@@ -1420,11 +1420,14 @@ hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp)
 		/*
 		 * Remove any unlinked files which were left open as-of
 		 * any system crash.
+		 *
+		 * Don't pass NODATA, we need the inode data so the delete
+		 * can do proper statistics updates.
 		 */
 		count = 0;
 		scan = hammer2_cluster_lookup(cluster, &key_next,
 					      0, HAMMER2_TID_MAX,
-					      HAMMER2_LOOKUP_NODATA, &ddflag);
+					      0, &ddflag);
 		while (scan) {
 			if (hammer2_cluster_type(scan) ==
 			    HAMMER2_BREF_TYPE_INODE) {
@@ -1433,8 +1436,7 @@ hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp)
 				++count;
 			}
 			scan = hammer2_cluster_next(cluster, scan, &key_next,
-						    0, HAMMER2_TID_MAX,
-						    HAMMER2_LOOKUP_NODATA);
+						    0, HAMMER2_TID_MAX, 0);
 		}
 
 		hammer2_inode_unlock_ex(pmp->ihidden, cluster);

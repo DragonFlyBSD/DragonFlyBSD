@@ -883,12 +883,9 @@ hammer2_vop_write(struct vop_write_args *ap)
 	/*
 	 * Read operations supported on this vnode?
 	 */
-	LOCKSTART;
 	vp = ap->a_vp;
-	if (vp->v_type != VREG) {
-		LOCKSTOP;
+	if (vp->v_type != VREG)
 		return (EINVAL);
-	}
 
 	/*
 	 * Misc
@@ -897,7 +894,6 @@ hammer2_vop_write(struct vop_write_args *ap)
 	uio = ap->a_uio;
 	error = 0;
 	if (ip->pmp->ronly) {
-		LOCKSTOP;
 		return (EROFS);
 	}
 
@@ -911,7 +907,6 @@ hammer2_vop_write(struct vop_write_args *ap)
 	    uio->uio_offset + uio->uio_resid >
 	     td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
 		lwpsignal(td->td_proc, td->td_lwp, SIGXFSZ);
-		LOCKSTOP;
 		return (EFBIG);
 	}
 
@@ -925,7 +920,6 @@ hammer2_vop_write(struct vop_write_args *ap)
 	error = hammer2_write_file(ip, uio, ap->a_ioflag, seqcount);
 	hammer2_trans_done(&trans);
 
-	LOCKSTOP;
 	return (error);
 }
 
@@ -1706,12 +1700,9 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	size_t name_len;
 	int error;
 	
-	LOCKSTART;
 	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly) {
-		LOCKSTOP;
+	if (dip->pmp->ronly)
 		return (EROFS);
-	}
 
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
@@ -1728,7 +1719,6 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
 		hammer2_trans_done(&trans);
-		LOCKSTOP;
 		return error;
 	}
 	*ap->a_vpp = hammer2_igetv(nip, ncparent, &error);
@@ -1785,7 +1775,6 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		cache_setvp(ap->a_nch, *ap->a_vpp);
 		/* hammer2_knote(ap->a_dvp, NOTE_WRITE); */
 	}
-	LOCKSTOP;
 	return error;
 }
 
