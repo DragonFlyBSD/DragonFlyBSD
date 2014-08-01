@@ -1,5 +1,4 @@
-/*	$OpenBSD: dhctoken.h,v 1.5 2006/05/15 08:10:57 fkr Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/dhctoken.h,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhctoken.h,v 1.6 2012/08/22 00:14:42 tedu Exp $	*/
 
 /* Tokens for config file lexer and parser. */
 
@@ -80,6 +79,7 @@
 #define TOK_REJECT		292
 #define TOK_FDDI		293
 #define TOK_LINK_TIMEOUT	294
+#define TOK_IGNORE		295
 
 #define is_identifier(x)	((x) >= TOK_FIRST_TOKEN &&	\
 				 (x) != TOK_STRING &&	\

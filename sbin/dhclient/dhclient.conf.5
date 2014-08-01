@@ -1,4 +1,4 @@
-.\" $OpenBSD: src/sbin/dhclient/dhclient.conf.5,v 1.21 2011/04/09 19:53:00 krw Exp $
+.\"	$OpenBSD: src/sbin/dhclient/dhclient.conf.5,v 1.22 2012/08/22 00:14:42 tedu Exp $
 .\"
 .\" Copyright (c) 1997 The Internet Software Consortium.
 .\" All rights reserved.
@@ -36,7 +36,7 @@
 .\" see ``http://www.isc.org/isc''.  To learn more about Vixie
 .\" Enterprises, see ``http://www.vix.com''.
 .\"
-.Dd July 23, 2013
+.Dd August 1, 2014
 .Dt DHCLIENT.CONF 5
 .Os
 .Sh NAME
@@ -238,6 +238,14 @@ Use
 for the given
 .Ar option ,
 regardless of the value supplied by the server.
+.It Xo
+.Ic ignore No { Op Ar option declaration
+.Oo , Ar ... option declaration Oc }
+.Xc
+If for some set of options the client should always ignore the
+value supplied by the server, these values can be defined in the
+.Ic ignore
+statement.
 .It Ic prepend Ar option option-value ;
 Use
 .Ar option-value
