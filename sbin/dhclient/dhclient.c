@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.148 2012/08/18 15:27:56 krw Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.149 2012/08/18 18:14:41 krw Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -703,7 +703,7 @@ dhcpoffer(struct iaddr client_addr, struct option_data *options)
 {
 	struct client_lease *lease, *lp;
 	int i;
-	int stop_selecting;
+	time_t stop_selecting;
 	char *name = options[DHO_DHCP_MESSAGE_TYPE].len ? "DHCPOFFER" :
 	    "BOOTREPLY";
 
