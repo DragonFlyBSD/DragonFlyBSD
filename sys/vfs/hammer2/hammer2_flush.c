@@ -746,6 +746,21 @@ again:
 				KKASSERT((chain->flags &
 					  HAMMER2_CHAIN_PFSROOT) == 0);
 			}
+
+			/*
+			 * Update inode statistics.  Pending stats in chain
+			 * are cleared out on UPDATE so expect that bit to
+			 * be set here too or the statistics will not be
+			 * rolled-up properly.
+			 */
+			{
+				hammer2_inode_data_t *ipdata;
+
+				KKASSERT(chain->flags & HAMMER2_CHAIN_UPDATE);
+				ipdata = &chain->data->ipdata;
+				ipdata->data_count += chain->data_count;
+				ipdata->inode_count += chain->inode_count;
+			}
 			KKASSERT((chain->flags & HAMMER2_CHAIN_EMBEDDED) == 0);
 			break;
 		default:
@@ -871,21 +886,35 @@ again:
 
 		/*
 		 * Blocktable updates
+		 *
+		 * We synchronize pending statistics at this time.  Delta
+		 * adjustments designated for the current and upper level
+		 * are synchronized.
 		 */
 		if (base && (chain->flags & HAMMER2_CHAIN_BMAPUPD)) {
 			if (chain->flags & HAMMER2_CHAIN_BMAPPED) {
 				hammer2_base_delete(info->trans, parent,
 						    base, count,
 						    &info->cache_index, chain);
-				hammer2_base_insert(info->trans, parent,
-						    base, count,
-						    &info->cache_index, chain);
+				/* base_delete clears both bits */
+			} else {
+				atomic_clear_int(&chain->flags,
+						 HAMMER2_CHAIN_BMAPUPD);
 			}
 		}
 		if (base && (chain->flags & HAMMER2_CHAIN_BMAPPED) == 0) {
+			parent->data_count += chain->data_count +
+					      chain->data_count_up;
+			parent->inode_count += chain->inode_count +
+					       chain->inode_count_up;
+			chain->data_count = 0;
+			chain->inode_count = 0;
+			chain->data_count_up = 0;
+			chain->inode_count_up = 0;
 			hammer2_base_insert(info->trans, parent,
 					    base, count,
 					    &info->cache_index, chain);
+			/* base_insert sets BMAPPED */
 		}
 		hammer2_chain_unlock(parent);
 	}

@@ -822,7 +822,8 @@ hammer2_cluster_scan(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 int
 hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 		     hammer2_cluster_t **clusterp,
-		     hammer2_key_t key, int keybits, int type, size_t bytes)
+		     hammer2_key_t key, int keybits,
+		     int type, size_t bytes, int flags)
 {
 	hammer2_cluster_t *cluster;
 	hammer2_pfsmount_t *pmp;
@@ -853,7 +854,8 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 		}
 		error = hammer2_chain_create(trans, &cparent->array[i],
 					     &cluster->array[i], pmp,
-					     key, keybits, type, bytes);
+					     key, keybits,
+					     type, bytes, flags);
 		KKASSERT(error == 0);
 		if (cparent->focus == NULL)
 			cparent->focus = cparent->array[i];
@@ -876,7 +878,8 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
  */
 void
 hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
-		       hammer2_cluster_t *cparent, hammer2_cluster_t *cluster)
+		       hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
+		       int flags)
 {
 	hammer2_chain_t *chain;
 	hammer2_blockref_t xbref;
@@ -894,11 +897,11 @@ hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 				xbref.keybits = bref->keybits;
 				hammer2_chain_rename(trans, &xbref,
 						     &cparent->array[i],
-						     chain);
+						     chain, flags);
 			} else {
 				hammer2_chain_rename(trans, NULL,
 						     &cparent->array[i],
-						     chain);
+						     chain, flags);
 			}
 			cluster->array[i] = chain;
 			if (cluster->focus == NULL)

@@ -241,6 +241,8 @@ struct hammer2_chain {
 	hammer2_xid_t	flush_xid;		/* flush sequencing */
 	hammer2_key_t   data_count;		/* delta's to apply */
 	hammer2_key_t   inode_count;		/* delta's to apply */
+	hammer2_key_t   data_count_up;		/* delta's to apply */
+	hammer2_key_t   inode_count_up;		/* delta's to apply */
 	hammer2_io_t	*dio;			/* physical data buffer */
 	u_int		bytes;			/* physical data size */
 	u_int		flags;
@@ -338,6 +340,9 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * Flags passed to hammer2_chain_delete()
  */
 #define HAMMER2_DELETE_PERMANENT	0x0001
+#define HAMMER2_DELETE_NOSTATS		0x0002
+
+#define HAMMER2_INSERT_NOSTATS		0x0002
 
 /*
  * Flags passed to hammer2_chain_delete_duplicate()
@@ -861,10 +866,10 @@ int hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
 				hammer2_pfsmount_t *pmp,
 				hammer2_key_t key, int keybits,
-				int type, size_t bytes);
+				int type, size_t bytes, int flags);
 void hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 				hammer2_chain_t **parentp,
-				hammer2_chain_t *chain);
+				hammer2_chain_t *chain, int flags);
 int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 				hammer2_ioc_pfs_t *pfs);
 void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
@@ -1014,9 +1019,11 @@ hammer2_cluster_t *hammer2_cluster_scan(hammer2_cluster_t *cparent,
 			hammer2_cluster_t *cluster, int flags);
 int hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 			hammer2_cluster_t **clusterp,
-			hammer2_key_t key, int keybits, int type, size_t bytes);
+			hammer2_key_t key, int keybits,
+			int type, size_t bytes, int flags);
 void hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
-			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster);
+			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
+			int flags);
 void hammer2_cluster_delete(hammer2_trans_t *trans, hammer2_cluster_t *pcluster,
 			hammer2_cluster_t *cluster, int flags);
 int hammer2_cluster_snapshot(hammer2_trans_t *trans,

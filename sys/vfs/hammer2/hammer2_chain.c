@@ -1014,6 +1014,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	nbytes = 1U << nradix;
 	if (obytes == nbytes)
 		return;
+	chain->data_count += (ssize_t)(nbytes - obytes);
 
 	/*
 	 * Make sure the old data is instantiated so we can copy it.  If this
@@ -2156,7 +2157,8 @@ done:
 int
 hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		     hammer2_chain_t **chainp, hammer2_pfsmount_t *pmp,
-		     hammer2_key_t key, int keybits, int type, size_t bytes)
+		     hammer2_key_t key, int keybits, int type, size_t bytes,
+		     int flags)
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *chain;
@@ -2236,6 +2238,20 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			 */
 			KKASSERT(chain->data == NULL);
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
+			break;
+		}
+
+		/*
+		 * Set statistics for pending updates.  These will be
+		 * synchronized by the flush code.
+		 */
+		switch(type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			chain->inode_count = 1;
+			break;
+		case HAMMER2_BREF_TYPE_DATA:
+		case HAMMER2_BREF_TYPE_INDIRECT:
+			chain->data_count = chain->bytes;
 			break;
 		}
 	} else {
@@ -2387,6 +2403,14 @@ again:
 			hammer2_chain_ref(chain);
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
 		}
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+		    (flags & HAMMER2_INSERT_NOSTATS) == 0) {
+			KKASSERT(chain->data);
+			chain->inode_count_up +=
+				chain->data->ipdata.inode_count;
+			chain->data_count_up +=
+				chain->data->ipdata.data_count;
+		}
 	}
 
 	/*
@@ -2433,7 +2457,8 @@ done:
  */
 void
 hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
-		     hammer2_chain_t **parentp, hammer2_chain_t *chain)
+		     hammer2_chain_t **parentp, hammer2_chain_t *chain,
+		     int flags)
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *parent;
@@ -2477,7 +2502,7 @@ hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 
 		hammer2_chain_create(trans, parentp, &chain, chain->pmp,
 				     bref->key, bref->keybits, bref->type,
-				     chain->bytes);
+				     chain->bytes, flags);
 		KKASSERT(chain->flags & HAMMER2_CHAIN_UPDATE);
 		hammer2_chain_setflush(trans, *parentp);
 	}
@@ -2491,7 +2516,8 @@ hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
  */
 static void
 _hammer2_chain_delete_helper(hammer2_trans_t *trans,
-			     hammer2_chain_t *parent, hammer2_chain_t *chain)
+			     hammer2_chain_t *parent, hammer2_chain_t *chain,
+			     int flags)
 {
 	hammer2_mount_t *hmp;
 
@@ -2569,7 +2595,29 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 			      "unrecognized blockref type: %d",
 			      parent->bref.type);
 		}
+
+		/*
+		 * delete blockmapped chain from its parent.
+		 *
+		 * The parent is not affected by any statistics in chain
+		 * which are pending synchronization.  That is, there is
+		 * nothing to undo in the parent since they have not yet
+		 * been incorporated into the parent.
+		 *
+		 * The parent is affected by statistics stored in inodes.
+		 * Those have already been synchronized, so they must be
+		 * undone.  XXX split update possible w/delete in middle?
+		 */
 		if (base) {
+			if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+			    (flags & HAMMER2_DELETE_NOSTATS) == 0) {
+				KKASSERT(chain->data != NULL);
+				parent->data_count -=
+					chain->data->ipdata.data_count;
+				parent->inode_count -=
+					chain->data->ipdata.inode_count;
+			}
+
 			int cache_index = -1;
 			hammer2_base_delete(trans, parent, base, count,
 					    &cache_index, chain);
@@ -2580,8 +2628,20 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		 * Chain is not blockmapped but a parent is present.
 		 * Atomically remove the chain from the parent.  There is
 		 * no blockmap entry to remove.
+		 *
+		 * Because chain was associated with a parent but not
+		 * synchronized, the chain's *_count_up fields contain
+		 * inode adjustment statistics which must be undone.
 		 */
 		spin_lock(&parent->core.cst.spin);
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+		    (flags & HAMMER2_DELETE_NOSTATS) == 0) {
+			KKASSERT(chain->data != NULL);
+			chain->data_count_up -=
+				chain->data->ipdata.data_count;
+			chain->inode_count_up -=
+				chain->data->ipdata.inode_count;
+		}
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 		atomic_add_int(&parent->core.live_count, -1);
 		++parent->core.generation;
@@ -2908,12 +2968,15 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		/*
 		 * Shift the chain to the indirect block.
 		 *
-		 * WARNING! Can cause held-over chains to require a refactor.
-		 *	    Fortunately we have none (our locked chains are
-		 *	    passed into and modified by the call).
+		 * WARNING! No reason for us to load chain data, pass NOSTATS
+		 *	    to prevent delete/insert from trying to access
+		 *	    inode stats (and thus asserting if there is no
+		 *	    chain->data loaded).
 		 */
-		hammer2_chain_delete(trans, parent, chain, 0);
-		hammer2_chain_rename(trans, NULL, &ichain, chain);
+		hammer2_chain_delete(trans, parent, chain,
+				     HAMMER2_DELETE_NOSTATS);
+		hammer2_chain_rename(trans, NULL, &ichain, chain,
+				     HAMMER2_INSERT_NOSTATS);
 		hammer2_chain_unlock(chain);
 		KKASSERT(parent->refs > 0);
 		chain = NULL;
@@ -3281,7 +3344,7 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0) {
 		KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
 			 chain->parent == parent);
-		_hammer2_chain_delete_helper(trans, parent, chain);
+		_hammer2_chain_delete_helper(trans, parent, chain, flags);
 	}
 
 	if (flags & HAMMER2_DELETE_PERMANENT) {

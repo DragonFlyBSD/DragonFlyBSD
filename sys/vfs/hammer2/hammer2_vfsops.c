@@ -1036,7 +1036,7 @@ retry:
 		*errorp = hammer2_cluster_create(trans, dparent, &cluster,
 					       lbase, HAMMER2_PBUFRADIX,
 					       HAMMER2_BREF_TYPE_DATA,
-					       pblksize);
+					       pblksize, 0);
 		if (cluster == NULL) {
 			hammer2_cluster_lookup_done(dparent);
 			panic("hammer2_cluster_create: par=%p error=%d\n",

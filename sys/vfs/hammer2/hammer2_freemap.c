@@ -346,7 +346,8 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		error = hammer2_chain_create(trans, parentp, &chain, hmp->spmp,
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
-				     HAMMER2_FREEMAP_LEVELN_PSIZE);
+				     HAMMER2_FREEMAP_LEVELN_PSIZE,
+				     0);
 		KKASSERT(error == 0);
 		if (error == 0) {
 			hammer2_chain_modify(trans, chain, 0);
@@ -807,7 +808,8 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 		error = hammer2_chain_create(trans, &parent, &chain, hmp->spmp,
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
-				     HAMMER2_FREEMAP_LEVELN_PSIZE);
+				     HAMMER2_FREEMAP_LEVELN_PSIZE,
+				     0);
 
 		if (hammer2_debug & 0x0040) {
 			kprintf("fixup create chain %p %016jx:%d\n",

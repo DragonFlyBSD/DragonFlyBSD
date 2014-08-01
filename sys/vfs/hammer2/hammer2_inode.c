@@ -646,7 +646,8 @@ retry:
 		error = hammer2_cluster_create(trans, cparent, &cluster,
 					     lhc, 0,
 					     HAMMER2_BREF_TYPE_INODE,
-					     HAMMER2_INODE_BYTES);
+					     HAMMER2_INODE_BYTES,
+					     0);
 	}
 #if INODE_DEBUG
 	kprintf("CREATE INODE %*.*s chain=%p\n",
@@ -841,7 +842,7 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 	hammer2_cluster_bref(cluster, &bref);
 	bref.key = lhc;			/* invisible dir entry key */
 	bref.keybits = 0;
-	hammer2_cluster_rename(trans, &bref, dcluster, cluster);
+	hammer2_cluster_rename(trans, &bref, dcluster, cluster, 0);
 
 	/*
 	 * cluster is now 'live' again.. adjust the filename.
@@ -948,7 +949,8 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 						       dcluster, &ncluster,
 						       lhc, 0,
 						       HAMMER2_BREF_TYPE_INODE,
-						       HAMMER2_INODE_BYTES);
+						       HAMMER2_INODE_BYTES,
+						       0);
 		} else {
 			/*
 			 * Reconnect the original cluster under the new name.
@@ -966,7 +968,8 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 						       dcluster, &ncluster,
 						       lhc, 0,
 						       HAMMER2_BREF_TYPE_INODE,
-						       HAMMER2_INODE_BYTES);
+						       HAMMER2_INODE_BYTES,
+						       0);
 		}
 	}
 
@@ -1448,7 +1451,8 @@ hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp)
 	error = hammer2_cluster_create(&trans, cparent, &cluster,
 				       HAMMER2_INODE_HIDDENDIR, 0,
 				       HAMMER2_BREF_TYPE_INODE,
-				       HAMMER2_INODE_BYTES);
+				       HAMMER2_INODE_BYTES,
+				       0);
 	hammer2_inode_unlock_ex(pmp->iroot, cparent);
 
 	hammer2_cluster_modify(&trans, cluster, 0);
@@ -1589,7 +1593,8 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 		error = hammer2_cluster_create(trans, cparent, &ncluster,
 					     lhc, 0,
 					     HAMMER2_BREF_TYPE_INODE,
-					     HAMMER2_INODE_BYTES);
+					     HAMMER2_INODE_BYTES,
+					     0);
 		hammer2_cluster_modify(trans, ncluster, 0);
 		wipdata = &hammer2_cluster_wdata(ncluster)->ipdata;
 
