@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/sbin/dhclient/dhcpd.h,v 1.78 2012/08/22 00:14:42 tedu Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhcpd.h,v 1.79 2012/08/26 23:33:30 krw Exp $	*/
 
 /*
  * Copyright (c) 2004 Henning Brauer <henning@openbsd.org>
@@ -250,6 +250,7 @@ void reinitialize_interface(void);
 void dispatch(void);
 void got_one(void);
 void set_timeout(time_t, void (*)(void));
+void set_timeout_interval(time_t, void (*)(void));
 void cancel_timeout(void);
 int interface_status(char *);
 int interface_link_forceup(char *);
@@ -276,7 +277,6 @@ char *piaddr(struct iaddr);
 /* dhclient.c */
 extern char *path_dhclient_conf;
 extern char *path_dhclient_db;
-extern time_t cur_time;
 extern int log_perror;
 extern int routefd;
 
