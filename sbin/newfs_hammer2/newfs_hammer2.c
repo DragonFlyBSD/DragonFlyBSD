@@ -567,7 +567,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 		/*
 		 * Compression mode and supported copyids.
 		 *
-		 * Do not allow compression when creating a "BOOT" label
+		 * Do not allow compression when creating any "BOOT" label
 		 * (pfs-create also does the same if the pfs is named "BOOT")
 		 */
 		if (strcasecmp(Label[i], "BOOT") == 0) {

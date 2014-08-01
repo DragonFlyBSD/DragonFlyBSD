@@ -200,7 +200,11 @@ main(int ac, char **av)
 		/*
 		 * List all PFSs
 		 */
-		ecode = cmd_pfs_list(sel_path);
+		if (ac > 2) {
+			fprintf(stderr, "pfs-list: too many arguments\n");
+			usage(1);
+		}
+		ecode = cmd_pfs_list((ac == 2) ? av[1] : sel_path);
 	} else if (strcmp(av[0], "pfs-create") == 0) {
 		/*
 		 * Create new PFS using pfs_type
@@ -224,14 +228,21 @@ main(int ac, char **av)
 		 * Create snapshot with optional pfs-type and optional
 		 * label override.
 		 */
-		if (ac > 2) {
+		if (ac > 3) {
 			fprintf(stderr, "pfs-snapshot: too many arguments\n");
 			usage(1);
 		}
-		if (ac != 2)
-			ecode = cmd_pfs_snapshot(sel_path, NULL);
-		else
-			ecode = cmd_pfs_snapshot(sel_path, av[1]);
+		switch(ac) {
+		case 1:
+			ecode = cmd_pfs_snapshot(sel_path, NULL, NULL);
+			break;
+		case 2:
+			ecode = cmd_pfs_snapshot(sel_path, av[1], NULL);
+			break;
+		case 3:
+			ecode = cmd_pfs_snapshot(sel_path, av[1], av[2]);
+			break;
+		}
 	} else if (strcmp(av[0], "service") == 0) {
 		/*
 		 * Start the service daemon.  This daemon accepts
@@ -388,7 +399,7 @@ void
 usage(int code)
 {
 	fprintf(stderr,
-		"hammer2 [-s path] command...\n"
+		"hammer2 [options] command...\n"
 		"    -s path            Select filesystem\n"
 		"    -t type            PFS type for pfs-create\n"
 		"    -u uuid            uuid for pfs-create\n"
@@ -401,7 +412,7 @@ usage(int code)
 			"Print directory hash\n"
 		"    status                       "
 			"Report cluster status\n"
-		"    pfs-list                     "
+		"    pfs-list [<path>]            "
 			"List PFSs\n"
 		"    pfs-clid <label>             "
 			"Print cluster id for specific PFS\n"
@@ -411,8 +422,8 @@ usage(int code)
 			"Create a PFS\n"
 		"    pfs-delete <label>           "
 			"Destroy a PFS\n"
-		"    snapshot [<label>]           "
-			"Snapshot a PFS\n"
+		"    snapshot <path> [<label>]           "
+			"Snapshot a PFS or directory\n"
 		"    service                      "
 			"Start service daemon\n"
 		"    stat [<path>]	          "
