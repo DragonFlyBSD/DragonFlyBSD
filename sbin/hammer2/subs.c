@@ -243,6 +243,30 @@ sizetostr(hammer2_off_t size)
 	return(buf);
 }
 
+const char *
+counttostr(hammer2_off_t size)
+{
+	static char buf[32];
+
+	if (size < 1024 / 2) {
+		snprintf(buf, sizeof(buf), "%jd",
+			 (intmax_t)size);
+	} else if (size < 1024 * 1024 / 2) {
+		snprintf(buf, sizeof(buf), "%jd",
+			 (intmax_t)size);
+	} else if (size < 1024 * 1024 * 1024LL / 2) {
+		snprintf(buf, sizeof(buf), "%6.2fM",
+			 (double)size / (1024 * 1024));
+	} else if (size < 1024 * 1024 * 1024LL * 1024LL / 2) {
+		snprintf(buf, sizeof(buf), "%6.2fG",
+			 (double)(size / (1024 * 1024 * 1024LL)));
+	} else {
+		snprintf(buf, sizeof(buf), "%6.2fT",
+			 (double)(size / (1024 * 1024 * 1024LL * 1024LL)));
+	}
+	return(buf);
+}
+
 #if 0
 /*
  * Allocation wrappers give us shims for possible future use
