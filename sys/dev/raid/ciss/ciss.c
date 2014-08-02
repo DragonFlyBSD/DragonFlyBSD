@@ -237,7 +237,7 @@ static d_close_t	ciss_close;
 static d_ioctl_t	ciss_ioctl;
 
 static struct dev_ops ciss_ops = {
-	{ "ciss", 0, 0 },
+	{ "ciss", 0, D_MPSAFE },
 	.d_open =	ciss_open,
 	.d_close =	ciss_close,
 	.d_ioctl =	ciss_ioctl,
@@ -425,7 +425,7 @@ ciss_attach(device_t dev)
     sc = device_get_softc(dev);
     sc->ciss_dev = dev;
     lockinit(&sc->ciss_lock, "cissmtx", 0, LK_CANRECURSE);
-    callout_init(&sc->ciss_periodic);
+    callout_init_mp(&sc->ciss_periodic);
 
     /*
      * Do PCI-specific init.
