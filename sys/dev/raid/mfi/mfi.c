@@ -163,7 +163,7 @@ static d_ioctl_t	mfi_ioctl;
 static d_kqfilter_t	mfi_kqfilter;
 
 static struct dev_ops mfi_ops = {
-	{ "mfi", 0, 0 },
+	{ "mfi", 0, D_MPSAFE },
 	.d_open =	mfi_open,
 	.d_close =	mfi_close,
 	.d_ioctl =	mfi_ioctl,

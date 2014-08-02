@@ -62,7 +62,7 @@ static	d_close_t		twa_close;
 static	d_ioctl_t		twa_ioctl;
 
 static struct dev_ops twa_ops = {
-	{ "twa", 0, 0 },
+	{ "twa", 0, D_MPSAFE },
 	.d_open =	twa_open,
 	.d_close =	twa_close,
 	.d_ioctl =	twa_ioctl,

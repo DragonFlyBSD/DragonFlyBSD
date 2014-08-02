@@ -175,7 +175,7 @@ MRSAS_CTLR_ID device_table[] = {
  *
  */
 static struct dev_ops mrsas_ops = {
-    { "mrsas", 0, 0 },
+    { "mrsas", 0, D_MPSAFE },
     .d_open =   mrsas_open,
     .d_close =  mrsas_close,
     .d_read =   mrsas_read,
