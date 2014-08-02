@@ -106,7 +106,7 @@ static d_close_t	mps_close;
 static d_ioctl_t	mps_ioctl_devsw;
 
 static struct dev_ops mps_ops = {
-	{ "mps", 0, 0 },
+	{ "mps", 0, D_MPSAFE },
 	.d_open =	mps_open,
 	.d_close =	mps_close,
 	.d_ioctl =	mps_ioctl_devsw,

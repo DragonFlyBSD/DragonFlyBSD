@@ -864,7 +864,7 @@ mps_alloc_requests(struct mps_softc *sc)
 		cm->cm_desc.Default.SMID = i;
 		cm->cm_sc = sc;
 		TAILQ_INIT(&cm->cm_chain_list);
-		callout_init(&cm->cm_callout);
+		callout_init_mp(&cm->cm_callout);
 
 		/* XXX Is a failure here a critical problem? */
 		if (bus_dmamap_create(sc->buffer_dmat, 0, &cm->cm_dmamap) == 0)
@@ -1037,7 +1037,7 @@ mps_attach(struct mps_softc *sc)
 	mps_dprint(sc, MPS_TRACE, "%s\n", __func__);
 
 	lockinit(&sc->mps_lock, "MPT2SAS lock", 0, LK_CANRECURSE);
-	callout_init(&sc->periodic);
+	callout_init_mp(&sc->periodic);
 	TAILQ_INIT(&sc->event_list);
 
 	if ((error = mps_transition_ready(sc)) != 0) {
