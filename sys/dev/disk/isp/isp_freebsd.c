@@ -75,7 +75,7 @@ static void isp_target_thread_fc(void *);
 static void isp_timer(void *);
 
 static struct dev_ops isp_ops = {
-	{ "isp", 0, D_DISK },
+	{ "isp", 0, D_MPSAFE },
 	.d_ioctl =	ispioctl,
 };
 
