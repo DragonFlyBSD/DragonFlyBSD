@@ -81,7 +81,7 @@ static d_close_t	mpt_close;
 static d_ioctl_t	mpt_ioctl;
 
 static struct dev_ops mpt_ops = {
-	{ "mpt", 0, 0 },
+	{ "mpt", 0, D_MPSAFE },
 	.d_open =	mpt_open,
 	.d_close =	mpt_close,
 	.d_ioctl =	mpt_ioctl,
