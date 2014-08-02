@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.152 2012/08/26 23:33:29 krw Exp $	*/
+/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.153 2012/08/31 02:36:11 krw Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -468,7 +468,6 @@ state_reboot(void)
 	client->first_sending = time(NULL);
 	client->interval = 0;
 
-	/* Send out the first DHCPREQUEST packet. */
 	send_request();
 }
 
@@ -488,8 +487,6 @@ state_init(void)
 	client->first_sending = time(NULL);
 	client->interval = 0;
 
-	/* Add an immediate timeout to cause the first DHCPDISCOVER packet
-	   to go out. */
 	send_discover();
 }
 
@@ -565,7 +562,6 @@ state_selecting(void)
 	/* Toss the lease we picked - we'll get it back in a DHCPACK. */
 	free_client_lease(picked);
 
-	/* Add an immediate timeout to send the first DHCPREQUEST packet. */
 	send_request();
 }
 
@@ -697,7 +693,6 @@ state_bound(void)
 	client->interval = 0;
 	client->state = S_RENEWING;
 
-	/* Send the first packet immediately. */
 	send_request();
 }
 
@@ -943,7 +938,6 @@ send_discover(void)
 	    ifi->name, inet_ntoa(sockaddr_broadcast.sin_addr),
 	    ntohs(sockaddr_broadcast.sin_port), client->interval);
 
-	/* Send out a packet. */
 	send_packet(inaddr_any, &sockaddr_broadcast, NULL);
 
 	set_timeout_interval(client->interval, send_discover);
@@ -1136,7 +1130,6 @@ send_request(void)
 	note("DHCPREQUEST on %s to %s port %d", ifi->name,
 	    inet_ntoa(destination.sin_addr), ntohs(destination.sin_port));
 
-	/* Send out a packet. */
 	send_packet(from, &destination, NULL);
 
 	set_timeout_interval(client->interval, send_request);
@@ -1149,7 +1142,6 @@ send_decline(void)
 	    inet_ntoa(sockaddr_broadcast.sin_addr),
 	    ntohs(sockaddr_broadcast.sin_port));
 
-	/* Send out a packet. */
 	send_packet(inaddr_any, &sockaddr_broadcast, NULL);
 }
 
