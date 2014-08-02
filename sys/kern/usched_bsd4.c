@@ -1883,7 +1883,7 @@ sched_thread_cpu_init(void)
 	int cache_coherent_not_supported = 0;
 
 	if (bootverbose)
-		kprintf("Start scheduler helpers on cpus:\n");
+		kprintf("Start usched_bsd4 helpers on cpus:\n");
 
 	sysctl_ctx_init(&usched_bsd4_sysctl_ctx);
 	usched_bsd4_sysctl_tree =

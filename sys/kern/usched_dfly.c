@@ -2144,7 +2144,7 @@ usched_dfly_cpu_init(void)
 	int cache_coherent_not_supported = 0;
 
 	if (bootverbose)
-		kprintf("Start scheduler helpers on cpus:\n");
+		kprintf("Start usched_dfly helpers on cpus:\n");
 
 	sysctl_ctx_init(&usched_dfly_sysctl_ctx);
 	usched_dfly_sysctl_tree =
@@ -2182,7 +2182,7 @@ usched_dfly_cpu_init(void)
 			case THREAD_LEVEL:
 				if (bootverbose)
 					kprintf ("    cpu%d - HyperThreading "
-						 "available. Core Sibs: ",
+						 "available. Core siblings: ",
 						 i);
 				break;
 			case CORE_LEVEL:
@@ -2191,7 +2191,7 @@ usched_dfly_cpu_init(void)
 				if (bootverbose)
 					kprintf ("    cpu%d - No HT available, "
 						 "multi-core/physical "
-						 "cpu. Physical Sibs: ",
+						 "cpu. Physical siblings: ",
 						 i);
 				break;
 			case CHIP_LEVEL:
@@ -2200,7 +2200,7 @@ usched_dfly_cpu_init(void)
 				if (bootverbose)
 					kprintf ("    cpu%d - No HT available, "
 						 "single-core/physical cpu. "
-						 "Package Sibs: ",
+						 "Package siblings: ",
 						 i);
 				break;
 			default:
@@ -2209,7 +2209,7 @@ usched_dfly_cpu_init(void)
 				cache_coherent_not_supported = 1;
 				if (bootverbose)
 					kprintf ("    cpu%d - Unknown cpunode->"
-						 "type=%u. Sibs: ",
+						 "type=%u. siblings: ",
 						 i,
 						 (u_int)dd->cpunode->type);
 				break;
