@@ -105,7 +105,7 @@ static devclass_t acpi_timer_devclass;
 DRIVER_MODULE(acpi_timer, acpi, acpi_timer_driver, acpi_timer_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_timer, acpi, 1, 1, 1);
 
-static u_int
+static inline uint32_t
 acpi_timer_read(void)
 {
     return (bus_space_read_4(acpi_timer_bst, acpi_timer_bsh, 0));
@@ -383,11 +383,11 @@ static int
 acpi_timer_test(void)
 {
     uint32_t	last, this;
-    int		min, max, n, delta;
+    int		min, max, max2, n, delta;
     register_t	s;
 
-    min = 10000000;
-    max = 0;
+    min = INT32_MAX;
+    max = max2 = 0;
 
     /* Test the timer with interrupts disabled to get accurate results. */
 #if defined(__i386__)
@@ -402,9 +402,13 @@ acpi_timer_test(void)
     for (n = 0; n < 2000; n++) {
 	this = acpi_timer_read();
 	delta = acpi_TimerDelta(this, last);
-	if (delta > max)
+	if (delta > max) {
+	    max2 = max;
 	    max = delta;
-	else if (delta < min)
+	} else if (delta > max2) {
+	    max2 = delta;
+	}
+	if (delta < min)
 	    min = delta;
 	last = this;
     }
@@ -416,9 +420,10 @@ acpi_timer_test(void)
 #error "no read_eflags"
 #endif
 
-    if (max - min > 2)
+    delta = max2 - min;
+    if ((max - min > 8 || delta > 3) && vmm_guest == VMM_GUEST_NONE)
 	n = 0;
-    else if (min < 0 || max == 0)
+    else if (min < 0 || max == 0 || max2 == 0)
 	n = 0;
     else
 	n = 1;
@@ -430,4 +435,3 @@ acpi_timer_test(void)
 
     return (n);
 }
-
