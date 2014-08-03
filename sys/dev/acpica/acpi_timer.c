@@ -344,7 +344,7 @@ acpi_timer_sysctl_freq(SYSCTL_HANDLER_ARGS)
     if (acpi_cputimer.freq == 0)
 	return (EOPNOTSUPP);
     freq = acpi_cputimer.freq;
-    error = sysctl_handle_int(oidp, &freq, sizeof(freq), req);
+    error = sysctl_handle_int(oidp, &freq, 0, req);
     if (error == 0 && req->newptr != NULL)
 	cputimer_set_frequency(&acpi_cputimer, freq);
 

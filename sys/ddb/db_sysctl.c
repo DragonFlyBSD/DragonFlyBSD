@@ -37,7 +37,6 @@
  * Author: Archie Cobbs <archie@whistle.com>
  *
  * $FreeBSD: src/sys/ddb/db_sysctl.c,v 1.1.4.1 2000/08/03 00:09:27 ps Exp $
- * $DragonFly: src/sys/ddb/db_sysctl.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +86,7 @@ sysctl_debug_panic(SYSCTL_HANDLER_ARGS)
 	int err;
 	int val = 0;
 
-	err = sysctl_handle_int(oidp, &val, sizeof(val), req);
+	err = sysctl_handle_int(oidp, &val, 0, req);
 	if (val == 1)
 		panic("sysctl_debug_panic");
 	return err;
@@ -116,7 +115,7 @@ sysctl_debug_panic2(SYSCTL_HANDLER_ARGS)
 	int err;
 	int val = 0;
 
-	err = sysctl_handle_int(oidp, &val, sizeof(val), req);
+	err = sysctl_handle_int(oidp, &val, 0, req);
 	if (val == 1)
 		stack_guard_panic2();
 	return err;

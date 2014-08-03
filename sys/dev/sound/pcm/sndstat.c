@@ -86,7 +86,7 @@ sysctl_hw_sndverbose(SYSCTL_HANDLER_ARGS)
 	int error, verbose;
 
 	verbose = sndstat_verbose;
-	error = sysctl_handle_int(oidp, &verbose, sizeof(verbose), req);
+	error = sysctl_handle_int(oidp, &verbose, 0, req);
 	if (error == 0 && req->newptr != NULL) {
 		lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 		if (verbose < 0 || verbose > 3)

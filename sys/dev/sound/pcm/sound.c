@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.c,v 1.93.2.5 2007/06/04 09:06:05 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.12 2008/01/06 16:55:51 swildner Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -362,7 +361,7 @@ sysctl_hw_snd_unit(SYSCTL_HANDLER_ARGS)
 	int error, unit;
 
 	unit = snd_unit;
-	error = sysctl_handle_int(oidp, &unit, sizeof(unit), req);
+	error = sysctl_handle_int(oidp, &unit, 0, req);
 	if (error == 0 && req->newptr != NULL) {
 		if (unit < 0 || (pcm_devclass != NULL &&
 		    unit >= devclass_get_maxunit(pcm_devclass)))
@@ -385,7 +384,7 @@ sysctl_hw_snd_maxautovchans(SYSCTL_HANDLER_ARGS)
 	int i, v, error;
 
 	v = snd_maxautovchans;
-	error = sysctl_handle_int(oidp, &v, sizeof(v), req);
+	error = sysctl_handle_int(oidp, &v, 0, req);
 	if (error == 0 && req->newptr != NULL) {
 		if (v < 0 || v > PCMMAXCHAN)
 			return E2BIG;
@@ -1087,7 +1086,7 @@ sysctl_hw_snd_vchans(SYSCTL_HANDLER_ARGS)
 	d = oidp->oid_arg1;
 
 	newcnt = d->vchancount;
-	err = sysctl_handle_int(oidp, &newcnt, sizeof(newcnt), req);
+	err = sysctl_handle_int(oidp, &newcnt, 0, req);
 
 	if (err == 0 && req->newptr != NULL && d->vchancount != newcnt)
 		err = pcm_setvchans(d, newcnt);

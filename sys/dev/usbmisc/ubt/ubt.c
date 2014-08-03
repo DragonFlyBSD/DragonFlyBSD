@@ -651,7 +651,7 @@ ubt_sysctl_config(SYSCTL_HANDLER_ARGS)
 	int t, error;
 
 	t = sc->sc_config;
-	error = sysctl_handle_int(oidp, &t, sizeof(t), req);
+	error = sysctl_handle_int(oidp, &t, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
 

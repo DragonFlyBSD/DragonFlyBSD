@@ -211,7 +211,7 @@ sysctl_hw_usb_uticom_stickdsr(SYSCTL_HANDLER_ARGS)
 	int err, val;
 
 	val = uticomstickdsr;
-	err = sysctl_handle_int(oidp, &val, sizeof(val), req);
+	err = sysctl_handle_int(oidp, &val, 0, req);
 	if (err != 0 || req->newptr == NULL)
 		return (err);
 	if (val == 0 || val == 1)

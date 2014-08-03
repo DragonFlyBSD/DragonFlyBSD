@@ -55,7 +55,7 @@ sysctl_hw_snd_targetirqrate(SYSCTL_HANDLER_ARGS)
 	int err, val;
 
 	val = chn_targetirqrate;
-	err = sysctl_handle_int(oidp, &val, sizeof(val), req);
+	err = sysctl_handle_int(oidp, &val, 0, req);
 	if (val < 16 || val > 512)
 		err = EINVAL;
 	else

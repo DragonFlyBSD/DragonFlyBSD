@@ -181,7 +181,7 @@ ngpppoe_set_ethertype(SYSCTL_HANDLER_ARGS)
 	int val;
 
 	val = pppoe_mode;
-	error = sysctl_handle_int(oidp, &val, sizeof(int), req);
+	error = sysctl_handle_int(oidp, &val, 0, req);
 	if (error != 0 || req->newptr == NULL)
 		return (error);
 	switch (val) {

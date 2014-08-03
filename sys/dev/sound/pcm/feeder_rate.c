@@ -140,7 +140,7 @@ sysctl_hw_snd_feeder_rate_ratemin(SYSCTL_HANDLER_ARGS)
 	int err, val;
 
 	val = feeder_rate_ratemin;
-	err = sysctl_handle_int(oidp, &val, sizeof(val), req);
+	err = sysctl_handle_int(oidp, &val, 0, req);
 	if (val < 1 || val >= feeder_rate_ratemax)
 		err = EINVAL;
 	else
@@ -156,7 +156,7 @@ sysctl_hw_snd_feeder_rate_ratemax(SYSCTL_HANDLER_ARGS)
 	int err, val;
 
 	val = feeder_rate_ratemax;
-	err = sysctl_handle_int(oidp, &val, sizeof(val), req);
+	err = sysctl_handle_int(oidp, &val, 0, req);
 	if (val <= feeder_rate_ratemin || val > 0x7fffff)
 		err = EINVAL;
 	else
@@ -172,7 +172,7 @@ sysctl_hw_snd_feeder_rate_scaling(SYSCTL_HANDLER_ARGS)
 	int err, val;
 
 	val = feeder_rate_scaling;
-	err = sysctl_handle_int(oidp, &val, sizeof(val), req);
+	err = sysctl_handle_int(oidp, &val, 0, req);
 	/*
 	 *      Feeder Scaling Type
 	 *      ===================
@@ -215,7 +215,7 @@ sysctl_hw_snd_feeder_rate_buffersize(SYSCTL_HANDLER_ARGS)
 	int err, val;
 
 	val = feeder_rate_buffersize;
-	err = sysctl_handle_int(oidp, &val, sizeof(val), req);
+	err = sysctl_handle_int(oidp, &val, 0, req);
 	/*
 	 * Don't waste too much kernel space
 	 */
