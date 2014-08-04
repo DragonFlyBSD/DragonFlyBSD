@@ -403,6 +403,7 @@ cmd_show(const char *devpath, int dofreemap)
 	return 0;
 }
 
+extern uint32_t iscsi_crc32(const void *buf, size_t size);
 static void
 show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 {
@@ -416,6 +417,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	size_t bytes;
 	const char *type_str;
 	char *str = NULL;
+	uint32_t cv;
 
 	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_EMPTY:
@@ -489,6 +491,41 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	bcount = 0;
 	didnl = 1;
 	namelen = 0;
+
+	/*
+	 * Check data integrity in verbose mode, otherwise we are just doing
+	 * a quick meta-data scan.  Meta-data integrity is always checked.
+	 * (Also see the check above that ensures the media data is loaded,
+	 * otherwise there's no data to check!).
+	 */
+	if (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1) {
+		switch(HAMMER2_DEC_CHECK(bref->methods)) {
+		case HAMMER2_CHECK_NONE:
+			break;
+		case HAMMER2_CHECK_ISCSI32:
+			cv = hammer2_icrc32(&media, bytes);
+			if (bref->check.iscsi32.value != cv) {
+				printf("(icrc %02x:%08x/%08x) ",
+				       bref->methods,
+				       bref->check.iscsi32.value,
+				       cv);
+			}
+			break;
+		case HAMMER2_CHECK_CRC64:
+			break;
+		case HAMMER2_CHECK_SHA192:
+			break;
+		case HAMMER2_CHECK_FREEMAP:
+			cv = hammer2_icrc32(&media, bytes);
+			if (bref->check.freemap.icrc32 != cv) {
+				printf("(fcrc %02x:%08x/%08x) ",
+					bref->methods,
+					bref->check.freemap.icrc32,
+					cv);
+			}
+			break;
+		}
+	}
 
 	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_EMPTY:
