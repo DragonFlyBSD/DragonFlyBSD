@@ -1091,9 +1091,12 @@ retry:
 }
 
 /* 
- * From hammer2_vnops.c.
+ * bio queued from hammer2_vnops.c.
+ *
  * The core write function which determines which path to take
- * depending on compression settings.
+ * depending on compression settings.  We also have to locate the
+ * related clusters so we can calculate and set the check data for
+ * the blockref.
  */
 static
 void
@@ -1335,6 +1338,13 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 			}
 
 			/*
+			 * The flush code doesn't calculate check codes for
+			 * file data (doing so can result in excessive I/O),
+			 * so we do it here.
+			 */
+			hammer2_chain_setcheck(chain, bdata);
+
+			/*
 			 * Device buffer is now valid, chain is no longer in
 			 * the initial state.
 			 *
@@ -1500,6 +1510,13 @@ hammer2_write_bp(hammer2_cluster_t *cluster, struct buf *bp, int ioflag,
 							HAMMER2_COMP_NONE) +
 					      HAMMER2_ENC_CHECK(temp_check);
 			bcopy(bp->b_data, bdata, chain->bytes);
+
+			/*
+			 * The flush code doesn't calculate check codes for
+			 * file data (doing so can result in excessive I/O),
+			 * so we do it here.
+			 */
+			hammer2_chain_setcheck(chain, bdata);
 
 			/*
 			 * Device buffer is now valid, chain is no longer in

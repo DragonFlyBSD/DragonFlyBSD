@@ -1013,7 +1013,9 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 				hammer2_cluster_data(ocluster)->ipdata.type;
 		wipdata->type = HAMMER2_OBJTYPE_HARDLINK;
 		wipdata->inum = hammer2_cluster_data(ocluster)->ipdata.inum;
+		wipdata->version = HAMMER2_INODE_VERSION_ONE;
 		wipdata->nlinks = 1;
+		wipdata->op_flags = HAMMER2_OPFLAG_DIRECTDATA;
 		hammer2_cluster_modsync(ncluster);
 		hammer2_cluster_unlock(ncluster);
 		ncluster = ocluster;
@@ -1602,7 +1604,8 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 		hammer2_cluster_modify(trans, ncluster, 0);
 		wipdata = &hammer2_cluster_wdata(ncluster)->ipdata;
 
-		wipdata->comp_algo = ripdata->comp_algo;
+		/* wipdata->comp_algo = ripdata->comp_algo; */
+		wipdata->comp_algo = 0;
 		wipdata->version = HAMMER2_INODE_VERSION_ONE;
 		wipdata->inum = ripdata->inum;
 		wipdata->target_type = ripdata->type;

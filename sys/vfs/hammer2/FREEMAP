@@ -4,84 +4,67 @@
 				Overview
 
     HAMMER2 Media is broken down into 2 GByte zones.  Each 2 GByte zone
-    contains a 4 MByte header (64 x 64K blocks).  The blocks in this header
-    are reserved for various purposes.  For example, block #0 is used for
-    the volume header or for a volume header backup.
+    contains a 4 MByte header (64 x 64K blocks = 0.2% of storage).  The
+    blocks in this header are reserved for various purposes.  For example,
+    block #0 is reserved for a volume header or volume header backup.  Most
+    of the 64KB blocks in this header are reserved for use by the freemap.
 
-    * It is very important to remember that the Freemap only uses blocks
-      from these reserved areas.  Freemap blocks are NOT dynamically
-      allocated.
+    The freemap only uses blocks from these reserved areas.  In order to
+    ensure that any of the four volume headers can be used for the mount
+    (in case some are found to be corrupted), each freemap block in the
+    logical freemap topology iterates through 6 different copies.  The
+    freemap is a 4-layer topology (+1 3-bit layer in the volume header),
+    so 6x4 = 24 of the 64 reserved blocks are dedicated to freemap
+    operations.
 
-    * On-mount, the synchronization TID for the main H2 filesystem is
-      compared against the synchronization TID of the freemap and the
-      H2 topology is incrementally iterated using mirror_tid to update
-      the freemap with any missing information.  This way the freemap flush
-      does not need to be synchronized with the normal H2 flush.  This
-      can be done very quickly on-mount.
+    Any given modification of a freemap block that crosses a flush group
+    must cycle to the next copy of the freemap block.  Having 6 copies
+    ensures that:
 
-    * The freemap is flushed in a manner similar to the normal H2 filesystem,
-      but as mentioned above it can be synchronized independently of the data
-      it represents.  One freemap flush could cover several H2 flushes.  A
-      freemap flush is not necessary for e.g. a fsync() or sync() to
-      complete successfully.
+    - Each of the four backup volume headers points to a consistent
+      freemap topology.  This eats 4 copies.
 
-    * The freemap granularity is 64KB (radix of 16) but the minimum
-      allocation radix for code is 1KB (radix of 10).  1KB inodes can
-      hold up to 512 bytes of direct data, so small files eat exactly
-      1KB of media storage inclusive of the inode.
+    - That recovery operations during mount do not modify the state of the
+      freemap topology pointed to by older volume headers that are still
+      valid.  This eats 1 copy.
 
-    * Representation of storage is block-oriented with ~1KB granularity
-      in the filesystem topology.  However, H2 also stores freemap locality
-      hints in the inode at all levels which specifies which freemap zones
-      all storage allocations made by the sub-tree are allocated from.  Up
-      to four zones may be listed in each inode.  The zones are power-of-2
-      sized and aligned the same and use a base/radix representation
-      (same as used for blockref->data_off).
+    - The bulk free scan eats 1 copy to use as spool-off space if the
+      thread hits its ram limits.  This copy is not part of the normal
+      rotation.
 
-      During updates higher level inodes may not have a sufficient number of
-      entries to represent the storage used on a fine-grain.  In this
-      situation the representations back-off to larger radix values.
+    - Total is 6 copies.
 
-      Ultimately these representations will be optimized by background scans.
-      That is, ultimately storage localization can be optimized bottom-up
-      such that it winds up being fairly optimal.  This includes the ability
-      to detect when a writable snapshot has differentiated sufficiently to
-      warrant a split.  This optimization should NOT attempt to dup common
-      data blocks.
+    However, there is one major restriction: If an older volume header is
+    selected by the mount code, any newer (presumably corrupt since the
+    mount code didn't select it) volume headers will lose freemap consistency
+    as the freemap code rotates into freemap blocks that might have been used
+    by the topology pointed to by the newer (but not selected) backup
+    volume headers.  For a RW mount, this means that if an older volume
+    backup is selected, the newer ones that were not selected MUST be
+    formally invalidated and cannot be used in a remount attempt.  To
+    mitigate the potential loss of data, any volume headers lost in this
+    manner can be snapshotted and the freemap recovery scan (in a RW mount)
+    can also scan the snapshots to try to ensure that the blocks are marked
+    as allocated.  The system operator can then check the snapshot manually.
 
-      XXX
-
-    * The zone oriented forward storage references in the inode (the four
-      entries) is used by the bulk free-scan to reduce the amount of
-      meta-data which must be duplicatively scanned.  More specifically,
-      when the sysadmin deletes storage and/or files or even whole directory
-      subhierachies, it is possible for a bulk free-scan to incrementally
-      scan the meta-data topology that covers ONLY those areas to determine
-      if it is possible to free up any actual blocks.
-
-      XXX
-
-    * H2 does not require that a rm -rf or snapshot destruction, truncation,
-      or any other operation actually mark freemap blocks as being
-      almost-free.  That is, the freemap elements can remain set to
-      ALLOCATED (11).  In fact, it is possible to just delete the directory
-      inode itself and not even recursively scan or delete sub-directories or
-      files.  The related storage will eventually be freed by an exhaustive
-      bulk free-scan anyway.
+    During normal operation, each filesystem flush rotates to a new backup
+    volume header (a filesystem has up to four) and retains full consistency
+    for the older volume headers.  Each logical freemap block in the topology
+    rotates through the 6 possible versions (on-modify only).
 
 				Freemap Topology
 
     The freemap topology contains 4 levels of meta-data (blockref arrays),
     one of which is embedded in the volume header (so only three real
-    meta-data levels), plus one level of leaf-data.
+    meta-data levels), plus one level of leaf-data.  Unlike normal files,
+    which use a variable-radix, the freemap topology uses a fixed radix to
+    simplify the algorithm and to ensure freemap locality to the blocks
+    under management.
 
-    Level 1 - (radix 10) 64KB blockmap representing 2GB.  There are 1024
+    Level 1 - (radix 10 + 21) 16KB blockmap representing 2GB.  There are 1024
 	      entries representing ~2MB worth of media storage per entry.
-
-	      Each entry maps 32 x 64KB allocations @ 2 bits per allocation,
-	      plus contains additional meta-data which allows H2 to cluster
-	      I/O operations.  Each entry locks the allocation granularity
-	      (e.g. to 1KB = radix 10 for inodes).
+	      Each entry contains a 128x2 bit bitmap representing 16KB
+	      of storage in 2 bits.
 
     Level 2 - (radix 10) 64KB blockmap representing 2TB (~2GB per entry)
     Level 3 - (radix 10) 64KB blockmap representing 2PB (~2TB per entry)
@@ -96,9 +79,34 @@
     number.  Level 1 uses block 1 through level 4 using block 4.  Level 5
     is stored in the volume header.
 
-    In addition there are FOUR SETS, A, B, C, and D, each containing blocks
-    for level 1-4.  Hammer2 alternates between sets on a block-by-block basis
-    in order to maintain consistency when updating the freemap.
+				    Flushing
+
+    The freemap does not have to be flushed by fsync/sync, but should probably
+    be flushed at least once a minute by the normal filesystem sync.  The
+    reason it does not have to be flushed every time is that the freemap
+    recovery (using the last fully flushed freemap TID) will simply do an
+    incremental scan of the main filesystem tree between the freemap TID
+    and the main filesystem tree's TID to ensure that blocks allocated in
+    the interim are properly allocated in the freemap.  Simple as that.
+
+				Freemap Granularity
+
+    The freemap granularity is 16KB (radix of 14) but the minimum
+    allocation radix is 1KB (radix of 10) (and can be in multiples of
+    1KB with some coding).  1KB inodes can hold up to 512 bytes of direct
+    data, so tiny files eat exactly 1KB of media storage inclusive of the
+    inode.
+
+    The freemap keeps track of partial allocations in-memory but not
+    on-media, so even a normal umount will cause partially allocated
+    blocks to appear fully allocated until some later date when the
+    bulk scan code defragments it.
+
+				   Block Selection
+
+    Block selection is localized to be near the inode's (or nearby data)
+    blockref.  The algorithmic complexity of determining locality is not
+    defined here atm.
 
 				Leaf Substructure
 
@@ -106,7 +114,7 @@
 	       are always the same size, allowing the filesystem code to
 	       cluster buffer cache I/O.
 
-    * bitmap - four 32 bit words representing ~2MB in 64KB allocation chunks
+    * bitmap - four 32 bit words representing ~2MB in 16KB allocation chunks
 	       at 2 bits per chunk.  The filesystem allocation granularity
 	       can be smaller (currently ~1KB minimum), and the live
 	       filesystem keeps caches iterations when allocating multiple
@@ -144,18 +152,15 @@
     there is no such thing as a real cylinder group, but we do the next
     best thing by implementing our layer 1 blockmap representing 2GB.
 
-    The layer 1 blockmap is an array of 1024 blockrefs, so each blockref
-    covers 2MB worth of media storage.  HAMMER2's 'cylinder group' concept
-    thus has a minimum granularity of 2MB.  A typical setting might be e.g.
-    10MB.
+				Level 2, 3, 4, 5
 
-    By localizing allocations to cylinder groups based on various bits of
-    information, HAMMER2 tries to allocate space on the disk and still leave
-    some left over for localized expansion and to reduce fragmentation at
-    the same time.  Not an easy task, especially considering the copy-on-write
-    nature of the filesystem.  This part of the algorithm likely needs a lot
-    of work but I hope I've laid down a media format that will not have to be
-    changed down the line to accomodate better allocation strategies.
+    Levels 2, 3, and 4 contains an array blockmap[1024] (64KB total),
+    supplying 10 bits of address space each.  Level 5 is a blockmap[8] stored
+    in the volume header supplying 3 bits of address space.  (level 0
+    supplies 10 + 21 bits of address space).
+
+    The Level1 blockmap is HAMMER2's idea of a 'cylinder group', thus
+    effectively fixed at multiples of ~2MB or so.
 
 			        Initial Conditions
 
@@ -166,9 +171,18 @@
     it to the live filesystem to initialize the freemap as more space gets
     allocated.
 
-				How blocks are freed
+    The freemap does NOT use a fixed 5-level radix tree.  It uses the same
+    blockmap algorithm used for file blocks but restricts any recursion to
+    specific radix values.  This means that small filesystems will have much
+    smaller freemap depths.  2 layers (and not counting the volume header as
+    a layer) gets us 16GB, 3 layers gets us 16TB.
 
-    The freemap bit patterns for each 64KB block are as follows:
+			How blocks are allocated and freed
+
+    H2 keeps track of sub-16KB allocations in-memory.  On a crash/reboot any
+    partial allocations effectively become full 16KB block allocations until
+    the bulk freeing code comes along and fixes it.  2-bit patterns are as
+    follows:
 
        00	FREE
        01	ARMED (for free) (future use)

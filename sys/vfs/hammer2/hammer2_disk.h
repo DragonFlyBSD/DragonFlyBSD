@@ -184,40 +184,69 @@
  *	+-----------------------+
  *
  * The first few 2GB zones contain volume headers and volume header backups.
- * After that the volume header block# is reserved.
+ * After that the volume header block# is reserved for future use.  Similarly,
+ * there are many blocks related to various Freemap levels which are not
+ * used in every segment and those are also reserved for future use.
  *
  *			Freemap (see the FREEMAP document)
  *
- * The freemap utilizes blocks #1-16 for now, see the FREEMAP document.
- * The filesystems rotations through the sections to avoid disturbing the
- * 'previous' version of the freemap during a flush.
+ * The freemap utilizes blocks #1-16 in 8 sets of 4 blocks.  Each block in
+ * a set represents a level of depth in the freemap topology.  Eight sets
+ * exist to prevent live updates from disturbing the state of the freemap
+ * were a crash/reboot to occur.  That is, a live update is not committed
+ * until the update's flush reaches the volume root.  There are FOUR volume
+ * roots representing the last four synchronization points, so the freemap
+ * must be consistent no matter which volume root is chosen by the mount
+ * code.
  *
- * Each freemap section is 4 x 64K blocks and represents 2GB, 2TB, 2PB,
- * and 2EB indirect map, plus the volume header has a set of 8 blockrefs
- * for another 3 bits for a total of 64 bits of address space.  The Level 0
- * 64KB block representing 2GB of storage is a hammer2_bmap_data[1024].
- * Each element contains a 128x2 bit bitmap representing 16KB per chunk for
- * 2MB of storage (x1024 elements = 2GB).  2 bits per chunk:
+ * Each freemap set is 4 x 64K blocks and represents the 2GB, 2TB, 2PB,
+ * and 2EB indirect map.  The volume header itself has a set of 8 freemap
+ * blockrefs representing another 3 bits, giving us a total 64 bits of
+ * representable address space.
+ *
+ * The Level 0 64KB block represents 2GB of storage represented by
+ * (64 x struct hammer2_bmap_data).  Each structure represents 2MB of storage
+ * and has a 256 bit bitmap, using 2 bits to represent a 16KB chunk of
+ * storage.  These 2 bits represent the following states:
  *
  *	00	Free
- *	01	(reserved)
+ *	01	(reserved) (Possibly partially allocated)
  *	10	Possibly free
  *	11	Allocated
  *
  * One important thing to note here is that the freemap resolution is 16KB,
- * but the minimuim storage allocation size is 1KB.  The hammer2 vfs keeps
- * track of sub-allocations in memory (on umount or reboot obvious the whole
- * 16KB will be considered allocated even if only 1KB is allocated).  It is
- * possible for fragmentation to build up over time.
+ * but the minimum storage allocation size is 1KB.  The hammer2 vfs keeps
+ * track of sub-allocations in memory, which means that on a unmount or reboot
+ * the entire 16KB of a partially allocated block will be considered fully
+ * allocated.  It is possible for fragmentation to build up over time, but
+ * defragmentation is fairly easy to accomplish since all modifications
+ * allocate a new block.
  *
  * The Second thing to note is that due to the way snapshots and inode
  * replication works, deleting a file cannot immediately free the related
- * space.  Instead, the freemap elements transition from 11->10.  The bulk
- * freeing code which does a complete scan is then responsible for
- * transitioning the elements to 00 or back to 11 or to 01 for that matter.
+ * space.  Furthermore, deletions often do not bother to traverse the
+ * block subhierarchy being deleted.  And to go even further, whole
+ * sub-directory trees can be deleted simply by deleting the directory inode
+ * at the top.  So even though we have a symbol to represent a 'possibly free'
+ * block (binary 10), only the bulk free scanning code can actually use it.
+ * Normal 'rm's or other deletions do not.
  *
  * WARNING!  ZONE_SEG and VOLUME_ALIGN must be a multiple of 1<<LEVEL0_RADIX
  *	     (i.e. a multiple of 2MB).  VOLUME_ALIGN must be >= ZONE_SEG.
+ *
+ * In Summary:
+ *
+ * (1) Modifications to freemap blocks 'allocate' a new copy (aka use a block
+ *     from the next set).  The new copy is reused until a flush occurs at
+ *     which point the next modification will then rotate to the next set.
+ *
+ * (2) A total of 10 freemap sets is required.
+ *
+ *     - 8 sets - 2 sets per volume header backup x 4 volume header backups
+ *     - 2 sets used as backing store for the bulk freemap scan.
+ *     - The freemap recovery scan which runs on-mount just uses the inactive
+ *	 set for whichever volume header was selected by the mount code.
+ *
  */
 #define HAMMER2_VOLUME_ALIGN		(8 * 1024 * 1024)
 #define HAMMER2_VOLUME_ALIGN64		((hammer2_off_t)HAMMER2_VOLUME_ALIGN)
@@ -235,73 +264,19 @@
 #define HAMMER2_ZONE_SEG64		((hammer2_off_t)HAMMER2_ZONE_SEG)
 #define HAMMER2_ZONE_BLOCKS_SEG		(HAMMER2_ZONE_SEG / HAMMER2_PBUFSIZE)
 
-/*
- * 64 x 64KB blocks are reserved at the base of each 2GB zone.  These blocks
- * are used to store the volume header or volume header backups, allocation
- * tree, and other information in the future.
- *
- * All specified blocks are not necessarily used in all 2GB zones.  However,
- * dead areas are reserved for future use and MUST NOT BE USED for other
- * purposes.
- *
- * The freemap is arranged into 15 groups of 4x64KB each.  The 4 sub-groups
- * are labeled ZONEFM1..4 and representing HAMMER2_FREEMAP_LEVEL{1-4}_RADIX,
- * for the up to 4 levels of radix tree representing the freemap.  For
- * simplicity we are reserving all four radix tree layers even though the
- * higher layers do not require teh reservation at each 2GB mark.  That
- * space is reserved for future use.
- *
- * Freemap blocks are not allocated dynamically but instead rotate through
- * one of 15 possible copies.  We require 15 copies for several reasons:
- *
- * (1) For distinguishing freemap 'allocations' made by the current flush
- *     verses the concurrently running front-end (at flush_tid + 1).  This
- *     theoretically requires two copies but the algorithm is greatly
- *     simplified if we use three.
- *
- * (2) There are up to 4 copies of the volume header (iterated on each flush),
- *     and if the mount code is forced to use an older copy due to corruption
- *     we must be sure that the state of the freemap AS-OF the earlier copy
- *     remains valid.
- *
- *     This means 3 copies x 4 flushes = 12 copies to be able to mount any
- *     of the four volume header backups after on boot or after a crash.
- *
- * (3) Freemap recovery on-mount eats a copy.  We don't want freemap recovery
- *     to blow away the copy used by some other volume header in case H2
- *     crashes during the recovery.  Total is now 13.
- *
- * (4) And I want some breathing room to ensure that complex flushes do not
- *     cause problems.  Also note that bulk block freeing itself must be
- *     careful so even on a live system, post-mount, the four volume header
- *     backups effectively represent short-lived snapshots.  And I only
- *     have room for 15 copies so it works out.
- *
- * Preferably I would like to improve the algorithm to only use 2 copies per
- * volume header (which would be a total of 2 x 4 = 8 + 1 for freemap recovery
- * + 1 for breathing room = 10 total instead of 15).  For now we use 15.
- */
 #define HAMMER2_ZONE_VOLHDR		0	/* volume header or backup */
-#define HAMMER2_ZONE_FREEMAP_00		1
-#define HAMMER2_ZONE_FREEMAP_01		5
-#define HAMMER2_ZONE_FREEMAP_02		9
-#define HAMMER2_ZONE_FREEMAP_03		13
-#define HAMMER2_ZONE_FREEMAP_04		17
-#define HAMMER2_ZONE_FREEMAP_05		21
-#define HAMMER2_ZONE_FREEMAP_06		25
-#define HAMMER2_ZONE_FREEMAP_07		29
-#define HAMMER2_ZONE_FREEMAP_08		33
-#define HAMMER2_ZONE_FREEMAP_09		37
-#define HAMMER2_ZONE_FREEMAP_10		41
-#define HAMMER2_ZONE_FREEMAP_11		45
-#define HAMMER2_ZONE_FREEMAP_12		49
-#define HAMMER2_ZONE_FREEMAP_13		53
-#define HAMMER2_ZONE_FREEMAP_14		57
-#define HAMMER2_ZONE_FREEMAP_END	61	/* (non-inclusive) */
+#define HAMMER2_ZONE_FREEMAP_00		1	/* normal freemap rotation */
+#define HAMMER2_ZONE_FREEMAP_01		5	/* normal freemap rotation */
+#define HAMMER2_ZONE_FREEMAP_02		9	/* normal freemap rotation */
+#define HAMMER2_ZONE_FREEMAP_03		13	/* normal freemap rotation */
+#define HAMMER2_ZONE_FREEMAP_04		17	/* normal freemap rotation */
+#define HAMMER2_ZONE_FREEMAP_05		21	/* normal freemap rotation */
+#define HAMMER2_ZONE_FREEMAP_06		25	/* batch freeing code only */
+#define HAMMER2_ZONE_FREEMAP_07		29	/* batch freeing code only */
+#define HAMMER2_ZONE_FREEMAP_08		33	/* (non-inclusive) */
 #define HAMMER2_ZONE_UNUSED62		62
 #define HAMMER2_ZONE_UNUSED63		63
 
-#define HAMMER2_ZONE_FREEMAP_COPIES	15
 						/* relative to FREEMAP_x */
 #define HAMMER2_ZONEFM_LEVEL1		0	/* 2GB leafmap */
 #define HAMMER2_ZONEFM_LEVEL2		1	/* 2TB indmap */
@@ -496,6 +471,21 @@ typedef struct dmsg_lnk_hammer2_volconf dmsg_lnk_hammer2_volconf_t;
  *	 ((key) + (1LL << keybits) - 1).  HAMMER2 usually populates
  *	 blocks bottom-up, inserting a new root when radix expansion
  *	 is required.
+ *
+ * --
+ *				FUTURE BLOCKREF EXPANSION
+ *
+ * In order to implement a 256-bit content addressable index we want to
+ * have a 256-bit key which essentially represents the cryptographic hash.
+ * (so, 64-bit key + 192-bit crypto-hash or 256-bit key-is-the-hash +
+ * 32-bit consistency check for indirect block layers).
+ *
+ * THIS IS POSSIBLE in a 64-byte blockref structure.  Of course, any number
+ * of bits can be represented by sizing the blockref.  For the purposes of
+ * HAMMER2 though my limit is 256 bits.  Not only that, but it will be an
+ * optimal construction because H2 already uses a variably-sized radix to
+ * pack the blockrefs at each level.  A 256-bit mechanic would allow us
+ * to implement a content-addressable index.
  */
 struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 	uint8_t		type;		/* type of underlying item */
@@ -540,13 +530,6 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 			uint64_t avail;		/* total available bytes */
 			uint64_t unused;	/* unused must be 0 */
 		} freemap;
-
-		/*
-		 * Debugging
-		 */
-		struct {
-			hammer2_tid_t sync_tid;
-		} debug;
 	} check;
 };
 
@@ -568,6 +551,7 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_BREF_TYPE_VOLUME	255	/* pseudo-type */
 
 #define HAMMER2_BREF_FLAG_PFSROOT	0x01	/* see also related opflag */
+#define HAMMER2_BREF_FLAG_ZERO		0x02
 
 #define HAMMER2_ENC_CHECK(n)		((n) << 4)
 #define HAMMER2_DEC_CHECK(n)		(((n) >> 4) & 15)
@@ -802,7 +786,9 @@ struct hammer2_inode_data {
 	uuid_t		pfs_fsid;	/* 00A0 (if PFSROOT) unique uuid */
 
 	/*
-	 * Quotas and cumulative sub-tree counters.
+	 * Quotas and aggregate sub-tree inode and data counters.  Note that
+	 * quotas are not replicated downward, they are explicitly set by
+	 * the sysop and in-memory structures keep track of inheritence.
 	 */
 	hammer2_key_t	data_quota;	/* 00B0 subtree quota in bytes */
 	hammer2_key_t	data_count;	/* 00B8 subtree byte count */
@@ -815,6 +801,8 @@ struct hammer2_inode_data {
 	 * Tracks (possibly degenerate) free areas covering all sub-tree
 	 * allocations under inode, not counting the inode itself.
 	 * 0/0 indicates empty entry.  fully set-associative.
+	 *
+	 * (not yet implemented)
 	 */
 	hammer2_off_t	reservedE0[4];	/* 00E0/E8/F0/F8 */
 

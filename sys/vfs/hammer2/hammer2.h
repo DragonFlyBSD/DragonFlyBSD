@@ -275,7 +275,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
 #define HAMMER2_CHAIN_DESTROY		0x00000004
-#define HAMMER2_CHAIN_FORCECOW		0x00000008	/* force copy-on-wr */
+#define HAMMER2_CHAIN_UNUSED00000008	0x00000008
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_UPDATE		0x00000040	/* need parent update */
@@ -368,11 +368,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  */
 #define HAMMER2_BMAP_COUNT		16	/* max bmap read-ahead */
 #define HAMMER2_BMAP_BYTES		(HAMMER2_PBUFSIZE * HAMMER2_BMAP_COUNT)
-
-/*
- * Misc
- */
-#define HAMMER2_FLUSH_DEPTH_LIMIT	10	/* stack recursion limit */
 
 /*
  * hammer2_freemap_adjust()
@@ -528,7 +523,7 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_TRANS_CONCURRENT	0x0002	/* concurrent w/flush */
 #define HAMMER2_TRANS_BUFCACHE		0x0004	/* from bioq strategy write */
 #define HAMMER2_TRANS_NEWINODE		0x0008	/* caller allocating inode */
-#define HAMMER2_TRANS_UNUSED0010	0x0010
+#define HAMMER2_TRANS_FREEBATCH		0x0010	/* batch freeing code */
 #define HAMMER2_TRANS_PREFLUSH		0x0020	/* preflush state */
 
 #define HAMMER2_FREEMAP_HEUR_NRADIX	4	/* pwr 2 PBUFRADIX-MINIORADIX */
@@ -881,6 +876,10 @@ void hammer2_chain_commit(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_setflush(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count);
+
+void hammer2_chain_setcheck(hammer2_chain_t *chain, void *bdata);
+int hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata);
+
 
 void hammer2_pfs_memory_wait(hammer2_pfsmount_t *pmp);
 void hammer2_pfs_memory_inc(hammer2_pfsmount_t *pmp);

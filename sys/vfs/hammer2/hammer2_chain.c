@@ -60,6 +60,8 @@
 #include <sys/kern_syscall.h>
 #include <sys/uuid.h>
 
+#include <crypto/sha2/sha2.h>
+
 #include "hammer2.h"
 
 static int hammer2_indirect_optimize;	/* XXX SYSCTL */
@@ -599,9 +601,9 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 #if 0
 		if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE)
 			return(0);
-#endif
 		if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_LEAF)
 			return(0);
+#endif
 		/* fall through */
 	case HAMMER2_RESOLVE_ALWAYS:
 		break;
@@ -657,7 +659,8 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 #if 0
 	/*
 	 * No need for this, always require that hammer2_chain_modify()
-	 * be called before any modifying operations.
+	 * be called before any modifying operations, which ensures that
+	 * the underlying dio is dirty.
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) &&
 	    !hammer2_io_isdirty(chain->dio)) {
@@ -670,8 +673,27 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 * been zero'd and marked dirty.
 	 */
 	bdata = hammer2_io_data(chain->dio, chain->bref.data_off);
-	if (chain->flags & HAMMER2_CHAIN_INITIAL)
+	if (chain->flags & HAMMER2_CHAIN_INITIAL) {
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
+		chain->bref.flags |= HAMMER2_BREF_FLAG_ZERO;
+	} else if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
+		/*
+		 * check data not currently synchronized due to
+		 * modification.  XXX assumes data stays in the buffer
+		 * cache, which might not be true (need biodep on flush
+		 * to calculate crc?  or simple crc?).
+		 */
+	} else {
+		if (hammer2_chain_testcheck(chain, bdata) == 0) {
+			kprintf("chain %016jx.%02x meth=%02x CHECK FAIL %08x (flags=%08x)\n",
+
+				chain->bref.data_off,
+				chain->bref.type,
+				chain->bref.methods,
+				hammer2_icrc32(bdata, chain->bytes),
+				chain->flags);
+		}
+	}
 
 	/*
 	 * Setup the data pointer, either pointing it to an embedded data
@@ -1034,7 +1056,6 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 */
 	hammer2_freemap_alloc(trans, chain, nbytes);
 	chain->bytes = nbytes;
-	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_FORCECOW);
 	/*ip->delta_dcount += (ssize_t)(nbytes - obytes);*/ /* XXX atomic */
 
 	/*
@@ -1150,11 +1171,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 		) {
 			hammer2_freemap_alloc(trans, chain, chain->bytes);
 			/* XXX failed allocation */
-		} else if (chain->flags & HAMMER2_CHAIN_FORCECOW) {
-			hammer2_freemap_alloc(trans, chain, chain->bytes);
-			/* XXX failed allocation */
 		}
-		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_FORCECOW);
 	}
 
 	/*
@@ -1168,16 +1185,16 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPUPD);
 
 	/*
-	 * Do not COW BREF_TYPE_DATA when OPTDATA is set.  This is because
-	 * data modifications are done via the logical buffer cache so COWing
-	 * it here would result in unnecessary extra copies (and possibly extra
-	 * block reallocations).  The INITIAL flag remains unchanged in this
-	 * situation.
-	 *
-	 * (This is a bit of a hack).
+	 * Short-cut data blocks which the caller does not need an actual
+	 * data reference to (aka OPTDATA), as long as the chain does not
+	 * already have a data pointer to the data.  This generally means
+	 * that the modifications are being done via the logical buffer cache.
+	 * The INITIAL flag relates only to the device data buffer and thus
+	 * remains unchange in this situation.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA &&
-	    (flags & HAMMER2_MODIFY_OPTDATA)) {
+	    (flags & HAMMER2_MODIFY_OPTDATA) &&
+	    chain->data == NULL) {
 		goto skip2;
 	}
 
@@ -1250,7 +1267,12 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 		}
 
 		/*
-		 * Retire the old buffer, replace with the new
+		 * Retire the old buffer, replace with the new.  Dirty or
+		 * redirty the new buffer.
+		 *
+		 * WARNING! The system buffer cache may have already flushed
+		 *	    the buffer, so we must be sure to [re]dirty it
+		 *	    for further modification.
 		 */
 		if (chain->dio)
 			hammer2_io_brelse(&chain->dio);
@@ -3818,4 +3840,116 @@ void
 hammer2_chain_wait(hammer2_chain_t *chain)
 {
 	tsleep(chain, 0, "chnflw", 1);
+}
+
+/*
+ * Set the check data for a chain.  This can be a heavy-weight operation
+ * and typically only runs on-flush.  For file data check data is calculated
+ * when the logical buffers are flushed.
+ */
+void
+hammer2_chain_setcheck(hammer2_chain_t *chain, void *bdata)
+{
+	chain->bref.flags &= ~HAMMER2_BREF_FLAG_ZERO;
+
+	switch(HAMMER2_DEC_CHECK(chain->bref.methods)) {
+	case HAMMER2_CHECK_NONE:
+		break;
+	case HAMMER2_CHECK_ISCSI32:
+		chain->bref.check.iscsi32.value =
+			hammer2_icrc32(bdata, chain->bytes);
+		break;
+	case HAMMER2_CHECK_CRC64:
+		chain->bref.check.crc64.value = 0;
+		/* XXX */
+		break;
+	case HAMMER2_CHECK_SHA192:
+		{
+			SHA256_CTX hash_ctx;
+			union {
+				uint8_t digest[SHA256_DIGEST_LENGTH];
+				uint64_t digest64[SHA256_DIGEST_LENGTH/8];
+			} u;
+
+			SHA256_Init(&hash_ctx);
+			SHA256_Update(&hash_ctx, bdata, chain->bytes);
+			SHA256_Final(u.digest, &hash_ctx);
+			u.digest64[2] ^= u.digest64[3];
+			bcopy(u.digest,
+			      chain->bref.check.sha192.data,
+			      sizeof(chain->bref.check.sha192.data));
+		}
+		break;
+	case HAMMER2_CHECK_FREEMAP:
+		chain->bref.check.freemap.icrc32 =
+			hammer2_icrc32(bdata, chain->bytes);
+		break;
+	default:
+		kprintf("hammer2_chain_setcheck: unknown check type %02x\n",
+			chain->bref.methods);
+		break;
+	}
+}
+
+int
+hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
+{
+	int r;
+
+	if (chain->bref.flags & HAMMER2_BREF_FLAG_ZERO)
+		return 1;
+
+	switch(HAMMER2_DEC_CHECK(chain->bref.methods)) {
+	case HAMMER2_CHECK_NONE:
+		r = 1;
+		break;
+	case HAMMER2_CHECK_ISCSI32:
+		r = (chain->bref.check.iscsi32.value ==
+		     hammer2_icrc32(bdata, chain->bytes));
+		break;
+	case HAMMER2_CHECK_CRC64:
+		r = (chain->bref.check.crc64.value == 0);
+		/* XXX */
+		break;
+	case HAMMER2_CHECK_SHA192:
+		{
+			SHA256_CTX hash_ctx;
+			union {
+				uint8_t digest[SHA256_DIGEST_LENGTH];
+				uint64_t digest64[SHA256_DIGEST_LENGTH/8];
+			} u;
+
+			SHA256_Init(&hash_ctx);
+			SHA256_Update(&hash_ctx, bdata, chain->bytes);
+			SHA256_Final(u.digest, &hash_ctx);
+			u.digest64[2] ^= u.digest64[3];
+			if (bcmp(u.digest,
+				 chain->bref.check.sha192.data,
+			         sizeof(chain->bref.check.sha192.data)) == 0) {
+				r = 1;
+			} else {
+				r = 0;
+			}
+		}
+		break;
+	case HAMMER2_CHECK_FREEMAP:
+		r = (chain->bref.check.freemap.icrc32 ==
+		     hammer2_icrc32(bdata, chain->bytes));
+		if (r == 0) {
+			kprintf("freemap.icrc %08x icrc32 %08x (%d)\n",
+				chain->bref.check.freemap.icrc32,
+				hammer2_icrc32(bdata, chain->bytes), chain->bytes);
+			if (chain->dio)
+				kprintf("dio %p buf %016jx,%d bdata %p/%p\n",
+					chain->dio, chain->dio->bp->b_loffset, chain->dio->bp->b_bufsize, bdata, chain->dio->bp->b_data);
+		}
+
+		break;
+	default:
+		kprintf("hammer2_chain_setcheck: unknown check type %02x\n",
+			chain->bref.methods);
+		r = 1;
+		break;
+	}
+	return r;
 }

@@ -107,24 +107,48 @@ hammer2_freemap_reserve(hammer2_trans_t *trans, hammer2_chain_t *chain,
 	bytes = 1 << radix;
 
 	/*
-	 * Calculate block selection index 0..7 of current block.
+	 * Calculate block selection index 0..7 of current block.  If this
+	 * is the first allocation of the block (verses a modification of an
+	 * existing block), we use index 0, otherwise we use the next rotating
+	 * index.
+	 *
+	 * NORMAL transactions use FREEMAP sections 0-5, while FREEBATCH
+	 * transactions use sections 6 and 7.  FREEBATCH transactions are
+	 * used by the batch freeing code to spool-off in-memory structures
+	 * used to track the batch free scan.
 	 */
-	if ((bref->data_off & ~HAMMER2_OFF_MASK_RADIX) == 0) {
-		index = 0;
+	if (trans->flags & HAMMER2_TRANS_FREEBATCH) {
+		if ((bref->data_off & ~HAMMER2_OFF_MASK_RADIX) == 0) {
+			index = (HAMMER2_ZONE_FREEMAP_06 -
+				 HAMMER2_ZONE_FREEMAP_00) / 4;
+		} else {
+			off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX &
+			      (((hammer2_off_t)1 <<
+				HAMMER2_FREEMAP_LEVEL1_RADIX) - 1);
+			off = off / HAMMER2_PBUFSIZE;
+			KKASSERT(off >= HAMMER2_ZONE_FREEMAP_06 &&
+				 off < HAMMER2_ZONE_FREEMAP_08);
+			index = (int)(off - HAMMER2_ZONE_FREEMAP_00) / 4;
+			KKASSERT(index >= 6 && index < 8);
+			if (++index == 8)
+				index = 6;
+		}
 	} else {
-		off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX &
-		      (((hammer2_off_t)1 << HAMMER2_FREEMAP_LEVEL1_RADIX) - 1);
-		off = off / HAMMER2_PBUFSIZE;
-		KKASSERT(off >= HAMMER2_ZONE_FREEMAP_00 &&
-			 off < HAMMER2_ZONE_FREEMAP_END);
-		index = (int)(off - HAMMER2_ZONE_FREEMAP_00) / 4;
-		KKASSERT(index >= 0 && index < HAMMER2_ZONE_FREEMAP_COPIES);
+		if ((bref->data_off & ~HAMMER2_OFF_MASK_RADIX) == 0) {
+			index = 0;
+		} else {
+			off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX &
+			      (((hammer2_off_t)1 <<
+				HAMMER2_FREEMAP_LEVEL1_RADIX) - 1);
+			off = off / HAMMER2_PBUFSIZE;
+			KKASSERT(off >= HAMMER2_ZONE_FREEMAP_00 &&
+				 off < HAMMER2_ZONE_FREEMAP_06);
+			index = (int)(off - HAMMER2_ZONE_FREEMAP_00) / 4;
+			KKASSERT(index >= 0 && index < 6);
+			if (++index == 6)
+				index = 0;
+		}
 	}
-
-	/*
-	 * Calculate new index (our 'allocation').
-	 */
-	index = (index + 1) % HAMMER2_ZONE_FREEMAP_COPIES;
 
 	/*
 	 * Calculate the block offset of the reserved block.  This will
@@ -866,7 +890,9 @@ again:
 	bmap = &chain->data->bmdata[(int)(data_off >> HAMMER2_SEGRADIX) &
 				    (HAMMER2_FREEMAP_COUNT - 1)];
 	bitmap = &bmap->bitmap[(int)(data_off >> (HAMMER2_SEGRADIX - 3)) & 7];
-	bmap->linear = 0;
+
+	if (modified)
+		bmap->linear = 0;
 
 	while (count) {
 		KKASSERT(bmmask11);

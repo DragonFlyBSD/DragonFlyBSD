@@ -58,6 +58,9 @@
 
 #define FLUSH_DEBUG 0
 
+#define HAMMER2_FLUSH_DEPTH_LIMIT       10      /* stack recursion limit */
+
+
 /*
  * Recursively flush the specified chain.  The chain is locked and
  * referenced by the caller and will remain so on return.  The chain
@@ -81,31 +84,6 @@ typedef struct hammer2_flush_info hammer2_flush_info_t;
 static void hammer2_flush_core(hammer2_flush_info_t *info,
 				hammer2_chain_t *chain, int deleting);
 static int hammer2_flush_recurse(hammer2_chain_t *child, void *data);
-#if 0
-static void hammer2_rollup_stats(hammer2_chain_t *parent,
-				hammer2_chain_t *child, int how);
-#endif
-
-
-#if 0
-static __inline
-void
-hammer2_updatestats(hammer2_flush_info_t *info, hammer2_blockref_t *bref,
-		    int how)
-{
-	hammer2_key_t bytes;
-
-	if (bref->type != 0) {
-		bytes = 1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
-		if (bref->type == HAMMER2_BREF_TYPE_INODE)
-			info->inode_count += how;
-		if (how < 0)
-			info->data_count -= bytes;
-		else
-			info->data_count += bytes;
-	}
-}
-#endif
 
 /*
  * For now use a global transaction manager.  What we ultimately want to do
@@ -635,10 +613,16 @@ again:
 		}
 
 		/*
-		 * Issue flush.
+		 * Issue the flush.  This is indirect via the DIO.
 		 *
-		 * A DELETED node that reaches this point must be flushed for
-		 * synchronization point consistency.
+		 * NOTE: A DELETED node that reaches this point must be
+		 *	 flushed for synchronization point consistency.
+		 *
+		 * NOTE: Even though MODIFIED was already set, the related DIO
+		 *	 might not be dirty due to a system buffer cache
+		 *	 flush and must be set dirty if we are going to make
+		 *	 further modifications to the buffer.  Chains with
+		 *	 embedded data don't need this.
 		 *
 		 * Update bref.mirror_tid, clear MODIFIED, and set UPDATE.
 		 */
@@ -662,6 +646,9 @@ again:
 		 */
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_FREEMAP:
+			/*
+			 * (note: embedded data, do not call setdirty)
+			 */
 			KKASSERT(hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED);
 			hmp->voldata.freemap_tid = hmp->fchain.bref.mirror_tid;
 			break;
@@ -670,6 +657,8 @@ again:
 			 * The free block table is flushed by hammer2_vfs_sync()
 			 * before it flushes vchain.  We must still hold fchain
 			 * locked while copying voldata to volsync, however.
+			 *
+			 * (note: embedded data, do not call setdirty)
 			 */
 			hammer2_voldata_lock(hmp);
 			hammer2_chain_lock(&hmp->fchain,
@@ -716,7 +705,7 @@ again:
 			/*
 			 * Data elements have already been flushed via the
 			 * logical file buffer cache.  Their hash was set in
-			 * the bref by the vop_write code.
+			 * the bref by the vop_write code.  Do not re-dirty.
 			 *
 			 * Make sure any device buffer(s) have been flushed
 			 * out here (there aren't usually any to flush) XXX.
@@ -731,8 +720,14 @@ again:
 			 * then, as well).
 			 */
 			KKASSERT((chain->flags & HAMMER2_CHAIN_EMBEDDED) == 0);
+			hammer2_chain_setcheck(chain, chain->data);
 			break;
 		case HAMMER2_BREF_TYPE_INODE:
+			/*
+			 * NOTE: We must call io_setdirty() to make any late
+			 *	 changes to the inode data, the system might
+			 *	 have already flushed the buffer.
+			 */
 			if (chain->data->ipdata.op_flags &
 			    HAMMER2_OPFLAG_PFSROOT) {
 				/*
@@ -741,6 +736,7 @@ again:
 				 */
 				hammer2_inode_data_t *ipdata;
 
+				hammer2_io_setdirty(chain->dio);
 				ipdata = &chain->data->ipdata;
 				if (pmp)
 					ipdata->pfs_inum = pmp->inode_tid;
@@ -754,15 +750,17 @@ again:
 			 * be set here too or the statistics will not be
 			 * rolled-up properly.
 			 */
-			{
+			if (chain->data_count || chain->inode_count) {
 				hammer2_inode_data_t *ipdata;
 
 				KKASSERT(chain->flags & HAMMER2_CHAIN_UPDATE);
+				hammer2_io_setdirty(chain->dio);
 				ipdata = &chain->data->ipdata;
 				ipdata->data_count += chain->data_count;
 				ipdata->inode_count += chain->inode_count;
 			}
 			KKASSERT((chain->flags & HAMMER2_CHAIN_EMBEDDED) == 0);
+			hammer2_chain_setcheck(chain, chain->data);
 			break;
 		default:
 			KKASSERT(chain->flags & HAMMER2_CHAIN_EMBEDDED);
@@ -1008,54 +1006,3 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 
 	return (0);
 }
-
-
-#if 0
-void
-hammer2_rollup_stats(hammer2_chain_t *parent, hammer2_chain_t *child, int how)
-{
-#if 0
-	hammer2_chain_t *grandp;
-#endif
-
-	parent->data_count += child->data_count;
-	parent->inode_count += child->inode_count;
-	child->data_count = 0;
-	child->inode_count = 0;
-	if (how < 0) {
-		parent->data_count -= child->bytes;
-		if (child->bref.type == HAMMER2_BREF_TYPE_INODE) {
-			parent->inode_count -= 1;
-#if 0
-			/* XXX child->data may be NULL atm */
-			parent->data_count -= child->data->ipdata.data_count;
-			parent->inode_count -= child->data->ipdata.inode_count;
-#endif
-		}
-	} else if (how > 0) {
-		parent->data_count += child->bytes;
-		if (child->bref.type == HAMMER2_BREF_TYPE_INODE) {
-			parent->inode_count += 1;
-#if 0
-			/* XXX child->data may be NULL atm */
-			parent->data_count += child->data->ipdata.data_count;
-			parent->inode_count += child->data->ipdata.inode_count;
-#endif
-		}
-	}
-	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
-		parent->data->ipdata.data_count += parent->data_count;
-		parent->data->ipdata.inode_count += parent->inode_count;
-#if 0
-		for (grandp = parent->above->first_parent;
-		     grandp;
-		     grandp = grandp->next_parent) {
-			grandp->data_count += parent->data_count;
-			grandp->inode_count += parent->inode_count;
-		}
-#endif
-		parent->data_count = 0;
-		parent->inode_count = 0;
-	}
-}
-#endif
