@@ -571,9 +571,15 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 		 * (pfs-create also does the same if the pfs is named "BOOT")
 		 */
 		if (strcasecmp(Label[i], "BOOT") == 0) {
-			rawip->comp_algo = HAMMER2_COMP_AUTOZERO;
+			rawip->comp_algo = HAMMER2_ENC_ALGO(
+						HAMMER2_COMP_AUTOZERO);
+			rawip->check_algo = HAMMER2_ENC_ALGO(
+						HAMMER2_CHECK_ISCSI32);
 		} else  {
-			rawip->comp_algo = HAMMER2_COMP_NEWFS_DEFAULT;
+			rawip->comp_algo = HAMMER2_ENC_ALGO(
+						HAMMER2_COMP_NEWFS_DEFAULT);
+			rawip->check_algo = HAMMER2_ENC_ALGO(
+						HAMMER2_CHECK_ISCSI32);
 		}
 
 		rawip->pfs_clid = Hammer2_PfsCLID[i];
@@ -628,7 +634,8 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	rawip->name_len = 0;		/* super-root is unnamed */
 	rawip->name_key = 0;
 
-	rawip->comp_algo = HAMMER2_COMP_AUTOZERO;
+	rawip->comp_algo = HAMMER2_ENC_ALGO(HAMMER2_COMP_AUTOZERO);
+	rawip->check_algo = HAMMER2_ENC_ALGO(HAMMER2_CHECK_ISCSI32);
 
 	/*
 	 * The super-root is flagged as a PFS and typically given its own
