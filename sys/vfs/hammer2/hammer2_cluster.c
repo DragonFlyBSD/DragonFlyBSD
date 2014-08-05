@@ -140,6 +140,24 @@ hammer2_cluster_setflush(hammer2_trans_t *trans, hammer2_cluster_t *cluster)
 	}
 }
 
+void
+hammer2_cluster_setmethod_check(hammer2_trans_t *trans,
+				hammer2_cluster_t *cluster,
+				int check_algo)
+{
+	hammer2_chain_t *chain;
+	int i;
+
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i];
+		if (chain) {
+			KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
+			chain->bref.methods &= ~HAMMER2_ENC_CHECK(-1);
+			chain->bref.methods |= HAMMER2_ENC_CHECK(check_algo);
+		}
+	}
+}
+
 /*
  * Create a cluster with one ref from the specified chain.  The chain
  * is not further referenced.  The caller typically supplies a locked

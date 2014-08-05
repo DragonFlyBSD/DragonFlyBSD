@@ -219,13 +219,15 @@ static void hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 				const hammer2_inode_data_t *ipdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase, int ioflag,
-				int pblksize, int *errorp, int comp_algo);
+				int pblksize, int *errorp,
+				int comp_algo, int check_algo);
 static void hammer2_zero_check_and_write(struct buf *bp,
 				hammer2_trans_t *trans, hammer2_inode_t *ip,
 				const hammer2_inode_data_t *ipdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase,
-				int ioflag, int pblksize, int *errorp);
+				int ioflag, int pblksize, int *errorp,
+				int check_algo);
 static int test_block_zeros(const char *buf, size_t bytes);
 static void zero_write(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_inode_t *ip,
@@ -234,7 +236,8 @@ static void zero_write(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_key_t lbase,
 				int *errorp);
 static void hammer2_write_bp(hammer2_cluster_t *cluster, struct buf *bp,
-				int ioflag, int pblksize, int *errorp);
+				int ioflag, int pblksize, int *errorp,
+				int check_algo);
 
 static int hammer2_rcvdmsg(kdmsg_msg_t *msg);
 static void hammer2_autodmsg(kdmsg_msg_t *msg);
@@ -1108,7 +1111,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 {
 	hammer2_cluster_t *cluster;
 
-	switch(HAMMER2_DEC_COMP(ipdata->comp_algo)) {
+	switch(HAMMER2_DEC_ALGO(ipdata->comp_algo)) {
 	case HAMMER2_COMP_NONE:
 		/*
 		 * We have to assign physical storage to the buffer
@@ -1121,7 +1124,8 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		cluster = hammer2_assign_physical(trans, ip, cparent,
 						lbase, pblksize,
 						errorp);
-		hammer2_write_bp(cluster, bp, ioflag, pblksize, errorp);
+		hammer2_write_bp(cluster, bp, ioflag, pblksize, errorp,
+				 ipdata->check_algo);
 		if (cluster)
 			hammer2_cluster_unlock(cluster);
 		break;
@@ -1131,7 +1135,8 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		 */
 		hammer2_zero_check_and_write(bp, trans, ip,
 				    ipdata, cparent, lbase,
-				    ioflag, pblksize, errorp);
+				    ioflag, pblksize, errorp,
+				    ipdata->check_algo);
 		break;
 	case HAMMER2_COMP_LZ4:
 	case HAMMER2_COMP_ZLIB:
@@ -1143,7 +1148,8 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 					   ipdata, cparent,
 					   lbase, ioflag,
 					   pblksize, errorp,
-					   ipdata->comp_algo);
+					   ipdata->comp_algo,
+					   ipdata->check_algo);
 		break;
 	}
 }
@@ -1159,7 +1165,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 	hammer2_inode_t *ip, const hammer2_inode_data_t *ipdata,
 	hammer2_cluster_t *cparent,
 	hammer2_key_t lbase, int ioflag, int pblksize,
-	int *errorp, int comp_algo)
+	int *errorp, int comp_algo, int check_algo)
 {
 	hammer2_cluster_t *cluster;
 	hammer2_chain_t *chain;
@@ -1183,7 +1189,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 		int comp_level;
 		int ret;
 
-		switch(HAMMER2_DEC_COMP(comp_algo)) {
+		switch(HAMMER2_DEC_ALGO(comp_algo)) {
 		case HAMMER2_COMP_LZ4:
 			comp_buffer = objcache_get(cache_buffer_write,
 						   M_INTWAIT);
@@ -1284,7 +1290,6 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 	for (i = 0; i < cluster->nchains; ++i) {
 		hammer2_io_t *dio;
 		char *bdata;
-		int temp_check;
 
 		chain = cluster->array[i];
 		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
@@ -1298,8 +1303,6 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 			      HAMMER2_EMBEDDED_BYTES);
 			break;
 		case HAMMER2_BREF_TYPE_DATA:
-			temp_check = HAMMER2_DEC_CHECK(chain->bref.methods);
-
 			/*
 			 * Optimize out the read-before-write
 			 * if possible.
@@ -1323,7 +1326,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 			if (comp_size) {
 				chain->bref.methods =
 					HAMMER2_ENC_COMP(comp_algo) +
-					HAMMER2_ENC_CHECK(temp_check);
+					HAMMER2_ENC_CHECK(check_algo);
 				bcopy(comp_buffer, bdata, comp_size);
 				if (comp_size != comp_block_size) {
 					bzero(bdata + comp_size,
@@ -1333,7 +1336,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 				chain->bref.methods =
 					HAMMER2_ENC_COMP(
 						HAMMER2_COMP_NONE) +
-					HAMMER2_ENC_CHECK(temp_check);
+					HAMMER2_ENC_CHECK(check_algo);
 				bcopy(bp->b_data, bdata, pblksize);
 			}
 
@@ -1392,7 +1395,8 @@ void
 hammer2_zero_check_and_write(struct buf *bp, hammer2_trans_t *trans,
 	hammer2_inode_t *ip, const hammer2_inode_data_t *ipdata,
 	hammer2_cluster_t *cparent,
-	hammer2_key_t lbase, int ioflag, int pblksize, int *errorp)
+	hammer2_key_t lbase, int ioflag, int pblksize, int *errorp,
+	int check_algo)
 {
 	hammer2_cluster_t *cluster;
 
@@ -1401,7 +1405,8 @@ hammer2_zero_check_and_write(struct buf *bp, hammer2_trans_t *trans,
 	} else {
 		cluster = hammer2_assign_physical(trans, ip, cparent,
 						  lbase, pblksize, errorp);
-		hammer2_write_bp(cluster, bp, ioflag, pblksize, errorp);
+		hammer2_write_bp(cluster, bp, ioflag, pblksize, errorp,
+				 check_algo);
 		if (cluster)
 			hammer2_cluster_unlock(cluster);
 	}
@@ -1467,21 +1472,18 @@ zero_write(struct buf *bp, hammer2_trans_t *trans,
 static
 void
 hammer2_write_bp(hammer2_cluster_t *cluster, struct buf *bp, int ioflag,
-				int pblksize, int *errorp)
+				int pblksize, int *errorp, int check_algo)
 {
 	hammer2_chain_t *chain;
 	hammer2_io_t *dio;
 	char *bdata;
 	int error;
 	int i;
-	int temp_check;
 
 	error = 0;	/* XXX TODO below */
 
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i];
-
-		temp_check = HAMMER2_DEC_CHECK(chain->bref.methods);
 
 		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
 
@@ -1508,7 +1510,7 @@ hammer2_write_bp(hammer2_cluster_t *cluster, struct buf *bp, int ioflag,
 
 			chain->bref.methods = HAMMER2_ENC_COMP(
 							HAMMER2_COMP_NONE) +
-					      HAMMER2_ENC_CHECK(temp_check);
+					      HAMMER2_ENC_CHECK(check_algo);
 			bcopy(bp->b_data, bdata, chain->bytes);
 
 			/*

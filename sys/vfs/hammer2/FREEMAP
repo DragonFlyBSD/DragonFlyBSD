@@ -61,10 +61,11 @@
     simplify the algorithm and to ensure freemap locality to the blocks
     under management.
 
-    Level 1 - (radix 10 + 21) 16KB blockmap representing 2GB.  There are 1024
-	      entries representing ~2MB worth of media storage per entry.
+    Level 1 - (radix 10 + 21) 64KB representing 2GB.  This is represented
+	      by a hammer2_bmap_data[1024] array.  Each entry represents
+	      2MB worth of media storage x 1024 entries to represent 2GB.
 	      Each entry contains a 128x2 bit bitmap representing 16KB
-	      of storage in 2 bits.
+	      of storage in 2 bits (128 x 16KB = 2MB).
 
     Level 2 - (radix 10) 64KB blockmap representing 2TB (~2GB per entry)
     Level 3 - (radix 10) 64KB blockmap representing 2PB (~2TB per entry)

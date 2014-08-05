@@ -550,7 +550,8 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		 * "boot", the boot loader can't decompress (yet).
 		 */
 		if (strcmp(pfs->name, "boot") == 0)
-			nipdata->comp_algo = HAMMER2_COMP_AUTOZERO;
+			nipdata->comp_algo = HAMMER2_ENC_ALGO(
+							HAMMER2_COMP_AUTOZERO);
 		hammer2_cluster_modsync(ncluster);
 		hammer2_inode_unlock_ex(nip, ncluster);
 	}
@@ -645,6 +646,14 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 	cparent = hammer2_inode_lock_ex(ip);
 	ripdata = &hammer2_cluster_data(cparent)->ipdata;
 
+	if (ino->ip_data.check_algo != ripdata->check_algo) {
+		wipdata = hammer2_cluster_modify_ip(&trans, ip, cparent, 0);
+		wipdata->check_algo = ino->ip_data.check_algo;
+		ripdata = wipdata; /* safety */
+		hammer2_cluster_setmethod_check(&trans, cparent,
+						wipdata->check_algo);
+		dosync = 1;
+	}
 	if (ino->ip_data.comp_algo != ripdata->comp_algo) {
 		wipdata = hammer2_cluster_modify_ip(&trans, ip, cparent, 0);
 		wipdata->comp_algo = ino->ip_data.comp_algo;

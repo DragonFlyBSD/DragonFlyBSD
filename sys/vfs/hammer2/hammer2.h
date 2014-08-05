@@ -980,6 +980,8 @@ void hammer2_cluster_set_chainflags(hammer2_cluster_t *cluster, uint32_t flags);
 void hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref);
 void hammer2_cluster_setflush(hammer2_trans_t *trans,
 			hammer2_cluster_t *cluster);
+void hammer2_cluster_setmethod_check(hammer2_trans_t *trans,
+			hammer2_cluster_t *cluster, int check_algo);
 hammer2_cluster_t *hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
 			hammer2_trans_t *trans,
 			hammer2_blockref_t *bref);

@@ -3855,6 +3855,8 @@ hammer2_chain_setcheck(hammer2_chain_t *chain, void *bdata)
 	switch(HAMMER2_DEC_CHECK(chain->bref.methods)) {
 	case HAMMER2_CHECK_NONE:
 		break;
+	case HAMMER2_CHECK_DISABLED:
+		break;
 	case HAMMER2_CHECK_ISCSI32:
 		chain->bref.check.iscsi32.value =
 			hammer2_icrc32(bdata, chain->bytes);
@@ -3901,6 +3903,9 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 
 	switch(HAMMER2_DEC_CHECK(chain->bref.methods)) {
 	case HAMMER2_CHECK_NONE:
+		r = 1;
+		break;
+	case HAMMER2_CHECK_DISABLED:
 		r = 1;
 		break;
 	case HAMMER2_CHECK_ISCSI32:

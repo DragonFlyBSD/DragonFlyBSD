@@ -553,18 +553,35 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_BREF_FLAG_PFSROOT	0x01	/* see also related opflag */
 #define HAMMER2_BREF_FLAG_ZERO		0x02
 
-#define HAMMER2_ENC_CHECK(n)		((n) << 4)
+/*
+ * Encode/decode check mode and compression mode for
+ * bref.methods.  The compression level is not encoded in
+ * bref.methods.
+ */
+#define HAMMER2_ENC_CHECK(n)		(((n) & 15) << 4)
 #define HAMMER2_DEC_CHECK(n)		(((n) >> 4) & 15)
+#define HAMMER2_ENC_COMP(n)		((n) & 15)
+#define HAMMER2_DEC_COMP(n)		((n) & 15)
 
 #define HAMMER2_CHECK_NONE		0
-#define HAMMER2_CHECK_ISCSI32		1
-#define HAMMER2_CHECK_CRC64		2
-#define HAMMER2_CHECK_SHA192		3
-#define HAMMER2_CHECK_FREEMAP		4
+#define HAMMER2_CHECK_DISABLED		1
+#define HAMMER2_CHECK_ISCSI32		2
+#define HAMMER2_CHECK_CRC64		3
+#define HAMMER2_CHECK_SHA192		4
+#define HAMMER2_CHECK_FREEMAP		5
 
-#define HAMMER2_ENC_COMP(n)		(n)
+/* user-specifiable check modes only */
+#define HAMMER2_CHECK_STRINGS		{ "none", "disabled", "crc32", \
+					  "crc64", "sha192" }
+#define HAMMER2_CHECK_STRINGS_COUNT	5
+
+/*
+ * Encode/decode check or compression algorithm request in
+ * ipdata->check_algo and ipdata->comp_algo.
+ */
+#define HAMMER2_ENC_ALGO(n)		(n)
+#define HAMMER2_DEC_ALGO(n)		((n) & 15)
 #define HAMMER2_ENC_LEVEL(n)		((n) << 4)
-#define HAMMER2_DEC_COMP(n)		((n) & 15)
 #define HAMMER2_DEC_LEVEL(n)		(((n) >> 4) & 15)
 
 #define HAMMER2_COMP_NONE		0
@@ -778,7 +795,7 @@ struct hammer2_inode_data {
 	 *	 registration in the cluster.
 	 */
 	uint8_t		target_type;	/* 0084 hardlink target type */
-	uint8_t		reserved85;	/* 0085 */
+	uint8_t		check_algo;	/* 0085 check code request & algo */
 	uint8_t		pfs_nmasters;	/* 0086 (if PFSROOT) if multi-master */
 	uint8_t		pfs_type;	/* 0087 (if PFSROOT) node type */
 	uint64_t	pfs_inum;	/* 0088 (if PFSROOT) inum allocator */
