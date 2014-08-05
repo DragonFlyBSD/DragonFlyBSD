@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2013 The DragonFly Project.  All rights reserved.
  *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@dragonflybsd.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -108,7 +110,7 @@ cmd_setcomp(const char *comp_str, char **paths)
 		while (*paths) {
 			if (lstat(*paths, &st) == 0) {
 				res = cmd_setcomp_core(
-					HAMMER2_ENC_COMP(comp_algo) |
+					HAMMER2_ENC_ALGO(comp_algo) |
 					 HAMMER2_ENC_LEVEL(comp_level),
 				        *paths,
 					&st);

@@ -501,6 +501,10 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	if (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1) {
 		switch(HAMMER2_DEC_CHECK(bref->methods)) {
 		case HAMMER2_CHECK_NONE:
+			printf("(meth %02x) ", bref->methods);
+			break;
+		case HAMMER2_CHECK_DISABLED:
+			printf("(meth %02x) ", bref->methods);
 			break;
 		case HAMMER2_CHECK_ISCSI32:
 			cv = hammer2_icrc32(&media, bytes);
@@ -509,11 +513,15 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 				       bref->methods,
 				       bref->check.iscsi32.value,
 				       cv);
+			} else {
+				printf("(meth %02x) ", bref->methods);
 			}
 			break;
 		case HAMMER2_CHECK_CRC64:
+			printf("(meth %02x) ", bref->methods);
 			break;
 		case HAMMER2_CHECK_SHA192:
+			printf("(meth %02x) ", bref->methods);
 			break;
 		case HAMMER2_CHECK_FREEMAP:
 			cv = hammer2_icrc32(&media, bytes);
@@ -522,6 +530,8 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 					bref->methods,
 					bref->check.freemap.icrc32,
 					cv);
+			} else {
+				printf("(meth %02x) ", bref->methods);
 			}
 			break;
 		}
@@ -594,6 +604,8 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 			  media.ipdata.ncopies);
 		tabprintf(tab, "compalg  %u\n",
 			  media.ipdata.comp_algo);
+		tabprintf(tab, "checkalg %u\n",
+			  media.ipdata.check_algo);
 		if (media.ipdata.op_flags & HAMMER2_OPFLAG_PFSROOT) {
 			tabprintf(tab, "pfs_type %u (%s)\n",
 				  media.ipdata.pfs_type,

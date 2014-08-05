@@ -368,6 +368,30 @@ main(int ac, char **av)
 			 */
 			ecode = cmd_setcomp(av[1], &av[2]);
 		}
+	} else if (strcmp(av[0], "setcheck") == 0) {
+		if (ac < 3) {
+			/*
+			 * Missing compression method and at least one
+			 * path.
+			 */
+			fprintf(stderr,
+				"setcheck: requires check code method and"
+				"directory/file path\n");
+			usage(1);
+		} else {
+			/*
+			 * Multiple paths may be specified
+			 */
+			ecode = cmd_setcheck(av[1], &av[2]);
+		}
+	} else if (strcmp(av[0], "clrcheck") == 0) {
+		ecode = cmd_setcheck("none", &av[1]);
+	} else if (strcmp(av[0], "setcrc32") == 0) {
+		ecode = cmd_setcheck("crc32", &av[1]);
+	} else if (strcmp(av[0], "setcrc64") == 0) {
+		ecode = cmd_setcheck("crc64", &av[1]);
+	} else if (strcmp(av[0], "setsha192") == 0) {
+		ecode = cmd_setcheck("sha192", &av[1]);
 	} else if (strcmp(av[0], "printinode") == 0) {
 		if (ac != 2) {
 			fprintf(stderr,
@@ -440,8 +464,16 @@ usage(int code)
 			"Raw hammer2 media dump\n"
 		"    freemap devpath              "
 			"Raw hammer2 media dump\n"
-		"    setcomp comp[:level] path    "
-			"Set compression {none, autozero, lz4, zlib} & level\n"
+		"    setcomp comp[:level] path... "
+			"Set comp algo {none, autozero, lz4, zlib} & level\n"
+		"    setcheck check path...       "
+			"Set check algo {none, crc32, crc64, sha192}\n"
+		"    setcrc32 path...             "
+			"Set check algo to crc32\n"
+		"    setcrc64 path...             "
+			"Set check algo to crc64\n"
+		"    setsha192 path...            "
+			"Set check algo to sha192\n"
 	);
 	exit(code);
 }

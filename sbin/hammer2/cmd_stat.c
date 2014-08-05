@@ -35,6 +35,7 @@
 #include "hammer2.h"
 
 static const char *compmodestr(uint8_t comp_algo);
+static const char *checkmodestr(uint8_t comp_algo);
 
 /*
  * Should be run as root.  Creates /etc/hammer2/rsa.{pub,prv} using
@@ -78,6 +79,7 @@ cmd_stat(int ac, const char **av)
 		printf("%9s ", counttostr(ino.ip_data.inode_count));
 		printf("%p ", ino.kdata);
 		printf("comp=%s ", compmodestr(ino.ip_data.comp_algo));
+		printf("check=%s ", checkmodestr(ino.ip_data.check_algo));
 		if (ino.ip_data.data_quota || ino.ip_data.inode_quota) {
 			printf(" quota ");
 			printf("%12s", sizetostr(ino.ip_data.data_quota));
@@ -94,7 +96,7 @@ compmodestr(uint8_t comp_algo)
 {
 	static char buf[64];
 	static const char *comps[] = HAMMER2_COMP_STRINGS;
-	int comp = HAMMER2_DEC_COMP(comp_algo);
+	int comp = HAMMER2_DEC_ALGO(comp_algo);
 	int level = HAMMER2_DEC_LEVEL(comp_algo);
 
 	if (level) {
@@ -111,6 +113,34 @@ compmodestr(uint8_t comp_algo)
 		else
 			snprintf(buf, sizeof(buf), "unknown(%d):default",
 				 comp);
+	}
+	return (buf);
+}
+
+static
+const char *
+checkmodestr(uint8_t check_algo)
+{
+	static char buf[64];
+	static const char *checks[] = HAMMER2_CHECK_STRINGS;
+	int check = HAMMER2_DEC_ALGO(check_algo);
+	int level = HAMMER2_DEC_LEVEL(check_algo);
+
+	/*
+	 * NOTE: Check algorithms normally do not encode any level.
+	 */
+	if (level) {
+		if (check >= 0 && check < HAMMER2_CHECK_STRINGS_COUNT)
+			snprintf(buf, sizeof(buf), "%s:%d",
+				 checks[check], level);
+		else
+			snprintf(buf, sizeof(buf), "unknown(%d):%d",
+				 check, level);
+	} else {
+		if (check >= 0 && check < HAMMER2_CHECK_STRINGS_COUNT)
+			snprintf(buf, sizeof(buf), "%s", checks[check]);
+		else
+			snprintf(buf, sizeof(buf), "unknown(%d)", check);
 	}
 	return (buf);
 }
