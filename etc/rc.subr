@@ -470,9 +470,10 @@ get_pidfile_from_conf()
 #	If argument has a given prefix, then change the operation as follows:
 #		Prefix	Operation
 #		------	---------
-#		fast	Skip the pid check, and set rc_fast=yes
+#		fast	Skip the pid check, and set rc_fast=yes, rc_quiet=yes
 #		force	Set ${rcvar} to YES, and set rc_force=yes
 #		one	Set ${rcvar} to YES
+#		quiet	Don't output some diagnostics, and set rc_quiet=yes
 #
 #	The following globals are used:
 #
@@ -598,6 +599,8 @@ get_pidfile_from_conf()
 #
 #	rc_force	Not empty if "force" was provided (q.v.)
 #
+#	rc_quiet	Not empty if "quiet" was provided
+#
 #
 dummy_rc_command()
 {
@@ -626,10 +629,17 @@ run_rc_command()
 		err 3 'run_rc_command: $name is not set.'
 	fi
 
+	# Don't repeat the first argument when passing additional command-
+	# line arguments to the command subroutines.
+	#
+	shift 1
+	rc_extra_args="$*"
+
 	case "$rc_arg" in
 	fast*)				# "fast" prefix; don't check pid
 		rc_arg=${rc_arg#fast}
 		rc_fast=yes
+		rc_quiet=yes
 		;;
 	force*)				# "force" prefix; always start
 		rc_arg=${rc_arg#force}
@@ -643,6 +653,12 @@ run_rc_command()
 		if [ -n "${rcvar}" ]; then
 			eval ${rcvar}=YES
 		fi
+		;;
+	quiet*)				# "quiet" prefix; omit some messages
+		_rc_prefix=quiet
+		rc_arg=${rc_arg#${_rc_prefix}}
+		rc_quiet=yes
+		;;
 	esac
 
 	eval _override_command=\$${name}_program
@@ -716,7 +732,7 @@ run_rc_command()
 					#
 			if [ -n "$_precmd" ]; then
 				debug "run_rc_command: evaluating ${_precmd}()."
-				eval $_precmd
+				eval $_precmd $rc_extra_args
 
 				_return=$?
 				check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
@@ -724,14 +740,14 @@ run_rc_command()
 
 			if [ -n "$_cmd" ]; then
 				debug "run_rc_command: evaluating ${_cmd}()."
-				eval $_cmd
+				eval $_cmd $rc_extra_args
 				_return=$?
 				check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 			fi
 
 			if [ -n "$_postcmd" ]; then
 				debug "run_rc_command: evaluating ${_postcmd}()."
-				eval $_postcmd
+				eval $_postcmd $rc_extra_args
 				_return=$?
 				check_early_term $rc_arg $_return "" || return $(($?-1))
 			fi
@@ -753,7 +769,9 @@ run_rc_command()
 
 		start)
 			if [ -n "$rc_pid" ]; then
-				echo "${name} already running? (pid=$rc_pid)."
+				if [ -z "$rc_quiet" ]; then
+					echo "${name} already running? (pid=$rc_pid)."
+				fi
 				exit 1
 			fi
 
@@ -918,7 +936,7 @@ $command $rc_flags $command_args"
 
 		restart)
 			if [ -n "$_precmd" ]; then
-				eval $_precmd
+				eval $_precmd $rc_extra_args
 				_return=$?
 				check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 			fi
@@ -930,12 +948,12 @@ $command $rc_flags $command_args"
 			fi
 			_rc_restart_done=YES
 
-			( $0 ${rc_force:+force}stop )
-			$0 ${rc_force:+force}start
+			( $0 ${rc_force:+force}stop $rc_extra_args )
+			$0 ${rc_force:+force}start $rc_extra_args
 			_return=$?
 
 			if [ -n "$_postcmd" ]; then
-				eval $_postcmd
+				eval $_postcmd $rc_extra_args
 				adjust_return_code $?
 				_return=$?
 			fi
@@ -1089,7 +1107,7 @@ load_rc_config()
 #
 rc_usage()
 {
-	echo -n 1>&2 "Usage: $0 [fast|force|one]("
+	echo -n 1>&2 "Usage: $0 [fast|force|one|quiet]("
 
 	_sep=
 	for _elem in $*; do
