@@ -162,8 +162,10 @@ static int i915_dma_cleanup(struct drm_device * dev)
 	if (dev->irq_enabled)
 		drm_irq_uninstall(dev);
 
+	DRM_LOCK(dev);
 	for (i = 0; i < I915_NUM_RINGS; i++)
 		intel_cleanup_ring_buffer(&dev_priv->ring[i]);
+	DRM_UNLOCK(dev);
 
 	/* Clear the HWS virtual address at teardown */
 	if (I915_NEED_GFX_HWS(dev))
@@ -638,10 +640,11 @@ static int i915_batchbuffer(struct drm_device *dev, void *data,
 		DRM_ERROR("Batchbuffer ioctl disabled\n");
 		return -EINVAL;
 	}
-	DRM_UNLOCK(dev);
 
 	DRM_DEBUG("i915 batchbuffer, start %x used %d cliprects %d\n",
 		  batch->start, batch->used, batch->num_cliprects);
+
+	RING_LOCK_TEST_WITH_RETURN(dev, file_priv);
 
 	cliplen = batch->num_cliprects * sizeof(struct drm_clip_rect);
 	if (batch->num_cliprects < 0)
@@ -654,15 +657,15 @@ static int i915_batchbuffer(struct drm_device *dev, void *data,
 		ret = -copyin(batch->cliprects, cliprects,
 		    batch->num_cliprects * sizeof(struct drm_clip_rect));
 		if (ret != 0) {
-			DRM_LOCK(dev);
+			ret = -EFAULT;
 			goto fail_free;
 		}
 	} else
 		cliprects = NULL;
 
 	DRM_LOCK(dev);
-	RING_LOCK_TEST_WITH_RETURN(dev, file_priv);
 	ret = i915_dispatch_batchbuffer(dev, batch, cliprects);
+	DRM_UNLOCK(dev);
 
 	sarea_priv = (drm_i915_sarea_t *)dev_priv->sarea_priv;
 	if (sarea_priv)
@@ -686,16 +689,16 @@ static int i915_cmdbuffer(struct drm_device *dev, void *data,
 	DRM_DEBUG("i915 cmdbuffer, buf %p sz %d cliprects %d\n",
 		  cmdbuf->buf, cmdbuf->sz, cmdbuf->num_cliprects);
 
+	RING_LOCK_TEST_WITH_RETURN(dev, file_priv);
+
 	if (cmdbuf->num_cliprects < 0)
 		return -EINVAL;
-
-	DRM_UNLOCK(dev);
 
 	batch_data = kmalloc(cmdbuf->sz, DRM_MEM_DMA, M_WAITOK);
 
 	ret = -copyin(cmdbuf->buf, batch_data, cmdbuf->sz);
 	if (ret != 0) {
-		DRM_LOCK(dev);
+		ret = -EFAULT;
 		goto fail_batch_free;
 	}
 
@@ -705,15 +708,16 @@ static int i915_cmdbuffer(struct drm_device *dev, void *data,
 		    M_WAITOK | M_ZERO);
 		ret = -copyin(cmdbuf->cliprects, cliprects,
 		    cmdbuf->num_cliprects * sizeof(struct drm_clip_rect));
+
 		if (ret != 0) {
-			DRM_LOCK(dev);
+			ret = -EFAULT;
 			goto fail_clip_free;
 		}
 	}
 
 	DRM_LOCK(dev);
-	RING_LOCK_TEST_WITH_RETURN(dev, file_priv);
 	ret = i915_dispatch_cmdbuffer(dev, cmdbuf, cliprects, batch_data);
+	DRM_UNLOCK(dev);
 	if (ret) {
 		DRM_ERROR("i915_dispatch_cmdbuffer failed\n");
 		goto fail_clip_free;
@@ -907,7 +911,9 @@ static int i915_flip_bufs(struct drm_device *dev, void *data,
 
 	RING_LOCK_TEST_WITH_RETURN(dev, file_priv);
 
+	DRM_LOCK(dev);
 	ret = i915_dispatch_flip(dev);
+	DRM_UNLOCK(dev);
 
 	return ret;
 }
