@@ -128,6 +128,15 @@
 })
 #endif
 
+#define WARN_ONCE(condition, format...)	({	\
+	static bool __warned_once;		\
+						\
+	if ((condition) && !__warned_once) {	\
+		WARN(condition, format);	\
+		__warned_once = true;		\
+	}					\
+})
+
 #define container_of(ptr, type, member)				\
 ({								\
 	__typeof(((type *)0)->member) *_p = (ptr);		\
