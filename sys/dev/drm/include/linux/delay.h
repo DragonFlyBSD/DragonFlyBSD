@@ -36,4 +36,12 @@ static inline void msleep(unsigned int msecs)
 	tsleep(&dummy, 0, "linux_msleep", msecs*hz/1000);
 }
 
+static __inline void
+mdelay(unsigned long msecs)
+{
+	int loops = msecs;
+	while (loops--)
+		DELAY(1000);
+}
+
 #endif	/* _LINUX_DELAY_H_ */
