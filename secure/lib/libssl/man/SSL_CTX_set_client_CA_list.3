@@ -162,7 +162,7 @@ the chosen \fBssl\fR, overriding the setting valid for \fBssl\fR's \s-1SSL_CTX\s
 .SH "NOTES"
 .IX Header "NOTES"
 When a \s-1TLS/SSL\s0 server requests a client certificate (see
-\&\fB\f(BISSL_CTX_set_verify_options()\fB\fR), it sends a list of CAs, for which
+\&\fB\f(BISSL_CTX_set_verify\fB\|(3)\fR), it sends a list of CAs, for which
 it will accept certificates, to the client.
 .PP
 This list must explicitly be set using \fISSL_CTX_set_client_CA_list()\fR for

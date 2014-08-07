@@ -102,6 +102,7 @@ MLINKS+= SSL_CTX_set_ssl_version.3 SSL_set_ssl_method.3
 MLINKS+= SSL_CTX_set_ssl_version.3 SSL_get_ssl_method.3
 MAN+= SSL_CTX_set_timeout.3
 MLINKS+= SSL_CTX_set_timeout.3 SSL_CTX_get_timeout.3
+MAN+= SSL_CTX_set_tlsext_ticket_key_cb.3
 MAN+= SSL_CTX_set_tmp_dh_callback.3
 MLINKS+= SSL_CTX_set_tmp_dh_callback.3 SSL_CTX_set_tmp_dh.3
 MLINKS+= SSL_CTX_set_tmp_dh_callback.3 SSL_set_tmp_dh_callback.3
