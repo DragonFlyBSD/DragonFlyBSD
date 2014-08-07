@@ -453,10 +453,11 @@
 /* empty */
 
 /*
- * SDA_SETUP	- (RW) SDA Hold Time Length Register		22.2.32
+ * SDA_SETUP	- (RW) SDA Setup Time Length Register		22.2.32
  *
  *	Set the SDA setup time length register in I2C clocks.
  *	The register must be programmed with a value >=2.
+ *	(Defaults to 0x64).
  */
 #define IG4_SDA_SETUP_MASK	0x00FF
 
