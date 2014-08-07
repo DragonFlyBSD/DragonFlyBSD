@@ -56,7 +56,7 @@
 #include <openssl/crypto.h>
 #include <openssl/opensslconf.h>
 
-#if defined(__OpenBSD__) || (defined(__FreeBSD__) && __FreeBSD__ > 2)
+#if defined(__OpenBSD__) || defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ > 2)
 
 #include OPENSSL_UNISTD
 
