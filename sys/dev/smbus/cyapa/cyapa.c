@@ -232,6 +232,9 @@ SYSCTL_INT(_debug, OID_AUTO, cyapa_slow_freq, CTLFLAG_RW,
 static int cyapa_norm_freq = 100;
 SYSCTL_INT(_debug, OID_AUTO, cyapa_norm_freq, CTLFLAG_RW,
 		&cyapa_norm_freq, 0, "");
+static int cyapa_minpressure = 16;
+SYSCTL_INT(_debug, OID_AUTO, cyapa_minpressure, CTLFLAG_RW,
+		&cyapa_minpressure, 0, "");
 
 static int cyapa_debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, cyapa_debug, CTLFLAG_RW,
@@ -1206,6 +1209,7 @@ int
 cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 {
 	int nfingers;
+	int afingers;	/* actual fingers after culling */
 	int i;
 	int j;
 	int k;
@@ -1218,6 +1222,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	uint16_t but;	/* high bits used for simulated but4/but5 */
 
 	nfingers = CYAPA_FNGR_NUMFINGERS(regs->fngr);
+	afingers = nfingers;
 
 	if (cyapa_debug) {
 		kprintf("stat %02x buttons %c%c%c nfngrs=%d ",
@@ -1235,30 +1240,10 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 				CYAPA_TOUCH_Y(regs, i),
 				CYAPA_TOUCH_P(regs, i));
 		}
-#if 0
-		inputev_mt_slot(&sc->iev, regs->touch[i].id - 1);
-		inputev_mt_report_slot_state(&sc->iev, MT_TOOL_FINGER, 1);
-		inputev_report_abs(&sc->iev, ABS_MT_POSITION_X,
-				   CYAPA_TOUCH_X(regs, i));
-		inputev_report_abs(&sc->iev, ABS_MT_POSITION_Y,
-				   CYAPA_TOUCH_Y(regs, i));
-		inputev_report_abs(&sc->iev, ABS_MT_PRESSURE,
-				   CYAPA_TOUCH_P(regs, i));
-#endif
+		if (CYAPA_TOUCH_P(regs, i) < cyapa_minpressure)
+			--afingers;
 	}
-#if 0
-	inputev_mt_sync_frame(&sc->iev);
 
-	if (sc->cap_buttons & CYAPA_FNGR_LEFT)
-		inputev_report_key(&sc->iev, BTN_LEFT,
-				 regs->fngr & CYAPA_FNGR_LEFT);
-	if (sc->cap_buttons & CYAPA_FNGR_MIDDLE)
-		inputev_report_key(&sc->iev, BTN_LEFT,
-				 regs->fngr & CYAPA_FNGR_MIDDLE);
-	if (sc->cap_buttons & CYAPA_FNGR_RIGHT)
-		inputev_report_key(&sc->iev, BTN_LEFT,
-				 regs->fngr & CYAPA_FNGR_RIGHT);
-#endif
 	/*
 	 * Tracking for local solutions
 	 */
@@ -1268,7 +1253,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	 * Track timing for finger-downs.  Used to detect false-3-finger
 	 * button-down.
 	 */
-	switch(nfingers) {
+	switch(afingers) {
 	case 0:
 		break;
 	case 1:
@@ -1291,19 +1276,12 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 			sc->finger3_ticks = sc->poll_ticks;
 		break;
 	}
-#if 0
-	kprintf("%d->%d %d (%d) (%d)\n",
-		sc->track_nfingers, nfingers,
-		(nfingers >= 1 ? sc->finger1_ticks : 0),
-		(nfingers >= 2 ? sc->finger2_ticks - sc->finger1_ticks : 0),
-		(nfingers >= 3 ? sc->finger3_ticks - sc->finger1_ticks : 0));
-#endif
-	sc->track_nfingers = nfingers;
+	sc->track_nfingers = afingers;
 
 	/*
 	 * Lookup and track finger indexes in the touch[] array.
 	 */
-	if (nfingers == 0) {
+	if (afingers == 0) {
 		sc->track_x = -1;
 		sc->track_y = -1;
 		sc->track_z = -1;
@@ -1333,7 +1311,8 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 			if (sc->track_id1 == regs->touch[i].id)
 				break;
 		}
-		if (i == nfingers) {
+		if (i == nfingers ||
+		    CYAPA_TOUCH_P(regs, i) < cyapa_minpressure) {
 			i = 0;
 			sc->track_x = -1;
 			sc->track_y = -1;
@@ -1350,8 +1329,9 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 			if (sc->track_id2 == regs->touch[j].id)
 				break;
 		}
-		if (j == nfingers) {
-			if (nfingers >= 2) {
+		if (j == nfingers ||
+		    CYAPA_TOUCH_P(regs, j) < cyapa_minpressure) {
+			if (afingers >= 2) {
 				if (i == 0)
 					j = 1;
 				else
@@ -1367,7 +1347,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		 * The third finger is used to tap or tap-hold to simulate
 		 * a button, we don't have to record it persistently.
 		 */
-		if (nfingers >= 3) {
+		if (afingers >= 3) {
 			k = 0;
 			if (i == 0 || j == 0)
 				k = 1;
@@ -1382,7 +1362,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	 * On initial touch determine if we are in the slider area.  Setting
 	 * track_z conditionalizes the delta calculations later on.
 	 */
-	if (nfingers && sc->zenabled > 0 &&
+	if (afingers && sc->zenabled > 0 &&
 	    sc->track_x == -1 && sc->track_z == -1) {
 		x = CYAPA_TOUCH_X(regs, i);
 		z = CYAPA_TOUCH_Y(regs, i);
@@ -1390,7 +1370,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 			sc->track_z = z;
 	}
 
-	if (nfingers && sc->track_z != -1) {
+	if (afingers && sc->track_z != -1) {
 		/*
 		 * Slider emulation (right side of trackpad).  Z is tracked
 		 * based on the Y position.  X and Y tracking are disabled.
@@ -1403,7 +1383,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		if (sc->touch_z == -1)
 			sc->touch_z = z;	/* not used atm */
 		sc->track_z = z / ZSCALE;
-	} else if (nfingers) {
+	} else if (afingers) {
 		/*
 		 * Normal pad position reporting (track_z is left -1)
 		 */
@@ -1428,17 +1408,17 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		sc->track_x = x;
 		sc->track_y = y;
 	}
-	if (nfingers >= 5 && sc->zenabled > 1 && sc->track_z < 0) {
+	if (afingers >= 5 && sc->zenabled > 1 && sc->track_z < 0) {
 		/*
 		 * Simulate the 5th button (when not in slider mode)
 		 */
 		but = SIMULATE_BUT5;
-	} else if (nfingers >= 4 && sc->zenabled > 1 && sc->track_z < 0) {
+	} else if (afingers >= 4 && sc->zenabled > 1 && sc->track_z < 0) {
 		/*
 		 * Simulate the 4th button (when not in slider mode)
 		 */
 		but = SIMULATE_BUT4;
-	} else if (nfingers >= 3 && sc->track_z < 0) {
+	} else if (afingers >= 3 && sc->track_z < 0) {
 		/*
 		 * Simulate the left, middle, or right button with 3
 		 * fingers when not in slider mode.
@@ -1495,7 +1475,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		} else {
 			but = CYAPA_FNGR_RIGHT;
 		}
-	} else if (nfingers == 2 || (nfingers >= 2 && sc->track_z >= 0)) {
+	} else if (afingers == 2 || (afingers >= 2 && sc->track_z >= 0)) {
 		/*
 		 * If 2 fingers are held down or 2 or more fingers are held
 		 * down and we are in slider mode, any key press is
@@ -1514,7 +1494,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		} else {
 			but = 0;
 		}
-	} else if (nfingers == 1 &&
+	} else if (afingers == 1 &&
 		   (abs(sc->touch_x - sc->track_x) > 32 ||
 		    abs(sc->touch_y - sc->track_y) > 32)) {
 		/*
@@ -1535,7 +1515,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		} else {
 			but = 0;
 		}
-	} else if (nfingers == 1 && (regs->fngr & CYAPA_FNGR_LEFT)) {
+	} else if (afingers == 1 && (regs->fngr & CYAPA_FNGR_LEFT)) {
 		/*
 		 * If you are swiping while holding a button down, the
 		 * button registration does not change.  Otherwise the
@@ -1556,7 +1536,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 			but = CYAPA_FNGR_MIDDLE;
 		else
 			but = CYAPA_FNGR_RIGHT;
-	} else if (nfingers == 1) {
+	} else if (afingers == 1) {
 		/*
 		 * Clear all finger state if 1 finger is down and nothing
 		 * is pressed.
