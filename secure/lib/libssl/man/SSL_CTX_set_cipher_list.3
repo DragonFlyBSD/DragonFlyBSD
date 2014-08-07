@@ -180,6 +180,10 @@ client only supports export \s-1RSA\s0 ciphers with a asymmetric key length
 of 512 bits and the server is not configured to use temporary \s-1RSA\s0
 keys), the \*(L"no shared cipher\*(R" (\s-1SSL_R_NO_SHARED_CIPHER\s0) error is generated
 and the handshake will fail.
+.PP
+If the cipher list does not contain any SSLv2 cipher suites (this is the
+default) then SSLv2 is effectively disabled and neither clients nor servers
+will attempt to use SSLv2.
 .SH "RETURN VALUES"
 .IX Header "RETURN VALUES"
 \&\fISSL_CTX_set_cipher_list()\fR and \fISSL_set_cipher_list()\fR return 1 if any cipher
