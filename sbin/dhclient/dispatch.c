@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/sbin/dhclient/dispatch.c,v 1.58 2012/09/18 09:34:09 krw Exp $	*/
+/*     $OpenBSD: src/sbin/dhclient/dispatch.c,v 1.59 2012/10/11 08:05:05 sthen Exp $   */
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -122,8 +122,6 @@ dispatch(void)
 another:
 		if (!ifi)
 			error("No interfaces available");
-
-		ifi->linkstat = interface_status(ifi->name);
 
 		if (timeout.func) {
 			time(&cur_time);
