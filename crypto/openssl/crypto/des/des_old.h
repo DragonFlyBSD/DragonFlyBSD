@@ -178,7 +178,7 @@ typedef struct _ossl_old_des_ks_struct
 #if 0
 #define des_crypt(b,s)\
 	DES_crypt((b),(s))
-#if !defined(PERL5) && !defined(__FreeBSD__) && !defined(NeXT) && !defined(__OpenBSD__) && !defined(__DragonFly__)
+#if !defined(PERL5) && !defined(__FreeBSD__) && !defined(NeXT) && !defined(__OpenBSD__)
 #define crypt(b,s)\
 	DES_crypt((b),(s))
 #endif
