@@ -823,8 +823,11 @@ fn_set_timezone(struct i_fn_args *a)
 		    a->os_root, cmd_name(a, "CP"),
 		    selection,
 		    a->os_root, a->cfg_root);
-		if (commands_execute(a, cmds))
+		if (commands_execute(a, cmds)) {
 			inform(a->c, _("The Time Zone has been set to %s."), selection);
+			setenv("TZ", selection, 1);
+			tzset();
+		}
 	}
 	commands_free(cmds);
 }
