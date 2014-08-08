@@ -212,9 +212,6 @@ fn_install_os(struct i_fn_args *a)
 			/*
 			 * Set this subpartition as the dump device.
 			 */
-			if (subpartition_get_capacity(sp) < storage_get_memsize(a->s))
-				continue;
-
 			command_add(cmds, "%s%s -v /dev/%s",
 			    a->os_root, cmd_name(a, "DUMPON"),
 			    subpartition_is_encrypted(sp) ?
