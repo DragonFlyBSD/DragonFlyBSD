@@ -191,6 +191,75 @@ command_unload(int argc, char *argv[])
     return(CMD_OK);
 }
 
+COMMAND_SET(crc, "crc", "calculate crc for file", command_crc);
+
+uint32_t iscsi_crc32(const void *buf, size_t size);
+uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
+
+static int
+command_crc(int argc, char *argv[])
+{
+    char	*name;
+    char	*cp;
+    int		i;
+    int		fd, got, tot;
+    int		error;
+    uint32_t	crc;
+    char	*buf;
+
+    if (argc == 1) {
+	command_errmsg = "no filename specified";
+	return(CMD_ERROR);
+    }
+    buf = malloc(8192);
+
+    error = 0;
+    printf("size\tcrc\t name\n");
+    for (i = 1; i < argc; ++i) {
+	    /* locate the file on the load path */
+	    cp = file_search(argv[i], NULL);
+	    if (cp == NULL) {
+		sprintf(command_errbuf, "can't find '%s'", argv[i]);
+		error = CMD_ERROR;
+		break;
+	    }
+	    name = cp;
+
+	    if ((fd = rel_open(name, NULL, O_RDONLY)) < 0) {
+		sprintf(command_errbuf,
+			"can't open '%s': %s",
+			name, strerror(errno));
+		free(name);
+		error = CMD_ERROR;
+		break;
+	    }
+	    tot = 0;
+	    crc = 0;
+	    for (;;) {
+		got = read(fd, buf, 8192);
+		if (got == 0)
+			break;
+		if (got < 0) {
+			printf("error reading '%s': %s\n",
+				name, strerror(errno));
+			break;
+		}
+		if (got == 0)
+			crc = iscsi_crc32(buf, got);
+		else
+			crc = iscsi_crc32_ext(buf, got, crc);
+		tot += got;
+	    }
+	    printf("%7d %08x %s\n", tot, crc, name);
+	    free(name);
+	    close(fd);
+    }
+    free (buf);
+    if (error == 0)
+	error = CMD_OK;
+    return error;
+}
+
 COMMAND_SET(lsmod, "lsmod", "list loaded modules", command_lsmod);
 
 static int
