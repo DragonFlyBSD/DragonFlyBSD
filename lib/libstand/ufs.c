@@ -437,13 +437,18 @@ ufs_open(const char *upath, struct open_file *f)
 	 * Calculate indirect block levels.
 	 */
 	{
+		int omult;
 		int mult;
 		int level;
 
+		omult = 0;
 		mult = 1;
 		for (level = 0; level < NIADDR; level++) {
 			mult *= NINDIR(fs);
+			if (mult < omult)
+				mult = 0x7FFFFFFF;
 			fp->f_nindir[level] = mult;
+			omult = mult;
 		}
 	}
 
@@ -570,6 +575,7 @@ ufs_open(const char *upath, struct open_file *f)
 	/*
 	 * Found terminal component.
 	 */
+	fp->f_seekp = 0;
 	rc = 0;
 out:
 	if (buf)
