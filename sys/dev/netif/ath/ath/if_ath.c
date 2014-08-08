@@ -5485,11 +5485,11 @@ ath_calibrate(void *arg)
 	 */
 	ath_power_set_power_state(sc, HAL_PM_AWAKE);
 
+	wlan_serialize_enter();
+
 	/* Skip trying to do this if we're in reset */
 	if (sc->sc_inreset_cnt)
 		goto restart;
-
-	wlan_serialize_enter();
 	if (ic->ic_flags & IEEE80211_F_SCAN)	/* defer, off channel */
 		goto restart;
 	longCal = (ticks - sc->sc_lastlongcal >= ath_longcalinterval*hz);
