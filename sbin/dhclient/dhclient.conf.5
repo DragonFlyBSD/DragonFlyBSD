@@ -1,4 +1,4 @@
-.\"	$OpenBSD: src/sbin/dhclient/dhclient.conf.5,v 1.23 2012/09/22 20:09:43 jmc Exp $
+.\"	$OpenBSD: src/sbin/dhclient/dhclient.conf.5,v 1.24 2012/10/27 23:08:53 krw Exp $
 .\"
 .\" Copyright (c) 1997 The Internet Software Consortium.
 .\" All rights reserved.
@@ -36,7 +36,7 @@
 .\" see ``http://www.isc.org/isc''.  To learn more about Vixie
 .\" Enterprises, see ``http://www.vix.com''.
 .\"
-.Dd August 7, 2014
+.Dd August 9, 2014
 .Dt DHCLIENT.CONF 5
 .Os
 .Sh NAME
@@ -177,6 +177,13 @@ The data that can be specifically requested is what are called
 DHCP Options are defined in
 .Xr dhcp-options 5 .
 .Bl -tag -width Ds
+.It Ic ignore Op Ar option
+The
+.Ic ignore
+statement causes the client to discard values provided by the server for
+the specified options.
+Only the option names should be specified in the ignore statement \- not
+option parameters.
 .It Ic request Op Ar option , ... ;
 The
 .Ic request
@@ -238,14 +245,6 @@ Use
 for the given
 .Ar option ,
 regardless of the value supplied by the server.
-.It Xo
-.Ic ignore No { Op Ar option declaration
-.Oo , Ar ... option declaration Oc }
-.Xc
-If for some set of options the client should always ignore the
-value supplied by the server, these values can be defined in the
-.Ic ignore
-statement.
 .It Ic prepend Ar option option-value ;
 Use
 .Ar option-value
