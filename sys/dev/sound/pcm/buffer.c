@@ -39,6 +39,25 @@
 
 SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pcm/buffer.c 267762 2014-06-23 03:45:39Z kan $");
 
+/*
+ * XXX
+ *
+ * sndbuf_kqtask is a taskqueue callback routine, called from
+ * taskqueue_swi, which runs under the MP lock.
+ *
+ * The only purpose is to be able to KNOTE() from a sound
+ * interrupt, which is running without MP lock held and thus
+ * can't call KNOTE() directly.
+ */
+static void
+sndbuf_kqtask(void *context, int pending)
+{
+	struct snd_dbuf *b = context;
+	struct kqinfo *ki = sndbuf_getkq(b);
+
+	KNOTE(&ki->ki_note, 0);
+}
+
 struct snd_dbuf *
 sndbuf_create(device_t dev, char *drv, char *desc, struct pcm_channel *channel)
 {
@@ -48,6 +67,7 @@ sndbuf_create(device_t dev, char *drv, char *desc, struct pcm_channel *channel)
 	ksnprintf(b->name, SNDBUF_NAMELEN, "%s:%s", drv, desc);
 	b->dev = dev;
 	b->channel = channel;
+	TASK_INIT(&b->kqtask, 0, sndbuf_kqtask, b);
 
 	return b;
 }
