@@ -24,7 +24,6 @@
  *    Daniel Vetter <daniel@ffwll.ch>
  *
  * Derived from Xorg ddx, xf86-video-intel, src/i830_video.c
- * $FreeBSD: src/sys/dev/drm2/i915/intel_overlay.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 #include <drm/drmP.h>
@@ -343,9 +342,17 @@ static int intel_overlay_off(struct intel_overlay *overlay)
 	intel_ring_emit(ring, flip_addr);
 	intel_ring_emit(ring, MI_WAIT_FOR_EVENT | MI_WAIT_FOR_OVERLAY_FLIP);
 	/* turn overlay off */
-	intel_ring_emit(ring, MI_OVERLAY_FLIP | MI_OVERLAY_OFF);
-	intel_ring_emit(ring, flip_addr);
-	intel_ring_emit(ring, MI_WAIT_FOR_EVENT | MI_WAIT_FOR_OVERLAY_FLIP);
+	if (IS_I830(dev)) {
+		/* Workaround: Don't disable the overlay fully, since otherwise
+		 * it dies on the next OVERLAY_ON cmd. */
+		intel_ring_emit(ring, MI_NOOP);
+		intel_ring_emit(ring, MI_NOOP);
+		intel_ring_emit(ring, MI_NOOP);
+	} else {
+		intel_ring_emit(ring, MI_OVERLAY_FLIP | MI_OVERLAY_OFF);
+		intel_ring_emit(ring, flip_addr);
+		intel_ring_emit(ring, MI_WAIT_FOR_EVENT | MI_WAIT_FOR_OVERLAY_FLIP);
+	}
 	intel_ring_advance(ring);
 
 	return intel_overlay_do_wait_request(overlay, intel_overlay_off_tail);

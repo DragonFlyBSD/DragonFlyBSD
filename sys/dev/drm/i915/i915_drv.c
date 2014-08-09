@@ -36,6 +36,11 @@
 #include <drm/drm_pciids.h>
 #include "intel_drv.h"
 
+/*		 "Specify LVDS channel mode "
+		 "(0=probe BIOS [default], 1=single-channel, 2=dual-channel)" */
+int i915_lvds_channel_mode __read_mostly = 0;
+TUNABLE_INT("drm.i915.lvds_channel_mode", &i915_lvds_channel_mode);
+
 /* drv_PCI_IDs comes from drm_pciids.h, generated from drm_pciids.txt. */
 static drm_pci_id_list_t i915_pciidlist[] = {
 	i915_PCI_IDS
@@ -440,9 +445,12 @@ static int i915_drm_thaw(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int error = 0;
 
-	DRM_LOCK(dev);
+	intel_gt_reset(dev);
+
 	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
+		DRM_LOCK(dev);
 		i915_gem_restore_gtt_mappings(dev);
+		DRM_UNLOCK(dev);
 	}
 
 	i915_restore_state(dev);
@@ -450,35 +458,28 @@ static int i915_drm_thaw(struct drm_device *dev)
 
 	/* KMS EnterVT equivalent */
 	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
+		intel_init_pch_refclk(dev);
+
+		DRM_LOCK(dev);
 		dev_priv->mm.suspended = 0;
 
 		error = i915_gem_init_hw(dev);
-
-		if (HAS_PCH_SPLIT(dev))
-			ironlake_init_pch_refclk(dev);
-
 		DRM_UNLOCK(dev);
-		lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
-		drm_mode_config_reset(dev);
-		lockmgr(&dev->mode_config.mutex, LK_RELEASE);
+
+		intel_modeset_init_hw(dev);
+		intel_modeset_setup_hw_state(dev, false);
 		drm_irq_install(dev);
-
-		lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
-		/* Resume the modeset for every activated CRTC */
-		drm_helper_resume_force_mode(dev);
-		lockmgr(&dev->mode_config.mutex, LK_RELEASE);
-
-		if (IS_IRONLAKE_M(dev))
-			ironlake_enable_rc6(dev);
-		DRM_LOCK(dev);
 	}
 
 	intel_opregion_init(dev);
 
 	dev_priv->modeset_on_lid = 0;
 
-	DRM_UNLOCK(dev);
-
+#if 0
+	console_lock();
+	intel_fbdev_set_suspend(dev, 0);
+	console_unlock();
+#endif
 	return error;
 }
 
@@ -699,9 +700,7 @@ static int gen6_do_reset(struct drm_device *dev)
 	I915_WRITE_NOTRACE(GEN6_GDRST, GEN6_GRDOM_FULL);
 
 	/* Spin waiting for the device to ack the reset request */
-	ret = _intel_wait_for(dev,
-	    (I915_READ(GEN6_GDRST) & GEN6_GRDOM_FULL) == 0,
-	    500, 1, "915rst");
+	ret = wait_for((I915_READ_NOTRACE(GEN6_GDRST) & GEN6_GRDOM_FULL) == 0, 500);
 
 	/* If reset with a user forcewake, try to restore, otherwise turn it off */
 	if (dev_priv->forcewake_count)

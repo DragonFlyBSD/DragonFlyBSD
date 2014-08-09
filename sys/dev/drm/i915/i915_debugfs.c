@@ -810,7 +810,7 @@ i915_cur_delayinfo(struct drm_device *dev, struct sbuf *m, void *unused)
 			   MEMSTAT_VID_SHIFT);
 		sbuf_printf(m, "Current P-state: %d\n",
 			   (rgvstat & MEMSTAT_PSTATE_MASK) >> MEMSTAT_PSTATE_SHIFT);
-	} else if (IS_GEN6(dev)) {
+	} else if (IS_GEN6(dev) || IS_GEN7(dev)) {
 		u32 gt_perf_status = I915_READ(GEN6_GT_PERF_STATUS);
 		u32 rp_state_limits = I915_READ(GEN6_RP_STATE_LIMITS);
 		u32 rp_state_cap = I915_READ(GEN6_RP_STATE_CAP);
@@ -821,7 +821,8 @@ i915_cur_delayinfo(struct drm_device *dev, struct sbuf *m, void *unused)
 
 		/* RPSTAT1 is in the GT power well */
 		if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
-			return (EINTR);
+			return -EINTR;
+
 		gen6_gt_force_wake_get(dev_priv);
 
 		rpstat = I915_READ(GEN6_RPSTAT1);
@@ -844,7 +845,7 @@ i915_cur_delayinfo(struct drm_device *dev, struct sbuf *m, void *unused)
 		sbuf_printf(m, "Render p-state limit: %d\n",
 			   rp_state_limits & 0xff);
 		sbuf_printf(m, "CAGF: %dMHz\n", ((rpstat & GEN6_CAGF_MASK) >>
-						GEN6_CAGF_SHIFT) * 50);
+						GEN6_CAGF_SHIFT) * GT_FREQUENCY_MULTIPLIER);
 		sbuf_printf(m, "RP CUR UP EI: %dus\n", rpupei &
 			   GEN6_CURICONT_MASK);
 		sbuf_printf(m, "RP CUR UP: %dus\n", rpcurup &
@@ -860,15 +861,15 @@ i915_cur_delayinfo(struct drm_device *dev, struct sbuf *m, void *unused)
 
 		max_freq = (rp_state_cap & 0xff0000) >> 16;
 		sbuf_printf(m, "Lowest (RPN) frequency: %dMHz\n",
-			   max_freq * 50);
+			   max_freq * GT_FREQUENCY_MULTIPLIER);
 
 		max_freq = (rp_state_cap & 0xff00) >> 8;
 		sbuf_printf(m, "Nominal (RP1) frequency: %dMHz\n",
-			   max_freq * 50);
+			   max_freq * GT_FREQUENCY_MULTIPLIER);
 
 		max_freq = rp_state_cap & 0xff;
 		sbuf_printf(m, "Max non-overclocked (RP0) frequency: %dMHz\n",
-			   max_freq * 50);
+			   max_freq * GT_FREQUENCY_MULTIPLIER);
 	} else {
 		sbuf_printf(m, "no P-state info available\n");
 	}
@@ -1134,8 +1135,8 @@ static int i915_ring_freq_table(struct drm_device *dev, struct sbuf *m,
 	int gpu_freq, ia_freq;
 
 	if (!(IS_GEN6(dev) || IS_GEN7(dev))) {
-		sbuf_printf(m, "unsupported on this chipset");
-		return (0);
+		sbuf_printf(m, "unsupported on this chipset\n");
+		return 0;
 	}
 
 	if (lockmgr(&dev_priv->rps.hw_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
@@ -1146,17 +1147,11 @@ static int i915_ring_freq_table(struct drm_device *dev, struct sbuf *m,
 	for (gpu_freq = dev_priv->rps.min_delay;
 	     gpu_freq <= dev_priv->rps.max_delay;
 	     gpu_freq++) {
-		I915_WRITE(GEN6_PCODE_DATA, gpu_freq);
-		I915_WRITE(GEN6_PCODE_MAILBOX, GEN6_PCODE_READY |
-			   GEN6_PCODE_READ_MIN_FREQ_TABLE);
-		if (_intel_wait_for(dev,
-		    (I915_READ(GEN6_PCODE_MAILBOX) & GEN6_PCODE_READY) == 0,
-		    10, 1, "915frq")) {
-			DRM_ERROR("pcode read of freq table timed out\n");
-			continue;
-		}
-		ia_freq = I915_READ(GEN6_PCODE_DATA);
-		sbuf_printf(m, "%d\t\t%d\n", gpu_freq * 50, ia_freq * 100);
+		ia_freq = gpu_freq;
+		sandybridge_pcode_read(dev_priv,
+				       GEN6_PCODE_READ_MIN_FREQ_TABLE,
+				       &ia_freq);
+		sbuf_printf(m, "%d\t\t%d\n", gpu_freq * GT_FREQUENCY_MULTIPLIER, ia_freq * 100);
 	}
 
 	lockmgr(&dev_priv->rps.hw_lock, LK_RELEASE);
@@ -1277,15 +1272,15 @@ i915_context_status(struct drm_device *dev, struct sbuf *m, void *data)
 	if (ret != 0)
 		return (EINTR);
 
-	if (dev_priv->pwrctx != NULL) {
+	if (dev_priv->ips.pwrctx) {
 		sbuf_printf(m, "power context ");
-		describe_obj(m, dev_priv->pwrctx);
+		describe_obj(m, dev_priv->ips.pwrctx);
 		sbuf_printf(m, "\n");
 	}
 
-	if (dev_priv->renderctx != NULL) {
+	if (dev_priv->ips.renderctx) {
 		sbuf_printf(m, "render context ");
-		describe_obj(m, dev_priv->renderctx);
+		describe_obj(m, dev_priv->ips.renderctx);
 		sbuf_printf(m, "\n");
 	}
 

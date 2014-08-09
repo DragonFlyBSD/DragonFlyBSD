@@ -25,7 +25,6 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- * $FreeBSD: src/sys/dev/drm2/i915/i915_drv.h,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 #ifndef _I915_DRV_H_
@@ -242,7 +241,6 @@ struct drm_i915_error_state {
 };
 
 struct drm_i915_display_funcs {
-	void (*dpms)(struct drm_crtc *crtc, int mode);
 	bool (*fbc_enabled)(struct drm_device *dev);
 	void (*enable_fbc)(struct drm_crtc *crtc, unsigned long interval);
 	void (*disable_fbc)(struct drm_device *dev);
@@ -253,16 +251,19 @@ struct drm_i915_display_funcs {
 				 uint32_t sprite_width, int pixel_size);
 	void (*update_linetime_wm)(struct drm_device *dev, int pipe,
 				 struct drm_display_mode *mode);
+	void (*modeset_global_resources)(struct drm_device *dev);
 	int (*crtc_mode_set)(struct drm_crtc *crtc,
 			     struct drm_display_mode *mode,
 			     struct drm_display_mode *adjusted_mode,
 			     int x, int y,
 			     struct drm_framebuffer *old_fb);
+	void (*crtc_enable)(struct drm_crtc *crtc);
+	void (*crtc_disable)(struct drm_crtc *crtc);
+	void (*off)(struct drm_crtc *crtc);
 	void (*write_eld)(struct drm_connector *connector,
 			  struct drm_crtc *crtc);
 	void (*fdi_link_train)(struct drm_crtc *crtc);
 	void (*init_clock_gating)(struct drm_device *dev);
-	void (*init_pch_clock_gating)(struct drm_device *dev);
 	int (*queue_flip)(struct drm_device *dev, struct drm_crtc *crtc,
 			  struct drm_framebuffer *fb,
 			  struct drm_i915_gem_object *obj);
@@ -360,14 +361,6 @@ enum no_fbc_reason {
 /* defined intel_pm.c */
 extern struct lock mchdev_lock;
 
-struct mem_block {
-	struct mem_block *next;
-	struct mem_block *prev;
-	int start;
-	int size;
-	struct drm_file *file_priv; /* NULL: free, -1: heap, other: real files */
-};
-
 struct opregion_header;
 struct opregion_acpi;
 struct opregion_swsci;
@@ -402,6 +395,15 @@ struct intel_gmbus {
 	u32 reg0;
 	u32 gpio_reg;
 	struct drm_i915_private *dev_priv;
+};
+
+struct intel_iic_softc {
+	struct drm_device *drm_dev;
+	device_t iic_dev;
+	bool force_bit_dev;
+	char name[32];
+	uint32_t reg;
+	uint32_t reg0;
 };
 
 struct i915_suspend_saved_registers {
@@ -623,16 +625,12 @@ typedef struct drm_i915_private {
 
 	const struct intel_device_info *info;
 
+	int relative_constants_mode;
+
 	device_t *gmbus_bridge;
 	device_t *bbbus_bridge;
 	device_t *gmbus;
 	device_t *bbbus;
-
-	/** gmbus_sx protects against concurrent usage of the single hw gmbus
-	 * controller on different i2c buses. */
-	struct lock gmbus_lock;
-
-	int relative_constants_mode;
 
 	drm_local_map_t *sarea;
 	drm_local_map_t *mmio_map;
@@ -646,6 +644,10 @@ typedef struct drm_i915_private {
 	/** gt_lock is also taken in irq contexts. */
 	struct lock gt_lock;
 
+	/** gmbus_mutex protects against concurrent usage of the single hw gmbus
+	 * controller on different i2c buses. */
+	struct lock gmbus_mutex;
+
 	drm_i915_sarea_t *sarea_priv;
 	struct intel_ring_buffer ring[I915_NUM_RINGS];
 	uint32_t next_seqno;
@@ -655,13 +657,9 @@ typedef struct drm_i915_private {
 
 	void *hw_status_page;
 	dma_addr_t dma_status_page;
-	uint32_t counter;
 	unsigned int status_gfx_addr;
 	drm_local_map_t hws_map;
 	struct drm_gem_object *hws_obj;
-
-	struct drm_i915_gem_object *pwrctx;
-	struct drm_i915_gem_object *renderctx;
 
 	unsigned int cpp;
 	int back_offset;
@@ -671,6 +669,9 @@ typedef struct drm_i915_private {
 
 	atomic_t irq_received;
 	u32 trace_irq_seqno;
+
+	/* DPIO indirect register protection */
+	struct spinlock dpio_lock;
 
 	/** Cached value of IER to avoid reads in updating the bitfield */
 	u32 pipestat[2];
@@ -682,7 +683,6 @@ typedef struct drm_i915_private {
 	u32 hotplug_supported_mask;
 	struct work_struct hotplug_work;
 
-	int tex_lru_log_granularity;
 	unsigned int sr01, adpa, ppcr, dvob, dvoc, lvds;
 	int vblank_pipe;
 
@@ -725,6 +725,8 @@ typedef struct drm_i915_private {
 	unsigned int display_clock_mode:1;
 	unsigned int fdi_rx_polarity_inverted:1;
 	int lvds_ssc_freq;
+	unsigned int bios_lvds_val; /* initial [PCH_]LVDS reg val in VBIOS */
+	unsigned int lvds_val; /* used for checking LVDS channel mode */
 	struct {
 		int rate;
 		int lanes;
@@ -775,6 +777,8 @@ typedef struct drm_i915_private {
 
 		/** PPGTT used for aliasing the PPGTT with the GTT */
 		struct i915_hw_ppgtt *aliasing_ppgtt;
+
+		bool shrinker_no_lock_stealing;
 
 		/**
 		 * List of objects currently involved in rendering from the
@@ -886,9 +890,6 @@ typedef struct drm_i915_private {
 	bool lvds_downclock_avail;
 	/* indicates the reduced downclock for LVDS*/
 	int lvds_downclock;
-	struct task idle_task;
-	struct callout idle_callout;
-	bool busy;
 	u16 orig_clock;
 	int child_dev_num;
 	struct child_device_config *child_dev;
@@ -932,6 +933,8 @@ typedef struct drm_i915_private {
 
 	struct drm_property *broadcast_rgb_property;
 	struct drm_property *force_audio_property;
+
+	u32 fdi_rx_config;
 
 	struct i915_suspend_saved_registers regfile;
 
@@ -1181,7 +1184,6 @@ struct drm_i915_file_private {
  * have their own (e.g. HAS_PCH_SPLIT for ILK+ display, IS_foo for particular
  * chips, etc.).
  */
-
 #define IS_GEN2(dev)	(INTEL_INFO(dev)->gen == 2)
 #define IS_GEN3(dev)	(INTEL_INFO(dev)->gen == 3)
 #define IS_GEN4(dev)	(INTEL_INFO(dev)->gen == 4)
@@ -1195,7 +1197,7 @@ struct drm_i915_file_private {
 #define I915_NEED_GFX_HWS(dev)	(INTEL_INFO(dev)->need_gfx_hws)
 
 #define HAS_HW_CONTEXTS(dev)	(INTEL_INFO(dev)->gen >= 6)
-#define HAS_ALIASING_PPGTT(dev)	(INTEL_INFO(dev)->gen >=6)
+#define HAS_ALIASING_PPGTT(dev)	(INTEL_INFO(dev)->gen >=6 && !IS_VALLEYVIEW(dev))
 
 #define HAS_OVERLAY(dev)		(INTEL_INFO(dev)->has_overlay)
 #define OVERLAY_NEEDS_PHYSICAL(dev)	(INTEL_INFO(dev)->overlay_needs_physical)
@@ -1234,7 +1236,7 @@ struct drm_i915_file_private {
 #define HAS_PCH_LPT(dev) (INTEL_PCH_TYPE(dev) == PCH_LPT)
 #define HAS_PCH_CPT(dev) (INTEL_PCH_TYPE(dev) == PCH_CPT)
 #define HAS_PCH_IBX(dev) (INTEL_PCH_TYPE(dev) == PCH_IBX)
-#define HAS_PCH_SPLIT(dev) (IS_GEN5(dev) || IS_GEN6(dev) || IS_IVYBRIDGE(dev))
+#define HAS_PCH_SPLIT(dev) (INTEL_PCH_TYPE(dev) != PCH_NONE)
 
 #define HAS_FORCE_WAKE(dev) (INTEL_INFO(dev)->has_force_wake)
 
@@ -1271,6 +1273,7 @@ extern int i915_panel_ignore_lid;
 extern unsigned int i915_powersave;
 extern int i915_semaphores;
 extern unsigned int i915_lvds_downclock;
+extern int i915_lvds_channel_mode __read_mostly;
 extern int i915_panel_use_ssc;
 extern int i915_vbt_sdvo_panel_type;
 extern int i915_enable_rc6;
@@ -1484,11 +1487,25 @@ int i915_gem_evict_everything(struct drm_device *dev);
 extern int i915_save_state(struct drm_device *dev);
 extern int i915_restore_state(struct drm_device *dev);
 
-/* intel_iic.c */
+/* intel_i2c.c */
 extern int intel_setup_gmbus(struct drm_device *dev);
 extern void intel_teardown_gmbus(struct drm_device *dev);
+static inline bool intel_gmbus_is_port_valid(unsigned port)
+{
+	return (port >= GMBUS_PORT_SSC && port <= GMBUS_PORT_DPD);
+}
+
+extern struct device *intel_gmbus_get_adapter(
+		struct drm_i915_private *dev_priv, unsigned port);
 extern void intel_gmbus_set_speed(device_t idev, int speed);
 extern void intel_gmbus_force_bit(device_t idev, bool force_bit);
+static inline bool intel_gmbus_is_forced_bit(struct device *adapter)
+{
+	struct intel_iic_softc *sc;
+	sc = device_get_softc(device_get_parent(adapter));
+
+	return sc->force_bit_dev;
+}
 extern void intel_iic_reset(struct drm_device *dev);
 
 /* i915_gem_context.c */
@@ -1530,10 +1547,11 @@ extern void intel_modeset_init(struct drm_device *dev);
 extern void intel_modeset_gem_init(struct drm_device *dev);
 extern void intel_modeset_cleanup(struct drm_device *dev);
 extern int intel_modeset_vga_set_state(struct drm_device *dev, bool state);
+extern void intel_modeset_setup_hw_state(struct drm_device *dev,
+					 bool force_restore);
 extern void intel_disable_fbc(struct drm_device *dev);
 extern bool ironlake_set_drps(struct drm_device *dev, u8 val);
-extern void ironlake_init_pch_refclk(struct drm_device *dev);
-extern void ironlake_enable_rc6(struct drm_device *dev);
+extern void intel_init_pch_refclk(struct drm_device *dev);
 extern void gen6_set_rps(struct drm_device *dev, u8 val);
 extern void intel_detect_pch(struct drm_device *dev);
 extern int intel_trans_dp_port_sel(struct drm_crtc *crtc);

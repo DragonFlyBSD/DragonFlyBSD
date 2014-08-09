@@ -450,15 +450,16 @@ static void i915_emit_breadcrumb(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
 
-	if (++dev_priv->counter > 0x7FFFFFFFUL)
-		dev_priv->counter = 0;
+	dev_priv->dri1.counter++;
+	if (dev_priv->dri1.counter > 0x7FFFFFFFUL)
+		dev_priv->dri1.counter = 0;
 	if (dev_priv->sarea_priv)
-		dev_priv->sarea_priv->last_enqueue = dev_priv->counter;
+		dev_priv->sarea_priv->last_enqueue = dev_priv->dri1.counter;
 
 	if (BEGIN_LP_RING(4) == 0) {
 		OUT_RING(MI_STORE_DWORD_INDEX);
 		OUT_RING(I915_BREADCRUMB_INDEX << MI_STORE_DWORD_INDEX_SHIFT);
-		OUT_RING(dev_priv->counter);
+		OUT_RING(dev_priv->dri1.counter);
 		OUT_RING(0);
 		ADVANCE_LP_RING();
 	}
@@ -560,27 +561,28 @@ static int i915_dispatch_flip(struct drm_device * dev)
 	if (!dev_priv->sarea_priv)
 		return -EINVAL;
 
-	DRM_DEBUG("%s: page=%d pfCurrentPage=%d\n",
-		  __func__,
-		  dev_priv->current_page,
-		  dev_priv->sarea_priv->pf_current_page);
+	DRM_DEBUG_DRIVER("%s: page=%d pfCurrentPage=%d\n",
+			  __func__,
+			 dev_priv->dri1.current_page,
+			 dev_priv->sarea_priv->pf_current_page);
 
 	i915_kernel_lost_context(dev);
 
 	ret = BEGIN_LP_RING(10);
 	if (ret)
 		return ret;
+
 	OUT_RING(MI_FLUSH | MI_READ_FLUSH);
 	OUT_RING(0);
 
 	OUT_RING(CMD_OP_DISPLAYBUFFER_INFO | ASYNC_FLIP);
 	OUT_RING(0);
-	if (dev_priv->current_page == 0) {
-		OUT_RING(dev_priv->back_offset);
-		dev_priv->current_page = 1;
+	if (dev_priv->dri1.current_page == 0) {
+		OUT_RING(dev_priv->dri1.back_offset);
+		dev_priv->dri1.current_page = 1;
 	} else {
-		OUT_RING(dev_priv->front_offset);
-		dev_priv->current_page = 0;
+		OUT_RING(dev_priv->dri1.front_offset);
+		dev_priv->dri1.current_page = 0;
 	}
 	OUT_RING(0);
 
@@ -589,20 +591,17 @@ static int i915_dispatch_flip(struct drm_device * dev)
 
 	ADVANCE_LP_RING();
 
-	if (++dev_priv->counter > 0x7FFFFFFFUL)
-		dev_priv->counter = 0;
-	if (dev_priv->sarea_priv)
-		dev_priv->sarea_priv->last_enqueue = dev_priv->counter;
+	dev_priv->sarea_priv->last_enqueue = dev_priv->dri1.counter++;
 
 	if (BEGIN_LP_RING(4) == 0) {
 		OUT_RING(MI_STORE_DWORD_INDEX);
 		OUT_RING(I915_BREADCRUMB_INDEX << MI_STORE_DWORD_INDEX_SHIFT);
-		OUT_RING(dev_priv->counter);
+		OUT_RING(dev_priv->dri1.counter);
 		OUT_RING(0);
 		ADVANCE_LP_RING();
 	}
 
-	dev_priv->sarea_priv->pf_current_page = dev_priv->current_page;
+	dev_priv->sarea_priv->pf_current_page = dev_priv->dri1.current_page;
 	return 0;
 }
 
@@ -743,28 +742,23 @@ static int i915_emit_irq(struct drm_device * dev)
 
 	i915_kernel_lost_context(dev);
 
-	DRM_DEBUG("i915: emit_irq\n");
+	DRM_DEBUG_DRIVER("\n");
 
-	dev_priv->counter++;
-	if (dev_priv->counter > 0x7FFFFFFFUL)
-		dev_priv->counter = 1;
-#if 0
-	if (master_priv->sarea_priv)
-		master_priv->sarea_priv->last_enqueue = dev_priv->counter;
-#else
+	dev_priv->dri1.counter++;
+	if (dev_priv->dri1.counter > 0x7FFFFFFFUL)
+		dev_priv->dri1.counter = 1;
 	if (dev_priv->sarea_priv)
-		dev_priv->sarea_priv->last_enqueue = dev_priv->counter;
-#endif
+		dev_priv->sarea_priv->last_enqueue = dev_priv->dri1.counter;
 
 	if (BEGIN_LP_RING(4) == 0) {
 		OUT_RING(MI_STORE_DWORD_INDEX);
 		OUT_RING(I915_BREADCRUMB_INDEX << MI_STORE_DWORD_INDEX_SHIFT);
-		OUT_RING(dev_priv->counter);
+		OUT_RING(dev_priv->dri1.counter);
 		OUT_RING(MI_USER_INTERRUPT);
 		ADVANCE_LP_RING();
 	}
 
-	return dev_priv->counter;
+	return dev_priv->dri1.counter;
 }
 
 static int i915_wait_irq(struct drm_device * dev, int irq_nr)
@@ -810,7 +804,7 @@ static int i915_wait_irq(struct drm_device * dev, int irq_nr)
 
 	if (ret == -EBUSY) {
 		DRM_ERROR("EBUSY -- rec: %d emitted: %d\n",
-			  READ_BREADCRUMB(dev_priv), (int)dev_priv->counter);
+			  READ_BREADCRUMB(dev_priv), (int)dev_priv->dri1.counter);
 	}
 
 	return ret;
@@ -1018,7 +1012,6 @@ static int i915_setparam(struct drm_device *dev, void *data,
 	case I915_SETPARAM_USE_MI_BATCHBUFFER_START:
 		break;
 	case I915_SETPARAM_TEX_LRU_LOG_GRANULARITY:
-		dev_priv->tex_lru_log_granularity = param->value;
 		break;
 	case I915_SETPARAM_ALLOW_BATCHBUFFER:
 		dev_priv->dri1.allow_batchbuffer = param->value;
@@ -1419,6 +1412,7 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	lockinit(&dev_priv->irq_lock, "userirq", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->error_lock, "915err", 0, LK_CANRECURSE);
 	spin_init(&dev_priv->rps.lock);
+	spin_init(&dev_priv->dpio_lock);
 
 	lockinit(&dev_priv->rps.hw_lock, "i915 rps.hw_lock", 0, LK_CANRECURSE);
 

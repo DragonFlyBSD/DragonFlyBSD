@@ -2768,7 +2768,7 @@ static int ironlake_setup_rc6(struct drm_device *dev)
 	return 0;
 }
 
-void ironlake_enable_rc6(struct drm_device *dev)
+static void ironlake_enable_rc6(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_ring_buffer *ring = &dev_priv->ring[RCS];

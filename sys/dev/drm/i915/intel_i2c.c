@@ -75,15 +75,6 @@ static void intel_teardown_gmbus_m(struct drm_device *dev, int m);
 
 #define I2C_RISEFALL_TIME 10
 
-struct intel_iic_softc {
-	struct drm_device *drm_dev;
-	device_t iic_dev;
-	bool force_bit_dev;
-	char name[32];
-	uint32_t reg;
-	uint32_t reg0;
-};
-
 static void
 intel_iic_quirk_set(struct drm_i915_private *dev_priv, bool enable)
 {
@@ -239,7 +230,7 @@ intel_gmbus_transfer(device_t idev, struct iic_msg *msgs, uint32_t nmsgs)
 	dev_priv = sc->drm_dev->dev_private;
 	unit = device_get_unit(idev);
 
-	lockmgr(&dev_priv->gmbus_lock, LK_EXCLUSIVE);
+	lockmgr(&dev_priv->gmbus_mutex, LK_EXCLUSIVE);
 	if (sc->force_bit_dev) {
 		error = intel_iic_quirk_xfer(dev_priv->bbbus[unit], msgs, nmsgs);
 		goto out;
@@ -332,7 +323,7 @@ done:
 		DRM_INFO("GMBUS timed out waiting for idle\n");
 	I915_WRITE(GMBUS0 + reg_offset, 0);
 out:
-	lockmgr(&dev_priv->gmbus_lock, LK_RELEASE);
+	lockmgr(&dev_priv->gmbus_mutex, LK_RELEASE);
 	return (error);
 
 clear_err:
@@ -358,6 +349,15 @@ timeout:
 
 	error = intel_iic_quirk_xfer(dev_priv->bbbus[unit], msgs, nmsgs);
 	goto out;
+}
+
+struct device *intel_gmbus_get_adapter(struct drm_i915_private *dev_priv,
+					    unsigned port)
+{
+	WARN_ON(!intel_gmbus_is_port_valid(port));
+	/* -1 to map pin pair to gmbus index */
+	return (intel_gmbus_is_port_valid(port)) ?
+		dev_priv->gmbus[port] : NULL;
 }
 
 void
@@ -593,7 +593,7 @@ intel_setup_gmbus(struct drm_device *dev)
 	int i, ret;
 
 	dev_priv = dev->dev_private;
-	lockinit(&dev_priv->gmbus_lock, "gmbus", 0, LK_CANRECURSE);
+	lockinit(&dev_priv->gmbus_mutex, "gmbus", 0, LK_CANRECURSE);
 	dev_priv->gmbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
 	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
 	dev_priv->bbbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
@@ -688,7 +688,7 @@ intel_teardown_gmbus_m(struct drm_device *dev, int m)
 	dev_priv->gmbus_bridge = NULL;
 	drm_free(dev_priv->bbbus_bridge, DRM_MEM_DRIVER);
 	dev_priv->bbbus_bridge = NULL;
-	lockuninit(&dev_priv->gmbus_lock);
+	lockuninit(&dev_priv->gmbus_mutex);
 }
 
 void

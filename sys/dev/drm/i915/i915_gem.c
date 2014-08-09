@@ -505,14 +505,6 @@ i915_gem_object_wait_rendering(struct drm_i915_gem_object *obj,
 	u32 seqno;
 	int ret;
 
-	/* This function only exists to support waiting for existing rendering,
-	 * not for emitting required flushes.
-	 */
-	BUG_ON((obj->base.write_domain & I915_GEM_GPU_DOMAINS) != 0);
-
-	/* If there is rendering queued on the buffer being evicted, wait for
-	 * it.
-	 */
 	if (readonly)
 		seqno = obj->last_write_seqno;
 	else
@@ -1047,11 +1039,10 @@ i915_gem_object_move_to_inactive(struct drm_i915_gem_object *obj)
 	struct drm_device *dev = obj->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
-	list_move_tail(&obj->mm_list, &dev_priv->mm.inactive_list);
-
-	BUG_ON(!list_empty(&obj->gpu_write_list));
 	BUG_ON(obj->base.write_domain & ~I915_GEM_GPU_DOMAINS);
 	BUG_ON(!obj->active);
+
+	list_move_tail(&obj->mm_list, &dev_priv->mm.inactive_list);
 
 	list_del_init(&obj->ring_list);
 	obj->ring = NULL;
@@ -2354,7 +2345,8 @@ i915_gem_object_pin(struct drm_i915_gem_object *obj,
 {
 	int ret;
 
-	BUG_ON(obj->pin_count == DRM_I915_GEM_OBJECT_MAX_PIN_COUNT);
+	if (WARN_ON(obj->pin_count == DRM_I915_GEM_OBJECT_MAX_PIN_COUNT))
+		return -EBUSY;
 
 	if (obj->gtt_space != NULL) {
 		if ((alignment && obj->gtt_offset & (alignment - 1)) ||
@@ -2974,7 +2966,6 @@ i915_gem_entervt_ioctl(struct drm_device *dev, void *data,
 	}
 
 	KASSERT(list_empty(&dev_priv->mm.active_list), ("active list"));
-	BUG_ON(!list_empty(&dev_priv->mm.inactive_list));
 	DRM_UNLOCK(dev);
 
 	ret = drm_irq_install(dev);

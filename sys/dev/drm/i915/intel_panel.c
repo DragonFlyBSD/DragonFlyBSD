@@ -26,8 +26,6 @@
  *      Dave Airlie <airlied@linux.ie>
  *      Jesse Barnes <jesse.barnes@intel.com>
  *      Chris Wilson <chris@chris-wilson.co.uk>
- *
- * $FreeBSD: src/sys/dev/drm2/i915/intel_panel.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 #include <drm/drmP.h>
@@ -205,7 +203,7 @@ u32 intel_panel_get_max_backlight(struct drm_device *dev)
 	return max;
 }
 
-u32 intel_panel_get_backlight(struct drm_device *dev)
+static u32 intel_panel_get_backlight(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 val;
@@ -277,15 +275,63 @@ void intel_panel_disable_backlight(struct drm_device *dev)
 
 	dev_priv->backlight_enabled = false;
 	intel_panel_actually_set_backlight(dev, 0);
+
+	if (INTEL_INFO(dev)->gen >= 4) {
+		uint32_t reg;
+
+		reg = HAS_PCH_SPLIT(dev) ? BLC_PWM_CPU_CTL2 : BLC_PWM_CTL2;
+
+		I915_WRITE(reg, I915_READ(reg) & ~BLM_PWM_ENABLE);
+	}
 }
 
-void intel_panel_enable_backlight(struct drm_device *dev)
+void intel_panel_enable_backlight(struct drm_device *dev,
+				  enum i915_pipe pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	if (dev_priv->backlight_level == 0)
 		dev_priv->backlight_level = intel_panel_get_max_backlight(dev);
 
+	if (INTEL_INFO(dev)->gen >= 4) {
+		uint32_t reg, tmp;
+
+		reg = HAS_PCH_SPLIT(dev) ? BLC_PWM_CPU_CTL2 : BLC_PWM_CTL2;
+
+
+		tmp = I915_READ(reg);
+
+		/* Note that this can also get called through dpms changes. And
+		 * we don't track the backlight dpms state, hence check whether
+		 * we have to do anything first. */
+		if (tmp & BLM_PWM_ENABLE)
+			goto set_level;
+
+		if (dev_priv->num_pipe == 3)
+			tmp &= ~BLM_PIPE_SELECT_IVB;
+		else
+			tmp &= ~BLM_PIPE_SELECT;
+
+		tmp |= BLM_PIPE(pipe);
+		tmp &= ~BLM_PWM_ENABLE;
+
+		I915_WRITE(reg, tmp);
+		POSTING_READ(reg);
+		I915_WRITE(reg, tmp | BLM_PWM_ENABLE);
+
+		if (HAS_PCH_SPLIT(dev)) {
+			tmp = I915_READ(BLC_PWM_PCH_CTL1);
+			tmp |= BLM_PCH_PWM_ENABLE;
+			tmp &= ~BLM_PCH_OVERRIDE_ENABLE;
+			I915_WRITE(BLC_PWM_PCH_CTL1, tmp);
+		}
+	}
+
+set_level:
+	/* Call below after setting BLC_PWM_CPU_CTL2 and BLC_PWM_PCH_CTL1.
+	 * BLC_PWM_CPU_CTL may be cleared to zero automatically when these
+	 * registers are set.
+	 */
 	dev_priv->backlight_enabled = true;
 	intel_panel_actually_set_backlight(dev, dev_priv->backlight_level);
 }
@@ -323,13 +369,93 @@ intel_panel_detect(struct drm_device *dev)
 	return connector_status_unknown;
 }
 
-int intel_panel_setup_backlight(struct drm_device *dev)
+#ifdef CONFIG_BACKLIGHT_CLASS_DEVICE
+static int intel_panel_update_status(struct backlight_device *bd)
 {
+	struct drm_device *dev = bl_get_data(bd);
+	intel_panel_set_backlight(dev, bd->props.brightness);
+	return 0;
+}
+
+static int intel_panel_get_brightness(struct backlight_device *bd)
+{
+	struct drm_device *dev = bl_get_data(bd);
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	return dev_priv->backlight_level;
+}
+
+static const struct backlight_ops intel_panel_bl_ops = {
+	.update_status = intel_panel_update_status,
+	.get_brightness = intel_panel_get_brightness,
+};
+
+int intel_panel_setup_backlight(struct drm_connector *connector)
+{
+	struct drm_device *dev = connector->dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct backlight_properties props;
+
 	intel_panel_init_backlight(dev);
+
+	if (WARN_ON(dev_priv->backlight))
+		return -ENODEV;
+
+	memset(&props, 0, sizeof(props));
+	props.type = BACKLIGHT_RAW;
+	props.max_brightness = _intel_panel_get_max_backlight(dev);
+	if (props.max_brightness == 0) {
+		DRM_DEBUG_DRIVER("Failed to get maximum backlight value\n");
+		return -ENODEV;
+	}
+	dev_priv->backlight =
+		backlight_device_register("intel_backlight",
+					  &connector->kdev, dev,
+					  &intel_panel_bl_ops, &props);
+
+	if (IS_ERR(dev_priv->backlight)) {
+		DRM_ERROR("Failed to register backlight: %ld\n",
+			  PTR_ERR(dev_priv->backlight));
+		dev_priv->backlight = NULL;
+		return -ENODEV;
+	}
+	dev_priv->backlight->props.brightness = intel_panel_get_backlight(dev);
+	return 0;
+}
+
+void intel_panel_destroy_backlight(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	if (dev_priv->backlight) {
+		backlight_device_unregister(dev_priv->backlight);
+		dev_priv->backlight = NULL;
+	}
+}
+#else
+int intel_panel_setup_backlight(struct drm_connector *connector)
+{
+	intel_panel_init_backlight(connector->dev);
 	return 0;
 }
 
 void intel_panel_destroy_backlight(struct drm_device *dev)
 {
 	return;
+}
+#endif
+
+int intel_panel_init(struct intel_panel *panel,
+		     struct drm_display_mode *fixed_mode)
+{
+	panel->fixed_mode = fixed_mode;
+
+	return 0;
+}
+
+void intel_panel_fini(struct intel_panel *panel)
+{
+	struct intel_connector *intel_connector =
+		container_of(panel, struct intel_connector, panel);
+
+	if (panel->fixed_mode)
+		drm_mode_destroy(intel_connector->base.dev, panel->fixed_mode);
 }

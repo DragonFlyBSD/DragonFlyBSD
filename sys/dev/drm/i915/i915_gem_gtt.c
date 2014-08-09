@@ -228,7 +228,11 @@ void i915_ppgtt_bind_object(struct i915_hw_ppgtt *ppgtt,
 
 	switch (cache_level) {
 	case I915_CACHE_LLC_MLC:
-		pte_flags |= GEN6_PTE_CACHE_LLC_MLC;
+		/* Haswell doesn't set L3 this way */
+		if (IS_HASWELL(obj->base.dev))
+			pte_flags |= GEN6_PTE_CACHE_LLC;
+		else
+			pte_flags |= GEN6_PTE_CACHE_LLC_MLC;
 		break;
 	case I915_CACHE_LLC:
 		pte_flags |= GEN6_PTE_CACHE_LLC;

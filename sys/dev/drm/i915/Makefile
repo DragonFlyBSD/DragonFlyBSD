@@ -12,6 +12,7 @@ SRCS	= \
 	i915_suspend.c \
 	intel_bios.c \
 	intel_crt.c \
+	intel_ddi.c \
 	intel_display.c \
 	intel_dp.c \
 	intel_fb.c \
