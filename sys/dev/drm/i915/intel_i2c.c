@@ -357,7 +357,7 @@ struct device *intel_gmbus_get_adapter(struct drm_i915_private *dev_priv,
 	WARN_ON(!intel_gmbus_is_port_valid(port));
 	/* -1 to map pin pair to gmbus index */
 	return (intel_gmbus_is_port_valid(port)) ?
-		dev_priv->gmbus[port] : NULL;
+		dev_priv->gmbus[port-1] : NULL;
 }
 
 void
@@ -442,7 +442,7 @@ intel_gmbus_attach(device_t idev)
 	device_set_desc(idev, sc->name);
 
 	/* By default use a conservative clock rate */
-	sc->reg0 = pin | GMBUS_RATE_100KHZ;
+	sc->reg0 = (pin + 1) | GMBUS_RATE_100KHZ;
 
 	/* XXX force bit banging until GMBUS is fully debugged */
 	if (IS_GEN2(sc->drm_dev)) {
@@ -496,8 +496,8 @@ intel_iicbb_attach(device_t idev)
 		GPIOC,
 		GPIOD,
 		GPIOE,
-		0,
-		GPIOF
+		GPIOF,
+		0
 	};
 
 	struct intel_iic_softc *sc;
@@ -512,8 +512,8 @@ intel_iicbb_attach(device_t idev)
 	ksnprintf(sc->name, sizeof(sc->name), "i915 iicbb %s", gpio_names[pin]);
 	device_set_desc(idev, sc->name);
 
-	sc->reg0 = pin | GMBUS_RATE_100KHZ;
-	sc->reg = map_pin_to_reg[pin];
+	sc->reg0 = (pin + 1) | GMBUS_RATE_100KHZ;
+	sc->reg = map_pin_to_reg[pin + 1];
 	if (HAS_PCH_SPLIT(dev_priv->dev))
 		sc->reg += PCH_GPIOA - GPIOA;
 
