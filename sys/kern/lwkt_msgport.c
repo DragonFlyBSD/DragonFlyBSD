@@ -484,6 +484,15 @@ _lwkt_pushmsg(lwkt_port_t port, lwkt_msg_t msg)
     else
     	queue = &port->mp_msgq;
     TAILQ_INSERT_TAIL(queue, msg, ms_node);
+
+    if (msg->ms_flags & MSGF_RECEIPT) {
+	/*
+	 * In case this message is forwarded later, the receipt
+	 * flag was cleared once the receipt function is called.
+	 */
+	atomic_clear_int(&msg->ms_flags, MSGF_RECEIPT);
+	msg->ms_receiptfn(msg, port);
+    }
 }
 
 static __inline

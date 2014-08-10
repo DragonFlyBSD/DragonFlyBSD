@@ -63,7 +63,7 @@ typedef struct lwkt_msg {
 	__int64_t ms_result64;		/* 64 bit result */
 	__off_t	ms_offset;		/* off_t result */
     } u;
-    int		ms_pad[2];		/* future use */
+    void	(*ms_receiptfn)(struct lwkt_msg *, lwkt_port_t);
 } lwkt_msg;
 
 /*
@@ -100,6 +100,7 @@ typedef struct lwkt_msg {
 #define MSGF_DROPABLE	0x0040		/* message supports drop */
 #define MSGF_ABORTABLE	0x0080		/* message supports abort */
 #define MSGF_PRIORITY	0x0100		/* priority message */
+#define MSGF_RECEIPT	0x0200		/* need receipt after put done */
 
 #define MSGF_USER0	0x00010000
 #define MSGF_USER1	0x00020000

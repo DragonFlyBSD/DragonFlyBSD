@@ -107,5 +107,13 @@ lwkt_dropmsg(lwkt_msg_t msg)
     return (error);
 }
 
+static __inline
+void
+lwkt_setmsg_receipt(lwkt_msg_t msg, void (*receiptfn)(lwkt_msg_t, lwkt_port_t))
+{
+	msg->ms_flags |= MSGF_RECEIPT;
+	msg->ms_receiptfn = receiptfn;
+}
+
 #endif	/* _KERNEL */
 #endif	/* _SYS_MSGPORT2_H_ */
