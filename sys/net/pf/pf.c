@@ -2502,11 +2502,25 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 {
 	unsigned char		 hash[16];
 	struct pf_pool		*rpool = &r->rpool;
-	struct pf_addr		*raddr = &rpool->cur->addr.v.a.addr;
-	struct pf_addr		*rmask = &rpool->cur->addr.v.a.mask;
 	struct pf_pooladdr	*acur = rpool->cur;
+	struct pf_pooladdr	*cur;
+	struct pf_addr		*raddr;
+	struct pf_addr		*rmask;
+	struct pf_addr		counter;
 	struct pf_src_node	 k;
 	int cpu = mycpu->gd_cpuid;
+	int tblidx;
+
+	/*
+	 * NOTE! rpool->cur and rpool->tblidx can be iterators and thus
+	 *	 may represent a SMP race due to the shared nature of the
+	 *	 rpool structure.  We allow the race and ensure that updates
+	 *	 do not create a fatal condition.
+	 */
+	cpu_ccfence();
+	cur = acur;
+	raddr = &cur->addr.v.a.addr;
+	rmask = &cur->addr.v.a.mask;
 
 	if (*sn == NULL && r->rpool.opts & PF_POOL_STICKYADDR &&
 	    (r->rpool.opts & PF_POOL_TYPEMASK) != PF_POOL_NONE) {
@@ -2532,37 +2546,37 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 		}
 	}
 
-	if (rpool->cur->addr.type == PF_ADDR_NOROUTE)
+	if (cur->addr.type == PF_ADDR_NOROUTE)
 		return (1);
-	if (rpool->cur->addr.type == PF_ADDR_DYNIFTL) {
+	if (cur->addr.type == PF_ADDR_DYNIFTL) {
 		switch (af) {
 #ifdef INET
 		case AF_INET:
-			if (rpool->cur->addr.p.dyn->pfid_acnt4 < 1 &&
+			if (cur->addr.p.dyn->pfid_acnt4 < 1 &&
 			    (rpool->opts & PF_POOL_TYPEMASK) !=
 			    PF_POOL_ROUNDROBIN)
 				return (1);
-			raddr = &rpool->cur->addr.p.dyn->pfid_addr4;
-			rmask = &rpool->cur->addr.p.dyn->pfid_mask4;
+			raddr = &cur->addr.p.dyn->pfid_addr4;
+			rmask = &cur->addr.p.dyn->pfid_mask4;
 			break;
 #endif /* INET */
 #ifdef INET6
 		case AF_INET6:
-			if (rpool->cur->addr.p.dyn->pfid_acnt6 < 1 &&
+			if (cur->addr.p.dyn->pfid_acnt6 < 1 &&
 			    (rpool->opts & PF_POOL_TYPEMASK) !=
 			    PF_POOL_ROUNDROBIN)
 				return (1);
-			raddr = &rpool->cur->addr.p.dyn->pfid_addr6;
-			rmask = &rpool->cur->addr.p.dyn->pfid_mask6;
+			raddr = &cur->addr.p.dyn->pfid_addr6;
+			rmask = &cur->addr.p.dyn->pfid_mask6;
 			break;
 #endif /* INET6 */
 		}
-	} else if (rpool->cur->addr.type == PF_ADDR_TABLE) {
+	} else if (cur->addr.type == PF_ADDR_TABLE) {
 		if ((rpool->opts & PF_POOL_TYPEMASK) != PF_POOL_ROUNDROBIN)
 			return (1); /* unsupported */
 	} else {
-		raddr = &rpool->cur->addr.v.a.addr;
-		rmask = &rpool->cur->addr.v.a.mask;
+		raddr = &cur->addr.v.a.addr;
+		rmask = &cur->addr.v.a.mask;
 	}
 
 	switch (rpool->opts & PF_POOL_TYPEMASK) {
@@ -2577,38 +2591,41 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 			switch (af) {
 #ifdef INET
 			case AF_INET:
-				rpool->counter.addr32[0] = htonl(karc4random());
+				counter.addr32[0] = htonl(karc4random());
 				break;
 #endif /* INET */
 #ifdef INET6
 			case AF_INET6:
 				if (rmask->addr32[3] != 0xffffffff)
-					rpool->counter.addr32[3] =
-					    htonl(karc4random());
+					counter.addr32[3] =
+						htonl(karc4random());
 				else
 					break;
 				if (rmask->addr32[2] != 0xffffffff)
-					rpool->counter.addr32[2] =
-					    htonl(karc4random());
+					counter.addr32[2] =
+						htonl(karc4random());
 				else
 					break;
 				if (rmask->addr32[1] != 0xffffffff)
-					rpool->counter.addr32[1] =
-					    htonl(karc4random());
+					counter.addr32[1] =
+						htonl(karc4random());
 				else
 					break;
 				if (rmask->addr32[0] != 0xffffffff)
-					rpool->counter.addr32[0] =
-					    htonl(karc4random());
+					counter.addr32[0] =
+						htonl(karc4random());
 				break;
 #endif /* INET6 */
 			}
-			PF_POOLMASK(naddr, raddr, rmask, &rpool->counter, af);
+			PF_POOLMASK(naddr, raddr, rmask, &counter, af);
 			PF_ACPY(init_addr, naddr, af);
 
 		} else {
-			PF_AINC(&rpool->counter, af);
-			PF_POOLMASK(naddr, raddr, rmask, &rpool->counter, af);
+			counter = rpool->counter;
+			cpu_ccfence();
+			PF_AINC(&counter, af);
+			PF_POOLMASK(naddr, raddr, rmask, &counter, af);
+			rpool->counter = counter;
 		}
 		break;
 	case PF_POOL_SRCHASH:
@@ -2616,53 +2633,62 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 		PF_POOLMASK(naddr, raddr, rmask, (struct pf_addr *)&hash, af);
 		break;
 	case PF_POOL_ROUNDROBIN:
-		if (rpool->cur->addr.type == PF_ADDR_TABLE) {
-			if (!pfr_pool_get(rpool->cur->addr.p.tbl,
-			    &rpool->tblidx, &rpool->counter,
-			    &raddr, &rmask, af))
+		tblidx = rpool->tblidx;
+		counter = rpool->counter;
+		if (cur->addr.type == PF_ADDR_TABLE) {
+			if (!pfr_pool_get(cur->addr.p.tbl,
+			    &tblidx, &counter,
+			    &raddr, &rmask, af)) {
 				goto get_addr;
-		} else if (rpool->cur->addr.type == PF_ADDR_DYNIFTL) {
-			if (!pfr_pool_get(rpool->cur->addr.p.dyn->pfid_kt,
-			    &rpool->tblidx, &rpool->counter,
-			    &raddr, &rmask, af))
+			}
+		} else if (cur->addr.type == PF_ADDR_DYNIFTL) {
+			if (!pfr_pool_get(cur->addr.p.dyn->pfid_kt,
+			    &tblidx, &counter,
+			    &raddr, &rmask, af)) {
 				goto get_addr;
-		} else if (pf_match_addr(0, raddr, rmask, &rpool->counter, af))
+			}
+		} else if (pf_match_addr(0, raddr, rmask,
+					 &counter, af)) {
 			goto get_addr;
+		}
 
 	try_next:
-		if ((rpool->cur = TAILQ_NEXT(rpool->cur, entries)) == NULL)
-			rpool->cur = TAILQ_FIRST(&rpool->list);
-		if (rpool->cur->addr.type == PF_ADDR_TABLE) {
-			rpool->tblidx = -1;
-			if (pfr_pool_get(rpool->cur->addr.p.tbl,
-			    &rpool->tblidx, &rpool->counter,
+		if ((cur = TAILQ_NEXT(cur, entries)) == NULL)
+			cur = TAILQ_FIRST(&rpool->list);
+		if (cur->addr.type == PF_ADDR_TABLE) {
+			tblidx = -1;
+			if (pfr_pool_get(cur->addr.p.tbl,
+			    &tblidx, &counter,
 			    &raddr, &rmask, af)) {
 				/* table contains no address of type 'af' */
-				if (rpool->cur != acur)
+				if (cur != acur)
 					goto try_next;
 				return (1);
 			}
-		} else if (rpool->cur->addr.type == PF_ADDR_DYNIFTL) {
-			rpool->tblidx = -1;
-			if (pfr_pool_get(rpool->cur->addr.p.dyn->pfid_kt,
-			    &rpool->tblidx, &rpool->counter,
+		} else if (cur->addr.type == PF_ADDR_DYNIFTL) {
+			tblidx = -1;
+			if (pfr_pool_get(cur->addr.p.dyn->pfid_kt,
+			    &tblidx, &counter,
 			    &raddr, &rmask, af)) {
 				/* table contains no address of type 'af' */
-				if (rpool->cur != acur)
+				if (cur != acur)
 					goto try_next;
 				return (1);
 			}
 		} else {
-			raddr = &rpool->cur->addr.v.a.addr;
-			rmask = &rpool->cur->addr.v.a.mask;
-			PF_ACPY(&rpool->counter, raddr, af);
+			raddr = &cur->addr.v.a.addr;
+			rmask = &cur->addr.v.a.mask;
+			PF_ACPY(&counter, raddr, af);
 		}
 
 	get_addr:
-		PF_ACPY(naddr, &rpool->counter, af);
+		rpool->cur = cur;
+		rpool->tblidx = tblidx;
+		PF_ACPY(naddr, &counter, af);
 		if (init_addr != NULL && PF_AZERO(init_addr, af))
 			PF_ACPY(init_addr, naddr, af);
-		PF_AINC(&rpool->counter, af);
+		PF_AINC(&counter, af);
+		rpool->counter = counter;
 		break;
 	}
 	if (*sn != NULL)
@@ -2858,11 +2884,14 @@ pf_match_translation(struct pf_pdesc *pd, struct mbuf *m, int off,
 	while (r && rm == NULL) {
 		struct pf_rule_addr	*src = NULL, *dst = NULL;
 		struct pf_addr_wrap	*xdst = NULL;
+		struct pf_pooladdr	*cur;
 
 		if (r->action == PF_BINAT && direction == PF_IN) {
 			src = &r->dst;
-			if (r->rpool.cur != NULL)
-				xdst = &r->rpool.cur->addr;
+			cur = r->rpool.cur;	/* SMP race possible */
+			cpu_ccfence();
+			if (cur)
+				xdst = &cur->addr;
 		} else {
 			src = &r->src;
 			dst = &r->dst;
