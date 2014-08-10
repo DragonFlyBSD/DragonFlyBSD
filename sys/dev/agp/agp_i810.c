@@ -2599,15 +2599,6 @@ intel_gtt_insert_sg_entries(struct sglist *sg_list, u_int first_entry,
 	agp_intel_gtt_insert_sg_entries(intel_agp, sg_list, first_entry, flags);
 }
 
-device_t
-intel_gtt_get_bridge_device(void)
-{
-	struct agp_i810_softc *sc;
-
-	sc = device_get_softc(intel_agp);
-	return (sc->bdev);
-}
-
 vm_paddr_t
 intel_gtt_read_pte_paddr(u_int entry)
 {

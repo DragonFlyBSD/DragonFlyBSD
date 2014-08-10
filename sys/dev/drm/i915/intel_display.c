@@ -9449,17 +9449,16 @@ void intel_connector_attach_encoder(struct intel_connector *connector,
  */
 int intel_modeset_vga_set_state(struct drm_device *dev, bool state)
 {
-	device_t bridge_dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	u16 gmch_ctrl;
 
-	bridge_dev = intel_gtt_get_bridge_device();
-	gmch_ctrl = pci_read_config(bridge_dev, INTEL_GMCH_CTRL, 2);
+	gmch_ctrl = pci_read_config(dev_priv->bridge_dev, INTEL_GMCH_CTRL, 2);
 	if (state)
 		gmch_ctrl &= ~INTEL_GMCH_VGA_DISABLE;
 	else
 		gmch_ctrl |= INTEL_GMCH_VGA_DISABLE;
-	pci_write_config(bridge_dev, INTEL_GMCH_CTRL, gmch_ctrl, 2);
-	return (0);
+	pci_write_config(dev_priv->bridge_dev, INTEL_GMCH_CTRL, gmch_ctrl, 2);
+	return 0;
 }
 
 struct intel_display_error_state {

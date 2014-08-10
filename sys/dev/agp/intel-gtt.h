@@ -96,7 +96,6 @@ void intel_gtt_insert_pages(u_int first_entry, u_int num_entries,
     vm_page_t *pages, u_int flags);
 vm_paddr_t intel_gtt_read_pte_paddr(u_int entry);
 u_int32_t intel_gtt_read_pte(u_int entry);
-device_t intel_gtt_get_bridge_device(void);
 void intel_gtt_write(u_int entry, uint32_t val);
 
 #endif

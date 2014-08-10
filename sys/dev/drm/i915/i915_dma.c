@@ -1164,19 +1164,16 @@ out:
 	return ret;
 }
 
-static int
-i915_get_bridge_dev(struct drm_device *dev)
+static int i915_get_bridge_dev(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 
-	dev_priv = dev->dev_private;
-
-	dev_priv->bridge_dev = intel_gtt_get_bridge_device();
-	if (dev_priv->bridge_dev == NULL) {
+	dev_priv->bridge_dev = pci_find_dbsf(0, 0, 0, 0);
+	if (!dev_priv->bridge_dev) {
 		DRM_ERROR("bridge device not found\n");
-		return (-1);
+		return -1;
 	}
-	return (0);
+	return 0;
 }
 
 #define MCHBAR_I915 0x44
