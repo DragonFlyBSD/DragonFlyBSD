@@ -111,12 +111,12 @@ struct snd_mixer;
 
 #define PCMMAXCLONE		PCMMAXCHAN
 
-#define PCMUNIT(x)		(snd_unit2u(dev2unit(x)))
-#define PCMDEV(x)		(snd_unit2d(dev2unit(x)))
-#define PCMCHAN(x)		(snd_unit2c(dev2unit(x)))
+#define PCMUNIT(x)		(snd_unit2u(minor(x)))
+#define PCMDEV(x)		(snd_unit2d(minor(x)))
+#define PCMCHAN(x)		(snd_unit2c(minor(x)))
 
 /* XXX unit2minor compat */
-#define PCMMINOR(x)	(x)
+#define PCMMINOR(x)		snd_u2unit(x)
 
 /*
  * By design, limit possible channels for each direction.
