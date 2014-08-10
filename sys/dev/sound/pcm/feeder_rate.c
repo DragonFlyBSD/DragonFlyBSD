@@ -1055,7 +1055,7 @@ z_resampler_build_polyphase(struct z_info *info)
 	}
 
 	info->z_pcoeff = kmalloc(sizeof(int32_t) *
-	    info->z_size * info->z_gy * 2, M_DEVBUF, M_NOWAIT | M_ZERO);
+	    info->z_size * info->z_gy * 2, M_DEVBUF, M_WAITOK | M_ZERO);
 	if (info->z_pcoeff == NULL)
 		return (ENOMEM);
 
@@ -1349,7 +1349,7 @@ z_setup_adaptive_sinc:
 	    i <= (info->z_alloc >> 1)) {
 		if (info->z_delay != NULL)
 			kfree(info->z_delay, M_DEVBUF);
-		info->z_delay = kmalloc(i, M_DEVBUF, M_NOWAIT | M_ZERO);
+		info->z_delay = kmalloc(i, M_DEVBUF, M_WAITOK | M_ZERO);
 		if (info->z_delay == NULL)
 			return (ENOMEM);
 		info->z_alloc = i;
@@ -1525,7 +1525,7 @@ z_resampler_init(struct pcm_feeder *f)
 	if (f->desc->in != f->desc->out)
 		return (EINVAL);
 
-	info = kmalloc(sizeof(*info), M_DEVBUF, M_NOWAIT | M_ZERO);
+	info = kmalloc(sizeof(*info), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (info == NULL)
 		return (ENOMEM);
 

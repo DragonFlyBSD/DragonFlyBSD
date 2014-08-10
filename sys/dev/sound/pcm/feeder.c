@@ -64,7 +64,7 @@ feeder_register(void *p)
 		KASSERT(fc->desc == NULL, ("first feeder not root: %s", fc->name));
 
 		SLIST_INIT(&feedertab);
-		fte = kmalloc(sizeof(*fte), M_FEEDER, M_NOWAIT | M_ZERO);
+		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
 		if (fte == NULL) {
 			kprintf("can't allocate memory for root feeder: %s\n",
 			    fc->name);
@@ -134,7 +134,7 @@ feeder_register(void *p)
 	i = 0;
 	while ((feedercnt < MAXFEEDERS) && (fc->desc[i].type > 0)) {
 		/* printf("adding feeder %s, %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out); */
-		fte = kmalloc(sizeof(*fte), M_FEEDER, M_NOWAIT | M_ZERO);
+		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
 		if (fte == NULL) {
 			kprintf("can't allocate memory for feeder '%s', %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out);
 
@@ -187,7 +187,7 @@ feeder_create(struct feeder_class *fc, struct pcm_feederdesc *desc)
 	struct pcm_feeder *f;
 	int err;
 
-	f = (struct pcm_feeder *)kobj_create((kobj_class_t)fc, M_FEEDER, M_NOWAIT | M_ZERO);
+	f = (struct pcm_feeder *)kobj_create((kobj_class_t)fc, M_FEEDER, M_WAITOK | M_ZERO);
 	if (f == NULL)
 		return NULL;
 

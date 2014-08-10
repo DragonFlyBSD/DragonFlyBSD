@@ -738,8 +738,7 @@ snd_clone_alloc_new:
 	 *
 	 * That said, go figure.
 	 */
-	ce = kmalloc(sizeof(*ce), M_DEVBUF,
-	    ((c->flags & SND_CLONE_WAITOK) ? M_WAITOK : M_NOWAIT) | M_ZERO);
+	ce = kmalloc(sizeof(*ce), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (ce == NULL) {
 		if (*unit != -1)
 			return (NULL);

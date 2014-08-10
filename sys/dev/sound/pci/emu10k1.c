@@ -1297,7 +1297,7 @@ emu_memalloc(struct sc_info *sc, u_int32_t sz, bus_addr_t *addr)
 	}
 	if (!found)
 		return NULL;
-	blk = kmalloc(sizeof(*blk), M_DEVBUF, M_NOWAIT);
+	blk = kmalloc(sizeof(*blk), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (blk == NULL)
 		return NULL;
 	buf = emu_malloc(sc, sz, &blk->buf_addr, &blk->buf_map);

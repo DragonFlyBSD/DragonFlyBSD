@@ -626,7 +626,7 @@ envy24ht_rom2cfg(struct sc_info *sc)
 #if(0)
 		device_printf(sc->dev, "envy24ht_rom2cfg(): ENVY24HT_E2PROM_SIZE-->%d\n", size);
 #endif
-        buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_NOWAIT);
+        buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_WAITOK | M_ZERO);
         if (buff == NULL) {
 #if(0)
                 device_printf(sc->dev, "envy24ht_rom2cfg(): malloc()\n");
@@ -666,7 +666,7 @@ i++)
 		return NULL;
 #endif
 	}
-	buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_NOWAIT);
+	buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_WAITOK | M_ZERO);
 	if (buff == NULL) {
 #if(0)
 		device_printf(sc->dev, "envy24ht_rom2cfg(): malloc()\n");
@@ -920,7 +920,7 @@ envy24ht_spi_create(device_t dev, void *info, int dir, int num)
 	device_printf(sc->dev, "envy24ht_spi_create(dev, sc, %d, %d)\n", dir, num);
 #endif
 	
-	buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_NOWAIT);
+	buff = kmalloc(sizeof(*buff), M_ENVY24HT, M_WAITOK | M_ZERO);
 	if (buff == NULL)
 		return NULL;
 
@@ -1498,7 +1498,7 @@ envy24htchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_chan
 
 	ch = &sc->chan[num];
 	ch->size = 8 * ENVY24HT_SAMPLE_NUM;
-	ch->data = kmalloc(ch->size, M_ENVY24HT, M_NOWAIT);
+	ch->data = kmalloc(ch->size, M_ENVY24HT, M_WAITOK | M_ZERO);
 	if (ch->data == NULL) {
 		ch->size = 0;
 		ch = NULL;
@@ -2460,7 +2460,7 @@ envy24ht_pci_attach(device_t dev)
 	device_printf(dev, "envy24ht_pci_attach()\n");
 #endif
 	/* get sc_info data area */
-	if ((sc = kmalloc(sizeof(*sc), M_ENVY24HT, M_NOWAIT)) == NULL) {
+	if ((sc = kmalloc(sizeof(*sc), M_ENVY24HT, M_WAITOK | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}

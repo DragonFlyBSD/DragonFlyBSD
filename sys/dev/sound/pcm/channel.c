@@ -1290,7 +1290,7 @@ chn_init(struct pcm_channel *c, void *devinfo, int dir, int direction)
 	 */
 	if (c->direction == PCMDIR_PLAY) {
 		bs->sl = sndbuf_getmaxsize(bs);
-		bs->shadbuf = kmalloc(bs->sl, M_DEVBUF, M_NOWAIT);
+		bs->shadbuf = kmalloc(bs->sl, M_DEVBUF, M_WAITOK | M_ZERO);
 		if (bs->shadbuf == NULL) {
 			ret = ENOMEM;
 			goto out;

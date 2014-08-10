@@ -152,7 +152,7 @@ feed_volume_init(struct pcm_feeder *f)
 		if (AFMT_ENCODING(f->desc->in) ==
 		    feed_volume_info_tab[i].format) {
 			info = kmalloc(sizeof(*info), M_DEVBUF,
-			    M_NOWAIT | M_ZERO);
+				       M_WAITOK | M_ZERO);
 			if (info == NULL)
 				return (ENOMEM);
 

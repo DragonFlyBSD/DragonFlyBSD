@@ -1117,7 +1117,7 @@ emu_memalloc(struct emu_mem *mem, uint32_t sz, bus_addr_t * addr, const char *ow
 			device_printf(mem->card->dev, "emu_memalloc: no free space in bitmap\n");
 		return (NULL);
 		}
-	blk = kmalloc(sizeof(*blk), M_DEVBUF, M_NOWAIT);
+	blk = kmalloc(sizeof(*blk), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (blk == NULL) {
 		if (mem->card->dbg_level > 2)
 			device_printf(mem->card->dev, "emu_memalloc: buffer allocation failed\n");
@@ -2366,7 +2366,7 @@ emu_rm_init(struct emu_sc_info *sc)
 	int maxcount;
 	struct emu_rm *rm;
 
-	rm = kmalloc(sizeof(struct emu_rm), M_DEVBUF, M_NOWAIT | M_ZERO);
+	rm = kmalloc(sizeof(struct emu_rm), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (rm == NULL) {
 		return (ENOMEM);
 	}
@@ -3248,13 +3248,13 @@ emu_pci_attach(device_t dev)
 
 	/* FRONT */
 	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
-		       M_NOWAIT | M_ZERO);
+		       M_WAITOK | M_ZERO);
 	if (func == NULL) {
 		error = ENOMEM;
 		goto bad;
 	}
 	pcminfo = kmalloc(sizeof(struct emu_pcminfo), M_DEVBUF,
-			  M_NOWAIT | M_ZERO);
+			  M_WAITOK | M_ZERO);
 	if (pcminfo == NULL) {
 		error = ENOMEM;
 		goto bad;
@@ -3270,13 +3270,13 @@ emu_pci_attach(device_t dev)
 	if (!(sc->mch_disabled)) {
 		/* REAR */
 		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
-			       M_NOWAIT | M_ZERO);
+			       M_WAITOK | M_ZERO);
 		if (func == NULL) {
 			error = ENOMEM;
 			goto bad;
 		}
 		pcminfo = kmalloc(sizeof(struct emu_pcminfo), M_DEVBUF,
-				  M_NOWAIT | M_ZERO);
+				  M_WAITOK | M_ZERO);
 		if (pcminfo == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -3291,13 +3291,13 @@ emu_pci_attach(device_t dev)
 		if (sc->has_51) {
 			/* CENTER */
 			func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
-				       M_NOWAIT | M_ZERO);
+				       M_WAITOK | M_ZERO);
 			if (func == NULL) {
 				error = ENOMEM;
 				goto bad;
 			}
 			pcminfo = kmalloc(sizeof(struct emu_pcminfo),
-					  M_DEVBUF, M_NOWAIT | M_ZERO);
+					  M_DEVBUF, M_WAITOK | M_ZERO);
 			if (pcminfo == NULL) {
 				error = ENOMEM;
 				goto bad;
@@ -3311,13 +3311,13 @@ emu_pci_attach(device_t dev)
 			device_set_ivars(sc->pcm[RT_CENTER], func);
 			/* SUB */
 			func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
-				       M_NOWAIT | M_ZERO);
+				       M_WAITOK | M_ZERO);
 			if (func == NULL) {
 				error = ENOMEM;
 				goto bad;
 			}
 			pcminfo = kmalloc(sizeof(struct emu_pcminfo),
-					  M_DEVBUF, M_NOWAIT | M_ZERO);
+					  M_DEVBUF, M_WAITOK | M_ZERO);
 			if (pcminfo == NULL) {
 				error = ENOMEM;
 				goto bad;
@@ -3333,13 +3333,13 @@ emu_pci_attach(device_t dev)
 		if (sc->has_71) {
 			/* SIDE */
 			func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
-				       M_NOWAIT | M_ZERO);
+				       M_WAITOK | M_ZERO);
 			if (func == NULL) {
 				error = ENOMEM;
 				goto bad;
 			}
 			pcminfo = kmalloc(sizeof(struct emu_pcminfo),
-					  M_DEVBUF, M_NOWAIT | M_ZERO);
+					  M_DEVBUF, M_WAITOK | M_ZERO);
 			if (pcminfo == NULL) {
 				error = ENOMEM;
 				goto bad;
@@ -3356,13 +3356,13 @@ emu_pci_attach(device_t dev)
 
 	if (sc->mch_rec) {
 		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
-			       M_NOWAIT | M_ZERO);
+			       M_WAITOK | M_ZERO);
 		if (func == NULL) {
 			error = ENOMEM;
 			goto bad;
 		}
 		pcminfo = kmalloc(sizeof(struct emu_pcminfo), M_DEVBUF,
-				  M_NOWAIT | M_ZERO);
+				  M_WAITOK | M_ZERO);
 		if (pcminfo == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -3383,12 +3383,12 @@ emu_pci_attach(device_t dev)
 #if 0
 	/* Midi Interface 1: Live!, Audigy, Audigy 2 */
 	if ((sc->is_emu10k1) || (sc->is_emu10k2) || (sc->is_ca0102)) {
-		func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+		func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_WAITOK | M_ZERO);
 		if (func == NULL) {
 			error = ENOMEM;
 			goto bad;
 		}
-		midiinfo = malloc(sizeof(struct emu_midiinfo), M_DEVBUF, M_NOWAIT | M_ZERO);
+		midiinfo = malloc(sizeof(struct emu_midiinfo), M_DEVBUF, M_WAITOK | M_ZERO);
 		if (midiinfo == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -3409,12 +3409,12 @@ emu_pci_attach(device_t dev)
 	}
 	/* Midi Interface 2: Audigy, Audigy 2 (on AudigyDrive) */
 	if (sc->is_emu10k2 || (sc->is_ca0102)) {
-		func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+		func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_WAITOK | M_ZERO);
 		if (func == NULL) {
 			error = ENOMEM;
 			goto bad;
 		}
-		midiinfo = malloc(sizeof(struct emu_midiinfo), M_DEVBUF, M_NOWAIT | M_ZERO);
+		midiinfo = malloc(sizeof(struct emu_midiinfo), M_DEVBUF, M_WAITOK | M_ZERO);
 		if (midiinfo == NULL) {
 			error = ENOMEM;
 			goto bad;

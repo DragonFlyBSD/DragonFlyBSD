@@ -611,7 +611,7 @@ nm_pci_probe(device_t dev)
 		/* Try to catch other non-ac97 cards */
 
 		if (i == NUM_BADCARDS) {
-			if (!(sc = kmalloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO))) {
+			if (!(sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO))) {
 				device_printf(dev, "cannot allocate softc\n");
 				return ENXIO;
 			}

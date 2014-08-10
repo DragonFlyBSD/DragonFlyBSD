@@ -591,7 +591,7 @@ envy24_rom2cfg(struct sc_info *sc)
 #endif
 		return NULL;
 	}
-	buff = kmalloc(sizeof(*buff), M_ENVY24, M_NOWAIT);
+	buff = kmalloc(sizeof(*buff), M_ENVY24, M_WAITOK | M_ZERO);
 	if (buff == NULL) {
 #if(0)
 		device_printf(sc->dev, "envy24_rom2cfg(): malloc()\n");
@@ -935,7 +935,7 @@ envy24_delta_ak4524_create(device_t dev, void *info, int dir, int num)
 	device_printf(sc->dev, "envy24_delta_ak4524_create(dev, sc, %d, %d)\n", dir, num);
 #endif
 	
-	buff = kmalloc(sizeof(*buff), M_ENVY24, M_NOWAIT);
+	buff = kmalloc(sizeof(*buff), M_ENVY24, M_WAITOK | M_ZERO);
 	if (buff == NULL)
 		return NULL;
 
@@ -1587,7 +1587,7 @@ envy24chan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channe
 
 	ch = &sc->chan[num];
 	ch->size = 8 * ENVY24_SAMPLE_NUM;
-	ch->data = kmalloc(ch->size, M_ENVY24, M_NOWAIT);
+	ch->data = kmalloc(ch->size, M_ENVY24, M_WAITOK | M_ZERO);
 	if (ch->data == NULL) {
 		ch->size = 0;
 		ch = NULL;
@@ -2554,7 +2554,7 @@ envy24_pci_attach(device_t dev)
 	device_printf(dev, "envy24_pci_attach()\n");
 #endif
 	/* get sc_info data area */
-	if ((sc = kmalloc(sizeof(*sc), M_ENVY24, M_NOWAIT)) == NULL) {
+	if ((sc = kmalloc(sizeof(*sc), M_ENVY24, M_WAITOK | M_ZERO)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}

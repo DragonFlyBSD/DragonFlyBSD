@@ -326,7 +326,7 @@ hdspechan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b,
 	ch->rvol = 0;
 
 	ch->size = HDSPE_CHANBUF_SIZE * 2 /* slots */;
-	ch->data = kmalloc(ch->size, M_HDSPE, M_NOWAIT);
+	ch->data = kmalloc(ch->size, M_HDSPE, M_WAITOK | M_ZERO);
 
 	ch->buffer = b;
 	ch->channel = c;

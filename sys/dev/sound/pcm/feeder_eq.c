@@ -355,7 +355,7 @@ feed_eq_init(struct pcm_feeder *f)
 	if (biquad_op == NULL)
 		return (EINVAL);
 
-	info = kmalloc(sizeof(*info), M_DEVBUF, M_NOWAIT | M_ZERO);
+	info = kmalloc(sizeof(*info), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (info == NULL)
 		return (ENOMEM);
 

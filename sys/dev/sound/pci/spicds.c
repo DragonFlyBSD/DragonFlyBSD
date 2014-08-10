@@ -144,7 +144,7 @@ spicds_create(device_t dev, void *devinfo, int num, spicds_ctrl ctrl)
 #if(0)
 	device_printf(dev, "spicds_create(dev, devinfo, %d, ctrl)\n", num);
 #endif
-	codec = (struct spicds_info *)kmalloc(sizeof *codec, M_SPICDS, M_NOWAIT);
+	codec = (struct spicds_info *)kmalloc(sizeof *codec, M_SPICDS, M_WAITOK | M_ZERO);
 	if (codec == NULL)
 		return NULL;
 

@@ -403,7 +403,7 @@ feed_matrix_init(struct pcm_feeder *f)
 	if (AFMT_ENCODING(f->desc->in) != AFMT_ENCODING(f->desc->out))
 		return (EINVAL);
 
-	info = kmalloc(sizeof(*info), M_DEVBUF, M_NOWAIT | M_ZERO);
+	info = kmalloc(sizeof(*info), M_DEVBUF, M_WAITOK | M_ZERO);
 	if (info == NULL)
 		return (ENOMEM);
 
