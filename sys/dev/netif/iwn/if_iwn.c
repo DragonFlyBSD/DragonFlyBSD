@@ -82,8 +82,6 @@
 #include "if_iwn_debug.h"
 #include "if_iwn_ioctl.h"
 
-#define nitems(ary)	(sizeof(ary) / sizeof((ary)[0]))
-
 #define IWN_LOCK(sc)
 #define IWN_UNLOCK(sc)
 
