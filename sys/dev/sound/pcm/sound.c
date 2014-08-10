@@ -108,9 +108,11 @@ snd_mtxfree(void *m)
 void
 snd_mtxassert(void *m)
 {
+#ifdef INVARIANTS
 	struct lock *lk = m;
 
 	KKASSERT(lockstatus(lk, curthread) != 0);
+#endif
 }
 
 int
