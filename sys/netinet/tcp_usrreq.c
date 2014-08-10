@@ -374,6 +374,12 @@ in_pcbinswildcardhash_handler(netmsg_t msg)
 		lwkt_replymsg(&nm->base.lmsg, 0);
 }
 
+static void
+tcp_sosetport(struct lwkt_msg *msg, lwkt_port_t port)
+{
+	sosetport(((struct netmsg_base *)msg)->nm_so, port);
+}
+
 /*
  * Prepare to accept connections.
  */
@@ -391,14 +397,17 @@ tcp_usr_listen(netmsg_t msg)
 	COMMON_START(so, inp, 0);
 
 	if (&curthread->td_msgport != port0) {
+		lwkt_msg_t lmsg = &msg->listen.base.lmsg;
+
 		KASSERT((msg->listen.nm_flags & PRUL_RELINK) == 0,
 		    ("already asked to relink"));
 
 		in_pcbunlink(so->so_pcb, &tcbinfo[mycpuid]);
-		sosetport(so, port0);
 		msg->listen.nm_flags |= PRUL_RELINK;
 
-		lwkt_forwardmsg(port0, &msg->listen.base.lmsg);
+		/* See the related comment in tcp_connect() */
+		lwkt_setmsg_receipt(lmsg, tcp_sosetport);
+		lwkt_forwardmsg(port0, lmsg);
 		/* msg invalid now */
 		return;
 	}
@@ -1134,6 +1143,7 @@ tcp_connect(netmsg_t msg)
 
 	if (port != &curthread->td_msgport) {
 		struct route *ro = &inp->inp_route;
+		lwkt_msg_t lmsg = &msg->connect.base.lmsg;
 
 		/*
 		 * in_pcbladdr() may have allocated a route entry for us
@@ -1150,11 +1160,49 @@ tcp_connect(netmsg_t msg)
 		 * target cpu.
 		 */
 		in_pcbunlink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
-		sosetport(so, port);
 		msg->connect.nm_flags |= PRUC_RECONNECT;
 		msg->connect.base.nm_dispatch = tcp_connect;
 
-		lwkt_forwardmsg(port, &msg->connect.base.lmsg);
+		/*
+		 * Use message put done receipt to change this socket's
+		 * so_port, i.e. _after_ this message was put onto the
+		 * target netisr's msgport but _before_ the message could
+		 * be pulled from the target netisr's msgport, so that:
+		 * - The upper half (socket code) will not see the new
+		 *   msgport before this message reaches the new msgport
+		 *   and messages for this socket will be ordered.
+		 * - This message will see the new msgport, when its
+		 *   handler is called in the target netisr.
+		 *
+		 * NOTE:
+		 * We MUST use messege put done receipt to change this
+		 * socket's so_port:
+		 * If we changed the so_port in this netisr after the
+		 * lwkt_forwardmsg (so messages for this socket will be
+		 * ordered) and changed the so_port in the target netisr
+		 * at the very beginning of this message's handler, we
+		 * would suffer so_port overwritten race, given this
+		 * message might be forwarded again.
+		 *
+		 * NOTE:
+		 * This mechanism depends on that the netisr's msgport
+		 * is spin msgport (currently it is :).
+		 *
+		 * If the upper half saw the new msgport before this
+		 * message reached the target netisr's msgport, the
+		 * messages sent from the upper half could reach the new
+		 * msgport before this message, thus there would be
+		 * message reordering.  The worst case could be soclose()
+		 * saw the new msgport and the detach message could reach
+		 * the new msgport before this message, i.e. the inpcb
+		 * could have been destroyed when this message was still
+		 * pending on or on its way to the new msgport.  Other
+		 * weird cases could also happen, e.g. inpcb->inp_pcbinfo,
+		 * since we have unlinked this inpcb from the current
+		 * pcbinfo first.
+		 */
+		lwkt_setmsg_receipt(lmsg, tcp_sosetport);
+		lwkt_forwardmsg(port, lmsg);
 		/* msg invalid now */
 		return;
 	} else if (msg->connect.nm_flags & PRUC_HELDTD) {
@@ -1233,6 +1281,7 @@ tcp6_connect(netmsg_t msg)
 
 	if (port != &curthread->td_msgport) {
 		struct route *ro = &inp->inp_route;
+		lwkt_msg_t lmsg = &msg->connect.base.lmsg;
 
 		/*
 		 * in_pcbladdr() may have allocated a route entry for us
@@ -1244,11 +1293,12 @@ tcp6_connect(netmsg_t msg)
 		bzero(ro, sizeof(*ro));
 
 		in_pcbunlink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
-		sosetport(so, port);
 		msg->connect.nm_flags |= PRUC_RECONNECT;
 		msg->connect.base.nm_dispatch = tcp6_connect;
 
-		lwkt_forwardmsg(port, &msg->connect.base.lmsg);
+		/* See the related comment in tcp_connect() */
+		lwkt_setmsg_receipt(lmsg, tcp_sosetport);
+		lwkt_forwardmsg(port, lmsg);
 		/* msg invalid now */
 		return;
 	}
