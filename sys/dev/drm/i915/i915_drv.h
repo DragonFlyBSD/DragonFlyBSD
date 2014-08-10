@@ -32,7 +32,7 @@
 
 #include <sys/eventhandler.h>
 
-#include <dev/agp/agp_i810.h>
+#include <dev/agp/intel-gtt.h>
 #include "i915_reg.h"
 #include "intel_bios.h"
 #include "intel_ringbuffer.h"

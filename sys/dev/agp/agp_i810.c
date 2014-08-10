@@ -58,7 +58,7 @@
 #include <bus/pci/pcireg.h>
 #include "agppriv.h"
 #include "agpreg.h"
-#include <dev/agp/agp_i810.h>
+#include <dev/agp/intel-gtt.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
