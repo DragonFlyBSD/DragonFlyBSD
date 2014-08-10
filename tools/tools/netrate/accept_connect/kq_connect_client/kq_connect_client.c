@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/event.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -9,7 +10,6 @@
 #include <netinet/in.h>
 
 #include <errno.h>
-#include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -152,6 +152,7 @@ mainloop(const struct sockaddr_in *in, int in_cnt, int nconn_max,
 	int kq, nchange = 0, nconn = 0, nevt_max;
 	u_long count = 0;
 	u_int in_idx = 0;
+	int nblock = 1;
 
 	kq = kqueue();
 	if (kq < 0) {
@@ -183,7 +184,7 @@ mainloop(const struct sockaddr_in *in, int in_cnt, int nconn_max,
 
 		while (nconn < nconn_max) {
 			const struct sockaddr_in *tmp;
-			int s, flags;
+			int s;
 
 			s = socket(AF_INET, SOCK_STREAM, 0);
 			if (s < 0) {
@@ -191,15 +192,8 @@ mainloop(const struct sockaddr_in *in, int in_cnt, int nconn_max,
 				return;
 			}
 
-			flags = fcntl(s, F_GETFL, 0);
-			if (flags < 0) {
-				fprintf(stderr, "fcntl(GETFL) failed: %d\n",
-				    errno);
-				return;
-			}
-			if (fcntl(s, F_SETFL, flags | O_NONBLOCK) < 0) {
-				fprintf(stderr, "fcntl(SETFL) failed: %d\n",
-				    errno);
+			if (ioctl(s, FIONBIO, &nblock, sizeof(nblock)) < 0) {
+				fprintf(stderr, "ioctl failed: %d\n", errno);
 				return;
 			}
 

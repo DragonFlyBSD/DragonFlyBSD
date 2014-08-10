@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/event.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 
@@ -7,7 +8,6 @@
 #include <netinet/in.h>
 
 #include <errno.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +27,7 @@ usage(const char *cmd)
 static int
 create_socket(const struct sockaddr_in *in, int reuseport)
 {
-	int serv_s, on, flags;
+	int serv_s, on;
 
 	serv_s = socket(AF_INET, SOCK_STREAM, 0);
 	if (serv_s < 0) {
@@ -52,13 +52,9 @@ create_socket(const struct sockaddr_in *in, int reuseport)
 		}
 	}
 
-	flags = fcntl(serv_s, F_GETFL, 0);
-	if (flags < 0) {
-		fprintf(stderr, "fcntl(F_GETFL) failed: %d\n", errno);
-		exit(1);
-	}
-	if (fcntl(serv_s, F_SETFL, flags | O_NONBLOCK) < 0) {
-		fprintf(stderr, "fcntl(F_SETFL) failed: %d\n", errno);
+	on = 1;
+	if (ioctl(serv_s, FIONBIO, &on, sizeof(on)) < 0) {
+		fprintf(stderr, "ioctl(FIONBIO) failed: %d\n", errno);
 		exit(1);
 	}
 
