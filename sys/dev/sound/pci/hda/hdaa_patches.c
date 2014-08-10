@@ -286,11 +286,19 @@ hdac_pin_patch(struct hdaa_widget *w)
 	/* New patches */
 	if (id == HDA_CODEC_ALC283 && subid == ACER_C720_SUBVENDOR) {
 		switch (nid) {
+		case 20:
+			patch = "as=2 seq=0";
+			break;
 		case 25:
 			patch = "as=1 seq=0";
 			break;
-		case 20:
-			patch = "as=2 seq=0";
+		case 27:
+			/*
+			patch = "device=Headphones conn=Fixed as=2 seq=15";
+			w->enable = 1;
+			*/
+			break;
+		case 33:
 			break;
 		}
 	} else
@@ -487,6 +495,8 @@ hdaa_widget_patch(struct hdaa_widget *w)
 	 *	hdaa1: hdaa_audio_ctl_parse: Ctl overflow!
 	 */
 	if (id == HDA_CODEC_ALC283 && subid == ACER_C720_SUBVENDOR) {
+		if (w->nid == 33)
+			w->senseredir = 12;
 		if (w->nid == 11)
 			w->enable = 0;
 	}
@@ -796,7 +806,6 @@ hdaa_patch_direct_acer_c720(struct hdaa_devinfo *devinfo)
 	struct hdaa_widget *w;
 	device_t dev = devinfo->dev;
 	uint32_t val;
-	int dummy;
 
 	kprintf("Acer C720 patch\n");
 
@@ -886,16 +895,22 @@ hdaa_patch_direct_acer_c720(struct hdaa_devinfo *devinfo)
 	/* Headphone capless set to high power mode */
 	hda_write_coef_idx(dev, 0x20, 0x43, 0x9004);
 
+#if 0
 	/*
 	 * This has to do with the 'mute internal speaker when
 	 * ext headphone out jack is plugged' function.  nid 27
 	 * comes from the special config bits (XXX currently hardwired)
+	 *
+	 * XXX doesn't apply to chromebook where we just have to change
+	 *	the mixer selection for nid 33.
 	 */
+	int dummy;
 	hda_command(dev, HDA_CMD_SET_AMP_GAIN_MUTE(0, 27, 0xb080));
 	tsleep(&dummy, 0, "hdaslp", hz / 10);
 	hda_command(dev, HDA_CMD_SET_PIN_WIDGET_CTRL(0, 27,
 				HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE));
 	tsleep(&dummy, 0, "hdaslp", hz / 10);
+#endif
 
 	/* 0x46 combo jack auto switch control 2 */
 	/* 3k pull-down control for headset jack. */
