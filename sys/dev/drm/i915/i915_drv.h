@@ -1479,8 +1479,11 @@ int i915_verify_lists(struct drm_device *dev);
 #endif
 
 /* i915_gem_evict.c */
-int i915_gem_evict_something(struct drm_device *dev, int min_size,
-    unsigned alignment, bool mappable);
+int __must_check i915_gem_evict_something(struct drm_device *dev, int min_size,
+					  unsigned alignment,
+					  unsigned cache_level,
+					  bool mappable,
+					  bool nonblock);
 int i915_gem_evict_everything(struct drm_device *dev);
 
 /* i915_suspend.c */

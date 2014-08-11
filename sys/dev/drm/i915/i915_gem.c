@@ -1875,6 +1875,7 @@ i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 	uint32_t size, fence_size, fence_alignment, unfenced_alignment;
 	bool mappable, fenceable;
 	int ret;
+	bool nonblocking = false;
 
 	dev = obj->base.dev;
 	dev_priv = dev->dev_private;
@@ -1930,7 +1931,9 @@ i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 	}
 	if (obj->gtt_space == NULL) {
 		ret = i915_gem_evict_something(dev, size, alignment,
-		    map_and_fenceable);
+					       obj->cache_level,
+					       map_and_fenceable,
+					       nonblocking);
 		if (ret != 0)
 			return (ret);
 		goto search_free;
