@@ -774,6 +774,7 @@ static const struct agp_i810_match {
 		.name = "Haswell desktop GT2 IG",
 		.driver = &agp_i810_sb_driver
 	},
+	{	0x0422, "Haswell", &agp_i810_sb_driver },
 	{
 		.devid = 0x0406,
 		.name = "Haswell mobile GT1 IG",
@@ -784,6 +785,7 @@ static const struct agp_i810_match {
 		.name = "Haswell mobile GT2 IG",
 		.driver = &agp_i810_sb_driver
 	},
+	{	0x0426, "Haswell", &agp_i810_sb_driver },
 	{
 		.devid = 0x040a,
 		.name = "Haswell server GT1 IG",
@@ -794,11 +796,38 @@ static const struct agp_i810_match {
 		.name = "Haswell server GT2 IG",
 		.driver = &agp_i810_sb_driver
 	},
+	{	0x042a, "Haswell", &agp_i810_sb_driver },
+	{	0x0c02, "Haswell", &agp_i810_sb_driver },
+	{	0x0c12, "Haswell", &agp_i810_sb_driver },
+	{	0x0c22, "Haswell", &agp_i810_sb_driver },
+	{	0x0c06, "Haswell", &agp_i810_sb_driver },
 	{
 		.devid = 0x0c16,
 		.name = "Haswell SDV",
 		.driver = &agp_i810_sb_driver
 	},
+	{	0x0c26, "Haswell", &agp_i810_sb_driver },
+	{	0x0c0a, "Haswell", &agp_i810_sb_driver },
+	{	0x0c1a, "Haswell", &agp_i810_sb_driver },
+	{	0x0c2a, "Haswell", &agp_i810_sb_driver },
+	{	0x0a02, "Haswell", &agp_i810_sb_driver },
+	{	0x0a12, "Haswell", &agp_i810_sb_driver },
+	{	0x0a22, "Haswell", &agp_i810_sb_driver },
+	{	0x0a06, "Haswell", &agp_i810_sb_driver },
+	{	0x0a16, "Haswell", &agp_i810_sb_driver },
+	{	0x0a26, "Haswell", &agp_i810_sb_driver },
+	{	0x0a0a, "Haswell", &agp_i810_sb_driver },
+	{	0x0a1a, "Haswell", &agp_i810_sb_driver },
+	{	0x0a2a, "Haswell", &agp_i810_sb_driver },
+	{	0x0d12, "Haswell", &agp_i810_sb_driver },
+	{	0x0d22, "Haswell", &agp_i810_sb_driver },
+	{	0x0d32, "Haswell", &agp_i810_sb_driver },
+	{	0x0d16, "Haswell", &agp_i810_sb_driver },
+	{	0x0d26, "Haswell", &agp_i810_sb_driver },
+	{	0x0d36, "Haswell", &agp_i810_sb_driver },
+	{	0x0d1a, "Haswell", &agp_i810_sb_driver },
+	{	0x0d2a, "Haswell", &agp_i810_sb_driver },
+	{	0x0d3a, "Haswell", &agp_i810_sb_driver },
 	{
 		.devid = 0,
 	}
