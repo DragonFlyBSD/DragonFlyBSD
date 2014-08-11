@@ -25,60 +25,6 @@
 	{0x8086, 0x7125, 0, "Intel i810E GMCH"}, \
 	{0, 0, 0, NULL}
 
-#define i830_PCI_IDS \
-	{0x8086, 0x2562, 0, "Intel i845G GMCH"}, \
-	{0x8086, 0x2572, 0, "Intel i865G GMCH"}, \
-	{0x8086, 0x3577, 0, "Intel i830M GMCH"}, \
-	{0x8086, 0x3582, 0, "Intel i852GM/i855GM GMCH"}, \
-	{0, 0, 0, NULL}
-
-#define i915_PCI_IDS \
-	{0x8086, 0x0042, CHIP_I9XX|CHIP_I915, "Intel IronLake"}, \
-	{0x8086, 0x0046, CHIP_I9XX|CHIP_I915, "Intel IronLake"}, \
-	{0x8086, 0x0102, CHIP_I9XX|CHIP_I915, "Intel SandyBridge"}, \
-	{0x8086, 0x0106, CHIP_I9XX|CHIP_I915, "Intel SandyBridge (M)"}, \
-	{0x8086, 0x010A, CHIP_I9XX|CHIP_I915, "Intel SandyBridge (M)"}, \
-	{0x8086, 0x0112, CHIP_I9XX|CHIP_I915, "Intel SandyBridge"}, \
-	{0x8086, 0x0116, CHIP_I9XX|CHIP_I915, "Intel SandyBridge (M)"}, \
-	{0x8086, 0x0122, CHIP_I9XX|CHIP_I915, "Intel SandyBridge"}, \
-	{0x8086, 0x0126, CHIP_I9XX|CHIP_I915, "Intel SandyBridge (M)"}, \
-	{0x8086, 0x0152, CHIP_I9XX|CHIP_I915, "Intel IvyBridge"}, \
-	{0x8086, 0x0156, CHIP_I9XX|CHIP_I915, "Intel IvyBridge (M)"}, \
-	{0x8086, 0x015A, CHIP_I9XX|CHIP_I915, "Intel IvyBridge (S)"}, \
-	{0x8086, 0x0162, CHIP_I9XX|CHIP_I915, "Intel IvyBridge"}, \
-	{0x8086, 0x0166, CHIP_I9XX|CHIP_I915, "Intel IvyBridge (M)"}, \
-	{0x8086, 0x016A, CHIP_I9XX|CHIP_I915, "Intel IvyBridge (S)"}, \
-	{0x8086, 0x2562, CHIP_I8XX, "Intel i845G GMCH"}, \
-	{0x8086, 0x2572, CHIP_I8XX, "Intel i865G GMCH"}, \
-	{0x8086, 0x2582, CHIP_I9XX|CHIP_I915, "Intel i915G"}, \
-	{0x8086, 0x258A, CHIP_I9XX|CHIP_I915, "Intel E7221 (i915)"}, \
-	{0x8086, 0x2592, CHIP_I9XX|CHIP_I915, "Intel i915GM"}, \
-	{0x8086, 0x2772, CHIP_I9XX|CHIP_I915, "Intel i945G"}, \
-	{0x8086, 0x27A2, CHIP_I9XX|CHIP_I915, "Intel i945GM"}, \
-	{0x8086, 0x27AE, CHIP_I9XX|CHIP_I915, "Intel i945GME"}, \
-	{0x8086, 0x2972, CHIP_I9XX|CHIP_I965, "Intel i946GZ"}, \
-	{0x8086, 0x2982, CHIP_I9XX|CHIP_I965, "Intel i965G"}, \
-	{0x8086, 0x2992, CHIP_I9XX|CHIP_I965, "Intel i965Q"}, \
-	{0x8086, 0x29A2, CHIP_I9XX|CHIP_I965, "Intel i965G"}, \
-	{0x8086, 0x29B2, CHIP_I9XX|CHIP_I915, "Intel Q35"}, \
-	{0x8086, 0x29C2, CHIP_I9XX|CHIP_I915, "Intel G33"}, \
-	{0x8086, 0x29D2, CHIP_I9XX|CHIP_I915, "Intel Q33"}, \
-	{0x8086, 0x2A02, CHIP_I9XX|CHIP_I965, "Intel i965GM"}, \
-	{0x8086, 0x2A12, CHIP_I9XX|CHIP_I965, "Intel i965GME/GLE"}, \
-	{0x8086, 0x2A42, CHIP_I9XX|CHIP_I965, "Mobile Intel® GM45 Express Chipset"}, \
-	{0x8086, 0x2E02, CHIP_I9XX|CHIP_I965, "Intel Eaglelake"}, \
-	{0x8086, 0x2E12, CHIP_I9XX|CHIP_I965, "Intel Q45/Q43"}, \
-	{0x8086, 0x2E22, CHIP_I9XX|CHIP_I965, "Intel G45/G43"}, \
-	{0x8086, 0x2E32, CHIP_I9XX|CHIP_I965, "Intel G41"}, \
-	{0x8086, 0x2E42, CHIP_I9XX|CHIP_I915, "Intel G43 ?"}, \
-	{0x8086, 0x2E92, CHIP_I9XX|CHIP_I915, "Intel G43 ?"}, \
-	{0x8086, 0x3577, CHIP_I8XX, "Intel i830M GMCH"}, \
-	{0x8086, 0x3582, CHIP_I8XX, "Intel i852GM/i855GM GMCH"}, \
-	{0x8086, 0x358E, CHIP_I8XX, "Intel i852GM/i855GM GMCH"}, \
-	{0x8086, 0xA001, CHIP_I9XX|CHIP_I965, "Intel Pineview"}, \
-	{0x8086, 0xA011, CHIP_I9XX|CHIP_I965, "Intel Pineview (M)"}, \
-	{0, 0, 0, NULL}
-
 #define imagine_PCI_IDS \
 	{0x105D, 0x2309, IMAGINE_128, "Imagine 128"}, \
 	{0x105D, 0x2339, IMAGINE_128_2, "Imagine 128-II"}, \

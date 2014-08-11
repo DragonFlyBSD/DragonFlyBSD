@@ -41,11 +41,6 @@
 int i915_lvds_channel_mode __read_mostly = 0;
 TUNABLE_INT("drm.i915.lvds_channel_mode", &i915_lvds_channel_mode);
 
-/* drv_PCI_IDs comes from drm_pciids.h, generated from drm_pciids.txt. */
-static drm_pci_id_list_t i915_pciidlist[] = {
-	i915_PCI_IDS
-};
-
 #define INTEL_VGA_DEVICE(id, info_) {		\
 	.device = id,				\
 	.info = info_,				\
@@ -508,11 +503,34 @@ i915_resume(device_t kdev)
 	return (ret);
 }
 
+/* XXX Hack for the old *BSD drm code base
+ * The device id field is set at probe time */
+static drm_pci_id_list_t i915_attach_list[] = {
+	{0x8086, 0, 0, "Intel i915 GPU"},
+	{0, 0, 0, NULL}
+};
+
 static int
 i915_probe(device_t kdev)
 {
+	int device, i = 0;
 
-	return drm_probe(kdev, i915_pciidlist);
+	if (pci_get_class(kdev) != PCIC_DISPLAY)
+		return ENXIO;
+
+	if (pci_get_vendor(kdev) != PCI_VENDOR_INTEL)
+		return ENXIO;
+
+	device = pci_get_device(kdev);
+
+	for (i = 0; pciidlist[i].device != 0; i++) {
+		if (pciidlist[i].device == device) {
+			i915_attach_list[0].device = device;
+			return 0;
+		}
+	}
+
+	return ENXIO;
 }
 
 int i915_modeset;
@@ -526,7 +544,7 @@ i915_attach(device_t kdev)
 	if (i915_modeset == 1)
 		i915_driver_info.driver_features |= DRIVER_MODESET;
 	dev->driver = &i915_driver_info;
-	return (drm_attach(kdev, i915_pciidlist));
+	return (drm_attach(kdev, i915_attach_list));
 }
 
 const struct intel_device_info *
