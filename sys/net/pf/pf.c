@@ -727,8 +727,12 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 	 * address/port is not localized to the same cpu that the untranslated
 	 * address/port is on.  The wire pf_state_key is managed on the global
 	 * statetbl tree for this case.
+	 *
+	 * However, it appears that RDR translations can wind up with
+	 * a reversed WIRE/STACK specification, so atm we do not distinguish
+	 * the direction.
 	 */
-	if ((s->state_flags & PFSTATE_STACK_GLOBAL) && idx == PF_SK_WIRE) {
+	if (s->state_flags & PFSTATE_STACK_GLOBAL) {
 		cpu = MAXCPU;
 		lockmgr(&pf_global_statetbl_lock, LK_EXCLUSIVE);
 	} else {
@@ -780,7 +784,7 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 
 	error = 0;
 failed:
-	if ((s->state_flags & PFSTATE_STACK_GLOBAL) && idx == PF_SK_WIRE)
+	if (s->state_flags & PFSTATE_STACK_GLOBAL)
 		lockmgr(&pf_global_statetbl_lock, LK_RELEASE);
 	return error;
 }
@@ -818,7 +822,7 @@ pf_state_key_detach(struct pf_state *s, int idx)
 	 * address/port is on.  The wire pf_state_key is managed on the global
 	 * statetbl tree for this case.
 	 */
-	if ((s->state_flags & PFSTATE_STACK_GLOBAL) && idx == PF_SK_WIRE) {
+	if (s->state_flags & PFSTATE_STACK_GLOBAL) {
 		cpu = MAXCPU;
 		lockmgr(&pf_global_statetbl_lock, LK_EXCLUSIVE);
 	} else {
@@ -844,7 +848,7 @@ pf_state_key_detach(struct pf_state *s, int idx)
 	}
 	s->key[idx] = NULL;
 
-	if ((s->state_flags & PFSTATE_STACK_GLOBAL) && idx == PF_SK_WIRE)
+	if (s->state_flags & PFSTATE_STACK_GLOBAL)
 		lockmgr(&pf_global_statetbl_lock, LK_RELEASE);
 }
 
@@ -3113,8 +3117,10 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 				if (tmp_nport > 65535)
 					tmp_nport -= 65535;
 				*nport = htons((u_int16_t)tmp_nport);
-			} else if (r->rpool.proxy_port[0])
+			} else if (r->rpool.proxy_port[0]) {
 				*nport = htons(r->rpool.proxy_port[0]);
+			}
+			pd->not_cpu_localized = 1;
 			break;
 		}
 		default:
