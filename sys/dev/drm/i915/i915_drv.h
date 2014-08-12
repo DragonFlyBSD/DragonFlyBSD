@@ -1298,10 +1298,8 @@ extern int i915_driver_device_is_agp(struct drm_device * dev);
 extern long i915_compat_ioctl(struct file *filp, unsigned int cmd,
 			      unsigned long arg);
 extern int i915_emit_box(struct drm_device *dev,
-			 struct drm_clip_rect __user *boxes,
-			 int i, int DR1, int DR4);
-int i915_emit_box_p(struct drm_device *dev, struct drm_clip_rect *box,
-    int DR1, int DR4);
+			 struct drm_clip_rect *box,
+			 int DR1, int DR4);
 extern int intel_gpu_reset(struct drm_device *dev);
 extern int i915_reset(struct drm_device *dev);
 unsigned long i915_chipset_val(struct drm_i915_private *dev_priv);

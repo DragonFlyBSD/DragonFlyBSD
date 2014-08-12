@@ -389,28 +389,16 @@ static int i915_emit_cmds(struct drm_device *dev, int __user *buffer,
 	return 0;
 }
 
-int i915_emit_box(struct drm_device * dev,
-		  struct drm_clip_rect *boxes,
-		  int i, int DR1, int DR4)
-{
-	struct drm_clip_rect box;
-
-	if (DRM_COPY_FROM_USER_UNCHECKED(&box, &boxes[i], sizeof(box))) {
-		return -EFAULT;
-	}
-
-	return (i915_emit_box_p(dev, &box, DR1, DR4));
-}
-
 int
-i915_emit_box_p(struct drm_device *dev, struct drm_clip_rect *box,
-    int DR1, int DR4)
+i915_emit_box(struct drm_device *dev,
+	      struct drm_clip_rect *box,
+	      int DR1, int DR4)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret;
 
-	if (box->y2 <= box->y1 || box->x2 <= box->x1 || box->y2 <= 0 ||
-	    box->x2 <= 0) {
+	if (box->y2 <= box->y1 || box->x2 <= box->x1 ||
+	    box->y2 <= 0 || box->x2 <= 0) {
 		DRM_ERROR("Bad box %d,%d..%d,%d\n",
 			  box->x1, box->y1, box->x2, box->y2);
 		return -EINVAL;
@@ -418,8 +406,8 @@ i915_emit_box_p(struct drm_device *dev, struct drm_clip_rect *box,
 
 	if (INTEL_INFO(dev)->gen >= 4) {
 		ret = BEGIN_LP_RING(4);
-		if (ret != 0)
-			return (ret);
+		if (ret)
+			return ret;
 
 		OUT_RING(GFX_OP_DRAWRECT_INFO_I965);
 		OUT_RING((box->x1 & 0xffff) | (box->y1 << 16));
@@ -427,8 +415,8 @@ i915_emit_box_p(struct drm_device *dev, struct drm_clip_rect *box,
 		OUT_RING(DR4);
 	} else {
 		ret = BEGIN_LP_RING(6);
-		if (ret != 0)
-			return (ret);
+		if (ret)
+			return ret;
 
 		OUT_RING(GFX_OP_DRAWRECT_INFO);
 		OUT_RING(DR1);
@@ -466,13 +454,15 @@ static void i915_emit_breadcrumb(struct drm_device *dev)
 }
 
 static int i915_dispatch_cmdbuffer(struct drm_device * dev,
-    drm_i915_cmdbuffer_t * cmd, struct drm_clip_rect *cliprects, void *cmdbuf)
+				   drm_i915_cmdbuffer_t *cmd,
+				   struct drm_clip_rect *cliprects,
+				   void *cmdbuf)
 {
 	int nbox = cmd->num_cliprects;
 	int i = 0, count, ret;
 
 	if (cmd->sz & 0x3) {
-		DRM_ERROR("alignment\n");
+		DRM_ERROR("alignment");
 		return -EINVAL;
 	}
 
@@ -482,8 +472,8 @@ static int i915_dispatch_cmdbuffer(struct drm_device * dev,
 
 	for (i = 0; i < count; i++) {
 		if (i < nbox) {
-			ret = i915_emit_box_p(dev, &cmd->cliprects[i],
-			    cmd->DR1, cmd->DR4);
+			ret = i915_emit_box(dev, &cliprects[i],
+					    cmd->DR1, cmd->DR4);
 			if (ret)
 				return ret;
 		}
@@ -497,39 +487,37 @@ static int i915_dispatch_cmdbuffer(struct drm_device * dev,
 	return 0;
 }
 
-static int
-i915_dispatch_batchbuffer(struct drm_device * dev,
-    drm_i915_batchbuffer_t * batch, struct drm_clip_rect *cliprects)
+static int i915_dispatch_batchbuffer(struct drm_device * dev,
+				     drm_i915_batchbuffer_t * batch,
+				     struct drm_clip_rect *cliprects)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	int nbox = batch->num_cliprects;
 	int i, count, ret;
 
 	if ((batch->start | batch->used) & 0x7) {
-		DRM_ERROR("alignment\n");
+		DRM_ERROR("alignment");
 		return -EINVAL;
 	}
 
 	i915_kernel_lost_context(dev);
 
 	count = nbox ? nbox : 1;
-
 	for (i = 0; i < count; i++) {
 		if (i < nbox) {
-			int ret = i915_emit_box_p(dev, &cliprects[i],
-			    batch->DR1, batch->DR4);
+			ret = i915_emit_box(dev, &cliprects[i],
+					    batch->DR1, batch->DR4);
 			if (ret)
 				return ret;
 		}
 
 		if (!IS_I830(dev) && !IS_845G(dev)) {
 			ret = BEGIN_LP_RING(2);
-			if (ret != 0)
-				return (ret);
+			if (ret)
+				return ret;
 
 			if (INTEL_INFO(dev)->gen >= 4) {
-				OUT_RING(MI_BATCH_BUFFER_START | (2 << 6) |
-				    MI_BATCH_NON_SECURE_I965);
+				OUT_RING(MI_BATCH_BUFFER_START | (2 << 6) | MI_BATCH_NON_SECURE_I965);
 				OUT_RING(batch->start);
 			} else {
 				OUT_RING(MI_BATCH_BUFFER_START | (2 << 6));
@@ -537,8 +525,8 @@ i915_dispatch_batchbuffer(struct drm_device * dev,
 			}
 		} else {
 			ret = BEGIN_LP_RING(4);
-			if (ret != 0)
-				return (ret);
+			if (ret)
+				return ret;
 
 			OUT_RING(MI_BATCH_BUFFER);
 			OUT_RING(batch->start | MI_BATCH_NON_SECURE);
@@ -548,8 +536,16 @@ i915_dispatch_batchbuffer(struct drm_device * dev,
 		ADVANCE_LP_RING();
 	}
 
-	i915_emit_breadcrumb(dev);
 
+	if (IS_G4X(dev) || IS_GEN5(dev)) {
+		if (BEGIN_LP_RING(2) == 0) {
+			OUT_RING(MI_FLUSH | MI_NO_WRITE_FLUSH | MI_INVALIDATE_ISP);
+			OUT_RING(MI_NOOP);
+			ADVANCE_LP_RING();
+		}
+	}
+
+	i915_emit_breadcrumb(dev);
 	return 0;
 }
 
