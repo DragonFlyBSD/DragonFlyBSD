@@ -14,12 +14,13 @@
 #define RCVBUF_SIZE	(256 * 1024)
 #define BUFLEN		2048
 
-static void	mainloop(struct sockaddr_in *, int, int);
+static void	mainloop(struct sockaddr_in *, int, int, int);
 
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s -4 addr4 -p port [-i ninst] [-r rcvbuf]\n", cmd);
+	fprintf(stderr, "%s -4 addr4 -p port [-i ninst] [-r rcvbuf] [-N]\n",
+	    cmd);
 	exit(2);
 }
 
@@ -27,15 +28,16 @@ int
 main(int argc, char *argv[])
 {
 	struct sockaddr_in in;
-	int opt, ninst, i, s, rcvbuf;
+	int opt, ninst, i, s, rcvbuf, noreply;
 
 	memset(&in, 0, sizeof(in));
 	in.sin_family = AF_INET;
 
+	noreply = 0;
 	ninst = 1;
 	rcvbuf = RCVBUF_SIZE;
 
-	while ((opt = getopt(argc, argv, "4:p:i:r:")) != -1) {
+	while ((opt = getopt(argc, argv, "4:p:i:r:N")) != -1) {
 		switch (opt) {
 		case '4':
 			if (inet_pton(AF_INET, optarg, &in.sin_addr) <= 0)
@@ -56,6 +58,10 @@ main(int argc, char *argv[])
 			rcvbuf *= 1024;
 			break;
 
+		case 'N':
+			noreply = 1;
+			break;
+
 		default:
 			usage(argv[0]);
 		}
@@ -71,17 +77,17 @@ main(int argc, char *argv[])
 
 		pid = fork();
 		if (pid == 0)
-			mainloop(&in, s, rcvbuf);
+			mainloop(&in, s, rcvbuf, noreply);
 		else if (pid < 0)
 			err(1, "fork %d failed", i);
 	}
 
-	mainloop(&in, s, rcvbuf);
+	mainloop(&in, s, rcvbuf, noreply);
 	exit(0);
 }
 
 static void
-mainloop(struct sockaddr_in *in, int s, int rcvbuf)
+mainloop(struct sockaddr_in *in, int s, int rcvbuf, int noreply)
 {
 	int on;
 	void *buf;
@@ -114,7 +120,7 @@ mainloop(struct sockaddr_in *in, int s, int rcvbuf)
 		cli_len = sizeof(cli);
 		n = recvfrom(s, buf, BUFLEN, 0,
 		    (struct sockaddr *)&cli, &cli_len);
-		if (n > 0) {
+		if (n > 0 && !noreply) {
 			sendto(s, buf, n, 0,
 			   (const struct sockaddr *)&cli, cli_len);
 		}
