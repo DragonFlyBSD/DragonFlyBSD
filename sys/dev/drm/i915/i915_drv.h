@@ -1381,15 +1381,16 @@ int i915_gem_object_pin(struct drm_i915_gem_object *obj, uint32_t alignment,
 void i915_gem_object_unpin(struct drm_i915_gem_object *obj);
 int i915_gem_object_unbind(struct drm_i915_gem_object *obj);
 void i915_gem_lastclose(struct drm_device *dev);
-uint32_t i915_get_gem_seqno(struct drm_device *dev);
 
-static inline void
+static inline bool
 i915_gem_object_pin_fence(struct drm_i915_gem_object *obj)
 {
 	if (obj->fence_reg != I915_FENCE_REG_NONE) {
 		struct drm_i915_private *dev_priv = obj->base.dev->dev_private;
 		dev_priv->fence_regs[obj->fence_reg].pin_count++;
-	}
+		return true;
+	} else
+		return false;
 }
 
 static inline void
@@ -1465,6 +1466,38 @@ int i915_gem_mmap_gtt(struct drm_file *file_priv, struct drm_device *dev,
 int i915_gem_dumb_destroy(struct drm_file *file_priv, struct drm_device *dev,
      uint32_t handle);
 
+/* i915_gem_context.c */
+void i915_gem_context_init(struct drm_device *dev);
+
+/* i915_gem_gtt.c */
+int i915_gem_init_aliasing_ppgtt(struct drm_device *dev);
+void i915_gem_cleanup_aliasing_ppgtt(struct drm_device *dev);
+void i915_ppgtt_bind_object(struct i915_hw_ppgtt *ppgtt,
+    struct drm_i915_gem_object *obj, enum i915_cache_level cache_level);
+void i915_ppgtt_unbind_object(struct i915_hw_ppgtt *ppgtt,
+    struct drm_i915_gem_object *obj);
+
+void i915_gem_restore_gtt_mappings(struct drm_device *dev);
+void i915_gem_gtt_bind_object(struct drm_i915_gem_object *obj,
+				enum i915_cache_level cache_level);
+void i915_gem_gtt_unbind_object(struct drm_i915_gem_object *obj);
+void i915_gem_gtt_finish_object(struct drm_i915_gem_object *obj);
+
+static inline void i915_gem_chipset_flush(struct drm_device *dev)
+{
+	if (INTEL_INFO(dev)->gen < 6)
+		intel_gtt_chipset_flush();
+}
+
+
+/* i915_gem_evict.c */
+int __must_check i915_gem_evict_something(struct drm_device *dev, int min_size,
+					  unsigned alignment,
+					  unsigned cache_level,
+					  bool mappable,
+					  bool nonblock);
+int i915_gem_evict_everything(struct drm_device *dev);
+
 /* i915_gem_tiling.c */
 void i915_gem_detect_bit_6_swizzle(struct drm_device *dev);
 void i915_gem_object_do_bit_17_swizzle(struct drm_i915_gem_object *obj);
@@ -1476,14 +1509,6 @@ int i915_verify_lists(struct drm_device *dev);
 #else
 #define i915_verify_lists(dev) 0
 #endif
-
-/* i915_gem_evict.c */
-int __must_check i915_gem_evict_something(struct drm_device *dev, int min_size,
-					  unsigned alignment,
-					  unsigned cache_level,
-					  bool mappable,
-					  bool nonblock);
-int i915_gem_evict_everything(struct drm_device *dev);
 
 /* i915_suspend.c */
 extern int i915_save_state(struct drm_device *dev);
@@ -1509,23 +1534,6 @@ static inline bool intel_gmbus_is_forced_bit(struct device *adapter)
 	return sc->force_bit_dev;
 }
 extern void intel_iic_reset(struct drm_device *dev);
-
-/* i915_gem_context.c */
-void i915_gem_context_init(struct drm_device *dev);
-
-/* i915_gem_gtt.c */
-int i915_gem_init_aliasing_ppgtt(struct drm_device *dev);
-void i915_gem_cleanup_aliasing_ppgtt(struct drm_device *dev);
-void i915_ppgtt_bind_object(struct i915_hw_ppgtt *ppgtt,
-    struct drm_i915_gem_object *obj, enum i915_cache_level cache_level);
-void i915_ppgtt_unbind_object(struct i915_hw_ppgtt *ppgtt,
-    struct drm_i915_gem_object *obj);
-
-void i915_gem_restore_gtt_mappings(struct drm_device *dev);
-void i915_gem_gtt_bind_object(struct drm_i915_gem_object *obj,
-				enum i915_cache_level cache_level);
-void i915_gem_gtt_unbind_object(struct drm_i915_gem_object *obj);
-void i915_gem_gtt_finish_object(struct drm_i915_gem_object *obj);
 
 /* intel_opregion.c */
 extern int intel_opregion_setup(struct drm_device *dev);

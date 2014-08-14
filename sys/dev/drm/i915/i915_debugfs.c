@@ -1559,8 +1559,6 @@ i915_info_sysctl_handler(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-extern int i915_gem_sync_exec_requests;
-extern int i915_fix_mi_batchbuffer_end;
 extern int i915_intr_pf;
 extern long i915_gem_wired_pages_cnt;
 
@@ -1604,14 +1602,6 @@ i915_sysctl_init(struct drm_device *dev, struct sysctl_ctx_list *ctx,
 	oid = SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(top), OID_AUTO,
 	    "cache_sharing", CTLTYPE_INT | CTLFLAG_RW, dev,
 	    0, i915_cache_sharing, "I", NULL);
-	if (oid == NULL)
-		return (ENOMEM);
-	oid = SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(top), OID_AUTO, "sync_exec",
-	    CTLFLAG_RW, &i915_gem_sync_exec_requests, 0, NULL);
-	if (oid == NULL)
-		return (ENOMEM);
-	oid = SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(top), OID_AUTO, "fix_mi",
-	    CTLFLAG_RW, &i915_fix_mi_batchbuffer_end, 0, NULL);
 	if (oid == NULL)
 		return (ENOMEM);
 	oid = SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(top), OID_AUTO, "intr_pf",
