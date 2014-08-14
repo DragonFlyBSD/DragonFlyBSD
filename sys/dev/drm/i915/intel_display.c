@@ -7578,6 +7578,12 @@ static bool intel_encoder_crtc_ok(struct drm_encoder *encoder,
 	int crtc_mask = 1;
 
 	WARN(!crtc, "checking null crtc?\n");
+	/* profmakx: this is to prevent the kernel from panicing
+         */
+	if(!crtc) {
+		return false;
+	}
+
 
 	dev = crtc->dev;
 
@@ -9377,7 +9383,9 @@ void intel_modeset_gem_init(struct drm_device *dev)
 
 	intel_setup_overlay(dev);
 
+	lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
 	intel_modeset_setup_hw_state(dev, false);
+	lockmgr(&dev->mode_config.mutex, LK_RELEASE);
 }
 
 void intel_modeset_cleanup(struct drm_device *dev)
