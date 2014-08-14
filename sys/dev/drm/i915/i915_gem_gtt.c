@@ -20,15 +20,14 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- * $FreeBSD: src/sys/dev/drm2/i915/i915_gem_gtt.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
-
-#include <sys/sfbuf.h>
 
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include "intel_drv.h"
+
+#include <linux/highmem.h>
 
 typedef uint32_t gtt_pte_t;
 
@@ -85,26 +84,24 @@ static void i915_ppgtt_clear_range(struct i915_hw_ppgtt *ppgtt,
 {
 	gtt_pte_t *pt_vaddr;
 	gtt_pte_t scratch_pte;
-	struct sf_buf *sf;
 	unsigned act_pd = first_entry / I915_PPGTT_PT_ENTRIES;
 	unsigned first_pte = first_entry % I915_PPGTT_PT_ENTRIES;
 	unsigned last_pte, i;
 
-	scratch_pte = GEN6_GTT_ADDR_ENCODE(ppgtt->scratch_page_dma_addr);
-	scratch_pte |= GEN6_PTE_VALID | GEN6_PTE_CACHE_LLC;
+	scratch_pte = pte_encode(ppgtt->dev, ppgtt->scratch_page_dma_addr,
+				 I915_CACHE_LLC);
 
 	while (num_entries) {
 		last_pte = first_pte + num_entries;
 		if (last_pte > I915_PPGTT_PT_ENTRIES)
 			last_pte = I915_PPGTT_PT_ENTRIES;
 
-		sf = sf_buf_alloc(ppgtt->pt_pages[act_pd]);
-		pt_vaddr = (uint32_t *)(uintptr_t)sf_buf_kva(sf);
+		pt_vaddr = kmap_atomic(ppgtt->pt_pages[act_pd]);
 
 		for (i = first_pte; i < last_pte; i++)
 			pt_vaddr[i] = scratch_pte;
 
-		sf_buf_free(sf);
+		kunmap_atomic(pt_vaddr);
 
 		num_entries -= last_pte - first_pte;
 		first_pte = 0;
@@ -127,6 +124,7 @@ int i915_gem_init_aliasing_ppgtt(struct drm_device *dev)
 
 	ppgtt = kmalloc(sizeof(*ppgtt), DRM_I915_GEM, M_WAITOK | M_ZERO);
 
+	ppgtt->dev = dev;
 	ppgtt->num_pd_entries = I915_PPGTT_PD_ENTRIES;
 	ppgtt->pt_pages = kmalloc(sizeof(vm_page_t) * ppgtt->num_pd_entries,
 	    DRM_I915_GEM, M_WAITOK | M_ZERO);
@@ -176,37 +174,32 @@ i915_gem_cleanup_aliasing_ppgtt(struct drm_device *dev)
 	drm_free(ppgtt, DRM_I915_GEM);
 }
 
-
 static void
 i915_ppgtt_insert_pages(struct i915_hw_ppgtt *ppgtt, unsigned first_entry,
-    unsigned num_entries, vm_page_t *pages, uint32_t pte_flags)
+    unsigned num_entries, vm_page_t *pages, enum i915_cache_level cache_level)
 {
-	uint32_t *pt_vaddr, pte;
-	struct sf_buf *sf;
-	unsigned act_pd, first_pte;
+	uint32_t *pt_vaddr;
+	unsigned act_pd = first_entry / I915_PPGTT_PT_ENTRIES;
+	unsigned first_pte = first_entry % I915_PPGTT_PT_ENTRIES;
 	unsigned last_pte, i;
-	vm_paddr_t page_addr;
-
-	act_pd = first_entry / I915_PPGTT_PT_ENTRIES;
-	first_pte = first_entry % I915_PPGTT_PT_ENTRIES;
+	dma_addr_t page_addr;
 
 	while (num_entries) {
 		last_pte = first_pte + num_entries;
 		if (last_pte > I915_PPGTT_PT_ENTRIES)
 			last_pte = I915_PPGTT_PT_ENTRIES;
 
-		sf = sf_buf_alloc(ppgtt->pt_pages[act_pd]);
-		pt_vaddr = (uint32_t *)(uintptr_t)sf_buf_kva(sf);
+		pt_vaddr = kmap_atomic(ppgtt->pt_pages[act_pd]);
 
 		for (i = first_pte; i < last_pte; i++) {
 			page_addr = VM_PAGE_TO_PHYS(*pages);
-			pte = GEN6_PTE_ADDR_ENCODE(page_addr);
-			pt_vaddr[i] = pte | pte_flags;
+			pt_vaddr[i] = pte_encode(ppgtt->dev, page_addr,
+						 cache_level);
 
 			pages++;
 		}
 
-		sf_buf_free(sf);
+		kunmap_atomic(pt_vaddr);
 
 		num_entries -= last_pte - first_pte;
 		first_pte = 0;
@@ -218,34 +211,8 @@ void i915_ppgtt_bind_object(struct i915_hw_ppgtt *ppgtt,
 			    struct drm_i915_gem_object *obj,
 			    enum i915_cache_level cache_level)
 {
-	struct drm_device *dev;
-	struct drm_i915_private *dev_priv;
-	uint32_t pte_flags;
-
-	dev = obj->base.dev;
-	dev_priv = dev->dev_private;
-	pte_flags = GEN6_PTE_VALID;
-
-	switch (cache_level) {
-	case I915_CACHE_LLC_MLC:
-		/* Haswell doesn't set L3 this way */
-		if (IS_HASWELL(obj->base.dev))
-			pte_flags |= GEN6_PTE_CACHE_LLC;
-		else
-			pte_flags |= GEN6_PTE_CACHE_LLC_MLC;
-		break;
-	case I915_CACHE_LLC:
-		pte_flags |= GEN6_PTE_CACHE_LLC;
-		break;
-	case I915_CACHE_NONE:
-		pte_flags |= GEN6_PTE_UNCACHED;
-		break;
-	default:
-		panic("cache mode");
-	}
-
 	i915_ppgtt_insert_pages(ppgtt, obj->gtt_space->start >> PAGE_SHIFT,
-	    obj->base.size >> PAGE_SHIFT, obj->pages, pte_flags);
+	    obj->base.size >> PAGE_SHIFT, obj->pages, cache_level);
 }
 
 void i915_ppgtt_unbind_object(struct i915_hw_ppgtt *ppgtt,
