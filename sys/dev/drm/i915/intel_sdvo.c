@@ -1449,7 +1449,7 @@ intel_sdvo_get_analog_edid(struct drm_connector *connector)
 	struct drm_i915_private *dev_priv = connector->dev->dev_private;
 
 	return drm_get_edid(connector,
-			    dev_priv->gmbus[dev_priv->crt_ddc_pin]);
+			    intel_gmbus_get_adapter(dev_priv, dev_priv->crt_ddc_pin));
 }
 
 static enum drm_connector_status
