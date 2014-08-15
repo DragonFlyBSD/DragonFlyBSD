@@ -129,7 +129,8 @@ smbus_probe_device(device_t dev, u_char addr)
 
 	cmd = 0x01;
 
-	error = smbus_trans(dev, addr, cmd, SMB_TRANS_NOCNT,
+	error = smbus_trans(dev, addr, cmd,
+			    SMB_TRANS_NOCNT | SMB_TRANS_NOREPORT,
 			    NULL, 0, buf, 1, NULL);
 	if (error == 0) {
 		device_printf(dev, "Probed address 0x%02x\n", addr);

@@ -85,6 +85,7 @@
 #define SMB_TRANS_NOCNT		0x0004	/* do not tx or rx count field */
 #define SMB_TRANS_7BIT		0x0008	/* change address mode to 7-bit */
 #define SMB_TRANS_10BIT		0x0010	/* change address mode to 10-bit */
+#define SMB_TRANS_NOREPORT	0x0020	/* do not report errors */
 
 /*
  * ivars codes
