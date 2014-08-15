@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2014.07.14
-#	Date:    2014-07-14 03:15:01
+#	Version: 2014.08.10
+#	Date:    2014-08-10 03:15:01
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -3542,6 +3542,7 @@
 		1014 04c7  PCIe3 x 8 Cache SAS RAID Internal Adapter 6GB(2CCA)
 		1014 04c8  PCIe3 x 8 Cache SAS RAID Internal Adapter 6GB(2CD2)
 		1014 0c49  PCIe3 x 8 Cache SAS RAID Internal Adapter 6GB(2CCD)
+	044b  GenWQE Accelerator Adapter
 	04aa  Flash Adapter 90 (PCIe2 0.9TB)
 	3022  QLA3022 Network Adapter
 	4022  QLA3022 Network Adapter
@@ -8896,6 +8897,7 @@
 	0fe1  GK107M [GeForce GT 730M]
 	0fe2  GK107M [GeForce GT 745M]
 	0fe3  GK107M [GeForce GT 745M]
+		103c 2b16  GeForce GT 745A
 		17aa 3675  GeForce GT 745A
 	0fe4  GK107M [GeForce GT 750M]
 	0fe5  GK107 [GeForce K340 USM]
@@ -8908,6 +8910,7 @@
 	0fef  GK107GL [GRID K340]
 	0ff1  GK107 [NVS 1000]
 	0ff2  GK107GL [GRID K1]
+	0ff3  GK107GL [Quadro K420]
 	0ff5  GK107GL [GRID K1 Tesla USM]
 	0ff6  GK107GLM [Quadro K1100M]
 		103c 197b  ZBook 15
@@ -8957,6 +8960,7 @@
 	1028  GK110GL [Tesla K20m]
 	1029  GK110BGL [Tesla K40s]
 	103a  GK110GL [Quadro K6000]
+	103c  GK110GL [Quadro K5200]
 	1040  GF119 [GeForce GT 520]
 	1042  GF119 [GeForce 510]
 	1048  GF119 [GeForce 605]
@@ -9103,6 +9107,8 @@
 		1028 05e8  GeForce GT 630M
 		1028 05f4  GeForce GT 720M
 		1028 064e  GeForce 820M
+		1028 0652  GeForce 820M
+		1028 0662  GeForce 820M
 		1028 068d  GeForce 820M
 		103c 18ef  GeForce GT 630M
 		103c 18f9  GeForce GT 630M
@@ -9189,11 +9195,14 @@
 		152d 0926  GeForce 620M
 		152d 0982  GeForce GT 630M
 		152d 0983  GeForce GT 630M
+		152d 1005  GeForce GT 820M
 		152d 1012  GeForce 710M
+		152d 1019  GeForce 820M
 		152d 1030  GeForce GT 630M
 		152d 1055  GeForce 710M
 		152d 1067  GeForce GT 720M
 		152d 1072  GeForce GT 720M
+		152d 1086  GeForce 820M
 		17aa 2200  NVS 5200M
 		17aa 2213  GeForce GT 720M
 		17aa 2220  GeForce GT 720M
@@ -9304,6 +9313,7 @@
 		10de 101a  GRID K240Q
 		10de 101b  GRID K260Q
 	11b1  GK104GL [GRID K2 Tesla USM]
+	11b4  GK104GL [Quadro K4200]
 	11b6  GK104GLM [Quadro K3100M]
 	11b7  GK104GLM [Quadro K4100M]
 	11b8  GK104GLM [Quadro K5100M]
@@ -9399,6 +9409,7 @@
 		103c 2b0d  GeForce GT 710A
 		103c 2b0f  GeForce GT 710A
 		103c 2b11  GeForce GT 710A
+		103c 2b20  GeForce 810A
 		103c 2b21  GeForce GT 810A
 		103c 2b22  GeForce GT 810A
 	1296  GK208M [GeForce 825M]
@@ -9407,6 +9418,7 @@
 	12b9  GK208GLM [Quadro K610M]
 	12ba  GK208GLM [Quadro K510M]
 	1340  GM108M [GeForce 830M]
+		103c 2b2b  GeForce 830A
 	1341  GM108M [GeForce 840M]
 		17aa 3697  GeForce 840A
 		17aa 3699  GeForce 840A
@@ -9420,6 +9432,9 @@
 		17aa a125  GeForce GTX 850A
 	1392  GM107M [GeForce GTX 860M]
 	1393  GM107M [GeForce 840M]
+	13b3  GM107GLM [Quadro K2200M]
+	13ba  GM107GL [Quadro K2200]
+	13bb  GM107GL [Quadro K620]
 10df  Emulex Corporation
 	0720  OneConnect NIC (Skyhawk)
 		17aa 1056  ThinkServer OCm14102-UX-L AnyFabric
@@ -9879,6 +9894,7 @@
 	0620  RocketRAID 620 2 Port SATA-III Controller
 	0622  RocketRAID 622 2 Port SATA-III Controller
 	0640  RocketRAID 640 4 Port SATA-III Controller
+	0644  RocketRAID 644 4 Port SATA-III Controller (eSATA)
 	1720  RocketRAID 1720 (2x SATA II RAID Controller)
 	1740  RocketRAID 1740
 	1742  RocketRAID 1742
@@ -13598,6 +13614,8 @@
 	0204  GPS170PCI GPS Receiver
 	0205  GPS170PEX GPS Receiver (PCI Express)
 	0206  GPS180PEX GPS Receiver (PCI Express)
+	0207  GLN180PEX GPS/GLONASS receiver (PCI Express)
+	0208  GPS180AMC GPS Receiver (PCI Express / MicroTCA / AdvancedMC)
 	0301  TCR510PCI IRIG Timecode Reader
 	0302  TCR167PCI IRIG Timecode Reader
 	0303  TCR511PCI IRIG Timecode Reader
@@ -13998,6 +14016,7 @@
 		1043 838e  Virtuoso 66 (Xonar DS)
 		1043 8428  Virtuoso 100 (Xonar Xense)
 		1043 8467  CMI8786 (Xonar DG)
+		1043 85f4  Virtuoso 100 (Xonar Essence STX II)
 		13f6 8782  PCI 2.0 HD Audio
 		13f6 ffff  CMI8787-HG2PCI
 		14c3 1710  HiFier Fantasia
@@ -15476,6 +15495,8 @@
 	4365  BCM43142 802.11b/g/n
 		1028 0016  Wireless 1704 802.11n + BT 4.0
 	43a0  BCM4360 802.11ac Wireless Network Adapter
+	43a9  BCM43217 802.11b/g/n
+	43aa  BCM43131 802.11b/g/n
 	43b1  BCM4352 802.11ac Wireless Network Adapter
 	4401  BCM4401 100Base-T
 		1025 0035  TravelMate 660
@@ -16692,6 +16713,7 @@
 16b4  Aspex Semiconductor Ltd
 16b8  Sonnet Technologies, Inc.
 16be  Creatix Polymedia GmbH
+16c3  Synopsys, Inc.
 16c6  Micrel-Kendin
 	8695  Centaur KS8695 ARM processor
 	8842  KSZ8842-PMQL 2-Port Ethernet Switch
@@ -23908,6 +23930,167 @@
 	65f9  5100 Chipset PCI Express x8 Port 6-7
 	65fa  5100 Chipset PCI Express x16 Port 4-7
 	65ff  5100 Chipset DMA Engine
+	6f00  Broadwell DMI2
+	6f01  Broadwell PCI Express Root Port 0
+	6f02  Broadwell PCI Express Root Port 1
+	6f03  Broadwell PCI Express Root Port 1
+	6f04  Broadwell PCI Express Root Port 2
+	6f05  Broadwell PCI Express Root Port 2
+	6f06  Broadwell PCI Express Root Port 2
+	6f07  Broadwell PCI Express Root Port 2
+	6f08  Broadwell PCI Express Root Port 3
+	6f09  Broadwell PCI Express Root Port 3
+	6f0a  Broadwell PCI Express Root Port 3
+	6f0b  Broadwell PCI Express Root Port 3
+	6f10  Broadwell IIO Debug
+	6f11  Broadwell IIO Debug
+	6f12  Broadwell IIO Debug
+	6f13  Broadwell IIO Debug
+	6f14  Broadwell IIO Debug
+	6f15  Broadwell IIO Debug
+	6f16  Broadwell IIO Debug
+	6f17  Broadwell IIO Debug
+	6f18  Broadwell IIO Debug
+	6f19  Broadwell IIO Debug
+	6f1a  Broadwell IIO Debug
+	6f1b  Broadwell IIO Debug
+	6f1c  Broadwell IIO Debug
+	6f1d  Broadwell R2PCIe Agent
+	6f1e  Broadwell Ubox
+	6f1f  Broadwell Ubox
+	6f20  Broadwell-DE Crystal Beach DMA Channel 0
+	6f21  Broadwell-DE Crystal Beach DMA Channel 1
+	6f22  Broadwell-DE Crystal Beach DMA Channel 2
+	6f23  Broadwell-DE Crystal Beach DMA Channel 3
+	6f24  Broadwell-DE Crystal Beach DMA Channel 4
+	6f25  Broadwell-DE Crystal Beach DMA Channel 5
+	6f26  Broadwell-DE Crystal Beach DMA Channel 6
+	6f27  Broadwell-DE Crystal Beach DMA Channel 7
+	6f28  Broadwell Adress Map/VTd_Misc/System Management
+	6f29  Broadwell IIO Hot Plug
+	6f2a  Broadwell IIO RAS/Control Status/Global Errors
+	6f2c  Broadwell I/O APIC
+	6f30  Broadwell Home Agent 0
+	6f32  Broadwell QPI Link 0
+	6f33  Broadwell QPI Link 1
+	6f34  Broadwell R2PCIe Agent
+	6f36  Broadwell R3 QPI Link 0/1
+	6f37  Broadwell R3 QPI Link 0/1
+	6f38  Broadwell Home Agent 1
+	6f39  Broadwell IO Performance Monitoring
+	6f3a  Broadwell QPI Link 2
+	6f3e  Broadwell R3 QPI Link 2
+	6f3f  Broadwell R3 QPI Link 2
+	6f40  Broadwell QPI Link 2
+	6f41  Broadwell R3 QPI Link 2
+	6f43  Broadwell QPI Link 2
+	6f45  Broadwell QPI Link 2 Debug
+	6f46  Broadwell QPI Link 2 Debug
+	6f47  Broadwell QPI Link 2 Debug
+	6f60  Broadwell Home Agent 1
+	6f68  Broadwell Target Address/Thermal/RAS
+	6f6a  Broadwell Channel Target Address Decoder
+	6f6b  Broadwell Channel Target Address Decoder
+	6f6c  Broadwell Channel Target Address Decoder
+	6f6d  Broadwell Channel Target Address Decoder
+	6f6e  Broadwell DDRIO Channel 2/3 Broadcast
+	6f6f  Broadwell DDRIO Global Broadcast
+	6f70  Broadwell Home Agent 0 Debug
+	6f71  Broadwell Memory Controller 0 - Target Address/Thermal/RAS
+	6f76  Broadwell R3 QPI Link Debug
+	6f78  Broadwell Home Agent 1 Debug
+	6f79  Broadwell Target Address/Thermal/RAS
+	6f7d  Broadwell Ubox
+	6f7e  Broadwell R3 QPI Link Debug
+	6f80  Broadwell QPI Link 0
+	6f81  Broadwell R3 QPI Link 0/1
+	6f83  Broadwell QPI Link 0
+	6f85  Broadwell QPI Link 0 Debug
+	6f86  Broadwell QPI Link 0 Debug
+	6f87  Broadwell QPI Link 0 Debug
+	6f88  Broadwell Power Control Unit
+	6f8a  Broadwell Power Control Unit
+	6f90  Broadwell QPI Link 1
+	6f93  Broadwell QPI Link 1
+	6f95  Broadwell QPI Link 1 Debug
+	6f96  Broadwell QPI Link 1 Debug
+	6f98  Broadwell Power Control Unit
+	6f99  Broadwell Power Control Unit
+	6f9a  Broadwell Power Control Unit
+	6f9c  Broadwell Power Control Unit
+	6fa0  Broadwell Home Agent 0
+	6fa8  Broadwell Memory Controller 0 - Target Address/Thermal/RAS
+	6faa  Broadwell Memory Controller 0 - Channel Target Address Decoder
+	6fab  Broadwell Memory Controller 0 - Channel Target Address Decoder
+	6fac  Broadwell Memory Controller 0 - Channel Target Address Decoder
+	6fad  Broadwell Memory Controller 0 - Channel Target Address Decoder
+	6fae  Broadwell DDRIO Channel 0/1 Broadcast
+	6faf  Broadwell DDRIO Global Broadcast
+	6fb0  Broadwell Memory Controller 0 - Channel 0 Thermal Control
+	6fb1  Broadwell Memory Controller 0 - Channel 1 Thermal Control
+	6fb2  Broadwell Memory Controller 0 - Channel 0 Error
+	6fb3  Broadwell Memory Controller 0 - Channel 1 Error
+	6fb4  Broadwell Memory Controller 0 - Channel 2 Thermal Control
+	6fb5  Broadwell Memory Controller 0 - Channel 3 Thermal Control
+	6fb6  Broadwell Memory Controller 0 - Channel 2 Error
+	6fb7  Broadwell Memory Controller 0 - Channel 3 Error
+	6fb8  Broadwell DDRIO Channel 2/3 Interface
+	6fb9  Broadwell DDRIO Channel 2/3 Interface
+	6fba  Broadwell DDRIO Channel 2/3 Interface
+	6fbb  Broadwell DDRIO Channel 2/3 Interface
+	6fbc  Broadwell DDRIO Channel 0/1 Interface
+	6fbd  Broadwell DDRIO Channel 0/1 Interface
+	6fbe  Broadwell DDRIO Channel 0/1 Interface
+	6fbf  Broadwell DDRIO Channel 0/1 Interface
+	6fc0  Broadwell Power Control Unit
+	6fc1  Broadwell Power Control Unit
+	6fc2  Broadwell Power Control Unit
+	6fc3  Broadwell Power Control Unit
+	6fc4  Broadwell Power Control Unit
+	6fc5  Broadwell Power Control Unit
+	6fc6  Broadwell Power Control Unit
+	6fc7  Broadwell Power Control Unit
+	6fc8  Broadwell Power Control Unit
+	6fc9  Broadwell Power Control Unit
+	6fca  Broadwell Power Control Unit
+	6fcb  Broadwell Power Control Unit
+	6fcc  Broadwell Power Control Unit
+	6fcd  Broadwell Power Control Unit
+	6fce  Broadwell Power Control Unit
+	6fcf  Broadwell Power Control Unit
+	6fd0  Broadwell Memory Controller 1 - Channel 0 Thermal Control
+	6fd1  Broadwell Memory Controller 1 - Channel 1 Thermal Control
+	6fd2  Broadwell Memory Controller 1 - Channel 0 Error
+	6fd3  Broadwell Memory Controller 1 - Channel 1 Error
+	6fd4  Broadwell Memory Controller 1 - Channel 2 Thermal Control
+	6fd5  Broadwell Memory Controller 1 - Channel 3 Thermal Control
+	6fd6  Broadwell Memory Controller 1 - Channel 2 Error
+	6fd7  Broadwell Memory Controller 1 - Channel 3 Error
+	6fe0  Broadwell Caching Agent
+	6fe1  Broadwell Caching Agent
+	6fe2  Broadwell Caching Agent
+	6fe3  Broadwell Caching Agent
+	6fe4  Broadwell Caching Agent
+	6fe5  Broadwell Caching Agent
+	6fe6  Broadwell Caching Agent
+	6fe7  Broadwell Caching Agent
+	6fe8  Broadwell Caching Agent
+	6fe9  Broadwell Caching Agent
+	6fea  Broadwell Caching Agent
+	6feb  Broadwell Caching Agent
+	6fec  Broadwell Caching Agent
+	6fed  Broadwell Caching Agent
+	6fee  Broadwell Caching Agent
+	6fef  Broadwell Caching Agent
+	6ff0  Broadwell Caching Agent
+	6ff1  Broadwell Caching Agent
+	6ff8  Broadwell Caching Agent
+	6ff9  Broadwell Caching Agent
+	6ffa  Broadwell Caching Agent
+	6ffb  Broadwell Caching Agent
+	6ffc  Broadwell Caching Agent
+	6ffd  Broadwell Caching Agent
+	6ffe  Broadwell Caching Agent
 	7000  82371SB PIIX3 ISA [Natoma/Triton II]
 		1af4 1100  Qemu virtual machine
 	7010  82371SB PIIX3 IDE [Natoma/Triton II]
@@ -24948,6 +25131,7 @@ d161  Digium, Inc.
 	1220  Wildcard TE220 dual-span T1/E1/J1 card 3.3V (PCI-Express) (5th gen)
 	1405  Wildcard TE405P/TE407P quad-span T1/E1/J1 card 5.0V (u1)
 	1420  Wildcard TE420 quad-span T1/E1/J1 card 3.3V (PCI-Express) (5th gen)
+	1820  Wildcard TE820 octal-span T1/E1/J1 card 3.3V (PCI-Express)
 	2400  Wildcard TDM2400P 24-port analog card
 	3400  Wildcard TC400P transcoder base card
 	8000  Wildcard TE121 single-span T1/E1/J1 card (PCI-Express)
@@ -24961,6 +25145,7 @@ d161  Digium, Inc.
 	8008  Hx8 Series 8-port Base Card (PCI-Express)
 	800a  Wildcard TE133 single-span T1/E1/J1 card (PCI Express)
 	800b  Wildcard TE134 single-span T1/E1/J1 card
+	800e  Wildcard TE435P quad-span T1/E1/J1 card 3.3V (PCI-Express)
 	b410  Wildcard B410 quad-BRI card
 d4d4  Dy4 Systems Inc
 	0601  PCI Mezzanine Card
