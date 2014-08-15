@@ -216,6 +216,7 @@ struct atmel_mxt_softc {
 	 */
 	struct mxt_rollup	core;
 	struct mxt_object	*msgprocobj;
+	struct mxt_object	*cmdprocobj;
 
 	/*
 	 * Capabilities
@@ -233,7 +234,8 @@ struct atmel_mxt_softc {
 	elopacket_t pend_rep;		/* pending reply to command */
 	int	pend_ack;		/* pending reply mode */
 
-	int	active_tick;
+	int	last_active_tick;
+	int	last_calibrate_tick;
 	int	data_signal;		/* something ready to read */
 	int	blocked;		/* someone is blocking */
 	int	reporting_mode;
@@ -252,6 +254,10 @@ typedef struct atmel_mxt_softc atmel_mxt_softc_t;
 #define REPORT_NONE		0x0000
 #define REPORT_ALL		0x0001
 
+/*
+ * Async debug variable commands are executed by the poller and will
+ * auto-clear.
+ */
 static int atmel_mxt_idle_freq = 1;
 SYSCTL_INT(_debug, OID_AUTO, atmel_mxt_idle_freq, CTLFLAG_RW,
 		&atmel_mxt_idle_freq, 0, "");
@@ -265,6 +271,17 @@ static int atmel_mxt_minpressure = 16;
 SYSCTL_INT(_debug, OID_AUTO, atmel_mxt_minpressure, CTLFLAG_RW,
 		&atmel_mxt_minpressure, 0, "");
 
+/*
+ * Run a calibration command every N seconds only when idle.  0 to disable.
+ * Default every 30 seconds.
+ */
+static int atmel_mxt_autocalibrate = 30;
+SYSCTL_INT(_debug, OID_AUTO, atmel_mxt_autocalibrate, CTLFLAG_RW,
+		&atmel_mxt_autocalibrate, 0, "");
+
+/*
+ * run a calibration on module startup.
+ */
 static int atmel_mxt_debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, atmel_mxt_debug, CTLFLAG_RW,
 		&atmel_mxt_debug, 0, "");
@@ -275,13 +292,13 @@ static int atmel_mxt_raw_input(atmel_mxt_softc_t *sc, mxt_message_t *msg);
 static struct mxt_object *mxt_findobject(struct mxt_rollup *core, int type);
 static int mxt_read_reg(atmel_mxt_softc_t *sc, uint16_t reg,
 			void *rbuf, int bytes);
-#if 0
 static int mxt_write_reg_buf(atmel_mxt_softc_t *sc, uint16_t reg,
 			void *xbuf, int bytes);
 static int mxt_write_reg(atmel_mxt_softc_t *sc, uint16_t reg, uint8_t val);
-#endif
 static int mxt_read_object(atmel_mxt_softc_t *sc, struct mxt_object *obj,
 			void *rbuf, int rbytes);
+static int mxt_write_object_off(atmel_mxt_softc_t *sc, struct mxt_object *obj,
+			int offset, uint8_t val);
 
 static
 const char *
@@ -371,18 +388,32 @@ init_device(atmel_mxt_softc_t *sc, int probe)
 			      "init_device cannot read configuration space\n");
 		goto done;
 	}
-	kprintf("COREBUF %p\n", sc->core.buf);
+	kprintf("COREBUF %p %d\n", sc->core.buf, blksize);
 	crc = obp_convert_crc((void *)((uint8_t *)sc->core.buf + blksize));
 	if (obp_crc24(sc->core.buf, blksize) != crc) {
 		device_printf(sc->dev,
 			      "init_device: configuration space "
 			      "crc mismatch %08x/%08x\n",
 			      crc, obp_crc24(sc->core.buf, blksize));
-		goto done;
+		/*goto done;*/
+	}
+	{
+		int i;
+
+		kprintf("info:   ");
+		for (i = 0; i < sizeof(sc->core.info); ++i)
+			kprintf(" %02x", sc->core.buf[i]);
+		kprintf("\nconfig: ");
+		while (i < blksize) {
+			kprintf(" %02x", sc->core.buf[i]);
+			++i;
+		}
+		kprintf("\n");
 	}
 	sc->core.objs = (void *)((uint8_t *)sc->core.buf +
 				 sizeof(sc->core.info));
 	sc->msgprocobj = mxt_findobject(&sc->core, MXT_GEN_MESSAGEPROCESSOR);
+	sc->cmdprocobj = mxt_findobject(&sc->core, MXT_GEN_COMMANDPROCESSOR);
 	if (sc->msgprocobj == NULL) {
 		device_printf(sc->dev,
 			      "init_device: cannot find msgproc config\n");
@@ -513,6 +544,8 @@ atmel_mxt_attach(device_t dev)
 	if ((sc->unit & 0x04FF) != (0x0400 | 0x04A))
 		return ENXIO;
 	sc->addr = sc->unit & 0x3FF;
+	sc->last_active_tick = ticks;
+	sc->last_calibrate_tick = ticks - atmel_mxt_autocalibrate * hz;
 
 	if (init_device(sc, 0))
 		return ENXIO;
@@ -563,6 +596,7 @@ atmel_mxt_detach(device_t dev)
 		sc->core.buf = NULL;
 	}
 	sc->msgprocobj = NULL;
+	sc->cmdprocobj = NULL;
 
 	return (0);
 }
@@ -866,12 +900,9 @@ void
 atmel_mxt_poll_thread(void *arg)
 {
 	atmel_mxt_softc_t *sc = arg;
-	device_t bus;		/* smbbus */
 	int error;
 	int freq = atmel_mxt_norm_freq;
 	int isidle = 0;
-
-	bus = device_get_parent(sc->dev);
 
 	while ((sc->poll_flags & ATMEL_POLL_SHUTDOWN) == 0) {
 		if (sc->msgprocobj)
@@ -887,6 +918,37 @@ atmel_mxt_poll_thread(void *arg)
 				isidle = atmel_mxt_raw_input(sc, &msg);
 			else
 				isidle = 1;
+		}
+
+		/*
+		 * don't let the last_active_tick or last_calibrate_tick
+		 * delta calculation overflow.
+		 */
+		if ((ticks - sc->last_active_tick) > 1000 * hz)
+			sc->last_active_tick = ticks - 1000 * hz;
+		if ((ticks - sc->last_calibrate_tick) > 1000 * hz)
+			sc->last_calibrate_tick = ticks - 1000 * hz;
+
+		/*
+		 * Automatically calibrate when the touchpad has been
+		 * idle atmel_mxt_autocalibrate seconds, and recalibrate
+		 * on the same interval while it remains idle.
+		 *
+		 * If we don't do this the touchscreen can get really out
+		 * of whack over time and basically stop functioning properly.
+		 * It's unclear why the device does not do this automatically.
+		 *
+		 * Response occurs in the message stream (which we just
+		 * ignore).
+		 */
+		if (sc->cmdprocobj && atmel_mxt_autocalibrate &&
+		    ((ticks - sc->last_calibrate_tick) >
+		     atmel_mxt_autocalibrate * hz) &&
+		    ((ticks - sc->last_active_tick) >
+		     atmel_mxt_autocalibrate * hz)) {
+			sc->last_calibrate_tick = ticks;
+			mxt_write_object_off(sc, sc->cmdprocobj,
+					 MXT_CMDPROC_CALIBRATE_OFF, 1);
 		}
 		tsleep(&sc->poll_flags, 0, "atmpol", (hz + freq - 1) / freq);
 		++sc->poll_ticks;
@@ -961,9 +1023,13 @@ atmel_mxt_raw_input(atmel_mxt_softc_t *sc, mxt_message_t *msg)
 	/*
 	 * Process message buffer.  For now ignore any messages with
 	 * reportids that we do not understand.
+	 *
+	 * note: reportid==1  typicallk acknowledges calibrations (?)
 	 */
 	if (msg->any.reportid < 3 || msg->any.reportid >= ATMEL_MAXTRACK)
 		goto done;
+
+	sc->last_active_tick = ticks;
 
 	track = &sc->track[msg->any.reportid];
 	track->x = (msg->touch.pos[0] << 4) |
@@ -1021,6 +1087,7 @@ mxt_read_reg(atmel_mxt_softc_t *sc, uint16_t reg, void *rbuf, int bytes)
 	uint8_t wreg[2];
 	device_t bus;
 	int error;
+	int rbytes;
 
 	wreg[0] = reg & 255;
 	wreg[1] = reg >> 8;
@@ -1033,13 +1100,19 @@ mxt_read_reg(atmel_mxt_softc_t *sc, uint16_t reg, void *rbuf, int bytes)
 			    SMB_TRANS_NOCMD |
 			    SMB_TRANS_7BIT,
 			    wreg, 2,
-			    rbuf, bytes, &bytes);
+			    rbuf, bytes, &rbytes);
 	smbus_release_bus(bus, sc->dev);
+
+	if (bytes != rbytes) {
+		device_printf(sc->dev,
+			      "smbus_trans reg %d short read %d/%d\n",
+			      reg, bytes, rbytes);
+		error = EINVAL;
+	}
 
 	return error;
 }
 
-#if 0
 static int
 mxt_write_reg_buf(atmel_mxt_softc_t *sc, uint16_t reg, void *xbuf, int bytes)
 {
@@ -1070,7 +1143,6 @@ mxt_write_reg(atmel_mxt_softc_t *sc, uint16_t reg, uint8_t val)
 {
 	return mxt_write_reg_buf(sc, reg, &val, 1);
 }
-#endif
 
 static int
 mxt_read_object(atmel_mxt_softc_t *sc, struct mxt_object *obj,
@@ -1082,6 +1154,16 @@ mxt_read_object(atmel_mxt_softc_t *sc, struct mxt_object *obj,
 	if (bytes > rbytes)
 		bytes = rbytes;
 	return mxt_read_reg(sc, reg, rbuf, bytes);
+}
+
+static int
+mxt_write_object_off(atmel_mxt_softc_t *sc, struct mxt_object *obj,
+		 int offset, uint8_t val)
+{
+	uint16_t reg = obj->start_pos_lsb + (obj->start_pos_msb << 8);
+
+	reg += offset;
+	return mxt_write_reg(sc, reg, val);
 }
 
 DRIVER_MODULE(atmel_mxt, smbus, atmel_mxt_driver, atmel_mxt_devclass,

@@ -474,6 +474,19 @@ typedef union mxt_message mxt_message_t;
 	{ MXTSTR(MXT_RESERVED255),		\
 	   MXT_RESERVED255		}
 
+/*
+ * MXT_GEN_COMMANDPROCESSOR object offsets.
+ */
+#define MXT_CMDPROC_RESET_OFF		0x00
+#define MXT_CMDPROC_BACKUPNV_OFF	0x01
+#define MXT_CMDPROC_CALIBRATE_OFF	0x02
+#define MXT_CMDPROC_REPORTALL_OFF	0x03
+#define MXT_CMDPROC_RESERVED04_OFF	0x04
+#define MXT_CMDPROC_DIAGNOSTIC_OFF	0x05
+
+/*
+ * device driver helper structures
+ */
 struct mxt_strinfo {
 	const char *id;
 	int	type;
@@ -483,7 +496,7 @@ struct mxt_rollup {
 	struct mxt_id_info	info;
 	struct mxt_object	*objs;
 	int			nobjs;
-	void			*buf;
+	uint8_t			*buf;
 };
 
 /*

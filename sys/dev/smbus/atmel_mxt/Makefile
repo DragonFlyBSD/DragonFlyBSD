@@ -1,6 +1,5 @@
 #
-# XXX temporarily include subr_input.c until it is
-# stable enough to just compile into the kernel.
+#
 
 .PATH: ${.CURDIR}/../../../kern
 KMOD=	atmel_mxt
