@@ -137,7 +137,7 @@ wait_status(ig4iic_softc_t *sc, uint32_t status)
 	count = sys_cputimer->count();
 	limit = sys_cputimer->freq / 40;
 
-	while (sys_cputimer->count() - count <= limit) {
+	for (;;) {
 		/*
 		 * Check requested status
 		 */
@@ -148,8 +148,8 @@ wait_status(ig4iic_softc_t *sc, uint32_t status)
 		}
 
 		/*
-		 * Shim RX_NOTEMPTY of the data was read by the
-		 * interrupt code.
+		 * When waiting for receive data break-out if the interrupt
+		 * loaded data into the FIFO.
 		 */
 		if (status & IG4_STATUS_RX_NOTEMPTY) {
 			if (sc->rpos != sc->rnext) {
@@ -159,8 +159,9 @@ wait_status(ig4iic_softc_t *sc, uint32_t status)
 		}
 
 		/*
-		 * Shim TX_EMPTY by resetting the retry timer if we
-		 * see a change in the transmit fifo level.
+		 * When waiting for the transmit FIFO to become empty,
+		 * reset the timeout if we see a change in the transmit
+		 * FIFO level as progress is being made.
 		 */
 		if (status & IG4_STATUS_TX_EMPTY) {
 			v = reg_read(sc, IG4_REG_TXFLR) & IG4_FIFOLVL_MASK;
@@ -171,8 +172,14 @@ wait_status(ig4iic_softc_t *sc, uint32_t status)
 		}
 
 		/*
-		 * The interrupt will wake us up if we are waiting for
-		 * read data, otherwise poll.
+		 * Stop if we've run out of time.
+		 */
+		if (sys_cputimer->count() - count > limit)
+			break;
+
+		/*
+		 * When waiting for receive data let the interrupt do its
+		 * work, otherwise poll with the lock held.
 		 */
 		if (status & IG4_STATUS_RX_NOTEMPTY) {
 			lksleep(sc, &sc->lk, 0, "i2cwait", (hz + 99) / 100);
@@ -180,6 +187,7 @@ wait_status(ig4iic_softc_t *sc, uint32_t status)
 			DELAY(25);
 		}
 	}
+
 	return error;
 }
 
@@ -905,10 +913,11 @@ ig4iic_intr(void *cookie)
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
 /*	reg_write(sc, IG4_REG_INTR_MASK, IG4_INTR_STOP_DET);*/
 	status = reg_read(sc, IG4_REG_I2C_STA);
-	if (status & IG4_STATUS_RX_NOTEMPTY) {
+	while (status & IG4_STATUS_RX_NOTEMPTY) {
 		sc->rbuf[sc->rnext & IG4_RBUFMASK] =
 		    (uint8_t)reg_read(sc, IG4_REG_DATA_CMD);
 		++sc->rnext;
+		status = reg_read(sc, IG4_REG_I2C_STA);
 	}
 	reg_read(sc, IG4_REG_CLR_INTR);
 	wakeup(sc);
