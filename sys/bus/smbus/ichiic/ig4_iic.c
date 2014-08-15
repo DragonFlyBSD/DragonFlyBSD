@@ -46,6 +46,7 @@
 #include <sys/mutex.h>
 #include <sys/syslog.h>
 #include <sys/bus.h>
+#include <sys/sysctl.h>
 
 #include <sys/rman.h>
 
@@ -63,6 +64,11 @@
 #define TRANS_BLOCK	3
 
 static void ig4iic_intr(void *cookie);
+static void ig4iic_dump(ig4iic_softc_t *sc);
+
+static int ig4_dump;
+SYSCTL_INT(_debug, OID_AUTO, ig4_dump, CTLTYPE_INT | CTLFLAG_RW,
+	   &ig4_dump, 0, "");
 
 /*
  * Low-level inline support functions
@@ -269,22 +275,24 @@ set_slave_addr(ig4iic_softc_t *sc, uint8_t slave, int trans_op)
  *
  * Quick:		START+ADDR+RD/WR STOP
  *
- * Normal:		START+ADDR+WR COMM DATA..DATA STOP
+ * Normal:		START+ADDR+WR CMD DATA..DATA STOP
  *
- *			START+ADDR+RD COMM
+ *			START+ADDR+RD CMD
  *			RESTART+ADDR RDATA..RDATA STOP
  *			(can also be used for I2C transactions)
  *
- * Process Call:	START+ADDR+WR COMM DATAL DATAH
+ * Process Call:	START+ADDR+WR CMD DATAL DATAH
  *			RESTART+ADDR+RD RDATAL RDATAH STOP
  *
- * Block:		START+ADDR+RD COMM
+ * Block:		START+ADDR+RD CMD
  *			RESTART+ADDR+RD RCOUNT DATA... STOP
  *
- * 			START+ADDR+WR COMM
+ * 			START+ADDR+WR CMD
  *			RESTART+ADDR+WR WCOUNT DATA... STOP
  *
- * For I2C - basically, no *COUNT fields.
+ * For I2C - basically, no *COUNT fields, possibly no *CMD field.  If the
+ *	     sender needs to issue a 2-byte command it will incorporate it
+ *	     into the write buffer and also set NOCMD.
  *
  * Generally speaking, the START+ADDR / RESTART+ADDR is handled automatically
  * by the controller at the beginning of a command sequence or on a data
@@ -295,7 +303,19 @@ smb_transaction(ig4iic_softc_t *sc, char cmd, int op,
 		char *wbuf, int wcount, char *rbuf, int rcount, int *actualp)
 {
 	int error;
+	int unit;
 	uint32_t last;
+
+	/*
+	 * Debugging - dump registers
+	 */
+	if (ig4_dump) {
+		unit = device_get_unit(sc->dev);
+		if (ig4_dump & (1 << unit)) {
+			ig4_dump &= ~(1 << unit);
+			ig4iic_dump(sc);
+		}
+	}
 
 	/*
 	 * Issue START or RESTART with next data byte, clear any previous
@@ -318,13 +338,19 @@ smb_transaction(ig4iic_softc_t *sc, char cmd, int op,
 			last |= IG4_DATA_STOP;
 		reg_write(sc, IG4_REG_DATA_CMD, last);
 		last = 0;
-
-		/*
-		 * Clean out any previously received data
-		 */
-		sc->rpos = 0;
-		sc->rnext = 0;
 	}
+
+	/*
+	 * Clean out any previously received data.
+	 */
+	if (sc->rpos != sc->rnext &&
+	    (op & SMB_TRANS_NOREPORT) == 0) {
+		device_printf(sc->dev,
+			      "discarding %d bytes of spurious data\n",
+			      sc->rnext - sc->rpos);
+	}
+	sc->rpos = 0;
+	sc->rnext = 0;
 
 	/*
 	 * If writing and not told otherwise, issue the write count (smbus).
@@ -397,8 +423,14 @@ smb_transaction(ig4iic_softc_t *sc, char cmd, int op,
 							last);
 		}
 		error = wait_status(sc, IG4_STATUS_RX_NOTEMPTY);
-		if (error)
+		if (error) {
+			if ((op & SMB_TRANS_NOREPORT) == 0) {
+				device_printf(sc->dev,
+					      "rx timeout addr 0x%02x\n",
+					      sc->last_slave);
+			}
 			goto done;
+		}
 		last = data_read(sc);
 
 		if (op & SMB_TRANS_NOCNT) {
@@ -443,24 +475,38 @@ ig4iic_attach(ig4iic_softc_t *sc)
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
 
 	v = reg_read(sc, IG4_REG_COMP_TYPE);
-	kprintf("type %08x\n", v);
+	kprintf("type %08x", v);
 	v = reg_read(sc, IG4_REG_COMP_PARAM1);
-	kprintf("params %08x\n", v);
+	kprintf(" params %08x", v);
+	v = reg_read(sc, IG4_REG_GENERAL);
+	kprintf(" general %08x", v);
+	if ((v & IG4_GENERAL_SWMODE) == 0) {
+		v |= IG4_GENERAL_SWMODE;
+		reg_write(sc, IG4_REG_GENERAL, v);
+		v = reg_read(sc, IG4_REG_GENERAL);
+		kprintf(" (updated %08x)", v);
+	}
+
+	v = reg_read(sc, IG4_REG_SW_LTR_VALUE);
+	kprintf(" swltr %08x", v);
+	v = reg_read(sc, IG4_REG_AUTO_LTR_VALUE);
+	kprintf(" autoltr %08x", v);
+
 	v = reg_read(sc, IG4_REG_COMP_VER);
-	kprintf("version %08x\n", v);
+	kprintf(" version %08x\n", v);
 	if (v != IG4_COMP_VER) {
 		error = ENXIO;
 		goto done;
 	}
 #if 1
 	v = reg_read(sc, IG4_REG_SS_SCL_HCNT);
-	kprintf("SS_SCL_HCNT %08x\n", v);
+	kprintf("SS_SCL_HCNT=%08x", v);
 	v = reg_read(sc, IG4_REG_SS_SCL_LCNT);
-	kprintf("SS_SCL_LCNT %08x\n", v);
+	kprintf(" LCNT=%08x", v);
 	v = reg_read(sc, IG4_REG_FS_SCL_HCNT);
-	kprintf("FS_SCL_HCNT %08x\n", v);
+	kprintf(" FS_SCL_HCNT=%08x", v);
 	v = reg_read(sc, IG4_REG_FS_SCL_LCNT);
-	kprintf("FS_SCL_LCNT %08x\n", v);
+	kprintf(" LCNT=%08x\n", v);
 	v = reg_read(sc, IG4_REG_SDA_HOLD);
 	kprintf("HOLD        %08x\n", v);
 
@@ -868,5 +914,47 @@ ig4iic_intr(void *cookie)
 	wakeup(sc);
 	lockmgr(&sc->lk, LK_RELEASE);
 }
+
+#define REGDUMP(sc, reg)	\
+	device_printf(sc->dev, "  %-23s %08x\n", #reg, reg_read(sc, reg))
+
+static
+void
+ig4iic_dump(ig4iic_softc_t *sc)
+{
+	device_printf(sc->dev, "ig4iic register dump:\n");
+	REGDUMP(sc, IG4_REG_CTL);
+	REGDUMP(sc, IG4_REG_TAR_ADD);
+	REGDUMP(sc, IG4_REG_SS_SCL_HCNT);
+	REGDUMP(sc, IG4_REG_SS_SCL_LCNT);
+	REGDUMP(sc, IG4_REG_FS_SCL_HCNT);
+	REGDUMP(sc, IG4_REG_FS_SCL_LCNT);
+	REGDUMP(sc, IG4_REG_INTR_STAT);
+	REGDUMP(sc, IG4_REG_INTR_MASK);
+	REGDUMP(sc, IG4_REG_RAW_INTR_STAT);
+	REGDUMP(sc, IG4_REG_RX_TL);
+	REGDUMP(sc, IG4_REG_TX_TL);
+	REGDUMP(sc, IG4_REG_I2C_EN);
+	REGDUMP(sc, IG4_REG_I2C_STA);
+	REGDUMP(sc, IG4_REG_TXFLR);
+	REGDUMP(sc, IG4_REG_RXFLR);
+	REGDUMP(sc, IG4_REG_SDA_HOLD);
+	REGDUMP(sc, IG4_REG_TX_ABRT_SOURCE);
+	REGDUMP(sc, IG4_REG_SLV_DATA_NACK);
+	REGDUMP(sc, IG4_REG_DMA_CTRL);
+	REGDUMP(sc, IG4_REG_DMA_TDLR);
+	REGDUMP(sc, IG4_REG_DMA_RDLR);
+	REGDUMP(sc, IG4_REG_SDA_SETUP);
+	REGDUMP(sc, IG4_REG_ENABLE_STATUS);
+	REGDUMP(sc, IG4_REG_COMP_PARAM1);
+	REGDUMP(sc, IG4_REG_COMP_VER);
+	REGDUMP(sc, IG4_REG_COMP_TYPE);
+	REGDUMP(sc, IG4_REG_CLK_PARMS);
+	REGDUMP(sc, IG4_REG_RESETS);
+	REGDUMP(sc, IG4_REG_GENERAL);
+	REGDUMP(sc, IG4_REG_SW_LTR_VALUE);
+	REGDUMP(sc, IG4_REG_AUTO_LTR_VALUE);
+}
+#undef REGDUMP
 
 DRIVER_MODULE(smbus, ig4iic, smbus_driver, smbus_devclass, NULL, NULL);
