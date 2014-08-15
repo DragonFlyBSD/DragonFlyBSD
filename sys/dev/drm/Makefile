@@ -1,6 +1,8 @@
-# $DragonFly: src/sys/dev/drm/Makefile,v 1.3 2008/04/05 18:12:28 hasso Exp $
+SUBDIR = drm mach64 mga r128 radeon radeonfw savage sis tdfx
 
-SUBDIR = drm mach64 mga r128 radeon radeonfw savage sis tdfx i915
+.if ${MACHINE_ARCH} == "x86_64"
+SUBDIR+= i915
+.endif
 
 .include <bsd.obj.mk>
 
