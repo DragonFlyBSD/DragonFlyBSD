@@ -563,6 +563,7 @@ struct ath_softc {
 	ath_bufhead		sc_rx_rxlist[HAL_NUM_RX_QUEUES];	/* deferred RX completion */
 	struct ath_tx_methods	sc_tx;
 	struct ath_tx_edma_fifo	sc_txedma[HAL_NUM_TX_QUEUES];
+	enum { ATH_RXFIFO_RESET, ATH_RXFIFO_OK } sc_rxfifo_state;
 
 	/*
 	 * This is (currently) protected by the TX queue lock;

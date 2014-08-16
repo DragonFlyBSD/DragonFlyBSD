@@ -67,6 +67,7 @@
 #include <sys/priv.h>
 #include <sys/module.h>
 #include <sys/ktr.h>
+#include <machine/pmap.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -146,7 +147,7 @@ static	int ath_edma_rxfifo_alloc(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 	    int nbufs);
 static	int ath_edma_rxfifo_flush(struct ath_softc *sc, HAL_RX_QUEUE qtype);
 static	void ath_edma_rxbuf_free(struct ath_softc *sc, struct ath_buf *bf);
-static	void ath_edma_recv_proc_queue(struct ath_softc *sc,
+static	int ath_edma_recv_proc_queue(struct ath_softc *sc,
 	    HAL_RX_QUEUE qtype, int dosched);
 static	int ath_edma_recv_proc_deferred_queue(struct ath_softc *sc,
 	    HAL_RX_QUEUE qtype, int dosched);
@@ -213,6 +214,20 @@ ath_edma_reinit_fifo(struct ath_softc *sc, HAL_RX_QUEUE qtype)
 	}
 }
 
+static void
+ath_edma_handle_rxfifo_reset(struct ath_softc *sc)
+{
+	if (sc->sc_rxfifo_state == ATH_RXFIFO_RESET) {
+		DPRINTF(sc, ATH_DEBUG_EDMA_RX,
+		    "%s: Re-initing HP FIFO\n", __func__);
+		ath_edma_reinit_fifo(sc, HAL_RX_QUEUE_HP);
+		DPRINTF(sc, ATH_DEBUG_EDMA_RX,
+		    "%s: Re-initing LP FIFO\n", __func__);
+		ath_edma_reinit_fifo(sc, HAL_RX_QUEUE_LP);
+		sc->sc_rxfifo_state = ATH_RXFIFO_OK;
+	}
+}
+
 /*
  * Start receive.
  *
@@ -229,34 +244,7 @@ ath_edma_startrecv(struct ath_softc *sc)
 
 	/* Enable RX FIFO */
 	ath_hal_rxena(ah);
-
-	/*
-	 * Entries should only be written out if the
-	 * FIFO is empty.
-	 *
-	 * XXX This isn't correct. I should be looking
-	 * at the value of AR_RXDP_SIZE (0x0070) to determine
-	 * how many entries are in here.
-	 *
-	 * A warm reset will clear the registers but not the FIFO.
-	 *
-	 * And I believe this is actually the address of the last
-	 * handled buffer rather than the current FIFO pointer.
-	 * So if no frames have been (yet) seen, we'll reinit the
-	 * FIFO.
-	 *
-	 * I'll chase that up at some point.
-	 */
-	if (ath_hal_getrxbuf(sc->sc_ah, HAL_RX_QUEUE_HP) == 0) {
-		DPRINTF(sc, ATH_DEBUG_EDMA_RX,
-		    "%s: Re-initing HP FIFO\n", __func__);
-		ath_edma_reinit_fifo(sc, HAL_RX_QUEUE_HP);
-	}
-	if (ath_hal_getrxbuf(sc->sc_ah, HAL_RX_QUEUE_LP) == 0) {
-		DPRINTF(sc, ATH_DEBUG_EDMA_RX,
-		    "%s: Re-initing LP FIFO\n", __func__);
-		ath_edma_reinit_fifo(sc, HAL_RX_QUEUE_LP);
-	}
+	ath_edma_handle_rxfifo_reset(sc);
 
 	/* Add up to m_fifolen entries in each queue */
 	/*
@@ -283,6 +271,8 @@ ath_edma_recv_sched_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
     int dosched)
 {
 	ath_power_set_power_state(sc, HAL_PM_AWAKE);
+	if (dosched)
+		ath_edma_handle_rxfifo_reset(sc);
 	ath_edma_recv_proc_queue(sc, qtype, dosched);
 	ath_power_restore_power_state(sc);
 
@@ -293,6 +283,8 @@ static void
 ath_edma_recv_sched(struct ath_softc *sc, int dosched)
 {
 	ath_power_set_power_state(sc, HAL_PM_AWAKE);
+	if (dosched)
+		ath_edma_handle_rxfifo_reset(sc);
 	ath_edma_recv_proc_queue(sc, HAL_RX_QUEUE_HP, dosched);
 	ath_edma_recv_proc_queue(sc, HAL_RX_QUEUE_LP, dosched);
 	ath_power_restore_power_state(sc);
@@ -339,7 +331,7 @@ ath_edma_recv_flush(struct ath_softc *sc)
 /*
  * Process frames from the current queue into the deferred queue.
  */
-static void
+static int
 ath_edma_recv_proc_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
     int dosched)
 {
@@ -352,6 +344,7 @@ ath_edma_recv_proc_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 	uint64_t tsf;
 	uint16_t nf;
 	int npkts = 0;
+	int n = 0;
 
 	tsf = ath_hal_gettsf64(ah);
 	nf = ath_hal_getchannoise(ah, sc->sc_curchan);
@@ -375,8 +368,9 @@ ath_edma_recv_proc_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 		 * Sync descriptor memory - this also syncs the buffer for us.
 		 * EDMA descriptors are in cached memory.
 		 */
+		cpu_lfence();
 		bus_dmamap_sync(sc->sc_dmat, bf->bf_dmamap,
-		    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
+				BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
 		rs = &bf->bf_status.ds_rxstat;
 		bf->bf_rxstatus = ath_hal_rxprocdesc(ah, ds, bf->bf_daddr,
 		    NULL, rs);
@@ -421,8 +415,9 @@ ath_edma_recv_proc_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 	} while (re->m_fifo_depth > 0);
 
 	/* Append some more fresh frames to the FIFO */
+	/* (kick already handled when dosched != 0) */
 	if (dosched)
-		ath_edma_rxfifo_alloc(sc, qtype, re->m_fifolen);
+		n = ath_edma_rxfifo_alloc(sc, qtype, re->m_fifolen);
 
 	ATH_RX_UNLOCK(sc);
 
@@ -433,25 +428,7 @@ ath_edma_recv_proc_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 	    "ath edma rx proc: npkts=%d\n",
 	    npkts);
 
-	/* Handle resched and kickpcu appropriately */
-	ATH_PCU_LOCK(sc);
-	if (dosched && sc->sc_kickpcu) {
-		ATH_KTR(sc, ATH_KTR_ERROR, 0,
-		    "ath_edma_recv_proc_queue(): kickpcu");
-		if (npkts > 0)
-			device_printf(sc->sc_dev,
-			    "%s: handled npkts %d\n",
-			    __func__, npkts);
-
-		/*
-		 * XXX TODO: what should occur here? Just re-poke and
-		 * re-enable the RX FIFO?
-		 */
-		sc->sc_kickpcu = 0;
-	}
-	ATH_PCU_UNLOCK(sc);
-
-	return;
+	return n;
 }
 
 /*
@@ -551,6 +528,8 @@ ath_edma_recv_tasklet(void *arg, int npending)
 #ifdef	IEEE80211_SUPPORT_SUPERG
 	struct ieee80211com *ic = ifp->if_l2com;
 #endif
+	int n1;
+	int n2;
 
 	DPRINTF(sc, ATH_DEBUG_EDMA_RX, "%s: called; npending=%d\n",
 	    __func__,
@@ -570,11 +549,23 @@ ath_edma_recv_tasklet(void *arg, int npending)
 
 	ath_power_set_power_state(sc, HAL_PM_AWAKE);
 
-	ath_edma_recv_proc_queue(sc, HAL_RX_QUEUE_HP, 1);
-	ath_edma_recv_proc_queue(sc, HAL_RX_QUEUE_LP, 1);
+	ath_edma_handle_rxfifo_reset(sc);
+	n1 = ath_edma_recv_proc_queue(sc, HAL_RX_QUEUE_HP, 1);
+	n2 = ath_edma_recv_proc_queue(sc, HAL_RX_QUEUE_LP, 1);
 
 	ath_edma_recv_proc_deferred_queue(sc, HAL_RX_QUEUE_HP, 1);
 	ath_edma_recv_proc_deferred_queue(sc, HAL_RX_QUEUE_LP, 1);
+
+	/* Handle resched and kickpcu appropriately */
+	ATH_PCU_LOCK(sc);
+	if (sc->sc_kickpcu) {
+		kprintf("k(%d,%d)", n1, n2);
+		sc->sc_kickpcu = 0;
+		/* reload imask XXX */
+		if (n1 || n2)
+			ath_hal_intrset(sc->sc_ah, sc->sc_imask);
+	}
+	ATH_PCU_UNLOCK(sc);
 
 	/*
 	 * XXX: If we read the tsf/channoise here and then pass it in,
@@ -640,6 +631,7 @@ ath_edma_rxbuf_init(struct ath_softc *sc, struct ath_buf *bf)
 	/*
 	 * Populate ath_buf fields.
 	 */
+	KKASSERT(m->m_len >= sc->sc_rx_statuslen);
 	bf->bf_desc = mtod(m, struct ath_desc *);
 	bf->bf_lastds = bf->bf_desc;	/* XXX only really for TX? */
 	bf->bf_m = m;
@@ -680,7 +672,7 @@ ath_edma_rxbuf_init(struct ath_softc *sc, struct ath_buf *bf)
 	 * to occur.
 	 */
 	bus_dmamap_sync(sc->sc_dmat, bf->bf_dmamap,
-	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+			BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
 	/* Finish! */
 	return (0);
@@ -762,7 +754,7 @@ ath_edma_rxfifo_alloc(struct ath_softc *sc, HAL_RX_QUEUE qtype, int nbufs)
 	/*
 	 * Allocate buffers until the FIFO is full or nbufs is reached.
 	 */
-	for (i = 0; i < nbufs && re->m_fifo_depth < re->m_fifolen; i++) {
+	for (i = 0; i < nbufs && re->m_fifo_depth < re->m_fifolen - 1; i++) {
 		/* Ensure the FIFO is already blank, complain loudly! */
 		if (re->m_fifo[re->m_fifo_tail] != NULL) {
 			device_printf(sc->sc_dev,

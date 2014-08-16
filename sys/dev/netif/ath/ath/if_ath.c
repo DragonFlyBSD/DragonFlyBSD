@@ -479,6 +479,8 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 		device_get_unit(sc->sc_dev));
 	CURVNET_RESTORE();
 
+	sc->sc_rxfifo_state = ATH_RXFIFO_RESET;
+
 	/* prepare sysctl tree for use in sub modules */
 	sysctl_ctx_init(&sc->sc_sysctl_ctx);
 	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
@@ -1836,6 +1838,7 @@ ath_resume(struct ath_softc *sc)
 	ath_power_set_power_state(sc, HAL_PM_AWAKE);
 	ath_power_setpower(sc, HAL_PM_AWAKE);
 
+	sc->sc_rxfifo_state = ATH_RXFIFO_RESET;
 	ath_hal_reset(ah, sc->sc_opmode,
 	    sc->sc_curchan != NULL ? sc->sc_curchan : ic->ic_curchan,
 	    AH_FALSE, &status);
@@ -2031,7 +2034,7 @@ ath_intr(void *arg)
 #endif
 			}
 		}
-		if (status & HAL_INT_RXEOL) {
+		if ((status & HAL_INT_RXEOL) && sc->sc_kickpcu == 0) {
 			int imask;
 			ATH_KTR(sc, ATH_KTR_ERROR, 0, "ath_intr: RXEOL");
 			ATH_PCU_LOCK(sc);
@@ -2064,8 +2067,7 @@ ath_intr(void *arg)
 			 * messing up the RX descriptor chain and making the
 			 * RX desc list much shorter.
 			 */
-			if (! sc->sc_kickpcu)
-				sc->sc_rxlink = NULL;
+			sc->sc_rxlink = NULL;
 			sc->sc_kickpcu = 1;
 			ATH_PCU_UNLOCK(sc);
 			/*
@@ -2339,6 +2341,7 @@ ath_init(void *arg)
 	ath_update_chainmasks(sc, ic->ic_curchan);
 	ath_hal_setchainmasks(sc->sc_ah, sc->sc_cur_txchainmask,
 	    sc->sc_cur_rxchainmask);
+	sc->sc_rxfifo_state = ATH_RXFIFO_RESET;
 	if (!ath_hal_reset(ah, sc->sc_opmode, ic->ic_curchan, AH_FALSE, &status)) {
 		if_printf(ifp, "unable to reset hardware; hal status %u\n",
 			status);
@@ -2720,6 +2723,7 @@ ath_reset(struct ifnet *ifp, ATH_RESET_TYPE reset_type)
 	ath_update_chainmasks(sc, ic->ic_curchan);
 	ath_hal_setchainmasks(sc->sc_ah, sc->sc_cur_txchainmask,
 	    sc->sc_cur_rxchainmask);
+	sc->sc_rxfifo_state = ATH_RXFIFO_RESET;
 	if (!ath_hal_reset(ah, sc->sc_opmode, ic->ic_curchan, AH_TRUE, &status))
 		if_printf(ifp, "%s: unable to reset hardware; hal status %u\n",
 			__func__, status);
@@ -5378,6 +5382,7 @@ ath_chan_set(struct ath_softc *sc, struct ieee80211_channel *chan)
 		ath_update_chainmasks(sc, chan);
 		ath_hal_setchainmasks(sc->sc_ah, sc->sc_cur_txchainmask,
 		    sc->sc_cur_rxchainmask);
+		sc->sc_rxfifo_state = ATH_RXFIFO_RESET;
 		if (!ath_hal_reset(ah, sc->sc_opmode, chan, AH_TRUE, &status)) {
 			if_printf(ifp, "%s: unable to reset "
 			    "channel %u (%u MHz, flags 0x%x), hal status %u\n",
