@@ -31,7 +31,7 @@ SRCS+=  _once_stub.c _pthread_stubs.c _rand48.c _spinlock_stub.c \
 	raise.c readdir.c readpassphrase.c rewinddir.c \
 	sysvipc.c sysvipc_shmget.c sysvipc_shmctl.c \
 	sysvipc_shmdt.c sysvipc_shmat.c\
-	scandir.c seed48.c seekdir.c semconfig.c sysvipc_semctl.c sysvipc_semget.c sysvipc_semop.c \
+	scandir.c seed48.c seekdir.c sysvipc_semctl.c sysvipc_semget.c sysvipc_semop.c \
 	setdomainname.c sethostname.c setjmperr.c setmode.c setprogname.c \
 	setproctitle.c \
 	siginterrupt.c siglist.c signal.c \

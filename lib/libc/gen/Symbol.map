@@ -342,7 +342,6 @@ DF306.0 {
     sem_trywait;
     sem_unlink;
     sem_wait;
-    semconfig;
     semctl;
     semget;
     semop;
