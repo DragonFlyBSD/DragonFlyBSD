@@ -1044,8 +1044,7 @@ _bus_dmamap_sync(bus_dma_tag_t dmat, bus_dmamap_t map, bus_dmasync_op_t op)
 		 * want to add support for invalidating
 		 * the caches on broken hardware
 		 */
-		switch (op) {
-		case BUS_DMASYNC_PREWRITE:
+		if (op & BUS_DMASYNC_PREWRITE) {
 			while (bpage != NULL) {
 				bcopy((void *)bpage->datavaddr,
 				      (void *)bpage->vaddr,
@@ -1053,9 +1052,8 @@ _bus_dmamap_sync(bus_dma_tag_t dmat, bus_dmamap_t map, bus_dmasync_op_t op)
 				bpage = STAILQ_NEXT(bpage, links);
 			}
 			dmat->bounce_zone->total_bounced++;
-			break;
-
-		case BUS_DMASYNC_POSTREAD:
+		}
+		if (op & BUS_DMASYNC_POSTREAD) {
 			while (bpage != NULL) {
 				bcopy((void *)bpage->vaddr,
 				      (void *)bpage->datavaddr,
@@ -1063,12 +1061,6 @@ _bus_dmamap_sync(bus_dma_tag_t dmat, bus_dmamap_t map, bus_dmasync_op_t op)
 				bpage = STAILQ_NEXT(bpage, links);
 			}
 			dmat->bounce_zone->total_bounced++;
-			break;
-
-		case BUS_DMASYNC_PREREAD:
-		case BUS_DMASYNC_POSTWRITE:
-			/* No-ops */
-			break;
 		}
 	}
 }

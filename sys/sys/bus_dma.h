@@ -112,12 +112,12 @@ struct uio;
  *
  *	Operations performed by bus_dmamap_sync().
  */
-typedef enum {
-	BUS_DMASYNC_PREREAD,
-	BUS_DMASYNC_POSTREAD,
-	BUS_DMASYNC_PREWRITE,
-	BUS_DMASYNC_POSTWRITE
-} bus_dmasync_op_t;
+typedef int bus_dmasync_op_t;
+
+#define	BUS_DMASYNC_PREREAD	0x01
+#define	BUS_DMASYNC_POSTREAD	0x02
+#define	BUS_DMASYNC_PREWRITE	0x04
+#define	BUS_DMASYNC_POSTWRITE	0x08
 
 /*
  *	bus_dma_tag_t

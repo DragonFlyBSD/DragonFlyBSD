@@ -165,7 +165,7 @@ static void		free_bounce_zone(bus_dma_tag_t);
 static int		reserve_bounce_pages(bus_dma_tag_t, bus_dmamap_t, int);
 static void		return_bounce_pages(bus_dma_tag_t, bus_dmamap_t);
 static bus_addr_t	add_bounce_page(bus_dma_tag_t, bus_dmamap_t,
-			    vm_offset_t, bus_size_t);
+			    vm_offset_t, bus_size_t *);
 static void		free_bounce_page(bus_dma_tag_t, struct bounce_page *);
 
 static bus_dmamap_t	get_map_waiting(bus_dma_tag_t);
@@ -716,11 +716,10 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 			size = buflen;
 		if (map->pagesneeded != 0 && run_filter(dmat, paddr)) {
 			/*
-			 * note: this paddr has the same in-page offset
-			 * as vaddr and thus the paddr above, so the
-			 * size does not have to be recalculated
+			 * NOTE: paddr may have different in-page offset,
+			 *	 unless BUS_DMA_KEEP_PG_OFFSET is set.
 			 */
-			paddr = add_bounce_page(dmat, map, vaddr, size);
+			paddr = add_bounce_page(dmat, map, vaddr, &size);
 		}
 
 		/*
@@ -919,6 +918,7 @@ bus_dmamap_load_mbuf_segment(bus_dma_tag_t dmat, bus_dmamap_t map,
 				 * EFBIG instead.
 				 */
 				error = EFBIG;
+				break;
 			}
 			first = 0;
 		}
@@ -1053,18 +1053,18 @@ _bus_dmamap_sync(bus_dma_tag_t dmat, bus_dmamap_t map, bus_dmasync_op_t op)
 		 * want to add support for invalidating
 		 * the caches on broken hardware
 		 */
-		switch (op) {
-		case BUS_DMASYNC_PREWRITE:
+		if (op & BUS_DMASYNC_PREWRITE) {
 			while (bpage != NULL) {
 				bcopy((void *)bpage->datavaddr,
 				      (void *)bpage->vaddr,
 				      bpage->datacount);
 				bpage = STAILQ_NEXT(bpage, links);
 			}
+			cpu_sfence();
 			dmat->bounce_zone->total_bounced++;
-			break;
-
-		case BUS_DMASYNC_POSTREAD:
+		}
+		if (op & BUS_DMASYNC_POSTREAD) {
+			cpu_lfence();
 			while (bpage != NULL) {
 				bcopy((void *)bpage->vaddr,
 				      (void *)bpage->datavaddr,
@@ -1072,13 +1072,9 @@ _bus_dmamap_sync(bus_dma_tag_t dmat, bus_dmamap_t map, bus_dmasync_op_t op)
 				bpage = STAILQ_NEXT(bpage, links);
 			}
 			dmat->bounce_zone->total_bounced++;
-			break;
-
-		case BUS_DMASYNC_PREREAD:
-		case BUS_DMASYNC_POSTWRITE:
-			/* No-ops */
-			break;
 		}
+		/* BUS_DMASYNC_PREREAD		- no operation on intel */
+		/* BUS_DMASYNC_POSTWRITE	- no operation on intel */
 	}
 }
 
@@ -1329,10 +1325,11 @@ return_bounce_pages(bus_dma_tag_t dmat, bus_dmamap_t map)
 
 static bus_addr_t
 add_bounce_page(bus_dma_tag_t dmat, bus_dmamap_t map, vm_offset_t vaddr,
-		bus_size_t size)
+		bus_size_t *sizep)
 {
 	struct bounce_zone *bz = dmat->bounce_zone;
 	struct bounce_page *bpage;
+	bus_size_t size;
 
 	KASSERT(map->pagesneeded > 0, ("map doesn't need any pages"));
 	map->pagesneeded--;
@@ -1355,9 +1352,25 @@ add_bounce_page(bus_dma_tag_t dmat, bus_dmamap_t map, vm_offset_t vaddr,
 	BZ_UNLOCK(bz);
 
 	if (dmat->flags & BUS_DMA_KEEP_PG_OFFSET) {
-		/* Page offset needs to be preserved. */
+		/*
+		 * Page offset needs to be preserved.  No size adjustments
+		 * needed.
+		 */
 		bpage->vaddr |= vaddr & PAGE_MASK;
 		bpage->busaddr |= vaddr & PAGE_MASK;
+		size = *sizep;
+	} else {
+		/*
+		 * Realign to bounce page base address, reduce size if
+		 * necessary.  Bounce pages are typically already
+		 * page-aligned.
+		 */
+		size = PAGE_SIZE - (bpage->busaddr & PAGE_MASK);
+		if (size < *sizep) {
+			*sizep = size;
+		} else {
+			size = *sizep;
+		}
 	}
 
 	bpage->datavaddr = vaddr;
