@@ -754,7 +754,7 @@ ath_edma_rxfifo_alloc(struct ath_softc *sc, HAL_RX_QUEUE qtype, int nbufs)
 	/*
 	 * Allocate buffers until the FIFO is full or nbufs is reached.
 	 */
-	for (i = 0; i < nbufs && re->m_fifo_depth < re->m_fifolen - 1; i++) {
+	for (i = 0; i < nbufs && re->m_fifo_depth < re->m_fifolen; i++) {
 		/* Ensure the FIFO is already blank, complain loudly! */
 		if (re->m_fifo[re->m_fifo_tail] != NULL) {
 			device_printf(sc->sc_dev,
