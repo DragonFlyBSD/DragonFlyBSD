@@ -24,7 +24,6 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- * $FreeBSD: src/sys/dev/drm2/i915/i915_dma.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 #include <drm/drmP.h>
@@ -35,6 +34,41 @@
 #include <linux/workqueue.h>
 
 extern struct drm_i915_private *i915_mch_dev;
+
+#define LP_RING(d) (&((struct drm_i915_private *)(d))->ring[RCS])
+
+#define BEGIN_LP_RING(n) \
+	intel_ring_begin(LP_RING(dev_priv), (n))
+
+#define OUT_RING(x) \
+	intel_ring_emit(LP_RING(dev_priv), x)
+
+#define ADVANCE_LP_RING() \
+	intel_ring_advance(LP_RING(dev_priv))
+
+/**
+ * Lock test for when it's just for synchronization of ring access.
+ *
+ * In that case, we don't need to do it when GEM is initialized as nobody else
+ * has access to the ring.
+ */
+#define RING_LOCK_TEST_WITH_RETURN(dev, file) do {			\
+	if (LP_RING(dev->dev_private)->obj == NULL)			\
+		LOCK_TEST_WITH_RETURN(dev, file);			\
+} while (0)
+
+static inline u32
+intel_read_legacy_status_page(struct drm_i915_private *dev_priv, int reg)
+{
+	if (I915_NEED_GFX_HWS(dev_priv->dev))
+		return ioread32(dev_priv->dri1.gfx_hws_cpu_addr + reg);
+	else
+		return intel_read_status_page(LP_RING(dev_priv), reg);
+}
+
+#define READ_HWSP(dev_priv, reg) intel_read_legacy_status_page(dev_priv, reg)
+#define READ_BREADCRUMB(dev_priv) READ_HWSP(dev_priv, I915_BREADCRUMB_INDEX)
+#define I915_BREADCRUMB_INDEX		0x21
 
 void i915_update_dri1_breadcrumb(struct drm_device *dev)
 {
@@ -1447,12 +1481,8 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	setup_timer(&dev_priv->hangcheck_timer, i915_hangcheck_elapsed,
 		    (unsigned long) dev);
 
-	if (IS_GEN5(dev)) {
-		lockmgr(&mchdev_lock, LK_EXCLUSIVE);
-		i915_mch_dev = dev_priv;
-		dev_priv->mchdev_lock = &mchdev_lock;
-		lockmgr(&mchdev_lock, LK_RELEASE);
-	}
+	if (IS_GEN5(dev))
+		intel_gpu_ips_init(dev_priv);
 
 	return 0;
 
@@ -1638,8 +1668,6 @@ struct drm_driver i915_driver_info = {
 	.dumb_create	= i915_gem_dumb_create,
 	.dumb_map_offset = i915_gem_mmap_gtt,
 	.dumb_destroy	= i915_gem_dumb_destroy,
-	.sysctl_init	= i915_sysctl_init,
-	.sysctl_cleanup	= i915_sysctl_cleanup,
 
 	.ioctls		= i915_ioctls,
 	.max_ioctl	= DRM_ARRAY_SIZE(i915_ioctls),

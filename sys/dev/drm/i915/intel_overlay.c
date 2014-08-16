@@ -1404,6 +1404,9 @@ void intel_cleanup_overlay(struct drm_device *dev)
 	drm_free(dev_priv->overlay, DRM_I915_GEM);
 }
 
+#ifdef CONFIG_DEBUG_FS
+#include <linux/seq_file.h>
+
 struct intel_overlay_error_state {
 	struct overlay_registers regs;
 	unsigned long base;
@@ -1500,3 +1503,4 @@ intel_overlay_print_error_state(struct sbuf *m,
 	P(UVSCALEV);
 #undef P
 }
+#endif

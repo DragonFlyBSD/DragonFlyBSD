@@ -9469,6 +9469,9 @@ int intel_modeset_vga_set_state(struct drm_device *dev, bool state)
 	return 0;
 }
 
+#ifdef CONFIG_DEBUG_FS
+#include <linux/seq_file.h>
+
 struct intel_display_error_state {
 	struct intel_cursor_error_state {
 		u32 control;
@@ -9577,3 +9580,4 @@ intel_display_print_error_state(struct sbuf *m,
 		sbuf_printf(m, "  BASE: %08x\n", error->cursor[i].base);
 	}
 }
+#endif

@@ -30,13 +30,13 @@
 #ifndef _I915_DRV_H_
 #define _I915_DRV_H_
 
-#include <sys/eventhandler.h>
-
 #include <dev/agp/intel-gtt.h>
 #include "i915_reg.h"
 #include "intel_bios.h"
 #include "intel_ringbuffer.h"
 #include <linux/completion.h>
+#include <linux/i2c.h>
+#include <linux/kref.h>
 #include <linux/workqueue.h>
 
 /* General customization:
@@ -57,7 +57,6 @@ enum i915_pipe {
 	I915_MAX_PIPES
 };
 #define pipe_name(p) ((p) + 'A')
-#define I915_NUM_PIPE	2
 
 enum transcoder {
 	TRANSCODER_A = 0,
@@ -180,26 +179,36 @@ struct sdvo_device_mapping {
 	u8 ddc_pin;
 };
 
+struct intel_display_error_state;
+
 struct drm_i915_error_state {
+	struct kref ref;
 	u32 eir;
 	u32 pgtbl_er;
 	u32 ier;
+	u32 ccid;
+	u32 derrmr;
+	u32 forcewake;
 	bool waiting[I915_NUM_RINGS];
 	u32 pipestat[I915_MAX_PIPES];
 	u32 tail[I915_NUM_RINGS];
 	u32 head[I915_NUM_RINGS];
+	u32 ctl[I915_NUM_RINGS];
 	u32 ipeir[I915_NUM_RINGS];
 	u32 ipehr[I915_NUM_RINGS];
 	u32 instdone[I915_NUM_RINGS];
 	u32 acthd[I915_NUM_RINGS];
 	u32 semaphore_mboxes[I915_NUM_RINGS][I915_NUM_RINGS - 1];
+	u32 semaphore_seqno[I915_NUM_RINGS][I915_NUM_RINGS - 1];
+	u32 rc_psmi[I915_NUM_RINGS]; /* sleep state */
 	/* our own tracking of ring head and tail */
 	u32 cpu_ring_head[I915_NUM_RINGS];
 	u32 cpu_ring_tail[I915_NUM_RINGS];
 	u32 error; /* gen6+ */
+	u32 err_int; /* gen7 */
 	u32 instpm[I915_NUM_RINGS];
 	u32 instps[I915_NUM_RINGS];
-	u32 instdone1;
+	u32 extra_instdone[I915_NUM_INSTDONE_REG];
 	u32 seqno[I915_NUM_RINGS];
 	u64 bbaddr;
 	u32 fault_reg[I915_NUM_RINGS];
@@ -267,8 +276,6 @@ struct drm_i915_display_funcs {
 	int (*queue_flip)(struct drm_device *dev, struct drm_crtc *crtc,
 			  struct drm_framebuffer *fb,
 			  struct drm_i915_gem_object *obj);
-	void (*force_wake_get)(struct drm_i915_private *dev_priv);
-	void (*force_wake_put)(struct drm_i915_private *dev_priv);
 	int (*update_plane)(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 			    int x, int y);
 	/* clock updates for mode set */
@@ -348,6 +355,17 @@ struct i915_hw_ppgtt {
 	vm_paddr_t scratch_page_dma_addr;
 };
 
+
+/* This must match up with the value previously used for execbuf2.rsvd1. */
+#define DEFAULT_CONTEXT_ID 0
+struct i915_hw_context {
+	int id;
+	bool is_initialized;
+	struct drm_i915_file_private *file_priv;
+	struct intel_ring_buffer *ring;
+	struct drm_i915_gem_object *obj;
+};
+
 enum no_fbc_reason {
 	FBC_NO_OUTPUT, /* no outputs enabled to compress */
 	FBC_STOLEN_TOO_SMALL, /* not enough space to hold compressed buffers */
@@ -358,19 +376,6 @@ enum no_fbc_reason {
 	FBC_MULTIPLE_PIPES, /* more than one pipe active */
 	FBC_MODULE_PARAM,
 };
-
-/* defined intel_pm.c */
-extern struct lock mchdev_lock;
-
-struct opregion_header;
-struct opregion_acpi;
-struct opregion_swsci;
-struct opregion_asle;
-
-#define I915_FENCE_REG_NONE -1
-#define I915_MAX_NUM_FENCES 16
-/* 16 fences + sign bit for FENCE_REG_NONE */
-#define I915_MAX_NUM_FENCE_BITS 5
 
 enum intel_pch {
 	PCH_NONE = 0,	/* No PCH present */
@@ -630,11 +635,11 @@ typedef struct drm_i915_private {
 
 	device_t *gmbus_bridge;
 	device_t *bbbus_bridge;
-	device_t *gmbus;
 	device_t *bbbus;
 
 	drm_local_map_t *sarea;
 	drm_local_map_t *mmio_map;
+	void __iomem *regs;
 
 	struct drm_i915_gt_funcs gt;
 	/** gt_fifo_count and the subsequent register write are synchronized
@@ -645,65 +650,71 @@ typedef struct drm_i915_private {
 	/** gt_lock is also taken in irq contexts. */
 	struct lock gt_lock;
 
+	device_t *gmbus;
+
 	/** gmbus_mutex protects against concurrent usage of the single hw gmbus
 	 * controller on different i2c buses. */
 	struct lock gmbus_mutex;
 
 	drm_i915_sarea_t *sarea_priv;
+	/**
+	 * Base address of the gmbus and gpio block.
+	 */
+	uint32_t gpio_mmio_base;
+
+	struct device *bridge_dev;
 	struct intel_ring_buffer ring[I915_NUM_RINGS];
 	uint32_t next_seqno;
 
 	drm_dma_handle_t *status_page_dmah;
 	struct resource *mch_res;
+	int mch_res_rid;
 
 	void *hw_status_page;
 	dma_addr_t dma_status_page;
 	unsigned int status_gfx_addr;
 	drm_local_map_t hws_map;
-	struct drm_gem_object *hws_obj;
 
 	unsigned int cpp;
 	int back_offset;
 	int front_offset;
 	int current_page;
-	int page_flipping;
 
 	atomic_t irq_received;
-	u32 trace_irq_seqno;
+
+	/* protects the irq masks */
+	struct lock irq_lock;
 
 	/* DPIO indirect register protection */
 	struct spinlock dpio_lock;
 
-	/** Cached value of IER to avoid reads in updating the bitfield */
+	/** Cached value of IMR to avoid reads in updating the bitfield */
 	u32 pipestat[2];
 	u32 irq_mask;
 	u32 gt_irq_mask;
 	u32 pch_irq_mask;
-	struct lock irq_lock;
 
 	u32 hotplug_supported_mask;
 	struct work_struct hotplug_work;
-
-	unsigned int sr01, adpa, ppcr, dvob, dvoc, lvds;
-	int vblank_pipe;
 
 	int num_pipe;
 	int num_pch_pll;
 
 	/* For hangcheck timer */
-#define DRM_I915_HANGCHECK_PERIOD ((1500 /* in ms */ * hz) / 1000)
+#define DRM_I915_HANGCHECK_PERIOD 1500 /* in ms */
 #define DRM_I915_HANGCHECK_JIFFIES msecs_to_jiffies(DRM_I915_HANGCHECK_PERIOD)
 	struct timer_list hangcheck_timer;
 	int hangcheck_count;
 	uint32_t last_acthd[I915_NUM_RINGS];
 	uint32_t prev_instdone[I915_NUM_INSTDONE_REG];
 
-	uint32_t last_acthd_bsd;
-	uint32_t last_acthd_blt;
-	uint32_t last_instdone;
-	uint32_t last_instdone1;
-
 	unsigned int stop_rings;
+
+	unsigned long cfb_size;
+	unsigned int cfb_fb;
+	enum plane cfb_plane;
+	int cfb_y;
+	struct intel_fbc_work *fbc_work;
 
 	struct intel_opregion opregion;
 
@@ -748,6 +759,13 @@ typedef struct drm_i915_private {
 
 	unsigned int fsb_freq, mem_freq, is_ddr3;
 
+	struct lock error_lock;
+	/* Protected by dev->error_lock. */
+	struct drm_i915_error_state *first_error;
+	struct work_struct error_work;
+	struct completion error_completion;
+	struct workqueue_struct *wq;
+
 	/* Display functions */
 	struct drm_i915_display_funcs display;
 
@@ -770,11 +788,22 @@ typedef struct drm_i915_private {
 		/** List of all objects in gtt_space. Used to restore gtt
 		 * mappings on resume */
 		struct list_head gtt_list;
+		/**
+		 * List of objects which are not bound to the GTT (thus
+		 * are idle and not used by the GPU) but still have
+		 * (presumably uncached) pages still attached.
+		 */
+		struct list_head unbound_list;
 
 		/** Usable portion of the GTT for GEM */
 		unsigned long gtt_start;
 		unsigned long gtt_mappable_end;
 		unsigned long gtt_end;
+		unsigned long stolen_base; /* limited to low memory (32-bit) */
+
+		struct io_mapping *gtt_mapping;
+		phys_addr_t gtt_base_addr;
+		int gtt_mtrr;
 
 		/** PPGTT used for aliasing the PPGTT with the GTT */
 		struct i915_hw_ppgtt *aliasing_ppgtt;
@@ -782,8 +811,7 @@ typedef struct drm_i915_private {
 		bool shrinker_no_lock_stealing;
 
 		/**
-		 * List of objects currently involved in rendering from the
-		 * ringbuffer.
+		 * List of objects currently involved in rendering.
 		 *
 		 * Includes buffers having the contents of their GPU caches
 		 * flushed, not necessarily primitives.  last_rendering_seqno
@@ -817,23 +845,11 @@ typedef struct drm_i915_private {
 		 */
 		struct delayed_work retire_work;
 
- 		/**
+		/**
 		 * Are we in a non-interruptible section of code like
 		 * modesetting?
 		 */
 		bool interruptible;
-
-		uint32_t next_gem_seqno;
-
-		/**
-		 * Waiting sequence number, if any
-		 */
-		uint32_t waiting_gem_seqno;
-
-		/**
-		 * Last seq seen at irq time
-		 */
-		uint32_t irq_gem_seqno;
 
 		/**
 		 * Flag if the X Server, and thus DRM, is not currently in
@@ -849,7 +865,7 @@ typedef struct drm_i915_private {
 		 * Flag if the hardware appears to be wedged.
 		 *
 		 * This is set when attempts to idle the device timeout.
-		 * It prevents command submission from occuring and makes
+		 * It prevents command submission from occurring and makes
 		 * every pending request fail
 		 */
 		atomic_t wedged;
@@ -894,15 +910,10 @@ typedef struct drm_i915_private {
 	u16 orig_clock;
 	int child_dev_num;
 	struct child_device_config *child_dev;
-	struct drm_connector *int_lvds_connector;
-	struct drm_connector *int_edp_connector;
 
-	device_t bridge_dev;
 	bool mchbar_need_disable;
 
 	struct intel_l3_parity l3_parity;
-
-	int mch_res_rid;
 
 	/* gen6+ rps state */
 	struct intel_gen6_power_mgmt rps;
@@ -913,27 +924,27 @@ typedef struct drm_i915_private {
 
 	enum no_fbc_reason no_fbc_reason;
 
-	struct lock *mchdev_lock;
-
-	unsigned long cfb_size;
-	unsigned int cfb_fb;
-	int cfb_plane;
-	int cfb_y;
-	struct intel_fbc_work *fbc_work;
-
-	struct lock error_lock;
-	/* Protected by dev->error_lock. */
-	struct drm_i915_error_state *first_error;
-	struct work_struct error_work;
-	struct completion error_completion;
-	struct workqueue_struct *wq;
+	struct drm_mm_node *compressed_fb;
+	struct drm_mm_node *compressed_llb;
 
 	unsigned long last_gpu_reset;
 
+	/* list of fbdev register on this device */
 	struct intel_fbdev *fbdev;
+
+	/*
+	 * The console may be contended at resume, but we don't
+	 * want it to block on it.
+	 */
+	struct work_struct console_resume_work;
+
+	struct backlight_device *backlight;
 
 	struct drm_property *broadcast_rgb_property;
 	struct drm_property *force_audio_property;
+
+	bool hw_contexts_disabled;
+	uint32_t hw_context_size;
 
 	u32 fdi_rx_config;
 
@@ -957,25 +968,38 @@ enum hdmi_force_audio {
 };
 
 enum i915_cache_level {
-	I915_CACHE_NONE,
+	I915_CACHE_NONE = 0,
 	I915_CACHE_LLC,
-	I915_CACHE_LLC_MLC, /* gen6+ */
+	I915_CACHE_LLC_MLC, /* gen6+, in docs at least! */
 };
 
-enum intel_chip_family {
-	CHIP_I8XX = 0x01,
-	CHIP_I9XX = 0x02,
-	CHIP_I915 = 0x04,
-	CHIP_I965 = 0x08,
+struct drm_i915_gem_object_ops {
+	/* Interface between the GEM object and its backing storage.
+	 * get_pages() is called once prior to the use of the associated set
+	 * of pages before to binding them into the GTT, and put_pages() is
+	 * called after we no longer need them. As we expect there to be
+	 * associated cost with migrating pages between the backing storage
+	 * and making them available for the GPU (e.g. clflush), we may hold
+	 * onto the pages after they are no longer referenced by the GPU
+	 * in case they may be used again shortly (for example migrating the
+	 * pages to a different memory domain within the GTT). put_pages()
+	 * will therefore most likely be called when the object itself is
+	 * being released or under memory pressure (where we attempt to
+	 * reap pages for the shrinker).
+	 */
+	int (*get_pages)(struct drm_i915_gem_object *);
+	void (*put_pages)(struct drm_i915_gem_object *);
 };
 
-/** driver private structure attached to each drm_gem_object */
 struct drm_i915_gem_object {
 	struct drm_gem_object base;
+
+	const struct drm_i915_gem_object_ops *ops;
 
 	/** Current space allocated to this object in the GTT, if any. */
 	struct drm_mm_node *gtt_space;
 	struct list_head gtt_list;
+
 	/** This object's place on the active/inactive lists */
 	struct list_head ring_list;
 	struct list_head mm_list;
@@ -1058,6 +1082,7 @@ struct drm_i915_gem_object {
 
 	unsigned int has_aliasing_ppgtt_mapping:1;
 	unsigned int has_global_gtt_mapping:1;
+	unsigned int has_dma_mapping:1;
 
 	vm_page_t *pages;
 
@@ -1080,7 +1105,6 @@ struct drm_i915_gem_object {
 	/** Breadcrumb of last rendering to the buffer. */
 	uint32_t last_read_seqno;
 	uint32_t last_write_seqno;
-
 	/** Breadcrumb of last fenced GPU access to the buffer. */
 	uint32_t last_fenced_seqno;
 
@@ -1106,7 +1130,7 @@ struct drm_i915_gem_object {
 };
 #define to_gem_object(obj) (&((struct drm_i915_gem_object *)(obj))->base)
 
-#define	to_intel_bo(x) container_of(x, struct drm_i915_gem_object, base)
+#define to_intel_bo(x) container_of(x, struct drm_i915_gem_object, base)
 
 /**
  * Request queue structure.
@@ -1144,6 +1168,7 @@ struct drm_i915_file_private {
 		struct spinlock lock;
 		struct list_head request_list;
 	} mm;
+	struct idr context_idr;
 };
 
 #define INTEL_INFO(dev)	(((struct drm_i915_private *) (dev)->dev_private)->info)
@@ -1270,19 +1295,20 @@ extern int intel_iommu_enabled;
 extern struct drm_ioctl_desc i915_ioctls[];
 extern struct drm_driver i915_driver_info;
 extern struct cdev_pager_ops i915_gem_pager_ops;
-extern int i915_panel_ignore_lid;
-extern unsigned int i915_powersave;
-extern int i915_semaphores;
-extern unsigned int i915_lvds_downclock;
+extern int i915_max_ioctl;
+extern unsigned int i915_fbpercrtc __always_unused;
+extern int i915_panel_ignore_lid __read_mostly;
+extern unsigned int i915_powersave __read_mostly;
+extern int i915_semaphores __read_mostly;
+extern unsigned int i915_lvds_downclock __read_mostly;
 extern int i915_lvds_channel_mode __read_mostly;
-extern int i915_panel_use_ssc;
-extern int i915_vbt_sdvo_panel_type;
-extern int i915_enable_rc6;
-extern int i915_enable_fbc;
-extern int i915_enable_ppgtt;
+extern int i915_panel_use_ssc __read_mostly;
+extern int i915_vbt_sdvo_panel_type __read_mostly;
+extern int i915_enable_rc6 __read_mostly;
+extern int i915_enable_fbc __read_mostly;
 extern int i915_enable_hangcheck;
-
-void i915_sysctl_cleanup(struct drm_device *dev);
+extern int i915_enable_ppgtt __read_mostly;
+extern unsigned int i915_preliminary_hw_support __read_mostly;
 
 				/* i915_dma.c */
 void i915_update_dri1_breadcrumb(struct drm_device *dev);
@@ -1296,40 +1322,50 @@ extern void i915_driver_preclose(struct drm_device *dev,
 extern void i915_driver_postclose(struct drm_device *dev,
 				  struct drm_file *file_priv);
 extern int i915_driver_device_is_agp(struct drm_device * dev);
+#ifdef CONFIG_COMPAT
 extern long i915_compat_ioctl(struct file *filp, unsigned int cmd,
 			      unsigned long arg);
+#endif
 extern int i915_emit_box(struct drm_device *dev,
 			 struct drm_clip_rect *box,
 			 int DR1, int DR4);
 extern int intel_gpu_reset(struct drm_device *dev);
 extern int i915_reset(struct drm_device *dev);
-unsigned long i915_chipset_val(struct drm_i915_private *dev_priv);
-unsigned long i915_mch_val(struct drm_i915_private *dev_priv);
-void i915_update_gfx_val(struct drm_i915_private *dev_priv);
-unsigned long i915_gfx_val(struct drm_i915_private *dev_priv);
+extern unsigned long i915_chipset_val(struct drm_i915_private *dev_priv);
+extern unsigned long i915_mch_val(struct drm_i915_private *dev_priv);
+extern unsigned long i915_gfx_val(struct drm_i915_private *dev_priv);
+extern void i915_update_gfx_val(struct drm_i915_private *dev_priv);
+
+extern void intel_console_resume(struct work_struct *work);
 
 /* i915_irq.c */
 extern int i915_irq_emit(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv);
 extern int i915_irq_wait(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv);
+void i915_hangcheck_elapsed(unsigned long data);
+void i915_handle_error(struct drm_device *dev, bool wedged);
 
 extern void intel_irq_init(struct drm_device *dev);
 extern void intel_gt_init(struct drm_device *dev);
 extern void intel_gt_reset(struct drm_device *dev);
 
-void intel_enable_asle(struct drm_device *dev);
-void i915_hangcheck_elapsed(unsigned long data);
-void i915_handle_error(struct drm_device *dev, bool wedged);
+void i915_error_state_free(struct kref *error_ref);
 
-void i915_enable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask);
-void i915_disable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask);
+void
+i915_enable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask);
+
+void
+i915_disable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask);
+
+void intel_enable_asle(struct drm_device *dev);
 
 #ifdef CONFIG_DEBUG_FS
 extern void i915_destroy_error_state(struct drm_device *dev);
 #else
 #define i915_destroy_error_state(x)
 #endif
+
 
 /* i915_gem.c */
 int i915_gem_init_ioctl(struct drm_device *dev, void *data,
@@ -1351,13 +1387,17 @@ int i915_gem_sw_finish_ioctl(struct drm_device *dev, void *data,
 int i915_gem_execbuffer(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
 int i915_gem_execbuffer2(struct drm_device *dev, void *data,
-			struct drm_file *file_priv);
+			 struct drm_file *file_priv);
 int i915_gem_pin_ioctl(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv);
 int i915_gem_unpin_ioctl(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv);
 int i915_gem_busy_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
+int i915_gem_get_caching_ioctl(struct drm_device *dev, void *data,
+			       struct drm_file *file);
+int i915_gem_set_caching_ioctl(struct drm_device *dev, void *data,
+			       struct drm_file *file);
 int i915_gem_throttle_ioctl(struct drm_device *dev, void *data,
 			    struct drm_file *file_priv);
 int i915_gem_madvise_ioctl(struct drm_device *dev, void *data,
@@ -1372,15 +1412,49 @@ int i915_gem_get_tiling(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
 int i915_gem_get_aperture_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
+int i915_gem_wait_ioctl(struct drm_device *dev, void *data,
+			struct drm_file *file_priv);
 void i915_gem_load(struct drm_device *dev);
 void i915_gem_unload(struct drm_device *dev);
 int i915_gem_init_object(struct drm_gem_object *obj);
+void i915_gem_object_init(struct drm_i915_gem_object *obj,
+			 const struct drm_i915_gem_object_ops *ops);
+struct drm_i915_gem_object *i915_gem_alloc_object(struct drm_device *dev,
+						  size_t size);
 void i915_gem_free_object(struct drm_gem_object *obj);
 int i915_gem_object_pin(struct drm_i915_gem_object *obj, uint32_t alignment,
     bool map_and_fenceable);
 void i915_gem_object_unpin(struct drm_i915_gem_object *obj);
-int i915_gem_object_unbind(struct drm_i915_gem_object *obj);
+int __must_check i915_gem_object_unbind(struct drm_i915_gem_object *obj);
+void i915_gem_release_mmap(struct drm_i915_gem_object *obj);
 void i915_gem_lastclose(struct drm_device *dev);
+
+int __must_check i915_mutex_lock_interruptible(struct drm_device *dev);
+int i915_gem_object_sync(struct drm_i915_gem_object *obj,
+			 struct intel_ring_buffer *to);
+void i915_gem_object_move_to_active(struct drm_i915_gem_object *obj,
+				    struct intel_ring_buffer *ring);
+
+int i915_gem_dumb_create(struct drm_file *file_priv,
+			 struct drm_device *dev,
+			 struct drm_mode_create_dumb *args);
+int i915_gem_mmap_gtt(struct drm_file *file_priv, struct drm_device *dev,
+		      uint32_t handle, uint64_t *offset);
+int i915_gem_dumb_destroy(struct drm_file *file_priv, struct drm_device *dev,
+			  uint32_t handle);
+/**
+ * Returns true if seq1 is later than seq2.
+ */
+static inline bool
+i915_seqno_passed(uint32_t seq1, uint32_t seq2)
+{
+	return (int32_t)(seq1 - seq2) >= 0;
+}
+
+extern int i915_gem_get_seqno(struct drm_device *dev, u32 *seqno);
+
+int __must_check i915_gem_object_get_fence(struct drm_i915_gem_object *obj);
+int __must_check i915_gem_object_put_fence(struct drm_i915_gem_object *obj);
 
 static inline bool
 i915_gem_object_pin_fence(struct drm_i915_gem_object *obj)
@@ -1407,82 +1481,89 @@ void i915_gem_retire_requests_ring(struct intel_ring_buffer *ring);
 int __must_check i915_gem_check_wedge(struct drm_i915_private *dev_priv,
 				      bool interruptible);
 
+void i915_gem_reset(struct drm_device *dev);
 void i915_gem_clflush_object(struct drm_i915_gem_object *obj);
-struct drm_i915_gem_object *i915_gem_alloc_object(struct drm_device *dev,
-    size_t size);
 int i915_gem_do_init(struct drm_device *dev, unsigned long start,
     unsigned long mappable_end, unsigned long end);
-uint32_t i915_gem_get_unfenced_gtt_alignment(struct drm_device *dev,
-    uint32_t size, int tiling_mode);
-int i915_mutex_lock_interruptible(struct drm_device *dev);
-int i915_gem_object_sync(struct drm_i915_gem_object *obj,
-			 struct intel_ring_buffer *to);
-
-int i915_gem_object_set_to_gtt_domain(struct drm_i915_gem_object *obj,
-    bool write);
+int __must_check i915_gem_object_set_domain(struct drm_i915_gem_object *obj,
+					    uint32_t read_domains,
+					    uint32_t write_domain);
+int __must_check i915_gem_object_finish_gpu(struct drm_i915_gem_object *obj);
+int __must_check i915_gem_init(struct drm_device *dev);
+int i915_gem_flush_ring(struct intel_ring_buffer *ring,
+    uint32_t invalidate_domains, uint32_t flush_domains);
+int __must_check i915_gem_init_hw(struct drm_device *dev);
+void i915_gem_l3_remap(struct drm_device *dev);
+void i915_gem_init_swizzling(struct drm_device *dev);
+void i915_gem_init_ppgtt(struct drm_device *dev);
+void i915_gem_cleanup_ringbuffer(struct drm_device *dev);
+int __must_check i915_gpu_idle(struct drm_device *dev);
+int __must_check i915_gem_idle(struct drm_device *dev);
+int i915_add_request(struct intel_ring_buffer *ring,
+		     struct drm_file *file,
+		     u32 *seqno);
+int __must_check i915_wait_seqno(struct intel_ring_buffer *ring,
+				 uint32_t seqno);
+int i915_gem_fault(struct drm_device *dev, uint64_t offset, int prot,
+    uint64_t *phys);
+int __must_check
+i915_gem_object_set_to_gtt_domain(struct drm_i915_gem_object *obj,
+				  bool write);
 int __must_check
 i915_gem_object_set_to_cpu_domain(struct drm_i915_gem_object *obj, bool write);
 int __must_check
 i915_gem_object_pin_to_display_plane(struct drm_i915_gem_object *obj,
 				     u32 alignment,
 				     struct intel_ring_buffer *pipelined);
-int i915_gem_object_finish_gpu(struct drm_i915_gem_object *obj);
-int __must_check i915_gem_init(struct drm_device *dev);
-int i915_gem_flush_ring(struct intel_ring_buffer *ring,
-    uint32_t invalidate_domains, uint32_t flush_domains);
-void i915_gem_release_mmap(struct drm_i915_gem_object *obj);
-int i915_gem_idle(struct drm_device *dev);
-int i915_gem_init_hw(struct drm_device *dev);
-void i915_gem_l3_remap(struct drm_device *dev);
-void i915_gem_init_swizzling(struct drm_device *dev);
-void i915_gem_init_ppgtt(struct drm_device *dev);
-void i915_gem_cleanup_ringbuffer(struct drm_device *dev);
-int __must_check i915_gpu_idle(struct drm_device *dev);
-void i915_gem_object_move_to_active(struct drm_i915_gem_object *obj,
-				    struct intel_ring_buffer *ring);
-int i915_add_request(struct intel_ring_buffer *ring,
-		     struct drm_file *file,
-		     u32 *seqno);
-int i915_wait_seqno(struct intel_ring_buffer *ring,
-				 uint32_t seqno);
-void i915_gem_reset(struct drm_device *dev);
-int i915_gem_mmap(struct drm_device *dev, uint64_t offset, int prot);
-int i915_gem_fault(struct drm_device *dev, uint64_t offset, int prot,
-    uint64_t *phys);
-void i915_gem_release(struct drm_device *dev, struct drm_file *file);
-int i915_gem_object_set_cache_level(struct drm_i915_gem_object *obj,
-    enum i915_cache_level cache_level);
-
-void i915_gem_free_all_phys_object(struct drm_device *dev);
-void i915_gem_detach_phys_object(struct drm_device *dev,
-    struct drm_i915_gem_object *obj);
 int i915_gem_attach_phys_object(struct drm_device *dev,
-    struct drm_i915_gem_object *obj, int id, int align);
+				struct drm_i915_gem_object *obj,
+				int id,
+				int align);
+void i915_gem_detach_phys_object(struct drm_device *dev,
+				 struct drm_i915_gem_object *obj);
+void i915_gem_free_all_phys_object(struct drm_device *dev);
+void i915_gem_release(struct drm_device *dev, struct drm_file *file);
 
-int i915_gem_dumb_create(struct drm_file *file_priv, struct drm_device *dev,
-    struct drm_mode_create_dumb *args);
-int i915_gem_mmap_gtt(struct drm_file *file_priv, struct drm_device *dev,
-     uint32_t handle, uint64_t *offset);
-int i915_gem_dumb_destroy(struct drm_file *file_priv, struct drm_device *dev,
-     uint32_t handle);
+uint32_t
+i915_gem_get_unfenced_gtt_alignment(struct drm_device *dev,
+				    uint32_t size,
+				    int tiling_mode);
+
+int i915_gem_object_set_cache_level(struct drm_i915_gem_object *obj,
+				    enum i915_cache_level cache_level);
 
 /* i915_gem_context.c */
 void i915_gem_context_init(struct drm_device *dev);
+void i915_gem_context_fini(struct drm_device *dev);
+void i915_gem_context_close(struct drm_device *dev, struct drm_file *file);
+int i915_switch_context(struct intel_ring_buffer *ring,
+			struct drm_file *file, int to_id);
+int i915_gem_context_create_ioctl(struct drm_device *dev, void *data,
+				  struct drm_file *file);
+int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
+				   struct drm_file *file);
 
 /* i915_gem_gtt.c */
-int i915_gem_init_aliasing_ppgtt(struct drm_device *dev);
+int __must_check i915_gem_init_aliasing_ppgtt(struct drm_device *dev);
 void i915_gem_cleanup_aliasing_ppgtt(struct drm_device *dev);
 void i915_ppgtt_bind_object(struct i915_hw_ppgtt *ppgtt,
-    struct drm_i915_gem_object *obj, enum i915_cache_level cache_level);
+			    struct drm_i915_gem_object *obj,
+			    enum i915_cache_level cache_level);
 void i915_ppgtt_unbind_object(struct i915_hw_ppgtt *ppgtt,
-    struct drm_i915_gem_object *obj);
+			      struct drm_i915_gem_object *obj);
 
 void i915_gem_restore_gtt_mappings(struct drm_device *dev);
+int __must_check i915_gem_gtt_prepare_object(struct drm_i915_gem_object *obj);
 void i915_gem_gtt_bind_object(struct drm_i915_gem_object *obj,
 				enum i915_cache_level cache_level);
 void i915_gem_gtt_unbind_object(struct drm_i915_gem_object *obj);
 void i915_gem_gtt_finish_object(struct drm_i915_gem_object *obj);
-
+void i915_gem_init_global_gtt(struct drm_device *dev,
+			      unsigned long start,
+			      unsigned long mappable_end,
+			      unsigned long end);
+int i915_gem_gtt_init(struct drm_device *dev);
+void i915_gem_gtt_fini(struct drm_device *dev);
 static inline void i915_gem_chipset_flush(struct drm_device *dev)
 {
 	if (INTEL_INFO(dev)->gen < 6)
@@ -1498,6 +1579,10 @@ int __must_check i915_gem_evict_something(struct drm_device *dev, int min_size,
 					  bool nonblock);
 int i915_gem_evict_everything(struct drm_device *dev);
 
+/* i915_gem_stolen.c */
+int i915_gem_init_stolen(struct drm_device *dev);
+void i915_gem_cleanup_stolen(struct drm_device *dev);
+
 /* i915_gem_tiling.c */
 void i915_gem_detect_bit_6_swizzle(struct drm_device *dev);
 void i915_gem_object_do_bit_17_swizzle(struct drm_i915_gem_object *obj);
@@ -1509,10 +1594,20 @@ int i915_verify_lists(struct drm_device *dev);
 #else
 #define i915_verify_lists(dev) 0
 #endif
+void i915_gem_object_check_coherency(struct drm_i915_gem_object *obj,
+				     int handle);
+
+/* i915_debugfs.c */
+int i915_debugfs_init(struct drm_minor *minor);
+void i915_debugfs_cleanup(struct drm_minor *minor);
 
 /* i915_suspend.c */
 extern int i915_save_state(struct drm_device *dev);
 extern int i915_restore_state(struct drm_device *dev);
+
+/* i915_sysfs.c */
+void i915_setup_sysfs(struct drm_device *dev_priv);
+void i915_teardown_sysfs(struct drm_device *dev_priv);
 
 /* intel_i2c.c */
 extern int intel_setup_gmbus(struct drm_device *dev);
@@ -1533,7 +1628,7 @@ static inline bool intel_gmbus_is_forced_bit(struct device *adapter)
 
 	return sc->force_bit_dev;
 }
-extern void intel_iic_reset(struct drm_device *dev);
+extern void intel_i2c_reset(struct drm_device *dev);
 
 /* intel_opregion.c */
 extern int intel_opregion_setup(struct drm_device *dev);
@@ -1550,6 +1645,15 @@ static inline void intel_opregion_asle_intr(struct drm_device *dev) { return; }
 static inline void intel_opregion_gse_intr(struct drm_device *dev) { return; }
 static inline void intel_opregion_enable_asle(struct drm_device *dev) { return; }
 #endif
+
+/* intel_acpi.c */
+#ifdef CONFIG_ACPI
+extern void intel_register_dsm_handler(void);
+extern void intel_unregister_dsm_handler(void);
+#else
+static inline void intel_register_dsm_handler(void) { return; }
+static inline void intel_unregister_dsm_handler(void) { return; }
+#endif /* CONFIG_ACPI */
 
 /* modesetting */
 extern void intel_modeset_init_hw(struct drm_device *dev);
@@ -1568,13 +1672,11 @@ extern int intel_trans_dp_port_sel(struct drm_crtc *crtc);
 extern int intel_enable_rc6(const struct drm_device *dev);
 
 extern bool i915_semaphore_is_enabled(struct drm_device *dev);
+int i915_reg_read_ioctl(struct drm_device *dev, void *data,
+			struct drm_file *file);
 
-extern struct intel_overlay_error_state *intel_overlay_capture_error_state(
-    struct drm_device *dev);
 extern void intel_overlay_print_error_state(struct sbuf *m,
     struct intel_overlay_error_state *error);
-extern struct intel_display_error_state *intel_display_capture_error_state(
-    struct drm_device *dev);
 extern void intel_display_print_error_state(struct sbuf *m,
     struct drm_device *dev, struct intel_display_error_state *error);
 
@@ -1584,44 +1686,18 @@ trace_i915_reg_rw(boolean_t rw, int reg, uint64_t val, int sz)
 	return;
 }
 
-#define LP_RING(d) (&((struct drm_i915_private *)(d))->ring[RCS])
-
-#define BEGIN_LP_RING(n) \
-	intel_ring_begin(LP_RING(dev_priv), (n))
-
-#define OUT_RING(x) \
-	intel_ring_emit(LP_RING(dev_priv), x)
-
-#define ADVANCE_LP_RING() \
-	intel_ring_advance(LP_RING(dev_priv))
-
-#define RING_LOCK_TEST_WITH_RETURN(dev, file) do {			\
-	if (LP_RING(dev->dev_private)->obj == NULL)			\
-		LOCK_TEST_WITH_RETURN(dev, file);			\
-} while (0)
-
-#define READ_HWSP(dev_priv, reg)  (((volatile u32*)(dev_priv->hw_status_page))[reg])
-#define READ_BREADCRUMB(dev_priv) READ_HWSP(dev_priv, I915_BREADCRUMB_INDEX)
-#define I915_GEM_HWS_INDEX		0x20
-#define I915_BREADCRUMB_INDEX		0x21
-
 const struct intel_device_info *i915_get_device_id(int device);
 
-/* i915_debug.c */
-int i915_sysctl_init(struct drm_device *dev, struct sysctl_ctx_list *ctx,
-    struct sysctl_oid *top);
+/* overlay */
+#ifdef CONFIG_DEBUG_FS
+extern struct intel_overlay_error_state *intel_overlay_capture_error_state(struct drm_device *dev);
+extern void intel_overlay_print_error_state(struct seq_file *m, struct intel_overlay_error_state *error);
 
-static inline bool
-i915_seqno_passed(uint32_t seq1, uint32_t seq2)
-{
-
-	return ((int32_t)(seq1 - seq2) >= 0);
-}
-
-extern int i915_gem_get_seqno(struct drm_device *dev, u32 *seqno);
-
-int __must_check i915_gem_object_get_fence(struct drm_i915_gem_object *obj);
-int __must_check i915_gem_object_put_fence(struct drm_i915_gem_object *obj);
+extern struct intel_display_error_state *intel_display_capture_error_state(struct drm_device *dev);
+extern void intel_display_print_error_state(struct seq_file *m,
+					    struct drm_device *dev,
+					    struct intel_display_error_state *error);
+#endif
 
 /* On SNB platform, before reading ring registers forcewake bit
  * must be set to prevent GT core from power down and stale values being

@@ -894,7 +894,7 @@ int i915_restore_state(struct drm_device *dev)
 
 	DRM_UNLOCK(dev);
 
-	intel_iic_reset(dev);
+	intel_i2c_reset(dev);
 
 	return 0;
 }

@@ -115,7 +115,7 @@ intel_iic_get_reserved(device_t idev)
 }
 
 void
-intel_iic_reset(struct drm_device *dev)
+intel_i2c_reset(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv;
 
@@ -135,7 +135,7 @@ intel_iicbus_reset(device_t idev, u_char speed, u_char addr, u_char *oldaddr)
 	sc = device_get_softc(idev);
 	dev = sc->drm_dev;
 
-	intel_iic_reset(dev);
+	intel_i2c_reset(dev);
 	return (0);
 }
 
@@ -392,7 +392,7 @@ intel_iic_quirk_xfer(device_t idev, struct iic_msg *msgs, int nmsgs)
 	sc = device_get_softc(bridge_dev);
 	dev_priv = sc->drm_dev->dev_private;
 
-	intel_iic_reset(sc->drm_dev);
+	intel_i2c_reset(sc->drm_dev);
 	intel_iic_quirk_set(dev_priv, true);
 	IICBB_SETSDA(bridge_dev, 1);
 	IICBB_SETSCL(bridge_dev, 1);
@@ -663,7 +663,7 @@ intel_setup_gmbus(struct drm_device *dev)
 		}
 		dev_priv->gmbus[i] = iic_dev;
 
-		intel_iic_reset(dev);
+		intel_i2c_reset(dev);
 	}
 
 	return (0);

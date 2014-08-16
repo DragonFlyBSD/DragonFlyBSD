@@ -294,6 +294,9 @@ static void i915_hotplug_work_func(struct work_struct *work)
 	drm_helper_hpd_irq_event(dev);
 }
 
+/* defined intel_pm.c */
+extern struct lock mchdev_lock;
+
 static void ironlake_handle_rps_change(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
