@@ -389,8 +389,11 @@ ath_edma_recv_proc_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 			if_ath_alq_post(&sc->sc_alq, ATH_ALQ_EDMA_RXSTATUS,
 			    sc->sc_rx_statuslen, (char *) ds);
 #endif /* ATH_DEBUG */
-		if (bf->bf_rxstatus == HAL_EINPROGRESS)
+		if (bf->bf_rxstatus == HAL_EINPROGRESS) {
+			DPRINTF(sc, ATH_DEBUG_EDMA_RX,
+			    "%s: Q%d: still in-prog!\n", __func__, qtype);
 			break;
+		}
 
 		/*
 		 * Completed descriptor.

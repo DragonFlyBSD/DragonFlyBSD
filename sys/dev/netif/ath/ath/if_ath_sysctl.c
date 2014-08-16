@@ -472,12 +472,14 @@ ath_sysctl_txagg(SYSCTL_HANDLER_ARGS)
 
 	ATH_RX_LOCK(sc);
 	for (i = 0; i < 2; i++) {
-		kprintf("%d: fifolen: %d/%d; head=%d; tail=%d\n",
+		kprintf("%d: fifolen: %d/%d; head=%d; tail=%d; m_pending=%p, m_holdbf=%p\n",
 		    i,
 		    sc->sc_rxedma[i].m_fifo_depth,
 		    sc->sc_rxedma[i].m_fifolen,
 		    sc->sc_rxedma[i].m_fifo_head,
-		    sc->sc_rxedma[i].m_fifo_tail);
+		    sc->sc_rxedma[i].m_fifo_tail,
+		    sc->sc_rxedma[i].m_rxpending,
+		    sc->sc_rxedma[i].m_holdbf);
 	}
 	i = 0;
 	TAILQ_FOREACH(bf, &sc->sc_rxbuf, bf_list) {
