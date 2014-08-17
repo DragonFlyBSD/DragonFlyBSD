@@ -1364,7 +1364,7 @@ void intel_ddi_prepare_link_retrain(struct drm_encoder *encoder)
 	struct intel_dp *intel_dp = &intel_dig_port->dp;
 	struct drm_i915_private *dev_priv = encoder->dev->dev_private;
 	enum port port = intel_dig_port->port;
-	bool wait;
+	bool wait = false;
 	uint32_t val;
 
 	if (I915_READ(DP_TP_CTL(port)) & DP_TP_CTL_ENABLE) {
