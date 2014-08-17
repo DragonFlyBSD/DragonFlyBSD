@@ -153,33 +153,6 @@ TASKQUEUE_DEFINE(name, taskqueue_thread_enqueue, &taskqueue_##name,	\
  * This queue is serviced by a software interrupt handler.  To enqueue
  * a task, call taskqueue_enqueue(taskqueue_swi, &task).
  */
-#define TASKQUEUE_FAST_DEFINE(name, enqueue, context, init)		\
-									\
-struct taskqueue *taskqueue_##name;					\
-									\
-static void								\
-taskqueue_define_##name(void *arg)					\
-{									\
-	taskqueue_##name =						\
-	    taskqueue_create_fast(#name, M_WAITOK, (enqueue),		\
-	    (context));							\
-	init;								\
-}									\
-									\
-SYSINIT(taskqueue_##name, SI_SUB_CONFIGURE, SI_ORDER_SECOND,		\
-	taskqueue_define_##name, NULL);					\
-									\
-struct __hack
-#define TASKQUEUE_FAST_DEFINE_THREAD(name)				\
-TASKQUEUE_FAST_DEFINE(name, taskqueue_thread_enqueue,			\
-	&taskqueue_##name, taskqueue_start_threads(&taskqueue_##name	\
-	1, PWAIT, "%s taskq", #name))
-
-/*
- * These queues are serviced by software interrupt handlers.  To enqueue
- * a task, call taskqueue_enqueue(taskqueue_swi, &task) or
- * taskqueue_enqueue(taskqueue_swi_giant, &task).
- */
 TASKQUEUE_DECLARE(swi);
 TASKQUEUE_DECLARE(swi_mp);
 
@@ -188,17 +161,5 @@ TASKQUEUE_DECLARE(swi_mp);
  * taskqueue_enqueue(taskqueue_thread[mycpuid], &task).
  */
 extern struct taskqueue *taskqueue_thread[];
-
-/*
- * Queue for swi handlers dispatched from fast interrupt handlers.
- * These are necessarily different from the above because the queue
- * must be locked with spinlocks since sleep mutex's cannot be used
- * from a fast interrupt handler context.
- */
-TASKQUEUE_DECLARE(fast);
-int	taskqueue_enqueue_fast(struct taskqueue *queue, struct task *task);
-struct taskqueue *taskqueue_create_fast(const char *name, int mflags,
-				    taskqueue_enqueue_fn enqueue,
-				    void *context);
 
 #endif /* !_SYS_TASKQUEUE_H_ */
