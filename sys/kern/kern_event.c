@@ -54,6 +54,9 @@
 #include <sys/file2.h>
 #include <sys/mplock2.h>
 
+#define EVENT_REGISTER	1
+#define EVENT_PROCESS	2
+
 /*
  * Global token for kqueue subsystem
  */
@@ -119,6 +122,11 @@ static void	filt_timerexpire(void *knx);
 static int	filt_timerattach(struct knote *kn);
 static void	filt_timerdetach(struct knote *kn);
 static int	filt_timer(struct knote *kn, long hint);
+static int	filt_userattach(struct knote *kn);
+static void	filt_userdetach(struct knote *kn);
+static int	filt_user(struct knote *kn, long hint);
+static void	filt_usertouch(struct knote *kn, struct kevent *kev,
+				u_long type);
 
 static struct filterops file_filtops =
 	{ FILTEROP_ISFD, filt_fileattach, NULL, NULL };
@@ -128,6 +136,8 @@ static struct filterops proc_filtops =
 	{ 0, filt_procattach, filt_procdetach, filt_proc };
 static struct filterops timer_filtops =
 	{ 0, filt_timerattach, filt_timerdetach, filt_timer };
+static struct filterops user_filtops =
+	{ 0, filt_userattach, filt_userdetach, filt_user };
 
 static int 		kq_ncallouts = 0;
 static int 		kq_calloutmax = (4 * 1024);
@@ -161,6 +171,7 @@ static struct filterops *sysfilt_ops[] = {
 	&sig_filtops,			/* EVFILT_SIGNAL */
 	&timer_filtops,			/* EVFILT_TIMER */
 	&file_filtops,			/* EVFILT_EXCEPT */
+	&user_filtops,			/* EVFILT_USER */
 };
 
 static int
@@ -414,6 +425,104 @@ filt_timer(struct knote *kn, long hint)
 {
 
 	return (kn->kn_data != 0);
+}
+
+/*
+ * EVFILT_USER
+ */
+static int
+filt_userattach(struct knote *kn)
+{
+	kn->kn_hook = NULL;
+	if (kn->kn_fflags & NOTE_TRIGGER)
+		kn->kn_ptr.hookid = 1;
+	else
+		kn->kn_ptr.hookid = 0;
+	return 0;
+}
+
+/*
+ * This function is called with the knote flagged locked but it is
+ * still possible to race a callout event due to the callback blocking.
+ * We must call callout_terminate() instead of callout_stop() to deal
+ * with the race.
+ */
+static void
+filt_userdetach(struct knote *kn)
+{
+	/* nothing to do */
+}
+
+static int
+filt_user(struct knote *kn, long hint)
+{
+	return (kn->kn_ptr.hookid);
+}
+
+static void
+filt_usertouch(struct knote *kn, struct kevent *kev, u_long type)
+{
+	u_int ffctrl;
+
+	switch (type) {
+	case EVENT_REGISTER:
+		if (kev->fflags & NOTE_TRIGGER)
+			kn->kn_ptr.hookid = 1;
+
+		ffctrl = kev->fflags & NOTE_FFCTRLMASK;
+		kev->fflags &= NOTE_FFLAGSMASK;
+		switch (ffctrl) {
+		case NOTE_FFNOP:
+			break;
+
+		case NOTE_FFAND:
+			kn->kn_sfflags &= kev->fflags;
+			break;
+
+		case NOTE_FFOR:
+			kn->kn_sfflags |= kev->fflags;
+			break;
+
+		case NOTE_FFCOPY:
+			kn->kn_sfflags = kev->fflags;
+			break;
+
+		default:
+			/* XXX Return error? */
+			break;
+		}
+		kn->kn_sdata = kev->data;
+
+		/*
+		 * This is not the correct use of EV_CLEAR in an event
+		 * modification, it should have been passed as a NOTE instead.
+		 * But we need to maintain compatibility with Apple & FreeBSD.
+		 *
+		 * Note however that EV_CLEAR can still be used when doing
+		 * the initial registration of the event and works as expected
+		 * (clears the event on reception).
+		 */
+		if (kev->flags & EV_CLEAR) {
+			kn->kn_ptr.hookid = 0;
+			kn->kn_data = 0;
+			kn->kn_fflags = 0;
+		}
+		break;
+
+        case EVENT_PROCESS:
+		*kev = kn->kn_kevent;
+		kev->fflags = kn->kn_sfflags;
+		kev->data = kn->kn_sdata;
+		if (kn->kn_flags & EV_CLEAR) {
+			kn->kn_ptr.hookid = 0;
+			/* kn_data, kn_fflags handled by parent */
+		}
+		break;
+
+	default:
+		panic("filt_usertouch() - invalid type (%ld)", type);
+		break;
+	}
 }
 
 /*
@@ -832,7 +941,6 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 		 * filter attach routine is responsible for insuring that
 		 * the identifier can be attached to it.
 		 */
-		kprintf("unknown filter: %d\n", kev->filter);
 		return (EINVAL);
 	}
 
@@ -942,9 +1050,13 @@ again2:
 			 * filter which have already been triggered.
 			 */
 			KKASSERT(kn->kn_status & KN_PROCESSING);
-			kn->kn_sfflags = kev->fflags;
-			kn->kn_sdata = kev->data;
-			kn->kn_kevent.udata = kev->udata;
+			if (fops == &user_filtops) {
+				filt_usertouch(kn, kev, EVENT_REGISTER);
+			} else {
+				kn->kn_sfflags = kev->fflags;
+				kn->kn_sdata = kev->data;
+				kn->kn_kevent.udata = kev->udata;
+			}
 		}
 
 		/*
@@ -964,6 +1076,34 @@ again2:
 		 */
 		knote_detach_and_drop(kn);
 		goto done;
+	} else {
+		/*
+		 * Modify an existing event.
+		 *
+		 * The user may change some filter values after the
+		 * initial EV_ADD, but doing so will not reset any
+		 * filter which have already been triggered.
+		 */
+		KKASSERT(kn->kn_status & KN_PROCESSING);
+		if (fops == &user_filtops) {
+			filt_usertouch(kn, kev, EVENT_REGISTER);
+		} else {
+			kn->kn_sfflags = kev->fflags;
+			kn->kn_sdata = kev->data;
+			kn->kn_kevent.udata = kev->udata;
+		}
+
+		/*
+		 * Execute the filter event to immediately activate the
+		 * knote if necessary.  If reprocessing events are pending
+		 * due to blocking above we do not run the filter here
+		 * but instead let knote_release() do it.  Otherwise we
+		 * might run the filter on a deleted event.
+		 */
+		if ((kn->kn_status & KN_REPROCESS) == 0) {
+			if (filter_event(kn, 0))
+				KNOTE_ACTIVATE(kn);
+		}
 	}
 
 	/*
@@ -1135,20 +1275,27 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 			/*
 			 * Post the event
 			 */
-			*kevp++ = kn->kn_kevent;
+			if (kn->kn_fop == &user_filtops)
+				filt_usertouch(kn, kevp, EVENT_PROCESS);
+			else
+				*kevp = kn->kn_kevent;
+			++kevp;
 			++total;
 			--count;
 
 			if (kn->kn_flags & EV_ONESHOT) {
 				kn->kn_status &= ~KN_QUEUED;
 				kn->kn_status |= KN_DELETING | KN_REPROCESS;
-			} else if (kn->kn_flags & EV_CLEAR) {
-				kn->kn_data = 0;
-				kn->kn_fflags = 0;
-				kn->kn_status &= ~(KN_QUEUED | KN_ACTIVE);
 			} else {
-				TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
-				kq->kq_count++;
+				if (kn->kn_flags & EV_CLEAR) {
+					kn->kn_data = 0;
+					kn->kn_fflags = 0;
+					kn->kn_status &= ~(KN_QUEUED |
+							   KN_ACTIVE);
+				} else {
+					TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
+					kq->kq_count++;
+				}
 			}
 		}
 
