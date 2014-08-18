@@ -133,6 +133,8 @@
 
 #define ZSCALE		10
 
+#define TIME_TO_IDLE	(hz * 10)
+
 struct cyapa_fifo {
 	int	rindex;
 	int	windex;
@@ -208,6 +210,7 @@ struct cyapa_softc {
 
 static void cyapa_poll_thread(void *arg);
 static int cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs);
+static void cyapa_set_power_mode(struct cyapa_softc *sc, int mode);
 
 static int fifo_empty(struct cyapa_fifo *fifo);
 static size_t fifo_ready(struct cyapa_fifo *fifo);
@@ -291,7 +294,6 @@ init_device(device_t dev, struct cyapa_cap *cap, int addr, int probe)
 	int error;
 	int retries;
 
-
 	bus = device_get_parent(dev);	/* smbus */
 
 	/*
@@ -336,7 +338,7 @@ init_device(device_t dev, struct cyapa_cap *cap, int addr, int probe)
 			if (error)
 				goto done;
 		}
-		tsleep(&error, 0, "cyapabt", hz / 10);
+		tsleep(&error, 0, "cyapab1", hz / 10);
 		--retries;
 		error = smbus_trans(bus, addr, CMD_BOOT_STATUS,
 				    SMB_TRANS_NOCNT | SMB_TRANS_7BIT,
@@ -363,6 +365,10 @@ init_device(device_t dev, struct cyapa_cap *cap, int addr, int probe)
 			     cap->prod_ida);
 		error = ENXIO;
 	}
+	error = smbus_trans(bus, addr, CMD_BOOT_STATUS,
+			    SMB_TRANS_NOCNT | SMB_TRANS_7BIT,
+			    NULL, 0, (void *)&boot, sizeof(boot), NULL);
+	device_printf(dev, "cyapa status %02x\n", boot.stat);
 
 done:
 	if (error)
@@ -435,6 +441,7 @@ cyapa_probe(device_t dev)
 	int unit;
 	int addr;
 	int error;
+	int dummy = 0;
 
 	unit = device_get_unit(dev);
 
@@ -449,6 +456,7 @@ cyapa_probe(device_t dev)
 	 */
 	if ((unit & 0x04FF) != (0x0400 | 0x067))
 		return ENXIO;
+	tsleep(&dummy, 0, "cyastab", hz);
 	addr = unit & 0x3FF;
 	error = init_device(dev, &cap, addr, 1);
 	if (error)
@@ -516,32 +524,7 @@ cyapa_attach(device_t dev)
 	/*
 	 * Setup input event tracking
 	 */
-#if 0
-	inputev_init(&sc->iev, "Cypress APA Trackpad (cyapa)");
-	inputev_set_evbit(&sc->iev, EV_ABS);
-	inputev_set_abs_params(&sc->iev, ABS_MT_POSITION_X,
-			       0, sc->cap_resx, 0, 0);
-	inputev_set_abs_params(&sc->iev, ABS_MT_POSITION_Y,
-			       0, sc->cap_resy, 0, 0);
-	inputev_set_abs_params(&sc->iev, ABS_MT_PRESSURE,
-			       0, 255, 0, 0);
-	if (sc->cap_phyx)
-		inputev_set_res(&sc->iev, ABS_MT_POSITION_X,
-				sc->cap_resx / sc->cap_phyx);
-	if (sc->cap_phyy)
-		inputev_set_res(&sc->iev, ABS_MT_POSITION_Y,
-				sc->cap_resy / sc->cap_phyy);
-	if (cap.buttons & CYAPA_FNGR_LEFT) {
-		inputev_set_keybit(&sc->iev, BTN_LEFT);
-		inputev_set_propbit(&sc->iev, INPUT_PROP_BUTTONPAD);
-	}
-	if (cap.buttons & CYAPA_FNGR_MIDDLE)
-		inputev_set_keybit(&sc->iev, BTN_MIDDLE);
-	if (cap.buttons & CYAPA_FNGR_RIGHT)
-		inputev_set_keybit(&sc->iev, BTN_RIGHT);
-
-	inputev_register(&sc->iev);
-#endif
+	cyapa_set_power_mode(sc, CMD_POWER_MODE_IDLE);
 
 	/*
 	 * Start the polling thread.
@@ -1176,6 +1159,8 @@ cyapa_poll_thread(void *arg)
 	int error;
 	int freq = cyapa_norm_freq;
 	int isidle = 0;
+	int pstate = CMD_POWER_MODE_IDLE;
+	int npstate;
 
 	bus = device_get_parent(sc->dev);
 
@@ -1193,12 +1178,33 @@ cyapa_poll_thread(void *arg)
 		}
 		tsleep(&sc->poll_flags, 0, "cyapw", (hz + freq - 1) / freq);
 		++sc->poll_ticks;
-		if (sc->count == 0)
+		if (sc->count == 0) {
 			freq = cyapa_idle_freq;
-		else if (isidle)
+			npstate = CMD_POWER_MODE_IDLE;
+		} else if (isidle) {
 			freq = cyapa_slow_freq;
-		else
+			npstate = CMD_POWER_MODE_IDLE;
+		} else {
 			freq = cyapa_norm_freq;
+			npstate = CMD_POWER_MODE_FULL;
+		}
+		if (pstate != npstate) {
+			pstate = npstate;
+			cyapa_set_power_mode(sc, pstate);
+			if (cyapa_debug) {
+				switch(pstate) {
+				case CMD_POWER_MODE_OFF:
+					kprintf("cyapa: power off\n");
+					break;
+				case CMD_POWER_MODE_IDLE:
+					kprintf("cyapa: power idle\n");
+					break;
+				case CMD_POWER_MODE_FULL:
+					kprintf("cyapa: power full\n");
+					break;
+				}
+			}
+		}
 	}
 	sc->poll_td = NULL;
 	wakeup(&sc->poll_td);
@@ -1560,8 +1566,8 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		if (sc->remote_mode == 0 && sc->reporting_mode)
 			sc->data_signal = 1;
 		isidle = 0;
-	} else if ((unsigned)(ticks - sc->active_tick) > hz) {
-		sc->active_tick = ticks - hz;	/* prevent overflow */
+	} else if ((unsigned)(ticks - sc->active_tick) >= TIME_TO_IDLE) {
+		sc->active_tick = ticks - TIME_TO_IDLE; /* prevent overflow */
 		isidle = 1;
 	} else {
 		isidle = 0;
@@ -1572,6 +1578,30 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	if (cyapa_debug)
 		kprintf("\n");
 	return(isidle);
+}
+
+static
+void
+cyapa_set_power_mode(struct cyapa_softc *sc, int mode)
+{
+	uint8_t data;
+	device_t bus;
+	int error;
+
+	bus = device_get_parent(sc->dev);
+	error = smbus_request_bus(bus, sc->dev, SMB_WAIT);
+	if (error == 0) {
+		error = smbus_trans(bus, sc->addr, CMD_POWER_MODE,
+				    SMB_TRANS_NOCNT | SMB_TRANS_7BIT,
+				    NULL, 0, (void *)&data, 1, NULL);
+		data = (data & ~0xFC) | mode;
+		if (error == 0) {
+			error = smbus_trans(bus, sc->addr, CMD_POWER_MODE,
+					    SMB_TRANS_NOCNT | SMB_TRANS_7BIT,
+					    (void *)&data, 1, NULL, 0, NULL);
+		}
+		smbus_release_bus(bus, sc->dev);
+	}
 }
 
 /*

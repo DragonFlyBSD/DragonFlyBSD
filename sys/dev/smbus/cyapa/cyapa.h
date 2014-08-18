@@ -113,6 +113,9 @@ struct cyapa_cap {
 #define CMD_DEV_STATUS          0x00	/* only if in operational state */
 #define CMD_SOFT_RESET          0x28
 #define CMD_POWER_MODE          0x29
+#define  CMD_POWER_MODE_OFF	0x00
+#define  CMD_POWER_MODE_IDLE	0x14
+#define  CMD_POWER_MODE_FULL	0xFC
 #define CMD_QUERY_CAPABILITIES  0x2A
 
 #endif
