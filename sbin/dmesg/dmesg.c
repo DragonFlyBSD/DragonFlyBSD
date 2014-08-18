@@ -170,6 +170,7 @@ main(int argc, char **argv)
 			if (rindex == cur.msg_bufx) {
 				if (tailmode == 0)
 					break;
+				fflush(stdout);
 				if (tailmode == 1)
 					sleep(1);
 			}
