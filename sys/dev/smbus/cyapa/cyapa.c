@@ -134,6 +134,7 @@
 #define ZSCALE		10
 
 #define TIME_TO_IDLE	(hz * 10)
+#define TIME_TO_RESET	(hz * 3)
 
 struct cyapa_fifo {
 	int	rindex;
@@ -242,6 +243,9 @@ SYSCTL_INT(_debug, OID_AUTO, cyapa_minpressure, CTLFLAG_RW,
 static int cyapa_debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, cyapa_debug, CTLFLAG_RW,
 		&cyapa_debug, 0, "");
+static int cyapa_reset = 0;
+SYSCTL_INT(_debug, OID_AUTO, cyapa_reset, CTLFLAG_RW,
+		&cyapa_reset, 0, "");
 
 static
 void
@@ -356,19 +360,25 @@ init_device(device_t dev, struct cyapa_cap *cap, int addr, int probe)
 	/*
 	 * Check identity
 	 */
-	error = smbus_trans(bus, addr, CMD_QUERY_CAPABILITIES,
-			    SMB_TRANS_NOCNT | SMB_TRANS_7BIT,
-			    NULL, 0, (void *)cap, sizeof(*cap), NULL);
+	if (cap) {
+		error = smbus_trans(bus, addr, CMD_QUERY_CAPABILITIES,
+				    SMB_TRANS_NOCNT | SMB_TRANS_7BIT,
+				    NULL, 0, (void *)cap, sizeof(*cap), NULL);
 
-	if (strncmp(cap->prod_ida, "CYTRA", 5) != 0) {
-		device_printf(dev, "Product ID \"%5.5s\" mismatch\n",
-			     cap->prod_ida);
-		error = ENXIO;
+		if (strncmp(cap->prod_ida, "CYTRA", 5) != 0) {
+			device_printf(dev, "Product ID \"%5.5s\" mismatch\n",
+				     cap->prod_ida);
+			error = ENXIO;
+		}
 	}
 	error = smbus_trans(bus, addr, CMD_BOOT_STATUS,
 			    SMB_TRANS_NOCNT | SMB_TRANS_7BIT,
 			    NULL, 0, (void *)&boot, sizeof(boot), NULL);
-	device_printf(dev, "cyapa status %02x\n", boot.stat);
+
+	if (probe == 0)		/* official init */
+		device_printf(dev, "cyapa init status %02x\n", boot.stat);
+	else if (probe == 2)
+		device_printf(dev, "cyapa reset status %02x\n", boot.stat);
 
 done:
 	if (error)
@@ -1161,6 +1171,7 @@ cyapa_poll_thread(void *arg)
 	int isidle = 0;
 	int pstate = CMD_POWER_MODE_IDLE;
 	int npstate;
+	int last_reset = ticks;
 
 	bus = device_get_parent(sc->dev);
 
@@ -1173,6 +1184,19 @@ cyapa_poll_thread(void *arg)
 					    (void *)&regs, sizeof(regs), NULL);
 			if (error == 0) {
 				isidle = cyapa_raw_input(sc, &regs);
+			}
+
+			/*
+			 * For some reason the device can crap-out.  If it
+			 * drops back into bootstrap mode try to reinitialize
+			 * it.
+			 */
+			if (cyapa_reset ||
+			    ((regs.stat & CYAPA_STAT_RUNNING) == 0 &&
+			     (unsigned)(ticks - last_reset) > TIME_TO_RESET)) {
+				cyapa_reset = 0;
+				last_reset = ticks;
+				init_device(sc->dev, NULL, sc->addr, 2);
 			}
 			smbus_release_bus(bus, sc->dev);
 		}
@@ -1227,6 +1251,17 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	short x2;
 	uint16_t but;	/* high bits used for simulated but4/but5 */
 
+	/*
+	 * If the device is not running the rest of the status
+	 * means something else, set fingers to 0.
+	 */
+	if ((regs->stat & CYAPA_STAT_RUNNING) == 0) {
+		regs->fngr = 0;
+	}
+
+	/*
+	 * Process fingers/movement
+	 */
 	nfingers = CYAPA_FNGR_NUMFINGERS(regs->fngr);
 	afingers = nfingers;
 
