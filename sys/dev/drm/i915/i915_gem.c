@@ -651,24 +651,21 @@ int
 i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		    struct drm_file *file)
 {
-	struct drm_i915_gem_mmap *args;
+	struct drm_i915_gem_mmap *args = data;
 	struct drm_gem_object *obj;
-	struct proc *p;
-	vm_map_t map;
+	struct proc *p = curproc;
+	vm_map_t map = &p->p_vmspace->vm_map;
 	vm_offset_t addr;
 	vm_size_t size;
-	int error, rv;
-
-	args = data;
+	int error = 0, rv;
 
 	obj = drm_gem_object_lookup(dev, file, args->handle);
 	if (obj == NULL)
-		return (-ENOENT);
-	error = 0;
+		return -ENOENT;
+
 	if (args->size == 0)
 		goto out;
-	p = curproc;
-	map = &p->p_vmspace->vm_map;
+
 	size = round_page(args->size);
 	PROC_LOCK(p);
 	if (map->size + size > p->p_rlimit[RLIMIT_VMEM].rlim_cur) {
@@ -682,7 +679,6 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	vm_object_hold(obj->vm_obj);
 	vm_object_reference_locked(obj->vm_obj);
 	vm_object_drop(obj->vm_obj);
-	DRM_UNLOCK(dev);
 	rv = vm_map_find(map, obj->vm_obj, args->offset, &addr, args->size,
 	    PAGE_SIZE, /* align */
 	    TRUE, /* fitit */
@@ -696,7 +692,6 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	} else {
 		args->addr_ptr = (uint64_t)addr;
 	}
-	DRM_LOCK(dev);
 out:
 	drm_gem_object_unreference(obj);
 	return (error);
