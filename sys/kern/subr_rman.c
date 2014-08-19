@@ -201,7 +201,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 	lwkt_gettoken(rm->rm_slock);
 
 	for (r = TAILQ_FIRST(&rm->rm_list);
-	     r && r->r_end < start;
+	     r && r->r_end < start + count - 1;
 	     r = TAILQ_NEXT(r, r_link))
 		;
 
@@ -215,7 +215,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 	 */
 	for (s = r; s; s = TAILQ_NEXT(s, r_link)) {
 		DPRINTF(("considering [%#lx, %#lx]\n", s->r_start, s->r_end));
-		if (s->r_start > end) {
+		if (s->r_start > end - (count - 1)) {
 			DPRINTF(("s->r_start (%#lx) > end (%#lx)\n",
 			    s->r_start, end));
 			break;
@@ -224,10 +224,10 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 			DPRINTF(("region is allocated\n"));
 			continue;
 		}
-		rstart = max(s->r_start, start);
+		rstart = ulmax(s->r_start, start);
 		rstart = (rstart + ((1ul << RF_ALIGNMENT(flags))) - 1) &
 		    ~((1ul << RF_ALIGNMENT(flags)) - 1);
-		rend = min(s->r_end, max(start + count, end));
+		rend = min(s->r_end, max(start + count - 1, end));
 		DPRINTF(("truncated region: [%#lx, %#lx]; size %#lx (requested %#lx)\n",
 		       rstart, rend, (rend - rstart + 1), count));
 
@@ -362,6 +362,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 	/*
 	 * We couldn't find anything.
 	 */
+	DPRINTF(("no region found\n"));
 out:
 	/*
 	 * If the user specified RF_ACTIVE in the initial flags,
@@ -372,6 +373,7 @@ out:
 	 */
 	if (rv && want_activate) {
 		struct resource *whohas;
+		DPRINTF(("activating region\n"));
 		if (int_rman_activate_resource(rm, rv, &whohas)) {
 			int_rman_release_resource(rm, rv);
 			rv = NULL;
