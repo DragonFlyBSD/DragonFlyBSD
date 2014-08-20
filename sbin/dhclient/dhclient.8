@@ -70,6 +70,10 @@ utility is used.
 is run on the command line with the name of the
 .Ar interface
 to be configured.
+If a
+.Nm
+is already running for the interface, the old process will be killed and
+replaced by the new invocation.
 .Pp
 The options are as follows:
 .Bl -tag -width "-p port"
@@ -181,9 +185,17 @@ for more information.
 .Sh FILES
 .Bl -tag -width "/var/db/dhclient.leases.<IFNAME>XXX" -compact
 .It Pa /etc/dhclient.conf
-DHCP client configuration file
+DHCP client configuration file.
 .It Pa /var/db/dhclient.leases. Ns Aq Ar IFNAME
-database of acquired leases
+Database of acquired leases.
+.It Pa /var/run/dhclient.<IFNAME>.pid
+Pidfile for running instance.
+While active, the pidfile is flock()'d by
+.Nm
+which can be tested by a program using flock() or by a script
+using the
+.Xr lockf 1
+utility, via a non-blocking lock attempt.
 .El
 .Sh SEE ALSO
 .Xr bpf 4 ,
