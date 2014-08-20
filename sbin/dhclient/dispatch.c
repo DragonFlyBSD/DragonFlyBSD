@@ -203,10 +203,15 @@ got_one(void)
 	do_packet(result, from.sin_port, ifrom, &hfrom);
 }
 
+/*
+ * Normally its ok to force the interface link up, but don't do it
+ * if it is an 80211 interface.
+ */
 int
 interface_link_forceup(char *ifname)
 {
 	struct ifreq ifr;
+	struct ifmediareq ifmr;
 	int sock;
 
 	if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
@@ -217,6 +222,13 @@ interface_link_forceup(char *ifname)
 	if (ioctl(sock, SIOCGIFFLAGS, (caddr_t)&ifr) == -1) {
 		close(sock);
 		return (-1);
+	}
+	memset(&ifmr, 0, sizeof(ifmr));
+	strlcpy(ifmr.ifm_name, ifname, sizeof(ifmr.ifm_name));
+	if (ioctl(sock, SIOCGIFMEDIA, (caddr_t)&ifmr) != -1) {
+		if (IFM_TYPE(ifmr.ifm_active) == IFM_IEEE80211) {
+			return 0;
+		}
 	}
 
 	if ((ifr.ifr_flags & (IFF_UP|IFF_RUNNING)) != (IFF_UP|IFF_RUNNING)) {

@@ -78,7 +78,6 @@ int no_daemon;
 int stayalive = 0;
 int unknown_ok = 1;
 int routefd = -1;
-int forceup = 1;	/* force interface up */
 pid_t monitor_pid;
 
 struct iaddr iaddr_broadcast = { 4, { 255, 255, 255, 255 } };
@@ -406,8 +405,7 @@ main(int argc, char *argv[])
 	read_client_conf();
 
 	if (interface_status(ifi->name) == 0) {
-		if (forceup)
-			interface_link_forceup(ifi->name);
+		interface_link_forceup(ifi->name);
 		/* Give it up to 4 seconds of silent grace to find link */
 		i = -4;
 	} else {

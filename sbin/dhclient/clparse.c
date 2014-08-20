@@ -58,7 +58,7 @@ read_client_conf(void)
 	new_parse(path_dhclient_conf);
 
 	/* Set some defaults... */
-	config->link_timeout = 10;
+	config->link_timeout = 30;
 	config->timeout = 60;
 	config->select_interval = 0;
 	config->reboot_timeout = 10;
