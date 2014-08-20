@@ -1,5 +1,3 @@
-/*	$OpenBSD: src/sbin/dhclient/dhclient.c,v 1.158 2012/10/27 23:08:53 krw Exp $	*/
-
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
  * Copyright (c) 1995, 1996, 1997, 1998, 1999
@@ -57,6 +55,7 @@
 #include <ctype.h>
 #include <poll.h>
 #include <pwd.h>
+#include <signal.h>
 #include <unistd.h>
 
 #include "dhcpd.h"
@@ -70,13 +69,17 @@
 
 char *path_dhclient_conf = _PATH_DHCLIENT_CONF;
 char *path_dhclient_db = NULL;
+char *orig_ifname;
 
 int log_perror = 1;
 int privfd;
 int nullfd = -1;
 int no_daemon;
+int stayalive = 0;
 int unknown_ok = 1;
 int routefd = -1;
+int forceup = 1;	/* force interface up */
+pid_t monitor_pid;
 
 struct iaddr iaddr_broadcast = { 4, { 255, 255, 255, 255 } };
 struct in_addr inaddr_any;
@@ -86,15 +89,17 @@ struct interface_info *ifi;
 struct client_state *client;
 struct client_config *config;
 
-int		 findproto(char *, int);
+int		findproto(char *, int);
 struct sockaddr	*get_ifa(char *, int);
-void		 usage(void);
-int		 check_option(struct client_lease *l, int option);
-int		 ipv4addrs(char * buf);
-int		 res_hnok(const char *dn);
+void		usage(void);
+int		check_option(struct client_lease *l, int option);
+int		ipv4addrs(char * buf);
+int		res_hnok(const char *dn);
 char		*option_as_string(unsigned int code, unsigned char *data, int len);
-int		 fork_privchld(int, int);
-void		 get_ifname(char *, char *);
+int		fork_privchld(int, int);
+void		get_ifname(char *, char *);
+static void	sig_handle(int sig);
+static int	killclient(int fd);
 
 time_t	scripttime;
 static FILE *leaseFile;
@@ -263,14 +268,21 @@ die:
 int
 main(int argc, char *argv[])
 {
-	int	 ch, fd, quiet = 0, i = 0, pipe_fd[2];
+	int ch, fd;
+	int pipe_fd[2];
+	int quiet = 0;
+	int dokillclient = 0;
+	int i;
 	struct passwd *pw;
 
 	/* Initially, log errors to stderr as well as to syslogd. */
 	openlog(getprogname(), LOG_PID | LOG_NDELAY, DHCPD_LOG_FACILITY);
 	setlogmask(LOG_UPTO(LOG_INFO));
 
-	while ((ch = getopt(argc, argv, "c:dl:qu")) != -1)
+	signal(SIGINT, sig_handle);
+	signal(SIGHUP, sig_handle);
+
+	while ((ch = getopt(argc, argv, "c:dl:quwx")) != -1) {
 		switch (ch) {
 		case 'c':
 			path_dhclient_conf = optarg;
@@ -287,15 +299,81 @@ main(int argc, char *argv[])
 		case 'u':
 			unknown_ok = 0;
 			break;
+		case 'w':
+			stayalive = 1;
+			break;
+		case 'x':
+			dokillclient = 1;
+			break;
 		default:
 			usage();
 		}
+	}
 
 	argc -= optind;
 	argv += optind;
 
 	if (argc != 1)
 		usage();
+	orig_ifname = argv[0];
+
+	if (dokillclient) {
+		char buf[256];
+
+		snprintf(buf, sizeof(buf),
+			 "/var/run/dhclient.%s.pid", orig_ifname);
+		fd = open(buf, O_RDWR, 0644);
+		if (fd < 0 || killclient(fd)) {
+			fprintf(stderr,
+				"no dhclient running on %s\n",
+				orig_ifname);
+		} else {
+			fprintf(stderr,
+				"stopping dhclient on %s\n",
+				orig_ifname);
+		}
+		if (fd >= 0)
+			close(fd);
+		exit(1);
+	}
+
+	if ((nullfd = open(_PATH_DEVNULL, O_RDWR, 0)) == -1)
+		error("cannot open %s: %m", _PATH_DEVNULL);
+
+	/*
+	 * If asked to stay alive forever get our daemon going right now
+	 * Then set up to fork/monitor and refork on exit.
+	 *
+	 * When I say 'forever' I really mean it.  If there are configuration
+	 * problems or missing interfaces or whatever, dhclient will wait
+	 * 10 seconds and try again.
+	 */
+	if (stayalive) {
+		pid_t pid;
+		pid_t rpid;
+		int omask;
+
+		go_daemon();
+
+		for (;;) {
+			omask = sigblock(sigmask(SIGINT) | sigmask(SIGHUP));
+			pid = fork();
+			if (pid > 0)
+				monitor_pid = pid;
+			sigsetmask(omask);
+
+			if (pid == 0)	/* child falls out of loop */
+				break;
+			while (pid > 0) {
+				rpid = waitpid(pid, NULL, 0);
+				if (rpid == pid)
+					break;
+				if (rpid != EINTR)
+					break;
+			}
+			sleep(10);
+		}
+	}
 
 	ifi = calloc(1, sizeof(*ifi));
 	if (ifi == NULL)
@@ -308,6 +386,7 @@ main(int argc, char *argv[])
 		error("config calloc");
 
 	get_ifname(ifi->name, argv[0]);
+
 	if (path_dhclient_db == NULL && asprintf(&path_dhclient_db, "%s.%s",
 	    _PATH_DHCLIENT_DB, ifi->name) == -1)
 		error("asprintf");
@@ -327,11 +406,13 @@ main(int argc, char *argv[])
 	read_client_conf();
 
 	if (interface_status(ifi->name) == 0) {
-		interface_link_forceup(ifi->name);
+		if (forceup)
+			interface_link_forceup(ifi->name);
 		/* Give it up to 4 seconds of silent grace to find link */
 		i = -4;
-	} else
+	} else {
 		i = 0;
+	}
 
 	while (!(ifi->linkstat = interface_status(ifi->name))) {
 		if (i == 0)
@@ -349,15 +430,13 @@ main(int argc, char *argv[])
 		fprintf(stderr, " got link\n");
 
  dispatch:
-	if ((nullfd = open(_PATH_DEVNULL, O_RDWR, 0)) == -1)
-		error("cannot open %s: %m", _PATH_DEVNULL);
-
 	if ((pw = getpwnam("_dhcp")) == NULL)
 		error("no such user: _dhcp");
 
 	if (pipe(pipe_fd) == -1)
 		error("pipe");
 
+	go_daemon();
 	fork_privchld(pipe_fd[0], pipe_fd[1]);
 
 	close(pipe_fd[0]);
@@ -396,9 +475,7 @@ main(int argc, char *argv[])
 	if (ifi->linkstat) {
 		client->state = S_REBOOTING;
 		state_reboot();
-	} else
-		go_daemon();
-
+	}
 	dispatch();
 
 	/* not reached */
@@ -664,7 +741,6 @@ bind_lease(void)
 	    piaddr(client->active->address),
 	    (long long)(client->active->renewal - time(NULL)));
 	client->state = S_BOUND;
-	go_daemon();
 }
 
 /*
@@ -996,7 +1072,6 @@ state_panic(void)
 					note("bound: immediate renewal.");
 					state_bound();
 				}
-				go_daemon();
 				return;
 			}
 		}
@@ -1036,7 +1111,6 @@ activate_next:
 	script_go();
 	client->state = S_INIT;
 	set_timeout_interval(config->retry_interval, state_init);
-	go_daemon();
 }
 
 void
@@ -1781,26 +1855,64 @@ dhcp_option_ev_name(char *buf, size_t buflen, const struct option *option)
 void
 go_daemon(void)
 {
-	static int state = 0;
+	char buf[256];
+	int fd;
 
-	if (no_daemon || state)
+	/*
+	 * Only once
+	 */
+	if (no_daemon == 2)
 		return;
 
-	state = 1;
+	/*
+	 * Setup pidfile, kill any dhclient already running for this
+	 * interface.
+	 */
+	snprintf(buf, sizeof(buf), "/var/run/dhclient.%s.pid", orig_ifname);
+	fd = open(buf, O_RDWR|O_CREAT, 0644);
+	if (fd >= 0) {
+		if (killclient(fd)) {
+			fprintf(stderr,
+				"starting dhclient on %s\n",
+				orig_ifname);
+		} else {
+			fprintf(stderr,
+				"restarting dhclient on %s\n",
+				orig_ifname);
+		}
+	}
 
-	/* Stop logging to stderr... */
-	log_perror = 0;
+	/*
+	 * Daemonize if requested
+	 */
+	if (no_daemon == 0) {
+		/* Stop logging to stderr... */
+		log_perror = 0;
 
-	if (daemon(1, 0) == -1)
-		error("daemon");
+		if (daemon(1, 0) == -1)
+			error("daemon");
 
-	/* we are chrooted, daemon(3) fails to open /dev/null */
-	if (nullfd != -1) {
-		dup2(nullfd, STDIN_FILENO);
-		dup2(nullfd, STDOUT_FILENO);
-		dup2(nullfd, STDERR_FILENO);
-		close(nullfd);
-		nullfd = -1;
+		/* we are chrooted, daemon(3) fails to open /dev/null */
+		if (nullfd != -1) {
+			dup2(nullfd, STDIN_FILENO);
+			dup2(nullfd, STDOUT_FILENO);
+			dup2(nullfd, STDERR_FILENO);
+			close(nullfd);
+			nullfd = -1;
+		}
+	}
+
+	/*
+	 * No further daemonizations, write out pid file and lock.
+	 */
+	no_daemon = 2;
+	if (fd >= 0) {
+		lseek(fd, 0L, SEEK_SET);
+		ftruncate(fd, 0);
+		snprintf(buf, sizeof(buf), "%ld\n", (long)getpid());
+		write(fd, buf, strlen(buf));
+		flock(fd, LOCK_EX);
+		/* leave descriptor open and locked */
 	}
 }
 
@@ -2010,8 +2122,16 @@ fork_privchld(int fd, int fd2)
 {
 	struct pollfd pfd[1];
 	int nfds, pfail = 0;
+	pid_t pid;
+	int omask;
 
-	switch (fork()) {
+	omask = sigblock(sigmask(SIGINT)|sigmask(SIGHUP));
+	pid = fork();
+	if (pid > 0)
+		monitor_pid = pid;
+	sigsetmask(omask);
+
+	switch (pid) {
 	case -1:
 		error("cannot fork");
 		break;
@@ -2094,4 +2214,46 @@ get_ifname(char *ifname, char *arg)
 		close(s);
 	} else if (strlcpy(ifi->name, arg, IFNAMSIZ) >= IFNAMSIZ)
 		error("Interface name too long");
+}
+
+static
+void
+sig_handle(int signo)
+{
+	if (monitor_pid > 0)
+		kill(monitor_pid, signo);
+	fprintf(stderr, "killed by signal\n");
+	exit(1);
+}
+
+static
+int
+killclient(int fd)
+{
+	int noclient = 1;
+
+	/*
+	 * Kill previously running dhclient
+	 */
+	if (flock(fd, LOCK_EX|LOCK_NB) < 0) {
+		char buf[256];
+		ssize_t n;
+		pid_t pid;
+
+		lseek(fd, 0L, SEEK_SET);
+		n = read(fd, buf, sizeof(buf));
+		if (n > 0) {
+			buf[n-1] = 0;
+			pid = strtol(buf, NULL, 10);
+			if ((int)pid > 0) {
+				noclient = 0;
+				kill(pid, SIGINT);
+			}
+		}
+		if (flock(fd, LOCK_EX|LOCK_NB) < 0)
+			usleep(20000);
+		while (flock(fd, LOCK_EX|LOCK_NB) < 0)
+			sleep(1);
+	}
+	return noclient;
 }

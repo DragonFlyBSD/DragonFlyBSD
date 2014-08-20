@@ -39,7 +39,7 @@ dhclient_start()
 
 dhclient_stop()
 {
-	ifconfig $ifn down	# cause dhclient to die
+	${dhclient_program} -x $ifn
 }
 
 ifn="$2"

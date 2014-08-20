@@ -43,7 +43,7 @@
 .Nd Dynamic Host Configuration Protocol (DHCP) client
 .Sh SYNOPSIS
 .Nm
-.Op Fl dqu
+.Op Fl dquwx
 .Op Fl c Ar file
 .Op Fl l Ar file
 .Ar interface
@@ -98,6 +98,16 @@ Forces
 .Nm
 to reject leases with unknown options in them.
 The default behaviour is to accept such lease offers.
+.It Fl w
+.Nm
+stays around permanently and will attempt to reconnect even if
+the interface does not exist, is down, or goes down.
+This is the default when interfaces are configured DHCP in
+.Pa /etc/dhclient.conf
+.It Fl x
+Kill any running
+.Nm
+on the specified interface.
 .El
 .Pp
 The DHCP protocol allows a host to contact a central server which
