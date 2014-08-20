@@ -1,13 +1,71 @@
-$DragonFly: src/usr.sbin/sendmail/main.c.patch,v 1.1 2008/02/18 19:47:32 dillon Exp $
-
-Index: main.c
-===================================================================
-RCS file: /cvs/src/contrib/sendmail-8.14/sendmail/main.c,v
-retrieving revision 1.1.1.2
-diff -u -p -r1.1.1.2 main.c
---- main.c	5 Nov 2007 01:37:45 -0000	1.1.1.2
-+++ main.c	18 Feb 2008 19:30:27 -0000
-@@ -2543,9 +2543,12 @@ 						     NULL), &forged);
+--- /usr/src/contrib/sendmail-8.14/sendmail/main.c	2014-08-20 09:45:52.585530000 -0700
++++ main.c	2014-08-20 09:48:38.388533000 -0700
+@@ -169,6 +169,7 @@
+ 	char warn_f_flag = '\0';
+ 	bool run_in_foreground = false;	/* -bD mode */
+ 	bool queuerun = false, debug = false;
++	bool queueintvl = false;
+ 	struct passwd *pw;
+ 	struct hostent *hp;
+ 	char *nullserver = NULL;
+@@ -482,6 +483,8 @@
+ 		  case 'q':
+ 			/* just check if it is there */
+ 			queuerun = true;
++			if (optarg[0])
++				queueintvl = true;
+ 			break;
+ 		}
+ 	}
+@@ -707,6 +710,23 @@
+ 	/* version */
+ 	macdefine(&BlankEnvelope.e_macro, A_PERM, 'v', Version);
+ 
++	/*
++	 * We have to fork early if starting as a daemon to
++	 * prevent resolver lookup problems (e.g. no net available)
++	 * from stalling the rc boot.
++	 */
++	if (OpMode == MD_DAEMON || queueintvl == true) {
++		/* put us in background */
++		i = fork();
++		if (i < 0)
++			syserr("daemon: cannot fork");
++		if (i != 0)
++		{
++			finis(false, true, EX_OK);
++			/* NOTREACHED */
++		}
++	}
++
+ 	/* hostname */
+ 	hp = myhostname(jbuf, sizeof(jbuf));
+ 	if (jbuf[0] != '\0')
+@@ -2305,6 +2325,7 @@
+ 	**		doing it in background.
+ 	**	We check for any errors that might have happened
+ 	**		during startup.
++	**	We have ALREADY forked if a daemon.
+ 	*/
+ 
+ 	if (OpMode == MD_DAEMON || QueueIntvl > 0)
+@@ -2315,6 +2336,7 @@
+ 		DaemonPid = 0;
+ 		if (!run_in_foreground && !tTd(99, 100))
+ 		{
++#if 0
+ 			/* put us in background */
+ 			i = fork();
+ 			if (i < 0)
+@@ -2324,6 +2346,7 @@
+ 				finis(false, true, EX_OK);
+ 				/* NOTREACHED */
+ 			}
++#endif
+ 
+ 			/*
+ 			**  Initialize exception stack and default exception
+@@ -2563,9 +2586,12 @@
  		macdefine(&BlankEnvelope.e_macro, A_TEMP, '_', authinfo);
  
  		/* at this point we are in a child: reset state */
