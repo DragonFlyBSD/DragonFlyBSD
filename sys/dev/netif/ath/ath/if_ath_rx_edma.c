@@ -559,8 +559,10 @@ ath_edma_recv_tasklet(void *arg, int npending)
 	/* Handle resched and kickpcu appropriately */
 	ATH_PCU_LOCK(sc);
 	if (sc->sc_kickpcu) {
+#ifdef ATH_DEBUG
 		if (sc->sc_debug & ATH_DEBUG_RECV_DESC)
 			kprintf("k(%d,%d)", n1, n2);
+#endif
 		sc->sc_kickpcu = 0;
 		/* reload imask XXX */
 		if (n1 || n2)
