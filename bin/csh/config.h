@@ -59,7 +59,7 @@
 #define HAVE_GETUTXENT 1
 
 /* Define if you have the iconv() function and it works. */
-/* #undef HAVE_ICONV */
+#define HAVE_ICONV 1
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
@@ -197,7 +197,7 @@
 #define HAVE_WCWIDTH 1
 
 /* Define as const if the declaration of iconv() needs const. */
-/* #undef ICONV_CONST */
+#define ICONV_CONST const
 
 /* Support NLS. */
 #define NLS 1
