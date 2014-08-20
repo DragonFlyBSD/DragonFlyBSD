@@ -23,9 +23,10 @@ wpa_supplicant_precmd()
 start_postcmd="wpa_supplicant_postcmd"
 wpa_supplicant_postcmd()
 {
-	while ! ifconfig $ifn | grep -qw "status: associated"; do
-		sleep 1
-	done
+# don't wait for wpa_supplicant to associate
+#	while ! ifconfig $ifn | grep -qw "status: associated"; do
+#		sleep 1
+#	done
 }
 
 ifn="$2"
