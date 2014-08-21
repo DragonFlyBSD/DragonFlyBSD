@@ -251,16 +251,17 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		return (error);
 	case F_DUPFD:
 		newmin = dat->fc_fd;
-		error = kern_dup(DUP_VARIABLE, fd, newmin, &dat->fc_fd);
+		error = kern_dup(DUP_VARIABLE | DUP_FCNTL, fd, newmin,
+		    &dat->fc_fd);
+		return (error);
+	case F_DUPFD_CLOEXEC:
+		newmin = dat->fc_fd;
+		error = kern_dup(DUP_VARIABLE | DUP_CLOEXEC | DUP_FCNTL,
+		    fd, newmin, &dat->fc_fd);
 		return (error);
 	case F_DUP2FD:
 		newmin = dat->fc_fd;
 		error = kern_dup(DUP_FIXED, fd, newmin, &dat->fc_fd);
-		return (error);
-	case F_DUPFD_CLOEXEC:
-		newmin = dat->fc_fd;
-		error = kern_dup(DUP_VARIABLE | DUP_CLOEXEC, fd, newmin,
-				 &dat->fc_fd);
 		return (error);
 	case F_DUP2FD_CLOEXEC:
 		newmin = dat->fc_fd;
@@ -476,8 +477,12 @@ sys_fcntl(struct fcntl_args *uap)
 /*
  * Common code for dup, dup2, and fcntl(F_DUPFD).
  *
- * There are three type flags: DUP_FIXED, DUP_VARIABLE, and DUP_CLOEXEC.
- * The first two flags are mutually exclusive, and the third is optional.
+ * There are four type flags: DUP_FCNTL, DUP_FIXED, DUP_VARIABLE, and
+ * DUP_CLOEXEC.
+ *
+ * DUP_FCNTL is for handling EINVAL vs. EBADF differences between
+ * fcntl()'s F_DUPFD and F_DUPFD_CLOEXEC and dup()/dup2 (per POSIX).
+ * The next two flags are mutually exclusive, and the fourth is optional.
  * DUP_FIXED tells kern_dup() to destructively dup over an existing file
  * descriptor if "new" is already open.  DUP_VARIABLE tells kern_dup()
  * to find the lowest unused file descriptor that is greater than or
@@ -501,7 +506,10 @@ kern_dup(int flags, int old, int new, int *res)
 
 	/*
 	 * Verify that we have a valid descriptor to dup from and
-	 * possibly to dup to.
+	 * possibly to dup to. When the new descriptor is out of
+	 * bounds, fcntl()'s F_DUPFD and F_DUPFD_CLOEXEC must
+	 * return EINVAL, while dup() and dup2() return EBADF in
+	 * this case.
 	 *
 	 * NOTE: maxfilesperuser is not applicable to dup()
 	 */
@@ -516,7 +524,7 @@ retry:
 		dtsize = minfilesperproc;
 
 	if (new < 0 || new > dtsize)
-		return (EINVAL);
+		return (flags & DUP_FCNTL ? EINVAL : EBADF);
 
 	spin_lock(&fdp->fd_spin);
 	if ((unsigned)old >= fdp->fd_nfiles || fdp->fd_files[old].fp == NULL) {

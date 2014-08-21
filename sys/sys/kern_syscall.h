@@ -24,8 +24,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.38 2008/06/01 19:27:37 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -40,6 +38,7 @@
 #define DUP_FIXED	0x1	/* Copy to specific fd even if in use */
 #define DUP_VARIABLE	0x2	/* Copy fd to an unused fd */
 #define DUP_CLOEXEC	0x4	/* Set fd close on exec flag */
+#define DUP_FCNTL	0x8	/* Set for F_DUPFD and F_DUPFD_CLOEXEC */
 union fcntl_dat;
 struct image_args;
 struct plimit;
