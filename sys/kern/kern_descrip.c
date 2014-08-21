@@ -481,7 +481,7 @@ sys_fcntl(struct fcntl_args *uap)
  * DUP_CLOEXEC.
  *
  * DUP_FCNTL is for handling EINVAL vs. EBADF differences between
- * fcntl()'s F_DUPFD and F_DUPFD_CLOEXEC and dup()/dup2 (per POSIX).
+ * fcntl()'s F_DUPFD and F_DUPFD_CLOEXEC and dup2() (per POSIX).
  * The next two flags are mutually exclusive, and the fourth is optional.
  * DUP_FIXED tells kern_dup() to destructively dup over an existing file
  * descriptor if "new" is already open.  DUP_VARIABLE tells kern_dup()
@@ -508,7 +508,7 @@ kern_dup(int flags, int old, int new, int *res)
 	 * Verify that we have a valid descriptor to dup from and
 	 * possibly to dup to. When the new descriptor is out of
 	 * bounds, fcntl()'s F_DUPFD and F_DUPFD_CLOEXEC must
-	 * return EINVAL, while dup() and dup2() return EBADF in
+	 * return EINVAL, while dup2() returns EBADF in
 	 * this case.
 	 *
 	 * NOTE: maxfilesperuser is not applicable to dup()
