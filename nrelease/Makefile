@@ -41,7 +41,7 @@ DPORTS_EXTRA_PACKAGES?=
 # MISSING: csup
 #
 DPORTS_PACKAGES?=	devel/git \
-			dns/bind98 \
+			dns/bind-tools \
 			net/isc-dhcp42-server \
 			sysutils/cdrtools \
 			${DPORTS_EXTRA_PACKAGES}
