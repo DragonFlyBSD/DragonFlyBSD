@@ -863,7 +863,6 @@ ucom_close(struct ucom_softc *sc)
 
 	if (!(sc->sc_flag & UCOM_FLAG_HL_READY)) {
 		DPRINTF("tp=%p already closed\n", tp);
-		UCOM_MTX_UNLOCK(sc);
 		return (error);
 	}
 	ucom_shutdown(sc);
