@@ -2087,7 +2087,6 @@ umass_cam_attach_sim(struct umass_softc *sc)
 	 * The CAM layer will then after a while start probing for devices on
 	 * the bus. The number of SIMs is limited to one.
 	 */
-	usb_callout_init_mtx(&sc->sc_rescan_timeout, &sc->sc_lock, 0);
 
 	devq = cam_simq_alloc(1 /* maximum openings */ );
 	if (devq == NULL) {
@@ -2109,6 +2108,7 @@ umass_cam_attach_sim(struct umass_softc *sc)
 	if (sc->sc_sim == NULL) {
 		return (ENOMEM);
 	}
+	usb_callout_init_mtx(&sc->sc_rescan_timeout, &sc->sc_lock, 0);
 
 	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 
@@ -2204,6 +2204,7 @@ static void
 umass_cam_detach_sim(struct umass_softc *sc)
 {
 	if (sc->sc_sim != NULL) {
+		usb_callout_stop(&sc->sc_rescan_timeout);
 		if (xpt_bus_deregister(cam_sim_path(sc->sc_sim))) {
 			/* accessing the softc is not possible after this */
 			sc->sc_sim->softc = NULL;
