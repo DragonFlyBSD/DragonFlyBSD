@@ -555,6 +555,7 @@ ucom_detach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 		}
 		UCOM_MTX_UNLOCK(sc);
 	}
+	ucom_unref(ssc);
 }
 
 void
@@ -1700,7 +1701,7 @@ ucom_free(void *xsc)
 	if (sc->sc_callback->ucom_free != NULL)
 		sc->sc_callback->ucom_free(sc);
 	else
-		ucom_unref(sc->sc_super);
+		/*ucom_unref(sc->sc_super) XXX hack, see end of ucom_detach_tty() */;
 
 	lockmgr(&ucom_lock, LK_EXCLUSIVE);
 	ucom_close_refs--;
