@@ -176,6 +176,7 @@ struct iwn_calib_state {
 	uint32_t	bad_plcp_cck;
 	uint32_t	fa_cck;
 	uint32_t	low_fa;
+	uint32_t	bad_plcp_ht;
 	uint8_t		cck_state;
 #define IWN_CCK_STATE_INIT	0
 #define IWN_CCK_STATE_LOFA	1
@@ -310,11 +311,9 @@ struct iwn_softc {
 	struct iwn_tx_ring	txq[IWN5000_NTXQUEUES];
 	struct iwn_rx_ring	rxq;
 
-	int			mem_rid;
 	struct resource		*mem;
 	bus_space_tag_t		sc_st;
 	bus_space_handle_t	sc_sh;
-	int			irq_rid;
 	struct resource		*irq;
 	bus_dma_tag_t		sc_dmat;
 	void 			*sc_ih;
@@ -325,10 +324,16 @@ struct iwn_softc {
 	struct task		sc_reinit_task;
 	struct task		sc_radioon_task;
 	struct task		sc_radiooff_task;
+	struct task		sc_panic_task;
 
+	/* Taskqueue */
+	struct taskqueue	*sc_tq;
+
+	/* Calibration information */
 	struct callout		calib_to;
 	int			calib_cnt;
 	struct iwn_calib_state	calib;
+	int			last_calib_ticks;
 	struct callout		watchdog_to;
 	struct callout		ct_kill_exit_to;
 	struct iwn_fw_info	fw;
@@ -342,6 +347,22 @@ struct iwn_softc {
 	struct iwn_rxon		*rxon;
 	int			ctx;
 	struct ieee80211vap	*ivap[IWN_NUM_RXON_CTX];
+
+	/* General statistics */
+	/*
+	 * The statistics are reset after each channel
+	 * change.  So it may be zeroed after things like
+	 * a background scan.
+	 *
+	 * So for now, this is just a cheap hack to
+	 * expose the last received statistics dump
+	 * via an ioctl().  Later versions of this
+	 * could expose the last 'n' messages, or just
+	 * provide a pipeline for the firmware responses
+	 * via something like BPF.
+	 */
+	struct iwn_stats	last_stat;
+	int			last_stat_valid;
 
 	uint8_t			uc_scan_progress;
 	uint32_t		rawtemp;
