@@ -51,12 +51,6 @@
 #include <vm/pmap.h>
 #include <machine/pmap.h>
 
-#if defined(__DragonFly__)
-#define mtx_init(a, b, c, d) spin_init(a)
-#define mtx_lock_spin(a) spin_lock(a)
-#define mtx_unlock_spin(a) spin_unlock(a)
-#endif
-
 #define PRVERB(a) do {							\
 	if (bootverbose)						\
 		kprintf a ;						\
@@ -82,11 +76,7 @@ static int pcie_minbus, pcie_maxbus;
 static uint32_t pcie_badslots;
 static int cfgmech;
 static int devmax;
-#if defined(__DragonFly__)
-static struct spinlock pcicfg_mtx;
-#else
-static struct mtx pcicfg_mtx;
-#endif
+static struct spinlock pcicfg_spin;
 static int mcfg_enable = 0;
 
 TUNABLE_INT("hw.pci.mcfg", &mcfg_enable);
@@ -159,7 +149,7 @@ pci_cfgregopen(void)
 	if (v > 0)
 		PRVERB(("pcibios: BIOS version %x.%02x\n", (v & 0xff00) >> 8,
 		    v & 0xff));
-	mtx_init(&pcicfg_mtx, "pcicfg", NULL, MTX_SPIN);
+	spin_init(&pcicfg_spin);
 	opened = 1;
 
 	/* $PIR requires PCI BIOS 2.10 or greater. */
@@ -341,7 +331,7 @@ pcireg_cfgread(int bus, int slot, int func, int reg, int bytes)
 	int data = -1;
 	int port;
 
-	mtx_lock_spin(&pcicfg_mtx);
+	spin_lock(&pcicfg_spin);
 	port = pci_cfgenable(bus, slot, func, reg, bytes);
 	if (port != 0) {
 		switch (bytes) {
@@ -357,7 +347,7 @@ pcireg_cfgread(int bus, int slot, int func, int reg, int bytes)
 		}
 		pci_cfgdisable();
 	}
-	mtx_unlock_spin(&pcicfg_mtx);
+	spin_unlock(&pcicfg_spin);
 	return (data);
 }
 
@@ -366,7 +356,7 @@ pcireg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes)
 {
 	int port;
 
-	mtx_lock_spin(&pcicfg_mtx);
+	spin_lock(&pcicfg_spin);
 	port = pci_cfgenable(bus, slot, func, reg, bytes);
 	if (port != 0) {
 		switch (bytes) {
@@ -382,7 +372,7 @@ pcireg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes)
 		}
 		pci_cfgdisable();
 	}
-	mtx_unlock_spin(&pcicfg_mtx);
+	spin_unlock(&pcicfg_spin);
 }
 
 /* check whether the configuration mechanism has been correctly identified */
