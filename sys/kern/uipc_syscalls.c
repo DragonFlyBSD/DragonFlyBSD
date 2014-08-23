@@ -1410,8 +1410,12 @@ sf_buf_mfree(void *arg)
 	m = sf_buf_page(sf);
 	if (sf_buf_free(sf)) {
 		/* sf invalid now */
+		/*
 		vm_page_busy_wait(m, FALSE, "sockpgf");
-		vm_page_unwire(m, 0);
+		vm_page_wakeup(m);
+		*/
+		vm_page_unhold(m);
+#if 0
 		if (m->object == NULL &&
 		    m->wire_count == 0 &&
 		    (m->flags & PG_NEED_COMMIT) == 0) {
@@ -1419,6 +1423,7 @@ sf_buf_mfree(void *arg)
 		} else {
 			vm_page_wakeup(m);
 		}
+#endif
 	}
 }
 
@@ -1556,7 +1561,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	struct mbuf *m, *mp;
 	struct sf_buf *sf;
 	struct vm_page *pg;
-	off_t off, xfsize;
+	off_t off, xfsize, xbytes;
 	off_t hbytes = 0;
 	int error = 0;
 
@@ -1596,6 +1601,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	}
 
 	*sbytes = 0;
+	xbytes = 0;
 	/*
 	 * Protect against multiple writers to the socket.
 	 */
@@ -1607,7 +1613,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	 * into an sf_buf, attach an mbuf header to the sf_buf, and queue
 	 * it on the socket.
 	 */
-	for (off = offset; ; off += xfsize, *sbytes += xfsize + hbytes) {
+	for (off = offset; ; off += xfsize, *sbytes += xfsize + hbytes, xbytes += xfsize) {
 		vm_pindex_t pindex;
 		vm_offset_t pgoff;
 		long space;
@@ -1624,8 +1630,8 @@ retry_lookup:
 		pgoff = (vm_offset_t)(off & PAGE_MASK);
 		if (PAGE_SIZE - pgoff < xfsize)
 			xfsize = PAGE_SIZE - pgoff;
-		if (nbytes && xfsize > (nbytes - *sbytes))
-			xfsize = nbytes - *sbytes;
+		if (nbytes && xfsize > (nbytes - xbytes))
+			xfsize = nbytes - xbytes;
 		if (xfsize <= 0)
 			break;
 		/*
@@ -1648,11 +1654,12 @@ retry_lookup:
 		/*
 		 * Attempt to look up the page.  
 		 *
-		 *	Allocate if not found, wait and loop if busy, then
-		 *	wire the page.  critical section protection is
-		 * 	required to maintain the object association (an
-		 *	interrupt can free the page) through to the
-		 *	vm_page_wire() call.
+		 * Allocate if not found, wait and loop if busy, then hold the page.
+		 * We hold rather than wire the page because we do not want to prevent
+		 * filesystem truncation operations from occuring on the file.  This
+		 * can happen even under normal operation if the file being sent is
+		 * remove()d after the sendfile() call completes, because the socket buffer
+		 * may still be draining.  tmpfs will crash if we try to use wire.
 		 */
 		vm_object_hold(obj);
 		pg = vm_page_lookup_busy_try(obj, pindex, TRUE, &error);
@@ -1670,7 +1677,7 @@ retry_lookup:
 				goto retry_lookup;
 			}
 		}
-		vm_page_wire(pg);
+		vm_page_hold(pg);
 		vm_object_drop(obj);
 
 		/*
@@ -1731,9 +1738,9 @@ retry_lookup:
 			vm_page_busy_wait(pg, FALSE, "sockpg");
 			/*vm_page_io_finish(pg);*/
 			if (error) {
-				vm_page_unwire(pg, 0);
 				vm_page_wakeup(pg);
-				vm_page_try_to_free(pg);
+				vm_page_unhold(pg);
+				/* vm_page_try_to_free(pg); */
 				ssb_unlock(&so->so_snd);
 				goto done;
 			}
@@ -1745,14 +1752,13 @@ retry_lookup:
 		 * but this wait can be interrupted.
 		 */
 		if ((sf = sf_buf_alloc(pg)) == NULL) {
-			vm_page_unwire(pg, 0);
 			vm_page_wakeup(pg);
-			vm_page_try_to_free(pg);
+			vm_page_unhold(pg);
+			/* vm_page_try_to_free(pg); */
 			ssb_unlock(&so->so_snd);
 			error = EINTR;
 			goto done;
 		}
-		vm_page_wakeup(pg);
 
 		/*
 		 * Get an mbuf header and set it up as having external storage.
@@ -1760,10 +1766,15 @@ retry_lookup:
 		MGETHDR(m, MB_WAIT, MT_DATA);
 		if (m == NULL) {
 			error = ENOBUFS;
+			vm_page_wakeup(pg);
+			vm_page_unhold(pg);
+			/* vm_page_try_to_free(pg); */
 			sf_buf_free(sf);
 			ssb_unlock(&so->so_snd);
 			goto done;
 		}
+
+		vm_page_wakeup(pg);
 
 		m->m_ext.ext_free = sf_buf_mfree;
 		m->m_ext.ext_ref = sf_buf_ref;
