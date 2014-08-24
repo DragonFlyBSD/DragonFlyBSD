@@ -120,7 +120,7 @@ static void
 dummyinit(void *dummy)
 {
 	TAILQ_INIT(&dummy_runq);
-	spin_init(&dummy_spin);
+	spin_init(&dummy_spin, "uscheddummy");
 	ATOMIC_CPUMASK_NANDBIT(dummy_curprocmask, 0);
 }
 SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, dummyinit, NULL)

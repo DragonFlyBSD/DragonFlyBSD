@@ -170,7 +170,7 @@ int putterdebug = 0;
  */
 
 /* protects both the list and the contents of the list elements */
-static struct spinlock pi_mtx = SPINLOCK_INITIALIZER(&pi_mtx);
+static struct spinlock pi_mtx = SPINLOCK_INITIALIZER(&pi_mtx, "pi_mtx");
 
 /*
  * fd routines, for cloner

@@ -8,7 +8,7 @@ cv_init(struct cv *c, const char *desc)
 {
 	c->cv_desc = desc;
 	c->cv_waiters = 0;
-	spin_init(&c->cv_lock);
+	spin_init(&c->cv_lock, "cvinit");
 }
 
 void

@@ -83,7 +83,7 @@ static unp_defdiscard_t unp_defdiscard_base;
  */
 static struct	sockaddr sun_noname = { sizeof(sun_noname), AF_LOCAL };
 static ino_t	unp_ino = 1;		/* prototype for fake inode numbers */
-static struct spinlock unp_ino_spin = SPINLOCK_INITIALIZER(&unp_ino_spin);
+static struct spinlock unp_ino_spin = SPINLOCK_INITIALIZER(&unp_ino_spin, "unp_ino_spin");
 
 static int     unp_attach (struct socket *, struct pru_attach_info *);
 static void    unp_detach (struct unpcb *);
@@ -787,7 +787,7 @@ static u_long	unpdg_sendspace = 2*1024;	/* really max datagram size */
 static u_long	unpdg_recvspace = 4*1024;
 
 static int	unp_rights;			/* file descriptors in flight */
-static struct spinlock unp_spin = SPINLOCK_INITIALIZER(&unp_spin);
+static struct spinlock unp_spin = SPINLOCK_INITIALIZER(&unp_spin, "unp_spin");
 
 SYSCTL_DECL(_net_local_seqpacket);
 SYSCTL_DECL(_net_local_stream);
@@ -1413,7 +1413,7 @@ unp_init(void)
 {
 	LIST_INIT(&unp_dhead);
 	LIST_INIT(&unp_shead);
-	spin_init(&unp_spin);
+	spin_init(&unp_spin, "unpinit");
 }
 
 static int

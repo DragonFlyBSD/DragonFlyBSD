@@ -643,7 +643,7 @@ int drm_mm_init(struct drm_mm * mm, unsigned long start, unsigned long size)
 	INIT_LIST_HEAD(&mm->unused_nodes);
 	mm->num_unused = 0;
 	mm->scanned_blocks = 0;
-	spin_init(&mm->unused_lock);
+	spin_init(&mm->unused_lock, "drmmminit");
 
 	/* Clever trick to avoid a special case in the free hole tracking. */
 	INIT_LIST_HEAD(&mm->head_node.node_list);

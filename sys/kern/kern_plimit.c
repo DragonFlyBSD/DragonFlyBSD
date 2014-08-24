@@ -66,7 +66,6 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_plimit.c,v 1.3 2008/05/08 01:26:00 dillon Exp $
  */
 
 #include <sys/resource.h>
@@ -111,7 +110,7 @@ plimit_init0(struct plimit *limit)
 	limit->pl_rlimit[RLIMIT_MEMLOCK].rlim_cur = lim / 3;
 	limit->p_cpulimit = RLIM_INFINITY;
 	limit->p_refcnt = 1;
-	spin_init(&limit->p_spin);
+	spin_init(&limit->p_spin, "plimitinit");
 }
 
 /*
@@ -515,7 +514,7 @@ plimit_copy(struct plimit *olimit, struct plimit *nlimit)
 {
 	*nlimit = *olimit;
 
-	spin_init(&nlimit->p_spin);
+	spin_init(&nlimit->p_spin, "plimitcopy");
 	nlimit->p_refcnt = 1;
 	nlimit->p_exclusive = 0;
 }

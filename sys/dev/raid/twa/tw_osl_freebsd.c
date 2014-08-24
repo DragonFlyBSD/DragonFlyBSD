@@ -306,9 +306,9 @@ twa_attach(device_t dev)
 
 	/* Initialize the mutexes right here. */
 	sc->io_lock = &(sc->io_lock_handle);
-	spin_init(sc->io_lock);
+	spin_init(sc->io_lock, "twa_iolock");
 	sc->q_lock = &(sc->q_lock_handle);
-	spin_init(sc->q_lock);
+	spin_init(sc->q_lock, "twa_qlock");
 	sc->sim_lock = &(sc->sim_lock_handle);
 	lockinit(sc->sim_lock, "tw_osl_sim_lock", 0, LK_CANRECURSE);
 

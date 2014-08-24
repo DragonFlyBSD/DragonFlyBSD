@@ -313,7 +313,7 @@ struct name {								\
 }
 
 #define RB_INITIALIZER(root)						\
-	{ NULL, NULL, SPINLOCK_INITIALIZER(root.spin) }
+	{ NULL, NULL, SPINLOCK_INITIALIZER(root.spin, "root.spin") }
 
 #define RB_INIT(root) do {						\
 	(root)->rbh_root = NULL;					\

@@ -86,7 +86,7 @@ TAILQ_HEAD(freelst, vnode);
 static struct freelst	vnode_active_list;
 static struct freelst	vnode_inactive_list;
 static struct vnode	vnode_active_rover;
-static struct spinlock	vfs_spin = SPINLOCK_INITIALIZER(vfs_spin);
+static struct spinlock	vfs_spin = SPINLOCK_INITIALIZER(vfs_spin, "vfs_spin");
 
 int  activevnodes = 0;
 SYSCTL_INT(_debug, OID_AUTO, activevnodes, CTLFLAG_RD,
@@ -115,7 +115,7 @@ vfs_lock_init(void)
 	TAILQ_INIT(&vnode_inactive_list);
 	TAILQ_INIT(&vnode_active_list);
 	TAILQ_INSERT_TAIL(&vnode_active_list, &vnode_active_rover, v_list);
-	spin_init(&vfs_spin);
+	spin_init(&vfs_spin, "vfslock");
 	kmalloc_raise_limit(M_VNODE, 0);	/* unlimited */
 }
 
@@ -875,7 +875,7 @@ allocvnode(int lktimeout, int lkflags)
 	RB_INIT(&vp->v_rbclean_tree);
 	RB_INIT(&vp->v_rbdirty_tree);
 	RB_INIT(&vp->v_rbhash_tree);
-	spin_init(&vp->v_spin);
+	spin_init(&vp->v_spin, "allocvnode");
 
 	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
 	atomic_add_int(&numvnodes, 1);

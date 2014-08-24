@@ -89,7 +89,7 @@ pci_cfgregopen(void)
 
 	if (!inited) {
 		inited = 1;
-		spin_init(&pcicfg_spin);
+		spin_init(&pcicfg_spin, "pcicfg");
 	}
 
 	if (cfgmech != CFGMECH_NONE)

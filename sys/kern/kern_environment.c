@@ -479,7 +479,7 @@ kenv_init(void *dummy)
 	}
 	kenv_dynp[i] = NULL;
 	
-	spin_init(&kenv_dynlock);
+	spin_init(&kenv_dynlock, "kenvdynlock");
 	kenv_isdynamic = 1;
 }
 SYSINIT(kenv, SI_BOOT1_POST, SI_ORDER_ANY, kenv_init, NULL);

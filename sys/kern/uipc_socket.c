@@ -180,7 +180,7 @@ soalloc(int waitok, struct protosw *pr)
 		TAILQ_INIT(&so->so_snd.ssb_kq.ki_mlist);
 		lwkt_token_init(&so->so_rcv.ssb_token, "rcvtok");
 		lwkt_token_init(&so->so_snd.ssb_token, "sndtok");
-		spin_init(&so->so_rcvd_spin);
+		spin_init(&so->so_rcvd_spin, "soalloc");
 		netmsg_init(&so->so_rcvd_msg.base, so, &netisr_adone_rport,
 		    MSGF_DROPABLE | MSGF_PRIORITY,
 		    so->so_proto->pr_usrreqs->pru_rcvd);

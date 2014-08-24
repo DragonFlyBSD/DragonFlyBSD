@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.67 2007/01/27 21:15:58 remko Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.11 2008/09/23 17:43:41 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -92,7 +91,7 @@ ata_queue_request(struct ata_request *request)
     ch = device_get_softc(request->parent);
     callout_init_mp(&request->callout);	/* serialization done via state_mtx */
     if (!request->callback && !(request->flags & ATA_R_REQUEUE))
-	spin_init(&request->done);
+	spin_init(&request->done, "ataqueuerqdone");
 
     /* in ATA_STALL_QUEUE state we call HW directly */
     if ((ch->state & ATA_STALL_QUEUE) && (request->flags & ATA_R_CONTROL)) {

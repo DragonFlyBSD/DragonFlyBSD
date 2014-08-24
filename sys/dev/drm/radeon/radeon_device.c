@@ -1031,10 +1031,10 @@ int radeon_device_init(struct radeon_device *rdev,
 	lockinit(&rdev->dc_hw_i2c_mutex,
 		 "drm__radeon_device__dc_hw_i2c_mutex", 0, LK_CANRECURSE);
 	atomic_set(&rdev->ih.lock, 0);
-	spin_init(&rdev->gem.mutex);
+	spin_init(&rdev->gem.mutex, "radeon_gemmtx");
 	lockinit(&rdev->pm.mutex, "drm__radeon_device__pm__mutex", 0,
 		 LK_CANRECURSE);
-	spin_init(&rdev->gpu_clock_mutex);
+	spin_init(&rdev->gpu_clock_mutex, "radeon_clockmtx");
 	lockinit(&rdev->pm.mclk_lock, "drm__radeon_device__pm__mclk_lock", 0,
 		 LK_CANRECURSE);
 	lockinit(&rdev->exclusive_lock, "drm__radeon_device__exclusive_lock",
@@ -1101,7 +1101,7 @@ int radeon_device_init(struct radeon_device *rdev,
 
 	/* Registers mapping */
 	/* TODO: block userspace mapping of io register */
-	spin_init(&rdev->mmio_idx_lock);
+	spin_init(&rdev->mmio_idx_lock, "radeon_mpio");
 	rdev->rmmio_rid = PCIR_BAR(2);
 	rdev->rmmio = bus_alloc_resource_any(rdev->dev, SYS_RES_MEMORY,
 	    &rdev->rmmio_rid, RF_ACTIVE | RF_SHAREABLE);

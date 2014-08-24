@@ -223,7 +223,7 @@ atausb_attach(device_t dev)
     sc->timeout = 5000;
     sc->locked_ch = NULL;
     sc->restart_ch = NULL;
-    spin_init(&sc->locked_mtx); 
+    spin_init(&sc->locked_mtx, "atausbattach");
 
     id = usbd_get_interface_descriptor(sc->iface);
     switch (id->bInterfaceProtocol) {
@@ -880,8 +880,8 @@ ata_usbchannel_attach(device_t dev)
     ch->hw.end_transaction = ata_usbchannel_end_transaction;
     ch->hw.status = NULL;
     ch->hw.command = NULL;
-    spin_init(&ch->state_mtx);
-    spin_init(&ch->queue_mtx);
+    spin_init(&ch->state_mtx, "usbattach_state");
+    spin_init(&ch->queue_mtx, "usbattach_queue");
     ata_queue_init(ch);
 
     /* XXX SOS reset the controller HW, the channel and device(s) */

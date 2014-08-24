@@ -383,7 +383,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	p2->p_stat = SIDL;
 
 	RB_INIT(&p2->p_lwp_tree);
-	spin_init(&p2->p_spin);
+	spin_init(&p2->p_spin, "procfork1");
 	lwkt_token_init(&p2->p_token, "proc");
 	lwkt_gettoken(&p2->p_token);
 
@@ -652,7 +652,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	crit_exit();
 	CPUMASK_ANDMASK(lp->lwp_cpumask, usched_mastermask);
 	lwkt_token_init(&lp->lwp_token, "lwp_token");
-	spin_init(&lp->lwp_spin);
+	spin_init(&lp->lwp_spin, "lwptoken");
 
 	/*
 	 * Assign the thread to the current cpu to begin with so we

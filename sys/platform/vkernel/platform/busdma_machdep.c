@@ -1006,7 +1006,7 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 	}
 	bz = new_bz;
 
-	spin_init(&bz->spin);
+	spin_init(&bz->spin, "allocbouncezone");
 	STAILQ_INIT(&bz->bounce_page_list);
 	STAILQ_INIT(&bz->bounce_map_waitinglist);
 	bz->free_bpages = 0;

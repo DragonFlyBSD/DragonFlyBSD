@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.196 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.15 2008/07/12 16:38:10 mneumann Exp $
  */
 
 #include "opt_ata.h"
@@ -3548,7 +3547,7 @@ ata_promise_chipinit(device_t dev)
 	    /* setup host packet controls */
 	    hpkt = kmalloc(sizeof(struct ata_promise_sx4),
 			  M_TEMP, M_INTWAIT | M_ZERO);
-	    spin_init(&hpkt->mtx);
+	    spin_init(&hpkt->mtx, "chipinit");
 	    TAILQ_INIT(&hpkt->queue);
 	    hpkt->busy = 0;
 	    device_set_ivars(dev, hpkt);
@@ -5815,7 +5814,7 @@ ata_serialize(device_t dev, int flags)
     if (!inited) {
 	serial = kmalloc(sizeof(struct ata_serialize),
 			      M_TEMP, M_INTWAIT | M_ZERO);
-	spin_init(&serial->locked_mtx);
+	spin_init(&serial->locked_mtx, "ataserialize");
 	serial->locked_ch = -1;
 	serial->restart_ch = -1;
 	device_set_ivars(ctlr->dev, serial);

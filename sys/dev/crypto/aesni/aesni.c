@@ -92,7 +92,7 @@ aesni_attach(device_t dev)
 		return (ENOMEM);
 	}
 
-	spin_init(&sc->lock);
+	spin_init(&sc->lock, "aesniattach");
 	crypto_register(sc->cid, CRYPTO_AES_CBC, 0, 0);
 	crypto_register(sc->cid, CRYPTO_AES_XTS, 0, 0);
 	return (0);

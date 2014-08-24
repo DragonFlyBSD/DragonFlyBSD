@@ -915,7 +915,7 @@ ruadd(struct rusage *ru, struct rusage *ru2)
 void
 uihashinit(void)
 {
-	spin_init(&uihash_lock);
+	spin_init(&uihash_lock, "uihashinit");
 	uihashtbl = hashinit(maxproc / 16, M_UIDINFO, &uihash);
 }
 
@@ -957,7 +957,7 @@ uicreate(uid_t uid)
 	/*
 	 * Initialize structure and enter it into the hash table
 	 */
-	spin_init(&uip->ui_lock);
+	spin_init(&uip->ui_lock, "uicreate");
 	uip->ui_uid = uid;
 	uip->ui_ref = 1;	/* we're returning a ref */
 	varsymset_init(&uip->ui_varsymset, NULL);

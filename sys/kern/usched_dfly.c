@@ -2160,7 +2160,7 @@ usched_dfly_cpu_init(void)
 		if (CPUMASK_TESTMASK(mask, smp_active_mask) == 0)
 		    continue;
 
-		spin_init(&dd->spin);
+		spin_init(&dd->spin, "uschedcpuinit");
 		dd->cpunode = get_cpu_node_by_cpuid(i);
 		dd->cpuid = i;
 		CPUMASK_ASSBIT(dd->cpumask, i);

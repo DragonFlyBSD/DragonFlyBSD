@@ -207,7 +207,7 @@ static struct dev_ops wdog_ops = {
 static void
 wdog_init(void)
 {
-	spin_init(&wdogmtx);
+	spin_init(&wdogmtx, "wdog");
 	make_dev(&wdog_ops, 0,
 	    UID_ROOT, GID_WHEEL, 0600, "wdog");
 	callout_init_mp(&wdog_callout);

@@ -70,7 +70,7 @@
 #include <pthread.h>
 #endif
 
-struct spinlock pmap_spin = SPINLOCK_INITIALIZER(pmap_spin);
+struct spinlock pmap_spin = SPINLOCK_INITIALIZER(pmap_spin, "pmap_spin");
 
 struct indefinite_info {
 	sysclock_t	base;
@@ -433,7 +433,7 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 	 * Indefinite wait test
 	 */
 	if (value == 1) {
-		spin_init(&spin);
+		spin_init(&spin, "sysctllock");
 		spin_lock(&spin);	/* force an indefinite wait */
 		spin_lock_test_mode = 1;
 		spin_lock(&spin);
@@ -448,7 +448,7 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 	if (value == 2) {
 		globaldata_t gd = mycpu;
 
-		spin_init(&spin);
+		spin_init(&spin, "sysctllocktest");
 		for (i = spin_test_count; i > 0; --i) {
 		    _spin_lock_quick(gd, &spin, "test");
 		    spin_unlock_quick(gd, &spin);

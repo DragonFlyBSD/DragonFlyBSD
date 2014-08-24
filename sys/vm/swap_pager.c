@@ -168,7 +168,7 @@ static int swap_async_max = 4;	/* maximum in-progress async I/O's	*/
 static int swap_burst_read = 0;	/* allow burst reading */
 static swblk_t swapiterator;	/* linearize allocations */
 
-static struct spinlock swapbp_spin = SPINLOCK_INITIALIZER(&swapbp_spin);
+static struct spinlock swapbp_spin = SPINLOCK_INITIALIZER(&swapbp_spin, "swapbp_spin");
 
 /* from vm_swap.c */
 extern struct vnode *swapdev_vp;

@@ -182,7 +182,7 @@ pmap_bootstrap(void)
 	kernel_pmap.pm_pteobj = NULL;	/* see pmap_init */
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	TAILQ_INIT(&kernel_pmap.pm_pvlist_free);
-	spin_init(&kernel_pmap.pm_spin);
+	spin_init(&kernel_pmap.pm_spin, "pmapbootstrap");
 	lwkt_token_init(&kernel_pmap.pm_token, "kpmap_tok");
 	i386_protection_init();
 }
@@ -253,7 +253,7 @@ pmap_pinit(struct pmap *pmap)
 	pmap->pm_cpucachemask = 0;
 	TAILQ_INIT(&pmap->pm_pvlist);
 	TAILQ_INIT(&pmap->pm_pvlist_free);
-	spin_init(&pmap->pm_spin);
+	spin_init(&pmap->pm_spin, "pmapinit");
 	lwkt_token_init(&pmap->pm_token, "pmap_tok");
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
 	pmap->pm_stats.resident_count = 1;

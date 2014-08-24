@@ -52,7 +52,7 @@
 
 /* Lock macros */
 #define POOL_LOCK_INIT(pool) \
-    spin_init(&(pool)->lock)
+    spin_init(&(pool)->lock, "csprng_poollock")
 
 #define POOL_LOCK(pool)      \
     spin_lock(&pool->lock)
@@ -65,7 +65,7 @@
 
 
 #define STATE_LOCK_INIT(state)  \
-    spin_init(&state->lock)
+    spin_init(&state->lock, "csprng_statelock")
 
 #define STATE_LOCK(state)	\
     spin_lock(&state->lock)

@@ -195,7 +195,7 @@ atapi_cam_attach(device_t dev)
 	return ENOMEM;
     }
 
-    spin_init(&scp->state_lock);
+    spin_init(&scp->state_lock, "atapicamattach");
 
     scp->dev = dev;
     scp->parent = device_get_parent(dev);

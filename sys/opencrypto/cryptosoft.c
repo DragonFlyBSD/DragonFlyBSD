@@ -58,7 +58,7 @@ static	struct swcr_data **swcr_sessions = NULL;
 static	u_int32_t swcr_sesnum;
 static	u_int32_t swcr_minsesnum = 1;
 
-static struct spinlock swcr_spin = SPINLOCK_INITIALIZER(swcr_spin);
+static struct spinlock swcr_spin = SPINLOCK_INITIALIZER(swcr_spin, "swcr_spin");
 
 u_int8_t hmac_ipad_buffer[HMAC_MAX_BLOCK_LEN];
 u_int8_t hmac_opad_buffer[HMAC_MAX_BLOCK_LEN];

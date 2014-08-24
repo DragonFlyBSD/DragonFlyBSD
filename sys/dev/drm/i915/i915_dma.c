@@ -1438,8 +1438,8 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 
 	lockinit(&dev_priv->irq_lock, "userirq", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->error_lock, "915err", 0, LK_CANRECURSE);
-	spin_init(&dev_priv->rps.lock);
-	spin_init(&dev_priv->dpio_lock);
+	spin_init(&dev_priv->rps.lock, "i915initrps");
+	spin_init(&dev_priv->dpio_lock, "i915initdpio");
 
 	lockinit(&dev_priv->rps.hw_lock, "i915 rps.hw_lock", 0, LK_CANRECURSE);
 
@@ -1565,7 +1565,7 @@ i915_driver_open(struct drm_device *dev, struct drm_file *file_priv)
 	i915_file_priv = kmalloc(sizeof(*i915_file_priv), DRM_MEM_FILES,
 	    M_WAITOK | M_ZERO);
 
-	spin_init(&i915_file_priv->mm.lock);
+	spin_init(&i915_file_priv->mm.lock, "i915priv");
 	INIT_LIST_HEAD(&i915_file_priv->mm.request_list);
 	file_priv->driver_priv = i915_file_priv;
 

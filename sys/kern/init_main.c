@@ -164,7 +164,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	lwkt_init_thread(&thread0, proc0paddr, LWKT_THREAD_STACK, 0, gd);
 	lwkt_set_comm(&thread0, "thread0");
 	RB_INIT(&proc0.p_lwp_tree);
-	spin_init(&proc0.p_spin);
+	spin_init(&proc0.p_spin, "iproc_proc0");
 	lwkt_token_init(&proc0.p_token, "iproc");
 	proc0.p_lasttid = 0;	/* +1 = next TID */
 	lwp_rb_tree_RB_INSERT(&proc0.p_lwp_tree, &lwp0);
@@ -173,7 +173,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	proc0.p_usched = usched_init();
 	CPUMASK_ASSALLONES(lwp0.lwp_cpumask);
 	lwkt_token_init(&lwp0.lwp_token, "lwp_token");
-	spin_init(&lwp0.lwp_spin);
+	spin_init(&lwp0.lwp_spin, "iproc_lwp0");
 	varsymset_init(&proc0.p_varsymset, NULL);
 	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;

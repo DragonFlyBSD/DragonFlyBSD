@@ -60,7 +60,7 @@
  * Return value:	None
  */
 #define tw_osl_init_lock(ctlr_handle, lock_name, lock)	\
-	spin_init(lock)
+	spin_init(lock, lock_name)
 
 
 

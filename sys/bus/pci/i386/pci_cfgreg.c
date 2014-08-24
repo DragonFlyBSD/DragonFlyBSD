@@ -149,7 +149,7 @@ pci_cfgregopen(void)
 	if (v > 0)
 		PRVERB(("pcibios: BIOS version %x.%02x\n", (v & 0xff00) >> 8,
 		    v & 0xff));
-	spin_init(&pcicfg_spin);
+	spin_init(&pcicfg_spin, "pcicfg");
 	opened = 1;
 
 	/* $PIR requires PCI BIOS 2.10 or greater. */

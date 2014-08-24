@@ -184,7 +184,7 @@ static struct buf *swbuf_raw;
 static vm_offset_t swapbkva;		/* swap buffers kva */
 static struct swqueue bswlist_raw;	/* without kva */
 static struct swqueue bswlist_kva;	/* with kva */
-static struct spinlock bswspin = SPINLOCK_INITIALIZER(&bswspin);
+static struct spinlock bswspin = SPINLOCK_INITIALIZER(&bswspin, "bswspin");
 static int pbuf_raw_count;
 static int pbuf_kva_count;
 

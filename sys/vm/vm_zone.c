@@ -237,7 +237,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 	 */
 	if ((z->zflags & ZONE_BOOT) == 0) {
 		z->zsize = (size + ZONE_ROUNDING - 1) & ~(ZONE_ROUNDING - 1);
-		spin_init(&z->zlock);
+		spin_init(&z->zlock, "zinitna");
 		z->zfreecnt = 0;
 		z->ztotal = 0;
 		z->zmax = 0;
@@ -371,7 +371,7 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 	z->zpagecount = 0;
 	z->zalloc = 0;
 	z->znalloc = 0;
-	spin_init(&z->zlock);
+	spin_init(&z->zlock, "zbootinit");
 
 	bzero(item, (size_t)nitems * z->zsize);
 	z->zitems = NULL;

@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/kern_sysref.c,v 1.7 2008/10/26 04:29:19 sephe Exp $
  */
 /*
  * System resource control module for all cluster-addressable system resource
@@ -80,7 +78,7 @@ sysrefbootinit(void *dummy __unused)
 
 	for (i = 0; i < ncpus; ++i) {
 		sa = &sysref_array[i];
-		spin_init(&sa->spin);
+		spin_init(&sa->spin, "sysrefbootinit");
 		RB_INIT(&sa->rbtree);
 	}
 }

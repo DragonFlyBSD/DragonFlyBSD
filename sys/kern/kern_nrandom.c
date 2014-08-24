@@ -468,7 +468,7 @@ rand_initialize(void)
 #endif
 
 
-	spin_init(&rand_spin);
+	spin_init(&rand_spin, "randinit");
 
 	/* Initialize IBAA. */
 	IBAA_Init();

@@ -134,7 +134,7 @@ mbtrack_cmp(struct mbtrack *mb1, struct mbtrack *mb2)
 RB_GENERATE2(mbuf_rb_tree, mbtrack, rb_node, mbtrack_cmp, struct mbuf *, m);
 
 struct mbuf_rb_tree	mbuf_track_root;
-static struct spinlock	mbuf_track_spin = SPINLOCK_INITIALIZER(mbuf_track_spin);
+static struct spinlock	mbuf_track_spin = SPINLOCK_INITIALIZER(mbuf_track_spin, "mbuf_track_spin");
 
 static void
 mbuftrack(struct mbuf *m)

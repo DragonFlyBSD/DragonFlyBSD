@@ -3627,16 +3627,16 @@ nchinit(void)
 		gd->gd_nchstats = &nchstats[i];
 	}
 	TAILQ_INIT(&ncneglist);
-	spin_init(&ncspin);
+	spin_init(&ncspin, "nchinit");
 	nchashtbl = hashinit_ext(desiredvnodes / 2,
 				 sizeof(struct nchash_head),
 				 M_VFSCACHE, &nchash);
 	for (i = 0; i <= (int)nchash; ++i) {
 		LIST_INIT(&nchashtbl[i].list);
-		spin_init(&nchashtbl[i].spin);
+		spin_init(&nchashtbl[i].spin, "nchinit_hash");
 	}
 	for (i = 0; i < NCMOUNT_NUMCACHE; ++i)
-		spin_init(&ncmount_cache[i].spin);
+		spin_init(&ncmount_cache[i].spin, "nchinit_cache");
 	nclockwarn = 5 * hz;
 }
 

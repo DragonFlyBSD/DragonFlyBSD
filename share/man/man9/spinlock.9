@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 15, 2014
+.Dd August 24, 2014
 .Dt SPINLOCK 9
 .Os
 .Sh NAME
@@ -46,7 +46,7 @@
 .In sys/spinlock.h
 .In sys/spinlock2.h
 .Ft void
-.Fn spin_init "struct spinlock *mtx"
+.Fn spin_init "struct spinlock *mtx" "const char *descr"
 .Ft void
 .Fn spin_uninit "struct spinlock *mtx"
 .Ft void
@@ -73,6 +73,10 @@ The
 function initializes a new
 .Fa spinlock
 structure for use.
+An initializer macro,
+.Dv SPINLOCK_INITIALIZER ,
+is provided as well, taking the same arguments as
+.Fn spin_init .
 The structure is cleaned up with
 .Fn spin_uninit
 when it is no longer needed.

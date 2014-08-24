@@ -28,8 +28,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/spinlock.h,v 1.5 2006/05/26 02:26:26 dillon Exp $
  */
 
 #ifndef _SYS_SPINLOCK_H_
@@ -50,9 +48,10 @@
 struct spinlock {
 	int counta;
 	int countb;
+	const char *descr;
 };
 
-#define SPINLOCK_INITIALIZER(head)	{ 0, 0 }
+#define SPINLOCK_INITIALIZER(head, d)	{ 0, 0, #d }
 
 #define SPINLOCK_SHARED			0x80000000
 #define SPINLOCK_EXCLWAIT		0x00100000 /* high bits counter */

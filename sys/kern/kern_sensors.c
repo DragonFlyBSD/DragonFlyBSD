@@ -38,7 +38,7 @@
 
 static int		sensor_task_lock_inited = 0;
 static struct lock	sensor_task_lock;
-static struct spinlock	sensor_dev_lock = SPINLOCK_INITIALIZER(sensor_dev_lock);
+static struct spinlock	sensor_dev_lock = SPINLOCK_INITIALIZER(sensor_dev_lock, "sensor_dev_lock");
 
 int			sensordev_count = 0;
 SLIST_HEAD(, ksensordev) sensordev_list = SLIST_HEAD_INITIALIZER(sensordev_list);

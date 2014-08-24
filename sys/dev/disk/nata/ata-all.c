@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.279 2007/02/23 16:25:08 jhb Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.c,v 1.14 2008/03/24 06:41:56 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -122,8 +121,8 @@ ata_attach(device_t dev)
     /* initialize the softc basics */
     ch->dev = dev;
     ch->state = ATA_IDLE;
-    spin_init(&ch->state_mtx);
-    spin_init(&ch->queue_mtx);
+    spin_init(&ch->state_mtx, "ataattach_state");
+    spin_init(&ch->queue_mtx, "ataattach_queue");
     ata_queue_init(ch);
 
     /* reset the controller HW, the channel and device(s) */

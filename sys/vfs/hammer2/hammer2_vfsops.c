@@ -334,10 +334,10 @@ hammer2_pfsalloc(const hammer2_inode_data_t *ipdata, hammer2_tid_t alloc_tid)
 	kmalloc_create(&pmp->minode, "HAMMER2-inodes");
 	kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
 	lockinit(&pmp->lock, "pfslk", 0, 0);
-	spin_init(&pmp->inum_spin);
+	spin_init(&pmp->inum_spin, "hm2pfsalloc_inum");
 	RB_INIT(&pmp->inum_tree);
 	TAILQ_INIT(&pmp->unlinkq);
-	spin_init(&pmp->list_spin);
+	spin_init(&pmp->list_spin, "hm2pfsalloc_list");
 
 	pmp->alloc_tid = alloc_tid + 1;	  /* our first media transaction id */
 	pmp->flush_tid = pmp->alloc_tid;
@@ -528,8 +528,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		kmalloc_create(&hmp->mchain, "HAMMER2-chains");
 		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
 		RB_INIT(&hmp->iotree);
-		spin_init(&hmp->io_spin);
-		spin_init(&hmp->list_spin);
+		spin_init(&hmp->io_spin, "hm2mount_io");
+		spin_init(&hmp->list_spin, "hm2mount_list");
 		TAILQ_INIT(&hmp->flushq);
 
 		lockinit(&hmp->vollk, "h2vol", 0, 0);

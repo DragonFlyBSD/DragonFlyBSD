@@ -89,7 +89,7 @@ struct futex_list futex_list;
 #if 0
 #define FUTEX_LOCK(f)		spin_lock(&(f)->f_lck)
 #define FUTEX_UNLOCK(f)		spin_unlock(&(f)->f_lck)
-#define FUTEX_INIT(f)		spin_init(&(f)->f_lck)
+#define FUTEX_INIT(f)		spin_init(&(f)->f_lck, "futex")
 #define	FUTEX_SLEEP(f, id, flag, wm, timo)	ssleep((id), &(f)->f_lck, (flag), (wm), (timo))
 #endif
 

@@ -46,7 +46,7 @@ int drm_dma_setup(struct drm_device *dev)
 	if (dev->dma == NULL)
 		return ENOMEM;
 
-	spin_init(&dev->dma_lock);
+	spin_init(&dev->dma_lock, "drmdma_lock");
 
 	return 0;
 }

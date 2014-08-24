@@ -1452,13 +1452,13 @@ xpt_init(void *dummy)
 	STAILQ_INIT(&xsoftc.highpowerq);
 	xsoftc.num_highpower = CAM_MAX_HIGHPOWER;
 
-	spin_init(&cam_simq_spin);
+	spin_init(&cam_simq_spin, "cam_simq_spin");
 	lockinit(&xsoftc.xpt_lock, "XPT lock", 0, LK_CANRECURSE);
 	lockinit(&xsoftc.xpt_topo_lock, "XPT topology lock", 0, LK_CANRECURSE);
 
 	SLIST_INIT(&cam_dead_sim.ccb_freeq);
 	TAILQ_INIT(&cam_dead_sim.sim_doneq);
-	spin_init(&cam_dead_sim.sim_spin);
+	spin_init(&cam_dead_sim.sim_spin, "cam_dead_sim");
 	cam_dead_sim.sim_action = dead_sim_action;
 	cam_dead_sim.sim_poll = dead_sim_poll;
 	cam_dead_sim.sim_name = "dead_sim";

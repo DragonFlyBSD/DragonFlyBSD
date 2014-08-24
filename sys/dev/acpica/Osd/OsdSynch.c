@@ -95,7 +95,7 @@ AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits,
 
     as = kmalloc(sizeof(*as), M_ACPISEM, M_INTWAIT | M_ZERO);
 
-    spin_init(&as->as_spin);
+    spin_init(&as->as_spin, "AcpiOsSem");
     as->as_units = InitialUnits;
     as->as_maxunits = MaxUnits;
     as->as_pendings = as->as_resetting = as->as_timeouts = 0;
@@ -345,7 +345,7 @@ AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
     if (OutHandle == NULL)
 	return (AE_BAD_PARAMETER);
     spin = kmalloc(sizeof(*spin), M_ACPISEM, M_INTWAIT|M_ZERO);
-    spin_init(&spin->lock);
+    spin_init(&spin->lock, "AcpiOsLock");
 #ifdef ACPI_DEBUG_LOCKS
     spin->owner = NULL;
     spin->func = "";

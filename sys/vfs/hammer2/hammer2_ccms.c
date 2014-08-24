@@ -74,7 +74,7 @@ void
 ccms_cst_init(ccms_cst_t *cst, void *handle)
 {
 	bzero(cst, sizeof(*cst));
-	spin_init(&cst->spin);
+	spin_init(&cst->spin, "ccmscst");
 	cst->handle = handle;
 }
 

@@ -635,7 +635,7 @@ bufinit(void *dummy __unused)
 	/* next, make a null set of free lists */
 	for (i = 0; i < ncpus; ++i) {
 		pcpu = &bufpcpu[i];
-		spin_init(&pcpu->spin);
+		spin_init(&pcpu->spin, "bufinit");
 		for (j = 0; j < BUFFER_QUEUES; j++)
 			TAILQ_INIT(&pcpu->bufqueues[j]);
 	}

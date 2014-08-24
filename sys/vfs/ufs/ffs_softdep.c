@@ -275,7 +275,7 @@ sema_init(struct sema *semap, char *name, int timo)
 	semap->value = 0;
 	semap->name = name;
 	semap->timo = timo;
-	spin_init(&semap->spin);
+	spin_init(&semap->spin, "ufssema");
 }
 
 /*

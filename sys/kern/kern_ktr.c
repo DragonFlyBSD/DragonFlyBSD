@@ -274,7 +274,7 @@ ktr_resync_callback(void *dummy __unused)
 	if (ktr_testspincnt) {
 		struct spinlock spin;
 
-		spin_init(&spin);
+		spin_init(&spin, "ktrresync");
 		spin_lock(&spin);
 		spin_unlock(&spin);
 		logtest_noargs(spin_beg);

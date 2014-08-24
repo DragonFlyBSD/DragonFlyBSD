@@ -569,7 +569,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	TAILQ_INIT(&kernel_pmap.pm_pvlist_free);
 	lwkt_token_init(&kernel_pmap.pm_token, "kpmap_tok");
-	spin_init(&kernel_pmap.pm_spin);
+	spin_init(&kernel_pmap.pm_spin, "pmapbootstrap");
 
 	/*
 	 * Reserve some special page table entries/VA space for temporary
@@ -1180,7 +1180,7 @@ pmap_pinit(struct pmap *pmap)
 	pmap->pm_ptphint = NULL;
 	TAILQ_INIT(&pmap->pm_pvlist);
 	TAILQ_INIT(&pmap->pm_pvlist_free);
-	spin_init(&pmap->pm_spin);
+	spin_init(&pmap->pm_spin, "pmapinit");
 	lwkt_token_init(&pmap->pm_token, "pmap_tok");
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
 	pmap->pm_stats.resident_count = 1;

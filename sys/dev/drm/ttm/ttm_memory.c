@@ -253,7 +253,7 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 	int i;
 	struct ttm_mem_zone *zone;
 
-	spin_init(&glob->spin);
+	spin_init(&glob->spin, "ttmemglob");
 	glob->swap_queue = taskqueue_create("ttm_swap", M_WAITOK,
 	    taskqueue_thread_enqueue, &glob->swap_queue);
 	taskqueue_start_threads(&glob->swap_queue, 1, 0, -1, "ttm swap");

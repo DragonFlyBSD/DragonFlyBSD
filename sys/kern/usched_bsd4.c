@@ -298,7 +298,7 @@ bsd4_rqinit(void *dummy)
 {
 	int i;
 
-	spin_init(&bsd4_spin);
+	spin_init(&bsd4_spin, "bsd4rq");
 	for (i = 0; i < NQS; i++) {
 		TAILQ_INIT(&bsd4_queues[i]);
 		TAILQ_INIT(&bsd4_rtqueues[i]);

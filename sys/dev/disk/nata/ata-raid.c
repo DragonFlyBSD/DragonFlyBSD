@@ -138,7 +138,7 @@ ata_raid_attach(struct ar_softc *rdp, int writeback)
     char buffer[32];
     int disk;
 
-    spin_init(&rdp->lock);
+    spin_init(&rdp->lock, "ataraidattach");
     ata_raid_config_changed(rdp, writeback);
 
     /* sanitize arrays total_size % (width * interleave) == 0 */
@@ -498,7 +498,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 				rebuild->dev = rdp->disks[this].dev;
 				rebuild->flags &= ~ATA_R_READ;
 				rebuild->flags |= ATA_R_WRITE;
-				spin_init(&composite->lock);
+				spin_init(&composite->lock, "ardfspare");
 				composite->residual = request->bytecount;
 				composite->rd_needed |= (1 << drv);
 				composite->wr_depend |= (1 << drv);
@@ -557,7 +557,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 				      sizeof(struct ata_request));
 				mirror->this = this;
 				mirror->dev = rdp->disks[this].dev;
-				spin_init(&composite->lock);
+				spin_init(&composite->lock, "ardfonline");
 				composite->residual = request->bytecount;
 				composite->wr_needed |= (1 << drv);
 				composite->wr_needed |= (1 << this);

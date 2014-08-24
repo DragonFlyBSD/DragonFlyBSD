@@ -116,7 +116,7 @@ static volatile int vm_pages_waiting;
 
 static struct alist vm_contig_alist;
 static struct almeta vm_contig_ameta[ALIST_RECORDS_65536];
-static struct spinlock vm_contig_spin = SPINLOCK_INITIALIZER(&vm_contig_spin);
+static struct spinlock vm_contig_spin = SPINLOCK_INITIALIZER(&vm_contig_spin, "vm_contig_spin");
 
 static u_long vm_dma_reserved = 0;
 TUNABLE_ULONG("vm.dma_reserved", &vm_dma_reserved);
@@ -150,7 +150,7 @@ vm_page_queue_init(void)
 
 	for (i = 0; i < PQ_COUNT; i++) {
 		TAILQ_INIT(&vm_page_queues[i].pl);
-		spin_init(&vm_page_queues[i].spin);
+		spin_init(&vm_page_queues[i].spin, "vm_page_queue_init");
 	}
 
 	for (i = 0; i < VMACTION_HSIZE; i++)

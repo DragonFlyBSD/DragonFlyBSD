@@ -84,7 +84,7 @@ static void taskqueue_run(struct taskqueue *queue, int lock_held);
 static __inline void
 TQ_LOCK_INIT(struct taskqueue *tq)
 {
-	spin_init(&tq->tq_lock);
+	spin_init(&tq->tq_lock, "tqlock");
 }
 
 static __inline void

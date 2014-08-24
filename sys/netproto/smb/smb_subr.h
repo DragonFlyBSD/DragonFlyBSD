@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.15 2006/12/22 23:57:54 swildner Exp $
  */
 #ifndef _NETSMB_SMB_SUBR_H_
 #define _NETSMB_SMB_SUBR_H_
@@ -82,7 +81,7 @@ void m_dumpm(struct mbuf *m);
 
 #define	lockdestroy(lock)
 #define	smb_slock			spinlock
-#define	smb_sl_init(sl, desc)		spin_init(sl)
+#define	smb_sl_init(sl, desc)		spin_init(sl, desc)
 #define	smb_sl_destroy(sl)
 #define	smb_sl_lock(sl)			spin_lock(sl)
 #define	smb_sl_unlock(sl)		spin_unlock(sl)

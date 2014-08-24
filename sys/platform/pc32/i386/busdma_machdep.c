@@ -154,7 +154,7 @@ struct bus_dmamap {
 static STAILQ_HEAD(, bus_dmamap) bounce_map_callbacklist =
 	STAILQ_HEAD_INITIALIZER(bounce_map_callbacklist);
 static struct spinlock bounce_map_list_spin =
-	SPINLOCK_INITIALIZER(&bounce_map_list_spin);
+	SPINLOCK_INITIALIZER(&bounce_map_list_spin, "bounce_map_list_spin");
 
 static struct bus_dmamap nobounce_dmamap;
 
@@ -258,7 +258,7 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 
 	newtag = kmalloc(sizeof(*newtag), M_DEVBUF, M_INTWAIT | M_ZERO);
 
-	spin_init(&newtag->spin);
+	spin_init(&newtag->spin, "busdmacreate");
 	newtag->parent = parent;
 	newtag->alignment = alignment;
 	newtag->boundary = boundary;
@@ -1095,7 +1095,7 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 	}
 	bz = new_bz;
 
-	spin_init(&bz->spin);
+	spin_init(&bz->spin, "allocbouncezone");
 	STAILQ_INIT(&bz->bounce_page_list);
 	STAILQ_INIT(&bz->bounce_map_waitinglist);
 	bz->free_bpages = 0;

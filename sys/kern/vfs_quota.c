@@ -125,7 +125,7 @@ vq_init(struct mount *mp)
 	/* initialize the rb trees */
 	RB_INIT(&mp->mnt_acct.ac_uroot);
 	RB_INIT(&mp->mnt_acct.ac_groot);
-	spin_init(&mp->mnt_acct.ac_spin);
+	spin_init(&mp->mnt_acct.ac_spin, "vqinit");
 
 	mp->mnt_acct.ac_bytes = 0;
 

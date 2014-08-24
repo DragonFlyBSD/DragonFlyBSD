@@ -370,7 +370,7 @@ lwkt_initport_spin(lwkt_port_t port, thread_t td, boolean_t fixed_cpuid)
 		   lwkt_spin_replyport,
 		   dmsgfn,
 		   pportfn_oncpu);
-    spin_init(&port->mpu_spin);
+    spin_init(&port->mpu_spin, "lwktinitport");
     port->mpu_td = td;
     if (fixed_cpuid)
 	port->mp_cpuid = td->td_gd->gd_cpuid;

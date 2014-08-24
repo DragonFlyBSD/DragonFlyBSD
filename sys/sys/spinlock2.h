@@ -263,10 +263,11 @@ spin_pool_unlock(void *chan)
 }
 
 static __inline void
-spin_init(struct spinlock *spin)
+spin_init(struct spinlock *spin, const char *descr)
 {
-        spin->counta = 0;
-        spin->countb = 0;
+	spin->counta = 0;
+	spin->countb = 0;
+	spin->descr  = descr;
 }
 
 static __inline void

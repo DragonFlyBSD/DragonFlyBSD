@@ -126,7 +126,7 @@ static struct dev_ops fildesc_ops = {
  * Descriptor management.
  */
 static struct filelist filehead = LIST_HEAD_INITIALIZER(&filehead);
-static struct spinlock filehead_spin = SPINLOCK_INITIALIZER(&filehead_spin);
+static struct spinlock filehead_spin = SPINLOCK_INITIALIZER(&filehead_spin, "filehead_spin");
 static int nfiles;		/* actual number of open files */
 extern int cmask;	
 
@@ -1559,7 +1559,7 @@ falloc(struct lwp *lp, struct file **resultfp, int *resultfd)
 	 * Allocate a new file descriptor.
 	 */
 	fp = kmalloc(sizeof(struct file), M_FILE, M_WAITOK | M_ZERO);
-	spin_init(&fp->f_spin);
+	spin_init(&fp->f_spin, "falloc");
 	SLIST_INIT(&fp->f_klist);
 	fp->f_count = 1;
 	fp->f_ops = &badfileops;
@@ -1782,7 +1782,7 @@ fdinit_bootstrap(struct proc *p0, struct filedesc *fdp0, int cmask)
 	fdp0->fd_files = fdp0->fd_builtin_files;
 	fdp0->fd_nfiles = NDFILE;
 	fdp0->fd_lastfile = -1;
-	spin_init(&fdp0->fd_spin);
+	spin_init(&fdp0->fd_spin, "fdinitbootstrap");
 }
 
 /*
@@ -1826,7 +1826,7 @@ fdinit(struct proc *p)
 	newfdp->fd_files = newfdp->fd_builtin_files;
 	newfdp->fd_nfiles = NDFILE;
 	newfdp->fd_lastfile = -1;
-	spin_init(&newfdp->fd_spin);
+	spin_init(&newfdp->fd_spin, "fdinit");
 
 	return (newfdp);
 }
@@ -1942,7 +1942,7 @@ again:
 	newfdp->fd_lastfile = fdp->fd_lastfile;
 	newfdp->fd_freefile = fdp->fd_freefile;
 	newfdp->fd_cmask = fdp->fd_cmask;
-	spin_init(&newfdp->fd_spin);
+	spin_init(&newfdp->fd_spin, "fdcopy");
 
 	/*
 	 * Copy the descriptor table through (i).  This also copies the

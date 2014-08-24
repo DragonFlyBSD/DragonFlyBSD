@@ -87,7 +87,7 @@ extern int lwkt_sched_debug;
 #endif
 
 static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
-struct spinlock		tok_debug_spin = SPINLOCK_INITIALIZER(&tok_debug_spin);
+struct spinlock		tok_debug_spin = SPINLOCK_INITIALIZER(&tok_debug_spin, "tok_debug_spin");
 
 #define TOKEN_STRING	"REF=%p TOK=%p TD=%p"
 #define TOKEN_ARGS	lwkt_tokref_t ref, lwkt_token_t tok, struct thread *td

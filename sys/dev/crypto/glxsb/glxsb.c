@@ -508,8 +508,8 @@ glxsb_crypto_setup(struct glxsb_softc *sc)
 
 	TAILQ_INIT(&sc->sc_sessions);
 	sc->sc_sid = 1;
-	spin_init(&sc->sc_sessions_lock);
-	spin_init(&sc->sc_task_mtx);
+	spin_init(&sc->sc_sessions_lock, "glxsb_sessions");
+	spin_init(&sc->sc_task_mtx, "glxsb_task");
 
 	if (crypto_register(sc->sc_cid, CRYPTO_AES_CBC, 0, 0) != 0)
 		goto crypto_fail;

@@ -37,7 +37,7 @@ typedef struct {
 static inline void
 init_waitqueue_head(wait_queue_head_t *eq)
 {
-	spin_init(&eq->lock);
+	spin_init(&eq->lock, "linux_waitqueue");
 }
 
 #define wake_up(eq)		wakeup_one(eq)

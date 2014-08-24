@@ -912,7 +912,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	kernel_pmap.pm_count = 1;
 	CPUMASK_ASSALLONES(kernel_pmap.pm_active);
 	RB_INIT(&kernel_pmap.pm_pvroot);
-	spin_init(&kernel_pmap.pm_spin);
+	spin_init(&kernel_pmap.pm_spin, "pmapbootstrap");
 	lwkt_token_init(&kernel_pmap.pm_token, "kpmap_tok");
 
 	/*
@@ -1626,7 +1626,7 @@ pmap_pinit0(struct pmap *pmap)
 	CPUMASK_ASSZERO(pmap->pm_active);
 	pmap->pm_pvhint = NULL;
 	RB_INIT(&pmap->pm_pvroot);
-	spin_init(&pmap->pm_spin);
+	spin_init(&pmap->pm_spin, "pmapinit0");
 	lwkt_token_init(&pmap->pm_token, "pmap_tok");
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
 	pmap_pinit_defaults(pmap);
@@ -1656,7 +1656,7 @@ pmap_pinit_simple(struct pmap *pmap)
 	if (pmap->pm_pmlpv == NULL) {
 		RB_INIT(&pmap->pm_pvroot);
 		bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
-		spin_init(&pmap->pm_spin);
+		spin_init(&pmap->pm_spin, "pmapinitsimple");
 		lwkt_token_init(&pmap->pm_token, "pmap_tok");
 	}
 }

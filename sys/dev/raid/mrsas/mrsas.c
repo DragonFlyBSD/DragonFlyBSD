@@ -776,7 +776,7 @@ static int mrsas_attach(device_t dev)
     lockinit(&sc->pci_lock,  "mrsas_pci_lock", 0, LK_CANRECURSE);
     lockinit(&sc->io_lock,  "mrsas_io_lock", 0, LK_CANRECURSE);
     lockinit(&sc->aen_lock,  "mrsas_aen_lock", 0, LK_CANRECURSE);
-    spin_init(&sc->ioctl_lock);
+    spin_init(&sc->ioctl_lock, "mrsasioctl");
     lockinit(&sc->mpt_cmd_pool_lock, "mrsas_mpt_cmd_pool_lock", 0,
 	LK_CANRECURSE);
     lockinit(&sc->mfi_cmd_pool_lock, "mrsas_mfi_cmd_pool_lock", 0,

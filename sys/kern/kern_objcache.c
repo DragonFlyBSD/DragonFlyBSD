@@ -28,8 +28,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.23 2008/10/26 04:29:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -226,7 +224,7 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 	 */
 	depot = &oc->depot[0];
 
-	spin_init(&depot->spin);
+	spin_init(&depot->spin, "objcachedepot");
 	SLIST_INIT(&depot->fullmagazines);
 	SLIST_INIT(&depot->emptymagazines);
 
@@ -989,7 +987,7 @@ objcache_timer(void *dummy)
 static void
 objcache_init(void)
 {
-	spin_init(&objcachelist_spin);
+	spin_init(&objcachelist_spin, "objcachelist");
 
 	magazine_capmin = mag_capacity_align(MAGAZINE_CAPACITY_MIN);
 	magazine_capmax = mag_capacity_align(MAGAZINE_CAPACITY_MAX);

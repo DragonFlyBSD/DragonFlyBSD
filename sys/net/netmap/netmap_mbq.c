@@ -40,7 +40,7 @@ static inline void __mbq_init(struct mbq *q)
 
 void mbq_safe_init(struct mbq *q)
 {
-    spin_init(&q->lock);
+    spin_init(&q->lock, "mbq");
     __mbq_init(q);
 }
 

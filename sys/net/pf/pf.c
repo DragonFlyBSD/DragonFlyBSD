@@ -117,7 +117,7 @@ extern int debug_pfugidhack;
 struct lwkt_token pf_token = LWKT_TOKEN_INITIALIZER(pf_token);
 struct lwkt_token pf_gtoken = LWKT_TOKEN_INITIALIZER(pf_gtoken);
 #if __SIZEOF_LONG__ != 8
-struct spinlock pf_spin = SPINLOCK_INITIALIZER(pf_spin);
+struct spinlock pf_spin = SPINLOCK_INITIALIZER(pf_spin, "pf_spin");
 #endif
 
 #define DPFPRINTF(n, x)	if (pf_status.debug >= (n)) kprintf x

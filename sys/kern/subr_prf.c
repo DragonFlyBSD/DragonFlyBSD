@@ -103,7 +103,7 @@ static void  snprintf_func (int ch, void *arg);
 
 static int consintr = 1;		/* Ok to handle console interrupts? */
 static int msgbufmapped;		/* Set when safe to use msgbuf */
-static struct spinlock cons_spin = SPINLOCK_INITIALIZER(cons_spin);
+static struct spinlock cons_spin = SPINLOCK_INITIALIZER(cons_spin, "cons_spin");
 static thread_t constty_td = NULL;
 
 int msgbuftrigger;
@@ -892,7 +892,7 @@ done:
 void
 kvcreinitspin(void)
 {
-	spin_init(&cons_spin);
+	spin_init(&cons_spin, "kvcre");
 	atomic_clear_long(&mycpu->gd_flags, GDF_KPRINTF);
 }
 

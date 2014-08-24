@@ -126,7 +126,7 @@ padlock_attach(device_t dev)
 		return (ENOMEM);
 	}
 
-	spin_init(&sc->sc_sessions_lock);
+	spin_init(&sc->sc_sessions_lock, "padlock");
 	crypto_register(sc->sc_cid, CRYPTO_AES_CBC, 0, 0);
 	crypto_register(sc->sc_cid, CRYPTO_MD5_HMAC, 0, 0);
 	crypto_register(sc->sc_cid, CRYPTO_SHA1_HMAC, 0, 0);
