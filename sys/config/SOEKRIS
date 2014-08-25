@@ -83,7 +83,6 @@ device		da		# Direct Access (disks)
 device		pass		# Passthrough device (direct SCSI access)
 device		sg		# Passthrough device (linux scsi generic)
 
-
 # atkbdc0 controls both the keyboard and the PS/2 mouse
 device		atkbdc0	at isa? port IO_KBD
 device		atkbd0	at atkbdc? irq 1
@@ -162,6 +161,7 @@ pseudo-device	ppp	1	# Kernel PPP
 pseudo-device	tun		# Packet tunnel.
 pseudo-device	pty		# Pseudo-ttys (telnet etc)
 pseudo-device	md		# Memory "disks"
+pseudo-device	vn		# File image "disks"
 pseudo-device	gif		# IPv6 and IPv4 tunneling
 pseudo-device	faith	1	# IPv6-to-IPv4 relaying (translation)
 
