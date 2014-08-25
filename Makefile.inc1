@@ -12,6 +12,7 @@
 # installworld- install everything built by "buildworld"
 # backupworld - copies /bin /sbin /usr/bin /usr/sbin /usr/lib /usr/libexec
 #               to manual backup dir
+# rescue      - create rescue image
 # restoreworld- installs binaries from manual backup dir to world
 # restoreworld-auto - installs binaries from auto-backup dir to world
 # most        - build user commands, no libraries or include files
@@ -488,7 +489,18 @@ installworld: installcheck
 
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
-	sync; sleep 2; sync; sleep 2
+	sync
+	@echo "installworld is done.  If things work as expected after a"
+	@echo "full reboot, consider updating the rescue image with"
+	@echo "'make rescue'.  Do not do it until rebooting."
+
+# Create a rescue image.  We no longer do this automatically for several
+# reasons, primarily that users have had serious issue with mismatched 'vn'
+# vs the kldload image that can crash the system.  But also, the rescue image
+# is intended to be a rescue image, it is a bad idea to update it at the
+# same time the world is installed.
+#
+rescue:
 	mkinitrd -b ${DESTDIR}/boot
 
 #

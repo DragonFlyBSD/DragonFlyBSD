@@ -29,6 +29,7 @@
 #			of the system for DragonFly. ex. two compilers
 # most                - Build user commands, no libraries or include files.
 # installmost         - Install user commands, no libraries or include files.
+# rescue	      - Create rescue image in /boot
 # backupworld         - Copies /bin /sbin /usr/bin /usr/sbin /usr/lib
 #                       /usr/libexec to manual backup dir.
 # restoreworld        - Installs binaries from manual backup dir to world.
@@ -82,7 +83,7 @@ TGTS=	all all-man buildkernel quickkernel nativekernel \
 	hierarchy install installcheck installkernel \
 	reinstallkernel installmost installworld libraries lint maninstall \
 	manlint mk most obj objlink regress rerelease tags \
-	backupworld restoreworld restoreworld-auto \
+	rescue backupworld restoreworld restoreworld-auto \
 	backup-clean backup-auto-clean \
 	_obj _includes _libraries _depend _worldtmp \
 	_bootstrap-tools _build-tools _cross-tools
