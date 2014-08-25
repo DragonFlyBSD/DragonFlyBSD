@@ -461,6 +461,20 @@ get_pidfile_from_conf()
 }
 
 #
+# check_startmsgs
+#	If rc_quiet is set (usually as a result of using faststart at
+#	boot time) check if rc_startmsgs is enabled.
+#
+check_startmsgs()
+{
+	if [ -n "$rc_quiet" ]; then
+		checkyesno rc_startmsgs
+	else
+		return 0
+	fi
+}
+
+#
 # run_rc_command argument
 #	Search for argument in the list of supported commands, which is:
 #		"start stop restart rcvar status poll ${extra_commands}"

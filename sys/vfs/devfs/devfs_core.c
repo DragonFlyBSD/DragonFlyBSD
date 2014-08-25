@@ -34,6 +34,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/bus.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/types.h>
@@ -1234,6 +1235,23 @@ devfs_msg_exec(devfs_msg_t msg)
 	lockmgr(&devfs_lock, LK_RELEASE);
 }
 
+static void
+notify(cdev_t dev, const char *ev)
+{
+	static const char prefix[] = "cdev=";
+	char *data;
+	int namelen;
+
+	if (cold)
+		return;
+	namelen = strlen(dev->si_name);
+	data = kmalloc(namelen + sizeof(prefix), M_TEMP, M_WAITOK);
+	memcpy(data, prefix, sizeof(prefix) - 1);
+	memcpy(data + sizeof(prefix) - 1, dev->si_name, namelen + 1);
+	devctl_notify("DEVFS", "CDEV", ev, data);
+	kfree(data, M_TEMP);
+}
+
 /*
  * Worker function to insert a new dev into the dev list and initialize its
  * permissions. It also calls devfs_propagate_dev which in turn propagates
@@ -1255,6 +1273,7 @@ devfs_create_dev_worker(cdev_t dev, uid_t uid, gid_t gid, int perms)
 	devfs_propagate_dev(dev, 1);
 
 	udev_event_attach(dev, NULL, 0);
+	notify(dev, "CREATE");
 
 	return 0;
 }
@@ -1275,6 +1294,7 @@ devfs_destroy_dev_worker(cdev_t dev)
 	error = devfs_unlink_dev(dev);
 	devfs_propagate_dev(dev, 0);
 
+	notify(dev, "DESTROY");
 	udev_event_detach(dev, NULL, 0);
 
 	if (error == 0)
