@@ -75,6 +75,7 @@ pseudo-device	ppp	1	# Kernel PPP
 pseudo-device	tun		# Packet tunnel.
 pseudo-device	pty		# Pseudo-ttys (telnet etc)
 pseudo-device	md		# Memory "disks"
+pseudo-device	vn		# File image "disks"
 pseudo-device	gif		# IPv6 and IPv4 tunneling
 pseudo-device	faith	1	# IPv6-to-IPv4 relaying (translation)
 
@@ -93,8 +94,6 @@ pseudo-device	bpf		#Berkeley packet filter
 
 # VIRTUAL DEVICES
 #
-device		vn
 device		vkd
 device		vke
-
 device		vcd
