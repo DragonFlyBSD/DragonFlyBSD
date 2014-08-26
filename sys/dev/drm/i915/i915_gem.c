@@ -50,7 +50,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/dev/drm2/i915/i915_gem.c 253497 2013-07-20 13:52:40Z kib $
  */
 
 #include <sys/resourcevar.h>
@@ -2157,6 +2156,68 @@ int i915_gem_object_set_cache_level(struct drm_i915_gem_object *obj,
 
 	obj->cache_level = cache_level;
 	return 0;
+}
+
+int i915_gem_get_caching_ioctl(struct drm_device *dev, void *data,
+			       struct drm_file *file)
+{
+	struct drm_i915_gem_caching *args = data;
+	struct drm_i915_gem_object *obj;
+	int ret;
+
+	ret = i915_mutex_lock_interruptible(dev);
+	if (ret)
+		return ret;
+
+	obj = to_intel_bo(drm_gem_object_lookup(dev, file, args->handle));
+	if (&obj->base == NULL) {
+		ret = -ENOENT;
+		goto unlock;
+	}
+
+	args->caching = obj->cache_level != I915_CACHE_NONE;
+
+	drm_gem_object_unreference(&obj->base);
+unlock:
+	DRM_UNLOCK(dev);
+	return ret;
+}
+
+int i915_gem_set_caching_ioctl(struct drm_device *dev, void *data,
+			       struct drm_file *file)
+{
+	struct drm_i915_gem_caching *args = data;
+	struct drm_i915_gem_object *obj;
+	enum i915_cache_level level;
+	int ret;
+
+	switch (args->caching) {
+	case I915_CACHING_NONE:
+		level = I915_CACHE_NONE;
+		break;
+	case I915_CACHING_CACHED:
+		level = I915_CACHE_LLC;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ret = i915_mutex_lock_interruptible(dev);
+	if (ret)
+		return ret;
+
+	obj = to_intel_bo(drm_gem_object_lookup(dev, file, args->handle));
+	if (&obj->base == NULL) {
+		ret = -ENOENT;
+		goto unlock;
+	}
+
+	ret = i915_gem_object_set_cache_level(obj, level);
+
+	drm_gem_object_unreference(&obj->base);
+unlock:
+	DRM_UNLOCK(dev);
+	return ret;
 }
 
 /*
