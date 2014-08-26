@@ -40,6 +40,7 @@
 #include <sys/event.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
+#include <sys/objcache.h>
 #include <sys/ctype.h>
 #include <sys/syslog.h>
 #include <sys/udev.h>
@@ -49,6 +50,7 @@
 #include <sys/thread2.h>
 
 MALLOC_DEFINE(M_UDEV, "udev", "udev allocs");
+static struct objcache *udev_event_kernel_cache;
 
 /* XXX: use UUIDs for identification; would need help from devfs */
 
@@ -420,16 +422,15 @@ static void
 udev_event_insert(int ev_type, prop_dictionary_t dict)
 {
 	struct udev_event_kernel *ev;
+	prop_dictionary_t dict_copy;
 
 	/* Only start queing events after client has initiated properly */
 	if (udev_initiated_count) {
-		/* XXX: use objcache eventually */
-		ev = kmalloc(sizeof(*ev), M_UDEV, M_WAITOK);
-		ev->ev.ev_dict = prop_dictionary_copy(dict);
-		if (ev->ev.ev_dict == NULL) {
-			kfree(ev, M_UDEV);
+		dict_copy = prop_dictionary_copy(dict);
+		if (dict_copy == NULL)
 			return;
-		}
+		ev = objcache_get(udev_event_kernel_cache, M_WAITOK);
+		ev->ev.ev_dict = dict_copy;
 		ev->ev.ev_type = ev_type;
 
 		lockmgr(&udev_lk, LK_EXCLUSIVE);
@@ -459,7 +460,7 @@ udev_clean_events_locked(void)
 	while ((ev = TAILQ_FIRST(&udev_evq)) &&
 	       ev->ev.ev_dict != NULL) {
 		TAILQ_REMOVE(&udev_evq, ev, link);
-		kfree(ev, M_UDEV);
+		objcache_put(udev_event_kernel_cache, ev);
 		--udev_evqlen;
 	}
 }
@@ -470,7 +471,6 @@ udev_event_externalize(struct udev_event_kernel *ev)
 	prop_dictionary_t	dict;
 	char *xml;
 	int error;
-
 
 	dict = prop_dictionary_create();
 	if (dict == NULL) {
@@ -927,11 +927,13 @@ udev_init(void)
 	lockinit(&udev_lk, "udevlk", 0, LK_CANRECURSE);
 	TAILQ_INIT(&udevq);
 	TAILQ_INIT(&udev_evq);
+	udev_event_kernel_cache = objcache_create_simple(M_UDEV, sizeof(struct udev_event_kernel));
 }
 
 static void
 udev_uninit(void)
 {
+	objcache_destroy(udev_event_kernel_cache);
 }
 
 static void
