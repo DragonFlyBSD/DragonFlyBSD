@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd August 26, 2014
+.Dd August 29, 2014
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -119,6 +119,13 @@ If set to
 disable informational messages from the rc scripts.
 Informational messages are displayed when
 a condition that is not serious enough to warrant a warning or an error occurs.
+.It Va rc_startmsgs
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+show
+.Dq Starting foo:
+when faststart is used (e.g., at boot time).
 .It Va swapfile
 .Pq Vt str
 If set to
