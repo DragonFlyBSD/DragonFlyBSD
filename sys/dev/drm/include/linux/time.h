@@ -83,4 +83,41 @@ set_normalized_timespec(struct timespec *ts, time_t sec, int64_t nsec)
 	ts->tv_nsec = nsec;
 }
 
+static inline int64_t
+timespec_to_ns(const struct timespec *ts)
+{
+	return ((ts->tv_sec * NSEC_PER_SEC) + ts->tv_nsec);
+}
+
+static inline struct timespec
+ns_to_timespec(const int64_t nsec)
+{
+	struct timespec ts;
+	int32_t rem;
+
+	if (nsec == 0) {
+		ts.tv_sec = 0;
+		ts.tv_nsec = 0;
+		return (ts);
+	}
+
+	ts.tv_sec = nsec / NSEC_PER_SEC;
+	rem = nsec % NSEC_PER_SEC;
+	if (rem < 0) {
+		ts.tv_sec--;
+		rem += NSEC_PER_SEC;
+	}
+	ts.tv_nsec = rem;
+	return (ts);
+}
+
+static inline int
+timespec_valid(const struct timespec *ts)
+{
+	if (ts->tv_sec < 0 || ts->tv_sec > 100000000 ||
+	    ts->tv_nsec < 0 || ts->tv_nsec >= 1000000000)
+		return (0);
+	return (1);
+}
+
 #endif	/* _LINUX_TIME_H_ */
