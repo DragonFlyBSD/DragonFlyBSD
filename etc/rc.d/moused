@@ -12,7 +12,6 @@ name=moused
 rcvar=`set_rcvar`
 command="/usr/sbin/${name}"
 start_cmd="moused_start"
-stop_cmd="moused_stop"
 pidprefix="/var/run/moused"
 pidfile="${pidprefix}.pid"
 pidarg=
