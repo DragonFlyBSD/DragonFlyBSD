@@ -27,6 +27,7 @@ SRCS=	\
 	ahpredef.c \
 	ahuuids.c \
 	aslanalyze.c \
+	aslascii.c \
 	aslbtypes.c \
 	aslcodegen.c \
 	aslcompile.c \
@@ -195,6 +196,9 @@ CFLAGS+= \
 LFLAGS=	-i -s
 YFLAGS=	-d
 
+aslcompiler.y: aslparser.y
+	m4 -P -I${UTILDIR} ${.ALLSRC} >${.TARGET}
+
 aslcompilerlex.c: aslcompiler.l
 	${LEX} ${LFLAGS} -PAslCompiler -o${.TARGET} ${.ALLSRC}
 
@@ -223,6 +227,7 @@ prparser.y.h: prparserparse.c
 	mv -f prparserparse.h ${.TARGET}
 
 CLEANFILES+=	\
+		aslcompiler.y \
 		aslcompilerlex.c \
 		aslcompilerparse.c \
 		aslcompiler.y.h \

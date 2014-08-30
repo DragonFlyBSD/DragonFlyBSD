@@ -1,6 +1,7 @@
+NoEcho('
 /******************************************************************************
  *
- * Module Name: pswalk - Parser routines to walk parsed op tree(s)
+ * Module Name: aslsupport.y - Bison/Yacc C support functions
  *
  *****************************************************************************/
 
@@ -41,80 +42,78 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-#include "acpi.h"
-#include "accommon.h"
-#include "acparser.h"
+')
 
-#define _COMPONENT          ACPI_PARSER
-        ACPI_MODULE_NAME    ("pswalk")
+/******************************************************************************
+ *
+ * Local support functions
+ *
+ *****************************************************************************/
+
+/*! [Begin] no source code translation */
+int
+AslCompilerwrap(void)
+{
+  return (1);
+}
+/*! [End] no source code translation !*/
+
+
+void *
+AslLocalAllocate (unsigned int Size)
+{
+    void                *Mem;
+
+
+    DbgPrint (ASL_PARSE_OUTPUT, "\nAslLocalAllocate: Expanding Stack to %u\n\n", Size);
+
+    Mem = UtStringCacheCalloc (Size);
+    if (!Mem)
+    {
+        AslCommonError (ASL_ERROR, ASL_MSG_MEMORY_ALLOCATION,
+                        Gbl_CurrentLineNumber, Gbl_LogicalLineNumber,
+                        Gbl_InputByteCount, Gbl_CurrentColumn,
+                        Gbl_Files[ASL_FILE_INPUT].Filename, NULL);
+        exit (1);
+    }
+
+    return (Mem);
+}
+
+ACPI_PARSE_OBJECT *
+AslDoError (void)
+{
+
+
+    return (TrCreateLeafNode (PARSEOP_ERRORNODE));
+
+}
 
 
 /*******************************************************************************
  *
- * FUNCTION:    AcpiPsDeleteParseTree
+ * FUNCTION:    UtGetOpName
  *
- * PARAMETERS:  SubtreeRoot         - Root of tree (or subtree) to delete
+ * PARAMETERS:  ParseOpcode         - Parser keyword ID
  *
- * RETURN:      None
+ * RETURN:      Pointer to the opcode name
  *
- * DESCRIPTION: Delete a portion of or an entire parse tree.
+ * DESCRIPTION: Get the ascii name of the parse opcode
  *
  ******************************************************************************/
 
-void
-AcpiPsDeleteParseTree (
-    ACPI_PARSE_OBJECT       *SubtreeRoot)
+char *
+UtGetOpName (
+    UINT32                  ParseOpcode)
 {
-    ACPI_PARSE_OBJECT       *Op = SubtreeRoot;
-    ACPI_PARSE_OBJECT       *Next = NULL;
-    ACPI_PARSE_OBJECT       *Parent = NULL;
-
-
-    ACPI_FUNCTION_TRACE_PTR (PsDeleteParseTree, SubtreeRoot);
-
-
-    /* Visit all nodes in the subtree */
-
-    while (Op)
-    {
-        /* Check if we are not ascending */
-
-        if (Op != Parent)
-        {
-            /* Look for an argument or child of the current op */
-
-            Next = AcpiPsGetArg (Op, 0);
-            if (Next)
-            {
-                /* Still going downward in tree (Op is not completed yet) */
-
-                Op = Next;
-                continue;
-            }
-        }
-
-        /* No more children, this Op is complete. */
-
-        Next = Op->Common.Next;
-        Parent = Op->Common.Parent;
-
-        AcpiPsFreeOp (Op);
-
-        /* If we are back to the starting point, the walk is complete. */
-
-        if (Op == SubtreeRoot)
-        {
-            return_VOID;
-        }
-        if (Next)
-        {
-            Op = Next;
-        }
-        else
-        {
-            Op = Parent;
-        }
-    }
-
-    return_VOID;
+#ifdef ASL_YYTNAME_START
+    /*
+     * First entries (ASL_YYTNAME_START) in yytname are special reserved names.
+     * Ignore first 8 characters of the name
+     */
+    return ((char *) yytname
+        [(ParseOpcode - ASL_FIRST_PARSE_OPCODE) + ASL_YYTNAME_START] + 8);
+#else
+    return ("[Unknown parser generator]");
+#endif
 }

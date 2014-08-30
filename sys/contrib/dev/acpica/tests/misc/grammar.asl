@@ -8402,7 +8402,7 @@ DefinitionBlock (
                     Return (0x71)
                 }
 
-                Store (DerefOf (Index (DEST, 3)), Local0) // DEST = "Destination buffer that..."
+                Store (DerefOf (Index (DEST, 3)), Local0) // DEST = "Destination buffer that...
 
                 If (LNotEqual (Local0, 0x74))       //  't'
                 {

@@ -41,7 +41,6 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-
 #include "aslcompiler.h"
 #include "aslcompiler.y.h"
 #include "acdisasm.h"
@@ -554,7 +553,7 @@ UtCheckIntegerRange (
 
 /*******************************************************************************
  *
- * FUNCTION:    UtGetStringBuffer
+ * FUNCTION:    UtStringCacheCalloc
  *
  * PARAMETERS:  Length              - Size of buffer requested
  *
@@ -567,22 +566,42 @@ UtCheckIntegerRange (
  ******************************************************************************/
 
 char *
-UtGetStringBuffer (
+UtStringCacheCalloc (
     UINT32                  Length)
 {
     char                    *Buffer;
+    ASL_CACHE_INFO          *Cache;
 
+
+    if (Length > ASL_STRING_CACHE_SIZE)
+    {
+        Buffer = UtLocalCalloc (Length);
+        return (Buffer);
+    }
 
     if ((Gbl_StringCacheNext + Length) >= Gbl_StringCacheLast)
     {
-        Gbl_StringCacheNext = UtLocalCalloc (ASL_STRING_CACHE_SIZE + Length);
-        Gbl_StringCacheLast = Gbl_StringCacheNext + ASL_STRING_CACHE_SIZE +
-                                Length;
+        /* Allocate a new buffer */
+
+        Cache = UtLocalCalloc (sizeof (Cache->Next) +
+            ASL_STRING_CACHE_SIZE);
+
+        /* Link new cache buffer to head of list */
+
+        Cache->Next = Gbl_StringCacheList;
+        Gbl_StringCacheList = Cache;
+
+        /* Setup cache management pointers */
+
+        Gbl_StringCacheNext = Cache->Buffer;
+        Gbl_StringCacheLast = Gbl_StringCacheNext + ASL_STRING_CACHE_SIZE;
     }
+
+    Gbl_StringCount++;
+    Gbl_StringSize += Length;
 
     Buffer = Gbl_StringCacheNext;
     Gbl_StringCacheNext += Length;
-
     return (Buffer);
 }
 
@@ -615,7 +634,8 @@ UtExpandLineBuffers (
     NewSize = Gbl_LineBufferSize * 2;
     if (Gbl_CurrentLineBuffer)
     {
-        DbgPrint (ASL_DEBUG_OUTPUT,"Increasing line buffer size from %u to %u\n",
+        DbgPrint (ASL_DEBUG_OUTPUT,
+            "Increasing line buffer size from %u to %u\n",
             Gbl_LineBufferSize, NewSize);
     }
 
@@ -660,6 +680,30 @@ ErrorExit:
 }
 
 
+/******************************************************************************
+ *
+ * FUNCTION:    UtFreeLineBuffers
+ *
+ * PARAMETERS:  None
+ *
+ * RETURN:      None
+ *
+ * DESCRIPTION: Free all line buffers
+ *
+ *****************************************************************************/
+
+void
+UtFreeLineBuffers (
+    void)
+{
+
+    free (Gbl_CurrentLineBuffer);
+    free (Gbl_MainTokenBuffer);
+    free (Gbl_MacroTokenBuffer);
+    free (Gbl_ExpressionTokenBuffer);
+}
+
+
 /*******************************************************************************
  *
  * FUNCTION:    UtInternalizeName
@@ -692,9 +736,9 @@ UtInternalizeName (
     Info.ExternalName = ExternalName;
     AcpiNsGetInternalNameLength (&Info);
 
-    /* We need a segment to store the internal  name */
+    /* We need a segment to store the internal name */
 
-    Info.InternalName = UtGetStringBuffer (Info.Length);
+    Info.InternalName = UtStringCacheCalloc (Info.Length);
     if (!Info.InternalName)
     {
         return (AE_NO_MEMORY);

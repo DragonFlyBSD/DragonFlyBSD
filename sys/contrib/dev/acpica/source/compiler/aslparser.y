@@ -1,6 +1,7 @@
+%{
 /******************************************************************************
  *
- * Module Name: pswalk - Parser routines to walk parsed op tree(s)
+ * Module Name: aslparser.y - Master Bison/Yacc input file for iASL
  *
  *****************************************************************************/
 
@@ -41,80 +42,88 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
+#include "aslcompiler.h"
 #include "acpi.h"
 #include "accommon.h"
-#include "acparser.h"
 
-#define _COMPONENT          ACPI_PARSER
-        ACPI_MODULE_NAME    ("pswalk")
+#define _COMPONENT          ACPI_COMPILER
+        ACPI_MODULE_NAME    ("aslparse")
 
-
-/*******************************************************************************
+/*
+ * Global Notes:
  *
- * FUNCTION:    AcpiPsDeleteParseTree
+ * October 2005: The following list terms have been optimized (from the
+ * original ASL grammar in the ACPI specification) to force the immediate
+ * reduction of each list item so that the parse stack use doesn't increase on
+ * each list element and possibly overflow on very large lists (>4000 items).
+ * This dramatically reduces use of the parse stack overall.
  *
- * PARAMETERS:  SubtreeRoot         - Root of tree (or subtree) to delete
- *
- * RETURN:      None
- *
- * DESCRIPTION: Delete a portion of or an entire parse tree.
- *
- ******************************************************************************/
+ *      ArgList, TermList, Objectlist, ByteList, DWordList, PackageList,
+ *      ResourceMacroList, and FieldUnitList
+ */
 
-void
-AcpiPsDeleteParseTree (
-    ACPI_PARSE_OBJECT       *SubtreeRoot)
-{
-    ACPI_PARSE_OBJECT       *Op = SubtreeRoot;
-    ACPI_PARSE_OBJECT       *Next = NULL;
-    ACPI_PARSE_OBJECT       *Parent = NULL;
+void *                      AslLocalAllocate (unsigned int Size);
 
+/* Bison/yacc configuration */
 
-    ACPI_FUNCTION_TRACE_PTR (PsDeleteParseTree, SubtreeRoot);
+#define static
+#undef malloc
+#define malloc              AslLocalAllocate
+#undef alloca
+#define alloca              AslLocalAllocate
+#define yytname             AslCompilername
 
+#define YYINITDEPTH         600             /* State stack depth */
+#define YYDEBUG             1               /* Enable debug output */
+#define YYERROR_VERBOSE     1               /* Verbose error messages */
+#define YYFLAG              -32768
 
-    /* Visit all nodes in the subtree */
+/* Define YYMALLOC/YYFREE to prevent redefinition errors  */
 
-    while (Op)
-    {
-        /* Check if we are not ascending */
+#define YYMALLOC            malloc
+#define YYFREE              free
+%}
 
-        if (Op != Parent)
-        {
-            /* Look for an argument or child of the current op */
-
-            Next = AcpiPsGetArg (Op, 0);
-            if (Next)
-            {
-                /* Still going downward in tree (Op is not completed yet) */
-
-                Op = Next;
-                continue;
-            }
-        }
-
-        /* No more children, this Op is complete. */
-
-        Next = Op->Common.Next;
-        Parent = Op->Common.Parent;
-
-        AcpiPsFreeOp (Op);
-
-        /* If we are back to the starting point, the walk is complete. */
-
-        if (Op == SubtreeRoot)
-        {
-            return_VOID;
-        }
-        if (Next)
-        {
-            Op = Next;
-        }
-        else
-        {
-            Op = Parent;
-        }
-    }
-
-    return_VOID;
+/*
+ * Declare the type of values in the grammar
+ */
+%union {
+    UINT64              i;
+    char                *s;
+    ACPI_PARSE_OBJECT   *n;
 }
+
+/*
+ * These shift/reduce conflicts are expected. There should be zero
+ * reduce/reduce conflicts.
+ */
+%expect 86
+
+/*! [Begin] no source code translation */
+
+/*
+ * The M4 macro processor is used to bring in the parser items,
+ * in order to keep this master file smaller, and to break up
+ * the various parser items.
+ */
+m4_define(NoEcho)
+
+/* Token types */
+
+m4_include(asltokens.y)
+
+/* Production types/names */
+
+m4_include(asltypes.y)
+%%
+
+/* Production rules */
+
+m4_include(aslrules.y)
+%%
+
+/*! [End] no source code translation !*/
+
+/* Local support functions in C */
+
+m4_include(aslsupport.y)

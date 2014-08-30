@@ -42,7 +42,6 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-
 #define __NSOBJECT_C__
 
 #include "acpi.h"
