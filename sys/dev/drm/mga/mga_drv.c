@@ -101,7 +101,6 @@ static void mga_configure(struct drm_device *dev)
 	dev->driver->device_is_agp	= mga_driver_device_is_agp;
 
 	dev->driver->ioctls		= mga_ioctls;
-	dev->driver->max_ioctl		= mga_max_ioctl;
 
 	dev->driver->name		= DRIVER_NAME;
 	dev->driver->desc		= DRIVER_DESC;
@@ -126,6 +125,7 @@ mga_attach(device_t kdev)
 	    M_WAITOK | M_ZERO);
 
 	mga_configure(dev);
+	dev->driver->num_ioctls = mga_max_ioctl;
 
 	return drm_attach(kdev, mga_pciidlist);
 }

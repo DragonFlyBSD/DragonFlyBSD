@@ -854,7 +854,6 @@ struct drm_driver {
 	drm_ioctl_desc_t *compat_ioctls;
 	int	*compat_ioctls_nr;
 #endif
-	int	max_ioctl;
 
 	int	buf_priv_size;
 
@@ -866,6 +865,7 @@ struct drm_driver {
 	const char *date;		/* Date of last major changes.	   */
 
 	u32 driver_features;
+	int num_ioctls;
 };
 
 /**

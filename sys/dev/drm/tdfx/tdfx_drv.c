@@ -48,8 +48,6 @@ static void tdfx_configure(struct drm_device *dev)
 
 	dev->driver->buf_priv_size	= 1; /* No dev_priv */
 
-	dev->driver->max_ioctl		= 0;
-
 	dev->driver->name		= DRIVER_NAME;
 	dev->driver->desc		= DRIVER_DESC;
 	dev->driver->date		= DRIVER_DATE;

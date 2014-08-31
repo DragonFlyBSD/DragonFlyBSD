@@ -61,7 +61,6 @@ static void r128_configure(struct drm_device *dev)
 	dev->driver->dma_ioctl		= r128_cce_buffers;
 
 	dev->driver->ioctls		= r128_ioctls;
-	dev->driver->max_ioctl		= r128_max_ioctl;
 
 	dev->driver->name		= DRIVER_NAME;
 	dev->driver->desc		= DRIVER_DESC;
@@ -86,6 +85,7 @@ r128_attach(device_t kdev)
 	    M_WAITOK | M_ZERO);
 
 	r128_configure(dev);
+	dev->driver->num_ioctls = r128_max_ioctl;
 
 	return drm_attach(kdev, r128_pciidlist);
 }

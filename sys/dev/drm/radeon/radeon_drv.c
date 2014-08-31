@@ -454,7 +454,7 @@ radeon_attach(device_t kdev)
 	dev = device_get_softc(kdev);
 	if (radeon_modeset == 1) {
 		kms_driver.driver_features |= DRIVER_MODESET;
-		kms_driver.max_ioctl = radeon_max_kms_ioctl;
+		kms_driver.num_ioctls = radeon_max_kms_ioctl;
 		radeon_register_atpx_handler();
 	}
 	dev->driver = &kms_driver;

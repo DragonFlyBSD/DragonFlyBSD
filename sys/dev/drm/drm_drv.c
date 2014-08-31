@@ -804,9 +804,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	if (ioctl->func == NULL && nr >= DRM_COMMAND_BASE) {
 		/* The array entries begin at DRM_COMMAND_BASE ioctl nr */
 		nr -= DRM_COMMAND_BASE;
-		if (nr > dev->driver->max_ioctl) {
-			DRM_DEBUG("Bad driver ioctl number, 0x%x (of 0x%x)\n",
-			    nr, dev->driver->max_ioctl);
+		if (nr > dev->driver->num_ioctls) {
 			return EINVAL;
 		}
 		ioctl = &dev->driver->ioctls[nr];

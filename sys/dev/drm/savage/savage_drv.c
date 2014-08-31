@@ -51,7 +51,6 @@ static void savage_configure(struct drm_device *dev)
 	dev->driver->dma_ioctl		= savage_bci_buffers;
 
 	dev->driver->ioctls		= savage_ioctls;
-	dev->driver->max_ioctl		= savage_max_ioctl;
 
 	dev->driver->name		= DRIVER_NAME;
 	dev->driver->desc		= DRIVER_DESC;
@@ -76,6 +75,7 @@ savage_attach(device_t kdev)
 	    M_WAITOK | M_ZERO);
 
 	savage_configure(dev);
+	dev->driver->num_ioctls = savage_max_ioctl;
 
 	return drm_attach(kdev, savage_pciidlist);
 }

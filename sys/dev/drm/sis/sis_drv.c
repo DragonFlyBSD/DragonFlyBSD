@@ -46,7 +46,6 @@ static void sis_configure(struct drm_device *dev)
 	dev->driver->context_dtor	= sis_final_context;
 
 	dev->driver->ioctls		= sis_ioctls;
-	dev->driver->max_ioctl		= sis_max_ioctl;
 
 	dev->driver->name		= DRIVER_NAME;
 	dev->driver->desc		= DRIVER_DESC;
@@ -71,6 +70,7 @@ sis_attach(device_t kdev)
 	    M_WAITOK | M_ZERO);
 
 	sis_configure(dev);
+	dev->driver->num_ioctls	= sis_max_ioctl;
 
 	return drm_attach(kdev, sis_pciidlist);
 }
