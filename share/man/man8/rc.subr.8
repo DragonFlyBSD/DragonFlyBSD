@@ -61,6 +61,8 @@
 .It
 .Ic info Ar message
 .It
+.Ic load_kld Oo Fl e Ar regex Oc Oo Fl m Ar module Oc Ar file
+.It
 .Ic load_rc_config Ar command
 .It
 .Ic mount_critical_filesystems Ar type
@@ -298,6 +300,20 @@ turned on or off by the
 .Xr rc.conf 5
 variable
 .Va rc_info .
+.It Ic load_kld Oo Fl e Ar regex Oc Oo Fl m Ar module Oc Ar file
+Load
+.Ar file
+as a kernel module unless it is already loaded.
+For the purpose of checking the module status,
+either the exact module name can be specified using
+.Fl m ,
+or an
+.Xr egrep 1
+regular expression matching the module name can be supplied via
+.Fl e .
+By default, the module is assumed to have the same name as
+.Ar file ,
+which is not always the case.
 .It Ic load_rc_config Ar command
 Source in the configuration files for
 .Ar command .
@@ -454,10 +470,38 @@ Defaults to the value of
 .Sy command .
 .It Sy required_dirs
 Check for the existence of the listed directories
-before running the default start method.
+before running the start method.
 .It Sy required_files
 Check for the readability of the listed files
-before running the default start method.
+before running the start method.
+.It Sy required_modules
+Ensure that the listed kernel modules are loaded
+before running the
+.Cm start
+method.
+This is done after invoking the commands from
+.Va start_precmd
+so that the missing modules are not loaded in vain
+if the preliminary commands indicate a error condition.
+A word in the list can have an optional
+.Dq Li : Ns Ar modname
+or
+.Dq Li ~ Ns Ar pattern
+suffix.
+The
+.Ar modname
+or
+.Ar pattern
+parameter is passed to
+.Ic load_kld
+through a
+.Fl m
+or
+.Fl e
+option, respectively.
+See the description of
+.Ic load_kld
+in this document for details.
 .It Sy required_vars
 Perform
 .Ic checkyesno
