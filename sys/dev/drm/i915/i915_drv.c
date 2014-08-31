@@ -41,6 +41,8 @@
 int i915_lvds_channel_mode __read_mostly = 0;
 TUNABLE_INT("drm.i915.lvds_channel_mode", &i915_lvds_channel_mode);
 
+static struct drm_driver driver;
+
 #define INTEL_VGA_DEVICE(id, info_) {		\
 	.device = id,				\
 	.info = info_,				\
@@ -535,15 +537,20 @@ i915_probe(device_t kdev)
 
 int i915_modeset;
 
+/* static int __init i915_init(void) */
 static int
 i915_attach(device_t kdev)
 {
 	struct drm_device *dev;
 
 	dev = device_get_softc(kdev);
+
+	driver.num_ioctls = i915_max_ioctl;
+
 	if (i915_modeset == 1)
-		i915_driver_info.driver_features |= DRIVER_MODESET;
-	dev->driver = &i915_driver_info;
+		driver.driver_features |= DRIVER_MODESET;
+
+	dev->driver = &driver;
 	return (drm_attach(kdev, i915_attach_list));
 }
 
@@ -855,6 +862,36 @@ int i915_reset(struct drm_device *dev)
 
 	return 0;
 }
+
+static struct drm_driver driver = {
+	.driver_features =   DRIVER_USE_AGP | DRIVER_REQUIRE_AGP |
+	    DRIVER_USE_MTRR | DRIVER_HAVE_IRQ | DRIVER_LOCKLESS_IRQ |
+	    DRIVER_GEM /*| DRIVER_MODESET*/,
+
+	.buf_priv_size	= sizeof(drm_i915_private_t),
+	.load		= i915_driver_load,
+	.open		= i915_driver_open,
+	.unload		= i915_driver_unload,
+	.preclose	= i915_driver_preclose,
+	.lastclose	= i915_driver_lastclose,
+	.postclose	= i915_driver_postclose,
+	.device_is_agp	= i915_driver_device_is_agp,
+	.gem_init_object = i915_gem_init_object,
+	.gem_free_object = i915_gem_free_object,
+	.gem_pager_ops	= &i915_gem_pager_ops,
+	.dumb_create	= i915_gem_dumb_create,
+	.dumb_map_offset = i915_gem_mmap_gtt,
+	.dumb_destroy	= i915_gem_dumb_destroy,
+
+	.ioctls		= i915_ioctls,
+
+	.name		= DRIVER_NAME,
+	.desc		= DRIVER_DESC,
+	.date		= DRIVER_DATE,
+	.major		= DRIVER_MAJOR,
+	.minor		= DRIVER_MINOR,
+	.patchlevel	= DRIVER_PATCHLEVEL,
+};
 
 /* We give fast paths for the really cool registers */
 #define NEEDS_FORCE_WAKE(dev_priv, reg) \

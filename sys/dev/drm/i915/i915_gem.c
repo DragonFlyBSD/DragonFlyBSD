@@ -529,31 +529,6 @@ i915_gem_object_wait_rendering(struct drm_i915_gem_object *obj,
 }
 
 /**
- * Ensures that an object will eventually get non-busy by flushing any required
- * write domains, emitting any outstanding lazy request and retiring and
- * completed requests.
- */
-static int
-i915_gem_object_flush_active(struct drm_i915_gem_object *obj)
-{
-	int ret;
-
-	if (obj->active) {
-		ret = i915_gem_object_flush_gpu_write_domain(obj);
-		if (ret)
-			return ret;
-
-		ret = i915_gem_check_olr(obj->ring, obj->last_read_seqno);
-		if (ret)
-			return ret;
-
-		i915_gem_retire_requests_ring(obj->ring);
-	}
-
-	return 0;
-}
-
-/**
  * Called when user space prepares to use an object with the CPU, either
  * through the mmap ioctl's mapping or a GTT mapping.
  */
@@ -1390,6 +1365,30 @@ i915_gem_retire_work_handler(struct work_struct *work)
 		intel_mark_idle(dev);
 
 	DRM_UNLOCK(dev);
+}
+/**
+ * Ensures that an object will eventually get non-busy by flushing any required
+ * write domains, emitting any outstanding lazy request and retiring and
+ * completed requests.
+ */
+static int
+i915_gem_object_flush_active(struct drm_i915_gem_object *obj)
+{
+	int ret;
+
+	if (obj->active) {
+		ret = i915_gem_object_flush_gpu_write_domain(obj);
+		if (ret)
+			return ret;
+
+		ret = i915_gem_check_olr(obj->ring, obj->last_read_seqno);
+		if (ret)
+			return ret;
+
+		i915_gem_retire_requests_ring(obj->ring);
+	}
+
+	return 0;
 }
 
 /**
