@@ -8,12 +8,11 @@ THISGIT!= which git 2>/dev/null; echo
 DPTBALL=/tmp/dports.tar.gz
 PKGBALL=/tmp/pkgboot.tar.xz
 DPDLURL=https://api.github.com/repos/DragonFlyBSD/DPorts/tarball/
-PKGBOOT_VERSION=01
+PKGBOOT_VERSION=02
 PKGBOOT_i386=bootstrap_pkg_${PKGBOOT_VERSION}_x86-32.tar.xz
 PKGBOOT_x86_64=bootstrap_pkg_${PKGBOOT_VERSION}_x86-64.tar.xz
 PKGBOOT=http://mirror-master.dragonflybsd.org/dports/bootstraps/${PKGBOOT_${MACHINE_ARCH}}
 GITNFMSG="git must be present on the system to use this option."
-ABIVERS?=`uname -P`
 ERRDP="Error: ${.CURDIR}/dports already exists"
 ERRSR="Error: ${.CURDIR}/src already exists"
 ERRNDP="Error: ${.CURDIR}/dports does not exist"
@@ -203,7 +202,11 @@ pkg-bootstrap-force:
 	@fetch -o ${PKGBALL} ${PKGBOOT}
 	@tar -xJf ${PKGBALL} -C ${.CURDIR}/local
 	@rm -f ${PKGBALL}
+.if defined(ABIVERS)
 	ABI=${ABIVERS} ${.CURDIR}/local/sbin/pkg-static install -y -f pkg
+.else
+	${.CURDIR}/local/sbin/pkg-static install -y -f pkg
+.endif
 
 pkg-bootstrap:
 .if exists(${.CURDIR}/local/sbin/pkg)
@@ -215,5 +218,9 @@ pkg-bootstrap:
 	@fetch -o ${PKGBALL} ${PKGBOOT}
 	@tar -xJf ${PKGBALL} -C ${.CURDIR}/local
 	@rm -f ${PKGBALL}
+.if defined(ABIVERS)
 	ABI=${ABIVERS} ${.CURDIR}/local/sbin/pkg-static install -y pkg
+.else
+	${.CURDIR}/local/sbin/pkg-static install -y pkg
+.endif
 .endif
