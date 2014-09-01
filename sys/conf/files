@@ -1931,10 +1931,6 @@ dev/drm/ttm/ttm_bo_vm.c			optional drm
 #dev/drm/i915/intel_sdvo.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_sprite.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_tv.c			optional i915kmsdrm drm
-dev/drm/mach64/mach64_dma.c		optional mach64drm drm
-dev/drm/mach64/mach64_drv.c		optional mach64drm drm
-dev/drm/mach64/mach64_irq.c		optional mach64drm drm
-dev/drm/mach64/mach64_state.c		optional mach64drm drm
 dev/drm/mga/mga_dma.c			optional mgadrm drm
 dev/drm/mga/mga_drv.c			optional mgadrm drm
 dev/drm/mga/mga_irq.c			optional mgadrm drm

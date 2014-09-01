@@ -2161,7 +2161,6 @@ device		aibs		# ASUSTeK AI Booster (ACPI ASOC ATK0110)
 # DRM options:
 # drm:		General DRM code
 # i915kmsdrm:	Intel integrated GPUs, starting from the 830M family
-# mach64drm:	ATI Mach64 cards - Rage and 3D Rage series
 # mgadrm:	AGP Matrox G200, G400, G450, G550
 # r128drm:	ATI Rage 128 cards
 # radeonkmsdrm:	ATI Radeon cards
@@ -2175,7 +2174,6 @@ device		aibs		# ASUSTeK AI Booster (ACPI ASOC ATK0110)
 
 device		drm
 #device		"i915kmsdrm"	# breaks VGA console, disabled by default
-device		"mach64drm"
 device		mgadrm
 device		"r128drm"
 #device		radeonkmsdrm	# breaks VGA console, disabled by default
