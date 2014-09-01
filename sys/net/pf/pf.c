@@ -1,5 +1,3 @@
-/*	$OpenBSD: pf.c,v 1.614 2008/08/02 12:34:37 henning Exp $ */
-
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
  *
@@ -293,6 +291,12 @@ struct pf_pool_limit pf_pool_limits[PF_LIMIT_MAX] = {
 	{ &pfr_kentry_pl, PFR_KENTRY_HIWAT }
 };
 
+/*
+ * If route-to and direction is out we match with no further processing
+ *	(rt_kif must be assigned and not equal to the out interface)
+ * If reply-to and direction is in we match with no further processing
+ *	(rt_kif must be assigned and not equal to the in interface)
+ */
 #define STATE_LOOKUP(i, k, d, s, m)					\
 	do {								\
 		s = pf_find_state(i, k, d, m);				\
@@ -738,12 +742,19 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 	} else {
 		cpu = mycpu->gd_cpuid;
 	}
-
 	KKASSERT(s->key[idx] == NULL);	/* XXX handle this? */
+
+	if (pf_status.debug >= PF_DEBUG_MISC) {
+		kprintf("state_key attach cpu %d (%08x:%d) %s (%08x:%d)\n",
+			cpu,
+			ntohl(sk->addr[0].addr32[0]), ntohs(sk->port[0]),
+			(idx == PF_SK_WIRE ? "->" : "<-"),
+			ntohl(sk->addr[1].addr32[0]), ntohs(sk->port[1]));
+	}
 
 	if ((cur = RB_INSERT(pf_state_tree, &pf_statetbl[cpu], sk)) != NULL) {
 		/* key exists. check for same kif, if none, add to key */
-		TAILQ_FOREACH(si, &cur->states, entry)
+		TAILQ_FOREACH(si, &cur->states, entry) {
 			if (si->s->kif == s->kif &&
 			    si->s->direction == s->direction) {
 				if (pf_status.debug >= PF_DEBUG_MISC) {
@@ -761,6 +772,7 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 				error = -1;
 				goto failed;	/* collision! */
 			}
+		}
 		kfree(sk, M_PFSTATEKEYPL);
 
 		s->key[idx] = cur;
@@ -894,8 +906,9 @@ pf_state_key_setup(struct pf_pdesc *pd, struct pf_rule *nr,
 		(*nkp)->port[1] = (*skp)->port[1];
 		(*nkp)->proto = pd->proto;
 		(*nkp)->af = pd->af;
-	} else
+	} else {
 		*nkp = *skp;
+	}
 
 	if (pd->dir == PF_IN) {
 		*skw = *skp;
@@ -926,6 +939,10 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 			return (-1);
 		s->key[PF_SK_STACK] = s->key[PF_SK_WIRE];
 	} else {
+		/*
+		skw->reverse = sks;
+		sks->reverse = skw;
+		*/
 		if (pf_state_key_attach(skw, s, PF_SK_WIRE)) {
 			kfree(sks, M_PFSTATEKEYPL);
 			return (-1);
@@ -1031,7 +1048,7 @@ pf_find_state(struct pfi_kif *kif, struct pf_state_key_cmp *key, u_int dir,
 	TAILQ_FOREACH(si, &sk->states, entry) {
 		if ((si->s->kif == pfi_all || si->s->kif == kif) &&
 		    sk == (dir == PF_IN ? si->s->key[PF_SK_WIRE] :
-		    si->s->key[PF_SK_STACK])) {
+					  si->s->key[PF_SK_STACK])) {
 			break;
 		}
 	}
@@ -1250,6 +1267,10 @@ pf_purge_expired_src_nodes(int waslocked)
 				 locked = 1;
 			 }
 			 if (cur->rule.ptr != NULL) {
+				/*
+				 * decrements in rule should be ok, token is
+				 * held exclusively in this code path.
+				 */
 				 cur->rule.ptr->src_nodes--;
 				 if (cur->rule.ptr->states_cur <= 0 &&
 				     cur->rule.ptr->max_src_nodes <= 0)
@@ -1337,6 +1358,10 @@ pf_free_state(struct pf_state *cur)
 	    pfsyncif->sc_bulk_terminator == cur))
 		return;
 	KKASSERT(cur->timeout == PFTM_UNLINKED);
+	/*
+	 * decrements in rule should be ok, token is
+	 * held exclusively in this code path.
+	 */
 	if (--cur->rule.ptr->states_cur <= 0 &&
 	    cur->rule.ptr->src_nodes <= 0)
 		pf_rm_rule(NULL, cur->rule.ptr);
@@ -4085,6 +4110,7 @@ pf_create_state(struct pf_rule *r, struct pf_rule *nr, struct pf_rule *a,
 				*pd->proto_sum = bproto_sum;
 			if (pd->ip_sum)
 				*pd->ip_sum = bip_sum;
+			m->m_flags &= ~M_HASH;
 			m_copyback(m, off, hdrlen, pd->hdr.any);
 		}
 		s->src.seqhi = htonl(karc4random());
@@ -4234,8 +4260,9 @@ pf_tcp_track_full(struct pf_state_peer *src, struct pf_state_peer *dst,
 	if (src->wscale && dst->wscale && !(th->th_flags & TH_SYN)) {
 		sws = src->wscale & PF_WSCALE_MASK;
 		dws = dst->wscale & PF_WSCALE_MASK;
-	} else
+	} else {
 		sws = dws = 0;
+	}
 
 	/*
 	 * Sequence tracking algorithm from Guido van Rooij's paper:
@@ -4657,6 +4684,7 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 	struct pf_state_peer	*src, *dst;
 	struct pf_state_key	*sk;
 
+	bzero(&key, sizeof(key));
 	key.af = pd->af;
 	key.proto = IPPROTO_TCP;
 	if (direction == PF_IN)	{	/* wire side, straight */
@@ -4664,11 +4692,25 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 		PF_ACPY(&key.addr[1], pd->dst, key.af);
 		key.port[0] = th->th_sport;
 		key.port[1] = th->th_dport;
+		if (pf_status.debug >= PF_DEBUG_MISC) {
+			kprintf("test-tcp IN (%08x:%d) -> (%08x:%d)\n",
+				ntohl(key.addr[0].addr32[0]),
+				ntohs(key.port[0]),
+				ntohl(key.addr[1].addr32[0]),
+				ntohs(key.port[1]));
+		}
 	} else {			/* stack side, reverse */
 		PF_ACPY(&key.addr[1], pd->src, key.af);
 		PF_ACPY(&key.addr[0], pd->dst, key.af);
 		key.port[1] = th->th_sport;
 		key.port[0] = th->th_dport;
+		if (pf_status.debug >= PF_DEBUG_MISC) {
+			kprintf("test-tcp OUT (%08x:%d) <- (%08x:%d)\n",
+				ntohl(key.addr[0].addr32[0]),
+				ntohs(key.port[0]),
+				ntohl(key.addr[1].addr32[0]),
+				ntohs(key.port[1]));
+		}
 	}
 
 	STATE_LOOKUP(kif, &key, direction, *state, m);
@@ -4814,7 +4856,6 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 			 * a bridge doesn't try to use it.
 			 */
 			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
-			m->m_flags &= ~M_HASH;
 			pf_change_ap(pd->src, &th->th_sport, pd->ip_sum,
 			    &th->th_sum, &nk->addr[pd->sidx],
 			    nk->port[pd->sidx], 0, pd->af);
@@ -4827,7 +4868,6 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 			 * the protocol stack on the wrong cpu for the
 			 * post-translated address.
 			 */
-			m->m_flags &= ~M_HASH;
 			pf_change_ap(pd->dst, &th->th_dport, pd->ip_sum,
 			    &th->th_sum, &nk->addr[pd->didx],
 			    nk->port[pd->didx], 0, pd->af);
@@ -4836,8 +4876,10 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 	}
 
 	/* Copyback sequence modulation or stateful scrub changes if needed */
-	if (copyback)
+	if (copyback) {
+		m->m_flags &= ~M_HASH;
 		m_copyback(m, off, sizeof(*th), (caddr_t)th);
+	}
 
 	pfsync_update_state(*state);
 	error = PF_PASS;
@@ -4858,6 +4900,7 @@ pf_test_state_udp(struct pf_state **state, int direction, struct pfi_kif *kif,
 	struct pf_state_key_cmp	 key;
 	struct udphdr		*uh = pd->hdr.udp;
 
+	bzero(&key, sizeof(key));
 	key.af = pd->af;
 	key.proto = IPPROTO_UDP;
 	if (direction == PF_IN)	{	/* wire side, straight */
@@ -4949,6 +4992,8 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 	int		 error;
 	struct pf_state_key_cmp key;
 
+	bzero(&key, sizeof(key));
+
 	switch (pd->proto) {
 #ifdef INET
 	case IPPROTO_ICMP:
@@ -5031,6 +5076,7 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 					    nk->port[pd->sidx];
 				}
 
+				m->m_flags &= ~M_HASH;
 				m_copyback(m, off, ICMP_MINLEN,
 				    (caddr_t)pd->hdr.icmp);
 				break;
@@ -5049,6 +5095,7 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 					    &pd->hdr.icmp6->icmp6_cksum,
 					    &nk->addr[pd->didx], 0);
 
+				m->m_flags &= ~M_HASH;
 				m_copyback(m, off,
 					sizeof(struct icmp6_hdr),
 					(caddr_t)pd->hdr.icmp6);
@@ -5297,6 +5344,7 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 					break;
 #endif /* INET6 */
 				}
+				m->m_flags &= ~M_HASH;
 				m_copyback(m, off2, 8, (caddr_t)&th);
 			}
 			break;
@@ -5365,6 +5413,7 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 					break;
 #endif /* INET6 */
 				}
+				m->m_flags &= ~M_HASH;
 				m_copyback(m, off2, sizeof(uh), (caddr_t)&uh);
 			}
 			break;
@@ -5418,6 +5467,7 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 				m_copyback(m, off, ICMP_MINLEN, (caddr_t)pd->hdr.icmp);
 				m_copyback(m, ipoff2, sizeof(h2), (caddr_t)&h2);
 				m_copyback(m, off2, ICMP_MINLEN, (caddr_t)&iih);
+				m->m_flags &= ~M_HASH;
 			}
 			break;
 		}
@@ -5473,6 +5523,7 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 				m_copyback(m, ipoff2, sizeof(h2_6), (caddr_t)&h2_6);
 				m_copyback(m, off2, sizeof(struct icmp6_hdr),
 				    (caddr_t)&iih);
+				m->m_flags &= ~M_HASH;
 			}
 			break;
 		}
@@ -5514,6 +5565,7 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 					m_copyback(m, off, ICMP_MINLEN,
 					    (caddr_t)pd->hdr.icmp);
 					m_copyback(m, ipoff2, sizeof(h2), (caddr_t)&h2);
+					m->m_flags &= ~M_HASH;
 					break;
 #endif /* INET */
 #ifdef INET6
@@ -5523,6 +5575,7 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 					    (caddr_t)pd->hdr.icmp6);
 					m_copyback(m, ipoff2, sizeof(h2_6),
 					    (caddr_t)&h2_6);
+					m->m_flags &= ~M_HASH;
 					break;
 #endif /* INET6 */
 				}
@@ -5550,6 +5603,7 @@ pf_test_state_other(struct pf_state **state, int direction, struct pfi_kif *kif,
 	struct pf_state_peer	*src, *dst;
 	struct pf_state_key_cmp	 key;
 
+	bzero(&key, sizeof(key));
 	key.af = pd->af;
 	key.proto = pd->proto;
 	if (direction == PF_IN)	{
@@ -6591,9 +6645,10 @@ done:
 		m_freem(*m0);
 		*m0 = NULL;
 		action = PF_PASS;
-	} else if (r->rt)
+	} else if (r->rt) {
 		/* pf_route can free the mbuf causing *m0 to become NULL */
 		pf_route(m0, r, dir, kif->pfik_ifp, s, &pd);
+	}
 
 	return (action);
 }

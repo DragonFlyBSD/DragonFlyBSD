@@ -911,6 +911,12 @@ struct pfsync_state {
 	u_int8_t	 timeout;
 	u_int8_t	 sync_flags;
 	u_int8_t	 updates;
+	u_int8_t	 pickup_mode;
+	u_int16_t	 cpuid;
+	u_int16_t	 reserved01;	/* future expansion */
+	u_int32_t	 reserved02;
+	u_int16_t	 reserved03[8];
+	u_int32_t	 reserved04[8];
 };
 
 #define PFSYNC_FLAG_COMPRESS	0x01

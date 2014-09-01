@@ -305,12 +305,31 @@ print_state(struct pfsync_state *s, int opts)
 		if (ntohl(s->anchor) != -1)
 			printf(", anchor %u", ntohl(s->anchor));
 		printf(", flags:");
+		if (s->state_flags & PFSTATE_ALLOWOPTS)
+			printf(" allowopts");
 		if (s->state_flags & PFSTATE_SLOPPY)
 			printf(" sloppy");
+		if (s->state_flags & PFSTATE_STACK_GLOBAL)
+			printf(" global");
+		if (s->state_flags & PFSTATE_CREATEINPROG)
+			printf(" creating");
 		if (s->sync_flags & PFSYNC_FLAG_SRCNODE)
 			printf(" source-track");
 		if (s->sync_flags & PFSYNC_FLAG_NATSRCNODE)
 			printf(" sticky-address");
+		switch(s->pickup_mode) {
+		case PF_PICKUPS_UNSPECIFIED:
+			break;
+		case PF_PICKUPS_DISABLED:
+			printf(" no-pickups");
+			break;
+		case PF_PICKUPS_HASHONLY:
+			printf(" hash-only");
+			break;
+		case PF_PICKUPS_ENABLED:
+			printf(" pickups");
+			break;
+		}
 		printf("\n");
 
 		sec = creation % 60;
@@ -339,8 +358,8 @@ print_state(struct pfsync_state *s, int opts)
 		u_int64_t id;
 
 		bcopy(&s->id, &id, sizeof(u_int64_t));
-		printf("   id: %016jx creatorid: %08x",
-		    be64toh(id),  ntohl(s->creatorid));
+		printf("   id: %016jx creatorid: %08x cpuid: %-3d",
+		       be64toh(id),  ntohl(s->creatorid), s->cpuid);
 		printf("\n");		    
 	}
 }

@@ -267,6 +267,8 @@ pfsync_state_export(struct pfsync_state *sp, struct pf_state *st)
 
 	sp->direction = st->direction;
 	sp->log = st->log;
+	sp->cpuid = st->cpuid;
+	sp->pickup_mode = st->pickup_mode;
 	sp->timeout = st->timeout;
 	sp->state_flags = st->state_flags;
 	if (st->src_node)
