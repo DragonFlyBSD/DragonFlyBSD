@@ -1112,6 +1112,14 @@ udp_send(netmsg_t msg)
 	if (pru_flags & PRUS_DONTROUTE)
 		flags |= SO_DONTROUTE;
 
+	if (inp->inp_flags & INP_CONNECTED) {
+		/*
+		 * For connected socket, this datagram has already
+		 * been in the correct netisr; no need to rehash.
+		 */
+		goto sendit;
+	}
+
 	cpu = udp_addrcpu(ui->ui_dst.s_addr, ui->ui_dport,
 	    ui->ui_src.s_addr, ui->ui_sport);
 	if (cpu != mycpuid) {
@@ -1173,6 +1181,7 @@ udp_send(netmsg_t msg)
 		return;
 	}
 
+sendit:
 	logudp(send_ipout, inp);
 	error = ip_output(m, inp->inp_options, &inp->inp_route, flags,
 	    inp->inp_moptions, inp);
