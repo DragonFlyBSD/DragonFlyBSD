@@ -1654,6 +1654,7 @@ vtnet_rx_intr_task(void *arg)
 	sc = arg;
 	ifp = sc->vtnet_ifp;
 
+next:
 //	lwkt_serialize_enter(&sc->vtnet_slz);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0) {
@@ -1672,8 +1673,7 @@ vtnet_rx_intr_task(void *arg)
 
 	if (more) {
 		sc->vtnet_stats.rx_task_rescheduled++;
-		/* XXX: Loop?! */
-		vtnet_rx_intr_task(sc);
+		goto next;
 	}
 }
 
@@ -2050,6 +2050,7 @@ vtnet_tx_intr_task(void *arg)
 	ifp = sc->vtnet_ifp;
 	ifsq = ifq_get_subq_default(&ifp->if_snd);
 
+next:
 //	lwkt_serialize_enter(&sc->vtnet_slz);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0) {
@@ -2067,9 +2068,7 @@ vtnet_tx_intr_task(void *arg)
 		vtnet_disable_tx_intr(sc);
 		sc->vtnet_stats.tx_task_rescheduled++;
 //		lwkt_serialize_exit(&sc->vtnet_slz);
-		vtnet_tx_intr_task(sc);
-		/* XXX: loop?! */
-		return;
+		goto next;
 	}
 
 //	lwkt_serialize_exit(&sc->vtnet_slz);
