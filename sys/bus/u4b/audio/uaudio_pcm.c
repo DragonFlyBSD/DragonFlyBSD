@@ -72,11 +72,13 @@ ua_chan_setblocksize(kobj_t obj, void *data, uint32_t blocksize)
 	return (uaudio_chan_set_param_blocksize(data, blocksize));
 }
 
+#if 0
 static int
 ua_chan_setfragments(kobj_t obj, void *data, uint32_t blocksize, uint32_t blockcount)
 {
 	return (uaudio_chan_set_param_fragments(data, blocksize, blockcount));
 }
+#endif
 
 static int
 ua_chan_trigger(kobj_t obj, void *data, int go)
@@ -103,11 +105,13 @@ ua_chan_getcaps(kobj_t obj, void *data)
 	return (uaudio_chan_getcaps(data));
 }
 
+#if 0
 static struct pcmchan_matrix *
 ua_chan_getmatrix(kobj_t obj, void *data, uint32_t format)
 {
 	return (uaudio_chan_getmatrix(data, format));
 }
+#endif
 
 static kobj_method_t ua_chan_methods[] = {
 	KOBJMETHOD(channel_init, ua_chan_init),
@@ -139,39 +143,21 @@ ua_mixer_init(struct snd_mixer *m)
 static int
 ua_mixer_set(struct snd_mixer *m, unsigned type, unsigned left, unsigned right)
 {
-	struct lock *lock = mixer_get_lock(m);
-	uint8_t do_unlock;
-
-	if (lockstatus(lock, curthread)) {
-		do_unlock = 0;
-	} else {
-		do_unlock = 1;
-		lockmgr(lock, LK_EXCLUSIVE);
-	}
+	sndlock_t lock = uaudio_mixer_lock(m);
+	snd_mtxlock(lock);
 	uaudio_mixer_set(mix_getdevinfo(m), type, left, right);
-	if (do_unlock) {
-		lockmgr(lock, LK_RELEASE);
-	}
+	snd_mtxunlock(lock);
 	return (left | (right << 8));
 }
 
 static uint32_t
 ua_mixer_setrecsrc(struct snd_mixer *m, uint32_t src)
 {
-	struct lock *lock = mixer_get_lock(m);
 	int retval;
-	uint8_t do_unlock;
-
-	if (lockstatus(lock, curthread)) {
-		do_unlock = 0;
-	} else {
-		do_unlock = 1;
-		lockmgr(lock, LK_EXCLUSIVE);
-	}
+	sndlock_t lock = uaudio_mixer_lock(m);
+	snd_mtxlock(lock);
 	retval = uaudio_mixer_setrecsrc(mix_getdevinfo(m), src);
-	if (do_unlock) {
-		lockmgr(lock, LK_RELEASE);
-	}
+	snd_mtxunlock(lock);
 	return (retval);
 }
 

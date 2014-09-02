@@ -237,7 +237,7 @@ struct umidi_chan {
 };
 
 struct uaudio_softc {
-	struct lock sc_lock;
+	sndlock_t lock;
 
 	struct sbuf sc_sndstat;
 	struct sndcard_func sc_sndcard_func;
@@ -583,8 +583,7 @@ uaudio_attach(device_t dev)
 	struct usb_interface_descriptor *id;
 	device_t child;
 
-	lockinit(&sc->sc_lock, "uaudio", 0, 0);
-
+	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "softc lock");
 	sc->sc_play_chan.priv_sc = sc;
 	sc->sc_rec_chan.priv_sc = sc;
 	sc->sc_udev = uaa->device;
@@ -783,8 +782,8 @@ uaudio_detach(device_t dev)
 	sc->sc_sndstat_valid = 0;
 
 	umidi_detach(dev);
-	lockuninit(&sc->sc_lock);
 
+	snd_mtxfree(sc->lock);
 	return (0);
 }
 
@@ -1401,6 +1400,12 @@ uaudio_chan_init(struct uaudio_softc *sc, struct snd_dbuf *b,
 		break;
 	}
 #endif
+	/*
+	 * KLUDGE:
+	 * Add support at least for 2 channels
+	 */
+	if (ch->p_asf1d->bNrChannels == 2) format |= AFMT_STEREO;
+
 	ch->pcm_cap.fmtlist[0] = format;
 	ch->pcm_cap.fmtlist[1] = 0;
 
@@ -3253,7 +3258,7 @@ uaudio_mixer_init_sub(struct uaudio_softc *sc, struct snd_mixer *m)
 
 	if (usbd_transfer_setup(sc->sc_udev, &sc->sc_mixer_iface_index,
 	    sc->sc_mixer_xfer, uaudio_mixer_config, 1, sc,
-	    &sc->sc_lock)) {
+	    sc->lock)) {
 		DPRINTFN(0, "could not allocate USB "
 		    "transfer for audio mixer!\n");
 		return (ENOMEM);
@@ -3282,17 +3287,16 @@ uaudio_mixer_set(struct uaudio_softc *sc, unsigned type,
     unsigned left, unsigned right)
 {
 	struct uaudio_mixer_node *mc;
+	int chan;
 
 	for (mc = sc->sc_mixer_root; mc;
 	    mc = mc->next) {
 
 		if (mc->ctl == type) {
-			if (mc->nchan == 2) {
-				/* set Right */
-				uaudio_mixer_ctl_set(sc, mc, 1, (int)(right * 255) / 100);
+			for (chan = 0; chan < mc->nchan; chan++) {
+				uaudio_mixer_ctl_set(sc, mc, chan,
+				    (int)((chan == 0 ? left : right) * 255) / 100);
 			}
-			/* set Left or Mono */
-			uaudio_mixer_ctl_set(sc, mc, 0, (int)(left * 255) / 100);
 		}
 	}
 }
@@ -3881,6 +3885,13 @@ umidi_detach(device_t dev)
 	lockuninit(&chan->lock);
 
 	return (0);
+}
+
+sndlock_t
+uaudio_mixer_lock(struct snd_mixer *m)
+{
+	struct uaudio_softc *sc = mix_getdevinfo(m);
+	return sc->lock;
 }
 
 DRIVER_MODULE(uaudio, uhub, uaudio_driver, uaudio_devclass, NULL, NULL);

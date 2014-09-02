@@ -63,6 +63,8 @@ extern void	uaudio_mixer_set(struct uaudio_softc *sc, unsigned type,
 		    unsigned left, unsigned right);
 extern uint32_t	uaudio_mixer_setrecsrc(struct uaudio_softc *sc, uint32_t src);
 
+extern sndlock_t uaudio_mixer_lock(struct snd_mixer *m);
+
 int	uaudio_get_vendor(device_t dev);
 int	uaudio_get_product(device_t dev);
 int	uaudio_get_release(device_t dev);

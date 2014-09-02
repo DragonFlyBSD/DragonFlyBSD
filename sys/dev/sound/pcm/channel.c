@@ -1074,23 +1074,20 @@ chn_setformat(struct pcm_channel *c, u_int32_t fmt)
 	return r;
 }
 
-/*
- * given a bufsz value, round it to a power of 2 in the min-max range
- * XXX only works if min and max are powers of 2
- */
-static int
-round_bufsz(int bufsz, int min, int max)
+static unsigned int
+round_bufsz (unsigned int bufsz, unsigned int min, unsigned int max)
 {
-	int tmp = min * 2;
+	int pow=1, res;
+	if (bufsz < min) bufsz = min;
+	else if (bufsz > max) bufsz = max;
 
-	KASSERT((min & (min-1)) == 0, ("min %d must be power of 2", min));
-	KASSERT((max & (max-1)) == 0, ("max %d must be power of 2", max));
-	while (tmp <= bufsz)
-		tmp <<= 1;
-	tmp >>= 1;
-	if (tmp > max)
-		tmp = max;
-	return tmp;
+	if (bufsz & (bufsz-1)) {
+		while (bufsz >> pow) pow++;
+		res = 1<<pow;
+	}
+	else res = bufsz;
+	if (res > max) return res>>1;
+	else return res;
 }
 
 /*
