@@ -1684,7 +1684,7 @@ in_pcbinsconnhash(struct inpcb *inp)
 void
 in_pcbremconnhash(struct inpcb *inp)
 {
-	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	struct inpcbinfo *pcbinfo __debugvar = inp->inp_pcbinfo;
 
 	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
 	    ("not in the correct netisr"));
