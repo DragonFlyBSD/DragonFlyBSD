@@ -14,13 +14,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"        This product includes software developed by the NetBSD
-.\"        Foundation, Inc. and its contributors.
-.\" 4. Neither the name of The NetBSD Foundation nor the names of its
-.\"    contributors may be used to endorse or promote products derived
-.\"    from this software without specific prior written permission.
 .\"
 .\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
 .\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -34,20 +27,20 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/snd_uaudio.4,v 1.5.4.1 2006/01/09 12:48:39 joel Exp $
+.\" $FreeBSD: head/share/man/man4/snd_uaudio.4 267938 2014-06-26 21:46:14Z bapt $
 .\"
-.Dd December 15, 2005
+.Dd September 2, 2014
 .Dt SND_UAUDIO 4
 .Os
 .Sh NAME
 .Nm snd_uaudio
-.Nd USB audio device driver
+.Nd USB audio and MIDI device driver
 .Sh SYNOPSIS
 To compile this driver into the kernel, place the following lines in your
 kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "device pcm"
-.Cd "device oldusb"
+.Cd "device usb"
 .Cd "device snd_uaudio"
 .Ed
 .Pp
@@ -62,7 +55,9 @@ The
 .Nm
 driver provides support for
 .Tn USB
-audio class devices.
+audio class devices and
+.Tn USB
+MIDI class devices.
 .Pp
 A
 .Tn USB
@@ -101,8 +96,7 @@ as of this writing, does not handle device un-registrations in a properly
 abstracted manner, i.e., a detach request is refused by the
 .Tn PCM
 framework if the device is in use.
-For
-.Tn USB
-and supposedly other detach-able busses, it is necessary to allow the
-device un-registration to complete successfully, otherwise the driver
-leaves wild pointers to invalid data structures and thus leading to a panic.
+It is necessary to allow the device un-registration to complete
+successfully, otherwise the
+.Tn PCM
+layer will panic.
