@@ -175,7 +175,7 @@ bpf_filter(const struct bpf_insn *pc, u_char *p, u_int wirelen, u_int buflen)
 {
 	u_int32_t A = 0, X = 0;
 	bpf_u_int32 k;
-	int32_t mem[BPF_MEMWORDS];
+	u_int32_t mem[BPF_MEMWORDS];
 
 	bzero(mem, sizeof(mem));
 
