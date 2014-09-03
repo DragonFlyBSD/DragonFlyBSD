@@ -886,23 +886,19 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	cpu = udp_addrcpu(addrs[1].sin_addr.s_addr, addrs[1].sin_port,
 	    addrs[0].sin_addr.s_addr, addrs[0].sin_port);
 
-	if (cpu != origcpu)
-		lwkt_migratecpu(cpu);
+	lwkt_migratecpu(cpu);
 
 	inp = in_pcblookup_hash(&udbinfo[cpu],
 	    addrs[1].sin_addr, addrs[1].sin_port,
 	    addrs[0].sin_addr, addrs[0].sin_port, TRUE, NULL);
 	if (inp == NULL || inp->inp_socket == NULL) {
 		error = ENOENT;
-	} else {
-		if (inp->inp_socket->so_cred != NULL) {
-			cred0 = *(inp->inp_socket->so_cred);
-			cred = &cred0;
-		}
+	} else if (inp->inp_socket->so_cred != NULL) {
+		cred0 = *(inp->inp_socket->so_cred);
+		cred = &cred0;
 	}
 
-	if (cpu != origcpu)
-		lwkt_migratecpu(origcpu);
+	lwkt_migratecpu(origcpu);
 
 	if (error)
 		return error;
