@@ -58,7 +58,8 @@ locald_start()
 		done
 		script_save_sep="$IFS"
 		IFS="${script_name_sep}"
-		for script in ${slist}; do
+		sortedslist=`rcorder -s nostart /etc/rc.d/* ${slist} | grep -v "^/etc/rc.d/" | tr '\n' "$IFS" 2>/dev/null`;
+		for script in ${sortedslist}; do
 			if [ -x "${script}" ]; then
 				(set -T
 				trap 'exit 1' 2
@@ -97,7 +98,8 @@ locald_stop()
 		done
 		script_save_sep="$IFS"
 		IFS="${script_name_sep}"
-		for script in `reverse_list ${slist}`; do
+		sortedslist=`rcorder -s nostart /etc/rc.d/* ${slist} | grep -v "^/etc/rc.d/" | tr '\n' "$IFS" 2>/dev/null`;
+		for script in `reverse_list ${sortedslist}`; do
 			if [ -x "${script}" ]; then
 				(set -T
 				trap 'exit 1' 2
