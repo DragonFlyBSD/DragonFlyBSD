@@ -1274,9 +1274,9 @@ static int
 tcp_getcred(SYSCTL_HANDLER_ARGS)
 {
 	struct sockaddr_in addrs[2];
+	struct ucred cred0, *cred = NULL;
 	struct inpcb *inp;
-	int cpu;
-	int error;
+	int cpu, origcpu, error;
 
 	error = priv_check(req->td, PRIV_ROOT);
 	if (error != 0)
@@ -1284,19 +1284,28 @@ tcp_getcred(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_IN(req, addrs, sizeof addrs);
 	if (error != 0)
 		return (error);
-	crit_enter();
+
+	origcpu = mycpuid;
 	cpu = tcp_addrcpu(addrs[1].sin_addr.s_addr, addrs[1].sin_port,
 	    addrs[0].sin_addr.s_addr, addrs[0].sin_port);
+
+	lwkt_migratecpu(cpu);
+
 	inp = in_pcblookup_hash(&tcbinfo[cpu], addrs[1].sin_addr,
 	    addrs[1].sin_port, addrs[0].sin_addr, addrs[0].sin_port, 0, NULL);
 	if (inp == NULL || inp->inp_socket == NULL) {
 		error = ENOENT;
-		goto out;
+	} else if (inp->inp_socket->so_cred != NULL) {
+		cred0 = *(inp->inp_socket->so_cred);
+		cred = &cred0;
 	}
-	error = SYSCTL_OUT(req, inp->inp_socket->so_cred, sizeof(struct ucred));
-out:
-	crit_exit();
-	return (error);
+
+	lwkt_migratecpu(origcpu);
+
+	if (error)
+		return (error);
+
+	return SYSCTL_OUT(req, cred, sizeof(struct ucred));
 }
 
 SYSCTL_PROC(_net_inet_tcp, OID_AUTO, getcred, (CTLTYPE_OPAQUE | CTLFLAG_RW),
