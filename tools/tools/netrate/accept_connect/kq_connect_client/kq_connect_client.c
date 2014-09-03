@@ -3,6 +3,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#include <sys/sysctl.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 
@@ -35,8 +36,14 @@ main(int argc, char *argv[])
 	long dur;
 	u_long *result, sum;
 	u_short port;
+	size_t prm_len;
 
-	ninst = 1;
+	prm_len = sizeof(ninst);
+	if (sysctlbyname("hw.ncpu", &ninst, &prm_len, NULL, 0) != 0) {
+		fprintf(stderr, "sysctl hw.ncpu failed: %d\n", errno);
+		exit(2);
+	}
+
 	nconn = 8;
 	dur = 10;
 	port = 0;

@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#include <sys/sysctl.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 
@@ -33,11 +34,17 @@ main(int argc, char *argv[])
 	int opt, ninst, i;
 	long dur;
 	u_long *result, sum;
+	size_t prm_len;
+
+	prm_len = sizeof(ninst);
+	if (sysctlbyname("hw.ncpu", &ninst, &prm_len, NULL, 0) != 0) {
+		fprintf(stderr, "sysctl hw.ncpu failed: %d\n", errno);
+		exit(2);
+	}
 
 	memset(&in, 0, sizeof(in));
 	in.sin_family = AF_INET;
 
-	ninst = 1;
 	dur = 10;
 
 	while ((opt = getopt(argc, argv, "4:p:i:l:")) != -1) {

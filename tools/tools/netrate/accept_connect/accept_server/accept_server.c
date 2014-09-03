@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/sysctl.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -64,12 +65,18 @@ main(int argc, char *argv[])
 {
 	struct sockaddr_in in;
 	int opt, ninst, serv_s, i, reuseport;
+	size_t prm_len;
+
+	prm_len = sizeof(ninst);
+	if (sysctlbyname("hw.ncpu", &ninst, &prm_len, NULL, 0) != 0) {
+		fprintf(stderr, "sysctl hw.ncpu failed: %d\n", errno);
+		exit(2);
+	}
 
 	memset(&in, 0, sizeof(in));
 	in.sin_family = AF_INET;
 	in.sin_addr.s_addr = INADDR_ANY;
 
-	ninst = 1;
 	reuseport = 0;
 
 	while ((opt = getopt(argc, argv, "p:i:r")) != -1) {
