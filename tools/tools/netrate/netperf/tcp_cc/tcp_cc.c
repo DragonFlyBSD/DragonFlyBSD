@@ -2,7 +2,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include <errno.h>
+#include <err.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -73,22 +73,16 @@ main(int argc, char *argv[])
 	args[i] = NULL;
 
 	instance = calloc(ninst, sizeof(struct netperf_child));
-	if (instance == NULL) {
-		fprintf(stderr, "calloc failed\n");
-		exit(1);
-	}
+	if (instance == NULL)
+		err(1, "calloc failed");
 
 	null_fd = open("/dev/null", O_RDWR);
-	if (null_fd < 0) {
-		fprintf(stderr, "open null failed: %d\n", errno);
-		exit(1);
-	}
+	if (null_fd < 0)
+		err(1, "open null failed");
 
 	for (i = 0; i < ninst; ++i) {
-		if (pipe(instance[i].pipes) < 0) {
-			fprintf(stderr, "pipe %dth failed: %d\n", i, errno);
-			exit(1);
-		}
+		if (pipe(instance[i].pipes) < 0)
+			err(1, "pipe %dth failed", i);
 	}
 
 	for (i = 0; i < ninst; ++i) {
@@ -102,15 +96,13 @@ main(int argc, char *argv[])
 			dup2(null_fd, STDERR_FILENO);
 			ret = execv(NETPERF_PATH, args);
 			if (ret < 0) {
-				fprintf(stderr, "execv %d failed: %d\n",
-				    i, errno);
+				warn("execv %d failed", i);
 				_exit(1);
 			}
 			/* Never reached */
 			abort();
 		} else if (pid < 0) {
-			fprintf(stderr, "vfork %d failed: %d\n", i, errno);
-			exit(1);
+			err(1, "vfork %d failed", i);
 		}
 		close(instance[i].pipes[1]);
 		instance[i].pipes[1] = -1;
@@ -121,10 +113,8 @@ main(int argc, char *argv[])
 		pid_t pid;
 
 		pid = waitpid(-1, NULL, 0);
-		if (pid < 0) {
-			fprintf(stderr, "waitpid failed: %d\n", errno);
-			exit(1);
-		}
+		if (pid < 0)
+			err(1, "waitpid failed");
 		++ninst_done;
 	}
 
@@ -134,10 +124,8 @@ main(int argc, char *argv[])
 		FILE *fp;
 
 		fp = fdopen(instance[i].pipes[0], "r");
-		if (fp == NULL) {
-			fprintf(stderr, "fdopen %dth failed\n", i);
-			exit(1);
-		}
+		if (fp == NULL)
+			err(1, "fdopen %dth failed\n", i);
 
 		while (fgets(line, sizeof(line), fp) != NULL) {
 			int n, arg1, arg2, arg3, arg4;
