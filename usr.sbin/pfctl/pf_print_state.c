@@ -313,6 +313,8 @@ print_state(struct pfsync_state *s, int opts)
 			printf(" global");
 		if (s->state_flags & PFSTATE_CREATEINPROG)
 			printf(" creating");
+		if (s->state_flags & PFSTATE_HALF_DUPLEX)
+			printf(" (TRANSLATION COLLISION)");
 		if (s->sync_flags & PFSYNC_FLAG_SRCNODE)
 			printf(" source-track");
 		if (s->sync_flags & PFSYNC_FLAG_NATSRCNODE)

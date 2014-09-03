@@ -345,9 +345,11 @@ static MALLOC_DEFINE(M_PFSTATEITEMPL, "pfstateitempl", "pf state item pool list"
 
 static __inline int pf_src_compare(struct pf_src_node *, struct pf_src_node *);
 static __inline int pf_state_compare_key(struct pf_state_key *,
-	struct pf_state_key *);
+				struct pf_state_key *);
+static __inline int pf_state_compare_rkey(struct pf_state_key *,
+				struct pf_state_key *);
 static __inline int pf_state_compare_id(struct pf_state *,
-	struct pf_state *);
+				struct pf_state *);
 
 struct pf_src_tree tree_src_tracking[MAXCPU];
 struct pf_state_tree_id tree_id[MAXCPU];
@@ -355,8 +357,8 @@ struct pf_state_queue state_list[MAXCPU];
 
 RB_GENERATE(pf_src_tree, pf_src_node, entry, pf_src_compare);
 RB_GENERATE(pf_state_tree, pf_state_key, entry, pf_state_compare_key);
-RB_GENERATE(pf_state_tree_id, pf_state,
-    entry_id, pf_state_compare_id);
+RB_GENERATE(pf_state_rtree, pf_state_key, entry, pf_state_compare_rkey);
+RB_GENERATE(pf_state_tree_id, pf_state, entry_id, pf_state_compare_id);
 
 static __inline int
 pf_src_compare(struct pf_src_node *a, struct pf_src_node *b)
@@ -633,8 +635,10 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
 	return (0);
 }
 
-/* state table stuff */
-
+/*
+ * state table (indexed by the pf_state_key structure), normal RBTREE
+ * comparison.
+ */
 static __inline int
 pf_state_compare_key(struct pf_state_key *a, struct pf_state_key *b)
 {
@@ -703,6 +707,79 @@ pf_state_compare_key(struct pf_state_key *a, struct pf_state_key *b)
 	return (0);
 }
 
+/*
+ * Used for RB_FIND only, compare in the reverse direction.  The
+ * element to be reversed is always (a), since we obviously can't
+ * reverse the state tree depicted by (b).
+ */
+static __inline int
+pf_state_compare_rkey(struct pf_state_key *a, struct pf_state_key *b)
+{
+	int	diff;
+
+	if ((diff = a->proto - b->proto) != 0)
+		return (diff);
+	if ((diff = a->af - b->af) != 0)
+		return (diff);
+	switch (a->af) {
+#ifdef INET
+	case AF_INET:
+		if (a->addr[1].addr32[0] > b->addr[0].addr32[0])
+			return (1);
+		if (a->addr[1].addr32[0] < b->addr[0].addr32[0])
+			return (-1);
+		if (a->addr[0].addr32[0] > b->addr[1].addr32[0])
+			return (1);
+		if (a->addr[0].addr32[0] < b->addr[1].addr32[0])
+			return (-1);
+		break;
+#endif /* INET */
+#ifdef INET6
+	case AF_INET6:
+		if (a->addr[1].addr32[3] > b->addr[0].addr32[3])
+			return (1);
+		if (a->addr[1].addr32[3] < b->addr[0].addr32[3])
+			return (-1);
+		if (a->addr[0].addr32[3] > b->addr[1].addr32[3])
+			return (1);
+		if (a->addr[0].addr32[3] < b->addr[1].addr32[3])
+			return (-1);
+		if (a->addr[1].addr32[2] > b->addr[0].addr32[2])
+			return (1);
+		if (a->addr[1].addr32[2] < b->addr[0].addr32[2])
+			return (-1);
+		if (a->addr[0].addr32[2] > b->addr[1].addr32[2])
+			return (1);
+		if (a->addr[0].addr32[2] < b->addr[1].addr32[2])
+			return (-1);
+		if (a->addr[1].addr32[1] > b->addr[0].addr32[1])
+			return (1);
+		if (a->addr[1].addr32[1] < b->addr[0].addr32[1])
+			return (-1);
+		if (a->addr[0].addr32[1] > b->addr[1].addr32[1])
+			return (1);
+		if (a->addr[0].addr32[1] < b->addr[1].addr32[1])
+			return (-1);
+		if (a->addr[1].addr32[0] > b->addr[0].addr32[0])
+			return (1);
+		if (a->addr[1].addr32[0] < b->addr[0].addr32[0])
+			return (-1);
+		if (a->addr[0].addr32[0] > b->addr[1].addr32[0])
+			return (1);
+		if (a->addr[0].addr32[0] < b->addr[1].addr32[0])
+			return (-1);
+		break;
+#endif /* INET6 */
+	}
+
+	if ((diff = a->port[1] - b->port[0]) != 0)
+		return (diff);
+	if ((diff = a->port[0] - b->port[1]) != 0)
+		return (diff);
+
+	return (0);
+}
+
 static __inline int
 pf_state_compare_id(struct pf_state *a, struct pf_state *b)
 {
@@ -727,20 +804,20 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 	int error;
 
 	/*
-	 * PFSTATE_STACK_GLOBAL is set for translations when the translated
-	 * address/port is not localized to the same cpu that the untranslated
-	 * address/port is on.  The wire pf_state_key is managed on the global
-	 * statetbl tree for this case.
+	 * PFSTATE_STACK_GLOBAL is set when the state might not hash to the
+	 * current cpu.  The keys are managed on the global statetbl tree
+	 * for this case.  Only translations (RDR, NAT) can cause this.
 	 *
-	 * However, it appears that RDR translations can wind up with
-	 * a reversed WIRE/STACK specification, so atm we do not distinguish
-	 * the direction.
+	 * When this flag is not set we must still check the global statetbl
+	 * for a collision, and if we find one we set the HALF_DUPLEX flag
+	 * in the state.
 	 */
 	if (s->state_flags & PFSTATE_STACK_GLOBAL) {
 		cpu = MAXCPU;
 		lockmgr(&pf_global_statetbl_lock, LK_EXCLUSIVE);
 	} else {
 		cpu = mycpu->gd_cpuid;
+		lockmgr(&pf_global_statetbl_lock, LK_SHARED);
 	}
 	KKASSERT(s->key[idx] == NULL);	/* XXX handle this? */
 
@@ -752,6 +829,67 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 			ntohl(sk->addr[1].addr32[0]), ntohs(sk->port[1]));
 	}
 
+	/*
+	 * Check whether (e.g.) a PASS rule being put on a per-cpu tree
+	 * collides with a translation rule on the global tree.  This is
+	 * NOT an error.  We *WANT* to establish state for this case so the
+	 * packet path is short-cutted and doesn't need to scan the ruleset
+	 * on every packet.  But the established state will only see one
+	 * side of a two-way packet conversation.  To prevent this from
+	 * causing problems (e.g. generating a RST), we force PFSTATE_SLOPPY
+	 * to be set on the established state.
+	 *
+	 * A collision against RDR state can only occur with a PASS IN in the
+	 * opposite direction or a PASS OUT in the forwards direction.  This
+	 * is because RDRs are processed on the input side.
+	 *
+	 * A collision against NAT state can only occur with a PASS IN in the
+	 * forwards direction or a PASS OUT in the opposite direction.  This
+	 * is because NATs are processed on the output side.
+	 *
+	 * In both situations we need to do a reverse addr/port test because
+	 * the PASS IN or PASS OUT only establishes if it doesn't match the
+	 * established RDR state in the forwards direction.  The direction
+	 * flag has to be ignored (it will be one way for a PASS IN and the
+	 * other way for a PASS OUT).
+	 *
+	 * pf_global_statetbl_lock will be locked shared when testing and
+	 * not entering into the global state table.
+	 */
+	if (cpu != MAXCPU &&
+	    (cur = RB_FIND(pf_state_rtree,
+			   (struct pf_state_rtree *)&pf_statetbl[MAXCPU],
+			   sk)) != NULL) {
+		TAILQ_FOREACH(si, &cur->states, entry) {
+			/*
+			 * NOTE: We must ignore direction mismatches.
+			 */
+			if (si->s->kif == s->kif) {
+				s->state_flags |= PFSTATE_HALF_DUPLEX |
+						  PFSTATE_SLOPPY;
+				if (pf_status.debug >= PF_DEBUG_MISC) {
+					kprintf(
+					    "pf: %s key attach collision "
+					    "on %s: ",
+					    (idx == PF_SK_WIRE) ?
+					    "wire" : "stack",
+					    s->kif->pfik_name);
+					pf_print_state_parts(s,
+					    (idx == PF_SK_WIRE) ? sk : NULL,
+					    (idx == PF_SK_STACK) ? sk : NULL);
+					kprintf("\n");
+				}
+				break;
+			}
+		}
+	}
+
+	/*
+	 * Enter into either the per-cpu or the global state table.
+	 *
+	 * pf_global_statetbl_lock will be locked exclusively when entering
+	 * into the global state table.
+	 */
 	if ((cur = RB_INSERT(pf_state_tree, &pf_statetbl[cpu], sk)) != NULL) {
 		/* key exists. check for same kif, if none, add to key */
 		TAILQ_FOREACH(si, &cur->states, entry) {
@@ -796,8 +934,7 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 
 	error = 0;
 failed:
-	if (s->state_flags & PFSTATE_STACK_GLOBAL)
-		lockmgr(&pf_global_statetbl_lock, LK_RELEASE);
+	lockmgr(&pf_global_statetbl_lock, LK_RELEASE);
 	return error;
 }
 

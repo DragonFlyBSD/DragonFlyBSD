@@ -851,6 +851,7 @@ struct pf_state {
 #define	PFSTATE_SLOPPY		0x02
 #define PFSTATE_STACK_GLOBAL	0x04	/* pf_state_key[1] is global */
 #define PFSTATE_CREATEINPROG	0x08	/* prevent find from finding it */
+#define PFSTATE_HALF_DUPLEX	0x10	/* collision against translation */
 
 /*
  * sync_flags
@@ -1135,6 +1136,8 @@ struct pfr_ktable {
 
 RB_HEAD(pf_state_tree, pf_state_key);
 RB_PROTOTYPE(pf_state_tree, pf_state_key, entry, pf_state_compare_key);
+RB_HEAD(pf_state_rtree, pf_state_key);
+RB_PROTOTYPE(pf_state_rtree, pf_state_key, entry, pf_state_compare_rkey);
 
 RB_HEAD(pf_state_tree_ext_gwy, pf_state_key);
 RB_PROTOTYPE(pf_state_tree_ext_gwy, pf_state_key,
