@@ -67,7 +67,6 @@ MAN=	aac.4 \
 	cmx.4 \
 	coretemp.4 \
 	crypto.4 \
-	csa.4 \
 	cue.4 \
 	cxm.4 \
 	da.4 \
