@@ -226,6 +226,19 @@ main(int argc, char **argv)
 		unregistration();
 		exit (0);
 	}
+	if (debug == 0) {
+		daemon(0, 0);
+		signal(SIGHUP, SIG_IGN);
+		signal(SIGINT, SIG_IGN);
+		/*
+		 * nfsd sits in the kernel most of the time.  It needs
+		 * to ignore SIGTERM/SIGQUIT in order to stay alive as long
+		 * as possible during a shutdown, otherwise loopback
+		 * mounts will not be able to unmount.
+		 */
+		signal(SIGTERM, SIG_IGN);
+		signal(SIGQUIT, SIG_IGN);
+	}
 	if (reregister) {
 		if (udpflag) {
 			memset(&hints, 0, sizeof hints);
@@ -304,19 +317,6 @@ main(int argc, char **argv)
 			freeaddrinfo(ai_tcp6);
 		}
 		exit (0);
-	}
-	if (debug == 0) {
-		daemon(0, 0);
-		signal(SIGHUP, SIG_IGN);
-		signal(SIGINT, SIG_IGN);
-		/*
-		 * nfsd sits in the kernel most of the time.  It needs
-		 * to ignore SIGTERM/SIGQUIT in order to stay alive as long
-		 * as possible during a shutdown, otherwise loopback
-		 * mounts will not be able to unmount.
-		 */
-		signal(SIGTERM, SIG_IGN);
-		signal(SIGQUIT, SIG_IGN);
 	}
 	signal(SIGSYS, nonfs);
 	signal(SIGCHLD, reapchild);

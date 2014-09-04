@@ -282,7 +282,7 @@ main(int argc, char **argv)
 	if (error)
 		errx(1, "NFS support is not available in the running kernel");
 
-	while ((c = getopt(argc, argv, "2dlnr")) != -1)
+	while ((c = getopt(argc, argv, "2dlnr")) != -1) {
 		switch (c) {
 		case '2':
 			force_v2 = 1;
@@ -302,6 +302,12 @@ main(int argc, char **argv)
 		default:
 			usage();
 		}
+	}
+	if (debug == 0) {
+		daemon(0, 0);
+		signal(SIGINT, SIG_IGN);
+		signal(SIGQUIT, SIG_IGN);
+	}
 	argc -= optind;
 	argv += optind;
 	grphead = NULL;
@@ -321,11 +327,6 @@ main(int argc, char **argv)
 	get_mountlist();
 	if (debug)
 		warnx("here we go");
-	if (debug == 0) {
-		daemon(0, 0);
-		signal(SIGINT, SIG_IGN);
-		signal(SIGQUIT, SIG_IGN);
-	}
 	signal(SIGHUP, huphandler);
 	signal(SIGTERM, terminate);
 
