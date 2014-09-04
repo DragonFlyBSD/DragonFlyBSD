@@ -797,6 +797,8 @@ struct pf_state_key {
 	struct inpcb		*inp;
 };
 
+#define PF_STATE_KEY_HASH_LENGTH	offsetof(struct pf_state_key, pad[0])
+
 /* keep synced with struct pf_state, used in RB_FIND */
 struct pf_state_cmp {
 	u_int64_t		 id;
