@@ -1107,7 +1107,7 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 	/*
 	 * Calculate hash code for altq
 	 */
-	s->hash = crc32(s->key[PF_SK_WIRE], sizeof(*sks));
+	s->hash = crc32(s->key[PF_SK_WIRE], PF_STATE_KEY_HASH_LENGTH);
 
 	if (RB_INSERT(pf_state_tree_id, &tree_id[cpu], s) != NULL) {
 		if (pf_status.debug >= PF_DEBUG_MISC) {
@@ -6678,7 +6678,11 @@ done:
 #endif
 
 #ifdef ALTQ
-	if (action == PF_PASS && r->qid) {
+	/*
+	 * Generate a hash code and qid request for ALTQ.  A qid of 0
+	 * is allowed and will cause altq to select the default queue.
+	 */
+	if (action == PF_PASS) {
 		m->m_pkthdr.fw_flags |= PF_MBUF_STRUCTURE;
 		if (pqid || (pd.tos & IPTOS_LOWDELAY))
 			m->m_pkthdr.pf.qid = r->pqid;
@@ -7075,7 +7079,11 @@ done:
 #endif
 
 #ifdef ALTQ
-	if (action == PF_PASS && r->qid) {
+	/*
+	 * Generate a hash code and qid request for ALTQ.  A qid of 0
+	 * is allowed and will cause altq to select the default queue.
+	 */
+	if (action == PF_PASS) {
 		m->m_pkthdr.fw_flags |= PF_MBUF_STRUCTURE;
 		if (pd.tos & IPTOS_LOWDELAY)
 			m->m_pkthdr.pf.qid = r->pqid;
