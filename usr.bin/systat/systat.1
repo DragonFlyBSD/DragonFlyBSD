@@ -85,6 +85,7 @@ The
 flag expects
 .Ar display
 to be one of:
+.Ic altq ,
 .Ic icmp ,
 .Ic icmp6 ,
 .Ic ifstat ,
@@ -490,6 +491,19 @@ actively passing data.  This requires pf to be active to be meaningful
 but is capable of displaying connection state for all packet traffic
 passing through the machine, even for connections that do not originate
 or terminate on the machine.
+.It Ic altq
+Display packet filter altq statistics.
+The ALTQ operates in conjuction with the packet filter (pf) on the
+interface's transmit path.
+Packet rate, data rate in bytes per interval, drop rate, and queue
+length is displayed in three separate sections in a convenient
+INTERFACE-by-ALTQLABEL matrix.
+.Pp
+To save space drops
+and queue length are combined in the third section.
+If packet drops are present, drops
+will be displayed, otherwise the packet queue length with a 'Q' suffix
+will be displayed.
 .El
 .Pp
 Commands to switch between displays may be abbreviated to the

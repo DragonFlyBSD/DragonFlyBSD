@@ -80,8 +80,6 @@ struct queue_stats {
 	qcol_t			*qc;
 	union class_stats	ostats;
 	union class_stats	nstats;
-	uint64_t  old_bytes;
-	uint64_t  old_packets;
 };
 
 typedef struct queue_stats queue_stats_t;
@@ -212,7 +210,7 @@ showaltqs(void)
 
 	mvprintw(TopSection1, 0, "        PACKETS");
 	mvprintw(TopSection2, 0, "        BYTES");
-	mvprintw(TopSection3, 0, "        DROPS");
+	mvprintw(TopSection3, 0, "   DROPS/QLEN");
 	SLIST_FOREACH(qc, &qcols, link) {
 		mvprintw(TopSection1, TOPQSTART + TOPQWIDTH * qc->col,
 			 "%9s", qc->qname);
@@ -473,6 +471,7 @@ print_altq(if_stat_t *p, queue_stats_t *q)
 	uint64_t xmit_bytes;
 	uint64_t drop_pkts;
 	uint64_t drop_bytes __unused;
+	uint64_t qlen;
 
 	switch(q->pa.altq.scheduler) {
 	case ALTQT_CBQ:
@@ -484,6 +483,7 @@ print_altq(if_stat_t *p, queue_stats_t *q)
 		xmit_bytes -= q->ostats.cbq.xmit_cnt.bytes;
 		drop_pkts -= q->ostats.cbq.drop_cnt.packets;
 		drop_bytes -= q->ostats.cbq.drop_cnt.bytes;
+		qlen = 0;
 		break;
 	case ALTQT_PRIQ:
 		xmit_pkts = q->nstats.priq.xmitcnt.packets;
@@ -494,6 +494,7 @@ print_altq(if_stat_t *p, queue_stats_t *q)
 		xmit_bytes -= q->ostats.priq.xmitcnt.bytes;
 		drop_pkts -= q->ostats.priq.dropcnt.packets;
 		drop_bytes -= q->ostats.priq.dropcnt.bytes;
+		qlen = q->nstats.priq.qlength;
 		break;
 	case ALTQT_HFSC:
 		xmit_pkts = q->nstats.hfsc.xmit_cnt.packets;
@@ -504,6 +505,7 @@ print_altq(if_stat_t *p, queue_stats_t *q)
 		xmit_bytes -= q->ostats.hfsc.xmit_cnt.bytes;
 		drop_pkts -= q->ostats.hfsc.drop_cnt.packets;
 		drop_bytes -= q->ostats.hfsc.drop_cnt.bytes;
+		qlen = q->nstats.hfsc.qlength;
 		break;
 	case ALTQT_FAIRQ:
 		xmit_pkts = q->nstats.fairq.xmit_cnt.packets;
@@ -514,39 +516,45 @@ print_altq(if_stat_t *p, queue_stats_t *q)
 		xmit_bytes -= q->ostats.fairq.xmit_cnt.bytes;
 		drop_pkts -= q->ostats.fairq.drop_cnt.packets;
 		drop_bytes -= q->ostats.fairq.drop_cnt.bytes;
+		qlen = q->nstats.fairq.qlength;
 		break;
 	default:
 		xmit_pkts = 0;
 		xmit_bytes = 0;
 		drop_pkts = 0;
 		drop_bytes = 0;
+		qlen = 0;
 		break;
 	}
 	if (xmit_pkts == 0)
 		mvprintw(TopSection1 + p->row,
-			 TOPQSTART + q->qc->col * TOPQWIDTH,
-			 "%9s", "");
+			 TOPQSTART + q->qc->col * TOPQWIDTH - 1,
+			 "%10s", "");
 	else
 		mvprintw(TopSection1 + p->row,
-			 TOPQSTART + q->qc->col * TOPQWIDTH,
-			 "%9jd",  (intmax_t)xmit_pkts);
+			 TOPQSTART + q->qc->col * TOPQWIDTH - 1,
+			 "%10jd",  (intmax_t)xmit_pkts);
 
 	if (xmit_bytes == 0)
 		mvprintw(TopSection2 + p->row,
-			 TOPQSTART + q->qc->col * TOPQWIDTH,
-			 "%9s", "");
+			 TOPQSTART + q->qc->col * TOPQWIDTH - 1,
+			 "%10s", "");
 	else
 		mvprintw(TopSection2 + p->row,
-			 TOPQSTART + q->qc->col * TOPQWIDTH,
-			 "%9jd",  (intmax_t)xmit_bytes);
-	if (drop_pkts == 0)
+			 TOPQSTART + q->qc->col * TOPQWIDTH - 1,
+			 "%10jd",  (intmax_t)xmit_bytes);
+	if (drop_pkts)
 		mvprintw(TopSection3 + p->row,
-			 TOPQSTART + q->qc->col * TOPQWIDTH,
-			 "%9s", "");
+			 TOPQSTART + q->qc->col * TOPQWIDTH - 1,
+			 "%10jd",  (intmax_t)drop_pkts);
+	else if (qlen)
+		mvprintw(TopSection3 + p->row,
+			 TOPQSTART + q->qc->col * TOPQWIDTH - 1,
+			 "%9jdQ",  (intmax_t)qlen);
 	else
 		mvprintw(TopSection3 + p->row,
-			 TOPQSTART + q->qc->col * TOPQWIDTH,
-			 "%9jd",  (intmax_t)drop_pkts);
+			 TOPQSTART + q->qc->col * TOPQWIDTH - 1,
+			 "%10s", "");
 }
 
 int
