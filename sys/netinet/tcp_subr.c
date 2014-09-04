@@ -1068,6 +1068,9 @@ tcp_drain_oncpu(struct inpcbhead *head)
 	LIST_INSERT_HEAD(head, marker, inp_list);
 
 	while ((inpb = LIST_NEXT(marker, inp_list)) != NULL) {
+		LIST_REMOVE(marker, inp_list);
+		LIST_INSERT_AFTER(inpb, marker, inp_list);
+
 		if ((inpb->inp_flags & INP_PLACEMARKER) == 0 &&
 		    (tcpb = intotcpcb(inpb)) != NULL &&
 		    (te = TAILQ_FIRST(&tcpb->t_segq)) != NULL) {
@@ -1078,9 +1081,6 @@ tcp_drain_oncpu(struct inpcbhead *head)
 			kfree(te, M_TSEGQ);
 			atomic_add_int(&tcp_reass_qsize, -1);
 			/* retry */
-		} else {
-			LIST_REMOVE(marker, inp_list);
-			LIST_INSERT_AFTER(inpb, marker, inp_list);
 		}
 	}
 	LIST_REMOVE(marker, inp_list);
