@@ -1,11 +1,10 @@
 #!/bin/sh
 
 # $Id: pfi,v 1.12 2005/03/07 06:18:21 cpressey Exp $
-# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.8 2005/12/10 00:11:08 swildner Exp $
 #
 
 # PROVIDE: pfi
-# REQUIRE: mountoptional
+# REQUIRE: mountcritremote
 
 . /etc/rc.subr
 
