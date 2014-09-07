@@ -1013,6 +1013,10 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 	if (ret)
 		goto err;
 
+	ret = i915_switch_context(ring, file, ctx_id);
+	if (ret)
+		goto err;
+
 	if (ring == &dev_priv->ring[RCS] &&
 	    mode != dev_priv->relative_constants_mode) {
 		ret = intel_ring_begin(ring, 4);
@@ -1136,6 +1140,7 @@ i915_gem_execbuffer(struct drm_device *dev, void *data,
 	exec2.num_cliprects = args->num_cliprects;
 	exec2.cliprects_ptr = args->cliprects_ptr;
 	exec2.flags = I915_EXEC_RENDER;
+	i915_execbuffer2_set_context_id(exec2, 0);
 
 	ret = i915_gem_do_execbuffer(dev, data, file, &exec2, exec2_list);
 	if (!ret) {
