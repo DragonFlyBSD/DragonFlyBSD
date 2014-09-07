@@ -260,7 +260,7 @@ nexus_print_all_resources(device_t dev)
 
 	if (SLIST_FIRST(rl) || ndev->nx_pcibus != -1)
 		retval += kprintf(" at");
-	
+
 	retval += resource_list_print_type(rl, "port", SYS_RES_IOPORT, "%#lx");
 	retval += resource_list_print_type(rl, "iomem", SYS_RES_MEMORY, "%#lx");
 	retval += resource_list_print_type(rl, "irq", SYS_RES_IRQ, "%ld");
@@ -306,7 +306,7 @@ static int
 nexus_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 {
 	struct nexus_device *ndev = DEVTONX(child);
-	
+
 	switch (which) {
 	case NEXUS_IVAR_PCIBUS:
 		*result = ndev->nx_pcibus;
@@ -321,7 +321,7 @@ static int
 nexus_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
 {
 	struct nexus_device *ndev = DEVTONX(child);
-	
+
 	switch (which) {
 	case NEXUS_IVAR_PCIBUS:
 		ndev->nx_pcibus = value;
@@ -407,7 +407,7 @@ nexus_alloc_resource(device_t bus, device_t child, int type, int *rid,
 			return 0;
 		}
 	}
-	
+
 	return rv;
 }
 
@@ -458,7 +458,7 @@ nexus_deactivate_resource(device_t bus, device_t child, int type, int rid,
 		psize = rman_get_size(r);
 		pmap_unmapdev((vm_offset_t)rman_get_virtual(r), psize);
 	}
-		
+
 	return (rman_deactivate_resource(r));
 }
 
