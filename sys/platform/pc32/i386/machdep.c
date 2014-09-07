@@ -96,6 +96,7 @@
 #include <machine/specialreg.h>
 #include <machine/bootinfo.h>
 #include <machine/md_var.h>
+#include <machine/pc/bios.h>
 #include <machine/pcb_ext.h>		/* pcb.h included via sys/user.h */
 #include <machine/globaldata.h>		/* CPU_prvspace */
 #include <machine/smp.h>
@@ -1393,7 +1394,7 @@ int15e820:
 				*(u_int32_t *)((char *)&smap->length + 4),
 				(u_int32_t)smap->length);
 
-		if (smap->type != 0x01)
+		if (smap->type != SMAP_TYPE_MEMORY)
 			goto next_run;
 
 		if (smap->length == 0)

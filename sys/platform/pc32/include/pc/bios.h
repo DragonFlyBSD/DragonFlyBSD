@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pc/bios.h,v 1.7.2.3 2001/10/21 03:16:56 yokota Exp $
- * $DragonFly: src/sys/platform/pc32/include/pc/bios.h,v 1.3 2003/11/08 02:55:19 dillon Exp $
  */
 
 /* 
@@ -286,15 +285,20 @@ struct PIR_table
 
 /*
  * Int 15:E820 'SMAP' structure
- *
- * XXX add constants for type
  */
 #define SMAP_SIG	0x534D4150			/* 'SMAP' */
+
+#define	SMAP_TYPE_MEMORY	1
+#define	SMAP_TYPE_RESERVED	2
+#define	SMAP_TYPE_ACPI_RECLAIM	3
+#define	SMAP_TYPE_ACPI_NVS	4
+#define	SMAP_TYPE_ACPI_ERROR	5
+
 struct bios_smap {
     u_int64_t	base;
     u_int64_t	length;
     u_int32_t	type;
-} __attribute__ ((packed));
+} __packed;
 
 struct bios_oem_signature {
 	char * anchor;		/* search anchor string in BIOS memory */
