@@ -188,7 +188,7 @@ nexus_probe(device_t dev)
 		rm->rm_descr = "Interrupt request lines";
 
 		if (rman_init(rm, cpuid))
-			panic("nexus_probe rman_init");
+			panic("%s rman_init", __func__);
 		MachIntrABI.rman_setup(rm);
 	}
 
@@ -205,7 +205,7 @@ nexus_probe(device_t dev)
 	if (rman_init(&drq_rman, -1)
 	    || rman_manage_region(&drq_rman,
 				  drq_rman.rm_start, drq_rman.rm_end))
-		panic("nexus_probe drq_rman");
+		panic("%s drq_rman", __func__);
 
 	/*
 	 * However, IO ports and Memory truely are global at this level,
@@ -218,7 +218,7 @@ nexus_probe(device_t dev)
 	port_rman.rm_descr = "I/O ports";
 	if (rman_init(&port_rman, -1)
 	    || rman_manage_region(&port_rman, 0, 0xffff))
-		panic("nexus_probe port_rman");
+		panic("%s port_rman", __func__);
 
 	mem_rman.rm_start = 0;
 	mem_rman.rm_end = ~0u;
@@ -226,7 +226,7 @@ nexus_probe(device_t dev)
 	mem_rman.rm_descr = "I/O memory addresses";
 	if (rman_init(&mem_rman, -1)
 	    || rman_manage_region(&mem_rman, 0, ~0))
-		panic("nexus_probe mem_rman");
+		panic("%s mem_rman", __func__);
 
 	return bus_generic_probe(dev);
 }
@@ -253,7 +253,7 @@ nexus_attach(device_t dev)
 	if (!devclass_get_device(devclass_find("isa"), 0)) {
 		child = BUS_ADD_CHILD(dev, dev, 0, "isa", 0);
 		if (child == NULL)
-			panic("nexus_attach isa");
+			panic("%s isa", __func__);
 		device_probe_and_attach(child);
 	}
 
@@ -506,7 +506,7 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 
 	/* somebody tried to setup an irq that failed to allocate! */
 	if (irq == NULL)
-		panic("nexus_setup_intr: NULL irq resource!");
+		panic("%s: NULL irq resource!", __func__);
 
 	*cookiep = NULL;
 	icflags = flags;
@@ -641,7 +641,7 @@ ram_identify(driver_t *driver, device_t parent)
         if (resource_disabled("ram", 0))
                 return;
         if (BUS_ADD_CHILD(parent, parent, 0, "ram", 0) == NULL)
-                panic("ram_identify");
+                panic("%s", __func__);
 }
 
 static int
@@ -684,14 +684,13 @@ ram_attach(device_t dev)
                         error = bus_set_resource(dev, SYS_RES_MEMORY, rid,
                             smap->base, smap->length, -1);
                         if (error)
-                                panic(
-                                    "ram_attach: resource %d failed set with %d",
-                                    rid, error);
+                                panic("%s: resource %d failed set with %d",
+                                    __func__, rid, error);
                         res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
                             0);
                         if (res == NULL)
-                                panic("ram_attach: resource %d failed to attach",
-                                    rid);
+                                panic("%s: resource %d failed to attach",
+                                    __func__, rid);
                         rid++;
                 }
                 return (0);
@@ -710,11 +709,12 @@ ram_attach(device_t dev)
                 error = bus_set_resource(dev, SYS_RES_MEMORY, rid, p[0],
                     p[1] - p[0], -1);
                 if (error)
-                        panic("ram_attach: resource %d failed set with %d", rid,
-                            error);
+                        panic("%s: resource %d failed set with %d", __func__,
+			    rid, error);
                 res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, 0);
                 if (res == NULL)
-                        panic("ram_attach: resource %d failed to attach", rid);
+                        panic("%s: resource %d failed to attach", __func__,
+			    rid);
         }
         return (0);
 }
