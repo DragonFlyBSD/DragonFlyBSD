@@ -638,98 +638,98 @@ static void
 ram_identify(driver_t *driver, device_t parent)
 {
 
-        if (resource_disabled("ram", 0))
-                return;
-        if (BUS_ADD_CHILD(parent, parent, 0, "ram", 0) == NULL)
-                panic("%s", __func__);
+	if (resource_disabled("ram", 0))
+		return;
+	if (BUS_ADD_CHILD(parent, parent, 0, "ram", 0) == NULL)
+		panic("%s", __func__);
 }
 
 static int
 ram_probe(device_t dev)
 {
 
-        device_quiet(dev);
-        device_set_desc(dev, "System RAM");
-        return (0);
+	device_quiet(dev);
+	device_set_desc(dev, "System RAM");
+	return (0);
 }
 
 static int
 ram_attach(device_t dev)
 {
-        struct bios_smap *smapbase, *smap, *smapend;
-        struct resource *res;
-        vm_paddr_t *p;
-        caddr_t kmdp;
-        uint32_t smapsize;
-        int error, rid;
+	struct bios_smap *smapbase, *smap, *smapend;
+	struct resource *res;
+	vm_paddr_t *p;
+	caddr_t kmdp;
+	uint32_t smapsize;
+	int error, rid;
 
-        /* Retrieve the system memory map from the loader. */
-        kmdp = preload_search_by_type("elf kernel");
-        if (kmdp == NULL)
-                kmdp = preload_search_by_type(ELF_KERN_STR);
-        if (kmdp != NULL)
-                smapbase = (struct bios_smap *)preload_search_info(kmdp,
-                    MODINFO_METADATA | MODINFOMD_SMAP);
-        else
-                smapbase = NULL;
-        if (smapbase != NULL) {
-                smapsize = *((u_int32_t *)smapbase - 1);
-                smapend = (struct bios_smap *)((uintptr_t)smapbase + smapsize);
+	/* Retrieve the system memory map from the loader. */
+	kmdp = preload_search_by_type("elf kernel");
+	if (kmdp == NULL)
+		kmdp = preload_search_by_type(ELF_KERN_STR);
+	if (kmdp != NULL)
+		smapbase = (struct bios_smap *)preload_search_info(kmdp,
+		    MODINFO_METADATA | MODINFOMD_SMAP);
+	else
+		smapbase = NULL;
+	if (smapbase != NULL) {
+		smapsize = *((u_int32_t *)smapbase - 1);
+		smapend = (struct bios_smap *)((uintptr_t)smapbase + smapsize);
 
-                rid = 0;
-                for (smap = smapbase; smap < smapend; smap++) {
-                        if (smap->type != SMAP_TYPE_MEMORY ||
-                            smap->length == 0)
-                                continue;
-                        error = bus_set_resource(dev, SYS_RES_MEMORY, rid,
-                            smap->base, smap->length, -1);
-                        if (error)
-                                panic("%s: resource %d failed set with %d",
-                                    __func__, rid, error);
-                        res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
-                            0);
-                        if (res == NULL)
-                                panic("%s: resource %d failed to attach",
-                                    __func__, rid);
-                        rid++;
-                }
-                return (0);
-        }
+		rid = 0;
+		for (smap = smapbase; smap < smapend; smap++) {
+			if (smap->type != SMAP_TYPE_MEMORY ||
+			    smap->length == 0)
+				continue;
+			error = bus_set_resource(dev, SYS_RES_MEMORY, rid,
+			    smap->base, smap->length, -1);
+			if (error)
+				panic("%s: resource %d failed set with %d",
+				    __func__, rid, error);
+			res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+			    0);
+			if (res == NULL)
+				panic("%s: resource %d failed to attach",
+				    __func__, rid);
+			rid++;
+		}
+		return (0);
+	}
 
-        /*
-         * If the system map is not available, fall back to using
-         * dump_avail[].  We use the dump_avail[] array rather than
-         * phys_avail[] for the memory map as phys_avail[] contains
-         * holes for kernel memory, page 0, the message buffer, and
-         * the dcons buffer.  We test the end address in the loop
-         * instead of the start since the start address for the first
-         * segment is 0.
-         */
-        for (rid = 0, p = dump_avail; p[1] != 0; rid++, p += 2) {
-                error = bus_set_resource(dev, SYS_RES_MEMORY, rid, p[0],
-                    p[1] - p[0], -1);
-                if (error)
-                        panic("%s: resource %d failed set with %d", __func__,
+	/*
+	 * If the system map is not available, fall back to using
+	 * dump_avail[].  We use the dump_avail[] array rather than
+	 * phys_avail[] for the memory map as phys_avail[] contains
+	 * holes for kernel memory, page 0, the message buffer, and
+	 * the dcons buffer.  We test the end address in the loop
+	 * instead of the start since the start address for the first
+	 * segment is 0.
+	 */
+	for (rid = 0, p = dump_avail; p[1] != 0; rid++, p += 2) {
+		error = bus_set_resource(dev, SYS_RES_MEMORY, rid, p[0],
+		    p[1] - p[0], -1);
+		if (error)
+			panic("%s: resource %d failed set with %d", __func__,
 			    rid, error);
-                res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, 0);
-                if (res == NULL)
-                        panic("%s: resource %d failed to attach", __func__,
+		res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, 0);
+		if (res == NULL)
+			panic("%s: resource %d failed to attach", __func__,
 			    rid);
-        }
-        return (0);
+	}
+	return (0);
 }
 static device_method_t ram_methods[] = {
-        /* Device interface */
-        DEVMETHOD(device_identify,      ram_identify),
-        DEVMETHOD(device_probe,         ram_probe),
-        DEVMETHOD(device_attach,        ram_attach),
-        { 0, 0 }
+	/* Device interface */
+	DEVMETHOD(device_identify,      ram_identify),
+	DEVMETHOD(device_probe,	 ram_probe),
+	DEVMETHOD(device_attach,	ram_attach),
+	{ 0, 0 }
 };
 
 static driver_t ram_driver = {
-        "ram",
-        ram_methods,
-        1,              /* no softc */
+	"ram",
+	ram_methods,
+	1,		/* no softc */
 };
 
 static devclass_t ram_devclass;
