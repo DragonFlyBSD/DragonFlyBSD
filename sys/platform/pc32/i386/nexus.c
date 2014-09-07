@@ -678,6 +678,12 @@ ram_attach(device_t dev)
 			if (smap->type != SMAP_TYPE_MEMORY ||
 			    smap->length == 0)
 				continue;
+			/*
+			 * Resources use long's to track resources, so
+			 * we can't include memory regions above 4GB.
+			 */
+			if (smap->base > ~0ul)
+				continue;
 			error = bus_set_resource(dev, SYS_RES_MEMORY, rid,
 			    smap->base, smap->length, -1);
 			if (error)
