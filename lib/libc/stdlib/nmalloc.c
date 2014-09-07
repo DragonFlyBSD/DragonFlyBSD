@@ -629,6 +629,8 @@ malloc(size_t size)
 	return(ptr);
 }
 
+#define MUL_NO_OVERFLOW	(1UL << (sizeof(size_t) * 4))
+
 /*
  * calloc() - call internal slab allocator
  */
@@ -636,6 +638,12 @@ void *
 calloc(size_t number, size_t size)
 {
 	void *ptr;
+
+	if ((number >= MUL_NO_OVERFLOW || number >= MUL_NO_OVERFLOW) &&
+	     number > 0 && (~(size_t)0) / number < size) {
+		errno = ENOMEM;
+		return(NULL);
+	}
 
 	ptr = _slaballoc(number * size, SAFLAG_ZERO);
 	if (ptr == NULL)
