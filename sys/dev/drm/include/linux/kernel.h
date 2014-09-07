@@ -66,6 +66,17 @@
 	unlikely(__ret);						\
 })
 
+#define WARN_ON_ONCE(condition) ({					\
+	static int __warned;						\
+	int __ret = !!(condition);					\
+	if (__ret && !__warned) {					\
+		kprintf("WARNING %s failed at %s:%d\n",			\
+		    _WARN_STR(condition), __FILE__, __LINE__);		\
+		__warned = 1;						\
+	}								\
+	unlikely(__ret);						\
+})
+
 #undef	ALIGN
 #define	ALIGN(x, y)		roundup2((x), (y))
 #define	DIV_ROUND_UP		howmany
