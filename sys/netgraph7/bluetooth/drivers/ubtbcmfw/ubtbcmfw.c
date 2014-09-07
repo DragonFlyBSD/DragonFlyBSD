@@ -169,7 +169,7 @@ static driver_t		ubtbcmfw_driver =
 	.size =		sizeof(struct ubtbcmfw_softc),
 };
 
-DRIVER_MODULE(ubtbcmfw, uhub, ubtbcmfw_driver, ubtbcmfw_devclass, NULL, 0);
+DRIVER_MODULE(ubtbcmfw, uhub, ubtbcmfw_driver, ubtbcmfw_devclass, NULL, NULL);
 MODULE_DEPEND(ubtbcmfw, usb, 1, 1, 1);
 
 /*

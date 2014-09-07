@@ -79,4 +79,4 @@ static driver_t tpm_driver = {
 
 static devclass_t tpm_devclass;
 
-DRIVER_MODULE(tpm, isa, tpm_driver, tpm_devclass, 0, 0);
+DRIVER_MODULE(tpm, isa, tpm_driver, tpm_devclass, NULL, NULL);

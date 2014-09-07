@@ -170,8 +170,8 @@ static driver_t uhub_driver = {
 	.size = sizeof(struct uhub_softc)
 };
 
-DRIVER_MODULE(uhub, usbus, uhub_driver, uhub_devclass, 0, 0);
-DRIVER_MODULE(uhub, uhub, uhub_driver, uhub_devclass, NULL, 0);
+DRIVER_MODULE(uhub, usbus, uhub_driver, uhub_devclass, NULL, NULL);
+DRIVER_MODULE(uhub, uhub, uhub_driver, uhub_devclass, NULL, NULL);
 MODULE_VERSION(uhub, 1);
 
 static void

@@ -734,5 +734,5 @@ static driver_t ram_driver = {
 
 static devclass_t ram_devclass;
 
-DRIVER_MODULE(ram, nexus, ram_driver, ram_devclass, 0, 0);
+DRIVER_MODULE(ram, nexus, ram_driver, ram_devclass, NULL, NULL);
 

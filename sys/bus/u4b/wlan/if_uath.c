@@ -2894,7 +2894,7 @@ static driver_t uath_driver = {
 };
 static devclass_t uath_devclass;
 
-DRIVER_MODULE(uath, uhub, uath_driver, uath_devclass, NULL, 0);
+DRIVER_MODULE(uath, uhub, uath_driver, uath_devclass, NULL, NULL);
 MODULE_DEPEND(uath, wlan, 1, 1, 1);
 MODULE_DEPEND(uath, usb, 1, 1, 1);
 MODULE_VERSION(uath, 1);

@@ -257,7 +257,7 @@ static driver_t udbp_driver = {
 	.size = sizeof(struct udbp_softc),
 };
 
-DRIVER_MODULE(udbp, uhub, udbp_driver, udbp_devclass, udbp_modload, 0);
+DRIVER_MODULE(udbp, uhub, udbp_driver, udbp_devclass, udbp_modload, NULL);
 MODULE_DEPEND(udbp, netgraph, NG_ABI_VERSION, NG_ABI_VERSION, NG_ABI_VERSION);
 MODULE_DEPEND(udbp, usb, 1, 1, 1);
 MODULE_VERSION(udbp, 1);

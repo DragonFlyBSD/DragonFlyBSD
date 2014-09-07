@@ -205,7 +205,7 @@ static driver_t ubser_driver = {
 	.size = sizeof(struct ubser_softc),
 };
 
-DRIVER_MODULE(ubser, uhub, ubser_driver, ubser_devclass, NULL, 0);
+DRIVER_MODULE(ubser, uhub, ubser_driver, ubser_devclass, NULL, NULL);
 MODULE_DEPEND(ubser, ucom, 1, 1, 1);
 MODULE_DEPEND(ubser, usb, 1, 1, 1);
 MODULE_VERSION(ubser, 1);

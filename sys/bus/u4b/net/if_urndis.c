@@ -151,7 +151,7 @@ static driver_t urndis_driver = {
 
 static devclass_t urndis_devclass;
 
-DRIVER_MODULE(urndis, uhub, urndis_driver, urndis_devclass, NULL, 0);
+DRIVER_MODULE(urndis, uhub, urndis_driver, urndis_devclass, NULL, NULL);
 MODULE_VERSION(urndis, 1);
 MODULE_DEPEND(urndis, uether, 1, 1, 1);
 MODULE_DEPEND(urndis, usb, 1, 1, 1);

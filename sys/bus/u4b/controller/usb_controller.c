@@ -116,20 +116,20 @@ static driver_t usb_driver = {
 };
 
 /* Host Only Drivers */
-DRIVER_MODULE(usbus, ohci, usb_driver, usb_devclass, 0, 0);
-DRIVER_MODULE(usbus, uhci, usb_driver, usb_devclass, 0, 0);
-DRIVER_MODULE(usbus, ehci, usb_driver, usb_devclass, 0, 0);
-DRIVER_MODULE(usbus, xhci, usb_driver, usb_devclass, 0, 0);
+DRIVER_MODULE(usbus, ohci, usb_driver, usb_devclass, NULL, NULL);
+DRIVER_MODULE(usbus, uhci, usb_driver, usb_devclass, NULL, NULL);
+DRIVER_MODULE(usbus, ehci, usb_driver, usb_devclass, NULL, NULL);
+DRIVER_MODULE(usbus, xhci, usb_driver, usb_devclass, NULL, NULL);
 
 #if 0 // XXX these are not ported yet (mpf)
 /* Device Only Drivers */
-DRIVER_MODULE(usbus, at91_udp, usb_driver, usb_devclass, 0, 0);
-DRIVER_MODULE(usbus, musbotg, usb_driver, usb_devclass, 0, 0);
-DRIVER_MODULE(usbus, uss820, usb_driver, usb_devclass, 0, 0);
-DRIVER_MODULE(usbus, octusb, usb_driver, usb_devclass, 0, 0);
+DRIVER_MODULE(usbus, at91_udp, usb_driver, usb_devclass, NULL, NULL);
+DRIVER_MODULE(usbus, musbotg, usb_driver, usb_devclass, NULL, NULL);
+DRIVER_MODULE(usbus, uss820, usb_driver, usb_devclass, NULL, NULL);
+DRIVER_MODULE(usbus, octusb, usb_driver, usb_devclass, NULL, NULL);
 
 /* Dual Mode Drivers */
-DRIVER_MODULE(usbus, dwcotg, usb_driver, usb_devclass, 0, 0);
+DRIVER_MODULE(usbus, dwcotg, usb_driver, usb_devclass, NULL, NULL);
 #endif
 /*------------------------------------------------------------------------*
  *	usb_probe

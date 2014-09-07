@@ -146,7 +146,7 @@ static driver_t ugensa_driver = {
 	.size = sizeof(struct ugensa_softc),
 };
 
-DRIVER_MODULE(ugensa, uhub, ugensa_driver, ugensa_devclass, NULL, 0);
+DRIVER_MODULE(ugensa, uhub, ugensa_driver, ugensa_devclass, NULL, NULL);
 MODULE_DEPEND(ugensa, ucom, 1, 1, 1);
 MODULE_DEPEND(ugensa, usb, 1, 1, 1);
 MODULE_VERSION(ugensa, 1);

@@ -131,7 +131,7 @@ static driver_t oce_driver = {
 static devclass_t oce_devclass;
 
 
-DRIVER_MODULE(oce, pci, oce_driver, oce_devclass, 0, 0);
+DRIVER_MODULE(oce, pci, oce_driver, oce_devclass, NULL, NULL);
 MODULE_DEPEND(oce, pci, 1, 1, 1);
 MODULE_DEPEND(oce, ether, 1, 1, 1);
 MODULE_VERSION(oce, 1);

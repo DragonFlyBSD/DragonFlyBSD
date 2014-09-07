@@ -166,7 +166,7 @@ static driver_t ucycom_driver = {
 	.size = sizeof(struct ucycom_softc),
 };
 
-DRIVER_MODULE(ucycom, uhub, ucycom_driver, ucycom_devclass, NULL, 0);
+DRIVER_MODULE(ucycom, uhub, ucycom_driver, ucycom_devclass, NULL, NULL);
 MODULE_DEPEND(ucycom, ucom, 1, 1, 1);
 MODULE_DEPEND(ucycom, usb, 1, 1, 1);
 MODULE_VERSION(ucycom, 1);

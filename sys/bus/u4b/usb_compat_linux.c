@@ -118,7 +118,7 @@ static driver_t usb_linux_driver = {
 
 static devclass_t usb_linux_devclass;
 
-DRIVER_MODULE(usb_linux, uhub, usb_linux_driver, usb_linux_devclass, NULL, 0);
+DRIVER_MODULE(usb_linux, uhub, usb_linux_driver, usb_linux_devclass, NULL, NULL);
 MODULE_VERSION(usb_linux, 1);
 
 /*------------------------------------------------------------------------*

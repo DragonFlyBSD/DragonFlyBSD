@@ -2389,7 +2389,7 @@ static driver_t upgt_driver = {
 
 static devclass_t upgt_devclass;
 
-DRIVER_MODULE(if_upgt, uhub, upgt_driver, upgt_devclass, NULL, 0);
+DRIVER_MODULE(if_upgt, uhub, upgt_driver, upgt_devclass, NULL, NULL);
 MODULE_VERSION(if_upgt, 1);
 MODULE_DEPEND(if_upgt, usb, 1, 1, 1);
 MODULE_DEPEND(if_upgt, wlan, 1, 1, 1);

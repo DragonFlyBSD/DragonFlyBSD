@@ -394,7 +394,7 @@ static driver_t ural_driver = {
 
 static devclass_t ural_devclass;
 
-DRIVER_MODULE(ural, uhub, ural_driver, ural_devclass, NULL, 0);
+DRIVER_MODULE(ural, uhub, ural_driver, ural_devclass, NULL, NULL);
 MODULE_DEPEND(ural, usb, 1, 1, 1);
 MODULE_DEPEND(ural, wlan, 1, 1, 1);
 MODULE_VERSION(ural, 1);

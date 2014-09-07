@@ -268,7 +268,7 @@ static driver_t umcs7840_driver = {
 	.size = sizeof(struct umcs7840_softc),
 };
 
-DRIVER_MODULE(umcs7840, uhub, umcs7840_driver, umcs7840_devclass, 0, 0);
+DRIVER_MODULE(umcs7840, uhub, umcs7840_driver, umcs7840_devclass, NULL, NULL);
 MODULE_DEPEND(umcs7840, ucom, 1, 1, 1);
 MODULE_DEPEND(umcs7840, usb, 1, 1, 1);
 MODULE_VERSION(umcs7840, UMCS7840_MODVER);

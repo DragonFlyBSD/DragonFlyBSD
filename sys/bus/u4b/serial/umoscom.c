@@ -273,7 +273,7 @@ static driver_t umoscom_driver = {
 	.size = sizeof(struct umoscom_softc),
 };
 
-DRIVER_MODULE(umoscom, uhub, umoscom_driver, umoscom_devclass, NULL, 0);
+DRIVER_MODULE(umoscom, uhub, umoscom_driver, umoscom_devclass, NULL, NULL);
 MODULE_DEPEND(umoscom, ucom, 1, 1, 1);
 MODULE_DEPEND(umoscom, usb, 1, 1, 1);
 MODULE_VERSION(umoscom, 1);

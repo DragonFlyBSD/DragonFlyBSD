@@ -305,7 +305,7 @@ static driver_t radeon_iicbb_driver = {
 static devclass_t radeon_iicbb_devclass;
 DRIVER_MODULE_ORDERED(radeon_iicbb, drm, radeon_iicbb_driver,
     radeon_iicbb_devclass, 0, 0, SI_ORDER_FIRST);
-DRIVER_MODULE(iicbb, radeon_iicbb, iicbb_driver, iicbb_devclass, 0, 0);
+DRIVER_MODULE(iicbb, radeon_iicbb, iicbb_driver, iicbb_devclass, NULL, NULL);
 
 /* hw i2c */
 
@@ -1027,7 +1027,7 @@ static driver_t radeon_hw_i2c_driver = {
 static devclass_t radeon_hw_i2c_devclass;
 DRIVER_MODULE_ORDERED(radeon_hw_i2c, drm, radeon_hw_i2c_driver,
     radeon_hw_i2c_devclass, 0, 0, SI_ORDER_FIRST);
-DRIVER_MODULE(iicbus, radeon_hw_i2c, iicbus_driver, iicbus_devclass, 0, 0);
+DRIVER_MODULE(iicbus, radeon_hw_i2c, iicbus_driver, iicbus_devclass, NULL, NULL);
 
 struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 					  struct radeon_i2c_bus_rec *rec,

@@ -175,7 +175,7 @@ static driver_t u3g_driver = {
 	.size = sizeof(struct u3g_softc),
 };
 
-DRIVER_MODULE(u3g, uhub, u3g_driver, u3g_devclass, u3g_driver_loaded, 0);
+DRIVER_MODULE(u3g, uhub, u3g_driver, u3g_devclass, u3g_driver_loaded, NULL);
 MODULE_DEPEND(u3g, ucom, 1, 1, 1);
 MODULE_DEPEND(u3g, usb, 1, 1, 1);
 MODULE_VERSION(u3g, 1);

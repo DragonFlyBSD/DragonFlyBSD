@@ -416,5 +416,5 @@ static driver_t siba_bwn_driver = {
 	sizeof(struct siba_bwn_softc)
 };
 static devclass_t siba_bwn_devclass;
-DRIVER_MODULE(siba_bwn, pci, siba_bwn_driver, siba_bwn_devclass, 0, 0);
+DRIVER_MODULE(siba_bwn, pci, siba_bwn_driver, siba_bwn_devclass, NULL, NULL);
 MODULE_VERSION(siba_bwn, 1);

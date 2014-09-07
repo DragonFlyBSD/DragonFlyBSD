@@ -4440,7 +4440,7 @@ static driver_t urtw_driver = {
 };
 static devclass_t urtw_devclass;
 
-DRIVER_MODULE(urtw, uhub, urtw_driver, urtw_devclass, NULL, 0);
+DRIVER_MODULE(urtw, uhub, urtw_driver, urtw_devclass, NULL, NULL);
 MODULE_DEPEND(urtw, wlan, 1, 1, 1);
 MODULE_DEPEND(urtw, usb, 1, 1, 1);
 MODULE_VERSION(urtw, 1);

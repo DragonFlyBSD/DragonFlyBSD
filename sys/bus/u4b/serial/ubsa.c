@@ -270,7 +270,7 @@ static driver_t ubsa_driver = {
 	.size = sizeof(struct ubsa_softc),
 };
 
-DRIVER_MODULE(ubsa, uhub, ubsa_driver, ubsa_devclass, NULL, 0);
+DRIVER_MODULE(ubsa, uhub, ubsa_driver, ubsa_devclass, NULL, NULL);
 MODULE_DEPEND(ubsa, ucom, 1, 1, 1);
 MODULE_DEPEND(ubsa, usb, 1, 1, 1);
 MODULE_VERSION(ubsa, 1);

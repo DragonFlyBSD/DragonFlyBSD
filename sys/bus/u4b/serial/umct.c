@@ -209,7 +209,7 @@ static driver_t umct_driver = {
 	.size = sizeof(struct umct_softc),
 };
 
-DRIVER_MODULE(umct, uhub, umct_driver, umct_devclass, NULL, 0);
+DRIVER_MODULE(umct, uhub, umct_driver, umct_devclass, NULL, NULL);
 MODULE_DEPEND(umct, ucom, 1, 1, 1);
 MODULE_DEPEND(umct, usb, 1, 1, 1);
 MODULE_VERSION(umct, 1);

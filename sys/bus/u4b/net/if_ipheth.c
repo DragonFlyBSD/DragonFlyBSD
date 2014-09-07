@@ -127,7 +127,7 @@ static driver_t ipheth_driver = {
 
 static devclass_t ipheth_devclass;
 
-DRIVER_MODULE(ipheth, uhub, ipheth_driver, ipheth_devclass, NULL, 0);
+DRIVER_MODULE(ipheth, uhub, ipheth_driver, ipheth_devclass, NULL, NULL);
 MODULE_VERSION(ipheth, 1);
 MODULE_DEPEND(ipheth, uether, 1, 1, 1);
 MODULE_DEPEND(ipheth, usb, 1, 1, 1);

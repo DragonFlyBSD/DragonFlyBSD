@@ -76,4 +76,4 @@ static driver_t tpm_acpi_driver = {
 };
 
 devclass_t tpm_devclass;
-DRIVER_MODULE(tpm, acpi, tpm_acpi_driver, tpm_devclass, 0, 0);
+DRIVER_MODULE(tpm, acpi, tpm_acpi_driver, tpm_devclass, NULL, NULL);
