@@ -637,7 +637,6 @@ nexus_release_msix(device_t dev, device_t child, int irq, int cpuid)
 static void
 ram_identify(driver_t *driver, device_t parent)
 {
-
 	if (resource_disabled("ram", 0))
 		return;
 	if (BUS_ADD_CHILD(parent, parent, 0, "ram", 0) == NULL)
@@ -647,7 +646,6 @@ ram_identify(driver_t *driver, device_t parent)
 static int
 ram_probe(device_t dev)
 {
-
 	device_quiet(dev);
 	device_set_desc(dev, "System RAM");
 	return (0);
@@ -662,6 +660,9 @@ ram_attach(device_t dev)
 	caddr_t kmdp;
 	uint32_t smapsize;
 	int error, rid;
+
+	device_quiet(dev);
+	device_set_desc(dev, "System RAM");
 
 	/* Retrieve the system memory map from the loader. */
 	kmdp = preload_search_by_type("elf kernel");
@@ -721,7 +722,7 @@ ram_attach(device_t dev)
 static device_method_t ram_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_identify,      ram_identify),
-	DEVMETHOD(device_probe,	 ram_probe),
+	DEVMETHOD(device_probe,	 	ram_probe),
 	DEVMETHOD(device_attach,	ram_attach),
 	{ 0, 0 }
 };
@@ -733,6 +734,4 @@ static driver_t ram_driver = {
 };
 
 static devclass_t ram_devclass;
-
 DRIVER_MODULE(ram, nexus, ram_driver, ram_devclass, NULL, NULL);
-
