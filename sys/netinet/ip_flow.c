@@ -568,7 +568,7 @@ ipflow_init(void)
 
 	for (i = 0; i < ncpus; ++i) {
 		netmsg_init(&ipflow_timo_netmsgs[i], NULL, &netisr_adone_rport,
-			    0, ipflow_timo_dispatch);
+			    MSGF_PRIORITY, ipflow_timo_dispatch);
 
 		ksnprintf(oid_name, sizeof(oid_name), "inuse%d", i);
 
