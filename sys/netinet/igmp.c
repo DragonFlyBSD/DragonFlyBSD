@@ -121,10 +121,10 @@ igmp_init(void)
 
 	Head = NULL;
 
-	netmsg_init(&igmp_slowtimo_netmsg, NULL, &netisr_adone_rport, 0,
-	    igmp_slowtimo_dispatch);
-	netmsg_init(&igmp_fasttimo_netmsg, NULL, &netisr_adone_rport, 0,
-	    igmp_fasttimo_dispatch);
+	netmsg_init(&igmp_slowtimo_netmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, igmp_slowtimo_dispatch);
+	netmsg_init(&igmp_fasttimo_netmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, igmp_fasttimo_dispatch);
 }
 
 static struct router_info *
