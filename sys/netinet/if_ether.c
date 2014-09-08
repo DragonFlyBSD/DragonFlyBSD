@@ -227,8 +227,8 @@ arp_rtrequest(int req, struct rtentry *rt)
 		struct arptimer_ctx *ctx = &arptimer_context[mycpuid];
 
 		ctx->timer_inited = TRUE;
-		netmsg_init(&ctx->timer_nmsg, NULL, &netisr_adone_rport, 0,
-		    arptimer_dispatch);
+		netmsg_init(&ctx->timer_nmsg, NULL, &netisr_adone_rport,
+		    MSGF_PRIORITY, arptimer_dispatch);
 		callout_init_mp(&ctx->timer_ch);
 		callout_reset(&ctx->timer_ch, hz, arptimer, NULL);
 	}
