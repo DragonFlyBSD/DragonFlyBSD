@@ -30,9 +30,10 @@ SRCS	= \
 	intel_sprite.c \
 	intel_tv.c
 
-SRCS   += device_if.h bus_if.h pci_if.h iicbus_if.h iicbb_if.h opt_drm.h \
+SRCS   += acpi_if.h device_if.h bus_if.h pci_if.h iicbus_if.h iicbb_if.h opt_drm.h \
 	  opt_ktr.h
 
 CFLAGS+= -I${SYSDIR}/dev/drm/include
+CFLAGS+= -I${.CURDIR}/../../../contrib/dev/acpica/source/include
 
 .include <bsd.kmod.mk>

@@ -29,6 +29,9 @@
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include "intel_drv.h"
+#include <contrib/dev/acpica/source/include/acpi.h>
+#include <contrib/dev/acpica/source/include/accommon.h>
+#include <dev/acpica/acpivar.h>
 
 #include <linux/io.h>
 
@@ -143,7 +146,6 @@ struct opregion_asle {
 #define ACPI_DIGITAL_OUTPUT (3<<8)
 #define ACPI_LVDS_OUTPUT (4<<8)
 
-#ifdef CONFIG_ACPI
 static u32 asle_set_backlight(struct drm_device *dev, u32 bclp)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -291,6 +293,7 @@ void intel_opregion_enable_asle(struct drm_device *dev)
 
 static struct intel_opregion *system_opregion;
 
+#if 0
 static int intel_opregion_video_event(struct notifier_block *nb,
 				      unsigned long val, void *data)
 {
@@ -323,6 +326,16 @@ static int intel_opregion_video_event(struct notifier_block *nb,
 static struct notifier_block intel_opregion_notifier = {
 	.notifier_call = intel_opregion_video_event,
 };
+#endif
+
+static int acpi_is_video_device(ACPI_HANDLE devh) {
+	ACPI_HANDLE h;
+	if (ACPI_FAILURE(AcpiGetHandle(devh, "_DOD", &h)) ||
+	    ACPI_FAILURE(AcpiGetHandle(devh, "_DOS", &h))) {
+		return 0;
+	}
+	return 1;
+}
 
 /*
  * Initialise the DIDL field in opregion. This passes a list of devices to
@@ -335,21 +348,23 @@ static void intel_didl_outputs(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_opregion *opregion = &dev_priv->opregion;
 	struct drm_connector *connector;
-	acpi_handle handle;
-	struct acpi_device *acpi_dev, *acpi_cdev, *acpi_video_bus = NULL;
-	unsigned long long device_id;
-	acpi_status status;
+	u32 device_id;
+	ACPI_HANDLE handle, acpi_video_bus, acpi_cdev;
+	ACPI_STATUS status;
 	u32 temp;
 	int i = 0;
 
-	handle = DEVICE_ACPI_HANDLE(&dev->pdev->dev);
-	if (!handle || ACPI_FAILURE(acpi_bus_get_device(handle, &acpi_dev)))
+	handle = acpi_get_handle(dev->dev);
+	if (!handle)
 		return;
 
-	if (acpi_is_video_device(acpi_dev))
-		acpi_video_bus = acpi_dev;
+	if (acpi_is_video_device(handle))
+		acpi_video_bus = handle;
 	else {
-		list_for_each_entry(acpi_cdev, &acpi_dev->children, node) {
+		acpi_cdev = NULL;
+		acpi_video_bus = NULL;
+		while (AcpiGetNextObject(ACPI_TYPE_DEVICE, handle, acpi_cdev,
+					 &acpi_cdev) != AE_NOT_FOUND) {
 			if (acpi_is_video_device(acpi_cdev)) {
 				acpi_video_bus = acpi_cdev;
 				break;
@@ -362,24 +377,21 @@ static void intel_didl_outputs(struct drm_device *dev)
 		return;
 	}
 
-	list_for_each_entry(acpi_cdev, &acpi_video_bus->children, node) {
+	acpi_cdev = NULL;
+	while (AcpiGetNextObject(ACPI_TYPE_DEVICE, acpi_video_bus, acpi_cdev,
+				 &acpi_cdev) != AE_NOT_FOUND) {
 		if (i >= 8) {
-			dev_printk(KERN_ERR, &dev->pdev->dev,
-				    "More than 8 outputs detected\n");
+			device_printf(dev->dev, "More than 8 outputs detected\n");
 			return;
 		}
-		status =
-			acpi_evaluate_integer(acpi_cdev->handle, "_ADR",
-						NULL, &device_id);
+		status = acpi_GetInteger(acpi_cdev, "_ADR", &device_id);
 		if (ACPI_SUCCESS(status)) {
 			if (!device_id)
 				goto blind_set;
-			iowrite32((u32)(device_id & 0x0f0f),
-				  &opregion->acpi->didl[i]);
+			opregion->acpi->didl[i] = (u32)(device_id & 0x0f0f);
 			i++;
 		}
 	}
-
 end:
 	/* If fewer than 8 outputs, the list must be null terminated */
 	if (i < 8)
@@ -391,7 +403,7 @@ blind_set:
 	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
 		int output_type = ACPI_OTHER_OUTPUT;
 		if (i >= 8) {
-			dev_printk(KERN_ERR, &dev->pdev->dev,
+			device_printf(dev->dev,
 				    "More than 8 outputs detected\n");
 			return;
 		}
@@ -465,7 +477,6 @@ void intel_opregion_init(struct drm_device *dev)
 		iowrite32(1, &opregion->acpi->drdy);
 
 		system_opregion = opregion;
-		register_acpi_notifier(&intel_opregion_notifier);
 	}
 
 	if (opregion->asle)
@@ -484,18 +495,16 @@ void intel_opregion_fini(struct drm_device *dev)
 		iowrite32(0, &opregion->acpi->drdy);
 
 		system_opregion = NULL;
-		unregister_acpi_notifier(&intel_opregion_notifier);
 	}
 
 	/* just clear all opregion memory pointers now */
-	iounmap(opregion->header);
+	pmap_unmapdev((vm_offset_t)opregion->header, OPREGION_SIZE);
 	opregion->header = NULL;
 	opregion->acpi = NULL;
 	opregion->swsci = NULL;
 	opregion->asle = NULL;
 	opregion->vbt = NULL;
 }
-#endif
 
 int intel_opregion_setup(struct drm_device *dev)
 {
