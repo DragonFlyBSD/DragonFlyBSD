@@ -424,7 +424,7 @@ in_inithead(void **head, int off)
 	ctx = &in_rtqtimo_context[cpuid];
 	ctx->timo_rnh = rnh;
 	callout_init_mp(&ctx->timo_ch);
-	netmsg_init(&ctx->timo_nmsg, NULL, &netisr_adone_rport, 0,
+	netmsg_init(&ctx->timo_nmsg, NULL, &netisr_adone_rport, MSGF_PRIORITY,
 		    in_rtqtimo_dispatch);
 
 	in_rtqtimo(NULL);	/* kick off timeout first time */
