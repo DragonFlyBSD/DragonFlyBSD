@@ -281,6 +281,9 @@ static void tcp_notify (struct inpcb *, int);
 
 struct tcp_stats tcpstats_percpu[MAXCPU] __cachealign;
 
+static struct netmsg_base tcp_drain_netmsg[MAXCPU];
+static void	tcp_drain_dispatch(netmsg_t nmsg);
+
 static int
 sysctl_tcpstats(SYSCTL_HANDLER_ARGS)
 {
@@ -409,6 +412,14 @@ tcp_init(void)
 	 */
 	for (cpu = 0; cpu < ncpus2; ++cpu)
 		bzero(&tcpstats_percpu[cpu], sizeof(struct tcp_stats));
+
+	/*
+	 * Initialize netmsgs for TCP drain
+	 */
+	for (cpu = 0; cpu < ncpus2; ++cpu) {
+		netmsg_init(&tcp_drain_netmsg[cpu], NULL, &netisr_adone_rport,
+		    MSGF_PRIORITY, tcp_drain_dispatch);
+	}
 
 	syncache_init();
 	netisr_register_rollup(tcp_willblock, NETISR_ROLLUP_PRIO_TCP);
@@ -1053,23 +1064,22 @@ no_valid_rt:
 }
 
 static __inline void
-tcp_drain_oncpu(struct inpcbhead *head)
+tcp_drain_oncpu(struct inpcbinfo *pcbinfo)
 {
-	struct inpcb *marker;
+	struct inpcbhead *head = &pcbinfo->pcblisthead;
 	struct inpcb *inpb;
-	struct tcpcb *tcpb;
-	struct tseg_qent *te;
 
 	/*
-	 * Allows us to block while running the list
+	 * Since we run in netisr, it is MP safe, even if
+	 * we block during the inpcb list iteration, i.e.
+	 * we don't need to use inpcb marker here.
 	 */
-	marker = kmalloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
-	marker->inp_flags |= INP_PLACEMARKER;
-	LIST_INSERT_HEAD(head, marker, inp_list);
+	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
+	    ("not in correct netisr"));
 
-	while ((inpb = LIST_NEXT(marker, inp_list)) != NULL) {
-		LIST_REMOVE(marker, inp_list);
-		LIST_INSERT_AFTER(inpb, marker, inp_list);
+	LIST_FOREACH(inpb, head, inp_list) {
+		struct tcpcb *tcpb;
+		struct tseg_qent *te;
 
 		if ((inpb->inp_flags & INP_PLACEMARKER) == 0 &&
 		    (tcpb = intotcpcb(inpb)) != NULL &&
@@ -1083,28 +1093,34 @@ tcp_drain_oncpu(struct inpcbhead *head)
 			/* retry */
 		}
 	}
-	LIST_REMOVE(marker, inp_list);
-	kfree(marker, M_TEMP);
 }
 
-struct netmsg_tcp_drain {
-	struct netmsg_base	base;
-	struct inpcbhead	*nm_head;
-};
+static void
+tcp_drain_dispatch(netmsg_t nmsg)
+{
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);  /* reply ASAP */
+	crit_exit();
+
+	tcp_drain_oncpu(&tcbinfo[mycpuid]);
+}
 
 static void
-tcp_drain_handler(netmsg_t msg)
+tcp_drain_ipi(void *arg __unused)
 {
-	struct netmsg_tcp_drain *nm = (void *)msg;
+	int cpu = mycpuid;
+	struct lwkt_msg *msg = &tcp_drain_netmsg[cpu].lmsg;
 
-	tcp_drain_oncpu(nm->nm_head);
-	lwkt_replymsg(&nm->base.lmsg, 0);
+	crit_enter();
+	if (msg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(cpu), msg);
+	crit_exit();
 }
 
 void
 tcp_drain(void)
 {
-	int cpu;
+	cpumask_t mask;
 
 	if (!do_tcpdrain)
 		return;
@@ -1116,23 +1132,14 @@ tcp_drain(void)
 	 *	reassembly queue should be flushed, but in a situation
 	 *	where we're really low on mbufs, this is potentially
 	 *	useful.
+	 * YYY: We may consider run tcp_drain_oncpu directly here,
+	 *      however, that will require M_WAITOK memory allocation
+	 *      for the inpcb marker.
 	 */
-	for (cpu = 0; cpu < ncpus2; cpu++) {
-		struct netmsg_tcp_drain *nm;
-
-		if (cpu == mycpu->gd_cpuid) {
-			tcp_drain_oncpu(&tcbinfo[cpu].pcblisthead);
-		} else {
-			nm = kmalloc(sizeof(struct netmsg_tcp_drain),
-				     M_LWKTMSG, M_NOWAIT);
-			if (nm == NULL)
-				continue;
-			netmsg_init(&nm->base, NULL, &netisr_afree_rport,
-				    0, tcp_drain_handler);
-			nm->nm_head = &tcbinfo[cpu].pcblisthead;
-			lwkt_sendmsg(netisr_cpuport(cpu), &nm->base.lmsg);
-		}
-	}
+	CPUMASK_ASSBMASK(mask, ncpus2);
+	CPUMASK_ANDMASK(mask, smp_active_mask);
+	if (CPUMASK_TESTNZERO(mask))
+		lwkt_send_ipiq_mask(mask, tcp_drain_ipi, NULL);
 }
 
 /*
