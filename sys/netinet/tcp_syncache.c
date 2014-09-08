@@ -360,7 +360,7 @@ syncache_init(void)
 				    &syncache_percpu->mrec[i];
 			netmsg_init(&syncache_percpu->mrec[i].msg.base,
 				    NULL, &syncache_null_rport,
-				    0, syncache_timer_handler);
+				    MSGF_PRIORITY, syncache_timer_handler);
 		}
 	}
 }
