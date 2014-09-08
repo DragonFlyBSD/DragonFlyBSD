@@ -390,9 +390,11 @@ ip_init(void)
 
 			TAILQ_INIT(&fragq->ipq[i]);
 			netmsg_init(&fragq->timeo_netmsg, NULL,
-			    &netisr_adone_rport, 0, ipfrag_timeo_dispatch);
+			    &netisr_adone_rport, MSGF_PRIORITY,
+			    ipfrag_timeo_dispatch);
 			netmsg_init(&fragq->drain_netmsg, NULL,
-			    &netisr_adone_rport, 0, ipfrag_drain_dispatch);
+			    &netisr_adone_rport, MSGF_PRIORITY,
+			    ipfrag_drain_dispatch);
 		}
 	}
 
