@@ -196,8 +196,6 @@ struct tcp_syncache_percpu {
 };
 static struct tcp_syncache_percpu tcp_syncache_percpu[MAXCPU];
 
-static struct lwkt_port syncache_null_rport;
-
 SYSCTL_NODE(_net_inet_tcp, OID_AUTO, syncache, CTLFLAG_RW, 0, "TCP SYN cache");
 
 SYSCTL_INT(_net_inet_tcp_syncache, OID_AUTO, bucketlimit, CTLFLAG_RD,
@@ -330,8 +328,6 @@ syncache_init(void)
 	}
 	tcp_syncache.hashmask = tcp_syncache.hashsize - 1;
 
-	lwkt_initport_replyonly_null(&syncache_null_rport);
-
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		struct tcp_syncache_percpu *syncache_percpu;
 
@@ -359,7 +355,7 @@ syncache_init(void)
 			syncache_percpu->mrec[i].msg.nm_mrec =
 				    &syncache_percpu->mrec[i];
 			netmsg_init(&syncache_percpu->mrec[i].msg.base,
-				    NULL, &syncache_null_rport,
+				    NULL, &netisr_adone_rport,
 				    MSGF_PRIORITY, syncache_timer_handler);
 		}
 	}
