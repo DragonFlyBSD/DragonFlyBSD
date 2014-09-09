@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/sdhci.4,v 1.2 2009/01/16 19:28:25 mav Exp $
 .\"
-.Dd April 16, 2010
+.Dd September 9, 2014
 .Dt SDHCI 4
 .Os
 .Sh NAME
@@ -69,6 +69,8 @@ ENE CB714
 .It
 RICOH R5C822
 .It
+RICOH R5CE823
+.It
 TI PCIXX21/XX11
 .El
 .Sh SEE ALSO
@@ -83,11 +85,13 @@ The
 driver was imported from
 .Fx
 into
-.Dx 2.7 .
+.Dx 2.7
+and updated by
+.An Markus Pfeiffer Aq Mt profmakx@dragonflybsd.org .
 .Sh AUTHORS
 .An Alexander Motin Aq Mt mav@FreeBSD.org
 .Sh BUGS
 Many of existing SD controller chips have some nonstandard requirements,
 proprietary registers and hardware bugs, requiring additional handling.
 ENE chips are handled to work fine, while some revisions of RICOH and TI
-controllers still don't see cards without some additional initialization.
+controllers still do not see cards without some additional initialization.
