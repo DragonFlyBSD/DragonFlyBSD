@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include <err.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
@@ -39,10 +40,8 @@ main(int argc, char *argv[])
 	size_t prm_len;
 
 	prm_len = sizeof(ninst);
-	if (sysctlbyname("hw.ncpu", &ninst, &prm_len, NULL, 0) != 0) {
-		fprintf(stderr, "sysctl hw.ncpu failed: %d\n", errno);
-		exit(2);
-	}
+	if (sysctlbyname("hw.ncpu", &ninst, &prm_len, NULL, 0) != 0)
+		err(2, "sysctl hw.ncpu failed");
 
 	nconn = 8;
 	dur = 10;
@@ -51,10 +50,8 @@ main(int argc, char *argv[])
 
 	in_max = 8;
 	in = calloc(in_max, sizeof(struct sockaddr_in));
-	if (in == NULL) {
-		fprintf(stderr, "calloc failed\n");
-		exit(1);
-	}
+	if (in == NULL)
+		err(1, "calloc failed");
 	in_cnt = 0;
 
 	while ((opt = getopt(argc, argv, "4:p:i:l:c:u")) != -1) {
@@ -66,10 +63,8 @@ main(int argc, char *argv[])
 
 				in_max <<= 1;
 				in = calloc(in_max, sizeof(struct sockaddr_in));
-				if (in == NULL) {
-					fprintf(stderr, "calloc failed\n");
-					exit(1);
-				}
+				if (in == NULL)
+					err(1, "calloc failed");
 
 				memcpy(in, old_in,
 				    old_in_max * sizeof(struct sockaddr_in));
@@ -121,10 +116,8 @@ main(int argc, char *argv[])
 
 	result = mmap(NULL, ninst * sizeof(u_long), PROT_READ | PROT_WRITE,
 	    MAP_ANON | MAP_SHARED, -1, 0);
-	if (result == MAP_FAILED) {
-		fprintf(stderr, "mmap failed: %d\n", errno);
-		exit(1);
-	}
+	if (result == MAP_FAILED)
+		err(1, "mmap failed");
 	memset(result, 0, ninst * sizeof(u_long));
 
 	for (i = 0; i < ninst; ++i) {
@@ -135,7 +128,7 @@ main(int argc, char *argv[])
 			mainloop(in, in_cnt, nconn, dur, &result[i], do_udp);
 			exit(0);
 		} else if (pid < 0) {
-			fprintf(stderr, "fork failed: %d\n", errno);
+			err(1, "fork failed");
 		}
 	}
 
@@ -143,10 +136,8 @@ main(int argc, char *argv[])
 		pid_t pid;
 
 		pid = waitpid(-1, NULL, 0);
-		if (pid < 0) {
-			fprintf(stderr, "waitpid failed: %d\n", errno);
-			exit(1);
-		}
+		if (pid < 0)
+			err(1, "waitpid failed");
 	}
 
 	sum = 0;
@@ -165,12 +156,12 @@ udp_send(const struct sockaddr_in *in)
 
 	s = socket(AF_INET, SOCK_DGRAM, 0);
 	if (s < 0) {
-		fprintf(stderr, "socket DGRAM failed: %d\n", errno);
+		warn("socket DGRAM failed");
 		return;
 	}
 
 	if (connect(s, (const struct sockaddr *)in, sizeof(*in)) < 0) {
-		fprintf(stderr, "connect DGRAM failed: %d\n", errno);
+		warn("connect DGRAM failed");
 		goto done;
 	}
 
@@ -190,24 +181,18 @@ mainloop(const struct sockaddr_in *in, int in_cnt, int nconn_max,
 	int nblock = 1;
 
 	kq = kqueue();
-	if (kq < 0) {
-		fprintf(stderr, "kqueue failed: %d\n", errno);
-		return;
-	}
+	if (kq < 0)
+		err(1, "kqueue failed");
 
 	nevt_max = nconn_max + 1; /* timer */
 
 	evt_change0 = malloc(nevt_max * sizeof(struct kevent));
-	if (evt_change0 == NULL) {
-		fprintf(stderr, "malloc evt_change failed\n");
-		return;
-	}
+	if (evt_change0 == NULL)
+		err(1, "malloc evt_change failed");
 
 	evt = malloc(nevt_max * sizeof(struct kevent));
-	if (evt == NULL) {
-		fprintf(stderr, "malloc evt failed\n");
-		return;
-	}
+	if (evt == NULL)
+		err(1, "malloc evt failed");
 
 	EV_SET(&evt_change0[0], 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0,
 	    dur * 1000L, NULL);
@@ -228,15 +213,11 @@ mainloop(const struct sockaddr_in *in, int in_cnt, int nconn_max,
 				udp_send(tmp);
 
 			s = socket(AF_INET, SOCK_STREAM, 0);
-			if (s < 0) {
-				fprintf(stderr, "socket failed: %d\n", errno);
-				return;
-			}
+			if (s < 0)
+				err(1, "socket failed");
 
-			if (ioctl(s, FIONBIO, &nblock, sizeof(nblock)) < 0) {
-				fprintf(stderr, "ioctl failed: %d\n", errno);
-				return;
-			}
+			if (ioctl(s, FIONBIO, &nblock, sizeof(nblock)) < 0)
+				err(1, "ioctl failed");
 
 			n = connect(s, (const struct sockaddr *)tmp,
 			    sizeof(*tmp));
@@ -247,11 +228,8 @@ mainloop(const struct sockaddr_in *in, int in_cnt, int nconn_max,
 			} else {
 			    	int error = errno;
 
-				if (error != EINPROGRESS) {
-					fprintf(stderr, "connect failed: %d\n",
-					    error);
-					return;
-				}
+				if (error != EINPROGRESS)
+					errc(1, error, "connect failed");
 			}
 			++nconn;
 
@@ -269,10 +247,8 @@ mainloop(const struct sockaddr_in *in, int in_cnt, int nconn_max,
 			evt_change = evt_change0;
 
 		n = kevent(kq, evt_change, nchange, evt, nevt_max, NULL);
-		if (n < 0) {
-			fprintf(stderr, "kevent failed: %d\n", errno);
-			return;
-		}
+		if (n < 0)
+			err(1, "kevent failed");
 		nchange = 0;
 
 		for (i = 0; i < n; ++i) {

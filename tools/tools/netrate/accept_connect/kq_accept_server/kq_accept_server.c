@@ -8,7 +8,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-#include <errno.h>
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,43 +31,29 @@ create_socket(const struct sockaddr_in *in, int reuseport)
 	int serv_s, on;
 
 	serv_s = socket(AF_INET, SOCK_STREAM, 0);
-	if (serv_s < 0) {
-		fprintf(stderr, "socket failed: %d\n", errno);
-		exit(1);
-	}
+	if (serv_s < 0)
+		err(1, "socket failed");
 
 	on = 1;
 	if (!reuseport) {
 		if (setsockopt(serv_s, SOL_SOCKET, SO_REUSEADDR,
-		    &on, sizeof(on)) < 0) {
-			fprintf(stderr, "setsockopt(REUSEADDR) failed: %d\n",
-			    errno);
-			exit(1);
-		}
+		    &on, sizeof(on)) < 0)
+			err(1, "setsockopt(REUSEADDR) failed");
 	} else {
 		if (setsockopt(serv_s, SOL_SOCKET, SO_REUSEPORT,
-		    &on, sizeof(on)) < 0) {
-			fprintf(stderr, "setsockopt(REUSEPORT) failed: %d\n",
-			    errno);
-			exit(1);
-		}
+		    &on, sizeof(on)) < 0)
+			err(1, "setsockopt(REUSEPORT) failed");
 	}
 
 	on = 1;
-	if (ioctl(serv_s, FIONBIO, &on, sizeof(on)) < 0) {
-		fprintf(stderr, "ioctl(FIONBIO) failed: %d\n", errno);
-		exit(1);
-	}
+	if (ioctl(serv_s, FIONBIO, &on, sizeof(on)) < 0)
+		err(1, "ioctl(FIONBIO) failed");
 
-	if (bind(serv_s, (const struct sockaddr *)in, sizeof(*in)) < 0) {
-		fprintf(stderr, "bind failed: %d\n", errno);
-		exit(1);
-	}
+	if (bind(serv_s, (const struct sockaddr *)in, sizeof(*in)) < 0)
+		err(1, "bind failed");
 
-	if (listen(serv_s, -1) < 0) {
-		fprintf(stderr, "listen failed: %d\n", errno);
-		exit(1);
-	}
+	if (listen(serv_s, -1) < 0)
+		err(1, "listen failed");
 	return serv_s;
 }
 
@@ -79,10 +65,8 @@ main(int argc, char *argv[])
 	size_t prm_len;
 
 	prm_len = sizeof(ninst);
-	if (sysctlbyname("hw.ncpu", &ninst, &prm_len, NULL, 0) != 0) {
-		fprintf(stderr, "sysctl hw.ncpu failed: %d\n", errno);
-		exit(2);
-	}
+	if (sysctlbyname("hw.ncpu", &ninst, &prm_len, NULL, 0) != 0)
+		err(2, "sysctl hw.ncpu failed");
 
 	memset(&in, 0, sizeof(in));
 	in.sin_family = AF_INET;
@@ -124,7 +108,7 @@ main(int argc, char *argv[])
 			mainloop(serv_s, &in);
 			exit(0);
 		} else if (pid < 0) {
-			fprintf(stderr, "fork failed: %d\n", errno);
+			err(1, "fork failed");
 		}
 	}
 
@@ -142,10 +126,8 @@ mainloop(int serv_s, const struct sockaddr_in *in)
 		serv_s = create_socket(in, 1);
 
 	kq = kqueue();
-	if (kq < 0) {
-		fprintf(stderr, "kqueue failed: %d\n", errno);
-		exit(1);
-	}
+	if (kq < 0)
+		err(1, "kqueue failed");
 
 	EV_SET(&change_evt0[0], serv_s, EVFILT_READ, EV_ADD, 0, 0, NULL);
 	nchange = 1;
@@ -159,10 +141,8 @@ mainloop(int serv_s, const struct sockaddr_in *in)
 			change_evt = change_evt0;
 
 		nevt = kevent(kq, change_evt, nchange, evt, EVENT_MAX, NULL);
-		if (nevt < 0) {
-			fprintf(stderr, "kevent failed: %d\n", errno);
-			exit(1);
-		}
+		if (nevt < 0)
+			err(1, "kevent failed");
 		nchange = 0;
 
 		for (i = 0; i < nevt; ++i) {

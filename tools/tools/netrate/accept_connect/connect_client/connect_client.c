@@ -8,7 +8,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-#include <errno.h>
+#include <err.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,10 +37,8 @@ main(int argc, char *argv[])
 	size_t prm_len;
 
 	prm_len = sizeof(ninst);
-	if (sysctlbyname("hw.ncpu", &ninst, &prm_len, NULL, 0) != 0) {
-		fprintf(stderr, "sysctl hw.ncpu failed: %d\n", errno);
-		exit(2);
-	}
+	if (sysctlbyname("hw.ncpu", &ninst, &prm_len, NULL, 0) != 0)
+		err(2, "sysctl hw.ncpu failed");
 
 	memset(&in, 0, sizeof(in));
 	in.sin_family = AF_INET;
@@ -80,10 +78,8 @@ main(int argc, char *argv[])
 
 	result = mmap(NULL, ninst * sizeof(u_long), PROT_READ | PROT_WRITE,
 	    MAP_ANON | MAP_SHARED, -1, 0);
-	if (result == MAP_FAILED) {
-		fprintf(stderr, "mmap failed: %d\n", errno);
-		exit(1);
-	}
+	if (result == MAP_FAILED)
+		err(1, "mmap failed");
 	memset(result, 0, ninst * sizeof(u_long));
 
 	for (i = 0; i < ninst; ++i) {
@@ -94,7 +90,7 @@ main(int argc, char *argv[])
 			mainloop(&in, dur, &result[i]);
 			exit(0);
 		} else if (pid < 0) {
-			fprintf(stderr, "fork failed: %d\n", errno);
+			err(1, "fork failed");
 		}
 	}
 
@@ -102,10 +98,8 @@ main(int argc, char *argv[])
 		pid_t pid;
 
 		pid = waitpid(-1, NULL, 0);
-		if (pid < 0) {
-			fprintf(stderr, "waitpid failed: %d\n", errno);
-			exit(1);
-		}
+		if (pid < 0)
+			err(1, "waitpid failed");
 	}
 
 	sum = 0;
@@ -122,27 +116,22 @@ signal_handler(int signum __unused)
 	global_stopped = 1;
 }
 
-
 static void
 mainloop(const struct sockaddr_in *in, long dur, u_long *res)
 {
 	struct itimerval it;
 	u_long count = 0;
 
-	if (signal(SIGALRM, signal_handler) == SIG_ERR) {
-		fprintf(stderr, "signal failed: %d\n", errno);
-		return;
-	}
+	if (signal(SIGALRM, signal_handler) == SIG_ERR)
+		err(1, "signal failed");
 
 	it.it_interval.tv_sec = 0;
 	it.it_interval.tv_usec = 0;
 	it.it_value.tv_sec = dur;
 	it.it_value.tv_usec = 0;
 
-	if (setitimer(ITIMER_REAL, &it, NULL) < 0) {
-		fprintf(stderr, "setitimer failed: %d\n", errno);
-		return;
-	}
+	if (setitimer(ITIMER_REAL, &it, NULL) < 0)
+		err(1, "setitimer failed");
 
 	while (!global_stopped) {
 		int s;
