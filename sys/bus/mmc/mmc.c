@@ -1523,4 +1523,4 @@ static driver_t mmc_driver = {
 static devclass_t mmc_devclass;
 
 
-DRIVER_MODULE(mmc, sdhci, mmc_driver, mmc_devclass, NULL, NULL);
+DRIVER_MODULE(mmc, sdhci_pci, mmc_driver, mmc_devclass, NULL, NULL);
