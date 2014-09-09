@@ -639,8 +639,8 @@ calloc(size_t number, size_t size)
 {
 	void *ptr;
 
-	if ((number >= MUL_NO_OVERFLOW || number >= MUL_NO_OVERFLOW) &&
-	     number > 0 && (~(size_t)0) / number < size) {
+	if ((number >= MUL_NO_OVERFLOW || size >= MUL_NO_OVERFLOW) &&
+	     number > 0 && SIZE_MAX / number < size) {
 		errno = ENOMEM;
 		return(NULL);
 	}
