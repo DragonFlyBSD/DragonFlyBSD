@@ -79,6 +79,7 @@ struct in_rtqtimo_ctx {
 static void	in_rtqtimo(void *);
 
 static struct in_rtqtimo_ctx in_rtqtimo_context[MAXCPU];
+static struct netmsg_base in_rtqdrain_netmsg[MAXCPU];
 
 /*
  * Do what we need to do when inserting a route.
@@ -384,20 +385,46 @@ in_rtqtimo(void *arg __unused)
 	crit_exit();
 }
 
-void
-in_rtqdrain(void)
+static void
+in_rtqdrain_dispatch(netmsg_t nmsg)
 {
 	struct radix_node_head *rnh = rt_tables[mycpuid][AF_INET];
 	struct rtqk_arg arg;
+
+	/* Reply ASAP */
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);
+	crit_exit();
 
 	arg.found = arg.killed = 0;
 	arg.rnh = rnh;
 	arg.nextstop = 0;
 	arg.draining = 1;
 	arg.updating = 0;
-	crit_enter();
 	rnh->rnh_walktree(rnh, in_rtqkill, &arg);
+}
+
+static void
+in_rtqdrain_ipi(void *arg __unused)
+{
+	int cpu = mycpuid;
+	struct lwkt_msg *msg = &in_rtqdrain_netmsg[cpu].lmsg;
+
+	crit_enter();
+	if (msg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(cpu), msg);
 	crit_exit();
+}
+
+void
+in_rtqdrain(void)
+{
+	cpumask_t mask;
+
+	CPUMASK_ASSBMASK(mask, ncpus);
+	CPUMASK_ANDMASK(mask, smp_active_mask);
+	if (CPUMASK_TESTNZERO(mask))
+		lwkt_send_ipiq_mask(mask, in_rtqdrain_ipi, NULL);
 }
 
 /*
@@ -425,7 +452,9 @@ in_inithead(void **head, int off)
 	ctx->timo_rnh = rnh;
 	callout_init_mp(&ctx->timo_ch);
 	netmsg_init(&ctx->timo_nmsg, NULL, &netisr_adone_rport, MSGF_PRIORITY,
-		    in_rtqtimo_dispatch);
+	    in_rtqtimo_dispatch);
+	netmsg_init(&in_rtqdrain_netmsg[cpuid], NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, in_rtqdrain_dispatch);
 
 	in_rtqtimo(NULL);	/* kick off timeout first time */
 	return 1;
