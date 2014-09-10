@@ -48,6 +48,7 @@ COPTS.job.c=	-Wno-format-nonliteral
 COPTS.parse.c=	-Wno-format-nonliteral
 COPTS.var.c=	-Wno-format-nonliteral
 
+DPADD=		${LIBUTIL}
 LDADD=		-lutil
 
 .PATH:	${srcdir}
