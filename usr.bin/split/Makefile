@@ -4,6 +4,6 @@
 PROG=	split
 
 LDADD=	-lutil
-DPADD=	${LIBUTIL};
+DPADD=	${LIBUTIL}
 
 .include <bsd.prog.mk>
