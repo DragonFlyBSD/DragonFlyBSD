@@ -9,7 +9,7 @@ SRCS+=		runlist.c testcase.c
 SRCS+=		kernel.c userland.c
 
 LDADD+=		-lprop -lutil
-DPADD+=		${LIBPROP} ${LIBUITL}
+DPADD+=		${LIBPROP} ${LIBUTIL}
 
 SUBDIR+=	fe
 .include <bsd.prog.mk>
