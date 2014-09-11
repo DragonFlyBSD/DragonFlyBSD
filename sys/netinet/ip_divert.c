@@ -119,8 +119,6 @@ static u_long	div_recvspace = DIVRCVQ;	/* XXX sysctl ? */
 
 static struct mbuf *ip_divert(struct mbuf *, int, int);
 
-static struct lwkt_token div_token = LWKT_TOKEN_INITIALIZER(div_token);
-
 /*
  * Initialize divert connection block queue.
  */
@@ -171,6 +169,9 @@ div_packet(struct mbuf *m, int incoming, int port)
 	struct m_tag *mtag;
 	struct divert_info *divinfo;
 	u_int16_t nport;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	/* Locate the divert info */
 	mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
@@ -230,13 +231,9 @@ div_packet(struct mbuf *m, int incoming, int port)
 	nport = htons((u_int16_t)port);
 
 	/*
-	 * XXX
 	 * Following loop to locate the inpcb is MPSAFE since the inpcb
-	 * insertion/removal happens on the same CPU (CPU0), however,
-	 * saving/testing the socket pointer is not MPSAFE.  So we still
-	 * need to hold BGL here.
+	 * insertion/removal happens on the same CPU (CPU0).
 	 */
-	lwkt_gettoken(&div_token);
 	LIST_FOREACH(inp, &divcbinfo.pcblisthead, inp_list) {
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
@@ -255,7 +252,6 @@ div_packet(struct mbuf *m, int incoming, int port)
 		ipstat.ips_noproto++;
 		ipstat.ips_delivered--;
 	}
-	lwkt_reltoken(&div_token);
 }
 
 static void
@@ -329,6 +325,9 @@ div_output(struct socket *so, struct mbuf *m,
 	struct m_tag *mtag;
 	struct divert_info *divinfo;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
 	if (control)
 		m_freem(control);		/* XXX */
 
@@ -390,6 +389,9 @@ div_attach(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
 	inp  = so->so_pcb;
 	if (inp)
 		panic("div_attach");
@@ -400,12 +402,9 @@ div_attach(netmsg_t msg)
 	error = soreserve(so, div_sendspace, div_recvspace, ai->sb_rlimit);
 	if (error)
 		goto out;
-	lwkt_gettoken(&div_token);
 	error = in_pcballoc(so, &divcbinfo);
-	if (error) {
-		lwkt_reltoken(&div_token);
+	if (error)
 		goto out;
-	}
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_ip_p = proto;
 	inp->inp_vflag |= INP_IPV4;
@@ -415,7 +414,6 @@ div_attach(netmsg_t msg)
 	 * we always know "where" to send the packet.
 	 */
 	sosetstate(so, SS_ISCONNECTED);
-	lwkt_reltoken(&div_token);
 	error = 0;
 out:
 	lwkt_replymsg(&msg->attach.base.lmsg, error);
@@ -426,6 +424,9 @@ div_detach(netmsg_t msg)
 {
 	struct socket *so = msg->detach.base.nm_so;
 	struct inpcb *inp;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	inp = so->so_pcb;
 	if (inp == NULL)
@@ -441,11 +442,7 @@ div_detach(netmsg_t msg)
 static void
 div_abort(netmsg_t msg)
 {
-	struct socket *so = msg->abort.base.nm_so;
-
-	soisdisconnected(so);
-	div_detach(msg);
-	/* msg invalid now */
+	panic("div_abort is called");
 }
 
 static void
@@ -453,6 +450,9 @@ div_disconnect(netmsg_t msg)
 {
 	struct socket *so = msg->disconnect.base.nm_so;
 	int error;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	if (so->so_state & SS_ISCONNECTED) {
 		soreference(so);
@@ -471,6 +471,9 @@ div_bind(netmsg_t msg)
 	struct socket *so = msg->bind.base.nm_so;
 	struct sockaddr *nam = msg->bind.nm_nam;
 	int error;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	/*
 	 * in_pcbbind assumes that nam is a sockaddr_in
@@ -493,6 +496,9 @@ static void
 div_shutdown(netmsg_t msg)
 {
 	struct socket *so = msg->shutdown.base.nm_so;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	socantsendmore(so);
 
