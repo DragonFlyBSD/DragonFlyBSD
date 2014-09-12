@@ -25,9 +25,9 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/acpi/acpiconf/acpiconf.8,v 1.15.20.1 2009/04/15 03:14:26 kensmith Exp $
+.\" $FreeBSD: head/usr.sbin/acpi/acpiconf/acpiconf.8 267668 2014-06-20 09:57:27Z bapt $
 .\"
-.Dd April 10, 2014
+.Dd September 11, 2014
 .Dt ACPICONF 8
 .Os
 .Sh NAME
@@ -37,6 +37,7 @@
 .Nm
 .Op Fl h
 .Op Fl i Ar batt
+.Op Fl k Ar ack
 .Op Fl s Ar type
 .Sh DESCRIPTION
 The
@@ -49,6 +50,9 @@ The following command-line options are recognized:
 Displays a summary of available options.
 .It Fl i Ar batt
 Get design information about the specified battery.
+.It Fl k Ar ack
+Ack or abort a pending suspend request using the argument provided.
+.Sy Most users should not use this option directly.
 .It Fl s Ar type
 Enters the specified sleep mode.
 Recognized types are
