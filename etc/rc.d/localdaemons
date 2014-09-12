@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/localdaemons,v 1.2 2003/05/05 15:38:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/localdaemons,v 1.5 2005/12/30 21:01:49 dillon Exp $
 #
 
 # PROVIDE: localdaemons
@@ -58,7 +57,7 @@ locald_start()
 		done
 		script_save_sep="$IFS"
 		IFS="${script_name_sep}"
-		sortedslist=`rcorder -s nostart /etc/rc.d/* ${slist} | grep -v "^/etc/rc.d/" | tr '\n' "$IFS" 2>/dev/null`;
+		sortedslist=`rcorder -s nostart /etc/rc.d/* ${slist} 2>/dev/null | grep -v "^/etc/rc.d/" | tr '\n' "$IFS"`;
 		for script in ${sortedslist}; do
 			if [ -x "${script}" ]; then
 				(set -T
@@ -98,7 +97,7 @@ locald_stop()
 		done
 		script_save_sep="$IFS"
 		IFS="${script_name_sep}"
-		sortedslist=`rcorder -s nostart /etc/rc.d/* ${slist} | grep -v "^/etc/rc.d/" | tr '\n' "$IFS" 2>/dev/null`;
+		sortedslist=`rcorder -s nostart /etc/rc.d/* ${slist} 2>/dev/null | grep -v "^/etc/rc.d/" | tr '\n' "$IFS"`;
 		for script in `reverse_list ${sortedslist}`; do
 			if [ -x "${script}" ]; then
 				(set -T
