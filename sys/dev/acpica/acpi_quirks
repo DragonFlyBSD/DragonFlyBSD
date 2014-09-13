@@ -426,6 +426,14 @@ oem:		FADT "AMIINT" ""
 oem_rev:	FADT = 0
 quirks:		ACPI_Q_BROKEN
 
+# Packard Bell Easynote ENTF71BM
+name:		Packard_Bell_ENTF71BM
+oem:		FADT "ACRSYS" "ACRPRDCT"
+oem_rev:	FADT = 0x00000003
+creator:	FADT "1025"
+creator_rev:	FADT = 0x00040000
+quirks:		ACPI_Q_BATT_RATE_ABS
+
 # QDIGRP 01/05/99
 name:		QDIGRP_Award
 oem:		FADT "QDIGRP" "AWRDACPI"
