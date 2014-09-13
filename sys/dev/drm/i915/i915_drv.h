@@ -1418,8 +1418,10 @@ void i915_gem_object_init(struct drm_i915_gem_object *obj,
 struct drm_i915_gem_object *i915_gem_alloc_object(struct drm_device *dev,
 						  size_t size);
 void i915_gem_free_object(struct drm_gem_object *obj);
-int i915_gem_object_pin(struct drm_i915_gem_object *obj, uint32_t alignment,
-    bool map_and_fenceable);
+int __must_check i915_gem_object_pin(struct drm_i915_gem_object *obj,
+				     uint32_t alignment,
+				     bool map_and_fenceable,
+				     bool nonblocking);
 void i915_gem_object_unpin(struct drm_i915_gem_object *obj);
 int __must_check i915_gem_object_unbind(struct drm_i915_gem_object *obj);
 void i915_gem_release_mmap(struct drm_i915_gem_object *obj);

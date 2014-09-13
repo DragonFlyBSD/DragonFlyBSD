@@ -67,8 +67,10 @@
 static __must_check int i915_gem_object_flush_gpu_write_domain(struct drm_i915_gem_object *obj);
 static void i915_gem_object_flush_gtt_write_domain(struct drm_i915_gem_object *obj);
 static void i915_gem_object_flush_cpu_write_domain(struct drm_i915_gem_object *obj);
-static int i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
-    unsigned alignment, bool map_and_fenceable);
+static __must_check int i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
+						    unsigned alignment,
+						    bool map_and_fenceable,
+						    bool nonblocking);
 static int i915_gem_phys_pwrite(struct drm_device *dev,
     struct drm_i915_gem_object *obj, uint64_t data_ptr, uint64_t offset,
     uint64_t size, struct drm_file *file_priv);
@@ -1993,7 +1995,8 @@ i915_gem_object_get_fence(struct drm_i915_gem_object *obj)
 static int
 i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 			    unsigned alignment,
-			    bool map_and_fenceable)
+			    bool map_and_fenceable,
+			    bool nonblocking)
 {
 	struct drm_device *dev = obj->base.dev;
 	drm_i915_private_t *dev_priv = dev->dev_private;
@@ -2001,7 +2004,6 @@ i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 	uint32_t size, fence_size, fence_alignment, unfenced_alignment;
 	bool mappable, fenceable;
 	int ret;
-	bool nonblocking = false;
 
 	if (obj->madv != I915_MADV_WILLNEED) {
 		DRM_ERROR("Attempting to bind a purgeable object\n");
@@ -2389,7 +2391,7 @@ i915_gem_object_pin_to_display_plane(struct drm_i915_gem_object *obj,
 	 * (e.g. libkms for the bootup splash), we have to ensure that we
 	 * always use map_and_fenceable for all scanout buffers.
 	 */
-	ret = i915_gem_object_pin(obj, alignment, true);
+	ret = i915_gem_object_pin(obj, alignment, true, false);
 	if (ret)
 		return ret;
 
@@ -2529,7 +2531,8 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 int
 i915_gem_object_pin(struct drm_i915_gem_object *obj,
 		    uint32_t alignment,
-		    bool map_and_fenceable)
+		    bool map_and_fenceable,
+		    bool nonblocking)
 {
 	int ret;
 
@@ -2553,10 +2556,16 @@ i915_gem_object_pin(struct drm_i915_gem_object *obj,
 	}
 
 	if (obj->gtt_space == NULL) {
+		struct drm_i915_private *dev_priv = obj->base.dev->dev_private;
+
 		ret = i915_gem_object_bind_to_gtt(obj, alignment,
-						  map_and_fenceable);
+						  map_and_fenceable,
+						  nonblocking);
 		if (ret)
 			return ret;
+
+		if (!dev_priv->mm.aliasing_ppgtt)
+			i915_gem_gtt_bind_object(obj, obj->cache_level);
 	}
 
 	if (!obj->has_global_gtt_mapping && map_and_fenceable)
@@ -2584,19 +2593,17 @@ i915_gem_pin_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_i915_gem_pin *args = data;
 	struct drm_i915_gem_object *obj;
-	struct drm_gem_object *gobj;
 	int ret;
 
 	ret = i915_mutex_lock_interruptible(dev);
 	if (ret)
 		return ret;
 
-	gobj = drm_gem_object_lookup(dev, file, args->handle);
-	if (gobj == NULL) {
+	obj = to_intel_bo(drm_gem_object_lookup(dev, file, args->handle));
+	if (&obj->base == NULL) {
 		ret = -ENOENT;
 		goto unlock;
 	}
-	obj = to_intel_bo(gobj);
 
 	if (obj->madv != I915_MADV_WILLNEED) {
 		DRM_ERROR("Attempting to pin a purgeable buffer\n");
@@ -2606,18 +2613,19 @@ i915_gem_pin_ioctl(struct drm_device *dev, void *data,
 
 	if (obj->pin_filp != NULL && obj->pin_filp != file) {
 		DRM_ERROR("Already pinned in i915_gem_pin_ioctl(): %d\n",
-			args->handle);
+			  args->handle);
 		ret = -EINVAL;
 		goto out;
 	}
 
-	obj->user_pin_count++;
-	obj->pin_filp = file;
-	if (obj->user_pin_count == 1) {
-		ret = i915_gem_object_pin(obj, args->alignment, true);
-		if (ret != 0)
+	if (obj->user_pin_count == 0) {
+		ret = i915_gem_object_pin(obj, args->alignment, true, false);
+		if (ret)
 			goto out;
 	}
+
+	obj->user_pin_count++;
+	obj->pin_filp = file;
 
 	/* XXX - flush the CPU caches for pinned objects
 	 * as the X server doesn't manage domains yet
@@ -2628,7 +2636,7 @@ out:
 	drm_gem_object_unreference(&obj->base);
 unlock:
 	DRM_UNLOCK(dev);
-	return (ret);
+	return ret;
 }
 
 int
@@ -3628,7 +3636,7 @@ i915_gem_obj_io(struct drm_device *dev, uint32_t handle, uint64_t data_ptr,
 			    size, file);
 		} else if (obj->gtt_space &&
 		    obj->base.write_domain != I915_GEM_DOMAIN_CPU) {
-			ret = i915_gem_object_pin(obj, 0, true);
+			ret = i915_gem_object_pin(obj, 0, true, false);
 			if (ret != 0)
 				goto out;
 			ret = i915_gem_object_set_to_gtt_domain(obj, true);
@@ -3754,7 +3762,7 @@ unlocked_vmobj:
 		}
 	}
 	if (!obj->gtt_space) {
-		ret = i915_gem_object_bind_to_gtt(obj, 0, true);
+		ret = i915_gem_object_bind_to_gtt(obj, 0, true, false);
 		if (ret != 0) {
 			cause = 30;
 			goto unlock;
