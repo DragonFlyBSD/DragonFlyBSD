@@ -3978,8 +3978,10 @@ ehci_device_suspend(struct usb_device *udev)
 				EHCI_REMOVE_QH(sc, xfer->qh_start[xfer->flags_int.curr_dma_set],
 				    sc->sc_intr_p_last[xfer->qh_pos]);
 			}
+			xfer->flags_int.onhwqueue = 0;
 		}
 	}
+	ehci_ring_doorbell(sc, NULL);
 
 	USB_BUS_UNLOCK(udev->bus);
 }
