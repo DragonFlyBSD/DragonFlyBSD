@@ -1143,10 +1143,10 @@ done:
 }
 
 static struct filterops usb_filtops_read = 
-    { FILTEROP_ISFD, NULL, usb_filter_detach, usb_filter_read };
+    { FILTEROP_ISFD | FILTEROP_MPSAFE, NULL, usb_filter_detach, usb_filter_read };
 
 static struct filterops usb_filtops_write = 
-    { FILTEROP_ISFD, NULL, usb_filter_detach, usb_filter_write };
+    { FILTEROP_ISFD | FILTEROP_MPSAFE, NULL, usb_filter_detach, usb_filter_write };
 
 static int
 usb_kqfilter(struct dev_kqfilter_args *ap)
@@ -1200,7 +1200,7 @@ usb_kqfilter(struct dev_kqfilter_args *ap)
 		return(0);
 	}
 
-	kn->kn_hook = (caddr_t)f;
+	kn->kn_hook = (caddr_t)cpd;
 	klist = &f->selinfo.ki_note;
 	knote_insert(klist, kn);
 
@@ -1211,8 +1211,8 @@ usb_kqfilter(struct dev_kqfilter_args *ap)
 static void
 usb_filter_detach(struct knote *kn)
 {
-	struct usb_fifo *f = (struct usb_fifo *)kn->kn_hook;
-	struct usb_cdev_privdata* cpd = f->curr_cpd;
+	struct usb_fifo *f;
+	struct usb_cdev_privdata* cpd = (struct usb_cdev_privdata *)kn->kn_hook;
 	struct usb_cdev_refdata refs;
 	struct klist *klist;
 	int err;
@@ -1230,12 +1230,28 @@ usb_filter_detach(struct knote *kn)
 		return;
 	}
 
-	lockmgr(f->priv_lock, LK_EXCLUSIVE);
-	if(f->flag_isselect) {
-		klist = &f->selinfo.ki_note; 
-		knote_remove(klist, kn);
-		f->flag_isselect = 0;
+	switch(kn->kn_filter) {
+	case EVFILT_READ:
+		f = refs.rxfifo;
+		break;
+	case EVFILT_WRITE:
+		f = refs.txfifo;
+		break;
+	default:
+		/* Better safe than sorry? (mpf) */
+		panic("Trying to detach unknown filter");
+		break;
 	}
+
+	lockmgr(f->priv_lock, LK_EXCLUSIVE);
+
+	/* removed check for f->flag_isselect, because
+	   it is racing completion in the filter leading
+	   to invalid data in the fifo knote list */
+	klist = &f->selinfo.ki_note; 
+	knote_remove(klist, kn);
+	f->flag_isselect = 0;
+
 	lockmgr(f->priv_lock, LK_RELEASE);
 
 	usb_unref_device(cpd, &refs);
@@ -1244,8 +1260,8 @@ usb_filter_detach(struct knote *kn)
 static int
 usb_filter_read(struct knote *kn, long hint)
 {
-	struct usb_fifo *f = (struct usb_fifo *)kn->kn_hook;
-	struct usb_cdev_privdata* cpd = f->curr_cpd;
+	struct usb_fifo *f;
+	struct usb_cdev_privdata* cpd = (struct usb_cdev_privdata *)kn->kn_hook;
 	struct usb_cdev_refdata refs;
 	struct usb_mbuf *m;
 	int err,locked,ready = 0;
@@ -1269,6 +1285,8 @@ usb_filter_read(struct knote *kn, long hint)
 	   with the priv_lock held and with the priv_lock
 	   not held. We need to find out from where and
 	   why */
+	f = refs.rxfifo;
+
 	locked = lockowned(f->priv_lock);
 	if(!locked)
 		lockmgr(f->priv_lock, LK_EXCLUSIVE);
@@ -1866,8 +1884,9 @@ usb_fifo_wakeup(struct usb_fifo *f)
 {
 	usb_fifo_signal(f);
 
+	KNOTE(&f->selinfo.ki_note, 0);
+
 	if (f->flag_isselect) {
-		KNOTE(&f->selinfo.ki_note, 0);
 		wakeup(&f->selinfo.ki_note);
 	}
 	if (f->async_p != NULL && lwkt_trytoken(&f->async_p->p_token)) {
