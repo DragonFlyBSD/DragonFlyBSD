@@ -39,8 +39,6 @@
 #include <linux/kref.h>
 #include <linux/workqueue.h>
 
-#define CONFIG_ACPI 1
-
 /* General customization:
  */
 
