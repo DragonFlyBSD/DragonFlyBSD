@@ -1266,7 +1266,7 @@ acpi_eval_osc(device_t dev, ACPI_HANDLE handle, const char *uuidstr,
 	if (error & ACPI_OSCERR_CAPSMASKED) {
 	    if (buf[0] & ACPI_OSC_QUERY_SUPPORT)
 		goto done;
-	    for (i = 1; i <= count; i++) {
+	    for (i = 1; i < count; i++) {
 		device_printf(dev,
 		    "_OSC capabilities have been masked: buf[%d]:%#x\n",
 		    i, buf[i] & ~((uint32_t *)retobj->Buffer.Pointer)[i]);
