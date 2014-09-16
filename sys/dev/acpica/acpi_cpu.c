@@ -191,43 +191,18 @@ acpi_cpu_attach(device_t dev)
      * revision, count, and one or more capabilities.
      */
     if (cpu_features) {
-	ACPI_OBJECT_LIST arglist;
 	uint32_t cap_set[3];
-	ACPI_OBJECT arg[4];
 	ACPI_STATUS status;
 
-	/* UUID needed by _OSC evaluation */
-	static uint8_t cpu_oscuuid[16] = {
-	   0x16, 0xA6, 0x77, 0x40, 0x0C, 0x29, 0xBE, 0x47,
-	   0x9E, 0xBD, 0xD8, 0x70, 0x58, 0x71, 0x39, 0x53
-	};
-
-	arglist.Pointer = arg;
-	arglist.Count = 4;
-	arg[0].Type = ACPI_TYPE_BUFFER;
-	arg[0].Buffer.Length = sizeof(cpu_oscuuid);
-	arg[0].Buffer.Pointer = cpu_oscuuid;	/* UUID */
-	arg[1].Type = ACPI_TYPE_INTEGER;
-	arg[1].Integer.Value = 1;		/* revision */
-	arg[2].Type = ACPI_TYPE_INTEGER;
-	arg[2].Integer.Value = 2;		/* # of capabilities integers */
-	arg[3].Type = ACPI_TYPE_BUFFER;
-	arg[3].Buffer.Length = sizeof(cap_set[0]) * 2; /* capabilities buffer */
-	arg[3].Buffer.Pointer = (uint8_t *)cap_set;
 	cap_set[0] = 0;
 	cap_set[1] = cpu_features;
-	status = AcpiEvaluateObject(handle, "_OSC", &arglist, NULL);
-	if (ACPI_SUCCESS(status)) {
-	    if (cap_set[0] & ACPI_OSCERR_OSCFAIL)
-		device_printf(dev, "_OSC unable to process request\n");
-	    if (cap_set[0] & ACPI_OSCERR_UUID)
-		device_printf(dev, "_OSC unrecognized UUID\n");
-	    if (cap_set[0] & ACPI_OSCERR_REVISION)
-		device_printf(dev, "_OSC unrecognized revision ID\n");
-	    if (cap_set[0] & ACPI_OSCERR_CAPSMASKED)
-		device_printf(dev, "_OSC capabilities have been masked: %#x\n",
-		    cpu_features & ~cap_set[1]);
-	} else {
+	status = acpi_eval_osc(dev, handle,
+	    "4077A616-290C-47BE-9EBD-D87058713953", 1, cap_set, 2);
+
+	if (ACPI_FAILURE(status)) {
+	    ACPI_OBJECT_LIST arglist;
+	    ACPI_OBJECT arg[4];
+
 	    if (bootverbose)
 		device_printf(dev, "_OSC failed, using _PDC\n");
 

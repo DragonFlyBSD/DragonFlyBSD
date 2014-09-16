@@ -47,6 +47,7 @@
 #include <sys/device.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
+#include <sys/uuid.h>
 
 #include <sys/rman.h>
 #include <bus/isa/isavar.h>
@@ -1209,6 +1210,74 @@ acpi_bus_alloc_gas(device_t dev, int *type, int *rid, ACPI_GENERIC_ADDRESS *gas,
 	bus_delete_resource(dev, res_type, *rid);
 
     return (error);
+}
+
+ACPI_STATUS
+acpi_eval_osc(device_t dev, ACPI_HANDLE handle, const char *uuidstr,
+    int revision, uint32_t *buf, int count)
+{
+    ACPI_BUFFER		retbuf = { ACPI_ALLOCATE_BUFFER, NULL };
+    ACPI_OBJECT_LIST	arglist;
+    ACPI_OBJECT		arg[4];
+    ACPI_OBJECT		*retobj;
+    ACPI_STATUS		status;
+    struct uuid		uuid;
+    uint32_t		error;
+    uint8_t		oscuuid[16];
+    int			i;
+
+    if (parse_uuid(uuidstr, &uuid) != 0)
+	    return (AE_ERROR);
+    le_uuid_enc(oscuuid, &uuid);
+
+    arglist.Pointer = arg;
+    arglist.Count = 4;
+    arg[0].Type = ACPI_TYPE_BUFFER;
+    arg[0].Buffer.Length = sizeof(oscuuid);
+    arg[0].Buffer.Pointer = oscuuid;		/* UUID */
+    arg[1].Type = ACPI_TYPE_INTEGER;
+    arg[1].Integer.Value = revision;		/* revision */
+    arg[2].Type = ACPI_TYPE_INTEGER;
+    arg[2].Integer.Value = count;		/* # of cap integers */
+    arg[3].Type = ACPI_TYPE_BUFFER;
+    arg[3].Buffer.Length = count * sizeof(uint32_t); /* capabilities buffer */
+    arg[3].Buffer.Pointer = (uint8_t *)buf;
+
+    status = AcpiEvaluateObject(handle, "_OSC", &arglist, &retbuf);
+    if (ACPI_FAILURE(status)) {
+	return (status);
+    } else {
+	retobj = retbuf.Pointer;
+	error = ((uint32_t *)retobj->Buffer.Pointer)[0] &
+	    ~ACPI_OSC_QUERY_SUPPORT;
+	if (error & ACPI_OSCERR_OSCFAIL) {
+	    device_printf(dev, "_OSC unable to process request\n");
+	    status = AE_ERROR;
+	}
+	if (error & ACPI_OSCERR_UUID) {
+	    device_printf(dev, "_OSC unrecognized UUID (%s)\n", uuidstr);
+	    status = AE_ERROR;
+	}
+	if (error & ACPI_OSCERR_REVISION) {
+	    device_printf(dev, "_OSC unrecognized revision ID (%d)\n",
+		revision);
+	    status = AE_ERROR;
+	}
+	if (error & ACPI_OSCERR_CAPSMASKED) {
+	    if (buf[0] & ACPI_OSC_QUERY_SUPPORT)
+		goto done;
+	    for (i = 1; i <= count; i++) {
+		device_printf(dev,
+		    "_OSC capabilities have been masked: buf[%d]:%#x\n",
+		    i, buf[i] & ~((uint32_t *)retobj->Buffer.Pointer)[i]);
+	    }
+	    status = AE_SUPPORT;
+	}
+    }
+
+done:
+    AcpiOsFree(retbuf.Pointer);
+    return (status);
 }
 
 /* Probe _HID and _CID for compatible ISA PNP ids. */

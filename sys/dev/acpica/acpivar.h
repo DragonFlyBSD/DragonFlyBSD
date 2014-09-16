@@ -209,6 +209,8 @@ extern struct lock acpi_lock;
 #define ACPI_PDC_MP_C2C3_NATIVE	(1 << 9) /* MP C2 and C3 support */
 #define ACPI_PDC_PX_HWCOORD	(1 << 11)/* Hardware coordination of Px */
 
+#define ACPI_OSC_QUERY_SUPPORT	(1 << 0) /* Query Support Flag */
+
 #define ACPI_OSCERR_OSCFAIL	(1 << 1) /* _OSC failure */
 #define ACPI_OSCERR_UUID	(1 << 2) /* Unrecognized UUID */
 #define ACPI_OSCERR_REVISION	(1 << 3) /* Unrecognized revision ID */
@@ -360,6 +362,9 @@ void		acpi_UserNotify(const char *subsystem, ACPI_HANDLE h,
 int		acpi_bus_alloc_gas(device_t dev, int *type, int *rid,
 		    ACPI_GENERIC_ADDRESS *gas, struct resource **res,
 		    u_int flags);
+ACPI_STATUS	acpi_eval_osc(device_t dev, ACPI_HANDLE handle,
+		    const char *uuidstr, int revision, uint32_t *buf,
+		    int count);
 
 struct acpi_parse_resource_set {
     void	(*set_init)(device_t dev, void *arg, void **context);
