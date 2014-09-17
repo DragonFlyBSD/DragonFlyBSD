@@ -245,4 +245,4 @@ struct ale_softc {
 #define	ALE_TIMEOUT		1000
 #define	ALE_PHY_TIMEOUT		1000
 
-#endif	/* _IF_ATEVAR_H */
+#endif	/* _IF_ALEVAR_H */
