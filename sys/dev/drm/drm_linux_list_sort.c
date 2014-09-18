@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/drm2/drm_linux_list_sort.c,v 1.1 2012/05/22 11:07:44 kib Exp $
+ * $FreeBSD: head/sys/dev/drm2/drm_linux_list_sort.c 258553 2013-11-25 15:01:59Z dumbbell $
  */
 
 #include <drm/drmP.h>
@@ -43,8 +43,8 @@ drm_le_cmp(void *priv, const void *d1, const void *d2)
 	struct drm_list_sort_thunk *thunk;
 
 	thunk = priv;
-	le1 = __DECONST(struct list_head *, d1);
-	le2 = __DECONST(struct list_head *, d2);
+	le1 = *(__DECONST(struct list_head **, d1));
+	le2 = *(__DECONST(struct list_head **, d2));
 	return ((thunk->cmp)(thunk->priv, le1, le2));
 }
 
@@ -72,5 +72,5 @@ drm_list_sort(void *priv, struct list_head *head, int (*cmp)(void *priv,
 	INIT_LIST_HEAD(head);
 	for (i = 0; i < count; i++)
 		list_add_tail(ar[i], head);
-	drm_free(ar, M_TEMP);
+	kfree(ar, M_TEMP);
 }
