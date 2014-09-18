@@ -435,13 +435,13 @@ div_detach(netmsg_t msg)
 	lwkt_replymsg(&msg->detach.base.lmsg, 0);
 }
 
-/*
- * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
- *	 will sofree() it when we return.
- */
 static void
 div_abort(netmsg_t msg)
 {
+	/*
+	 * Divert socket does not support listen(2),
+	 * so this should never be called.
+	 */
 	panic("div_abort is called");
 }
 
@@ -455,13 +455,11 @@ div_disconnect(netmsg_t msg)
 	    ("not in netisr0"));
 
 	if (so->so_state & SS_ISCONNECTED) {
-		soreference(so);
-		div_abort(msg);
-		/* msg invalid now */
-		sofree(so);
-		return;
+		soisdisconnected(so);
+		error = 0;
+	} else {
+		error = ENOTCONN;
 	}
-	error = ENOTCONN;
 	lwkt_replymsg(&msg->disconnect.base.lmsg, error);
 }
 
