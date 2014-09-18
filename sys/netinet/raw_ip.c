@@ -86,9 +86,6 @@ struct	inpcbportinfo ripcbportinfo;
 ip_fw_ctl_t *ip_fw_ctl_ptr;
 ip_dn_ctl_t *ip_dn_ctl_ptr;
 
-static struct lwkt_token raw_token = LWKT_TOKEN_INITIALIZER(raw_token);
-
-
 /*
  * hooks for multicast routing. They all default to NULL,
  * so leave them not initialized and rely on BSS being set to 0.
@@ -156,10 +153,12 @@ rip_input(struct mbuf **mp, int *offp, int proto)
 	struct inpcb *last = NULL;
 	struct mbuf *opts = NULL;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
 	*mp = NULL;
 
 	ripsrc.sin_addr = ip->ip_src;
-	lwkt_gettoken(&raw_token);
 	LIST_FOREACH(inp, &ripcbinfo.pcblisthead, inp_list) {
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
@@ -254,7 +253,6 @@ rip_input(struct mbuf **mp, int *offp, int proto)
 		ipstat.ips_noproto++;
 		ipstat.ips_delivered--;
 	}
-	lwkt_reltoken(&raw_token);
 	return(IPPROTO_DONE);
 }
 
@@ -270,6 +268,9 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 	__va_list ap;
 	int flags = (so->so_options & SO_DONTROUTE) | IP_ALLOWBROADCAST;
 	u_long dst;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	__va_start(ap, so);
 	dst = __va_arg(ap, u_long);
@@ -347,6 +348,9 @@ rip_ctloutput(netmsg_t msg)
 	struct sockopt *sopt = msg->ctloutput.nm_sopt;
 	struct	inpcb *inp = so->so_pcb;
 	int	error, optval;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	if (sopt->sopt_level != IPPROTO_IP) {
 		error = EINVAL;
@@ -487,6 +491,9 @@ rip_ctlinput(netmsg_t msg)
 	int err;
 	int flags;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
 	switch (cmd) {
 	case PRC_IFDOWN:
 		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
@@ -563,6 +570,9 @@ rip_attach(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
 	inp = so->so_pcb;
 	if (inp)
 		panic("rip_attach");
@@ -574,7 +584,6 @@ rip_attach(netmsg_t msg)
 	if (error)
 		goto done;
 
-	lwkt_gettoken(&raw_token);
 	error = in_pcballoc(so, &ripcbinfo);
 	if (error == 0) {
 		inp = (struct inpcb *)so->so_pcb;
@@ -582,7 +591,6 @@ rip_attach(netmsg_t msg)
 		inp->inp_ip_p = proto;
 		inp->inp_ip_ttl = ip_defttl;
 	}
-	lwkt_reltoken(&raw_token);
 	error = 0;
 done:
 	lwkt_replymsg(&msg->lmsg, error);
@@ -593,6 +601,9 @@ rip_detach(netmsg_t msg)
 {
 	struct socket *so = msg->base.nm_so;
 	struct inpcb *inp;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	inp = so->so_pcb;
 	if (inp == NULL)
@@ -607,24 +618,14 @@ rip_detach(netmsg_t msg)
 	lwkt_replymsg(&msg->lmsg, 0);
 }
 
-/*
- * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
- *	 will sofree() it when we return.
- */
 static void
 rip_abort(netmsg_t msg)
 {
-	struct socket *so = msg->base.nm_so;
-	int error;
-
-	soisdisconnected(so);
-	if (so->so_state & SS_NOFDREF) {    /* XXX not sure why this test */
-		rip_detach(msg);
-		/* msg invalid now */
-		return;
-	}
-	error = 0;
-	lwkt_replymsg(&msg->lmsg, error);
+	/*
+	 * Raw socket does not support listen(2),
+	 * so this should never be called.
+	 */
+	panic("rip_abort is called");
 }
 
 static void
@@ -633,14 +634,15 @@ rip_disconnect(netmsg_t msg)
 	struct socket *so = msg->base.nm_so;
 	int error;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
 	if (so->so_state & SS_ISCONNECTED) {
-		soreference(so);
-		rip_abort(msg);
-		/* msg invalid now */
-		sofree(so);
-		return;
+		soisdisconnected(so);
+		error = 0;
+	} else {
+		error = ENOTCONN;
 	}
-	error = ENOTCONN;
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -652,6 +654,9 @@ rip_bind(netmsg_t msg)
 	struct inpcb *inp = so->so_pcb;
 	struct sockaddr_in *addr = (struct sockaddr_in *)nam;
 	int error;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	if (nam->sa_len == sizeof(*addr)) {
 		if (TAILQ_EMPTY(&ifnet) ||
@@ -679,6 +684,9 @@ rip_connect(netmsg_t msg)
 	struct sockaddr_in *addr = (struct sockaddr_in *)nam;
 	int error;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
 	if (nam->sa_len != sizeof(*addr)) {
 		error = EINVAL;
 	} else if (TAILQ_EMPTY(&ifnet)) {
@@ -699,6 +707,9 @@ rip_connect(netmsg_t msg)
 static void
 rip_shutdown(netmsg_t msg)
 {
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
 	socantsendmore(msg->base.nm_so);
 	lwkt_replymsg(&msg->lmsg, 0);
 }
@@ -714,6 +725,9 @@ rip_send(netmsg_t msg)
 	struct inpcb *inp = so->so_pcb;
 	u_long dst;
 	int error;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	if (so->so_state & SS_ISCONNECTED) {
 		if (nam) {
