@@ -865,10 +865,8 @@ acpi_child_pnpinfo_str_method(device_t cbdev, device_t child, char *buf,
     ACPI_DEVICE_INFO *adinfo;
     struct acpi_device *dinfo = device_get_ivars(child);
     char *end;
-    int error;
 
-    error = AcpiGetObjectInfo(dinfo->ad_handle, &adinfo);
-    if (error) {
+    if (ACPI_FAILURE(AcpiGetObjectInfo(dinfo->ad_handle, &adinfo))) {
 	ksnprintf(buf, buflen, "unknown");
     } else {
 	ksnprintf(buf, buflen, "_HID=%s _UID=%lu",
@@ -1286,7 +1284,6 @@ acpi_isa_get_logicalid(device_t dev)
 {
     ACPI_DEVICE_INFO	*devinfo;
     ACPI_HANDLE		h;
-    ACPI_STATUS		error;
     uint32_t		pnpid;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
@@ -1295,10 +1292,8 @@ acpi_isa_get_logicalid(device_t dev)
     pnpid = 0;
 
     /* Fetch and validate the HID. */
-    if ((h = acpi_get_handle(dev)) == NULL)
-	goto out;
-    error = AcpiGetObjectInfo(h, &devinfo);
-    if (ACPI_FAILURE(error))
+    if ((h = acpi_get_handle(dev)) == NULL ||
+	ACPI_FAILURE(AcpiGetObjectInfo(h, &devinfo)))
 	goto out;
 
     if ((devinfo->Valid & ACPI_VALID_HID) != 0)
@@ -1315,7 +1310,6 @@ acpi_isa_get_compatid(device_t dev, uint32_t *cids, int count)
 {
     ACPI_DEVICE_INFO	*devinfo;
     ACPI_HANDLE		h;
-    ACPI_STATUS		error;
     uint32_t		*pnpid;
     int			valid, i;
 
@@ -1326,12 +1320,9 @@ acpi_isa_get_compatid(device_t dev, uint32_t *cids, int count)
     valid = 0;
 
     /* Fetch and validate the CID */
-    if ((h = acpi_get_handle(dev)) == NULL)
-	goto out;
-    error = AcpiGetObjectInfo(h, &devinfo);
-    if (ACPI_FAILURE(error))
-	goto out;
-    if ((devinfo->Valid & ACPI_VALID_CID) == 0)
+    if ((h = acpi_get_handle(dev)) == NULL ||
+	ACPI_FAILURE(AcpiGetObjectInfo(h, &devinfo)) ||
+	(devinfo->Valid & ACPI_VALID_CID) == 0)
 	goto out;
 
     if (devinfo->CompatibleIdList.Count < count)
@@ -1873,14 +1864,11 @@ acpi_DeviceIsPresent(device_t dev)
 {
     ACPI_DEVICE_INFO	*devinfo;
     ACPI_HANDLE		h;
-    ACPI_STATUS		error;
     int			ret;
 
     ret = FALSE;
-    if ((h = acpi_get_handle(dev)) == NULL)
-	return (FALSE);
-    error = AcpiGetObjectInfo(h, &devinfo);
-    if (ACPI_FAILURE(error))
+    if ((h = acpi_get_handle(dev)) == NULL ||
+	ACPI_FAILURE(AcpiGetObjectInfo(h, &devinfo)))
 	return (FALSE);
 
     /* If no _STA method, must be present */
@@ -1903,14 +1891,11 @@ acpi_BatteryIsPresent(device_t dev)
 {
     ACPI_DEVICE_INFO	*devinfo;
     ACPI_HANDLE		h;
-    ACPI_STATUS		error;
     int			ret;
 
     ret = FALSE;
-    if ((h = acpi_get_handle(dev)) == NULL)
-	return (FALSE);
-    error = AcpiGetObjectInfo(h, &devinfo);
-    if (ACPI_FAILURE(error))
+    if ((h = acpi_get_handle(dev)) == NULL ||
+	ACPI_FAILURE(AcpiGetObjectInfo(h, &devinfo)))
 	return (FALSE);
 
     /* If no _STA method, must be present */
@@ -1932,14 +1917,11 @@ BOOLEAN
 acpi_MatchHid(ACPI_HANDLE h, const char *hid)
 {
     ACPI_DEVICE_INFO	*devinfo;
-    ACPI_STATUS		error;
     int			ret, i;
 
     ret = FALSE;
-    if (hid == NULL || h == NULL)
-	return (ret);
-    error = AcpiGetObjectInfo(h, &devinfo);
-    if (ACPI_FAILURE(error))
+    if (hid == NULL || h == NULL ||
+	ACPI_FAILURE(AcpiGetObjectInfo(h, &devinfo)))
 	return (ret);
 
     if ((devinfo->Valid & ACPI_VALID_HID) != 0 &&
