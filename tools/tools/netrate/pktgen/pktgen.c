@@ -59,6 +59,7 @@
 #include <net/netisr2.h>
 
 #include <netinet/in.h>
+#include <netinet/in_pcb.h>
 #include <netinet/ip.h>
 #include <netinet/udp_var.h>
 
