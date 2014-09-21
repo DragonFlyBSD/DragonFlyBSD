@@ -1280,13 +1280,19 @@ udp_inswildcardhash_dispatch(netmsg_t msg)
 {
 	struct inpcb *inp = msg->base.nm_so->so_pcb;
 	lwkt_msg_t lmsg = &msg->base.lmsg;
+	boolean_t forwarded;
 
 	KASSERT(inp->inp_lport != 0, ("local port not set yet"));
 	KASSERT((ntohs(inp->inp_lport) & ncpus2_mask) == mycpuid,
 	    ("not target cpu"));
 
 	in_pcblink(inp, &udbinfo[mycpuid]);
-	udp_inswildcardhash_oncpu(inp);
+
+	forwarded = udp_inswildcardhash_oncpu(inp);
+	if (forwarded) {
+		/* The message is further forwarded, so we are done here. */
+		return;
+	}
 
 	if (lmsg->ms_flags & MSGF_UDP_SEND) {
 		udp_send(msg);
@@ -1338,8 +1344,7 @@ udp_inswildcardhash(struct inpcb *inp, struct netmsg_base *msg, int error)
 		return TRUE; /* forwarded */
 	}
 
-	udp_inswildcardhash_oncpu(inp);
-	return FALSE;
+	return udp_inswildcardhash_oncpu(inp);
 }
 
 static void
