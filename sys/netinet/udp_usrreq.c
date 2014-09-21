@@ -211,6 +211,16 @@ static boolean_t udp_inswildcardhash(struct inpcb *inp,
     struct netmsg_base *msg, int error);
 static void udp_remwildcardhash(struct inpcb *inp);
 
+static void
+udp_reset_route(struct inpcb *inp)
+{
+	struct route *ro = &inp->inp_route;
+
+	if (ro->ro_rt != NULL)
+		RTFREE(ro->ro_rt);
+	bzero(ro, sizeof(*ro));
+}
+
 void
 udp_init(void)
 {
@@ -1311,7 +1321,6 @@ udp_sosetport(struct lwkt_msg *msg, lwkt_port_t port)
 static boolean_t
 udp_inswildcardhash(struct inpcb *inp, struct netmsg_base *msg, int error)
 {
-	struct route *ro = &inp->inp_route;
 	lwkt_msg_t lmsg = &msg->lmsg;
 	int cpu;
 
@@ -1319,9 +1328,7 @@ udp_inswildcardhash(struct inpcb *inp, struct netmsg_base *msg, int error)
 	 * Always clear the route cache, so we don't need to
 	 * worry about any owner CPU changes later.
 	 */
-	if (ro->ro_rt != NULL)
-		RTFREE(ro->ro_rt);
-	bzero(ro, sizeof(*ro));
+	udp_reset_route(inp);
 
 	KASSERT(inp->inp_lport != 0, ("local port not set yet"));
 	cpu = ntohs(inp->inp_lport) & ncpus2_mask;
@@ -1441,7 +1448,6 @@ udp_connect(netmsg_t msg)
 	    inp->inp_laddr.s_addr != INADDR_ANY ?
 	    inp->inp_laddr.s_addr : if_sin->sin_addr.s_addr, inp->inp_lport);
 	if (port != &curthread->td_msgport) {
-		struct route *ro = &inp->inp_route;
 		lwkt_msg_t lmsg = &msg->connect.base.lmsg;
 		int nm_flags = PRUC_RECONNECT;
 
@@ -1450,9 +1456,7 @@ udp_connect(netmsg_t msg)
 		 * on the current CPU, but we need a route entry on the
 		 * inpcb's owner CPU, so free it here.
 		 */
-		if (ro->ro_rt != NULL)
-			RTFREE(ro->ro_rt);
-		bzero(ro, sizeof(*ro));
+		udp_reset_route(inp);
 
 		if (inp->inp_flags & INP_WILDCARD) {
 			/*
