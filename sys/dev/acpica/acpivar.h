@@ -369,14 +369,14 @@ ACPI_STATUS	acpi_eval_osc(device_t dev, ACPI_HANDLE handle,
 struct acpi_parse_resource_set {
     void	(*set_init)(device_t dev, void *arg, void **context);
     void	(*set_done)(device_t dev, void *context);
-    void	(*set_ioport)(device_t dev, void *context, uint32_t base,
-		    uint32_t length);
-    void	(*set_iorange)(device_t dev, void *context, uint32_t low,
-		    uint32_t high, uint32_t length, uint32_t align);
-    void	(*set_memory)(device_t dev, void *context, uint32_t base,
-		    uint32_t length);
-    void	(*set_memoryrange)(device_t dev, void *context, uint32_t low,
-		    uint32_t high, uint32_t length, uint32_t align);
+    void	(*set_ioport)(device_t dev, void *context, uint64_t base,
+		    uint64_t length);
+    void	(*set_iorange)(device_t dev, void *context, uint64_t low,
+		    uint64_t high, uint64_t length, uint64_t align);
+    void	(*set_memory)(device_t dev, void *context, uint64_t base,
+		    uint64_t length);
+    void	(*set_memoryrange)(device_t dev, void *context, uint64_t low,
+		    uint64_t high, uint64_t length, uint64_t align);
     void	(*set_irq)(device_t dev, void *context, uint8_t *irq,
 		    int count, int trig, int pol);
     void	(*set_ext_irq)(device_t dev, void *context, uint32_t *irq,
