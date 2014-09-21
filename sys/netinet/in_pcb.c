@@ -285,6 +285,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	inp = kmalloc(pcbinfo->ipi_size, M_PCB, M_WAITOK|M_ZERO|M_NULLOK);
 	if (inp == NULL)
 		return (ENOMEM);
+	inp->inp_lgrpindex = -1;
 	inp->inp_gencnt = ++pcbinfo->ipi_gencnt;
 	inp->inp_pcbinfo = pcbinfo;
 	inp->inp_socket = so;
@@ -1803,6 +1804,7 @@ in_pcbinslocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	struct inp_localgrphead *hdr;
 	struct inp_localgroup *grp, *grp_alloc = NULL;
 	struct ucred *cred;
+	int i, idx;
 
 	ASSERT_PCBINFO_TOKEN_HELD(pcbinfo);
 
@@ -1930,7 +1932,59 @@ again:
 	KASSERT(grp->il_inpcnt < grp->il_inpsiz,
 	    ("invalid local group size %d and count %d",
 	     grp->il_inpsiz, grp->il_inpcnt));
-	grp->il_inp[grp->il_inpcnt] = inp;
+
+	/*
+	 * Keep the local group sorted by the inpcb local group index
+	 * in ascending order.
+	 *
+	 * This eases the multi-process userland application which uses
+	 * SO_REUSEPORT sockets and binds process to the owner cpu of
+	 * the SO_REUSEPORT socket:
+	 * If we didn't sort the local group by the inpcb local group
+	 * index and one of the process owning an inpcb in this local
+	 * group restarted, e.g. crashed and restarted by watchdog,
+	 * other processes owning a inpcb in this local group would have
+	 * to detect that event, refetch its socket's owner cpu, and
+	 * re-bind.
+	 */
+	idx = grp->il_inpcnt;
+	for (i = 0; i < idx; ++i) {
+		struct inpcb *oinp = grp->il_inp[i];
+
+		if (oinp->inp_lgrpindex > i) {
+			if (inp->inp_lgrpindex < 0) {
+				inp->inp_lgrpindex = i;
+			} else if (inp->inp_lgrpindex != i) {
+				if (bootverbose) {
+					kprintf("inp %p: grpidx %d, "
+					    "assigned to %d, cpu%d\n",
+					    inp, inp->inp_lgrpindex, i,
+					    mycpuid);
+				}
+			}
+			grp->il_inp[i] = inp;
+
+			/* Pull down inpcbs */
+			for (; i < grp->il_inpcnt; ++i) {
+				struct inpcb *oinp1 = grp->il_inp[i + 1];
+
+				grp->il_inp[i + 1] = oinp;
+				oinp = oinp1;
+			}
+			grp->il_inpcnt++;
+			return;
+		}
+	}
+
+	if (inp->inp_lgrpindex < 0) {
+		inp->inp_lgrpindex = idx;
+	} else if (inp->inp_lgrpindex != idx) {
+		if (bootverbose) {
+			kprintf("inp %p: grpidx %d, assigned to %d, cpu%d\n",
+			    inp, inp->inp_lgrpindex, idx, mycpuid);
+		}
+	}
+	grp->il_inp[idx] = inp;
 	grp->il_inpcnt++;
 }
 
@@ -2048,6 +2102,7 @@ in_pcbremwildcardhash(struct inpcb *inp)
 	KASSERT(inp->inp_flags & INP_WILDCARD, ("inp not wildcard"));
 
 	in_pcbremwildcardhash_oncpu(inp, pcbinfo);
+	inp->inp_lgrpindex = -1;
 	inp->inp_flags &= ~INP_WILDCARD;
 }
 

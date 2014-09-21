@@ -191,6 +191,7 @@ struct inpcb {
 	LIST_ENTRY(inpcb) inp_hash; /* hash list */
 	LIST_ENTRY(inpcb) inp_list; /* list for all PCBs of this proto */
 	u_int32_t	inp_flow;
+	int		inp_lgrpindex;	/* local group index */
 
 	/* local and foreign ports, local and foreign addr */
 	struct	in_conninfo inp_inc;
