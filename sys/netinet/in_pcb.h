@@ -140,7 +140,7 @@ struct inp_localgroup {
 	uint16_t	il_lport;
 	u_char		il_vflag;
 	u_char		il_pad;
-	uint32_t	il_factor;
+	uint32_t	il_pad2;
 	union in_dependaddr il_dependladdr;
 #define il_laddr	il_dependladdr.id46_addr.ia46_addr4
 #define il6_laddr	il_dependladdr.id6_addr

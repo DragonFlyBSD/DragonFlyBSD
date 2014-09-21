@@ -1443,9 +1443,6 @@ inp_localgroup_lookup(const struct inpcbinfo *pcbinfo,
 
 	hdr = &pcbinfo->localgrphashbase[
 	    INP_PCBLOCALGRPHASH(lport, pcbinfo->localgrphashmask)];
-#ifdef INP_LOCALGROUP_HASHTHR
-	pkt_hash >>= ncpus2_shift;
-#endif
 
 	/*
 	 * Order of socket selection:
@@ -1464,20 +1461,12 @@ inp_localgroup_lookup(const struct inpcbinfo *pcbinfo,
 		if (grp->il_lport == lport) {
 			int idx;
 
-#ifdef INP_LOCALGROUP_HASHTHR
-			idx = pkt_hash / grp->il_factor;
-			KASSERT(idx < grp->il_inpcnt && idx >= 0,
-			    ("invalid hash %04x, cnt %d or fact %d",
-			     pkt_hash, grp->il_inpcnt, grp->il_factor));
-#else
 			/*
 			 * Modulo-N is used here, which greatly reduces
 			 * completion queue token contention, thus more
 			 * cpu time is saved.
 			 */
 			idx = pkt_hash % grp->il_inpcnt;
-#endif
-
 			if (grp->il_laddr.s_addr == laddr.s_addr)
 				return grp->il_inp[idx];
 			else if (grp->il_laddr.s_addr == INADDR_ANY)
@@ -1806,16 +1795,6 @@ inp_localgroup_copy(struct inp_localgroup *grp,
 	for (i = 0; i < old_grp->il_inpcnt; ++i)
 		grp->il_inp[i] = old_grp->il_inp[i];
 	grp->il_inpcnt = old_grp->il_inpcnt;
-	grp->il_factor = old_grp->il_factor;
-}
-
-static void
-inp_localgroup_factor(struct inp_localgroup *grp)
-{
-	grp->il_factor =
-	    ((uint32_t)(0xffff >> ncpus2_shift) / grp->il_inpcnt) + 1;
-	KASSERT(grp->il_factor != 0, ("invalid local group factor, "
-	    "ncpus2_shift %d, inpcnt %d", ncpus2_shift, grp->il_inpcnt));
 }
 
 static void
@@ -1953,7 +1932,6 @@ again:
 	     grp->il_inpsiz, grp->il_inpcnt));
 	grp->il_inp[grp->il_inpcnt] = inp;
 	grp->il_inpcnt++;
-	inp_localgroup_factor(grp);
 }
 
 void
@@ -2024,7 +2002,6 @@ in_pcbremlocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 				for (; i + 1 < grp->il_inpcnt; ++i)
 					grp->il_inp[i] = grp->il_inp[i + 1];
 				grp->il_inpcnt--;
-				inp_localgroup_factor(grp);
 			}
 			return;
 		}
