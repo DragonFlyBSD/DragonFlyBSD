@@ -1261,8 +1261,35 @@ out:
 	lwkt_replymsg(&msg->attach.base.lmsg, error);
 }
 
+static void
+udp_inswildcard_replymsg(netmsg_t msg)
+{
+	lwkt_msg_t lmsg = &msg->lmsg;
+
+	if (lmsg->ms_flags & MSGF_UDP_SEND) {
+		udp_send(msg);
+		/* msg is replied by udp_send() */
+	} else {
+		lwkt_replymsg(lmsg, lmsg->ms_error);
+	}
+}
+
+static void
+udp_soreuseport_dispatch(netmsg_t msg)
+{
+	/* This inpcb has already been in the wildcard hash. */
+	in_pcblink_flags(msg->base.nm_so->so_pcb, &udbinfo[mycpuid], 0);
+	udp_inswildcard_replymsg(msg);
+}
+
+static void
+udp_sosetport(struct lwkt_msg *msg, lwkt_port_t port)
+{
+	sosetport(((struct netmsg_base *)msg)->nm_so, port);
+}
+
 static boolean_t
-udp_inswildcardhash_oncpu(struct inpcb *inp)
+udp_inswildcardhash_oncpu(struct inpcb *inp, struct netmsg_base *msg)
 {
 	int cpu;
 
@@ -1281,7 +1308,34 @@ udp_inswildcardhash_oncpu(struct inpcb *inp)
 		in_pcbinswildcardhash_oncpu(inp, &udbinfo[cpu]);
 	}
 
-	/* TODO need to change port again, if SO_REUSEPORT */
+	if (inp->inp_socket->so_options & SO_REUSEPORT) {
+		/*
+		 * For SO_REUSEPORT socket, redistribute it based on its
+		 * local group index.
+		 */
+		cpu = inp->inp_lgrpindex & ncpus2_mask;
+		if (cpu != mycpuid) {
+			struct lwkt_port *port = netisr_cpuport(cpu);
+			lwkt_msg_t lmsg = &msg->lmsg;
+
+			/*
+			 * We are moving the protocol processing port the
+			 * socket is on, we have to unlink here and re-link
+			 * on the target cpu (this inpcb is still left in
+			 * the wildcard hash).
+			 */
+			in_pcbunlink_flags(inp, &udbinfo[mycpuid], 0);
+			msg->nm_dispatch = udp_soreuseport_dispatch;
+
+			/*
+			 * See the related comment in tcp_usrreq.c
+			 * tcp_connect()
+			 */
+			lwkt_setmsg_receipt(lmsg, udp_sosetport);
+			lwkt_forwardmsg(port, lmsg);
+			return TRUE; /* forwarded */
+		}
+	}
 	return FALSE;
 }
 
@@ -1289,7 +1343,6 @@ static void
 udp_inswildcardhash_dispatch(netmsg_t msg)
 {
 	struct inpcb *inp = msg->base.nm_so->so_pcb;
-	lwkt_msg_t lmsg = &msg->base.lmsg;
 	boolean_t forwarded;
 
 	KASSERT(inp->inp_lport != 0, ("local port not set yet"));
@@ -1298,24 +1351,12 @@ udp_inswildcardhash_dispatch(netmsg_t msg)
 
 	in_pcblink(inp, &udbinfo[mycpuid]);
 
-	forwarded = udp_inswildcardhash_oncpu(inp);
+	forwarded = udp_inswildcardhash_oncpu(inp, &msg->base);
 	if (forwarded) {
 		/* The message is further forwarded, so we are done here. */
 		return;
 	}
-
-	if (lmsg->ms_flags & MSGF_UDP_SEND) {
-		udp_send(msg);
-		/* msg is replied by udp_send() */
-	} else {
-		lwkt_replymsg(lmsg, lmsg->ms_error);
-	}
-}
-
-static void
-udp_sosetport(struct lwkt_msg *msg, lwkt_port_t port)
-{
-	sosetport(((struct netmsg_base *)msg)->nm_so, port);
+	udp_inswildcard_replymsg(msg);
 }
 
 static boolean_t
@@ -1351,7 +1392,7 @@ udp_inswildcardhash(struct inpcb *inp, struct netmsg_base *msg, int error)
 		return TRUE; /* forwarded */
 	}
 
-	return udp_inswildcardhash_oncpu(inp);
+	return udp_inswildcardhash_oncpu(inp, msg);
 }
 
 static void
