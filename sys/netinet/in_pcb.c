@@ -315,28 +315,40 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
  * inp_pcbinfo, NULL it out so we assert if it does.
  */
 void
-in_pcbunlink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
+in_pcbunlink_flags(struct inpcb *inp, struct inpcbinfo *pcbinfo, int flags)
 {
 	KASSERT(inp->inp_pcbinfo == pcbinfo, ("pcbinfo mismatch"));
-	KASSERT((inp->inp_flags & (INP_WILDCARD | INP_CONNECTED)) == 0,
+	KASSERT((inp->inp_flags & (flags | INP_CONNECTED)) == 0,
 	    ("already linked"));
 
 	in_pcbofflist(inp);
 	inp->inp_pcbinfo = NULL;
 }
 
+void
+in_pcbunlink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
+{
+	in_pcbunlink_flags(inp, pcbinfo, INP_WILDCARD);
+}
+
 /*
  * Relink a pcb into a new pcbinfo.
  */
 void
-in_pcblink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
+in_pcblink_flags(struct inpcb *inp, struct inpcbinfo *pcbinfo, int flags)
 {
 	KASSERT(inp->inp_pcbinfo == NULL, ("has pcbinfo"));
-	KASSERT((inp->inp_flags & (INP_WILDCARD | INP_CONNECTED)) == 0,
+	KASSERT((inp->inp_flags & (flags | INP_CONNECTED)) == 0,
 	    ("already linked"));
 
 	inp->inp_pcbinfo = pcbinfo;
 	in_pcbonlist(inp);
+}
+
+void
+in_pcblink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
+{
+	return in_pcblink_flags(inp, pcbinfo, INP_WILDCARD);
 }
 
 static int
