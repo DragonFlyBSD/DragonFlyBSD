@@ -117,6 +117,7 @@ struct drm_device;
 #define DRM_UT_KMS		0x04
 #define DRM_UT_PRIME		0x08
 
+#include "opt_drm.h"
 #ifdef DRM_DEBUG
 #undef DRM_DEBUG
 #define DRM_DEBUG_DEFAULT_ON 1
