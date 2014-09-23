@@ -13,4 +13,3 @@
 	(ISPL((framep)->if_cs) == SEL_UPL)
 
 #endif
-

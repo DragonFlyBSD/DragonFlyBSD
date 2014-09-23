@@ -281,6 +281,3 @@ typedef struct _MSG_MAILBOX_REPLY
   MailboxReply_t, MPI_POINTER pMailboxReply_t;
 
 #endif
-
-
-

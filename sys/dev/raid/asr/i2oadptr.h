@@ -401,5 +401,3 @@ PRAGMA_PACK_POP
 PRAGMA_ALIGN_POP
 
 #endif	    /* I2O_ADPTR_HDR */
-
-

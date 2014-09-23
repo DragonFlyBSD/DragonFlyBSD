@@ -49,4 +49,3 @@ typedef struct _sigjmp_buf { int _sjb[_JBLEN + 1]; } sigjmp_buf[1];
 typedef struct _jmp_buf { int _jb[_JBLEN + 1]; } jmp_buf[1];
 
 #endif
-

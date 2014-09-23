@@ -230,4 +230,3 @@ struct datatag {
 /* for PADT */
 
 #endif /* _NETGRAPH_PPPOE_H_ */
-

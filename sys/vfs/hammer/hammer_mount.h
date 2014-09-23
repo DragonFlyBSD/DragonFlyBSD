@@ -61,4 +61,3 @@ struct hammer_mount_info {
 #define HMNT_UNDO_DIRTY	0x00000008
 
 #define HMNT_USERFLAGS	(HMNT_NOHISTORY | HMNT_MASTERID)
-

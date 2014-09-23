@@ -357,4 +357,3 @@ struct ata_xfer {
 	void			*atascsi_private;
 	struct ata_port         *at;	/* NULL if direct-attached */
 };
-

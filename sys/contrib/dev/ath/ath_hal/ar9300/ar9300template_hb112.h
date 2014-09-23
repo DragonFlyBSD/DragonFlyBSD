@@ -748,4 +748,3 @@ static ar9300_eeprom_t ar9300_template_hb112=
 };
 
 #endif
-

@@ -59,4 +59,3 @@ void helper_msg_destroy_tdio(struct bfq_disk_ctx *bfq_diskctx, struct dsched_thr
 void helper_msg_kill(struct bfq_disk_ctx *bfq_diskctx);
 
 #endif
-

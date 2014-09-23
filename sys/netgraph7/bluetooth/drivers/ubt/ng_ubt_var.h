@@ -128,4 +128,3 @@ typedef struct ubt_softc	ubt_softc_t;
 typedef struct ubt_softc *	ubt_softc_p;
 
 #endif /* ndef _NG_UBT_VAR_H_ */
-

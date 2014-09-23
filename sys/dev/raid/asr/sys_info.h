@@ -469,4 +469,3 @@ typedef struct dpt_metrics {
 #endif
 
 #endif	/* __SYS_INFO_H */
-

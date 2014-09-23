@@ -117,4 +117,3 @@ extern struct bootinfo	bootinfo;
 #define	WHOLE_DISK_SLICE	1
 
 #endif	/* !_MACHINE_BOOTINFO_H_ */
-

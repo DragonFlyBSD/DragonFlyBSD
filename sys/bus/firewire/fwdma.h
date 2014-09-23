@@ -110,4 +110,3 @@ void fwdma_free_size(bus_dma_tag_t, bus_dmamap_t, void *, bus_size_t);
 struct fwdma_alloc_multi *fwdma_malloc_multiseg(struct firewire_comm *,
 	int, int, int, int);
 void fwdma_free_multiseg(struct fwdma_alloc_multi *);
-

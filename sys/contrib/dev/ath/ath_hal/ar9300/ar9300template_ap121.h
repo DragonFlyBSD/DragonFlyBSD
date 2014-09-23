@@ -745,4 +745,3 @@ static ar9300_eeprom_t ar9300_template_ap121=
 };
 
 #endif
-

@@ -76,4 +76,3 @@ void cpu_invltlb(void);
 #endif /* _KERNEL */
 
 #endif /* !_MACHINE_CPUFUNC_H_ */
-

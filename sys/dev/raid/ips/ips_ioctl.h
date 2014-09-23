@@ -59,4 +59,3 @@ typedef struct ips_user_request {
 	void		*data_buffer;
 	u_int32_t	status;
 } ips_user_request;
-

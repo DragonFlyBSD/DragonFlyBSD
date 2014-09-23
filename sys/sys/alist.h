@@ -110,4 +110,3 @@ extern alist_blk_t alist_free_info(alist_t bl, alist_blk_t *startp,
 extern void alist_print(alist_t alist);
 
 #endif	/* _SYS_ALIST_H_ */
-

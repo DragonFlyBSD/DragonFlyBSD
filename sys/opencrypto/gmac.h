@@ -48,4 +48,3 @@ void	AES_GMAC_Final(uint8_t [GMAC_DIGEST_LEN], AES_GMAC_CTX *);
 __END_DECLS
 
 #endif /* _GMAC_H_ */
-

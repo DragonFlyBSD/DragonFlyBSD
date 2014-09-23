@@ -106,4 +106,3 @@ enum {
 };
 
 #endif /* _NETGRAPH_NG_ONE2MANY_H_ */
-

@@ -239,4 +239,3 @@ typedef struct _MSG_LAN_RESET_REPLY
 #define MPI_LAN_TX_MODES_ENABLE_LOOPBACK_SUPPRESSION   (0x01)
 
 #endif
-

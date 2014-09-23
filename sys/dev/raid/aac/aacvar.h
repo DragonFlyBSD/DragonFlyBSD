@@ -651,4 +651,3 @@ aac_release_sync_fib(struct aac_softc *sc)
 
 	KKASSERT(lockstatus(&sc->aac_io_lock, curthread) != 0);
 }
-

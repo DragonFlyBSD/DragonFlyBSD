@@ -121,4 +121,3 @@ typedef __uint32_t	cpulock_t;	/* count and exclusive lock */
 #define PTESIZE         sizeof(pt_entry_t) /* for assembly files */
 
 #endif /* !_CPU_TYPES_H_ */
-

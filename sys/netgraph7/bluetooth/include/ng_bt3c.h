@@ -108,4 +108,3 @@ typedef struct {
 } ng_bt3c_firmware_block_ep;
 
 #endif /* ndef _NG_BT3C_H_ */
-

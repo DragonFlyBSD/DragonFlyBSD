@@ -63,4 +63,3 @@ struct ngsock {
 #define	NGS_FLAG_NOLINGER	1	/* close with last hook */
 
 #endif /* _NETGRAPH_NG_SOCKETVAR_H_ */
-

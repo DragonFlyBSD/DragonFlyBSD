@@ -325,4 +325,3 @@ static const BF_KEY bf_init= {
 	0xb74e6132L, 0xce77e25bL, 0x578fdfe3L, 0x3ac372e6L,
 	}
 	};
-

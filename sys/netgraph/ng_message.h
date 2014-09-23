@@ -308,4 +308,3 @@ struct typelist {
 #endif /* _KERNEL */
 
 #endif /* _NETGRAPH_NG_MESSAGE_H_ */
-

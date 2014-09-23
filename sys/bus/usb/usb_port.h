@@ -188,4 +188,3 @@ __CONCAT(dname,_detach)(device_t self)
 #define logprintf		kprintf
 
 #endif /* _USB_PORT_H */
-

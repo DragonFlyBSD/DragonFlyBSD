@@ -161,4 +161,3 @@ struct vattr {
 #define VA_FSID_UUID_VALID	0x0010	/* uuid fields also populated */
 
 #endif
-

@@ -119,4 +119,3 @@
 #define SLVFS_ELM_VA_FSMID		(0x0113|SE_CMDF_ASIZE8)
 
 #endif
-

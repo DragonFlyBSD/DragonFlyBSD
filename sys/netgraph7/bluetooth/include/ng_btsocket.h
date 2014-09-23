@@ -342,4 +342,3 @@ struct ng_btsocket_rfcomm_fc_info {
 #define NG_BTSOCKET_INFO_LEVEL	4
 
 #endif /* _NETGRAPH_BTSOCKET_H_ */
-

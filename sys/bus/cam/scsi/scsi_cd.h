@@ -745,4 +745,3 @@ void scsi_read_dvd_structure(struct ccb_scsiio *csio, u_int32_t retries,
 __END_DECLS
 
 #endif /*_SCSI_SCSI_CD_H*/
-

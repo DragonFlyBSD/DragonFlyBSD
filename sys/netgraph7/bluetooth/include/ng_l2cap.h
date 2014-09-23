@@ -663,4 +663,3 @@ typedef struct {
 typedef u_int16_t	ng_l2cap_node_auto_discon_ep;
 
 #endif /* ndef _NETGRAPH_L2CAP_H_ */
-

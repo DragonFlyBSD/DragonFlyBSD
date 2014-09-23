@@ -507,4 +507,3 @@ struct hammer_ioc_data {
 #define HAMMERIOC_PFS_ITERATE	_IOWR('h',28,struct hammer_ioc_pfs_iterate)
 
 #endif
-

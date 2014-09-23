@@ -58,4 +58,3 @@ struct syslink_desc {
 };
 
 #endif
-

@@ -224,4 +224,3 @@ u_int32_t	bluetooth_l2cap_rtx_timeout	(void);
 u_int32_t	bluetooth_l2cap_ertx_timeout	(void);
 
 #endif /* _NETGRAPH_BLUETOOTH_H_ */
-

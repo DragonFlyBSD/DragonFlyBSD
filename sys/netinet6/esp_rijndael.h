@@ -54,4 +54,3 @@ int esp_rijndael_blockencrypt (const struct esp_algorithm *,
 #endif
 
 #endif
-

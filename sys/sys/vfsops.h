@@ -1109,4 +1109,3 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_nremove((nch)->mount->mnt_vn_use_ops, nch, dvp, cred)
 
 #endif
-

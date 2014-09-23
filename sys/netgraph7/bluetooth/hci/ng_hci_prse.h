@@ -217,4 +217,3 @@ static const struct ng_cmdlist	ng_hci_cmdlist[] = {
 };
 
 #endif /* ndef _NETGRAPH_HCI_PRSE_H_ */
-

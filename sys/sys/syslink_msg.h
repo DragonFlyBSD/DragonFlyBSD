@@ -315,4 +315,3 @@ typedef struct syslink_msg	*syslink_msg_t;
 typedef struct syslink_elm	*syslink_elm_t;
 
 #endif
-

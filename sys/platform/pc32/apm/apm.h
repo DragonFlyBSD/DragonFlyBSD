@@ -41,4 +41,3 @@ struct apm_softc {
 	struct	apm_event_info event_list[APM_NEVENTS];
 	u_char	event_filter[APM_NPMEV];
 };
-

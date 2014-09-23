@@ -391,4 +391,3 @@ typedef struct _MSG_FC_PRIMITIVE_SEND_REPLY
   FcPrimitiveSendReply_t, MPI_POINTER pFcPrimitiveSendReply_t;
 
 #endif
-

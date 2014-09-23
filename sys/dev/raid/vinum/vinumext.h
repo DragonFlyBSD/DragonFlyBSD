@@ -267,4 +267,3 @@ void FFree(void *mem, char *, int);
 #define Malloc(x)  malloc ((x))		/* just the size */
 #define Free(x)	   free ((x))		/* just the address */
 #endif
-

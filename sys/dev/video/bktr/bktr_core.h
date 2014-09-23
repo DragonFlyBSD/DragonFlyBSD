@@ -94,4 +94,3 @@ int	tuner_ioctl( bktr_ptr_t bktr, int unit,
 int	vbi_open( bktr_ptr_t bktr );
 int	vbi_close( bktr_ptr_t bktr );
 int	vbi_read( bktr_ptr_t bktr, struct uio *uio, int ioflag );
-

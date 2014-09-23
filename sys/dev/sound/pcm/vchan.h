@@ -30,5 +30,3 @@
 int vchan_create(struct pcm_channel *parent);
 int vchan_destroy(struct pcm_channel *c);
 int vchan_initsys(device_t dev);
-
-

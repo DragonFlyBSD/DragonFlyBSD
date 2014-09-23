@@ -52,4 +52,3 @@ struct ad_softc {
 };
 
 extern devclass_t ad_devclass;
-

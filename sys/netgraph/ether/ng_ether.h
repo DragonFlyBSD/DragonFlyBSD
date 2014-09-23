@@ -72,4 +72,3 @@ extern	const struct ng_parse_type ng_ether_enaddr_type;
 #endif /* _KERNEL */
 
 #endif /* _NETGRAPH_NG_ETHER_H_ */
-

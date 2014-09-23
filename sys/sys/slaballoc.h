@@ -135,4 +135,3 @@ typedef struct SLGlobalData {
 #endif	/* _KERNEL */
 
 #endif	/* _SYS_SLABALLOC_H_ */
-

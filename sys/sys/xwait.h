@@ -29,4 +29,3 @@ xupdate_gen(struct xwait *w)
 }
 
 #endif
-

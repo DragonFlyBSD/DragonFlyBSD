@@ -28,4 +28,3 @@
  */
 
 extern struct devsw netdev;
-

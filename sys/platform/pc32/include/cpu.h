@@ -43,4 +43,3 @@
         ((ISPL((framep)->if_cs) == SEL_UPL) || (framep->if_eflags & PSL_VM))
 
 #endif
-

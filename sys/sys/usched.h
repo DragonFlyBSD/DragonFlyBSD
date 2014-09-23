@@ -116,4 +116,3 @@ int usched_set(pid_t, int, void *, int);
 #endif
 
 #endif
-

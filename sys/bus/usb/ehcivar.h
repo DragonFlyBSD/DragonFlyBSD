@@ -170,4 +170,3 @@ void		ehci_power(int state, void *priv);
 void		ehci_shutdown(void *v);
 
 #define MS_TO_TICKS(ms) ((ms) * hz / 1000)
-

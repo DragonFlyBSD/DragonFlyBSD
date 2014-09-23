@@ -14850,6 +14850,3 @@ u32 bce_xi90_rv2p_proc2[] = {
     bce_rv2p_proc2[BCE_RV2P_PROC2_MAX_BD_PAGE_LOC] = 						\
     (bce_rv2p_proc2[BCE_RV2P_PROC2_MAX_BD_PAGE_LOC] & ~0xFFFF) | (value);	\
 }
-
-
-

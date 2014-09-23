@@ -81,4 +81,3 @@ enum {
 };
 
 #endif /* _NETGRAPH_NG_PRED1_H_ */
-

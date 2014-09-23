@@ -52,4 +52,3 @@ int  ng_hci_lp_qos_ind                   (ng_hci_unit_con_p);
 void ng_hci_process_con_timeout          (node_p, hook_p, void *, int);
 
 #endif /* ndef _NETGRAPH_HCI_ULPI_H_ */
-

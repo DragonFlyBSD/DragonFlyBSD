@@ -518,4 +518,3 @@ extern char	*ng_get_string_token(const char *s, int *startp, int *lenp);
 extern char	*ng_encode_string(const char *s);
 
 #endif /* _NETGRAPH_PARSE_H_ */
-
