@@ -581,4 +581,3 @@ static driver_t spic_driver = {
 };
 
 DRIVER_MODULE(spic, isa, spic_driver, spic_devclass, NULL, NULL);
-

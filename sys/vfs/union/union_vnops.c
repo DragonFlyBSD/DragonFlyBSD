@@ -1792,4 +1792,3 @@ struct vop_ops union_vnode_vops = {
 	.vop_old_whiteout =	union_whiteout,
 	.vop_write =		union_write
 };
-

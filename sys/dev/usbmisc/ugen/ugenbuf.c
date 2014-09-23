@@ -93,4 +93,3 @@ relugenbuf(void *buf, int bsize)
 	kfree(buf, M_UGENBUF);
     }
 }
-

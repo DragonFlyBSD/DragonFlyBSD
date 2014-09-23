@@ -1085,4 +1085,3 @@ drop:
 
 	return (error);
 } /* ng_hci_raw_rcvdata */
-

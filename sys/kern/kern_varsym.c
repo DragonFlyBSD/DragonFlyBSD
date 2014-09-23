@@ -549,4 +549,3 @@ varsymset_clean(struct varsymset *vss)
     vss->vx_setsize = 0;
     lockmgr(&vss->vx_lock, LK_RELEASE);
 }
-

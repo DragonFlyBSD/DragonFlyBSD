@@ -678,4 +678,3 @@ dl_symbol_values(long callpc, const char **name)
 	}
 #endif
 }
-

@@ -4022,4 +4022,3 @@ nfsrv_access(struct mount *mp, struct vnode *vp, int flags, struct ucred *cred,
 	return error;
 }
 #endif /* NFS_NOSERVER */
-

@@ -201,4 +201,3 @@ cothread_unlock(cothread_t cotd, int is_cotd)
 		crit_exit_id("cothread");
 	}
 }
-

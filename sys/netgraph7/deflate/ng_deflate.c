@@ -681,4 +681,3 @@ ng_deflate_reset_req(node_p node)
 		inflateReset(&priv->cx);
 	}
 }
-

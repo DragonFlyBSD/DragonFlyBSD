@@ -1240,4 +1240,3 @@ hammer_fsid_to_udev(uuid_t *uuid)
 	crc = crc32(uuid, sizeof(*uuid));
 	return((udev_t)crc);
 }
-

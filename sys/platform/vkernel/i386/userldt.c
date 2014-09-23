@@ -58,4 +58,3 @@ user_ldt_free (struct pcb *pcb)
 	if (pcb->pcb_ldt)
 		panic("user_ldt_free");
 }
-

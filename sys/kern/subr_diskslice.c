@@ -858,4 +858,3 @@ set_ds_wlabel(struct diskslices *ssp, int slice, int wlabel)
 {
 	ssp->dss_slices[slice].ds_wlabel = wlabel;
 }
-

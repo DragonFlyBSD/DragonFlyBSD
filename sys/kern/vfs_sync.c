@@ -735,4 +735,3 @@ sync_print(struct vop_print_args *ap)
 	kprintf("\n");
 	return (0);
 }
-

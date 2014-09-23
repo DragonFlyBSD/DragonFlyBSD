@@ -619,4 +619,3 @@ mem_drvinit(void *unused)
 }
 
 SYSINIT(memdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,mem_drvinit,NULL)
-

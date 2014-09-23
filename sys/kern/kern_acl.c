@@ -314,4 +314,3 @@ sys___acl_aclcheck_fd(struct __acl_aclcheck_fd_args *uap)
 	fdrop(fp);
 	return (error);
 }
-

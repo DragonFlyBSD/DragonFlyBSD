@@ -580,4 +580,3 @@ static s32 e1000_check_for_link_vf(struct e1000_hw *hw)
 out:
 	return ret_val;
 }
-

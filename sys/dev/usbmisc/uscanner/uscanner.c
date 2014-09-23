@@ -675,4 +675,3 @@ uscannerkqfilter(struct dev_kqfilter_args *ap)
 }
 
 DRIVER_MODULE(uscanner, uhub, uscanner_driver, uscanner_devclass, usbd_driver_load, NULL);
-

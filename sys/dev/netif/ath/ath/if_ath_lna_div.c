@@ -1006,4 +1006,3 @@ div_comb_done:
 	antcomb->main_recv_cnt = 0;
 	antcomb->alt_recv_cnt = 0;
 }
-

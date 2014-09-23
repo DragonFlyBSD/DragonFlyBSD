@@ -102,4 +102,3 @@ sys_linux_getcwd(struct linux_getcwd_args *args)
 	kfree(buf, M_TEMP);
 	return (error);
 }
-

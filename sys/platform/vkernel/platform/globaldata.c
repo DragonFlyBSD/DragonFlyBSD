@@ -125,4 +125,3 @@ is_globaldata_space(vm_offset_t saddr, vm_offset_t eaddr)
 	}
 	return (FALSE);
 }
-

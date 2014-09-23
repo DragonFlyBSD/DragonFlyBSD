@@ -494,4 +494,3 @@ ng_hci_str_error(u_int16_t code)
 	return ((code >= LAST_ERROR_CODE)? s[LAST_ERROR_CODE] : s[code]);
 } /* ng_hci_str_error */
 #endif
-

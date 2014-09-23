@@ -3639,4 +3639,3 @@ nfsfifo_close(struct vop_close_args *ap)
 	}
 	return (VOCALL(&fifo_vnode_vops, &ap->a_head));
 }
-

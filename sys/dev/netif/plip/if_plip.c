@@ -758,4 +758,3 @@ static driver_t lp_driver = {
 
 DECLARE_DUMMY_MODULE(if_plip);
 DRIVER_MODULE(if_plip, ppbus, lp_driver, lp_devclass, NULL, NULL);
-

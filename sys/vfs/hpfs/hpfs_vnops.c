@@ -1181,4 +1181,3 @@ struct vop_ops hpfs_vnode_vops = {
 	.vop_ioctl =		hpfs_ioctl,
 	.vop_pathconf =		hpfs_pathconf
 };
-

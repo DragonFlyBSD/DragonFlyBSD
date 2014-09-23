@@ -251,10 +251,3 @@ SHA1_Final(struct sha1_context *ctx, unsigned char *digest)
 	digest[17] = ((ctx->H4 >> 16) & 0xff);
 	digest[16] = ((ctx->H4 >> 24) & 0xff);
 }
-
-
-
-
-
-
-

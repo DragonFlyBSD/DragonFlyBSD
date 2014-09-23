@@ -518,4 +518,3 @@ plimit_copy(struct plimit *olimit, struct plimit *nlimit)
 	nlimit->p_refcnt = 1;
 	nlimit->p_exclusive = 0;
 }
-

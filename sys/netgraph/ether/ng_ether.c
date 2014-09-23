@@ -728,4 +728,3 @@ ng_ether_mod_event(module_t mod, int event, void *data)
 	crit_exit();
 	return (error);
 }
-

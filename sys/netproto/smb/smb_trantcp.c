@@ -622,4 +622,3 @@ struct smb_tran_desc smb_tran_nbtcp_desc = {
 	smb_nbst_getparam, smb_nbst_setparam,
 	smb_nbst_fatal
 };
-

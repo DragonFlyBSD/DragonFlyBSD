@@ -494,4 +494,3 @@ ng_bpf_setprog(hook_p hook, const struct ng_bpf_hookprog *hp0)
 	hip->prog = hp;
 	return (0);
 }
-

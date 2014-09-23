@@ -369,4 +369,3 @@ allocsysid(void)
 	crit_exit_gd(gd);
 	return(sysid);
 }
-

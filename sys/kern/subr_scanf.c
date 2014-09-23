@@ -622,4 +622,3 @@ doswitch:
 	}
 	/* NOTREACHED */
 }
-

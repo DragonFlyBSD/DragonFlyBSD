@@ -2547,6 +2547,3 @@ reset_pipeline_out:
 
 	return ret_val;
 }
-
-
-

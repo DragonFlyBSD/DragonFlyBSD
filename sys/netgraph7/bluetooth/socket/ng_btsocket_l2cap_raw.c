@@ -1301,4 +1301,3 @@ ng_btsocket_l2cap_raw_send_sync_ngmsg(ng_btsocket_l2cap_raw_pcb_p pcb,
 
 	return (0);
 } /* ng_btsocket_l2cap_raw_send_sync_ngmsg */
-

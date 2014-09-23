@@ -1527,4 +1527,3 @@ _hammer_checkspace(hammer_mount_t hmp, int slop, int64_t *resp)
 	}
 	return (ENOSPC);
 }
-

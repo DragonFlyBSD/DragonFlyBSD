@@ -1446,4 +1446,3 @@ u_int32_t MR_GetSpanBlock(u_int32_t ld, u_int64_t row, u_int64_t *span_blk,
     }
     return span;
 }
-

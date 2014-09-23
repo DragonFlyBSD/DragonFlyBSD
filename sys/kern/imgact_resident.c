@@ -321,4 +321,3 @@ restart:
 	uap->sysmsg_result = count;
     return(error);
 }
-

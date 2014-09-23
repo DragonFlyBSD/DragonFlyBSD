@@ -823,4 +823,3 @@ ng_iface_disconnect(hook_p hook)
 	*get_hook_from_iffam(priv, iffam) = NULL;
 	return (0);
 }
-

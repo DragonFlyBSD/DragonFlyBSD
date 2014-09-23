@@ -129,4 +129,3 @@ ffs_checkdeferred(struct buf *bp)
 	}
 	return(0);
 }
-

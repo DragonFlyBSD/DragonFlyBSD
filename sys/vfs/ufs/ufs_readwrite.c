@@ -426,4 +426,3 @@ ffs_write(struct vop_write_args *ap)
 
 	return (error);
 }
-

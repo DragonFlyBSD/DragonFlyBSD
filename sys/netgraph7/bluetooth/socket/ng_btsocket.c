@@ -250,4 +250,3 @@ ng_btsocket_modevent(module_t mod, int event, void *data)
 
 	return (error);
 } /* ng_btsocket_modevent */
-

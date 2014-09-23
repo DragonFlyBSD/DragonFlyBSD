@@ -168,4 +168,3 @@ devfs_clone_bitmap_get(struct devfs_bitmap *bitmap, int limit)
 
 	return unit;
 }
-

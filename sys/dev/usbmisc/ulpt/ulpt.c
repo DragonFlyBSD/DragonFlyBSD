@@ -755,4 +755,3 @@ ieee1284_print_id(char *str)
 #endif
 
 DRIVER_MODULE(ulpt, uhub, ulpt_driver, ulpt_devclass, usbd_driver_load, NULL);
-

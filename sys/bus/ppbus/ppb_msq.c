@@ -334,4 +334,3 @@ ppb_MS_microseq(device_t bus, device_t dev, struct ppb_microseq *msq, int *ret)
 error:
 	return (error);
 }
-

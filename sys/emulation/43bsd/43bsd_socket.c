@@ -539,4 +539,3 @@ cleanup:
 		m_freem(control);
 	return (error);
 }
-

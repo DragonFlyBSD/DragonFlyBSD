@@ -923,4 +923,3 @@ ckpt_expand_name(const char *name, uid_t uid, pid_t pid)
 	temp[n] = '\0';
 	return temp;
 }
-

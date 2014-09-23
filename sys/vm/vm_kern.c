@@ -484,4 +484,3 @@ kvm_free(SYSCTL_HANDLER_ARGS)
 }
 SYSCTL_PROC(_vm, OID_AUTO, kvm_free, CTLTYPE_ULONG|CTLFLAG_RD,
     0, 0, kvm_free, "LU", "Amount of KVM free");
-

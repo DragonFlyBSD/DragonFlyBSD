@@ -241,4 +241,3 @@ ar5416RestoreSpectralConfig(struct ath_hal *ah, uint32_t restoreval)
 	}
 	return;
 }
-

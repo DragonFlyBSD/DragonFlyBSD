@@ -332,4 +332,3 @@ static driver_t pcfclock_driver = {
 };
 
 DRIVER_MODULE(pcfclock, ppbus, pcfclock_driver, pcfclock_devclass, NULL, NULL);
-

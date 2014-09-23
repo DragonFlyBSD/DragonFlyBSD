@@ -391,4 +391,3 @@ ffs_rawread(struct vnode *vp,
 	*workdone = 0;
 	return 0;
 }
-

@@ -364,4 +364,3 @@ acpi_machdep_quirks(int *quirks)
 {
 	return (0);
 }
-

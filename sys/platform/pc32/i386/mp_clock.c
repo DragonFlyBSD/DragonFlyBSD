@@ -139,4 +139,3 @@ static devclass_t piix_devclass;
 DRIVER_MODULE(piix, pci, piix_driver, piix_devclass, NULL, NULL);
 
 #endif
-

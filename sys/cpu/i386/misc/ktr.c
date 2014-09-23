@@ -83,4 +83,3 @@ cpu_ktr_caller(struct ktr_entry *_ktr)
     frameptr = FRAMEUP(frameptr);	/* frame, caller2 of caller1 */
     ktr->ktr_caller2 = frameptr[1];
 }
-

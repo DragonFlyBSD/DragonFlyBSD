@@ -362,4 +362,3 @@ iir_ioctl(struct dev_ioctl_args *ap)
     --gdt_stat.io_count_act;
     return (0);
 }
-

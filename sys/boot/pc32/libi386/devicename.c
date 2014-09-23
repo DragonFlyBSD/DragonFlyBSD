@@ -241,4 +241,3 @@ i386_setcurrdev(struct env_var *ev, int flags, const void *value)
     env_setenv(ev->ev_name, flags | EV_NOHOOK, value, NULL, NULL);
     return(0);
 }
-

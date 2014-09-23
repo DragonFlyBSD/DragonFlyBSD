@@ -866,4 +866,3 @@ hpfs_breadstruct (
 
 	return (0);
 }
-

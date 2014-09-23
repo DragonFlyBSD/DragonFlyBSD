@@ -1639,4 +1639,3 @@ ng_l2cap_l2ca_enable_clt(ng_l2cap_p l2cap, struct ng_mesg *msg)
 
 	return (error);
 } /* ng_l2cap_l2ca_enable_clt */
-

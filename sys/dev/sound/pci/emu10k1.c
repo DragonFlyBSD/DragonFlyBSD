@@ -2083,4 +2083,3 @@ static driver_t emujoy_driver = {
 static devclass_t emujoy_devclass;
 
 DRIVER_MODULE(emujoy, pci, emujoy_driver, emujoy_devclass, NULL, NULL);
-

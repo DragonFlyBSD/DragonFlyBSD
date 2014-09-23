@@ -399,4 +399,3 @@ sys_linux_setresuid16(struct linux_setresuid16_args *args)
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
-

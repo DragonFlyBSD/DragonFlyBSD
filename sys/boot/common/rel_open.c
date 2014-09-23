@@ -196,4 +196,3 @@ rel_stat(const char *path, struct stat *st)
 	}
 	return(res);
 }
-

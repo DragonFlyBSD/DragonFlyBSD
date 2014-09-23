@@ -319,4 +319,3 @@ sys_usched_set(struct usched_set_args *uap)
 	rel_mplock();
 	return (error);
 }
-

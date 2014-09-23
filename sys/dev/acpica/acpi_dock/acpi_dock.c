@@ -551,4 +551,3 @@ static devclass_t acpi_dock_devclass;
 
 DRIVER_MODULE(acpi_dock, acpi, acpi_dock_driver, acpi_dock_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_dock, acpi, 1, 1, 1);
-

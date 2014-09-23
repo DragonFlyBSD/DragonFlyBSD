@@ -4910,4 +4910,3 @@ release:
 		hw->phy.ops.release(hw);
 	}
 }
-

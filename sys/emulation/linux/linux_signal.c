@@ -465,4 +465,3 @@ sys_linux_tkill(struct linux_tkill_args *args)
 
 	return (linux_do_tkill(0, args->tid, args->sig));
 }
-

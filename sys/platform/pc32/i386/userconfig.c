@@ -3330,5 +3330,3 @@ save_dev(struct uc_device *idev)
 	uc_devlist = id_pn;
 	return 0;
 }
-
-

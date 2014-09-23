@@ -3345,4 +3345,3 @@ ng_macro_test(item_p item)
 	NG_FWD_MSG_HOOK(error, node, item, hook, retaddr);
 }
 #endif /* TESTING */
-

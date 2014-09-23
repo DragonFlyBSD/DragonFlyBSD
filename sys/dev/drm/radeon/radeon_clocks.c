@@ -913,4 +913,3 @@ void radeon_legacy_set_clock_gating(struct radeon_device *rdev, int enable)
 		}
 	}
 }
-

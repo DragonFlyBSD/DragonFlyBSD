@@ -162,4 +162,3 @@ sys_yield(struct yield_args *uap)
 	lwkt_user_yield();
 	return(0);
 }
-

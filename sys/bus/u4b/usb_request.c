@@ -2274,4 +2274,3 @@ usbd_req_set_lpm_info(struct usb_device *udev, struct lock *lock,
 	}
 	return (err);
 }
-

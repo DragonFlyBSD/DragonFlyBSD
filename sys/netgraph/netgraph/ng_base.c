@@ -2069,5 +2069,3 @@ ngintr(netmsg_t pmsg)
 out:
 	rel_mplock();
 }
-
-

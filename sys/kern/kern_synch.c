@@ -1239,4 +1239,3 @@ sched_setup(void *dummy)
 	schedcpu(NULL);
 	loadav(NULL);
 }
-

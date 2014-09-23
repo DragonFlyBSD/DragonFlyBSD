@@ -1715,4 +1715,3 @@ ng_get_getAlign_method(const struct ng_parse_type *t)
 		t = t->supertype;
 	return (t ? t->getAlign : NULL);
 }
-

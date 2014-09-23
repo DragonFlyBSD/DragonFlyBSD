@@ -897,4 +897,3 @@ process_link_policy_status(ng_hci_unit_p unit, ng_hci_command_status_ep *ep,
 
 	return (error);
 } /* process_link_policy_status */
-

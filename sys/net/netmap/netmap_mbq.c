@@ -140,4 +140,3 @@ void mbq_safe_destroy(struct mbq *q)
 void mbq_destroy(struct mbq *q)
 {
 }
-

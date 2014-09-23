@@ -1280,4 +1280,3 @@ ng_ksocket_parse(const struct ng_ksocket_alias *aliases,
 		return (-1);
 	return (val);
 }
-

@@ -207,4 +207,3 @@ cpu_invltlb(void)
 {
 	madvise((void *)KvaStart, KvaEnd - KvaStart, MADV_INVAL);
 }
-

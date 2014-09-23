@@ -806,4 +806,3 @@ ng_mppc_updatekey(u_int32_t bits,
 		bcopy(&ng_mppe_weakenkey, key, 1);
 	rc4_init(rc4, key, keylen);
 }
-

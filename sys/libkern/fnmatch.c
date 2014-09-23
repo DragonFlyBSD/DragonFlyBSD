@@ -222,4 +222,3 @@ rangematch(const char *pattern, char test, int flags, char **newp)
 	*newp = (char *)(uintptr_t)pattern;
 	return (ok == negate ? RANGE_NOMATCH : RANGE_MATCH);
 }
-

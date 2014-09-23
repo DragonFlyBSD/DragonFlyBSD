@@ -561,4 +561,3 @@ cpu_clr_iopl(void)
 	curthread->td_lwp->lwp_md.md_regs->tf_eflags &= ~PSL_IOPL;
 	return(0);
 }
-

@@ -841,4 +841,3 @@ pfi_unmask(void *addr)
 	}
 	return (b);
 }
-

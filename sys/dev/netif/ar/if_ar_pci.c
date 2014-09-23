@@ -176,4 +176,3 @@ errexit:
 	ar_deallocate_resources(device);
 	return (ENXIO);
 }
-

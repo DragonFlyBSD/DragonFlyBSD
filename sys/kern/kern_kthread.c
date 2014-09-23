@@ -211,4 +211,3 @@ kproc_suspend_loop(void)
 		lwkt_reltoken(&kpsus_token);
 	}
 }
-

@@ -1462,5 +1462,3 @@ ng_l2tp_seq_check(struct l2tp_seq *seq)
 #undef CHECK
 }
 #endif	/* INVARIANTS */
-
-

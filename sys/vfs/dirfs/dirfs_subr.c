@@ -891,4 +891,3 @@ debug(int level, const char *fmt, ...)
 		__va_end(ap);
 	}
 }
-

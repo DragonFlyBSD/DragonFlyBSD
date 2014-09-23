@@ -190,4 +190,3 @@ ufs_ihashrem(struct ufsmount *ump, struct inode *ip)
 		ip->i_flag &= ~IN_HASHED;
 	}
 }
-

@@ -1376,4 +1376,3 @@ pcn_shutdown(device_t dev)
 	pcn_stop(sc);
 	lwkt_serialize_exit(ifp->if_serializer);
 }
-

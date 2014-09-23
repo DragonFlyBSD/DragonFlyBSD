@@ -536,4 +536,3 @@ struct vop_ops fdesc_vnode_vops = {
 	.vop_reclaim =		fdesc_reclaim,
 	.vop_setattr =		fdesc_setattr
 };
-

@@ -715,4 +715,3 @@ ng_tag_setdata_out(hook_p hook, const struct ng_tag_hookout *hp0)
 	hip->out_tag_data = (void*)(hip->out->tag_data);
 	return (0);
 }
-

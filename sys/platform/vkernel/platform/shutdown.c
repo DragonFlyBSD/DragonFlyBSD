@@ -99,4 +99,3 @@ shutdown_intr(void *arg __unused, void *frame __unused)
 		reboot(RB_POWEROFF);
 	}	
 }
-

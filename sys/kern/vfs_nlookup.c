@@ -1368,4 +1368,3 @@ naccess_va(struct vattr *va, int nflags, struct ucred *cred)
 	return(EACCES);
     return(0);
 }
-

@@ -723,5 +723,3 @@ ar9300_aic_start_normal (struct ath_hal *ah)
 #endif
 
 #endif
-
-

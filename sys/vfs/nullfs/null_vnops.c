@@ -252,4 +252,3 @@ struct vop_ops null_vnode_vops = {
 	.vop_nrename =		null_nrename,
 	.vop_mountctl =		null_mountctl
 };
-

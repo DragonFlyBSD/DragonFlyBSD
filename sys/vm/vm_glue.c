@@ -587,4 +587,3 @@ swapout(struct proc *p)
 }
 
 #endif /* !NO_SWAPPING */
-

@@ -819,4 +819,3 @@ vm86_clear_timer_fault(void)
 	vml->vml_iomap[TIMER_CNTR1 >> 3] &= ~(1 << (TIMER_CNTR1 & 7));
 	vml->vml_iomap[TIMER_CNTR2 >> 3] &= ~(1 << (TIMER_CNTR2 & 7));
 }
-

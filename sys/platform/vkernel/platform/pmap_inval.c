@@ -221,4 +221,3 @@ pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
 	*ptep = 0;
 	return(pte);
 }
-

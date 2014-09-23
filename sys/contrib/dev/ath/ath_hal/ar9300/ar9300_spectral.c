@@ -585,4 +585,3 @@ int16_t ar9300_get_ext_chan_nf(struct ath_hal *ah)
 
 #endif
 #endif /* ATH_SUPPORT_SPECTRAL */
-

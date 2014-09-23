@@ -549,4 +549,3 @@ hammer_und_rb_compare(hammer_undo_t node1, hammer_undo_t node2)
                 return(1);
         return(0);
 }
-

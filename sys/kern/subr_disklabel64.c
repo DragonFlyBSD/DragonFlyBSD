@@ -513,4 +513,3 @@ struct disklabel_ops disklabel64_ops = {
 	.op_makevirginlabel = l64_makevirginlabel,
 	.op_freedisklabel = l64_freedisklabel
 };
-

@@ -564,4 +564,3 @@ fp_shutdown(file_t fp, int how)
 {
     return(fo_shutdown(fp, how));
 }
-

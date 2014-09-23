@@ -1275,4 +1275,3 @@ ar9300_is_ani_noise_spur(struct ath_hal *ah)
 
     return ani_state->phy_noise_spur;
 }
-

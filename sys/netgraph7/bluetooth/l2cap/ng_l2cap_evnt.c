@@ -1324,4 +1324,3 @@ get_next_l2cap_opt(struct mbuf *m, int *off, ng_l2cap_cfg_opt_p hdr,
 
 	return (1);
 } /* get_next_l2cap_opt */
-

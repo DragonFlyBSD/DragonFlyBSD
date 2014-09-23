@@ -2842,4 +2842,3 @@ devfs_WildCaseCmp(const char *w, const char *s)
     kfree(mary, M_DEVFS);
     return(i);
 }
-

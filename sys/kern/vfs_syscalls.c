@@ -4820,4 +4820,3 @@ chroot_visible_mnt(struct mount *mp, struct proc *p)
 
 	return(0);
 }
-

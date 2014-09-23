@@ -244,4 +244,3 @@ soo_shutdown(struct file *fp, int how)
 		error = 0;
 	return (error);
 }
-

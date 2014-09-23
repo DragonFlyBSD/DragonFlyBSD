@@ -404,4 +404,3 @@ isa_outb(int port, int value)
         __asm __volatile("outb %0,%%dx" : : "a" (al), "d" (port));
     }
 }
-

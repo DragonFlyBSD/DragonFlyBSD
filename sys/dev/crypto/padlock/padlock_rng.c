@@ -75,4 +75,3 @@ padlock_rng_uninit(struct padlock_softc *sc)
 {
 	callout_stop(&sc->sc_rng_co);
 }
-

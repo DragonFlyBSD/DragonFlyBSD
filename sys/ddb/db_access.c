@@ -119,4 +119,3 @@ db_put_value(db_addr_t addr, int size, db_expr_t value)
 
 	db_write_bytes(addr, size, data);
 }
-

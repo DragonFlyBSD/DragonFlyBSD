@@ -379,4 +379,3 @@ static int old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
 
 	return (VM_PAGER_OK);
 }
-

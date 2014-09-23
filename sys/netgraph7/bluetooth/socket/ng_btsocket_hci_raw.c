@@ -1634,4 +1634,3 @@ ng_btsocket_hci_raw_sockaddr(struct socket *so, struct sockaddr **nam)
 
 	return ((*nam == NULL)? ENOMEM : 0);
 } /* ng_btsocket_hci_raw_sockaddr */
-

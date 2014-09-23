@@ -3686,4 +3686,3 @@ static devclass_t       mrsas_devclass;
 DRIVER_MODULE(mrsas, pci, mrsas_driver, mrsas_devclass, NULL, NULL);
 MODULE_VERSION(mrsas, 1);
 MODULE_DEPEND(mrsas, cam, 1, 1, 1);
-

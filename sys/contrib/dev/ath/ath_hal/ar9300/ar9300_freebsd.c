@@ -678,4 +678,3 @@ rf9330_probe(struct ath_hal *ah)
 }
 
 AH_RF(RF9330, rf9330_probe, rf9330_attach);
-

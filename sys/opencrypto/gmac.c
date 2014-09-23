@@ -155,4 +155,3 @@ AES_GMAC_Final(uint8_t digest[GMAC_DIGEST_LEN], AES_GMAC_CTX *ctx)
 		digest[i] = ctx->ghash.S[i] ^ keystream[i];
 	bzero(keystream, sizeof(keystream));
 }
-

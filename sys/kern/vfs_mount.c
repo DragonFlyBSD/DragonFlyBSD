@@ -1089,4 +1089,3 @@ mount_get_by_nc(struct namecache *ncp)
 	lwkt_reltoken(&mountlist_token);
 	return (mp);
 }
-

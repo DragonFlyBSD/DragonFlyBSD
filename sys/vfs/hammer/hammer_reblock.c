@@ -611,4 +611,3 @@ done:
 	hammer_btree_unlock_children(cursor->trans->hmp, &lockroot, NULL);
 	return (error);
 }
-

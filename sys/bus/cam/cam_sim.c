@@ -279,4 +279,3 @@ deadsim_action(struct cam_sim *sim, union ccb *ccb)
 	ccb->ccb_h.status = CAM_TID_INVALID;
 	xpt_done(ccb);
 }
-

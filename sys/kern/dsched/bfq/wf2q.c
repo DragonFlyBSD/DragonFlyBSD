@@ -227,5 +227,3 @@ wf2q_get_next_thread_io(struct wf2q_t *wf2q)
 	wf2q->wf2q_tdio_count--;
 	return tdio;
 }
-
-

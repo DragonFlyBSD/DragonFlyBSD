@@ -865,4 +865,3 @@ struct pr_usrreqs udp6_usrreqs = {
 	.pru_sosend = sosend,
 	.pru_soreceive = soreceive
 };
-

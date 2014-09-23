@@ -1447,4 +1447,3 @@ setrealcpu(void)
 		break;
 	}
 }
-

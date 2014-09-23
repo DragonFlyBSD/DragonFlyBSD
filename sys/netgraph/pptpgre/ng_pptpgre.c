@@ -998,4 +998,3 @@ ng_pptpgre_time(node_p node)
 	t += (pptptime_t)tv.tv_usec / (1000000 / PPTP_TIME_SCALE);
 	return(t);
 }
-

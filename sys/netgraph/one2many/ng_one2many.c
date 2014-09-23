@@ -516,5 +516,3 @@ ng_one2many_update_many(priv_p priv)
 #endif
 	}
 }
-
-

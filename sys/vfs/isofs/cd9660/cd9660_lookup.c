@@ -480,4 +480,3 @@ cd9660_devblkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	*bpp = bp;
 	return (0);
 }
-

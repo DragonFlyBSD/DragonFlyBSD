@@ -978,4 +978,3 @@ Debugger(const char *msg)
 	kprintf("Debugger(\"%s\") called.\n", msg);
 }
 #endif /* no DDB */
-

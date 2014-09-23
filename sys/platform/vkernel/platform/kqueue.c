@@ -203,4 +203,3 @@ kqueue_intr(void *arg __unused, void *frame __unused)
 		}
 	} while (n == 8);
 }
-

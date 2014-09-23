@@ -423,4 +423,3 @@ xdr_int_decode(struct mbuf **mptr, int *iptr)
 }
 
 #endif	/* BOOTP && NFS_ROOT */
-

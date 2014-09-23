@@ -373,4 +373,3 @@ mpipe_free(malloc_pipe_t mpipe, void *buf)
 	kfree(buf, mpipe->type);
     }
 }
-
