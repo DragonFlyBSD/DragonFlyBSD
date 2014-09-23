@@ -14,7 +14,7 @@
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s -4 ip4 -p port [-b ip4] -P bind_port\n", cmd);
+	fprintf(stderr, "%s -4 ip4 -p port [-b ip4] -P bind_port [-r]\n", cmd);
 	exit(1);
 }
 
@@ -22,7 +22,7 @@ int
 main(int argc, char *argv[])
 {
 	struct sockaddr_in in, local_in;
-	int s, opt, n;
+	int s, opt, n, reuseport;
 	uint8_t buf[18];
 
 	memset(&in, 0, sizeof(in));
@@ -31,7 +31,9 @@ main(int argc, char *argv[])
 	memset(&local_in, 0, sizeof(local_in));
 	local_in.sin_family = AF_INET;
 
-	while ((opt = getopt(argc, argv, "4:P:b:p:")) != -1) {
+	reuseport = 0;
+
+	while ((opt = getopt(argc, argv, "4:P:b:p:r")) != -1) {
 		switch (opt) {
 		case '4':
 			if (inet_pton(AF_INET, optarg, &in.sin_addr) <= 0)
@@ -53,6 +55,10 @@ main(int argc, char *argv[])
 			in.sin_port = htons(in.sin_port);
 			break;
 
+		case 'r':
+			reuseport = 1;
+			break;
+
 		default:
 			usage(argv[0]);
 		}
@@ -65,6 +71,12 @@ main(int argc, char *argv[])
 	s = socket(AF_INET, SOCK_DGRAM, 0);
 	if (s < 0)
 		err(2, "socket failed");
+
+	if (reuseport) {
+		if (setsockopt(s, SOL_SOCKET, SO_REUSEPORT,
+		    &reuseport, sizeof(reuseport)) < 0)
+			err(2, "setsockopt SO_REUSEPORT failed");
+	}
 
 	if (bind(s, (const struct sockaddr *)&local_in, sizeof(local_in)) < 0)
 		err(2, "bind failed");
