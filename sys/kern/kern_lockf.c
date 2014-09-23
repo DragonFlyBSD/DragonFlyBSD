@@ -34,8 +34,9 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.37 2007/11/01 22:48:16 dillon Exp $
  */
+
+#include "opt_debug_lockf.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -885,8 +886,8 @@ _lf_print_lock(const struct lockf *lock)
 		lf_printf("lockf %p:\n", lock);
 	}
 	TAILQ_FOREACH(range, &lock->lf_range, lf_link)
-		kprintf("\t%lld..%lld type %s owned by %d\n",
-		       range->lf_start, range->lf_end,
+		kprintf("\t%jd..%jd type %s owned by %d\n",
+		       (uintmax_t)range->lf_start, (uintmax_t)range->lf_end,
 		       range->lf_type == F_RDLCK ? "shared" : "exclusive",
 		       range->lf_flags & F_POSIX ? range->lf_owner->p_pid : -1);
 	if (TAILQ_EMPTY(&lock->lf_blocked))
@@ -894,8 +895,8 @@ _lf_print_lock(const struct lockf *lock)
 	else
 		kprintf("blocked locks:");
 	TAILQ_FOREACH(range, &lock->lf_blocked, lf_link)
-		kprintf("\t%lld..%lld type %s waiting on %p\n",
-		       range->lf_start, range->lf_end,
+		kprintf("\t%jd..%jd type %s waiting on %p\n",
+		       (uintmax_t)range->lf_start, (uintmax_t)range->lf_end,
 		       range->lf_type == F_RDLCK ? "shared" : "exclusive",
 		       range);
 }
