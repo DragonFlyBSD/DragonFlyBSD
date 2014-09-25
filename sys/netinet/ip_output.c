@@ -1343,6 +1343,16 @@ ip_ctloutput(netmsg_t msg)
 	int	error, optval;
 
 	error = optval = 0;
+
+	/* Get socket's owner cpuid hint */
+	if (sopt->sopt_level == SOL_SOCKET &&
+	    sopt->sopt_dir == SOPT_GET &&
+	    sopt->sopt_name == SO_CPUHINT) {
+		optval = mycpuid;
+		soopt_from_kbuf(sopt, &optval, sizeof(optval));
+		goto done;
+	}
+
 	if (sopt->sopt_level != IPPROTO_IP) {
 		error = EINVAL;
 		goto done;

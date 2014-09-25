@@ -2439,10 +2439,16 @@ integer:
 			error = sooptcopyout(sopt, &optval_l, sizeof(optval_l));
 			break;
 
+		case SO_CPUHINT:
+			optval = -1; /* no hint */
+			goto integer;
+
 		default:
 			error = ENOPROTOOPT;
 			break;
 		}
+		if (error == 0 && so->so_proto && so->so_proto->pr_ctloutput)
+			so_pr_ctloutput(so, sopt);
 		return (error);
 	}
 }

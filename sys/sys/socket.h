@@ -100,8 +100,10 @@ typedef __socklen_t	socklen_t;
 #define SO_RCVTIMEO	0x1006		/* receive timeout */
 #define	SO_ERROR	0x1007		/* get error status and clear */
 #define	SO_TYPE		0x1008		/* get socket type */
-/*efine	SO_PRIVSTATE	0x1009		   get/deny privileged state */
+/* 0x1009 reserved for FreeBSD compat */
 #define	SO_SNDSPACE	0x100a		/* get appr. send buffer free space */
+/* 0x1010 ~ 0x102f reserved for FreeBSD compat */
+#define	SO_CPUHINT	0x1030		/* get socket's owner cpuid hint */
 
 /*
  * Structure used for manipulating linger option.

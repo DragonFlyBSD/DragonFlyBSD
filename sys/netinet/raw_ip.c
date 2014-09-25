@@ -352,12 +352,21 @@ rip_ctloutput(netmsg_t msg)
 	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
 	    ("not in netisr0"));
 
+	error = 0;
+
+	/* Get socket's owner cpuid hint */
+	if (sopt->sopt_level == SOL_SOCKET &&
+	    sopt->sopt_dir == SOPT_GET &&
+	    sopt->sopt_name == SO_CPUHINT) {
+		optval = mycpuid;
+		soopt_from_kbuf(sopt, &optval, sizeof(optval));
+		goto done;
+	}
+
 	if (sopt->sopt_level != IPPROTO_IP) {
 		error = EINVAL;
 		goto done;
 	}
-
-	error = 0;
 
 	switch (sopt->sopt_dir) {
 	case SOPT_GET:

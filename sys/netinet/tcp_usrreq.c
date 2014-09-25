@@ -1418,6 +1418,28 @@ tcp_ctloutput(netmsg_t msg)
 		error = ECONNRESET;
 		goto done;
 	}
+	tp = intotcpcb(inp);
+
+	/* Get socket's owner cpuid hint */
+	if (sopt->sopt_level == SOL_SOCKET &&
+	    sopt->sopt_dir == SOPT_GET &&
+	    sopt->sopt_name == SO_CPUHINT) {
+		if (tp->t_flags & TF_LISTEN) {
+			/*
+			 * Listen sockets owner cpuid is always 0,
+			 * which does not make sense if SO_REUSEPORT
+			 * is not set.
+			 */
+			if (so->so_options & SO_REUSEPORT)
+				optval = (inp->inp_lgrpindex & ncpus2_mask);
+			else
+				optval = -1; /* no hint */
+		} else {
+			optval = mycpuid;
+		}
+		soopt_from_kbuf(sopt, &optval, sizeof(optval));
+		goto done;
+	}
 
 	if (sopt->sopt_level != IPPROTO_TCP) {
 		switch (sopt->sopt_name) {
@@ -1442,7 +1464,6 @@ tcp_ctloutput(netmsg_t msg)
 		/* msg invalid now */
 		return;
 	}
-	tp = intotcpcb(inp);
 
 	switch (sopt->sopt_dir) {
 	case SOPT_SET:
