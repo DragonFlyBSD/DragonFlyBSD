@@ -754,6 +754,19 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 
 	hmp = trans->hmp;
 
+	/*
+	 * Disallow the creation of new inodes in directories which
+	 * have been deleted.  In HAMMER, this will cause a record
+	 * syncing assertion later on in the flush code.
+	 */
+	if (dip->ino_data.nlinks == 0) {
+		*ipp = NULL;
+                return (EINVAL);
+	}
+
+	/*
+	 * Allocate inode
+	 */
 	ip = kmalloc(sizeof(*ip), hmp->m_inodes, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
 	++hmp->count_inodes;
