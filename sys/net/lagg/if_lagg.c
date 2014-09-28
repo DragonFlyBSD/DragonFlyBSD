@@ -1,8 +1,10 @@
-/*	$OpenBSD: if_trunk.c,v 1.30 2007/01/31 06:20:19 reyk Exp $	*/
-
+/*	$OpenBSD: if_trunk.c,v 1.30 2007/01/31 06:20:19 reyk Exp $
+ *	$FreeBSD: head/sys/net/if_lagg.c 256218 2013-10-09 19:04:40Z glebius $
+ */
 /*
  * Copyright (c) 2005, 2006 Reyk Floeter <reyk@openbsd.org>
  * Copyright (c) 2007 Andrew Thompson <thompsa@FreeBSD.org>
+ * Copyright (c) 2014 Marcelo Araujo <araujo@FreeBSD.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

@@ -1,4 +1,6 @@
-/*	$OpenBSD: if_trunk.h,v 1.11 2007/01/31 06:20:19 reyk Exp $	*/
+/*	$OpenBSD: if_trunk.h,v 1.11 2007/01/31 06:20:19 reyk Exp $
+ *	$FreeBSD: head/sys/net/if_lagg.h 255038 2013-08-29 19:35:14Z adrian $
+ */
 
 /*
  * Copyright (c) 2005, 2006 Reyk Floeter <reyk@openbsd.org>

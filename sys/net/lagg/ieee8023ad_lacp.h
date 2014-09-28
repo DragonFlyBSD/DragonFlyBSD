@@ -1,4 +1,6 @@
-/*	$NetBSD: ieee8023ad_impl.h,v 1.2 2005/12/10 23:21:39 elad Exp $	*/
+/*	$NetBSD: ieee8023ad_impl.h,v 1.2 2005/12/10 23:21:39 elad Exp $
+ *	$FreeBSD: head/sys/net/ieee8023ad_lacp.h 253687 2013-07-26 19:41:13Z adrian $
+ */
 
 /*-
  * Copyright (c)2005 YAMAMOTO Takashi,
@@ -25,7 +27,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD$
  */
 
 /*

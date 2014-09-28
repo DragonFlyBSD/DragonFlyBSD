@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.\" $FreeBSD$
+.\" $FreeBSD: head/share/man/man4/lagg.4 243091 2012-11-15 16:54:14Z joel $
 .\"
 .Dd February 23, 2012
 .Dt LAGG 4
@@ -182,7 +182,7 @@ device as a workaround.)
 The
 .Nm
 device first appeared in
-.Fx 6.3 .
+.Dx 3.9
 .Sh AUTHORS
 .An -nosplit
 The
@@ -195,6 +195,12 @@ The LACP implementation was written by
 .An YAMAMOTO Takashi
 for
 .Nx .
+The
+.Fx
+version was ported to
+.Dx 3.9
+by
+.An Markus Pfeiffer Aq profmakx@dragonflybsd.org .
 .Sh BUGS
 There is no way to configure LACP administrative variables, including system
 and port priorities.

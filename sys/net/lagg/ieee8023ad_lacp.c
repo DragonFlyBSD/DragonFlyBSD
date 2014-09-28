@@ -1,4 +1,6 @@
-/*	$NetBSD: ieee8023ad_lacp.c,v 1.3 2005/12/11 12:24:54 christos Exp $	*/
+/*	$NetBSD: ieee8023ad_lacp.c,v 1.3 2005/12/11 12:24:54 christos Exp $
+ *	$FreeBSD: head/sys/net/ieee8023ad_lacp.c 253687 2013-07-26 19:41:13Z adrian $
+ */
 
 /*-
  * Copyright (c)2005 YAMAMOTO Takashi,
