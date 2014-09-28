@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
+#include <sys/usched.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -16,12 +17,12 @@
 
 #define EVENT_MAX	128
 
-static void	mainloop(int, const struct sockaddr_in *);
+static void	mainloop(int, const struct sockaddr_in *, int);
 
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s -p port [-i n_instance] [-r]\n", cmd);
+	fprintf(stderr, "%s -p port [-i n_instance] [-r] [-B]\n", cmd);
 	exit(1);
 }
 
@@ -61,7 +62,7 @@ int
 main(int argc, char *argv[])
 {
 	struct sockaddr_in in;
-	int opt, ninst, serv_s, i, reuseport;
+	int opt, ninst, serv_s, i, reuseport, bindcpu;
 	size_t prm_len;
 
 	prm_len = sizeof(ninst);
@@ -72,9 +73,10 @@ main(int argc, char *argv[])
 	in.sin_family = AF_INET;
 	in.sin_addr.s_addr = INADDR_ANY;
 
+	bindcpu = 0;
 	reuseport = 0;
 
-	while ((opt = getopt(argc, argv, "p:i:r")) != -1) {
+	while ((opt = getopt(argc, argv, "Bp:i:r")) != -1) {
 		switch (opt) {
 		case 'p':
 			in.sin_port = htons(atoi(optarg));
@@ -88,6 +90,10 @@ main(int argc, char *argv[])
 			reuseport = 1;
 			break;
 
+		case 'B':
+			bindcpu = 1;
+			break;
+
 		default:
 			usage(argv[0]);
 		}
@@ -95,6 +101,8 @@ main(int argc, char *argv[])
 
 	if (ninst < 1 || in.sin_port == 0)
 		usage(argv[0]);
+	if (!reuseport)
+		bindcpu = 0;
 
 	serv_s = -1;
 	if (!reuseport)
@@ -105,25 +113,37 @@ main(int argc, char *argv[])
 
 		pid = fork();
 		if (pid == 0) {
-			mainloop(serv_s, &in);
+			mainloop(serv_s, &in, bindcpu);
 			exit(0);
 		} else if (pid < 0) {
 			err(1, "fork failed");
 		}
 	}
 
-	mainloop(serv_s, &in);
+	mainloop(serv_s, &in, bindcpu);
 	exit(0);
 }
 
 static void
-mainloop(int serv_s, const struct sockaddr_in *in)
+mainloop(int serv_s, const struct sockaddr_in *in, int bindcpu)
 {
 	struct kevent change_evt0[EVENT_MAX];
 	int kq, nchange;
 
 	if (serv_s < 0)
 		serv_s = create_socket(in, 1);
+
+	if (bindcpu) {
+		socklen_t cpu_len;
+		int cpu;
+
+		cpu_len = sizeof(cpu);
+		if (getsockopt(serv_s, SOL_SOCKET, SO_CPUHINT,
+		    &cpu, &cpu_len) < 0)
+			err(1, "getsockopt(CPUHINT) failed");
+		if (cpu >= 0)
+			usched_set(getpid(), USCHED_SET_CPU, &cpu, sizeof(cpu));
+	}
 
 	kq = kqueue();
 	if (kq < 0)
