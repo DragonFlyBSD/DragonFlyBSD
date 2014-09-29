@@ -345,7 +345,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_WILDCARD		0x400	/* wildcard match */
 /* 0x800 unused */
 #define	INP_CONNECTED		0x1000	/* exact match */
-#define	INP_WASBOUND_NOTANY	0x2000	/* was bound to non-null laddr */
+#define	INP_FLAG_PROTO1		0x2000	/* protocol specific */
 #define INP_PLACEMARKER		0x4000	/* skip this pcb, its a placemarker */
 
 #define IN6P_IPV6_V6ONLY	0x008000 /* restrict AF_INET6 socket for v6 */

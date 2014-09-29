@@ -140,6 +140,9 @@ struct	udpstat {
 }
 
 #ifdef _KERNEL
+
+#define INP_WASBOUND_NOTANY	INP_FLAG_PROTO1	/* bound to non-null laddr */
+
 #ifdef SYSCTL_DECL
 SYSCTL_DECL(_net_inet_udp);
 #endif
@@ -167,6 +170,6 @@ struct lwkt_port	*udp_ctlport (int, struct sockaddr *, void *);
 struct lwkt_port	*udp_initport(void);
 struct lwkt_port	*udp_cport (int);
 
-#endif
+#endif	/* _KERNEL */
 
 #endif
