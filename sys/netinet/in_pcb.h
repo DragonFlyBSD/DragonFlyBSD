@@ -343,7 +343,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_MTUDISC		0x100	/* user can do MTU discovery */
 #define	INP_FAITH		0x200	/* accept FAITH'ed connections */
 #define	INP_WILDCARD		0x400	/* wildcard match */
-/* 0x800 unused */
+#define INP_FLAG_PROTO2		0x800	/* protocol specific */
 #define	INP_CONNECTED		0x1000	/* exact match */
 #define	INP_FLAG_PROTO1		0x2000	/* protocol specific */
 #define INP_PLACEMARKER		0x4000	/* skip this pcb, its a placemarker */

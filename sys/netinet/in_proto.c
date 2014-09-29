@@ -126,7 +126,7 @@ struct protosw inetsw[] = {
 	.pr_input = udp_input,
 	.pr_output = NULL,
 	.pr_ctlinput = udp_ctlinput,
-	.pr_ctloutput = ip_ctloutput,
+	.pr_ctloutput = udp_ctloutput,
 
 	.pr_ctlport = udp_ctlport,
 	.pr_init = udp_init,

@@ -120,6 +120,8 @@
 
 #define MSGF_UDP_SEND		MSGF_PROTO1
 
+#define INP_DIRECT_DETACH	INP_FLAG_PROTO2
+
 #define UDP_KTR_STRING		"inp=%p"
 #define UDP_KTR_ARGS		struct inpcb *inp
 
@@ -278,6 +280,35 @@ sysctl_udpstat(SYSCTL_HANDLER_ARGS)
 }
 SYSCTL_PROC(_net_inet_udp, UDPCTL_STATS, stats, (CTLTYPE_OPAQUE | CTLFLAG_RW),
     0, 0, sysctl_udpstat, "S,udpstat", "UDP statistics");
+
+void
+udp_ctloutput(netmsg_t msg)
+{
+	struct socket *so = msg->base.nm_so;
+	struct sockopt *sopt = msg->ctloutput.nm_sopt;
+	struct	inpcb *inp = so->so_pcb;
+
+	if (sopt->sopt_level == IPPROTO_IP) {
+		switch (sopt->sopt_name) {
+		case IP_MULTICAST_IF:
+		case IP_MULTICAST_VIF:
+		case IP_MULTICAST_TTL:
+		case IP_MULTICAST_LOOP:
+		case IP_ADD_MEMBERSHIP:
+		case IP_DROP_MEMBERSHIP:
+			if (&curthread->td_msgport != netisr_cpuport(0)) {
+				/*
+				 * This pr_ctloutput msg will be forwarded
+				 * to netisr0 to run; we can't do direct
+				 * detaching anymore.
+				 */
+				inp->inp_flags &= ~INP_DIRECT_DETACH;
+			}
+			break;
+		}
+	}
+	return ip_ctloutput(msg);
+}
 
 /*
  * Check multicast packets to make sure they are only sent to sockets with
@@ -1254,6 +1285,7 @@ udp_attach(netmsg_t msg)
 		goto out;
 
 	inp = (struct inpcb *)so->so_pcb;
+	inp->inp_flags |= INP_DIRECT_DETACH;
 	inp->inp_vflag |= INP_IPV4;
 	inp->inp_ip_ttl = ip_defttl;
 	error = 0;
@@ -1364,6 +1396,9 @@ udp_inswildcardhash(struct inpcb *inp, struct netmsg_base *msg, int error)
 {
 	lwkt_msg_t lmsg = &msg->lmsg;
 	int cpu;
+
+	/* This inpcb could no longer be directly detached */
+	inp->inp_flags &= ~INP_DIRECT_DETACH;
 
 	/*
 	 * Always clear the route cache, so we don't need to
@@ -1684,6 +1719,12 @@ udp_detach(netmsg_t msg)
 	 * no one could find this inpcb from the inpcb list.
 	 */
 	in_pcbofflist(inp);
+
+	if (inp->inp_flags & INP_DIRECT_DETACH) {
+		/* Direct detaching is allowed */
+		udp_detach2(so);
+		return;
+	}
 
 	/*
 	 * Go through netisrs which process UDP to make sure

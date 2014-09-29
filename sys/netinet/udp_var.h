@@ -161,6 +161,7 @@ int			udp_addrcpu (in_addr_t faddr, in_port_t fport,
 struct lwkt_port	*udp_addrport (in_addr_t faddr, in_port_t fport,
 				     in_addr_t laddr, in_port_t lport);
 void			udp_ctlinput(netmsg_t msg);
+void	 		udp_ctloutput(netmsg_t msg);
 void			udp_init (void);
 void			udp_thread_init (void);
 int			udp_input (struct mbuf **, int *, int);
