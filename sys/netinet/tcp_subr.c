@@ -862,7 +862,7 @@ tcp_close(struct tcpcb *tp)
 	}
 
 	/*
-	 * INP_WILDCARD_MP indicates that listen(2) has been called on
+	 * INP_WILDCARD indicates that listen(2) has been called on
 	 * this socket.  This implies:
 	 * - A wildcard inp's hash is replicated for each protocol thread.
 	 * - Syncache for this inp grows independently in each protocol
@@ -872,14 +872,14 @@ tcp_close(struct tcpcb *tp)
 	 * We have to chain a message to the rest of the protocol threads
 	 * to cleanup the wildcard hash and the syncache.  The cleanup
 	 * in the current protocol thread is defered till the end of this
-	 * function.
+	 * function (syncache_destroy and in_pcbdetach).
 	 *
 	 * NOTE:
 	 * After cleanup the inp's hash and syncache entries, this inp will
 	 * no longer be available to the rest of the protocol threads, so we
 	 * are safe to whack the inp in the following code.
 	 */
-	if (inp->inp_flags & INP_WILDCARD_MP) {
+	if ((inp->inp_flags & INP_WILDCARD) && ncpus2 > 1) {
 		struct netmsg_listen_detach nmsg;
 
 		KKASSERT(so->so_port == netisr_cpuport(0));
@@ -891,8 +891,6 @@ tcp_close(struct tcpcb *tp)
 		nmsg.nm_tp = tp;
 		nmsg.nm_tp_inh = tp_inh;
 		lwkt_domsg(netisr_cpuport(1), &nmsg.base.lmsg, 0);
-
-		inp->inp_flags &= ~INP_WILDCARD_MP;
 	}
 
 	KKASSERT(tp->t_state != TCPS_TERMINATING);

@@ -343,7 +343,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_MTUDISC		0x100	/* user can do MTU discovery */
 #define	INP_FAITH		0x200	/* accept FAITH'ed connections */
 #define	INP_WILDCARD		0x400	/* wildcard match */
-#define	INP_WILDCARD_MP		0x800	/* distributed wildcard match */
+/* 0x800 unused */
 #define	INP_CONNECTED		0x1000	/* exact match */
 #define	INP_WASBOUND_NOTANY	0x2000	/* was bound to non-null laddr */
 #define INP_PLACEMARKER		0x4000	/* skip this pcb, its a placemarker */
@@ -364,6 +364,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	IN6P_RFC2292		0x40000000 /* used RFC2292 API on the socket */
 #define	IN6P_MTU		0x80000000 /* receive path MTU */
 
+/* 0x10000000 unused */
 #define INP_ONLIST		0x20000000 /* on pcblist */
 #define	INP_RECVTTL		0x80000000 /* receive incoming IP TTL */
 

@@ -432,18 +432,14 @@ tcp_usr_listen(netmsg_t msg)
 	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
-	if (ncpus > 1) {
+	if (ncpus2 > 1) {
 		/*
-		 * We have to set the flag because we can't have other cpus
-		 * messing with our inp's flags.
+		 * Put this inpcb into wildcard hash on other cpus.
 		 */
 		KASSERT(!(inp->inp_flags & INP_CONNECTED),
 			("already on connhash"));
 		KASSERT(!(inp->inp_flags & INP_WILDCARD),
 			("already on wildcardhash"));
-		KASSERT(!(inp->inp_flags & INP_WILDCARD_MP),
-			("already on MP wildcardhash"));
-		inp->inp_flags |= INP_WILDCARD_MP;
 
 		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
 			    MSGF_PRIORITY, in_pcbinswildcardhash_handler);
@@ -485,18 +481,14 @@ tcp6_usr_listen(netmsg_t msg)
 	tp->t_flags |= TF_LISTEN;
 	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 
-	if (ncpus > 1) {
+	if (ncpus2 > 1) {
 		/*
-		 * We have to set the flag because we can't have other cpus
-		 * messing with our inp's flags.
+		 * Put this inpcb into wildcard hash on other cpus.
 		 */
 		KASSERT(!(inp->inp_flags & INP_CONNECTED),
 			("already on connhash"));
 		KASSERT(!(inp->inp_flags & INP_WILDCARD),
 			("already on wildcardhash"));
-		KASSERT(!(inp->inp_flags & INP_WILDCARD_MP),
-			("already on MP wildcardhash"));
-		inp->inp_flags |= INP_WILDCARD_MP;
 
 		KKASSERT(so->so_port == netisr_cpuport(0));
 		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
