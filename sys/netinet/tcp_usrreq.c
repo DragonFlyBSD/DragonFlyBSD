@@ -1442,18 +1442,21 @@ tcp_ctloutput(netmsg_t msg)
 	}
 
 	if (sopt->sopt_level != IPPROTO_TCP) {
-		switch (sopt->sopt_name) {
-		case IP_MULTICAST_IF:
-		case IP_MULTICAST_VIF:
-		case IP_MULTICAST_TTL:
-		case IP_MULTICAST_LOOP:
-		case IP_ADD_MEMBERSHIP:
-		case IP_DROP_MEMBERSHIP:
-			/*
-			 * Multicast does not make sense on TCP sockets.
-			 */
-			error = EOPNOTSUPP;
-			goto done;
+		if (sopt->sopt_level == IPPROTO_IP) {
+			switch (sopt->sopt_name) {
+			case IP_MULTICAST_IF:
+			case IP_MULTICAST_VIF:
+			case IP_MULTICAST_TTL:
+			case IP_MULTICAST_LOOP:
+			case IP_ADD_MEMBERSHIP:
+			case IP_DROP_MEMBERSHIP:
+				/*
+				 * Multicast does not make sense on
+				 * TCP sockets.
+				 */
+				error = EOPNOTSUPP;
+				goto done;
+			}
 		}
 #ifdef INET6
 		if (INP_CHECK_SOCKAF(so, AF_INET6))
