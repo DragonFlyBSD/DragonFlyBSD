@@ -190,6 +190,8 @@
         ..
         ip6fw
         ..
+        lagg
+        ..
         pf
         ..
         ppp
@@ -209,8 +211,6 @@
         tap
         ..
         tun
-        ..
-        lagg
         ..
     ..
     netbt

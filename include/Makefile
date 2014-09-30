@@ -70,7 +70,7 @@ LSUBDIRS= \
 	net/bridge net/tap net/tun net/ppp net/ppp_layer net/sl \
 	net/pf net/altq \
 	net/vlan net/ipfw net/ip6fw net/dummynet net/sppp net/ip_mroute \
-	net/altq net/lagg \
+	net/lagg \
 	netgraph/UI netgraph/async netgraph/bpf netgraph/bridge \
 	netgraph/cisco netgraph/echo netgraph/eiface netgraph/etf \
 	netgraph/ether netgraph/fec netgraph/frame_relay netgraph/hole \
