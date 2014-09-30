@@ -111,9 +111,10 @@
  * 300705 - Removal of ATM support.
  * 300800 - 3.8 release
  * 300900 - 3.9 master
+ * 300901 - drm/i915 hardware context support added
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300900	/* propagated to newvers */
+#define __DragonFly_version 300901	/* propagated to newvers */
 
 #include <sys/_null.h>
 
