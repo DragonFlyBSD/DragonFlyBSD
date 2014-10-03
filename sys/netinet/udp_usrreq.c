@@ -1698,7 +1698,7 @@ udp_detach(netmsg_t msg)
 	 */
 	lwkt_replymsg(&msg->detach.base.lmsg, EJUSTRETURN);
 
-	if (ncpus == 1) {
+	if (ncpus2 == 1) {
 		/* Only one CPU, detach the inpcb directly. */
 		udp_detach2(so);
 		return;
