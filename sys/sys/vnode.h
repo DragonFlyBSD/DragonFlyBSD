@@ -501,6 +501,7 @@ void	debug_vn_unlock (struct vnode *vp,
 #define VOP_ENOTTY	((void*)(uintptr_t)vop_enotty)
 #define VOP_EINVAL	((void*)(uintptr_t)vop_einval)
 #define VOP_EOPNOTSUPP	((void*)(uintptr_t)vop_eopnotsupp)
+#define VOP_EIO	((void*)(uintptr_t)vop_eio)
 
 int	vn_get_namelen(struct vnode *, int *);
 void	vn_setspecops (struct file *fp);

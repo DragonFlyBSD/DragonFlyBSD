@@ -130,6 +130,12 @@ vop_einval(struct vop_generic_args *ap)
 }
 
 int
+vop_eio(struct vop_generic_args *ap)
+{
+	return (EIO);
+}
+
+int
 vop_stdmarkatime(struct vop_markatime_args *ap)
 {
 	return (EOPNOTSUPP);
