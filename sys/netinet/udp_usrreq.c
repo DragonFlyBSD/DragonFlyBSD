@@ -1713,7 +1713,12 @@ udp_detach(netmsg_t msg)
 	in_pcbofflist(inp);
 
 	if (inp->inp_flags & INP_DIRECT_DETACH) {
-		/* Direct detaching is allowed */
+		/*
+		 * Direct detaching is allowed
+		 */
+		KASSERT((inp->inp_flags & INP_WILDCARD) == 0,
+		    ("in the wildcardhash"));
+		KASSERT(inp->inp_moptions == NULL, ("has mcast options"));
 		udp_detach2(so);
 		return;
 	}
