@@ -64,7 +64,6 @@
 #include <machine/limits.h>
 
 static int	procfs_access (struct vop_access_args *);
-static int	procfs_badop (struct vop_generic_args *);
 static int	procfs_bmap (struct vop_bmap_args *);
 static int	procfs_close (struct vop_close_args *);
 static int	procfs_getattr (struct vop_getattr_args *);
@@ -87,16 +86,16 @@ static int	procfs_readdir_root(struct vop_readdir_args *);
 struct vop_ops procfs_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_access =		procfs_access,
-	.vop_advlock =		(void *)procfs_badop,
+	.vop_advlock =		VOP_EIO,
 	.vop_bmap =		procfs_bmap,
 	.vop_close =		procfs_close,
-	.vop_old_create =	(void *)procfs_badop,
+	.vop_old_create =	VOP_EIO,
 	.vop_getattr =		procfs_getattr,
 	.vop_inactive =		procfs_inactive,
-	.vop_old_link =		(void *)procfs_badop,
+	.vop_old_link =		VOP_EIO,
 	.vop_old_lookup =	procfs_lookup,
-	.vop_old_mkdir =	(void *)procfs_badop,
-	.vop_old_mknod =	(void *)procfs_badop,
+	.vop_old_mkdir =	VOP_EIO,
+	.vop_old_mknod =	VOP_EIO,
 	.vop_open =		procfs_open,
 	.vop_pathconf =		vop_stdpathconf,
 	.vop_print =		procfs_print,
@@ -104,11 +103,11 @@ struct vop_ops procfs_vnode_vops = {
 	.vop_readdir =		procfs_readdir,
 	.vop_readlink =		procfs_readlink,
 	.vop_reclaim =		procfs_reclaim,
-	.vop_old_remove =	(void *)procfs_badop,
-	.vop_old_rename =	(void *)procfs_badop,
-	.vop_old_rmdir =	(void *)procfs_badop,
+	.vop_old_remove =	VOP_EIO,
+	.vop_old_rename =	VOP_EIO,
+	.vop_old_rmdir =	VOP_EIO,
 	.vop_setattr =		procfs_setattr,
-	.vop_old_symlink =	(void *)procfs_badop,
+	.vop_old_symlink =	VOP_EIO,
 	.vop_write =		(void *)procfs_rw,
 	.vop_ioctl =		procfs_ioctl
 };
@@ -491,15 +490,6 @@ procfs_print(struct vop_print_args *ap)
 	kprintf("tag VT_PROCFS, type %d, pid %ld, mode %x, flags %lx\n",
 	    pfs->pfs_type, (long)pfs->pfs_pid, pfs->pfs_mode, pfs->pfs_flags);
 	return (0);
-}
-
-/*
- * generic entry point for unsupported operations
- */
-static int
-procfs_badop(struct vop_generic_args *ap)
-{
-	return (EIO);
 }
 
 /*
