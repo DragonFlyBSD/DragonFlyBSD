@@ -495,6 +495,12 @@ void	debug_vn_unlock (struct vnode *vp,
 #define vn_unlock(vp)		debug_vn_unlock(vp, __FILE__, __LINE__)
 #endif
 
+#define VOP_NULL	((void*)(uintptr_t)vop_null)
+#define VOP_EBADF	((void*)(uintptr_t)vop_ebadf)
+#define VOP_ENOTTY	((void*)(uintptr_t)vop_enotty)
+#define VOP_EINVAL	((void*)(uintptr_t)vop_einval)
+#define VOP_EOPNOTSUPP	((void*)(uintptr_t)vop_eopnotsupp)
+
 int	vn_get_namelen(struct vnode *, int *);
 void	vn_setspecops (struct file *fp);
 int	vn_fullpath (struct proc *p, struct vnode *vn, char **retbuf, char **freebuf, int guess);

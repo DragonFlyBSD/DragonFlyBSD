@@ -565,7 +565,7 @@ portal_badop(void)
 
 struct vop_ops portal_vnode_vops = {
 	.vop_default =		vop_defaultop,
-	.vop_access =		(void *)vop_null,
+	.vop_access =		VOP_NULL,
 	.vop_bmap =		(void *)portal_badop,
 	.vop_getattr =		portal_getattr,
 	.vop_inactive =		portal_inactive,
