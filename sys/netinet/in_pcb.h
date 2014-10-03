@@ -465,6 +465,18 @@ do { \
 #define ASSERT_PCBINFO_TOKEN_HELD(pcbinfo)
 #endif	/* INVARIANTS */
 
+#ifdef INVARIANTS
+#define ASSERT_INP_NOTINHASH(inp) \
+do { \
+	KASSERT(!((inp)->inp_flags & INP_CONNECTED), \
+	    ("already on connhash")); \
+	KASSERT(!((inp)->inp_flags & INP_WILDCARD), \
+	    ("already on wildcardhash")); \
+} while (0)
+#else	/* !INVARIANTS */
+#define ASSERT_INP_NOTINHASH(inp)
+#endif	/* INVARIANTS */
+
 extern int	ipport_lowfirstauto;
 extern int	ipport_lowlastauto;
 extern int	ipport_firstauto;

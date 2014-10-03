@@ -1663,8 +1663,7 @@ in_pcbinsconnhash(struct inpcb *inp)
 
 	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
 	    ("not in the correct netisr"));
-	KASSERT(!(inp->inp_flags & INP_WILDCARD), ("already on wildcardhash"));
-	KASSERT(!(inp->inp_flags & INP_CONNECTED), ("already on connhash"));
+	ASSERT_INP_NOTINHASH(inp);
 	inp->inp_flags |= INP_CONNECTED;
 
 	/*
@@ -2025,10 +2024,7 @@ in_pcbinswildcardhash(struct inpcb *inp)
 
 	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
 	    ("not in correct netisr"));
-	KASSERT(!(inp->inp_flags & INP_CONNECTED),
-		("already on connhash"));
-	KASSERT(!(inp->inp_flags & INP_WILDCARD),
-		("already on wildcardhash"));
+	ASSERT_INP_NOTINHASH(inp);
 	inp->inp_flags |= INP_WILDCARD;
 
 	in_pcbinswildcardhash_oncpu(inp, pcbinfo);

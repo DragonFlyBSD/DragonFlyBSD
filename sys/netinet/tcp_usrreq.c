@@ -436,11 +436,7 @@ tcp_usr_listen(netmsg_t msg)
 		/*
 		 * Put this inpcb into wildcard hash on other cpus.
 		 */
-		KASSERT(!(inp->inp_flags & INP_CONNECTED),
-			("already on connhash"));
-		KASSERT(!(inp->inp_flags & INP_WILDCARD),
-			("already on wildcardhash"));
-
+		ASSERT_INP_NOTINHASH(inp);
 		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
 			    MSGF_PRIORITY, in_pcbinswildcardhash_handler);
 		nm.nm_inp = inp;
@@ -485,14 +481,10 @@ tcp6_usr_listen(netmsg_t msg)
 		/*
 		 * Put this inpcb into wildcard hash on other cpus.
 		 */
-		KASSERT(!(inp->inp_flags & INP_CONNECTED),
-			("already on connhash"));
-		KASSERT(!(inp->inp_flags & INP_WILDCARD),
-			("already on wildcardhash"));
-
 		KKASSERT(so->so_port == netisr_cpuport(0));
 		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
+		ASSERT_INP_NOTINHASH(inp);
 
 		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
 			    MSGF_PRIORITY, in_pcbinswildcardhash_handler);
