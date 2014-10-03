@@ -61,7 +61,6 @@ struct fifoinfo {
 	long		fi_writers;
 };
 
-static int	fifo_badop (void);
 static int	fifo_print (struct vop_print_args *);
 static int	fifo_lookup (struct vop_old_lookup_args *);
 static int	fifo_open (struct vop_open_args *);
@@ -91,28 +90,28 @@ struct vop_ops fifo_vnode_vops = {
 	.vop_advlock =		fifo_advlock,
 	.vop_bmap =		fifo_bmap,
 	.vop_close =		fifo_close,
-	.vop_old_create =	(void *)fifo_badop,
+	.vop_old_create =	VOP_PANIC,
 	.vop_getattr =		VOP_EBADF,
 	.vop_inactive =		fifo_inactive,
 	.vop_ioctl =		fifo_ioctl,
 	.vop_kqfilter =		fifo_kqfilter,
-	.vop_old_link =		(void *)fifo_badop,
+	.vop_old_link =		VOP_PANIC,
 	.vop_old_lookup =	fifo_lookup,
-	.vop_old_mkdir =	(void *)fifo_badop,
-	.vop_old_mknod =	(void *)fifo_badop,
+	.vop_old_mkdir =	VOP_PANIC,
+	.vop_old_mknod =	VOP_PANIC,
 	.vop_open =		fifo_open,
 	.vop_pathconf =		fifo_pathconf,
 	.vop_print =		fifo_print,
 	.vop_read =		fifo_read,
-	.vop_readdir =		(void *)fifo_badop,
-	.vop_readlink =		(void *)fifo_badop,
-	.vop_reallocblks =	(void *)fifo_badop,
+	.vop_readdir =		VOP_PANIC,
+	.vop_readlink =		VOP_PANIC,
+	.vop_reallocblks =	VOP_PANIC,
 	.vop_reclaim =		VOP_NULL,
-	.vop_old_remove =	(void *)fifo_badop,
-	.vop_old_rename =	(void *)fifo_badop,
-	.vop_old_rmdir =	(void *)fifo_badop,
+	.vop_old_remove =	VOP_PANIC,
+	.vop_old_rename =	VOP_PANIC,
+	.vop_old_rmdir =	VOP_PANIC,
 	.vop_setattr =		VOP_EBADF,
-	.vop_old_symlink =	(void *)fifo_badop,
+	.vop_old_symlink =	VOP_PANIC,
 	.vop_write =		fifo_write
 };
 
@@ -592,14 +591,4 @@ static int
 fifo_advlock(struct vop_advlock_args *ap)
 {
 	return ((ap->a_flags & F_POSIX) ? EINVAL : EOPNOTSUPP);
-}
-
-/*
- * Fifo bad operation
- */
-static int
-fifo_badop(void)
-{
-	panic("fifo_badop called");
-	/* NOTREACHED */
 }
