@@ -122,8 +122,6 @@ struct  intel_ring_buffer {
 	 */
 	struct list_head request_list;
 
-	struct list_head gpu_write_list;
-
 	/**
 	 * Do we have some not yet emitted requests outstanding?
 	 */

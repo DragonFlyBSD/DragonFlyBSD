@@ -1005,8 +1005,6 @@ struct drm_i915_gem_object {
 	/** This object's place on the active/inactive lists */
 	struct list_head ring_list;
 	struct list_head mm_list;
-	/** This object's place on GPU write list */
-	struct list_head gpu_write_list;
 	/** This object's place in the batchbuffer or on the eviction list */
 	struct list_head exec_list;
 
@@ -1490,8 +1488,6 @@ int __must_check i915_gem_object_set_domain(struct drm_i915_gem_object *obj,
 					    uint32_t write_domain);
 int __must_check i915_gem_object_finish_gpu(struct drm_i915_gem_object *obj);
 int __must_check i915_gem_init(struct drm_device *dev);
-int i915_gem_flush_ring(struct intel_ring_buffer *ring,
-    uint32_t invalidate_domains, uint32_t flush_domains);
 int __must_check i915_gem_init_hw(struct drm_device *dev);
 void i915_gem_l3_remap(struct drm_device *dev);
 void i915_gem_init_swizzling(struct drm_device *dev);
