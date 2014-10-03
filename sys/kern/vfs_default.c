@@ -141,6 +141,15 @@ vop_null(struct vop_generic_args *ap)
 	return (0);
 }
 
+/**
+ * Helper - panic on bad VOP's in a given filesystem.
+ */
+int
+vop_panic(struct vop_generic_args *ap)
+{
+	panic("filesystem tripped a bad VOP: vop_panic[%s]", ap->a_desc->sd_name);
+}
+
 int
 vop_defaultop(struct vop_generic_args *ap)
 {

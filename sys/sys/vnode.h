@@ -495,6 +495,7 @@ void	debug_vn_unlock (struct vnode *vp,
 #define vn_unlock(vp)		debug_vn_unlock(vp, __FILE__, __LINE__)
 #endif
 
+#define VOP_PANIC	((void*)(uintptr_t)vop_panic)
 #define VOP_NULL	((void*)(uintptr_t)vop_null)
 #define VOP_EBADF	((void*)(uintptr_t)vop_ebadf)
 #define VOP_ENOTTY	((void*)(uintptr_t)vop_enotty)
