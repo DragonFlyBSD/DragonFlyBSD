@@ -42,7 +42,6 @@
 /*
  * Prototypes for dead operations on vnodes.
  */
-static int	dead_badop (void);
 static int	dead_bmap (struct vop_bmap_args *);
 static int	dead_ioctl (struct vop_ioctl_args *);
 static int	dead_lookup (struct vop_old_lookup_args *);
@@ -57,15 +56,15 @@ struct vop_ops dead_vnode_vops = {
 	.vop_access =		VOP_EBADF,
 	.vop_advlock =		VOP_EBADF,
 	.vop_bmap =		dead_bmap,
-	.vop_old_create =	(void *)dead_badop,
+	.vop_old_create =	VOP_PANIC,
 	.vop_getattr =		VOP_EBADF,
 	.vop_inactive =		VOP_NULL,
 	.vop_ioctl =		dead_ioctl,
-	.vop_old_link =		(void *)dead_badop,
+	.vop_old_link =		VOP_PANIC,
 	.vop_old_lookup =	dead_lookup,
-	.vop_old_mkdir =	(void *)dead_badop,
-	.vop_old_mknod =	(void *)dead_badop,
-	.vop_mmap =		(void *)dead_badop,
+	.vop_old_mkdir =	VOP_PANIC,
+	.vop_old_mknod =	VOP_PANIC,
+	.vop_mmap =		VOP_PANIC,
 	.vop_open =		dead_open,
 	.vop_close =		dead_close,
 	.vop_pathconf =		VOP_EBADF,	/* per pathconf(2) */
@@ -74,11 +73,11 @@ struct vop_ops dead_vnode_vops = {
 	.vop_readdir =		VOP_EBADF,
 	.vop_readlink =		VOP_EBADF,
 	.vop_reclaim =		VOP_NULL,
-	.vop_old_remove =	(void *)dead_badop,
-	.vop_old_rename =	(void *)dead_badop,
-	.vop_old_rmdir =	(void *)dead_badop,
+	.vop_old_remove =	VOP_PANIC,
+	.vop_old_rename =	VOP_PANIC,
+	.vop_old_rmdir =	VOP_PANIC,
 	.vop_setattr =		VOP_EBADF,
-	.vop_old_symlink =	(void *)dead_badop,
+	.vop_old_symlink =	VOP_PANIC,
 	.vop_write =		dead_write
 };
 
@@ -199,14 +198,4 @@ dead_print(struct vop_print_args *ap)
 {
 	kprintf("tag VT_NON, dead vnode\n");
 	return (0);
-}
-
-/*
- * Empty vnode bad operation
- */
-static int
-dead_badop(void)
-{
-	panic("dead_badop called");
-	/* NOTREACHED */
 }
