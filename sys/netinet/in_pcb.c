@@ -987,13 +987,8 @@ in_pcbladdr_find(struct inpcb *inp, struct sockaddr *nam,
 	}
 	return (0);
 fail:
-	if (alloc_route) {
-		struct route *ro = &inp->inp_route;
-
-		if (ro->ro_rt != NULL)
-			RTFREE(ro->ro_rt);
-		bzero(ro, sizeof(*ro));
-	}
+	if (alloc_route)
+		in_pcbresetroute(inp);
 	return (EADDRNOTAVAIL);
 }
 
@@ -2365,4 +2360,14 @@ in_pcbcontainer_marker(int cpuid)
 	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
 
 	return &in_pcbcontainer_markers[cpuid];
+}
+
+void
+in_pcbresetroute(struct inpcb *inp)
+{
+	struct route *ro = &inp->inp_route;
+
+	if (ro->ro_rt != NULL)
+		RTFREE(ro->ro_rt);
+	bzero(ro, sizeof(*ro));
 }

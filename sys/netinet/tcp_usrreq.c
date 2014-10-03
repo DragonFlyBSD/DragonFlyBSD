@@ -1134,7 +1134,6 @@ tcp_connect(netmsg_t msg)
 			    inp->inp_lport);
 
 	if (port != &curthread->td_msgport) {
-		struct route *ro = &inp->inp_route;
 		lwkt_msg_t lmsg = &msg->connect.base.lmsg;
 
 		/*
@@ -1142,9 +1141,7 @@ tcp_connect(netmsg_t msg)
 		 * on the current CPU, but we need a route entry on the
 		 * inpcb's owner CPU, so free it here.
 		 */
-		if (ro->ro_rt != NULL)
-			RTFREE(ro->ro_rt);
-		bzero(ro, sizeof(*ro));
+		in_pcbresetroute(inp);
 
 		/*
 		 * We are moving the protocol processing port the socket
@@ -1272,7 +1269,6 @@ tcp6_connect(netmsg_t msg)
 	port = tcp6_addrport();	/* XXX hack for now, always cpu0 */
 
 	if (port != &curthread->td_msgport) {
-		struct route *ro = &inp->inp_route;
 		lwkt_msg_t lmsg = &msg->connect.base.lmsg;
 
 		/*
@@ -1280,9 +1276,7 @@ tcp6_connect(netmsg_t msg)
 		 * on the current CPU, but we need a route entry on the
 		 * inpcb's owner CPU, so free it here.
 		 */
-		if (ro->ro_rt != NULL)
-			RTFREE(ro->ro_rt);
-		bzero(ro, sizeof(*ro));
+		in_pcbresetroute(inp);
 
 		in_pcbunlink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 		msg->connect.nm_flags |= PRUC_RECONNECT;

@@ -530,6 +530,7 @@ void	in_savefaddr (struct socket *so, const struct sockaddr *faddr);
 struct inpcb *
 	in_pcblocalgroup_last(const struct inpcbinfo *, const struct inpcb *);
 void	in_pcbglobalinit(void);
+void	in_pcbresetroute(struct inpcb *);
 
 int	in_pcblist_global(SYSCTL_HANDLER_ARGS);
 int	in_pcblist_global_ncpus2(SYSCTL_HANDLER_ARGS);
