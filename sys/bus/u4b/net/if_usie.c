@@ -1585,4 +1585,3 @@ usie_driver_loaded(struct module *mod, int what, void *arg)
 	}
 	return (0);
 }
-

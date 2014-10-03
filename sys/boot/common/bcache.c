@@ -343,4 +343,3 @@ command_bcache(int argc, char *argv[])
     printf("\n%u ops  %u bypasses  %u hits  %u misses  %u flushes\n", bcache_ops, bcache_bypasses, bcache_hits, bcache_misses, bcache_flushes);
     return(CMD_OK);
 }
-

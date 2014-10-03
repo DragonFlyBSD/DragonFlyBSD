@@ -273,4 +273,3 @@
     0x95, 0x01,		/*  REPORT COUNT (1)			*/\
     0x81, 0x01,		/*  INPUT (Constant)			*/\
     0xc0		/* END COLLECTION			*/\
-

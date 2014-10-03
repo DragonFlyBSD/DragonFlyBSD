@@ -383,4 +383,3 @@ kvm_access_check(vm_offset_t saddr, vm_offset_t eaddr, int prot)
 		return EFAULT;
 	return 0;
 }
-

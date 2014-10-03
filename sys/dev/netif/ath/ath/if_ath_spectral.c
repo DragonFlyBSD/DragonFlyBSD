@@ -282,4 +282,3 @@ bad:
 		kfree(outdata, M_TEMP);
 	return (error);
 }
-

@@ -40,4 +40,3 @@ void	biosched_done(struct thread *td);
 #endif
 
 #endif
-

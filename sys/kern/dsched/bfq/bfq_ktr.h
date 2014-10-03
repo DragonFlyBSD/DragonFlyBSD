@@ -64,4 +64,3 @@ KTR_INFO(KTR_DSCHED_BFQ, dsched_bfq, thread_ttime_avg, 0, "%p: %" PRIu64,
     struct bfq_thread_io *bfq_tdio, off_t ttime_avg);
 
 #endif
-

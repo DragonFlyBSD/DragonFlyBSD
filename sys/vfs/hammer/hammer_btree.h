@@ -249,4 +249,3 @@ struct hammer_node_ondisk {
 	(sizeof(struct hammer_node_ondisk) - sizeof(hammer_crc_t))
 
 typedef struct hammer_node_ondisk *hammer_node_ondisk_t;
-

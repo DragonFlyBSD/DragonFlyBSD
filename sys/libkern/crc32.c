@@ -136,4 +136,3 @@ crc32_ext(const void *buf, size_t size, uint32_t ocrc)
 
 	return crc ^ ~0U;
 }
-

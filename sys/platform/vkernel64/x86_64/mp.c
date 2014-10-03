@@ -505,4 +505,3 @@ get_logical_CPU_number_within_core(int cpuid)
 	return get_apicid_from_cpuid(cpuid) &
 	    ( (1 << logical_CPU_bits) -1);
 }
-

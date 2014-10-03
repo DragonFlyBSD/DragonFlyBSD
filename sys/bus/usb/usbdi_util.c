@@ -561,4 +561,3 @@ usb_find_desc_if(usbd_device_handle dev, int type, int subtype,
 	}
 	return desc;
 }
-

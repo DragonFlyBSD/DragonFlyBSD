@@ -108,4 +108,3 @@ static driver_t cmx_pccard_driver = {
 };
 
 DRIVER_MODULE(cmx, pccard, cmx_pccard_driver, cmx_devclass, NULL, NULL);
-

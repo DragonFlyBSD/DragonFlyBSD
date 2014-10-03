@@ -511,4 +511,3 @@ void twofish_decrypt(twofish_ctx *ctx, const u_int8_t in_blk[], u_int8_t out_blk
     ((u_int32_t *)out_blk)[2] = LE32(blk[0] ^ l_key[2]);
     ((u_int32_t *)out_blk)[3] = LE32(blk[1] ^ l_key[3]);
 };
-

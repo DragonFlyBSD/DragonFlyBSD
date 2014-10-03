@@ -85,5 +85,3 @@ SYSINIT(feeder, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, feeder_register, &feeder ## _cl
 
 #define FEEDRATE_SRC	1
 #define FEEDRATE_DST	2
-
-

@@ -1957,4 +1957,3 @@ int radeon_asic_init(struct radeon_device *rdev)
 
 	return 0;
 }
-

@@ -692,7 +692,3 @@
 #endif
 
 #endif  /*GRAPHICTYPE */
-
-
-
-

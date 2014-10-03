@@ -290,4 +290,3 @@ amrd_detach(device_t dev)
 
     return(0);
 }
-

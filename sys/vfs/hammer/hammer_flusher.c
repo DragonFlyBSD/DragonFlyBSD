@@ -963,4 +963,3 @@ hammer_flusher_haswork(hammer_mount_t hmp)
 	}
 	return(0);
 }
-

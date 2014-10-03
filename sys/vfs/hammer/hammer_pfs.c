@@ -469,4 +469,3 @@ hammer_pfs_delete_at_cursor(hammer_cursor_t cursor, hammer_tid_t trunc_tid)
 	}
 	return(error);
 }
-

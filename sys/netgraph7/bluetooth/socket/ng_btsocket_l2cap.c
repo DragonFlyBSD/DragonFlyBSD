@@ -2810,4 +2810,3 @@ ng_btsocket_l2cap_result2errno(int result)
 
 	return (ENOSYS);
 } /* ng_btsocket_l2cap_result2errno */
-

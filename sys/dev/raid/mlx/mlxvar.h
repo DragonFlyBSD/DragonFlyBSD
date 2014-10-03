@@ -243,5 +243,3 @@ extern int	mlx_submit_ioctl(struct mlx_softc *sc,
 				 struct mlx_sysdrive *drive, u_long cmd, 
 				 caddr_t addr, int32_t flag);
 extern void	mlxd_intr(struct bio *bio);
-
-

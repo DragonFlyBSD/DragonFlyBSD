@@ -1094,4 +1094,3 @@ nglmi_disconnect(hook_p hook)
 	ng_rmnode(hook->node);
 	return (0);
 }
-

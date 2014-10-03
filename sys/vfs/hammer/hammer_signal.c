@@ -58,4 +58,3 @@ hammer_signal_check(hammer_mount_t hmp)
 		return(EINTR);
 	return(0);
 }
-

@@ -89,4 +89,3 @@ db_write_cmd(db_expr_t address, boolean_t have_addr, db_expr_t count,
 
 	db_skip_to_eol();
 }
-

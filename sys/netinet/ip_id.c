@@ -131,4 +131,3 @@ ip_randomid(void)
 	crit_exit();
 	return(r);
 }
-

@@ -495,4 +495,3 @@ ng_etf_disconnect(hook_p hook)
 		ng_rmnode(NG_HOOK_NODE(hook));
 	return (0);
 }
-

@@ -41,4 +41,3 @@
  */
 
 #include "hammer.h"
-

@@ -123,4 +123,3 @@ int	mq_receive1(struct lwp *, mqd_t, void *, size_t, unsigned *, struct timespec
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
 #endif	/* _SYS_MQUEUE_H_ */
-

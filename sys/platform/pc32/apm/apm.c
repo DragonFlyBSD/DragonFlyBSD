@@ -1424,4 +1424,3 @@ static driver_t apm_driver = {
 static devclass_t apm_devclass;
 
 DRIVER_MODULE(apm, nexus, apm_driver, apm_devclass, NULL, NULL);
-

@@ -208,4 +208,3 @@ int  ng_btsocket_l2cap_sockaddr   (struct socket *, struct sockaddr **);
 #endif /* _KERNEL */
 
 #endif /* _NETGRAPH_BTSOCKET_L2CAP_H_ */
-

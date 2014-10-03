@@ -1562,4 +1562,3 @@ static driver_t musycc_driver = {
 };
 
 DRIVER_MODULE(musycc, pci, musycc_driver, musycc_devclass, NULL, NULL);
-

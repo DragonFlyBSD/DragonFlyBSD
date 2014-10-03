@@ -179,4 +179,3 @@ set_user_TLS(void)
 	clear_quickret();
 	crit_exit_quick(td);
 }
-

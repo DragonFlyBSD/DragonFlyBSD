@@ -69,4 +69,3 @@ DO_SETBITS(schedsofttty, &gd->gd_sdelayed, SWI_TTY_PENDING)
 /*DO_SETBITS(schedsoftvm, &gd->gd_sdelayed, SWI_VM_PENDING)*/
 /*DO_SETBITS(schedsofttq, &gd->gd_sdelayed, SWI_TQ_PENDING)*/
 /* YYY schedsoft what? */
-

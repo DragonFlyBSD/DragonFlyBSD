@@ -138,4 +138,3 @@ char* SHA512_Data(const u_int8_t*, size_t, char[SHA512_DIGEST_STRING_LENGTH]);
 #endif /* __cplusplus */
 
 #endif /* __SHA2_H__ */
-

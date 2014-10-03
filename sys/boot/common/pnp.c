@@ -179,4 +179,3 @@ pnp_eisaformat(u_int8_t *data)
     idbuf[7] = 0;
     return(idbuf);
 }
-

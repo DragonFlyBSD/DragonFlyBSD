@@ -734,4 +734,3 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	sleep_gdinit(gd);
 	ATOMIC_CPUMASK_ORBIT(usched_global_cpumask, cpuid);
 }
-

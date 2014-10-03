@@ -200,4 +200,3 @@ db_dump_td_tokens(thread_t td)
 	}
 	db_printf("\n");
 }
-

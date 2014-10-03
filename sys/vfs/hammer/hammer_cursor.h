@@ -171,4 +171,3 @@ struct hammer_cmirror {
 			((cursor)->leaf == &(cursor)->iprec->leaf)
 #define hammer_cursor_ondisk(cursor)		\
 			((cursor)->leaf != &(cursor)->iprec->leaf)
-

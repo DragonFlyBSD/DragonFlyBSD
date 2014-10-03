@@ -442,4 +442,3 @@ smb_sleep(void *chan, struct smb_slock *sl, int slpflags, const char *wmesg, int
 	}
 	return error;
 }
-

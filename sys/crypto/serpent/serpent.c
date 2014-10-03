@@ -628,4 +628,3 @@ void serpent_decrypt(serpent_ctx *ctx, const u_int8_t in_blk[],
     *((u_int32_t *)(out_blk +  8)) = le32toh(c);
     *((u_int32_t *)(out_blk + 12)) = le32toh(d);
 }
-

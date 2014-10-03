@@ -1461,4 +1461,3 @@ int drm_fb_helper_hotplug_event(struct drm_fb_helper *fb_helper)
 
 	return drm_fb_helper_single_fb_probe(fb_helper, bpp_sel);
 }
-

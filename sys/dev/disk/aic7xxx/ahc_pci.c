@@ -234,4 +234,3 @@ ahc_pci_map_registers(struct ahc_softc *ahc)
 	ahc->platform_data->regs = regs;
 	return (0);
 }
-

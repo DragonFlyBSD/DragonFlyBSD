@@ -577,4 +577,3 @@ struct vop_ops portal_vnode_vops = {
 	.vop_reclaim =		portal_reclaim,
 	.vop_setattr =		portal_setattr
 };
-

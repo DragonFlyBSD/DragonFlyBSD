@@ -352,4 +352,3 @@ lwkt_send_ipiq2_bycpu(int dcpu, ipifunc2_t func, void *arg1, int arg2)
 
 #endif	/* _KERNEL */
 #endif	/* _SYS_THREAD2_H_ */
-

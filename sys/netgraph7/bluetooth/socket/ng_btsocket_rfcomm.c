@@ -3573,4 +3573,3 @@ ng_btsocket_rfcomm_prepare_packet(struct sockbuf *sb, int length)
 
 	return (top);
 } /* ng_btsocket_rfcomm_prepare_packet */
-

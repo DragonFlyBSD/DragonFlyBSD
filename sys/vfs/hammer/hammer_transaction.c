@@ -314,4 +314,3 @@ hammer_destroy_objid_cache(hammer_mount_t hmp)
 	}
 	KKASSERT(hmp->objid_cache_count == 0);
 }
-

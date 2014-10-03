@@ -1329,4 +1329,3 @@ journal_nrename(struct vop_nrename_args *ap)
     jreclist_done(mp, &jreclist, error);
     return (error);
 }
-

@@ -235,4 +235,3 @@ struct epic_frag_list {
 #define	SMC9434TX_XG_ADHOC	0xA021
 #define	SMC9432FTX_ADHOC	0xA022
 #define	SMC9432BTX1		0xA024
-

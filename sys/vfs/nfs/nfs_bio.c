@@ -1733,4 +1733,3 @@ nfsmout:
 	kfree(info, M_NFSREQ);
 	lwkt_reltoken(&nmp->nm_token);
 }
-

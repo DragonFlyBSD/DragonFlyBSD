@@ -477,4 +477,3 @@ uslcom_set_flow_ctrl(struct uslcom_softc *sc, tcflag_t cflag, tcflag_t iflag)
 		device_printf(sc->sc_ucom.sc_dev, "uslcom_set_flow: %s\n",
 			      usbd_errstr(err));
 }
-

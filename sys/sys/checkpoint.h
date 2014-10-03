@@ -58,4 +58,3 @@ int sys_checkpoint(int type, int fd, pid_t pid, int retval);
 #endif
 
 #endif /* PRIVATE_CKPT_H_ */
-

@@ -101,4 +101,3 @@ mpls_hashfn(struct mbuf **mp, int hoff)
 	m->m_pkthdr.hash = MPLSP_MPORT_HASH(label, ifp->if_index);
 	m->m_flags |= M_HASH;
 }
-

@@ -1178,4 +1178,3 @@ hammer_cursor_invalidate_cache(hammer_cursor_t cursor)
 		cursor->data = NULL;
         }
 }
-

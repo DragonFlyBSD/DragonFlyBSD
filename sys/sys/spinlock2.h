@@ -278,4 +278,3 @@ spin_uninit(struct spinlock *spin)
 
 #endif	/* _KERNEL */
 #endif	/* _SYS_SPINLOCK2_H_ */
-

@@ -87,4 +87,3 @@ cam_status		xpt_register_async(int event, ac_callback_t *cbfunc,
 #endif /* _KERNEL */
 
 #endif /* _CAM_CAM_XPT_H */
-

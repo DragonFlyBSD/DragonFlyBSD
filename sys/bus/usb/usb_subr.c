@@ -1272,4 +1272,3 @@ usb_disconnect_port(struct usbd_port *up, device_t parent)
 	up->device = NULL;
 	usb_free_device(dev);
 }
-

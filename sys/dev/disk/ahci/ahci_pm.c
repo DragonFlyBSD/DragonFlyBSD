@@ -951,4 +951,3 @@ static void
 ahci_pm_dummy_done(struct ata_xfer *xa)
 {
 }
-

@@ -239,4 +239,3 @@ void cast_setkey(cast_key* key, u_int8_t* rawkey, int keybytes)
 }
 
 /* Made in Canada */
-

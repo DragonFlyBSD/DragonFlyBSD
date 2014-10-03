@@ -674,4 +674,3 @@ symtable_dump(FILE *ofile, FILE *dfile)
 		free(curnode);
 	}
 }
-

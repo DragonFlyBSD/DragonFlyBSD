@@ -1661,4 +1661,3 @@ atopid(const char *b, u_int len)
 
 	return (p);
 }
-

@@ -255,4 +255,3 @@ struct datatag {
 /* for PADT */
 
 #endif /* _NETGRAPH_NG_PPPOE_H_ */
-

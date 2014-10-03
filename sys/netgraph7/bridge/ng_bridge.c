@@ -1042,4 +1042,3 @@ ng_bridge_nodename(node_p node)
 		ksnprintf(name, sizeof(name), "[%x]", ng_node2ID(node));
 	return name;
 }
-

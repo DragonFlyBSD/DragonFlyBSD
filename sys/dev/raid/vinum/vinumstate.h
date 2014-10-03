@@ -259,4 +259,3 @@ enum drivestate {
 	/* last value, for table dimensions */
 	drive_laststate = drive_up
 };
-

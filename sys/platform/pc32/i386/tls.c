@@ -201,4 +201,3 @@ sys_get_tls_area(struct get_tls_area_args *uap)
 	}
 	return(error);
 }
-

@@ -516,4 +516,3 @@ extern void lwkt_remove_tdallq (struct thread *);
 #endif
 
 #endif
-

@@ -57,4 +57,3 @@ cpu_clr_iopl(void)
 {
 	return (EOPNOTSUPP);
 }
-

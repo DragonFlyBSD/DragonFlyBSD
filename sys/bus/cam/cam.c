@@ -397,4 +397,3 @@ cam_calc_geometry(struct ccb_calc_geometry *ccg, int extended)
 	ccg->cylinders = ccg->volume_size / secs_per_cylinder;
 	ccg->ccb_h.status = CAM_REQ_CMP;
 }
-

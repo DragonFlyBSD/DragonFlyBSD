@@ -109,4 +109,3 @@ struct	sockaddr_mpls {
 #define MPLSCTL_FORWARDING	1
 
 #endif /* _NETMPLS_MPLS_H_ */
-

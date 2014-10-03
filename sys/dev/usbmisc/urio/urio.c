@@ -557,4 +557,3 @@ urio_detach(device_t self)
 }
 
 DRIVER_MODULE(urio, uhub, urio_driver, urio_devclass, usbd_driver_load, NULL);
-

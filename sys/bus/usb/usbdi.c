@@ -1242,4 +1242,3 @@ usbd_driver_load(module_t mod, int what, void *arg)
 
  	return (0);
 }
-

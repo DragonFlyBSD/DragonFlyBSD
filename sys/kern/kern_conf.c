@@ -499,4 +499,3 @@ devtoname(cdev_t dev)
 	}
 	return (dev->si_name);
 }
-

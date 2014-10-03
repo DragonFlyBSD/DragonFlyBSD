@@ -850,4 +850,3 @@ ng_mppc_updatekey(u_int32_t bits,
 	rc4_init(rc4, key, keylen);
 }
 #endif
-

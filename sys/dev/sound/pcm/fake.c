@@ -160,5 +160,3 @@ fkchan_kill(struct pcm_channel *c)
 	kfree(c, M_DEVBUF);
 	return 0;
 }
-
-

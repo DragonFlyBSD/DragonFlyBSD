@@ -264,4 +264,3 @@ struct netif_driver efi_net = {
 	0,			/* netif_ifs */
 	0			/* netif_nifs */
 };
-

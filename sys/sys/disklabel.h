@@ -96,4 +96,3 @@ struct disklabel_ops {
 typedef struct disklabel_ops	*disklabel_ops_t;
 
 #endif /* !_SYS_DISKLABEL_H_ */
-

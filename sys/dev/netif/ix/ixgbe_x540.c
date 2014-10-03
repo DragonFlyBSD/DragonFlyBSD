@@ -998,5 +998,3 @@ s32 ixgbe_blink_led_stop_X540(struct ixgbe_hw *hw, u32 index)
 
 	return IXGBE_SUCCESS;
 }
-
-

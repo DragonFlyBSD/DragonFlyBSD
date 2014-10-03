@@ -752,4 +752,3 @@ stopevent(struct proc *p, unsigned int event, unsigned int val)
 		spin_unlock(&p->p_spin);
 	}
 }
-

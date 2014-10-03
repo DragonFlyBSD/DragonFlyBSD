@@ -1634,4 +1634,3 @@ wb_shutdown(device_t dev)
 	wb_stop(sc);
 	lwkt_serialize_exit(ifp->if_serializer);
 }
-

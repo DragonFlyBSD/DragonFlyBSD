@@ -1209,4 +1209,3 @@ ng_hci_process_con_timeout(node_p node, hook_p hook, void *arg1, int con_handle)
 
 	ng_hci_free_con(con);
 } /* ng_hci_process_con_timeout */
-

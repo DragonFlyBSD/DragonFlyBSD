@@ -230,4 +230,3 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
 done:
     return(error);
 }
-

@@ -100,4 +100,3 @@ typedef struct ng_h4_info {
 typedef ng_h4_info_t *		 ng_h4_info_p;
 
 #endif /* _NETGRAPH_H4_VAR_H_ */
-

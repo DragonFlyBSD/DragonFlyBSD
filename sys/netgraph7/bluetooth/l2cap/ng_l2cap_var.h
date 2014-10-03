@@ -185,4 +185,3 @@ typedef struct ng_l2cap_cmd {
 typedef ng_l2cap_cmd_t *		ng_l2cap_cmd_p;
 
 #endif /* ndef _NETGRAPH_L2CAP_VAR_H_ */
-

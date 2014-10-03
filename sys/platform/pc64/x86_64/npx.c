@@ -588,4 +588,3 @@ fpurstor(union savefpu *addr)
 		frstor(addr);
 	}
 }
-

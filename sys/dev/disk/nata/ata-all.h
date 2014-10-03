@@ -701,4 +701,3 @@ MALLOC_DECLARE(M_ATA);
 
 /* Dragonfly: Default request timeout increased from 5 to 10 */
 #define ATA_DEFAULT_TIMEOUT	10
-

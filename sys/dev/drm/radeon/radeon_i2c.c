@@ -1380,4 +1380,3 @@ void radeon_router_select_cd_port(struct radeon_connector *radeon_connector)
 			    radeon_connector->router.i2c_addr,
 			    0x1, val);
 }
-

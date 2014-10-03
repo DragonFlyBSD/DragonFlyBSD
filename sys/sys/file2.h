@@ -122,4 +122,3 @@ fo_kqfilter(struct file *fp, struct knote *kn)
 #endif /* _KERNEL */
 
 #endif /* !SYS_FILE2_H */
-

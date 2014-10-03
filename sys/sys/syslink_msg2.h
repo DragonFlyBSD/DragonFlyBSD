@@ -148,4 +148,3 @@ sl_elm_pop(struct syslink_elm *par, struct syslink_elm *elm)
 	     elm = (void *)((char *)elm + SL_MSG_ALIGN(elm->se_bytes)))
 
 #endif
-

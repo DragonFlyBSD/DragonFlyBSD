@@ -822,4 +822,3 @@ init_maxsockets(void *ignored)
 }
 SYSINIT(param, SI_BOOT1_TUNABLES, SI_ORDER_ANY,
 	init_maxsockets, NULL);
-

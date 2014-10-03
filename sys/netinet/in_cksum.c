@@ -225,4 +225,3 @@ in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
 	++sum0;
     return(~sum0 & 0xffff);
 }
-

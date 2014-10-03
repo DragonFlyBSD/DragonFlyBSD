@@ -4123,4 +4123,3 @@ ar9300_probe(uint16_t vendorid, uint16_t devid)
 }
 
 AH_CHIP(AR9300, ar9300_probe, ar9300_attach);
-

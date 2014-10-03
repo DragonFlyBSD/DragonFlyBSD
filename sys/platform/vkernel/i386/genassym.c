@@ -216,4 +216,3 @@ ASSYM(PS_IDLESTACK, offsetof(struct privatespace, idlestack));
 ASSYM(PS_IDLESTACK_PAGE, offsetof(struct privatespace, idlestack) / PAGE_SIZE);
 ASSYM(PS_IDLESTACK_TOP, sizeof(struct privatespace));
 ASSYM(PS_SIZEOF, sizeof(struct privatespace));
-

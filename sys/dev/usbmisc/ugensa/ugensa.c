@@ -474,4 +474,3 @@ ugensa_e220_changemode(usbd_device_handle dev)
 
 	usbd_do_request(dev, &req, 0);
 }
-

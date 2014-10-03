@@ -92,4 +92,3 @@ DOMAIN_SET(mpls);
 SYSCTL_NODE(_net,	PF_MPLS,	mpls,	CTLFLAG_RW,	0,
 	"MPLS Family");
 #endif
-

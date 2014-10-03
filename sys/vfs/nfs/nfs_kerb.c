@@ -145,4 +145,3 @@ nfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 }
 
 #endif /* NFS_NOSERVER */
-

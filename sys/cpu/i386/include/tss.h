@@ -82,4 +82,3 @@ struct i386tss {
 };
 
 #endif /* _CPU_TSS_H_ */
-

@@ -198,4 +198,3 @@ int		uhci_detach(uhci_softc_t *, int);
 
 void		uhci_shutdown(void *v);
 void		uhci_power(int state, void *priv);
-

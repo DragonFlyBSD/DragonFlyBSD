@@ -391,4 +391,3 @@ vm_page_undirty(vm_page_t m)
 
 #endif	/* _KERNEL */
 #endif	/* _VM_VM_PAGE2_H_ */
-

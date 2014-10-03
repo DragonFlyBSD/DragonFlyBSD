@@ -3714,4 +3714,3 @@ filt_hammervnode(struct knote *kn, long hint)
 	}
 	return (kn->kn_fflags != 0);
 }
-

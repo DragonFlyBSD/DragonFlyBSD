@@ -57,4 +57,3 @@ struct spinlock {
 #define SPINLOCK_EXCLWAIT		0x00100000 /* high bits counter */
 
 #endif
-

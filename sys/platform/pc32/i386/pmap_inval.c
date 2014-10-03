@@ -130,4 +130,3 @@ pmap_inval_done(pmap_inval_info_t info)
     KKASSERT((info->pir_flags & PIRF_CPUSYNC) == 0);
     crit_exit_id("inval");
 }
-

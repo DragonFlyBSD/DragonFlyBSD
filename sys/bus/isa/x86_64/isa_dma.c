@@ -511,4 +511,3 @@ isa_dmabp(struct buf *bp)
 	}
 	return(flags);
 }
-

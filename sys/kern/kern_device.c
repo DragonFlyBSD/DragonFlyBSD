@@ -773,4 +773,3 @@ nullclose(struct dev_close_args *ap)
 {
 	return (0);
 }
-

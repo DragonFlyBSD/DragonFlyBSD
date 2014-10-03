@@ -96,4 +96,3 @@ const usb_descriptor_t *usb_find_desc_if(usbd_device_handle dev, int type,
 					 int subtype,
 					 usb_interface_descriptor_t *id);
 #define USBD_SUBTYPE_ANY (~0)
-

@@ -51,4 +51,3 @@ extern void rc4_crypt(struct rc4_state *state,
 		const u_char *inbuf, u_char *outbuf, int buflen);
 
 #endif
-

@@ -435,4 +435,3 @@ dl_symbol_values(int callpc, const char **name)
 		}
 	}
 }
-

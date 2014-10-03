@@ -1370,4 +1370,3 @@ nfs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	info->allerror = error;
     return(0);
 }
-

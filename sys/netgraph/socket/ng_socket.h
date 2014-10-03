@@ -68,4 +68,3 @@ struct sockaddr_ng {
 };
 
 #endif /* _NETGRAPH_NG_SOCKET_H_ */
-

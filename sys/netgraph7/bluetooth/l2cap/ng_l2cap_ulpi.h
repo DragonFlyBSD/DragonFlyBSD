@@ -77,4 +77,3 @@ int ng_l2cap_l2ca_get_info_rsp (ng_l2cap_con_p, u_int32_t, u_int16_t,
 int ng_l2cap_l2ca_enable_clt   (ng_l2cap_p, struct ng_mesg *);
 
 #endif /* ndef _NETGRAPH_L2CAP_ULPI_H_ */
-

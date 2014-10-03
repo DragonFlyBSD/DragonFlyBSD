@@ -358,4 +358,3 @@ int	ng_wait_node(node_p node, char *msg);
 
 #endif	/* _KERNEL */
 #endif	/* _NETGRAPH_NETGRAPH_H_ */
-

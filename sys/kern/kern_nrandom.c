@@ -769,4 +769,3 @@ NANOUP_EVENT(void)
 	}
 	spin_unlock(&rand_spin);
 }
-

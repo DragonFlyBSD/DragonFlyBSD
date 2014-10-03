@@ -606,4 +606,3 @@ int ixgbevf_get_queues(struct ixgbe_hw *hw, unsigned int *num_tcs,
 	UNREFERENCED_3PARAMETER(hw, num_tcs, default_tc);
 	return IXGBE_SUCCESS;
 }
-

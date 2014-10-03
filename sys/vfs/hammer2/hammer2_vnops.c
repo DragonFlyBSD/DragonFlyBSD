@@ -2556,4 +2556,3 @@ struct vop_ops hammer2_fifo_vops = {
         .vop_setattr =          hammer2_vop_setattr,
         .vop_kqfilter =         hammer2_vop_fifokqfilter
 };
-

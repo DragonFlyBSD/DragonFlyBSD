@@ -1124,4 +1124,3 @@ panic(const char *ctl, ...)
 }
 
 #endif
-

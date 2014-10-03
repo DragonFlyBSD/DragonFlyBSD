@@ -604,4 +604,3 @@ sbcreatecontrol(caddr_t p, int size, int type, int level)
 	mbuftrackid(m, 24);
 	return (m);
 }
-

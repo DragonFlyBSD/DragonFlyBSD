@@ -63,4 +63,3 @@ cpu_clr_iopl(void)
 	clear_quickret();
 	return(0);
 }
-

@@ -790,4 +790,3 @@ struct vop_ops ntfs_vnode_vops = {
 	.vop_read =		ntfs_read,
 	.vop_write =		ntfs_write
 };
-

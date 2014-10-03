@@ -75,4 +75,3 @@ EVENTHANDLER_DECLARE(power_profile_change, power_profile_change_hook);
 
 #endif	/* _KERNEL */
 #endif	/* !_SYS_POWER_H_ */
-

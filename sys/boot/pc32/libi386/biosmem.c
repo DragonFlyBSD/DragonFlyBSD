@@ -128,4 +128,3 @@ bios_getmem(void)
     memtop = 0x100000 + bios_extmem;	/* XXX ignored */
     memtop = 64 * 1024 * 1024;
 }    
-

@@ -2021,4 +2021,3 @@ unp_discard(struct file *fp, void *data __unused)
 		closef(fp, NULL);
 	}
 }
-

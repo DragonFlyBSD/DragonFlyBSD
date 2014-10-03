@@ -172,4 +172,3 @@ physwrite(struct dev_write_args *ap)
 {
 	return(physio(ap->a_head.a_dev, ap->a_uio, ap->a_ioflag));
 }
-

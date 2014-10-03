@@ -1142,4 +1142,3 @@ out:
 
 	return (error);
 } /* page_scan_rep_mode_change */
-

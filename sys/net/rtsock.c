@@ -1470,4 +1470,3 @@ static struct domain routedomain = {
 };
 
 DOMAIN_SET(route);
-

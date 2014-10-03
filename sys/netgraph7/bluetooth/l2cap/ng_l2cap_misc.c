@@ -641,4 +641,3 @@ ng_l2cap_get_ident(ng_l2cap_con_p con)
 
 	return (NG_L2CAP_NULL_IDENT);
 } /* ng_l2cap_get_ident */
-

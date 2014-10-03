@@ -2886,4 +2886,3 @@ ar5416SetIFSTiming(struct ath_hal *ah, const struct ieee80211_channel *chan)
 	OS_REG_RMW_FIELD(ah, AR_D_GBL_IFS_MISC,
 	    AR_D_GBL_IFS_MISC_USEC_DURATION, init_usec);
 }
-

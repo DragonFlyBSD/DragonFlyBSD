@@ -1047,4 +1047,3 @@ dmi_check_system(const struct dmi_system_id *sysid)
 	}
 	return (num);
 }
-

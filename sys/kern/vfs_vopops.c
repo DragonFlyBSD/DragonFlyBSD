@@ -2064,4 +2064,3 @@ vop_nrename_ap(struct vop_nrename_args *ap)
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_nrename);
 	return(error);
 }
-

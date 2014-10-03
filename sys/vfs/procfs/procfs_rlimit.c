@@ -108,4 +108,3 @@ procfs_dorlimit(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 
 	return (error);
 }
-

@@ -1559,4 +1559,3 @@ hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
 	}
 	return(0);
 }
-

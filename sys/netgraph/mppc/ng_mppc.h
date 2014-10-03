@@ -82,4 +82,3 @@ enum {
 };
 
 #endif /* _NETGRAPH_MPPC_H_ */
-

@@ -67,4 +67,3 @@ ssize_t vmspace_pread(void *, void *, size_t, int, off_t);
 ssize_t vmspace_pwrite(void *, const void *, size_t, int, off_t);
 
 #endif
-

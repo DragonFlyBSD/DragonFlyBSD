@@ -231,4 +231,3 @@ ng_UI_disconnect(hook_p hook)
 		panic(__func__);
 	return (0);
 }
-

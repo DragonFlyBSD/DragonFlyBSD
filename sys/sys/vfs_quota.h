@@ -51,4 +51,3 @@ struct mount* vq_vptomp(struct vnode *vp);
 int vq_write_ok(struct mount *mp, uid_t uid, gid_t gid, uint64_t delta);
 
 #endif
-

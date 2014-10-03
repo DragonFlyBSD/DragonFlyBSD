@@ -536,4 +536,3 @@
 
 #define cs_duplex_half(sc) \
         (cs_writereg(sc->nic_addr, PP_AutoNegCTL, NLP_ENABLE))
-

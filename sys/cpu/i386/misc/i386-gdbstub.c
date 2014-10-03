@@ -609,4 +609,3 @@ gdb_handle_exception (db_regs_t *raw_regs, int type, int code)
       putpacket (remcomOutBuffer);
     }
 }
-

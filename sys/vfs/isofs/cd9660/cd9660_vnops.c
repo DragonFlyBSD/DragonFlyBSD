@@ -840,4 +840,3 @@ struct vop_ops cd9660_fifo_vops = {
 	.vop_reclaim =		cd9660_reclaim,
 	.vop_setattr =		cd9660_setattr,
 };
-

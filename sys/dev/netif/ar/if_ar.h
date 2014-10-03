@@ -49,4 +49,3 @@
 #define NG_AR_HOOK_RAW		"rawdata"
 
 #endif /* _DEV_NETIF_AR_IF_AR_H_ */
-

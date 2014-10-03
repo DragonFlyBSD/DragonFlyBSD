@@ -1484,4 +1484,3 @@ jrecord_file_data(struct jrecord *jrec, struct vnode *vp,
     }
     kfree(buf, M_JOURNAL);
 }
-

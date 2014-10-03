@@ -3143,4 +3143,3 @@ audio_attach_mi(device_t dev)
 
 DRIVER_MODULE(uaudio, uhub, uaudio_driver, uaudio_devclass, usbd_driver_load, NULL);
 MODULE_VERSION(uaudio, 1);
-

@@ -88,4 +88,3 @@ int  ng_btsocket_hci_raw_sockaddr   (struct socket *, struct sockaddr **);
 #endif /* _KERNEL */
  
 #endif /* ndef _NETGRAPH_BTSOCKET_HCI_RAW_H_ */
-
