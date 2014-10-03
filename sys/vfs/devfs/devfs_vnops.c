@@ -75,9 +75,7 @@
 #endif
 
 MALLOC_DECLARE(M_DEVFS);
-#define DEVFS_BADOP	(void *)devfs_vop_badop
 
-static int devfs_vop_badop(struct vop_generic_args *);
 static int devfs_vop_access(struct vop_access_args *);
 static int devfs_vop_inactive(struct vop_inactive_args *);
 static int devfs_vop_reclaim(struct vop_reclaim_args *);
@@ -127,31 +125,31 @@ extern struct lock devfs_lock;
 struct vop_ops devfs_vnode_norm_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_access =		devfs_vop_access,
-	.vop_advlock =		DEVFS_BADOP,
-	.vop_bmap =		DEVFS_BADOP,
+	.vop_advlock =		VOP_EIO,
+	.vop_bmap =		VOP_EIO,
 	.vop_close =		vop_stdclose,
 	.vop_getattr =		devfs_vop_getattr,
 	.vop_inactive =		devfs_vop_inactive,
-	.vop_ncreate =		DEVFS_BADOP,
+	.vop_ncreate =		VOP_EIO,
 	.vop_nresolve =		devfs_vop_nresolve,
 	.vop_nlookupdotdot =	devfs_vop_nlookupdotdot,
-	.vop_nlink =		DEVFS_BADOP,
+	.vop_nlink =		VOP_EIO,
 	.vop_nmkdir =		devfs_vop_nmkdir,
-	.vop_nmknod =		DEVFS_BADOP,
+	.vop_nmknod =		VOP_EIO,
 	.vop_nremove =		devfs_vop_nremove,
-	.vop_nrename =		DEVFS_BADOP,
+	.vop_nrename =		VOP_EIO,
 	.vop_nrmdir =		devfs_vop_nrmdir,
 	.vop_nsymlink =		devfs_vop_nsymlink,
 	.vop_open =		vop_stdopen,
 	.vop_pathconf =		vop_stdpathconf,
 	.vop_print =		devfs_vop_print,
-	.vop_read =		DEVFS_BADOP,
+	.vop_read =		VOP_EIO,
 	.vop_readdir =		devfs_vop_readdir,
 	.vop_readlink =		devfs_vop_readlink,
 	.vop_reclaim =		devfs_vop_reclaim,
 	.vop_setattr =		devfs_vop_setattr,
-	.vop_write =		DEVFS_BADOP,
-	.vop_ioctl =		DEVFS_BADOP
+	.vop_write =		VOP_EIO,
+	.vop_ioctl =		VOP_EIO
 };
 
 /*
@@ -173,8 +171,8 @@ struct vop_ops devfs_vnode_dev_vops = {
 	.vop_print =		devfs_vop_print,
 	.vop_kqfilter =		devfs_spec_kqfilter,
 	.vop_read =		devfs_spec_read,
-	.vop_readdir =		DEVFS_BADOP,
-	.vop_readlink =		DEVFS_BADOP,
+	.vop_readdir =		VOP_EIO,
+	.vop_readlink =		VOP_EIO,
 	.vop_reclaim =		devfs_vop_reclaim,
 	.vop_setattr =		devfs_vop_setattr,
 	.vop_strategy =		devfs_spec_strategy,
@@ -229,15 +227,6 @@ node_sync_dev_set(struct devfs_node *node)
 		dev->si_gid = node->gid;
 		dev->si_perms = node->mode;
 	}
-}
-
-/*
- * generic entry point for unsupported operations
- */
-static int
-devfs_vop_badop(struct vop_generic_args *ap)
-{
-	return (EIO);
 }
 
 
