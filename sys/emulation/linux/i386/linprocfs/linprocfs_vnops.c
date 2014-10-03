@@ -71,7 +71,6 @@
 extern struct vnode *procfs_findtextvp (struct proc *);
 
 static int	linprocfs_access (struct vop_access_args *);
-static int	linprocfs_badop (struct vop_generic_args *);
 static int	linprocfs_bmap (struct vop_bmap_args *);
 static int	linprocfs_close (struct vop_close_args *);
 static int	linprocfs_getattr (struct vop_getattr_args *);
@@ -97,16 +96,16 @@ static int	linprocfs_readdir_syskernel(struct vop_readdir_args *ap);
 struct vop_ops linprocfs_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_access =		linprocfs_access,
-	.vop_advlock =		(void *)linprocfs_badop,
+	.vop_advlock =		VOP_EIO,
 	.vop_bmap =		linprocfs_bmap,
 	.vop_close =		linprocfs_close,
-	.vop_old_create =	(void *)linprocfs_badop,
+	.vop_old_create =	VOP_EIO,
 	.vop_getattr =		linprocfs_getattr,
 	.vop_inactive =		linprocfs_inactive,
-	.vop_old_link =		(void *)linprocfs_badop,
+	.vop_old_link =		VOP_EIO,
 	.vop_old_lookup =	linprocfs_lookup,
-	.vop_old_mkdir =	(void *)linprocfs_badop,
-	.vop_old_mknod =	(void *)linprocfs_badop,
+	.vop_old_mkdir =	VOP_EIO,
+	.vop_old_mknod =	VOP_EIO,
 	.vop_open =		linprocfs_open,
 	.vop_pathconf =		vop_stdpathconf,
 	.vop_print =		linprocfs_print,
@@ -114,11 +113,11 @@ struct vop_ops linprocfs_vnode_vops = {
 	.vop_readdir =		linprocfs_readdir,
 	.vop_readlink =		linprocfs_readlink,
 	.vop_reclaim =		linprocfs_reclaim,
-	.vop_old_remove =	(void *)linprocfs_badop,
-	.vop_old_rename =	(void *)linprocfs_badop,
-	.vop_old_rmdir =	(void *)linprocfs_badop,
+	.vop_old_remove =	VOP_EIO,
+	.vop_old_rename =	VOP_EIO,
+	.vop_old_rmdir =	VOP_EIO,
 	.vop_setattr =		linprocfs_setattr,
-	.vop_old_symlink =	(void *)linprocfs_badop,
+	.vop_old_symlink =	VOP_EIO,
 	.vop_write =		(void *)linprocfs_rw,
 	.vop_ioctl =		linprocfs_ioctl
 };
@@ -444,16 +443,6 @@ linprocfs_print(struct vop_print_args *ap)
 	kprintf("tag VT_PROCFS, type %d, pid %ld, mode %x, flags %lx\n",
 	    pfs->pfs_type, (long)pfs->pfs_pid, pfs->pfs_mode, pfs->pfs_flags);
 	return (0);
-}
-
-/*
- * generic entry point for unsupported operations
- */
-static int
-linprocfs_badop(struct vop_generic_args *ap __unused)
-{
-
-	return (EIO);
 }
 
 /*
