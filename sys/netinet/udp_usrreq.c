@@ -1387,6 +1387,8 @@ udp_inswildcardhash(struct inpcb *inp, struct netmsg_base *msg, int error)
 	lwkt_msg_t lmsg = &msg->lmsg;
 	int cpu;
 
+	ASSERT_INP_NOTINHASH(inp);
+
 	/* This inpcb could no longer be directly detached */
 	inp->inp_flags &= ~INP_DIRECT_DETACH;
 
