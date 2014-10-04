@@ -53,17 +53,6 @@
 #define	KTR_DRM		KTR_DEV
 #define	KTR_DRM_REG	KTR_SPARE3
 
-#define	PCI_VENDOR_ID_APPLE		0x106b
-#define	PCI_VENDOR_ID_ASUSTEK		0x1043
-#define	PCI_VENDOR_ID_ATI		0x1002
-#define	PCI_VENDOR_ID_DELL		0x1028
-#define	PCI_VENDOR_ID_HP		0x103c
-#define	PCI_VENDOR_ID_IBM		0x1014
-#define	PCI_VENDOR_ID_INTEL		0x8086
-#define	PCI_VENDOR_ID_SERVERWORKS	0x1166
-#define	PCI_VENDOR_ID_SONY		0x104d
-#define	PCI_VENDOR_ID_VIA		0x1106
-
 #define	hweight32(i)	bitcount32(i)
 
 static inline unsigned long

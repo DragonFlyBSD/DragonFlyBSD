@@ -95,6 +95,7 @@
 
 #include <linux/atomic.h>
 #include <linux/idr.h>
+#include <linux/pci.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/kref.h>

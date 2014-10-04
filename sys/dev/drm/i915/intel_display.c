@@ -8909,8 +8909,6 @@ static const struct intel_dmi_quirk intel_dmi_quirks[] = {
 	},
 };
 
-#define	PCI_ANY_ID	(~0u)
-
 static struct intel_quirk intel_quirks[] = {
 	/* HP Mini needs pipe A force quirk (LP: #322104) */
 	{ 0x27ae, 0x103c, 0x361a, quirk_pipea_force },
