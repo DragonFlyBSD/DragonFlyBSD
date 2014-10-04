@@ -616,8 +616,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
      */
     if (type->ks_limit == 0) {
 	crit_enter();
-	if (type->ks_limit == 0)
-	    malloc_init(type);
+	malloc_init(type);
 	crit_exit();
     }
     ++type->ks_calls;
