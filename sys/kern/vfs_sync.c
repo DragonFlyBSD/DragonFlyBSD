@@ -479,7 +479,7 @@ static int sync_reclaim (struct vop_reclaim_args *);
 static int sync_print(struct vop_print_args *);
 
 static struct vop_ops sync_vnode_vops = {
-	.vop_default =	vop_eopnotsupp,
+	.vop_default =	VOP_ENOTSUPP,
 	.vop_close =	sync_close,
 	.vop_fsync =	sync_fsync,
 	.vop_inactive =	sync_inactive,

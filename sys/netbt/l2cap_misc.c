@@ -48,8 +48,8 @@ struct l2cap_channel_list
 struct l2cap_channel_list
 	l2cap_listen_list = LIST_HEAD_INITIALIZER(l2cap_listen_list);
 
-vm_zone_t l2cap_req_pool;
-vm_zone_t l2cap_pdu_pool;
+struct objcache * l2cap_req_pool;
+struct objcache * l2cap_pdu_pool;
 
 const l2cap_qos_t l2cap_default_qos = {
 	0,			/* flags */
@@ -122,7 +122,7 @@ l2cap_request_alloc(struct l2cap_channel *chan, uint8_t code)
 	if (req && req->lr_id == next_id)
 		return ENFILE;
 
-	req = zalloc(l2cap_req_pool);
+	req = objcache_get(l2cap_req_pool, M_ZERO);
 	if (req == NULL)
 		return ENOMEM;
 
@@ -170,7 +170,7 @@ l2cap_request_free(struct l2cap_req *req)
 		return;
 
 	TAILQ_REMOVE(&link->hl_reqs, req, lr_next);
-	zfree(l2cap_req_pool, req);
+	objcache_put(l2cap_req_pool, req);
 }
 
 /*

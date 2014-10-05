@@ -95,7 +95,7 @@ struct rfcomm_session_list
 struct rfcomm_session_list
 	rfcomm_session_listen = LIST_HEAD_INITIALIZER(rfcomm_session_listen);
 
-vm_zone_t rfcomm_credit_pool;
+struct objcache * rfcomm_credit_pool;
 
 /*
  * RFCOMM System Parameters (see section 5.3)
@@ -159,8 +159,8 @@ static const uint8_t crctable[256] = {	/* reversed, 8-bit, poly=0x07 */
 void
 rfcomm_init(void)
 {
-	rfcomm_credit_pool = zinit("rfcomm_credit",
-	    sizeof(struct rfcomm_credit), 0, 0, 0);
+	rfcomm_credit_pool =
+	    objcache_create_simple(M_BLUETOOTH, sizeof(struct rfcomm_credit));
 }
 
 /*
@@ -242,7 +242,7 @@ rfcomm_session_free(struct rfcomm_session *rs)
 	/* throw away any remaining credit notes */
 	while ((credit = STAILQ_FIRST(&rs->rs_credits)) != NULL) {
 		STAILQ_REMOVE_HEAD(&rs->rs_credits, rc_next);
-		zfree(rfcomm_credit_pool, credit);
+		objcache_put(rfcomm_credit_pool, credit);
 	}
 
 	KKASSERT(STAILQ_EMPTY(&rs->rs_credits));
@@ -481,7 +481,7 @@ rfcomm_session_complete(void *arg, int count)
 		}
 
 		STAILQ_REMOVE_HEAD(&rs->rs_credits, rc_next);
-		zfree(rfcomm_credit_pool, credit);
+		objcache_put(rfcomm_credit_pool, credit);
 	}
 
 	/*
@@ -1458,13 +1458,13 @@ rfcomm_session_send_frame(struct rfcomm_session *rs, int type, int dlci)
 	struct mbuf *m;
 	uint8_t fcs, cr;
 
-	credit = zalloc(rfcomm_credit_pool);
+	credit = objcache_get(rfcomm_credit_pool, M_ZERO);
 	if (credit == NULL)
 		return ENOMEM;
 
 	m = m_gethdr(MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
-		zfree(rfcomm_credit_pool, credit);
+		objcache_put(rfcomm_credit_pool, credit);
 		return ENOMEM;
 	}
 
@@ -1529,7 +1529,7 @@ rfcomm_session_send_uih(struct rfcomm_session *rs, struct rfcomm_dlc *dlc,
 	/*
 	 * Make a credit note for the completion notification
 	 */
-	credit = zalloc(rfcomm_credit_pool);
+	credit = objcache_get(rfcomm_credit_pool, M_ZERO);
 	if (credit == NULL)
 		goto nomem;
 
@@ -1620,7 +1620,7 @@ nomem:
 
 fail:
 	if (credit != NULL)
-		zfree(rfcomm_credit_pool, credit);
+		objcache_put(rfcomm_credit_pool, credit);
 
 	return err;
 }

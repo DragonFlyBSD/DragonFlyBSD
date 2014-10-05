@@ -64,7 +64,6 @@
 
 static int portal_fileid = PORTAL_ROOTFILEID+1;
 
-static int	portal_badop (void);
 static void	portal_closefd (struct thread *td, int fd);
 static int	portal_connect (struct socket *so, struct socket *so2);
 static int	portal_getattr (struct vop_getattr_args *ap);
@@ -552,21 +551,10 @@ portal_print(struct vop_print_args *ap)
 }
 
 
-/*
- * Portal "should never get here" operation
- */
-static int
-portal_badop(void)
-{
-
-	panic("portal: bad op");
-	/* NOTREACHED */
-}
-
 struct vop_ops portal_vnode_vops = {
 	.vop_default =		vop_defaultop,
-	.vop_access =		(void *)vop_null,
-	.vop_bmap =		(void *)portal_badop,
+	.vop_access =		VOP_NULL,
+	.vop_bmap =		VOP_PANIC,
 	.vop_getattr =		portal_getattr,
 	.vop_inactive =		portal_inactive,
 	.vop_old_lookup =	portal_lookup,
@@ -577,4 +565,3 @@ struct vop_ops portal_vnode_vops = {
 	.vop_reclaim =		portal_reclaim,
 	.vop_setattr =		portal_setattr
 };
-

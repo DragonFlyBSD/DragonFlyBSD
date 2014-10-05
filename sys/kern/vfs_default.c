@@ -71,23 +71,23 @@ static int	vop_nostrategy (struct vop_strategy_args *);
  * If there is no specific entry here, we will return EOPNOTSUPP.
  */
 struct vop_ops default_vnode_vops = {
-	.vop_default		= vop_eopnotsupp,
-	.vop_advlock		= (void *)vop_einval,
-	.vop_fsync		= (void *)vop_null,
-	.vop_ioctl		= (void *)vop_enotty,
-	.vop_mmap		= (void *)vop_einval,
+	.vop_default		= VOP_EOPNOTSUPP,
+	.vop_advlock		= VOP_EINVAL,
+	.vop_fsync		= VOP_NULL,
+	.vop_ioctl		= VOP_ENOTTY,
+	.vop_mmap		= VOP_EINVAL,
 	.vop_old_lookup		= vop_nolookup,
 	.vop_open		= vop_stdopen,
 	.vop_close		= vop_stdclose,
 	.vop_pathconf		= vop_stdpathconf,
-	.vop_readlink		= (void *)vop_einval,
-	.vop_reallocblks	= (void *)vop_eopnotsupp,
+	.vop_readlink		= VOP_EINVAL,
+	.vop_reallocblks	= VOP_EOPNOTSUPP,
 	.vop_strategy		= vop_nostrategy,
-	.vop_getacl		= (void *)vop_eopnotsupp,
-	.vop_setacl		= (void *)vop_eopnotsupp,
-	.vop_aclcheck		= (void *)vop_eopnotsupp,
-	.vop_getextattr		= (void *)vop_eopnotsupp,
-	.vop_setextattr		= (void *)vop_eopnotsupp,
+	.vop_getacl		= VOP_EOPNOTSUPP,
+	.vop_setacl		= VOP_EOPNOTSUPP,
+	.vop_aclcheck		= VOP_EOPNOTSUPP,
+	.vop_getextattr		= VOP_EOPNOTSUPP,
+	.vop_setextattr		= VOP_EOPNOTSUPP,
 	.vop_markatime		= vop_stdmarkatime,
 	.vop_nresolve		= vop_compat_nresolve,
 	.vop_nlookupdotdot	= vop_compat_nlookupdotdot,
@@ -130,6 +130,12 @@ vop_einval(struct vop_generic_args *ap)
 }
 
 int
+vop_eio(struct vop_generic_args *ap)
+{
+	return (EIO);
+}
+
+int
 vop_stdmarkatime(struct vop_markatime_args *ap)
 {
 	return (EOPNOTSUPP);
@@ -139,6 +145,15 @@ int
 vop_null(struct vop_generic_args *ap)
 {
 	return (0);
+}
+
+/**
+ * Helper - panic on bad VOP's in a given filesystem.
+ */
+int
+vop_panic(struct vop_generic_args *ap)
+{
+	panic("filesystem tripped a bad VOP: vop_panic[%s]", ap->a_desc->sd_name);
 }
 
 int

@@ -57,6 +57,10 @@
 #include <sys/blist.h>
 #endif
 
+#ifdef MALLOC_DECLARE
+MALLOC_DECLARE(M_PAGER);
+#endif
+
 /*
  * SWB_NPAGES must be a power of 2.  It may be set to 1, 2, 4, 8, or 16
  * pages per allocation.  We recommend you stick with the default of 8.

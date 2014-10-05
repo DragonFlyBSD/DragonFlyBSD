@@ -86,7 +86,6 @@ static int ufs_getattr (struct vop_getattr_args *);
 static int ufs_link (struct vop_old_link_args *);
 static int ufs_makeinode (int mode, struct vnode *, struct vnode **, struct componentname *);
 static int ufs_markatime (struct vop_markatime_args *);
-static int ufs_missingop (struct vop_generic_args *ap);
 static int ufs_mkdir (struct vop_old_mkdir_args *);
 static int ufs_mknod (struct vop_old_mknod_args *);
 static int ufs_mmap (struct vop_mmap_args *);
@@ -2110,13 +2109,6 @@ bad:
 	return (error);
 }
 
-static int
-ufs_missingop(struct vop_generic_args *ap)
-{
-	panic("no vop function for %s in ufs child", ap->a_desc->sd_name);
-	return (EOPNOTSUPP);
-}
-
 static struct filterops ufsread_filtops = 
 	{ FILTEROP_ISFD, NULL, filt_ufsdetach, filt_ufsread };
 static struct filterops ufswrite_filtops = 
@@ -2221,10 +2213,10 @@ filt_ufsvnode(struct knote *kn, long hint)
 /* Global vfs data structures for ufs. */
 static struct vop_ops ufs_vnode_vops = {
 	.vop_default =		vop_defaultop,
-	.vop_fsync =		(void *)ufs_missingop,
-	.vop_read =		(void *)ufs_missingop,
-	.vop_reallocblks =	(void *)ufs_missingop,
-	.vop_write =		(void *)ufs_missingop,
+	.vop_fsync =		VOP_PANIC,
+	.vop_read =		VOP_PANIC,
+	.vop_reallocblks =	VOP_PANIC,
+	.vop_write =		VOP_PANIC,
 	.vop_access =		ufs_access,
 	.vop_advlock =		ufs_advlock,
 	.vop_bmap =		ufs_bmap,
@@ -2256,7 +2248,7 @@ static struct vop_ops ufs_vnode_vops = {
 
 static struct vop_ops ufs_spec_vops = {
 	.vop_default =		vop_defaultop,
-	.vop_fsync =		(void *)ufs_missingop,
+	.vop_fsync =		VOP_PANIC,
 	.vop_access =		ufs_access,
 	.vop_close =		ufs_close,
 	.vop_getattr =		ufs_getattr,
@@ -2271,7 +2263,7 @@ static struct vop_ops ufs_spec_vops = {
 
 static struct vop_ops ufs_fifo_vops = {
 	.vop_default =		fifo_vnoperate,
-	.vop_fsync =		(void *)ufs_missingop,
+	.vop_fsync =		VOP_PANIC,
 	.vop_access =		ufs_access,
 	.vop_close =		ufsfifo_close,
 	.vop_getattr =		ufs_getattr,

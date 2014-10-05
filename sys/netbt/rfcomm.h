@@ -426,7 +426,7 @@ int rfcomm_setopt(struct rfcomm_dlc *, int, void *);
 int rfcomm_setopt2(struct rfcomm_dlc *, int, struct socket *, struct sockopt *);
 int rfcomm_getopt(struct rfcomm_dlc *, int, void *);
 
-extern vm_zone_t rfcomm_credit_pool;
+extern struct objcache * rfcomm_credit_pool;
 #endif /* _KERNEL */
 
 #endif /* _NETBT_RFCOMM_H_ */

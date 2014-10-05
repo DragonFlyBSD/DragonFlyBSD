@@ -354,7 +354,7 @@ typedef union {
 #define L2CAP_LM_SECURE		(1<<2)	/* want secured link */
 
 #ifdef _KERNEL
-#include <vm/vm_zone.h>
+#include <sys/objcache.h>
 
 #include <net/if.h>		/* for struct ifqueue */
 
@@ -363,8 +363,8 @@ LIST_HEAD(l2cap_channel_list, l2cap_channel);
 /* global variables */
 extern struct l2cap_channel_list l2cap_active_list;
 extern struct l2cap_channel_list l2cap_listen_list;
-extern vm_zone_t l2cap_pdu_pool;
-extern vm_zone_t l2cap_req_pool;
+extern struct objcache * l2cap_pdu_pool;
+extern struct objcache * l2cap_req_pool;
 extern const l2cap_qos_t l2cap_default_qos;
 
 /* sysctl variables */

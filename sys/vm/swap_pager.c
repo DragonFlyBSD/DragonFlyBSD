@@ -116,8 +116,8 @@
 #include <vm/vm_pageout.h>
 #include <vm/swap_pager.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_zone.h>
 #include <vm/vnode_pager.h>
+#include <sys/objcache.h>
 
 #include <sys/buf2.h>
 #include <vm/vm_page2.h>
@@ -191,7 +191,9 @@ SYSCTL_INT(_vm, OID_AUTO, swap_size,
 SYSCTL_INT(_vm, OID_AUTO, report_swap_allocs,
         CTLFLAG_RW, &vm_report_swap_allocs, 0, "");
 
-vm_zone_t		swap_zone;
+MALLOC_DEFINE(M_PAGER, "Pager swap", "Page out swap private data");
+
+struct objcache * swap_slab;
 
 /*
  * Red-Black tree for swblock entries
@@ -377,7 +379,7 @@ swap_pager_swap_init(void)
 	nsw_wcount_async_max = nsw_wcount_async;
 
 	/*
-	 * The zone is dynamically allocated so generally size it to
+	 * The slab is dynamically allocated so generally size it to
 	 * maxswzone (32MB to 512MB of KVM).  Set a minimum size based
 	 * on physical memory of around 8x (each swblock can hold 16 pages).
 	 *
@@ -390,13 +392,8 @@ swap_pager_swap_init(void)
 	n2 = n;
 
 	do {
-		swap_zone = zinit(
-			"SWAPMETA", 
-			sizeof(struct swblock), 
-			n,
-			ZONE_INTERRUPT, 
-			1);
-		if (swap_zone != NULL)
+		swap_slab = objcache_create_simple(M_PAGER, sizeof(struct swblock) * n);
+		if (swap_slab != NULL)
 			break;
 		/*
 		 * if the allocation failed, try a zone two thirds the
@@ -405,10 +402,10 @@ swap_pager_swap_init(void)
 		n -= ((n + 2) / 3);
 	} while (n > 0);
 
-	if (swap_zone == NULL)
-		panic("swap_pager_swap_init: swap_zone == NULL");
+	if (swap_slab == NULL)
+		panic("swap_pager_swap_init: swap_slab == NULL");
 	if (n2 != n)
-		kprintf("Swap zone entries reduced from %d to %d.\n", n2, n);
+		kprintf("Swap slab entries reduced from %d to %d.\n", n2, n);
 }
 
 /*
@@ -2166,7 +2163,7 @@ retry:
 	if (swap == NULL) {
 		int i;
 
-		swap = zalloc(swap_zone);
+		swap = objcache_get(swap_slab, M_ZERO);
 		if (swap == NULL) {
 			vm_wait(0);
 			goto retry;
@@ -2283,7 +2280,7 @@ swp_pager_meta_free_callback(struct swblock *swap, void *data)
 	 * if (swap) runs out of blocks and could be freed.
 	 *
 	 * NOTE: Decrement swb_count after swp_pager_freeswapspace()
-	 *	 to deal with a zfree race.
+	 *	 to deal with a zfree race. ?????
 	 */
 	while (index <= eindex) {
 		swblk_t v = swap->swb_pages[index];
@@ -2295,7 +2292,7 @@ swp_pager_meta_free_callback(struct swblock *swap, void *data)
 			--mycpu->gd_vmtotal.t_vm;
 			if (--swap->swb_count == 0) {
 				swp_pager_remove(object, swap);
-				zfree(swap_zone, swap);
+				objcache_put(swap_slab, swap);
 				--object->swblock_count;
 				break;
 			}
@@ -2341,7 +2338,7 @@ swp_pager_meta_free_all(vm_object_t object)
 		}
 		if (swap->swb_count != 0)
 			panic("swap_pager_meta_free_all: swb_count != 0");
-		zfree(swap_zone, swap);
+		objcache_put(swap_slab, swap);
 		--object->swblock_count;
 		lwkt_yield();
 	}
@@ -2392,7 +2389,7 @@ swp_pager_meta_ctl(vm_object_t object, vm_pindex_t index, int flags)
 				--mycpu->gd_vmtotal.t_vm;
 				if (--swap->swb_count == 0) {
 					swp_pager_remove(object, swap);
-					zfree(swap_zone, swap);
+					objcache_put(swap_slab, swap);
 					--object->swblock_count;
 				}
 			} 

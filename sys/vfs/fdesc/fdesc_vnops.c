@@ -525,7 +525,7 @@ fdesc_print(struct vop_print_args *ap)
 
 struct vop_ops fdesc_vnode_vops = {
 	.vop_default =		vop_defaultop,
-	.vop_access =		(void *)vop_null,
+	.vop_access =		VOP_NULL,
 	.vop_getattr =		fdesc_getattr,
 	.vop_inactive =		fdesc_inactive,
 	.vop_old_lookup =	fdesc_lookup,
