@@ -141,8 +141,8 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	smb_share_unlock(ssp, 0);
 	mp->mnt_stat.f_iosize = SSTOVC(ssp)->vc_txmax;
 
-        smp = kmalloc(sizeof(*smp), M_SMBFSDATA, M_WAITOK | M_USE_RESERVE | M_ZERO);
-        mp->mnt_data = (qaddr_t)smp;
+	smp = kmalloc(sizeof(*smp), M_SMBFSDATA, M_WAITOK | M_USE_RESERVE | M_ZERO);
+	mp->mnt_data = (qaddr_t)smp;
 	smp->sm_cred = crhold(cred);
 	smp->sm_hash = hashinit(desiredvnodes, M_SMBFSHASH, &smp->sm_hashlen);
 	if (smp->sm_hash == NULL)
@@ -150,7 +150,7 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	lockinit(&smp->sm_hashlock, "smbfsh", 0, 0);
 	smp->sm_share = ssp;
 	smp->sm_root = NULL;
-        smp->sm_args = args;
+	smp->sm_args = args;
 	smp->sm_caseopt = args.caseopt;
 	smp->sm_args.file_mode = (smp->sm_args.file_mode &
 			    (S_IRWXU|S_IRWXG|S_IRWXO)) | S_IFREG;
@@ -189,7 +189,7 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 #endif
 	return error;
 bad:
-        if (smp) {
+	if (smp) {
 		if (smp->sm_cred)
 			crfree(smp->sm_cred);
 		if (smp->sm_hash)
@@ -200,7 +200,7 @@ bad:
 	}
 	if (ssp)
 		smb_share_put(ssp, &scred);
-        return error;
+	return error;
 }
 
 /* Unmount the filesystem described by mp. */
