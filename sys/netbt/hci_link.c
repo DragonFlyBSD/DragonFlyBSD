@@ -549,7 +549,7 @@ hci_acl_send(struct mbuf *m, struct hci_link *link,
 		return ENETDOWN;
 	}
 
-	pdu = zalloc(l2cap_pdu_pool);
+	pdu = objcache_get(l2cap_pdu_pool, M_ZERO);
 	if (pdu == NULL)
 		goto nomem;
 
@@ -594,7 +594,7 @@ nomem:
 	if (m) m_freem(m);
 	if (pdu) {
 		IF_DRAIN(&pdu->lp_data);
-		zfree(l2cap_pdu_pool, pdu);
+		objcache_put(l2cap_pdu_pool, pdu);
 	}
 
 	return ENOMEM;
@@ -740,7 +740,7 @@ hci_acl_complete(struct hci_link *link, int num)
 						l2cap_start(chan);
 				}
 
-				zfree(l2cap_pdu_pool, pdu);
+				objcache_put(l2cap_pdu_pool, pdu);
 			}
 		} else {
 			pdu->lp_pending -= num;
@@ -965,7 +965,7 @@ hci_link_free(struct hci_link *link, int err)
 		if (pdu->lp_pending)
 			link->hl_unit->hci_num_acl_pkts += pdu->lp_pending;
 
-		zfree(l2cap_pdu_pool, pdu);
+		objcache_put(l2cap_pdu_pool, pdu);
 	}
 
 	KKASSERT(TAILQ_EMPTY(&link->hl_txq));

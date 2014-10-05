@@ -136,30 +136,30 @@ struct protosw btsw[] = {
 static void
 netbt_dispose(struct mbuf* m)
 {
-	zdestroy(l2cap_pdu_pool);
-	zdestroy(l2cap_req_pool);
-	zdestroy(rfcomm_credit_pool);
+	objcache_destroy(l2cap_pdu_pool);
+	objcache_destroy(l2cap_req_pool);
+	objcache_destroy(rfcomm_credit_pool);
 }
 
 static void
 netbt_init(void)
 {
-	l2cap_pdu_pool = zinit("l2cap_pdu", sizeof(struct l2cap_pdu), 1,
-	    ZONE_DESTROYABLE, 1);
+	l2cap_pdu_pool =
+	    objcache_create_simple(M_BLUETOOTH, sizeof(struct l2cap_pdu));
 	if (l2cap_pdu_pool == NULL)
 		goto fail;
-	l2cap_req_pool = zinit("l2cap_req", sizeof(struct l2cap_req), 1,
-	    ZONE_DESTROYABLE, 1);
+	l2cap_req_pool =
+	    objcache_create_simple(M_BLUETOOTH, sizeof(struct l2cap_req));
 	if (l2cap_req_pool == NULL)
 		goto fail;
-	rfcomm_credit_pool = zinit("rfcomm_credit",
-	    sizeof(struct rfcomm_credit), 1, ZONE_DESTROYABLE, 1);
+	rfcomm_credit_pool =
+	    objcache_create_simple(M_BLUETOOTH, sizeof(struct rfcomm_credit));
 	if (rfcomm_credit_pool == NULL)
 		goto fail;
 	return;
 fail:
 	netbt_dispose(NULL);
-	panic("Can't create vm_zones");
+	panic("Can't create magazine out of slab");
 }
 
 struct domain btdomain = {

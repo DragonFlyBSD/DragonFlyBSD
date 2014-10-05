@@ -49,7 +49,7 @@
 
 #include <sys/msgport2.h>
 
-#include <vm/vm_zone.h>
+#include <sys/objcache.h>
 
 #include <netbt/bluetooth.h>
 #include <netbt/hci.h>		/* XXX for EPASSTHROUGH */
