@@ -135,9 +135,6 @@ static struct task firmware_unload_task;
  * This mutex protects accesses to the firmware table.
  */
 static struct lock firmware_lock;
-#if 0
-MTX_SYSINIT(firmware, &firmware_lock, "firmware table", MTX_DEF);
-#endif
 
 /*
  * Helper function to lookup a name.
