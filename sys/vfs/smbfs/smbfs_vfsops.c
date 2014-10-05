@@ -68,14 +68,6 @@ int smbfs_debuglevel = 0;
 
 static int smbfs_version = SMBFS_VERSION;
 
-#ifdef SMBFS_USEZONE
-#include <vm/vm.h>
-#include <vm/vm_extern.h>
-#include <vm/vm_zone.h>
-
-vm_zone_t smbfsmount_zone;
-#endif
-
 SYSCTL_NODE(_vfs, OID_AUTO, smbfs, CTLFLAG_RW, 0, "SMB/CIFS file system");
 SYSCTL_INT(_vfs_smbfs, OID_AUTO, version, CTLFLAG_RD, &smbfs_version, 0, "");
 SYSCTL_INT(_vfs_smbfs, OID_AUTO, debuglevel, CTLFLAG_RW, &smbfs_debuglevel, 0, "");
@@ -149,17 +141,7 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	smb_share_unlock(ssp, 0);
 	mp->mnt_stat.f_iosize = SSTOVC(ssp)->vc_txmax;
 
-#ifdef SMBFS_USEZONE
-	smp = zalloc(smbfsmount_zone);
-#else
-        smp = kmalloc(sizeof(*smp), M_SMBFSDATA, M_WAITOK | M_USE_RESERVE);
-#endif
-        if (smp == NULL) {
-                kprintf("could not alloc smbmount\n");
-                error = ENOMEM;
-		goto bad;
-        }
-	bzero(smp, sizeof(*smp));
+        smp = kmalloc(sizeof(*smp), M_SMBFSDATA, M_WAITOK | M_USE_RESERVE | M_ZERO);
         mp->mnt_data = (qaddr_t)smp;
 	smp->sm_cred = crhold(cred);
 	smp->sm_hash = hashinit(desiredvnodes, M_SMBFSHASH, &smp->sm_hashlen);
@@ -214,11 +196,7 @@ bad:
 			hashdestroy(smp->sm_hash, M_SMBFSHASH,
 			    smp->sm_hashlen);
 		lockdestroy(&smp->sm_hashlock);
-#ifdef SMBFS_USEZONE
-		zfree(smbfsmount_zone, smp);
-#else
 		kfree(smp, M_SMBFSDATA);
-#endif
 	}
 	if (ssp)
 		smb_share_put(ssp, &scred);
@@ -261,11 +239,7 @@ smbfs_unmount(struct mount *mp, int mntflags)
 	if (smp->sm_hash)
 		hashdestroy(smp->sm_hash, M_SMBFSHASH, smp->sm_hashlen);
 	lockdestroy(&smp->sm_hashlock);
-#ifdef SMBFS_USEZONE
-	zfree(smbfsmount_zone, smp);
-#else
 	kfree(smp, M_SMBFSDATA);
-#endif
 	mp->mnt_flag &= ~MNT_LOCAL;
 	return error;
 }
@@ -316,9 +290,6 @@ smbfs_root(struct mount *mp, struct vnode **vpp)
 int
 smbfs_init(struct vfsconf *vfsp)
 {
-#ifdef SMBFS_USEZONE
-	smbfsmount_zone = zinit("SMBFSMOUNT", sizeof(struct smbmount), 0, 0, 1);
-#endif
 	smbfs_pbuf_freecnt = nswbuf / 2 + 1;
 	SMBVDEBUG("done.\n");
 	return 0;
