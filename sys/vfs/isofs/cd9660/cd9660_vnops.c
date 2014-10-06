@@ -157,8 +157,7 @@ cd9660_getattr(struct vop_getattr_args *ap)
 	vap->va_atime	= ip->inode.iso_atime;
 	vap->va_mtime	= ip->inode.iso_mtime;
 	vap->va_ctime	= ip->inode.iso_ctime;
-	vap->va_rmajor	= umajor(ip->inode.iso_rdev);
-	vap->va_rminor	= uminor(ip->inode.iso_rdev);
+	vap->va_rdev	= makedev( umajor(ip->inode.iso_rdev), uminor(ip->inode.iso_rdev) );
 
 	vap->va_size	= (u_quad_t)(unsigned long)ip->i_size;
 	if (ip->i_size == 0 && (vap->va_mode & S_IFMT) == S_IFLNK) {

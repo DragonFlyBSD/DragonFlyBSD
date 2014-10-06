@@ -558,12 +558,11 @@ devfs_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_uid = node->uid;
 	vap->va_gid = node->gid;
 
-	vap->va_rmajor = 0;
-	vap->va_rminor = 0;
+	vap->va_rdev = makedev(0,0);
 
 	if ((node->node_type == Ndev) && node->d_dev)  {
 		reference_dev(node->d_dev);
-		vap->va_rminor = node->d_dev->si_uminor;
+		vap->va_rdev &= minor(node->d_dev->si_uminor);
 		release_dev(node->d_dev);
 	}
 

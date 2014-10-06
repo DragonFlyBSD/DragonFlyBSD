@@ -182,8 +182,7 @@ puffs_setvattr(struct vattr *vap, const struct vattr *sva)
 	SETIFVAL(va_mtime.tv_nsec, long);
 	SETIFVAL(va_gen, u_long);
 	SETIFVAL(va_flags, u_long);
-	SETIFVAL(va_rmajor, int);
-	SETIFVAL(va_rminor, int);
+	SETIFVAL(va_rdev, int);
 	SETIFVAL(va_bytes, u_quad_t);
 #undef SETIFVAL
 	/* ignore va->va_vaflags */
@@ -213,8 +212,7 @@ puffs_vattr_null(struct vattr *vap)
 	    vap->va_atime.tv_nsec =
 	    vap->va_mtime.tv_nsec =
 	    vap->va_ctime.tv_nsec = PUFFS_VNOVAL;
-	vap->va_rmajor = PUFFS_VNOVAL;
-	vap->va_rminor = PUFFS_VNOVAL;
+	vap->va_rdev = makedev(PUFFS_VNOVAL, PUFFS_VNOVAL);
 	vap->va_bytes = (u_quad_t)PUFFS_VNOVAL;
 
 	vap->va_flags = 0;

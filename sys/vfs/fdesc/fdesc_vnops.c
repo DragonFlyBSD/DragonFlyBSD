@@ -292,8 +292,7 @@ fdesc_getattr(struct vop_getattr_args *ap)
 		vap->va_ctime = vap->va_mtime;
 		vap->va_gen = 0;
 		vap->va_flags = 0;
-		vap->va_rmajor = VNOVAL;
-		vap->va_rminor = VNOVAL;
+		vap->va_rdev = makdev(VNOVAL, VNOVAL);
 		vap->va_bytes = 0;
 		break;
 
@@ -322,8 +321,7 @@ fdesc_getattr(struct vop_getattr_args *ap)
 			vap->va_fileid = VTOFDESC(vp)->fd_ix;
 			vap->va_size = stb.st_size;
 			vap->va_blocksize = stb.st_blksize;
-			vap->va_rmajor = umajor(stb.st_rdev);
-			vap->va_rminor = uminor(stb.st_rdev);
+			vap->va_rdev = makedev( umajor(stb.st_rdev), uminor(stb.st_rdev) );
 
 			/*
 			 * If no time data is provided, use the current time.

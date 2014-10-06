@@ -296,8 +296,7 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 	vap->va_uid = pmp->pm_uid;
 	vap->va_gid = pmp->pm_gid;
 	vap->va_nlink = 1;
-	vap->va_rmajor = VNOVAL;
-	vap->va_rminor = VNOVAL;
+	vap->va_rdev = makedev(VNOVAL,VNOVAL);
 	vap->va_size = dep->de_FileSize;
 	dos2unixtime(dep->de_MDate, dep->de_MTime, 0, &vap->va_mtime);
 	if (pmp->pm_flags & MSDOSFSMNT_LONGNAME) {
@@ -343,14 +342,14 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 	 */
 	if ((vap->va_type != VNON) || (vap->va_nlink != VNOVAL) ||
 	    (vap->va_fsid != VNOVAL) || (vap->va_fileid != VNOVAL) ||
-	    (vap->va_blocksize != VNOVAL) || (vap->va_rmajor != VNOVAL) ||
+	    (vap->va_blocksize != VNOVAL) || (major(vap->va_rdev) != VNOVAL) ||
 	    (vap->va_bytes != VNOVAL) || (vap->va_gen != VNOVAL)) {
 #ifdef MSDOSFS_DEBUG
 		kprintf("msdosfs_setattr(): returning EINVAL\n");
 		kprintf("    va_type %u, va_nlink %"PRIx64", va_fsid %x, va_fileid %"PRIx64"\n",
 		    vap->va_type, vap->va_nlink, vap->va_fsid, vap->va_fileid);
 		kprintf("    va_blocksize %lx, va_rmajor %x, va_bytes %"PRIx64", va_gen %"PRIx64"\n",
-		    vap->va_blocksize, vap->va_rmajor, vap->va_bytes, vap->va_gen);
+		    vap->va_blocksize, major(vap->va_rdev), vap->va_bytes, vap->va_gen);
 		kprintf("    va_uid %x, va_gid %x\n",
 		    vap->va_uid, vap->va_gid);
 #endif

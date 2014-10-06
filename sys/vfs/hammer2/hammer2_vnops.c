@@ -414,8 +414,7 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_nlink = ipdata->nlinks;
 	vap->va_uid = hammer2_to_unix_xid(&ipdata->uid);
 	vap->va_gid = hammer2_to_unix_xid(&ipdata->gid);
-	vap->va_rmajor = 0;
-	vap->va_rminor = 0;
+	vap->va_rdev = makedev(0,0);
 	vap->va_size = ip->size;	/* protected by shared lock */
 	vap->va_blocksize = HAMMER2_PBUFSIZE;
 	vap->va_flags = ipdata->uflags;

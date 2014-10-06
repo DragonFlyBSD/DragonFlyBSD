@@ -446,8 +446,7 @@ portal_getattr(struct vop_getattr_args *ap)
 	vap->va_ctime = vap->va_mtime;
 	vap->va_gen = 0;
 	vap->va_flags = 0;
-	vap->va_rmajor = VNOVAL;
-	vap->va_rminor = VNOVAL;
+	vap->va_rdev = makedev(VNOVAL, VNOVAL);
 	/* vap->va_qbytes = 0; */
 	vap->va_bytes = 0;
 	/* vap->va_qsize = 0; */

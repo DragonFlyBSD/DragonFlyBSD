@@ -136,8 +136,7 @@ struct vattr {
 	struct timespec	va_ctime;	/* time file changed */
 	u_int64_t	va_gen;		/* generation number of file */
 	u_long		va_flags;	/* flags defined for file */
-	int		va_rmajor;	/* device the special file represents */
-	int		va_rminor;
+	dev_t		va_rdev;	/* device the special file represents */
 	u_quad_t	va_bytes;	/* bytes of disk space held by file */
 	u_quad_t	va_filerev;	/* file modification number */
 	u_int		va_vaflags;	/* operations flags, see below */

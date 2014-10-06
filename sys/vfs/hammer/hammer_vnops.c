@@ -1039,8 +1039,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_nlink = ip->ino_data.nlinks;
 	vap->va_uid = hammer_to_unix_xid(&ip->ino_data.uid);
 	vap->va_gid = hammer_to_unix_xid(&ip->ino_data.gid);
-	vap->va_rmajor = 0;
-	vap->va_rminor = 0;
+	vap->va_rdev = makedev(0,0);
 	vap->va_size = ip->ino_data.size;
 
 	/*
@@ -1096,8 +1095,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	switch (ip->ino_data.obj_type) {
 	case HAMMER_OBJTYPE_CDEV:
 	case HAMMER_OBJTYPE_BDEV:
-		vap->va_rmajor = ip->ino_data.rmajor;
-		vap->va_rminor = ip->ino_data.rminor;
+		vap->va_rdev = makedev( ip->ino_data.rmajor, ip->ino_data.rminor );
 		break;
 	default:
 		break;

@@ -457,8 +457,7 @@ hpfs_getattr(struct vop_getattr_args *ap)
 	vap->va_nlink = 1;
 	vap->va_uid = hp->h_uid;
 	vap->va_gid = hp->h_gid;
-	vap->va_rmajor = VNOVAL;
-	vap->va_rminor = VNOVAL;
+	vap->va_rdev = makedev(VNOVAL, VNOVAL);
 	vap->va_size = hp->h_fn.fn_size;
 	vap->va_bytes = ((hp->h_fn.fn_size + DEV_BSIZE-1) & ~(DEV_BSIZE-1)) +
 			DEV_BSIZE;
@@ -502,7 +501,7 @@ hpfs_setattr(struct vop_setattr_args *ap)
 	 */
 	if ((vap->va_type != VNON) || (vap->va_nlink != VNOVAL) ||
 	    (vap->va_fsid != VNOVAL) || (vap->va_fileid != VNOVAL) ||
-	    (vap->va_blocksize != VNOVAL) || (vap->va_rmajor != VNOVAL) ||
+	    (vap->va_blocksize != VNOVAL) || (major(vap->va_rdev) != VNOVAL) ||
 	    (vap->va_bytes != VNOVAL) || (vap->va_gen != VNOVAL)) {
 		dprintf(("hpfs_setattr: changing nonsettable attr\n"));
 		return (EINVAL);

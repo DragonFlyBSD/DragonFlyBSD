@@ -183,8 +183,7 @@ ntfs_getattr(struct vop_getattr_args *ap)
 	vap->va_nlink = ip->i_nlink;
 	vap->va_uid = ip->i_mp->ntm_uid;
 	vap->va_gid = ip->i_mp->ntm_gid;
-	vap->va_rmajor = VNOVAL;
-	vap->va_rminor = VNOVAL;
+	vap->va_rdev = makedev(VNOVAL, VNOVAL);
 	vap->va_size = fp->f_size;
 	vap->va_bytes = fp->f_allocated;
 	vap->va_atime = ntfs_nttimetounix(fp->f_times.t_access);

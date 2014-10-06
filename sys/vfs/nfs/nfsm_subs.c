@@ -1575,8 +1575,8 @@ nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
 		fp->fa_mode = vtonfsv3_mode(vap->va_mode);
 		txdr_hyper(vap->va_size, &fp->fa3_size);
 		txdr_hyper(vap->va_bytes, &fp->fa3_used);
-		fp->fa3_rdev.specdata1 = txdr_unsigned(vap->va_rmajor);
-		fp->fa3_rdev.specdata2 = txdr_unsigned(vap->va_rminor);
+		fp->fa3_rdev.specdata1 = txdr_unsigned(major(vap->va_rdev));
+		fp->fa3_rdev.specdata2 = txdr_unsigned(minor(vap->va_rdev));
 		fp->fa3_fsid.nfsuquad[0] = 0;
 		fp->fa3_fsid.nfsuquad[1] = txdr_unsigned(vap->va_fsid);
 		txdr_hyper(vap->va_fileid, &fp->fa3_fileid);
@@ -1591,7 +1591,7 @@ nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
 		if (vap->va_type == VFIFO)
 			fp->fa2_rdev = 0xffffffff;
 		else
-			fp->fa2_rdev = txdr_unsigned(makeudev(vap->va_rmajor, vap->va_rminor));
+			fp->fa2_rdev = txdr_unsigned(makeudev(major(vap->va_rdev), minor(vap->va_rdev)));
 		fp->fa2_blocks = txdr_unsigned(vap->va_bytes / NFS_FABLKSIZE);
 		fp->fa2_fsid = txdr_unsigned(vap->va_fsid);
 		fp->fa2_fileid = txdr_unsigned(vap->va_fileid);

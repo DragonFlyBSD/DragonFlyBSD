@@ -433,7 +433,7 @@ hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
 			vp->v_ops = &pmp->mp->mnt_vn_spec_ops;
 			if (ipdata->type != HAMMER2_OBJTYPE_CDEV)
 				vp->v_type = VBLK;
-			addaliasu(vp, ipdata->rmajor, ipdata->rminor);
+			addaliasu(vp, major(ipdata->rdev), ipdata->rminor);
 			break;
 		case HAMMER2_OBJTYPE_FIFO:
 			vp->v_type = VFIFO;
@@ -703,8 +703,7 @@ retry:
 		switch (nipdata->type) {
 		case HAMMER2_OBJTYPE_CDEV:
 		case HAMMER2_OBJTYPE_BDEV:
-			nipdata->rmajor = vap->va_rmajor;
-			nipdata->rminor = vap->va_rminor;
+			nipdata->rdev = vap->va_rdev;
 			break;
 		default:
 			break;
@@ -1635,8 +1634,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 		wipdata->target_type = ripdata->type;
 		wipdata->type = HAMMER2_OBJTYPE_HARDLINK;
 		wipdata->uflags = 0;
-		wipdata->rmajor = 0;
-		wipdata->rminor = 0;
+		wipdata->rdev = makedev(0,0);
 		wipdata->ctime = 0;
 		wipdata->mtime = 0;
 		wipdata->atime = 0;

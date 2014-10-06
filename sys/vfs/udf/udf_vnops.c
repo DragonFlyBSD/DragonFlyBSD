@@ -318,8 +318,7 @@ udf_getattr(struct vop_getattr_args *a)
 	udf_timetotimespec(&fentry->atime, &vap->va_atime);
 	udf_timetotimespec(&fentry->mtime, &vap->va_mtime);
 	vap->va_ctime = vap->va_mtime; /* XXX Stored as an Extended Attribute */
-	vap->va_rmajor = VNOVAL;
-	vap->va_rminor = VNOVAL;
+	vap->va_rdev = makedev(VNOVAL, VNOVAL);
 	if (vp->v_type & VDIR) {
 		/*
 		 * Directories that are recorded within their ICB will show

@@ -500,7 +500,7 @@ dirfs_setattr(struct vop_setattr_args *ap)
 	 */
 	if ((vap->va_type != VNON) || (vap->va_nlink != VNOVAL) ||
 	    (vap->va_fsid != VNOVAL) || (vap->va_fileid != VNOVAL) ||
-	    (vap->va_blocksize != VNOVAL) || (vap->va_rmajor != VNOVAL) ||
+	    (vap->va_blocksize != VNOVAL) || (major(vap->va_rdev) != VNOVAL) ||
 	    ((int)vap->va_bytes != VNOVAL) || (vap->va_gen != VNOVAL)) {
 		msgno = 0;
 		error = EINVAL;

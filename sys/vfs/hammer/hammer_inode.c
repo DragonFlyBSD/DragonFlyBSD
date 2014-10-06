@@ -307,8 +307,8 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			case HAMMER_OBJTYPE_CDEV:
 			case HAMMER_OBJTYPE_BDEV:
 				vp->v_ops = &hmp->mp->mnt_vn_spec_ops;
-				addaliasu(vp, ip->ino_data.rmajor,
-					  ip->ino_data.rminor);
+				addaliasu(vp, major(ip->ino_data.rdev),
+					  minor(ip->ino_data.rdev));
 				break;
 			case HAMMER_OBJTYPE_FIFO:
 				vp->v_ops = &hmp->mp->mnt_vn_fifo_ops;
@@ -855,8 +855,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	switch(ip->ino_leaf.base.obj_type) {
 	case HAMMER_OBJTYPE_CDEV:
 	case HAMMER_OBJTYPE_BDEV:
-		ip->ino_data.rmajor = vap->va_rmajor;
-		ip->ino_data.rminor = vap->va_rminor;
+		ip->ino_data.rdev = vap->va_rdev;
 		break;
 	default:
 		break;

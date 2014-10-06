@@ -752,8 +752,7 @@ nfs_loadattrcache(struct vnode *vp, struct mbuf **mdp, caddr_t *dposp,
 	vap = &np->n_vattr;
 	vap->va_type = vtyp;
 	vap->va_mode = (vmode & 07777);
-	vap->va_rmajor = rmajor;
-	vap->va_rminor = rminor;
+	vap->va_rdev = makedev(rmajor, rminor);
 	vap->va_mtime = mtime;
 	vap->va_fsid = vp->v_mount->mnt_stat.f_fsid.val[0];
 	if (v3) {

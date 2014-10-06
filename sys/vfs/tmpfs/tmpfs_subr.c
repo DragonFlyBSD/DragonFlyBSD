@@ -547,7 +547,7 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
 	/* Allocate a node that represents the new file. */
 	error = tmpfs_alloc_node(tmp, vap->va_type, cred->cr_uid,
 				 dnode->tn_gid, vap->va_mode, target,
-				 vap->va_rmajor, vap->va_rminor, &node);
+				 major(vap->va_rdev), minor(vap->va_rdev), &node);
 	if (error != 0)
 		return error;
 	TMPFS_NODE_LOCK(node);

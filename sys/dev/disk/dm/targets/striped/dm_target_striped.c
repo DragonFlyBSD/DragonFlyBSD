@@ -388,7 +388,7 @@ dm_target_stripe_deps(dm_table_entry_t *table_en, prop_array_t prop_array)
 		if (error)
 			break;
 		prop_array_add_uint64(prop_array,
-				(uint64_t)makeudev(va.va_rmajor, va.va_rminor));
+				(uint64_t)makeudev(major(va.va_rdev), minor(va.va_rdev)));
 	}
 	return (error);
 }

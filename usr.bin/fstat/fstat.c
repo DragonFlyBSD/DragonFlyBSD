@@ -616,8 +616,8 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 	fsp->fsid = nfsnode.n_vattr.va_fsid;
 	fsp->fileid = nfsnode.n_vattr.va_fileid;
 	fsp->size = nfsnode.n_size;
-	fsp->rdev = makeudev(nfsnode.n_vattr.va_rmajor,
-			     nfsnode.n_vattr.va_rminor);
+	fsp->rdev = makeudev(major(nfsnode.n_vattr.va_rdev),
+			     minor(nfsnode.n_vattr.va_rdev));
 	fsp->mode = nfsnode.n_vattr.va_mode | mtrans(vp->v_type);
 
 	return 1;

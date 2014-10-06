@@ -1758,8 +1758,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
                             (error = priv_check_cred(cred, PRIV_ROOT, 0))) {
 				goto nfsmreply0;
                         }
-			vap->va_rmajor = umajor(rdev);
-			vap->va_rminor = uminor(rdev);
+			vap->va_rdev = makedev( umajor(rdev), uminor(rdev) );
 
 			vn_unlock(dvp);
 			error = VOP_NMKNOD(&nd.nl_nch, dvp, &vp, nd.nl_cred, vap);
@@ -1942,8 +1941,7 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	ERROROUT(nfsm_srvsattr(&info, vap));
 	if (vtyp == VCHR || vtyp == VBLK) {
 		NULLOUT(tl = nfsm_dissect(&info, 2 * NFSX_UNSIGNED));
-		vap->va_rmajor = fxdr_unsigned(u_int32_t, *tl++);
-		vap->va_rminor = fxdr_unsigned(u_int32_t, *tl);
+		vap->va_rdev = makedev( fxdr_unsigned(u_int32_t, *tl++), fxdr_unsigned(u_int32_t, *tl) );
 	}
 
 	/*

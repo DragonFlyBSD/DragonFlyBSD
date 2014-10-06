@@ -230,8 +230,7 @@ vattr_null(struct vattr *vap)
 	vap->va_fsid = VNOVAL;
 	vap->va_fileid = VNOVAL;
 	vap->va_blocksize = VNOVAL;
-	vap->va_rmajor = VNOVAL;
-	vap->va_rminor = VNOVAL;
+	vap->va_rdev = makdev(VNOVAL, VNOVAL);
 	vap->va_atime.tv_sec = VNOVAL;
 	vap->va_atime.tv_nsec = VNOVAL;
 	vap->va_mtime.tv_sec = VNOVAL;

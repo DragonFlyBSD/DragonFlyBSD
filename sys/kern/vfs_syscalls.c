@@ -2043,8 +2043,7 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 
 	VATTR_NULL(&vattr);
 	vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
-	vattr.va_rmajor = rmajor;
-	vattr.va_rminor = rminor;
+	vattr.va_rdev = makedev(rmajor, rminor);
 
 	switch (mode & S_IFMT) {
 	case S_IFMT:	/* used by badsect to flag bad sectors */

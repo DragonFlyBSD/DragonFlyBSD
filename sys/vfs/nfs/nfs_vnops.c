@@ -1545,8 +1545,8 @@ nfs_mknodrpc(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp,
 	info.v3 = NFS_ISV3(dvp);
 
 	if (vap->va_type == VCHR || vap->va_type == VBLK) {
-		rmajor = txdr_unsigned(vap->va_rmajor);
-		rminor = txdr_unsigned(vap->va_rminor);
+		rmajor = txdr_unsigned(major(vap->va_rdev));
+		rminor = txdr_unsigned(minor(vap->va_rdev));
 	} else if (vap->va_type == VFIFO || vap->va_type == VSOCK) {
 		rmajor = nfs_xdrneg1;
 		rminor = nfs_xdrneg1;
@@ -1569,8 +1569,8 @@ nfs_mknodrpc(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp,
 		nfsm_v3attrbuild(&info, vap, FALSE);
 		if (vap->va_type == VCHR || vap->va_type == VBLK) {
 			tl = nfsm_build(&info, 2 * NFSX_UNSIGNED);
-			*tl++ = txdr_unsigned(vap->va_rmajor);
-			*tl = txdr_unsigned(vap->va_rminor);
+			*tl++ = txdr_unsigned(major(vap->va_rdev));
+			*tl = txdr_unsigned(minor(vap->va_rdev));
 		}
 	} else {
 		sp = nfsm_build(&info, NFSX_V2SATTR);

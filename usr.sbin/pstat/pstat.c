@@ -553,9 +553,9 @@ nfs_print(struct vnode *vp)
 	printf(" %6ju %5s", (uintmax_t)VT.va_fileid, flagbuf);
 	type = VT.va_mode & S_IFMT;
 	if (S_ISCHR(VT.va_mode) || S_ISBLK(VT.va_mode))
-		if (usenumflag || ((name = devname((VT.va_rmajor << 8) | VT.va_rminor, type)) == NULL))
+		if (usenumflag || ((name = devname(VT.va_rdev, type)) == NULL))
 			printf("   %2d,%-2d",
-			    VT.va_rmajor, VT.va_rminor);
+			    major(VT.va_rdev), minor(VT.va_rdev));
 		else
 			printf(" %7s", name);
 	else
