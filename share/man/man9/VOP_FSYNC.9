@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/VOP_FSYNC.9,v 1.6.2.2 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd July 24, 1996
+.Dd October 8, 2014
 .Dt VOP_FSYNC 9
 .Os
 .Sh NAME
@@ -36,7 +36,7 @@
 .In sys/param.h
 .In sys/vnode.h
 .Ft int
-.Fn VOP_FSYNC "struct vnode *vp" "struct ucred *cred" "int waitfor" "struct proc *p"
+.Fn VOP_FSYNC "struct vnode *vp" "int waitfor" "int flags"
 .Sh DESCRIPTION
 This call flushes any dirty filesystem buffers for the file.
 It is used to implement the
@@ -48,25 +48,37 @@ system calls.
 Its arguments are:
 .Bl -tag -width waitfor
 .It Ar vp
-the vnode of the file
-.It Ar cred
-the caller's credentials
+the vnode of the file.
 .It Ar waitfor
-whether the function should wait for I/O to complete
-.It Ar p
-the calling process
+whether the function should do data, medata-data updates or be full-synchronous.
+.It Ar flags
+are additional flags to be passed to the filesystem specific
+.Xr fsync 2
+function.
 .El
 .Pp
 The argument
 .Fa waitfor
-is either
-.Dv MNT_WAIT
-or
-.Dv MNT_NOWAIT
-and specifies whether or not the function should wait for the writes
-to finish before returning.
+can use the following flags:
+.Bl -tag -width "MNT_NOWAIT"
+.It MNT_NOWAIT
+is for an asychronous data pass and a meta-data pass as well.
+.It MNT_LAZY
+means a limited amount of data from dirty buffers and a full meta-data synchronization pass.
+.It MNT_WAIT
+will make the syncer try to do a full synchronization pass. That is, a meta-data pass and multiple
+data passes.
+.El
+.Pp
+The argument
+.Fa flags
+is to specify additional flags passed to the filesystem specific
+.Xr fsync 2
+call.
+The only supported flag at the moment is VOP_FSYNC_SYSCALL which indicates the file synchronization
+was requested from userland.
 .Sh LOCKS
-The file should be locked on entry.
+No requirements.
 .Sh RETURN VALUES
 Zero is returned if the call is successful, otherwise an appropriate
 error code is returned.
