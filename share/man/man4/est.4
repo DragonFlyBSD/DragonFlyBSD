@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd March 17, 2011
+.Dd October 10, 2014
 .Dt EST 4
 .Os
 .Sh NAME
@@ -52,7 +52,10 @@ The
 .Nm
 driver provides support for the
 .Tn Enhanced SpeedStep Technology
-present in newer CPUs.
+present in some CPUs.
+Please note that
+.Xr powerd 8
+should be preferred if it is working properly on your system.
 .Pp
 If the CPU is supported
 .Nm
@@ -77,6 +80,9 @@ An associated userland daemon which is part of the
 collection
 .Pa ( sysutils/estd )
 can be used to dynamically set the CPU frequency depending on utilization.
+.Sh SEE ALSO
+.Xr powernow 4 ,
+.Xr powerd 8
 .Sh HISTORY
 The
 .Nm

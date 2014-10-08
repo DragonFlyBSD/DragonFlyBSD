@@ -1,7 +1,7 @@
 .\" (c) Copyright 2010 by Matthew Dillon and Dima Ruban.  Permission to
 .\"    use and distribute based on the DragonFly copyright.
 .\"
-.Dd June 28, 2010
+.Dd October 10, 2014
 .Dt POWERD 8
 .Os
 .Sh NAME
@@ -17,7 +17,8 @@ daemon monitors the CPU load and automatically adjusts the CPU
 frequency up or down.
 .Pp
 All CPUs will be set to their maximum frequency when the 1 second
-machine load exceeds 25% of one CPU.  All CPUs will be set to their
+machine load exceeds 25% of one CPU.
+All CPUs will be set to their
 minimum frequency when the 10 second machine load drops below 12% of
 one CPU.
 .Pp
@@ -36,7 +37,9 @@ The
 utility will exit with a non-zero code if the required sysctls are not
 present.
 .Sh SEE ALSO
-.Xr acpi 4
+.Xr acpi 4 ,
+.Xr est 4 ,
+.Xr powernow 4
 .Sh HISTORY
 The
 .Nm
