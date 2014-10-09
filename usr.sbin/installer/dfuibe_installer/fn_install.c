@@ -644,6 +644,13 @@ fn_install_os(struct i_fn_args *a)
 			    a->os_root, cmd_name(a, "CHFLAGS"),
 			    a->os_root, pfs_mountpt[j]);
 
+	/* Create the rescue image. */
+	command_add(cmds, "%s%s -b %smnt/boot -t %smnt/tmp",
+	    a->os_root, cmd_name(a, "MKINITRD"),
+	    a->os_root, a->os_root);
+	command_add(cmds, "%s%s -rf %smnt/tmp/initrd",
+	    a->os_root, cmd_name(a, "RM"), a->os_root);
+
 	/* Do some preparation if encrypted partitions were configured */
 	if (needcrypt) {
 		command_add(cmds,
@@ -655,11 +662,6 @@ fn_install_os(struct i_fn_args *a)
 		    a->os_root, cmd_name(a, "ECHO"),
 		    a->os_root);
 		if (use_hammer) {
-			command_add(cmds, "%s%s -b %smnt/boot -t %smnt/tmp",
-			    a->os_root, cmd_name(a, "MKINITRD"),
-			    a->os_root, a->os_root);
-			command_add(cmds, "%s%s -rf %smnt/tmp/initrd",
-			    a->os_root, cmd_name(a, "RM"), a->os_root);
 			command_add(cmds,
 			    "%s%s 'initrd.img_load=\"YES\"' >>%smnt/boot/loader.conf",
 			    a->os_root, cmd_name(a, "ECHO"),
