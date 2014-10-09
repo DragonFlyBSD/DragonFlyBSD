@@ -123,6 +123,7 @@
 
 #define ACPI_UINTPTR_T		uintptr_t
 #define ACPI_USE_DO_WHILE_0
+#define ACPI_USE_SYSTEM_CLIBRARY
 
 #ifdef _KERNEL
 
@@ -182,9 +183,7 @@ struct acpicache;
 
 #else /* _KERNEL */
 
-/* Always use DragonFly code over our local versions */
 #define ACPI_USE_STANDARD_HEADERS
-#define ACPI_USE_SYSTEM_CLIBRARY
 
 #define ACPI_CAST_PTHREAD_T(pthread)    ((ACPI_THREAD_ID) ACPI_TO_INTEGER (pthread))
 #define ACPI_FLUSH_CPU_CACHE()
