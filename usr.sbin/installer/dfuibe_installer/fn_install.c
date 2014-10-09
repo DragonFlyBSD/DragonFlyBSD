@@ -644,12 +644,6 @@ fn_install_os(struct i_fn_args *a)
 			    a->os_root, cmd_name(a, "CHFLAGS"),
 			    a->os_root, pfs_mountpt[j]);
 
-	command_add(cmds, "%s%s %sinstall.log %smnt/var/log/install.log",
-	    a->os_root, cmd_name(a, "CP"),
-	    a->tmp, a->os_root);
-	command_add(cmds, "%s%s 600 %smnt/var/log/install.log",
-	    a->os_root, cmd_name(a, "CHMOD"), a->os_root);
-
 	/* Do some preparation if encrypted partitions were configured */
 	if (needcrypt) {
 		command_add(cmds,
@@ -682,6 +676,13 @@ fn_install_os(struct i_fn_args *a)
 		command_add(cmds, "%susr/local/bin/after_installation_routines.sh",
 		    a->os_root);
 	}
+
+	/* Save the installation log. */
+	command_add(cmds, "%s%s %sinstall.log %smnt/var/log/install.log",
+	    a->os_root, cmd_name(a, "CP"),
+	    a->tmp, a->os_root);
+	command_add(cmds, "%s%s 600 %smnt/var/log/install.log",
+	    a->os_root, cmd_name(a, "CHMOD"), a->os_root);
 
 	/*
 	 * Do it!
