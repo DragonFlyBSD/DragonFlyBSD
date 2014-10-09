@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <sys/sched.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <err.h>
 #include <sysexits.h>
@@ -9,7 +10,6 @@
 
 /*
  * $FreeBSD: src/tools/regression/p1003_1b/prutil.c,v 1.1 2000/02/16 14:28:41 dufault Exp $
- * $DragonFly: src/tools/regression/p1003_1b/prutil.c,v 1.3 2007/06/26 23:30:05 josepht Exp $
  */
 void quit(const char *text)
 {

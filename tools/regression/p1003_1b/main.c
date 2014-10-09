@@ -1,6 +1,6 @@
 /* $FreeBSD: src/tools/regression/p1003_1b/main.c,v 1.1 2000/02/16 14:28:40 dufault Exp $ */
-/* $DragonFly: src/tools/regression/p1003_1b/main.c,v 1.2 2003/06/17 04:29:11 dillon Exp $ */
 #include <stdio.h>
+#include <string.h>
 
 int fifo(int argc, char *argv[]);
 int memlock(int argc, char *argv[]);
