@@ -2095,8 +2095,6 @@ kern/dsched/bfq/wf2q.c			optional dsched_bfq
 kern/dsched/bfq/bfq_helper_thread.c	optional dsched_bfq
 
 # ACPICA code
-${ACPICA_DIR}/common/ahids.c			optional acpi
-${ACPICA_DIR}/common/ahuuids.c			optional acpi
 ${ACPICA_COMP_DIR}/debugger/dbcmds.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbconvert.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbdisply.c		optional acpi acpi_debug
@@ -2121,6 +2119,20 @@ ${ACPICA_COMP_DIR}/disassembler/dmresrcl2.c	optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/disassembler/dmresrcs.c	optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/disassembler/dmutils.c	optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/disassembler/dmwalk.c	optional acpi acpi_debug
+${ACPICA_COMP_DIR}/dispatcher/dsargs.c		optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dscontrol.c	optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dsfield.c		optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dsinit.c		optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dsmethod.c	optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dsmthdat.c	optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dsobject.c	optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dsopcode.c	optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dsutils.c		optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dswexec.c		optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dswload.c		optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dswload2.c	optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dswscope.c	optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dswstate.c	optional acpi
 ${ACPICA_COMP_DIR}/events/evevent.c		optional acpi
 ${ACPICA_COMP_DIR}/events/evglock.c		optional acpi
 ${ACPICA_COMP_DIR}/events/evgpe.c		optional acpi
@@ -2136,30 +2148,6 @@ ${ACPICA_COMP_DIR}/events/evxface.c		optional acpi
 ${ACPICA_COMP_DIR}/events/evxfevnt.c		optional acpi
 ${ACPICA_COMP_DIR}/events/evxfgpe.c		optional acpi
 ${ACPICA_COMP_DIR}/events/evxfregn.c		optional acpi
-${ACPICA_COMP_DIR}/hardware/hwacpi.c		optional acpi
-${ACPICA_COMP_DIR}/hardware/hwesleep.c		optional acpi
-${ACPICA_COMP_DIR}/hardware/hwgpe.c		optional acpi
-${ACPICA_COMP_DIR}/hardware/hwpci.c		optional acpi
-${ACPICA_COMP_DIR}/hardware/hwregs.c		optional acpi
-${ACPICA_COMP_DIR}/hardware/hwsleep.c		optional acpi
-${ACPICA_COMP_DIR}/hardware/hwtimer.c		optional acpi
-${ACPICA_COMP_DIR}/hardware/hwvalid.c		optional acpi
-${ACPICA_COMP_DIR}/hardware/hwxface.c		optional acpi
-${ACPICA_COMP_DIR}/hardware/hwxfsleep.c		optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dsargs.c		optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dscontrol.c	optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dsfield.c		optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dsinit.c		optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dsmethod.c	optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dsmthdat.c	optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dsobject.c	optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dsopcode.c	optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dsutils.c		optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dswexec.c		optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dswload.c		optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dswload2.c	optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dswscope.c	optional acpi
-${ACPICA_COMP_DIR}/dispatcher/dswstate.c	optional acpi
 ${ACPICA_COMP_DIR}/executer/exconfig.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exconvrt.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/excreate.c		optional acpi
@@ -2184,17 +2172,16 @@ ${ACPICA_COMP_DIR}/executer/exstoren.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exstorob.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exsystem.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exutils.c		optional acpi
-${ACPICA_COMP_DIR}/parser/psargs.c		optional acpi
-${ACPICA_COMP_DIR}/parser/psloop.c		optional acpi
-${ACPICA_COMP_DIR}/parser/psobject.c		optional acpi
-${ACPICA_COMP_DIR}/parser/psopcode.c		optional acpi
-${ACPICA_COMP_DIR}/parser/psopinfo.c		optional acpi
-${ACPICA_COMP_DIR}/parser/psparse.c		optional acpi
-${ACPICA_COMP_DIR}/parser/psscope.c		optional acpi
-${ACPICA_COMP_DIR}/parser/pstree.c		optional acpi
-${ACPICA_COMP_DIR}/parser/psutils.c		optional acpi
-${ACPICA_COMP_DIR}/parser/pswalk.c		optional acpi
-${ACPICA_COMP_DIR}/parser/psxface.c		optional acpi
+${ACPICA_COMP_DIR}/hardware/hwacpi.c		optional acpi
+${ACPICA_COMP_DIR}/hardware/hwesleep.c		optional acpi
+${ACPICA_COMP_DIR}/hardware/hwgpe.c		optional acpi
+${ACPICA_COMP_DIR}/hardware/hwpci.c		optional acpi
+${ACPICA_COMP_DIR}/hardware/hwregs.c		optional acpi
+${ACPICA_COMP_DIR}/hardware/hwsleep.c		optional acpi
+${ACPICA_COMP_DIR}/hardware/hwtimer.c		optional acpi
+${ACPICA_COMP_DIR}/hardware/hwvalid.c		optional acpi
+${ACPICA_COMP_DIR}/hardware/hwxface.c		optional acpi
+${ACPICA_COMP_DIR}/hardware/hwxfsleep.c		optional acpi
 ${ACPICA_COMP_DIR}/namespace/nsaccess.c		optional acpi
 ${ACPICA_COMP_DIR}/namespace/nsalloc.c		optional acpi
 ${ACPICA_COMP_DIR}/namespace/nsarguments.c	optional acpi
@@ -2216,6 +2203,17 @@ ${ACPICA_COMP_DIR}/namespace/nswalk.c		optional acpi
 ${ACPICA_COMP_DIR}/namespace/nsxfeval.c		optional acpi
 ${ACPICA_COMP_DIR}/namespace/nsxfname.c		optional acpi
 ${ACPICA_COMP_DIR}/namespace/nsxfobj.c		optional acpi
+${ACPICA_COMP_DIR}/parser/psargs.c		optional acpi
+${ACPICA_COMP_DIR}/parser/psloop.c		optional acpi
+${ACPICA_COMP_DIR}/parser/psobject.c		optional acpi
+${ACPICA_COMP_DIR}/parser/psopcode.c		optional acpi
+${ACPICA_COMP_DIR}/parser/psopinfo.c		optional acpi
+${ACPICA_COMP_DIR}/parser/psparse.c		optional acpi
+${ACPICA_COMP_DIR}/parser/psscope.c		optional acpi
+${ACPICA_COMP_DIR}/parser/pstree.c		optional acpi
+${ACPICA_COMP_DIR}/parser/psutils.c		optional acpi
+${ACPICA_COMP_DIR}/parser/pswalk.c		optional acpi
+${ACPICA_COMP_DIR}/parser/psxface.c		optional acpi
 ${ACPICA_COMP_DIR}/resources/rsaddr.c		optional acpi
 ${ACPICA_COMP_DIR}/resources/rscalc.c		optional acpi
 ${ACPICA_COMP_DIR}/resources/rscreate.c		optional acpi
@@ -2237,8 +2235,8 @@ ${ACPICA_COMP_DIR}/tables/tbinstal.c		optional acpi
 ${ACPICA_COMP_DIR}/tables/tbprint.c		optional acpi
 ${ACPICA_COMP_DIR}/tables/tbutils.c		optional acpi
 ${ACPICA_COMP_DIR}/tables/tbxface.c		optional acpi
-${ACPICA_COMP_DIR}/tables/tbxfroot.c		optional acpi
 ${ACPICA_COMP_DIR}/tables/tbxfload.c		optional acpi
+${ACPICA_COMP_DIR}/tables/tbxfroot.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utaddress.c	optional acpi
 ${ACPICA_COMP_DIR}/utilities/utalloc.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utbuffer.c		optional acpi
@@ -2270,6 +2268,8 @@ ${ACPICA_COMP_DIR}/utilities/utuuid.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utxface.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utxferror.c	optional acpi
 ${ACPICA_COMP_DIR}/utilities/utxfinit.c		optional acpi
+${ACPICA_DIR}/common/ahids.c			optional acpi
+${ACPICA_DIR}/common/ahuuids.c			optional acpi
 
 #
 # experimental new USB stack from recent FreeBSD
