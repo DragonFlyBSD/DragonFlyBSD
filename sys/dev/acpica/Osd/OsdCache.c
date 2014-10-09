@@ -56,8 +56,6 @@ struct acpiobjhead {
 
 #include "acpi.h"
 
-#ifndef ACPI_USE_LOCAL_CACHE
-
 ACPI_STATUS
 AcpiOsCreateCache(char *CacheName, UINT16 ObjectSize, UINT16 MaxDepth,
     ACPI_CACHE_T **ReturnCache)
@@ -145,5 +143,3 @@ AcpiOsReleaseObject(ACPI_CACHE_T *Cache, void *Object)
 	objcache_put(Cache->cache, head);
 	return AE_OK;
 }
-
-#endif

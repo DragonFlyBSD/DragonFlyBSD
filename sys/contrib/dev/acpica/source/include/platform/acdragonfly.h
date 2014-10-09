@@ -176,10 +176,8 @@
 #define ACPI_SPINLOCK	struct acpi_spinlock *
 struct acpi_spinlock;
 
-#ifndef ACPI_USE_LOCAL_CACHE
 #define ACPI_CACHE_T	struct acpicache
 struct acpicache;
-#endif
 
 #else /* _KERNEL */
 

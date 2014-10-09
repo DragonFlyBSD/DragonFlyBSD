@@ -76,7 +76,7 @@ SRCS+=	acpi_pci.c acpi_pcib.c acpi_pcib_acpi.c acpi_pcib_pci.c
 SRCS+=	acpi_pci_link.c
 SRCS+=  acpi_powerres.c acpi_quirk.c acpi_resource.c acpi_thermal.c
 SRCS+=  acpi_timer.c acpi_hpet.c acpi_if.c acpi_wmi_if.c
-SRCS+=  OsdDebug.c
+SRCS+=  OsdCache.c OsdDebug.c
 SRCS+=  OsdHardware.c OsdInterrupt.c OsdMemory.c OsdSchedule.c
 SRCS+=  OsdStream.c OsdSynch.c OsdTable.c OsdEnvironment.c
 SRCS+=  opt_acpi.h opt_ddb.h opt_ktr.h
@@ -93,12 +93,6 @@ opt_ddb.h: Makefile
 .else
 opt_ddb.h: Makefile
 	echo -n > ${.TARGET}
-.endif
-.if ACPI_USE_LOCAL_CACHE
-CFLAGS+= -DACPI_USE_LOCAL_CACHE
-SRCS+=		utcache.c
-.else
-SRCS+=		OsdCache.c
 .endif
 
 # Machine-specific code for P-State
