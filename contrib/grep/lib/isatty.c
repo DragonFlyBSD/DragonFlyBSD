@@ -1,5 +1,5 @@
 /* isatty() replacement.
-   Copyright (C) 2012 Free Software Foundation, Inc.
+   Copyright (C) 2012-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@
 #define IsConsoleHandle(h) (((intptr_t) (h) & 3) == 3)
 
 #if HAVE_MSVC_INVALID_PARAMETER_HANDLER
-static inline int
+static int
 _isatty_nothrow (int fd)
 {
   int result;

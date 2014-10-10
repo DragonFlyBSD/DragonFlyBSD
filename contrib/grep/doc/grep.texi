@@ -13,10 +13,12 @@
 @syncodeindex vr cp
 @c %**end of header
 
+@documentencoding UTF-8
+
 @copying
 This manual is for @command{grep}, a pattern matching engine.
 
-Copyright @copyright{} 1999-2002, 2005, 2008-2012 Free Software Foundation,
+Copyright @copyright{} 1999--2002, 2005, 2008--2014 Free Software Foundation,
 Inc.
 
 @quotation
@@ -193,7 +195,19 @@ The empty file contains zero patterns, and therefore matches nothing.
 @opindex -y
 @opindex --ignore-case
 @cindex case insensitive search
-Ignore case distinctions in both the pattern and the input files.
+Ignore case distinctions, so that characters that differ only in case
+match each other.  Although this is straightforward when letters
+differ in case only via lowercase-uppercase pairs, the behavior is
+unspecified in other situations.  For example, uppercase ``S'' has an
+unusual lowercase counterpart ``ſ'' (Unicode character U+017F, LATIN
+SMALL LETTER LONG S) in many locales, and it is unspecified whether
+this unusual character matches ``S'' or ``s'' even though uppercasing
+it yields ``S''.  Another example: the lowercase German letter ``ß''
+(U+00DF, LATIN SMALL LETTER SHARP S) is normally capitalized as the
+two-character string ``SS'' but it does not match ``SS'', and it might
+not match the uppercase letter ``ẞ'' (U+1E9E, LATIN CAPITAL LETTER
+SHARP S) even though lowercasing the latter yields the former.
+
 @option{-y} is an obsolete synonym that is provided for compatibility.
 (@option{-i} is specified by POSIX.)
 
@@ -518,14 +532,13 @@ Print @var{num} lines of leading and trailing output context.
 @opindex --group-separator
 @cindex group separator
 When @option{-A}, @option{-B} or @option{-C} are in use,
-print @var{string} instead of @option{--} around disjoint groups
-of lines.
+print @var{string} instead of @option{--} between groups of lines.
 
 @item --no-group-separator
 @opindex --group-separator
 @cindex group separator
 When @option{-A}, @option{-B} or @option{-C} are in use,
-print disjoint groups of lines adjacent to each other.
+do not print a separator between groups of lines.
 
 @end table
 
@@ -541,26 +554,25 @@ between prefix fields and actual line content.
 Context (i.e., non-matching) lines use @samp{-} instead.
 
 @item
-When no context is specified,
+When context is not specified,
 matching lines are simply output one right after another.
 
 @item
-When nonzero context is specified,
+When context is specified,
 lines that are adjacent in the input form a group
 and are output one right after another, while
-a separator appears by default between disjoint groups on a line
-of its own and without any prefix.
+by default a separator appears between non-adjacent groups.
 
 @item
 The default separator
-is @samp{--}, however whether to include it and its appearance
+is a @samp{--} line; its presence and appearance
 can be changed with the options above.
 
 @item
 Each group may contain
 several matching lines when they are close enough to each other
-that two otherwise adjacent but divided groups connect
-and can just merge into a single contiguous one.
+that two adjacent groups connect and can merge into a single
+contiguous one.
 @end itemize
 
 @node File and Directory Selection
@@ -656,8 +668,8 @@ under @option{--exclude}).
 @item --exclude-dir=@var{dir}
 @opindex --exclude-dir
 @cindex exclude directories
-Exclude directories matching the pattern @var{dir} from recursive
-directory searches.
+Skip any directory whose name matches the pattern @var{dir}, ignoring
+any redundant trailing slashes in @var{dir}.
 
 @item -I
 Process a binary file as if it did not contain matching data;
@@ -705,15 +717,6 @@ directory, recursively, following all symbolic links.
 @cindex line buffering
 Use line buffering on output.
 This can cause a performance penalty.
-
-@item --mmap
-@opindex --mmap
-@cindex memory mapped input
-This option is deprecated and now elicits a warning, but is otherwise a no-op.
-It used to make @command{grep} read
-input with the @code{mmap} system call, instead of the default @code{read}
-system call.  On modern systems, @code{mmap} would rarely if ever yield
-better performance.
 
 @item -U
 @itemx --binary
@@ -960,8 +963,8 @@ They are omitted (i.e., false) by default and become true when specified.
 @cindex national language support
 @cindex NLS
 These variables specify the locale for the @code{LC_COLLATE} category,
-which determines the collating sequence
-used to interpret range expressions like @samp{[a-z]}.
+which might affect how range expressions like @samp{[a-z]} are
+interpreted.
 
 @item LC_ALL
 @itemx LC_CTYPE
@@ -1180,6 +1183,7 @@ The preceding item is matched @var{n} or more times.
 @cindex braces, first argument omitted
 @cindex match expression at most @var{m} times
 The preceding item is matched at most @var{m} times.
+This is a GNU extension.
 
 @item @{@var{n},@var{m}@}
 @opindex @{@var{n},@var{m}@}
@@ -1222,14 +1226,13 @@ For example, the regular expression
 Within a bracket expression, a @dfn{range expression} consists of two
 characters separated by a hyphen.
 It matches any single character that
-sorts between the two characters, inclusive, using the locale's
-collating sequence and character set.
-For example, in the default C
-locale, @samp{[a-d]} is equivalent to @samp{[abcd]}.
-Many locales sort
-characters in dictionary order, and in these locales @samp{[a-d]} is
-typically not equivalent to @samp{[abcd]};
-it might be equivalent to @samp{[aBbCcDd]}, for example.
+sorts between the two characters, inclusive.
+In the default C locale, the sorting sequence is the native character
+order; for example, @samp{[a-d]} is equivalent to @samp{[abcd]}.
+In other locales, the sorting sequence is not specified, and
+@samp{[a-d]} might be equivalent to @samp{[abcd]} or to
+@samp{[aBbCcDd]}, or it might fail to match any character, or the set of
+characters that it matches might even be erratic.
 To obtain the traditional interpretation
 of bracket expressions, you can use the @samp{C} locale by setting the
 @env{LC_ALL} environment variable to the value @samp{C}.
@@ -1714,25 +1717,19 @@ How can I match across lines?
 
 Standard grep cannot do this, as it is fundamentally line-based.
 Therefore, merely using the @code{[:space:]} character class does not
-match newlines in the way you might expect.  However, if your grep is
-compiled with Perl patterns enabled, the Perl @samp{s}
-modifier (which makes @code{.} match newlines) can be used:
-
-@example
-printf 'foo\nbar\n' | grep -P '(?s)foo.*?bar'
-@end example
+match newlines in the way you might expect.
 
 With the GNU @command{grep} option @code{-z} (@pxref{File and
 Directory Selection}), the input is terminated by null bytes.  Thus,
-you can match newlines in the input, but the output will be the whole
-file, so this is really only useful to determine if the pattern is
-present:
+you can match newlines in the input, but typically if there is a match
+the entire input is output, so this usage is often combined with
+output-suppressing options like @option{-q}, e.g.:
 
 @example
 printf 'foo\nbar\n' | grep -z -q 'foo[[:space:]]\+bar'
 @end example
 
-Failing either of those options, you need to transform the input
+If this does not suffice, you can transform the input
 before giving it to @command{grep}, or turn to @command{awk},
 @command{sed}, @command{perl}, or many other utilities that are
 designed to operate across lines.

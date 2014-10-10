@@ -1,5 +1,5 @@
 /* Define at-style functions like fstatat, unlinkat, fchownat, etc.
-   Copyright (C) 2006, 2009-2012 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2009-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -17,9 +17,17 @@
 /* written by Jim Meyering */
 
 #include "dosname.h" /* solely for definition of IS_ABSOLUTE_FILE_NAME */
-#include "openat.h"
-#include "openat-priv.h"
-#include "save-cwd.h"
+
+#ifdef GNULIB_SUPPORT_ONLY_AT_FDCWD
+# include <errno.h>
+# ifndef ENOTSUP
+#  define ENOTSUP EINVAL
+# endif
+#else
+# include "openat.h"
+# include "openat-priv.h"
+# include "save-cwd.h"
+#endif
 
 #ifdef AT_FUNC_USE_F1_COND
 # define CALL_FUNC(F)                           \
@@ -61,16 +69,21 @@
 FUNC_RESULT
 AT_FUNC_NAME (int fd, char const *file AT_FUNC_POST_FILE_PARAM_DECLS)
 {
+  VALIDATE_FLAG (flag);
+
+  if (fd == AT_FDCWD || IS_ABSOLUTE_FILE_NAME (file))
+    return CALL_FUNC (file);
+
+#ifdef GNULIB_SUPPORT_ONLY_AT_FDCWD
+  errno = ENOTSUP;
+  return FUNC_FAIL;
+#else
+  {
   /* Be careful to choose names unlikely to conflict with
      AT_FUNC_POST_FILE_PARAM_DECLS.  */
   struct saved_cwd saved_cwd;
   int saved_errno;
   FUNC_RESULT err;
-
-  VALIDATE_FLAG (flag);
-
-  if (fd == AT_FDCWD || IS_ABSOLUTE_FILE_NAME (file))
-    return CALL_FUNC (file);
 
   {
     char proc_buf[OPENAT_BUFFER_SIZE];
@@ -125,6 +138,8 @@ AT_FUNC_NAME (int fd, char const *file AT_FUNC_POST_FILE_PARAM_DECLS)
   if (saved_errno)
     errno = saved_errno;
   return err;
+  }
+#endif
 }
 #undef CALL_FUNC
 #undef FUNC_RESULT

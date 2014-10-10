@@ -1,23 +1,22 @@
 /* Extended regular expression matching and search library.
-   Copyright (C) 2002-2012 Free Software Foundation, Inc.
+   Copyright (C) 2002-2014 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
    Contributed by Isamu Hasegawa <isamu@yamato.ibm.com>.
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 3, or (at your option)
-   any later version.
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public
+   License as published by the Free Software Foundation; either
+   version 3 of the License, or (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
+   The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
 
-   You should have received a copy of the GNU General Public License along
-   with this program; if not, see <http://www.gnu.org/licenses/>.  */
+   You should have received a copy of the GNU General Public
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
-#include "verify.h"
-#include "intprops.h"
 static reg_errcode_t match_ctx_init (re_match_context_t *cache, int eflags,
 				     Idx n) internal_function;
 static void match_ctx_clean (re_match_context_t *mctx) internal_function;
@@ -200,7 +199,7 @@ static Idx group_nodes_into_DFAstates (const re_dfa_t *dfa,
 static bool check_node_accept (const re_match_context_t *mctx,
 			       const re_token_t *node, Idx idx)
      internal_function;
-static reg_errcode_t extend_buffers (re_match_context_t *mctx)
+static reg_errcode_t extend_buffers (re_match_context_t *mctx, int min_len)
      internal_function;
 
 /* Entry point for POSIX code.  */
@@ -229,9 +228,7 @@ regexec (preg, string, nmatch, pmatch, eflags)
 {
   reg_errcode_t err;
   Idx start, length;
-#ifdef _LIBC
   re_dfa_t *dfa = preg->buffer;
-#endif
 
   if (eflags & ~(REG_NOTBOL | REG_NOTEOL | REG_STARTEND))
     return REG_BADPAT;
@@ -247,14 +244,14 @@ regexec (preg, string, nmatch, pmatch, eflags)
       length = strlen (string);
     }
 
-  __libc_lock_lock (dfa->lock);
+  lock_lock (dfa->lock);
   if (preg->no_sub)
     err = re_search_internal (preg, string, length, start, length,
 			      length, 0, NULL, eflags);
   else
     err = re_search_internal (preg, string, length, start, length,
 			      length, nmatch, pmatch, eflags);
-  __libc_lock_unlock (dfa->lock);
+  lock_unlock (dfa->lock);
   return err != REG_NOERROR;
 }
 
@@ -376,11 +373,8 @@ re_search_2_stub (struct re_pattern_buffer *bufp,
   Idx len = length1 + length2;
   char *s = NULL;
 
-  verify (! TYPE_SIGNED (Idx));
-  if (BE (len < length1, 0))
-     return -2;
-  /* if (BE (length1 < 0 || length2 < 0 || stop < 0, 0))
-     return -2; */
+  if (BE (length1 < 0 || length2 < 0 || stop < 0 || len < length1, 0))
+    return -2;
 
   /* Concatenate the strings.  */
   if (length2 > 0)
@@ -425,23 +419,18 @@ re_search_stub (struct re_pattern_buffer *bufp,
   Idx nregs;
   regoff_t rval;
   int eflags = 0;
-#ifdef _LIBC
   re_dfa_t *dfa = bufp->buffer;
-#endif
   Idx last_start = start + range;
 
   /* Check for out-of-range.  */
-  verify (! TYPE_SIGNED (Idx));
-  /* if (BE (start < 0, 0))
-     return -1; */
-  if (BE (start > length, 0))
-     return -1;
+  if (BE (start < 0 || start > length, 0))
+    return -1;
   if (BE (length < last_start || (0 <= range && last_start < start), 0))
     last_start = length;
-  else if (BE (/* last_start < 0 || */ (range < 0 && start <= last_start), 0))
+  else if (BE (last_start < 0 || (range < 0 && start <= last_start), 0))
     last_start = 0;
 
-  __libc_lock_lock (dfa->lock);
+  lock_lock (dfa->lock);
 
   eflags |= (bufp->not_bol) ? REG_NOTBOL : 0;
   eflags |= (bufp->not_eol) ? REG_NOTEOL : 0;
@@ -505,7 +494,7 @@ re_search_stub (struct re_pattern_buffer *bufp,
     }
   re_free (pmatch);
  out:
-  __libc_lock_unlock (dfa->lock);
+  lock_unlock (dfa->lock);
   return rval;
 }
 
@@ -743,7 +732,7 @@ re_search_internal (const regex_t *preg,
   mctx.input.tip_context = (eflags & REG_NOTBOL) ? CONTEXT_BEGBUF
 			   : CONTEXT_NEWLINE | CONTEXT_BEGBUF;
 
-  /* Check incrementally whether of not the input string match.  */
+  /* Check incrementally whether the input string matches.  */
   incr = (last_start < start) ? -1 : 1;
   left_lim = (last_start < start) ? last_start : start;
   right_lim = (last_start < start) ? start : last_start;
@@ -1071,7 +1060,7 @@ prune_impossible_nodes (re_match_context_t *mctx)
    since initial states may have constraints like "\<", "^", etc..  */
 
 static inline re_dfastate_t *
-__attribute ((always_inline)) internal_function
+__attribute__ ((always_inline)) internal_function
 acquire_init_state_context (reg_errcode_t *err, const re_match_context_t *mctx,
 			    Idx idx)
 {
@@ -1183,7 +1172,7 @@ check_matching (re_match_context_t *mctx, bool fl_longest_match,
 	  || (BE (next_char_idx >= mctx->input.valid_len, 0)
 	      && mctx->input.valid_len < mctx->input.len))
 	{
-	  err = extend_buffers (mctx);
+	  err = extend_buffers (mctx, next_char_idx + 1);
 	  if (BE (err != REG_NOERROR, 0))
 	    {
 	      assert (err == REG_ESPACE);
@@ -1763,7 +1752,7 @@ clean_state_log_if_needed (re_match_context_t *mctx, Idx next_state_log_idx)
 	  && mctx->input.valid_len < mctx->input.len))
     {
       reg_errcode_t err;
-      err = extend_buffers (mctx);
+      err = extend_buffers (mctx, next_state_log_idx + 1);
       if (BE (err != REG_NOERROR, 0))
 	return err;
     }
@@ -2820,7 +2809,7 @@ get_subexp (re_match_context_t *mctx, Idx bkref_node, Idx bkref_str_idx)
 		  if (bkref_str_off >= mctx->input.len)
 		    break;
 
-		  err = extend_buffers (mctx);
+		  err = extend_buffers (mctx, bkref_str_off + 1);
 		  if (BE (err != REG_NOERROR, 0))
 		    return err;
 
@@ -3943,6 +3932,7 @@ check_node_accept_bytes (const re_dfa_t *dfa, Idx node_idx,
 		in_collseq = find_collation_sequence_value (pin, elem_len);
 	    }
 	  /* match with range expression?  */
+	  /* FIXME: Implement rational ranges here, too.  */
 	  for (i = 0; i < cset->nranges; ++i)
 	    if (cset->range_starts[i] <= in_collseq
 		&& in_collseq <= cset->range_ends[i])
@@ -3994,18 +3984,9 @@ check_node_accept_bytes (const re_dfa_t *dfa, Idx node_idx,
 # endif /* _LIBC */
 	{
 	  /* match with range expression?  */
-#if __GNUC__ >= 2 && ! (__STDC_VERSION__ < 199901L && defined __STRICT_ANSI__)
-	  wchar_t cmp_buf[] = {L'\0', L'\0', wc, L'\0', L'\0', L'\0'};
-#else
-	  wchar_t cmp_buf[] = {L'\0', L'\0', L'\0', L'\0', L'\0', L'\0'};
-	  cmp_buf[2] = wc;
-#endif
 	  for (i = 0; i < cset->nranges; ++i)
 	    {
-	      cmp_buf[0] = cset->range_starts[i];
-	      cmp_buf[4] = cset->range_ends[i];
-	      if (wcscoll (cmp_buf, cmp_buf + 2) <= 0
-		  && wcscoll (cmp_buf + 2, cmp_buf + 4) <= 0)
+	      if (cset->range_starts[i] <= wc && wc <= cset->range_ends[i])
 		{
 		  match_len = char_len;
 		  goto check_node_accept_bytes_match;
@@ -4143,7 +4124,7 @@ check_node_accept (const re_match_context_t *mctx, const re_token_t *node,
 
 static reg_errcode_t
 internal_function __attribute_warn_unused_result__
-extend_buffers (re_match_context_t *mctx)
+extend_buffers (re_match_context_t *mctx, int min_len)
 {
   reg_errcode_t ret;
   re_string_t *pstr = &mctx->input;
@@ -4153,8 +4134,10 @@ extend_buffers (re_match_context_t *mctx)
           <= pstr->bufs_len, 0))
     return REG_ESPACE;
 
-  /* Double the lengths of the buffers.  */
-  ret = re_string_realloc_buffers (pstr, MIN (pstr->len, pstr->bufs_len * 2));
+  /* Double the lengths of the buffers, but allocate at least MIN_LEN.  */
+  ret = re_string_realloc_buffers (pstr,
+				   MAX (min_len,
+					MIN (pstr->len, pstr->bufs_len * 2)));
   if (BE (ret != REG_NOERROR, 0))
     return ret;
 

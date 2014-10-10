@@ -1,5 +1,5 @@
 /* kwset.c - search for any of a set of keywords.
-   Copyright (C) 1989, 1998, 2000, 2005, 2007, 2009-2012 Free Software
+   Copyright (C) 1989, 1998, 2000, 2005, 2007, 2009-2014 Free Software
    Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
@@ -23,17 +23,25 @@
 
 /* The algorithm implemented by these routines bears a startling resemblance
    to one discovered by Beate Commentz-Walter, although it is not identical.
-   See "A String Matching Algorithm Fast on the Average," Technical Report,
-   IBM-Germany, Scientific Center Heidelberg, Tiergartenstrasse 15, D-6900
-   Heidelberg, Germany.  See also Aho, A.V., and M. Corasick, "Efficient
-   String Matching:  An Aid to Bibliographic Search," CACM June 1975,
-   Vol. 18, No. 6, which describes the failure function used below. */
+   See: Commentz-Walter B. A string matching algorithm fast on the average.
+   Lecture Notes in Computer Science 71 (1979), 118-32
+   <http://dx.doi.org/10.1007/3-540-09510-1_10>.
+   See also: Aho AV, Corasick MJ. Efficient string matching: an aid to
+   bibliographic search. CACM 18, 6 (1975), 333-40
+   <http://dx.doi.org/10.1145/360825.360855>, which describes the
+   failure function used below. */
 
 #include <config.h>
+
+#include "kwset.h"
+
+#include <stdbool.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include "system.h"
-#include "kwset.h"
+#include "memchr2.h"
 #include "obstack.h"
+#include "xalloc.h"
 
 #define link kwset_link
 
@@ -47,7 +55,7 @@
 #define obstack_chunk_alloc malloc
 #define obstack_chunk_free free
 
-#define U(c) ((unsigned char) (c))
+#define U(c) (to_uchar (c))
 
 /* Balanced tree of edges and labels leaving a given trie node. */
 struct tree
@@ -83,30 +91,45 @@ struct kwset
   unsigned char delta[NCHAR];	/* Delta table for rapid search. */
   struct trie *next[NCHAR];	/* Table of children of the root. */
   char *target;			/* Target string if there's only one. */
-  int mind2;			/* Used in Boyer-Moore search for one string. */
+  int *shift;			/* Used in Boyer-Moore search for one string. */
   char const *trans;		/* Character translation table. */
+
+  /* If there's only one string, this is the string's last byte,
+     translated via TRANS if TRANS is nonnull.  */
+  char gc1;
+
+  /* Likewise for the string's penultimate byte, if it has two or more
+     bytes.  */
+  char gc2;
+
+  /* If there's only one string, this helps to match the string's last byte.
+     If GC1HELP is negative, only GC1 matches the string's last byte;
+     otherwise at least two bytes match, and B matches if TRANS[B] == GC1.
+     If GC1HELP is in the range 0..(NCHAR - 1), there are exactly two
+     such matches, and GC1HELP is the other match after conversion to
+     unsigned char.  If GC1HELP is at least NCHAR, there are three or
+     more such matches; e.g., Greek has three sigma characters that
+     all match when case-folding.  */
+  int gc1help;
 };
 
+/* Use TRANS to transliterate C.  A null TRANS does no transliteration.  */
+static inline char
+tr (char const *trans, char c)
+{
+  return trans ? trans[U(c)] : c;
+}
+
 /* Allocate and initialize a keyword set object, returning an opaque
-   pointer to it.  Return NULL if memory is not available. */
+   pointer to it.  */
 kwset_t
 kwsalloc (char const *trans)
 {
-  struct kwset *kwset;
+  struct kwset *kwset = xmalloc (sizeof *kwset);
 
-  kwset = (struct kwset *) malloc(sizeof (struct kwset));
-  if (!kwset)
-    return NULL;
-
-  obstack_init(&kwset->obstack);
+  obstack_init (&kwset->obstack);
   kwset->words = 0;
-  kwset->trie
-    = (struct trie *) obstack_alloc(&kwset->obstack, sizeof (struct trie));
-  if (!kwset->trie)
-    {
-      kwsfree((kwset_t) kwset);
-      return NULL;
-    }
+  kwset->trie = obstack_alloc (&kwset->obstack, sizeof *kwset->trie);
   kwset->trie->accepting = 0;
   kwset->trie->links = NULL;
   kwset->trie->parent = NULL;
@@ -119,44 +142,38 @@ kwsalloc (char const *trans)
   kwset->target = NULL;
   kwset->trans = trans;
 
-  return (kwset_t) kwset;
+  return kwset;
 }
 
 /* This upper bound is valid for CHAR_BIT >= 4 and
    exact for CHAR_BIT in { 4..11, 13, 15, 17, 19 }. */
 #define DEPTH_SIZE (CHAR_BIT + CHAR_BIT/2)
 
-/* Add the given string to the contents of the keyword set.  Return NULL
-   for success, an error message otherwise. */
-const char *
-kwsincr (kwset_t kws, char const *text, size_t len)
+/* Add the given string to the contents of the keyword set.  */
+void
+kwsincr (kwset_t kwset, char const *text, size_t len)
 {
-  struct kwset *kwset;
-  struct trie *trie;
-  unsigned char label;
-  struct tree *link;
-  int depth;
-  struct tree *links[DEPTH_SIZE];
-  enum { L, R } dirs[DEPTH_SIZE];
-  struct tree *t, *r, *l, *rl, *lr;
+  struct trie *trie = kwset->trie;
+  char const *trans = kwset->trans;
 
-  kwset = (struct kwset *) kws;
-  trie = kwset->trie;
   text += len;
 
   /* Descend the trie (built of reversed keywords) character-by-character,
      installing new nodes when necessary. */
   while (len--)
     {
-      label = kwset->trans ? kwset->trans[U(*--text)] : *--text;
+      unsigned char uc = *--text;
+      unsigned char label = trans ? trans[uc] : uc;
 
       /* Descend the tree of outgoing links for this trie node,
          looking for the current character and keeping track
          of the path followed. */
-      link = trie->links;
+      struct tree *link = trie->links;
+      struct tree *links[DEPTH_SIZE];
+      enum { L, R } dirs[DEPTH_SIZE];
       links[0] = (struct tree *) &trie->links;
       dirs[0] = L;
-      depth = 1;
+      int depth = 1;
 
       while (link && label != link->label)
         {
@@ -172,19 +189,10 @@ kwsincr (kwset_t kws, char const *text, size_t len)
          a link in the current trie node's tree. */
       if (!link)
         {
-          link = (struct tree *) obstack_alloc(&kwset->obstack,
-                                               sizeof (struct tree));
-          if (!link)
-            return _("memory exhausted");
+          link = obstack_alloc (&kwset->obstack, sizeof *link);
           link->llink = NULL;
           link->rlink = NULL;
-          link->trie = (struct trie *) obstack_alloc(&kwset->obstack,
-                                                     sizeof (struct trie));
-          if (!link->trie)
-            {
-              obstack_free(&kwset->obstack, link);
-              return _("memory exhausted");
-            }
+          link->trie = obstack_alloc (&kwset->obstack, sizeof *link->trie);
           link->trie->accepting = 0;
           link->trie->links = NULL;
           link->trie->parent = trie;
@@ -215,6 +223,8 @@ kwsincr (kwset_t kws, char const *text, size_t len)
           if (depth && ((dirs[depth] == L && --links[depth]->balance)
                         || (dirs[depth] == R && ++links[depth]->balance)))
             {
+              struct tree *t, *r, *l, *rl, *lr;
+
               switch (links[depth]->balance)
                 {
                 case (char) -2:
@@ -282,8 +292,6 @@ kwsincr (kwset_t kws, char const *text, size_t len)
     kwset->mind = trie->depth;
   if (trie->depth > kwset->maxd)
     kwset->maxd = trie->depth;
-
-  return NULL;
 }
 
 /* Enqueue the trie nodes referenced from the given tree in the
@@ -381,132 +389,210 @@ treenext (struct tree const *tree, struct trie *next[])
 
 /* Compute the shift for each trie node, as well as the delta
    table and next cache for the given keyword set. */
-const char *
-kwsprep (kwset_t kws)
+void
+kwsprep (kwset_t kwset)
 {
-  struct kwset *kwset;
+  char const *trans = kwset->trans;
   int i;
-  struct trie *curr;
-  char const *trans;
-  unsigned char delta[NCHAR];
-
-  kwset = (struct kwset *) kws;
+  unsigned char deltabuf[NCHAR];
+  unsigned char *delta = trans ? deltabuf : kwset->delta;
 
   /* Initial values for the delta table; will be changed later.  The
      delta entry for a given character is the smallest depth of any
      node at which an outgoing edge is labeled by that character. */
-  memset(delta, kwset->mind < UCHAR_MAX ? kwset->mind : UCHAR_MAX, NCHAR);
+  memset (delta, MIN (kwset->mind, UCHAR_MAX), sizeof deltabuf);
+
+  /* Traverse the nodes of the trie in level order, simultaneously
+     computing the delta table, failure function, and shift function.  */
+  struct trie *curr, *last;
+  for (curr = last = kwset->trie; curr; curr = curr->next)
+    {
+      /* Enqueue the immediate descendants in the level order queue.  */
+      enqueue (curr->links, &last);
+
+      curr->shift = kwset->mind;
+      curr->maxshift = kwset->mind;
+
+      /* Update the delta table for the descendants of this node.  */
+      treedelta (curr->links, curr->depth, delta);
+
+      /* Compute the failure function for the descendants of this node.  */
+      treefails (curr->links, curr->fail, kwset->trie);
+
+      /* Update the shifts at each node in the current node's chain
+         of fails back to the root.  */
+      struct trie *fail;
+      for (fail = curr->fail; fail; fail = fail->fail)
+        {
+          /* If the current node has some outgoing edge that the fail
+             doesn't, then the shift at the fail should be no larger
+             than the difference of their depths.  */
+          if (!hasevery (fail->links, curr->links))
+            if (curr->depth - fail->depth < fail->shift)
+              fail->shift = curr->depth - fail->depth;
+
+          /* If the current node is accepting then the shift at the
+             fail and its descendants should be no larger than the
+             difference of their depths.  */
+          if (curr->accepting && fail->maxshift > curr->depth - fail->depth)
+            fail->maxshift = curr->depth - fail->depth;
+        }
+    }
+
+  /* Traverse the trie in level order again, fixing up all nodes whose
+     shift exceeds their inherited maxshift.  */
+  for (curr = kwset->trie->next; curr; curr = curr->next)
+    {
+      if (curr->maxshift > curr->parent->maxshift)
+        curr->maxshift = curr->parent->maxshift;
+      if (curr->shift > curr->maxshift)
+        curr->shift = curr->maxshift;
+    }
+
+  /* Create a vector, indexed by character code, of the outgoing links
+     from the root node.  */
+  struct trie *nextbuf[NCHAR];
+  struct trie **next = trans ? nextbuf : kwset->next;
+  memset (next, 0, sizeof nextbuf);
+  treenext (kwset->trie->links, next);
+  if (trans)
+    for (i = 0; i < NCHAR; ++i)
+      kwset->next[i] = next[U(trans[i])];
 
   /* Check if we can use the simple boyer-moore algorithm, instead
      of the hairy commentz-walter algorithm. */
-  if (kwset->words == 1 && kwset->trans == NULL)
+  if (kwset->words == 1)
     {
-      char c;
-
       /* Looking for just one string.  Extract it from the trie. */
-      kwset->target = obstack_alloc(&kwset->obstack, kwset->mind);
-      if (!kwset->target)
-        return _("memory exhausted");
+      kwset->target = obstack_alloc (&kwset->obstack, kwset->mind);
       for (i = kwset->mind - 1, curr = kwset->trie; i >= 0; --i)
         {
           kwset->target[i] = curr->links->label;
-          curr = curr->links->trie;
+          curr = curr->next;
         }
-      /* Build the Boyer Moore delta.  Boy that's easy compared to CW. */
-      for (i = 0; i < kwset->mind; ++i)
-        delta[U(kwset->target[i])] = kwset->mind - (i + 1);
-      /* Find the minimal delta2 shift that we might make after
-         a backwards match has failed. */
-      c = kwset->target[kwset->mind - 1];
-      for (i = kwset->mind - 2; i >= 0; --i)
-        if (kwset->target[i] == c)
-          break;
-      kwset->mind2 = kwset->mind - (i + 1);
-    }
-  else
-    {
-      struct trie *fail;
-      struct trie *last, *next[NCHAR];
-
-      /* Traverse the nodes of the trie in level order, simultaneously
-         computing the delta table, failure function, and shift function. */
-      for (curr = last = kwset->trie; curr; curr = curr->next)
+      /* Looking for the delta2 shift that we might make after a
+         backwards match has failed.  Extract it from the trie.  */
+      if (kwset->mind > 1)
         {
-          /* Enqueue the immediate descendants in the level order queue. */
-          enqueue(curr->links, &last);
-
-          curr->shift = kwset->mind;
-          curr->maxshift = kwset->mind;
-
-          /* Update the delta table for the descendants of this node. */
-          treedelta(curr->links, curr->depth, delta);
-
-          /* Compute the failure function for the descendants of this node.  */
-          treefails(curr->links, curr->fail, kwset->trie);
-
-          /* Update the shifts at each node in the current node's chain
-             of fails back to the root. */
-          for (fail = curr->fail; fail; fail = fail->fail)
+          kwset->shift
+            = obstack_alloc (&kwset->obstack,
+                             sizeof *kwset->shift * (kwset->mind - 1));
+          for (i = 0, curr = kwset->trie->next; i < kwset->mind - 1; ++i)
             {
-              /* If the current node has some outgoing edge that the fail
-                 doesn't, then the shift at the fail should be no larger
-                 than the difference of their depths. */
-              if (!hasevery(fail->links, curr->links))
-                if (curr->depth - fail->depth < fail->shift)
-                  fail->shift = curr->depth - fail->depth;
-
-              /* If the current node is accepting then the shift at the
-                 fail and its descendants should be no larger than the
-                 difference of their depths. */
-              if (curr->accepting && fail->maxshift > curr->depth - fail->depth)
-                fail->maxshift = curr->depth - fail->depth;
+              kwset->shift[i] = curr->shift;
+              curr = curr->next;
             }
         }
 
-      /* Traverse the trie in level order again, fixing up all nodes whose
-         shift exceeds their inherited maxshift. */
-      for (curr = kwset->trie->next; curr; curr = curr->next)
+      char gc1 = tr (trans, kwset->target[kwset->mind - 1]);
+
+      /* Set GC1HELP according to whether exactly one, exactly two, or
+         three-or-more characters match GC1.  */
+      int gc1help = -1;
+      if (trans)
         {
-          if (curr->maxshift > curr->parent->maxshift)
-            curr->maxshift = curr->parent->maxshift;
-          if (curr->shift > curr->maxshift)
-            curr->shift = curr->maxshift;
+          char const *equiv1 = memchr (trans, gc1, NCHAR);
+          char const *equiv2 = memchr (equiv1 + 1, gc1,
+                                       trans + NCHAR - (equiv1 + 1));
+          if (equiv2)
+            gc1help = (memchr (equiv2 + 1, gc1, trans + NCHAR - (equiv2 + 1))
+                       ? NCHAR
+                       : U(gc1) ^ (equiv1 - trans) ^ (equiv2 - trans));
         }
 
-      /* Create a vector, indexed by character code, of the outgoing links
-         from the root node. */
-      for (i = 0; i < NCHAR; ++i)
-        next[i] = NULL;
-      treenext(kwset->trie->links, next);
-
-      if ((trans = kwset->trans) != NULL)
-        for (i = 0; i < NCHAR; ++i)
-          kwset->next[i] = next[U(trans[i])];
-      else
-        memcpy(kwset->next, next, NCHAR * sizeof(struct trie *));
+      kwset->gc1 = gc1;
+      kwset->gc1help = gc1help;
+      if (kwset->mind > 1)
+        kwset->gc2 = tr (trans, kwset->target[kwset->mind - 2]);
     }
 
   /* Fix things up for any translation table. */
-  if ((trans = kwset->trans) != NULL)
+  if (trans)
     for (i = 0; i < NCHAR; ++i)
       kwset->delta[i] = delta[U(trans[i])];
-  else
-    memcpy(kwset->delta, delta, NCHAR);
-
-  return NULL;
 }
 
-/* Fast boyer-moore search. */
-static size_t _GL_ATTRIBUTE_PURE
-bmexec (kwset_t kws, char const *text, size_t size)
+/* Delta2 portion of a Boyer-Moore search.  *TP is the string text
+   pointer; it is updated in place.  EP is the end of the string text,
+   and SP the end of the pattern.  LEN is the pattern length; it must
+   be at least 2.  TRANS, if nonnull, is the input translation table.
+   GC1 and GC2 are the last and second-from last bytes of the pattern,
+   transliterated by TRANS; the caller precomputes them for
+   efficiency.  If D1 is nonnull, it is a delta1 table for shifting *TP
+   when failing.  KWSET->shift says how much to shift.  */
+static inline bool
+bm_delta2_search (char const **tpp, char const *ep, char const *sp, int len,
+                  char const *trans, char gc1, char gc2,
+                  unsigned char const *d1, kwset_t kwset)
 {
-  struct kwset const *kwset;
+  char const *tp = *tpp;
+  int d = len, skip = 0;
+
+  while (true)
+    {
+      int i = 2;
+      if (tr (trans, tp[-2]) == gc2)
+        {
+          while (++i <= d)
+            if (tr (trans, tp[-i]) != tr (trans, sp[-i]))
+              break;
+          if (i > d)
+            {
+              for (i = d + skip + 1; i <= len; ++i)
+                if (tr (trans, tp[-i]) != tr (trans, sp[-i]))
+                  break;
+              if (i > len)
+                {
+                  *tpp = tp - len;
+                  return true;
+                }
+            }
+        }
+
+      tp += d = kwset->shift[i - 2];
+      if (tp > ep)
+        break;
+      if (tr (trans, tp[-1]) != gc1)
+        {
+          if (d1)
+            tp += d1[U(tp[-1])];
+          break;
+        }
+      skip = i - 1;
+    }
+
+  *tpp = tp;
+  return false;
+}
+
+/* Return the address of the first byte in the buffer S (of size N)
+   that matches the last byte specified by KWSET, a singleton.  */
+static char const *
+memchr_kwset (char const *s, size_t n, kwset_t kwset)
+{
+  if (kwset->gc1help < 0)
+    return memchr (s, kwset->gc1, n);
+  int small_heuristic = 2;
+  int small = (- (uintptr_t) s % sizeof (long)
+               + small_heuristic * sizeof (long));
+  size_t ntrans = kwset->gc1help < NCHAR && small < n ? small : n;
+  char const *slim = s + ntrans;
+  for (; s < slim; s++)
+    if (kwset->trans[U(*s)] == kwset->gc1)
+      return s;
+  n -= ntrans;
+  return n == 0 ? NULL : memchr2 (s, kwset->gc1, kwset->gc1help, n);
+}
+
+/* Fast Boyer-Moore search (inlinable version).  */
+static inline size_t _GL_ATTRIBUTE_PURE
+bmexec_trans (kwset_t kwset, char const *text, size_t size)
+{
   unsigned char const *d1;
   char const *ep, *sp, *tp;
-  int d, gc, i, len, md2;
-
-  kwset = (struct kwset const *) kws;
-  len = kwset->mind;
+  int d;
+  int len = kwset->mind;
+  char const *trans = kwset->trans;
 
   if (len == 0)
     return 0;
@@ -514,50 +600,55 @@ bmexec (kwset_t kws, char const *text, size_t size)
     return -1;
   if (len == 1)
     {
-      tp = memchr (text, kwset->target[0], size);
+      tp = memchr_kwset (text, size, kwset);
       return tp ? tp - text : -1;
     }
 
   d1 = kwset->delta;
   sp = kwset->target + len;
-  gc = U(sp[-2]);
-  md2 = kwset->mind2;
   tp = text + len;
+  char gc1 = kwset->gc1;
+  char gc2 = kwset->gc2;
 
   /* Significance of 12: 1 (initial offset) + 10 (skip loop) + 1 (md2). */
   if (size > 12 * len)
     /* 11 is not a bug, the initial offset happens only once. */
-    for (ep = text + size - 11 * len;;)
+    for (ep = text + size - 11 * len; tp <= ep; )
       {
-        while (tp <= ep)
+        char const *tp0 = tp;
+        d = d1[U(tp[-1])], tp += d;
+        d = d1[U(tp[-1])], tp += d;
+        if (d != 0)
           {
             d = d1[U(tp[-1])], tp += d;
             d = d1[U(tp[-1])], tp += d;
-            if (d == 0)
-              goto found;
             d = d1[U(tp[-1])], tp += d;
-            d = d1[U(tp[-1])], tp += d;
-            d = d1[U(tp[-1])], tp += d;
-            if (d == 0)
-              goto found;
-            d = d1[U(tp[-1])], tp += d;
-            d = d1[U(tp[-1])], tp += d;
-            d = d1[U(tp[-1])], tp += d;
-            if (d == 0)
-              goto found;
-            d = d1[U(tp[-1])], tp += d;
-            d = d1[U(tp[-1])], tp += d;
+            if (d != 0)
+              {
+                d = d1[U(tp[-1])], tp += d;
+                d = d1[U(tp[-1])], tp += d;
+                d = d1[U(tp[-1])], tp += d;
+                if (d != 0)
+                  {
+                    d = d1[U(tp[-1])], tp += d;
+                    d = d1[U(tp[-1])], tp += d;
+
+                    /* As a heuristic, prefer memchr to seeking by
+                       delta1 when the latter doesn't advance much.  */
+                    int advance_heuristic = 16 * sizeof (long);
+                    if (advance_heuristic <= tp - tp0)
+                      goto big_advance;
+                    tp--;
+                    tp = memchr_kwset (tp, text + size - tp, kwset);
+                    if (! tp)
+                      return -1;
+                    tp++;
+                  }
+              }
           }
-        break;
-      found:
-        if (U(tp[-2]) == gc)
-          {
-            for (i = 3; i <= len && U(tp[-i]) == U(sp[-i]); ++i)
-              ;
-            if (i > len)
-              return tp - len - text;
-          }
-        tp += md2;
+        if (bm_delta2_search (&tp, ep, sp, len, trans, gc1, gc2, d1, kwset))
+          return tp - text;
+      big_advance:;
       }
 
   /* Now we have only a few characters left to search.  We
@@ -569,24 +660,28 @@ bmexec (kwset_t kws, char const *text, size_t size)
       d = d1[U((tp += d)[-1])];
       if (d != 0)
         continue;
-      if (U(tp[-2]) == gc)
-        {
-          for (i = 3; i <= len && U(tp[-i]) == U(sp[-i]); ++i)
-            ;
-          if (i > len)
-            return tp - len - text;
-        }
-      d = md2;
+      if (bm_delta2_search (&tp, ep, sp, len, trans, gc1, gc2, NULL, kwset))
+        return tp - text;
     }
 
   return -1;
 }
 
+/* Fast Boyer-Moore search.  */
+static size_t
+bmexec (kwset_t kwset, char const *text, size_t size)
+{
+  /* Help the compiler inline bmexec_trans in two ways, depending on
+     whether kwset->trans is null.  */
+  return (kwset->trans
+          ? bmexec_trans (kwset, text, size)
+          : bmexec_trans (kwset, text, size));
+}
+
 /* Hairy multiple string search. */
 static size_t _GL_ARG_NONNULL ((4))
-cwexec (kwset_t kws, char const *text, size_t len, struct kwsmatch *kwsmatch)
+cwexec (kwset_t kwset, char const *text, size_t len, struct kwsmatch *kwsmatch)
 {
-  struct kwset const *kwset;
   struct trie * const *next;
   struct trie const *trie;
   struct trie const *accept;
@@ -603,7 +698,6 @@ cwexec (kwset_t kws, char const *text, size_t len, struct kwsmatch *kwsmatch)
 #endif
 
   /* Initialize register copies and look for easy ways out. */
-  kwset = (struct kwset *) kws;
   if (len < kwset->mind)
     return -1;
   next = kwset->next;
@@ -651,7 +745,8 @@ cwexec (kwset_t kws, char const *text, size_t len, struct kwsmatch *kwsmatch)
       d = trie->shift;
       while (beg > text)
         {
-          c = trans ? trans[U(*--beg)] : *--beg;
+          unsigned char uc = *--beg;
+          c = trans ? trans[uc] : uc;
           tree = trie->links;
           while (tree && c != tree->label)
             if (c < tree->label)
@@ -702,7 +797,8 @@ cwexec (kwset_t kws, char const *text, size_t len, struct kwsmatch *kwsmatch)
       d = trie->shift;
       while (beg > text)
         {
-          c = trans ? trans[U(*--beg)] : *--beg;
+          unsigned char uc = *--beg;
+          c = trans ? trans[uc] : uc;
           tree = trie->links;
           while (tree && c != tree->label)
             if (c < tree->label)
@@ -738,18 +834,18 @@ cwexec (kwset_t kws, char const *text, size_t len, struct kwsmatch *kwsmatch)
   return mch - text;
 }
 
-/* Search TEXT for a match of any member of the keyword set, KWS.
+/* Search TEXT for a match of any member of KWSET.
    Return the offset (into TEXT) of the first byte of the matching substring,
    or (size_t) -1 if no match is found.  Upon a match, store details in
    *KWSMATCH: index of matched keyword, start offset (same as the return
    value), and length.  */
 size_t
-kwsexec (kwset_t kws, char const *text, size_t size, struct kwsmatch *kwsmatch)
+kwsexec (kwset_t kwset, char const *text, size_t size,
+         struct kwsmatch *kwsmatch)
 {
-  struct kwset const *kwset = (struct kwset *) kws;
-  if (kwset->words == 1 && kwset->trans == NULL)
+  if (kwset->words == 1)
     {
-      size_t ret = bmexec (kws, text, size);
+      size_t ret = bmexec (kwset, text, size);
       if (ret != (size_t) -1)
         {
           kwsmatch->index = 0;
@@ -759,16 +855,13 @@ kwsexec (kwset_t kws, char const *text, size_t size, struct kwsmatch *kwsmatch)
       return ret;
     }
   else
-    return cwexec(kws, text, size, kwsmatch);
+    return cwexec (kwset, text, size, kwsmatch);
 }
 
 /* Free the components of the given keyword set. */
 void
-kwsfree (kwset_t kws)
+kwsfree (kwset_t kwset)
 {
-  struct kwset *kwset;
-
-  kwset = (struct kwset *) kws;
-  obstack_free(&kwset->obstack, NULL);
-  free(kws);
+  obstack_free (&kwset->obstack, NULL);
+  free (kwset);
 }

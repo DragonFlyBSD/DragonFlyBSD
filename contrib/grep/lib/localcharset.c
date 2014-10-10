@@ -1,6 +1,6 @@
 /* Determine a canonical name for the current locale's character encoding.
 
-   Copyright (C) 2000-2006, 2008-2012 Free Software Foundation, Inc.
+   Copyright (C) 2000-2006, 2008-2014 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -63,6 +63,11 @@
 #if defined OS2
 # define INCL_DOS
 # include <os2.h>
+#endif
+
+/* For MB_CUR_MAX_L */
+#if defined DARWIN7
+# include <xlocale.h>
 #endif
 
 #if ENABLE_RELOCATABLE
@@ -541,6 +546,13 @@ locale_charset (void)
      thus GNU libiconv would call this function a second time.  */
   if (codeset[0] == '\0')
     codeset = "ASCII";
+
+#ifdef DARWIN7
+  /* Mac OS X sets MB_CUR_MAX to 1 when LC_ALL=C, and "UTF-8"
+     (the default codeset) does not work when MB_CUR_MAX is 1.  */
+  if (strcmp (codeset, "UTF-8") == 0 && MB_CUR_MAX_L (uselocale (NULL)) <= 1)
+    codeset = "ASCII";
+#endif
 
   return codeset;
 }

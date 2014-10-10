@@ -1,6 +1,6 @@
 /* Detect cycles in file tree walks.
 
-   Copyright (C) 2003-2006, 2009-2012 Free Software Foundation, Inc.
+   Copyright (C) 2003-2006, 2009-2014 Free Software Foundation, Inc.
 
    Written by Jim Meyering.
 

@@ -1,6 +1,5 @@
-/* Compare two wide strings using the current locale.
-   Copyright (C) 2011-2012 Free Software Foundation, Inc.
-   Written by Bruno Haible <bruno@clisp.org>, 2011.
+/* Scan memory for the first of two bytes.
+   Copyright (C) 2008-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -15,13 +14,19 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#include <config.h>
+#include <stddef.h>
 
-/* Specification.  */
-#include <wchar.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
+/* Return the first address of either C1 or C2 (treated as unsigned
+   char) that occurs within N bytes of the memory region S.  If
+   neither byte appears, return NULL.  */
 
-#include "wcscoll-impl.h"
+extern void *memchr2 (void const *s, int c1, int c2, size_t n)
+  _GL_ATTRIBUTE_PURE;
+
+#ifdef __cplusplus
+}
+#endif

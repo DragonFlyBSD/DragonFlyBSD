@@ -1,5 +1,5 @@
 /* Searching in a string.
-   Copyright (C) 2005-2012 Free Software Foundation, Inc.
+   Copyright (C) 2005-2014 Free Software Foundation, Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2005.
 
    This program is free software: you can redistribute it and/or modify
@@ -45,11 +45,13 @@ knuth_morris_pratt_multibyte (const char *haystack, const char *needle,
   size_t *table;
 
   /* Allocate room for needle_mbchars and the table.  */
-  char *memory = (char *) nmalloca (m, sizeof (mbchar_t) + sizeof (size_t));
+  void *memory = nmalloca (m, sizeof (mbchar_t) + sizeof (size_t));
+  void *table_memory;
   if (memory == NULL)
     return false;
-  needle_mbchars = (mbchar_t *) memory;
-  table = (size_t *) (memory + m * sizeof (mbchar_t));
+  needle_mbchars = memory;
+  table_memory = needle_mbchars + m;
+  table = table_memory;
 
   /* Fill needle_mbchars.  */
   {

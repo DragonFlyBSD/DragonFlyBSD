@@ -1,6 +1,6 @@
 /* exclude.c -- exclude file names
 
-   Copyright (C) 1992-1994, 1997, 1999-2007, 2009-2012 Free Software
+   Copyright (C) 1992-1994, 1997, 1999-2007, 2009-2014 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wctype.h>
+#include <regex.h>
 
 #include "exclude.h"
 #include "hash.h"
@@ -39,6 +40,7 @@
 #include "fnmatch.h"
 #include "xalloc.h"
 #include "verify.h"
+#include "filename.h"
 
 #if USE_UNLOCKED_IO
 # include "unlocked-io.h"
@@ -73,8 +75,12 @@ verify (((EXCLUDE_ANCHORED | EXCLUDE_INCLUDE | EXCLUDE_WILDCARDS)
 
 struct patopts
   {
-    char const *pattern;
     int options;
+    union
+    {
+      char const *pattern;
+      regex_t re;
+    } v;
   };
 
 /* An array of pattern-options pairs.  */
@@ -104,12 +110,32 @@ struct exclude_segment
     } v;
   };
 
+struct pattern_buffer
+  {
+    struct pattern_buffer *next;
+    char *base;
+  };
+
 /* The exclude structure keeps a singly-linked list of exclude segments,
    maintained in reverse order.  */
 struct exclude
   {
     struct exclude_segment *head;
+    struct pattern_buffer *patbuf;
   };
+
+/* Register BUF in the pattern buffer list of EX.  ADD_FUNC (see
+   add_exclude_file and add_exclude_fp below) can use this function
+   if it modifies the pattern, to ensure the allocated memory will be
+   properly reclaimed upon calling free_exclude. */
+void
+exclude_add_pattern_buffer (struct exclude *ex, char *buf)
+{
+  struct pattern_buffer *pbuf = xmalloc (sizeof *pbuf);
+  pbuf->base = buf;
+  pbuf->next = ex->patbuf;
+  ex->patbuf = pbuf;
+}
 
 /* Return true if STR has or may have wildcards, when matched with OPTIONS.
    Return false if STR definitely does not have wildcards.  */
@@ -120,8 +146,20 @@ fnmatch_pattern_has_wildcards (const char *str, int options)
     {
       switch (*str++)
         {
+	case '.':
+	case '{':
+	case '}':
+	case '(':
+	case ')':
+	  if (options & EXCLUDE_REGEX)
+	    return true;
+	  break;
+
         case '\\':
-          str += ! (options & FNM_NOESCAPE) && *str;
+	  if (options & EXCLUDE_REGEX)
+	    continue;
+	  else
+	    str += ! (options & FNM_NOESCAPE) && *str;
           break;
 
         case '+': case '@': case '!':
@@ -243,9 +281,16 @@ new_exclude_segment (struct exclude *ex, enum exclude_type type, int options)
 static void
 free_exclude_segment (struct exclude_segment *seg)
 {
+  size_t i;
+
   switch (seg->type)
     {
     case exclude_pattern:
+      for (i = 0; i < seg->v.pat.exclude_count; i++)
+	{
+	  if (seg->v.pat.exclude[i].options & EXCLUDE_REGEX)
+	    regfree (&seg->v.pat.exclude[i].v.re);
+	}
       free (seg->v.pat.exclude);
       break;
 
@@ -261,12 +306,23 @@ void
 free_exclude (struct exclude *ex)
 {
   struct exclude_segment *seg;
+  struct pattern_buffer *pbuf;
+
   for (seg = ex->head; seg; )
     {
       struct exclude_segment *next = seg->next;
       free_exclude_segment (seg);
       seg = next;
     }
+
+  for (pbuf = ex->patbuf; pbuf; )
+    {
+      struct pattern_buffer *next = pbuf->next;
+      free (pbuf->base);
+      free (pbuf);
+      pbuf = next;
+    }
+
   free (ex);
 }
 
@@ -331,9 +387,19 @@ exclude_fnmatch (char const *pattern, char const *f, int options)
   if (! (options & EXCLUDE_ANCHORED))
     for (p = f; *p && ! matched; p++)
       if (*p == '/' && p[1] != '/')
-        matched = ((*matcher) (pattern, p + 1, options) == 0);
+	matched = ((*matcher) (pattern, p + 1, options) == 0);
 
   return matched;
+}
+
+bool
+exclude_patopts (struct patopts const *opts, char const *f)
+{
+  int options = opts->options;
+
+  return (options & EXCLUDE_REGEX)
+          ? regexec (&opts->v.re, f, 0, NULL, 0) == 0
+          : exclude_fnmatch (opts->v.pattern, f, options);
 }
 
 /* Return true if the exclude_pattern segment SEG matches F.  */
@@ -347,9 +413,7 @@ file_pattern_matches (struct exclude_segment const *seg, char const *f)
 
   for (i = 0; i < exclude_count; i++)
     {
-      char const *pattern = exclude[i].pattern;
-      int options = exclude[i].options;
-      if (exclude_fnmatch (pattern, f, options))
+      if (exclude_patopts (exclude + i, f))
         return true;
     }
   return false;
@@ -454,17 +518,17 @@ void
 add_exclude (struct exclude *ex, char const *pattern, int options)
 {
   struct exclude_segment *seg;
+  struct exclude_pattern *pat;
+  struct patopts *patopts;
 
-  if ((options & EXCLUDE_WILDCARDS)
+  if ((options & (EXCLUDE_REGEX|EXCLUDE_WILDCARDS))
       && fnmatch_pattern_has_wildcards (pattern, options))
     {
-      struct exclude_pattern *pat;
-      struct patopts *patopts;
-
       if (! (ex->head && ex->head->type == exclude_pattern
-             && ((ex->head->options & EXCLUDE_INCLUDE)
-                 == (options & EXCLUDE_INCLUDE))))
-        new_exclude_segment (ex, exclude_pattern, options);
+	     && ((ex->head->options & EXCLUDE_INCLUDE)
+		 == (options & EXCLUDE_INCLUDE))))
+	new_exclude_segment (ex, exclude_pattern, options);
+
       seg = ex->head;
 
       pat = &seg->v.pat;
@@ -472,8 +536,51 @@ add_exclude (struct exclude *ex, char const *pattern, int options)
         pat->exclude = x2nrealloc (pat->exclude, &pat->exclude_alloc,
                                    sizeof *pat->exclude);
       patopts = &pat->exclude[pat->exclude_count++];
-      patopts->pattern = pattern;
+
       patopts->options = options;
+      if (options & EXCLUDE_REGEX)
+	{
+	  int rc;
+	  int cflags = REG_NOSUB|REG_EXTENDED|
+	               ((options & FNM_CASEFOLD) ? REG_ICASE : 0);
+
+	  if (options & FNM_LEADING_DIR)
+	    {
+	      char *tmp;
+	      size_t len = strlen (pattern);
+
+	      while (len > 0 && ISSLASH (pattern[len-1]))
+		--len;
+
+	      if (len == 0)
+		rc = 1;
+	      else
+		{
+		  tmp = xmalloc (len + 7);
+		  memcpy (tmp, pattern, len);
+		  strcpy (tmp + len, "(/.*)?");
+		  rc = regcomp (&patopts->v.re, tmp, cflags);
+		  free (tmp);
+		}
+	    }
+	  else
+	    rc = regcomp (&patopts->v.re, pattern, cflags);
+
+	  if (rc)
+	    {
+	      pat->exclude_count--;
+	      return;
+	    }
+	}
+      else
+	{
+	  if (options & EXCLUDE_ALLOC)
+	    {
+	      pattern = xstrdup (pattern);
+	      exclude_add_pattern_buffer (ex, (char*) pattern);
+	    }
+	  patopts->v.pattern = pattern;
+	}
     }
   else
     {
@@ -498,45 +605,39 @@ add_exclude (struct exclude *ex, char const *pattern, int options)
 /* Use ADD_FUNC to append to EX the patterns in FILE_NAME, each with
    OPTIONS.  LINE_END terminates each pattern in the file.  If
    LINE_END is a space character, ignore trailing spaces and empty
-   lines in FILE.  Return -1 on failure, 0 on success.  */
+   lines in FP.  Return -1 on failure, 0 on success.  */
 
 int
-add_exclude_file (void (*add_func) (struct exclude *, char const *, int),
-                  struct exclude *ex, char const *file_name, int options,
-                  char line_end)
+add_exclude_fp (void (*add_func) (struct exclude *, char const *, int, void *),
+		struct exclude *ex, FILE *fp, int options,
+		char line_end,
+		void *data)
 {
-  bool use_stdin = file_name[0] == '-' && !file_name[1];
-  FILE *in;
   char *buf = NULL;
   char *p;
-  char const *pattern;
+  char *pattern;
   char const *lim;
   size_t buf_alloc = 0;
   size_t buf_count = 0;
   int c;
   int e = 0;
 
-  if (use_stdin)
-    in = stdin;
-  else if (! (in = fopen (file_name, "r")))
-    return -1;
-
-  while ((c = getc (in)) != EOF)
+  while ((c = getc (fp)) != EOF)
     {
       if (buf_count == buf_alloc)
         buf = x2realloc (buf, &buf_alloc);
       buf[buf_count++] = c;
     }
 
-  if (ferror (in))
-    e = errno;
-
-  if (!use_stdin && fclose (in) != 0)
+  if (ferror (fp))
     e = errno;
 
   buf = xrealloc (buf, buf_count + 1);
   buf[buf_count] = line_end;
   lim = buf + buf_count + ! (buf_count == 0 || buf[buf_count - 1] == line_end);
+
+  exclude_add_pattern_buffer (ex, buf);
+
   pattern = buf;
 
   for (p = buf; p < lim; p++)
@@ -554,7 +655,7 @@ add_exclude_file (void (*add_func) (struct exclude *, char const *, int),
           }
 
         *pattern_end = '\0';
-        (*add_func) (ex, pattern, options);
+        (*add_func) (ex, pattern, options, data);
 
       next_pattern:
         pattern = p + 1;
@@ -562,4 +663,33 @@ add_exclude_file (void (*add_func) (struct exclude *, char const *, int),
 
   errno = e;
   return e ? -1 : 0;
+}
+
+static void
+call_addfn (struct exclude *ex, char const *pattern, int options, void *data)
+{
+  void (**addfnptr) (struct exclude *, char const *, int) = data;
+  (*addfnptr) (ex, pattern, options);
+}
+
+int
+add_exclude_file (void (*add_func) (struct exclude *, char const *, int),
+		  struct exclude *ex, char const *file_name, int options,
+		  char line_end)
+{
+  bool use_stdin = file_name[0] == '-' && !file_name[1];
+  FILE *in;
+  int rc = 0;
+
+  if (use_stdin)
+    in = stdin;
+  else if (! (in = fopen (file_name, "r")))
+    return -1;
+
+  rc = add_exclude_fp (call_addfn, ex, in, options, line_end, &add_func);
+
+  if (!use_stdin && fclose (in) != 0)
+    rc = -1;
+
+  return rc;
 }

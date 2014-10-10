@@ -1,5 +1,5 @@
 /* kwset.h - header declaring the keyword set library.
-   Copyright (C) 1989, 1998, 2005, 2007, 2009-2012 Free Software Foundation,
+   Copyright (C) 1989, 1998, 2005, 2007, 2009-2014 Free Software Foundation,
    Inc.
 
    This program is free software; you can redistribute it and/or modify
@@ -21,6 +21,8 @@
    The author may be reached (Email) at the address mike@ai.mit.edu,
    or (US mail) as Mike Haertel c/o Free Software Foundation. */
 
+#include <stddef.h>
+
 struct kwsmatch
 {
   size_t index;			/* Index number of matching keyword. */
@@ -33,20 +35,17 @@ struct kwsmatch
 struct kwset;
 typedef struct kwset *kwset_t;
 
-/* Return an opaque pointer to a newly allocated keyword set, or NULL
-   if enough memory cannot be obtained.  The argument if non-NULL
+/* Return an opaque pointer to a newly allocated keyword set.  A nonnull arg
    specifies a table of character translations to be applied to all
-   pattern and search text. */
+   pattern and search text.  */
 extern kwset_t kwsalloc (char const *);
 
 /* Incrementally extend the keyword set to include the given string.
-   Return NULL for success, or an error message.  Remember an index
-   number for each keyword included in the set. */
-extern const char *kwsincr (kwset_t, char const *, size_t);
+   Remember an index number for each keyword included in the set.  */
+extern void kwsincr (kwset_t, char const *, size_t);
 
-/* When the keyword set has been completely built, prepare it for
-   use.  Return NULL for success, or an error message. */
-extern const char *kwsprep (kwset_t);
+/* When the keyword set has been completely built, prepare it for use.  */
+extern void kwsprep (kwset_t);
 
 /* Search through the given buffer for a member of the keyword set.
    Return a pointer to the leftmost longest match found, or NULL if

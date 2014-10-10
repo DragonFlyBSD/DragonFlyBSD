@@ -1,6 +1,6 @@
 /* strerror-override.c --- POSIX compatible system error routine
 
-   Copyright (C) 2010-2012 Free Software Foundation, Inc.
+   Copyright (C) 2010-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -289,6 +289,11 @@ strerror_override (int errnum)
 #if GNULIB_defined_ENOTRECOVERABLE
     case ENOTRECOVERABLE:
       return "State not recoverable";
+#endif
+
+#if GNULIB_defined_EILSEQ
+    case EILSEQ:
+      return "Invalid or incomplete multibyte or wide character";
 #endif
 
     default:

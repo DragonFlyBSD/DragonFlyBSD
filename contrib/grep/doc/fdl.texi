@@ -5,7 +5,7 @@
 @c hence no sectioning command or @node.
 
 @display
-Copyright @copyright{} 2000-2002, 2007-2008, 2010-2012 Free Software
+Copyright @copyright{} 2000-2002, 2007-2008, 2010-2014 Free Software
 Foundation, Inc.
 @uref{http://fsf.org/}
 

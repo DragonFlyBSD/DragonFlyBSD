@@ -1,20 +1,21 @@
 /* Extended regular expression matching and search library.
-   Copyright (C) 2002-2012 Free Software Foundation, Inc.
+   Copyright (C) 2002-2014 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
    Contributed by Isamu Hasegawa <isamu@yamato.ibm.com>.
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 3, or (at your option)
-   any later version.
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public
+   License as published by the Free Software Foundation; either
+   version 3 of the License, or (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
+   The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
 
-   You should have received a copy of the GNU General Public License along
-   with this program; if not, see <http://www.gnu.org/licenses/>.  */
+   You should have received a copy of the GNU General Public
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
 
 #ifndef _REGEX_INTERNAL_H
 #define _REGEX_INTERNAL_H 1
@@ -26,21 +27,55 @@
 #include <string.h>
 
 #include <langinfo.h>
-#ifndef _LIBC
-# include "localcharset.h"
-#endif
 #include <locale.h>
 #include <wchar.h>
 #include <wctype.h>
 #include <stdbool.h>
 #include <stdint.h>
-#if defined _LIBC
+
+#ifdef _LIBC
 # include <bits/libc-lock.h>
+# define lock_define(name) __libc_lock_define (, name)
+# define lock_init(lock) (__libc_lock_init (lock), 0)
+# define lock_fini(lock) 0
+# define lock_lock(lock) __libc_lock_lock (lock)
+# define lock_unlock(lock) __libc_lock_unlock (lock)
+#elif defined GNULIB_LOCK
+# include "glthread/lock.h"
+  /* Use gl_lock_define if empty macro arguments are known to work.
+     Otherwise, fall back on less-portable substitutes.  */
+# if ((defined __GNUC__ && !defined __STRICT_ANSI__) \
+      || (defined __STDC_VERSION__ && 199901L <= __STDC_VERSION__))
+#  define lock_define(name) gl_lock_define (, name)
+# elif USE_POSIX_THREADS
+#  define lock_define(name) pthread_mutex_t name;
+# elif USE_PTH_THREADS
+#  define lock_define(name) pth_mutex_t name;
+# elif USE_SOLARIS_THREADS
+#  define lock_define(name) mutex_t name;
+# elif USE_WINDOWS_THREADS
+#  define lock_define(name) gl_lock_t name;
+# else
+#  define lock_define(name)
+# endif
+# define lock_init(lock) glthread_lock_init (&(lock))
+# define lock_fini(lock) glthread_lock_destroy (&(lock))
+# define lock_lock(lock) glthread_lock_lock (&(lock))
+# define lock_unlock(lock) glthread_lock_unlock (&(lock))
+#elif defined GNULIB_PTHREAD
+# include <pthread.h>
+# define lock_define(name) pthread_mutex_t name;
+# define lock_init(lock) pthread_mutex_init (&(lock), 0)
+# define lock_fini(lock) pthread_mutex_destroy (&(lock))
+# define lock_lock(lock) pthread_mutex_lock (&(lock))
+# define lock_unlock(lock) pthread_mutex_unlock (&(lock))
 #else
-# define __libc_lock_define(CLASS,NAME)
-# define __libc_lock_init(NAME) do { } while (0)
-# define __libc_lock_lock(NAME) do { } while (0)
-# define __libc_lock_unlock(NAME) do { } while (0)
+# define lock_define(name)
+# define lock_init(lock) 0
+# define lock_fini(lock) ((void) 0)
+  /* The 'dfa' avoids an "unused variable 'dfa'" warning from GCC.  */
+# define lock_lock(lock) ((void) dfa)
+# define lock_unlock(lock) ((void) 0)
 #endif
 
 /* In case that the system doesn't have isblank().  */
@@ -63,7 +98,7 @@
 # ifdef _LIBC
 #  undef gettext
 #  define gettext(msgid) \
-  INTUSE(__dcgettext) (_libc_intl_domainname, msgid, LC_MESSAGES)
+  __dcgettext (_libc_intl_domainname, msgid, LC_MESSAGES)
 # endif
 #else
 # define gettext(msgid) (msgid)
@@ -75,7 +110,7 @@
 # define gettext_noop(String) String
 #endif
 
-#if (defined MB_CUR_MAX && HAVE_WCTYPE_H && HAVE_ISWCTYPE && HAVE_WCSCOLL) || _LIBC
+#if (defined MB_CUR_MAX && HAVE_WCTYPE_H && HAVE_ISWCTYPE) || _LIBC
 # define RE_ENABLE_I18N
 #endif
 
@@ -83,9 +118,6 @@
 # define BE(expr, val) __builtin_expect (expr, val)
 #else
 # define BE(expr, val) (expr)
-# ifdef _LIBC
-#  define inline
-# endif
 #endif
 
 /* Number of ASCII characters.  */
@@ -102,6 +134,8 @@
 
 /* Rename to standard API for using out of glibc.  */
 #ifndef _LIBC
+# undef __wctype
+# undef __iswctype
 # define __wctype wctype
 # define __iswctype iswctype
 # define __btowc btowc
@@ -111,10 +145,8 @@
 # define attribute_hidden
 #endif /* not _LIBC */
 
-#if __GNUC__ >= 4 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 1)
-# define __attribute(arg) __attribute__ (arg)
-#else
-# define __attribute(arg)
+#if __GNUC__ < 3 + (__GNUC_MINOR__ < 1)
+# define __attribute__(arg)
 #endif
 
 typedef __re_idx_t Idx;
@@ -430,7 +462,7 @@ static void build_upper_buffer (re_string_t *pstr) internal_function;
 static void re_string_translate_buffer (re_string_t *pstr) internal_function;
 static unsigned int re_string_context_at (const re_string_t *input, Idx idx,
 					  int eflags)
-     internal_function __attribute ((pure));
+     internal_function __attribute__ ((pure));
 #endif
 #define re_string_peek_byte(pstr, offset) \
   ((pstr)->mbs[(pstr)->cur_idx + offset])
@@ -449,7 +481,9 @@ static unsigned int re_string_context_at (const re_string_t *input, Idx idx,
 #define re_string_skip_bytes(pstr,idx) ((pstr)->cur_idx += (idx))
 #define re_string_set_index(pstr,idx) ((pstr)->cur_idx = (idx))
 
-#include <alloca.h>
+#if defined _LIBC || HAVE_ALLOCA
+# include <alloca.h>
+#endif
 
 #ifndef _LIBC
 # if HAVE_ALLOCA
@@ -464,6 +498,12 @@ static unsigned int re_string_context_at (const re_string_t *input, Idx idx,
 #  undef alloca
 #  define alloca(n) malloc (n)
 # endif
+#endif
+
+#ifdef _LIBC
+# define MALLOC_0_IS_NONNULL 1
+#elif !defined MALLOC_0_IS_NONNULL
+# define MALLOC_0_IS_NONNULL 0
 #endif
 
 #ifndef MAX
@@ -696,7 +736,7 @@ struct re_dfa_t
 #ifdef DEBUG
   char* re_str;
 #endif
-  __libc_lock_define (, lock)
+  lock_define (lock)
 };
 
 #define re_node_set_init_empty(set) memset (set, '\0', sizeof (re_node_set))
@@ -727,33 +767,33 @@ typedef struct
 } bracket_elem_t;
 
 
-/* Inline functions for bitset_t operation.  */
+/* Functions for bitset_t operation.  */
 
-static inline void
+static void
 bitset_set (bitset_t set, Idx i)
 {
   set[i / BITSET_WORD_BITS] |= (bitset_word_t) 1 << i % BITSET_WORD_BITS;
 }
 
-static inline void
+static void
 bitset_clear (bitset_t set, Idx i)
 {
   set[i / BITSET_WORD_BITS] &= ~ ((bitset_word_t) 1 << i % BITSET_WORD_BITS);
 }
 
-static inline bool
+static bool
 bitset_contain (const bitset_t set, Idx i)
 {
   return (set[i / BITSET_WORD_BITS] >> i % BITSET_WORD_BITS) & 1;
 }
 
-static inline void
+static void
 bitset_empty (bitset_t set)
 {
   memset (set, '\0', sizeof (bitset_t));
 }
 
-static inline void
+static void
 bitset_set_all (bitset_t set)
 {
   memset (set, -1, sizeof (bitset_word_t) * (SBC_MAX / BITSET_WORD_BITS));
@@ -762,13 +802,13 @@ bitset_set_all (bitset_t set)
       ((bitset_word_t) 1 << SBC_MAX % BITSET_WORD_BITS) - 1;
 }
 
-static inline void
+static void
 bitset_copy (bitset_t dest, const bitset_t src)
 {
   memcpy (dest, src, sizeof (bitset_t));
 }
 
-static inline void
+static void __attribute__ ((unused))
 bitset_not (bitset_t set)
 {
   int bitset_i;
@@ -780,7 +820,7 @@ bitset_not (bitset_t set)
        & ~set[BITSET_WORDS - 1]);
 }
 
-static inline void
+static void __attribute__ ((unused))
 bitset_merge (bitset_t dest, const bitset_t src)
 {
   int bitset_i;
@@ -788,7 +828,7 @@ bitset_merge (bitset_t dest, const bitset_t src)
     dest[bitset_i] |= src[bitset_i];
 }
 
-static inline void
+static void __attribute__ ((unused))
 bitset_mask (bitset_t dest, const bitset_t src)
 {
   int bitset_i;
@@ -797,9 +837,9 @@ bitset_mask (bitset_t dest, const bitset_t src)
 }
 
 #ifdef RE_ENABLE_I18N
-/* Inline functions for re_string.  */
-static inline int
-internal_function __attribute ((pure))
+/* Functions for re_string.  */
+static int
+internal_function __attribute__ ((pure, unused))
 re_string_char_size_at (const re_string_t *pstr, Idx idx)
 {
   int byte_idx;
@@ -811,8 +851,8 @@ re_string_char_size_at (const re_string_t *pstr, Idx idx)
   return byte_idx;
 }
 
-static inline wint_t
-internal_function __attribute ((pure))
+static wint_t
+internal_function __attribute__ ((pure, unused))
 re_string_wchar_at (const re_string_t *pstr, Idx idx)
 {
   if (pstr->mb_cur_max == 1)
@@ -822,9 +862,8 @@ re_string_wchar_at (const re_string_t *pstr, Idx idx)
 
 # ifndef NOT_IN_libc
 static int
-internal_function __attribute ((pure))
-re_string_elem_size_at (const re_string_t *pstr _UNUSED_PARAMETER_,
-			Idx idx _UNUSED_PARAMETER_)
+internal_function __attribute__ ((pure, unused))
+re_string_elem_size_at (const re_string_t *pstr, Idx idx)
 {
 #  ifdef _LIBC
   const unsigned char *p, *extra;

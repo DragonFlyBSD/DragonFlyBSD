@@ -1,5 +1,5 @@
 /* provide a replacement openat function
-   Copyright (C) 2004-2012 Free Software Foundation, Inc.
+   Copyright (C) 2004-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #undef __need_system_fcntl_h
 
 #if HAVE_OPENAT
-static inline int
+static int
 orig_openat (int fd, char const *filename, int flags, mode_t mode)
 {
   return openat (fd, filename, flags, mode);

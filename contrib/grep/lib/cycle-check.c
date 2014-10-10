@@ -1,6 +1,6 @@
 /* help detect directory cycles efficiently
 
-   Copyright (C) 2003-2006, 2009-2012 Free Software Foundation, Inc.
+   Copyright (C) 2003-2006, 2009-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 
 /* Return true if I is a power of 2, or is zero.  */
 
-static inline bool
+static bool
 is_zero_or_power_of_two (uintmax_t i)
 {
   return (i & (i - 1)) == 0;

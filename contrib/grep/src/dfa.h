@@ -1,5 +1,5 @@
 /* dfa.h - declarations for GNU deterministic regexp compiler
-   Copyright (C) 1988, 1998, 2007, 2009-2012 Free Software Foundation, Inc.
+   Copyright (C) 1988, 1998, 2007, 2009-2014 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -18,11 +18,17 @@
 
 /* Written June, 1988 by Mike Haertel */
 
+#include <regex.h>
+#include <stdbool.h>
+#include <stddef.h>
+
 /* Element of a list of strings, at least one of which is known to
    appear in any R.E. matching the DFA. */
 struct dfamust
 {
-  int exact;
+  bool exact;
+  bool begline;
+  bool endline;
   char *must;
   struct dfamust *next;
 };
@@ -65,6 +71,15 @@ extern void dfacomp (char const *, size_t, struct dfa *, int);
 extern char *dfaexec (struct dfa *d, char const *begin, char *end,
                       int newline, size_t *count, int *backref);
 
+/* Return a superset for D.  The superset matches everything that D
+   matches, along with some other strings (though the latter should be
+   rare, for efficiency reasons).  Return a null pointer if no useful
+   superset is available.  */
+extern struct dfa *dfasuperset (struct dfa const *d) _GL_ATTRIBUTE_PURE;
+
+/* The DFA is likely to be fast.  */
+extern bool dfaisfast (struct dfa const *) _GL_ATTRIBUTE_PURE;
+
 /* Free the storage held by the components of a struct dfa. */
 extern void dfafree (struct dfa *);
 
@@ -96,3 +111,5 @@ extern void dfawarn (const char *);
    takes a single argument, a NUL-terminated string describing the error.
    The user must supply a dfaerror.  */
 extern _Noreturn void dfaerror (const char *);
+
+extern int using_utf8 (void);
