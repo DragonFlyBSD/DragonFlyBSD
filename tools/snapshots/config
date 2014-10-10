@@ -2,9 +2,9 @@
 #
 
 set build = /build/snapshots
-set dflygit = /repository/git/dragonfly.git
-set pkgsrcgit = /repository/git/pkgsrc.git
+set dflygit = git://crater.dragonflybsd.org/dragonfly.git
+set dportsgit = git://crater.dragonflybsd.org/dports.git
 set dfly_branch = master
-set pkgsrc_branch = vendor
+set dports_branch = master
 set snapshots = /archive/snapshots
 set relsname = DEV

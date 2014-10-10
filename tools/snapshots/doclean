@@ -5,9 +5,16 @@
 
 source config
 
-set ncpu = `sysctl -n hw.ncpu`
+# slow and steady wins the race, don't interfere
+# with other stuff
+set ncpu = 1
+#set ncpu = `sysctl -n hw.ncpu`
 set pushdsilent
 set xdate = "date"
+
+# needed for ports 'ex' script execution
+#
+setenv TERM xterm
 
 echo "`$xdate` - SNAPSHOTS DOCLEAN BEGIN"
 
@@ -25,7 +32,7 @@ foreach arg ( $argv )
     default:
 	echo "Unknown option $arg"
 	echo "`$xdate` - SNAPSHOTS DOCLEAN END"
-	exit 1
+ 	exit 1
     endsw
 end
 
@@ -37,7 +44,13 @@ if ( "$build" == "" ) then
     exit 1
 endif
 
+if ( -e $build/root/usr/src/nrelease && -e $build/root/dev/null ) then
+    echo "`$xdate` - Cleanup previous nrelease"
+    chroot $build/root csh -c "cd /usr/src/nrelease; make -DNOPROFILE -DWITHOUT_SRCS clean"
+endif
+
 if ( -e $build/root/dev/null ) then
+    sync; sleep 1
     echo "`$xdate` - Unmount devfs from $build/root/dev"
     umount $build/root/dev
     if ( $? > 0 ) then
@@ -47,10 +60,10 @@ if ( -e $build/root/dev/null ) then
     endif
 endif
 
-# remount the nullfs mount read-only just in case the umount fails.
-#
-umount $build/root/usr/pkgsrc/distfiles >& /dev/null
-mount -u -o ro $build/root/usr/pkgsrc/distfiles >& /dev/null
+sync; sleep 1
+umount $build/root/usr/distfiles >& /dev/null
+umount $build/root/usr/src >& /dev/null
+umount $build/root/usr/dports >& /dev/null
 
 if ( $?quick == 0 ) then
     echo "`$xdate` - Destroying root environment at $build/root"
@@ -73,11 +86,11 @@ echo "`$xdate` - Log files are in $build/*.out"
 if ( ! -e $build/root/etc/networks ) then
     unset realquick
 endif
-if ( ! -d $build/root/usr/src ) then
+if ( ! -d $build/src ) then
     unset quick
     unset realquick
 endif
-if ( ! -d $build/root/usr/pkgsrc ) then
+if ( ! -d $build/dports ) then
     unset quick
     unset realquick
 endif
@@ -87,14 +100,13 @@ endif
 #
 # DragonFly sources
 #
-pushd $build/root/usr
-if ( $?quick == 0 ) then
+pushd $build
+
+if ( ! -d src ) then
     echo "`$xdate` - Cloning $dflygit"
-    rm -rf src
     git clone -n $dflygit src
 endif
-popd
-pushd $build/root/usr/src
+pushd $build/src
 if ( "`git branch | fgrep $dfly_branch`" == "" ) then
     echo "`$xdate` - Branching-src $dfly_branch"
     git branch $dfly_branch origin/$dfly_branch
@@ -106,22 +118,33 @@ popd
 
 # Package sources
 #
-pushd $build/root/usr
-if ( $?quick == 0 ) then
-    echo "`$xdate` - Cloning $pkgsrcgit"
-    rm -rf pkgsrc
-    git clone -n $pkgsrcgit pkgsrc
+if ( ! -d dports ) then
+    echo "`$xdate` - Cloning $dportsgit"
+    git clone -n $dportsgit dports
 endif
-popd
-pushd $build/root/usr/pkgsrc
-if ( "`git branch | fgrep $pkgsrc_branch`" == "" ) then
-    echo "`$xdate` - Branching-pkgsrc $pkgsrc_branch"
-    git branch $pkgsrc_branch origin/$pkgsrc_branch
+pushd $build/dports
+if ( "`git branch | fgrep $dports_branch`" == "" ) then
+    echo "`$xdate` - Branching-dports $dports_branch"
+    git branch $dports_branch origin/$dports_branch
 endif
-echo "`$xdate` - Updating pkgsrc"
-git checkout $pkgsrc_branch
+echo "`$xdate` - Updating dports"
+git checkout $dports_branch
 git pull
 popd
+
+# null mounts
+#
+mkdir -p $build/root/usr/src
+mkdir -p $build/root/usr/dports
+mkdir -p $build/root/usr/distfiles
+
+echo "`$xdate` - Mounting src, dports, distfiles"
+mount_null $build/src $build/root/usr/src
+mount_null $build/dports $build/root/usr/dports
+mount_null $build/distfiles $build/root/usr/distfiles
+
+popd
+# popped build
 
 # Install/upgrade environment
 #
@@ -159,8 +182,6 @@ if ( $?realquick == 0 ) then
     make upgrade DESTDIR=$build/root >& $build/upgrade.out
 endif
 
-popd
-
 # Setup the chroot environment, including packages nrelease needs to
 # build.
 #
@@ -169,8 +190,6 @@ echo "`$xdate` - Mounting devfs"
 if ( ! -e $build/root/dev/null ) then
     mount_devfs dummy $build/root/dev
 endif
-echo "`$xdate` - Mounting distfiles"
-mount_null $build/distfiles $build/root/usr/pkgsrc/distfiles
 
 #mkdir -m 1777 $build/root/tmp
 #mkdir -m 1777 $build/root/var/tmp
@@ -180,40 +199,49 @@ if ( $?realquick == 0 ) then
     chroot $build/root /etc/rc.d/ldconfig start
 endif
 cp /etc/resolv.conf $build/root/etc/
+rm -rf $build/root/usr/obj/dports
+mkdir -p $build/root/usr/obj/dports
 
-if ( ! -e $build/root/usr/pkg/bin/bmake ) then
-    echo "`$xdate` - Bootstrapping pkgsrc, tail -f $build/bootstrap.out"
-    chroot $build/root csh -c "cd /usr/pkgsrc/bootstrap; rm -rf /usr/obj/bootstrap; ./bootstrap --workdir=/usr/obj/bootstrap" >& $build/bootstrap.out
+cat > $build/root/etc/make.conf << EOF
+
+# set by doclean
+#
+git_UNSET=CONTRIB PERL DIALOG
+
+EOF
+
+if ( ! -e $build/root/usr/local/bin/bmake ) then
+    echo "`$xdate` - Bootstrapping dports, tail -f $build/bootstrap.out"
+    chroot $build/root csh -c "cd /usr/dports/devel/bmake; make all install" >& $build/bootstrap.out
     if ( $? > 0 ) then
-	echo "`$xdate` - pkgsrc bootstrap had problems"
+	echo "`$xdate` - dports bootstrap had problems"
 	echo "`$xdate` - SNAPSHOTS DOCLEAN END"
 	exit 1
     endif
 endif
 
-if ( ! -e $build/root/usr/pkg/bin/mkisofs ) then
-    echo "`$xdate` - Setting up cdrecord and friends, tail -f $build/nrelease1.out"
-    setenv PKGSRC_PATH /usr/pkgsrc
-    chroot $build/root csh -c "cd /usr/src/nrelease; make fetch pkgsrc_cdrecord" >& $build/nrelease1.out
-    if ( $? > 0 ) then
-	echo "`$xdate` - nrelease had problems"
-	echo "`$xdate` - SNAPSHOTS DOCLEAN END"
-	exit 1
-    endif
-endif
-
-# The nrelease build needs scmgit as well.  Try to get the binary package
+# The nrelease build needs cdrecord and git.  Try to get the binary package
 # first and then build whatever else is needed from source.  These packages
 # are not part of the nrelease snapshot build, they are used by nrelease
 # to do the build.
 #
-if ( ! -e $build/root/usr/pkg/bin/git ) then
-    echo "`$xdate` - Setting up scmgit from pkgsrc, tail -f $build/nrelease2.out"
-    chroot $build/root csh -c "pkg_radd scmgit"
-    if ( ! -e $build/root/usr/pkg/bin/git ) then
+if ( ! -e $build/root/usr/local/bin/mkisofs ) then
+    echo "`$xdate` - Setting up cdrecord and friends, tail -f $build/nrelease1.out"
+    #chroot $build/root csh -c "pkg_radd cdrecord"
+    if ( ! -e $build/root/usr/local/bin/mkisofs ) then
 	    echo "`$xdate` - Binary package not found, building from source"
-	    chroot $build/root csh -c "cd /usr/pkgsrc/devel/scmgit; bmake update"
+	    chroot $build/root csh -c "cd /usr/dports/sysutils/cdrtools; make -DBATCH all install"
+    endif
+endif
+
+if ( ! -e $build/root/usr/local/bin/git ) then
+    echo "`$xdate` - Setting up git from dports, tail -f $build/nrelease2.out"
+    #chroot $build/root csh -c "pkg_radd git"
+    if ( ! -e $build/root/usr/local/bin/git ) then
+	    echo "`$xdate` - Binary package not found, building from source"
+	    chroot $build/root csh -c "cd /usr/dports/devel/git; make -DBATCH all install"
     endif
 endif
 
 echo "`$xdate` - SNAPSHOTS DOCLEAN END"
+

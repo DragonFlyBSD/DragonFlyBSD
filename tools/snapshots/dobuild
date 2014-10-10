@@ -9,6 +9,10 @@ set ncpu = `sysctl -n hw.ncpu`
 set pushdsilent
 set xdate = "date"
 
+# needed for ports 'ex' script execution
+#
+setenv TERM xterm
+
 echo "`$xdate` - SNAPSHOTS DOBUILD BEGIN"
 
 # Options
@@ -29,7 +33,7 @@ foreach arg ( $argv )
     default:
 	echo "`$xdate` - Unknown option $arg"
 	echo "`$xdate` - SNAPSHOTS DOBUILD END"
-	exit 1
+ 	exit 1
     endsw
 end
 
@@ -38,13 +42,17 @@ if ( ! -e $build/root/dev/null ) then
     mount_devfs dummy $build/root/dev
 endif
 
-umount $build/root/usr/pkgsrc/distfiles >& /dev/null
-mount_null $build/distfiles $build/root/usr/pkgsrc/distfiles
-
-setenv PKGSRC_PATH /usr/pkgsrc
+sync; sleep 1
+umount $build/root/usr/distfiles >& /dev/null
+umount $build/root/usr/src >& /dev/null
+umount $build/root/usr/dports >& /dev/null
+sync; sleep 1
+mount_null $build/distfiles $build/root/usr/distfiles
+mount_null $build/src $build/root/usr/src
+mount_null $build/dports $build/root/usr/dports
 
 echo "`$xdate` - Build is running nrelease, tail -f $build/nrelease-build.out"
-chroot $build/root csh -c "cd /usr/src/nrelease; make -DNOPROFILE -DWITHOUT_SRCS img $nrelease_args" >& $build/nrelease-build.out
+chroot $build/root csh -c "cd /usr/src/nrelease; make -DNOPROFILE -DWITHOUT_SRCS MAKE_JOBS=1 img $nrelease_args" >& $build/nrelease-build.out
 
 if ( $? > 0 ) then
     echo "`$xdate` - NRelease build had a problem, see $build/nrelease-build.out"
@@ -82,13 +90,16 @@ chmod 644 $filepath/images/$basename.iso.bz2
 chmod 644 $filepath/images/$basename.img.bz2
 chmod 644 $filepath/kernels/$basename.boot.tar.bz2
 sync
+umask 022
 pushd $filepath/images
 md5 $basename.iso.bz2 >> CHECKSUM.MD5
 md5 $basename.img.bz2 >> CHECKSUM.MD5
+chmod 644 CHECKSUM.MD5
 popd
 
 pushd $filepath/kernels
 md5 $basename.boot.tar.bz2 >> CHECKSUM.MD5
+chmod 644 CHECKSUM.MD5
 popd
 
 # Only adjust the 'latest' softlink shortcuts for
@@ -112,6 +123,10 @@ if ( "$relsname" == "DEV" ) then
     popd
 endif
 
-sync
+sync; sleep 1
+umount $build/root/usr/distfiles >& /dev/null
+umount $build/root/usr/src >& /dev/null
+umount $build/root/usr/dports >& /dev/null
+umount $build/root/dev >& /dev/null
 
 echo "`$xdate` - SNAPSHOTS DOBUILD END"

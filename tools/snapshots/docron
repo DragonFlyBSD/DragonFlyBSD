@@ -1,9 +1,11 @@
 #!/bin/csh
 #
 
-./doclean quick
+umask 022
+./doclean >& /build/snapshots/docron.out
 if ( $? > 0 ) then
     echo "doclean script failed, aborting build"
     exit 1
 endif
-./dobuild
+./dobuild >>& /build/snapshots/docron.out
+
