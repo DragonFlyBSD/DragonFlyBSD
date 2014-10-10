@@ -412,7 +412,15 @@ statement_sink_location (gimple stmt, basic_block frombb,
 	      && gimple_vdef (use_stmt)
 	      && operand_equal_p (gimple_assign_lhs (stmt),
 				  gimple_assign_lhs (use_stmt), 0))
-	    continue;
+	    {
+	      /* If use_stmt is or might be a nop assignment then USE_STMT
+		 acts as a use as well as definition.  */
+	      if (stmt != use_stmt
+		  && ref_maybe_used_by_stmt_p (use_stmt,
+					       gimple_assign_lhs (stmt)))
+		return false;
+	      continue;
+	    }
 
 	  if (gimple_code (use_stmt) != GIMPLE_PHI)
 	    return false;
@@ -628,7 +636,7 @@ static void
 execute_sink_code (void)
 {
   loop_optimizer_init (LOOPS_NORMAL);
-
+  split_critical_edges ();
   connect_infinite_loops_to_exit ();
   memset (&sink_stats, 0, sizeof (sink_stats));
   calculate_dominance_info (CDI_DOMINATORS);

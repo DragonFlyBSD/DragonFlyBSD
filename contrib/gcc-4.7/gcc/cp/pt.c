@@ -5521,6 +5521,10 @@ convert_nontype_argument (tree type, tree expr, tsubst_flags_t complain)
 	  else
 	    return NULL_TREE;
 	}
+
+      /* Avoid typedef problems.  */
+      if (TREE_TYPE (expr) != type)
+	expr = fold_convert (type, expr);
     }
   /* [temp.arg.nontype]/5, bullet 2
 
@@ -12214,6 +12218,9 @@ tsubst_copy (tree t, tree args, tsubst_flags_t complain, tree in_decl)
     case TYPE_DECL:
       return tsubst (t, args, complain, in_decl);
 
+    case USING_DECL:
+      t = DECL_NAME (t);
+      /* Fall through.  */
     case IDENTIFIER_NODE:
       if (IDENTIFIER_TYPENAME_P (t))
 	{
@@ -14706,8 +14713,11 @@ fn_type_unification (tree fn,
 
       /* If we're looking for an exact match, check that what we got
 	 is indeed an exact match.  It might not be if some template
-	 parameters are used in non-deduced contexts.  */
-      if (strict == DEDUCE_EXACT)
+	 parameters are used in non-deduced contexts.  But don't check
+	 for an exact match if we have dependent template arguments;
+	 in that case we're doing partial ordering, and we already know
+	 that we have two candidates that will provide the actual type.  */
+      if (strict == DEDUCE_EXACT && !any_dependent_template_arguments_p (targs))
 	{
 	  unsigned int i;
 
@@ -18083,6 +18093,10 @@ maybe_instantiate_noexcept (tree fn)
 {
   tree fntype, spec, noex, clone;
 
+  /* Don't instantiate a noexcept-specification from template context.  */
+  if (processing_template_decl)
+    return;
+
   if (DECL_CLONED_FUNCTION_P (fn))
     fn = DECL_CLONED_FUNCTION (fn);
   fntype = TREE_TYPE (fn);
@@ -18177,6 +18191,7 @@ instantiate_decl (tree d, int defer_ok,
      if the variable has a constant value the referring expression can
      take advantage of that fact.  */
   if (TREE_CODE (d) == VAR_DECL
+      || decl_function_context (d)
       || DECL_DECLARED_CONSTEXPR_P (d))
     defer_ok = 0;
 
@@ -19545,7 +19560,7 @@ bool
 any_type_dependent_elements_p (const_tree list)
 {
   for (; list; list = TREE_CHAIN (list))
-    if (value_dependent_expression_p (TREE_VALUE (list)))
+    if (type_dependent_expression_p (TREE_VALUE (list)))
       return true;
 
   return false;

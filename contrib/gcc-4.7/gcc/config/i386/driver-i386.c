@@ -350,7 +350,10 @@ detect_caches_intel (bool xeon_mp, unsigned max_level,
 enum vendor_signatures
 {
   SIG_INTEL =	0x756e6547 /* Genu */,
-  SIG_AMD =	0x68747541 /* Auth */
+  SIG_AMD =	0x68747541 /* Auth */,
+  SIG_CENTAUR =	0x746e6543 /* Cent */,
+  SIG_CYRIX =	0x69727943 /* Cyri */,
+  SIG_NSC =	0x646f6547 /* Geod */
 };
 
 enum processor_signatures
@@ -466,27 +469,6 @@ const char *host_detect_local_cpu (int argc, const char **argv)
       has_fsgsbase = ebx & bit_FSGSBASE;
     }
 
-  /* Get XCR_XFEATURE_ENABLED_MASK register with xgetbv.  */
-#define XCR_XFEATURE_ENABLED_MASK	0x0
-#define XSTATE_FP			0x1
-#define XSTATE_SSE			0x2
-#define XSTATE_YMM			0x4
-  if (has_osxsave)
-    asm (".byte 0x0f; .byte 0x01; .byte 0xd0"
-	 : "=a" (eax), "=d" (edx)
-	 : "c" (XCR_XFEATURE_ENABLED_MASK));
-
-  /* Check if SSE and YMM states are supported.  */
-  if (!has_osxsave
-      || (eax & (XSTATE_SSE | XSTATE_YMM)) != (XSTATE_SSE | XSTATE_YMM))
-    {
-      has_avx = 0;
-      has_avx2 = 0;
-      has_fma = 0;
-      has_fma4 = 0;
-      has_xop = 0;
-    }
-
   /* Check cpuid level of extended features.  */
   __cpuid (0x80000000, ext_level, ebx, ecx, edx);
 
@@ -508,9 +490,34 @@ const char *host_detect_local_cpu (int argc, const char **argv)
       has_3dnow = edx & bit_3DNOW;
     }
 
+  /* Get XCR_XFEATURE_ENABLED_MASK register with xgetbv.  */
+#define XCR_XFEATURE_ENABLED_MASK	0x0
+#define XSTATE_FP			0x1
+#define XSTATE_SSE			0x2
+#define XSTATE_YMM			0x4
+  if (has_osxsave)
+    asm (".byte 0x0f; .byte 0x01; .byte 0xd0"
+	 : "=a" (eax), "=d" (edx)
+	 : "c" (XCR_XFEATURE_ENABLED_MASK));
+
+  /* Check if SSE and YMM states are supported.  */
+  if (!has_osxsave
+      || (eax & (XSTATE_SSE | XSTATE_YMM)) != (XSTATE_SSE | XSTATE_YMM))
+    {
+      has_avx = 0;
+      has_avx2 = 0;
+      has_fma = 0;
+      has_fma4 = 0;
+      has_f16c = 0;
+      has_xop = 0;
+    }
+
   if (!arch)
     {
-      if (vendor == SIG_AMD)
+      if (vendor == SIG_AMD
+	  || vendor == SIG_CENTAUR
+	  || vendor == SIG_CYRIX
+	  || vendor == SIG_NSC)
 	cache = detect_caches_amd (ext_level);
       else if (vendor == SIG_INTEL)
 	{
@@ -548,6 +555,37 @@ const char *host_detect_local_cpu (int argc, const char **argv)
 	processor = PROCESSOR_K6;
       else
 	processor = PROCESSOR_PENTIUM;
+    }
+  else if (vendor == SIG_CENTAUR)
+    {
+      if (arch)
+	{
+	  switch (family)
+	    {
+	    case 6:
+	      if (model > 9)
+		/* Use the default detection procedure.  */
+		processor = PROCESSOR_GENERIC32;
+	      else if (model == 9)
+		cpu = "c3-2";
+	      else if (model >= 6)
+		cpu = "c3";
+	      else
+		processor = PROCESSOR_GENERIC32;
+	      break;
+	    case 5:
+	      if (has_3dnow)
+		cpu = "winchip2";
+	      else if (has_mmx)
+		cpu = "winchip2-c6";
+	      else
+		processor = PROCESSOR_GENERIC32;
+	      break;
+	    default:
+	      /* We have no idea.  */
+	      processor = PROCESSOR_GENERIC32;
+	    }
+	}
     }
   else
     {
@@ -593,13 +631,18 @@ const char *host_detect_local_cpu (int argc, const char **argv)
 	  /* Atom.  */
 	  cpu = "atom";
 	  break;
+	case 0x0f:
+	  /* Merom.  */
+	case 0x17:
+	case 0x1d:
+	  /* Penryn.  */
+	  cpu = "core2";
+	  break;
 	case 0x1a:
 	case 0x1e:
 	case 0x1f:
 	case 0x2e:
 	  /* Nehalem.  */
-	  cpu = "corei7";
-	  break;
 	case 0x25:
 	case 0x2c:
 	case 0x2f:
@@ -611,14 +654,10 @@ const char *host_detect_local_cpu (int argc, const char **argv)
 	  /* Sandy Bridge.  */
 	  cpu = "corei7-avx";
 	  break;
-	case 0x17:
-	case 0x1d:
-	  /* Penryn.  */
-	  cpu = "core2";
-	  break;
-	case 0x0f:
-	  /* Merom.  */
-	  cpu = "core2";
+	case 0x3a:
+	case 0x3e:
+	  /* Ivy Bridge.  */
+	  cpu = "core-avx-i";
 	  break;
 	default:
 	  if (arch)

@@ -315,7 +315,7 @@ alpha*-dec-*vms*)
 	md_unwind_header=alpha/vms-unwind.h
 	;;
 arm-wrs-vxworks)
-	tmake_file="$tmake_file arm/t-arm arm/t-vxworks t-fdpbit"
+	tmake_file="$tmake_file arm/t-arm arm/t-vxworks t-softfp-sfdf t-softfp-excl arm/t-softfp t-softfp"
 	extra_parts="$extra_parts crti.o crtn.o"
 	;;
 arm*-*-freebsd*)
@@ -1110,7 +1110,7 @@ tilepro-*-linux*)
 	md_unwind_header=tilepro/linux-unwind.h
         ;;
 v850*-*-*)
-	tmake_file="v850/t-v850 t-fdpbit"
+	tmake_file="${tmake_file} v850/t-v850 t-fdpbit"
 	;;
 vax-*-linux*)
 	tmake_file="$tmake_file vax/t-linux"
@@ -1127,7 +1127,7 @@ xtensa*-*-elf*)
 	extra_parts="$extra_parts crti.o crtn.o"
 	;;
 xtensa*-*-linux*)
-	tmake_file="$tmake_file xtensa/t-xtensa xtensa/t-linux"
+	tmake_file="$tmake_file xtensa/t-xtensa xtensa/t-linux t-slibgcc-libgcc"
 	md_unwind_header=xtensa/linux-unwind.h
 	;;
 am33_2.0-*-linux*)

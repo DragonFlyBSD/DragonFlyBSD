@@ -1466,7 +1466,7 @@ vect_analyze_loop_operations (loop_vec_info loop_vinfo, bool slp)
 
   if (!LOOP_VINFO_NITERS_KNOWN_P (loop_vinfo)
       || LOOP_VINFO_INT_NITERS (loop_vinfo) % vectorization_factor != 0
-      || LOOP_PEELING_FOR_ALIGNMENT (loop_vinfo))
+      || LOOP_VINFO_PEELING_FOR_GAPS (loop_vinfo))
     {
       if (vect_print_dump_info (REPORT_DETAILS))
         fprintf (vect_dump, "epilog loop required.");
@@ -2009,6 +2009,12 @@ vect_is_simple_reduction_1 (loop_vec_info loop_info, gimple phi,
               || (!check_reduction && flow_loop_nested_p (vect_loop, loop)));
 
   name = PHI_RESULT (phi);
+  /* ???  If there are no uses of the PHI result the inner loop reduction
+     won't be detected as possibly double-reduction by vectorizable_reduction
+     because that tries to walk the PHI arg from the preheader edge which
+     can be constant.  See PR60382.  */
+  if (has_zero_uses (name))
+    return NULL;
   nloop_uses = 0;
   FOR_EACH_IMM_USE_FAST (use_p, imm_iter, name)
     {
@@ -4158,7 +4164,8 @@ vect_finalize_reduction:
          result.  (The reduction result is expected to have two immediate uses -
          one at the latch block, and one at the loop exit).  */
       FOR_EACH_IMM_USE_FAST (use_p, imm_iter, scalar_dest)
-        if (!flow_bb_inside_loop_p (loop, gimple_bb (USE_STMT (use_p))))
+        if (!flow_bb_inside_loop_p (loop, gimple_bb (USE_STMT (use_p)))
+	    && !is_gimple_debug (USE_STMT (use_p)))
           VEC_safe_push (gimple, heap, phis, USE_STMT (use_p));
 
       /* We expect to have found an exit_phi because of loop-closed-ssa
@@ -4286,7 +4293,10 @@ vect_finalize_reduction:
       FOR_EACH_IMM_USE_FAST (use_p, imm_iter, scalar_dest)
         {
           if (!flow_bb_inside_loop_p (loop, gimple_bb (USE_STMT (use_p))))
-            VEC_safe_push (gimple, heap, phis, USE_STMT (use_p));
+	    {
+	      if (!is_gimple_debug (USE_STMT (use_p)))
+		VEC_safe_push (gimple, heap, phis, USE_STMT (use_p));
+	    }
           else
             {
               if (double_reduc && gimple_code (USE_STMT (use_p)) == GIMPLE_PHI)
@@ -4296,7 +4306,8 @@ vect_finalize_reduction:
                   FOR_EACH_IMM_USE_FAST (phi_use_p, phi_imm_iter, phi_res)
                     {
                       if (!flow_bb_inside_loop_p (loop,
-                                             gimple_bb (USE_STMT (phi_use_p))))
+                                             gimple_bb (USE_STMT (phi_use_p)))
+			  && !is_gimple_debug (USE_STMT (phi_use_p)))
                         VEC_safe_push (gimple, heap, phis,
                                        USE_STMT (phi_use_p));
                     }

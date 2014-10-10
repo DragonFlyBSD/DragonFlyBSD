@@ -988,6 +988,9 @@ coverage_obj_init (void)
       /* The function is not being emitted, remove from list.  */
       *fn_prev = fn->next;
 
+  if (functions_head == NULL)
+    return false;
+
   for (ix = 0; ix != GCOV_COUNTERS; ix++)
     if ((1u << ix) & prg_ctr_mask)
       n_counters++;
@@ -1099,6 +1102,9 @@ coverage_init (const char *filename)
   memcpy (da_file_name + prefix_len, filename, len);
   strcpy (da_file_name + prefix_len + len, GCOV_DATA_SUFFIX);
 
+  if (flag_branch_probabilities)
+    read_counts_file ();
+
   /* Name of bbg file.  */
   if (flag_test_coverage && !flag_compare_debug)
     {
@@ -1118,9 +1124,6 @@ coverage_init (const char *filename)
 	  gcov_write_unsigned (local_tick);
 	}
     }
-
-  if (flag_branch_probabilities)
-    read_counts_file ();
 }
 
 /* Performs file-level cleanup.  Close graph file, generate coverage
