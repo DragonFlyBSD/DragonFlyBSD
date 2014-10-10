@@ -50,7 +50,7 @@ Its arguments are:
 .It Ar vp
 the vnode of the file.
 .It Ar waitfor
-whether the function should do data, medata-data updates or be full-synchronous.
+whether the function should do data, meta-data updates or be full-synchronous.
 .It Ar flags
 are additional flags to be passed to the filesystem specific
 .Xr fsync 2
@@ -60,14 +60,16 @@ function.
 The argument
 .Fa waitfor
 can use the following flags:
-.Bl -tag -width "MNT_NOWAIT"
-.It MNT_NOWAIT
+.Bl -tag -width ".Dv MNT_NOWAIT"
+.It Dv MNT_NOWAIT
 is for an asychronous data pass and a meta-data pass as well.
-.It MNT_LAZY
+.It Dv MNT_LAZY
 means a limited amount of data from dirty buffers and a full meta-data synchronization pass.
-.It MNT_WAIT
-will make the syncer try to do a full synchronization pass. That is, a meta-data pass and multiple
-data passes.
+.It Dv MNT_WAIT
+will make
+.Xr syncer 4
+try to do a full synchronization pass.
+That is, a meta-data pass and multiple data passes.
 .El
 .Pp
 The argument
@@ -75,10 +77,9 @@ The argument
 is to specify additional flags passed to the filesystem specific
 .Xr fsync 2
 call.
-The only supported flag at the moment is VOP_FSYNC_SYSCALL which indicates the file synchronization
-was requested from userland.
-.Sh LOCKS
-No requirements.
+The only supported flag at the moment is
+.Dv VOP_FSYNC_SYSCALL
+which indicates the file synchronization was requested from userland.
 .Sh RETURN VALUES
 Zero is returned if the call is successful, otherwise an appropriate
 error code is returned.
@@ -90,6 +91,7 @@ The filesystem is full.
 Quota exceeded.
 .El
 .Sh SEE ALSO
+.Xr syncer 4
 .Xr vnode 9
 .Sh AUTHORS
 This man page was written by
