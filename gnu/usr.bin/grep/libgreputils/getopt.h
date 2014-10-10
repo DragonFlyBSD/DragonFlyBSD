@@ -1,6 +1,6 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
 /* Declarations for getopt.
-   Copyright (C) 1989-1994, 1996-1999, 2001, 2003-2007, 2009-2012 Free Software
+   Copyright (C) 1989-1994, 1996-1999, 2001, 2003-2007, 2009-2014 Free Software
    Foundation, Inc.
    This file is part of the GNU C Library.
 
@@ -50,7 +50,9 @@
    linkers.  */
 #if defined __GETOPT_PREFIX && !defined __need_getopt
 # if !1
+#  define __need_system_stdlib_h
 #  include <stdlib.h>
+#  undef __need_system_stdlib_h
 #  include <stdio.h>
 #  include <unistd.h>
 # endif

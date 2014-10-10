@@ -4,12 +4,15 @@ LIB=		greputils
 INTERNALLIB=	true
 
 CONTRIBDIR=	${BASEDIR}/lib
-.PATH:		${CONTRIBDIR} ${CONTRIBDIR}/uniwidth ${CONTRIBDIR}/unistr
+.PATH:		${CONTRIBDIR} ${CONTRIBDIR}/uniwidth ${CONTRIBDIR}/unistr \
+		${CONTRIBDIR}/glthread
 
 CFLAGS+=	-I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
 CFLAGS+=	-DHAVE_CONFIG_H
 
 SRCS=		argmatch.c \
+		binary-io.c \
+		bitrotate.c \
 		c-ctype.c \
 		c-strcasecmp.c \
 		c-strncasecmp.c \
@@ -30,20 +33,27 @@ SRCS=		argmatch.c \
 		hash.c \
 		i-ring.c \
 		localcharset.c \
+		lock.c \
 		malloca.c \
 		mbchar.c \
+		mbiter.c \
 		mbscasecmp.c \
 		mbslen.c \
 		mbsstr.c \
+		mbuiter.c \
+		memchr2.c \
 		openat-die.c \
 		openat-safer.c \
 		progname.c \
 		propername.c \
 		quotearg.c \
+		safe-read.c \
 		save-cwd.c \
 		striconv.c \
 		strnlen1.c \
+		threadlib.c \
 		trim.c \
+		unistd.c \
 		dup-safer.c \
 		fd-safer.c \
 		pipe-safer.c \
@@ -60,11 +70,9 @@ SRCS=		argmatch.c \
 		xstrtol.c \
 		xstrtoul.c \
 		xstrtol-error.c \
-		colorize.c \
+		colorize-posix.c \
 		chdir-long.c \
-		dup2.c \
 		error.c \
-		fcntl.c \
 		fts.c \
 		getopt.c \
 		getopt1.c \
@@ -72,9 +80,7 @@ SRCS=		argmatch.c \
 		openat-proc.c \
 		regex.c \
 		strerror.c \
-		strerror-override.c
-
-# no longer needed
-#		wcwidth.c
+		strerror-override.c \
+		wcwidth.c
 
 .include <bsd.lib.mk>

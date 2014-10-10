@@ -1,15 +1,15 @@
-GNU GREP 2.14
-=============
+GNU GREP
+========
 
 Original source can be downloaded from:
 http://ftp.gnu.org/gnu/grep
 
-file = grep-2.14.tar.xz
-date = 20 August 2012
-size = 1195640
-sha1 = fb6ea404a0ef915334ca6212c7b517432ffe193e
+file = grep-2.20.tar.xz
+date = 03 June 2014
+size = 1237196
+sha1 = 55aac6158b51baa505669cf8f86440bcc106ec65
 
 A list of files and directories removed is in README.DELETED
 
 Local modifications applied to following files:
-	src/main.c
+	src/grep.c

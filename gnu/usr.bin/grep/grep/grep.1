@@ -21,7 +21,7 @@
 . \" ISO 8601 date, complete format, extended representation
 . ds Dt \\*(Yr-\\*(Mn-\\*(Dy
 ..
-.TH GREP 1 \*(Dt "GNU grep 2.14" "User Commands"
+.TH GREP 1 \*(Dt "GNU grep 2.20" "User Commands"
 .hy 0
 .
 .SH NAME
@@ -533,6 +533,7 @@ following symbolic links only if they are on the command line.
 This is equivalent to the
 .B "\-d recurse"
 option.
+.TP
 .BR \-R ", " \-\^\-dereference\-recursive
 Read all files under each directory, recursively.
 Follow all symbolic links, unlike
@@ -542,23 +543,6 @@ Follow all symbolic links, unlike
 .BR \-\^\-line\-buffered
 Use line buffering on output.
 This can cause a performance penalty.
-.TP
-.B \-\^\-mmap
-If possible, use the
-.BR mmap (2)
-system call to read input, instead of
-the default
-.BR read (2)
-system call.
-In some situations,
-.B \-\^\-mmap
-yields better performance.
-However,
-.B \-\^\-mmap
-can cause undefined behavior (including core dumps)
-if an input file shrinks while
-.B grep
-is operating, or if an I/O error occurs.
 .TP
 .BR \-U ", " \-\^\-binary
 Treat the file(s) as binary.
@@ -750,6 +734,12 @@ The preceding item is matched
 .I n
 or more times.
 .TP
+.BI {, m }
+The preceding item is matched at most
+.I m
+times.
+This is a \s-1GNU\s0 extension.
+.TP
 .BI { n , m }
 The preceding item is matched at least
 .I n
@@ -828,7 +818,7 @@ For example, the command
 searches for the two-character string
 .B {1
 instead of reporting a syntax error in the regular expression.
-\s-1POSIX.2\s0 allows this behavior as an extension, but portable scripts
+\s-1POSIX\s0 allows this behavior as an extension, but portable scripts
 should avoid it.
 .
 .SH "ENVIRONMENT VARIABLES"
@@ -1123,13 +1113,13 @@ The default C locale uses American English messages.
 .B POSIXLY_CORRECT
 If set,
 .B grep
-behaves as \s-1POSIX.2\s0 requires; otherwise,
+behaves as \s-1POSIX\s0 requires; otherwise,
 .B grep
 behaves more like other \s-1GNU\s0 programs.
-\s-1POSIX.2\s0 requires that options that follow file names must be
+\s-1POSIX\s0 requires that options that follow file names must be
 treated as file names; by default, such options are permuted to the
 front of the operand list and are treated as options.
-Also, \s-1POSIX.2\s0 requires that unrecognized options be diagnosed as
+Also, \s-1POSIX\s0 requires that unrecognized options be diagnosed as
 \*(lqillegal\*(rq, but since they are not really against the law the default
 is to diagnose them as \*(lqinvalid\*(rq.
 .B POSIXLY_CORRECT
@@ -1178,7 +1168,7 @@ to use logic that tests for this general condition
 instead of strict equality with\ 2.
 .
 .SH COPYRIGHT
-Copyright 1998-2000, 2002, 2005-2012 Free Software Foundation, Inc.
+Copyright 1998-2000, 2002, 2005-2014 Free Software Foundation, Inc.
 .PP
 This is free software;
 see the source for copying conditions.
@@ -1212,7 +1202,7 @@ Back-references are very slow, and may require exponential time.
 .SS "Regular Manual Pages"
 awk(1), cmp(1), diff(1), find(1), gzip(1),
 perl(1), sed(1), sort(1), xargs(1), zgrep(1),
-mmap(2), read(2),
+read(2),
 pcre(3), pcresyntax(3), pcrepattern(3),
 terminfo(5),
 glob(7), regex(7).

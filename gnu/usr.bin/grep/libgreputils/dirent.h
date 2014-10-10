@@ -1,6 +1,5 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
-/* Like <fcntl.h>, but with non-working flags defined to 0.
-
+/* A GNU-like <dirent.h>.
    Copyright (C) 2006-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -16,63 +15,54 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-/* written by Paul Eggert */
+#ifndef _GL_DIRENT_H
 
 #if __GNUC__ >= 3
 #pragma GCC system_header
 #endif
 
 
-#if defined __need_system_fcntl_h
-/* Special invocation convention.  */
-
-/* Needed before <sys/stat.h>.
-   May also define off_t to a 64-bit type on native Windows.  */
-#include <sys/types.h>
-/* On some systems other than glibc, <sys/stat.h> is a prerequisite of
-   <fcntl.h>.  On glibc systems, we would like to avoid namespace pollution.
-   But on glibc systems, <fcntl.h> includes <sys/stat.h> inside an
-   extern "C" { ... } block, which leads to errors in C++ mode with the
-   overridden <sys/stat.h> from gnulib.  These errors are known to be gone
-   with g++ version >= 4.3.  */
-#if !(defined __GLIBC__ || defined __UCLIBC__) || (defined __cplusplus && defined GNULIB_NAMESPACE && !(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)))
-# include <sys/stat.h>
-#endif
-#include_next <fcntl.h>
-
-#else
-/* Normal invocation convention.  */
-
-#ifndef _GL_FCNTL_H
-
-/* Needed before <sys/stat.h>.
-   May also define off_t to a 64-bit type on native Windows.  */
-#include <sys/types.h>
-/* On some systems other than glibc, <sys/stat.h> is a prerequisite of
-   <fcntl.h>.  On glibc systems, we would like to avoid namespace pollution.
-   But on glibc systems, <fcntl.h> includes <sys/stat.h> inside an
-   extern "C" { ... } block, which leads to errors in C++ mode with the
-   overridden <sys/stat.h> from gnulib.  These errors are known to be gone
-   with g++ version >= 4.3.  */
-#if !(defined __GLIBC__ || defined __UCLIBC__) || (defined __cplusplus && defined GNULIB_NAMESPACE && !(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)))
-# include <sys/stat.h>
-#endif
 /* The include_next requires a split double-inclusion guard.  */
-#include_next <fcntl.h>
-
-#ifndef _GL_FCNTL_H
-#define _GL_FCNTL_H
-
-#ifndef __GLIBC__ /* Avoid namespace pollution on glibc systems.  */
-# include <unistd.h>
+#if 1
+# include_next <dirent.h>
 #endif
 
-/* Native Windows platforms declare open(), creat() in <io.h>.  */
-#if (1 || defined GNULIB_POSIXCHECK) \
-    && ((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__)
-# include <io.h>
+#ifndef _GL_DIRENT_H
+#define _GL_DIRENT_H
+
+/* Get ino_t.  Needed on some systems, including glibc 2.8.  */
+#include <sys/types.h>
+
+#if !1
+/* Define types DIR and 'struct dirent'.  */
+# if !GNULIB_defined_struct_dirent
+struct dirent
+{
+  char d_type;
+  char d_name[1];
+};
+/* Possible values for 'd_type'.  */
+#  define DT_UNKNOWN 0
+#  define DT_FIFO    1          /* FIFO */
+#  define DT_CHR     2          /* character device */
+#  define DT_DIR     4          /* directory */
+#  define DT_BLK     6          /* block device */
+#  define DT_REG     8          /* regular file */
+#  define DT_LNK    10          /* symbolic link */
+#  define DT_SOCK   12          /* socket */
+#  define DT_WHT    14          /* whiteout */
+typedef struct gl_directory DIR;
+#  define GNULIB_defined_struct_dirent 1
+# endif
 #endif
 
+/* The __attribute__ feature is available in gcc versions 2.5 and later.
+   The attribute __pure__ was added in gcc 2.96.  */
+#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 96)
+# define _GL_ATTRIBUTE_PURE __attribute__ ((__pure__))
+#else
+# define _GL_ATTRIBUTE_PURE /* empty */
+#endif
 
 /* The definitions of _GL_FUNCDECL_RPL etc. are copied here.  */
 #ifndef _GL_CXXDEFS_H
@@ -397,263 +387,184 @@ _GL_WARN_EXTERN_C int _gl_warn_on_use
 #if 1
 # if 0
 #  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
-#   undef fcntl
-#   define fcntl rpl_fcntl
+#   undef opendir
+#   define opendir rpl_opendir
 #  endif
-_GL_FUNCDECL_RPL (fcntl, int, (int fd, int action, ...));
-_GL_CXXALIAS_RPL (fcntl, int, (int fd, int action, ...));
+_GL_FUNCDECL_RPL (opendir, DIR *, (const char *dir_name) _GL_ARG_NONNULL ((1)));
+_GL_CXXALIAS_RPL (opendir, DIR *, (const char *dir_name));
 # else
 #  if !1
-_GL_FUNCDECL_SYS (fcntl, int, (int fd, int action, ...));
+_GL_FUNCDECL_SYS (opendir, DIR *, (const char *dir_name) _GL_ARG_NONNULL ((1)));
 #  endif
-_GL_CXXALIAS_SYS (fcntl, int, (int fd, int action, ...));
+_GL_CXXALIAS_SYS (opendir, DIR *, (const char *dir_name));
 # endif
-_GL_CXXALIASWARN (fcntl);
+_GL_CXXALIASWARN (opendir);
 #elif defined GNULIB_POSIXCHECK
-# undef fcntl
-# if HAVE_RAW_DECL_FCNTL
-_GL_WARN_ON_USE (fcntl, "fcntl is not always POSIX compliant - "
-                 "use gnulib module fcntl for portability");
+# undef opendir
+# if HAVE_RAW_DECL_OPENDIR
+_GL_WARN_ON_USE (opendir, "opendir is not portable - "
+                 "use gnulib module opendir for portability");
 # endif
 #endif
 
 #if 1
-# if 0
-#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
-#   undef open
-#   define open rpl_open
-#  endif
-_GL_FUNCDECL_RPL (open, int, (const char *filename, int flags, ...)
-                             _GL_ARG_NONNULL ((1)));
-_GL_CXXALIAS_RPL (open, int, (const char *filename, int flags, ...));
-# else
-_GL_CXXALIAS_SYS (open, int, (const char *filename, int flags, ...));
+# if !1
+_GL_FUNCDECL_SYS (readdir, struct dirent *, (DIR *dirp) _GL_ARG_NONNULL ((1)));
 # endif
-/* On HP-UX 11, in C++ mode, open() is defined as an inline function with a
-   default argument.  _GL_CXXALIASWARN does not work in this case.  */
-# if !defined __hpux
-_GL_CXXALIASWARN (open);
-# endif
+_GL_CXXALIAS_SYS (readdir, struct dirent *, (DIR *dirp));
+_GL_CXXALIASWARN (readdir);
 #elif defined GNULIB_POSIXCHECK
-# undef open
-/* Assume open is always declared.  */
-_GL_WARN_ON_USE (open, "open is not always POSIX compliant - "
-                 "use gnulib module open for portability");
-#endif
-
-#if 1
-# if 0
-#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
-#   undef openat
-#   define openat rpl_openat
-#  endif
-_GL_FUNCDECL_RPL (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...)
-                  _GL_ARG_NONNULL ((2)));
-_GL_CXXALIAS_RPL (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...));
-# else
-#  if !1
-_GL_FUNCDECL_SYS (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...)
-                  _GL_ARG_NONNULL ((2)));
-#  endif
-_GL_CXXALIAS_SYS (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...));
-# endif
-_GL_CXXALIASWARN (openat);
-#elif defined GNULIB_POSIXCHECK
-# undef openat
-# if HAVE_RAW_DECL_OPENAT
-_GL_WARN_ON_USE (openat, "openat is not portable - "
-                 "use gnulib module openat for portability");
+# undef readdir
+# if HAVE_RAW_DECL_READDIR
+_GL_WARN_ON_USE (readdir, "readdir is not portable - "
+                 "use gnulib module readdir for portability");
 # endif
 #endif
 
-
-/* Fix up the FD_* macros, only known to be missing on mingw.  */
-
-#ifndef FD_CLOEXEC
-# define FD_CLOEXEC 1
-#endif
-
-/* Fix up the supported F_* macros.  Intentionally leave other F_*
-   macros undefined.  Only known to be missing on mingw.  */
-
-#ifndef F_DUPFD_CLOEXEC
-# define F_DUPFD_CLOEXEC 0x40000000
-/* Witness variable: 1 if gnulib defined F_DUPFD_CLOEXEC, 0 otherwise.  */
-# define GNULIB_defined_F_DUPFD_CLOEXEC 1
-#else
-# define GNULIB_defined_F_DUPFD_CLOEXEC 0
-#endif
-
-#ifndef F_DUPFD
-# define F_DUPFD 1
-#endif
-
-#ifndef F_GETFD
-# define F_GETFD 2
-#endif
-
-/* Fix up the O_* macros.  */
-
-#if !defined O_DIRECT && defined O_DIRECTIO
-/* Tru64 spells it 'O_DIRECTIO'.  */
-# define O_DIRECT O_DIRECTIO
-#endif
-
-#if !defined O_CLOEXEC && defined O_NOINHERIT
-/* Mingw spells it 'O_NOINHERIT'.  */
-# define O_CLOEXEC O_NOINHERIT
-#endif
-
-#ifndef O_CLOEXEC
-# define O_CLOEXEC 0
-#endif
-
-#ifndef O_DIRECT
-# define O_DIRECT 0
-#endif
-
-#ifndef O_DIRECTORY
-# define O_DIRECTORY 0
-#endif
-
-#ifndef O_DSYNC
-# define O_DSYNC 0
-#endif
-
-#ifndef O_EXEC
-# define O_EXEC O_RDONLY /* This is often close enough in older systems.  */
-#endif
-
-#ifndef O_IGNORE_CTTY
-# define O_IGNORE_CTTY 0
-#endif
-
-#ifndef O_NDELAY
-# define O_NDELAY 0
-#endif
-
-#ifndef O_NOATIME
-# define O_NOATIME 0
-#endif
-
-#ifndef O_NONBLOCK
-# define O_NONBLOCK O_NDELAY
-#endif
-
-/* If the gnulib module 'nonblocking' is in use, guarantee a working non-zero
-   value of O_NONBLOCK.  Otherwise, O_NONBLOCK is defined (above) to O_NDELAY
-   or to 0 as fallback.  */
 #if 0
-# if O_NONBLOCK
-#  define GNULIB_defined_O_NONBLOCK 0
-# else
-#  define GNULIB_defined_O_NONBLOCK 1
-#  undef O_NONBLOCK
-#  define O_NONBLOCK 0x40000000
+# if !1
+_GL_FUNCDECL_SYS (rewinddir, void, (DIR *dirp) _GL_ARG_NONNULL ((1)));
+# endif
+_GL_CXXALIAS_SYS (rewinddir, void, (DIR *dirp));
+_GL_CXXALIASWARN (rewinddir);
+#elif defined GNULIB_POSIXCHECK
+# undef rewinddir
+# if HAVE_RAW_DECL_REWINDDIR
+_GL_WARN_ON_USE (rewinddir, "rewinddir is not portable - "
+                 "use gnulib module rewinddir for portability");
 # endif
 #endif
 
-#ifndef O_NOCTTY
-# define O_NOCTTY 0
+#if 1
+# if 0
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   undef closedir
+#   define closedir rpl_closedir
+#  endif
+_GL_FUNCDECL_RPL (closedir, int, (DIR *dirp) _GL_ARG_NONNULL ((1)));
+_GL_CXXALIAS_RPL (closedir, int, (DIR *dirp));
+# else
+#  if !1
+_GL_FUNCDECL_SYS (closedir, int, (DIR *dirp) _GL_ARG_NONNULL ((1)));
+#  endif
+_GL_CXXALIAS_SYS (closedir, int, (DIR *dirp));
+# endif
+_GL_CXXALIASWARN (closedir);
+#elif defined GNULIB_POSIXCHECK
+# undef closedir
+# if HAVE_RAW_DECL_CLOSEDIR
+_GL_WARN_ON_USE (closedir, "closedir is not portable - "
+                 "use gnulib module closedir for portability");
+# endif
 #endif
 
-#ifndef O_NOFOLLOW
-# define O_NOFOLLOW 0
+#if 1
+/* Return the file descriptor associated with the given directory stream,
+   or -1 if none exists.  */
+# if 0
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   undef dirfd
+#   define dirfd rpl_dirfd
+#  endif
+_GL_FUNCDECL_RPL (dirfd, int, (DIR *) _GL_ARG_NONNULL ((1)));
+_GL_CXXALIAS_RPL (dirfd, int, (DIR *));
+# else
+#  if defined __cplusplus && defined GNULIB_NAMESPACE && defined dirfd
+    /* dirfd is defined as a macro and not as a function.
+       Turn it into a function and get rid of the macro.  */
+static inline int (dirfd) (DIR *dp) { return dirfd (dp); }
+#   undef dirfd
+#  endif
+#  if !(1 || defined dirfd)
+_GL_FUNCDECL_SYS (dirfd, int, (DIR *) _GL_ARG_NONNULL ((1)));
+#  endif
+_GL_CXXALIAS_SYS (dirfd, int, (DIR *));
+# endif
+_GL_CXXALIASWARN (dirfd);
+#elif defined GNULIB_POSIXCHECK
+# undef dirfd
+# if HAVE_RAW_DECL_DIRFD
+_GL_WARN_ON_USE (dirfd, "dirfd is unportable - "
+                 "use gnulib module dirfd for portability");
+# endif
 #endif
 
-#ifndef O_NOLINK
-# define O_NOLINK 0
+#if 1
+/* Open a directory stream visiting the given directory file
+   descriptor.  Return NULL and set errno if fd is not visiting a
+   directory.  On success, this function consumes fd (it will be
+   implicitly closed either by this function or by a subsequent
+   closedir).  */
+# if 0
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   undef fdopendir
+#   define fdopendir rpl_fdopendir
+#  endif
+_GL_FUNCDECL_RPL (fdopendir, DIR *, (int fd));
+_GL_CXXALIAS_RPL (fdopendir, DIR *, (int fd));
+# else
+#  if !1 || !1
+_GL_FUNCDECL_SYS (fdopendir, DIR *, (int fd));
+#  endif
+_GL_CXXALIAS_SYS (fdopendir, DIR *, (int fd));
+# endif
+_GL_CXXALIASWARN (fdopendir);
+#elif defined GNULIB_POSIXCHECK
+# undef fdopendir
+# if HAVE_RAW_DECL_FDOPENDIR
+_GL_WARN_ON_USE (fdopendir, "fdopendir is unportable - "
+                 "use gnulib module fdopendir for portability");
+# endif
 #endif
 
-#ifndef O_NOLINKS
-# define O_NOLINKS 0
+#if 0
+/* Scan the directory DIR, calling FILTER on each directory entry.
+   Entries for which FILTER returns nonzero are individually malloc'd,
+   sorted using qsort with CMP, and collected in a malloc'd array in
+   *NAMELIST.  Returns the number of entries selected, or -1 on error.  */
+# if !1
+_GL_FUNCDECL_SYS (scandir, int,
+                  (const char *dir, struct dirent ***namelist,
+                   int (*filter) (const struct dirent *),
+                   int (*cmp) (const struct dirent **, const struct dirent **))
+                  _GL_ARG_NONNULL ((1, 2, 4)));
+# endif
+/* Need to cast, because on glibc systems, the fourth parameter is
+                        int (*cmp) (const void *, const void *).  */
+_GL_CXXALIAS_SYS_CAST (scandir, int,
+                       (const char *dir, struct dirent ***namelist,
+                        int (*filter) (const struct dirent *),
+                        int (*cmp) (const struct dirent **, const struct dirent **)));
+_GL_CXXALIASWARN (scandir);
+#elif defined GNULIB_POSIXCHECK
+# undef scandir
+# if HAVE_RAW_DECL_SCANDIR
+_GL_WARN_ON_USE (scandir, "scandir is unportable - "
+                 "use gnulib module scandir for portability");
+# endif
 #endif
 
-#ifndef O_NOTRANS
-# define O_NOTRANS 0
-#endif
-
-#ifndef O_RSYNC
-# define O_RSYNC 0
-#endif
-
-#ifndef O_SEARCH
-# define O_SEARCH O_RDONLY /* This is often close enough in older systems.  */
-#endif
-
-#ifndef O_SYNC
-# define O_SYNC 0
-#endif
-
-#ifndef O_TTY_INIT
-# define O_TTY_INIT 0
-#endif
-
-#if ~O_ACCMODE & (O_RDONLY | O_WRONLY | O_RDWR | O_EXEC | O_SEARCH)
-# undef O_ACCMODE
-# define O_ACCMODE (O_RDONLY | O_WRONLY | O_RDWR | O_EXEC | O_SEARCH)
-#endif
-
-/* For systems that distinguish between text and binary I/O.
-   O_BINARY is usually declared in fcntl.h  */
-#if !defined O_BINARY && defined _O_BINARY
-  /* For MSC-compatible compilers.  */
-# define O_BINARY _O_BINARY
-# define O_TEXT _O_TEXT
-#endif
-
-#if defined __BEOS__ || defined __HAIKU__
-  /* BeOS 5 and Haiku have O_BINARY and O_TEXT, but they have no effect.  */
-# undef O_BINARY
-# undef O_TEXT
-#endif
-
-#ifndef O_BINARY
-# define O_BINARY 0
-# define O_TEXT 0
-#endif
-
-/* Fix up the AT_* macros.  */
-
-/* Work around a bug in Solaris 9 and 10: AT_FDCWD is positive.  Its
-   value exceeds INT_MAX, so its use as an int doesn't conform to the
-   C standard, and GCC and Sun C complain in some cases.  If the bug
-   is present, undef AT_FDCWD here, so it can be redefined below.  */
-#if 0 < AT_FDCWD && AT_FDCWD == 0xffd19553
-# undef AT_FDCWD
-#endif
-
-/* Use the same bit pattern as Solaris 9, but with the proper
-   signedness.  The bit pattern is important, in case this actually is
-   Solaris with the above workaround.  */
-#ifndef AT_FDCWD
-# define AT_FDCWD (-3041965)
-#endif
-
-/* Use the same values as Solaris 9.  This shouldn't matter, but
-   there's no real reason to differ.  */
-#ifndef AT_SYMLINK_NOFOLLOW
-# define AT_SYMLINK_NOFOLLOW 4096
-#endif
-
-#ifndef AT_REMOVEDIR
-# define AT_REMOVEDIR 1
-#endif
-
-/* Solaris 9 lacks these two, so just pick unique values.  */
-#ifndef AT_SYMLINK_FOLLOW
-# define AT_SYMLINK_FOLLOW 2
-#endif
-
-#ifndef AT_EACCESS
-# define AT_EACCESS 4
+#if 0
+/* Compare two 'struct dirent' entries alphabetically.  */
+# if !1
+_GL_FUNCDECL_SYS (alphasort, int,
+                  (const struct dirent **, const struct dirent **)
+                  _GL_ATTRIBUTE_PURE
+                  _GL_ARG_NONNULL ((1, 2)));
+# endif
+/* Need to cast, because on glibc systems, the parameters are
+                       (const void *, const void *).  */
+_GL_CXXALIAS_SYS_CAST (alphasort, int,
+                       (const struct dirent **, const struct dirent **));
+_GL_CXXALIASWARN (alphasort);
+#elif defined GNULIB_POSIXCHECK
+# undef alphasort
+# if HAVE_RAW_DECL_ALPHASORT
+_GL_WARN_ON_USE (alphasort, "alphasort is unportable - "
+                 "use gnulib module alphasort for portability");
+# endif
 #endif
 
 
-#endif /* _GL_FCNTL_H */
-#endif /* _GL_FCNTL_H */
-#endif
+#endif /* _GL_DIRENT_H */
+#endif /* _GL_DIRENT_H */

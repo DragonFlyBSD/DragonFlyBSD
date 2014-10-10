@@ -1,7 +1,6 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
-/* Like <fcntl.h>, but with non-working flags defined to 0.
-
-   Copyright (C) 2006-2014 Free Software Foundation, Inc.
+/* A POSIX <locale.h>.
+   Copyright (C) 2007-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,63 +15,40 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-/* written by Paul Eggert */
-
 #if __GNUC__ >= 3
 #pragma GCC system_header
 #endif
 
 
-#if defined __need_system_fcntl_h
-/* Special invocation convention.  */
+#ifdef _GL_ALREADY_INCLUDING_LOCALE_H
 
-/* Needed before <sys/stat.h>.
-   May also define off_t to a 64-bit type on native Windows.  */
-#include <sys/types.h>
-/* On some systems other than glibc, <sys/stat.h> is a prerequisite of
-   <fcntl.h>.  On glibc systems, we would like to avoid namespace pollution.
-   But on glibc systems, <fcntl.h> includes <sys/stat.h> inside an
-   extern "C" { ... } block, which leads to errors in C++ mode with the
-   overridden <sys/stat.h> from gnulib.  These errors are known to be gone
-   with g++ version >= 4.3.  */
-#if !(defined __GLIBC__ || defined __UCLIBC__) || (defined __cplusplus && defined GNULIB_NAMESPACE && !(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)))
-# include <sys/stat.h>
-#endif
-#include_next <fcntl.h>
+/* Special invocation conventions to handle Solaris header files
+   (through Solaris 10) when combined with gettext's libintl.h.  */
+
+#include_next <locale.h>
 
 #else
 /* Normal invocation convention.  */
 
-#ifndef _GL_FCNTL_H
+#ifndef _GL_LOCALE_H
 
-/* Needed before <sys/stat.h>.
-   May also define off_t to a 64-bit type on native Windows.  */
-#include <sys/types.h>
-/* On some systems other than glibc, <sys/stat.h> is a prerequisite of
-   <fcntl.h>.  On glibc systems, we would like to avoid namespace pollution.
-   But on glibc systems, <fcntl.h> includes <sys/stat.h> inside an
-   extern "C" { ... } block, which leads to errors in C++ mode with the
-   overridden <sys/stat.h> from gnulib.  These errors are known to be gone
-   with g++ version >= 4.3.  */
-#if !(defined __GLIBC__ || defined __UCLIBC__) || (defined __cplusplus && defined GNULIB_NAMESPACE && !(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)))
-# include <sys/stat.h>
-#endif
+#define _GL_ALREADY_INCLUDING_LOCALE_H
+
 /* The include_next requires a split double-inclusion guard.  */
-#include_next <fcntl.h>
+#include_next <locale.h>
 
-#ifndef _GL_FCNTL_H
-#define _GL_FCNTL_H
+#undef _GL_ALREADY_INCLUDING_LOCALE_H
 
-#ifndef __GLIBC__ /* Avoid namespace pollution on glibc systems.  */
-# include <unistd.h>
+#ifndef _GL_LOCALE_H
+#define _GL_LOCALE_H
+
+/* NetBSD 5.0 mis-defines NULL.  */
+#include <stddef.h>
+
+/* Mac OS X 10.5 defines the locale_t type in <xlocale.h>.  */
+#if 1
+# include <xlocale.h>
 #endif
-
-/* Native Windows platforms declare open(), creat() in <io.h>.  */
-#if (1 || defined GNULIB_POSIXCHECK) \
-    && ((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__)
-# include <io.h>
-#endif
-
 
 /* The definitions of _GL_FUNCDECL_RPL etc. are copied here.  */
 #ifndef _GL_CXXDEFS_H
@@ -391,269 +367,162 @@ _GL_WARN_EXTERN_C int _gl_warn_on_use
 # endif
 #endif
 
-
-/* Declare overridden functions.  */
-
-#if 1
-# if 0
-#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
-#   undef fcntl
-#   define fcntl rpl_fcntl
-#  endif
-_GL_FUNCDECL_RPL (fcntl, int, (int fd, int action, ...));
-_GL_CXXALIAS_RPL (fcntl, int, (int fd, int action, ...));
-# else
-#  if !1
-_GL_FUNCDECL_SYS (fcntl, int, (int fd, int action, ...));
-#  endif
-_GL_CXXALIAS_SYS (fcntl, int, (int fd, int action, ...));
-# endif
-_GL_CXXALIASWARN (fcntl);
-#elif defined GNULIB_POSIXCHECK
-# undef fcntl
-# if HAVE_RAW_DECL_FCNTL
-_GL_WARN_ON_USE (fcntl, "fcntl is not always POSIX compliant - "
-                 "use gnulib module fcntl for portability");
-# endif
+/* The LC_MESSAGES locale category is specified in POSIX, but not in ISO C.
+   On systems that don't define it, use the same value as GNU libintl.  */
+#if !defined LC_MESSAGES
+# define LC_MESSAGES 1729
 #endif
 
-#if 1
-# if 0
-#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
-#   undef open
-#   define open rpl_open
-#  endif
-_GL_FUNCDECL_RPL (open, int, (const char *filename, int flags, ...)
-                             _GL_ARG_NONNULL ((1)));
-_GL_CXXALIAS_RPL (open, int, (const char *filename, int flags, ...));
-# else
-_GL_CXXALIAS_SYS (open, int, (const char *filename, int flags, ...));
-# endif
-/* On HP-UX 11, in C++ mode, open() is defined as an inline function with a
-   default argument.  _GL_CXXALIASWARN does not work in this case.  */
-# if !defined __hpux
-_GL_CXXALIASWARN (open);
-# endif
-#elif defined GNULIB_POSIXCHECK
-# undef open
-/* Assume open is always declared.  */
-_GL_WARN_ON_USE (open, "open is not always POSIX compliant - "
-                 "use gnulib module open for portability");
-#endif
-
-#if 1
-# if 0
-#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
-#   undef openat
-#   define openat rpl_openat
-#  endif
-_GL_FUNCDECL_RPL (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...)
-                  _GL_ARG_NONNULL ((2)));
-_GL_CXXALIAS_RPL (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...));
-# else
-#  if !1
-_GL_FUNCDECL_SYS (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...)
-                  _GL_ARG_NONNULL ((2)));
-#  endif
-_GL_CXXALIAS_SYS (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...));
-# endif
-_GL_CXXALIASWARN (openat);
-#elif defined GNULIB_POSIXCHECK
-# undef openat
-# if HAVE_RAW_DECL_OPENAT
-_GL_WARN_ON_USE (openat, "openat is not portable - "
-                 "use gnulib module openat for portability");
-# endif
-#endif
-
-
-/* Fix up the FD_* macros, only known to be missing on mingw.  */
-
-#ifndef FD_CLOEXEC
-# define FD_CLOEXEC 1
-#endif
-
-/* Fix up the supported F_* macros.  Intentionally leave other F_*
-   macros undefined.  Only known to be missing on mingw.  */
-
-#ifndef F_DUPFD_CLOEXEC
-# define F_DUPFD_CLOEXEC 0x40000000
-/* Witness variable: 1 if gnulib defined F_DUPFD_CLOEXEC, 0 otherwise.  */
-# define GNULIB_defined_F_DUPFD_CLOEXEC 1
-#else
-# define GNULIB_defined_F_DUPFD_CLOEXEC 0
-#endif
-
-#ifndef F_DUPFD
-# define F_DUPFD 1
-#endif
-
-#ifndef F_GETFD
-# define F_GETFD 2
-#endif
-
-/* Fix up the O_* macros.  */
-
-#if !defined O_DIRECT && defined O_DIRECTIO
-/* Tru64 spells it 'O_DIRECTIO'.  */
-# define O_DIRECT O_DIRECTIO
-#endif
-
-#if !defined O_CLOEXEC && defined O_NOINHERIT
-/* Mingw spells it 'O_NOINHERIT'.  */
-# define O_CLOEXEC O_NOINHERIT
-#endif
-
-#ifndef O_CLOEXEC
-# define O_CLOEXEC 0
-#endif
-
-#ifndef O_DIRECT
-# define O_DIRECT 0
-#endif
-
-#ifndef O_DIRECTORY
-# define O_DIRECTORY 0
-#endif
-
-#ifndef O_DSYNC
-# define O_DSYNC 0
-#endif
-
-#ifndef O_EXEC
-# define O_EXEC O_RDONLY /* This is often close enough in older systems.  */
-#endif
-
-#ifndef O_IGNORE_CTTY
-# define O_IGNORE_CTTY 0
-#endif
-
-#ifndef O_NDELAY
-# define O_NDELAY 0
-#endif
-
-#ifndef O_NOATIME
-# define O_NOATIME 0
-#endif
-
-#ifndef O_NONBLOCK
-# define O_NONBLOCK O_NDELAY
-#endif
-
-/* If the gnulib module 'nonblocking' is in use, guarantee a working non-zero
-   value of O_NONBLOCK.  Otherwise, O_NONBLOCK is defined (above) to O_NDELAY
-   or to 0 as fallback.  */
+/* Bionic libc's 'struct lconv' is just a dummy.  */
 #if 0
-# if O_NONBLOCK
-#  define GNULIB_defined_O_NONBLOCK 0
+# define lconv rpl_lconv
+struct lconv
+{
+  /* All 'char *' are actually 'const char *'.  */
+
+  /* Members that depend on the LC_NUMERIC category of the locale.  See
+     <http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_04> */
+
+  /* Symbol used as decimal point.  */
+  char *decimal_point;
+  /* Symbol used to separate groups of digits to the left of the decimal
+     point.  */
+  char *thousands_sep;
+  /* Definition of the size of groups of digits to the left of the decimal
+     point.  */
+  char *grouping;
+
+  /* Members that depend on the LC_MONETARY category of the locale.  See
+     <http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_03> */
+
+  /* Symbol used as decimal point.  */
+  char *mon_decimal_point;
+  /* Symbol used to separate groups of digits to the left of the decimal
+     point.  */
+  char *mon_thousands_sep;
+  /* Definition of the size of groups of digits to the left of the decimal
+     point.  */
+  char *mon_grouping;
+  /* Sign used to indicate a value >= 0.  */
+  char *positive_sign;
+  /* Sign used to indicate a value < 0.  */
+  char *negative_sign;
+
+  /* For formatting local currency.  */
+  /* Currency symbol (3 characters) followed by separator (1 character).  */
+  char *currency_symbol;
+  /* Number of digits after the decimal point.  */
+  char frac_digits;
+  /* For values >= 0: 1 if the currency symbol precedes the number, 0 if it
+     comes after the number.  */
+  char p_cs_precedes;
+  /* For values >= 0: Position of the sign.  */
+  char p_sign_posn;
+  /* For values >= 0: Placement of spaces between currency symbol, sign, and
+     number.  */
+  char p_sep_by_space;
+  /* For values < 0: 1 if the currency symbol precedes the number, 0 if it
+     comes after the number.  */
+  char n_cs_precedes;
+  /* For values < 0: Position of the sign.  */
+  char n_sign_posn;
+  /* For values < 0: Placement of spaces between currency symbol, sign, and
+     number.  */
+  char n_sep_by_space;
+
+  /* For formatting international currency.  */
+  /* Currency symbol (3 characters) followed by separator (1 character).  */
+  char *int_curr_symbol;
+  /* Number of digits after the decimal point.  */
+  char int_frac_digits;
+  /* For values >= 0: 1 if the currency symbol precedes the number, 0 if it
+     comes after the number.  */
+  char int_p_cs_precedes;
+  /* For values >= 0: Position of the sign.  */
+  char int_p_sign_posn;
+  /* For values >= 0: Placement of spaces between currency symbol, sign, and
+     number.  */
+  char int_p_sep_by_space;
+  /* For values < 0: 1 if the currency symbol precedes the number, 0 if it
+     comes after the number.  */
+  char int_n_cs_precedes;
+  /* For values < 0: Position of the sign.  */
+  char int_n_sign_posn;
+  /* For values < 0: Placement of spaces between currency symbol, sign, and
+     number.  */
+  char int_n_sep_by_space;
+};
+#endif
+
+#if 1
+# if 0
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   undef localeconv
+#   define localeconv rpl_localeconv
+#  endif
+_GL_FUNCDECL_RPL (localeconv, struct lconv *, (void));
+_GL_CXXALIAS_RPL (localeconv, struct lconv *, (void));
 # else
-#  define GNULIB_defined_O_NONBLOCK 1
-#  undef O_NONBLOCK
-#  define O_NONBLOCK 0x40000000
+_GL_CXXALIAS_SYS (localeconv, struct lconv *, (void));
+# endif
+_GL_CXXALIASWARN (localeconv);
+#elif 0
+# undef localeconv
+# define localeconv localeconv_used_without_requesting_gnulib_module_localeconv
+#elif defined GNULIB_POSIXCHECK
+# undef localeconv
+# if HAVE_RAW_DECL_LOCALECONV
+_GL_WARN_ON_USE (localeconv,
+                 "localeconv returns too few information on some platforms - "
+                 "use gnulib module localeconv for portability");
 # endif
 #endif
 
-#ifndef O_NOCTTY
-# define O_NOCTTY 0
+#if IN_GREP_GNULIB_TESTS
+# if 0
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   undef setlocale
+#   define setlocale rpl_setlocale
+#   define GNULIB_defined_setlocale 1
+#  endif
+_GL_FUNCDECL_RPL (setlocale, char *, (int category, const char *locale));
+_GL_CXXALIAS_RPL (setlocale, char *, (int category, const char *locale));
+# else
+_GL_CXXALIAS_SYS (setlocale, char *, (int category, const char *locale));
+# endif
+_GL_CXXALIASWARN (setlocale);
+#elif defined GNULIB_POSIXCHECK
+# undef setlocale
+# if HAVE_RAW_DECL_SETLOCALE
+_GL_WARN_ON_USE (setlocale, "setlocale works differently on native Windows - "
+                 "use gnulib module setlocale for portability");
+# endif
 #endif
 
-#ifndef O_NOFOLLOW
-# define O_NOFOLLOW 0
+#if 0
+# if 0
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   undef duplocale
+#   define duplocale rpl_duplocale
+#  endif
+_GL_FUNCDECL_RPL (duplocale, locale_t, (locale_t locale) _GL_ARG_NONNULL ((1)));
+_GL_CXXALIAS_RPL (duplocale, locale_t, (locale_t locale));
+# else
+#  if 1
+_GL_CXXALIAS_SYS (duplocale, locale_t, (locale_t locale));
+#  endif
+# endif
+# if 1
+_GL_CXXALIASWARN (duplocale);
+# endif
+#elif defined GNULIB_POSIXCHECK
+# undef duplocale
+# if HAVE_RAW_DECL_DUPLOCALE
+_GL_WARN_ON_USE (duplocale, "duplocale is buggy on some glibc systems - "
+                 "use gnulib module duplocale for portability");
+# endif
 #endif
 
-#ifndef O_NOLINK
-# define O_NOLINK 0
-#endif
-
-#ifndef O_NOLINKS
-# define O_NOLINKS 0
-#endif
-
-#ifndef O_NOTRANS
-# define O_NOTRANS 0
-#endif
-
-#ifndef O_RSYNC
-# define O_RSYNC 0
-#endif
-
-#ifndef O_SEARCH
-# define O_SEARCH O_RDONLY /* This is often close enough in older systems.  */
-#endif
-
-#ifndef O_SYNC
-# define O_SYNC 0
-#endif
-
-#ifndef O_TTY_INIT
-# define O_TTY_INIT 0
-#endif
-
-#if ~O_ACCMODE & (O_RDONLY | O_WRONLY | O_RDWR | O_EXEC | O_SEARCH)
-# undef O_ACCMODE
-# define O_ACCMODE (O_RDONLY | O_WRONLY | O_RDWR | O_EXEC | O_SEARCH)
-#endif
-
-/* For systems that distinguish between text and binary I/O.
-   O_BINARY is usually declared in fcntl.h  */
-#if !defined O_BINARY && defined _O_BINARY
-  /* For MSC-compatible compilers.  */
-# define O_BINARY _O_BINARY
-# define O_TEXT _O_TEXT
-#endif
-
-#if defined __BEOS__ || defined __HAIKU__
-  /* BeOS 5 and Haiku have O_BINARY and O_TEXT, but they have no effect.  */
-# undef O_BINARY
-# undef O_TEXT
-#endif
-
-#ifndef O_BINARY
-# define O_BINARY 0
-# define O_TEXT 0
-#endif
-
-/* Fix up the AT_* macros.  */
-
-/* Work around a bug in Solaris 9 and 10: AT_FDCWD is positive.  Its
-   value exceeds INT_MAX, so its use as an int doesn't conform to the
-   C standard, and GCC and Sun C complain in some cases.  If the bug
-   is present, undef AT_FDCWD here, so it can be redefined below.  */
-#if 0 < AT_FDCWD && AT_FDCWD == 0xffd19553
-# undef AT_FDCWD
-#endif
-
-/* Use the same bit pattern as Solaris 9, but with the proper
-   signedness.  The bit pattern is important, in case this actually is
-   Solaris with the above workaround.  */
-#ifndef AT_FDCWD
-# define AT_FDCWD (-3041965)
-#endif
-
-/* Use the same values as Solaris 9.  This shouldn't matter, but
-   there's no real reason to differ.  */
-#ifndef AT_SYMLINK_NOFOLLOW
-# define AT_SYMLINK_NOFOLLOW 4096
-#endif
-
-#ifndef AT_REMOVEDIR
-# define AT_REMOVEDIR 1
-#endif
-
-/* Solaris 9 lacks these two, so just pick unique values.  */
-#ifndef AT_SYMLINK_FOLLOW
-# define AT_SYMLINK_FOLLOW 2
-#endif
-
-#ifndef AT_EACCESS
-# define AT_EACCESS 4
-#endif
-
-
-#endif /* _GL_FCNTL_H */
-#endif /* _GL_FCNTL_H */
-#endif
+#endif /* _GL_LOCALE_H */
+#endif /* ! _GL_ALREADY_INCLUDING_LOCALE_H */
+#endif /* _GL_LOCALE_H */

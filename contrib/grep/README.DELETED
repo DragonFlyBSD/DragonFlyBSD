@@ -23,7 +23,6 @@ doc/Makefile.in
 doc/grep.in.1
 doc/grep.info
 doc/stamp-vti
-doc/texinfo.tex
 gnulib-tests/
 lib/Makefile.am
 lib/Makefile.in
@@ -58,9 +57,11 @@ lib/stdarg.in.h
 lib/stdbool.in.h
 lib/stddef.in.h
 lib/stdint.in.h
+lib/stdio.in.h
 lib/stdlib.in.h
 lib/string.in.h
 lib/sys_stat.in.h
+lib/sys_time.in.h
 lib/sys_types.in.h
 lib/time.in.h
 lib/unistd.in.h
@@ -74,5 +75,4 @@ maint.mk
 po/
 src/Makefile.am
 src/Makefile.in
-src/dosbuf.c
 tests/

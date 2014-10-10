@@ -1,12 +1,12 @@
 /* DO NOT EDIT! GENERATED AUTOMATICALLY! */
-/* Like <fcntl.h>, but with non-working flags defined to 0.
+/* A substitute for ISO C99 <wctype.h>, for platforms that lack it.
 
    Copyright (C) 2006-2014 Free Software Foundation, Inc.
 
-   This program is free software: you can redistribute it and/or modify
+   This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 3 of the License, or
-   (at your option) any later version.
+   the Free Software Foundation; either version 3, or (at your option)
+   any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,65 +14,61 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program; if not, see <http://www.gnu.org/licenses/>.  */
 
-/* written by Paul Eggert */
+/* Written by Bruno Haible and Paul Eggert.  */
+
+/*
+ * ISO C 99 <wctype.h> for platforms that lack it.
+ * <http://www.opengroup.org/susv3xbd/wctype.h.html>
+ *
+ * iswctype, towctrans, towlower, towupper, wctrans, wctype,
+ * wctrans_t, and wctype_t are not yet implemented.
+ */
+
+#ifndef _GL_WCTYPE_H
 
 #if __GNUC__ >= 3
 #pragma GCC system_header
 #endif
 
 
-#if defined __need_system_fcntl_h
-/* Special invocation convention.  */
-
-/* Needed before <sys/stat.h>.
-   May also define off_t to a 64-bit type on native Windows.  */
-#include <sys/types.h>
-/* On some systems other than glibc, <sys/stat.h> is a prerequisite of
-   <fcntl.h>.  On glibc systems, we would like to avoid namespace pollution.
-   But on glibc systems, <fcntl.h> includes <sys/stat.h> inside an
-   extern "C" { ... } block, which leads to errors in C++ mode with the
-   overridden <sys/stat.h> from gnulib.  These errors are known to be gone
-   with g++ version >= 4.3.  */
-#if !(defined __GLIBC__ || defined __UCLIBC__) || (defined __cplusplus && defined GNULIB_NAMESPACE && !(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)))
-# include <sys/stat.h>
+#if 1
+/* Solaris 2.5 has a bug: <wchar.h> must be included before <wctype.h>.
+   Tru64 with Desktop Toolkit C has a bug: <stdio.h> must be included before
+   <wchar.h>.
+   BSD/OS 4.0.1 has a bug: <stddef.h>, <stdio.h> and <time.h> must be
+   included before <wchar.h>.  */
+# include <stddef.h>
+# include <stdio.h>
+# include <time.h>
+# include <wchar.h>
 #endif
-#include_next <fcntl.h>
 
-#else
-/* Normal invocation convention.  */
-
-#ifndef _GL_FCNTL_H
-
-/* Needed before <sys/stat.h>.
-   May also define off_t to a 64-bit type on native Windows.  */
-#include <sys/types.h>
-/* On some systems other than glibc, <sys/stat.h> is a prerequisite of
-   <fcntl.h>.  On glibc systems, we would like to avoid namespace pollution.
-   But on glibc systems, <fcntl.h> includes <sys/stat.h> inside an
-   extern "C" { ... } block, which leads to errors in C++ mode with the
-   overridden <sys/stat.h> from gnulib.  These errors are known to be gone
-   with g++ version >= 4.3.  */
-#if !(defined __GLIBC__ || defined __UCLIBC__) || (defined __cplusplus && defined GNULIB_NAMESPACE && !(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)))
-# include <sys/stat.h>
+/* mingw has declarations of towupper and towlower in <ctype.h> as
+   well <wctype.h>.  Include <ctype.h> in advance to avoid rpl_ prefix
+   being added to the declarations.  */
+#ifdef __MINGW32__
+# include <ctype.h>
 #endif
+
+/* Include the original <wctype.h> if it exists.
+   BeOS 5 has the functions but no <wctype.h>.  */
 /* The include_next requires a split double-inclusion guard.  */
-#include_next <fcntl.h>
-
-#ifndef _GL_FCNTL_H
-#define _GL_FCNTL_H
-
-#ifndef __GLIBC__ /* Avoid namespace pollution on glibc systems.  */
-# include <unistd.h>
+#if 1
+# include_next <wctype.h>
 #endif
 
-/* Native Windows platforms declare open(), creat() in <io.h>.  */
-#if (1 || defined GNULIB_POSIXCHECK) \
-    && ((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__)
-# include <io.h>
-#endif
+#ifndef _GL_WCTYPE_H
+#define _GL_WCTYPE_H
 
+#ifndef _GL_INLINE_HEADER_BEGIN
+ #error "Please include config.h first."
+#endif
+_GL_INLINE_HEADER_BEGIN
+#ifndef _GL_WCTYPE_INLINE
+# define _GL_WCTYPE_INLINE _GL_INLINE
+#endif
 
 /* The definitions of _GL_FUNCDECL_RPL etc. are copied here.  */
 #ifndef _GL_CXXDEFS_H
@@ -331,18 +327,6 @@
 
 #endif /* _GL_CXXDEFS_H */
 
-/* The definition of _GL_ARG_NONNULL is copied here.  */
-/* _GL_ARG_NONNULL((n,...,m)) tells the compiler and static analyzer tools
-   that the values passed as arguments n, ..., m must be non-NULL pointers.
-   n = 1 stands for the first argument, n = 2 for the second argument etc.  */
-#ifndef _GL_ARG_NONNULL
-# if (__GNUC__ == 3 && __GNUC_MINOR__ >= 3) || __GNUC__ > 3
-#  define _GL_ARG_NONNULL(params) __attribute__ ((__nonnull__ params))
-# else
-#  define _GL_ARG_NONNULL(params)
-# endif
-#endif
-
 /* The definition of _GL_WARN_ON_USE is copied here.  */
 #ifndef _GL_WARN_ON_USE
 
@@ -391,269 +375,442 @@ _GL_WARN_EXTERN_C int _gl_warn_on_use
 # endif
 #endif
 
-
-/* Declare overridden functions.  */
-
-#if 1
-# if 0
-#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
-#   undef fcntl
-#   define fcntl rpl_fcntl
-#  endif
-_GL_FUNCDECL_RPL (fcntl, int, (int fd, int action, ...));
-_GL_CXXALIAS_RPL (fcntl, int, (int fd, int action, ...));
-# else
-#  if !1
-_GL_FUNCDECL_SYS (fcntl, int, (int fd, int action, ...));
-#  endif
-_GL_CXXALIAS_SYS (fcntl, int, (int fd, int action, ...));
-# endif
-_GL_CXXALIASWARN (fcntl);
-#elif defined GNULIB_POSIXCHECK
-# undef fcntl
-# if HAVE_RAW_DECL_FCNTL
-_GL_WARN_ON_USE (fcntl, "fcntl is not always POSIX compliant - "
-                 "use gnulib module fcntl for portability");
-# endif
+/* Solaris 2.6 <wctype.h> includes <widec.h> which includes <euc.h> which
+   #defines a number of identifiers in the application namespace.  Revert
+   these #defines.  */
+#ifdef __sun
+# undef multibyte
+# undef eucw1
+# undef eucw2
+# undef eucw3
+# undef scrw1
+# undef scrw2
+# undef scrw3
 #endif
 
-#if 1
-# if 0
-#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
-#   undef open
-#   define open rpl_open
-#  endif
-_GL_FUNCDECL_RPL (open, int, (const char *filename, int flags, ...)
-                             _GL_ARG_NONNULL ((1)));
-_GL_CXXALIAS_RPL (open, int, (const char *filename, int flags, ...));
-# else
-_GL_CXXALIAS_SYS (open, int, (const char *filename, int flags, ...));
+/* Define wint_t and WEOF.  (Also done in wchar.in.h.)  */
+#if !1 && !defined wint_t
+# define wint_t int
+# ifndef WEOF
+#  define WEOF -1
 # endif
-/* On HP-UX 11, in C++ mode, open() is defined as an inline function with a
-   default argument.  _GL_CXXALIASWARN does not work in this case.  */
-# if !defined __hpux
-_GL_CXXALIASWARN (open);
-# endif
-#elif defined GNULIB_POSIXCHECK
-# undef open
-/* Assume open is always declared.  */
-_GL_WARN_ON_USE (open, "open is not always POSIX compliant - "
-                 "use gnulib module open for portability");
-#endif
-
-#if 1
-# if 0
-#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
-#   undef openat
-#   define openat rpl_openat
-#  endif
-_GL_FUNCDECL_RPL (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...)
-                  _GL_ARG_NONNULL ((2)));
-_GL_CXXALIAS_RPL (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...));
-# else
-#  if !1
-_GL_FUNCDECL_SYS (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...)
-                  _GL_ARG_NONNULL ((2)));
-#  endif
-_GL_CXXALIAS_SYS (openat, int,
-                  (int fd, char const *file, int flags, /* mode_t mode */ ...));
-# endif
-_GL_CXXALIASWARN (openat);
-#elif defined GNULIB_POSIXCHECK
-# undef openat
-# if HAVE_RAW_DECL_OPENAT
-_GL_WARN_ON_USE (openat, "openat is not portable - "
-                 "use gnulib module openat for portability");
-# endif
-#endif
-
-
-/* Fix up the FD_* macros, only known to be missing on mingw.  */
-
-#ifndef FD_CLOEXEC
-# define FD_CLOEXEC 1
-#endif
-
-/* Fix up the supported F_* macros.  Intentionally leave other F_*
-   macros undefined.  Only known to be missing on mingw.  */
-
-#ifndef F_DUPFD_CLOEXEC
-# define F_DUPFD_CLOEXEC 0x40000000
-/* Witness variable: 1 if gnulib defined F_DUPFD_CLOEXEC, 0 otherwise.  */
-# define GNULIB_defined_F_DUPFD_CLOEXEC 1
 #else
-# define GNULIB_defined_F_DUPFD_CLOEXEC 0
-#endif
-
-#ifndef F_DUPFD
-# define F_DUPFD 1
-#endif
-
-#ifndef F_GETFD
-# define F_GETFD 2
-#endif
-
-/* Fix up the O_* macros.  */
-
-#if !defined O_DIRECT && defined O_DIRECTIO
-/* Tru64 spells it 'O_DIRECTIO'.  */
-# define O_DIRECT O_DIRECTIO
-#endif
-
-#if !defined O_CLOEXEC && defined O_NOINHERIT
-/* Mingw spells it 'O_NOINHERIT'.  */
-# define O_CLOEXEC O_NOINHERIT
-#endif
-
-#ifndef O_CLOEXEC
-# define O_CLOEXEC 0
-#endif
-
-#ifndef O_DIRECT
-# define O_DIRECT 0
-#endif
-
-#ifndef O_DIRECTORY
-# define O_DIRECTORY 0
-#endif
-
-#ifndef O_DSYNC
-# define O_DSYNC 0
-#endif
-
-#ifndef O_EXEC
-# define O_EXEC O_RDONLY /* This is often close enough in older systems.  */
-#endif
-
-#ifndef O_IGNORE_CTTY
-# define O_IGNORE_CTTY 0
-#endif
-
-#ifndef O_NDELAY
-# define O_NDELAY 0
-#endif
-
-#ifndef O_NOATIME
-# define O_NOATIME 0
-#endif
-
-#ifndef O_NONBLOCK
-# define O_NONBLOCK O_NDELAY
-#endif
-
-/* If the gnulib module 'nonblocking' is in use, guarantee a working non-zero
-   value of O_NONBLOCK.  Otherwise, O_NONBLOCK is defined (above) to O_NDELAY
-   or to 0 as fallback.  */
-#if 0
-# if O_NONBLOCK
-#  define GNULIB_defined_O_NONBLOCK 0
-# else
-#  define GNULIB_defined_O_NONBLOCK 1
-#  undef O_NONBLOCK
-#  define O_NONBLOCK 0x40000000
+/* MSVC defines wint_t as 'unsigned short' in <crtdefs.h>.
+   This is too small: ISO C 99 section 7.24.1.(2) says that wint_t must be
+   "unchanged by default argument promotions".  Override it.  */
+# if defined _MSC_VER
+#  if !GNULIB_defined_wint_t
+#   include <crtdefs.h>
+typedef unsigned int rpl_wint_t;
+#   undef wint_t
+#   define wint_t rpl_wint_t
+#   define GNULIB_defined_wint_t 1
+#  endif
+# endif
+# ifndef WEOF
+#  define WEOF ((wint_t) -1)
 # endif
 #endif
 
-#ifndef O_NOCTTY
-# define O_NOCTTY 0
+
+#if !GNULIB_defined_wctype_functions
+
+/* FreeBSD 4.4 to 4.11 has <wctype.h> but lacks the functions.
+   Linux libc5 has <wctype.h> and the functions but they are broken.
+   Assume all 11 functions (all isw* except iswblank) are implemented the
+   same way, or not at all.  */
+# if ! 1 || 0
+
+/* IRIX 5.3 has macros but no functions, its isw* macros refer to an
+   undefined variable _ctmp_ and to <ctype.h> macros like _P, and they
+   refer to system functions like _iswctype that are not in the
+   standard C library.  Rather than try to get ancient buggy
+   implementations like this to work, just disable them.  */
+#  undef iswalnum
+#  undef iswalpha
+#  undef iswblank
+#  undef iswcntrl
+#  undef iswdigit
+#  undef iswgraph
+#  undef iswlower
+#  undef iswprint
+#  undef iswpunct
+#  undef iswspace
+#  undef iswupper
+#  undef iswxdigit
+#  undef towlower
+#  undef towupper
+
+/* Linux libc5 has <wctype.h> and the functions but they are broken.  */
+#  if 0
+#   if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#    define iswalnum rpl_iswalnum
+#    define iswalpha rpl_iswalpha
+#    define iswblank rpl_iswblank
+#    define iswcntrl rpl_iswcntrl
+#    define iswdigit rpl_iswdigit
+#    define iswgraph rpl_iswgraph
+#    define iswlower rpl_iswlower
+#    define iswprint rpl_iswprint
+#    define iswpunct rpl_iswpunct
+#    define iswspace rpl_iswspace
+#    define iswupper rpl_iswupper
+#    define iswxdigit rpl_iswxdigit
+#   endif
+#  endif
+#  if 0
+#   if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#    define towlower rpl_towlower
+#    define towupper rpl_towupper
+#   endif
+#  endif
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswalnum
+#  else
+iswalnum
+#  endif
+         (wint_t wc)
+{
+  return ((wc >= '0' && wc <= '9')
+          || ((wc & ~0x20) >= 'A' && (wc & ~0x20) <= 'Z'));
+}
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswalpha
+#  else
+iswalpha
+#  endif
+         (wint_t wc)
+{
+  return (wc & ~0x20) >= 'A' && (wc & ~0x20) <= 'Z';
+}
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswblank
+#  else
+iswblank
+#  endif
+         (wint_t wc)
+{
+  return wc == ' ' || wc == '\t';
+}
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswcntrl
+#  else
+iswcntrl
+#  endif
+        (wint_t wc)
+{
+  return (wc & ~0x1f) == 0 || wc == 0x7f;
+}
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswdigit
+#  else
+iswdigit
+#  endif
+         (wint_t wc)
+{
+  return wc >= '0' && wc <= '9';
+}
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswgraph
+#  else
+iswgraph
+#  endif
+         (wint_t wc)
+{
+  return wc >= '!' && wc <= '~';
+}
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswlower
+#  else
+iswlower
+#  endif
+         (wint_t wc)
+{
+  return wc >= 'a' && wc <= 'z';
+}
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswprint
+#  else
+iswprint
+#  endif
+         (wint_t wc)
+{
+  return wc >= ' ' && wc <= '~';
+}
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswpunct
+#  else
+iswpunct
+#  endif
+         (wint_t wc)
+{
+  return (wc >= '!' && wc <= '~'
+          && !((wc >= '0' && wc <= '9')
+               || ((wc & ~0x20) >= 'A' && (wc & ~0x20) <= 'Z')));
+}
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswspace
+#  else
+iswspace
+#  endif
+         (wint_t wc)
+{
+  return (wc == ' ' || wc == '\t'
+          || wc == '\n' || wc == '\v' || wc == '\f' || wc == '\r');
+}
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswupper
+#  else
+iswupper
+#  endif
+         (wint_t wc)
+{
+  return wc >= 'A' && wc <= 'Z';
+}
+
+_GL_WCTYPE_INLINE int
+#  if 0
+rpl_iswxdigit
+#  else
+iswxdigit
+#  endif
+          (wint_t wc)
+{
+  return ((wc >= '0' && wc <= '9')
+          || ((wc & ~0x20) >= 'A' && (wc & ~0x20) <= 'F'));
+}
+
+_GL_WCTYPE_INLINE wint_t
+#  if 0
+rpl_towlower
+#  else
+towlower
+#  endif
+         (wint_t wc)
+{
+  return (wc >= 'A' && wc <= 'Z' ? wc - 'A' + 'a' : wc);
+}
+
+_GL_WCTYPE_INLINE wint_t
+#  if 0
+rpl_towupper
+#  else
+towupper
+#  endif
+         (wint_t wc)
+{
+  return (wc >= 'a' && wc <= 'z' ? wc - 'a' + 'A' : wc);
+}
+
+# elif 1 && (! 1 || 0)
+/* Only the iswblank function is missing.  */
+
+#  if 0
+#   if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#    define iswblank rpl_iswblank
+#   endif
+_GL_FUNCDECL_RPL (iswblank, int, (wint_t wc));
+#  else
+_GL_FUNCDECL_SYS (iswblank, int, (wint_t wc));
+#  endif
+
+# endif
+
+# if defined __MINGW32__
+
+/* On native Windows, wchar_t is uint16_t, and wint_t is uint32_t.
+   The functions towlower and towupper are implemented in the MSVCRT library
+   to take a wchar_t argument and return a wchar_t result.  mingw declares
+   these functions to take a wint_t argument and return a wint_t result.
+   This means that:
+   1. When the user passes an argument outside the range 0x0000..0xFFFF, the
+      function will look only at the lower 16 bits.  This is allowed according
+      to POSIX.
+   2. The return value is returned in the lower 16 bits of the result register.
+      The upper 16 bits are random: whatever happened to be in that part of the
+      result register.  We need to fix this by adding a zero-extend from
+      wchar_t to wint_t after the call.  */
+
+_GL_WCTYPE_INLINE wint_t
+rpl_towlower (wint_t wc)
+{
+  return (wint_t) (wchar_t) towlower (wc);
+}
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   define towlower rpl_towlower
+#  endif
+
+_GL_WCTYPE_INLINE wint_t
+rpl_towupper (wint_t wc)
+{
+  return (wint_t) (wchar_t) towupper (wc);
+}
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   define towupper rpl_towupper
+#  endif
+
+# endif /* __MINGW32__ */
+
+# define GNULIB_defined_wctype_functions 1
 #endif
 
-#ifndef O_NOFOLLOW
-# define O_NOFOLLOW 0
+#if 0
+_GL_CXXALIAS_RPL (iswalnum, int, (wint_t wc));
+_GL_CXXALIAS_RPL (iswalpha, int, (wint_t wc));
+_GL_CXXALIAS_RPL (iswcntrl, int, (wint_t wc));
+_GL_CXXALIAS_RPL (iswdigit, int, (wint_t wc));
+_GL_CXXALIAS_RPL (iswgraph, int, (wint_t wc));
+_GL_CXXALIAS_RPL (iswlower, int, (wint_t wc));
+_GL_CXXALIAS_RPL (iswprint, int, (wint_t wc));
+_GL_CXXALIAS_RPL (iswpunct, int, (wint_t wc));
+_GL_CXXALIAS_RPL (iswspace, int, (wint_t wc));
+_GL_CXXALIAS_RPL (iswupper, int, (wint_t wc));
+_GL_CXXALIAS_RPL (iswxdigit, int, (wint_t wc));
+#else
+_GL_CXXALIAS_SYS (iswalnum, int, (wint_t wc));
+_GL_CXXALIAS_SYS (iswalpha, int, (wint_t wc));
+_GL_CXXALIAS_SYS (iswcntrl, int, (wint_t wc));
+_GL_CXXALIAS_SYS (iswdigit, int, (wint_t wc));
+_GL_CXXALIAS_SYS (iswgraph, int, (wint_t wc));
+_GL_CXXALIAS_SYS (iswlower, int, (wint_t wc));
+_GL_CXXALIAS_SYS (iswprint, int, (wint_t wc));
+_GL_CXXALIAS_SYS (iswpunct, int, (wint_t wc));
+_GL_CXXALIAS_SYS (iswspace, int, (wint_t wc));
+_GL_CXXALIAS_SYS (iswupper, int, (wint_t wc));
+_GL_CXXALIAS_SYS (iswxdigit, int, (wint_t wc));
+#endif
+_GL_CXXALIASWARN (iswalnum);
+_GL_CXXALIASWARN (iswalpha);
+_GL_CXXALIASWARN (iswcntrl);
+_GL_CXXALIASWARN (iswdigit);
+_GL_CXXALIASWARN (iswgraph);
+_GL_CXXALIASWARN (iswlower);
+_GL_CXXALIASWARN (iswprint);
+_GL_CXXALIASWARN (iswpunct);
+_GL_CXXALIASWARN (iswspace);
+_GL_CXXALIASWARN (iswupper);
+_GL_CXXALIASWARN (iswxdigit);
+
+#if 1
+# if 0 || 0
+_GL_CXXALIAS_RPL (iswblank, int, (wint_t wc));
+# else
+_GL_CXXALIAS_SYS (iswblank, int, (wint_t wc));
+# endif
+_GL_CXXALIASWARN (iswblank);
 #endif
 
-#ifndef O_NOLINK
-# define O_NOLINK 0
+#if !1
+# if !GNULIB_defined_wctype_t
+typedef void * wctype_t;
+#  define GNULIB_defined_wctype_t 1
+# endif
 #endif
 
-#ifndef O_NOLINKS
-# define O_NOLINKS 0
+/* Get a descriptor for a wide character property.  */
+#if 0
+# if !1
+_GL_FUNCDECL_SYS (wctype, wctype_t, (const char *name));
+# endif
+_GL_CXXALIAS_SYS (wctype, wctype_t, (const char *name));
+_GL_CXXALIASWARN (wctype);
+#elif defined GNULIB_POSIXCHECK
+# undef wctype
+# if HAVE_RAW_DECL_WCTYPE
+_GL_WARN_ON_USE (wctype, "wctype is unportable - "
+                 "use gnulib module wctype for portability");
+# endif
 #endif
 
-#ifndef O_NOTRANS
-# define O_NOTRANS 0
+/* Test whether a wide character has a given property.
+   The argument WC must be either a wchar_t value or WEOF.
+   The argument DESC must have been returned by the wctype() function.  */
+#if 1
+# if !1
+_GL_FUNCDECL_SYS (iswctype, int, (wint_t wc, wctype_t desc));
+# endif
+_GL_CXXALIAS_SYS (iswctype, int, (wint_t wc, wctype_t desc));
+_GL_CXXALIASWARN (iswctype);
+#elif defined GNULIB_POSIXCHECK
+# undef iswctype
+# if HAVE_RAW_DECL_ISWCTYPE
+_GL_WARN_ON_USE (iswctype, "iswctype is unportable - "
+                 "use gnulib module iswctype for portability");
+# endif
 #endif
 
-#ifndef O_RSYNC
-# define O_RSYNC 0
+#if 0 || defined __MINGW32__
+_GL_CXXALIAS_RPL (towlower, wint_t, (wint_t wc));
+_GL_CXXALIAS_RPL (towupper, wint_t, (wint_t wc));
+#else
+_GL_CXXALIAS_SYS (towlower, wint_t, (wint_t wc));
+_GL_CXXALIAS_SYS (towupper, wint_t, (wint_t wc));
+#endif
+_GL_CXXALIASWARN (towlower);
+_GL_CXXALIASWARN (towupper);
+
+#if !1
+# if !GNULIB_defined_wctrans_t
+typedef void * wctrans_t;
+#  define GNULIB_defined_wctrans_t 1
+# endif
 #endif
 
-#ifndef O_SEARCH
-# define O_SEARCH O_RDONLY /* This is often close enough in older systems.  */
+/* Get a descriptor for a wide character case conversion.  */
+#if 0
+# if !1
+_GL_FUNCDECL_SYS (wctrans, wctrans_t, (const char *name));
+# endif
+_GL_CXXALIAS_SYS (wctrans, wctrans_t, (const char *name));
+_GL_CXXALIASWARN (wctrans);
+#elif defined GNULIB_POSIXCHECK
+# undef wctrans
+# if HAVE_RAW_DECL_WCTRANS
+_GL_WARN_ON_USE (wctrans, "wctrans is unportable - "
+                 "use gnulib module wctrans for portability");
+# endif
 #endif
 
-#ifndef O_SYNC
-# define O_SYNC 0
+/* Perform a given case conversion on a wide character.
+   The argument WC must be either a wchar_t value or WEOF.
+   The argument DESC must have been returned by the wctrans() function.  */
+#if 0
+# if !1
+_GL_FUNCDECL_SYS (towctrans, wint_t, (wint_t wc, wctrans_t desc));
+# endif
+_GL_CXXALIAS_SYS (towctrans, wint_t, (wint_t wc, wctrans_t desc));
+_GL_CXXALIASWARN (towctrans);
+#elif defined GNULIB_POSIXCHECK
+# undef towctrans
+# if HAVE_RAW_DECL_TOWCTRANS
+_GL_WARN_ON_USE (towctrans, "towctrans is unportable - "
+                 "use gnulib module towctrans for portability");
+# endif
 #endif
 
-#ifndef O_TTY_INIT
-# define O_TTY_INIT 0
-#endif
+_GL_INLINE_HEADER_END
 
-#if ~O_ACCMODE & (O_RDONLY | O_WRONLY | O_RDWR | O_EXEC | O_SEARCH)
-# undef O_ACCMODE
-# define O_ACCMODE (O_RDONLY | O_WRONLY | O_RDWR | O_EXEC | O_SEARCH)
-#endif
-
-/* For systems that distinguish between text and binary I/O.
-   O_BINARY is usually declared in fcntl.h  */
-#if !defined O_BINARY && defined _O_BINARY
-  /* For MSC-compatible compilers.  */
-# define O_BINARY _O_BINARY
-# define O_TEXT _O_TEXT
-#endif
-
-#if defined __BEOS__ || defined __HAIKU__
-  /* BeOS 5 and Haiku have O_BINARY and O_TEXT, but they have no effect.  */
-# undef O_BINARY
-# undef O_TEXT
-#endif
-
-#ifndef O_BINARY
-# define O_BINARY 0
-# define O_TEXT 0
-#endif
-
-/* Fix up the AT_* macros.  */
-
-/* Work around a bug in Solaris 9 and 10: AT_FDCWD is positive.  Its
-   value exceeds INT_MAX, so its use as an int doesn't conform to the
-   C standard, and GCC and Sun C complain in some cases.  If the bug
-   is present, undef AT_FDCWD here, so it can be redefined below.  */
-#if 0 < AT_FDCWD && AT_FDCWD == 0xffd19553
-# undef AT_FDCWD
-#endif
-
-/* Use the same bit pattern as Solaris 9, but with the proper
-   signedness.  The bit pattern is important, in case this actually is
-   Solaris with the above workaround.  */
-#ifndef AT_FDCWD
-# define AT_FDCWD (-3041965)
-#endif
-
-/* Use the same values as Solaris 9.  This shouldn't matter, but
-   there's no real reason to differ.  */
-#ifndef AT_SYMLINK_NOFOLLOW
-# define AT_SYMLINK_NOFOLLOW 4096
-#endif
-
-#ifndef AT_REMOVEDIR
-# define AT_REMOVEDIR 1
-#endif
-
-/* Solaris 9 lacks these two, so just pick unique values.  */
-#ifndef AT_SYMLINK_FOLLOW
-# define AT_SYMLINK_FOLLOW 2
-#endif
-
-#ifndef AT_EACCESS
-# define AT_EACCESS 4
-#endif
-
-
-#endif /* _GL_FCNTL_H */
-#endif /* _GL_FCNTL_H */
-#endif
+#endif /* _GL_WCTYPE_H */
+#endif /* _GL_WCTYPE_H */
