@@ -1693,7 +1693,7 @@ handle_char_store (gimple_stmt_iterator *gsi)
 	       its length may be decreased.  */
 	    adjust_last_stmt (si, stmt, false);
 	}
-      else if (si != NULL)
+      else if (si != NULL && integer_zerop (gimple_assign_rhs1 (stmt)))
 	{
 	  si = unshare_strinfo (si);
 	  si->length = build_int_cst (size_type_node, 0);
@@ -1896,6 +1896,29 @@ strlen_enter_block (struct dom_walk_data *walk_data ATTRIBUTE_UNUSED,
 		  int count_vdef = 100;
 		  do_invalidate (dombb, phi, visited, &count_vdef);
 		  BITMAP_FREE (visited);
+		  if (count_vdef == 0)
+		    {
+		      /* If there were too many vdefs in between immediate
+			 dominator and current bb, invalidate everything.
+			 If stridx_to_strinfo has been unshared, we need
+			 to free it, otherwise just set it to NULL.  */
+		      if (!strinfo_shared ())
+			{
+			  unsigned int i;
+			  strinfo si;
+
+			  for (i = 1;
+			       VEC_iterate (strinfo, stridx_to_strinfo, i, si);
+			       ++i)
+			    {
+			      free_strinfo (si);
+			      VEC_replace (strinfo, stridx_to_strinfo,
+					   i, NULL);
+			    }
+			}
+		      else
+			stridx_to_strinfo = NULL;
+		    }
 		  break;
 		}
 	    }

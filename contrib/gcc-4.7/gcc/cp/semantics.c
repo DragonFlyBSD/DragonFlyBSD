@@ -2430,7 +2430,8 @@ finish_fname (tree id)
   tree decl;
 
   decl = fname_decl (input_location, C_RID_CODE (id), id);
-  if (processing_template_decl && current_function_decl)
+  if (processing_template_decl && current_function_decl
+      && decl != error_mark_node)
     decl = DECL_NAME (decl);
   return decl;
 }
@@ -4976,7 +4977,7 @@ finish_omp_atomic (enum tree_code code, enum tree_code opcode, tree lhs,
 	}
       stmt = build2 (OMP_ATOMIC, void_type_node, integer_zero_node, stmt);
     }
-  add_stmt (stmt);
+  finish_expr_stmt (stmt);
 }
 
 void
@@ -7412,15 +7413,17 @@ cxx_fold_indirect_ref (location_t loc, tree type, tree op0, bool *empty_base)
 	    }
 	}
     }
-  /* *(foo *)fooarrptreturn> (*fooarrptr)[0] */
+  /* *(foo *)fooarrptr => (*fooarrptr)[0] */
   else if (TREE_CODE (TREE_TYPE (subtype)) == ARRAY_TYPE
 	   && (same_type_ignoring_top_level_qualifiers_p
 	       (type, TREE_TYPE (TREE_TYPE (subtype)))))
     {
       tree type_domain;
       tree min_val = size_zero_node;
-      sub = cxx_fold_indirect_ref (loc, TREE_TYPE (subtype), sub, NULL);
-      if (!sub)
+      tree newsub = cxx_fold_indirect_ref (loc, TREE_TYPE (subtype), sub, NULL);
+      if (newsub)
+	sub = newsub;
+      else
 	sub = build1_loc (loc, INDIRECT_REF, TREE_TYPE (subtype), sub);
       type_domain = TYPE_DOMAIN (TREE_TYPE (sub));
       if (type_domain && TYPE_MIN_VALUE (type_domain))
@@ -7457,11 +7460,6 @@ cxx_eval_indirect_ref (const constexpr_call *call, tree t,
     {
       tree sub = op0;
       STRIP_NOPS (sub);
-      if (TREE_CODE (sub) == POINTER_PLUS_EXPR)
-	{
-	  sub = TREE_OPERAND (sub, 0);
-	  STRIP_NOPS (sub);
-	}
       if (TREE_CODE (sub) == ADDR_EXPR)
 	{
 	  /* We couldn't fold to a constant value.  Make sure it's not
@@ -8596,6 +8594,12 @@ potential_constant_expression_1 (tree t, bool want_rval, tsubst_flags_t flags)
 	}
       return false;
 
+    case OMP_ATOMIC:
+    case OMP_ATOMIC_READ:
+    case OMP_ATOMIC_CAPTURE_OLD:
+    case OMP_ATOMIC_CAPTURE_NEW:
+      return false;
+
     default:
       sorry ("unexpected AST of kind %s", tree_code_name[TREE_CODE (t)]);
       gcc_unreachable();
@@ -8959,13 +8963,12 @@ void
 insert_capture_proxy (tree var)
 {
   cp_binding_level *b;
-  int skip;
   tree stmt_list;
 
   /* Put the capture proxy in the extra body block so that it won't clash
      with a later local variable.  */
   b = current_binding_level;
-  for (skip = 0; ; ++skip)
+  for (;;)
     {
       cp_binding_level *n = b->level_chain;
       if (n->kind == sk_function_parms)
@@ -8976,8 +8979,7 @@ insert_capture_proxy (tree var)
 
   /* And put a DECL_EXPR in the STATEMENT_LIST for the same block.  */
   var = build_stmt (DECL_SOURCE_LOCATION (var), DECL_EXPR, var);
-  stmt_list = VEC_index (tree, stmt_list_stack,
-			 VEC_length (tree, stmt_list_stack) - 1 - skip);
+  stmt_list = VEC_index (tree, stmt_list_stack, 1);
   gcc_assert (stmt_list);
   append_to_statement_list_force (var, &stmt_list);
 }

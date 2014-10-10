@@ -486,11 +486,24 @@ negate_expr_p (tree t)
 	 and actually traps on some architectures.  But if overflow is
 	 undefined, we can negate, because - (INT_MIN / 1) is an
 	 overflow.  */
-      if (INTEGRAL_TYPE_P (TREE_TYPE (t))
-	  && !TYPE_OVERFLOW_UNDEFINED (TREE_TYPE (t)))
-        break;
-      return negate_expr_p (TREE_OPERAND (t, 1))
-             || negate_expr_p (TREE_OPERAND (t, 0));
+      if (INTEGRAL_TYPE_P (TREE_TYPE (t)))
+	{
+	  if (!TYPE_OVERFLOW_UNDEFINED (TREE_TYPE (t)))
+	    break;
+	  /* If overflow is undefined then we have to be careful because
+	     we ask whether it's ok to associate the negate with the
+	     division which is not ok for example for
+	     -((a - b) / c) where (-(a - b)) / c may invoke undefined
+	     overflow because of negating INT_MIN.  So do not use
+	     negate_expr_p here but open-code the two important cases.  */
+	  if (TREE_CODE (TREE_OPERAND (t, 0)) == NEGATE_EXPR
+	      || (TREE_CODE (TREE_OPERAND (t, 0)) == INTEGER_CST
+		  && may_negate_without_overflow_p (TREE_OPERAND (t, 0))))
+	    return true;
+	}
+      else if (negate_expr_p (TREE_OPERAND (t, 0)))
+	return true;
+      return negate_expr_p (TREE_OPERAND (t, 1));
 
     case NOP_EXPR:
       /* Negate -((double)float) as (double)(-float).  */
@@ -670,16 +683,20 @@ fold_negate_expr (location_t loc, tree t)
 	      return fold_build2_loc (loc, TREE_CODE (t), type,
 				  TREE_OPERAND (t, 0), negate_expr (tem));
 	    }
+	  /* If overflow is undefined then we have to be careful because
+	     we ask whether it's ok to associate the negate with the
+	     division which is not ok for example for
+	     -((a - b) / c) where (-(a - b)) / c may invoke undefined
+	     overflow because of negating INT_MIN.  So do not use
+	     negate_expr_p here but open-code the two important cases.  */
           tem = TREE_OPERAND (t, 0);
-          if (negate_expr_p (tem))
-	    {
-	      if (INTEGRAL_TYPE_P (type)
-		  && (TREE_CODE (tem) != INTEGER_CST
-		      || tree_int_cst_equal (tem, TYPE_MIN_VALUE (type))))
-		fold_overflow_warning (warnmsg, WARN_STRICT_OVERFLOW_MISC);
-	      return fold_build2_loc (loc, TREE_CODE (t), type,
-				  negate_expr (tem), TREE_OPERAND (t, 1));
-	    }
+	  if ((INTEGRAL_TYPE_P (type)
+	       && (TREE_CODE (tem) == NEGATE_EXPR
+		   || (TREE_CODE (tem) == INTEGER_CST
+		       && may_negate_without_overflow_p (tem))))
+	      || !INTEGRAL_TYPE_P (type))
+	    return fold_build2_loc (loc, TREE_CODE (t), type,
+				    negate_expr (tem), TREE_OPERAND (t, 1));
         }
       break;
 
@@ -4862,11 +4879,15 @@ fold_range_test (location_t loc, enum tree_code code, tree type,
   int in0_p, in1_p, in_p;
   tree low0, low1, low, high0, high1, high;
   bool strict_overflow_p = false;
-  tree lhs = make_range (op0, &in0_p, &low0, &high0, &strict_overflow_p);
-  tree rhs = make_range (op1, &in1_p, &low1, &high1, &strict_overflow_p);
-  tree tem;
+  tree tem, lhs, rhs;
   const char * const warnmsg = G_("assuming signed overflow does not occur "
 				  "when simplifying range test");
+
+  if (!INTEGRAL_TYPE_P (type))
+    return 0;
+
+  lhs = make_range (op0, &in0_p, &low0, &high0, &strict_overflow_p);
+  rhs = make_range (op1, &in1_p, &low1, &high1, &strict_overflow_p);
 
   /* If this is an OR operation, invert both sides; we will invert
      again at the end.  */
@@ -13832,14 +13853,29 @@ fold_ternary_loc (location_t loc, enum tree_code code, tree type,
 	  && integer_zerop (op2)
 	  && (tem = sign_bit_p (TREE_OPERAND (arg0, 0), arg1)))
 	{
+	  /* sign_bit_p looks through both zero and sign extensions,
+	     but for this optimization only sign extensions are
+	     usable.  */
+	  tree tem2 = TREE_OPERAND (arg0, 0);
+	  while (tem != tem2)
+	    {
+	      if (TREE_CODE (tem2) != NOP_EXPR
+		  || TYPE_UNSIGNED (TREE_TYPE (TREE_OPERAND (tem2, 0))))
+		{
+		  tem = NULL_TREE;
+		  break;
+		}
+	      tem2 = TREE_OPERAND (tem2, 0);
+	    }
 	  /* sign_bit_p only checks ARG1 bits within A's precision.
 	     If <sign bit of A> has wider type than A, bits outside
 	     of A's precision in <sign bit of A> need to be checked.
 	     If they are all 0, this optimization needs to be done
 	     in unsigned A's type, if they are all 1 in signed A's type,
 	     otherwise this can't be done.  */
-	  if (TYPE_PRECISION (TREE_TYPE (tem))
-	      < TYPE_PRECISION (TREE_TYPE (arg1))
+	  if (tem
+	      && TYPE_PRECISION (TREE_TYPE (tem))
+		 < TYPE_PRECISION (TREE_TYPE (arg1))
 	      && TYPE_PRECISION (TREE_TYPE (tem))
 		 < TYPE_PRECISION (type))
 	    {

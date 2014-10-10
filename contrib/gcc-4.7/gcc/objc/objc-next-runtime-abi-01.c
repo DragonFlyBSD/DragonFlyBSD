@@ -26,7 +26,6 @@ along with GCC; see the file COPYING3.  If not see
 #include "config.h"
 #include "system.h"
 #include "coretypes.h"
-#include "tm.h"
 #include "tree.h"
 
 #ifdef OBJCPLUS
@@ -49,7 +48,7 @@ along with GCC; see the file COPYING3.  If not see
 
 #include "ggc.h"
 #include "target.h"
-#include "output.h"
+#include "c-family/c-target.h"
 #include "tree-iterator.h"
 
 #include "objc-runtime-hooks.h"
@@ -2268,47 +2267,50 @@ generate_objc_symtab_decl (void)
 		   init_objc_symtab (TREE_TYPE (UOBJC_SYMBOLS_decl)));
 }
 
+/* Any target implementing NeXT ObjC m32 ABI has to ensure that objects
+   refer to, and define, symbols that enforce linkage of classes into the
+   executable image, preserving unix archive semantics.
+
+   At present (4.8), the only targets implementing this are Darwin; these
+   use top level asms to implement a scheme (see config/darwin-c.c).  The
+   latter method is a hack, but compatible with LTO see also PR48109 for
+   further discussion and other possible methods.  */
 
 static void
-handle_next_class_ref (tree chain)
+handle_next_class_ref (tree chain ATTRIBUTE_UNUSED)
 {
-  const char *name = IDENTIFIER_POINTER (TREE_VALUE (chain));
-  char *string = (char *) alloca (strlen (name) + 30);
-
-  sprintf (string, ".objc_class_name_%s", name);
-
-#ifdef ASM_DECLARE_UNRESOLVED_REFERENCE
-  ASM_DECLARE_UNRESOLVED_REFERENCE (asm_out_file, string);
-#else
-  return ; /* NULL build for targets other than Darwin.  */
-#endif
+  if (targetcm.objc_declare_unresolved_class_reference)
+    {
+      const char *name = IDENTIFIER_POINTER (TREE_VALUE (chain));
+      char *string = (char *) alloca (strlen (name) + 30);
+      sprintf (string, ".objc_class_name_%s", name);
+      targetcm.objc_declare_unresolved_class_reference (string);
+    }
 }
 
 static void
-handle_next_impent (struct imp_entry *impent)
+handle_next_impent (struct imp_entry *impent ATTRIBUTE_UNUSED)
 {
-  char buf[BUFSIZE];
-
-  switch (TREE_CODE (impent->imp_context))
+  if (targetcm.objc_declare_class_definition)
     {
-    case CLASS_IMPLEMENTATION_TYPE:
-      snprintf (buf, BUFSIZE, ".objc_class_name_%s",
-		IDENTIFIER_POINTER (CLASS_NAME (impent->imp_context)));
-      break;
-    case CATEGORY_IMPLEMENTATION_TYPE:
-      snprintf (buf, BUFSIZE, "*.objc_category_name_%s_%s",
-		IDENTIFIER_POINTER (CLASS_NAME (impent->imp_context)),
-		IDENTIFIER_POINTER (CLASS_SUPER_NAME (impent->imp_context)));
-      break;
-    default:
-      return;
-    }
+      char buf[BUFSIZE];
 
-#ifdef ASM_DECLARE_CLASS_REFERENCE
-  ASM_DECLARE_CLASS_REFERENCE (asm_out_file, buf);
-#else
-  return ; /* NULL build for targets other than Darwin.  */
-#endif
+      switch (TREE_CODE (impent->imp_context))
+	{
+	  case CLASS_IMPLEMENTATION_TYPE:
+	    snprintf (buf, BUFSIZE, ".objc_class_name_%s",
+		      IDENTIFIER_POINTER (CLASS_NAME (impent->imp_context)));
+	    break;
+	  case CATEGORY_IMPLEMENTATION_TYPE:
+	    snprintf (buf, BUFSIZE, "*.objc_category_name_%s_%s",
+		      IDENTIFIER_POINTER (CLASS_NAME (impent->imp_context)),
+		      IDENTIFIER_POINTER (CLASS_SUPER_NAME (impent->imp_context)));
+	    break;
+	  default:
+	    return;
+	}
+      targetcm.objc_declare_class_definition (buf);
+    }
 }
 
 static void
@@ -2330,35 +2332,6 @@ generate_classref_translation_entry (tree chain)
   return;
 }
 
-
-/* The Fix-and-Continue functionality available in Mac OS X 10.3 and
-   later requires that ObjC translation units participating in F&C be
-   specially marked.  The following routine accomplishes this.  */
-
-/* static int _OBJC_IMAGE_INFO[2] = { 0, 1 }; */
-
-static void
-generate_objc_image_info (void)
-{
-  tree decl;
-  int flags
-    = ((flag_replace_objc_classes && imp_count ? 1 : 0)
-       | (flag_objc_gc ? 2 : 0));
-  VEC(constructor_elt,gc) *v = NULL;
-  tree array_type;
-
-  array_type  = build_sized_array_type (integer_type_node, 2);
-
-  decl = start_var_decl (array_type, "_OBJC_ImageInfo");
-
-  CONSTRUCTOR_APPEND_ELT (v, NULL_TREE, integer_zero_node);
-  CONSTRUCTOR_APPEND_ELT (v, NULL_TREE, build_int_cst (integer_type_node, flags));
-  /* The runtime wants this and refers to it in a manner hidden from the compiler.
-     So we must force the output.  */
-  DECL_PRESERVE_P (decl) = 1;
-  OBJCMETA (decl, objc_meta, meta_info);
-  finish_var_decl (decl, objc_build_constructor (TREE_TYPE (decl), v));
-}
 
 static void
 objc_generate_v1_next_metadata (void)
@@ -2410,13 +2383,9 @@ objc_generate_v1_next_metadata (void)
   attr = build_tree_list (objc_meta, meta_modules);
   build_module_descriptor (vers, attr);
 
-  /* This conveys information on GC usage and zero-link.  */
-  generate_objc_image_info ();
-
   /* Dump the class references.  This forces the appropriate classes
      to be linked into the executable image, preserving unix archive
-     semantics.  This can be removed when we move to a more dynamically
-     linked environment.  */
+     semantics.  */
 
   for (chain = cls_ref_chain; chain; chain = TREE_CHAIN (chain))
     {
