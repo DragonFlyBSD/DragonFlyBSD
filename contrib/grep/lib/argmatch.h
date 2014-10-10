@@ -1,6 +1,6 @@
 /* argmatch.h -- definitions and prototypes for argmatch.c
 
-   Copyright (C) 1990, 1998-1999, 2001-2002, 2004-2005, 2009-2012 Free Software
+   Copyright (C) 1990, 1998-1999, 2001-2002, 2004-2005, 2009-2014 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -25,6 +25,10 @@
 # include <stddef.h>
 
 # include "verify.h"
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
 # define ARRAY_CARDINALITY(Array) (sizeof (Array) / sizeof *(Array))
 
@@ -99,5 +103,9 @@ char const *argmatch_to_argument (char const *value,
 # define ARGMATCH_TO_ARGUMENT(Value, Arglist, Vallist)                  \
   argmatch_to_argument (Value, Arglist,                                 \
                         (char const *) (Vallist), sizeof *(Vallist))
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif /* ARGMATCH_H_ */

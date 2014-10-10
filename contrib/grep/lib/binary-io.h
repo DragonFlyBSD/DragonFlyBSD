@@ -1,5 +1,5 @@
 /* Binary mode I/O.
-   Copyright (C) 2001, 2003, 2005, 2008-2012 Free Software Foundation, Inc.
+   Copyright (C) 2001, 2003, 2005, 2008-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -25,6 +25,14 @@
    so we include it here first.  */
 #include <stdio.h>
 
+#ifndef _GL_INLINE_HEADER_BEGIN
+ #error "Please include config.h first."
+#endif
+_GL_INLINE_HEADER_BEGIN
+#ifndef BINARY_IO_INLINE
+# define BINARY_IO_INLINE _GL_INLINE
+#endif
+
 /* set_binary_mode (fd, mode)
    sets the binary/text I/O mode of file descriptor fd to the given mode
    (must be O_BINARY or O_TEXT) and returns the previous mode.  */
@@ -39,9 +47,9 @@
 # endif
 #else
   /* On reasonable systems, binary I/O is the only choice.  */
-  /* Use an inline function rather than a macro, to avoid gcc warnings
+  /* Use a function rather than a macro, to avoid gcc warnings
      "warning: statement with no effect".  */
-static inline int
+BINARY_IO_INLINE int
 set_binary_mode (int fd, int mode)
 {
   (void) fd;
@@ -61,5 +69,7 @@ set_binary_mode (int fd, int mode)
 #else
 # define SET_BINARY(fd) ((void) set_binary_mode (fd, O_BINARY))
 #endif
+
+_GL_INLINE_HEADER_END
 
 #endif /* _BINARY_H */

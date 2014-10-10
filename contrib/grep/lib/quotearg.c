@@ -1,6 +1,6 @@
 /* quotearg.c - quote arguments for output
 
-   Copyright (C) 1998-2002, 2004-2012 Free Software Foundation, Inc.
+   Copyright (C) 1998-2002, 2004-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -178,7 +178,7 @@ set_custom_quoting (struct quoting_options *o,
 static struct quoting_options /* NOT PURE!! */
 quoting_options_from_style (enum quoting_style style)
 {
-  struct quoting_options o = { 0, 0, { 0 }, NULL, NULL };
+  struct quoting_options o = { literal_quoting_style, 0, { 0 }, NULL, NULL };
   if (style == custom_quoting_style)
     abort ();
   o.style = style;
@@ -348,7 +348,12 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
 
       if (backslash_escapes
           && quote_string_len
-          && i + quote_string_len <= argsize
+          && (i + quote_string_len
+              <= (argsize == SIZE_MAX && 1 < quote_string_len
+                  /* Use strlen only if we must: when argsize is SIZE_MAX,
+                     and when the quote string is more than 1 byte long.
+                     If we do call strlen, save the result.  */
+                  ? (argsize = strlen (arg)) : argsize))
           && memcmp (arg + i, quote_string, quote_string_len) == 0)
         {
           if (elide_outer_quotes)
@@ -621,7 +626,7 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
 
       if (! ((backslash_escapes || elide_outer_quotes)
              && quote_these_too
-             && quote_these_too[c / INT_BITS] & (1 << (c % INT_BITS)))
+             && quote_these_too[c / INT_BITS] >> (c % INT_BITS) & 1)
           && !is_right_quote)
         goto store_c;
 
@@ -929,7 +934,7 @@ quotearg_custom_mem (char const *left_quote, char const *right_quote,
 }
 
 
-/* The quoting option used by quote_n and quote.  */
+/* The quoting option used by the functions of quote.h.  */
 struct quoting_options quote_quoting_options =
   {
     locale_quoting_style,
@@ -939,13 +944,25 @@ struct quoting_options quote_quoting_options =
   };
 
 char const *
-quote_n (int n, char const *name)
+quote_n_mem (int n, char const *arg, size_t argsize)
 {
-  return quotearg_n_options (n, name, SIZE_MAX, &quote_quoting_options);
+  return quotearg_n_options (n, arg, argsize, &quote_quoting_options);
 }
 
 char const *
-quote (char const *name)
+quote_mem (char const *arg, size_t argsize)
 {
-  return quote_n (0, name);
+  return quote_n_mem (0, arg, argsize);
+}
+
+char const *
+quote_n (int n, char const *arg)
+{
+  return quote_n_mem (n, arg, SIZE_MAX);
+}
+
+char const *
+quote (char const *arg)
+{
+  return quote_n (0, arg);
 }

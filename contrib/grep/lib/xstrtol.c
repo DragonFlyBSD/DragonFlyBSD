@@ -1,6 +1,6 @@
 /* A more useful interface to strtol.
 
-   Copyright (C) 1995-1996, 1998-2001, 2003-2007, 2009-2012 Free Software
+   Copyright (C) 1995-1996, 1998-2001, 2003-2007, 2009-2014 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -182,7 +182,7 @@ __xstrtol (const char *s, char **ptr, int strtol_base,
           break;
 
         case 'c':
-          overflow = 0;
+          overflow = LONGINT_OK;
           break;
 
         case 'E': /* exa or exbi */

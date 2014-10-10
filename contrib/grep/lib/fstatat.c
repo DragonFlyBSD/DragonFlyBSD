@@ -1,6 +1,6 @@
 /* Work around an fstatat bug on Solaris 9.
 
-   Copyright (C) 2006, 2009-2012 Free Software Foundation, Inc.
+   Copyright (C) 2006, 2009-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 #undef __need_system_sys_stat_h
 
 #if HAVE_FSTATAT
-static inline int
+static int
 orig_fstatat (int fd, char const *filename, struct stat *buf, int flags)
 {
   return fstatat (fd, filename, buf, flags);
@@ -97,7 +97,7 @@ rpl_fstatat (int fd, char const *file, struct stat *st, int flag)
    because the preprocessor sees a use of a macro that requires two
    arguments but is only given one.  Hence, we need an inline
    forwarder to get past the preprocessor.  */
-static inline int
+static int
 stat_func (char const *name, struct stat *st)
 {
   return stat (name, st);

@@ -1,4 +1,4 @@
-/* Copyright (C) 2011-2012 Free Software Foundation, Inc.
+/* Copyright (C) 2011-2014 Free Software Foundation, Inc.
    This file is part of gnulib.
 
    This program is free software: you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include <unistd.h>
 
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 
 #if GNULIB_GETCWD

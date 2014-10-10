@@ -1,6 +1,5 @@
-/* Determine whether a locale is hard.
-
-   Copyright (C) 1999, 2003-2004, 2009-2012 Free Software Foundation, Inc.
+/* Scan memory for the first of two bytes.
+   Copyright (C) 2008-2014 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -15,11 +14,19 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#ifndef HARD_LOCALE_H_
-# define HARD_LOCALE_H_ 1
+#include <stddef.h>
 
-# include <stdbool.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-bool hard_locale (int);
+/* Return the first address of either C1 or C2 (treated as unsigned
+   char) that occurs within N bytes of the memory region S.  If
+   neither byte appears, return NULL.  */
 
-#endif /* HARD_LOCALE_H_ */
+extern void *memchr2 (void const *s, int c1, int c2, size_t n)
+  _GL_ATTRIBUTE_PURE;
+
+#ifdef __cplusplus
+}
+#endif
