@@ -1,11 +1,16 @@
 This is XZ Utils imported from:
 http://tukaani.org/xz/
 
+file = xz-5.0.7.tar.bz2
+date = 20 September 2014
+size = 1074352
+sha1 = 7458b6492889a218a4a29e2a5b1e2ff7ca65a947
+
 When upgrading, remember to update config.h in lib/liblzma.
 ./configure --disable-nls
 
 Used in:
-lib/liblzma
-usr.bin/lzmainfo
-usr.bin/xz
-usr.bin/xzdec
+	lib/liblzma
+	usr.bin/lzmainfo
+	usr.bin/xz
+	usr.bin/xzdec
