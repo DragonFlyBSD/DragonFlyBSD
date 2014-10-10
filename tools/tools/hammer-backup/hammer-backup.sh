@@ -36,7 +36,7 @@
 #
 # hammer-backup
 #
-# This script operats HAMMER PFSes and dumps its contents for backup
+# This script operates HAMMER PFSes and dumps its contents for backup
 # purposes.
 #
 
@@ -173,12 +173,14 @@ do_backup()
     cmd="hammer -y -v mirror-read ${pfs_path} ${begtid} 2> ${tmplog} \
 	${compress_opts} > ${output_file}"
 
-    info "Launching: ${cmd}."
+    info "Launching: ${cmd}"
     if [ ${dryrun} -eq 0 ]; then
 	# Sync to disk before mirror-read
 	hammer synctid ${pfs_path} > /dev/null 2>&1
 	eval ${cmd}
 	if [ $? -eq 0 ]; then
+	    # On completion, make sure only root can access backup files.
+	    chmod 600 ${output_file}
 	    info "Backup completed."
 	else
 	    rm -f ${output_file}
