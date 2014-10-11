@@ -109,7 +109,7 @@ SRCS+=	acpi_wakeup.c
 #SRCS+=	madt.c
 SRCS+=	pmtimer.c
 .endif
-CLEANFILES+=	acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin ${DBSRC}
+CLEANFILES+=	acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin
 
 acpi_wakecode.h: acpi_wakecode.S
 	${MAKE} -f ${SYSDIR}/${OSACPI_MD_DIR}/Makefile \
