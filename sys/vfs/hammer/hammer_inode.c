@@ -759,7 +759,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	 * have been deleted.  In HAMMER, this will cause a record
 	 * syncing assertion later on in the flush code.
 	 */
-	if (dip->ino_data.nlinks == 0) {
+	if (dip && dip->ino_data.nlinks == 0) {
 		*ipp = NULL;
                 return (EINVAL);
 	}
