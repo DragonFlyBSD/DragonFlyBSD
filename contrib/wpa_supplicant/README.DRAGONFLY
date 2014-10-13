@@ -15,4 +15,7 @@ A list of files and directories removed is in README.DELETED
 
 The following files have been added or patched:
 ===============================================
+	modified:   src/drivers/driver_bsd.c
 	modified:   src/wps/wps_upnp.c
+	modified:   wpa_supplicant/main.c
+	modified:   wpa_supplicant/wpa_supplicant.c
