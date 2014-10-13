@@ -2637,6 +2637,9 @@ TO_REMOVE+=/usr/share/man/man8/scspd.8.gz
 TO_REMOVE+=/boot/kernel/.ko
 TO_REMOVE+=/usr/share/man/cat4/ed.4.gz
 TO_REMOVE+=/usr/share/man/man4/ed.4.gz
+TO_REMOVE+=/usr/share/zoneinfo/Asia/Chongqing
+TO_REMOVE+=/usr/share/zoneinfo/Asia/Harbin
+TO_REMOVE+=/usr/share/zoneinfo/Asia/Kashgar
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
