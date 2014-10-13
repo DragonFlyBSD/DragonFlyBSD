@@ -1492,9 +1492,7 @@ udp_connect(netmsg_t msg)
 	/*
 	 * Bind if we have to
 	 */
-	if (inp->inp_lport == 0 ||
-	    (td->td_proc && td->td_proc->p_ucred->cr_prison != NULL &&
-	     inp->inp_laddr.s_addr == INADDR_ANY)) {
+	if (inp->inp_lport == 0) {
 		error = in_pcbbind(inp, NULL, td);
 		if (error)
 			goto out;
