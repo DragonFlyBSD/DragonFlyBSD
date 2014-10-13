@@ -223,6 +223,16 @@ acpi_battery_get_battinfo(device_t dev, struct acpi_battinfo *battinfo)
 	    bi[i].cap = 100;
 
 	/*
+	 * Some DSDTs report a negative 16-bit value for the rate and/or
+	 * report 0 as 65536.
+	 */
+	if (acpi_quirks & ACPI_Q_BATT_RATE_ABS &&
+	    bif->units == ACPI_BIF_UNITS_MA &&
+	    bst[i].rate != ACPI_BATT_UNKNOWN &&
+	    (int16_t)bst[i].rate < 0)
+		bst[i].rate = abs((int16_t)bst[i].rate);
+
+	/*
 	 * On systems with more than one battery, they may get used
 	 * sequentially, thus bst.rate may only signify the one currently
 	 * in use.  For the remaining batteries, bst.rate will be zero,
@@ -233,16 +243,6 @@ acpi_battery_get_battinfo(device_t dev, struct acpi_battinfo *battinfo)
 	if (bst[i].rate != ACPI_BATT_UNKNOWN &&
 	    (bst[i].state & ACPI_BATT_STAT_DISCHARG) != 0)
 	    valid_rate += bst[i].rate;
-
-	/*
-	 * Some DSDTs report a negative 16-bit value for the rate and/or
-	 * report 0 as 65536.
-	 */
-	if (acpi_quirks & ACPI_Q_BATT_RATE_ABS &&
-	    bif->units == ACPI_BIF_UNITS_MA &&
-	    bst[i].rate != ACPI_BATT_UNKNOWN &&
-	    (int16_t)bst[i].rate < 0)
-		bst[i].rate = abs((int16_t)bst[i].rate);
     }
 
     /* If the caller asked for a device but we didn't find it, error. */
