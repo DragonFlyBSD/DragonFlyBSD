@@ -10,6 +10,7 @@ config.h.in
 config.sub
 configure
 configure.ac
+compile
 depcomp
 doc/
 examples/

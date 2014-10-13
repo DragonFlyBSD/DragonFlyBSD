@@ -88,6 +88,9 @@
 /* Define to 1 if you have the `re_comp' function. */
 /* #undef HAVE_RE_COMP */
 
+/* Define to 1 if you have the `secure_getenv' function. */
+/* #undef HAVE_SECURE_GETENV */
+
 /* Define to 1 if `stat' has the bug that it succeeds when given the
    zero-length file name argument. */
 /* #undef HAVE_STAT_EMPTY_STRING_BUG */
@@ -199,6 +202,9 @@
 /* Define to 1 if `vfork' works. */
 #define HAVE_WORKING_VFORK 1
 
+/* Define to 1 if you have the `__secure_getenv' function. */
+/* #undef HAVE___SECURE_GETENV */
+
 /* Define to 1 if `lstat' dereferences a symlink specified with a trailing
    slash. */
 #define LSTAT_FOLLOWS_SLASHED_SYMLINK 1
@@ -208,7 +214,7 @@
 #define LT_OBJDIR ".libs/"
 
 /* Name of package */
-#define PACKAGE "libedit-20121213"
+#define PACKAGE "libedit-20140620"
 
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT ""
@@ -217,16 +223,16 @@
 #define PACKAGE_NAME "libedit"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "libedit 3.0"
+#define PACKAGE_STRING "libedit 3.1"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "libedit-20121213"
+#define PACKAGE_TARNAME "libedit-20140620"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "3.0"
+#define PACKAGE_VERSION "3.1"
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void
@@ -257,7 +263,7 @@
 
 
 /* Version number of package */
-#define VERSION "3.0"
+#define VERSION "3.1"
 
 /* Define to 1 if you want wide-character code */
 #define WIDECHAR 1
