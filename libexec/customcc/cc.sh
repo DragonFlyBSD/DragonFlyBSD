@@ -31,26 +31,13 @@
 # SUCH DAMAGE.
 #
 
-CDIR=$(dirname $0)
 CNAME=$(basename $0)
+CCVER3=`echo ${CCVER} | awk '{print substr($0, 1, 3);}'`
 
-if [ "${CCVER}" = "clang" -o "${CCVER}" = "clangsvn" ]; then
-	if [ "${CNAME}" = "cpp" ]; then
-		exec ${CDIR}/../gcc44/cpp "$@"
-	else
-		INCOPT="-nobuiltininc -nostdinc \
-		    -isysroot @@INCPREFIX@@ \
-		    -isystem /usr/include \
-		    -isystem /usr/include/c++/4.4"
-	fi
-elif [ "${CCVER}" = "gcc46" ]; then
-	GCC46VER=`gnatc++ -dumpversion`
-	GCC46MAC=`gnatc++ -dumpmachine`
+if [ "${CCVER3}" = "gcc" ]; then
 	INCOPT="-nostdinc \
 	    -iprefix @@INCPREFIX@@ \
-	    -iwithprefixbefore /usr/include \
-	    -isystem /usr/pkg/include/c++/${GCC46VER} \
-	    -isystem /usr/pkg/include/c++/${GCC46VER}/${GCC46MAC}"
+	    -iwithprefixbefore /usr/include"
 fi
 
 . /etc/defaults/compilers.conf
@@ -64,9 +51,25 @@ CUSTOM_CPP=`eval echo \$\{${CCVER}_CPP\}`
 CUSTOM_CPPFLAGS=`eval echo \$\{${CCVER}_CPPFLAGS\}`
 
 if [ "${CNAME}" = "cc" -o "${CNAME}" = "gcc" ]; then
+	if [ -z ${CUSTOM_CC} ]; then
+		echo "${CCVER}_CC undefined, see compilers.conf(5)"
+		exit 1
+	fi
 	exec ${CUSTOM_CC} ${INCOPT} ${CUSTOM_CFLAGS} "$@"
 elif [ "${CNAME}" = "c++" -o "${CNAME}" = "g++" ]; then
-	exec ${CUSTOM_CXX} ${INCOPT} ${CUSTOM_CXXFLAGS} "$@"
+	if [ -z ${CUSTOM_CXX} ]; then
+		echo "${CCVER}_CXX undefined, see compilers.conf(5)"
+		exit 1
+	fi
+	INCOPT="${INCOPT} -isystem /usr/local/lib/${CCVER}/include/c++"
+	CXXMACHINE=`${CUSTOM_CXX} -dumpmachine`
+	MDINCOPT="-isystem \
+	    /usr/local/lib/${CCVER}/include/c++/${CXXMACHINE}"
+	exec ${CUSTOM_CXX} ${INCOPT} ${MDINCOPT} ${CUSTOM_CXXFLAGS} "$@"
 elif [ "${CNAME}" = "cpp" ]; then
+	if [ -z ${CUSTOM_CPP} ]; then
+		echo "${CCVER}_CPP undefined, see compilers.conf(5)"
+		exit 1
+	fi
 	exec ${CUSTOM_CPP} ${INCOPT} ${CUSTOM_CPPFLAGS} "$@"
 fi
