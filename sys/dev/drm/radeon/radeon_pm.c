@@ -696,9 +696,9 @@ void radeon_pm_fini(struct radeon_device *rdev)
 		int i;
 		for (i = 0; i < rdev->pm.num_power_states; ++i) {
 			drm_free(rdev->pm.power_state[i].clock_info,
-				 DRM_MEM_DRIVER);
+				 M_DRM);
 		}
-		drm_free(rdev->pm.power_state, DRM_MEM_DRIVER);
+		drm_free(rdev->pm.power_state, M_DRM);
 		rdev->pm.power_state = NULL;
 		rdev->pm.num_power_states = 0;
 	}

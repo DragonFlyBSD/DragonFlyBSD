@@ -409,7 +409,7 @@ static int intel_crt_ddc_get_modes(struct drm_connector *connector,
 		return 0;
 
 	ret = intel_connector_update_modes(connector, edid);
-	kfree(edid, DRM_MEM_KMS);
+	kfree(edid, M_DRM);
 
 	return ret;
 }
@@ -444,7 +444,7 @@ static bool intel_crt_detect_ddc(struct drm_connector *connector)
 		DRM_DEBUG_KMS("CRT not detected via DDC:0x50 [no valid EDID found]\n");
 	}
 
-	drm_free(edid, DRM_MEM_KMS);
+	drm_free(edid, M_DRM);
 
 	return false;
 }
@@ -621,7 +621,7 @@ static void intel_crt_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	drm_free(connector, DRM_MEM_KMS);
+	drm_free(connector, M_DRM);
 }
 
 static int intel_crt_get_modes(struct drm_connector *connector)
@@ -727,14 +727,14 @@ void intel_crt_init(struct drm_device *dev)
 	if (dmi_check_system(intel_no_crt))
 		return;
 
-	crt = kmalloc(sizeof(struct intel_crt), DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	crt = kmalloc(sizeof(struct intel_crt), M_DRM, M_WAITOK | M_ZERO);
 	if (!crt)
 		return;
 
-	intel_connector = kmalloc(sizeof(struct intel_connector), DRM_MEM_KMS,
+	intel_connector = kmalloc(sizeof(struct intel_connector), M_DRM,
 	    M_WAITOK | M_ZERO);
 	if (!intel_connector) {
-		kfree(crt, DRM_MEM_KMS);
+		kfree(crt, M_DRM);
 		return;
 	}
 

@@ -87,7 +87,7 @@ static bool igp_read_bios_from_vram(struct radeon_device *rdev)
 		drm_core_ioremapfree(&bios_map, rdev->ddev);
 		return false;
 	}
-	rdev->bios = kmalloc(size, DRM_MEM_DRIVER, M_WAITOK);
+	rdev->bios = kmalloc(size, M_DRM, M_WAITOK);
 	if (rdev->bios == NULL) {
 		drm_core_ioremapfree(&bios_map, rdev->ddev);
 		return false;
@@ -124,7 +124,7 @@ static bool radeon_read_bios(struct radeon_device *rdev)
 		vga_pci_unmap_bios(vga_dev, bios);
 		return false;
 	}
-	rdev->bios = kmalloc(size, DRM_MEM_DRIVER, M_WAITOK);
+	rdev->bios = kmalloc(size, M_DRM, M_WAITOK);
 	memcpy(rdev->bios, bios, size);
 	vga_pci_unmap_bios(vga_dev, bios);
 	return true;
@@ -233,7 +233,7 @@ static bool radeon_atrm_get_bios(struct radeon_device *rdev)
 	if (!found)
 		return false;
 
-	rdev->bios = kmalloc(size, DRM_MEM_DRIVER, M_WAITOK);
+	rdev->bios = kmalloc(size, M_DRM, M_WAITOK);
 	if (!rdev->bios) {
 		DRM_ERROR("Unable to allocate bios\n");
 		return false;
@@ -256,7 +256,7 @@ static bool radeon_atrm_get_bios(struct radeon_device *rdev)
 			DRM_INFO("%s: Incorrect BIOS signature: 0x%02X%02X\n",
 			    __func__, rdev->bios[0], rdev->bios[1]);
 		}
-		drm_free(rdev->bios, DRM_MEM_DRIVER);
+		drm_free(rdev->bios, M_DRM);
 		return false;
 	}
 	return true;
@@ -670,7 +670,7 @@ static bool radeon_acpi_vfct_bios(struct radeon_device *rdev)
 		goto out_unmap;
 	}
 
-	rdev->bios = kmalloc(vhdr->ImageLength, DRM_MEM_DRIVER, M_WAITOK);
+	rdev->bios = kmalloc(vhdr->ImageLength, M_DRM, M_WAITOK);
 	memcpy(rdev->bios, &vbios->VbiosContent, vhdr->ImageLength);
 	ret = !!rdev->bios;
 
@@ -724,7 +724,7 @@ bool radeon_get_bios(struct radeon_device *rdev)
 	DRM_DEBUG("%sBIOS detected\n", rdev->is_atom_bios ? "ATOM" : "COM");
 	return true;
 free_bios:
-	drm_free(rdev->bios, DRM_MEM_DRIVER);
+	drm_free(rdev->bios, M_DRM);
 	rdev->bios = NULL;
 	return false;
 }

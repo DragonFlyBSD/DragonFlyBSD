@@ -111,9 +111,6 @@ static void i915_gem_lowmem(void *arg);
 static int i915_gem_obj_io(struct drm_device *dev, uint32_t handle, uint64_t data_ptr,
     uint64_t size, uint64_t offset, enum uio_rw rw, struct drm_file *file);
 
-MALLOC_DEFINE(DRM_I915_GEM, "i915gem", "Allocations from i915 gem");
-long i915_gem_wired_pages_cnt;
-
 /* some bookkeeping */
 static void i915_gem_info_add_obj(struct drm_i915_private *dev_priv,
 				  size_t size)
@@ -257,7 +254,7 @@ i915_gem_create(struct drm_file *file,
 	if (ret) {
 		drm_gem_object_release(&obj->base);
 		i915_gem_info_remove_obj(dev->dev_private, obj->base.size);
-		drm_free(obj, DRM_I915_GEM);
+		drm_free(obj, M_DRM);
 		return (-ret);
 	}
 
@@ -960,11 +957,10 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 		vm_page_busy_wait(obj->pages[i], FALSE, "i915gem");
 		vm_page_unwire(obj->pages[i], 1);
 		vm_page_wakeup(obj->pages[i]);
-		atomic_add_long(&i915_gem_wired_pages_cnt, -1);
 	}
 	VM_OBJECT_UNLOCK(obj->base.vm_obj);
 	obj->dirty = 0;
-	drm_free(obj->pages, DRM_I915_GEM);
+	drm_free(obj->pages, M_DRM);
 	obj->pages = NULL;
 }
 
@@ -980,7 +976,7 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj,
 	dev = obj->base.dev;
 	KASSERT(obj->pages == NULL, ("Obj already has pages"));
 	page_count = obj->base.size / PAGE_SIZE;
-	obj->pages = kmalloc(page_count * sizeof(vm_page_t), DRM_I915_GEM,
+	obj->pages = kmalloc(page_count * sizeof(vm_page_t), M_DRM,
 	    M_WAITOK);
 	vm_obj = obj->base.vm_obj;
 	VM_OBJECT_LOCK(vm_obj);
@@ -999,10 +995,9 @@ failed:
 		vm_page_busy_wait(m, FALSE, "i915gem");
 		vm_page_unwire(m, 0);
 		vm_page_wakeup(m);
-		atomic_add_long(&i915_gem_wired_pages_cnt, -1);
 	}
 	VM_OBJECT_UNLOCK(vm_obj);
-	drm_free(obj->pages, DRM_I915_GEM);
+	drm_free(obj->pages, M_DRM);
 	obj->pages = NULL;
 	return (-EIO);
 }
@@ -1143,7 +1138,7 @@ i915_add_request(struct intel_ring_buffer *ring,
 	if (ret)
 		return ret;
 
-	request = kmalloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	request = kmalloc(sizeof(*request), M_DRM, M_WAITOK | M_ZERO);
 	if (request == NULL)
 		return -ENOMEM;
 
@@ -1157,7 +1152,7 @@ i915_add_request(struct intel_ring_buffer *ring,
 
 	ret = ring->add_request(ring);
 	if (ret) {
-		kfree(request, DRM_I915_GEM);
+		kfree(request, M_DRM);
 		return ret;
 	}
 
@@ -1227,7 +1222,7 @@ static void i915_gem_reset_ring_lists(struct drm_i915_private *dev_priv,
 
 		list_del(&request->list);
 		i915_gem_request_remove_from_client(request);
-		drm_free(request, DRM_I915_GEM);
+		drm_free(request, M_DRM);
 	}
 
 	while (!list_empty(&ring->active_list)) {
@@ -1320,7 +1315,7 @@ i915_gem_retire_requests_ring(struct intel_ring_buffer *ring)
 
 		list_del(&request->list);
 		i915_gem_request_remove_from_client(request);
-		kfree(request, DRM_I915_GEM);
+		kfree(request, M_DRM);
 	}
 
 	/* Move any buffers on the active list that are no longer referenced
@@ -2722,10 +2717,10 @@ struct drm_i915_gem_object *i915_gem_alloc_object(struct drm_device *dev,
 
 	dev_priv = dev->dev_private;
 
-	obj = kmalloc(sizeof(*obj), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	obj = kmalloc(sizeof(*obj), M_DRM, M_WAITOK | M_ZERO);
 
 	if (drm_gem_object_init(dev, &obj->base, size) != 0) {
-		drm_free(obj, DRM_I915_GEM);
+		drm_free(obj, M_DRM);
 		return (NULL);
 	}
 
@@ -2796,8 +2791,8 @@ void i915_gem_free_object(struct drm_gem_object *gem_obj)
 	drm_gem_object_release(&obj->base);
 	i915_gem_info_remove_obj(dev_priv, obj->base.size);
 
-	drm_free(obj->bit_17, DRM_I915_GEM);
-	drm_free(obj, DRM_I915_GEM);
+	drm_free(obj->bit_17, M_DRM);
+	drm_free(obj, M_DRM);
 }
 
 int
@@ -3227,7 +3222,7 @@ static int i915_gem_init_phys_object(struct drm_device *dev,
 	if (dev_priv->mm.phys_objs[id - 1] || !size)
 		return 0;
 
-	phys_obj = kmalloc(sizeof(struct drm_i915_gem_phys_object), DRM_I915_GEM,
+	phys_obj = kmalloc(sizeof(struct drm_i915_gem_phys_object), M_DRM,
 	    M_WAITOK | M_ZERO);
 	if (!phys_obj)
 		return -ENOMEM;
@@ -3247,7 +3242,7 @@ static int i915_gem_init_phys_object(struct drm_device *dev,
 	return 0;
 
 kfree_obj:
-	drm_free(phys_obj, DRM_I915_GEM);
+	drm_free(phys_obj, M_DRM);
 	return ret;
 }
 
@@ -3265,7 +3260,7 @@ static void i915_gem_free_phys_object(struct drm_device *dev, int id)
 	}
 
 	drm_pci_free(dev, phys_obj->handle);
-	drm_free(phys_obj, DRM_I915_GEM);
+	drm_free(phys_obj, M_DRM);
 	dev_priv->mm.phys_objs[id - 1] = NULL;
 }
 
@@ -3311,7 +3306,6 @@ void i915_gem_detach_phys_object(struct drm_device *dev,
 		vm_page_busy_wait(m, FALSE, "i915gem");
 		vm_page_unwire(m, 0);
 		vm_page_wakeup(m);
-		atomic_add_long(&i915_gem_wired_pages_cnt, -1);
 	}
 	VM_OBJECT_UNLOCK(obj->base.vm_obj);
 	intel_gtt_chipset_flush();
@@ -3379,7 +3373,6 @@ i915_gem_attach_phys_object(struct drm_device *dev,
 		vm_page_busy_wait(m, FALSE, "i915gem");
 		vm_page_unwire(m, 0);
 		vm_page_wakeup(m);
-		atomic_add_long(&i915_gem_wired_pages_cnt, -1);
 	}
 	VM_OBJECT_UNLOCK(obj->base.vm_obj);
 
@@ -3504,7 +3497,6 @@ i915_gem_swap_io(struct drm_device *dev, struct drm_i915_gem_object *obj,
 		vm_page_busy_wait(m, FALSE, "i915gem");
 		vm_page_unwire(m, 1);
 		vm_page_wakeup(m);
-		atomic_add_long(&i915_gem_wired_pages_cnt, -1);
 
 		if (ret != 0)
 			break;
@@ -3549,7 +3541,7 @@ i915_gem_obj_io(struct drm_device *dev, uint32_t handle, uint64_t data_ptr,
 	start = trunc_page(data_ptr);
 	end = round_page(data_ptr + size);
 	npages = howmany(end - start, PAGE_SIZE);
-	ma = kmalloc(npages * sizeof(vm_page_t), DRM_I915_GEM, M_WAITOK |
+	ma = kmalloc(npages * sizeof(vm_page_t), M_DRM, M_WAITOK |
 	    M_ZERO);
 	npages = vm_fault_quick_hold_pages(&curproc->p_vmspace->vm_map,
 	    (vm_offset_t)data_ptr, size,
@@ -3610,7 +3602,7 @@ unlock:
 unlocked:
 	vm_page_unhold_pages(ma, npages);
 free_ma:
-	drm_free(ma, DRM_I915_GEM);
+	drm_free(ma, M_DRM);
 	return (ret);
 }
 
@@ -3855,7 +3847,6 @@ i915_gem_wire_page(vm_object_t object, vm_pindex_t pindex)
 	}
 	vm_page_wire(m);
 	vm_page_wakeup(m);
-	atomic_add_long(&i915_gem_wired_pages_cnt, 1);
 	return (m);
 }
 

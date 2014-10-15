@@ -54,7 +54,7 @@ int radeon_driver_unload_kms(struct drm_device *dev)
 	radeon_acpi_fini(rdev);
 	radeon_modeset_fini(rdev);
 	radeon_device_fini(rdev);
-	drm_free(rdev, DRM_MEM_DRIVER);
+	drm_free(rdev, M_DRM);
 	dev->dev_private = NULL;
 	return 0;
 }
@@ -77,7 +77,7 @@ int radeon_driver_load_kms(struct drm_device *dev, unsigned long flags)
 	struct radeon_device *rdev;
 	int r, acpi_status;
 
-	rdev = kmalloc(sizeof(struct radeon_device), DRM_MEM_DRIVER,
+	rdev = kmalloc(sizeof(struct radeon_device), M_DRM,
 		       M_ZERO | M_WAITOK);
 	if (rdev == NULL) {
 		return -ENOMEM;
@@ -445,7 +445,7 @@ int radeon_driver_open_kms(struct drm_device *dev, struct drm_file *file_priv)
 		struct radeon_bo_va *bo_va;
 		int r;
 
-		fpriv = kmalloc(sizeof(*fpriv), DRM_MEM_DRIVER,
+		fpriv = kmalloc(sizeof(*fpriv), M_DRM,
 				M_ZERO | M_WAITOK);
 		if (unlikely(!fpriv)) {
 			return -ENOMEM;
@@ -462,7 +462,7 @@ int radeon_driver_open_kms(struct drm_device *dev, struct drm_file *file_priv)
 					  RADEON_VM_PAGE_SNOOPED);
 		if (r) {
 			radeon_vm_fini(rdev, &fpriv->vm);
-			drm_free(fpriv, DRM_MEM_DRIVER);
+			drm_free(fpriv, M_DRM);
 			return r;
 		}
 
@@ -500,7 +500,7 @@ void radeon_driver_postclose_kms(struct drm_device *dev,
 		}
 
 		radeon_vm_fini(rdev, &fpriv->vm);
-		drm_free(fpriv, DRM_MEM_DRIVER);
+		drm_free(fpriv, M_DRM);
 		file_priv->driver_priv = NULL;
 	}
 }

@@ -541,7 +541,7 @@ static void radeon_ttm_backend_destroy(struct ttm_tt *ttm)
 	struct radeon_ttm_tt *gtt = (void *)ttm;
 
 	ttm_dma_tt_fini(&gtt->ttm);
-	drm_free(gtt, DRM_MEM_DRIVER);
+	drm_free(gtt, M_DRM);
 }
 
 static struct ttm_backend_func radeon_backend_func = {
@@ -567,7 +567,7 @@ static struct ttm_tt *radeon_ttm_tt_create(struct ttm_bo_device *bdev,
 #endif /* DUMBBELL_WIP */
 #endif
 
-	gtt = kmalloc(sizeof(struct radeon_ttm_tt), DRM_MEM_DRIVER,
+	gtt = kmalloc(sizeof(struct radeon_ttm_tt), M_DRM,
 		      M_WAITOK | M_ZERO);
 	if (gtt == NULL) {
 		return NULL;
@@ -575,7 +575,7 @@ static struct ttm_tt *radeon_ttm_tt_create(struct ttm_bo_device *bdev,
 	gtt->ttm.ttm.func = &radeon_backend_func;
 	gtt->rdev = rdev;
 	if (ttm_dma_tt_init(&gtt->ttm, bdev, size, page_flags, dummy_read_page)) {
-		drm_free(gtt, DRM_MEM_DRIVER);
+		drm_free(gtt, M_DRM);
 		return NULL;
 	}
 	return &gtt->ttm.ttm;

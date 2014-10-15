@@ -154,7 +154,7 @@ static void radeon_sa_bo_remove_locked(struct radeon_sa_bo *sa_bo)
 	list_del_init(&sa_bo->olist);
 	list_del_init(&sa_bo->flist);
 	radeon_fence_unref(&sa_bo->fence);
-	drm_free(sa_bo, DRM_MEM_DRIVER);
+	drm_free(sa_bo, M_DRM);
 }
 
 static void radeon_sa_bo_try_free(struct radeon_sa_manager *sa_manager)
@@ -327,7 +327,7 @@ int radeon_sa_bo_new(struct radeon_device *rdev,
 	KASSERT(align <= RADEON_GPU_PAGE_SIZE, ("align > RADEON_GPU_PAGE_SIZE"));
 	KASSERT(size <= sa_manager->size, ("size > sa_manager->size"));
 
-	*sa_bo = kmalloc(sizeof(struct radeon_sa_bo), DRM_MEM_DRIVER,
+	*sa_bo = kmalloc(sizeof(struct radeon_sa_bo), M_DRM,
 			 M_WAITOK | M_ZERO);
 	if ((*sa_bo) == NULL) {
 		return -ENOMEM;
@@ -375,7 +375,7 @@ int radeon_sa_bo_new(struct radeon_device *rdev,
 	} while (!r);
 
 	lockmgr(&sa_manager->wq_lock, LK_RELEASE);
-	drm_free(*sa_bo, DRM_MEM_DRIVER);
+	drm_free(*sa_bo, M_DRM);
 	*sa_bo = NULL;
 	return r;
 }

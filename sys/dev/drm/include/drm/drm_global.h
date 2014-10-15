@@ -51,6 +51,4 @@ extern void drm_global_release(void);
 extern int drm_global_item_ref(struct drm_global_reference *ref);
 extern void drm_global_item_unref(struct drm_global_reference *ref);
 
-MALLOC_DECLARE(M_DRM_GLOBAL);
-
 #endif

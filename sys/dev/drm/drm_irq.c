@@ -37,8 +37,6 @@
 #include <linux/timer.h>
 #include <drm/drmP.h>
 
-MALLOC_DEFINE(DRM_MEM_VBLANK, "drm_vblank", "DRM VBLANK Handling Data");
-
 /* Access macro for slots in vblank timestamp ringbuffer. */
 #define vblanktimestamp(dev, crtc, count) ( \
 	(dev)->_vblank_time[(crtc) * DRM_VBLANKTIME_RBSIZE + \
@@ -186,13 +184,13 @@ void drm_vblank_cleanup(struct drm_device *dev)
 
 	vblank_disable_fn((unsigned long)dev);
 
-	drm_free(dev->_vblank_count, DRM_MEM_VBLANK);
-	drm_free(dev->vblank_refcount, DRM_MEM_VBLANK);
-	drm_free(dev->vblank_enabled, DRM_MEM_VBLANK);
-	drm_free(dev->last_vblank, DRM_MEM_VBLANK);
-	drm_free(dev->last_vblank_wait, DRM_MEM_VBLANK);
-	drm_free(dev->vblank_inmodeset, DRM_MEM_VBLANK);
-	drm_free(dev->_vblank_time, DRM_MEM_VBLANK);
+	drm_free(dev->_vblank_count, M_DRM);
+	drm_free(dev->vblank_refcount, M_DRM);
+	drm_free(dev->vblank_enabled, M_DRM);
+	drm_free(dev->last_vblank, M_DRM);
+	drm_free(dev->last_vblank_wait, M_DRM);
+	drm_free(dev->vblank_inmodeset, M_DRM);
+	drm_free(dev->_vblank_time, M_DRM);
 
 	dev->num_crtcs = 0;
 }
@@ -209,22 +207,22 @@ int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 	dev->num_crtcs = num_crtcs;
 
 	dev->vbl_queue = kmalloc(sizeof(wait_queue_head_t) * num_crtcs,
-	    DRM_MEM_VBLANK, M_WAITOK);
+	    M_DRM, M_WAITOK);
 
 	dev->_vblank_count = kmalloc(sizeof(atomic_t) * num_crtcs,
-	    DRM_MEM_VBLANK, M_WAITOK);
+	    M_DRM, M_WAITOK);
 	dev->vblank_refcount = kmalloc(sizeof(atomic_t) * num_crtcs,
-	    DRM_MEM_VBLANK, M_WAITOK);
+	    M_DRM, M_WAITOK);
 	dev->vblank_enabled = kmalloc(num_crtcs * sizeof(int),
-	    DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 	dev->last_vblank = kmalloc(num_crtcs * sizeof(u32),
-	    DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 	dev->last_vblank_wait = kmalloc(num_crtcs * sizeof(u32),
-	    DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 	dev->vblank_inmodeset = kmalloc(num_crtcs * sizeof(int),
-	    DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 	dev->_vblank_time = kmalloc(num_crtcs * DRM_VBLANKTIME_RBSIZE *
-	    sizeof(struct timeval), DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
+	    sizeof(struct timeval), M_DRM, M_WAITOK | M_ZERO);
 	DRM_INFO("Supports vblank timestamp caching Rev 1 (10.10.2010).\n");
 
 	/* Driver specific high-precision vblank timestamping supported? */
@@ -1016,7 +1014,7 @@ static void
 drm_vblank_event_destroy(struct drm_pending_event *e)
 {
 
-	drm_free(e, DRM_MEM_VBLANK);
+	drm_free(e, M_DRM);
 }
 
 static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
@@ -1028,7 +1026,7 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 	unsigned int seq;
 	int ret;
 
-	e = kmalloc(sizeof *e, DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
+	e = kmalloc(sizeof *e, M_DRM, M_WAITOK | M_ZERO);
 
 	e->pipe = pipe;
 	e->base.pid = curproc->p_pid;
@@ -1075,7 +1073,7 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 
 err_unlock:
 	lockmgr(&dev->event_lock, LK_RELEASE);
-	drm_free(e, DRM_MEM_VBLANK);
+	drm_free(e, M_DRM);
 	drm_vblank_put(dev, pipe);
 	return ret;
 }

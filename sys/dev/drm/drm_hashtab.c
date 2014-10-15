@@ -44,7 +44,7 @@ int drm_ht_create(struct drm_open_hash *ht, unsigned int order)
 	ht->order = order;
 	ht->table = NULL;
 	ht->table = kmalloc(size * sizeof(*ht->table),
-			DRM_MEM_HASHTAB, M_WAITOK | M_ZERO);
+			M_DRM, M_WAITOK | M_ZERO);
 	if (!ht->table) {
 		DRM_ERROR("Out of memory for hash table\n");
 		return -ENOMEM;
@@ -198,7 +198,7 @@ EXPORT_SYMBOL(drm_ht_remove_item);
 void drm_ht_remove(struct drm_open_hash *ht)
 {
 	if (ht->table) {
-		kfree(ht->table, DRM_MEM_HASHTAB);
+		kfree(ht->table, M_DRM);
 		ht->table = NULL;
 	}
 }

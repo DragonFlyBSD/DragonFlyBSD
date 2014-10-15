@@ -1188,7 +1188,7 @@ static void i915_capture_error_state(struct drm_device *dev)
 		return;
 
 	/* Account for pipe specific data like PIPE*STAT */
-	error = kmalloc(sizeof(*error), DRM_I915_GEM, M_NOWAIT | M_ZERO);
+	error = kmalloc(sizeof(*error), M_DRM, M_NOWAIT | M_ZERO);
 	if (!error) {
 		DRM_DEBUG_DRIVER("out of memory, not capturing error state\n");
 		return;

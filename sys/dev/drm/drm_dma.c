@@ -42,7 +42,7 @@
 int drm_dma_setup(struct drm_device *dev)
 {
 
-	dev->dma = kmalloc(sizeof(*dev->dma), DRM_MEM_DRIVER, M_NOWAIT | M_ZERO);
+	dev->dma = kmalloc(sizeof(*dev->dma), M_DRM, M_NOWAIT | M_ZERO);
 	if (dev->dma == NULL)
 		return ENOMEM;
 
@@ -68,21 +68,21 @@ void drm_dma_takedown(struct drm_device *dev)
 			for (j = 0; j < dma->bufs[i].seg_count; j++) {
 				drm_pci_free(dev, dma->bufs[i].seglist[j]);
 			}
-			drm_free(dma->bufs[i].seglist, DRM_MEM_SEGS);
+			drm_free(dma->bufs[i].seglist, M_DRM);
 		}
 
 	   	if (dma->bufs[i].buf_count) {
 		   	for (j = 0; j < dma->bufs[i].buf_count; j++) {
 				drm_free(dma->bufs[i].buflist[j].dev_private,
-				    DRM_MEM_BUFS);
+				    M_DRM);
 			}
-		   	drm_free(dma->bufs[i].buflist, DRM_MEM_BUFS);
+			drm_free(dma->bufs[i].buflist, M_DRM);
 		}
 	}
 
-	drm_free(dma->buflist, DRM_MEM_BUFS);
-	drm_free(dma->pagelist, DRM_MEM_PAGES);
-	drm_free(dev->dma, DRM_MEM_DRIVER);
+	drm_free(dma->buflist, M_DRM);
+	drm_free(dma->pagelist, M_DRM);
+	drm_free(dev->dma, M_DRM);
 	dev->dma = NULL;
 	spin_uninit(&dev->dma_lock);
 }

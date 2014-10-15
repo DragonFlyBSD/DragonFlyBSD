@@ -496,7 +496,7 @@ i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj)
 
 	if (obj->bit_17 == NULL) {
 		obj->bit_17 = kmalloc(BITS_TO_LONGS(page_count) *
-		    sizeof(long), DRM_I915_GEM, M_WAITOK);
+		    sizeof(long), M_DRM, M_WAITOK);
 		if (obj->bit_17 == NULL) {
 			DRM_ERROR("Failed to allocate memory for bit 17 "
 				  "record\n");

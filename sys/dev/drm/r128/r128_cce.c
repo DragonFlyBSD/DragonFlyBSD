@@ -351,7 +351,7 @@ static int r128_do_init_cce(struct drm_device * dev, drm_r128_init_t * init)
 
 	DRM_DEBUG("\n");
 
-	dev_priv = drm_alloc(sizeof(drm_r128_private_t), DRM_MEM_DRIVER);
+	dev_priv = drm_alloc(sizeof(drm_r128_private_t), M_DRM);
 	if (dev_priv == NULL)
 		return -ENOMEM;
 
@@ -615,7 +615,7 @@ int r128_do_cleanup_cce(struct drm_device * dev)
 					DRM_ERROR("failed to cleanup PCI GART!\n");
 		}
 
-		drm_free(dev->dev_private, DRM_MEM_DRIVER);
+		drm_free(dev->dev_private, M_DRM);
 		dev->dev_private = NULL;
 	}
 
@@ -763,7 +763,7 @@ static int r128_freelist_init(struct drm_device * dev)
 	drm_r128_freelist_t *entry;
 	int i;
 
-	dev_priv->head = drm_alloc(sizeof(drm_r128_freelist_t), DRM_MEM_DRIVER);
+	dev_priv->head = drm_alloc(sizeof(drm_r128_freelist_t), M_DRM);
 	if (dev_priv->head == NULL)
 		return -ENOMEM;
 
@@ -774,7 +774,7 @@ static int r128_freelist_init(struct drm_device * dev)
 		buf = dma->buflist[i];
 		buf_priv = buf->dev_private;
 
-		entry = drm_alloc(sizeof(drm_r128_freelist_t), DRM_MEM_DRIVER);
+		entry = drm_alloc(sizeof(drm_r128_freelist_t), M_DRM);
 		if (!entry)
 			return -ENOMEM;
 

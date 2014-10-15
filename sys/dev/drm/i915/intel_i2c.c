@@ -595,13 +595,13 @@ intel_setup_gmbus(struct drm_device *dev)
 	dev_priv = dev->dev_private;
 	lockinit(&dev_priv->gmbus_mutex, "gmbus", 0, LK_CANRECURSE);
 	dev_priv->gmbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
-	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 	dev_priv->bbbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
-	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 	dev_priv->gmbus = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
-	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 	dev_priv->bbbus = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
-	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 
 	for (i = 0; i < GMBUS_NUM_PORTS; i++) {
 		/*
@@ -680,13 +680,13 @@ intel_teardown_gmbus_m(struct drm_device *dev, int m)
 
 	dev_priv = dev->dev_private;
 
-	drm_free(dev_priv->gmbus, DRM_MEM_DRIVER);
+	drm_free(dev_priv->gmbus, M_DRM);
 	dev_priv->gmbus = NULL;
-	drm_free(dev_priv->bbbus, DRM_MEM_DRIVER);
+	drm_free(dev_priv->bbbus, M_DRM);
 	dev_priv->bbbus = NULL;
-	drm_free(dev_priv->gmbus_bridge, DRM_MEM_DRIVER);
+	drm_free(dev_priv->gmbus_bridge, M_DRM);
 	dev_priv->gmbus_bridge = NULL;
-	drm_free(dev_priv->bbbus_bridge, DRM_MEM_DRIVER);
+	drm_free(dev_priv->bbbus_bridge, M_DRM);
 	dev_priv->bbbus_bridge = NULL;
 	lockuninit(&dev_priv->gmbus_mutex);
 }

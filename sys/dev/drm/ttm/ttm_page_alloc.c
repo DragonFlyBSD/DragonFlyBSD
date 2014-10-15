@@ -128,8 +128,6 @@ struct ttm_pool_manager {
 #define	wc_pool_dma32 _u._ut.u_wc_pool_dma32
 #define	uc_pool_dma32 _u._ut.u_uc_pool_dma32
 
-MALLOC_DEFINE(M_TTM_POOLMGR, "ttm_poolmgr", "TTM Pool Manager");
-
 static void
 ttm_vm_page_free(vm_page_t m)
 {
@@ -169,7 +167,7 @@ ttm_caching_state_to_vm(enum ttm_caching_state cstate)
 static void ttm_pool_kobj_release(struct ttm_pool_manager *m)
 {
 
-	drm_free(m, M_TTM_POOLMGR);
+	drm_free(m, M_DRM);
 }
 
 #if 0
@@ -800,7 +798,7 @@ int ttm_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
 		kprintf("[TTM] manager != NULL\n");
 	kprintf("[TTM] Initializing pool allocator\n");
 
-	_manager = kmalloc(sizeof(*_manager), M_TTM_POOLMGR, M_WAITOK | M_ZERO);
+	_manager = kmalloc(sizeof(*_manager), M_DRM, M_WAITOK | M_ZERO);
 
 	ttm_page_pool_init_locked(&_manager->wc_pool, 0, "wc");
 	ttm_page_pool_init_locked(&_manager->uc_pool, 0, "uc");

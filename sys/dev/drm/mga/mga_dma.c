@@ -252,7 +252,7 @@ static int mga_freelist_init(struct drm_device * dev, drm_mga_private_t * dev_pr
 	int i;
 	DRM_DEBUG("count=%d\n", dma->buf_count);
 
-	dev_priv->head = drm_alloc(sizeof(drm_mga_freelist_t), DRM_MEM_DRIVER);
+	dev_priv->head = drm_alloc(sizeof(drm_mga_freelist_t), M_DRM);
 	if (dev_priv->head == NULL)
 		return -ENOMEM;
 
@@ -263,7 +263,7 @@ static int mga_freelist_init(struct drm_device * dev, drm_mga_private_t * dev_pr
 		buf = dma->buflist[i];
 		buf_priv = buf->dev_private;
 
-		entry = drm_alloc(sizeof(drm_mga_freelist_t), DRM_MEM_DRIVER);
+		entry = drm_alloc(sizeof(drm_mga_freelist_t), M_DRM);
 		if (entry == NULL)
 			return -ENOMEM;
 
@@ -299,7 +299,7 @@ static void mga_freelist_cleanup(struct drm_device * dev)
 	entry = dev_priv->head;
 	while (entry) {
 		next = entry->next;
-		drm_free(entry, DRM_MEM_DRIVER);
+		drm_free(entry, M_DRM);
 		entry = next;
 	}
 
@@ -396,7 +396,7 @@ int mga_driver_load(struct drm_device *dev, unsigned long flags)
 	drm_mga_private_t *dev_priv;
 	int ret;
 
-	dev_priv = drm_alloc(sizeof(drm_mga_private_t), DRM_MEM_DRIVER);
+	dev_priv = drm_alloc(sizeof(drm_mga_private_t), M_DRM);
 	if (!dev_priv)
 		return -ENOMEM;
 
@@ -1146,7 +1146,7 @@ int mga_dma_buffers(struct drm_device *dev, void *data,
  */
 int mga_driver_unload(struct drm_device * dev)
 {
-	drm_free(dev->dev_private, DRM_MEM_DRIVER);
+	drm_free(dev->dev_private, M_DRM);
 	dev->dev_private = NULL;
 
 	return 0;

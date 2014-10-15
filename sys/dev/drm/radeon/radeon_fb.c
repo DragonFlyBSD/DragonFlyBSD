@@ -303,7 +303,7 @@ out_unref:
 	if (fb && ret) {
 		drm_gem_object_unreference(gobj);
 		drm_framebuffer_cleanup(fb);
-		drm_free(fb, DRM_MEM_DRIVER); /* XXX malloc'd in radeon_user_framebuffer_create? */
+		drm_free(fb, M_DRM); /* XXX malloc'd in radeon_user_framebuffer_create? */
 	}
 	return ret;
 }
@@ -375,7 +375,7 @@ int radeon_fbdev_init(struct radeon_device *rdev)
 	if (ASIC_IS_RN50(rdev) || rdev->mc.real_vram_size <= (32*1024*1024))
 		bpp_sel = 8;
 
-	rfbdev = kmalloc(sizeof(struct radeon_fbdev), DRM_MEM_DRIVER,
+	rfbdev = kmalloc(sizeof(struct radeon_fbdev), M_DRM,
 			 M_WAITOK | M_ZERO);
 	if (!rfbdev)
 		return -ENOMEM;
@@ -388,7 +388,7 @@ int radeon_fbdev_init(struct radeon_device *rdev)
 				 rdev->num_crtc,
 				 RADEONFB_CONN_LIMIT);
 	if (ret) {
-		drm_free(rfbdev, DRM_MEM_DRIVER);
+		drm_free(rfbdev, M_DRM);
 		return ret;
 	}
 
@@ -403,7 +403,7 @@ void radeon_fbdev_fini(struct radeon_device *rdev)
 		return;
 
 	radeon_fbdev_destroy(rdev->ddev, rdev->mode_info.rfbdev);
-	drm_free(rdev->mode_info.rfbdev, DRM_MEM_DRIVER);
+	drm_free(rdev->mode_info.rfbdev, M_DRM);
 	rdev->mode_info.rfbdev = NULL;
 }
 

@@ -3686,7 +3686,7 @@ void evergreen_fini(struct radeon_device *rdev)
 		ni_fini_microcode(rdev);
 	else
 		r600_fini_microcode(rdev);
-	drm_free(rdev->bios, DRM_MEM_DRIVER);
+	drm_free(rdev->bios, M_DRM);
 	rdev->bios = NULL;
 }
 

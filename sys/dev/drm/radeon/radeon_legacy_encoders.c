@@ -383,7 +383,7 @@ void radeon_legacy_backlight_init(struct radeon_encoder *radeon_encoder,
 #endif
 
 	pdata = kmalloc(sizeof(struct radeon_backlight_privdata),
-			DRM_MEM_DRIVER, M_WAITOK);
+			M_DRM, M_WAITOK);
 	if (!pdata) {
 		DRM_ERROR("Memory allocation failed\n");
 		goto error;
@@ -447,7 +447,7 @@ void radeon_legacy_backlight_init(struct radeon_encoder *radeon_encoder,
 	return;
 
 error:
-	drm_free(pdata, DRM_MEM_DRIVER);
+	drm_free(pdata, M_DRM);
 	return;
 }
 
@@ -475,7 +475,7 @@ static void radeon_legacy_backlight_exit(struct radeon_encoder *radeon_encoder)
 
 		pdata = bl_get_data(bd);
 		backlight_device_unregister(bd);
-		drm_free(pdata, DRM_MEM_DRIVER);
+		drm_free(pdata, M_DRM);
 
 		DRM_INFO("radeon legacy LVDS backlight unloaded\n");
 	}
@@ -501,10 +501,10 @@ static void radeon_lvds_enc_destroy(struct drm_encoder *encoder)
 
 	if (radeon_encoder->enc_priv) {
 		radeon_legacy_backlight_exit(radeon_encoder);
-		drm_free(radeon_encoder->enc_priv, DRM_MEM_DRIVER);
+		drm_free(radeon_encoder->enc_priv, M_DRM);
 	}
 	drm_encoder_cleanup(encoder);
-	drm_free(radeon_encoder, DRM_MEM_DRIVER);
+	drm_free(radeon_encoder, M_DRM);
 }
 
 static const struct drm_encoder_funcs radeon_legacy_lvds_enc_funcs = {
@@ -1011,9 +1011,9 @@ static void radeon_ext_tmds_enc_destroy(struct drm_encoder *encoder)
 {
 	struct radeon_encoder *radeon_encoder = to_radeon_encoder(encoder);
 	/* don't destroy the i2c bus record here, this will be done in radeon_i2c_fini */
-	drm_free(radeon_encoder->enc_priv, DRM_MEM_DRIVER);
+	drm_free(radeon_encoder->enc_priv, M_DRM);
 	drm_encoder_cleanup(encoder);
-	drm_free(radeon_encoder, DRM_MEM_DRIVER);
+	drm_free(radeon_encoder, M_DRM);
 }
 
 static const struct drm_encoder_helper_funcs radeon_legacy_tmds_ext_helper_funcs = {
@@ -1699,7 +1699,7 @@ static struct radeon_encoder_int_tmds *radeon_legacy_get_tmds_info(struct radeon
 	bool ret;
 
 	tmds = kmalloc(sizeof(struct radeon_encoder_int_tmds),
-		       DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
+		       M_DRM, M_ZERO | M_WAITOK);
 
 	if (!tmds)
 		return NULL;
@@ -1726,7 +1726,7 @@ static struct radeon_encoder_ext_tmds *radeon_legacy_get_ext_tmds_info(struct ra
 		return NULL;
 
 	tmds = kmalloc(sizeof(struct radeon_encoder_ext_tmds),
-		       DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
+		       M_DRM, M_ZERO | M_WAITOK);
 
 	if (!tmds)
 		return NULL;
@@ -1758,7 +1758,7 @@ radeon_add_legacy_encoder(struct drm_device *dev, uint32_t encoder_enum, uint32_
 
 	/* add a new one */
 	radeon_encoder = kmalloc(sizeof(struct radeon_encoder),
-				 DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
+				 M_DRM, M_ZERO | M_WAITOK);
 	if (!radeon_encoder)
 		return;
 

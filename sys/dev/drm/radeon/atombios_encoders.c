@@ -197,7 +197,7 @@ void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
 		return;
 
 	pdata = kmalloc(sizeof(struct radeon_backlight_privdata),
-			DRM_MEM_DRIVER, M_WAITOK);
+			M_DRM, M_WAITOK);
 	if (!pdata) {
 		DRM_ERROR("Memory allocation failed\n");
 		goto error;
@@ -231,7 +231,7 @@ void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
 	return;
 
 error:
-	drm_free(pdata, DRM_MEM_DRIVER);
+	drm_free(pdata, M_DRM);
 	return;
 }
 
@@ -260,7 +260,7 @@ static void radeon_atom_backlight_exit(struct radeon_encoder *radeon_encoder)
 
 		pdata = bl_get_data(bd);
 		backlight_device_unregister(bd);
-		drm_free(pdata, DRM_MEM_DRIVER);
+		drm_free(pdata, M_DRM);
 
 		DRM_INFO("radeon atom LVDS backlight unloaded\n");
 	}
@@ -2491,9 +2491,9 @@ void radeon_enc_destroy(struct drm_encoder *encoder)
 	struct radeon_encoder *radeon_encoder = to_radeon_encoder(encoder);
 	if (radeon_encoder->devices & (ATOM_DEVICE_LCD_SUPPORT))
 		radeon_atom_backlight_exit(radeon_encoder);
-	drm_free(radeon_encoder->enc_priv, DRM_MEM_DRIVER);
+	drm_free(radeon_encoder->enc_priv, M_DRM);
 	drm_encoder_cleanup(encoder);
-	drm_free(radeon_encoder, DRM_MEM_DRIVER);
+	drm_free(radeon_encoder, M_DRM);
 }
 
 static const struct drm_encoder_funcs radeon_atom_enc_funcs = {
@@ -2506,7 +2506,7 @@ radeon_atombios_set_dac_info(struct radeon_encoder *radeon_encoder)
 	struct drm_device *dev = radeon_encoder->base.dev;
 	struct radeon_device *rdev = dev->dev_private;
 	struct radeon_encoder_atom_dac *dac = kmalloc(sizeof(struct radeon_encoder_atom_dac),
-						      DRM_MEM_DRIVER,
+						      M_DRM,
 						      M_ZERO | M_WAITOK);
 
 	if (!dac)
@@ -2521,7 +2521,7 @@ radeon_atombios_set_dig_info(struct radeon_encoder *radeon_encoder)
 {
 	int encoder_enum = (radeon_encoder->encoder_enum & ENUM_ID_MASK) >> ENUM_ID_SHIFT;
 	struct radeon_encoder_atom_dig *dig = kmalloc(sizeof(struct radeon_encoder_atom_dig),
-						      DRM_MEM_DRIVER,
+						      M_DRM,
 						      M_ZERO | M_WAITOK);
 
 	if (!dig)
@@ -2561,7 +2561,7 @@ radeon_add_atom_encoder(struct drm_device *dev,
 
 	/* add a new one */
 	radeon_encoder = kmalloc(sizeof(struct radeon_encoder),
-				 DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
+				 M_DRM, M_ZERO | M_WAITOK);
 	if (!radeon_encoder)
 		return;
 

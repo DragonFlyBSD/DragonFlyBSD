@@ -613,11 +613,11 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set)
 	/* Allocate space for the backup of all (non-pointer) crtc, encoder and
 	 * connector data. */
 	save_crtcs = kmalloc(dev->mode_config.num_crtc * sizeof(struct drm_crtc),
-	    DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 	save_encoders = kmalloc(dev->mode_config.num_encoder *
-	    sizeof(struct drm_encoder), DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	    sizeof(struct drm_encoder), M_DRM, M_WAITOK | M_ZERO);
 	save_connectors = kmalloc(dev->mode_config.num_connector *
-	    sizeof(struct drm_connector), DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	    sizeof(struct drm_connector), M_DRM, M_WAITOK | M_ZERO);
 
 	/* Copy data. Note that driver private data is not affected.
 	 * Should anything bad happen only the expected state is
@@ -787,9 +787,9 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set)
 		}
 	}
 
-	kfree(save_connectors, DRM_MEM_KMS);
-	kfree(save_encoders, DRM_MEM_KMS);
-	kfree(save_crtcs, DRM_MEM_KMS);
+	kfree(save_connectors, M_DRM);
+	kfree(save_encoders, M_DRM);
+	kfree(save_crtcs, M_DRM);
 	return 0;
 
 fail:
@@ -815,9 +815,9 @@ fail:
 				      save_set.y, save_set.fb))
 		DRM_ERROR("failed to restore config after modeset failure\n");
 
-	drm_free(save_connectors, DRM_MEM_KMS);
-	drm_free(save_encoders, DRM_MEM_KMS);
-	drm_free(save_crtcs, DRM_MEM_KMS);
+	drm_free(save_connectors, M_DRM);
+	drm_free(save_encoders, M_DRM);
+	drm_free(save_crtcs, M_DRM);
 	return ret;
 }
 EXPORT_SYMBOL(drm_crtc_helper_set_config);

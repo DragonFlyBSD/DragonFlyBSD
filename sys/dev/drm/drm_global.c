@@ -32,8 +32,6 @@
 #include <drm/drmP.h>
 #include <drm/drm_global.h>
 
-MALLOC_DEFINE(M_DRM_GLOBAL, "drm_global", "DRM Global Items");
-
 struct drm_global_item {
 	struct lock mutex;
 	void *object;
@@ -73,7 +71,7 @@ int drm_global_item_ref(struct drm_global_reference *ref)
 
 	lockmgr(&item->mutex, LK_EXCLUSIVE);
 	if (item->refcount == 0) {
-		item->object = kmalloc(ref->size, M_DRM_GLOBAL,
+		item->object = kmalloc(ref->size, M_DRM,
 		    M_WAITOK | M_ZERO);
 
 		ref->object = item->object;
@@ -102,7 +100,7 @@ void drm_global_item_unref(struct drm_global_reference *ref)
 	KKASSERT(ref->object == item->object);
 	if (--item->refcount == 0) {
 		ref->release(ref);
-		drm_free(item->object, M_DRM_GLOBAL);
+		drm_free(item->object, M_DRM);
 		item->object = NULL;
 	}
 	lockmgr(&item->mutex, LK_RELEASE);

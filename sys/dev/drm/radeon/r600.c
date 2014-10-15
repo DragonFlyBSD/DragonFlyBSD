@@ -3033,7 +3033,7 @@ void r600_fini(struct radeon_device *rdev)
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
 	r600_fini_microcode(rdev);
-	drm_free(rdev->bios, DRM_MEM_DRIVER);
+	drm_free(rdev->bios, M_DRM);
 	rdev->bios = NULL;
 }
 

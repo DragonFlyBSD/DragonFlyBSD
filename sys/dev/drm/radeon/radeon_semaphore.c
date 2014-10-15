@@ -38,7 +38,7 @@ int radeon_semaphore_create(struct radeon_device *rdev,
 {
 	int r;
 
-	*semaphore = kmalloc(sizeof(struct radeon_semaphore), DRM_MEM_DRIVER,
+	*semaphore = kmalloc(sizeof(struct radeon_semaphore), M_DRM,
 			     M_WAITOK);
 	if (*semaphore == NULL) {
 		return -ENOMEM;
@@ -46,7 +46,7 @@ int radeon_semaphore_create(struct radeon_device *rdev,
 	r = radeon_sa_bo_new(rdev, &rdev->ring_tmp_bo,
 			     &(*semaphore)->sa_bo, 8, 8, true);
 	if (r) {
-		drm_free(*semaphore, DRM_MEM_DRIVER);
+		drm_free(*semaphore, M_DRM);
 		*semaphore = NULL;
 		return r;
 	}
@@ -117,6 +117,6 @@ void radeon_semaphore_free(struct radeon_device *rdev,
 			" hardware lockup imminent!\n", *semaphore);
 	}
 	radeon_sa_bo_free(rdev, &(*semaphore)->sa_bo, fence);
-	drm_free(*semaphore, DRM_MEM_DRIVER);
+	drm_free(*semaphore, M_DRM);
 	*semaphore = NULL;
 }

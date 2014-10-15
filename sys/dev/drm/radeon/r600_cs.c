@@ -2398,7 +2398,7 @@ int r600_cs_parse(struct radeon_cs_parser *p)
 
 	if (p->track == NULL) {
 		/* initialize tracker, we are in kms */
-		track = kmalloc(sizeof(*track), DRM_MEM_DRIVER,
+		track = kmalloc(sizeof(*track), M_DRM,
 				M_ZERO | M_WAITOK);
 		if (track == NULL)
 			return -ENOMEM;
@@ -2417,7 +2417,7 @@ int r600_cs_parse(struct radeon_cs_parser *p)
 	do {
 		r = r600_cs_packet_parse(p, &pkt, p->idx);
 		if (r) {
-			drm_free(p->track, DRM_MEM_DRIVER);
+			drm_free(p->track, M_DRM);
 			p->track = NULL;
 			return r;
 		}
@@ -2433,12 +2433,12 @@ int r600_cs_parse(struct radeon_cs_parser *p)
 			break;
 		default:
 			DRM_ERROR("Unknown packet type %d !\n", pkt.type);
-			drm_free(p->track, DRM_MEM_DRIVER);
+			drm_free(p->track, M_DRM);
 			p->track = NULL;
 			return -EINVAL;
 		}
 		if (r) {
-			drm_free(p->track, DRM_MEM_DRIVER);
+			drm_free(p->track, M_DRM);
 			p->track = NULL;
 			return r;
 		}
@@ -2449,7 +2449,7 @@ int r600_cs_parse(struct radeon_cs_parser *p)
 		DRM_MDELAY(1);
 	}
 #endif
-	drm_free(p->track, DRM_MEM_DRIVER);
+	drm_free(p->track, M_DRM);
 	p->track = NULL;
 	return 0;
 }
@@ -2459,7 +2459,7 @@ static int r600_cs_parser_relocs_legacy(struct radeon_cs_parser *p)
 	if (p->chunk_relocs_idx == -1) {
 		return 0;
 	}
-	p->relocs = kmalloc(sizeof(struct radeon_cs_reloc), DRM_MEM_DRIVER,
+	p->relocs = kmalloc(sizeof(struct radeon_cs_reloc), M_DRM,
 			    M_ZERO | M_WAITOK);
 	if (p->relocs == NULL) {
 		return -ENOMEM;
@@ -2479,17 +2479,17 @@ static void r600_cs_parser_fini(struct radeon_cs_parser *parser, int error)
 {
 	unsigned i;
 
-	drm_free(parser->relocs, DRM_MEM_DRIVER);
+	drm_free(parser->relocs, M_DRM);
 	for (i = 0; i < parser->nchunks; i++) {
-		drm_free(parser->chunks[i].kdata, DRM_MEM_DRIVER);
+		drm_free(parser->chunks[i].kdata, M_DRM);
 		if (parser->rdev && (parser->rdev->flags & RADEON_IS_AGP)) {
-			drm_free(parser->chunks[i].kpage[0], DRM_MEM_DRIVER);
-			drm_free(parser->chunks[i].kpage[1], DRM_MEM_DRIVER);
+			drm_free(parser->chunks[i].kpage[0], M_DRM);
+			drm_free(parser->chunks[i].kpage[1], M_DRM);
 		}
 	}
-	drm_free(parser->chunks, DRM_MEM_DRIVER);
-	drm_free(parser->chunks_array, DRM_MEM_DRIVER);
-	drm_free(parser->track, DRM_MEM_DRIVER);
+	drm_free(parser->chunks, M_DRM);
+	drm_free(parser->chunks_array, M_DRM);
+	drm_free(parser->track, M_DRM);
 }
 
 int r600_cs_legacy(struct drm_device *dev, void *data, struct drm_file *filp,
@@ -2501,7 +2501,7 @@ int r600_cs_legacy(struct drm_device *dev, void *data, struct drm_file *filp,
 	int r;
 
 	/* initialize tracker */
-	track = kmalloc(sizeof(*track), DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
+	track = kmalloc(sizeof(*track), M_DRM, M_ZERO | M_WAITOK);
 	if (track == NULL)
 		return -ENOMEM;
 	r600_cs_track_init(track);

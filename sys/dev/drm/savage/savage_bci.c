@@ -300,7 +300,7 @@ static int savage_dma_init(drm_savage_private_t *dev_priv)
 	dev_priv->nr_dma_pages = dev_priv->cmd_dma->size /
 		(SAVAGE_DMA_PAGE_SIZE*4);
 	dev_priv->dma_pages = drm_alloc(sizeof(drm_savage_dma_page_t) *
-					dev_priv->nr_dma_pages, DRM_MEM_DRIVER);
+					dev_priv->nr_dma_pages, M_DRM);
 	if (dev_priv->dma_pages == NULL)
 		return -ENOMEM;
 
@@ -540,7 +540,7 @@ int savage_driver_load(struct drm_device *dev, unsigned long chipset)
 {
 	drm_savage_private_t *dev_priv;
 
-	dev_priv = drm_alloc(sizeof(drm_savage_private_t), DRM_MEM_DRIVER);
+	dev_priv = drm_alloc(sizeof(drm_savage_private_t), M_DRM);
 	if (dev_priv == NULL)
 		return -ENOMEM;
 
@@ -683,7 +683,7 @@ int savage_driver_unload(struct drm_device *dev)
 {
 	drm_savage_private_t *dev_priv = dev->dev_private;
 
-	drm_free(dev_priv, DRM_MEM_DRIVER);
+	drm_free(dev_priv, M_DRM);
 
 	return 0;
 }
@@ -817,7 +817,7 @@ static int savage_do_init_bci(struct drm_device *dev, drm_savage_init_t *init)
 		dev_priv->fake_dma.size = SAVAGE_FAKE_DMA_SIZE;
 		dev_priv->fake_dma.type = _DRM_SHM;
 		dev_priv->fake_dma.virtual = drm_alloc(SAVAGE_FAKE_DMA_SIZE,
-						      DRM_MEM_DRIVER);
+						      M_DRM);
 		if (!dev_priv->fake_dma.virtual) {
 			DRM_ERROR("could not allocate faked DMA buffer!\n");
 			savage_do_cleanup_bci(dev);
@@ -916,7 +916,7 @@ static int savage_do_cleanup_bci(struct drm_device *dev)
 
 	if (dev_priv->cmd_dma == &dev_priv->fake_dma) {
 		if (dev_priv->fake_dma.virtual)
-			drm_free(dev_priv->fake_dma.virtual,DRM_MEM_DRIVER);
+			drm_free(dev_priv->fake_dma.virtual,M_DRM);
 	} else if (dev_priv->cmd_dma && dev_priv->cmd_dma->virtual &&
 		   dev_priv->cmd_dma->type == _DRM_AGP &&
 		   dev_priv->dma_type == SAVAGE_DMA_AGP)
@@ -932,7 +932,7 @@ static int savage_do_cleanup_bci(struct drm_device *dev)
 	}
 
 	if (dev_priv->dma_pages)
-		drm_free(dev_priv->dma_pages, DRM_MEM_DRIVER);
+		drm_free(dev_priv->dma_pages, M_DRM);
 
 	return 0;
 }

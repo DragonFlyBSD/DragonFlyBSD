@@ -72,7 +72,7 @@ drm_gem_init(struct drm_device *dev)
 	lockinit(&dev->object_name_lock, "objnam", 0, LK_CANRECURSE);
 	idr_init(&dev->object_name_idr);
 
-	mm = kmalloc(sizeof(*mm), DRM_MEM_DRIVER, M_WAITOK);
+	mm = kmalloc(sizeof(*mm), M_DRM, M_WAITOK);
 	if (!mm) {
 		DRM_ERROR("out of memory\n");
 		return -ENOMEM;
@@ -81,7 +81,7 @@ drm_gem_init(struct drm_device *dev)
 	dev->mm_private = mm;
 
 	if (drm_ht_create(&mm->offset_hash, 12)) {
-		drm_free(mm, DRM_MEM_DRIVER);
+		drm_free(mm, M_DRM);
 		return -ENOMEM;
 	}
 
@@ -96,7 +96,7 @@ drm_gem_destroy(struct drm_device *dev)
 
 	drm_ht_remove(&mm->offset_hash);
 	delete_unrhdr(mm->idxunr);
-	drm_free(mm, DRM_MEM_DRIVER);
+	drm_free(mm, M_DRM);
 	dev->mm_private = NULL;
 }
 
@@ -150,7 +150,7 @@ drm_gem_object_alloc(struct drm_device *dev, size_t size)
 {
 	struct drm_gem_object *obj;
 
-	obj = kmalloc(sizeof(*obj), DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+	obj = kmalloc(sizeof(*obj), M_DRM, M_WAITOK | M_ZERO);
 	if (drm_gem_object_init(dev, obj, size) != 0)
 		goto free;
 
@@ -161,7 +161,7 @@ drm_gem_object_alloc(struct drm_device *dev, size_t size)
 dealloc:
 	vm_object_deallocate(obj->vm_obj);
 free:
-	drm_free(obj, DRM_MEM_DRIVER);
+	drm_free(obj, M_DRM);
 	return (NULL);
 }
 

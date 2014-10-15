@@ -333,7 +333,7 @@ drm_do_get_edid(struct drm_connector *connector, device_t adapter)
 	u8 *block, *new;
 	bool print_bad_edid = !connector->bad_edid_counter || (drm_debug & DRM_UT_KMS);
 
-	block = kmalloc(EDID_LENGTH, DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	block = kmalloc(EDID_LENGTH, M_DRM, M_WAITOK | M_ZERO);
 
 	/* base block fetch */
 	for (i = 0; i < 4; i++) {
@@ -353,7 +353,7 @@ drm_do_get_edid(struct drm_connector *connector, device_t adapter)
 	if (block[0x7e] == 0)
 		return block;
 
-	new = krealloc(block, (block[0x7e] + 1) * EDID_LENGTH, DRM_MEM_KMS,
+	new = krealloc(block, (block[0x7e] + 1) * EDID_LENGTH, M_DRM,
 	    M_WAITOK);
 	if (!new)
 		goto out;
@@ -380,7 +380,7 @@ drm_do_get_edid(struct drm_connector *connector, device_t adapter)
 		block[EDID_LENGTH-1] += block[0x7e] - valid_extensions;
 		block[0x7e] = valid_extensions;
 		new = krealloc(block, (valid_extensions + 1) * EDID_LENGTH,
-		    DRM_MEM_KMS, M_WAITOK);
+		    M_DRM, M_WAITOK);
 		if (!new)
 			goto out;
 		block = new;
@@ -396,7 +396,7 @@ carp:
 	connector->bad_edid_counter++;
 
 out:
-	kfree(block, DRM_MEM_KMS);
+	kfree(block, M_DRM);
 	return NULL;
 }
 

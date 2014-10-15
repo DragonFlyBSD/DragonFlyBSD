@@ -3873,7 +3873,7 @@ void intel_encoder_destroy(struct drm_encoder *encoder)
 	struct intel_encoder *intel_encoder = to_intel_encoder(encoder);
 
 	drm_encoder_cleanup(encoder);
-	drm_free(intel_encoder, DRM_MEM_KMS);
+	drm_free(intel_encoder, M_DRM);
 }
 
 /* Simple dpms helper for encodres with just one connector, no cloning and only
@@ -6638,7 +6638,7 @@ intel_framebuffer_create(struct drm_device *dev,
 	struct intel_framebuffer *intel_fb;
 	int ret;
 
-	intel_fb = kmalloc(sizeof(*intel_fb), DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	intel_fb = kmalloc(sizeof(*intel_fb), M_DRM, M_WAITOK | M_ZERO);
 	if (!intel_fb) {
 		drm_gem_object_unreference_unlocked(&obj->base);
 		return ERR_PTR(-ENOMEM);
@@ -6647,7 +6647,7 @@ intel_framebuffer_create(struct drm_device *dev,
 	ret = intel_framebuffer_init(dev, intel_fb, mode_cmd, obj);
 	if (ret) {
 		drm_gem_object_unreference_unlocked(&obj->base);
-		kfree(intel_fb, DRM_MEM_KMS);
+		kfree(intel_fb, M_DRM);
 		return ERR_PTR(ret);
 	}
 
@@ -6949,7 +6949,7 @@ struct drm_display_mode *intel_crtc_mode_get(struct drm_device *dev,
 	int vtot = I915_READ(VTOTAL(cpu_transcoder));
 	int vsync = I915_READ(VSYNC(cpu_transcoder));
 
-	mode = kmalloc(sizeof(*mode), DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	mode = kmalloc(sizeof(*mode), M_DRM, M_WAITOK | M_ZERO);
 	if (!mode)
 		return NULL;
 
@@ -7084,12 +7084,12 @@ static void intel_crtc_destroy(struct drm_crtc *crtc)
 
 	if (work) {
 		cancel_work_sync(&work->work);
-		kfree(work, DRM_MEM_KMS);
+		kfree(work, M_DRM);
 	}
 
 	drm_crtc_cleanup(crtc);
 
-	drm_free(intel_crtc, DRM_MEM_KMS);
+	drm_free(intel_crtc, M_DRM);
 }
 
 static void intel_unpin_work_fn(struct work_struct *__work)
@@ -7109,7 +7109,7 @@ static void intel_unpin_work_fn(struct work_struct *__work)
 	BUG_ON(atomic_read(&to_intel_crtc(work->crtc)->unpin_work_count) == 0);
 	atomic_dec(&to_intel_crtc(work->crtc)->unpin_work_count);
 
-	drm_free(work, DRM_MEM_KMS);
+	drm_free(work, M_DRM);
 }
 
 static void do_intel_finish_page_flip(struct drm_device *dev,
@@ -7463,7 +7463,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	     fb->pitches[0] != crtc->fb->pitches[0]))
 		return -EINVAL;
 
-	work = kmalloc(sizeof *work, DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	work = kmalloc(sizeof *work, M_DRM, M_WAITOK | M_ZERO);
 	if (work == NULL)
 		return -ENOMEM;
 
@@ -7480,7 +7480,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	if (intel_crtc->unpin_work) {
 		lockmgr(&dev->event_lock, LK_RELEASE);
-		drm_free(work, DRM_MEM_KMS);
+		drm_free(work, M_DRM);
 		drm_vblank_put(dev, intel_crtc->pipe);
 
 		DRM_DEBUG_DRIVER("flip queue: crtc already busy\n");
@@ -7537,7 +7537,7 @@ cleanup:
 
 	drm_vblank_put(dev, intel_crtc->pipe);
 free_work:
-	drm_free(work, DRM_MEM_KMS);
+	drm_free(work, M_DRM);
 
 	return ret;
 }
@@ -8044,9 +8044,9 @@ static void intel_set_config_free(struct intel_set_config *config)
 	if (!config)
 		return;
 
-	drm_free(config->save_connector_encoders, DRM_MEM_KMS);
-	drm_free(config->save_encoder_crtcs, DRM_MEM_KMS);
-	drm_free(config, DRM_MEM_KMS);
+	drm_free(config->save_connector_encoders, M_DRM);
+	drm_free(config->save_encoder_crtcs, M_DRM);
+	drm_free(config, M_DRM);
 }
 
 static int intel_set_config_save_state(struct drm_device *dev,
@@ -8058,13 +8058,13 @@ static int intel_set_config_save_state(struct drm_device *dev,
 
 	config->save_encoder_crtcs =
 		kmalloc(dev->mode_config.num_encoder *
-			sizeof(struct drm_crtc *), DRM_MEM_KMS, M_WAITOK | M_ZERO );
+			sizeof(struct drm_crtc *), M_DRM, M_WAITOK | M_ZERO );
 	if (!config->save_encoder_crtcs)
 		return -ENOMEM;
 
 	config->save_connector_encoders =
 		kmalloc(dev->mode_config.num_connector *
-			sizeof(struct drm_encoder *), DRM_MEM_KMS, M_WAITOK | M_ZERO );
+			sizeof(struct drm_encoder *), M_DRM, M_WAITOK | M_ZERO );
 	if (!config->save_connector_encoders)
 		return -ENOMEM;
 
@@ -8271,7 +8271,7 @@ static int intel_crtc_set_config(struct drm_mode_set *set)
 	dev = set->crtc->dev;
 
 	ret = -ENOMEM;
-	config = kmalloc(sizeof(*config), DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	config = kmalloc(sizeof(*config), M_DRM, M_WAITOK | M_ZERO);
 	if (!config)
 		goto out_config;
 
@@ -8372,7 +8372,7 @@ static void intel_crtc_init(struct drm_device *dev, int pipe)
 
 	intel_crtc = kmalloc(sizeof(struct intel_crtc) +
 	    (INTELFB_CONN_LIMIT * sizeof(struct drm_connector *)),
-	    DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 
 	drm_crtc_init(dev, &intel_crtc->base, &intel_crtc_funcs);
 
@@ -8616,7 +8616,7 @@ static void intel_user_framebuffer_destroy(struct drm_framebuffer *fb)
 	drm_framebuffer_cleanup(fb);
 	drm_gem_object_unreference_unlocked(&intel_fb->obj->base);
 
-	drm_free(intel_fb, DRM_MEM_KMS);
+	drm_free(intel_fb, M_DRM);
 }
 
 static int intel_user_framebuffer_create_handle(struct drm_framebuffer *fb,
@@ -9509,7 +9509,7 @@ intel_display_capture_error_state(struct drm_device *dev)
 	enum transcoder cpu_transcoder;
 	int i;
 
-	error = kmalloc(sizeof(*error), DRM_MEM_KMS, M_NOWAIT);
+	error = kmalloc(sizeof(*error), M_DRM, M_NOWAIT);
 	if (error == NULL)
 		return NULL;
 

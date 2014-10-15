@@ -490,7 +490,7 @@ void rs400_fini(struct radeon_device *rdev)
 	radeon_fence_driver_fini(rdev);
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
-	drm_free(rdev->bios, DRM_MEM_DRIVER);
+	drm_free(rdev->bios, M_DRM);
 	rdev->bios = NULL;
 }
 

@@ -903,13 +903,13 @@ bool radeon_get_atom_connector_info_from_supported_devices_table(struct
 	router.ddc_valid = false;
 	router.cd_valid = false;
 
-	bios_connectors = kmalloc(bc_size, DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+	bios_connectors = kmalloc(bc_size, M_DRM, M_WAITOK | M_ZERO);
 	if (!bios_connectors)
 		return false;
 
 	if (!atom_parse_data_header(ctx, index, &size, &frev, &crev,
 				    &data_offset)) {
-		drm_free(bios_connectors, DRM_MEM_DRIVER);
+		drm_free(bios_connectors, M_DRM);
 		return false;
 	}
 
@@ -1081,7 +1081,7 @@ bool radeon_get_atom_connector_info_from_supported_devices_table(struct
 
 	radeon_link_encoder_connector(dev);
 
-	drm_free(bios_connectors, DRM_MEM_DRIVER);
+	drm_free(bios_connectors, M_DRM);
 	return true;
 }
 
@@ -1531,7 +1531,7 @@ struct radeon_encoder_atom_dig *radeon_atombios_get_lvds_info(struct
 			(union lvds_info *)((char *)mode_info->atom_context->bios + data_offset);
 		lvds =
 		    kmalloc(sizeof(struct radeon_encoder_atom_dig),
-			DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+			M_DRM, M_WAITOK | M_ZERO);
 
 		if (!lvds)
 			return NULL;
@@ -1618,7 +1618,7 @@ struct radeon_encoder_atom_dig *radeon_atombios_get_lvds_info(struct
 						struct edid *edid;
 						int edid_size =
 							max((int)EDID_LENGTH, (int)fake_edid_record->ucFakeEDIDLength);
-						edid = kmalloc(edid_size, DRM_MEM_KMS, M_WAITOK);
+						edid = kmalloc(edid_size, M_DRM, M_WAITOK);
 						if (edid) {
 							memcpy((u8 *)edid, (u8 *)&fake_edid_record->ucFakeEDIDString[0],
 							       fake_edid_record->ucFakeEDIDLength);
@@ -1628,7 +1628,7 @@ struct radeon_encoder_atom_dig *radeon_atombios_get_lvds_info(struct
 								rdev->mode_info.bios_hardcoded_edid_size = edid_size;
 							} else
 								drm_free(edid,
-									 DRM_MEM_KMS);
+									 M_DRM);
 						}
 					}
 					record += sizeof(ATOM_FAKE_EDID_PATCH_RECORD);
@@ -1671,7 +1671,7 @@ radeon_atombios_get_primary_dac_info(struct radeon_encoder *encoder)
 			((char *)mode_info->atom_context->bios + data_offset);
 
 		p_dac = kmalloc(sizeof(struct radeon_encoder_primary_dac),
-		    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+		    M_DRM, M_WAITOK | M_ZERO);
 
 		if (!p_dac)
 			return NULL;
@@ -1857,7 +1857,7 @@ radeon_atombios_get_tv_dac_info(struct radeon_encoder *encoder)
 			((char *)mode_info->atom_context->bios + data_offset);
 
 		tv_dac = kmalloc(sizeof(struct radeon_encoder_tv_dac),
-		    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+		    M_DRM, M_WAITOK | M_ZERO);
 
 		if (!tv_dac)
 			return NULL;
@@ -2013,14 +2013,14 @@ static int radeon_atombios_parse_power_table_1_3(struct radeon_device *rdev)
 	if (num_modes > ATOM_MAX_NUMBEROF_POWER_BLOCK)
 		num_modes = ATOM_MAX_NUMBEROF_POWER_BLOCK;
 	rdev->pm.power_state = kmalloc(sizeof(struct radeon_power_state) * num_modes,
-	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 	if (!rdev->pm.power_state)
 		return state_index;
 	/* last mode is usually default, array is low to high */
 	for (i = 0; i < num_modes; i++) {
 		rdev->pm.power_state[state_index].clock_info =
 			kmalloc(sizeof(struct radeon_pm_clock_info) * 1,
-			    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+			    M_DRM, M_WAITOK | M_ZERO);
 		if (!rdev->pm.power_state[state_index].clock_info)
 			return state_index;
 		rdev->pm.power_state[state_index].num_clock_modes = 1;
@@ -2422,7 +2422,7 @@ static int radeon_atombios_parse_power_table_4_5(struct radeon_device *rdev)
 	radeon_atombios_add_pplib_thermal_controller(rdev, &power_info->pplib.sThermalController);
 	rdev->pm.power_state = kmalloc(sizeof(struct radeon_power_state) *
 				       power_info->pplib.ucNumStates,
-				       DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+				       M_DRM, M_WAITOK | M_ZERO);
 	if (!rdev->pm.power_state)
 		return state_index;
 	/* first mode is usually default, followed by low to high */
@@ -2440,7 +2440,7 @@ static int radeon_atombios_parse_power_table_4_5(struct radeon_device *rdev)
 		rdev->pm.power_state[i].clock_info = kmalloc(sizeof(struct radeon_pm_clock_info) *
 							     ((power_info->pplib.ucStateEntrySize - 1) ?
 							      (power_info->pplib.ucStateEntrySize - 1) : 1),
-							     DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+							     M_DRM, M_WAITOK | M_ZERO);
 		if (!rdev->pm.power_state[i].clock_info)
 			return state_index;
 		if (power_info->pplib.ucStateEntrySize - 1) {
@@ -2521,7 +2521,7 @@ static int radeon_atombios_parse_power_table_6(struct radeon_device *rdev)
 		 le16_to_cpu(power_info->pplib.usNonClockInfoArrayOffset));
 	rdev->pm.power_state = kmalloc(sizeof(struct radeon_power_state) *
 				       state_array->ucNumEntries,
-				       DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+				       M_DRM, M_WAITOK | M_ZERO);
 	if (!rdev->pm.power_state)
 		return state_index;
 	for (i = 0; i < state_array->ucNumEntries; i++) {
@@ -2534,7 +2534,7 @@ static int radeon_atombios_parse_power_table_6(struct radeon_device *rdev)
 		rdev->pm.power_state[i].clock_info = kmalloc(sizeof(struct radeon_pm_clock_info) *
 							     (power_state->v2.ucNumDPMLevels ?
 							      power_state->v2.ucNumDPMLevels : 1),
-							     DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+							     M_DRM, M_WAITOK | M_ZERO);
 		if (!rdev->pm.power_state[i].clock_info)
 			return state_index;
 		if (power_state->v2.ucNumDPMLevels) {
@@ -2612,11 +2612,11 @@ void radeon_atombios_get_power_modes(struct radeon_device *rdev)
 		}
 	} else {
 		rdev->pm.power_state = kmalloc(sizeof(struct radeon_power_state),
-		    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+		    M_DRM, M_WAITOK | M_ZERO);
 		if (rdev->pm.power_state) {
 			rdev->pm.power_state[0].clock_info =
 				kmalloc(sizeof(struct radeon_pm_clock_info) * 1,
-				    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+				    M_DRM, M_WAITOK | M_ZERO);
 			if (rdev->pm.power_state[0].clock_info) {
 				/* add the default mode */
 				rdev->pm.power_state[state_index].type =

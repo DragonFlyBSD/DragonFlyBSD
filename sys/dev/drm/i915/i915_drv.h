@@ -50,8 +50,6 @@
 #define DRIVER_DESC		"Intel Graphics"
 #define DRIVER_DATE		"20080730"
 
-MALLOC_DECLARE(DRM_I915_GEM);
-
 enum i915_pipe {
 	PIPE_A = 0,
 	PIPE_B,

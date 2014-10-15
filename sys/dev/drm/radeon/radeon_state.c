@@ -3205,7 +3205,7 @@ int radeon_driver_open(struct drm_device *dev, struct drm_file *file_priv)
 	struct drm_radeon_driver_file_fields *radeon_priv;
 
 	DRM_DEBUG("\n");
-	radeon_priv = kmalloc(sizeof(*radeon_priv), DRM_MEM_DRIVER, M_WAITOK);
+	radeon_priv = kmalloc(sizeof(*radeon_priv), M_DRM, M_WAITOK);
 
 	if (!radeon_priv)
 		return -ENOMEM;
@@ -3224,7 +3224,7 @@ void radeon_driver_postclose(struct drm_device *dev, struct drm_file *file_priv)
 	struct drm_radeon_driver_file_fields *radeon_priv =
 	    file_priv->driver_priv;
 
-	drm_free(radeon_priv, DRM_MEM_DRIVER);
+	drm_free(radeon_priv, M_DRM);
 }
 
 struct drm_ioctl_desc radeon_ioctls[] = {

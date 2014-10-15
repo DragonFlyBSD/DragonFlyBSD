@@ -150,7 +150,7 @@ static int sis_fb_init(struct drm_device *dev, void *data, struct drm_file *file
 
 	if (dev_priv == NULL) {
 		dev->dev_private = drm_calloc(1, sizeof(drm_sis_private_t),
-					      DRM_MEM_DRIVER);
+					      M_DRM);
 		dev_priv = dev->dev_private;
 		if (dev_priv == NULL)
 			return ENOMEM;
@@ -228,7 +228,7 @@ static int sis_ioctl_agp_init(struct drm_device *dev, void *data, struct drm_fil
 
 	if (dev_priv == NULL) {
 		dev->dev_private = drm_calloc(1, sizeof(drm_sis_private_t),
-					      DRM_MEM_DRIVER);
+					      M_DRM);
 		dev_priv = dev->dev_private;
 		if (dev_priv == NULL)
 			return ENOMEM;

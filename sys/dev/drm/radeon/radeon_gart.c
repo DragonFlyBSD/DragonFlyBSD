@@ -360,13 +360,13 @@ int radeon_gart_init(struct radeon_device *rdev)
 		 rdev->gart.num_cpu_pages, rdev->gart.num_gpu_pages);
 	/* Allocate pages table */
 	rdev->gart.pages = kmalloc(sizeof(void *) * rdev->gart.num_cpu_pages,
-				   DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
+				   M_DRM, M_ZERO | M_WAITOK);
 	if (rdev->gart.pages == NULL) {
 		radeon_gart_fini(rdev);
 		return -ENOMEM;
 	}
 	rdev->gart.pages_addr = kmalloc(sizeof(dma_addr_t) * rdev->gart.num_cpu_pages,
-					DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
+					M_DRM, M_ZERO | M_WAITOK);
 	if (rdev->gart.pages_addr == NULL) {
 		radeon_gart_fini(rdev);
 		return -ENOMEM;
@@ -392,8 +392,8 @@ void radeon_gart_fini(struct radeon_device *rdev)
 		radeon_gart_unbind(rdev, 0, rdev->gart.num_cpu_pages);
 	}
 	rdev->gart.ready = false;
-	drm_free(rdev->gart.pages, DRM_MEM_DRIVER);
-	drm_free(rdev->gart.pages_addr, DRM_MEM_DRIVER);
+	drm_free(rdev->gart.pages, M_DRM);
+	drm_free(rdev->gart.pages_addr, M_DRM);
 	rdev->gart.pages = NULL;
 	rdev->gart.pages_addr = NULL;
 
@@ -534,7 +534,7 @@ static void radeon_vm_free_pt(struct radeon_device *rdev,
 	for (i = 0; i < radeon_vm_num_pdes(rdev); i++)
 		radeon_sa_bo_free(rdev, &vm->page_tables[i], vm->fence);
 
-	drm_free(vm->page_tables, DRM_MEM_DRIVER);
+	drm_free(vm->page_tables, M_DRM);
 }
 
 /**
@@ -646,7 +646,7 @@ retry:
 	memset(pd_addr, 0, pd_size);
 
 	pts_size = radeon_vm_num_pdes(rdev) * sizeof(struct radeon_sa_bo *);
-	vm->page_tables = kmalloc(pts_size, DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
+	vm->page_tables = kmalloc(pts_size, M_DRM, M_ZERO | M_WAITOK);
 
 	if (vm->page_tables == NULL) {
 		DRM_ERROR("Cannot allocate memory for page table array\n");
@@ -794,7 +794,7 @@ struct radeon_bo_va *radeon_vm_bo_add(struct radeon_device *rdev,
 {
 	struct radeon_bo_va *bo_va;
 
-	bo_va = kmalloc(sizeof(struct radeon_bo_va), DRM_MEM_DRIVER,
+	bo_va = kmalloc(sizeof(struct radeon_bo_va), M_DRM,
 			M_ZERO | M_WAITOK);
 	if (bo_va == NULL) {
 		return NULL;
@@ -1225,7 +1225,7 @@ int radeon_vm_bo_rmv(struct radeon_device *rdev,
 	lockmgr(&bo_va->vm->mutex, LK_RELEASE);
 	list_del(&bo_va->bo_list);
 
-	drm_free(bo_va, DRM_MEM_DRIVER);
+	drm_free(bo_va, M_DRM);
 	return r;
 }
 
@@ -1293,7 +1293,7 @@ void radeon_vm_fini(struct radeon_device *rdev, struct radeon_vm *vm)
 		if (!r) {
 			list_del_init(&bo_va->bo_list);
 			radeon_bo_unreserve(bo_va->bo);
-			drm_free(bo_va, DRM_MEM_DRIVER);
+			drm_free(bo_va, M_DRM);
 		}
 	}
 	radeon_fence_unref(&vm->fence);

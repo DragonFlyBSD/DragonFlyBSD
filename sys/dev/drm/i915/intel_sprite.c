@@ -574,7 +574,7 @@ static void intel_destroy_plane(struct drm_plane *plane)
 	struct intel_plane *intel_plane = to_intel_plane(plane);
 	intel_disable_plane(plane);
 	drm_plane_cleanup(plane);
-	kfree(intel_plane, DRM_MEM_KMS);
+	kfree(intel_plane, M_DRM);
 }
 
 int intel_sprite_set_colorkey(struct drm_device *dev, void *data,
@@ -674,7 +674,7 @@ intel_plane_init(struct drm_device *dev, enum i915_pipe pipe)
 	if (INTEL_INFO(dev)->gen < 5)
 		return -ENODEV;
 
-	intel_plane = kmalloc(sizeof(struct intel_plane), DRM_MEM_KMS,
+	intel_plane = kmalloc(sizeof(struct intel_plane), M_DRM,
 	    M_WAITOK | M_ZERO);
 	if (!intel_plane)
 		return -ENOMEM;
@@ -714,7 +714,7 @@ intel_plane_init(struct drm_device *dev, enum i915_pipe pipe)
 		break;
 
 	default:
-		kfree(intel_plane, DRM_MEM_KMS);
+		kfree(intel_plane, M_DRM);
 		return -ENODEV;
 	}
 
@@ -725,7 +725,7 @@ intel_plane_init(struct drm_device *dev, enum i915_pipe pipe)
 			     plane_formats, num_plane_formats,
 			     false);
 	if (ret)
-		kfree(intel_plane, DRM_MEM_KMS);
+		kfree(intel_plane, M_DRM);
 
 	return ret;
 }

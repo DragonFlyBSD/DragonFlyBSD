@@ -45,8 +45,6 @@ struct ttm_agp_backend {
 	device_t bridge;
 };
 
-MALLOC_DEFINE(M_TTM_AGP, "ttm_agp", "TTM AGP Backend");
-
 static int ttm_agp_bind(struct ttm_tt *ttm, struct ttm_mem_reg *bo_mem)
 {
 	struct ttm_agp_backend *agp_be = container_of(ttm, struct ttm_agp_backend, ttm);
@@ -100,7 +98,7 @@ static void ttm_agp_destroy(struct ttm_tt *ttm)
 	if (agp_be->mem)
 		ttm_agp_unbind(ttm);
 	ttm_tt_fini(ttm);
-	drm_free(agp_be, M_TTM_AGP);
+	drm_free(agp_be, M_DRM);
 }
 
 static struct ttm_backend_func ttm_agp_func = {
@@ -116,7 +114,7 @@ struct ttm_tt *ttm_agp_tt_create(struct ttm_bo_device *bdev,
 {
 	struct ttm_agp_backend *agp_be;
 
-	agp_be = kmalloc(sizeof(*agp_be), M_TTM_AGP, M_WAITOK | M_ZERO);
+	agp_be = kmalloc(sizeof(*agp_be), M_DRM, M_WAITOK | M_ZERO);
 	if (!agp_be)
 		return NULL;
 

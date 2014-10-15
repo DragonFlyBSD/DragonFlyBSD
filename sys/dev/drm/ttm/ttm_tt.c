@@ -45,23 +45,21 @@
 #include <drm/ttm/ttm_placement.h>
 #include <drm/ttm/ttm_page_alloc.h>
 
-MALLOC_DEFINE(M_TTM_PD, "ttm_pd", "TTM Page Directories");
-
 /**
  * Allocates storage for pointers to the pages that back the ttm.
  */
 static void ttm_tt_alloc_page_directory(struct ttm_tt *ttm)
 {
 	ttm->pages = kmalloc(ttm->num_pages * sizeof(void *),
-	    M_TTM_PD, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 }
 
 static void ttm_dma_tt_alloc_page_directory(struct ttm_dma_tt *ttm)
 {
 	ttm->ttm.pages = kmalloc(ttm->ttm.num_pages * sizeof(void *),
-	    M_TTM_PD, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 	ttm->dma_address = kmalloc(ttm->ttm.num_pages *
-	    sizeof(*ttm->dma_address), M_TTM_PD, M_WAITOK);
+	    sizeof(*ttm->dma_address), M_DRM, M_WAITOK);
 }
 
 static inline int ttm_tt_set_page_caching(vm_page_t p,
@@ -198,7 +196,7 @@ EXPORT_SYMBOL(ttm_tt_init);
 
 void ttm_tt_fini(struct ttm_tt *ttm)
 {
-	drm_free(ttm->pages, M_TTM_PD);
+	drm_free(ttm->pages, M_DRM);
 	ttm->pages = NULL;
 }
 EXPORT_SYMBOL(ttm_tt_fini);
@@ -233,9 +231,9 @@ void ttm_dma_tt_fini(struct ttm_dma_tt *ttm_dma)
 {
 	struct ttm_tt *ttm = &ttm_dma->ttm;
 
-	drm_free(ttm->pages, M_TTM_PD);
+	drm_free(ttm->pages, M_DRM);
 	ttm->pages = NULL;
-	drm_free(ttm_dma->dma_address, M_TTM_PD);
+	drm_free(ttm_dma->dma_address, M_DRM);
 	ttm_dma->dma_address = NULL;
 }
 EXPORT_SYMBOL(ttm_dma_tt_fini);

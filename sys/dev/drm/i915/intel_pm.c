@@ -289,7 +289,7 @@ static void intel_fbc_work_fn(struct work_struct *__work)
 	}
 	DRM_UNLOCK(dev);
 
-	kfree(work, DRM_MEM_KMS);
+	kfree(work, M_DRM);
 }
 
 static void intel_cancel_fbc_work(struct drm_i915_private *dev_priv)
@@ -305,7 +305,7 @@ static void intel_cancel_fbc_work(struct drm_i915_private *dev_priv)
 	 */
 	if (cancel_delayed_work(&dev_priv->fbc_work->work))
 		/* tasklet was killed before being run, clean up */
-		kfree(dev_priv->fbc_work, DRM_MEM_KMS);
+		kfree(dev_priv->fbc_work, M_DRM);
 
 	/* Mark the work as no longer wanted so that if it does
 	 * wake-up (because the work was already running and waiting
@@ -326,7 +326,7 @@ void intel_enable_fbc(struct drm_crtc *crtc, unsigned long interval)
 
 	intel_cancel_fbc_work(dev_priv);
 
-	work = kmalloc(sizeof(*work), DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	work = kmalloc(sizeof(*work), M_DRM, M_WAITOK | M_ZERO);
 	if (work == NULL) {
 		dev_priv->display.enable_fbc(crtc, interval);
 		return;

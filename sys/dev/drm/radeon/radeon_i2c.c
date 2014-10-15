@@ -1042,7 +1042,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 	if (rec->mm_i2c && (radeon_hw_i2c == 0))
 		return NULL;
 
-	i2c = kmalloc(sizeof(struct radeon_i2c_chan), DRM_MEM_DRIVER,
+	i2c = kmalloc(sizeof(struct radeon_i2c_chan), M_DRM,
 		      M_ZERO | M_WAITOK);
 	if (i2c == NULL)
 		return NULL;
@@ -1161,7 +1161,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 	return i2c;
 out_free:
 	rel_mplock();
-	drm_free(i2c, DRM_MEM_DRIVER);
+	drm_free(i2c, M_DRM);
 	return NULL;
 
 }
@@ -1173,7 +1173,7 @@ struct radeon_i2c_chan *radeon_i2c_create_dp(struct drm_device *dev,
 	struct radeon_i2c_chan *i2c;
 	int ret;
 
-	i2c = kmalloc(sizeof(struct radeon_i2c_chan), DRM_MEM_DRIVER,
+	i2c = kmalloc(sizeof(struct radeon_i2c_chan), M_DRM,
 		      M_ZERO | M_WAITOK);
 	if (i2c == NULL)
 		return NULL;
@@ -1191,7 +1191,7 @@ struct radeon_i2c_chan *radeon_i2c_create_dp(struct drm_device *dev,
 
 	return i2c;
 out_free:
-	drm_free(i2c, DRM_MEM_DRIVER);
+	drm_free(i2c, M_DRM);
 	return NULL;
 
 }
@@ -1209,7 +1209,7 @@ void radeon_i2c_destroy(struct radeon_i2c_chan *i2c)
 		KASSERT(ret == 0, ("unable to detach iic bus %s: %d",
 		    i2c->name, ret));
 	}
-	drm_free(i2c, DRM_MEM_DRIVER);
+	drm_free(i2c, M_DRM);
 }
 
 /* Add the default buses */

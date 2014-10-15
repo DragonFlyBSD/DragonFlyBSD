@@ -409,7 +409,7 @@ static int drm_lastclose(struct drm_device *dev)
 
 	DRM_LOCK(dev);
 	if (dev->unique) {
-		drm_free(dev->unique, DRM_MEM_DRIVER);
+		drm_free(dev->unique, M_DRM);
 		dev->unique = NULL;
 		dev->unique_len = 0;
 	}
@@ -417,7 +417,7 @@ static int drm_lastclose(struct drm_device *dev)
 	for (i = 0; i < DRM_HASH_SIZE; i++) {
 		for (pt = dev->magiclist[i].head; pt; pt = next) {
 			next = pt->next;
-			drm_free(pt, DRM_MEM_MAGIC);
+			drm_free(pt, M_DRM);
 		}
 		dev->magiclist[i].head = dev->magiclist[i].tail = NULL;
 	}
@@ -435,7 +435,7 @@ static int drm_lastclose(struct drm_device *dev)
 			if (entry->bound)
 				drm_agp_unbind_memory(entry->handle);
 			drm_agp_free_memory(entry->handle);
-			drm_free(entry, DRM_MEM_AGPLISTS);
+			drm_free(entry, M_DRM);
 		}
 		dev->agp->memory = NULL;
 
@@ -607,7 +607,7 @@ static void drm_unload(struct drm_device *dev)
 	}
 
 	if (dev->agp) {
-		drm_free(dev->agp, DRM_MEM_AGPLISTS);
+		drm_free(dev->agp, M_DRM);
 		dev->agp = NULL;
 	}
 

@@ -48,7 +48,7 @@ int drm_buffer_alloc(struct drm_buffer **buf, int size)
 	/* Allocating pointer table to end of structure makes drm_buffer
 	 * variable sized */
 	*buf = kmalloc(sizeof(struct drm_buffer) + nr_pages*sizeof(char *),
-			DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
+			M_DRM, M_ZERO | M_WAITOK);
 
 	if (*buf == NULL) {
 		DRM_ERROR("Failed to allocate drm buffer object to hold"
@@ -63,7 +63,7 @@ int drm_buffer_alloc(struct drm_buffer **buf, int size)
 
 		(*buf)->data[idx] =
 			kmalloc(min(PAGE_SIZE, size - idx * PAGE_SIZE),
-				DRM_MEM_DRIVER, M_WAITOK);
+				M_DRM, M_WAITOK);
 
 
 		if ((*buf)->data[idx] == NULL) {
@@ -81,12 +81,12 @@ error_out:
 
 	/* Only last element can be null pointer so check for it first. */
 	if ((*buf)->data[idx])
-		drm_free((*buf)->data[idx], DRM_MEM_DRIVER);
+		drm_free((*buf)->data[idx], M_DRM);
 
 	for (--idx; idx >= 0; --idx)
-		drm_free((*buf)->data[idx], DRM_MEM_DRIVER);
+		drm_free((*buf)->data[idx], M_DRM);
 
-	drm_free(*buf, DRM_MEM_DRIVER);
+	drm_free(*buf, M_DRM);
 	return -ENOMEM;
 }
 
@@ -137,9 +137,9 @@ void drm_buffer_free(struct drm_buffer *buf)
 		int nr_pages = buf->size / PAGE_SIZE + 1;
 		int idx;
 		for (idx = 0; idx < nr_pages; ++idx)
-			drm_free(buf->data[idx], DRM_MEM_DRIVER);
+			drm_free(buf->data[idx], M_DRM);
 
-		drm_free(buf, DRM_MEM_DRIVER);
+		drm_free(buf, M_DRM);
 	}
 }
 

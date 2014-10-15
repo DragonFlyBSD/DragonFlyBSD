@@ -81,7 +81,7 @@ r128_attach(device_t kdev)
 {
 	struct drm_device *dev = device_get_softc(kdev);
 
-	dev->driver = kmalloc(sizeof(struct drm_driver), DRM_MEM_DRIVER,
+	dev->driver = kmalloc(sizeof(struct drm_driver), M_DRM,
 	    M_WAITOK | M_ZERO);
 
 	r128_configure(dev);
@@ -103,7 +103,7 @@ r128_detach(device_t kdev)
 
 	ret = drm_detach(kdev);
 
-	kfree(dev->driver, DRM_MEM_DRIVER);
+	kfree(dev->driver, M_DRM);
 
 	return ret;
 }

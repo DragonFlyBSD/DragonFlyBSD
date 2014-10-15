@@ -47,8 +47,6 @@ static int ttm_bo_setup_vm(struct ttm_buffer_object *bo);
 static int ttm_bo_swapout(struct ttm_mem_shrink *shrink);
 static void ttm_bo_global_kobj_release(struct ttm_bo_global *glob);
 
-MALLOC_DEFINE(M_TTM_BO, "ttm_bo", "TTM Buffer Objects");
-
 static inline int ttm_mem_type_from_flags(uint32_t flags, uint32_t *mem_type)
 {
 	int i;
@@ -131,7 +129,7 @@ static void ttm_bo_release_list(struct kref *list_kref)
 	if (bo->destroy)
 		bo->destroy(bo);
 	else {
-		kfree(bo, M_TTM_BO);
+		kfree(bo, M_DRM);
 	}
 	ttm_mem_global_free(bdev->glob->mem_glob, acc_size);
 }
@@ -1264,7 +1262,7 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 		if (destroy)
 			(*destroy)(bo);
 		else
-			kfree(bo, M_TTM_BO);
+			kfree(bo, M_DRM);
 		return -ENOMEM;
 	}
 
@@ -1274,7 +1272,7 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 		if (destroy)
 			(*destroy)(bo);
 		else
-			kfree(bo, M_TTM_BO);
+			kfree(bo, M_DRM);
 		ttm_mem_global_free(mem_glob, acc_size);
 		return -EINVAL;
 	}
@@ -1387,7 +1385,7 @@ int ttm_bo_create(struct ttm_bo_device *bdev,
 	int ret;
 
 	*p_bo = NULL;
-	bo = kmalloc(sizeof(*bo), M_TTM_BO, M_WAITOK | M_ZERO);
+	bo = kmalloc(sizeof(*bo), M_DRM, M_WAITOK | M_ZERO);
 	if (unlikely(bo == NULL))
 		return -ENOMEM;
 
@@ -1573,7 +1571,7 @@ out_no_shrink:
 	vm_page_free(glob->dummy_read_page);
 	*/
 out_no_drp:
-	kfree(glob, M_DRM_GLOBAL);
+	kfree(glob, M_DRM);
 	return ret;
 }
 EXPORT_SYMBOL(ttm_bo_global_init);

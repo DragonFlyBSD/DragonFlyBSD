@@ -621,7 +621,7 @@ unsigned radeon_ring_backup(struct radeon_device *rdev, struct radeon_ring *ring
 	}
 
 	/* and then save the content of the ring */
-	*data = kmalloc(size * sizeof(uint32_t), DRM_MEM_DRIVER, M_WAITOK);
+	*data = kmalloc(size * sizeof(uint32_t), M_DRM, M_WAITOK);
 	if (!*data) {
 		lockmgr(&rdev->ring_lock, LK_RELEASE);
 		return 0;
@@ -663,7 +663,7 @@ int radeon_ring_restore(struct radeon_device *rdev, struct radeon_ring *ring,
 	}
 
 	radeon_ring_unlock_commit(rdev, ring);
-	drm_free(data, DRM_MEM_DRIVER);
+	drm_free(data, M_DRM);
 	return 0;
 }
 

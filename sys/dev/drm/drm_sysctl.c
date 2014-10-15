@@ -64,7 +64,7 @@ int drm_sysctl_init(struct drm_device *dev)
 	struct sysctl_oid *top, *drioid;
 	int		  i;
 
-	info = kmalloc(sizeof *info, DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+	info = kmalloc(sizeof *info, M_DRM, M_WAITOK | M_ZERO);
 	if ( !info )
 		return 1;
 	dev->sysctl = info;
@@ -134,7 +134,7 @@ int drm_sysctl_cleanup(struct drm_device *dev)
 	int error;
 
 	error = sysctl_ctx_free(&dev->sysctl->ctx);
-	drm_free(dev->sysctl, DRM_MEM_DRIVER);
+	drm_free(dev->sysctl, M_DRM);
 	dev->sysctl = NULL;
 	if (dev->driver->sysctl_cleanup != NULL)
 		dev->driver->sysctl_cleanup(dev);
@@ -247,7 +247,7 @@ static int drm_bufs_info DRM_SYSCTL_HANDLER_ARGS
 	}
 	spin_lock(&dev->dma_lock);
 	tempdma = *dma;
-	templists = kmalloc(sizeof(int) * dma->buf_count, DRM_MEM_DRIVER,
+	templists = kmalloc(sizeof(int) * dma->buf_count, M_DRM,
 	    M_NOWAIT);
 	for (i = 0; i < dma->buf_count; i++)
 		templists[i] = dma->buflist[i]->list;
@@ -280,7 +280,7 @@ static int drm_bufs_info DRM_SYSCTL_HANDLER_ARGS
 
 	SYSCTL_OUT(req, "", 1);
 done:
-	drm_free(templists, DRM_MEM_DRIVER);
+	drm_free(templists, M_DRM);
 	return retcode;
 }
 
@@ -298,7 +298,7 @@ static int drm_clients_info DRM_SYSCTL_HANDLER_ARGS
 	list_for_each_entry(priv, &dev->filelist, lhead)
 		privcount++;
 
-	tempprivs = kmalloc(sizeof(struct drm_file) * privcount, DRM_MEM_DRIVER,
+	tempprivs = kmalloc(sizeof(struct drm_file) * privcount, M_DRM,
 	    M_NOWAIT);
 	if (tempprivs == NULL) {
 		DRM_UNLOCK(dev);
@@ -325,7 +325,7 @@ static int drm_clients_info DRM_SYSCTL_HANDLER_ARGS
 
 	SYSCTL_OUT(req, "", 1);
 done:
-	drm_free(tempprivs, DRM_MEM_DRIVER);
+	drm_free(tempprivs, M_DRM);
 	return retcode;
 }
 

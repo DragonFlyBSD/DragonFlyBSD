@@ -213,7 +213,7 @@ int intel_fbdev_init(struct drm_device *dev)
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	int ret;
 
-	ifbdev = kmalloc(sizeof(struct intel_fbdev), DRM_MEM_KMS,
+	ifbdev = kmalloc(sizeof(struct intel_fbdev), M_DRM,
 	    M_WAITOK | M_ZERO);
 
 	dev_priv->fbdev = ifbdev;
@@ -223,7 +223,7 @@ int intel_fbdev_init(struct drm_device *dev)
 				 dev_priv->num_pipe,
 				 INTELFB_CONN_LIMIT);
 	if (ret) {
-		drm_free(ifbdev, DRM_MEM_KMS);
+		drm_free(ifbdev, M_DRM);
 		return ret;
 	}
 
@@ -240,7 +240,7 @@ void intel_fbdev_fini(struct drm_device *dev)
 		return;
 
 	intel_fbdev_destroy(dev, dev_priv->fbdev);
-	drm_free(dev_priv->fbdev, DRM_MEM_KMS);
+	drm_free(dev_priv->fbdev, M_DRM);
 	dev_priv->fbdev = NULL;
 }
 

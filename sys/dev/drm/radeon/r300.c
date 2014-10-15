@@ -1253,7 +1253,7 @@ int r300_cs_parse(struct radeon_cs_parser *p)
 	struct r100_cs_track *track;
 	int r;
 
-	track = kmalloc(sizeof(*track), DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
+	track = kmalloc(sizeof(*track), M_DRM, M_ZERO | M_WAITOK);
 	if (track == NULL)
 		return -ENOMEM;
 	r100_cs_track_clear(p->rdev, track);
@@ -1261,7 +1261,7 @@ int r300_cs_parse(struct radeon_cs_parser *p)
 	do {
 		r = r100_cs_packet_parse(p, &pkt, p->idx);
 		if (r) {
-			drm_free(p->track, DRM_MEM_DRIVER);
+			drm_free(p->track, M_DRM);
 			p->track = NULL;
 			return r;
 		}
@@ -1280,17 +1280,17 @@ int r300_cs_parse(struct radeon_cs_parser *p)
 			break;
 		default:
 			DRM_ERROR("Unknown packet type %d !\n", pkt.type);
-			drm_free(p->track, DRM_MEM_DRIVER);
+			drm_free(p->track, M_DRM);
 			p->track = NULL;
 			return -EINVAL;
 		}
 		if (r) {
-			drm_free(p->track, DRM_MEM_DRIVER);
+			drm_free(p->track, M_DRM);
 			p->track = NULL;
 			return r;
 		}
 	} while (p->idx < p->chunks[p->chunk_ib_idx].length_dw);
-	drm_free(p->track, DRM_MEM_DRIVER);
+	drm_free(p->track, M_DRM);
 	p->track = NULL;
 	return 0;
 }
@@ -1469,7 +1469,7 @@ void r300_fini(struct radeon_device *rdev)
 	radeon_fence_driver_fini(rdev);
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
-	drm_free(rdev->bios, DRM_MEM_DRIVER);
+	drm_free(rdev->bios, M_DRM);
 	rdev->bios = NULL;
 }
 

@@ -69,7 +69,7 @@ static void radeon_do_test_moves(struct radeon_device *rdev, int flag)
 		n -= rdev->ih.ring_size;
 	n /= size;
 
-	gtt_obj = kmalloc(n * sizeof(*gtt_obj), DRM_MEM_DRIVER,
+	gtt_obj = kmalloc(n * sizeof(*gtt_obj), M_DRM,
 			  M_ZERO | M_WAITOK);
 	if (!gtt_obj) {
 		DRM_ERROR("Failed to allocate %d pointers\n", n);
@@ -238,7 +238,7 @@ out_cleanup:
 				radeon_bo_unref(&gtt_obj[i]);
 			}
 		}
-		drm_free(gtt_obj, DRM_MEM_DRIVER);
+		drm_free(gtt_obj, M_DRM);
 	}
 	if (fence) {
 		radeon_fence_unref(&fence);

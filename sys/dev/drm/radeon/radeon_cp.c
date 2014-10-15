@@ -2064,7 +2064,7 @@ int radeon_driver_load(struct drm_device *dev, unsigned long flags)
 	drm_radeon_private_t *dev_priv;
 	int ret = 0;
 
-	dev_priv = kmalloc(sizeof(drm_radeon_private_t), DRM_MEM_DRIVER,
+	dev_priv = kmalloc(sizeof(drm_radeon_private_t), M_DRM,
 			   M_ZERO | M_WAITOK);
 	if (dev_priv == NULL)
 		return -ENOMEM;
@@ -2124,7 +2124,7 @@ int radeon_master_create(struct drm_device *dev, struct drm_master *master)
 	unsigned long sareapage;
 	int ret;
 
-	master_priv = kmalloc(sizeof(*master_priv), DRM_MEM_DRIVER,
+	master_priv = kmalloc(sizeof(*master_priv), M_DRM,
 			      M_ZERO | M_WAITOK);
 	if (!master_priv)
 		return -ENOMEM;
@@ -2135,7 +2135,7 @@ int radeon_master_create(struct drm_device *dev, struct drm_master *master)
 			 &master_priv->sarea);
 	if (ret) {
 		DRM_ERROR("SAREA setup failed\n");
-		drm_free(master_priv, DRM_MEM_DRIVER);
+		drm_free(master_priv, M_DRM);
 		return ret;
 	}
 	master_priv->sarea_priv = (drm_radeon_sarea_t *)((char *)master_priv->sarea->handle) +
@@ -2165,7 +2165,7 @@ void radeon_master_destroy(struct drm_device *dev, struct drm_master *master)
 		drm_rmmap(dev, master_priv->sarea);
 #endif
 
-	drm_free(master_priv, DRM_MEM_DRIVER);
+	drm_free(master_priv, M_DRM);
 
 	master->driver_priv = NULL;
 }
@@ -2199,7 +2199,7 @@ int radeon_driver_unload(struct drm_device *dev)
 
 	drm_rmmap(dev, dev_priv->mmio);
 
-	drm_free(dev_priv, DRM_MEM_DRIVER);
+	drm_free(dev_priv, M_DRM);
 
 	dev->dev_private = NULL;
 	return 0;

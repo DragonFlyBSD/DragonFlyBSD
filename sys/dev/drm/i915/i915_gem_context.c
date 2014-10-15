@@ -136,7 +136,7 @@ static void do_destroy(struct i915_hw_context *ctx)
 		BUG_ON(ctx != dev_priv->ring[RCS].default_context);
 
 	drm_gem_object_unreference(&ctx->obj->base);
-	kfree(ctx, DRM_I915_GEM);
+	kfree(ctx, M_DRM);
 }
 
 static struct i915_hw_context *
@@ -147,13 +147,13 @@ create_hw_context(struct drm_device *dev,
 	struct i915_hw_context *ctx;
 	int ret, id;
 
-	ctx = kmalloc(sizeof(*ctx), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	ctx = kmalloc(sizeof(*ctx), M_DRM, M_WAITOK | M_ZERO);
 	if (ctx == NULL)
 		return ERR_PTR(-ENOMEM);
 
 	ctx->obj = i915_gem_alloc_object(dev, dev_priv->hw_context_size);
 	if (ctx->obj == NULL) {
-		kfree(ctx, DRM_I915_GEM);
+		kfree(ctx, M_DRM);
 		DRM_DEBUG_DRIVER("Context object allocated failed\n");
 		return ERR_PTR(-ENOMEM);
 	}

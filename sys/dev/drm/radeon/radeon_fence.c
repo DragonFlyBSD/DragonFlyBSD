@@ -105,7 +105,7 @@ int radeon_fence_emit(struct radeon_device *rdev,
 		      int ring)
 {
 	/* we are protected by the ring emission mutex */
-	*fence = kmalloc(sizeof(struct radeon_fence), DRM_MEM_DRIVER,
+	*fence = kmalloc(sizeof(struct radeon_fence), M_DRM,
 			 M_WAITOK);
 	if ((*fence) == NULL) {
 		return -ENOMEM;
@@ -200,7 +200,7 @@ void radeon_fence_process(struct radeon_device *rdev, int ring)
 static void radeon_fence_destroy(struct radeon_fence *fence)
 {
 
-	drm_free(fence, DRM_MEM_DRIVER);
+	drm_free(fence, M_DRM);
 }
 
 /**

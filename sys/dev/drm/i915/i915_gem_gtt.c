@@ -122,12 +122,12 @@ int i915_gem_init_aliasing_ppgtt(struct drm_device *dev)
 	 */
 	first_pd_entry_in_global_pt = 512 * 1024 - I915_PPGTT_PD_ENTRIES;
 
-	ppgtt = kmalloc(sizeof(*ppgtt), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	ppgtt = kmalloc(sizeof(*ppgtt), M_DRM, M_WAITOK | M_ZERO);
 
 	ppgtt->dev = dev;
 	ppgtt->num_pd_entries = I915_PPGTT_PD_ENTRIES;
 	ppgtt->pt_pages = kmalloc(sizeof(vm_page_t) * ppgtt->num_pd_entries,
-	    DRM_I915_GEM, M_WAITOK | M_ZERO);
+	    M_DRM, M_WAITOK | M_ZERO);
 
 	for (i = 0; i < ppgtt->num_pd_entries; i++) {
 		ppgtt->pt_pages[i] = vm_page_alloc(NULL, 0,
@@ -170,8 +170,8 @@ i915_gem_cleanup_aliasing_ppgtt(struct drm_device *dev)
 			vm_page_free(m);
 		}
 	}
-	drm_free(ppgtt->pt_pages, DRM_I915_GEM);
-	drm_free(ppgtt, DRM_I915_GEM);
+	drm_free(ppgtt->pt_pages, M_DRM);
+	drm_free(ppgtt, M_DRM);
 }
 
 static void

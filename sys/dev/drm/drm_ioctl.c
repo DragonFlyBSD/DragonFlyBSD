@@ -90,12 +90,12 @@ int drm_setunique(struct drm_device *dev, void *data,
 	if (!u->unique_len || u->unique_len > 1024)
 		return EINVAL;
 
-	busid = kmalloc(u->unique_len + 1, DRM_MEM_DRIVER, M_WAITOK);
+	busid = kmalloc(u->unique_len + 1, M_DRM, M_WAITOK);
 	if (busid == NULL)
 		return ENOMEM;
 
 	if (DRM_COPY_FROM_USER(busid, u->unique, u->unique_len)) {
-		drm_free(busid, DRM_MEM_DRIVER);
+		drm_free(busid, M_DRM);
 		return EFAULT;
 	}
 	busid[u->unique_len] = '\0';
@@ -105,7 +105,7 @@ int drm_setunique(struct drm_device *dev, void *data,
 	 */
 	ret = ksscanf(busid, "PCI:%d:%d:%d", &bus, &slot, &func);
 	if (ret != 3) {
-		drm_free(busid, DRM_MEM_DRIVER);
+		drm_free(busid, M_DRM);
 		return EINVAL;
 	}
 	domain = bus >> 8;
@@ -115,7 +115,7 @@ int drm_setunique(struct drm_device *dev, void *data,
 	    (bus != dev->pci_bus) ||
 	    (slot != dev->pci_slot) ||
 	    (func != dev->pci_func)) {
-		drm_free(busid, DRM_MEM_DRIVER);
+		drm_free(busid, M_DRM);
 		return EINVAL;
 	}
 
@@ -139,7 +139,7 @@ static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
 	DRM_LOCK(dev);
 
 	dev->unique_len = 20;
-	dev->unique = kmalloc(dev->unique_len + 1, DRM_MEM_DRIVER, M_NOWAIT);
+	dev->unique = kmalloc(dev->unique_len + 1, M_DRM, M_NOWAIT);
 	if (dev->unique == NULL) {
 		DRM_UNLOCK(dev);
 		return ENOMEM;

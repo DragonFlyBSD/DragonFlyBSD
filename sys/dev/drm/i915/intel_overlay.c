@@ -1051,7 +1051,7 @@ int intel_overlay_put_image(struct drm_device *dev, void *data,
 		return ret;
 	}
 
-	params = kmalloc(sizeof(struct put_image_params), DRM_I915_GEM,
+	params = kmalloc(sizeof(struct put_image_params), M_DRM,
 	    M_WAITOK | M_ZERO);
 
 	drmmode_obj = drm_mode_object_find(dev, put_image_rec->crtc_id,
@@ -1153,7 +1153,7 @@ int intel_overlay_put_image(struct drm_device *dev, void *data,
 	DRM_UNLOCK(dev);
 	lockmgr(&dev->mode_config.mutex, LK_RELEASE);
 
-	drm_free(params, DRM_I915_GEM);
+	drm_free(params, M_DRM);
 
 	return 0;
 
@@ -1162,7 +1162,7 @@ out_unlock:
 	lockmgr(&dev->mode_config.mutex, LK_RELEASE);
 	drm_gem_object_unreference_unlocked(&new_bo->base);
 out_free:
-	drm_free(params, DRM_I915_GEM);
+	drm_free(params, M_DRM);
 
 	return ret;
 }
@@ -1320,7 +1320,7 @@ void intel_setup_overlay(struct drm_device *dev)
 	if (!HAS_OVERLAY(dev))
 		return;
 
-	overlay = kmalloc(sizeof(struct intel_overlay), DRM_I915_GEM,
+	overlay = kmalloc(sizeof(struct intel_overlay), M_DRM,
 	    M_WAITOK | M_ZERO);
 	DRM_LOCK(dev);
 	if (dev_priv->overlay != NULL)
@@ -1384,7 +1384,7 @@ out_free_bo:
 	drm_gem_object_unreference(&reg_bo->base);
 out_free:
 	DRM_UNLOCK(dev);
-	drm_free(overlay, DRM_I915_GEM);
+	drm_free(overlay, M_DRM);
 	return;
 }
 
@@ -1401,7 +1401,7 @@ void intel_cleanup_overlay(struct drm_device *dev)
 	KASSERT(!dev_priv->overlay->active, ("Overlay still active"));
 
 	drm_gem_object_unreference_unlocked(&dev_priv->overlay->reg_bo->base);
-	drm_free(dev_priv->overlay, DRM_I915_GEM);
+	drm_free(dev_priv->overlay, M_DRM);
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -1425,7 +1425,7 @@ intel_overlay_capture_error_state(struct drm_device *dev)
 	if (!overlay || !overlay->active)
 		return NULL;
 
-	error = kmalloc(sizeof(*error), DRM_I915_GEM, M_NOWAIT);
+	error = kmalloc(sizeof(*error), M_DRM, M_NOWAIT);
 	if (error == NULL)
 		return NULL;
 
@@ -1446,7 +1446,7 @@ intel_overlay_capture_error_state(struct drm_device *dev)
 	return (error);
 
 err:
-	drm_free(error, DRM_I915_GEM);
+	drm_free(error, M_DRM);
 	return (NULL);
 }
 

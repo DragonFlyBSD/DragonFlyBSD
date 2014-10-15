@@ -210,7 +210,7 @@ parse_lfp_panel_data(struct drm_i915_private *dev_priv,
 					       lvds_lfp_data_ptrs,
 					       lvds_options->panel_type);
 
-	panel_fixed_mode = kmalloc(sizeof(*panel_fixed_mode), DRM_MEM_KMS,
+	panel_fixed_mode = kmalloc(sizeof(*panel_fixed_mode), M_DRM,
 	    M_WAITOK | M_ZERO);
 
 	fill_detail_timing_data(panel_fixed_mode, panel_dvo_timing);
@@ -269,7 +269,7 @@ parse_sdvo_panel_data(struct drm_i915_private *dev_priv,
 	if (!dvo_timing)
 		return;
 
-	panel_fixed_mode = kmalloc(sizeof(*panel_fixed_mode), DRM_MEM_KMS,
+	panel_fixed_mode = kmalloc(sizeof(*panel_fixed_mode), M_DRM,
 	    M_WAITOK | M_ZERO);
 
 	fill_detail_timing_data(panel_fixed_mode, dvo_timing + index);
@@ -569,7 +569,7 @@ parse_device_mapping(struct drm_i915_private *dev_priv,
 		DRM_DEBUG_KMS("no child dev is parsed from VBT\n");
 		return;
 	}
-	dev_priv->child_dev = kmalloc(sizeof(*p_child) * count, DRM_MEM_KMS,
+	dev_priv->child_dev = kmalloc(sizeof(*p_child) * count, M_DRM,
 	    M_WAITOK | M_ZERO);
 
 	dev_priv->child_dev_num = count;

@@ -439,14 +439,14 @@ bool radeon_combios_check_hardcoded_edid(struct radeon_device *rdev)
 
 	raw = rdev->bios + edid_info;
 	size = EDID_LENGTH * (raw[0x7e] + 1);
-	edid = kmalloc(size, DRM_MEM_KMS, M_WAITOK);
+	edid = kmalloc(size, M_DRM, M_WAITOK);
 	if (edid == NULL)
 		return false;
 
 	memcpy((unsigned char *)edid, raw, size);
 
 	if (!drm_edid_is_valid(edid)) {
-		drm_free(edid, DRM_MEM_KMS);
+		drm_free(edid, M_DRM);
 		return false;
 	}
 
@@ -463,7 +463,7 @@ radeon_bios_get_hardcoded_edid(struct radeon_device *rdev)
 
 	if (rdev->mode_info.bios_hardcoded_edid) {
 		edid = kmalloc(rdev->mode_info.bios_hardcoded_edid_size,
-			       DRM_MEM_KMS, M_WAITOK);
+			       M_DRM, M_WAITOK);
 		if (edid) {
 			memcpy((unsigned char *)edid,
 			       (unsigned char *)rdev->mode_info.bios_hardcoded_edid,
@@ -930,7 +930,7 @@ struct radeon_encoder_primary_dac *radeon_combios_get_primary_dac_info(struct
 	int found = 0;
 
 	p_dac = kmalloc(sizeof(struct radeon_encoder_primary_dac),
-			DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+			M_DRM, M_WAITOK | M_ZERO);
 
 	if (!p_dac)
 		return NULL;
@@ -1066,7 +1066,7 @@ struct radeon_encoder_tv_dac *radeon_combios_get_tv_dac_info(struct
 	int found = 0;
 
 	tv_dac = kmalloc(sizeof(struct radeon_encoder_tv_dac),
-			 DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+			 M_DRM, M_WAITOK | M_ZERO);
 	if (!tv_dac)
 		return NULL;
 
@@ -1154,7 +1154,7 @@ static struct radeon_encoder_lvds *radeon_legacy_get_lvds_info_from_regs(struct
 	uint32_t ppll_div_sel, ppll_val;
 	uint32_t lvds_ss_gen_cntl = RREG32(RADEON_LVDS_SS_GEN_CNTL);
 
-	lvds = kmalloc(sizeof(struct radeon_encoder_lvds), DRM_MEM_DRIVER,
+	lvds = kmalloc(sizeof(struct radeon_encoder_lvds), M_DRM,
 		       M_WAITOK | M_ZERO);
 
 	if (!lvds)
@@ -1231,7 +1231,7 @@ struct radeon_encoder_lvds *radeon_combios_get_lvds_info(struct radeon_encoder
 
 	if (lcd_info) {
 		lvds = kmalloc(sizeof(struct radeon_encoder_lvds),
-			       DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+			       M_DRM, M_WAITOK | M_ZERO);
 
 		if (!lvds)
 			return NULL;
@@ -2689,15 +2689,15 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 
 	/* allocate 2 power states */
 	rdev->pm.power_state = kmalloc(sizeof(struct radeon_power_state) * 2,
-				       DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+				       M_DRM, M_WAITOK | M_ZERO);
 	if (rdev->pm.power_state) {
 		/* allocate 1 clock mode per state */
 		rdev->pm.power_state[0].clock_info =
 			kmalloc(sizeof(struct radeon_pm_clock_info) * 1,
-				DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+				M_DRM, M_WAITOK | M_ZERO);
 		rdev->pm.power_state[1].clock_info =
 			kmalloc(sizeof(struct radeon_pm_clock_info) * 1,
-				DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+				M_DRM, M_WAITOK | M_ZERO);
 		if (!rdev->pm.power_state[0].clock_info ||
 		    !rdev->pm.power_state[1].clock_info)
 			goto pm_failed;

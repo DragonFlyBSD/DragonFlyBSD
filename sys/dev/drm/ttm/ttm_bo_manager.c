@@ -47,8 +47,6 @@ struct ttm_range_manager {
 	struct lock lock;
 };
 
-MALLOC_DEFINE(M_TTM_RMAN, "ttm_rman", "TTM Range Manager");
-
 static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 			       struct ttm_buffer_object *bo,
 			       struct ttm_placement *placement,
@@ -107,13 +105,13 @@ static int ttm_bo_man_init(struct ttm_mem_type_manager *man,
 	struct ttm_range_manager *rman;
 	int ret;
 
-	rman = kmalloc(sizeof(*rman), M_TTM_RMAN, M_ZERO | M_WAITOK);
+	rman = kmalloc(sizeof(*rman), M_DRM, M_ZERO | M_WAITOK);
 	if (!rman)
 		return -ENOMEM;
 
 	ret = drm_mm_init(&rman->mm, 0, p_size);
 	if (ret) {
-		kfree(rman, M_TTM_RMAN);
+		kfree(rman, M_DRM);
 		return ret;
 	}
 
@@ -131,7 +129,7 @@ static int ttm_bo_man_takedown(struct ttm_mem_type_manager *man)
 	if (drm_mm_clean(mm)) {
 		drm_mm_takedown(mm);
 		lockmgr(&rman->lock, LK_RELEASE);
-		kfree(rman, M_TTM_RMAN);
+		kfree(rman, M_DRM);
 		man->priv = NULL;
 		return 0;
 	}

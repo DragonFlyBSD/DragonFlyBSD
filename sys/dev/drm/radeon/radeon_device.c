@@ -730,7 +730,7 @@ static uint32_t cail_ioreg_read(struct card_info *info, uint32_t reg)
 int radeon_atombios_init(struct radeon_device *rdev)
 {
 	struct card_info *atom_card_info =
-	    kmalloc(sizeof(struct card_info), DRM_MEM_DRIVER,
+	    kmalloc(sizeof(struct card_info), M_DRM,
 		    M_ZERO | M_WAITOK);
 
 	if (!atom_card_info)
@@ -775,10 +775,10 @@ void radeon_atombios_fini(struct radeon_device *rdev)
 {
 	if (rdev->mode_info.atom_context) {
 		drm_free(rdev->mode_info.atom_context->scratch,
-			 DRM_MEM_DRIVER);
+			 M_DRM);
 		atom_destroy(rdev->mode_info.atom_context);
 	}
-	drm_free(rdev->mode_info.atom_card_info, DRM_MEM_DRIVER);
+	drm_free(rdev->mode_info.atom_card_info, M_DRM);
 }
 
 /* COMBIOS */
@@ -1474,7 +1474,7 @@ retry:
 	} else {
 		radeon_fence_driver_force_completion(rdev);
 		for (i = 0; i < RADEON_NUM_RINGS; ++i) {
-			drm_free(ring_data[i], DRM_MEM_DRIVER);
+			drm_free(ring_data[i], M_DRM);
 		}
 	}
 

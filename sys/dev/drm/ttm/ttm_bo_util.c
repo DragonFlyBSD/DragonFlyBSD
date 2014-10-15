@@ -377,11 +377,9 @@ out:
 }
 EXPORT_SYMBOL(ttm_bo_move_memcpy);
 
-MALLOC_DEFINE(M_TTM_TRANSF_OBJ, "ttm_transf_obj", "TTM Transfer Objects");
-
 static void ttm_transfered_destroy(struct ttm_buffer_object *bo)
 {
-	kfree(bo, M_TTM_TRANSF_OBJ);
+	kfree(bo, M_DRM);
 }
 
 /**
@@ -406,7 +404,7 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	struct ttm_bo_device *bdev = bo->bdev;
 	struct ttm_bo_driver *driver = bdev->driver;
 
-	fbo = kmalloc(sizeof(*fbo), M_TTM_TRANSF_OBJ, M_WAITOK | M_ZERO);
+	fbo = kmalloc(sizeof(*fbo), M_DRM, M_WAITOK | M_ZERO);
 	if (!fbo)
 		return -ENOMEM;
 

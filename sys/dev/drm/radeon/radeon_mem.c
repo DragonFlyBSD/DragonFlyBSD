@@ -45,7 +45,7 @@ static struct mem_block *split_block(struct mem_block *p, int start, int size,
 	/* Maybe cut off the start of an existing block */
 	if (start > p->start) {
 		struct mem_block *newblock = kmalloc(sizeof(*newblock),
-						     DRM_MEM_DRIVER, M_WAITOK);
+						     M_DRM, M_WAITOK);
 		if (!newblock)
 			goto out;
 		newblock->start = start;
@@ -62,7 +62,7 @@ static struct mem_block *split_block(struct mem_block *p, int start, int size,
 	/* Maybe cut off the end of an existing block */
 	if (size < p->size) {
 		struct mem_block *newblock = kmalloc(sizeof(*newblock),
-						     DRM_MEM_DRIVER, M_WAITOK);
+						     M_DRM, M_WAITOK);
 		if (!newblock)
 			goto out;
 		newblock->start = start + size;
@@ -119,7 +119,7 @@ static void free_block(struct mem_block *p)
 		p->size += q->size;
 		p->next = q->next;
 		p->next->prev = p;
-		drm_free(q, DRM_MEM_DRIVER);
+		drm_free(q, M_DRM);
 	}
 
 	if (p->prev->file_priv == NULL) {
@@ -127,7 +127,7 @@ static void free_block(struct mem_block *p)
 		q->size += p->size;
 		q->next = p->next;
 		q->next->prev = q;
-		drm_free(p, DRM_MEM_DRIVER);
+		drm_free(p, M_DRM);
 	}
 }
 
@@ -135,15 +135,15 @@ static void free_block(struct mem_block *p)
  */
 static int init_heap(struct mem_block **heap, int start, int size)
 {
-	struct mem_block *blocks = kmalloc(sizeof(*blocks), DRM_MEM_DRIVER,
+	struct mem_block *blocks = kmalloc(sizeof(*blocks), M_DRM,
 					   M_WAITOK);
 
 	if (!blocks)
 		return -ENOMEM;
 
-	*heap = kmalloc(sizeof(**heap), DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
+	*heap = kmalloc(sizeof(**heap), M_DRM, M_ZERO | M_WAITOK);
 	if (!*heap) {
-		drm_free(blocks, DRM_MEM_DRIVER);
+		drm_free(blocks, M_DRM);
 		return -ENOMEM;
 	}
 
@@ -180,7 +180,7 @@ void radeon_mem_release(struct drm_file *file_priv, struct mem_block *heap)
 			p->size += q->size;
 			p->next = q->next;
 			p->next->prev = p;
-			drm_free(q, DRM_MEM_DRIVER);
+			drm_free(q, M_DRM);
 		}
 	}
 }
@@ -197,10 +197,10 @@ void radeon_mem_takedown(struct mem_block **heap)
 	for (p = (*heap)->next; p != *heap;) {
 		struct mem_block *q = p;
 		p = p->next;
-		drm_free(q, DRM_MEM_DRIVER);
+		drm_free(q, M_DRM);
 	}
 
-	drm_free(*heap, DRM_MEM_DRIVER);
+	drm_free(*heap, M_DRM);
 	*heap = NULL;
 }
 

@@ -1475,23 +1475,23 @@ void intel_ddi_init(struct drm_device *dev, enum port port)
 	struct intel_connector *dp_connector = NULL;
 
 	intel_dig_port = kmalloc(sizeof(struct intel_digital_port),
-		DRM_MEM_KMS, M_WAITOK | M_ZERO);
+		M_DRM, M_WAITOK | M_ZERO);
 	if (!intel_dig_port)
 		return;
 
 	dp_connector = kmalloc(sizeof(struct intel_connector),
-		DRM_MEM_KMS, M_WAITOK | M_ZERO);
+		M_DRM, M_WAITOK | M_ZERO);
 	if (!dp_connector) {
-		kfree(intel_dig_port, DRM_MEM_KMS);
+		kfree(intel_dig_port, M_DRM);
 		return;
 	}
 
 	if (port != PORT_A) {
 		hdmi_connector = kmalloc(sizeof(struct intel_connector),
-			DRM_MEM_KMS, M_WAITOK | M_ZERO);
+			M_DRM, M_WAITOK | M_ZERO);
 		if (!hdmi_connector) {
-			kfree(dp_connector, DRM_MEM_KMS);
-			kfree(intel_dig_port, DRM_MEM_KMS);
+			kfree(dp_connector, M_DRM);
+			kfree(intel_dig_port, M_DRM);
 			return;
 		}
 	}

@@ -141,7 +141,7 @@ _create_workqueue_common(char *name, int cpus)
 {
 	struct workqueue_struct *wq;
 
-	wq = kmalloc(sizeof(*wq), DRM_MEM_KMS, M_WAITOK);
+	wq = kmalloc(sizeof(*wq), M_DRM, M_WAITOK);
 	wq->taskqueue = taskqueue_create((name), M_WAITOK,
 	    taskqueue_thread_enqueue,  &wq->taskqueue);
 	taskqueue_start_threads(&wq->taskqueue, cpus, 0, -1, "%s", name);
@@ -163,7 +163,7 @@ static inline void
 destroy_workqueue(struct workqueue_struct *wq)
 {
 	taskqueue_free(wq->taskqueue);
-	kfree(wq, DRM_MEM_KMS);
+	kfree(wq, M_DRM);
 }
 
 #define	flush_workqueue(wq)	flush_taskqueue((wq)->taskqueue)
