@@ -274,8 +274,7 @@ TMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		M4=${BTOOLSDEST}/usr/bin/m4 \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
-TMAKE=		${TMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
-		-DNO_FORTRAN -DNOSHARED
+TMAKE=		${TMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING -DNOSHARED
 
 # cross-tool stage
 #
@@ -294,7 +293,7 @@ XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		M4=${BTOOLSDEST}/usr/bin/m4 \
 		PATH=${BTOOLSPATH}:${PATH}
 
-XMAKE=		${XMAKEENV} make -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB \
+XMAKE=		${XMAKEENV} make -f Makefile.inc1 -DNO_GDB \
 		-DBOOTSTRAPPING -DNOSHARED
 
 # world stage, note the strict path and note that TOOLS_PREFIX is left
