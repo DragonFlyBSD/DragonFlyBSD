@@ -124,7 +124,7 @@ typedef u_int vm_eflags_t;
 union vm_map_object {
 	struct vm_object *vm_object;	/* object object */
 	struct vm_map *sub_map;		/* belongs to another map */
-	int	(*uksmap)(cdev_t dev, vm_page_t fake);
+	int	(*uksmap)(struct cdev *dev, vm_page_t fake);
 	void	*map_object;		/* generic */
 };
 
