@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2014.09.13
-#	Date:    2014-09-13 03:15:01
+#	Version: 2014.10.15
+#	Date:    2014-10-15 03:15:02
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -1446,6 +1446,7 @@
 	6606  Mars XTX [Radeon HD 8790M]
 		1028 0684  FirePro W4170M
 	6607  Mars LE [Radeon HD 8530M / R5 M240]
+	6608  Oland GL [FirePro W2100]
 	6610  Oland XT [Radeon HD 8670 / R7 250]
 		1019 0030  Radeon HD 8670
 		1028 2120  Radeon R7 250
@@ -2075,6 +2076,7 @@
 	6829  Cape Verde
 	682a  Venus PRO
 	682b  Venus LE [Radeon HD 8830M]
+	682c  Cape Verde GL [FirePro W4100]
 	682d  Chelsea XT GL [FirePro M4000]
 	682f  Chelsea LP [Radeon HD 7730M]
 		103c 1851  Radeon HD 7750M
@@ -2674,7 +2676,7 @@
 	6901  Topaz PRO [Radeon R5 M255]
 	6920  Tonga
 	6921  Amethyst XT [Radeon R9 M295X]
-	692b  Tonga XT GL [FirePro W8100]
+	692b  Tonga PRO GL [FirePro W7100]
 	692f  Tonga XT GL [FirePro W8100]
 	6939  Tonga PRO [Radeon R9 285]
 	700f  RS100 AGP Bridge
@@ -2986,6 +2988,7 @@
 	95c6  RV620 LE [Radeon HD 3450 AGP]
 	95c9  RV620 LE [Radeon HD 3450 PCI]
 	95cc  RV620 GL [FirePro V3700]
+	95cd  RV620 [FirePro 2450]
 	95cf  RV620 GL [FirePro 2260]
 	960f  RS780 HDMI Audio [Radeon (HD) 3000 Series]
 	9610  RS780 [Radeon HD 3200]
@@ -3053,9 +3056,9 @@
 	9851  Mullins [Radeon R4/R5 Graphics]
 	9852  Mullins [Radeon R2 Graphics]
 	9853  Mullins [Radeon R2 Graphics]
-	9854  Mullins [Radeon R3 Graphics]
+	9854  Mullins [Radeon R3E Graphics]
 	9855  Mullins [Radeon R6 Graphics]
-	9856  Mullins [Radeon R2 Graphics]
+	9856  Mullins [Radeon R1E/R2E Graphics]
 	9857  Mullins [Radeon APU XX-2200M with R2 Graphics]
 	9858  Mullins
 	9859  Mullins
@@ -9418,6 +9421,7 @@
 	0e0a  GK104 HDMI Audio Controller
 	0e0b  GK106 HDMI Audio Controller
 	0e0c  GF114 HDMI Audio Controller
+	0e0f  GK208 HDMI/DP Audio Controller
 	0e1a  GK110 HDMI Audio
 	0e1b  GK107 HDMI Audio Controller
 		103c 197b  ZBook 15
@@ -9433,6 +9437,7 @@
 	0f00  GF108 [GeForce GT 630]
 	0f01  GF108 [GeForce GT 620]
 	0f02  GF108 [GeForce GT 730]
+	0fbb  GM204 High Definition Audio Controller
 	0fc0  GK107 [GeForce GT 640 OEM]
 	0fc1  GK107 [GeForce GT 640]
 	0fc2  GK107 [GeForce GT 630 OEM]
@@ -9967,6 +9972,7 @@
 	1284  GK208 [GeForce GT 630 Rev. 2]
 	1286  GK208 [GeForce GT 720]
 	1287  GK208 [GeForce GT 730]
+	1288  GK208 [GeForce GT 720]
 	1290  GK208M [GeForce GT 730M]
 		103c 2afa  GeForce GT 730A
 		103c 2b04  GeForce GT 730A
@@ -10010,10 +10016,13 @@
 	13ba  GM107GL [Quadro K2200]
 	13bb  GM107GL [Quadro K620]
 	13bd  GM107GL [Tesla M40]
-	13c0  GM204
+	13c0  GM204 [GeForce GTX 980]
+		1043 8504  GTX980-4GD5
 	13c1  GM204
 	13c2  GM204 [GeForce GTX 970]
 	13c3  GM204
+	13d7  GM204M [GeForce GTX 980M]
+	13d8  GM204M [GeForce GTX 970M]
 10df  Emulex Corporation
 	0720  OneConnect NIC (Skyhawk)
 		17aa 1056  ThinkServer OCm14102-UX-L AnyFabric
@@ -11682,12 +11691,22 @@
 1137  Cisco Systems Inc
 	0023  VIC 81 PCIe Upstream Port
 	0040  VIC PCIe Upstream Port
+		1137 004f  VIC 1280 Dual 40Gb Mezzanine
+		1137 0084  VIC 1240 Dual 40Gb MLOM
+		1137 0085  VIC 1225 Dual 10Gb SFP+ PCIe
+		1137 00cd  VIC 1285 Dual 40Gb QSFP+ PCIe
+		1137 00ce  VIC 1225T Dual 10GBaseT PCIe
+		1137 012a  VIC M4308 Dual 40Gb
+		1137 012c  VIC 1340 Dual 40Gb MLOM
+		1137 012e  VIC 1227 Dual 10Gb SFP+ PCIe
+		1137 0137  VIC 1380 Dual 40Gb Mezzanine
 	0041  VIC PCIe Downstream Port
 	0042  VIC Management Controller
 		1137 0047  VIC P81E PCIe Management Controller
 		1137 0085  VIC 1225 PCIe Management Controller
 		1137 00cd  VIC 1285 PCIe Management Controller
 		1137 00ce  VIC 1225T PCIe Management Controller
+		1137 012e  VIC 1227 PCIe Management Controller
 	0043  VIC Ethernet NIC
 		1137 0047  VIC P81E PCIe Ethernet NIC
 		1137 0048  VIC M81KR Mezzanine Ethernet NIC
@@ -11696,6 +11715,10 @@
 		1137 0085  VIC 1225 PCIe Ethernet NIC
 		1137 00cd  VIC 1285 PCIe Ethernet NIC
 		1137 00ce  VIC 1225T PCIe Ethernet NIC
+		1137 012a  VIC M4308 Ethernet NIC
+		1137 012c  VIC 1340 MLOM Ethernet NIC
+		1137 012e  VIC 1227 PCIe Ethernet NIC
+		1137 0137  VIC 1380 Mezzanine Ethernet NIC
 	0044  VIC Ethernet NIC Dynamic
 		1137 0047  VIC P81E PCIe Ethernet NIC Dynamic
 		1137 0048  VIC M81KR Mezzanine Ethernet NIC Dynamic
@@ -11704,6 +11727,10 @@
 		1137 0085  VIC 1225 PCIe Ethernet NIC Dynamic
 		1137 00cd  VIC 1285 PCIe Ethernet NIC Dynamic
 		1137 00ce  VIC 1225T PCIe Ethernet NIC Dynamic
+		1137 012a  VIC M4308 Ethernet NIC Dynamic
+		1137 012c  VIC 1340 MLOM Ethernet NIC Dynamic
+		1137 012e  VIC 1227 PCIe Ethernet NIC Dynamic
+		1137 0137  VIC 1380 Mezzanine Ethernet NIC Dynamic
 	0045  VIC FCoE HBA
 		1137 0047  VIC P81E PCIe FCoE HBA
 		1137 0048  VIC M81KR Mezzanine FCoE HBA
@@ -11712,9 +11739,28 @@
 		1137 0085  VIC 1225 PCIe FCoE HBA
 		1137 00cd  VIC 1285 PCIe FCoE HBA
 		1137 00ce  VIC 1225T PCIe FCoE HBA
+		1137 012a  VIC M4308 FCoE HBA
+		1137 012c  VIC 1340 MLOM FCoE HBA
+		1137 012e  VIC 1227 PCIe FCoE HBA
+		1137 0137  VIC 1380 Mezzanine FCoE HBA
+	0046  VIC SCSI Controller
+		1137 012a  VIC M4308 SCSI Controller
 	004e  VIC 82 PCIe Upstream Port
 	0071  VIC SR-IOV VF
+	007a  VIC 1300 PCIe Upstream Port
+		1137 012a  VIC M4308 Dual 40Gb
+		1137 012c  VIC 1340 Dual 40Gb MLOM
+		1137 0137  VIC 1380 Dual 40Gb Mezzanine
 	00cf  VIC Userspace NIC
+		1137 004f  VIC 1280 Mezzanine Userspace NIC
+		1137 0084  VIC 1240 MLOM Userspace NIC
+		1137 0085  VIC 1225 PCIe Userspace NIC
+		1137 00cd  VIC 1285 PCIe Userspace NIC
+		1137 00ce  VIC 1225T PCIe Userspace NIC
+		1137 012a  VIC M4308 Userspace NIC
+		1137 012c  VIC 1340 MLOM Userspace NIC
+		1137 012e  VIC 1227 PCIe Userspace NIC
+		1137 0137  VIC 1380 Mezzanine Userspace NIC
 1138  Ziatech Corporation
 	8905  8905 [STD 32 Bridge]
 1139  Dynamic Pictures, Inc
@@ -15059,10 +15105,13 @@
 	5015  T502-BT Unified Wire Ethernet Controller
 	5080  T540-5080 Unified Wire Ethernet Controller
 	5081  T540-5081 Unified Wire Ethernet Controller
+	5082  T504-5082 Unified Wire Ethernet Controller
 	5083  T540-5083 Unified Wire Ethernet Controller
 	5084  T580-5084 Unified Wire Ethernet Controller
 	5085  T580-5085 Unified Wire Ethernet Controller
 	5086  T580-5086 Unified Wire Ethernet Controller
+	5087  T580-5087 Unified Wire Ethernet Controller
+	5088  T570-5088 Unified Wire Ethernet Controller
 	5401  T520-CR Unified Wire Ethernet Controller
 	5402  T522-CR Unified Wire Ethernet Controller
 	5403  T540-CR Unified Wire Ethernet Controller
@@ -15086,10 +15135,13 @@
 	5415  T502-BT Unified Wire Ethernet Controller
 	5480  T540-5080 Unified Wire Ethernet Controller
 	5481  T540-5081 Unified Wire Ethernet Controller
+	5482  T504-5082 Unified Wire Ethernet Controller
 	5483  T540-5083 Unified Wire Ethernet Controller
 	5484  T580-5084 Unified Wire Ethernet Controller
 	5485  T580-5085 Unified Wire Ethernet Controller
 	5486  T580-5086 Unified Wire Ethernet Controller
+	5487  T580-5087 Unified Wire Ethernet Controller
+	5488  T570-5088 Unified Wire Ethernet Controller
 	5501  T520-CR Unified Wire Storage Controller
 	5502  T522-CR Unified Wire Storage Controller
 	5503  T540-CR Unified Wire Storage Controller
@@ -15113,10 +15165,13 @@
 	5515  T502-BT Unified Wire Storage Controller
 	5580  T540-5080 Unified Wire Storage Controller
 	5581  T540-5081 Unified Wire Storage Controller
+	5582  T504-5082 Unified Wire Storage Controller
 	5583  T540-5083 Unified Wire Storage Controller
 	5584  T580-5084 Unified Wire Storage Controller
 	5585  T580-5085 Unified Wire Storage Controller
 	5586  T580-5086 Unified Wire Storage Controller
+	5587  T580-5087 Unified Wire Storage Controller
+	5588  T570-5088 Unified Wire Storage Controller
 	5601  T520-CR Unified Wire Storage Controller
 	5602  T522-CR Unified Wire Storage Controller
 	5603  T540-CR Unified Wire Storage Controller
@@ -15140,10 +15195,13 @@
 	5615  T502-BT Unified Wire Storage Controller
 	5680  T540-5080 Unified Wire Storage Controller
 	5681  T540-5081 Unified Wire Storage Controller
+	5682  T504-5082 Unified Wire Storage Controller
 	5683  T540-5083 Unified Wire Storage Controller
 	5684  T580-5084 Unified Wire Storage Controller
 	5685  T580-5085 Unified Wire Storage Controller
 	5686  T580-5086 Unified Wire Storage Controller
+	5687  T580-5087 Unified Wire Storage Controller
+	5688  T570-5088 Unified Wire Storage Controller
 	5701  T520-CR Unified Wire Ethernet Controller
 	5702  T522-CR Unified Wire Ethernet Controller
 	5703  T540-CR Unified Wire Ethernet Controller
@@ -15167,9 +15225,13 @@
 	5715  T502-BT Unified Wire Ethernet Controller
 	5780  T540-5080 Unified Wire Ethernet Controller
 	5781  T540-5081 Unified Wire Ethernet Controller
+	5782  T504-5082 Unified Wire Ethernet Controller
 	5783  T540-5083 Unified Wire Ethernet Controller
 	5784  T580-5084 Unified Wire Ethernet Controller
 	5785  T580-5085 Unified Wire Ethernet Controller
+	5786  T580-5086 Unified Wire Ethernet Controller
+	5787  T580-5087 Unified Wire Ethernet Controller
+	5788  T570-5088 Unified Wire Ethernet Controller
 	5801  T520-CR Unified Wire Ethernet Controller [VF]
 	5802  T522-CR Unified Wire Ethernet Controller [VF]
 	5803  T540-CR Unified Wire Ethernet Controller [VF]
@@ -15193,10 +15255,13 @@
 	5815  T502-BT Unified Wire Ethernet Controller [VF]
 	5880  T540-5080 Unified Wire Ethernet Controller [VF]
 	5881  T540-5081 Unified Wire Ethernet Controller [VF]
+	5882  T504-5082 Unified Wire Ethernet Controller [VF]
 	5883  T540-5083 Unified Wire Ethernet Controller [VF]
 	5884  T580-5084 Unified Wire Ethernet Controller [VF]
 	5885  T580-5085 Unified Wire Ethernet Controller [VF]
 	5886  T580-5086 Unified Wire Ethernet Controller [VF]
+	5887  T580-5087 Unified Wire Ethernet Controller [VF]
+	5888  T570-5088 Unified Wire Ethernet Controller [VF]
 	a000  PE10K Unified Wire Ethernet Controller
 1426  Storage Technology Corp.
 1427  Better On-Line Solutions
@@ -16423,6 +16488,7 @@
 		153b 117e  Cinergy T PCIe Dual
 		18ac db78  FusionHDTV DVB-T Dual Express
 		4254 9580  T9580
+		4254 980c  T980C
 	8880  CX23887/8 PCIe Broadcast Audio and Video Decoder with 3D Comb
 		0070 c108  WinTV-HVR-4400-HD model 1278
 		5654 2389  GoTView X5 DVD Hybrid PCI-E
@@ -17456,6 +17522,7 @@
 1760  TEDIA spol. s r. o.
 	0101  PCD-7004 Digital Bi-Directional Ports PCI Card
 	0102  PCD-7104 Digital Input & Output PCI Card
+	0303  PCD-7006C Digital Input & Output PCI Card
 1771  InnoVISION Multimedia Ltd.
 # nee SBS Technologies
 1775  GE Intelligent Platforms
@@ -17815,8 +17882,9 @@
 	0612  AD612 Data Acquisition Device
 	0614  MF614 Multifunction I/O Card
 	0622  AD622 Data Acquisition Device
-	0624  MF624 Multifunction I/O Card
+	0624  MF624 Multifunction I/O PCI Card
 	0625  MF625 3-phase Motor Driver
+	0634  MF634 Multifunction I/O PCIe Card
 186f  WiNRADiO Communications
 1876  L-3 Communications
 	a101  VigraWATCH PCI
@@ -18105,6 +18173,8 @@
 		1924 800b  SFN7x42Q-R1 Flareon Ultra 7000 Series 10/40G Adapter
 	1803  SFC9020 Virtual Function [Solarstorm]
 	1813  SFL9021 Virtual Function [Solarstorm]
+	1903  SFC9120 Virtual Function
+	1923  SFC9140 Virtual Function
 	6703  SFC4000 rev A iSCSI/Onload [Solarstorm]
 		10b8 0102  SMC10GPCIe-10BT (A2) [TigerCard]
 		10b8 0103  SMC10GPCIe-10BT (A3) [TigerCard]
@@ -18217,6 +18287,14 @@
 	0401  P4080
 	0408  P4040E
 	0409  P4040
+	0440  T4240 with security
+	0441  T4240 without security
+	0446  T4160 with security
+	0447  T4160 without security
+	0830  T2080 with security
+	0831  T2080 without security
+	0838  T2081 with security
+	0839  T2081 without security
 	580c  MPC5121e
 	7010  MPC8641 PCI Host Bridge
 	7011  MPC8641D PCI Host Bridge
@@ -18506,7 +18584,8 @@
 	0201  Wil6200 Wireless PCI Express Port
 	0301  Wil6200 802.11ad Wireless Network Adapter
 1aec  Wolfson Microelectronics
-1aed  Fusion-io
+# nee Fusion-io
+1aed  SanDisk
 	1003  ioDimm3 (v1.2)
 	1005  ioDimm3
 		1014 03c3  High IOPS SSD PCIe Adapter
@@ -20394,6 +20473,7 @@
 	10cd  82567LF-2 Gigabit Network Connection
 	10ce  82567V-2 Gigabit Network Connection
 	10d3  82574L Gigabit Network Connection
+		103c 1785  NC112i 1-port Ethernet Server Adapter
 		103c 3250  NC112T PCI Express single Port Gigabit Server Adapter
 		1043 8369  Motherboard
 		1093 76e9  PCIe-8233 Ethernet Adapter
@@ -20851,6 +20931,8 @@
 	1571  XL710/X710 Virtual Function
 	1572  Ethernet Controller X710 for 10GbE SFP+
 		1028 1f99  Ethernet 10G 4P X710/I350 rNDC
+		17aa 0000  ThinkServer XL710 AnyFabric
+		17aa 4001  ThinkServer XL710-4 AnyFabric
 		8086 0000  Ethernet Converged Network Adapter X710
 		8086 0001  Ethernet Converged Network Adapter X710-4
 		8086 0002  Ethernet Converged Network Adapter X710-4
@@ -20918,6 +21000,25 @@
 	163b  Broadwell-U Integrated Graphics
 	163d  Broadwell-U Integrated Graphics
 	163e  Broadwell-U Integrated Graphics
+	1900  Sky Lake Host Bridge/DRAM Registers
+	1901  Sky Lake PCIe Controller (x16)
+	1904  Sky Lake Host Bridge/DRAM Registers
+	1905  Sky Lake PCIe Controller (x8)
+	1908  Sky Lake Host Bridge/DRAM Registers
+	1909  Sky Lake PCIe Controller (x4)
+	190c  Sky Lake Host Bridge/DRAM Registers
+	190f  Sky Lake Host Bridge/DRAM Registers
+	1910  Sky Lake Host Bridge/DRAM Registers
+	1911  Sky Lake Gaussian Mixture Model
+	1912  Sky Lake Integrated Graphics
+	1916  Sky Lake Integrated Graphics
+	1918  Sky Lake Host Bridge/DRAM Registers
+	1919  Sky Lake Imaging Unit
+	191e  Sky Lake Integrated Graphics
+	191f  Sky Lake Host Bridge/DRAM Registers
+	1926  Sky Lake Integrated Graphics
+	1932  Sky Lake Integrated Graphics
+	193b  Sky Lake Integrated Graphics
 	1960  80960RP (i960RP) Microprocessor
 		101e 0431  MegaRAID 431 RAID Controller
 		101e 0438  MegaRAID 438 Ultra2 LVD RAID Controller
@@ -20973,6 +21074,7 @@
 		1028 04da  Vostro 3750
 		8086 7270  Apple MacBookPro8,2 [Core i7, 15", 2011]
 	1c04  6 Series/C200 Series Chipset Family SATA RAID Controller
+		103c 3118  Smart Array B110i SATA RAID Controller
 	1c05  6 Series/C200 Series Chipset Family SATA RAID Controller
 	1c08  6 Series/C200 Series Chipset Family 2 port SATA IDE Controller
 	1c09  6 Series/C200 Series Chipset Family 2 port SATA IDE Controller
@@ -21320,6 +21422,42 @@
 	1f42  Atom processor C2000 GbE
 	1f44  Atom processor C2000 GbE Virtual Function
 	1f45  Ethernet Connection I354 2.5 GbE Backplane
+	2014  Sky Lake-E Ubox Registers
+	2015  Sky Lake-E Ubox Registers
+	2016  Sky Lake-E Ubox Registers
+	2018  Sky Lake-E M2PCI Registers
+	201a  Sky Lake-E Non-Transparent Bridge Registers
+	201c  Sky Lake-E Non-Transparent Bridge Registers
+	2021  Sky Lake-E CBDMA Registers
+	2024  Sky Lake-E MM/Vt-d Configuration Registers
+	2030  Sky Lake-E PCI Express Root Port 1A
+	2031  Sky Lake-E PCI Express Root Port 1B
+	2032  Sky Lake-E PCI Express Root Port 1C
+	2033  Sky Lake-E PCI Express Root Port 1D
+	2035  Sky Lake-E RAS Configuration Registers
+	204c  Sky Lake-E M3KTI Registers
+	204d  Sky Lake-E M3KTI Registers
+	204e  Sky Lake-E M3KTI Registers
+	2054  Sky Lake-E CHA Registers
+	2055  Sky Lake-E CHA Registers
+	2056  Sky Lake-E CHA Registers
+	2057  Sky Lake-E CHA Registers
+	2068  Sky Lake-E DDRIO Registers
+	2069  Sky Lake-E DDRIO Registers
+	206a  Sky Lake-E IOxAPIC Configuration Registers
+	206e  Sky Lake-E DDRIO Registers
+	206f  Sky Lake-E DDRIO Registers
+	2078  Sky Lake-E PCU Registers
+	207a  Sky Lake-E PCU Registers
+	2080  Sky Lake-E PCU Registers
+	2081  Sky Lake-E PCU Registers
+	2082  Sky Lake-E PCU Registers
+	2083  Sky Lake-E PCU Registers
+	2084  Sky Lake-E PCU Registers
+	2085  Sky Lake-E PCU Registers
+	2086  Sky Lake-E PCU Registers
+	208d  Sky Lake-E CHA Registers
+	208e  Sky Lake-E CHA Registers
 	2250  Xeon Phi coprocessor 5100 series
 	225c  Xeon Phi coprocessor SE10/7120 series
 	225d  Xeon Phi coprocessor 3120 series 
@@ -22816,7 +22954,7 @@
 		1028 01da  OptiPlex 745
 		1462 7235  P965 Neo MS-7235 mainboard
 	2821  82801HR/HO/HH (ICH8R/DO/DH) 6 port SATA Controller [AHCI mode]
-	2822  82801 SATA Controller [RAID mode]
+	2822  SATA Controller [RAID mode]
 		1028 020d  Inspiron 530
 		103c 2a6f  Asus IPIBL-LB Motherboard
 	2823  C610/X99 series chipset sSATA Controller [RAID mode]
@@ -25221,6 +25359,87 @@
 	a012  Atom Processor D4xx/D5xx/N4xx/N5xx Integrated Graphics Controller
 		144d c072  Notebook N150P
 	a013  Atom Processor D4xx/D5xx/N4xx/N5xx CHAPS counter
+	a103  Sunrise Point-H SATA Controller [AHCI mode]
+	a105  Sunrise Point-H SATA Controller [RAID mode]
+	a107  Sunrise Point-H SATA Controller [RAID mode]
+	a10f  Sunrise Point-H SATA Controller [RAID mode]
+	a110  Sunrise Point-H PCI Express Root Port #1
+	a111  Sunrise Point-H PCI Express Root Port #2
+	a112  Sunrise Point-H PCI Express Root Port #3
+	a113  Sunrise Point-H PCI Express Root Port #4
+	a114  Sunrise Point-H PCI Express Root Port #5
+	a115  Sunrise Point-H PCI Express Root Port #6
+	a116  Sunrise Point-H PCI Express Root Port #7
+	a117  Sunrise Point-H PCI Express Root Port #8
+	a118  Sunrise Point-H PCI Express Root Port #9
+	a119  Sunrise Point-H PCI Express Root Port #10
+	a11a  Sunrise Point-H PCI Express Root Port #11
+	a11b  Sunrise Point-H PCI Express Root Port #12
+	a11c  Sunrise Point-H PCI Express Root Port #13
+	a11d  Sunrise Point-H PCI Express Root Port #14
+	a11e  Sunrise Point-H PCI Express Root Port #15
+	a11f  Sunrise Point-H PCI Express Root Port #16
+	a120  Sunrise Point-H P2SB
+	a121  Sunrise Point-H PMC
+	a122  Sunrise Point-H cAVS
+	a123  Sunrise Point-H SMBus
+	a124  Sunrise Point-H SPI Controller
+	a125  Sunrise Point-H Gigabit Ethernet Controller
+	a126  Sunrise Point-H Northpeak
+	a127  Sunrise Point-H LPSS UART #0
+	a128  Sunrise Point-H LPSS UART #1
+	a129  Sunrise Point-H LPSS SPI #0
+	a12a  Sunrise Point-H LPSS SPI #1
+	a12f  Sunrise Point-H USB 3.0 xHCI Controller
+	a130  Sunrise Point-H USB Device Controller (OTG)
+	a131  Sunrise Point-H Thermal subsystem
+	a133  Sunrise Point-H Northpeak ACPI Function
+	a135  Sunrise Point-H Integrated Sensor Hub
+	a13a  Sunrise Point-H CSME HECI #1
+	a13b  Sunrise Point-H CSME HECI #2
+	a13c  Sunrise Point-H CSME IDE Redirection
+	a13d  Sunrise Point-H KT Redirection
+	a13e  Sunrise Point-H CSME HECI #3
+	a140  Sunrise Point-H LPC Controller
+	a141  Sunrise Point-H LPC Controller
+	a142  Sunrise Point-H LPC Controller
+	a143  Sunrise Point-H LPC Controller
+	a144  Sunrise Point-H LPC Controller
+	a145  Sunrise Point-H LPC Controller
+	a146  Sunrise Point-H LPC Controller
+	a147  Sunrise Point-H LPC Controller
+	a148  Sunrise Point-H LPC Controller
+	a149  Sunrise Point-H LPC Controller
+	a14a  Sunrise Point-H LPC Controller
+	a14b  Sunrise Point-H LPC Controller
+	a14c  Sunrise Point-H LPC Controller
+	a14d  Sunrise Point-H LPC Controller
+	a14e  Sunrise Point-H LPC Controller
+	a14f  Sunrise Point-H LPC Controller
+	a150  Sunrise Point-H LPC Controller
+	a151  Sunrise Point-H LPC Controller
+	a152  Sunrise Point-H LPC Controller
+	a153  Sunrise Point-H LPC Controller
+	a154  Sunrise Point-H LPC Controller
+	a155  Sunrise Point-H LPC Controller
+	a156  Sunrise Point-H LPC Controller
+	a157  Sunrise Point-H LPC Controller
+	a158  Sunrise Point-H LPC Controller
+	a159  Sunrise Point-H LPC Controller
+	a15a  Sunrise Point-H LPC Controller
+	a15b  Sunrise Point-H LPC Controller
+	a15c  Sunrise Point-H LPC Controller
+	a15d  Sunrise Point-H LPC Controller
+	a15e  Sunrise Point-H LPC Controller
+	a15f  Sunrise Point-H LPC Controller
+	a160  Sunrise Point-H LPSS I2C Controller #0
+	a161  Sunrise Point-H LPSS I2C Controller #1
+	a166  Sunrise Point-H LPSS UART Controller #2
+	a167  Sunrise Point-H PCI Root Port #17
+	a168  Sunrise Point-H PCI Root Port #18
+	a169  Sunrise Point-H PCI Root Port #19
+	a16a  Sunrise Point-H PCI Root Port #20
+	a170  Sunrise Point-H HD Audio
 	a620  6400/6402 Advanced Memory Buffer (AMB)
 	b152  21152 PCI-to-PCI Bridge
 		8086 b152  21152 PCI-to-PCI Bridge
@@ -25762,6 +25981,7 @@ bdbd  Blackmagic Design
 	a12f  DeckLink Mini Monitor
 	a130  DeckLink Mini Recorder
 	a132  UltraStudio 4K
+	a138  Decklink SDI 4K
 c001  TSI Telsys
 c0a9  Micron/Crucial Technology
 c0de  Motorola
