@@ -528,9 +528,14 @@ i915_gem_execbuffer_relocate_slow(struct drm_device *dev,
 	for (i = 0; i < count; i++)
 		total += exec[i].relocation_count;
 
-	reloc_offset = kmalloc(count * sizeof(*reloc_offset), M_DRM,
-	    M_WAITOK | M_ZERO);
-	reloc = kmalloc(total * sizeof(*reloc), M_DRM, M_WAITOK | M_ZERO);
+	reloc_offset = drm_malloc_ab(count, sizeof(*reloc_offset));
+	reloc = drm_malloc_ab(total, sizeof(*reloc));
+	if (reloc == NULL || reloc_offset == NULL) {
+		drm_free_large(reloc);
+		drm_free_large(reloc_offset);
+		DRM_LOCK(dev);
+		return -ENOMEM;
+	}
 
 	total = 0;
 	for (i = 0; i < count; i++) {
@@ -613,8 +618,8 @@ i915_gem_execbuffer_relocate_slow(struct drm_device *dev,
 	 */
 
 err:
-	drm_free(reloc, M_DRM);
-	drm_free(reloc_offset, M_DRM);
+	drm_free_large(reloc);
+	drm_free_large(reloc_offset);
 	return ret;
 }
 
@@ -1101,10 +1106,15 @@ i915_gem_execbuffer(struct drm_device *dev, void *data,
 	}
 
 	/* Copy in the exec list from userland */
-	exec_list = kmalloc(sizeof(*exec_list) * args->buffer_count,
-	    M_DRM, M_WAITOK);
-	exec2_list = kmalloc(sizeof(*exec2_list) * args->buffer_count,
-	    M_DRM, M_WAITOK);
+	exec_list = drm_malloc_ab(sizeof(*exec_list), args->buffer_count);
+	exec2_list = drm_malloc_ab(sizeof(*exec2_list), args->buffer_count);
+	if (exec_list == NULL || exec2_list == NULL) {
+		DRM_DEBUG("Failed to allocate exec list for %d buffers\n",
+			  args->buffer_count);
+		drm_free_large(exec_list);
+		drm_free_large(exec2_list);
+		return -ENOMEM;
+	}
 
 	ret = copy_from_user(exec_list,
 			     (void __user *)(uintptr_t)args->buffers_ptr,
@@ -1112,8 +1122,8 @@ i915_gem_execbuffer(struct drm_device *dev, void *data,
 	if (ret != 0) {
 		DRM_DEBUG("copy %d exec entries failed %d\n",
 			  args->buffer_count, ret);
-		drm_free(exec_list, M_DRM);
-		drm_free(exec2_list, M_DRM);
+		drm_free_large(exec_list);
+		drm_free_large(exec2_list);
 		return -EFAULT;
 	}
 
@@ -1157,8 +1167,8 @@ i915_gem_execbuffer(struct drm_device *dev, void *data,
 		}
 	}
 
-	drm_free(exec_list, M_DRM);
-	drm_free(exec2_list, M_DRM);
+	drm_free_large(exec_list);
+	drm_free_large(exec2_list);
 	return ret;
 }
 
@@ -1178,6 +1188,9 @@ i915_gem_execbuffer2(struct drm_device *dev, void *data,
 
 	exec2_list = kmalloc(sizeof(*exec2_list)*args->buffer_count,
 			     M_DRM, M_WAITOK);
+	if (exec2_list == NULL)
+		exec2_list = drm_malloc_ab(sizeof(*exec2_list),
+					   args->buffer_count);
 	if (exec2_list == NULL) {
 		DRM_DEBUG("Failed to allocate exec list for %d buffers\n",
 			  args->buffer_count);
@@ -1190,7 +1203,7 @@ i915_gem_execbuffer2(struct drm_device *dev, void *data,
 	if (ret != 0) {
 		DRM_DEBUG("copy %d exec entries failed %d\n",
 			  args->buffer_count, ret);
-		drm_free(exec2_list, M_DRM);
+		drm_free_large(exec2_list);
 		return -EFAULT;
 	}
 
@@ -1208,6 +1221,6 @@ i915_gem_execbuffer2(struct drm_device *dev, void *data,
 		}
 	}
 
-	drm_free(exec2_list, M_DRM);
+	drm_free_large(exec2_list);
 	return ret;
 }

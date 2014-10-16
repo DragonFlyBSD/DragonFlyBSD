@@ -1603,6 +1603,8 @@ static __inline__ void drm_core_dropmap(struct drm_map *map)
 {
 }
 
+#include <drm/drm_mem_util.h>
+
 /* FreeBSD compatibility macros */
 #define PROC_LOCK(p)
 #define PROC_UNLOCK(p)
