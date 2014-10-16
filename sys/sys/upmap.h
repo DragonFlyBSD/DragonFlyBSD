@@ -70,7 +70,7 @@ typedef struct ukpheader {
 #define UKPLEN_1024		0x0A00
 
 #define UKPLEN_TS		((sizeof(struct timespec) == 8) ? \
-					UKPLEN_8 : UKPLEN_16)
+					UKPLEN_16 : UKPLEN_32)
 
 #define UKPTYPE_VERSION		(0x0001 | UKPLEN_4)	/* always first */
 
@@ -113,13 +113,26 @@ struct sys_upmap {
  * UNTIL YOU HIT TYPE 0, THEN CACHE THE RESULTING POINTER.
  *
  * If you insist, at least check that the version matches KPMAP_VERSION.
+ *
+ * Procedure for reading stable values from ts_uptime/ts_realtime.  This
+ * avoids looping in nearly all cases, including during a kernel update.
+ * The only case where this might loop is if the kernel deschedules
+ * the user thread for more than 1 tick.
+ *
+ *	do {
+ *		w = upticks;
+ *		cpu_lfence();
+ *		load ts_uptime[w & 1] or ts_realtime[w & 1]
+ *		cpu_lfence();
+ *		w = upticks - w;
+ *	} while (w > 1);
  */
 struct sys_kpmap {
 	ukpheader_t	header[64];
 	int32_t		version;
-	int32_t		upticks;
-	struct timespec	ts_uptime;	/* mono uptime @ticks (uncompensated) */
-	struct timespec ts_realtime;	/* realtime @ticks resolution */
+	int32_t		upticks;	/* userland reads ts_*[upticks & 1] */
+	struct timespec	ts_uptime[2];	/* mono uptime @ticks (uncompensated) */
+	struct timespec ts_realtime[2];	/* realtime @ticks resolution */
 	int64_t		tsc_freq;	/* (if supported by cpu) */
 	int32_t		tick_freq;	/* scheduler tick frequency */
 };

@@ -114,10 +114,21 @@ mmopen(struct dev_open_args *ap)
 	switch (minor(dev)) {
 	case 0:
 	case 1:
+		/*
+		 * /dev/mem and /dev/kmem
+		 */
 		if (ap->a_oflags & FWRITE) {
 			if (securelevel > 0 || kernel_mem_readonly)
 				return (EPERM);
 		}
+		error = 0;
+		break;
+	case 6:
+		/*
+		 * /dev/kpmap can only be opened for reading.
+		 */
+		if (ap->a_oflags & FWRITE)
+			return (EPERM);
 		error = 0;
 		break;
 	case 14:
@@ -678,9 +689,11 @@ user_kernel_mapping(int num, vm_ooffset_t offset, vm_ooffset_t *resultp)
 		 */
 		if (p->p_upmap == NULL)
 			proc_usermap(p);
-		if (p->p_upmap && offset == 0) {
+		if (p->p_upmap &&
+		    offset < roundup2(sizeof(*p->p_upmap), PAGE_SIZE)) {
 			/* only good for current process */
-			*resultp = pmap_kextract((vm_offset_t)p->p_upmap);
+			*resultp = pmap_kextract((vm_offset_t)p->p_upmap +
+						 offset);
 			error = 0;
 		}
 		break;
@@ -688,8 +701,10 @@ user_kernel_mapping(int num, vm_ooffset_t offset, vm_ooffset_t *resultp)
 		/*
 		 * /dev/kpmap - maps RO shared kernel global page
 		 */
-		if (kpmap && offset == 0) {
-			*resultp = pmap_kextract((vm_offset_t)kpmap);
+		if (kpmap &&
+		    offset < roundup2(sizeof(*kpmap), PAGE_SIZE)) {
+			*resultp = pmap_kextract((vm_offset_t)kpmap +
+						 offset);
 			error = 0;
 		}
 		break;

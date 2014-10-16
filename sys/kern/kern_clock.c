@@ -558,11 +558,19 @@ hardclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 	    basetime_index = ni;
 
 	    /*
-	     * Update kpmap on each tick
+	     * Update kpmap on each tick.  TS updates are integrated with
+	     * fences and upticks allowing userland to read the data
+	     * deterministically.
 	     */
 	    if (kpmap) {
-		getnanouptime(&kpmap->ts_uptime);
-		getnanotime(&kpmap->ts_realtime);
+		int w;
+
+		w = (kpmap->upticks + 1) & 1;
+		getnanouptime(&kpmap->ts_uptime[w]);
+		getnanotime(&kpmap->ts_realtime[w]);
+		cpu_sfence();
+		++kpmap->upticks;
+		cpu_sfence();
 	    }
 	}
 
