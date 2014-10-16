@@ -90,6 +90,7 @@ struct proc *initproc;
 struct proc proc0;
 struct lwp lwp0;
 struct thread thread0;
+struct sys_kpmap *kpmap;
 
 int cmask = CMASK;
 u_int cpu_mi_feature;
@@ -583,11 +584,11 @@ start_init(void *dummy, struct trapframe *frame)
 	 * Need just enough stack to hold the faked-up "execve()" arguments.
 	 */
 	addr = trunc_page(USRSTACK - PAGE_SIZE);
-	error = vm_map_find(&p->p_vmspace->vm_map, NULL, 0, &addr,
-			    PAGE_SIZE, PAGE_SIZE,
+	error = vm_map_find(&p->p_vmspace->vm_map, NULL, NULL,
+			    0, &addr, PAGE_SIZE,
+			    PAGE_SIZE,
 			    FALSE, VM_MAPTYPE_NORMAL,
-			    VM_PROT_ALL, VM_PROT_ALL,
-			    0);
+			    VM_PROT_ALL, VM_PROT_ALL, 0);
 	if (error)
 		panic("init: couldn't allocate argument space");
 	p->p_vmspace->vm_maxsaddr = (caddr_t)addr;
@@ -716,6 +717,28 @@ kick_init(const void *udata __unused)
 	start_forked_proc(&lwp0, initproc);
 }
 SYSINIT(kickinit, SI_SUB_KTHREAD_INIT, SI_ORDER_FIRST, kick_init, NULL)
+
+static void
+kpmap_init(const void *udata __unused)
+{
+	kpmap = kmalloc(roundup2(sizeof(*kpmap), PAGE_SIZE),
+			M_TEMP, M_ZERO | M_WAITOK);
+
+	kpmap->header[0].type = UKPTYPE_VERSION;
+	kpmap->header[0].offset = offsetof(struct sys_kpmap, version);
+	kpmap->header[1].type = KPTYPE_UPTICKS;
+	kpmap->header[1].offset = offsetof(struct sys_kpmap, upticks);
+	kpmap->header[2].type = KPTYPE_TS_UPTIME;
+	kpmap->header[2].offset = offsetof(struct sys_kpmap, ts_uptime);
+	kpmap->header[3].type = KPTYPE_TS_REALTIME;
+	kpmap->header[3].offset = offsetof(struct sys_kpmap, ts_realtime);
+	kpmap->header[4].type = KPTYPE_TSC_FREQ;
+	kpmap->header[4].offset = offsetof(struct sys_kpmap, tsc_freq);
+	kpmap->header[5].type = KPTYPE_TICK_FREQ;
+	kpmap->header[5].offset = offsetof(struct sys_kpmap, tick_freq);
+	kpmap->version = KPMAP_VERSION;
+}
+SYSINIT(kpmapinit, SI_BOOT1_POST, SI_ORDER_FIRST, kpmap_init, NULL)
 
 /*
  * Machine independant globaldata initialization

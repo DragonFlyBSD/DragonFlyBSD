@@ -102,11 +102,11 @@ kmem_alloc_pageable(vm_map_t map, vm_size_t size)
 
 	size = round_page(size);
 	addr = vm_map_min(map);
-	result = vm_map_find(map, NULL, (vm_offset_t) 0,
-			     &addr, size, PAGE_SIZE,
+	result = vm_map_find(map, NULL, NULL,
+			     (vm_offset_t) 0, &addr, size,
+			     PAGE_SIZE,
 			     TRUE, VM_MAPTYPE_NORMAL,
-			     VM_PROT_ALL, VM_PROT_ALL,
-			     0);
+			     VM_PROT_ALL, VM_PROT_ALL, 0);
 	if (result != KERN_SUCCESS)
 		return (0);
 	return (addr);
@@ -125,11 +125,11 @@ kmem_alloc_nofault(vm_map_t map, vm_size_t size, vm_size_t align)
 
 	size = round_page(size);
 	addr = vm_map_min(map);
-	result = vm_map_find(map, NULL, (vm_offset_t) 0,
-			     &addr, size, align,
+	result = vm_map_find(map, NULL, NULL,
+			     (vm_offset_t) 0, &addr, size,
+			     align,
 			     TRUE, VM_MAPTYPE_NORMAL,
-			     VM_PROT_ALL, VM_PROT_ALL,
-			     MAP_NOFAULT);
+			     VM_PROT_ALL, VM_PROT_ALL, MAP_NOFAULT);
 	if (result != KERN_SUCCESS)
 		return (0);
 	return (addr);
@@ -184,10 +184,10 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	vm_object_hold(&kernel_object);
 	vm_object_reference_locked(&kernel_object);
 	vm_map_insert(map, &count,
-		      &kernel_object, addr, addr, addr + size,
+		      &kernel_object, NULL,
+		      addr, addr, addr + size,
 		      VM_MAPTYPE_NORMAL,
-		      VM_PROT_ALL, VM_PROT_ALL,
-		      cow);
+		      VM_PROT_ALL, VM_PROT_ALL, cow);
 	vm_object_drop(&kernel_object);
 
 	vm_map_unlock(map);
@@ -273,11 +273,11 @@ kmem_suballoc(vm_map_t parent, vm_map_t result,
 	size = round_page(size);
 
 	*min = (vm_offset_t) vm_map_min(parent);
-	ret = vm_map_find(parent, NULL, (vm_offset_t) 0,
-			  min, size, PAGE_SIZE,
+	ret = vm_map_find(parent, NULL, NULL,
+			  (vm_offset_t) 0, min, size,
+			  PAGE_SIZE,
 			  TRUE, VM_MAPTYPE_UNSPECIFIED,
-			  VM_PROT_ALL, VM_PROT_ALL,
-			  0);
+			  VM_PROT_ALL, VM_PROT_ALL, 0);
 	if (ret != KERN_SUCCESS) {
 		kprintf("kmem_suballoc: bad status return of %d.\n", ret);
 		panic("kmem_suballoc");
@@ -325,8 +325,8 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
 		tsleep(map, 0, "kmaw", 0);
 	}
 	vm_map_insert(map, &count,
-		      NULL, (vm_offset_t) 0,
-		      addr, addr + size,
+		      NULL, NULL,
+		      (vm_offset_t) 0, addr, addr + size,
 		      VM_MAPTYPE_NORMAL,
 		      VM_PROT_ALL, VM_PROT_ALL,
 		      0);
@@ -356,7 +356,7 @@ kmem_alloc_attr(vm_map_t map, vm_size_t size, int flags, vm_paddr_t low,
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
 	if (vm_map_findspace(map, vm_map_min(map), size, PAGE_SIZE,
-				flags, &addr)) {
+			     flags, &addr)) {
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
 		return (0);
@@ -364,8 +364,11 @@ kmem_alloc_attr(vm_map_t map, vm_size_t size, int flags, vm_paddr_t low,
 	offset = addr - vm_map_min(&kernel_map);
 	vm_object_hold(&kernel_object);
 	vm_object_reference_locked(&kernel_object);
-	vm_map_insert(map, &count, &kernel_object, offset, addr, addr + size,
-		VM_MAPTYPE_NORMAL, VM_PROT_ALL, VM_PROT_ALL, 0);
+	vm_map_insert(map, &count,
+		      &kernel_object, NULL,
+		      offset, addr, addr + size,
+		      VM_MAPTYPE_NORMAL,
+		      VM_PROT_ALL, VM_PROT_ALL, 0);
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
 	vm_object_drop(&kernel_object);
@@ -431,28 +434,28 @@ kmem_init(void)
 	addr = KvaStart;
 	if (virtual2_start) {
 		if (addr < virtual2_start) {
-			vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
-				      addr, virtual2_start,
+			vm_map_insert(m, &count,
+				      NULL, NULL,
+				      (vm_offset_t) 0, addr, virtual2_start,
 				      VM_MAPTYPE_NORMAL,
-				      VM_PROT_ALL, VM_PROT_ALL,
-				      0);
+				      VM_PROT_ALL, VM_PROT_ALL, 0);
 		}
 		addr = virtual2_end;
 	}
 	if (addr < virtual_start) {
-		vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
-			      addr, virtual_start,
+		vm_map_insert(m, &count,
+			      NULL, NULL,
+			      (vm_offset_t) 0, addr, virtual_start,
 			      VM_MAPTYPE_NORMAL,
-			      VM_PROT_ALL, VM_PROT_ALL,
-			      0);
+			      VM_PROT_ALL, VM_PROT_ALL, 0);
 	}
 	addr = virtual_end;
 	if (addr < KvaEnd) {
-		vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
-			      addr, KvaEnd,
+		vm_map_insert(m, &count,
+			      NULL, NULL,
+			      (vm_offset_t) 0, addr, KvaEnd,
 			      VM_MAPTYPE_NORMAL,
-			      VM_PROT_ALL, VM_PROT_ALL,
-			      0);
+			      VM_PROT_ALL, VM_PROT_ALL, 0);
 	}
 	/* ... and ending with the completion of the above `insert' */
 	vm_map_unlock(m);

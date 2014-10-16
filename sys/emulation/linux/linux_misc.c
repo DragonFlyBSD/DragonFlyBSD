@@ -415,12 +415,11 @@ sys_linux_uselib(struct linux_uselib_args *args)
 		vmaddr = trunc_page(a_out->a_entry);
 
 		/* get anon user mapping, read+write+execute */
-		error = vm_map_find(&p->p_vmspace->vm_map, NULL, 0,
-				    &vmaddr, a_out->a_text + a_out->a_data,
+		error = vm_map_find(&p->p_vmspace->vm_map, NULL, NULL,
+				    0, &vmaddr, a_out->a_text + a_out->a_data,
 				    PAGE_SIZE,
 				    FALSE, VM_MAPTYPE_NORMAL,
-				    VM_PROT_ALL, VM_PROT_ALL,
-				    0);
+				    VM_PROT_ALL, VM_PROT_ALL, 0);
 		if (error)
 			goto cleanup;
 
@@ -472,12 +471,11 @@ sys_linux_uselib(struct linux_uselib_args *args)
 		    a_out->a_data;
 
 		/* allocate some 'anon' space */
-		error = vm_map_find(&p->p_vmspace->vm_map, NULL, 0,
-				    &vmaddr, bss_size,
+		error = vm_map_find(&p->p_vmspace->vm_map, NULL, NULL,
+				    0, &vmaddr, bss_size,
 				    PAGE_SIZE,
 				    FALSE, VM_MAPTYPE_NORMAL,
-				    VM_PROT_ALL, VM_PROT_ALL,
-				    0);
+				    VM_PROT_ALL, VM_PROT_ALL, 0);
 		if (error)
 			goto cleanup;
 	}

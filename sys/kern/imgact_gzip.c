@@ -247,11 +247,10 @@ do_aout_hdr(struct imgact_gzip * gz)
 		vmaddr = gz->virtual_offset + gz->a_out.a_text + 
 			gz->a_out.a_data;
 		error = vm_map_find(&vmspace->vm_map,
-				    NULL, 0,
-				    &vmaddr, gz->bss_size, PAGE_SIZE,
+				    NULL, NULL,
+				    0, &vmaddr, gz->bss_size, PAGE_SIZE,
 				    FALSE, VM_MAPTYPE_NORMAL,
-				    VM_PROT_ALL, VM_PROT_ALL,
-				    0);
+				    VM_PROT_ALL, VM_PROT_ALL, 0);
 		if (error) {
 			gz->where = __LINE__;
 			return (error);

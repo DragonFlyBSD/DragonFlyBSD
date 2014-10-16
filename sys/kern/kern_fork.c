@@ -379,6 +379,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * once the process is on the allproc list to avoid things such
 	 * as competing modifications to p_flags.
 	 */
+	mycpu->gd_forkid += ncpus;
+	p2->p_forkid = mycpu->gd_forkid + mycpu->gd_cpuid;
 	p2->p_lasttid = -1;	/* first tid will be 0 */
 	p2->p_stat = SIDL;
 

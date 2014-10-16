@@ -1154,6 +1154,49 @@ lwpkthreaddeferred(void)
 	}
 }
 
+void
+proc_usermap(struct proc *p)
+{
+	struct sys_upmap *upmap;
+
+	lwkt_gettoken(&p->p_token);
+	upmap = kmalloc(roundup2(sizeof(*upmap), PAGE_SIZE), M_PROC,
+			M_WAITOK | M_ZERO);
+	if (p->p_upmap == NULL) {
+		upmap->header[0].type = UKPTYPE_VERSION;
+		upmap->header[0].offset = offsetof(struct sys_upmap, version);
+		upmap->header[1].type = UPTYPE_RUNTICKS;
+		upmap->header[1].offset = offsetof(struct sys_upmap, runticks);
+		upmap->header[2].type = UPTYPE_FORKID;
+		upmap->header[2].offset = offsetof(struct sys_upmap, forkid);
+		upmap->header[3].type = UPTYPE_PID;
+		upmap->header[3].offset = offsetof(struct sys_upmap, pid);
+		upmap->header[4].type = UPTYPE_PROC_TITLE;
+		upmap->header[4].offset = offsetof(struct sys_upmap,proc_title);
+
+		upmap->version = UPMAP_VERSION;
+		upmap->pid = p->p_pid;
+		upmap->forkid = p->p_forkid;
+		p->p_upmap = upmap;
+	} else {
+		kfree(upmap, M_PROC);
+	}
+	lwkt_reltoken(&p->p_token);
+}
+
+void
+proc_userunmap(struct proc *p)
+{
+	struct sys_upmap *upmap;
+
+	lwkt_gettoken(&p->p_token);
+	if ((upmap = p->p_upmap) != NULL) {
+		p->p_upmap = NULL;
+		kfree(upmap, M_PROC);
+	}
+	lwkt_reltoken(&p->p_token);
+}
+
 /*
  * Scan all processes on the allproc list.  The process is automatically
  * held for the callback.  A return value of -1 terminates the loop.
@@ -1600,11 +1643,33 @@ sysctl_kern_proc_args(SYSCTL_HANDLER_ARGS)
 		error = EPERM;
 		goto done;
 	}
-	if (req->oldptr && (pa = p->p_args) != NULL) {
-		refcount_acquire(&pa->ar_ref);
-		error = SYSCTL_OUT(req, pa->ar_args, pa->ar_length);
-		if (refcount_release(&pa->ar_ref))
-			kfree(pa, M_PARGS);
+	if (req->oldptr) {
+		if (p->p_upmap != NULL && p->p_upmap->proc_title[0]) {
+			/*
+			 * Args set via writable user process mmap.
+			 * We must calculate the string length manually
+			 * because the user data can change at any time.
+			 */
+			size_t n;
+			char *base;
+
+			base = p->p_upmap->proc_title;
+			for (n = 0; n < UPMAP_MAXPROCTITLE - 1; ++n) {
+				if (base[n] == 0)
+					break;
+			}
+			error = SYSCTL_OUT(req, base, n);
+			if (error == 0)
+				error = SYSCTL_OUT(req, "", 1);
+		} else if ((pa = p->p_args) != NULL) {
+			/*
+			 * Args set by setproctitle() sysctl.
+			 */
+			refcount_acquire(&pa->ar_ref);
+			error = SYSCTL_OUT(req, pa->ar_args, pa->ar_length);
+			if (refcount_release(&pa->ar_ref))
+				kfree(pa, M_PARGS);
+		}
 	}
 	if (req->newptr == NULL)
 		goto done;

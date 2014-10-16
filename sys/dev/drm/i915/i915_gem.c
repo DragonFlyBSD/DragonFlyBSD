@@ -701,13 +701,14 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	vm_object_hold(obj->vm_obj);
 	vm_object_reference_locked(obj->vm_obj);
 	vm_object_drop(obj->vm_obj);
-	rv = vm_map_find(map, obj->vm_obj, args->offset, &addr, args->size,
-	    PAGE_SIZE, /* align */
-	    TRUE, /* fitit */
-	    VM_MAPTYPE_NORMAL, /* maptype */
-	    VM_PROT_READ | VM_PROT_WRITE, /* prot */
-	    VM_PROT_READ | VM_PROT_WRITE, /* max */
-	    MAP_SHARED /* cow */);
+	rv = vm_map_find(map, obj->vm_obj, NULL,
+			 args->offset, &addr, args->size,
+			 PAGE_SIZE, /* align */
+			 TRUE, /* fitit */
+			 VM_MAPTYPE_NORMAL, /* maptype */
+			 VM_PROT_READ | VM_PROT_WRITE, /* prot */
+			 VM_PROT_READ | VM_PROT_WRITE, /* max */
+			 MAP_SHARED /* cow */);
 	if (rv != KERN_SUCCESS) {
 		vm_object_deallocate(obj->vm_obj);
 		error = -vm_mmap_to_errno(rv);

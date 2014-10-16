@@ -1,5 +1,37 @@
 /*
- * (MPSAFE)
+ * Copyright (c) 2003-2014 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * ---
  *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -36,8 +68,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	from: @(#)vm_fault.c	8.4 (Berkeley) 1/12/94
- *
+ * ---
  *
  * Copyright (c) 1987, 1990 Carnegie-Mellon University.
  * All rights reserved.
@@ -63,9 +94,6 @@
  *
  * any improvements or extensions that they make and grant Carnegie the
  * rights to redistribute these changes.
- *
- * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.47 2008/07/01 02:02:56 dillon Exp $
  */
 
 /*
@@ -379,6 +407,7 @@ RetryFault:
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
 	fs.object = fs.first_object;	/* so unlock_and_deallocate works */
+	fs.prot = fs.first_prot;	/* default (used by uksmap) */
 
 	if (fs.entry->eflags & (MAP_ENTRY_NOFAULT | MAP_ENTRY_KSTACK)) {
 		if (fs.entry->eflags & MAP_ENTRY_NOFAULT) {
@@ -391,6 +420,30 @@ RetryFault:
 			panic("vm_fault: fault on stack guard, addr: %p",
 			      (void *)vaddr);
 		}
+	}
+
+	/*
+	 * A user-kernel shared map has no VM object and bypasses
+	 * everything.  We execute the uksmap function with a temporary
+	 * fictitious vm_page.  The address is directly mapped with no
+	 * management.
+	 */
+	if (fs.entry->maptype == VM_MAPTYPE_UKSMAP) {
+		struct vm_page fakem;
+
+		bzero(&fakem, sizeof(fakem));
+		fakem.pindex = first_pindex;
+		fakem.flags = PG_BUSY | PG_FICTITIOUS | PG_UNMANAGED;
+		fakem.valid = VM_PAGE_BITS_ALL;
+		fakem.pat_mode = VM_MEMATTR_DEFAULT;
+		if (fs.entry->object.uksmap(fs.entry->aux.dev, &fakem)) {
+			result = KERN_FAILURE;
+			unlock_things(&fs);
+			goto done2;
+		}
+		pmap_enter(fs.map->pmap, vaddr, &fakem, fs.prot | inherit_prot,
+			   fs.wired, fs.entry);
+		goto done_success;
 	}
 
 	/*
@@ -528,9 +581,6 @@ RetryFault:
 	vm_page_flag_set(fs.m, PG_REFERENCED);
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot | inherit_prot,
 		   fs.wired, fs.entry);
-	mycpu->gd_cnt.v_vm_faults++;
-	if (curthread->td_lwp)
-		++curthread->td_lwp->lwp_ru.ru_minflt;
 
 	/*KKASSERT(fs.m->queue == PQ_NONE); page-in op may deactivate page */
 	KKASSERT(fs.m->flags & PG_BUSY);
@@ -573,6 +623,11 @@ RetryFault:
 					  fs.entry, fs.prot, fault_flags);
 		}
 	}
+
+done_success:
+	mycpu->gd_cnt.v_vm_faults++;
+	if (curthread->td_lwp)
+		++curthread->td_lwp->lwp_ru.ru_minflt;
 
 	/*
 	 * Unlock everything, and return
@@ -1984,9 +2039,21 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry,
 	pmap = vm_map_pmap(map);
 	start = entry->start;
 	end = entry->end;
-	fictitious = entry->object.vm_object &&
-			((entry->object.vm_object->type == OBJT_DEVICE) ||
-			 (entry->object.vm_object->type == OBJT_MGTDEVICE));
+	switch(entry->maptype) {
+	case VM_MAPTYPE_NORMAL:
+	case VM_MAPTYPE_VPAGETABLE:
+		fictitious = entry->object.vm_object &&
+			    ((entry->object.vm_object->type == OBJT_DEVICE) ||
+			     (entry->object.vm_object->type == OBJT_MGTDEVICE));
+		break;
+	case VM_MAPTYPE_UKSMAP:
+		fictitious = TRUE;
+		break;
+	default:
+		fictitious = FALSE;
+		break;
+	}
+
 	if (entry->eflags & MAP_ENTRY_KSTACK)
 		start += PAGE_SIZE;
 	map->timestamp++;
@@ -2390,7 +2457,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 	 * We do not currently prefault mappings that use virtual page
 	 * tables.  We do not prefault foreign pmaps.
 	 */
-	if (entry->maptype == VM_MAPTYPE_VPAGETABLE)
+	if (entry->maptype != VM_MAPTYPE_NORMAL)
 		return;
 	lp = curthread->td_lwp;
 	if (lp == NULL || (pmap != vmspace_pmap(lp->lwp_vmspace)))
@@ -2691,7 +2758,7 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 	 * We do not currently prefault mappings that use virtual page
 	 * tables.  We do not prefault foreign pmaps.
 	 */
-	if (entry->maptype == VM_MAPTYPE_VPAGETABLE)
+	if (entry->maptype != VM_MAPTYPE_NORMAL)
 		return;
 	lp = curthread->td_lwp;
 	if (lp == NULL || (pmap != vmspace_pmap(lp->lwp_vmspace)))

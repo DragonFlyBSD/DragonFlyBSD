@@ -48,6 +48,7 @@
 struct cdev;
 struct ucred;
 struct devfs_bitmap;
+struct vm_page;
 
 /*
  * This structure is at the base of every device args structure
@@ -247,7 +248,8 @@ struct dev_ops {
 	d_kqfilter_t	*d_kqfilter;
 	d_clone_t	*d_clone;	/* clone from base dev_ops */
 	d_revoke_t	*d_revoke;
-#define dev_ops_last_field	d_revoke
+	int (*d_uksmap)(struct cdev *dev, struct vm_page *fake);
+#define dev_ops_last_field	d_uksmap
 };
 
 /*

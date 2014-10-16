@@ -764,6 +764,7 @@ lwp_wait(struct lwp *lp)
 	 * will be cleared temporarily if a thread gets preempted.
 	 */
 	while ((td->td_flags & (TDF_RUNNING |
+				TDF_RUNQ |
 			        TDF_PREEMPT_LOCK |
 			        TDF_EXITING)) != TDF_EXITING) {
 		tsleep(lp, 0, "lwpwait3", 1);
@@ -788,6 +789,7 @@ lwp_dispose(struct lwp *lp)
 	KKASSERT(lwkt_preempted_proc() != lp);
 	KKASSERT(td->td_refs == 0);
 	KKASSERT((td->td_flags & (TDF_RUNNING |
+				  TDF_RUNQ |
 				  TDF_PREEMPT_LOCK |
 				  TDF_EXITING)) == TDF_EXITING);
 
@@ -984,6 +986,7 @@ loop:
 			 * the zombie list.
 			 */
 			proc_remove_zombie(p);
+			proc_userunmap(p);
 			lwkt_reltoken(&p->p_token);
 			leavepgrp(p);
 

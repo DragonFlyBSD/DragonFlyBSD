@@ -1188,6 +1188,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	vm_offset_t eaddr;
 	vm_size_t   esize;
 	vm_size_t   align;
+	int (*uksmap)(cdev_t dev, vm_page_t fake);
 	struct vnode *vp;
 	struct thread *td = curthread;
 	struct proc *p;
@@ -1276,6 +1277,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			vm_map_remove(map, *addr, *addr + size);
 	}
 
+	uksmap = NULL;
+
 	/*
 	 * Lookup/allocate object.
 	 */
@@ -1306,7 +1309,32 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		vp = NULL;
 	} else {
 		vp = (struct vnode *)handle;
+
+		/*
+		 * Non-anonymous mappings of VCHR (aka not /dev/zero)
+		 * cannot specify MAP_STACK or MAP_VPAGETABLE.
+		 */
 		if (vp->v_type == VCHR) {
+			if (flags & (MAP_STACK | MAP_VPAGETABLE)) {
+				lwkt_reltoken(&map->token);
+				return(EINVAL);
+			}
+		}
+
+		if (vp->v_type == VCHR && vp->v_rdev->si_ops->d_uksmap) {
+			/*
+			 * Device mappings without a VM object, typically
+			 * sharing permanently allocated kernel memory or
+			 * process-context-specific (per-process) data.
+			 *
+			 * Force them to be shared.
+			 */
+			uksmap = vp->v_rdev->si_ops->d_uksmap;
+			object = NULL;
+			docow = MAP_PREFAULT_PARTIAL;
+			flags &= ~(MAP_PRIVATE|MAP_COPY);
+			flags |= MAP_SHARED;
+		} else if (vp->v_type == VCHR) {
 			/*
 			 * Device mappings (device size unknown?).
 			 * Force them to be shared.
@@ -1332,7 +1360,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		} else {
 			/*
 			 * Regular file mapping (typically).  The attribute
-			 * check is for the link count test only.  Mmapble
+			 * check is for the link count test only.  mmapable
 			 * vnodes must already have a VM object assigned.
 			 */
 			struct vattr vat;
@@ -1383,6 +1411,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	/*
 	 * This may place the area in its own page directory if (size) is
 	 * large enough, otherwise it typically returns its argument.
+	 *
+	 * (object can be NULL)
 	 */
 	if (fitit) {
 		*addr = pmap_addr_hint(object, *addr, size);
@@ -1394,15 +1424,25 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	 * Mappings that use virtual page tables will default to storing
 	 * the page table at offset 0.
 	 */
-	if (flags & MAP_STACK) {
+	if (uksmap) {
+		rv = vm_map_find(map, uksmap, vp->v_rdev,
+				 foff, addr, size,
+				 align,
+				 fitit, VM_MAPTYPE_UKSMAP,
+				 prot, maxprot, docow);
+	} else if (flags & MAP_STACK) {
 		rv = vm_map_stack(map, *addr, size, flags,
 				  prot, maxprot, docow);
 	} else if (flags & MAP_VPAGETABLE) {
-		rv = vm_map_find(map, object, foff, addr, size, align,
+		rv = vm_map_find(map, object, NULL,
+				 foff, addr, size,
+				 align,
 				 fitit, VM_MAPTYPE_VPAGETABLE,
 				 prot, maxprot, docow);
 	} else {
-		rv = vm_map_find(map, object, foff, addr, size, align,
+		rv = vm_map_find(map, object, NULL,
+				 foff, addr, size,
+				 align,
 				 fitit, VM_MAPTYPE_NORMAL,
 				 prot, maxprot, docow);
 	}
@@ -1412,6 +1452,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		 * Lose the object reference. Will destroy the
 		 * object if it's an unnamed anonymous mapping
 		 * or named anonymous without other references.
+		 *
+		 * (NOTE: object can be NULL)
 		 */
 		vm_object_deallocate(object);
 		goto out;

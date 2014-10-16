@@ -2334,8 +2334,8 @@ restart:
 			}
 			if (addr) {
 				vm_map_insert(&buffer_map, &count,
-					NULL, 0,
-					addr, addr + maxsize,
+					NULL, NULL,
+					0, addr, addr + maxsize,
 					VM_MAPTYPE_NORMAL,
 					VM_PROT_ALL, VM_PROT_ALL,
 					MAP_NOFAULT);

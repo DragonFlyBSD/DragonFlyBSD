@@ -84,6 +84,7 @@
 #include <sys/signalvar.h>
 #include <sys/timex.h>
 #include <sys/timepps.h>
+#include <sys/upmap.h>
 #include <vm/vm.h>
 #include <sys/lock.h>
 #include <vm/pmap.h>
@@ -253,6 +254,10 @@ initclocks(void *dummy)
 	/*psratio = profhz / stathz;*/
 	initclocks_pcpu();
 	clocks_running = 1;
+	if (kpmap) {
+	    kpmap->tsc_freq = (uint64_t)tsc_frequency;
+	    kpmap->tick_freq = hz;
+	}
 }
 
 /*
@@ -551,6 +556,14 @@ hardclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 	     */
 	    cpu_sfence();
 	    basetime_index = ni;
+
+	    /*
+	     * Update kpmap on each tick
+	     */
+	    if (kpmap) {
+		getnanouptime(&kpmap->ts_uptime);
+		getnanotime(&kpmap->ts_realtime);
+	    }
 	}
 
 	/*
@@ -576,6 +589,9 @@ hardclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 	 */
 	if ((p = curproc) != NULL && lwkt_trytoken(&p->p_token)) {
 		crit_enter_hard();
+		if (p->p_upmap)
+			++p->p_upmap->runticks;
+
 		if (frame && CLKF_USERMODE(frame) &&
 		    timevalisset(&p->p_timer[ITIMER_VIRTUAL].it_value) &&
 		    itimerdecr(&p->p_timer[ITIMER_VIRTUAL], ustick) == 0) {

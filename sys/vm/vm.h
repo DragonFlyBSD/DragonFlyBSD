@@ -92,10 +92,17 @@ typedef u_char vm_prot_t;	/* protection codes */
 
 typedef u_char vm_maptype_t;	/* type of vm_map_entry */
 
+/*
+ * NOTE: UKSMAPs are unmanaged.  The underlying kernel memory must not be
+ *	 freed until all related mappings are gone.  There is no object.
+ *	 The device can map different things for the same UKS mapping even
+ *	 when inherited via fork().
+ */
 #define VM_MAPTYPE_UNSPECIFIED	0
 #define VM_MAPTYPE_NORMAL	1
 #define VM_MAPTYPE_VPAGETABLE	2
 #define VM_MAPTYPE_SUBMAP	3
+#define VM_MAPTYPE_UKSMAP	4	/* user-kernel shared memory */
 
 union vm_map_object;
 typedef union vm_map_object vm_map_object_t;

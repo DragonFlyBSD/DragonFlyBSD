@@ -1482,11 +1482,12 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
      */
     vm_object_hold(&kernel_object);
     vm_object_reference_locked(&kernel_object);
-    vm_map_insert(&kernel_map, &count, 
-		    &kernel_object, addr, addr, addr + size,
-		    VM_MAPTYPE_NORMAL,
-		    VM_PROT_ALL, VM_PROT_ALL,
-		    0);
+    vm_map_insert(&kernel_map, &count,
+		  &kernel_object, NULL,
+		  addr, addr, addr + size,
+		  VM_MAPTYPE_NORMAL,
+		  VM_PROT_ALL, VM_PROT_ALL,
+		  0);
     vm_object_drop(&kernel_object);
     vm_map_set_wired_quick(&kernel_map, addr, size, &count);
     vm_map_unlock(&kernel_map);

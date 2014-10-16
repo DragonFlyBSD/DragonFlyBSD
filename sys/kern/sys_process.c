@@ -85,12 +85,11 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 	vm_map_lookup_done (tmap, out_entry, 0);
 
 	/* Find space in kernel_map for the page we're interested in */
-	rv = vm_map_find (&kernel_map, object, IDX_TO_OFF(pindex),
-			  &kva,
-			  PAGE_SIZE, PAGE_SIZE,
+	rv = vm_map_find (&kernel_map, object, NULL,
+			  IDX_TO_OFF(pindex), &kva, PAGE_SIZE,
+			  PAGE_SIZE,
 			  0, VM_MAPTYPE_NORMAL,
-			  VM_PROT_ALL, VM_PROT_ALL,
-			  0);
+			  VM_PROT_ALL, VM_PROT_ALL, 0);
 
 	if (!rv) {
 		vm_object_reference XXX (object);
@@ -172,12 +171,11 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 		return EFAULT;
 
 	/* Find space in kernel_map for the page we're interested in */
-	rv = vm_map_find (&kernel_map, object, IDX_TO_OFF(pindex),
-			  &kva,
-			  PAGE_SIZE, PAGE_SIZE,
+	rv = vm_map_find (&kernel_map, object, NULL,
+			  IDX_TO_OFF(pindex), &kva, PAGE_SIZE,
+			  PAGE_SIZE,
 			  0, VM_MAPTYPE_NORMAL,
-			  VM_PROT_ALL, VM_PROT_ALL,
-			  0);
+			  VM_PROT_ALL, VM_PROT_ALL, 0);
 	if (!rv) {
 		vm_object_reference XXX (object);
 

@@ -118,18 +118,21 @@ typedef u_int vm_flags_t;
 typedef u_int vm_eflags_t;
 
 /*
- *	Objects which live in maps may be either VM objects, or
- *	another map (called a "sharing map") which denotes read-write
- *	sharing with other maps.
+ * A vm_map_entry may reference an object, a submap, a uksmap, or a
+ * direct user-kernel shared map.
  */
 union vm_map_object {
 	struct vm_object *vm_object;	/* object object */
 	struct vm_map *sub_map;		/* belongs to another map */
+	int	(*uksmap)(cdev_t dev, vm_page_t fake);
+	void	*map_object;		/* generic */
 };
 
 union vm_map_aux {
 	vm_offset_t avail_ssize;	/* amt can grow if this is a stack */
 	vpte_t master_pde;		/* virtual page table root */
+	struct cdev *dev;
+	void	*map_aux;
 };
 
 /*
@@ -534,21 +537,20 @@ void vm_map_entry_release(int);
 void vm_map_entry_krelease(int);
 vm_map_t vm_map_create (vm_map_t, struct pmap *, vm_offset_t, vm_offset_t);
 int vm_map_delete (vm_map_t, vm_offset_t, vm_offset_t, int *);
-int vm_map_find (vm_map_t, vm_object_t, vm_ooffset_t,
-		 vm_offset_t *, vm_size_t, vm_size_t,
+int vm_map_find (vm_map_t, void *, void *,
+		 vm_ooffset_t, vm_offset_t *, vm_size_t,
+		 vm_size_t,
 		 boolean_t, vm_maptype_t,
-		 vm_prot_t, vm_prot_t, 
-		 int);
+		 vm_prot_t, vm_prot_t, int);
 int vm_map_findspace (vm_map_t, vm_offset_t, vm_size_t, vm_size_t,
 		      int, vm_offset_t *);
 vm_offset_t vm_map_hint(struct proc *, vm_offset_t, vm_prot_t);
 int vm_map_inherit (vm_map_t, vm_offset_t, vm_offset_t, vm_inherit_t);
 void vm_map_init (struct vm_map *, vm_offset_t, vm_offset_t, pmap_t);
-int vm_map_insert (vm_map_t, int *, vm_object_t, vm_ooffset_t,
-		   vm_offset_t, vm_offset_t,
+int vm_map_insert (vm_map_t, int *, void *, void *,
+		   vm_ooffset_t, vm_offset_t, vm_offset_t,
 		   vm_maptype_t,
-		   vm_prot_t, vm_prot_t,
-		   int);
+		   vm_prot_t, vm_prot_t, int);
 int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t, vm_map_entry_t *, vm_object_t *,
     vm_pindex_t *, vm_prot_t *, boolean_t *);
 void vm_map_lookup_done (vm_map_t, vm_map_entry_t, int);

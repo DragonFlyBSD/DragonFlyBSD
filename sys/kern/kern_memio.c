@@ -71,8 +71,11 @@ static	d_close_t	mmclose;
 static	d_read_t	mmread;
 static	d_write_t	mmwrite;
 static	d_ioctl_t	mmioctl;
+#if 0
 static	d_mmap_t	memmmap;
+#endif
 static	d_kqfilter_t	mmkqfilter;
+static int memuksmap(cdev_t dev, vm_page_t fake);
 
 #define CDEV_MAJOR 2
 static struct dev_ops mem_ops = {
@@ -83,7 +86,10 @@ static struct dev_ops mem_ops = {
 	.d_write =	mmwrite,
 	.d_ioctl =	mmioctl,
 	.d_kqfilter =	mmkqfilter,
+#if 0
 	.d_mmap =	memmmap,
+#endif
+	.d_uksmap =	memuksmap
 };
 
 static int rand_bolt;
@@ -283,6 +289,8 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 			c = min(c, poolsize);
 			error = uiomove(buf, (int)c, uio);
 			continue;
+		/* case 5: read/write not supported, mmap only */
+		/* case 6: read/write not supported, mmap only */
 		case 12:
 			/*
 			 * minor device 12 (/dev/zero) is source of nulls 
@@ -326,45 +334,94 @@ mmwrite(struct dev_write_args *ap)
 	return(mmrw(ap->a_head.a_dev, ap->a_uio, ap->a_ioflag));
 }
 
-
-
-
-
 /*******************************************************\
 * allow user processes to MMAP some memory sections	*
 * instead of going through read/write			*
 \*******************************************************/
 
+static int user_kernel_mapping(int num, vm_ooffset_t offset,
+				vm_ooffset_t *resultp);
+
+#if 0
+
 static int
 memmmap(struct dev_mmap_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
+	vm_ooffset_t result;
+	int error;
 
 	switch (minor(dev)) {
 	case 0:
 		/* 
 		 * minor device 0 is physical memory 
 		 */
-#if defined(__i386__)
-        	ap->a_result = i386_btop(ap->a_offset);
-#elif defined(__x86_64__)
-		ap->a_result = x86_64_btop(ap->a_offset);
-#endif
-		return 0;
+		ap->a_result = atop(ap->a_offset);
+		error = 0;
+		break;
 	case 1:
 		/*
 		 * minor device 1 is kernel memory 
 		 */
-#if defined(__i386__)
-        	ap->a_result = i386_btop(vtophys(ap->a_offset));
-#elif defined(__x86_64__)
-        	ap->a_result = x86_64_btop(vtophys(ap->a_offset));
-#endif
-		return 0;
-
+		ap->a_result = atop(vtophys(ap->a_offset));
+		error = 0;
+		break;
+	case 5:
+	case 6:
+		/*
+		 * minor device 5 is /dev/upmap (see sys/upmap.h)
+		 * minor device 6 is /dev/kpmap (see sys/upmap.h)
+		 */
+		result = 0;
+		error = user_kernel_mapping(minor(dev), ap->a_offset, &result);
+		ap->a_result = atop(result);
+		break;
 	default:
-		return EINVAL;
+		error = EINVAL;
+		break;
 	}
+	return error;
+}
+
+#endif
+
+static int
+memuksmap(cdev_t dev, vm_page_t fake)
+{
+	vm_ooffset_t result;
+	int error;
+
+	switch (minor(dev)) {
+	case 0:
+		/*
+		 * minor device 0 is physical memory
+		 */
+		fake->phys_addr = ptoa(fake->pindex);
+		error = 0;
+		break;
+	case 1:
+		/*
+		 * minor device 1 is kernel memory
+		 */
+		fake->phys_addr = vtophys(ptoa(fake->pindex));
+		error = 0;
+		break;
+	case 5:
+	case 6:
+		/*
+		 * minor device 5 is /dev/upmap (see sys/upmap.h)
+		 * minor device 6 is /dev/kpmap (see sys/upmap.h)
+		 */
+		result = 0;
+		error = user_kernel_mapping(minor(dev),
+					    ptoa(fake->pindex), &result);
+		fake->phys_addr = result;
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+	return error;
 }
 
 static int
@@ -601,6 +658,47 @@ iszerodev(cdev_t dev)
 	return (zerodev == dev);
 }
 
+/*
+ * /dev/upmap and /dev/kpmap.
+ */
+static int
+user_kernel_mapping(int num, vm_ooffset_t offset, vm_ooffset_t *resultp)
+{
+	struct proc *p = curproc;
+	int error;
+
+	if (p == NULL)
+		return (EINVAL);
+	error = EINVAL;
+
+	switch(num) {
+	case 5:
+		/*
+		 * /dev/upmap - maps RW per-process shared user-kernel area.
+		 */
+		if (p->p_upmap == NULL)
+			proc_usermap(p);
+		if (p->p_upmap && offset == 0) {
+			/* only good for current process */
+			*resultp = pmap_kextract((vm_offset_t)p->p_upmap);
+			error = 0;
+		}
+		break;
+	case 6:
+		/*
+		 * /dev/kpmap - maps RO shared kernel global page
+		 */
+		if (kpmap && offset == 0) {
+			*resultp = pmap_kextract((vm_offset_t)kpmap);
+			error = 0;
+		}
+		break;
+	default:
+		break;
+	}
+	return error;
+}
+
 static void
 mem_drvinit(void *unused)
 {
@@ -614,6 +712,8 @@ mem_drvinit(void *unused)
 	make_dev(&mem_ops, 2, UID_ROOT, GID_WHEEL, 0666, "null");
 	make_dev(&mem_ops, 3, UID_ROOT, GID_WHEEL, 0644, "random");
 	make_dev(&mem_ops, 4, UID_ROOT, GID_WHEEL, 0644, "urandom");
+	make_dev(&mem_ops, 5, UID_ROOT, GID_WHEEL, 0666, "upmap");
+	make_dev(&mem_ops, 6, UID_ROOT, GID_WHEEL, 0444, "kpmap");
 	zerodev = make_dev(&mem_ops, 12, UID_ROOT, GID_WHEEL, 0666, "zero");
 	make_dev(&mem_ops, 14, UID_ROOT, GID_WHEEL, 0600, "io");
 }

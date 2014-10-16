@@ -965,18 +965,22 @@ vm_map_lookup_entry(vm_map_t map, vm_offset_t address, vm_map_entry_t *entry)
  * making call to account for the new entry.
  */
 int
-vm_map_insert(vm_map_t map, int *countp,
-	      vm_object_t object, vm_ooffset_t offset,
-	      vm_offset_t start, vm_offset_t end,
+vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
+	      vm_ooffset_t offset, vm_offset_t start, vm_offset_t end,
 	      vm_maptype_t maptype,
-	      vm_prot_t prot, vm_prot_t max,
-	      int cow)
+	      vm_prot_t prot, vm_prot_t max, int cow)
 {
 	vm_map_entry_t new_entry;
 	vm_map_entry_t prev_entry;
 	vm_map_entry_t temp_entry;
 	vm_eflags_t protoeflags;
 	int must_drop = 0;
+	vm_object_t object;
+
+	if (maptype == VM_MAPTYPE_UKSMAP)
+		object = NULL;
+	else
+		object = map_object;
 
 	ASSERT_VM_MAP_LOCKED(map);
 	if (object)
@@ -1048,6 +1052,7 @@ vm_map_insert(vm_map_t map, int *countp,
 		 (prev_entry->end == start) &&
 		 (prev_entry->wired_count == 0) &&
 		 prev_entry->maptype == maptype &&
+		 maptype == VM_MAPTYPE_NORMAL &&
 		 ((prev_entry->object.vm_object == NULL) ||
 		  vm_object_coalesce(prev_entry->object.vm_object,
 				     OFF_TO_IDX(prev_entry->offset),
@@ -1101,9 +1106,10 @@ vm_map_insert(vm_map_t map, int *countp,
 
 	new_entry->maptype = maptype;
 	new_entry->eflags = protoeflags;
-	new_entry->object.vm_object = object;
+	new_entry->object.map_object = map_object;
+	new_entry->aux.master_pde = 0;		/* in case size is different */
+	new_entry->aux.map_aux = map_aux;
 	new_entry->offset = offset;
-	new_entry->aux.master_pde = 0;
 
 	new_entry->inheritance = VM_INHERIT_DEFAULT;
 	new_entry->protection = prot;
@@ -1145,7 +1151,8 @@ vm_map_insert(vm_map_t map, int *countp,
 	 * don't try.
 	 */
 	if ((cow & (MAP_PREFAULT|MAP_PREFAULT_PARTIAL)) &&
-	    maptype != VM_MAPTYPE_VPAGETABLE) {
+	    maptype != VM_MAPTYPE_VPAGETABLE &&
+	    maptype != VM_MAPTYPE_UKSMAP) {
 		int dorelock = 0;
 		if (vm_map_relock_enable && (cow & MAP_PREFAULT_RELOCK)) {
 			dorelock = 1;
@@ -1306,16 +1313,23 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
  * No requirements.  This function will lock the map temporarily.
  */
 int
-vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
-	    vm_offset_t *addr,	vm_size_t length, vm_size_t align,
+vm_map_find(vm_map_t map, void *map_object, void *map_aux,
+	    vm_ooffset_t offset, vm_offset_t *addr,
+	    vm_size_t length, vm_size_t align,
 	    boolean_t fitit,
 	    vm_maptype_t maptype,
 	    vm_prot_t prot, vm_prot_t max,
 	    int cow)
 {
 	vm_offset_t start;
+	vm_object_t object;
 	int result;
 	int count;
+
+	if (maptype == VM_MAPTYPE_UKSMAP)
+		object = NULL;
+	else
+		object = map_object;
 
 	start = *addr;
 
@@ -1333,11 +1347,9 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 		}
 		start = *addr;
 	}
-	result = vm_map_insert(map, &count, object, offset,
-			       start, start + length,
-			       maptype,
-			       prot, max,
-			       cow);
+	result = vm_map_insert(map, &count, map_object, map_aux,
+			       offset, start, start + length,
+			       maptype, prot, max, cow);
 	if (object)
 		vm_object_drop(object);
 	vm_map_unlock(map);
@@ -1369,6 +1381,8 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 	}
 
 	if (entry->maptype == VM_MAPTYPE_SUBMAP)
+		return;
+	if (entry->maptype == VM_MAPTYPE_UKSMAP)
 		return;
 
 	prev = entry->prev;
@@ -2205,7 +2219,8 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 			 * management structures and the faulting in of the
 			 * page.
 			 */
-			if (entry->maptype != VM_MAPTYPE_SUBMAP) {
+			if (entry->maptype == VM_MAPTYPE_NORMAL ||
+			    entry->maptype == VM_MAPTYPE_VPAGETABLE) {
 				int copyflag = entry->eflags &
 					       MAP_ENTRY_NEEDS_COPY;
 				if (copyflag && ((entry->protection &
@@ -2402,7 +2417,8 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 			 * do not have to do this for entries that point to sub
 			 * maps because we won't hold the lock on the sub map.
 			 */
-			if (entry->maptype != VM_MAPTYPE_SUBMAP) {
+			if (entry->maptype == VM_MAPTYPE_NORMAL ||
+			    entry->maptype == VM_MAPTYPE_VPAGETABLE) {
 				int copyflag = entry->eflags &
 					       MAP_ENTRY_NEEDS_COPY;
 				if (copyflag && ((entry->protection &
@@ -2612,7 +2628,10 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	for (current = entry; current->start < end; current = current->next) {
 		offset = current->offset + (start - current->start);
 		size = (end <= current->end ? end : current->end) - start;
-		if (current->maptype == VM_MAPTYPE_SUBMAP) {
+
+		switch(current->maptype) {
+		case VM_MAPTYPE_SUBMAP:
+		{
 			vm_map_t smap;
 			vm_map_entry_t tentry;
 			vm_size_t tsize;
@@ -2626,8 +2645,15 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			object = tentry->object.vm_object;
 			offset = tentry->offset + (offset - tentry->start);
 			vm_map_unlock_read(smap);
-		} else {
+			break;
+		}
+		case VM_MAPTYPE_NORMAL:
+		case VM_MAPTYPE_VPAGETABLE:
 			object = current->object.vm_object;
+			break;
+		default:
+			object = NULL;
+			break;
 		}
 
 		if (object)
@@ -2759,7 +2785,11 @@ vm_map_entry_delete(vm_map_t map, vm_map_entry_t entry, int *countp)
 	switch(entry->maptype) {
 	case VM_MAPTYPE_NORMAL:
 	case VM_MAPTYPE_VPAGETABLE:
+	case VM_MAPTYPE_SUBMAP:
 		vm_object_deallocate(entry->object.vm_object);
+		break;
+	case VM_MAPTYPE_UKSMAP:
+		/* XXX TODO */
 		break;
 	default:
 		break;
@@ -2847,7 +2877,17 @@ again:
 
 		offidxstart = OFF_TO_IDX(entry->offset);
 		count = OFF_TO_IDX(e - s);
-		object = entry->object.vm_object;
+
+		switch(entry->maptype) {
+		case VM_MAPTYPE_NORMAL:
+		case VM_MAPTYPE_VPAGETABLE:
+		case VM_MAPTYPE_SUBMAP:
+			object = entry->object.vm_object;
+			break;
+		default:
+			object = NULL;
+			break;
+		}
 
 		/*
 		 * Unwire before removing addresses from the pmap; otherwise,
@@ -3260,9 +3300,11 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 {
 	vm_object_t src_object;
 
-	if (dst_entry->maptype == VM_MAPTYPE_SUBMAP)
+	if (dst_entry->maptype == VM_MAPTYPE_SUBMAP ||
+	    dst_entry->maptype == VM_MAPTYPE_UKSMAP)
 		return;
-	if (src_entry->maptype == VM_MAPTYPE_SUBMAP)
+	if (src_entry->maptype == VM_MAPTYPE_SUBMAP ||
+	    src_entry->maptype == VM_MAPTYPE_UKSMAP)
 		return;
 
 	if (src_entry->wired_count == 0) {
@@ -3330,6 +3372,11 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
  * The source map must not be locked.
  * No requirements.
  */
+static void vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
+			  vm_map_entry_t old_entry, int *countp);
+static void vmspace_fork_uksmap_entry(vm_map_t old_map, vm_map_t new_map,
+			  vm_map_entry_t old_entry, int *countp);
+
 struct vmspace *
 vmspace_fork(struct vmspace *vm1)
 {
@@ -3337,8 +3384,6 @@ vmspace_fork(struct vmspace *vm1)
 	vm_map_t old_map = &vm1->vm_map;
 	vm_map_t new_map;
 	vm_map_entry_t old_entry;
-	vm_map_entry_t new_entry;
-	vm_object_t object;
 	int count;
 
 	lwkt_gettoken(&vm1->vm_map.token);
@@ -3364,98 +3409,18 @@ vmspace_fork(struct vmspace *vm1)
 
 	old_entry = old_map->header.next;
 	while (old_entry != &old_map->header) {
-		if (old_entry->maptype == VM_MAPTYPE_SUBMAP)
+		switch(old_entry->maptype) {
+		case VM_MAPTYPE_SUBMAP:
 			panic("vm_map_fork: encountered a submap");
-
-		switch (old_entry->inheritance) {
-		case VM_INHERIT_NONE:
 			break;
-		case VM_INHERIT_SHARE:
-			/*
-			 * Clone the entry, creating the shared object if
-			 * necessary.
-			 */
-			if (old_entry->object.vm_object == NULL)
-				vm_map_entry_allocate_object(old_entry);
-
-			if (old_entry->eflags & MAP_ENTRY_NEEDS_COPY) {
-				/*
-				 * Shadow a map_entry which needs a copy,
-				 * replacing its object with a new object
-				 * that points to the old one.  Ask the
-				 * shadow code to automatically add an
-				 * additional ref.  We can't do it afterwords
-				 * because we might race a collapse.  The call
-				 * to vm_map_entry_shadow() will also clear
-				 * OBJ_ONEMAPPING.
-				 */
-				vm_map_entry_shadow(old_entry, 1);
-			} else if (old_entry->object.vm_object) {
-				/*
-				 * We will make a shared copy of the object,
-				 * and must clear OBJ_ONEMAPPING.
-				 *
-				 * Optimize vnode objects.  OBJ_ONEMAPPING
-				 * is non-applicable but clear it anyway,
-				 * and its terminal so we don'th ave to deal
-				 * with chains.  Reduces SMP conflicts.
-				 *
-				 * XXX assert that object.vm_object != NULL
-				 *     since we allocate it above.
-				 */
-				object = old_entry->object.vm_object;
-				if (object->type == OBJT_VNODE) {
-					vm_object_reference_quick(object);
-					vm_object_clear_flag(object,
-							     OBJ_ONEMAPPING);
-				} else {
-					vm_object_hold(object);
-					vm_object_chain_wait(object, 0);
-					vm_object_reference_locked(object);
-					vm_object_clear_flag(object,
-							     OBJ_ONEMAPPING);
-					vm_object_drop(object);
-				}
-			}
-
-			/*
-			 * Clone the entry.  We've already bumped the ref on
-			 * any vm_object.
-			 */
-			new_entry = vm_map_entry_create(new_map, &count);
-			*new_entry = *old_entry;
-			new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
-			new_entry->wired_count = 0;
-
-			/*
-			 * Insert the entry into the new map -- we know we're
-			 * inserting at the end of the new map.
-			 */
-
-			vm_map_entry_link(new_map, new_map->header.prev,
-					  new_entry);
-
-			/*
-			 * Update the physical map
-			 */
-			pmap_copy(new_map->pmap, old_map->pmap,
-				  new_entry->start,
-				  (old_entry->end - old_entry->start),
-				  old_entry->start);
+		case VM_MAPTYPE_UKSMAP:
+			vmspace_fork_uksmap_entry(old_map, new_map,
+						  old_entry, &count);
 			break;
-		case VM_INHERIT_COPY:
-			/*
-			 * Clone the entry and link into the map.
-			 */
-			new_entry = vm_map_entry_create(new_map, &count);
-			*new_entry = *old_entry;
-			new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
-			new_entry->wired_count = 0;
-			new_entry->object.vm_object = NULL;
-			vm_map_entry_link(new_map, new_map->header.prev,
-					  new_entry);
-			vm_map_copy_entry(old_map, new_map, old_entry,
-					  new_entry);
+		case VM_MAPTYPE_NORMAL:
+		case VM_MAPTYPE_VPAGETABLE:
+			vmspace_fork_normal_entry(old_map, new_map,
+						  old_entry, &count);
 			break;
 		}
 		old_entry = old_entry->next;
@@ -3470,6 +3435,126 @@ vmspace_fork(struct vmspace *vm1)
 	lwkt_reltoken(&vm1->vm_map.token);
 
 	return (vm2);
+}
+
+static
+void
+vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
+			  vm_map_entry_t old_entry, int *countp)
+{
+	vm_map_entry_t new_entry;
+	vm_object_t object;
+
+	switch (old_entry->inheritance) {
+	case VM_INHERIT_NONE:
+		break;
+	case VM_INHERIT_SHARE:
+		/*
+		 * Clone the entry, creating the shared object if
+		 * necessary.
+		 */
+		if (old_entry->object.vm_object == NULL)
+			vm_map_entry_allocate_object(old_entry);
+
+		if (old_entry->eflags & MAP_ENTRY_NEEDS_COPY) {
+			/*
+			 * Shadow a map_entry which needs a copy,
+			 * replacing its object with a new object
+			 * that points to the old one.  Ask the
+			 * shadow code to automatically add an
+			 * additional ref.  We can't do it afterwords
+			 * because we might race a collapse.  The call
+			 * to vm_map_entry_shadow() will also clear
+			 * OBJ_ONEMAPPING.
+			 */
+			vm_map_entry_shadow(old_entry, 1);
+		} else if (old_entry->object.vm_object) {
+			/*
+			 * We will make a shared copy of the object,
+			 * and must clear OBJ_ONEMAPPING.
+			 *
+			 * Optimize vnode objects.  OBJ_ONEMAPPING
+			 * is non-applicable but clear it anyway,
+			 * and its terminal so we don'th ave to deal
+			 * with chains.  Reduces SMP conflicts.
+			 *
+			 * XXX assert that object.vm_object != NULL
+			 *     since we allocate it above.
+			 */
+			object = old_entry->object.vm_object;
+			if (object->type == OBJT_VNODE) {
+				vm_object_reference_quick(object);
+				vm_object_clear_flag(object,
+						     OBJ_ONEMAPPING);
+			} else {
+				vm_object_hold(object);
+				vm_object_chain_wait(object, 0);
+				vm_object_reference_locked(object);
+				vm_object_clear_flag(object,
+						     OBJ_ONEMAPPING);
+				vm_object_drop(object);
+			}
+		}
+
+		/*
+		 * Clone the entry.  We've already bumped the ref on
+		 * any vm_object.
+		 */
+		new_entry = vm_map_entry_create(new_map, countp);
+		*new_entry = *old_entry;
+		new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
+		new_entry->wired_count = 0;
+
+		/*
+		 * Insert the entry into the new map -- we know we're
+		 * inserting at the end of the new map.
+		 */
+
+		vm_map_entry_link(new_map, new_map->header.prev,
+				  new_entry);
+
+		/*
+		 * Update the physical map
+		 */
+		pmap_copy(new_map->pmap, old_map->pmap,
+			  new_entry->start,
+			  (old_entry->end - old_entry->start),
+			  old_entry->start);
+		break;
+	case VM_INHERIT_COPY:
+		/*
+		 * Clone the entry and link into the map.
+		 */
+		new_entry = vm_map_entry_create(new_map, countp);
+		*new_entry = *old_entry;
+		new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
+		new_entry->wired_count = 0;
+		new_entry->object.vm_object = NULL;
+		vm_map_entry_link(new_map, new_map->header.prev,
+				  new_entry);
+		vm_map_copy_entry(old_map, new_map, old_entry,
+				  new_entry);
+		break;
+	}
+}
+
+/*
+ * When forking user-kernel shared maps, the map might change in the
+ * child so do not try to copy the underlying pmap entries.
+ */
+static
+void
+vmspace_fork_uksmap_entry(vm_map_t old_map, vm_map_t new_map,
+			  vm_map_entry_t old_entry, int *countp)
+{
+	vm_map_entry_t new_entry;
+
+	new_entry = vm_map_entry_create(new_map, countp);
+	*new_entry = *old_entry;
+	new_entry->eflags &= ~MAP_ENTRY_USER_WIRED;
+	new_entry->wired_count = 0;
+	vm_map_entry_link(new_map, new_map->header.prev,
+			  new_entry);
 }
 
 /*
@@ -3555,12 +3640,11 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	 * eliminate these as input parameters, and just
 	 * pass these values here in the insert call.
 	 */
-	rv = vm_map_insert(map, &count,
-			   NULL, 0, addrbos + max_ssize - init_ssize,
+	rv = vm_map_insert(map, &count, NULL, NULL,
+			   0, addrbos + max_ssize - init_ssize,
 	                   addrbos + max_ssize,
 			   VM_MAPTYPE_NORMAL,
-			   prot, max,
-			   cow);
+			   prot, max, cow);
 
 	/* Now set the avail_ssize amount */
 	if (rv == KERN_SUCCESS) {
@@ -3710,11 +3794,10 @@ Retry:
 		addr = end;
 	}
 
-	rv = vm_map_insert(map, &count,
-			   NULL, 0, addr, stack_entry->start,
+	rv = vm_map_insert(map, &count, NULL, NULL,
+			   0, addr, stack_entry->start,
 			   VM_MAPTYPE_NORMAL,
-			   VM_PROT_ALL, VM_PROT_ALL,
-			   0);
+			   VM_PROT_ALL, VM_PROT_ALL, 0);
 
 	/* Adjust the available stack space by the amount we grew. */
 	if (rv == KERN_SUCCESS) {
@@ -3993,6 +4076,15 @@ RetryLookup:
 	}
 
 	/*
+	 * Only NORMAL and VPAGETABLE maps are object-based.  UKSMAPs are not.
+	 */
+	if (entry->maptype != VM_MAPTYPE_NORMAL &&
+	    entry->maptype != VM_MAPTYPE_VPAGETABLE) {
+		*object = NULL;
+		goto skip;
+	}
+
+	/*
 	 * If the entry was copy-on-write, we either ...
 	 */
 	if (entry->eflags & MAP_ENTRY_NEEDS_COPY) {
@@ -4047,9 +4139,10 @@ RetryLookup:
 	 * Return the object/offset from this entry.  If the entry was
 	 * copy-on-write or empty, it has been fixed up.
 	 */
-
-	*pindex = OFF_TO_IDX((vaddr - entry->start) + entry->offset);
 	*object = entry->object.vm_object;
+
+skip:
+	*pindex = OFF_TO_IDX((vaddr - entry->start) + entry->offset);
 
 	/*
 	 * Return whether this is the only map sharing this data.  On
@@ -4129,7 +4222,8 @@ DB_SHOW_COMMAND(map, vm_map_print)
 			if (entry->wired_count != 0)
 				db_printf(", wired");
 		}
-		if (entry->maptype == VM_MAPTYPE_SUBMAP) {
+		switch(entry->maptype) {
+		case VM_MAPTYPE_SUBMAP:
 			/* XXX no %qd in kernel.  Truncate entry->offset. */
 			db_printf(", share=%p, offset=0x%lx\n",
 			    (void *)entry->object.sub_map,
@@ -4144,7 +4238,9 @@ DB_SHOW_COMMAND(map, vm_map_print)
 					     full, 0, NULL);
 				db_indent -= 2;
 			}
-		} else {
+			break;
+		case VM_MAPTYPE_NORMAL:
+		case VM_MAPTYPE_VPAGETABLE:
 			/* XXX no %qd in kernel.  Truncate entry->offset. */
 			db_printf(", object=%p, offset=0x%lx",
 			    (void *)entry->object.vm_object,
@@ -4165,6 +4261,19 @@ DB_SHOW_COMMAND(map, vm_map_print)
 				nlines += 4;
 				db_indent -= 2;
 			}
+			break;
+		case VM_MAPTYPE_UKSMAP:
+			db_printf(", uksmap=%p, offset=0x%lx",
+			    (void *)entry->object.uksmap,
+			    (long)entry->offset);
+			if (entry->eflags & MAP_ENTRY_COW)
+				db_printf(", copy (%s)",
+				    (entry->eflags & MAP_ENTRY_NEEDS_COPY) ? "needed" : "done");
+			db_printf("\n");
+			nlines++;
+			break;
+		default:
+			break;
 		}
 	}
 	db_indent -= 2;

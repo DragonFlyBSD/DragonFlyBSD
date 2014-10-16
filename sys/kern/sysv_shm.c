@@ -329,13 +329,12 @@ again:
 	vm_object_chain_wait(shm_handle->shm_object, 0);
 	vm_object_reference_locked(shm_handle->shm_object);
 	rv = vm_map_find(&p->p_vmspace->vm_map, 
-			 shm_handle->shm_object, 0,
-			 &attach_va,
-			 size, align,
+			 shm_handle->shm_object, NULL,
+			 0, &attach_va, size,
+			 align,
 			 ((flags & MAP_FIXED) ? 0 : 1), 
 			 VM_MAPTYPE_NORMAL,
-			 prot, prot,
-			 0);
+			 prot, prot, 0);
 	vm_object_drop(shm_handle->shm_object);
 	if (rv != KERN_SUCCESS) {
                 vm_object_deallocate(shm_handle->shm_object);

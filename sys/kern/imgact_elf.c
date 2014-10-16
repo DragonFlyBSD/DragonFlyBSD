@@ -304,7 +304,7 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 		vm_map_lock(&vmspace->vm_map);
 		rv = vm_map_insert(&vmspace->vm_map, &count,
-				      object,
+				      object, NULL,
 				      file_addr,	/* file offset */
 				      map_addr,		/* virtual start */
 				      map_addr + map_len,/* virtual end */
@@ -346,8 +346,10 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 		vm_map_lock(&vmspace->vm_map);
 		rv = vm_map_insert(&vmspace->vm_map, &count,
-					NULL, 0,
-					map_addr, map_addr + map_len,
+					NULL, NULL,
+					0,
+					map_addr,
+					map_addr + map_len,
 					VM_MAPTYPE_NORMAL,
 					VM_PROT_ALL, VM_PROT_ALL,
 					0);

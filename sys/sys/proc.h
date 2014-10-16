@@ -34,11 +34,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	@(#)proc.h	8.15 (Berkeley) 5/19/95
- * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
  */
-
 #ifndef _SYS_PROC_H_
 #define	_SYS_PROC_H_
 
@@ -55,6 +51,7 @@
 #include <sys/rtprio.h>			/* For struct rtprio. */
 #include <sys/signal.h>
 #include <sys/lock.h>
+#include <sys/upmap.h>
 #ifndef _KERNEL
 #include <sys/time.h>			/* For structs itimerval, timeval. */
 #endif
@@ -344,6 +341,9 @@ struct	proc {
 	void		*p_vmm;
 	cpulock_t	p_vmm_cpulock;	/* count cpus in and kickout lock */
 	cpumask_t	p_vmm_cpumask;	/* cpus entering or in vmm */
+	struct sys_upmap *p_upmap;	/* user RO mappable per-process page */
+	forkid_t	p_forkid;	/* unique forkid */
+	void		*p_reserveds[4]; /* reserved for future */
 };
 
 #define lwp_wchan	lwp_thread->td_wchan
@@ -575,6 +575,8 @@ void	prelezomb (struct proc *);
 void	pstall (struct proc *, const char *, int);
 void	lwpuserret(struct lwp *);
 void	lwpkthreaddeferred(void);
+void	proc_usermap(struct proc *p);
+void	proc_userunmap(struct proc *p);
 
 u_int32_t	procrunnable (void);
 

@@ -321,12 +321,11 @@ pipespace(struct pipe *cpipe, int size)
 		object = vm_object_allocate(OBJT_DEFAULT, npages);
 		buffer = (caddr_t)vm_map_min(&kernel_map);
 
-		error = vm_map_find(&kernel_map, object, 0,
-				    (vm_offset_t *)&buffer,
-				    size, PAGE_SIZE,
+		error = vm_map_find(&kernel_map, object, NULL,
+				    0, (vm_offset_t *)&buffer, size,
+				    PAGE_SIZE,
 				    1, VM_MAPTYPE_NORMAL,
-				    VM_PROT_ALL, VM_PROT_ALL,
-				    0);
+				    VM_PROT_ALL, VM_PROT_ALL, 0);
 
 		if (error != KERN_SUCCESS) {
 			vm_object_deallocate(object);

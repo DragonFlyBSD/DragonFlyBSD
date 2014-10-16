@@ -172,7 +172,10 @@ struct globaldata {
 	struct lwkt_tokref gd_handoff;		/* hand-off tokref */
 	void		*gd_delayed_wakeup[2];
 	void		*gd_sample_pc;		/* sample program ctr/tr */
-	void		*gd_preserved[5];	/* future fields */
+	void		*gd_reserved_pcpu_mmap; /* future */
+	uint64_t	gd_forkid;		/* per-cpu unique inc ncpus */
+	uint64_t	gd_reserved64[4];
+	void		*gd_preserved[4];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 
