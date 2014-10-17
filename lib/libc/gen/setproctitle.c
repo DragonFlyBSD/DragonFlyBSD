@@ -35,6 +35,7 @@
 #include "un-namespace.h"
 
 #include "libc_private.h"
+#include "../upmap/upmap.h"
 
 /*
  * Older FreeBSD 2.0, 2.1 and 2.2 had different ps_strings structures and
@@ -75,6 +76,11 @@ setproctitle(const char *fmt, ...)
 	unsigned long ul_ps_strings;
 	int oid[4];
 
+	va_start(ap, fmt);
+
+	if (__ukp_spt(fmt, ap) == 0)
+		return;
+
 	if (buf == NULL) {
 		buf = malloc(SPT_BUFSIZE);
 		if (buf == NULL)
@@ -88,8 +94,6 @@ setproctitle(const char *fmt, ...)
 			return;
 		*obuf = '\0';
 	}
-
-	va_start(ap, fmt);
 
 	if (fmt) {
 		buf[SPT_BUFSIZE - 1] = '\0';

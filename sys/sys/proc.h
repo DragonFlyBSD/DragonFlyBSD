@@ -575,7 +575,7 @@ void	prelezomb (struct proc *);
 void	pstall (struct proc *, const char *, int);
 void	lwpuserret(struct lwp *);
 void	lwpkthreaddeferred(void);
-void	proc_usermap(struct proc *p);
+void	proc_usermap(struct proc *p, int invfork);
 void	proc_userunmap(struct proc *p);
 
 u_int32_t	procrunnable (void);

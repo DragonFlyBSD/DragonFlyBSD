@@ -675,11 +675,33 @@ iszerodev(cdev_t dev)
 static int
 user_kernel_mapping(int num, vm_ooffset_t offset, vm_ooffset_t *resultp)
 {
-	struct proc *p = curproc;
+	struct proc *p;
 	int error;
+	int invfork;
 
-	if (p == NULL)
+	if ((p = curproc) == NULL)
 		return (EINVAL);
+
+	/*
+	 * If this is a child currently in vfork the pmap is shared with
+	 * the parent!  We need to actually set-up the parent's p_upmap,
+	 * not the child's, and we need to set the invfork flag.  Userland
+	 * will probably adjust its static state so it must be consistent
+	 * with the parent or userland will be really badly confused.
+	 *
+	 * (this situation can happen when user code in vfork() calls
+	 *  libc's getpid() or some other function which then decides
+	 *  it wants the upmap).
+	 */
+	if (p->p_flags & P_PPWAIT) {
+		p = p->p_pptr;
+		if (p == NULL)
+			return (EINVAL);
+		invfork = 1;
+	} else {
+		invfork = 0;
+	}
+
 	error = EINVAL;
 
 	switch(num) {
@@ -688,7 +710,10 @@ user_kernel_mapping(int num, vm_ooffset_t offset, vm_ooffset_t *resultp)
 		 * /dev/upmap - maps RW per-process shared user-kernel area.
 		 */
 		if (p->p_upmap == NULL)
-			proc_usermap(p);
+			proc_usermap(p, invfork);
+		else if (invfork)
+			p->p_upmap->invfork = invfork;
+
 		if (p->p_upmap &&
 		    offset < roundup2(sizeof(*p->p_upmap), PAGE_SIZE)) {
 			/* only good for current process */

@@ -71,6 +71,7 @@ typedef struct ukpheader {
 
 #define UKPLEN_TS		((sizeof(struct timespec) == 8) ? \
 					UKPLEN_16 : UKPLEN_32)
+#define UKPLEN_DECODE(type)	(1 << ((type >> 8) & 0x0F))
 
 #define UKPTYPE_VERSION		(0x0001 | UKPLEN_4)	/* always first */
 
@@ -78,12 +79,13 @@ typedef struct ukpheader {
 #define UPTYPE_FORKID		(0x0011 | UKPLEN_8)
 #define UPTYPE_PID		(0x0012 | UKPLEN_4)
 #define UPTYPE_PROC_TITLE	(0x0013 | UKPLEN_1024)
+#define UPTYPE_INVFORK		(0x0014 | UKPLEN_4)
 
 #define KPTYPE_UPTICKS		(0x8000 | UKPLEN_4)
 #define KPTYPE_TS_UPTIME	(0x8001 | UKPLEN_TS)
 #define KPTYPE_TS_REALTIME	(0x8002 | UKPLEN_TS)
 #define KPTYPE_TSC_FREQ		(0x8003 | UKPLEN_8)
-#define KPTYPE_TICK_FREQ	(0x8003 | UKPLEN_8)
+#define KPTYPE_TICK_FREQ	(0x8004 | UKPLEN_8)
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -100,7 +102,7 @@ struct sys_upmap {
 	uint32_t	version;
 	uint32_t	runticks;	/* running scheduler ticks */
 	forkid_t	forkid;		/* unique 2^64 (fork detect) NOT MONO */
-	uint32_t	unused01;	/* cpu migrations (kpmap detect) */
+	uint32_t	invfork;	/* vfork active */
 	pid_t		pid;		/* process id */
 	uint32_t	reserved[16];
 	char		proc_title[UPMAP_MAXPROCTITLE];

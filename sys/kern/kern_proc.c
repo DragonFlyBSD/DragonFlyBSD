@@ -1155,7 +1155,7 @@ lwpkthreaddeferred(void)
 }
 
 void
-proc_usermap(struct proc *p)
+proc_usermap(struct proc *p, int invfork)
 {
 	struct sys_upmap *upmap;
 
@@ -1173,10 +1173,13 @@ proc_usermap(struct proc *p)
 		upmap->header[3].offset = offsetof(struct sys_upmap, pid);
 		upmap->header[4].type = UPTYPE_PROC_TITLE;
 		upmap->header[4].offset = offsetof(struct sys_upmap,proc_title);
+		upmap->header[5].type = UPTYPE_INVFORK;
+		upmap->header[5].offset = offsetof(struct sys_upmap, invfork);
 
 		upmap->version = UPMAP_VERSION;
 		upmap->pid = p->p_pid;
 		upmap->forkid = p->p_forkid;
+		upmap->invfork = invfork;
 		p->p_upmap = upmap;
 	} else {
 		kfree(upmap, M_PROC);

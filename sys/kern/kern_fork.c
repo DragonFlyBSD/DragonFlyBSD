@@ -499,8 +499,12 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	p2->p_flags |= p1->p_flags & P_SUGID;
 	if (p1->p_session->s_ttyvp != NULL && (p1->p_flags & P_CONTROLT))
 		p2->p_flags |= P_CONTROLT;
-	if (flags & RFPPWAIT)
+	if (flags & RFPPWAIT) {
 		p2->p_flags |= P_PPWAIT;
+		if (p1->p_upmap)
+			p1->p_upmap->invfork = 1;
+	}
+
 
 	/*
 	 * Inherit the virtual kernel structure (allows a virtual kernel
