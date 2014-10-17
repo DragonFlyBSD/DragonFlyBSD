@@ -50,6 +50,7 @@
 #include <net/bpf.h>
 #include <net/if_arp.h>
 #include <net/ifq_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #include <netinet/in_var.h>
 
@@ -361,6 +362,7 @@ vke_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	count = 0;
 	while ((m = ifsq_dequeue(ifsq)) != NULL) {
 		if (vke_txfifo_enqueue(sc, m) != -1) {
+			ETHER_BPF_MTAP(ifp, m);
 			if (count++ == VKE_CHUNK) {
 				cothread_lock(cotd, 0);
 				cothread_signal(cotd);
