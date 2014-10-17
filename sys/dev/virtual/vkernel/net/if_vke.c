@@ -49,6 +49,7 @@
 #include <net/if.h>
 #include <net/bpf.h>
 #include <net/if_arp.h>
+#include <net/if_media.h>
 #include <net/ifq_var.h>
 #include <net/vlan/if_vlan_ether.h>
 
@@ -117,11 +118,16 @@ struct vke_softc {
 	int			sc_tap_unit;	/* unit of backend tap(4) */
 	in_addr_t		sc_addr;	/* address */
 	in_addr_t		sc_mask;	/* netmask */
+
+	struct ifmedia		sc_media;
 };
 
 static void	vke_start(struct ifnet *, struct ifaltq_subque *);
 static void	vke_init(void *);
 static int	vke_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
+
+static int	vke_media_change(struct ifnet *);
+static void	vke_media_status(struct ifnet *, struct ifmediareq *);
 
 static int	vke_attach(const struct vknetif_info *, int);
 static int	vke_stop(struct vke_softc *);
@@ -384,6 +390,7 @@ static int
 vke_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct vke_softc *sc = ifp->if_softc;
+	struct ifreq *ifr = (struct ifreq *)data;
 	int error = 0;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
@@ -400,8 +407,7 @@ vke_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 	case SIOCGIFMEDIA:
 	case SIOCSIFMEDIA:
-		error = EOPNOTSUPP;
-		/* TODO */
+		error = ifmedia_ioctl(ifp, ifr, &sc->sc_media, cmd);
 		break;
 	case SIOCGIFSTATUS: {
 		struct ifstat *ifs = (struct ifstat *)data;
@@ -830,7 +836,44 @@ vke_attach(const struct vknetif_info *info, int unit)
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifq_set_ready(&ifp->if_snd);
 
-	/* TODO: if_media */
+	ifmedia_init(&sc->sc_media, 0, vke_media_change, vke_media_status);
+	/* We support as many media types as we please for
+	   debugging purposes */
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_T, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_T | IFM_FDX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_2, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_5, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_TX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_TX | IFM_FDX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_FX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_T4, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_VG, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_100_T2, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_FX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_STP, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10_FL, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_SX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_LX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_CX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_T, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_HPNA_1, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_LR, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_SR, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_CX4, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_2500_SX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_TWINAX, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_TWINAX_LONG, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_LRM, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_10G_T, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_40G_CR4, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_40G_SR4, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_40G_LR4, 0, NULL);
+	ifmedia_add(&sc->sc_media, IFM_ETHER | IFM_AUTO, 0, NULL);
+
+	ifmedia_set(&sc->sc_media, IFM_ETHER | IFM_AUTO);
+
+	ifp->if_link_state = LINK_STATE_UP;
 
 	ether_ifattach(ifp, enaddr, NULL);
 
@@ -882,4 +925,28 @@ vke_init_addr(struct ifnet *ifp, in_addr_t addr, in_addr_t mask)
 	ifnet_serialize_all(ifp);
 
 	return ret;
+}
+
+static int vke_media_change(struct ifnet *ifp)
+{
+	/* ignored */
+	return(0);
+}
+
+static void vke_media_status(struct ifnet *ifp, struct ifmediareq *imr)
+{
+	struct vke_softc *sc = (struct vke_softc *)ifp->if_softc;
+
+	imr->ifm_status = IFM_AVALID;
+	imr->ifm_status |= IFM_ACTIVE;
+
+        if(sc->sc_media.ifm_cur) {
+		if(sc->sc_media.ifm_cur->ifm_media == IFM_ETHER) {
+			imr->ifm_active = IFM_ETHER | IFM_1000_T | IFM_FDX;
+		} else {
+			imr->ifm_active = sc->sc_media.ifm_cur->ifm_media;
+		}
+	} else {
+		imr->ifm_active = IFM_ETHER | IFM_1000_T | IFM_FDX;
+	}
 }
