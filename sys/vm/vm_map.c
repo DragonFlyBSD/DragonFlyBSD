@@ -2939,6 +2939,8 @@ again:
 			}
 			vm_object_chain_release(object);
 			vm_object_drop(object);
+		} else if (entry->maptype == VM_MAPTYPE_UKSMAP) {
+			pmap_remove(map->pmap, s, e);
 		}
 
 		/*
