@@ -1308,7 +1308,10 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 	--pmap->pm_stats.resident_count;
 
 	if (p->hold_count)  {
-		panic("pmap_release: freeing held page table page");
+		panic("pmap_release: freeing held pt page "
+		      "pmap=%p pg=%p dmap=%p pi=%ld {%ld,%ld,%ld}",
+		      pmap, p, (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(p)),
+		      p->pindex, NUPDE, NUPDPE, PML4PML4I);
 	}
 	if (pmap->pm_ptphint && (pmap->pm_ptphint->pindex == p->pindex))
 		pmap->pm_ptphint = NULL;
