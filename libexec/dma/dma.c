@@ -479,7 +479,7 @@ main(int argc, char **argv)
 			if (optarg[0] == 'c' || optarg[0] == 'm') {
 				break;
 			}
-			/* else FALLTRHOUGH */
+			/* else FALLTHROUGH */
 		case 'b':
 			/* -bX is being ignored, except for -bp */
 			if (optarg[0] == 'p') {
@@ -489,7 +489,7 @@ main(int argc, char **argv)
 				queue_only = 1;
 				break;
 			}
-			/* else FALLTRHOUGH */
+			/* else FALLTHROUGH */
 		case 'D':
 			daemonize = 0;
 			break;
@@ -509,7 +509,7 @@ main(int argc, char **argv)
 			/* -oX is being ignored, except for -oi */
 			if (optarg[0] != 'i')
 				break;
-			/* else FALLTRHOUGH */
+			/* else FALLTHROUGH */
 		case 'O':
 			break;
 		case 'i':
