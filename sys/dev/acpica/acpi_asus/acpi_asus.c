@@ -50,9 +50,7 @@
 #include "accommon.h"
 #include "acpivar.h"
 
-#if defined(__FreeBSD__)
-#include <dev/led/led.h>
-#endif
+#include <dev/misc/led/led.h>
 
 /* Methods */
 #define ACPI_ASUS_METHOD_BRN	1
@@ -123,14 +121,12 @@ struct acpi_asus_softc {
 	struct acpi_asus_model	*model;
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
-#if defined(__FreeBSD__)
 	struct acpi_asus_led	s_bled;
 	struct acpi_asus_led	s_dled;
 	struct acpi_asus_led	s_gled;
 	struct acpi_asus_led	s_mled;
 	struct acpi_asus_led	s_tled;
 	struct acpi_asus_led	s_wled;
-#endif
 
 	int			s_brn;
 	int			s_disp;
@@ -515,10 +511,8 @@ static int	acpi_asus_probe(device_t dev);
 static int	acpi_asus_attach(device_t dev);
 static int	acpi_asus_detach(device_t dev);
 
-#if defined(__FreeBSD__)
 static void	acpi_asus_led(struct acpi_asus_led *led, int state);
 static void	acpi_asus_led_task(struct acpi_asus_led *led, int pending __unused);
-#endif
 
 static int	acpi_asus_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_asus_sysctl_init(struct acpi_asus_softc *sc, int method);
@@ -753,7 +747,6 @@ acpi_asus_attach(device_t dev)
 		    acpi_asus_sysctls[i].description);
 	}
 
-#if defined(__FreeBSD__)
 	/* Attach leds */
 	if (sc->model->bled_set) {
 		sc->s_bled.busy = 0;
@@ -805,7 +798,6 @@ acpi_asus_attach(device_t dev)
 		    led_create_state((led_t *)acpi_asus_led, &sc->s_wled,
 			"wled", 1);
 	}
-#endif
 
 	/* Activate hotkeys */
 	AcpiEvaluateObject(sc->handle, "BSTS", NULL, NULL);
@@ -844,7 +836,6 @@ acpi_asus_detach(device_t dev)
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
 	sc = device_get_softc(dev);
-#if defined(__FreeBSD)
 	/* Turn the lights off */
 	if (sc->model->bled_set)
 		led_destroy(sc->s_bled.cdev);
@@ -863,7 +854,6 @@ acpi_asus_detach(device_t dev)
 
 	if (sc->model->wled_set)
 		led_destroy(sc->s_wled.cdev);
-#endif
 
 	/* Remove notify handler */
 	AcpiRemoveNotifyHandler(sc->handle, ACPI_SYSTEM_NOTIFY,
@@ -882,7 +872,6 @@ acpi_asus_detach(device_t dev)
 	return (0);
 }
 
-#if defined(__FreeBSD__)
 static void
 acpi_asus_led_task(struct acpi_asus_led *led, int pending __unused)
 {
@@ -943,7 +932,6 @@ acpi_asus_led(struct acpi_asus_led *led, int state)
 
 	AcpiOsExecute(OSL_NOTIFY_HANDLER, (void *)acpi_asus_led_task, led);
 }
-#endif
 
 static int
 acpi_asus_sysctl(SYSCTL_HANDLER_ARGS)

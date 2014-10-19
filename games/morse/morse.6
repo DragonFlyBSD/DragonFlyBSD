@@ -29,7 +29,7 @@
 .\"	@(#)bcd.6	8.1 (Berkeley) 5/31/93
 .\" $FreeBSD: src/games/morse/morse.6,v 1.4.2.7 2003/01/26 02:57:27 keramida Exp $
 .\"
-.Dd May 30, 2008
+.Dd October 19, 2014
 .Dt MORSE 6
 .Os
 .Sh NAME
@@ -37,15 +37,12 @@
 .Nd reformat input as morse code
 .Sh SYNOPSIS
 .Nm
-.Op Fl o
-.Op Fl p
+.Op Fl elops
 .Op Fl P Ar dspdevice
 .Op Fl d Ar device
-.Op Fl e
 .Op Fl w Ar speed
 .Op Fl W Ar speed
 .Op Fl f Ar frequency
-.Op Fl s
 .Op Ar string ...
 .Sh DESCRIPTION
 The command
@@ -55,6 +52,12 @@ Acceptable input are command line arguments or the standard input.
 .Pp
 Available options:
 .Bl -tag -width flag
+.It Fl l
+The
+.Fl l
+option produces output suitable for
+.Xr led 4
+devices.
 .It Fl s
 The
 .Fl s

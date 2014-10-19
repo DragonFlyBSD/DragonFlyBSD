@@ -665,6 +665,7 @@ rt2860.fw			optional ralfw				\
 	no-obj no-implicit-rule						\
 	clean		"rt2860.fw"
 dev/netif/lge/if_lge.c	optional lge
+dev/misc/led/led.c		standard
 dev/disk/md/md.c		optional md
 dev/raid/mfi/mfi.c		optional mfi
 dev/raid/mfi/mfi_debug.c	optional mfi

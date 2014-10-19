@@ -48,6 +48,7 @@
 #include <sys/lock.h>
 #include <sys/thread2.h>
 #include <machine/clock.h>
+#include <dev/misc/led/led.h>
 
 #include "acpi.h"
 #include "accommon.h"
@@ -282,10 +283,8 @@ static int	acpi_thinkpad_attach(device_t dev);
 static int	acpi_thinkpad_detach(device_t dev);
 static int	acpi_thinkpad_resume(device_t dev);
 
-#if 0 /* XXX */
 static void	thinkpad_led(void *softc, int onoff);
 static void	thinkpad_led_task(struct acpi_thinkpad_softc *sc, int pending __unused);
-#endif
 
 static int	acpi_thinkpad_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_thinkpad_sysctl_init(struct acpi_thinkpad_softc *sc,
@@ -331,7 +330,6 @@ DRIVER_MODULE(acpi_thinkpad, acpi, acpi_thinkpad_driver,
 MODULE_DEPEND(acpi_thinkpad, acpi, 1, 1, 1);
 static char    *thinkpad_ids[] = {"IBM0068", "LEN0068", NULL};
 
-#if 0 /* XXX */
 static void
 thinkpad_led(void *softc, int onoff)
 {
@@ -359,7 +357,6 @@ thinkpad_led_task(struct acpi_thinkpad_softc *sc, int pending __unused)
 
 	sc->led_busy = 0;
 }
-#endif
 
 static int
 acpi_thinkpad_probe(device_t dev)
@@ -474,11 +471,9 @@ acpi_thinkpad_attach(device_t dev)
 
 	sensordev_install(&sc->sensordev);
 
-#if 0 /* XXX */
 	/* Hook up light to led(4) */
 	if (sc->light_set_supported)
 		sc->led_dev = led_create_state(thinkpad_led, sc, "thinklight", sc->light_val);
-#endif
 
 	return (0);
 }
@@ -510,10 +505,8 @@ acpi_thinkpad_detach(device_t dev)
 		sensor_detach(&sc->sensordev, &sc->sensors[i]);
 	sensor_task_unregister(sc);
 
-#if 0 /* XXX */
 	if (sc->led_dev != NULL)
 		led_destroy(sc->led_dev);
-#endif
 
 	return (0);
 }

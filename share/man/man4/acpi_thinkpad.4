@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/acpi_ibm.4 237509 2012-06-23 20:44:45Z joel $
 .\"
-.Dd March 30, 2014
+.Dd October 19, 2014
 .Dt ACPI_THINKPAD 4
 .Os
 .Sh NAME
@@ -145,17 +145,17 @@ Mute
 .It Li 0x18
 Access IBM Button
 .El
-.\".Ss Xr led 4 Ss Interface
-.\"The
-.\".Nm
-.\"driver provides a
-.\".Xr led 4
-.\"interface for the ThinkLight.
-.\"The ThinkLight can be made to blink by writing
-.\".Tn ASCII
-.\"strings to the
-.\".Pa /dev/led/thinklight
-.\"device.
+.Ss Xr led 4 Ss Interface
+The
+.Nm
+driver provides a
+.Xr led 4
+interface for the ThinkLight.
+The ThinkLight can be made to blink by writing
+.Tn ASCII
+strings to the
+.Pa /dev/led/thinklight
+device.
 .Sh SYSCTL VARIABLES
 The following sysctls are currently implemented:
 .Bl -tag -width indent
@@ -359,13 +359,13 @@ Defaults for these sysctls can be set in
 .Xr sysctl.conf 5 .
 Sensors can be monitored by
 .Xr sensorsd 8 .
-.\".Sh FILES
-.\".Bl -tag -width ".Pa /dev/led/thinklight"
-.\".It Pa /dev/led/thinklight
-.\"ThinkLight
-.\".Xr led 4
-.\"device node
-.\".El
+.Sh FILES
+.Bl -tag -width ".Pa /dev/led/thinklight"
+.It Pa /dev/led/thinklight
+ThinkLight
+.Xr led 4
+device node
+.El
 .Sh EXAMPLES
 The following can be added to
 .Xr devd.conf 5
@@ -471,7 +471,7 @@ hw.acpi.thinkpad.handlerevents=0x04\\ 0x10\\ 0x11
 .Ed
 .Sh SEE ALSO
 .Xr acpi 4 ,
-.\" .Xr led 4 ,
+.Xr led 4 ,
 .Xr sysctl.conf 5 ,
 .Xr devd 8 ,
 .Xr sensorsd 8 ,

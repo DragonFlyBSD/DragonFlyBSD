@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)morse.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/morse/morse.c,v 1.12.2.2 2002/03/12 17:45:15 phantom Exp $
- * $DragonFly: src/games/morse/morse.c,v 1.8 2008/05/30 21:47:04 corecode Exp $
  */
 
 /*
@@ -194,11 +193,11 @@ void		play(const char *, int);
 void		ttyout(const char *, int);
 void		sighandler(int);
 
-#define GETOPTOPTS "d:ef:opP:sw:W:"
+#define GETOPTOPTS "d:ef:lopP:sw:W:"
 #define USAGE \
-"usage: morse [-s] [-e] [-p | -o] [-P device] [-d device] [-w speed] [-W speed] [-f frequency] [string ...]\n"
+"usage: morse [-els] [-p | -o] [-P device] [-d device] [-w speed] [-W speed] [-f frequency] [string ...]\n"
 
-static int      oflag, pflag, sflag, eflag;
+static int      lflag, oflag, pflag, sflag, eflag;
 static int      wpm = 20;	/* words per minute */
 static int	farnsworth = -1;
 #define FREQUENCY 600
@@ -238,6 +237,9 @@ main(int argc, char **argv)
 		case 'f':
 			freq = atoi(optarg);
 			break;
+		case 'l':
+			lflag = 1;
+			break;
 		case 'o':
 			oflag = 1;
 			/* FALLTHROUGH */
@@ -261,8 +263,12 @@ main(int argc, char **argv)
 			fputs(USAGE, stderr);
 			exit(1);
 		}
-	if (pflag + !!device + sflag > 1) {
-		fputs("morse: only one of -o, -p, -d and -s allowed\n", stderr);
+	if (sflag && lflag) {
+		fputs("morse: only one of -l and -s allowed\n", stderr);
+		exit(1);
+	}
+	if (pflag + !!device + sflag + lflag > 1) {
+		fputs("morse: only one of -o, -p, -d and -l, -s allowed\n", stderr);
 		exit(1);
 	}
 	if ((pflag || device) && ((wpm < 1) || (wpm > 60) || (farnsworth > 60))) {
@@ -358,6 +364,8 @@ main(int argc, char **argv)
 			hightab = iso8859tab;
 	}
 
+	if (lflag)
+		printf("m");
 	if (*argv) {
 		do {
 			prosign = 0;
@@ -470,6 +478,8 @@ morse(char c, int prosign)
 		} else if (device) {
 			ttyout(" ", 0);
 			return;
+		} else if (lflag) {
+			printf("\n");
 		} else {
 			show("", 0);
 			return;
@@ -492,7 +502,10 @@ morse(char c, int prosign)
 void
 show(const char *s, int prosign)
 {
-	if (sflag)
+	if (lflag) {
+		printf("%s ", s);
+		return;
+	} else if (sflag)
 		printf(" %s", s);
 	else
 		for (; *s; ++s)
