@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/periodic/daily/440.status-mailq,v 1.11 2006/03/08 17:26:53 matteo Exp $
-# $DragonFly: src/etc/periodic/daily/440.status-mailq,v 1.4 2007/12/29 21:44:44 matthias Exp $
 #
 
 # If there is a global system configuration file, suck it in.
@@ -34,7 +33,7 @@ case "$daily_status_mailq_enable" in
 		*)
 		    mailq;;
 	    esac | tee /dev/stderr |
-	    egrep -v '(mqueue is empty|Total requests)' | wc -l)
+	    egrep -v '(Mail queue is empty|mqueue is empty|Total requests)' | wc -l)
 	    [ $rc -gt 0 ] && rc=1 || rc=0
 
 	    case "$daily_status_include_submit_mailq" in
@@ -55,7 +54,7 @@ case "$daily_status_mailq_enable" in
 			*)
 			    mailq -Ac;;
 		    esac | tee /dev/stderr |
-		    egrep -v '(mqueue is empty|Total requests)' | wc -l)
+		    egrep -v '(Mail queue is empty|mqueue is empty|Total requests)' | wc -l)
 		    [ $rc_submit -gt 0 ] && rc=1
 		fi;;
 	    esac

@@ -459,7 +459,7 @@ main(int argc, char **argv)
 	if (strcmp(argv[0], "mailq") == 0) {
 		argv++; argc--;
 		showq = 1;
-		if (argc != 0)
+		if (argc != 0 && strcmp(argv[0], "-Ac") != 0)
 			errx(1, "invalid arguments");
 		goto skipopts;
 	} else if (strcmp(argv[0], "newaliases") == 0) {
@@ -468,6 +468,9 @@ main(int argc, char **argv)
 
 		if (read_aliases() != 0)
 			errx(1, "could not parse aliases file `%s'", config.aliases);
+		exit(0);
+	} else if (strcmp(argv[0], "hoststat") == 0 ||
+		   strcmp(argv[0], "purgestat") == 0) {
 		exit(0);
 	}
 
