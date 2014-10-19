@@ -4,10 +4,9 @@
 KMOD=	snd_emu10kx
 
 SRCS=	device_if.h bus_if.h pci_if.h
-SRCS+=	channel_if.h ac97_if.h mixer_if.h mpufoi_if.h
+SRCS+=	channel_if.h ac97_if.h mixer_if.h
 # Master, PCM and MIDI devices
 SRCS+=	emu10kx.c
 SRCS+=	emu10kx-pcm.c
-SRCS+=	emu10kx-midi.c
 
 .include <bsd.kmod.mk>

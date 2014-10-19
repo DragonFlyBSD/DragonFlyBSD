@@ -38,9 +38,6 @@
 #include <dev/pci/pcivar.h>
 #include <sys/queue.h>
 
-#include <dev/sound/midi/mpu401.h>
-#include "mpufoi_if.h"
-
 SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/emu10k1.c 267581 2014-06-17 16:07:57Z jhb $");
 
 /* -------------------------------------------------------------------- */
@@ -228,9 +225,6 @@ struct sc_info {
 	struct emu_voice voice[64];
 	struct sc_pchinfo pch[EMU_MAX_CHANS];
 	struct sc_rchinfo rch[3];
-	struct mpu401   *mpu;
-	mpu401_intr_t           *mpu_intr;
-	int mputx;
 };
 
 /* -------------------------------------------------------------------- */
@@ -1156,63 +1150,6 @@ static kobj_method_t emurchan_methods[] = {
 };
 CHANNEL_DECLARE(emurchan);
 
-static unsigned char
-emu_mread(struct mpu401 *arg, void *sc, int reg)
-{	
-	unsigned int d;
-
-	d = emu_rd((struct sc_info *)sc, 0x18 + reg, 1); 
-	return d;
-}
-
-static void
-emu_mwrite(struct mpu401 *arg, void *sc, int reg, unsigned char b)
-{
-
-	emu_wr((struct sc_info *)sc, 0x18 + reg, b, 1);
-}
-
-static int
-emu_muninit(struct mpu401 *arg, void *cookie)
-{
-	struct sc_info *sc = cookie;
-
-	snd_mtxlock(sc->lock);
-	sc->mpu_intr = 0;
-	snd_mtxunlock(sc->lock);
-
-	return 0;
-}
-
-static kobj_method_t emu_mpu_methods[] = {
-    	KOBJMETHOD(mpufoi_read,		emu_mread),
-    	KOBJMETHOD(mpufoi_write,	emu_mwrite),
-    	KOBJMETHOD(mpufoi_uninit,	emu_muninit),
-	KOBJMETHOD_END
-};
-
-static DEFINE_CLASS(emu_mpu, emu_mpu_methods, 0);
-
-static void
-emu_intr2(void *p)
-{
-	struct sc_info *sc = (struct sc_info *)p;
-
-	if (sc->mpu_intr)
-	    (sc->mpu_intr)(sc->mpu);
-}
-
-static void
-emu_midiattach(struct sc_info *sc)
-{
-	int i;
-
-	i = emu_rd(sc, EMU_INTE, 4);
-	i |= EMU_INTE_MIDIRXENABLE;
-	emu_wr(sc, EMU_INTE, i, 4);
-
-	sc->mpu = mpu401_init(&emu_mpu_class, sc, emu_intr2, &sc->mpu_intr);
-}
 /* -------------------------------------------------------------------- */
 /* The interrupt handler */
 
@@ -1255,11 +1192,6 @@ emu_intr(void *data)
 #endif
 		}
 
-	    if (stat & EMU_IPR_MIDIRECVBUFE)
-		if (sc->mpu_intr) {
-		    (sc->mpu_intr)(sc->mpu);
-		    ack |= EMU_IPR_MIDIRECVBUFE | EMU_IPR_MIDITRANSBUFE;
- 		}
 		if (stat & ~ack)
 			device_printf(sc->dev, "dodgy irq: %x (harmless)\n",
 			    stat & ~ack);
@@ -2034,8 +1966,6 @@ emu_uninit(struct sc_info *sc)
 	emu_free(sc, sc->mem.ptb_pages, sc->mem.ptb_map);
 	emu_free(sc, sc->mem.silent_page, sc->mem.silent_map);
 
-	if(sc->mpu)
-	    mpu401_uninit(sc->mpu);
 	return 0;
 }
 
@@ -2120,8 +2050,6 @@ emu_pci_attach(device_t dev)
 	if (codec == NULL) goto bad;
 	gotmic = (ac97_getcaps(codec) & AC97_CAP_MICCHANNEL) ? 1 : 0;
 	if (mixer_init(dev, ac97_getmixerclass(), codec) == -1) goto bad;
-
-	emu_midiattach(sc);
 
 	i = 0;
 	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &i,

@@ -313,8 +313,6 @@ MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
     dev/sound/pci/hda/hdac_if.m \
     dev/sound/pcm/ac97_if.m dev/sound/pcm/channel_if.m \
     dev/sound/pcm/feeder_if.m dev/sound/pcm/mixer_if.m \
-    dev/sound/midi/mpu_if.m dev/sound/midi/mpufoi_if.m \
-    dev/sound/midi/synth_if.m  \
     libiconv/iconv_converter_if.m dev/agp/agp_if.m opencrypto/cryptodev_if.m \
     bus/mmc/mmcbus_if.m bus/mmc/mmcbr_if.m \
     dev/virtual/virtio/virtio/virtio_bus_if.m \

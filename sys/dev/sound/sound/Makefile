@@ -2,7 +2,6 @@
 
 .PATH: ${.CURDIR}/../../../dev/sound
 .PATH: ${.CURDIR}/../../../dev/sound/pcm
-.PATH: ${.CURDIR}/../../../dev/sound/midi
 
 KMOD=	sound
 SRCS=	device_if.h bus_if.h pci_if.h
@@ -12,11 +11,8 @@ SRCS+=	feeder.c feeder_rate.c feeder_volume.c
 SRCS+=	feeder_chain.c feeder_eq.c feeder_format.c
 SRCS+=	feeder_matrix.c feeder_mixer.c
 SRCS+=	feeder_eq_gen.h feeder_rate_gen.h snd_fxdiv_gen.h
-SRCS+=	mpu_if.h mpufoi_if.h synth_if.h
-SRCS+=	mpu_if.c mpufoi_if.c synth_if.c
 SRCS+=	ac97.c ac97_patch.c buffer.c channel.c clone.c dsp.c
 SRCS+=	mixer.c sndstat.c sound.c unit.c vchan.c
-SRCS+=	midi.c mpu401.c sequencer.c
 
 .if !exists(@)
 feeder_eq_gen.h:	@

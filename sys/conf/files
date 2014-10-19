@@ -1705,7 +1705,6 @@ dev/sound/pci/cs4281.c		optional snd_cs4281 pci
 dev/sound/pci/emu10k1.c		optional snd_emu10k1 pci
 dev/sound/pci/emu10kx.c		optional snd_emu10kx pci
 dev/sound/pci/emu10kx-pcm.c	optional snd_emu10kx pci
-dev/sound/pci/emu10kx-midi.c	optional snd_emu10kx pci
 dev/sound/pci/envy24.c		optional snd_envy24 pci
 dev/sound/pci/envy24ht.c	optional snd_envy24ht pci
 dev/sound/pci/es137x.c		optional snd_es137x pci
@@ -1756,12 +1755,6 @@ dev/sound/pcm/mixer_if.m	optional sound
 dev/sound/pcm/sndstat.c		optional sound
 dev/sound/pcm/sound.c		optional sound
 dev/sound/pcm/vchan.c		optional sound
-dev/sound/midi/midi.c		optional sound
-dev/sound/midi/mpu401.c		optional sound
-dev/sound/midi/mpu_if.m		optional sound
-dev/sound/midi/mpufoi_if.m	optional sound
-dev/sound/midi/sequencer.c	optional sound
-dev/sound/midi/synth_if.m	optional sound
 #
 # These files in libkern/ are those needed by all architectures.  Some
 # of the files in libkern/ are only needed on some architectures, e.g.,
