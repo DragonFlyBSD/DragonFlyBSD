@@ -227,7 +227,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 		rstart = ulmax(s->r_start, start);
 		rstart = (rstart + ((1ul << RF_ALIGNMENT(flags))) - 1) &
 		    ~((1ul << RF_ALIGNMENT(flags)) - 1);
-		rend = min(s->r_end, max(start + count - 1, end));
+		rend = ulmin(s->r_end, ulmax(start + count - 1, end));
 		DPRINTF(("truncated region: [%#lx, %#lx]; size %#lx (requested %#lx)\n",
 		       rstart, rend, (rend - rstart + 1), count));
 
@@ -326,8 +326,8 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 			break;
 		if ((s->r_flags & flags) != flags)
 			continue;
-		rstart = max(s->r_start, start);
-		rend = min(s->r_end, max(start + count, end));
+		rstart = ulmax(s->r_start, start);
+		rend = ulmin(s->r_end, ulmax(start + count, end));
 		if (s->r_start >= start && s->r_end <= end
 		    && (s->r_end - s->r_start + 1) == count) {
 			rv = kmalloc(sizeof *rv, M_RMAN, M_NOWAIT | M_ZERO);

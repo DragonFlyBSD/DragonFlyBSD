@@ -689,9 +689,13 @@ ram_attach(device_t dev)
 				    __func__, rid, error);
 			res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
 			    0);
-			if (res == NULL)
-				panic("%s: resource %d failed to attach",
-				    __func__, rid);
+			if (res == NULL) {
+				panic("%s: resource %d failed to "
+				      "attach 0x%016jx/%jd",
+				    __func__, rid,
+				    (intmax_t)smap->base,
+				    (intmax_t)smap->length);
+			}
 			rid++;
 		}
 		return (0);
