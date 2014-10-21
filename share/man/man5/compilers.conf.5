@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd October 14, 2014
+.Dd October 21, 2014
 .Dt COMPILERS.CONF 5
 .Os
 .Sh NAME
@@ -53,45 +53,81 @@ file specifies the default settings for all variables, the
 .Pa /etc/compilers.conf
 file specifies override settings.
 .Pp
-The following variables are available:
-.Bl -tag -width ".Va <version>_CPPFLAGS"
+The following variable definitions are mandatory:
+.Bl -tag -width ".Va <version>_INCOPTCXX"
 .It Va <version>_CC
 The pathname of the
 .Nm cc
-program of the compiler.
-.It Va <version>_CFLAGS
-Any additional flags to pass to
-.Va <version>_CC .
-.It Va <version>_CPP
-The pathname of the
-.Nm cpp
-program of the compiler.
-.It Va <version>_CPPFLAGS
-Any additional flags to pass to
-.Va <version>_CPP .
+compiler.
 .It Va <version>_CXX
 The pathname of the
 .Nm c++
-program of the compiler.
-.It Va <version>_CXXFLAGS
-Any additional flags to pass to
-.Va <version>_CXX .
+and
+.Nm CC
+compilers.
+.It Va <version>_CPP
+The pathname of the
+.Nm cpp
+pre-processor.
+.It Va <version>_INCOPT
+The include flags passed to the invocation of every version of c compiler,
+c++ compiler, and pre-processor program.  This is normally set to the 
+predefined STD_INCOPT variable.
+.It Va <version>_INCOPTCXX
+The include flags passed to the invocation of every version of c++
+compiler.  This is normally set to either the DPORT_GCC_STD_INCOPTXX or
+DPORT_CLANG_STD_INCOPTXX predefined variables.
 .El
 .Pp
-Currently, defaults are provided for
+These variables are optionally available:
+.Bl -tag -width ".Va <version>_INCOPTCXX"
+.It Va <version>_GCC
+The pathname of the
+.Nm gcc
+compiler.
+.It Va <version>_GXX
+The pathname of the
+.Nm g++
+compiler.
+.It Va <version>_GCOV
+The pathname of the
+.Nm gcov
+coverage testing tool.
+.\"
+.\" Uncomment the following after clang is brought into base
+.\".It Va <version>_CLANG
+.\"The pathname of the
+.\".Nm clang
+.\"compiler.
+.\".It Va <version>_CLANGCXX
+.\"The pathname of the
+.\".Nm clang++
+.\"compiler.
+.\".It Va <version>_CLANGCPP
+.\"The pathname of the
+.\".Nm clang-cpp
+.\"pre-processor.
+.\"
+.It Va <version>_CFLAGS
+Additional flags to pass to the c compilers.
+.It Va <version>_CXXFLAGS
+Additional flags to pass to the c++ compilers.
+.It Va <version>_CPPFLAGS
+Additional flags to pass to the pre-processors.
+.El
+.Pp
+Currently, defaults are provided for the
+.Xr dports 7
+compilers of
+.Nm clang35
+.Pa ( lang/clang35 ) ,
 .Nm gcc48
-(installed from
-.Xr dports 7 Ap s
-.Pa lang/gcc48 ) ,
+.Pa ( lang/gcc48 ) ,
 .Nm gcc49
-(installed from
-.Xr dports 7 Ap s
-.Pa lang/gcc49 ) ,
+.Pa ( lang/gcc49 ) ,
 and
 .Nm gcc5
-(installed from
-.Xr dports 7 Ap s
-.Pa lang/gcc5 ) .
+.Pa ( lang/gcc5 ) .
 .Sh IMPLEMENTATION NOTES
 In
 .Dx ,

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2009-2012
+# Copyright (c) 2009-2014
 #	The DragonFly Project.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,44 +32,126 @@
 #
 
 CNAME=$(basename $0)
-CCVER3=`echo ${CCVER} | awk '{print substr($0, 1, 3);}'`
 
-if [ "${CCVER3}" = "gcc" ]; then
-	INCOPT="-nostdinc \
-	    -iprefix @@INCPREFIX@@ \
-	    -iwithprefixbefore /usr/include"
-fi
+INCPREFIX=@@INCPREFIX@@
+MACHARCH=@@MACHARCH@@
+MACHREL=@@MACHREL@@
 
 . /etc/defaults/compilers.conf
 [ -f /etc/compilers.conf ] && . /etc/compilers.conf
 
-CUSTOM_CC=`eval echo \$\{${CCVER}_CC\}`
-CUSTOM_CFLAGS=`eval echo \$\{${CCVER}_CFLAGS\}`
-CUSTOM_CXX=`eval echo \$\{${CCVER}_CXX\}`
-CUSTOM_CXXFLAGS=`eval echo \$\{${CCVER}_CXXFLAGS\}`
-CUSTOM_CPP=`eval echo \$\{${CCVER}_CPP\}`
-CUSTOM_CPPFLAGS=`eval echo \$\{${CCVER}_CPPFLAGS\}`
 
-if [ "${CNAME}" = "cc" -o "${CNAME}" = "gcc" ]; then
-	if [ -z ${CUSTOM_CC} ]; then
-		echo "${CCVER}_CC undefined, see compilers.conf(5)"
+case ${CNAME} in
+	gcc)
+		CUSTOM_GCC=`eval echo \$\{${CCVER}_GCC\}`
+		if [ -n  "${CUSTOM_GCC}" ]; then
+			COMPILER=${CUSTOM_GCC}
+			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+		else
+			COMPILER=/usr/libexec/gcc47/gcc
+			INCOPT=${STD_INCOPT}
+		fi
+		;;
+	g++)
+		CUSTOM_GXX=`eval echo \$\{${CCVER}_GXX\}`
+		if [ -n  "${CUSTOM_GXX}" ]; then
+			COMPILER=${CUSTOM_GXX}
+			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+			INCOPTCXX=`eval echo \$\{${CCVER}_INCOPTCXX\}`
+		else
+			COMPILER=/usr/libexec/gcc47/g++
+			INCOPT=${GCC_INCOPT}
+			INCOPTCXX="-isystem /usr/include/c++/4.7"
+		fi
+		;;
+	clang)
+		CUSTOM_CLANG=`eval echo \$\{${CCVER}_CLANG\}`
+		if [ -n  "${CUSTOM_CLANG}" ]; then
+			COMPILER=${CUSTOM_CLANG}
+			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+		else
+			COMPILER=/usr/libexec/clangbase/clang
+			INCOPT=${STD_INCOPT}
+		fi
+		;;
+	clang++)
+		CUSTOM_CLANGCXX=`eval echo \$\{${CCVER}_CLANGCXX\}`
+		if [ -n  "${CUSTOM_CLANGCXX}" ]; then
+			COMPILER=${CUSTOM_CLANGCXX}
+			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+			INCOPTCXX=`eval echo \$\{${CCVER}_INCOPTCXX\}`
+		else
+			COMPILER=/usr/libexec/clangbase/clang++
+			INCOPT=${CLANG_INCOPT}
+			INCOPTCXX="-isystem /usr/include/c++/4.7"
+		fi
+		;;
+	cc)
+		CUSTOM_CC=`eval echo \$\{${CCVER}_CC\}`
+		if [ -n ${CUSTOM_CC} ]; then
+			COMPILER=${CUSTOM_CC}
+			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+		else
+			echo "${CCVER}_CC undefined, see compilers.conf(5)"
+			exit 1
+		fi
+		;;
+	c++|CC)
+		CUSTOM_CXX=`eval echo \$\{${CCVER}_CXX\}`
+		if [ -n ${CUSTOM_CXX} ]; then
+			COMPILER=${CUSTOM_CXX}
+			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+			INCOPTCXX=`eval echo \$\{${CCVER}_INCOPTCXX\}`
+		else
+			echo "${CCVER}_CXX undefined, see compilers.conf(5)"
+			exit 1
+		fi
+		;;
+	cpp)
+		CUSTOM_CPP=`eval echo \$\{${CCVER}_CPP\}`
+		if [ -n ${CUSTOM_CPP} ]; then
+			COMPILER=${CUSTOM_CPP}
+			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+		else
+			echo "${CCVER}_CPP undefined, see compilers.conf(5)"
+			exit 1
+		fi
+		;;
+	clang-cpp)
+		CUSTOM_CLANGCPP=`eval echo \$\{${CCVER}_CLANGCPP\}`
+		if [ -n  "${CUSTOM_CLANGCPP}" ]; then
+			COMPILER=${CUSTOM_CLANGCPP}
+			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
+		else
+			COMPILER=/usr/libexec/clangbase/clang-cpp
+			INCOPT=${CLANG_INCOPT}
+		fi
+		;;
+	gcov)
+		CUSTOM_GCOV=`eval echo \$\{${CCVER}_GCOV\}`
+		if [ -n  "${CUSTOM_GCOV}" ]; then
+			exec ${CUSTOM_GCOV} "$@"
+		else
+			exec /usr/libexec/gcc47/gcov "$@"
+		fi
+		;;
+	*)
+		echo "customcc: unrecognized command '${CNAME}'"
 		exit 1
-	fi
-	exec ${CUSTOM_CC} ${INCOPT} ${CUSTOM_CFLAGS} "$@"
-elif [ "${CNAME}" = "c++" -o "${CNAME}" = "g++" ]; then
-	if [ -z ${CUSTOM_CXX} ]; then
-		echo "${CCVER}_CXX undefined, see compilers.conf(5)"
-		exit 1
-	fi
-	INCOPT="${INCOPT} -isystem /usr/local/lib/${CCVER}/include/c++"
-	CXXMACHINE=`${CUSTOM_CXX} -dumpmachine`
-	MDINCOPT="-isystem \
-	    /usr/local/lib/${CCVER}/include/c++/${CXXMACHINE}"
-	exec ${CUSTOM_CXX} ${INCOPT} ${MDINCOPT} ${CUSTOM_CXXFLAGS} "$@"
-elif [ "${CNAME}" = "cpp" ]; then
-	if [ -z ${CUSTOM_CPP} ]; then
-		echo "${CCVER}_CPP undefined, see compilers.conf(5)"
-		exit 1
-	fi
-	exec ${CUSTOM_CPP} ${INCOPT} ${CUSTOM_CPPFLAGS} "$@"
-fi
+		;;
+esac
+
+case ${CNAME} in
+	gcc|clang|cc)
+		CUSTOM_CFLAGS=`eval echo \$\{${CCVER}_CFLAGS\}`
+		exec ${COMPILER} ${INCOPT} ${CUSTOM_CFLAGS} "$@"
+		;;
+	g++|clang++|c++|CC)
+		CUSTOM_CXXFLAGS=`eval echo \$\{${CCVER}_CXXFLAGS\}`
+		exec ${COMPILER} ${INCOPT} ${INCOPTCXX} ${CUSTOM_CFLAGS} "$@"
+		;;
+	cpp|clang-cpp)
+		CUSTOM_CPPFLAGS=`eval echo \$\{${CCVER}_CPPFLAGS\}`
+		exec ${COMPILER} ${INCOPT} ${CUSTOM_CPPFLAGS} "$@"
+		;;
+esac
