@@ -123,12 +123,14 @@ v3451_dialer(num, acu)
 	return (1);
 }
 
+void
 v3451_disconnect()
 {
 
 	close(FD);
 }
 
+void
 v3451_abort()
 {
 

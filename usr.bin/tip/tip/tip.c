@@ -145,7 +145,7 @@ main(int argc, char *argv[])
 	 *	is private, we don't want 'ps' or 'w' to find it).
 	 */
 	if (strlen(system) > sizeof(PNbuf) - 1)
-		errx(1, "phone number too long (max = %d bytes)", sizeof PNbuf - 1);
+		errx(1, "phone number too long (max = %lu bytes)", sizeof PNbuf - 1);
 	strncpy(PNbuf, system, sizeof(PNbuf) - 1);
 	for (p = system; *p; p++)
 		*p = '\0';
@@ -521,8 +521,7 @@ speed(n)
 }
 
 int
-any(c, p)
-	char c, *p;
+any(char c, char *p)
 {
 	while (p && *p)
 		if (*p++ == c)

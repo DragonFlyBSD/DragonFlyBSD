@@ -139,6 +139,7 @@ v831_disconnect()
                 ioctl(FD, TIOCNXCL, 0);
         }
         close(FD);
+        return 0;
 }
 
 v831_abort()
@@ -156,6 +157,7 @@ v831_abort()
         if (FD > 0)
                 ioctl(FD, TIOCCDTR, 0);
         close(FD);
+        return 0;
 }
 
 /*

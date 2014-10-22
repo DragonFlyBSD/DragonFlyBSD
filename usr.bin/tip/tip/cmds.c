@@ -507,11 +507,14 @@ out:
 	stop_t = time(0);
 	fclose(fd);
 	signal(SIGINT, f);
-	if (boolean(value(VERBOSE)))
-		if (boolean(value(RAWFTP)))
+	if (boolean(value(VERBOSE))) {
+		if (boolean(value(RAWFTP))) {
 			prtime(" chars transferred in ", stop_t-start_t);
-		else
+		}
+		else {
 			prtime(" lines transferred in ", stop_t-start_t);
+		}
+	}
 	write(fildes[1], (char *)&ccc, 1);
 	usetchars ();
 }
@@ -716,7 +719,7 @@ consh(int c)
 	char buf[256];
 	putchar(c);
 	if (prompt("Local command? ", buf, sizeof(buf)))
-		return;
+		return 0;
 	tiplink (buf, TL_SIGNAL_TIPOUT | TL_VERBOSE);
 	return 0;
 }

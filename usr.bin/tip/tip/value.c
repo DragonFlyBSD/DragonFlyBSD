@@ -60,11 +60,14 @@ vinit()
 		if (p->v_type&ENVIRON)
 			if ((cp = getenv(p->v_name)))
 				p->v_value = cp;
-		if (p->v_type&IREMOTE)
-			if (p->v_type&STRING)
+		if (p->v_type&IREMOTE) {
+			if (p->v_type&STRING) {
 				p->v_value = *(char **) address(p->v_value);
-			else
+			}
+			else {
 				number(p->v_value) = *address(p->v_value);
+			}
+		}
 	}
 	/*
 	 * Read the .tiprc file in the HOME directory

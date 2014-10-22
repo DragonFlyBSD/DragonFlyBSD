@@ -60,11 +60,14 @@ logent(group, num, acu, message)
 		warn("flock");
 		return;
 	}
-	if ((user = getlogin()) == NULL)
-		if ((pwd = getpwuid(getuid())) == NULL)
+	if ((user = getlogin()) == NULL) {
+		if ((pwd = getpwuid(getuid())) == NULL) {
 			user = "???";
-		else
+		}
+		else {
 			user = pwd->pw_name;
+		}
+	}
 	t = time(0);
 	timestamp = ctime(&t);
 	timestamp[24] = '\0';

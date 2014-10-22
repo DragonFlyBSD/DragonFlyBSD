@@ -105,7 +105,7 @@ cumain(int argc, char *argv[])
 	 * The "cu" host name is used to define the
 	 * attributes of the generic dialer.
 	 */
-	(void)snprintf(sbuf, sizeof(sbuf), "cu%d", BR);
+	(void)snprintf(sbuf, sizeof(sbuf), "cu%ld", BR);
 	if ((i = hunt(sbuf)) == 0) {
 		printf("all ports busy\n");
 		exit(3);
@@ -131,5 +131,6 @@ cumain(int argc, char *argv[])
 	}
 	if (!HW)
 		ttysetup(speed(BR));
+	return 0;
 }
 #endif /* INCLUDE_CU_INTERFACE */

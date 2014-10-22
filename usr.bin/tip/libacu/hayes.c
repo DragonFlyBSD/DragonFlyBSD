@@ -138,8 +138,10 @@ hay_disconnect()
 	sleep(1);
 	ioctl(FD, TIOCSDTR, 0);
 	goodbye();
+	return 0;
 }
 
+void
 hay_abort()
 {
 
@@ -228,7 +230,7 @@ error_rep(c)
 		printf("Unknown Modem error: %c (0x%x)", c, c);
 	}
 	printf("\n\r");
-	return;
+	return 0;
 }
 
 /*

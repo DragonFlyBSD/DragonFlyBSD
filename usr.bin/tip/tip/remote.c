@@ -108,14 +108,16 @@ getremcap(host)
 	int   stat;
 
 	rempath = getenv("REMOTE");
-	if (rempath != NULL)
-		if (*rempath != '/')
+	if (rempath != NULL) {
+		if (*rempath != '/') {
 			/* we have an entry */
 			cgetset(rempath);
+		}
 		else {	/* we have a path */
 			db_array[1] = rempath;
 			db_array[2] = _PATH_REMOTE;
 		}
+	}
 
 	if ((stat = cgetent(&bp, db_array, host)) < 0) {
 		if (DV ||
