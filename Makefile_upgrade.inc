@@ -2634,6 +2634,8 @@ TO_REMOVE+=/usr/share/man/man8/ilmid.8.gz
 TO_REMOVE+=/usr/share/man/cat8/scspd.8.gz
 TO_REMOVE+=/usr/share/man/man8/scspd.8.gz
 TO_REMOVE+=/boot/kernel/.ko
+TO_REMOVE+=/usr/share/openssl/man/cat3/CMS_sign_add1_signer.3.gz
+TO_REMOVE+=/usr/share/openssl/man/man3/CMS_sign_add1_signer.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
