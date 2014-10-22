@@ -15,7 +15,7 @@
 # we back off to something it probably does have.
 
 _DEFAULT_CCVER=		gcc47
-_DEFAULT_BINUTILSVER=	binutils222
+_DEFAULT_BINUTILSVER=	binutils224
 
 CCVER ?= ${_DEFAULT_CCVER}
 _CCVER := ${CCVER}
@@ -39,9 +39,9 @@ CPUTYPE= ${FORCE_CPUTYPE}
 .  if ${CCVER_BSD_CPU_MK} != ""
 .    include "${CCVER_BSD_CPU_MK}"
 .  endif
-.elif ${CCVER} == "gcc47"
+.elif ${CCVER} == gcc47
 .  include <bsd.cpu.gcc47.mk>
-.elif ${CCVER} == "gcc44"
+.elif ${CCVER} == gcc44
 .  include <bsd.cpu.gcc44.mk>
 .else
 .  include <bsd.cpu.custom.mk>
