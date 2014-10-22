@@ -2640,6 +2640,8 @@ TO_REMOVE+=/usr/share/man/man4/ed.4.gz
 TO_REMOVE+=/usr/share/zoneinfo/Asia/Chongqing
 TO_REMOVE+=/usr/share/zoneinfo/Asia/Harbin
 TO_REMOVE+=/usr/share/zoneinfo/Asia/Kashgar
+TO_REMOVE+=/usr/share/openssl/man/cat3/CMS_sign_add1_signer.3.gz
+TO_REMOVE+=/usr/share/openssl/man/man3/CMS_sign_add1_signer.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
