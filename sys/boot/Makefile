@@ -9,21 +9,11 @@
 # Build DLoader
 SUBDIR+=		dloader
 
-# Build OpenFirmware library
-.if ${MACHINE_ARCH} == "powerpc" || ${MACHINE_ARCH} == "sparc64"
-SUBDIR+=		ofw
-.endif
-
 # Pick the machine-dependant subdir based on the target architecture.
 .if ${REALLY_X86_64} == "true"
 SUBDIR+=		pc32
 .else
 SUBDIR+=		${MACHINE_PLATFORM}
-.endif
-
-# Build EFI executable on ia64
-.if ${MACHINE_ARCH} == "ia64"
-SUBDIR+=		efi
 .endif
 
 .include <bsd.subdir.mk>

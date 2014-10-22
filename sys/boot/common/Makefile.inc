@@ -8,12 +8,6 @@ SRCS+=	module.c panic.c rel_open.c
 SRCS+=	load_elf32.c load_elf32_obj.c reloc_elf32.c
 SRCS+=	load_elf64.c load_elf64_obj.c reloc_elf64.c
 .endif
-.if ${MACHINE_ARCH} == "powerpc"
-SRCS+=	load_elf32.c
-.endif
-.if ${MACHINE_ARCH} == "sparc64" || ${MACHINE_ARCH} == "ia64"
-SRCS+=	load_elf64.c
-.endif
 
 .if defined(LOADER_NET_SUPPORT)
 SRCS+=	dev_net.c
