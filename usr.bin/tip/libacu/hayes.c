@@ -56,15 +56,20 @@
  * mode only. This would make it consistent with normal
  * interactive use thru the command 'tip dialer'.
  */
+#include "acucommon.h"
 #include "tipconf.h"
 #include "tip.h"
 
 #define	min(a,b)	((a < b) ? a : b)
 
-static	void sigALRM();
+static	void error_rep(char);
+static 	char gobble(char *);
+static	void goodbye(void);
+static	int hay_sync(void);
+static	void sigALRM(int);
+
 static	int timeout = 0;
 static	jmp_buf timeoutbuf;
-static 	char gobble();
 #define DUMBUFLEN	40
 static char dumbuf[DUMBUFLEN];
 
@@ -74,11 +79,9 @@ static char dumbuf[DUMBUFLEN];
 #define	FAILED		4
 static	int state = IDLE;
 
-hay_dialer(num, acu)
-	char *num;
-	char *acu;
+int
+hay_dialer(char *num, char *acu)
 {
-	char *cp;
 	int connected = 0;
 	char dummy;
 #if ACULOG
@@ -124,12 +127,9 @@ hay_dialer(num, acu)
 	return (connected);
 }
 
-
-hay_disconnect()
+void
+hay_disconnect(void)
 {
-	char c;
-	int len, rlen;
-
 	/* first hang up the modem*/
 #ifdef DEBUG
 	printf("\rdisconnecting modem....\n\r");
@@ -138,21 +138,17 @@ hay_disconnect()
 	sleep(1);
 	ioctl(FD, TIOCSDTR, 0);
 	goodbye();
-	return 0;
 }
 
 void
-hay_abort()
+hay_abort(void)
 {
-
-	char c;
-
 	write(FD, "\r", 1);	/* send anything to abort the call */
 	hay_disconnect();
 }
 
 static void
-sigALRM()
+sigALRM(int signo)
 {
 
 	printf("\07timeout waiting for reply\n\r");
@@ -161,12 +157,12 @@ sigALRM()
 }
 
 static char
-gobble(match)
-	char *match;
+gobble(char *match)
 {
 	char c;
 	sig_t f;
-	int i, status = 0;
+	size_t i;
+	int status = 0;
 
 	f = signal(SIGALRM, sigALRM);
 	timeout = 0;
@@ -196,8 +192,8 @@ gobble(match)
 	return (status);
 }
 
-error_rep(c)
-	char c;
+static void
+error_rep(char c)
 {
 	printf("\n\r");
 	switch (c) {
@@ -230,15 +226,19 @@ error_rep(c)
 		printf("Unknown Modem error: %c (0x%x)", c, c);
 	}
 	printf("\n\r");
-	return 0;
+	return;
 }
 
 /*
  * set modem back to normal verbose status codes.
  */
-goodbye()
+static void
+goodbye(void)
 {
-	int len, rlen;
+#ifdef DEBUG
+	int rlen;
+#endif
+	int len;
 	char c;
 
 	ioctl(FD, TIOCFLUSH, &len);	/* get rid of trash */
@@ -280,7 +280,8 @@ goodbye()
 
 #define MAXRETRY	5
 
-hay_sync()
+static int
+hay_sync(void)
 {
 	int len, retry = 0;
 

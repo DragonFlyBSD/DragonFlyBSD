@@ -1,5 +1,4 @@
 # $FreeBSD: src/usr.bin/tip/libacu/Makefile,v 1.3.12.1 2002/07/19 18:46:29 ru Exp $
-# $DragonFly: src/usr.bin/tip/libacu/Makefile,v 1.3 2007/08/27 16:50:59 pavalos Exp $
 
 LIB=		acu
 INTERNALLIB=	YES

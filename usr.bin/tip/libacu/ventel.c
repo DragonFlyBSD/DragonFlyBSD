@@ -38,13 +38,14 @@
  * Routines for calling up on a Ventel Modem
  * The Ventel is expected to be strapped for local echo (just like uucp)
  */
+#include "acucommon.h"
 #include "tipconf.h"
 #include "tip.h"
 #include <err.h>
 
 #define	MAXRETRY	5
 
-static	void sigALRM();
+static	void sigALRM(int);
 static int gobble(char, char[]);
 static int vensync(int);
 static void echo(char *);
@@ -59,15 +60,14 @@ static	jmp_buf timeoutbuf;
 #define delay(num,denom) busyloop(CPUSPEED*num/denom)
 #define CPUSPEED 1000000	/* VAX 780 is 1MIPS */
 #define	DELAY(n)	{ long N = (n); while (--N > 0); }
-void busyloop(int n) { DELAY(n); }
+static void busyloop(int n) { DELAY(n); }
 
-ven_dialer(num, acu)
-	char *num;
-	char *acu;
+int
+ven_dialer(char *num, char *acu)
 {
 	char *cp;
 	int connected = 0;
-	char *msg, *index(), line[80];
+	char *msg, line[80];
 
 	/*
 	 * Get in synch with a couple of carriage returns
@@ -109,7 +109,7 @@ ven_dialer(num, acu)
 	cp = index(line, '\r');
 	if (cp)
 		*cp = '\0';
-	for (cp = line; cp = index(cp, ' '); cp++)
+	for (cp = line; (cp = index(cp, ' ')); cp++)
 		if (cp[1] == ' ')
 			break;
 	if (cp) {
@@ -126,13 +126,15 @@ ven_dialer(num, acu)
 	return (connected);
 }
 
-ven_disconnect()
+void
+ven_disconnect(void)
 {
 
 	close(FD);
 }
 
-ven_abort()
+void
+ven_abort(void)
 {
 
 	write(FD, "\03", 1);
@@ -140,31 +142,29 @@ ven_abort()
 }
 
 static void
-echo(s)
-	char *s;
+echo(char *s)
 {
 	char c;
 
-	while (c = *s++) switch (c) {
-
-	case '$':
-		read(FD, &c, 1);
-		s++;
-		break;
-
-	case '#':
-		c = *s++;
-		write(FD, &c, 1);
-		break;
-
-	default:
-		write(FD, &c, 1);
-		read(FD, &c, 1);
+	while ((c = *s++) != '\0') {
+		switch (c) {
+		case '$':
+			read(FD, &c, 1);
+			s++;
+			break;
+		case '#':
+			c = *s++;
+			write(FD, &c, 1);
+			break;
+		default:
+			write(FD, &c, 1);
+			read(FD, &c, 1);
+		}
 	}
 }
 
 static void
-sigALRM()
+sigALRM(int signo)
 {
 	printf("\07timeout waiting for reply\n");
 	timeout = 1;
@@ -172,9 +172,7 @@ sigALRM()
 }
 
 static int
-gobble(match, response)
-	char match;
-	char response[];
+gobble(char match, char response[])
 {
 	char *cp = response;
 	sig_t f;

@@ -44,17 +44,18 @@
 
 #define	MAXRETRY	5
 
-static	void sigALRM();
 static	int timeout = 0;
 static	int connected = 0;
-static	jmp_buf timeoutbuf, intbuf;
-static	int t3000_sync();
+static	jmp_buf timeoutbuf;
+static	void sigALRM(int);
 static	int t3000_connect(void);
+static	void t3000_nap(void);
 static	int t3000_swallow(char *);
+static	int t3000_sync(void);
+static	void t3000_write(int, char *, int);
 
-t3000_dialer(num, acu)
-	char *num;
-	char *acu;
+int
+t3000_dialer(char *num, char *acu)
 {
 	char *cp;
 #if ACULOG
@@ -106,7 +107,8 @@ badsynch:
 	return (connected);
 }
 
-t3000_disconnect()
+void
+t3000_disconnect(void)
 {
 	 /* first hang up the modem*/
 	ioctl(FD, TIOCCDTR, 0);
@@ -116,14 +118,15 @@ t3000_disconnect()
 	close(FD);
 }
 
-t3000_abort()
+void
+t3000_abort(void)
 {
 	t3000_write(FD, "\r", 1);	/* send anything to abort the call */
 	t3000_disconnect();
 }
 
 static void
-sigALRM()
+sigALRM(int signo)
 {
 	printf("\07timeout waiting for reply\n");
 	timeout = 1;
@@ -131,9 +134,8 @@ sigALRM()
 }
 
 static int
-t3000_swallow(match)
-  char *match;
-  {
+t3000_swallow(char *match)
+{
 	sig_t f;
 	char c;
 
@@ -175,24 +177,24 @@ struct tbaud_msg {
 	int baud;
 	int baud2;
 } tbaud_msg[] = {
-	"",		B300,	0,
-	" 1200",	B1200,	0,
-	" 2400",	B2400,	0,
-	" 4800",	B4800,	0,
-	" 9600",	B9600,	0,
-	" 14400",	B19200,	B9600,
-	" 19200",	B19200,	B9600,
-	" 38400",	B38400,	B9600,
-	" 57600",	B38400,	B9600,
-	" 7512",	B9600,	0,
-	" 1275",	B2400,	0,
-	" 7200",	B9600,	0,
-	" 12000",	B19200,	B9600,
-	0,		0,	0,
+	{ "",		B300,	0 },
+	{ " 1200",	B1200,	0 },
+	{ " 2400",	B2400,	0 },
+	{ " 4800",	B4800,	0 },
+	{ " 9600",	B9600,	0 },
+	{ " 14400",	B19200,	B9600 },
+	{ " 19200",	B19200,	B9600 },
+	{ " 38400",	B38400,	B9600 },
+	{ " 57600",	B38400,	B9600 },
+	{ " 7512",	B9600,	0 },
+	{ " 1275",	B2400,	0 },
+	{ " 7200",	B9600,	0 },
+	{ " 12000",	B19200,	B9600 },
+	{ 0,		0,	0 },
 };
 
 static int
-t3000_connect()
+t3000_connect(void)
 {
 	char c;
 	int nc, nl, n;
@@ -251,7 +253,6 @@ again:
 			putchar(c);
 #endif
 	}
-error1:
 	printf("%s\r\n", dialer_buf);
 error:
 	signal(SIGALRM, f);
@@ -263,7 +264,7 @@ error:
  * the t3000 in sync.
  */
 static int
-t3000_sync()
+t3000_sync(void)
 {
 	int already = 0;
 	int len;
@@ -307,10 +308,8 @@ if (len == 0) len = 1;
 	return (0);
 }
 
-t3000_write(fd, cp, n)
-int fd;
-char *cp;
-int n;
+static void
+t3000_write(int fd, char *cp, int n)
 {
 #ifdef notdef
 	if (boolean(value(VERBOSE)))
@@ -341,7 +340,8 @@ t3000_verbose_read()
 }
 #endif
 
-t3000_nap()
+static void
+t3000_nap(void)
 {
 	acu_nap (50);
 }

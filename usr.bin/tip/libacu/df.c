@@ -37,29 +37,30 @@
  * Dial the DF02-AC or DF03-AC
  */
 
+#include "acucommon.h"
 #include "tipconf.h"
 #include "tip.h"
 
 static jmp_buf Sjbuf;
-static void timeout();
+static int	df_dialer(char *, char *, int);
+static void	timeout(int);
 
-df02_dialer(num, acu)
-	char *num, *acu;
+int
+df02_dialer(char *num, char *acu)
 {
 
 	return (df_dialer(num, acu, 0));
 }
 
-df03_dialer(num, acu)
-	char *num, *acu;
+int
+df03_dialer(char *num, char *acu)
 {
 
 	return (df_dialer(num, acu, 1));
 }
 
-df_dialer(num, acu, df03)
-	char *num, *acu;
-	int df03;
+static int
+df_dialer(char *num, char *acu, int df03)
 {
 	int f = FD;
 	int speed = 0, rw = 2;
@@ -102,7 +103,8 @@ df_dialer(num, acu, df03)
 	return (c == 'A');
 }
 
-df_disconnect()
+void
+df_disconnect(void)
 {
 	int rw = 2;
 
@@ -111,8 +113,8 @@ df_disconnect()
 	ioctl(FD, TIOCFLUSH, &rw);
 }
 
-
-df_abort()
+void
+df_abort(void)
 {
 
 	df_disconnect();
@@ -120,7 +122,7 @@ df_abort()
 
 
 static void
-timeout()
+timeout(int signo)
 {
 
 	longjmp(Sjbuf, 1);

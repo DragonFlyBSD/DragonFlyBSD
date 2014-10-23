@@ -32,83 +32,56 @@
  *
  * @(#)acutab.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/acutab.c,v 1.4 1999/08/28 01:06:32 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/acutab.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
 
 #include "tipconf.h"
 #include "tip.h"
 
-extern int df02_dialer(), df03_dialer(),
-	   biz31f_dialer(),
-	   biz31w_dialer(),
-	   biz22f_dialer(),
-	   biz22w_dialer(),
-	   ven_dialer(),
-	   hay_dialer(),
-	   cour_dialer(),
-	   multitech_dialer(),
-	   t3000_dialer(),
-	   v3451_dialer(),
-	   v831_dialer(),
-	   dn_dialer();
-
-extern void df_disconnect(), df_abort(),
-	   biz31_disconnect(), biz31_abort(),
-	   biz22_disconnect(), biz22_abort(),
-	   ven_disconnect(), ven_abort(),
-	   hay_disconnect(), hay_abort(),
-	   cour_disconnect(), cour_abort(),
-	   multitech_disconnect(), multitech_abort(),
-	   t3000_disconnect(), t3000_abort(),
-	   v3451_disconnect(), v3451_abort(),
-	   v831_disconnect(), v831_abort(),
-	   dn_disconnect(), dn_abort();
-
 acu_t acutable[] = {
 #if BIZ1031
-	"biz31f", biz31f_dialer, biz31_disconnect,	biz31_abort,
-	"biz31w", biz31w_dialer, biz31_disconnect,	biz31_abort,
+	{ "biz31f",	biz31f_dialer,	biz31_disconnect,	biz31_abort } ,
+	{ "biz31w",	biz31w_dialer,	biz31_disconnect,	biz31_abort } ,
 #endif
 #if BIZ1022
-	"biz22f", biz22f_dialer, biz22_disconnect,	biz22_abort,
-	"biz22w", biz22w_dialer, biz22_disconnect,	biz22_abort,
+	{ "biz22f",	biz22f_dialer,	biz22_disconnect,	biz22_abort } ,
+	{ "biz22w",	biz22w_dialer,	biz22_disconnect,	biz22_abort } ,
 #endif
 #if DF02
-	"df02",	df02_dialer,	df_disconnect,		df_abort,
+	{ "df02",	df02_dialer,	df_disconnect,		df_abort } ,
 #endif
 #if DF03
-	"df03",	df03_dialer,	df_disconnect,		df_abort,
+	{ "df03",	df03_dialer,	df_disconnect,		df_abort } ,
 #endif
 #if DN11
-	"dn11",	dn_dialer,	dn_disconnect,		dn_abort,
+	{ "dn11",	dn_dialer,	dn_disconnect,		dn_abort } ,
 #endif
 #if VENTEL
-	"ventel",ven_dialer,	ven_disconnect,		ven_abort,
+	{ "ventel",	ven_dialer,	ven_disconnect,		ven_abort } ,
 #endif
 #if HAYES
-	"hayes",hay_dialer,	hay_disconnect,		hay_abort,
+	{ "hayes",	hay_dialer,	hay_disconnect,		hay_abort } ,
 #endif
 #if COURIER
-	"courier",cour_dialer,	cour_disconnect,	cour_abort,
+	{ "courier",	cour_dialer,	cour_disconnect,	cour_abort } ,
 #endif
 #if MULTITECH
-	"multitech",multitech_dialer,	multitech_disconnect,	multitech_abort,
+	{ "multitech",	multitech_dialer, multitech_disconnect,	multitech_abort } ,
 #endif
 #if T3000
-	"t3000",t3000_dialer,	t3000_disconnect,	t3000_abort,
+	{ "t3000",	t3000_dialer,	t3000_disconnect,	t3000_abort } ,
 #endif
 #if V3451
 #if !V831
-	"vadic",v3451_dialer,	v3451_disconnect,	v3451_abort,
+	{ "vadic",	v3451_dialer,	v3451_disconnect,	v3451_abort } ,
 #endif
-	"v3451",v3451_dialer,	v3451_disconnect,	v3451_abort,
+	{ "v3451",	v3451_dialer,	v3451_disconnect,	v3451_abort } ,
 #endif
 #if V831
 #if !V3451
-	"vadic",v831_dialer,	v831_disconnect,	v831_abort,
+	{ "vadic",	v831_dialer,	v831_disconnect,	v831_abort } ,
 #endif
-	"v831",v831_dialer,	v831_disconnect,	v831_abort,
+	{ "v831",	v831_dialer,	v831_disconnect,	v831_abort } ,
 #endif
-	0,	0,		0,			0
+	{ 0,		0,		0,			0 }
 };
 

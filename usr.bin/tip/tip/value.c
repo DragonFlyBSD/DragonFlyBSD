@@ -38,7 +38,7 @@
 
 #define MIDDLE	35
 
-static value_t *vlookup();
+static value_t *vlookup(char *);
 int vstring(char *, char *);
 void vlex(char *);
 void vassign(value_t *, char *);
@@ -49,7 +49,7 @@ static int col = 0;
  * Variable manipulation
  */
 void
-vinit()
+vinit(void)
 {
 	value_t *p;
 	char *cp;
@@ -61,12 +61,10 @@ vinit()
 			if ((cp = getenv(p->v_name)))
 				p->v_value = cp;
 		if (p->v_type&IREMOTE) {
-			if (p->v_type&STRING) {
+			if (p->v_type&STRING)
 				p->v_value = *(char **) address(p->v_value);
-			}
-			else {
+			else
 				number(p->v_value) = *address(p->v_value);
-			}
 		}
 	}
 	/*
@@ -93,13 +91,11 @@ vinit()
 	vtable[EXCEPTIONS].v_access &= ~(WRITE<<PUBLIC);
 }
 
-static int vaccess();
+static int vaccess(unsigned, unsigned);
 
 /*VARARGS1*/
 void
-vassign(p, v)
-	value_t *p;
-	char *v;
+vassign(value_t *p, char *v)
 {
 
 	if (!vaccess(p->v_access, WRITE)) {
@@ -141,12 +137,11 @@ vassign(p, v)
 	p->v_access |= CHANGED;
 }
 
-static void vprint();
+static void vprint(value_t *);
 static void vtoken(char *);
 
 void
-vlex(s)
-	char *s;
+vlex(char *s)
 {
 	value_t *p;
 
@@ -171,12 +166,10 @@ vlex(s)
 }
 
 static void
-vtoken(s)
-	char *s;
+vtoken(char *s)
 {
 	value_t *p;
 	char *cp;
-	char *expand();
 
 	if ((cp = index(s, '='))) {
 		*cp = '\0';
@@ -211,11 +204,9 @@ vtoken(s)
 }
 
 static void
-vprint(p)
-	value_t *p;
+vprint(value_t *p)
 {
 	char *cp;
-	extern char *interp(), *ctrl();
 
 	if (col > 0 && col < MIDDLE)
 		while (col++ < MIDDLE)
@@ -235,7 +226,7 @@ vprint(p)
 		printf("%s=", p->v_name);
 		col++;
 		if (p->v_value) {
-			cp = interp(p->v_value, NULL);
+			cp = interp(p->v_value);
 			col += size(cp);
 			printf("%s", cp);
 		}
@@ -265,8 +256,7 @@ vprint(p)
 
 
 static int
-vaccess(mode, rw)
-	unsigned mode, rw;
+vaccess(unsigned mode, unsigned rw)
 {
 	if (mode & (rw<<PUBLIC))
 		return (1);
@@ -276,8 +266,7 @@ vaccess(mode, rw)
 }
 
 static value_t *
-vlookup(s)
-	char *s;
+vlookup(char *s)
 {
 	value_t *p;
 
@@ -288,9 +277,7 @@ vlookup(s)
 }
 
 char *
-vinterp(s, stop)
-	char *s;
-	char stop;
+vinterp(char *s, char stop)
 {
 	char *p = s, c;
 	int num;
@@ -345,12 +332,9 @@ vinterp(s, stop)
  */
 
 int
-vstring(s,v)
-	char *s;
-	char *v;
+vstring(char *s, char *v)
 {
 	value_t *p;
-	char *expand();
 
 	p = vlookup(s);
 	if (p == NULL)

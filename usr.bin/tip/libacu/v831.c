@@ -38,22 +38,23 @@
 /*
  * Routines for dialing up on Vadic 831
  */
+#include "acucommon.h"
 #include "tipconf.h"
 #include "tip.h"
 #include <errno.h>
+#include <sys/wait.h>
 
-int	v831_abort();
-static	void alarmtr();
+static	void alarmtr(int);
 static int dialit(char *, char *);
 static char *sanitize(char *);
 
 static jmp_buf jmpbuf;
 static int child = -1;
 
-v831_dialer(num, acu)
-        char *num, *acu;
+int
+v831_dialer(char *num, char *acu)
 {
-        int status, pid, connected = 1;
+        int status, pid;
         int timelim;
 
         if (boolean(value(VERBOSE)))
@@ -117,7 +118,7 @@ v831_dialer(num, acu)
 }
 
 static void
-alarmtr()
+alarmtr(int signo)
 {
         alarm(0);
         longjmp(jmpbuf, 1);
@@ -127,22 +128,23 @@ alarmtr()
  * Insurance, for some reason we don't seem to be
  *  hanging up...
  */
-v831_disconnect()
+void
+v831_disconnect(void)
 {
         sleep(2);
 #ifdef DEBUG
         printf("[disconnect: FD=%d]\n", FD);
 #endif
         if (FD > 0) {
-                ioctl(FD, TIOCCDTR, 0);
-								acu_setspeec (0);
-                ioctl(FD, TIOCNXCL, 0);
+		ioctl(FD, TIOCCDTR, 0);
+		acu_setspeed(0);
+		ioctl(FD, TIOCNXCL, 0);
         }
         close(FD);
-        return 0;
 }
 
-v831_abort()
+void
+v831_abort(void)
 {
 
 #ifdef DEBUG
@@ -157,7 +159,6 @@ v831_abort()
         if (FD > 0)
                 ioctl(FD, TIOCCDTR, 0);
         close(FD);
-        return 0;
 }
 
 /*
@@ -180,9 +181,7 @@ struct vaconfig {
 #define ETX	03
 
 static int
-dialit(phonenum, acu)
-	char *phonenum;
-	char *acu;
+dialit(char *phonenum, char *acu)
 {
         struct vaconfig *vp;
         char c;
@@ -256,8 +255,7 @@ dialit(phonenum, acu)
 }
 
 static char *
-sanitize(s)
-	char *s;
+sanitize(char *s)
 {
         static char buf[128];
         char *cp;

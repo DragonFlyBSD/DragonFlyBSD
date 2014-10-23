@@ -32,15 +32,10 @@
  *
  * @(#)cmdtab.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/cmdtab.c,v 1.3 1999/08/28 01:06:33 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/cmdtab.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
  */
 
 #include "tipconf.h"
 #include "tip.h"
-
-extern	int shell(), getfl(), sendfile(), chdirectory();
-extern	int finish(), help(), pipefile(), pipeout(), variable();
-extern	int cu_take(), cu_put(), dollar(), genbrk(), suspend();
 
 esctable_t etable[] = {
 	{ '!',	NORM,	"shell",			 shell },
@@ -61,5 +56,5 @@ esctable_t etable[] = {
 	{ 's',	NORM,	"set variable",			 variable },
 	{ '?',	NORM,	"get this summary",		 help },
 	{ '#',	NORM,	"send break",			 genbrk },
-	{ 0, 0, 0 }
+	{ 0, 0, NULL, NULL }
 };

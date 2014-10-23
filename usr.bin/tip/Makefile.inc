@@ -1,2 +1,1 @@
-CSTD?=	gnu89
-WARNS?=	1
+WARNS?=	2

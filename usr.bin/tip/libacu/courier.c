@@ -44,17 +44,18 @@
 
 #define	MAXRETRY	5
 
-static	void sigALRM();
 static	int cour_connect(void);
+static	void cour_nap(void);
 static	int cour_swallow(char *);
+static	int coursync(void);
+static	void cour_write(int, char *, int);
+static	void sigALRM(int);
 static	int timeout = 0;
 static	int connected = 0;
-static	jmp_buf timeoutbuf, intbuf;
-static	int coursync();
+static	jmp_buf timeoutbuf;
 
-cour_dialer(num, acu)
-	char *num;
-	char *acu;
+int
+cour_dialer(char *num, char *acu)
 {
 	char *cp;
 #if ACULOG
@@ -107,7 +108,8 @@ badsynch:
 	return (connected);
 }
 
-cour_disconnect()
+void
+cour_disconnect(void)
 {
 	 /* first hang up the modem*/
 	ioctl(FD, TIOCCDTR, 0);
@@ -117,14 +119,15 @@ cour_disconnect()
 	close(FD);
 }
 
-cour_abort()
+void
+cour_abort(void)
 {
 	cour_write(FD, "\r", 1);	/* send anything to abort the call */
 	cour_disconnect();
 }
 
 static void
-sigALRM()
+sigALRM(int signo)
 {
 	printf("\07timeout waiting for reply\n");
 	timeout = 1;
@@ -132,9 +135,8 @@ sigALRM()
 }
 
 static int
-cour_swallow(match)
-  char *match;
-  {
+cour_swallow(char *match)
+{
 	sig_t f;
 	char c;
 
@@ -170,16 +172,16 @@ struct baud_msg {
 	char *msg;
 	int baud;
 } baud_msg[] = {
-	"",		B300,
-	" 1200",	B1200,
-	" 2400",	B2400,
-	" 9600",	B9600,
-	" 9600/ARQ",	B9600,
-	0,		0,
+	{ "",		B300 },
+	{ " 1200",	B1200 },
+	{ " 2400",	B2400 },
+	{ " 9600",	B9600 },
+	{ " 9600/ARQ",	B9600 },
+	{ 0,		0 },
 };
 
 static int
-cour_connect()
+cour_connect(void)
 {
 	char c;
 	int nc, nl, n;
@@ -238,7 +240,6 @@ again:
 			putchar(c);
 #endif
 	}
-error1:
 	printf("%s\r\n", dialer_buf);
 error:
 	signal(SIGALRM, f);
@@ -250,7 +251,7 @@ error:
  * the courier in sync.
  */
 static int
-coursync()
+coursync(void)
 {
 	int already = 0;
 	int len;
@@ -291,10 +292,8 @@ coursync()
 	return (0);
 }
 
-cour_write(fd, cp, n)
-int fd;
-char *cp;
-int n;
+static void
+cour_write(int fd, char *cp, int n)
 {
 #ifdef notdef
 	if (boolean(value(VERBOSE)))
@@ -325,7 +324,8 @@ cour_verbose_read()
 }
 #endif
 
-cour_nap()
+static void
+cour_nap(void)
 {
 	acu_nap (50);
 }

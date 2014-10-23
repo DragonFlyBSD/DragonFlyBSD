@@ -34,7 +34,6 @@
  *      @(#)tip.h	8.1 (Berkeley) 6/6/93
  *
  * $FreeBSD: src/usr.bin/tip/tip/tip.h,v 1.5.2.1 2000/07/01 12:24:23 ps Exp $
- * $DragonFly: src/usr.bin/tip/tip/tip.h,v 1.5 2005/04/19 05:32:02 cpressey Exp $
  */
 
 /*
@@ -142,9 +141,9 @@ typedef
 typedef
 	struct {
 		char	*acu_name;
-		int	(*acu_dialer)();
-		void	(*acu_disconnect)();
-		void	(*acu_abort)();
+		int	(*acu_dialer)(char *, char *);
+		void	(*acu_disconnect)(void);
+		void	(*acu_abort)(void);
 	}
 	acu_t;
 
@@ -192,7 +191,7 @@ typedef
 		char	e_char;		/* char to match on */
 		char	e_flags;	/* experimental, priviledged */
 		char	*e_help;	/* help string */
-		int 	(*e_func)();	/* command */
+		void 	(*e_func)(int);	/* command */
 	}
 	esctable_t;
 
@@ -295,31 +294,99 @@ char	*uucplock;		/* name of lock file for uucp's */
 int	odisc;				/* initial tty line discipline */
 extern	int disc;			/* current tty discpline */
 
-extern	char *ctrl();
-extern	char *vinterp();
-extern	char *connect();
-extern	int   size(char *);
-extern	int   any(char, char *);
-extern	void  setscript(void);
-extern	void  tipout(void);
-extern	void  vinit(void);
-extern	long  hunt(char *);
-extern	int vstring(char *, char *);
-extern	void setparity(char *);
-extern	void vlex(char *);
-extern	void daemon_uid(void);
-extern	void disconnect(char *);
-extern	void shell_uid(void);
-extern	void unraw(void);
-extern	void xpwrite(int, char *, int);
-extern	int prompt(char *, char *, size_t);
-extern	int consh(int);
-extern	void tipabort(char *);
+char	*ctrl(char);
+char	*vinterp(char *, char);
+char	*connect(void);
+int	size(char *);
+int	any(char, char *);
+void	setscript(void);
+void	tipout(void);
+void	vinit(void);
+long	hunt(char *);
+int	vstring(char *, char *);
+void	setparity(char *);
+void	vlex(char *);
+void	daemon_uid(void);
+void	disconnect(char *);
+void	shell_uid(void);
+void	unraw(void);
+void	user_uid(void);
+void	xpwrite(int, char *, int);
+int	prompt(char *, char *, size_t);
+void	tipabort(char *);
+void	cumain(int, char **);
+char	*getremote(char *);
+char	*interp(char *);
+
+void	chdirectory(int);
+void	cleanup(int);
+void	consh(int);
+void	cu_put(int);
+void	cu_take(int);
+void	dollar(int);
+char	*expand(char *);
+void	finish(int);
+void	genbrk(int);
+void	getfl(int);
+void	help(int);
+void	pipefile(int);
+void	pipeout(int);
+void	sendfile(int);
+void	shell(int);
+int	speed(int);
+void	suspend(int);
+void	timeoutfunc(int);
+void	ttysetup(int);
+void	variable(int);
+
+void	biz22_abort(void);
+int	biz22f_dialer(char *, char *);
+int	biz22w_dialer(char *, char *);
+void	biz22_disconnect(void);
+
+void	cour_abort(void);
+int	cour_dialer(char *, char *);
+void	cour_disconnect(void);
+
+void	df_abort(void);
+int	df02_dialer(char *, char *);
+int	df03_dialer(char *, char *);
+void	df_disconnect(void);
+
+void	dn_abort(void);
+int	dn_dialer(char *, char *);
+void	dn_disconnect(void);
+
+void	hay_abort(void);
+int	hay_dialer(char *, char *);
+void	hay_disconnect(void);
+
+void	multitech_abort(void);
+int	multitech_dialer(char *, char *);
+void	multitech_disconnect(void);
+
+void	t3000_abort(void);
+int	t3000_dialer(char *, char *);
+void	t3000_disconnect(void);
+
+acu_t	*unidialer_getmodem(const char *);
+
+void	v3451_abort(void);
+int	v3451_dialer(char *, char *);
+void	v3451_disconnect(void);
+
+void	v831_abort(void);
+int	v831_dialer(char *, char *);
+void	v831_disconnect(void);
+
+void	ven_abort(void);
+int	ven_dialer(char *, char *);
+void	ven_disconnect(void);
 
 #define TL_VERBOSE       0x00000001
 #define TL_SIGNAL_TIPOUT 0x00000002
 
-int tiplink (char *cmd, unsigned int flags);
-void raw ();
+int tiplink(char *cmd, unsigned int flags);
+void raw(void);
 
 /* end of tip.h */

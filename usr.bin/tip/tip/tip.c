@@ -69,12 +69,10 @@ CONST int bauds[] = {
 int	disc = OTTYDISC;		/* tip normally runs this way */
 #endif
 
-void	intprompt();
-void	timeout(int);
-void	killchild();
-void	cleanup();
-void	tipdone();
-char	*sname();
+static void	intprompt(int);
+static void	killchild(void);
+static void	tipdone(int);
+static char	*sname(char *);
 char	PNbuf[256];			/* This limits the size of a number */
 
 static void usage(void);
@@ -87,7 +85,6 @@ void unraw(void);
 void shell_uid(void);
 void daemon_uid(void);
 void user_uid(void);
-int speed(int);
 
 int
 main(int argc, char *argv[])
@@ -145,7 +142,7 @@ main(int argc, char *argv[])
 	 *	is private, we don't want 'ps' or 'w' to find it).
 	 */
 	if (strlen(system) > sizeof(PNbuf) - 1)
-		errx(1, "phone number too long (max = %lu bytes)", sizeof PNbuf - 1);
+		errx(1, "phone number too long (max = %zd bytes)", sizeof PNbuf - 1);
 	strncpy(PNbuf, system, sizeof(PNbuf) - 1);
 	for (p = system; *p; p++)
 		*p = '\0';
@@ -246,7 +243,7 @@ cucommon:
 	raw();
 
 	pipe(fildes); pipe(repdes);
-	(void)signal(SIGALRM, timeout);
+	(void)signal(SIGALRM, timeoutfunc);
 
 	/*
 	 * Everything's set up now:
@@ -269,14 +266,14 @@ cucommon:
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: tip [-v] [-speed] [system-name]\n");
 	exit(1);
 }
 
 void
-killchild()
+killchild(void)
 {
 	if (pid != 0) {
 		kill(pid, SIGTERM);
@@ -285,7 +282,7 @@ killchild()
 }
 
 void
-cleanup()
+cleanup(int signo)
 {
 
 	daemon_uid();
@@ -298,7 +295,7 @@ cleanup()
 }
 
 void
-tipdone()
+tipdone(int signo)
 {
 	tipabort("Hangup.");
 }
@@ -313,7 +310,7 @@ tipdone()
 static int uidswapped;
 
 void
-user_uid()
+user_uid(void)
 {
 	if (uidswapped == 0) {
 		seteuid(uid);
@@ -322,7 +319,7 @@ user_uid()
 }
 
 void
-daemon_uid()
+daemon_uid(void)
 {
 	if (uidswapped) {
 		seteuid(euid);
@@ -331,7 +328,7 @@ daemon_uid()
 }
 
 void
-shell_uid()
+shell_uid(void)
 {
 	setegid(gid);
 	seteuid(uid);
@@ -341,7 +338,7 @@ shell_uid()
  * put the controlling keyboard into raw mode
  */
 void
-raw ()
+raw(void)
 {
 #if HAVE_TERMIOS
 	tcsetattr (0, TCSANOW, &ctermios);
@@ -359,7 +356,7 @@ raw ()
  * return keyboard to normal mode
  */
 void
-unraw()
+unraw(void)
 {
 #if HAVE_TERMIOS
 	tcsetattr (0, TCSANOW, &otermios);
@@ -380,10 +377,7 @@ static	jmp_buf promptbuf;
  *  normal erase and kill characters.
  */
 int
-prompt(s, p, sz)
-	char *s;
-	char *p;
-	size_t sz;
+prompt(char *s, char *p, size_t sz)
 {
 	char *b = p;
 	sig_t oint, oquit;
@@ -408,7 +402,7 @@ prompt(s, p, sz)
  * Interrupt service routine during prompting
  */
 void
-intprompt()
+intprompt(int signo)
 {
 
 	(void)signal(SIGINT, SIG_IGN);
@@ -421,7 +415,7 @@ intprompt()
  * ****TIPIN   TIPIN****
  */
 void
-tipin()
+tipin(void)
 {
 	int i;
 	char gch, bol = 1;
@@ -479,7 +473,7 @@ extern esctable_t etable[];
  *  called on recognition of ``escapec'' at the beginning of a line
  */
 char
-escape()
+escape(void)
 {
 	char gch;
 	esctable_t *p;
@@ -505,8 +499,7 @@ escape()
 }
 
 int
-speed(n)
-	int n;
+speed(int n)
 {
 #if HAVE_TERMIOS
 	return (n);
@@ -530,8 +523,7 @@ any(char c, char *p)
 }
 
 int
-size(s)
-	char	*s;
+size(char *s)
 {
 	int i = 0;
 
@@ -541,8 +533,7 @@ size(s)
 }
 
 char *
-interp(s)
-	char *s;
+interp(char *s)
 {
 	static char buf[256];
 	char *p = buf, c, *q;
@@ -567,8 +558,7 @@ interp(s)
 }
 
 char *
-ctrl(c)
-	char c;
+ctrl(char c)
 {
 	static char s[3];
 
@@ -587,8 +577,7 @@ ctrl(c)
  * Help command
  */
 void
-help(c)
-	char c;
+help(int c)
 {
 	esctable_t *p;
 
@@ -640,8 +629,7 @@ ttysetup (int speed)
  * strip leading directories.
  */
 char *
-sname(s)
-	char *s;
+sname(char *s)
 {
 	char *p = s;
 
@@ -660,10 +648,7 @@ static int bits8;
  * with the right parity and output it.
  */
 void
-xpwrite(fd, buf, n)
-	int fd;
-	char *buf;
-	int n;
+xpwrite(int fd, char *buf, int n)
 {
 	int i;
 	char *bp;
@@ -687,8 +672,7 @@ xpwrite(fd, buf, n)
  * Build a parity table with appropriate high-order bit.
  */
 void
-setparity(defparity)
-	char *defparity;
+setparity(char *defparity)
 {
 	int i, flip, clr, set;
 	char *parity;

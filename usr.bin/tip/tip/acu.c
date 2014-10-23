@@ -43,8 +43,8 @@ acu_t* unidialer_getmodem (const char *modem_name);
 
 static acu_t *acu = NULL;
 static int conflag;
-static void acuabort();
-static acu_t *acutype();
+static void acuabort(int);
+static acu_t *acutype(char *);
 static jmp_buf jmpbuf;
 /*
  * Establish connection for tip
@@ -63,7 +63,7 @@ static jmp_buf jmpbuf;
  *   found in the file).
  */
 char *
-connect()
+connect(void)
 {
 	char *cp = PN;
 	char *phnum, string[256];
@@ -164,8 +164,7 @@ connect()
 }
 
 void
-disconnect(reason)
-	char *reason;
+disconnect(char *reason)
 {
 	if (!conflag) {
 		logent(value(HOST), "", DV, "call terminated");
@@ -188,8 +187,7 @@ acuabort(int s)
 }
 
 static acu_t *
-acutype(s)
-	char *s;
+acutype(char *s)
 {
 	acu_t *p;
 	extern acu_t acutable[];

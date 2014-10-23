@@ -57,22 +57,8 @@ char	null = '\0';
 char	*sep[] = { "second", "minute", "hour" };
 static char *argv[10];		/* argument vector for take and put */
 
-void		timeout(int);		/* timeout function called on alarm */
 static void	stopsnd(int);		/* SIGINT handler during file transfers */
-static void	intcopy();		/* interrupt routine for file transfers */
-
-void suspend(char);
-void genbrk(void);
-void variable(void);
-void finish(void);
-void tipabort(char *);
-void chdirectory(void);
-void shell(void);
-void cu_put(char);
-void sendfile(char);
-void pipefile(void);
-void cu_take(char);
-void getfl(char);
+static void	intcopy(int);		/* interrupt routine for file transfers */
 
 static int anyof(char *, char *);
 static void tandem(char *);
@@ -84,8 +70,8 @@ static void transmit(FILE *, char *, char *);
 static void transfer(char *, int, char *);
 static void xfer(char *, int, char *);
 
-void
-usedefchars (void)
+static void
+usedefchars(void)
 {
 #if HAVE_TERMIOS
 	int cnt;
@@ -99,8 +85,8 @@ usedefchars (void)
 #endif
 }
 
-void
-usetchars (void)
+static void
+usetchars(void)
 {
 #if HAVE_TERMIOS
 	tcsetattr (0, TCSANOW, &ctermios);
@@ -109,8 +95,8 @@ usetchars (void)
 #endif
 }
 
-void
-flush_remote (void)
+static void
+flush_remote(void)
 {
 #ifdef TIOCFLUSH
 	int cmd = 0;
@@ -127,9 +113,9 @@ flush_remote (void)
  *  get a file from the remote host
  */
 void
-getfl(char c)
+getfl(int c)
 {
-	char buf[256], *cp, *expand();
+	char buf[256], *cp;
 
 	putchar(c);
 	/*
@@ -157,10 +143,10 @@ getfl(char c)
  * Cu-like take command
  */
 void
-cu_take(char cc)
+cu_take(int c)
 {
 	int fd, argc;
-	char line[BUFSIZ], *expand(), *cp;
+	char line[BUFSIZ], *cp;
 
 	if (prompt("[take] ", copyname, sizeof(copyname)))
 		return;
@@ -335,7 +321,7 @@ transfer(char *buf, int fd, char *eofchars)
  *   send remote input to local process via pipe
  */
 void
-pipefile(void)
+pipefile(int c)
 {
 	int cpid, pdes[2];
 	char buf[256];
@@ -394,13 +380,12 @@ stopsnd(int __dummy)
  *  terminate transmission with pseudo EOF sequence
  */
 void
-sendfile(char cc)
+sendfile(int c)
 {
 	FILE *fd;
 	char *fnamex;
-	char *expand();
 
-	putchar(cc);
+	putchar(c);
 	/*
 	 * get file name
 	 */
@@ -508,12 +493,10 @@ out:
 	fclose(fd);
 	signal(SIGINT, f);
 	if (boolean(value(VERBOSE))) {
-		if (boolean(value(RAWFTP))) {
+		if (boolean(value(RAWFTP)))
 			prtime(" chars transferred in ", stop_t-start_t);
-		}
-		else {
+		else
 			prtime(" lines transferred in ", stop_t-start_t);
-		}
 	}
 	write(fildes[1], (char *)&ccc, 1);
 	usetchars ();
@@ -523,12 +506,11 @@ out:
  * Cu-like put command
  */
 void
-cu_put(char cc)
+cu_put(int c)
 {
 	FILE *fd;
 	char line[BUFSIZ];
 	int argc;
-	char *expand();
 	char *copynamex;
 
 	if (prompt("[put] ", copyname, sizeof(copyname)))
@@ -599,9 +581,9 @@ tryagain:
 }
 
 void
-timeout(int __dummy)
+timeoutfunc(int __dummy)
 {
-	signal(SIGALRM, timeout);
+	signal(SIGALRM, timeoutfunc);
 	timedout = 1;
 }
 
@@ -713,15 +695,14 @@ tiplink (char *cmd, unsigned int flags)
  *  1 <-> remote tty out
  *  2 <-> local tty out
  */
-int
+void
 consh(int c)
 {
 	char buf[256];
 	putchar(c);
 	if (prompt("Local command? ", buf, sizeof(buf)))
-		return 0;
+		return;
 	tiplink (buf, TL_SIGNAL_TIPOUT | TL_VERBOSE);
-	return 0;
 }
 #endif
 
@@ -729,7 +710,7 @@ consh(int c)
  * Escape to local shell
  */
 void
-shell(void)
+shell(int c)
 {
 	int shpid, status;
 	char *cp;
@@ -787,7 +768,7 @@ setscript(void)
  *   local portion of tip
  */
 void
-chdirectory(void)
+chdirectory(int c)
 {
 	char dirname[PATH_MAX];
 	char *cp = dirname;
@@ -818,7 +799,7 @@ tipabort(char *msg)
 }
 
 void
-finish(void)
+finish(int c)
 {
 	char *abortmsg = NULL, *dismsg;
 
@@ -834,7 +815,7 @@ finish(void)
 }
 
 void
-intcopy(void)
+intcopy(int signo)
 {
 	raw();
 	quit = 1;
@@ -896,7 +877,7 @@ prtime(char *s, time_t a)
 }
 
 void
-variable(void)
+variable(int c)
 {
 	char	buf[256];
 
@@ -978,7 +959,7 @@ tandem(char *option)
  * Send a break.
  */
 void
-genbrk(void)
+genbrk(int c)
 {
 
 	ioctl(FD, TIOCSBRK, NULL);
@@ -990,7 +971,7 @@ genbrk(void)
  * Suspend tip
  */
 void
-suspend(char c)
+suspend(int c)
 {
 
 	unraw();

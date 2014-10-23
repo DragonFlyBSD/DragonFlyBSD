@@ -99,8 +99,7 @@ expand_tilde (char **path, void (*free) (char *p))
 }
 
 static void
-getremcap(host)
-	char *host;
+getremcap(char *host)
 {
 	char **p, ***q;
 	char *bp;
@@ -109,10 +108,9 @@ getremcap(host)
 
 	rempath = getenv("REMOTE");
 	if (rempath != NULL) {
-		if (*rempath != '/') {
+		if (*rempath != '/')
 			/* we have an entry */
 			cgetset(rempath);
-		}
 		else {	/* we have a path */
 			db_array[1] = rempath;
 			db_array[2] = _PATH_REMOTE;
@@ -249,8 +247,7 @@ getremcap(host)
 }
 
 char *
-getremote(host)
-	char *host;
+getremote(char *host)
 {
 	char *cp;
 	static char *next;

@@ -38,6 +38,7 @@
  * Routines for calling up on a Courier modem.
  * Derived from Hayes driver.
  */
+#include "acucommon.h"
 #include "tipconf.h"
 #include "tip.h"
 
@@ -48,7 +49,8 @@
 #include <sys/times.h>
 #include <unistd.h>
 
-void acu_nap (unsigned int how_long)
+void
+acu_nap(unsigned int how_long)
 {
 	struct timeval t;
 	t.tv_usec = (how_long % 1000) * 1000;
@@ -57,7 +59,8 @@ void acu_nap (unsigned int how_long)
 }
 
 #elif HAVE_USLEEP
-void acu_nap (unsigned int how_long)
+void
+acu_nap(unsigned int how_long)
 {
 	(void) usleep (how_long * 1000);
 }
@@ -73,12 +76,14 @@ void acu_nap (unsigned int how_long)
 
 static int ringring;
 
-static void acunap_napx()
+static void
+acunap_napx(void)
 {
 	ringring = 1;
 }
 
-void acu_nap (unsigned int how_long)
+void
+acu_nap(unsigned int how_long)
 {
 				int omask;
         struct itimerval itv, oitv;
@@ -121,7 +126,8 @@ acu_hw_flow_control(int hw_flow_control)
 #endif /* HAVE_TERMIOS */
 }
 
-int acu_flush ()
+int
+acu_flush(void)
 {
 #ifdef TIOCFLUSH
 	int flags = 0;
@@ -132,7 +138,8 @@ int acu_flush ()
 #endif
 }
 
-int acu_getspeed ()
+int
+acu_getspeed(void)
 {
 #if HAVE_TERMIOS
 	struct termios term;
@@ -145,7 +152,8 @@ int acu_getspeed ()
 #endif
 }
 
-int acu_setspeed (int speed)
+int
+acu_setspeed(int speed)
 {
 	int rc = 0;
 #if HAVE_TERMIOS
@@ -177,7 +185,8 @@ int acu_setspeed (int speed)
 	return (rc);
 }
 
-void acu_hupcl ()
+void
+acu_hupcl(void)
 {
 #if HAVE_TERMIOS
 	struct termios term;

@@ -38,9 +38,10 @@
 
 #define DISCONNECT_CMD	"\20\04"	/* disconnection string */
 
-static	void sigALRM();
+static	int biz_dialer(char *, char *);
 static	int cmd(char *s);
 static	int detect(char *s);
+static	void sigALRM(int);
 static	int timeout = 0;
 static	jmp_buf timeoutbuf;
 
@@ -50,8 +51,7 @@ static	jmp_buf timeoutbuf;
  *	pulse dialing (mod = "W")
  */
 static int
-biz_dialer(num, mod)
-	char *num, *mod;
+biz_dialer(char *num, char *mod)
 {
 	int connected = 0;
 	char cbuf[40];
@@ -102,21 +102,22 @@ biz_dialer(num, mod)
 	return (connected);
 }
 
-biz22w_dialer(num, acu)
-	char *num, *acu;
+int
+biz22w_dialer(char *num, char *acu)
 {
 
 	return (biz_dialer(num, "W"));
 }
 
-biz22f_dialer(num, acu)
-	char *num, *acu;
+int
+biz22f_dialer(char *num, char *acu)
 {
 
 	return (biz_dialer(num, "V"));
 }
 
-biz22_disconnect()
+void
+biz22_disconnect(void)
 {
 	int rw = 2;
 
@@ -125,14 +126,15 @@ biz22_disconnect()
 	ioctl(FD, TIOCFLUSH, &rw);
 }
 
-biz22_abort()
+void
+biz22_abort(void)
 {
 
 	write(FD, "\02", 1);
 }
 
 static void
-sigALRM()
+sigALRM(int signo)
 {
 
 	timeout = 1;
@@ -140,8 +142,7 @@ sigALRM()
 }
 
 static int
-cmd(s)
-	char *s;
+cmd(char *s)
 {
 	sig_t f;
 	char c;
@@ -162,8 +163,7 @@ cmd(s)
 }
 
 static int
-detect(s)
-	char *s;
+detect(char *s)
 {
 	sig_t f;
 	char c;

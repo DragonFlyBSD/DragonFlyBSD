@@ -40,22 +40,18 @@
 #include "tipconf.h"
 #include "tip.h"
 
-extern char *getremote();
-extern char *rindex();
-
 static	jmp_buf deadline;
 static	int deadfl;
 
-void
-dead()
+static void
+dead(int signo)
 {
 	deadfl = 1;
 	longjmp(deadline, 1);
 }
 
 long
-hunt(name)
-	char *name;
+hunt(char *name)
 {
 	char *cp;
 	sig_t f;

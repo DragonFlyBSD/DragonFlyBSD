@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * @(#)tipconf.h 8.1 (Berkeley) 3/25/95
- * $DragonFly: src/usr.bin/tip/tip/tipconf.h,v 1.2 2004/09/03 20:48:16 dillon Exp $
  */
 
 #ifndef tipconf_h_included

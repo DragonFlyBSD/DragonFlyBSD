@@ -32,7 +32,6 @@
  *
  * @(#)log.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/log.c,v 1.4 1999/08/28 01:06:34 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/log.c,v 1.3 2005/04/19 05:32:02 cpressey Exp $
  */
 
 #include "tipconf.h"
@@ -47,8 +46,7 @@ static	FILE *flog = NULL;
  */
 
 void
-logent(group, num, acu, message)
-	char *group, *num, *acu, *message;
+logent(char *group, char *num, char *acu, char *message)
 {
 	char *user, *timestamp;
 	struct passwd *pwd;
@@ -61,12 +59,10 @@ logent(group, num, acu, message)
 		return;
 	}
 	if ((user = getlogin()) == NULL) {
-		if ((pwd = getpwuid(getuid())) == NULL) {
+		if ((pwd = getpwuid(getuid())) == NULL)
 			user = "???";
-		}
-		else {
+		else
 			user = pwd->pw_name;
-		}
 	}
 	t = time(0);
 	timestamp = ctime(&t);
@@ -84,7 +80,7 @@ logent(group, num, acu, message)
 }
 
 void
-loginit()
+loginit(void)
 {
 	flog = fopen(value(LOG), "a");
 	if (flog == NULL)

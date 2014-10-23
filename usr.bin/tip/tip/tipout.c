@@ -49,8 +49,8 @@ static	jmp_buf sigbuf;
  * TIPOUT wait state routine --
  *   sent by TIPIN when it wants to posses the remote host
  */
-void
-intIOT()
+static void
+intIOT(int signo)
 {
 
 	write(repdes[1],&ccc,1);
@@ -62,15 +62,15 @@ intIOT()
  * Scripting command interpreter --
  *  accepts script file name over the pipe and acts accordingly
  */
-void
-intEMT()
+static void
+intEMT(int signo)
 {
 	char c, line[256];
 	char *pline = line;
 	char reply;
 
 	read(fildes[0], &c, 1);
-	while (c != '\n' && pline - line < sizeof(line)) {
+	while (c != '\n' && (size_t)(pline - line) < sizeof(line)) {
 		*pline++ = c;
 		read(fildes[0], &c, 1);
 	}
@@ -92,8 +92,8 @@ intEMT()
 	longjmp(sigbuf, 1);
 }
 
-void
-intTERM()
+static void
+intTERM(int signo)
 {
 
 	if (boolean(value(SCRIPT)) && fscript != NULL)
@@ -101,8 +101,8 @@ intTERM()
 	exit(0);
 }
 
-void
-intSYS()
+static void
+intSYS(int signo)
 {
 
 	boolean(value(BEAUTIFY)) = !boolean(value(BEAUTIFY));
@@ -113,7 +113,7 @@ intSYS()
  * ****TIPOUT   TIPOUT****
  */
 void
-tipout()
+tipout(void)
 {
 	char buf[BUFSIZ];
 	char *cp;
@@ -134,19 +134,19 @@ tipout()
 			/* lost carrier */
 			if (cnt < 0 && errno == EIO) {
 				sigblock(sigmask(SIGTERM));
-				intTERM();
+				intTERM(0);
 				/*NOTREACHED*/
 			} else if (cnt == 0 && errno == ENOENT) {
 				if (getppid() != 1)
 					kill(getppid(),SIGUSR1);
 				sigblock(sigmask(SIGTERM));
-				intTERM();
+				intTERM(0);
 				/*NOTREACHED*/
 			} else if (cnt < 0) {
 				if (getppid() != 1)
 					kill(getppid(),SIGUSR1);
 				sigblock(sigmask(SIGTERM));
-				intTERM();
+				intTERM(0);
 				/*NOTREACHED*/
 			}
 			continue;

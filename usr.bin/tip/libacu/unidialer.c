@@ -90,11 +90,19 @@ static unsigned int intercommand_delay;
 static unsigned int escape_guard_time;
 static unsigned int reset_delay;
 
-static int unidialer_dialer (char *num, char *acu);
-static void unidialer_disconnect ();
-static void unidialer_abort ();
+static int unidialer_dialer(char *num, char *acu);
+static void unidialer_disconnect(void);
+static void unidialer_abort(void);
 static int unidialer_connect(void);
 static int unidialer_swallow(char *);
+#ifdef DEBUG
+static void unidialer_verbose_read (void);
+#endif
+static void unidialer_modem_cmd(int fd, CONST char *cmd);
+static void unidialer_write(int fd, CONST char *cp, int n);
+static void unidialer_write_str(int fd, CONST char *cp);
+static void sigALRM(int);
+static int unidialersync(void);
 
 static acu_t unidialer =
 {
@@ -108,39 +116,27 @@ static acu_t unidialer =
 	Table of parameters kept in modem database
 */
 modem_parm_t modem_parms [] = {
-	{ mpt_string, "dial_command", &dial_command, "ATDT%s\r" },
-	{ mpt_string, "hangup_command", &hangup_command, "ATH\r", },
-	{ mpt_string, "echo_off_command", &echo_off_command, "ATE0\r" },
-	{ mpt_string, "reset_command", &reset_command, "ATZ\r" },
-	{ mpt_string, "init_string", &init_string, "AT&F\r", },
-	{ mpt_string, "escape_sequence", &escape_sequence, "+++" },
-	{ mpt_boolean, "hw_flow_control", (char **)&hw_flow_control, NULL },
-	{ mpt_boolean, "lock_baud", (char **)&lock_baud, NULL },
-	{ mpt_number, "intercharacter_delay", (char **)&intercharacter_delay, (char *)50 },
-	{ mpt_number, "intercommand_delay", (char **)&intercommand_delay, (char *)300 },
-	{ mpt_number, "escape_guard_time", (char **)&escape_guard_time, (char *)300 },
-	{ mpt_number, "reset_delay", (char **)&reset_delay, (char *)3000 },
-	{ mpt_notype, NULL, NULL, NULL }
+	{ mpt_string, "dial_command", { &dial_command }, { "ATDT%s\r" } },
+	{ mpt_string, "hangup_command", { &hangup_command }, { "ATH\r", } },
+	{ mpt_string, "echo_off_command", { &echo_off_command }, { "ATE0\r" } },
+	{ mpt_string, "reset_command", { &reset_command }, { "ATZ\r" } },
+	{ mpt_string, "init_string", { &init_string }, { "AT{ &F\r", } },
+	{ mpt_string, "escape_sequence", { &escape_sequence }, { "+++" } },
+	{ mpt_boolean, "hw_flow_control", { (char **)&hw_flow_control }, { NULL } },
+	{ mpt_boolean, "lock_baud", { (char **)&lock_baud }, { NULL } },
+	{ mpt_number, "intercharacter_delay", { (char **)&intercharacter_delay }, { (char *)50 } },
+	{ mpt_number, "intercommand_delay", { (char **)&intercommand_delay }, { (char *)300 } },
+	{ mpt_number, "escape_guard_time", { (char **)&escape_guard_time }, { (char *)300 } },
+	{ mpt_number, "reset_delay", { (char **)&reset_delay }, { (char *)3000 } },
+	{ mpt_notype, NULL, { NULL }, { NULL } }
 };
-
-/*
-	Forward declarations
-*/
-static void unidialer_verbose_read ();
-static void unidialer_modem_cmd (int fd, CONST char *cmd);
-static void unidialer_write (int fd, CONST char *cp, int n);
-static void unidialer_write_str (int fd, CONST char *cp);
-static void unidialer_disconnect ();
-static void sigALRM ();
-static int unidialersync ();
-static int unidialer_swallow (char *match);
 
 /*
 	Global vars
 */
 static int timeout = 0;
 static int connected = 0;
-static jmp_buf timeoutbuf, intbuf;
+static jmp_buf timeoutbuf;
 
 #define cgetflag(f)	(cgetcap(bp, f, ':') != NULL)
 
@@ -201,24 +197,24 @@ static int getmodemparms (const char *modem)
 	{
 		switch (mpp->modem_parm_type)
 		{
-			case mpt_string:
-				if (cgetstr (bp, (char *)mpp->name, mpp->value.string) == -1)
-					*mpp->value.string = mpp->default_value.string;
-				break;
-
-			case mpt_number:
-			{
-				long l;
-				if (cgetnum (bp, (char *)mpp->name, &l) == -1)
-					*mpp->value.number = mpp->default_value.number;
-				else
-					*mpp->value.number = (unsigned int)l;
-			}
-				break;
-
-			case mpt_boolean:
-				*mpp->value.number = cgetflag ((char *)mpp->name);
-				break;
+		case mpt_string:
+			if (cgetstr (bp, (char *)mpp->name, mpp->value.string) == -1)
+				*mpp->value.string = mpp->default_value.string;
+			break;
+		case mpt_number:
+		{
+			long l;
+			if (cgetnum (bp, (char *)mpp->name, &l) == -1)
+				*mpp->value.number = mpp->default_value.number;
+			else
+				*mpp->value.number = (unsigned int)l;
+		}
+			break;
+		case mpt_boolean:
+			*mpp->value.number = cgetflag ((char *)mpp->name);
+			break;
+		default:
+			break;
 		}
 	}
 	strncpy (modem_name, modem, sizeof (modem_name) - 1);
@@ -228,7 +224,8 @@ static int getmodemparms (const char *modem)
 
 /*
 */
-acu_t* unidialer_getmodem (const char *modem_name)
+acu_t *
+unidialer_getmodem(const char *modem_name)
 {
 	acu_t* rc = NULL;
 	if (getmodemparms (modem_name))
@@ -236,7 +233,8 @@ acu_t* unidialer_getmodem (const char *modem_name)
 	return rc;
 }
 
-static int unidialer_modem_ready ()
+static int
+unidialer_modem_ready(void)
 {
 #ifdef TIOCMGET
 	int state;
@@ -269,7 +267,8 @@ static int unidialer_waitfor_modem_ready (int ms)
 #endif
 }
 
-int unidialer_tty_clocal (int flag)
+static void
+unidialer_tty_clocal(int flag)
 {
 #if HAVE_TERMIOS
 	struct termios t;
@@ -294,7 +293,8 @@ int unidialer_tty_clocal (int flag)
 #endif
 }
 
-int unidialer_get_modem_response (char *buf, int bufsz, int response_timeout)
+static int
+unidialer_get_modem_response(char *buf, int bufsz, int response_timeout)
 {
 	sig_t f;
 	char c, *p = buf, *lid = buf + bufsz - 1;
@@ -394,7 +394,8 @@ int unidialer_get_modem_response (char *buf, int bufsz, int response_timeout)
 	}
 }
 
-int unidialer_get_okay (int ms)
+static int
+unidialer_get_okay(int ms)
 {
 	int okay;
 	char buf [BUFSIZ];
@@ -403,7 +404,8 @@ int unidialer_get_okay (int ms)
 	return okay;
 }
 
-static int unidialer_dialer (char *num, char *acu)
+static int
+unidialer_dialer(char *num, char *acu)
 {
 	char *cp;
 	char dial_string [80];
@@ -485,7 +487,8 @@ badsynch:
 	return (connected);
 }
 
-static void unidialer_disconnect ()
+static void
+unidialer_disconnect(void)
 {
 	int okay, retries;
 
@@ -547,13 +550,15 @@ static void unidialer_disconnect ()
 	close (FD);
 }
 
-static void unidialer_abort ()
+static void
+unidialer_abort(void)
 {
 	unidialer_write_str (FD, "\r");	/* send anything to abort the call */
 	unidialer_disconnect ();
 }
 
-static void sigALRM ()
+static void
+sigALRM(int signo)
 {
 	(void) printf("\07timeout waiting for reply\n");
 	timeout = 1;
@@ -607,15 +612,16 @@ static struct baud_msg {
 	char *msg;
 	int baud;
 } baud_msg[] = {
-	"",		B300,
-	" 1200",	B1200,
-	" 2400",	B2400,
-	" 9600",	B9600,
-	" 9600/ARQ",	B9600,
-	0,		0,
+	{ "",		B300 },
+	{ " 1200",	B1200 },
+	{ " 2400",	B2400 },
+	{ " 9600",	B9600 },
+	{ " 9600/ARQ",	B9600 },
+	{ 0,		0 },
 };
 
-static int unidialer_connect ()
+static int
+unidialer_connect(void)
 {
 	char c;
 	int nc, nl, n;
@@ -677,7 +683,6 @@ again:
 		}
 		dialer_buf[nc] = c;
 	}
-error1:
 	printf("%s\r\n", dialer_buf);
 error:
 	signal(SIGALRM, f);
@@ -688,7 +693,8 @@ error:
  * This convoluted piece of code attempts to get
  * the unidialer in sync.
  */
-static int unidialersync ()
+static int
+unidialersync(void)
 {
 	int already = 0;
 	int len;
@@ -783,7 +789,7 @@ static void unidialer_write (int fd, const char *cp, int n)
 }
 
 #ifdef DEBUG
-static void unidialer_verbose_read()
+static void unidialer_verbose_read(void)
 {
 	int n = 0;
 	char buf[BUFSIZ];

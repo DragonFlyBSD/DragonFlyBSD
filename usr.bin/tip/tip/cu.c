@@ -36,15 +36,14 @@
 
 #include "tipconf.h"
 #include "tip.h"
-
-void	cleanup();
+#include <libutil.h>
 
 #if INCLUDE_CU_INTERFACE
 
 /*
  * Botch the interface to look like cu's
  */
-int
+void
 cumain(int argc, char *argv[])
 {
 	int i;
@@ -131,6 +130,6 @@ cumain(int argc, char *argv[])
 	}
 	if (!HW)
 		ttysetup(speed(BR));
-	return 0;
+	exit(0);
 }
 #endif /* INCLUDE_CU_INTERFACE */

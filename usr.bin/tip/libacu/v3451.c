@@ -36,6 +36,7 @@
 /*
  * Routines for calling up on a Vadic 3451 Modem
  */
+#include "acucommon.h"
 #include "tipconf.h"
 #include "tip.h"
 
@@ -47,17 +48,13 @@ static int prefix(char *, char *);
 
 static	jmp_buf Sjbuf;
 
-v3451_dialer(num, acu)
-	char *num;
-	char *acu;
+int
+v3451_dialer(char *num, char *acu)
 {
 	sig_t func;
 	int ok;
 	int slow = number(value(BAUDRATE)) < 1200, rw = 2;
 	char phone[50];
-#if ACULOG
-	char line[80];
-#endif
 
 	/*
 	 * Get in synch
@@ -124,32 +121,29 @@ v3451_dialer(num, acu)
 }
 
 void
-v3451_disconnect()
+v3451_disconnect(void)
 {
 
 	close(FD);
 }
 
 void
-v3451_abort()
+v3451_abort(void)
 {
 
 	close(FD);
 }
 
 static void
-vawrite(cp, delay)
-	char *cp;
-	int delay;
+vawrite(char *cp, int delay)
 {
 
 	for (; *cp; sleep(delay), cp++)
 		write(FD, cp, 1);
 }
 
-static
-expect(cp)
-	char *cp;
+static int
+expect(char *cp)
 {
 	char buf[300];
 	char *rp = buf;
@@ -193,8 +187,7 @@ alarmtr(int signo __unused)
 }
 
 static int
-notin(sh, lg)
-	char *sh, *lg;
+notin(char *sh, char *lg)
 {
 	for (; *lg; lg++)
 		if (prefix(sh, lg))
@@ -202,9 +195,8 @@ notin(sh, lg)
 	return (1);
 }
 
-static
-prefix(s1, s2)
-	char *s1, *s2;
+static int
+prefix(char *s1, char *s2)
 {
 	char c;
 

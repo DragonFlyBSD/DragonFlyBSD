@@ -63,13 +63,11 @@ static CONST unsigned int reset_delay = 2000;
 /*
 	Forward declarations
 */
-void multitech_write (int fd, CONST char *cp, int n);
-void multitech_write_str (int fd, CONST char *cp);
-void multitech_disconnect ();
-void acu_nap (unsigned int how_long);
-static void sigALRM ();
-static int multitechsync ();
-static int multitech_swallow (char *match);
+static void multitech_write(int fd, CONST char *cp, int n);
+static void multitech_write_str(int fd, CONST char *cp);
+static void sigALRM(int signo);
+static int multitechsync(void);
+static int multitech_swallow(char *match);
 static int multitech_connect(void);
 
 /*
@@ -77,9 +75,10 @@ static int multitech_connect(void);
 */
 static int timeout = 0;
 static int connected = 0;
-static jmp_buf timeoutbuf, intbuf;
+static jmp_buf timeoutbuf;
 
-int multitech_dialer (char *num, char *acu)
+int
+multitech_dialer(char *num, char *acu)
 {
 	char *cp;
 #if ACULOG
@@ -156,7 +155,8 @@ badsynch:
 	return (connected);
 }
 
-void multitech_disconnect ()
+void
+multitech_disconnect(void)
 {
 	int okay, retries;
 	for (retries = okay = 0; retries < 3 && !okay; retries++)
@@ -186,21 +186,24 @@ void multitech_disconnect ()
 	close (FD);
 }
 
-void multitech_abort ()
+void
+multitech_abort(void)
 {
 	multitech_write_str (FD, "\r");	/* send anything to abort the call */
 	multitech_disconnect ();
 }
 
-static void sigALRM ()
+static
+void sigALRM(int signo)
 {
 	(void) printf("\07timeout waiting for reply\n");
 	timeout = 1;
 	longjmp(timeoutbuf, 1);
 }
 
-static int multitech_swallow (char *match)
-  {
+static int
+multitech_swallow(char *match)
+{
 	sig_t f;
 	char c;
 
@@ -236,15 +239,16 @@ static struct baud_msg {
 	char *msg;
 	int baud;
 } baud_msg[] = {
-	"",		B300,
-	" 1200",	B1200,
-	" 2400",	B2400,
-	" 9600",	B9600,
-	" 9600/ARQ",	B9600,
-	0,		0,
+	{ "",		B300 },
+	{ " 1200",	B1200 },
+	{ " 2400",	B2400 },
+	{ " 9600",	B9600 },
+	{ " 9600/ARQ",	B9600 },
+	{ 0,		0 },
 };
 
-static int multitech_connect ()
+static int
+multitech_connect(void)
 {
 	char c;
 	int nc, nl, n;
@@ -306,7 +310,6 @@ again:
 		}
 		dialer_buf[nc] = c;
 	}
-error1:
 	printf("%s\r\n", dialer_buf);
 error:
 	signal(SIGALRM, f);
@@ -317,7 +320,8 @@ error:
  * This convoluted piece of code attempts to get
  * the multitech in sync.
  */
-static int multitechsync ()
+static int
+multitechsync(void)
 {
 	int already = 0;
 	int len;

@@ -41,17 +41,16 @@
 #include "tipconf.h"
 #include "tip.h"
 #include <errno.h>
+#include <sys/wait.h>
 
-int dn_abort();
-void alarmtr();
+void alarmtr(int);
 static jmp_buf jmpbuf;
 static int child = -1, dn;
 
-dn_dialer(num, acu)
-	char *num, *acu;
+int
+dn_dialer(char *num, char *acu)
 {
-	char *p, *q, phone[40];
-	int lt, nw, connected = 1;
+	int lt, nw;
 	int timelim;
 
 	if (boolean(value(VERBOSE)))
@@ -121,7 +120,7 @@ dn_dialer(num, acu)
 }
 
 void
-alarmtr()
+alarmtr(int signo)
 {
 	alarm(0);
 	longjmp(jmpbuf, 1);
@@ -131,7 +130,8 @@ alarmtr()
  * Insurance, for some reason we don't seem to be
  *  hanging up...
  */
-dn_disconnect()
+void
+dn_disconnect(void)
 {
 
 	sleep(2);
@@ -140,7 +140,8 @@ dn_disconnect()
 	close(FD);
 }
 
-dn_abort()
+void
+dn_abort(void)
 {
 
 	sleep(2);
