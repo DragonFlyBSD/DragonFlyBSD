@@ -32,8 +32,9 @@
 static inline void msleep(unsigned int msecs)
 {
 	static int dummy;
+	int delay = MAX(msecs*hz/1000, 1);
 
-	tsleep(&dummy, 0, "linux_msleep", msecs*hz/1000);
+	tsleep(&dummy, 0, "linux_msleep", delay);
 }
 
 static __inline void
