@@ -147,6 +147,8 @@ main(int argc, char *argv[])
 
 	/* Ignore the SIGHUP we get when our parent shell dies. */
 	signal(SIGHUP, SIG_IGN);
+	/* parent shell might also send a SIGTERM?  Best to ignore as well */
+	signal(SIGTERM, SIG_IGN);
 
 	/* Send a SIGTERM first, a chance to save the buffers. */
 	if (kill(-1, SIGTERM) == -1)
