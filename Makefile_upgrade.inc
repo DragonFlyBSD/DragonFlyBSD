@@ -2642,6 +2642,23 @@ TO_REMOVE+=/usr/share/zoneinfo/Asia/Harbin
 TO_REMOVE+=/usr/share/zoneinfo/Asia/Kashgar
 TO_REMOVE+=/usr/share/openssl/man/cat3/CMS_sign_add1_signer.3.gz
 TO_REMOVE+=/usr/share/openssl/man/man3/CMS_sign_add1_signer.3.gz
+TO_REMOVE+=/boot/kernel/mach64.ko
+TO_REMOVE+=/boot/kernel/mga.ko
+TO_REMOVE+=/boot/kernel/r128.ko
+TO_REMOVE+=/boot/kernel/savage.ko
+TO_REMOVE+=/boot/kernel/sis.ko
+TO_REMOVE+=/boot/kernel/tdfx.ko
+TO_REMOVE+=/usr/share/man/man4/mach64.4.gz
+TO_REMOVE+=/usr/share/man/man4/mach64drm.4.gz
+TO_REMOVE+=/usr/share/man/man4/mga.4.gz
+TO_REMOVE+=/usr/share/man/man4/mgadrm.4.gz
+TO_REMOVE+=/usr/share/man/man4/r128.4.gz
+TO_REMOVE+=/usr/share/man/man4/r128drm.4.gz
+TO_REMOVE+=/usr/share/man/man4/savage.4.gz
+TO_REMOVE+=/usr/share/man/man4/savagedrm.4.gz
+TO_REMOVE+=/usr/share/man/man4/sisdrm.4.gz
+TO_REMOVE+=/usr/share/man/man4/tdfx.4.gz
+TO_REMOVE+=/usr/share/man/man4/tdfxdrm.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

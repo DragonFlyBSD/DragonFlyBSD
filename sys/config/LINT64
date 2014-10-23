@@ -2161,12 +2161,7 @@ device		aibs		# ASUSTeK AI Booster (ACPI ASOC ATK0110)
 # DRM options:
 # drm:		General DRM code
 # i915kmsdrm:	Intel integrated GPUs, starting from the 830M family
-# mgadrm:	AGP Matrox G200, G400, G450, G550
-# r128drm:	ATI Rage 128 cards
 # radeonkmsdrm:	ATI Radeon cards
-# savagedrm:	Savage cards
-# sisdrm:	Sis cards
-# tdfxdrm:	3dfx Voodoo 3/4/5 and Banshee
 #
 # DRM_DEBUG:	include debug printfs, very slow
 #
@@ -2174,12 +2169,7 @@ device		aibs		# ASUSTeK AI Booster (ACPI ASOC ATK0110)
 
 device		drm
 #device		"i915kmsdrm"	# breaks VGA console, disabled by default
-device		mgadrm
-device		"r128drm"
 #device		radeonkmsdrm	# breaks VGA console, disabled by default
-device		savagedrm
-device		sisdrm
-device		tdfxdrm
 
 options 	DRM_DEBUG
 options 	DRM_LINUX
