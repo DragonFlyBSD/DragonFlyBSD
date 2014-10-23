@@ -1,4 +1,4 @@
-SUBDIR = drm mga r128 radeon radeonfw savage sis tdfx
+SUBDIR = drm radeon radeonfw
 
 .if ${MACHINE_ARCH} == "x86_64"
 SUBDIR+= i915
