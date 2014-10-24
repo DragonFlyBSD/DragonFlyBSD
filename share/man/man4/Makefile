@@ -415,7 +415,7 @@ MLINKS+=disc.4 if_disc.4
 MLINKS+=dm.4 dm_target_linear.4
 MLINKS+=drm.4 i915kms.4 \
 	drm.4 radeondrm.4 \
-	drm.4 radeon.4 \
+	drm.4 radeon.4
 MLINKS+=dsched.4 dsched_fq.4
 MLINKS+=em.4 emx.4 \
 	em.4 if_em.4 \
