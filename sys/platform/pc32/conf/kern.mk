@@ -1,4 +1,3 @@
-# $DragonFly: src/sys/platform/pc32/conf/kern.mk,v 1.1 2006/10/22 16:09:13 dillon Exp $
 #
 # On the i386, do not align the stack to 16-byte boundaries.  Otherwise GCC
 # adds code to the entry and exit point of every function to align the
@@ -12,21 +11,21 @@
 # only saved and restored under strictly managed conditions and mainline
 # kernel code cannot safely use the FP system.
 #
-CFLAGS+=	-mpreferred-stack-boundary=2
 CFLAGS+=	-fno-stack-protector
 CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3
 
-.if ${CCVER} == "gcc44" || ${CCVER} == "gcc47"
+.if ${CCVER:Mgcc*}
+CFLAGS+=	-mpreferred-stack-boundary=2
 CFLAGS+=	-mno-ssse3 -mno-sse4.1 -mno-sse4.2 -mno-sse4 -mno-sse4a \
 		-mno-sse5 
 CFLAGS+=	-mno-abm -mno-aes -mno-avx -mno-pclmul -mno-popcnt
-.endif
 
 .if ${CCVER} == "gcc47"
 CFLAGS+=	-mno-avx2 -mno-fsgsbase -mno-rdrnd -mno-f16c
 CFLAGS+=	-mno-fma -mno-fma4
 CFLAGS+=	-mno-bmi -mno-bmi2
 CFLAGS+=	-mno-xop -mno-lwp -mno-lzcnt -mno-tbm
+.endif
 .endif
 
 CFLAGS+=	-msoft-float

@@ -9,16 +9,22 @@
 
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
-		-Wold-style-definition -Wold-style-declaration -Wno-inline \
+		-Wold-style-definition -Wno-inline \
 		-Wno-pointer-sign -Winit-self -std=c99
 
+.if ${CCVER:Mgcc*}
+# All flags inside this block are gcc-specific except for --param
+# Since inline-limit wasn't recognized, and since --param squawks on clang
+# when it isn't used, it was shift to GCC compilers only.
+CFLAGS+=	-Wold-style-declaration \
+		-finline-limit=${INLINE_LIMIT} \
+		--param inline-unit-growth=100 \
+		--param large-function-growth=1000
 .if ${CCVER} == "gcc47"
 CWARNFLAGS+=	-Wno-unused-but-set-variable
 .endif
+.endif
 
-CFLAGS+= -finline-limit=${INLINE_LIMIT}
-CFLAGS+= --param inline-unit-growth=100
-CFLAGS+= --param large-function-growth=1000
 
 # Require the proper use of 'extern' for variables.  -fno-common will
 # cause duplicate declarations to generate a link error.

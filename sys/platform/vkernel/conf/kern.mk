@@ -1,4 +1,3 @@
-# $DragonFly: src/sys/platform/vkernel/conf/kern.mk,v 1.3 2007/01/06 08:57:30 dillon Exp $
 #
 # On the i386, do not align the stack to 16-byte boundaries.  Otherwise GCC
 # adds code to the entry and exit point of every function to align the
@@ -12,7 +11,9 @@
 # only saved and restored under strictly managed conditions and mainline
 # kernel code cannot safely use the FP system.
 #
+.if ${CCVER:Mgcc*}
 CFLAGS+=	-mpreferred-stack-boundary=2
+.endif
 CFLAGS+=	-fno-stack-protector
 CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3
 CFLAGS+=	-D_KERNEL_VIRTUAL
