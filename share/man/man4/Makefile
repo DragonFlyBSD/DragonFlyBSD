@@ -345,6 +345,7 @@ MAN=	aac.4 \
 	ums.4 \
 	unix.4 \
 	uplcom.4 \
+	upmap.4 \
 	urio.4 \
 	usb.4 \
 	uscanner.4 \
@@ -516,6 +517,7 @@ MLINKS+=ti.4 if_ti.4
 MLINKS+=tl.4 if_tl.4
 MLINKS+=tun.4 if_tun.4
 MLINKS+=txp.4 if_txp.4
+MLINKS+=upmap.4 kpmap.4
 #MLINKS+=ural.4 if_ural.4
 MLINKS+=vga.4 vesa.4
 MLINKS+=vge.4 if_vge.4
