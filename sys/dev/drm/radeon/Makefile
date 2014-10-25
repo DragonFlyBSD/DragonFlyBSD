@@ -100,9 +100,13 @@ SRCS	+=								\
 	iicbus_if.h							\
 	pci_if.h
 
-CFLAGS+= -I${.CURDIR}/../../../dev/drm/radeon -fms-extensions
+CFLAGS+= -I${.CURDIR}/../../../dev/drm/radeon
 CFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
 
 CFLAGS+= -I${SYSDIR}/dev/drm/include
+
+.if ${CCVER} == "gcc44"
+CFLAGS+= -fms-extensions
+.endif
 
 .include <bsd.kmod.mk>

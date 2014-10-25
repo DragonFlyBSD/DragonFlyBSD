@@ -1,8 +1,4 @@
-SUBDIR= drm
-
-.if ${CCVER} == "gcc44" || ${CCVER} == "gcc47"
-SUBDIR+= radeon radeonfw
-.endif
+SUBDIR = drm radeon radeonfw
 
 .if ${MACHINE_ARCH} == "x86_64"
 SUBDIR+= i915
