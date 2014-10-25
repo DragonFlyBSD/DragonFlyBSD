@@ -19,7 +19,10 @@ WARNS?=		2
 CFLAGS+=	-ffreestanding
 
 .if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
+.if ${CCVER:Mgcc*}
 CFLAGS+=	-mpreferred-stack-boundary=2
+.endif
+CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
 FORCE_CPUTYPE=	i386
 .endif
 
