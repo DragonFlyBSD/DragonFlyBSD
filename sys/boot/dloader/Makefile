@@ -8,7 +8,6 @@
 .PATH: ${.CURDIR}/${MACHINE_ARCH}
 SRCS=	subs.c config.c cmds.c
 
-CFLAGS+=	-ffreestanding
 .if HAVE_PNP
 CFLAGS+=	-DHAVE_PNP
 .endif
@@ -32,7 +31,7 @@ stack_protector.o: ../../libkern/stack_protector.c
 .endif
 
 .if defined(REALLY_X86_64)
-CFLAGS+=	-m32 -I.
+CFLAGS+=	-I.
 .endif
 
 CFLAGS+=	-I${.CURDIR}
