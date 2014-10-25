@@ -43,7 +43,6 @@ ORG1D = `${.OBJDIR}/bootasmdef.nx -d MEM_BIOS_LADDR`
 ORG2=	`${.OBJDIR}/bootasmdef.nx BOOT2_VORIGIN`
 
 CFLAGS=	-Os \
-	-fno-guess-branch-probability \
 	-fomit-frame-pointer \
 	-fno-unwind-tables \
 	-fno-asynchronous-unwind-tables \
@@ -64,9 +63,11 @@ CFLAGS+= -march=i386
 # Unfortunately, unit-at-a-time creates issues as yet
 # not tracked down, in boot2, so we have to turn it off.  Note that
 # the problem has been narrowed down to the 'boot2' code.  The /boot/loader
-# doesn't seem to have a problem.
+# doesn't seem to have a problem.  Added to BOOT2_GCC_FLAGS since clang
+# doesn't recognize this flag.  The no-guess-branch-probability flag is also
+# gcc-specific so it was moved to BOOT2_GCC_FLAGS as well.
 #
-CFLAGS+= -fno-unit-at-a-time
+CFLAGS+= ${BOOT2_GCC_FLAGS}
 
 # boot2 area in 32 bit disklabel is 16 sectors (8K)
 #
@@ -108,7 +109,7 @@ boot1$s.out: boot1$s.o bootasmdef.nx
 
 boot1$s.o: boot1.S
 	${CC} ${CFLAGS} ${_ADDCFLAGS$s} -DFLAGS=${B1FLAGS} \
-		${.ALLSRC} -o ${.TARGET} -c
+		${ASSEMBLER_FLAGS} ${.ALLSRC} -o ${.TARGET} -c
 
 #${.CURDIR}/../../common/ufsread.c ${.CURDIR}/../../../../lib/libstand/hammer2.c
 

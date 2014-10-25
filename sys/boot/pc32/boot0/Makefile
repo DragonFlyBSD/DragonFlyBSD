@@ -65,7 +65,7 @@ ${PROG}: boot0.o bootasmdef.nx
 	objcopy -S -O binary boot0.out ${.TARGET}
 
 boot0.o: boot0.S
-	${CC} -c ${CFLAGS} ${.IMPSRC} -o ${.TARGET}
+	${CC} -c ${CFLAGS} ${ASSEMBLER_FLAGS} ${.IMPSRC} -o ${.TARGET}
 
 CLEANFILES+= boot0.out boot0.o bootasmdef.nx
 
