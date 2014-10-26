@@ -112,9 +112,10 @@
  * 300800 - 3.8 release
  * 300900 - 3.9 master
  * 300901 - drm/i915 hardware context support added
+ * 400000 - 4.0 release
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300901	/* propagated to newvers */
+#define __DragonFly_version 400000	/* propagated to newvers */
 
 #include <sys/_null.h>
 
