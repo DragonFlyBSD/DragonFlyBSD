@@ -1,22 +1,19 @@
-MDOCML 1.12.2
+MDOCML 1.13.1
 =============
 
 Original source is available from:
 http://mdocml.bsd.lv/snapshots/
 
-file = mdocml-1.12.3.tar.gz
-date = 31 December 2013
-size = 292544
-sha1 = 6a74b4e4b54a20b8022f05236e2294ad2915e5d7
+file = mdocml-1.13.1.tar.gz
+date = 10 August 2014
+size = 317389
+sha1 = 50b12980e74eb705354775bd42a1a5d1910b8399
 
 Local modifications applied to the following files:
 	Makefile
 	config.h
 	lib.in
-	mandoc.h
-	mdoc_validate.c
 	msec.in
-	read.c
 
 The source code is generally kept in sync with the stable branch of
 the upstream CVS for collaboration purposes.  Sporadic vendor branch
