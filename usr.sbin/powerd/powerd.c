@@ -54,6 +54,7 @@ static void acpi_setcpufreq(int nstate);
 static void setupdominfo(void);
 
 int DebugOpt;
+int TurboOpt = 1;
 int CpuLimit;		/* # of cpus at max frequency */
 int DomLimit;		/* # of domains at max frequency */
 int PowerFd;
@@ -75,10 +76,13 @@ main(int ac, char **av)
 	int nstate;
 	char buf[64];
 
-	while ((ch = getopt(ac, av, "d")) != -1) {
+	while ((ch = getopt(ac, av, "dt")) != -1) {
 		switch(ch) {
 		case 'd':
 			DebugOpt = 1;
+			break;
+		case 't':
+			TurboOpt = 0;
 			break;
 		default:
 			usage();
@@ -356,6 +360,12 @@ acpi_setcpufreq(int nstate)
 				lowest = v;
 			if (highest == 0 || highest < v)
 				highest = v;
+			/* 
+			 * Detect turbo mode
+			 */
+			if ((highest - v == 1) && ! TurboOpt)
+				highest = v;
+
 		}
 
 		/*
@@ -383,6 +393,6 @@ static
 void
 usage(void)
 {
-	fprintf(stderr, "usage: powerd [-d]\n");
+	fprintf(stderr, "usage: powerd [-dt]\n");
 	exit(1);
 }
