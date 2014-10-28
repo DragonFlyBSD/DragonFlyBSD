@@ -63,7 +63,9 @@ int DomEnd;
 int NCpus;
 int CpuCount[256];	/* # of cpus in any given domain */
 int CpuToDom[256];	/* domain a particular cpu belongs to */
-double Trigger = 0.25;	/* load per cpu to force max freq */
+int Hysteresis = 10;
+double TriggerUp = 0.25;/* load per cpu to force max freq */
+double TriggerDown; /* load per cpu to force the min freq */
 
 static void sigintr(int signo);
 
@@ -76,13 +78,19 @@ main(int ac, char **av)
 	int nstate;
 	char buf[64];
 
-	while ((ch = getopt(ac, av, "dt")) != -1) {
+	while ((ch = getopt(ac, av, "dtp:u:")) != -1) {
 		switch(ch) {
 		case 'd':
 			DebugOpt = 1;
 			break;
 		case 't':
 			TurboOpt = 0;
+			break;
+		case 'p':
+			Hysteresis = (int)strtol(optarg, NULL, 10);
+			break;
+		case 'u':
+			TriggerUp = (double) strtol(optarg, NULL, 10) / 100;
 			break;
 		default:
 			usage();
@@ -91,6 +99,18 @@ main(int ac, char **av)
 	}
 	ac -= optind;
 	av += optind;
+
+	if (0 > Hysteresis || Hysteresis > 99) {
+		fprintf(stderr, "Invalid hysteresis value\n");
+		exit(1);
+	}
+
+	if (0 > TriggerUp || TriggerUp > 1) {
+		fprintf(stderr, "Invalid load limit value\n");
+		exit(1);
+	}
+
+	TriggerDown = TriggerUp - (TriggerUp * (double) Hysteresis / 100);
 
 	/*
 	 * Make sure powerd is not already running.
@@ -166,7 +186,9 @@ main(int ac, char **av)
 		qavg = getcputime();
 		savg = (savg * 7.0 + qavg) / 8.0;
 
-		nstate = savg / Trigger;
+		nstate = savg / TriggerUp;
+		if (nstate < CpuLimit)
+			nstate = savg / TriggerDown;
 		if (nstate > NCpus)
 			nstate = NCpus;
 		if (DebugOpt) {

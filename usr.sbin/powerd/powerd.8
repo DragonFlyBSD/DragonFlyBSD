@@ -35,6 +35,11 @@ Turbo mode.
 Disables switching to turbo mode as maximum frequency completely.
 Switching to turbo mode as maximum frequency is enabled by default,
 if the CPU supports it.
+.It Fl u
+Per cpu load limit in percent to force max frequency.
+.It Fl p
+Percent of the upper limit to substract as an hysteresis value to scale
+down to the min frequency.
 .El
 .Sh DIAGNOSTICS
 The
