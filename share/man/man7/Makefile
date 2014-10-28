@@ -16,7 +16,6 @@ MAN=	ascii.7 \
 	mailaddr.7 \
 	nls.7 \
 	operator.7 \
-	pkgsrc.7 \
 	release.7 \
 	script.7 \
 	security.7 \

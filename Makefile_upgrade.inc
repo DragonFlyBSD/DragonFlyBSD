@@ -2670,6 +2670,16 @@ TO_REMOVE+=/usr/share/man/man4/savagedrm.4.gz
 TO_REMOVE+=/usr/share/man/man4/sisdrm.4.gz
 TO_REMOVE+=/usr/share/man/man4/tdfx.4.gz
 TO_REMOVE+=/usr/share/man/man4/tdfxdrm.4.gz
+TO_REMOVE+=/etc/periodic/security/670.pkgsrcaudit
+TO_REMOVE+=/etc/pkg_radd.conf
+TO_REMOVE+=/usr/bin/pkg_radd
+TO_REMOVE+=/usr/bin/pkg_search
+TO_REMOVE+=/usr/share/man/cat1/pkg_radd.1.gz
+TO_REMOVE+=/usr/share/man/man1/pkg_radd.1.gz
+TO_REMOVE+=/usr/share/man/cat1/pkg_search.1.gz
+TO_REMOVE+=/usr/share/man/man1/pkg_search.1.gz
+TO_REMOVE+=/usr/share/man/cat7/pkgsrc.7.gz
+TO_REMOVE+=/usr/share/man/man7/pkgsrc.7.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

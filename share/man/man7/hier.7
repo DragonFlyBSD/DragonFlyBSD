@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd March 6, 2014
+.Dd October 10, 2014
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -360,33 +360,6 @@ and
 architecture-specific target tree produced by building the
 .Pa /usr/src
 tree
-.It Pa pkg/
-default destination directory for the
-.Xr pkgsrc 7
-collection.
-Within
-.Pa pkg/ ,
-the general layout sketched out by
-.Xr hier 7
-for
-.Pa /usr
-should be used.
-Exceptions are the
-.Pa man/
-directory (directly under
-.Pa pkg/
-rather than under
-.Pa pkg/share/ ) ,
-documentation (in
-.Pa share/doc/<pkg>/ ) ,
-and
-.Pa /usr/pkg/etc
-.Pf ( mimics
-.Pa /etc ) .
-.It Pa pkgsrc/
-The
-.Xr pkgsrc 7
-collection (optional).
 .It Pa sbin/
 system daemons & system utilities (executed by users)
 .It Pa share/

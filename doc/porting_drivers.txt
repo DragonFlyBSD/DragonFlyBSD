@@ -5,7 +5,7 @@
   /usr/src/sys/dev/disk/blah in DragonFly.
 
 * Keep all the SVN IDs in the files as a future reference point. dports' SVN
-  will do that by default. When using pkgsrc's SVN client, please note the
+  will do that by default. When using the FreeBSD git repo, please note the
   files' IDs manually, either in the files themselves or in the commit message.
   The general idea is that it must not get lost.
 

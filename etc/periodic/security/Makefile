@@ -10,7 +10,6 @@ FILES=	100.chksetuid \
 	550.ipfwlimit \
 	600.ip6fwdenied \
 	650.ip6fwlimit \
-	670.pkgsrcaudit \
 	700.kernelmsg \
 	800.loginfail \
 	900.tcpwrap \

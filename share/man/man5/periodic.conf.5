@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/periodic.conf.5,v 1.8.2.22 2003/02/08 21:42:01 gshapiro Exp $
 .\"
-.Dd January 24, 2010
+.Dd October 10, 2014
 .Dt PERIODIC.CONF 5
 .Os
 .Sh NAME
@@ -562,23 +562,6 @@ Set to
 to display
 .Xr ip6fw 8
 rules that have reached their verbosity limit.
-.It Va daily_status_pkgsrc_audit_enable
-.Pq Vt bool
-Set to
-.Dq YES
-to check the currently installed packages against a database of known
-vulnerabilities and report those that are vulnerable.
-.It Va daily_status_pkgsrc_check_signatures
-.Pq Vt bool
-Set to
-.Dq YES
-to check the digital signature of all files installed by packages against
-the expected values stored in the packages database.
-.It Va daily_status_pkgsrc_fetch_vulnerabilities
-.Pq Vt bool
-Set to
-.Dq YES
-to refresh the local database of package vulnerabilities.
 .It Va daily_status_security_kernelmsg_enable
 .Pq Vt bool
 Set to

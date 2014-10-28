@@ -338,19 +338,19 @@
     asking for help.
 
 
-		OBTAINING A PKGSRC TREE TO BUILD/INSTALL PACKAGES
+		OBTAINING A DPORTS TREE TO BUILD/INSTALL PACKAGES
 
-    In order to obtain a reasonably current snapshot of the pkgsrc tree, use
+    In order to obtain a reasonably current snapshot of the dports tree, use
     our repo:
 
     cd /usr
     make help
-    make pkgsrc-create
+    make dports-create
 
     This tree can then be kept up to date with:
 
     cd /usr
-    make pkgsrc-update
+    make dports-update
 
 
 			EMERGENCY RECOVERY FROM THE 'Live CD'

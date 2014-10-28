@@ -305,10 +305,7 @@ defaults(void)
 		decolonify(b, &mandirs, &nele);
 	}
 
-	/*
-	 * -s defaults to precompiled list, plus subdirs of /usr/dports and
-	 * /usr/pkgsrc
-	 */
+	/* -s defaults to precompiled list, plus subdirs of /usr/dports */
 	if (!sourcedirs) {
 		if ((b = malloc(strlen(sourcepath) + 1)) == NULL)
 			abort();
@@ -353,44 +350,6 @@ defaults(void)
 			}
 			closedir(dir);
 		}
-		if (stat(PATH_PKGSRC, &sb) == -1) {
-			if (errno == ENOENT)
-				/* no /usr/pkgsrc, we are done */
-				return;
-			err(EX_OSERR, "stat(" PATH_PKGSRC ")");
-		}
-		if ((sb.st_mode & S_IFMT) != S_IFDIR)
-			/* /usr/pkgsrc is not a directory, ignore */
-			return;
-		if (access(PATH_PKGSRC, R_OK | X_OK) != 0)
-			return;
-		if ((dir = opendir(PATH_PKGSRC)) == NULL)
-			err(EX_OSERR, "opendir" PATH_PKGSRC ")");
-		while ((dirp = readdir(dir)) != NULL) {
-			if (dirp->d_name[0] == '.' ||
-			    strcmp(dirp->d_name, "CVS") == 0)
-				/* ignore dot entries and CVS subdir */
-				continue;
-			if ((b = malloc(sizeof PATH_PKGSRC + 1 + dirp->d_namlen))
-			    == NULL)
-				abort();
-			strcpy(b, PATH_PKGSRC);
-			strcat(b, "/");
-			strcat(b, dirp->d_name);
-			if (stat(b, &sb) == -1 ||
-			    (sb.st_mode & S_IFMT) != S_IFDIR ||
-			    access(b, R_OK | X_OK) != 0) {
-				free(b);
-				continue;
-			}
-			sourcedirs = realloc(sourcedirs,
-					     (nele + 2) * sizeof(char *));
-			if (sourcedirs == NULL)
-				abort();
-			sourcedirs[nele++] = b;
-			sourcedirs[nele] = NULL;
-		}
-		closedir(dir);
 	}
 }
 

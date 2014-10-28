@@ -151,7 +151,6 @@ SUBDIR=	alias \
 	pctrack \
 	perror \
 	pkg_radd \
-	pkg_search \
 	pkill \
 	pr \
 	printenv \

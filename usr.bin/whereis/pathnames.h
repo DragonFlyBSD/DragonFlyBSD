@@ -44,9 +44,6 @@
 /* Each subdirectory of PATH_DPORTS will be appended to PATH_SOURCES. */
 #define PATH_DPORTS "/usr/dports"
 
-/* Each subdirectory of PATH_PKGSRC will be appended to PATH_SOURCES. */
-#define PATH_PKGSRC "/usr/pkgsrc"
-
 /* How to query the current manpath. */
 #define MANPATHCMD "manpath -q"
 

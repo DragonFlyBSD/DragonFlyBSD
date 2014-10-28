@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/gen/dlopen.3 211397 2010-08-16 15:18:30Z joel $
 .\"
-.Dd April 28, 2011
+.Dd October 10, 2014
 .Dt DLVSYM 3
 .Os
 .Sh NAME
@@ -83,8 +83,8 @@ main (int argc, char *argv[])
     void       *handle;
     int        (*func_sum)(int a, int b);
 
-    /* open the pkgsrc shared gcc library  */
-    handle = dlopen("/usr/pkg/lib/libgcc_s.so", RTLD_LAZY);
+    /* open the dports shared gcc410 library  */
+    handle = dlopen("/usr/local/lib/gcc410/libgcc_s.so", RTLD_LAZY);
     if (!handle) {
        fprintf (stderr, "%s\en", dlerror ());
        exit (EXIT_FAILURE);
