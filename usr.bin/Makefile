@@ -150,7 +150,6 @@ SUBDIR=	alias \
 	pathchk \
 	pctrack \
 	perror \
-	pkg_radd \
 	pkill \
 	pr \
 	printenv \
