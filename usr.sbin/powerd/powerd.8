@@ -1,7 +1,7 @@
 .\" (c) Copyright 2010 by Matthew Dillon and Dima Ruban.  Permission to
 .\"    use and distribute based on the DragonFly copyright.
 .\"
-.Dd October 10, 2014
+.Dd October 28, 2014
 .Dt POWERD 8
 .Os
 .Sh NAME
@@ -32,7 +32,9 @@ to not go to the background and prints some debug output to
 .Va stdout .
 .It Fl t
 Turbo mode.
-Disables turbo mode completly. Turbo mode is enabled by default.
+Disables switching to turbo mode as maximum frequency completely.
+Switching to turbo mode as maximum frequency is enabled by default,
+if the CPU supports it.
 .El
 .Sh DIAGNOSTICS
 The
