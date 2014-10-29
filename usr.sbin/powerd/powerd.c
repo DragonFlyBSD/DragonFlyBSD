@@ -78,19 +78,19 @@ main(int ac, char **av)
 	int nstate;
 	char buf[64];
 
-	while ((ch = getopt(ac, av, "dtp:u:")) != -1) {
+	while ((ch = getopt(ac, av, "dp:tu:")) != -1) {
 		switch(ch) {
 		case 'd':
 			DebugOpt = 1;
 			break;
-		case 't':
-			TurboOpt = 0;
-			break;
 		case 'p':
 			Hysteresis = (int)strtol(optarg, NULL, 10);
 			break;
+		case 't':
+			TurboOpt = 0;
+			break;
 		case 'u':
-			TriggerUp = (double) strtol(optarg, NULL, 10) / 100;
+			TriggerUp = (double)strtol(optarg, NULL, 10) / 100;
 			break;
 		default:
 			usage();
@@ -415,6 +415,6 @@ static
 void
 usage(void)
 {
-	fprintf(stderr, "usage: powerd [-dt]\n");
+	fprintf(stderr, "usage: powerd [-dt] [-p hysteresis] [-u trigger_up]\n");
 	exit(1);
 }

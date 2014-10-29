@@ -9,7 +9,9 @@
 .Nd simple ACPI based CPU/power control
 .Sh SYNOPSIS
 .Nm
-.Op Fl d
+.Op Fl dt
+.Op Fl p Ar hysteresis
+.Op Fl u Ar trigger_up
 .Sh DESCRIPTION
 The
 .Nm
@@ -23,23 +25,23 @@ minimum frequency when the 10 second machine load drops below 12% of
 one CPU.
 .Pp
 The options are as follows:
-.Bl -tag -width Fl
+.Bl -tag -width ".Fl p Ar hysteresis"
 .It Fl d
 Debug option.
 Causes
 .Nm
 to not go to the background and prints some debug output to
 .Va stdout .
+.It Fl p Ar hysteresis
+Percent of the upper limit to subtract as an hysteresis value to scale
+down to the min frequency.
 .It Fl t
 Turbo mode.
 Disables switching to turbo mode as maximum frequency completely.
 Switching to turbo mode as maximum frequency is enabled by default,
 if the CPU supports it.
-.It Fl u
-Per cpu load limit in percent to force max frequency.
-.It Fl p
-Percent of the upper limit to substract as an hysteresis value to scale
-down to the min frequency.
+.It Fl u Ar trigger_up
+Per CPU load limit in percent to force maximum frequency.
 .El
 .Sh DIAGNOSTICS
 The
