@@ -30,7 +30,8 @@
 .\"
 .\"     @(#)rc.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/share/man/man8/rc.8,v 1.22 2002/12/12 17:25:58 ru Exp $
-.Dd September 28, 2009
+.\"
+.Dd October 29, 2014
 .Dt RC 8
 .Os
 .Sh NAME
@@ -282,6 +283,15 @@ Perform a
 .Cm stop
 then a
 .Cm start .
+.It Cm reload
+Send
+.Va $sig_reload
+(defaults to
+.Dv HUP )
+to the program(s) associated with the service.
+Note that not all scripts enable the
+.Cm reload
+command.
 .It Cm status
 If the script starts a process (rather than performing a one-off
 operation), show the status of the process.
