@@ -94,6 +94,8 @@
 #include "hammer2_ioctl.h"
 #include "hammer2_ccms.h"
 
+struct hammer2_io;
+struct hammer2_iocb;
 struct hammer2_chain;
 struct hammer2_cluster;
 struct hammer2_inode;
@@ -177,6 +179,7 @@ typedef uint32_t hammer2_xid_t;
 RB_HEAD(hammer2_chain_tree, hammer2_chain);
 TAILQ_HEAD(h2_flush_list, hammer2_chain);
 TAILQ_HEAD(h2_core_list, hammer2_chain);
+TAILQ_HEAD(h2_iocb_list, hammer2_iocb);
 
 #define CHAIN_CORE_DELETE_BMAP_ENTRIES	\
 	(HAMMER2_PBUFSIZE / sizeof(hammer2_blockref_t) / sizeof(uint32_t))
@@ -196,35 +199,62 @@ typedef struct hammer2_chain_core hammer2_chain_core_t;
 #define HAMMER2_CORE_UNUSED0001		0x0001
 #define HAMMER2_CORE_COUNTEDBREFS	0x0002
 
-/*
- * H2 is a copy-on-write filesystem.  In order to allow chains to allocate
- * smaller blocks (down to 64-bytes), but improve performance and make
- * clustered I/O possible using larger block sizes, the kernel buffer cache
- * is abstracted via the hammer2_io structure.
- */
 RB_HEAD(hammer2_io_tree, hammer2_io);
 
+/*
+ * IOCB - IO callback (into chain, cluster, or manual request)
+ */
+struct hammer2_iocb {
+	TAILQ_ENTRY(hammer2_iocb) entry;
+	void (*callback)(struct hammer2_iocb *iocb);
+	struct hammer2_io	*dio;
+	struct hammer2_cluster	*cluster;
+	struct hammer2_chain	*chain;
+	void			*ptr;
+	off_t			lbase;
+	int			lsize;
+	uint32_t		flags;
+	int			error;
+};
+
+typedef struct hammer2_iocb hammer2_iocb_t;
+
+#define HAMMER2_IOCB_INTERLOCK	0x00000001
+#define HAMMER2_IOCB_ONQ	0x00000002
+#define HAMMER2_IOCB_DONE	0x00000004
+#define HAMMER2_IOCB_INPROG	0x00000008
+#define HAMMER2_IOCB_DIDBP	0x00000010	/* loaded dio->buf */
+#define HAMMER2_IOCB_QUICK	0x00010000
+#define HAMMER2_IOCB_ZERO	0x00020000
+#define HAMMER2_IOCB_READ	0x00040000
+#define HAMMER2_IOCB_WAKEUP	0x00080000
+
+/*
+ * DIO - Management structure wrapping system buffer cache.
+ *
+ *	 Used for multiple purposes including concurrent management
+ *	 if small requests by chains into larger DIOs.
+ */
 struct hammer2_io {
 	RB_ENTRY(hammer2_io) rbnode;	/* indexed by device offset */
+	struct h2_iocb_list iocbq;
 	struct spinlock spin;
 	struct hammer2_mount *hmp;
 	struct buf	*bp;
-	struct bio	*bio;
 	off_t		pbase;
 	int		psize;
-	void		(*callback)(struct hammer2_io *dio,
-				    struct hammer2_cluster *cluster,
-				    struct hammer2_chain *chain,
-				    void *arg1, off_t arg2);
-	struct hammer2_cluster *arg_l;		/* INPROG I/O only */
-	struct hammer2_chain *arg_c;		/* INPROG I/O only */
-	void		*arg_p;			/* INPROG I/O only */
-	off_t		arg_o;			/* INPROG I/O only */
 	int		refs;
 	int		act;			/* activity */
 };
 
 typedef struct hammer2_io hammer2_io_t;
+
+#define HAMMER2_DIO_INPROG	0x80000000	/* bio in progress */
+#define HAMMER2_DIO_GOOD	0x40000000	/* buf data is good */
+#define HAMMER2_DIO_WAITING	0x20000000	/* (old) */
+#define HAMMER2_DIO_DIRTY	0x10000000	/* flush on last drop */
+
+#define HAMMER2_DIO_MASK	0x0FFFFFFF
 
 /*
  * Primary chain structure keeps track of the topology in-memory.
@@ -402,6 +432,7 @@ struct hammer2_cluster {
 	struct hammer2_pfsmount	*pmp;
 	uint32_t		flags;
 	int			nchains;
+	hammer2_iocb_t		iocb;
 	hammer2_chain_t		*focus;		/* current focus (or mod) */
 	hammer2_chain_t		*array[HAMMER2_MAXCLUSTER];
 	char			missed[HAMMER2_MAXCLUSTER];
@@ -421,6 +452,10 @@ RB_HEAD(hammer2_inode_tree, hammer2_inode);
  *
  * NOTE: The inode's attribute CST which is also used to lock the inode
  *	 is embedded in the chain (chain.cst) and aliased w/ attr_cst.
+ *
+ * NOTE: The inode-embedded cluster is never used directly for I/O (since
+ *	 it may be shared).  Instead it will be replicated-in and synchronized
+ *	 back out if changed.
  */
 struct hammer2_inode {
 	RB_ENTRY(hammer2_inode) rbnode;		/* inumber lookup (HL) */
@@ -825,12 +860,12 @@ void hammer2_chain_core_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_chain_t *chain, int how);
-void hammer2_chain_load_async(hammer2_cluster_t *cluster,
-				void (*func)(hammer2_io_t *dio,
-					     hammer2_cluster_t *cluster,
-					     hammer2_chain_t *chain,
-					     void *arg_p, off_t arg_o),
-				void *arg_p);
+const hammer2_media_data_t *hammer2_chain_rdata(hammer2_chain_t *chain);
+hammer2_media_data_t *hammer2_chain_wdata(hammer2_chain_t *chain);
+
+void hammer2_cluster_load_async(hammer2_cluster_t *cluster,
+				void (*callback)(hammer2_iocb_t *iocb),
+				void *ptr);
 void hammer2_chain_moved(hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_trans_t *trans,
 				hammer2_chain_t *chain, int flags);
@@ -909,11 +944,14 @@ int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 /*
  * hammer2_io.c
  */
-hammer2_io_t *hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase,
-				int lsize, int *ownerp);
 void hammer2_io_putblk(hammer2_io_t **diop);
 void hammer2_io_cleanup(hammer2_mount_t *hmp, struct hammer2_io_tree *tree);
 char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
+void hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
+				hammer2_iocb_t *iocb);
+void hammer2_io_complete(hammer2_iocb_t *iocb);
+void hammer2_io_callback(struct bio *bio);
+void hammer2_iocb_wait(hammer2_iocb_t *iocb);
 int hammer2_io_new(hammer2_mount_t *hmp, off_t lbase, int lsize,
 				hammer2_io_t **diop);
 int hammer2_io_newnz(hammer2_mount_t *hmp, off_t lbase, int lsize,
@@ -922,14 +960,6 @@ int hammer2_io_newq(hammer2_mount_t *hmp, off_t lbase, int lsize,
 				hammer2_io_t **diop);
 int hammer2_io_bread(hammer2_mount_t *hmp, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-void hammer2_io_breadcb(hammer2_mount_t *hmp, off_t lbase, int lsize,
-				void (*callback)(hammer2_io_t *dio,
-						 hammer2_cluster_t *arg_l,
-						 hammer2_chain_t *arg_c,
-						 void *arg_p, off_t arg_o),
-				hammer2_cluster_t *arg_l,
-				hammer2_chain_t *arg_c,
-				void *arg_p, off_t arg_o);
 void hammer2_io_bawrite(hammer2_io_t **diop);
 void hammer2_io_bdwrite(hammer2_io_t **diop);
 int hammer2_io_bwrite(hammer2_io_t **diop);
@@ -971,7 +1001,7 @@ void hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
  */
 int hammer2_cluster_need_resize(hammer2_cluster_t *cluster, int bytes);
 uint8_t hammer2_cluster_type(hammer2_cluster_t *cluster);
-const hammer2_media_data_t *hammer2_cluster_data(hammer2_cluster_t *cluster);
+const hammer2_media_data_t *hammer2_cluster_rdata(hammer2_cluster_t *cluster);
 hammer2_media_data_t *hammer2_cluster_wdata(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_from_chain(hammer2_chain_t *chain);
 int hammer2_cluster_modified(hammer2_cluster_t *cluster);

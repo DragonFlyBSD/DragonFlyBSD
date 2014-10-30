@@ -364,7 +364,7 @@ hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 {
-	const hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ripdata;
 	hammer2_mount_t *hmp;
 	hammer2_ioc_pfs_t *pfs;
 	hammer2_cluster_t *cparent;
@@ -389,12 +389,12 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 						 0, (hammer2_key_t)-1,
 						 0, &ddflag);
 	} else if (pfs->name_key == (hammer2_key_t)-1) {
-		ipdata = &hammer2_cluster_data(rcluster)->ipdata;
+		ripdata = &hammer2_cluster_rdata(rcluster)->ipdata;
 		cluster = hammer2_cluster_lookup(cparent, &key_next,
-						 ipdata->name_key,
-						 ipdata->name_key,
+						 ripdata->name_key,
+						 ripdata->name_key,
 						 0, &ddflag);
-		ipdata = NULL;	/* safety */
+		ripdata = NULL;	/* safety */
 	} else {
 		cluster = hammer2_cluster_lookup(cparent, &key_next,
 						 pfs->name_key, pfs->name_key,
@@ -412,15 +412,15 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		/*
 		 * Load the data being returned by the ioctl.
 		 */
-		ipdata = &hammer2_cluster_data(cluster)->ipdata;
-		pfs->name_key = ipdata->name_key;
-		pfs->pfs_type = ipdata->pfs_type;
-		pfs->pfs_clid = ipdata->pfs_clid;
-		pfs->pfs_fsid = ipdata->pfs_fsid;
-		KKASSERT(ipdata->name_len < sizeof(pfs->name));
-		bcopy(ipdata->filename, pfs->name, ipdata->name_len);
-		pfs->name[ipdata->name_len] = 0;
-		ipdata = NULL;	/* safety */
+		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
+		pfs->name_key = ripdata->name_key;
+		pfs->pfs_type = ripdata->pfs_type;
+		pfs->pfs_clid = ripdata->pfs_clid;
+		pfs->pfs_fsid = ripdata->pfs_fsid;
+		KKASSERT(ripdata->name_len < sizeof(pfs->name));
+		bcopy(ripdata->filename, pfs->name, ripdata->name_len);
+		pfs->name[ripdata->name_len] = 0;
+		ripdata = NULL;	/* safety */
 
 		/*
 		 * Calculate the next field
@@ -434,8 +434,8 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 			 hammer2_cluster_type(cluster) !=
 			  HAMMER2_BREF_TYPE_INODE);
 		if (cluster) {
-			ipdata = &hammer2_cluster_data(cluster)->ipdata;
-			pfs->name_next = ipdata->name_key;
+			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
+			pfs->name_next = ripdata->name_key;
 			hammer2_cluster_unlock(cluster);
 		} else {
 			pfs->name_next = (hammer2_key_t)-1;
@@ -455,7 +455,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 {
-	const hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ripdata;
 	hammer2_mount_t *hmp;
 	hammer2_ioc_pfs_t *pfs;
 	hammer2_cluster_t *cparent;
@@ -480,12 +480,12 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 					 HAMMER2_LOOKUP_SHARED, &ddflag);
 	while (cluster) {
 		if (hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE) {
-			ipdata = &hammer2_cluster_data(cluster)->ipdata;
-			if (ipdata->name_len == len &&
-			    bcmp(ipdata->filename, pfs->name, len) == 0) {
+			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
+			if (ripdata->name_len == len &&
+			    bcmp(ripdata->filename, pfs->name, len) == 0) {
 				break;
 			}
-			ipdata = NULL;	/* safety */
+			ripdata = NULL;	/* safety */
 		}
 		cluster = hammer2_cluster_next(cparent, cluster, &key_next,
 					   key_next,
@@ -497,12 +497,12 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	 * Load the data being returned by the ioctl.
 	 */
 	if (cluster) {
-		ipdata = &hammer2_cluster_data(cluster)->ipdata;
-		pfs->name_key = ipdata->name_key;
-		pfs->pfs_type = ipdata->pfs_type;
-		pfs->pfs_clid = ipdata->pfs_clid;
-		pfs->pfs_fsid = ipdata->pfs_fsid;
-		ipdata = NULL;
+		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
+		pfs->name_key = ripdata->name_key;
+		pfs->pfs_type = ripdata->pfs_type;
+		pfs->pfs_clid = ripdata->pfs_clid;
+		pfs->pfs_fsid = ripdata->pfs_fsid;
+		ripdata = NULL;
 
 		hammer2_cluster_unlock(cluster);
 	} else {
@@ -612,15 +612,15 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 {
-	const hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ripdata;
 	hammer2_ioc_inode_t *ino;
 	hammer2_cluster_t *cparent;
 
 	ino = data;
 
 	cparent = hammer2_inode_lock_sh(ip);
-	ipdata = &hammer2_cluster_data(cparent)->ipdata;
-	ino->ip_data = *ipdata;
+	ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
+	ino->ip_data = *ripdata;
 	ino->kdata = ip;
 	hammer2_inode_unlock_sh(ip, cparent);
 
@@ -644,7 +644,7 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 
 	hammer2_trans_init(&trans, ip->pmp, 0);
 	cparent = hammer2_inode_lock_ex(ip);
-	ripdata = &hammer2_cluster_data(cparent)->ipdata;
+	ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
 
 	if (ino->ip_data.check_algo != ripdata->check_algo) {
 		wipdata = hammer2_cluster_modify_ip(&trans, ip, cparent, 0);

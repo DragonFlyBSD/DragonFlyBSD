@@ -6,51 +6,54 @@
     HAMMER2 Media is broken down into 2 GByte zones.  Each 2 GByte zone
     contains a 4 MByte header (64 x 64K blocks = 0.2% of storage).  The
     blocks in this header are reserved for various purposes.  For example,
-    block #0 is reserved for a volume header or volume header backup.  Most
-    of the 64KB blocks in this header are reserved for use by the freemap.
+    block #0 is reserved for a volume headers.  Most of the remaining
+    64KB blocks in this header are reserved for use by the freemap.
 
     The freemap only uses blocks from these reserved areas.  In order to
-    ensure that any of the four volume headers can be used for the mount
+    ensure that any of the four volume headers can be used by the mount code
     (in case some are found to be corrupted), each freemap block in the
-    logical freemap topology iterates through 6 different copies.  The
-    freemap is a 4-layer topology (+1 3-bit layer in the volume header),
-    so 6x4 = 24 of the 64 reserved blocks are dedicated to freemap
-    operations.
+    logical freemap topology will iterate through up to 8 copies whos
+    block numbers are taken the reserved area.
 
-    Any given modification of a freemap block that crosses a flush group
-    must cycle to the next copy of the freemap block.  Having 6 copies
-    ensures that:
+    - Four copies, one for each of the four volume headers which H2 sequences
+      through on each flush.  This ensures that a mount from any of the four
+      volume headers is handed a consistent freemap topology.
 
-    - Each of the four backup volume headers points to a consistent
-      freemap topology.  This eats 4 copies.
+    - One copy to ensure that recovery operations during mount do not modify
+      the state of the freemap topology pointed to by older volume headers
+      which are still valid.  Note that the freemap for volume headers
+      indexed after the mount point being recovered may lose freemap
+      consistency, so if you choose an older mount point for a RW mount,
+      you have to stick with it.
 
-    - That recovery operations during mount do not modify the state of the
-      freemap topology pointed to by older volume headers that are still
-      valid.  This eats 1 copy.
+    - One copy for live operations.  This allows HAMMER2 to retire the
+      related buffer (or for the OS to retire the buffer cache buffer)
+      prior to the next flush and also allows the buffers to be flushed
+      asynchronously.
 
-    - The bulk free scan eats 1 copy to use as spool-off space if the
-      thread hits its ram limits.  This copy is not part of the normal
-      rotation.
+    - The two remaining copies add robustness to the specification.  For
+      example, with appropriate feature code the filesystem can tolerate
+      a limited number of bad blocks in the reserved area.
 
-    - Total is 6 copies.
+    For the moment we use a simple calculation for the freemap block.  In
+    a later version I would like to mix the blocks up a bit so the blocks
+    in each set of 8 are not situated near each other.
 
-    However, there is one major restriction: If an older volume header is
-    selected by the mount code, any newer (presumably corrupt since the
-    mount code didn't select it) volume headers will lose freemap consistency
-    as the freemap code rotates into freemap blocks that might have been used
-    by the topology pointed to by the newer (but not selected) backup
-    volume headers.  For a RW mount, this means that if an older volume
-    backup is selected, the newer ones that were not selected MUST be
-    formally invalidated and cannot be used in a remount attempt.  To
-    mitigate the potential loss of data, any volume headers lost in this
-    manner can be snapshotted and the freemap recovery scan (in a RW mount)
-    can also scan the snapshots to try to ensure that the blocks are marked
-    as allocated.  The system operator can then check the snapshot manually.
+				RW Mount Restrictions
 
-    During normal operation, each filesystem flush rotates to a new backup
-    volume header (a filesystem has up to four) and retains full consistency
-    for the older volume headers.  Each logical freemap block in the topology
-    rotates through the 6 possible versions (on-modify only).
+    If an older volume header is explicitly selected by the mount code, any
+    newer (presumably corrupt since the mount code didn't select it) volume
+    headers will lose freemap consistency as the freemap code rotates into
+    freemap blocks that might have been used by the topology pointed to by
+    the newer (but not selected) volume headers.  For a RW mount, this means
+    that if an older volume header is selected, the newer ones that were
+    not selected WILL be formally invalidated by the mount code and cannot
+    be used in a remount attempt.
+
+    During normal operation, each filesystem flush rotates to a new volume
+    header.  A filesystem may have up to four volume headers spread at 2GB
+    intervals.  Filesystems smaller than ~9GB or so will have fewer volume
+    headers to rotate through.
 
 				Freemap Topology
 
@@ -60,6 +63,13 @@
     which use a variable-radix, the freemap topology uses a fixed radix to
     simplify the algorithm and to ensure freemap locality to the blocks
     under management.
+
+    Freemap blocks are allocated from the reserved area in each 2GB zone.
+    The leafs represent data in the zone.  Higher levels in the freemap
+    topology will cover more area but the physical freemap meta-data blocks
+    always occur prior to the area being covered.  Thus a HAMMER2 filesystem
+    of almost any size can be formatted and the related freemap blocks
+    will always exist.
 
     Level 1 - (radix 10 + 21) 64KB representing 2GB.  This is represented
 	      by a hammer2_bmap_data[1024] array.  Each entry represents
@@ -75,20 +85,33 @@
 	      volume header).
 
     Each level is assign reserved blocks in the 4MB header per 2GB zone.
-    Since we use block 0 for the volume header / volume header backup,
-    our level names above can simply also represent the relative block
-    number.  Level 1 uses block 1 through level 4 using block 4.  Level 5
-    is stored in the volume header.
+    Since we use block 0 for the volume header, the first freemap reserved
+    block in the zone begins at block 1.
+
+    Freemap copy #0:
+	Level 1 uses block 1 (this is the leaf block)
+	Level 2 uses block 2
+	Level 3 uses block 3
+	Level 4 uses block 4
+
+    Freemap copy #1:
+	Level 1 uses block 5 (this is the leaf block)
+	Level 2 uses block 6
+	Level 3 uses block 7
+	Level 4 uses block 8
+
+    ... and so forth up to Freemap copy #7 using blocks 29, 30, 31, and 32.
 
 				    Flushing
 
     The freemap does not have to be flushed by fsync/sync, but should probably
     be flushed at least once a minute by the normal filesystem sync.  The
-    reason it does not have to be flushed every time is that the freemap
-    recovery (using the last fully flushed freemap TID) will simply do an
-    incremental scan of the main filesystem tree between the freemap TID
-    and the main filesystem tree's TID to ensure that blocks allocated in
-    the interim are properly allocated in the freemap.  Simple as that.
+    reason it does not have to be flushed every time is that freemap recovery
+    is executed on-mount and will use the last fully flushed freemap TID
+    stored in the volume header to do an incremental meta-data scan of the
+    H2 filesystem between that TID and the last flushed TID.  All blocks not
+    found to have been marked allocated will be marked allocated.  Simple as
+    that.
 
 				Freemap Granularity
 
@@ -103,45 +126,45 @@
     blocks to appear fully allocated until some later date when the
     bulk scan code defragments it.
 
-				   Block Selection
+				 Block Selection
 
     Block selection is localized to be near the inode's (or nearby data)
     blockref.  The algorithmic complexity of determining locality is not
     defined here atm.
 
-				Leaf Substructure
+			     Freemap Leaf Substructure
 
-    * radix  - Clustering radix.  All allocations for any given ~2MB zone
-	       are always the same size, allowing the filesystem code to
-	       cluster buffer cache I/O.
+    * linear - Linear sub-granular allocation offset.  Allows ~1KB granular
+	       linear allocations.
 
-    * bitmap - four 32 bit words representing ~2MB in 16KB allocation chunks
+    * class  - Allocation clustering class ((type << 8) | radix).
+
+    * avail  - Available space in bytes, currently only used by layer 1 leaf.
+	       Used as an allocation clustering aid.
+
+    * bitmap - Eight 32 bit words representing ~2MB in 16KB allocation chunks
 	       at 2 bits per chunk.  The filesystem allocation granularity
 	       can be smaller (currently ~1KB minimum), and the live
-	       filesystem keeps caches iterations when allocating multiple
-	       chunks.  However, on remount any partial allocations out of
-	       a 64KB allocation block causes the entire 64KB to be
-	       considered allocated.  Fragmented space can potentially be
-	       reclaimed and/or relocated by the bulk block free scan.
+	       filesystem caches iterations when allocating multiple chunks.
+	       However, on remount any partial allocations out of a 64KB
+	       allocation block MAY cause the entire 64KB to be considered
+	       allocated.  Fragmented space can potentially be reclaimed
+	       and/or relocated by the bulk block free scan.
 
 	       The 2-bit bitmap fields are assigned as follows:
 
 	       00	FREE
-	       01	ARMED for free stage (future use)
-	       10	ARMED for free stage (future use)
+	       01	POSSIBLY FREE (type 1)
+	       10	POSSIBLY FREE (type 2)
 	       11	ALLOCATED
 
-	       It should be noted that in some cases, such as snapshot
-	       destruction, H2 does not bother to actually ARM the related
-	       blocks (which would take a long time).  Instead, the bulk
-	       free-scan may have to do a more exhaustive scan.
+			  Freemap Metadata Substructure
+			     (Levels 2, 3, 4, and 5)
 
-			      Blockref Substructure
-
-    The blockref substructure at each level steals some space from the
-    check code area (a 24-byte area).  We only need 4 bytes for the check
-    code icrc.  We use some of the remaining space to store information
-    that allows the block allocator to do its work more efficiently.
+    Freemap layers 2, 3, 4, and 5 operate as arrays of blockrefs but steal
+    some of the check area (a 24-byte area) for freemap-specific meta-data.
+    We reserve a few fields to store information which allows the block
+    allocator to do its work more efficiently.
 
     * bigmask - A mask of radixes available for allocation under this
 		blockref.  Typically initialized to -1.
@@ -150,15 +173,16 @@
 
     The freemap allocator uses a cylinder-group-like abstraction using
     the localized allocation concept first implemented by UFS.  In HAMMER2
-    there is no such thing as a real cylinder group, but we do the next
-    best thing by implementing our layer 1 blockmap representing 2GB.
-
-				Level 2, 3, 4, 5
+    there is no such thing as a real cylinder group, nor are there specific
+    reserved areas for inodes vs data, but we do the next best thing by
+    roughly typing leafs (each leaf representing ~2MB) to hopefully allow
+    the drive to employ its zone-cache to make both stat-only and tar-style
+    bulk accesses efficient (in addition to normal file accesses).
 
     Levels 2, 3, and 4 contains an array blockmap[1024] (64KB total),
-    supplying 10 bits of address space each.  Level 5 is a blockmap[8] stored
-    in the volume header supplying 3 bits of address space.  (level 0
-    supplies 10 + 21 bits of address space).
+    supplying 10 bits of address space each.  Level 5 is a blockmap[8]
+    stored in the volume header supplying 3 bits of address space.
+    (level 0 supplies 10 + 21 bits of address space).
 
     The Level1 blockmap is HAMMER2's idea of a 'cylinder group', thus
     effectively fixed at multiples of ~2MB or so.
@@ -180,32 +204,91 @@
 
 			How blocks are allocated and freed
 
-    H2 keeps track of sub-16KB allocations in-memory.  On a crash/reboot any
-    partial allocations effectively become full 16KB block allocations until
-    the bulk freeing code comes along and fixes it.  2-bit patterns are as
-    follows:
+    The H2 freemap leaf bitmap operates in 16KB chunks, but the leaf also
+    contains a linear allocation offset that can keep track of sub-16KB
+    allocations with certain restrictions.  More random sub-16KB allocations
+    are tracked in-memory, but will be lost (assumed to be a full 16KB) if
+    a crash occurs.
 
-       00	FREE
-       01	ARMED (for free) (future use)
-       10	ARMED (for free) (future use)
-       11	ALLOCATED
+    NOTE!  All operations on the freemap occur on the current live version
+	   of the freemap, including bulkfree operations.
 
-    Currently H2 only implements 00 and 11.  When a file, topology, or
-    snapshot is deleted H2 simply leaves the blocks marked allocated but
-    records the related freezone/radix(s) in memory.
+    Blocks are allocated by transitioning the 2-bit pattern in the leaf
+    to 11.  That is, (00, 01, 10) -> (11).  This handles races between the
+    live allocator and the asynchronous bulkfree code.  A live allocation
+    which occurs while the asynchronous bulkfree process is running will
+    operate race-free by transitioning the (01) an (10) states back
+    to (11), which prevents bulkfree from later marking those blocks
+    FREE (00).
 
-    At some point a background bulk free-scan will run.  This code must
-    scan meta-data and has a limited cache to detect duplicative sub-trees
-    (due to snapshots).  It uses the freezone/radix information recorded
-    in memory to reduce the complexity of the scan, find all references to
-    the related blocks in the meta-data, and determines what can actually
-    be freed.  Once this determination is made the bulk free-scan sets
-    the related freemap bits to FREE (00).
+    Blocks can be freed several ways, but all block freeing operations
+    require at least two passes before the related blocks can actually be
+    reused.
 
-    An exhaustive free-scan is not usually required during normal operation
-    but is typically run incrementally by cron every so often to ensure, over
-    time, that all freeable blocks are actually freed.  This is most useful
-    when maintaining multiple snapshots.
+    Method #1 - Removal in the filesystem marks the related freemap bitmap
+		POSSIBLY FREE (either 01 or 10).  The asynchronous bulkfree
+		process later determines that the block is actually free and
+		transitions it to FREE (00), or moves it back to
+		ALLOCATED (11).
+
+		This works whether the blocks can actually be freed or not,
+		so we don't care if the related blocks are part of some other
+		snapshot or not.  bulkfree will figure it out.
+
+    Method #2 - Removal in the filesystem ignores the freemap.  The freemap
+		blocks are left alone (typically ALLOCATED (11)).
+
+		In this situation bulkfree must make extra passes to determine
+		if blocks are possibly free, then transition the leaf bitmap
+		entries to POSSIBLY FREE (01 or 10).  bulkfree cannot directly
+		transition the entries to FREE (00) without another pass.
+
+		However, this method has numerous advantages including making
+		snapshot manipulation (including deletions) instantanious
+		and allow whole subtrees and/or large-files to be rm -rf'd
+		with only a single disk write to update the inode in the
+		best case.
+
+    Method #3 - Brute force.  *ALL* freemap bitmap entries are marked
+		POSSIBLY FREE and bulkfree then must do multiple passes
+		(particularly in order to ensure that its memory use remains
+		bounded) to again transition all the freemap bitmap entries
+		to either FREE (00) or ALLOCATED (11).
+
+		This method can be faster than #2 but wastes a considerable
+		amount of write-bandwidth (and SSD wear if the target drive
+		is a SSD).
+
+    In all cases the bulkfree code must make a final pass on the filesystem
+    to do the final transition of POSSIBLY FREE blocks to FREE (00) or
+    ALLOCATED (11).  Again, races for the FREE (00) are handled by observing
+    if the bitmap code was moved to ALLOCATED (11) by the live system while
+    bulkfree ran asynchrnously and not transitioning the element to FREE (00)
+    in that situation.
+
+    All bulkfree passes are done on meta-data.  Actual data blocks do not
+    need to be read unless the media is being verified.  H2 uses method #2
+    by default and efficiency depends on how much ram the system has to
+    cache scan information.  That said, the bulkfree process is not only
+    incremental but it is also interruptable and restartable.  It does not
+    interfere with live operations other than using disk bandwidth, so
+    there are several ways to run it including in the background.
+
+    The biggest issue is that *NO* space can be freed up by the live
+    filesystem without the bulkfree process unless we optimize the case
+    where data is created and deleted from within a single snapshot.
+    This is made more difficult by the fact that each flush represents
+    a fine-grained snapshot (up to four, representing the four volume
+    headers the flush iterates through).
+
+		      Snapshots and Replicated Topologies
+
+    The bulkfree code maintains information in-memory to the best of its
+    ability for a multitude of reasons, including attempting to detect
+    snapshot recursions down block chains which have already been scanned
+    via some other snapshot.  Without this, a large number of snapshots
+    can cause a huge multiplication of disk I/O reads (but not writes) during
+    the topology scan.
 
 			Use of Generic indirect-block API
 
@@ -217,18 +300,35 @@
 
     The Freemap is defined above as a fixed 5-level scheme (level 1-5),
     but in actual operation the radix tree can be shortcut just as it
-    is with normal files.  However, shorcuts are forced into the radix
-    values of this specification and reserved blocks are calculated based
-    on the radix level and offset, so as the freemap becomes more fleshed
-    out the tree looks more and more like the specification.
+    is with normal files.  However, unlike normal files, shorcuts will
+    be forced to use specific radix values in order to guarantee that
+    reserved block numbers can be trivially calculated.  As the freemap
+    becomes more fleshed out the tree on-media will look more and more like
+    the actual specification.
 
     One advantage of doing things this way is that smaller filesystems
-    won't actually use a 6-level scheme.  A 16GB filesystem can use 8
-    blockrefs at layer 5 (in the volume header) that point directly to
-    layer 1.  A 16TB filesystem can use 8 blockrefs at layer5 that point
-    to layer 2.  And so forth.
+    won't actually use a 5-level scheme.  A 16GB filesystem can use 8
+    blockrefs in the volume header which point directly to layer 1 leaf
+    blocks.  A 16TB filesystem can be managed with only three levels
+    (layer 3, 2, and 1 only where the 8 x layer 3 blockrefs are stored in
+    the volume header).  And so forth.
 
     At the moment we have no plans to return any of the unused 4MB zone
     header space (per 2GB of storage) back to the filesystem for general use.
     There are lots of things we may want to use the reserved areas for in
     the future.
+
+				Emergency Deletions
+
+    All filesystem modifications including deletions must allocate blocks
+    in order to update the main topology all the way to the root.  H2 will
+    reserve roughly 5% of the available blocks in the filesystem for
+    deletions in order to allow a system operator to recover from a
+    filesystem full condition.
+
+    Despite this, situations may come up, due to having snapshots, where
+    deletions eat up available blocks but fail to create freeable space.
+    When this situation occurs the system operator may be forced to issue
+    emergency in-place deletions which replace existing blocks rather then
+    allocate new blocks.  For the moment the spec for dealing with these
+    situations remains incomplete.

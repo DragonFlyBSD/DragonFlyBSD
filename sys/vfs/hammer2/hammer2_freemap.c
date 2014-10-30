@@ -998,3 +998,40 @@ again:
 done:
 	hammer2_chain_unlock(parent);
 }
+
+/*
+ * Validate the freemap, in three stages.
+ *
+ * stage-1	ALLOCATED     -> POSSIBLY FREE
+ *		POSSIBLY FREE -> POSSIBLY FREE (type corrected)
+ *
+ *	This transitions bitmap entries from ALLOCATED to POSSIBLY FREE.
+ *	The POSSIBLY FREE state does not mean that a block is actually free
+ *	and may be transitioned back to ALLOCATED in stage-2.
+ *
+ *	This is typically done during normal filesystem operations when
+ *	something is deleted or a block is replaced.
+ *
+ *	This is done by bulkfree in-bulk after a memory-bounded meta-data
+ *	scan to try to determine what might be freeable.
+ *
+ *	This can be done unconditionally through a freemap scan when the
+ *	intention is to brute-force recover the proper state of the freemap.
+ *
+ * stage-2	POSSIBLY FREE -> ALLOCATED	(scan metadata topology)
+ *
+ *	This is done by bulkfree during a meta-data scan to ensure that
+ *	all blocks still actually allocated by the filesystem are marked
+ *	as such.
+ *
+ *	NOTE! Live filesystem transitions to POSSIBLY FREE can occur while
+ *	      the bulkfree stage-2 and stage-3 is running.  The live filesystem
+ *	      will use the alternative POSSIBLY FREE type (2) to prevent
+ *	      stage-3 from improperly transitioning unvetted possibly-free
+ *	      blocks to FREE.
+ *
+ * stage-3	POSSIBLY FREE (type 1) -> FREE	(scan freemap)
+ *
+ *	This is done by bulkfree to finalize POSSIBLY FREE states.
+ *
+ */

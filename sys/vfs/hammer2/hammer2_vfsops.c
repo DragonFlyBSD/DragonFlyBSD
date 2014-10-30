@@ -210,20 +210,20 @@ static void hammer2_vfs_unmount_hmp2(struct mount *mp, hammer2_mount_t *hmp);
  */
 static void hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_inode_t *ip,
-				hammer2_inode_data_t *ipdata,
+				const hammer2_inode_data_t *ripdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase, int ioflag, int pblksize,
 				int *errorp);
 static void hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_inode_t *ip,
-				const hammer2_inode_data_t *ipdata,
+				const hammer2_inode_data_t *ripdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase, int ioflag,
 				int pblksize, int *errorp,
 				int comp_algo, int check_algo);
 static void hammer2_zero_check_and_write(struct buf *bp,
 				hammer2_trans_t *trans, hammer2_inode_t *ip,
-				const hammer2_inode_data_t *ipdata,
+				const hammer2_inode_data_t *ripdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase,
 				int ioflag, int pblksize, int *errorp,
@@ -231,7 +231,7 @@ static void hammer2_zero_check_and_write(struct buf *bp,
 static int test_block_zeros(const char *buf, size_t bytes);
 static void zero_write(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_inode_t *ip,
-				const hammer2_inode_data_t *ipdata,
+				const hammer2_inode_data_t *ripdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase,
 				int *errorp);
@@ -326,7 +326,7 @@ hammer2_vfs_uninit(struct vfsconf *vfsp __unused)
  * mounts and the spmp structure for media (hmp) structures.
  */
 static hammer2_pfsmount_t *
-hammer2_pfsalloc(const hammer2_inode_data_t *ipdata, hammer2_tid_t alloc_tid)
+hammer2_pfsalloc(const hammer2_inode_data_t *ripdata, hammer2_tid_t alloc_tid)
 {
 	hammer2_pfsmount_t *pmp;
 
@@ -341,9 +341,9 @@ hammer2_pfsalloc(const hammer2_inode_data_t *ipdata, hammer2_tid_t alloc_tid)
 
 	pmp->alloc_tid = alloc_tid + 1;	  /* our first media transaction id */
 	pmp->flush_tid = pmp->alloc_tid;
-	if (ipdata) {
-		pmp->inode_tid = ipdata->pfs_inum + 1;
-		pmp->pfs_clid = ipdata->pfs_clid;
+	if (ripdata) {
+		pmp->inode_tid = ripdata->pfs_inum + 1;
+		pmp->pfs_clid = ripdata->pfs_clid;
 	}
 	mtx_init(&pmp->wthread_mtx);
 	bioq_init(&pmp->wthread_bioq);
@@ -389,7 +389,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	hammer2_chain_t *rchain;
 	hammer2_cluster_t *cluster;
 	hammer2_cluster_t *cparent;
-	const hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ripdata;
 	hammer2_blockref_t bref;
 	struct file *fp;
 	char devstr[MNAMELEN];
@@ -630,8 +630,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		/*
 		 * Sanity-check schain's pmp, finish initializing spmp.
 		 */
+		ripdata = &hammer2_chain_rdata(schain)->ipdata;
 		KKASSERT(schain->pmp == spmp);
-		spmp->pfs_clid = schain->data->ipdata.pfs_clid;
+		spmp->pfs_clid = ripdata->pfs_clid;
 
 		/*
 		 * NOTE: inode_get sucks up schain's lock.
@@ -693,7 +694,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	while (cluster) {
 		if (hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE &&
 		    strcmp(label,
-		       hammer2_cluster_data(cluster)->ipdata.filename) == 0) {
+		       hammer2_cluster_rdata(cluster)->ipdata.filename) == 0) {
 			break;
 		}
 		cluster = hammer2_cluster_next(cparent, cluster, &key_next,
@@ -740,11 +741,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * Check to see if the cluster id is already mounted at the mount
 	 * point.  If it is, add us to the cluster.
 	 */
-	ipdata = &hammer2_cluster_data(cluster)->ipdata;
+	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 	hammer2_cluster_bref(cluster, &bref);
 	TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
 		if (pmp->spmp_hmp == NULL &&
-		    bcmp(&pmp->pfs_clid, &ipdata->pfs_clid,
+		    bcmp(&pmp->pfs_clid, &ripdata->pfs_clid,
 			 sizeof(pmp->pfs_clid)) == 0) {
 			break;
 		}
@@ -799,7 +800,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 *
 	 * From this point on we have to call hammer2_unmount() on failure.
 	 */
-	pmp = hammer2_pfsalloc(ipdata, bref.mirror_tid);
+	pmp = hammer2_pfsalloc(ripdata, bref.mirror_tid);
 	kprintf("PMP mirror_tid is %016jx\n", bref.mirror_tid);
 	for (i = 0; i < cluster->nchains; ++i) {
 		rchain = cluster->array[i];
@@ -1104,14 +1105,15 @@ retry:
 static
 void
 hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
-			hammer2_inode_t *ip, hammer2_inode_data_t *ipdata,
+			hammer2_inode_t *ip,
+			const hammer2_inode_data_t *ripdata,
 			hammer2_cluster_t *cparent,
 			hammer2_key_t lbase, int ioflag, int pblksize,
 			int *errorp)
 {
 	hammer2_cluster_t *cluster;
 
-	switch(HAMMER2_DEC_ALGO(ipdata->comp_algo)) {
+	switch(HAMMER2_DEC_ALGO(ripdata->comp_algo)) {
 	case HAMMER2_COMP_NONE:
 		/*
 		 * We have to assign physical storage to the buffer
@@ -1125,7 +1127,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 						lbase, pblksize,
 						errorp);
 		hammer2_write_bp(cluster, bp, ioflag, pblksize, errorp,
-				 ipdata->check_algo);
+				 ripdata->check_algo);
 		if (cluster)
 			hammer2_cluster_unlock(cluster);
 		break;
@@ -1134,9 +1136,9 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		 * Check for zero-fill only
 		 */
 		hammer2_zero_check_and_write(bp, trans, ip,
-				    ipdata, cparent, lbase,
+				    ripdata, cparent, lbase,
 				    ioflag, pblksize, errorp,
-				    ipdata->check_algo);
+				    ripdata->check_algo);
 		break;
 	case HAMMER2_COMP_LZ4:
 	case HAMMER2_COMP_ZLIB:
@@ -1145,11 +1147,11 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		 * Check for zero-fill and attempt compression.
 		 */
 		hammer2_compress_and_write(bp, trans, ip,
-					   ipdata, cparent,
+					   ripdata, cparent,
 					   lbase, ioflag,
 					   pblksize, errorp,
-					   ipdata->comp_algo,
-					   ipdata->check_algo);
+					   ripdata->comp_algo,
+					   ripdata->check_algo);
 		break;
 	}
 }
@@ -1162,7 +1164,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 static
 void
 hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
-	hammer2_inode_t *ip, const hammer2_inode_data_t *ipdata,
+	hammer2_inode_t *ip, const hammer2_inode_data_t *ripdata,
 	hammer2_cluster_t *cparent,
 	hammer2_key_t lbase, int ioflag, int pblksize,
 	int *errorp, int comp_algo, int check_algo)
@@ -1175,7 +1177,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 	char *comp_buffer;
 
 	if (test_block_zeros(bp->b_data, pblksize)) {
-		zero_write(bp, trans, ip, ipdata, cparent, lbase, errorp);
+		zero_write(bp, trans, ip, ripdata, cparent, lbase, errorp);
 		return;
 	}
 
@@ -1278,7 +1280,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 	cluster = hammer2_assign_physical(trans, ip, cparent,
 					  lbase, comp_block_size,
 					  errorp);
-	ipdata = &hammer2_cluster_data(cparent)->ipdata;
+	ripdata = NULL;
 
 	if (*errorp) {
 		kprintf("WRITE PATH: An error occurred while "
@@ -1288,18 +1290,19 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 	}
 
 	for (i = 0; i < cluster->nchains; ++i) {
+		hammer2_inode_data_t *wipdata;
 		hammer2_io_t *dio;
 		char *bdata;
 
-		chain = cluster->array[i];
+		chain = cluster->array[i];	/* XXX */
 		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
 
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_INODE:
-			KKASSERT(chain->data->ipdata.op_flags &
-				 HAMMER2_OPFLAG_DIRECTDATA);
+			wipdata = &hammer2_chain_wdata(chain)->ipdata;
+			KKASSERT(wipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA);
 			KKASSERT(bp->b_loffset == 0);
-			bcopy(bp->b_data, chain->data->ipdata.u.data,
+			bcopy(bp->b_data, wipdata->u.data,
 			      HAMMER2_EMBEDDED_BYTES);
 			break;
 		case HAMMER2_BREF_TYPE_DATA:
@@ -1393,7 +1396,7 @@ done:
 static
 void
 hammer2_zero_check_and_write(struct buf *bp, hammer2_trans_t *trans,
-	hammer2_inode_t *ip, const hammer2_inode_data_t *ipdata,
+	hammer2_inode_t *ip, const hammer2_inode_data_t *ripdata,
 	hammer2_cluster_t *cparent,
 	hammer2_key_t lbase, int ioflag, int pblksize, int *errorp,
 	int check_algo)
@@ -1401,7 +1404,7 @@ hammer2_zero_check_and_write(struct buf *bp, hammer2_trans_t *trans,
 	hammer2_cluster_t *cluster;
 
 	if (test_block_zeros(bp->b_data, pblksize)) {
-		zero_write(bp, trans, ip, ipdata, cparent, lbase, errorp);
+		zero_write(bp, trans, ip, ripdata, cparent, lbase, errorp);
 	} else {
 		cluster = hammer2_assign_physical(trans, ip, cparent,
 						  lbase, pblksize, errorp);
@@ -1435,7 +1438,7 @@ test_block_zeros(const char *buf, size_t bytes)
 static
 void
 zero_write(struct buf *bp, hammer2_trans_t *trans,
-	   hammer2_inode_t *ip, const hammer2_inode_data_t *ipdata,
+	   hammer2_inode_t *ip, const hammer2_inode_data_t *ripdata,
 	   hammer2_cluster_t *cparent,
 	   hammer2_key_t lbase, int *errorp __unused)
 {
@@ -1475,6 +1478,7 @@ hammer2_write_bp(hammer2_cluster_t *cluster, struct buf *bp, int ioflag,
 				int pblksize, int *errorp, int check_algo)
 {
 	hammer2_chain_t *chain;
+	hammer2_inode_data_t *wipdata;
 	hammer2_io_t *dio;
 	char *bdata;
 	int error;
@@ -1483,16 +1487,15 @@ hammer2_write_bp(hammer2_cluster_t *cluster, struct buf *bp, int ioflag,
 	error = 0;	/* XXX TODO below */
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
-
+		chain = cluster->array[i];	/* XXX */
 		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
 
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_INODE:
-			KKASSERT(chain->data->ipdata.op_flags &
-				 HAMMER2_OPFLAG_DIRECTDATA);
+			wipdata = &hammer2_chain_wdata(chain)->ipdata;
+			KKASSERT(wipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA);
 			KKASSERT(bp->b_loffset == 0);
-			bcopy(bp->b_data, chain->data->ipdata.u.data,
+			bcopy(bp->b_data, wipdata->u.data,
 			      HAMMER2_EMBEDDED_BYTES);
 			error = 0;
 			break;
@@ -1991,6 +1994,7 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 		      struct hammer2_recovery_info *info,
 		      hammer2_tid_t sync_tid)
 {
+	const hammer2_inode_data_t *ripdata;
 	hammer2_chain_t *chain;
 	int cache_index;
 	int cumulative_error = 0;
@@ -2018,12 +2022,13 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 		 * for recursion.
 		 */
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
-		if (parent->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
+		ripdata = &hammer2_chain_rdata(parent)->ipdata;
+		if (ripdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
 			/* not applicable to recovery scan */
 			hammer2_chain_unlock(parent);
 			return 0;
 		}
-		if ((parent->data->ipdata.op_flags & HAMMER2_OPFLAG_PFSROOT) &&
+		if ((ripdata->op_flags & HAMMER2_OPFLAG_PFSROOT) &&
 		    info->depth != 0) {
 			pfs_boundary = 1;
 			sync_tid = parent->bref.mirror_tid - 1;
@@ -2692,7 +2697,7 @@ hammer2_autodmsg(kdmsg_msg_t *msg)
 static void
 hammer2_update_spans(hammer2_mount_t *hmp, kdmsg_state_t *state)
 {
-	const hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ripdata;
 	hammer2_cluster_t *cparent;
 	hammer2_cluster_t *cluster;
 	hammer2_pfsmount_t *spmp;
@@ -2716,20 +2721,20 @@ hammer2_update_spans(hammer2_mount_t *hmp, kdmsg_state_t *state)
 	while (cluster) {
 		if (hammer2_cluster_type(cluster) != HAMMER2_BREF_TYPE_INODE)
 			continue;
-		ipdata = &hammer2_cluster_data(cluster)->ipdata;
-		kprintf("UPDATE SPANS: %s\n", ipdata->filename);
+		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
+		kprintf("UPDATE SPANS: %s\n", ripdata->filename);
 
 		rmsg = kdmsg_msg_alloc(state, DMSG_LNK_SPAN | DMSGF_CREATE,
 				       hammer2_lnk_span_reply, NULL);
-		rmsg->any.lnk_span.pfs_clid = ipdata->pfs_clid;
-		rmsg->any.lnk_span.pfs_fsid = ipdata->pfs_fsid;
-		rmsg->any.lnk_span.pfs_type = ipdata->pfs_type;
+		rmsg->any.lnk_span.pfs_clid = ripdata->pfs_clid;
+		rmsg->any.lnk_span.pfs_fsid = ripdata->pfs_fsid;
+		rmsg->any.lnk_span.pfs_type = ripdata->pfs_type;
 		rmsg->any.lnk_span.peer_type = DMSG_PEER_HAMMER2;
 		rmsg->any.lnk_span.proto_version = DMSG_SPAN_PROTO_1;
-		name_len = ipdata->name_len;
+		name_len = ripdata->name_len;
 		if (name_len >= sizeof(rmsg->any.lnk_span.fs_label))
 			name_len = sizeof(rmsg->any.lnk_span.fs_label) - 1;
-		bcopy(ipdata->filename, rmsg->any.lnk_span.fs_label, name_len);
+		bcopy(ripdata->filename, rmsg->any.lnk_span.fs_label, name_len);
 
 		kdmsg_msg_write(rmsg);
 

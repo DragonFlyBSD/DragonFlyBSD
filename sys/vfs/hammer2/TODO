@@ -21,9 +21,6 @@
 
 * inode always contains target cluster/chain, not hardlink
 
-* cluster_modify_ip -> data returned mod to all chains
-* and hammer2_cluster_data() -> same thing
-
 * chain refs in cluster, cluster refs
 
 * check inode shared lock ... can end up in endless loop if following

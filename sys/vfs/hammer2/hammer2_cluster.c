@@ -77,23 +77,6 @@ hammer2_cluster_type(hammer2_cluster_t *cluster)
 	return(cluster->focus->bref.type);
 }
 
-/*
- * NOTE: When modifying a cluster object via hammer2_cluster_wdata()
- *	 and hammer2_cluster_modsync(), remember that block array
- *	 entries are not copied to the elements of the cluster.
- */
-const hammer2_media_data_t *
-hammer2_cluster_data(hammer2_cluster_t *cluster)
-{
-	return(cluster->focus->data);
-}
-
-hammer2_media_data_t *
-hammer2_cluster_wdata(hammer2_cluster_t *cluster)
-{
-	return(cluster->focus->data);
-}
-
 int
 hammer2_cluster_modified(hammer2_cluster_t *cluster)
 {
@@ -274,6 +257,10 @@ hammer2_cluster_ref(hammer2_cluster_t *cluster)
 /*
  * Drop the caller's reference to the cluster.  When the ref count drops to
  * zero this function frees the cluster and drops all underlying chains.
+ *
+ * In-progress read I/Os are typically detached from the cluster once the
+ * first one returns (the remaining stay attached to the DIOs but are then
+ * ignored and drop naturally).
  */
 void
 hammer2_cluster_drop(hammer2_cluster_t *cluster)
@@ -529,7 +516,8 @@ hammer2_cluster_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
 }
 
 /*
- * Adjust the cluster's chains to allow modification.
+ * Adjust the cluster's chains to allow modification and adjust the
+ * focus.  Data will be accessible on return.
  */
 void
 hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
@@ -548,7 +536,9 @@ hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 }
 
 /*
- * Synchronize modifications with other chains in a cluster.
+ * Synchronize modifications from the focus to other chains in a cluster.
+ * Convenient because nominal API users can just modify the contents of the
+ * focus (at least for non-blockref data).
  *
  * Nominal front-end operations only edit non-block-table data in a single
  * chain.  This code copies such modifications to the other chains in the
@@ -977,7 +967,7 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 {
 	hammer2_mount_t *hmp;
 	hammer2_cluster_t *ncluster;
-	const hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ripdata;
 	hammer2_inode_data_t *wipdata;
 	hammer2_inode_t *nip;
 	size_t name_len;
@@ -992,8 +982,11 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 	name_len = strlen(pfs->name);
 	lhc = hammer2_dirhash(pfs->name, name_len);
 
-	ipdata = &hammer2_cluster_data(ocluster)->ipdata;
-	opfs_clid = ipdata->pfs_clid;
+	/*
+	 * Get the clid
+	 */
+	ripdata = &hammer2_cluster_rdata(ocluster)->ipdata;
+	opfs_clid = ripdata->pfs_clid;
 	hmp = ocluster->focus->hmp;
 
 	/*
@@ -1043,7 +1036,7 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 		/* XXX hack blockset copy */
 		/* XXX doesn't work with real cluster */
 		KKASSERT(ocluster->nchains == 1);
-		wipdata->u.blockset = ocluster->focus->data->ipdata.u.blockset;
+		wipdata->u.blockset = ripdata->u.blockset;
 		hammer2_cluster_modsync(ncluster);
 		for (i = 0; i < ncluster->nchains; ++i) {
 			if (ncluster->array[i])
@@ -1087,6 +1080,125 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 		cparent->array[i] = rchain;
 	}
 	return cparent;
+}
+
+/************************************************************************
+ *			        CLUSTER I/O 				*
+ ************************************************************************
+ *
+ *
+ * WARNING! blockref[] array data is not universal.  These functions should
+ *	    only be used to access universal data.
+ *
+ * NOTE!    The rdata call will wait for at least one of the chain I/Os to
+ *	    complete if necessary.  The I/O's should have already been
+ *	    initiated by the cluster_lock/chain_lock operation.
+ *
+ *	    The cluster must already be in a modified state before wdata
+ *	    is called.  The data will already be available for this case.
+ */
+const hammer2_media_data_t *
+hammer2_cluster_rdata(hammer2_cluster_t *cluster)
+{
+	return(cluster->focus->data);
+}
+
+hammer2_media_data_t *
+hammer2_cluster_wdata(hammer2_cluster_t *cluster)
+{
+	KKASSERT(hammer2_cluster_modified(cluster));
+	return(cluster->focus->data);
+}
+
+/*
+ * Load async into independent buffer - used to load logical buffers from
+ * underlying device data.  The callback is made for the first validated
+ * data found, or NULL if no valid data is available.
+ *
+ * NOTE! The cluster structure is either unique or serialized (e.g. embedded
+ *	 in the inode with an exclusive lock held), the chain structure may be
+ *	 shared.
+ */
+void
+hammer2_cluster_load_async(hammer2_cluster_t *cluster,
+			   void (*callback)(hammer2_iocb_t *iocb), void *ptr)
+{
+	hammer2_chain_t *chain;
+	hammer2_iocb_t *iocb;
+	hammer2_mount_t *hmp;
+	hammer2_blockref_t *bref;
+	int i;
+
+	/*
+	 * Try to find a chain whos data is already resolved.  If none can
+	 * be found, start with the first chain.
+	 */
+	chain = NULL;
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i];
+		if (chain && chain->data)
+			break;
+	}
+	if (i == cluster->nchains) {
+		chain = cluster->array[0];
+		i = 0;
+	}
+
+	iocb = &cluster->iocb;
+	iocb->callback = callback;
+	iocb->dio = NULL;		/* for already-validated case */
+	iocb->cluster = cluster;
+	iocb->chain = chain;
+	iocb->ptr = ptr;
+	iocb->lbase = (off_t)i;
+	iocb->flags = 0;
+	iocb->error = 0;
+
+	/*
+	 * Data already validated
+	 */
+	if (chain->data) {
+		callback(iocb);
+		return;
+	}
+
+	/*
+	 * We must resolve to a device buffer, either by issuing I/O or
+	 * by creating a zero-fill element.  We do not mark the buffer
+	 * dirty when creating a zero-fill element (the hammer2_chain_modify()
+	 * API must still be used to do that).
+	 *
+	 * The device buffer is variable-sized in powers of 2 down
+	 * to HAMMER2_MIN_ALLOC (typically 1K).  A 64K physical storage
+	 * chunk always contains buffers of the same size. (XXX)
+	 *
+	 * The minimum physical IO size may be larger than the variable
+	 * block size.
+	 */
+	bref = &chain->bref;
+	hmp = chain->hmp;
+
+#if 0
+	/* handled by callback? <- TODO XXX even needed for loads? */
+	/*
+	 * The getblk() optimization for a 100% overwrite can only be used
+	 * if the physical block size matches the request.
+	 */
+	if ((chain->flags & HAMMER2_CHAIN_INITIAL) &&
+	    chain->bytes == hammer2_devblksize(chain->bytes)) {
+		error = hammer2_io_new(hmp, bref->data_off, chain->bytes, &dio);
+		KKASSERT(error == 0);
+		iocb->dio = dio;
+		callback(iocb);
+		return;
+	}
+#endif
+
+	/*
+	 * Otherwise issue a read
+	 */
+	hammer2_adjreadcounter(&chain->bref, chain->bytes);
+	hammer2_io_getblk(hmp, bref->data_off, chain->bytes, iocb);
 }
 
 /************************************************************************

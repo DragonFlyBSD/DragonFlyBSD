@@ -729,81 +729,6 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 }
 
 /*
- * This basically calls hammer2_io_breadcb() but does some pre-processing
- * of the chain first to handle certain cases.
- */
-void
-hammer2_chain_load_async(hammer2_cluster_t *cluster,
-			 void (*callback)(hammer2_io_t *dio,
-					  hammer2_cluster_t *cluster,
-					  hammer2_chain_t *chain,
-					  void *arg_p, off_t arg_o),
-			 void *arg_p)
-{
-	hammer2_chain_t *chain;
-	hammer2_mount_t *hmp;
-	struct hammer2_io *dio;
-	hammer2_blockref_t *bref;
-	int error;
-	int i;
-
-	/*
-	 * If no chain specified see if any chain data is available and use
-	 * that, otherwise begin an I/O iteration using the first chain.
-	 */
-	chain = NULL;
-	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
-		if (chain && chain->data)
-			break;
-	}
-	if (i == cluster->nchains) {
-		chain = cluster->array[0];
-		i = 0;
-	}
-
-	if (chain->data) {
-		callback(NULL, cluster, chain, arg_p, (off_t)i);
-		return;
-	}
-
-	/*
-	 * We must resolve to a device buffer, either by issuing I/O or
-	 * by creating a zero-fill element.  We do not mark the buffer
-	 * dirty when creating a zero-fill element (the hammer2_chain_modify()
-	 * API must still be used to do that).
-	 *
-	 * The device buffer is variable-sized in powers of 2 down
-	 * to HAMMER2_MIN_ALLOC (typically 1K).  A 64K physical storage
-	 * chunk always contains buffers of the same size. (XXX)
-	 *
-	 * The minimum physical IO size may be larger than the variable
-	 * block size.
-	 */
-	bref = &chain->bref;
-	hmp = chain->hmp;
-
-	/*
-	 * The getblk() optimization can only be used on newly created
-	 * elements if the physical block size matches the request.
-	 */
-	if ((chain->flags & HAMMER2_CHAIN_INITIAL) &&
-	    chain->bytes == hammer2_devblksize(chain->bytes)) {
-		error = hammer2_io_new(hmp, bref->data_off, chain->bytes, &dio);
-		KKASSERT(error == 0);
-		callback(dio, cluster, chain, arg_p, (off_t)i);
-		return;
-	}
-
-	/*
-	 * Otherwise issue a read
-	 */
-	hammer2_adjreadcounter(&chain->bref, chain->bytes);
-	hammer2_io_breadcb(hmp, bref->data_off, chain->bytes,
-			   callback, cluster, chain, arg_p, (off_t)i);
-}
-
-/*
  * Unlock and deref a chain element.
  *
  * On the last lock release any non-embedded data (chain->dio) will be
@@ -1111,6 +1036,7 @@ hammer2_chain_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
 void
 hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 {
+	hammer2_blockref_t obref;
 	hammer2_mount_t *hmp;
 	hammer2_io_t *dio;
 	int error;
@@ -1119,9 +1045,10 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 	char *bdata;
 
 	hmp = chain->hmp;
+	obref = chain->bref;
 
 	/*
-	 * data is not optional for freemap chains (we must always be sure
+	 * Data is not optional for freemap chains (we must always be sure
 	 * to copy the data on COW storage allocations).
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
@@ -1294,6 +1221,18 @@ skip2:
 	 */
 	if (chain->parent)
 		hammer2_chain_setflush(trans, chain->parent);
+
+	/*
+	 * Adjust the freemap bitmap to indicate that the related blocks
+	 * MIGHT be freeable.  Bulkfree must still determine that the blocks
+	 * are actually freeable.
+	 */
+	if (obref.type != HAMMER2_BREF_TYPE_FREEMAP_NODE &&
+	    obref.type != HAMMER2_BREF_TYPE_FREEMAP_LEAF &&
+	    (obref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
+		hammer2_freemap_adjust(trans, hmp,
+				       &obref, HAMMER2_FREEMAP_DOMAYFREE);
+	}
 }
 
 /*
@@ -2679,6 +2618,20 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		 */
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 	}
+
+	/*
+	 * If the deletion is permanent (i.e. the chain is not simply being
+	 * moved within the topology), adjust the freemap to indicate that
+	 * the block *might* be freeable.  bulkfree must still determine
+	 * that it is actually freeable.
+	 */
+	if ((flags & HAMMER2_DELETE_PERMANENT) &&
+	    chain->bref.type != HAMMER2_BREF_TYPE_FREEMAP_NODE &&
+	    chain->bref.type != HAMMER2_BREF_TYPE_FREEMAP_LEAF &&
+	    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
+		hammer2_freemap_adjust(trans, hmp, &chain->bref,
+				       HAMMER2_FREEMAP_DOMAYFREE);
+	}
 }
 
 /*
@@ -3840,6 +3793,20 @@ void
 hammer2_chain_wait(hammer2_chain_t *chain)
 {
 	tsleep(chain, 0, "chnflw", 1);
+}
+
+const hammer2_media_data_t *
+hammer2_chain_rdata(hammer2_chain_t *chain)
+{
+	KKASSERT(chain->data != NULL);
+	return (chain->data);
+}
+
+hammer2_media_data_t *
+hammer2_chain_wdata(hammer2_chain_t *chain)
+{
+	KKASSERT(chain->data != NULL);
+	return (chain->data);
 }
 
 /*
