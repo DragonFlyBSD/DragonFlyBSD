@@ -159,7 +159,7 @@ struct mos_softc {
 	struct usb_ether sc_ue;
 	struct ifnet ifp;
 
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 	struct usb_xfer *sc_xfer[MOS_ENDPT_MAX];
 
 	uint16_t mos_flags;
@@ -170,6 +170,6 @@ struct mos_softc {
 };
 
 #define	GET_MII(sc)		uether_getmii(&(sc)->sc_ue)
-#define	MOS_LOCK(_sc)		mtx_lock(&(_sc)->sc_mtx)
-#define	MOS_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
-#define	MOS_LOCK_ASSERT(_sc, t)	mtx_assert(&(_sc)->sc_mtx, t)
+#define	MOS_LOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
+#define	MOS_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_RELEASE)
+#define	MOS_LOCK_ASSERT(_sc)	lockowned(&(_sc)->sc_lock)

@@ -97,7 +97,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -106,27 +105,27 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <net/ifq_var.h>
+
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
 #include "usbdevs.h"
 
 #define	USB_DEBUG_VAR mos_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/net/usb_ethernet.h>
+#include <bus/u4b/net/usb_ethernet.h>
 
-//#include <dev/usb/net/if_mosreg.h>
+//#include <bus/u4b/net/if_mosreg.h>
 #include "if_mosreg.h"
 
 #ifdef USB_DEBUG
@@ -420,7 +419,7 @@ mos_miibus_readreg(struct device *dev, int phy, int reg)
 
 	USETW(val, 0);
 
-	locked = mtx_owned(&sc->sc_mtx);
+	locked = lockowned(&sc->sc_lock);
 	if (!locked)
 		MOS_LOCK(sc);
 
@@ -450,7 +449,7 @@ mos_miibus_writereg(device_t dev, int phy, int reg, int val)
 	struct mos_softc *sc = device_get_softc(dev);
 	int i, locked;
 
-	locked = mtx_owned(&sc->sc_mtx);
+	locked = lockowned(&sc->sc_lock);
 	if (!locked)
 		MOS_LOCK(sc);
 
@@ -479,7 +478,7 @@ mos_miibus_statchg(device_t dev)
 	struct mii_data *mii = GET_MII(sc);
 	int val, err, locked;
 
-	locked = mtx_owned(&sc->sc_mtx);
+	locked = lockowned(&sc->sc_lock);
 	if (!locked)
 		MOS_LOCK(sc);
 
@@ -526,7 +525,7 @@ mos_ifmedia_upd(struct ifnet *ifp)
 	struct mii_data *mii = GET_MII(sc);
 	struct mii_softc *miisc;
 
-	MOS_LOCK_ASSERT(sc, MA_OWNED);
+	MOS_LOCK_ASSERT(sc);
 
 	sc->mos_link = 0;
 	if (mii->mii_instance) {
@@ -562,7 +561,7 @@ mos_setpromisc(struct usb_ether *ue)
 
 	uint8_t rxmode;
 
-	MOS_LOCK_ASSERT(sc, MA_OWNED);
+	MOS_LOCK_ASSERT(sc);
 
 	rxmode = mos_reg_read_1(sc, MOS_CTL);
 
@@ -590,7 +589,7 @@ mos_setmulti(struct usb_ether *ue)
 	uint8_t hashtbl[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 	int allmulti = 0;
 
-	MOS_LOCK_ASSERT(sc, MA_OWNED);
+	MOS_LOCK_ASSERT(sc);
 
 	rxmode = mos_reg_read_1(sc, MOS_CTL);
 
@@ -598,7 +597,6 @@ mos_setmulti(struct usb_ether *ue)
 		allmulti = 1;
 
 	/* get all new ones */
-	if_maddr_rlock(ifp);
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK) {
 			allmulti = 1;
@@ -608,7 +606,6 @@ mos_setmulti(struct usb_ether *ue)
 		    ifma->ifma_addr), ETHER_ADDR_LEN) >> 26;
 		hashtbl[h / 8] |= 1 << (h % 8);
 	}
-	if_maddr_runlock(ifp);
 
 	/* now program new ones */
 	if (allmulti == 1) {
@@ -636,7 +633,7 @@ mos_reset(struct mos_softc *sc)
 	mos_reg_write_1(sc, MOS_FRAME_DROP_CNT, 0);
 
 	/* Wait a little while for the chip to get its brains in order. */
-	usb_pause_mtx(&sc->sc_mtx, hz / 128);
+	usb_pause_mtx(&sc->sc_lock, hz / 128);
 	return;
 }
 
@@ -693,12 +690,12 @@ mos_attach(device_t dev)
 	sc->mos_flags = USB_GET_DRIVER_INFO(uaa);
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, device_get_nameunit(dev), NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, device_get_nameunit(dev), 0, LK_CANRECURSE);
 
 	iface_index = MOS_IFACE_IDX;
 	error = usbd_transfer_setup(uaa->device, &iface_index,
 	    sc->sc_xfer, mos_config, MOS_ENDPT_MAX,
-	    sc, &sc->sc_mtx);
+	    sc, &sc->sc_lock);
 
 	if (error) {
 		device_printf(dev, "allocating USB transfers failed\n");
@@ -707,7 +704,7 @@ mos_attach(device_t dev)
 	ue->ue_sc = sc;
 	ue->ue_dev = dev;
 	ue->ue_udev = uaa->device;
-	ue->ue_mtx = &sc->sc_mtx;
+	ue->ue_lock = &sc->sc_lock;
 	ue->ue_methods = &mos_ue_methods;
 
 
@@ -755,7 +752,7 @@ mos_detach(device_t dev)
 
 	usbd_transfer_unsetup(sc->sc_xfer, MOS_ENDPT_MAX);
 	uether_ifdetach(ue);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }
@@ -860,7 +857,7 @@ tr_setup:
 		/*
 		 * XXX: don't send anything if there is no link?
 		 */
-		IFQ_DRV_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == NULL)
 			return;
 
@@ -899,7 +896,7 @@ mos_tick(struct usb_ether *ue)
 	struct mos_softc *sc = uether_getsc(ue);
 	struct mii_data *mii = GET_MII(sc);
 
-	MOS_LOCK_ASSERT(sc, MA_OWNED);
+	MOS_LOCK_ASSERT(sc);
 
 	mii_tick(mii);
 	if (!sc->mos_link && mii->mii_media_status & IFM_ACTIVE &&
@@ -931,7 +928,7 @@ mos_init(struct usb_ether *ue)
 	struct ifnet *ifp = uether_getifp(ue);
 	uint8_t rxmode;
 
-	MOS_LOCK_ASSERT(sc, MA_OWNED);
+	MOS_LOCK_ASSERT(sc);
 
 	/* Cancel pending I/O and free all RX/TX buffers. */
 	mos_reset(sc);
@@ -961,7 +958,7 @@ mos_init(struct usb_ether *ue)
 	/* Load the multicast filter. */
 	mos_setmulti(ue);
 
-	ifp->if_drv_flags |= IFF_DRV_RUNNING;
+	ifp->if_flags |= IFF_RUNNING;
 	mos_start(ue);
 }
 
@@ -1011,8 +1008,8 @@ mos_stop(struct usb_ether *ue)
 
 	mos_reset(sc);
 
-	MOS_LOCK_ASSERT(sc, MA_OWNED);
-	ifp->if_drv_flags &= ~IFF_DRV_RUNNING;
+	MOS_LOCK_ASSERT(sc);
+	ifp->if_flags &= ~IFF_RUNNING;
 
 	/* stop all the transfers, if not already stopped */
 	usbd_transfer_stop(sc->sc_xfer[MOS_ENDPT_TX]);

@@ -1,3 +1,3 @@
-SUBDIR=	axe udav uether urndis
+SUBDIR=	axe mos udav uether urndis
 
 .include <bsd.subdir.mk>
