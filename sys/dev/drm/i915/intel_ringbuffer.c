@@ -32,7 +32,6 @@
 #include "i915_drv.h"
 #include "intel_drv.h"
 #include "intel_ringbuffer.h"
-#include <sys/sched.h>
 
 /*
  * 965+ support PIPE_CONTROL commands, which provide finer grained control
@@ -480,7 +479,7 @@ err_unpin:
 err_unref:
 	drm_gem_object_unreference(&obj->base);
 err:
-	drm_free(pc, M_DRM);
+	kfree(pc, M_DRM);
 	return ret;
 }
 
@@ -499,7 +498,7 @@ cleanup_pipe_control(struct intel_ring_buffer *ring)
 	i915_gem_object_unpin(obj);
 	drm_gem_object_unreference(&obj->base);
 
-	drm_free(pc, M_DRM);
+	kfree(pc, M_DRM);
 	ring->private = NULL;
 }
 
@@ -877,8 +876,8 @@ void intel_ring_setup_status_page(struct intel_ring_buffer *ring)
 
 static int
 bsd_ring_flush(struct intel_ring_buffer *ring,
-	       u32    invalidate_domains,
-	       u32    flush_domains)
+	       u32     invalidate_domains,
+	       u32     flush_domains)
 {
 	int ret;
 
@@ -1335,7 +1334,7 @@ static int ring_wait_for_space(struct intel_ring_buffer *ring, int n)
 	 * to running on almost untested codepaths). But on resume
 	 * timers don't work yet, so prevent a complete hang in that
 	 * case by choosing an insanely large timeout. */
-	end = ticks + 60 * hz;
+	end = jiffies + 60 * HZ;
 
 	do {
 		ring->head = I915_READ_HEAD(ring);
@@ -1355,12 +1354,12 @@ static int ring_wait_for_space(struct intel_ring_buffer *ring, int n)
 			dev_priv->sarea_priv->perf_boxes |= I915_BOX_WAIT;
 #endif
 
-		DELAY(1000);
+		msleep(1);
 
 		ret = i915_gem_check_wedge(dev_priv, dev_priv->mm.interruptible);
 		if (ret)
 			return ret;
-	} while (!time_after(ticks, end));
+	} while (!time_after(jiffies, end));
 	return -EBUSY;
 }
 

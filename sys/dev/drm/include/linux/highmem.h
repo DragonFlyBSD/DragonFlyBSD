@@ -29,12 +29,22 @@
 
 #include <machine/vmparam.h>
 
-static void *kmap_atomic(struct vm_page *pg)
+static inline void *kmap(struct vm_page *pg)
 {
 	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pg));
 }
 
-static void kunmap_atomic(void *vaddr)
+static inline void kunmap(struct vm_page *pg)
+{
+	/* Nothing to do on systems with a direct memory map */
+}
+
+static inline void *kmap_atomic(struct vm_page *pg)
+{
+	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pg));
+}
+
+static inline void kunmap_atomic(void *vaddr)
 {
 	/* Nothing to do on systems with a direct memory map */
 }

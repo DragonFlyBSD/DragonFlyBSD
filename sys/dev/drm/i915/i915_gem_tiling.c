@@ -23,14 +23,13 @@
  * Authors:
  *    Eric Anholt <eric@anholt.net>
  *
- * $FreeBSD: src/sys/dev/drm2/i915/i915_gem_tiling.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
-#include <sys/sfbuf.h>
-
+#include <linux/bitops.h>
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
+#include <linux/highmem.h>
 
 /** @file i915_gem_tiling.c
  *
@@ -357,14 +356,15 @@ i915_gem_set_tiling(struct drm_device *dev, void *data,
 		/* We need to rebind the object if its current allocation
 		 * no longer meets the alignment restrictions for its new
 		 * tiling mode. Otherwise we can just leave it alone, but
-		 * need to ensure that any fence register is cleared.
+		 * need to ensure that any fence register is updated before
+		 * the next fenced (either through the GTT or by the BLT unit
+		 * on older GPUs) access.
 		 *
 		 * After updating the tiling parameters, we then flag whether
 		 * we need to update an associated fence register. Note this
 		 * has to also include the unfenced register the GPU uses
 		 * whilst executing a fenced command for an untiled object.
 		 */
-		i915_gem_release_mmap(obj);
 
 		obj->map_and_fenceable =
 			obj->gtt_space == NULL ||
@@ -388,6 +388,9 @@ i915_gem_set_tiling(struct drm_device *dev, void *data,
 
 			obj->tiling_mode = args->tiling_mode;
 			obj->stride = args->stride;
+
+			/* Force the fence to be reacquired for GTT access */
+			i915_gem_release_mmap(obj);
 		}
 	}
 	/* we have to maintain this existing ABI... */
@@ -449,16 +452,13 @@ i915_gem_get_tiling(struct drm_device *dev, void *data,
  * by the GPU.
  */
 static void
-i915_gem_swizzle_page(vm_page_t m)
+i915_gem_swizzle_page(struct vm_page *page)
 {
 	char temp[64];
 	char *vaddr;
-	struct sf_buf *sf;
 	int i;
 
-	/* XXXKIB sleep */
-	sf = sf_buf_alloc(m);
-	vaddr = (char *)sf_buf_kva(sf);
+	vaddr = kmap(page);
 
 	for (i = 0; i < PAGE_SIZE; i += 128) {
 		memcpy(temp, &vaddr[i], 64);
@@ -466,7 +466,7 @@ i915_gem_swizzle_page(vm_page_t m)
 		memcpy(&vaddr[i + 64], temp, 64);
 	}
 
-	sf_buf_free(sf);
+	kunmap(page);
 }
 
 void
@@ -496,7 +496,7 @@ i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj)
 
 	if (obj->bit_17 == NULL) {
 		obj->bit_17 = kmalloc(BITS_TO_LONGS(page_count) *
-		    sizeof(long), M_DRM, M_WAITOK);
+					   sizeof(long), M_DRM, M_WAITOK);
 		if (obj->bit_17 == NULL) {
 			DRM_ERROR("Failed to allocate memory for bit 17 "
 				  "record\n");
@@ -504,11 +504,10 @@ i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj)
 		}
 	}
 
-	/* XXXKIB: review locking, atomics might be not needed there */
 	for (i = 0; i < page_count; i++) {
 		if (VM_PAGE_TO_PHYS(obj->pages[i]) & (1 << 17))
-			set_bit(i, obj->bit_17);
+			__set_bit(i, obj->bit_17);
 		else
-			clear_bit(i, obj->bit_17);
+			__clear_bit(i, obj->bit_17);
 	}
 }

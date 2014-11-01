@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2014 François Tigeot
  * All rights reserved.
  *
@@ -24,15 +24,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_IO_H_
-#define _LINUX_IO_H_
+#ifndef _ASM_BITOPS_NON_ATOMIC_H_
+#define _ASM_BITOPS_NON_ATOMIC_H_
 
-#define ioread8(addr)		*(volatile uint8_t *)((char *)addr)
-#define ioread16(addr)		*(volatile uint16_t *)((char *)addr)
-#define ioread32(addr)		*(volatile uint32_t *)((char *)addr)
+static inline void __set_bit(int nr, volatile unsigned long *addr)
+{
+	*(addr + (nr / BITS_PER_LONG)) |= (1 << (nr % BITS_PER_LONG));
+}
 
-#define iowrite8(data, addr)	*(volatile uint8_t *)((char *)addr) = data;
-#define iowrite16(data, addr)	*(volatile uint16_t *)((char *)addr) = data;
-#define iowrite32(data, addr)	*(volatile uint32_t *)((char *)addr) = data;
+static inline void __clear_bit(int nr, volatile unsigned long *addr)
+{
+	*(addr + (nr / BITS_PER_LONG)) &= ~(1 << (nr % BITS_PER_LONG));
+}
 
-#endif	/* _LINUX_IO_H_ */
+#endif	/* _ASM_BITOPS_NON_ATOMIC_H_ */

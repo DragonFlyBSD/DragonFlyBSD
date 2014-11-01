@@ -96,41 +96,6 @@ static void i915_write_hws_pga(struct drm_device *dev)
 }
 
 /**
- * Sets up the hardware status page for devices that need a physical address
- * in the register.
- */
-static int i915_init_phys_hws(struct drm_device *dev)
-{
-	drm_i915_private_t *dev_priv = dev->dev_private;
-	struct intel_ring_buffer *ring = LP_RING(dev_priv);
-
-	/*
-	 * Program Hardware Status Page
-	 * XXXKIB Keep 4GB limit for allocation for now.  This method
-	 * of allocation is used on <= 965 hardware, that has several
-	 * erratas regarding the use of physical memory > 4 GB.
-	 */
-	DRM_UNLOCK(dev);
-	dev_priv->status_page_dmah =
-		drm_pci_alloc(dev, PAGE_SIZE, PAGE_SIZE, 0xffffffff);
-	DRM_LOCK(dev);
-	if (!dev_priv->status_page_dmah) {
-		DRM_ERROR("Can not allocate hardware status page\n");
-		return -ENOMEM;
-	}
-	ring->status_page.page_addr = dev_priv->hw_status_page =
-	    dev_priv->status_page_dmah->vaddr;
-	dev_priv->dma_status_page = dev_priv->status_page_dmah->busaddr;
-
-	memset(dev_priv->hw_status_page, 0, PAGE_SIZE);
-
-	i915_write_hws_pga(dev);
-	DRM_DEBUG("Enabled hardware status page, phys %jx\n",
-	    (uintmax_t)dev_priv->dma_status_page);
-	return 0;
-}
-
-/**
  * Frees the hardware status page, whether it's a physical address or a virtual
  * address set up by the X Server.
  */
@@ -144,10 +109,11 @@ static void i915_free_hws(struct drm_device *dev)
 		dev_priv->status_page_dmah = NULL;
 	}
 
-	if (dev_priv->status_gfx_addr) {
-		dev_priv->status_gfx_addr = 0;
+	if (ring->status_page.gfx_addr) {
 		ring->status_page.gfx_addr = 0;
-		drm_core_ioremapfree(&dev_priv->hws_map, dev);
+#if 0	/* We don't care about dri1 */
+		iounmap(dev_priv->dri1.gfx_hws_cpu_addr);
+#endif
 	}
 
 	/* Need to rewrite hardware status page */
@@ -240,11 +206,12 @@ static int i915_initialize(struct drm_device * dev, drm_i915_init_t * init)
 		}
 	}
 
-	dev_priv->cpp = init->cpp;
-	dev_priv->back_offset = init->back_offset;
-	dev_priv->front_offset = init->front_offset;
-	dev_priv->current_page = 0;
+	dev_priv->dri1.cpp = init->cpp;
+	dev_priv->dri1.back_offset = init->back_offset;
+	dev_priv->dri1.front_offset = init->front_offset;
+	dev_priv->dri1.current_page = 0;
 	dev_priv->sarea_priv->pf_current_page = 0;
+
 
 	/* Allow hardware batchbuffers unless told otherwise.
 	 */
@@ -1075,9 +1042,10 @@ static int i915_setparam(struct drm_device *dev, void *data,
 static int i915_set_status_page(struct drm_device *dev, void *data,
 				struct drm_file *file_priv)
 {
+#if 0	/* We don't care about dri1 */
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	drm_i915_hws_addr_t *hws = data;
-	struct intel_ring_buffer *ring = LP_RING(dev_priv);
+	struct intel_ring_buffer *ring;
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET))
 		return -ENODEV;
@@ -1095,34 +1063,31 @@ static int i915_set_status_page(struct drm_device *dev, void *data,
 		return 0;
 	}
 
-	ring->status_page.gfx_addr = dev_priv->status_gfx_addr =
-	    hws->addr & (0x1ffff<<12);
+	DRM_DEBUG_DRIVER("set status page addr 0x%08x\n", (u32)hws->addr);
 
-	dev_priv->hws_map.offset = dev->agp->base + hws->addr;
-	dev_priv->hws_map.size = 4*1024;
-	dev_priv->hws_map.type = 0;
-	dev_priv->hws_map.flags = 0;
-	dev_priv->hws_map.mtrr = 0;
+	ring = LP_RING(dev_priv);
+	ring->status_page.gfx_addr = hws->addr & (0x1ffff<<12);
 
-	drm_core_ioremap_wc(&dev_priv->hws_map, dev);
-	if (dev_priv->hws_map.virtual == NULL) {
+	dev_priv->dri1.gfx_hws_cpu_addr =
+		ioremap_wc(dev_priv->mm.gtt_base_addr + hws->addr, 4096);
+	if (dev_priv->dri1.gfx_hws_cpu_addr == NULL) {
 		i915_dma_cleanup(dev);
-		ring->status_page.gfx_addr = dev_priv->status_gfx_addr = 0;
+		ring->status_page.gfx_addr = 0;
 		DRM_ERROR("can not ioremap virtual address for"
 				" G33 hw status page\n");
 		return -ENOMEM;
 	}
-	ring->status_page.page_addr = dev_priv->hw_status_page =
-	    dev_priv->hws_map.virtual;
 
-	memset(dev_priv->hw_status_page, 0, PAGE_SIZE);
-	I915_WRITE(HWS_PGA, dev_priv->status_gfx_addr);
+	memset_io(dev_priv->dri1.gfx_hws_cpu_addr, 0, PAGE_SIZE);
+	I915_WRITE(HWS_PGA, ring->status_page.gfx_addr);
 
 	DRM_DEBUG_DRIVER("load hws HWS_PGA with gfx mem 0x%x\n",
 			 ring->status_page.gfx_addr);
 	DRM_DEBUG_DRIVER("load hws at %p\n",
 			 ring->status_page.page_addr);
 	return 0;
+#endif
+	return -EINVAL;
 }
 
 static int i915_get_bridge_dev(struct drm_device *dev)
@@ -1444,16 +1409,6 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	spin_init(&dev_priv->dpio_lock, "i915initdpio");
 
 	lockinit(&dev_priv->rps.hw_lock, "i915 rps.hw_lock", 0, LK_CANRECURSE);
-
-	/* Init HWS */
-	if (!I915_NEED_GFX_HWS(dev)) {
-		ret = i915_init_phys_hws(dev);
-		if (ret != 0) {
-			drm_rmmap(dev, dev_priv->mmio_map);
-			drm_free(dev_priv, M_DRM);
-			return ret;
-		}
-	}
 
 	if (IS_IVYBRIDGE(dev) || IS_HASWELL(dev))
 		dev_priv->num_pipe = 3;

@@ -25,6 +25,8 @@
  *
  */
 
+#include <linux/i2c.h>
+#include <linux/export.h>
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
@@ -32,7 +34,6 @@
 #include "intel_drv.h"
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
-#include <linux/err.h>
 
 #define DP_LINK_CHECK_TIMEOUT	(10 * 1000)
 
@@ -562,12 +563,13 @@ intel_dp_aux_native_read(struct intel_dp *intel_dp,
 }
 
 static int
-intel_dp_i2c_aux_ch(device_t idev, int mode, uint8_t write_byte,
-    uint8_t *read_byte)
+intel_dp_i2c_aux_ch(device_t idev, int mode,
+		    uint8_t write_byte, uint8_t *read_byte)
 {
 	struct iic_dp_aux_data *data;
 	struct intel_dp *intel_dp;
 	uint16_t address;
+
 	uint8_t msg[5];
 	uint8_t reply[2];
 	unsigned retry;
@@ -664,7 +666,7 @@ static int
 intel_dp_i2c_init(struct intel_dp *intel_dp,
 		  struct intel_connector *intel_connector, const char *name)
 {
-	int ret;
+	int	ret;
 
 	DRM_DEBUG_KMS("i2c_init %s\n", name);
 
@@ -673,7 +675,7 @@ intel_dp_i2c_init(struct intel_dp *intel_dp,
 	    intel_dp_i2c_aux_ch, intel_dp, &intel_dp->dp_iic_bus,
 	    &intel_dp->adapter);
 	ironlake_edp_panel_vdd_off(intel_dp, false);
-	return (ret);
+	return ret;
 }
 
 bool
@@ -1068,7 +1070,7 @@ static void ironlake_panel_vdd_off_sync(struct intel_dp *intel_dp)
 		DRM_DEBUG_KMS("PCH_PP_STATUS: 0x%08x PCH_PP_CONTROL: 0x%08x\n",
 			      I915_READ(PCH_PP_STATUS), I915_READ(PCH_PP_CONTROL));
 
-		DELAY(intel_dp->panel_power_down_delay * 1000);
+		msleep(intel_dp->panel_power_down_delay);
 	}
 }
 
@@ -1191,7 +1193,7 @@ void ironlake_edp_backlight_on(struct intel_dp *intel_dp)
 	 * link.  So delay a bit to make sure the image is solid before
 	 * allowing it to appear.
 	 */
-	DELAY(intel_dp->backlight_on_delay * 1000);
+	msleep(intel_dp->backlight_on_delay);
 	pp = ironlake_get_pp_control(dev_priv);
 	pp |= EDP_BLC_ENABLE;
 	I915_WRITE(PCH_PP_CONTROL, pp);
@@ -1216,7 +1218,7 @@ void ironlake_edp_backlight_off(struct intel_dp *intel_dp)
 	pp &= ~EDP_BLC_ENABLE;
 	I915_WRITE(PCH_PP_CONTROL, pp);
 	POSTING_READ(PCH_PP_CONTROL);
-	DELAY(intel_dp->backlight_off_delay * 1000);
+	msleep(intel_dp->backlight_off_delay);
 }
 
 static void ironlake_edp_pll_on(struct intel_dp *intel_dp)
@@ -1283,7 +1285,7 @@ void intel_dp_sink_dpms(struct intel_dp *intel_dp, int mode)
 		ret = intel_dp_aux_native_write_1(intel_dp, DP_SET_POWER,
 						  DP_SET_POWER_D3);
 		if (ret != 1)
-			DRM_DEBUG("failed to write sink power state\n");
+			DRM_DEBUG_DRIVER("failed to write sink power state\n");
 	} else {
 		/*
 		 * When turning on, we need to retry for 1ms to give the sink
@@ -1295,7 +1297,7 @@ void intel_dp_sink_dpms(struct intel_dp *intel_dp, int mode)
 							  DP_SET_POWER_D0);
 			if (ret == 1)
 				break;
-			DELAY(1000);
+			msleep(1);
 		}
 	}
 }
@@ -1421,7 +1423,7 @@ intel_dp_aux_native_read_retry(struct intel_dp *intel_dp, uint16_t address,
 					       recv_bytes);
 		if (ret == recv_bytes)
 			return true;
-		DELAY(1000);
+		msleep(1);
 	}
 
 	return false;
@@ -1852,7 +1854,8 @@ intel_dp_start_link_train(struct intel_dp *intel_dp)
 			if ((intel_dp->train_set[i] & DP_TRAIN_MAX_SWING_REACHED) == 0)
 				break;
 		if (i == intel_dp->lane_count) {
-			if (++loop_tries == 5) {
+			++loop_tries;
+			if (loop_tries == 5) {
 				DRM_DEBUG_KMS("too many full retries, give up\n");
 				break;
 			}
@@ -1862,11 +1865,15 @@ intel_dp_start_link_train(struct intel_dp *intel_dp)
 		}
 
 		/* Check to see if we've tried the same voltage 5 times */
-		if ((intel_dp->train_set[0] & DP_TRAIN_VOLTAGE_SWING_MASK) != voltage) {
-			voltage = intel_dp->train_set[0] & DP_TRAIN_VOLTAGE_SWING_MASK;
-			voltage_tries = 0;
-		} else
+		if ((intel_dp->train_set[0] & DP_TRAIN_VOLTAGE_SWING_MASK) == voltage) {
 			++voltage_tries;
+			if (voltage_tries == 5) {
+				DRM_DEBUG_KMS("too many voltage retries, give up\n");
+				break;
+			}
+		} else
+			voltage_tries = 0;
+		voltage = intel_dp->train_set[0] & DP_TRAIN_VOLTAGE_SWING_MASK;
 
 		/* Compute new intel_dp->train_set as requested by target */
 		intel_get_adjust_train(intel_dp, link_status);
@@ -2147,7 +2154,7 @@ intel_dp_check_link_status(struct intel_dp *intel_dp)
 		if (sink_irq_vector & DP_AUTOMATED_TEST_REQUEST)
 			intel_dp_handle_test_request(intel_dp);
 		if (sink_irq_vector & (DP_CP_IRQ | DP_SINK_SPECIFIC_IRQ))
-			DRM_DEBUG_KMS("CP or sink specific irq unhandled\n");
+			DRM_DEBUG_DRIVER("CP or sink specific irq unhandled\n");
 	}
 
 	if (!drm_dp_channel_eq_ok(link_status, intel_dp->lane_count)) {
@@ -2286,6 +2293,7 @@ intel_dp_get_edid_modes(struct drm_connector *connector, struct device *adapter)
 	return intel_ddc_get_modes(connector, adapter);
 }
 
+
 /**
  * Uses CRT_HOTPLUG_EN and CRT_HOTPLUG_STAT to detect DP connection.
  *
@@ -2301,6 +2309,7 @@ intel_dp_detect(struct drm_connector *connector, bool force)
 	struct drm_device *dev = connector->dev;
 	enum drm_connector_status status;
 	struct edid *edid = NULL;
+	char dpcd_hex_dump[sizeof(intel_dp->dpcd) * 3];
 
 	intel_dp->has_audio = false;
 
@@ -2309,10 +2318,13 @@ intel_dp_detect(struct drm_connector *connector, bool force)
 	else
 		status = g4x_dp_detect(intel_dp);
 
-	DRM_DEBUG_KMS("DPCD: %02hx%02hx%02hx%02hx%02hx%02hx%02hx%02hx\n",
-		      intel_dp->dpcd[0], intel_dp->dpcd[1], intel_dp->dpcd[2],
-		      intel_dp->dpcd[3], intel_dp->dpcd[4], intel_dp->dpcd[5],
-		      intel_dp->dpcd[6], intel_dp->dpcd[7]);
+	ksnprintf(dpcd_hex_dump,
+		  sizeof(dpcd_hex_dump),
+		  "%02hx%02hx%02hx%02hx%02hx%02hx%02hx%02hx\n",
+		  intel_dp->dpcd[0], intel_dp->dpcd[1], intel_dp->dpcd[2],
+		  intel_dp->dpcd[3], intel_dp->dpcd[4], intel_dp->dpcd[5],
+		  intel_dp->dpcd[6], intel_dp->dpcd[7]);
+	DRM_DEBUG_KMS("DPCD: %s\n", dpcd_hex_dump);
 
 	if (status != connector_status_connected)
 		return status;
@@ -2371,8 +2383,7 @@ intel_dp_detect_audio(struct drm_connector *connector)
 	edid = intel_dp_get_edid(connector, intel_dp->adapter);
 	if (edid) {
 		has_audio = drm_detect_monitor_audio(edid);
-
-		drm_free(edid, M_DRM);
+		kfree(edid, M_DRM);
 	}
 
 	return has_audio;
@@ -2466,7 +2477,7 @@ intel_dp_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	drm_free(connector, M_DRM);
+	kfree(connector, M_DRM);
 }
 
 void intel_dp_encoder_destroy(struct drm_encoder *encoder)
@@ -2487,7 +2498,7 @@ void intel_dp_encoder_destroy(struct drm_encoder *encoder)
 		cancel_delayed_work_sync(&intel_dp->panel_vdd_work);
 		ironlake_panel_vdd_off_sync(intel_dp);
 	}
-	drm_free(intel_dp, M_DRM);
+	kfree(intel_dig_port, M_DRM);
 }
 
 static const struct drm_encoder_helper_funcs intel_dp_helper_funcs = {
@@ -2763,6 +2774,7 @@ intel_dp_init_connector(struct intel_digital_port *intel_dig_port,
 		intel_connector->get_hw_state = intel_ddi_connector_get_hw_state;
 	else
 		intel_connector->get_hw_state = intel_connector_get_hw_state;
+
 
 	/* Set up the DDC bus. */
 	switch (port) {

@@ -30,6 +30,7 @@
 
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>
+
 #include "intel_drv.h"
 
 #define PCI_LBPC 0xf4 /* legacy/combination backlight modes */
@@ -91,7 +92,7 @@ intel_pch_panel_fitting(struct drm_device *dev,
 			} else if (scaled_width < scaled_height) { /* letter */
 				height = scaled_width / mode->hdisplay;
 				if (height & 1)
-					height++;
+				    height++;
 				y = (adjusted_mode->vdisplay - height + 1) / 2;
 				x = 0;
 				width = adjusted_mode->hdisplay;
@@ -203,6 +204,30 @@ u32 intel_panel_get_max_backlight(struct drm_device *dev)
 	return max;
 }
 
+static int i915_panel_invert_brightness;
+TUNABLE_INT("drm.i915.panel_invert_brightness", &i915_panel_invert_brightness);
+#if 0
+MODULE_PARM_DESC(invert_brightness, "Invert backlight brightness "
+	"(-1 force normal, 0 machine defaults, 1 force inversion), please "
+	"report PCI device ID, subsystem vendor and subsystem device ID "
+	"to dri-devel@lists.freedesktop.org, if your machine needs it. "
+	"It will then be included in an upcoming module version.");
+#endif
+
+static u32 intel_panel_compute_brightness(struct drm_device *dev, u32 val)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	if (i915_panel_invert_brightness < 0)
+		return val;
+
+	if (i915_panel_invert_brightness > 0 ||
+	    dev_priv->quirks & QUIRK_INVERT_BRIGHTNESS)
+		return intel_panel_get_max_backlight(dev) - val;
+
+	return val;
+}
+
 static u32 intel_panel_get_backlight(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -223,7 +248,8 @@ static u32 intel_panel_get_backlight(struct drm_device *dev)
 		}
 	}
 
-	DRM_DEBUG("get backlight PWM = %d\n", val);
+	val = intel_panel_compute_brightness(dev, val);
+	DRM_DEBUG_DRIVER("get backlight PWM = %d\n", val);
 	return val;
 }
 
@@ -239,7 +265,8 @@ static void intel_panel_actually_set_backlight(struct drm_device *dev, u32 level
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 tmp;
 
-	DRM_DEBUG("set backlight PWM = %d\n", level);
+	DRM_DEBUG_DRIVER("set backlight PWM = %d\n", level);
+	level = intel_panel_compute_brightness(dev, level);
 
 	if (HAS_PCH_SPLIT(dev))
 		return intel_pch_panel_set_backlight(dev, level);
@@ -254,7 +281,7 @@ static void intel_panel_actually_set_backlight(struct drm_device *dev, u32 level
 	}
 
 	tmp = I915_READ(BLC_PWM_CTL);
-	if (INTEL_INFO(dev)->gen < 4) 
+	if (INTEL_INFO(dev)->gen < 4)
 		level <<= 1;
 	tmp &= ~BACKLIGHT_DUTY_CYCLE_MASK;
 	I915_WRITE(BLC_PWM_CTL, tmp | level);
@@ -277,11 +304,17 @@ void intel_panel_disable_backlight(struct drm_device *dev)
 	intel_panel_actually_set_backlight(dev, 0);
 
 	if (INTEL_INFO(dev)->gen >= 4) {
-		uint32_t reg;
+		uint32_t reg, tmp;
 
 		reg = HAS_PCH_SPLIT(dev) ? BLC_PWM_CPU_CTL2 : BLC_PWM_CTL2;
 
 		I915_WRITE(reg, I915_READ(reg) & ~BLM_PWM_ENABLE);
+
+		if (HAS_PCH_SPLIT(dev)) {
+			tmp = I915_READ(BLC_PWM_PCH_CTL1);
+			tmp &= ~BLM_PCH_PWM_ENABLE;
+			I915_WRITE(BLC_PWM_PCH_CTL1, tmp);
+		}
 	}
 }
 
@@ -347,26 +380,23 @@ static void intel_panel_init_backlight(struct drm_device *dev)
 enum drm_connector_status
 intel_panel_detect(struct drm_device *dev)
 {
-#if 0
 	struct drm_i915_private *dev_priv = dev->dev_private;
-#endif
 
-	if (i915_panel_ignore_lid)
-		return i915_panel_ignore_lid > 0 ?
-			connector_status_connected :
-			connector_status_disconnected;
-
-	/* opregion lid state on HP 2540p is wrong at boot up,
-	 * appears to be either the BIOS or Linux ACPI fault */
-#if 0
 	/* Assume that the BIOS does not lie through the OpRegion... */
-	if (dev_priv->opregion.lid_state)
+	if (!i915_panel_ignore_lid && dev_priv->opregion.lid_state) {
 		return ioread32(dev_priv->opregion.lid_state) & 0x1 ?
 			connector_status_connected :
 			connector_status_disconnected;
-#endif
+	}
 
-	return connector_status_unknown;
+	switch (i915_panel_ignore_lid) {
+	case -2:
+		return connector_status_connected;
+	case -1:
+		return connector_status_disconnected;
+	default:
+		return connector_status_unknown;
+	}
 }
 
 #ifdef CONFIG_BACKLIGHT_CLASS_DEVICE

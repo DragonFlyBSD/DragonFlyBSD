@@ -28,6 +28,9 @@
 #ifndef	_LINUX_BITOPS_H_
 #define	_LINUX_BITOPS_H_
 
+#include <sys/types.h>
+#include <sys/systm.h>
+
 #ifdef __LP64__
 #define	BITS_PER_LONG		64
 #else
@@ -479,5 +482,6 @@ bitmap_release_region(unsigned long *bitmap, int pos, int order)
         __reg_op(bitmap, pos, order, REG_OP_RELEASE);
 }
 
+#include <asm/bitops/non-atomic.h>
 
 #endif	/* _LINUX_BITOPS_H_ */

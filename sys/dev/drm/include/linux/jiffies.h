@@ -28,6 +28,10 @@
 #define _LINUX_JIFFIES_H_
 
 #include <linux/time.h>
+#include <sys/kernel.h>
+#include <machine/limits.h>
+
+#define HZ			hz
 
 #define jiffies_to_msecs(x)	(((int64_t)(x)) * 1000 / hz)
 #define msecs_to_jiffies(x)	(((int64_t)(x)) * hz / 1000)

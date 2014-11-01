@@ -670,16 +670,6 @@ typedef struct drm_i915_private {
 	struct resource *mch_res;
 	int mch_res_rid;
 
-	void *hw_status_page;
-	dma_addr_t dma_status_page;
-	unsigned int status_gfx_addr;
-	drm_local_map_t hws_map;
-
-	unsigned int cpp;
-	int back_offset;
-	int front_offset;
-	int current_page;
-
 	atomic_t irq_received;
 
 	/* protects the irq masks */

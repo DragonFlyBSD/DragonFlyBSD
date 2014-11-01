@@ -94,12 +94,14 @@
 #include <uapi_drm/drm_sarea.h>
 
 #include <linux/atomic.h>
+#include <linux/err.h>
 #include <linux/idr.h>
 #include <linux/pci.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/kref.h>
 #include <linux/list.h>
+#include <linux/mutex.h>
 #include <linux/timer.h>
 #include <linux/types.h>
 #include <linux/wait.h>
