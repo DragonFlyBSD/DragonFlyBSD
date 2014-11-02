@@ -107,6 +107,7 @@ struct	shminfo shminfo = {
 	0
 };
 
+static int shm_allow_removed;
 static int shm_use_phys = 1;
 
 TUNABLE_LONG("kern.ipc.shmmin", &shminfo.shmmin);
@@ -127,6 +128,9 @@ SYSCTL_LONG(_kern_ipc, OID_AUTO, shmall, CTLFLAG_RW, &shminfo.shmall, 0,
     "Max pages of shared memory");
 SYSCTL_INT(_kern_ipc, OID_AUTO, shm_use_phys, CTLFLAG_RW, &shm_use_phys, 0,
     "Use phys pager allocation instead of swap pager allocation");
+SYSCTL_INT(_kern_ipc, OID_AUTO, shm_allow_removed, CTLFLAG_RW,
+    &shm_allow_removed, 0,
+    "Enable/Disable attachment to attached segments marked for removal");
 
 static int
 shm_find_segment_by_key(key_t key)
@@ -151,8 +155,9 @@ shm_find_segment_by_shmid(int shmid)
 	if (segnum < 0 || segnum >= shmalloced)
 		return NULL;
 	shmseg = &shmsegs[segnum];
-	if ((shmseg->shm_perm.mode & (SHMSEG_ALLOCATED | SHMSEG_REMOVED))
-	    != SHMSEG_ALLOCATED ||
+	if ((shmseg->shm_perm.mode & SHMSEG_ALLOCATED) == 0 ||
+	    (!shm_allow_removed &&
+	    (shmseg->shm_perm.mode & SHMSEG_REMOVED) != 0) ||
 	    shmseg->shm_perm.seq != IPCID_TO_SEQ(shmid)) {
 		return NULL;
 	}
