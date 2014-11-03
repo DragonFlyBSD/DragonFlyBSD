@@ -987,6 +987,9 @@ static int i915_getparam(struct drm_device *dev, void *data,
 	case I915_PARAM_HAS_WAIT_TIMEOUT:
 		value = 1;
 		break;
+	case I915_PARAM_HAS_SEMAPHORES:
+		value = i915_semaphore_is_enabled(dev);
+		break;
 	case I915_PARAM_HAS_PINNED_BATCHES:
 		value = 1;
 		break;

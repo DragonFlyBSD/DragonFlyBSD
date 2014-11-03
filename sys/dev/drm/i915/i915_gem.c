@@ -71,8 +71,9 @@ static __must_check int i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *
 						    bool map_and_fenceable,
 						    bool nonblocking);
 static int i915_gem_phys_pwrite(struct drm_device *dev,
-    struct drm_i915_gem_object *obj, uint64_t data_ptr, uint64_t offset,
-    uint64_t size, struct drm_file *file_priv);
+				struct drm_i915_gem_object *obj,
+				struct drm_i915_gem_pwrite *args,
+				struct drm_file *file);
 
 static void i915_gem_write_fence(struct drm_device *dev, int reg,
 				 struct drm_i915_gem_object *obj);
@@ -107,9 +108,6 @@ static int i915_gem_object_needs_bit17_swizzle(struct drm_i915_gem_object *obj);
 static vm_page_t i915_gem_wire_page(vm_object_t object, vm_pindex_t pindex);
 static void i915_gem_reset_fences(struct drm_device *dev);
 static void i915_gem_lowmem(void *arg);
-
-static int i915_gem_obj_io(struct drm_device *dev, uint32_t handle, uint64_t data_ptr,
-    uint64_t size, uint64_t offset, enum uio_rw rw, struct drm_file *file);
 
 /* some bookkeeping */
 static void i915_gem_info_add_obj(struct drm_i915_private *dev_priv,
@@ -306,6 +304,79 @@ static int i915_gem_object_needs_bit17_swizzle(struct drm_i915_gem_object *obj)
 		obj->tiling_mode != I915_TILING_NONE;
 }
 
+static inline void vm_page_reference(vm_page_t m)
+{
+	vm_page_flag_set(m, PG_REFERENCED);
+}
+
+static int
+i915_gem_shmem_pread(struct drm_device *dev,
+		     struct drm_i915_gem_object *obj,
+		     struct drm_i915_gem_pread *args,
+		     struct drm_file *file)
+{
+	vm_object_t vm_obj;
+	vm_page_t m;
+	struct sf_buf *sf;
+	vm_offset_t mkva;
+	vm_pindex_t obj_pi;
+	int cnt, do_bit17_swizzling, length, obj_po, ret, swizzled_po;
+
+	do_bit17_swizzling = i915_gem_object_needs_bit17_swizzle(obj);
+
+	obj->dirty = 1;
+	vm_obj = obj->base.vm_obj;
+	ret = 0;
+
+	VM_OBJECT_LOCK(vm_obj);
+	vm_object_pip_add(vm_obj, 1);
+	while (args->size > 0) {
+		obj_pi = OFF_TO_IDX(args->offset);
+		obj_po = args->offset & PAGE_MASK;
+
+		m = i915_gem_wire_page(vm_obj, obj_pi);
+		VM_OBJECT_UNLOCK(vm_obj);
+
+		sf = sf_buf_alloc(m);
+		mkva = sf_buf_kva(sf);
+		length = min(args->size, PAGE_SIZE - obj_po);
+		while (length > 0) {
+			if (do_bit17_swizzling &&
+			    (VM_PAGE_TO_PHYS(m) & (1 << 17)) != 0) {
+				cnt = roundup2(obj_po + 1, 64);
+				cnt = min(cnt - obj_po, length);
+				swizzled_po = obj_po ^ 64;
+			} else {
+				cnt = length;
+				swizzled_po = obj_po;
+			}
+			ret = -copyout_nofault(
+			    (char *)mkva + swizzled_po,
+			    (void *)(uintptr_t)args->data_ptr, cnt);
+			if (ret != 0)
+				break;
+			args->data_ptr += cnt;
+			args->size -= cnt;
+			length -= cnt;
+			args->offset += cnt;
+			obj_po += cnt;
+		}
+		sf_buf_free(sf);
+		VM_OBJECT_LOCK(vm_obj);
+		vm_page_reference(m);
+		vm_page_busy_wait(m, FALSE, "i915gem");
+		vm_page_unwire(m, 1);
+		vm_page_wakeup(m);
+
+		if (ret != 0)
+			break;
+	}
+	vm_object_pip_wakeup(vm_obj);
+	VM_OBJECT_UNLOCK(vm_obj);
+
+	return (ret);
+}
+
 /**
  * Reads data from the object referenced by handle.
  *
@@ -316,9 +387,131 @@ i915_gem_pread_ioctl(struct drm_device *dev, void *data,
 		     struct drm_file *file)
 {
 	struct drm_i915_gem_pread *args = data;
+	struct drm_i915_gem_object *obj;
+	int ret = 0;
 
-	return (i915_gem_obj_io(dev, args->handle, args->data_ptr, args->size,
-	    args->offset, UIO_READ, file));
+	if (args->size == 0)
+		return 0;
+
+	ret = i915_mutex_lock_interruptible(dev);
+	if (ret)
+		return ret;
+
+	obj = to_intel_bo(drm_gem_object_lookup(dev, file, args->handle));
+	if (&obj->base == NULL) {
+		ret = -ENOENT;
+		goto unlock;
+	}
+
+	/* Bounds check source.  */
+	if (args->offset > obj->base.size ||
+	    args->size > obj->base.size - args->offset) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = i915_gem_shmem_pread(dev, obj, args, file);
+out:
+	drm_gem_object_unreference(&obj->base);
+unlock:
+	DRM_UNLOCK(dev);
+	return ret;
+}
+
+/**
+ * This is the fast pwrite path, where we copy the data directly from the
+ * user into the GTT, uncached.
+ */
+static int
+i915_gem_gtt_pwrite_fast(struct drm_device *dev,
+			 struct drm_i915_gem_object *obj,
+			 struct drm_i915_gem_pwrite *args,
+			 struct drm_file *file)
+{
+	vm_offset_t mkva;
+	int ret;
+
+	/*
+	 * Pass the unaligned physical address and size to pmap_mapdev_attr()
+	 * so it can properly calculate whether an extra page needs to be
+	 * mapped or not to cover the requested range.  The function will
+	 * add the page offset into the returned mkva for us.
+	 */
+	mkva = (vm_offset_t)pmap_mapdev_attr(dev->agp->base + obj->gtt_offset +
+	    args->offset, args->size, PAT_WRITE_COMBINING);
+	ret = -copyin_nofault((void *)(uintptr_t)args->data_ptr, (char *)mkva, args->size);
+	pmap_unmapdev(mkva, args->size);
+
+	return ret;
+}
+
+static int
+i915_gem_shmem_pwrite(struct drm_device *dev,
+		      struct drm_i915_gem_object *obj,
+		      struct drm_i915_gem_pwrite *args,
+		      struct drm_file *file)
+{
+	vm_object_t vm_obj;
+	vm_page_t m;
+	struct sf_buf *sf;
+	vm_offset_t mkva;
+	vm_pindex_t obj_pi;
+	int cnt, do_bit17_swizzling, length, obj_po, ret, swizzled_po;
+
+	do_bit17_swizzling = 0;
+
+	obj->dirty = 1;
+	vm_obj = obj->base.vm_obj;
+	ret = 0;
+
+	VM_OBJECT_LOCK(vm_obj);
+	vm_object_pip_add(vm_obj, 1);
+	while (args->size > 0) {
+		obj_pi = OFF_TO_IDX(args->offset);
+		obj_po = args->offset & PAGE_MASK;
+
+		m = i915_gem_wire_page(vm_obj, obj_pi);
+		VM_OBJECT_UNLOCK(vm_obj);
+
+		sf = sf_buf_alloc(m);
+		mkva = sf_buf_kva(sf);
+		length = min(args->size, PAGE_SIZE - obj_po);
+		while (length > 0) {
+			if (do_bit17_swizzling &&
+			    (VM_PAGE_TO_PHYS(m) & (1 << 17)) != 0) {
+				cnt = roundup2(obj_po + 1, 64);
+				cnt = min(cnt - obj_po, length);
+				swizzled_po = obj_po ^ 64;
+			} else {
+				cnt = length;
+				swizzled_po = obj_po;
+			}
+			ret = -copyin_nofault(
+			    (void *)(uintptr_t)args->data_ptr,
+			    (char *)mkva + swizzled_po, cnt);
+			if (ret != 0)
+				break;
+			args->data_ptr += cnt;
+			args->size -= cnt;
+			length -= cnt;
+			args->offset += cnt;
+			obj_po += cnt;
+		}
+		sf_buf_free(sf);
+		VM_OBJECT_LOCK(vm_obj);
+		vm_page_dirty(m);
+		vm_page_reference(m);
+		vm_page_busy_wait(m, FALSE, "i915gem");
+		vm_page_unwire(m, 1);
+		vm_page_wakeup(m);
+
+		if (ret != 0)
+			break;
+	}
+	vm_object_pip_wakeup(vm_obj);
+	VM_OBJECT_UNLOCK(vm_obj);
+
+	return (ret);
 }
 
 /**
@@ -331,9 +524,58 @@ i915_gem_pwrite_ioctl(struct drm_device *dev, void *data,
 		      struct drm_file *file)
 {
 	struct drm_i915_gem_pwrite *args = data;
+	struct drm_i915_gem_object *obj;
+	int ret;
 
-	return (i915_gem_obj_io(dev, args->handle, args->data_ptr, args->size,
-	    args->offset, UIO_WRITE, file));
+	if (args->size == 0)
+		return 0;
+
+	ret = i915_mutex_lock_interruptible(dev);
+	if (ret)
+		return ret;
+
+	obj = to_intel_bo(drm_gem_object_lookup(dev, file, args->handle));
+	if (&obj->base == NULL) {
+		ret = -ENOENT;
+		goto unlock;
+	}
+
+	/* Bounds check destination. */
+	if (args->offset > obj->base.size ||
+	    args->size > obj->base.size - args->offset) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = -EFAULT;
+	/* We can only do the GTT pwrite on untiled buffers, as otherwise
+	 * it would end up going through the fenced access, and we'll get
+	 * different detiling behavior between reading and writing.
+	 * pread/pwrite currently are reading and writing from the CPU
+	 * perspective, requiring manual detiling by the client.
+	 */
+	if (obj->phys_obj) {
+		ret = i915_gem_phys_pwrite(dev, obj, args, file);
+		goto out;
+	}
+
+	if (obj->cache_level == I915_CACHE_NONE &&
+	    obj->tiling_mode == I915_TILING_NONE &&
+	    obj->base.write_domain != I915_GEM_DOMAIN_CPU) {
+		ret = i915_gem_gtt_pwrite_fast(dev, obj, args, file);
+		/* Note that the gtt paths might fail with non-page-backed user
+		 * pointers (e.g. gtt mappings when moving data between
+		 * textures). Fallback to the shmem path in that case. */
+	}
+
+	if (ret == -EFAULT || ret == -ENOSPC)
+		ret = i915_gem_shmem_pwrite(dev, obj, args, file);
+
+out:
+	drm_gem_object_unreference(&obj->base);
+unlock:
+	DRM_UNLOCK(dev);
+	return ret;
 }
 
 int
@@ -925,11 +1167,6 @@ static inline int
 i915_gem_object_is_purgeable(struct drm_i915_gem_object *obj)
 {
 	return obj->madv == I915_MADV_DONTNEED;
-}
-
-static inline void vm_page_reference(vm_page_t m)
-{
-	vm_page_flag_set(m, PG_REFERENCED);
 }
 
 static void
@@ -1960,6 +2197,76 @@ i915_gem_object_get_fence(struct drm_i915_gem_object *obj)
 	return 0;
 }
 
+static bool i915_gem_valid_gtt_space(struct drm_device *dev,
+				     struct drm_mm_node *gtt_space,
+				     unsigned long cache_level)
+{
+	struct drm_mm_node *other;
+
+	/* On non-LLC machines we have to be careful when putting differing
+	 * types of snoopable memory together to avoid the prefetcher
+	 * crossing memory domains and dieing.
+	 */
+	if (HAS_LLC(dev))
+		return true;
+
+	if (gtt_space == NULL)
+		return true;
+
+	if (list_empty(&gtt_space->node_list))
+		return true;
+
+	other = list_entry(gtt_space->node_list.prev, struct drm_mm_node, node_list);
+	if (other->allocated && !other->hole_follows && other->color != cache_level)
+		return false;
+
+	other = list_entry(gtt_space->node_list.next, struct drm_mm_node, node_list);
+	if (other->allocated && !gtt_space->hole_follows && other->color != cache_level)
+		return false;
+
+	return true;
+}
+
+static void i915_gem_verify_gtt(struct drm_device *dev)
+{
+#if WATCH_GTT
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_gem_object *obj;
+	int err = 0;
+
+	list_for_each_entry(obj, &dev_priv->mm.gtt_list, gtt_list) {
+		if (obj->gtt_space == NULL) {
+			printk(KERN_ERR "object found on GTT list with no space reserved\n");
+			err++;
+			continue;
+		}
+
+		if (obj->cache_level != obj->gtt_space->color) {
+			printk(KERN_ERR "object reserved space [%08lx, %08lx] with wrong color, cache_level=%x, color=%lx\n",
+			       obj->gtt_space->start,
+			       obj->gtt_space->start + obj->gtt_space->size,
+			       obj->cache_level,
+			       obj->gtt_space->color);
+			err++;
+			continue;
+		}
+
+		if (!i915_gem_valid_gtt_space(dev,
+					      obj->gtt_space,
+					      obj->cache_level)) {
+			printk(KERN_ERR "invalid GTT space found at [%08lx, %08lx] - color=%x\n",
+			       obj->gtt_space->start,
+			       obj->gtt_space->start + obj->gtt_space->size,
+			       obj->cache_level);
+			err++;
+			continue;
+		}
+	}
+
+	WARN_ON(err);
+#endif
+}
+
 /**
  * Finds free space in the GTT aperture and binds the object there.
  */
@@ -2009,30 +2316,45 @@ i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 
  search_free:
 	if (map_and_fenceable)
-		free_space = drm_mm_search_free_in_range(
-		    &dev_priv->mm.gtt_space, size, alignment, 0,
-		    dev_priv->mm.gtt_mappable_end, 0);
+		free_space =
+			drm_mm_search_free_in_range_color(&dev_priv->mm.gtt_space,
+							  size, alignment, obj->cache_level,
+							  0, dev_priv->mm.gtt_mappable_end,
+							  false);
 	else
-		free_space = drm_mm_search_free(&dev_priv->mm.gtt_space,
-		    size, alignment, 0);
+		free_space = drm_mm_search_free_color(&dev_priv->mm.gtt_space,
+						      size, alignment, obj->cache_level,
+						      false);
+
 	if (free_space != NULL) {
-		int color = 0;
 		if (map_and_fenceable)
-			obj->gtt_space = drm_mm_get_block_range_generic(
-			    free_space, size, alignment, color, 0,
-			    dev_priv->mm.gtt_mappable_end, 1);
+			obj->gtt_space =
+				drm_mm_get_block_range_generic(free_space,
+							       size, alignment, obj->cache_level,
+							       0, dev_priv->mm.gtt_mappable_end,
+							       false);
 		else
-			obj->gtt_space = drm_mm_get_block_generic(free_space,
-			    size, alignment, color, 1);
+			obj->gtt_space =
+				drm_mm_get_block_generic(free_space,
+							 size, alignment, obj->cache_level,
+							 false);
 	}
 	if (obj->gtt_space == NULL) {
 		ret = i915_gem_evict_something(dev, size, alignment,
 					       obj->cache_level,
 					       map_and_fenceable,
 					       nonblocking);
-		if (ret != 0)
-			return (ret);
+		if (ret)
+			return ret;
+
 		goto search_free;
+	}
+	if (WARN_ON(!i915_gem_valid_gtt_space(dev,
+					      obj->gtt_space,
+					      obj->cache_level))) {
+		drm_mm_put_block(obj->gtt_space);
+		obj->gtt_space = NULL;
+		return -EINVAL;
 	}
 
 	/*
@@ -2069,6 +2391,7 @@ i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 		obj->gtt_offset + obj->base.size <= dev_priv->mm.gtt_mappable_end;
 	obj->map_and_fenceable = mappable && fenceable;
 
+	i915_gem_verify_gtt(dev);
 	return 0;
 }
 
@@ -2197,6 +2520,12 @@ int i915_gem_object_set_cache_level(struct drm_i915_gem_object *obj,
 		return -EBUSY;
 	}
 
+	if (!i915_gem_valid_gtt_space(dev, obj->gtt_space, cache_level)) {
+		ret = i915_gem_object_unbind(obj);
+		if (ret)
+			return ret;
+	}
+
 	if (obj->gtt_space) {
 		ret = i915_gem_object_finish_gpu(obj);
 		if (ret)
@@ -2208,7 +2537,7 @@ int i915_gem_object_set_cache_level(struct drm_i915_gem_object *obj,
 		 * registers with snooped memory, so relinquish any fences
 		 * currently pointing to our region in the aperture.
 		 */
-		if (INTEL_INFO(obj->base.dev)->gen < 6) {
+		if (INTEL_INFO(dev)->gen < 6) {
 			ret = i915_gem_object_put_fence(obj);
 			if (ret)
 				return ret;
@@ -2219,6 +2548,8 @@ int i915_gem_object_set_cache_level(struct drm_i915_gem_object *obj,
 		if (obj->has_aliasing_ppgtt_mapping)
 			i915_ppgtt_bind_object(dev_priv->mm.aliasing_ppgtt,
 					       obj, cache_level);
+
+		obj->gtt_space->color = cache_level;
 	}
 
 	if (cache_level == I915_CACHE_NONE) {
@@ -2244,6 +2575,7 @@ int i915_gem_object_set_cache_level(struct drm_i915_gem_object *obj,
 	}
 
 	obj->cache_level = cache_level;
+	i915_gem_verify_gtt(dev);
 	return 0;
 }
 
@@ -3383,30 +3715,27 @@ i915_gem_attach_phys_object(struct drm_device *dev,
 static int
 i915_gem_phys_pwrite(struct drm_device *dev,
 		     struct drm_i915_gem_object *obj,
-		     uint64_t data_ptr,
-		     uint64_t offset,
-		     uint64_t size,
+		     struct drm_i915_gem_pwrite *args,
 		     struct drm_file *file_priv)
 {
-	char *user_data, *vaddr;
-	int ret;
+	void *vaddr = (char *)obj->phys_obj->handle->vaddr + args->offset;
+	char __user *user_data = (char __user *) (uintptr_t) args->data_ptr;
 
-	vaddr = (char *)obj->phys_obj->handle->vaddr + offset;
-	user_data = (char *)(uintptr_t)data_ptr;
+	if (copyin_nofault(user_data, vaddr, args->size) != 0) {
+		unsigned long unwritten;
 
-	if (copyin_nofault(user_data, vaddr, size) != 0) {
 		/* The physical object once assigned is fixed for the lifetime
 		 * of the obj, so we can safely drop the lock and continue
 		 * to access vaddr.
 		 */
 		DRM_UNLOCK(dev);
-		ret = -copyin(user_data, vaddr, size);
+		unwritten = copy_from_user(vaddr, user_data, args->size);
 		DRM_LOCK(dev);
-		if (ret != 0)
-			return (ret);
+		if (unwritten)
+			return -EFAULT;
 	}
 
-	intel_gtt_chipset_flush();
+	i915_gem_chipset_flush(dev);
 	return 0;
 }
 
@@ -3429,182 +3758,6 @@ void i915_gem_release(struct drm_device *dev, struct drm_file *file)
 		request->file_priv = NULL;
 	}
 	spin_unlock(&file_priv->mm.lock);
-}
-
-static int
-i915_gem_swap_io(struct drm_device *dev, struct drm_i915_gem_object *obj,
-    uint64_t data_ptr, uint64_t size, uint64_t offset, enum uio_rw rw,
-    struct drm_file *file)
-{
-	vm_object_t vm_obj;
-	vm_page_t m;
-	struct sf_buf *sf;
-	vm_offset_t mkva;
-	vm_pindex_t obj_pi;
-	int cnt, do_bit17_swizzling, length, obj_po, ret, swizzled_po;
-
-	if (obj->gtt_offset != 0 && rw == UIO_READ)
-		do_bit17_swizzling = i915_gem_object_needs_bit17_swizzle(obj);
-	else
-		do_bit17_swizzling = 0;
-
-	obj->dirty = 1;
-	vm_obj = obj->base.vm_obj;
-	ret = 0;
-
-	VM_OBJECT_LOCK(vm_obj);
-	vm_object_pip_add(vm_obj, 1);
-	while (size > 0) {
-		obj_pi = OFF_TO_IDX(offset);
-		obj_po = offset & PAGE_MASK;
-
-		m = i915_gem_wire_page(vm_obj, obj_pi);
-		VM_OBJECT_UNLOCK(vm_obj);
-
-		sf = sf_buf_alloc(m);
-		mkva = sf_buf_kva(sf);
-		length = min(size, PAGE_SIZE - obj_po);
-		while (length > 0) {
-			if (do_bit17_swizzling &&
-			    (VM_PAGE_TO_PHYS(m) & (1 << 17)) != 0) {
-				cnt = roundup2(obj_po + 1, 64);
-				cnt = min(cnt - obj_po, length);
-				swizzled_po = obj_po ^ 64;
-			} else {
-				cnt = length;
-				swizzled_po = obj_po;
-			}
-			if (rw == UIO_READ)
-				ret = -copyout_nofault(
-				    (char *)mkva + swizzled_po,
-				    (void *)(uintptr_t)data_ptr, cnt);
-			else
-				ret = -copyin_nofault(
-				    (void *)(uintptr_t)data_ptr,
-				    (char *)mkva + swizzled_po, cnt);
-			if (ret != 0)
-				break;
-			data_ptr += cnt;
-			size -= cnt;
-			length -= cnt;
-			offset += cnt;
-			obj_po += cnt;
-		}
-		sf_buf_free(sf);
-		VM_OBJECT_LOCK(vm_obj);
-		if (rw == UIO_WRITE)
-			vm_page_dirty(m);
-		vm_page_reference(m);
-		vm_page_busy_wait(m, FALSE, "i915gem");
-		vm_page_unwire(m, 1);
-		vm_page_wakeup(m);
-
-		if (ret != 0)
-			break;
-	}
-	vm_object_pip_wakeup(vm_obj);
-	VM_OBJECT_UNLOCK(vm_obj);
-
-	return (ret);
-}
-
-static int
-i915_gem_gtt_write(struct drm_device *dev, struct drm_i915_gem_object *obj,
-    uint64_t data_ptr, uint64_t size, uint64_t offset, struct drm_file *file)
-{
-	vm_offset_t mkva;
-	int ret;
-
-	/*
-	 * Pass the unaligned physical address and size to pmap_mapdev_attr()
-	 * so it can properly calculate whether an extra page needs to be
-	 * mapped or not to cover the requested range.  The function will
-	 * add the page offset into the returned mkva for us.
-	 */
-	mkva = (vm_offset_t)pmap_mapdev_attr(dev->agp->base + obj->gtt_offset +
-	    offset, size, PAT_WRITE_COMBINING);
-	ret = -copyin_nofault((void *)(uintptr_t)data_ptr, (char *)mkva, size);
-	pmap_unmapdev(mkva, size);
-	return (ret);
-}
-
-static int
-i915_gem_obj_io(struct drm_device *dev, uint32_t handle, uint64_t data_ptr,
-    uint64_t size, uint64_t offset, enum uio_rw rw, struct drm_file *file)
-{
-	struct drm_i915_gem_object *obj;
-	vm_page_t *ma;
-	vm_offset_t start, end;
-	int npages, ret;
-
-	if (size == 0)
-		return (0);
-	start = trunc_page(data_ptr);
-	end = round_page(data_ptr + size);
-	npages = howmany(end - start, PAGE_SIZE);
-	ma = kmalloc(npages * sizeof(vm_page_t), M_DRM, M_WAITOK |
-	    M_ZERO);
-	npages = vm_fault_quick_hold_pages(&curproc->p_vmspace->vm_map,
-	    (vm_offset_t)data_ptr, size,
-	    (rw == UIO_READ ? VM_PROT_WRITE : 0 ) | VM_PROT_READ, ma, npages);
-	if (npages == -1) {
-		ret = -EFAULT;
-		goto free_ma;
-	}
-
-	ret = i915_mutex_lock_interruptible(dev);
-	if (ret != 0)
-		goto unlocked;
-
-	obj = to_intel_bo(drm_gem_object_lookup(dev, file, handle));
-	if (&obj->base == NULL) {
-		ret = -ENOENT;
-		goto unlock;
-	}
-	if (offset > obj->base.size || size > obj->base.size - offset) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	if (rw == UIO_READ) {
-		ret = i915_gem_swap_io(dev, obj, data_ptr, size, offset,
-		    UIO_READ, file);
-	} else {
-		if (obj->phys_obj) {
-			ret = i915_gem_phys_pwrite(dev, obj, data_ptr, offset,
-			    size, file);
-		} else if (obj->gtt_space &&
-		    obj->base.write_domain != I915_GEM_DOMAIN_CPU) {
-			ret = i915_gem_object_pin(obj, 0, true, false);
-			if (ret != 0)
-				goto out;
-			ret = i915_gem_object_set_to_gtt_domain(obj, true);
-			if (ret != 0)
-				goto out_unpin;
-			ret = i915_gem_object_put_fence(obj);
-			if (ret != 0)
-				goto out_unpin;
-			ret = i915_gem_gtt_write(dev, obj, data_ptr, size,
-			    offset, file);
-out_unpin:
-			i915_gem_object_unpin(obj);
-		} else {
-			ret = i915_gem_object_set_to_cpu_domain(obj, true);
-			if (ret != 0)
-				goto out;
-			ret = i915_gem_swap_io(dev, obj, data_ptr, size, offset,
-			    UIO_WRITE, file);
-		}
-	}
-out:
-	drm_gem_object_unreference(&obj->base);
-unlock:
-	DRM_UNLOCK(dev);
-unlocked:
-	vm_page_unhold_pages(ma, npages);
-free_ma:
-	drm_free(ma, M_DRM);
-	return (ret);
 }
 
 static int

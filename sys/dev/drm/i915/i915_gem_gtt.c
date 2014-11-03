@@ -443,3 +443,42 @@ void i915_gem_gtt_finish_object(struct drm_i915_gem_object *obj)
 
 	undo_idling(dev_priv, interruptible);
 }
+
+static void i915_gtt_color_adjust(struct drm_mm_node *node,
+				  unsigned long color,
+				  unsigned long *start,
+				  unsigned long *end)
+{
+	if (node->color != color)
+		*start += 4096;
+
+	if (!list_empty(&node->node_list)) {
+		node = list_entry(node->node_list.next,
+				  struct drm_mm_node,
+				  node_list);
+		if (node->allocated && node->color != color)
+			*end -= 4096;
+	}
+}
+
+void i915_gem_init_global_gtt(struct drm_device *dev,
+			      unsigned long start,
+			      unsigned long mappable_end,
+			      unsigned long end)
+{
+	drm_i915_private_t *dev_priv = dev->dev_private;
+
+	/* Substract the guard page ... */
+	drm_mm_init(&dev_priv->mm.gtt_space, start, end - start - PAGE_SIZE);
+	if (!HAS_LLC(dev))
+		dev_priv->mm.gtt_space.color_adjust = i915_gtt_color_adjust;
+
+	dev_priv->mm.gtt_start = start;
+	dev_priv->mm.gtt_mappable_end = mappable_end;
+	dev_priv->mm.gtt_end = end;
+	dev_priv->mm.gtt_total = end - start;
+	dev_priv->mm.mappable_gtt_total = min(end, mappable_end) - start;
+
+	/* ... but ensure that we clear the entire range. */
+	intel_gtt_clear_range(start / PAGE_SIZE, (end-start) / PAGE_SIZE);
+}
