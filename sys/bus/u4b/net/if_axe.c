@@ -185,11 +185,6 @@ static miibus_readreg_t axe_miibus_readreg;
 static miibus_writereg_t axe_miibus_writereg;
 static miibus_statchg_t axe_miibus_statchg;
 
-/*
-static int axe_miibus_readreg(device_t dev, int phy, int reg);
-static int axe_miibus_writereg(device_t dev, int phy, int reg, int val);
-static void axe_miibus_statchg(device_t dev);
-*/
 static uether_fn_t axe_attach_post;
 static uether_fn_t axe_init;
 static uether_fn_t axe_stop;
@@ -885,9 +880,6 @@ axe_attach_post_sub(struct usb_ether *ue)
 	ifp->if_ioctl = axe_ioctl;
 	ifp->if_init = uether_init;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
-	/* XXX
-	ifp->if_snd.ifq_drv_maxlen = ifqmaxlen;
-	*/
 	ifq_set_ready(&ifp->if_snd);
 
 	if (AXE_IS_178_FAMILY(sc))
@@ -911,13 +903,11 @@ axe_attach_post_sub(struct usb_ether *ue)
 	else
 		adv_pause = 0;
 
+	/* Careful, miibus assumes that the first member of the softc
+           of it's parent is an arpcom structure --mpf */
 	error = mii_phy_probe(ue->ue_dev, &ue->ue_miibus, 
 		uether_ifmedia_upd, ue->ue_methods->ue_mii_sts);
-	/* XXX
-	error = mii_attach(ue->ue_dev, &ue->ue_miibus, ifp,
-	    uether_ifmedia_upd, ue->ue_methods->ue_mii_sts,
-	    BMSR_DEFCAPMASK, sc->sc_phyno, MII_OFFSET_ANY, adv_pause);
-	*/
+
 	return (error);
 }
 
