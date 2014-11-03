@@ -133,7 +133,7 @@ ue_queue_command(struct usb_ether *ue,
 struct ifnet *
 uether_getifp(struct usb_ether *ue)
 {
-	return (ue->ue_ifp);
+	return &(ue->ue_arpcom.ac_if);
 }
 
 struct mii_data *
@@ -194,36 +194,30 @@ ue_attach_post_task(struct usb_proc_msg *_task)
 	struct usb_ether_cfg_task *task =
 	    (struct usb_ether_cfg_task *)_task;
 	struct usb_ether *ue = task->ue;
-	struct ifnet *ifp;
+	struct ifnet *ifp = uether_getifp(ue);
 	int error;
 	char num[14];			/* sufficient for 32 bits */
 
 	/* first call driver's post attach routine */
 	ue->ue_methods->ue_attach_post(ue);
 
+	/* Make sure the ifp pointer is set */
+	ue->ue_ifp = ifp;
+
 	UE_UNLOCK(ue);
 
 	KKASSERT(!lockowned(ue->ue_lock));
-	/* XXX
-	ue->ue_unit = alloc_unr(ueunit);
-	*/
 	ue->ue_unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(ue), 0);
 	usb_callout_init_mtx(&ue->ue_watchdog, ue->ue_lock, 0);
 	sysctl_ctx_init(&ue->ue_sysctl_ctx);
 
 	KKASSERT(!lockowned(ue->ue_lock));
 	error = 0;
-	ifp = if_alloc(IFT_ETHER);
-	if (ifp == NULL) {
-		device_printf(ue->ue_dev, "could not allocate ifnet\n");
-		goto fail;
-	}
 
 	KKASSERT(!lockowned(ue->ue_lock));
 	ifp->if_softc = ue;
 	if_initname(ifp, "ue", ue->ue_unit);
 	if (ue->ue_methods->ue_attach_post_sub != NULL) {
-		ue->ue_ifp = ifp;
 		error = ue->ue_methods->ue_attach_post_sub(ue);
 		KKASSERT(!lockowned(ue->ue_lock));
 	} else {
@@ -235,23 +229,12 @@ ue_attach_post_task(struct usb_proc_msg *_task)
 		ifp->if_start = ue_start;
 		ifp->if_init = ue_init;
 		ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
-	/* XXX
-		ifp->if_snd.ifq_drv_maxlen = ifqmaxlen;
-	*/
 		ifq_set_ready(&ifp->if_snd);
-		ue->ue_ifp = ifp;
 
 		if (ue->ue_methods->ue_mii_upd != NULL &&
 		    ue->ue_methods->ue_mii_sts != NULL) {
-			/* device_xxx() depends on this */
-/*			mtx_lock(&Giant);*/
 			error = mii_phy_probe(ue->ue_dev, &ue->ue_miibus, 
-				ue_ifmedia_upd, ue->ue_methods->ue_mii_sts);
-			/*	
-			error = mii_attach(ue->ue_dev, &ue->ue_miibus, ifp,
-			    ue_ifmedia_upd, ue->ue_methods->ue_mii_sts,
-			    BMSR_DEFCAPMASK, MII_PHY_ANY, MII_OFFSET_ANY, 0);
-*/ /*			mtx_unlock(&Giant);*/
+			  		      ue_ifmedia_upd, ue->ue_methods->ue_mii_sts);
 		}
 	}
 
@@ -280,14 +263,7 @@ ue_attach_post_task(struct usb_proc_msg *_task)
 	return;
 
 fail:
-	/* XXX
-	free_unr(ueunit, ue->ue_unit);
-	*/
 	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(ue), ue->ue_unit);
-	if (ue->ue_ifp != NULL) {
-		if_free(ue->ue_ifp);
-		ue->ue_ifp = NULL;
-	}
 	UE_LOCK(ue);
 	return;
 }
@@ -301,7 +277,7 @@ uether_ifdetach(struct usb_ether *ue)
 	usb_proc_drain(&ue->ue_tq);
 
 	/* read "ifnet" pointer after taskqueue drain */
-	ifp = ue->ue_ifp;
+	ifp = uether_getifp(ue);
 
 	if (ifp != NULL) {
 
@@ -315,25 +291,17 @@ uether_ifdetach(struct usb_ether *ue)
 
 		/* detach miibus */
 		if (ue->ue_miibus != NULL) {
-			/*mtx_lock(&Giant);*/	/* device_xxx() depends on this */
 			device_delete_child(ue->ue_dev, ue->ue_miibus);
-			/*mtx_unlock(&Giant);*/
 		}
 
 		/* detach ethernet */
 		ether_ifdetach(ifp);
-
-		/* free interface instance */
-		if_free(ifp);
 
 		/* free sysctl */
 		sysctl_ctx_free(&ue->ue_sysctl_ctx);
 
 		/* free unit */
 		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(ue), ue->ue_unit);
-		/*
-		free_unr(ueunit, ue->ue_unit);
-		*/
 	}
 
 	/* free taskqueue, if any */
@@ -370,7 +338,7 @@ ue_start_task(struct usb_proc_msg *_task)
 	struct usb_ether_cfg_task *task =
 	    (struct usb_ether_cfg_task *)_task;
 	struct usb_ether *ue = task->ue;
-	struct ifnet *ifp = ue->ue_ifp;
+	struct ifnet *ifp = uether_getifp(ue);
 
 	UE_LOCK_ASSERT(ue);
 
@@ -465,7 +433,7 @@ ue_ifmedia_task(struct usb_proc_msg *_task)
 	struct usb_ether_cfg_task *task =
 	    (struct usb_ether_cfg_task *)_task;
 	struct usb_ether *ue = task->ue;
-	struct ifnet *ifp = ue->ue_ifp;
+	struct ifnet *ifp = uether_getifp(ue);
 
 	ue->ue_methods->ue_mii_upd(ifp);
 }
@@ -474,7 +442,7 @@ static void
 ue_watchdog(void *arg)
 {
 	struct usb_ether *ue = arg;
-	struct ifnet *ifp = ue->ue_ifp;
+	struct ifnet *ifp = uether_getifp(ue);
 	
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
@@ -492,7 +460,7 @@ ue_tick_task(struct usb_proc_msg *_task)
 	struct usb_ether_cfg_task *task =
 	    (struct usb_ether_cfg_task *)_task;
 	struct usb_ether *ue = task->ue;
-	struct ifnet *ifp = ue->ue_ifp;
+	struct ifnet *ifp = uether_getifp(ue);
 	
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
@@ -596,7 +564,7 @@ int
 uether_rxmbuf(struct usb_ether *ue, struct mbuf *m, 
     unsigned int len)
 {
-	struct ifnet *ifp = ue->ue_ifp;
+	struct ifnet *ifp = uether_getifp(ue);
 
 	UE_LOCK_ASSERT(ue);
 
@@ -614,7 +582,7 @@ int
 uether_rxbuf(struct usb_ether *ue, struct usb_page_cache *pc, 
     unsigned int offset, unsigned int len)
 {
-	struct ifnet *ifp = ue->ue_ifp;
+	struct ifnet *ifp = uether_getifp(ue);
 	struct mbuf *m;
 
 	UE_LOCK_ASSERT(ue);
@@ -643,7 +611,7 @@ uether_rxbuf(struct usb_ether *ue, struct usb_page_cache *pc,
 void
 uether_rxflush(struct usb_ether *ue)
 {
-	struct ifnet *ifp = ue->ue_ifp;
+	struct ifnet *ifp = uether_getifp(ue);
 	struct mbuf *m;
 
 	UE_LOCK_ASSERT(ue);
