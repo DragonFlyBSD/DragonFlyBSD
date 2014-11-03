@@ -2199,6 +2199,9 @@ device		uether
 # LinkSys USB200M and various other adapters.
 device		axe
 #
+# Moschip MCS7730/MCS7840 USB to fast ethernet. Supports the Sitecom LN030.
+device		mos
+#
 # Davicom DM9601E USB to fast ethernet. Supports the Corega FEther USB-TXC.
 device		udav
 

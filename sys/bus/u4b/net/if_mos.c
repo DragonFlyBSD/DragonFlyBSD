@@ -76,13 +76,12 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/dev/usb/net/if_mos.c 271832 2014-09-18 21:09:22Z glebius $
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 /*
- * Moschip MCS7730/MCS7830 USB to Ethernet controller
+ * Moschip MCS7730/MCS7830/MCS7832 USB to Ethernet controller
  * The datasheet is available at the following URL:
  * http://www.moschip.com/data/products/MCS7830/Data%20Sheet_7830.pdf
  */
@@ -101,6 +100,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/systm.h>
+#include <sys/socket.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/module.h>
@@ -112,6 +112,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
+#include <net/if.h>
+#include <net/if_var.h>
 #include <net/ifq_var.h>
 
 #include <bus/u4b/usb.h>
@@ -148,6 +150,7 @@ SYSCTL_INT(_hw_usb_mos, OID_AUTO, debug, CTLFLAG_RW, &mos_debug, 0,
 static const STRUCT_USB_HOST_ID mos_devs[] = {
 	{USB_VPI(USB_VENDOR_MOSCHIP, USB_PRODUCT_MOSCHIP_MCS7730, MCS7730)},
 	{USB_VPI(USB_VENDOR_MOSCHIP, USB_PRODUCT_MOSCHIP_MCS7830, MCS7830)},
+	{USB_VPI(USB_VENDOR_MOSCHIP, USB_PRODUCT_MOSCHIP_MCS7832, MCS7832)},
 	{USB_VPI(USB_VENDOR_SITECOMEU, USB_PRODUCT_SITECOMEU_LN030, MCS7830)},
 };
 
@@ -524,6 +527,7 @@ mos_ifmedia_upd(struct ifnet *ifp)
 	struct mos_softc *sc = ifp->if_softc;
 	struct mii_data *mii = GET_MII(sc);
 	struct mii_softc *miisc;
+	int error;
 
 	MOS_LOCK_ASSERT(sc);
 
@@ -532,8 +536,8 @@ mos_ifmedia_upd(struct ifnet *ifp)
 		LIST_FOREACH(miisc, &mii->mii_phys, mii_list)
 		    mii_phy_reset(miisc);
 	}
-	mii_mediachg(mii);
-	return (0);
+	error = mii_mediachg(mii);
+	return (error);
 }
 
 /*
@@ -712,6 +716,8 @@ mos_attach(device_t dev)
 		MOS_DPRINTFN("model: MCS7730");
 	} else if (sc->mos_flags & MCS7830) {
 		MOS_DPRINTFN("model: MCS7830");
+	} else if (sc->mos_flags & MCS7832) {
+		MOS_DPRINTFN("model: MCS7832");
 	}
 	error = uether_ifattach(ue);
 	if (error) {
@@ -783,7 +789,7 @@ mos_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 	case USB_ST_TRANSFERRED:
 		MOS_DPRINTFN("actlen : %d", actlen);
 		if (actlen <= 1) {
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto tr_setup;
 		}
 		/* evaluate status byte at the end */
@@ -802,7 +808,7 @@ mos_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 				MOS_DPRINTFN("CRC error");
 			if (rxstat & MOS_RXSTS_ALIGN_ERROR)
 				MOS_DPRINTFN("alignment error");
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto tr_setup;
 		}
 		/* Remember the last byte was used for the status fields */
@@ -811,7 +817,7 @@ mos_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 			MOS_DPRINTFN("error: pktlen %d is smaller "
 			    "than ether_header %zd", pktlen,
 			    sizeof(struct ether_header));
-			ifp->if_ierrors++;
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto tr_setup;
 		}
 		uether_rxbuf(ue, pc, 0, actlen);
@@ -850,7 +856,7 @@ mos_bulk_write_callback(struct usb_xfer *xfer, usb_error_t error)
 	switch (USB_GET_STATE(xfer)) {
 	case USB_ST_TRANSFERRED:
 		MOS_DPRINTFN("transfer of complete");
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		/* FALLTHROUGH */
 	case USB_ST_SETUP:
 tr_setup:
@@ -877,11 +883,11 @@ tr_setup:
 
 		usbd_transfer_submit(xfer);
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 		return;
 	default:
 		MOS_DPRINTFN("usb error on tx: %s\n", usbd_errstr(error));
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		if (error != USB_ERR_CANCELLED) {
 			usbd_xfer_set_stall(xfer);
 			goto tr_setup;
@@ -972,7 +978,7 @@ mos_intr_callback(struct usb_xfer *xfer, usb_error_t error)
 	uint32_t pkt;
 	int actlen;
 
-	ifp->if_oerrors++;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 
 	usbd_xfer_status(xfer, &actlen, NULL, NULL, NULL);
 	MOS_DPRINTFN("actlen %i", actlen);

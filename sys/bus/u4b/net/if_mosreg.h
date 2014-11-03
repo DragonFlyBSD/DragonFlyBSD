@@ -152,6 +152,7 @@
 
 #define	MCS7730	0x0001
 #define	MCS7830	0x0002
+#define	MCS7832	0x0004
 
 #define	MOS_INC(x, y)           (x) = (x + 1) % y
 
@@ -172,4 +173,4 @@ struct mos_softc {
 #define	GET_MII(sc)		uether_getmii(&(sc)->sc_ue)
 #define	MOS_LOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
 #define	MOS_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_RELEASE)
-#define	MOS_LOCK_ASSERT(_sc)	lockowned(&(_sc)->sc_lock)
+#define	MOS_LOCK_ASSERT(_sc)	KKASSERT(lockowned(&(_sc)->sc_lock))
