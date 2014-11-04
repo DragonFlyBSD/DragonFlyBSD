@@ -874,7 +874,7 @@ axe_attach_post_sub(struct usb_ether *ue)
 	int error;
 
 	sc = uether_getsc(ue);
-	ifp = ue->ue_ifp;
+	ifp = uether_getifp(ue);
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_start = uether_start;
 	ifp->if_ioctl = axe_ioctl;
@@ -1102,7 +1102,7 @@ axe_rx_frame(struct usb_ether *ue, struct usb_page_cache *pc, int actlen)
 		axe_rxeof(ue, pc, 0, actlen, NULL);
 
 	if (error != 0)
-		IFNET_STAT_INC(ue->ue_ifp, ierrors, 1);
+		IFNET_STAT_INC(uether_getifp(ue), ierrors, 1);
 	return (error);
 }
 
@@ -1110,7 +1110,7 @@ static int
 axe_rxeof(struct usb_ether *ue, struct usb_page_cache *pc, unsigned int offset,
     unsigned int len, struct axe_csum_hdr *csum_hdr)
 {
-	struct ifnet *ifp = ue->ue_ifp;
+	struct ifnet *ifp = uether_getifp(ue);
 	struct mbuf *m;
 
 	if (len < ETHER_HDR_LEN || len > MCLBYTES - ETHER_ALIGN) {

@@ -83,7 +83,6 @@ struct usb_ether {
 		 due to assumptions made by code in mii and in other
                  places in the network stack. See also if_var.h --mpf */
 	struct arpcom		ue_arpcom;
-	struct ifnet		*ue_ifp;
 	struct lock		*ue_lock;
 	const struct usb_ether_methods *ue_methods;
 	struct sysctl_oid	*ue_sysctl_oid;

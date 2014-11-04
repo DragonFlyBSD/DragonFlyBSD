@@ -201,9 +201,6 @@ ue_attach_post_task(struct usb_proc_msg *_task)
 	/* first call driver's post attach routine */
 	ue->ue_methods->ue_attach_post(ue);
 
-	/* Make sure the ifp pointer is set */
-	ue->ue_ifp = ifp;
-
 	UE_UNLOCK(ue);
 
 	KKASSERT(!lockowned(ue->ue_lock));
