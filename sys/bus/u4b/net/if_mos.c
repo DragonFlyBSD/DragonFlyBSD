@@ -737,7 +737,10 @@ static void
 mos_attach_post(struct usb_ether *ue)
 {
 	struct mos_softc *sc = uether_getsc(ue);
-        int err;
+	int err;
+#if USB_DEBUG
+	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	/* Read MAC address, inform the world. */
 	err = mos_readmac(sc, ue->ue_eaddr);
@@ -745,7 +748,7 @@ mos_attach_post(struct usb_ether *ue)
 	if (err)
 	  MOS_DPRINTFN("couldn't get MAC address");
 
-	MOS_DPRINTFN("address: %s", ether_sprintf(ue->ue_eaddr));
+	MOS_DPRINTFN("address: %s", kether_ntoa(ue->ue_eaddr, ethstr));
 
 	mos_chip_init(sc);
 }
