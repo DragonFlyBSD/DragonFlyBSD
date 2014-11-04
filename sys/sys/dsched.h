@@ -124,7 +124,7 @@ struct dsched_thread_io {
 	TAILQ_ENTRY(dsched_thread_io)	link;
 	TAILQ_ENTRY(dsched_thread_io)	dlink;
 
-	TAILQ_HEAD(tdio_queue, bio)	queue;	/* IO queue (bio) */
+	TAILQ_HEAD(, bio)	queue;	/* IO queue (bio) */
 	struct lock		lock;
 	int32_t			qlength;/* IO queue length */
 

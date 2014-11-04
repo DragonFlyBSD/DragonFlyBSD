@@ -741,10 +741,9 @@ dsched_disk_ctx_destroy(struct dsched_disk_ctx *diskctx)
 		TAILQ_REMOVE(&diskctx->tdio_list, tdio, dlink);
 		atomic_clear_int(&tdio->flags, DSCHED_LINKED_DISK_CTX);
 		tdio->diskctx = NULL;
+		/* XXX tdio->diskctx->dp->d_sched_policy->destroy_tdio(tdio);*/
 		lockmgr(&diskctx->lock, LK_RELEASE);
-		lockmgr(&tdio->lock, LK_EXCLUSIVE);
 		dsched_thread_io_unref_destroy(tdio);
-		lockmgr(&tdio->lock, LK_RELEASE);
 		lockmgr(&diskctx->lock, LK_EXCLUSIVE);
 	}
 	lockmgr(&diskctx->lock, LK_RELEASE);
@@ -837,40 +836,6 @@ dsched_thread_io_unref_destroy(struct dsched_thread_io *tdio)
 			dsched_thread_io_destroy(tdio);
 			break;
 		}
-	}
-}
-
-static void
-dsched_async_thread_io_destroy(struct bio *bio)
-{
-	struct bio *obio;
-	void *ident = dsched_get_bio_priv(bio);
-
-	obio = pop_bio(bio);
-	biodone(obio);
-	wakeup(ident);
-}
-
-
-static void
-dsched_thread_io_drain(struct dsched_thread_io *tdio)
-{
-	struct bio *bio;
-	struct bio *nbio;
-
-	while (tdio->qlength != 0) {
-		bio = TAILQ_LAST(&tdio->queue, tdio_queue);
-		TAILQ_REMOVE(&tdio->queue, bio, link);
-
-		nbio = push_bio(bio);
-		nbio->bio_done = &dsched_async_thread_io_destroy;
-		nbio->bio_offset = bio->bio_offset;
-
-		dsched_set_bio_dp(nbio, tdio->dp);
-		dsched_set_bio_priv(nbio, (void *)tdio);
-		TAILQ_INSERT_TAIL(&tdio->queue, nbio, link);
-
-		lksleep((void *)tdio, &tdio->lock, 0, "tdiow", 0);
 	}
 }
 
@@ -987,12 +952,9 @@ dsched_thread_ctx_destroy(struct dsched_thread_ctx *tdctx)
 
 	while ((tdio = TAILQ_FIRST(&tdctx->tdio_list)) != NULL) {
 		KKASSERT(tdio->flags & DSCHED_LINKED_THREAD_CTX);
-		lockmgr(&tdio->lock, LK_EXCLUSIVE);
-		dsched_thread_io_drain(tdio);
 		TAILQ_REMOVE(&tdctx->tdio_list, tdio, link);
 		atomic_clear_int(&tdio->flags, DSCHED_LINKED_THREAD_CTX);
 		tdio->tdctx = NULL;
-		lockmgr(&tdio->lock, LK_RELEASE);
 		lockmgr(&tdctx->lock, LK_RELEASE);	/* avoid deadlock */
 		dsched_thread_io_unref_destroy(tdio);
 		lockmgr(&tdctx->lock, LK_EXCLUSIVE);
