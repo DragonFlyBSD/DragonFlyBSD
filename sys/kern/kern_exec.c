@@ -668,12 +668,13 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 		if ((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) {
 			vm_page_hold(m);
 			vm_page_sleep_busy(m, FALSE, "execpg");
-			if ((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) {
+			if ((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL &&
+			    m->object == object && m->pindex == pageno) {
 				vm_object_drop(object);
 				goto done;
 			}
+			vm_page_unhold(m);
 		}
-		vm_page_unhold(m);
 	}
 	vm_object_drop(object);
 
