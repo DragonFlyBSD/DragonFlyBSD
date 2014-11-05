@@ -884,14 +884,15 @@ vm_page_hold(vm_page_t m)
 }
 
 /*
- * The opposite of vm_page_hold().  A page can be freed while being held,
- * which places it on the PQ_HOLD queue.  If we are able to busy the page
- * after the hold count drops to zero we will move the page to the
- * appropriate PQ_FREE queue by calling vm_page_free_toq().
+ * The opposite of vm_page_hold().  If the page is on the HOLD queue
+ * it was freed while held and must be moved back to the FREE queue.
  */
 void
 vm_page_unhold(vm_page_t m)
 {
+	KASSERT(m->hold_count > 0 && m->queue - m->pc != PQ_FREE,
+		("vm_page_unhold: pg %p illegal hold_count (%d) or on FREE queue (%d)",
+		 m, m->hold_count, m->queue - m->pc));
 	vm_page_spin_lock(m);
 	atomic_add_int(&m->hold_count, -1);
 	if (m->hold_count == 0 && m->queue - m->pc == PQ_HOLD) {
@@ -1203,8 +1204,7 @@ vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 
 /*
  * vm_page_unqueue() without any wakeup.  This routine is used when a page
- * is being moved between queues or otherwise is to remain BUSYied by the
- * caller.
+ * is to remain BUSYied by the caller.
  *
  * This routine may not block.
  */
@@ -1446,7 +1446,9 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
 			 */
 			KKASSERT((m->flags & (PG_UNMANAGED |
 					      PG_NEED_COMMIT)) == 0);
-			KKASSERT(m->hold_count == 0);
+			KASSERT(m->hold_count == 0, ("m->hold_count is not zero "
+						     "pg %p q=%d flags=%08x hold=%d wire=%d",
+						     m, m->queue, m->flags, m->hold_count, m->wire_count));
 			KKASSERT(m->wire_count == 0);
 			vm_page_spin_unlock(m);
 			pagedaemon_wakeup();
@@ -2132,7 +2134,7 @@ vm_page_free_fromq_fast(void)
 				vm_page_spin_unlock(m);
 			} else if (m->flags & PG_ZERO) {
 				/*
-				 * The page is PG_ZERO, requeue it and loop
+				 * The page is already PG_ZERO, requeue it and loop
 				 */
 				_vm_page_add_queue_spinlocked(m,
 							      PQ_FREE + m->pc,
@@ -2148,11 +2150,11 @@ vm_page_free_fromq_fast(void)
 				/*
 				 * The page is not PG_ZERO'd so return it.
 				 */
-				vm_page_spin_unlock(m);
 				KKASSERT((m->flags & (PG_UNMANAGED |
 						      PG_NEED_COMMIT)) == 0);
 				KKASSERT(m->hold_count == 0);
 				KKASSERT(m->wire_count == 0);
+				vm_page_spin_unlock(m);
 				break;
 			}
 			m = NULL;
