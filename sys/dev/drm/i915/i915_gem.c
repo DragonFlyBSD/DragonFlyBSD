@@ -2349,13 +2349,6 @@ i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 
 		goto search_free;
 	}
-	if (WARN_ON(!i915_gem_valid_gtt_space(dev,
-					      obj->gtt_space,
-					      obj->cache_level))) {
-		drm_mm_put_block(obj->gtt_space);
-		obj->gtt_space = NULL;
-		return -EINVAL;
-	}
 
 	/*
 	 * NOTE: i915_gem_object_get_pages_gtt() cannot
