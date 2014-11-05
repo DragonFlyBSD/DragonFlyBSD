@@ -1976,7 +1976,9 @@ pfr_match_addr(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af)
 	struct pfr_kentry	*ke = NULL;
 	int			 match;
 	struct sockaddr_in	 pfr_sin;
+#ifdef INET6
 	struct sockaddr_in6	 pfr_sin6;
+#endif
 
 	if (!(kt->pfrkt_flags & PFR_TFLAG_ACTIVE) && kt->pfrkt_root != NULL)
 		kt = kt->pfrkt_root;
@@ -2023,7 +2025,9 @@ pfr_update_stats(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af,
 {
 	struct pfr_kentry	*ke = NULL;
 	struct sockaddr_in	 pfr_sin;
+#ifdef INET6
 	struct sockaddr_in6	 pfr_sin6;
+#endif
 
 	if (!(kt->pfrkt_flags & PFR_TFLAG_ACTIVE) && kt->pfrkt_root != NULL)
 		kt = kt->pfrkt_root;
