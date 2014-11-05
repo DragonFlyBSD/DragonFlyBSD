@@ -73,9 +73,19 @@ _start(char **ap, void (*cleanup)(void))
 #ifdef GCRT
 	atexit(_mcleanup);
 	monstartup(&eprol, &etext);
-__asm__("eprol:");
 #endif
 
 	handle_static_init(argc, argv, env);
+#ifdef GCRT
+	/*
+	 * This label was previously located just after the monstartup
+	 * function.  It was relocated after the handle_static_init function
+	 * to avoid an alternative conditional optimization performed by
+	 * clang.  The optimization cause the compilation to fail with a
+	 * label redefinition error.  The impact of the label relocation is
+	 * the loss of profiling of handle_static_init function.
+	 */
+__asm__("eprol:");
+#endif
 	exit(main(argc, argv, env));
 }
