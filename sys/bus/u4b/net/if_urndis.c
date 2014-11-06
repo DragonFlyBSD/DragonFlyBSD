@@ -342,7 +342,7 @@ urndis_init(struct usb_ether *ue)
 	struct urndis_softc *sc = uether_getsc(ue);
 	struct ifnet *ifp = uether_getifp(ue);
 
-	URNDIS_LOCK_ASSERT(sc, MA_OWNED);
+	URNDIS_LOCK_ASSERT(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
 
@@ -361,7 +361,7 @@ urndis_stop(struct usb_ether *ue)
 	struct urndis_softc *sc = uether_getsc(ue);
 	struct ifnet *ifp = uether_getifp(ue);
 
-	URNDIS_LOCK_ASSERT(sc, MA_OWNED);
+	URNDIS_LOCK_ASSERT(sc);
 
 	ifp->if_flags &= ~IFF_RUNNING;
 
