@@ -53,7 +53,7 @@ struct urndis_softc {
 
 #define	URNDIS_LOCK(sc) lockmgr(&(sc)->sc_lock, LK_EXCLUSIVE)
 #define	URNDIS_UNLOCK(sc) lockmgr(&(sc)->sc_lock, LK_RELEASE)
-#define	URNDIS_LOCK_ASSERT(sc, what) lockowned(&(sc)->sc_lock)
+#define	URNDIS_LOCK_ASSERT(sc) KKASSERT(lockowned(&(sc)->sc_lock))
 
 #define	RNDIS_STATUS_BUFFER_OVERFLOW 	0x80000005L
 #define	RNDIS_STATUS_FAILURE 		0xC0000001L
