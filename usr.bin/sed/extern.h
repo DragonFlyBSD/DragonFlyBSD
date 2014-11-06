@@ -32,7 +32,6 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/sed/extern.h,v 1.15 2007/06/12 12:05:23 yar Exp $
- * $DragonFly: src/usr.bin/sed/extern.h,v 1.3 2008/04/08 13:23:38 swildner Exp $
  */
 
 extern struct s_command *prog;

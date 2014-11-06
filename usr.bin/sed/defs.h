@@ -32,7 +32,6 @@
  *
  *	@(#)defs.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/sed/defs.h,v 1.8 2009/05/25 06:45:33 brian Exp $
- * $DragonFly: src/usr.bin/sed/defs.h,v 1.2 2008/04/08 13:23:38 swildner Exp $
  */
 
 /*
@@ -144,6 +143,7 @@ typedef struct {
 	char *space;		/* Current space pointer. */
 	size_t len;		/* Current length. */
 	int deleted;		/* If deleted. */
+	int append_newline;	/* If originally terminated by \n. */
 	char *back;		/* Backing memory. */
 	size_t blen;		/* Backing memory length. */
 } SPACE;
