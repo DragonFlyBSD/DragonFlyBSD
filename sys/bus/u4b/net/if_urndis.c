@@ -167,23 +167,32 @@ static const struct usb_ether_methods urndis_ue_methods = {
 };
 
 static const STRUCT_USB_HOST_ID urndis_host_devs[] = {
-#if 0
-	/* XXX this entry has a conflict an entry the umodem driver XXX */
-	{USB_IFACE_CLASS(UICLASS_CDC), USB_IFACE_SUBCLASS(UISUBCLASS_ABSTRACT_CONTROL_MODEL),
-	USB_IFACE_PROTOCOL(0xff)},
-#endif
 	{USB_IFACE_CLASS(UICLASS_WIRELESS), USB_IFACE_SUBCLASS(UISUBCLASS_RF),
 	USB_IFACE_PROTOCOL(UIPROTO_RNDIS)},
 	{USB_IFACE_CLASS(UICLASS_IAD), USB_IFACE_SUBCLASS(UISUBCLASS_SYNC),
 	USB_IFACE_PROTOCOL(UIPROTO_ACTIVESYNC)},
 };
 
+static const STRUCT_USB_HOST_ID urndis_non_huawei_host_devs[] = {
+	{USB_IFACE_CLASS(UICLASS_CDC),
+	USB_IFACE_SUBCLASS(UISUBCLASS_ABSTRACT_CONTROL_MODEL),
+	USB_IFACE_PROTOCOL(0xff)},
+};
+
 static int
 urndis_probe(device_t dev)
 {
+	int res;
 	struct usb_attach_arg *uaa = device_get_ivars(dev);
 
-	return (usbd_lookup_id_by_uaa(urndis_host_devs, sizeof(urndis_host_devs), uaa));
+	res = usbd_lookup_id_by_uaa(urndis_host_devs,
+	    sizeof(urndis_host_devs), uaa);
+	if (res == 0)
+		return(0);
+	if (uaa->info.idVendor == USB_VENDOR_HUAWEI)
+		return(ENXIO);
+	return (usbd_lookup_id_by_uaa(urndis_non_huawei_host_devs,
+		sizeof(urndis_non_huawei_host_devs), uaa));
 }
 
 static void
