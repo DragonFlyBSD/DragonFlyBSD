@@ -729,7 +729,7 @@ static void send_vblank_event(struct drm_device *dev,
 
 	list_add_tail(&e->base.link,
 		      &e->base.file_priv->event_list);
-	wakeup(&e->base.file_priv->event_list);
+	drm_event_wakeup(&e->base);
 #if 0
 	trace_drm_vblank_event_delivered(e->base.pid, e->pipe,
 					 e->event.sequence);
