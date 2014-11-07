@@ -254,16 +254,41 @@ drm_event_wakeup(struct drm_pending_event *e)
 	KKASSERT(lockstatus(&dev->event_lock, curthread) != 0);
 
 	wakeup(&file_priv->event_space);
+	KNOTE(&file_priv->dkq.ki_note, 0);
 }
 
 static int
 drmfilt(struct knote *kn, long hint)
 {
-	return (0);
+	struct drm_file *file_priv;
+	struct drm_device *dev;
+	int ready = 0;
+
+	file_priv = (struct drm_file *)kn->kn_hook;
+	dev = file_priv->dev;
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	if (!list_empty(&file_priv->event_list))
+		ready = 1;
+	lockmgr(&dev->event_lock, LK_RELEASE);
+
+	return (ready);
 }
 
 static void
-drmfilt_detach(struct knote *kn) {}
+drmfilt_detach(struct knote *kn)
+{
+	struct drm_file *file_priv;
+	struct drm_device *dev;
+	struct klist *klist;
+
+	file_priv = (struct drm_file *)kn->kn_hook;
+	dev = file_priv->dev;
+
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	klist = &file_priv->dkq.ki_note;
+	knote_remove(klist, kn);
+	lockmgr(&dev->event_lock, LK_RELEASE);
+}
 
 static struct filterops drmfiltops =
         { FILTEROP_ISFD, NULL, drmfilt_detach, drmfilt };
@@ -271,7 +296,19 @@ static struct filterops drmfiltops =
 int
 drm_kqfilter(struct dev_kqfilter_args *ap)
 {
+	struct cdev *kdev = ap->a_head.a_dev;
+	struct drm_file *file_priv;
+	struct drm_device *dev;
 	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+	int error;
+
+	error = devfs_get_cdevpriv(ap->a_fp, (void **)&file_priv);
+	if (error != 0) {
+		DRM_ERROR("can't find authenticator\n");
+		return (EINVAL);
+	}
+	dev = drm_get_device_from_kdev(kdev);
 
 	ap->a_result = 0;
 
@@ -279,11 +316,17 @@ drm_kqfilter(struct dev_kqfilter_args *ap)
 	case EVFILT_READ:
 	case EVFILT_WRITE:
 		kn->kn_fop = &drmfiltops;
+		kn->kn_hook = (caddr_t)file_priv;
 		break;
 	default:
 		ap->a_result = EOPNOTSUPP;
 		return (0);
 	}
+
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	klist = &file_priv->dkq.ki_note;
+	knote_insert(klist, kn);
+	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	return (0);
 }

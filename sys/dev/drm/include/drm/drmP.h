@@ -495,6 +495,7 @@ struct drm_file {
 	drm_magic_t	  magic;
 	unsigned long	  ioctl_count;
 	struct list_head lhead;
+	struct kqinfo	  dkq;
 
 	/** Mapping of mm object handles to object pointers. */
 	struct idr object_idr;
