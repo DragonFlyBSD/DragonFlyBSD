@@ -230,12 +230,15 @@ CLEANFILES+=	\
 		aslcompiler.y \
 		aslcompilerlex.c \
 		aslcompilerparse.c \
+		aslcompilerparse.h \
 		aslcompiler.y.h \
 		dtparserlex.c \
 		dtparserparse.c \
+		dtparserparse.h \
 		dtparser.y.h \
 		prparserlex.c \
 		prparserparse.c \
+		prparserparse.h \
 		prparser.y.h
 
 .include <bsd.prog.mk>
