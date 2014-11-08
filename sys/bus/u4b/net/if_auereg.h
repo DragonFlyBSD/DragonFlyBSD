@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD$
+ * $FreeBSD: head/sys/dev/usb/net/if_auereg.h 196219 2009-08-14 20:03:53Z jhb $
  */
 
 /*
@@ -203,7 +203,7 @@ struct aue_rxpkt {
 
 struct aue_softc {
 	struct usb_ether	sc_ue;
-	struct mtx		sc_mtx;
+	struct lock		sc_lock;
 	struct usb_xfer	*sc_xfer[AUE_N_TRANSFER];
 
 	int			sc_flags;
@@ -215,6 +215,6 @@ struct aue_softc {
 #define	AUE_FLAG_DUAL_PHY	0x0400	/* chip has two transcivers */
 };
 
-#define	AUE_LOCK(_sc)		mtx_lock(&(_sc)->sc_mtx)
-#define	AUE_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
-#define	AUE_LOCK_ASSERT(_sc, t)	mtx_assert(&(_sc)->sc_mtx, t)
+#define	AUE_LOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
+#define	AUE_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_RELEASE)
+#define	AUE_LOCK_ASSERT(_sc)	KKASSERT(lockowned(&(_sc)->sc_lock))

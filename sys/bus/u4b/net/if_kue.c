@@ -28,10 +28,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/dev/usb/net/if_kue.c 271832 2014-09-18 21:09:22Z glebius $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 /*
  * Kawasaki LSI KL5KUSB101B USB to ethernet adapter driver.
@@ -66,36 +65,38 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/systm.h>
+#include <sys/socket.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <net/if.h>
+#include <net/if_var.h>
+#include <net/ifq_var.h>
+
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
 #include "usbdevs.h"
 
 #define	USB_DEBUG_VAR kue_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/net/usb_ethernet.h>
-#include <dev/usb/net/if_kuereg.h>
-#include <dev/usb/net/if_kuefw.h>
+#include <bus/u4b/net/usb_ethernet.h>
+#include <bus/u4b/net/if_kuereg.h>
+#include <bus/u4b/net/if_kuefw.h>
 
 /*
  * Various supported device vendors/products.
@@ -340,7 +341,7 @@ kue_setpromisc(struct usb_ether *ue)
 	struct kue_softc *sc = uether_getsc(ue);
 	struct ifnet *ifp = uether_getifp(ue);
 
-	KUE_LOCK_ASSERT(sc, MA_OWNED);
+	KUE_LOCK_ASSERT(sc);
 
 	if (ifp->if_flags & IFF_PROMISC)
 		sc->sc_rxfilt |= KUE_RXFILT_PROMISC;
@@ -358,7 +359,7 @@ kue_setmulti(struct usb_ether *ue)
 	struct ifmultiaddr *ifma;
 	int i = 0;
 
-	KUE_LOCK_ASSERT(sc, MA_OWNED);
+	KUE_LOCK_ASSERT(sc);
 
 	if (ifp->if_flags & IFF_ALLMULTI || ifp->if_flags & IFF_PROMISC) {
 		sc->sc_rxfilt |= KUE_RXFILT_ALLMULTI;
@@ -369,7 +370,6 @@ kue_setmulti(struct usb_ether *ue)
 
 	sc->sc_rxfilt &= ~KUE_RXFILT_ALLMULTI;
 
-	if_maddr_rlock(ifp);
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 	{
 		if (ifma->ifma_addr->sa_family != AF_LINK)
@@ -385,7 +385,6 @@ kue_setmulti(struct usb_ether *ue)
 		    ETHER_ADDR_LEN);
 		i++;
 	}
-	if_maddr_runlock(ifp);
 
 	if (i == KUE_MCFILTCNT(sc))
 		sc->sc_rxfilt |= KUE_RXFILT_ALLMULTI;
@@ -411,7 +410,7 @@ kue_reset(struct kue_softc *sc)
 
 	cd = usbd_get_config_descriptor(sc->sc_ue.ue_udev);
 
-	err = usbd_req_set_config(sc->sc_ue.ue_udev, &sc->sc_mtx,
+	err = usbd_req_set_config(sc->sc_ue.ue_udev, &sc->sc_lock,
 	    cd->bConfigurationValue);
 	if (err)
 		DPRINTF("reset failed (ignored)\n");
@@ -476,17 +475,17 @@ kue_attach(device_t dev)
 	int error;
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, device_get_nameunit(dev), NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, device_get_nameunit(dev), 0, LK_CANRECURSE);
 
 	iface_index = KUE_IFACE_IDX;
 	error = usbd_transfer_setup(uaa->device, &iface_index,
-	    sc->sc_xfer, kue_config, KUE_N_TRANSFER, sc, &sc->sc_mtx);
+	    sc->sc_xfer, kue_config, KUE_N_TRANSFER, sc, &sc->sc_lock);
 	if (error) {
 		device_printf(dev, "allocating USB transfers failed\n");
 		goto detach;
 	}
 
-	sc->sc_mcfilters = malloc(KUE_MCFILTCNT(sc) * ETHER_ADDR_LEN,
+	sc->sc_mcfilters = kmalloc(KUE_MCFILTCNT(sc) * ETHER_ADDR_LEN,
 	    M_USBDEV, M_WAITOK);
 	if (sc->sc_mcfilters == NULL) {
 		device_printf(dev, "failed allocating USB memory\n");
@@ -496,7 +495,7 @@ kue_attach(device_t dev)
 	ue->ue_sc = sc;
 	ue->ue_dev = dev;
 	ue->ue_udev = uaa->device;
-	ue->ue_mtx = &sc->sc_mtx;
+	ue->ue_lock = &sc->sc_lock;
 	ue->ue_methods = &kue_ue_methods;
 
 	error = uether_ifattach(ue);
@@ -519,8 +518,8 @@ kue_detach(device_t dev)
 
 	usbd_transfer_unsetup(sc->sc_xfer, KUE_N_TRANSFER);
 	uether_ifdetach(ue);
-	mtx_destroy(&sc->sc_mtx);
-	free(sc->sc_mcfilters, M_USBDEV);
+	lockuninit(&sc->sc_lock);
+	kfree(sc->sc_mcfilters, M_USBDEV);
 
 	return (0);
 }
@@ -545,8 +544,8 @@ kue_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 	switch (USB_GET_STATE(xfer)) {
 	case USB_ST_TRANSFERRED:
 
-		if (actlen <= (2 + sizeof(struct ether_header))) {
-			ifp->if_ierrors++;
+		if (actlen <= (int)(2 + sizeof(struct ether_header))) {
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto tr_setup;
 		}
 		pc = usbd_xfer_get_frame(xfer, 0);
@@ -592,12 +591,12 @@ kue_bulk_write_callback(struct usb_xfer *xfer, usb_error_t error)
 	switch (USB_GET_STATE(xfer)) {
 	case USB_ST_TRANSFERRED:
 		DPRINTFN(11, "transfer complete\n");
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 		/* FALLTHROUGH */
 	case USB_ST_SETUP:
 tr_setup:
-		IFQ_DRV_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd);
 
 		if (m == NULL)
 			return;
@@ -634,7 +633,7 @@ tr_setup:
 		DPRINTFN(11, "transfer error, %s\n",
 		    usbd_errstr(error));
 
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 
 		if (error != USB_ERR_CANCELLED) {
 			/* try to clear stall first */
@@ -664,7 +663,7 @@ kue_init(struct usb_ether *ue)
 	struct kue_softc *sc = uether_getsc(ue);
 	struct ifnet *ifp = uether_getifp(ue);
 
-	KUE_LOCK_ASSERT(sc, MA_OWNED);
+	KUE_LOCK_ASSERT(sc);
 
 	/* set MAC address */
 	kue_ctl(sc, KUE_CTL_WRITE, KUE_CMD_SET_MAC,
@@ -685,7 +684,7 @@ kue_init(struct usb_ether *ue)
 
 	usbd_xfer_set_stall(sc->sc_xfer[KUE_BULK_DT_WR]);
 
-	ifp->if_drv_flags |= IFF_DRV_RUNNING;
+	ifp->if_flags |= IFF_RUNNING;
 	kue_start(ue);
 }
 
@@ -695,9 +694,9 @@ kue_stop(struct usb_ether *ue)
 	struct kue_softc *sc = uether_getsc(ue);
 	struct ifnet *ifp = uether_getifp(ue);
 
-	KUE_LOCK_ASSERT(sc, MA_OWNED);
+	KUE_LOCK_ASSERT(sc);
 
-	ifp->if_drv_flags &= ~IFF_DRV_RUNNING;
+	ifp->if_flags &= ~IFF_RUNNING;
 
 	/*
 	 * stop all the transfers, if not already stopped:

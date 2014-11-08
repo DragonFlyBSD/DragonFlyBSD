@@ -2109,26 +2109,6 @@ device          mly
 #device		moscom
 #device		uticom
 #
-# ADMtek USB ethernet (oldusb)
-# Supports the LinkSys USB100TX,
-# the Billionton USB100, the Melco LU-ATX, the D-Link DSB-650TX
-# and the SMC 2202USB. Also works with the ADMtek AN986 Pegasus
-# eval board.
-#device		aue
-#
-# CATC USB-EL1201A USB ethernet (oldusb)
-# Supports the CATC Netmate
-# and Netmate II, and the Belkin F5U111.
-#device		cue
-#
-# Kawasaki LSI ethernet (oldusb)
-# Supports the LinkSys USB10T,
-# Entrega USB-NET-E45, Peracom Ethernet Adapter, the
-# 3Com 3c19250, the ADS Technologies USB-10BT, the ATen UC10T,
-# the Netgear EA101, the D-Link DSB-650, the SMC 2102USB
-# and 2104USB, and the Corega USB-T.
-#device		kue
-#
 # USB CDC ethernet (oldusb)
 #Supports the LG P-500 smartphone.
 #device		lgue
@@ -2195,9 +2175,29 @@ device		uvscom
 # USB ethernet support
 device		uether
 #
+# ADMtek USB ethernet. Supports the LinkSys USB100TX,
+# the Billionton USB100, the Melco LU-ATX, the D-Link DSB-650TX
+# and the SMC 2202USB. Also works with the ADMtek AN986 Pegasus
+# eval board.
+device		aue
+#
 # ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
 # LinkSys USB200M and various other adapters.
 device		axe
+#
+# CATC USB-EL1201A USB ethernet. Supports the CATC Netmate
+# and Netmate II, and the Belkin F5U111.
+device		cue
+#
+# USB Apple iPhone/iPad tethered Ethernet driver
+device		ipheth
+#
+# Kawasaki LSI ethernet. Supports the LinkSys USB10T,
+# Entrega USB-NET-E45, Peracom Ethernet Adapter, the
+# 3Com 3c19250, the ADS Technologies USB-10BT, the ATen UC10T,
+# the Netgear EA101, the D-Link DSB-650, the SMC 2102USB
+# and 2104USB, and the Corega USB-T.
+device		kue
 #
 # Moschip MCS7730/MCS7840 USB to fast ethernet. Supports the Sitecom LN030.
 device		mos

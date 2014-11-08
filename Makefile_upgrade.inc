@@ -2727,9 +2727,6 @@ TO_REMOVE+=/usr/share/man/man4/ural.4.gz
 # Clean up old USB stuff when the new stack is requested
 # and vice versa
 .if !defined(WANT_OLDUSB)
-TO_REMOVE+=/boot/kernel/if_aue.ko
-TO_REMOVE+=/boot/kernel/if_cue.ko
-TO_REMOVE+=/boot/kernel/if_kue.ko
 TO_REMOVE+=/boot/kernel/if_lgue.ko
 TO_REMOVE+=/boot/kernel/if_rue.ko
 TO_REMOVE+=/boot/kernel/moscom.ko
@@ -2769,6 +2766,7 @@ TO_REMOVE+=/usr/share/man/man5/usbd.conf.5.gz
 TO_REMOVE+=/usr/share/man/man8/usbd.8.gz
 TO_REMOVE+=/usr/share/man/man8/usbdevs.8.gz
 .else
+TO_REMOVE+=/boot/kernel/if_ipheth.ko
 TO_REMOVE+=/boot/kernel/if_mos.ko
 TO_REMOVE+=/boot/kernel/if_rum.ko
 TO_REMOVE+=/boot/kernel/if_run.ko
@@ -3031,12 +3029,14 @@ TO_REMOVE+=/usr/share/man/cat3/usb_set_altinterface.3.gz
 TO_REMOVE+=/usr/share/man/cat3/usb_set_configuration.3.gz
 TO_REMOVE+=/usr/share/man/cat3/usb_set_debug.3.gz
 TO_REMOVE+=/usr/share/man/cat3/usb_strerror.3.gz
+TO_REMOVE+=/usr/share/man/cat4/if_ipheth.4.gz
 TO_REMOVE+=/usr/share/man/cat4/if_mos.4.gz
 TO_REMOVE+=/usr/share/man/cat4/if_rum.4.gz
 TO_REMOVE+=/usr/share/man/cat4/if_run.4.gz
 TO_REMOVE+=/usr/share/man/cat4/if_udav.4.gz
 TO_REMOVE+=/usr/share/man/cat4/if_urndis.4.gz
 TO_REMOVE+=/usr/share/man/cat4/if_urtwn.4.gz
+TO_REMOVE+=/usr/share/man/cat4/ipheth.4.gz
 TO_REMOVE+=/usr/share/man/cat4/mos.4.gz
 TO_REMOVE+=/usr/share/man/cat4/rum.4.gz
 TO_REMOVE+=/usr/share/man/cat4/run.4.gz
@@ -3246,12 +3246,14 @@ TO_REMOVE+=/usr/share/man/man3/usb_set_altinterface.3.gz
 TO_REMOVE+=/usr/share/man/man3/usb_set_configuration.3.gz
 TO_REMOVE+=/usr/share/man/man3/usb_set_debug.3.gz
 TO_REMOVE+=/usr/share/man/man3/usb_strerror.3.gz
+TO_REMOVE+=/usr/share/man/man4/if_ipheth.4.gz
 TO_REMOVE+=/usr/share/man/man4/if_mos.4.gz
 TO_REMOVE+=/usr/share/man/man4/if_rum.4.gz
 TO_REMOVE+=/usr/share/man/man4/if_run.4.gz
 TO_REMOVE+=/usr/share/man/man4/if_udav.4.gz
 TO_REMOVE+=/usr/share/man/man4/if_urndis.4.gz
 TO_REMOVE+=/usr/share/man/man4/if_urtwn.4.gz
+TO_REMOVE+=/usr/share/man/man4/ipheth.4.gz
 TO_REMOVE+=/usr/share/man/man4/mos.4.gz
 TO_REMOVE+=/usr/share/man/man4/rum.4.gz
 TO_REMOVE+=/usr/share/man/man4/run.4.gz

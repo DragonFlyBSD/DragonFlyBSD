@@ -28,34 +28,44 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/aue.4,v 1.7.2.7 2003/02/17 21:20:39 trhodes Exp $
+.\" $FreeBSD: head/share/man/man4/aue.4 267938 2014-06-26 21:46:14Z bapt $
 .\"
-.Dd December 25, 1999
+.Dd November 10, 2014
 .Dt AUE 4
 .Os
 .Sh NAME
 .Nm aue
 .Nd ADMtek AN986 Pegasus USB Ethernet driver
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd "device uhci"
 .Cd "device ohci"
-.Cd "device oldusb"
+.Cd "device usb"
 .Cd "device miibus"
 .Cd "device aue"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+if_aue_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for USB ethernet adapters based on the ADMtek
-AN986 Pegasus chipset, including the LinkSys USB100TX, the Billionton
-Systems USB100, the Melco Inc. LU-ATX, the D-Link DSB-650TX, the
-SMC 2202USB, and those LinkSys USB10T adapters that contain the
+driver provides support for USB Ethernet adapters based on the ADMtek
 AN986 Pegasus chipset.
+.Pp
 The LinkSys USB10T adapters that contain the AN986 Pegasus chipset
 will operate at 100Base-TX and full-duplex.
 .Pp
 The Pegasus contains a 10/100
-ethernet MAC with MII interface and is designed to work with both
-ethernet and HomePNA transceivers.
+Ethernet MAC with MII interface and is designed to work with both
+Ethernet and HomePNA transceivers.
 Although designed to interface with
 100Mbps peripherals, the existing USB standard specifies a maximum
 transfer speed of 12Mbps.
@@ -90,7 +100,7 @@ implies
 .Ar half-duplex
 mode.
 .It 100baseTX
-Set 100Mbps (fast ethernet) operation.
+Set 100Mbps (Fast Ethernet) operation.
 The
 .Ar mediaopt
 option can also be used to enable
@@ -115,6 +125,54 @@ half duplex mode if this media option is not specified.
 .Pp
 For more information on configuring this device, see
 .Xr ifconfig 8 .
+.Sh HARDWARE
+Adapters supported by the
+.Nm
+driver include:
+.Pp
+.Bl -bullet -compact
+.It
+Abocom UFE1000, DSB650TX_NA
+.It
+Accton USB320-EC, SpeedStream
+.It
+ADMtek AN986, AN8511
+.It
+Billionton USB100, USB100LP, USB100EL, USBE100
+.It
+Corega Ether FEther USB-T, FEther USB-TX, FEther USB-TXS
+.It
+D-Link DSB-650, DSB-650TX, DSB-650TX-PNA
+.It
+Elecom LD-USBL/TX
+.It
+Elsa Microlink USB2Ethernet
+.It
+HP hn210e
+.It
+I-O Data USB ETTX
+.It
+Kingston KNU101TX
+.It
+LinkSys USB10T adapters that contain the AN986 Pegasus chipset,
+USB10TA, USB10TX, USB100TX, USB100H1
+.It
+MELCO LUA-TX, LUA2-TX
+.It
+Netgear FA101
+.It
+Planex UE-200TX
+.It
+Sandberg USB to Network Link (model number 133-06)
+.It
+Siemens Speedstream
+.It
+SmartBridges smartNIC
+.It
+SMC 2202USB
+.It
+SOHOware NUB100
+.El
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "aue%d: watchdog timeout"
@@ -125,6 +183,7 @@ before a timeout expired.
 The driver failed to allocate an mbuf for the receiver ring.
 .El
 .Sh SEE ALSO
+.Xr altq 4 ,
 .Xr arp 4 ,
 .Xr ifmedia 4 ,
 .Xr miibus 4 ,

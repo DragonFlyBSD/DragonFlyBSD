@@ -28,10 +28,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/dev/usb/net/if_cue.c 271832 2014-09-18 21:09:22Z glebius $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 /*
  * CATC USB-EL1210A USB to ethernet driver. Used in the CATC Netmate
@@ -52,35 +51,37 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/systm.h>
+#include <sys/socket.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <net/if.h>
+#include <net/if_var.h>
+#include <net/ifq_var.h>
+
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
 #include "usbdevs.h"
 
 #define	USB_DEBUG_VAR cue_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/net/usb_ethernet.h>
-#include <dev/usb/net/if_cuereg.h>
+#include <bus/u4b/net/usb_ethernet.h>
+#include <bus/u4b/net/if_cuereg.h>
 
 /*
  * Various supported device vendors/products.
@@ -288,7 +289,7 @@ cue_setpromisc(struct usb_ether *ue)
 	struct cue_softc *sc = uether_getsc(ue);
 	struct ifnet *ifp = uether_getifp(ue);
 
-	CUE_LOCK_ASSERT(sc, MA_OWNED);
+	CUE_LOCK_ASSERT(sc);
 
 	/* if we want promiscuous mode, set the allframes bit */
 	if (ifp->if_flags & IFF_PROMISC)
@@ -309,7 +310,7 @@ cue_setmulti(struct usb_ether *ue)
 	uint32_t h = 0, i;
 	uint8_t hashtbl[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-	CUE_LOCK_ASSERT(sc, MA_OWNED);
+	CUE_LOCK_ASSERT(sc);
 
 	if (ifp->if_flags & IFF_ALLMULTI || ifp->if_flags & IFF_PROMISC) {
 		for (i = 0; i < 8; i++)
@@ -320,7 +321,6 @@ cue_setmulti(struct usb_ether *ue)
 	}
 
 	/* now program new ones */
-	if_maddr_rlock(ifp);
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 	{
 		if (ifma->ifma_addr->sa_family != AF_LINK)
@@ -328,7 +328,6 @@ cue_setmulti(struct usb_ether *ue)
 		h = cue_mchash(LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
 		hashtbl[h >> 3] |= 1 << (h & 0x7);
 	}
-	if_maddr_runlock(ifp);
 
 	/*
 	 * Also include the broadcast address in the filter
@@ -400,11 +399,11 @@ cue_attach(device_t dev)
 	int error;
 
 	device_set_usb_desc(dev);
-	mtx_init(&sc->sc_mtx, device_get_nameunit(dev), NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, device_get_nameunit(dev), 0, LK_CANRECURSE);
 
 	iface_index = CUE_IFACE_IDX;
 	error = usbd_transfer_setup(uaa->device, &iface_index,
-	    sc->sc_xfer, cue_config, CUE_N_TRANSFER, sc, &sc->sc_mtx);
+	    sc->sc_xfer, cue_config, CUE_N_TRANSFER, sc, &sc->sc_lock);
 	if (error) {
 		device_printf(dev, "allocating USB transfers failed\n");
 		goto detach;
@@ -413,7 +412,7 @@ cue_attach(device_t dev)
 	ue->ue_sc = sc;
 	ue->ue_dev = dev;
 	ue->ue_udev = uaa->device;
-	ue->ue_mtx = &sc->sc_mtx;
+	ue->ue_lock = &sc->sc_lock;
 	ue->ue_methods = &cue_ue_methods;
 
 	error = uether_ifattach(ue);
@@ -436,7 +435,7 @@ cue_detach(device_t dev)
 
 	usbd_transfer_unsetup(sc->sc_xfer, CUE_N_TRANSFER);
 	uether_ifdetach(ue);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }
@@ -457,8 +456,8 @@ cue_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 	switch (USB_GET_STATE(xfer)) {
 	case USB_ST_TRANSFERRED:
 
-		if (actlen <= (2 + sizeof(struct ether_header))) {
-			ifp->if_ierrors++;
+		if (actlen <= (int)(2 + sizeof(struct ether_header))) {
+			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto tr_setup;
 		}
 		pc = usbd_xfer_get_frame(xfer, 0);
@@ -502,12 +501,12 @@ cue_bulk_write_callback(struct usb_xfer *xfer, usb_error_t error)
 	switch (USB_GET_STATE(xfer)) {
 	case USB_ST_TRANSFERRED:
 		DPRINTFN(11, "transfer complete\n");
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 		/* FALLTHROUGH */
 	case USB_ST_SETUP:
 tr_setup:
-		IFQ_DRV_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd);
 
 		if (m == NULL)
 			return;
@@ -540,7 +539,7 @@ tr_setup:
 		DPRINTFN(11, "transfer error, %s\n",
 		    usbd_errstr(error));
 
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 
 		if (error != USB_ERR_CANCELLED) {
 			/* try to clear stall first */
@@ -557,14 +556,14 @@ cue_tick(struct usb_ether *ue)
 	struct cue_softc *sc = uether_getsc(ue);
 	struct ifnet *ifp = uether_getifp(ue);
 
-	CUE_LOCK_ASSERT(sc, MA_OWNED);
+	CUE_LOCK_ASSERT(sc);
 
-	ifp->if_collisions += cue_csr_read_2(sc, CUE_TX_SINGLECOLL);
-	ifp->if_collisions += cue_csr_read_2(sc, CUE_TX_MULTICOLL);
-	ifp->if_collisions += cue_csr_read_2(sc, CUE_TX_EXCESSCOLL);
+	IFNET_STAT_INC(ifp, collisions, cue_csr_read_2(sc, CUE_TX_SINGLECOLL));
+	IFNET_STAT_INC(ifp, collisions, cue_csr_read_2(sc, CUE_TX_MULTICOLL));
+	IFNET_STAT_INC(ifp, collisions, cue_csr_read_2(sc, CUE_TX_EXCESSCOLL));
 
 	if (cue_csr_read_2(sc, CUE_RX_FRAMEERR))
-		ifp->if_ierrors++;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 }
 
 static void
@@ -586,7 +585,7 @@ cue_init(struct usb_ether *ue)
 	struct ifnet *ifp = uether_getifp(ue);
 	int i;
 
-	CUE_LOCK_ASSERT(sc, MA_OWNED);
+	CUE_LOCK_ASSERT(sc);
 
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
@@ -621,7 +620,7 @@ cue_init(struct usb_ether *ue)
 
 	usbd_xfer_set_stall(sc->sc_xfer[CUE_BULK_DT_WR]);
 
-	ifp->if_drv_flags |= IFF_DRV_RUNNING;
+	ifp->if_flags |= IFF_RUNNING;
 	cue_start(ue);
 }
 
@@ -635,9 +634,9 @@ cue_stop(struct usb_ether *ue)
 	struct cue_softc *sc = uether_getsc(ue);
 	struct ifnet *ifp = uether_getifp(ue);
 
-	CUE_LOCK_ASSERT(sc, MA_OWNED);
+	CUE_LOCK_ASSERT(sc);
 
-	ifp->if_drv_flags &= ~IFF_DRV_RUNNING;
+	ifp->if_flags &= ~IFF_RUNNING;
 
 	/*
 	 * stop all the transfers, if not already stopped:

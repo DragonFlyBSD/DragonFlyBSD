@@ -180,7 +180,7 @@ pseudo-device	cryptodev
 #device		ugen		# Generic (oldusb)
 #device		uscanner	# Scanners (oldusb)
 #device		urio		# Diamond Rio MP3 Player (oldusb)
-#device		aue		# ADMtek USB ethernet (oldusb)
+device		aue		# ADMtek USB ethernet
 #device		rue		# RealTek 8150 based USB ethernet (oldusb)
 
 device		usb		# USB Bus (required)

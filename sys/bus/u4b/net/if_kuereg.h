@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD$
+ * $FreeBSD: head/sys/dev/usb/net/if_kuereg.h 196219 2009-08-14 20:03:53Z jhb $
  */
 
 /*
@@ -125,7 +125,7 @@ enum {
 
 struct kue_softc {
 	struct usb_ether	sc_ue;
-	struct mtx		sc_mtx;
+	struct lock		sc_lock;
 	struct kue_ether_desc	sc_desc;
 	struct usb_xfer	*sc_xfer[KUE_N_TRANSFER];
 	uint8_t			*sc_mcfilters;
@@ -136,6 +136,6 @@ struct kue_softc {
 	uint16_t		sc_rxfilt;
 };
 
-#define	KUE_LOCK(_sc)		mtx_lock(&(_sc)->sc_mtx)
-#define	KUE_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
-#define	KUE_LOCK_ASSERT(_sc, t)	mtx_assert(&(_sc)->sc_mtx, t)
+#define	KUE_LOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
+#define	KUE_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_RELEASE)
+#define	KUE_LOCK_ASSERT(_sc)	KKASSERT(lockowned(&(_sc)->sc_lock))

@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/sys/dev/usb/net/if_iphethvar.h 213805 2010-10-13 21:36:42Z hselasky $ */
 /*-
  * Copyright (c) 2010 Hans Petter Selasky. All rights reserved.
  * Copyright (c) 2009 Diego Giagio. All rights reserved.
@@ -66,7 +66,7 @@ enum {
 
 struct ipheth_softc {
 	struct usb_ether sc_ue;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	struct usb_xfer *sc_xfer[IPHETH_N_TRANSFER];
 	struct mbuf *sc_rx_buf[IPHETH_RX_FRAMES_MAX];
@@ -77,8 +77,8 @@ struct ipheth_softc {
 	uint8_t	sc_carrier_on;
 };
 
-#define	IPHETH_LOCK(_sc)			mtx_lock(&(_sc)->sc_mtx)
-#define	IPHETH_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
-#define	IPHETH_LOCK_ASSERT(_sc, t)	mtx_assert(&(_sc)->sc_mtx, t)
+#define	IPHETH_LOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
+#define	IPHETH_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_RELEASE)
+#define	IPHETH_LOCK_ASSERT(_sc)		KKASSERT(lockowned(&(_sc)->sc_lock))
 
 #endif					/* _IF_IPHETHVAR_H_ */

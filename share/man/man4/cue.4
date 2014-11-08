@@ -28,39 +28,65 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/cue.4,v 1.7.2.10 2004/03/01 09:23:45 brueffer Exp $
+.\" $FreeBSD: head/share/man/man4/cue.4 267938 2014-06-26 21:46:14Z bapt $
 .\"
-.Dd January 13, 2000
+.Dd November 10, 2014
 .Dt CUE 4
 .Os
 .Sh NAME
 .Nm cue
-.Nd CATC USB-EL1210A USB Ethernet driver
+.Nd "CATC USB-EL1210A USB Ethernet driver"
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd "device uhci"
 .Cd "device ohci"
-.Cd "device oldusb"
+.Cd "device usb"
 .Cd "device cue"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+if_cue_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for USB ethernet adapters based on the Computer
-Access Technology Corporation's USB-EL1210A chipset, including the
-CATC Netmate and Netmate II, the Belkin F5U011/F5U111, and the
-SmartBridges SmartLink.
+driver provides support for USB Ethernet adapters based on the Computer
+Access Technology Corporation's USB-EL1210A chipset.
 .Pp
 The USB-EL1210A supports a 512-bit multicast hash filter, single perfect
 filter entry for the station address and promiscuous mode.
 Packets are
 received and transmitted over separate USB bulk transfer endpoints.
 .Pp
-The CATC adapter supports only 10mbps half-duplex mode, hence there
+The CATC chipset supports only 10Mbps half-duplex mode, hence there
 are no
 .Xr ifmedia 4
 modes to select.
 .Pp
 For more information on configuring this device, see
 .Xr ifconfig 8 .
+.Sh HARDWARE
+The
+.Nm
+driver supports CATC USB-EL1210A based USB Ethernet
+adapters including:
+.Pp
+.Bl -bullet -compact
+.It
+Belkin F5U011/F5U111
+.It
+CATC Netmate
+.It
+CATC Netmate II
+.It
+SmartBridges SmartLink
+.El
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "cue%d: watchdog timeout"
@@ -72,6 +98,7 @@ The driver failed to allocate an mbuf for the receiver ring.
 .El
 .Sh SEE ALSO
 .Xr arp 4 ,
+.Xr ifmedia 4 ,
 .Xr netintro 4 ,
 .Xr ng_ether 4 ,
 .Xr ifconfig 8

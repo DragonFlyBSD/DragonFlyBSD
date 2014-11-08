@@ -22,6 +22,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/dev/usb/net/if_ipheth.c 271832 2014-09-18 21:09:22Z glebius $
  */
 
 /*
@@ -29,11 +31,7 @@
  * the Apple iPhone Ethernet driver.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -42,26 +40,29 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
+#include <sys/socket.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <net/if.h>
+#include <net/if_var.h>
+#include <net/ifq_var.h>
+
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
 #include "usbdevs.h"
 
 #define	USB_DEBUG_VAR ipheth_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
 
-#include <dev/usb/net/usb_ethernet.h>
-#include <dev/usb/net/if_iphethvar.h>
+#include <bus/u4b/net/usb_ethernet.h>
+#include <bus/u4b/net/if_iphethvar.h>
 
 static device_probe_t ipheth_probe;
 static device_attach_t ipheth_attach;
@@ -149,6 +150,7 @@ static const struct usb_ether_methods ipheth_ue_methods = {
     USB_IFACE_PROTOCOL(pt)
 
 static const STRUCT_USB_HOST_ID ipheth_devs[] = {
+#if 0
 	{IPHETH_ID(USB_VENDOR_APPLE, USB_PRODUCT_APPLE_IPHONE,
 	    IPHETH_USBINTF_CLASS, IPHETH_USBINTF_SUBCLASS,
 	    IPHETH_USBINTF_PROTO)},
@@ -161,6 +163,19 @@ static const STRUCT_USB_HOST_ID ipheth_devs[] = {
 	{IPHETH_ID(USB_VENDOR_APPLE, USB_PRODUCT_APPLE_IPHONE_4,
 	    IPHETH_USBINTF_CLASS, IPHETH_USBINTF_SUBCLASS,
 	    IPHETH_USBINTF_PROTO)},
+	{IPHETH_ID(USB_VENDOR_APPLE, USB_PRODUCT_APPLE_IPHONE_4S,
+	    IPHETH_USBINTF_CLASS, IPHETH_USBINTF_SUBCLASS,
+	    IPHETH_USBINTF_PROTO)},
+	{IPHETH_ID(USB_VENDOR_APPLE, USB_PRODUCT_APPLE_IPHONE_5,
+	    IPHETH_USBINTF_CLASS, IPHETH_USBINTF_SUBCLASS,
+	    IPHETH_USBINTF_PROTO)},
+#else
+	/* product agnostic interface match */
+	{USB_VENDOR(USB_VENDOR_APPLE),
+	 USB_IFACE_CLASS(IPHETH_USBINTF_CLASS),
+	 USB_IFACE_SUBCLASS(IPHETH_USBINTF_SUBCLASS),
+	 USB_IFACE_PROTOCOL(IPHETH_USBINTF_PROTO)},
+#endif
 };
 
 static int
@@ -211,7 +226,7 @@ ipheth_attach(device_t dev)
 
 	device_set_usb_desc(dev);
 
-	mtx_init(&sc->sc_mtx, device_get_nameunit(dev), NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, device_get_nameunit(dev), 0, LK_CANRECURSE);
 
 	error = usbd_set_alt_interface_index(uaa->device,
 	    uaa->info.bIfaceIndex, IPHETH_ALT_INTFNUM);
@@ -220,7 +235,7 @@ ipheth_attach(device_t dev)
 		goto detach;
 	}
 	error = usbd_transfer_setup(uaa->device, &sc->sc_iface_no,
-	    sc->sc_xfer, ipheth_config, IPHETH_N_TRANSFER, sc, &sc->sc_mtx);
+	    sc->sc_xfer, ipheth_config, IPHETH_N_TRANSFER, sc, &sc->sc_lock);
 	if (error) {
 		device_printf(dev, "Cannot setup USB transfers\n");
 		goto detach;
@@ -228,7 +243,7 @@ ipheth_attach(device_t dev)
 	ue->ue_sc = sc;
 	ue->ue_dev = dev;
 	ue->ue_udev = uaa->device;
-	ue->ue_mtx = &sc->sc_mtx;
+	ue->ue_lock = &sc->sc_lock;
 	ue->ue_methods = &ipheth_ue_methods;
 
 	error = ipheth_get_mac_addr(sc);
@@ -260,7 +275,7 @@ ipheth_detach(device_t dev)
 
 	uether_ifdetach(ue);
 
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }
@@ -326,9 +341,9 @@ ipheth_init(struct usb_ether *ue)
 	struct ipheth_softc *sc = uether_getsc(ue);
 	struct ifnet *ifp = uether_getifp(ue);
 
-	IPHETH_LOCK_ASSERT(sc, MA_OWNED);
+	IPHETH_LOCK_ASSERT(sc);
 
-	ifp->if_drv_flags |= IFF_DRV_RUNNING;
+	ifp->if_flags |= IFF_RUNNING;
 
 	/* stall data write direction, which depends on USB mode */
 	usbd_xfer_set_stall(sc->sc_xfer[IPHETH_BULK_TX]);
@@ -382,7 +397,7 @@ ipheth_bulk_write_callback(struct usb_xfer *xfer, usb_error_t error)
 		DPRINTFN(11, "transfer complete: %u bytes in %u frames\n",
 		    actlen, aframes);
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 		/* free all previous TX buffers */
 		ipheth_free_queue(sc->sc_tx_buf, IPHETH_TX_FRAMES_MAX);
@@ -392,7 +407,7 @@ ipheth_bulk_write_callback(struct usb_xfer *xfer, usb_error_t error)
 tr_setup:
 		for (x = 0; x != IPHETH_TX_FRAMES_MAX; x++) {
 
-			IFQ_DRV_DEQUEUE(&ifp->if_snd, m);
+			m = ifq_dequeue(&ifp->if_snd);
 
 			if (m == NULL)
 				break;
@@ -437,7 +452,7 @@ tr_setup:
 		ipheth_free_queue(sc->sc_tx_buf, IPHETH_TX_FRAMES_MAX);
 
 		/* count output errors */
-		ifp->if_oerrors++;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 
 		if (error != USB_ERR_CANCELLED) {
 			/* try to clear stall first */

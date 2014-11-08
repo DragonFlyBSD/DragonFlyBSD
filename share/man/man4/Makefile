@@ -533,6 +533,7 @@ MLINKS+=xl.4 if_xl.4
 
 .if !defined(WANT_OLDUSB)
 MAN+= \
+	ipheth.4 \
 	mos.4 \
 	rum.4 \
 	run.4 \
@@ -553,6 +554,7 @@ MAN+= \
 	usfs.4 \
 	u3g.4 \
 	xhci.4
+MLINKS+=ipheth.4 if_ipheth.4
 MLINKS+=mos.4 if_mos.4
 MLINKS+=rum.4 if_rum.4
 MLINKS+=run.4 if_run.4

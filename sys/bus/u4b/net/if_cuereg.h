@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD$
+ * $FreeBSD: head/sys/dev/usb/net/if_cuereg.h 251674 2013-06-13 01:33:01Z kevlo $
  */
 
 /*
@@ -111,7 +111,7 @@
 #define	CUE_CONFIG_IDX		0	/* config number 1 */
 #define	CUE_IFACE_IDX		0
 
-/* The interrupt endpoint is currently unused by the KLSI part. */
+/* The interrupt endpoint is currently unused by the CATC part. */
 enum {
 	CUE_BULK_DT_WR,
 	CUE_BULK_DT_RD,
@@ -120,13 +120,13 @@ enum {
 
 struct cue_softc {
 	struct usb_ether	sc_ue;
-	struct mtx		sc_mtx;
+	struct lock		sc_lock;
 	struct usb_xfer	*sc_xfer[CUE_N_TRANSFER];
 
 	int			sc_flags;
 #define	CUE_FLAG_LINK		0x0001	/* got a link */
 };
 
-#define	CUE_LOCK(_sc)		mtx_lock(&(_sc)->sc_mtx)
-#define	CUE_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
-#define	CUE_LOCK_ASSERT(_sc, t)	mtx_assert(&(_sc)->sc_mtx, t)
+#define	CUE_LOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
+#define	CUE_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_RELEASE)
+#define	CUE_LOCK_ASSERT(_sc)	KKASSERT(lockowned(&(_sc)->sc_lock))
