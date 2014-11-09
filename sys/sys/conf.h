@@ -217,6 +217,8 @@ static moduledata_t name##_mod = {					\
 };									\
 DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE)
 
+#define dev2unit(x)	((minor(x) & 0xff) | (minor(x) >> 8))
+
 int	count_dev (cdev_t dev);
 void	destroy_dev (cdev_t dev);
 void	release_dev (cdev_t dev);

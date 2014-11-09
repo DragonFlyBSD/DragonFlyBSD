@@ -412,7 +412,6 @@ struct fw_crom_buf {
 
 #define FWMAXNDMA 0x100 /* 8 bits DMA channel id. in device No. */
 
-#define dev2unit(x)	((minor(x) & 0xff) | (minor(x) >> 8))
 #define unit2minor(x)	(((x) & 0xff) | (((x) << 8) & ~0xffff))
 
 #define MAKEMINOR(f, u, s)	\
