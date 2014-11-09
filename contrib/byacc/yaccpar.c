@@ -1,11 +1,11 @@
-/* $Id: skeleton.c,v 1.31 2011/09/07 09:37:59 tom Exp $ */
+/* This file generated automatically using
+ * @Id: skel2c,v 1.3 2014/04/06 19:48:04 tom Exp @
+ */
+
+/* @Id: yaccpar.skel,v 1.5 2014/04/07 21:51:00 tom Exp @ */
 
 #include "defs.h"
 
-/*  The definition of yysccsid in the banner should be replaced with	*/
-/*  a #pragma ident directive if the target C compiler supports		*/
-/*  #pragma ident directives.						*/
-/*									*/
 /*  If the skeleton is changed, the banner should be changed so that	*/
 /*  the altered version can be easily distinguished from the original.	*/
 /*									*/
@@ -16,9 +16,9 @@
 
 const char *const banner[] =
 {
-    "#ifndef lint",
-    "static const char yysccsid[] = \"@(#)yaccpar	1.9 (Berkeley) 02/21/93\";",
-    "#endif",
+    "/* original parser id follows */",
+    "/* yysccsid[] = \"@(#)yaccpar	1.9 (Berkeley) 02/21/93\" */",
+    "/* (use YYMAJOR/YYMINOR for ifdefs dependent on parser version) */",
     "",
     "#define YYBYACC 1",
     CONCAT1("#define YYMAJOR ", YYMAJOR),
@@ -31,7 +31,8 @@ const char *const banner[] =
     "#define yyclearin      (yychar = YYEMPTY)",
     "#define yyerrok        (yyerrflag = 0)",
     "#define YYRECOVERING() (yyerrflag != 0)",
-    "",
+    "#define YYENOMEM       (-2)",
+    "#define YYEOF          0",
     0
 };
 
@@ -44,15 +45,15 @@ const char *const xdecls[] =
 
 const char *const tables[] =
 {
-    "extern short yylhs[];",
-    "extern short yylen[];",
-    "extern short yydefred[];",
-    "extern short yydgoto[];",
-    "extern short yysindex[];",
-    "extern short yyrindex[];",
-    "extern short yygindex[];",
-    "extern short yytable[];",
-    "extern short yycheck[];",
+    "extern YYINT yylhs[];",
+    "extern YYINT yylen[];",
+    "extern YYINT yydefred[];",
+    "extern YYINT yydgoto[];",
+    "extern YYINT yysindex[];",
+    "extern YYINT yyrindex[];",
+    "extern YYINT yygindex[];",
+    "extern YYINT yytable[];",
+    "extern YYINT yycheck[];",
     "",
     "#if YYDEBUG",
     "extern char *yyname[];",
@@ -90,18 +91,18 @@ const char *const hdr_defs[] =
     "#ifdef YYMAXDEPTH",
     "#define YYSTACKSIZE YYMAXDEPTH",
     "#else",
-    "#define YYSTACKSIZE 500",
-    "#define YYMAXDEPTH  500",
+    "#define YYSTACKSIZE 10000",
+    "#define YYMAXDEPTH  10000",
     "#endif",
     "#endif",
     "",
-    "#define YYINITSTACKSIZE 500",
+    "#define YYINITSTACKSIZE 200",
     "",
     "typedef struct {",
     "    unsigned stacksize;",
-    "    short    *s_base;",
-    "    short    *s_mark;",
-    "    short    *s_last;",
+    "    YYINT    *s_base;",
+    "    YYINT    *s_mark;",
+    "    YYINT    *s_last;",
     "    YYSTYPE  *l_base;",
     "    YYSTYPE  *l_mark;",
     "} YYSTACKDATA;",
@@ -142,27 +143,27 @@ const char *const body_1[] =
     "{",
     "    int i;",
     "    unsigned newsize;",
-    "    short *newss;",
+    "    YYINT *newss;",
     "    YYSTYPE *newvs;",
     "",
     "    if ((newsize = data->stacksize) == 0)",
     "        newsize = YYINITSTACKSIZE;",
     "    else if (newsize >= YYMAXDEPTH)",
-    "        return -1;",
+    "        return YYENOMEM;",
     "    else if ((newsize *= 2) > YYMAXDEPTH)",
     "        newsize = YYMAXDEPTH;",
     "",
-    "    i = data->s_mark - data->s_base;",
-    "    newss = (short *)realloc(data->s_base, newsize * sizeof(*newss));",
+    "    i = (int) (data->s_mark - data->s_base);",
+    "    newss = (YYINT *)realloc(data->s_base, newsize * sizeof(*newss));",
     "    if (newss == 0)",
-    "        return -1;",
+    "        return YYENOMEM;",
     "",
     "    data->s_base = newss;",
     "    data->s_mark = newss + i;",
     "",
     "    newvs = (YYSTYPE *)realloc(data->l_base, newsize * sizeof(*newvs));",
     "    if (newvs == 0)",
-    "        return -1;",
+    "        return YYENOMEM;",
     "",
     "    data->l_base = newvs;",
     "    data->l_mark = newvs + i;",
@@ -217,7 +218,7 @@ const char *const body_2[] =
     "    memset(&yystack, 0, sizeof(yystack));",
     "#endif",
     "",
-    "    if (yystack.s_base == NULL && yygrowstack(&yystack)) goto yyoverflow;",
+    "    if (yystack.s_base == NULL && yygrowstack(&yystack) == YYENOMEM) goto yyoverflow;",
     "    yystack.s_mark = yystack.s_base;",
     "    yystack.l_mark = yystack.l_base;",
     "    yystate = 0;",
@@ -227,13 +228,11 @@ const char *const body_2[] =
     "    if ((yyn = yydefred[yystate]) != 0) goto yyreduce;",
     "    if (yychar < 0)",
     "    {",
-    "        if ((yychar = YYLEX) < 0) yychar = 0;",
+    "        if ((yychar = YYLEX) < 0) yychar = YYEOF;",
     "#if YYDEBUG",
     "        if (yydebug)",
     "        {",
-    "            yys = 0;",
-    "            if (yychar <= YYMAXTOKEN) yys = yyname[yychar];",
-    "            if (!yys) yys = \"illegal-symbol\";",
+    "            yys = yyname[YYTRANSLATE(yychar)];",
     "            printf(\"%sdebug: state %d, reading %d (%s)\\n\",",
     "                    YYPREFIX, yystate, yychar, yys);",
     "        }",
@@ -247,7 +246,7 @@ const char *const body_2[] =
     "            printf(\"%sdebug: state %d, shifting to state %d\\n\",",
     "                    YYPREFIX, yystate, yytable[yyn]);",
     "#endif",
-    "        if (yystack.s_mark >= yystack.s_last && yygrowstack(&yystack))",
+    "        if (yystack.s_mark >= yystack.s_last && yygrowstack(&yystack) == YYENOMEM)",
     "        {",
     "            goto yyoverflow;",
     "        }",
@@ -266,11 +265,7 @@ const char *const body_2[] =
     "    }",
     "    if (yyerrflag) goto yyinrecovery;",
     "",
-    0
-};
-
-const char *const body_3[] =
-{
+    "    YYERROR_CALL(\"syntax error\");",
     "",
     "    goto yyerrlab;",
     "",
@@ -291,7 +286,7 @@ const char *const body_3[] =
     "                    printf(\"%sdebug: state %d, error recovery shifting\\",
     " to state %d\\n\", YYPREFIX, *yystack.s_mark, yytable[yyn]);",
     "#endif",
-    "                if (yystack.s_mark >= yystack.s_last && yygrowstack(&yystack))",
+    "                if (yystack.s_mark >= yystack.s_last && yygrowstack(&yystack) == YYENOMEM)",
     "                {",
     "                    goto yyoverflow;",
     "                }",
@@ -304,8 +299,7 @@ const char *const body_3[] =
     "            {",
     "#if YYDEBUG",
     "                if (yydebug)",
-    "                    printf(\"%sdebug: error recovery discarding state %d\
-\\n\",",
+    "                    printf(\"%sdebug: error recovery discarding state %d\\n\",",
     "                            YYPREFIX, *yystack.s_mark);",
     "#endif",
     "                if (yystack.s_mark <= yystack.s_base) goto yyabort;",
@@ -316,15 +310,12 @@ const char *const body_3[] =
     "    }",
     "    else",
     "    {",
-    "        if (yychar == 0) goto yyabort;",
+    "        if (yychar == YYEOF) goto yyabort;",
     "#if YYDEBUG",
     "        if (yydebug)",
     "        {",
-    "            yys = 0;",
-    "            if (yychar <= YYMAXTOKEN) yys = yyname[yychar];",
-    "            if (!yys) yys = \"illegal-symbol\";",
-    "            printf(\"%sdebug: state %d, error recovery discards token %d\
- (%s)\\n\",",
+    "            yys = yyname[YYTRANSLATE(yychar)];",
+    "            printf(\"%sdebug: state %d, error recovery discards token %d (%s)\\n\",",
     "                    YYPREFIX, yystate, yychar, yys);",
     "        }",
     "#endif",
@@ -367,19 +358,17 @@ const char *const trailer[] =
     "        *++yystack.l_mark = yyval;",
     "        if (yychar < 0)",
     "        {",
-    "            if ((yychar = YYLEX) < 0) yychar = 0;",
+    "            if ((yychar = YYLEX) < 0) yychar = YYEOF;",
     "#if YYDEBUG",
     "            if (yydebug)",
     "            {",
-    "                yys = 0;",
-    "                if (yychar <= YYMAXTOKEN) yys = yyname[yychar];",
-    "                if (!yys) yys = \"illegal-symbol\";",
+    "                yys = yyname[YYTRANSLATE(yychar)];",
     "                printf(\"%sdebug: state %d, reading %d (%s)\\n\",",
     "                        YYPREFIX, YYFINAL, yychar, yys);",
     "            }",
     "#endif",
     "        }",
-    "        if (yychar == 0) goto yyaccept;",
+    "        if (yychar == YYEOF) goto yyaccept;",
     "        goto yyloop;",
     "    }",
     "    if ((yyn = yygindex[yym]) && (yyn += yystate) >= 0 &&",
@@ -392,20 +381,16 @@ const char *const trailer[] =
     "        printf(\"%sdebug: after reduction, shifting from state %d \\",
     "to state %d\\n\", YYPREFIX, *yystack.s_mark, yystate);",
     "#endif",
-    "    if (yystack.s_mark >= yystack.s_last && yygrowstack(&yystack))",
+    "    if (yystack.s_mark >= yystack.s_last && yygrowstack(&yystack) == YYENOMEM)",
     "    {",
     "        goto yyoverflow;",
     "    }",
-    "    *++yystack.s_mark = (short) yystate;",
+    "    *++yystack.s_mark = (YYINT) yystate;",
     "    *++yystack.l_mark = yyval;",
     "    goto yyloop;",
     "",
     "yyoverflow:",
-    0
-};
-
-const char *const trailer_2[] =
-{
+    "    YYERROR_CALL(\"yacc stack overflow\");",
     "",
     "yyabort:",
     "    yyfreestack(&yystack);",
@@ -421,19 +406,13 @@ const char *const trailer_2[] =
 void
 write_section(FILE * fp, const char *const section[])
 {
-    int c;
     int i;
     const char *s;
 
     for (i = 0; (s = section[i]) != 0; ++i)
     {
-	while ((c = *s) != 0)
-	{
-	    putc(c, fp);
-	    ++s;
-	}
 	if (fp == code_file)
 	    ++outline;
-	putc('\n', fp);
+	fprintf(fp, "%s\n", s);
     }
 }
