@@ -40,7 +40,8 @@
 .Nm pci_get_powerstate ,
 .Nm pci_find_bsf ,
 .Nm pci_find_dbsf ,
-.Nm pci_find_device
+.Nm pci_find_device,
+.Nm pci_find_extcap,
 .Nd PCI bus interface
 .Sh SYNOPSIS
 .In sys/bus.h
@@ -69,6 +70,8 @@
 .Fn pci_find_dbsf "uint32_t domain" "uint8_t bus" "uint8_t slot" "uint8_t func"
 .Ft device_t
 .Fn pci_find_device "uint16_t vendor" "uint16_t device"
+.Ft int
+.Fn pci_find_extcap "device_t dev" "int capability" "int *capreg"
 .Sh DESCRIPTION
 The
 .Nm
@@ -237,6 +240,25 @@ and
 IDs.
 Note that there can be multiple matches for this search; this function
 only returns the first matching device.
+.Ss Device Information
+The
+.Fn pci_find_extcap
+function is used to locate the first instance of a PCI-express
+extended capability register set for the device
+.Fa dev .
+The extended capability to locate is specified by ID via
+.Fa capability .
+Constant macros of the form
+.Dv PCIZ_xxx
+for standard extended capability IDs are defined in
+.In bus/pci/pcireg.h .
+If the extended capability is found, then
+.Fa *capreg
+is set to the offset in configuration space of the extended capability
+register set, and
+.Fn pci_find_extcap
+Return the offset in configuration space of the requested extended
+capability entry or 0 if the specified capability was not found.
 .Sh IMPLEMENTATION NOTES
 The
 .Vt pci_addr_t
