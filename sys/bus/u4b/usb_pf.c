@@ -41,8 +41,11 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <net/if.h>
+#include <net/if_clone.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/bpf.h>
+#include <net/route.h>
 #include <sys/sysctl.h>
 #include <sys/condvar.h>
 
@@ -57,23 +60,36 @@
 #include <bus/u4b/usb_bus.h>
 #include <bus/u4b/usb_pf.h>
 #include <bus/u4b/usb_transfer.h>
+
 static void usbpf_init(void *);
 static void usbpf_uninit(void *);
-static int usbpf_ioctl(struct ifnet *, u_long, caddr_t);
-static int usbpf_clone_match(struct if_clone *, const char *);
-static int usbpf_clone_create(struct if_clone *, char *, size_t, caddr_t);
-static int usbpf_clone_destroy(struct if_clone *, struct ifnet *);
-static struct usb_bus *usbpf_ifname2ubus(const char *);
+static int usbpf_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
+static int usbpf_clone_create(struct if_clone *, int, caddr_t);
+static int usbpf_clone_destroy(struct ifnet *);
+static struct usb_bus *usbpf_ifname2ubus(int unit);
 static uint32_t usbpf_aggregate_xferflags(struct usb_xfer_flags *);
 static uint32_t usbpf_aggregate_status(struct usb_xfer_flags_int *);
 static int usbpf_xfer_frame_is_read(struct usb_xfer *, uint32_t);
 static uint32_t usbpf_xfer_precompute_size(struct usb_xfer *, int);
 
-static struct if_clone *usbpf_cloner;
-static const char usbusname[] = "usbus";
 
 SYSINIT(usbpf_init, SI_SUB_PSEUDO, SI_ORDER_MIDDLE, usbpf_init, NULL);
 SYSUNINIT(usbpf_uninit, SI_SUB_PSEUDO, SI_ORDER_MIDDLE, usbpf_uninit, NULL);
+
+static const char * usbusname = "usbus";
+struct if_clone usbpf_cloner = IF_CLONE_INITIALIZER("usbus",
+				 usbpf_clone_create,
+				 usbpf_clone_destroy,
+				 0, IF_MAXUNIT);
+
+static void
+usbpf_init(void *arg)
+{
+	if_clone_attach(&usbpf_cloner);
+	if (bootverbose)
+		kprintf("usbpf: Initialized\n");
+	return;
+}
 
 static void
 usbpf_uninit(void *arg)
@@ -85,7 +101,7 @@ usbpf_uninit(void *arg)
 	int error;
 	int i;
 	
-	if_clone_detach(usbpf_cloner);
+	if_clone_detach(&usbpf_cloner);
 
 	dc = devclass_find(usbusname);
 	if (dc == NULL)
@@ -96,13 +112,13 @@ usbpf_uninit(void *arg)
 	for (i = 0; i < devlcnt; i++) {
 		ubus = device_get_softc(devlp[i]);
 		if (ubus != NULL && ubus->ifp != NULL)
-			usbpf_clone_destroy(usbpf_cloner, ubus->ifp);
+			usbpf_clone_destroy(ubus->ifp);
 	}
-	free(devlp, M_TEMP);
+	kfree(devlp, M_TEMP);
 }
 
 static int
-usbpf_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
+usbpf_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	
 	/* No configuration allowed. */
@@ -110,18 +126,11 @@ usbpf_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 }
 
 static struct usb_bus *
-usbpf_ifname2ubus(const char *ifname)
+usbpf_ifname2ubus(int unit)
 {
 	device_t dev;
 	devclass_t dc;
-	int unit;
-	int error;
 
-	if (strncmp(ifname, usbusname, sizeof(usbusname) - 1) != 0)
-		return (NULL);
-	error = ifc_name2unit(ifname, &unit);
-	if (error || unit < 0)
-		return (NULL);
 	dc = devclass_find(usbusname);
 	if (dc == NULL)
 		return (NULL);
@@ -133,58 +142,29 @@ usbpf_ifname2ubus(const char *ifname)
 }
 
 static int
-usbpf_clone_match(struct if_clone *ifc, const char *name)
+usbpf_clone_create(struct if_clone *ifc, int unit, caddr_t params)
 {
-	struct usb_bus *ubus;
-
-	ubus = usbpf_ifname2ubus(name);
-	if (ubus == NULL)
-		return (0);
-	if (ubus->ifp != NULL)
-		return (0);
-
-	return (1);
-}
-
-static int
-usbpf_clone_create(struct if_clone *ifc, char *name, size_t len, caddr_t params)
-{
-	int error;
-	int unit;
 	struct ifnet *ifp;
 	struct usb_bus *ubus;
 
-	error = ifc_name2unit(name, &unit);
-	if (error)
-		return (error);
-	if (unit < 0)
-		return (EINVAL);
-
-	ubus = usbpf_ifname2ubus(name);
+	ubus = usbpf_ifname2ubus(unit);
 	if (ubus == NULL)
-		return (1);
+		return (EINVAL);
 	if (ubus->ifp != NULL)
-		return (1);
-
-	error = ifc_alloc_unit(ifc, &unit);
-	if (error) {
-		device_printf(ubus->parent, "usbpf: Could not allocate "
-		    "instance\n");
-		return (error);
-	}
+		return (EINVAL);
 	ifp = ubus->ifp = if_alloc(IFT_USB);
 	if (ifp == NULL) {
-		ifc_free_unit(ifc, unit);
 		device_printf(ubus->parent, "usbpf: Could not allocate "
 		    "instance\n");
 		return (ENOSPC);
 	}
-	strlcpy(ifp->if_xname, name, sizeof(ifp->if_xname));
+	ksnprintf(ifp->if_xname, sizeof(ifp->if_xname), "%s%d", usbusname, unit);
 	ifp->if_softc = ubus;
 	ifp->if_dname = usbusname;
 	ifp->if_dunit = unit;
 	ifp->if_ioctl = usbpf_ioctl;
-	if_attach(ifp);
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
+	if_attach(ifp, NULL);
 	ifp->if_flags |= IFF_UP;
 	rt_ifmsg(ifp);
 	/*
@@ -198,7 +178,7 @@ usbpf_clone_create(struct if_clone *ifc, char *name, size_t len, caddr_t params)
 }
 
 static int
-usbpf_clone_destroy(struct if_clone *ifc, struct ifnet *ifp)
+usbpf_clone_destroy(struct ifnet *ifp) 
 {
 	struct usb_bus *ubus;
 	int unit;
@@ -210,7 +190,6 @@ usbpf_clone_destroy(struct if_clone *ifc, struct ifnet *ifp)
 	bpfdetach(ifp);
 	if_detach(ifp);
 	if_free(ifp);
-	ifc_free_unit(ifc, unit);
 	
 	return (0);
 }
@@ -218,7 +197,6 @@ usbpf_clone_destroy(struct if_clone *ifc, struct ifnet *ifp)
 void
 usbpf_attach(struct usb_bus *ubus)
 {
-
 	if (bootverbose)
 		device_printf(ubus->parent, "usbpf: Attached\n");
 }
@@ -226,9 +204,8 @@ usbpf_attach(struct usb_bus *ubus)
 void
 usbpf_detach(struct usb_bus *ubus)
 {
-
 	if (ubus->ifp != NULL)
-		usbpf_clone_destroy(usbpf_cloner, ubus->ifp);
+		usbpf_clone_destroy(ubus->ifp);
 	if (bootverbose)
 		device_printf(ubus->parent, "usbpf: Detached\n");
 }
@@ -382,9 +359,10 @@ usbpf_xfertap(struct usb_xfer *xfer, int type)
 	/* sanity checks */
 	if (bus->ifp == NULL)
 		return;
+	/* XXX this is not needed on dragonfly 
 	if (!bpf_peers_present(bus->ifp->if_bpf))
 		return;
-
+	*/
 	totlen = usbpf_xfer_precompute_size(xfer, type);
 
 	if (type == USBPF_XFERTAP_SUBMIT)
@@ -398,7 +376,7 @@ usbpf_xfertap(struct usb_xfer *xfer, int type)
 	 * When BPF supports it we could pass a fragmented array of
 	 * buffers avoiding the data copy operation here.
 	 */
-	buf = ptr = malloc(totlen, M_TEMP, M_NOWAIT);
+	buf = ptr = kmalloc(totlen, M_TEMP, M_NOWAIT);
 	if (buf == NULL) {
 		device_printf(bus->parent, "usbpf: Out of memory\n");
 		return;
@@ -507,5 +485,5 @@ usbpf_xfertap(struct usb_xfer *xfer, int type)
 
 	bpf_tap(bus->ifp->if_bpf, buf, totlen);
 
-	free(buf, M_TEMP);
+	kfree(buf, M_TEMP);
 }

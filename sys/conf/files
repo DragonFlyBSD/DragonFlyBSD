@@ -2286,7 +2286,7 @@ bus/u4b/usb_lookup.c			optional usb
 bus/u4b/usb_mbuf.c			optional usb
 bus/u4b/usb_msctest.c			optional usb
 bus/u4b/usb_parse.c			optional usb
-#bus/u4b/usb_pf.c			optional usb
+bus/u4b/usb_pf.c			optional usb
 bus/u4b/usb_process.c			optional usb
 bus/u4b/usb_request.c			optional usb
 bus/u4b/usb_transfer.c			optional usb
