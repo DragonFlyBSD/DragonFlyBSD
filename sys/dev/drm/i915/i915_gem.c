@@ -931,13 +931,10 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		goto out;
 
 	size = round_page(args->size);
-	PROC_LOCK(p);
 	if (map->size + size > p->p_rlimit[RLIMIT_VMEM].rlim_cur) {
-		PROC_UNLOCK(p);
 		error = ENOMEM;
 		goto out;
 	}
-	PROC_UNLOCK(p);
 
 	addr = 0;
 	vm_object_hold(obj->vm_obj);

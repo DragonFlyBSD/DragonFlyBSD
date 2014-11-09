@@ -115,7 +115,6 @@ int radeon_fence_emit(struct radeon_device *rdev,
 	(*fence)->seq = ++rdev->fence_drv[ring].sync_seq[ring];
 	(*fence)->ring = ring;
 	radeon_fence_ring_emit(rdev, ring, *fence);
-	CTR2(KTR_DRM, "radeon fence: emit (ring=%d, seq=%d)", ring, (*fence)->seq);
 	return 0;
 }
 
@@ -300,9 +299,6 @@ static int radeon_fence_wait_seq(struct radeon_device *rdev, u64 target_seq,
 		/* Save current last activity valuee, used to check for GPU lockups */
 		last_activity = rdev->fence_drv[ring].last_activity;
 
-		CTR2(KTR_DRM, "radeon fence: wait begin (ring=%d, seq=%d)",
-		    ring, seq);
-
 		radeon_irq_kms_sw_irq_get(rdev, ring);
 		fence_queue_locked = false;
 		r = 0;
@@ -337,8 +333,6 @@ static int radeon_fence_wait_seq(struct radeon_device *rdev, u64 target_seq,
 		if (unlikely(r == EINTR || r == ERESTART)) {
 			return -r;
 		}
-		CTR2(KTR_DRM, "radeon fence: wait end (ring=%d, seq=%d)",
-		    ring, seq);
 
 		if (unlikely(!signaled)) {
 #ifndef __FreeBSD__
@@ -490,8 +484,6 @@ static int radeon_fence_wait_any_seq(struct radeon_device *rdev,
 			timeout = 1;
 		}
 
-		CTR2(KTR_DRM, "radeon fence: wait begin (ring=%d, target_seq=%d)",
-		    ring, target_seq[ring]);
 		for (i = 0; i < RADEON_NUM_RINGS; ++i) {
 			if (target_seq[i]) {
 				radeon_irq_kms_sw_irq_get(rdev, i);
@@ -534,8 +526,6 @@ static int radeon_fence_wait_any_seq(struct radeon_device *rdev,
 		if (unlikely(r == EINTR || r == ERESTART)) {
 			return -r;
 		}
-		CTR2(KTR_DRM, "radeon fence: wait end (ring=%d, target_seq=%d)",
-		    ring, target_seq[ring]);
 
 		if (unlikely(!signaled)) {
 #ifndef __FreeBSD__

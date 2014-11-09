@@ -64,9 +64,7 @@ ttm_lock_send_sig(int signo)
 	struct proc *p;
 
 	p = curproc;	/* XXXKIB curthread ? */
-	PROC_LOCK(p);
 	ksignal(p, signo);
-	PROC_UNLOCK(p);
 }
 
 void ttm_read_unlock(struct ttm_lock *lock)

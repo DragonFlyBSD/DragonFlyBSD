@@ -1609,15 +1609,8 @@ static __inline__ void drm_core_dropmap(struct drm_map *map)
 #include <drm/drm_mem_util.h>
 
 /* FreeBSD compatibility macros */
-#define PROC_LOCK(p)
-#define PROC_UNLOCK(p)
-
-#define VM_OBJECT_RLOCK(object)		VM_OBJECT_LOCK(object)
-#define VM_OBJECT_RUNLOCK(object)	VM_OBJECT_UNLOCK(object)
 #define VM_OBJECT_WLOCK(object)		VM_OBJECT_LOCK(object)
 #define VM_OBJECT_WUNLOCK(object)	VM_OBJECT_UNLOCK(object)
-
-#define CTR2(one,two,three,four)
 
 #define DRM_PCIE_SPEED_25 1
 #define DRM_PCIE_SPEED_50 2
