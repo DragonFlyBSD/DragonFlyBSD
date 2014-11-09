@@ -95,17 +95,37 @@ _rtld_bind_start:
 	pushq	%r9			# Save %r9
 	pushq	%r10			# Save %r10
 	pushq	%r11			# Save %r11
+	subq	$128,%rsp
+	movups	%xmm0,0(%rsp)		# Save xmm regs that might be
+	movups	%xmm1,16(%rsp)		# used for scratch.  clang may
+	movups	%xmm2,32(%rsp)		# use them for fast structural copies.
+	movups	%xmm3,48(%rsp)
+	movups	%xmm4,64(%rsp)
+	movups	%xmm5,80(%rsp)
+	movups	%xmm6,96(%rsp)
+	movups	%xmm7,112(%rsp)
 
-	movq	0x58(%rsp),%rdi		# Fetch obj argument    (arg 1)
-	movq	0x60(%rsp),%rsi		# Fetch reloff argument (arg 2)
-	leaq	0x68(%rsp),%rdx		# Fetch original stack pointer (arg 3)
+	movq	128+0x58(%rsp),%rdi	# Fetch obj argument    (arg 1)
+	movq	128+0x60(%rsp),%rsi	# Fetch reloff argument (arg 2)
+	leaq	128+0x68(%rsp),%rdx	# Fetch original stack pointer (arg 3)
 	leaq	(%rsi,%rsi,2),%rsi	# multiply by 3
 	leaq	(,%rsi,8),%rsi		# now 8, for 24 (sizeof Elf_Rela)
 
 	call	_rtld_bind@PLT		# Transfer control to the binder
 	/* Now %rax contains the entry point of the function being called. */
 
-	movq	%rax,0x60(%rsp)		# Store target over reloff argument
+	movq	%rax,128+0x60(%rsp)	# Store target over reloff argument
+
+	movups	0(%rsp),%xmm0
+	movups	16(%rsp),%xmm1
+	movups	32(%rsp),%xmm2
+	movups	48(%rsp),%xmm3
+	movups	64(%rsp),%xmm4
+	movups	80(%rsp),%xmm5
+	movups	96(%rsp),%xmm6
+	movups	112(%rsp),%xmm7
+	leaq	128(%rsp),%rsp
+
 	popq	%r11			# Restore %r11
 	popq	%r10			# Restore %r10
 	popq	%r9			# Restore %r9
@@ -116,7 +136,8 @@ _rtld_bind_start:
 	popq	%rdx			# Restore %rdx
 	popq	%rax			# Restore %rax
 	popfq				# Restore rflags
-	leaq	16(%rsp),%rsp		# Discard spare, obj, do not change rflags
+	leaq	16(%rsp),%rsp		# Discard spare, obj,
+					#  do not change rflags
 	ret				# "Return" to target address
 
 	.section .note.GNU-stack,"",%progbits
