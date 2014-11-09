@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/pci.9,v 1.11 2008/02/15 23:56:33 danger Exp $
 .\"
-.Dd July 9, 2009
+.Dd November 9, 2014
 .Dt PCI 9
 .Os
 .Sh NAME
@@ -40,8 +40,8 @@
 .Nm pci_get_powerstate ,
 .Nm pci_find_bsf ,
 .Nm pci_find_dbsf ,
-.Nm pci_find_device,
-.Nm pci_find_extcap,
+.Nm pci_find_device ,
+.Nm pci_find_extcap
 .Nd PCI bus interface
 .Sh SYNOPSIS
 .In sys/bus.h
@@ -240,7 +240,7 @@ and
 IDs.
 Note that there can be multiple matches for this search; this function
 only returns the first matching device.
-.Ss Device Information
+.Pp
 The
 .Fn pci_find_extcap
 function is used to locate the first instance of a PCI-express
