@@ -1,9 +1,13 @@
 ACKNOWLEDGEMENTS
+MANIFEST
 Makefile.old
 NEW_FEATURES
 NOTES
 NO_WARRANTY
+README.BTYACC
 aclocal.m4
+btyaccpar.c
+btyaccpar.skel
 config.guess
 config.sub
 config_h.in
@@ -13,5 +17,7 @@ descrip.mms
 install-sh
 makefile.in
 package/
+skel2c
 test/
 vmsbuild.com
+yaccpar.skel
