@@ -169,6 +169,16 @@ if_clone_attach(struct if_clone *ifc)
 	int err;
 	int len, maxclone;
 	int unit;
+	struct if_clone *ifct;
+
+	/* Duplicate entries in if_cloners lead
+           to infinite loops in if_clone_create */
+	LIST_FOREACH(ifct, &if_cloners, ifc_list) {
+		if (ifct == ifc) {
+			panic("%s: duplicate entry %s\n",
+			      __func__, ifc->ifc_name);
+		}
+	}
 
 	KASSERT(ifc->ifc_minifs - 1 <= ifc->ifc_maxunit,
 	    ("%s: %s requested more units then allowed (%d > %d)",
