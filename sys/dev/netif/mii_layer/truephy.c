@@ -256,7 +256,6 @@ truephy_reset(struct mii_softc *sc)
 	int i;
 
 	if (sc->mii_model == MII_MODEL_AGERE_ET1011) {
-		kprintf("phy phy phy model\n");
 		mii_phy_reset(sc);
 		return;
 	}
