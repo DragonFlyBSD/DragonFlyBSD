@@ -1,3 +1,4 @@
+/* $FreeBSD: head/sys/dev/usb/usb_pf.c 265779 2014-05-09 14:28:11Z hselasky $ */
 /*-
  * Copyright (c) 1990, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
