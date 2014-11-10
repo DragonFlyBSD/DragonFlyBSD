@@ -32,8 +32,6 @@
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pci.c,v 1.26 2010/12/19 11:14:34 tijl Exp $
  */
 
-#include "use_oldusb.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -54,13 +52,8 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#if NOLDUSB == 0
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
-#else
-#include <bus/usb/usb.h>
-#include <bus/usb/usbdi.h>
-#endif
 
 #include <emulation/ndis/pe_var.h>
 #include <emulation/ndis/cfg_var.h>

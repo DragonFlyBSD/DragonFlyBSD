@@ -30,7 +30,6 @@
 
 #include "opt_acpi.h"
 #include "opt_compat_oldpci.h"
-#include "use_oldusb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -60,12 +59,10 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pci_private.h>
 
-#if NOLDUSB == 0
 #include <bus/u4b/controller/xhcireg.h>
 #include <bus/u4b/controller/ehcireg.h>
 #include <bus/u4b/controller/ohcireg.h>
 #include <bus/u4b/controller/uhcireg.h>
-#endif
 
 #include "pcib_if.h"
 #include "pci_if.h"
@@ -311,12 +308,8 @@ TUNABLE_INT("hw.pci.honor_msi_blacklist", &pci_honor_msi_blacklist);
 SYSCTL_INT(_hw_pci, OID_AUTO, honor_msi_blacklist, CTLFLAG_RD,
     &pci_honor_msi_blacklist, 1, "Honor chipset blacklist for MSI");
 
-#if NOLDUSB == 0
 #if defined(__i386__) || defined(__x86_64__)
 static int pci_usb_takeover = 1;
-#else
-static int pci_usb_takeover = 0;
-#endif
 TUNABLE_INT("hw.pci.usb_early_takeover", &pci_usb_takeover);
 SYSCTL_INT(_hw_pci, OID_AUTO, usb_early_takeover, CTLFLAG_RD,
     &pci_usb_takeover, 1, "Enable early takeover of USB controllers.\n\
@@ -2777,7 +2770,6 @@ pci_assign_interrupt(device_t bus, device_t dev, int force_route)
 	    machintr_legacy_intr_cpuid(irq));
 }
 
-#if NOLDUSB == 0
 /* Perform early OHCI takeover from SMM. */
 static void
 ohci_early_takeover(device_t self)
@@ -2970,7 +2962,6 @@ xhci_early_takeover(device_t self)
 	}
 	bus_release_resource(self, SYS_RES_MEMORY, rid, res);
 }
-#endif /* NOLDUSB == 0 */
 
 void
 pci_add_resources(device_t pcib, device_t bus, device_t dev, int force, uint32_t prefetchmask)
@@ -3017,7 +3008,6 @@ pci_add_resources(device_t pcib, device_t bus, device_t dev, int force, uint32_t
 		pci_assign_interrupt(bus, dev, 1);
 	}
 
-#if NOLDUSB == 0
 	if (pci_usb_takeover && pci_get_class(dev) == PCIC_SERIALBUS &&
 	    pci_get_subclass(dev) == PCIS_SERIALBUS_USB) {
 		if (pci_get_progif(dev) == PCIP_SERIALBUS_USB_XHCI)
@@ -3029,7 +3019,6 @@ pci_add_resources(device_t pcib, device_t bus, device_t dev, int force, uint32_t
 		else if (pci_get_progif(dev) == PCIP_SERIALBUS_USB_UHCI)
 			uhci_early_takeover(dev);
 	}
-#endif
 }
 
 void

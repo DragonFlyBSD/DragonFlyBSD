@@ -1920,41 +1920,6 @@ device          mly
 
 # USB support
 #
-# NOTE: If you enable 'oldusb' you must also disable 'usb' and rebuild
-#	the world with WANT_OLDUSB=true in /etc/make.conf, in addition
-#	to rebuilding the kernel.
-#
-# Use this instead of usb for the old stack
-#device		oldusb
-#device		natausb		# ATA-over-USB support (oldusb)
-#
-# USB Bluetooth (oldusb)
-#device		ubt
-# Generic USB device driver (oldusb)
-#device		ugen
-# USB Rio (MP3 Player) (oldusb)
-#device		urio
-# USB scanners (oldusb)
-#device		uscanner
-# USB com devices (oldusb)
-#device		moscom
-#device		uticom
-#
-# USB CDC ethernet (oldusb)
-#Supports the LG P-500 smartphone.
-#device		lgue
-#
-# RealTek 8150 based USB ethernet device (oldusb):
-#   Melco LUA-KTX
-#   GREEN HOUSE GH-USB100B
-#   Billionton ThumbLAN USBKR2-100B
-#device		rue
-#
-# Ralink Technology RT2500USB (oldusb)
-#device		ural
-#
-# USB sound (oldusb)
-#device		"snd_uaudio"
 
 # UHCI controller
 device		uhci

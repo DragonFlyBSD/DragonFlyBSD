@@ -215,8 +215,8 @@ SUBDIR=	alias \
 	uniq \
 	units \
 	unvis \
-	${_usbhidaction} \
-	${_usbhidctl} \
+	usbhidaction \
+	u4bhidctl \
 	users \
 	uudecode \
 	uuencode \
@@ -249,13 +249,6 @@ SUBDIR=	alias \
 
 .if defined(WANT_HESIOD)
 SUBDIR+=hesinfo
-.endif
-
-.if !defined(WANT_OLDUSB)
-_usbhidctl=	u4bhidctl
-_usbhidaction=	usbhidaction
-.else
-_usbhidctl=	usbhidctl
 .endif
 
 .if !defined(NO_OPENSSL)

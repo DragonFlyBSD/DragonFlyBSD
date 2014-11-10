@@ -72,7 +72,6 @@ shells		- list of configurable shells
 sysctl.conf	- kernel state defaults
 syslog.conf	- configuration file for syslogd(8)
 ttys		- defines port configuration for init(8)
-usbd.conf	- configuration file for usbd(8)
 defaults/	- directory containing default configuration files
 defaults/compilers.conf	- default configuration for non-base compilers
 defaults/devfs.conf	- default rule file for devfs(5)

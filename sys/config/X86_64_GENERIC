@@ -313,20 +313,6 @@ pseudo-device	crypto		# core crypto support, used by wlan
 
 # USB support
 #
-# NOTE: If you enable 'oldusb' you must also disable 'usb' and rebuild
-#	the world with WANT_OLDUSB=true in /etc/make.conf, in addition
-#	to rebuilding the kernel.
-#
-#device		oldusb		# use this instead of usb for the old stack
-#device		natausb		# ATA-over-USB support (oldusb)
-#device		ugen		# Generic (oldusb)
-#device		uscanner	# Scanners (oldusb)
-#device		urio		# Diamond Rio MP3 Player (oldusb)
-device		aue		# ADMtek USB ethernet
-device		cue		# CATC USB ethernet
-device		kue		# Kawasaki LSI USB ethernet
-#device		rue		# RealTek 8150 based USB ethernet (oldusb)
-
 device		usb		# USB Bus (required)
 device		uhci		# UHCI PCI->USB interface
 device		ohci		# OHCI PCI->USB interface
@@ -337,9 +323,11 @@ device		umass		# Disks/Mass storage - Requires scbus and da
 device		ums		# Mouse
 # USB Ethernet, requires mii
 device		axe		# ASIX Electronics USB Ethernet
+device		aue		# ADMtek USB ethernet
+device		cue		# CATC USB ethernet
+device		kue		# Kawasaki LSI USB ethernet
 # USB wireless NICs, requires wlan, wlan_amrr
 #device		rum		# Ralink Technology RT2501USB/RT2601USB
-#device		ural		# Ralink Technology RT2500USB
 
 # FireWire support
 device		firewire	# FireWire bus code

@@ -17,10 +17,6 @@ SUBDIR=	\
 	video \
 	virtual
 
-.if defined(WANT_OLDUSB)
-SUBDIR+=usbmisc
-.endif
-
 .for dir in ${SUBDIR}
 .if empty(DEV_SUPPORT:M${dir}) && empty(DEV_SUPPORT:M${dir}/*)
 SUBDIR:= ${SUBDIR:N${dir}}

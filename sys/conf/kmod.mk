@@ -307,7 +307,7 @@ MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
     bus/iicbus/iicbus_if.m bus/isa/isa_if.m dev/netif/mii_layer/miibus_if.m \
     bus/pccard/card_if.m bus/pccard/power_if.m bus/pci/pci_if.m \
     bus/pci/pcib_if.m \
-    bus/ppbus/ppbus_if.m bus/smbus/smbus_if.m \
+    bus/ppbus/ppbus_if.m bus/smbus/smbus_if.m bus/u4b/usb_if.m \
     dev/acpica/acpi_if.m dev/acpica/acpi_wmi_if.m dev/disk/nata/ata_if.m \
     dev/disk/sdhci/sdhci_if.m \
     dev/sound/pcm/ac97_if.m dev/sound/pcm/channel_if.m \
@@ -316,12 +316,6 @@ MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
     bus/mmc/mmcbus_if.m bus/mmc/mmcbr_if.m \
     dev/virtual/virtio/virtio/virtio_bus_if.m \
     dev/virtual/virtio/virtio/virtio_if.m
-
-.if !defined(WANT_OLDUSB)
-MFILES+=bus/u4b/usb_if.m
-.else
-MFILES+=bus/usb/usb_if.m
-.endif
 
 .for _srcsrc in ${MFILES}
 .for _ext in c h

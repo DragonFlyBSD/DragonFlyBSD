@@ -9,10 +9,33 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 4.0 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
+
+OLD USB DRIVERS REMOVED
+-----------------------
+
+The old USB stack, along with the kernel config option "device oldusb"
+and the make.conf variable "WANT_OLDUSB" have been removed. This means
+that for custom kernel configuration files which were derived from a
+GENERIC or X86_64_GENERIC file prior to making the usb4bsd stack default,
+various (old USB stack specific) devices will now complain about being
+unknown:
+
+  * oldusb	(obviously)
+  * natausb	(not yet ported to usb4bsd)
+  * rue		(not yet ported to usb4bsd)
+  * ugen	(no longer needed in usb4bsd)
+  * urio	(not yet ported to usb4bsd)
+  * uscanner	(no longer needed in usb4bsd)
+
+They should be removed or commented out in such custom kernel configs.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.8 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
-SMP and DEVICE_POLLING OPTIONS MADE UNKNOWN
+SMP AND DEVICE_POLLING OPTIONS MADE UNKNOWN
 -------------------------------------------
 
 DEVICE_POLLING was replaced by IFPOLL_ENABLE and the former SMP code is

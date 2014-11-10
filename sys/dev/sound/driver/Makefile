@@ -5,8 +5,4 @@ SUBDIR += envy24ht es137x fm801 hda ich maestro maestro3 neomagic
 SUBDIR += solo spicds t4dwave via8233 via82c686 vibes
 SUBDIR += driver
 
-.if defined(WANT_OLDUSB)
-SUBDIR += uaudio
-.endif
-
 .include <bsd.subdir.mk>

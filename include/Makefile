@@ -56,7 +56,7 @@ LDIRS=	net netbt netgraph netgraph7 netinet netinet6 sys vm
 #
 LSUBDIRS= \
 	bus/cam bus/cam/scsi \
-	bus/cam bus/pccard bus/pci bus/isa bus/ppbus bus/smbus \
+	bus/cam bus/pccard bus/pci bus/isa bus/ppbus bus/smbus bus/u4b \
 	dev/disk/dm \
 	dev/disk/mpt/mpilib \
 	dev/misc/lpt dev/misc/ppi dev/misc/putter \
@@ -91,12 +91,6 @@ LSUBDIRS= \
 	vfs/isofs/cd9660 vfs/puffs \
 	vfs/msdosfs vfs/nfs vfs/ntfs \
 	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2
-
-.if !defined(WANT_OLDUSB)
-LSUBDIRS+=	bus/u4b
-.else
-LSUBDIRS+=	bus/usb
-.endif
 
 # For SHARED=symlinks, bus/cam is a symlink, so cam/scsi is taken care of
 LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnet/*:Nnetgraph/*:Nnetgraph7/*}

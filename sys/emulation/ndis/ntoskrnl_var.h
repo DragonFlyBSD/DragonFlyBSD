@@ -35,8 +35,6 @@
 #ifndef _NTOSKRNL_VAR_H_
 #define _NTOSKRNL_VAR_H_
 
-#include "use_oldusb.h"
-
 #define MTX_NTOSKRNL_SPIN_LOCK "NDIS thread lock"
 
 /*
@@ -1068,11 +1066,7 @@ struct irp {
 		union {
 			kapc			irp_apc;
 			struct {
-#if NOLDUSB == 0
 				void		*irp_ep;
-#else
-				void		*irp_xfer;
-#endif
 				void		*irp_dev;
 			} irp_usb;
 		} irp_misc;
@@ -1084,11 +1078,7 @@ struct irp {
 #define irp_pkttype		s2.u2.irp_pkttype
 
 #define	IRP_NDIS_DEV(irp)	(irp)->irp_tail.irp_misc.irp_usb.irp_dev
-#if NOLDUSB == 0
 #define	IRP_NDISUSB_EP(irp)	(irp)->irp_tail.irp_misc.irp_usb.irp_ep
-#else
-#define	IRP_NDISUSB_XFER(irp)	(irp)->irp_tail.irp_misc.irp_usb.irp_xfer
-#endif
 
 typedef struct irp irp;
 

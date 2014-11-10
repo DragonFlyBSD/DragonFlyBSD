@@ -32,8 +32,6 @@
  * $FreeBSD: src/sys/compat/ndis/kern_windrv.c,v 1.21 2010/11/22 20:46:38 bschmidt Exp $
  */
 
-#include "use_oldusb.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/unistd.h>
@@ -56,13 +54,8 @@
 #include <machine/segments.h>
 #endif
 
-#if NOLDUSB == 0
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
-#else
-#include <bus/usb/usb.h>
-#include <bus/usb/usbdi.h>
-#endif
 
 #include <emulation/ndis/pe_var.h>
 #include <emulation/ndis/cfg_var.h>
@@ -70,11 +63,7 @@
 #include <emulation/ndis/ntoskrnl_var.h>
 #include <emulation/ndis/ndis_var.h>
 #include <emulation/ndis/hal_var.h>
-#if NOLDUSB == 0
 #include <emulation/ndis/u4bd_var.h>
-#else
-#include <emulation/ndis/usbd_var.h>
-#endif
 
 static struct lock drvdb_lock;
 static STAILQ_HEAD(drvdb, drvdb_ent) drvdb_head;

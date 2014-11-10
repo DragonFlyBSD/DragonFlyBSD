@@ -124,10 +124,8 @@ SUBDIR= 802_11 \
 	traceroute6 \
 	trpt \
 	tzsetup \
-	${_usbconfig} \
-	${_usbd} \
-	${_usbdevs} \
-	${_usbdump} \
+	usbconfig \
+	usbdump \
 	vidcontrol \
 	vipw \
 	vknetd \
@@ -142,14 +140,6 @@ SUBDIR= 802_11 \
 	ypserv \
 	ypset \
 	zic
-
-.if defined(WANT_OLDUSB)
-_usbd=		usbd
-_usbdevs=	usbdevs
-.else
-_usbconfig=	usbconfig
-_usbdump=	usbdump
-.endif
 
 .if !defined(NO_LPR)
 SUBDIR+=lpr

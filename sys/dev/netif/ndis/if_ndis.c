@@ -35,8 +35,6 @@
  * then hacked upon mercilessly by me.
  */
 
-#include "use_oldusb.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/sockio.h>
@@ -73,13 +71,8 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#if NOLDUSB == 0
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
-#else
-#include <bus/usb/usb.h>
-#include <bus/usb/usbdi.h>
-#endif
 
 #include <emulation/ndis/pe_var.h>
 #include <emulation/ndis/cfg_var.h>
@@ -87,11 +80,7 @@
 #include <emulation/ndis/ntoskrnl_var.h>
 #include <emulation/ndis/hal_var.h>
 #include <emulation/ndis/ndis_var.h>
-#if NOLDUSB == 0
 #include <emulation/ndis/u4bd_var.h>
-#else
-#include <emulation/ndis/usbd_var.h>
-#endif
 #include <dev/netif/ndis/if_ndisvar.h>
 
 #define NDIS_DEBUG
@@ -560,19 +549,11 @@ ndis_attach(device_t dev)
 
 	lockinit(&sc->ndis_lock, "network driver", 0, LK_CANRECURSE);
 	KeInitializeSpinLock(&sc->ndis_rxlock);
-#if NOLDUSB == 0
 	KeInitializeSpinLock(&sc->ndisusb_tasklock);
 	KeInitializeSpinLock(&sc->ndisusb_xferdonelock);
-#else
-	KeInitializeSpinLock(&sc->ndisusb_xferlock);
-#endif
 	InitializeListHead(&sc->ndis_shlist);
-#if NOLDUSB == 0
 	InitializeListHead(&sc->ndisusb_tasklist);
 	InitializeListHead(&sc->ndisusb_xferdonelist);
-#else
-	InitializeListHead(&sc->ndisusb_xferlist);
-#endif
 	callout_init_mp(&sc->ndis_stat_callout);
 
 	if (sc->ndis_iftype == PCMCIABus) {
@@ -636,14 +617,10 @@ ndis_attach(device_t dev)
 	sc->ndis_startitem = IoAllocateWorkItem(sc->ndis_block->nmb_deviceobj);
 	sc->ndis_resetitem = IoAllocateWorkItem(sc->ndis_block->nmb_deviceobj);
 	sc->ndis_inputitem = IoAllocateWorkItem(sc->ndis_block->nmb_deviceobj);
-#if NOLDUSB == 0
 	sc->ndisusb_xferdoneitem =
 	    IoAllocateWorkItem(sc->ndis_block->nmb_deviceobj);
 	sc->ndisusb_taskitem =
 	    IoAllocateWorkItem(sc->ndis_block->nmb_deviceobj);
-#else
-	sc->ndisusb_xferitem = IoAllocateWorkItem(sc->ndis_block->nmb_deviceobj);
-#endif
 	KeInitializeDpc(&sc->ndis_rxdpc, ndis_rxeof_xfr_wrap, sc->ndis_block);
 
 	/* Call driver's init routine. */
@@ -1077,15 +1054,10 @@ ndis_detach(device_t dev)
 		IoFreeWorkItem(sc->ndis_resetitem);
 	if (sc->ndis_inputitem != NULL)
 		IoFreeWorkItem(sc->ndis_inputitem);
-#if NOLDUSB == 0
 	if (sc->ndisusb_xferdoneitem != NULL)
 		IoFreeWorkItem(sc->ndisusb_xferdoneitem);
 	if (sc->ndisusb_taskitem != NULL)
 		IoFreeWorkItem(sc->ndisusb_taskitem);
-#else
-	if (sc->ndisusb_xferitem != NULL)
-		IoFreeWorkItem(sc->ndisusb_xferitem);
-#endif
 
 	bus_generic_detach(dev);
 	ndis_unload_driver(sc);

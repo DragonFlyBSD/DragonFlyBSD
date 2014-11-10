@@ -130,6 +130,7 @@ MAN=	aac.4 \
 	ip.4 \
 	ip6.4 \
 	ipfirewall.4 \
+	ipheth.4 \
 	ips.4 \
 	ipsec.4 \
 	isa.4 \
@@ -154,7 +155,6 @@ MAN=	aac.4 \
 	lagg.4 \
 	led.4 \
 	lge.4 \
-	lgue.4 \
 	lm.4 \
 	lo.4 \
 	lp.4 \
@@ -169,6 +169,7 @@ MAN=	aac.4 \
 	mmc.4 \
 	mmcsd.4 \
 	mn.4 \
+	mos.4 \
 	moscom.4 \
 	mouse.4 \
 	mps.4 \
@@ -252,7 +253,9 @@ MAN=	aac.4 \
 	rndtest.4 \
 	route.4 \
 	rp.4 \
-	rue.4 \
+	rum.4 \
+	run.4 \
+	runfw.4 \
 	sa.4 \
 	safe.4 \
 	sbp.4 \
@@ -326,12 +329,18 @@ MAN=	aac.4 \
 	uark.4 \
 	ubsa.4 \
 	ubsec.4 \
+	ubser.4 \
 	ubt.4 \
 	uchcom.4 \
+	ucycom.4 \
 	ucom.4 \
+	udav.4 \
 	udp.4 \
+	uep.4 \
 	ufm.4 \
+	ufoma.4 \
 	uftdi.4 \
+	uipaq.4 \
 	ugen.4 \
 	ugensa.4 \
 	uguru.4 \
@@ -340,16 +349,25 @@ MAN=	aac.4 \
 	ukbd.4 \
 	ulpt.4 \
 	umass.4 \
+	umcs.4 \
 	umct.4 \
 	umodem.4 \
+	umoscom.4 \
 	ums.4 \
 	unix.4 \
 	uplcom.4 \
 	upmap.4 \
 	urio.4 \
+	urndis.4 \
+	urtwn.4 \
+	urtwnfw.4 \
 	usb.4 \
+	usb_quirk.4 \
+	usb_template.4 \
 	uscanner.4 \
+	usfs.4 \
 	uslcom.4 \
+	u3g.4 \
 	uticom.4 \
 	uvisor.4 \
 	uvscom.4 \
@@ -376,6 +394,7 @@ MAN=	aac.4 \
 	wlan_xauth.4 \
 	wpi.4 \
 	xe.4 \
+	xhci.4 \
 	xl.4 \
 	xpt.4 \
 	zero.4
@@ -388,7 +407,6 @@ MAN=	aac.4 \
 #	bwi.4 \
 #	iwl.4 \
 #	rtw.4 \
-#	ural.4 \
 
 MLINKS=	acpi_thermal.4 acpi_tz.4
 #MLINKS+=acx.4 if_acx.4
@@ -437,6 +455,7 @@ MLINKS+=iicbus.4 ic.4 \
 MLINKS+=ipfirewall.4 ipaccounting.4 \
 	ipfirewall.4 ipacct.4 \
 	ipfirewall.4 ipfw.4
+MLINKS+=ipheth.4 if_ipheth.4
 MLINKS+=iwi.4 if_iwi.4
 #MLINKS+=iwl.4 if_iwl.4
 MLINKS+=iwn.4 if_iwn.4
@@ -447,10 +466,10 @@ MLINKS+=jme.4 if_jme.4
 MLINKS+=kue.4 if_kue.4
 MLINKS+=lagg.4 if_lagg.4
 MLINKS+=lge.4 if_lge.4
-MLINKS+=lgue.4 if_lgue.4
 MLINKS+=lo.4 loop.4
 MLINKS+=lp.4 plip.4
 MLINKS+=mem.4 kmem.4
+MLINKS+=mos.4 if_mos.4
 MLINKS+=msk.4 if_msk.4
 MLINKS+=mxge.4 if_mxge.4
 MLINKS+=my.4 if_my.4
@@ -472,7 +491,9 @@ MLINKS+=random.4 urandom.4
 MLINKS+=re.4 if_re.4
 MLINKS+=rl.4 if_rl.4
 #MLINKS+=rtw.4 if_rtw.4
-MLINKS+=rue.4 if_rue.4
+#MLINKS+=rue.4 if_rue.4
+MLINKS+=rum.4 if_rum.4
+MLINKS+=run.4 if_run.4
 MLINKS+=sbsh.4 if_sbsh.4
 MLINKS+=scsi.4 CAM.4 \
 	scsi.4 cam.4 \
@@ -517,8 +538,11 @@ MLINKS+=ti.4 if_ti.4
 MLINKS+=tl.4 if_tl.4
 MLINKS+=tun.4 if_tun.4
 MLINKS+=txp.4 if_txp.4
+MLINKS+=udav.4 if_udav.4
 MLINKS+=upmap.4 kpmap.4
 #MLINKS+=ural.4 if_ural.4
+MLINKS+=urndis.4 if_urndis.4
+MLINKS+=urtwn.4 if_urtwn.4
 MLINKS+=vga.4 vesa.4
 MLINKS+=vge.4 if_vge.4
 MLINKS+=vlan.4 if_vlan.4
@@ -530,38 +554,6 @@ MLINKS+=wi.4 if_wi.4
 MLINKS+=wpi.4 if_wpi.4
 MLINKS+=xe.4 if_xe.4
 MLINKS+=xl.4 if_xl.4
-
-.if !defined(WANT_OLDUSB)
-MAN+= \
-	ipheth.4 \
-	mos.4 \
-	rum.4 \
-	run.4 \
-	runfw.4 \
-	ubser.4 \
-	ucycom.4 \
-	udav.4 \
-	uep.4 \
-	ufoma.4 \
-	uipaq.4 \
-	umcs.4 \
-	umoscom.4 \
-	urndis.4 \
-	urtwn.4 \
-	urtwnfw.4 \
-	usb_quirk.4 \
-	usb_template.4 \
-	usfs.4 \
-	u3g.4 \
-	xhci.4
-MLINKS+=ipheth.4 if_ipheth.4
-MLINKS+=mos.4 if_mos.4
-MLINKS+=rum.4 if_rum.4
-MLINKS+=run.4 if_run.4
-MLINKS+=udav.4 if_udav.4
-MLINKS+=urndis.4 if_urndis.4
-MLINKS+=urtwn.4 if_urtwn.4
-.endif
 
 .if ${MACHINE_ARCH} == "i386"
 SUBDIR=	 man4.${MACHINE_ARCH}

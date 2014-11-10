@@ -84,8 +84,8 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libstand \
 	libtcplay \
 	libtelnet \
-	${_libusb} \
-	${_libusbhid} \
+	libusb \
+	libu4bhid \
 	libvgl \
 	libwrap \
 	liby \
@@ -112,13 +112,6 @@ _libsmutil=	libsmutil
 _libnetgraph=	libnetgraph7
 .else
 _libnetgraph=	libnetgraph
-.endif
-
-.if !defined(WANT_OLDUSB)
-_libusb=	libusb
-_libusbhid=	libu4bhid
-.else
-_libusbhid=	libusbhid
 .endif
 
 .include <bsd.subdir.mk>

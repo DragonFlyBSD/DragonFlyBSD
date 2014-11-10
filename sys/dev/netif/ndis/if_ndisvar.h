@@ -32,8 +32,6 @@
  * $FreeBSD: src/sys/dev/if_ndis/if_ndisvar.h,v 1.39 2009/05/02 15:14:18 thompsa Exp $
  */
 
-#include "use_oldusb.h"
-
 #define NDIS_DEFAULT_NODENAME	"FreeBSD NDIS node"
 #define NDIS_NODENAME_LEN	32
 
@@ -115,7 +113,6 @@ struct ndis_vap {
 };
 #define	NDIS_VAP(vap)	((struct ndis_vap *)(vap))
 
-#if NOLDUSB == 0
 #define	NDISUSB_CONFIG_NO			0
 #define	NDISUSB_IFACE_INDEX			0
 /* XXX at USB2 there's no USBD_NO_TIMEOUT macro anymore  */
@@ -153,18 +150,6 @@ struct ndisusb_task {
 	void			*nt_ctx;
 	list_entry		nt_tasklist;
 };
-#else /* !NOLDUSB == 0 */
-#define	NDISUSB_CONFIG_NO			1
-#define	NDISUSB_IFACE_INDEX			0
-#define	NDISUSB_INTR_TIMEOUT			1000
-#define	NDISUSB_TX_TIMEOUT			10000
-struct ndisusb_xfer {
-	usbd_xfer_handle	nx_xfer;
-	usbd_private_handle	nx_priv;
-	usbd_status		nx_status;
-	list_entry		nx_xferlist;
-};
-#endif
 
 struct ndis_softc {
 	struct ifnet		*ifp;
@@ -242,7 +227,6 @@ struct ndis_softc {
 	int			ndis_tx_timer;
 	int			ndis_hang_timer;
 
-#if NOLDUSB == 0
 	struct usb_device	*ndisusb_dev;
 	struct lock		ndisusb_lock;
 	struct ndisusb_ep	ndisusb_dread_ep;
@@ -270,33 +254,3 @@ struct ndis_softc {
 #define	NDISUSB_LOCK(_sc)	lockmgr(&(_sc)->ndisusb_lock, LK_EXCLUSIVE)
 #define	NDISUSB_UNLOCK(_sc)	lockmgr(&(_sc)->ndisusb_lock, LK_RELEASE)
 #define	NDISUSB_LOCK_ASSERT(_sc, t)	KKASSERT(lockstatus(&(_sc)->ndisusb_lock, curthread) != 0)
-#else /* !NOLDUSB == 0 */
-	io_workitem		*ndisusb_xferitem;
-	list_entry		ndisusb_xferlist;
-	kspin_lock		ndisusb_xferlock;
-#define	NDISUSB_ENDPT_BOUT	0
-#define	NDISUSB_ENDPT_BIN	1
-#define	NDISUSB_ENDPT_IIN	2
-#define	NDISUSB_ENDPT_IOUT	3
-#define	NDISUSB_ENDPT_MAX	4
-	usbd_pipe_handle	ndisusb_ep[NDISUSB_ENDPT_MAX];
-	char			*ndisusb_iin_buf;
-	int			ndisusb_status;
-#define NDISUSB_STATUS_DETACH	0x1
-};
-
-#define	NDISMTX_LOCK(_sc)	lockmgr(&(_sc)->ndis_lock, LK_EXCLUSIVE)
-#define	NDISMTX_UNLOCK(_sc)	lockmgr(&(_sc)->ndis_lock, LK_RELEASE)
-#define	NDISUSB_LOCK(_sc)	get_mplock()
-#define	NDISUSB_UNLOCK(_sc)	rel_mplock()
-#define	NDIS_LOCK(_sc) do {						\
-	if ((_sc)->ndis_iftype == PNPBus)				\
-		NDISUSB_LOCK(_sc);					\
-	NDISMTX_LOCK(_sc);						\
-} while (0)
-#define	NDIS_UNLOCK(_sc) do {						\
-	if ((_sc)->ndis_iftype == PNPBus)				\
-		NDISUSB_UNLOCK(_sc);					\
-	NDISMTX_UNLOCK(_sc);						\
-} while (0)
-#endif

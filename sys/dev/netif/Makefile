@@ -13,8 +13,4 @@ SUBDIR+=ar ed sbni sr
 # SUBDIR+= acx bwi iwl rtw
 # .endif
 
-.if defined(WANT_OLDUSB)
-SUBDIR+=aue axe cue kue lgue rue
-.endif
-
 .include <bsd.subdir.mk>
