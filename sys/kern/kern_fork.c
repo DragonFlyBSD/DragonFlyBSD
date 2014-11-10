@@ -67,6 +67,7 @@
 #include <sys/dsched.h>
 
 static MALLOC_DEFINE(M_ATFORK, "atfork", "atfork callback");
+static MALLOC_DEFINE(M_REAPER, "reaper", "process reapers");
 
 /*
  * These are the stuctures used to create a callout list for things to do
@@ -383,6 +384,13 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	p2->p_forkid = mycpu->gd_forkid + mycpu->gd_cpuid;
 	p2->p_lasttid = -1;	/* first tid will be 0 */
 	p2->p_stat = SIDL;
+
+	/*
+	 * NOTE: Process 0 will not have a reaper, but process 1 (init) and
+	 *	 all other processes always will.
+	 */
+	if ((p2->p_reaper = p1->p_reaper) != NULL)
+		reaper_hold(p2->p_reaper);
 
 	RB_INIT(&p2->p_lwp_tree);
 	spin_init(&p2->p_spin, "procfork1");
@@ -803,4 +811,246 @@ start_forked_proc(struct lwp *lp1, struct proc *p2)
 		if (atomic_cmpset_int(&p2->p_flags, pflags, pflags))
 			tsleep(lp1->lwp_proc, PINTERLOCKED, "ppwait", 0);
 	}
+}
+
+/*
+ * reapctl (int op, union reaper *data)
+ */
+int
+sys_reapctl(struct reapctl_args *uap)
+{
+	struct proc *p = curproc;
+	struct proc *p2;
+	struct sysreaper *reap;
+	union reaper_info udata;
+	int error;
+
+	switch(uap->op) {
+	case REAPER_OP_ACQUIRE:
+		lwkt_gettoken(&p->p_token);
+		reap = kmalloc(sizeof(*reap), M_REAPER, M_WAITOK|M_ZERO);
+		if (p->p_reaper == NULL || p->p_reaper->p != p) {
+			reaper_init(p, reap);
+			error = 0;
+		} else {
+			kfree(reap, M_REAPER);
+			error = EALREADY;
+		}
+		lwkt_reltoken(&p->p_token);
+		break;
+	case REAPER_OP_RELEASE:
+		lwkt_gettoken(&p->p_token);
+release_again:
+		reap = p->p_reaper;
+		KKASSERT(reap != NULL);
+		if (reap->p == p) {
+			reaper_hold(reap);	/* in case of thread race */
+			lockmgr(&reap->lock, LK_EXCLUSIVE);
+			if (reap->p != p) {
+				lockmgr(&reap->lock, LK_RELEASE);
+				reaper_drop(reap);
+				goto release_again;
+			}
+			reap->p = NULL;
+			p->p_reaper = reap->parent;
+			if (p->p_reaper)
+				reaper_hold(p->p_reaper);
+			lockmgr(&reap->lock, LK_RELEASE);
+			reaper_drop(reap);	/* our ref */
+			reaper_drop(reap);	/* old p_reaper ref */
+			error = 0;
+		} else {
+			error = ENOTCONN;
+		}
+		lwkt_reltoken(&p->p_token);
+		break;
+	case REAPER_OP_STATUS:
+		bzero(&udata, sizeof(udata));
+		lwkt_gettoken_shared(&p->p_token);
+		if ((reap = p->p_reaper) != NULL && reap->p == p) {
+			udata.status.flags = reap->flags;
+			udata.status.refs = reap->refs;
+			p2 = LIST_FIRST(&p->p_children);
+			udata.status.pid_head = p2 ? p2->p_pid : -1;
+		}
+		lwkt_reltoken(&p->p_token);
+		if (uap->data) {
+			error = copyout(&udata, uap->data,
+					sizeof(udata.status));
+		} else {
+			error = 0;
+		}
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+	return error;
+}
+
+/*
+ * Bump ref on reaper, preventing destruction
+ */
+void
+reaper_hold(struct sysreaper *reap)
+{
+	KKASSERT(reap->refs > 0);
+	refcount_acquire(&reap->refs);
+}
+
+/*
+ * Drop ref on reaper, destroy the structure on the 1->0
+ * transition and loop on the parent.
+ */
+void
+reaper_drop(struct sysreaper *next)
+{
+	struct sysreaper *reap;
+
+	while ((reap = next) != NULL) {
+		if (refcount_release(&reap->refs)) {
+			next = reap->parent;
+			KKASSERT(reap->p == NULL);
+			reap->parent = NULL;
+			kfree(reap, M_REAPER);
+		} else {
+			next = NULL;
+		}
+	}
+}
+
+/*
+ * Initialize a static or newly allocated reaper structure
+ */
+void
+reaper_init(struct proc *p, struct sysreaper *reap)
+{
+	reap->parent = p->p_reaper;
+	reap->p = p;
+	if (p == initproc) {
+		reap->flags = REAPER_STAT_OWNED | REAPER_STAT_REALINIT;
+		reap->refs = 2;
+	} else {
+		reap->flags = REAPER_STAT_OWNED;
+		reap->refs = 1;
+	}
+	lockinit(&reap->lock, "subrp", 0, 0);
+	cpu_sfence();
+	p->p_reaper = reap;
+}
+
+/*
+ * Called with p->p_token held during exit.
+ *
+ * This is a bit simpler than RELEASE because there are no threads remaining
+ * to race.  We only release if we own the reaper, the exit code will handle
+ * the final p_reaper release.
+ */
+struct sysreaper *
+reaper_exit(struct proc *p)
+{
+	struct sysreaper *reap;
+
+	/*
+	 * Release acquired reaper
+	 */
+	if ((reap = p->p_reaper) != NULL && reap->p == p) {
+		lockmgr(&reap->lock, LK_EXCLUSIVE);
+		p->p_reaper = reap->parent;
+		if (p->p_reaper)
+			reaper_hold(p->p_reaper);
+		reap->p = NULL;
+		lockmgr(&reap->lock, LK_RELEASE);
+		reaper_drop(reap);
+	}
+
+	/*
+	 * Return and clear reaper (caller is holding p_token for us)
+	 * (reap->p does not equal p).  Caller must drop it.
+	 */
+	if ((reap = p->p_reaper) != NULL) {
+		p->p_reaper = NULL;
+	}
+	return reap;
+}
+
+/*
+ * Return a held (PHOLD) process representing the reaper for process (p).
+ * NULL should not normally be returned.  Caller should PRELE() the returned
+ * reaper process when finished.
+ *
+ * Remove dead internal nodes while we are at it.
+ *
+ * Process (p)'s token must be held on call.
+ * The returned process's token is NOT acquired by this routine.
+ */
+struct proc *
+reaper_get(struct sysreaper *reap)
+{
+	struct sysreaper *next;
+	struct proc *reproc;
+
+	if (reap == NULL)
+		return NULL;
+
+	/*
+	 * Extra hold for loop
+	 */
+	reaper_hold(reap);
+
+	while (reap) {
+		lockmgr(&reap->lock, LK_SHARED);
+		if (reap->p) {
+			/*
+			 * Probable reaper
+			 */
+			if (reap->p) {
+				reproc = reap->p;
+				PHOLD(reproc);
+				lockmgr(&reap->lock, LK_RELEASE);
+				reaper_drop(reap);
+				return reproc;
+			}
+
+			/*
+			 * Raced, try again
+			 */
+			lockmgr(&reap->lock, LK_RELEASE);
+			continue;
+		}
+
+		/*
+		 * Traverse upwards in the reaper topology, destroy
+		 * dead internal nodes when possible.
+		 *
+		 * NOTE: Our ref on next means that a dead node should
+		 *	 have 2 (ours and reap->parent's).
+		 */
+		next = reap->parent;
+		while (next) {
+			reaper_hold(next);
+			if (next->refs == 2 && next->p == NULL) {
+				lockmgr(&reap->lock, LK_RELEASE);
+				lockmgr(&reap->lock, LK_EXCLUSIVE);
+				if (next->refs == 2 &&
+				    reap->parent == next &&
+				    next->p == NULL) {
+					/*
+					 * reap->parent inherits ref from next.
+					 */
+					reap->parent = next->parent;
+					next->parent = NULL;
+					reaper_drop(next);	/* ours */
+					reaper_drop(next);	/* old parent */
+					next = reap->parent;
+					continue;	/* possible chain */
+				}
+			}
+			break;
+		}
+		lockmgr(&reap->lock, LK_RELEASE);
+		reaper_drop(reap);
+		reap = next;
+	}
+	return NULL;
 }

@@ -63,6 +63,7 @@
 #include <sys/varsym.h>
 #include <sys/resourcevar.h>
 #ifdef _KERNEL
+#include <sys/reaper.h>
 #include <sys/globaldata.h>
 #endif
 #include <sys/systimer.h>
@@ -343,7 +344,8 @@ struct	proc {
 	cpumask_t	p_vmm_cpumask;	/* cpus entering or in vmm */
 	struct sys_upmap *p_upmap;	/* user RO mappable per-process page */
 	forkid_t	p_forkid;	/* unique forkid */
-	void		*p_reserveds[4]; /* reserved for future */
+	struct sysreaper *p_reaper;	/* reaper control */
+	void		*p_reserveds[3]; /* reserved for future */
 };
 
 #define lwp_wchan	lwp_thread->td_wchan
@@ -577,6 +579,11 @@ void	lwpuserret(struct lwp *);
 void	lwpkthreaddeferred(void);
 void	proc_usermap(struct proc *p, int invfork);
 void	proc_userunmap(struct proc *p);
+void	reaper_hold(struct sysreaper *reap);
+void	reaper_drop(struct sysreaper *reap);
+struct sysreaper *reaper_exit(struct proc *p);
+void	reaper_init(struct proc *p, struct sysreaper *reap);
+struct proc *reaper_get(struct sysreaper *reap);
 
 u_int32_t	procrunnable (void);
 
