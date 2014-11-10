@@ -189,7 +189,43 @@ static struct ichwd_device ichwd_devices[] = {
 	{ DEVICEID_PPT29,    "Intel Panther Point watchdog timer",	10 },
 	{ DEVICEID_PPT30,    "Intel Panther Point watchdog timer",	10 },
 	{ DEVICEID_PPT31,    "Intel Panther Point watchdog timer",	10 },
+	{ DEVICEID_LPT0,     "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT1,     "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT2,     "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT3,     "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT4,     "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT5,     "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT6,     "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT7,     "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT8,     "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT9,     "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT10,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT11,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT12,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT13,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT14,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT15,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT16,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT17,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT18,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT19,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT20,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT21,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT22,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT23,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT24,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT25,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT26,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT27,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT28,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT29,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT30,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_LPT31,    "Intel Lynx Point watchdog timer",		10 },
+	{ DEVICEID_WCPT2,    "Intel Wildcat Point watchdog timer",	10 },
+	{ DEVICEID_WCPT4,    "Intel Wildcat Point watchdog timer",	10 },
+	{ DEVICEID_WCPT6,    "Intel Wildcat Point watchdog timer",	10 },
 	{ DEVICEID_DH89XXCC_LPC,  "Intel DH89xxCC watchdog timer",	10 },
+	{ DEVICEID_COLETOCRK_LPC, "Intel Coleto Creek watchdog timer",  10 },
 	{ 0, NULL, 0 },
 };
 
@@ -320,8 +356,6 @@ ichwd_tmr_reload(struct ichwd_softc *sc)
 		ichwd_write_tco_1(sc, TCO_RLD, 1);
 	else
 		ichwd_write_tco_2(sc, TCO_RLD, 1);
-
-	ichwd_verbose_printf(sc->device, "timer reloaded\n");
 }
 
 /*
