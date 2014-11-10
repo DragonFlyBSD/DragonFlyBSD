@@ -869,11 +869,12 @@ release_again:
 		lwkt_gettoken_shared(&p->p_token);
 		if ((reap = p->p_reaper) != NULL && reap->p == p) {
 			udata.status.flags = reap->flags;
-			udata.status.refs = reap->refs;
-			p2 = LIST_FIRST(&p->p_children);
-			udata.status.pid_head = p2 ? p2->p_pid : -1;
+			udata.status.refs = reap->refs - 1; /* minus ours */
 		}
+		p2 = LIST_FIRST(&p->p_children);
+		udata.status.pid_head = p2 ? p2->p_pid : -1;
 		lwkt_reltoken(&p->p_token);
+
 		if (uap->data) {
 			error = copyout(&udata, uap->data,
 					sizeof(udata.status));
