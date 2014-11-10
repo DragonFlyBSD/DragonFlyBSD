@@ -1,0 +1,128 @@
+.\"
+.\" Copyright (c) 2014
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd November 9, 2014
+.Dt REAPCTL 2
+.Os
+.Sh NAME
+.Nm reapctl
+.Nd control reaping of sub-processes
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In sys/reaper.h
+.Ft int
+.Fo reapctl
+.Fa "int op"
+.Fa "union reaper_info *data"
+.Fc
+.Sh DESCRIPTION
+The
+.Fn reapctl
+system call allows a process to take-over the reaping task from init for
+any forked sub-process, recursively (for all children thereafter) which
+would otherwise reparent to init.
+This allows a chain of control to be maintained no matter what the
+sub-process does.
+.Pp
+Any process may become a reaper for its sub-processes.
+The feature may also be used recursively, or independently, to
+create reaping domains or sub-domains.
+.Pp
+This call is typically used by service monitoring programs, jails, or
+chroots to ensure that the underlying services cannot get away from under
+the monitor.
+.Sh CONTROL OPERATIONS
+The following operations are defined in
+.In sys/reaper.h :
+.Bl -tag -width indent
+.It Dv REAPER_OP_ACQUIRE
+Become a reaper for all sub-processes forked after the call returns.
+The data argument is ignored and can be NULL.
+.It Dv REAPER_OP_RELEASE
+Release reaping duties, reaping returns to normal operation.
+The data argument is ignored and can be NULL.
+.It Dv REAPER_OP_STATUS
+Request status.
+The supplied data structure is loaded with the current reaper status.
+The data argument may be NULL, which can be used to test whether
+the system call exists or not (assuming you catch ENOSYS).
+See the include file for more information.
+.Pp
+Current status flags, indicating whether reaping is acquired.
+If reaping is acquired additional data will be returned.
+.Pp
+When reaping is acquired, the first running pid under the reaper
+is also loaded into the data structure, or -1 if there are none
+running.
+Callers wishing to destroy all processes under management can
+kill the process in question, waitpid it, and loop until no processes
+remain.
+This is guarenteed to ultimately irradicate everything that was directly
+or indirectly started under the reaper.
+.Pp
+.El
+.Sh RETURN VALUES
+0 is returned upon successful completion.
+Otherwise -1 is returned and
+.Va errno
+is set to indicate the error.
+.Pp
+If a data structure is supplied, data may be read or written to it
+according to the op code.
+Only sufficient data to support the requested operation is read or
+written.
+.Sh ERRORS
+The
+.Fn reapctl
+function will fail when one of the following occurs:
+.Bl -tag -width Er
+.It Bq Er EALREADY
+An attempt to acquire reaping is made but the current
+process has already acquired the feature.
+.It Bq Er ENOTCONN
+An attempt to release reaping is made but the current
+process has not currently acquired the feature.
+.It Bq Er EINVAL
+The operation is not supported.
+.El
+.Sh SEE ALSO
+.Sh HISTORY
+The
+.Fn reapctl
+system call first appeared in
+.Dx 4.0 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Fn reapctl
+system call was written by
+.An Matthew Dillon .

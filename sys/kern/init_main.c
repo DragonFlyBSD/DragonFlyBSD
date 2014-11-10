@@ -91,6 +91,7 @@ struct proc proc0;
 struct lwp lwp0;
 struct thread thread0;
 struct sys_kpmap *kpmap;
+struct sysreaper initreaper;
 
 int cmask = CMASK;
 u_int cpu_mi_feature;
@@ -702,6 +703,7 @@ create_init(const void *udata __unused)
 	if (error)
 		panic("cannot fork init: %d", error);
 	initproc->p_flags |= P_SYSTEM;
+	reaper_init(initproc, &initreaper);
 	lp = ONLY_LWP_IN_PROC(initproc);
 	cpu_set_fork_handler(lp, start_init, NULL);
 	crit_exit();

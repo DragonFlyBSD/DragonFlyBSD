@@ -268,6 +268,8 @@ exit1(int rv)
 	struct lwp *lp = td->td_lwp;
 	struct proc *q;
 	struct proc *pp;
+	struct proc *reproc;
+	struct sysreaper *reap;
 	struct vmspace *vm;
 	struct vnode *vtmp;
 	struct exitlist *ep;
@@ -491,14 +493,24 @@ exit1(int rv)
 	pp = NULL;
 
 	/*
-	 * Reparent all of this process's children to the init process.
-	 * We must hold initproc->p_token in order to mess with
-	 * initproc->p_children.  We already hold p->p_token (to remove
-	 * the children from our list).
+	 * release controlled reaper for exit if we own it and return the
+	 * remaining reaper (the one for us), which we will drop after we
+	 * are done.
 	 */
+	reap = reaper_exit(p);
+
+	/*
+	 * Reparent all of this process's children to the init process or
+	 * to the designated reaper.  We must hold the reaper's p_token in
+	 * order to safely mess with p_children.
+	 *
+	 * We already hold p->p_token (to remove the children from our list).
+	 */
+	reproc = NULL;
 	q = LIST_FIRST(&p->p_children);
 	if (q) {
-		lwkt_gettoken(&initproc->p_token);
+		reproc = reaper_get(reap);
+		lwkt_gettoken(&reproc->p_token);
 		while ((q = LIST_FIRST(&p->p_children)) != NULL) {
 			PHOLD(q);
 			lwkt_gettoken(&q->p_token);
@@ -508,8 +520,8 @@ exit1(int rv)
 				continue;
 			}
 			LIST_REMOVE(q, p_sibling);
-			LIST_INSERT_HEAD(&initproc->p_children, q, p_sibling);
-			q->p_pptr = initproc;
+			LIST_INSERT_HEAD(&reproc->p_children, q, p_sibling);
+			q->p_pptr = reproc;
 			q->p_sigparent = SIGCHLD;
 
 			/*
@@ -523,8 +535,8 @@ exit1(int rv)
 			lwkt_reltoken(&q->p_token);
 			PRELE(q);
 		}
-		lwkt_reltoken(&initproc->p_token);
-		wakeup(initproc);
+		lwkt_reltoken(&reproc->p_token);
+		wakeup(reproc);
 	}
 
 	/*
@@ -541,18 +553,33 @@ exit1(int rv)
 
 	/*
 	 * Notify parent that we're gone.  If parent has the PS_NOCLDWAIT
-	 * flag set, or if the handler is set to SIG_IGN, notify process 1
-	 * instead (and hope it will handle this situation).
+	 * flag set, or if the handler is set to SIG_IGN, notify the reaper
+	 * instead (it will handle this situation).
+	 *
+	 * NOTE: The reaper can still be the parent process.
 	 *
 	 * (must reload pp)
 	 */
 	if (p->p_pptr->p_sigacts->ps_flag & (PS_NOCLDWAIT | PS_CLDSIGIGN)) {
-		proc_reparent(p, initproc);
+		if (reproc == NULL)
+			reproc = reaper_get(reap);
+		proc_reparent(p, reproc);
 	}
+	if (reproc)
+		PRELE(reproc);
+	if (reap)
+		reaper_drop(reap);
 
+	/*
+	 * Signal (possibly new) parent.
+	 */
 	pp = p->p_pptr;
 	PHOLD(pp);
 	if (p->p_sigparent && pp != initproc) {
+		int sig = p->p_sigparent;
+
+		if (sig != SIGUSR1 && sig != SIGCHLD)
+			sig = SIGCHLD;
 	        ksignal(pp, p->p_sigparent);
 	} else {
 	        ksignal(pp, SIGCHLD);
