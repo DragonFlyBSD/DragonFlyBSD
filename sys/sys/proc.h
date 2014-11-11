@@ -63,7 +63,7 @@
 #include <sys/varsym.h>
 #include <sys/resourcevar.h>
 #ifdef _KERNEL
-#include <sys/reaper.h>
+#include <sys/procctl.h>
 #include <sys/globaldata.h>
 #endif
 #include <sys/systimer.h>

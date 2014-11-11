@@ -814,10 +814,10 @@ start_forked_proc(struct lwp *lp1, struct proc *p2)
 }
 
 /*
- * reapctl (int op, union reaper *data)
+ * procctl (idtype_t idtype, id_t id, int cmd, void *arg)
  */
 int
-sys_reapctl(struct reapctl_args *uap)
+sys_procctl(struct procctl_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *p2;
@@ -825,8 +825,11 @@ sys_reapctl(struct reapctl_args *uap)
 	union reaper_info udata;
 	int error;
 
-	switch(uap->op) {
-	case REAPER_OP_ACQUIRE:
+	if (uap->idtype != P_PID || uap->id != (id_t)p->p_pid)
+		return EINVAL;
+
+	switch(uap->cmd) {
+	case PROC_REAP_ACQUIRE:
 		lwkt_gettoken(&p->p_token);
 		reap = kmalloc(sizeof(*reap), M_REAPER, M_WAITOK|M_ZERO);
 		if (p->p_reaper == NULL || p->p_reaper->p != p) {
@@ -838,7 +841,7 @@ sys_reapctl(struct reapctl_args *uap)
 		}
 		lwkt_reltoken(&p->p_token);
 		break;
-	case REAPER_OP_RELEASE:
+	case PROC_REAP_RELEASE:
 		lwkt_gettoken(&p->p_token);
 release_again:
 		reap = p->p_reaper;
@@ -864,7 +867,7 @@ release_again:
 		}
 		lwkt_reltoken(&p->p_token);
 		break;
-	case REAPER_OP_STATUS:
+	case PROC_REAP_STATUS:
 		bzero(&udata, sizeof(udata));
 		lwkt_gettoken_shared(&p->p_token);
 		if ((reap = p->p_reaper) != NULL && reap->p == p) {

@@ -20,6 +20,8 @@
 
 #include <sys/syslink.h>
 
+#include <sys/procctl.h>
+
 #define	PAD_(t)	(sizeof(register_t) <= sizeof(t) ? \
 		0 : sizeof(register_t) - sizeof(t))
 
@@ -2265,12 +2267,14 @@ struct	vmm_guest_sync_addr_args {
 	long *	dstaddr;	char dstaddr_[PAD_(long *)];
 	long *	srcaddr;	char srcaddr_[PAD_(long *)];
 };
-struct	reapctl_args {
+struct	procctl_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
-	int	op;	char op_[PAD_(int)];
-	union reaper *	data;	char data_[PAD_(union reaper *)];
+	idtype_t	idtype;	char idtype_[PAD_(idtype_t)];
+	id_t	id;	char id_[PAD_(id_t)];
+	int	cmd;	char cmd_[PAD_(int)];
+	void *	data;	char data_[PAD_(void *)];
 };
 
 #ifdef COMPAT_43
@@ -2878,7 +2882,7 @@ int	sys_eaccess (struct eaccess_args *);
 int	sys_lpathconf (struct lpathconf_args *);
 int	sys_vmm_guest_ctl (struct vmm_guest_ctl_args *);
 int	sys_vmm_guest_sync_addr (struct vmm_guest_sync_addr_args *);
-int	sys_reapctl (struct reapctl_args *);
+int	sys_procctl (struct procctl_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

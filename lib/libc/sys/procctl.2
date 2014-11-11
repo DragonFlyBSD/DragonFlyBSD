@@ -30,23 +30,25 @@
 .\" SUCH DAMAGE.
 .\"
 .Dd November 9, 2014
-.Dt REAPCTL 2
+.Dt PROCCTL 2
 .Os
 .Sh NAME
-.Nm reapctl
+.Nm procctl
 .Nd control reaping of sub-processes
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
-.In sys/reaper.h
+.In sys/procctl.h
 .Ft int
-.Fo reapctl
-.Fa "int op"
-.Fa "union reaper_info *data"
+.Fo procctl
+.Fa "idtype_t idtype"
+.Fa "id_t id"
+.Fa "int cmd"
+.Fa "void *data"
 .Fc
 .Sh DESCRIPTION
 The
-.Fn reapctl
+.Fn procctl
 system call allows a process to take-over the reaping task from init for
 any forked sub-process, recursively (for all children thereafter) which
 would otherwise reparent to init.
@@ -62,15 +64,15 @@ chroots to ensure that the underlying services cannot get away from under
 the monitor.
 .Sh CONTROL OPERATIONS
 The following operations are defined in
-.In sys/reaper.h :
+.In sys/procctl.h :
 .Bl -tag -width indent
-.It Dv REAPER_OP_ACQUIRE
+.It Dv PROC_REAP_ACQUIRE
 Become a reaper for all sub-processes forked after the call returns.
 The data argument is ignored and can be NULL.
-.It Dv REAPER_OP_RELEASE
+.It Dv PROC_REAP_RELEASE
 Release reaping duties, reaping returns to normal operation.
 The data argument is ignored and can be NULL.
-.It Dv REAPER_OP_STATUS
+.It Dv PROC_REAP_STATUS
 Request status.
 The supplied data structure is loaded with the current reaper status.
 The data argument may be NULL, which can be used to test whether
@@ -102,7 +104,7 @@ Only sufficient data to support the requested operation is read or
 written.
 .Sh ERRORS
 The
-.Fn reapctl
+.Fn procctl
 function will fail when one of the following occurs:
 .Bl -tag -width Er
 .It Bq Er EALREADY
@@ -117,12 +119,12 @@ The operation is not supported.
 .Sh SEE ALSO
 .Sh HISTORY
 The
-.Fn reapctl
+.Fn procctl
 system call first appeared in
 .Dx 4.0 .
 .Sh AUTHORS
 .An -nosplit
 The
-.Fn reapctl
+.Fn procctl
 system call was written by
 .An Matthew Dillon .

@@ -580,7 +580,7 @@ exit1(int rv)
 
 		if (sig != SIGUSR1 && sig != SIGCHLD)
 			sig = SIGCHLD;
-	        ksignal(pp, p->p_sigparent);
+	        ksignal(pp, sig);
 	} else {
 	        ksignal(pp, SIGCHLD);
 	}
