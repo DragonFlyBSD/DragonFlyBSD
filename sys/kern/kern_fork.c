@@ -546,17 +546,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * Temporarily hold pptr for the RFNOWAIT case to avoid ripouts.
 	 */
 	if (flags & RFNOWAIT) {
-		if (reap && reap->p) {
-			lockmgr(&reap->lock, LK_SHARED);
-			if (reap && reap->p) {
-				pptr = reap->p;
-				PHOLD(pptr);
-			} else {
-				pptr = initproc;
-				PHOLD(pptr);
-			}
-			lockmgr(&reap->lock, LK_RELEASE);
-		} else {
+		pptr = reaper_get(reap);
+		if (pptr == NULL) {
 			pptr = initproc;
 			PHOLD(pptr);
 		}
