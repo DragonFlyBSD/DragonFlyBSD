@@ -150,11 +150,9 @@ execute_init(command_t *cmd)
 
 	/*
 	 * Start accept thread for unix domain listen socket.
-	 * Start service
 	 */
 	remote_listener(cmd, lfd);
 	pthread_mutex_lock(&serial_mtx);
-	execute_start(cmd);
 
 	/*
 	 * Become the reaper for all children recursively.
@@ -164,6 +162,11 @@ execute_init(command_t *cmd)
 				 "reaper for its children\n");
 		fflush(cmd->fp);
 	}
+
+	/*
+	 * Initial service start
+	 */
+	execute_start(cmd);
 
 	/*
 	 * Main loop is the reaper
@@ -180,6 +183,7 @@ execute_init(command_t *cmd)
 		 * if we are stopping we have to poll for reaping while
 		 * we handle stopping.
 		 */
+		fflush(cmd->fp);
 		if (RunState == RS_STARTED) {
 			pthread_mutex_unlock(&serial_mtx);
 			pid = wait3(&status, 0, NULL);
@@ -200,8 +204,12 @@ execute_init(command_t *cmd)
 					RunState = RS_STOPPED;
 					LastStop = ts.tv_sec;
 				} /* else still considered normal run state */
-			} else {
-				/* reap random disconnected child */
+			} else if (cmd->debug) {
+				/*
+				 * Reap random disconnected child, but don't
+				 * spew to the log unless debugging is
+				 * enabled.
+				 */
 				fprintf(cmd->fp,
 					"svc %s: reap indirect child %d\n",
 					cmd->label,
@@ -220,6 +228,11 @@ execute_init(command_t *cmd)
 			usepid = info.status.pid_head;
 		} else {
 			usepid = -1;
+		}
+		if (cmd->debug) {
+			fprintf(stderr, "svc %s: usepid %d\n",
+				cmd->label, usepid);
+			fflush(stderr);
 		}
 
 		/*
@@ -395,6 +408,7 @@ execute_restart(command_t *cmd)
 int
 execute_stop(command_t *cmd)
 {
+	union reaper_info info;
 	struct timespec ts;
 	int save_restart_some;
 	int save_restart_all;
@@ -411,8 +425,16 @@ execute_stop(command_t *cmd)
 	fprintf(cmd->fp, "svc %s: Stopping\n", cmd->label);
 	fflush(cmd->fp);
 
+	/*
+	 * Start the kill chain going so the master loop's wait3 wakes up.
+	 */
 	if (DirectPid >= 0) {
 		kill(DirectPid, SIGTERM);
+	} else {
+		if (procctl(P_PID, getpid(), PROC_REAP_STATUS, &info) == 0 &&
+		    info.status.pid_head > 0) {
+			kill(info.status.pid_head, SIGTERM);
+		}
 	}
 
 	clock_gettime(CLOCK_MONOTONIC_FAST, &ts);
@@ -480,7 +502,9 @@ execute_status(command_t *cmd)
 
 	switch(RunState) {
 	case RS_STOPPED:
-		if (InitCmd && InitCmd->manual_stop)
+		if (InitCmd && InitCmd->exit_mode)
+			state = "stopped (exiting)";
+		else if (InitCmd && InitCmd->manual_stop)
 			state = "stopped (manual)";
 		else
 			state = "stopped";

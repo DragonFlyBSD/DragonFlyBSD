@@ -405,7 +405,7 @@ execute_remote(command_t *cmd, int (*func)(command_t *cmd))
 		/*
 		 * Extract the label from the service.<label>.sk name.
 		 */
-		len = p2 - p1 - 4;
+		len = p2 - p1;
 		plab = strdup(p1);
 		*strrchr(plab, '.') = 0;
 
