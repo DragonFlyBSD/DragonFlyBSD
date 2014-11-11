@@ -68,7 +68,9 @@ typedef struct SvcCommand {
 	int	tail_mode : 2;
 	int	jail_clean : 1;
 	int	manual_stop : 1;
+	int	empty_label : 1;	/* label not specified (vs 'all') */
 	int	commanded : 1;		/* command by system operator */
+	int	force_remove_files : 1;
 	FILE	*fp;
 	char	*piddir;
 	char	*rootdir;
@@ -112,6 +114,7 @@ void sdup(char **strp);
 void afree(char ***aryp);
 void adup(char ***aryp);
 int setup_pid_and_socket(command_t *cmd, int *lfdp, int *pfdp);
+void remove_pid_and_socket(command_t *cmd, const char *label);
 
 void remote_execute(command_t *cmd, const char *label);
 void remote_listener(command_t *cmd, int lfd);
@@ -126,3 +129,4 @@ int execute_list(command_t *cmd);
 int execute_status(command_t *cmd);
 int execute_log(command_t *cmd);
 int execute_logfile(command_t *cmd);
+int execute_help(command_t *cmd);

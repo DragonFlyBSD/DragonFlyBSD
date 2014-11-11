@@ -259,6 +259,7 @@ execute_init(command_t *cmd)
 				fprintf(cmd->fp,
 					"svc %s: service demon exiting\n",
 					cmd->label);
+				remove_pid_and_socket(cmd, cmd->label);
 				exit(0);
 			} else if (cmd->manual_stop) {
 				/*
@@ -453,8 +454,13 @@ execute_stop(command_t *cmd)
 int
 execute_exit(command_t *cmd)
 {
+	if (cmd->commanded) {
+		InitCmd->restart_some = 0;
+		InitCmd->restart_all = 1;	/* kill all children */
+		InitCmd->exit_mode = 1;		/* exit after stop */
+	}
+	fprintf(cmd->fp, "svc %s: Stopping and Exiting\n", cmd->label);
 	execute_stop(cmd);
-	fprintf(cmd->fp, "svc %s: Exiting\n", cmd->label);
 
 	exit(0);
 }
@@ -542,4 +548,17 @@ execute_logfile(command_t *cmd)
 		}
 	}
 	return rc;
+}
+
+int
+execute_help(command_t *cmd)
+{
+	fprintf(cmd->fp,
+		"svc [options] directive [label [additional_args]]\n"
+		"\n"
+		"Directives: init start stop stopall restart exit\n"
+		"            kill list status log logf tailf logfile\n"
+		"            help\n"
+	);
+	return 0;
 }

@@ -65,7 +65,7 @@ main(int ac, char **av)
 int
 process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 {
-	const char *optstr = "dfp:r:R:xst:u:g:G:l:c:C:j:J:k:T:F:";
+	const char *optstr = "dfhp:r:R:xst:u:g:G:l:c:C:j:J:k:T:F:";
 	struct group *grent;
 	struct passwd *pwent;
 	char *sub;
@@ -80,6 +80,7 @@ process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 	cmd->termkill_timo = -1;		/* will use default value */
 	cmd->orig_ac = ac;
 	cmd->orig_av = av;
+	cmd->empty_label = 1;
 
 	optind = 1;
 	opterr = 1;
@@ -93,6 +94,10 @@ process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 			break;
 		case 'f':
 			cmd->foreground = 1;
+			break;
+		case 'h':
+			execute_help(cmd);
+			exit(0);
 			break;
 		case 'p':
 			sreplace(&cmd->piddir, optarg);
@@ -238,13 +243,20 @@ process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 
 	/*
 	 * directive [label] [...additional args]
+	 *
+	 * If 'all' is specified the label field is left NULL (ensure that
+	 * it is NULL), and empty_label is still cleared so safety code works.
 	 */
 	i = optind;
 	if (av[i]) {
 		cmd->directive = strdup(av[i]);
 		++i;
 		if (av[i]) {
-			cmd->label = strdup(av[i]);
+			cmd->empty_label = 0;
+			if (strcmp(av[i], "all") == 0)
+				sfree(&cmd->label);
+			else
+				cmd->label = strdup(av[i]);
 			++i;
 			cmd->ext_av = av + i;
 			cmd->ext_ac = ac - i;
@@ -270,8 +282,36 @@ execute_cmd(command_t *cmd)
 
 	directive = cmd->directive;
 
+	/*
+	 * Safely, require a label for directives that do not match
+	 * this list, or 'all'.  Do not default to all if no label
+	 * is specified.  e.g. things like 'kill' or 'exit' could
+	 * blow up the system.
+	 */
+	if (cmd->empty_label) {
+		if (strcmp(directive, "status") != 0 &&
+		    strcmp(directive, "list") != 0 &&
+		    strcmp(directive, "log") != 0 &&
+		    strcmp(directive, "logf") != 0 &&
+		    strcmp(directive, "help") != 0 &&
+		    strcmp(directive, "tailf") != 0)  {
+			fprintf(cmd->fp,
+				"Directive requires a label or 'all': %s\n",
+				directive);
+			rc = 1;
+			return rc;
+		}
+	}
+
+	/*
+	 * Process directives.  If we are on the remote already the
+	 * execute_remote() function will simply chain to the passed-in
+	 * function.
+	 */
 	if (strcmp(directive, "init") == 0) {
 		rc = execute_init(cmd);
+	} else if (strcmp(directive, "help") == 0) {
+		rc = execute_help(cmd);
 	} else if (strcmp(directive, "start") == 0) {
 		rc = execute_remote(cmd, execute_start);
 	} else if (strcmp(directive, "stop") == 0) {
@@ -284,12 +324,14 @@ execute_cmd(command_t *cmd)
 		rc = execute_remote(cmd, execute_restart);
 	} else if (strcmp(directive, "exit") == 0) {
 		cmd->restart_some = 0;
-		cmd->restart_all = 1;	/* stop everything */
+		cmd->restart_all = 1;		/* stop everything */
+		cmd->force_remove_files = 1;
 		rc = execute_remote(cmd, execute_exit);
 	} else if (strcmp(directive, "kill") == 0) {
 		cmd->restart_some = 0;
-		cmd->restart_all = 1;	/* stop everything */
-		cmd->termkill_timo = 0;	/* force immediate SIGKILL */
+		cmd->restart_all = 1;		/* stop everything */
+		cmd->termkill_timo = 0;		/* force immediate SIGKILL */
+		cmd->force_remove_files = 1;
 		rc = execute_remote(cmd, execute_exit);
 	} else if (strcmp(directive, "list") == 0) {
 		rc = execute_remote(cmd, execute_list);

@@ -141,6 +141,12 @@ remote_connect_thread(void *arg)
 			conn->label);
 		conn->rc = 1;
 		conn->active = 0;
+		if (cmd->force_remove_files) {
+			fprintf(cmd->fp,
+				"Removing pid and socket files for %s\n",
+				conn->label);
+			remove_pid_and_socket(cmd, conn->label);
+		}
 	}
 	return NULL;
 }

@@ -163,3 +163,14 @@ setup_pid_and_socket(command_t *cmd, int *lfdp, int *pfdp)
 		return 1;
 	}
 }
+
+void
+remove_pid_and_socket(command_t *cmd, const char *label)
+{
+	char *path;
+
+	asprintf(&path, "%s/service.%s.pid", cmd->piddir, label);
+	remove(path);
+	asprintf(&path, "%s/service.%s.sk", cmd->piddir, label);
+	remove(path);
+}

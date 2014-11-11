@@ -64,6 +64,8 @@ Foreground mode.  Instead of fork/detaching the service, the service itself
 runs in the foreground when the
 .Ar init
 directive is specified.  The pid will not be printed in this case.
+.It Fl h
+Display quick help for directives and exit.
 .It Fl p Ar directory
 Specify the directory to store pidfiles and sockets in, and to search
 for active labels.
@@ -274,7 +276,7 @@ This will cause the service demon to then kill any remaining hanger-ons
 before exiting.
 .Sh DIRECTIVES
 .Bl -tag -width indent
-.It Ar init Ar exec-command Op arguments
+.It Ar init Ar label Ar exec-command Op arguments
 Start a new service with the specified label.
 This command will fail if the label is already in-use.
 This command will detach a new service demon, create a pidfile, and
@@ -337,6 +339,8 @@ operation but override prior options and terminate ALL processes
 running under the service.
 The service demon itself then terminates and must be init'd again
 to restart.
+.Pp
+This function will also remove any stale pid and socket files.
 .It Ar kill
 Execute the
 .Ar stop
@@ -346,6 +350,8 @@ Also force the delay to 0, bypassing SIGTERM and causing SIGKILL to be
 sent.
 The service demon itself then terminates and must be init'd again
 to restart.
+.Pp
+This function will also remove any stale pid and socket files.
 .It Ar list
 List a subset of labels and their status.
 If no label is specified, all active labels are listed.
@@ -376,7 +382,7 @@ This works similarly to
 .Ar logf
 but dumps fewer lines of log history before dovetailing into
 continuous monitoring.
-.It Ar logfile Op path
+.It Ar logfile Ar label Op path
 Re-open, set, or change the logfile path for the monitor,
 creating a new logfile if necessary.
 The logfile is created by the parent monitor (the one not running in
@@ -388,6 +394,8 @@ changing the logfile.
 If you wish to disable the logfile, set it to /dev/null.
 Disabling the logfile does not prevent you from viewing the
 last ~8KB and/or monitoring any logged data.
+.It Ar help
+Display quick help for directives.
 .El
 .Pp
 Description of nominal operation
