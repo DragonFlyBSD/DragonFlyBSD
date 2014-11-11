@@ -1,0 +1,442 @@
+.\"
+.\" Copyright (c) 2014
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd November 10, 2014
+.Dt SERVICE 8
+.Os
+.Sh NAME
+.Nm service
+.Nd build an environment and monitor/maintain a service or command
+.Sh SYNOPSIS
+.Nm
+.Op Fl options
+.Ar directive
+.Ar label
+.Op arguments-to-directive
+.Sh DESCRIPTION
+.Nm
+is a program which can build, monitor, and manage a simple environment
+and execute a command within that environment.
+It uses the
+.Xr reapctl 2
+system call to round-up all processes and sub-processes created under the
+environment.
+It can detect when the specific command or the command and all processes
+exit and perform some action, and it can do a few relatively simple support
+functions to terminate, restart, or terminate/re-initiate.
+.Pp
+The following options are available:
+.Bl -tag -width indent
+.It Fl d
+Debug mode.  Additional debug output is printed.
+This will also force
+.Fl f .
+.It Fl f
+Foreground mode.  Instead of fork/detaching the service, the service itself
+runs in the foreground when the
+.Ar init
+directive is specified.  The pid will not be printed in this case.
+.It Fl p Ar directory
+Specify the directory to store pidfiles and sockets in, and to search
+for active labels.
+If not specified, the default is
+.Pa /var/run .
+If specified as
+.Ar none ,
+no pidfile will be created or maintained.  The
+.Ar none
+specification is not recommended except in combination with
+.Fl f
+.Fl x .
+.It Fl r Ar timo
+Specify the restart delay and enable automatic restarts if the original
+command under management exits, even if other processes are still present.
+This option also modifies the behavior of the
+.Ar stop
+service command, causing it to kill only the main process under management.
+Any forked children will be left intact.
+This option is exclusive with
+.Fl R .
+.It Fl R Ar timo
+Specify the restart delay and enable automatic restarts if all processes
+under management exit.
+This option also modifies the behavior of the
+.Ar stop
+service command, causing it to kill all processes under management.
+This option is exclusive with
+.Fl r .
+.It Fl x
+Causes the service demon itself to exit if the service being monitored
+exits or is stopped.
+Specify as an option to the left of the
+.Ar init
+directive.
+.Nm
+will still use
+.Fl r
+or
+.Fl R
+to indicate what is considered a dead service (some or all of the processes).
+If neither is specified,
+.Fl r
+is assumed.  If specified, the timeout is irrelevant as there will be no
+restart.
+.Pp
+This option also issues a
+.Ar stopall
+directive before exiting.  That is, it will still ensure that all processes
+running under the service, either direct or indirect, are dead before the
+service itself exits.
+.It Fl s
+Causes the service demon to issue a
+.Xr sync 2
+command after stopping or killing a service.
+.It Fl t Ar timo
+When stopping processes under management, specify the amount of time
+allowed to elapse after sending a SIGTERM before sending a SIGKILL.
+If 0 is specified, only SIGKILL will be sent.
+The default is 10 seconds.
+.It Fl u Ar user
+Set the uid of the command to execute.  The service demon itself is not
+affected.
+.Pp
+Specified when initializing a new service, has no effect for other directives.
+Cannot be overridden in
+.Ar start
+or
+.Ar restart .
+.It Fl g Ar group
+Set the gid of the command to execute.  The service demon itself is not
+affected.
+.Pp
+Specified when initializing a new service, has no effect for other directives.
+Cannot be overridden in
+.Ar start
+or
+.Ar restart .
+.It Fl G Ar group-list
+Set the group-list of the command to execute.  The service demon itself is not
+affected.
+.Pp
+Specified when initializing a new service, has no effect for other directives.
+Cannot be overridden in
+.Ar start
+or
+.Ar restart .
+.It Fl l Ar path
+Set the logfile path for the command.
+If not specified, no logfile will be created.
+However, the service monitor will still keep track of the last ~8KB or
+so of stdout/stderr output.
+.Pp
+Specified when initializing a new service, has no effect for other directives.
+.It Fl c Ar directory
+.It Fl C Ar directory
+Chroot into the specified directory when executing or re-executing the
+command.  The service itself stays outside the chroot.
+When
+.Fl c
+is used, the service will automatically mount /dev in the chroot if it
+does not already exist.
+This will be unmounted when the service exits or is killed, but remains
+in-place when the service is stopped.
+When
+.Fl C
+is used, the service will not automatically mount /dev in the chroot.
+.Pp
+Specified when initializing a new service, has no effect for other directives.
+Cannot be overridden in
+.Ar start
+or
+.Ar restart .
+.It Fl j Ar directory
+.It Fl J Ar directory
+Create a jail and operate in a manner similar to a chroot.
+.It Fl k Ar jail-spec
+Additional specification for the jail.  See below.
+.It Fl T Ar title
+Tell
+.Nm
+to use
+.Xr setproctitle 1
+to adjust what shows up in a ps command, to make process lists easier to
+diagnose.
+.It Fl F Ar restarts:pertimo
+Specify failure timing.
+If a service is automatically restarted more than the specified number
+within the specified period, the service is considered to be in a failed
+state when it next dies and will no longer be restarted.
+.Pp
+The situation will be syslogged and an email will be sent to
+.Ar service-errors
+with a description of the problem if the service is running as root.
+If the service is running as a user, the email is sent to the user.
+The system operator should generally setup a mail alias to point
+.Ar service-errors
+to the desired destination.
+.Pp
+This feature is disabled by default.
+If you only specify the restart count the rate will default to
+per 60 seconds.
+Specify as an option to the left of the
+.Ar init
+directive.
+.It Ar directive Op arguments-to-directive
+Specify a directive (see below).
+.It Ar label
+Specify a label to name or locate the service.
+Note that most directives allow a label prefix to be specified, affecting
+multiple services.
+If your label is postfixed by a number, you should use a fixed-width
+0-fill field for the number or risk some confusion.
+.El
+.Pp
+All timeouts and delays are specified in seconds.
+.Pp
+If neither
+.Fl r
+or
+.Fl R
+is specified in the
+.Ar init
+directive, the service will not automatically restart if the underlying
+processes exit.  The service demon will remain intact unless
+.Fl x
+has been specified.
+.Pp
+.Nm
+always creates a pid file in the pid directory named
+.Pa service.<label>.pid
+and maintains an open descriptor with an active exclusive
+.Xr flock 2
+on the file.
+Scripts can determine whether the service demon itself is running or not
+via the
+.Xr lockf 1
+utility, or may use the convenient
+.Ar status
+directive and check the exit code to get more detailed status.
+In addition, a service socket is created in the pid directory named
+.Pa service.<label>.sk
+which
+.Nm
+uses to communicate with a running service demon.
+.Pp
+Note that the service demon itself will not exit when the executed command
+exits unless you have used the
+.Fl x
+option, or the
+.Ar exit
+or
+.Ar kill
+directives.
+.Pp
+Some RC services, such as sendmail, may maintain multiple service processes
+and name each one with a postfix to the label.
+By specifying just the prefix, your directives will affect all matching
+labels.
+.Pp
+For build systems the
+.Fl x
+option is typically used, sometimes with the
+.Fl f
+option, and allowed to default to just waiting for the original command
+exec to exit.
+This will cause the service demon to then kill any remaining hanger-ons
+before exiting.
+.Sh DIRECTIVES
+.Bl -tag -width indent
+.It Ar init Ar exec-command Op arguments
+Start a new service with the specified label.
+This command will fail if the label is already in-use.
+This command will detach a new service demon, create a pidfile, and
+output the pid of the new service demon to stdout before returning.
+.Pp
+If the
+.Ar exec-command
+is a single word and not an absolute or relative path, the system
+command path will be searched for the command.
+.It Ar start
+Start a service that has been stopped.
+The label can be a wildcard prefix so, for example, if there are
+three sendmail services (sendmail01, sendmail02, sendmail03), then
+the label 'sendmail' will operate on all three.
+.Pp
+If the service is already running, this directive will be a NOP.
+.It Ar stop
+Stop a running service by sending a TERM signal and later a KILL signal
+if necessry, to some or all processes
+running under the service.  The processes signaled depend on the original
+.Fl r
+or
+.Fl R
+options specified when the service was initiated.
+These options, along with
+.Fl t
+may also be specified in this directive to override
+(but not permanently change) the original options.
+.Pp
+The service demon itself remains intact.
+.It Ar stopall
+This is a short-hand for
+.Fl R Ar 0
+.Ar stop .
+It will kill all sub-processes of the service regardless of whether
+.Fl r
+or
+.Fl R
+was used in the original
+.Ar init
+directive.
+.It Ar restart
+Execute the
+.Ar stop
+operation, sleep for a few seconds based on the original
+.Fl r
+or
+.Fl R
+options, and then execute the
+.Ar start
+operation.
+These options, along with
+.Fl t
+may also be specified in this directive to override
+(but not permanently change) the original options.
+.It Ar exit
+Execute the
+.Ar stop
+operation but override prior options and terminate ALL processes
+running under the service.
+The service demon itself then terminates and must be init'd again
+to restart.
+.It Ar kill
+Execute the
+.Ar stop
+operation but override prior options and terminate ALL processes
+running under the service.
+Also force the delay to 0, bypassing SIGTERM and causing SIGKILL to be
+sent.
+The service demon itself then terminates and must be init'd again
+to restart.
+.It Ar list
+List a subset of labels and their status.
+If no label is specified, all active labels are listed.
+.It Ar status
+Print the status of a particular label, exit with a 0 status if
+the service exists and is still considered to be running.
+Exit with 1 if the service exists but is considered to be stopped.
+Exit with 2 if the service does not exist.
+If multiple labels match, the worst condition found becomes the exit code.
+.Pp
+Scripts that use this feature can conveniently use the
+.Ar start
+directive to start any matching service that is considered stopped.
+The directive is a NOP for services that are considered to be running.
+.It Ar log
+The service demon monitors stdout/stderr output from programs it runs
+continuously and will remember the last ~8KB or so, which can be
+dumped via this directive.
+.It Ar logf
+This works the same as
+.Ar log
+but continues to monitor and dump the output until you ^C.
+In order to avoid potentially stalling the service under management,
+gaps may occur if the monitor is unable to keep up with the log
+output.
+.It Ar tailf
+This works similarly to
+.Ar logf
+but dumps fewer lines of log history before dovetailing into
+continuous monitoring.
+.It Ar logfile Op path
+Re-open, set, or change the logfile path for the monitor,
+creating a new logfile if necessary.
+The logfile is created by the parent monitor (the one not running in
+a chroot or jail or as a particular user or group).
+This way the service under management cannot modify or destroy it.
+.Pp
+It is highly recommended that you specify an absolute path when
+changing the logfile.
+If you wish to disable the logfile, set it to /dev/null.
+Disabling the logfile does not prevent you from viewing the
+last ~8KB and/or monitoring any logged data.
+.El
+.Pp
+Description of nominal operation
+.Xr reapctl 2
+system call.
+.Sh JAIL-SPECIFICATIONS
+A simple jail just chroots into a directory, possibly mounts /dev, and
+allows all current IP bindings to be used.
+The service demon itself does not run in the jail, but will keep the
+jail intact across
+.Ar stop
+and
+.Ar start/restart
+operations by leaving a forked process intact inside.
+If the jail is destroyed, the service demon will re-create it if necessary
+on a
+.Ar start/restart .
+.Fl k
+option may be used to specify additional parameters.
+Parameters are comma-delimited with no spaces.
+Values may be specified in the name=value format.
+For example:
+.Fl k Ar clean,ip=1.2.3.4,ip=5.6.7.8
+.Bl -tag -width indent
+.It Ar clean
+The jail is handed a clean environment, similar to what
+.Xr jail 8
+does.
+.It Ar ip=addr
+The jail is allowed to bind to the specified IP address.  This option may
+be specified multiple times.
+.El
+.Sh SIGNALS
+Generally speaking signals should not be sent to a service demon.
+Instead, the command should be run with an appropriate directive to
+adjust running behavior.
+However, the service demon will act on signals as follows:
+.Bl -tag -width indent
+.It Dv SIGTERM
+The service demon will execute the
+.Ar exit
+directive.
+.It Dv SIGHUP
+The service demon will execute the
+.Ar restart
+directive.
+.El
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Dx 4.0 .
