@@ -8,7 +8,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/miibus.4,v 1.3.2.6 2004/03/01 09:22:11 brueffer Exp $
 .\"
-.Dd July 26, 2008
+.Dd November 11, 2014
 .Dt MIIBUS 4
 .Os
 .Sh NAME
@@ -47,6 +47,14 @@ The following network device drivers use the
 interface:
 .Pp
 .Bl -tag -compact -width ".Xr stge 4"
+.It Xr ae 4
+Attansic/Atheros L2 FastEthernet
+.It Xr age 4
+Attansic/Atheros L1 Gigabit Ethernet
+.It Xr alc 4
+Atheros AR8131/AR8132 Gigabit/Fast Ethernet
+.It Xr ale 4
+Atheros AR8121/AR8113/AR8114 Gigabit/Fast Ethernet
 .It Xr aue 4
 ADMtek USB Ethernet
 .It Xr axe 4
@@ -69,6 +77,8 @@ Intel EtherExpress PRO/100B
 JMicron Gigabit Ethernet
 .It Xr lge 4
 Level 1 LXT1001 NetCellerator Gigabit Ethernet
+.It Xr mos 4
+Moschip MCS7730/MCS7830/MCS7832 USB Ethernet
 .It Xr msk 4
 Marvell/SysKonnect Yukon II Gigabit Ethernet
 .It Xr nfe 4
@@ -81,8 +91,8 @@ AMD Am79C97x PCI 10/100
 RealTek 8139C+/8169/8169S/8110S
 .It Xr rl 4
 RealTek 8129/8139
-.It Xr rue 4
-RealTek RTL8150 USB To Fast Ethernet
+.\".It Xr rue 4
+.\"RealTek RTL8150 USB To Fast Ethernet
 .It Xr sf 4
 Adaptec AIC-6915
 .It Xr sis 4
@@ -97,6 +107,8 @@ Sundance/Tamarack TC9021 Gigabit Ethernet
 Texas Instruments ThunderLAN
 .It Xr tx 4
 SMC EtherPower II (83c170)
+.It Xr udav 4
+Davicom DM9601 USB Ethernet
 .It Xr vge 4
 VIA Networking Technologies VT6122 PCI Gigabit Ethernet
 .It Xr vr 4
@@ -116,6 +128,10 @@ and
 .Nx ,
 but as a result are not well behaved newbus device drivers.
 .Sh SEE ALSO
+.Xr ae 4 ,
+.Xr age 4 ,
+.Xr alc 4 ,
+.Xr ale 4 ,
 .Xr arp 4 ,
 .Xr aue 4 ,
 .Xr axe 4 ,
@@ -128,6 +144,7 @@ but as a result are not well behaved newbus device drivers.
 .Xr fxp 4 ,
 .Xr jme 4 ,
 .Xr lge 4 ,
+.Xr mos 4 ,
 .Xr msk 4 ,
 .Xr netintro 4 ,
 .Xr nfe 4 ,
@@ -135,7 +152,7 @@ but as a result are not well behaved newbus device drivers.
 .Xr pcn 4 ,
 .Xr re 4 ,
 .Xr rl 4 ,
-.Xr rue 4 ,
+.\".Xr rue 4 ,
 .Xr sf 4 ,
 .Xr sis 4 ,
 .Xr sk 4 ,
@@ -143,6 +160,7 @@ but as a result are not well behaved newbus device drivers.
 .Xr stge 4 ,
 .Xr tl 4 ,
 .Xr tx 4 ,
+.Xr udav 4 ,
 .Xr vge 4 ,
 .Xr vr 4 ,
 .Xr wb 4 ,
