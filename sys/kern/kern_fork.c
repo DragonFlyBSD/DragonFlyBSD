@@ -246,6 +246,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	struct proc *pptr;
 	struct pgrp *p1grp;
 	struct pgrp *plkgrp;
+	struct sysreaper *reap;
 	uid_t uid;
 	int ok, error;
 	static int curfail = 0;
@@ -389,8 +390,12 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * NOTE: Process 0 will not have a reaper, but process 1 (init) and
 	 *	 all other processes always will.
 	 */
-	if ((p2->p_reaper = p1->p_reaper) != NULL)
-		reaper_hold(p2->p_reaper);
+	if ((reap = p1->p_reaper) != NULL) {
+		reaper_hold(reap);
+		p2->p_reaper = reap;
+	} else {
+		p2->p_reaper = NULL;
+	}
 
 	RB_INIT(&p2->p_lwp_tree);
 	spin_init(&p2->p_spin, "procfork1");
@@ -535,19 +540,38 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * Attach the new process to its parent.
 	 *
 	 * If RFNOWAIT is set, the newly created process becomes a child
-	 * of init.  This effectively disassociates the child from the
-	 * parent.
+	 * of the reaper (typically init).  This effectively disassociates
+	 * the child from the parent.
+	 *
+	 * Temporarily hold pptr for the RFNOWAIT case to avoid ripouts.
 	 */
-	if (flags & RFNOWAIT)
-		pptr = initproc;
-	else
+	if (flags & RFNOWAIT) {
+		if (reap && reap->p) {
+			lockmgr(&reap->lock, LK_SHARED);
+			if (reap && reap->p) {
+				pptr = reap->p;
+				PHOLD(pptr);
+			} else {
+				pptr = initproc;
+				PHOLD(pptr);
+			}
+			lockmgr(&reap->lock, LK_RELEASE);
+		} else {
+			pptr = initproc;
+			PHOLD(pptr);
+		}
+	} else {
 		pptr = p1;
+	}
 	p2->p_pptr = pptr;
 	LIST_INIT(&p2->p_children);
 
 	lwkt_gettoken(&pptr->p_token);
 	LIST_INSERT_HEAD(&pptr->p_children, p2, p_sibling);
 	lwkt_reltoken(&pptr->p_token);
+
+	if (flags & RFNOWAIT)
+		PRELE(pptr);
 
 	varsymset_init(&p2->p_varsymset, &p1->p_varsymset);
 	callout_init_mp(&p2->p_ithandle);
