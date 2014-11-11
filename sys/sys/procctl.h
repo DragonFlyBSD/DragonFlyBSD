@@ -32,12 +32,41 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _SYS_REAPER_H_
-#define _SYS_REAPER_H_
+#ifndef _SYS_PROCCTL_H_
+#define _SYS_PROCCTL_H_
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #include <sys/lock.h>
 #endif
+
+typedef enum idtype {
+	/*
+	 * These names were mostly lifted from Solaris source code and
+	 * still use Solaris style naming to avoid breaking any
+	 * OpenSolaris code which has been ported to FreeBSD.  There
+	 * is no clear FreeBSD counterpart for all of the names, but
+	 * some have a clear correspondence to FreeBSD entities.
+	 *
+	 * The numerical values are kept synchronized with the Solaris
+	 * values.
+	 */
+	P_PID,			/* A process identifier. */
+	P_PPID,			/* A parent process identifier.	*/
+	P_PGID,			/* A process group identifier. */
+	P_SID,			/* A session identifier. */
+	P_CID,			/* A scheduling class identifier. */
+	P_UID,			/* A user identifier. */
+	P_GID,			/* A group identifier. */
+	P_ALL,			/* All processes. */
+	P_LWPID,		/* An LWP identifier. */
+	P_TASKID,		/* A task identifier. */
+	P_PROJID,		/* A project identifier. */
+	P_POOLID,		/* A pool identifier. */
+	P_JAILID,		/* A zone identifier. */
+	P_CTID,			/* A (process) contract identifier. */
+	P_CPUID,		/* CPU identifier. */
+	P_PSETID		/* Processor set identifier. */
+} idtype_t;			/* The type of id_t we are using. */
 
 struct reaper_status {
 	uint32_t	flags;
@@ -51,11 +80,11 @@ union reaper_info {
 	struct reaper_status	status;
 };
 
-#define _REAPER_PRESENT
+#define _PROCCTL_PRESENT
 
-#define REAPER_OP_ACQUIRE	0x0001
-#define REAPER_OP_RELEASE	0x0002
-#define REAPER_OP_STATUS	0x0003
+#define PROC_REAP_ACQUIRE	0x0001
+#define PROC_REAP_RELEASE	0x0002
+#define PROC_REAP_STATUS	0x0003
 
 #define REAPER_STAT_OWNED	0x00000001
 #define REAPER_STAT_REALINIT	0x00000002
@@ -76,7 +105,7 @@ struct sysreaper {
 
 #if !defined(_KERNEL)
 
-int reapctl(int op, union reaper_info *data);
+int procctl(idtype_t idtype, id_t id, int cmd, void *arg);
 
 #endif
 

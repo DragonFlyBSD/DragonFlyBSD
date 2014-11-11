@@ -140,7 +140,7 @@ DF306.0 {
     modstat;
     mount;
     mountctl;
-    reapctl;
+    procctl;
     mprotect;
     mq_close;
     mq_getattr;
@@ -438,7 +438,7 @@ DFprivate_1.0 {
     __sys_modstat;
     __sys_mount;
     __sys_mountctl;
-    __sys_reapctl;
+    __sys_procctl;
     __sys_mprotect;
     __sys_mq_close;
     __sys_mq_getattr;
@@ -721,7 +721,7 @@ DFprivate_1.0 {
     _modstat;
     _mount;
     _mountctl;
-    _reapctl;
+    _procctl;
     _mprotect;
     _mq_close;
     _mq_getattr;
