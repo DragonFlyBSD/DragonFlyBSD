@@ -76,6 +76,7 @@ process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 
 	bzero(cmd, sizeof(*cmd));
 	cmd->fp = fp;				/* error and output reporting */
+	cmd->logfd = -1;
 	sreplace(&cmd->piddir, "/var/run");	/* must not be NULL */
 	cmd->termkill_timo = -1;		/* will use default value */
 	cmd->orig_ac = ac;
@@ -453,6 +454,11 @@ free_cmd(command_t *cmd)
 	sfree(&cmd->directive);
 	sfree(&cmd->label);
 	afree(&cmd->ext_av);
+
+	if (cmd->logfd >= 0) {
+		close(cmd->logfd);
+		cmd->logfd = -1;
+	}
 
 	bzero(cmd, sizeof(*cmd));
 }

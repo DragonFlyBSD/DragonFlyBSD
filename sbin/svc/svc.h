@@ -65,13 +65,13 @@ typedef struct SvcCommand {
 	int	restart_all : 1;
 	int	exit_mode : 1;
 	int	sync_mode : 1;
-	int	tail_mode : 2;
+	int	tail_mode : 3;
 	int	jail_clean : 1;
 	int	manual_stop : 1;
 	int	empty_label : 1;	/* label not specified (vs 'all') */
 	int	commanded : 1;		/* command by system operator */
 	int	force_remove_files : 1;
-	FILE	*fp;
+	FILE	*fp;			/* nominal output */
 	char	*piddir;
 	char	*rootdir;
 	char	*jaildir;
@@ -92,6 +92,13 @@ typedef struct SvcCommand {
 	struct group grent;
 	gid_t	groups[NGROUPS];
 	int	ngroups;
+
+	pthread_cond_t logcond;		/* wait for activity */
+	char	logbuf[8192];		/* must be power of 2 >= 2048 */
+	int	logwindex;
+	int	logcount;
+	int	logfds[2];		/* logfile pipe descriptors */
+	int	logfd;			/* logfile file descriptor */
 } command_t;
 
 typedef enum {
@@ -101,6 +108,8 @@ typedef enum {
 	RS_STOPPING2,	/* TERM sent */
 	RS_STOPPING3,	/* KILL sent */
 } runstate_t;
+
+#define LOGCHUNK	1024
 
 extern pthread_mutex_t serial_mtx;
 

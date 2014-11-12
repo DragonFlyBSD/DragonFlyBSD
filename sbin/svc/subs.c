@@ -110,7 +110,7 @@ setup_pid_and_socket(command_t *cmd, int *lfdp, int *pfdp)
 	 */
 	asprintf(&pidfile, "%s/service.%s.pid", cmd->piddir, cmd->label);
 	*lfdp = -1;
-	*pfdp = open(pidfile, O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0644);
+	*pfdp = open(pidfile, O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0640);
 	if (*pfdp < 0) {
 		if (errno == EWOULDBLOCK) {
 			fprintf(cmd->fp, "Cannot init, %s is already active\n",

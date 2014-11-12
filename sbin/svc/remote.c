@@ -123,6 +123,15 @@ remote_connect_thread(void *arg)
 		while ((ptr = fgetln(conn->fpr, &len)) != NULL) {
 			if (len == 2 && ptr[0] == '.' && ptr[1] == '\n')
 				break;
+
+			/*
+			 * de-escape ..
+			 */
+			if (len == 3 && ptr[0] == '.' && ptr[1] == '.' &&
+			    ptr[2] == '\n') {
+				++ptr;
+				--len;
+			}
 			fwrite(ptr, 1, len, cmd->fp);
 			fflush(cmd->fp);
 		}

@@ -45,12 +45,17 @@ runstate_t RunState = RS_STOPPED;
 command_t *InitCmd;
 int RestartCounter;
 
+static void *logger_thread(void *arg);
+static void setstate_stopped(command_t *cmd, struct timespec *ts);
+static int escapewrite(FILE *fp, char *buf, int n, int *statep);
+
 int
 execute_init(command_t *cmd)
 {
         char buf[32];
         pid_t pid;
 	pid_t stoppingpid = -1;
+	pthread_t logtd;
 	time_t nextstop = 0;
 	int lfd;	/* unix domain listen socket */
 	int pfd;	/* pid file */
@@ -65,11 +70,6 @@ execute_init(command_t *cmd)
 	}
 	fprintf(cmd->fp, "initializing new service: %s\n", cmd->label);
 
-	if (pipe(fds) < 0) {
-		fprintf(cmd->fp, "Unable to create pipe: %s\n",
-			strerror(errno));
-		return 1;
-	}
 	if ((xfd = open("/dev/null", O_RDWR)) < 0) {
 		fprintf(cmd->fp, "Unable to open /dev/null: %s\n",
 			strerror(errno));
@@ -81,22 +81,44 @@ execute_init(command_t *cmd)
 	 * pidfile.
 	 */
 	rc = setup_pid_and_socket(cmd, &lfd, &pfd);
-	if (rc) {
-		close(fds[0]);
-		close(fds[1]);
+	if (rc)
 		return rc;
-	}
 
 	/*
 	 * Detach the service
 	 */
-        if ((pid = fork()) != 0) {
+	if (cmd->foreground) {
+		/*
+		 * Stay in foreground.
+		 */
+		fds[0] = -1;
+		fds[1] = -1;
+		pid = 0;
+	} else {
+		if (pipe(fds) < 0) {
+			fprintf(cmd->fp, "Unable to create pipe: %s\n",
+				strerror(errno));
+			close(lfd);
+			close(pfd);
+			remove_pid_and_socket(cmd, cmd->label);
+			return 1;
+		}
+		pid = fork();
+	}
+
+	if (pid != 0) {
                 /*
                  * Parent
                  */
 		close(fds[1]);
                 if (pid < 0) {
                         fprintf(cmd->fp, "fork failed: %s\n", strerror(errno));
+			close(lfd);
+			close(pfd);
+			close(fds[0]);
+			close(fds[1]);
+			remove_pid_and_socket(cmd, cmd->label);
+			return 1;
                 } else {
 			/*
 			 * Fill-in pfd before returning.
@@ -118,41 +140,77 @@ execute_init(command_t *cmd)
         }
 
 	/*
-	 * Service demon is now running.
+	 * Forked child is now the service demon.
 	 *
-	 * Detach from terminal, setup logfile.
+	 * Detach from terminal, scrap tty.
 	 */
-	close(fds[0]);
-	fclose(cmd->fp);
-	if (cmd->logfile)
-		cmd->fp = fopen(cmd->logfile, "a");
-	else
-		cmd->fp = fdopen(dup(xfd), "a");
-	if (xfd != 0) {
+	if (cmd->foreground == 0) {
+		close(fds[0]);
+		fds[0] = -1;
+	}
+
+	if (xfd != 0)				/* scrap tty inputs */
 		dup2(xfd, 0);
-		close(xfd);
+	if (cmd->foreground == 0) {
+		int tfd;
+
+		if (xfd != 1)			/* scrap tty outputs */
+			dup2(xfd, 1);
+		if (xfd != 2)
+			dup2(xfd, 2);
+
+		if ((tfd = open("/dev/tty", O_RDWR)) >= 0) {
+			ioctl(tfd, TIOCNOTTY, 0);	/* no controlling tty */
+			close(tfd);
+		}
+		setsid();				/* new session */
 	}
-	dup2(fileno(cmd->fp), 1);
-	dup2(fileno(cmd->fp), 2);
-	if ((xfd = open("/dev/tty", O_RDWR)) >= 0) {
-		ioctl(xfd, TIOCNOTTY, 0);	/* no controlling tty */
-		close(xfd);
-	}
-	setsid();				/* new session */
+
+	/*
+	 * Setup log file.  The log file must not use descriptors 0, 1, or 2.
+	 */
+	if (cmd->logfile && strcmp(cmd->logfile, "/dev/null") == 0)
+		cmd->logfd = -1;
+	else if (cmd->logfile)
+		cmd->logfd = open(cmd->logfile, O_WRONLY|O_CREAT|O_APPEND, 0640);
+	else if (cmd->foreground)
+		cmd->logfd = dup(1);
+	else
+		cmd->logfd = -1;
 
 	/*
 	 * Signal parent that we are completely detached now.
 	 */
 	c = 1;
-	write(fds[1], &c, 1);
-	close(fds[1]);
+	if (cmd->foreground == 0) {
+		write(fds[1], &c, 1);
+		close(fds[1]);
+		fds[1] = -1;
+	}
 	InitCmd = cmd;
+
+	/*
+	 * Setup log pipe.  The logger thread copies the pipe to a buffer
+	 * for the 'log' directive and also writes it to logfd.
+	 */
+	pipe(cmd->logfds);
+	if (cmd->fp != stdout)
+		fclose(cmd->fp);
+	cmd->fp = fdopen(cmd->logfds[1], "w");
+
+	if (xfd > 2) {
+		close(xfd);
+		xfd = -1;
+	}
+
+	pthread_cond_init(&cmd->logcond, NULL);
 
 	/*
 	 * Start accept thread for unix domain listen socket.
 	 */
-	remote_listener(cmd, lfd);
 	pthread_mutex_lock(&serial_mtx);
+	pthread_create(&logtd, NULL, logger_thread, cmd);
+	remote_listener(cmd, lfd);
 
 	/*
 	 * Become the reaper for all children recursively.
@@ -201,8 +259,7 @@ execute_init(command_t *cmd)
 				fflush(cmd->fp);
 				DirectPid = -1;
 				if (cmd->restart_some) {
-					RunState = RS_STOPPED;
-					LastStop = ts.tv_sec;
+					setstate_stopped(cmd, &ts);
 				} /* else still considered normal run state */
 			} else if (cmd->debug) {
 				/*
@@ -240,10 +297,7 @@ execute_init(command_t *cmd)
 		 * timer.
 		 */
 		if (usepid < 0) {
-			if (RunState != RS_STOPPED) {
-				RunState = RS_STOPPED;
-				LastStop = ts.tv_sec;
-			}
+			setstate_stopped(cmd, &ts);
 		} else if (stoppingpid != usepid &&
 			   (RunState == RS_STOPPING2 ||
 			    RunState == RS_STOPPING3)) {
@@ -256,10 +310,8 @@ execute_init(command_t *cmd)
 		 */
 		switch(RunState) {
 		case RS_STARTED:
-			if (usepid < 0) {
-				RunState = RS_STOPPED;
-				LastStop = ts.tv_sec;
-			}
+			if (usepid < 0)
+				setstate_stopped(cmd, &ts);
 			break;
 		case RS_STOPPED:
 			dt = (int)(ts.tv_sec - LastStop);
@@ -378,6 +430,10 @@ execute_start(command_t *cmd)
 
 	clock_gettime(CLOCK_MONOTONIC_FAST, &ts);
 	if ((DirectPid = fork()) == 0) {
+		fflush(InitCmd->fp);
+						/* leave stdin /dev/null */
+		dup2(fileno(InitCmd->fp), 1);	/* setup stdout */
+		dup2(fileno(InitCmd->fp), 2);	/* setup stderr */
 		closefrom(3);
 		execvp(InitCmd->ext_av[0], InitCmd->ext_av);
 		exit(99);
@@ -386,8 +442,7 @@ execute_start(command_t *cmd)
 		RunState = RS_STARTED;
 		LastStart = ts.tv_sec;
 	} else {
-		RunState = RS_STOPPED;
-		LastStop = ts.tv_sec;
+		setstate_stopped(InitCmd, &ts);
 	}
 	InitCmd->manual_stop = 0;
 	fprintf(cmd->fp, "svc %s: Starting pid %d\n", cmd->label, DirectPid);
@@ -528,11 +583,85 @@ execute_status(command_t *cmd)
 }
 
 int
-execute_log(command_t *cmd __unused)
+execute_log(command_t *cmd)
 {
+	int lbsize = (int)sizeof(cmd->logbuf);
+	int lbmask = lbsize - 1;
+	int windex;
+	int n;
+	int lastnl;
+	int dotstate;
+	char buf[LOGCHUNK];
+
+	assert(InitCmd);
+
+	/*
+	 * mode 0 - Dump everything then exit
+	 * mode 1 - Dump everything then block/loop
+	 * mode 2 - Skeep to end then block/loop
+	 */
+	if (cmd->tail_mode == 2)
+		windex = InitCmd->logwindex;
+	else
+		windex = InitCmd->logwindex - InitCmd->logcount;
+	lastnl = 1;
+	dotstate = 0;	/* 0=start-of-line 1=middle-of-line 2=dot */
+
+	for (;;) {
+		/*
+		 * Calculate the amount of data we missed and determine
+		 * if some data was lost.
+		 */
+		n = InitCmd->logwindex - windex;
+		if (n < 0 || n > InitCmd->logcount) {
+			windex = InitCmd->logwindex - InitCmd->logcount;
+			pthread_mutex_unlock(&serial_mtx);
+			fprintf(cmd->fp, "\n(LOG DATA LOST)\n");
+			pthread_mutex_lock(&serial_mtx);
+			continue;
+		}
+
+		/*
+		 * Circular buffer and copy size limitations.  If no
+		 * data ready, wait for some.
+		 */
+		if (n > lbsize - (windex & lbmask))
+			n = lbsize - (windex & lbmask);
+		if (n > LOGCHUNK)
+			n = LOGCHUNK;
+		if (n == 0) {
+			if (cmd->tail_mode == 0)
+				break;
+			pthread_cond_wait(&InitCmd->logcond, &serial_mtx);
+			continue;
+		}
+		bcopy(InitCmd->logbuf + (windex & lbmask), buf, n);
+
+		/*
+		 * Dump log output, escape any '.' on a line by itself.
+		 */
+		pthread_mutex_unlock(&serial_mtx);
+		n = escapewrite(cmd->fp, buf, n, &dotstate);
+		fflush(cmd->fp);
+		if (n > 0)
+			lastnl = (buf[n-1] == '\n');
+		pthread_mutex_lock(&serial_mtx);
+
+		if (n < 0)
+			break;
+		windex += n;
+	}
+	if (lastnl == 0) {
+		pthread_mutex_unlock(&serial_mtx);
+		fprintf(cmd->fp, "\n");
+		pthread_mutex_lock(&serial_mtx);
+	}
 	return 0;
 }
 
+/*
+ * Change or reopen logfile.
+ */
 int
 execute_logfile(command_t *cmd)
 {
@@ -540,14 +669,16 @@ execute_logfile(command_t *cmd)
 	int fd;
 	int rc;
 
+	assert(InitCmd);
+
 	logfile = cmd->logfile;
 	if (cmd->ext_av && cmd->ext_av[0])
 		logfile = cmd->ext_av[0];
-	if (logfile == NULL && InitCmd)
+	if (logfile == NULL)
 		logfile = InitCmd->logfile;
 
 	rc = 0;
-	if (InitCmd && logfile) {
+	if (logfile) {
 		if (InitCmd->logfile &&
 		    strcmp(InitCmd->logfile, logfile) == 0) {
 			fprintf(cmd->fp, "svc %s: Reopen logfile %s\n",
@@ -556,19 +687,25 @@ execute_logfile(command_t *cmd)
 			fprintf(cmd->fp, "svc %s: Change logfile to %s\n",
 				cmd->label, logfile);
 		}
-		fd = open(logfile, O_WRONLY|O_CREAT|O_APPEND, 0640);
-		if (fd >= 0) {
-			fflush(stdout);
-			fflush(stderr);
-			dup2(fd, fileno(stdout));
-			dup2(fd, fileno(stderr));
+		if (InitCmd->logfd >= 0) {
+			close(InitCmd->logfd);
+			InitCmd->logfd = -1;
+		}
+		if (strcmp(logfile, "/dev/null") == 0) {
 			sreplace(&InitCmd->logfile, logfile);
-			close(fd);
 		} else {
-			fprintf(cmd->fp,
-				"svc %s: Unable to open/create \"%s\": %s\n",
-				cmd->label, logfile, strerror(errno));
-			rc = 1;
+			fd = open(logfile, O_WRONLY|O_CREAT|O_APPEND, 0640);
+			if (fd >= 0) {
+				InitCmd->logfd = fd;
+				sreplace(&InitCmd->logfile, logfile);
+			} else {
+				fprintf(cmd->fp,
+					"svc %s: Unable to open/create "
+					"\"%s\": %s\n",
+					cmd->label,
+					logfile, strerror(errno));
+				rc = 1;
+			}
 		}
 	}
 	return rc;
@@ -585,4 +722,125 @@ execute_help(command_t *cmd)
 		"            help\n"
 	);
 	return 0;
+}
+
+static
+void *
+logger_thread(void *arg)
+{
+	command_t *cmd = arg;
+	int lbsize = (int)sizeof(cmd->logbuf);
+	int lbmask = lbsize - 1;
+	int windex;
+	int n;
+
+	pthread_detach(pthread_self());
+	pthread_mutex_lock(&serial_mtx);
+	for (;;) {
+		/*
+		 * slip circular buffer to make room for new data.
+		 */
+		n = cmd->logcount - (lbsize - LOGCHUNK);
+		if (n > 0) {
+			cmd->logcount -= n;
+			cmd->logwindex += n;
+		}
+		windex = cmd->logwindex & lbmask;
+		n = lbsize - windex;
+		if (n > LOGCHUNK)
+			n = LOGCHUNK;
+		pthread_mutex_unlock(&serial_mtx);
+		n = read(cmd->logfds[0], cmd->logbuf + windex, n);
+		pthread_mutex_lock(&serial_mtx);
+		if (n > 0) {
+			if (cmd->logfd >= 0)
+				write(cmd->logfd, cmd->logbuf + windex, n);
+			cmd->logcount += n;
+			cmd->logwindex += n;
+			pthread_cond_signal(&cmd->logcond);
+		}
+		if (n == 0 || (n < 0 && errno != EINTR))
+			break;
+	}
+	pthread_mutex_unlock(&serial_mtx);
+	return NULL;
+}
+
+static
+void
+setstate_stopped(command_t *cmd, struct timespec *ts)
+{
+	if (RunState != RS_STOPPED) {
+		RunState = RS_STOPPED;
+		LastStop = ts->tv_sec;
+		if (cmd->sync_mode)	/* support -s option */
+			sync();
+	}
+}
+
+static
+int
+escapewrite(FILE *fp, char *buf, int n, int *statep)
+{
+	int b;
+	int i;
+	int r;
+	char c;
+
+	b = 0;
+	r = 0;
+	while (i < n) {
+		for (i = b; i < n; ++i) {
+			c = buf[i];
+
+			switch(*statep) {
+			case 0:
+				/*
+				 * beginning of line
+				 */
+				if (c == '.')
+					*statep = 2;
+				else if (c != '\n')
+					*statep = 1;
+				break;
+			case 1:
+				/*
+				 * middle of line
+				 */
+				if (c == '\n')
+					*statep = 0;
+				break;
+			case 2:
+				/*
+				 * dot was output at beginning of line
+				 */
+				if (c == '\n')
+					*statep = 3;
+				else
+					*statep = 1;
+				break;
+			default:
+				break;
+			}
+			if (*statep == 3)	/* flush with escape */
+				break;
+		}
+		if (i != b) {
+			n = fwrite(buf, 1, i - b, fp);
+			if (n > 0)
+				r += n;
+			if (n < 0)
+				r = -1;
+		}
+		if (*statep == 3) {		/* added escape */
+			n = fwrite(".", 1, 1, fp);
+			/* escapes not counted in r */
+			*statep = 1;
+			if (n < 0)
+				r = -1;
+		}
+		if (r < 0)
+			break;
+	}
+	return r;
 }
