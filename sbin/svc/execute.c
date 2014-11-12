@@ -47,6 +47,11 @@ int RestartCounter;
 
 static void *logger_thread(void *arg);
 static void setstate_stopped(command_t *cmd, struct timespec *ts);
+static int setup_gid(command_t *cmd);
+static int setup_uid(command_t *cmd);
+static int setup_jail(command_t *cmd);
+static int setup_chroot(command_t *cmd);
+static int setup_devfs(command_t *cmd, const char *dir, int domount);
 static int escapewrite(FILE *fp, char *buf, int n, int *statep);
 
 int
@@ -142,8 +147,20 @@ execute_init(command_t *cmd)
 	/*
 	 * Forked child is now the service demon.
 	 *
-	 * Detach from terminal, scrap tty.
+	 * Detach from terminal, scrap tty, set process title.
 	 */
+	if (cmd->proctitle) {
+		setproctitle("%s - %s", cmd->label, cmd->proctitle);
+	} else {
+		setproctitle("%s", cmd->label);
+	}
+	if (cmd->mountdev) {
+		if (cmd->jaildir)
+			setup_devfs(cmd, cmd->jaildir, 1);
+		else if (cmd->rootdir)
+			setup_devfs(cmd, cmd->rootdir, 1);
+	}
+
 	if (cmd->foreground == 0) {
 		close(fds[0]);
 		fds[0] = -1;
@@ -325,7 +342,7 @@ execute_init(command_t *cmd)
 					"svc %s: service demon exiting\n",
 					cmd->label);
 				remove_pid_and_socket(cmd, cmd->label);
-				exit(0);
+				goto exitloop;
 			} else if (cmd->manual_stop) {
 				/*
 				 * Service demon was told to stop via
@@ -392,7 +409,14 @@ execute_init(command_t *cmd)
 			break;
 		}
 	}
+exitloop:
 	pthread_mutex_unlock(&serial_mtx);
+	if (cmd->mountdev) {
+		if (cmd->jaildir)
+			setup_devfs(cmd, cmd->jaildir, 0);
+		else if (cmd->rootdir)
+			setup_devfs(cmd, cmd->rootdir, 0);
+	}
 	exit(0);
 	/* does not return */
 }
@@ -435,6 +459,14 @@ execute_start(command_t *cmd)
 		dup2(fileno(InitCmd->fp), 1);	/* setup stdout */
 		dup2(fileno(InitCmd->fp), 2);	/* setup stderr */
 		closefrom(3);
+
+		if (cmd->jaildir)		/* jail or chroot */
+			setup_jail(cmd);
+		else if (cmd->rootdir)
+			setup_chroot(cmd);
+
+		setup_gid(cmd);
+		setup_uid(cmd);
 		execvp(InitCmd->ext_av[0], InitCmd->ext_av);
 		exit(99);
 	}
@@ -535,11 +567,13 @@ execute_exit(command_t *cmd)
 		InitCmd->restart_some = 0;
 		InitCmd->restart_all = 1;	/* kill all children */
 		InitCmd->exit_mode = 1;		/* exit after stop */
+	} else {
+		cmd->exit_mode = 1;
 	}
 	fprintf(cmd->fp, "svc %s: Stopping and Exiting\n", cmd->label);
 	execute_stop(cmd);
 
-	exit(0);
+	return 0;
 }
 
 int
@@ -766,6 +800,10 @@ logger_thread(void *arg)
 	return NULL;
 }
 
+/*
+ * Put us in the STOPPED state if we are not already there, and
+ * handle post-stop options (aka sync).
+ */
 static
 void
 setstate_stopped(command_t *cmd, struct timespec *ts)
@@ -778,6 +816,144 @@ setstate_stopped(command_t *cmd, struct timespec *ts)
 	}
 }
 
+static
+int
+setup_gid(command_t *cmd)
+{
+	int i;
+
+	if (cmd->gid_mode &&
+	    setgid(cmd->grent.gr_gid) < 0) {
+		fprintf(cmd->fp, "unable to setgid to \"%s\": %s\n",
+			cmd->grent.gr_name, strerror(errno));
+		return 1;
+	}
+
+	/*
+	 * -G overrides all group ids.
+	 */
+	if (cmd->ngroups) {
+		if (setgroups(cmd->ngroups, cmd->groups) < 0) {
+			fprintf(cmd->fp, "unable to setgroups to (");
+			for (i = 0; i < cmd->ngroups; ++i) {
+				if (i)
+					fprintf(cmd->fp, ", ");
+				fprintf(cmd->fp, "%d", cmd->groups[i]);
+			}
+			fprintf(cmd->fp, "): %s\n", strerror(errno));
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static
+int
+setup_uid(command_t *cmd)
+{
+	fprintf(stderr, "UIDMODE %d %d\n", cmd->uid_mode, cmd->pwent.pw_uid);
+	if (cmd->uid_mode &&
+	    cmd->gid_mode == 0 &&
+	    cmd->ngroups == 0 &&
+	    setgid(cmd->pwent.pw_gid) < 0) {
+		fprintf(cmd->fp, "unable to setgid for user \"%s\": %s\n",
+			cmd->pwent.pw_name,
+			strerror(errno));
+		return 1;
+	}
+	if (cmd->uid_mode &&
+	    setuid(cmd->pwent.pw_uid) < 0) {
+		fprintf(cmd->fp, "unable to setuid for user \"%s\": %s\n",
+			cmd->pwent.pw_name,
+			strerror(errno));
+		return 1;
+	}
+	return 0;
+}
+
+static
+int
+setup_jail(command_t *cmd)
+{
+	struct jail info;
+	char hostbuf[256];
+
+	if (gethostname(hostbuf, sizeof(hostbuf) - 1) < 0) {
+		fprintf(cmd->fp, "gethostname() failed: %s\n", strerror(errno));
+		return 1;
+	}
+	/* make sure it is zero terminated */
+	hostbuf[sizeof(hostbuf) -1] = 0;
+
+	bzero(&info, sizeof(info));
+	info.version = 1;
+	info.path = cmd->jaildir;
+	info.hostname = hostbuf;
+	/* info.n_ips, sockaddr_storage ips[] */
+
+	if (jail(&info) < 0) {
+		fprintf(cmd->fp, "unable to create jail \"%s\": %s\n",
+			cmd->rootdir,
+			strerror(errno));
+		return 1;
+	}
+	return 0;
+}
+
+static
+int
+setup_chroot(command_t *cmd)
+{
+	if (chroot(cmd->rootdir) < 0) {
+		fprintf(cmd->fp, "unable to chroot to \"%s\": %s\n",
+			cmd->rootdir,
+			strerror(errno));
+		return 1;
+	}
+	return 0;
+}
+
+static
+int
+setup_devfs(command_t *cmd, const char *dir, int domount)
+{
+	struct devfs_mount_info info;
+	struct statfs fs;
+	int rc = 0;
+	char *path;
+
+	bzero(&info, sizeof(info));
+	info.flags = 0;
+	asprintf(&path, "%s/dev", dir);
+
+	if (domount) {
+		if (statfs(path, &fs) == 0 &&
+		    strcmp(fs.f_fstypename, "devfs") == 0) {
+			fprintf(cmd->fp, "devfs already mounted\n");
+		} else
+		if (mount("devfs", path, MNT_NOEXEC|MNT_NOSUID, &info) < 0) {
+			fprintf(cmd->fp, "cannot mount devfs on %s: %s\n",
+				path, strerror(errno));
+			rc = 1;
+		}
+	} else {
+		if (statfs(path, &fs) < 0 ||
+		    strcmp(fs.f_fstypename, "devfs") != 0) {
+			fprintf(cmd->fp, "devfs already unmounted\n");
+		} else
+		if (unmount(path, 0) < 0) {
+			fprintf(cmd->fp, "cannot unmount devfs from %s: %s\n",
+				path, strerror(errno));
+			rc = 1;
+		}
+	}
+	free(path);
+	return rc;
+}
+
+/*
+ * Escape writes.  A '.' on a line by itself must be escaped to '..'.
+ */
 static
 int
 escapewrite(FILE *fp, char *buf, int n, int *statep)

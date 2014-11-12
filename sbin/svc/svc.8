@@ -30,10 +30,10 @@
 .\" SUCH DAMAGE.
 .\"
 .Dd November 10, 2014
-.Dt SERVICE 8
+.Dt SVC 8
 .Os
 .Sh NAME
-.Nm service
+.Nm svc
 .Nd build an environment and monitor/maintain a service or command
 .Sh SYNOPSIS
 .Nm
@@ -127,8 +127,14 @@ allowed to elapse after sending a SIGTERM before sending a SIGKILL.
 If 0 is specified, only SIGKILL will be sent.
 The default is 10 seconds.
 .It Fl u Ar user
-Set the uid of the command to execute.  The service demon itself is not
-affected.
+Set the uid and gid of the command to execute based on the user.
+The uid or username must exist in the password file.
+The gid may be overridden by the
+.Fl g
+or
+.Fl G
+options.
+The service demon itself is not affected.
 .Pp
 Specified when initializing a new service, has no effect for other directives.
 Cannot be overridden in
@@ -136,8 +142,11 @@ Cannot be overridden in
 or
 .Ar restart .
 .It Fl g Ar group
-Set the gid of the command to execute.  The service demon itself is not
-affected.
+Set the gid of the command to execute.
+This will override the user's gid set via the
+.Fl u
+option.
+The service demon itself is not affected.
 .Pp
 Specified when initializing a new service, has no effect for other directives.
 Cannot be overridden in
@@ -147,6 +156,7 @@ or
 .It Fl G Ar group-list
 Set the group-list of the command to execute.  The service demon itself is not
 affected.
+This will completely override all other assumed or specified GIDs.
 .Pp
 Specified when initializing a new service, has no effect for other directives.
 Cannot be overridden in
@@ -160,19 +170,26 @@ However, the service monitor will still keep track of the last ~8KB or
 so of stdout/stderr output.
 .Pp
 Specified when initializing a new service, has no effect for other directives.
+.It Fl m
+May be used in combination with
+.Fl c
+or
+.Fl j
+to automatically mount /dev in a chroot or jail.
+It will be left mounted through stops and starts and will be unmounted
+when
+.Nm
+is told to exit.
+.Pp
+Specified when initializing a new service, has no effect for other directives.
 .It Fl c Ar directory
-.It Fl C Ar directory
 Chroot into the specified directory when executing or re-executing the
 command.  The service itself stays outside the chroot.
-When
-.Fl c
-is used, the service will automatically mount /dev in the chroot if it
-does not already exist.
-This will be unmounted when the service exits or is killed, but remains
-in-place when the service is stopped.
-When
-.Fl C
-is used, the service will not automatically mount /dev in the chroot.
+If
+.Fl m
+is also specified, the service will automatically mount /dev in the chroot
+if it does not already exist and unmount it when the service exits.  The
+mount remains in place when the service is stopped.
 .Pp
 Specified when initializing a new service, has no effect for other directives.
 Cannot be overridden in
@@ -180,7 +197,6 @@ Cannot be overridden in
 or
 .Ar restart .
 .It Fl j Ar directory
-.It Fl J Ar directory
 Create a jail and operate in a manner similar to a chroot.
 .It Fl k Ar jail-spec
 Additional specification for the jail.  See below.

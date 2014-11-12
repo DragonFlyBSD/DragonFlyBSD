@@ -65,7 +65,7 @@ main(int ac, char **av)
 int
 process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 {
-	const char *optstr = "dfhp:r:R:xst:u:g:G:l:c:C:j:J:k:T:F:";
+	const char *optstr = "dfhp:r:R:xst:u:g:G:l:c:mj:k:T:F:";
 	struct group *grent;
 	struct passwd *pwent;
 	char *sub;
@@ -124,9 +124,9 @@ process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 			break;
 		case 'u':
 			if (isdigit(optarg[0])) {
-				pwent = getpwnam(optarg);
-			} else {
 				pwent = getpwuid(strtol(optarg, NULL, 0));
+			} else {
+				pwent = getpwnam(optarg);
 			}
 			if (pwent == NULL) {
 				fprintf(fp, "Cannot find user %s: %s\n",
@@ -134,6 +134,7 @@ process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 					strerror(errno));
 				goto failed;
 			}
+			cmd->uid_mode = 1;
 			sfree(&cmd->pwent.pw_name);
 			sfree(&cmd->pwent.pw_passwd);
 			sfree(&cmd->pwent.pw_class);
@@ -151,9 +152,9 @@ process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 		case 'g':
 			setgroupent(1);
 			if (isdigit(optarg[0])) {
-				grent = getgrnam(optarg);
-			} else {
 				grent = getgrgid(strtol(optarg, NULL, 0));
+			} else {
+				grent = getgrnam(optarg);
 			}
 			if (grent == NULL) {
 				fprintf(fp, "Cannot find group %s: %s\n",
@@ -161,6 +162,7 @@ process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 					strerror(errno));
 				goto failed;
 			}
+			cmd->gid_mode = 1;
 			sfree(&cmd->grent.gr_name);
 			sfree(&cmd->grent.gr_passwd);
 			afree(&cmd->grent.gr_mem);
@@ -175,17 +177,15 @@ process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 			sub = strtok(cpy, ",");
 			i = 0;
 			while (sub) {
-				if (isdigit(optarg[0])) {
-					grent = getgrnam(optarg);
+				if (isdigit(sub[0])) {
+					grent = getgrgid(strtol(sub, NULL, 0));
 				} else {
-					grent = getgrgid(strtol(optarg,
-								NULL, 0));
+					grent = getgrnam(sub);
 				}
 				if (grent == NULL) {
 					fprintf(fp,
 						"Cannot find group %s: %s\n",
-						optarg,
-						strerror(errno));
+						sub, strerror(errno));
 					i = -1;
 				}
 				if (i == NGROUPS) {
@@ -206,15 +206,12 @@ process_cmd(command_t *cmd, FILE *fp, int ac, char **av)
 		case 'l':
 			sreplace(&cmd->logfile, optarg);
 			break;
-		case 'C':
-			cmd->mountdev = 1;
-			/* fall through */
 		case 'c':
 			sreplace(&cmd->rootdir, optarg);
 			break;
-		case 'J':
+		case 'm':
 			cmd->mountdev = 1;
-			/* fall through */
+			break;
 		case 'j':
 			sreplace(&cmd->jaildir, optarg);
 			break;

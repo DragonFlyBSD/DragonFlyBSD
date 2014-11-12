@@ -42,6 +42,9 @@
 #include <sys/wait.h>
 #include <sys/un.h>
 #include <sys/tty.h>
+#include <sys/devfs.h>
+#include <sys/mount.h>
+#include <sys/jail.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -67,6 +70,8 @@ typedef struct SvcCommand {
 	int	sync_mode : 1;
 	int	tail_mode : 3;
 	int	jail_clean : 1;
+	int	uid_mode : 1;
+	int	gid_mode : 1;
 	int	manual_stop : 1;
 	int	empty_label : 1;	/* label not specified (vs 'all') */
 	int	commanded : 1;		/* command by system operator */
