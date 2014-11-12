@@ -116,7 +116,6 @@ EOF
 cat >/mnt/etc/rc.conf << EOF
 ifconfig_em0="DHCP"
 sshd_enable="YES"
-usbd_enable="YES"
 sendmail_enable="NONE"
 dumpdev="/dev/${xdisk}b"
 EOF
