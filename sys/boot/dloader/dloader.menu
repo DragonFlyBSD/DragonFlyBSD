@@ -27,6 +27,7 @@ set module_path=";modules"
 acpi_load="YES"
 ahci_load="YES"
 ehci_load="YES"
+xhci_load="YES"
 
 ifset default_kernel
     # already selected a kernel
@@ -41,8 +42,9 @@ menuadd cd ${base}${default_kernel}
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif xhci_load hint.xhci.0.disabled
 menuadd loadall
 menuadd boot
 
@@ -53,14 +55,17 @@ menuadd optinclude loader.conf.local
 menuadd set hint.acpi.0.disabled=1
 menuadd set loader.acpi_disabled_by_user=1
 menuadd set hint.ehci.0.disabled=1
+menuadd set hint.xhci.0.disabled=1
 menuadd set loader.ehci_disabled_by_user=1
+menuadd set loader.xhci_disabled_by_user=1
 menuadd set hw.ata.ata_dma=0
 menuadd set hw.ata.atapi_dma=0
 menuadd set hw.ata.wc=0
 menuadd set hw.eisa_slots=0
 menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif xhci_load hint.xhci.0.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
@@ -71,8 +76,9 @@ menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd set hint.ahci.disabled=YES
 menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif xhci_load hint.xhci.0.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
@@ -84,8 +90,9 @@ menuadd optinclude loader.conf.local
 menuadd set hint.acpi.0.disabled=1
 menuadd set loader.acpi_disabled_by_user=1
 menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif xhci_load hint.xhci.0.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
@@ -100,8 +107,9 @@ menuadd cd ${base}kernel.alt
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif xhci_load hint.xhci.0.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
@@ -113,8 +121,9 @@ menuadd cd ${base}kernel.bak
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif xhci_load hint.xhci.0.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
@@ -126,8 +135,9 @@ menuadd cd ${base}kernel.old
 menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif xhci_load hint.xhci.0.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
@@ -139,8 +149,9 @@ menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd set boot_single="YES"
 menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif xhci_load hint.xhci.0.disabled
 menuadd initrd.img_load="YES"
 menuadd initrd.img_type="md_image"
 menuadd set vfs.root.mountfrom="ufs:md0s0"
@@ -155,8 +166,9 @@ menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd set boot_single="YES"
 menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif xhci_load hint.xhci.0.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
@@ -167,8 +179,9 @@ menuadd optinclude loader.conf
 menuadd optinclude loader.conf.local
 menuadd set boot_verbose=YES
 menuadd lunsetif acpi_load hint.acpi.0.disabled
-menuadd lunsetif ehci_load hint.ehci.0.disabled
 menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif xhci_load hint.xhci.0.disabled
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO

@@ -2,14 +2,21 @@
 			DRAGONFLY 'Live CD' README.USB
 
     When booting from 'Live CD', the USB subsystem is activated by the
-    default boot.  This includes the primary USB, OHCI and EHCI drivers.
-    On some systems it might be needed to not start EHCI driver (for USB 2.0)
-    to be able to run DragonFly, this is done by:
+    default boot.  This includes the primary USB, OHCI, EHCI and XHCI
+    drivers. On some systems it might be needed to not start the EHCI
+    driver (for USB 2.0) or XHCI driver (for USB 3.0) to be able to run
+    DragonFly. This is done by:
+
+    For EHCI
+    ========
 
         - 'unset ehci_load' in loader prompt, or
         - choosing 'safe mode' in boot prompt, or
-
         - 'set hint.ehci.0.disabled=0' in /boot/loader.conf
 
-    To enable USBD after installing on a hard disk, simply set 
-    usbd_enable="YES" in /etc/rc.conf.
+    For XHCI
+    ========
+
+        - 'unset xhci_load' in loader prompt, or
+        - choosing 'safe mode' in boot prompt, or
+        - 'set hint.xhci.0.disabled=0' in /boot/loader.conf

@@ -245,6 +245,9 @@ main(void)
     /* enable EHCI */
     setenv("ehci_load", "YES", 1);
 
+    /* enable XHCI */
+    setenv("xhci_load", "YES", 1);
+
     printf("\n");
     printf("%s, Revision %s\n", bootprog_name, bootprog_rev);
     printf("(%s, %s)\n", bootprog_maker, bootprog_date);
