@@ -43,9 +43,10 @@
 int
 main(void)
 { 
-	size_t len, i;
+	size_t len;
 	char *jls; /* Jail list */
 	char *curpos;
+	char *nextpos;
 
 	if (sysctlbyname("jail.list", NULL, &len, NULL, 0) == -1)
 		err(1, "sysctlbyname(): jail.list");
@@ -64,15 +65,29 @@ retry:
 		}
 		err(1, "sysctlbyname(): jail.list");
 	}
-	printf("JID\tHostname\tPath\tIPs\n");
+	printf("JID\tHostname\tPath\t\tIPs\n");
 	curpos = jls;
-	do {
-		for (i = 0; i < 3; i++) {
-			curpos = strchr(curpos, ' ');
-			*curpos = '\t';
-		}
-	} while ( (curpos = strchr(curpos, '\n')) != NULL);
-	printf("%s\n", jls);
+	while (curpos) {
+		char *str_jid;
+		char *str_host;
+		char *str_path;
+		char *str_ips;
+
+		nextpos = strchr(curpos, '\n');
+		if (nextpos)
+			*nextpos++ = 0;
+		str_jid = strtok(curpos, " ");
+		str_host = strtok(NULL, " ");
+		str_path = strtok(NULL, " ");
+		str_ips = strtok(NULL, "\n");
+
+		printf("%-8s%-15s %-15s %s\n",
+			str_jid,
+			str_host,
+			str_path,
+			(str_ips ? str_ips : "(none)"));
+		curpos = nextpos;
+	}
 	free(jls);
 	exit(0);
 }
