@@ -75,5 +75,17 @@ i386_autoload(void)
 	    printf("EHCI autoload failed - %s\n", strerror(error));
     }
 
+    disabled = 0;
+    rv = getenv("hint.xhci.0.disabled");
+    if (rv != NULL && strncmp(rv, "0", 1) != 0) {
+	disabled = 1;
+    }
+
+    if (getenv("xhci_load") && (!disabled)) {
+	error = mod_load("xhci", NULL, 0, NULL);
+	if (error != 0)
+	    printf("XHCI autoload failed - %s\n", strerror(error));
+    }
+
     return(0);
 }

@@ -38,7 +38,12 @@
 		lunset ehci_load
 		set hint.ehci.0.disabled=1
 
-	For more information on ACPI, AHCI and EHCI use `help' on these topics.
+	If needed, disable the XHCI driver with:
+
+		lunset xhci_load
+		set hint.xhci.0.disabled=1
+
+	For more information on ACPI, AHCI, EHCI and XHCI use `help' on these topics.
 
 ################################################################################
 # T<variable>=<value> DAssign value to variable
@@ -163,6 +168,24 @@
 		set hint.ehci.0.disabled=1
 
 	See ehci.4 man page (on booted system) for full description.
+
+################################################################################
+# TXHCI DControl XHCI module behaviour
+
+	$xhci_load
+
+	The XHCI driver provides support for the USB Enhanched Host Controller
+	Interface, which is used by USB 2.0 controllers.
+
+	The XHCI kernel module is by default loaded automatically.
+
+	If the xhci_load variable is set, the XHCI module will be loaded.
+	The XHCI driver can be disabled with:
+
+		lunset xhci_load
+		set hint.xhci.0.disabled=1
+
+	See xhci.4 man page (on booted system) for full description.
 
 ################################################################################
 # Tload DLoad a kernel or module
