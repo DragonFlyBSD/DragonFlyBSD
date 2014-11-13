@@ -41,8 +41,6 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-#define __DSFIELD_C__
-
 #include "acpi.h"
 #include "accommon.h"
 #include "amlcode.h"
@@ -391,6 +389,7 @@ AcpiDsGetFieldNames (
              */
             Info->ResourceBuffer = NULL;
             Info->ConnectionNode = NULL;
+            Info->PinNumberIndex = 0;
 
             /*
              * A Connection() is either an actual resource descriptor (buffer)
@@ -466,6 +465,7 @@ AcpiDsGetFieldNames (
             }
 
             Info->FieldBitPosition += Info->FieldBitLength;
+            Info->PinNumberIndex++; /* Index relative to previous Connection() */
             break;
 
         default:

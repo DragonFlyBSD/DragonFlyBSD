@@ -147,6 +147,13 @@ CmDoCompile (
     Event = UtBeginEvent ("Flush source input");
     CmFlushSourceCode ();
 
+    /* Prune the parse tree if requested (debug purposes only) */
+
+    if (Gbl_PruneParseTree)
+    {
+        AslPruneParseTree (Gbl_PruneDepth, Gbl_PruneType);
+    }
+
     /* Optional parse tree dump, compiler debug output only */
 
     LsDumpParseTree ();
@@ -540,6 +547,10 @@ CmDoOutputFiles (
     /* Dump the namespace to the .nsp file if requested */
 
     (void) NsDisplayNamespace ();
+
+    /* Dump the device mapping file */
+
+    MpEmitMappingInfo ();
 }
 
 

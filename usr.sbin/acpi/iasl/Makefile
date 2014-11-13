@@ -43,6 +43,9 @@ SRCS=	\
 	asllookup.c \
 	aslmain.c \
 	aslmap.c \
+	aslmapenter.c \
+	aslmapoutput.c \
+	aslmaputils.c \
 	aslmethod.c \
 	aslnamesp.c \
 	asloffset.c \
@@ -52,6 +55,8 @@ SRCS=	\
 	asloptions.c \
 	aslpredef.c \
 	aslprepkg.c \
+	aslprintf.c \
+	aslprune.c \
 	aslresource.c \
 	aslrestype1.c \
 	aslrestype1i.c \
@@ -70,16 +75,9 @@ SRCS=	\
 	aslwalks.c \
 	aslxref.c \
 	cmfsize.c \
-	dtcompile.c \
-	dtexpress.c \
-	dtfield.c \
-	dtio.c \
-	dtsubtable.c \
-	dttable.c \
-	dttemplate.c \
-	dtutils.c \
 	dbfileio.c \
 	dmbuffer.c \
+	dmcstyle.c \
 	dmdeferred.c \
 	dmextern.c \
 	dmnames.c \
@@ -106,6 +104,14 @@ SRCS=	\
 	dswload2.c \
 	dswscope.c \
 	dswstate.c \
+	dtcompile.c \
+	dtexpress.c \
+	dtfield.c \
+	dtio.c \
+	dtsubtable.c \
+	dttable.c \
+	dttemplate.c \
+	dtutils.c \
 	exconvrt.c \
 	excreate.c \
 	exdump.c \

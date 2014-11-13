@@ -42,7 +42,9 @@ OBJECTS = \
 	$(OBJDIR)/acgetline.o\
 	$(OBJDIR)/aeexec.o\
 	$(OBJDIR)/aehandlers.o\
+	$(OBJDIR)/aeinitfile.o\
 	$(OBJDIR)/aemain.o\
+	$(OBJDIR)/aeregion.o\
 	$(OBJDIR)/aetables.o\
 	$(OBJDIR)/ahids.o\
 	$(OBJDIR)/ahuuids.o\
@@ -61,6 +63,7 @@ OBJECTS = \
 	$(OBJDIR)/dbutils.o\
 	$(OBJDIR)/dbxface.o\
 	$(OBJDIR)/dmbuffer.o\
+	$(OBJDIR)/dmcstyle.o\
 	$(OBJDIR)/dmdeferred.o\
 	$(OBJDIR)/dmnames.o\
 	$(OBJDIR)/dmobject.o\

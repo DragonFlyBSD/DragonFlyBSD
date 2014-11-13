@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd April 10, 2014
+.Dd November 8, 2014
 .Dt ACPIEXEC 8
 .Os
 .Sh NAME
@@ -65,7 +65,9 @@ Enable loading of additional test tables.
 Enable Interpreter Slack Mode.
 .It Fl et
 Enable debug semaphore timeout.
-.It Fl f Ar value
+.It Fl fi Ar file
+Specify namespace initialization file.
+.It Fl fv Ar value
 Operation Region initialization fill value.
 .It Fl h
 Display the help message.
@@ -87,6 +89,12 @@ Verbose region handler output.
 .It Fl x Ar debug_level
 Debug output level.
 .El
+.Pp
+From within the interactive mode, use
+.Sq \&?
+or
+.Dq help
+to see a list of available AML Debugger commands.
 .Sh SEE ALSO
 .Xr acpi 4 ,
 .Xr acpibin 8 ,

@@ -49,8 +49,8 @@
  * Compiler versions and names
  */
 #define ASL_REVISION                ACPI_CA_VERSION
-#define ASL_COMPILER_NAME           "ASL Optimizing Compiler"
-#define AML_DISASSEMBLER_NAME       "AML Disassembler"
+#define ASL_COMPILER_NAME           "ASL+ Optimizing Compiler"
+#define AML_DISASSEMBLER_NAME       "AML/ASL+ Disassembler"
 #define ASL_INVOCATION_NAME         "iasl"
 #define ASL_CREATOR_ID              "INTL"
 
@@ -108,6 +108,7 @@
 
 #define FILE_SUFFIX_PREPROCESSOR    "i"
 #define FILE_SUFFIX_AML_CODE        "aml"
+#define FILE_SUFFIX_MAP             "map"
 #define FILE_SUFFIX_LISTING         "lst"
 #define FILE_SUFFIX_HEX_DUMP        "hex"
 #define FILE_SUFFIX_DEBUG           "txt"

@@ -66,6 +66,9 @@ OBJECTS = \
 	$(OBJDIR)/asllookup.o\
 	$(OBJDIR)/aslmain.o\
 	$(OBJDIR)/aslmap.o\
+	$(OBJDIR)/aslmapenter.o\
+	$(OBJDIR)/aslmapoutput.o\
+	$(OBJDIR)/aslmaputils.o\
 	$(OBJDIR)/aslmessages.o\
 	$(OBJDIR)/aslmethod.o\
 	$(OBJDIR)/aslnamesp.o\
@@ -76,6 +79,8 @@ OBJECTS = \
 	$(OBJDIR)/asloptions.o\
 	$(OBJDIR)/aslpredef.o\
 	$(OBJDIR)/aslprepkg.o\
+	$(OBJDIR)/aslprintf.o\
+	$(OBJDIR)/aslprune.o\
 	$(OBJDIR)/aslresource.o\
 	$(OBJDIR)/aslrestype1.o\
 	$(OBJDIR)/aslrestype1i.o\
@@ -94,16 +99,9 @@ OBJECTS = \
 	$(OBJDIR)/aslwalks.o\
 	$(OBJDIR)/aslxref.o\
 	$(OBJDIR)/cmfsize.o\
-	$(OBJDIR)/dtcompile.o\
-	$(OBJDIR)/dtexpress.o\
-	$(OBJDIR)/dtfield.o\
-	$(OBJDIR)/dtio.o\
-	$(OBJDIR)/dtsubtable.o\
-	$(OBJDIR)/dttable.o\
-	$(OBJDIR)/dttemplate.o\
-	$(OBJDIR)/dtutils.o\
 	$(OBJDIR)/dbfileio.o\
 	$(OBJDIR)/dmbuffer.o\
+	$(OBJDIR)/dmcstyle.o\
 	$(OBJDIR)/dmdeferred.o\
 	$(OBJDIR)/dmextern.o\
 	$(OBJDIR)/dmnames.o\
@@ -130,6 +128,14 @@ OBJECTS = \
 	$(OBJDIR)/dswload2.o\
 	$(OBJDIR)/dswscope.o\
 	$(OBJDIR)/dswstate.o\
+	$(OBJDIR)/dtcompile.o\
+	$(OBJDIR)/dtexpress.o\
+	$(OBJDIR)/dtfield.o\
+	$(OBJDIR)/dtio.o\
+	$(OBJDIR)/dtsubtable.o\
+	$(OBJDIR)/dttable.o\
+	$(OBJDIR)/dttemplate.o\
+	$(OBJDIR)/dtutils.o\
 	$(OBJDIR)/exconvrt.o\
 	$(OBJDIR)/excreate.o\
 	$(OBJDIR)/exdump.o\
@@ -228,6 +234,7 @@ MISC = \
 
 ASL_PARSER = \
 	$(ASL_COMPILER)/aslparser.y\
+	$(ASL_COMPILER)/aslsupport.y\
 	$(ASL_COMPILER)/asltokens.y\
 	$(ASL_COMPILER)/asltypes.y\
 	$(ASL_COMPILER)/aslrules.y
@@ -254,7 +261,7 @@ include ../Makefile.rules
 #
 # Macro processing for iASL .y files
 #
-$(OBJDIR)/aslcompiler.y :       $(ASL_PARSER)
+$(OBJDIR)/aslcompiler.y :      $(ASL_PARSER)
 	$(MACROPROC) $(MFLAGS) $(ASL_COMPILER)/aslparser.y > $(OBJDIR)/aslcompiler.y
 
 #

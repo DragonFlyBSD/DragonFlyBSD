@@ -14,7 +14,9 @@ MAN=	acpiexec.8
 SRCS=	\
 	aeexec.c \
 	aehandlers.c \
+	aeinitfile.c \
 	aemain.c \
+	aeregion.c \
 	aetables.c
 
 SRCS+=	\
@@ -36,6 +38,7 @@ SRCS+=	\
 	dbutils.c \
 	dbxface.c \
 	dmbuffer.c \
+	dmcstyle.c \
 	dmdeferred.c \
 	dmnames.c \
 	dmobject.c \

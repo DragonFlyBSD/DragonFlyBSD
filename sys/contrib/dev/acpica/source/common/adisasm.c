@@ -128,7 +128,7 @@ AcpiDsMethodDataInitArgs (
 
 
 static ACPI_TABLE_DESC      LocalTables[1];
-static ACPI_PARSE_OBJECT    *AcpiGbl_ParseOpRoot;
+ACPI_PARSE_OBJECT    *AcpiGbl_ParseOpRoot;
 
 
 /*******************************************************************************
@@ -489,6 +489,14 @@ AdAmlDisassemble (
             fprintf (stderr, "Disassembly completed\n");
             fprintf (stderr, "ASL Output:    %s - %u bytes\n",
                 DisasmFilename, CmGetFileSize (File));
+
+            if (Gbl_MapfileFlag)
+            {
+                fprintf (stderr, "%14s %s - %u bytes\n",
+                    Gbl_Files[ASL_FILE_MAP_OUTPUT].ShortDescription,
+                    Gbl_Files[ASL_FILE_MAP_OUTPUT].Filename,
+                    FlGetFileSize (ASL_FILE_MAP_OUTPUT));
+            }
         }
     }
 
@@ -536,12 +544,26 @@ AdDisassemblerHeader (
 {
     time_t                  Timer;
 
+
     time (&Timer);
 
     /* Header and input table info */
 
     AcpiOsPrintf ("/*\n");
-    AcpiOsPrintf (ACPI_COMMON_HEADER ("AML Disassembler", " * "));
+    AcpiOsPrintf (ACPI_COMMON_HEADER (AML_DISASSEMBLER_NAME, " * "));
+
+    if (AcpiGbl_CstyleDisassembly)
+    {
+        AcpiOsPrintf (
+            " * Disassembling to symbolic ASL+ operators\n"
+            " *\n");
+    }
+    else
+    {
+        AcpiOsPrintf (
+            " * Disassembling to non-symbolic legacy ASL operators\n"
+            " *\n");
+    }
 
     AcpiOsPrintf (" * Disassembly of %s, %s", Filename, ctime (&Timer));
     AcpiOsPrintf (" *\n");
@@ -688,6 +710,7 @@ AdDisplayTables (
     }
 
     AcpiDmDisassemble (NULL, AcpiGbl_ParseOpRoot, ACPI_UINT32_MAX);
+    MpEmitMappingInfo ();
 
     if (AcpiGbl_DbOpt_verbose)
     {

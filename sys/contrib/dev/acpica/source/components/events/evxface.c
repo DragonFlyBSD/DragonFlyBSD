@@ -41,7 +41,6 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-#define __EVXFACE_C__
 #define EXPORT_ACPI_INTERFACES
 
 #include "acpi.h"
@@ -1036,7 +1035,8 @@ AcpiRemoveGpeHandler (
      * enabled, it should be enabled at this point to restore the
      * post-initialization configuration.
      */
-    if ((Handler->OriginalFlags & ACPI_GPE_DISPATCH_METHOD) &&
+    if (((Handler->OriginalFlags & ACPI_GPE_DISPATCH_METHOD) ||
+         (Handler->OriginalFlags & ACPI_GPE_DISPATCH_NOTIFY)) &&
         Handler->OriginallyEnabled)
     {
         (void) AcpiEvAddGpeReference (GpeEventInfo);

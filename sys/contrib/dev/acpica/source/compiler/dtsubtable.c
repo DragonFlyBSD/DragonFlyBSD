@@ -41,8 +41,6 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-#define __DTSUBTABLE_C__
-
 #include "aslcompiler.h"
 #include "dtcompiler.h"
 
@@ -73,13 +71,15 @@ DtCreateSubtable (
     DT_SUBTABLE             **RetSubtable)
 {
     DT_SUBTABLE             *Subtable;
+    char                    *String;
 
 
     Subtable = UtSubtableCacheCalloc ();
 
     /* Create a new buffer for the subtable data */
 
-    Subtable->Buffer = ACPI_CAST_PTR (UINT8, UtStringCacheCalloc (Length));
+    String = UtStringCacheCalloc (Length);
+    Subtable->Buffer = ACPI_CAST_PTR (UINT8, String);
     ACPI_MEMCPY (Subtable->Buffer, Buffer, Length);
 
     Subtable->Length = Length;

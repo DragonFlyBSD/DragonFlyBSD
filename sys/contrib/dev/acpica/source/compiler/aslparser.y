@@ -62,7 +62,9 @@
  *      ResourceMacroList, and FieldUnitList
  */
 
-void *                      AslLocalAllocate (unsigned int Size);
+void *
+AslLocalAllocate (
+    unsigned int            Size);
 
 /* Bison/yacc configuration */
 
@@ -80,8 +82,8 @@ void *                      AslLocalAllocate (unsigned int Size);
 
 /* Define YYMALLOC/YYFREE to prevent redefinition errors  */
 
-#define YYMALLOC            malloc
-#define YYFREE              free
+#define YYMALLOC            AslLocalAllocate
+#define YYFREE              ACPI_FREE
 %}
 
 /*
@@ -97,7 +99,7 @@ void *                      AslLocalAllocate (unsigned int Size);
  * These shift/reduce conflicts are expected. There should be zero
  * reduce/reduce conflicts.
  */
-%expect 86
+%expect 89
 
 /*! [Begin] no source code translation */
 
