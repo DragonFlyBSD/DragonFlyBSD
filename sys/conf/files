@@ -2031,30 +2031,30 @@ kern/dsched/bfq/wf2q.c			optional dsched_bfq
 kern/dsched/bfq/bfq_helper_thread.c	optional dsched_bfq
 
 # ACPICA code
-${ACPICA_COMP_DIR}/debugger/dbcmds.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbconvert.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbdisply.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbexec.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbfileio.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbhistry.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbinput.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbmethod.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbnames.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbstats.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbtest.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbutils.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/debugger/dbxface.c		optional acpi acpi_debug
-${ACPICA_COMP_DIR}/disassembler/dmbuffer.c	optional acpi acpi_debug
-${ACPICA_COMP_DIR}/disassembler/dmdeferred.c	optional acpi acpi_debug
-${ACPICA_COMP_DIR}/disassembler/dmnames.c	optional acpi acpi_debug
-${ACPICA_COMP_DIR}/disassembler/dmobject.c	optional acpi acpi_debug
-${ACPICA_COMP_DIR}/disassembler/dmopcode.c	optional acpi acpi_debug
-${ACPICA_COMP_DIR}/disassembler/dmresrc.c	optional acpi acpi_debug
-${ACPICA_COMP_DIR}/disassembler/dmresrcl.c	optional acpi acpi_debug
-${ACPICA_COMP_DIR}/disassembler/dmresrcl2.c	optional acpi acpi_debug
-${ACPICA_COMP_DIR}/disassembler/dmresrcs.c	optional acpi acpi_debug
-${ACPICA_COMP_DIR}/disassembler/dmutils.c	optional acpi acpi_debug
-${ACPICA_COMP_DIR}/disassembler/dmwalk.c	optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbcmds.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbconvert.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbdisply.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbexec.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbfileio.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbhistry.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbinput.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbmethod.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbnames.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbstats.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbtest.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbutils.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/debugger/dbxface.c		optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/disassembler/dmbuffer.c	optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/disassembler/dmdeferred.c	optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/disassembler/dmnames.c	optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/disassembler/dmobject.c	optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/disassembler/dmopcode.c	optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/disassembler/dmresrc.c	optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/disassembler/dmresrcl.c	optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/disassembler/dmresrcl2.c	optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/disassembler/dmresrcs.c	optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/disassembler/dmutils.c	optional acpi acpi_debug
+#${ACPICA_COMP_DIR}/disassembler/dmwalk.c	optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/dispatcher/dsargs.c		optional acpi
 ${ACPICA_COMP_DIR}/dispatcher/dscontrol.c	optional acpi
 ${ACPICA_COMP_DIR}/dispatcher/dsfield.c		optional acpi

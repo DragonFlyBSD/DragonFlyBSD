@@ -302,8 +302,10 @@ acpi_TimerDelta(uint32_t end, uint32_t start)
 	return (end - start);
 }
 
+#if 0				/* XXX */
 #ifdef ACPI_DEBUGGER
 void		acpi_EnterDebugger(void);
+#endif
 #endif
 
 #ifdef ACPI_DEBUG

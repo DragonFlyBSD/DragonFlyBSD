@@ -139,12 +139,14 @@
 #define DEBUGGER_THREADING 0    /* integrated with DDB */
 
 #ifdef ACPI_DEBUG
-#define ACPI_DEBUG_OUTPUT	/* for backward compatibility */
+#define ACPI_DEBUG_OUTPUT	/* enable debug output */
+#if 0				/* XXX */
 #include "opt_ddb.h"
 #ifdef DDB
 #define ACPI_DEBUGGER
 #endif /* DDB */
 #define ACPI_DISASSEMBLER
+#endif
 #endif
 
 #ifdef ACPI_DEBUG_CACHE

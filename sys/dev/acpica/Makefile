@@ -31,11 +31,11 @@ KMOD	= acpi
 
 # ACPICA sources
 SRCS+=	ahids.c ahuuids.c
-SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
-SRCS+=	dbinput.c dbstats.c dbtest.c dbutils.c dbxface.c
-SRCS+=	dbmethod.c dbnames.c
-SRCS+=	dmbuffer.c dmdeferred.c dmnames.c dmobject.c dmopcode.c
-SRCS+=	dmresrc.c dmresrcl.c dmresrcl2.c dmresrcs.c dmutils.c dmwalk.c
+#SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
+#SRCS+=	dbinput.c dbstats.c dbtest.c dbutils.c dbxface.c
+#SRCS+=	dbmethod.c dbnames.c
+#SRCS+=	dmbuffer.c dmdeferred.c dmnames.c dmobject.c dmopcode.c
+#SRCS+=	dmresrc.c dmresrcl.c dmresrcl2.c dmresrcs.c dmutils.c dmwalk.c
 SRCS+=	dsfield.c dsinit.c dsmethod.c dsmthdat.c
 SRCS+=	dsobject.c dsopcode.c dsutils.c dswexec.c dswload.c
 SRCS+=	dswscope.c dswstate.c dsargs.c dscontrol.c dswload2.c
