@@ -380,7 +380,7 @@ struct	proc {
 
 /* Marked a kernel thread */
 #define	P_UNUSED20	0x00100000 /* was: on a user scheduling run queue */
-#define	P_KTHREADP	0x00200000 /* Process is really a kernel thread */
+#define	P_UNUSED21	0x00200000 /* was: Process is really a kernel thread */
 #define P_IDLESWAP	0x00400000 /* Swapout was due to idleswap, not load */
 
 #define	P_JAILED	0x01000000 /* Process is in jail */
