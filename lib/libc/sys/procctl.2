@@ -76,7 +76,8 @@ The data argument is ignored and can be NULL.
 Request status.
 The supplied data structure is loaded with the current reaper status.
 The data argument may be NULL, which can be used to test whether
-the system call exists or not (assuming you catch ENOSYS).
+the system call exists or not (assuming you catch
+.Er ENOSYS ) .
 See the include file for more information.
 .Pp
 Current status flags, indicating whether reaping is acquired.
@@ -90,7 +91,6 @@ kill the process in question, waitpid it, and loop until no processes
 remain.
 This is guarenteed to ultimately irradicate everything that was directly
 or indirectly started under the reaper.
-.Pp
 .El
 .Sh RETURN VALUES
 0 is returned upon successful completion.
