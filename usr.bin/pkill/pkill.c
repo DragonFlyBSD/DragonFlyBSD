@@ -68,8 +68,8 @@
 #define	MAX_PID	PID_MAX
 
 /* Ignore system-processes (if '-S' flag is not specified) and myself. */
-#define	PSKIP(kp)	((kp)->kp_pid == mypid ||			\
-			 (!kthreads && ((kp)->kp_flags & P_KTHREADP) != 0))
+#define	PSKIP(kp)	((kp)->kp_pid == mypid ||	\
+	    (!kthreads && (kp)->kp_pid <= 0))
 
 enum listtype {
 	LT_GENERIC,
