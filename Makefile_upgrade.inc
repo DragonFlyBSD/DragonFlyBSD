@@ -2713,6 +2713,7 @@ TO_REMOVE+=/usr/share/man/cat8/usbdevs.8.gz
 TO_REMOVE+=/usr/share/man/man5/usbd.conf.5.gz
 TO_REMOVE+=/usr/share/man/man8/usbd.8.gz
 TO_REMOVE+=/usr/share/man/man8/usbdevs.8.gz
+TO_REMOVE+=/usr/include/sys/reaper.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
