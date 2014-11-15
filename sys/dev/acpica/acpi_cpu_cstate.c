@@ -61,7 +61,7 @@
  * Support for ACPI Processor devices, including C[1-3+] sleep states.
  */
 
-/* Hooks for the ACPI CA debugging infrastructure */
+/* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_PROCESSOR
 ACPI_MODULE_NAME("PROCESSOR")
 

@@ -69,7 +69,7 @@
 
 MALLOC_DEFINE(M_ACPIDEV, "acpidev", "ACPI devices");
 
-/* Hooks for the ACPI CA debugging infrastructure */
+/* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_BUS
 ACPI_MODULE_NAME("ACPI")
 
@@ -468,7 +468,7 @@ acpi_attach(device_t dev)
     ACPI_SERIAL_INIT(acpi);
 
     /*
-     * Set the globals from our tunables.  This is needed because ACPI-CA
+     * Set the globals from our tunables.  This is needed because ACPICA
      * uses UINT8 for some values and we have no tunable_byte.
      */
     AcpiGbl_AutoSerializeMethods = acpi_auto_serialize_methods ? TRUE : FALSE;
@@ -482,7 +482,7 @@ acpi_attach(device_t dev)
     AcpiDbgLevel &= ~ACPI_LV_DEBUG_OBJECT;
 #endif
 
-    /* Start up the ACPI CA subsystem. */
+    /* Start up the ACPICA subsystem. */
     status = AcpiInitializeSubsystem();
     if (ACPI_FAILURE(status)) {
 	device_printf(dev, "Could not initialize Subsystem: %s\n",

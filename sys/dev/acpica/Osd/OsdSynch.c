@@ -368,7 +368,7 @@ AcpiOsDeleteLock (ACPI_SPINLOCK Spin)
  * OS-dependent locking primitives.  These routines should be able to be
  * called from an interrupt-handler or cpu_idle thread.
  *
- * NB: some of ACPI-CA functions with locking flags, say AcpiSetRegister(),
+ * NB: some of ACPICA functions with locking flags, say AcpiSetRegister(),
  * are changed to unconditionally call AcpiOsAcquireLock/AcpiOsReleaseLock.
  */
 ACPI_CPU_FLAGS

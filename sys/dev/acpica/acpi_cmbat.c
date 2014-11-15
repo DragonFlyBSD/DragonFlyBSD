@@ -47,7 +47,7 @@
 /* Check the battery once a minute. */
 #define	CMBAT_POLLRATE		(60 * hz)
 
-/* Hooks for the ACPI CA debugging infrastructure */
+/* Hooks for the ACPICA debugging infrastructure */
 #define	_COMPONENT	ACPI_BATTERY
 ACPI_MODULE_NAME("BATTERY")
 

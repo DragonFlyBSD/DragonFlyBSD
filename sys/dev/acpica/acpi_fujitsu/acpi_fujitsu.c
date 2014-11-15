@@ -40,7 +40,7 @@
 
 #include <dev/acpica/acpivar.h>
 
-/* Hooks for the ACPI CA debugging infrastructure */
+/* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_OEM
 ACPI_MODULE_NAME("Fujitsu")
 

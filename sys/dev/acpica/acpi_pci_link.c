@@ -44,7 +44,7 @@
 #include <bus/pci/pcivar.h>
 #include "pcib_if.h"
 
-/* Hooks for the ACPI CA debugging infrastructure. */
+/* Hooks for the ACPICA debugging infrastructure. */
 #define _COMPONENT	ACPI_BUS
 ACPI_MODULE_NAME("PCI_LINK")
 

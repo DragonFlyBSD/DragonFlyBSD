@@ -46,7 +46,7 @@
 #include "pcib_if.h"
 #include "pci_if.h"
 
-/* Hooks for the ACPI CA debugging infrastructure. */
+/* Hooks for the ACPICA debugging infrastructure. */
 #define _COMPONENT	ACPI_BUS
 ACPI_MODULE_NAME("PCI")
 
@@ -215,7 +215,7 @@ acpi_pci_update_device(ACPI_HANDLE handle, device_t pci_child)
 			/*
 			 * The TabletPC TC1000 has a second PCI-ISA bridge
 			 * that has a _HID for an acpi_sysresource device.
-			 * In that case, leave ACPI-CA's device data pointing
+			 * In that case, leave ACPICA's device data pointing
 			 * at the ACPI-enumerated device.
 			 */
 			device_printf(child,
@@ -232,7 +232,7 @@ acpi_pci_update_device(ACPI_HANDLE handle, device_t pci_child)
 	}
 
 	/*
-	 * Update ACPI-CA to use the PCI enumerated device_t for this handle.
+	 * Update ACPICA to use the PCI enumerated device_t for this handle.
 	 */
 	status = AcpiDetachData(handle, acpi_fake_objhandler);
 	if (ACPI_FAILURE(status))

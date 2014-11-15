@@ -44,7 +44,7 @@
 #include <dev/acpica/acpivar.h>
 #include <bus/isa/isavar.h>
 
-/* Hooks for the ACPI CA debugging infrastructure. */
+/* Hooks for the ACPICA debugging infrastructure. */
 #define _COMPONENT	ACPI_BUS
 ACPI_MODULE_NAME("ISA_ACPI")
 

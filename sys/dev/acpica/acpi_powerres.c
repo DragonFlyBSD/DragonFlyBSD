@@ -54,7 +54,7 @@
 
 MALLOC_DEFINE(M_ACPIPWR, "acpipwr", "ACPI power resources");
 
-/* Hooks for the ACPI CA debugging infrastructure */
+/* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_POWERRES
 ACPI_MODULE_NAME("POWERRES")
 

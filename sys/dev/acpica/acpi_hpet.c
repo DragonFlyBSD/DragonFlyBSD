@@ -40,7 +40,7 @@
 #include "acpivar.h"
 #include "acpi_hpet.h"
 
-/* Hooks for the ACPI CA debugging infrastructure */
+/* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_TIMER
 ACPI_MODULE_NAME("HPET")
 

@@ -148,7 +148,7 @@ struct acpi_prw_data {
  * interrupts, get/set control paths, etc.) should use the sx lock macros
  * (ACPI_SERIAL).
  *
- * ACPI-CA handles its own locking and should not be called with locks held.
+ * ACPICA handles its own locking and should not be called with locks held.
  *
  * The most complicated path is:
  *     GPE -> EC runs _Qxx -> _Qxx reads EC space -> GPE
@@ -169,7 +169,7 @@ extern struct lock acpi_lock;
 #define ACPI_SERIAL_ASSERT(sys)         KKASSERT(lockstatus(&sys##_serial, curthread) == LK_EXCLUSIVE);
 #define ACPI_SERIAL_DECL(sys, name)     static struct lock sys##_serial;
 /*
- * ACPI CA does not define layers for non-ACPI CA drivers.
+ * ACPICA does not define layers for non-ACPICA drivers.
  * We define some here within the range provided.
  */
 #define	ACPI_AC_ADAPTER		0x00010000

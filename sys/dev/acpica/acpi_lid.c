@@ -41,7 +41,7 @@
 
 #include <dev/acpica/acpivar.h>
 
-/* Hooks for the ACPI CA debugging infrastructure */
+/* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_BUTTON
 ACPI_MODULE_NAME("LID")
 

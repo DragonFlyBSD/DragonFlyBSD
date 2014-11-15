@@ -44,7 +44,7 @@
 #include <bus/isa/isavar.h>
 #include <bus/isa/pnpvar.h>
  
-/* Hooks for the ACPI CA debugging infrastructure */
+/* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_AC_ADAPTER
 ACPI_MODULE_NAME("AC_ADAPTER")
 

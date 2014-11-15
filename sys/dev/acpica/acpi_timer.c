@@ -48,7 +48,7 @@
  * Based on the i386-only mp_clock.c by <phk@FreeBSD.ORG>.
  */
 
-/* Hooks for the ACPI CA debugging infrastructure */
+/* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_TIMER
 ACPI_MODULE_NAME("TIMER")
 

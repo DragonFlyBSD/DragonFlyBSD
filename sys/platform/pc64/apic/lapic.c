@@ -504,9 +504,9 @@ lapic_timer_restart_handler(void *dummy __unused)
 }
 
 /*
- * This function is called only by ACPI-CA code currently:
+ * This function is called only by ACPICA code currently:
  * - AMD C1E fixup.  AMD C1E only seems to happen after ACPI
- *   module controls PM.  So once ACPI-CA is attached, we try
+ *   module controls PM.  So once ACPICA is attached, we try
  *   to apply the fixup to prevent LAPIC timer from hanging.
  */
 static void

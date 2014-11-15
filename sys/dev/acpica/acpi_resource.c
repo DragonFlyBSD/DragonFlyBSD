@@ -42,7 +42,7 @@
 #include "acpi.h"
 #include <dev/acpica/acpivar.h>
 
-/* Hooks for the ACPI CA debugging infrastructure */
+/* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_BUS
 ACPI_MODULE_NAME("RESOURCE")
 

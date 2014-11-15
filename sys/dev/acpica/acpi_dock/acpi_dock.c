@@ -39,7 +39,7 @@
 #include <dev/acpica/acpivar.h>
 #include <dev/acpica/acpiio.h>
 
-/* Hooks for the ACPI CA debugging infrastructure */
+/* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_DOCK
 ACPI_MODULE_NAME("DOCK")
 
