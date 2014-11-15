@@ -103,6 +103,7 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 {
 	struct drm_local_map *map;
 	struct drm_map_list *entry = NULL;
+	drm_dma_handle_t *dmah;
 	int align;
 
 	/* Allocate a new map structure, fill it in, and do any type-specific
@@ -117,8 +118,6 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 	map->size = size;
 	map->type = type;
 	map->flags = flags;
-	map->handle = (void *)((unsigned long)alloc_unr(dev->map_unrhdr) <<
-	    DRM_MAP_HANDLE_SHIFT);
 
 	/* Only allow shared memory to be removable since we only keep enough
 	 * book keeping information about shared memory to allow for removal
@@ -163,7 +162,7 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 
 	switch (map->type) {
 	case _DRM_REGISTERS:
-		map->virtual = drm_ioremap(dev, map);
+		map->handle = drm_ioremap(dev, map);
 		if (!(map->flags & _DRM_WRITE_COMBINING))
 			break;
 		/* FALLTHROUGH */
@@ -172,24 +171,24 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 			map->mtrr = 1;
 		break;
 	case _DRM_SHM:
-		map->virtual = kmalloc(map->size, M_DRM, M_NOWAIT);
+		map->handle = kmalloc(map->size, M_DRM, M_NOWAIT);
 		DRM_DEBUG("%lu %d %p\n",
-		    map->size, drm_order(map->size), map->virtual);
-		if (!map->virtual) {
+		    map->size, drm_order(map->size), map->handle);
+		if (!map->handle) {
 			drm_free(map, M_DRM);
 			return ENOMEM;
 		}
-		map->offset = (unsigned long)map->virtual;
+		map->offset = (unsigned long)map->handle;
 		if (map->flags & _DRM_CONTAINS_LOCK) {
 			/* Prevent a 2nd X Server from creating a 2nd lock */
 			DRM_LOCK(dev);
 			if (dev->lock.hw_lock != NULL) {
 				DRM_UNLOCK(dev);
-				drm_free(map->virtual, M_DRM);
+				drm_free(map->handle, M_DRM);
 				drm_free(map, M_DRM);
 				return EBUSY;
 			}
-			dev->lock.hw_lock = map->virtual; /* Pointer to lock */
+			dev->lock.hw_lock = map->handle; /* Pointer to lock */
 			DRM_UNLOCK(dev);
 		}
 		break;
@@ -225,7 +224,7 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 			drm_free(map, M_DRM);
 			return EINVAL;
 		}
-		map->virtual = (void *)(uintptr_t)(dev->sg->vaddr + offset);
+		map->handle = (void *)(uintptr_t)(dev->sg->vaddr + offset);
 		map->offset = dev->sg->vaddr + offset;
 		break;
 	case _DRM_CONSISTENT:
@@ -238,13 +237,13 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 		align = map->size;
 		if ((align & (align - 1)) != 0)
 			align = PAGE_SIZE;
-		map->dmah = drm_pci_alloc(dev, map->size, align, 0xfffffffful);
-		if (map->dmah == NULL) {
+		dmah = drm_pci_alloc(dev, map->size, align, 0xfffffffful);
+		if (!dmah) {
 			drm_free(map, M_DRM);
 			return ENOMEM;
 		}
-		map->virtual = map->dmah->vaddr;
-		map->offset = map->dmah->busaddr;
+		map->handle = dmah->vaddr;
+		map->offset = (unsigned long)dmah->busaddr;
 		break;
 	default:
 		DRM_ERROR("Bad map type %d\n", map->type);
@@ -309,6 +308,7 @@ int drm_addmap_ioctl(struct drm_device *dev, void *data,
 void drm_rmmap(struct drm_device *dev, struct drm_local_map *map)
 {
 	struct drm_map_list *r_list = NULL, *list_t;
+	drm_dma_handle_t dmah;
 	int found = 0;
 
 	DRM_LOCK_ASSERT(dev);
@@ -331,8 +331,7 @@ void drm_rmmap(struct drm_device *dev, struct drm_local_map *map)
 
 	switch (map->type) {
 	case _DRM_REGISTERS:
-		if (map->bsr == NULL)
-			drm_ioremapfree(map);
+		drm_ioremapfree(map);
 		/* FALLTHROUGH */
 	case _DRM_FRAME_BUFFER:
 		if (map->mtrr) {
@@ -344,29 +343,20 @@ void drm_rmmap(struct drm_device *dev, struct drm_local_map *map)
 		}
 		break;
 	case _DRM_SHM:
-		drm_free(map->virtual, M_DRM);
+		drm_free(map->handle, M_DRM);
 		break;
 	case _DRM_AGP:
 	case _DRM_SCATTER_GATHER:
 		break;
 	case _DRM_CONSISTENT:
-		drm_pci_free(dev, map->dmah);
+		dmah.vaddr = map->handle;
+		dmah.busaddr = map->offset;
+		drm_pci_free(dev, &dmah);
 		break;
 	default:
 		DRM_ERROR("Bad map type %d\n", map->type);
 		break;
 	}
-
-	if (map->bsr != NULL) {
-		bus_release_resource(dev->dev, SYS_RES_MEMORY, map->rid,
-		    map->bsr);
-	}
-
-	DRM_UNLOCK(dev);
-	if (map->handle)
-		free_unr(dev->map_unrhdr, (unsigned long)map->handle >>
-		    DRM_MAP_HANDLE_SHIFT);
-	DRM_LOCK(dev);
 
 	drm_free(map, M_DRM);
 }

@@ -42,8 +42,8 @@ int drm_mmap(struct dev_mmap_args *ap)
 	struct drm_device *dev = drm_get_device_from_kdev(kdev);
 	struct drm_file *file_priv = NULL;
 	struct drm_local_map *map = NULL;
-	struct drm_map_list *r_list;
 	int error;
+	struct drm_hash_item *hash;
 
 	enum drm_map_type type;
 	vm_paddr_t phys;
@@ -90,21 +90,16 @@ int drm_mmap(struct dev_mmap_args *ap)
 	   bit longer.
 	*/
 	DRM_LOCK(dev);
-	list_for_each_entry(r_list, &dev->maplist, head) {
-		if (r_list->map && r_list->map->offset >> DRM_MAP_HANDLE_SHIFT ==
-		    (unsigned long)r_list->map->handle >> DRM_MAP_HANDLE_SHIFT) {
-			map = r_list->map;
-			break;
-		}
+
+	if (drm_ht_find_item(&dev->map_hash, offset, &hash)) {
+		DRM_ERROR("Could not find map\n");
+		return -EINVAL;
 	}
 
+	map = drm_hash_entry(hash, struct drm_map_list, hash)->map;
 	if (map == NULL) {
 		DRM_DEBUG("Can't find map, request offset = %016jx\n",
 		    (uintmax_t)offset);
-		list_for_each_entry(r_list, &dev->maplist, head) {
-			DRM_DEBUG("map offset = %016lx, handle = %016lx\n",
-			    r_list->map->offset, (unsigned long)r_list->map->handle);
-		}
 		DRM_UNLOCK(dev);
 		return -1;
 	}
@@ -113,10 +108,9 @@ int drm_mmap(struct dev_mmap_args *ap)
 		DRM_DEBUG("restricted map\n");
 		return -1;
 	}
+
 	type = map->type;
 	DRM_UNLOCK(dev);
-
-	offset = offset & ((1ULL << DRM_MAP_HANDLE_SHIFT) - 1);
 
 	switch (type) {
 	case _DRM_FRAME_BUFFER:
@@ -135,7 +129,7 @@ int drm_mmap(struct dev_mmap_args *ap)
 		/* FALLTHROUGH */
 	case _DRM_CONSISTENT:
 	case _DRM_SHM:
-		phys = vtophys((char *)map->virtual + offset);
+		phys = vtophys((char *)map->handle + offset);
 		break;
 	default:
 		DRM_ERROR("bad map type %d\n", type);

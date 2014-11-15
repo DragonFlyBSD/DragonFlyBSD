@@ -69,11 +69,11 @@ static bool igp_read_bios_from_vram(struct radeon_device *rdev)
 	bios_map.flags  = 0;
 	bios_map.mtrr   = 0;
 	drm_core_ioremap(&bios_map, rdev->ddev);
-	if (bios_map.virtual == NULL) {
+	if (bios_map.handle == NULL) {
 		DRM_INFO("%s: failed to ioremap\n", __func__);
 		return false;
 	}
-	bios = bios_map.virtual;
+	bios = bios_map.handle;
 	size = bios_map.size;
 	DRM_INFO("%s: Map address: %p (%ju bytes)\n", __func__, bios, (uintmax_t)size);
 

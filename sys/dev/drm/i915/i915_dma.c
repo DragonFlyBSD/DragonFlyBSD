@@ -187,7 +187,7 @@ static int i915_initialize(struct drm_device * dev, drm_i915_init_t * init)
 	}
 
 	dev_priv->sarea_priv = (drm_i915_sarea_t *)
-	    ((u8 *) dev_priv->sarea->virtual + init->sarea_priv_offset);
+	    ((u8 *) dev_priv->sarea->handle + init->sarea_priv_offset);
 
 	if (init->ring_size != 0) {
 		if (LP_RING(dev_priv)->obj != NULL) {

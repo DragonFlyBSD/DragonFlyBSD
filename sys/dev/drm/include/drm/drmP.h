@@ -559,28 +559,17 @@ typedef struct drm_sg_mem {
 	vm_pindex_t pages;
 } drm_sg_mem_t;
 
-#define DRM_MAP_HANDLE_BITS	(sizeof(void *) == 4 ? 4 : 24)
-#define DRM_MAP_HANDLE_SHIFT	(sizeof(void *) * 8 - DRM_MAP_HANDLE_BITS)
-
 /**
  * Kernel side of a mapping
  */
 struct drm_local_map {
-	unsigned long offset;	  /* Physical address (0 for SAREA)       */
-	unsigned long size;	  /* Physical size (bytes)                */
-	enum drm_map_type type;	  /* Type of memory mapped                */
-	enum drm_map_flags flags; /* Flags                                */
-	void *handle;		  /* User-space: "Handle" to pass to mmap */
-				  /* Kernel-space: kernel-virtual address */
-	int mtrr;		  /* Boolean: MTRR used                   */
-				  /* Private data                         */
-	int rid;		  /* PCI resource ID for bus_space        */
-	void *virtual;		  /* Kernel-space: kernel-virtual address */
-	struct resource *bsr;
-	bus_space_tag_t bst;
-	bus_space_handle_t bsh;
-	drm_dma_handle_t *dmah;
-	TAILQ_ENTRY(drm_local_map) link;
+	resource_size_t offset;	 /**< Requested physical address (0 for SAREA)*/
+	unsigned long size;	 /**< Requested physical size (bytes) */
+	enum drm_map_type type;	 /**< Type of memory to map */
+	enum drm_map_flags flags;	 /**< Flags */
+	void *handle;		 /**< User-space: "Handle" to pass to mmap() */
+				 /**< Kernel-space: kernel-virtual address */
+	int mtrr;		 /**< MTRR slot used */
 };
 
 typedef struct drm_local_map drm_local_map_t;
@@ -898,29 +887,35 @@ struct drm_device {
 	struct lock	  dev_lock;	/* protects everything else */
 	struct lock	  dev_struct_lock;
 
-				/* Usage Counters */
-	int		  open_count;	/* Outstanding files open	   */
-	int		  buf_use;	/* Buffers in use -- cannot alloc  */
-
-				/* Performance counters */
-	unsigned long     counters;
-	enum drm_stat_type	types[15];
-	atomic_t          counts[15];
-
-				/* Authentication */
-	drm_magic_head_t  magiclist[DRM_HASH_SIZE];
-
 	/** \name Locks */
 	/*@{ */
 	struct lock struct_mutex;	/**< For others */
 	/*@} */
+
+	/** \name Usage Counters */
+	/*@{ */
+	int		  open_count;	/* Outstanding files open	   */
+	int		  buf_use;	/* Buffers in use -- cannot alloc  */
+	/*@} */
+
+
+	/** \name Performance counters */
+	/*@{ */
+	unsigned long     counters;
+	enum drm_stat_type	types[15];
+	atomic_t          counts[15];
+	/*@} */
+
+				/* Authentication */
+	drm_magic_head_t  magiclist[DRM_HASH_SIZE];
 
 	struct list_head filelist;
 
 	/** \name Memory management */
 	/*@{ */
 	struct list_head maplist;	/**< Linked list of regions */
-	struct unrhdr	  *map_unrhdr;
+	int map_count;			/**< Number of mappable regions */
+	struct drm_open_hash map_hash;	/**< User token hash table for maps */
 
 	drm_local_map_t	  **context_sareas;
 	int		  max_context;
@@ -1552,17 +1547,17 @@ drm_free(void *pt, struct malloc_type *area)
 static __inline__ void
 drm_core_ioremap_wc(struct drm_local_map *map, struct drm_device *dev)
 {
-	map->virtual = drm_ioremap_wc(dev, map);
+	map->handle = drm_ioremap_wc(dev, map);
 }
 static __inline__ void
 drm_core_ioremap(struct drm_local_map *map, struct drm_device *dev)
 {
-	map->virtual = drm_ioremap(dev, map);
+	map->handle = drm_ioremap(dev, map);
 }
 static __inline__ void
 drm_core_ioremapfree(struct drm_local_map *map, struct drm_device *dev)
 {
-	if ( map->virtual && map->size )
+	if ( map->handle && map->size )
 		drm_ioremapfree(map);
 }
 
