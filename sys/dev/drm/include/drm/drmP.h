@@ -112,9 +112,9 @@
 struct drm_file;
 struct drm_device;
 
-#include "drm_os_freebsd.h"
-#include "drm_hashtab.h"
-#include "drm_mm.h"
+#include <drm/drm_os_linux.h>
+#include <drm/drm_hashtab.h>
+#include <drm/drm_mm.h>
 
 #define DRM_UT_CORE 		0x01
 #define DRM_UT_DRIVER		0x02
@@ -242,31 +242,6 @@ enum {
 #define DRM_READMEMORYBARRIER()		cpu_lfence()
 #define DRM_WRITEMEMORYBARRIER()	cpu_sfence()
 #define DRM_MEMORYBARRIER()		cpu_mfence()
-
-#define DRM_READ8(map, offset)						\
-	*(volatile u_int8_t *)(((vm_offset_t)(map)->virtual) +		\
-	    (vm_offset_t)(offset))
-#define DRM_READ16(map, offset)						\
-	le16toh(*(volatile u_int16_t *)(((vm_offset_t)(map)->virtual) +	\
-	    (vm_offset_t)(offset)))
-#define DRM_READ32(map, offset)						\
-	le32toh(*(volatile u_int32_t *)(((vm_offset_t)(map)->virtual) +	\
-	    (vm_offset_t)(offset)))
-#define DRM_READ64(map, offset)						\
-	le64toh(*(volatile u_int64_t *)(((vm_offset_t)(map)->virtual) +	\
-	    (vm_offset_t)(offset)))
-#define DRM_WRITE8(map, offset, val)					\
-	*(volatile u_int8_t *)(((vm_offset_t)(map)->virtual) +		\
-	    (vm_offset_t)(offset)) = val
-#define DRM_WRITE16(map, offset, val)					\
-	*(volatile u_int16_t *)(((vm_offset_t)(map)->virtual) +		\
-	    (vm_offset_t)(offset)) = htole16(val)
-#define DRM_WRITE32(map, offset, val)					\
-	*(volatile u_int32_t *)(((vm_offset_t)(map)->virtual) +		\
-	    (vm_offset_t)(offset)) = htole32(val)
-#define DRM_WRITE64(map, offset, val)					\
-	*(volatile u_int64_t *)(((vm_offset_t)(map)->virtual) +		\
-	    (vm_offset_t)(offset)) = htole64(val)
 
 #define DRM_VERIFYAREA_READ( uaddr, size )		\
 	(!useracc(__DECONST(caddr_t, uaddr), size, VM_PROT_READ))

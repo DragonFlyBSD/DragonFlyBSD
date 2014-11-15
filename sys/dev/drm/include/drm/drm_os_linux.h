@@ -5,6 +5,32 @@
  * $FreeBSD: head/sys/dev/drm2/drm_os_freebsd.h 254858 2013-08-25 14:27:14Z dumbbell $
  */
 
+#define DRM_READ8(map, offset)						\
+	*(volatile u_int8_t *)(((vm_offset_t)(map)->virtual) +		\
+	    (vm_offset_t)(offset))
+#define DRM_READ16(map, offset)						\
+	le16toh(*(volatile u_int16_t *)(((vm_offset_t)(map)->virtual) +	\
+	    (vm_offset_t)(offset)))
+#define DRM_READ32(map, offset)						\
+	le32toh(*(volatile u_int32_t *)(((vm_offset_t)(map)->virtual) +	\
+	    (vm_offset_t)(offset)))
+#define DRM_READ64(map, offset)						\
+	le64toh(*(volatile u_int64_t *)(((vm_offset_t)(map)->virtual) +	\
+	    (vm_offset_t)(offset)))
+#define DRM_WRITE8(map, offset, val)					\
+	*(volatile u_int8_t *)(((vm_offset_t)(map)->virtual) +		\
+	    (vm_offset_t)(offset)) = val
+#define DRM_WRITE16(map, offset, val)					\
+	*(volatile u_int16_t *)(((vm_offset_t)(map)->virtual) +		\
+	    (vm_offset_t)(offset)) = htole16(val)
+#define DRM_WRITE32(map, offset, val)					\
+	*(volatile u_int32_t *)(((vm_offset_t)(map)->virtual) +		\
+	    (vm_offset_t)(offset)) = htole32(val)
+#define DRM_WRITE64(map, offset, val)					\
+	*(volatile u_int64_t *)(((vm_offset_t)(map)->virtual) +		\
+	    (vm_offset_t)(offset)) = htole64(val)
+
+
 #if _BYTE_ORDER == _BIG_ENDIAN
 #define	__BIG_ENDIAN 4321
 #else
