@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/VOP_INACTIVE.9,v 1.5.2.3 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd July 24, 1996
+.Dd November 15, 2014
 .Dt VOP_INACTIVE 9
 .Os
 .Sh NAME
@@ -37,9 +37,9 @@
 .In sys/param.h
 .In sys/vnode.h
 .Ft int
-.Fn VOP_INACTIVE "struct vnode *vp" "struct proc *p"
+.Fn VOP_INACTIVE "struct vnode *vp"
 .Ft int
-.Fn VOP_RECLAIM "struct vnode *vp" "struct proc *p"
+.Fn VOP_RECLAIM "struct vnode *vp"
 .Sh DESCRIPTION
 The arguments are:
 .Bl -tag -width 2n
@@ -56,44 +56,6 @@ It can be used to reclaim space for 'open but deleted' files.
 is called when a vnode is being reused for a different filesystem.
 Any filesystem specific resources associated with the vnode should be
 freed.
-.Sh LOCKS
-For VOP_INACTIVE, the vp will be locked on entry.  Your VOP_INACTIVE code
-must unlock the vp prior to returning.
-.Pp
-For VOP_RECLAIM, the vp will not be locked on entry and should be left
-unlocked on return.
-.Sh PSEUDOCODE
-.Bd -literal
-int
-vop_inactive(struct vnode *vp)
-{
-    if (link count of vp == 0) {
-	/*
-	 * Reclaim space in filesystem for vp.
-	 */
-	...;
-    }
-    VOP_UNLOCK(vp, 0, p);
-
-    return 0;
-}
-
-int
-vop_reclaim(struct vnode *vp)
-{
-    /*
-     * Clean out the name cache.
-     */
-    cache_purge(vp);
-
-    /*
-     * Free filesystem-related data.
-     */
-    ...;
-
-    return 0;
-}
-.Ed
 .Sh SEE ALSO
 .Xr vnode 9
 .Sh AUTHORS

@@ -24,109 +24,52 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man9/VOP_LINK.9,v 1.9.2.3 2001/12/17 11:30:18 ru Exp $
+.\" $FreeBSD: src/share/man/man9/VOP_REMOVE.9,v 1.7.2.2 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd July 24, 1996
-.Dt VOP_LINK 9
+.Dd October 13, 2014
+.Dt VOP_OLD_REMOVE 9
 .Os
 .Sh NAME
-.Nm VOP_LINK
-.Nd create a new name for a file
+.Nm VOP_OLD_REMOVE ,
+.Nm VOP_OLD_RMDIR
+.Nd remove a file or directory
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/vnode.h
 .Ft int
-.Fn VOP_LINK "struct vnode *dvp" "struct vnode *vp" "struct componentname *cnp"
+.Fn VOP_OLD_REMOVE "struct vnode *dvp" "struct vnode *vp" "struct componentname *cnp"
+.Ft int
+.Fn VOP_OLD_RMDIR "struct vnode *dvp" "struct vnode *vp" "struct componentname *cnp"
 .Sh DESCRIPTION
-This links a new name in the specified directory to an existing file.
+These entry points remove files and directories respectively.
 .Pp
-Its arguments are:
-.Bl -tag -width 8n
+The arguments are:
+.Bl -tag -width dvp
 .It Fa dvp
 the vnode of the directory
 .It Fa vp
-the vnode of the file to be linked
+the vnode of the file to be removed
 .It Fa cnp
 pathname information about the file
 .El
-.Pp
-The pathname info must be released on exit.  The directory and
-file vnodes should NOT be released on exit.
 .Sh LOCKS
-The directory,
+Both
 .Fa dvp
-is locked on entry and should remain locked on return.
-The file
+and
 .Fa vp
-is not locked on entry and should remain that way on return.
-If your VOP code locks
-.Fa vp ,
-it must be sure to unlock prior to returning.
+should be locked on entry and remain locked on return.
 .Sh RETURN VALUES
-Zero is returned if the file was linked successfully, otherwise an
-error is returned.
-.Sh PSEUDOCODE
-.Bd -literal
-int
-vop_link(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
-{
-    int error = 0;
-
-    if (vp->v_mount != dvp->v_mount) {
-	VOP_ABORTOP(dvp, cnp);
-	error = EXDEV;
-	goto out2;
-    }
-    if (vp != dvp && (error = VOP_LOCK(vp))) {
-	VOP_ABORTOP(dvp, cnp);
-	goto out2;
-    }
-
-    /*
-     * now that we've locked vp, we have to use out1 instead of out2
-     */
-
-    if (vp would have too many links) {
-	VOP_ABORTOP(dvp, cnp);
-	error = EMLINK;
-	goto out1;
-    }
-
-    if (vp is immutable) {
-	VOP_ABORTOP(dvp, cnp);
-	error = EPERM;
-	goto out1;
-    }
-
-    /*
-     * Increment link count of vp and write back the on-disc version of it.
-     */
-    ...;
-
-    if (!error) {
-	/*
-	 * Add the new name to the directory.
-	 */
-	...;
-    }
-
-    kfree(cnp->cn_pnbuf, M_NAMEI);
-out1:
-    if (vp != dvp)
-	VOP_UNLOCK(vp);
-out2:
-
-    return error;
-}
-.Ed
+Zero is returned on success, otherwise an error code is returned.
 .Sh ERRORS
 .Bl -tag -width Er
 .It Bq Er EPERM
 the file is immutable
+.It Bq Er ENOTEMPTY
+attempt to remove a directory which is not empty
 .El
 .Sh SEE ALSO
 .Xr vnode 9 ,
-.Xr vn_lock 9
+.Xr VOP_OLD_LOOKUP 9
 .Sh AUTHORS
-This man page was originally written by
+This man page was written by
 .An Doug Rabson .
