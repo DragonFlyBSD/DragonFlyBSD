@@ -29,7 +29,6 @@
  *
  * $Id: ng_l2cap_misc.h,v 1.3 2003/09/08 19:11:45 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/l2cap/ng_l2cap_misc.h,v 1.6 2005/08/21 19:15:14 pjd Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/l2cap/ng_l2cap_misc.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #ifndef _NETGRAPH_L2CAP_MISC_H_

@@ -1,0 +1,8 @@
+# $Id: Makefile,v 1.1 2002/11/24 20:40:05 max Exp $
+# $FreeBSD: head/sys/modules/netgraph/bluetooth/hci/Makefile 124472 2004-01-13 11:28:51Z ru $
+
+KMOD=		ng_hci
+SRCS=		ng_hci_main.c ng_hci_cmds.c ng_hci_evnt.c  \
+		ng_hci_ulpi.c ng_hci_misc.c
+
+.include <bsd.kmod.mk>

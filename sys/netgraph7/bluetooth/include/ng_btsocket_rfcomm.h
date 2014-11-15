@@ -29,7 +29,6 @@
  *
  * $Id: ng_btsocket_rfcomm.h,v 1.10 2003/03/29 22:27:42 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/include/ng_btsocket_rfcomm.h,v 1.8 2006/07/21 17:11:13 rwatson Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/include/ng_btsocket_rfcomm.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #ifndef _NETGRAPH_BTSOCKET_RFCOMM_H_
@@ -252,7 +251,7 @@ struct ng_btsocket_rfcomm_session {
 	u_int16_t				 mtu;    /* default MTU */
 	struct ng_bt_mbufq			 outq;   /* outgoing queue */
 
-	struct mtx				 session_mtx; /* session lock */
+	struct lock				 session_lock; /* session lock */
 	LIST_HEAD(, ng_btsocket_rfcomm_pcb)	 dlcs;	 /* active DLC */
 
 	LIST_ENTRY(ng_btsocket_rfcomm_session)	 next;	 /* link to next */
@@ -296,8 +295,8 @@ struct ng_btsocket_rfcomm_pcb {
 	int16_t					 rx_cred; /* RX credits */
 	int16_t					 tx_cred; /* TX credits */
 
-	struct mtx				 pcb_mtx; /* PCB lock */
-	struct callout_handle			 timo;    /* timeout */
+	struct lock				 pcb_lock; /* PCB lock */
+	struct callout				 timo;    /* timeout */
 
 	LIST_ENTRY(ng_btsocket_rfcomm_pcb)	 session_next;/* link to next */
 	LIST_ENTRY(ng_btsocket_rfcomm_pcb)	 next;	  /* link to next */
@@ -315,25 +314,22 @@ typedef struct ng_btsocket_rfcomm_pcb *	ng_btsocket_rfcomm_pcb_p;
 #ifdef _KERNEL
 
 void ng_btsocket_rfcomm_init       (void);
-void ng_btsocket_rfcomm_abort      (struct socket *);
+void ng_btsocket_rfcomm_abort      (netmsg_t msg);
+#if 0 /* XXX */
 void ng_btsocket_rfcomm_close      (struct socket *);
-int  ng_btsocket_rfcomm_accept     (struct socket *, struct sockaddr **);
-int  ng_btsocket_rfcomm_attach     (struct socket *, int, struct thread *);
-int  ng_btsocket_rfcomm_bind       (struct socket *, struct sockaddr *,
-                                    struct thread *);
-int  ng_btsocket_rfcomm_connect    (struct socket *, struct sockaddr *,
-                                    struct thread *);
-int  ng_btsocket_rfcomm_control    (struct socket *, u_long, caddr_t,
-                                    struct ifnet *, struct thread *);
-int  ng_btsocket_rfcomm_ctloutput  (struct socket *, struct sockopt *);
-void ng_btsocket_rfcomm_detach     (struct socket *);
-int  ng_btsocket_rfcomm_disconnect (struct socket *);
-int  ng_btsocket_rfcomm_listen     (struct socket *, int, struct thread *);
-int  ng_btsocket_rfcomm_peeraddr   (struct socket *, struct sockaddr **);
-int  ng_btsocket_rfcomm_send       (struct socket *, int, struct mbuf *,
-                                    struct sockaddr *, struct mbuf *,
-                                    struct thread *);
-int  ng_btsocket_rfcomm_sockaddr   (struct socket *, struct sockaddr **);
+#endif
+void ng_btsocket_rfcomm_accept     (netmsg_t msg);
+void ng_btsocket_rfcomm_attach     (netmsg_t msg);
+void ng_btsocket_rfcomm_bind       (netmsg_t msg);
+void ng_btsocket_rfcomm_connect    (netmsg_t msg);
+void ng_btsocket_rfcomm_control    (netmsg_t msg);
+void ng_btsocket_rfcomm_ctloutput  (netmsg_t msg);
+void ng_btsocket_rfcomm_detach     (netmsg_t msg);
+void ng_btsocket_rfcomm_disconnect (netmsg_t msg);
+void ng_btsocket_rfcomm_listen     (netmsg_t msg);
+void ng_btsocket_rfcomm_peeraddr   (netmsg_t msg);
+void ng_btsocket_rfcomm_send       (netmsg_t msg);
+void ng_btsocket_rfcomm_sockaddr   (netmsg_t msg);
 
 #endif /* _KERNEL */
 

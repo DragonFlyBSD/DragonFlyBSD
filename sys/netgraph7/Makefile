@@ -4,6 +4,7 @@
 SUBDIR=	UI \
 	async \
 	bpf \
+	bluetooth \
 	bridge \
 	cisco \
 	deflate \

@@ -29,7 +29,6 @@
  *
  * $Id: ng_btsocket.h,v 1.8 2003/04/26 22:32:10 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/include/ng_btsocket.h,v 1.8 2006/05/17 00:13:06 emax Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/include/ng_btsocket.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #ifndef _NETGRAPH_BTSOCKET_H_

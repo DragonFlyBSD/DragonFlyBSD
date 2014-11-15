@@ -38,17 +38,19 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/queue.h>
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
-#include "bluetooth/include/ng_bluetooth.h"
-#include "bluetooth/include/ng_hci.h"
-#include "bluetooth/hci/ng_hci_var.h"
-#include "bluetooth/hci/ng_hci_prse.h"
-#include "bluetooth/hci/ng_hci_cmds.h"
-#include "bluetooth/hci/ng_hci_evnt.h"
-#include "bluetooth/hci/ng_hci_ulpi.h"
-#include "bluetooth/hci/ng_hci_misc.h"
+#include <sys/refcount.h>
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/netgraph2.h>
+#include <netgraph7/ng_parse.h>
+#include <netgraph7/bluetooth/include/ng_bluetooth.h>
+#include <netgraph7/bluetooth/include/ng_hci.h>
+#include <netgraph7/bluetooth/hci/ng_hci_var.h>
+#include <netgraph7/bluetooth/hci/ng_hci_prse.h>
+#include <netgraph7/bluetooth/hci/ng_hci_cmds.h>
+#include <netgraph7/bluetooth/hci/ng_hci_evnt.h>
+#include <netgraph7/bluetooth/hci/ng_hci_ulpi.h>
+#include <netgraph7/bluetooth/hci/ng_hci_misc.h>
 
 /******************************************************************************
  ******************************************************************************
@@ -868,6 +870,7 @@ ng_hci_acl_rcvdata(hook_p hook, item_p item)
 
 	/* Queue item and schedule data transfer */
 	NGI_M(item) = m;
+	ng_ref_item(item);
 	NG_BT_ITEMQ_ENQUEUE(&con->conq, item);
 	item = NULL;
 	m = NULL;
@@ -987,6 +990,7 @@ ng_hci_sco_rcvdata(hook_p hook, item_p item)
 
 	/* Queue item and schedule data transfer */
 	NGI_M(item) = m;
+	ng_ref_item(item);
 	NG_BT_ITEMQ_ENQUEUE(&con->conq, item);
 	item = NULL;
 	m = NULL;

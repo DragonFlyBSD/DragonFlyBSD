@@ -29,7 +29,6 @@
  *
  * $Id: ng_bluetooth.h,v 1.4 2003/04/26 22:32:34 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/include/ng_bluetooth.h,v 1.5 2008/04/15 21:15:32 mav Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/include/ng_bluetooth.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #ifndef _NETGRAPH_BLUETOOTH_H_

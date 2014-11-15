@@ -29,8 +29,6 @@
  *
  * $Id: ng_bluetooth.c,v 1.3 2003/04/26 22:37:31 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/common/ng_bluetooth.c,v 1.7 2007/06/04 18:25:07 dwmalone Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/common/ng_bluetooth.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/common/ng_bluetooth.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,7 +38,7 @@
 #include <sys/module.h>
 #include <sys/sysctl.h>
 
-#include "bluetooth/include/ng_bluetooth.h"
+#include <netgraph7/bluetooth/include/ng_bluetooth.h>
 
 /*
  * Bluetooth stack sysctl globals

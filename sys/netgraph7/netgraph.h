@@ -601,6 +601,7 @@ struct ng_apply_info {
 struct ng_item {
 	struct lwkt_msg		el_lmsg;
 	u_long	el_flags;
+	STAILQ_ENTRY(ng_item)	el_next;
 	node_p	el_dest; /* The node it will be applied against (or NULL) */
 	hook_p	el_hook; /* Entering hook. Optional in Control messages */
 	union {

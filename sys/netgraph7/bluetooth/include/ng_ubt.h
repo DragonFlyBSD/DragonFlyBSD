@@ -29,7 +29,6 @@
  *
  * $Id: ng_ubt.h,v 1.6 2003/04/13 21:34:42 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/include/ng_ubt.h,v 1.3 2005/01/07 01:45:43 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/include/ng_ubt.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #ifndef _NG_UBT_H_

@@ -33,7 +33,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/bitstring.h>
+#include <bitstring.h>		/* XXX */
 #include <sys/domain.h>
 #include <sys/endian.h>
 #include <sys/errno.h>
@@ -42,7 +42,6 @@
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/mutex.h>
 #include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/queue.h>
@@ -50,13 +49,16 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
-#include "ng_message.h"
-#include "netgraph.h"
-#include "bluetooth/include/ng_bluetooth.h"
-#include "bluetooth/include/ng_hci.h"
-#include "bluetooth/include/ng_l2cap.h"
-#include "bluetooth/include/ng_btsocket.h"
-#include "bluetooth/include/ng_btsocket_hci_raw.h"
+#include <sys/msgport2.h>
+#include <sys/refcount.h>
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/netgraph2.h>
+#include <netgraph7/bluetooth/include/ng_bluetooth.h>
+#include <netgraph7/bluetooth/include/ng_hci.h>
+#include <netgraph7/bluetooth/include/ng_l2cap.h>
+#include <netgraph7/bluetooth/include/ng_btsocket.h>
+#include <netgraph7/bluetooth/include/ng_btsocket_hci_raw.h>
 
 /* MALLOC define */
 #ifdef NG_SEPARATE_MALLOC
@@ -111,12 +113,12 @@ static u_int32_t				ng_btsocket_hci_raw_debug_level;
 static u_int32_t				ng_btsocket_hci_raw_ioctl_timeout;
 static node_p					ng_btsocket_hci_raw_node;
 static struct ng_bt_itemq			ng_btsocket_hci_raw_queue;
-static struct mtx				ng_btsocket_hci_raw_queue_mtx;
+static struct lock				ng_btsocket_hci_raw_queue_lock;
 static struct task				ng_btsocket_hci_raw_task;
 static LIST_HEAD(, ng_btsocket_hci_raw_pcb)	ng_btsocket_hci_raw_sockets;
-static struct mtx				ng_btsocket_hci_raw_sockets_mtx;
+static struct lock				ng_btsocket_hci_raw_sockets_lock;
 static u_int32_t				ng_btsocket_hci_raw_token;
-static struct mtx				ng_btsocket_hci_raw_token_mtx;
+static struct lock				ng_btsocket_hci_raw_token_lock;
 static struct ng_btsocket_hci_raw_sec_filter	*ng_btsocket_hci_raw_sec_filter;
  
 /* Sysctl tree */
@@ -265,7 +267,7 @@ ng_btsocket_hci_raw_node_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			return (0);
 		}
 
-		mtx_lock(&ng_btsocket_hci_raw_queue_mtx);
+		lockmgr(&ng_btsocket_hci_raw_queue_lock, LK_EXCLUSIVE);
 		if (NG_BT_ITEMQ_FULL(&ng_btsocket_hci_raw_queue)) {
 			NG_BTSOCKET_HCI_RAW_ERR(
 "%s: Input queue is full\n", __func__);
@@ -274,10 +276,11 @@ ng_btsocket_hci_raw_node_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			NG_FREE_ITEM(item);
 			error = ENOBUFS;
 		} else {
+			ng_ref_item(item);
 			NG_BT_ITEMQ_ENQUEUE(&ng_btsocket_hci_raw_queue, item);
 			error = ng_btsocket_hci_raw_wakeup_input_task();
 		}
-		mtx_unlock(&ng_btsocket_hci_raw_queue_mtx);
+		lockmgr(&ng_btsocket_hci_raw_queue_lock, LK_RELEASE);
 	} else {
 		NG_FREE_ITEM(item);
 		error = EINVAL;
@@ -318,7 +321,7 @@ ng_btsocket_hci_raw_node_rcvdata(hook_p hook, item_p item)
 		NGI_GET_M(item, nam->m_next);
 		NGI_M(item) = nam;
 
-		mtx_lock(&ng_btsocket_hci_raw_queue_mtx);
+		lockmgr(&ng_btsocket_hci_raw_queue_lock, LK_EXCLUSIVE);
 		if (NG_BT_ITEMQ_FULL(&ng_btsocket_hci_raw_queue)) {
 			NG_BTSOCKET_HCI_RAW_ERR(
 "%s: Input queue is full\n", __func__);
@@ -327,10 +330,11 @@ ng_btsocket_hci_raw_node_rcvdata(hook_p hook, item_p item)
 			NG_FREE_ITEM(item);
 			error = ENOBUFS;
 		} else {
+			ng_ref_item(item);
 			NG_BT_ITEMQ_ENQUEUE(&ng_btsocket_hci_raw_queue, item);
 			error = ng_btsocket_hci_raw_wakeup_input_task();
 		}
-		mtx_unlock(&ng_btsocket_hci_raw_queue_mtx);
+		lockmgr(&ng_btsocket_hci_raw_queue_lock, LK_RELEASE);
 	} else {
 		NG_BTSOCKET_HCI_RAW_ERR(
 "%s: Failed to allocate address mbuf\n", __func__);
@@ -357,14 +361,14 @@ ng_btsocket_hci_raw_node_rcvdata(hook_p hook, item_p item)
 static void
 ng_btsocket_hci_raw_get_token(u_int32_t *token)
 {
-	mtx_lock(&ng_btsocket_hci_raw_token_mtx);
+	lockmgr(&ng_btsocket_hci_raw_token_lock, LK_EXCLUSIVE);
   
 	if (++ ng_btsocket_hci_raw_token == 0)
 		ng_btsocket_hci_raw_token = 1;
  
 	*token = ng_btsocket_hci_raw_token;
  
-	mtx_unlock(&ng_btsocket_hci_raw_token_mtx);
+	lockmgr(&ng_btsocket_hci_raw_token_lock, LK_RELEASE);
 } /* ng_btsocket_hci_raw_get_token */
 
 /*
@@ -400,7 +404,7 @@ ng_btsocket_hci_raw_send_sync_ngmsg(ng_btsocket_hci_raw_pcb_p pcb, char *path,
 	struct ng_mesg	*msg = NULL;
 	int		 error = 0;
 
-	mtx_assert(&pcb->pcb_mtx, MA_OWNED);
+	KKASSERT(lockowned(&pcb->pcb_lock) != 0);
 
 	NG_MKMESSAGE(msg, NGM_HCI_COOKIE, cmd, 0, M_WAITOK | M_NULLOK);
 	if (msg == NULL)
@@ -416,7 +420,7 @@ ng_btsocket_hci_raw_send_sync_ngmsg(ng_btsocket_hci_raw_pcb_p pcb, char *path,
 		return (error);
 	}
 
-	error = msleep(&pcb->msg, &pcb->pcb_mtx, PZERO|PCATCH, "hcictl", 
+	error = lksleep(&pcb->msg, &pcb->pcb_lock, PCATCH, "hcictl", 
 			ng_btsocket_hci_raw_ioctl_timeout * hz);
 	pcb->token = 0;
 
@@ -444,7 +448,7 @@ ng_btsocket_hci_raw_savctl(ng_btsocket_hci_raw_pcb_p pcb, struct mbuf **ctl,
 	int		dir;
 	struct timeval	tv;
 
-	mtx_assert(&pcb->pcb_mtx, MA_OWNED);
+	KKASSERT(lockowned(&pcb->pcb_lock) != 0);
 
 	if (pcb->flags & NG_BTSOCKET_HCI_RAW_DIRECTION) {
 		dir = (m->m_flags & M_PROTO1)? 1 : 0;
@@ -484,11 +488,11 @@ ng_btsocket_hci_raw_data_input(struct mbuf *nam)
 
 	sa = mtod(nam, struct sockaddr_hci *);
 
-	mtx_lock(&ng_btsocket_hci_raw_sockets_mtx);
+	lockmgr(&ng_btsocket_hci_raw_sockets_lock, LK_EXCLUSIVE);
 
 	LIST_FOREACH(pcb, &ng_btsocket_hci_raw_sockets, next) {
 
-		mtx_lock(&pcb->pcb_mtx);
+		lockmgr(&pcb->pcb_lock, LK_EXCLUSIVE);
 
 		/*
 		 * If socket was bound then check address and
@@ -519,7 +523,7 @@ ng_btsocket_hci_raw_data_input(struct mbuf *nam)
 
 			ng_btsocket_hci_raw_savctl(pcb, &ctl, m);
 
-			if (sbappendaddr(&pcb->so->so_rcv, 
+			if (sbappendaddr(&pcb->so->so_rcv.sb, 
 					(struct sockaddr *) sa, m, ctl))
 				sorwakeup(pcb->so);
 			else {
@@ -531,10 +535,10 @@ ng_btsocket_hci_raw_data_input(struct mbuf *nam)
 			}
 		}
 next:
-		mtx_unlock(&pcb->pcb_mtx);
+		lockmgr(&pcb->pcb_lock, LK_RELEASE);
 	}
 
-	mtx_unlock(&ng_btsocket_hci_raw_sockets_mtx);
+	lockmgr(&ng_btsocket_hci_raw_sockets_lock, LK_RELEASE);
 
 	NG_FREE_M(nam);
 	NG_FREE_M(m0);
@@ -549,25 +553,25 @@ ng_btsocket_hci_raw_msg_input(struct ng_mesg *msg)
 {
 	ng_btsocket_hci_raw_pcb_p	pcb = NULL;
 
-	mtx_lock(&ng_btsocket_hci_raw_sockets_mtx);
+	lockmgr(&ng_btsocket_hci_raw_sockets_lock, LK_EXCLUSIVE);
 
 	LIST_FOREACH(pcb, &ng_btsocket_hci_raw_sockets, next) {
-		mtx_lock(&pcb->pcb_mtx);
+		lockmgr(&pcb->pcb_lock, LK_EXCLUSIVE);
 
 		if (msg->header.token == pcb->token) {
 			pcb->msg = msg;
 			wakeup(&pcb->msg);
 
-			mtx_unlock(&pcb->pcb_mtx);
-			mtx_unlock(&ng_btsocket_hci_raw_sockets_mtx);
+			lockmgr(&pcb->pcb_lock, LK_RELEASE);
+			lockmgr(&ng_btsocket_hci_raw_sockets_lock, LK_RELEASE);
 
 			return;
 		}
 
-		mtx_unlock(&pcb->pcb_mtx);
+		lockmgr(&pcb->pcb_lock, LK_RELEASE);
 	}
 
-	mtx_unlock(&ng_btsocket_hci_raw_sockets_mtx);
+	lockmgr(&ng_btsocket_hci_raw_sockets_lock, LK_RELEASE);
 
 	NG_FREE_MSG(msg); /* checks for != NULL */
 } /* ng_btsocket_hci_raw_msg_input */
@@ -582,9 +586,9 @@ ng_btsocket_hci_raw_input(void *context, int pending)
 	item_p	item = NULL;
 
 	for (;;) {
-		mtx_lock(&ng_btsocket_hci_raw_queue_mtx);
+		lockmgr(&ng_btsocket_hci_raw_queue_lock, LK_EXCLUSIVE);
 		NG_BT_ITEMQ_DEQUEUE(&ng_btsocket_hci_raw_queue, item);
-		mtx_unlock(&ng_btsocket_hci_raw_queue_mtx);
+		lockmgr(&ng_btsocket_hci_raw_queue_lock, LK_RELEASE);
 
 		if (item == NULL)
 			break;
@@ -611,6 +615,7 @@ ng_btsocket_hci_raw_input(void *context, int pending)
 		}
 
 		NG_FREE_ITEM(item);
+		ng_unref_item(item, 0);
 	}
 } /* ng_btsocket_hci_raw_input */
 
@@ -666,7 +671,7 @@ ng_btsocket_hci_raw_filter(ng_btsocket_hci_raw_pcb_p pcb, struct mbuf *m, int d)
 {
 	int	type, event, opcode;
 
-	mtx_assert(&pcb->pcb_mtx, MA_OWNED);
+	KKASSERT(lockowned(&pcb->pcb_lock) != 0);
 
 	switch ((type = *mtod(m, u_int8_t *))) {
 	case NG_HCI_CMD_PKT:
@@ -760,20 +765,20 @@ ng_btsocket_hci_raw_init(void)
 
 	/* Create input queue */
 	NG_BT_ITEMQ_INIT(&ng_btsocket_hci_raw_queue, ifqmaxlen);
-	mtx_init(&ng_btsocket_hci_raw_queue_mtx,
-		"btsocks_hci_raw_queue_mtx", NULL, MTX_DEF);
+	lockinit(&ng_btsocket_hci_raw_queue_lock,
+		"btsocks_hci_raw_queue_lock", 0, 0);
 	TASK_INIT(&ng_btsocket_hci_raw_task, 0,
 		ng_btsocket_hci_raw_input, NULL);
 
 	/* Create list of sockets */
 	LIST_INIT(&ng_btsocket_hci_raw_sockets);
-	mtx_init(&ng_btsocket_hci_raw_sockets_mtx,
-		"btsocks_hci_raw_sockets_mtx", NULL, MTX_DEF);
+	lockinit(&ng_btsocket_hci_raw_sockets_lock,
+		"btsocks_hci_raw_sockets_lock", 0, 0);
 
 	/* Tokens */
 	ng_btsocket_hci_raw_token = 0;
-	mtx_init(&ng_btsocket_hci_raw_token_mtx,
-		"btsocks_hci_raw_token_mtx", NULL, MTX_DEF);
+	lockinit(&ng_btsocket_hci_raw_token_lock,
+		"btsocks_hci_raw_token_lock", 0, 0);
 
 	/* 
 	 * Security filter
@@ -873,49 +878,64 @@ ng_btsocket_hci_raw_init(void)
  */
 
 void
-ng_btsocket_hci_raw_abort(struct socket *so)
+ng_btsocket_hci_raw_abort(netmsg_t msg)
 {
 } /* ng_btsocket_hci_raw_abort */
 
+#if 0 /* XXX */
 void
 ng_btsocket_hci_raw_close(struct socket *so)
 {
 } /* ng_btsocket_hci_raw_close */
+#endif
 
 /*
  * Create new raw HCI socket
  */
 
-int
-ng_btsocket_hci_raw_attach(struct socket *so, int proto, struct thread *td)
+void
+ng_btsocket_hci_raw_attach(netmsg_t msg)
 {
-	ng_btsocket_hci_raw_pcb_p	pcb = so2hci_raw_pcb(so);
-	int				error = 0;
+	struct socket			*so = msg->attach.base.nm_so;
+	int				 proto = msg->attach.nm_proto;
+	ng_btsocket_hci_raw_pcb_p	 pcb = so2hci_raw_pcb(so);
+	int				 error = 0;
 
-	if (pcb != NULL)
-		return (EISCONN);
+	if (pcb != NULL) {
+		error = EISCONN;
+		goto out;
+	}
 
-	if (ng_btsocket_hci_raw_node == NULL)
-		return (EPROTONOSUPPORT);
-	if (proto != BLUETOOTH_PROTO_HCI)
-		return (EPROTONOSUPPORT);
-	if (so->so_type != SOCK_RAW)
-		return (ESOCKTNOSUPPORT);
+	if (ng_btsocket_hci_raw_node == NULL) {
+		error = EPROTONOSUPPORT;
+		goto out;
+	}
+	if (proto != BLUETOOTH_PROTO_HCI) {
+		error = EPROTONOSUPPORT;
+		goto out;
+	}
+	if (so->so_type != SOCK_RAW) {
+		error = ESOCKTNOSUPPORT;
+		goto out;
+	}
 
 	error = soreserve(so, NG_BTSOCKET_HCI_RAW_SENDSPACE,
-				NG_BTSOCKET_HCI_RAW_RECVSPACE);
+				NG_BTSOCKET_HCI_RAW_RECVSPACE, NULL);
 	if (error != 0)
-		return (error);
+		goto out;
 
 	pcb = kmalloc(sizeof(*pcb), M_NETGRAPH_BTSOCKET_HCI_RAW,
 		      M_WAITOK | M_NULLOK | M_ZERO);
-	if (pcb == NULL)
-		return (ENOMEM);
+	if (pcb == NULL) {
+		error = ENOMEM;
+		goto out;
+	}
 
 	so->so_pcb = (caddr_t) pcb;
 	pcb->so = so;
 
-	if (priv_check(td, PRIV_NETBLUETOOTH_RAW) == 0)
+	if (curproc == NULL ||
+	    priv_check(curthread, PRIV_NETBLUETOOTH_RAW) == 0)
 		pcb->flags |= NG_BTSOCKET_HCI_RAW_PRIVILEGED;
 
 	/*
@@ -926,116 +946,156 @@ ng_btsocket_hci_raw_attach(struct socket *so, int proto, struct thread *td)
 	bit_set(pcb->filter.event_mask, NG_HCI_EVENT_COMMAND_COMPL - 1);
 	bit_set(pcb->filter.event_mask, NG_HCI_EVENT_COMMAND_STATUS - 1);
 
-	mtx_init(&pcb->pcb_mtx, "btsocks_hci_raw_pcb_mtx", NULL, MTX_DEF);
+	lockinit(&pcb->pcb_lock, "btsocks_hci_raw_pcb_lock", 0, 0);
 
-	mtx_lock(&ng_btsocket_hci_raw_sockets_mtx);
+	lockmgr(&ng_btsocket_hci_raw_sockets_lock, LK_EXCLUSIVE);
 	LIST_INSERT_HEAD(&ng_btsocket_hci_raw_sockets, pcb, next);
-	mtx_unlock(&ng_btsocket_hci_raw_sockets_mtx);
+	lockmgr(&ng_btsocket_hci_raw_sockets_lock, LK_RELEASE);
 
-	return (0);
+out:
+	lwkt_replymsg(&msg->attach.base.lmsg, error);
 } /* ng_btsocket_hci_raw_attach */
 
 /*
  * Bind raw HCI socket
  */
 
-int
-ng_btsocket_hci_raw_bind(struct socket *so, struct sockaddr *nam,
-		struct thread *td)
+void
+ng_btsocket_hci_raw_bind(netmsg_t msg)
 {
+	struct socket			*so = msg->bind.base.nm_so;
+	struct sockaddr			*nam = msg->bind.nm_nam;
 	ng_btsocket_hci_raw_pcb_p	 pcb = so2hci_raw_pcb(so);
 	struct sockaddr_hci		*sa = (struct sockaddr_hci *) nam;
+	int				 error = 0;
 
-	if (pcb == NULL)
-		return (EINVAL);
-	if (ng_btsocket_hci_raw_node == NULL)
-		return (EINVAL);
+	if (pcb == NULL) {
+		error = EINVAL;
+		goto out;
+	}
+	if (ng_btsocket_hci_raw_node == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
-	if (sa == NULL)
-		return (EINVAL);
-	if (sa->hci_family != AF_BLUETOOTH)
-		return (EAFNOSUPPORT);
-	if (sa->hci_len != sizeof(*sa))
-		return (EINVAL);
-	if (sa->hci_node[0] == 0)
-		return (EINVAL);
+	if (sa == NULL) {
+		error = EINVAL;
+		goto out;
+	}
+	if (sa->hci_family != AF_BLUETOOTH) {
+		error = EAFNOSUPPORT;
+		goto out;
+	}
+	if (sa->hci_len != sizeof(*sa)) {
+		error = EINVAL;
+		goto out;
+	}
+	if (sa->hci_node[0] == 0) {
+		error = EINVAL;
+		goto out;
+	}
 
-	mtx_lock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_EXCLUSIVE);
 	bcopy(sa, &pcb->addr, sizeof(pcb->addr));
-	mtx_unlock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_RELEASE);
 
-	return (0);
+out:
+	lwkt_replymsg(&msg->bind.base.lmsg, error);
 } /* ng_btsocket_hci_raw_bind */
 
 /*
  * Connect raw HCI socket
  */
 
-int
-ng_btsocket_hci_raw_connect(struct socket *so, struct sockaddr *nam,
-		struct thread *td)
+void
+ng_btsocket_hci_raw_connect(netmsg_t msg)
 {
+	struct socket			*so = msg->connect.base.nm_so;
+	struct sockaddr			*nam = msg->connect.nm_nam;
 	ng_btsocket_hci_raw_pcb_p	 pcb = so2hci_raw_pcb(so);
 	struct sockaddr_hci		*sa = (struct sockaddr_hci *) nam;
+	int				 error = 0;
 
-	if (pcb == NULL)
-		return (EINVAL);
-	if (ng_btsocket_hci_raw_node == NULL)
-		return (EINVAL);
+	if (pcb == NULL) {
+		error = EINVAL;
+		goto out;
+	}
+	if (ng_btsocket_hci_raw_node == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
-	if (sa == NULL)
-		return (EINVAL);
-	if (sa->hci_family != AF_BLUETOOTH)
-		return (EAFNOSUPPORT);
-	if (sa->hci_len != sizeof(*sa))
-		return (EINVAL);
-	if (sa->hci_node[0] == 0)
-		return (EDESTADDRREQ);
+	if (sa == NULL) {
+		error = EINVAL;
+		goto out;
+	}
+	if (sa->hci_family != AF_BLUETOOTH) {
+		error = EAFNOSUPPORT;
+		goto out;
+	}
+	if (sa->hci_len != sizeof(*sa)) {
+		error = EINVAL;
+		goto out;
+	}
+	if (sa->hci_node[0] == 0) {
+		error = EDESTADDRREQ;
+		goto out;
+	}
 
-	mtx_lock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_EXCLUSIVE);
 
 	if (bcmp(sa, &pcb->addr, sizeof(pcb->addr)) != 0) {
-		mtx_unlock(&pcb->pcb_mtx);
-		return (EADDRNOTAVAIL);
+		lockmgr(&pcb->pcb_lock, LK_RELEASE);
+		error = EADDRNOTAVAIL;
+		goto out;
 	}
 
 	soisconnected(so);
 
-	mtx_unlock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_RELEASE);
 
-	return (0);
+out:
+	lwkt_replymsg(&msg->connect.base.lmsg, error);
 } /* ng_btsocket_hci_raw_connect */
 
 /*
  * Process ioctl on socket
  */
 
-int
-ng_btsocket_hci_raw_control(struct socket *so, u_long cmd, caddr_t data,
-		struct ifnet *ifp, struct thread *td)
+void
+ng_btsocket_hci_raw_control(netmsg_t msg)
 {
+	struct socket			*so = msg->control.base.nm_so;
+	u_long				 cmd = msg->control.nm_cmd;
+	caddr_t				 data = msg->control.nm_data;
 	ng_btsocket_hci_raw_pcb_p	 pcb = so2hci_raw_pcb(so);
 	char				 path[NG_NODESIZ + 1];
-	struct ng_mesg			*msg = NULL;
+	struct ng_mesg			*ngmsg = NULL;
 	int				 error = 0;
 
-	if (pcb == NULL)
-		return (EINVAL);
-	if (ng_btsocket_hci_raw_node == NULL)
-		return (EINVAL);
+	if (pcb == NULL) {
+		error = EINVAL;
+		goto out;
+	}
+	if (ng_btsocket_hci_raw_node == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
-	mtx_lock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_EXCLUSIVE);
 
 	/* Check if we have device name */
 	if (pcb->addr.hci_node[0] == 0) {
-		mtx_unlock(&pcb->pcb_mtx);
-		return (EHOSTUNREACH);
+		lockmgr(&pcb->pcb_lock, LK_RELEASE);
+		error = EHOSTUNREACH;
+		goto out;
 	}
 
 	/* Check if we have pending ioctl() */
 	if (pcb->token != 0) {
-		mtx_unlock(&pcb->pcb_mtx);
-		return (EBUSY);
+		lockmgr(&pcb->pcb_lock, LK_RELEASE);
+		error = EBUSY;
+		goto out;
 	}
 
 	ksnprintf(path, sizeof(path), "%s:", pcb->addr.hci_node);
@@ -1145,24 +1205,24 @@ ng_btsocket_hci_raw_control(struct socket *so, u_long cmd, caddr_t data,
 			break;
 		}
 
-		NG_MKMESSAGE(msg, NGM_HCI_COOKIE,
+		NG_MKMESSAGE(ngmsg, NGM_HCI_COOKIE,
 			NGM_HCI_NODE_GET_NEIGHBOR_CACHE, 0, M_WAITOK | M_NULLOK);
-		if (msg == NULL) {
+		if (ngmsg == NULL) {
 			error = ENOMEM;
 			break;
 		}
-		ng_btsocket_hci_raw_get_token(&msg->header.token);
-		pcb->token = msg->header.token;
+		ng_btsocket_hci_raw_get_token(&ngmsg->header.token);
+		pcb->token = ngmsg->header.token;
 		pcb->msg = NULL;
 
-		NG_SEND_MSG_PATH(error, ng_btsocket_hci_raw_node, msg, path, 0);
+		NG_SEND_MSG_PATH(error, ng_btsocket_hci_raw_node, ngmsg, path, 0);
 		if (error != 0) {
 			pcb->token = 0;
 			break;
 		}
 
-		error = msleep(&pcb->msg, &pcb->pcb_mtx,
-				PZERO|PCATCH, "hcictl", 
+		error = lksleep(&pcb->msg, &pcb->pcb_lock,
+				PCATCH, "hcictl", 
 				ng_btsocket_hci_raw_ioctl_timeout * hz);
 		pcb->token = 0;
 
@@ -1201,24 +1261,24 @@ ng_btsocket_hci_raw_control(struct socket *so, u_long cmd, caddr_t data,
 			break;
 		}
 
-		NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_NODE_GET_CON_LIST,
+		NG_MKMESSAGE(ngmsg, NGM_HCI_COOKIE, NGM_HCI_NODE_GET_CON_LIST,
 			0, M_WAITOK | M_NULLOK);
-		if (msg == NULL) {
+		if (ngmsg == NULL) {
 			error = ENOMEM;
 			break;
 		}
-		ng_btsocket_hci_raw_get_token(&msg->header.token);
-		pcb->token = msg->header.token;
+		ng_btsocket_hci_raw_get_token(&ngmsg->header.token);
+		pcb->token = ngmsg->header.token;
 		pcb->msg = NULL;
 
-		NG_SEND_MSG_PATH(error, ng_btsocket_hci_raw_node, msg, path, 0);
+		NG_SEND_MSG_PATH(error, ng_btsocket_hci_raw_node, ngmsg, path, 0);
 		if (error != 0) {
 			pcb->token = 0;
 			break;
 		}
 
-		error = msleep(&pcb->msg, &pcb->pcb_mtx,
-				PZERO|PCATCH, "hcictl", 
+		error = lksleep(&pcb->msg, &pcb->pcb_lock,
+				PCATCH, "hcictl", 
 				ng_btsocket_hci_raw_ioctl_timeout * hz);
 		pcb->token = 0;
 
@@ -1321,24 +1381,24 @@ ng_btsocket_hci_raw_control(struct socket *so, u_long cmd, caddr_t data,
 			break;
 		}
 
-		NG_MKMESSAGE(msg, NGM_GENERIC_COOKIE, NGM_LISTNAMES,
+		NG_MKMESSAGE(ngmsg, NGM_GENERIC_COOKIE, NGM_LISTNAMES,
 			0, M_WAITOK | M_NULLOK);
-		if (msg == NULL) {
+		if (ngmsg == NULL) {
 			error = ENOMEM;
 			break;
 		}
-		ng_btsocket_hci_raw_get_token(&msg->header.token);
-		pcb->token = msg->header.token;
+		ng_btsocket_hci_raw_get_token(&ngmsg->header.token);
+		pcb->token = ngmsg->header.token;
 		pcb->msg = NULL;
 
-		NG_SEND_MSG_PATH(error, ng_btsocket_hci_raw_node, msg, ".:", 0);
+		NG_SEND_MSG_PATH(error, ng_btsocket_hci_raw_node, ngmsg, ".:", 0);
 		if (error != 0) {
 			pcb->token = 0;
 			break;
 		}
 
-		error = msleep(&pcb->msg, &pcb->pcb_mtx,
-				PZERO|PCATCH, "hcictl",
+		error = lksleep(&pcb->msg, &pcb->pcb_lock,
+				PCATCH, "hcictl",
 				ng_btsocket_hci_raw_ioctl_timeout * hz);
 		pcb->token = 0;
 
@@ -1378,31 +1438,38 @@ ng_btsocket_hci_raw_control(struct socket *so, u_long cmd, caddr_t data,
 		break;
 	}
 
-	mtx_unlock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_RELEASE);
 
-	return (error);
+out:
+	lwkt_replymsg(&msg->control.base.lmsg, error);
 } /* ng_btsocket_hci_raw_control */
 
 /*
  * Process getsockopt/setsockopt system calls
  */
 
-int
-ng_btsocket_hci_raw_ctloutput(struct socket *so, struct sockopt *sopt)
+void
+ng_btsocket_hci_raw_ctloutput(netmsg_t msg)
 {
-	ng_btsocket_hci_raw_pcb_p		pcb = so2hci_raw_pcb(so);
-	struct ng_btsocket_hci_raw_filter	filter;
-	int					error = 0, dir;
+	struct socket				*so = msg->ctloutput.base.nm_so;
+	struct sockopt				*sopt = msg->ctloutput.nm_sopt;
+	ng_btsocket_hci_raw_pcb_p		 pcb = so2hci_raw_pcb(so);
+	struct ng_btsocket_hci_raw_filter	 filter;
+	int					 error = 0, dir;
 
-	if (pcb == NULL)
-		return (EINVAL);
-	if (ng_btsocket_hci_raw_node == NULL)
-		return (EINVAL);
+	if (pcb == NULL) {
+		error = EINVAL;
+		goto out;
+	}
+	if (ng_btsocket_hci_raw_node == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
 	if (sopt->sopt_level != SOL_HCI_RAW)
-		return (0);
+		goto out;
 
-	mtx_lock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_EXCLUSIVE);
 
 	switch (sopt->sopt_dir) {
 	case SOPT_GET:
@@ -1456,9 +1523,10 @@ ng_btsocket_hci_raw_ctloutput(struct socket *so, struct sockopt *sopt)
 		break;
 	}
 
-	mtx_unlock(&pcb->pcb_mtx);
-	
-	return (error);
+	lockmgr(&pcb->pcb_lock, LK_RELEASE);
+
+out:
+	lwkt_replymsg(&msg->ctloutput.base.lmsg, error);
 } /* ng_btsocket_hci_raw_ctloutput */
 
 /*
@@ -1466,70 +1534,85 @@ ng_btsocket_hci_raw_ctloutput(struct socket *so, struct sockopt *sopt)
  */
 
 void
-ng_btsocket_hci_raw_detach(struct socket *so)
+ng_btsocket_hci_raw_detach(netmsg_t msg)
 {
-	ng_btsocket_hci_raw_pcb_p	pcb = so2hci_raw_pcb(so);
+	struct socket			*so = msg->detach.base.nm_so;
+	ng_btsocket_hci_raw_pcb_p	 pcb = so2hci_raw_pcb(so);
+	int				 error = 0;
 
 	KASSERT(pcb != NULL, ("ng_btsocket_hci_raw_detach: pcb == NULL"));
 
 	if (ng_btsocket_hci_raw_node == NULL)
-		return;
+		goto out;
 
-	mtx_lock(&ng_btsocket_hci_raw_sockets_mtx);
-	mtx_lock(&pcb->pcb_mtx);
+	lockmgr(&ng_btsocket_hci_raw_sockets_lock, LK_EXCLUSIVE);
+	lockmgr(&pcb->pcb_lock, LK_EXCLUSIVE);
 
 	LIST_REMOVE(pcb, next);
 
-	mtx_unlock(&pcb->pcb_mtx);
-	mtx_unlock(&ng_btsocket_hci_raw_sockets_mtx);
+	lockmgr(&pcb->pcb_lock, LK_RELEASE);
+	lockmgr(&ng_btsocket_hci_raw_sockets_lock, LK_RELEASE);
 
-	mtx_destroy(&pcb->pcb_mtx);
+	lockuninit(&pcb->pcb_lock);
 
 	bzero(pcb, sizeof(*pcb));
 	kfree(pcb, M_NETGRAPH_BTSOCKET_HCI_RAW);
 
 	so->so_pcb = NULL;
+
+out:
+	lwkt_replymsg(&msg->detach.base.lmsg, error);
 } /* ng_btsocket_hci_raw_detach */
 
 /*
  * Disconnect raw HCI socket
  */
 
-int
-ng_btsocket_hci_raw_disconnect(struct socket *so)
+void
+ng_btsocket_hci_raw_disconnect(netmsg_t msg)
 {
+	struct socket			*so = msg->disconnect.base.nm_so;
 	ng_btsocket_hci_raw_pcb_p	 pcb = so2hci_raw_pcb(so);
+	int				 error = 0;
 
-	if (pcb == NULL)
-		return (EINVAL);
-	if (ng_btsocket_hci_raw_node == NULL)
-		return (EINVAL);
+	if (pcb == NULL) {
+		error = EINVAL;
+		goto out;
+	}
+	if (ng_btsocket_hci_raw_node == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
-	mtx_lock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_EXCLUSIVE);
 	soisdisconnected(so);
-	mtx_unlock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_RELEASE);
 
-	return (0);
+out:
+	lwkt_replymsg(&msg->disconnect.base.lmsg, error);
 } /* ng_btsocket_hci_raw_disconnect */
 
 /*
  * Get socket peer's address
  */
 
-int
-ng_btsocket_hci_raw_peeraddr(struct socket *so, struct sockaddr **nam)
+void
+ng_btsocket_hci_raw_peeraddr(netmsg_t msg)
 {
-	return (ng_btsocket_hci_raw_sockaddr(so, nam));
+	return (ng_btsocket_hci_raw_sockaddr(msg));
 } /* ng_btsocket_hci_raw_peeraddr */
 
 /*
  * Send data
  */
 
-int
-ng_btsocket_hci_raw_send(struct socket *so, int flags, struct mbuf *m,
-		struct sockaddr *sa, struct mbuf *control, struct thread *td)
+void
+ng_btsocket_hci_raw_send(netmsg_t msg)
 {
+	struct socket			*so = msg->send.base.nm_so;
+	struct mbuf			*control = msg->send.nm_control;
+	struct mbuf			*m = msg->send.nm_m;
+	struct sockaddr			*sa = msg->send.nm_addr;
 	ng_btsocket_hci_raw_pcb_p	 pcb = so2hci_raw_pcb(so);
 	struct mbuf			*nam = NULL;
 	int				 error = 0;
@@ -1564,17 +1647,17 @@ ng_btsocket_hci_raw_send(struct socket *so, int flags, struct mbuf *m,
 		goto drop;
 	}
 
-	mtx_lock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_EXCLUSIVE);
 
 	error = ng_btsocket_hci_raw_filter(pcb, m, 0);
 	if (error != 0) {
-		mtx_unlock(&pcb->pcb_mtx);
+		lockmgr(&pcb->pcb_lock, LK_RELEASE);
 		goto drop;
 	}
 
 	if (sa == NULL) {
 		if (pcb->addr.hci_node[0] == 0) {
-			mtx_unlock(&pcb->pcb_mtx);
+			lockmgr(&pcb->pcb_lock, LK_RELEASE);
 			error = EDESTADDRREQ;
 			goto drop;
 		}
@@ -1584,7 +1667,7 @@ ng_btsocket_hci_raw_send(struct socket *so, int flags, struct mbuf *m,
 
 	MGET(nam, MB_DONTWAIT, MT_SONAME);
 	if (nam == NULL) {
-		mtx_unlock(&pcb->pcb_mtx);
+		lockmgr(&pcb->pcb_lock, LK_RELEASE);
 		error = ENOBUFS;
 		goto drop;
 	}
@@ -1595,43 +1678,57 @@ ng_btsocket_hci_raw_send(struct socket *so, int flags, struct mbuf *m,
 	nam->m_next = m;
 	m = NULL;
 
-	mtx_unlock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_RELEASE);
 
-	return (ng_send_fn(ng_btsocket_hci_raw_node, NULL, 
-				ng_btsocket_hci_raw_output, nam, 0));
+	error = ng_send_fn(ng_btsocket_hci_raw_node, NULL,
+				ng_btsocket_hci_raw_output, nam, 0);
+	goto out;
+
 drop:
 	NG_FREE_M(control); /* NG_FREE_M checks for != NULL */
 	NG_FREE_M(nam);
 	NG_FREE_M(m);
-	
-	return (error);
+
+out:	
+	lwkt_replymsg(&msg->send.base.lmsg, error);
 } /* ng_btsocket_hci_raw_send */
 
 /*
  * Get socket address
  */
 
-int
-ng_btsocket_hci_raw_sockaddr(struct socket *so, struct sockaddr **nam)
+void
+ng_btsocket_hci_raw_sockaddr(netmsg_t msg)
 {
-	ng_btsocket_hci_raw_pcb_p	pcb = so2hci_raw_pcb(so);
-	struct sockaddr_hci		sa;
+	struct socket			 *so = msg->sockaddr.base.nm_so;
+	struct sockaddr			**nam = msg->sockaddr.nm_nam;
+	ng_btsocket_hci_raw_pcb_p	  pcb = so2hci_raw_pcb(so);
+	struct sockaddr_hci		  sa;
+	int				  error = 0;
 
-	if (pcb == NULL)
-		return (EINVAL);
-	if (ng_btsocket_hci_raw_node == NULL)
-		return (EINVAL);
+	if (pcb == NULL) {
+		error = EINVAL;
+		goto out;
+	}
+	if (ng_btsocket_hci_raw_node == NULL) {
+		error = EINVAL;
+		goto out;
+	}
 
 	bzero(&sa, sizeof(sa));
 	sa.hci_len = sizeof(sa);
 	sa.hci_family = AF_BLUETOOTH;
 
-	mtx_lock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_EXCLUSIVE);
 	strlcpy(sa.hci_node, pcb->addr.hci_node, sizeof(sa.hci_node));
-	mtx_unlock(&pcb->pcb_mtx);
+	lockmgr(&pcb->pcb_lock, LK_RELEASE);
 
-	*nam = sodupsockaddr((struct sockaddr *) &sa, M_WAITOK | M_NULLOK);
+	*nam = dup_sockaddr((struct sockaddr *) &sa);
 
-	return ((*nam == NULL)? ENOMEM : 0);
+	if (*nam == NULL)
+		error = ENOMEM;
+
+out:
+	lwkt_replymsg(&msg->sockaddr.base.lmsg, error);
 } /* ng_btsocket_hci_raw_sockaddr */
 

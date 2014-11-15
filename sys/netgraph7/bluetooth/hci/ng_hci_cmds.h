@@ -29,7 +29,6 @@
  *
  * $Id: ng_hci_cmds.h,v 1.1 2002/11/24 19:46:58 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/hci/ng_hci_cmds.h,v 1.4 2005/01/07 01:45:43 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/hci/ng_hci_cmds.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #ifndef _NETGRAPH_HCI_CMDS_H_

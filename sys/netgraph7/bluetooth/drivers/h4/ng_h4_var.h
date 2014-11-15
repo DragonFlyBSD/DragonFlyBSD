@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $Id: ng_h4_var.h,v 1.5 2005/10/31 17:57:43 max Exp $
- * $FreeBSD: src/sys/netgraph/bluetooth/drivers/h4/ng_h4_var.h,v 1.6 2007/08/13 17:19:28 emax Exp $
+ * $FreeBSD: head/sys/netgraph/bluetooth/drivers/h4/ng_h4_var.h 171818 2007-08-13 17:19:28Z emax $
  * 
  * Based on:
  * ---------
@@ -83,8 +83,8 @@ typedef struct ng_h4_info {
 
 	struct ifqueue		outq;	/* Queue of outgoing mbuf's */
 #define NG_H4_DEFAULTQLEN	 12     /* XXX max number of mbuf's in outq */
-#define	NG_H4_LOCK(sc)		IF_LOCK(&sc->outq)
-#define	NG_H4_UNLOCK(sc)	IF_UNLOCK(&sc->outq)
+#define	NG_H4_LOCK(sc)		crit_enter();
+#define	NG_H4_UNLOCK(sc)	crit_exit();
 
 #define NG_H4_IBUF_SIZE		1024	/* XXX must be big enough to hold full 
 					   frame */

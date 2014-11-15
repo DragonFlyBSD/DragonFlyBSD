@@ -33,27 +33,26 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/bitstring.h>
+#include <bitstring.h>		/* XXX */
 #include <sys/errno.h>
 #include <sys/domain.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/mbuf.h>
-#include <sys/mutex.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
-#include "ng_message.h"
-#include "netgraph.h"
-#include "bluetooth/include/ng_bluetooth.h"
-#include "bluetooth/include/ng_hci.h"
-#include "bluetooth/include/ng_l2cap.h"
-#include "bluetooth/include/ng_btsocket.h"
-#include "bluetooth/include/ng_btsocket_hci_raw.h"
-#include "bluetooth/include/ng_btsocket_l2cap.h"
-#include "bluetooth/include/ng_btsocket_rfcomm.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/bluetooth/include/ng_bluetooth.h>
+#include <netgraph7/bluetooth/include/ng_hci.h>
+#include <netgraph7/bluetooth/include/ng_l2cap.h>
+#include <netgraph7/bluetooth/include/ng_btsocket.h>
+#include <netgraph7/bluetooth/include/ng_btsocket_hci_raw.h>
+#include <netgraph7/bluetooth/include/ng_btsocket_l2cap.h>
+#include <netgraph7/bluetooth/include/ng_btsocket_rfcomm.h>
 
 static int			ng_btsocket_modevent (module_t, int, void *);
 extern struct domain		ng_btsocket_domain;
@@ -74,7 +73,11 @@ static struct pr_usrreqs	ng_btsocket_hci_raw_usrreqs = {
 	.pru_send =		ng_btsocket_hci_raw_send,
 	.pru_shutdown =		NULL,
 	.pru_sockaddr =		ng_btsocket_hci_raw_sockaddr,
+#if 0 /* XXX */
 	.pru_close =		ng_btsocket_hci_raw_close,
+#endif
+	.pru_sosend =		sosend,
+	.pru_soreceive =	soreceive,
 };
 
 /*
@@ -93,7 +96,11 @@ static struct pr_usrreqs	ng_btsocket_l2cap_raw_usrreqs = {
 	.pru_send =		ng_btsocket_l2cap_raw_send,
 	.pru_shutdown =		NULL,
 	.pru_sockaddr =		ng_btsocket_l2cap_raw_sockaddr,
+#if 0 /* XXX */
 	.pru_close =		ng_btsocket_l2cap_raw_close,
+#endif
+	.pru_sosend =		sosend,
+	.pru_soreceive =	soreceive,
 };
 
 /*
@@ -114,7 +121,11 @@ static struct pr_usrreqs	ng_btsocket_l2cap_usrreqs = {
 	.pru_send =		ng_btsocket_l2cap_send,
 	.pru_shutdown =		NULL,
 	.pru_sockaddr =		ng_btsocket_l2cap_sockaddr,
+#if 0 /* XXX */
 	.pru_close =		ng_btsocket_l2cap_close,
+#endif
+	.pru_sosend =		sosend,
+	.pru_soreceive =	soreceive,
 };
 
 /*
@@ -135,7 +146,11 @@ static struct pr_usrreqs	ng_btsocket_rfcomm_usrreqs = {
 	.pru_send =		ng_btsocket_rfcomm_send,
 	.pru_shutdown =		NULL,
 	.pru_sockaddr =		ng_btsocket_rfcomm_sockaddr,
+#if 0 /* XXX */
 	.pru_close =		ng_btsocket_rfcomm_close,
+#endif
+	.pru_sosend =		sosend,
+	.pru_soreceive =	soreceive,
 };
 
 /* 

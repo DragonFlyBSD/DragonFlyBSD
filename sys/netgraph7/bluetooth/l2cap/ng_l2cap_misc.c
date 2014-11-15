@@ -29,7 +29,6 @@
  *
  * $Id: ng_l2cap_misc.c,v 1.5 2003/09/08 19:11:45 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/l2cap/ng_l2cap_misc.c,v 1.12 2005/08/31 18:13:23 emax Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/l2cap/ng_l2cap_misc.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,17 +37,17 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/queue.h>
-#include "ng_message.h"
-#include "netgraph.h"
-#include "bluetooth/include/ng_bluetooth.h"
-#include "bluetooth/include/ng_hci.h"
-#include "bluetooth/include/ng_l2cap.h"
-#include "bluetooth/l2cap/ng_l2cap_var.h"
-#include "bluetooth/l2cap/ng_l2cap_cmds.h"
-#include "bluetooth/l2cap/ng_l2cap_evnt.h"
-#include "bluetooth/l2cap/ng_l2cap_llpi.h"
-#include "bluetooth/l2cap/ng_l2cap_ulpi.h"
-#include "bluetooth/l2cap/ng_l2cap_misc.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/bluetooth/include/ng_bluetooth.h>
+#include <netgraph7/bluetooth/include/ng_hci.h>
+#include <netgraph7/bluetooth/include/ng_l2cap.h>
+#include <netgraph7/bluetooth/l2cap/ng_l2cap_var.h>
+#include <netgraph7/bluetooth/l2cap/ng_l2cap_cmds.h>
+#include <netgraph7/bluetooth/l2cap/ng_l2cap_evnt.h>
+#include <netgraph7/bluetooth/l2cap/ng_l2cap_llpi.h>
+#include <netgraph7/bluetooth/l2cap/ng_l2cap_ulpi.h>
+#include <netgraph7/bluetooth/l2cap/ng_l2cap_misc.h>
 
 static u_int16_t	ng_l2cap_get_cid	(ng_l2cap_p);
 

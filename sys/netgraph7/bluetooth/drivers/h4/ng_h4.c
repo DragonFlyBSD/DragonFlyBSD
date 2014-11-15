@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $Id: ng_h4.c,v 1.10 2005/10/31 17:57:43 max Exp $
- * $FreeBSD: src/sys/netgraph/bluetooth/drivers/h4/ng_h4.c,v 1.17 2007/08/13 17:19:28 emax Exp $
+ * $FreeBSD: head/sys/netgraph/bluetooth/drivers/h4/ng_h4.c 243882 2012-12-05 08:04:20Z glebius $
  * 
  * Based on:
  * ---------
@@ -53,14 +53,14 @@
 #include <sys/ttycom.h>
 #include <net/if.h>
 #include <net/if_var.h>
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
-#include "bluetooth/include/ng_bluetooth.h"
-#include "bluetooth/include/ng_hci.h"
-#include "bluetooth/include/ng_h4.h"
-#include "bluetooth/drivers/h4/ng_h4_var.h"
-#include "bluetooth/drivers/h4/ng_h4_prse.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/ng_parse.h>
+#include <netgraph7/bluetooth/include/ng_bluetooth.h>
+#include <netgraph7/bluetooth/include/ng_hci.h>
+#include <netgraph7/bluetooth/include/ng_h4.h>
+#include <netgraph7/bluetooth/drivers/h4/ng_h4_var.h>
+#include <netgraph7/bluetooth/drivers/h4/ng_h4_prse.h>
 
 /*****************************************************************************
  *****************************************************************************
@@ -90,7 +90,7 @@ static int	ng_h4_write	(struct tty *, struct uio *, int);
 static int	ng_h4_input	(int, struct tty *);
 static int	ng_h4_start	(struct tty *);
 static int	ng_h4_ioctl	(struct tty *, u_long, caddr_t, 
-					int, struct thread *);
+					int, struct ucred *);
 
 /* Line discipline descriptor */
 static struct linesw		ng_h4_disc = {
@@ -172,8 +172,7 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 	sc->want = 1;
 	sc->got = 0;
 
-	mtx_init(&sc->outq.ifq_mtx, "ng_h4 node+queue", NULL, MTX_DEF);
-	IFQ_SET_MAXLEN(&sc->outq, NG_H4_DEFAULTQLEN);
+	sc->outq.ifq_maxlen = NG_H4_DEFAULTQLEN;
 	ng_callout_init(&sc->timo);
 
 	NG_H4_LOCK(sc);
@@ -185,7 +184,6 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 
 		kprintf("%s: Unable to create new node!\n", __func__);
 
-		mtx_destroy(&sc->outq.ifq_mtx);
 		bzero(sc, sizeof(*sc));
 		kfree(sc, M_NETGRAPH_H4);
 
@@ -203,7 +201,6 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 		kprintf("%s: %s - node name exists?\n", __func__, name);
 
 		NG_NODE_UNREF(sc->node);
-		mtx_destroy(&sc->outq.ifq_mtx);
 		bzero(sc, sizeof(*sc));
 		kfree(sc, M_NETGRAPH_H4);
 
@@ -213,7 +210,7 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 
 	/* Set back pointers */
 	NG_NODE_SET_PRIVATE(sc->node, sc);
-	tp->t_lsc = (caddr_t) sc;
+	tp->t_sc = (caddr_t) sc;
 
 	/* The node has to be a WRITER because data can change node status */
 	NG_NODE_FORCE_WRITER(sc->node);
@@ -243,7 +240,7 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 static int
 ng_h4_close(struct tty *tp, int flag)
 {
-	ng_h4_info_p	sc = (ng_h4_info_p) tp->t_lsc;
+	ng_h4_info_p	sc = (ng_h4_info_p) tp->t_sc;
 
 	lwkt_gettoken(&tty_token);
 	ttyflush(tp, FREAD | FWRITE);
@@ -255,7 +252,7 @@ ng_h4_close(struct tty *tp, int flag)
 		if (callout_pending(&sc->timo))
 			ng_uncallout(&sc->timo, sc->node);
 
-		tp->t_lsc = NULL;
+		tp->t_sc = NULL;
 		sc->dying = 1;
 
 		NG_H4_UNLOCK(sc);
@@ -293,9 +290,9 @@ ng_h4_write(struct tty *tp, struct uio *uio, int flag)
 
 static int
 ng_h4_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
-		struct thread *td)
+    struct ucred *cred)
 {
-	ng_h4_info_p	sc = (ng_h4_info_p) tp->t_lsc;
+	ng_h4_info_p	sc = (ng_h4_info_p) tp->t_sc;
 	int		error = 0;
 
 	if (sc == NULL)
@@ -341,7 +338,7 @@ ng_h4_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
 static int
 ng_h4_input(int c, struct tty *tp)
 {
-	ng_h4_info_p	sc = (ng_h4_info_p) tp->t_lsc;
+	ng_h4_info_p	sc = (ng_h4_info_p) tp->t_sc;
 
 	lwkt_gettoken(&tty_token);
 	if (sc == NULL || tp != sc->tp ||
@@ -582,7 +579,7 @@ ng_h4_input(int c, struct tty *tp)
 static int
 ng_h4_start(struct tty *tp)
 {
-	ng_h4_info_p	 sc = (ng_h4_info_p) tp->t_lsc;
+	ng_h4_info_p	 sc = (ng_h4_info_p) tp->t_sc;
 	struct mbuf	*m = NULL;
 	int		 size;
 
@@ -637,7 +634,8 @@ ng_h4_start(struct tty *tp)
 	 * being called in lieu of ttstart and must do what it would.
 	 */
 
-	tt_oproc(sc->tp);
+	if (tp->t_oproc != NULL)
+		(*tp->t_oproc) (tp);
 
 	/*
 	 * This timeout is needed for operation on a pseudo-tty, because the
@@ -646,7 +644,7 @@ ng_h4_start(struct tty *tp)
 
 	NG_H4_LOCK(sc);
 
-	if (!IFQ_IS_EMPTY(&sc->outq) && !callout_pending(&sc->timo))
+	if (!IF_QEMPTY(&sc->outq) && !callout_pending(&sc->timo))
 		ng_callout(&sc->timo, sc->node, NULL, 1,
 			ng_h4_process_timeout, NULL, 0);
 
@@ -741,7 +739,7 @@ ng_h4_disconnect(hook_p hook)
 		if (callout_pending(&sc->timo))
 			ng_uncallout(&sc->timo, sc->node);
 
-		_IF_DRAIN(&sc->outq); 
+		IF_DRAIN(&sc->outq); 
 
 		sc->state = NG_H4_W4_PKT_IND;
 		sc->want = 1;
@@ -779,10 +777,9 @@ ng_h4_shutdown(node_p node)
 
 	NG_NODE_SET_PRIVATE(node, NULL);
 
-	_IF_DRAIN(&sc->outq);
+	IF_DRAIN(&sc->outq);
 
 	NG_NODE_UNREF(node);
-	mtx_destroy(&sc->outq.ifq_mtx);
 	bzero(sc, sizeof(*sc));
 	kfree(sc, M_NETGRAPH_H4);
 
@@ -812,12 +809,12 @@ ng_h4_rcvdata(hook_p hook, item_p item)
 
 	NG_H4_LOCK(sc);
 
-	if (_IF_QFULL(&sc->outq)) {
+	if (IF_QFULL(&sc->outq)) {
 		NG_H4_ERR("%s: %s - dropping mbuf, len=%d\n", __func__,
 			NG_NODE_NAME(sc->node), m->m_pkthdr.len);
 
 		NG_H4_STAT_OERROR(sc->stat);
-		_IF_DROP(&sc->outq);
+		IF_DROP(&sc->outq);
 
 		NG_H4_UNLOCK(sc);
 
@@ -829,8 +826,8 @@ ng_h4_rcvdata(hook_p hook, item_p item)
 	NG_H4_INFO("%s: %s - queue mbuf, len=%d\n", __func__,
 		NG_NODE_NAME(sc->node), m->m_pkthdr.len);
 
-	_IF_ENQUEUE(&sc->outq, m);
-	qlen = _IF_QLEN(&sc->outq);
+	IF_ENQUEUE(&sc->outq, m);
+	qlen = IF_QLEN(&sc->outq);
 
 	NG_H4_UNLOCK(sc);
 
@@ -838,11 +835,8 @@ ng_h4_rcvdata(hook_p hook, item_p item)
 	 * If qlen > 1, then we should already have a scheduled callout
 	 */
 
-	if (qlen == 1) {
-		mtx_lock(&Giant);
+	if (qlen == 1)
 		ng_h4_start(sc->tp);
-		mtx_unlock(&Giant);
-	}
 
 	return (0);
 } /* ng_h4_rcvdata */
@@ -881,7 +875,7 @@ ng_h4_rcvmsg(node_p node, item_p item, hook_p lasthook)
 					(sc->hook != NULL)? NG_H4_HOOK : "",
 					sc->debug,
 					sc->state,
-					_IF_QLEN(&sc->outq),
+					IF_QLEN(&sc->outq),
 					sc->outq.ifq_maxlen,
 					sc->got,
 					sc->want);
@@ -896,7 +890,7 @@ ng_h4_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	case NGM_H4_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_H4_NODE_RESET:
-			_IF_DRAIN(&sc->outq); 
+			IF_DRAIN(&sc->outq); 
 			sc->state = NG_H4_W4_PKT_IND;
 			sc->want = 1;
 			sc->got = 0;
@@ -946,8 +940,8 @@ ng_h4_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			else if (*((ng_h4_node_qlen_ep *)(msg->data)) <= 0)
 				error = EINVAL;
 			else
-				IFQ_SET_MAXLEN(&sc->outq,
-					*((ng_h4_node_qlen_ep *)(msg->data)));
+				sc->outq.ifq_maxlen =
+					*((ng_h4_node_qlen_ep *)(msg->data));
 			break;
 
 		case NGM_H4_NODE_GET_STAT:
@@ -993,9 +987,7 @@ ng_h4_process_timeout(node_p node, hook_p hook, void *arg1, int arg2)
 {
 	ng_h4_info_p	sc = (ng_h4_info_p) NG_NODE_PRIVATE(node);
 
-	mtx_lock(&Giant);
 	ng_h4_start(sc->tp);
-	mtx_unlock(&Giant);
 } /* ng_h4_process_timeout */
 
 /*
@@ -1011,9 +1003,9 @@ ng_h4_mod_event(module_t mod, int event, void *data)
 	switch (event) {
 	case MOD_LOAD:
 		/* Register line discipline */
-		mtx_lock(&Giant);
-		ng_h4_ldisc = ldisc_register(H4DISC, &ng_h4_disc);
-		mtx_unlock(&Giant);
+		crit_enter();
+		ng_h4_ldisc = ldisc_register(BTUARTDISC, &ng_h4_disc);
+		crit_exit();
 
 		if (ng_h4_ldisc < 0) {
 			kprintf("%s: can't register H4 line discipline\n",
@@ -1024,9 +1016,9 @@ ng_h4_mod_event(module_t mod, int event, void *data)
 
 	case MOD_UNLOAD:
 		/* Unregister line discipline */
-		mtx_lock(&Giant);
+		crit_enter();
 		ldisc_deregister(ng_h4_ldisc);
-		mtx_unlock(&Giant);
+		crit_exit();
 		break;
 
 	default:
