@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014 Imre Vadász
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,7 +45,7 @@ init_waitqueue_head(wait_queue_head_t *eq)
 #define wake_up_all(eq)		wakeup(eq)
 
 /*
- * wait_event_timeout:
+ * wait_event_interruptible_timeout:
  * - The process is put to sleep until the condition evaluates to true.
  * - The condition is checked each time the waitqueue wq is woken up.
  * - wake_up has to be called after changing any variable that could change
@@ -55,11 +56,13 @@ init_waitqueue_head(wait_queue_head_t *eq)
  *   - the remaining jiffies if the condition evaluated to true before
  *   the timeout elapsed.
  *   - remaining jiffies are always at least 1
+ *   - -ERESTARTSYS if interrupted by a signal (when PCATCH is set in flags)
 */
 #define __wait_event_common(wq, condition, timeout_jiffies, flags)	\
 ({									\
 	int start_jiffies, elapsed_jiffies, remaining_jiffies, ret;	\
 	bool timeout_expired = false;					\
+	bool interrupted = false;					\
 	long retval;							\
 									\
 	start_jiffies = ticks;						\
@@ -71,6 +74,10 @@ init_waitqueue_head(wait_queue_head_t *eq)
 									\
 		ret = ssleep(&wq, &wq.lock, flags,			\
 					"lwe", timeout_jiffies);	\
+		if (ret == EINTR || ret == ERESTART) {			\
+			interrupted = true;				\
+			break;						\
+		}							\
 		if (ret == EWOULDBLOCK) {				\
 			timeout_expired = true;				\
 			break;						\
@@ -80,13 +87,17 @@ init_waitqueue_head(wait_queue_head_t *eq)
 									\
 	elapsed_jiffies = ticks - start_jiffies;			\
 	remaining_jiffies = timeout_jiffies - elapsed_jiffies;		\
-	if (remaining_jiffies == 0)					\
+	if (remaining_jiffies <= 0)					\
 		remaining_jiffies = 1;					\
 									\
 	if (timeout_expired)						\
 		retval = 0;						\
-	else 								\
+	else if (interrupted)						\
+		retval = -ERESTARTSYS;					\
+	else if (timeout_jiffies > 0)					\
 		retval = remaining_jiffies;				\
+	else								\
+		retval = 1;						\
 									\
 	retval;								\
 })
@@ -98,7 +109,14 @@ init_waitqueue_head(wait_queue_head_t *eq)
 		__wait_event_common(wq, condition, timeout, 0)
 
 #define wait_event_interruptible(wq, condition)				\
-		__wait_event_common(wq, condition, 0, PCATCH)
+({									\
+	long retval;							\
+									\
+	retval = __wait_event_common(wq, condition, 0, PCATCH);		\
+	if (retval != -ERESTARTSYS)					\
+		retval = 0;						\
+	retval;								\
+})
 
 #define wait_event_interruptible_timeout(wq, condition, timeout)	\
 		__wait_event_common(wq, condition, timeout, PCATCH)

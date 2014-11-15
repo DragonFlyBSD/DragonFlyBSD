@@ -267,6 +267,8 @@ int radeon_gem_create_ioctl(struct drm_device *dev, void *data,
 					args->initial_domain, false,
 					false, &gobj);
 	if (r) {
+		if (r == -ERESTARTSYS)
+			r = -EINTR;
 		lockmgr(&rdev->exclusive_lock, LK_RELEASE);
 		r = radeon_gem_handle_lockup(rdev, r);
 		return r;
@@ -393,6 +395,8 @@ int radeon_gem_wait_idle_ioctl(struct drm_device *dev, void *data,
 	if (rdev->asic->ioctl_wait_idle)
 		robj->rdev->asic->ioctl_wait_idle(rdev, robj);
 	drm_gem_object_unreference_unlocked(gobj);
+	if (r == -ERESTARTSYS)
+		r = -EINTR;
 	r = radeon_gem_handle_lockup(rdev, r);
 	return r;
 }
