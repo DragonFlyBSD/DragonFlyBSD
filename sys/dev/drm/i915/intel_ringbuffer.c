@@ -1140,11 +1140,6 @@ static int init_phys_hws_pga(struct intel_ring_buffer *ring)
 	return 0;
 }
 
-static inline void __iomem *ioremap_wc(resource_size_t phys_addr, unsigned long size)
-{
-	return pmap_mapdev_attr(phys_addr, size, VM_MEMATTR_WRITE_COMBINING);
-}
-
 static int intel_init_ring_buffer(struct drm_device *dev,
 				  struct intel_ring_buffer *ring)
 {

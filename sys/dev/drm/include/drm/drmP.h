@@ -103,6 +103,7 @@
 #include <linux/list.h>
 #include <linux/mutex.h>
 #include <linux/timer.h>
+#include <asm/io.h>
 #include <linux/types.h>
 #include <linux/wait.h>
 

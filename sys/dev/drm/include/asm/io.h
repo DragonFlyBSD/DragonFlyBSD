@@ -24,8 +24,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_IO_H_
-#define _LINUX_IO_H_
+#ifndef _ASM_IO_H_
+#define _ASM_IO_H_
+
+#include <machine/pmap.h>
 
 #define ioread8(addr)		*(volatile uint8_t *)((char *)addr)
 #define ioread16(addr)		*(volatile uint16_t *)((char *)addr)
@@ -35,4 +37,15 @@
 #define iowrite16(data, addr)	*(volatile uint16_t *)((char *)addr) = data;
 #define iowrite32(data, addr)	*(volatile uint32_t *)((char *)addr) = data;
 
-#endif	/* _LINUX_IO_H_ */
+/* ioremap: map bus memory into CPU space */
+static inline void __iomem *ioremap(resource_size_t offset, unsigned long size)
+{
+	return pmap_mapdev_uncacheable(offset, size);
+}
+
+static inline void __iomem *ioremap_wc(resource_size_t phys_addr, unsigned long size)
+{
+	return pmap_mapdev_attr(phys_addr, size, VM_MEMATTR_WRITE_COMBINING);
+}
+
+#endif	/* _ASM_IO_H_ */

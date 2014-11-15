@@ -33,8 +33,6 @@
 #include <contrib/dev/acpica/source/include/accommon.h>
 #include <dev/acpica/acpivar.h>
 
-#include <linux/io.h>
-
 #define PCI_ASLE 0xe4
 #define PCI_ASLS 0xfc
 
