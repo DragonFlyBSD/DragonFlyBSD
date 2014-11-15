@@ -1982,6 +1982,9 @@ device		aue
 # LinkSys USB200M and various other adapters.
 device		axe
 #
+# ASIX Electronics AX88178A/AX88179 USB 2.0/3.0 gigabit ethernet driver.
+device		axge
+#
 # CATC USB-EL1201A USB ethernet. Supports the CATC Netmate
 # and Netmate II, and the Belkin F5U111.
 device		cue

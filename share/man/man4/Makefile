@@ -46,6 +46,7 @@ MAN=	aac.4 \
 	atkbdc.4 \
 	aue.4 \
 	axe.4 \
+	axge.4 \
 	bce.4 \
 	bfe.4 \
 	bge.4 \
@@ -419,6 +420,7 @@ MLINKS+=an.4 if_an.4
 MLINKS+=ath.4 if_ath.4
 MLINKS+=aue.4 if_aue.4
 MLINKS+=axe.4 if_axe.4
+MLINKS+=axge.4 if_axge.4
 MLINKS+=bce.4 if_bce.4
 MLINKS+=bfe.4 if_bfe.4
 MLINKS+=bge.4 if_bge.4

@@ -2265,6 +2265,7 @@ bus/u4b/storage/ustorage_fs.c		optional usfs usb
 bus/u4b/net/usb_ethernet.c		optional uether usb
 bus/u4b/net/if_aue.c			optional aue uether usb
 bus/u4b/net/if_axe.c			optional axe uether usb
+bus/u4b/net/if_axge.c			optional axge uether usb
 bus/u4b/net/if_cue.c			optional cue uether usb
 bus/u4b/net/if_ipheth.c			optional ipheth uether usb
 bus/u4b/net/if_kue.c			optional kue uether usb
