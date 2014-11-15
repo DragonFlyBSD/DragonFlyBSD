@@ -58,12 +58,14 @@ static void setthetime(const char *, const char *, int, int);
 static void badformat(void);
 static void usage(void);
 
+static const char *rfc2822_format ="%a, %d %b %Y %T %z";
+
 int
 main(int argc, char **argv)
 {
 	struct timezone tz;
 	int ch, rflag;
-	int jflag, nflag;
+	int jflag, nflag, Rflag;
 	const char *format;
 	char buf[1024];
 	char *endptr, *fmt;
@@ -78,9 +80,9 @@ main(int argc, char **argv)
 	setlocale(LC_TIME, "");
 	tz.tz_dsttime = tz.tz_minuteswest = 0;
 	rflag = 0;
-	jflag = nflag = 0;
+	jflag = nflag = Rflag = 0;
 	set_timezone = 0;
-	while ((ch = getopt(argc, argv, "d:f:jnr:t:uv:")) != -1)
+	while ((ch = getopt(argc, argv, "d:f:jnRr:t:uv:")) != -1)
 		switch(ch) {
 		case 'd':		/* daylight savings time */
 			tz.tz_dsttime = strtol(optarg, &endptr, 10) ? 1 : 0;
@@ -96,6 +98,9 @@ main(int argc, char **argv)
 			break;
 		case 'n':		/* don't set network */
 			nflag = 1;
+			break;
+		case 'R':
+			Rflag = 1;	/*RFC 2822 datetime format */
 			break;
 		case 'r':		/* user specified seconds */
 			rflag = 1;
@@ -135,6 +140,9 @@ main(int argc, char **argv)
 
 	format = "%+";
 
+	if (Rflag)
+		format = rfc2822_format;
+
 	/* allow the operands in any order */
 	if (*argv && **argv == '+') {
 		format = *argv + 1;
@@ -159,6 +167,15 @@ main(int argc, char **argv)
 		usage();
 	}
 	vary_destroy(v);
+
+	if (format == rfc2822_format) {
+		/*
+		 * When using RFC 2822 datetime format, don't honor the
+		 * locale.
+		 */
+		setlocale(LC_TIME, "C");
+	}
+
 	strftime(buf, sizeof(buf), format, &lt);
 	printf("%s\n", buf);
 	if (fflush(stdout) != 0)
@@ -289,7 +306,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
-	    "usage: date [-jnu] [-d dst] [-r seconds] [-t west] "
+	    "usage: date [-jnRu] [-d dst] [-r seconds] [-t west] "
 	    "[-v[+|-]val[ymwdHMS]] ... ",
 	    "            "
 	    "[-f fmt date | [[[[[cc]yy]mm]dd]HH]MM[.ss]] [+format]");

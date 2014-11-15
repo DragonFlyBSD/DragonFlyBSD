@@ -30,9 +30,8 @@
 .\"
 .\"     @(#)date.1	8.3 (Berkeley) 4/28/95
 .\" $FreeBSD: src/bin/date/date.1,v 1.72 2005/02/13 22:25:09 ru Exp $
-.\" $DragonFly: src/bin/date/date.1,v 1.4 2005/07/20 20:05:46 cpressey Exp $
 .\"
-.Dd August 9, 2004
+.Dd November 15, 2014
 .Dt DATE 1
 .Os
 .Sh NAME
@@ -40,7 +39,7 @@
 .Nd display or set date and time
 .Sh SYNOPSIS
 .Nm
-.Op Fl ju
+.Op Fl jRu
 .Op Fl r Ar seconds
 .Oo
 .Fl v
@@ -52,7 +51,7 @@
 .Ar ...
 .Op Cm + Ns Ar output_fmt
 .Nm
-.Op Fl jnu
+.Op Fl jnRu
 .Sm off
 .Op Oo Oo Oo Oo Ar cc Oc Ar yy Oc Ar mm Oc Ar dd Oc Ar HH
 .Ar MM Op Ar .ss
@@ -130,6 +129,16 @@ The
 .Fl n
 option suppresses this behavior and causes the time to be set only on the
 current machine.
+.It Fl R
+Use RFC 2822 date and time output format. This is equivalent to use
+.Dq Li %a, %d %b %Y \&%T %z
+as
+.Ar output_fmt
+while
+.Ev LC_TIME
+is set to the
+.Dq C
+locale.
 .It Fl r Ar seconds
 Print the date and time represented by
 .Ar seconds ,
