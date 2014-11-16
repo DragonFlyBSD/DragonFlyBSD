@@ -79,7 +79,7 @@ int radeon_gem_object_create(struct radeon_device *rdev, int size,
 retry:
 	r = radeon_bo_create(rdev, size, alignment, kernel, initial_domain, NULL, &robj);
 	if (r) {
-		if (r != -ERESTART) {
+		if (r != -ERESTARTSYS) {
 			if (initial_domain == RADEON_GEM_DOMAIN_VRAM) {
 				initial_domain |= RADEON_GEM_DOMAIN_GTT;
 				goto retry;

@@ -33,13 +33,13 @@
  *
  * Portions of this software were developed by Konstantin Belousov
  * <kib@FreeBSD.org> under sponsorship from the FreeBSD Foundation.
- *
- * $FreeBSD: head/sys/dev/drm2/ttm/ttm_lock.c 247835 2013-03-05 09:49:34Z kib $
  */
 
 #include <drm/ttm/ttm_lock.h>
 #include <drm/ttm/ttm_module.h>
 #include <linux/atomic.h>
+#include <linux/errno.h>
+#include <linux/wait.h>
 #include <linux/export.h>
 
 #define TTM_WRITE_LOCK_PENDING    (1 << 0)

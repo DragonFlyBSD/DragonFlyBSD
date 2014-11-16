@@ -1833,7 +1833,7 @@ i915_gem_object_unbind(struct drm_i915_gem_object *obj)
 	 */
 	if (ret == 0)
 		ret = i915_gem_object_set_to_cpu_domain(obj, 1);
-	if (ret == -ERESTART || ret == -EINTR)
+	if (ret == -ERESTARTSYS)
 		return ret;
 	if (ret) {
 		/* In the event of a disaster, abandon all caches and
