@@ -36,6 +36,7 @@
 #include <drm/drm_hashtab.h>
 #include <linux/kref.h>
 #include <linux/list.h>
+#include <linux/wait.h>
 
 struct ttm_bo_device;
 

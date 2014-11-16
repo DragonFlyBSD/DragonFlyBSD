@@ -97,6 +97,9 @@ init_waitqueue_head(wait_queue_head_t *eq)
 #define wait_event_timeout(wq, condition, timeout)			\
 		__wait_event_common(wq, condition, timeout, 0)
 
+#define wait_event_interruptible(wq, condition)				\
+		__wait_event_common(wq, condition, 0, PCATCH)
+
 #define wait_event_interruptible_timeout(wq, condition, timeout)	\
 		__wait_event_common(wq, condition, timeout, PCATCH)
 

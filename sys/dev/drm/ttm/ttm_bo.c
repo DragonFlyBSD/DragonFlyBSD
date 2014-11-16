@@ -137,23 +137,13 @@ static void ttm_bo_release_list(struct kref *list_kref)
 static int ttm_bo_wait_unreserved(struct ttm_buffer_object *bo,
 				  bool interruptible)
 {
-	const char *wmsg;
-	int flags, ret;
-
-	ret = 0;
 	if (interruptible) {
-		flags = PCATCH;
-		wmsg = "ttbowi";
+		return wait_event_interruptible(bo->event_queue,
+					       !ttm_bo_is_reserved(bo));
 	} else {
-		flags = 0;
-		wmsg = "ttbowu";
+		wait_event(bo->event_queue, !ttm_bo_is_reserved(bo));
+		return 0;
 	}
-	while (ttm_bo_is_reserved(bo)) {
-		ret = -lksleep(bo, &bo->glob->lru_lock, 0, wmsg, 0);
-		if (ret != 0)
-			break;
-	}
-	return (ret);
 }
 
 void ttm_bo_add_to_lru(struct ttm_buffer_object *bo)
