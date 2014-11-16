@@ -84,7 +84,7 @@ wait_for_completion_interruptible_timeout(struct completion *x,
 			ret = 0;
 			break;
 		case ERESTART:
-			ret = -ERESTART;	/* -ERESTARTSYS on Linux */
+			ret = -ERESTARTSYS;
 			break;
 		case 0:
 			awakened = true;

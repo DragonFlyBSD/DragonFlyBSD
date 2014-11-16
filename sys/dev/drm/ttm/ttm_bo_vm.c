@@ -46,6 +46,7 @@
 #include <drm/ttm/ttm_placement.h>
 #include <vm/vm.h>
 #include <vm/vm_page.h>
+#include <linux/errno.h>
 #include <linux/export.h>
 
 RB_GENERATE(ttm_bo_device_buffer_objects, ttm_buffer_object, vm_rb,
@@ -137,7 +138,7 @@ reserve:
 		case 0:
 			break;
 		case -EBUSY:
-		case -ERESTART:
+		case -ERESTARTSYS:
 		case -EINTR:
 			lwkt_yield();
 			goto reserve;

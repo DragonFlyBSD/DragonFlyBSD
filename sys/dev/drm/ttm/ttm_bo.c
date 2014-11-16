@@ -26,8 +26,6 @@
  **************************************************************************/
 /*
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
- *
- * $FreeBSD: head/sys/dev/drm2/ttm/ttm_bo.c 248060 2013-03-08 18:11:02Z dumbbell $
  */
 
 #define pr_fmt(fmt) "[TTM] " fmt
@@ -36,6 +34,7 @@
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <linux/atomic.h>
+#include <linux/errno.h>
 #include <linux/export.h>
 #include <linux/wait.h>
 
@@ -830,8 +829,8 @@ static int ttm_bo_evict(struct ttm_buffer_object *bo, bool interruptible,
 	lockmgr(&bdev->fence_lock, LK_RELEASE);
 
 	if (unlikely(ret != 0)) {
-		if (ret != -ERESTART) {
-			kprintf("[TTM] Failed to expire sync object before buffer eviction\n");
+		if (ret != -ERESTARTSYS) {
+			pr_err("Failed to expire sync object before buffer eviction\n");
 		}
 		goto out;
 	}
@@ -851,8 +850,8 @@ static int ttm_bo_evict(struct ttm_buffer_object *bo, bool interruptible,
 	ret = ttm_bo_mem_space(bo, &placement, &evict_mem, interruptible,
 				no_wait_gpu);
 	if (ret) {
-		if (ret != -ERESTART) {
-			kprintf("[TTM] Failed to find memory space for buffer 0x%p eviction\n",
+		if (ret != -ERESTARTSYS) {
+			pr_err("Failed to find memory space for buffer 0x%p eviction\n",
 			       bo);
 			ttm_bo_mem_space_debug(bo, &placement);
 		}
@@ -862,8 +861,8 @@ static int ttm_bo_evict(struct ttm_buffer_object *bo, bool interruptible,
 	ret = ttm_bo_handle_move_mem(bo, &evict_mem, true, interruptible,
 				     no_wait_gpu);
 	if (ret) {
-		if (ret != -ERESTART)
-			kprintf("[TTM] Buffer eviction failed\n");
+		if (ret != -ERESTARTSYS)
+			pr_err("Buffer eviction failed\n");
 		ttm_bo_mem_put(bo, &evict_mem);
 		goto out;
 	}
@@ -1109,10 +1108,10 @@ int ttm_bo_mem_space(struct ttm_buffer_object *bo,
 			mem->placement = cur_flags;
 			return 0;
 		}
-		if (ret == -ERESTART)
+		if (ret == -ERESTARTSYS)
 			has_erestartsys = true;
 	}
-	ret = (has_erestartsys) ? -ERESTART : -ENOMEM;
+	ret = (has_erestartsys) ? -ERESTARTSYS : -ENOMEM;
 	return ret;
 }
 EXPORT_SYMBOL(ttm_bo_mem_space);
