@@ -275,11 +275,12 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 	 */
 #ifdef ICMPPRINTFS
 	if (icmpprintfs) {
-		char buf[sizeof "aaa.bbb.ccc.ddd"];
+		char src_buf[INET_ADDRSTRLEN], dst_buf[INET_ADDRSTRLEN];
 
-		strcpy(buf, inet_ntoa(ip->ip_src));
 		kprintf("icmp_input from %s to %s, len %d\n",
-		       buf, inet_ntoa(ip->ip_dst), icmplen);
+		    inet_ntop(AF_INET, &ip->ip_src, src_buf, INET_ADDRSTRLEN),
+		    inet_ntop(AF_INET, &ip->ip_dst, dst_buf, INET_ADDRSTRLEN),
+		    icmplen);
 	}
 #endif
 	if (icmplen < ICMP_MINLEN) {
@@ -424,13 +425,17 @@ deliver:
 			rt = rtpurelookup((struct sockaddr *)&icmpsrc);
 			if (rt != NULL && (rt->rt_flags & RTF_HOST) &&
 			    !(rt->rt_rmx.rmx_locks & RTV_MTU)) {
+#ifdef DEBUG_MTUDISC
+				char src_buf[INET_ADDRSTRLEN];
+#endif
 				mtu = ntohs(icp->icmp_nextmtu);
 				if (!mtu)
 					mtu = ip_next_mtu(rt->rt_rmx.rmx_mtu,
 							  1);
 #ifdef DEBUG_MTUDISC
 				kprintf("MTU for %s reduced to %d\n",
-					inet_ntoa(icmpsrc.sin_addr), mtu);
+				    inet_ntop(AF_INET, &icmpsrc.sin_addr,
+				        src_buf, INET_ADDRSTRLEN), mtu);
 #endif
 				if (mtu < 296) {
 					/* rt->rt_rmx.rmx_mtu =
@@ -567,11 +572,13 @@ reflect:
 		icmpdst.sin_addr = icp->icmp_gwaddr;
 #ifdef	ICMPPRINTFS
 		if (icmpprintfs) {
-			char buf[sizeof "aaa.bbb.ccc.ddd"];
+			char dst_buf[INET_ADDRSTRLEN], gw_buf[INET_ADDRSTRLEN];
 
-			strcpy(buf, inet_ntoa(icp->icmp_ip.ip_dst));
 			kprintf("redirect dst %s to %s\n",
-			       buf, inet_ntoa(icp->icmp_gwaddr));
+			    inet_ntop(AF_INET, &icp->icmp_ip.ip_dst,
+			        dst_buf, INET_ADDRSTRLEN),
+			    inet_ntop(AF_INET, &icp->icmp_gwaddr,
+			        gw_buf, INET_ADDRSTRLEN));
 		}
 #endif
 		icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
@@ -819,10 +826,11 @@ icmp_send(struct mbuf *m, struct mbuf *opts, struct route *rt)
 	m->m_pkthdr.rcvif = NULL;
 #ifdef ICMPPRINTFS
 	if (icmpprintfs) {
-		char buf[sizeof "aaa.bbb.ccc.ddd"];
+		char dst_buf[INET_ADDRSTRLEN], src_buf[INET_ADDRSTRLEN];
 
-		strcpy(buf, inet_ntoa(ip->ip_dst));
-		kprintf("icmp_send dst %s src %s\n", buf, inet_ntoa(ip->ip_src));
+		kprintf("icmp_send dst %s src %s\n",
+		    inet_ntop(AF_INET, &ip->ip_dst, dst_buf, INET_ADDRSTRLEN),
+		    inet_ntop(AF_INET, &ip->ip_src, src_buf, INET_ADDRSTRLEN));
 	}
 #endif
 	ip_output(m, opts, rt, 0, NULL, NULL);
