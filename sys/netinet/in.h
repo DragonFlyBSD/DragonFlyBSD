@@ -525,6 +525,8 @@ int	 in_broadcast (struct in_addr, struct ifnet *);
 int	 in_canforward (struct in_addr);
 int	 in_localaddr (struct in_addr);
 char	*inet_ntoa (struct in_addr); /* in libkern */
+char	*inet_ntop(int, const void * __restrict, char * __restrict,
+	    socklen_t); /* in libkern */
 
 int	prison_replace_wildcards (struct thread *td, struct sockaddr *ip);
 int	prison_remote_ip (struct thread *td, struct sockaddr *ip);

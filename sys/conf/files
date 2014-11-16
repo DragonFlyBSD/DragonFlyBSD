@@ -1747,6 +1747,7 @@ libkern/icrc32.c			standard
 libkern/linux_idr.c			standard
 libkern/index.c				standard
 libkern/inet_ntoa.c			standard
+libkern/inet_ntop.c			standard
 libkern/mcount.c			optional	profiling-routine
 libkern/memmove.c			standard
 libkern/memcchr.c			standard
