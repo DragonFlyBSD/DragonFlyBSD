@@ -135,7 +135,9 @@ SYSCTL_INT(_net_inet_icmp, OID_AUTO, reply_from_interface, CTLFLAG_RW,
 	"non-local packets");
 
 #ifdef ICMPPRINTFS
-int	icmpprintfs = 0;
+static int	icmpprintfs = 0;
+SYSCTL_INT(_net_inet_icmp, OID_AUTO, debug_prints, CTLFLAG_RW,
+	&icmpprintfs, 0, "extra ICMP debug prints");
 #endif
 
 static void	icmp_reflect (struct mbuf *);

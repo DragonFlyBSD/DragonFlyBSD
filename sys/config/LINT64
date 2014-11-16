@@ -410,6 +410,8 @@ pseudo-device	stf			#6to4 IPv6 over IPv4 encapsulation
 #
 # TCPDEBUG is undocumented.
 #
+# ICMPPRINTFS enables ICMP to do extra debug prints.
+#
 options 	MROUTING		# Multicast routing
 options 	PIM			# Protocol Independent Multicast
 options 	IPFIREWALL		#firewall
@@ -424,6 +426,7 @@ options 	IPV6FIREWALL_DEFAULT_TO_ACCEPT
 options 	IPDIVERT		#divert sockets
 options 	IPSTEALTH		#support for stealth forwarding
 options 	TCPDEBUG
+options		ICMPPRINTFS
 
 device		pf
 device		pflog
