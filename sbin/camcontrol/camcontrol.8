@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: src/sbin/camcontrol/camcontrol.8,v 1.19.2.12 2003/01/08 17:55:02 njl Exp $
 .\"
-.Dd September 14, 1998
+.Dd November 16, 2014
 .Dt CAMCONTROL 8
 .Os
 .Sh NAME
@@ -41,6 +41,7 @@
 .Op command args
 .Nm
 .Ic devlist
+.Op Fl b
 .Op Fl v
 .Nm
 .Ic periphlist
@@ -259,6 +260,10 @@ With the
 .Fl v
 argument, SCSI bus number, adapter name and unit numbers are printed as
 well.
+On the other hand, with the
+.Fl b
+argument, only the bus adapter, and unit information will be printed, and
+device information will be omited.
 .It Ic periphlist
 List all peripheral drivers attached to a given physical device (logical
 unit).
