@@ -68,9 +68,9 @@
  */
 
 __uint32_t
-in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
+in_cksum_range(const struct mbuf *m, int nxt, int offset, int bytes)
 {
-    __uint8_t *ptr;
+    const __uint8_t *ptr;
     __uint32_t sum0;
     __uint32_t sum1;
     int n;
@@ -92,9 +92,9 @@ in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
 	bzero(&ipov, sizeof ipov);
 	ipov.ih_len = htons(bytes);
 	ipov.ih_pr = nxt;
-	ipov.ih_src = mtod(m, struct ip *)->ip_src;
-	ipov.ih_dst = mtod(m, struct ip *)->ip_dst;
-	ptr = (uint8_t *)&ipov;
+	ipov.ih_src = mtod(m, const struct ip *)->ip_src;
+	ipov.ih_dst = mtod(m, const struct ip *)->ip_dst;
+	ptr = (const uint8_t *)&ipov;
 
 	sum32 = asm_ones32(ptr, sizeof(ipov) / 4);
 	sum32 = (sum32 >> 16) + (sum32 & 0xffff);
@@ -126,7 +126,7 @@ in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
 	 * Calculate pointer base and number of bytes to snarf, account
 	 * for snarfed bytes.
 	 */
-	ptr = mtod(m, __uint8_t *) + offset;
+	ptr = mtod(m, const __uint8_t *) + offset;
 	if ((n = m->m_len - offset) > bytes)
 	    n = bytes;
 	bytes -= n;
@@ -157,9 +157,9 @@ in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
 	}
 	if (((intptr_t)ptr & 2) && n > 1) {
 	    if (flip)
-		sum1 += *(__uint16_t *)ptr;
+		sum1 += *(const __uint16_t *)ptr;
 	    else
-		sum0 += *(__uint16_t *)ptr;
+		sum0 += *(const __uint16_t *)ptr;
 	    ptr += 2;
 	    n -= 2;
 	}
@@ -171,7 +171,7 @@ in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
 	if (n >= 4) {
 	    __uint32_t sum32;
 
-	    sum32 = asm_ones32((void *)ptr, n >> 2);
+	    sum32 = asm_ones32((const void *)ptr, n >> 2);
 	    sum32 = (sum32 >> 16) + (sum32 & 0xffff);
 	    if (flip)
 		sum1 += sum32;
@@ -187,9 +187,9 @@ in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
 	 */
 	if (n & 2) {
 	    if (flip)
-		sum1 += *(__uint16_t *)ptr;
+		sum1 += *(const __uint16_t *)ptr;
 	    else
-		sum0 += *(__uint16_t *)ptr;
+		sum0 += *(const __uint16_t *)ptr;
 	    ptr += 2;
 	    /* n -= 2; dontcare */
 	}

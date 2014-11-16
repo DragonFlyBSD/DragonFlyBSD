@@ -52,17 +52,17 @@
 struct ip;
 struct mbuf;
 
-__uint32_t in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes);
+__uint32_t in_cksum_range(const struct mbuf *m, int nxt, int offset, int bytes);
 __uint32_t asm_ones32(const void *buf, int count);	/* in 32 bit words */
 
 static __inline u_int
-in_cksum(struct mbuf *m, int len)
+in_cksum(const struct mbuf *m, int len)
 {
     return(in_cksum_range(m, 0, 0, len));
 }
 
 static __inline u_int
-in_cksum_skip(struct mbuf *m, int len, int skip)
+in_cksum_skip(const struct mbuf *m, int len, int skip)
 {
     return(in_cksum_range(m, 0, skip, len - skip));
 }
