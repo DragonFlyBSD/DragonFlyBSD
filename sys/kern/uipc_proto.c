@@ -70,15 +70,6 @@ static struct protosw localsw[] = {
 	.pr_flags = PR_RIGHTS|PR_SYNC_PORT|PR_ATOMIC|PR_ADDR,
 	.pr_ctloutput = NULL,
 	.pr_usrreqs = &uipc_usrreqs
-    },
-    {
-	.pr_type = 0,
-	.pr_protocol = 0,
-	.pr_flags = PR_SYNC_PORT,
-	.pr_ctlinput = raw_ctlinput,
-	.pr_ctloutput = NULL,
-	.pr_init = raw_init,
-	.pr_usrreqs = &raw_usrreqs
     }
 };
 
