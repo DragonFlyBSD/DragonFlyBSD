@@ -21,7 +21,7 @@
 .\"
 .\" $OpenBSD: patch.1,v 1.26 2010/09/03 11:09:29 jmc Exp $
 .\" $FreeBSD: head/usr.bin/patch/patch.1 249373 2013-04-11 18:46:41Z joel $
-.Dd February 6, 2014
+.Dd November 16, 2014
 .Dt PATCH 1
 .Os
 .Sh NAME
@@ -107,7 +107,7 @@ This is equivalent to specifying
 This option is currently the default, unless
 .Fl -posix
 is specified.
-.It Fl C , Fl Fl check
+.It Fl C , Fl Fl check , Fl Fl dry-run
 Checks that the patch would apply cleanly, but does not modify anything.
 .It Fl c , Fl Fl context
 Forces
