@@ -186,7 +186,7 @@ void radeon_fence_process(struct radeon_device *rdev, int ring)
 
 	if (wake) {
 		rdev->fence_drv[ring].last_activity = jiffies;
-		cv_broadcast(&rdev->fence_queue);
+		wake_up_all(&rdev->fence_queue);
 	}
 }
 
@@ -278,7 +278,7 @@ static int radeon_fence_wait_seq(struct radeon_device *rdev, u64 target_seq,
 	unsigned long timeout, last_activity;
 	uint64_t seq;
 	unsigned i;
-	bool signaled, fence_queue_locked;
+	bool signaled;
 	int r;
 
 	while (target_seq > atomic64_read(&rdev->fence_drv[ring].last_seq)) {
@@ -304,50 +304,28 @@ static int radeon_fence_wait_seq(struct radeon_device *rdev, u64 target_seq,
 		    ring, seq);
 
 		radeon_irq_kms_sw_irq_get(rdev, ring);
-		fence_queue_locked = false;
-		r = 0;
-		while (!(signaled = radeon_fence_seq_signaled(rdev,
-		    target_seq, ring))) {
-			if (!fence_queue_locked) {
-				lockmgr(&rdev->fence_queue_mtx, LK_EXCLUSIVE);
-				fence_queue_locked = true;
-			}
-			if (intr) {
-				r = cv_timedwait_sig(&rdev->fence_queue,
-				    &rdev->fence_queue_mtx,
-				    timeout);
-			} else {
-				r = cv_timedwait(&rdev->fence_queue,
-				    &rdev->fence_queue_mtx,
-				    timeout);
-			}
-			if (r != 0) {
-				if (r == EWOULDBLOCK) {
-					signaled =
-					    radeon_fence_seq_signaled(
-						rdev, target_seq, ring);
-				}
-				break;
-			}
-		}
-		if (fence_queue_locked) {
-			lockmgr(&rdev->fence_queue_mtx, LK_RELEASE);
+		if (intr) {
+			r = wait_event_interruptible_timeout(rdev->fence_queue,
+				(signaled = radeon_fence_seq_signaled(rdev, target_seq, ring)),
+				timeout);
+                } else {
+			r = wait_event_timeout(rdev->fence_queue,
+				(signaled = radeon_fence_seq_signaled(rdev, target_seq, ring)),
+				timeout);
 		}
 		radeon_irq_kms_sw_irq_put(rdev, ring);
-		if (unlikely(r == EINTR || r == ERESTART)) {
-			return -r;
+		if (unlikely(r < 0)) {
+			return r;
 		}
 		CTR2(KTR_DRM, "radeon fence: wait end (ring=%d, seq=%d)",
 		    ring, seq);
 
 		if (unlikely(!signaled)) {
-#ifndef __FreeBSD__
 			/* we were interrupted for some reason and fence
 			 * isn't signaled yet, resume waiting */
 			if (r) {
 				continue;
 			}
-#endif
 
 			/* check if sequence value has changed since last_activity */
 			if (seq != atomic64_read(&rdev->fence_drv[ring].last_seq)) {
@@ -369,7 +347,7 @@ static int radeon_fence_wait_seq(struct radeon_device *rdev, u64 target_seq,
 			if (radeon_ring_is_lockup(rdev, ring, &rdev->ring[ring])) {
 				/* good news we believe it's a lockup */
 				dev_warn(rdev->dev, "GPU lockup (waiting for 0x%016jx last fence id 0x%016jx)\n",
-					 (uintmax_t)target_seq, (uintmax_t)seq);
+					 target_seq, seq);
 
 				/* change last activity so nobody else think there is a lockup */
 				for (i = 0; i < RADEON_NUM_RINGS; ++i) {
@@ -452,7 +430,7 @@ static int radeon_fence_wait_any_seq(struct radeon_device *rdev,
 {
 	unsigned long timeout, last_activity, tmp;
 	unsigned i, ring = RADEON_NUM_RINGS;
-	bool signaled, fence_queue_locked;
+	bool signaled;
 	int r;
 
 	for (i = 0, last_activity = 0; i < RADEON_NUM_RINGS; ++i) {
@@ -497,54 +475,32 @@ static int radeon_fence_wait_any_seq(struct radeon_device *rdev,
 				radeon_irq_kms_sw_irq_get(rdev, i);
 			}
 		}
-		fence_queue_locked = false;
-		r = 0;
-		while (!(signaled = radeon_fence_any_seq_signaled(rdev,
-		    target_seq))) {
-			if (!fence_queue_locked) {
-				lockmgr(&rdev->fence_queue_mtx, LK_EXCLUSIVE);
-				fence_queue_locked = true;
-			}
-			if (intr) {
-				r = cv_timedwait_sig(&rdev->fence_queue,
-				    &rdev->fence_queue_mtx,
-				    timeout);
-			} else {
-				r = cv_timedwait(&rdev->fence_queue,
-				    &rdev->fence_queue_mtx,
-				    timeout);
-			}
-			if (r != 0) {
-				if (r == EWOULDBLOCK) {
-					signaled =
-					    radeon_fence_any_seq_signaled(
-						rdev, target_seq);
-				}
-				break;
-			}
-		}
-		if (fence_queue_locked) {
-			lockmgr(&rdev->fence_queue_mtx, LK_RELEASE);
+		if (intr) {
+			r = wait_event_interruptible_timeout(rdev->fence_queue,
+				(signaled = radeon_fence_any_seq_signaled(rdev, target_seq)),
+				timeout);
+		} else {
+			r = wait_event_timeout(rdev->fence_queue,
+				(signaled = radeon_fence_any_seq_signaled(rdev, target_seq)),
+				timeout);
 		}
 		for (i = 0; i < RADEON_NUM_RINGS; ++i) {
 			if (target_seq[i]) {
 				radeon_irq_kms_sw_irq_put(rdev, i);
 			}
 		}
-		if (unlikely(r == EINTR || r == ERESTART)) {
-			return -r;
+		if (unlikely(r < 0)) {
+			return r;
 		}
 		CTR2(KTR_DRM, "radeon fence: wait end (ring=%d, target_seq=%d)",
 		    ring, target_seq[ring]);
 
 		if (unlikely(!signaled)) {
-#ifndef __FreeBSD__
 			/* we were interrupted for some reason and fence
 			 * isn't signaled yet, resume waiting */
 			if (r) {
 				continue;
 			}
-#endif
 
 			lockmgr(&rdev->ring_lock, LK_EXCLUSIVE);
 			for (i = 0, tmp = 0; i < RADEON_NUM_RINGS; ++i) {
@@ -562,7 +518,7 @@ static int radeon_fence_wait_any_seq(struct radeon_device *rdev,
 			if (radeon_ring_is_lockup(rdev, ring, &rdev->ring[ring])) {
 				/* good news we believe it's a lockup */
 				dev_warn(rdev->dev, "GPU lockup (waiting for 0x%016jx)\n",
-					 (uintmax_t)target_seq[ring]);
+					 target_seq[ring]);
 
 				/* change last activity so nobody else think there is a lockup */
 				for (i = 0; i < RADEON_NUM_RINGS; ++i) {
@@ -877,9 +833,7 @@ int radeon_fence_driver_init(struct radeon_device *rdev)
 {
 	int ring;
 
-	lockinit(&rdev->fence_queue_mtx,
-	    "drm__radeon_device__fence_queue_mtx", 0, LK_CANRECURSE);
-	cv_init(&rdev->fence_queue, "drm__radeon_device__fence_queue");
+	init_waitqueue_head(&rdev->fence_queue);
 	for (ring = 0; ring < RADEON_NUM_RINGS; ring++) {
 		radeon_fence_driver_init_ring(rdev, ring);
 	}
@@ -910,10 +864,9 @@ void radeon_fence_driver_fini(struct radeon_device *rdev)
 			/* no need to trigger GPU reset as we are unloading */
 			radeon_fence_driver_force_completion(rdev);
 		}
-		cv_broadcast(&rdev->fence_queue);
+		wake_up_all(&rdev->fence_queue);
 		radeon_scratch_free(rdev, rdev->fence_drv[ring].scratch_reg);
 		rdev->fence_drv[ring].initialized = false;
-		cv_destroy(&rdev->fence_queue);
 	}
 	lockmgr(&rdev->ring_lock, LK_RELEASE);
 }

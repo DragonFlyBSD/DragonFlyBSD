@@ -1597,8 +1597,7 @@ struct radeon_device {
 	struct radeon_scratch		scratch;
 	struct radeon_mman		mman;
 	struct radeon_fence_driver	fence_drv[RADEON_NUM_RINGS];
-	struct cv			fence_queue;
-	struct lock			fence_queue_mtx;
+	wait_queue_head_t		fence_queue;
 	struct lock			ring_lock;
 	struct radeon_ring		ring[RADEON_NUM_RINGS];
 	bool				ib_pool_ready;
