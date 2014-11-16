@@ -54,6 +54,7 @@
 #include <sys/mplock2.h>
 
 SYSCTL_NODE(_hw, OID_AUTO, bus, CTLFLAG_RW, NULL, NULL);
+SYSCTL_NODE(, OID_AUTO, dev, CTLFLAG_RW, NULL, NULL);
 
 MALLOC_DEFINE(M_BUS, "bus", "Bus data structures");
 
@@ -99,6 +100,144 @@ void		print_devclass_list(void);
 #define print_devclass_list_short()	/* nop */
 #define print_devclass_list()		/* nop */
 #endif
+
+/*
+ * dev sysctl tree
+ */
+
+enum {
+	DEVCLASS_SYSCTL_PARENT,
+};
+
+static int
+devclass_sysctl_handler(SYSCTL_HANDLER_ARGS)
+{
+	devclass_t dc = (devclass_t)arg1;
+	const char *value;
+
+	switch (arg2) {
+	case DEVCLASS_SYSCTL_PARENT:
+		value = dc->parent ? dc->parent->name : "";
+		break;
+	default:
+		return (EINVAL);
+	}
+	return (SYSCTL_OUT(req, value, strlen(value)));
+}
+
+static void
+devclass_sysctl_init(devclass_t dc)
+{
+
+	if (dc->sysctl_tree != NULL)
+		return;
+	sysctl_ctx_init(&dc->sysctl_ctx);
+	dc->sysctl_tree = SYSCTL_ADD_NODE(&dc->sysctl_ctx,
+	    SYSCTL_STATIC_CHILDREN(_dev), OID_AUTO, dc->name,
+	    CTLFLAG_RD, NULL, "");
+	SYSCTL_ADD_PROC(&dc->sysctl_ctx, SYSCTL_CHILDREN(dc->sysctl_tree),
+	    OID_AUTO, "%parent", CTLTYPE_STRING | CTLFLAG_RD,
+	    dc, DEVCLASS_SYSCTL_PARENT, devclass_sysctl_handler, "A",
+	    "parent class");
+}
+
+enum {
+	DEVICE_SYSCTL_DESC,
+	DEVICE_SYSCTL_DRIVER,
+	DEVICE_SYSCTL_LOCATION,
+	DEVICE_SYSCTL_PNPINFO,
+	DEVICE_SYSCTL_PARENT,
+};
+
+static int
+device_sysctl_handler(SYSCTL_HANDLER_ARGS)
+{
+	device_t dev = (device_t)arg1;
+	const char *value;
+	char *buf;
+	int error;
+
+	buf = NULL;
+	switch (arg2) {
+	case DEVICE_SYSCTL_DESC:
+		value = dev->desc ? dev->desc : "";
+		break;
+	case DEVICE_SYSCTL_DRIVER:
+		value = dev->driver ? dev->driver->name : "";
+		break;
+	case DEVICE_SYSCTL_LOCATION:
+		value = buf = kmalloc(1024, M_BUS, M_WAITOK | M_ZERO);
+		bus_child_location_str(dev, buf, 1024);
+		break;
+	case DEVICE_SYSCTL_PNPINFO:
+		value = buf = kmalloc(1024, M_BUS, M_WAITOK | M_ZERO);
+		bus_child_pnpinfo_str(dev, buf, 1024);
+		break;
+	case DEVICE_SYSCTL_PARENT:
+		value = dev->parent ? dev->parent->nameunit : "";
+		break;
+	default:
+		return (EINVAL);
+	}
+	error = SYSCTL_OUT(req, value, strlen(value));
+	if (buf != NULL)
+		kfree(buf, M_BUS);
+	return (error);
+}
+
+static void
+device_sysctl_init(device_t dev)
+{
+	devclass_t dc = dev->devclass;
+
+	if (dev->sysctl_tree != NULL)
+		return;
+	devclass_sysctl_init(dc);
+	sysctl_ctx_init(&dev->sysctl_ctx);
+	dev->sysctl_tree = SYSCTL_ADD_NODE(&dev->sysctl_ctx,
+	    SYSCTL_CHILDREN(dc->sysctl_tree), OID_AUTO,
+	    dev->nameunit + strlen(dc->name),
+	    CTLFLAG_RD, NULL, "");
+	SYSCTL_ADD_PROC(&dev->sysctl_ctx, SYSCTL_CHILDREN(dev->sysctl_tree),
+	    OID_AUTO, "%desc", CTLTYPE_STRING | CTLFLAG_RD,
+	    dev, DEVICE_SYSCTL_DESC, device_sysctl_handler, "A",
+	    "device description");
+	SYSCTL_ADD_PROC(&dev->sysctl_ctx, SYSCTL_CHILDREN(dev->sysctl_tree),
+	    OID_AUTO, "%driver", CTLTYPE_STRING | CTLFLAG_RD,
+	    dev, DEVICE_SYSCTL_DRIVER, device_sysctl_handler, "A",
+	    "device driver name");
+	SYSCTL_ADD_PROC(&dev->sysctl_ctx, SYSCTL_CHILDREN(dev->sysctl_tree),
+	    OID_AUTO, "%location", CTLTYPE_STRING | CTLFLAG_RD,
+	    dev, DEVICE_SYSCTL_LOCATION, device_sysctl_handler, "A",
+	    "device location relative to parent");
+	SYSCTL_ADD_PROC(&dev->sysctl_ctx, SYSCTL_CHILDREN(dev->sysctl_tree),
+	    OID_AUTO, "%pnpinfo", CTLTYPE_STRING | CTLFLAG_RD,
+	    dev, DEVICE_SYSCTL_PNPINFO, device_sysctl_handler, "A",
+	    "device identification");
+	SYSCTL_ADD_PROC(&dev->sysctl_ctx, SYSCTL_CHILDREN(dev->sysctl_tree),
+	    OID_AUTO, "%parent", CTLTYPE_STRING | CTLFLAG_RD,
+	    dev, DEVICE_SYSCTL_PARENT, device_sysctl_handler, "A",
+	    "parent device");
+}
+
+static void
+device_sysctl_update(device_t dev)
+{
+	devclass_t dc = dev->devclass;
+
+	if (dev->sysctl_tree == NULL)
+		return;
+	sysctl_rename_oid(dev->sysctl_tree, dev->nameunit + strlen(dc->name));
+}
+
+static void
+device_sysctl_fini(device_t dev)
+{
+	if (dev->sysctl_tree == NULL)
+		return;
+	sysctl_ctx_free(&dev->sysctl_ctx);
+	dev->sysctl_tree = NULL;
+}
 
 static void	device_attach_async(device_t dev);
 static void	device_attach_thread(void *arg);
@@ -1387,6 +1526,18 @@ device_get_flags(device_t dev)
 	return(dev->devflags);
 }
 
+struct sysctl_ctx_list *
+device_get_sysctl_ctx(device_t dev)
+{
+	return (&dev->sysctl_ctx);
+}
+
+struct sysctl_oid *
+device_get_sysctl_tree(device_t dev)
+{
+	return (dev->sysctl_tree);
+}
+
 int
 device_print_prettyname(device_t dev)
 {
@@ -1721,11 +1872,13 @@ device_doattach(device_t dev)
 	int hasclass = (dev->devclass != NULL);
 	int error;
 
+	device_sysctl_init(dev);
 	error = DEVICE_ATTACH(dev);
 	if (error == 0) {
 		dev->state = DS_ATTACHED;
 		if (bootverbose && !device_is_quiet(dev))
 			device_print_child(bus, dev);
+		device_sysctl_update(dev);
 		devadded(dev);
 	} else {
 		kprintf("device_probe_and_attach: %s%d attach returned %d\n",
@@ -1735,6 +1888,7 @@ device_doattach(device_t dev)
 			device_set_devclass(dev, 0);
 		device_set_driver(dev, NULL);
 		dev->state = DS_NOTPRESENT;
+		device_sysctl_fini(dev);
 	}
 	return(error);
 }
@@ -1762,6 +1916,7 @@ device_detach(device_t dev)
 
 	dev->state = DS_NOTPRESENT;
 	device_set_driver(dev, NULL);
+	device_sysctl_fini(dev);
 
 	return(0);
 }

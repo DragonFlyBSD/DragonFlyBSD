@@ -373,6 +373,8 @@ const	char *device_get_nameunit(device_t dev);
 void	*device_get_softc(device_t dev);
 device_state_t	device_get_state(device_t dev);
 int	device_get_unit(device_t dev);
+struct sysctl_ctx_list *device_get_sysctl_ctx(device_t dev);
+struct sysctl_oid *device_get_sysctl_tree(device_t dev);
 int	device_is_alive(device_t dev); /* did probe succeed? */
 int	device_is_attached(device_t dev);	/* did attach succeed? */
 int	device_is_enabled(device_t dev);

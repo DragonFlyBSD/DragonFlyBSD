@@ -30,6 +30,8 @@
 #ifndef _SYS_BUS_PRIVATE_H_
 #define _SYS_BUS_PRIVATE_H_
 
+#include <sys/sysctl.h>
+
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
 
 #error "This file should not be included by userland programs."
@@ -63,6 +65,9 @@ struct devclass {
 	char		*name;
 	device_t	*devices;	/* array of devices indexed by unit */
 	int		maxunit;	/* size of devices array */
+
+	struct sysctl_ctx_list sysctl_ctx;
+	struct sysctl_oid *sysctl_tree;
 };
 
 /*
@@ -131,6 +136,9 @@ struct device {
 	u_char		pad;
 	void		*ivars;
 	void		*softc;
+
+	struct sysctl_ctx_list sysctl_ctx; /**< state for sysctl variables  */
+	struct sysctl_oid *sysctl_tree;	/**< state for sysctl variables */
 };
 
 struct device_op_desc {
