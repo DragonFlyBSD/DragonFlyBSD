@@ -290,15 +290,12 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 		return(IPPROTO_DONE);
 	}
 	ip = mtod(m, struct ip *);
-	m->m_len -= hlen;
-	m->m_data += hlen;
-	icp = mtod(m, struct icmp *);
-	if (in_cksum(m, icmplen)) {
+
+	if (in_cksum_skip(m, hlen + icmplen, hlen)) {
 		icmpstat.icps_checksum++;
 		goto freeit;
 	}
-	m->m_len += hlen;
-	m->m_data -= hlen;
+	icp = mtod(m, struct icmp *);
 
 	if (m->m_pkthdr.rcvif && m->m_pkthdr.rcvif->if_type == IFT_FAITH) {
 		/*
