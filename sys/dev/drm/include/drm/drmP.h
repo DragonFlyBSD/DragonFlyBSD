@@ -101,6 +101,7 @@
 #include <linux/kernel.h>
 #include <linux/kref.h>
 #include <linux/list.h>
+#include <linux/mm.h>
 #include <linux/mutex.h>
 #include <linux/timer.h>
 #include <asm/io.h>
@@ -229,7 +230,6 @@ enum {
 
 #define drm_get_device_from_kdev(_kdev) (_kdev->si_drv1)
 
-#define PAGE_ALIGN(addr) round_page(addr)
 /* DRM_SUSER returns true if the user is superuser */
 #define DRM_SUSER(p)		(priv_check(p, PRIV_DRIVER) == 0)
 #define DRM_AGP_FIND_DEVICE()	agp_find_device()
