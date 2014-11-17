@@ -298,7 +298,7 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 		icmpstat.icps_checksum++;
 		goto freeit;
 	}
-	icp = mtod(m, struct icmp *);
+	icp = (struct icmp *)((caddr_t)ip + hlen);
 
 	if (m->m_pkthdr.rcvif && m->m_pkthdr.rcvif->if_type == IFT_FAITH) {
 		/*
