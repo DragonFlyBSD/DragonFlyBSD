@@ -213,7 +213,7 @@ kpfctlinput(int cmd, struct sockaddr *sa)
 
 	SLIST_FOREACH(dp, &domains, dom_next) {
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
-			so_pru_ctlinput(pr, cmd, sa, NULL);
+			so_pr_ctlinput(pr, cmd, sa, NULL);
 	}
 }
 
@@ -235,7 +235,7 @@ kpfctlinput2(int cmd, struct sockaddr *sa, void *ctlparam)
 			continue;
 
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
-			so_pru_ctlinput(pr, cmd, sa, ctlparam);
+			so_pr_ctlinput(pr, cmd, sa, ctlparam);
 	}
 }
 

@@ -110,7 +110,7 @@ int so_pru_sense (struct socket *so, struct stat *sb);
 int so_pru_shutdown (struct socket *so);
 int so_pru_sockaddr (struct socket *so, struct sockaddr **nam);
 int so_pr_ctloutput(struct socket *so, struct sockopt *sopt);
-void so_pru_ctlinput(struct protosw *pr, int cmd,
+void so_pr_ctlinput(struct protosw *pr, int cmd,
 		struct sockaddr *arg, void *extra);
 
 static __inline int

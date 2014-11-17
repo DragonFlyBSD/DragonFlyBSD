@@ -1048,7 +1048,7 @@ icmp6_notify_error(struct mbuf *m, int off, int icmp6len, int code)
 			icmp6_mtudisc_update(&ip6cp, 1);	/*XXX*/
 		}
 
-		so_pru_ctlinput(
+		so_pr_ctlinput(
 			&inet6sw[ip6_protox[nxt]],
 			code, (struct sockaddr *)&icmp6dst, &ip6cp);
 	}

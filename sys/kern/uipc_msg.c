@@ -529,7 +529,7 @@ so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
  * temporary data.
  */
 void
-so_pru_ctlinput(struct protosw *pr, int cmd, struct sockaddr *arg, void *extra)
+so_pr_ctlinput(struct protosw *pr, int cmd, struct sockaddr *arg, void *extra)
 {
 	struct netmsg_pru_ctlinput msg;
 	lwkt_port_t port;

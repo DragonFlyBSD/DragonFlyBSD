@@ -453,7 +453,7 @@ deliver:
 		 * XXX if the packet contains [IPv4 AH TCP], we can't make a
 		 * notification to TCP layer.
 		 */
-		so_pru_ctlinput(
+		so_pr_ctlinput(
 			&inetsw[ip_protox[icp->icmp_ip.ip_p]],
 			code, (struct sockaddr *)&icmpsrc, &icp->icmp_ip);
 		break;
