@@ -538,19 +538,17 @@ reflect:
 
 	case ICMP_REDIRECT:
 		if (log_redirect) {
-			u_long src, dst, gw;
+			char src_buf[INET_ADDRSTRLEN];
+			char dst_buf[INET_ADDRSTRLEN];
+			char gwy_buf[INET_ADDRSTRLEN];
 
-			src = ntohl(ip->ip_src.s_addr);
-			dst = ntohl(icp->icmp_ip.ip_dst.s_addr);
-			gw = ntohl(icp->icmp_gwaddr.s_addr);
-			kprintf("icmp redirect from %d.%d.%d.%d: "
-			       "%d.%d.%d.%d => %d.%d.%d.%d\n",
-			       (int)(src >> 24), (int)((src >> 16) & 0xff),
-			       (int)((src >> 8) & 0xff), (int)(src & 0xff),
-			       (int)(dst >> 24), (int)((dst >> 16) & 0xff),
-			       (int)((dst >> 8) & 0xff), (int)(dst & 0xff),
-			       (int)(gw >> 24), (int)((gw >> 16) & 0xff),
-			       (int)((gw >> 8) & 0xff), (int)(gw & 0xff));
+			kprintf("icmp redirect from %s: %s => %s\n",
+			    inet_ntop(AF_INET, &ip->ip_src,
+			        src_buf, INET_ADDRSTRLEN),
+			    inet_ntop(AF_INET, &icp->icmp_ip.ip_dst,
+			        dst_buf, INET_ADDRSTRLEN),
+			    inet_ntop(AF_INET, &icp->icmp_gwaddr,
+			        gwy_buf, INET_ADDRSTRLEN));
 		}
 		if (drop_redirect)
 			break;
