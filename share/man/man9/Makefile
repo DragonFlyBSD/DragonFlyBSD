@@ -191,6 +191,7 @@ MAN=	accept_filter.9 \
 	vm_map_findspace.9 \
 	vm_page_alloc.9 \
 	vn_fullpath.9 \
+	vn_lock.9 \
 	vnode.9 \
 	VOP_ACCESS.9 \
 	VOP_ACLCHECK.9 \
