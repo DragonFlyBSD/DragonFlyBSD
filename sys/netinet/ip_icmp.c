@@ -394,7 +394,6 @@ deliver:
 			icmpstat.icps_badlen++;
 			goto freeit;
 		}
-		icp->icmp_ip.ip_len = ntohs(icp->icmp_ip.ip_len);
 		/* Discard ICMP's in response to multicast packets */
 		if (IN_MULTICAST(ntohl(icp->icmp_ip.ip_dst.s_addr)))
 			goto badcode;
