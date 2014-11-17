@@ -1,0 +1,96 @@
+.\" Copyright (c) 1996 Doug Rabson
+.\"
+.\" All rights reserved.
+.\"
+.\" This program is free software.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE DEVELOPERS ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE DEVELOPERS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\"
+.Dd November 17, 2014
+.Dt vn_lock 9
+.Os
+.Sh NAME
+.Nm vn_lock ,
+.Nm vn_unlock ,
+.Nm vn_islocked
+.Nd serialize access to a vnode
+.Sh SYNOPSIS
+.In sys/vnode.h
+.Ft int
+.Fn vn_lock "struct vnode *vp" "int flags"
+.Ft void
+.Fn vn_unlock "struct vnode *vp"
+.Ft int
+.Fn vn_islocked "struct vnode *vp"
+.Sh DESCRIPTION
+These calls are used to serialize access to the filesystem, such as
+to prevent two writes to the same file from happening at the
+same time.
+.Pp
+The arguments are:
+.Bl -tag -width flags
+.It Fa vp
+the vnode being locked or unlocked
+.It Fa flags
+One of the lock request types:
+.Bl -column ".Dv LK_FAILRECLAIM" -offset indent
+.It Dv LK_RETRY Ta "Automatically retry on timeout"
+.It Dv LK_FAILRECLAIM Ta "Fail if the vnode is being reclaimed"
+.El
+.Pp
+.El
+.Pp
+The
+.Fn vn_lock
+function will require either
+.Dv LK_EXCLUSIVE
+or
+.Dv LK_SHARED
+to be
+.Em or Ns 'ed
+with the request flags described above in order to specify the type
+of lock to be used.
+.Pp
+The
+.Fn vn_unlock
+function uses
+.Dv LK_RELEASE
+internally to release a previously held lock.
+.Pp
+Please note all these functions rely on
+.Xr lockmgr 9
+to perform their operations.
+.Sh RETURN VALUES
+The
+.Fn vn_lock
+fuction returns zero on success and non-zero on failure.
+.Pp
+The
+.Fn vn_islocked
+function has identical return values as
+.Xr lockstatus 9 .
+.Sh SEE ALSO
+.Xr lockmgr 9
+.Xr vnode 9
+.Sh AUTHORS
+This man page was written by
+.An Doug Rabson .
