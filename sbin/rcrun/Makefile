@@ -4,6 +4,7 @@ SYMLINKS= \
 	rcrun ${BINDIR}/rcstop \
 	rcrun ${BINDIR}/rcrestart \
 	rcrun ${BINDIR}/rcreload \
+	rcrun ${BINDIR}/rcstatus \
 	rcrun ${BINDIR}/rcvar \
 	rcrun ${BINDIR}/rclist \
 	rcrun ${BINDIR}/rcforce \
@@ -21,6 +22,7 @@ MLINKS=	rcrun.8 rcdisable.8 \
 	rcrun.8 rclist.8 \
 	rcrun.8 rcrestart.8 \
 	rcrun.8 rcreload.8 \
+	rcrun.8 rcstatus.8 \
 	rcrun.8 rcstart.8 \
 	rcrun.8 rcstop.8 \
 	rcrun.8 rcvar.8
