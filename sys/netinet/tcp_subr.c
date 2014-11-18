@@ -1417,7 +1417,7 @@ tcp_ctlinput(netmsg_t msg)
 		   ip != NULL) {
 		notify = tcp_drop_syn_sent;
 	} else if (cmd == PRC_MSGSIZE) {
-		struct icmp *icmp = (struct icmp *)
+		const struct icmp *icmp = (const struct icmp *)
 		    ((caddr_t)ip - offsetof(struct icmp, icmp_ip));
 
 		arg = ntohs(icmp->icmp_nextmtu);
@@ -1432,19 +1432,18 @@ tcp_ctlinput(netmsg_t msg)
 	}
 
 	if (ip != NULL) {
-		crit_enter();
 		th = (struct tcphdr *)((caddr_t)ip +
 				       (IP_VHL_HL(ip->ip_vhl) << 2));
 		cpu = tcp_addrcpu(faddr.s_addr, th->th_dport,
 				  ip->ip_src.s_addr, th->th_sport);
 		inp = in_pcblookup_hash(&tcbinfo[cpu], faddr, th->th_dport,
 					ip->ip_src, th->th_sport, 0, NULL);
-		if ((inp != NULL) && (inp->inp_socket != NULL)) {
+		if (inp != NULL && inp->inp_socket != NULL) {
 			icmpseq = htonl(th->th_seq);
 			tp = intotcpcb(inp);
 			if (SEQ_GEQ(icmpseq, tp->snd_una) &&
 			    SEQ_LT(icmpseq, tp->snd_max))
-				(*notify)(inp, arg);
+				notify(inp, arg);
 		} else {
 			struct in_conninfo inc;
 
@@ -1457,7 +1456,6 @@ tcp_ctlinput(netmsg_t msg)
 #endif
 			syncache_unreach(&inc, th);
 		}
-		crit_exit();
 	} else {
 		struct netmsg_tcp_notify *nm;
 
