@@ -46,7 +46,7 @@
 is a program which can build, monitor, and manage a simple environment
 and execute a command within that environment.
 It uses the
-.Xr reapctl 2
+.Xr procctl 2
 system call to round-up all processes and sub-processes created under the
 environment.
 It can detect when the specific command or the command and all processes
@@ -204,7 +204,7 @@ Additional specification for the jail.  See below.
 Tell
 .Nm
 to use
-.Xr setproctitle 1
+.Xr setproctitle 3
 to adjust what shows up in a ps command, to make process lists easier to
 diagnose.
 .It Fl F Ar restarts:pertimo
@@ -415,7 +415,7 @@ Display quick help for directives.
 .El
 .Pp
 Description of nominal operation
-.Xr reapctl 2
+.Xr procctl 2
 system call.
 .Sh JAIL-SPECIFICATIONS
 A simple jail just chroots into a directory, possibly mounts /dev, and
