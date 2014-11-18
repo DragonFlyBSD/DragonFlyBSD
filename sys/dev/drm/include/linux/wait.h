@@ -32,13 +32,13 @@
 #include <sys/param.h>
 
 typedef struct {
-	struct spinlock	lock;
+	struct lock	lock;
 } wait_queue_head_t;
 
 static inline void
 init_waitqueue_head(wait_queue_head_t *eq)
 {
-	spin_init(&eq->lock, "linux_waitqueue");
+	lockinit(&eq->lock, "lwq", 0, LK_CANRECURSE);
 }
 
 #define wake_up(eq)		wakeup_one(eq)
@@ -67,12 +67,12 @@ init_waitqueue_head(wait_queue_head_t *eq)
 									\
 	start_jiffies = ticks;						\
 									\
-	spin_lock(&wq.lock);						\
+	lockmgr(&wq.lock, LK_EXCLUSIVE);				\
 	while (1) {							\
 		if (condition)						\
 			break;						\
 									\
-		ret = ssleep(&wq, &wq.lock, flags,			\
+		ret = lksleep(&wq, &wq.lock, flags,			\
 					"lwe", timeout_jiffies);	\
 		if (ret == EINTR || ret == ERESTART) {			\
 			interrupted = true;				\
@@ -83,7 +83,7 @@ init_waitqueue_head(wait_queue_head_t *eq)
 			break;						\
 		}							\
 	}								\
-	spin_unlock(&wq.lock);						\
+	lockmgr(&wq.lock, LK_RELEASE);					\
 									\
 	elapsed_jiffies = ticks - start_jiffies;			\
 	remaining_jiffies = timeout_jiffies - elapsed_jiffies;		\

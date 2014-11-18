@@ -50,23 +50,23 @@ init_completion(struct completion *c)
 static inline void
 complete(struct completion *c)
 {
-	spin_lock(&c->wait.lock);
+	lockmgr(&c->wait.lock, LK_EXCLUSIVE);
 	c->done++;
-	spin_unlock(&c->wait.lock);
+	lockmgr(&c->wait.lock, LK_RELEASE);
 	wakeup_one(&c->wait);
 }
 
 static inline void
 complete_all(struct completion *c)
 {
-	spin_lock(&c->wait.lock);
+	lockmgr(&c->wait.lock, LK_EXCLUSIVE);
 	c->done++;
-	spin_unlock(&c->wait.lock);
+	lockmgr(&c->wait.lock, LK_RELEASE);
 	wakeup(&c->wait);
 }
 
 static inline long
-wait_for_completion_interruptible_timeout(struct completion *x,
+wait_for_completion_interruptible_timeout(struct completion *c,
 		unsigned long timeout)
 {
 	int start_jiffies, elapsed_jiffies, remaining_jiffies;
@@ -75,9 +75,9 @@ wait_for_completion_interruptible_timeout(struct completion *x,
 
 	start_jiffies = ticks;
 
-	spin_lock(&x->wait.lock);
-	while (x->done == 0 && !timeout_expired) {
-		ret = ssleep(&x->wait, &x->wait.lock, PCATCH, "wfcit", timeout);
+	lockmgr(&c->wait.lock, LK_EXCLUSIVE);
+	while (c->done == 0 && !timeout_expired) {
+		ret = lksleep(&c->wait, &c->wait.lock, PCATCH, "wfcit", timeout);
 		switch(ret) {
 		case EWOULDBLOCK:
 			timeout_expired = true;
@@ -91,7 +91,7 @@ wait_for_completion_interruptible_timeout(struct completion *x,
 			break;
 		}
 	}
-	spin_unlock(&x->wait.lock);
+	lockmgr(&c->wait.lock, LK_RELEASE);
 
 	if (awakened) {
 		elapsed_jiffies = ticks - start_jiffies;
