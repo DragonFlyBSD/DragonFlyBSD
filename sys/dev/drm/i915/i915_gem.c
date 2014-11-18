@@ -153,9 +153,9 @@ i915_gem_wait_for_error(struct drm_device *dev)
 		 * end up waiting upon a subsequent completion event that
 		 * will never happen.
 		 */
-		spin_lock(&x->wait.lock);
+		lockmgr(&x->wait.lock, LK_EXCLUSIVE);
 		x->done++;
-		spin_unlock(&x->wait.lock);
+		lockmgr(&x->wait.lock, LK_RELEASE);
 	}
 	return 0;
 }
@@ -587,9 +587,9 @@ i915_gem_check_wedge(struct drm_i915_private *dev_priv,
 		bool recovery_complete;
 
 		/* Give the error handler a chance to run. */
-		spin_lock(&x->wait.lock);
+		lockmgr(&x->wait.lock, LK_EXCLUSIVE);
 		recovery_complete = x->done > 0;
-		spin_unlock(&x->wait.lock);
+		lockmgr(&x->wait.lock, LK_RELEASE);
 
 		/* Non-interruptible callers can't handle -EAGAIN, hence return
 		 * -EIO unconditionally for these. */
