@@ -39,6 +39,7 @@
 static void parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd);
 static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
 static void pseudofs_usage(int code);
+static char *strtrl(char **path, int len);
 static int getyn(void);
 static int timetosecs(char *str);
 
@@ -63,14 +64,15 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 	pfs->bytes = sizeof(*pfs->ondisk);
 
 	/*
-	 * Remove the trailing '/' if there is one so that
-	 * in the case path is a symbolic link to the PFS,
-	 * the symbolic link is used and not the root dir of
-	 * the PFS
+	 * Trailing '/' must be removed so that upon pfs-destroy
+	 * the symlink can be deleted without problems.
+	 * Root directory (/) must be excluded from this.
 	 */
 	len = strnlen(path, MAXPATHLEN);
-	if (path[len-1] == '/' && path[len] == '\0')
-		path[len-1] = '\0';
+	if (len > 1) {
+		if (strtrl(&path, len) == NULL)
+			errx(1, "Unexpected NULL path");
+	}
 
 	/*
 	 * Calculate the directory containing the softlink
@@ -729,4 +731,22 @@ timetosecs(char *str)
 	if (v > 0x7FFFFFFF)
 		v = 0x7FFFFFFF;
 	return((int)v);
+}
+
+static
+char *
+strtrl(char **path, int len)
+{
+	char *s, *p;
+
+	s = *path;
+	if (s == NULL)
+		return NULL;
+
+	p = s + len;
+	/* Attempt to remove all trailing slashes */
+	while (p-- > s && *p == '/')
+		*p = '\0';
+
+	return p;
 }
