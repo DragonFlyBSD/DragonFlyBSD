@@ -43,7 +43,8 @@
 		lunset xhci_load
 		set hint.xhci.0.disabled=1
 
-	For more information on ACPI, AHCI, EHCI and XHCI use `help' on these topics.
+	For more information on ACPI, AHCI, EHCI and XHCI use `help' on these
+	topics.
 
 ################################################################################
 # T<variable>=<value> DAssign value to variable
@@ -174,8 +175,8 @@
 
 	$xhci_load
 
-	The XHCI driver provides support for the USB Enhanched Host Controller
-	Interface, which is used by USB 2.0 controllers.
+	The XHCI driver provides support for the USB eXtensible Host Controller
+	Interface, which is used by USB 3.0 controllers.
 
 	The XHCI kernel module is by default loaded automatically.
 
