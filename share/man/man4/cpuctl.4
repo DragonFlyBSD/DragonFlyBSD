@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: release/10.0.0/share/man/man4/cpuctl.4 235317 2012-05-12 03:25:46Z gjb $
 .\"
-.Dd June 30, 2009
+.Dd November 18, 2014
 .Dt CPUCTL 4
 .Os
 .Sh NAME
@@ -58,7 +58,7 @@ with the appropriate index will be created.
 For multicore CPUs such a
 special device will be created for each core.
 .Pp
-Currently, only i386 and amd64 processors are
+Currently, only i386 and x86_64 processors are
 supported.
 .Sh IOCTL INTERFACE
 All of the supported operations are invoked using the
@@ -121,7 +121,11 @@ field should point to the firmware image of size
 .Pp
 For additional information refer to
 .Pa cpuctl.h .
-.Sh RETURN VALUES
+.Sh FILES
+.Bl -tag -width /dev/cpuctl -compact
+.It Pa /dev/cpuctl
+.El
+.Sh ERRORS
 .Bl -tag -width Er
 .It Bq Er ENXIO
 The operation requested is not supported by the device (e.g., unsupported
@@ -133,12 +137,8 @@ No physical memory was available to complete the request.
 .It Bq Er EFAULT
 The firmware image address points outside the process address space.
 .El
-.Sh FILES
-.Bl -tag -width /dev/cpuctl -compact
-.It Pa /dev/cpuctl
-.El
 .Sh SEE ALSO
-.Xr hwpmc 4 ,
+.\".Xr hwpmc 4 ,
 .Xr cpucontrol 8
 .Sh HISTORY
 The
@@ -149,6 +149,6 @@ driver first appeared in
 The
 .Nm
 module and this manual page were written by
-.An Stanislav Sedov Aq stas@FreeBSD.org .
+.An Stanislav Sedov Aq Mt stas@FreeBSD.org .
 .Sh BUGS
 Yes, probably, report if any.
