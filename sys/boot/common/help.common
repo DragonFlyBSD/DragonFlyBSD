@@ -31,7 +31,7 @@
 	If needed, disable the AHCI driver with:
 
 		lunset ahci_load
-		set hint.ahci.0.disabled=1
+		set hint.ahci.disabled=1
 
 	If needed, disable the EHCI driver with:
 
@@ -89,7 +89,7 @@
 	The AHCI driver can be disabled with:
 
 		lunset ahci_load
-		set hint.ahci.0.disabled=1
+		set hint.ahci.disabled=1
 
 	A link speed of 1.5Gb/s can be enforced with:
 
@@ -526,7 +526,7 @@
 
 		One file system example:
 
-			"hammer:da8se1a"
+			"hammer:da8s1a"
 
 		One file system HAMMER2 redundant copies examples:
 
