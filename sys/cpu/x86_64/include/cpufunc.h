@@ -979,6 +979,7 @@ void	intr_restore(register_t rf);
 #endif	/* __GNUC__ */
 
 int	rdmsr_safe(u_int msr, uint64_t *val);
+int wrmsr_safe(u_int msr, uint64_t newval);
 void	reset_dbregs(void);
 
 __END_DECLS

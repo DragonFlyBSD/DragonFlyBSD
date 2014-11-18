@@ -1852,6 +1852,10 @@ device		clockmod
 # Intel Core and newer CPUs on-die digital thermal sensor support
 device		coretemp
 
+# CPU control pseudo-device. Provides access to MSRs, CPUID info and
+# microcode update feature.
+device		cpuctl
+
 # AMD Family 0Fh, 10h and 11h temperature sensors
 device		kate
 device		km

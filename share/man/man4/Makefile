@@ -67,6 +67,7 @@ MAN=	aac.4 \
 	clockmod.4 \
 	cmx.4 \
 	coretemp.4 \
+	cpuctl.4 \
 	crypto.4 \
 	cue.4 \
 	cxm.4 \

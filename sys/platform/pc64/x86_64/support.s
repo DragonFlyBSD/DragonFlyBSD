@@ -732,6 +732,25 @@ ENTRY(rdmsr_safe)
 	ret
 
 /*
+ * Support for writing MSRs in the safe manner.
+ */
+ENTRY(wrmsr_safe)
+/* int wrmsr_safe(u_int msr, uint64_t data) */
+	movq	PCPU(curthread),%r8
+	movq	TD_PCB(%r8), %r8
+	movq	$msr_onfault,PCB_ONFAULT(%r8)
+	movq    %rsp,PCB_ONFAULT_SP(%rcx)
+	movl	%edi,%ecx
+	movl	%esi,%eax
+	sarq	$32,%rsi
+	movl	%esi,%edx
+	wrmsr			/* Write MSR pointed by %ecx. Accepts
+				   hi byte in edx, lo in %eax. */
+	xorq	%rax,%rax
+	movq	%rax,PCB_ONFAULT(%r8)
+	ret
+
+/*
  * MSR operations fault handler
  */
 	ALIGN_TEXT

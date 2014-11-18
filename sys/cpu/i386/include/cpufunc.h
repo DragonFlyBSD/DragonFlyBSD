@@ -790,6 +790,7 @@ u_int	rcr0		(void);
 u_int	rcr3		(void);
 u_int	rcr4		(void);
 int	rdmsr_safe	(u_int msr, uint64_t *val);
+int	wrmsr_safe(u_int msr, uint64_t newval);
 void    reset_dbregs    (void);
 __END_DECLS
 

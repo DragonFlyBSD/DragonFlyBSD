@@ -24,6 +24,7 @@ SUBDIR= 802_11 \
 	ckdist \
 	clog \
 	config \
+	cpucontrol \
 	crashinfo \
 	cron \
 	daemon \
