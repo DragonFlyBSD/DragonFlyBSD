@@ -856,7 +856,7 @@ udp_ctlinput(netmsg_t msg)
 	struct ip *ip = msg->ctlinput.nm_extra;
 	int cmd = msg->ctlinput.nm_cmd;
 	struct udphdr *uh;
-	void (*notify) (struct inpcb *, int) = udp_notify;
+	void (*notify)(struct inpcb *, int) = udp_notify;
 	struct in_addr faddr;
 	struct inpcb *inp;
 
@@ -878,7 +878,7 @@ udp_ctlinput(netmsg_t msg)
 		inp = in_pcblookup_hash(&udbinfo[mycpuid], faddr, uh->uh_dport,
 					ip->ip_src, uh->uh_sport, 0, NULL);
 		if (inp != NULL && inp->inp_socket != NULL)
-			(*notify)(inp, inetctlerrmap[cmd]);
+			notify(inp, inetctlerrmap[cmd]);
 	} else {
 		struct netmsg_udp_notify *nm;
 
