@@ -1403,10 +1403,6 @@ tcp_ctlinput(netmsg_t msg)
 	tcp_seq icmpseq;
 	int arg, cpu;
 
-	if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0) {
-		goto done;
-	}
-
 	faddr = ((struct sockaddr_in *)sa)->sin_addr;
 	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
 		goto done;
@@ -1431,6 +1427,8 @@ tcp_ctlinput(netmsg_t msg)
 		notify = in_rtchange;
 	} else if (cmd == PRC_HOSTDEAD) {
 		ip = NULL;
+	} else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0) {
+		goto done;
 	}
 
 	if (ip != NULL) {
