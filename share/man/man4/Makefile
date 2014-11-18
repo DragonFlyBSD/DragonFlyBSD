@@ -251,6 +251,7 @@ MAN=	aac.4 \
 	random.4 \
 	rdrand.4 \
 	re.4 \
+	rgephy.4 \
 	rl.4 \
 	rndtest.4 \
 	route.4 \
