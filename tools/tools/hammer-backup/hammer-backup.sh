@@ -42,7 +42,7 @@
 
 initialization()
 {
-    VERSION="0.2"
+    VERSION="0.3"
     SCRIPTNAME=${0##*/}
 
     dryrun=0	  # Dry-run
@@ -60,6 +60,7 @@ initialization()
     checksum_opt=0 # Perfom a checksum of all backups
     find_last=0	  # Find last full backup
     timestamp=$(date +'%Y%m%d%H%M%S')
+    memlimit="10%"
 }
 
 info()
@@ -126,6 +127,17 @@ get_uuid()
 	}'
 }
 
+namesuffix()
+{
+    # Output file format is YYYYmmddHHMMSS
+    if [ "${pfs_path}" == "/" ]; then
+	tmp="_root"
+    else
+	tmp=$(echo ${pfs_path} | tr '/' '_')
+    fi
+    echo ${tmp}
+}
+
 file2date()
 {
     local filename=""
@@ -165,7 +177,7 @@ do_backup()
 
     # Calculate the compression options
     if [ ${compress} -eq 1 ]; then
-	compress_opts=" | xz -c -${comp_rate}"
+	compress_opts=" | xz -M ${memlimit} -c -${comp_rate}"
 	output_file="${output_file}.xz"
     fi
 
@@ -240,7 +252,7 @@ detect_latest_backup()
     # in the filename will let them be sorted by ls. But this could actually
     # change.
     if [ ${find_last} -eq 1 ]; then
-	pattern=$(echo ${pfs_path} | tr "/" "_").xz.bkp
+	pattern=$(namesuffix).*bkp
 	latest=$(ls -1 ${backup_dir}/*${pattern} 2> /dev/null | tail -1)
 	if [ -z "${latest}" ]; then
 	    err 1 "Failed to detect the latest full backup file."
@@ -345,6 +357,8 @@ checksum_backups()
     local storedck=""
     local fileck=""
     local tmp=""
+    local retf=0
+    local retm=0
 
     for bkp in ${backup_dir}/*.bkp
     do
@@ -362,10 +376,12 @@ checksum_backups()
 	    echo -n "${fname} : "
 	    if [ ! -f ${fname} ]; then
 		echo "MISSING"
+		retm=1
 		continue
 	    elif [ "${storedck}" == "${fileck}" ]; then
 		echo "OK"
 	    else
+		retf=2
 		echo "FAILED"
 	    fi
 	done < ${bkp}
@@ -376,7 +392,7 @@ checksum_backups()
 	err 255 "No backup files found in ${backup_dir}"
     fi
 
-    exit 0
+    exit $(( ${retm} + ${retf} ))
 }
 # -------------------------------------------------------------
 
@@ -454,8 +470,6 @@ shift $(($OPTIND - 1))
 
 info "hammer-backup version ${VERSION}"
 
-#
-# If list option is selected
 pfs_path="$1"
 
 # Backup directory must exist
@@ -466,9 +480,6 @@ elif [ ! -d "${backup_dir}" ]; then
 fi
 info "Backup dir is ${backup_dir}"
 
-# Output file format is YYYYmmddHHMMSS
-tmp=$(echo ${pfs_path} | tr '/' '_')
-output_file="${backup_dir}/${timestamp}${tmp}"
 
 # List backups if needed
 if [ ${list_opt} -eq 1 ]; then
@@ -481,6 +492,14 @@ if [ ${checksum_opt} -eq 1 ]; then
     info "Checksum test for all backup files."
     checksum_backups
 fi
+
+# Calculate output filename and make
+# sure absolute paths are passed
+firstchr=$(echo ${pfs_path} | cut -b1)
+if [ "${firstchr}" != "/" ]; then
+    err 1 "You must specify an absolute path"
+fi
+output_file="${backup_dir}/${timestamp}"$(namesuffix)
 
 # Only work on a HAMMER fs
 check_pfs
