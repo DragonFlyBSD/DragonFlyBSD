@@ -491,16 +491,17 @@ get_process_info(struct system_info *si, struct process_select *sel,
 		 */
 		if ((show_system && (LP(pp, pid) == -1)) ||
 		    (show_system || ((PP(pp, flags) & P_SYSTEM) == 0))) {
-			int pstate = LP(pp, stat);
+			int lpstate = LP(pp, stat);
+			int pstate = PP(pp, stat);
 
 			total_procs++;
-			if (pstate == LSRUN)
+			if (lpstate == LSRUN)
 				process_states[0]++;
-			if (pstate >= 0 && pstate < MAXPSTATES)
+			if (pstate >= 0 && pstate < MAXPSTATES - 1)
 				process_states[pstate]++;
 			if ((show_system && (LP(pp, pid) == -1)) ||
 			    (show_idle || (LP(pp, pctcpu) != 0) ||
-			    (pstate == LSRUN)) &&
+			    (lpstate == LSRUN)) &&
 			    (!show_uid || PP(pp, ruid) == (uid_t) sel->uid)) {
 				*prefp++ = pp;
 				active_procs++;
