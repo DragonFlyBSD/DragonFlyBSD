@@ -97,6 +97,7 @@ typedef struct SLZone {
     __int32_t	z_Magic;	/* magic number for sanity check */
     int		z_Cpu;		/* which cpu owns this zone? */
     struct globaldata *z_CpuGd;	/* which cpu owns this zone? */
+    LIST_ENTRY(SLZone) z_Entry;	/* ZoneAry[] if z_NFree!=0, else Free*Zones */
     struct SLZone *z_Next;	/* ZoneAry[] link if z_NFree non-zero */
     int		z_NFree;	/* total free chunks / ualloc space in zone */
     int		z_NMax;		/* maximum free chunks */
@@ -123,10 +124,13 @@ typedef struct SLZone {
 
 #define SLZF_UNOTZEROD		0x0001
 
+LIST_HEAD(SLZoneList, SLZone);		/* NOTE: Assumes NULL initialization */
+typedef struct SLZoneList SLZoneList;
+
 typedef struct SLGlobalData {
-    SLZone	*ZoneAry[NZONES];	/* linked list of zones NFree > 0 */
-    SLZone	*FreeZones;		/* whole zones that have become free */
-    SLZone	*FreeOvZones;		/* oversized zones */
+    SLZoneList	ZoneAry[NZONES];	/* linked list of zones NFree > 0 */
+    SLZoneList	FreeZones;		/* whole zones that have become free */
+    SLZoneList	FreeOvZones;		/* oversized zones */
     int		NFreeZones;		/* free zone count */
     int		JunkIndex;
     struct malloc_type ZoneInfo;	/* stats on meta-zones allocated */

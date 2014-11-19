@@ -510,24 +510,23 @@ SLZone *
 check_zone_free(SLGlobalData *slgd, SLZone *z)
 {
     if (z->z_NFree == z->z_NMax &&
-	(z->z_Next || slgd->ZoneAry[z->z_ZoneIndex] != z) &&
+	(z->z_Next || LIST_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z) &&
 	z->z_RCount == 0
     ) {
-	SLZone **pz;
+	SLZone *znext;
 	int *kup;
 
-	for (pz = &slgd->ZoneAry[z->z_ZoneIndex]; z != *pz; pz = &(*pz)->z_Next)
-	    ;
-	*pz = z->z_Next;
+	znext = LIST_NEXT(z, z_Entry);
+	LIST_REMOVE(z, z_Entry);
+
 	z->z_Magic = -1;
-	z->z_Next = slgd->FreeZones;
-	slgd->FreeZones = z;
+	LIST_INSERT_HEAD(&slgd->FreeZones, z, z_Entry);
 	++slgd->NFreeZones;
 	kup = btokup(z);
 	*kup = 0;
-	z = *pz;
+	z = znext;
     } else {
-	z = z->z_Next;
+	z = LIST_NEXT(z, z_Entry);
     }
     return z;
 }
@@ -677,8 +676,8 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	if (slgd->NFreeZones > ZoneRelsThresh) {	/* crit sect race */
 	    int *kup;
 
-	    z = slgd->FreeZones;
-	    slgd->FreeZones = z->z_Next;
+	    z = LIST_FIRST(&slgd->FreeZones);
+	    LIST_REMOVE(z, z_Entry);
 	    --slgd->NFreeZones;
 	    kup = btokup(z);
 	    *kup = 0;
@@ -691,13 +690,13 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
     /*
      * XXX handle oversized frees that were queued from kfree().
      */
-    while (slgd->FreeOvZones && (flags & M_RNOWAIT) == 0) {
+    while (LIST_FIRST(&slgd->FreeOvZones) && (flags & M_RNOWAIT) == 0) {
 	crit_enter();
-	if ((z = slgd->FreeOvZones) != NULL) {
+	if ((z = LIST_FIRST(&slgd->FreeOvZones)) != NULL) {
 	    vm_size_t tsize;
 
 	    KKASSERT(z->z_Magic == ZALLOC_OVSZ_MAGIC);
-	    slgd->FreeOvZones = z->z_Next;
+	    LIST_REMOVE(z, z_Entry);
 	    tsize = z->z_ChunkSize;
 	    kmem_slab_free(z, tsize);	/* may block */
 	    atomic_add_int(&ZoneBigAlloc, -(int)tsize / 1024);
@@ -743,7 +742,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
     KKASSERT(zi < NZONES);
     crit_enter();
 
-    if ((z = slgd->ZoneAry[zi]) != NULL) {
+    if ((z = LIST_FIRST(&slgd->ZoneAry[zi])) != NULL) {
 	/*
 	 * Locate a chunk - we have to have at least one.  If this is the
 	 * last chunk go ahead and do the work to retrieve chunks freed
@@ -773,8 +772,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	     * Clear RSignal
 	     */
 	    if (z->z_NFree == 0) {
-		slgd->ZoneAry[zi] = z->z_Next;
-		z->z_Next = NULL;
+		LIST_REMOVE(z, z_Entry);
 	    } else {
 		z->z_RSignal = 0;
 	    }
@@ -837,8 +835,8 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	int off;
 	int *kup;
 
-	if ((z = slgd->FreeZones) != NULL) {
-	    slgd->FreeZones = z->z_Next;
+	if ((z = LIST_FIRST(&slgd->FreeZones)) != NULL) {
+	    LIST_REMOVE(z, z_Entry);
 	    --slgd->NFreeZones;
 	    bzero(z, sizeof(SLZone));
 	    z->z_Flags |= SLZF_UNOTZEROD;
@@ -886,8 +884,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	bzero(z->z_Sources, sizeof(z->z_Sources));
 #endif
 	chunk = (SLChunk *)(z->z_BasePtr + z->z_UIndex * size);
-	z->z_Next = slgd->ZoneAry[zi];
-	slgd->ZoneAry[zi] = z;
+	LIST_INSERT_HEAD(&slgd->ZoneAry[zi], z, z_Entry);
 	if ((z->z_Flags & SLZF_UNOTZEROD) == 0) {
 	    flags &= ~M_ZERO;	/* already zero'd */
 	    flags |= M_PASSIVE_ZERO;
@@ -1096,8 +1093,7 @@ kfree_remote(void *ptr)
      */
     clean_zone_rchunks(z);
     if (z->z_NFree && nfree == 0) {
-	z->z_Next = slgd->ZoneAry[z->z_ZoneIndex];
-	slgd->ZoneAry[z->z_ZoneIndex] = z;
+	LIST_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
     }
 
     /*
@@ -1111,21 +1107,14 @@ kfree_remote(void *ptr)
      * zone.
      */
     if (z->z_NFree == z->z_NMax &&
-	(z->z_Next || slgd->ZoneAry[z->z_ZoneIndex] != z) &&
+	(z->z_Next || LIST_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z) &&
 	z->z_RCount == 0
     ) {
-	SLZone **pz;
 	int *kup;
 
-	for (pz = &slgd->ZoneAry[z->z_ZoneIndex];
-	     z != *pz;
-	     pz = &(*pz)->z_Next) {
-	    ;
-	}
-	*pz = z->z_Next;
+	LIST_REMOVE(z, z_Entry);
 	z->z_Magic = -1;
-	z->z_Next = slgd->FreeZones;
-	slgd->FreeZones = z;
+	LIST_INSERT_HEAD(&slgd->FreeZones, z, z_Entry);
 	++slgd->NFreeZones;
 	kup = btokup(z);
 	*kup = 0;
@@ -1209,9 +1198,9 @@ kfree(void *ptr, struct malloc_type *type)
 	    logmemory(free_ovsz_delayed, ptr, type, size, 0);
 	    z = (SLZone *)ptr;
 	    z->z_Magic = ZALLOC_OVSZ_MAGIC;
-	    z->z_Next = slgd->FreeOvZones;
 	    z->z_ChunkSize = size;
-	    slgd->FreeOvZones = z;
+
+	    LIST_INSERT_HEAD(&slgd->FreeOvZones, z, z_Entry);
 	    crit_exit();
 	} else {
 	    crit_exit();
@@ -1349,8 +1338,7 @@ kfree(void *ptr, struct malloc_type *type)
      * must be added back onto the appropriate list.
      */
     if (z->z_NFree++ == 0) {
-	z->z_Next = slgd->ZoneAry[z->z_ZoneIndex];
-	slgd->ZoneAry[z->z_ZoneIndex] = z;
+	LIST_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
     }
 
     --type->ks_inuse[z->z_Cpu];
@@ -1374,9 +1362,9 @@ slab_cleanup(void)
 
     crit_enter();
     for (i = 0; i < NZONES; ++i) {
-	if ((z = slgd->ZoneAry[i]) == NULL)
+	if ((z = LIST_FIRST(&slgd->ZoneAry[i])) == NULL)
 		continue;
-	z = z->z_Next;
+	z = LIST_NEXT(z, z_Entry);
 
 	/*
 	 * Scan zones starting with the second zone in each list.
@@ -1385,6 +1373,8 @@ slab_cleanup(void)
 	    /*
 	     * Shift all RChunks to the end of the LChunks list.  This is
 	     * an O(1) operation.
+	     *
+	     * Then free the zone if possible.
 	     */
 	    clean_zone_rchunks(z);
 	    z = check_zone_free(slgd, z);
