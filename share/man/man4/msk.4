@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/msk.4,v 1.6 2007/12/05 09:41:58 remko Exp $
 .\"
-.Dd March 12, 2013
+.Dd November 20, 2014
 .Dt MSK 4
 .Os
 .Sh NAME
@@ -210,8 +210,10 @@ prompt before booting the kernel or stored in
 .Xr loader.conf 5 .
 .Bl -tag -width indent
 .It Va hw.mskc.msi.enable
-By default, the driver will use MSI if it is supported.
-This behavior can be turned off by setting this tunable to 0.
+The
+.Nm driver
+supports MSI but it is turned off by default.
+It can be enabled by setting this tunable to 1.
 .El
 .\".Sh SYSCTL VARIABLES
 .\"The following variables are available as both
