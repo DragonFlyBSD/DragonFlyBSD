@@ -342,10 +342,24 @@ chn_write(struct pcm_channel *c, struct uio *buf, int ioflags)
 			if (nbio)
 				ret = EWOULDBLOCK;
 			else {
-				timeout = (hz * sndbuf_getblksz(bs)) / (sndbuf_getspd(bs) * sndbuf_getbps(bs));
-				if (timeout < 1)
-					timeout = 1;
-				timeout = 1;
+				int denom;
+
+				/*
+				 * Ceiling of calculation, minimum 2 ticks.
+				 * 1 tick can timeout instantly if the next
+				 * tick interval occurs immediately.
+				 *
+				 * Also ensure the calculation is +1 to
+				 * handle other edge cases.  e.g. if the
+				 * fractional calculation is 3.9 ticks the
+				 * result is 4 + 1 = 5, because 4 can actually
+				 * be anywhere from 3 to 4 ticks.
+				 */
+				denom = sndbuf_getspd(bs) * sndbuf_getbps(bs);
+				timeout = (hz * sndbuf_getblksz(bs) +
+					   denom - 1) / denom + 1;
+				if (timeout < 2)
+					timeout = 2;
 	   			ret = chn_sleep(c, "pcmwr", timeout);
 				if (ret == EWOULDBLOCK) {
 					count -= timeout;
