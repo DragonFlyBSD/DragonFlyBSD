@@ -164,6 +164,14 @@ another:
 		}
 
 		if ((fds[0].revents & (POLLIN | POLLHUP))) {
+			/* XXX profmakx: I am not sure whether updating the linkstate
+			  here is the best idea, but it being not up to date leads
+			  to a busy loop.
+			  Alternatively we can just remove the link state check since
+			  the link state is checked in got_one() later on
+			 */
+			ifi->linkstat = interface_status(ifi->name);
+
 			if (ifi && ifi->linkstat && ifi->rfdesc != -1)
 				got_one();
 		}
