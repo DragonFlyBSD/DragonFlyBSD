@@ -3181,6 +3181,10 @@ carp_proto_ctlinput(netmsg_t msg)
 	struct sockaddr *sa = msg->ctlinput.nm_arg;
 	struct in_ifaddr_container *iac;
 
+	/* We only process PRC_IFDOWN and PRC_IFUP commands */
+	if (cmd != PRC_IFDOWN && cmd != PRC_IFUP)
+		goto done;
+
 	TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
 		struct in_ifaddr *ia = iac->ia;
 		struct ifnet *ifp = ia->ia_ifp;
@@ -3199,7 +3203,7 @@ carp_proto_ctlinput(netmsg_t msg)
 			break;
 		}
 	}
-
+done:
 	lwkt_replymsg(&msg->lmsg, 0);
 }
 
