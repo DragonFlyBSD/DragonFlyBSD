@@ -727,6 +727,7 @@ static void
 vtpci_probe_and_attach_child(struct vtpci_softc *sc)
 {
 	device_t dev, child;
+	int error;
 
 	dev = sc->vtpci_dev;
 	child = sc->vtpci_child_dev;
@@ -737,11 +738,9 @@ vtpci_probe_and_attach_child(struct vtpci_softc *sc)
 	if (device_get_state(child) != DS_NOTPRESENT)
 		return;
 
-	if (device_probe_child(dev, child) != 0)
-		return;
-
 	vtpci_set_status(dev, VIRTIO_CONFIG_STATUS_DRIVER);
-	if (DEVICE_ATTACH(child) != 0) {
+	error = device_probe_and_attach(child);
+	if (error != 0 || device_get_state(child) == DS_NOTPRESENT) {
 		vtpci_set_status(dev, VIRTIO_CONFIG_STATUS_FAILED);
 		vtpci_reset(sc);
 		vtpci_release_child_resources(sc);
