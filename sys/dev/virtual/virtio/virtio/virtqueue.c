@@ -284,9 +284,11 @@ virtqueue_notify(struct virtqueue *vq, lwkt_serialize_t interlock)
 	cpu_mfence();
 
 	if (vq_ring_must_notify_host(vq)) {
-		lwkt_serialize_exit(interlock);
+		if (interlock != NULL)
+			lwkt_serialize_exit(interlock);
 		vq_ring_notify_host(vq);
-		lwkt_serialize_enter(interlock);
+		if (interlock != NULL)
+			lwkt_serialize_enter(interlock);
 	}
 	vq->vq_queued_cnt = 0;
 }
