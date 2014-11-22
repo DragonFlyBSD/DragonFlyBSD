@@ -61,9 +61,9 @@ shift $(( $OPTIND - 1 ))
 
 if [ -n "$RESTART" ]; then
 	skip="-s nostart"
-	if [ `/sbin/sysctl -n security.jail.jailed` -eq 1 ]; then
-		skip="$skip -s nojail"
-	fi
+#	if [ `/sbin/sysctl -n security.jail.jailed` -eq 1 ]; then
+#		skip="$skip -s nojail"
+#	fi
 	[ -n "$local_startup" ] && find_local_scripts
 	files=`rcorder ${skip} ${local_rc} 2>/dev/null`
 
@@ -88,9 +88,9 @@ fi
 if [ -n "$ENABLED" -o -n "$RCORDER" ]; then
 	# Copied from /etc/rc
 	skip="-s nostart"
-	if [ `/sbin/sysctl -n security.jail.jailed` -eq 1 ]; then
-		skip="$skip -s nojail"
-	fi
+#	if [ `/sbin/sysctl -n security.jail.jailed` -eq 1 ]; then
+#		skip="$skip -s nojail"
+#	fi
 	[ -n "$local_startup" ] && find_local_scripts
 	files=`rcorder ${skip} /etc/rc.d/* ${local_rc} 2>/dev/null`
 fi
