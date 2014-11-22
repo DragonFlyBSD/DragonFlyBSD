@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $FreeBSD: head/usr.sbin/service/service.sh 263202 2014-03-15 02:26:46Z eadler $
+# $FreeBSD: head/usr.sbin/service/service.sh 268773 2014-07-16 19:02:30Z dteske $
 
 #  Copyright (c) 2009 Douglas Barton
 #  All rights reserved.
@@ -109,7 +109,7 @@ fi
 if [ -n "$LIST" ]; then
 	for dir in /etc/rc.d $local_startup; do
 		[ -n "$VERBOSE" ] && echo "From ${dir}:"
-		cd $dir && for file in *; do echo $file; done
+		[ -d ${dir} ] && /bin/ls -1 ${dir}
 	done
 	exit 0
 fi
