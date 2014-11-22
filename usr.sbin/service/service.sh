@@ -64,7 +64,7 @@ if [ -n "$RESTART" ]; then
 	if [ `/sbin/sysctl -n security.jail.jailed` -eq 1 ]; then
 		skip="$skip -s nojail"
 	fi
-	[ -n "$local_startup" ] && find_local_scripts_new
+	[ -n "$local_startup" ] && find_local_scripts
 	files=`rcorder ${skip} ${local_rc} 2>/dev/null`
 
 	for file in `reverse_list ${files}`; do
@@ -91,7 +91,7 @@ if [ -n "$ENABLED" -o -n "$RCORDER" ]; then
 	if [ `/sbin/sysctl -n security.jail.jailed` -eq 1 ]; then
 		skip="$skip -s nojail"
 	fi
-	[ -n "$local_startup" ] && find_local_scripts_new
+	[ -n "$local_startup" ] && find_local_scripts
 	files=`rcorder ${skip} /etc/rc.d/* ${local_rc} 2>/dev/null`
 fi
 
