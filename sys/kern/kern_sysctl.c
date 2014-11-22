@@ -69,7 +69,7 @@ static MALLOC_DEFINE(M_SYSCTLOID, "sysctloid", "sysctl dynamic oids");
  * sysctl requests.  This is implemented by serializing any userland
  * sysctl requests larger than a single page via an exclusive lock.
  */
-static struct lock sysctllock;
+struct lock sysctllock;
 static struct lock sysctlmemlock;
 
 #define	SYSCTL_XLOCK()		lockmgr(&sysctllock, LK_EXCLUSIVE)

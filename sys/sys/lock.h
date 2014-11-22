@@ -76,31 +76,60 @@ struct lock {
 
 /*
  * Lock request types:
- *   LK_SHARED - get one of many possible shared locks. If a process
- *	holding an exclusive lock requests a shared lock, the exclusive
- *	lock(s) will be downgraded to shared locks.
- *   LK_EXCLUSIVE - stop further shared locks, when they are cleared,
- *	grant a pending upgrade if it exists, then grant an exclusive
- *	lock. Only one exclusive lock may exist at a time, except that
- *	a process holding an exclusive lock may get additional exclusive
- *	locks if it explicitly sets the LK_CANRECURSE flag in the lock
- *	request, or if the LK_CANRECUSE flag was set when the lock was
- *	initialized.
- *   LK_UPGRADE - the process must hold a shared lock that it wants to
- *	have upgraded to an exclusive lock. Other processes may get
- *	exclusive access to the resource between the time that the upgrade
- *	is requested and the time that it is granted.
- *   LK_EXCLUPGRADE - the process must hold a shared lock that it wants to
- *	have upgraded to an exclusive lock. If the request succeeds, no
- *	other processes will have gotten exclusive access to the resource
- *	between the time that the upgrade is requested and the time that
- *	it is granted. However, if another process has already requested
- *	an upgrade, the request will fail (see error returns below).
- *   LK_DOWNGRADE - the process must hold an exclusive lock that it wants
- *	to have downgraded to a shared lock. If the process holds multiple
- *	(recursive) exclusive locks, they will all be downgraded to shared
- *	locks.
- *   LK_RELEASE - release one instance of a lock.
+ *
+ *   LK_SHARED
+ *	Get one of many possible shared locks. If a process holding an
+ *	exclusive lock requests a shared lock, the exclusive lock(s) will
+ *	be downgraded to shared locks.
+ *
+ *   LK_EXCLUSIVE
+ *	Stop further shared locks, when they are cleared, grant a pending
+ *	upgrade if it exists, then grant an exclusive lock. Only one exclusive
+ *	lock may exist at a time, except that a process holding an exclusive
+ *	lock may get additional exclusive locks if it explicitly sets the
+ *	LK_CANRECURSE flag in the lock request, or if the LK_CANRECUSE flag
+ *	was set when the lock was initialized.
+ *
+ *   LK_UPGRADE
+ *	The process must hold a shared lock that it wants to have upgraded
+ *	to an exclusive lock. Other processes may get exclusive access to
+ *	the resource between the time that the upgrade is requested and the
+ *	time that it is granted.
+ *
+ *   LK_EXCLUPGRADE
+ *	the process must hold a shared lock that it wants to have upgraded
+ *	to an exclusive lock. If the request succeeds, no other processes
+ *	will have gotten exclusive access to the resource between the time
+ *	that the upgrade is requested and the time that it is granted.
+ *	However, if another process has already requested an upgrade, the
+ *	request will fail (see error returns below).
+ *
+ *   LK_DOWNGRADE
+ *	The process must hold an exclusive lock that it wants to have
+ *	downgraded to a shared lock. If the process holds multiple (recursive)
+ *	exclusive locks, they will all be downgraded to shared locks.
+ *
+ *   LK_RELEASE
+ *	Release one instance of a lock.
+ *
+ *   LK_CANCEL_BEG
+ *	The current exclusive lock holder can cancel any blocked lock requests,
+ *	or any new requests, whos callers specified LK_CANCELABLE.  They will
+ *	receive a ENOLCK error code.  Cancel beg/end does not stack.
+ *
+ *	The cancel command stays in effect until the exclusive lock holder
+ *	releases the last count on the lock or issues a LK_CANCEL_END command.
+ *
+ *   LK_CANCEL_END
+ *	The current exclusive lock holder can stop canceling new requests
+ *	whos callers specify LK_CANCELABLE.  The exclusive lock is maintained.
+ *
+ *	Note that the last release of the exclusive lock will also
+ *	automatically end cancel mode.
+ *
+ *
+ * ---
+ *
  *   LK_EXCLOTHER - return for lockstatus().  Used when another process
  *	holds the lock exclusively.
  *
@@ -115,18 +144,22 @@ struct lock {
 #define LK_RELEASE	0x00000006	/* release any type of lock */
 #define LK_WAITUPGRADE	0x00000007
 #define LK_EXCLOTHER	0x00000008	/* other process holds lock */
+#define LK_CANCEL_BEG	0x00000009	/* cancel other requests */
+#define LK_CANCEL_END	0x0000000a	/* stop canceling other requests */
 
 /*
  * lk_count bit fields.
  *
- * Positive count is exclusive, negative count is shared.
+ * Positive count is exclusive, negative count is shared.  The count field
+ * must be large enough to accomodate all possible threads.
  */
 #define LKC_EXREQ	0x80000000	/* waiting for exclusive lock */
 #define LKC_SHREQ	0x40000000	/* waiting for shared lock */
 #define LKC_UPREQ	0x20000000	/* waiting for upgrade */
 #define LKC_EXCL	0x10000000	/* exclusive (else shr or unlcoked) */
 #define LKC_UPGRANT	0x08000000	/* upgrade granted */
-#define LKC_MASK	0x07FFFFFF
+#define LKC_CANCEL	0x04000000	/* cancel in effect */
+#define LKC_MASK	0x03FFFFFF
 
 /*
  * External lock flags.
@@ -138,8 +171,7 @@ struct lock {
 #define LK_NOWAIT	0x00000010	/* do not sleep to await lock */
 #define LK_SLEEPFAIL	0x00000020	/* sleep, then return failure */
 #define LK_CANRECURSE	0x00000040	/* allow recursive exclusive lock */
-#define LK_UNUSED0080	0x00000080
-#define	LK_UNUSED0100x	0x01000000
+#define	LK_CANCELABLE	0x01000000	/* blocked caller can be canceled */
 #define LK_TIMELOCK	0x02000000
 #define LK_PCATCH	0x04000000	/* timelocked with signal catching */
 

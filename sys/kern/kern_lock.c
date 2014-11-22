@@ -3,7 +3,7 @@
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (C) 1997
  *	John S. Dyson.  All rights reserved.
- * Copyright (C) 2013
+ * Copyright (C) 2013-2014
  *	Matthew Dillon, All rights reserved.
  *
  * This code contains ideas from software contributed to Berkeley by
@@ -47,7 +47,23 @@
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
 
+extern struct lock sysctllock;
+
 static void undo_upreq(struct lock *lkp);
+
+#ifdef DEBUG_CANCEL_LOCKS
+
+static int sysctl_cancel_lock(SYSCTL_HANDLER_ARGS);
+static int sysctl_cancel_test(SYSCTL_HANDLER_ARGS);
+
+static struct lock cancel_lk;
+LOCK_SYSINIT(cancellk, &cancel_lk, "cancel", 0);
+SYSCTL_PROC(_kern, OID_AUTO, cancel_lock, CTLTYPE_INT|CTLFLAG_RW, 0, 0,
+	    sysctl_cancel_lock, "I", "test cancelable locks");
+SYSCTL_PROC(_kern, OID_AUTO, cancel_test, CTLTYPE_INT|CTLFLAG_RW, 0, 0,
+	    sysctl_cancel_test, "I", "test cancelable locks");
+
+#endif
 
 /*
  * Locking primitives implementation.
@@ -65,7 +81,6 @@ static void undo_upreq(struct lock *lkp);
 
 /*
  * Set, change, or release a lock.
- *
  */
 int
 #ifndef	DEBUG_LOCKS
@@ -172,6 +187,12 @@ again:
 		 * upgrade to one.
 		 */
 		if (count & wflags) {
+			if (extflags & LK_CANCELABLE) {
+				if (count & LKC_CANCEL) {
+					error = ENOLCK;
+					break;
+				}
+			}
 			if (extflags & LK_NOWAIT) {
 				error = EBUSY;
 				break;
@@ -245,6 +266,12 @@ again:
 		if (extflags & LK_NOWAIT) {
 			error = EBUSY;
 			break;
+		}
+		if (extflags & LK_CANCELABLE) {
+			if (count & LKC_CANCEL) {
+				error = ENOLCK;
+				break;
+			}
 		}
 
 		/*
@@ -374,6 +401,12 @@ again:
 			error = EBUSY;
 			goto again;
 		}
+		if (extflags & LK_CANCELABLE) {
+			if (count & LKC_CANCEL) {
+				error = ENOLCK;
+				break;
+			}
+		}
 
 		/*
 		 * Release the shared lock and request the upgrade.
@@ -449,6 +482,10 @@ again:
 				break;
 			}
 			/* retry */
+		} else if ((count & LKC_CANCEL) && (extflags & LK_CANCELABLE)) {
+			undo_upreq(lkp);
+			error = ENOLCK;
+			break;
 		} else {
 			pflags = (extflags & LK_PCATCH) ? PCATCH : 0;
 			timo = (extflags & LK_TIMELOCK) ? lkp->lk_timo : 0;
@@ -513,7 +550,8 @@ again:
 				lkp->lk_lockholder = NULL;
 				if (!atomic_cmpset_int(&lkp->lk_count, count,
 					      (count - 1) &
-					   ~(LKC_EXCL|LKC_EXREQ|LKC_SHREQ))) {
+					   ~(LKC_EXCL | LKC_EXREQ |
+					     LKC_SHREQ| LKC_CANCEL))) {
 					lkp->lk_lockholder = otd;
 					goto again;
 				}
@@ -555,7 +593,8 @@ again:
 				 */
 				if (!atomic_cmpset_int(&lkp->lk_count, count,
 					      (count - 1) &
-					       ~(LKC_EXREQ|LKC_SHREQ))) {
+					       ~(LKC_EXREQ | LKC_SHREQ |
+						 LKC_CANCEL))) {
 					goto again;
 				}
 				if (count & (LKC_EXREQ|LKC_SHREQ))
@@ -567,10 +606,12 @@ again:
 				 * Last shared count is being released but
 				 * an upgrade request is present, automatically
 				 * grant an exclusive state to the owner of
-				 * the upgrade request.
+				 * the upgrade request.  Masked count
+				 * remains 1.
 				 */
 				if (!atomic_cmpset_int(&lkp->lk_count, count,
-					      (count & ~LKC_UPREQ) |
+					      (count & ~(LKC_UPREQ |
+							 LKC_CANCEL)) |
 					      LKC_EXCL | LKC_UPGRANT)) {
 					goto again;
 				}
@@ -584,6 +625,27 @@ again:
 			/* success */
 			COUNT(td, -1);
 		}
+		break;
+
+	case LK_CANCEL_BEG:
+		/*
+		 * Start canceling blocked requestors or later requestors.
+		 * requestors must use CANCELABLE.  Don't waste time issuing
+		 * a wakeup if nobody is pending.
+		 */
+		KKASSERT((count & LKC_CANCEL) == 0);	/* disallowed case */
+		KKASSERT((count & LKC_MASK) != 0);	/* issue w/lock held */
+		if (!atomic_cmpset_int(&lkp->lk_count,
+				       count, count | LKC_CANCEL)) {
+			goto again;
+		}
+		if (count & (LKC_EXREQ|LKC_SHREQ|LKC_UPREQ)) {
+			wakeup(lkp);
+		}
+		break;
+
+	case LK_CANCEL_END:
+		atomic_clear_int(&lkp->lk_count, LKC_CANCEL);
 		break;
 
 	default:
@@ -807,3 +869,48 @@ lock_sysinit(struct lock_args *arg)
 {
 	lockinit(arg->la_lock, arg->la_desc, 0, arg->la_flags);
 }
+
+#ifdef DEBUG_CANCEL_LOCKS
+
+static
+int
+sysctl_cancel_lock(SYSCTL_HANDLER_ARGS)
+{
+	int error;
+
+	if (req->newptr) {
+		lockmgr(&sysctllock, LK_RELEASE);
+		lockmgr(&cancel_lk, LK_EXCLUSIVE);
+		kprintf("x");
+		error = tsleep(&error, PCATCH, "canmas", hz * 5);
+		lockmgr(&cancel_lk, LK_CANCEL_BEG);
+		kprintf("y");
+		error = tsleep(&error, PCATCH, "canmas", hz * 5);
+		kprintf("z");
+		lockmgr(&cancel_lk, LK_RELEASE);
+		lockmgr(&sysctllock, LK_EXCLUSIVE);
+		SYSCTL_OUT(req, &error, sizeof(error));
+	}
+	error = 0;
+
+	return error;
+}
+
+static
+int
+sysctl_cancel_test(SYSCTL_HANDLER_ARGS)
+{
+	int error;
+
+	if (req->newptr) {
+		error = lockmgr(&cancel_lk, LK_EXCLUSIVE|LK_CANCELABLE);
+		if (error == 0)
+			lockmgr(&cancel_lk, LK_RELEASE);
+		SYSCTL_OUT(req, &error, sizeof(error));
+		kprintf("test %d\n", error);
+	}
+
+	return 0;
+}
+
+#endif
