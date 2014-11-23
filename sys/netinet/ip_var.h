@@ -165,10 +165,6 @@ extern struct ip_stats	ipstats_percpu[MAXCPU];
 #define	IP_ALLOWBROADCAST	SO_BROADCAST	/* can send broadcast packets */
 #define	IP_DEBUGROUTE		0x10000		/* debug route */
 
-/* direction passed to ip_hashfn as last parameter */
-#define IP_MPORT_IN		0 /* Find lwkt port for incoming packets */
-#define IP_MPORT_OUT		1 /* Find lwkt port for outgoing packets */
-
 struct ip;
 struct inpcb;
 struct route;
@@ -199,8 +195,7 @@ void	 ip_init(void);
 extern int	 (*ip_mforward)(struct ip *, struct ifnet *, struct mbuf *,
 			  struct ip_moptions *);
 
-void	ip_hashfn(struct mbuf **, int, int);
-void	ip_hashfn_in(struct mbuf **, int);
+void	ip_hashfn(struct mbuf **, int);
 void	ip_hashcheck(struct mbuf *, const struct pktinfo *);
 
 boolean_t

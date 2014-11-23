@@ -398,7 +398,7 @@ ip_init(void)
 		}
 	}
 
-	netisr_register(NETISR_IP, ip_input_handler, ip_hashfn_in);
+	netisr_register(NETISR_IP, ip_input_handler, ip_hashfn);
 	netisr_register_hashcheck(NETISR_IP, ip_hashcheck);
 }
 
@@ -478,7 +478,7 @@ ip_input(struct mbuf *m)
 		m->m_flags &= ~M_HASH;
 	}
 	if ((m->m_flags & M_HASH) == 0) {
-		ip_hashfn(&m, 0, IP_MPORT_IN);
+		ip_hashfn(&m, 0);
 		if (m == NULL)
 			return;
 		KKASSERT(m->m_flags & M_HASH);
@@ -972,7 +972,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		ip->ip_len = htons(ip->ip_len + hlen);
 		ip->ip_off = htons(ip->ip_off);
 
-		ip_hashfn(&m, 0, IP_MPORT_IN);
+		ip_hashfn(&m, 0);
 		if (m == NULL)
 			return;
 

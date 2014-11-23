@@ -263,7 +263,7 @@ fail:
  * This function can blow away the mbuf if the packet is malformed.
  */
 void
-ip_hashfn(struct mbuf **mptr, int hoff, int dir)
+ip_hashfn(struct mbuf **mptr, int hoff)
 {
 	struct ip *ip;
 	int iphlen;
@@ -310,12 +310,6 @@ ip_hashfn(struct mbuf **mptr, int hoff, int dir)
 back:
 	m->m_flags |= M_HASH;
 	m->m_pkthdr.hash = hash;
-}
-
-void
-ip_hashfn_in(struct mbuf **mptr, int hoff)
-{
-	ip_hashfn(mptr, hoff, IP_MPORT_IN);
 }
 
 /*
