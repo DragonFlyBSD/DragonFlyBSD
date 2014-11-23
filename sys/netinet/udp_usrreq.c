@@ -879,8 +879,8 @@ udp_get_inpnotify(int cmd, const struct sockaddr *sa,
 
 			uh = (const struct udphdr *)
 			    ((caddr_t)ip + (ip->ip_hl << 2));
-			*cpuid = udp_addrcpu(faddr.s_addr, ip->ip_src.s_addr,
-			    uh->uh_dport, uh->uh_sport);
+			*cpuid = udp_addrcpu(faddr.s_addr, uh->uh_dport,
+			    ip->ip_src.s_addr, uh->uh_sport);
 		}
 	}
 
