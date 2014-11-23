@@ -418,15 +418,9 @@ unlock:
 	return ret;
 }
 
-/**
- * This is the fast pwrite path, where we copy the data directly from the
- * user into the GTT, uncached.
- */
 static int
-i915_gem_gtt_pwrite_fast(struct drm_device *dev,
-			 struct drm_i915_gem_object *obj,
-			 struct drm_i915_gem_pwrite *args,
-			 struct drm_file *file)
+i915_gem_gtt_write(struct drm_device *dev, struct drm_i915_gem_object *obj,
+    uint64_t data_ptr, uint64_t size, uint64_t offset, struct drm_file *file)
 {
 	vm_offset_t mkva;
 	int ret;
@@ -438,10 +432,9 @@ i915_gem_gtt_pwrite_fast(struct drm_device *dev,
 	 * add the page offset into the returned mkva for us.
 	 */
 	mkva = (vm_offset_t)pmap_mapdev_attr(dev->agp->base + obj->gtt_offset +
-	    args->offset, args->size, PAT_WRITE_COMBINING);
-	ret = -copyin_nofault((void *)(uintptr_t)args->data_ptr, (char *)mkva, args->size);
-	pmap_unmapdev(mkva, args->size);
-
+	    offset, size, PAT_WRITE_COMBINING);
+	ret = -copyin_nofault((void *)(uintptr_t)data_ptr, (char *)mkva, size);
+	pmap_unmapdev(mkva, size);
 	return ret;
 }
 
@@ -525,14 +518,29 @@ i915_gem_pwrite_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_i915_gem_pwrite *args = data;
 	struct drm_i915_gem_object *obj;
-	int ret;
+	vm_page_t *ma;
+	vm_offset_t start, end;
+	int npages, ret;
 
 	if (args->size == 0)
 		return 0;
 
+	start = trunc_page(args->data_ptr);
+	end = round_page(args->data_ptr + args->size);
+	npages = howmany(end - start, PAGE_SIZE);
+	ma = kmalloc(npages * sizeof(vm_page_t), M_DRM, M_WAITOK |
+	    M_ZERO);
+	npages = vm_fault_quick_hold_pages(&curproc->p_vmspace->vm_map,
+	    (vm_offset_t)args->data_ptr, args->size,
+	    VM_PROT_READ, ma, npages);
+	if (npages == -1) {
+		ret = -EFAULT;
+		goto free_ma;
+	}
+
 	ret = i915_mutex_lock_interruptible(dev);
-	if (ret)
-		return ret;
+	if (ret != 0)
+		goto unlocked;
 
 	obj = to_intel_bo(drm_gem_object_lookup(dev, file, args->handle));
 	if (&obj->base == NULL) {
@@ -547,34 +555,37 @@ i915_gem_pwrite_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
-	ret = -EFAULT;
-	/* We can only do the GTT pwrite on untiled buffers, as otherwise
-	 * it would end up going through the fenced access, and we'll get
-	 * different detiling behavior between reading and writing.
-	 * pread/pwrite currently are reading and writing from the CPU
-	 * perspective, requiring manual detiling by the client.
-	 */
 	if (obj->phys_obj) {
 		ret = i915_gem_phys_pwrite(dev, obj, args, file);
-		goto out;
-	}
-
-	if (obj->cache_level == I915_CACHE_NONE &&
-	    obj->tiling_mode == I915_TILING_NONE &&
-	    obj->base.write_domain != I915_GEM_DOMAIN_CPU) {
-		ret = i915_gem_gtt_pwrite_fast(dev, obj, args, file);
-		/* Note that the gtt paths might fail with non-page-backed user
-		 * pointers (e.g. gtt mappings when moving data between
-		 * textures). Fallback to the shmem path in that case. */
-	}
-
-	if (ret == -EFAULT || ret == -ENOSPC)
+	} else if (obj->gtt_space &&
+		    obj->base.write_domain != I915_GEM_DOMAIN_CPU) {
+		ret = i915_gem_object_pin(obj, 0, true, false);
+		if (ret != 0)
+			goto out;
+		ret = i915_gem_object_set_to_gtt_domain(obj, true);
+		if (ret != 0)
+			goto out_unpin;
+		ret = i915_gem_object_put_fence(obj);
+		if (ret != 0)
+			goto out_unpin;
+		ret = i915_gem_gtt_write(dev, obj, args->data_ptr, args->size,
+		    args->offset, file);
+out_unpin:
+		i915_gem_object_unpin(obj);
+	} else {
+		ret = i915_gem_object_set_to_cpu_domain(obj, true);
+		if (ret != 0)
+			goto out;
 		ret = i915_gem_shmem_pwrite(dev, obj, args, file);
-
+	}
 out:
 	drm_gem_object_unreference(&obj->base);
 unlock:
 	DRM_UNLOCK(dev);
+unlocked:
+	vm_page_unhold_pages(ma, npages);
+free_ma:
+	drm_free(ma, M_DRM);
 	return ret;
 }
 
