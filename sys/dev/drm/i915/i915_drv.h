@@ -30,12 +30,12 @@
 #ifndef _I915_DRV_H_
 #define _I915_DRV_H_
 
-#include <dev/agp/intel-gtt.h>
 #include "i915_reg.h"
 #include "intel_bios.h"
 #include "intel_ringbuffer.h"
 #include <linux/completion.h>
 #include <linux/i2c.h>
+#include <drm/intel-gtt.h>
 #include <linux/kref.h>
 #include <linux/workqueue.h>
 
