@@ -28,7 +28,7 @@
 .\"	@(#)netstat.1	8.8 (Berkeley) 4/18/94
 .\" $FreeBSD: src/usr.bin/netstat/netstat.1,v 1.22.2.13 2003/05/03 22:10:02 keramida Exp $
 .\"
-.Dd July 12, 2008
+.Dd November 23, 2014
 .Dt NETSTAT 1
 .Os
 .Sh NAME
@@ -86,7 +86,7 @@ but show ports symbolically.
 .Bk -words
 .Nm
 .Fl i | I Ar interface
-.Op Fl aBbdnt
+.Op Fl aBbdhnt
 .Op Fl f Ar address_family
 .Op Fl M Ar core
 .Op Fl N Ar system
@@ -114,6 +114,9 @@ If
 .Fl d
 is also present, show the number of dropped packets.
 If
+.Fl h
+is also present, print all counters in human readable form.
+If
 .Fl t
 is also present, show the contents of watchdog timers.
 If
@@ -125,7 +128,7 @@ of current buffer usage.
 .Nm
 .Fl w Ar wait
 .Op Fl I Ar interface
-.Op Fl d
+.Op Fl dh
 .Op Fl M Ar core
 .Op Fl N Ar system
 .Ek
@@ -140,6 +143,9 @@ or a single
 If
 .Fl d
 is also present, show the number of dropped packets.
+If
+.Fl h
+is also present, print counters in human readable form.
 .It Xo
 .Bk -words
 .Nm
