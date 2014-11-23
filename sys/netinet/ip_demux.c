@@ -372,15 +372,17 @@ lwkt_port_t
 tcp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 {
 	struct ip *ip = vip;
-	struct tcphdr *th;
-	struct in_addr faddr;
-	int cpu;
+	inp_notify_t notify;
+	int cpu, arg;
 
-	faddr = ((struct sockaddr_in *)sa)->sin_addr;
-	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
-		return(NULL);
-	if (ip == NULL || PRC_IS_REDIRECT(cmd) || cmd == PRC_HOSTDEAD) {
+	notify = tcp_get_inpnotify(cmd, sa, &arg, &ip, &cpu);
+	if (notify == NULL)
+		return NULL;
+
+	if (cpu == ncpus) {
 		/*
+		 * Go through all CPUs.
+		 *
 		 * A new message will be allocated later to save necessary
 		 * information and will be forwarded to all network protocol
 		 * threads in the following way:
@@ -403,11 +405,8 @@ tcp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 		 */
 		return cpu0_ctlport(cmd, sa, vip);
 	} else {
-		th = (struct tcphdr *)((caddr_t)ip + (ip->ip_hl << 2));
-		cpu = tcp_addrcpu(faddr.s_addr, th->th_dport,
-				  ip->ip_src.s_addr, th->th_sport);
+		return netisr_cpuport(cpu);
 	}
-	return(netisr_cpuport(cpu));
 }
 
 lwkt_port_t

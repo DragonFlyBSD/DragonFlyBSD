@@ -659,7 +659,7 @@ syncache_badack(struct in_conninfo *inc)
 }
 
 void
-syncache_unreach(struct in_conninfo *inc, struct tcphdr *th)
+syncache_unreach(struct in_conninfo *inc, const struct tcphdr *th)
 {
 	struct syncache *sc;
 	struct syncache_head *sch;

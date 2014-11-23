@@ -642,6 +642,8 @@ struct tcpcb *
 	 tcp_close (struct tcpcb *);
 void	 tcp_ctlinput(union netmsg *);
 void	 tcp_ctloutput(union netmsg *);
+inp_notify_t tcp_get_inpnotify(int cmd, const struct sockaddr *sa,
+	    int *arg, struct ip **ip0, int *cpuid);
 struct tcpcb *
 	 tcp_drop (struct tcpcb *, int);
 void	 tcp_drain (void);
@@ -713,7 +715,7 @@ void	 tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq);
 u_long	 tcp_initial_window(struct tcpcb *tp);
 void	 tcp_timer_keep_activity(struct tcpcb *tp, int thflags);
 void	 syncache_init(void);
-void	 syncache_unreach(struct in_conninfo *, struct tcphdr *);
+void	 syncache_unreach(struct in_conninfo *, const struct tcphdr *);
 int	 syncache_expand(struct in_conninfo *, struct tcphdr *,
 	     struct socket **, struct mbuf *);
 int	 syncache_add(struct in_conninfo *, struct tcpopt *,

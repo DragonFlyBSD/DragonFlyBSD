@@ -1389,25 +1389,19 @@ tcp_notifyall_oncpu(netmsg_t msg)
 		lwkt_replymsg(&nm->base.lmsg, 0);
 }
 
-void
-tcp_ctlinput(netmsg_t msg)
+inp_notify_t
+tcp_get_inpnotify(int cmd, const struct sockaddr *sa,
+    int *arg, struct ip **ip0, int *cpuid)
 {
-	int cmd = msg->ctlinput.nm_cmd;
-	struct sockaddr *sa = msg->ctlinput.nm_arg;
-	struct ip *ip = msg->ctlinput.nm_extra;
-	struct tcphdr *th;
+	struct ip *ip = *ip0;
 	struct in_addr faddr;
-	struct inpcb *inp;
-	struct tcpcb *tp;
 	inp_notify_t notify = tcp_notify;
-	tcp_seq icmpseq;
-	int arg, cpu;
 
-	faddr = ((struct sockaddr_in *)sa)->sin_addr;
+	faddr = ((const struct sockaddr_in *)sa)->sin_addr;
 	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
-		goto done;
+		return NULL;
 
-	arg = inetctlerrmap[cmd];
+	*arg = inetctlerrmap[cmd];
 	if (cmd == PRC_QUENCH) {
 		notify = tcp_quench;
 	} else if (icmp_may_rst &&
@@ -1420,7 +1414,7 @@ tcp_ctlinput(netmsg_t msg)
 		const struct icmp *icmp = (const struct icmp *)
 		    ((caddr_t)ip - offsetof(struct icmp, icmp_ip));
 
-		arg = ntohs(icmp->icmp_nextmtu);
+		*arg = ntohs(icmp->icmp_nextmtu);
 		notify = tcp_mtudisc;
 	} else if (PRC_IS_REDIRECT(cmd)) {
 		ip = NULL;
@@ -1428,19 +1422,54 @@ tcp_ctlinput(netmsg_t msg)
 	} else if (cmd == PRC_HOSTDEAD) {
 		ip = NULL;
 	} else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0) {
-		goto done;
+		return NULL;
 	}
 
+	if (cpuid != NULL) {
+		if (ip == NULL) {
+			/* Go through all CPUs */
+			*cpuid = ncpus;
+		} else {
+			const struct tcphdr *th;
+
+			th = (const struct tcphdr *)
+			    ((caddr_t)ip + (IP_VHL_HL(ip->ip_vhl) << 2));
+			*cpuid = tcp_addrcpu(faddr.s_addr, th->th_dport,
+			    ip->ip_src.s_addr, th->th_sport);
+		}
+	}
+
+	*ip0 = ip;
+	return notify;
+}
+
+void
+tcp_ctlinput(netmsg_t msg)
+{
+	int cmd = msg->ctlinput.nm_cmd;
+	struct sockaddr *sa = msg->ctlinput.nm_arg;
+	struct ip *ip = msg->ctlinput.nm_extra;
+	struct in_addr faddr;
+	inp_notify_t notify;
+	int arg;
+
+	notify = tcp_get_inpnotify(cmd, sa, &arg, &ip, NULL);
+	if (notify == NULL)
+		goto done;
+
+	faddr = ((struct sockaddr_in *)sa)->sin_addr;
 	if (ip != NULL) {
-		th = (struct tcphdr *)((caddr_t)ip +
-				       (IP_VHL_HL(ip->ip_vhl) << 2));
-		cpu = tcp_addrcpu(faddr.s_addr, th->th_dport,
-				  ip->ip_src.s_addr, th->th_sport);
-		inp = in_pcblookup_hash(&tcbinfo[cpu], faddr, th->th_dport,
+		const struct tcphdr *th;
+		struct inpcb *inp;
+
+		th = (const struct tcphdr *)
+		    ((caddr_t)ip + (IP_VHL_HL(ip->ip_vhl) << 2));
+		inp = in_pcblookup_hash(&tcbinfo[mycpuid], faddr, th->th_dport,
 					ip->ip_src, th->th_sport, 0, NULL);
 		if (inp != NULL && inp->inp_socket != NULL) {
-			icmpseq = htonl(th->th_seq);
-			tp = intotcpcb(inp);
+			tcp_seq icmpseq = htonl(th->th_seq);
+			struct tcpcb *tp = intotcpcb(inp);
+
 			if (SEQ_GEQ(icmpseq, tp->snd_una) &&
 			    SEQ_LT(icmpseq, tp->snd_max))
 				notify(inp, arg);
