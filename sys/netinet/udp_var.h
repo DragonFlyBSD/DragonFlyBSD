@@ -170,6 +170,8 @@ void			udp_shutdown (union netmsg *);
 struct lwkt_port	*udp_ctlport (int, struct sockaddr *, void *);
 struct lwkt_port	*udp_initport(void);
 struct lwkt_port	*udp_cport (int);
+inp_notify_t		udp_get_inpnotify(int, const struct sockaddr *,
+			    struct ip **, int *);
 
 #endif	/* _KERNEL */
 

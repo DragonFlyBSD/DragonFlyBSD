@@ -436,25 +436,23 @@ lwkt_port_t
 udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 {
 	struct ip *ip = vip;
-	struct udphdr *uh;
-	struct in_addr faddr;
+	inp_notify_t notify;
 	int cpu;
 
-	faddr = ((struct sockaddr_in *)sa)->sin_addr;
-	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
-		return(NULL);
-	if (ip == NULL || PRC_IS_REDIRECT(cmd) || cmd == PRC_HOSTDEAD) {
+	notify = udp_get_inpnotify(cmd, sa, &ip, &cpu);
+	if (notify == NULL)
+		return NULL;
+
+	if (cpu == ncpus) {
 		/*
+		 * Go through all CPUs.
+		 *
 		 * See the comment in tcp_ctlport.
 		 */
 		return cpu0_ctlport(cmd, sa, vip);
 	} else {
-		uh = (struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
-
-		cpu = udp_addrcpu(faddr.s_addr, ip->ip_src.s_addr,
-				  uh->uh_dport, uh->uh_sport);
+		return netisr_cpuport(cpu);
 	}
-	return (netisr_cpuport(cpu));
 }
 
 struct lwkt_port *

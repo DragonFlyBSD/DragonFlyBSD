@@ -849,20 +849,17 @@ udp_notifyall_oncpu(netmsg_t msg)
 		lwkt_replymsg(&nm->base.lmsg, 0);
 }
 
-void
-udp_ctlinput(netmsg_t msg)
+inp_notify_t
+udp_get_inpnotify(int cmd, const struct sockaddr *sa,
+    struct ip **ip0, int *cpuid)
 {
-	struct sockaddr *sa = msg->ctlinput.nm_arg;
-	struct ip *ip = msg->ctlinput.nm_extra;
-	int cmd = msg->ctlinput.nm_cmd;
-	struct udphdr *uh;
-	inp_notify_t notify = udp_notify;
 	struct in_addr faddr;
-	struct inpcb *inp;
+	struct ip *ip = *ip0;
+	inp_notify_t notify = udp_notify;
 
-	faddr = ((struct sockaddr_in *)sa)->sin_addr;
+	faddr = ((const struct sockaddr_in *)sa)->sin_addr;
 	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
-		goto done;
+		return NULL;
 
 	if (PRC_IS_REDIRECT(cmd)) {
 		ip = NULL;
@@ -870,11 +867,46 @@ udp_ctlinput(netmsg_t msg)
 	} else if (cmd == PRC_HOSTDEAD) {
 		ip = NULL;
 	} else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0) {
-		goto done;
+		return NULL;
 	}
 
+	if (cpuid != NULL) {
+		if (ip == NULL) {
+			/* Go through all CPUs */
+			*cpuid = ncpus;
+		} else {
+			const struct udphdr *uh;
+
+			uh = (const struct udphdr *)
+			    ((caddr_t)ip + (ip->ip_hl << 2));
+			*cpuid = udp_addrcpu(faddr.s_addr, ip->ip_src.s_addr,
+			    uh->uh_dport, uh->uh_sport);
+		}
+	}
+
+	*ip0 = ip;
+	return notify;
+}
+
+void
+udp_ctlinput(netmsg_t msg)
+{
+	struct sockaddr *sa = msg->ctlinput.nm_arg;
+	struct ip *ip = msg->ctlinput.nm_extra;
+	int cmd = msg->ctlinput.nm_cmd;
+	inp_notify_t notify;
+	struct in_addr faddr;
+
+	notify = udp_get_inpnotify(cmd, sa, &ip, NULL);
+	if (notify == NULL)
+		goto done;
+
+	faddr = ((struct sockaddr_in *)sa)->sin_addr;
 	if (ip) {
-		uh = (struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
+		const struct udphdr *uh;
+		struct inpcb *inp;
+
+		uh = (const struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
 		inp = in_pcblookup_hash(&udbinfo[mycpuid], faddr, uh->uh_dport,
 					ip->ip_src, uh->uh_sport, 0, NULL);
 		if (inp != NULL && inp->inp_socket != NULL)
