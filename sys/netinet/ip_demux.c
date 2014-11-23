@@ -451,8 +451,8 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 	} else {
 		uh = (struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
 
-		cpu = udp_addrcpu(faddr.s_addr, ip->ip_src.s_addr,
-				  uh->uh_dport, uh->uh_sport);
+		cpu = udp_addrcpu(faddr.s_addr, uh->uh_dport,
+				  ip->ip_src.s_addr, uh->uh_sport);
 	}
 	return (netisr_cpuport(cpu));
 }
