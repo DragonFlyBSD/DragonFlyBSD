@@ -50,6 +50,7 @@
 #endif
 #include <arpa/inet.h>
 
+#include <libutil.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,13 +78,23 @@ show_stat(const char *fmt, int width, u_long value, short showvalue)
 {
 	char newfmt[32];
 
-	/* Construct the format string */
-	if (showvalue) {
-		sprintf(newfmt, "%%%d%s", width, fmt);
-		printf(newfmt, value);
-	} else {
+	if (! showvalue) {
+		/* no value, just the dash */
 		sprintf(newfmt, "%%%ds", width);
 		printf(newfmt, "-");
+		return;
+	}
+
+	if (hflag) {		/* human-readable */
+		char buf[5];
+		humanize_number(buf, sizeof buf, (int64_t) value, "",
+				HN_AUTOSCALE,
+				HN_NOSPACE | HN_DECIMAL);
+		sprintf(newfmt, "%%%ds", width);
+		printf(newfmt, buf);
+	} else {
+		sprintf(newfmt, "%%%d%s", width, fmt);
+		printf(newfmt, value);
 	}
 }
 
@@ -687,16 +698,16 @@ loop:
 			off = (u_long)TAILQ_NEXT(&ifnet, if_link);
 		}
 		if (!first) {
-			printf("%10lu %5lu %10lu %10lu %5lu %10lu %5lu",
-				sum->ift_ip - total->ift_ip,
-				sum->ift_ie - total->ift_ie,
-				sum->ift_ib - total->ift_ib,
-				sum->ift_op - total->ift_op,
-				sum->ift_oe - total->ift_oe,
-				sum->ift_ob - total->ift_ob,
-				sum->ift_co - total->ift_co);
+			/* %10lu %5lu %10lu %10lu %5lu %10lu %5lu */
+			show_stat("lu", 10,   sum->ift_ip - total->ift_ip, 1);
+			show_stat("lu",  5+1, sum->ift_ie - total->ift_ie, 1);
+			show_stat("lu", 10+1, sum->ift_ib - total->ift_ib, 1);
+			show_stat("lu", 10+1, sum->ift_op - total->ift_op, 1);
+			show_stat("lu",  5+1, sum->ift_oe - total->ift_oe, 1);
+			show_stat("lu", 10+1, sum->ift_ob - total->ift_ob, 1);
+			show_stat("lu",  5+1, sum->ift_co - total->ift_co, 1);
 			if (dflag)
-				printf(" %5u", sum->ift_dr - total->ift_dr);
+				show_stat("u", 5+1, sum->ift_dr - total->ift_dr, 1);
 		}
 		*total = *sum;
 	}
