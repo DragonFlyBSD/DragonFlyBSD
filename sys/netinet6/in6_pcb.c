@@ -892,7 +892,7 @@ in6_mapped_peeraddr_dispatch(netmsg_t msg)
 void
 in6_pcbnotify(struct inpcbinfo *pcbinfo, struct sockaddr *dst, in_port_t fport,
     const struct sockaddr *src, in_port_t lport, int cmd, int arg,
-    void (*notify) (struct inpcb *, int))
+    inp_notify_t notify)
 {
 	struct inpcb *inp, *marker;
 	struct sockaddr_in6 sa6_src, *sa6_dst;

@@ -487,6 +487,8 @@ extern int	ipport_hilastauto;
 union netmsg;
 struct xinpcb;
 
+typedef	void	(*inp_notify_t)(struct inpcb *, int);
+
 void	in_pcbportrange(u_short *, u_short *, u_short, u_short);
 void	in_pcbpurgeif0 (struct inpcbinfo *, struct ifnet *);
 void	in_losing (struct inpcb *);
@@ -527,7 +529,7 @@ struct inpcb *
 			       struct in_addr, u_int, struct in_addr, u_int,
 			       boolean_t, struct ifnet *, const struct mbuf *);
 void	in_pcbnotifyall (struct inpcbinfo *, struct in_addr,
-	    int, void (*)(struct inpcb *, int));
+	    int, inp_notify_t);
 int	in_setpeeraddr (struct socket *so, struct sockaddr **nam);
 void	in_setpeeraddr_dispatch(union netmsg *);
 int	in_setsockaddr (struct socket *so, struct sockaddr **nam);

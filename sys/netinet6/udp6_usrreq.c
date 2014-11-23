@@ -455,7 +455,7 @@ udp6_ctlinput(netmsg_t msg)
 	int off = 0;
 	struct ip6ctlparam *ip6cp = NULL;
 	const struct sockaddr_in6 *sa6_src = NULL;
-	void (*notify) (struct inpcb *, int) = udp_notify;
+	inp_notify_t notify = udp_notify;
 	struct udp_portonly {
 		u_int16_t uh_sport;
 		u_int16_t uh_dport;

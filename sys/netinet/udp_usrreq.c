@@ -829,7 +829,7 @@ udp_notify(struct inpcb *inp, int error)
 
 struct netmsg_udp_notify {
 	struct netmsg_base base;
-	void		(*nm_notify)(struct inpcb *, int);
+	inp_notify_t	nm_notify;
 	struct in_addr	nm_faddr;
 	int		nm_arg;
 };
@@ -856,7 +856,7 @@ udp_ctlinput(netmsg_t msg)
 	struct ip *ip = msg->ctlinput.nm_extra;
 	int cmd = msg->ctlinput.nm_cmd;
 	struct udphdr *uh;
-	void (*notify)(struct inpcb *, int) = udp_notify;
+	inp_notify_t notify = udp_notify;
 	struct in_addr faddr;
 	struct inpcb *inp;
 

@@ -1368,7 +1368,7 @@ SYSCTL_PROC(_net_inet6_tcp6, OID_AUTO, getcred, (CTLTYPE_OPAQUE | CTLFLAG_RW),
 
 struct netmsg_tcp_notify {
 	struct netmsg_base base;
-	void		(*nm_notify)(struct inpcb *, int);
+	inp_notify_t	nm_notify;
 	struct in_addr	nm_faddr;
 	int		nm_arg;
 };
@@ -1399,7 +1399,7 @@ tcp_ctlinput(netmsg_t msg)
 	struct in_addr faddr;
 	struct inpcb *inp;
 	struct tcpcb *tp;
-	void (*notify)(struct inpcb *, int) = tcp_notify;
+	inp_notify_t notify = tcp_notify;
 	tcp_seq icmpseq;
 	int arg, cpu;
 
@@ -1482,7 +1482,7 @@ tcp6_ctlinput(netmsg_t msg)
 	struct sockaddr *sa = msg->ctlinput.nm_arg;
 	void *d = msg->ctlinput.nm_extra;
 	struct tcphdr th;
-	void (*notify) (struct inpcb *, int) = tcp_notify;
+	inp_notify_t notify = tcp_notify;
 	struct ip6_hdr *ip6;
 	struct mbuf *m;
 	struct ip6ctlparam *ip6cp = NULL;

@@ -287,7 +287,7 @@ rip6_ctlinput(netmsg_t msg)
 	void *d = msg->ctlinput.nm_extra;
 	struct ip6ctlparam *ip6cp = NULL;
 	const struct sockaddr_in6 *sa6_src = NULL;
-	void (*notify) (struct inpcb *, int) = in6_rtchange;
+	inp_notify_t notify = in6_rtchange;
 
 	if (sa->sa_family != AF_INET6 ||
 	    sa->sa_len != sizeof(struct sockaddr_in6))

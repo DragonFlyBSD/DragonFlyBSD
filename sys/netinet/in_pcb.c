@@ -1156,7 +1156,7 @@ in_setpeeraddr_dispatch(netmsg_t msg)
 
 void
 in_pcbnotifyall(struct inpcbinfo *pcbinfo, struct in_addr faddr, int err,
-		void (*notify)(struct inpcb *, int))
+    inp_notify_t notify)
 {
 	struct inpcb *inp, *marker;
 

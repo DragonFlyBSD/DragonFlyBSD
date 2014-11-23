@@ -75,6 +75,10 @@
 #include <sys/types.h>
 #endif
 
+#ifndef _NETINET_IN_PCB_H_
+#include <netinet/in_pcb.h>
+#endif
+
 #define	satosin6(sa)	((struct sockaddr_in6 *)(sa))
 #define	sin6tosa(sin6)	((struct sockaddr *)(sin6))
 #define	ifatoia6(ifa)	((struct in6_ifaddr *)(ifa))
@@ -114,7 +118,7 @@ struct	inpcb *
 				u_int, int, struct ifnet *);
 void	in6_pcbnotify (struct inpcbinfo *, struct sockaddr *,
 			   in_port_t, const struct sockaddr *, in_port_t,
-			   int, int, void (*)(struct inpcb *, int));
+			   int, int, inp_notify_t);
 void	in6_rtchange (struct inpcb *, int);
 void	in6_setpeeraddr_dispatch (union netmsg *);
 void	in6_setsockaddr_dispatch (union netmsg *);
