@@ -332,14 +332,6 @@ ip_hashcheck(struct mbuf *m, const struct pktinfo *pi)
 {
 	KASSERT((m->m_flags & M_HASH), ("no valid packet hash"));
 
-	/*
-	 * XXX generic packet handling defrag on CPU 0 for now.
-	 */
-	if (pi->pi_flags & PKTINFO_FLAG_FRAG) {
-		m->m_pkthdr.hash = 0;
-		return;
-	}
-
 	switch (pi->pi_l3proto) {
 	case IPPROTO_TCP:
 	case IPPROTO_UDP:
