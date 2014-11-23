@@ -10,8 +10,7 @@ SRCS=	ssh.c readconf.c clientloop.c sshtty.c \
 	sshconnect.c sshconnect1.c sshconnect2.c mux.c \
 	roaming_common.c roaming_client.c
 
-X11BASE?=	/usr/local
-CFLAGS+= -DXAUTH_PATH=\"${X11BASE}/bin/xauth\"
+CFLAGS+= -DXAUTH_PATH=\"/usr/local/bin/xauth\"
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
