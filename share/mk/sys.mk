@@ -26,6 +26,8 @@ unix		?=	We run FreeBSD, not UNIX.
 
 .LIBS:		.a
 
+X11BASE		?=	/usr/local
+
 AR		?=	ar
 NXAR		?=	${NXENV} ${AR}
 .if defined(%POSIX)
