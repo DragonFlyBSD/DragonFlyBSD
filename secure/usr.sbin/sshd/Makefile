@@ -33,8 +33,7 @@ CFLAGS+=-DUSE_PAM -DHAVE_SECURITY_PAM_APPL_H \
 LDADD+=	-lopie
 DPADD+=	${LIBOPIE}
 
-X11BASE?=	/usr/local
-CFLAGS+= -DXAUTH_PATH=\"${X11BASE}/bin/xauth\"
+CFLAGS+= -DXAUTH_PATH=\"/usr/local/bin/xauth\"
 
 LDADD+=	-lcrypt -lwrap ${MINUSLPAM}
 DPADD+=	${LIBCRYPT} ${LIBWRAP} ${LIBPAM}
