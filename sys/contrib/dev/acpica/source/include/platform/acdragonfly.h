@@ -175,6 +175,8 @@
 #define	ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsWaitEventsComplete
 #define	AcpiOsWaitEventsComplete()
 
+#define	USE_NATIVE_ALLOCATE_ZEROED
+
 #define ACPI_SPINLOCK	struct acpi_spinlock *
 struct acpi_spinlock;
 

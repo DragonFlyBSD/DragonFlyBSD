@@ -64,6 +64,12 @@ AcpiOsAllocate(ACPI_SIZE Size)
     return (kmalloc(Size, M_ACPICA, M_INTWAIT));
 }
 
+void *
+AcpiOsAllocateZeroed(ACPI_SIZE Size)
+{
+    return (kmalloc(Size, M_ACPICA, M_INTWAIT | M_ZERO));
+}
+
 void
 AcpiOsFree(void *Memory)
 {
