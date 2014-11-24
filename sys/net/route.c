@@ -357,7 +357,7 @@ rtfree_remote(struct rtentry *rt)
 	lwkt_sendmsg(netisr_cpuport(rt->rt_cpuid), lmsg);
 }
 
-static int
+int
 rtredirect_oncpu(struct sockaddr *dst, struct sockaddr *gateway,
 		 struct sockaddr *netmask, int flags, struct sockaddr *src)
 {

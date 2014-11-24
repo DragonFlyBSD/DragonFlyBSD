@@ -218,6 +218,18 @@ kpfctlinput(int cmd, struct sockaddr *sa)
 }
 
 void
+kpfctlinput_direct(int cmd, struct sockaddr *sa)
+{
+	struct domain *dp;
+	struct protosw *pr;
+
+	SLIST_FOREACH(dp, &domains, dom_next) {
+		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
+			so_pr_ctlinput_direct(pr, cmd, sa, NULL);
+	}
+}
+
+void
 kpfctlinput2(int cmd, struct sockaddr *sa, void *ctlparam)
 {
 	struct domain *dp;

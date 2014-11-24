@@ -404,6 +404,8 @@ int	 rtchange (struct ifaddr *, struct ifaddr *);
 int	 rtioctl (u_long, caddr_t, struct ucred *);
 void	 rtredirect (struct sockaddr *, struct sockaddr *,
 	    struct sockaddr *, int, struct sockaddr *);
+int	 rtredirect_oncpu (struct sockaddr *, struct sockaddr *,
+	    struct sockaddr *, int, struct sockaddr *);
 int	 rtrequest (int, struct sockaddr *,
 	    struct sockaddr *, struct sockaddr *, int, struct rtentry **);
 int	 rtrequest_global (int, struct sockaddr *,

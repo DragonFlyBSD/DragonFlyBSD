@@ -74,6 +74,8 @@ so_pru_soreceive(struct socket *so, struct sockaddr **paddr, struct uio *uio,
 		controlp, flagsp));
 }
 
+struct lwkt_port;
+
 void so_pru_abort (struct socket *so);
 void so_pru_abort_async (struct socket *so);
 void so_pru_abort_direct (struct socket *so);
@@ -110,7 +112,11 @@ int so_pru_sense (struct socket *so, struct stat *sb);
 int so_pru_shutdown (struct socket *so);
 int so_pru_sockaddr (struct socket *so, struct sockaddr **nam);
 int so_pr_ctloutput(struct socket *so, struct sockopt *sopt);
+struct lwkt_port *so_pr_ctlport(struct protosw *pr, int cmd,
+		struct sockaddr *arg, void *extra, int *cpuid);
 void so_pr_ctlinput(struct protosw *pr, int cmd,
+		struct sockaddr *arg, void *extra);
+void so_pr_ctlinput_direct(struct protosw *pr, int cmd,
 		struct sockaddr *arg, void *extra);
 
 static __inline int

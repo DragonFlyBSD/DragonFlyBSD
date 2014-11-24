@@ -548,9 +548,10 @@ netisr_register_rollup(netisr_ru_t ru_func, int prio)
  */
 lwkt_port_t
 cpu0_ctlport(int cmd __unused, struct sockaddr *sa __unused,
-	     void *extra __unused)
+    void *extra __unused, int *cpuid)
 {
-	return (&netisr_cpu[0].td_msgport);
+	*cpuid = 0;
+	return netisr_cpuport(*cpuid);
 }
 
 /*

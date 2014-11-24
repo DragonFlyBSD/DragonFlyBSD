@@ -518,6 +518,17 @@ so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
 	return (error);
 }
 
+struct lwkt_port *
+so_pr_ctlport(struct protosw *pr, int cmd, struct sockaddr *arg, 
+    void *extra, int *cpuid)
+{
+	if (pr->pr_ctlport == NULL)
+		return NULL;
+	KKASSERT(pr->pr_ctlinput != NULL);
+
+	return pr->pr_ctlport(cmd, arg, extra, cpuid);
+}
+
 /*
  * Protocol control input, typically via icmp.
  *
@@ -533,19 +544,45 @@ so_pr_ctlinput(struct protosw *pr, int cmd, struct sockaddr *arg, void *extra)
 {
 	struct netmsg_pr_ctlinput msg;
 	lwkt_port_t port;
+	int cpuid;
 
-	if (pr->pr_ctlport == NULL)
-		return;
-	KKASSERT(pr->pr_ctlinput != NULL);
-	port = pr->pr_ctlport(cmd, arg, extra);
+	port = so_pr_ctlport(pr, cmd, arg, extra, &cpuid);
 	if (port == NULL)
 		return;
 	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
 		    0, pr->pr_ctlinput);
 	msg.nm_cmd = cmd;
+	msg.nm_direct = 0;
 	msg.nm_arg = arg;
 	msg.nm_extra = extra;
 	lwkt_domsg(port, &msg.base.lmsg, 0);
+}
+
+void
+so_pr_ctlinput_direct(struct protosw *pr, int cmd, struct sockaddr *arg,
+    void *extra)
+{
+	struct netmsg_pr_ctlinput msg;
+	netisr_fn_t func;
+	lwkt_port_t port;
+	int cpuid;
+
+	port = so_pr_ctlport(pr, cmd, arg, extra, &cpuid);
+	if (port == NULL)
+		return;
+	if (cpuid != ncpus && cpuid != mycpuid)
+		return;
+
+	func = pr->pr_ctlinput;
+	netmsg_init(&msg.base, NULL, &netisr_adone_rport, 0, func);
+	msg.base.lmsg.ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
+	msg.base.lmsg.ms_flags |= MSGF_SYNC;
+	msg.nm_cmd = cmd;
+	msg.nm_direct = 1;
+	msg.nm_arg = arg;
+	msg.nm_extra = extra;
+	func((netmsg_t)&msg);
+	KKASSERT(msg.base.lmsg.ms_flags & MSGF_DONE);
 }
 
 /*

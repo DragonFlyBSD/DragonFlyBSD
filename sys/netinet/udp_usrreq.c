@@ -893,11 +893,11 @@ udp_ctlinput(netmsg_t msg)
 {
 	struct sockaddr *sa = msg->ctlinput.nm_arg;
 	struct ip *ip = msg->ctlinput.nm_extra;
-	int cmd = msg->ctlinput.nm_cmd;
+	int cmd = msg->ctlinput.nm_cmd, cpuid;
 	inp_notify_t notify;
 	struct in_addr faddr;
 
-	notify = udp_get_inpnotify(cmd, sa, &ip, NULL);
+	notify = udp_get_inpnotify(cmd, sa, &ip, &cpuid);
 	if (notify == NULL)
 		goto done;
 
@@ -906,11 +906,22 @@ udp_ctlinput(netmsg_t msg)
 		const struct udphdr *uh;
 		struct inpcb *inp;
 
+		if (cpuid != mycpuid)
+			goto done;
+
 		uh = (const struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
 		inp = in_pcblookup_hash(&udbinfo[mycpuid], faddr, uh->uh_dport,
 					ip->ip_src, uh->uh_sport, 0, NULL);
 		if (inp != NULL && inp->inp_socket != NULL)
 			notify(inp, inetctlerrmap[cmd]);
+	} else if (msg->ctlinput.nm_direct) {
+		if (cpuid != ncpus && cpuid != mycpuid)
+			goto done;
+		if (mycpuid >= ncpus2)
+			goto done;
+
+		in_pcbnotifyall(&udbinfo[mycpuid], faddr, inetctlerrmap[cmd],
+		    notify);
 	} else {
 		struct netmsg_udp_notify *nm;
 

@@ -97,12 +97,14 @@ struct m_hdr {
 	union {
 		struct netmsg_packet mhm_pkt;	/* hardware->proto stack msg */
 		struct netmsg_pru_send mhm_snd;	/* usrspace->proto stack msg */
-		struct netmsg_inarp mhm_arp;	/* proto stack<->route msg */
+		struct netmsg_inarp mhm_arp;	/* proto stack arpinput msg */
+		struct netmsg_ctlinput mhm_ctl;	/* proto stack ctlinput msg */
 	} mh_msgu;
 };
 #define mh_netmsg	mh_msgu.mhm_pkt
 #define mh_sndmsg	mh_msgu.mhm_snd
 #define mh_arpmsg	mh_msgu.mhm_arp
+#define mh_ctlmsg	mh_msgu.mhm_ctl
 
 /* pf stuff */
 struct pkthdr_pf {

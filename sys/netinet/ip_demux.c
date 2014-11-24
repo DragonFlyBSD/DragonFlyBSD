@@ -355,17 +355,17 @@ tcp_soport(struct socket *so, struct sockaddr *nam,
  * operation.
  */
 lwkt_port_t
-tcp_ctlport(int cmd, struct sockaddr *sa, void *vip)
+tcp_ctlport(int cmd, struct sockaddr *sa, void *vip, int *cpuid)
 {
 	struct ip *ip = vip;
 	inp_notify_t notify;
-	int cpu, arg;
+	int arg;
 
-	notify = tcp_get_inpnotify(cmd, sa, &arg, &ip, &cpu);
+	notify = tcp_get_inpnotify(cmd, sa, &arg, &ip, cpuid);
 	if (notify == NULL)
 		return NULL;
 
-	if (cpu == ncpus) {
+	if (*cpuid == ncpus) {
 		/*
 		 * Go through all CPUs.
 		 *
@@ -389,9 +389,9 @@ tcp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 		 * netisr0 ---------> netisr1 ---------> netisrN
 		 *                                       [msg is kfree()ed]
 		 */
-		return cpu0_ctlport(cmd, sa, vip);
+		return netisr_cpuport(0);
 	} else {
-		return netisr_cpuport(cpu);
+		return netisr_cpuport(*cpuid);
 	}
 }
 
@@ -418,25 +418,24 @@ udp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
  * operation.
  */
 lwkt_port_t
-udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
+udp_ctlport(int cmd, struct sockaddr *sa, void *vip, int *cpuid)
 {
 	struct ip *ip = vip;
 	inp_notify_t notify;
-	int cpu;
 
-	notify = udp_get_inpnotify(cmd, sa, &ip, &cpu);
+	notify = udp_get_inpnotify(cmd, sa, &ip, cpuid);
 	if (notify == NULL)
 		return NULL;
 
-	if (cpu == ncpus) {
+	if (*cpuid == ncpus) {
 		/*
 		 * Go through all CPUs.
 		 *
 		 * See the comment in tcp_ctlport.
 		 */
-		return cpu0_ctlport(cmd, sa, vip);
+		return netisr_cpuport(0);
 	} else {
-		return netisr_cpuport(cpu);
+		return netisr_cpuport(*cpuid);
 	}
 }
 

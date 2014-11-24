@@ -109,7 +109,7 @@ struct protosw {
 					/* control input (from below) */
 	void	(*pr_ctloutput)(netmsg_t);
 					/* control output (from above) */
-	struct lwkt_port *(*pr_ctlport)(int, struct sockaddr *, void *);
+	struct lwkt_port *(*pr_ctlport)(int, struct sockaddr *, void *, int *);
 
 	/*
 	 * Utility hooks, not called with any particular context.
@@ -316,7 +316,7 @@ int	pru_soreceive_notsupp(struct socket *so,
 
 struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *,
 			      struct mbuf **);
-struct lwkt_port *cpu0_ctlport(int, struct sockaddr *, void *);
+struct lwkt_port *cpu0_ctlport(int, struct sockaddr *, void *, int *);
 
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
@@ -395,6 +395,7 @@ const char *prcorequests[] = {
 #ifdef _KERNEL
 
 void	kpfctlinput (int, struct sockaddr *);
+void	kpfctlinput_direct (int, struct sockaddr *);
 void	kpfctlinput2 (int, struct sockaddr *, void *);
 struct protosw *pffindproto (int family, int protocol, int type);
 struct protosw *pffindtype (int family, int type);

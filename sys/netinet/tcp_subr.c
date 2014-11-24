@@ -1451,9 +1451,9 @@ tcp_ctlinput(netmsg_t msg)
 	struct ip *ip = msg->ctlinput.nm_extra;
 	struct in_addr faddr;
 	inp_notify_t notify;
-	int arg;
+	int arg, cpuid;
 
-	notify = tcp_get_inpnotify(cmd, sa, &arg, &ip, NULL);
+	notify = tcp_get_inpnotify(cmd, sa, &arg, &ip, &cpuid);
 	if (notify == NULL)
 		goto done;
 
@@ -1461,6 +1461,9 @@ tcp_ctlinput(netmsg_t msg)
 	if (ip != NULL) {
 		const struct tcphdr *th;
 		struct inpcb *inp;
+
+		if (cpuid != mycpuid)
+			goto done;
 
 		th = (const struct tcphdr *)
 		    ((caddr_t)ip + (IP_VHL_HL(ip->ip_vhl) << 2));
@@ -1485,6 +1488,13 @@ tcp_ctlinput(netmsg_t msg)
 #endif
 			syncache_unreach(&inc, th);
 		}
+	} else if (msg->ctlinput.nm_direct) {
+		if (cpuid != ncpus && cpuid != mycpuid)
+			goto done;
+		if (mycpuid >= ncpus2)
+			goto done;
+
+		in_pcbnotifyall(&tcbinfo[mycpuid], faddr, arg, notify);
 	} else {
 		struct netmsg_tcp_notify *nm;
 

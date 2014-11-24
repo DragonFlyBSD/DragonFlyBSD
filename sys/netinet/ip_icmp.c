@@ -47,6 +47,8 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/netisr2.h>
+#include <net/netmsg2.h>
 #include <net/route.h>
 
 #define _IP_VHL
@@ -249,6 +251,345 @@ freeit:
 	m_freem(n);
 }
 
+static void
+icmp_ctlinput_done_handler(netmsg_t nmsg)
+{
+	struct netmsg_ctlinput *msg = (struct netmsg_ctlinput *)nmsg;
+	struct mbuf *m = msg->m;
+	int hlen = msg->hlen;
+
+	rip_input(&m, &hlen, msg->proto);
+}
+
+static void
+icmp_ctlinput_done(struct mbuf *m)
+{
+	struct netmsg_ctlinput *msg = &m->m_hdr.mh_ctlmsg;
+
+	netmsg_init(&msg->base, NULL, &netisr_apanic_rport, 0,
+	    icmp_ctlinput_done_handler);
+	lwkt_sendmsg(netisr_cpuport(0), &msg->base.lmsg);
+}
+
+static void
+icmp_mtudisc(struct mbuf *m, int hlen)
+{
+	struct sockaddr_in icmpsrc = { sizeof(struct sockaddr_in), AF_INET };
+	struct rtentry *rt;
+	struct icmp *icp;
+
+	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
+
+	icp = mtodoff(m, struct icmp *, hlen);
+	icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
+
+	/*
+	 * MTU discovery:
+	 * If we got a needfrag and there is a host route to the original
+	 * destination, and the MTU is not locked, then set the MTU in the
+	 * route to the suggested new value (if given) and then notify as
+	 * usual.  The ULPs will notice that the MTU has changed and adapt
+	 * accordingly.  If no new MTU was suggested, then we guess a new
+	 * one less than the current value.  If the new MTU is unreasonably
+	 * small (arbitrarily set at 296), then we reset the MTU to the
+	 * interface value and enable the lock bit, indicating that we are
+	 * no longer doing MTU discovery.
+	 */
+	rt = rtpurelookup((struct sockaddr *)&icmpsrc);
+	if (rt != NULL && (rt->rt_flags & RTF_HOST) &&
+	    !(rt->rt_rmx.rmx_locks & RTV_MTU)) {
+#ifdef DEBUG_MTUDISC
+		char src_buf[INET_ADDRSTRLEN];
+#endif
+		int mtu;
+
+		mtu = ntohs(icp->icmp_nextmtu);
+		if (!mtu)
+			mtu = ip_next_mtu(rt->rt_rmx.rmx_mtu, 1);
+#ifdef DEBUG_MTUDISC
+		kprintf("MTU for %s reduced to %d\n",
+		    inet_ntop(AF_INET, &icmpsrc.sin_addr,
+			src_buf, INET_ADDRSTRLEN), mtu);
+#endif
+		if (mtu < 296) {
+			/* rt->rt_rmx.rmx_mtu = rt->rt_ifp->if_mtu; */
+			rt->rt_rmx.rmx_locks |= RTV_MTU;
+		} else if (rt->rt_rmx.rmx_mtu > mtu) {
+			rt->rt_rmx.rmx_mtu = mtu;
+		}
+	}
+	if (rt != NULL)
+		--rt->rt_refcnt;
+
+	/*
+	 * XXX if the packet contains [IPv4 AH TCP], we can't make a
+	 * notification to TCP layer.
+	 */
+	so_pr_ctlinput_direct(&inetsw[ip_protox[icp->icmp_ip.ip_p]],
+	    PRC_MSGSIZE, (struct sockaddr *)&icmpsrc, &icp->icmp_ip);
+}
+
+static void
+icmp_mtudisc_handler(netmsg_t nmsg)
+{
+	struct netmsg_ctlinput *msg = (struct netmsg_ctlinput *)nmsg;
+	int nextcpu;
+
+	icmp_mtudisc(msg->m, msg->hlen);
+
+	nextcpu = mycpuid + 1;
+	if (nextcpu < ncpus)
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &msg->base.lmsg);
+	else
+		icmp_ctlinput_done(msg->m);
+}
+
+static boolean_t
+icmp_mtudisc_start(struct mbuf *m, int hlen, int proto)
+{
+	struct netmsg_ctlinput *msg;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
+	icmp_mtudisc(m, hlen);
+
+	if (ncpus == 1) {
+		/* There is only one netisr; done */
+		return FALSE;
+	}
+
+	msg = &m->m_hdr.mh_ctlmsg;
+	netmsg_init(&msg->base, NULL, &netisr_apanic_rport, 0,
+	    icmp_mtudisc_handler);
+	msg->m = m;
+	msg->cmd = PRC_MSGSIZE;
+	msg->hlen = hlen;
+	msg->proto = proto;
+
+	lwkt_sendmsg(netisr_cpuport(1), &msg->base.lmsg);
+	return TRUE;
+}
+
+static void
+icmp_ctlinput(struct mbuf *m, int cmd, int hlen)
+{
+	struct sockaddr_in icmpsrc = { sizeof(struct sockaddr_in), AF_INET };
+	struct icmp *icp;
+
+	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
+
+	icp = mtodoff(m, struct icmp *, hlen);
+	icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
+
+	/*
+	 * XXX if the packet contains [IPv4 AH TCP], we can't make a
+	 * notification to TCP layer.
+	 */
+	so_pr_ctlinput_direct(&inetsw[ip_protox[icp->icmp_ip.ip_p]],
+	    cmd, (struct sockaddr *)&icmpsrc, &icp->icmp_ip);
+}
+
+static void
+icmp_ctlinput_handler(netmsg_t nmsg)
+{
+	struct netmsg_ctlinput *msg = (struct netmsg_ctlinput *)nmsg;
+
+	icmp_ctlinput(msg->m, msg->cmd, msg->hlen);
+	icmp_ctlinput_done(msg->m);
+}
+
+static void
+icmp_ctlinput_start(struct mbuf *m, struct lwkt_port *port,
+    int cmd, int hlen, int proto)
+{
+	struct netmsg_ctlinput *msg;
+
+	KASSERT(&curthread->td_msgport != port,
+	    ("send icmp ctlinput to the current netisr"));
+
+	msg = &m->m_hdr.mh_ctlmsg;
+	netmsg_init(&msg->base, NULL, &netisr_apanic_rport, 0,
+	    icmp_ctlinput_handler);
+	msg->m = m;
+	msg->cmd = cmd;
+	msg->hlen = hlen;
+	msg->proto = proto;
+
+	lwkt_sendmsg(port, &msg->base.lmsg);
+}
+
+static void
+icmp_ctlinput_global_handler(netmsg_t nmsg)
+{
+	struct netmsg_ctlinput *msg = (struct netmsg_ctlinput *)nmsg;
+	int nextcpu;
+
+	icmp_ctlinput(msg->m, msg->cmd, msg->hlen);
+
+	nextcpu = mycpuid + 1;
+	if (nextcpu < ncpus)
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &msg->base.lmsg);
+	else
+		icmp_ctlinput_done(msg->m);
+}
+
+static void
+icmp_ctlinput_global_start(struct mbuf *m, int cmd, int hlen, int proto)
+{
+	struct netmsg_ctlinput *msg;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+	KASSERT(ncpus > 1, ("there is only 1 cpu"));
+
+	icmp_ctlinput(m, cmd, hlen);
+
+	msg = &m->m_hdr.mh_ctlmsg;
+	netmsg_init(&msg->base, NULL, &netisr_apanic_rport, 0,
+	    icmp_ctlinput_global_handler);
+	msg->m = m;
+	msg->cmd = cmd;
+	msg->hlen = hlen;
+	msg->proto = proto;
+
+	lwkt_sendmsg(netisr_cpuport(1), &msg->base.lmsg);
+}
+
+#define ICMP_RTREDIRECT_FLAGS	(RTF_GATEWAY | RTF_HOST)
+
+static void
+icmp_redirect(struct mbuf *m, int hlen, boolean_t prt)
+{
+	struct sockaddr_in icmpsrc = { sizeof(struct sockaddr_in), AF_INET };
+	struct sockaddr_in icmpdst = { sizeof(struct sockaddr_in), AF_INET };
+	struct sockaddr_in icmpgw = { sizeof(struct sockaddr_in), AF_INET };
+	struct icmp *icp;
+	struct ip *ip;
+
+	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
+
+	ip = mtod(m, struct ip *);
+	icp = mtodoff(m, struct icmp *, hlen);
+
+	/*
+	 * Short circuit routing redirects to force immediate change
+	 * in the kernel's routing tables.  The message is also handed
+	 * to anyone listening on a raw socket (e.g. the routing daemon
+	 * for use in updating its tables).
+	 */
+#ifdef ICMPPRINTFS
+	if (icmpprintfs && prt) {
+		char dst_buf[INET_ADDRSTRLEN], gw_buf[INET_ADDRSTRLEN];
+
+		kprintf("redirect dst %s to %s\n",
+		    inet_ntop(AF_INET, &icp->icmp_ip.ip_dst,
+			dst_buf, INET_ADDRSTRLEN),
+		    inet_ntop(AF_INET, &icp->icmp_gwaddr,
+			gw_buf, INET_ADDRSTRLEN));
+	}
+#endif
+	icmpgw.sin_addr = ip->ip_src;
+	icmpdst.sin_addr = icp->icmp_gwaddr;
+	icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
+	rtredirect_oncpu((struct sockaddr *)&icmpsrc,
+	    (struct sockaddr *)&icmpdst, NULL, ICMP_RTREDIRECT_FLAGS,
+	    (struct sockaddr *)&icmpgw);
+	kpfctlinput_direct(PRC_REDIRECT_HOST, (struct sockaddr *)&icmpsrc);
+}
+
+static void
+icmp_redirect_done_handler(netmsg_t nmsg)
+{
+	struct netmsg_ctlinput *msg = (struct netmsg_ctlinput *)nmsg;
+	struct mbuf *m = msg->m;
+	int hlen = msg->hlen;
+#ifdef IPSEC
+	struct sockaddr_in icmpsrc = { sizeof(struct sockaddr_in), AF_INET };
+	struct icmp *icp = mtodoff(m, struct icmp *, hlen);;
+
+	icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
+	key_sa_routechange((struct sockaddr *)&icmpsrc);
+#endif
+	rip_input(&m, &hlen, msg->proto);
+}
+
+static void
+icmp_redirect_done(struct mbuf *m, int hlen, boolean_t dispatch_rip)
+{
+	struct rt_addrinfo rtinfo;
+	struct sockaddr_in icmpsrc = { sizeof(struct sockaddr_in), AF_INET };
+	struct sockaddr_in icmpdst = { sizeof(struct sockaddr_in), AF_INET };
+	struct sockaddr_in icmpgw = { sizeof(struct sockaddr_in), AF_INET };
+	struct icmp *icp;
+	struct ip *ip;
+
+	ip = mtod(m, struct ip *);
+	icp = mtodoff(m, struct icmp *, hlen);
+
+	icmpgw.sin_addr = ip->ip_src;
+	icmpdst.sin_addr = icp->icmp_gwaddr;
+	icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
+
+	bzero(&rtinfo, sizeof(struct rt_addrinfo));
+	rtinfo.rti_info[RTAX_DST] = (struct sockaddr *)&icmpsrc;
+	rtinfo.rti_info[RTAX_GATEWAY] = (struct sockaddr *)&icmpdst;
+	rtinfo.rti_info[RTAX_NETMASK] = NULL;
+	rtinfo.rti_info[RTAX_AUTHOR] = (struct sockaddr *)&icmpgw;
+	rt_missmsg(RTM_REDIRECT, &rtinfo, ICMP_RTREDIRECT_FLAGS, 0);
+
+	if (dispatch_rip) {
+		struct netmsg_ctlinput *msg = &m->m_hdr.mh_ctlmsg;
+
+		netmsg_init(&msg->base, NULL, &netisr_apanic_rport, 0,
+		    icmp_redirect_done_handler);
+		lwkt_sendmsg(netisr_cpuport(0), &msg->base.lmsg);
+	}
+}
+
+static void
+icmp_redirect_handler(netmsg_t nmsg)
+{
+	struct netmsg_ctlinput *msg = (struct netmsg_ctlinput *)nmsg;
+	int nextcpu;
+
+	icmp_redirect(msg->m, msg->hlen, FALSE);
+
+	nextcpu = mycpuid + 1;
+	if (nextcpu < ncpus)
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &msg->base.lmsg);
+	else
+		icmp_redirect_done(msg->m, msg->hlen, TRUE);
+}
+
+static boolean_t
+icmp_redirect_start(struct mbuf *m, int hlen, int proto)
+{
+	struct netmsg_ctlinput *msg;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
+	icmp_redirect(m, hlen, TRUE);
+
+	if (ncpus == 1) {
+		/* There is only one netisr; done */
+		icmp_redirect_done(m, hlen, FALSE);
+		return FALSE;
+	}
+
+	msg = &m->m_hdr.mh_ctlmsg;
+	netmsg_init(&msg->base, NULL, &netisr_apanic_rport, 0,
+	    icmp_redirect_handler);
+	msg->m = m;
+	msg->cmd = PRC_REDIRECT_HOST;
+	msg->hlen = hlen;
+	msg->proto = proto;
+
+	lwkt_sendmsg(netisr_cpuport(1), &msg->base.lmsg);
+	return TRUE;
+}
+
 /*
  * Process a received ICMP message.
  */
@@ -257,7 +598,6 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct sockaddr_in icmpsrc = { sizeof(struct sockaddr_in), AF_INET };
 	struct sockaddr_in icmpdst = { sizeof(struct sockaddr_in), AF_INET };
-	struct sockaddr_in icmpgw = { sizeof(struct sockaddr_in), AF_INET };
 	struct icmp *icp;
 	struct in_ifaddr *ia;
 	struct mbuf *m = *mp;
@@ -265,6 +605,9 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 	int icmplen = ip->ip_len;
 	int i, hlen;
 	int code;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	*mp = NULL;
 	hlen = *offp;
@@ -402,61 +745,62 @@ deliver:
 			kprintf("deliver to protocol %d\n", icp->icmp_ip.ip_p);
 #endif
 		icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
-#if 1
+
 		/*
-		 * MTU discovery:
-		 * If we got a needfrag and there is a host route to the
-		 * original destination, and the MTU is not locked, then
-		 * set the MTU in the route to the suggested new value
-		 * (if given) and then notify as usual.  The ULPs will
-		 * notice that the MTU has changed and adapt accordingly.
-		 * If no new MTU was suggested, then we guess a new one
-		 * less than the current value.  If the new MTU is
-		 * unreasonably small (arbitrarily set at 296), then
-		 * we reset the MTU to the interface value and enable the
-		 * lock bit, indicating that we are no longer doing MTU
-		 * discovery.
+		 * MTU discovery
 		 */
 		if (code == PRC_MSGSIZE) {
-			struct rtentry *rt;
-			int mtu;
-
-			rt = rtpurelookup((struct sockaddr *)&icmpsrc);
-			if (rt != NULL && (rt->rt_flags & RTF_HOST) &&
-			    !(rt->rt_rmx.rmx_locks & RTV_MTU)) {
-#ifdef DEBUG_MTUDISC
-				char src_buf[INET_ADDRSTRLEN];
-#endif
-				mtu = ntohs(icp->icmp_nextmtu);
-				if (!mtu)
-					mtu = ip_next_mtu(rt->rt_rmx.rmx_mtu,
-							  1);
-#ifdef DEBUG_MTUDISC
-				kprintf("MTU for %s reduced to %d\n",
-				    inet_ntop(AF_INET, &icmpsrc.sin_addr,
-				        src_buf, INET_ADDRSTRLEN), mtu);
-#endif
-				if (mtu < 296) {
-					/* rt->rt_rmx.rmx_mtu =
-						rt->rt_ifp->if_mtu; */
-					rt->rt_rmx.rmx_locks |= RTV_MTU;
-				} else if (rt->rt_rmx.rmx_mtu > mtu) {
-					rt->rt_rmx.rmx_mtu = mtu;
-				}
+			/* Run MTU discovery in all netisrs */
+			if (icmp_mtudisc_start(m, hlen, proto)) {
+				/* Forwarded; done */
+				return IPPROTO_DONE;
 			}
-			if (rt != NULL)
-				--rt->rt_refcnt;
-		}
-#endif
-		/*
-		 * XXX if the packet contains [IPv4 AH TCP], we can't make a
-		 * notification to TCP layer.
-		 */
-		so_pr_ctlinput(
-			&inetsw[ip_protox[icp->icmp_ip.ip_p]],
-			code, (struct sockaddr *)&icmpsrc, &icp->icmp_ip);
-		break;
+			/* Move on; run rip_input() directly */
+		} else {
+			struct protosw *pr;
+			struct lwkt_port *port;
+			int cpu;
 
+			pr = &inetsw[ip_protox[icp->icmp_ip.ip_p]];
+			port = so_pr_ctlport(pr, code,
+			    (struct sockaddr *)&icmpsrc, &icp->icmp_ip, &cpu);
+			if (port != NULL) {
+				if (cpu == ncpus) {
+					if (ncpus > 1) {
+						/*
+						 * Run pr_ctlinput in all
+						 * netisrs
+						 */
+						icmp_ctlinput_global_start(m,
+						    code, hlen, proto);
+						return IPPROTO_DONE;
+					}
+					/*
+					 * There is only one netisr; run
+					 * pr_ctlinput directly.
+					 */
+				} else if (cpu != mycpuid) {
+					/*
+					 * Send to the target netisr to run
+					 * pr_ctlinput.
+					 */
+					icmp_ctlinput_start(m, port,
+					    code, hlen, proto);
+					return IPPROTO_DONE;
+				}
+
+				/*
+				 * The target netisr is this netisr.
+				 *
+				 * XXX if the packet contains [IPv4 AH TCP],
+				 * we can't make a notification to TCP layer.
+				 */
+				so_pr_ctlinput_direct(pr, code,
+				    (struct sockaddr *)&icmpsrc, &icp->icmp_ip);
+			}
+			/* Move on; run rip_input() directly */
+		}
+		break;
 badcode:
 		icmpstat.icps_badcode++;
 		break;
@@ -558,16 +902,7 @@ reflect:
 			icmpstat.icps_badlen++;
 			break;
 		}
-		/*
-		 * Short circuit routing redirects to force
-		 * immediate change in the kernel's routing
-		 * tables.  The message is also handed to anyone
-		 * listening on a raw socket (e.g. the routing
-		 * daemon for use in updating its tables).
-		 */
-		icmpgw.sin_addr = ip->ip_src;
-		icmpdst.sin_addr = icp->icmp_gwaddr;
-#ifdef	ICMPPRINTFS
+#ifdef ICMPPRINTFS
 		if (icmpprintfs) {
 			char dst_buf[INET_ADDRSTRLEN], gw_buf[INET_ADDRSTRLEN];
 
@@ -579,11 +914,13 @@ reflect:
 		}
 #endif
 		icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
-		rtredirect((struct sockaddr *)&icmpsrc,
-		  (struct sockaddr *)&icmpdst,
-		  NULL, RTF_GATEWAY | RTF_HOST,
-		  (struct sockaddr *)&icmpgw);
-		kpfctlinput(PRC_REDIRECT_HOST, (struct sockaddr *)&icmpsrc);
+
+		/* Run redirect in all netisrs */
+		if (icmp_redirect_start(m, hlen, proto)) {
+			/* Forwarded; done */
+			return IPPROTO_DONE;
+		}
+		/* Move on; run rip_input() directly */
 #ifdef IPSEC
 		key_sa_routechange((struct sockaddr *)&icmpsrc);
 #endif

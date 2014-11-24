@@ -167,7 +167,7 @@ void			udp_thread_init (void);
 int			udp_input (struct mbuf **, int *, int);
 void			udp_notify (struct inpcb *inp, int error);
 void			udp_shutdown (union netmsg *);
-struct lwkt_port	*udp_ctlport (int, struct sockaddr *, void *);
+struct lwkt_port	*udp_ctlport (int, struct sockaddr *, void *, int *);
 struct lwkt_port	*udp_initport(void);
 inp_notify_t		udp_get_inpnotify(int, const struct sockaddr *,
 			    struct ip **, int *);

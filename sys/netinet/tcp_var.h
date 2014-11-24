@@ -704,7 +704,7 @@ void	 tcp_fillheaders (struct tcpcb *, void *, void *, boolean_t);
 struct lwkt_port *
 	 tcp_soport(struct socket *, struct sockaddr *, struct mbuf **);
 struct lwkt_port *
-	 tcp_ctlport(int, struct sockaddr *, void *);
+	 tcp_ctlport(int, struct sockaddr *, void *, int *);
 struct lwkt_port *
 	 tcp_initport(void);
 struct tcpcb *
