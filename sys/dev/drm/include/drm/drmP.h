@@ -102,6 +102,7 @@
 #include <linux/kref.h>
 #include <linux/list.h>
 #include <linux/mm.h>
+#include <linux/moduleparam.h>
 #include <linux/mutex.h>
 #include <linux/timer.h>
 #include <asm/io.h>
