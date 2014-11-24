@@ -260,7 +260,7 @@ struct netmsg_pr_ctloutput {
 	struct sockopt		*nm_sopt;
 };
 
-struct netmsg_pru_ctlinput {
+struct netmsg_pr_ctlinput {
 	struct netmsg_base	base;
 	int			nm_cmd;
 	struct sockaddr		*nm_arg;
@@ -282,6 +282,7 @@ union netmsg {
 	struct netmsg_so_notify_abort	notify_abort;
 
 	struct netmsg_pr_ctloutput	ctloutput;
+	struct netmsg_pr_ctlinput	ctlinput;
 
 	struct netmsg_pru_abort		abort;
 	struct netmsg_pru_accept	accept;		/* synchronous */
@@ -302,7 +303,6 @@ union netmsg {
 	struct netmsg_pru_sockaddr	sockaddr;
 	struct netmsg_pru_sosend	sosend;		/* synchronous */
 	struct netmsg_pru_soreceive	soreceive;	/* synchronous */
-	struct netmsg_pru_ctlinput	ctlinput;
 };
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */

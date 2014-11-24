@@ -531,7 +531,7 @@ so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
 void
 so_pr_ctlinput(struct protosw *pr, int cmd, struct sockaddr *arg, void *extra)
 {
-	struct netmsg_pru_ctlinput msg;
+	struct netmsg_pr_ctlinput msg;
 	lwkt_port_t port;
 
 	if (pr->pr_ctlport == NULL)
