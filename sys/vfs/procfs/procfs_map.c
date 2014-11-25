@@ -95,19 +95,26 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		int resident, privateresident;
 		char *type;
 
-		if (entry->maptype != VM_MAPTYPE_NORMAL &&
-		    entry->maptype != VM_MAPTYPE_VPAGETABLE) {
+		switch(entry->maptype) {
+		case VM_MAPTYPE_NORMAL:
+		case VM_MAPTYPE_VPAGETABLE:
+			obj = entry->object.vm_object;
+			if (obj)
+				vm_object_hold(obj);
+
+			if (obj && (obj->shadow_count == 1))
+				privateresident = obj->resident_page_count;
+			else
+				privateresident = 0;
+			break;
+		case VM_MAPTYPE_UKSMAP:
+			obj = NULL;
+			privateresident = 0;
+			break;
+		default:
+			/* ignore entry */
 			continue;
 		}
-
-		obj = entry->object.vm_object;
-		if (obj)
-			vm_object_hold(obj);
-
-		if (obj && (obj->shadow_count == 1))
-			privateresident = obj->resident_page_count;
-		else
-			privateresident = 0;
 
 		/*
 		 * Use map->hint as a poor man's ripout detector.
@@ -182,10 +189,18 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 			if (lobj != obj)
 				vm_object_drop(lobj);
 		} else {
-			type = "none";
 			flags = 0;
 			ref_count = 0;
 			shadow_count = 0;
+
+			switch(entry->maptype) {
+			case VM_MAPTYPE_UKSMAP:
+				type = "uksmap";
+				break;
+			default:
+				type = "none";
+				break;
+			}
 		}
 
 		/*
