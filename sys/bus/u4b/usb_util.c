@@ -257,12 +257,14 @@ usb_callout_timeout_wrapper(void *arg)
 
 	/*
 	 * Simulate FreeBSD's callout behaviour which allows
-	 * a lock to be acquired before the function is called
+	 * a lock to be acquired before the function is called.
+	 *
+	 * (is now implemented directly by DragonFly).
 	 */
 
-	lockmgr(uco->uco_lock, LK_EXCLUSIVE);
+	/*lockmgr(uco->uco_lock, LK_EXCLUSIVE); -- already locked by callout */
 	uco->uco_func(uco->uco_arg);
-	lockmgr(uco->uco_lock, LK_RELEASE);
+	/*lockmgr(uco->uco_lock, LK_RELEASE);*/
 	/* XXX Have to introduce flags and release lock? */
 }
 
@@ -270,7 +272,7 @@ void
 usb_callout_init_mtx_dfly(struct usb_callout *uco, struct lock *lock,
     int flags)
 {
-	callout_init(&uco->co);
+	callout_init_lk(&uco->co, lock);
 	uco->uco_lock = lock;
 	uco->uco_flags = flags;    
 }
