@@ -33,7 +33,7 @@
 #include <sys/callout.h>
 #include <sys/nata.h>
 #include <sys/queue.h>
-#include <sys/spinlock2.h>
+#include <sys/lock.h>
 #include <sys/buf.h>
 #include <sys/systm.h>
 #include <sys/taskqueue.h>
@@ -65,12 +65,12 @@ ata_drop_requests(device_t dev)
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct ata_request *request, *tmp;
 
-    spin_lock(&ch->queue_mtx);
+    lockmgr(&ch->queue_mtx, LK_EXCLUSIVE);
     TAILQ_FOREACH_MUTABLE(request, &ch->ata_queue, chain, tmp) {
 	TAILQ_REMOVE(&ch->ata_queue, request, chain);
 	request->result = ENXIO;
     }
-    spin_unlock(&ch->queue_mtx);
+    lockmgr(&ch->queue_mtx, LK_RELEASE);
 }
 
 void
@@ -89,28 +89,29 @@ ata_queue_request(struct ata_request *request)
 	return;
     }
     ch = device_get_softc(request->parent);
-    callout_init_mp(&request->callout);	/* serialization done via state_mtx */
+    /* serialization done via state_mtx */
+    callout_init_lk(&request->callout, &ch->state_mtx);
     if (!request->callback && !(request->flags & ATA_R_REQUEUE))
-	spin_init(&request->done, "ataqueuerqdone");
+	lockinit(&request->done, "ataqueuerqdone", 0, 0);
 
     /* in ATA_STALL_QUEUE state we call HW directly */
     if ((ch->state & ATA_STALL_QUEUE) && (request->flags & ATA_R_CONTROL)) {
-	spin_lock(&ch->state_mtx);
+	lockmgr(&ch->state_mtx, LK_EXCLUSIVE);
 	ch->running = request;
 	if (ch->hw.begin_transaction(request) == ATA_OP_FINISHED) {
 	    ch->running = NULL;
 	    if (!request->callback) 
-		spin_uninit(&request->done);
-	    spin_unlock(&ch->state_mtx);
+		lockuninit(&request->done);
+	    lockmgr(&ch->state_mtx, LK_RELEASE);
 	    return;
 	}
 	/* interlock against interrupt */
 	request->flags |= ATA_R_HWCMDQUEUED;
-	spin_unlock(&ch->state_mtx);
+	lockmgr(&ch->state_mtx, LK_RELEASE);
     }
     /* otherwise put request on the locked queue at the specified location */
     else  {
-	spin_lock(&ch->queue_mtx);
+	lockmgr(&ch->queue_mtx, LK_EXCLUSIVE);
 	if (request->flags & ATA_R_AT_HEAD) {
 	    TAILQ_INSERT_HEAD(&ch->ata_queue, request, chain);
 	} else if (request->flags & ATA_R_ORDERED) {
@@ -119,7 +120,7 @@ ata_queue_request(struct ata_request *request)
 	    TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
 	    ch->transition = NULL;
 	}
-	spin_unlock(&ch->queue_mtx);
+	lockmgr(&ch->queue_mtx, LK_RELEASE);
 	ATA_DEBUG_RQ(request, "queued");
 	ata_start(ch->dev);
     }
@@ -133,12 +134,12 @@ ata_queue_request(struct ata_request *request)
 	ATA_DEBUG_RQ(request, "wait for completion");
 	if (!dumping) {
 	    /* interlock against wakeup */
-	    spin_lock(&request->done);
+	    lockmgr(&request->done, LK_EXCLUSIVE);
 	    /* check if the request was completed already */
 	    if (!(request->flags & ATA_R_COMPLETED))
-		ssleep(request, &request->done, 0, "ATA request completion "
+		lksleep(request, &request->done, 0, "ATA request completion "
 		       "wait", request->timeout * hz * 4);
-	    spin_unlock(&request->done);
+	    lockmgr(&request->done, LK_RELEASE);
 	    /* check if the request was completed while sleeping */
 	    if (!(request->flags & ATA_R_COMPLETED)) {
 		/* apparently not */
@@ -149,7 +150,7 @@ ata_queue_request(struct ata_request *request)
 		ata_completed(request, 0);
 	    }
 	}
-	spin_uninit(&request->done);
+	lockuninit(&request->done);
     }
 }
 
@@ -212,7 +213,7 @@ ata_start(device_t dev)
     int dependencies = 0;
 
     /* if we have a request on the queue try to get it running */
-    spin_lock(&ch->queue_mtx);
+    lockmgr(&ch->queue_mtx, LK_EXCLUSIVE);
     if ((request = TAILQ_FIRST(&ch->ata_queue))) {
 
 	/* we need the locking function to get the lock for this channel */
@@ -220,16 +221,16 @@ ata_start(device_t dev)
 
 	    /* check for composite dependencies */
 	    if ((cptr = request->composite)) {
-		spin_lock(&cptr->lock);
+		lockmgr(&cptr->lock, LK_EXCLUSIVE);
 		if ((request->flags & ATA_R_WRITE) &&
 		    (cptr->wr_depend & cptr->rd_done) != cptr->wr_depend) {
 		    dependencies = 1;
 		}
-		spin_unlock(&cptr->lock);
+		lockmgr(&cptr->lock, LK_RELEASE);
 	    }
 
 	    /* check we are in the right state and has no dependencies */
-	    spin_lock(&ch->state_mtx);
+	    lockmgr(&ch->state_mtx, LK_EXCLUSIVE);
 	    if (ch->state == ATA_IDLE && !dependencies) {
 		ATA_DEBUG_RQ(request, "starting");
 
@@ -242,8 +243,8 @@ ata_start(device_t dev)
 		if (ch->hw.begin_transaction(request) == ATA_OP_FINISHED) {
 		    ch->running = NULL;
 		    ch->state = ATA_IDLE;
-		    spin_unlock(&ch->state_mtx);
-		    spin_unlock(&ch->queue_mtx);
+		    lockmgr(&ch->state_mtx, LK_RELEASE);
+		    lockmgr(&ch->queue_mtx, LK_RELEASE);
 		    ATA_LOCKING(dev, ATA_LF_UNLOCK);
 		    ata_finish(request);
 		    return;
@@ -253,17 +254,17 @@ ata_start(device_t dev)
 		request->flags |= ATA_R_HWCMDQUEUED;
 
 		if (dumping) {
-		    spin_unlock(&ch->state_mtx);
-		    spin_unlock(&ch->queue_mtx);
+		    lockmgr(&ch->state_mtx, LK_RELEASE);
+		    lockmgr(&ch->queue_mtx, LK_RELEASE);
 		    while (!ata_interrupt(ch))
 			DELAY(10);
 		    return;
 		}       
 	    }
-	    spin_unlock(&ch->state_mtx);
+	    lockmgr(&ch->state_mtx, LK_RELEASE);
 	}
     }
-    spin_unlock(&ch->queue_mtx);
+    lockmgr(&ch->queue_mtx, LK_RELEASE);
 }
 
 void
@@ -482,7 +483,7 @@ ata_completed(void *context, int dummy)
     if ((composite = request->composite)) {
 	int index = 0;
 
-	spin_lock(&composite->lock);
+	lockmgr(&composite->lock, LK_EXCLUSIVE);
 
 	/* update whats done */
 	if (request->flags & ATA_R_READ)
@@ -497,7 +498,7 @@ ata_completed(void *context, int dummy)
 	    index = composite->wr_needed & ~composite->wr_done;
 	}
 
-	spin_unlock(&composite->lock);
+	lockmgr(&composite->lock, LK_RELEASE);
 
 	/* if we have any ready candidates kick them off */
 	if (index) {
@@ -514,9 +515,9 @@ ata_completed(void *context, int dummy)
     if (request->callback)
 	(request->callback)(request);
     else {
-	spin_lock(&request->done);
+	lockmgr(&request->done, LK_EXCLUSIVE);
 	request->flags |= ATA_R_COMPLETED;
-	spin_unlock(&request->done);
+	lockmgr(&request->done, LK_RELEASE);
 	wakeup_one(request);
     }
 
@@ -530,9 +531,9 @@ ata_timeout(struct ata_request *request)
 {
     struct ata_channel *ch = device_get_softc(request->parent);
 
-    /* acquire state_mtx, softclock_handler() doesn't do this for us */
-    spin_lock(&ch->state_mtx);
-
+    /*
+     * NOTE: callout acquired ch->state_mtx for us.
+     */
     /*request->flags |= ATA_R_DEBUG;*/
     ATA_DEBUG_RQ(request, "timeout");
 
@@ -544,12 +545,10 @@ ata_timeout(struct ata_request *request)
      */
     if (ch->state == ATA_ACTIVE) {
 	request->flags |= ATA_R_TIMEOUT;
-	spin_unlock(&ch->state_mtx);
+	lockmgr(&ch->state_mtx, LK_RELEASE);
 	ATA_LOCKING(ch->dev, ATA_LF_UNLOCK);
 	ata_finish(request);
-    }
-    else {
-	spin_unlock(&ch->state_mtx);
+	lockmgr(&ch->state_mtx, LK_EXCLUSIVE);
     }
 }
 
@@ -562,12 +561,12 @@ ata_fail_requests(device_t dev)
     TAILQ_INIT(&fail_requests);
 
     /* grap all channel locks to avoid races */
-    spin_lock(&ch->queue_mtx);
-    spin_lock(&ch->state_mtx);
+    lockmgr(&ch->queue_mtx, LK_EXCLUSIVE);
+    lockmgr(&ch->state_mtx, LK_EXCLUSIVE);
 
     /* do we have any running request to care about ? */
     if ((request = ch->running) && (!dev || request->dev == dev)) {
-	callout_stop(&request->callout);
+	callout_stop_sync(&request->callout);
 	ch->running = NULL;
 	request->result = ENXIO;
 	TAILQ_INSERT_TAIL(&fail_requests, request, chain);
@@ -584,8 +583,8 @@ ata_fail_requests(device_t dev)
 	}
     }
 
-    spin_unlock(&ch->state_mtx);
-    spin_unlock(&ch->queue_mtx);
+    lockmgr(&ch->state_mtx, LK_RELEASE);
+    lockmgr(&ch->queue_mtx, LK_RELEASE);
    
     /* finish up all requests collected above */
     TAILQ_FOREACH_MUTABLE(request, &fail_requests, chain, tmp) {

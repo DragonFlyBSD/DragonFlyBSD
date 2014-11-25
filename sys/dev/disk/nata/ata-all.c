@@ -46,7 +46,6 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 
-#include <sys/spinlock2.h>
 #include <sys/mplock2.h>
 
 #include "ata-all.h"
@@ -121,8 +120,8 @@ ata_attach(device_t dev)
     /* initialize the softc basics */
     ch->dev = dev;
     ch->state = ATA_IDLE;
-    spin_init(&ch->state_mtx, "ataattach_state");
-    spin_init(&ch->queue_mtx, "ataattach_queue");
+    lockinit(&ch->state_mtx, "ataattach_state", 0, 0);
+    lockinit(&ch->queue_mtx, "ataattach_queue", 0, 0);
     ata_queue_init(ch);
 
     /* reset the controller HW, the channel and device(s) */
@@ -163,9 +162,9 @@ ata_detach(device_t dev)
 	return ENXIO;
 
     /* grap the channel lock so no new requests gets launched */
-    spin_lock(&ch->state_mtx);
+    lockmgr(&ch->state_mtx, LK_EXCLUSIVE);
     ch->state |= ATA_STALL_QUEUE;
-    spin_unlock(&ch->state_mtx);
+    lockmgr(&ch->state_mtx, LK_RELEASE);
 
     /* detach & delete all children */
     if (!device_get_children(dev, &children, &nchildren)) {
@@ -179,8 +178,8 @@ ata_detach(device_t dev)
     bus_teardown_intr(dev, ch->r_irq, ch->ih);
     bus_release_resource(dev, SYS_RES_IRQ, ATA_IRQ_RID, ch->r_irq);
     ch->r_irq = NULL;
-    spin_uninit(&ch->state_mtx);
-    spin_uninit(&ch->queue_mtx);
+    lockuninit(&ch->state_mtx);
+    lockuninit(&ch->queue_mtx);
     return 0;
 }
 
@@ -204,14 +203,14 @@ ata_reinit(device_t dev)
 	tsleep(&dev, 0, "atarini", 1);
 
     /* catch eventual request in ch->running */
-    spin_lock(&ch->state_mtx);
+    lockmgr(&ch->state_mtx, LK_EXCLUSIVE);
     if ((request = ch->running))
-	callout_stop(&request->callout);
+	callout_stop_sync(&request->callout);
     ch->running = NULL;
 
     /* unconditionally grap the channel lock */
     ch->state |= ATA_STALL_QUEUE;
-    spin_unlock(&ch->state_mtx);
+    lockmgr(&ch->state_mtx, LK_RELEASE);
 
     /* reset the controller HW, the channel and device(s) */
     ATA_RESET(dev);
@@ -257,9 +256,9 @@ ata_reinit(device_t dev)
     }
 
     /* we're done release the channel for new work */
-    spin_lock(&ch->state_mtx);
+    lockmgr(&ch->state_mtx, LK_EXCLUSIVE);
     ch->state = ATA_IDLE;
-    spin_unlock(&ch->state_mtx);
+    lockmgr(&ch->state_mtx, LK_RELEASE);
     ATA_LOCKING(dev, ATA_LF_UNLOCK);
 
     if (bootverbose)
@@ -281,13 +280,13 @@ ata_suspend(device_t dev)
 
     /* wait for the channel to be IDLE or detached before suspending */
     while (ch->r_irq) {
-	spin_lock(&ch->state_mtx);
+	lockmgr(&ch->state_mtx, LK_EXCLUSIVE);
 	if (ch->state == ATA_IDLE) {
 	    ch->state = ATA_ACTIVE;
-	    spin_unlock(&ch->state_mtx);
+	    lockmgr(&ch->state_mtx, LK_RELEASE);
 	    break;
 	}
-	spin_unlock(&ch->state_mtx);
+	lockmgr(&ch->state_mtx, LK_RELEASE);
 	tsleep(ch, 0, "atasusp", hz/10);
     }
     ATA_LOCKING(dev, ATA_LF_UNLOCK);
@@ -318,7 +317,7 @@ ata_interrupt(void *data)
     struct ata_channel *ch = (struct ata_channel *)data;
     struct ata_request *request;
 
-    spin_lock(&ch->state_mtx);
+    lockmgr(&ch->state_mtx, LK_EXCLUSIVE);
     do {
 	/*
 	 * Ignore interrupt if its not for us.  This may also have the
@@ -355,13 +354,13 @@ ata_interrupt(void *data)
 	    ch->running = NULL;
 	    if (ch->state == ATA_ACTIVE)
 		ch->state = ATA_IDLE;
-	    spin_unlock(&ch->state_mtx);
+	    lockmgr(&ch->state_mtx, LK_RELEASE);
 	    ATA_LOCKING(ch->dev, ATA_LF_UNLOCK);
 	    ata_finish(request);
 	    return 1;
 	}
     } while (0);
-    spin_unlock(&ch->state_mtx);
+    lockmgr(&ch->state_mtx, LK_RELEASE);
     return 0;
 }
 

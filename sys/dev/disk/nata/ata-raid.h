@@ -32,7 +32,7 @@
 #include <sys/bus.h>
 #include <sys/disk.h>
 #include <sys/proc.h>
-#include <sys/spinlock.h>
+#include <sys/lock.h>
 
 /* misc defines */
 #define MAX_ARRAYS      16
@@ -109,7 +109,7 @@ struct ar_softc {
     } disks[MAX_DISKS];
     int                 toggle;         /* performance hack for RAID1's */
     u_int64_t           rebuild_lba;    /* rebuild progress indicator */
-    struct spinlock     lock;           /* metadata lock */
+    struct lock		lock;           /* metadata lock */
     struct disk		disk;		/* disklabel/slice stuff */
     struct devstat	devstat;	/* device statistics */
     cdev_t		cdev;		/* device placeholder */

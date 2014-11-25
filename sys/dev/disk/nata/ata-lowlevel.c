@@ -456,7 +456,7 @@ ata_end_transaction(struct ata_request *request)
     kprintf("ata_end_transaction OOPS!!\n");
 
 end_finished:
-    callout_stop(&request->callout);
+    callout_stop_sync(&request->callout);
     return ATA_OP_FINISHED;
 
 end_continue:

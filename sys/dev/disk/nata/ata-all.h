@@ -36,7 +36,6 @@
 #include <sys/objcache.h>
 #include <sys/queue.h>
 #include <sys/rman.h>
-#include <sys/spinlock.h>
 #include <sys/systm.h>
 #include <sys/taskqueue.h>
 
@@ -326,7 +325,7 @@ struct ata_ahci_cmd_list {
 /* structure used for composite atomic operations */
 #define MAX_COMPOSITES          32              /* u_int32_t bits */
 struct ata_composite {
-    struct spinlock     lock;                   /* control lock */
+    struct lock		lock;                   /* control lock */
     u_int32_t           rd_needed;              /* needed read subdisks */
     u_int32_t           rd_done;                /* done read subdisks */
     u_int32_t           wr_needed;              /* needed write subdisks */
@@ -386,7 +385,7 @@ struct ata_request {
     u_int32_t                   donecount;      /* bytes transferred */
     int                         result;         /* result error code */
     void                        (*callback)(struct ata_request *request);
-    struct spinlock             done;           /* request done sema */
+    struct lock			done;           /* request done sema */
     int                         retries;        /* retry count */
     int                         timeout;        /* timeout for this cmd */
     int				unused01;
@@ -515,13 +514,13 @@ struct ata_channel {
 #define         ATA_ATAPI_SLAVE         0x08
 #define		ATA_PORTMULTIPLIER	0x10
 
-    struct spinlock             state_mtx;      /* state lock */
+    struct lock			state_mtx;      /* state lock */
     int                         state;          /* ATA channel state */
 #define         ATA_IDLE                0x0000
 #define         ATA_ACTIVE              0x0001
 #define         ATA_STALL_QUEUE         0x0002
 
-    struct spinlock             queue_mtx;      /* queue lock */
+    struct lock			queue_mtx;      /* queue lock */
     TAILQ_HEAD(, ata_request)   ata_queue;      /* head of ATA queue */
     int				reorder;	/* limit sort reordering */
     struct ata_request		*transition;
