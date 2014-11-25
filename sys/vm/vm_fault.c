@@ -772,6 +772,35 @@ RetryFault:
 	}
 
 	/*
+	 * A user-kernel shared map has no VM object and bypasses
+	 * everything.  We execute the uksmap function with a temporary
+	 * fictitious vm_page.  The address is directly mapped with no
+	 * management.
+	 */
+	if (fs.entry->maptype == VM_MAPTYPE_UKSMAP) {
+		struct vm_page fakem;
+
+		bzero(&fakem, sizeof(fakem));
+		fakem.pindex = first_pindex;
+		fakem.flags = PG_BUSY | PG_FICTITIOUS | PG_UNMANAGED;
+		fakem.valid = VM_PAGE_BITS_ALL;
+		fakem.pat_mode = VM_MEMATTR_DEFAULT;
+		if (fs.entry->object.uksmap(fs.entry->aux.dev, &fakem)) {
+			*errorp = KERN_FAILURE;
+			fs.m = NULL;
+			unlock_things(&fs);
+			goto done2;
+		}
+		fs.m = PHYS_TO_VM_PAGE(fakem.phys_addr);
+		vm_page_hold(fs.m);
+
+		unlock_things(&fs);
+		*errorp = 0;
+		goto done;
+	}
+
+
+	/*
 	 * A system map entry may return a NULL object.  No object means
 	 * no pager means an unrecoverable kernel fault.
 	 */
