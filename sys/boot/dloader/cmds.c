@@ -94,6 +94,7 @@ static char *kenv_vars[] = {
 	"prompt",
 	"rootdev",
 	"root_disk_unit",
+	"xhci_load",
 	NULL
 };
 

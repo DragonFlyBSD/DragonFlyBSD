@@ -562,6 +562,21 @@ check_startmsgs()
 #				files before running the default (re)start
 #				command.
 #
+#	required_modules n	If set, ensure the given kernel modules are
+#				loaded before running a (re)start command.
+#				The check and possible loads are actually
+#				done after start_precmd so that the modules
+#				aren't loaded in vain, should the precmd
+#				return a non-zero status to indicate a error.
+#				If a word in the list looks like "foo:bar",
+#				"foo" is the KLD file name and "bar" is the
+#				module name.  If a word looks like "foo~bar",
+#				"foo" is the KLD file name and "bar" is a
+#				egrep(1) pattern matching the module name.
+#				Otherwise the module name is assumed to be
+#				the same as the KLD file name, which is most
+#				common.  See load_kld().
+#
 #	required_vars	n	If set, perform checkyesno on each of the
 #				listed variables before running the default
 #				(re)start command.
@@ -829,6 +844,20 @@ run_rc_command()
 					fi
 				fi
 			done
+			for _f in $required_modules; do
+				case "${_f}" in
+				*~*)	_args="-e ${_f#*~} ${_f%%~*}" ;;
+				*:*)	_args="-m ${_f#*:} ${_f%%:*}" ;;
+				*)	_args="${_f}" ;;
+				esac
+				if ! load_kld ${_args}; then
+					if [ -z "$rc_force" ]; then
+						set_provide_list $rc_arg $RC_FAILED
+						adjust_return_code $RC_FAILED
+						return $?
+					fi
+				fi
+			done
 
 					# if the precmd failed and force
 					# isn't set, exit
@@ -1052,6 +1081,54 @@ run_rc_script()
 		;;
 	esac
 }
+
+# Code common to scripts that need to load a kernel module
+# if it isn't in the kernel yet. Syntax:
+#   load_kld [-e regex] [-m module] file
+# where -e or -m chooses the way to check if the module
+# is already loaded:
+#   regex is egrep'd in the output from `kldstat -v',
+#   module is passed to `kldstat -m'.
+# The default way is as though `-m file' were specified.
+load_kld()
+{
+	local _loaded _mod _opt _re
+
+	while getopts "e:m:" _opt; do
+		case "$_opt" in
+		e) _re="$OPTARG" ;;
+		m) _mod="$OPTARG" ;;
+		*) err 3 'USAGE: load_kld [-e regex] [-m module] file' ;;
+		esac
+	done
+	shift $(($OPTIND - 1))
+	if [ $# -ne 1 ]; then
+		err 3 'USAGE: load_kld [-e regex] [-m module] file'
+	fi
+	_mod=${_mod:-$1}
+	_loaded=false
+	if [ -n "$_re" ]; then
+		if kldstat -v | egrep -q -e "$_re"; then
+			_loaded=true
+		fi
+	else
+		if kldstat -q -m "$_mod"; then
+			_loaded=true
+		fi
+	fi
+	if ! $_loaded; then
+		if ! kldload "$1"; then
+			warn "Unable to load kernel module $1"
+			return 1
+		else
+			info "$1 kernel module loaded."
+		fi
+	else
+		debug "load_kld: $1 kernel module already loaded."
+	fi
+	return 0
+}
+
 
 # ltr str src dst
 #	Change every $src in $str to $dst.
@@ -1320,4 +1397,22 @@ devfs_domount()
 	fi
 
 return 0
+}
+
+# Find scripts in local_startup directories.
+find_local_scripts() {
+	local_rc=''
+	for dir in ${local_startup}; do
+		if [ -d "${dir}" ]; then
+			for file in `grep -l '^# PROVIDE:' ${dir}/* 2>/dev/null`; do
+				case "$file" in
+				*.sample) ;;
+				*)	if [ -x "$file" ]; then
+						local_rc="${local_rc} ${file}"
+					fi
+					;;
+				esac
+			done
+		fi
+	done
 }

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $FreeBSD: head/usr.sbin/service/service.sh 263202 2014-03-15 02:26:46Z eadler $
+# $FreeBSD: head/usr.sbin/service/service.sh 268773 2014-07-16 19:02:30Z dteske $
 
 #  Copyright (c) 2009 Douglas Barton
 #  All rights reserved.
@@ -61,10 +61,10 @@ shift $(( $OPTIND - 1 ))
 
 if [ -n "$RESTART" ]; then
 	skip="-s nostart"
-	if [ `/sbin/sysctl -n security.jail.jailed` -eq 1 ]; then
-		skip="$skip -s nojail"
-	fi
-	[ -n "$local_startup" ] && find_local_scripts_new
+#	if [ `/sbin/sysctl -n security.jail.jailed` -eq 1 ]; then
+#		skip="$skip -s nojail"
+#	fi
+	[ -n "$local_startup" ] && find_local_scripts
 	files=`rcorder ${skip} ${local_rc} 2>/dev/null`
 
 	for file in `reverse_list ${files}`; do
@@ -88,10 +88,10 @@ fi
 if [ -n "$ENABLED" -o -n "$RCORDER" ]; then
 	# Copied from /etc/rc
 	skip="-s nostart"
-	if [ `/sbin/sysctl -n security.jail.jailed` -eq 1 ]; then
-		skip="$skip -s nojail"
-	fi
-	[ -n "$local_startup" ] && find_local_scripts_new
+#	if [ `/sbin/sysctl -n security.jail.jailed` -eq 1 ]; then
+#		skip="$skip -s nojail"
+#	fi
+	[ -n "$local_startup" ] && find_local_scripts
 	files=`rcorder ${skip} /etc/rc.d/* ${local_rc} 2>/dev/null`
 fi
 
@@ -109,7 +109,7 @@ fi
 if [ -n "$LIST" ]; then
 	for dir in /etc/rc.d $local_startup; do
 		[ -n "$VERBOSE" ] && echo "From ${dir}:"
-		cd $dir && for file in *; do echo $file; done
+		[ -d ${dir} ] && /bin/ls -1 ${dir}
 	done
 	exit 0
 fi

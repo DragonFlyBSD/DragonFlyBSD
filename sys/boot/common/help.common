@@ -31,14 +31,20 @@
 	If needed, disable the AHCI driver with:
 
 		lunset ahci_load
-		set hint.ahci.0.disabled=1
+		set hint.ahci.disabled=1
 
 	If needed, disable the EHCI driver with:
 
 		lunset ehci_load
 		set hint.ehci.0.disabled=1
 
-	For more information on ACPI, AHCI and EHCI use `help' on these topics.
+	If needed, disable the XHCI driver with:
+
+		lunset xhci_load
+		set hint.xhci.0.disabled=1
+
+	For more information on ACPI, AHCI, EHCI and XHCI use `help' on these
+	topics.
 
 ################################################################################
 # T<variable>=<value> DAssign value to variable
@@ -84,7 +90,7 @@
 	The AHCI driver can be disabled with:
 
 		lunset ahci_load
-		set hint.ahci.0.disabled=1
+		set hint.ahci.disabled=1
 
 	A link speed of 1.5Gb/s can be enforced with:
 
@@ -163,6 +169,24 @@
 		set hint.ehci.0.disabled=1
 
 	See ehci.4 man page (on booted system) for full description.
+
+################################################################################
+# TXHCI DControl XHCI module behaviour
+
+	$xhci_load
+
+	The XHCI driver provides support for the USB eXtensible Host Controller
+	Interface, which is used by USB 3.0 controllers.
+
+	The XHCI kernel module is by default loaded automatically.
+
+	If the xhci_load variable is set, the XHCI module will be loaded.
+	The XHCI driver can be disabled with:
+
+		lunset xhci_load
+		set hint.xhci.0.disabled=1
+
+	See xhci.4 man page (on booted system) for full description.
 
 ################################################################################
 # Tload DLoad a kernel or module
@@ -503,7 +527,7 @@
 
 		One file system example:
 
-			"hammer:da8se1a"
+			"hammer:da8s1a"
 
 		One file system HAMMER2 redundant copies examples:
 

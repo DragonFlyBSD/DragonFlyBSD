@@ -1,6 +1,4 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.15 2008/09/28 03:19:46 pavalos Exp $
-#
 
 PROG=	sshd
 SRCS=	sshd.c auth-rhosts.c auth-passwd.c auth-rsa.c auth-rh-rsa.c \
@@ -35,9 +33,7 @@ CFLAGS+=-DUSE_PAM -DHAVE_SECURITY_PAM_APPL_H \
 LDADD+=	-lopie
 DPADD+=	${LIBOPIE}
 
-.if defined(X11BASE)
-CFLAGS+= -DXAUTH_PATH=\"${X11BASE}/bin/xauth\"
-.endif
+CFLAGS+= -DXAUTH_PATH=\"/usr/local/bin/xauth\"
 
 LDADD+=	-lcrypt -lwrap ${MINUSLPAM}
 DPADD+=	${LIBCRYPT} ${LIBWRAP} ${LIBPAM}
