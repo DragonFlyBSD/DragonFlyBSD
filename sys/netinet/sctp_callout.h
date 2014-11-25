@@ -8,6 +8,8 @@
 #include <sys/queue.h>
 #endif
 
+#error "sctp_callout.h should never be used by dragonfly"
+
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
  * All rights reserved.
