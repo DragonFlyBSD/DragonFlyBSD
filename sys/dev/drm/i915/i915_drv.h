@@ -777,7 +777,7 @@ typedef struct drm_i915_private {
 		struct drm_mm gtt_space;
 		/** List of all objects in gtt_space. Used to restore gtt
 		 * mappings on resume */
-		struct list_head gtt_list;
+		struct list_head bound_list;
 		/**
 		 * List of objects which are not bound to the GTT (thus
 		 * are idle and not used by the GPU) but still have
@@ -1073,6 +1073,7 @@ struct drm_i915_gem_object {
 	unsigned int has_dma_mapping:1;
 
 	vm_page_t *pages;
+	int pages_pin_count;
 
 	/**
 	 * Used for performing relocations during execbuffer insertion.

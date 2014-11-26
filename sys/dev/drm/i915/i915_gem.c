@@ -217,7 +217,7 @@ i915_gem_get_aperture_ioctl(struct drm_device *dev, void *data,
 
 	pinned = 0;
 	DRM_LOCK(dev);
-	list_for_each_entry(obj, &dev_priv->mm.gtt_list, gtt_list)
+	list_for_each_entry(obj, &dev_priv->mm.bound_list, gtt_list)
 		if (obj->pin_count)
 			pinned += obj->gtt_space->size;
 	DRM_UNLOCK(dev);
@@ -2379,7 +2379,7 @@ i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 		goto search_free;
 	}
 
-	list_add_tail(&obj->gtt_list, &dev_priv->mm.gtt_list);
+	list_add_tail(&obj->gtt_list, &dev_priv->mm.bound_list);
 	list_add_tail(&obj->mm_list, &dev_priv->mm.inactive_list);
 
 	obj->gtt_offset = obj->gtt_space->start;
@@ -3498,7 +3498,7 @@ i915_gem_load(struct drm_device *dev)
 	INIT_LIST_HEAD(&dev_priv->mm.active_list);
 	INIT_LIST_HEAD(&dev_priv->mm.inactive_list);
 	INIT_LIST_HEAD(&dev_priv->mm.fence_list);
-	INIT_LIST_HEAD(&dev_priv->mm.gtt_list);
+	INIT_LIST_HEAD(&dev_priv->mm.bound_list);
 	for (i = 0; i < I915_NUM_RINGS; i++)
 		init_ring_lists(&dev_priv->ring[i]);
 	for (i = 0; i < I915_MAX_NUM_FENCES; i++)
