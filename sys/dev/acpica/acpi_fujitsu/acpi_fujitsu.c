@@ -242,6 +242,7 @@ acpi_fujitsu_attach(device_t dev)
 {
 	struct acpi_fujitsu_softc *sc;
 
+	ACPI_SERIAL_INIT(fujitsu);
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
 	sc = device_get_softc(dev);

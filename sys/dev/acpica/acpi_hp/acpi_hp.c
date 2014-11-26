@@ -471,6 +471,7 @@ acpi_hp_attach(device_t dev)
 	struct acpi_softc	*acpi_sc;
 	int			arg;
 
+	ACPI_SERIAL_INIT(hp);
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t) __func__);
 
 	sc = device_get_softc(dev);

@@ -125,6 +125,7 @@ acpi_smbat_attach(device_t dev)
 	uint32_t base;
 
 	sc = device_get_softc(dev);
+	ACPI_SERIAL_INIT(smbat);
 	if (ACPI_FAILURE(acpi_GetInteger(acpi_get_handle(dev), "_EC", &base))) {
 		device_printf(dev, "cannot get EC base address\n");
 		return (ENXIO);

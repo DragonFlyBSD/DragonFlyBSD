@@ -248,6 +248,8 @@ acpi_video_attach(device_t dev)
 	acpi_sc = devclass_get_softc(devclass_find("acpi"), 0);
 	if (acpi_sc == NULL)
 		return (ENXIO);
+	ACPI_SERIAL_INIT(video);
+	ACPI_SERIAL_INIT(video_output);
 	ACPI_SERIAL_BEGIN(video);
 	if (acpi_video_sysctl_tree == NULL) {
 		acpi_video_sysctl_tree = SYSCTL_ADD_NODE(&acpi_video_sysctl_ctx,

@@ -378,6 +378,7 @@ acpi_thinkpad_attach(device_t dev)
 	devclass_t		ec_devclass;
 	int			i;
 
+	ACPI_SERIAL_INIT(thinkpad);
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t) __func__);
 
 	sc = device_get_softc(dev);
