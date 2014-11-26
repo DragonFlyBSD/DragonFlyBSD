@@ -1,4 +1,4 @@
-/* $OpenBSD: misc.c,v 1.86 2011/09/05 05:59:08 djm Exp $ */
+/* $OpenBSD: misc.c,v 1.94 2014/07/15 15:54:14 millert Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  * Copyright (c) 2005,2006 Damien Miller.  All rights reserved.
@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/param.h>
 
 #include <stdarg.h>
@@ -43,6 +44,7 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -127,7 +129,7 @@ unset_nonblock(int fd)
 const char *
 ssh_gai_strerror(int gaierr)
 {
-	if (gaierr == EAI_SYSTEM)
+	if (gaierr == EAI_SYSTEM && errno != 0)
 		return strerror(errno);
 	return gai_strerror(gaierr);
 }
@@ -206,16 +208,18 @@ pwcopy(struct passwd *pw)
 
 	copy->pw_name = xstrdup(pw->pw_name);
 	copy->pw_passwd = xstrdup(pw->pw_passwd);
+#ifdef HAVE_STRUCT_PASSWD_PW_GECOS
 	copy->pw_gecos = xstrdup(pw->pw_gecos);
+#endif
 	copy->pw_uid = pw->pw_uid;
 	copy->pw_gid = pw->pw_gid;
-#ifdef HAVE_PW_EXPIRE_IN_PASSWD
+#ifdef HAVE_STRUCT_PASSWD_PW_EXPIRE
 	copy->pw_expire = pw->pw_expire;
 #endif
-#ifdef HAVE_PW_CHANGE_IN_PASSWD
+#ifdef HAVE_STRUCT_PASSWD_PW_CHANGE
 	copy->pw_change = pw->pw_change;
 #endif
-#ifdef HAVE_PW_CLASS_IN_PASSWD
+#ifdef HAVE_STRUCT_PASSWD_PW_CLASS
 	copy->pw_class = xstrdup(pw->pw_class);
 #endif
 	copy->pw_dir = xstrdup(pw->pw_dir);
@@ -251,13 +255,13 @@ a2tun(const char *s, int *remote)
 		*remote = SSH_TUNID_ANY;
 		sp = xstrdup(s);
 		if ((ep = strchr(sp, ':')) == NULL) {
-			xfree(sp);
+			free(sp);
 			return (a2tun(s, NULL));
 		}
 		ep[0] = '\0'; ep++;
 		*remote = a2tun(ep, NULL);
 		tun = a2tun(sp, NULL);
-		xfree(sp);
+		free(sp);
 		return (*remote == SSH_TUNID_ERR ? *remote : tun);
 	}
 
@@ -490,7 +494,7 @@ replacearg(arglist *args, u_int which, char *fmt, ...)
 	if (which >= args->num)
 		fatal("replacearg: tried to replace invalid arg %d >= %d",
 		    which, args->num);
-	xfree(args->list[which]);
+	free(args->list[which]);
 	args->list[which] = cp;
 }
 
@@ -501,8 +505,8 @@ freeargs(arglist *args)
 
 	if (args->list != NULL) {
 		for (i = 0; i < args->num; i++)
-			xfree(args->list[i]);
-		xfree(args->list);
+			free(args->list[i]);
+		free(args->list);
 		args->nalloc = args->num = 0;
 		args->list = NULL;
 	}
@@ -515,8 +519,8 @@ freeargs(arglist *args)
 char *
 tilde_expand_filename(const char *filename, uid_t uid)
 {
-	const char *path;
-	char user[128], ret[MAXPATHLEN];
+	const char *path, *sep;
+	char user[128], *ret;
 	struct passwd *pw;
 	u_int len, slash;
 
@@ -536,22 +540,21 @@ tilde_expand_filename(const char *filename, uid_t uid)
 	} else if ((pw = getpwuid(uid)) == NULL)	/* ~/path */
 		fatal("tilde_expand_filename: No such uid %ld", (long)uid);
 
-	if (strlcpy(ret, pw->pw_dir, sizeof(ret)) >= sizeof(ret))
-		fatal("tilde_expand_filename: Path too long");
-
 	/* Make sure directory has a trailing '/' */
 	len = strlen(pw->pw_dir);
-	if ((len == 0 || pw->pw_dir[len - 1] != '/') &&
-	    strlcat(ret, "/", sizeof(ret)) >= sizeof(ret))
-		fatal("tilde_expand_filename: Path too long");
+	if (len == 0 || pw->pw_dir[len - 1] != '/')
+		sep = "/";
+	else
+		sep = "";
 
 	/* Skip leading '/' from specified path */
 	if (path != NULL)
 		filename = path + 1;
-	if (strlcat(ret, filename, sizeof(ret)) >= sizeof(ret))
+
+	if (xasprintf(&ret, "%s%s%s", pw->pw_dir, sep, filename) >= MAXPATHLEN)
 		fatal("tilde_expand_filename: Path too long");
 
-	return (xstrdup(ret));
+	return (ret);
 }
 
 /*
@@ -786,6 +789,20 @@ get_u32(const void *vp)
 	return (v);
 }
 
+u_int32_t
+get_u32_le(const void *vp)
+{
+	const u_char *p = (const u_char *)vp;
+	u_int32_t v;
+
+	v  = (u_int32_t)p[0];
+	v |= (u_int32_t)p[1] << 8;
+	v |= (u_int32_t)p[2] << 16;
+	v |= (u_int32_t)p[3] << 24;
+
+	return (v);
+}
+
 u_int16_t
 get_u16(const void *vp)
 {
@@ -824,6 +841,16 @@ put_u32(void *vp, u_int32_t v)
 	p[3] = (u_char)v & 0xff;
 }
 
+void
+put_u32_le(void *vp, u_int32_t v)
+{
+	u_char *p = (u_char *)vp;
+
+	p[0] = (u_char)v & 0xff;
+	p[1] = (u_char)(v >> 8) & 0xff;
+	p[2] = (u_char)(v >> 16) & 0xff;
+	p[3] = (u_char)(v >> 24) & 0xff;
+}
 
 void
 put_u16(void *vp, u_int16_t v)
@@ -851,6 +878,31 @@ ms_to_timeval(struct timeval *tv, int ms)
 		ms = 0;
 	tv->tv_sec = ms / 1000;
 	tv->tv_usec = (ms % 1000) * 1000;
+}
+
+time_t
+monotime(void)
+{
+#if defined(HAVE_CLOCK_GETTIME) && \
+    (defined(CLOCK_MONOTONIC) || defined(CLOCK_BOOTTIME))
+	struct timespec ts;
+	static int gettime_failed = 0;
+
+	if (!gettime_failed) {
+#if defined(CLOCK_BOOTTIME)
+		if (clock_gettime(CLOCK_BOOTTIME, &ts) == 0)
+			return (ts.tv_sec);
+#endif
+#if defined(CLOCK_MONOTONIC)
+		if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
+			return (ts.tv_sec);
+#endif
+		debug3("clock_gettime: %s", strerror(errno));
+		gettime_failed = 1;
+	}
+#endif /* HAVE_CLOCK_GETTIME && (CLOCK_MONOTONIC || CLOCK_BOOTTIME */
+
+	return time(NULL);
 }
 
 void
@@ -998,6 +1050,60 @@ iptos2str(int iptos)
 	snprintf(iptos_str, sizeof iptos_str, "0x%02x", iptos);
 	return iptos_str;
 }
+
+void
+lowercase(char *s)
+{
+	for (; *s; s++)
+		*s = tolower((u_char)*s);
+}
+
+int
+unix_listener(const char *path, int backlog, int unlink_first)
+{
+	struct sockaddr_un sunaddr;
+	int saved_errno, sock;
+
+	memset(&sunaddr, 0, sizeof(sunaddr));
+	sunaddr.sun_family = AF_UNIX;
+	if (strlcpy(sunaddr.sun_path, path, sizeof(sunaddr.sun_path)) >= sizeof(sunaddr.sun_path)) {
+		error("%s: \"%s\" too long for Unix domain socket", __func__,
+		    path);
+		errno = ENAMETOOLONG;
+		return -1;
+	}
+
+	sock = socket(PF_UNIX, SOCK_STREAM, 0);
+	if (sock < 0) {
+		saved_errno = errno;
+		error("socket: %.100s", strerror(errno));
+		errno = saved_errno;
+		return -1;
+	}
+	if (unlink_first == 1) {
+		if (unlink(path) != 0 && errno != ENOENT)
+			error("unlink(%s): %.100s", path, strerror(errno));
+	}
+	if (bind(sock, (struct sockaddr *)&sunaddr, sizeof(sunaddr)) < 0) {
+		saved_errno = errno;
+		error("bind: %.100s", strerror(errno));
+		close(sock);
+		error("%s: cannot bind to path: %s", __func__, path);
+		errno = saved_errno;
+		return -1;
+	}
+	if (listen(sock, backlog) < 0) {
+		saved_errno = errno;
+		error("listen: %.100s", strerror(errno));
+		close(sock);
+		unlink(path);
+		error("%s: cannot listen on path: %s", __func__, path);
+		errno = saved_errno;
+		return -1;
+	}
+	return sock;
+}
+
 void
 sock_set_v6only(int s)
 {

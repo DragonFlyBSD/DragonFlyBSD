@@ -8,12 +8,14 @@ TODO
 aclocal.m4
 audit-linux.c
 buildpkg.sh.in
+cipher-aesctr.c
 config.guess
 config.h.in
 config.sub
 configure
 configure.ac
 contrib/
+fixalgorithms
 fixpaths
 fixprogs
 install-sh
@@ -27,7 +29,6 @@ openbsd-compat/Makefile.in
 openbsd-compat/base64.c
 openbsd-compat/basename.c
 openbsd-compat/bindresvport.c
-openbsd-compat/bsd-arc4random.c
 openbsd-compat/bsd-asprintf.c
 openbsd-compat/bsd-closefrom.c
 openbsd-compat/bsd-cray.c
@@ -44,7 +45,6 @@ openbsd-compat/dirname.c
 openbsd-compat/fake-rfc2553.c
 openbsd-compat/getcwd.c
 openbsd-compat/getgrouplist.c
-openbsd-compat/getopt.c
 openbsd-compat/getrrsetbyname-ldns.c
 openbsd-compat/inet_aton.c
 openbsd-compat/inet_ntoa.c
@@ -98,4 +98,3 @@ ssh_config.0
 sshd.0
 sshd_config.0
 survey.sh.in
-version.h

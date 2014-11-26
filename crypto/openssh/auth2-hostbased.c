@@ -1,4 +1,4 @@
-/* $OpenBSD: auth2-hostbased.c,v 1.14 2010/08/04 05:42:47 djm Exp $ */
+/* $OpenBSD: auth2-hostbased.c,v 1.18 2014/07/15 15:54:14 millert Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *
@@ -36,6 +36,7 @@
 #include "packet.h"
 #include "buffer.h"
 #include "log.h"
+#include "misc.h"
 #include "servconf.h"
 #include "compat.h"
 #include "key.h"
@@ -100,6 +101,12 @@ userauth_hostbased(Authctxt *authctxt)
 		    "(received %d, expected %d)", key->type, pktype);
 		goto done;
 	}
+	if (key_type_plain(key->type) == KEY_RSA &&
+	    (datafellows & SSH_BUG_RSASIGMD5) != 0) {
+		error("Refusing RSA key because peer uses unsafe "
+		    "signature format");
+		goto done;
+	}
 	service = datafellows & SSH_BUG_HBSERVICE ? "ssh-userauth" :
 	    authctxt->service;
 	buffer_init(&b);
@@ -116,6 +123,10 @@ userauth_hostbased(Authctxt *authctxt)
 #ifdef DEBUG_PK
 	buffer_dump(&b);
 #endif
+
+	pubkey_auth_info(authctxt, key,
+	    "client user \"%.100s\", client host \"%.100s\"", cuser, chost);
+
 	/* test for allowed key and correct signature */
 	authenticated = 0;
 	if (PRIVSEP(hostbased_key_allowed(authctxt->pw, cuser, chost, key)) &&
@@ -128,11 +139,11 @@ done:
 	debug2("userauth_hostbased: authenticated %d", authenticated);
 	if (key != NULL)
 		key_free(key);
-	xfree(pkalg);
-	xfree(pkblob);
-	xfree(cuser);
-	xfree(chost);
-	xfree(sig);
+	free(pkalg);
+	free(pkblob);
+	free(cuser);
+	free(chost);
+	free(sig);
 	return authenticated;
 }
 
@@ -207,7 +218,7 @@ hostbased_key_allowed(struct passwd *pw, const char *cuser, char *chost,
 			verbose("Accepted %s public key %s from %s@%s",
 			    key_type(key), fp, cuser, lookup);
 		}
-		xfree(fp);
+		free(fp);
 	}
 
 	return (host_status == HOST_OK);

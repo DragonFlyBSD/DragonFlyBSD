@@ -1,4 +1,4 @@
-/* $OpenBSD: sshlogin.c,v 1.27 2011/01/11 06:06:09 djm Exp $ */
+/* $OpenBSD: sshlogin.c,v 1.29 2014/07/15 15:54:14 millert Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -58,6 +58,7 @@
 #include "loginrec.h"
 #include "log.h"
 #include "buffer.h"
+#include "misc.h"
 #include "servconf.h"
 
 extern Buffer loginmsg;
@@ -97,7 +98,7 @@ store_lastlog_message(const char *user, uid_t uid)
 	time_string = sys_auth_get_lastlogin_msg(user, uid);
 	if (time_string != NULL) {
 		buffer_append(&loginmsg, time_string, strlen(time_string));
-		xfree(time_string);
+		free(time_string);
 	}
 # else
 	last_login_time = get_last_login_time(uid, user, hostname,

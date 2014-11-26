@@ -1,4 +1,4 @@
-/* $OpenBSD: packet.c,v 1.176 2012/01/25 19:40:09 markus Exp $ */
+/* $OpenBSD: packet.c,v 1.198 2014/07/15 15:54:14 millert Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -58,6 +58,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
 
 #include "xmalloc.h"
 #include "buffer.h"
@@ -65,7 +66,6 @@
 #include "crc32.h"
 #include "compress.h"
 #include "deattack.h"
-#include "channels.h"
 #include "compat.h"
 #include "ssh1.h"
 #include "ssh2.h"
@@ -76,7 +76,9 @@
 #include "log.h"
 #include "canohost.h"
 #include "misc.h"
+#include "channels.h"
 #include "ssh.h"
+#include "ssherr.h"
 #include "roaming.h"
 
 #ifdef PACKET_DEBUG
@@ -165,8 +167,13 @@ struct session_state {
 	Newkeys *newkeys[MODE_MAX];
 	struct packet_state p_read, p_send;
 
+	/* Volume-based rekeying */
 	u_int64_t max_blocks_in, max_blocks_out;
 	u_int32_t rekey_limit;
+
+	/* Time-based rekeying */
+	time_t rekey_interval;	/* how often in seconds */
+	time_t rekey_time;	/* time of last rekeying */
 
 	/* Session key for protocol v1 */
 	u_char ssh1_key[SSH_SESSION_KEY_LENGTH];
@@ -215,7 +222,8 @@ alloc_session_state(void)
 void
 packet_set_connection(int fd_in, int fd_out)
 {
-	Cipher *none = cipher_by_name("none");
+	const Cipher *none = cipher_by_name("none");
+	int r;
 
 	if (none == NULL)
 		fatal("packet_set_connection: cannot load cipher 'none'");
@@ -223,10 +231,11 @@ packet_set_connection(int fd_in, int fd_out)
 		active_state = alloc_session_state();
 	active_state->connection_in = fd_in;
 	active_state->connection_out = fd_out;
-	cipher_init(&active_state->send_context, none, (const u_char *)"",
-	    0, NULL, 0, CIPHER_ENCRYPT);
-	cipher_init(&active_state->receive_context, none, (const u_char *)"",
-	    0, NULL, 0, CIPHER_DECRYPT);
+	if ((r = cipher_init(&active_state->send_context, none,
+	    (const u_char *)"", 0, NULL, 0, CIPHER_ENCRYPT)) != 0 ||
+	    (r = cipher_init(&active_state->receive_context, none,
+	    (const u_char *)"", 0, NULL, 0, CIPHER_DECRYPT)) != 0)
+		fatal("%s: cipher_init: %s", __func__, ssh_err(r));
 	active_state->newkeys[MODE_IN] = active_state->newkeys[MODE_OUT] = NULL;
 	if (!active_state->initialized) {
 		active_state->initialized = 1;
@@ -275,7 +284,7 @@ packet_stop_discard(void)
 static void
 packet_start_discard(Enc *enc, Mac *mac, u_int packet_length, u_int discard)
 {
-	if (enc == NULL || !cipher_is_cbc(enc->cipher))
+	if (enc == NULL || !cipher_is_cbc(enc->cipher) || (mac && mac->etm))
 		packet_disconnect("Packet corrupt");
 	if (packet_length != PACKET_MAX_SIZE && mac && mac->enabled)
 		active_state->packet_discard_mac = mac;
@@ -323,13 +332,15 @@ void
 packet_get_keyiv(int mode, u_char *iv, u_int len)
 {
 	CipherContext *cc;
+	int r;
 
 	if (mode == MODE_OUT)
 		cc = &active_state->send_context;
 	else
 		cc = &active_state->receive_context;
 
-	cipher_get_keyiv(cc, iv, len);
+	if ((r = cipher_get_keyiv(cc, iv, len)) != 0)
+		fatal("%s: cipher_get_keyiv: %s", __func__, ssh_err(r));
 }
 
 int
@@ -375,13 +386,15 @@ void
 packet_set_iv(int mode, u_char *dat)
 {
 	CipherContext *cc;
+	int r;
 
 	if (mode == MODE_OUT)
 		cc = &active_state->send_context;
 	else
 		cc = &active_state->receive_context;
 
-	cipher_set_keyiv(cc, dat);
+	if ((r = cipher_set_keyiv(cc, dat)) != 0)
+		fatal("%s: cipher_set_keyiv: %s", __func__, ssh_err(r));
 }
 
 int
@@ -545,7 +558,8 @@ packet_start_compression(int level)
 void
 packet_set_encryption_key(const u_char *key, u_int keylen, int number)
 {
-	Cipher *cipher = cipher_by_number(number);
+	const Cipher *cipher = cipher_by_number(number);
+	int r;
 
 	if (cipher == NULL)
 		fatal("packet_set_encryption_key: unknown cipher number %d", number);
@@ -555,10 +569,11 @@ packet_set_encryption_key(const u_char *key, u_int keylen, int number)
 		fatal("packet_set_encryption_key: keylen too big: %d", keylen);
 	memcpy(active_state->ssh1_key, key, keylen);
 	active_state->ssh1_keylen = keylen;
-	cipher_init(&active_state->send_context, cipher, key, keylen, NULL,
-	    0, CIPHER_ENCRYPT);
-	cipher_init(&active_state->receive_context, cipher, key, keylen, NULL,
-	    0, CIPHER_DECRYPT);
+	if ((r = cipher_init(&active_state->send_context, cipher,
+	    key, keylen, NULL, 0, CIPHER_ENCRYPT)) != 0 ||
+	    (r = cipher_init(&active_state->receive_context, cipher,
+	    key, keylen, NULL, 0, CIPHER_DECRYPT)) != 0)
+		fatal("%s: cipher_init: %s", __func__, ssh_err(r));
 }
 
 u_int
@@ -624,6 +639,7 @@ packet_put_raw(const void *buf, u_int len)
 	buffer_append(&active_state->outgoing_packet, buf, len);
 }
 
+#ifdef WITH_OPENSSL
 void
 packet_put_bignum(BIGNUM * value)
 {
@@ -635,6 +651,7 @@ packet_put_bignum2(BIGNUM * value)
 {
 	buffer_put_bignum2(&active_state->outgoing_packet, value);
 }
+#endif
 
 #ifdef OPENSSL_HAS_ECC
 void
@@ -707,9 +724,10 @@ packet_send1(void)
 	buffer_append(&active_state->output, buf, 4);
 	cp = buffer_append_space(&active_state->output,
 	    buffer_len(&active_state->outgoing_packet));
-	cipher_crypt(&active_state->send_context, cp,
+	if (cipher_crypt(&active_state->send_context, 0, cp,
 	    buffer_ptr(&active_state->outgoing_packet),
-	    buffer_len(&active_state->outgoing_packet));
+	    buffer_len(&active_state->outgoing_packet), 0, 0) != 0)
+		fatal("%s: cipher_crypt failed", __func__);
 
 #ifdef PACKET_DEBUG
 	fprintf(stderr, "encrypted: ");
@@ -735,7 +753,7 @@ set_newkeys(int mode)
 	Comp *comp;
 	CipherContext *cc;
 	u_int64_t *max_blocks;
-	int crypt_type;
+	int r, crypt_type;
 
 	debug2("set_newkeys: mode %d", mode);
 
@@ -757,13 +775,16 @@ set_newkeys(int mode)
 		mac  = &active_state->newkeys[mode]->mac;
 		comp = &active_state->newkeys[mode]->comp;
 		mac_clear(mac);
-		xfree(enc->name);
-		xfree(enc->iv);
-		xfree(enc->key);
-		xfree(mac->name);
-		xfree(mac->key);
-		xfree(comp->name);
-		xfree(active_state->newkeys[mode]);
+		explicit_bzero(enc->iv,  enc->iv_len);
+		explicit_bzero(enc->key, enc->key_len);
+		explicit_bzero(mac->key, mac->key_len);
+		free(enc->name);
+		free(enc->iv);
+		free(enc->key);
+		free(mac->name);
+		free(mac->key);
+		free(comp->name);
+		free(active_state->newkeys[mode]);
 	}
 	active_state->newkeys[mode] = kex_get_newkeys(mode);
 	if (active_state->newkeys[mode] == NULL)
@@ -771,15 +792,16 @@ set_newkeys(int mode)
 	enc  = &active_state->newkeys[mode]->enc;
 	mac  = &active_state->newkeys[mode]->mac;
 	comp = &active_state->newkeys[mode]->comp;
-	if (mac_init(mac) == 0)
+	if (cipher_authlen(enc->cipher) == 0 && mac_init(mac) == 0)
 		mac->enabled = 1;
 	DBG(debug("cipher_init_context: %d", mode));
-	cipher_init(cc, enc->cipher, enc->key, enc->key_len,
-	    enc->iv, enc->block_size, crypt_type);
+	if ((r = cipher_init(cc, enc->cipher, enc->key, enc->key_len,
+	    enc->iv, enc->iv_len, crypt_type)) != 0)
+		fatal("%s: cipher_init: %s", __func__, ssh_err(r));
 	/* Deleting the keys does not gain extra security */
-	/* memset(enc->iv,  0, enc->block_size);
-	   memset(enc->key, 0, enc->key_len);
-	   memset(mac->key, 0, mac->key_len); */
+	/* explicit_bzero(enc->iv,  enc->block_size);
+	   explicit_bzero(enc->key, enc->key_len);
+	   explicit_bzero(mac->key, mac->key_len); */
 	if ((comp->type == COMP_ZLIB ||
 	    (comp->type == COMP_DELAYED &&
 	     active_state->after_authentication)) && comp->enabled == 0) {
@@ -842,9 +864,8 @@ static void
 packet_send2_wrapped(void)
 {
 	u_char type, *cp, *macbuf = NULL;
-	u_char padlen, pad;
-	u_int packet_length = 0;
-	u_int i, len;
+	u_char padlen, pad = 0;
+	u_int i, len, authlen = 0, aadlen = 0;
 	u_int32_t rnd = 0;
 	Enc *enc   = NULL;
 	Mac *mac   = NULL;
@@ -855,8 +876,12 @@ packet_send2_wrapped(void)
 		enc  = &active_state->newkeys[MODE_OUT]->enc;
 		mac  = &active_state->newkeys[MODE_OUT]->mac;
 		comp = &active_state->newkeys[MODE_OUT]->comp;
+		/* disable mac for authenticated encryption */
+		if ((authlen = cipher_authlen(enc->cipher)) != 0)
+			mac = NULL;
 	}
 	block_size = enc ? enc->block_size : 8;
+	aadlen = (mac && mac->enabled && mac->etm) || authlen ? 4 : 0;
 
 	cp = buffer_ptr(&active_state->outgoing_packet);
 	type = cp[5];
@@ -889,6 +914,7 @@ packet_send2_wrapped(void)
 	 * calc size of padding, alloc space, get random data,
 	 * minimum padding is 4 bytes
 	 */
+	len -= aadlen; /* packet length is not encrypted for EtM modes */
 	padlen = block_size - (len % block_size);
 	if (padlen < 4)
 		padlen += block_size;
@@ -898,8 +924,8 @@ packet_send2_wrapped(void)
 		    roundup(active_state->extra_pad, block_size);
 		pad = active_state->extra_pad -
 		    ((len + padlen) % active_state->extra_pad);
-		debug3("packet_send2: adding %d (len %d padlen %d extra_pad %d)",
-		    pad, len, padlen, active_state->extra_pad);
+		DBG(debug3("%s: adding %d (len %d padlen %d extra_pad %d)",
+		    __func__, pad, len, padlen, active_state->extra_pad));
 		padlen += pad;
 		active_state->extra_pad = 0;
 	}
@@ -914,31 +940,40 @@ packet_send2_wrapped(void)
 		}
 	} else {
 		/* clear padding */
-		memset(cp, 0, padlen);
+		explicit_bzero(cp, padlen);
 	}
-	/* packet_length includes payload, padding and padding length field */
-	packet_length = buffer_len(&active_state->outgoing_packet) - 4;
+	/* sizeof (packet_len + pad_len + payload + padding) */
+	len = buffer_len(&active_state->outgoing_packet);
 	cp = buffer_ptr(&active_state->outgoing_packet);
-	put_u32(cp, packet_length);
+	/* packet_length includes payload, padding and padding length field */
+	put_u32(cp, len - 4);
 	cp[4] = padlen;
-	DBG(debug("send: len %d (includes padlen %d)", packet_length+4, padlen));
+	DBG(debug("send: len %d (includes padlen %d, aadlen %d)",
+	    len, padlen, aadlen));
 
 	/* compute MAC over seqnr and packet(length fields, payload, padding) */
-	if (mac && mac->enabled) {
+	if (mac && mac->enabled && !mac->etm) {
 		macbuf = mac_compute(mac, active_state->p_send.seqnr,
-		    buffer_ptr(&active_state->outgoing_packet),
-		    buffer_len(&active_state->outgoing_packet));
+		    buffer_ptr(&active_state->outgoing_packet), len);
 		DBG(debug("done calc MAC out #%d", active_state->p_send.seqnr));
 	}
 	/* encrypt packet and append to output buffer. */
-	cp = buffer_append_space(&active_state->output,
-	    buffer_len(&active_state->outgoing_packet));
-	cipher_crypt(&active_state->send_context, cp,
-	    buffer_ptr(&active_state->outgoing_packet),
-	    buffer_len(&active_state->outgoing_packet));
+	cp = buffer_append_space(&active_state->output, len + authlen);
+	if (cipher_crypt(&active_state->send_context, active_state->p_send.seqnr,
+	    cp, buffer_ptr(&active_state->outgoing_packet),
+	    len - aadlen, aadlen, authlen) != 0)
+		fatal("%s: cipher_crypt failed", __func__);
 	/* append unencrypted MAC */
-	if (mac && mac->enabled)
+	if (mac && mac->enabled) {
+		if (mac->etm) {
+			/* EtM: compute mac over aadlen + cipher text */
+			macbuf = mac_compute(mac,
+			    active_state->p_send.seqnr, cp, len);
+			DBG(debug("done calc MAC(EtM) out #%d",
+			    active_state->p_send.seqnr));
+		}
 		buffer_append(&active_state->output, macbuf, mac->mac_len);
+	}
 #ifdef PACKET_DEBUG
 	fprintf(stderr, "encrypted: ");
 	buffer_dump(&active_state->output);
@@ -949,8 +984,8 @@ packet_send2_wrapped(void)
 	if (++active_state->p_send.packets == 0)
 		if (!(datafellows & SSH_BUG_NOREKEY))
 			fatal("XXX too many packets with same key");
-	active_state->p_send.blocks += (packet_length + 4) / block_size;
-	active_state->p_send.bytes += packet_length + 4;
+	active_state->p_send.blocks += len / block_size;
+	active_state->p_send.bytes += len;
 	buffer_clear(&active_state->outgoing_packet);
 
 	if (type == SSH2_MSG_NEWKEYS)
@@ -975,7 +1010,7 @@ packet_send2(void)
 		    (type == SSH2_MSG_SERVICE_REQUEST) ||
 		    (type == SSH2_MSG_SERVICE_ACCEPT)) {
 			debug("enqueue packet: %u", type);
-			p = xmalloc(sizeof(*p));
+			p = xcalloc(1, sizeof(*p));
 			p->type = type;
 			memcpy(&p->payload, &active_state->outgoing_packet,
 			    sizeof(Buffer));
@@ -994,6 +1029,7 @@ packet_send2(void)
 	/* after a NEWKEYS message we can send the complete queue */
 	if (type == SSH2_MSG_NEWKEYS) {
 		active_state->rekeying = 0;
+		active_state->rekey_time = monotime();
 		while ((p = TAILQ_FIRST(&active_state->outgoing))) {
 			type = p->type;
 			debug("dequeue packet: %u", type);
@@ -1001,7 +1037,7 @@ packet_send2(void)
 			memcpy(&active_state->outgoing_packet, &p->payload,
 			    sizeof(Buffer));
 			TAILQ_REMOVE(&active_state->outgoing, p, next);
-			xfree(p);
+			free(p);
 			packet_send2_wrapped();
 		}
 	}
@@ -1026,7 +1062,7 @@ packet_send(void)
 int
 packet_read_seqnr(u_int32_t *seqnr_p)
 {
-	int type, len, ret, ms_remain, cont;
+	int type, len, ret, cont, ms_remain = 0;
 	fd_set *setp;
 	char buf[8192];
 	struct timeval timeout, start, *timeoutp = NULL;
@@ -1051,7 +1087,7 @@ packet_read_seqnr(u_int32_t *seqnr_p)
 			packet_check_eom();
 		/* If we got a packet, return it. */
 		if (type != SSH_MSG_NONE) {
-			xfree(setp);
+			free(setp);
 			return type;
 		}
 		/*
@@ -1186,8 +1222,9 @@ packet_read_poll1(void)
 	/* Decrypt data to incoming_packet. */
 	buffer_clear(&active_state->incoming_packet);
 	cp = buffer_append_space(&active_state->incoming_packet, padded_len);
-	cipher_crypt(&active_state->receive_context, cp,
-	    buffer_ptr(&active_state->input), padded_len);
+	if (cipher_crypt(&active_state->receive_context, 0, cp,
+	    buffer_ptr(&active_state->input), padded_len, 0, 0) != 0)
+		fatal("%s: cipher_crypt failed", __func__);
 
 	buffer_consume(&active_state->input, padded_len);
 
@@ -1235,8 +1272,8 @@ static int
 packet_read_poll2(u_int32_t *seqnr_p)
 {
 	u_int padlen, need;
-	u_char *macbuf, *cp, type;
-	u_int maclen, block_size;
+	u_char *macbuf = NULL, *cp, type;
+	u_int maclen, authlen = 0, aadlen = 0, block_size;
 	Enc *enc   = NULL;
 	Mac *mac   = NULL;
 	Comp *comp = NULL;
@@ -1248,11 +1285,31 @@ packet_read_poll2(u_int32_t *seqnr_p)
 		enc  = &active_state->newkeys[MODE_IN]->enc;
 		mac  = &active_state->newkeys[MODE_IN]->mac;
 		comp = &active_state->newkeys[MODE_IN]->comp;
+		/* disable mac for authenticated encryption */
+		if ((authlen = cipher_authlen(enc->cipher)) != 0)
+			mac = NULL;
 	}
 	maclen = mac && mac->enabled ? mac->mac_len : 0;
 	block_size = enc ? enc->block_size : 8;
+	aadlen = (mac && mac->enabled && mac->etm) || authlen ? 4 : 0;
 
-	if (active_state->packlen == 0) {
+	if (aadlen && active_state->packlen == 0) {
+		if (cipher_get_length(&active_state->receive_context,
+		    &active_state->packlen,
+		    active_state->p_read.seqnr,
+		    buffer_ptr(&active_state->input),
+		    buffer_len(&active_state->input)) != 0)
+			return SSH_MSG_NONE;
+		if (active_state->packlen < 1 + 4 ||
+		    active_state->packlen > PACKET_MAX_SIZE) {
+#ifdef PACKET_DEBUG
+			buffer_dump(&active_state->input);
+#endif
+			logit("Bad packet length %u.", active_state->packlen);
+			packet_disconnect("Packet corrupt");
+		}
+		buffer_clear(&active_state->incoming_packet);
+	} else if (active_state->packlen == 0) {
 		/*
 		 * check if input size is less than the cipher block size,
 		 * decrypt first block and extract length of incoming packet
@@ -1262,8 +1319,10 @@ packet_read_poll2(u_int32_t *seqnr_p)
 		buffer_clear(&active_state->incoming_packet);
 		cp = buffer_append_space(&active_state->incoming_packet,
 		    block_size);
-		cipher_crypt(&active_state->receive_context, cp,
-		    buffer_ptr(&active_state->input), block_size);
+		if (cipher_crypt(&active_state->receive_context,
+		    active_state->p_read.seqnr, cp,
+		    buffer_ptr(&active_state->input), block_size, 0, 0) != 0)
+			fatal("Decryption integrity check failed");
 		cp = buffer_ptr(&active_state->incoming_packet);
 		active_state->packlen = get_u32(cp);
 		if (active_state->packlen < 1 + 4 ||
@@ -1276,13 +1335,21 @@ packet_read_poll2(u_int32_t *seqnr_p)
 			    PACKET_MAX_SIZE);
 			return SSH_MSG_NONE;
 		}
-		DBG(debug("input: packet len %u", active_state->packlen+4));
 		buffer_consume(&active_state->input, block_size);
 	}
-	/* we have a partial packet of block_size bytes */
-	need = 4 + active_state->packlen - block_size;
-	DBG(debug("partial packet %d, need %d, maclen %d", block_size,
-	    need, maclen));
+	DBG(debug("input: packet len %u", active_state->packlen+4));
+	if (aadlen) {
+		/* only the payload is encrypted */
+		need = active_state->packlen;
+	} else {
+		/*
+		 * the payload size and the payload are encrypted, but we
+		 * have a partial packet of block_size bytes
+		 */
+		need = 4 + active_state->packlen - block_size;
+	}
+	DBG(debug("partial packet: block %d, need %d, maclen %d, authlen %d,"
+	    " aadlen %d", block_size, need, maclen, authlen, aadlen));
 	if (need % block_size != 0) {
 		logit("padding error: need %d block %d mod %d",
 		    need, block_size, need % block_size);
@@ -1292,26 +1359,37 @@ packet_read_poll2(u_int32_t *seqnr_p)
 	}
 	/*
 	 * check if the entire packet has been received and
-	 * decrypt into incoming_packet
+	 * decrypt into incoming_packet:
+	 * 'aadlen' bytes are unencrypted, but authenticated.
+	 * 'need' bytes are encrypted, followed by either
+	 * 'authlen' bytes of authentication tag or
+	 * 'maclen' bytes of message authentication code.
 	 */
-	if (buffer_len(&active_state->input) < need + maclen)
+	if (buffer_len(&active_state->input) < aadlen + need + authlen + maclen)
 		return SSH_MSG_NONE;
 #ifdef PACKET_DEBUG
 	fprintf(stderr, "read_poll enc/full: ");
 	buffer_dump(&active_state->input);
 #endif
-	cp = buffer_append_space(&active_state->incoming_packet, need);
-	cipher_crypt(&active_state->receive_context, cp,
-	    buffer_ptr(&active_state->input), need);
-	buffer_consume(&active_state->input, need);
+	/* EtM: compute mac over encrypted input */
+	if (mac && mac->enabled && mac->etm)
+		macbuf = mac_compute(mac, active_state->p_read.seqnr,
+		    buffer_ptr(&active_state->input), aadlen + need);
+	cp = buffer_append_space(&active_state->incoming_packet, aadlen + need);
+	if (cipher_crypt(&active_state->receive_context,
+	    active_state->p_read.seqnr, cp,
+	    buffer_ptr(&active_state->input), need, aadlen, authlen) != 0)
+		fatal("Decryption integrity check failed");
+	buffer_consume(&active_state->input, aadlen + need + authlen);
 	/*
 	 * compute MAC over seqnr and packet,
 	 * increment sequence number for incoming packet
 	 */
 	if (mac && mac->enabled) {
-		macbuf = mac_compute(mac, active_state->p_read.seqnr,
-		    buffer_ptr(&active_state->incoming_packet),
-		    buffer_len(&active_state->incoming_packet));
+		if (!mac->etm)
+			macbuf = mac_compute(mac, active_state->p_read.seqnr,
+			    buffer_ptr(&active_state->incoming_packet),
+			    buffer_len(&active_state->incoming_packet));
 		if (timingsafe_bcmp(macbuf, buffer_ptr(&active_state->input),
 		    mac->mac_len) != 0) {
 			logit("Corrupted MAC on input.");
@@ -1403,16 +1481,20 @@ packet_read_poll_seqnr(u_int32_t *seqnr_p)
 				packet_get_char();
 				msg = packet_get_string(NULL);
 				debug("Remote: %.900s", msg);
-				xfree(msg);
+				free(msg);
 				msg = packet_get_string(NULL);
-				xfree(msg);
+				free(msg);
 				break;
 			case SSH2_MSG_DISCONNECT:
 				reason = packet_get_int();
 				msg = packet_get_string(NULL);
-				logit("Received disconnect from %s: %u: %.400s",
+				/* Ignore normal client exit notifications */
+				do_log2(active_state->server_side &&
+				    reason == SSH2_DISCONNECT_BY_APPLICATION ?
+				    SYSLOG_LEVEL_INFO : SYSLOG_LEVEL_ERROR,
+				    "Received disconnect from %s: %u: %.400s",
 				    get_remote_ipaddr(), reason, msg);
-				xfree(msg);
+				free(msg);
 				cleanup_exit(255);
 				break;
 			case SSH2_MSG_UNIMPLEMENTED:
@@ -1426,22 +1508,23 @@ packet_read_poll_seqnr(u_int32_t *seqnr_p)
 		} else {
 			type = packet_read_poll1();
 			switch (type) {
+			case SSH_MSG_NONE:
+				return SSH_MSG_NONE;
 			case SSH_MSG_IGNORE:
 				break;
 			case SSH_MSG_DEBUG:
 				msg = packet_get_string(NULL);
 				debug("Remote: %.900s", msg);
-				xfree(msg);
+				free(msg);
 				break;
 			case SSH_MSG_DISCONNECT:
 				msg = packet_get_string(NULL);
-				logit("Received disconnect from %s: %.400s",
+				error("Received disconnect from %s: %.400s",
 				    get_remote_ipaddr(), msg);
 				cleanup_exit(255);
 				break;
 			default:
-				if (type)
-					DBG(debug("received packet type %d", type));
+				DBG(debug("received packet type %d", type));
 				return type;
 			}
 		}
@@ -1498,6 +1581,7 @@ packet_get_int64(void)
  * must have been initialized before this call.
  */
 
+#ifdef WITH_OPENSSL
 void
 packet_get_bignum(BIGNUM * value)
 {
@@ -1527,6 +1611,7 @@ packet_get_raw(u_int *length_ptr)
 		*length_ptr = bytes;
 	return buffer_ptr(&active_state->incoming_packet);
 }
+#endif
 
 int
 packet_remaining(void)
@@ -1547,7 +1632,7 @@ packet_get_string(u_int *length_ptr)
 	return buffer_get_string(&active_state->incoming_packet, length_ptr);
 }
 
-void *
+const void *
 packet_get_string_ptr(u_int *length_ptr)
 {
 	return buffer_get_string_ptr(&active_state->incoming_packet, length_ptr);
@@ -1678,7 +1763,7 @@ void
 packet_write_wait(void)
 {
 	fd_set *setp;
-	int ret, ms_remain;
+	int ret, ms_remain = 0;
 	struct timeval start, timeout, *timeoutp = NULL;
 
 	setp = (fd_set *)xcalloc(howmany(active_state->connection_out + 1,
@@ -1719,7 +1804,7 @@ packet_write_wait(void)
 		}
 		packet_write_poll();
 	}
-	xfree(setp);
+	free(setp);
 }
 
 /* Returns true if there is buffered data to write to the connection. */
@@ -1879,13 +1964,33 @@ packet_need_rekeying(void)
 	    (active_state->max_blocks_out &&
 	        (active_state->p_send.blocks > active_state->max_blocks_out)) ||
 	    (active_state->max_blocks_in &&
-	        (active_state->p_read.blocks > active_state->max_blocks_in));
+	        (active_state->p_read.blocks > active_state->max_blocks_in)) ||
+	    (active_state->rekey_interval != 0 && active_state->rekey_time +
+		 active_state->rekey_interval <= monotime());
 }
 
 void
-packet_set_rekey_limit(u_int32_t bytes)
+packet_set_rekey_limits(u_int32_t bytes, time_t seconds)
 {
+	debug3("rekey after %lld bytes, %d seconds", (long long)bytes,
+	    (int)seconds);
 	active_state->rekey_limit = bytes;
+	active_state->rekey_interval = seconds;
+	/*
+	 * We set the time here so that in post-auth privsep slave we count
+	 * from the completion of the authentication.
+	 */
+	active_state->rekey_time = monotime();
+}
+
+time_t
+packet_get_rekey_timeout(void)
+{
+	time_t seconds;
+
+	seconds = active_state->rekey_time + active_state->rekey_interval -
+	    monotime();
+	return (seconds <= 0 ? 1 : seconds);
 }
 
 void
@@ -1962,5 +2067,25 @@ packet_restore_state(void)
 		buffer_append(&active_state->input, buf, len);
 		buffer_clear(&backup_state->input);
 		add_recv_bytes(len);
+	}
+}
+
+/* Reset after_authentication and reset compression in post-auth privsep */
+void
+packet_set_postauth(void)
+{
+	Comp *comp;
+	int mode;
+
+	debug("%s: called", __func__);
+	/* This was set in net child, but is not visible in user child */
+	active_state->after_authentication = 1;
+	active_state->rekeying = 0;
+	for (mode = 0; mode < MODE_MAX; mode++) {
+		if (active_state->newkeys[mode] == NULL)
+			continue;
+		comp = &active_state->newkeys[mode]->comp;
+		if (comp && comp->enabled)
+			packet_init_compression();
 	}
 }

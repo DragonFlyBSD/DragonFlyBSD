@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-add.c,v 1.103 2011/10/18 23:37:42 djm Exp $ */
+/* $OpenBSD: ssh-add.c,v 1.113 2014/07/09 14:15:56 benno Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -62,6 +62,7 @@
 #include "authfile.h"
 #include "pathnames.h"
 #include "misc.h"
+#include "ssherr.h"
 
 /* argv0 */
 extern char *__progname;
@@ -73,6 +74,7 @@ static char *default_files[] = {
 #ifdef OPENSSL_HAS_ECC
 	_PATH_SSH_CLIENT_ID_ECDSA,
 #endif
+	_PATH_SSH_CLIENT_ID_ED25519,
 	_PATH_SSH_CLIENT_IDENTITY,
 	NULL
 };
@@ -89,17 +91,17 @@ static void
 clear_pass(void)
 {
 	if (pass) {
-		memset(pass, 0, strlen(pass));
-		xfree(pass);
+		explicit_bzero(pass, strlen(pass));
+		free(pass);
 		pass = NULL;
 	}
 }
 
 static int
-delete_file(AuthenticationConnection *ac, const char *filename)
+delete_file(AuthenticationConnection *ac, const char *filename, int key_only)
 {
-	Key *public;
-	char *comment = NULL;
+	Key *public = NULL, *cert = NULL;
+	char *certpath = NULL, *comment = NULL;
 	int ret = -1;
 
 	public = key_load_public(filename, &comment);
@@ -113,8 +115,33 @@ delete_file(AuthenticationConnection *ac, const char *filename)
 	} else
 		fprintf(stderr, "Could not remove identity: %s\n", filename);
 
-	key_free(public);
-	xfree(comment);
+	if (key_only)
+		goto out;
+
+	/* Now try to delete the corresponding certificate too */
+	free(comment);
+	comment = NULL;
+	xasprintf(&certpath, "%s-cert.pub", filename);
+	if ((cert = key_load_public(certpath, &comment)) == NULL)
+		goto out;
+	if (!key_equal_public(cert, public))
+		fatal("Certificate %s does not match private key %s",
+		    certpath, filename);
+
+	if (ssh_remove_identity(ac, cert)) {
+		fprintf(stderr, "Identity removed: %s (%s)\n", certpath,
+		    comment);
+		ret = 0;
+	} else
+		fprintf(stderr, "Could not remove identity: %s\n", certpath);
+
+ out:
+	if (cert != NULL)
+		key_free(cert);
+	if (public != NULL)
+		key_free(public);
+	free(certpath);
+	free(comment);
 
 	return ret;
 }
@@ -144,7 +171,7 @@ add_file(AuthenticationConnection *ac, const char *filename, int key_only)
 	Key *private, *cert;
 	char *comment = NULL;
 	char msg[1024], *certpath = NULL;
-	int fd, perms_ok, ret = -1;
+	int r, fd, perms_ok, ret = -1;
 	Buffer keyblob;
 
 	if (strcmp(filename, "-") == 0) {
@@ -175,12 +202,18 @@ add_file(AuthenticationConnection *ac, const char *filename, int key_only)
 	close(fd);
 
 	/* At first, try empty passphrase */
-	private = key_parse_private(&keyblob, filename, "", &comment);
+	if ((r = sshkey_parse_private_fileblob(&keyblob, "", filename,
+	    &private, &comment)) != 0 && r != SSH_ERR_KEY_WRONG_PASSPHRASE)
+		fatal("Cannot parse %s: %s", filename, ssh_err(r));
+	/* try last */
+	if (private == NULL && pass != NULL) {
+		if ((r = sshkey_parse_private_fileblob(&keyblob, pass, filename,
+		    &private, &comment)) != 0 &&
+		    r != SSH_ERR_KEY_WRONG_PASSPHRASE)
+			fatal("Cannot parse %s: %s", filename, ssh_err(r));
+	}
 	if (comment == NULL)
 		comment = xstrdup(filename);
-	/* try last */
-	if (private == NULL && pass != NULL)
-		private = key_parse_private(&keyblob, filename, pass, NULL);
 	if (private == NULL) {
 		/* clear passphrase since it did not work */
 		clear_pass();
@@ -190,12 +223,15 @@ add_file(AuthenticationConnection *ac, const char *filename, int key_only)
 			pass = read_passphrase(msg, RP_ALLOW_STDIN);
 			if (strcmp(pass, "") == 0) {
 				clear_pass();
-				xfree(comment);
+				free(comment);
 				buffer_free(&keyblob);
 				return -1;
 			}
-			private = key_parse_private(&keyblob, filename, pass,
-			    &comment);
+			if ((r = sshkey_parse_private_fileblob(&keyblob,
+			     pass, filename, &private, NULL)) != 0 &&
+			    r != SSH_ERR_KEY_WRONG_PASSPHRASE)
+				fatal("Cannot parse %s: %s",
+					    filename, ssh_err(r));
 			if (private != NULL)
 				break;
 			clear_pass();
@@ -257,8 +293,8 @@ add_file(AuthenticationConnection *ac, const char *filename, int key_only)
 		fprintf(stderr, "The user must confirm each use of the key\n");
  out:
 	if (certpath != NULL)
-		xfree(certpath);
-	xfree(comment);
+		free(certpath);
+	free(comment);
 	key_free(private);
 
 	return ret;
@@ -267,14 +303,17 @@ add_file(AuthenticationConnection *ac, const char *filename, int key_only)
 static int
 update_card(AuthenticationConnection *ac, int add, const char *id)
 {
-	char *pin;
+	char *pin = NULL;
 	int ret = -1;
 
-	pin = read_passphrase("Enter passphrase for PKCS#11: ", RP_ALLOW_STDIN);
-	if (pin == NULL)
-		return -1;
+	if (add) {
+		if ((pin = read_passphrase("Enter passphrase for PKCS#11: ",
+		    RP_ALLOW_STDIN)) == NULL)
+			return -1;
+	}
 
-	if (ssh_update_card(ac, add, id, pin, lifetime, confirm)) {
+	if (ssh_update_card(ac, add, id, pin == NULL ? "" : pin,
+	    lifetime, confirm)) {
 		fprintf(stderr, "Card %s: %s\n",
 		    add ? "added" : "removed", id);
 		ret = 0;
@@ -283,7 +322,7 @@ update_card(AuthenticationConnection *ac, int add, const char *id)
 		    add ? "add" : "remove", id);
 		ret = -1;
 	}
-	xfree(pin);
+	free(pin);
 	return ret;
 }
 
@@ -305,14 +344,14 @@ list_identities(AuthenticationConnection *ac, int do_fp)
 				    SSH_FP_HEX);
 				printf("%d %s %s (%s)\n",
 				    key_size(key), fp, comment, key_type(key));
-				xfree(fp);
+				free(fp);
 			} else {
 				if (!key_write(key, stdout))
 					fprintf(stderr, "key_write failed");
 				fprintf(stdout, " %s\n", comment);
 			}
 			key_free(key);
-			xfree(comment);
+			free(comment);
 		}
 	}
 	if (!had_identities) {
@@ -337,16 +376,16 @@ lock_agent(AuthenticationConnection *ac, int lock)
 			fprintf(stderr, "Passwords do not match.\n");
 			passok = 0;
 		}
-		memset(p2, 0, strlen(p2));
-		xfree(p2);
+		explicit_bzero(p2, strlen(p2));
+		free(p2);
 	}
 	if (passok && ssh_lock_agent(ac, lock, p1)) {
 		fprintf(stderr, "Agent %slocked.\n", lock ? "" : "un");
 		ret = 0;
 	} else
 		fprintf(stderr, "Failed to %slock agent.\n", lock ? "" : "un");
-	memset(p1, 0, strlen(p1));
-	xfree(p1);
+	explicit_bzero(p1, strlen(p1));
+	free(p1);
 	return (ret);
 }
 
@@ -354,7 +393,7 @@ static int
 do_file(AuthenticationConnection *ac, int deleting, int key_only, char *file)
 {
 	if (deleting) {
-		if (delete_file(ac, file) == -1)
+		if (delete_file(ac, file, key_only) == -1)
 			return -1;
 	} else {
 		if (add_file(ac, file, key_only) == -1)
@@ -397,6 +436,8 @@ main(int argc, char **argv)
 	seed_rng();
 
 	OpenSSL_add_all_algorithms();
+
+	setlinebuf(stdout);
 
 	/* At first, get a connection to the authentication agent. */
 	ac = ssh_get_authentication_connection();
