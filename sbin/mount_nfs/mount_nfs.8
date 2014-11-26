@@ -28,9 +28,8 @@
 .\"	@(#)mount_nfs.8	8.3 (Berkeley) 3/29/95
 .\"
 .\" $FreeBSD: src/sbin/mount_nfs/mount_nfs.8,v 1.18.2.10 2003/05/13 14:45:40 trhodes Exp $
-.\" $DragonFly: src/sbin/mount_nfs/mount_nfs.8,v 1.6 2008/05/01 23:36:43 swildner Exp $
 .\""
-.Dd March 29, 1995
+.Dd November 27, 2014
 .Dt MOUNT_NFS 8
 .Os
 .Sh NAME
@@ -38,13 +37,12 @@
 .Nd mount nfs file systems
 .Sh SYNOPSIS
 .Nm
-.Op Fl 23KNPTUbcdils
+.Op Fl 23NPTUbcdils
 .Op Fl D Ar deadthresh
 .Op Fl I Ar readdirsize
 .Op Fl R Ar retrycnt
 .Op Fl a Ar maxreadahead
 .Op Fl g Ar maxgroups
-.Op Fl m Ar realm
 .Op Fl o Ar options
 .Op Fl r Ar readsize
 .Op Fl t Ar timeout
@@ -114,16 +112,6 @@ feature.
 Set the readdir read size to the specified value.
 The value should normally
 be a multiple of DIRBLKSIZ that is \(<= the read size for the mount.
-.It Fl K
-Pass Kerberos authenticators to the server for client-to-server
-user-credential mapping.
-This requires that the kernel be built with the NFSKERB option.
-The use of this option will prevent the kernel from compiling
-unless calls to the appropriate Kerberos encryption routines
-are provided in the NFS source.
-(Refer to RFC 2695
-.%T "Authentication Mechanisms for ONC RPC" ,
-for more information.)
 .It Fl N
 Do
 .Em not
@@ -205,11 +193,6 @@ Probably
 most useful for client to server network interconnects with a large bandwidth
 times delay product.
 This is the default.
-.It Fl m
-Set the Kerberos realm to the string argument.
-Used with the
-.Fl K
-option for mounts to other realms.
 .It Fl o
 Options are specified with a
 .Fl o
@@ -260,9 +243,6 @@ Same as
 .It Cm intr
 Same as
 .Fl i .
-.It Cm kerb
-Same as
-.Fl K .
 .It Cm nfsv2
 Same as
 .Fl 2 .
