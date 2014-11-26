@@ -109,7 +109,7 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 	/* Allocate a new map structure, fill it in, and do any type-specific
 	 * initialization necessary.
 	 */
-	map = kmalloc(sizeof(*map), M_DRM, M_ZERO | M_NOWAIT);
+	map = kmalloc(sizeof(*map), M_DRM, M_ZERO | M_WAITOK | M_NULLOK);
 	if (!map) {
 		return ENOMEM;
 	}
@@ -171,7 +171,7 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 			map->mtrr = 1;
 		break;
 	case _DRM_SHM:
-		map->handle = kmalloc(map->size, M_DRM, M_NOWAIT);
+		map->handle = kmalloc(map->size, M_DRM, M_WAITOK | M_NULLOK);
 		DRM_DEBUG("%lu %d %p\n",
 		    map->size, drm_order(map->size), map->handle);
 		if (!map->handle) {
@@ -508,7 +508,7 @@ static int drm_do_addbufs_agp(struct drm_device *dev, struct drm_buf_desc *reque
 	entry = &dma->bufs[order];
 
 	entry->buflist = kmalloc(count * sizeof(*entry->buflist), M_DRM,
-	    M_NOWAIT | M_ZERO);
+				 M_WAITOK | M_NULLOK | M_ZERO);
 	if (!entry->buflist) {
 		return ENOMEM;
 	}
@@ -534,7 +534,7 @@ static int drm_do_addbufs_agp(struct drm_device *dev, struct drm_buf_desc *reque
 
 		buf->dev_priv_size = dev->driver->buf_priv_size;
 		buf->dev_private = kmalloc(buf->dev_priv_size, M_DRM,
-		    M_NOWAIT | M_ZERO);
+					   M_WAITOK | M_NULLOK | M_ZERO);
 		if (buf->dev_private == NULL) {
 			/* Set count correctly so we free the proper amount. */
 			entry->buf_count = count;
@@ -551,7 +551,7 @@ static int drm_do_addbufs_agp(struct drm_device *dev, struct drm_buf_desc *reque
 
 	temp_buflist = krealloc(dma->buflist,
 	    (dma->buf_count + entry->buf_count) * sizeof(*dma->buflist),
-	    M_DRM, M_NOWAIT);
+	    M_DRM, M_WAITOK | M_NULLOK);
 	if (temp_buflist == NULL) {
 		/* Free the entry because it isn't valid */
 		drm_cleanup_buf_error(dev, entry);
@@ -610,15 +610,16 @@ static int drm_do_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *reque
 	entry = &dma->bufs[order];
 
 	entry->buflist = kmalloc(count * sizeof(*entry->buflist), M_DRM,
-	    M_NOWAIT | M_ZERO);
+				 M_WAITOK | M_NULLOK | M_ZERO);
 	entry->seglist = kmalloc(count * sizeof(*entry->seglist), M_DRM,
-	    M_NOWAIT | M_ZERO);
+				 M_WAITOK | M_NULLOK | M_ZERO);
 
 	/* Keep the original pagelist until we know all the allocations
 	 * have succeeded
 	 */
 	temp_pagelist = kmalloc((dma->page_count + (count << page_order)) *
-	    sizeof(*dma->pagelist), M_DRM, M_NOWAIT);
+				sizeof(*dma->pagelist),
+				M_DRM, M_WAITOK | M_NULLOK);
 
 	if (entry->buflist == NULL || entry->seglist == NULL || 
 	    temp_pagelist == NULL) {
@@ -678,7 +679,9 @@ static int drm_do_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *reque
 
 			buf->dev_priv_size = dev->driver->buf_priv_size;
 			buf->dev_private = kmalloc(buf->dev_priv_size,
-			    M_DRM, M_NOWAIT | M_ZERO);
+						   M_DRM,
+						   M_WAITOK | M_NULLOK |
+						    M_ZERO);
 			if (buf->dev_private == NULL) {
 				/* Set count correctly so we free the proper amount. */
 				entry->buf_count = count;
@@ -696,7 +699,7 @@ static int drm_do_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *reque
 
 	temp_buflist = krealloc(dma->buflist,
 	    (dma->buf_count + entry->buf_count) * sizeof(*dma->buflist),
-	    M_DRM, M_NOWAIT);
+	    M_DRM, M_WAITOK | M_NULLOK);
 	if (temp_buflist == NULL) {
 		/* Free the entry because it isn't valid */
 		drm_cleanup_buf_error(dev, entry);
@@ -767,7 +770,7 @@ static int drm_do_addbufs_sg(struct drm_device *dev, struct drm_buf_desc *reques
 	entry = &dma->bufs[order];
 
 	entry->buflist = kmalloc(count * sizeof(*entry->buflist), M_DRM,
-	    M_NOWAIT | M_ZERO);
+				 M_WAITOK | M_NULLOK | M_ZERO);
 	if (entry->buflist == NULL)
 		return ENOMEM;
 
@@ -792,7 +795,7 @@ static int drm_do_addbufs_sg(struct drm_device *dev, struct drm_buf_desc *reques
 
 		buf->dev_priv_size = dev->driver->buf_priv_size;
 		buf->dev_private = kmalloc(buf->dev_priv_size, M_DRM,
-		    M_NOWAIT | M_ZERO);
+					   M_WAITOK | M_NULLOK | M_ZERO);
 		if (buf->dev_private == NULL) {
 			/* Set count correctly so we free the proper amount. */
 			entry->buf_count = count;
@@ -812,7 +815,7 @@ static int drm_do_addbufs_sg(struct drm_device *dev, struct drm_buf_desc *reques
 
 	temp_buflist = krealloc(dma->buflist,
 	    (dma->buf_count + entry->buf_count) * sizeof(*dma->buflist),
-	    M_DRM, M_NOWAIT);
+	    M_DRM, M_WAITOK | M_NULLOK);
 	if (temp_buflist == NULL) {
 		/* Free the entry because it isn't valid */
 		drm_cleanup_buf_error(dev, entry);

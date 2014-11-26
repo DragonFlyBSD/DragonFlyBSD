@@ -1459,7 +1459,7 @@ intel_overlay_capture_error_state(struct drm_device *dev)
 	if (!overlay || !overlay->active)
 		return NULL;
 
-	error = kmalloc(sizeof(*error), M_DRM, M_NOWAIT);
+	error = kmalloc(sizeof(*error), M_DRM, M_WAITOK | M_NULLOK);
 	if (error == NULL)
 		return NULL;
 

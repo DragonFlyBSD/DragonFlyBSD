@@ -1517,13 +1517,13 @@ struct drm_display_mode *drm_mode_create_from_cmdline_mode(
 static __inline__ void *
 drm_alloc(size_t size, struct malloc_type *area)
 {
-	return kmalloc(size, area, M_NOWAIT);
+	return kmalloc(size, area, M_WAITOK | M_NULLOK);
 }
 
 static __inline__ void *
 drm_calloc(size_t nmemb, size_t size, struct malloc_type *area)
 {
-	return kmalloc(size * nmemb, area, M_NOWAIT | M_ZERO);
+	return kmalloc(size * nmemb, area, M_WAITOK | M_NULLOK | M_ZERO);
 }
 
 static __inline__ void *
@@ -1531,7 +1531,7 @@ drm_realloc(void *oldpt, size_t oldsize, size_t size,
     struct malloc_type *area)
 {
 	void *res;
-	res = krealloc(oldpt, size, area, M_NOWAIT);
+	res = krealloc(oldpt, size, area, M_WAITOK | M_NULLOK);
 	if (res == NULL && oldpt != NULL)
 		kfree(oldpt,area);
 	return res;

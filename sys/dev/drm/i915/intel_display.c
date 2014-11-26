@@ -9509,7 +9509,7 @@ intel_display_capture_error_state(struct drm_device *dev)
 	enum transcoder cpu_transcoder;
 	int i;
 
-	error = kmalloc(sizeof(*error), M_DRM, M_NOWAIT);
+	error = kmalloc(sizeof(*error), M_DRM, M_WAITOK | M_NULLOK);
 	if (error == NULL)
 		return NULL;
 

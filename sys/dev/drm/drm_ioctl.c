@@ -139,7 +139,7 @@ static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
 	DRM_LOCK(dev);
 
 	dev->unique_len = 20;
-	dev->unique = kmalloc(dev->unique_len + 1, M_DRM, M_NOWAIT);
+	dev->unique = kmalloc(dev->unique_len + 1, M_DRM, M_WAITOK | M_NULLOK);
 	if (dev->unique == NULL) {
 		DRM_UNLOCK(dev);
 		return ENOMEM;

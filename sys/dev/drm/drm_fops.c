@@ -137,7 +137,7 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 
 	DRM_DEBUG("pid = %d, device = %s\n", DRM_CURRENTPID, devtoname(kdev));
 
-	priv = kmalloc(sizeof(*priv), M_DRM, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_DRM, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL) {
 		return ENOMEM;
 	}

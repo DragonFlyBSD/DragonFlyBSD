@@ -52,9 +52,11 @@ static struct drm_mm_node *drm_mm_kmalloc(struct drm_mm *mm, int atomic)
 	struct drm_mm_node *child;
 
 	if (atomic)
-		child = kmalloc(sizeof(*child), M_DRM, M_ZERO | M_NOWAIT);
+		child = kmalloc(sizeof(*child), M_DRM,
+				M_ZERO | M_NOWAIT);
 	else
-		child = kmalloc(sizeof(*child), M_DRM, M_ZERO | M_WAITOK);
+		child = kmalloc(sizeof(*child), M_DRM,
+				M_ZERO | M_WAITOK | M_NULLOK);
 
 	if (unlikely(child == NULL)) {
 		spin_lock(&mm->unused_lock);

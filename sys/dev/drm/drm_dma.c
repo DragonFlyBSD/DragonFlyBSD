@@ -42,7 +42,8 @@
 int drm_dma_setup(struct drm_device *dev)
 {
 
-	dev->dma = kmalloc(sizeof(*dev->dma), M_DRM, M_NOWAIT | M_ZERO);
+	dev->dma = kmalloc(sizeof(*dev->dma), M_DRM,
+			   M_WAITOK | M_NULLOK | M_ZERO);
 	if (dev->dma == NULL)
 		return ENOMEM;
 

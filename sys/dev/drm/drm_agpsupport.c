@@ -174,7 +174,7 @@ int drm_agp_alloc(struct drm_device *dev, struct drm_agp_buffer *request)
 	if (!dev->agp || !dev->agp->acquired)
 		return EINVAL;
 
-	entry = kmalloc(sizeof(*entry), M_DRM, M_NOWAIT | M_ZERO);
+	entry = kmalloc(sizeof(*entry), M_DRM, M_WAITOK | M_NULLOK | M_ZERO);
 	if (entry == NULL)
 		return ENOMEM;
 
@@ -355,7 +355,7 @@ drm_agp_head_t *drm_agp_init(void)
 
 	if (agp_available) {
 		head = kmalloc(sizeof(*head), M_DRM,
-		    M_NOWAIT | M_ZERO);
+				M_WAITOK | M_NULLOK | M_ZERO);
 		if (head == NULL)
 			return NULL;
 		head->agpdev = agpdev;

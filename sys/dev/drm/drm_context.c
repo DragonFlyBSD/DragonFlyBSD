@@ -77,7 +77,7 @@ int drm_ctxbitmap_next(struct drm_device *dev)
 
 		ctx_sareas = krealloc(dev->context_sareas,
 		    max_ctx * sizeof(*dev->context_sareas),
-		    M_DRM, M_NOWAIT);
+		    M_DRM, M_WAITOK | M_NULLOK);
 		if (ctx_sareas == NULL) {
 			clear_bit(bit, dev->ctx_bitmap);
 			DRM_DEBUG("failed to allocate bit : %d\n", bit);
@@ -99,7 +99,7 @@ int drm_ctxbitmap_init(struct drm_device *dev)
 
 	DRM_LOCK(dev);
 	dev->ctx_bitmap = kmalloc(PAGE_SIZE, M_DRM,
-	    M_NOWAIT | M_ZERO);
+				  M_WAITOK | M_NULLOK | M_ZERO);
 	if (dev->ctx_bitmap == NULL) {
 		DRM_UNLOCK(dev);
 		return ENOMEM;

@@ -66,7 +66,8 @@ drm_pci_alloc(struct drm_device *dev, size_t size,
 		return NULL;
 	}
 
-	dmah = kmalloc(sizeof(drm_dma_handle_t), M_DRM, M_ZERO | M_NOWAIT);
+	dmah = kmalloc(sizeof(drm_dma_handle_t), M_DRM,
+		       M_ZERO | M_WAITOK | M_NULLOK);
 	if (dmah == NULL)
 		return NULL;
 
