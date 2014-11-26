@@ -187,6 +187,34 @@ callout_unpend_disarm(struct callout *c)
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags)) {
 			break;
 		}
+		cpu_pause();
+		/* retry */
+	}
+	return flags;
+}
+
+/*
+ * Clear ARMED after finishing adjustments to the callout, potentially
+ * allowing other cpus to take over.  We can only do this if the IPI mask
+ * is 0.
+ */
+static __inline
+int
+callout_maybe_clear_armed(struct callout *c)
+{
+	int flags;
+	int nflags;
+
+	for (;;) {
+		flags = c->c_flags;
+		cpu_ccfence();
+		if (flags & CALLOUT_IPI_MASK)
+			break;
+		nflags = flags & ~CALLOUT_ARMED;
+		if (atomic_cmpset_int(&c->c_flags, flags, nflags))
+			break;
+		cpu_pause();
+		/* retry */
 	}
 	return flags;
 }
@@ -758,7 +786,7 @@ _callout_stop(struct callout *c, int issync)
 				 * NOTE: WAITING bit race exists when doing
 				 *	 unconditional bit clears.
 				 */
-				atomic_clear_int(&c->c_flags, CALLOUT_ARMED);
+				callout_maybe_clear_armed(c);
 				if (c->c_flags & CALLOUT_WAITING)
 					flags |= CALLOUT_WAITING;
 			}
@@ -801,6 +829,7 @@ _callout_stop(struct callout *c, int issync)
 	}
 
 skip_slow:
+
 	/*
 	 * If (issync) we must also wait for any in-progress callbacks to
 	 * complete, unless the stop is being executed from the callback
@@ -885,11 +914,11 @@ callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 		 * Transition to the stopped state, recover the EXECUTED
 		 * status, decrement the IPI count.  If pending we cannot
 		 * clear ARMED until after we have removed (c) from the
-		 * callwheel.
+		 * callwheel, and only if there are no more IPIs pending.
 		 */
 		nflags = flags & ~(CALLOUT_ACTIVE | CALLOUT_PENDING);
 		nflags = nflags - 1;			/* dec ipi count */
-		if ((flags & CALLOUT_PENDING) == 0)
+		if ((flags & (CALLOUT_IPI_MASK | CALLOUT_PENDING)) == 1)
 			nflags &= ~CALLOUT_ARMED;
 		if ((flags & CALLOUT_IPI_MASK) == 1)
 			nflags &= ~(CALLOUT_WAITING | CALLOUT_EXECUTED);
@@ -916,7 +945,7 @@ callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 				 * NOTE: WAITING bit race exists when doing
 				 *	 unconditional bit clears.
 				 */
-				atomic_clear_int(&c->c_flags, CALLOUT_ARMED);
+				callout_maybe_clear_armed(c);
 				if (c->c_flags & CALLOUT_WAITING)
 					flags |= CALLOUT_WAITING;
 			}
