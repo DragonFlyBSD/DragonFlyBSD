@@ -1821,10 +1821,10 @@ skip:
 int
 get_net(char *cp, struct netmsk *net, int maskflg)
 {
-	struct netent *np;
+	struct netent *np = NULL;
 	char *name, *p, *prefp;
 	struct sockaddr_in sin;
-	struct sockaddr *sa;
+	struct sockaddr *sa = NULL;
 	struct addrinfo hints, *ai = NULL;
 	char netname[NI_MAXHOST];
 	long preflen;
@@ -1836,13 +1836,11 @@ get_net(char *cp, struct netmsk *net, int maskflg)
 		prefp = p + 1;
 	}
 
-	if ((np = getnetbyname(cp)) != NULL) {
-		bzero(&sin, sizeof sin);
-		sin.sin_family = AF_INET;
-		sin.sin_len = sizeof sin;
-		sin.sin_addr = inet_makeaddr(np->n_net, 0);
-		sa = (struct sockaddr *)&sin;
-	} else if (isxdigit(*cp) || *cp == ':') {
+	/*
+	 * Check for a numeric address first. We wish to avoid
+	 * possible DNS lookups in getnetbyname().
+	 */
+	if (isxdigit(*cp) || *cp == ':') {
 		memset(&hints, 0, sizeof hints);
 		/* Ensure the mask and the network have the same family. */
 		if (maskflg && (opt_flags & OP_NET))
@@ -1852,9 +1850,9 @@ get_net(char *cp, struct netmsk *net, int maskflg)
 		else
 			hints.ai_family = AF_UNSPEC;
 		hints.ai_flags = AI_NUMERICHOST;
-		if (getaddrinfo(cp, NULL, &hints, &ai) != 0)
-			goto fail;
-		if (ai->ai_family == AF_INET) {
+		if (getaddrinfo(cp, NULL, &hints, &ai) == 0)
+			sa = ai->ai_addr;
+		if (sa != NULL && ai->ai_family == AF_INET) {
 			/*
 			 * The address in `cp' is really a network address, so
 			 * use inet_network() to re-interpret this correctly.
@@ -1868,9 +1866,16 @@ get_net(char *cp, struct netmsk *net, int maskflg)
 				fprintf(stderr, "get_net: v4 addr %s\n",
 				    inet_ntoa(sin.sin_addr));
 			sa = (struct sockaddr *)&sin;
-		} else
-			sa = ai->ai_addr;
-	} else
+		}
+	}
+	if (sa == NULL && (np = getnetbyname(cp)) != NULL) {
+		bzero(&sin, sizeof sin);
+		sin.sin_family = AF_INET;
+		sin.sin_len = sizeof sin;
+		sin.sin_addr = inet_makeaddr(np->n_net, 0);
+		sa = (struct sockaddr *)&sin;
+	}
+	if (sa == NULL)
 		goto fail;
 
 	if (maskflg) {
