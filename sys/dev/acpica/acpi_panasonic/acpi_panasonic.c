@@ -155,6 +155,7 @@ acpi_panasonic_attach(device_t dev)
 	sc = device_get_softc(dev);
 	sc->dev = dev;
 	sc->handle = acpi_get_handle(dev);
+	ACPI_SERIAL_INIT(panasonic);
 
 	acpi_sc = acpi_device_get_parent_softc(dev);
 

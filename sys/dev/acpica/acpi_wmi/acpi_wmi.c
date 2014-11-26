@@ -230,6 +230,7 @@ acpi_wmi_attach(device_t dev)
 	int ret;
 	ACPI_STATUS status;
 
+	ACPI_SERIAL_INIT(acpi_wmi);
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 	sc = device_get_softc(dev);
 	ret = ENXIO;

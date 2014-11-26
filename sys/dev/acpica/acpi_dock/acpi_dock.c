@@ -483,6 +483,7 @@ acpi_dock_attach(device_t dev)
 
 	AcpiEvaluateObject(h, "_INI", NULL, NULL);
 
+	ACPI_SERIAL_INIT(dock);
 	ACPI_SERIAL_BEGIN(dock);
 
 	acpi_dock_device_check(dev);
