@@ -286,6 +286,7 @@ machine_init(struct statics *statics)
 	statics->order_names = ordernames;
 	/* we need kvm descriptor in order to show full commands */
 	statics->flags.fullcmds = kd != NULL;
+	statics->flags.threads = 1;
 
 	/* all done! */
 	return (0);
@@ -535,8 +536,6 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	char status[16];
 	int state;
 	int xnice;
-	int prefer_fullcmd;
-	char **comm_full;
 	char *comm;
 	char cputime_fmt[10], ccputime_fmt[10];
 
@@ -546,15 +545,28 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	hp->remaining--;
 
 	/* get the process's command name */
-	prefer_fullcmd = show_fullcmd;
 	if (show_fullcmd) {
-		if ((comm_full = kvm_getargv(kd, pp, 0)) == NULL) {
-			prefer_fullcmd = 0;
+		char **comm_full = kvm_getargv(kd, pp, 0);
+		if (comm_full != 0)
+			comm = *comm_full;
+		else
 			comm = PP(pp, comm);
-		}
 	}
 	else {
 		comm = PP(pp, comm);
+	}
+
+	/* the actual field to display */
+	char cmdfield[MAX_COLS];
+
+	if (PP(pp, flags) & P_SYSTEM) {
+		/* system process */
+		snprintf(cmdfield, sizeof cmdfield, "[%s]", comm);
+	} else if (LP(pp, tid) > 0) {
+		/* display it as a thread */
+		snprintf(cmdfield, sizeof cmdfield, "%s{%d}", comm, LP(pp, tid));
+	} else {
+		snprintf(cmdfield, sizeof cmdfield, "%s", comm);
 	}
 	
 	/*
@@ -631,7 +643,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	    ccputime_fmt,
 	    100.0 * pct,
 	    cmdlength,
-	    prefer_fullcmd ? *comm_full : comm);
+	    cmdfield);
 
 	/* return the result */
 	return (fmt);
