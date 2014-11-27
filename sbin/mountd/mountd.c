@@ -180,7 +180,7 @@ void	mntsrv(struct svc_req *, SVCXPRT *);
 void	nextfield(char **, char **);
 void	out_of_mem(void);
 void	parsecred(char *, struct ucred *);
-int	put_exlist(struct dirlist *, XDR *, struct dirlist *, int *);
+int	put_exlist(struct dirlist *, XDR *, struct dirlist *, int *, int);
 void    *sa_rawaddr(struct sockaddr *sa, int *nbytes);
 int     sacmp(struct sockaddr *sa1, struct sockaddr *sa2,
     struct sockaddr *samask);
@@ -188,6 +188,7 @@ int	scan_tree(struct dirlist *, struct sockaddr *);
 static void usage(void);
 int	xdr_dir(XDR *, char *);
 int	xdr_explist(XDR *, caddr_t);
+int	xdr_explist_brief(XDR *, caddr_t);
 int	xdr_fhs(XDR *, caddr_t);
 int	xdr_mlist(XDR *, caddr_t);
 void	terminate(int);
@@ -668,7 +669,8 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 		return;
 	case RPCMNT_EXPORT:
 		if (!svc_sendreply(transp, (xdrproc_t)xdr_explist, NULL))
-			syslog(LOG_ERR, "can't send reply");
+			if (!svc_sendreply(transp, (xdrproc_t)xdr_explist_brief, NULL))
+				syslog(LOG_ERR, "can't send reply");
 		if (do_log)
 			syslog(LOG_NOTICE,
 			    "export request succeeded from %s",
@@ -747,7 +749,7 @@ xdr_mlist(XDR *xdrsp, caddr_t cp)
  * Xdr conversion for export list
  */
 int
-xdr_explist(XDR *xdrsp, caddr_t cp)
+xdr_explist_common(XDR *xdrsp, caddr_t cp, int brief)
 {
 	struct exportlist *ep;
 	int false = 0;
@@ -760,11 +762,12 @@ xdr_explist(XDR *xdrsp, caddr_t cp)
 	ep = exphead;
 	while (ep) {
 		putdef = 0;
-		if (put_exlist(ep->ex_dirl, xdrsp, ep->ex_defdir, &putdef))
+		if (put_exlist(ep->ex_dirl, xdrsp, ep->ex_defdir,
+			&putdef, brief))
 			goto errout;
 		if (ep->ex_defdir && putdef == 0 &&
 			put_exlist(ep->ex_defdir, xdrsp, NULL,
-			&putdef))
+			    &putdef, brief))
 			goto errout;
 		ep = ep->ex_next;
 	}
@@ -782,7 +785,7 @@ errout:
  * directory paths.
  */
 int
-put_exlist(struct dirlist *dp, XDR *xdrsp, struct dirlist *adp, int *putdefp)
+put_exlist(struct dirlist *dp, XDR *xdrsp, struct dirlist *adp, int *putdefp, int brief)
 {
 	struct grouplist *grp;
 	struct hostlist *hp;
@@ -792,7 +795,7 @@ put_exlist(struct dirlist *dp, XDR *xdrsp, struct dirlist *adp, int *putdefp)
 	char *strp;
 
 	if (dp) {
-		if (put_exlist(dp->dp_left, xdrsp, adp, putdefp))
+		if (put_exlist(dp->dp_left, xdrsp, adp, putdefp, brief))
 			return (1);
 		if (!xdr_bool(xdrsp, &true))
 			return (1);
@@ -803,7 +806,13 @@ put_exlist(struct dirlist *dp, XDR *xdrsp, struct dirlist *adp, int *putdefp)
 			gotalldir = 1;
 			*putdefp = 1;
 		}
-		if ((dp->dp_flag & DP_DEFSET) == 0 &&
+		if (brief) {
+			if (!xdr_bool(xdrsp, &true))
+				return (1);
+			strp = "(...)";
+			if (!xdr_string(xdrsp, &strp, RPCMNT_PATHLEN))
+				return (1);
+		} else if ((dp->dp_flag & DP_DEFSET) == 0 &&
 		    (gotalldir == 0 || (adp->dp_flag & DP_DEFSET) == 0)) {
 			hp = dp->dp_hosts;
 			while (hp) {
@@ -832,10 +841,28 @@ put_exlist(struct dirlist *dp, XDR *xdrsp, struct dirlist *adp, int *putdefp)
 		}
 		if (!xdr_bool(xdrsp, &false))
 			return (1);
-		if (put_exlist(dp->dp_right, xdrsp, adp, putdefp))
+		if (put_exlist(dp->dp_right, xdrsp, adp, putdefp, brief))
 			return (1);
 	}
 	return (0);
+}
+
+int
+xdr_explist(xdrsp, cp)
+	XDR *xdrsp;
+	caddr_t cp;
+{
+
+	return xdr_explist_common(xdrsp, cp, 0);
+}
+
+int
+xdr_explist_brief(xdrsp, cp)
+	XDR *xdrsp;
+	caddr_t cp;
+{
+
+	return xdr_explist_common(xdrsp, cp, 1);
 }
 
 char *line;
