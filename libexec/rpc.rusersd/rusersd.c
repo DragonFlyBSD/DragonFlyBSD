@@ -31,7 +31,7 @@
 
 #include <stdlib.h>
 #include <rpc/rpc.h>
-#include <rpc/pmap_clnt.h>
+#include <sys/socket.h>
 #include <signal.h>
 #include <syslog.h>
 #define utmp rutmp
@@ -45,8 +45,8 @@ int from_inetd = 1;
 void
 cleanup(int sig)
 {
-        (void) pmap_unset(RUSERSPROG, RUSERSVERS_IDLE);
-        (void) pmap_unset(RUSERSPROG, RUSERSVERS_ORIG);
+	(void) rpcb_unset(RUSERSPROG, RUSERSVERS_IDLE, NULL);
+	(void) rpcb_unset(RUSERSPROG, RUSERSVERS_ORIG, NULL);
         exit(0);
 }
 
@@ -54,9 +54,8 @@ int
 main(int argc, char *argv[])
 {
 	SVCXPRT *transp;
-        int sock = 0;
-        int proto = 0;
-	struct sockaddr_in from;
+	int ok;
+	struct sockaddr_storage from;
 	int fromlen;
 
         /*
@@ -65,8 +64,6 @@ main(int argc, char *argv[])
 	fromlen = sizeof(from);
         if (getsockname(0, (struct sockaddr *)&from, &fromlen) < 0) {
                 from_inetd = 0;
-                sock = RPC_ANYSOCK;
-                proto = IPPROTO_UDP;
         }
 
         if (!from_inetd) {
@@ -82,21 +79,32 @@ main(int argc, char *argv[])
 
         openlog("rpc.rusersd", LOG_CONS|LOG_PID, LOG_DAEMON);
 
-	transp = svcudp_create(sock);
-	if (transp == NULL) {
-		syslog(LOG_ERR, "cannot create udp service");
-		exit(1);
-	}
-	if (!svc_register(transp, RUSERSPROG, RUSERSVERS_IDLE, rusers_service, proto)) {
-		syslog(LOG_ERR, "unable to register (RUSERSPROG, RUSERSVERS_IDLE, %s)", proto?"udp":"(inetd)");
+	if (from_inetd) {
+		transp = svc_tli_create(0, NULL, NULL, 0, 0);
+		if (transp == NULL) {
+			syslog(LOG_ERR, "cannot create udp service.");
+			exit(1);
+		}
+		ok = svc_reg(transp, RUSERSPROG, RUSERSVERS_IDLE,
+		    rusers_service, NULL);
+	} else
+		ok = svc_create(rusers_service,
+		    RUSERSPROG, RUSERSVERS_IDLE, "udp");
+	if (!ok) {
+		syslog(LOG_ERR, "unable to register (RUSERSPROG, RUSERSVERS_IDLE, %s)", (!from_inetd)?"udp":"(inetd)");
 		exit(1);
 	}
 
-	if (!svc_register(transp, RUSERSPROG, RUSERSVERS_ORIG, rusers_service, proto)) {
-		syslog(LOG_ERR, "unable to register (RUSERSPROG, RUSERSVERS_ORIG, %s)", proto?"udp":"(inetd)");
+	if (from_inetd)
+		ok = svc_reg(transp, RUSERSPROG, RUSERSVERS_ORIG,
+		    rusers_service, NULL);
+	else
+		ok = svc_create(rusers_service,
+		    RUSERSPROG, RUSERSVERS_ORIG, "udp");
+	if (!ok) {
+		syslog(LOG_ERR, "unable to register (RUSERSPROG, RUSERSVERS_ORIG, %s)", (!from_inetd)?"udp":"(inetd)");
 		exit(1);
 	}
-
         svc_run();
 	syslog(LOG_ERR, "svc_run returned");
 	exit(1);

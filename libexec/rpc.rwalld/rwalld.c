@@ -37,7 +37,6 @@
 #include <string.h>
 #include <syslog.h>
 #include <rpc/rpc.h>
-#include <rpc/pmap_clnt.h>
 #include <rpcsvc/rwall.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -62,10 +61,8 @@ int
 main(int argc, char *argv[])
 {
 	SVCXPRT *transp;
-	int s, salen;
-	struct sockaddr_in sa;
-        int sock = 0;
-        int proto = 0;
+	int ok, salen;
+	struct sockaddr_storage sa;
 
 	if (argc == 2 && !strcmp(argv[1], "-n"))
 		nodaemon = 1;
@@ -86,42 +83,33 @@ main(int argc, char *argv[])
 	salen = sizeof(sa);
         if (getsockname(0, (struct sockaddr *)&sa, &salen) < 0) {
                 from_inetd = 0;
-                sock = RPC_ANYSOCK;
-                proto = IPPROTO_UDP;
         }
 
         if (!from_inetd) {
                 if (!nodaemon)
                         possess();
 
-                (void)pmap_unset(WALLPROG, WALLVERS);
-                if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
-                        err(1, "socket");
-                bzero((char *)&sa, sizeof sa);
-                if (bind(s, (struct sockaddr *)&sa, sizeof sa) < 0)
-                        err(1, "bind");
-
-                salen = sizeof sa;
-                if (getsockname(s, (struct sockaddr *)&sa, &salen))
-                        err(1, "getsockname");
-
-                pmap_set(WALLPROG, WALLVERS, IPPROTO_UDP, ntohs(sa.sin_port));
-                if (dup2(s, 0) < 0)
-                        err(1, "dup2");
-                (void)pmap_unset(WALLPROG, WALLVERS);
+		(void)rpcb_unset(WALLPROG, WALLVERS, NULL);
         }
 
 	(void)signal(SIGCHLD, killkids);
 
 	openlog("rpc.rwalld", LOG_CONS|LOG_PID, LOG_DAEMON);
 
-	transp = svcudp_create(sock);
-	if (transp == NULL) {
-		syslog(LOG_ERR, "cannot create udp service");
-		exit(1);
-	}
-	if (!svc_register(transp, WALLPROG, WALLVERS, wallprog_1, proto)) {
-		syslog(LOG_ERR, "unable to register (WALLPROG, WALLVERS, %s)", proto?"udp":"(inetd)");
+	/* create and register the service */
+	if (from_inetd) {
+		transp = svc_tli_create(0, NULL, NULL, 0, 0);
+		if (transp == NULL) {
+			syslog(LOG_ERR, "couldn't create udp service.");
+			exit(1);
+		}
+		ok = svc_reg(transp, WALLPROG, WALLVERS,
+		    wallprog_1, NULL);
+	} else
+		ok = svc_create(wallprog_1,
+		    WALLPROG, WALLVERS, "udp");
+	if (!ok) {
+		syslog(LOG_ERR, "unable to register (WALLPROG, WALLVERS, %s)", (!from_inetd)?"udp":"(inetd)");
 		exit(1);
 	}
 	svc_run();

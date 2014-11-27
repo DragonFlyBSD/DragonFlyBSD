@@ -29,9 +29,9 @@
 
 #include <vfs/ufs/quota.h>
 #include <rpc/rpc.h>
-#include <rpc/pmap_clnt.h>
 #include <rpcsvc/rquota.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 static void cleanup(int);
 static void rquota_service(struct svc_req *request, SVCXPRT *transp);
@@ -57,7 +57,7 @@ int from_inetd = 1;
 void 
 cleanup(int signo __unused)
 {
-	(void) pmap_unset(RQUOTAPROG, RQUOTAVERS);
+	(void) rpcb_unset(RQUOTAPROG, RQUOTAVERS, NULL);
 	exit(0);
 }
 
@@ -65,22 +65,19 @@ int
 main(void)
 {
 	SVCXPRT *transp;
-	int sock = 0;
-	int proto = 0;
-	struct sockaddr_in from;
+	int ok;
+	struct sockaddr_storage from;
 	int fromlen;
 
 	fromlen = sizeof(from);
 	if (getsockname(0, (struct sockaddr *)&from, &fromlen) < 0) {
 		from_inetd = 0;
-		sock = RPC_ANYSOCK;
-		proto = IPPROTO_UDP;
 	}
 
 	if (!from_inetd) {
 		daemon(0, 0);
 
-		(void) pmap_unset(RQUOTAPROG, RQUOTAVERS);
+		(void) rpcb_unset(RQUOTAPROG, RQUOTAVERS, NULL);
 
 		(void) signal(SIGINT, cleanup);
 		(void) signal(SIGTERM, cleanup);
@@ -90,13 +87,19 @@ main(void)
 	openlog("rpc.rquotad", LOG_CONS|LOG_PID, LOG_DAEMON);
 
 	/* create and register the service */
-	transp = svcudp_create(sock);
-	if (transp == NULL) {
-		syslog(LOG_ERR, "couldn't create udp service");
-		exit(1);
-	}
-	if (!svc_register(transp, RQUOTAPROG, RQUOTAVERS, rquota_service, proto)) {
-		syslog(LOG_ERR, "unable to register (RQUOTAPROG, RQUOTAVERS, %s)", proto?"udp":"(inetd)");
+	if (from_inetd) {
+		transp = svc_tli_create(0, NULL, NULL, 0, 0);
+		if (transp == NULL) {
+			syslog(LOG_ERR, "couldn't create udp service.");
+			exit(1);
+		}
+		ok = svc_reg(transp, RQUOTAPROG, RQUOTAVERS,
+			     rquota_service, NULL);
+	} else
+		ok = svc_create(rquota_service,
+				RQUOTAPROG, RQUOTAVERS, "udp");
+	if (!ok) {
+		syslog(LOG_ERR, "unable to register (RQUOTAPROG, RQUOTAVERS, %s)", (!from_inetd)?"udp":"(inetd)");
 		exit(1);
 	}
 
