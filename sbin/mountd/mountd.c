@@ -62,6 +62,7 @@
 #include <err.h>
 #include <errno.h>
 #include <grp.h>
+#include <limits.h>
 #include <libutil.h>
 #include <netdb.h>
 #include <pwd.h>
@@ -2297,10 +2298,10 @@ makemask(struct sockaddr_storage *ssp, int bitlen)
 
 	if ((p = sa_rawaddr((struct sockaddr *)ssp, &len)) == NULL)
 		return (-1);
-	if (bitlen > len * NBBY)
+	if (bitlen > len * CHAR_BIT)
 		return (-1);
 	for (i = 0; i < len; i++) {
-		bits = (bitlen > NBBY) ? NBBY : bitlen;
+		bits = (bitlen > CHAR_BIT) ? CHAR_BIT : bitlen;
 		*p++ = (1 << bits) - 1;
 		bitlen -= bits;
 	}
