@@ -136,7 +136,7 @@ cpuctl_do_cpuid(int cpu, cpuctl_cpuid_args_t *data)
 
 	/* Explicitly clear cpuid data to avoid returning stale info. */
 	bzero(data->data, sizeof(data->data));
-	DPRINTF("[cpuctl,%d]: retriving cpuid level %#0x for %d cpu\n",
+	DPRINTF("[cpuctl,%d]: retrieving cpuid level %#0x for %d cpu\n",
 	    __LINE__, data->level, cpu);
 	oldcpu = mycpuid;
 	lwkt_migratecpu(cpu);
@@ -207,7 +207,7 @@ cpuctl_do_update(int cpu, cpuctl_update_args_t *data)
 
 	ret = cpuctl_do_cpuid(cpu, &args);
 	if (ret != 0) {
-		DPRINTF("[cpuctl,%d]: cannot retrive cpuid info for cpu %d",
+		DPRINTF("[cpuctl,%d]: cannot retrieve cpuid info for cpu %d",
 		    __LINE__, cpu);
 		return (ENXIO);
 	}
