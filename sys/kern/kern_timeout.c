@@ -208,7 +208,7 @@ callout_maybe_clear_armed(struct callout *c)
 	for (;;) {
 		flags = c->c_flags;
 		cpu_ccfence();
-		if (flags & CALLOUT_IPI_MASK)
+		if (flags & (CALLOUT_PENDING | CALLOUT_IPI_MASK))
 			break;
 		nflags = flags & ~CALLOUT_ARMED;
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags))
@@ -342,6 +342,12 @@ loop:
 			sc->next = TAILQ_NEXT(c, c_links.tqe);
 			TAILQ_REMOVE(bucket, c, c_links.tqe);
 
+			KASSERT((c->c_flags & CALLOUT_ARMED) &&
+				(c->c_flags & CALLOUT_PENDING) &&
+				CALLOUT_FLAGS_TO_CPU(c->c_flags) ==
+				mycpu->gd_cpuid,
+				("callout %p: bad flags %08x", c, c->c_flags));
+
 			/*
 			 * Once CALLOUT_PENDING is cleared, sc->running
 			 * protects the callout structure's existance but
@@ -354,7 +360,6 @@ loop:
 			 * callout_stop() issued from within c_func() returns
 			 * the correct status.
 			 */
-
 			if ((flags & (CALLOUT_AUTOLOCK | CALLOUT_ACTIVE)) ==
 			    (CALLOUT_AUTOLOCK | CALLOUT_ACTIVE)) {
 				void (*c_func)(void *);
@@ -487,7 +492,9 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *), void *arg)
 	 * issue a callout_stop().
 	 *
 	 * Clearing bits on flags is a way to guarantee they are not set,
-	 * as the cmpset atomic op will fail otherwise.
+	 * as the cmpset atomic op will fail otherwise.  PENDING and ARMED
+	 * must not be set, if we find them set we loop up and call
+	 * stop_sync() again.
 	 *
 	 */
 	for (;;) {
@@ -495,7 +502,7 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *), void *arg)
 		int nflags;
 
 		callout_stop_sync(c);
-		flags = c->c_flags & ~CALLOUT_PENDING;
+		flags = c->c_flags & ~(CALLOUT_PENDING | CALLOUT_ARMED);
 		nflags = (flags & ~(CALLOUT_CPU_MASK |
 				    CALLOUT_EXECUTED)) |
 			 CALLOUT_CPU_TO_FLAGS(gd->gd_cpuid) |
@@ -550,14 +557,16 @@ callout_reset_bycpu(struct callout *c, int to_ticks, void (*ftn)(void *),
 	 * it is to issue a callout_stop().
 	 *
 	 * Clearing bits on flags (vs nflags) is a way to guarantee they were
-	 * not previously set, by forcing the atomic op to fail.
+	 * not previously set, by forcing the atomic op to fail.  The callout
+	 * must not be pending or armed after the stop_sync, if it is we have
+	 * to loop up and stop_sync() again.
 	 */
 	for (;;) {
 		int flags;
 		int nflags;
 
 		callout_stop_sync(c);
-		flags = c->c_flags & ~CALLOUT_PENDING;
+		flags = c->c_flags & ~(CALLOUT_PENDING | CALLOUT_ARMED);
 		nflags = (flags & ~(CALLOUT_CPU_MASK |
 				    CALLOUT_EXECUTED)) |
 			 CALLOUT_CPU_TO_FLAGS(tgd->gd_cpuid) |
@@ -742,6 +751,7 @@ _callout_stop(struct callout *c, int issync)
 		} else {
 			cpuid = gd->gd_cpuid;
 			KKASSERT((flags & CALLOUT_IPI_MASK) == 0);
+			KKASSERT((flags & CALLOUT_PENDING) == 0);
 		}
 
 		/*
@@ -765,9 +775,15 @@ _callout_stop(struct callout *c, int issync)
 				   CALLOUT_EXECUTED |
 				   CALLOUT_WAITING |
 				   CALLOUT_PENDING);
+
+		/* NOTE: IPI_MASK already tested */
 		if ((flags & CALLOUT_PENDING) == 0)
 			nflags &= ~CALLOUT_ARMED;
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags)) {
+			/*
+			 * Can only remove from callwheel if currently
+			 * pending.
+			 */
 			if (flags & CALLOUT_PENDING) {
 				sc = &softclock_pcpu_ary[gd->gd_cpuid];
 				if (sc->next == c)
@@ -875,8 +891,6 @@ callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 	struct callout *c = arg;
 	softclock_pcpu_t sc;
 
-	sc = &softclock_pcpu_ary[gd->gd_cpuid];
-
 	/*
 	 * Only the fast path can run in an IPI.  Chain the stop request
 	 * if we are racing cpu changes.
@@ -890,8 +904,6 @@ callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 		flags = c->c_flags;
 		cpu_ccfence();
 
-		cpuid = CALLOUT_FLAGS_TO_CPU(flags);
-
 		/*
 		 * Can't handle an armed callout in the fast path if it is
 		 * not on the current cpu.  We must atomically increment the
@@ -899,10 +911,14 @@ callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 		 *
 		 * If called from an IPI we chain the IPI instead.
 		 */
-		if ((flags & CALLOUT_ARMED) && gd->gd_cpuid != cpuid) {
-			tgd = globaldata_find(cpuid);
-			lwkt_send_ipiq3(tgd, callout_stop_ipi, c, issync);
-			break;
+		if (flags & CALLOUT_ARMED) {
+			cpuid = CALLOUT_FLAGS_TO_CPU(flags);
+			if (gd->gd_cpuid != cpuid) {
+				tgd = globaldata_find(cpuid);
+				lwkt_send_ipiq3(tgd, callout_stop_ipi,
+						c, issync);
+				break;
+			}
 		}
 
 		/*
@@ -929,6 +945,7 @@ callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 			 * pending.
 			 */
 			if (flags & CALLOUT_PENDING) {
+				sc = &softclock_pcpu_ary[gd->gd_cpuid];
 				if (sc->next == c)
 					sc->next = TAILQ_NEXT(c, c_links.tqe);
 				TAILQ_REMOVE(
