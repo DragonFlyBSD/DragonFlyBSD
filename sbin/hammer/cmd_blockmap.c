@@ -58,7 +58,7 @@ static void dump_collect(collect_t collect);
 void
 hammer_cmd_blockmap(void)
 {
-	dump_blockmap("btree", HAMMER_ZONE_FREEMAP_INDEX);
+	dump_blockmap("freemap", HAMMER_ZONE_FREEMAP_INDEX);
 }
 
 static
