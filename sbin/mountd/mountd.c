@@ -843,8 +843,8 @@ put_exlist(struct dirlist *dp, XDR *xdrsp, struct dirlist *adp, int *putdefp)
 	return (0);
 }
 
-#define LINESIZ	10240
-char line[LINESIZ];
+char *line;
+int linesize;
 FILE *exp_file;
 
 /*
@@ -1954,7 +1954,7 @@ int
 get_line(void)
 {
 	char *p, *cp;
-	int len;
+	size_t len;
 	int totlen, cont_line;
 
 	/*
@@ -1963,9 +1963,8 @@ get_line(void)
 	p = line;
 	totlen = 0;
 	do {
-		if (fgets(p, LINESIZ - totlen, exp_file) == NULL)
+		if ((p = fgetln(exp_file, &len)) == NULL)
 			return (0);
-		len = strlen(p);
 		cp = p + len - 1;
 		cont_line = 0;
 		while (cp >= p &&
@@ -1979,15 +1978,15 @@ get_line(void)
 			*++cp = ' ';
 			len++;
 		}
-		*++cp = '\0';
-		if (len > 0) {
-			totlen += len;
-			if (totlen >= LINESIZ) {
-				syslog(LOG_ERR, "exports line too long");
-				exit(2);
-			}
-			p = cp;
+		if (linesize < len + totlen + 1) {
+			linesize = len + totlen + 1;
+			line = realloc(line, linesize);
+			if (line == NULL)
+				out_of_mem();
 		}
+		memcpy(line + totlen, p, len);
+		totlen += len;
+		line[totlen] = '\0';
 	} while (totlen == 0 || cont_line);
 	return (1);
 }
