@@ -456,31 +456,31 @@ command_menu(int ac, char **av)
 static char *logo_blank_line = "                                 ";
 
 static char *logo_color[LOGO_LINES] = {
-	"[37m ,--,           [31m|           [37m,--, [0m",
-	"[37m |   `-,       [31m,^,       [37m,-'   | [0m",
-	"[37m  `,    `-,   [32m([31m/ \\[32m)   [37m,-'    ,'  [0m",
-	"[37m    `-,    `-,[31m/   \\[37m,-'    ,-'    [0m",
-	"[37m       `------[31m(   )[37m------'       [0m",
-	"[37m   ,----------[31m(   )[37m----------,   [0m",
-	"[37m  |        _,-[31m(   )[37m-,_        |  [0m",
-	"[37m   `-,__,-'   [31m\\   /   [37m`-,__,-'   [0m",
-	"[37m               [31m| |               [0m",
-	"[37m               [31m| |               [0m",
-	"[37m               [31m| |               [0m",
-	"[37m               [31m| |               [0m",
-	"[37m               [31m| |               [0m",
-	"[37m               [31m| |               [0m",
-	"[37m               [31m`|'               [0m",
+	"[31;1m ,--,                       ,--, [0m",
+	"[31;1m |   `-,       [33;1m_[31m:[33;1m_[31;1m       ,-'   | [0m",
+	"[31;1m  `,    `-,   [33;1m([31m/ \\[33;1m)[31;1m   ,-'    ,'  [0m",
+	"[31;1m    `-,    `-,[31m/   \\[31;1m,-'    ,-'    [0m",
+	"[31;1m       `------[31m{   }[31;1m------'       [0m",
+	"[31;1m   ,----------[31m{   }[31;1m----------,   [0m",
+	"[31;1m  |        _,-[31m{   }[31;1m-,_        |  [0m",
+	"[31;1m   `-,__,-'   [31m\\   /[31;1m   `-,__,-'   [0m",
+	"[31m               | |               [0m",
+	"[31m               | |               [0m",
+	"[31m               | |               [0m",
+	"[31m               | |               [0m",
+	"[31m               | |               [0m",
+	"[31m               | |               [0m",
+	"[31m               `,'               [0m",
 	"                                 " };
 
 static char *logo_mono[LOGO_LINES] =  {
-	" ,--,           |           ,--, ",
-	" |   `-,       ,^,       ,-'   | ",
+	" ,--,                       ,--, ",
+	" |   `-,       _:_       ,-'   | ",
 	"  `,    `-,   (/ \\)   ,-'    ,'  ",
 	"    `-,    `-,/   \\,-'    ,-'    ",
-	"       `------(   )------'       ",
-	"   ,----------(   )----------,   ",
-	"  |        _,-(   )-,_        |  ",
+	"       `------{   }------'       ",
+	"   ,----------{   }----------,   ",
+	"  |        _,-{   }-,_        |  ",
 	"   `-,__,-'   \\   /   `-,__,-'   ",
 	"               | |               ",
 	"               | |               ",
@@ -488,18 +488,18 @@ static char *logo_mono[LOGO_LINES] =  {
 	"               | |               ",
 	"               | |               ",
 	"               | |               ",
-	"               `|'               ",
+	"               `,'               ",
 	"                                 " };
 
 static void
-logo_display(char **logo, int line, int orientation)
+logo_display(char **logo, int line, int orientation, int barrier)
 {
 	const char *fmt;
 
 	if (orientation == FRED_LEFT)
-		fmt = "%s  | ";
+		fmt = barrier ? "%s  | " : "  %s  ";
 	else
-		fmt = " |  %s";
+		fmt = barrier ? " |  %s" : "  %s  ";
 
 	if (logo != NULL) {
 		if (line < LOGO_LINES)
@@ -515,6 +515,7 @@ menu_display(void)
 	dvar_t dvar;
 	int i;
 	int logo_left = 0;		/* default to fred on right */
+	int separated = 0;		/* default no line b/w fred & menu */
 	char **logo = logo_mono;
 
 	if (dvar_istrue(dvar_get("loader_color")))
@@ -526,16 +527,24 @@ menu_display(void)
 	if (dvar_istrue(dvar_get("fred_on_left")))
 		logo_left = 1;
 
+	if (dvar_istrue(dvar_get("fred_separated")))
+		separated = 1;
+
 	dvar = dvar_first();
 	i = 0;
 
-	if (logo != NULL)
-		printf(logo_left ? "%35s|%43s\n" : "%43s|%35s\n", " ", " ");
-
+	if (logo != NULL) {
+		if (logo_left)
+			printf(separated ? "%35s|%43s\n" : "%35s %43s\n",
+				" ", " ");
+		else
+			printf(separated ? "%43s|%35s\n" : "%43s %35s\n",
+				" ", " ");
+	}
 
 	while (dvar || i < LOGO_LINES) {
 		if (logo_left)
-			logo_display(logo, i, FRED_LEFT);
+			logo_display(logo, i, FRED_LEFT, separated);
 
 		while (dvar) {
 			if (strncmp(dvar->name, "menu_", 5) == 0) {
@@ -548,13 +557,13 @@ menu_display(void)
 		}
 		/*
 		 * Pad when the number of menu entries is less than
-                 * LOGO_LINES.
+		 * LOGO_LINES.
 		 */
 		if (dvar == NULL)
 			printf("    %38.38s", " ");
 
 		if (!logo_left)
-			logo_display(logo, i, FRED_RIGHT);
+			logo_display(logo, i, FRED_RIGHT, separated);
 		printf("\n");
 		i++;
 	}
