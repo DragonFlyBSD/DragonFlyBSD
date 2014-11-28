@@ -1549,6 +1549,7 @@ pmap_release(struct pmap *pmap)
 
 	KKASSERT(pmap != &kernel_pmap);
 
+	lwkt_gettoken(&vm_token);
 #if defined(DIAGNOSTIC)
 	if (object->ref_count != 1)
 		panic("pmap_release: pteobj reference count != 1");
@@ -1556,6 +1557,11 @@ pmap_release(struct pmap *pmap)
 
 	info.pmap = pmap;
 	info.object = object;
+
+	KASSERT(CPUMASK_TESTZERO(pmap->pm_active),
+		("pmap %p still active! %016jx",
+		pmap,
+		(uintmax_t)CPUMASK_LOWMASK(pmap->pm_active)));
 
 	spin_lock(&pmap_spin);
 	TAILQ_REMOVE(&pmap_list, pmap, pm_pmnode);
@@ -1575,6 +1581,7 @@ pmap_release(struct pmap *pmap)
 		}
 	} while (info.error);
 	vm_object_drop(object);
+	lwkt_reltoken(&vm_token);
 }
 
 static int
@@ -1815,7 +1822,8 @@ pmap_collect(void)
 	pmap_pagedaemon_waken = 0;
 
 	if (warningdone < 5) {
-		kprintf("pmap_collect: collecting pv entries -- suggest increasing PMAP_SHPGPERPROC\n");
+		kprintf("pmap_collect: collecting pv entries -- "
+			"suggest increasing PMAP_SHPGPERPROC\n");
 		warningdone++;
 	}
 
@@ -3329,14 +3337,14 @@ pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 	crit_enter();
 	oldvm = p->p_vmspace;
 	if (oldvm != newvm) {
+		if (adjrefs)
+			vmspace_ref(newvm);
 		p->p_vmspace = newvm;
 		KKASSERT(p->p_nthreads == 1);
 		lp = RB_ROOT(&p->p_lwp_tree);
 		pmap_setlwpvm(lp, newvm);
-		if (adjrefs) {
-			vmspace_ref(newvm);
+		if (adjrefs)
 			vmspace_rel(oldvm);
-		}
 	}
 	crit_exit();
 }
@@ -3353,25 +3361,23 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 	struct pmap *pmap;
 
 	oldvm = lp->lwp_vmspace;
-	if (oldvm == newvm)
-		return;
-	lp->lwp_vmspace = newvm;
-	if (curthread->td_lwp != lp)
-		return;
-	/*
-	 * NOTE: We don't have to worry about the CPULOCK here because
-	 *	 the virtual kernel doesn't call this function when VMM
-	 *	 is enabled (and depends on the host kernel when it isn't).
-	 */
-	crit_enter();
-	pmap = vmspace_pmap(newvm);
-	ATOMIC_CPUMASK_ORBIT(pmap->pm_active, mycpu->gd_cpuid);
+	if (oldvm != newvm) {
+		crit_enter();
+		lp->lwp_vmspace = newvm;
+		if (curthread->td_lwp == lp) {
+			pmap = vmspace_pmap(newvm);
+			ATOMIC_CPUMASK_ORBIT(pmap->pm_active, mycpu->gd_cpuid);
+			if (pmap->pm_active_lock & CPULOCK_EXCL)
+				pmap_interlock_wait(newvm);
 #if defined(SWTCH_OPTIM_STATS)
-	tlb_flush_count++;
+			tlb_flush_count++;
 #endif
-	pmap = vmspace_pmap(oldvm);
-	ATOMIC_CPUMASK_NANDBIT(pmap->pm_active, mycpu->gd_cpuid);
-	crit_exit();
+			pmap = vmspace_pmap(oldvm);
+			ATOMIC_CPUMASK_NANDBIT(pmap->pm_active,
+					       mycpu->gd_cpuid);
+		}
+		crit_exit();
+	}
 }
 
 /*
@@ -3384,8 +3390,14 @@ pmap_interlock_wait (struct vmspace *vm)
 {
 	pmap_t pmap = vmspace_pmap(vm);
 
-	while (pmap->pm_active_lock & CPULOCK_EXCL)
-		pthread_yield();
+	if (pmap->pm_active_lock & CPULOCK_EXCL) {
+		crit_enter();
+		while (pmap->pm_active_lock & CPULOCK_EXCL) {
+			cpu_ccfence();
+			pthread_yield();
+		}
+		crit_exit();
+	}
 }
 
 vm_offset_t
