@@ -283,7 +283,7 @@ ENTRY(cpu_exit_switch)
 	ret
 
 /*
- * cpu_heavy_restore()	(current thread in %rax on entry)
+ * cpu_heavy_restore()	(current thread in %rax on entry, %rbx is old thread)
  *
  *	Restore the thread after an LWKT switch.  This entry is normally
  *	called via the LWKT switch restore function, which was pulled
@@ -322,13 +322,13 @@ ENTRY(cpu_heavy_restore)
 	movq	TD_LWP(%rax),%rcx
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
 
-	movq	PCPU(other_cpus)+0, %rsi
+	movq	PCPU(cpumask)+0, %rsi
 	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE+0(%rcx)
-	movq	PCPU(other_cpus)+8, %rsi
+	movq	PCPU(cpumask)+8, %rsi
 	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE+8(%rcx)
-	movq	PCPU(other_cpus)+16, %rsi
+	movq	PCPU(cpumask)+16, %rsi
 	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE+16(%rcx)
-	movq	PCPU(other_cpus)+24, %rsi
+	movq	PCPU(cpumask)+24, %rsi
 	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE+24(%rcx)
 
 	movl    VM_PMAP+PM_ACTIVE_LOCK(%rcx),%esi
@@ -580,6 +580,7 @@ ENTRY(savectx)
 
 /*
  * cpu_idle_restore()	(current thread in %rax on entry) (one-time execution)
+ *			(old thread is %rbx on entry)
  *
  *	Don't bother setting up any regs other than %rbp so backtraces
  *	don't die.  This restore function is used to bootstrap into the
@@ -624,6 +625,7 @@ ENTRY(cpu_idle_restore)
 
 /*
  * cpu_kthread_restore() (current thread is %rax on entry) (one-time execution)
+ *			 (old thread is %rbx on entry)
  *
  *	Don't bother setting up any regs other then %rbp so backtraces
  *	don't die.  This restore function is used to bootstrap into an
