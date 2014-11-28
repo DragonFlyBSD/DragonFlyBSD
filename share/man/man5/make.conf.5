@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
 .\"
-.Dd April 16, 2013
+.Dd Novemember 28, 2014
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -470,6 +470,9 @@ Set to avoid compiling profiled libraries.
 Set to disable the installation of
 .Xr ppp 8
 with the set-user-ID bit on.
+.It Va XAUTH_PATH
+.Pq Vt str
+The path to the xauth program used by OpenSSH client.
 .It Va SENDMAIL_MC
 .Pq Vt str
 The default
