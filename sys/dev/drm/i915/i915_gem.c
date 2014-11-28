@@ -85,8 +85,6 @@ static uint32_t i915_gem_get_gtt_size(struct drm_device *dev, uint32_t size,
     int tiling_mode);
 static uint32_t i915_gem_get_gtt_alignment(struct drm_device *dev,
     uint32_t size, int tiling_mode);
-static int i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj,
-    int flags);
 static void i915_gem_object_finish_gtt(struct drm_i915_gem_object *obj);
 static void i915_gem_object_truncate(struct drm_i915_gem_object *obj);
 
@@ -1211,8 +1209,7 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 }
 
 static int
-i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj,
-    int flags)
+i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 {
 	struct drm_device *dev;
 	vm_object_t vm_obj;
@@ -2362,7 +2359,7 @@ i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 	 * NOTE: i915_gem_object_get_pages_gtt() cannot
 	 *	 return ENOMEM, since we used VM_ALLOC_RETRY.
 	 */
-	ret = i915_gem_object_get_pages_gtt(obj, 0);
+	ret = i915_gem_object_get_pages_gtt(obj);
 	if (ret != 0) {
 		drm_mm_put_block(obj->gtt_space);
 		obj->gtt_space = NULL;
@@ -3043,20 +3040,60 @@ unlock:
 	return ret;
 }
 
+void i915_gem_object_init(struct drm_i915_gem_object *obj,
+			  const struct drm_i915_gem_object_ops *ops)
+{
+	INIT_LIST_HEAD(&obj->mm_list);
+	INIT_LIST_HEAD(&obj->gtt_list);
+	INIT_LIST_HEAD(&obj->ring_list);
+	INIT_LIST_HEAD(&obj->exec_list);
+
+	obj->ops = ops;
+
+	obj->fence_reg = I915_FENCE_REG_NONE;
+	obj->madv = I915_MADV_WILLNEED;
+	/* Avoid an unnecessary call to unbind on the first bind. */
+	obj->map_and_fenceable = true;
+
+	i915_gem_info_add_obj(obj->base.dev->dev_private, obj->base.size);
+}
+
+static const struct drm_i915_gem_object_ops i915_gem_object_ops = {
+	.get_pages = i915_gem_object_get_pages_gtt,
+	.put_pages = i915_gem_object_put_pages_gtt,
+};
+
 struct drm_i915_gem_object *i915_gem_alloc_object(struct drm_device *dev,
 						  size_t size)
 {
-	struct drm_i915_private *dev_priv;
 	struct drm_i915_gem_object *obj;
-
-	dev_priv = dev->dev_private;
+#if 0
+	struct address_space *mapping;
+	u32 mask;
+#endif
 
 	obj = kmalloc(sizeof(*obj), M_DRM, M_WAITOK | M_ZERO);
+	if (obj == NULL)
+		return NULL;
 
 	if (drm_gem_object_init(dev, &obj->base, size) != 0) {
-		drm_free(obj, M_DRM);
-		return (NULL);
+		kfree(obj, M_DRM);
+		return NULL;
 	}
+
+#if 0
+	mask = GFP_HIGHUSER | __GFP_RECLAIMABLE;
+	if (IS_CRESTLINE(dev) || IS_BROADWATER(dev)) {
+		/* 965gm cannot relocate objects above 4GiB. */
+		mask &= ~__GFP_HIGHMEM;
+		mask |= __GFP_DMA32;
+	}
+
+	mapping = obj->base.filp->f_path.dentry->d_inode->i_mapping;
+	mapping_set_gfp_mask(mapping, mask);
+#endif
+
+	i915_gem_object_init(obj, &i915_gem_object_ops);
 
 	obj->base.write_domain = I915_GEM_DOMAIN_CPU;
 	obj->base.read_domains = I915_GEM_DOMAIN_CPU;
@@ -3077,17 +3114,6 @@ struct drm_i915_gem_object *i915_gem_alloc_object(struct drm_device *dev,
 		obj->cache_level = I915_CACHE_LLC;
 	} else
 		obj->cache_level = I915_CACHE_NONE;
-	obj->base.driver_private = NULL;
-	obj->fence_reg = I915_FENCE_REG_NONE;
-	INIT_LIST_HEAD(&obj->mm_list);
-	INIT_LIST_HEAD(&obj->gtt_list);
-	INIT_LIST_HEAD(&obj->ring_list);
-	INIT_LIST_HEAD(&obj->exec_list);
-	obj->madv = I915_MADV_WILLNEED;
-	/* Avoid an unnecessary call to unbind on the first bind. */
-	obj->map_and_fenceable = true;
-
-	i915_gem_info_add_obj(dev_priv, size);
 
 	return obj;
 }
