@@ -59,7 +59,7 @@
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include "intel_drv.h"
-#include "intel_ringbuffer.h"
+#include <linux/shmem_fs.h>
 #include <linux/completion.h>
 #include <linux/highmem.h>
 #include <linux/jiffies.h>
@@ -104,7 +104,6 @@ static inline void i915_gem_object_fence_lost(struct drm_i915_gem_object *obj)
 static int i915_gem_object_is_purgeable(struct drm_i915_gem_object *obj);
 static bool i915_gem_object_is_inactive(struct drm_i915_gem_object *obj);
 static int i915_gem_object_needs_bit17_swizzle(struct drm_i915_gem_object *obj);
-static vm_page_t shmem_read_mapping_page(vm_object_t, vm_pindex_t);
 static void i915_gem_reset_fences(struct drm_device *dev);
 static void i915_gem_lowmem(void *arg);
 
@@ -4012,37 +4011,6 @@ i915_gem_assert_pages_not_mapped(struct drm_device *dev, vm_page_t *ma,
 	}
 }
 #endif
-
-#define	VM_OBJECT_LOCK_ASSERT_OWNED(object)
-
-static vm_page_t
-shmem_read_mapping_page(vm_object_t object, vm_pindex_t pindex)
-{
-	vm_page_t m;
-	int rv;
-
-	VM_OBJECT_LOCK_ASSERT_OWNED(object);
-	m = vm_page_grab(object, pindex, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
-	if (m->valid != VM_PAGE_BITS_ALL) {
-		if (vm_pager_has_page(object, pindex)) {
-			rv = vm_pager_get_page(object, &m, 1);
-			m = vm_page_lookup(object, pindex);
-			if (m == NULL)
-				return ERR_PTR(-ENOMEM);
-			if (rv != VM_PAGER_OK) {
-				vm_page_free(m);
-				return ERR_PTR(-ENOMEM);
-			}
-		} else {
-			pmap_zero_page(VM_PAGE_TO_PHYS(m));
-			m->valid = VM_PAGE_BITS_ALL;
-			m->dirty = 0;
-		}
-	}
-	vm_page_wire(m);
-	vm_page_wakeup(m);
-	return (m);
-}
 
 static int
 i915_gpu_is_active(struct drm_device *dev)
