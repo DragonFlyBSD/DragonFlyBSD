@@ -542,9 +542,6 @@ struct ahci_softc {
 	u_int32_t		sc_ccc_ports;
 	u_int32_t		sc_ccc_ports_cur;
 #endif
-
-	struct sysctl_ctx_list	sysctl_ctx;
-	struct sysctl_oid	*sysctl_tree;
 };
 #define DEVNAME(_s)		((_s)->sc_dev.dv_xname)
 

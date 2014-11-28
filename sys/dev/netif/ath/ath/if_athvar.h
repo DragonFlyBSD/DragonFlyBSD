@@ -547,8 +547,6 @@ struct ath_softc {
 	struct ath_stats	sc_stats;	/* interface statistics */
 	struct ath_tx_aggr_stats	sc_aggr_stats;
 	struct ath_intr_stats	sc_intr_stats;
-	struct sysctl_ctx_list	sc_sysctl_ctx;
-	struct sysctl_oid	*sc_sysctl_tree;
 	uint64_t		sc_debug;
 	uint64_t		sc_ktrdebug;
 	int			sc_nvaps;	/* # vaps */

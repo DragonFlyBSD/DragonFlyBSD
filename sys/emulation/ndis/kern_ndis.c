@@ -272,13 +272,6 @@ ndis_create_sysctls(void *arg)
 
 	TAILQ_INIT(&sc->ndis_cfglist_head);
 
-	/* Create the sysctl tree. */
-
-	sc->ndis_tree = SYSCTL_ADD_NODE(&sc->ndis_ctx,
-	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	    device_get_nameunit(sc->ndis_dev), CTLFLAG_RD, 0,
-	    device_get_desc(sc->ndis_dev));
-
 	/* Add the driver-specific registry keys. */
 
 	while(1) {
@@ -293,7 +286,7 @@ ndis_create_sysctls(void *arg)
 		/* See if we already have a sysctl with this name */
 
 		oidp = NULL;
-		TAILQ_FOREACH(e, &sc->ndis_ctx, link) {
+		TAILQ_FOREACH(e, device_get_sysctl_ctx(sc->ndis_dev), link) {
 			oidp = e->entry;
 			if (strcasecmp(oidp->oid_name, vals->nc_cfgkey) == 0)
 				break;
@@ -373,7 +366,8 @@ ndis_add_sysctl(void *arg, char *key, char *desc, char *val, int flag)
 	TAILQ_INSERT_TAIL(&sc->ndis_cfglist_head, cfg, link);
 
 	cfg->ndis_oid =
-	SYSCTL_ADD_STRING(&sc->ndis_ctx, SYSCTL_CHILDREN(sc->ndis_tree),
+	    SYSCTL_ADD_STRING(device_get_sysctl_ctx(sc->ndis_dev),
+	    SYSCTL_CHILDREN(device_get_sysctl_tree(sc->ndis_dev)),
 	    OID_AUTO, cfg->ndis_cfg.nc_cfgkey, flag,
 	    cfg->ndis_cfg.nc_val, sizeof(cfg->ndis_cfg.nc_val),
 	    cfg->ndis_cfg.nc_cfgdesc);
@@ -397,7 +391,7 @@ ndis_flush_sysctls(void *arg)
 
 	sc = arg;
 
-	clist = &sc->ndis_ctx;
+	clist = device_get_sysctl_ctx(sc->ndis_dev);
 
 	while (!TAILQ_EMPTY(&sc->ndis_cfglist_head)) {
 		cfg = TAILQ_FIRST(&sc->ndis_cfglist_head);

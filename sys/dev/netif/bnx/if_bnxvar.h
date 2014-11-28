@@ -31,7 +31,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.16 2004/09/23 20:11:18 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.25 2008/10/22 14:24:24 sephe Exp $
  */
 
 #ifndef _IF_BNXVAR_H_
@@ -382,9 +381,6 @@ struct bnx_softc {
 	int			bnx_intr_type;
 	int			bnx_intr_cnt;
 	struct bnx_intr_data	bnx_intr_data[BNX_INTR_MAX];
-
-	struct sysctl_ctx_list	bnx_sysctl_ctx;
-	struct sysctl_oid	*bnx_sysctl_tree;
 
 	int			bnx_phyno;
 	uint32_t		bnx_coal_chg;

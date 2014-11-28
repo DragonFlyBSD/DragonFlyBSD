@@ -1,6 +1,5 @@
 /*	$NetBSD: if_stgereg.h,v 1.3 2003/02/10 21:10:07 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/stge/if_stgereg.h,v 1.1 2006/07/25 00:37:09 yongari Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/stge/if_stgevar.h,v 1.1 2006/11/16 13:43:55 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -153,8 +152,6 @@ struct stge_softc {
 	int			sc_suspended;
 	int			sc_detach;
 
-	struct sysctl_ctx_list	sc_sysctl_ctx;
-	struct sysctl_oid	*sc_sysctl_tree;
 	int			sc_rxint_nframe;
 	int			sc_rxint_dmawait;
 	int			sc_nerr;

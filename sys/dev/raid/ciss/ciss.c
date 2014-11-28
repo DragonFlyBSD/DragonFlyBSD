@@ -559,12 +559,8 @@ ciss_shutdown(device_t dev)
 static void
 ciss_init_sysctl(struct ciss_softc *sc)
 {
-    sysctl_ctx_init(&sc->ciss_sysctl_ctx);
-    sc->ciss_sysctl_tree = SYSCTL_ADD_NODE(&sc->ciss_sysctl_ctx,
-	SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	device_get_nameunit(sc->ciss_dev), CTLFLAG_RD, 0, "");
-    SYSCTL_ADD_INT(&sc->ciss_sysctl_ctx,
-	SYSCTL_CHILDREN(sc->ciss_sysctl_tree),
+    SYSCTL_ADD_INT(device_get_sysctl_ctx(sc->ciss_dev),
+	SYSCTL_CHILDREN(device_get_sysctl_tree(sc->ciss_dev)),
 	OID_AUTO, "soft_reset", CTLFLAG_RW, &sc->ciss_soft_reset, 0, "");
 }
 
@@ -1979,8 +1975,6 @@ ciss_free(struct ciss_softc *sc)
 
     if (sc->ciss_controllers)
 	kfree(sc->ciss_controllers, CISS_MALLOC_CLASS);
-
-    sysctl_ctx_free(&sc->ciss_sysctl_ctx);
 }
 
 /************************************************************************

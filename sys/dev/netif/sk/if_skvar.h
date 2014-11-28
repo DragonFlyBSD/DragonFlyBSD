@@ -66,7 +66,6 @@
  * $FreeBSD: /c/ncvs/src/sys/pci/if_skreg.h,v 1.9 2000/04/22 02:16:37 wpaul Exp $
  * $NetBSD: if_skvar.h,v 1.6 2005/05/30 04:35:22 christos Exp $
  * $OpenBSD: if_skvar.h,v 1.2 2005/12/22 20:54:47 brad Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skvar.h,v 1.4 2007/12/14 11:37:11 sephe Exp $
  */
 
 /*
@@ -177,8 +176,6 @@ struct sk_softc {
 	uint32_t		sk_intrmask;
 	uint32_t		sk_imtimer_ticks;
 	int			sk_imtime;
-	struct sysctl_ctx_list	sk_sysctl_ctx;
-	struct sysctl_oid	*sk_sysctl_tree;
 	struct lwkt_serialize	sk_serializer;
 	struct sk_if_softc	*sk_if[2];
 	device_t		sk_devs[2];

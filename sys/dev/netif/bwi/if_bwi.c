@@ -532,6 +532,8 @@ bwi_attach(device_t dev)
 	struct ifnet *ifp = &ic->ic_if;
 	struct bwi_mac *mac;
 	struct bwi_phy *phy;
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid_list *tree;
 	char ethstr[ETHER_ADDRSTRLEN + 1];
 	int i, error;
 
@@ -607,41 +609,26 @@ bwi_attach(device_t dev)
 	/*
 	 * Create sysctl tree
 	 */
-	sysctl_ctx_init(&sc->sc_sysctl_ctx);
-	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
-					     SYSCTL_STATIC_CHILDREN(_hw),
-					     OID_AUTO,
-					     device_get_nameunit(dev),
-					     CTLFLAG_RD, 0, "");
-	if (sc->sc_sysctl_tree == NULL) {
-		device_printf(dev, "can't add sysctl node\n");
-		error = ENXIO;
-		goto fail;
-	}
+	ctx = device_get_sysctl_ctx(sc->bge_dev);
+	tree = SYSCTL_CHILDREN(device_get_sysctl_tree(sc->bge_dev));
 
-	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 			"dwell_time", CTLFLAG_RW, &sc->sc_dwell_time, 0,
 			"Channel dwell time during scan (msec)");
-	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 			"fw_version", CTLFLAG_RD, &sc->sc_fw_version, 0,
 			"Firmware version");
-	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 			"led_idle", CTLFLAG_RW, &sc->sc_led_idle, 0,
 			"# ticks before LED enters idle state");
-	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "led_blink", CTLFLAG_RW, &sc->sc_led_blink, 0,
 		       "Allow LED to blink");
-	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "txpwr_calib", CTLFLAG_RW, &sc->sc_txpwr_calib, 0,
 		       "Enable software TX power calibration");
 #ifdef BWI_DEBUG
-	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 			"debug", CTLFLAG_RW, &sc->sc_debug, 0, "Debug flags");
 #endif
 
@@ -847,9 +834,6 @@ bwi_detach(device_t dev)
 		for (i = 0; i < sc->sc_nmac; ++i)
 			bwi_mac_detach(&sc->sc_mac[i]);
 	}
-
-	if (sc->sc_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->sc_sysctl_ctx);
 
 	if (sc->sc_irq_res != NULL) {
 		bus_release_resource(dev, SYS_RES_IRQ, sc->sc_irq_rid,

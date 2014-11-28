@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.14 2008/06/08 10:06:05 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -441,9 +439,6 @@ struct acx_softc {
 	struct acx_buf_data	sc_buf_data;
 
 	struct acx_stats	sc_stats;	/* statistics */
-
-	struct sysctl_ctx_list	sc_sysctl_ctx;
-	struct sysctl_oid	*sc_sysctl_tree;
 
 	/*
 	 * TX rate control

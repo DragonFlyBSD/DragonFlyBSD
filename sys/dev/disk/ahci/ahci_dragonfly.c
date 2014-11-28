@@ -108,8 +108,6 @@ static int
 ahci_attach (device_t dev)
 {
 	struct ahci_softc *sc = device_get_softc(dev);
-	char name[16];
-	int error;
 
 	sc->sc_ad = ahci_lookup_device(dev);
 	if (sc->sc_ad == NULL)
@@ -132,19 +130,7 @@ ahci_attach (device_t dev)
 	if (kgetenv("hint.ahci.forcefbss"))
 		sc->sc_flags |= AHCI_F_FORCE_FBSS;
 
-	sysctl_ctx_init(&sc->sysctl_ctx);
-	ksnprintf(name, sizeof(name), "%s%d",
-		device_get_name(dev), device_get_unit(dev));
-	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
-				SYSCTL_STATIC_CHILDREN(_hw),
-				OID_AUTO, name, CTLFLAG_RD, 0, "");
-
-	error = sc->sc_ad->ad_attach(dev);
-	if (error) {
-		sysctl_ctx_free(&sc->sysctl_ctx);
-		sc->sysctl_tree = NULL;
-	}
-	return (error);
+	return (sc->sc_ad->ad_attach(dev));
 }
 
 static int
@@ -153,10 +139,6 @@ ahci_detach (device_t dev)
 	struct ahci_softc *sc = device_get_softc(dev);
 	int error = 0;
 
-	if (sc->sysctl_tree) {
-		sysctl_ctx_free(&sc->sysctl_ctx);
-		sc->sysctl_tree = NULL;
-	}
 	if (sc->sc_ad) {
 		error = sc->sc_ad->ad_detach(dev);
 		sc->sc_ad = NULL;
@@ -257,6 +239,7 @@ ahci_os_hardsleep(int us)
 void
 ahci_os_start_port(struct ahci_port *ap)
 {
+	struct sysctl_oid *soid;
 	char name[16];
 
 	atomic_set_int(&ap->ap_signal, AP_SIGF_INIT | AP_SIGF_THREAD_SYNC);
@@ -265,8 +248,9 @@ ahci_os_start_port(struct ahci_port *ap)
 	lockinit(&ap->ap_sig_lock, "ahport", 0, 0);
 	sysctl_ctx_init(&ap->sysctl_ctx);
 	ksnprintf(name, sizeof(name), "%d", ap->ap_num);
+	soid = device_get_sysctl_tree(ap->ap_sc->sc_dev);
 	ap->sysctl_tree = SYSCTL_ADD_NODE(&ap->sysctl_ctx,
-				SYSCTL_CHILDREN(ap->ap_sc->sysctl_tree),
+				SYSCTL_CHILDREN(soid),
 				OID_AUTO, name, CTLFLAG_RD, 0, "");
 
 	if ((ap->ap_sc->sc_cap & AHCI_REG_CAP_SALP) &&

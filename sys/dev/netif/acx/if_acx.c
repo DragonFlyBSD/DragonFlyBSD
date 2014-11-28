@@ -262,6 +262,8 @@ acx_attach(device_t dev)
 	struct acx_softc *sc;
 	struct ifnet *ifp;
 	struct ieee80211com *ic;
+	struct sysctl_ctx_list *sctx;
+	struct sysctl_oid *soid;
 	int i, error;
 
 	sc = device_get_softc(dev);
@@ -392,47 +394,30 @@ acx_attach(device_t dev)
 	sc->sc_scan_dwell = 200;	/* 200 milliseconds */
 	sc->sc_calib_intvl = 3 * 60;	/* 3 minutes */
 
-	sysctl_ctx_init(&sc->sc_sysctl_ctx);
-	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
-					     SYSCTL_STATIC_CHILDREN(_hw),
-					     OID_AUTO,
-					     device_get_nameunit(dev),
-					     CTLFLAG_RD, 0, "");
-	if (sc->sc_sysctl_tree == NULL) {
-		device_printf(dev, "can't add sysctl node\n");
-		error = ENXIO;
-		goto fail;
-	}
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "msdu_lifetime",
-			CTLTYPE_INT | CTLFLAG_RW,
+	sctx = device_get_sysctl_ctx(dev);
+	soid = device_get_sysctl_tree(dev);
+	SYSCTL_ADD_PROC(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
+			"msdu_lifetime", CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, acx_sysctl_msdu_lifetime, "I",
 			"MSDU life time");
-	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 		       "long_retry_limit", CTLFLAG_RW,
 		       &sc->sc_long_retry_limit, 0, "Long retry limit");
-	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 		       "scan_dwell", CTLFLAG_RW,
 		       &sc->sc_scan_dwell, 0, "Scan channel dwell time (ms)");
-	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 		       "calib_intvl", CTLFLAG_RW,
 		       &sc->sc_calib_intvl, 0, "Calibration interval (second)");
 
 	/*
 	 * Nodes for firmware operation
 	 */
-	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 		       "combined_radio_fw", CTLFLAG_RW,
 		       &sc->sc_firmware.combined_radio_fw, 0,
 		       "Radio and base firmwares are combined");
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "free_fw",
+	SYSCTL_ADD_PROC(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "free_fw",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, acx_sysctl_free_firmware, "I",
 			"Free firmware");
@@ -440,41 +425,32 @@ acx_attach(device_t dev)
 	/*
 	 * Nodes for statistics
 	 */
-	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
-			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UQUAD(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 			 "frag_error", CTLFLAG_RW, &sc->sc_stats.err_oth_frag,
 			 0, "Fragment errors");
-	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
-			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UQUAD(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 			 "tx_abort", CTLFLAG_RW, &sc->sc_stats.err_abort,
 			 0, "TX abortions");
-	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
-			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UQUAD(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 			 "tx_invalid", CTLFLAG_RW, &sc->sc_stats.err_param,
 			 0, "Invalid TX param in TX descriptor");
-	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
-			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UQUAD(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 			 "no_wepkey", CTLFLAG_RW, &sc->sc_stats.err_no_wepkey,
 			 0, "No WEP key exists");
-	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
-			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UQUAD(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 			 "msdu_timeout", CTLFLAG_RW,
 			 &sc->sc_stats.err_msdu_timeout,
 			 0, "MSDU timeouts");
-	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
-			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UQUAD(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 			 "ex_txretry", CTLFLAG_RW, &sc->sc_stats.err_ex_retry,
 			 0, "Excessive TX retries");
-	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
-			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UQUAD(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 			 "buf_oflow", CTLFLAG_RW, &sc->sc_stats.err_buf_oflow,
 			 0, "Buffer overflows");
-	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
-			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UQUAD(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 			 "dma_error", CTLFLAG_RW, &sc->sc_stats.err_dma,
 			 0, "DMA errors");
-	SYSCTL_ADD_UQUAD(&sc->sc_sysctl_ctx,
-			 SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UQUAD(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 			 "unkn_error", CTLFLAG_RW, &sc->sc_stats.err_unkn,
 			 0, "Unknown errors");
 
@@ -582,9 +558,6 @@ acx_detach(device_t dev)
 		bpfdetach(ifp);
 		ieee80211_ifdetach(ic);
 	}
-
-	if (sc->sc_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->sc_sysctl_ctx);
 
 	if (sc->sc_irq_res != NULL) {
 		bus_release_resource(dev, SYS_RES_IRQ, sc->sc_irq_rid,

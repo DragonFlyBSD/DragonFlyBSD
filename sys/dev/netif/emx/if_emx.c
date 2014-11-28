@@ -931,10 +931,6 @@ emx_detach(device_t dev)
 
 	emx_dma_free(sc);
 
-	/* Free sysctl tree */
-	if (sc->sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->sysctl_ctx);
-
 	if (sc->mta != NULL)
 		kfree(sc->mta, M_DEVBUF);
 
@@ -3629,76 +3625,69 @@ emx_sysctl_stats(SYSCTL_HANDLER_ARGS)
 static void
 emx_add_sysctl(struct emx_softc *sc)
 {
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid *tree;
 #if defined(EMX_RSS_DEBUG) || defined(EMX_TSS_DEBUG)
 	char pkt_desc[32];
 	int i;
 #endif
 
-	sysctl_ctx_init(&sc->sysctl_ctx);
-	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
-				SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-				device_get_nameunit(sc->dev),
-				CTLFLAG_RD, 0, "");
-	if (sc->sysctl_tree == NULL) {
-		device_printf(sc->dev, "can't add sysctl node\n");
-		return;
-	}
-
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	ctx = device_get_sysctl_ctx(sc->dev);
+	tree = device_get_sysctl_tree(sc->dev);
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			OID_AUTO, "debug", CTLTYPE_INT|CTLFLAG_RW, sc, 0,
 			emx_sysctl_debug_info, "I", "Debug Information");
 
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			OID_AUTO, "stats", CTLTYPE_INT|CTLFLAG_RW, sc, 0,
 			emx_sysctl_stats, "I", "Statistics");
 
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rxd", CTLFLAG_RD, &sc->rx_data[0].num_rx_desc, 0,
 	    "# of RX descs");
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "txd", CTLFLAG_RD, &sc->tx_data[0].num_tx_desc, 0,
 	    "# of TX descs");
 
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "int_throttle_ceil", CTLTYPE_INT|CTLFLAG_RW, sc, 0,
 	    emx_sysctl_int_throttle, "I", "interrupt throttling rate");
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "tx_intr_nsegs", CTLTYPE_INT|CTLFLAG_RW, sc, 0,
 	    emx_sysctl_tx_intr_nsegs, "I", "# segments per TX interrupt");
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "tx_wreg_nsegs", CTLTYPE_INT|CTLFLAG_RW, sc, 0,
 	    emx_sysctl_tx_wreg_nsegs, "I",
 	    "# segments sent before write to hardware register");
 
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rx_ring_cnt", CTLFLAG_RD, &sc->rx_ring_cnt, 0,
 	    "# of RX rings");
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "tx_ring_cnt", CTLFLAG_RD, &sc->tx_ring_cnt, 0,
 	    "# of TX rings");
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "tx_ring_inuse", CTLFLAG_RD, &sc->tx_ring_inuse, 0,
 	    "# of TX rings used");
 
 #ifdef IFPOLL_ENABLE
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			OID_AUTO, "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW,
 			sc, 0, emx_sysctl_npoll_rxoff, "I",
 			"NPOLLING RX cpu offset");
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			OID_AUTO, "npoll_txoff", CTLTYPE_INT|CTLFLAG_RW,
 			sc, 0, emx_sysctl_npoll_txoff, "I",
 			"NPOLLING TX cpu offset");
 #endif
 
 #ifdef EMX_RSS_DEBUG
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 		       OID_AUTO, "rss_debug", CTLFLAG_RW, &sc->rss_debug,
 		       0, "RSS debug level");
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		ksnprintf(pkt_desc, sizeof(pkt_desc), "rx%d_pkt", i);
-		SYSCTL_ADD_ULONG(&sc->sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_ULONG(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		    pkt_desc, CTLFLAG_RW, &sc->rx_data[i].rx_pkts,
 		    "RXed packets");
 	}
@@ -3706,8 +3695,7 @@ emx_add_sysctl(struct emx_softc *sc)
 #ifdef EMX_TSS_DEBUG
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
 		ksnprintf(pkt_desc, sizeof(pkt_desc), "tx%d_pkt", i);
-		SYSCTL_ADD_ULONG(&sc->sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_ULONG(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		    pkt_desc, CTLFLAG_RW, &sc->tx_data[i].tx_pkts,
 		    "TXed packets");
 	}

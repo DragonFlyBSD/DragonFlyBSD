@@ -282,15 +282,6 @@ oce_attach(device_t dev)
 	if (rc)
 		goto vlan_free;
 
-	sysctl_ctx_init(&sc->sysctl_ctx);
-	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
-	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	    device_get_nameunit(sc->dev), CTLFLAG_RD, 0, "");
-	if (sc->sysctl_tree == NULL) {
-		device_printf(sc->dev, "cannot add sysctl tree node\n");
-		rc = ENXIO;
-		goto vlan_free;
-	}
 	oce_add_sysctls(sc);
 
 	callout_init_mp(&sc->timer);
@@ -351,8 +342,6 @@ oce_detach(device_t dev)
 	oce_hw_shutdown(sc);
 
 	bus_generic_detach(dev);
-
-	sysctl_ctx_free(&sc->sysctl_ctx);
 	return 0;
 }
 

@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/ufoma.4 233648 2012-03-29 05:02:12Z eadler $
 .\"
-.Dd March 15, 2014
+.Dd November 28, 2014
 .Dt UFOMA 4
 .Os
 .Sh NAME
@@ -72,34 +72,34 @@ The device is accessed through the
 .Xr ucom 4
 driver which makes it behave like a
 .Xr tty 4 .
-.\".Sh SYSCTLS
-.\"These devices often have a few interface sets and these interfaces
-.\"have their role, sometimes multiplexed.
-.\"These roles are identified with the following sysctl MIBs:
-.\".Bl -tag -width indent
-.\".It Va dev.ucom.%d.supportmode
-.\"The modes which are supported by the interface.
-.\".It Va dev.ucom.%d.currentmode
-.\"Current mode of the interface.
-.\".It Va dev.ucom.%d.openmode
-.\"Mode to transit when the device is open next.
-.\".El
-.\"The modes are as follows:
-.\".Bl -tag -width indent
-.\".It Li modem
-.\"Accepts AT commands and go and pass packet communication data.
-.\".It Li handsfree
-.\"Accepts AT commands but it does not pass data.
-.\".It Li obex
-.\"Accepts OBEX frame which is used to exchange telephone book, etc.
-.\".It Li vendor1 , vendor2
-.\"Vendor specific data may be passed.
-.\".It Li deactivated
-.\"When an interface is recognized by the system but not used, the interface
-.\"will be set to this mode.
-.\".It Li unlinked
-.\"When an interface is not yet negotiated, the interface is in this mode.
-.\".El
+.Sh SYSCTLS
+These devices often have a few interface sets and these interfaces
+have their role, sometimes multiplexed.
+These roles are identified with the following sysctl MIBs:
+.Bl -tag -width indent
+.It Va dev.ucom.%d.supportmode
+The modes which are supported by the interface.
+.It Va dev.ucom.%d.currentmode
+Current mode of the interface.
+.It Va dev.ucom.%d.openmode
+Mode to transit when the device is open next.
+.El
+The modes are as follows:
+.Bl -tag -width indent
+.It Li modem
+Accepts AT commands and go and pass packet communication data.
+.It Li handsfree
+Accepts AT commands but it does not pass data.
+.It Li obex
+Accepts OBEX frame which is used to exchange telephone book, etc.
+.It Li vendor1 , vendor2
+Vendor specific data may be passed.
+.It Li deactivated
+When an interface is recognized by the system but not used, the interface
+will be set to this mode.
+.It Li unlinked
+When an interface is not yet negotiated, the interface is in this mode.
+.El
 .Sh HARDWARE
 Devices supported by the
 .Nm

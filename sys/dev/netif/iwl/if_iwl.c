@@ -211,21 +211,6 @@ iwl_attach(device_t dev)
 	}
 
 	/*
-	 * Create sysctl tree
-	 */
-	sysctl_ctx_init(&iwl->iwl_sysctl_ctx);
-	iwl->iwl_sysctl_tree = SYSCTL_ADD_NODE(&iwl->iwl_sysctl_ctx,
-					       SYSCTL_STATIC_CHILDREN(_hw),
-					       OID_AUTO,
-					       device_get_nameunit(dev),
-					       CTLFLAG_RD, 0, "");
-	if (iwl->iwl_sysctl_tree == NULL) {
-		device_printf(dev, "can't add sysctl node\n");
-		error = ENXIO;
-		goto back;
-	}
-
-	/*
 	 * Device specific attach
 	 */
 	error = sc->sc_info->attach(dev);
@@ -242,9 +227,6 @@ iwl_detach(device_t dev)
 	struct iwlcom *iwl = &sc->u.common;
 
 	sc->sc_info->detach(dev);
-
-	if (iwl->iwl_sysctl_tree != NULL)
-		sysctl_ctx_free(&iwl->iwl_sysctl_ctx);
 
 	if (iwl->iwl_irq_res != NULL) {
 		bus_release_resource(dev, SYS_RES_IRQ, iwl->iwl_irq_rid,

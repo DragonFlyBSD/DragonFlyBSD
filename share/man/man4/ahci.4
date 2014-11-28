@@ -14,7 +14,7 @@
 .\" TORTIOUS ACTION, ARISING OUT OF
 .\" PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd April 7, 2012
+.Dd November 28, 2014
 .Dt AHCI 4
 .Os
 .Sh NAME
@@ -99,10 +99,10 @@ hw.ahci.msi.enable=0
 .Ed
 .Sh SYSCTL VARIABLES
 Link power management can be set with the sysctl
-.Va hw.ahci%d.%d.link_pwr_mgmt
+.Va dev.ahci.%d.%d.link_pwr_mgmt
 to 0 for `disabled', 1 for `medium', and 2 for `aggressive'.
 Link power state can be read with the sysctl
-.Va hw.ahci%d.%d.link_pwr_state .
+.Va dev.ahci.%d.%d.link_pwr_state .
 .Sh SEE ALSO
 .Xr intro 4 ,
 .Xr nata 4 ,

@@ -599,7 +599,7 @@ NdisReadConfiguration(ndis_status *status, ndis_config_parm **parm,
 	 * See if registry key is already in a list of known keys
 	 * included with the driver.
 	 */
-	TAILQ_FOREACH(e, &sc->ndis_ctx, link) {
+	TAILQ_FOREACH(e, device_get_sysctl_ctx(sc->ndis_dev), link) {
 		oidp = e->entry;
 		if (strcasecmp(oidp->oid_name, keystr) == 0) {
 			if (strcmp((char *)oidp->oid_arg1, "UNSET") == 0) {
@@ -696,7 +696,7 @@ NdisWriteConfiguration(ndis_status *status, ndis_handle cfg,
 
 	/* See if the key already exists. */
 
-	TAILQ_FOREACH(e, &sc->ndis_ctx, link) {
+	TAILQ_FOREACH(e, device_get_sysctl_ctx(sc->ndis_dev), link) {
 		oidp = e->entry;
 		if (strcasecmp(oidp->oid_name, keystr) == 0) {
 			/* Found it, set the value. */

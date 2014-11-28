@@ -427,14 +427,6 @@ iwn_pci_attach(device_t dev)
 		goto fail;
 	}
 
-	/* prepare sysctl tree for use in sub modules */
-	sysctl_ctx_init(&sc->sc_sysctl_ctx);
-	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
-		SYSCTL_STATIC_CHILDREN(_hw),
-		OID_AUTO,
-		device_get_nameunit(sc->sc_dev),
-		CTLFLAG_RD, 0, "");
-
 #ifdef	IWN_DEBUG
 	error = resource_int_value(device_get_name(sc->sc_dev),
 	    device_get_unit(sc->sc_dev), "debug", &(sc->sc_debug));
@@ -1343,8 +1335,8 @@ iwn_sysctlattach(struct iwn_softc *sc)
 	struct sysctl_ctx_list *ctx;
 	struct sysctl_oid *tree;
 
-	ctx = &sc->sc_sysctl_ctx;
-	tree = sc->sc_sysctl_tree;
+	ctx = device_get_sysctl_ctx(sc->sc_dev);
+	tree = device_get_sysctl_tree(sc->sc_dev);
 
 	if (tree) {
 		device_printf(sc->sc_dev, "can't add sysctl node\n");
@@ -1432,9 +1424,6 @@ iwn_pci_detach(device_t dev)
 		callout_stop(&sc->calib_to);
 		ieee80211_ifdetach(ic);
 	}
-
-	/* cleanup sysctl nodes */
-	sysctl_ctx_free(&sc->sc_sysctl_ctx);
 
 	/* Uninstall interrupt handler. */
 	if (sc->irq != NULL) {

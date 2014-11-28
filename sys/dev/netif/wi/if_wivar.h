@@ -142,8 +142,6 @@ struct wi_softc	{
 
 	struct wi_tx_radiotap_header sc_tx_th;
 	struct wi_rx_radiotap_header sc_rx_th;
-
-	struct sysctl_ctx_list  sc_sysctl_ctx;
 };
 
 /* maximum consecutive false change-of-BSSID indications */

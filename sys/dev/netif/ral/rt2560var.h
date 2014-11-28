@@ -154,8 +154,6 @@ struct rt2560_softc {
 #define RT2560_F_PRIO_OACTIVE	0x2
 #define RT2560_F_DATA_OACTIVE	0x4
 	int			sc_flags;
-
-	struct sysctl_ctx_list	sc_sysctl_ctx;
 };
 
 int	rt2560_attach(device_t, int);

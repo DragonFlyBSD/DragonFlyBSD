@@ -380,13 +380,11 @@ mrsas_setup_sysctl(struct mrsas_softc *sc)
 	device_get_unit(sc->mrsas_dev));
     ksnprintf(tmpstr2, sizeof(tmpstr2), "mrsas%d", device_get_unit(sc->mrsas_dev));
 
-#if 0
     sysctl_ctx = device_get_sysctl_ctx(sc->mrsas_dev);
     if (sysctl_ctx != NULL)
         sysctl_tree = device_get_sysctl_tree(sc->mrsas_dev);
 
     if (sysctl_tree == NULL) {
-#endif
         sysctl_ctx_init(&sc->sysctl_ctx);
         sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
             SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO, tmpstr2,
@@ -395,9 +393,7 @@ mrsas_setup_sysctl(struct mrsas_softc *sc)
              return;
         sysctl_ctx = &sc->sysctl_ctx;
         sysctl_tree = sc->sysctl_tree;
-#if 0
     }
-#endif
     SYSCTL_ADD_UINT(sysctl_ctx, SYSCTL_CHILDREN(sysctl_tree),
         OID_AUTO, "disable_ocr", CTLFLAG_RW, &sc->disableOnlineCtrlReset, 0,
         "Disable the use of OCR");

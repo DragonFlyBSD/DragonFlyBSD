@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jmevar.h,v 1.1 2008/05/27 01:42:01 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jmevar.h,v 1.8 2008/11/26 11:55:18 sephe Exp $
  */
 
 #ifndef	_IF_JMEVAR_H
@@ -290,9 +289,6 @@ struct jme_softc {
 	int			jme_if_flags;
 	uint32_t		jme_txcsr;
 	uint32_t		jme_rxcsr;
-
-	struct sysctl_ctx_list	jme_sysctl_ctx;
-	struct sysctl_oid	*jme_sysctl_tree;
 
 	/*
 	 * Sysctl variables

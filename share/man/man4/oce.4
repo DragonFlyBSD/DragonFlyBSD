@@ -36,7 +36,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/oce.4,v 1.7 2013/07/07 00:30:13 svnexp Exp $
 .\"
-.Dd July 1, 2013
+.Dd November 28, 2014
 .Dt OCE 4
 .Os
 .Sh NAME
@@ -104,7 +104,7 @@ Copy Makefile and UFI file to a directory
 .It
 Execute make & make install
 .It
-sysctl hw.oce<if_id>.fw_upgrade=elxflash
+sysctl dev.oce.<if_id>.fw_upgrade=elxflash
 .It
 Reboot the machine
 .El

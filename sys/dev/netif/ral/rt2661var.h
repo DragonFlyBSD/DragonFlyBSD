@@ -158,8 +158,6 @@ struct rt2661_softc {
 	int				sc_rxtap_len;
 	struct rt2661_tx_radiotap_header sc_txtap;
 	int				sc_txtap_len;
-
-	struct sysctl_ctx_list  sc_sysctl_ctx;
 };
 
 int	rt2661_attach(device_t, int);

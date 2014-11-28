@@ -886,9 +886,6 @@ typedef struct oce_softc {
 	uint16_t qnqid;
 	uint16_t pvid;
 
-	struct sysctl_ctx_list sysctl_ctx;
-	struct sysctl_oid *sysctl_tree;
-
 } OCE_SOFTC, *POCE_SOFTC;
 
 

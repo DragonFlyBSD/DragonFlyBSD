@@ -196,15 +196,8 @@ twe_attach(device_t dev)
     lockinit(&sc->twe_io_lock, "twe I/O", 0, LK_CANRECURSE);
     lockinit(&sc->twe_config_lock, "twe config", 0, LK_CANRECURSE);
 
-    sysctl_ctx_init(&sc->sysctl_ctx);
-    sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
-	SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	device_get_nameunit(dev), CTLFLAG_RD, 0, "");
-    if (sc->sysctl_tree == NULL) {
-	twe_printf(sc, "cannot add sysctl tree node\n");
-	return (ENXIO);
-    }
-    SYSCTL_ADD_STRING(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+    SYSCTL_ADD_STRING(device_get_sysctl_ctx(dev),
+	SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
 	OID_AUTO, "driver_version", CTLFLAG_RD, TWE_DRIVER_VERSION_STRING, 0,
 	"TWE driver version");
 
@@ -423,7 +416,6 @@ twe_free(struct twe_softc *sc)
 	destroy_dev(sc->twe_dev_t);
     dev_ops_remove_minor(&twe_ops, device_get_unit(sc->twe_dev));
 
-    sysctl_ctx_free(&sc->sysctl_ctx);
     lockuninit(&sc->twe_config_lock);
     lockuninit(&sc->twe_io_lock);
 }

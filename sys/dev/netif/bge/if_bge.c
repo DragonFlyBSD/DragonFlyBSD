@@ -2028,6 +2028,8 @@ bge_attach(device_t dev)
 {
 	struct ifnet *ifp;
 	struct bge_softc *sc;
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid_list *tree;
 	uint32_t hwcfg = 0, misccfg;
 	int error = 0, rid, capmask;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
@@ -2591,49 +2593,27 @@ again:
 			BGE_SETBIT(sc, BGE_MODE_CTL, BGE_MODECTL_STACKUP);
 	}
 
-	/*
-	 * Create sysctl nodes.
-	 */
-	sysctl_ctx_init(&sc->bge_sysctl_ctx);
-	sc->bge_sysctl_tree = SYSCTL_ADD_NODE(&sc->bge_sysctl_ctx,
-					      SYSCTL_STATIC_CHILDREN(_hw),
-					      OID_AUTO,
-					      device_get_nameunit(dev),
-					      CTLFLAG_RD, 0, "");
-	if (sc->bge_sysctl_tree == NULL) {
-		device_printf(dev, "can't add sysctl node\n");
-		error = ENXIO;
-		goto fail;
-	}
+	ctx = device_get_sysctl_ctx(sc->bge_dev);
+	tree = SYSCTL_CHILDREN(device_get_sysctl_tree(sc->bge_dev));
 
-	SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->bge_sysctl_tree),
-			OID_AUTO, "rx_coal_ticks",
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "rx_coal_ticks",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bge_sysctl_rx_coal_ticks, "I",
 			"Receive coalescing ticks (usec).");
-	SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->bge_sysctl_tree),
-			OID_AUTO, "tx_coal_ticks",
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "tx_coal_ticks",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bge_sysctl_tx_coal_ticks, "I",
 			"Transmit coalescing ticks (usec).");
-	SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->bge_sysctl_tree),
-			OID_AUTO, "rx_coal_bds",
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "rx_coal_bds",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bge_sysctl_rx_coal_bds, "I",
 			"Receive max coalesced BD count.");
-	SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->bge_sysctl_tree),
-			OID_AUTO, "tx_coal_bds",
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "tx_coal_bds",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bge_sysctl_tx_coal_bds, "I",
 			"Transmit max coalesced BD count.");
 
-	SYSCTL_ADD_INT(&sc->bge_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->bge_sysctl_tree),
-		       OID_AUTO, "tx_wreg", CTLFLAG_RW,
+	SYSCTL_ADD_INT(ctx, tree, OID_AUTO, "tx_wreg", CTLFLAG_RW,
 		       &sc->bge_tx_wreg, 0,
 		       "# of segments before writing to hardware register");
 
@@ -2654,34 +2634,29 @@ again:
 		 * consumes a lot of CPU cycles, so leave it off by
 		 * default.
 		 */
-		SYSCTL_ADD_INT(&sc->bge_sysctl_ctx,
-			       SYSCTL_CHILDREN(sc->bge_sysctl_tree),
-			       OID_AUTO, "force_defrag", CTLFLAG_RW,
+		SYSCTL_ADD_INT(ctx, tree, OID_AUTO,
+			       "force_defrag", CTLFLAG_RW,
 			       &sc->bge_force_defrag, 0,
 			       "Force defragment on TX path");
 	}
 	if (sc->bge_flags & BGE_FLAG_STATUS_TAG) {
 		if (!BGE_IS_5705_PLUS(sc)) {
-			SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
-			    SYSCTL_CHILDREN(sc->bge_sysctl_tree), OID_AUTO,
+			SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 			    "rx_coal_ticks_int", CTLTYPE_INT | CTLFLAG_RW,
 			    sc, 0, bge_sysctl_rx_coal_ticks_int, "I",
 			    "Receive coalescing ticks "
 			    "during interrupt (usec).");
-			SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
-			    SYSCTL_CHILDREN(sc->bge_sysctl_tree), OID_AUTO,
+			SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 			    "tx_coal_ticks_int", CTLTYPE_INT | CTLFLAG_RW,
 			    sc, 0, bge_sysctl_tx_coal_ticks_int, "I",
 			    "Transmit coalescing ticks "
 			    "during interrupt (usec).");
 		}
-		SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->bge_sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 		    "rx_coal_bds_int", CTLTYPE_INT | CTLFLAG_RW,
 		    sc, 0, bge_sysctl_rx_coal_bds_int, "I",
 		    "Receive max coalesced BD count during interrupt.");
-		SYSCTL_ADD_PROC(&sc->bge_sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->bge_sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 		    "tx_coal_bds_int", CTLTYPE_INT | CTLFLAG_RW,
 		    sc, 0, bge_sysctl_tx_coal_bds_int, "I",
 		    "Transmit max coalesced BD count during interrupt.");
@@ -2696,9 +2671,8 @@ again:
 
 #ifdef IFPOLL_ENABLE
 	/* Polling setup */
-	ifpoll_compat_setup(&sc->bge_npoll,
-	    &sc->bge_sysctl_ctx, sc->bge_sysctl_tree, device_get_unit(dev),
-	    ifp->if_serializer);
+	ifpoll_compat_setup(&sc->bge_npoll, ctx, (struct sysctl_oid *)tree,
+	    device_get_unit(dev), ifp->if_serializer);
 #endif
 
 	if (sc->bge_irq_type == PCI_INTR_TYPE_MSI) {
@@ -2765,9 +2739,6 @@ bge_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY,
 		    PCIR_BAR(2), sc->bge_res2);
 	}
-
-	if (sc->bge_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->bge_sysctl_ctx);
 
 	bge_dma_free(sc);
 

@@ -396,10 +396,6 @@ struct igb_softc {
 	u_long			packet_buf_alloc_rx;
 	u_long			packet_buf_alloc_tx;
 
-	/* sysctl tree glue */
-	struct sysctl_ctx_list	sysctl_ctx;
-	struct sysctl_oid	*sysctl_tree;
-
 	void 			*stats;
 
 	int			msix_mem_rid;

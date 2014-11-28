@@ -282,17 +282,8 @@ wi_attach(device_t dev)
 	}
 
 	/* Export info about the device via sysctl */
-	sctx = &sc->sc_sysctl_ctx;
-        sysctl_ctx_init(sctx);
-        soid = SYSCTL_ADD_NODE(sctx, SYSCTL_STATIC_CHILDREN(_hw),
-                               OID_AUTO,
-                               device_get_nameunit(sc->sc_dev),
-                               CTLFLAG_RD, 0, "");
-	if (soid == NULL) {
-		device_printf(sc->sc_dev, "can't add sysctl node\n");
-		return ENXIO;
-	}
-
+	sctx = device_get_sysctl_ctx(sc->sc_dev);
+	soid = device_get_sysctl_tree(sc->sc_dev);
 	SYSCTL_ADD_STRING(sctx, SYSCTL_CHILDREN(soid), OID_AUTO,
 	    "firmware_type", CTLFLAG_RD,
 	    wi_firmware_names[sc->sc_firmware_type], 0,

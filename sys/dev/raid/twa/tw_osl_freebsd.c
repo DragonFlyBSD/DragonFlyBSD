@@ -312,20 +312,8 @@ twa_attach(device_t dev)
 	sc->sim_lock = &(sc->sim_lock_handle);
 	lockinit(sc->sim_lock, "tw_osl_sim_lock", 0, LK_CANRECURSE);
 
-	sysctl_ctx_init(&sc->sysctl_ctxt);
-	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctxt,
-		SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-		device_get_nameunit(dev), CTLFLAG_RD, 0, "");
-	if (sc->sysctl_tree == NULL) {
-		tw_osli_printf(sc, "error = %d",
-			TW_CL_SEVERITY_ERROR_STRING,
-			TW_CL_MESSAGE_SOURCE_FREEBSD_DRIVER,
-			0x2000,
-			"Cannot add sysctl tree node",
-			ENXIO);
-		return(ENXIO);
-	}
-	SYSCTL_ADD_STRING(&sc->sysctl_ctxt, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_STRING(device_get_sysctl_ctx(dev),
+		SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
 		OID_AUTO, "driver_version", CTLFLAG_RD,
 		TW_OSL_DRIVER_VERSION_STRING, 0, "TWA driver version");
 
@@ -794,11 +782,6 @@ tw_osli_free_resources(struct twa_softc *sc)
 	if (sc->ctrl_dev != NULL)
 		destroy_dev(sc->ctrl_dev);
 	dev_ops_remove_minor(&twa_ops, device_get_unit(sc->bus_dev));
-
-	if ((error = sysctl_ctx_free(&sc->sysctl_ctxt)))
-		tw_osli_dbg_dprintf(1, sc,
-			"sysctl_ctx_free returned %d", error);
-
 }
 
 

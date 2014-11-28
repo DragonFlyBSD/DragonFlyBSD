@@ -173,9 +173,6 @@ struct twa_softc {
 	TW_INT32		irq_type;	/* interrupt type */
 	TW_VOID			*intr_handle;	/* interrupt handle */
 
-	struct sysctl_ctx_list	sysctl_ctxt;	/* sysctl context */
-	struct sysctl_oid	*sysctl_tree;	/* sysctl oid */
-
 	struct cam_sim		*sim;	/* sim for this controller */
 	struct cam_path		*path;	/* peripheral, path, tgt, lun
 					associated with this controller */

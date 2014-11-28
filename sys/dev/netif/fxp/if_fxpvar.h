@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxpvar.h,v 1.17.2.6 2002/11/13 20:58:31 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.9 2008/06/15 10:41:00 sephe Exp $
  */
 
 /*
@@ -117,8 +116,6 @@ struct fxp_softc {
 	struct ifmedia sc_media;	/* media information */
 	struct ifpoll_compat fxp_npoll;	/* polling */
 	device_t miibus;
-	struct sysctl_ctx_list sysctl_ctx;
-	struct sysctl_oid *sysctl_tree;
 	int tunable_int_delay;		/* interrupt delay value for ucode */
 	int tunable_bundle_max;		/* max # frames per interrupt (ucode) */
 	int eeprom_size;		/* size of serial EEPROM */

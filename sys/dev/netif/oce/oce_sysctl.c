@@ -69,8 +69,8 @@ void
 oce_add_sysctls(POCE_SOFTC sc)
 {
 
-	struct sysctl_ctx_list *ctx = &sc->sysctl_ctx;
-	struct sysctl_oid *tree = sc->sysctl_tree;
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->dev);
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->dev);
 	struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
 	struct sysctl_oid *stats_node;
 

@@ -234,6 +234,8 @@ et_attach(device_t dev)
 {
 	struct et_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid *tree;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	int error;
 	u_int irq_flags;
@@ -298,34 +300,20 @@ et_attach(device_t dev)
 	/*
 	 * Create sysctl tree
 	 */
-	sysctl_ctx_init(&sc->sc_sysctl_ctx);
-	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
-					     SYSCTL_STATIC_CHILDREN(_hw),
-					     OID_AUTO,
-					     device_get_nameunit(dev),
-					     CTLFLAG_RD, 0, "");
-	if (sc->sc_sysctl_tree == NULL) {
-		device_printf(dev, "can't add sysctl node\n");
-		error = ENXIO;
-		goto fail;
-	}
-
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
+	ctx = device_get_sysctl_ctx(dev);
+	tree = device_get_sysctl_tree(dev);
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			OID_AUTO, "rx_intr_npkts", CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, et_sysctl_rx_intr_npkts, "I",
 			"RX IM, # packets per RX interrupt");
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			OID_AUTO, "rx_intr_delay", CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, et_sysctl_rx_intr_delay, "I",
 			"RX IM, RX interrupt delay (x10 usec)");
-	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "tx_intr_nsegs", CTLFLAG_RW, &sc->sc_tx_intr_nsegs, 0,
 		       "TX IM, # segments per TX interrupt");
-	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 			"timer", CTLFLAG_RW, &sc->sc_timer, 0,
 			"TX timer");
 
@@ -400,9 +388,6 @@ et_detach(device_t dev)
 
 		ether_ifdetach(ifp);
 	}
-
-	if (sc->sc_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->sc_sysctl_ctx);
 
 	if (sc->sc_miibus != NULL)
 		device_delete_child(dev, sc->sc_miibus);

@@ -1123,9 +1123,6 @@ jme_detach(device_t dev)
 		ether_ifdetach(ifp);
 	}
 
-	if (sc->jme_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->jme_sysctl_ctx);
-
 	if (sc->jme_miibus != NULL)
 		device_delete_child(dev, sc->jme_miibus);
 	bus_generic_detach(dev);
@@ -1145,64 +1142,49 @@ jme_detach(device_t dev)
 static void
 jme_sysctl_node(struct jme_softc *sc)
 {
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid *tree;
 #ifdef JME_RSS_DEBUG
 	int r;
 #endif
 
-	sysctl_ctx_init(&sc->jme_sysctl_ctx);
-	sc->jme_sysctl_tree = SYSCTL_ADD_NODE(&sc->jme_sysctl_ctx,
-				SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-				device_get_nameunit(sc->jme_dev),
-				CTLFLAG_RD, 0, "");
-	if (sc->jme_sysctl_tree == NULL) {
-		device_printf(sc->jme_dev, "can't add sysctl node\n");
-		return;
-	}
-
-	SYSCTL_ADD_PROC(&sc->jme_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+	ctx = device_get_sysctl_ctx(sc->jme_dev);
+	tree = device_get_sysctl_tree(sc->jme_dev);
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "tx_coal_to", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, jme_sysctl_tx_coal_to, "I", "jme tx coalescing timeout");
 
-	SYSCTL_ADD_PROC(&sc->jme_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "tx_coal_pkt", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, jme_sysctl_tx_coal_pkt, "I", "jme tx coalescing packet");
 
-	SYSCTL_ADD_PROC(&sc->jme_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "rx_coal_to", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, jme_sysctl_rx_coal_to, "I", "jme rx coalescing timeout");
 
-	SYSCTL_ADD_PROC(&sc->jme_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "rx_coal_pkt", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, jme_sysctl_rx_coal_pkt, "I", "jme rx coalescing packet");
 
-	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "rx_desc_count", CTLFLAG_RD,
 		       &sc->jme_cdata.jme_rx_data[0].jme_rx_desc_cnt,
 		       0, "RX desc count");
-	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "tx_desc_count", CTLFLAG_RD,
 		       &sc->jme_cdata.jme_tx_data.jme_tx_desc_cnt,
 		       0, "TX desc count");
-	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "rx_ring_count", CTLFLAG_RD,
 		       &sc->jme_cdata.jme_rx_ring_cnt,
 		       0, "RX ring count");
-	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "tx_wreg", CTLFLAG_RW,
 		       &sc->jme_cdata.jme_tx_data.jme_tx_wreg, 0,
 		       "# of segments before writing to hardware register");
 
 #ifdef JME_RSS_DEBUG
-	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "rss_debug", CTLFLAG_RW, &sc->jme_rss_debug,
 		       0, "RSS debug level");
 	for (r = 0; r < sc->jme_cdata.jme_rx_ring_cnt; ++r) {
@@ -1210,15 +1192,13 @@ jme_sysctl_node(struct jme_softc *sc)
 
 		ksnprintf(rx_ring_desc, sizeof(rx_ring_desc),
 		    "rx_ring%d_pkt", r);
-		SYSCTL_ADD_ULONG(&sc->jme_sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_ULONG(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		    rx_ring_desc, CTLFLAG_RW,
 		    &sc->jme_cdata.jme_rx_data[r].jme_rx_pkt, "RXed packets");
 
 		ksnprintf(rx_ring_desc, sizeof(rx_ring_desc),
 		    "rx_ring%d_emp", r);
-		SYSCTL_ADD_ULONG(&sc->jme_sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_ULONG(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		    rx_ring_desc, CTLFLAG_RW,
 		    &sc->jme_cdata.jme_rx_data[r].jme_rx_emp,
 		    "# of time RX ring empty");
@@ -1226,12 +1206,10 @@ jme_sysctl_node(struct jme_softc *sc)
 #endif
 
 #ifdef IFPOLL_ENABLE
-	SYSCTL_ADD_PROC(&sc->jme_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW, sc, 0,
 	    jme_sysctl_npoll_rxoff, "I", "NPOLLING RX cpu offset");
-	SYSCTL_ADD_PROC(&sc->jme_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "npoll_txoff", CTLTYPE_INT|CTLFLAG_RW, sc, 0,
 	    jme_sysctl_npoll_txoff, "I", "NPOLLING TX cpu offset");
 #endif

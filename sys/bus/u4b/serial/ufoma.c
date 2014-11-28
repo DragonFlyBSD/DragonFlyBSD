@@ -168,8 +168,6 @@ struct ufoma_softc {
 	struct ucom_softc sc_ucom;
 	struct cv sc_cv;
 	struct lock sc_lock;
-	struct sysctl_ctx_list sc_sysctl_ctx;
-	struct sysctl_oid *sc_sysctl_tree;
 
 	struct usb_xfer *sc_ctrl_xfer[UFOMA_CTRL_ENDPT_MAX];
 	struct usb_xfer *sc_bulk_xfer[UFOMA_BULK_ENDPT_MAX];
@@ -371,6 +369,8 @@ ufoma_attach(device_t dev)
 	struct ufoma_softc *sc = device_get_softc(dev);
 	struct usb_config_descriptor *cd;
 	struct usb_interface_descriptor *id;
+	struct sysctl_ctx_list *sctx;
+	struct sysctl_oid *soid;
 
 	usb_mcpc_acm_descriptor *mad;
 	uint8_t elements;
@@ -454,35 +454,21 @@ ufoma_attach(device_t dev)
 	ucom_set_pnpinfo_usb(&sc->sc_super_ucom, dev);
 
 	/*Sysctls*/
-	sysctl_ctx_init(&sc->sc_sysctl_ctx);
-	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
-	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	    device_get_nameunit(sc->sc_dev), CTLFLAG_RD, 0, "");
-	if (sc->sc_sysctl_tree == NULL) {
-		DPRINTF("can't add sysctl node\n");
-		goto detach;
-	}
+	sctx = device_get_sysctl_ctx(dev);
+	soid = device_get_sysctl_tree(dev);
 
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "supportmode",
+	SYSCTL_ADD_PROC(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "supportmode",
 			CTLFLAG_RD|CTLTYPE_STRING, sc, 0, ufoma_sysctl_support,
 			"A", "Supporting port role");
 
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "currentmode",
+	SYSCTL_ADD_PROC(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "currentmode",
 			CTLFLAG_RD|CTLTYPE_STRING, sc, 0, ufoma_sysctl_current,
 			"A", "Current port role");
 
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "openmode",
+	SYSCTL_ADD_PROC(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "openmode",
 			CTLFLAG_RW|CTLTYPE_STRING, sc, 0, ufoma_sysctl_open,
 			"A", "Mode to transit when port is opened");
-	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "comunit",
+	SYSCTL_ADD_UINT(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "comunit",
 			CTLFLAG_RD, &(sc->sc_super_ucom.sc_unit), 0, 
 			"Unit number as USB serial");
 
@@ -507,7 +493,6 @@ ufoma_detach(device_t dev)
 	}
 	lockuninit(&sc->sc_lock);
 	cv_destroy(&sc->sc_cv);
-	sysctl_ctx_free(&sc->sc_sysctl_ctx);
 
 	return (0);
 }

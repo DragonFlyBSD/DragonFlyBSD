@@ -492,9 +492,6 @@ iwi_detach(device_t dev)
 
 	devfs_clone_bitmap_uninit(&sc->sc_unr);
 
-	if (sc->sc_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->sc_sysctl_ctx);
-
 	if_free(ifp);
 
 	wlan_serialize_exit();
@@ -3289,19 +3286,8 @@ iwi_sysctlattach(struct iwi_softc *sc)
 	struct sysctl_ctx_list *ctx;
 	struct sysctl_oid *tree;
 
-	ctx = &sc->sc_sysctl_ctx;
-	sysctl_ctx_init(ctx);
-
-	tree = SYSCTL_ADD_NODE(ctx, SYSCTL_STATIC_CHILDREN(_hw),
-	                       OID_AUTO,
-	                       device_get_nameunit(sc->sc_dev),
-	                       CTLFLAG_RD, 0, "");
-	if (tree == NULL) {
-		device_printf(sc->sc_dev, "can't add sysctl node\n");
-		return;
-	}
-
-	sc->sc_sysctl_tree = tree;
+	ctx = device_get_sysctl_ctx(sc->sc_dev);
+	tree = device_get_sysctl_tree(sc->sc_dev);
 
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, "radio",
 	    CTLTYPE_INT | CTLFLAG_RD, sc, 0, iwi_sysctl_radio, "I",
@@ -3474,8 +3460,8 @@ iwi_sysctl_softled(SYSCTL_HANDLER_ARGS)
 static void
 iwi_ledattach(struct iwi_softc *sc)
 {
-	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
-	struct sysctl_oid *tree = sc->sc_sysctl_tree;
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
 
 	sc->sc_blinking = 0;
 	sc->sc_ledstate = 1;

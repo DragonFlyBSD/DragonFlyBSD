@@ -320,10 +320,6 @@ struct ix_softc {
 	int			intr_cnt;
 	struct ix_intr_data	*intr_data;
 
-	/* sysctl tree glue */
-	struct sysctl_ctx_list	sysctl_ctx;
-	struct sysctl_oid	*sysctl_tree;
-
 	device_t		dev;
 	bus_dma_tag_t		parent_tag;
 	struct ifmedia		media;

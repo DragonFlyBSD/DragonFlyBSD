@@ -1040,18 +1040,8 @@ alc_sysctl_node(struct alc_softc *sc)
 	int error;
 
 	stats = &sc->alc_stats;
-	ctx = &sc->alc_sysctl_ctx;
-	sysctl_ctx_init(ctx);
-
-	tree = SYSCTL_ADD_NODE(ctx, SYSCTL_STATIC_CHILDREN(_hw),
-			       OID_AUTO,
-			       device_get_nameunit(sc->alc_dev),
-			       CTLFLAG_RD, 0, "");
-	if (tree == NULL) {
-		device_printf(sc->alc_dev, "can't add sysctl node\n");
-		return;
-	}
-	child = SYSCTL_CHILDREN(tree);
+	ctx = device_get_sysctl_ctx(sc->alc_dev);
+	child = SYSCTL_CHILDREN(device_get_sysctl_tree(sc->alc_dev));
 
 	SYSCTL_ADD_PROC(ctx, child, OID_AUTO, "int_rx_mod",
 	    CTLTYPE_INT | CTLFLAG_RW, &sc->alc_int_rx_mod, 0,

@@ -292,16 +292,8 @@ aac_attach(struct aac_softc *sc)
 	/*
 	 * Add sysctls.
 	 */
-	sysctl_ctx_init(&sc->aac_sysctl_ctx);
-	sc->aac_sysctl_tree = SYSCTL_ADD_NODE(&sc->aac_sysctl_ctx,
-	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	    device_get_nameunit(sc->aac_dev), CTLFLAG_RD, 0, "");
-	if (sc->aac_sysctl_tree == NULL) {
-		device_printf(sc->aac_dev, "can't add sysctl node\n");
-		return (EINVAL);
-	}
-	SYSCTL_ADD_INT(&sc->aac_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->aac_sysctl_tree),
+	SYSCTL_ADD_INT(device_get_sysctl_ctx(sc->aac_dev),
+	    SYSCTL_CHILDREN(device_get_sysctl_tree(sc->aac_dev)),
 	    OID_AUTO, "firmware_build", CTLFLAG_RD,
 	    &sc->aac_revision.buildNumber, 0,
 	    "firmware build number");
@@ -658,8 +650,6 @@ aac_free(struct aac_softc *sc)
 		bus_release_resource(sc->aac_dev, SYS_RES_MEMORY,
 		    rman_get_rid(sc->aac_regs_res1), sc->aac_regs_res1);
 	dev_ops_remove_minor(&aac_ops, device_get_unit(sc->aac_dev));
-
-	sysctl_ctx_free(&sc->aac_sysctl_ctx);
 }
 
 /*

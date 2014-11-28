@@ -223,9 +223,6 @@ struct ale_softc {
 	int			ale_int_tx_mod;
 	int			ale_max_frame_size;
 	int			ale_pagesize;
-
-	struct sysctl_ctx_list	ale_sysctl_ctx;
-	struct sysctl_oid	*ale_sysctl_tree;
 };
 
 /* Register access macros. */

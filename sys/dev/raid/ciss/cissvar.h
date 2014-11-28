@@ -239,9 +239,6 @@ struct ciss_softc
 
     int				ciss_soft_reset;
 
-    struct sysctl_ctx_list	ciss_sysctl_ctx;
-    struct sysctl_oid		*ciss_sysctl_tree;
-
     int				ciss_flags;
 #define CISS_FLAG_NOTIFY_OK	(1<<0)		/* notify command running OK */
 #define CISS_FLAG_CONTROL_OPEN	(1<<1)		/* control device is open */

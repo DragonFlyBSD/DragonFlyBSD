@@ -783,8 +783,8 @@ em_attach(device_t dev)
 #ifdef IFPOLL_ENABLE
 	/* Polling setup */
 	ifpoll_compat_setup(&adapter->npoll,
-	    &adapter->sysctl_ctx, adapter->sysctl_tree, device_get_unit(dev),
-	    ifp->if_serializer);
+	    device_get_sysctl_ctx(dev), device_get_sysctl_tree(dev),
+	    device_get_unit(dev), ifp->if_serializer);
 #endif
 
 	/* Reset the hardware */
@@ -935,10 +935,6 @@ em_detach(device_t dev)
 	/* Free top level busdma tag */
 	if (adapter->parent_dtag != NULL)
 		bus_dma_tag_destroy(adapter->parent_dtag);
-
-	/* Free sysctl tree */
-	if (adapter->sysctl_tree != NULL)
-		sysctl_ctx_free(&adapter->sysctl_ctx);
 
 	if (adapter->mta != NULL)
 		kfree(adapter->mta, M_DEVBUF);
@@ -4058,53 +4054,42 @@ em_sysctl_stats(SYSCTL_HANDLER_ARGS)
 static void
 em_add_sysctl(struct adapter *adapter)
 {
-	sysctl_ctx_init(&adapter->sysctl_ctx);
-	adapter->sysctl_tree = SYSCTL_ADD_NODE(&adapter->sysctl_ctx,
-					SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-					device_get_nameunit(adapter->dev),
-					CTLFLAG_RD, 0, "");
-	if (adapter->sysctl_tree == NULL) {
-		device_printf(adapter->dev, "can't add sysctl node\n");
-	} else {
-		SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-		    OID_AUTO, "debug", CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
-		    em_sysctl_debug_info, "I", "Debug Information");
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid *tree;
 
-		SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-		    OID_AUTO, "stats", CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
-		    em_sysctl_stats, "I", "Statistics");
+	ctx = device_get_sysctl_ctx(adapter->dev);
+	tree = device_get_sysctl_tree(adapter->dev);
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
+	    OID_AUTO, "debug", CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
+	    em_sysctl_debug_info, "I", "Debug Information");
 
-		SYSCTL_ADD_INT(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-		    OID_AUTO, "rxd", CTLFLAG_RD,
-		    &adapter->num_rx_desc, 0, NULL);
-		SYSCTL_ADD_INT(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-		    OID_AUTO, "txd", CTLFLAG_RD,
-		    &adapter->num_tx_desc, 0, NULL);
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
+	    OID_AUTO, "stats", CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
+	    em_sysctl_stats, "I", "Statistics");
 
-		if (adapter->hw.mac.type >= e1000_82540) {
-			SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-			    SYSCTL_CHILDREN(adapter->sysctl_tree),
-			    OID_AUTO, "int_throttle_ceil",
-			    CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
-			    em_sysctl_int_throttle, "I",
-			    "interrupt throttling rate");
-		}
-		SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-		    OID_AUTO, "int_tx_nsegs",
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
+	    OID_AUTO, "rxd", CTLFLAG_RD,
+	    &adapter->num_rx_desc, 0, NULL);
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
+	    OID_AUTO, "txd", CTLFLAG_RD,
+	    &adapter->num_tx_desc, 0, NULL);
+
+	if (adapter->hw.mac.type >= e1000_82540) {
+		SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
+		    OID_AUTO, "int_throttle_ceil",
 		    CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
-		    em_sysctl_int_tx_nsegs, "I",
-		    "# segments per TX interrupt");
-		SYSCTL_ADD_INT(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-	            OID_AUTO, "wreg_tx_nsegs", CTLFLAG_RW,
-		    &adapter->tx_wreg_nsegs, 0,
-		    "# segments before write to hardware register");
+		    em_sysctl_int_throttle, "I",
+		    "interrupt throttling rate");
 	}
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
+	    OID_AUTO, "int_tx_nsegs",
+	    CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
+	    em_sysctl_int_tx_nsegs, "I",
+	    "# segments per TX interrupt");
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
+	    OID_AUTO, "wreg_tx_nsegs", CTLFLAG_RW,
+	    &adapter->tx_wreg_nsegs, 0,
+	    "# segments before write to hardware register");
 }
 
 static int

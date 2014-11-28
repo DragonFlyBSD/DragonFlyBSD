@@ -899,8 +899,6 @@ struct bwn_softc {
 #define	BWN_FLAG_ATTACHED		(1 << 0)
 #define	BWN_FLAG_INVALID		(1 << 1)
 #define	BWN_FLAG_NEED_BEACON_TP		(1 << 2)
-	struct sysctl_ctx_list	sc_sysctl_ctx;
-	struct sysctl_oid	*sc_sysctl_tree;
 	unsigned			sc_debug;
 
 	struct bwn_mac		*sc_curmac;

@@ -319,17 +319,8 @@ rt2560_attach(device_t dev, int id)
 	/*
 	 * Add a few sysctl knobs.
 	 */
-	ctx = &sc->sc_sysctl_ctx;
-	sysctl_ctx_init(ctx);
-	tree = SYSCTL_ADD_NODE(ctx, SYSCTL_STATIC_CHILDREN(_hw),
-				OID_AUTO,
-				device_get_nameunit(sc->sc_dev),
-				CTLFLAG_RD, 0, "");
-        if (tree == NULL) {
-                device_printf(sc->sc_dev, "can't add sysctl node\n");
-                goto fail6;
-        }
-
+	ctx = device_get_sysctl_ctx(sc->sc_dev);
+	tree = device_get_sysctl_tree(sc->sc_dev);
 #ifdef RAL_DEBUG
 	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "debug", CTLFLAG_RW, &sc->sc_debug, 0, "debug msgs");

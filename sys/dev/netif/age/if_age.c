@@ -691,9 +691,6 @@ age_detach(device_t dev)
 		ether_ifdetach(ifp);
 	}
 
-	if (sc->age_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->age_sysctl_ctx);
-
 	if (sc->age_miibus != NULL)
 		device_delete_child(dev, sc->age_miibus);
 	bus_generic_detach(dev);
@@ -715,25 +712,15 @@ age_detach(device_t dev)
 static void
 age_sysctl_node(struct age_softc *sc)
 {
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->age_dev);
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->age_dev);
 	int error;
 
-	sysctl_ctx_init(&sc->age_sysctl_ctx);
-	sc->age_sysctl_tree = SYSCTL_ADD_NODE(&sc->age_sysctl_ctx,
-				SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-				device_get_nameunit(sc->age_dev),
-				CTLFLAG_RD, 0, "");
-	if (sc->age_sysctl_tree == NULL) {
-		device_printf(sc->age_dev, "can't add sysctl node\n");
-		return;
-	}
-
-	SYSCTL_ADD_PROC(&sc->age_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->age_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "stats", CTLTYPE_INT | CTLFLAG_RW, sc, 0, sysctl_age_stats,
 	    "I", "Statistics");
 
-	SYSCTL_ADD_PROC(&sc->age_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->age_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "int_mod", CTLTYPE_INT | CTLFLAG_RW, &sc->age_int_mod, 0,
 	    sysctl_hw_age_int_mod, "I", "age interrupt moderation");
 

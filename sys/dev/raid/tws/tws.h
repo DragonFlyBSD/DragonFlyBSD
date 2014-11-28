@@ -219,8 +219,6 @@ struct tws_softc {
     u_int32_t   subdevice_id;             /* device id */
     u_int8_t    tws_state;                /* driver state */
     u_int8_t    tws_prev_state;           /* driver prev state */
-    struct sysctl_ctx_list tws_clist;     /* sysctl context */
-    struct sysctl_oid *tws_oidp;          /* sysctl context */
     struct resource *reg_res;             /* register interface window */
     struct resource *mfa_res;             /* mfa interface window */
     int reg_res_id;                       /* register resource id */

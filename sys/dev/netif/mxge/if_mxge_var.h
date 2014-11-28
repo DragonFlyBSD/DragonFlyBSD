@@ -180,8 +180,6 @@ struct mxge_softc {
 	struct callout co_hdl;
 	u_long opackets;		/* saved ifnet.opackets */
 	u_long ipackets;		/* saved ifnet.ipackets */
-	struct sysctl_ctx_list sysctl_ctx;
-	struct sysctl_oid *sysctl_tree;
 	struct sysctl_oid *slice_sysctl_tree;
 	struct sysctl_ctx_list slice_sysctl_ctx;
 	uint8_t	mac_addr[6];		/* eeprom mac address */

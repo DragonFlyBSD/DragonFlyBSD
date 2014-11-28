@@ -395,10 +395,6 @@ struct emx_softc {
 	/* Misc stats maintained by the driver */
 	unsigned long		rx_overruns;
 
-	/* sysctl tree glue */
-	struct sysctl_ctx_list	sysctl_ctx;
-	struct sysctl_oid	*sysctl_tree;
-
 	struct e1000_hw_stats	stats;
 };
 

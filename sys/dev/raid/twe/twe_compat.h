@@ -80,8 +80,6 @@
     void			*twe_cmd;		/* command structures */	\
     void			*twe_immediate;		/* immediate commands */	\
     bus_dmamap_t		twe_immediate_map;					\
-    struct sysctl_ctx_list	sysctl_ctx;						\
-    struct sysctl_oid		*sysctl_tree;						\
     struct lock			twe_io_lock;						\
     struct lock			twe_config_lock;
 

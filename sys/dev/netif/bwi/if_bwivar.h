@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/dev/netif/bwi/if_bwivar.h,v 1.14 2008/02/15 11:15:38 sephe Exp $
  */
 
 #ifndef _IF_BWIVAR_H
@@ -637,9 +635,6 @@ struct bwi_softc {
 				(struct bwi_softc *, uint32_t, int);
 
 	void			(*sc_txeof_status)(struct bwi_softc *);
-
-	struct sysctl_ctx_list	sc_sysctl_ctx;
-	struct sysctl_oid	*sc_sysctl_tree;
 
 	struct ieee80211_onoe_param sc_onoe_param;
 

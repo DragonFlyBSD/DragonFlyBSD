@@ -427,8 +427,8 @@ ath_rate_fetch_node_stats(struct ath_softc *sc, struct ath_node *an,
 static void
 ath_rate_sysctlattach(struct ath_softc *sc)
 {
-	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
-	struct sysctl_oid *tree = sc->sc_sysctl_tree;
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
 
 	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		"rate_interval", CTLFLAG_RW, &ath_rateinterval, 0,

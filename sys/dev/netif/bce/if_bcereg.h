@@ -27,7 +27,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bcereg.h,v 1.13 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bcereg.h,v 1.3 2008/06/15 05:14:41 sephe Exp $
  */
 
 #ifndef	_BCE_H_DEFINED
@@ -6085,8 +6084,6 @@ struct bce_softc {
 	struct bce_rx_ring	*rx_rings;
 
 	int			bce_if_flags;
-	struct sysctl_ctx_list	bce_sysctl_ctx;
-	struct sysctl_oid	*bce_sysctl_tree;
 
 	/* Provides access to hardware statistics through sysctl. */
 	uint64_t stat_IfHCInOctets;

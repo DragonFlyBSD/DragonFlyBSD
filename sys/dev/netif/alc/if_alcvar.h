@@ -242,8 +242,6 @@ struct alc_softc {
 	int			alc_int_rx_mod;
 	int			alc_int_tx_mod;
 	int			alc_buf_size;
-
-	struct sysctl_ctx_list	alc_sysctl_ctx;
 };
 
 /* Register access macros. */

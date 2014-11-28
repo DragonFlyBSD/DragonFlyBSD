@@ -381,9 +381,6 @@ struct aac_softc
 							 * task */
 	struct intr_config_hook	aac_ich;
 
-	struct sysctl_ctx_list	aac_sysctl_ctx;
-	struct sysctl_oid	*aac_sysctl_tree;
-
 	/* management interface */
 	struct cdev *aac_dev_t;
 	struct lock		aac_aifq_lock;

@@ -34,7 +34,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/mrsas.4 267182 2014-06-06 19:00:43Z joel $
 .\"
-.Dd July 18, 2014
+.Dd November 28, 2014
 .Dt MRSAS 4
 .Os
 .Sh NAME
@@ -196,14 +196,14 @@ hw.mrsasX.mrsas_fw_fault_check_delay=NN
 where NN is the fault check delay value in seconds.
 .Pp
 The current number of active I/O commands is shown in the
-.Va hw.mrsasX.fw_outstanding
+.Va dev.mrsas.X.fw_outstanding
 .Xr sysctl 8
 variable.
 .Sh DEBUGGING
 To enable debugging prints from the
 .Nm
 driver, set the
-.Va hw.mrsas.X.debug_level
+.Va dev.mrsas.X.debug_level
 variable, where X is the adapter number, either in
 .Xr loader.conf 5
 or via

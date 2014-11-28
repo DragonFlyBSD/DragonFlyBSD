@@ -219,8 +219,6 @@ struct isposinfo {
 	struct cdev *		cdev;
 	struct intr_config_hook	ehook;
 	struct cam_devq *	devq;
-	struct sysctl_ctx_list	sysctl_ctx;
-	struct sysctl_oid	*sysctl_tree;
 
 	/*
 	 * Firmware pointer
@@ -586,8 +584,6 @@ default:							\
 #define	SIMQFRZ_TIMED		0x4
 
 #define	isp_dev		isp_osinfo.dev
-#define	isp_sysctl_ctx	isp_osinfo.sysctl_ctx
-#define	isp_sysctl_tree	isp_osinfo.sysctl_tree
 
 /*
  * prototypes for isp_pci && isp_freebsd to share

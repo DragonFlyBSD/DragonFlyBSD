@@ -394,18 +394,9 @@ ae_sysctl_node(struct ae_softc *sc)
 	unsigned int i;
 
 	ae_stats = &sc->stats;
-	sysctl_ctx_init(&sc->ae_sysctl_ctx);
-	sc->ae_sysctl_tree = SYSCTL_ADD_NODE(&sc->ae_sysctl_ctx,
-				SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-				device_get_nameunit(sc->ae_dev),
-				CTLFLAG_RD, 0, "");
-	if (sc->ae_sysctl_tree == NULL) {
-		device_printf(sc->ae_dev, "can't add sysctl node\n");
-		return;
-	}
-	ctx = &sc->ae_sysctl_ctx;
-	root = sc->ae_sysctl_tree;
 
+	ctx = device_get_sysctl_ctx(sc->ae_dev);
+	root = device_get_sysctl_tree(sc->ae_dev);
 	stats = SYSCTL_ADD_NODE(ctx, SYSCTL_CHILDREN(root), OID_AUTO, "stats",
 	    CTLFLAG_RD, NULL, "ae statistics");
 	if (stats == NULL) {
@@ -1444,10 +1435,6 @@ ae_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->ae_mem_rid,
 				     sc->ae_mem_res);
 	}
-
-	if (sc->ae_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->ae_sysctl_ctx);
-
 	ae_dma_free(sc);
 
 	return (0);

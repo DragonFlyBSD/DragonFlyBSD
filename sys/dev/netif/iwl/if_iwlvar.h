@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/dev/netif/iwl/if_iwlvar.h,v 1.1 2008/03/05 14:10:39 sephe Exp $
  */
 
 #ifndef _IF_IWLVAR_H
@@ -65,9 +63,6 @@ struct iwlcom {
 	int			iwl_irq_rid;
 	struct resource		*iwl_irq_res;
 	void			*iwl_irq_handle;
-
-	struct sysctl_ctx_list	iwl_sysctl_ctx;
-	struct sysctl_oid	*iwl_sysctl_tree;
 
 	int			iwl_tx_timer;
 

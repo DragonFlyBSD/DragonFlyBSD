@@ -736,9 +736,6 @@ struct mpt_softc {
 	/* Userland management interface. */
 	struct cdev		*cdev;
 
-	struct sysctl_ctx_list		mpt_sysctl_ctx;
-	struct sysctl_oid		*mpt_sysctl_tree;
-
 	TAILQ_ENTRY(mpt_softc)	links;
 };
 

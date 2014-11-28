@@ -481,15 +481,6 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 
 	sc->sc_rxfifo_state = ATH_RXFIFO_RESET;
 
-	/* prepare sysctl tree for use in sub modules */
-	sysctl_ctx_init(&sc->sc_sysctl_ctx);
-	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
-		SYSCTL_STATIC_CHILDREN(_hw),
-		OID_AUTO,
-		device_get_nameunit(sc->sc_dev),
-		CTLFLAG_RD, 0, "");
-
-
 	ah = ath_hal_attach(devid, sc, sc->sc_st, sc->sc_sh,
 	    sc->sc_eepromdata, &status);
 	if (ah == NULL) {
@@ -1277,11 +1268,6 @@ ath_detach(struct ath_softc *sc)
 	CURVNET_SET(ifp->if_vnet);
 	if_free(ifp);
 	CURVNET_RESTORE();
-
-	if (sc->sc_sysctl_tree) {
-		sysctl_ctx_free(&sc->sc_sysctl_ctx);
-		sc->sc_sysctl_tree = NULL;
-	}
 
 	return 0;
 }

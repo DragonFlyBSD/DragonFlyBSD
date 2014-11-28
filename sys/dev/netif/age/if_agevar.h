@@ -223,9 +223,6 @@ struct age_softc {
 	int			age_max_frame_size;
 	int			age_rr_prod;
 	int			age_tpd_cons;
-
-	struct sysctl_ctx_list	age_sysctl_ctx;
-	struct sysctl_oid	*age_sysctl_tree;
 };
 
 /* Register access macros. */

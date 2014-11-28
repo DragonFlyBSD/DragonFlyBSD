@@ -570,6 +570,8 @@ stge_attach(device_t dev)
 {
 	struct stge_softc *sc;
 	struct ifnet *ifp;
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid *tree;
 	uint8_t enaddr[ETHER_ADDR_LEN];
 	int error, i;
 	uint16_t cmd;
@@ -653,25 +655,13 @@ stge_attach(device_t dev)
 	sc->sc_rxint_nframe = STGE_RXINT_NFRAME_DEFAULT;
 	sc->sc_rxint_dmawait = STGE_RXINT_DMAWAIT_DEFAULT;
 
-	sysctl_ctx_init(&sc->sc_sysctl_ctx);
-	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
-					     SYSCTL_STATIC_CHILDREN(_hw),
-					     OID_AUTO,
-					     device_get_nameunit(dev),
-					     CTLFLAG_RD, 0, "");
-	if (sc->sc_sysctl_tree == NULL) {
-		device_printf(dev, "can't add sysctl node\n");
-		error = ENXIO;
-		goto fail;
-	}
-
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	ctx = device_get_sysctl_ctx(dev);
+	tree = device_get_sysctl_tree(dev);
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "rxint_nframe", CTLTYPE_INT|CTLFLAG_RW, &sc->sc_rxint_nframe, 0,
 	    sysctl_hw_stge_rxint_nframe, "I", "stge rx interrupt nframe");
 
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "rxint_dmawait", CTLTYPE_INT|CTLFLAG_RW, &sc->sc_rxint_dmawait, 0,
 	    sysctl_hw_stge_rxint_dmawait, "I", "stge rx interrupt dmawait");
 
@@ -765,9 +755,8 @@ stge_attach(device_t dev)
 	ether_ifattach(ifp, enaddr, NULL);
 
 #ifdef IFPOLL_ENABLE
-	ifpoll_compat_setup(&sc->sc_npoll,
-	    &sc->sc_sysctl_ctx, sc->sc_sysctl_tree, device_get_unit(dev),
-	    ifp->if_serializer);
+	ifpoll_compat_setup(&sc->sc_npoll, ctx, (struct sysctl_oid *)tree,
+	    device_get_unit(dev), ifp->if_serializer);
 #endif
 
 	/* VLAN capability setup */
@@ -836,9 +825,6 @@ stge_detach(device_t dev)
 
 		ether_ifdetach(ifp);
 	}
-
-	if (sc->sc_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->sc_sysctl_ctx);
 
 	if (sc->sc_miibus != NULL)
 		device_delete_child(dev, sc->sc_miibus);

@@ -407,10 +407,6 @@ struct adapter {
 	unsigned long		tx_irq;
 	unsigned long		link_irq;
 
-	/* sysctl tree glue */
-	struct sysctl_ctx_list	sysctl_ctx;
-	struct sysctl_oid	*sysctl_tree;
-
 	/* 82547 workaround */
 	uint32_t		tx_fifo_size;
 	uint32_t		tx_fifo_head;

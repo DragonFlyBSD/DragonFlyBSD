@@ -430,6 +430,4 @@ struct iwn_softc {
 
 	/* For specific params */
 	const struct iwn_base_params *base_params;
-	struct sysctl_ctx_list  sc_sysctl_ctx;
-	struct sysctl_oid       *sc_sysctl_tree;
 };

@@ -1,5 +1,4 @@
 /*	$OpenBSD: if_nfevar.h,v 1.11 2006/02/19 13:57:02 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.13 2008/07/12 11:44:17 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -122,8 +121,6 @@ struct nfe_softc {
 	int			sc_rx_ring_count;
 	int			sc_tx_ring_count;
 	int			sc_debug;
-	struct sysctl_ctx_list	sc_sysctl_ctx;
-	struct sysctl_oid	*sc_sysctl_tree;
 
 	struct lwkt_serialize	sc_jbuf_serializer;
 };

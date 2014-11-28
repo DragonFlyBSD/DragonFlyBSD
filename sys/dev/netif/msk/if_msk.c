@@ -1478,6 +1478,8 @@ static int
 mskc_attach(device_t dev)
 {
 	struct msk_softc *sc;
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid *tree;
 	int error, *port, cpuid;
 	u_int irq_flags;
 
@@ -1586,38 +1588,23 @@ mskc_attach(device_t dev)
 	/*
 	 * Create sysctl tree
 	 */
-	sysctl_ctx_init(&sc->msk_sysctl_ctx);
-	sc->msk_sysctl_tree = SYSCTL_ADD_NODE(&sc->msk_sysctl_ctx,
-					      SYSCTL_STATIC_CHILDREN(_hw),
-					      OID_AUTO,
-					      device_get_nameunit(dev),
-					      CTLFLAG_RD, 0, "");
-	if (sc->msk_sysctl_tree == NULL) {
-		device_printf(dev, "can't add sysctl node\n");
-		error = ENXIO;
-		goto fail;
-	}
-
-	SYSCTL_ADD_PROC(&sc->msk_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->msk_sysctl_tree),
+	ctx = device_get_sysctl_ctx(dev);
+	tree = device_get_sysctl_tree(dev);
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			OID_AUTO, "process_limit", CTLTYPE_INT | CTLFLAG_RW,
 			&sc->msk_process_limit, 0, mskc_sysctl_proc_limit,
 			"I", "max number of Rx events to process");
-	SYSCTL_ADD_PROC(&sc->msk_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->msk_sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, mskc_sysctl_intr_rate,
 			"I", "max number of interrupt per second");
-	SYSCTL_ADD_INT(&sc->msk_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->msk_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "defrag_avoided", CTLFLAG_RW, &sc->msk_defrag_avoided,
 		       0, "# of avoided m_defrag on TX path");
-	SYSCTL_ADD_INT(&sc->msk_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->msk_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "leading_copied", CTLFLAG_RW, &sc->msk_leading_copied,
 		       0, "# of leading copies on TX path");
-	SYSCTL_ADD_INT(&sc->msk_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->msk_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "trailing_copied", CTLFLAG_RW, &sc->msk_trailing_copied,
 		       0, "# of trailing copies on TX path");
 
@@ -1841,9 +1828,6 @@ mskc_detach(device_t dev)
 		bus_release_resource(dev, sc->msk_res_type, sc->msk_res_rid,
 				     sc->msk_res);
 	}
-
-	if (sc->msk_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->msk_sysctl_ctx);
 
 	return (0);
 }

@@ -1134,11 +1134,6 @@ bwn_detach(device_t dev)
 	if (sc->bwn_irq_type == PCI_INTR_TYPE_MSI)
 		pci_release_msi(dev);
 
-	if (sc->sc_sysctl_tree) {
-		sysctl_ctx_free(&sc->sc_sysctl_ctx);
-		sc->sc_sysctl_tree = NULL;
-	}
-
 	wlan_serialize_exit();
 	return (0);
 }
@@ -1169,14 +1164,6 @@ bwn_attach_pre(struct bwn_softc *sc)
 	/* set these up early for if_printf use */
 	if_initname(ifp, device_get_name(sc->sc_dev),
 	    device_get_unit(sc->sc_dev));
-
-	/* prepare sysctl tree for use in sub modules */
-	sysctl_ctx_init(&sc->sc_sysctl_ctx);
-	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
-		SYSCTL_STATIC_CHILDREN(_hw),
-		OID_AUTO,
-		device_get_nameunit(sc->sc_dev),
-		CTLFLAG_RD, 0, "");
 
 	ifp->if_softc = sc;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
@@ -14113,8 +14100,8 @@ bwn_sysctl_node(struct bwn_softc *sc)
 		return;
 	stats = &mac->mac_stats;
 
-	ctx = &sc->sc_sysctl_ctx;
-	tree = sc->sc_sysctl_tree;
+	ctx = device_get_sysctl_ctx(sc->sc_dev);
+	tree = device_get_sysctl_tree(sc->sc_dev);
 	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "linknoise", CTLFLAG_RW, &stats->rts, 0, "Noise level");
 	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,

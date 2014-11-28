@@ -1836,6 +1836,8 @@ bnx_attach(device_t dev)
 	struct ifnet *ifp;
 	struct bnx_softc *sc;
 	struct bnx_rx_std_ring *std;
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid_list *tree;
 	uint32_t hwcfg = 0;
 	int error = 0, rid, capmask, i, std_cpuid, std_cpuid_def;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
@@ -2325,61 +2327,35 @@ bnx_attach(device_t dev)
 		}
 	}
 
-	/*
-	 * Create sysctl nodes.
-	 */
-	sysctl_ctx_init(&sc->bnx_sysctl_ctx);
-	sc->bnx_sysctl_tree = SYSCTL_ADD_NODE(&sc->bnx_sysctl_ctx,
-					      SYSCTL_STATIC_CHILDREN(_hw),
-					      OID_AUTO,
-					      device_get_nameunit(dev),
-					      CTLFLAG_RD, 0, "");
-	if (sc->bnx_sysctl_tree == NULL) {
-		device_printf(dev, "can't add sysctl node\n");
-		error = ENXIO;
-		goto fail;
-	}
+	ctx = device_get_sysctl_ctx(sc->bnx_dev);
+	tree = SYSCTL_CHILDREN(device_get_sysctl_tree(sc->bnx_dev));
 
-	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, tree, OID_AUTO,
 	    "rx_rings", CTLFLAG_RD, &sc->bnx_rx_retcnt, 0, "# of RX rings");
-	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, tree, OID_AUTO,
 	    "tx_rings", CTLFLAG_RD, &sc->bnx_tx_ringcnt, 0, "# of TX rings");
 
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->bnx_sysctl_tree),
-			OID_AUTO, "rx_coal_ticks",
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "rx_coal_ticks",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bnx_sysctl_rx_coal_ticks, "I",
 			"Receive coalescing ticks (usec).");
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->bnx_sysctl_tree),
-			OID_AUTO, "tx_coal_ticks",
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "tx_coal_ticks",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bnx_sysctl_tx_coal_ticks, "I",
 			"Transmit coalescing ticks (usec).");
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->bnx_sysctl_tree),
-			OID_AUTO, "rx_coal_bds",
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "rx_coal_bds",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bnx_sysctl_rx_coal_bds, "I",
 			"Receive max coalesced BD count.");
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->bnx_sysctl_tree),
-			OID_AUTO, "rx_coal_bds_poll",
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "rx_coal_bds_poll",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bnx_sysctl_rx_coal_bds_poll, "I",
 			"Receive max coalesced BD count in polling.");
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->bnx_sysctl_tree),
-			OID_AUTO, "tx_coal_bds",
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "tx_coal_bds",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bnx_sysctl_tx_coal_bds, "I",
 			"Transmit max coalesced BD count.");
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->bnx_sysctl_tree),
-			OID_AUTO, "tx_coal_bds_poll",
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO, "tx_coal_bds_poll",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bnx_sysctl_tx_coal_bds_poll, "I",
 			"Transmit max coalesced BD count in polling.");
@@ -2399,50 +2375,42 @@ bnx_attach(device_t dev)
 	 * consumes a lot of CPU cycles, so leave it off by
 	 * default.
 	 */
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 	    "force_defrag", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, bnx_sysctl_force_defrag, "I",
 	    "Force defragment on TX path");
 
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 	    "tx_wreg", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, bnx_sysctl_tx_wreg, "I",
 	    "# of segments before writing to hardware register");
 
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 	    "std_refill", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, bnx_sysctl_std_refill, "I",
 	    "# of packets received before scheduling standard refilling");
 
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 	    "rx_coal_bds_int", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, bnx_sysctl_rx_coal_bds_int, "I",
 	    "Receive max coalesced BD count during interrupt.");
-	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 	    "tx_coal_bds_int", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, bnx_sysctl_tx_coal_bds_int, "I",
 	    "Transmit max coalesced BD count during interrupt.");
 
 #ifdef IFPOLL_ENABLE
 	if (sc->bnx_flags & BNX_FLAG_RXTX_BUNDLE) {
-		SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 		    "npoll_offset", CTLTYPE_INT | CTLFLAG_RW,
 		    sc, 0, bnx_sysctl_npoll_offset, "I",
 		    "NPOLLING cpu offset");
 	} else {
-		SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 		    "npoll_rxoff", CTLTYPE_INT | CTLFLAG_RW,
 		    sc, 0, bnx_sysctl_npoll_rxoff, "I",
 		    "NPOLLING RX cpu offset");
-		SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_PROC(ctx, tree, OID_AUTO,
 		    "npoll_txoff", CTLTYPE_INT | CTLFLAG_RW,
 		    sc, 0, bnx_sysctl_npoll_txoff, "I",
 		    "NPOLLING TX cpu offset");
@@ -2450,26 +2418,21 @@ bnx_attach(device_t dev)
 #endif
 
 #ifdef BNX_RSS_DEBUG
-	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, tree, OID_AUTO,
 	    "std_refill_mask", CTLFLAG_RD,
 	    &sc->bnx_rx_std_ring.bnx_rx_std_refill, 0, "");
-	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, tree, OID_AUTO,
 	    "std_used", CTLFLAG_RD,
 	    &sc->bnx_rx_std_ring.bnx_rx_std_used, 0, "");
-	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, tree, OID_AUTO,
 	    "rss_debug", CTLFLAG_RW, &sc->bnx_rss_debug, 0, "");
 	for (i = 0; i < sc->bnx_rx_retcnt; ++i) {
 		ksnprintf(desc, sizeof(desc), "rx_pkt%d", i);
-		SYSCTL_ADD_ULONG(&sc->bnx_sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_ULONG(ctx, tree, OID_AUTO,
 		    desc, CTLFLAG_RW, &sc->bnx_rx_ret_ring[i].bnx_rx_pkt, "");
 
 		ksnprintf(desc, sizeof(desc), "rx_force_sched%d", i);
-		SYSCTL_ADD_ULONG(&sc->bnx_sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_ULONG(ctx, tree, OID_AUTO,
 		    desc, CTLFLAG_RW,
 		    &sc->bnx_rx_ret_ring[i].bnx_rx_force_sched, "");
 	}
@@ -2477,25 +2440,21 @@ bnx_attach(device_t dev)
 #ifdef BNX_TSS_DEBUG
 	for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
 		ksnprintf(desc, sizeof(desc), "tx_pkt%d", i);
-		SYSCTL_ADD_ULONG(&sc->bnx_sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_ULONG(ctx, tree, OID_AUTO,
 		    desc, CTLFLAG_RW, &sc->bnx_tx_ring[i].bnx_tx_pkt, "");
 	}
 #endif
 
-	SYSCTL_ADD_ULONG(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_ULONG(ctx, tree, OID_AUTO,
 	    "norxbds", CTLFLAG_RW, &sc->bnx_norxbds, "");
 
-	SYSCTL_ADD_ULONG(&sc->bnx_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_ULONG(ctx, tree, OID_AUTO,
 	    "errors", CTLFLAG_RW, &sc->bnx_errors, "");
 
 #ifdef BNX_TSO_DEBUG
 	for (i = 0; i < BNX_TSO_NSTATS; ++i) {
 		ksnprintf(desc, sizeof(desc), "tso%d", i + 1);
-		SYSCTL_ADD_ULONG(&sc->bnx_sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		SYSCTL_ADD_ULONG(ctx, tree, OID_AUTO,
 		    desc, CTLFLAG_RW, &sc->bnx_tsosegs[i], "");
 	}
 #endif
@@ -2610,9 +2569,6 @@ bnx_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY,
 		    PCIR_BAR(2), sc->bnx_res2);
 	}
-
-	if (sc->bnx_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->bnx_sysctl_ctx);
 
 	bnx_dma_free(sc);
 

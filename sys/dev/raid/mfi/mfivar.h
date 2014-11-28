@@ -305,9 +305,6 @@ struct mfi_softc {
 	struct lock			mfi_io_lock;
 	struct lock			mfi_config_lock;
 
-	struct sysctl_ctx_list		mfi_sysctl_ctx;
-	struct sysctl_oid		*mfi_sysctl_tree;
-
 	/* Controller type specific interfaces */
 	void	(*mfi_enable_intr)(struct mfi_softc *sc);
 	void	(*mfi_disable_intr)(struct mfi_softc *sc);

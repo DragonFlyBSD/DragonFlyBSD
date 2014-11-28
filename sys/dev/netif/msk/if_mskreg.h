@@ -94,7 +94,6 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_mskreg.h,v 1.11 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_mskreg.h,v 1.4 2008/06/17 11:00:13 sephe Exp $ */
 
 /*
  * SysKonnect PCI vendor ID
@@ -2486,9 +2485,6 @@ struct msk_softc {
 	bus_addr_t		msk_stat_ring_paddr;
 	int			msk_stat_cons;
 	struct lwkt_serialize	msk_serializer;
-
-	struct sysctl_ctx_list	msk_sysctl_ctx;
-	struct sysctl_oid	*msk_sysctl_tree;
 
 	/*
 	 * Sysctl variables

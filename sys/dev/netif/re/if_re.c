@@ -1336,6 +1336,8 @@ re_attach(device_t dev)
 {
 	struct re_softc	*sc = device_get_softc(dev);
 	struct ifnet *ifp;
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid *tree;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	int error = 0, qlen, msi_enable;
 	u_int irq_flags;
@@ -1377,49 +1379,32 @@ re_attach(device_t dev)
 	}
 	re_config_imtype(sc, sc->re_imtype);
 
-	sysctl_ctx_init(&sc->re_sysctl_ctx);
-	sc->re_sysctl_tree = SYSCTL_ADD_NODE(&sc->re_sysctl_ctx,
-					     SYSCTL_STATIC_CHILDREN(_hw),
-					     OID_AUTO,
-					     device_get_nameunit(dev),
-					     CTLFLAG_RD, 0, "");
-	if (sc->re_sysctl_tree == NULL) {
-		device_printf(dev, "can't add sysctl node\n");
-		error = ENXIO;
-		goto fail;
-	}
-	SYSCTL_ADD_INT(&sc->re_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->re_sysctl_tree), OID_AUTO,
+	ctx = device_get_sysctl_ctx(dev);
+	tree = device_get_sysctl_tree(dev);
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "rx_desc_count", CTLFLAG_RD, &sc->re_rx_desc_cnt,
 		       0, "RX desc count");
-	SYSCTL_ADD_INT(&sc->re_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->re_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "tx_desc_count", CTLFLAG_RD, &sc->re_tx_desc_cnt,
 		       0, "TX desc count");
-	SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->re_sysctl_tree),
-			OID_AUTO, "sim_time",
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, "sim_time",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, re_sysctl_simtime, "I",
 			"Simulated interrupt moderation time (usec).");
-	SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->re_sysctl_tree),
-			OID_AUTO, "imtype",
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, "imtype",
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, re_sysctl_imtype, "I",
 			"Interrupt moderation type -- "
 			"0:disable, 1:simulated, "
 			"2:hardware(if supported)");
 	if (sc->re_caps & RE_C_HWIM) {
-		SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
-				SYSCTL_CHILDREN(sc->re_sysctl_tree),
+		SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 				OID_AUTO, "hw_rxtime",
 				CTLTYPE_INT | CTLFLAG_RW,
 				sc, 0, re_sysctl_rxtime, "I",
 				"Hardware interrupt moderation time "
 				"(unit: 25usec).");
-		SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
-				SYSCTL_CHILDREN(sc->re_sysctl_tree),
+		SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 				OID_AUTO, "hw_txtime",
 				CTLTYPE_INT | CTLFLAG_RW,
 				sc, 0, re_sysctl_txtime, "I",
@@ -1645,9 +1630,8 @@ re_attach(device_t dev)
 	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->re_irq));
 
 #ifdef IFPOLL_ENABLE
-	ifpoll_compat_setup(&sc->re_npoll,
-	    &sc->re_sysctl_ctx, sc->re_sysctl_tree, device_get_unit(dev),
-	    ifp->if_serializer);
+	ifpoll_compat_setup(&sc->re_npoll, ctx, (struct sysctl_oid *)tree,
+	    device_get_unit(dev), ifp->if_serializer);
 #endif
 
 #ifdef RE_DIAG
@@ -1711,9 +1695,6 @@ re_detach(device_t dev)
 	if (sc->re_miibus)
 		device_delete_child(dev, sc->re_miibus);
 	bus_generic_detach(dev);
-
-	if (sc->re_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->re_sysctl_ctx);
 
 	if (sc->re_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, sc->re_irq_rid,

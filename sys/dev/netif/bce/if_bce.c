@@ -1122,9 +1122,6 @@ bce_detach(device_t dev)
 
 	bce_dma_free(sc);
 
-	if (sc->bce_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->bce_sysctl_ctx);
-
 	if (sc->serializes != NULL)
 		kfree(sc->serializes, M_DEVBUF);
 
@@ -6050,19 +6047,8 @@ bce_add_sysctls(struct bce_softc *sc)
 	int i;
 #endif
 
-	sysctl_ctx_init(&sc->bce_sysctl_ctx);
-	sc->bce_sysctl_tree = SYSCTL_ADD_NODE(&sc->bce_sysctl_ctx,
-					      SYSCTL_STATIC_CHILDREN(_hw),
-					      OID_AUTO,
-					      device_get_nameunit(sc->bce_dev),
-					      CTLFLAG_RD, 0, "");
-	if (sc->bce_sysctl_tree == NULL) {
-		device_printf(sc->bce_dev, "can't add sysctl node\n");
-		return;
-	}
-
-	ctx = &sc->bce_sysctl_ctx;
-	children = SYSCTL_CHILDREN(sc->bce_sysctl_tree);
+	ctx = device_get_sysctl_ctx(sc->bce_dev);
+	children = SYSCTL_CHILDREN(device_get_sysctl_tree(sc->bce_dev));
 
 	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "tx_bds_int",
 			CTLTYPE_INT | CTLFLAG_RW,

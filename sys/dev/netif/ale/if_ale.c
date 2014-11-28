@@ -665,9 +665,6 @@ ale_detach(device_t dev)
 		ether_ifdetach(ifp);
 	}
 
-	if (sc->ale_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->ale_sysctl_ctx);
-
 	if (sc->ale_miibus != NULL)
 		device_delete_child(dev, sc->ale_miibus);
 	bus_generic_detach(dev);
@@ -700,19 +697,9 @@ ale_sysctl_node(struct ale_softc *sc)
 	struct ale_hw_stats *stats;
 	int error;
 
-	sysctl_ctx_init(&sc->ale_sysctl_ctx);
-	sc->ale_sysctl_tree = SYSCTL_ADD_NODE(&sc->ale_sysctl_ctx,
-				SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-				device_get_nameunit(sc->ale_dev),
-				CTLFLAG_RD, 0, "");
-	if (sc->ale_sysctl_tree == NULL) {
-		device_printf(sc->ale_dev, "can't add sysctl node\n");
-		return;
-	}
-
 	stats = &sc->ale_stats;
-	ctx = &sc->ale_sysctl_ctx;
-	child = SYSCTL_CHILDREN(sc->ale_sysctl_tree);
+	ctx = device_get_sysctl_ctx(sc->ale_dev);
+	child = SYSCTL_CHILDREN(device_get_sysctl_tree(sc->ale_dev));
 
 	SYSCTL_ADD_PROC(ctx, child, OID_AUTO, "int_rx_mod",
 	    CTLTYPE_INT | CTLFLAG_RW, &sc->ale_int_rx_mod, 0,

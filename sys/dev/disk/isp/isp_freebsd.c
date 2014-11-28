@@ -171,10 +171,12 @@ isp_attach_chan(ispsoftc_t *isp, struct cam_devq *devq, int chan)
 		}
 #endif
 		if (chan == 0) {
-			SYSCTL_ADD_QUAD(&isp->isp_sysctl_ctx, SYSCTL_CHILDREN(isp->isp_sysctl_tree), OID_AUTO, "wwnn", CTLFLAG_RD, &FCPARAM(isp, 0)->isp_wwnn, 0, "World Wide Node Name");
-			SYSCTL_ADD_QUAD(&isp->isp_sysctl_ctx, SYSCTL_CHILDREN(isp->isp_sysctl_tree), OID_AUTO, "wwpn", CTLFLAG_RD, &FCPARAM(isp, 0)->isp_wwpn, 0, "World Wide Port Name");
-			SYSCTL_ADD_UINT(&isp->isp_sysctl_ctx, SYSCTL_CHILDREN(isp->isp_sysctl_tree), OID_AUTO, "loop_down_limit", CTLFLAG_RW, &ISP_FC_PC(isp, 0)->loop_down_limit, 0, "Loop Down Limit");
-			SYSCTL_ADD_UINT(&isp->isp_sysctl_ctx, SYSCTL_CHILDREN(isp->isp_sysctl_tree), OID_AUTO, "gone_device_time", CTLFLAG_RW, &ISP_FC_PC(isp, 0)->gone_device_time, 0, "Gone Device Time");
+			struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(isp->isp_osinfo.dev);
+			struct sysctl_oid *tree = device_get_sysctl_tree(isp->isp_osinfo.dev);
+			SYSCTL_ADD_QUAD(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, "wwnn", CTLFLAG_RD, &FCPARAM(isp, 0)->isp_wwnn, 0, "World Wide Node Name");
+			SYSCTL_ADD_QUAD(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, "wwpn", CTLFLAG_RD, &FCPARAM(isp, 0)->isp_wwpn, 0, "World Wide Port Name");
+			SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, "loop_down_limit", CTLFLAG_RW, &ISP_FC_PC(isp, 0)->loop_down_limit, 0, "Loop Down Limit");
+			SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, "gone_device_time", CTLFLAG_RW, &ISP_FC_PC(isp, 0)->gone_device_time, 0, "Gone Device Time");
 		}
 	}
 	return (0);
@@ -210,14 +212,6 @@ isp_attach(ispsoftc_t *isp)
 		return (EIO);
 	}
 
-	sysctl_ctx_init(&isp->isp_sysctl_ctx);
-	isp->isp_sysctl_tree = SYSCTL_ADD_NODE(&isp->isp_sysctl_ctx,
-	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	    device_get_nameunit(isp->isp_dev), CTLFLAG_RD, 0, "");
-	if (isp->isp_sysctl_tree == NULL) {
-		device_printf(isp->isp_dev, "can't add sysctl node\n");
-		return (EINVAL);
-	}
 	for (chan = 0; chan < isp->isp_nchan; chan++) {
 		if (isp_attach_chan(isp, isp->isp_osinfo.devq, chan)) {
 			goto unwind;
@@ -319,8 +313,6 @@ isp_detach(ispsoftc_t *isp)
 	if (isp->isp_osinfo.devq != NULL) {
 		isp->isp_osinfo.devq = NULL;
 	}
-	if (isp->isp_sysctl_tree != NULL)
-		sysctl_ctx_free(&isp->isp_sysctl_ctx);
 	return (0);
 }
 

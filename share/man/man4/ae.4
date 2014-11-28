@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ae.4,v 1.2.2.1.4.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd July 13, 2009
+.Dd November 28, 2014
 .Dt AE 4
 .Os
 .Sh NAME
@@ -100,7 +100,7 @@ The
 .Nm
 driver collects a number of useful MAC counter during the work.
 The statistics is available via the
-.Va hw.ae%d.stats
+.Va dev.ae.%d.stats
 .Xr sysctl 8
 tree, where %d corresponds to the controller number.
 .Sh DIAGNOSTICS

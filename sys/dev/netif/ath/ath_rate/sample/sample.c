@@ -1346,8 +1346,8 @@ ath_rate_sysctl_sample_rate(SYSCTL_HANDLER_ARGS)
 static void
 ath_rate_sysctlattach(struct ath_softc *sc, struct sample_softc *ssc)
 {
-	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
-	struct sysctl_oid *tree = sc->sc_sysctl_tree;
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
 
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "smoothing_rate", CTLTYPE_INT | CTLFLAG_RW, ssc, 0,

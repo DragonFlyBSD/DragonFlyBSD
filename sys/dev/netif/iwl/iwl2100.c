@@ -366,8 +366,8 @@ iwl2100_attach(device_t dev)
 	callout_init(&sc->sc_reinit);
 
 	/* Add sysctl node */
-	SYSCTL_ADD_UINT(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_UINT(device_get_sysctl_ctx(dev),
+			SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
 			"debug", CTLFLAG_RW, &sc->sc_debug, 0, "debug flags");
 
 	if (bootverbose)

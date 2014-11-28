@@ -152,8 +152,6 @@ struct ae_softc	{
 	int			wd_timer;	/* XXX remove */
 
 	struct ae_stats		stats;
-	struct sysctl_ctx_list	ae_sysctl_ctx;
-	struct sysctl_oid	*ae_sysctl_tree;
 };
 
 #define	BUS_ADDR_LO(x)		((uint64_t) (x) & 0xFFFFFFFF)

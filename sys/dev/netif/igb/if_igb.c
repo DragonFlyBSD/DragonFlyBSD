@@ -732,9 +732,6 @@ igb_detach(device_t dev)
 	}
 	bus_generic_detach(dev);
 
-	if (sc->sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->sysctl_ctx);
-
 	igb_free_intr(sc);
 
 	if (sc->msix_mem_res != NULL) {
@@ -1625,38 +1622,32 @@ igb_setup_ifp(struct igb_softc *sc)
 static void
 igb_add_sysctl(struct igb_softc *sc)
 {
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid *tree;
 	char node[32];
 	int i;
 
-	sysctl_ctx_init(&sc->sysctl_ctx);
-	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
-	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	    device_get_nameunit(sc->dev), CTLFLAG_RD, 0, "");
-	if (sc->sysctl_tree == NULL) {
-		device_printf(sc->dev, "can't add sysctl node\n");
-		return;
-	}
-
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	ctx = device_get_sysctl_ctx(sc->dev);
+	tree = device_get_sysctl_tree(sc->dev);
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rxr", CTLFLAG_RD, &sc->rx_ring_cnt, 0, "# of RX rings");
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rxr_inuse", CTLFLAG_RD, &sc->rx_ring_inuse, 0,
 	    "# of RX rings used");
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "txr", CTLFLAG_RD, &sc->tx_ring_cnt, 0, "# of TX rings");
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "txr_inuse", CTLFLAG_RD, &sc->tx_ring_inuse, 0,
 	    "# of TX rings used");
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rxd", CTLFLAG_RD, &sc->rx_rings[0].num_rx_desc, 0,
 	    "# of RX descs");
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "txd", CTLFLAG_RD, &sc->tx_rings[0].num_tx_desc, 0,
 	    "# of TX descs");
 
 	if (sc->intr_type != PCI_INTR_TYPE_MSIX) {
-		SYSCTL_ADD_PROC(&sc->sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->sysctl_tree),
+		SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 		    OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
 		    sc, 0, igb_sysctl_intr_rate, "I", "interrupt rate");
 	} else {
@@ -1664,54 +1655,53 @@ igb_add_sysctl(struct igb_softc *sc)
 			struct igb_msix_data *msix = &sc->msix_data[i];
 
 			ksnprintf(node, sizeof(node), "msix%d_rate", i);
-			SYSCTL_ADD_PROC(&sc->sysctl_ctx,
-			    SYSCTL_CHILDREN(sc->sysctl_tree),
+			SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			    OID_AUTO, node, CTLTYPE_INT | CTLFLAG_RW,
 			    msix, 0, igb_sysctl_msix_rate, "I",
 			    msix->msix_rate_desc);
 		}
 	}
 
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "tx_intr_nsegs", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, igb_sysctl_tx_intr_nsegs, "I",
 	    "# of segments per TX interrupt");
 
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "tx_wreg_nsegs", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, igb_sysctl_tx_wreg_nsegs, "I",
 	    "# of segments sent before write to hardware register");
 
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rx_wreg_nsegs", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, igb_sysctl_rx_wreg_nsegs, "I",
 	    "# of segments received before write to hardware register");
 
 #ifdef IFPOLL_ENABLE
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW,
 	    sc, 0, igb_sysctl_npoll_rxoff, "I", "NPOLLING RX cpu offset");
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "npoll_txoff", CTLTYPE_INT|CTLFLAG_RW,
 	    sc, 0, igb_sysctl_npoll_txoff, "I", "NPOLLING TX cpu offset");
 #endif
 
 #ifdef IGB_RSS_DEBUG
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rss_debug", CTLFLAG_RW, &sc->rss_debug, 0,
 	    "RSS debug level");
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		ksnprintf(node, sizeof(node), "rx%d_pkt", i);
-		SYSCTL_ADD_ULONG(&sc->sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, node,
+		SYSCTL_ADD_ULONG(ctx,
+		    SYSCTL_CHILDREN(tree), OID_AUTO, node,
 		    CTLFLAG_RW, &sc->rx_rings[i].rx_packets, "RXed packets");
 	}
 #endif
 #ifdef IGB_TSS_DEBUG
 	for  (i = 0; i < sc->tx_ring_cnt; ++i) {
 		ksnprintf(node, sizeof(node), "tx%d_pkt", i);
-		SYSCTL_ADD_ULONG(&sc->sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, node,
+		SYSCTL_ADD_ULONG(ctx,
+		    SYSCTL_CHILDREN(tree), OID_AUTO, node,
 		    CTLFLAG_RW, &sc->tx_rings[i].tx_packets, "TXed packets");
 	}
 #endif

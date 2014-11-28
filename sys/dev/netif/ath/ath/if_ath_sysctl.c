@@ -684,8 +684,8 @@ done:
 static void
 ath_sysctl_alq_attach(struct ath_softc *sc)
 {
-	struct sysctl_oid *tree = sc->sc_sysctl_tree;
-	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
 	struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
 
 	tree = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, "alq", CTLFLAG_RD,
@@ -712,8 +712,8 @@ ath_sysctl_alq_attach(struct ath_softc *sc)
 void
 ath_sysctlattach(struct ath_softc *sc)
 {
-	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
-	struct sysctl_oid *tree = sc->sc_sysctl_tree;
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
 	struct ath_hal *ah = sc->sc_ah;
 
 	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
@@ -926,8 +926,8 @@ ath_sysctl_clearstats(SYSCTL_HANDLER_ARGS)
 static void
 ath_sysctl_stats_attach_rxphyerr(struct ath_softc *sc, struct sysctl_oid_list *parent)
 {
-	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
-	struct sysctl_oid *tree = sc->sc_sysctl_tree;
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
 	struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
 	int i;
 	char sn[8];
@@ -944,8 +944,8 @@ static void
 ath_sysctl_stats_attach_intr(struct ath_softc *sc,
     struct sysctl_oid_list *parent)
 {
-	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
-	struct sysctl_oid *tree = sc->sc_sysctl_tree;
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
 	struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
 	int i;
 	char sn[8];
@@ -963,8 +963,8 @@ ath_sysctl_stats_attach_intr(struct ath_softc *sc,
 void
 ath_sysctl_stats_attach(struct ath_softc *sc)
 {
-	struct sysctl_oid *tree = sc->sc_sysctl_tree;
-	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
 	struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
  
 	/* Create "clear" node */
@@ -1206,8 +1206,8 @@ ath_sysctl_stats_attach(struct ath_softc *sc)
 void
 ath_sysctl_hal_attach(struct ath_softc *sc)
 {
-	struct sysctl_oid *tree = sc->sc_sysctl_tree;
-	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
 	struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
 
 	tree = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, "hal", CTLFLAG_RD,

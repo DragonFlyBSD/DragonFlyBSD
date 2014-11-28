@@ -407,6 +407,8 @@ cleanup:
 static int
 mpt_read_config_info_fc(struct mpt_softc *mpt)
 {
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid *tree;
 	char *topology = NULL;
 	int rv;
 
@@ -465,28 +467,27 @@ mpt_read_config_info_fc(struct mpt_softc *mpt)
 	    mpt->mpt_fcport_page0.WWPN.Low,
 	    mpt->mpt_fcport_speed);
 	MPT_UNLOCK(mpt);
-	{
-		ksnprintf(mpt->scinfo.fc.wwnn,
-		    sizeof (mpt->scinfo.fc.wwnn), "0x%08x%08x",
-		    mpt->mpt_fcport_page0.WWNN.High,
-		    mpt->mpt_fcport_page0.WWNN.Low);
+	ctx = device_get_sysctl_ctx(mpt->dev);
+	tree = device_get_sysctl_tree(mpt->dev);
 
-		ksnprintf(mpt->scinfo.fc.wwpn,
-		    sizeof (mpt->scinfo.fc.wwpn), "0x%08x%08x",
-		    mpt->mpt_fcport_page0.WWPN.High,
-		    mpt->mpt_fcport_page0.WWPN.Low);
+	ksnprintf(mpt->scinfo.fc.wwnn,
+	    sizeof (mpt->scinfo.fc.wwnn), "0x%08x%08x",
+	    mpt->mpt_fcport_page0.WWNN.High,
+	    mpt->mpt_fcport_page0.WWNN.Low);
 
-		SYSCTL_ADD_STRING(&mpt->mpt_sysctl_ctx,
-		       SYSCTL_CHILDREN(mpt->mpt_sysctl_tree), OID_AUTO,
-		       "wwnn", CTLFLAG_RD, mpt->scinfo.fc.wwnn, 0,
-		       "World Wide Node Name");
+	ksnprintf(mpt->scinfo.fc.wwpn,
+	    sizeof (mpt->scinfo.fc.wwpn), "0x%08x%08x",
+	    mpt->mpt_fcport_page0.WWPN.High,
+	    mpt->mpt_fcport_page0.WWPN.Low);
 
-		SYSCTL_ADD_STRING(&mpt->mpt_sysctl_ctx,
-		       SYSCTL_CHILDREN(mpt->mpt_sysctl_tree), OID_AUTO,
-		       "wwpn", CTLFLAG_RD, mpt->scinfo.fc.wwpn, 0,
-		       "World Wide Port Name");
+	SYSCTL_ADD_STRING(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+	       "wwnn", CTLFLAG_RD, mpt->scinfo.fc.wwnn, 0,
+	       "World Wide Node Name");
 
-	}
+	SYSCTL_ADD_STRING(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+	       "wwpn", CTLFLAG_RD, mpt->scinfo.fc.wwpn, 0,
+	       "World Wide Port Name");
+
 	MPT_LOCK(mpt);
 	return (0);
 }

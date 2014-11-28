@@ -33,7 +33,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.31 2008/10/21 12:31:01 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_8139CP	64
@@ -164,8 +163,6 @@ struct re_softc {
 	int			re_if_flags;	/* saved ifnet.if_flags */
 
 	u_long			re_hwassist;
-	struct sysctl_ctx_list	re_sysctl_ctx;
-	struct sysctl_oid	*re_sysctl_tree;
 	uint16_t		re_intrs;
 	uint16_t		re_tx_ack;
 	uint16_t		re_rx_ack;

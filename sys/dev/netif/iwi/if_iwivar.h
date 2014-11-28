@@ -216,9 +216,6 @@ struct iwi_softc {
 
 	struct iwi_rx_radiotap_header sc_rxtap;
 	struct iwi_tx_radiotap_header sc_txtap;
-
-	struct sysctl_ctx_list  sc_sysctl_ctx;
-	struct sysctl_oid       *sc_sysctl_tree;
 };
 
 #define	IWI_STATE_BEGIN(_sc, _state)	do {			\

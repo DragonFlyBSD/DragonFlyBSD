@@ -558,9 +558,6 @@ ix_detach(device_t dev)
 	ifmedia_removeall(&sc->media);
 	bus_generic_detach(dev);
 
-	if (sc->sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->sysctl_ctx);
-
 	ix_free_intr(sc);
 
 	if (sc->msix_mem_res != NULL) {
@@ -3977,56 +3974,49 @@ ix_newbuf(struct ix_rx_ring *rxr, int i, boolean_t wait)
 static void
 ix_add_sysctl(struct ix_softc *sc)
 {
+	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->dev);
+	struct sysctl_oid *tree = device_get_sysctl_tree(sc->dev);
 #ifdef IX_RSS_DEBUG
 	char node[32];
 	int i;
 #endif
 
-	sysctl_ctx_init(&sc->sysctl_ctx);
-	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
-	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	    device_get_nameunit(sc->dev), CTLFLAG_RD, 0, "");
-	if (sc->sysctl_tree == NULL) {
-		device_printf(sc->dev, "can't add sysctl node\n");
-		return;
-	}
-
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rxr", CTLFLAG_RD, &sc->rx_ring_cnt, 0, "# of RX rings");
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rxr_inuse", CTLFLAG_RD, &sc->rx_ring_inuse, 0,
 	    "# of RX rings used");
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "txr", CTLFLAG_RD, &sc->tx_ring_cnt, 0, "# of TX rings");
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "txr_inuse", CTLFLAG_RD, &sc->tx_ring_inuse, 0,
 	    "# of TX rings used");
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rxd", CTLTYPE_INT | CTLFLAG_RD,
 	    sc, 0, ix_sysctl_rxd, "I",
 	    "# of RX descs");
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "txd", CTLTYPE_INT | CTLFLAG_RD,
 	    sc, 0, ix_sysctl_txd, "I",
 	    "# of TX descs");
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "tx_wreg_nsegs", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, ix_sysctl_tx_wreg_nsegs, "I",
 	    "# of segments sent before write to hardware register");
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rx_wreg_nsegs", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, ix_sysctl_rx_wreg_nsegs, "I",
 	    "# of received segments sent before write to hardware register");
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "tx_intr_nsegs", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, ix_sysctl_tx_intr_nsegs, "I",
 	    "# of segments per TX interrupt");
 
 #ifdef IFPOLL_ENABLE
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW,
 	    sc, 0, ix_sysctl_npoll_rxoff, "I", "NPOLLING RX cpu offset");
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "npoll_txoff", CTLTYPE_INT|CTLFLAG_RW,
 	    sc, 0, ix_sysctl_npoll_txoff, "I", "NPOLLING TX cpu offset");
 #endif
@@ -4045,18 +4035,18 @@ do { \
 #undef IX_ADD_INTR_RATE_SYSCTL
 
 #ifdef IX_RSS_DEBUG
-	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rss_debug", CTLFLAG_RW, &sc->rss_debug, 0,
 	    "RSS debug level");
 	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		ksnprintf(node, sizeof(node), "rx%d_pkt", i);
-		SYSCTL_ADD_ULONG(&sc->sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, node,
+		SYSCTL_ADD_ULONG(ctx,
+		    SYSCTL_CHILDREN(tree), OID_AUTO, node,
 		    CTLFLAG_RW, &sc->rx_rings[i].rx_pkts, "RXed packets");
 	}
 #endif
 
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "flowctrl", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, ix_sysctl_flowctrl, "I",
 	    "flow control, 0 - off, 1 - rx pause, 2 - tx pause, 3 - full");
@@ -4067,7 +4057,7 @@ do { \
 	 * advertised speed list to only a certain value, this
 	 * supports 1G on 82599 devices, and 100Mb on X540.
 	 */
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "advspeed", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, ix_sysctl_advspeed, "I",
 	    "advertised link speed, "
@@ -4272,8 +4262,8 @@ ix_add_intr_rate_sysctl(struct ix_softc *sc, int use,
 
 	for (i = 0; i < sc->intr_cnt; ++i) {
 		if (sc->intr_data[i].intr_use == use) {
-			SYSCTL_ADD_PROC(&sc->sysctl_ctx,
-			    SYSCTL_CHILDREN(sc->sysctl_tree),
+			SYSCTL_ADD_PROC(device_get_sysctl_ctx(sc->dev),
+			    SYSCTL_CHILDREN(device_get_sysctl_tree(sc->dev)),
 			    OID_AUTO, name, CTLTYPE_INT | CTLFLAG_RW,
 			    sc, 0, handler, "I", desc);
 			break;

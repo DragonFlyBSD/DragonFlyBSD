@@ -460,6 +460,8 @@ nfe_attach(device_t dev)
 {
 	struct nfe_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct sysctl_ctx_list *ctx;
+	struct sysctl_oid *tree;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	bus_addr_t lowaddr;
 	int error;
@@ -577,33 +579,20 @@ nfe_attach(device_t dev)
 	/*
 	 * Create sysctl tree
 	 */
-	sysctl_ctx_init(&sc->sc_sysctl_ctx);
-	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
-					     SYSCTL_STATIC_CHILDREN(_hw),
-					     OID_AUTO,
-					     device_get_nameunit(dev),
-					     CTLFLAG_RD, 0, "");
-	if (sc->sc_sysctl_tree == NULL) {
-		device_printf(dev, "can't add sysctl node\n");
-		error = ENXIO;
-		goto fail;
-	}
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
+	ctx = device_get_sysctl_ctx(dev);
+	tree = device_get_sysctl_tree(dev);
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 			OID_AUTO, "imtimer", CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, nfe_sysctl_imtime, "I",
 			"Interrupt moderation time (usec).  "
 			"0 to disable interrupt moderation.");
-	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "rx_ring_count", CTLFLAG_RD, &sc->sc_rx_ring_count,
 		       0, "RX ring count");
-	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "tx_ring_count", CTLFLAG_RD, &sc->sc_tx_ring_count,
 		       0, "TX ring count");
-	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
-		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		       "debug", CTLFLAG_RW, &sc->sc_debug,
 		       0, "control debugging printfs");
 
@@ -649,9 +638,8 @@ nfe_attach(device_t dev)
 	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->sc_irq_res));
 
 #ifdef IFPOLL_ENABLE
-	ifpoll_compat_setup(&sc->sc_npoll,
-	    &sc->sc_sysctl_ctx, sc->sc_sysctl_tree, device_get_unit(dev),
-	    ifp->if_serializer);
+	ifpoll_compat_setup(&sc->sc_npoll, ctx, (struct sysctl_oid *)tree,
+	    device_get_unit(dev), ifp->if_serializer);
 #endif
 
 	error = bus_setup_intr(dev, sc->sc_irq_res, INTR_MPSAFE, nfe_intr, sc,
@@ -687,9 +675,6 @@ nfe_detach(device_t dev)
 	if (sc->sc_miibus != NULL)
 		device_delete_child(dev, sc->sc_miibus);
 	bus_generic_detach(dev);
-
-	if (sc->sc_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->sc_sysctl_ctx);
 
 	if (sc->sc_irq_res != NULL) {
 		bus_release_resource(dev, SYS_RES_IRQ, sc->sc_irq_rid,

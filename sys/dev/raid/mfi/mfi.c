@@ -732,20 +732,12 @@ mfi_attach(struct mfi_softc *sc)
 		make_dev_alias(sc->mfi_cdev, "megaraid_sas_ioctl_node");
 	if (sc->mfi_cdev != NULL)
 		sc->mfi_cdev->si_drv1 = sc;
-	sysctl_ctx_init(&sc->mfi_sysctl_ctx);
-	sc->mfi_sysctl_tree = SYSCTL_ADD_NODE(&sc->mfi_sysctl_ctx,
-	    SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-	    device_get_nameunit(sc->mfi_dev), CTLFLAG_RD, 0, "");
-	if (sc->mfi_sysctl_tree == NULL) {
-		device_printf(sc->mfi_dev, "can't add sysctl node\n");
-		return (EINVAL);
-	}
-	SYSCTL_ADD_INT(&sc->mfi_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->mfi_sysctl_tree),
+	SYSCTL_ADD_INT(device_get_sysctl_ctx(sc->mfi_dev),
+	    SYSCTL_CHILDREN(device_get_sysctl_tree(sc->mfi_dev)),
 	    OID_AUTO, "delete_busy_volumes", CTLFLAG_RW,
 	    &sc->mfi_delete_busy_volumes, 0, "Allow removal of busy volumes");
-	SYSCTL_ADD_INT(&sc->mfi_sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->mfi_sysctl_tree),
+	SYSCTL_ADD_INT(device_get_sysctl_ctx(sc->mfi_dev),
+	    SYSCTL_CHILDREN(device_get_sysctl_tree(sc->mfi_dev)),
 	    OID_AUTO, "keep_deleted_volumes", CTLFLAG_RW,
 	    &sc->mfi_keep_deleted_volumes, 0,
 	    "Don't detach the mfid device for a busy volume that is deleted");
@@ -1193,9 +1185,6 @@ mfi_free(struct mfi_softc *sc)
 		bus_dma_tag_destroy(sc->mfi_buffer_dmat);
 	if (sc->mfi_parent_dmat != NULL)
 		bus_dma_tag_destroy(sc->mfi_parent_dmat);
-
-	if (sc->mfi_sysctl_tree != NULL)
-		sysctl_ctx_free(&sc->mfi_sysctl_ctx);
 
 #if 0 /* XXX swildner: not sure if we need something like mtx_initialized() */
 	if (mtx_initialized(&sc->mfi_io_lock))

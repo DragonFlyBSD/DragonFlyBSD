@@ -242,9 +242,6 @@ struct amr_softc
     struct cdev			*amr_dev_t;
     struct lock			amr_list_lock;
 
-    struct sysctl_ctx_list	amr_sysctl_ctx;
-    struct sysctl_oid		*amr_sysctl_tree;
-
     /* controller type-specific support */
     int				amr_type;
 #define AMR_TYPE_QUARTZ		(1<<0)

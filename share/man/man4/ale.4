@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ale.4,v 1.2 2008/11/29 18:09:50 brueffer Exp $
 .\"
-.Dd December 31, 2008
+.Dd November 28, 2014
 .Dt ALE 4
 .Os
 .Sh NAME
@@ -108,18 +108,18 @@ Atheros AR8114 PCI Express Fast Ethernet controller
 Atheros AR8121 PCI Express Gigabit Ethernet controller
 .El
 .Sh SYSCTL VARIABLES
-The following variables are available as both
-.Xr sysctl 8
-variables and
-.Xr loader 8
-tunables:
+.\"The following variables are available as both
+.\".Xr sysctl 8
+.\"variables and
+.\".Xr loader 8
+.\"tunables:
 .Bl -tag -width "xxxxxx"
-.It Va dev.ale%d.int_rx_mod
+.It Va dev.ale.%d.int_rx_mod
 Maximum amount of time to delay receive interrupt processing in
 units of 1us.
 The accepted range is 0 to 130000, the default is 30(30us).
 Value 0 completely disables the interrupt moderation.
-.It Va dev.ale%d.int_tx_mod
+.It Va dev.ale.%d.int_tx_mod
 Maximum amount of time to delay transmit interrupt processing in
 units of 1us.
 The accepted range is 0 to 130000, the default is 1000(1ms).
