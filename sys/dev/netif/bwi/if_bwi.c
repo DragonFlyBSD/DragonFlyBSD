@@ -610,7 +610,7 @@ bwi_attach(device_t dev)
 	 * Create sysctl tree
 	 */
 	ctx = device_get_sysctl_ctx(sc->bge_dev);
-	tree = SYSCTL_CHILDREN(device_get_sysctl_tree(sc->bge_dev));
+	tree = device_get_sysctl_tree(sc->bge_dev);
 
 	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 			"dwell_time", CTLFLAG_RW, &sc->sc_dwell_time, 0,
