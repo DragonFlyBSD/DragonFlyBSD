@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.conf.5,v 1.18 2002/08/27 01:02:56 trhodes Exp $
-.Dd October 6, 2010
+.Dd November 29, 2014
 .Dt LOADER.CONF 5
 .Os
 .Sh NAME
@@ -217,6 +217,8 @@ then install the bootcode to the partition via
 .Pp
 Note that in comconsole mode the kernel will pick up the baud rate
 from the boot loader, so no kernel recompile is needed.
+.It Va kernel
+.Pq Dq kernel .
 .It Va fred_disable
 .Pq Dq NO
 Shows a monochrome version of Fred, the official
@@ -230,8 +232,9 @@ to
 .It Va fred_on_left
 .Pq Dq NO
 Shows Fred on the left side of the menu rather than the right side.
-.It Va kernel
-.Pq Dq kernel .
+.It Va fred_separated
+.Pq Dq NO
+Draws a line between Fred and the menu block.
 .It Va loader_color
 .Pq Dq NO
 If set to
@@ -244,6 +247,10 @@ boot menu appears (remember to set
 to
 .Dq NO
 for this to work.)
+.It Va fred_is blue
+.Pq Dq NO
+When a color loader is requested, Fred is depicted as a red dragonfly
+with red wings.  This setting causes Fred to be shown as a blue dragonfly.
 .It Va splash_bmp_load
 .Pq Dq NO
 If set to

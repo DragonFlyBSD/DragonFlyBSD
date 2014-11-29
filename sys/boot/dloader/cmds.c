@@ -473,6 +473,24 @@ static char *logo_color[LOGO_LINES] = {
 	"[31m               `,'               [0m",
 	"                                 " };
 
+static char *logo_indigo[LOGO_LINES] = {
+	"[36m ,--,                       ,--[36;1m, [0m",
+	"[36m |   `-,       [34;1m_[34m:[34;1m_[36m       ,-'   [36;1m| [0m",
+	"[36m  `,    `-,   [34;1m([34m/ \\[34;1m)[36m   ,-'    [36;1m,'  [0m",
+	"[36m    `-,    `-,[34m/   \\[36m,-'    [36;1m,-'    [0m",
+	"[36m       `------[34m{   }[36m------[36;1m'       [0m",
+	"[36m   ,----------[34m{   }[36m----------[36;1m,   [0m",
+	"[36m  |        [36;1m_,-[34m{   }[36m-,_        [36;1m|  [0m",
+	"[36m   `-,__[36;1m,-'   [34m\\   /[36m   `-,__[36;1m,-'   [0m",
+	"[34m               | |               [0m",
+	"[34m               | |               [0m",
+	"[34m               | |               [0m",
+	"[34m               | |               [0m",
+	"[34m               | |               [0m",
+	"[34m               | |               [0m",
+	"[34m               `,'               [0m",
+	"                                 " };
+
 static char *logo_mono[LOGO_LINES] =  {
 	" ,--,                       ,--, ",
 	" |   `-,       _:_       ,-'   | ",
@@ -526,6 +544,9 @@ menu_display(void)
 
 	if (dvar_istrue(dvar_get("fred_on_left")))
 		logo_left = 1;
+
+	if (dvar_istrue(dvar_get("fred_is_blue")))
+		logo = logo_indigo;
 
 	if (dvar_istrue(dvar_get("fred_separated")))
 		separated = 1;
