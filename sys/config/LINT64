@@ -2281,7 +2281,6 @@ options	KTR_VERBOSE=1
 #options KTR_TOKENS
 #options KTR_TSLEEP
 #options KTR_UDP
-#options KTR_USB_MEMORY
 #options KTR_USCHED_BSD4
 #options KTR_USCHED_DFLY
 

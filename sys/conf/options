@@ -572,7 +572,6 @@ KTR_SPIN_CONTENTION		opt_ktr.h
 KTR_TESTLOG			opt_ktr.h
 KTR_TOKENS			opt_ktr.h
 KTR_TSLEEP			opt_ktr.h
-KTR_USB_MEMORY			opt_ktr.h
 KTR_USCHED_BSD4			opt_ktr.h
 KTR_USCHED_DFLY			opt_ktr.h
 KTR_VERBOSE			opt_ktr.h
