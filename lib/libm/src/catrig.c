@@ -150,13 +150,13 @@ f(double a, double b, double hypot_a_b)
  */
 static inline void
 do_hard_work(double x, double y, double *rx, int *B_is_usable, double *B,
-	     double *sqrt_A2my2, double *new_y)
+    double *sqrt_A2my2, double *new_y)
 {
 	double R, S, A; /* A, B, R, and S are as in Hull et al. */
 	double Am1, Amy; /* A-1, A-y. */
 
-	R = hypot(x, y + 1); /* |z+I| */
-	S = hypot(x, y - 1); /* |z-I| */
+	R = hypot(x, y + 1);		/* |z+I| */
+	S = hypot(x, y - 1);		/* |z-I| */
 
 	/* A = (|z+I| + |z-I|) / 2 */
 	A = (R + S) / 2;
@@ -250,7 +250,7 @@ do_hard_work(double x, double y, double *rx, int *B_is_usable, double *B,
 			 * scaling should avoid any underflow problems.
 			 */
 			*sqrt_A2my2 = x * (4 / DBL_EPSILON / DBL_EPSILON) * y /
-				sqrt((y + 1) * (y - 1));
+			    sqrt((y + 1) * (y - 1));
 			*new_y = y * (4 / DBL_EPSILON / DBL_EPSILON);
 		} else {		/* if (y < 1) */
 			/*
@@ -587,7 +587,7 @@ catanh(double complex z)
 		/* catanh(NaN + I*+-Inf) = sign(NaN)0 + I*+-PI/2 */
 		if (isinf(y))
 			return (cpack(copysign(0, x),
-				      copysign(pio2_hi + pio2_lo, y)));
+			    copysign(pio2_hi + pio2_lo, y)));
 		/*
 		 * All other cases involving NaN return NaN + I*NaN.
 		 * C99 leaves it optional whether to raise invalid if one of
@@ -598,7 +598,7 @@ catanh(double complex z)
 
 	if (ax > RECIP_EPSILON || ay > RECIP_EPSILON)
 		return (cpack(real_part_reciprocal(x, y),
-			      copysign(pio2_hi + pio2_lo, y)));
+		    copysign(pio2_hi + pio2_lo, y)));
 
 	if (ax < SQRT_3_EPSILON / 2 && ay < SQRT_3_EPSILON / 2) {
 		/*

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2013 David Chisnall
+ * Copyright (c) 2005 David Schultz <das@FreeBSD.ORG>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,51 +23,36 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/msun/src/imprecise.c 255294 2013-09-06 07:58:23Z theraven $
+ * $FreeBSD: head/lib/msun/src/s_lrint.c 140088 2005-01-11 23:12:55Z das $
  */
 
-#include <float.h>
+#include <fenv.h>
 #include <math.h>
 
-/*
- * If long double is not the same size as double, then these will lose
- * precision and we should emit a warning whenever something links against
- * them.
- */
-#if (LDBL_MANT_DIG > 53)
-#define WARN_IMPRECISE(x) \
-	__warn_references(x, # x " has lower than advertised precision");
-#else
-#define WARN_IMPRECISE(x)
+#ifndef type
+#define type		double
+#define	roundit		rint
+#define dtype		long
+#define	fn		lrint
 #endif
+
 /*
- * Declare the functions as weak variants so that other libraries providing
- * real versions can override them.
+ * C99 says we should not raise a spurious inexact exception when an
+ * invalid exception is raised.  Unfortunately, the set of inputs
+ * that overflows depends on the rounding mode when 'dtype' has more
+ * significant bits than 'type'.  Hence, we bend over backwards for the
+ * sake of correctness; an MD implementation could be more efficient.
  */
-#define	DECLARE_WEAK(x)\
-	__weak_reference(imprecise_## x, x);\
-	WARN_IMPRECISE(x)
-
-long double
-imprecise_powl(long double x, long double y)
+dtype
+fn(type x)
 {
+	fenv_t env;
+	dtype d;
 
-	return pow(x, y);
+	feholdexcept(&env);
+	d = (dtype)roundit(x);
+	if (fetestexcept(FE_INVALID))
+		feclearexcept(FE_INEXACT);
+	feupdateenv(&env);
+	return (d);
 }
-DECLARE_WEAK(powl);
-
-#define DECLARE_FORMER_IMPRECISE(f) \
-	__asm__(".symver imprecise_" #f "l," #f "l@DF306.1"); \
-	long double imprecise_ ## f ## l(long double v) { return f(v); }
-
-#define DECLARE_IMPRECISE(f) \
-	long double imprecise_ ## f ## l(long double v) { return f(v); }\
-	DECLARE_WEAK(f ## l)
-
-DECLARE_IMPRECISE(lgamma);
-DECLARE_FORMER_IMPRECISE(cosh);
-DECLARE_FORMER_IMPRECISE(erfc);
-DECLARE_FORMER_IMPRECISE(erf);
-DECLARE_FORMER_IMPRECISE(sinh);
-DECLARE_FORMER_IMPRECISE(tanh);
-DECLARE_FORMER_IMPRECISE(tgamma);

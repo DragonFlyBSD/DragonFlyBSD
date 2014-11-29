@@ -1,6 +1,5 @@
 
 /* @(#)e_lgamma.c 1.3 95/01/18 */
-/* $FreeBSD: head/lib/msun/src/e_lgamma.c 176451 2008-02-22 02:30:36Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -13,11 +12,14 @@
  *
  */
 
+
 /* __ieee754_lgamma(x)
  * Return the logarithm of the Gamma function of x.
  *
  * Method: call __ieee754_lgamma_r
  */
+
+#include <float.h>
 
 #include "math.h"
 #include "math_private.h"
@@ -29,3 +31,7 @@ __ieee754_lgamma(double x)
 {
 	return __ieee754_lgamma_r(x,&signgam);
 }
+
+#if (LDBL_MANT_DIG == 53)
+__weak_reference(lgamma, lgammal);
+#endif

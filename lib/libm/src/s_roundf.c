@@ -23,28 +23,32 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/msun/src/s_roundf.c 153017 2005-12-02 13:45:06Z bde $
+ * $FreeBSD: head/lib/msun/src/s_roundf.c 257770 2013-11-06 23:44:52Z kargl $
  */
 
-#include <math.h>
+
+#include "math.h"
+#include "math_private.h"
 
 float
 roundf(float x)
 {
 	float t;
+	uint32_t hx;
 
-	if (!isfinite(x))
-		return (x);
+	GET_FLOAT_WORD(hx, x);
+	if ((hx & 0x7fffffff) == 0x7f800000)
+		return (x + x);
 
-	if (x >= 0.0) {
+	if (!(hx & 0x80000000)) {
 		t = floorf(x);
-		if (t - x <= -0.5)
-			t += 1.0;
+		if (t - x <= -0.5F)
+			t += 1;
 		return (t);
 	} else {
 		t = floorf(-x);
-		if (t + x <= -0.5)
-			t += 1.0;
+		if (t + x <= -0.5F)
+			t += 1;
 		return (-t);
 	}
 }

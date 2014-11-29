@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2013 David Chisnall
+ * Copyright (c) 2008 David Schultz <das@FreeBSD.ORG>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,51 +23,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/msun/src/imprecise.c 255294 2013-09-06 07:58:23Z theraven $
+ * $FreeBSD: head/lib/msun/src/e_remainderl.c 177765 2008-03-30 20:47:42Z das $
  */
 
-#include <float.h>
+
 #include <math.h>
 
-/*
- * If long double is not the same size as double, then these will lose
- * precision and we should emit a warning whenever something links against
- * them.
- */
-#if (LDBL_MANT_DIG > 53)
-#define WARN_IMPRECISE(x) \
-	__warn_references(x, # x " has lower than advertised precision");
-#else
-#define WARN_IMPRECISE(x)
-#endif
-/*
- * Declare the functions as weak variants so that other libraries providing
- * real versions can override them.
- */
-#define	DECLARE_WEAK(x)\
-	__weak_reference(imprecise_## x, x);\
-	WARN_IMPRECISE(x)
-
 long double
-imprecise_powl(long double x, long double y)
+remainderl(long double x, long double y)
 {
+	int quo;
 
-	return pow(x, y);
+	return (remquol(x, y, &quo));
 }
-DECLARE_WEAK(powl);
-
-#define DECLARE_FORMER_IMPRECISE(f) \
-	__asm__(".symver imprecise_" #f "l," #f "l@DF306.1"); \
-	long double imprecise_ ## f ## l(long double v) { return f(v); }
-
-#define DECLARE_IMPRECISE(f) \
-	long double imprecise_ ## f ## l(long double v) { return f(v); }\
-	DECLARE_WEAK(f ## l)
-
-DECLARE_IMPRECISE(lgamma);
-DECLARE_FORMER_IMPRECISE(cosh);
-DECLARE_FORMER_IMPRECISE(erfc);
-DECLARE_FORMER_IMPRECISE(erf);
-DECLARE_FORMER_IMPRECISE(sinh);
-DECLARE_FORMER_IMPRECISE(tanh);
-DECLARE_FORMER_IMPRECISE(tgamma);

@@ -1,5 +1,4 @@
 /* @(#)s_tanh.c 5.1 93/09/24 */
-/* $FreeBSD: head/lib/msun/src/s_tanh.c 176451 2008-02-22 02:30:36Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -10,6 +9,7 @@
  * is preserved.
  * ====================================================
  */
+
 
 /* Tanh(x)
  * Return the Hyperbolic Tangent of x
@@ -35,10 +35,13 @@
  *	only tanh(0)=0 is exact for finite argument.
  */
 
+#include <float.h>
+
 #include "math.h"
 #include "math_private.h"
 
-static const double one = 1.0, two = 2.0, tiny = 1.0e-300, huge = 1.0e300;
+static const volatile double tiny = 1.0e-300;
+static const double one = 1.0, two = 2.0, huge = 1.0e300;
 
 double
 tanh(double x)
@@ -73,3 +76,7 @@ tanh(double x)
 	}
 	return (jx>=0)? z: -z;
 }
+
+#if (LDBL_MANT_DIG == 53)
+__weak_reference(tanh, tanhl);
+#endif

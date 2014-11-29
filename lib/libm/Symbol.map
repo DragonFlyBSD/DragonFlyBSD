@@ -264,12 +264,28 @@ DF306.0 {
  */
 
 DF306.1 {
+	/*
+	 * These old versions are implemented with __asm__ .symver
+	 * coshl;
+	 * erfcl;
+	 * erfl;
+	 * lgammal;
+	 * sinhl;
+	 * tanhl;
+	 */
+	powl;
+	tgammal;
+};
+
+/*
+ * Implemented in 4.1-dev branch
+ */
+
+DF402.0 {
 	coshl;
 	erfcl;
 	erfl;
 	lgammal;
-	powl;
 	sinhl;
 	tanhl;
-	tgammal;
 };

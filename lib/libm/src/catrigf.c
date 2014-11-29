@@ -85,7 +85,7 @@ f(float a, float b, float hypot_a_b)
 
 static inline void
 do_hard_work(float x, float y, float *rx, int *B_is_usable, float *B,
-	     float *sqrt_A2my2, float *new_y)
+    float *sqrt_A2my2, float *new_y)
 {
 	float R, S, A;
 	float Am1, Amy;
@@ -133,7 +133,7 @@ do_hard_work(float x, float y, float *rx, int *B_is_usable, float *B,
 			*sqrt_A2my2 = sqrtf(Amy * (A + y));
 		} else if (y > 1) {
 			*sqrt_A2my2 = x * (4 / FLT_EPSILON / FLT_EPSILON) * y /
-				sqrtf((y + 1) * (y - 1));
+			    sqrtf((y + 1) * (y - 1));
 			*new_y = y * (4 / FLT_EPSILON / FLT_EPSILON);
 		} else {
 			*sqrt_A2my2 = sqrtf((1 - y) * (1 + y));
@@ -169,7 +169,7 @@ casinhf(float complex z)
 		else
 			w = clog_for_large_values(-z) + m_ln2;
 		return (cpackf(copysignf(crealf(w), x),
-			       copysignf(cimagf(w), y)));
+		    copysignf(cimagf(w), y)));
 	}
 
 	if (x == 0 && y == 0)
@@ -291,7 +291,7 @@ clog_for_large_values(float complex z)
 
 	if (ax > FLT_MAX / 2)
 		return (cpackf(logf(hypotf(x / m_e, y / m_e)) + 1,
-			       atan2f(y, x)));
+		    atan2f(y, x)));
 
 	if (ax > QUARTER_SQRT_MAX || ay < SQRT_MIN)
 		return (cpackf(logf(hypotf(x, y)), atan2f(y, x)));
@@ -355,13 +355,13 @@ catanhf(float complex z)
 			return (cpackf(copysignf(0, x), y + y));
 		if (isinf(y))
 			return (cpackf(copysignf(0, x),
-				       copysignf(pio2_hi + pio2_lo, y)));
+			    copysignf(pio2_hi + pio2_lo, y)));
 		return (cpackf(x + 0.0L + (y + 0), x + 0.0L + (y + 0)));
 	}
 
 	if (ax > RECIP_EPSILON || ay > RECIP_EPSILON)
 		return (cpackf(real_part_reciprocal(x, y),
-			       copysignf(pio2_hi + pio2_lo, y)));
+		    copysignf(pio2_hi + pio2_lo, y)));
 
 	if (ax < SQRT_3_EPSILON / 2 && ay < SQRT_3_EPSILON / 2) {
 		raise_inexact();
