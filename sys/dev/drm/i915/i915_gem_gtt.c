@@ -468,8 +468,13 @@ void i915_gem_init_global_gtt(struct drm_device *dev,
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
 
+	unsigned long mappable;
+	int error;
+
+	mappable = min(end, mappable_end) - start;
+
 	/* Substract the guard page ... */
-	drm_mm_init(&dev_priv->mm.gtt_space, start, end - start - PAGE_SIZE);
+	drm_mm_init(&dev_priv->mm.gtt_space, start, end - start);
 	if (!HAS_LLC(dev))
 		dev_priv->mm.gtt_space.color_adjust = i915_gtt_color_adjust;
 
@@ -477,8 +482,13 @@ void i915_gem_init_global_gtt(struct drm_device *dev,
 	dev_priv->mm.gtt_mappable_end = mappable_end;
 	dev_priv->mm.gtt_end = end;
 	dev_priv->mm.gtt_total = end - start;
-	dev_priv->mm.mappable_gtt_total = min(end, mappable_end) - start;
+	dev_priv->mm.mappable_gtt_total = mappable;
 
 	/* ... but ensure that we clear the entire range. */
 	intel_gtt_clear_range(start / PAGE_SIZE, (end-start) / PAGE_SIZE);
+	device_printf(dev->dev,
+	    "taking over the fictitious range 0x%lx-0x%lx\n",
+	    dev->agp->base + start, dev->agp->base + start + mappable);
+	error = -vm_phys_fictitious_reg_range(dev->agp->base + start,
+	    dev->agp->base + start + mappable, VM_MEMATTR_WRITE_COMBINING);
 }

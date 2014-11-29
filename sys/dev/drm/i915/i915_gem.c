@@ -198,7 +198,8 @@ i915_gem_init_ioctl(struct drm_device *dev, void *data,
 		return -ENODEV;
 
 	lockmgr(&dev->dev_lock, LK_EXCLUSIVE|LK_RETRY|LK_CANRECURSE);
-	i915_gem_do_init(dev, args->gtt_start, args->gtt_end, args->gtt_end);
+	i915_gem_init_global_gtt(dev, args->gtt_start,
+				 args->gtt_end, args->gtt_end);
 	lockmgr(&dev->dev_lock, LK_RELEASE);
 
 	return 0;
@@ -3163,35 +3164,6 @@ void i915_gem_free_object(struct drm_gem_object *gem_obj)
 }
 
 int
-i915_gem_do_init(struct drm_device *dev, unsigned long start,
-    unsigned long mappable_end, unsigned long end)
-{
-	drm_i915_private_t *dev_priv;
-	unsigned long mappable;
-	int error;
-
-	dev_priv = dev->dev_private;
-	mappable = min(end, mappable_end) - start;
-
-	drm_mm_init(&dev_priv->mm.gtt_space, start, end - start);
-
-	dev_priv->mm.gtt_start = start;
-	dev_priv->mm.gtt_mappable_end = mappable_end;
-	dev_priv->mm.gtt_end = end;
-	dev_priv->mm.gtt_total = end - start;
-	dev_priv->mm.mappable_gtt_total = mappable;
-
-	/* Take over this portion of the GTT */
-	intel_gtt_clear_range(start / PAGE_SIZE, (end-start) / PAGE_SIZE);
-	device_printf(dev->dev,
-	    "taking over the fictitious range 0x%lx-0x%lx\n",
-	    dev->agp->base + start, dev->agp->base + start + mappable);
-	error = -vm_phys_fictitious_reg_range(dev->agp->base + start,
-	    dev->agp->base + start + mappable, VM_MEMATTR_WRITE_COMBINING);
-	return (error);
-}
-
-int
 i915_gem_idle(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
@@ -3370,25 +3342,19 @@ intel_enable_ppgtt(struct drm_device *dev)
 int i915_gem_init(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	unsigned long prealloc_size, gtt_size, mappable_size;
+	unsigned long gtt_size, mappable_size;
 	int ret;
 
-	prealloc_size = dev_priv->mm.gtt->stolen_size;
 	gtt_size = dev_priv->mm.gtt->gtt_total_entries << PAGE_SHIFT;
 	mappable_size = dev_priv->mm.gtt->gtt_mappable_entries << PAGE_SHIFT;
-
-	/* Basic memrange allocator for stolen space */
-	drm_mm_init(&dev_priv->mm.stolen, 0, prealloc_size);
 
 	DRM_LOCK(dev);
 	if (intel_enable_ppgtt(dev) && HAS_ALIASING_PPGTT(dev)) {
 		/* PPGTT pdes are stolen from global gtt ptes, so shrink the
 		 * aperture accordingly when using aliasing ppgtt. */
 		gtt_size -= I915_PPGTT_PD_ENTRIES*PAGE_SIZE;
-		/* For paranoia keep the guard page in between. */
-		gtt_size -= PAGE_SIZE;
 
-		i915_gem_do_init(dev, 0, mappable_size, gtt_size);
+		i915_gem_init_global_gtt(dev, 0, mappable_size, gtt_size);
 
 		ret = i915_gem_init_aliasing_ppgtt(dev);
 		if (ret) {
@@ -3406,7 +3372,8 @@ int i915_gem_init(struct drm_device *dev)
 		 * should be enough to keep any prefetching inside of the
 		 * aperture.
 		 */
-		i915_gem_do_init(dev, 0, mappable_size, gtt_size - PAGE_SIZE);
+		i915_gem_init_global_gtt(dev, 0, mappable_size,
+					 gtt_size);
 	}
 
 	ret = i915_gem_init_hw(dev);
@@ -3415,22 +3382,6 @@ int i915_gem_init(struct drm_device *dev)
 		i915_gem_cleanup_aliasing_ppgtt(dev);
 		return ret;
 	}
-
-#if 0
-	/* Try to set up FBC with a reasonable compressed buffer size */
-	if (I915_HAS_FBC(dev) && i915_powersave) {
-		int cfb_size;
-
-		/* Leave 1M for line length buffer & misc. */
-
-		/* Try to get a 32M buffer... */
-		if (prealloc_size > (36*1024*1024))
-			cfb_size = 32*1024*1024;
-		else /* fall back to 7/8 of the stolen space */
-			cfb_size = prealloc_size * 7 / 8;
-		i915_setup_compression(dev, cfb_size);
-	}
-#endif
 
 	/* Allow hardware batchbuffers unless told otherwise, but not for KMS. */
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))

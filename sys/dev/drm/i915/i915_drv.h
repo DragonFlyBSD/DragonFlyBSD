@@ -1470,8 +1470,6 @@ int __must_check i915_gem_check_wedge(struct drm_i915_private *dev_priv,
 
 void i915_gem_reset(struct drm_device *dev);
 void i915_gem_clflush_object(struct drm_i915_gem_object *obj);
-int i915_gem_do_init(struct drm_device *dev, unsigned long start,
-    unsigned long mappable_end, unsigned long end);
 int __must_check i915_gem_object_set_domain(struct drm_i915_gem_object *obj,
 					    uint32_t read_domains,
 					    uint32_t write_domain);
