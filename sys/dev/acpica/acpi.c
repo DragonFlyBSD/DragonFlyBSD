@@ -256,13 +256,26 @@ static int acpi_debug_objects;
 TUNABLE_INT("debug.acpi.enable_debug_objects", &acpi_debug_objects);
 SYSCTL_PROC(_debug_acpi, OID_AUTO, enable_debug_objects,
     CTLFLAG_RW | CTLTYPE_INT, NULL, 0, acpi_debug_objects_sysctl, "I",
-    "Enable Debug objects");
+    "Enable Debug objects.");
+
+/* Allow ignoring the XSDT. */
+static int acpi_ignore_xsdt;
+TUNABLE_INT("debug.acpi.ignore_xsdt", &acpi_ignore_xsdt);
+SYSCTL_INT(_debug_acpi, OID_AUTO, ignore_xsdt, CTLFLAG_RD,
+    &acpi_ignore_xsdt, 1, "Ignore the XSDT, forcing the use of the RSDT.");
 
 /* Allow the interpreter to ignore common mistakes in BIOS. */
 static int acpi_interpreter_slack = 1;
 TUNABLE_INT("debug.acpi.interpreter_slack", &acpi_interpreter_slack);
 SYSCTL_INT(_debug_acpi, OID_AUTO, interpreter_slack, CTLFLAG_RD,
     &acpi_interpreter_slack, 1, "Turn on interpreter slack mode.");
+
+/* Allow preferring 32-bit FADT register addresses over the 64-bit ones. */
+static int acpi_fadt_addr32;
+TUNABLE_INT("debug.acpi.fadt_addr32", &acpi_fadt_addr32);
+SYSCTL_INT(_debug_acpi, OID_AUTO, fadt_addr32, CTLFLAG_RD,
+    &acpi_fadt_addr32, 1,
+    "Prefer 32-bit FADT register addresses over 64-bit ones.");
 
 /* Power devices off and on in suspend and resume.  XXX Remove once tested. */
 static int acpi_do_powerstate = 1;
@@ -404,7 +417,8 @@ acpi_probe(device_t dev)
     if ((paddr = AcpiOsGetRootPointer()) == 0 ||
 	(rsdp = AcpiOsMapMemory(paddr, sizeof(ACPI_TABLE_RSDP))) == NULL)
 	return_VALUE (ENXIO);
-    if (rsdp->Revision > 1 && rsdp->XsdtPhysicalAddress != 0)
+    if (acpi_ignore_xsdt == 0 &&
+	rsdp->Revision > 1 && rsdp->XsdtPhysicalAddress != 0)
 	paddr = (ACPI_PHYSICAL_ADDRESS)rsdp->XsdtPhysicalAddress;
     else
 	paddr = (ACPI_PHYSICAL_ADDRESS)rsdp->RsdtPhysicalAddress;
@@ -472,8 +486,10 @@ acpi_attach(device_t dev)
      * uses UINT8 for some values and we have no tunable_byte.
      */
     AcpiGbl_AutoSerializeMethods = acpi_auto_serialize_methods ? TRUE : FALSE;
-    AcpiGbl_EnableInterpreterSlack = acpi_interpreter_slack ? TRUE : FALSE;
+    AcpiGbl_DoNotUseXsdt = acpi_ignore_xsdt ? TRUE : FALSE;
     AcpiGbl_EnableAmlDebugObject = acpi_debug_objects ? TRUE : FALSE;
+    AcpiGbl_EnableInterpreterSlack = acpi_interpreter_slack ? TRUE : FALSE;
+    AcpiGbl_Use32BitFadtAddresses = acpi_fadt_addr32 ? TRUE : FALSE;
 
 #ifndef ACPI_DEBUG
     /*
