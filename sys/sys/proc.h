@@ -44,7 +44,7 @@
 
 #else
 
-#include <sys/callout.h>		/* For struct callout_handle. */
+#include <sys/callout.h>		/* For struct callout. */
 #include <sys/filedesc.h>
 #include <sys/queue.h>
 #include <sys/tree.h>

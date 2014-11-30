@@ -129,10 +129,6 @@ struct callout {
 #define CALLOUT_FLAGS_TO_CPU(flags)	(((flags) & CALLOUT_CPU_MASK) >> 12)
 #define CALLOUT_CPU_TO_FLAGS(cpuid)	((cpuid) << 12)
 
-struct callout_handle {
-	struct callout *callout;
-};
-
 /*
  * WARNING! The caller is responsible for stabilizing the callout state,
  *	    our suggestion is to either manage the callout on the same cpu
