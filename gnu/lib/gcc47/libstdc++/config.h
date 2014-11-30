@@ -5,13 +5,13 @@
 #define HAVE_ACOSF 1
 
 /* Define to 1 if you have the `acosl' function. */
-/* #undef HAVE_ACOSL */
+#define HAVE_ACOSL 1
 
 /* Define to 1 if you have the `asinf' function. */
 #define HAVE_ASINF 1
 
 /* Define to 1 if you have the `asinl' function. */
-/* #undef HAVE_ASINL */
+#define HAVE_ASINL 1
 
 /* Define to 1 if the target assembler supports .symver directive. */
 #define HAVE_AS_SYMVER_DIRECTIVE 1
@@ -26,7 +26,7 @@
 #define HAVE_ATANF 1
 
 /* Define to 1 if you have the `atanl' function. */
-/* #undef HAVE_ATANL */
+#define HAVE_ATANL 1
 
 /* Define to 1 if the target assembler supports thread-local storage. */
 /* #undef HAVE_CC_TLS */
@@ -47,10 +47,10 @@
 #define HAVE_COSHF 1
 
 /* Define to 1 if you have the `coshl' function. */
-/* #undef HAVE_COSHL */
+#define HAVE_COSHL 1
 
 /* Define to 1 if you have the `cosl' function. */
-/* #undef HAVE_COSL */
+#define HAVE_COSL 1
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
@@ -122,7 +122,7 @@
 #define HAVE_EXPF 1
 
 /* Define to 1 if you have the `expl' function. */
-/* #undef HAVE_EXPL */
+#define HAVE_EXPL 1
 
 /* Define to 1 if you have the `fabsf' function. */
 #define HAVE_FABSF 1
@@ -213,7 +213,7 @@
 #define HAVE_INTTYPES_H 1
 
 /* Define to 1 if you have the `isinf' function. */
-/* #undef HAVE_ISINF */
+#define HAVE_ISINF 1
 
 /* Define to 1 if you have the `isinff' function. */
 /* #undef HAVE_ISINFF */
@@ -222,10 +222,10 @@
 /* #undef HAVE_ISINFL */
 
 /* Define to 1 if you have the `isnan' function. */
-/* #undef HAVE_ISNAN */
+#define HAVE_ISNAN 1
 
 /* Define to 1 if you have the `isnanf' function. */
-/* #undef HAVE_ISNANF */
+#define HAVE_ISNANF 1
 
 /* Define to 1 if you have the `isnanl' function. */
 /* #undef HAVE_ISNANL */
@@ -270,13 +270,13 @@
 #define HAVE_LOG10F 1
 
 /* Define to 1 if you have the `log10l' function. */
-/* #undef HAVE_LOG10L */
+#define HAVE_LOG10L 1
 
 /* Define to 1 if you have the `logf' function. */
 #define HAVE_LOGF 1
 
 /* Define to 1 if you have the `logl' function. */
-/* #undef HAVE_LOGL */
+#define HAVE_LOGL 1
 
 /* Define to 1 if you have the <machine/endian.h> header file. */
 #define HAVE_MACHINE_ENDIAN_H 1
@@ -309,7 +309,7 @@
 #define HAVE_POWF 1
 
 /* Define to 1 if you have the `powl' function. */
-/* #undef HAVE_POWL */
+#define HAVE_POWL 1
 
 /* Define to 1 if you have the `qfpclass' function. */
 /* #undef HAVE_QFPCLASS */
@@ -333,10 +333,10 @@
 #define HAVE_SINHF 1
 
 /* Define to 1 if you have the `sinhl' function. */
-/* #undef HAVE_SINHL */
+#define HAVE_SINHL 1
 
 /* Define to 1 if you have the `sinl' function. */
-/* #undef HAVE_SINL */
+#define HAVE_SINL 1
 
 /* Define to 1 if you have the `sqrtf' function. */
 #define HAVE_SQRTF 1
@@ -433,10 +433,10 @@
 #define HAVE_TANHF 1
 
 /* Define to 1 if you have the `tanhl' function. */
-/* #undef HAVE_TANHL */
+#define HAVE_TANHL 1
 
 /* Define to 1 if you have the `tanl' function. */
-/* #undef HAVE_TANL */
+#define HAVE_TANL 1
 
 /* Define to 1 if you have the <tgmath.h> header file. */
 #define HAVE_TGMATH_H 1
@@ -655,7 +655,7 @@
 /* #undef HAVE__TANL */
 
 /* Define as const if the declaration of iconv() needs const. */
-#define ICONV_CONST const
+/* #undef ICONV_CONST */
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
@@ -768,12 +768,12 @@
 
 /* Define if C99 functions or macros from <wchar.h>, <math.h>, <complex.h>,
    <stdio.h>, and <stdlib.h> can be used or exposed. */
-/* #undef _GLIBCXX_USE_C99 */
+#define _GLIBCXX_USE_C99 1
 
 /* Define if C99 functions in <complex.h> should be used in <complex>. Using
    compiler builtins for these functions requires corresponding C99 library
    functions to be present. */
-/* #undef _GLIBCXX_USE_C99_COMPLEX */
+#define _GLIBCXX_USE_C99_COMPLEX 1
 
 /* Define if C99 functions in <complex.h> should be used in <tr1/complex>.
    Using compiler builtins for these functions requires corresponding C99
@@ -802,7 +802,7 @@
 
 /* Define if C99 functions or macros in <math.h> should be imported in
    <tr1/cmath> in namespace std::tr1. */
-/* #undef _GLIBCXX_USE_C99_MATH_TR1 */
+#define _GLIBCXX_USE_C99_MATH_TR1 1
 
 /* Define if C99 types in <stdint.h> should be imported in <tr1/cstdint> in
    namespace std::tr1. */
