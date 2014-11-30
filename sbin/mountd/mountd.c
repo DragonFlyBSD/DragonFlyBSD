@@ -931,7 +931,7 @@ get_exportlist(void)
 	struct grouplist *grp, *tgrp;
 	struct exportlist **epp;
 	struct dirlist *dirhead;
-	struct statfs fsb, *fsp;
+	struct statfs fsb, *fsp, *mntbufp;
 	struct ucred anon;
 	struct vfsconf vfc;
 	char *cp, *endcp, *dirp, *hst, *usr, *dom, savedc;
@@ -962,10 +962,9 @@ get_exportlist(void)
 	/*
 	 * And delete exports that are in the kernel for all local
 	 * filesystems.
-	 * XXX: Should know how to handle all local exportable filesystems
-	 *      instead of just "ufs".
+	 * XXX: Should know how to handle all local exportable filesystems.
 	 */
-	num = getmntinfo(&fsp, MNT_NOWAIT);
+	num = getmntinfo(&mntbufp, MNT_NOWAIT);
 	for (i = 0; i < num; i++) {
 		union {
 			struct ufs_args ua;
@@ -975,6 +974,8 @@ get_exportlist(void)
 			struct ntfs_args na;
 		} targs;
 		struct export_args export;
+
+		fsp = &mntbufp[i];
 		if (getvfsbyname(fsp->f_fstypename, &vfc) != 0) {
 			syslog(LOG_ERR, "getvfsbyname() failed for %s",
 			    fsp->f_fstypename);
@@ -1006,7 +1007,6 @@ get_exportlist(void)
 				syslog(LOG_ERR, "can't delete exports for %s",
 				    fsp->f_mntonname);
 		}
-		fsp++;
 	}
 
 	/*
