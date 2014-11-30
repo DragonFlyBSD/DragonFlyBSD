@@ -45,8 +45,7 @@
 #include <sys/sysctl.h>
 
 #include <rpc/rpc.h>
-#include <rpc/pmap_clnt.h>
-#include <rpc/pmap_prot.h>
+#include <rpc/rpc_com.h>
 #include <rpcsvc/mount.h>
 #include <vfs/nfs/rpcv2.h>
 #include <vfs/nfs/nfsproto.h>
@@ -254,6 +253,7 @@ main(int argc, char **argv)
 	pid_t otherpid;
 	int udpsock, tcpsock, udp6sock, tcp6sock;
 	int xcreated = 0, s;
+	int maxrec = RPC_MAXDATASIZE;
 	int one = 1;
 	int c;
 
@@ -333,6 +333,9 @@ main(int argc, char **argv)
 	rpcb_unset(RPCPROG_MNT, RPCMNT_VER3, NULL);
 	udpsock  = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	tcpsock  = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	rpc_control(RPC_SVC_CONNMAXREC_SET, &maxrec);
+
 	udpconf  = getnetconfigent("udp");
 	tcpconf  = getnetconfigent("tcp");
 	if (!have_v6)
@@ -389,7 +392,7 @@ skip_v6:
 	if (tcpsock != -1 && tcpconf != NULL) {
 		bindresvport(tcpsock, NULL);
 		listen(tcpsock, SOMAXCONN);
-		tcptransp = svc_vc_create(tcpsock, 0, 0);
+		tcptransp = svc_vc_create(tcpsock, RPC_MAXDATASIZE, RPC_MAXDATASIZE);
 		if (tcptransp != NULL) {
 			if (!svc_reg(tcptransp, RPCPROG_MNT, RPCMNT_VER1,
 			    mntsrv, tcpconf))
@@ -430,7 +433,7 @@ skip_v6:
 	if (have_v6 && tcp6sock != -1 && tcp6conf != NULL) {
 		bindresvport(tcp6sock, NULL);
 		listen(tcp6sock, SOMAXCONN);
-		tcp6transp = svc_vc_create(tcp6sock, 0, 0);
+		tcp6transp = svc_vc_create(tcp6sock, RPC_MAXDATASIZE, RPC_MAXDATASIZE);
 		if (tcp6transp != NULL) {
 			if (!svc_reg(tcp6transp, RPCPROG_MNT, RPCMNT_VER1,
 			    mntsrv, tcp6conf))
