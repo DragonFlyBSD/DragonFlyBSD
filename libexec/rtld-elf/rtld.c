@@ -163,6 +163,7 @@ static bool matched_symbol(SymLook *, const Obj_Entry *, Sym_Match_Result *,
     const unsigned long);
 
 void r_debug_state(struct r_debug *, struct link_map *) __noinline;
+void _r_debug_postinit(struct link_map *) __noinline;
 
 /*
  * Data declarations.
@@ -725,6 +726,7 @@ _rtld_call_init(void)
 	obj_main->init_array = obj_main->fini_array = (Elf_Addr)NULL;
     }
     objlist_call_init(&initlist, &lockstate);
+    _r_debug_postinit(&obj_main->linkmap);
     objlist_clear(&initlist);
     dbg("loading filtees");
     for (obj = obj_list->next; obj != NULL; obj = obj->next) {
@@ -3657,6 +3659,19 @@ r_debug_state(struct r_debug* rd, struct link_map *m)
      * calls being made.
      */
     __asm __volatile("" : : : "memory");
+}
+
+/*
+ * A function called after init routines have completed. This can be used to
+ * break before a program's entry routine is called, and can be used when
+ * main is not available in the symbol table.
+ */
+void
+_r_debug_postinit(struct link_map *m)
+{
+
+	/* See r_debug_state(). */
+	__asm __volatile("" : : : "memory");
 }
 
 /*
