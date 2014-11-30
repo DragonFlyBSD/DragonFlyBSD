@@ -332,6 +332,7 @@ main(int argc, char **argv)
 		warnx("here we go");
 	signal(SIGHUP, huphandler);
 	signal(SIGTERM, terminate);
+	signal(SIGPIPE, SIG_IGN);
 
 	pidfile_write(pfh);
 
@@ -984,7 +985,7 @@ get_exportlist(void)
 
 		/*
 		 * Do not delete export for network filesystem by
-		 * passing "export" arg to nmount().
+		 * passing "export" arg to mount().
 		 * It only makes sense to do this for local filesystems.
 		 */
 		if (vfc.vfc_flags & VFCF_NETWORK)
