@@ -248,6 +248,9 @@ int
 main(int argc, char **argv)
 {
 	fd_set readfds;
+	struct sockaddr_in sin;
+	struct sockaddr_in6 sin6;
+	char *endptr;
 	SVCXPRT *udptransp, *tcptransp, *udp6transp, *tcp6transp;
 	struct netconfig *udpconf, *tcpconf, *udp6conf, *tcp6conf;
 	pid_t otherpid;
@@ -255,7 +258,8 @@ main(int argc, char **argv)
 	int xcreated = 0, s;
 	int maxrec = RPC_MAXDATASIZE;
 	int one = 1;
-	int c;
+	int c, r;
+	in_port_t svcport = 0;
 
 	udp6conf = tcp6conf = NULL;
 	udp6sock = tcp6sock = 0;
@@ -295,6 +299,13 @@ main(int argc, char **argv)
 			break;
 		case 'l':
 			dolog = 1;
+			break;
+		case 'p':
+			endptr = NULL;
+			svcport = (in_port_t)strtoul(optarg, &endptr, 10);
+			if (endptr == NULL || *endptr != '\0' ||
+			    svcport == 0 || svcport >= IPPORT_MAX)
+				usage();
 			break;
 		default:
 			usage();
@@ -369,8 +380,26 @@ skip_v6:
 			exit(1);
 		}
 	}
+	if (svcport != 0) {
+		bzero(&sin, sizeof(struct sockaddr_in));
+		sin.sin_len = sizeof(struct sockaddr_in);
+		sin.sin_family = AF_INET;
+		sin.sin_port = htons(svcport);
+
+		bzero(&sin6, sizeof(struct sockaddr_in6));
+		sin6.sin6_len = sizeof(struct sockaddr_in6);
+		sin6.sin6_family = AF_INET6;
+		sin6.sin6_port = htons(svcport);
+	}
 	if (udpsock != -1 && udpconf != NULL) {
-		bindresvport(udpsock, NULL);
+		if (svcport != 0) {
+			r = bindresvport(udpsock, &sin);
+			if (r != 0) {
+				syslog(LOG_ERR, "bindresvport: %m");
+				exit(1);
+			}
+		} else
+			bindresvport(udpsock, NULL);
 		udptransp = svc_dg_create(udpsock, 0, 0);
 		if (udptransp != NULL) {
 			if (!svc_reg(udptransp, RPCPROG_MNT, RPCMNT_VER1,
@@ -390,7 +419,14 @@ skip_v6:
 
 	}
 	if (tcpsock != -1 && tcpconf != NULL) {
-		bindresvport(tcpsock, NULL);
+		if (svcport != 0) {
+			r = bindresvport(tcpsock, &sin);
+			if (r != 0) {
+				syslog(LOG_ERR, "bindresvport: %m");
+				exit(1);
+			}
+		} else
+			bindresvport(tcpsock, NULL);
 		listen(tcpsock, SOMAXCONN);
 		tcptransp = svc_vc_create(tcpsock, RPC_MAXDATASIZE, RPC_MAXDATASIZE);
 		if (tcptransp != NULL) {
@@ -411,7 +447,15 @@ skip_v6:
 
 	}
 	if (have_v6 && udp6sock != -1 && udp6conf != NULL) {
-		bindresvport(udp6sock, NULL);
+		if (svcport != 0) {
+			r = bindresvport_sa(udp6sock,
+			    (struct sockaddr *)&sin6);
+			if (r != 0) {
+				syslog(LOG_ERR, "bindresvport_sa: %m");
+				exit(1);
+			}
+		} else
+			(void)bindresvport_sa(udp6sock, NULL);
 		udp6transp = svc_dg_create(udp6sock, 0, 0);
 		if (udp6transp != NULL) {
 			if (!svc_reg(udp6transp, RPCPROG_MNT, RPCMNT_VER1,
@@ -431,7 +475,15 @@ skip_v6:
 
 	}
 	if (have_v6 && tcp6sock != -1 && tcp6conf != NULL) {
-		bindresvport(tcp6sock, NULL);
+		if (svcport != 0) {
+			r = bindresvport_sa(tcp6sock,
+			    (struct sockaddr *)&sin6);
+			if (r != 0) {
+				syslog(LOG_ERR, "bindresvport_sa: %m");
+				exit(1);
+			}
+		} else
+			(void)bindresvport_sa(tcp6sock, NULL);
 		listen(tcp6sock, SOMAXCONN);
 		tcp6transp = svc_vc_create(tcp6sock, RPC_MAXDATASIZE, RPC_MAXDATASIZE);
 		if (tcp6transp != NULL) {
@@ -481,7 +533,8 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-		"usage: mountd [-2] [-d] [-l] [-n] [-r] [export_file]\n");
+		"usage: mountd [-2] [-d] [-l] [-n] [-p <port>] [-r] "
+		"[export_file]\n");
 	exit(1);
 }
 
