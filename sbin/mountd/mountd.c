@@ -211,11 +211,6 @@ int got_sighup = 0;
 
 int opt_flags;
 static int have_v6 = 1;
-#ifdef NI_WITHSCOPEID
-static const int ninumeric = NI_NUMERICHOST | NI_WITHSCOPEID;
-#else
-static const int ninumeric = NI_NUMERICHOST;
-#endif
 
 struct pidfh *pfh = NULL;
 /* Bits for the opt_flags above */
@@ -1633,7 +1628,7 @@ get_host(char *cp, struct grouplist *grp, struct grouplist *tgrp)
 	while (ai != NULL) {
 		if (ai->ai_canonname == NULL) {
 			if (getnameinfo(ai->ai_addr, ai->ai_addrlen, host,
-			    sizeof host, NULL, 0, ninumeric) != 0)
+			    sizeof host, NULL, 0, NI_NUMERICHOST) != 0)
 				strlcpy(host, "?", sizeof(host));
 			ai->ai_canonname = strdup(host);
 			ai->ai_flags |= AI_CANONNAME;
@@ -1952,7 +1947,7 @@ get_net(char *cp, struct netmsk *net, int maskflg)
 		if (np) {
 			name = np->n_name;
 		} else if (getnameinfo(sa, sa->sa_len, netname, sizeof netname,
-			NULL, 0, ninumeric) == 0) {
+			NULL, 0, NI_NUMERICHOST) == 0) {
 			name = netname;
 		} else {
 			goto fail;
