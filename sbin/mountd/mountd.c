@@ -933,6 +933,7 @@ get_exportlist(void)
 	struct dirlist *dirhead;
 	struct statfs fsb, *fsp;
 	struct ucred anon;
+	struct vfsconf vfc;
 	char *cp, *endcp, *dirp, *hst, *usr, *dom, savedc;
 	int len, has_host, exflags, got_nondir, dirplen, num, i, netgrp;
 
@@ -974,6 +975,19 @@ get_exportlist(void)
 			struct ntfs_args na;
 		} targs;
 		struct export_args export;
+		if (getvfsbyname(fsp->f_fstypename, &vfc) != 0) {
+			syslog(LOG_ERR, "getvfsbyname() failed for %s",
+			    fsp->f_fstypename);
+			continue;
+		}
+
+		/*
+		 * Do not delete export for network filesystem by
+		 * passing "export" arg to nmount().
+		 * It only makes sense to do this for local filesystems.
+		 */
+		if (vfc.vfc_flags & VFCF_NETWORK)
+			continue;
 
 		export.ex_flags = MNT_DELEXPORT;
 		if (mountctl(fsp->f_mntonname, MOUNTCTL_SET_EXPORT, -1,
