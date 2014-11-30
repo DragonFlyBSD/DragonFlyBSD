@@ -282,7 +282,23 @@ DF306.1 {
  */
 
 DF402.0 {
+	cacosl;
+	casinl;
+	catanl;
+	ccoshl;
+	ccosl;
 	coshl;
+	csinl;
+	csinhl;
+	ctanl;
+	ctanhl;
+	cexpl;
+	clog;
+	clogf;
+	clogl;
+	cpow;
+	cpowf;
+	cpowl;
 	erfcl;
 	erfl;
 	lgammal;

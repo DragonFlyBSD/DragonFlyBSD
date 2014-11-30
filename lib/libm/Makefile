@@ -22,6 +22,7 @@ CFLAGS+=	-I${.CURDIR}/ld80
 .PATH:	${.CURDIR}/bsdsrc
 .PATH:	${.CURDIR}/src
 .PATH:	${.CURDIR}/man
+.PATH:	${.CURDIR}/gaps
 
 LIB=	m
 SHLIB_MAJOR= 4
@@ -90,6 +91,12 @@ COMMON_SRCS+=	catrig.c catrigf.c \
 	s_conj.c s_conjf.c s_conjl.c \
 	s_cproj.c s_cprojf.c s_creal.c s_crealf.c s_creall.c \
 	s_csinh.c s_csinhf.c s_ctanh.c s_ctanhf.c
+
+# C99 complex functions from NetBSD
+COMMON_SRCS+=	cacosl.c casinl.c catanl.c ccoshl.c ccosl.c \
+	csinl.c csinhl.c ctanl.c ctanhl.c cexpl.c \
+	clog.c clogf.c clogl.c cpow.c cpowf.c cpowl.c \
+	cephes_subrl.c
 
 # libc supplies these functions:
 #COMMON_SRCS+=	s_fabs.c s_frexp.c s_isnan.c s_ldexp.c s_modf.c
@@ -307,5 +314,14 @@ MLINKS+=tanh.3 tanhf.3 \
 	tanh.3 tanhl.3
 MLINKS+=trunc.3 truncf.3 \
 	trunc.3 truncl.3
+
+
+# C99 complex functions man pages from NetBSD
+MAN+=	cacosl.3 casinl.3 catanl.3 ccoshl.3 ccosl.3 \
+	csinl.3 csinhl.3 ctanl.3 ctanhl.3 cexpl.3 clog.3 cpow.3
+MLINKS+=clog.3 clogf.3 \
+	clog.3 clogl.3
+MLINKS+=cpow.3 cpowf.3 \
+	cpow.3 cpowl.3
 
 .include <bsd.lib.mk>

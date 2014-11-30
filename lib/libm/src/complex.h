@@ -111,6 +111,27 @@ float complex	ctanf(float complex);
 double complex	ctanh(double complex);
 float complex	ctanhf(float complex);
 
+
+/* Remaining complex functions from NetBSD */
+long double complex	cacosl(long double complex);
+long double complex	casinl(long double complex);
+long double complex	catanl(long double complex);
+long double complex	ccoshl(long double complex);
+long double complex	ccosl(long double complex);
+long double complex	csinl(long double complex);
+long double complex	csinhl(long double complex);
+long double complex	ctanl(long double complex);
+long double complex	ctanhl(long double complex);
+long double complex	cexpl(long double complex);
+long double complex	clogl(long double complex);
+long double complex	cpowl(long double complex, long double complex);
+
+double      complex	clog(double complex);
+double      complex	cpow(double complex, double complex);
+
+float       complex	clogf(float complex);
+float       complex	cpowf(float complex, float complex);
+
 __END_DECLS
 
 #endif /* _COMPLEX_H */
