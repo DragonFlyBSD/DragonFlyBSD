@@ -36,14 +36,16 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/timeout.9,v 1.9.2.6 2001/12/17 11:30:19 ru Exp $
 .\"
-.Dd February 8, 2014
+.Dd November 30, 2014
 .Dt CALLOUT 9
 .Os
 .Sh NAME
 .Nm callout_init ,
+.Nm callout_init_lk ,
 .Nm callout_init_mp ,
 .Nm callout_reset ,
 .Nm callout_stop ,
+.Nm callout_stop_async ,
 .Nm callout_stop_sync ,
 .Nm callout_active ,
 .Nm callout_pending ,
@@ -58,12 +60,16 @@ typedef void timeout_t (void *);
 .Ft void
 .Fn callout_init "struct callout *c"
 .Ft void
+.Fn callout_init_lk "struct callout *c" "struct lock *lk"
+.Ft void
 .Fn callout_init_mp "struct callout *c"
 .Ft void
 .Fn callout_reset "struct callout *c" "int ticks" "timeout_t *func" "void *arg"
 .Ft int
 .Fn callout_stop "struct callout *c"
 .Ft void
+.Fn callout_stop_async "struct callout *c"
+.Ft int
 .Fn callout_stop_sync "struct callout *c"
 .Ft int
 .Fn callout_active "struct callout *c"
@@ -107,6 +113,17 @@ requires that the callback function installed by
 be MP safe.
 .Pp
 The
+.Fn callout_init_lk
+function associates the callout handle
+.Fa c
+with a lock specified by
+.Fa lk .
+The
+.Nm callout
+subsystem acquires the associated lock before calling the callout function
+and releases it after the function returns.
+.Pp
+The
 .Fn callout_reset
 function resets and starts the timer associated with the callout handle
 .Fa c .
@@ -127,6 +144,12 @@ It is safe to call
 on a callout that is not pending, so long as it is initialized.
 If the callout is not set, has already been serviced or is currently
 being serviced, then zero will be returned.
+The
+.Fn callout_stop_async
+function is identical to
+.Fn callout_stop
+without a return value.
+.Pp
 The
 .Fn callout_stop_sync
 function is a synchronous version of
