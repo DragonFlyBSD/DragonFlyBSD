@@ -1,4 +1,4 @@
-DF306.0 {
+DF402.0 {
 	_CurrentRuneLocale;
 	_DefaultRuneLocale;
 	_ThreadRuneLocale;
@@ -200,6 +200,8 @@ DF306.0 {
 	wctype;
 	wctype_l;
 	wcwidth;
+};
+
 DFprivate_1.0 {
     _PathLocale;
     __detect_path_locale;

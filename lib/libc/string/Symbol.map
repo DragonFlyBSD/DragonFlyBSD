@@ -1,4 +1,4 @@
-DF306.0 {
+DF402.0 {
     bcmp;
     bcopy;
     bzero;
@@ -15,6 +15,7 @@ DF306.0 {
     memcpy;
     memmem;
     memmove;
+    mempcpy;
     memrchr;
     memset;
     rindex;

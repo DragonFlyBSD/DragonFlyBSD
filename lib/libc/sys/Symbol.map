@@ -1,4 +1,4 @@
-DF306.0 {
+DF402.0 {
     accept;
     access;
     acct;
@@ -23,8 +23,8 @@ DF306.0 {
     close;
     closefrom;
     connect;
-    dup;
     dup2;
+    dup;
     eaccess;
     environ;
     exec_sys_register;
@@ -188,7 +188,6 @@ DF306.0 {
     revoke;
     rfork;
     rmdir;
-    rtime;
     rtprio;
     sched_get_priority_max;
     sched_get_priority_min;
@@ -216,7 +215,6 @@ DF306.0 {
     setresuid;
     setreuid;
     setrlimit;
-    setrpcent;
     setsid;
     setsockopt;
     settimeofday;
@@ -329,7 +327,6 @@ DFprivate_1.0 {
     __sys_exec_sys_register;
     __sys_exec_sys_unregister;
     __sys_execve;
-    __sys_exit;
     __sys_extaccept;
     __sys_extattr_delete_file;
     __sys_extattr_get_file;

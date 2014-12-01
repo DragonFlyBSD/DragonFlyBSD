@@ -1,8 +1,6 @@
-DF306.0 {
-	clock_gettime;
-	_clock_gettime;
+DF402.0 {
 	__clock_gettime;
 	__upmap_map;
 	__kpmap_map;
 	__ukp_spt;
-}
+};

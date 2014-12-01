@@ -1,4 +1,4 @@
-DF306.0 {
+DF402.0 {
     _int_to_time;
     _long_to_time;
     _time32_to_time;
@@ -11,6 +11,7 @@ DF306.0 {
     asctime_r;
     ctime;
     ctime_r;
+    daylight;
     difftime;
     gmtime;
     gmtime_r;

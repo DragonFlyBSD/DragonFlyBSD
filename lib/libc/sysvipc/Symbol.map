@@ -1,8 +1,9 @@
-DF308.0 {
+DF402.0 {
     connect_to_daemon;
     handle_new_connection;
     init_socket;
     is_sysvinit;
+    msginfo;
     receive_fd;
     receive_message;
     receive_msg_with_cred;
@@ -48,5 +49,4 @@ DFprivate_1.0 {
     _sysv_umtx_init;
     _sysv_umtx_lock;
     _sysv_umtx_unlock;
-    _shmget;
 };

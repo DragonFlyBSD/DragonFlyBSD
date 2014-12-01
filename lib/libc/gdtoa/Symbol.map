@@ -1,4 +1,4 @@
-DF306.0 {
+DF402.0 {
     strtod;
     strtof;
 
@@ -7,11 +7,15 @@ DF306.0 {
 };
 
 DFprivate_1.0 {
+    __hexnan_D2A;
+};
+
+/*
+DFprivate_1.0 {
     __strtodg;
     __strtord;
     __strtorx;
 
-    /* D2A symbols */
     __Balloc_D2A;
     __Bfree_D2A;
     __ULtod_D2A;
@@ -27,7 +31,6 @@ DFprivate_1.0 {
     __gethex_D2A;
     __hexdig_D2A;
     __hexdig_init_D2A;
-    __hexnan_D2A;
     __hi0bits_D2A;
     __i2b_D2A;
     __increment_D2A;
@@ -51,7 +54,6 @@ DFprivate_1.0 {
     __trailz_D2A;
     __ulp_D2A;
 
-    /* DragonFly, not gdtoa */
     __dtoa;
     __gdtoa_locks;
     __gdtoa;
@@ -59,3 +61,4 @@ DFprivate_1.0 {
     __hldtoa;
     __ldtoa;
 };
+*/

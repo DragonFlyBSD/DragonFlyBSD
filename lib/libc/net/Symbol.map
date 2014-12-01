@@ -1,4 +1,4 @@
-DF306.0 {
+DF402.0 {
     endhostent;
     endnetent;
     endprotoent;
@@ -21,9 +21,9 @@ DF306.0 {
     getaddrinfo;
     gethostbyaddr;
     gethostbyaddr_r;
-    gethostbyname;
     gethostbyname2;
     gethostbyname2_r;
+    gethostbyname;
     gethostbyname_r;
     gethostent;
     gethostent_r;
@@ -37,9 +37,6 @@ DF306.0 {
     getnetbyname_r;
     getnetent;
     getnetent_r;
-    getnetgrent;
-    getnetname;
-    getnetpath;
     getprotobyname;
     getprotobyname_r;
     getprotobynumber;
@@ -52,6 +49,16 @@ DF306.0 {
     getservbyport_r;
     getservent;
     getservent_r;
+    hes_error;
+    hes_free;
+    hes_init;
+    hes_resolve;
+    hes_to_bind;
+    hesiod_end;
+    hesiod_free_list;
+    hesiod_init;
+    hesiod_resolve;
+    hesiod_to_bind;
     if_freenameindex;
     if_indextoname;
     if_nameindex;
@@ -91,7 +98,6 @@ DF306.0 {
     iruserok_sa;
     link_addr;
     link_ntoa;
-    paddr;
     nsdispatch;
     rcmd;
     rcmd_af;
@@ -100,7 +106,6 @@ DF306.0 {
     rresvport;
     rresvport_af;
     ruserok;
-    sctp_peeloff;
     send;
     sethostent;
     setnetent;
@@ -110,31 +115,49 @@ DF306.0 {
 };
 
 DFprivate_1.0 {
-    __abandon_cached_mp_write_session;
+    _nsdispatch;
+    _nsyyerror;
+    _nsyylex;
+    _nsyyparse;
+    _nsyylineno;
     __b64_ntop;
     __b64_pton;
+    __dns_getanswer;
+    __ivaliduser;
+    __ivaliduser_af;
+    __ivaliduser_sa;
+    __check_rhosts_file;
+    __rcmd_errstr;
+    __nss_compat_getgrnam_r;
+    __nss_compat_getgrgid_r;
+    __nss_compat_getgrent_r;
+    __nss_compat_setgrent;
+    __nss_compat_endgrent;
+    __nss_compat_getpwnam_r;
+    __nss_compat_getpwuid_r;
+    __nss_compat_getpwent_r;
+    __nss_compat_setpwent;
+    __nss_compat_endpwent;
+};
+
+/*
+DFprivate_1.0 {
+    __abandon_cached_mp_write_session;
     __cached_mp_read;
     __cached_mp_write;
     __cached_read;
     __cached_write;
-    __check_rhosts_file;
     __close_cached_connection;
     __close_cached_mp_read_session;
     __close_cached_mp_write_session;
     __copy_hostent;
     __copy_netent;
     __copy_protoent;
-    __dns_getanswer;
     __endprotoent_p;
     __getprotoent_p;
     __hostdata_init;
     __hostent_data_init;
     __hostent_init;
-    __ivaliduser;
-    __ivaliduser_af;
-    __ivaliduser_sa;
-    __loc_aton;
-    __loc_ntoa;
     __netdata_init;
     __nsdefaultsrc;
     __netent_data_init;
@@ -142,16 +165,6 @@ DFprivate_1.0 {
     __nss_common_cache_read;
     __nss_common_cache_write;
     __nss_common_cache_write_negative;
-    __nss_compat_endgrent;
-    __nss_compat_endpwent;
-    __nss_compat_getgrent_r;
-    __nss_compat_getgrgid_r;
-    __nss_compat_getgrnam_r;
-    __nss_compat_getpwent_r;
-    __nss_compat_getpwnam_r;
-    __nss_compat_getpwuid_r;
-    __nss_compat_setgrent;
-    __nss_compat_setpwent;
     __nss_mp_cache_end;
     __nss_mp_cache_read;
     __nss_mp_cache_write;
@@ -164,7 +177,6 @@ DFprivate_1.0 {
     __proto_unmarshal_func;
     __protodata_init;
     __protoent_data_init;
-    __rcmd_errstr;
     __setprotoent_p;
     __sys_sctp_peeloff;
     _dns_gethostbyaddr;
@@ -190,7 +202,6 @@ DFprivate_1.0 {
     _nis_getnetbyname;
     _nsdbtaddsrc;
     _nsdbtput;
-    _nsdispatch;
     _nsyy_create_buffer;
     _nsyy_delete_buffer;
     _nsyy_flex_debug;
@@ -203,7 +214,6 @@ DFprivate_1.0 {
     _nsyychar;
     _nsyydebug;
     _nsyyerrflag;
-    _nsyyerror;
     _nsyyfree;
     _nsyyget_debug;
     _nsyyget_in;
@@ -213,13 +223,10 @@ DFprivate_1.0 {
     _nsyyget_text;
     _nsyyin;
     _nsyyleng;
-    _nsyylex;
     _nsyylex_destroy;
-    _nsyylineno;
     _nsyylval;
     _nsyynerrs;
     _nsyyout;
-    _nsyyparse;
     _nsyypop_buffer_state;
     _nsyypush_buffer_state;
     _nsyyrealloc;
@@ -237,3 +244,4 @@ DFprivate_1.0 {
     _setnethtent;
     _sctp_peeloff;
 };
+*/

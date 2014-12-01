@@ -1,10 +1,10 @@
-DF306.0 {
+DF402.0 {
+    _mcleanup;
     monstartup;
     moncontrol;
+    mexitcount;
 };
 
 DFprivate_1.0 {
-    .minbrk;
     _gmonparam;
-    _mcleanup;
 };

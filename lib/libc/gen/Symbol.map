@@ -1,4 +1,4 @@
-DF306.0 {
+DF402.0 {
     __assert;
     __fpclassifyd;
     __fpclassifyf;
@@ -125,6 +125,7 @@ DF306.0 {
     getmntinfo;
     getmntvinfo;
     getmode;
+    getnetgrent;
     getobjformat;
     getosreldate;
     getpagesize;
@@ -448,6 +449,9 @@ DF306.0 {
 };
 
 DFprivate_1.0 {
+#if defined(i386)
+    __libc_tls_get_addr;
+#endif
     ___getcwd;
     ___libc_tls_get_addr;
     __aout_fdnlist;
@@ -458,21 +462,7 @@ DFprivate_1.0 {
     __fdopendir2;
     __fmtcheck;
     __getcwd;
-    __getgroupmembership;
-    __gr_match_entry;
-    __gr_parse_entry;
-    __libc_C_ctype_;
-    __libc_C_tolower_;
-    __libc_C_toupper_;
     __libc_allocate_tls;
-    __libc_call_init;
-    __libc_free_tls;
-#if defined(i386)
-    __libc_tls_get_addr;
-#endif
-    __libc_tls_get_addr_tcb;
-    __libc_tolower_tab_;
-    __libc_toupper_tab_;
     __opendir2;
     __pause;
     __progname;
@@ -492,7 +482,6 @@ DFprivate_1.0 {
     _get_mcontext;
     _getcontext;
     _libc_allocate_tls;
-    _libc_init_tls;
     _logname_valid;
     _makecontext;
     _pthread_atfork;
@@ -639,12 +628,6 @@ DFprivate_1.0 {
     _spinunlock;
     _spinunlock_stub;
     _swapcontext;
-    _thread_autoinit_dummy_decl;
-    _thread_autoinit_dummy_decl_stub;
-    _thread_init;
-    _thread_init_stub;
-    _tolower;
-    _toupper;
     _updwtmpx;
     _use_only_yp;
     _usleep;
@@ -652,3 +635,26 @@ DFprivate_1.0 {
     _waitpid;
     _warn;
 };
+
+/*
+DFprivate_1.0 {
+    __getgroupmembership;
+    __gr_match_entry;
+    __gr_parse_entry;
+    __libc_C_ctype_;
+    __libc_C_tolower_;
+    __libc_C_toupper_;
+    __libc_call_init;
+    __libc_free_tls;
+    __libc_tls_get_addr_tcb;
+    __libc_tolower_tab_;
+    __libc_toupper_tab_;
+    _libc_init_tls;
+    _thread_autoinit_dummy_decl;
+    _thread_autoinit_dummy_decl_stub;
+    _thread_init;
+    _thread_init_stub;
+    _tolower;
+    _toupper;
+};
+*/

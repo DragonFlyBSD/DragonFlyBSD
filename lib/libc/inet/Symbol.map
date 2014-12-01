@@ -1,22 +1,4 @@
-DF306.0 {
-    inet_addr;
-    inet_aton;
-    inet_lnaof;
-    inet_makeaddr;
-    inet_net_ntop;
-    inet_net_pton;
-    inet_neta;
-    inet_netof;
-    inet_network;
-    inet_nsap_addr;
-    inet_nsap_ntoa;
-    inet_ntoa;
-    inet_ntoa_r;
-    inet_ntop;
-    inet_pton;
-};
-
-DFprivate_1.0 {
+DF402.0 {
     __inet_addr;
     __inet_aton;
     __inet_cidr_ntop;
@@ -34,4 +16,19 @@ DFprivate_1.0 {
     __inet_ntoa_r;
     __inet_ntop;
     __inet_pton;
+    inet_addr;
+    inet_aton;
+    inet_lnaof;
+    inet_makeaddr;
+    inet_net_ntop;
+    inet_net_pton;
+    inet_neta;
+    inet_netof;
+    inet_network;
+    inet_nsap_addr;
+    inet_nsap_ntoa;
+    inet_ntoa;
+    inet_ntoa_r;
+    inet_ntop;
+    inet_pton;
 };

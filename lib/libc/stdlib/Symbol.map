@@ -1,4 +1,4 @@
-DF306.0 {
+DF402.0 {
     _Exit;
     __cxa_atexit;
     __cxa_finalize;
@@ -10,9 +10,13 @@ DF306.0 {
     at_quick_exit;
     atexit;
     atof;
+    atof_l;
     atoi;
+    atoi_l;
     atol;
+    atol_l;
     atoll;
+    atoll_l;
     bsearch;
     calloc;
     div;
@@ -70,15 +74,26 @@ DF306.0 {
     srandom;
     srandomdev;
     strfmon;
+    strtod_l;
+    strtof_l;
     strtoimax;
+    strtoimax_l;
     strtol;
+    strtol_l;
+    strtold_l;
     strtoll;
+    strtoll_l;
     strtonum;
     strtoq;
+    strtoq_l;
     strtoul;
+    strtoul_l;
     strtoull;
+    strtoull_l;
     strtoumax;
+    strtoumax_l;
     strtouq;
+    strtouq_l;
     suboptarg;
     system;
     tdelete;
@@ -90,8 +105,13 @@ DF306.0 {
 };
 
 DFprivate_1.0 {
-    __cleanup;
     __system;
     _nmalloc_thr_init;
     _system;
 };
+
+/*
+DFprivate_1.0 {
+    __cleanup;
+};
+*/

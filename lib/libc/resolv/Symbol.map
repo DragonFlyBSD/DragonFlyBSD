@@ -1,30 +1,4 @@
-DF306.0 {
-    dn_comp;
-    dn_count_labels;
-    dn_expand;
-    fp_resstat;
-    h_errlist;
-    h_errno;
-    h_nerr;
-    herror;
-    hstrerror;
-    p_fqnname;
-    p_query;
-    p_secstodate;
-    res_buildprotolist;
-    res_init;
-    res_mkquery;
-    res_query;
-    res_querydomain;
-    res_search;
-    res_send;
-    sym_ntop;
-    sym_ntos;
-    sym_ston;
-};
-
-DFprivate_1.0 {
-    ___mtctxres;
+DF402.0 {
     __dn_comp;
     __dn_count_labels;
     __dn_expand;
@@ -32,16 +6,16 @@ DFprivate_1.0 {
     __fp_nquery;
     __fp_query;
     __fp_resstat;
-    __guard;
     __h_errno;
     __h_errno_set;
     __hostalias;
+    __loc_aton;
+    __loc_ntoa;
     __p_cdname;
     __p_cdnname;
     __p_cert_syms;
     __p_class;
     __p_class_syms;
-    __p_default_section_syms;
     __p_fqname;
     __p_fqnname;
     __p_key_syms;
@@ -55,11 +29,9 @@ DFprivate_1.0 {
     __p_time;
     __p_type;
     __p_type_syms;
-    __p_update_section_syms;
     __putlong;
     __putshort;
     __res_close;
-    __res_disable_mt;
     __res_dnok;
     __res_findzonecut2;
     __res_freeupdrec;
@@ -81,7 +53,6 @@ DFprivate_1.0 {
     __res_nmkquery;
     __res_nmkupdate;
     __res_nopt;
-    __res_nopt_rdata;
     __res_nquery;
     __res_nquerydomain;
     __res_nsearch;
@@ -108,5 +79,38 @@ DFprivate_1.0 {
     _getshort;
     _res;
     _res_close;
+    dn_comp;
+    dn_count_labels;
+    dn_expand;
+    fp_resstat;
+    h_errlist;
+    h_errno;
+    h_nerr;
+    herror;
+    hstrerror;
+    p_fqnname;
+    p_query;
+    p_secstodate;
+    res_buildprotolist;
+    res_init;
+    res_mkquery;
+    res_query;
+    res_querydomain;
+    res_search;
+    res_send;
+    sym_ntop;
+    sym_ntos;
+    sym_ston;
+};
+
+/*
+DFprivate_1.0 {
+    ___mtctxres;
+    __guard;
+    __p_default_section_syms;
+    __p_update_section_syms;
+    __res_disable_mt;
+    __res_nopt_rdata;
     _res_opcodes;
 };
+*/

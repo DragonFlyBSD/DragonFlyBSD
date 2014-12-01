@@ -1,11 +1,13 @@
-DF306.0 {
+DF402.0 {
     catclose;
     catgets;
     catopen;
 };
 
+/*
 DFprivate_1.0 {
     _catclose;
     _catgets;
     _catopen;
 };
+*/

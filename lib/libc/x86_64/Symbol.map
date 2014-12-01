@@ -1,4 +1,4 @@
-DF306.0 {
+DF402.0 {
 	/* PSEUDO syscalls */
 	_exit;
 
@@ -38,10 +38,13 @@ DF306.0 {
 DFprivate_1.0 {
 	/* PSEUDO syscalls */
 	_getlogin;
+	__sys_exit;
 	___longjmp;
 	__longjmp;
 	__siglongjmp;
 	.curbrk;
+	.minbrk;
 	.cerror;
 	_brk;
+	_end;
 };
