@@ -31,7 +31,7 @@
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mountd.c	8.15 (Berkeley) 5/1/95
- * $FreeBSD: src/sbin/mountd/mountd.c,v 1.39.2.5 2002/09/13 15:57:43 joerg Exp $
+ * $FreeBSD: head/usr.sbin/mountd/mountd.c 173056 2007-10-27 12:24:47Z simon $
  */
 
 #include <sys/param.h>
@@ -582,7 +582,7 @@ create_service(struct netconfig *nconf)
 					break;
 				case AF_INET6:
 					sin6 = malloc(sizeof(struct sockaddr_in6));
-					if (res->ai_addr == NULL)
+					if (sin6 == NULL)
 						out_of_mem();
 					sin6->sin6_family = AF_INET6;
 					sin6->sin6_port = htons(0);
