@@ -19,9 +19,7 @@ CFLAGS+= -I${CONTRIBDIR} -I${.CURDIR}
 
 INCS=		zconf.h zlib.h
 
-.if defined(RELEASE36)
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
-.endif
 
 .include <bsd.lib.mk>

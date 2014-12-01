@@ -379,9 +379,7 @@ MLINKS=	archive_entry.3 archive_entry_clear.3 \
 	archive_write_set_options.3 archive_write_set_format_option.3 \
 	archive_write_set_options.3 archive_write_set_option.3
 
-.if defined(RELEASE36)
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
-.endif
 
 .include <bsd.lib.mk>

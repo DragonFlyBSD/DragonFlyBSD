@@ -15,10 +15,8 @@ LDADD=		-lncurses
 
 WARNS?=		2
 
-.if defined(RELEASE36)
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
-.endif
 
 SRCS+=		chared.c \
 		common.c \
