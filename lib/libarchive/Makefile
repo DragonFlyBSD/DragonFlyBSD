@@ -380,7 +380,6 @@ MLINKS=	archive_entry.3 archive_entry_clear.3 \
 	archive_write_set_options.3 archive_write_set_option.3
 
 .if defined(RELEASE36)
-SHLIB_MAJOR=	6
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
 .endif

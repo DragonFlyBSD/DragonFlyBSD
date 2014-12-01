@@ -16,7 +16,6 @@ LDADD=		-lncurses
 WARNS?=		2
 
 .if defined(RELEASE36)
-SHLIB_MAJOR=	6
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
 .endif

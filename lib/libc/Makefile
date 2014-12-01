@@ -16,7 +16,7 @@ LDFLAGS+= -nodefaultlibs
 #
 .include "${.CURDIR}/Makefile.inc"
 
-.if defined(RELEASE36)
+.if defined(RELEASE42)
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${CMAPS}
 .endif

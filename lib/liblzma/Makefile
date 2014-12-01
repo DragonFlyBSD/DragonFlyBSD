@@ -123,7 +123,6 @@ CFLAGS+= -DHAVE_CONFIG_H -DTUKLIB_SYMBOL_PREFIX=lzma_ \
 	-I${LZMADIR}/../common
 
 .if defined(RELEASE36)
-SHLIB_MAJOR=	4
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
 .endif

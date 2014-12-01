@@ -10,7 +10,6 @@ INCS=	md2.h md4.h md5.h ripemd.h sha.h sha256.h sha512.h
 WARNS?=	2
 
 .if defined(RELEASE36)
-SHLIB_MAJOR=	4
 VERSION_DEF=	${.CURDIR}/../libc/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
 .endif
