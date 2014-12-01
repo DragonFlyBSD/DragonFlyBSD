@@ -196,7 +196,8 @@ void	terminate(int);
 struct exportlist *exphead;
 struct mountlist *mlhead;
 struct grouplist *grphead;
-char exname[MAXPATHLEN];
+char *exnames_default[2] = { _PATH_EXPORTS, NULL };
+char **exnames;
 struct ucred def_anon = {
 	1,
 	(uid_t) -2,
@@ -316,11 +317,10 @@ main(int argc, char **argv)
 	grphead = NULL;
 	exphead = NULL;
 	mlhead = NULL;
-	if (argc == 1) {
-		strncpy(exname, *argv, MAXPATHLEN-1);
-		exname[MAXPATHLEN-1] = '\0';
-	} else
-		strcpy(exname, _PATH_EXPORTS);
+	if (argc > 0)
+		exnames = argv;
+	else
+		exnames = exnames_default;
 	openlog("mountd", LOG_PID, LOG_DAEMON);
 	if (debug)
 		warnx("getting export list");
@@ -530,7 +530,7 @@ usage(void)
 {
 	fprintf(stderr,
 		"usage: mountd [-2] [-d] [-l] [-n] [-p <port>] [-r] "
-		"[export_file]\n");
+		"[export_file ...]\n");
 	exit(1);
 }
 
@@ -923,101 +923,20 @@ int linesize;
 FILE *exp_file;
 
 /*
- * Get the export list
+ * Get the export list from one, currently open file
  */
-void
-get_exportlist(void)
+static void
+get_exportlist_one(void)
 {
 	struct exportlist *ep, *ep2;
 	struct grouplist *grp, *tgrp;
 	struct exportlist **epp;
 	struct dirlist *dirhead;
-	struct statfs fsb, *fsp, *mntbufp;
+	struct statfs fsb;
 	struct ucred anon;
-	struct vfsconf vfc;
 	char *cp, *endcp, *dirp, *hst, *usr, *dom, savedc;
-	int len, has_host, exflags, got_nondir, dirplen, num, i, netgrp;
+	int len, has_host, exflags, got_nondir, dirplen, netgrp;
 
-	dirp = NULL;
-	dirplen = 0;
-
-	/*
-	 * First, get rid of the old list
-	 */
-	ep = exphead;
-	while (ep) {
-		ep2 = ep;
-		ep = ep->ex_next;
-		free_exp(ep2);
-	}
-	exphead = NULL;
-
-	grp = grphead;
-	while (grp) {
-		tgrp = grp;
-		grp = grp->gr_next;
-		free_grp(tgrp);
-	}
-	grphead = NULL;
-
-	/*
-	 * And delete exports that are in the kernel for all local
-	 * filesystems.
-	 * XXX: Should know how to handle all local exportable filesystems.
-	 */
-	num = getmntinfo(&mntbufp, MNT_NOWAIT);
-	for (i = 0; i < num; i++) {
-		union {
-			struct ufs_args ua;
-			struct iso_args ia;
-			struct mfs_args ma;
-			struct msdosfs_args da;
-			struct ntfs_args na;
-		} targs;
-		struct export_args export;
-
-		fsp = &mntbufp[i];
-		if (getvfsbyname(fsp->f_fstypename, &vfc) != 0) {
-			syslog(LOG_ERR, "getvfsbyname() failed for %s",
-			    fsp->f_fstypename);
-			continue;
-		}
-
-		/*
-		 * Do not delete export for network filesystem by
-		 * passing "export" arg to mount().
-		 * It only makes sense to do this for local filesystems.
-		 */
-		if (vfc.vfc_flags & VFCF_NETWORK)
-			continue;
-
-		export.ex_flags = MNT_DELEXPORT;
-		if (mountctl(fsp->f_mntonname, MOUNTCTL_SET_EXPORT, -1,
-			     &export, sizeof(export), NULL, 0) == 0) {
-		} else if (!strcmp(fsp->f_fstypename, "mfs") ||
-		    !strcmp(fsp->f_fstypename, "ufs") ||
-		    !strcmp(fsp->f_fstypename, "msdos") ||
-		    !strcmp(fsp->f_fstypename, "ntfs") ||
-		    !strcmp(fsp->f_fstypename, "cd9660")) {
-			bzero(&targs, sizeof targs);
-			targs.ua.fspec = NULL;
-			targs.ua.export.ex_flags = MNT_DELEXPORT;
-			if (mount(fsp->f_fstypename, fsp->f_mntonname,
-				  fsp->f_flags | MNT_UPDATE,
-				  (caddr_t)&targs) < 0)
-				syslog(LOG_ERR, "can't delete exports for %s",
-				    fsp->f_mntonname);
-		}
-	}
-
-	/*
-	 * Read in the exports file and build the list, calling
-	 * mount() as we go along to push the export rules into the kernel.
-	 */
-	if ((exp_file = fopen(exname, "r")) == NULL) {
-		syslog(LOG_ERR, "can't open %s", exname);
-		exit(2);
-	}
 	dirhead = NULL;
 	while (get_line()) {
 		if (debug)
@@ -1236,6 +1155,107 @@ nextline:
 		}
 	}
 	fclose(exp_file);
+}
+
+/*
+ * Get the export list from all specified files
+ */
+void
+get_exportlist(void)
+{
+	struct exportlist *ep, *ep2;
+	struct grouplist *grp, *tgrp;
+	struct statfs *fsp, *mntbufp;
+	struct vfsconf vfc;
+	char *dirp;
+	int dirplen, num, i;
+
+	dirp = NULL;
+	dirplen = 0;
+
+	/*
+	 * First, get rid of the old list
+	 */
+	ep = exphead;
+	while (ep) {
+		ep2 = ep;
+		ep = ep->ex_next;
+		free_exp(ep2);
+	}
+	exphead = NULL;
+
+	grp = grphead;
+	while (grp) {
+		tgrp = grp;
+		grp = grp->gr_next;
+		free_grp(tgrp);
+	}
+	grphead = NULL;
+
+	/*
+	 * And delete exports that are in the kernel for all local
+	 * filesystems.
+	 * XXX: Should know how to handle all local exportable filesystems.
+	 */
+	num = getmntinfo(&mntbufp, MNT_NOWAIT);
+	for (i = 0; i < num; i++) {
+		union {
+			struct ufs_args ua;
+			struct iso_args ia;
+			struct mfs_args ma;
+			struct msdosfs_args da;
+			struct ntfs_args na;
+		} targs;
+		struct export_args export;
+
+		fsp = &mntbufp[i];
+		if (getvfsbyname(fsp->f_fstypename, &vfc) != 0) {
+			syslog(LOG_ERR, "getvfsbyname() failed for %s",
+			    fsp->f_fstypename);
+			continue;
+		}
+
+		/*
+		 * Do not delete export for network filesystem by
+		 * passing "export" arg to mount().
+		 * It only makes sense to do this for local filesystems.
+		 */
+		if (vfc.vfc_flags & VFCF_NETWORK)
+			continue;
+
+		export.ex_flags = MNT_DELEXPORT;
+		if (mountctl(fsp->f_mntonname, MOUNTCTL_SET_EXPORT, -1,
+			     &export, sizeof(export), NULL, 0) == 0) {
+		} else if (!strcmp(fsp->f_fstypename, "mfs") ||
+		    !strcmp(fsp->f_fstypename, "ufs") ||
+		    !strcmp(fsp->f_fstypename, "msdos") ||
+		    !strcmp(fsp->f_fstypename, "ntfs") ||
+		    !strcmp(fsp->f_fstypename, "cd9660")) {
+			bzero(&targs, sizeof targs);
+			targs.ua.fspec = NULL;
+			targs.ua.export.ex_flags = MNT_DELEXPORT;
+			if (mount(fsp->f_fstypename, fsp->f_mntonname,
+				  fsp->f_flags | MNT_UPDATE,
+				  (caddr_t)&targs) < 0)
+				syslog(LOG_ERR, "can't delete exports for %s",
+				    fsp->f_mntonname);
+		}
+	}
+
+	/*
+	 * Read in the exports file and build the list, calling
+	 * nmount() as we go along to push the export rules into the kernel.
+	 */
+	for (i = 0; exnames[i] != NULL; i++) {
+		if (debug)
+			warnx("reading exports from %s", exnames[i]);
+		if ((exp_file = fopen(exnames[i], "r")) == NULL) {
+			syslog(LOG_ERR, "can't open %s", exnames[i]);
+			exit(2);
+		}
+		get_exportlist_one();
+		fclose(exp_file);
+	}
 }
 
 /*

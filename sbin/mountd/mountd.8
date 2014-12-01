@@ -29,7 +29,7 @@
 .\" $FreeBSD: src/sbin/mountd/mountd.8,v 1.16.2.2 2000/12/08 14:04:02 ru Exp $
 .\" $DragonFly: src/sbin/mountd/mountd.8,v 1.5 2008/05/09 20:31:04 swildner Exp $
 .\"
-.Dd November 30, 2014
+.Dd December 1, 2014
 .Dt MOUNTD 8
 .Os
 .Sh NAME
@@ -41,7 +41,7 @@ mount requests
 .Nm
 .Op Fl 2dlnr
 .Op Fl p Ar port
-.Op Ar exportsfile
+.Op Ar exportsfile ...
 .Sh DESCRIPTION
 .Nm Mountd
 is the server for
@@ -105,6 +105,7 @@ flag.
 .It Ar exportsfile
 Specify an alternate location
 for the exports file.
+There can many exports files.
 .El
 .Pp
 When
