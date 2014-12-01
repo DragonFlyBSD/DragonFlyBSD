@@ -1169,6 +1169,7 @@ get_exportlist(void)
 	struct vfsconf vfc;
 	char *dirp;
 	int dirplen, num, i;
+	int done;
 
 	dirp = NULL;
 	dirplen = 0;
@@ -1246,15 +1247,21 @@ get_exportlist(void)
 	 * Read in the exports file and build the list, calling
 	 * nmount() as we go along to push the export rules into the kernel.
 	 */
+	done = 0;
 	for (i = 0; exnames[i] != NULL; i++) {
 		if (debug)
 			warnx("reading exports from %s", exnames[i]);
 		if ((exp_file = fopen(exnames[i], "r")) == NULL) {
-			syslog(LOG_ERR, "can't open %s", exnames[i]);
-			exit(2);
+			syslog(LOG_WARNING, "can't open %s", exnames[i]);
+			continue;
 		}
 		get_exportlist_one();
 		fclose(exp_file);
+		done++;
+	}
+	if (done == 0) {
+		syslog(LOG_ERR, "can't open any exports file");
+		exit(2);
 	}
 }
 
