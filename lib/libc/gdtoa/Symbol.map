@@ -1,5 +1,6 @@
 DF402.0 {
     strtod;
+    strtodg_l;
     strtof;
 
     /* DragonFly, not gdtoa */
@@ -8,13 +9,11 @@ DF402.0 {
 
 DFprivate_1.0 {
     __hexnan_D2A;
-};
-
-/*
-DFprivate_1.0 {
     __strtodg;
     __strtord;
     __strtorx;
+    __strtord_l;
+    __strtorx_l;
 
     __Balloc_D2A;
     __Bfree_D2A;
@@ -61,4 +60,3 @@ DFprivate_1.0 {
     __hldtoa;
     __ldtoa;
 };
-*/

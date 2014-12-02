@@ -22,14 +22,6 @@ DF402.0 {
 };
 
 DFprivate_1.0 {
-    __bt_open;
-    __dbpanic;
-    __hash_open;
-    __rec_open;
-};
-
-/*
-DFprivate_1.0 {
     __add_ovflpage;
     __addel;
     __big_delete;
@@ -47,6 +39,7 @@ DFprivate_1.0 {
     __bt_free;
     __bt_get;
     __bt_new;
+    __bt_open;
     __bt_pgin;
     __bt_pgout;
     __bt_put;
@@ -59,6 +52,8 @@ DFprivate_1.0 {
     __buf_free;
     __buf_init;
     __call_hash;
+    __dbpanic;
+    __hash_open;
     __default_hash;
     __delpair;
     __expand_table;
@@ -67,6 +62,7 @@ DFprivate_1.0 {
     __find_last_page;
     __get_buf;
     __get_page;
+    __ibitmap;
     __log2;
     __ovfl_delete;
     __ovfl_get;
@@ -80,6 +76,7 @@ DFprivate_1.0 {
     __rec_fpipe;
     __rec_get;
     __rec_iput;
+    __rec_open;
     __rec_put;
     __rec_ret;
     __rec_search;
@@ -88,7 +85,4 @@ DFprivate_1.0 {
     __rec_vmap;
     __rec_vpipe;
     __reclaim_buf;
-    __split_page;
-    __ibitmap;
 };
-*/

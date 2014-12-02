@@ -106,6 +106,7 @@ DF402.0 {
     rresvport;
     rresvport_af;
     ruserok;
+    sctp_peeloff;
     send;
     sethostent;
     setnetent;
@@ -140,7 +141,6 @@ DFprivate_1.0 {
     __nss_compat_endpwent;
 };
 
-/*
 DFprivate_1.0 {
     __abandon_cached_mp_write_session;
     __cached_mp_read;
@@ -160,6 +160,7 @@ DFprivate_1.0 {
     __hostent_init;
     __netdata_init;
     __nsdefaultsrc;
+    __netdata_init;
     __netent_data_init;
     __nss_cache_handler;
     __nss_common_cache_read;
@@ -178,7 +179,6 @@ DFprivate_1.0 {
     __protodata_init;
     __protoent_data_init;
     __setprotoent_p;
-    __sys_sctp_peeloff;
     _dns_gethostbyaddr;
     _dns_gethostbyname;
     _dns_getnetbyaddr;
@@ -238,10 +238,9 @@ DFprivate_1.0 {
     _nsyytext;
     _nsyyval;
     _nsyywrap;
+    _sctp_peeloff;
     _sethostdnsent;
     _sethosthtent;
     _setnetdnsent;
     _setnethtent;
-    _sctp_peeloff;
 };
-*/

@@ -103,7 +103,6 @@ DF402.0 {
     sym_ston;
 };
 
-/*
 DFprivate_1.0 {
     ___mtctxres;
     __guard;
@@ -113,4 +112,3 @@ DFprivate_1.0 {
     __res_nopt_rdata;
     _res_opcodes;
 };
-*/

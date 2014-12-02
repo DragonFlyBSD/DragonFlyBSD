@@ -18,9 +18,7 @@ DF402.0 {
     ypresp_data;
 };
 
-/*
 DFprivate_1.0 {
     _ypbindlist;
     _yplib_timeout;
 };
-*/

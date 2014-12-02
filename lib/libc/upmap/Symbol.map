@@ -1,5 +1,6 @@
 DF402.0 {
 	__clock_gettime;
+	__getpid;
 	__upmap_map;
 	__kpmap_map;
 	__ukp_spt;

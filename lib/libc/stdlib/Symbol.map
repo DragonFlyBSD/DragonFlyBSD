@@ -104,14 +104,13 @@ DF402.0 {
     unsetenv;
 };
 
+/*
+ * ignore WEAK:  __pthread_cxa_finalize;
+ */
+
 DFprivate_1.0 {
+    __cleanup;
     __system;
     _nmalloc_thr_init;
     _system;
 };
-
-/*
-DFprivate_1.0 {
-    __cleanup;
-};
-*/

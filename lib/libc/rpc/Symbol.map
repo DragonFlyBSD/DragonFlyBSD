@@ -227,22 +227,17 @@ DF402.0 {
 };
 
 DFprivate_1.0 {
-    __des_crypt_LOCAL;
-    __key_decryptsession_pk_LOCAL;
-    __key_encryptsession_pk_LOCAL;
-    __key_gendes_LOCAL;
-    __svc_clean_idle;
-};
-
-/*
-DFprivate_1.0 {
     __authdes_ops_lock;
     __authnone_lock;
     __authsvc_lock;
     __clnt_fd_lock;
     __clntraw_lock;
+    __des_crypt_LOCAL;
     __dupreq_lock;
     __getpublickey_LOCAL;
+    __key_decryptsession_pk_LOCAL;
+    __key_encryptsession_pk_LOCAL;
+    __key_gendes_LOCAL;
     __loopnconf_lock;
     __ops_lock;
     __proglst_lock;
@@ -264,10 +259,11 @@ DFprivate_1.0 {
     __rpc_socktype2seman;
     __rpc_taddr2uaddr_af;
     __rpc_uaddr2taddr_af;
-    __rpcbaddr_cache_lock;
     __rpcb_findaddr_timed;
+    __rpcbaddr_cache_lock;
     __rpcgettp;
     __rpcsoc_lock;
+    __svc_clean_idle;
     __svc_fd_lock;
     __svc_lock;
     __svc_maxrec;
@@ -279,4 +275,3 @@ DFprivate_1.0 {
     _des_crypt_call;
     _get_next_token;
 };
-*/

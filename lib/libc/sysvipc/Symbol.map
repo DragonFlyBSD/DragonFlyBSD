@@ -55,6 +55,12 @@ DFprivate_1.0 {
     _hash_insert;
     _hash_lookup;
     _hash_remove;
+    _msgctl;
+    _msgget;
+    _msgrcv;
+    _msgsnd;
+    _semget;
+    _semop;
     _sysv_umtx_init;
     _sysv_umtx_lock;
     _sysv_umtx_unlock;

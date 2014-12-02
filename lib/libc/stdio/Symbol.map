@@ -27,6 +27,7 @@ DF402.0 {
     fgetwc;
     fgetwc_l;
     fgetwln;
+    fgetwln_l;
     fgetws;
     fgetws_l;
     fileno;
@@ -154,6 +155,14 @@ DF402.0 {
 };
 
 DFprivate_1.0 {
+    __fcloseall;
+    __fflush;
+    __fgetwc_mbs;
+    __find_arguments;
+    __find_warguments;
+    __fputwc;
+    __fread;
+    __freedtoa;
     __lowercase_hex;
     __printf_arginfo_chr;
     __printf_arginfo_errno;
@@ -179,35 +188,6 @@ DFprivate_1.0 {
     __printf_render_str;
     __printf_render_time;
     __printf_render_vis;
-    __uppercase_hex;
-    __use_xprintf;
-    __vfprintf;
-    __vfscanf;
-    __vfwprintf;
-    __vfwscanf;
-    __xvprintf;
-    _cleanup;
-    _fcookie;
-    _flockfile;
-    _flockfile_debug;
-    _flockfile_debug_stub;
-    _ftrylockfile;
-    _funlockfile;
-    register_printf_function;
-    register_printf_render;
-    register_printf_render_std;
-};
-
-/*
-DFprivate_1.0 {
-    __fcloseall;
-    __fgetwc_unlock;
-    __find_arguments;
-    __find_warguments;
-    __fflush;
-    __fputwc_unlock;
-    __fread;
-    __freedtoa;
     __sclose;
     __sdidinit;
     __sflags;
@@ -227,11 +207,28 @@ DFprivate_1.0 {
     __swrite;
     __swsetup;
     __ungetc;
+    __ungetwc;
+    __uppercase_hex;
+    __use_xprintf;
+    __vfprintf;
+    __vfscanf;
+    __vfwprintf;
+    __vfwscanf;
+    __xvprintf;
+    _cleanup;
+    _fcookie;
+    _flockfile;
+    _flockfile_debug;
+    _flockfile_debug_stub;
     _ftello;
+    _ftrylockfile;
+    _funlockfile;
     _fwalk;
     _mktemp;
     _sread;
     _sseek;
     _swrite;
+    register_printf_function;
+    register_printf_render;
+    register_printf_render_std;
 };
-*/

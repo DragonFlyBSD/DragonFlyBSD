@@ -261,6 +261,8 @@ DF402.0 {
     varsym_list;
     varsym_set;
     vfork;
+    vmm_guest_ctl;
+    vmm_guest_sync_addr;
     vmspace_create;
     vmspace_ctl;
     vmspace_destroy;
@@ -447,6 +449,10 @@ DFprivate_1.0 {
     __sys_mq_timedreceive;
     __sys_mq_timedsend;
     __sys_mq_unlink;
+    __sys_msgctl;
+    __sys_msgget;
+    __sys_msgrcv;
+    __sys_msgsnd;
     __sys_msync;
     __sys_munlock;
     __sys_munlockall;
@@ -486,7 +492,10 @@ DFprivate_1.0 {
     __sys_sched_setparam;
     __sys_sched_setscheduler;
     __sys_sched_yield;
+    __sys_sctp_peeloff;
     __sys_select;
+    __sys_semget;
+    __sys_semop;
     __sys_sendfile;
     __sys_sendmsg;
     __sys_sendto;
@@ -549,6 +558,8 @@ DFprivate_1.0 {
     __sys_varsym_list;
     __sys_varsym_set;
     __sys_vfork;
+    __sys_vmm_guest_ctl;
+    __sys_vmm_guest_sync_addr;
     __sys_vmspace_create;
     __sys_vmspace_ctl;
     __sys_vmspace_destroy;
@@ -842,6 +853,8 @@ DFprivate_1.0 {
     _varsym_list;
     _varsym_set;
     _vfork;
+    _vmm_guest_ctl;
+    _vmm_guest_sync_addr;
     _vmspace_create;
     _vmspace_ctl;
     _vmspace_destroy;

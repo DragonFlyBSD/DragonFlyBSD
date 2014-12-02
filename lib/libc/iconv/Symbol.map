@@ -1,5 +1,4 @@
 DF402.0 {
-    __iconv;
     _iconv_version;
     iconv;
     iconv_canonicalize;
@@ -9,4 +8,11 @@ DF402.0 {
     iconv_set_relocation_prefix;
     iconvctl;
     iconvlist;
+};
+
+DFprivate_1.0 {
+    __iconv;
+    __iconv_free_list;
+    __iconv_get_list;
+    _iconv_open;
 };

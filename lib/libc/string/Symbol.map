@@ -92,5 +92,6 @@ DF402.0 {
 };
 
 DFprivate_1.0 {
+    __strchrnul;
     __strtok_r;
 };
