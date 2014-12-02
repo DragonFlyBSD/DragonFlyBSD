@@ -977,12 +977,8 @@ TO_REMOVE+=/usr/share/man/man8/portmap.8.gz
 TO_REMOVE+=/usr/share/examples/etc/host.conf
 TO_REMOVE+=/usr/share/man/cat3/regsterrpc.3.gz
 TO_REMOVE+=/usr/share/man/man3/regsterrpc.3.gz
-TO_REMOVE+=/usr/share/man/cat3/svc_getreg.3.gz
-TO_REMOVE+=/usr/share/man/man3/svc_getreg.3.gz
 TO_REMOVE+=/usr/share/man/cat3/svc_getregset.3.gz
 TO_REMOVE+=/usr/share/man/man3/svc_getregset.3.gz
-TO_REMOVE+=/usr/share/man/cat3/xdr_authunix_parms.3.gz
-TO_REMOVE+=/usr/share/man/man3/xdr_authunix_parms.3.gz
 TO_REMOVE+=/usr/share/man/cat9/KTR_LOG_PTR.9.gz
 TO_REMOVE+=/usr/share/man/man9/KTR_LOG_PTR.9.gz
 TO_REMOVE+=/usr/libexec/rexecd
@@ -2726,6 +2722,8 @@ TO_REMOVE+=/usr/share/man/man9/VOP_REMOVE.9.gz
 TO_REMOVE+=/usr/share/man/man9/VOP_RMDIR.9.gz
 TO_REMOVE+=/usr/share/man/man9/VOP_RENAME.9.gz
 TO_REMOVE+=/usr/share/man/man9/VOP_STRATEGY.9.gz
+TO_REMOVE+=/usr/share/man/cat3/libm.3.gz
+TO_REMOVE+=/usr/share/man/man3/libm.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

@@ -1019,6 +1019,8 @@ MLINKS+=usbdi.9 usb_fifo_alloc_buffer.9 \
 	usbdi.9 usbd_xfer_status.9
 MLINKS+=vcount.9 count_dev.9
 MLINKS+=vhold.9 vdrop.9
+MLINKS+=vn_lock.9 vn_islocked.9 \
+	vn_lock.9 vn_unlock.9
 MLINKS+=VOP_ATTRIB.9 VOP_GETATTR.9 \
 	VOP_ATTRIB.9 VOP_SETATTR.9
 MLINKS+=VOP_GETPAGES.9 VOP_PUTPAGES.9

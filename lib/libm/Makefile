@@ -249,8 +249,12 @@ MLINKS+=j0.3 j0f.3 \
 	j0.3 y0f.3 \
 	j0.3 ynf.3
 MLINKS+=lgamma.3 gamma.3 \
+	lgamma.3 gamma_r.3 \
 	lgamma.3 gammaf.3 \
+	lgamma.3 gammaf_r.3 \
+	lgamma.3 lgamma_r.3 \
 	lgamma.3 lgammaf.3 \
+	lgamma.3 lgammaf_r.3 \
 	lgamma.3 lgammal.3 \
 	lgamma.3 tgamma.3 \
 	lgamma.3 tgammaf.3
