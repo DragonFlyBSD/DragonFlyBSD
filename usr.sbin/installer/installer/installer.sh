@@ -64,11 +64,13 @@ installer_start()
 	esac
 
 	if [ "X$pfi_frontend" = "Xauto" ]; then
-		if [ "X$DISPLAY" = "X" ]; then
-			if [ "X$LIVECD" = "X" ]; then
-				pfi_frontend="curseslog"
-			else
+		if [ "X$TTY_INST" = "X" ]; then
+		    if $(is_livecd); then
+				TTY=/dev/ttyv1
 				pfi_frontend="cursesvty"
+			else
+				TTY=$(tty)
+				pfi_frontend="curseslog"
 			fi
 		else
 			pfi_frontend="cursesx11"
@@ -170,6 +172,27 @@ installer_start()
 	esac
 }
 
+is_livecd()
+{
+    local _ttyv1=$(grep -w "^ttyv1" /etc/ttys)
+    local cdmnt=$(mount -t cd9660 | grep 'cd[0-9]' | cut -w -f1)
+    local guest=$(sysctl -n kern.vmm_guest)
+
+    #
+    # ttyv1 isn't configured for the LiveCD/DVD so use
+    # that as a clue for now. Vkernels will be forced
+    # to use 'curseslog' to avoid polluting its only
+    # terminal.
+    #
+    [ "${guest}" = "vkernel" ] && return 1;
+
+    if [ ! -z "${cdmnt}" -a -z "${_ttyv1}" ]; then
+	return 0	# Return success, it's a LiveCD
+    else
+	return 1
+    fi
+}
+
 ### MAIN ###
 
 if [ $# -gt 1 ]; then
@@ -177,25 +200,10 @@ if [ $# -gt 1 ]; then
 	exit 1
 fi
 
-# Check if we are booted from a LiveCD, DVD etc. ttyv1 isn't configured in
-# this case, so use that as a clue for now. Also, we have to use /dev/console
-# in vkernels.
 #
-_ttyv1=`grep -w "^ttyv1" /etc/ttys`
-if [ "`sysctl -n kern.vmm_guest`" = "vkernel" ]; then
-	SOURCE_DIR=/
-	TTY=/dev/console
-elif [ -z "$_ttyv1" ]; then
-	LIVECD=YES
-	SOURCE_DIR=/
-	TTY=/dev/ttyv1
-elif [ $# = 1 -a -d $1 ]; then
-	SOURCE_DIR=$1/
-	TTY=/dev/`w | awk '{ print $2 }' | tail -n1`
-else
-	SOURCE_DIR=/
-	TTY=/dev/`w | awk '{ print $2 }' | tail -n1`
-fi
+# Source directory for the installation
+#
+SOURCE_DIR=${sdir}/
 
 ps auwwwxxx > /tmp/ps.txt
 if grep -q dfuibe_installer /tmp/ps.txt; then
