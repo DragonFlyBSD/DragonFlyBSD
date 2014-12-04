@@ -431,18 +431,29 @@ sysctl_hw_snd_default_unit(SYSCTL_HANDLER_ARGS)
 {
 	struct snddev_info *d;
 	int error, unit;
+	cdev_t old_d;
 
 	unit = snd_unit;
 	error = sysctl_handle_int(oidp, &unit, 0, req);
 	if (error == 0 && req->newptr != NULL) {
+		if ((old_d = devfs_find_device_by_name("dsp%d", snd_unit)))
+			destroy_dev_alias(old_d, "dsp");
+		if ((old_d = devfs_find_device_by_name("mixer%d", snd_unit)))
+			destroy_dev_alias(old_d, "mixer");
 		d = devclass_get_softc(pcm_devclass, unit);
 		if (!PCM_REGISTERED(d) || CHN_EMPTY(d, channels.pcm))
 			return EINVAL;
+		error = make_dev_alias(d->dsp_clonedev, "dsp");
+		if (error)
+			goto done;
+		error = make_dev_alias(d->mixer_dev, "mixer");
 		snd_unit = unit;
 		snd_unit_auto = 0;
 	}
+done:
 	return (error);
 }
+
 /* XXX: do we need a way to let the user change the default unit? */
 SYSCTL_PROC(_hw_snd, OID_AUTO, default_unit,
 	    CTLTYPE_INT | CTLFLAG_RW | CTLFLAG_ANYBODY,
