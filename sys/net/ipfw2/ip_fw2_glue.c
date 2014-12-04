@@ -43,7 +43,7 @@
 
 #include <netinet/in.h>
 
-#include <net/ipfw/ip_fw2.h>
+#include <net/ipfw2/ip_fw2.h>
 
 ip_fw_chk_t *ip_fw_chk_ptr;
 ip_fw_dn_io_t *ip_fw_dn_io_ptr;
@@ -51,10 +51,10 @@ int ip_fw_loaded;
 int fw_enable = 1;
 int fw_one_pass = 1;
 
-static void	ip_fw_sockopt_dispatch(netmsg_t msg);
+static void	ip_fw2_sockopt_dispatch(netmsg_t msg);
 
 int
-ip_fw_sockopt(struct sockopt *sopt)
+ip_fw2_sockopt(struct sockopt *sopt)
 {
 	struct netmsg_base smsg;
 
@@ -75,7 +75,7 @@ ip_fw_sockopt(struct sockopt *sopt)
 }
 
 static void
-ip_fw_sockopt_dispatch(netmsg_t msg)
+ip_fw2_sockopt_dispatch(netmsg_t msg)
 {
 	struct sockopt *sopt = msg->lmsg.u.ms_resultp;
 	int error;

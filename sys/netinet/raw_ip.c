@@ -71,6 +71,9 @@
 #include <net/ipfw/ip_fw.h>
 #include <net/dummynet/ip_dummynet.h>
 
+#include <net/ipfw2/ip_fw.h>
+#include <net/dummynet2/ip_dummynet.h>
+
 #ifdef FAST_IPSEC
 #include <netproto/ipsec/ipsec.h>
 #endif /*FAST_IPSEC*/
@@ -85,6 +88,9 @@ struct	inpcbportinfo ripcbportinfo;
 /* control hooks for ipfw and dummynet */
 ip_fw_ctl_t *ip_fw_ctl_ptr;
 ip_dn_ctl_t *ip_dn_ctl_ptr;
+
+
+ip_fw2_ctl_t *ip_fw2_ctl_x_ptr;
 
 /*
  * hooks for multicast routing. They all default to NULL,
@@ -375,7 +381,12 @@ rip_ctloutput(netmsg_t msg)
 			optval = inp->inp_flags & INP_HDRINCL;
 			soopt_from_kbuf(sopt, &optval, sizeof optval);
 			break;
-
+		case IP_FW_X:
+			if (IPFW2_LOADED)
+				error = ip_fw2_sockopt(sopt);
+			else
+				error = ENOPROTOOPT;
+			break;
 		case IP_FW_ADD: /* ADD actually returns the body... */
 		case IP_FW_GET:
 			if (IPFW_LOADED)
@@ -423,7 +434,12 @@ rip_ctloutput(netmsg_t msg)
 			else
 				inp->inp_flags &= ~INP_HDRINCL;
 			break;
-
+		case IP_FW_X:
+			if (IPFW2_LOADED)
+				error = ip_fw2_ctl_x_ptr(sopt);
+			else
+				 error = ENOPROTOOPT;
+			break;
 		case IP_FW_ADD:
 		case IP_FW_DEL:
 		case IP_FW_FLUSH:

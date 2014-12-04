@@ -65,7 +65,7 @@
 
 #include <net/ipfw2/ip_fw2.h>
 
-#include "ip_fw_layer4.h"
+#include "ip_fw2_layer4.h"
 
 void
 check_tcpflag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
@@ -189,10 +189,10 @@ ipfw_layer4_modevent(module_t mod, int type, void *data)
 }
 
 static moduledata_t ipfw_layer4_mod = {
-	"ipfw_layer4",
+	"ipfw2_layer4",
 	ipfw_layer4_modevent,
 	NULL
 };
-DECLARE_MODULE(ipfw_layer4, ipfw_layer4_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
-MODULE_DEPEND(ipfw_layer4, ipfw_basic, 1, 1, 1);
-MODULE_VERSION(ipfw_layer4, 1);
+DECLARE_MODULE(ipfw2_layer4, ipfw_layer4_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
+MODULE_DEPEND(ipfw2_layer4, ipfw2_basic, 1, 1, 1);
+MODULE_VERSION(ipfw2_layer4, 1);

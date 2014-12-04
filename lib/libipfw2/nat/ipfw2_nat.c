@@ -32,9 +32,42 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IPFW_BASIC_H
-#define _IPFW_BASIC_H
+#include <stdio.h>
+#include <stdlib.h>
 
-#include <../../../sys/net/ipfw_basic/ip_fw_basic.h>
+#include <net/if.h>
+#include <net/route.h>
+#include <net/pfil.h>
+#include <netinet/in.h>
 
-#endif
+#include "../../../sys/net/ipfw2/ip_fw2.h"
+#include "../../../sbin/ipfw2/ipfw.h"
+#include "ipfw2_nat.h"
+
+
+void
+parse_nat(ipfw_insn **cmd, int *ac, char **av[])
+{
+	NEXT_ARG1;
+	(*cmd)->opcode = O_NAT_NAT;
+	(*cmd)->module = MODULE_NAT_ID;
+	(*cmd)->len = F_INSN_SIZE(ipfw_insn_nat);
+	(*cmd)->arg1 = strtoul(**av, NULL, 10);
+	((ipfw_insn_nat *)(*cmd))->nat = NULL;
+	NEXT_ARG1;
+}
+
+void
+show_nat(ipfw_insn *cmd)
+{
+	printf(" nat %u", cmd->arg1);
+}
+
+void
+load_module(register_func function, register_keyword keyword)
+{
+	keyword(MODULE_NAT_ID, O_NAT_NAT, "nat", IPFW_KEYWORD_TYPE_ACTION);
+	function(MODULE_NAT_ID, O_NAT_NAT,
+		(parser_func)parse_nat, (shower_func)show_nat);
+}
+

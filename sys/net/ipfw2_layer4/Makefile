@@ -1,4 +1,4 @@
-KMOD=   ipfw_layer4
-SRCS=   ip_fw_layer4.c
+KMOD=   ipfw2_layer4
+SRCS=   ip_fw2_layer4.c
 
 .include <bsd.kmod.mk>

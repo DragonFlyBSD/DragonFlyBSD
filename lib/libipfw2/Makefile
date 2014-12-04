@@ -1,7 +1,7 @@
-SUBDIR=	ipfw_basic \
-	ipfw_layer2 \
-	ipfw_layer4 \
-	ipfw_dummynet \
-	ipfw_nat 
+SUBDIR=	basic \
+	layer2 \
+	layer4 \
+	dummynet \
+	nat
 
 .include <bsd.subdir.mk>

@@ -67,7 +67,7 @@
 
 #include <net/ipfw2/ip_fw2.h>
 
-#include "ip_fw_basic.h"
+#include "ip_fw2_basic.h"
 
 #define TIME_LEQ(a, b)	((int)((a) - (b)) <= 0)
 

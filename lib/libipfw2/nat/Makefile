@@ -1,9 +1,9 @@
 SRCDIR=	${.CURDIR}/
 
-LIB=    _ipfw_nat
-SRCS=	ipfw_nat.c 
+LIB=    ipfw2nat
+SRCS=	ipfw2_nat.c 
 
-INCS=	ipfw_nat.h 
+INCS=	ipfw2_nat.h 
 
 
 WARNS?=	2

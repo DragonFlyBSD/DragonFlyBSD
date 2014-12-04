@@ -1,9 +1,9 @@
 SRCDIR=	${.CURDIR}/
 
-LIB=    _ipfw_dummynet
-SRCS=	ipfw_dummynet.c
+LIB=    ipfw2dummynet
+SRCS=	ipfw2_dummynet.c
 
-INCS=	ipfw_dummynet.h
+INCS=	ipfw2_dummynet.h
 
 
 WARNS?=	2

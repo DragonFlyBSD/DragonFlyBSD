@@ -46,7 +46,7 @@
 
 #include "../../../sys/net/ipfw2/ip_fw2.h"
 #include "../../../sbin/ipfw2/ipfw.h"
-#include "ipfw_layer2.h"
+#include "ipfw2_layer2.h"
 
 /*
  * Returns the number of bits set (from left) in a contiguous bitmask,

@@ -2,7 +2,7 @@
 # $DragonFly: src/sys/net/dummynet/Makefile,v 1.7 2008/09/16 12:30:57 sephe Exp $
 
 KMOD=   dummynet2
-SRCS=   ip_dummynet.c
+SRCS=   ip_dummynet2.c
 SRCS+=	opt_ipdn.h
 
 .ifndef BUILDING_WITH_KERNEL

@@ -32,9 +32,9 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IPFW_DUMMYNET_H
-#define _IPFW_DUMMYNET_H
+#ifndef _IPFW_LAYER2_H
+#define _IPFW_LAYER2_H
 
-#include "../../../../sys/net/dummynet2/ip_dummynet.h"
+#include "../../../../sys/net/ipfw2_layer2/ip_fw2_layer2.h"
 
 #endif

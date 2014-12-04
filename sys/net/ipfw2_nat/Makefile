@@ -1,4 +1,4 @@
-KMOD=   ipfw_nat 
-SRCS=   ip_fw_nat.c
+KMOD=   ipfw2_nat 
+SRCS=   ip_fw2_nat.c
 
 .include <bsd.kmod.mk>

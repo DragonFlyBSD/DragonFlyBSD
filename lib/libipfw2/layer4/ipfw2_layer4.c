@@ -48,7 +48,7 @@
 
 #include "../../../sys/net/ipfw2/ip_fw2.h"
 #include "../../../sbin/ipfw2/ipfw.h"
-#include "ipfw_layer4.h"
+#include "ipfw2_layer4.h"
 
 
 void

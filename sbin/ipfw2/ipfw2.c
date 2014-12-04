@@ -55,13 +55,14 @@
 #include <net/if_dl.h>
 #include <net/route.h>
 #include <net/ethernet.h>
-#include <net/ipfw2/ip_fw.h>
-#include <net/dummynet2/ip_dummynet.h>
 
-#include "ipfw.h"
+
+#include "../../sys/net/ipfw2/ip_fw2.h"
+#include "../../sys/net/dummynet2/ip_dummynet2.h"
 #include "../../sys/net/libalias/alias.h"
-#include "../../sys/net/ipfw_basic/ip_fw_basic.h"
-#include "../../sys/net/ipfw_nat/ip_fw_nat.h"
+#include "../../sys/net/ipfw2_basic/ip_fw2_basic.h"
+#include "../../sys/net/ipfw2_nat/ip_fw2_nat.h"
+#include "ipfw.h"
 
 
 #define KEYWORD_SIZE	256

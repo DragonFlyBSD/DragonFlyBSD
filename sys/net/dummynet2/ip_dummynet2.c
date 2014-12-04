@@ -65,7 +65,7 @@
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
 
-#include <net/dummynet2/ip_dummynet.h>
+#include <net/dummynet2/ip_dummynet2.h>
 #include <net/ipfw2/ip_fw2.h>
 
 void check_pipe(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
@@ -2054,10 +2054,10 @@ dummynet_modevent(module_t mod, int type, void *data)
 }
 
 static moduledata_t dummynet_mod = {
-	"dummynet",
+	"dummynet2",
 	dummynet_modevent,
 	NULL
 };
-DECLARE_MODULE(dummynet, dummynet_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
-MODULE_DEPEND(ipfw_nat, ipfw_basic, 1, 1, 1);
-MODULE_VERSION(dummynet, 1);
+DECLARE_MODULE(dummynet2, dummynet_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
+MODULE_DEPEND(dummynet2, ipfw2_basic, 1, 1, 1);
+MODULE_VERSION(dummynet2, 1);

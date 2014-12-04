@@ -67,10 +67,11 @@
 #include <net/route.h>
 #include <net/pfil.h>
 #include <net/netmsg2.h>
-#include <net/dummynet2/ip_dummynet.h>
+
 #include <net/ipfw2/ip_fw2.h>
-#include <net/ipfw_basic/ip_fw_basic.h>
-#include <net/ipfw_nat/ip_fw_nat.h>
+#include <net/ipfw2_basic/ip_fw2_basic.h>
+#include <net/ipfw2_nat/ip_fw2_nat.h>
+#include <net/dummynet2/ip_dummynet2.h>
 
 MALLOC_DEFINE(M_IPFW2, "IPFW2", "ip_fw2 default module");
 

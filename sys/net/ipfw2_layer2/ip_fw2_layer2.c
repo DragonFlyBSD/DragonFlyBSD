@@ -51,7 +51,7 @@
 
 #include <net/ipfw2/ip_fw2.h>
 
-#include "ip_fw_layer2.h"
+#include "ip_fw2_layer2.h"
 
 
 void check_layer2(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
@@ -108,10 +108,10 @@ ipfw_layer2_modevent(module_t mod, int type, void *data)
 }
 
 static moduledata_t ipfw_layer2_mod = {
-	"ipfw_layer2",
+	"ipfw2_layer2",
 	ipfw_layer2_modevent,
 	NULL
 };
-DECLARE_MODULE(ipfw_layer2, ipfw_layer2_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
-MODULE_DEPEND(ipfw_layer2, ipfw_basic, 1, 1, 1);
-MODULE_VERSION(ipfw_layer2, 1);
+DECLARE_MODULE(ipfw2_layer2, ipfw_layer2_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
+MODULE_DEPEND(ipfw2_layer2, ipfw2_basic, 1, 1, 1);
+MODULE_VERSION(ipfw2_layer2, 1);

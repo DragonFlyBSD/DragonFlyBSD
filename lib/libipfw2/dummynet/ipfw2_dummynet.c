@@ -42,32 +42,51 @@
 
 #include "../../../sys/net/ipfw2/ip_fw2.h"
 #include "../../../sbin/ipfw2/ipfw.h"
-#include "ipfw_nat.h"
-
+#include "ipfw2_dummynet.h"
 
 void
-parse_nat(ipfw_insn **cmd, int *ac, char **av[])
+parse_pipe(ipfw_insn **cmd, int *ac, char **av[])
 {
 	NEXT_ARG1;
-	(*cmd)->opcode = O_NAT_NAT;
-	(*cmd)->module = MODULE_NAT_ID;
-	(*cmd)->len = F_INSN_SIZE(ipfw_insn_nat);
+	(*cmd)->opcode = O_DUMMYNET_PIPE;
+	(*cmd)->module = MODULE_DUMMYNET_ID;
+	(*cmd)->len = ((*cmd)->len&(F_NOT|F_OR))|LEN_OF_IPFWINSN;
 	(*cmd)->arg1 = strtoul(**av, NULL, 10);
-	((ipfw_insn_nat *)(*cmd))->nat = NULL;
 	NEXT_ARG1;
 }
 
 void
-show_nat(ipfw_insn *cmd)
+parse_queue(ipfw_insn **cmd, int *ac, char **av[])
 {
-	printf(" nat %u", cmd->arg1);
+	NEXT_ARG1;
+	(*cmd)->opcode = O_DUMMYNET_QUEUE;
+	(*cmd)->module = MODULE_DUMMYNET_ID;
+	(*cmd)->len = ((*cmd)->len&(F_NOT|F_OR))|LEN_OF_IPFWINSN;
+	(*cmd)->arg1 = strtoul(**av, NULL, 10);
+	NEXT_ARG1;
+}
+
+void
+show_pipe(ipfw_insn *cmd)
+{
+	printf(" pipe %u", cmd->arg1);
+}
+
+void
+show_queue(ipfw_insn *cmd)
+{
+	printf(" queue %u", cmd->arg1);
 }
 
 void
 load_module(register_func function, register_keyword keyword)
 {
-	keyword(MODULE_NAT_ID, O_NAT_NAT, "nat", IPFW_KEYWORD_TYPE_ACTION);
-	function(MODULE_NAT_ID, O_NAT_NAT,
-		(parser_func)parse_nat, (shower_func)show_nat);
+	keyword(MODULE_DUMMYNET_ID,O_DUMMYNET_PIPE,"pipe", IPFW_KEYWORD_TYPE_ACTION);
+	function(MODULE_DUMMYNET_ID,O_DUMMYNET_PIPE,
+			(parser_func)parse_pipe, (shower_func)show_pipe);
+
+	keyword(MODULE_DUMMYNET_ID,O_DUMMYNET_QUEUE,"queue", IPFW_KEYWORD_TYPE_ACTION);
+	function(MODULE_DUMMYNET_ID,O_DUMMYNET_QUEUE,
+			(parser_func)parse_queue, (shower_func)show_queue);
 }
 

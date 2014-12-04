@@ -32,9 +32,9 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IPFW_LAYER2_H
-#define _IPFW_LAYER2_H
+#ifndef _IPFW_BASIC_H
+#define _IPFW_BASIC_H
 
-#include "../../../../sys/net/ipfw_layer4/ip_fw_layer4.h"
+#include <../../../sys/net/ipfw2_basic/ip_fw2_basic.h>
 
 #endif

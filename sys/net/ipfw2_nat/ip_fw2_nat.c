@@ -75,7 +75,7 @@
 
 #include <net/ipfw2/ip_fw2.h>
 
-#include "ip_fw_nat.h"
+#include "ip_fw2_nat.h"
 
 
 static struct lock nat_lock;
@@ -570,12 +570,12 @@ static int ipfw_nat_modevent(module_t mod, int type, void *data)
 }
 
 static moduledata_t ipfw_nat_mod = {
-	"ipfw_nat",
+	"ipfw2_nat",
 	ipfw_nat_modevent,
 	NULL
 };
 
-DECLARE_MODULE(ipfw_nat, ipfw_nat_mod, SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_ANY);
-MODULE_DEPEND(ipfw_nat, libalias, 1, 1, 1);
-MODULE_DEPEND(ipfw_nat, ipfw_basic, 1, 1, 1);
-MODULE_VERSION(ipfw_nat, 1);
+DECLARE_MODULE(ipfw2_nat, ipfw_nat_mod, SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_ANY);
+MODULE_DEPEND(ipfw2_nat, libalias, 1, 1, 1);
+MODULE_DEPEND(ipfw2_nat, ipfw2_basic, 1, 1, 1);
+MODULE_VERSION(ipfw2_nat, 1);

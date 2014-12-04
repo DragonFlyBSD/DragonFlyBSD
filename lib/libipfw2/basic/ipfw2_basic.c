@@ -57,7 +57,7 @@
 
 #include "../../../sys/net/ipfw2/ip_fw2.h"
 #include "../../../sbin/ipfw2/ipfw.h"
-#include "ipfw_basic.h"
+#include "ipfw2_basic.h"
 
 
 #define	IP_MASK_ALL	0xffffffff

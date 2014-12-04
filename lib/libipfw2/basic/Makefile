@@ -1,9 +1,9 @@
 SRCDIR=	${.CURDIR}/
 
-LIB=    _ipfw_basic
-SRCS=	ipfw_basic.c 
+LIB=    ipfw2basic
+SRCS=	ipfw2_basic.c
 
-INCS=	ipfw_basic.h 
+INCS=	ipfw2_basic.h
 
 
 WARNS?=	2

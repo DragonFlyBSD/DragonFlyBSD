@@ -348,6 +348,7 @@ struct sockaddr_in {
 #define	IP_IPSEC_POLICY		21   /* int; set/get security policy */
 #define	IP_FAITH		22   /* bool; accept FAITH'ed connections */
 
+#define IP_FW_X			49   /* ipfw2 firewall */
 #define	IP_FW_ADD		50   /* add a firewall rule to chain */
 #define	IP_FW_DEL		51   /* delete a firewall rule from chain */
 #define	IP_FW_FLUSH		52   /* flush firewall rule chain */

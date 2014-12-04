@@ -35,6 +35,6 @@
 #ifndef _IP_FW_H
 #define _IP_FW_H
 
-#include <net/ipfw/ip_fw2.h>
+#include <net/ipfw2/ip_fw2.h>
 
 #endif /* _IP_FW_H */

@@ -1,9 +1,9 @@
 SRCDIR=	${.CURDIR}/
 
-LIB=    _ipfw_layer2
-SRCS=	ipfw_layer2.c 
+LIB=    ipfw2layer2
+SRCS=	ipfw2_layer2.c 
 
-INCS=	ipfw_layer2.h 
+INCS=	ipfw2_layer2.h 
 
 
 WARNS?=	2

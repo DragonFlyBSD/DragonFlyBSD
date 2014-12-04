@@ -306,13 +306,13 @@ struct sockopt;
 struct dn_flow_set;
 
 typedef int	ip_fw_chk_t(struct ip_fw_args *);
-typedef int	ip_fw_ctl_t(struct sockopt *);
+typedef int	ip_fw2_ctl_t(struct sockopt *);
 typedef int	ipfw_nat_cfg_t(struct sockopt *);
 typedef void ip_fw_dn_io_t(struct mbuf *, int, int, struct ip_fw_args *);
 
 
 extern ip_fw_chk_t	*ip_fw_chk_ptr;
-extern ip_fw_ctl_t	*ip_fw_ctl_x_ptr;
+extern ip_fw2_ctl_t	*ip_fw_ctl_x_ptr;
 extern ip_fw_dn_io_t	*ip_fw_dn_io_ptr;
 
 extern int fw_one_pass;
