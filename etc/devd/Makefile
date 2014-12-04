@@ -2,7 +2,7 @@
 
 FILES=	uath.conf usb.conf
 
-.if ${MACHINE} == "amd64" || ${MACHINE} == "i386"
+.if ${MACHINE_ARCH} == "x86_64" || ${MACHINE_ARCH} == "i386"
 FILES+=	asus.conf
 .endif
 
