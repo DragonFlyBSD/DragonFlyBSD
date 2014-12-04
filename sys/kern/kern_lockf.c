@@ -63,7 +63,7 @@ int lf_global_counter = 0;
 int lf_print_ranges = 0;
 
 static void _lf_print_lock(const struct lockf *);
-static void _lf_printf(const char *, ...);
+static void _lf_printf(const char *, ...) __printflike(1, 2);
 
 #define lf_print_lock(lock) if (lf_print_ranges) _lf_print_lock(lock)
 #define lf_printf(ctl, args...)	if (lf_print_ranges) _lf_printf(ctl, args)
@@ -839,15 +839,15 @@ lf_create_range(struct lockf_range *range, struct proc *owner, int type,
 	range->lf_end = end;
 	range->lf_owner = owner;
 
-	lf_printf("lf_create_range: %lld..%lld\n",
-			range->lf_start, range->lf_end);
+	lf_printf("lf_create_range: %ju..%ju\n",
+	    (uintmax_t)range->lf_start, (uintmax_t)range->lf_end);
 }
 
 static void
 lf_destroy_range(struct lockf_range *range)
 {
-	lf_printf("lf_destroy_range: %lld..%lld\n",
-		  range->lf_start, range->lf_end);
+	lf_printf("lf_destroy_range: %ju..%ju\n",
+	    (uintmax_t)range->lf_start, (uintmax_t)range->lf_end);
 	kfree(range, M_LOCKF);
 #ifdef INVARIANTS
 	atomic_add_int(&lf_global_counter, -1);
