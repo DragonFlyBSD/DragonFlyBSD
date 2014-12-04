@@ -3355,8 +3355,6 @@ restart:
 			_cache_put(par);
 			return (EXDEV);
 		}
-		kprintf("[diagnostic] cache_resolve: had to recurse on %*.*s\n",
-			par->nc_nlen, par->nc_nlen, par->nc_name);
 		/*
 		 * The parent is not set in stone, ref and lock it to prevent
 		 * it from disappearing.  Also note that due to renames it
