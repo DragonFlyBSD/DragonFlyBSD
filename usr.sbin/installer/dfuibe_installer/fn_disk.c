@@ -597,6 +597,13 @@ format_slice(struct i_fn_args *a)
 	 */
 
 	/*
+	 * Make sure the survey did get disk info correctly or fail
+	 */
+	if ((storage_get_selected_disk(a->s) == NULL) ||
+	    (storage_get_selected_slice(a->s) == NULL))
+		return 0;
+
+	/*
 	 * Set the slice's sysid to 165.
 	 */
 	disk_get_geometry(storage_get_selected_disk(a->s), &cyl, &hd, &sec);
