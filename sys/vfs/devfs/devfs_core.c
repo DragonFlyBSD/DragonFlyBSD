@@ -439,7 +439,6 @@ devfs_freep(struct devfs_node *node)
 		v_release_rdev(vp);
 		vp->v_data = NULL;
 		node->v_node = NULL;
-		cache_inval_vp(vp, CINV_DESTROY);
 		vput(vp);
 	}
 
@@ -481,6 +480,7 @@ devfs_freep(struct devfs_node *node)
 int
 devfs_unlinkp(struct devfs_node *node)
 {
+	struct vnode *vp;
 	struct devfs_node *parent;
 	KKASSERT(node);
 
@@ -502,6 +502,25 @@ devfs_unlinkp(struct devfs_node *node)
 	}
 
 	node->parent = NULL;
+
+	/*
+	 * Namecache invalidation.
+	 * devfs alias nodes are special: their v_node entry is always null
+	 * and they use the one from their link target.
+	 * We thus use the target node's vp to invalidate both alias and target
+	 * entries in the namecache.
+	 * Doing so for the target is not necessary but it would be more
+	 * expensive to resolve only the namecache entry of the alias node
+	 * from the information available in this function.
+	 */
+	if (node->node_type == Nlink)
+		vp = node->link_target->v_node;
+	else
+		vp = node->v_node;
+
+	if (vp != NULL)
+		cache_inval_vp(vp, CINV_DESTROY);
+
 	return 0;
 }
 
