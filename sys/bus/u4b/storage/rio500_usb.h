@@ -20,7 +20,7 @@
 
     ---------------------------------------------------------------------- */
 
-/*  $FreeBSD$ */
+/*  $FreeBSD: head/sys/dev/usb/storage/rio500_usb.h 196219 2009-08-14 20:03:53Z jhb $ */
 
 #include <sys/ioccom.h>
 #ifndef USB_VENDOR_DIAMOND

@@ -1,3 +1,3 @@
-SUBDIR=	umass usfs
+SUBDIR=	umass urio usfs
 
 .include <bsd.subdir.mk> 

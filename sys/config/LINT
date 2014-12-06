@@ -2121,6 +2121,8 @@ device		umodem
 device		ums
 # eGalax USB touch screen
 device		uep
+# Diamond Rio 500 MP3 player
+device		urio
 # USB com devices
 device		"u3g"
 device		uark

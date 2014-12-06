@@ -2261,6 +2261,7 @@ bus/u4b/controller/usb_controller.c     optional usb
 # USB storage drivers
 #
 bus/u4b/storage/umass.c			optional umass usb
+bus/u4b/storage/urio.c			optional urio usb
 bus/u4b/storage/ustorage_fs.c		optional usfs usb
 #
 # USB network drivers

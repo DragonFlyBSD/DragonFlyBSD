@@ -1,5 +1,5 @@
-.\" Copyright (c) 2000 Dirk-Willem van Gulik
-.\" 	<dirkx@webweaving.org>. All rights reserved.
+.\" Copyright (c) 2000 Dirk-Willem van Gulik <dirkx@webweaving.org>
+.\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -9,39 +9,45 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by Bill Paul.
-.\" 4. Neither the name of the author nor the names of any co-contributors
-.\"    may be used to endorse or promote products derived from this software
-.\"   without specific prior written permission.
 .\"
-.\" THIS SOFTWARE IS PROVIDED BY NICK HIBMA AND CONTRIBUTORS ``AS IS'' AND
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
 .\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 .\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-.\" ARE DISCLAIMED.  IN NO EVENT SHALL NICK HIBMA OR THE VOICES IN HIS HEAD
-.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-.\" THE POSSIBILITY OF SUCH DAMAGE.
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
 .\"
-.\"	$FreeBSD: src/share/man/man4/urio.4,v 1.5.2.3 2001/08/17 13:08:39 ru Exp $
+.\" $FreeBSD: head/share/man/man4/urio.4 267938 2014-06-26 21:46:14Z bapt $
 .\"
-.Dd August 6, 2009
+.Dd December 6, 2014
 .Dt URIO 4
 .Os
 .Sh NAME
 .Nm urio
-.Nd USB driver for the Rio500 MP3 player
+.Nd "USB driver for the Rio MP3 players"
 .Sh SYNOPSIS
-.Cd "device urio0"
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device urio"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+urio_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for the Rio500 MP3 player from Diamond MultiMedia
+driver provides support for Rio MP3 players from Diamond MultiMedia
 which attaches to the USB port.
 The
 .Nm
@@ -55,7 +61,20 @@ controllers.
 .Pp
 Subsequently, the
 .Pa /dev/urio0
-device can be used by the Rio500 userland applications.
+device can be used by the Rio userland applications.
+.Sh HARDWARE
+The following devices are supported by the
+.Nm
+driver:
+.Pp
+.Bl -bullet -compact
+.It
+Diamond MultiMedia Rio 500
+.It
+Diamond MultiMedia Rio 600
+.It
+Diamond MultiMedia Rio 800
+.El
 .Sh FILES
 .Bl -tag -width /dev/ums0 -compact
 .It Pa /dev/urio0
@@ -69,12 +88,12 @@ driver to the kernel:
 .Pp
 To download a song over the
 .Tn USB
-connection into the Rio500 using the
+connection into the Rio using the
 .Xr rio_add_song 1
 utility (see the
 .Sx SEE ALSO
 section):
-.Dl rio_add_song /usr/local/MP3/TraceyChapman/02-Fast-Car.mp3
+.Dl rio_add_song /usr/local/MP3/TracyChapman/02-Fast-Car.mp3
 .Sh SEE ALSO
 .Xr ohci 4 ,
 .Xr uhci 4 ,
@@ -97,6 +116,7 @@ and that the device used is
 CFLAGS="-I/usr/include/dev/usb" ./configure \\
     --with-devicepath='/dev' --with-deviceentry='urio0'
 .Ed
+.\".Sh HISTORY
 .Sh AUTHORS
 .An -nosplit
 The

@@ -26,11 +26,9 @@
  * This code is based on ugen.c and ulpt.c developed by Lennart Augustsson.
  * This code includes software developed by the NetBSD Foundation, Inc. and
  * its contributors.
+ *
+ * $FreeBSD: head/sys/dev/usb/storage/urio.c 246128 2013-01-30 18:01:20Z sbz $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 
 /*
  * 2000/3/24  added NetBSD/OpenBSD support (from Alex Nemirovsky)
@@ -45,7 +43,6 @@ __FBSDID("$FreeBSD$");
  */
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -54,10 +51,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
@@ -65,17 +60,17 @@ __FBSDID("$FreeBSD$");
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
 #include "usbdevs.h"
 
-#include <dev/usb/usb_ioctl.h>
-#include <dev/usb/usb_generic.h>
+#include <bus/u4b/usb_ioctl.h>
+#include <bus/u4b/usb_generic.h>
 
 #define	USB_DEBUG_VAR urio_debug
-#include <dev/usb/usb_debug.h>
+#include <bus/u4b/usb_debug.h>
 
-#include <dev/usb/storage/rio500_usb.h>
+#include <bus/u4b/storage/rio500_usb.h>
 
 #ifdef USB_DEBUG
 static int urio_debug = 0;
@@ -96,7 +91,7 @@ SYSCTL_INT(_hw_usb_urio, OID_AUTO, debug, CTLFLAG_RW,
 
 struct urio_softc {
 	struct usb_fifo_sc sc_fifo;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	struct usb_device *sc_udev;
 	struct usb_xfer *sc_xfer[URIO_T_MAX];
@@ -185,6 +180,7 @@ static device_method_t urio_methods[] = {
 	DEVMETHOD(device_probe, urio_probe),
 	DEVMETHOD(device_attach, urio_attach),
 	DEVMETHOD(device_detach, urio_detach),
+
 	DEVMETHOD_END
 };
 
@@ -194,7 +190,7 @@ static driver_t urio_driver = {
 	.size = sizeof(struct urio_softc),
 };
 
-DRIVER_MODULE(urio, uhub, urio_driver, urio_devclass, NULL, NULL);
+DRIVER_MODULE(urio, uhub, urio_driver, urio_devclass, NULL, 0);
 MODULE_DEPEND(urio, usb, 1, 1, 1);
 MODULE_VERSION(urio, 1);
 
@@ -230,21 +226,21 @@ urio_attach(device_t dev)
 
 	sc->sc_udev = uaa->device;
 
-	mtx_init(&sc->sc_mtx, "urio lock", NULL, MTX_DEF | MTX_RECURSE);
+	lockinit(&sc->sc_lock, "urio lock", 0, LK_CANRECURSE);
 
-	snprintf(sc->sc_name, sizeof(sc->sc_name),
+	ksnprintf(sc->sc_name, sizeof(sc->sc_name),
 	    "%s", device_get_nameunit(dev));
 
 	error = usbd_transfer_setup(uaa->device,
 	    &uaa->info.bIfaceIndex, sc->sc_xfer,
-	    urio_config, URIO_T_MAX, sc, &sc->sc_mtx);
+	    urio_config, URIO_T_MAX, sc, &sc->sc_lock);
 
 	if (error) {
 		DPRINTF("error=%s\n", usbd_errstr(error));
 		goto detach;
 	}
 
-	error = usb_fifo_attach(uaa->device, sc, &sc->sc_mtx,
+	error = usb_fifo_attach(uaa->device, sc, &sc->sc_lock,
 	    &urio_fifo_methods, &sc->sc_fifo,
 	    device_get_unit(dev), -1, uaa->info.bIfaceIndex,
 	    UID_ROOT, GID_OPERATOR, 0644);
@@ -395,9 +391,9 @@ urio_open(struct usb_fifo *fifo, int fflags)
 
 	if (fflags & FREAD) {
 		/* clear stall first */
-		mtx_lock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 		sc->sc_flags |= URIO_FLAG_READ_STALL;
-		mtx_unlock(&sc->sc_mtx);
+		lockmgr(&sc->sc_lock, LK_RELEASE);
 
 		if (usb_fifo_alloc_buffer(fifo,
 		    usbd_xfer_max_len(sc->sc_xfer[URIO_T_RD]),
@@ -489,7 +485,7 @@ urio_detach(device_t dev)
 
 	usbd_transfer_unsetup(sc->sc_xfer, URIO_T_MAX);
 
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }
