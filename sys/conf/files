@@ -2248,92 +2248,92 @@ bus/u4b/usb_if.m			optional usb
 #
 # USB controller drivers
 #
-bus/u4b/controller/ehci.c               optional ehci usb
-bus/u4b/controller/ehci_pci.c           optional ehci pci usb
-bus/u4b/controller/ohci.c               optional ohci usb
-bus/u4b/controller/ohci_pci.c           optional ohci pci usb
-bus/u4b/controller/uhci.c               optional uhci usb
-bus/u4b/controller/uhci_pci.c           optional uhci pci usb
-bus/u4b/controller/xhci.c               optional xhci usb
-bus/u4b/controller/xhci_pci.c           optional xhci pci usb
+bus/u4b/controller/ehci.c               optional ehci
+bus/u4b/controller/ehci_pci.c           optional ehci pci
+bus/u4b/controller/ohci.c               optional ohci
+bus/u4b/controller/ohci_pci.c           optional ohci pci
+bus/u4b/controller/uhci.c               optional uhci
+bus/u4b/controller/uhci_pci.c           optional uhci pci
+bus/u4b/controller/xhci.c               optional xhci
+bus/u4b/controller/xhci_pci.c           optional xhci pci
 bus/u4b/controller/usb_controller.c     optional usb
 #
 # USB storage drivers
 #
-bus/u4b/storage/umass.c			optional umass usb
-bus/u4b/storage/urio.c			optional urio usb
-bus/u4b/storage/ustorage_fs.c		optional usfs usb
+bus/u4b/storage/umass.c			optional umass
+bus/u4b/storage/urio.c			optional urio
+bus/u4b/storage/ustorage_fs.c		optional usfs
 #
 # USB network drivers
 #
-bus/u4b/net/usb_ethernet.c		optional uether usb
-bus/u4b/net/if_aue.c			optional aue uether usb
-bus/u4b/net/if_axe.c			optional axe uether usb
-bus/u4b/net/if_axge.c			optional axge uether usb
-bus/u4b/net/if_cue.c			optional cue uether usb
-bus/u4b/net/if_ipheth.c			optional ipheth uether usb
-bus/u4b/net/if_kue.c			optional kue uether usb
-bus/u4b/net/if_mos.c			optional mos uether usb
-bus/u4b/net/if_udav.c			optional udav uether usb
-bus/u4b/net/if_urndis.c			optional urndis uether usb
+bus/u4b/net/usb_ethernet.c		optional uether
+bus/u4b/net/if_aue.c			optional aue uether
+bus/u4b/net/if_axe.c			optional axe uether
+bus/u4b/net/if_axge.c			optional axge uether
+bus/u4b/net/if_cue.c			optional cue uether
+bus/u4b/net/if_ipheth.c			optional ipheth uether
+bus/u4b/net/if_kue.c			optional kue uether
+bus/u4b/net/if_mos.c			optional mos uether
+bus/u4b/net/if_udav.c			optional udav uether
+bus/u4b/net/if_urndis.c			optional urndis uether
 #
 # USB WLAN drivers
 #
-bus/u4b/wlan/if_rum.c			optional rum usb
-bus/u4b/wlan/if_run.c			optional run usb
-runfw.c					optional runfw usb		\
+bus/u4b/wlan/if_rum.c			optional rum
+bus/u4b/wlan/if_run.c			optional run
+runfw.c					optional runfw			\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk run.fw:runfw -mrunfw -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"runfw.c"
-runfw.fwo				optional runfw usb		\
+runfw.fwo				optional runfw			\
 	dependency	"run.fw"					\
 	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"runfw.fwo"
-run.fw					optional runfw usb		\
+run.fw					optional runfw			\
 	dependency	"$S/contrib/dev/run/rt2870.fw.uu"		\
 	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"run.fw"
-bus/u4b/wlan/if_urtwn.c			optional urtwn usb
-urtwn-rtl8188eufw.c			optional urtwnfw usb		\
+bus/u4b/wlan/if_urtwn.c			optional urtwn
+urtwn-rtl8188eufw.c			optional urtwnfw		\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk urtwn-rtl8188eufw.fw:urtwn-rtl8188eufw:111 -murtwn-rtl8188eufw -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"urtwn-rtl8188eufw.c"
-urtwn-rtl8188eufw.fwo			optional urtwnfw usb		\
+urtwn-rtl8188eufw.fwo			optional urtwnfw		\
 	dependency	"urtwn-rtl8188eufw.fw"				\
 	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"urtwn-rtl8188eufw.fwo"
-urtwn-rtl8188eufw.fw			optional urtwnfw usb		\
+urtwn-rtl8188eufw.fw			optional urtwnfw		\
 	dependency	"$S/contrib/dev/urtwn/urtwn-rtl8188eufw.fw.uu"	\
 	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"urtwn-rtl8188eufw.fw"
-urtwn-rtl8192cfwT.c			optional urtwnfw usb		\
+urtwn-rtl8192cfwT.c			optional urtwnfw		\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk urtwn-rtl8192cfwT.fw:urtwn-rtl8192cfwT:111 -murtwn-rtl8192cfwT -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"urtwn-rtl8192cfwT.c"
-urtwn-rtl8192cfwT.fwo			optional urtwnfw usb		\
+urtwn-rtl8192cfwT.fwo			optional urtwnfw		\
 	dependency	"urtwn-rtl8192cfwT.fw"				\
 	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"urtwn-rtl8192cfwT.fwo"
-urtwn-rtl8192cfwT.fw			optional urtwnfw usb		\
+urtwn-rtl8192cfwT.fw			optional urtwnfw		\
 	dependency	"$S/contrib/dev/urtwn/urtwn-rtl8192cfwT.fw.uu"	\
 	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"urtwn-rtl8192cfwT.fw"
-urtwn-rtl8192cfwU.c			optional urtwnfw usb		\
+urtwn-rtl8192cfwU.c			optional urtwnfw		\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk urtwn-rtl8192cfwU.fw:urtwn-rtl8192cfwU:111 -murtwn-rtl8192cfwU -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"urtwn-rtl8192cfwU.c"
-urtwn-rtl8192cfwU.fwo			optional urtwnfw usb		\
+urtwn-rtl8192cfwU.fwo			optional urtwnfw		\
 	dependency	"urtwn-rtl8192cfwU.fw"				\
 	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"urtwn-rtl8192cfwU.fwo"
-urtwn-rtl8192cfwU.fw			optional urtwnfw usb		\
+urtwn-rtl8192cfwU.fw			optional urtwnfw		\
 	dependency	"$S/contrib/dev/urtwn/urtwn-rtl8192cfwU.fw.uu"	\
 	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
@@ -2341,37 +2341,37 @@ urtwn-rtl8192cfwU.fw			optional urtwnfw usb		\
 #
 # USB serial and parallel port drivers
 #
-bus/u4b/serial/usb_serial.c 		optional ucom usb
-bus/u4b/serial/u3g.c			optional u3g ucom usb
-bus/u4b/serial/uark.c			optional uark ucom usb
-bus/u4b/serial/ubsa.c			optional ubsa ucom usb
-bus/u4b/serial/ubser.c			optional ubser ucom usb
-bus/u4b/serial/uchcom.c			optional uchcom ucom usb
-bus/u4b/serial/ucycom.c			optional ucycom ucom usb
-bus/u4b/serial/ufoma.c			optional ufoma ucom usb
-bus/u4b/serial/uftdi.c			optional uftdi ucom usb
-bus/u4b/serial/ugensa.c			optional ugensa ucom usb
-bus/u4b/serial/uipaq.c			optional uipaq ucom usb
-bus/u4b/serial/ulpt.c			optional ulpt ucom usb
-bus/u4b/serial/umcs.c			optional umcs ucom usb
-bus/u4b/serial/umct.c			optional umct ucom usb
-bus/u4b/serial/umodem.c			optional umodem ucom usb
-bus/u4b/serial/umoscom.c		optional umoscom ucom usb
-bus/u4b/serial/uplcom.c			optional uplcom ucom usb
-bus/u4b/serial/uslcom.c			optional uslcom ucom usb
-bus/u4b/serial/uvisor.c			optional uvisor ucom usb
-bus/u4b/serial/uvscom.c			optional uvscom ucom usb
+bus/u4b/serial/usb_serial.c 		optional ucom
+bus/u4b/serial/u3g.c			optional u3g ucom
+bus/u4b/serial/uark.c			optional uark ucom
+bus/u4b/serial/ubsa.c			optional ubsa ucom
+bus/u4b/serial/ubser.c			optional ubser ucom
+bus/u4b/serial/uchcom.c			optional uchcom ucom
+bus/u4b/serial/ucycom.c			optional ucycom ucom
+bus/u4b/serial/ufoma.c			optional ufoma ucom
+bus/u4b/serial/uftdi.c			optional uftdi ucom
+bus/u4b/serial/ugensa.c			optional ugensa ucom
+bus/u4b/serial/uipaq.c			optional uipaq ucom
+bus/u4b/serial/ulpt.c			optional ulpt ucom
+bus/u4b/serial/umcs.c			optional umcs ucom
+bus/u4b/serial/umct.c			optional umct ucom
+bus/u4b/serial/umodem.c			optional umodem ucom
+bus/u4b/serial/umoscom.c		optional umoscom ucom
+bus/u4b/serial/uplcom.c			optional uplcom ucom
+bus/u4b/serial/uslcom.c			optional uslcom ucom
+bus/u4b/serial/uvisor.c			optional uvisor ucom
+bus/u4b/serial/uvscom.c			optional uvscom ucom
 #
 # USB misc drivers
 #
-bus/u4b/misc/ufm.c			optional ufm usb
+bus/u4b/misc/ufm.c			optional ufm
 #
 # USB input drivers
 #
-bus/u4b/input/ukbd.c			optional ukbd usb
-bus/u4b/input/ums.c			optional ums usb
-bus/u4b/input/uep.c			optional uep usb
-bus/u4b/input/uhid.c			optional uhid usb
+bus/u4b/input/ukbd.c			optional ukbd
+bus/u4b/input/ums.c			optional ums
+bus/u4b/input/uep.c			optional uep
+bus/u4b/input/uhid.c			optional uhid
 #
 # USB quirks
 #
@@ -2379,19 +2379,19 @@ bus/u4b/quirk/usb_quirk.c		optional usb
 #
 # USB templates
 #
-bus/u4b/template/usb_template.c		optional usb_template usb
-bus/u4b/template/usb_template_audio.c	optional usb_template usb
-bus/u4b/template/usb_template_cdce.c	optional usb_template usb
-bus/u4b/template/usb_template_kbd.c	optional usb_template usb
-bus/u4b/template/usb_template_modem.c	optional usb_template usb
-bus/u4b/template/usb_template_mouse.c	optional usb_template usb
-bus/u4b/template/usb_template_msc.c	optional usb_template usb
-bus/u4b/template/usb_template_mtp.c	optional usb_template usb
+bus/u4b/template/usb_template.c		optional usb_template
+bus/u4b/template/usb_template_audio.c	optional usb_template
+bus/u4b/template/usb_template_cdce.c	optional usb_template
+bus/u4b/template/usb_template_kbd.c	optional usb_template
+bus/u4b/template/usb_template_modem.c	optional usb_template
+bus/u4b/template/usb_template_mouse.c	optional usb_template
+bus/u4b/template/usb_template_msc.c	optional usb_template
+bus/u4b/template/usb_template_mtp.c	optional usb_template
 #
 # Other drivers
 #
-bus/u4b/audio/uaudio.c			optional snd_uaudio usb
-bus/u4b/audio/uaudio_pcm.c		optional snd_uaudio usb
+bus/u4b/audio/uaudio.c			optional snd_uaudio
+bus/u4b/audio/uaudio_pcm.c		optional snd_uaudio
 
 #
 # virtio support

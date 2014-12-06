@@ -74,7 +74,7 @@ emulation/ndis/subr_hal.c	optional ndisapi pci
 emulation/ndis/subr_ndis.c	optional ndisapi pci
 emulation/ndis/subr_ntoskrnl.c	optional ndisapi pci
 emulation/ndis/subr_pe.c	optional ndisapi pci
-emulation/ndis/subr_u4bd.c	optional ndisapi pci usb
+emulation/ndis/subr_u4bd.c	optional ndisapi pci
 emulation/ndis/winx32_wrap.S	optional ndisapi pci
 #
 bf_enc.o			optional	ipsec ipsec_esp		\
