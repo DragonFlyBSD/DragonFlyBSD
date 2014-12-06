@@ -752,6 +752,7 @@ pcm_best_unit(int old)
 {
 	struct snddev_info *d;
 	int i, best, bestprio, prio;
+	cdev_t old_d;
 
 	best = -1;
 	bestprio = -100;
@@ -770,6 +771,18 @@ pcm_best_unit(int old)
 			bestprio = prio;
 		}
 	}
+
+	/* Change default devfs entries to new best device if needed */
+	if (snd_unit != best) {
+		if ((old_d = devfs_find_device_by_name("dsp%d", snd_unit)))
+			destroy_dev_alias(old_d, "dsp");
+		if ((old_d = devfs_find_device_by_name("mixer%d", snd_unit)))
+			destroy_dev_alias(old_d, "mixer");
+		d = devclass_get_softc(pcm_devclass, best);
+		make_dev_alias(d->dsp_clonedev, "dsp");
+		make_dev_alias(d->mixer_dev, "mixer");
+	}
+
 	return (best);
 }
 
