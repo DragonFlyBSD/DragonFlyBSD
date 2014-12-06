@@ -207,6 +207,11 @@ USB access library (libusb -lusb)
 .Fn libusb20_be_enqueue_device "struct libusb20_backend *pbe" "struct libusb20_device *pdev"
 .Ft void
 .Fn libusb20_be_free "struct libusb20_backend *pbe"
+.Ft "const char *"
+.Fn libusb20_strerror "int code"
+.Ft "const char *"
+.Fn libusb20_error_name "int code"
+.In libusb20_desc.h
 .Ft uint8_t
 .Fn libusb20_me_get_1 "const struct libusb20_me_struct *me" "uint16_t off"
 .Ft uint16_t
@@ -217,10 +222,6 @@ USB access library (libusb -lusb)
 .Fn libusb20_me_decode "const void *pdata" "uint16_t len" "void *pdecoded"
 .Ft "const uint8_t *"
 .Fn libusb20_desc_foreach "const struct libusb20_me_struct *me" "const uint8_t *pdesc"
-.Ft "const char *"
-.Fn libusb20_strerror "int code"
-.Ft "const char *"
-.Fn libusb20_error_name "int code"
 .
 .
 .Sh DESCRIPTION
