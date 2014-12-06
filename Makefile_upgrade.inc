@@ -2736,6 +2736,10 @@ TO_REMOVE+=/usr/share/man/man9/VOP_RENAME.9.gz
 TO_REMOVE+=/usr/share/man/man9/VOP_STRATEGY.9.gz
 TO_REMOVE+=/usr/share/man/cat3/libm.3.gz
 TO_REMOVE+=/usr/share/man/man3/libm.3.gz
+TO_REMOVE+=/usr/share/man/cat9/kobj_class_compile.9.gz
+TO_REMOVE+=/usr/share/man/cat9/kobj_class_free.9.gz
+TO_REMOVE+=/usr/share/man/man9/kobj_class_compile.9.gz
+TO_REMOVE+=/usr/share/man/man9/kobj_class_free.9.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

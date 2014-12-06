@@ -38,10 +38,6 @@
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/kobj.h
-.Ft void
-.Fn kobj_class_compile "kobj_class_t cls"
-.Ft void
-.Fn kobj_class_free "kobj_class_t cls"
 .Ft kobj_t
 .Fn kobj_create "kobj_class_t cls" "struct malloc_type *mtype" "int mflags"
 .Ft void
@@ -96,15 +92,6 @@ This should be done with care as the classes must agree on the layout
 of the object.
 The device framework uses this feature to associate drivers with
 devices.
-.Pp
-The functions
-.Fn kobj_class_compile
-and
-.Fn kobj_class_free
-are used to process a class description to make method dispatching
-efficient.
-A client should not normally need to call these since a class
-will automatically be compiled the first time it is used.
 .Pp
 To define a class, first define a simple array of
 .Vt kobj_method_t .

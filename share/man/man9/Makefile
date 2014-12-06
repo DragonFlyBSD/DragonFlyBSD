@@ -590,8 +590,6 @@ MLINKS+=kmalloc.9 kfree.9 \
 	kmalloc.9 MALLOC_DECLARE.9 \
 	kmalloc.9 MALLOC_DEFINE.9
 MLINKS+=kobj.9 DEFINE_CLASS.9 \
-	kobj.9 kobj_class_compile.9 \
-	kobj.9 kobj_class_free.9 \
 	kobj.9 kobj_create.9 \
 	kobj.9 kobj_delete.9 \
 	kobj.9 kobj_init.9
