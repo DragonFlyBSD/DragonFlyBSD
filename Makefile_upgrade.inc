@@ -2740,6 +2740,12 @@ TO_REMOVE+=/usr/share/man/cat9/kobj_class_compile.9.gz
 TO_REMOVE+=/usr/share/man/cat9/kobj_class_free.9.gz
 TO_REMOVE+=/usr/share/man/man9/kobj_class_compile.9.gz
 TO_REMOVE+=/usr/share/man/man9/kobj_class_free.9.gz
+TO_REMOVE+=/usr/share/man/cat4/moscom.4.gz
+TO_REMOVE+=/usr/share/man/man4/moscom.4.gz
+TO_REMOVE+=/usr/share/man/cat4/uscanner.4.gz
+TO_REMOVE+=/usr/share/man/man4/uscanner.4.gz
+TO_REMOVE+=/usr/share/man/cat4/uticom.4.gz
+TO_REMOVE+=/usr/share/man/man4/uticom.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

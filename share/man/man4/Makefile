@@ -172,7 +172,6 @@ MAN=	aac.4 \
 	mmcsd.4 \
 	mn.4 \
 	mos.4 \
-	moscom.4 \
 	mouse.4 \
 	mps.4 \
 	mpt.4 \
@@ -367,11 +366,9 @@ MAN=	aac.4 \
 	usb.4 \
 	usb_quirk.4 \
 	usb_template.4 \
-	uscanner.4 \
 	usfs.4 \
 	uslcom.4 \
 	u3g.4 \
-	uticom.4 \
 	uvisor.4 \
 	uvscom.4 \
 	vga.4 \
