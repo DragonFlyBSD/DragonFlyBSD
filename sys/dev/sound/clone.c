@@ -593,9 +593,11 @@ snd_clone_register(struct snd_clone_entry *ce, struct cdev *dev)
 	SND_CLONE_ASSERT((ce->flags & SND_CLONE_ALLOC) == SND_CLONE_ALLOC,
 	    ("invalid clone alloc flags=0x%08x", ce->flags));
 	SND_CLONE_ASSERT(ce->devt == NULL, ("ce->devt not NULL"));
+#if 0	/* dev2unit doesn't make any sense on DragonFly */
 	SND_CLONE_ASSERT(ce->unit == dev2unit(dev),
 	    ("invalid unit ce->unit=0x%08x dev2unit=0x%08x",
 	    ce->unit, dev2unit(dev)));
+#endif
 
 	SND_CLONE_ASSERT(ce->parent != NULL, ("NULL parent"));
 

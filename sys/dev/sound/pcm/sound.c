@@ -1031,6 +1031,8 @@ SYSCTL_PROC(_hw_snd, OID_AUTO, clone_gc, CTLTYPE_INT | CTLFLAG_RW,
     "global clone garbage collector");
 #endif
 
+extern struct devfs_bitmap devfs_dsp_clone_bitmap;
+
 int
 pcm_register(device_t dev, void *devinfo, int numplay, int numrec)
 {
@@ -1150,11 +1152,17 @@ pcm_register(device_t dev, void *devinfo, int numplay, int numrec)
 
 	/* XXX use make_autoclone_dev? */
 	/* XXX PCMMAXCHAN can be created for regular channels */
+#if 0
 	d->dsp_clonedev = make_dev(&dsp_ops,
 			    PCMMINOR(device_get_unit(dev)),
 			    UID_ROOT, GID_WHEEL, 0666, "dsp%d",
 			    device_get_unit(dev));
 	devfs_clone_handler_add(devtoname(d->dsp_clonedev), dsp_clone);
+#endif
+	d->dsp_clonedev = make_autoclone_dev(&dsp_ops,
+			    &DEVFS_CLONE_BITMAP(dsp), dsp_clone,
+			    UID_ROOT, GID_WHEEL, 0666, "dsp%d",
+			    device_get_unit(dev));
 
 	sndstat_register(dev, d->status, sndstat_prepare_pcm);
 

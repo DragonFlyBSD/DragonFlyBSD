@@ -32,6 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 #include <sys/ctype.h>
+#include <sys/devfs.h>
 #include <sys/device.h>
 #include <sys/eventhandler.h>
 #include <sys/lock.h>
@@ -80,6 +81,8 @@ static d_mmap_single_t dsp_mmap_single;
 static void dsp_filter_detach(struct knote *);
 static int dsp_filter_read(struct knote *, long);
 static int dsp_filter_write(struct knote *, long);
+
+DEVFS_DECLARE_CLONE_BITMAP(dsp);
 
 struct dev_ops dsp_ops = {
 	.d_open =	dsp_open,
@@ -807,6 +810,8 @@ dsp_close(struct dev_close_args *ap)
 	PCM_UNLOCK(d);
 
 	PCM_GIANT_LEAVE(d);
+
+	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(dsp),0);
 
 	return (0);
 }
@@ -2452,6 +2457,7 @@ dsp_clone(struct dev_clone_args *ap)
 			cunit = -1;
 		}
 	}
+	unit = snd_unit;	/* XXX: I don't understand the freebsd code */
 
 	d = devclass_get_softc(pcm_devclass, unit);
 	if (!PCM_REGISTERED(d) || d->clones == NULL) {
@@ -2536,12 +2542,26 @@ dsp_clone_alloc:
 		snd_clone_setmaxunit(d->clones, tumax);
 	if (ce != NULL) {
 		udcmask |= snd_c2unit(cunit);
-		dev = make_only_dev(&dsp_ops, PCMMINOR(udcmask),
-		    UID_ROOT, GID_WHEEL, 0666, "%s%d%s%d",
-		    devname, unit, devsep, cunit);
+		int subunit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(dsp), 0);
+
+/* Code from master
+		pcm_chan->dsp_dev = make_only_dev(&dsp_ops,
+				PCMMKMINOR(PCMUNIT(i_dev), pcm_chan->chan_num),
+				UID_ROOT, GID_WHEEL,
+				0666,
+				"%s.%d",
+				devtoname(i_dev),
+				pcm_chan->chan_num);
+*/
+		dev = make_only_dev(&dsp_ops,
+		    PCMMKMINOR(unit,subunit),
+		    UID_ROOT, GID_WHEEL, 0666, "%s%d.%d",
+		    devname, unit, subunit);
 		snd_clone_register(ce, dev);
 		err = 0;
 	}
+
+	ap->a_dev = dev;
 
 	PCM_RELEASE_QUICK(d);
 #if 0
