@@ -965,10 +965,10 @@ tr_setup:
 				(void) ieee80211_input_all(ic, m, rssi,
 				    RT2573_NOISE_FLOOR);
 		}
+		RUM_LOCK(sc);
 		if (!ifq_is_oactive(&ifp->if_snd) &&
 		    !ifq_is_empty(&ifp->if_snd))
 			rum_start_locked(ifp);
-		RUM_LOCK(sc);
 		return;
 
 	default:			/* Error */
@@ -1226,9 +1226,7 @@ rum_tx_data(struct rum_softc *sc, struct mbuf *m0, struct ieee80211_node *ni)
 	uint16_t dur;
 	int error, rate;
 
-#if 0 /* XXX swildner: lock needed? */
 	RUM_LOCK_ASSERT(sc, MA_OWNED);
-#endif
 
 	wh = mtod(m0, struct ieee80211_frame *);
 
@@ -1329,8 +1327,12 @@ rum_start_locked(struct ifnet *ifp)
 static void
 rum_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
+	struct rum_softc *sc = ifp->if_softc;
+
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+	RUM_LOCK(sc);
 	rum_start_locked(ifp);
+	RUM_UNLOCK(sc);
 }
 
 static int
