@@ -196,7 +196,7 @@ state_welcome(struct i_fn_args *a)
 	    OPERATING_SYSTEM_NAME, OPERATING_SYSTEM_NAME, OPERATING_SYSTEM_URL,
 	    OPERATING_SYSTEM_NAME, OPERATING_SYSTEM_NAME);
 
-	if (!a->booted_from_livecd) {
+	if ((a->flags & I_BOOTED_LIVECD) == 0) {
 		state = state_welcome_system;
 		return;
 	}
@@ -214,7 +214,7 @@ state_welcome(struct i_fn_args *a)
 	    NULL
 	);
 
-	if (a->upgrade_menu_toggle) {
+	if (a->flags & I_UPGRADE_TOOGLE) {
 		snprintf(msg_buf[0], sizeof(msg_buf[0]),
 		    _("Upgrade a FreeBSD 4.X system to %s"),
 		    OPERATING_SYSTEM_NAME);
@@ -1452,7 +1452,7 @@ state_setup_remote_installation_server(struct i_fn_args *a)
 
 int
 flow(int transport, char *rendezvous, char *os_root,
-     int booted_from_livecd __unused, int upgrade_menu_toggle __unused)
+     int flags __unused)
 {
 	struct i_fn_args *a;
 
@@ -1466,11 +1466,10 @@ flow(int transport, char *rendezvous, char *os_root,
 	/*
 	 * XXX We can't handle this yet.
 	 *
-	   a->booted_from_livecd = booted_from_livecd;
-	   a->upgrade_menu_toggle = upgrade_menu_toggle;
+	   a->flags |= I_BOOTED_LIVECD;
+	   a->flags |= I_UPGRADE_TOOGLE;
 	*/
-	a->booted_from_livecd = 1;
-	a->upgrade_menu_toggle = 0;
+	a->flags |= I_BOOTED_LIVECD;
 
 	/*
 	 * Execute the state machine here.  The global function pointer

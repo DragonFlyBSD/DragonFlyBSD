@@ -69,8 +69,7 @@ main(int argc, char **argv)
 	int do_reboot = 0;
 	int opt;
 	int transport = 0;
-	int booted_from_livecd = 0;
-	int upgrade_menu_toggle = 0;
+	int flags = 0;
 
 #ifdef ENABLE_NLS
 	setlocale (LC_ALL, "");
@@ -122,7 +121,7 @@ main(int argc, char **argv)
 	}
 
 	do_reboot = flow(transport, rendezvous, os_root,
-	    booted_from_livecd, upgrade_menu_toggle);
+	    flags);
 	free(rendezvous);
 
 	if (do_reboot)

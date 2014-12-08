@@ -90,6 +90,6 @@ void		 state_setup_remote_installation_server(struct i_fn_args *);
 
 /* Entry Point */
 
-int		 flow(int, char *, char *, int livecd_configuration, int upgrade_menu_toggle);
+int		 flow(int, char *, char *, int);
 
 #endif /* !__FLOW_H_ */
