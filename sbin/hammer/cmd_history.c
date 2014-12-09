@@ -47,7 +47,7 @@ void
 hammer_cmd_history(const char *offset_str, char **av, int ac)
 {
 	off_t off;
-	int i;
+	int i = 0;
 	int len;
 	char *rptr;
 
@@ -56,11 +56,12 @@ hammer_cmd_history(const char *offset_str, char **av, int ac)
 		off = strtoll(offset_str + 1, &rptr, 0);
 		if (*rptr == ',')
 			len = strtol(rptr + 1, NULL, 0);
+		i = 1;
 	} else {
 		off = -1;
 	}
 
-	for (i = 0; i < ac; ++i)
+	for (; i < ac; ++i)
 		hammer_do_history(av[i], off, len);
 }
 
@@ -173,4 +174,3 @@ timestr32(u_int32_t time32)
 	strftime(timebuf, sizeof(timebuf), "%d-%b-%Y %H:%M:%S", tp);
 	return(timebuf);
 }
-
