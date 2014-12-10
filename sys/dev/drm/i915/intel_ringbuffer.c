@@ -1124,7 +1124,7 @@ static int init_phys_hws_pga(struct intel_ring_buffer *ring)
 
 	if (!dev_priv->status_page_dmah) {
 		dev_priv->status_page_dmah =
-			drm_pci_alloc(ring->dev, PAGE_SIZE, PAGE_SIZE, ~0);
+			drm_pci_alloc(ring->dev, PAGE_SIZE, PAGE_SIZE);
 		if (!dev_priv->status_page_dmah)
 			return -ENOMEM;
 	}

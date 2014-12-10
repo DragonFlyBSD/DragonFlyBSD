@@ -547,7 +547,7 @@ int radeon_dummy_page_init(struct radeon_device *rdev)
 	if (rdev->dummy_page.dmah)
 		return 0;
 	rdev->dummy_page.dmah = drm_pci_alloc(rdev->ddev,
-	    PAGE_SIZE, PAGE_SIZE, ~0);
+	    PAGE_SIZE, PAGE_SIZE);
 	if (rdev->dummy_page.dmah == NULL)
 		return -ENOMEM;
 	rdev->dummy_page.addr =

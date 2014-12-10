@@ -104,7 +104,6 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 	struct drm_local_map *map;
 	struct drm_map_list *entry = NULL;
 	drm_dma_handle_t *dmah;
-	int align;
 
 	/* Allocate a new map structure, fill it in, and do any type-specific
 	 * initialization necessary.
@@ -228,22 +227,17 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 		map->offset = dev->sg->vaddr + offset;
 		break;
 	case _DRM_CONSISTENT:
-		/* Unfortunately, we don't get any alignment specification from
-		 * the caller, so we have to guess.  drm_pci_alloc requires
-		 * a power-of-two alignment, so try to align the bus address of
-		 * the map to it size if possible, otherwise just assume
-		 * PAGE_SIZE alignment.
-		 */
-		align = map->size;
-		if ((align & (align - 1)) != 0)
-			align = PAGE_SIZE;
-		dmah = drm_pci_alloc(dev, map->size, align, 0xfffffffful);
+		/* dma_addr_t is 64bit on i386 with CONFIG_HIGHMEM64G,
+		 * As we're limiting the address to 2^32-1 (or less),
+		 * casting it down to 32 bits is no problem, but we
+		 * need to point to a 64bit variable first. */
+		dmah = drm_pci_alloc(dev, map->size, map->size);
 		if (!dmah) {
-			drm_free(map, M_DRM);
-			return ENOMEM;
+			kfree(map, M_DRM);
+			return -ENOMEM;
 		}
 		map->handle = dmah->vaddr;
-		map->offset = (unsigned long)dmah->busaddr;
+		map->offset = dmah->busaddr;
 		break;
 	default:
 		DRM_ERROR("Bad map type %d\n", map->type);
@@ -586,6 +580,7 @@ static int drm_do_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *reque
 	int total;
 	int page_order;
 	drm_buf_entry_t *entry;
+	drm_dma_handle_t *dmah;
 	drm_buf_t *buf;
 	int alignment;
 	unsigned long offset;
@@ -642,25 +637,25 @@ static int drm_do_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *reque
 
 	while (entry->buf_count < count) {
 		spin_unlock(&dev->dma_lock);
-		drm_dma_handle_t *dmah = drm_pci_alloc(dev, size, alignment,
-		    0xfffffffful);
+		dmah = drm_pci_alloc(dev, PAGE_SIZE << page_order, 0x1000);
 		spin_lock(&dev->dma_lock);
-		if (dmah == NULL) {
+
+		if (!dmah) {
 			/* Set count correctly so we free the proper amount. */
 			entry->buf_count = count;
 			entry->seg_count = count;
 			drm_cleanup_buf_error(dev, entry);
 			drm_free(temp_pagelist, M_DRM);
-			return ENOMEM;
+			return -ENOMEM;
 		}
 
 		entry->seglist[entry->seg_count++] = dmah;
 		for (i = 0; i < (1 << page_order); i++) {
-			DRM_DEBUG("page %d @ %p\n",
-			    dma->page_count + page_count,
-			    (char *)dmah->vaddr + PAGE_SIZE * i);
-			temp_pagelist[dma->page_count + page_count++] = 
-			    (long)dmah->vaddr + PAGE_SIZE * i;
+			DRM_DEBUG("page %d @ 0x%08lx\n",
+				  dma->page_count + page_count,
+				  (unsigned long)dmah->vaddr + PAGE_SIZE * i);
+			temp_pagelist[dma->page_count + page_count++]
+				= (unsigned long)dmah->vaddr + PAGE_SIZE * i;
 		}
 		for (offset = 0;
 		    offset + size <= total && entry->buf_count < count;

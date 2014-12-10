@@ -870,8 +870,6 @@ struct drm_pending_vblank_event {
 struct drm_device {
 	drm_pci_id_list_t *id_entry;	/* PCI ID, name, and chipset private */
 
-	uint16_t pci_device;		/* PCI device id */
-	uint16_t pci_vendor;		/* PCI vendor id */
 	uint16_t pci_subdevice;		/* PCI subsystem device id */
 	uint16_t pci_subvendor;		/* PCI subsystem vendor id */
 
@@ -957,9 +955,6 @@ struct drm_device {
 	struct drm_sysctl_info *sysctl;
 	int		  sysctl_node_idx;
 
-	drm_agp_head_t    *agp;
-
-	struct device *dev;             /**< Device structure */
 
 	drm_sg_mem_t      *sg;  /* Scatter gather memory */
 	unsigned long     *ctx_bitmap;
@@ -996,6 +991,15 @@ struct drm_device {
 	 */
 	struct list_head vblank_event_list;
 	struct lock	event_lock;
+
+	/*@} */
+
+	struct drm_agp_head *agp;	/**< AGP data */
+
+	struct device *dev;             /**< Device structure */
+	struct pci_dev *pdev;		/**< PCI device structure */
+	int pci_vendor;			/**< PCI vendor id */
+	int pci_device;			/**< PCI device id */
 
 	struct drm_driver *driver;
 	struct drm_local_map *agp_buffer_map;
@@ -1369,8 +1373,8 @@ int	drm_sg_free(struct drm_device *dev, void *data,
 		    struct drm_file *file_priv);
 
 /* consistent PCI memory functions (drm_pci.c) */
-drm_dma_handle_t *drm_pci_alloc(struct drm_device *dev, size_t size,
-				size_t align, dma_addr_t maxaddr);
+extern drm_dma_handle_t *drm_pci_alloc(struct drm_device *dev, size_t size,
+				       size_t align);
 void	drm_pci_free(struct drm_device *dev, drm_dma_handle_t *dmah);
 
 			       /* sysfs support (drm_sysfs.c) */
