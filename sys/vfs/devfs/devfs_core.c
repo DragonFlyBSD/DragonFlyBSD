@@ -513,7 +513,7 @@ devfs_unlinkp(struct devfs_node *node)
 	 * expensive to resolve only the namecache entry of the alias node
 	 * from the information available in this function.
 	 */
-	if (node->node_type == Nlink)
+	if (node->link_target && node->node_type == Nlink)
 		vp = node->link_target->v_node;
 	else
 		vp = node->v_node;
