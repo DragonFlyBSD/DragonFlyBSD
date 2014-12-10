@@ -46,7 +46,7 @@
 #include <stddef.h>
 
 /* Mac OS X 10.5 defines the locale_t type in <xlocale.h>.  */
-#if 1
+#ifndef BOOTSTRAPPING
 # include <xlocale.h>
 #endif
 
