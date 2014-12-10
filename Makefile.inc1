@@ -467,8 +467,11 @@ installcheck:
 	@pw usershow _pflogd || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
 	@pw groupshow authpf || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
 	@pw groupshow _pflogd || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
+.if !defined(OVERRIDE_CHECKS)
 .if !defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/"
 	@case `uname -r` in 1.2*|1.3-*|1.3.*|1.4.*|1.5.0-*|1.5.1-*|1.5.2-*|1.5.3-*) echo "You must upgrade your kernel to at least 1.5.4 and reboot before you can safely installworld, due to libc/system call ABI changes" ; /usr/bin/false ; esac
+	@case `uname -r` in 1.*|2.*|3.0*|3.1*|3.2*|3.3*|3.4*|3.5*|3.6*) echo "Base is too old for a normal installworld, you need to use installworld-force" ; /usr/bin/false ; esac
+.endif
 .endif
 
 #
@@ -492,6 +495,34 @@ installworld: installcheck
 	@echo "installworld is done.  If things work as expected after a"
 	@echo "full reboot, consider updating the rescue image with"
 	@echo "'make rescue'.  Do not do it until rebooting."
+
+installworld-force:
+	@echo "Doing a forced installworld.  This will install to a temporary directory,"
+	@echo "then copy the main binaries and libraries with a static cpdup to ${DESTDIR}/"
+	@echo "and finally willl issue a normal installworld.  Starting in 5 seconds.".
+	@echo "^C to abort."
+	sleep 1
+	rm -rf /usr/obj/temp > /dev/null 2>& 1 || chflags -R noschg /usr/obj/temp
+	rm -rf /usr/obj/temp
+	mkdir -p /usr/obj/temp/cpdup/bin
+	(cd ${.CURDIR}/bin/cpdup; make clean; make obj; make clean; make CFLAGS=-static all install DESTDIR=/usr/obj/temp/cpdup NOMAN=TRUE)
+	@echo "XXXXXXXXX Installing to temporary XXXXXXXXX"
+	@sleep 1
+	(cd ${.CURDIR}; ${MAKE} installworld DESTDIR=/usr/obj/temp > /dev/null 2>&1)
+	@echo "XXXXXXXXX Blasting binaries and libraries XXXXXXXXX"
+	@sleep 1
+	/usr/obj/temp/cpdup/bin/cpdup -i0 /usr/obj/temp/bin /bin
+	/usr/obj/temp/cpdup/bin/cpdup -i0 /usr/obj/temp/sbin /sbin
+	/usr/obj/temp/cpdup/bin/cpdup -i0 /usr/obj/temp/lib /lib
+	/usr/obj/temp/cpdup/bin/cpdup -i0 /usr/obj/temp/usr/bin /usr/bin
+	/usr/obj/temp/cpdup/bin/cpdup -i0 /usr/obj/temp/usr/sbin /usr/sbin
+	/usr/obj/temp/cpdup/bin/cpdup -i0 /usr/obj/temp/usr/lib /usr/lib
+	/usr/obj/temp/cpdup/bin/cpdup -i0 /usr/obj/temp/libexec /libexec
+	/usr/obj/temp/cpdup/bin/cpdup -i0 /usr/obj/temp/usr/libexec /usr/libexec
+	@echo "XXXXXXXXX Doing final installworld XXXXXXXX"
+	sleep 5
+	(cd ${.CURDIR}; ${MAKE} installworld OVERRIDE_CHECKS=TRUE)
+	(cd ${.CURDIR}; ${MAKE} upgrade OVERRIDE_CHECKS=TRUE)
 
 # Create a rescue image.  We no longer do this automatically for several
 # reasons, primarily that users have had serious issue with mismatched 'vn'

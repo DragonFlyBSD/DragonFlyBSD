@@ -9,6 +9,7 @@
 # realquickworld      - Skip above steps, plus depend
 # crossworld	      - Just do the bootstrap, build, and cross-build steps
 # installworld        - Install everything built by "buildworld".
+# installworld-force  - Install everything built by "buildworld", special case for old systems
 # world               - buildworld + installworld.
 # buildkernel         - Rebuild the kernel and the kernel-modules from scratch
 #			using build/bootstrap/cross tools from the last
@@ -81,7 +82,7 @@ TGTS=	all all-man buildkernel quickkernel nativekernel \
 	buildworld crossworld quickworld realquickworld checkdpadd clean \
 	cleandepend cleandir depend everything \
 	hierarchy install installcheck installkernel \
-	reinstallkernel installmost installworld libraries lint maninstall \
+	reinstallkernel installmost installworld installworld-force libraries lint maninstall \
 	manlint mk most obj objlink regress rerelease tags \
 	rescue backupworld restoreworld restoreworld-auto \
 	backup-clean backup-auto-clean \
