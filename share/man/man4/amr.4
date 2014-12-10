@@ -23,7 +23,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/amr.4,v 1.35 2006/06/18 14:45:28 brueffer Exp $
 .\"
-.Dd June 14, 2014
+.Dd December 10, 2014
 .Dt AMR 4
 .Os
 .Sh NAME
@@ -63,6 +63,12 @@ LSI MegaRAID SAS controllers are supported by
 and
 .Xr mrsas 4
 and will not work with this driver.
+.Sh FILES
+.Bl -tag -width ".Pa /dev/amrdX" -compact
+.It Pa /dev/amrdX
+.Nm
+device nodes
+.El
 .Sh HARDWARE
 Controllers supported by the
 .Nm

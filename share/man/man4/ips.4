@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ips.4,v 1.2 2003/11/12 02:26:47 hmp Exp $
 .\"
-.Dd November 30, 2010
+.Dd December 10, 2014
 .Dt IPS 4
 .Os
 .Sh NAME
@@ -98,6 +98,12 @@ and see if that stops it.
 You can also use the
 .Xr sysctl 8
 command to change this setting after boot.
+.Sh FILES
+.Bl -tag -width ".Pa /dev/ipsdX" -compact
+.It Pa /dev/ipsdX
+.Nm
+device nodes
+.El
 .Sh DIAGNOSTICS
 Several error codes may be shown when the card initializes the
 .Tn IBM

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/mmcsd.4,v 1.4 2008/10/22 09:11:35 mav Exp $
 .\"
-.Dd April 16, 2010
+.Dd December 10, 2014
 .Dt MMCSD 4
 .Os
 .Sh NAME
@@ -36,6 +36,12 @@
 The
 .Nm
 driver implements direct access block device for MMC and SD memory cards.
+.Sh FILES
+.Bl -tag -width ".Pa /dev/mmcsdX" -compact
+.It Pa /dev/mmcsdX
+.Nm
+device nodes
+.El
 .Sh SEE ALSO
 .Xr mmc 4 ,
 .Xr sdhci 4

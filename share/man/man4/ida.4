@@ -2,7 +2,7 @@
 .\" Written by Tom Rhodes
 .\" This file is public domain
 .\"
-.Dd January 5, 2003
+.Dd December 10, 2014
 .Dt IDA 4
 .Os
 .Sh NAME
@@ -55,6 +55,12 @@ Extreme caution should be exercised when using the pass-through interface.
 It is possible to interfere with normal system I/O and cause hangs if
 pass-through is used to an active device.
 Pass-through should only be used to a device that is otherwise quiescent.
+.Sh FILES
+.Bl -tag -width ".Pa /dev/idadX" -compact
+.It Pa /dev/idadX
+.Nm
+device nodes
+.El
 .Sh SEE ALSO
 .Xr cam 4 ,
 .Xr pass 4 ,

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/virtio_blk.4 267938 2014-06-26 21:46:14Z bapt $
 .\"
-.Dd November 21, 2014
+.Dd December 10, 2014
 .Dt VIRTIO_BLK 4
 .Os
 .Sh NAME
@@ -48,6 +48,12 @@ virtio_blk_load="YES"
 The
 .Nm
 device driver provides support for VirtIO block devices.
+.Sh FILES
+.Bl -tag -width ".Pa /dev/vbdX" -compact
+.It Pa /dev/vbdX
+.Nm
+device nodes
+.El
 .Sh LOADER TUNABLES
 Tunables can be set at the
 .Xr loader 8

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/twe.4,v 1.18 2012/11/17 01:50:48 svnexp Exp $
 .\"
-.Dd December 31, 2010
+.Dd December 10, 2014
 .Dt TWE 4
 .Os
 .Sh NAME
@@ -55,6 +55,12 @@ These adapters were formerly known as
 .Pp
 These devices support 2, 4, 8, or 12 ATA disk drives
 and provide RAID0 (striping) and RAID1 (mirroring) functionality.
+.Sh FILES
+.Bl -tag -width ".Pa /dev/twedX" -compact
+.It Pa /dev/twedX
+.Nm
+device nodes
+.El
 .Sh HARDWARE
 The
 .Nm
