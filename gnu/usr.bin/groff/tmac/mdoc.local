@@ -60,7 +60,6 @@
 .ds doc-str-Lb-librefuse        File System in Userspace Convenience Library (librefuse, \-lrefuse)
 .ds doc-str-Lb-librpcsvc        RPC Service Library (librpcsvc, \-lrpcsvc)
 .ds doc-str-Lb-libsdp           Bluetooth Service Discovery Protocol Library (libsdp, \-lsdp)
-.ds doc-str-Lb-libskey          S/Key Password Control Table Access Library (libskey, \-lskey)
 .ds doc-str-Lb-libstand         Standalone Applications Library (libstand, \-lstand)
 .ds doc-str-Lb-libtacplus       TACACS+ Client Library (libtacplus, \-ltacplus)
 .ds doc-str-Lb-libtcplay        TrueCrypt-compatible API library (libtcplay, \-ltcplay)
