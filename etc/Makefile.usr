@@ -198,7 +198,11 @@ dports-replace:
 	rm -f ${DPTBALL}
 .endif
 
+# NOTE: In force mode we also have to remove any old pkg.conf
+#	which might interfere with the newer pkg bootstrap.
+#
 pkg-bootstrap-force:
+	@rm -f /usr/local/etc/pkg.conf
 	@fetch -o ${PKGBALL} ${PKGBOOT}
 	@tar -xJf ${PKGBALL} -C ${.CURDIR}/local
 	@rm -f ${PKGBALL}
