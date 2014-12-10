@@ -64,6 +64,7 @@
 .ds doc-str-Lb-libstand         Standalone Applications Library (libstand, \-lstand)
 .ds doc-str-Lb-libtacplus       TACACS+ Client Library (libtacplus, \-ltacplus)
 .ds doc-str-Lb-libtcplay        TrueCrypt-compatible API library (libtcplay, \-ltcplay)
+.ds doc-str-Lb-libusb           USB access library (libusb, \-lusb)
 .ds doc-str-Lb-libvgl           Video Graphics Library (libvgl, \-lvgl)
 .
 .
