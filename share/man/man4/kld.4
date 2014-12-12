@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/kld.4,v 1.5.2.6 2001/08/17 13:08:38 ru Exp $
 .\"
-.Dd August 6, 2009
+.Dd December 12, 2014
 .Dt KLD 4
 .Os
 .Sh NAME
@@ -61,7 +61,7 @@ client and server, all the screen-savers, and the
 emulator.
 .Nm
 modules are placed by default in the
-.Pa /boot/modules
+.Pa /boot/kernel
 directory.
 .Pp
 The
@@ -88,7 +88,7 @@ program is used to check the status of the modules currently loaded into the
 system.
 .Sh FILES
 .Bl -tag -width ".In sys/module.h" -compact
-.It Pa /boot/modules
+.It Pa /boot/kernel
 directory containing module binaries shipped with the system
 .It In sys/module.h
 file containing definitions required to compile a

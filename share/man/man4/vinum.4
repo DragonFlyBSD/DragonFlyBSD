@@ -36,7 +36,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/vinum.4,v 1.22.2.9 2002/04/22 08:19:35 kuriyama Exp $
 .\"
-.Dd September 2, 2008
+.Dd December 12, 2014
 .Dt VINUM 4
 .Os
 .Sh NAME
@@ -877,19 +877,19 @@ builds a module with debugging symbols by default.
 If the version of
 .Nm
 in
-.Pa /boot/modules
+.Pa /boot/kernel
 does not contain symbols, you will not get an error message, but the stack trace
 will not show the symbols.
 Check the module before starting
 .Xr kgdb 1 :
 .Bd -literal
-$ file /boot/modules/vinum.ko
-/boot/modules/vinum.ko: ELF 32-bit LSB shared object, Intel 80386,
+$ file /boot/kernel/vinum.ko
+/boot/kernel/vinum.ko: ELF 32-bit LSB shared object, Intel 80386,
   version 1 (SYSV), dynamically linked, not stripped
 .Ed
 .Pp
 If the output shows that
-.Pa /boot/modules/vinum.ko
+.Pa /boot/kernel/vinum.ko
 is stripped, you will have to find a version which is not.
 Usually this will be
 either in

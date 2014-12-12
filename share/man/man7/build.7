@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
 .\"
-.Dd October 26, 2014
+.Dd December 12, 2014
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -208,9 +208,9 @@ make DESTLABEL=test installkernel
 .Ed
 .Pp
 installs them as
-.Pa /boot/kernel.test
+.Pa /boot/kernel.test/kernel
 and
-.Pa /boot/modules.test ,
+.Pa /boot/kernel.test ,
 respectively.
 .It Ev DESTKERNDIR
 Where to install the kernel and the modules (the default is

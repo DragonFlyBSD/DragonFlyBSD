@@ -36,7 +36,7 @@
 .\" $FreeBSD: src/share/man/man4/netgraph.4,v 1.39.2.1 2001/12/21 09:00:50 ru Exp $
 .\" $Whistle: netgraph.4,v 1.7 1999/01/28 23:54:52 julian Exp $
 .\"
-.Dd September 2, 2008
+.Dd December 12, 2014
 .Dt NETGRAPH 4
 .Os
 .Sh NAME
@@ -1005,9 +1005,9 @@ Definitions needed to use
 .Nm
 {type}
 nodes, including the type cookie definition.
-.It Pa /boot/modules/netgraph.ko
+.It Pa /boot/kernel/netgraph.ko
 Netgraph subsystem loadable KLD module.
-.It Pa /boot/modules/ng_{type}.ko
+.It Pa /boot/kernel/ng_{type}.ko
 Loadable KLD module for node type {type}.
 .El
 .Sh USER MODE SUPPORT

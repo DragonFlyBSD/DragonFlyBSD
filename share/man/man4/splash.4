@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/splash.4,v 1.9.2.7 2001/08/17 13:08:39 ru Exp $
 .\"
-.Dd September 2, 2008
+.Dd December 12, 2014
 .Dt SPLASH 4
 .Os
 .Sh NAME
@@ -171,11 +171,11 @@ section above.
 boot loader configuration defaults
 .It Pa /etc/rc.conf
 system configuration information
-.It Pa /boot/modules/splash_*.ko
+.It Pa /boot/kernel/splash_*.ko
 splash image decoder modules
-.It Pa /boot/modules/*_saver.ko
+.It Pa /boot/kernel/*_saver.ko
 screen saver modules
-.It Pa /boot/modules/vesa.ko
+.It Pa /boot/kernel/vesa.ko
 the VESA support module
 .El
 .Sh EXAMPLES

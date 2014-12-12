@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sbin/kldload/kldload.8,v 1.7.2.10 2002/12/07 08:44:02 jmallett Exp $
 .\"
-.Dd March 12, 2014
+.Dd December 12, 2014
 .Dt KLDLOAD 8
 .Os
 .Sh NAME
@@ -52,8 +52,8 @@ Do not try to load module if already loaded.
 Be more verbose.
 .El
 .Sh FILES
-.Bl -tag -width /boot/modules -compact
-.It Pa /boot/modules
+.Bl -tag -width /boot/kernel -compact
+.It Pa /boot/kernel
 directory containing loadable modules.
 Modules must have an extension of
 .Pa .ko .
