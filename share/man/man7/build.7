@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
 .\"
-.Dd December 12, 2014
+.Dd December 13, 2014
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -81,7 +81,7 @@ Installs the results of the build for this directory.
 The other
 .Pa /usr/src
 make targets are:
-.Bl -tag -width ".Cm backup-auto-clean"
+.Bl -tag -width ".Cm installworld-force"
 .It Cm buildworld
 Rebuild everything but the kernel.
 .It Cm quickworld
@@ -100,6 +100,22 @@ Just do the bootstrap, build and cross-build steps.
 .It Cm installworld
 Install everything built by
 .Cm buildworld .
+.It Cm installworld-force
+Force an
+.Cm installworld .
+This will install to a temporary directory, then copy the main binaries
+and libraries with a static
+.Xr cpdup 1
+to
+.Ev DESTDIR
+and finally will issue a normal
+.Cm installworld
+and
+.Cm upgrade .
+It is a special case to be used on older systems as a last resort when
+the normal
+.Cm installworld
+doesn't work.
 .It Cm world
 .Cm buildworld +
 .Cm installworld .
