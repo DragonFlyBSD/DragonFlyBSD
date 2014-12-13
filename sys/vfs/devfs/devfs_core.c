@@ -471,6 +471,29 @@ devfs_freep(struct devfs_node *node)
 }
 
 /*
+ * Returns a valid vp associated with the devfs alias node or NULL
+ * XXX alias nodes can also point to other aliases
+ * but we only manage direct associations here
+ */
+static void *devfs_alias_getvp(struct devfs_node *node)
+{
+	if (node->node_type != Nlink)
+		return NULL;
+
+	/*
+	 * devfs alias nodes are removed before their targets
+	 * when the filesystem gets unmounted
+	 */
+	if (node->link_target == NULL)
+		return NULL;
+
+	if (node->link_target->v_node == NULL)
+		return NULL;
+
+	return node->link_target->v_node;
+}
+
+/*
  * Unlink the devfs node from the topology and add it to the orphan list.
  * The node will later be destroyed by freep.
  *
@@ -513,8 +536,8 @@ devfs_unlinkp(struct devfs_node *node)
 	 * expensive to resolve only the namecache entry of the alias node
 	 * from the information available in this function.
 	 */
-	if (node->link_target && node->node_type == Nlink)
-		vp = node->link_target->v_node;
+	if (node->node_type == Nlink)
+		vp = devfs_alias_getvp(node);
 	else
 		vp = node->v_node;
 
@@ -543,6 +566,17 @@ devfs_iterate_topology(struct devfs_node *node,
 
 	ret = callback(node, arg1);
 	return ret;
+}
+
+static void *
+devfs_alias_reaper_callback(struct devfs_node *node, void *unused)
+{
+	if (node->node_type == Nlink) {
+		devfs_unlinkp(node);
+		devfs_freep(node);
+	}
+
+	return NULL;
 }
 
 /*
@@ -1189,6 +1223,9 @@ devfs_msg_exec(devfs_msg_t msg)
 	case DEVFS_MOUNT_DEL:
 		mnt = msg->mdv_mnt;
 		TAILQ_REMOVE(&devfs_mnt_list, mnt, link);
+		/* Be sure to remove all the aliases first */
+		devfs_iterate_topology(mnt->root_node, devfs_alias_reaper_callback,
+				       NULL);
 		devfs_iterate_topology(mnt->root_node, devfs_reaperp_callback,
 				       NULL);
 		if (mnt->leak_count) {
