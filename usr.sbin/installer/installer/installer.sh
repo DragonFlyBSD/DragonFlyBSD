@@ -175,7 +175,6 @@ installer_start()
 is_livecd()
 {
     local _ttyv1=$(grep -w "^ttyv1" /etc/ttys)
-    local cdmnt=$(mount -t cd9660 | grep 'cd[0-9]' | cut -w -f1)
     local guest=$(sysctl -n kern.vmm_guest)
 
     #
@@ -186,7 +185,7 @@ is_livecd()
     #
     [ "${guest}" = "vkernel" ] && return 1;
 
-    if [ ! -z "${cdmnt}" -a -z "${_ttyv1}" ]; then
+    if [ -z "${_ttyv1}" ]; then
 	return 0	# Return success, it's a LiveCD
     else
 	return 1
