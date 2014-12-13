@@ -28,7 +28,6 @@
  *
  * @(#)computer.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/trek/computer.c,v 1.5 1999/11/30 03:49:45 billf Exp $
- * $DragonFly: src/games/trek/computer.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
 #include "trek.h"
@@ -175,10 +174,10 @@ computer(int v __unused)
 				tqy = Ship.quady;
 			} else {
 				ix = getintpar("Quadrant");
-				if (ix < 0 || ix >= NSECTS)
+				if (ix < 0 || ix >= NQUADS)
 					break;
 				iy = getintpar("q-y");
-				if (iy < 0 || iy >= NSECTS)
+				if (iy < 0 || iy >= NQUADS)
 					break;
 				tqx = ix;
 				tqy = iy;
