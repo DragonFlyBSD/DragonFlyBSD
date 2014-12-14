@@ -61,9 +61,6 @@ static void ipmi_dtor(void *arg);
 
 static void ipmi_filter_detach(struct knote *);
 static int ipmi_filter_read(struct knote *, long);
-#if 0 /* XXX swildner: watchdog(9) (FreeBSD) -> wdog(9) (DragonFly) porting */
-static int ipmi_watchdog(void *, int);
-#endif
 
 int ipmi_attached = 0;
 
@@ -80,15 +77,8 @@ static struct dev_ops ipmi_ops = {
 	.d_kqfilter =	ipmi_kqfilter,
 };
 
-#if 0 /* XXX swildner: watchdog(9) (FreeBSD) -> wdog(9) (DragonFly) porting */
-static struct watchdog ipmi_wdog = {
-	.name		=	"IPMI",
-	.wdog_fn	=	ipmi_watchdog,
-	.arg		=	NULL,
-	.period_max	=	(UINT16_MAX*1000) / 10,
-};
-static struct ipmi_softc *ipmi_wdog_sc;
-#endif
+static int ipmi_watchdog_sysctl_enable(SYSCTL_HANDLER_ARGS);
+static int ipmi_watchdog_sysctl_period(SYSCTL_HANDLER_ARGS);
 
 static MALLOC_DEFINE(M_IPMI, "ipmi", "ipmi");
 
@@ -633,19 +623,17 @@ ipmi_dequeue_request(struct ipmi_softc *sc)
 int
 ipmi_polled_enqueue_request(struct ipmi_softc *sc, struct ipmi_request *req)
 {
-
 	IPMI_LOCK_ASSERT(sc);
 
 	TAILQ_INSERT_TAIL(&sc->ipmi_pending_requests, req, ir_link);
+
 	cv_signal(&sc->ipmi_request_added);
 	return (0);
 }
 
-#if 0 /* XXX swildner: watchdog(9) (FreeBSD) -> wdog(9) (DragonFly) porting */
 /*
  * Watchdog event handler.
  */
-
 static int
 ipmi_set_watchdog(struct ipmi_softc *sc, unsigned int sec)
 {
@@ -674,7 +662,6 @@ ipmi_set_watchdog(struct ipmi_softc *sc, unsigned int sec)
 		req->ir_request[4] = 0;
 		req->ir_request[5] = 0;
 	}
-
 	error = ipmi_submit_driver_request(sc, req, 0);
 	if (error)
 		device_printf(sc->ipmi_dev, "Failed to set watchdog\n");
@@ -697,24 +684,25 @@ ipmi_set_watchdog(struct ipmi_softc *sc, unsigned int sec)
 	*/
 }
 
-static int
-ipmi_watchdog(void *unused, int period)
+static void
+ipmi_watchdog(void *arg)
 {
-	unsigned int timeout;
-	struct ipmi_softc *sc = ipmi_wdog_sc;
+	struct ipmi_softc *sc = (struct ipmi_softc *)arg;
 	int e;
 
-	timeout = (period * 1000) / 1000000000;
-	if (timeout == 0)
-		timeout = 1;
-	e = ipmi_set_watchdog(sc, timeout);
-	if (e == 0)
-		sc->ipmi_watchdog_active = 1;
-	else
-		ipmi_set_watchdog(sc, 0);
-	return (period);
+	if(sc->ipmi_wdog_period) {
+		e = ipmi_set_watchdog(sc, sc->ipmi_wdog_period + 1);
+
+		if (e == 0)
+			sc->ipmi_watchdog_active = 1;
+		else
+			ipmi_set_watchdog(sc, 0);
+
+		callout_reset(&sc->ipmi_watchdog,
+			      sc->ipmi_wdog_period * hz,
+			      &ipmi_watchdog, (void *)sc);
+	}
 }
-#endif
 
 static void
 ipmi_startup(void *arg)
@@ -803,7 +791,6 @@ ipmi_startup(void *arg)
 	}
 	device_printf(dev, "Number of channels %d\n", i);
 
-#if 0 /* XXX swildner: watchdog(9) (FreeBSD) -> wdog(9) (DragonFly) porting */
 	/* probe for watchdog */
 	req = ipmi_alloc_driver_request(IPMI_ADDR(IPMI_APP_REQUEST, 0),
 	    IPMI_GET_WDOG, 0, 0);
@@ -811,12 +798,35 @@ ipmi_startup(void *arg)
 	ipmi_submit_driver_request(sc, req, 0);
 
 	if (req->ir_compcode == 0x00) {
+		struct sysctl_ctx_list *ctx;
+		struct sysctl_oid *tree;
+		struct sysctl_oid_list *child;
+
 		device_printf(dev, "Attached watchdog\n");
 		/* register the watchdog event handler */
-		wdog_register(&ipmi_wdog);
+		/* XXX profmakx: our wdog driver holds a spinlock while
+		   running the watchdog function, but since the ipmi watchdog
+		   function sleeps, this doesn't work. Hack something with
+		   a callout */
+		callout_init(&sc->ipmi_watchdog);
+		sc->ipmi_wdog_enable = 0;
+		sc->ipmi_wdog_period = 30;
+
+		ctx = device_get_sysctl_ctx(dev);
+		tree = device_get_sysctl_tree(dev);
+		child = SYSCTL_CHILDREN(tree);
+
+		SYSCTL_ADD_PROC(ctx, child, OID_AUTO, "watchdog_enable",
+			    CTLTYPE_INT | CTLFLAG_RW, sc, 0,
+			    ipmi_watchdog_sysctl_enable, "I",
+			    "ipmi watchdog enable");
+		SYSCTL_ADD_PROC(ctx, child, OID_AUTO, "watchdog_period",
+			    CTLTYPE_INT | CTLFLAG_RW, sc, 0,
+			    ipmi_watchdog_sysctl_period, "I",
+			    "ipmi watchdog period");
+
 	}
 	ipmi_free_request(req);
-#endif
 
 	sc->ipmi_cdev = make_dev(&ipmi_ops, device_get_unit(dev),
 	    UID_ROOT, GID_OPERATOR, 0660, "ipmi%d", device_get_unit(dev));
@@ -872,11 +882,9 @@ ipmi_detach(device_t dev)
 	if (sc->ipmi_cdev)
 		destroy_dev(sc->ipmi_cdev);
 
-#if 0 /* XXX swildner: watchdog(9) (FreeBSD) -> wdog(9) (DragonFly) porting */
 	/* Detach from watchdog handling and turn off watchdog. */
-	wdog_unregister(&ipmi_wdog);
+	callout_stop_sync(&sc->ipmi_watchdog);
 	ipmi_set_watchdog(sc, 0);
-#endif
 
 	/* XXX: should use shutdown callout I think. */
 	/* If the backend uses a kthread, shut it down. */
@@ -930,6 +938,64 @@ ipmi_unload(void *arg)
 	kfree(devs, M_TEMP);
 }
 SYSUNINIT(ipmi_unload, SI_SUB_DRIVERS, SI_ORDER_FIRST, ipmi_unload, NULL);
+
+static int
+ipmi_watchdog_sysctl_enable(SYSCTL_HANDLER_ARGS)
+{
+	struct ipmi_softc *sc;
+	int enable;
+	int error;
+
+	sc = oidp->oid_arg1;
+
+	IPMI_LOCK(sc);
+	enable = sc->ipmi_wdog_enable;
+	IPMI_UNLOCK(sc);
+
+	error = sysctl_handle_int(oidp, &enable, 0, req);
+	if(error || req->newptr == NULL)
+		return error;
+
+	IPMI_LOCK(sc);
+	sc->ipmi_wdog_enable = enable;
+	IPMI_UNLOCK(sc);
+
+	if (sc->ipmi_wdog_enable==0) {
+		callout_stop(&sc->ipmi_watchdog);
+		ipmi_set_watchdog(sc, 0);
+	} else {
+		callout_reset(&sc->ipmi_watchdog,
+			      sc->ipmi_wdog_period * hz,
+			      &ipmi_watchdog, (void *)sc); 
+		ipmi_set_watchdog(sc, sc->ipmi_wdog_period + 1);
+	}
+	return 0;
+}
+
+static int
+ipmi_watchdog_sysctl_period(SYSCTL_HANDLER_ARGS)
+{
+	struct ipmi_softc *sc;
+	int error;
+	int period;
+
+	sc = oidp->oid_arg1;
+
+	IPMI_LOCK(sc);
+	period = sc->ipmi_wdog_period;
+	IPMI_UNLOCK(sc);
+
+	error = sysctl_handle_int(oidp, &period, 30, req);
+
+	if (error || req->newptr == NULL)
+		return error;
+
+	IPMI_LOCK(sc);
+	sc->ipmi_wdog_period = period;
+	IPMI_UNLOCK(sc);
+
+	return 0;
+}
 
 #ifdef IMPI_DEBUG
 static void

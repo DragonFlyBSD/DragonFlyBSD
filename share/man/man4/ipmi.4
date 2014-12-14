@@ -90,6 +90,16 @@ is heavily adopted from the standard and
 .Tn Linux
 driver; however, not all features described in the
 standard are supported.
+.Sh SYSCTL VARIABLES
+The following
+.Xr sysctl 8
+variables are available:
+.Bl -tag -width ".Va dev.ipmi.%d.watchdog_timeout"
+.It Va dev.ipmi.%d.watchdog_enable
+Enable watchdog functionality.
+.It Va dev.ipmi.%d.watchdog_timeout
+Set the watchdog timeout.
+.El
 .Sh IOCTLS
 Sending and receiving messages through the
 .Nm

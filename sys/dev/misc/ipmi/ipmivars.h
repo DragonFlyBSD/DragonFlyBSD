@@ -110,6 +110,11 @@ struct ipmi_softc {
 	struct thread		*ipmi_kthread;
 	driver_intr_t		*ipmi_intr;
 	struct kqinfo		ipmi_kq;
+
+	struct callout		ipmi_watchdog;
+	int			ipmi_wdog_period;
+	int			ipmi_wdog_enable;
+
 	int			(*ipmi_startup)(struct ipmi_softc *);
 	int			(*ipmi_enqueue_request)(struct ipmi_softc *, struct ipmi_request *);
 };
