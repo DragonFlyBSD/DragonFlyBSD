@@ -472,25 +472,23 @@ devfs_freep(struct devfs_node *node)
 
 /*
  * Returns a valid vp associated with the devfs alias node or NULL
- * XXX alias nodes can also point to other aliases
- * but we only manage direct associations here
  */
 static void *devfs_alias_getvp(struct devfs_node *node)
 {
-	if (node->node_type != Nlink)
-		return NULL;
+	struct devfs_node *found = node;
+	int depth = 0;
 
-	/*
-	 * devfs alias nodes are removed before their targets
-	 * when the filesystem gets unmounted
-	 */
-	if (node->link_target == NULL)
-		return NULL;
+	while ((found->node_type == Nlink) && (found->link_target)) {
+		if (depth >= 8) {
+			devfs_debug(DEVFS_DEBUG_SHOW, "Recursive link or depth >= 8");
+			break;
+		}
 
-	if (node->link_target->v_node == NULL)
-		return NULL;
+		found = found->link_target;
+		++depth;
+	}
 
-	return node->link_target->v_node;
+	return found->v_node;
 }
 
 /*
