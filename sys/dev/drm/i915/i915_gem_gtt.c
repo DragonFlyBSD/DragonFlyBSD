@@ -301,7 +301,6 @@ static void undo_idling(struct drm_i915_private *dev_priv, bool interruptible)
 		dev_priv->mm.interruptible = interruptible;
 }
 
-#if 0
 static void i915_ggtt_clear_range(struct drm_device *dev,
 				 unsigned first_entry,
 				 unsigned num_entries)
@@ -327,26 +326,22 @@ static void i915_ggtt_clear_range(struct drm_device *dev,
 		iowrite32(scratch_pte, &gtt_base[i]);
 	readl(gtt_base);
 }
-#endif
 
-void
-i915_gem_restore_gtt_mappings(struct drm_device *dev)
+void i915_gem_restore_gtt_mappings(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_i915_gem_object *obj;
 
-	dev_priv = dev->dev_private;
-
 	/* First fill our portion of the GTT with scratch pages */
-	intel_gtt_clear_range(dev_priv->mm.gtt_start / PAGE_SIZE,
-	    (dev_priv->mm.gtt_end - dev_priv->mm.gtt_start) / PAGE_SIZE);
+	i915_ggtt_clear_range(dev, dev_priv->mm.gtt_start / PAGE_SIZE,
+			      (dev_priv->mm.gtt_end - dev_priv->mm.gtt_start) / PAGE_SIZE);
 
 	list_for_each_entry(obj, &dev_priv->mm.bound_list, gtt_list) {
 		i915_gem_clflush_object(obj);
 		i915_gem_gtt_bind_object(obj, obj->cache_level);
 	}
 
-	intel_gtt_chipset_flush();
+	i915_gem_chipset_flush(dev);
 }
 
 #if 0
