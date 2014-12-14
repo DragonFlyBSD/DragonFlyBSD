@@ -2591,7 +2591,7 @@ intel_gtt_insert_pages(u_int first_entry, u_int num_entries, vm_page_t *pages,
 	    pages, flags);
 }
 
-const struct intel_gtt *intel_gtt_get(void)
+struct intel_gtt *intel_gtt_get(void)
 {
 	intel_private.base = agp_intel_gtt_get(intel_agp);
 	return &intel_private.base;

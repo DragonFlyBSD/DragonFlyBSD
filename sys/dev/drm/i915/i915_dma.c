@@ -1572,12 +1572,11 @@ void i915_driver_preclose(struct drm_device * dev, struct drm_file *file_priv)
 	i915_gem_release(dev, file_priv);
 }
 
-void i915_driver_postclose(struct drm_device *dev, struct drm_file *file_priv)
+void i915_driver_postclose(struct drm_device *dev, struct drm_file *file)
 {
-	struct drm_i915_file_private *i915_file_priv = file_priv->driver_priv;
+	struct drm_i915_file_private *file_priv = file->driver_priv;
 
-	spin_uninit(&i915_file_priv->mm.lock);
-	drm_free(i915_file_priv, M_DRM);
+	kfree(file_priv, M_DRM);
 }
 
 struct drm_ioctl_desc i915_ioctls[] = {

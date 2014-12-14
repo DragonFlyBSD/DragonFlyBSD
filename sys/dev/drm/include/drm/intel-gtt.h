@@ -54,21 +54,18 @@ struct intel_gtt {
 	u_int stolen_size;
 	/* Total number of gtt entries. */
 	u_int gtt_total_entries;
-	/*
-	 * Part of the gtt that is mappable by the cpu, for those
-	 * chips where this is not the full gtt.
-	 */
+	/* Part of the gtt that is mappable by the cpu, for those chips where
+	 * this is not the full gtt. */
 	u_int gtt_mappable_entries;
-
-	/*
-	 * Always false.
-	 */
-	u_int do_idle_maps;
-
-	/*
-	 * Share the scratch page dma with ppgtts.
-	 */
+	/* Whether we idle the gpu before mapping/unmapping */
+	unsigned int do_idle_maps : 1;
+	/* Share the scratch page dma with ppgtts. */
 	vm_paddr_t scratch_page_dma;
+	struct vm_page *scratch_page;
+	/* for ppgtt PDE access */
+	uint32_t *gtt;
+	/* needed for ioremap in drm/i915 */
+	bus_addr_t gma_bus_addr;
 };
 
 struct intel_gtt agp_intel_gtt_get(device_t dev);
@@ -83,7 +80,7 @@ void agp_intel_gtt_insert_sg_entries(device_t dev, struct sglist *sg_list,
 void agp_intel_gtt_insert_pages(device_t dev, u_int first_entry,
     u_int num_entries, vm_page_t *pages, u_int flags);
 
-const struct intel_gtt *intel_gtt_get(void);
+struct intel_gtt *intel_gtt_get(void);
 
 int intel_gtt_chipset_flush(void);
 void intel_gtt_unmap_memory(struct sglist *sg_list);
