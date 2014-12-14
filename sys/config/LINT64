@@ -1244,6 +1244,7 @@ device		"snd_vibes"
 #
 # bktr: Brooktree bt848/848a/849a/878/879 video capture and TV Tuner board
 # ecc: ECC memory controller
+# ipmi: Intelligent Platform Management Interface
 # joy: joystick
 # nrp: Comtrol Rocketport
 # si: Specialix SI/XIO 4-32 port terminal multiplexor
@@ -1264,6 +1265,7 @@ device		si
 # nullmodem terminal driver
 device		nmdm
 device		tpm
+device		ipmi
 
 # The `ahc' device provides support for the Adaptec 274X and 284X
 # adapters.

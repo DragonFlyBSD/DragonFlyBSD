@@ -133,6 +133,7 @@ MAN=	aac.4 \
 	ip6.4 \
 	ipfirewall.4 \
 	ipheth.4 \
+	ipmi.4 \
 	ips.4 \
 	ipsec.4 \
 	isa.4 \

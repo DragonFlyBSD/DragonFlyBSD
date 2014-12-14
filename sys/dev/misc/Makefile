@@ -1,3 +1,4 @@
-SUBDIR= amdsbwd cmx cpuctl dcons ecc ichwd joy kbdmux lpbb pcfclock nmdm putter syscons snp tbridge
+SUBDIR= amdsbwd cmx cpuctl dcons ecc ichwd ipmi joy kbdmux lpbb \
+	nmdm pcfclock putter snp syscons tbridge
 
 .include <bsd.subdir.mk>

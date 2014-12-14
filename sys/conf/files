@@ -665,6 +665,16 @@ rt2860.fw			optional ralfw				\
 	no-obj no-implicit-rule						\
 	clean		"rt2860.fw"
 dev/netif/lge/if_lge.c	optional lge
+dev/misc/ipmi/ipmi.c		optional ipmi
+dev/misc/ipmi/ipmi_acpi.c	optional ipmi acpi
+dev/misc/ipmi/ipmi_isa.c	optional ipmi isa
+dev/misc/ipmi/ipmi_kcs.c	optional ipmi
+dev/misc/ipmi/ipmi_smic.c	optional ipmi
+dev/misc/ipmi/ipmi_smbus.c	optional ipmi smbus
+dev/misc/ipmi/ipmi_smbios.c	optional ipmi
+dev/misc/ipmi/ipmi_ssif.c	optional ipmi smbus
+dev/misc/ipmi/ipmi_pci.c	optional ipmi pci
+#dev/misc/ipmi/ipmi_linux.c	optional ipmi compat_linux
 dev/misc/led/led.c		standard
 dev/disk/md/md.c		optional md
 dev/raid/mfi/mfi.c		optional mfi
