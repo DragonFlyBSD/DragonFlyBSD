@@ -296,12 +296,11 @@ twa_attach(device_t dev)
 	TW_INT32		irq_flags;
 	TW_INT32		error;
 
-	tw_osli_dbg_dprintf(3, sc, "entered");
-
 	sc->ctlr_handle.osl_ctlr_ctxt = sc;
 
 	/* Initialize the softc structure. */
 	sc->bus_dev = dev;
+	tw_osli_dbg_dprintf(3, sc, "entered");
 	sc->device_id = pci_get_device(dev);
 
 	/* Initialize the mutexes right here. */
