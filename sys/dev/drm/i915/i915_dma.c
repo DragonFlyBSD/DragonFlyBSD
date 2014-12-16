@@ -1349,7 +1349,10 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 		drm_free(dev_priv, M_DRM);
 		return (-EIO);
 	}
-	dev_priv->mm.gtt = intel_gtt_get();
+
+	ret = i915_gem_gtt_init(dev);
+	if (ret)
+		goto put_bridge;
 
 	/* Add register map (needed for suspend/resume) */
 	mmio_bar = IS_GEN2(dev) ? 1 : 0;
@@ -1451,6 +1454,7 @@ out_gem_unload:
 	intel_teardown_mchbar(dev);
 	destroy_workqueue(dev_priv->wq);
 out_mtrrfree:
+put_bridge:
 	return ret;
 }
 

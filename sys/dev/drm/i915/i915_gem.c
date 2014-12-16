@@ -721,12 +721,13 @@ i915_wait_seqno(struct intel_ring_buffer *ring, uint32_t seqno)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	int ret = 0;
+	bool interruptible = dev_priv->mm.interruptible;
+	int ret;
 
 	DRM_LOCK_ASSERT(dev);
 	BUG_ON(seqno == 0);
 
-	ret = i915_gem_check_wedge(dev_priv, dev_priv->mm.interruptible);
+	ret = i915_gem_check_wedge(dev_priv, interruptible);
 	if (ret)
 		return ret;
 
@@ -734,9 +735,7 @@ i915_wait_seqno(struct intel_ring_buffer *ring, uint32_t seqno)
 	if (ret)
 		return ret;
 
-	ret = __wait_seqno(ring, seqno, dev_priv->mm.interruptible, NULL);
-
-	return ret;
+	return __wait_seqno(ring, seqno, interruptible, NULL);
 }
 
 /**
@@ -968,6 +967,23 @@ out:
 	drm_gem_object_unreference(obj);
 	return (error);
 }
+
+/**
+ * i915_gem_fault - fault a page into the GTT
+ * vma: VMA in question
+ * vmf: fault info
+ *
+ * The fault handler is set up by drm_gem_mmap() when a object is GTT mapped
+ * from userspace.  The fault handler takes care of binding the object to
+ * the GTT (if needed), allocating and programming a fence register (again,
+ * only if needed based on whether the old reg is still valid or the object
+ * is tiled) and inserting a new PTE into the faulting process.
+ *
+ * Note that the faulting process may involve evicting existing objects
+ * from the GTT and/or fence registers to make room.  So performance may
+ * suffer if the GTT working set is large or there are few fence registers
+ * left.
+ */
 
 /**
  * i915_gem_release_mmap - remove physical page mappings
@@ -1833,6 +1849,8 @@ i915_gem_object_unbind(struct drm_i915_gem_object *obj)
 	if (obj->pin_count)
 		return -EBUSY;
 
+	BUG_ON(obj->pages == NULL);
+
 	ret = i915_gem_object_finish_gpu(obj);
 	if (ret)
 		return ret;
@@ -2057,13 +2075,26 @@ static void i915_gem_object_update_fence(struct drm_i915_gem_object *obj,
 					 struct drm_i915_fence_reg *fence,
 					 bool enable)
 {
-	struct drm_i915_private *dev_priv = obj->base.dev->dev_private;
-	int reg = fence_number(dev_priv, fence);
+	struct drm_device *dev = obj->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	int fence_reg = fence_number(dev_priv, fence);
 
-	i915_gem_write_fence(obj->base.dev, reg, enable ? obj : NULL);
+	/* In order to fully serialize access to the fenced region and
+	 * the update to the fence register we need to take extreme
+	 * measures on SNB+. In theory, the write to the fence register
+	 * flushes all memory transactions before, and coupled with the
+	 * mb() placed around the register write we serialise all memory
+	 * operations with respect to the changes in the tiler. Yet, on
+	 * SNB+ we need to take a step further and emit an explicit wbinvd()
+	 * on each processor in order to manually flush all memory
+	 * transactions before updating the fence register.
+	 */
+	if (HAS_LLC(obj->base.dev))
+		cpu_wbinvd_on_all_cpus();
+	i915_gem_write_fence(dev, fence_reg, enable ? obj : NULL);
 
 	if (enable) {
-		obj->fence_reg = reg;
+		obj->fence_reg = fence_reg;
 		fence->obj = obj;
 		list_move_tail(&fence->lru_list, &dev_priv->mm.fence_list);
 	} else {
@@ -2459,7 +2490,7 @@ i915_gem_object_flush_cpu_write_domain(struct drm_i915_gem_object *obj)
 		return;
 
 	i915_gem_clflush_object(obj);
-	intel_gtt_chipset_flush();
+	i915_gem_chipset_flush(obj->base.dev);
 	old_write_domain = obj->base.write_domain;
 	obj->base.write_domain = 0;
 }
@@ -2567,10 +2598,8 @@ int i915_gem_object_set_cache_level(struct drm_i915_gem_object *obj,
 		 * in obj->write_domain and have been skipping the clflushes.
 		 * Just set it to the CPU cache for now.
 		 */
-		KASSERT((obj->base.write_domain & ~I915_GEM_DOMAIN_CPU) == 0,
-		    ("obj %p in CPU write domain", obj));
-		KASSERT((obj->base.read_domains & ~I915_GEM_DOMAIN_CPU) == 0,
-		    ("obj %p in CPU read domain", obj));
+		WARN_ON(obj->base.write_domain & ~I915_GEM_DOMAIN_CPU);
+		WARN_ON(obj->base.read_domains & ~I915_GEM_DOMAIN_CPU);
 
 		old_read_domains = obj->base.read_domains;
 		old_write_domain = obj->base.write_domain;
@@ -2780,7 +2809,7 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_i915_file_private *file_priv = file->driver_priv;
-	unsigned long recent_enough = ticks - (20 * hz / 1000);
+	unsigned long recent_enough = jiffies - msecs_to_jiffies(20);
 	struct drm_i915_gem_request *request;
 	struct intel_ring_buffer *ring = NULL;
 	u32 seqno = 0;
@@ -2955,7 +2984,7 @@ out:
 	drm_gem_object_unreference(&obj->base);
 unlock:
 	DRM_UNLOCK(dev);
-	return (ret);
+	return ret;
 }
 
 int
@@ -2985,7 +3014,7 @@ i915_gem_busy_ioctl(struct drm_device *dev, void *data,
 
 	args->busy = obj->active;
 	if (obj->ring) {
-		args->busy |= intel_ring_flag(obj->ring) << 17;
+		args->busy |= intel_ring_flag(obj->ring) << 16;
 	}
 
 	drm_gem_object_unreference(&obj->base);
@@ -3481,8 +3510,9 @@ i915_gem_load(struct drm_device *dev)
 
 	INIT_LIST_HEAD(&dev_priv->mm.active_list);
 	INIT_LIST_HEAD(&dev_priv->mm.inactive_list);
-	INIT_LIST_HEAD(&dev_priv->mm.fence_list);
+	INIT_LIST_HEAD(&dev_priv->mm.unbound_list);
 	INIT_LIST_HEAD(&dev_priv->mm.bound_list);
+	INIT_LIST_HEAD(&dev_priv->mm.fence_list);
 	for (i = 0; i < I915_NUM_RINGS; i++)
 		init_ring_lists(&dev_priv->ring[i]);
 	for (i = 0; i < I915_MAX_NUM_FENCES; i++)
