@@ -144,7 +144,7 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 		}
 	}
 
-	if (rt->rt_rmx.rmx_mtu != 0 && !(rt->rt_rmx.rmx_locks & RTV_MTU) &&
+	if (rt->rt_rmx.rmx_mtu == 0 && !(rt->rt_rmx.rmx_locks & RTV_MTU) &&
 	    rt->rt_ifp != NULL)
 		rt->rt_rmx.rmx_mtu = rt->rt_ifp->if_mtu;
 
