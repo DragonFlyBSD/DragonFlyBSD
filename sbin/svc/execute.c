@@ -965,6 +965,7 @@ escapewrite(FILE *fp, char *buf, int n, int *statep)
 
 	b = 0;
 	r = 0;
+	i = 0;
 	while (i < n) {
 		for (i = b; i < n; ++i) {
 			c = buf[i];

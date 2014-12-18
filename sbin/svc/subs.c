@@ -111,6 +111,7 @@ setup_pid_and_socket(command_t *cmd, int *lfdp, int *pfdp)
 	asprintf(&pidfile, "%s/service.%s.pid", cmd->piddir, cmd->label);
 	*lfdp = -1;
 	*pfdp = open(pidfile, O_RDWR|O_CREAT|O_EXLOCK|O_NONBLOCK, 0640);
+	free(pidfile);
 	if (*pfdp < 0) {
 		if (errno == EWOULDBLOCK) {
 			fprintf(cmd->fp, "Cannot init, %s is already active\n",
@@ -121,7 +122,6 @@ setup_pid_and_socket(command_t *cmd, int *lfdp, int *pfdp)
 				cmd->label,
 				strerror(errno));
 		}
-		free(pidfile);
 		return 1;
 	}
 	ftruncate(*pfdp, 0);
@@ -167,10 +167,13 @@ setup_pid_and_socket(command_t *cmd, int *lfdp, int *pfdp)
 void
 remove_pid_and_socket(command_t *cmd, const char *label)
 {
-	char *path;
+	char *pidpath, *skpath;
 
-	asprintf(&path, "%s/service.%s.pid", cmd->piddir, label);
-	remove(path);
-	asprintf(&path, "%s/service.%s.sk", cmd->piddir, label);
-	remove(path);
+	asprintf(&pidpath, "%s/service.%s.pid", cmd->piddir, label);
+	remove(pidpath);
+	asprintf(&skpath, "%s/service.%s.sk", cmd->piddir, label);
+	remove(skpath);
+
+	free(pidpath);
+	free(skpath);
 }
