@@ -156,7 +156,7 @@ KTR_INFO(KTR_TCP, tcp, delayed, 2, "tcp execute delayed ops", 0);
 */
 
 #define TCP_IW_MAXSEGS_DFLT	4
-#define TCP_IW_CAPSEGS_DFLT	3
+#define TCP_IW_CAPSEGS_DFLT	4
 
 struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
