@@ -297,7 +297,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	}
 #endif
 #ifdef INET6
-	if (INP_SOCKAF(so) == AF_INET6 && ip6_v6only)
+	if (INP_SOCKAF(so) == AF_INET6)
 		inp->inp_flags |= IN6P_IPV6_V6ONLY;
 	if (ip6_auto_flowlabel)
 		inp->inp_flags |= IN6P_AUTOFLOWLABEL;

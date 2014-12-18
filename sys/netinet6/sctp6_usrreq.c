@@ -782,12 +782,6 @@ sctp6_attach(netmsg_t msg)
 	inp->inp_vflag |=  INP_IPV6;
 #endif
 #endif
-#if defined(__NetBSD__)
-	if (ip6_v6only) {
-		inp6->in6p_flags |= IN6P_IPV6_V6ONLY;
-	}
-	so->so_send = sctp_sosend;
-#endif
 	inp6->in6p_hops = -1;	        /* use kernel default */
 	inp6->in6p_cksum = -1;	/* just to be sure */
 #ifdef INET
@@ -1128,22 +1122,9 @@ sctp6_send(netmsg_t msg)
 	}
 
 	if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
-		if (!ip6_v6only) {
-			struct sockaddr_in *sin;
-
-			sin = kmalloc(sizeof(*sin), M_LWKTMSG, M_INTWAIT);
-			/* convert v4-mapped into v4 addr and send */
-			in6_sin6_2_sin(sin, sin6);
-			msg->send.nm_addr = (struct sockaddr *)sin;
-			msg->send.nm_flags |= PRUS_NAMALLOC;
-			sctp_send(msg);
-			/* msg invalid now */
-			return;
-		} else {
-			/* mapped addresses aren't enabled */
-			error = EINVAL;
-			goto out;
-		}
+		/* mapped addresses aren't enabled */
+		error = EINVAL;
+		goto out;
 	}
 #endif /* INET */
 connected_type:
@@ -1215,7 +1196,6 @@ sctp6_connect(netmsg_t msg)
 	struct sctp_tcb *stcb;
 #ifdef INET
 	struct sockaddr_in6 *sin6;
-	struct sockaddr_storage ss;
 #endif /* INET */
 	int error = 0;
 
@@ -1285,18 +1265,12 @@ sctp6_connect(netmsg_t msg)
 	}
 
 	if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
-		if (!ip6_v6only) {
-			/* convert v4-mapped into v4 addr */
-			in6_sin6_2_sin((struct sockaddr_in *)&ss, sin6);
-			addr = (struct sockaddr *)&ss;
-		} else {
-			/* mapped addresses aren't enabled */
-			crit_exit();
-			SCTP_INP_RUNLOCK(inp);
-			SCTP_ASOC_CREATE_UNLOCK(inp);
-			error = EINVAL;
-			goto out;
-		}
+		/* mapped addresses aren't enabled */
+		crit_exit();
+		SCTP_INP_RUNLOCK(inp);
+		SCTP_ASOC_CREATE_UNLOCK(inp);
+		error = EINVAL;
+		goto out;
 	} else
 #endif /* INET */
 		addr = addr;	/* for true v6 address case */

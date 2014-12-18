@@ -601,8 +601,6 @@ udp6_attach(netmsg_t msg)
 
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_vflag |= INP_IPV6;
-	if (!ip6_v6only)
-		inp->inp_vflag |= INP_IPV4;
 	inp->in6p_hops = -1;	/* use kernel default */
 	inp->in6p_cksum = -1;	/* just to be sure */
 	/*
@@ -717,10 +715,6 @@ udp6_connect(netmsg_t msg)
 	error = in6_pcbconnect(inp, nam, td);
 	crit_exit();
 	if (error == 0) {
-		if (!ip6_v6only) { /* should be non mapped addr */
-			inp->inp_vflag &= ~INP_IPV4;
-			inp->inp_vflag |= INP_IPV6;
-		}
 		soisconnected(so);
 	} else if (error == EAFNOSUPPORT) {	/* connection dissolved */
 		/*
@@ -810,29 +804,6 @@ udp6_send(netmsg_t msg)
 		if (addr->sa_family != AF_INET6) {
 			error = EAFNOSUPPORT;
 			goto bad;
-		}
-	}
-
-	if (!ip6_v6only) {
-		int hasv4addr;
-		struct sockaddr_in6 *sin6 = NULL;
-
-		if (addr == NULL)
-			hasv4addr = (inp->inp_vflag & INP_IPV4);
-		else {
-			sin6 = (struct sockaddr_in6 *)addr;
-			hasv4addr = IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)
-				? 1 : 0;
-		}
-		if (hasv4addr) {
-			const struct pr_usrreqs *pru;
-
-			if (sin6)
-				in6_sin6_2_sin_in_sock(addr);
-			pru = inetsw[ip_protox[IPPROTO_UDP]].pr_usrreqs;
-			pru->pru_send(msg);
-			/* msg invalid now */
-			return;
 		}
 	}
 
