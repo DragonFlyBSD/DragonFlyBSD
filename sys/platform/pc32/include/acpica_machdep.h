@@ -69,9 +69,4 @@ extern int	acpi_release_global_lock(uint32_t *lock);
 
 #endif /* _KERNEL */
 
-#define ACPI_MACHINE_WIDTH             32
-#define COMPILER_DEPENDENT_INT64       long long
-#define COMPILER_DEPENDENT_UINT64      unsigned long long
-#define ACPI_USE_NATIVE_DIVIDE
-
 #endif /* _MACHINE_ACPICA_MACHDEP_H__ */

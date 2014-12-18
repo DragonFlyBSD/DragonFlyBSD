@@ -119,9 +119,18 @@
 
 #include <platform/acgcc.h>	/* DragonFly uses GCC */
 #include <sys/types.h>
-#include <machine/acpica_machdep.h>
 
-#define ACPI_UINTPTR_T		uintptr_t
+#ifdef __LP64__
+#define	ACPI_MACHINE_WIDTH	64
+#else
+#define	ACPI_MACHINE_WIDTH	32
+#define	ACPI_USE_NATIVE_DIVIDE
+#endif
+
+#define	ACPI_UINTPTR_T			uintptr_t
+#define	COMPILER_DEPENDENT_INT64	int64_t
+#define	COMPILER_DEPENDENT_UINT64	uint64_t
+
 #define ACPI_USE_DO_WHILE_0
 #define ACPI_USE_SYSTEM_CLIBRARY
 
@@ -130,16 +139,15 @@
 #include "opt_acpi.h"
 #include <sys/ctype.h>
 #include <sys/systm.h>
+#include <machine/acpica_machdep.h>
 #include <stdarg.h>
-
-#ifdef DEBUGGER_THREADING
-#undef DEBUGGER_THREADING
-#endif /* DEBUGGER_THREADING */
-
-#define DEBUGGER_THREADING 0    /* integrated with DDB */
 
 #ifdef ACPI_DEBUG
 #define ACPI_DEBUG_OUTPUT	/* enable debug output */
+#ifdef DEBUGGER_THREADING
+#undef DEBUGGER_THREADING
+#endif /* DEBUGGER_THREADING */
+#define	DEBUGGER_THREADING DEBUGGER_SINGLE_THREADED /* integrated with DDB */
 #if 0				/* XXX */
 #include "opt_ddb.h"
 #ifdef DDB

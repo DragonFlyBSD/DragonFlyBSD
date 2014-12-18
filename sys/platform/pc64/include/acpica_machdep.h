@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/acpica_machdep.h,v 1.6 2004/10/11 05:39:15 njl Exp $
- * $DragonFly: src/sys/platform/pc64/include/acpica_machdep.h,v 1.1 2007/08/21 19:45:45 corecode Exp $
  */
 
 /******************************************************************************
@@ -69,9 +68,5 @@ extern int	acpi_release_global_lock(uint32_t *lock);
 		((Acq) = acpi_release_global_lock(&(FACSptr)->GlobalLock))
 
 #endif /* _KERNEL */
-
-#define ACPI_MACHINE_WIDTH             64
-#define COMPILER_DEPENDENT_INT64       long
-#define COMPILER_DEPENDENT_UINT64      unsigned long
 
 #endif /* _MACHINE_ACPICA_MACHDEP_H__ */
