@@ -156,6 +156,10 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		if (nam->sa_family != AF_INET6)
 			return (EAFNOSUPPORT);
 
+		/* Reject v4-mapped address */
+		if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr))
+			return (EADDRNOTAVAIL);
+
 		if (!prison_replace_wildcards(td, nam))
 			return (EINVAL);
 
@@ -242,25 +246,6 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 				error = EADDRINUSE;
 				goto done;
 			}
-			if ((inp->inp_flags & IN6P_IPV6_V6ONLY) == 0 &&
-			    IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr)) {
-				struct sockaddr_in sin;
-
-				in6_sin6_2_sin(&sin, sin6);
-				t = in_pcblookup_local(portinfo,
-				    sin.sin_addr, lport,
-				    INPLOOKUP_WILDCARD, cred);
-				if (t &&
-				    (so->so_cred->cr_uid !=
-				     t->inp_socket->so_cred->cr_uid) &&
-				    (ntohl(t->inp_laddr.s_addr) != INADDR_ANY ||
-				     INP_SOCKAF(so) ==
-				     INP_SOCKAF(t->inp_socket))) {
-					inp->in6p_laddr = kin6addr_any;
-					error = EADDRINUSE;
-					goto done;
-				}
-			}
 		}
 		if (cred && cred->cr_prison &&
 		    !prison_replace_wildcards(td, nam)) {
@@ -274,21 +259,6 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			inp->in6p_laddr = kin6addr_any;
 			error = EADDRINUSE;
 			goto done;
-		}
-		if ((inp->inp_flags & IN6P_IPV6_V6ONLY) == 0 &&
-		    IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr)) {
-			struct sockaddr_in sin;
-
-			in6_sin6_2_sin(&sin, sin6);
-			t = in_pcblookup_local(portinfo, sin.sin_addr, lport,
-			    wild, cred);
-			if (t && (reuseport & t->inp_socket->so_options) == 0 &&
-			    (ntohl(t->inp_laddr.s_addr) != INADDR_ANY ||
-			     INP_SOCKAF(so) == INP_SOCKAF(t->inp_socket))) {
-				inp->in6p_laddr = kin6addr_any;
-				error = EADDRINUSE;
-				goto done;
-			}
 		}
 
 		inp->inp_lport = lport;
@@ -391,6 +361,10 @@ in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	struct in6_addr *addr6;
 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
 	int error;
+
+	/* Reject v4-mapped address */
+	if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr))
+		return EADDRNOTAVAIL;
 
 	/*
 	 * Call inner routine, to assign local interface address.
@@ -723,7 +697,6 @@ in6_pcbdetach(struct inpcb *inp)
 		m_free(inp->inp_options);
 	ip_freemoptions(inp->inp_moptions);
 
-	inp->inp_vflag = 0;
 	kfree(inp, M_PCB);
 }
 
@@ -823,63 +796,6 @@ in6_setpeeraddr(struct socket *so, struct sockaddr **nam)
 	return 0;
 }
 
-void
-in6_mapped_sockaddr_dispatch(netmsg_t msg)
-{
-	int error;
-
-	error = in6_mapped_sockaddr(msg->sockaddr.base.nm_so,
-				    msg->sockaddr.nm_nam);
-	lwkt_replymsg(&msg->sockaddr.base.lmsg, error);
-}
-
-int
-in6_mapped_sockaddr(struct socket *so, struct sockaddr **nam)
-{
-	struct	inpcb *inp = so->so_pcb;
-	int	error;
-
-	if (inp == NULL)
-		return EINVAL;
-	if (inp->inp_vflag & INP_IPV4) {
-		error = in_setsockaddr(so, nam);
-		if (error == 0)
-			in6_sin_2_v4mapsin6_in_sock(nam);
-	} else
-	/* scope issues will be handled in in6_setsockaddr(). */
-	error = in6_setsockaddr(so, nam);
-
-	return error;
-}
-
-int
-in6_mapped_peeraddr(struct socket *so, struct sockaddr **nam)
-{
-	struct	inpcb *inp = so->so_pcb;
-	int	error;
-
-	if (inp == NULL)
-		return EINVAL;
-	if (inp->inp_vflag & INP_IPV4) {
-		error = in_setpeeraddr(so, nam);
-		if (error == 0)
-			in6_sin_2_v4mapsin6_in_sock(nam);
-	} else
-	/* scope issues will be handled in in6_setpeeraddr(). */
-	error = in6_setpeeraddr(so, nam);
-
-	return error;
-}
-
-void
-in6_mapped_peeraddr_dispatch(netmsg_t msg)
-{
-	int error;
-
-	error = in6_mapped_peeraddr(msg->base.nm_so, msg->peeraddr.nm_nam);
-	lwkt_replymsg(&msg->base.lmsg, error);
-}
-
 /*
  * Pass some notification to all connections of a protocol
  * associated with address dst.  The local address and/or port numbers
@@ -942,7 +858,7 @@ in6_pcbnotify(struct inpcbinfo *pcbinfo, struct sockaddr *dst, in_port_t fport,
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
 
-		if ((inp->inp_vflag & INP_IPV6) == 0)
+		if (!INP_ISIPV6(inp))
 			continue;
 		/*
 		 * If the error designates a new path MTU for a destination
@@ -1032,7 +948,7 @@ in6_pcblookup_local(struct inpcbportinfo *portinfo,
 		 */
 		LIST_FOREACH(inp, &phd->phd_pcblist, inp_portlist) {
 			wildcard = 0;
-			if ((inp->inp_vflag & INP_IPV6) == 0)
+			if (!INP_ISIPV6(inp))
 				continue;
 			if (!IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr))
 				wildcard++;
@@ -1107,8 +1023,7 @@ in6_pcbpurgeif0(struct inpcbinfo *pcbinfo, struct ifnet *ifp)
 		if (in6p->in6p_flags & INP_PLACEMARKER)
 			continue;
 		im6o = in6p->in6p_moptions;
-		if ((in6p->inp_vflag & INP_IPV6) &&
-		    im6o) {
+		if (INP_ISIPV6(in6p) && im6o) {
 			/*
 			 * Unselect the outgoing interface if it is being
 			 * detached.
@@ -1215,7 +1130,7 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 					      lport,
 					      pcbinfo->hashmask)];
 	LIST_FOREACH(inp, head, inp_hash) {
-		if ((inp->inp_vflag & INP_IPV6) == 0)
+		if (!INP_ISIPV6(inp))
 			continue;
 		if (IN6_ARE_ADDR_EQUAL(&inp->in6p_faddr, faddr) &&
 		    IN6_ARE_ADDR_EQUAL(&inp->in6p_laddr, laddr) &&
@@ -1261,7 +1176,7 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 			if (inp->inp_flags & INP_PLACEMARKER)
 				continue;
 
-			if (!(inp->inp_vflag & INP_IPV6))
+			if (!INP_ISIPV6(inp))
 				continue;
 			if (inp->inp_socket != NULL)
 				cred = inp->inp_socket->so_cred;
@@ -1332,7 +1247,7 @@ init_sin6(struct sockaddr_in6 *sin6, struct mbuf *m)
 	return;
 }
 
-static void
+void
 in6_savefaddr(struct socket *so, const struct sockaddr *faddr)
 {
 	struct sockaddr_in6 *sin6;
@@ -1355,15 +1270,4 @@ in6_savefaddr(struct socket *so, const struct sockaddr *faddr)
 		sin6->sin6_addr.s6_addr16[1] = 0;
 
 	so->so_faddr = (struct sockaddr *)sin6;
-}
-
-void
-in6_mapped_savefaddr(struct socket *so, const struct sockaddr *faddr)
-{
-	if (faddr->sa_family == AF_INET) {
-		in_savefaddr(so, faddr);
-		in6_sin_2_v4mapsin6_in_sock(&so->so_faddr);
-	} else {
-		in6_savefaddr(so, faddr);
-	}
 }

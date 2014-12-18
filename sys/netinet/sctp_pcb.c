@@ -814,17 +814,7 @@ sctp_endpoint_probe(struct sockaddr *nam, struct sctppcbhead *head,
 		    (inp->sctp_lport == lport)) {
 			/* got it */
 			if ((nam->sa_family == AF_INET) &&
-			    (inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) &&
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-			    (((struct inpcb *)inp)->inp_flags & IN6P_IPV6_V6ONLY)
-#else
-#if defined(__OpenBSD__)
-			    (0)	/* For open bsd we do dual bind only */
-#else
-			    (((struct in6pcb *)inp)->in6p_flags & IN6P_IPV6_V6ONLY)
-#endif
-#endif
-				) {
+			    (inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6)) {
 				/* IPv4 on a IPv6 socket with ONLY IPv6 set */
 				SCTP_INP_RUNLOCK(inp);
 				continue;
@@ -1491,6 +1481,11 @@ sctp_inpcb_alloc(struct socket *so)
 	/* setup socket pointers */
 	inp->sctp_socket = so;
 
+	if (INP_CHECK_SOCKAF(so, AF_INET6))
+		inp->ip_inp.inp.inp_af = AF_INET6;
+	else
+		inp->ip_inp.inp.inp_af = AF_INET;
+
 	/* setup inpcb socket too */
 	inp->ip_inp.inp.inp_socket = so;
 	inp->sctp_frag_point = SCTP_DEFAULT_MAXSEGMENT;
@@ -1758,17 +1753,7 @@ sctp_isport_inuse(struct sctp_inpcb *inp, uint16_t lport)
 		}
 		/* This one is in use. */
 		/* check the v6/v4 binding issue */
-		if ((t_inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) &&
-#if defined(__FreeBSD__)
-		    (((struct inpcb *)t_inp)->inp_flags & IN6P_IPV6_V6ONLY)
-#else
-#if defined(__OpenBSD__)
-		    (0)	/* For open bsd we do dual bind only */
-#else
-		    (((struct in6pcb *)t_inp)->in6p_flags & IN6P_IPV6_V6ONLY)
-#endif
-#endif
-			) {
+		if (t_inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) {
 			if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) {
 				/* collision in V6 space */
 				return (1);
@@ -1776,22 +1761,9 @@ sctp_isport_inuse(struct sctp_inpcb *inp, uint16_t lport)
 				/* inp is BOUND_V4 no conflict */
 				continue;
 			}
-		} else if (t_inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) {
-			/* t_inp is bound v4 and v6, conflict always */
-			return (1);
 		} else {
 			/* t_inp is bound only V4 */
-			if ((inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) &&
-#if defined(__FreeBSD__)
-			    (((struct inpcb *)inp)->inp_flags & IN6P_IPV6_V6ONLY)
-#else
-#if defined(__OpenBSD__)
-			    (0)	/* For open bsd we do dual bind only */
-#else
-			    (((struct in6pcb *)inp)->in6p_flags & IN6P_IPV6_V6ONLY)
-#endif
-#endif
-				) {
+			if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) {
 				/* no conflict */
 				continue;
 			}
@@ -1801,15 +1773,6 @@ sctp_isport_inuse(struct sctp_inpcb *inp, uint16_t lport)
 	}
 	return (0);
 }
-
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-/*
- * Don't know why, but without this there is an unknown reference when
- * compiling NetBSD... hmm
- */
-extern void in6_sin6_2_sin (struct sockaddr_in *, struct sockaddr_in6 *sin6);
-#endif
-
 
 int
 #if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
@@ -1848,32 +1811,8 @@ sctp_inpcb_bind(struct socket *so, struct sockaddr *addr, struct proc *p)
 
 	if (addr != NULL) {
 		if (addr->sa_family == AF_INET) {
-			struct sockaddr_in *sin;
-
-			/* IPV6_V6ONLY socket? */
-			if (
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-				(ip_inp->inp_flags & IN6P_IPV6_V6ONLY)
-#else
-#if defined(__OpenBSD__)
-				(0)	/* For openbsd we do dual bind only */
-#else
-				(((struct in6pcb *)inp)->in6p_flags & IN6P_IPV6_V6ONLY)
-#endif
-#endif
-				) {
-				return (EINVAL);
-			}
-
-			if (addr->sa_len != sizeof(*sin))
-				return (EINVAL);
-
-			sin = (struct sockaddr_in *)addr;
-			lport = sin->sin_port;
-
-			if (sin->sin_addr.s_addr != INADDR_ANY) {
-				bindall = 0;
-			}
+			/* We don't support v4-mapped address */
+			return (EINVAL);
 		} else if (addr->sa_family == AF_INET6) {
 			/* Only for pure IPv6 Address. (No IPv4 Mapped!) */
 			struct sockaddr_in6 *sin6;
@@ -2394,11 +2333,6 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 		ip_freemoptions(ip_pcb->inp_moptions);
 		ip_pcb->inp_moptions = 0;
 	}
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-	inp->inp_vflag = 0;
-#else
-	ip_pcb->inp_vflag = 0;
-#endif
 
 	/* Now the sctp_pcb things */
 
@@ -3650,64 +3584,14 @@ sctp_destination_is_reachable(struct sctp_tcb *stcb, struct sockaddr *destaddr)
 	}
 	/* NOTE: all "scope" checks are done when local addresses are added */
 	if (destaddr->sa_family == AF_INET6) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-		answer = inp->inp_vflag & INP_IPV6;
-#else
-		answer = inp->ip_inp.inp.inp_vflag & INP_IPV6;
-#endif
+		answer = INP_ISIPV6(&inp->ip_inp.inp);
 	} else if (destaddr->sa_family == AF_INET) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-		answer = inp->inp_vflag & INP_IPV4;
-#else
-		answer = inp->ip_inp.inp.inp_vflag & INP_IPV4;
-#endif
+		answer = INP_ISIPV4(&inp->ip_inp.inp);
 	} else {
 		/* invalid family, so it's unreachable */
 		answer = 0;
 	}
 	return (answer);
-}
-
-/*
- * update the inp_vflags on an endpoint
- */
-static void
-sctp_update_ep_vflag(struct sctp_inpcb *inp) {
-	struct sctp_laddr *laddr;
-
-	/* first clear the flag */
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-	inp->inp_vflag = 0;
-#else
-	inp->ip_inp.inp.inp_vflag = 0;
-#endif
-	/* set the flag based on addresses on the ep list */
-	LIST_FOREACH(laddr, &inp->sctp_addr_list, sctp_nxt_addr) {
-		if (laddr->ifa == NULL) {
-#ifdef SCTP_DEBUG
-			if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-				kprintf("An ounce of prevention is worth a pound of cure\n");
-			}
-#endif /* SCTP_DEBUG */
-			continue;
-		}
-		if (laddr->ifa->ifa_addr) {
-			continue;
-		}
-		if (laddr->ifa->ifa_addr->sa_family == AF_INET6) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-			inp->inp_vflag |= INP_IPV6;
-#else
-			inp->ip_inp.inp.inp_vflag |= INP_IPV6;
-#endif
-		} else if (laddr->ifa->ifa_addr->sa_family == AF_INET) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-			inp->inp_vflag |= INP_IPV4;
-#else
-			inp->ip_inp.inp.inp_vflag |= INP_IPV4;
-#endif
-		}
-	}
 }
 
 /*
@@ -3747,20 +3631,10 @@ sctp_add_local_addr_ep(struct sctp_inpcb *inp, struct ifaddr *ifa)
 		if (error != 0)
 			return (error);
 		inp->laddr_count++;
-		/* update inp_vflag flags */
-		if (ifa->ifa_addr->sa_family == AF_INET6) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-			inp->inp_vflag |= INP_IPV6;
-#else
-			inp->ip_inp.inp.inp_vflag |= INP_IPV6;
-#endif
-		} else if (ifa->ifa_addr->sa_family == AF_INET) {
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-			inp->inp_vflag |= INP_IPV4;
-#else
-			inp->ip_inp.inp.inp_vflag |= INP_IPV4;
-#endif
-		}
+		/*
+		 * We don't allow change of the inp_af; we don't support
+		 * v4-mapped address.
+		 */
 	}
 	return (0);
 }
@@ -3839,8 +3713,10 @@ sctp_del_local_addr_ep(struct sctp_inpcb *inp, struct ifaddr *ifa)
 		/* remove it from the ep list */
 		sctp_remove_laddr(laddr);
 		inp->laddr_count--;
-		/* update inp_vflag flags */
-		sctp_update_ep_vflag(inp);
+		/*
+		 * We don't allow change of the inp_af; we don't support
+		 * v4-mapped address.
+		 */
 		/* select a new primary destination if needed */
 		LIST_FOREACH(stcb, &inp->sctp_asoc_list, sctp_tcblist) {
 			/* presume caller (sctp_asconf.c) already owns INP lock */

@@ -1835,12 +1835,8 @@ icmp6_rip6_input(struct	mbuf **mp, int	off)
 	{
 		if (in6p->inp_flags & INP_PLACEMARKER)
 			continue;
-		if ((in6p->inp_vflag & INP_IPV6) == 0)
+		if (!INP_ISIPV6(in6p))
 			continue;
-#ifdef HAVE_NRL_INPCB
-		if (!(in6p->in6p_flags & INP_IPV6))
-			continue;
-#endif
 		if (in6p->in6p_ip6_nxt != IPPROTO_ICMPV6)
 			continue;
 		if (!IN6_IS_ADDR_UNSPECIFIED(&in6p->in6p_laddr) &&

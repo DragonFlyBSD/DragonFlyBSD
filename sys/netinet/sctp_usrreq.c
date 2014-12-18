@@ -730,7 +730,6 @@ sctp_attach(netmsg_t msg)
 
 	inp->sctp_flags &= ~SCTP_PCB_FLAGS_BOUND_V6;	/* I'm not v6! */
 	ip_inp = &inp->ip_inp.inp;
-	ip_inp->inp_vflag |= INP_IPV4;
 	ip_inp->inp_ip_ttl = ip_defttl;
 
 #ifdef IPSEC
@@ -1149,15 +1148,6 @@ sctp_fill_user_address(struct sockaddr_storage *ss, struct sockaddr *sa)
 	return (0);
 }
 
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-/*
- * On NetBSD and OpenBSD in6_sin_2_v4mapsin6() not used and not exported,
- * so we have to export it here.
- */
-void    in6_sin_2_v4mapsin6(struct sockaddr_in *sin, struct sockaddr_in6 *sin6);
-#endif
-
 static int
 sctp_fill_up_addresses(struct sctp_inpcb *inp,
 		       struct sctp_tcb *stcb,
@@ -1185,17 +1175,6 @@ sctp_fill_up_addresses(struct sctp_inpcb *inp,
 	ipv4_addr_legal = ipv6_addr_legal = 0;
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) {
 		ipv6_addr_legal = 1;
-		if (
-#if defined(__OpenBSD__)
-		(0) /* we always do dual bind */
-#elif defined (__NetBSD__)
-		(((struct in6pcb *)inp)->in6p_flags & IN6P_IPV6_V6ONLY)
-#else
-		(((struct in6pcb *)inp)->inp_flags & IN6P_IPV6_V6ONLY)
-#endif
-		== 0) {
-			ipv4_addr_legal = 1;
-		}
 	} else {
 		ipv4_addr_legal = 1;
 	}
@@ -1239,17 +1218,10 @@ sctp_fill_up_addresses(struct sctp_inpcb *inp,
 					    (IN4_ISPRIVATE_ADDRESS(&sin->sin_addr))) {
 						continue;
 					}
-					if (inp->sctp_flags & SCTP_PCB_FLAGS_NEEDS_MAPPED_V4) {
-						in6_sin_2_v4mapsin6(sin, (struct sockaddr_in6 *)sas);
-						((struct sockaddr_in6 *)sas)->sin6_port = inp->sctp_lport;
-						sas = (struct sockaddr_storage *)((caddr_t)sas + sizeof(struct sockaddr_in6));
-						actual += sizeof(struct sockaddr_in6);
-					} else {
-						memcpy(sas, sin, sizeof(*sin));
-						((struct sockaddr_in *)sas)->sin_port = inp->sctp_lport;
-						sas = (struct sockaddr_storage *)((caddr_t)sas + sizeof(*sin));
-						actual += sizeof(*sin);
-					}
+					memcpy(sas, sin, sizeof(*sin));
+					((struct sockaddr_in *)sas)->sin_port = inp->sctp_lport;
+					sas = (struct sockaddr_storage *)((caddr_t)sas + sizeof(*sin));
+					actual += sizeof(*sin);
 					if (actual >= limit) {
 						return (actual);
 					}
@@ -1496,25 +1468,13 @@ sctp_do_connect_x(struct socket *so,
 	}
 	if ((inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) &&
 	    (num_v4 > 0)) {
-		struct in6pcb *inp6;
-		inp6 = (struct in6pcb *)inp;
-		if (
-#if defined(__OpenBSD__)
-			(0) /* we always do dual bind */
-#elif defined (__NetBSD__)
-			(inp6->in6p_flags & IN6P_IPV6_V6ONLY)
-#else
-			(inp6->inp_flags & IN6P_IPV6_V6ONLY)
-#endif
-			) {
-			/*
-			 * if IPV6_V6ONLY flag, ignore connections
-			 * destined to a v4 addr or v4-mapped addr
-			 */
-			SCTP_INP_WUNLOCK(inp);
-			SCTP_ASOC_CREATE_UNLOCK(inp);
-			return EINVAL;
-		}
+		/*
+		 * Ignore connections destined to a v4 addr or
+		 * v4-mapped addr
+		 */
+		SCTP_INP_WUNLOCK(inp);
+		SCTP_ASOC_CREATE_UNLOCK(inp);
+		return EINVAL;
 	}
 #endif /* INET6 */
 	if ((inp->sctp_flags & SCTP_PCB_FLAGS_UNBOUND) ==
@@ -2102,14 +2062,7 @@ sctp_optsget(struct socket *so,
 #endif /* SCTP_DEBUG */
 				break;
 			}
-			if ((stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_NEEDS_MAPPED_V4) &&
-			    (((struct sockaddr *)&net->ro._l_addr)->sa_family == AF_INET)) {
-				/* Must map the address */
-				in6_sin_2_v4mapsin6((struct sockaddr_in *)&net->ro._l_addr,
-						    (struct sockaddr_in6 *)sas);
-			} else {
-				memcpy(sas, &net->ro._l_addr, cpsz);
-			}
+			memcpy(sas, &net->ro._l_addr, cpsz);
 			((struct sockaddr_in *)sas)->sin_port = stcb->rport;
 
 			sas = (struct sockaddr_storage *)((caddr_t)sas + cpsz);
@@ -2702,7 +2655,7 @@ sctp_optsset(struct socket *so,
 
 		case SCTP_I_WANT_MAPPED_V4_ADDR:
 			if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) {
-				set_opt = SCTP_PCB_FLAGS_NEEDS_MAPPED_V4;
+				return (EOPNOTSUPP);
 			} else {
 				return (EINVAL);
 			}
@@ -3420,7 +3373,6 @@ sctp_optsset(struct socket *so,
 	{
 		struct sctp_getaddresses *addrs;
 		struct sockaddr *addr_touse;
-		struct sockaddr_in sin;
 		/* see if we're bound all already! */
 		if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUNDALL) {
 			error = EINVAL;
@@ -3436,8 +3388,8 @@ sctp_optsset(struct socket *so,
 			struct sockaddr_in6 *sin6;
 			sin6 = (struct sockaddr_in6 *)addr_touse;
 			if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
-				in6_sin6_2_sin(&sin, sin6);
-				addr_touse = (struct sockaddr *)&sin;
+				error = EADDRNOTAVAIL;
+				break;
 			}
 		}
 		if (inp->sctp_flags & SCTP_PCB_FLAGS_UNBOUND) {
@@ -3490,7 +3442,6 @@ sctp_optsset(struct socket *so,
 	{
 		struct sctp_getaddresses *addrs;
 		struct sockaddr *addr_touse;
-		struct sockaddr_in sin;
 		/* see if we're bound all already! */
 		if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUNDALL) {
 			error = EINVAL;
@@ -3506,8 +3457,8 @@ sctp_optsset(struct socket *so,
 			struct sockaddr_in6 *sin6;
 			sin6 = (struct sockaddr_in6 *)addr_touse;
 			if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
-				in6_sin6_2_sin(&sin, sin6);
-				addr_touse = (struct sockaddr *)&sin;
+				error = EADDRNOTAVAIL;
+				break;
 			}
 		}
                 /* No lock required mgmt_ep_sa does its own locking. If

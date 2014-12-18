@@ -753,11 +753,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	if (isipv6) {
 		inp->in6p_laddr = sc->sc_inc.inc6_laddr;
 	} else {
-#ifdef INET6
-		inp->inp_vflag &= ~INP_IPV6;
-		inp->inp_vflag |= INP_IPV4;
-		inp->inp_flags &= ~IN6P_IPV6_V6ONLY;
-#endif
+		KASSERT(INP_ISIPV4(inp), ("not inet pcb"));
 		inp->inp_laddr = sc->sc_inc.inc_laddr;
 	}
 	inp->inp_lport = sc->sc_inc.inc_lport;

@@ -451,7 +451,7 @@ tcp_fillheaders(struct tcpcb *tp, void *ip_ptr, void *tcp_ptr, boolean_t tso)
 	struct tcphdr *tcp_hdr = (struct tcphdr *)tcp_ptr;
 
 #ifdef INET6
-	if (inp->inp_vflag & INP_IPV6) {
+	if (INP_ISIPV6(inp)) {
 		struct ip6_hdr *ip6;
 
 		ip6 = (struct ip6_hdr *)ip_ptr;
@@ -701,7 +701,7 @@ tcp_newtcpcb(struct inpcb *inp)
 	struct inp_tp *it;
 	struct tcpcb *tp;
 #ifdef INET6
-	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) != 0);
+	boolean_t isipv6 = INP_ISIPV6(inp);
 #else
 	const boolean_t isipv6 = FALSE;
 #endif
@@ -835,8 +835,7 @@ tcp_close(struct tcpcb *tp)
 	struct rtentry *rt;
 	boolean_t dosavessthresh;
 #ifdef INET6
-	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) != 0);
-	boolean_t isafinet6 = (INP_CHECK_SOCKAF(so, AF_INET6) != 0);
+	boolean_t isipv6 = INP_ISIPV6(inp);
 #else
 	const boolean_t isipv6 = FALSE;
 #endif
@@ -1051,7 +1050,7 @@ no_valid_rt:
 	 * pcbdetach removes any wildcard hash entry on the current CPU.
 	 */
 #ifdef INET6
-	if (isafinet6)
+	if (isipv6)
 		in6_pcbdetach(inp);
 	else
 #endif
@@ -1323,7 +1322,6 @@ tcp6_getcred(SYSCTL_HANDLER_ARGS)
 	struct sockaddr_in6 addrs[2];
 	struct inpcb *inp;
 	int error;
-	boolean_t mapped = FALSE;
 
 	error = priv_check(req->td, PRIV_ROOT);
 	if (error != 0)
@@ -1331,26 +1329,10 @@ tcp6_getcred(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_IN(req, addrs, sizeof addrs);
 	if (error != 0)
 		return (error);
-	if (IN6_IS_ADDR_V4MAPPED(&addrs[0].sin6_addr)) {
-		if (IN6_IS_ADDR_V4MAPPED(&addrs[1].sin6_addr))
-			mapped = TRUE;
-		else
-			return (EINVAL);
-	}
 	crit_enter();
-	if (mapped) {
-		inp = in_pcblookup_hash(&tcbinfo[0],
-		    *(struct in_addr *)&addrs[1].sin6_addr.s6_addr[12],
-		    addrs[1].sin6_port,
-		    *(struct in_addr *)&addrs[0].sin6_addr.s6_addr[12],
-		    addrs[0].sin6_port,
-		    0, NULL);
-	} else {
-		inp = in6_pcblookup_hash(&tcbinfo[0],
-		    &addrs[1].sin6_addr, addrs[1].sin6_port,
-		    &addrs[0].sin6_addr, addrs[0].sin6_port,
-		    0, NULL);
-	}
+	inp = in6_pcblookup_hash(&tcbinfo[0],
+	    &addrs[1].sin6_addr, addrs[1].sin6_port,
+	    &addrs[0].sin6_addr, addrs[0].sin6_port, 0, NULL);
 	if (inp == NULL || inp->inp_socket == NULL) {
 		error = ENOENT;
 		goto out;
@@ -1654,7 +1636,7 @@ tcp_new_isn(struct tcpcb *tp)
 	MD5Update(&isn_ctx, (u_char *)&tp->t_inpcb->inp_fport, sizeof(u_short));
 	MD5Update(&isn_ctx, (u_char *)&tp->t_inpcb->inp_lport, sizeof(u_short));
 #ifdef INET6
-	if (tp->t_inpcb->inp_vflag & INP_IPV6) {
+	if (INP_ISIPV6(tp->t_inpcb)) {
 		MD5Update(&isn_ctx, (u_char *) &tp->t_inpcb->in6p_faddr,
 			  sizeof(struct in6_addr));
 		MD5Update(&isn_ctx, (u_char *) &tp->t_inpcb->in6p_laddr,
@@ -1717,7 +1699,7 @@ tcp_mtudisc(struct inpcb *inp, int mtu)
 	struct socket *so = inp->inp_socket;
 	int maxopd, mss;
 #ifdef INET6
-	boolean_t isipv6 = ((tp->t_inpcb->inp_vflag & INP_IPV6) != 0);
+	boolean_t isipv6 = INP_ISIPV6(inp);
 #else
 	const boolean_t isipv6 = FALSE;
 #endif
@@ -1876,7 +1858,7 @@ ipsec_hdrsiz_tcp(struct tcpcb *tp)
 		return (0);
 
 #ifdef INET6
-	if (inp->inp_vflag & INP_IPV6) {
+	if (INP_ISIPV6(inp)) {
 		struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
 
 		th = (struct tcphdr *)(ip6 + 1);
@@ -2076,7 +2058,7 @@ tcp_rmx_iwsegs(struct tcpcb *tp, u_long *maxsegs, u_long *capsegs)
 	struct rtentry *rt;
 	struct inpcb *inp = tp->t_inpcb;
 #ifdef INET6
-	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) ? TRUE : FALSE);
+	boolean_t isipv6 = INP_ISIPV6(inp);
 #else
 	const boolean_t isipv6 = FALSE;
 #endif

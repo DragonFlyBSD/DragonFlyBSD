@@ -154,9 +154,7 @@ struct netmsg_pru_connect {
 };
 
 #define PRUC_RECONNECT		0x0001		/* thread port change */
-#define PRUC_NAMALLOC		0x0002		/* nm_nam allocated */
 #define PRUC_PUSH		0x0004		/* call tcp_output */
-#define PRUC_FALLBACK		0x0008		/* fallback to ipv4 */
 #define PRUC_ASYNC		0x0010
 #define PRUC_HELDTD		0x0020
 #define PRUC_HASLADDR		0x0040

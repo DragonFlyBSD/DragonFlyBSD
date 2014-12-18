@@ -3493,21 +3493,8 @@ sctp_send_initiate_ack(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 		/* Its a V6 socket */
 		in_inp = (struct inpcb *)inp;
 		stc.ipv6_addr_legal = 1;
-		/* Now look at the binding flag to see if V4 will be legal */
-		if (
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		    (in_inp->inp_flags & IN6P_IPV6_V6ONLY)
-#elif defined(__OpenBSD__)
-		    (0)	/* For openbsd we do dual bind only */
-#else
-		    (((struct in6pcb *)in_inp)->in6p_flags & IN6P_IPV6_V6ONLY)
-#endif
-		    == 0) {
-			stc.ipv4_addr_legal = 1;
-		} else {
-			/* V4 addresses are NOT legal on the association */
-			stc.ipv4_addr_legal = 0;
-		}
+		/* V4 addresses are NOT legal on the association */
+		stc.ipv4_addr_legal = 0;
 	} else {
 		/* Its a V4 socket, no - V6 */
 		stc.ipv4_addr_legal = 1;

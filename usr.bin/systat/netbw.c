@@ -112,17 +112,15 @@ mytcpcb_cmp(struct mytcpcb *tcp1, struct mytcpcb *tcp2)
 	/*
 	 * Sort IPV4 vs IPV6 addresses
 	 */
-	if ((tcp1->xtcp.xt_inp.inp_vflag & (INP_IPV4|INP_IPV6)) <
-	    (tcp2->xtcp.xt_inp.inp_vflag & (INP_IPV4|INP_IPV6)))
+	if (tcp1->xtcp.xt_inp.inp_af < tcp2->xtcp.xt_inp.inp_af)
 		return(-1);
-	if ((tcp1->xtcp.xt_inp.inp_vflag & (INP_IPV4|INP_IPV6)) >
-	    (tcp2->xtcp.xt_inp.inp_vflag & (INP_IPV4|INP_IPV6)))
+	if (tcp1->xtcp.xt_inp.inp_af > tcp2->xtcp.xt_inp.inp_af)
 		return(1);
 
 	/*
 	 * Local and foreign addresses
 	 */
-	if (tcp1->xtcp.xt_inp.inp_vflag & INP_IPV4) {
+	if (INP_ISIPV4(&tcp1->xtcp.xt_inp)) {
 		if (ntohl(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_laddr.s_addr) <
 		    ntohl(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_laddr.s_addr))
 			return(-1);
@@ -135,7 +133,7 @@ mytcpcb_cmp(struct mytcpcb *tcp1, struct mytcpcb *tcp2)
 		if (ntohl(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_faddr.s_addr) >
 		    ntohl(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_faddr.s_addr))
 			return(1);
-	} else if (tcp1->xtcp.xt_inp.inp_vflag & INP_IPV6) {
+	} else if (INP_ISIPV6(&tcp1->xtcp.xt_inp)) {
 		r = bcmp(&tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie6_faddr,
 			 &tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie6_faddr,
 			 sizeof(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie6_faddr));
@@ -346,12 +344,12 @@ netbwline(int row, struct mytcpcb *elm, double delta_time)
 		  "rcv %s snd %s "
 		  "[%c%c%c%c%c%c%c]",
 		  netaddrstr(
-		    elm->xtcp.xt_inp.inp_vflag,
+		    elm->xtcp.xt_inp.inp_af,
 		    &elm->xtcp.xt_inp.inp_inc.inc_ie.
 			ie_dependladdr,
 		    ntohs(elm->xtcp.xt_inp.inp_inc.inc_ie.ie_lport)),
 		  netaddrstr(
-		    elm->xtcp.xt_inp.inp_vflag,
+		    elm->xtcp.xt_inp.inp_af,
 		    &elm->xtcp.xt_inp.inp_inc.inc_ie.
 			ie_dependfaddr,
 		    ntohs(elm->xtcp.xt_inp.inp_inc.inc_ie.ie_fport)),
@@ -426,7 +424,7 @@ numtok(double value)
 }
 
 const char *
-netaddrstr(u_char vflags, union in_dependaddr *depaddr, u_int16_t port)
+netaddrstr(u_char af, union in_dependaddr *depaddr, u_int16_t port)
 {
 	static char buf[MAXINDEXES][64];
 	static int nexta;
@@ -434,7 +432,7 @@ netaddrstr(u_char vflags, union in_dependaddr *depaddr, u_int16_t port)
 
 	nexta = (nexta + 1) % MAXINDEXES;
 
-	if (vflags & INP_IPV4) {
+	if (af == AF_INET) {
 		snprintf(bufip, sizeof(bufip),
 			 "%d.%d.%d.%d",
 			 (ntohl(depaddr->id46_addr.ia46_addr4.s_addr) >> 24) &
@@ -447,7 +445,7 @@ netaddrstr(u_char vflags, union in_dependaddr *depaddr, u_int16_t port)
 			  255);
 		snprintf(buf[nexta], sizeof(buf[nexta]),
 			 "%15s:%-5d", bufip, port);
-	} else if (vflags & INP_IPV6) {
+	} else if (af == AF_INET6) {
 		snprintf(bufip, sizeof(bufip),
 			 "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
 			 ntohs(depaddr->id6_addr.s6_addr16[0]),

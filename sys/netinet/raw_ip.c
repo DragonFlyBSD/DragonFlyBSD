@@ -163,7 +163,7 @@ rip_input(struct mbuf **mp, int *offp, int proto)
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
 #ifdef INET6
-		if ((inp->inp_vflag & INP_IPV4) == 0)
+		if (!INP_ISIPV4(inp))
 			continue;
 #endif
 		if (inp->inp_ip_p && inp->inp_ip_p != proto)
@@ -596,11 +596,9 @@ rip_attach(netmsg_t msg)
 	error = in_pcballoc(so, &ripcbinfo);
 	if (error == 0) {
 		inp = (struct inpcb *)so->so_pcb;
-		inp->inp_vflag |= INP_IPV4;
 		inp->inp_ip_p = proto;
 		inp->inp_ip_ttl = ip_defttl;
 	}
-	error = 0;
 done:
 	lwkt_replymsg(&msg->lmsg, error);
 }

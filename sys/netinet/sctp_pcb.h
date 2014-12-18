@@ -339,18 +339,6 @@ struct sctp_inpcb {
 	uint32_t sctp_vtag_first;
 	struct mbuf *pkt, *pkt_last, *sb_last_mpkt;
 	struct mbuf *control;
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-#ifndef INP_IPV6
-#define INP_IPV6	0x1
-#endif
-#ifndef INP_IPV4
-#define INP_IPV4	0x2
-#endif
-	u_char inp_vflag;
-	u_char inp_ip_ttl;
-	u_char inp_ip_tos;
-	u_char inp_ip_resv;
-#endif
 #if defined(__FreeBSD__) && __FreeBSD_version >= 503000
 	struct mtx inp_mtx;
 	struct mtx inp_create_mtx;
@@ -698,11 +686,6 @@ sctp_initiate_iterator(asoc_func af, uint32_t, uint32_t, void *, uint32_t,
 #if defined(__APPLE__)
 void	sctp_callout_alloc(struct sctp_timer *);
 void	sctp_callout_free(struct callout *);
-#endif
-
-#ifdef __NetBSD__
-extern void in6_sin6_2_sin (struct sockaddr_in *,
-                            struct sockaddr_in6 *sin6);
 #endif
 
 #endif /* _KERNEL */

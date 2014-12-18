@@ -407,7 +407,6 @@ div_attach(netmsg_t msg)
 		goto out;
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_ip_p = proto;
-	inp->inp_vflag |= INP_IPV4;
 	inp->inp_flags |= INP_HDRINCL;
 	/*
 	 * The socket is always "connected" because

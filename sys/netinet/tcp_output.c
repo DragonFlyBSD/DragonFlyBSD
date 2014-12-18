@@ -197,7 +197,7 @@ tcp_output(struct tcpcb *tp)
 	boolean_t sendalot;
 	struct ip6_hdr *ip6;
 #ifdef INET6
-	const boolean_t isipv6 = (inp->inp_vflag & INP_IPV6) != 0;
+	const boolean_t isipv6 = INP_ISIPV6(inp);
 #else
 	const boolean_t isipv6 = FALSE;
 #endif
@@ -1211,16 +1211,11 @@ after_th:
 			    NULL, NULL, inp);
 		} else {
 			struct rtentry *rt;
-			ip->ip_len = m->m_pkthdr.len;
-#ifdef INET6
-			if (INP_CHECK_SOCKAF(so, AF_INET6))
-				ip->ip_ttl = in6_selecthlim(inp,
-				    (inp->in6p_route.ro_rt ?
-				     inp->in6p_route.ro_rt->rt_ifp : NULL));
-			else
-#endif
-				ip->ip_ttl = inp->inp_ip_ttl;	/* XXX */
 
+			KASSERT(!INP_CHECK_SOCKAF(so, AF_INET6), ("inet6 pcb"));
+
+			ip->ip_len = m->m_pkthdr.len;
+			ip->ip_ttl = inp->inp_ip_ttl;	/* XXX */
 			ip->ip_tos = inp->inp_ip_tos;	/* XXX */
 			/*
 			 * See if we should do MTU discovery.
@@ -1412,7 +1407,7 @@ tcp_tso_getsize(struct tcpcb *tp, u_int *segsz, u_int *hlen0)
 {
 	struct inpcb * const inp = tp->t_inpcb;
 #ifdef INET6
-	const boolean_t isipv6 = (inp->inp_vflag & INP_IPV6) != 0;
+	const boolean_t isipv6 = INP_ISIPV6(inp);
 #else
 	const boolean_t isipv6 = FALSE;
 #endif

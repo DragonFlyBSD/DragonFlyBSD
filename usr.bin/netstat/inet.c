@@ -184,13 +184,13 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 	if (so->xso_protocol != (int)proto)
 		return;
 
-	if ((af == AF_INET && (inp->inp_vflag & INP_IPV4) == 0)
+	if ((af == AF_INET && !INP_ISIPV4(inp))
 #ifdef INET6
-	    || (af == AF_INET6 && (inp->inp_vflag & INP_IPV6) == 0)
+	    || (af == AF_INET6 && !INP_ISIPV6(inp))
 #endif /* INET6 */
-	    || (af == AF_UNSPEC && ((inp->inp_vflag & INP_IPV4) == 0
+	    || (af == AF_UNSPEC && (!INP_ISIPV4(inp)
 #ifdef INET6
-		&& (inp->inp_vflag & INP_IPV6) == 0
+		&& !INP_ISIPV6(inp)
 #endif /* INET6 */
 		))
 	    ) {
@@ -202,10 +202,10 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 #ifdef INET6
 	    || (af == AF_INET6 && IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
 #endif /* INET6 */
-	    || (af == AF_UNSPEC && (((inp->inp_vflag & INP_IPV4) != 0 &&
+	    || (af == AF_UNSPEC && ((INP_ISIPV4(inp) &&
 		inet_lnaof(inp->inp_laddr) == INADDR_ANY)
 #ifdef INET6
-	    || ((inp->inp_vflag & INP_IPV6) != 0 &&
+	    || (INP_ISIPV6(inp) &&
 		IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
 #endif
 		  ))
@@ -265,11 +265,11 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 		}
 	}
 #ifdef INET6
-	if ((inp->inp_vflag & INP_IPV6) != 0)
-		vchar = ((inp->inp_vflag & INP_IPV4) != 0) ? "46" : "6 ";
+	if (INP_ISIPV6(inp))
+		vchar = "6 ";
 	else
 #endif
-		vchar = ((inp->inp_vflag & INP_IPV4) != 0) ? "4 " : "  ";
+		vchar = INP_ISIPV4(inp) ? "4 " : "  ";
 
 	printf("%-3.3s%-2.2s ", name, vchar);
 	if (Lflag) {
@@ -288,7 +288,7 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 		       so->so_snd.sb_cc);
 	}
 	if (numeric_port) {
-		if (inp->inp_vflag & INP_IPV4) {
+		if (INP_ISIPV4(inp)) {
 			inetprint(&inp->inp_laddr, (int)inp->inp_lport,
 				  name, 1);
 			if (!Lflag)
@@ -296,7 +296,7 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 					  (int)inp->inp_fport, name, 1);
 		}
 #ifdef INET6
-		else if (inp->inp_vflag & INP_IPV6) {
+		else if (INP_ISIPV6(inp)) {
 			inet6print(&inp->in6p_laddr,
 				   (int)inp->inp_lport, name, 1);
 			if (!Lflag)
@@ -305,7 +305,7 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 		} /* else nothing printed now */
 #endif /* INET6 */
 	} else if (inp->inp_flags & INP_ANONPORT) {
-		if (inp->inp_vflag & INP_IPV4) {
+		if (INP_ISIPV4(inp)) {
 			inetprint(&inp->inp_laddr, (int)inp->inp_lport,
 				  name, 1);
 			if (!Lflag)
@@ -313,7 +313,7 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 					  (int)inp->inp_fport, name, 0);
 		}
 #ifdef INET6
-		else if (inp->inp_vflag & INP_IPV6) {
+		else if (INP_ISIPV6(inp)) {
 			inet6print(&inp->in6p_laddr,
 				   (int)inp->inp_lport, name, 1);
 			if (!Lflag)
@@ -322,7 +322,7 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 		} /* else nothing printed now */
 #endif /* INET6 */
 	} else {
-		if (inp->inp_vflag & INP_IPV4) {
+		if (INP_ISIPV4(inp)) {
 			inetprint(&inp->inp_laddr, (int)inp->inp_lport,
 				  name, 0);
 			if (!Lflag)
@@ -332,7 +332,7 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 						inp->inp_fport);
 		}
 #ifdef INET6
-		else if (inp->inp_vflag & INP_IPV6) {
+		else if (INP_ISIPV6(inp)) {
 			inet6print(&inp->in6p_laddr,
 				   (int)inp->inp_lport, name, 0);
 			if (!Lflag)

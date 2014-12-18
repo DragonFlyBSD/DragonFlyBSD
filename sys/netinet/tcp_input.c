@@ -290,7 +290,7 @@ static boolean_t tcp_recv_dupack(struct tcpcb *, tcp_seq, u_int);
 #define ND6_HINT(tp) \
 do { \
 	if ((tp) && (tp)->t_inpcb && \
-	    ((tp)->t_inpcb->inp_vflag & INP_IPV6) && \
+	    INP_ISIPV6((tp)->t_inpcb) && \
 	    (tp)->t_inpcb->in6p_route.ro_rt) \
 		nd6_nud_hint((tp)->t_inpcb->in6p_route.ro_rt, NULL, 0); \
 } while (0)
@@ -2997,7 +2997,7 @@ tcp_mss(struct tcpcb *tp, int offer)
 	struct inpcb *inp = tp->t_inpcb;
 	struct socket *so;
 #ifdef INET6
-	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) ? TRUE : FALSE);
+	boolean_t isipv6 = INP_ISIPV6(inp);
 	size_t min_protoh = isipv6 ?
 			    sizeof(struct ip6_hdr) + sizeof(struct tcphdr) :
 			    sizeof(struct tcpiphdr);
@@ -3181,8 +3181,7 @@ tcp_mssopt(struct tcpcb *tp)
 {
 	struct rtentry *rt;
 #ifdef INET6
-	boolean_t isipv6 =
-	    ((tp->t_inpcb->inp_vflag & INP_IPV6) ? TRUE : FALSE);
+	boolean_t isipv6 = INP_ISIPV6(tp->t_inpcb);
 	int min_protoh = isipv6 ?
 			     sizeof(struct ip6_hdr) + sizeof(struct tcphdr) :
 			     sizeof(struct tcpiphdr);
@@ -3421,7 +3420,7 @@ tcp_rmx_msl(const struct tcpcb *tp)
 	struct inpcb *inp = tp->t_inpcb;
 	int msl;
 #ifdef INET6
-	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) ? TRUE : FALSE);
+	boolean_t isipv6 = INP_ISIPV6(inp);
 #else
 	const boolean_t isipv6 = FALSE;
 #endif

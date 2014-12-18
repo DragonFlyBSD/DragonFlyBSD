@@ -1463,10 +1463,6 @@ ip6_ctloutput(struct socket *so, struct sockopt *sopt)
 					else {
 						/* -1 = kernel default */
 						in6p->in6p_hops = optval;
-
-						if ((in6p->in6p_vflag &
-						     INP_IPV4) != 0)
-							in6p->inp_ip_ttl = optval;
 					}
 					break;
 #define OPTSET(bit) \
@@ -1598,10 +1594,7 @@ do { \
 						error = EINVAL;
 						break;
 					}
-					if (optval) {
-						in6p->in6p_flags |= IN6P_IPV6_V6ONLY;
-						in6p->in6p_vflag &= ~INP_IPV4;
-					} else {
+					if (!optval) {
 						/* Don't allow v4-mapped */
 						error = EOPNOTSUPP;
 					}
@@ -1899,7 +1892,7 @@ do { \
 					break;
 
 				case IPV6_V6ONLY:
-					optval = OPTBIT(IN6P_IPV6_V6ONLY);
+					optval = 1;
 					break;
 
 				case IPV6_PORTRANGE:

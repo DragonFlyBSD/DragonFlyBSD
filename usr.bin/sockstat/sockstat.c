@@ -76,7 +76,6 @@ static int	*ports;
 struct sock {
 	void *socket;
 	void *pcb;
-	int vflag;
 	int family;
 	int proto;
 	const char *protoname;
@@ -190,13 +189,7 @@ gather_inet(int proto)
 	const char *varname, *protoname;
 	size_t len;
 	void *buf;
-	int hash, vflag;
-
-	vflag = 0;
-	if (opt_4)
-		vflag |= INP_IPV4;
-	if (opt_6)
-		vflag |= INP_IPV6;
+	int hash;
 
 	switch (proto) {
 	case IPPROTO_TCP:
@@ -261,39 +254,38 @@ gather_inet(int proto)
 		default:
 			abort();
 		}
-		if ((inp->inp_vflag & vflag) == 0)
+		if ((INP_ISIPV4(inp) && !opt_4) || (INP_ISIPV6(inp) && !opt_6))
 			continue;
-		if (inp->inp_vflag & INP_IPV4) {
+		if (INP_ISIPV4(inp)) {
 			if ((inp->inp_fport == 0 && !opt_l) ||
 			    (inp->inp_fport != 0 && !opt_c))
 				continue;
-		} else if (inp->inp_vflag & INP_IPV6) {
+		} else if (INP_ISIPV6(inp)) {
 			if ((inp->in6p_fport == 0 && !opt_l) ||
 			    (inp->in6p_fport != 0 && !opt_c))
 				continue;
 		} else {
 			if (opt_v)
-				warnx("invalid vflag 0x%x", inp->inp_vflag);
+				warnx("invalid af 0x%x", inp->inp_af);
 			continue;
 		}
 		if ((sock = calloc(1, sizeof *sock)) == NULL)
 			err(1, "malloc()");
 		sock->socket = so->xso_so;
 		sock->proto = proto;
-		if (inp->inp_vflag & INP_IPV4) {
+		if (INP_ISIPV4(inp)) {
 			sock->family = AF_INET;
 			sockaddr(&sock->laddr, sock->family,
 			    &inp->inp_laddr, inp->inp_lport);
 			sockaddr(&sock->faddr, sock->family,
 			    &inp->inp_faddr, inp->inp_fport);
-		} else if (inp->inp_vflag & INP_IPV6) {
+		} else if (INP_ISIPV6(inp)) {
 			sock->family = AF_INET6;
 			sockaddr(&sock->laddr, sock->family,
 			    &inp->in6p_laddr, inp->in6p_lport);
 			sockaddr(&sock->faddr, sock->family,
 			    &inp->in6p_faddr, inp->in6p_fport);
 		}
-		sock->vflag = inp->inp_vflag;
 		sock->protoname = protoname;
 		hash = (int)((uintptr_t)sock->socket % HASHSIZE);
 		sock->next = sockhash[hash];
@@ -497,9 +489,9 @@ display(void)
 		while (pos < 29)
 			pos += xprintf(" ");
 		pos += xprintf("%s", s->protoname);
-		if (s->vflag & INP_IPV4)
+		if (s->family == AF_INET)
 			pos += xprintf("4");
-		if (s->vflag & INP_IPV6)
+		if (s->family == AF_INET6)
 			pos += xprintf("6");
 		while (pos < 36)
 			pos += xprintf(" ");

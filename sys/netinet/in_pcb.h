@@ -138,7 +138,7 @@ struct in_endpoints {
 struct inp_localgroup {
 	LIST_ENTRY(inp_localgroup) il_list;
 	uint16_t	il_lport;
-	u_char		il_vflag;
+	u_char		il_af;		/* AF_INET or AF_INET6 */
 	u_char		il_pad;
 	uint32_t	il_pad2;
 	union in_dependaddr il_dependladdr;
@@ -203,9 +203,7 @@ struct inpcb {
 	int	inp_flags;		/* generic IP/datagram flags */
 
 	struct	inpcbpolicy *inp_sp; /* for IPSEC */
-	u_char	inp_vflag;
-#define	INP_IPV4	0x1
-#define	INP_IPV6	0x2
+	u_char	inp_af;			/* AF_INET or AF_INET6 */
 	u_char	inp_ip_ttl;		/* time to live proto */
 	u_char	inp_ip_p;		/* protocol proto */
 	u_char	inp_ip_minttl;		/* minimum TTL or drop */
@@ -250,7 +248,7 @@ struct inpcb {
 #define	in6p_hops	inp_depend6.inp6_hops	/* default hop limit */
 #define	in6p_ip6_nxt	inp_ip_p
 #define	in6p_flowinfo	inp_flow
-#define	in6p_vflag	inp_vflag
+#define	in6p_af		inp_af
 #define	in6p_options	inp_depend6.inp6_options
 #define	in6p_outputopts	inp_depend6.inp6_outputopts
 #define	in6p_moptions	inp_depend6.inp6_moptions
@@ -348,7 +346,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_FLAG_PROTO1		0x2000	/* protocol specific */
 #define INP_PLACEMARKER		0x4000	/* skip this pcb, its a placemarker */
 
-#define IN6P_IPV6_V6ONLY	0x008000 /* restrict AF_INET6 socket for v6 */
+/* 0x008000 unused */
 
 #define	IN6P_PKTINFO		0x010000 /* receive IP6 dst and I/F */
 #define	IN6P_HOPLIMIT		0x020000 /* receive hoplimit */
@@ -416,8 +414,10 @@ struct baddynamicports {
 
 
 #define	INP_SOCKAF(so) so->so_proto->pr_domain->dom_family
-
 #define	INP_CHECK_SOCKAF(so, af)	(INP_SOCKAF(so) == af)
+
+#define INP_ISIPV6(inp)			((inp)->inp_af == AF_INET6)
+#define INP_ISIPV4(inp)			((inp)->inp_af == AF_INET)
 
 #ifdef _KERNEL
 

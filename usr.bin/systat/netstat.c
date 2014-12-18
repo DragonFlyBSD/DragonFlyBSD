@@ -244,7 +244,7 @@ enter(struct inpcb *inp, struct xsocket *so, int state, const char *proto)
 	 * pcblist may return non-ipv4 sockets, but at the moment
 	 * -netstat code doesn't support other than ipv4.
 	 */
-	if ((inp->inp_vflag & INP_IPV4) == 0)
+	if (!INP_ISIPV4(inp))
 		return;
 	/*
 	 * Only take exact matches, any sockets with

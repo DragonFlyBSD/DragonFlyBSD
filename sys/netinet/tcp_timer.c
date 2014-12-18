@@ -606,7 +606,7 @@ tcp_timer_rexmt_handler(struct tcpcb *tp)
 	 */
 	if (tp->t_rxtshift > TCP_MAXRXTSHIFT / 4) {
 #ifdef INET6
-		if ((tp->t_inpcb->inp_vflag & INP_IPV6) != 0)
+		if (INP_ISIPV6(tp->t_inpcb))
 			in6_losing(tp->t_inpcb);
 		else
 #endif

@@ -124,56 +124,6 @@ extern struct protosw inetsw[];
 extern u_int32_t sctp_debug_on;
 #endif
 
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-extern void in6_sin_2_v4mapsin6 (struct sockaddr_in *sin,
-				 struct sockaddr_in6 *sin6);
-extern void in6_sin6_2_sin (struct sockaddr_in *,
-			    struct sockaddr_in6 *sin6);
-extern void in6_sin6_2_sin_in_sock(struct sockaddr *nam);
-
-/*
- * Convert sockaddr_in6 to sockaddr_in.  Original sockaddr_in6 must be
- * v4 mapped addr or v4 compat addr
- */
-void
-in6_sin6_2_sin(struct sockaddr_in *sin, struct sockaddr_in6 *sin6)
-{
-	bzero(sin, sizeof(*sin));
-	sin->sin_len = sizeof(struct sockaddr_in);
-	sin->sin_family = AF_INET;
-	sin->sin_port = sin6->sin6_port;
-	sin->sin_addr.s_addr = sin6->sin6_addr.s6_addr32[3];
-}
-
-/* Convert sockaddr_in to sockaddr_in6 in v4 mapped addr format. */
-void
-in6_sin_2_v4mapsin6(struct sockaddr_in *sin, struct sockaddr_in6 *sin6)
-{
-	bzero(sin6, sizeof(*sin6));
-	sin6->sin6_len = sizeof(struct sockaddr_in6);
-	sin6->sin6_family = AF_INET6;
-	sin6->sin6_port = sin->sin_port;
-	sin6->sin6_addr.s6_addr32[0] = 0;
-	sin6->sin6_addr.s6_addr32[1] = 0;
-	sin6->sin6_addr.s6_addr32[2] = IPV6_ADDR_INT32_SMP;
-	sin6->sin6_addr.s6_addr32[3] = sin->sin_addr.s_addr;
-}
-
-/* Convert sockaddr_in6 into sockaddr_in. */
-void
-in6_sin6_2_sin_in_sock(struct sockaddr *nam)
-{
-	struct sockaddr_in *sin_p;
-	struct sockaddr_in6 sin6;
-
-	/* save original sockaddr_in6 addr and convert it to sockaddr_in  */
-	sin6 = *(struct sockaddr_in6 *)nam;
-	sin_p = (struct sockaddr_in *)nam;
-	in6_sin6_2_sin(sin_p, &sin6);
-}
-
-#endif /* !(__FreeBSD__ || __APPLE__) */
-
 static int sctp6_bind_oncpu(struct socket *so, struct sockaddr *addr, thread_t td);
 
 
@@ -773,15 +723,6 @@ sctp6_attach(netmsg_t msg)
 	inp->sctp_flags |= SCTP_PCB_FLAGS_BOUND_V6;	/* I'm v6! */
 	inp6 = (struct in6pcb *)inp;
 
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-	inp6->inp_vflag |= INP_IPV6;
-#else
-#if defined(__OpenBSD__)
-	inp->ip_inp.inp.inp_flags |= INP_IPV6;
-#else
-	inp->inp_vflag |=  INP_IPV6;
-#endif
-#endif
 	inp6->in6p_hops = -1;	        /* use kernel default */
 	inp6->in6p_cksum = -1;	/* just to be sure */
 #ifdef INET
@@ -821,7 +762,6 @@ static int
 sctp6_bind_oncpu(struct socket *so, struct sockaddr *addr, thread_t td)
 {
 	struct sctp_inpcb *inp;
-	struct in6pcb *inp6;
 	int error;
 
 	inp = (struct sctp_inpcb *)so->so_pcb;
@@ -830,83 +770,7 @@ sctp6_bind_oncpu(struct socket *so, struct sockaddr *addr, thread_t td)
 		goto out;
 	}
 
-	inp6 = (struct in6pcb *)inp;
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-	inp6->inp_vflag &= ~INP_IPV4;
-	inp6->inp_vflag |= INP_IPV6;
-#else
-#if defined(__OpenBSD__)
-	inp->ip_inp.inp.inp_flags &= ~INP_IPV4;
-	inp->ip_inp.inp.inp_flags |= INP_IPV6;
-#else
-	inp->inp_vflag &= ~INP_IPV4;
-	inp->inp_vflag |= INP_IPV6;
-#endif
-#endif
-	if (addr != NULL &&
-#if defined(__OpenBSD__)
-	     (0) /* we always do dual bind */
-#elif defined (__NetBSD__)
-	     !(inp6->in6p_flags & IN6P_IPV6_V6ONLY)
-#else
-	     !(inp6->inp_flags & IN6P_IPV6_V6ONLY)
-#endif
-	     ) {
-		if (addr->sa_family == AF_INET) {
-			/* binding v4 addr to v6 socket, so reset flags */
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-			inp6->inp_vflag |= INP_IPV4;
-			inp6->inp_vflag &= ~INP_IPV6;
-#else
-#if defined(__OpenBSD__)
-			inp->ip_inp.inp.inp_flags |= INP_IPV4;
-			inp->ip_inp.inp.inp_flags &= ~INP_IPV6;
-#else
-			inp->inp_vflag |= INP_IPV4;
-			inp->inp_vflag &= ~INP_IPV6;
-#endif
-#endif
-		} else {
-			struct sockaddr_in6 *sin6_p;
-			sin6_p = (struct sockaddr_in6 *)addr;
-
-			if (IN6_IS_ADDR_UNSPECIFIED(&sin6_p->sin6_addr)) {
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-			  inp6->inp_vflag |= INP_IPV4;
-#else
-#if defined(__OpenBSD__)
-			  inp->ip_inp.inp.inp_flags |= INP_IPV4;
-#else
-			  inp->inp_vflag |= INP_IPV4;
-#endif
-#endif
-			}
-			else if (IN6_IS_ADDR_V4MAPPED(&sin6_p->sin6_addr)) {
-				struct sockaddr_in sin;
-				in6_sin6_2_sin(&sin, sin6_p);
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-				inp6->inp_vflag |= INP_IPV4;
-				inp6->inp_vflag &= ~INP_IPV6;
-#else
-#if defined(__OpenBSD__)
-				inp->ip_inp.inp.inp_flags |= INP_IPV4;
-				inp->ip_inp.inp.inp_flags &= ~INP_IPV6;
-
-#else
-				inp->inp_vflag |= INP_IPV4;
-				inp->inp_vflag &= ~INP_IPV6;
-#endif
-#endif
-				crit_enter();
-				error = sctp_inpcb_bind(so,
-						(struct sockaddr *)&sin,
-						td);
-				crit_exit();
-				goto out;
-			}
-		}
-	} else if (addr != NULL) {
-		/* IPV6_V6ONLY socket */
+	if (addr != NULL) {
 		if (addr->sa_family == AF_INET) {
 			/* can't bind v4 addr to v6 only socket! */
 			error = EINVAL;
@@ -1097,30 +961,13 @@ sctp6_send(netmsg_t msg)
 
 #ifdef INET
 	sin6 = (struct sockaddr_in6 *)addr;
-	if (
-
-#if defined(__OpenBSD__)
-	     (0) /* we always do dual bind */
-#elif defined (__NetBSD__)
-	     (inp6->in6p_flags & IN6P_IPV6_V6ONLY)
-#else
-	     (inp6->inp_flags & IN6P_IPV6_V6ONLY)
-#endif
-	    ) {
-		/*
-		 * if IPV6_V6ONLY flag, we discard datagrams
-		 * destined to a v4 addr or v4-mapped addr
-		 */
-		if (addr->sa_family == AF_INET) {
-			error = EINVAL;
-			goto out;
-		}
-		if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
-			error = EINVAL;
-			goto out;
-		}
+	/*
+	 * We discard datagrams destined to a v4 addr or v4-mapped addr
+	 */
+	if (addr->sa_family == AF_INET) {
+		error = EINVAL;
+		goto out;
 	}
-
 	if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
 		/* mapped addresses aren't enabled */
 		error = EINVAL;
@@ -1235,35 +1082,16 @@ sctp6_connect(netmsg_t msg)
 
 #ifdef INET
 	sin6 = (struct sockaddr_in6 *)addr;
-	if (
-#if defined(__OpenBSD__)
-	     (0) /* we always do dual bind */
-#elif defined (__NetBSD__)
-	     (inp6->in6p_flags & IN6P_IPV6_V6ONLY)
-#else
-	     (inp6->inp_flags & IN6P_IPV6_V6ONLY)
-#endif
-	    ) {
-		/*
-		 * if IPV6_V6ONLY flag, ignore connections
-		 * destined to a v4 addr or v4-mapped addr
-		 */
-		if (addr->sa_family == AF_INET) {
-			crit_exit();
-			SCTP_INP_RUNLOCK(inp);
-			SCTP_ASOC_CREATE_UNLOCK(inp);
-			error = EINVAL;
-			goto out;
-		}
-		if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
-			crit_exit();
-			SCTP_INP_RUNLOCK(inp);
-			SCTP_ASOC_CREATE_UNLOCK(inp);
-			error = EINVAL;
-			goto out;
-		}
+	/*
+	 * Ignore connections destined to a v4 addr or v4-mapped addr
+	 */
+	if (addr->sa_family == AF_INET) {
+		crit_exit();
+		SCTP_INP_RUNLOCK(inp);
+		SCTP_ASOC_CREATE_UNLOCK(inp);
+		error = EINVAL;
+		goto out;
 	}
-
 	if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
 		/* mapped addresses aren't enabled */
 		crit_exit();
@@ -1497,7 +1325,6 @@ sctp6_in6getaddr(netmsg_t msg)
 {
 	struct socket *so = msg->sockaddr.base.nm_so;
 	struct sockaddr **nam = msg->sockaddr.nm_nam;
-	struct sockaddr *addr;
 	struct in6pcb *inp6 = sotoin6pcb(so);
 	int error;
 
@@ -1509,42 +1336,6 @@ sctp6_in6getaddr(netmsg_t msg)
 	crit_enter();
 	/* allow v6 addresses precedence */
 	error = sctp6_getaddr(so, nam);
-	if (error) {
-		/* try v4 next if v6 failed */
-		error = sctp_ingetaddr_oncpu(so, nam);
-		if (error) {
-			crit_exit();
-			goto out;
-		}
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
-		addr = *nam;
-#endif
-		/* if I'm V6ONLY, convert it to v4-mapped */
-		if (
-#if defined(__OpenBSD__)
-	     (0) /* we always do dual bind */
-#elif defined (__NetBSD__)
-	     (inp6->in6p_flags & IN6P_IPV6_V6ONLY)
-#else
-	     (inp6->inp_flags & IN6P_IPV6_V6ONLY)
-#endif
-		    ) {
-			struct sockaddr_in6 sin6;
-			in6_sin_2_v4mapsin6((struct sockaddr_in *)addr, &sin6);
-			memcpy(addr, &sin6, sizeof(struct sockaddr_in6));
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-			nam->m_len = sizeof(sin6);
-#endif
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-		} else {
-			nam->m_len = sizeof(struct sockaddr_in);
-#endif
-		}
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-	} else {
-		nam->m_len = sizeof(struct sockaddr_in6);
-#endif
-	}
 	crit_exit();
 out:
 	lwkt_replymsg(&msg->lmsg, error);
@@ -1555,7 +1346,6 @@ sctp6_getpeeraddr(netmsg_t msg)
 {
 	struct socket *so = msg->peeraddr.base.nm_so;
 	struct sockaddr **nam = msg->peeraddr.nm_nam;
-	struct sockaddr *addr = *nam;
 	struct in6pcb *inp6 = sotoin6pcb(so);
 	int error;
 
@@ -1567,39 +1357,6 @@ sctp6_getpeeraddr(netmsg_t msg)
 	crit_enter();
 	/* allow v6 addresses precedence */
 	error = sctp6_peeraddr(so, nam);
-	if (error) {
-		/* try v4 next if v6 failed */
-		error = sctp_peeraddr_oncpu(so, nam);
-		if (error) {
-			crit_exit();
-			goto out;
-		}
-		/* if I'm V6ONLY, convert it to v4-mapped */
-		if (
-#if defined(__OpenBSD__)
-	     (0) /* we always do dual bind */
-#elif defined (__NetBSD__)
-	     (inp6->in6p_flags & IN6P_IPV6_V6ONLY)
-#else
-	     (inp6->inp_flags & IN6P_IPV6_V6ONLY)
-#endif
-		    ) {
-			struct sockaddr_in6 sin6;
-			in6_sin_2_v4mapsin6((struct sockaddr_in *)addr, &sin6);
-			memcpy(addr, &sin6, sizeof(struct sockaddr_in6));
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-			nam->m_len = sizeof(sin6);
-#endif
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-		} else {
-			nam->m_len = sizeof(struct sockaddr_in);
-#endif
-		}
-#if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
-	} else {
-		nam->m_len = sizeof(struct sockaddr_in6);
-#endif
-	}
 	crit_exit();
 out:
 	lwkt_replymsg(&msg->lmsg, error);

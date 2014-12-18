@@ -332,21 +332,6 @@ tcp6_usr_bind(netmsg_t msg)
 		error = EAFNOSUPPORT;
 		goto out;
 	}
-	inp->inp_vflag &= ~INP_IPV4;
-	inp->inp_vflag |= INP_IPV6;
-	if ((inp->inp_flags & IN6P_IPV6_V6ONLY) == 0) {
-		if (IN6_IS_ADDR_UNSPECIFIED(&sin6p->sin6_addr))
-			inp->inp_vflag |= INP_IPV4;
-		else if (IN6_IS_ADDR_V4MAPPED(&sin6p->sin6_addr)) {
-			struct sockaddr_in sin;
-
-			in6_sin6_2_sin(&sin, sin6p);
-			inp->inp_vflag |= INP_IPV4;
-			inp->inp_vflag &= ~INP_IPV6;
-			error = in_pcbbind(inp, (struct sockaddr *)&sin, td);
-			goto out;
-		}
-	}
 	error = in6_pcbbind(inp, nam, td);
 	if (error)
 		goto out;
@@ -464,10 +449,6 @@ tcp6_usr_listen(netmsg_t msg)
 		goto out;
 
 	if (inp->inp_lport == 0) {
-		if (!(inp->inp_flags & IN6P_IPV6_V6ONLY))
-			inp->inp_vflag |= INP_IPV4;
-		else
-			inp->inp_vflag &= ~INP_IPV4;
 		error = in6_pcbbind(inp, NULL, td);
 		if (error)
 			goto out;
@@ -578,28 +559,13 @@ tcp6_usr_connect(netmsg_t msg)
 		goto out;
 	}
 
+	/* Reject v4-mapped address */
 	if (IN6_IS_ADDR_V4MAPPED(&sin6p->sin6_addr)) {
-		struct sockaddr_in *sinp;
-
-		if ((inp->inp_flags & IN6P_IPV6_V6ONLY) != 0) {
-			error = EINVAL;
-			goto out;
-		}
-		sinp = kmalloc(sizeof(*sinp), M_LWKTMSG, M_INTWAIT);
-		in6_sin6_2_sin(sinp, sin6p);
-		inp->inp_vflag |= INP_IPV4;
-		inp->inp_vflag &= ~INP_IPV6;
-		msg->connect.nm_nam = (struct sockaddr *)sinp;
-		msg->connect.nm_flags |= PRUC_NAMALLOC;
-		tcp_connect(msg);
-		/* msg is invalid now */
-		return;
+		error = EADDRNOTAVAIL;
+		goto out;
 	}
-	inp->inp_vflag &= ~INP_IPV4;
-	inp->inp_vflag |= INP_IPV6;
-	inp->inp_inc.inc_isipv6 = 1;
 
-	msg->connect.nm_flags |= PRUC_FALLBACK;
+	inp->inp_inc.inc_isipv6 = 1;
 	tcp6_connect(msg);
 	/* msg is invalid now */
 	return;
@@ -691,7 +657,7 @@ tcp6_usr_accept(netmsg_t msg)
 	}
 	tp = intotcpcb(inp);
 	TCPDEBUG1();
-	in6_mapped_peeraddr(so, nam);
+	in6_setpeeraddr(so, nam);
 	COMMON_END(PRU_ACCEPT);
 }
 #endif /* INET6 */
@@ -895,7 +861,7 @@ tcp_usr_savefaddr(struct socket *so, const struct sockaddr *faddr)
 static void
 tcp6_usr_savefaddr(struct socket *so, const struct sockaddr *faddr)
 {
-	in6_mapped_savefaddr(so, faddr);
+	in6_savefaddr(so, faddr);
 }
 #endif
 
@@ -951,13 +917,13 @@ struct pr_usrreqs tcp6_usrreqs = {
 	.pru_detach = tcp_usr_detach,
 	.pru_disconnect = tcp_usr_disconnect,
 	.pru_listen = tcp6_usr_listen,
-	.pru_peeraddr = in6_mapped_peeraddr_dispatch,
+	.pru_peeraddr = in6_setpeeraddr_dispatch,
 	.pru_rcvd = tcp_usr_rcvd,
 	.pru_rcvoob = tcp_usr_rcvoob,
 	.pru_send = tcp_usr_send,
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = tcp_usr_shutdown,
-	.pru_sockaddr = in6_mapped_sockaddr_dispatch,
+	.pru_sockaddr = in6_setsockaddr_dispatch,
 	.pru_sosend = sosendtcp,
 	.pru_soreceive = sorecvtcp,
 	.pru_savefaddr = tcp6_usr_savefaddr
@@ -1201,10 +1167,6 @@ out:
 		m_freem(msg->connect.nm_m);
 		msg->connect.nm_m = NULL;
 	}
-	if (msg->connect.nm_flags & PRUC_NAMALLOC) {
-		kfree(msg->connect.nm_nam, M_LWKTMSG);
-		msg->connect.nm_nam = NULL;
-	}
 	if (msg->connect.nm_flags & PRUC_HELDTD)
 		lwkt_rele(td);
 	if (error && (msg->connect.nm_flags & PRUC_ASYNC)) {
@@ -1284,21 +1246,12 @@ tcp6_connect(netmsg_t msg)
 				   &msg->connect.nm_m, sin6, addr6);
 	/* nm_m may still be intact */
 out:
-	if (error && (msg->connect.nm_flags & PRUC_FALLBACK)) {
-		tcp_connect(msg);
-		/* msg invalid now */
-	} else {
-		if (msg->connect.nm_m) {
-			m_freem(msg->connect.nm_m);
-			msg->connect.nm_m = NULL;
-		}
-		if (msg->connect.nm_flags & PRUC_NAMALLOC) {
-			kfree(msg->connect.nm_nam, M_LWKTMSG);
-			msg->connect.nm_nam = NULL;
-		}
-		lwkt_replymsg(&msg->connect.base.lmsg, error);
-		/* msg invalid now */
+	if (msg->connect.nm_m) {
+		m_freem(msg->connect.nm_m);
+		msg->connect.nm_m = NULL;
 	}
+	lwkt_replymsg(&msg->connect.base.lmsg, error);
+	/* msg invalid now */
 }
 
 static int
@@ -1642,7 +1595,7 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 	int error;
 	int cpu;
 #ifdef INET6
-	int isipv6 = INP_CHECK_SOCKAF(so, AF_INET6) != 0;
+	boolean_t isipv6 = INP_CHECK_SOCKAF(so, AF_INET6);
 #endif
 
 	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
@@ -1666,13 +1619,9 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 		return (error);
 	inp = so->so_pcb;
 #ifdef INET6
-	if (isipv6) {
-		inp->inp_vflag |= INP_IPV6;
+	if (isipv6)
 		inp->in6p_hops = -1;	/* use kernel default */
-	}
-	else
 #endif
-	inp->inp_vflag |= INP_IPV4;
 	tp = tcp_newtcpcb(inp);
 	if (tp == NULL) {
 		/*

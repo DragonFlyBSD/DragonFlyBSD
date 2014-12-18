@@ -1725,16 +1725,8 @@ sctp_addr_mgmt_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 		struct in6pcb *inp6;
 
 		inp6 = (struct in6pcb *)&inp->ip_inp.inp;
-		/* invalid if we are a v6 only endpoint */
-		if ((inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) &&
-#if defined(__OpenBSD__)
-		    (0) /* we always do dual bind */
-#elif defined (__NetBSD__)
-		    (inp6->in6p_flags & IN6P_IPV6_V6ONLY)
-#else
-		    (inp6->inp_flags & IN6P_IPV6_V6ONLY)
-#endif
-			)
+		/* invalid; we are a v6 only endpoint */
+		if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6)
 			return;
 
 		sin = (struct sockaddr_in *)ifa->ifa_addr;
@@ -1824,19 +1816,8 @@ sctp_addr_mgmt_ep(struct sctp_inpcb *inp, struct ifaddr *ifa, uint16_t type)
 			return;
 		}
 	} else if (ifa->ifa_addr->sa_family == AF_INET) {
-		/* invalid if we are a v6 only endpoint */
-		struct in6pcb *inp6;
-		inp6 = (struct in6pcb *)&inp->ip_inp.inp;
-
-		if ((inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) &&
-#if defined(__OpenBSD__)
-		    (0) /* we always do dual bind */
-#elif defined (__NetBSD__)
-		    (inp6->in6p_flags & IN6P_IPV6_V6ONLY)
-#else
-		    (inp6->inp_flags & IN6P_IPV6_V6ONLY)
-#endif
-			) {
+		/* invalid; we are a v6 only endpoint */
+		if (inp->sctp_flags & SCTP_PCB_FLAGS_BOUND_V6) {
 			SCTP_INP_WUNLOCK(inp);
 			return;
 		}

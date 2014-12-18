@@ -297,11 +297,13 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	}
 #endif
 #ifdef INET6
-	if (INP_SOCKAF(so) == AF_INET6)
-		inp->inp_flags |= IN6P_IPV6_V6ONLY;
-	if (ip6_auto_flowlabel)
-		inp->inp_flags |= IN6P_AUTOFLOWLABEL;
+	if (INP_CHECK_SOCKAF(so, AF_INET6)) {
+		if (ip6_auto_flowlabel)
+			inp->inp_flags |= IN6P_AUTOFLOWLABEL;
+		inp->inp_af = AF_INET6;
+	} else
 #endif
+	inp->inp_af = AF_INET;
 	soreference(so);
 	so->so_pcb = inp;
 
@@ -568,16 +570,9 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			     (t->inp_socket->so_options & SO_REUSEPORT) == 0) &&
 			    (so->so_cred->cr_uid !=
 			     t->inp_socket->so_cred->cr_uid)) {
-#ifdef INET6
-				if (!in_nullhost(sin->sin_addr) ||
-				    !in_nullhost(t->inp_laddr) ||
-				    INP_SOCKAF(so) == INP_SOCKAF(t->inp_socket))
-#endif
-				{
-					inp->inp_laddr.s_addr = INADDR_ANY;
-					error = EADDRINUSE;
-					goto done;
-				}
+				inp->inp_laddr.s_addr = INADDR_ANY;
+				error = EADDRINUSE;
+				goto done;
 			}
 		}
 		if (cred && !prison_replace_wildcards(td, nam)) {
@@ -588,16 +583,9 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		t = in_pcblookup_local(portinfo, sin->sin_addr, lport,
 		    wild, cred);
 		if (t && !(reuseport & t->inp_socket->so_options)) {
-#ifdef INET6
-			if (!in_nullhost(sin->sin_addr) ||
-			    !in_nullhost(t->inp_laddr) ||
-			    INP_SOCKAF(so) == INP_SOCKAF(t->inp_socket))
-#endif
-			{
-				inp->inp_laddr.s_addr = INADDR_ANY;
-				error = EADDRINUSE;
-				goto done;
-			}
+			inp->inp_laddr.s_addr = INADDR_ANY;
+			error = EADDRINUSE;
+			goto done;
 		}
 		inp->inp_lport = lport;
 		in_pcbinsporthash(portinfo, inp);
@@ -648,7 +636,7 @@ in_pcblookup_localremote(struct inpcbportinfo *portinfo, struct in_addr laddr,
 	if (phd != NULL) {
 		LIST_FOREACH(inp, &phd->phd_pcblist, inp_portlist) {
 #ifdef INET6
-			if ((inp->inp_vflag & INP_IPV4) == 0)
+			if (!INP_ISIPV4(inp))
 				continue;
 #endif
 			if (inp->inp_laddr.s_addr != INADDR_ANY &&
@@ -1066,7 +1054,6 @@ in_pcbdetach(struct inpcb *inp)
 	if (inp->inp_route.ro_rt)
 		rtfree(inp->inp_route.ro_rt);
 	ip_freemoptions(inp->inp_moptions);
-	inp->inp_vflag = 0;
 	kfree(inp, M_PCB);
 }
 
@@ -1181,7 +1168,7 @@ in_pcbnotifyall(struct inpcbinfo *pcbinfo, struct in_addr faddr, int err,
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
 #ifdef INET6
-		if (!(inp->inp_vflag & INP_IPV4))
+		if (!INP_ISIPV4(inp))
 			continue;
 #endif
 		if (inp->inp_faddr.s_addr != faddr.s_addr ||
@@ -1237,7 +1224,7 @@ in_pcbpurgeif0(struct inpcbinfo *pcbinfo, struct ifnet *ifp)
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
 		imo = inp->inp_moptions;
-		if ((inp->inp_vflag & INP_IPV4) && imo != NULL) {
+		if (INP_ISIPV4(inp) && imo != NULL) {
 			int i, gap;
 
 			/*
@@ -1362,7 +1349,7 @@ in_pcblookup_local(struct inpcbportinfo *portinfo, struct in_addr laddr,
 		LIST_FOREACH(inp, &phd->phd_pcblist, inp_portlist) {
 			wildcard = 0;
 #ifdef INET6
-			if ((inp->inp_vflag & INP_IPV4) == 0)
+			if (!INP_ISIPV4(inp))
 				continue;
 #endif
 			if (inp->inp_faddr.s_addr != INADDR_ANY)
@@ -1410,7 +1397,7 @@ in_pcblocalgroup_last(const struct inpcbinfo *pcbinfo,
 	    INP_PCBLOCALGRPHASH(inp->inp_lport, pcbinfo->localgrphashmask)];
 
 	LIST_FOREACH(grp, hdr, il_list) {
-		if (grp->il_vflag == inp->inp_vflag &&
+		if (grp->il_af == inp->inp_af &&
 		    grp->il_lport == inp->inp_lport &&
 		    memcmp(&grp->il_dependladdr,
 			&inp->inp_inc.inc_ie.ie_dependladdr,
@@ -1457,13 +1444,11 @@ inp_localgroup_lookup(const struct inpcbinfo *pcbinfo,
 	 * 1. non-wild.
 	 * 2. wild.
 	 *
-	 * NOTE:
-	 * - Local group does not contain jailed sockets
-	 * - Local group does not contain IPv4 mapped INET6 wild sockets
+	 * NOTE: Local group does not contain jailed sockets
 	 */
 	LIST_FOREACH(grp, hdr, il_list) {
 #ifdef INET6
-		if (!(grp->il_vflag & INP_IPV4))
+		if (grp->il_af != AF_INET)
 			continue;
 #endif
 		if (grp->il_lport == lport) {
@@ -1505,7 +1490,7 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 	    laddr.s_addr, lport, pcbinfo->hashmask)];
 	LIST_FOREACH(inp, head, inp_hash) {
 #ifdef INET6
-		if (!(inp->inp_vflag & INP_IPV4))
+		if (!INP_ISIPV4(inp))
 			continue;
 #endif
 		if (in_hosteq(inp->inp_faddr, faddr) &&
@@ -1527,9 +1512,6 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 	if (wildcard) {
 		struct inpcb *local_wild = NULL;
 		struct inpcb *jinp_wild = NULL;
-#ifdef INET6
-		struct inpcb *local_wild_mapped = NULL;
-#endif
 		struct inpcontainer *ic;
 		struct inpcontainerhead *chead;
 		struct sockaddr_in jsin;
@@ -1568,7 +1550,7 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 
 			jsin.sin_addr.s_addr = laddr.s_addr;
 #ifdef INET6
-			if (!(inp->inp_vflag & INP_IPV4))
+			if (!INP_ISIPV4(inp))
 				continue;
 #endif
 			if (inp->inp_socket != NULL)
@@ -1596,17 +1578,10 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 					}
 				}
 				if (inp->inp_laddr.s_addr == INADDR_ANY) {
-#ifdef INET6
-					if (INP_CHECK_SOCKAF(inp->inp_socket,
-							     AF_INET6))
-						local_wild_mapped = inp;
+					if (cred != NULL && jailed(cred))
+						jinp_wild = inp;
 					else
-#endif
-						if (cred != NULL &&
-						    jailed(cred))
-							jinp_wild = inp;
-						else
-							local_wild = inp;
+						local_wild = inp;
 				}
 			}
 		}
@@ -1615,10 +1590,6 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 
 		if (local_wild != NULL)
 			return (local_wild);
-#ifdef INET6
-		if (local_wild_mapped != NULL)
-			return (local_wild_mapped);
-#endif
 		if (jinp != NULL)
 			return (jinp);
 		return (jinp_wild);
@@ -1650,7 +1621,7 @@ in_pcbinsconnhash(struct inpcb *inp)
 	u_int32_t hashkey_faddr, hashkey_laddr;
 
 #ifdef INET6
-	if (inp->inp_vflag & INP_IPV6) {
+	if (INP_ISIPV6(inp)) {
 		hashkey_faddr = inp->in6p_faddr.s6_addr32[3] /* XXX JH */;
 		hashkey_laddr = inp->in6p_laddr.s6_addr32[3] /* XXX JH */;
 	} else {
@@ -1762,14 +1733,14 @@ in_pcbinsporthash_lport(struct inpcb *inp)
 }
 
 static struct inp_localgroup *
-inp_localgroup_alloc(u_char vflag,
-    uint16_t port, const union in_dependaddr *addr, int size)
+inp_localgroup_alloc(u_char af, uint16_t port,
+    const union in_dependaddr *addr, int size)
 {
 	struct inp_localgroup *grp;
 
 	grp = kmalloc(__offsetof(struct inp_localgroup, il_inp[size]),
 	    M_TEMP, M_INTWAIT | M_ZERO);
-	grp->il_vflag = vflag;
+	grp->il_af = af;
 	grp->il_lport = port;
 	grp->il_dependladdr = *addr;
 	grp->il_inpsiz = size;
@@ -1827,22 +1798,12 @@ in_pcbinslocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	if (cred != NULL && jailed(cred))
 		return;
 
-#ifdef INET6
-	/*
-	 * XXX don't allow IPv4 mapped INET6 wild socket
-	 */
-	if ((inp->inp_vflag & INP_IPV4) &&
-	    inp->inp_laddr.s_addr == INADDR_ANY &&
-	    INP_CHECK_SOCKAF(inp->inp_socket, AF_INET6))
-		return;
-#endif
-
 	hdr = &pcbinfo->localgrphashbase[
 	    INP_PCBLOCALGRPHASH(inp->inp_lport, pcbinfo->localgrphashmask)];
 
 again:
 	LIST_FOREACH(grp, hdr, il_list) {
-		if (grp->il_vflag == inp->inp_vflag &&
+		if (grp->il_af == inp->inp_af &&
 		    grp->il_lport == inp->inp_lport &&
 		    memcmp(&grp->il_dependladdr,
 		        &inp->inp_inc.inc_ie.ie_dependladdr,
@@ -1855,7 +1816,7 @@ again:
 		 * Create a new local group
 		 */
 		if (grp_alloc == NULL) {
-			grp_alloc = inp_localgroup_alloc(inp->inp_vflag,
+			grp_alloc = inp_localgroup_alloc(inp->inp_af,
 			    inp->inp_lport, &inp->inp_inc.inc_ie.ie_dependladdr,
 			    INP_LOCALGROUP_SIZMIN);
 			/*
@@ -1898,7 +1859,7 @@ again:
 		    grp->il_inpcnt >= grp_alloc->il_inpsiz) {
 			if (grp_alloc != NULL)
 				inp_localgroup_free(grp_alloc);
-			grp_alloc = inp_localgroup_alloc(grp->il_vflag,
+			grp_alloc = inp_localgroup_alloc(grp->il_af,
 			    grp->il_lport, &grp->il_dependladdr,
 			    grp->il_inpsiz * 2);
 			/*

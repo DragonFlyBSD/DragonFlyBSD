@@ -129,8 +129,7 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 	int error = 0;
 	struct ip6_pktopts opt, *stickyopt = in6p->in6p_outputopts;
 	int priv;
-	int af = AF_INET6, hlen = sizeof(struct ip6_hdr);
-	int flags;
+	int hlen = sizeof(struct ip6_hdr);
 	struct sockaddr_in6 tmp;
 
 	priv = !priv_check(td, PRIV_ROOT);	/* 1 if privileged, 0 if not */
@@ -152,6 +151,11 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 		 * and the local port.
 		 */
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr6;
+
+		/* Caller should have rejected the v4-mapped address */
+		KASSERT(!IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr),
+		    ("v4-mapped address"));
+
 		if (sin6->sin6_port == 0) {
 			error = EADDRNOTAVAIL;
 			goto release;
@@ -174,37 +178,16 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 		faddr = &sin6->sin6_addr;
 		fport = sin6->sin6_port; /* allow 0 port */
 
-		if (IN6_IS_ADDR_V4MAPPED(faddr)) {
-			if ((in6p->in6p_flags & IN6P_IPV6_V6ONLY)) {
-				/*
-				 * I believe we should explicitly discard the
-				 * packet when mapped addresses are disabled,
-				 * rather than send the packet as an IPv6 one.
-				 * If we chose the latter approach, the packet
-				 * might be sent out on the wire based on the
-				 * default route, the situation which we'd
-				 * probably want to avoid.
-				 * (20010421 jinmei@kame.net)
-				 */
-				error = EINVAL;
-				goto release;
-			} else
-				af = AF_INET;
-		}
-
 		/* KAME hack: embed scopeid */
 		if (in6_embedscope(&sin6->sin6_addr, sin6, in6p, NULL) != 0) {
 			error = EINVAL;
 			goto release;
 		}
 
-		if (!IN6_IS_ADDR_V4MAPPED(faddr)) {
-			laddr = in6_selectsrc(sin6, in6p->in6p_outputopts,
-					      in6p->in6p_moptions,
-					      &in6p->in6p_route,
-					      &in6p->in6p_laddr, &error, NULL);
-		} else
-			laddr = &in6p->in6p_laddr;	/* XXX */
+		laddr = in6_selectsrc(sin6, in6p->in6p_outputopts,
+				      in6p->in6p_moptions,
+				      &in6p->in6p_route,
+				      &in6p->in6p_laddr, &error, NULL);
 		if (laddr == NULL) {
 			if (error == 0)
 				error = EADDRNOTAVAIL;
@@ -218,29 +201,15 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 			error = ENOTCONN;
 			goto release;
 		}
-		if (IN6_IS_ADDR_V4MAPPED(&in6p->in6p_faddr)) {
-			if ((in6p->in6p_flags & IN6P_IPV6_V6ONLY)) {
-				/*
-				 * XXX: this case would happen when the
-				 * application sets the V6ONLY flag after
-				 * connecting the foreign address.
-				 * Such applications should be fixed,
-				 * so we bark here.
-				 */
-				log(LOG_INFO, "udp6_output: IPV6_V6ONLY "
-				    "option was set for a connected socket\n");
-				error = EINVAL;
-				goto release;
-			} else
-				af = AF_INET;
-		}
+
+		/* Connection to v4-mapped address should have been rejected */
+		KASSERT(!IN6_IS_ADDR_V4MAPPED(&in6p->in6p_faddr),
+		    ("bound to v4-mapped address"));
+
 		laddr = &in6p->in6p_laddr;
 		faddr = &in6p->in6p_faddr;
 		fport = in6p->in6p_fport;
 	}
-
-	if (af == AF_INET)
-		hlen = sizeof(struct ip);
 
 	/*
 	 * Calculate data length and get a mbuf
@@ -264,37 +233,28 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 		udp6->uh_ulen = 0;
 	udp6->uh_sum = 0;
 
-	switch (af) {
-	case AF_INET6:
-		ip6 = mtod(m, struct ip6_hdr *);
-		ip6->ip6_flow	= in6p->in6p_flowinfo & IPV6_FLOWINFO_MASK;
-		ip6->ip6_vfc 	&= ~IPV6_VERSION_MASK;
-		ip6->ip6_vfc 	|= IPV6_VERSION;
+	ip6 = mtod(m, struct ip6_hdr *);
+	ip6->ip6_flow	= in6p->in6p_flowinfo & IPV6_FLOWINFO_MASK;
+	ip6->ip6_vfc 	&= ~IPV6_VERSION_MASK;
+	ip6->ip6_vfc 	|= IPV6_VERSION;
 #if 0				/* ip6_plen will be filled in ip6_output. */
-		ip6->ip6_plen	= htons((u_short)plen);
+	ip6->ip6_plen	= htons((u_short)plen);
 #endif
-		ip6->ip6_nxt	= IPPROTO_UDP;
-		ip6->ip6_hlim	= in6_selecthlim(in6p,
-						 in6p->in6p_route.ro_rt ?
-						 in6p->in6p_route.ro_rt->rt_ifp : NULL);
-		ip6->ip6_src	= *laddr;
-		ip6->ip6_dst	= *faddr;
+	ip6->ip6_nxt	= IPPROTO_UDP;
+	ip6->ip6_hlim	= in6_selecthlim(in6p,
+					 in6p->in6p_route.ro_rt ?
+					 in6p->in6p_route.ro_rt->rt_ifp : NULL);
+	ip6->ip6_src	= *laddr;
+	ip6->ip6_dst	= *faddr;
 
-		if ((udp6->uh_sum = in6_cksum(m, IPPROTO_UDP,
-				sizeof(struct ip6_hdr), plen)) == 0) {
-			udp6->uh_sum = 0xffff;
-		}
-
-		flags = 0;
-
-		udp6stat.udp6s_opackets++;
-		error = ip6_output(m, in6p->in6p_outputopts, &in6p->in6p_route,
-		    flags, in6p->in6p_moptions, NULL, in6p);
-		break;
-	case AF_INET:
-		error = EAFNOSUPPORT;
-		goto release;
+	if ((udp6->uh_sum = in6_cksum(m, IPPROTO_UDP,
+			sizeof(struct ip6_hdr), plen)) == 0) {
+		udp6->uh_sum = 0xffff;
 	}
+
+	udp6stat.udp6s_opackets++;
+	error = ip6_output(m, in6p->in6p_outputopts, &in6p->in6p_route, 0,
+	    in6p->in6p_moptions, NULL, in6p);
 	goto releaseopt;
 
 release:

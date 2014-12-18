@@ -152,7 +152,7 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 	LIST_FOREACH(in6p, &ripcbinfo.pcblisthead, inp_list) {
 		if (in6p->in6p_flags & INP_PLACEMARKER)
 			continue;
-		if (!(in6p->in6p_vflag & INP_IPV6))
+		if (!INP_ISIPV6(in6p))
 			continue;
 		if (in6p->in6p_ip6_nxt &&
 		    in6p->in6p_ip6_nxt != proto)
@@ -340,6 +340,11 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 	dstsock = __va_arg(ap, struct sockaddr_in6 *);
 	control = __va_arg(ap, struct mbuf *);
 	__va_end(ap);
+
+	if (IN6_IS_ADDR_V4MAPPED(&dstsock->sin6_addr)) {
+		error = EADDRNOTAVAIL;
+		goto bad;
+	}
 
 	in6p = so->so_pcb;
 
@@ -591,7 +596,6 @@ rip6_attach(netmsg_t msg)
 	if (error)
 		goto out;
 	inp = (struct inpcb *)so->so_pcb;
-	inp->inp_vflag |= INP_IPV6;
 	inp->in6p_ip6_nxt = (long)proto;
 	inp->in6p_hops = -1;	/* use kernel default */
 	inp->in6p_cksum = -1;
@@ -672,6 +676,10 @@ rip6_bind(netmsg_t msg)
 		error = EADDRNOTAVAIL;
 		goto out;
 	}
+	if (IN6_IS_ADDR_V4MAPPED(&addr->sin6_addr)) {
+		error = EADDRNOTAVAIL;
+		goto out;
+	}
 #ifdef ENABLE_DEFAULT_SCOPE
 	if (addr->sin6_scope_id == 0) {	/* not change if specified  */
 		addr->sin6_scope_id = scope6_addr2default(&addr->sin6_addr);
@@ -718,6 +726,10 @@ rip6_connect(netmsg_t msg)
 	}
 	if (addr->sin6_family != AF_INET6) {
 		error = EAFNOSUPPORT;
+		goto out;
+	}
+	if (IN6_IS_ADDR_V4MAPPED(&addr->sin6_addr)) {
+		error = EADDRNOTAVAIL;
 		goto out;
 	}
 #ifdef ENABLE_DEFAULT_SCOPE
