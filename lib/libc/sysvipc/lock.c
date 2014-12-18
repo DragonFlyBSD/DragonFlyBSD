@@ -111,7 +111,7 @@ sysv_cond_signal(int *val) {
 int
 sysv_rwlock_init(struct sysv_rwlock *rwlock)
 {
-	int ret;
+	int ret = 0;
 
 	if (rwlock == NULL)
 		return (EINVAL);
