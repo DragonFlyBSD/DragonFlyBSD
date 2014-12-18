@@ -153,6 +153,7 @@ getbounds(void) {
 	ret = (int)strtol(buf, NULL, 10);
 	if (ret == 0 && (errno == EINVAL || errno == ERANGE))
 		syslog(LOG_WARNING, "invalid value found in bounds, using 0");
+	fclose(fp);
 	return (ret);
 }
 
