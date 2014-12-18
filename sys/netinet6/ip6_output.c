@@ -1598,11 +1598,13 @@ do { \
 						error = EINVAL;
 						break;
 					}
-					OPTSET(IN6P_IPV6_V6ONLY);
-					if (optval)
+					if (optval) {
+						in6p->in6p_flags |= IN6P_IPV6_V6ONLY;
 						in6p->in6p_vflag &= ~INP_IPV4;
-					else
-						in6p->in6p_vflag |= INP_IPV4;
+					} else {
+						/* Don't allow v4-mapped */
+						error = EOPNOTSUPP;
+					}
 					break;
 				}
 				break;
