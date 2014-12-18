@@ -562,6 +562,8 @@ list(DB *db, char **argv)
 	}
 	if (status == RET_ERROR)
 		perror("list/seq");
+
+	fclose(fp);
 }
 
 DB *BUGdb;
