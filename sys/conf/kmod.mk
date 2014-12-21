@@ -140,7 +140,7 @@ CFLAGS+=	-include ${BUILDING_WITH_KERNEL}/opt_global.h
 .endif
 
 CFLAGS+=	${DEBUG_FLAGS}
-.if ${MACHINE_ARCH} == x86_64
+.if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+=	-fno-omit-frame-pointer
 .endif
 

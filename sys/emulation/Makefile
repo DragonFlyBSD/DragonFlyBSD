@@ -1,6 +1,6 @@
 SUBDIR= ndis
 
-.if ${MACHINE_ARCH} == i386
+.if ${MACHINE_ARCH} == "i386"
 SUBDIR+=linux
 .endif
 

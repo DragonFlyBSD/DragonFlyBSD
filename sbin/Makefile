@@ -100,8 +100,8 @@ SUBDIR=	adjkerntz \
 	vinum \
 	vquota
 
-.if ${MACHINE_ARCH} == i386 || ${MACHINE_ARCH} == x86_64
-.if ${MACHINE_ARCH} == i386
+.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "i386"
 SUBDIR+=kget
 .endif
 SUBDIR+=mount_smbfs \
