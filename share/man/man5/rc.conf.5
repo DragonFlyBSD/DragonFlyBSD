@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd August 29, 2014
+.Dd December 21, 2014
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1753,12 +1753,6 @@ this is the faith prefix to enable a FAITH IPv6-to-IPv4 TCP translator.
 You also need
 .Xr faithd 8
 setup.
-.It Va ipv6_ipv4mapping
-.Pq Vt bool
-If set to
-.Dq Li YES
-this enables IPv4 mapped IPv6 address communication (like
-.Li ::ffff:a.b.c.d ) .
 .It Va keybell
 .Pq Vt str
 The keyboard bell sound.

@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/in6.h,v 1.7.2.7 2002/08/01 19:38:50 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.h,v 1.12 2008/09/14 08:58:33 hasso Exp $	*/
 /*	$KAME: in6.h,v 1.89 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -614,8 +613,8 @@ struct ip6_mtuinfo {
 #define IPV6CTL_RR_PRUNE	22	/* walk timer for router renumbering */
 #if 0	/* obsolete */
 #define IPV6CTL_MAPPED_ADDR	23
-#endif
 #define IPV6CTL_V6ONLY		24
+#endif
 #define IPV6CTL_RTEXPIRE	25	/* cloned route expiration time */
 #define IPV6CTL_RTMINEXPIRE	26	/* min value for expiration time */
 #define IPV6CTL_RTMAXCACHE	27	/* trigger level for dynamic expire */
