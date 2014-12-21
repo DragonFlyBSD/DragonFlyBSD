@@ -40,7 +40,7 @@
 
 #ifdef _KERNEL
 
-#ifndef _SYS_TYPES_H_
+#ifndef _SYS_FILE_H_
 #include <sys/file.h>
 #endif
 
