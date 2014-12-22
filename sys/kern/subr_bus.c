@@ -54,6 +54,7 @@
 #include <sys/mplock2.h>
 
 SYSCTL_NODE(_hw, OID_AUTO, bus, CTLFLAG_RW, NULL, NULL);
+SYSCTL_NODE(, OID_AUTO, dev, CTLFLAG_RW, NULL, NULL);
 
 MALLOC_DEFINE(M_BUS, "bus", "Bus data structures");
 
