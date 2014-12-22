@@ -861,9 +861,9 @@ urndis_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 				    msg.rm_datalen, (unsigned)MCLBYTES);
 				goto tr_setup;
 			} else if (msg.rm_datalen > (uint32_t)(MHLEN - ETHER_ALIGN)) {
-				m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
+				m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 			} else {
-				m = m_gethdr(M_NOWAIT, MT_DATA);
+				m = m_gethdr(MB_DONTWAIT, MT_DATA);
 			}
 
 			/* check if we have a buffer */

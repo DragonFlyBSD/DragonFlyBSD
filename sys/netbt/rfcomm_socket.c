@@ -113,7 +113,7 @@ rfcomm_ctloutput(netmsg_t msg)
 
 	switch(sopt->sopt_dir) {
 	case PRCO_GETOPT:
-		m = m_get(M_WAITOK, MT_DATA);
+		m = m_get(MB_WAIT, MT_DATA);
 		crit_enter();
 		m->m_len = rfcomm_getopt(pcb, sopt->sopt_name, mtod(m, void *));
 		crit_exit();		
