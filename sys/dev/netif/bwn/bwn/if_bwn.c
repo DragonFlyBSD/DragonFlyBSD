@@ -1403,7 +1403,7 @@ bwn_pio_tx_start(struct bwn_mac *mac, struct ieee80211_node *ni, struct mbuf *m)
 		/*
 		 * XXX please removes m_defrag(9)
 		 */
-		m_new = m_defrag(m, M_INTWAIT);
+		m_new = m_defrag(m, MB_DONTWAIT);
 		if (m_new == NULL) {
 			device_printf(sc->sc_dev,
 			    "%s: can't defrag TX buffer\n",
@@ -1510,7 +1510,7 @@ bwn_dma_tx_start(struct bwn_mac *mac, struct ieee80211_node *ni, struct mbuf *m)
 	if (error) {    /* error == EFBIG */
 		struct mbuf *m_new;
 
-		m_new = m_defrag(m, M_INTWAIT);
+		m_new = m_defrag(m, MB_DONTWAIT);
 		if (m_new == NULL) {
 			if_printf(ifp, "%s: can't defrag TX buffer\n",
 			    __func__);
@@ -9032,7 +9032,7 @@ ready:
 	padding = (macstat & BWN_RX_MAC_PADDING) ? 2 : 0;
 	totlen = len + padding;
 	KASSERT(totlen <= MCLBYTES, ("too big..\n"));
-	m = m_getcl(M_INTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
 		device_printf(sc->sc_dev, "%s: out of memory", __func__);
 		goto error;
@@ -9091,7 +9091,7 @@ bwn_dma_newbuf(struct bwn_dma_ring *dr, struct bwn_dmadesc_generic *desc,
 	struct mbuf *m;
 	int error;
 
-	m = m_getcl(M_INTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
 		error = ENOBUFS;
 

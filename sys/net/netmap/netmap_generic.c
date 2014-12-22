@@ -91,7 +91,7 @@ __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257666 2013-11-05 01:06:22Z lui
 /*
  * we allocate an EXT_PACKET
  */
-#define netmap_get_mbuf(len) m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR)
+#define netmap_get_mbuf(len) m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR)
 
 /* mbuf destructor, also need to change the type to EXT_EXTREF,
  * add an M_NOFREE flag, and then clear the flag and

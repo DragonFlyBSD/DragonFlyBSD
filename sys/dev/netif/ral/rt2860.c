@@ -749,7 +749,7 @@ rt2860_alloc_rx_ring(struct rt2860_softc *sc, struct rt2860_rx_ring *ring)
 			goto fail;
 		}
 
-		data->m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
+		data->m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (data->m == NULL) {
 			device_printf(sc->sc_dev,
 			    "could not allocate rx mbuf\n");
@@ -1244,7 +1244,7 @@ rt2860_rx_intr(struct rt2860_softc *sc)
 		}
 #endif
 
-		m1 = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
+		m1 = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (__predict_false(m1 == NULL)) {
 			IFNET_STAT_INC(ifp, ierrors, 1);
 			goto skip;
@@ -1623,7 +1623,7 @@ rt2860_tx(struct rt2860_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 		}
 	}
 	if (__predict_false(error != 0)) {
-		m1 = m_defrag(m, M_NOWAIT);
+		m1 = m_defrag(m, MB_DONTWAIT);
 		if (m1 == NULL) {
 			device_printf(sc->sc_dev,
 			    "could not defragment mbuf\n");
@@ -1876,7 +1876,7 @@ rt2860_tx_raw(struct rt2860_softc *sc, struct mbuf *m,
 		}
 	}
 	if (__predict_false(error != 0)) {
-		m1 = m_defrag(m, M_NOWAIT);
+		m1 = m_defrag(m, MB_DONTWAIT);
 		if (m1 == NULL) {
 			device_printf(sc->sc_dev,
 			    "could not defragment mbuf\n");

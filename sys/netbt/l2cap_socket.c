@@ -116,7 +116,7 @@ l2cap_ctloutput(netmsg_t msg)
 
 	switch(sopt->sopt_dir) {
 	case PRCO_GETOPT:
-		m = m_get(M_NOWAIT, MT_DATA);
+		m = m_get(MB_DONTWAIT, MT_DATA);
 		if (m == NULL) {
 		    error = ENOMEM;
 		    break;
