@@ -1,7 +1,6 @@
 .\"	$KAME: ip6.4,v 1.23 2005/01/11 05:56:25 itojun Exp $
 .\"	$OpenBSD: ip6.4,v 1.21 2005/01/06 03:50:46 itojun Exp $
 .\"	$FreeBSD: src/share/man/man4/ip6.4,v 1.18 2005/01/23 16:02:48 gnn Exp $
-.\"	$DragonFly: src/share/man/man4/ip6.4,v 1.3 2005/01/23 17:03:13 hrs Exp $
 .\"
 .\" Copyright (c) 1983, 1991, 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -29,7 +28,7 @@
 .\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
-.Dd December 29, 2004
+.Dd December 22, 2014
 .Dt IP6 4
 .Os
 .Sh NAME
@@ -376,10 +375,10 @@ turned off.
 .It Dv IPV6_V6ONLY Fa "int *"
 Get or set whether only IPv6 connections can be made to this socket.
 For wildcard sockets, this can restrict connections to IPv6 only.
-.\"With
-.\".Ox
-.\"IPv6 sockets are always IPv6-only, so the socket option is read-only
-.\"(not modifiable).
+With
+.Dx ,
+the socket option cannot be set to 0 (which will result in returning
+.Er EOPNOTSUPP ) .
 .It Dv IPV6_FAITH Fa "int *"
 Get or set the status of whether
 .Xr faith 4
