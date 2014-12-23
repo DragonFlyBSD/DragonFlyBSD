@@ -328,12 +328,6 @@ vm_page_t vm_phys_fictitious_to_vm_page(vm_paddr_t pa);
 			__func__ , ##__VA_ARGS__);			\
 } while (0)
 
-#define	dev_err(dev, fmt, ...)						\
-	device_printf((dev), "error: " fmt, ## __VA_ARGS__)
-#define	dev_warn(dev, fmt, ...)						\
-	device_printf((dev), "warning: " fmt, ## __VA_ARGS__)
-#define	dev_info(dev, fmt, ...)						\
-	device_printf((dev), "info: " fmt, ## __VA_ARGS__)
 #define	dev_dbg(dev, fmt, ...) do {					\
 	if ((drm_debug& DRM_DEBUGBITS_KMS) != 0) {			\
 		device_printf((dev), "debug: " fmt, ## __VA_ARGS__);	\
