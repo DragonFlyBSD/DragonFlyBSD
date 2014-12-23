@@ -29,6 +29,86 @@
 
 #define PCI_ANY_ID	(~0u)
 
+#include <sys/bus.h>
+#include <bus/pci/pcivar.h>
+
+#include <linux/device.h>
+#include <linux/io.h>
+
 #include <linux/pci_ids.h>
+
+struct pci_dev {
+	struct device	*dev;
+};
+
+static inline int
+pci_read_config_byte(struct pci_dev *pdev, int where, u8 *val)
+{
+	*val = (u16)pci_read_config(pdev->dev, where, 1);
+	return 0;
+}
+
+static inline int
+pci_read_config_word(struct pci_dev *pdev, int where, u16 *val)
+{
+	*val = (u16)pci_read_config(pdev->dev, where, 2);
+	return 0;
+}
+
+static inline int
+pci_read_config_dword(struct pci_dev *pdev, int where, u32 *val)
+{
+	*val = (u32)pci_read_config(pdev->dev, where, 4);
+	return 0;
+}
+
+static inline int
+pci_write_config_byte(struct pci_dev *pdev, int where, u8 val)
+{
+	pci_write_config(pdev->dev, where, val, 1);
+	return 0;
+}
+
+static inline int
+pci_write_config_word(struct pci_dev *pdev, int where, u16 val)
+{
+	pci_write_config(pdev->dev, where, val, 2);
+	return 0;
+}
+
+static inline int
+pci_write_config_dword(struct pci_dev *pdev, int where, u32 val)
+{
+	pci_write_config(pdev->dev, where, val, 4);
+	return 0;
+}
+
+
+static inline struct pci_dev *
+pci_dev_get(struct pci_dev *dev)
+{
+	/* Linux increments a reference count here */
+	return dev;
+}
+
+static inline struct pci_dev *
+pci_dev_put(struct pci_dev *dev)
+{
+	/* Linux decrements a reference count here */
+	return dev;
+}
+
+
+static inline int
+pci_set_dma_mask(struct pci_dev *dev, u64 mask)
+{
+	return -EIO;
+}
+
+static inline int
+pci_set_consistent_dma_mask(struct pci_dev *dev, u64 mask)
+{
+	return -EIO;
+}
 
 #endif /* LINUX_PCI_H */
