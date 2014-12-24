@@ -461,9 +461,64 @@ void intel_panel_destroy_backlight(struct drm_device *dev)
 	}
 }
 #else
+
+/*
+ * Read max backlight level
+ */
+static int
+sysctl_backlight_max(SYSCTL_HANDLER_ARGS)
+{
+	int err, val;
+
+	val = intel_panel_get_max_backlight((struct drm_device *)arg1);
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	return(err);
+}
+
+/*
+ * Read/write backlight level
+ */
+static int
+sysctl_backlight_handler(SYSCTL_HANDLER_ARGS)
+{
+	struct drm_i915_private *dev_priv;
+	int err, val;
+
+	dev_priv = ((struct drm_device *)arg1)->dev_private;
+	val = dev_priv->backlight_level;
+
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	if (err != 0 || req->newptr == NULL) {
+		return(err);
+	}
+
+	if (val != dev_priv->backlight_level && val >=0 &&
+			val <= intel_panel_get_max_backlight((struct drm_device *)arg1)) {
+		intel_panel_set_backlight(arg1, val);
+	}
+
+	return(err);
+}
+struct drm_sysctl_info {
+	               struct sysctl_ctx_list ctx;
+	               char   name[2];
+	};
 int intel_panel_setup_backlight(struct drm_connector *connector)
 {
 	intel_panel_init_backlight(connector->dev);
+
+	SYSCTL_ADD_PROC(&connector->dev->sysctl->ctx, &sysctl__hw_children,
+			OID_AUTO, "backlight_max",
+			CTLTYPE_INT | CTLFLAG_RD | CTLFLAG_ANYBODY,
+			connector->dev, sizeof(int),
+			sysctl_backlight_max,
+			"I", "Max backlight level");
+	SYSCTL_ADD_PROC(&connector->dev->sysctl->ctx, &sysctl__hw_children,
+			OID_AUTO, "backlight_level",
+			CTLTYPE_INT | CTLFLAG_RW | CTLFLAG_ANYBODY,
+			connector->dev, sizeof(int),
+			sysctl_backlight_handler,
+			"I", "Backlight level");
 	return 0;
 }
 
@@ -471,6 +526,7 @@ void intel_panel_destroy_backlight(struct drm_device *dev)
 {
 	return;
 }
+
 #endif
 
 int intel_panel_init(struct intel_panel *panel,
