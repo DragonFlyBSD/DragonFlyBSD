@@ -4014,7 +4014,7 @@ static int i915gm_get_display_clock_speed(struct drm_device *dev)
 {
 	u16 gcfgc = 0;
 
-	gcfgc = pci_read_config(dev->dev, GCFGC, 2);
+	pci_read_config_word(dev->pdev, GCFGC, &gcfgc);
 
 	if (gcfgc & GC_LOW_FREQUENCY_ENABLE)
 		return 133000;
@@ -9458,12 +9458,12 @@ int intel_modeset_vga_set_state(struct drm_device *dev, bool state)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u16 gmch_ctrl;
 
-	gmch_ctrl = pci_read_config(dev_priv->bridge_dev, INTEL_GMCH_CTRL, 2);
+	pci_read_config_word(dev_priv->bridge_dev, INTEL_GMCH_CTRL, &gmch_ctrl);
 	if (state)
 		gmch_ctrl &= ~INTEL_GMCH_VGA_DISABLE;
 	else
 		gmch_ctrl |= INTEL_GMCH_VGA_DISABLE;
-	pci_write_config(dev_priv->bridge_dev, INTEL_GMCH_CTRL, gmch_ctrl, 2);
+	pci_write_config_word(dev_priv->bridge_dev, INTEL_GMCH_CTRL, gmch_ctrl);
 	return 0;
 }
 

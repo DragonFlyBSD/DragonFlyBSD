@@ -243,7 +243,7 @@ static u32 intel_panel_get_backlight(struct drm_device *dev)
 		if (is_backlight_combination_mode(dev)) {
 			u8 lbpc;
 
-			lbpc = pci_read_config(dev->dev, PCI_LBPC, 1);
+			pci_read_config_byte(dev->pdev, PCI_LBPC, &lbpc);
 			val *= lbpc;
 		}
 	}
@@ -277,7 +277,7 @@ static void intel_panel_actually_set_backlight(struct drm_device *dev, u32 level
 
 		lbpc = level * 0xfe / max + 1;
 		level /= lbpc;
-		pci_write_config(dev->dev, PCI_LBPC, lbpc, 4);
+		pci_write_config_byte(dev->pdev, PCI_LBPC, lbpc);
 	}
 
 	tmp = I915_READ(BLC_PWM_CTL);

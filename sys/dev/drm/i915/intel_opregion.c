@@ -513,7 +513,7 @@ int intel_opregion_setup(struct drm_device *dev)
 	char buf[sizeof(OPREGION_SIGNATURE)];
 	int err = 0;
 
-	asls = pci_read_config(dev->dev, PCI_ASLS, 4);
+	pci_read_config_dword(dev->pdev, PCI_ASLS, &asls);
 	DRM_DEBUG_DRIVER("graphic opregion physical addr: 0x%x\n", asls);
 	if (asls == 0) {
 		DRM_DEBUG_DRIVER("ACPI OpRegion not supported!\n");

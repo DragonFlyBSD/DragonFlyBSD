@@ -650,8 +650,8 @@ static int i8xx_do_reset(struct drm_device *dev)
 static int i965_reset_complete(struct drm_device *dev)
 {
 	u8 gdrst;
-	gdrst = pci_read_config(dev->dev, I965_GDRST, 1);
-	return (gdrst & 0x1);
+	pci_read_config_byte(dev->pdev, I965_GDRST, &gdrst);
+	return (gdrst & GRDOM_RESET_ENABLE) == 0;
 }
 
 static int i965_do_reset(struct drm_device *dev)
@@ -664,19 +664,19 @@ static int i965_do_reset(struct drm_device *dev)
 	 * well as the reset bit (GR/bit 0).  Setting the GR bit
 	 * triggers the reset; when done, the hardware will clear it.
 	 */
-	gdrst = pci_read_config(dev->dev, I965_GDRST, 1);
-	pci_write_config(dev->dev, I965_GDRST,
+	pci_read_config_byte(dev->pdev, I965_GDRST, &gdrst);
+	pci_write_config_byte(dev->pdev, I965_GDRST,
 			      gdrst | GRDOM_RENDER |
-			      GRDOM_RESET_ENABLE, 1);
+			      GRDOM_RESET_ENABLE);
 	ret =  wait_for(i965_reset_complete(dev), 500);
 	if (ret)
 		return ret;
 
 	/* We can't reset render&media without also resetting display ... */
-	gdrst = pci_read_config(dev->dev, I965_GDRST, 1);
-	pci_write_config(dev->dev, I965_GDRST,
+	pci_read_config_byte(dev->pdev, I965_GDRST, &gdrst);
+	pci_write_config_byte(dev->pdev, I965_GDRST,
 			      gdrst | GRDOM_MEDIA |
-			      GRDOM_RESET_ENABLE, 1);
+			      GRDOM_RESET_ENABLE);
 
 	return wait_for(i965_reset_complete(dev), 500);
 }
