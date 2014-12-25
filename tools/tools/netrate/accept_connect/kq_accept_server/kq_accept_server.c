@@ -22,7 +22,8 @@ static void	mainloop(int, const struct sockaddr_in *, int);
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s -p port [-i n_instance] [-r] [-B]\n", cmd);
+	fprintf(stderr, "%s -p port [-4 inet4] [-i n_instance] [-r] [-B]\n",
+	    cmd);
 	exit(1);
 }
 
@@ -76,8 +77,16 @@ main(int argc, char *argv[])
 	bindcpu = 0;
 	reuseport = 0;
 
-	while ((opt = getopt(argc, argv, "Bp:i:r")) != -1) {
+	while ((opt = getopt(argc, argv, "4:Bp:i:r")) != -1) {
 		switch (opt) {
+		case '4':
+			if (inet_pton(AF_INET, optarg, &in.sin_addr) <= 0) {
+				fprintf(stderr, "invalid -4 option: %s\n",
+				    optarg);
+				usage(argv[0]);
+			}
+			break;
+
 		case 'p':
 			in.sin_port = htons(atoi(optarg));
 			break;
