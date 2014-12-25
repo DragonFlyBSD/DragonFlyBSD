@@ -237,9 +237,6 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			t = in6_pcblookup_local(portinfo,
 			    &sin6->sin6_addr, lport, INPLOOKUP_WILDCARD, cred);
 			if (t &&
-			    (!IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr) ||
-			     !IN6_IS_ADDR_UNSPECIFIED(&t->in6p_laddr) ||
-			     (t->inp_socket->so_options & SO_REUSEPORT) == 0) &&
 			    (so->so_cred->cr_uid !=
 			     t->inp_socket->so_cred->cr_uid)) {
 				inp->in6p_laddr = kin6addr_any;

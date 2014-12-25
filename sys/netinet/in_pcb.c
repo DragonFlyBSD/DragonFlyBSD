@@ -565,9 +565,6 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			t = in_pcblookup_local(portinfo, sin->sin_addr, lport,
 			    INPLOOKUP_WILDCARD, cred);
 			if (t &&
-			    (!in_nullhost(sin->sin_addr) ||
-			     !in_nullhost(t->inp_laddr) ||
-			     (t->inp_socket->so_options & SO_REUSEPORT) == 0) &&
 			    (so->so_cred->cr_uid !=
 			     t->inp_socket->so_cred->cr_uid)) {
 				inp->inp_laddr.s_addr = INADDR_ANY;
