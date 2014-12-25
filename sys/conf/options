@@ -577,6 +577,7 @@ KTR_USCHED_DFLY			opt_ktr.h
 KTR_VERBOSE			opt_ktr.h
 KTR_IF_POLL			opt_ktr.h
 KTR_UDP				opt_ktr.h
+KTR_SOWAKEUP			opt_ktr.h
 
 # NTFS options
 NTFS_DEBUG			opt_ntfs.h

@@ -38,6 +38,7 @@
 #include <sys/domain.h>
 #include <sys/file.h>	/* for maxfiles */
 #include <sys/kernel.h>
+#include <sys/ktr.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
@@ -56,6 +57,16 @@
 #include <sys/socketvar2.h>
 
 #include <net/netisr2.h>
+
+#ifndef KTR_SOWAKEUP
+#define KTR_SOWAKEUP	KTR_ALL
+#endif
+KTR_INFO_MASTER(sowakeup);
+KTR_INFO(KTR_SOWAKEUP, sowakeup, nconn_start, 0, "newconn sorwakeup start");
+KTR_INFO(KTR_SOWAKEUP, sowakeup, nconn_end, 1, "newconn sorwakeup end");
+KTR_INFO(KTR_SOWAKEUP, sowakeup, nconn_wakeupstart, 2, "newconn wakeup start");
+KTR_INFO(KTR_SOWAKEUP, sowakeup, nconn_wakeupend, 3, "newconn wakeup end");
+#define logsowakeup(name)	KTR_LOG(sowakeup_ ## name)
 
 int	maxsockets;
 
@@ -440,8 +451,14 @@ sonewconn_faddr(struct socket *head, int connstatus,
 		 * XXX head may be on a different protocol thread.
 		 *     sorwakeup()->sowakeup() is hacked atm.
 		 */
+		logsowakeup(nconn_start);
 		sorwakeup(head);
+		logsowakeup(nconn_end);
+
+		logsowakeup(nconn_wakeupstart);
 		wakeup((caddr_t)&head->so_timeo);
+		logsowakeup(nconn_wakeupend);
+
 		sosetstate(so, connstatus);
 	}
 	soclrstate(so, SS_ASSERTINPROG);

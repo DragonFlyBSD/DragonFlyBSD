@@ -2280,6 +2280,7 @@ options	KTR_VERBOSE=1
 #options KTR_KERNENTRY
 #options KTR_MEMORY
 #options KTR_SERIALIZER
+#options KTR_SOWAKEUP
 #options KTR_SPIN_CONTENTION
 #options KTR_TESTLOG
 #options KTR_TOKENS
