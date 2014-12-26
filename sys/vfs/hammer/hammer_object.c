@@ -2640,11 +2640,11 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.obj_type = 0;
-	cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE + 1;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_ENTRY_START;
 	cursor.key_beg.key = HAMMER_MIN_KEY;
 
 	cursor.key_end = cursor.key_beg;
-	cursor.key_end.rec_type = 0xFFFF;
+	cursor.key_end.rec_type = HAMMER_RECTYPE_MAX;
 	cursor.key_end.key = HAMMER_MAX_KEY;
 
 	cursor.asof = ip->obj_asof;

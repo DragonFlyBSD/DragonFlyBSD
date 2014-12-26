@@ -676,6 +676,7 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_RECTYPE_MOVED		0x8000	/* special recovery flag */
 #define HAMMER_RECTYPE_MAX		0xFFFF
 
+#define HAMMER_RECTYPE_ENTRY_START	(HAMMER_RECTYPE_INODE + 1)
 #define HAMMER_RECTYPE_CLEAN_START	HAMMER_RECTYPE_EXT
 
 #define HAMMER_FIXKEY_SYMLINK		1
