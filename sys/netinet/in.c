@@ -72,8 +72,6 @@ static int	in_ifinit(struct ifnet *, struct in_ifaddr *,
 
 static int	in_control_internal(u_long, caddr_t, struct ifnet *,
 		    struct thread *);
-static int	in_control_redispatch(u_long, caddr_t, struct ifnet *,
-		    struct thread *);
 
 static int	in_addprefix(struct in_ifaddr *, int);
 static void	in_scrubprefix(struct in_ifaddr *);
@@ -198,10 +196,8 @@ in_control_dispatch(netmsg_t msg)
 {
 	int error;
 
-	error = in_control_redispatch(msg->control.nm_cmd,
-				      msg->control.nm_data,
-				      msg->control.nm_ifp,
-				      msg->control.nm_td);
+	error = in_control(msg->base.nm_so, msg->control.nm_cmd,
+	    msg->control.nm_data, msg->control.nm_ifp, msg->control.nm_td);
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -217,12 +213,31 @@ in_control_internal_dispatch(netmsg_t msg)
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
-static int
-in_control_redispatch(u_long cmd, caddr_t data, struct ifnet *ifp,
-		      struct thread *td)
+/*
+ * Generic internet control operations (ioctl's).
+ * Ifp is 0 if not an interface-specific ioctl.
+ *
+ * NOTE! td might be NULL.
+ */
+/* ARGSUSED */
+int
+in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
+    struct thread *td)
 {
 	struct netmsg_pru_control msg;
 	int error;
+
+	switch (cmd) {
+	case SIOCALIFADDR:
+	case SIOCDLIFADDR:
+		if (td && (error = priv_check(td, PRIV_ROOT)) != 0)
+			return error;
+		/* FALLTHROUGH */
+	case SIOCGLIFADDR:
+		if (!ifp)
+			return EINVAL;
+		return in_lifaddr_ioctl(so, cmd, data, ifp, td);
+	}
 
 	/*
 	 * IFADDR alterations are serialized by netisr0
@@ -249,38 +264,6 @@ in_control_redispatch(u_long cmd, caddr_t data, struct ifnet *ifp,
 		break;
 	}
 	return error;
-}
-
-/*
- * Generic internet control operations (ioctl's).
- * Ifp is 0 if not an interface-specific ioctl.
- *
- * NOTE! td might be NULL.
- */
-/* ARGSUSED */
-int
-in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
-	   struct thread *td)
-{
-	int error;
-
-	switch (cmd) {
-	case SIOCALIFADDR:
-	case SIOCDLIFADDR:
-		if (td && (error = priv_check(td, PRIV_ROOT)) != 0)
-			return error;
-		/* FALLTHROUGH */
-	case SIOCGLIFADDR:
-		if (!ifp)
-			return EINVAL;
-		return in_lifaddr_ioctl(so, cmd, data, ifp, td);
-	}
-
-	KASSERT(cmd != SIOCALIFADDR && cmd != SIOCDLIFADDR,
-		("recursive SIOC%cLIFADDR!",
-		 cmd == SIOCDLIFADDR ? 'D' : 'A'));
-
-	return in_control_redispatch(cmd, data, ifp, td);
 }
 
 static void
