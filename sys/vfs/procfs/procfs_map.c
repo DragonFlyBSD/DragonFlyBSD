@@ -40,6 +40,7 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
+#include <sys/sbuf.h>
 #include <vfs/procfs/procfs.h>
 
 #include <vm/vm.h>
@@ -51,76 +52,66 @@
 
 #include <machine/limits.h>
 
-#define MEBUFFERSIZE 256
-
-/*
- * The map entries can *almost* be read with programs like cat.  However,
- * large maps need special programs to read.  It is not easy to implement
- * a program that can sense the required size of the buffer, and then
- * subsequently do a read with the appropriate size.  This operation cannot
- * be atomic.  The best that we can do is to allow the program to do a read
- * with an arbitrarily large buffer, and return as much as we can.  We can
- * return an error code if the buffer is too small (EFBIG), then the program
- * can try a bigger buffer.
- */
 int
 procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	     struct uio *uio)
 {
 	struct proc *p = lp->lwp_proc;
-	int len;
+	ssize_t buflen = uio->uio_offset + uio->uio_resid;
 	struct vnode *vp;
 	char *fullpath, *freepath;
 	int error;
 	vm_map_t map = &p->p_vmspace->vm_map;
 	pmap_t pmap = vmspace_pmap(p->p_vmspace);
 	vm_map_entry_t entry;
-	char mebuffer[MEBUFFERSIZE];
+	struct sbuf *sb = NULL;
+	unsigned int last_timestamp;
 
 	if (uio->uio_rw != UIO_READ)
 		return (EOPNOTSUPP);
 
-	if (uio->uio_offset != 0)
-		return (0);
-	
 	error = 0;
+
+	if (uio->uio_offset < 0 || uio->uio_resid < 0 || buflen >= INT_MAX)
+		return EINVAL;
+	sb = sbuf_new (sb, NULL, buflen+1, 0);
+	if (sb == NULL)
+		return EIO;
+
 	vm_map_lock_read(map);
-	for (entry = map->header.next;
-		((uio->uio_resid > 0) && (entry != &map->header));
+	for (entry = map->header.next; entry != &map->header;
 		entry = entry->next) {
 		vm_object_t obj, tobj, lobj;
 		int ref_count, shadow_count, flags;
-		vm_offset_t addr;
-		vm_offset_t ostart;
+		vm_offset_t e_start, e_end, addr;
+		vm_eflags_t e_eflags;
+		vm_prot_t e_prot;
 		int resident, privateresident;
 		char *type;
 
+		privateresident = 0;
 		switch(entry->maptype) {
 		case VM_MAPTYPE_NORMAL:
 		case VM_MAPTYPE_VPAGETABLE:
 			obj = entry->object.vm_object;
-			if (obj)
+			if (obj != NULL) {
 				vm_object_hold(obj);
-
-			if (obj && (obj->shadow_count == 1))
-				privateresident = obj->resident_page_count;
-			else
-				privateresident = 0;
+				if (obj->shadow_count == 1)
+					privateresident = obj->resident_page_count;
+			}
 			break;
 		case VM_MAPTYPE_UKSMAP:
 			obj = NULL;
-			privateresident = 0;
 			break;
 		default:
 			/* ignore entry */
 			continue;
 		}
 
-		/*
-		 * Use map->hint as a poor man's ripout detector.
-		 */
-		map->hint = entry;
-		ostart = entry->start;
+		e_eflags = entry->eflags;
+		e_prot = entry->protection;
+		e_start = entry->start;
+		e_end = entry->end;
 
 		/*
 		 * Count resident pages (XXX can be horrible on 64-bit)
@@ -150,6 +141,8 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		} else {
 			lobj = NULL;
 		}
+		last_timestamp = map->timestamp;
+		vm_map_unlock(map);
 
 		freepath = NULL;
 		fullpath = "-";
@@ -178,21 +171,21 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 				vp = NULL;
 				break;
 			}
+			if (lobj != obj)
+				vm_object_drop(lobj);
 			
 			flags = obj->flags;
 			ref_count = obj->ref_count;
 			shadow_count = obj->shadow_count;
+			vm_object_drop(obj);
 			if (vp != NULL) {
 				vn_fullpath(p, vp, &fullpath, &freepath, 1);
 				vrele(vp);
 			}
-			if (lobj != obj)
-				vm_object_drop(lobj);
 		} else {
 			flags = 0;
 			ref_count = 0;
 			shadow_count = 0;
-
 			switch(entry->maptype) {
 			case VM_MAPTYPE_UKSMAP:
 				type = "uksmap";
@@ -207,62 +200,45 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		 * format:
 		 *  start, end, res, priv res, cow, access, type, (fullpath).
 		 */
-		ksnprintf(mebuffer, sizeof(mebuffer),
+		error = sbuf_printf(sb,
 #if LONG_BIT == 64
 			  "0x%016lx 0x%016lx %d %d %p %s%s%s %d %d "
 #else
 			  "0x%08lx 0x%08lx %d %d %p %s%s%s %d %d "
 #endif
 			  "0x%04x %s %s %s %s\n",
-			(u_long)entry->start, (u_long)entry->end,
+			(u_long)e_start, (u_long)e_end,
 			resident, privateresident, obj,
-			(entry->protection & VM_PROT_READ)?"r":"-",
-			(entry->protection & VM_PROT_WRITE)?"w":"-",
-			(entry->protection & VM_PROT_EXECUTE)?"x":"-",
+			(e_prot & VM_PROT_READ)?"r":"-",
+			(e_prot & VM_PROT_WRITE)?"w":"-",
+			(e_prot & VM_PROT_EXECUTE)?"x":"-",
 			ref_count, shadow_count, flags,
-			(entry->eflags & MAP_ENTRY_COW)?"COW":"NCOW",
-			(entry->eflags & MAP_ENTRY_NEEDS_COPY)?"NC":"NNC",
+			(e_eflags & MAP_ENTRY_COW)?"COW":"NCOW",
+			(e_eflags & MAP_ENTRY_NEEDS_COPY)?"NC":"NNC",
 			type, fullpath);
-
-		if (obj)
-			vm_object_drop(obj);
 
 		if (freepath != NULL) {
 			kfree(freepath, M_TEMP);
 			freepath = NULL;
 		}
 
-		len = strlen(mebuffer);
-		if (len > uio->uio_resid) {
-			error = EFBIG;
+		vm_map_lock_read(map);
+		if (error == -1) {
+			error = 0;
 			break;
 		}
 
-		/*
-		 * We cannot safely hold the map locked while accessing
-		 * userspace as a VM fault might recurse the locked map.
-		 */
-		vm_map_unlock_read(map);
-		error = uiomove(mebuffer, len, uio);
-		vm_map_lock_read(map);
-		if (error)
-			break;
-
-		/*
-		 * We use map->hint as a poor man's ripout detector.  If
-		 * it does not match the entry we set it to prior to
-		 * unlocking the map the entry MIGHT now be stale.  In
-		 * this case we do an expensive lookup to find our place
-		 * in the iteration again.
-		 */
-		if (map->hint != entry) {
+		if (last_timestamp != map->timestamp) {
 			vm_map_entry_t reentry;
-
-			vm_map_lookup_entry(map, ostart, &reentry);
+			vm_map_lookup_entry(map, e_start, &reentry);
 			entry = reentry;
 		}
 	}
 	vm_map_unlock_read(map);
+	if (sbuf_finish(sb) == 0)
+		buflen = sbuf_len(sb);
+	error = uiomove_frombuf(sbuf_data(sb), buflen, uio);
+	sbuf_delete(sb);
 
 	return error;
 }
