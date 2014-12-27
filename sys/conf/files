@@ -1448,7 +1448,6 @@ netinet6/ipcomp_core.c		optional ipsec
 netinet6/ipcomp_input.c		optional ipsec
 netinet6/ipcomp_output.c	optional ipsec
 netinet6/in6_pcb.c		optional inet6
-netinet6/in6_prefix.c		optional inet6
 netinet6/in6_proto.c		optional inet6
 netinet6/in6_rmx.c		optional inet6
 netinet6/mld6.c			optional inet6

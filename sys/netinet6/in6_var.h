@@ -130,8 +130,6 @@ struct	in6_ifaddr {
 	int	ia6_flags;
 
 	struct in6_addrlifetime ia6_lifetime;
-	struct ifprefix *ia6_ifpr; /* back pointer to ifprefix */
-
 	struct nd_prefix *ia6_ndpr; /* back pointer to the ND prefix
 				     * (for autoconfigured addresses only)
 				     */
@@ -637,11 +635,6 @@ int	in6_matchlen (struct in6_addr *, struct in6_addr *);
 int	in6_are_prefix_equal (struct in6_addr *p1, struct in6_addr *p2,
 				  int len);
 void	in6_prefixlen2mask (struct in6_addr *maskp, int len);
-int	in6_prefix_ioctl (struct socket *so, u_long cmd, caddr_t data,
-			      struct ifnet *ifp);
-int	in6_prefix_add_ifid (int iilen, struct in6_ifaddr *ia);
-void	in6_prefix_remove_ifid (int iilen, struct in6_ifaddr *ia);
-void	in6_purgeprefix (struct ifnet *);
 void	in6_ifremloop(struct ifaddr *);
 void	in6_ifaddloop(struct ifaddr *);
 

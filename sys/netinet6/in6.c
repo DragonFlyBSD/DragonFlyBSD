@@ -1027,20 +1027,6 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 	 * not just go to unlink.
 	 */
 
-#if 0				/* disable this mechanism for now */
-	/* update prefix list */
-	if (hostIsNew &&
-	    (ifra->ifra_flags & IN6_IFF_NOPFX) == 0) { /* XXX */
-		int iilen;
-
-		iilen = (sizeof(ia->ia_prefixmask.sin6_addr) << 3) - plen;
-		if ((error = in6_prefix_add_ifid(iilen, ia)) != 0) {
-			in6_purgeaddr((struct ifaddr *)ia);
-			return (error);
-		}
-	}
-#endif
-
 	if (ifp->if_flags & IFF_MULTICAST) {
 		struct sockaddr_in6 mltaddr, mltmask;
 		struct in6_multi *in6m;
@@ -1251,7 +1237,6 @@ in6_purgeaddr(struct ifaddr *ifa)
 static void
 in6_unlink_ifa(struct in6_ifaddr *ia, struct ifnet *ifp)
 {
-	int plen, iilen;
 	struct in6_ifaddr *oia;
 
 	crit_enter();
@@ -1270,12 +1255,6 @@ in6_unlink_ifa(struct in6_ifaddr *ia, struct ifnet *ifp)
 			/* search failed */
 			kprintf("Couldn't unlink in6_ifaddr from in6_ifaddr\n");
 		}
-	}
-
-	if (oia->ia6_ifpr) {	/* check for safety */
-		plen = in6_mask2len(&oia->ia_prefixmask.sin6_addr, NULL);
-		iilen = (sizeof(oia->ia_prefixmask.sin6_addr) << 3) - plen;
-		in6_prefix_remove_ifid(iilen, oia);
 	}
 
 	/*

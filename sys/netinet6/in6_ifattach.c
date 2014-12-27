@@ -803,9 +803,6 @@ in6_ifdetach(struct ifnet *ifp)
 	struct netmsg_base nmsg;
 	struct lwkt_msg *lmsg = &nmsg.lmsg;
 
-	/* nuke prefix list.  this may try to remove some of ifaddrs as well */
-	in6_purgeprefix(ifp);
-
 	/* remove neighbor management table */
 	nd6_purge(ifp);
 

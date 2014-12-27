@@ -304,7 +304,6 @@ struct inet6_ndpr_msghdr {
 #define prm_rrf_decrprefd	prm_flags.prf_rr.decrprefd
 
 #define ifpr2ndpr(ifpr)	((struct nd_prefix *)(ifpr))
-#define ndpr2ifpr(ndpr)	((struct ifprefix *)(ndpr))
 
 struct nd_pfxrouter {
 	LIST_ENTRY(nd_pfxrouter) pfr_entry;

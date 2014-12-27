@@ -517,7 +517,6 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	for (i = 0; i < ncpus; ++i)
 		TAILQ_INIT(&ifp->if_addrheads[i]);
 
-	TAILQ_INIT(&ifp->if_prefixhead);
 	TAILQ_INIT(&ifp->if_multiaddrs);
 	TAILQ_INIT(&ifp->if_groups);
 	getmicrotime(&ifp->if_lastchange);
