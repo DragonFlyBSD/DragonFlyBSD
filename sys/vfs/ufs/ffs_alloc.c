@@ -532,10 +532,12 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 		kprintf("\n\tnew:");
 #endif
 	for (blkno = newblk, i = 0; i < len; i++, blkno += fs->fs_frag) {
-		if (!DOINGSOFTDEP(vp))
+		if (!DOINGSOFTDEP(vp) &&
+		    buflist->bs_children[i]->b_bio2.bio_offset != NOOFFSET) {
 			ffs_blkfree(ip,
 			    dofftofsb(fs, buflist->bs_children[i]->b_bio2.bio_offset),
 			    fs->fs_bsize);
+		}
 		buflist->bs_children[i]->b_bio2.bio_offset = fsbtodoff(fs, blkno);
 #ifdef DIAGNOSTIC
 		if (!ffs_checkblk(ip,
