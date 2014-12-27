@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.18 2008/10/09 04:20:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -202,7 +200,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 						left_bound, right_bound);
 			print_btree_elm(elm, i, node->type, flags, "RBN", NULL);
 		}
-		printf("    }\n");
+		printf("     }\n");
 	}
 
 	for (i = 0; i < node->count; ++i) {
