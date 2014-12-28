@@ -1261,16 +1261,17 @@ static int
 usb_filter_read(struct knote *kn, long hint)
 {
 	struct usb_fifo *f;
-	struct usb_cdev_privdata* cpd = (struct usb_cdev_privdata *)kn->kn_hook;
+	struct usb_cdev_privdata *cpd = (struct usb_cdev_privdata *)kn->kn_hook;
 	struct usb_cdev_refdata refs;
 	struct usb_mbuf *m;
 	int err,locked,ready = 0;
 
 	DPRINTF("\n");
+
 	/*
 	 * The associated file has been closed.
 	 */
-	if(cpd == NULL) {
+	if (cpd == NULL) {
 		kn->kn_flags |= EV_ERROR;
 		return (ready);
 	}
@@ -1325,31 +1326,18 @@ usb_filter_read(struct knote *kn, long hint)
 static int
 usb_filter_write(struct knote *kn, long hint)
 {
-	DPRINTF("\n");
-
-	/* 
-	   XXX mpf
-	   write is always ok
-	   This seems to work just fine. Not sure whether we 
-           need the whole kerfuffle done in usb_poll.
-           It also does not work, probably since if there
-	   wasn't a write transfer queued before, why 
-	   should it have completed.
-	 */
-	return 1;
-#if XXXDF	
-	struct usb_fifo *f = (struct usb_fifo *)kn->kn_hook;
-	struct usb_cdev_privdata* cpd = f->curr_cpd;
+	struct usb_fifo *f;
+	struct usb_cdev_privdata *cpd = (struct usb_cdev_privdata *)kn->kn_hook;
 	struct usb_cdev_refdata refs;
 	struct usb_mbuf *m;
-	int locked, err,ready = 0;
+	int err,locked,ready = 0;
 
 	DPRINTF("\n");
 
 	/*
 	 * The associated file has been closed.
 	 */
-	if(cpd == NULL) {
+	if (cpd == NULL) {
 		kn->kn_flags |= EV_ERROR;
 		return (ready);
 	}
@@ -1357,13 +1345,19 @@ usb_filter_write(struct knote *kn, long hint)
 	err = usb_ref_device(cpd, &refs, 0 /* no uref */ );
 	if (err) {
 		kn->kn_flags |= EV_ERROR;
-		return (0);
+		return (ready);
 	}
-	
+	/* XXX mpf
+	   For some reason this function is called both
+	   with the priv_lock held and with the priv_lock
+	   not held. We need to find out from where and
+	   why */
+	f = refs.txfifo;
+
 	locked = lockowned(f->priv_lock);
-	if(!locked) 
+	if(!locked)
 		lockmgr(f->priv_lock, LK_EXCLUSIVE);
-	
+
 	if (!refs.is_usbfs) {
 		if (f->flag_iserror) {
 			/* we got an error */
@@ -1379,9 +1373,8 @@ usb_filter_write(struct knote *kn, long hint)
 			}
 			/* check if any packets are available */
 			USB_IF_POLL(&f->free_q, m);
-			if(m) {
+			if (m)
 				ready = 1;
-			}
 		}
 	} else {
 		if (f->flag_iscomplete) {
@@ -1395,8 +1388,9 @@ usb_filter_write(struct knote *kn, long hint)
 		lockmgr(f->priv_lock, LK_RELEASE);
 
 	usb_unref_device(cpd, &refs);
+
+	DPRINTFN(3,"ready %d\n", ready);
 	return(ready);
-#endif
 }
 
 #if 0
