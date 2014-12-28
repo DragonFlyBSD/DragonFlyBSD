@@ -85,6 +85,8 @@
 #include <net/if_types.h>
 #include <net/route.h>
 #include <net/if_dl.h>
+#include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -132,6 +134,10 @@ static int in6_ifinit (struct ifnet *, struct in6_ifaddr *,
 			   struct sockaddr_in6 *, int);
 static void in6_unlink_ifa (struct in6_ifaddr *, struct ifnet *);
 static void in6_ifloop_request_callback(int, int, struct rt_addrinfo *, struct rtentry *, void *);
+
+static void	in6_control_internal_dispatch(netmsg_t);
+static int	in6_control_internal(u_long, caddr_t, struct ifnet *,
+		    struct thread *);
 
 struct in6_multihead in6_multihead;	/* XXX BSS initialization */
 
@@ -387,14 +393,10 @@ in6_control_dispatch(netmsg_t msg)
 }
 
 int
-in6_control(struct socket *so, u_long cmd, caddr_t data,
-	    struct ifnet *ifp, struct thread *td)
+in6_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
+    struct thread *td)
 {
-	struct	in6_ifreq *ifr = (struct in6_ifreq *)data;
-	struct	in6_ifaddr *ia = NULL;
-	struct	in6_aliasreq *ifra = (struct in6_aliasreq *)data;
-	struct	in6_ifextra *xtra;
-	int privileged;
+	struct netmsg_pru_control msg;
 	int error;
 
 	switch (cmd) {
@@ -428,7 +430,80 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 		 * properly setup.  Instead just error out.
 		 */
 		return (EOPNOTSUPP);
+
+	case SIOCALIFADDR:
+	case SIOCDLIFADDR:
+		if ((error = priv_check(td, PRIV_ROOT)) != 0)
+			return (error);
+		/* FALLTHROUGH */
+	case SIOCGLIFADDR:
+		if (ifp == NULL)
+			return (EOPNOTSUPP);
+		return in6_lifaddr_ioctl(so, cmd, data, ifp, td);
+
+	/* mroute */
+	case SIOCGETSGCNT_IN6:
+	case SIOCGETMIFCNT_IN6:
+	/* srcsel policy */
+	case SIOCAADDRCTL_POLICY:
+	case SIOCDADDRCTL_POLICY:
+	/* nd6 */
+	case SIOCSNDFLUSH_IN6:
+	case SIOCSPFXFLUSH_IN6:
+	case SIOCSRTRFLUSH_IN6:
+	case SIOCSDEFIFACE_IN6:
+	case SIOCSIFINFO_FLAGS:
+	case OSIOCGIFINFO_IN6:
+	case SIOCGIFINFO_IN6:
+	case SIOCGDRLST_IN6:
+	case SIOCGPRLST_IN6:
+	case SIOCGNBRINFO_IN6:
+	case SIOCGDEFIFACE_IN6:
+	/* scope6 */
+	case SIOCSSCOPE6:
+	case SIOCGSCOPE6:
+	case SIOCGSCOPE6DEF:
+	/* change address */
+	case SIOCSIFALIFETIME_IN6:
+	case SIOCAIFADDR_IN6:
+	case SIOCDIFADDR_IN6:
+		/*
+		 * Dispatch to netisr0 to run
+		 */
+		netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+		    in6_control_internal_dispatch);
+		msg.nm_cmd = cmd;
+		msg.nm_data = data;
+		msg.nm_ifp = ifp;
+		msg.nm_td = td;
+		lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
+		return msg.base.lmsg.ms_error;
+
+	default:
+		return in6_control_internal(cmd, data, ifp, td);
 	}
+}
+
+static void
+in6_control_internal_dispatch(netmsg_t msg)
+{
+	int error;
+
+	error = in6_control_internal(msg->control.nm_cmd, msg->control.nm_data,
+	    msg->control.nm_ifp, msg->control.nm_td);
+	lwkt_replymsg(&msg->lmsg, error);
+}
+
+static int
+in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
+    struct thread *td)
+{
+	struct	in6_ifreq *ifr = (struct in6_ifreq *)data;
+	struct	in6_ifaddr *ia = NULL;
+	struct	in6_aliasreq *ifra = (struct in6_aliasreq *)data;
+	struct	in6_ifextra *xtra;
+	int privileged;
+	int error;
 
 	privileged = 0;
 	if (priv_check(td, PRIV_ROOT) == 0)
@@ -484,16 +559,6 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 		return (scope6_get_default((struct scope6_id *)
 			ifr->ifr_ifru.ifru_scope_id));
 		break;
-	}
-
-	switch (cmd) {
-	case SIOCALIFADDR:
-	case SIOCDLIFADDR:
-		if (!privileged)
-			return (EPERM);
-		/* fall through */
-	case SIOCGLIFADDR:
-		return in6_lifaddr_ioctl(so, cmd, data, ifp, td);
 	}
 
 	/*
