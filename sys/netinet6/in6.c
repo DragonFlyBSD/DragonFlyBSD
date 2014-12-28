@@ -418,7 +418,7 @@ in6_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		 * on a single interface, SIOCSIFxxx ioctls are not suitable
 		 * and should be unused.
 		 */
-		/* we decided to obsolete this command (20000704) */
+		/* We decided to obsolete this command (20000704) */
 		return (EINVAL);
 
 	case SIOCSIFADDR:
@@ -498,16 +498,16 @@ static int
 in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
     struct thread *td)
 {
-	struct	in6_ifreq *ifr = (struct in6_ifreq *)data;
-	struct	in6_ifaddr *ia = NULL;
-	struct	in6_aliasreq *ifra = (struct in6_aliasreq *)data;
-	struct	in6_ifextra *xtra;
-	int privileged;
+	struct in6_ifreq *ifr = (struct in6_ifreq *)data;
+	struct in6_ifaddr *ia = NULL;
+	struct in6_aliasreq *ifra = (struct in6_aliasreq *)data;
+	struct in6_ifextra *xtra;
+	boolean_t privileged;
 	int error;
 
-	privileged = 0;
+	privileged = FALSE;
 	if (priv_check(td, PRIV_ROOT) == 0)
-		privileged++;
+		privileged = TRUE;
 
 	switch (cmd) {
 	case SIOCGETSGCNT_IN6:
@@ -534,7 +534,7 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	case SIOCSIFINFO_FLAGS:
 		if (!privileged)
 			return (EPERM);
-		/* fall through */
+		/* FALLTHROUGH */
 	case OSIOCGIFINFO_IN6:
 	case SIOCGIFINFO_IN6:
 	case SIOCGDRLST_IN6:
@@ -550,15 +550,14 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			return (EPERM);
 		return (scope6_set(ifp,
 			(struct scope6_id *)ifr->ifr_ifru.ifru_scope_id));
-		break;
+
 	case SIOCGSCOPE6:
 		return (scope6_get(ifp,
 			(struct scope6_id *)ifr->ifr_ifru.ifru_scope_id));
-		break;
+
 	case SIOCGSCOPE6DEF:
 		return (scope6_get_default((struct scope6_id *)
 			ifr->ifr_ifru.ifru_scope_id));
-		break;
 	}
 
 	/*
@@ -566,16 +565,17 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	 */
 	if (ifra->ifra_addr.sin6_family == AF_INET6) { /* XXX */
 		struct sockaddr_in6 *sa6 =
-			(struct sockaddr_in6 *)&ifra->ifra_addr;
+		    (struct sockaddr_in6 *)&ifra->ifra_addr;
 
 		if (IN6_IS_ADDR_LINKLOCAL(&sa6->sin6_addr)) {
 			if (sa6->sin6_addr.s6_addr16[1] == 0) {
-				/* link ID is not embedded by the user */
+				/* Link ID is not embedded by the user */
 				sa6->sin6_addr.s6_addr16[1] =
-					htons(ifp->if_index);
+				    htons(ifp->if_index);
 			} else if (sa6->sin6_addr.s6_addr16[1] !=
-				    htons(ifp->if_index)) {
-				return (EINVAL);	/* link ID contradicts */
+			    htons(ifp->if_index)) {
+				/* Link ID contradicts */
+				return (EINVAL);
 			}
 			if (sa6->sin6_scope_id) {
 				if (sa6->sin6_scope_id !=
@@ -590,7 +590,7 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	switch (cmd) {
 	case SIOCDIFADDR_IN6:
 		/*
-		 * for IPv4, we look for existing in_ifaddr here to allow
+		 * For IPv4, we look for existing in_ifaddr here to allow
 		 * "ifconfig if0 delete" to remove first IPv4 address on the
 		 * interface.  For IPv6, as the spec allow multiple interface
 		 * address from the day one, we consider "remove the first one"
@@ -609,44 +609,41 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			return (EAFNOSUPPORT);
 		if (!privileged)
 			return (EPERM);
-
 		break;
 
 	case SIOCGIFADDR_IN6:
-		/* This interface is basically deprecated. use SIOCGIFCONF. */
-		/* fall through */
+		/* This interface is basically deprecated.  Use SIOCGIFCONF. */
+		/* FALLTHROUGH */
 	case SIOCGIFAFLAG_IN6:
 	case SIOCGIFNETMASK_IN6:
 	case SIOCGIFDSTADDR_IN6:
 	case SIOCGIFALIFETIME_IN6:
-		/* must think again about its semantics */
+		/* Must think again about its semantics */
 		if (ia == NULL)
 			return (EADDRNOTAVAIL);
 		break;
+
 	case SIOCSIFALIFETIME_IN6:
 	    {
-		struct in6_addrlifetime *lt;
+		const struct in6_addrlifetime *lt;
 
 		if (!privileged)
 			return (EPERM);
 		if (ia == NULL)
 			return (EADDRNOTAVAIL);
-		/* sanity for overflow - beware unsigned */
+		/* Sanity for overflow - beware unsigned */
 		lt = &ifr->ifr_ifru.ifru_lifetime;
-		if (lt->ia6t_vltime != ND6_INFINITE_LIFETIME
-		    && lt->ia6t_vltime + time_uptime < time_uptime) {
+		if (lt->ia6t_vltime != ND6_INFINITE_LIFETIME &&
+		    lt->ia6t_vltime + time_uptime < time_uptime)
 			return EINVAL;
-		}
-		if (lt->ia6t_pltime != ND6_INFINITE_LIFETIME
-		    && lt->ia6t_pltime + time_uptime < time_uptime) {
+		if (lt->ia6t_pltime != ND6_INFINITE_LIFETIME &&
+		    lt->ia6t_pltime + time_uptime < time_uptime)
 			return EINVAL;
-		}
 		break;
 	    }
 	}
 
 	switch (cmd) {
-
 	case SIOCGIFADDR_IN6:
 		ifr->ifr_addr = ia->ia_addr;
 		break;
@@ -655,7 +652,7 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		if (!(ifp->if_flags & IFF_POINTOPOINT))
 			return (EINVAL);
 		/*
-		 * XXX: should we check if ifa_dstaddr is NULL and return
+		 * XXX: Should we check if ifa_dstaddr is NULL and return
 		 * an error?
 		 */
 		ifr->ifr_dstaddr = ia->ia_dstaddr;
@@ -670,18 +667,18 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		break;
 
 	case SIOCGIFSTAT_IN6:
-		if (ifp == NULL || (xtra = ifp->if_afdata[AF_INET6]) == NULL)
+		if ((xtra = ifp->if_afdata[AF_INET6]) == NULL)
 			return EINVAL;
 		bzero(&ifr->ifr_ifru.ifru_stat,
-		      sizeof(ifr->ifr_ifru.ifru_stat));
+		    sizeof(ifr->ifr_ifru.ifru_stat));
 		ifr->ifr_ifru.ifru_stat = *xtra->in6_ifstat;
 		break;
 
 	case SIOCGIFSTAT_ICMP6:
-		if (ifp == NULL || (xtra = ifp->if_afdata[AF_INET6]) == NULL)
+		if ((xtra = ifp->if_afdata[AF_INET6]) == NULL)
 			return EINVAL;
 		bzero(&ifr->ifr_ifru.ifru_stat,
-			sizeof(ifr->ifr_ifru.ifru_icmp6stat));
+		    sizeof(ifr->ifr_ifru.ifru_icmp6stat));
 		ifr->ifr_ifru.ifru_icmp6stat = *xtra->icmp6_ifstat;
 		break;
 
@@ -691,17 +688,18 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 
 	case SIOCSIFALIFETIME_IN6:
 		ia->ia6_lifetime = ifr->ifr_ifru.ifru_lifetime;
-		/* for sanity */
 		if (ia->ia6_lifetime.ia6t_vltime != ND6_INFINITE_LIFETIME) {
 			ia->ia6_lifetime.ia6t_expire =
-				time_uptime + ia->ia6_lifetime.ia6t_vltime;
-		} else
+			    time_uptime + ia->ia6_lifetime.ia6t_vltime;
+		} else {
 			ia->ia6_lifetime.ia6t_expire = 0;
+		}
 		if (ia->ia6_lifetime.ia6t_pltime != ND6_INFINITE_LIFETIME) {
 			ia->ia6_lifetime.ia6t_preferred =
-				time_uptime + ia->ia6_lifetime.ia6t_pltime;
-		} else
+			    time_uptime + ia->ia6_lifetime.ia6t_pltime;
+		} else {
 			ia->ia6_lifetime.ia6t_preferred = 0;
+		}
 		break;
 
 	case SIOCAIFADDR_IN6:
@@ -715,38 +713,38 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			iaIsNew = 1;
 
 		/*
-		 * first, make or update the interface address structure,
+		 * First, make or update the interface address structure,
 		 * and link it to the list.
 		 */
 		if ((error = in6_update_ifa(ifp, ifra, ia)) != 0)
 			return (error);
 
 		/*
-		 * then, make the prefix on-link on the interface.
-		 * XXX: we'd rather create the prefix before the address, but
+		 * Then, make the prefix on-link on the interface.
+		 * XXX: We'd rather create the prefix before the address, but
 		 * we need at least one address to install the corresponding
 		 * interface route, so we configure the address first.
 		 */
 
 		/*
-		 * convert mask to prefix length (prefixmask has already
+		 * Convert mask to prefix length (prefixmask has already
 		 * been validated in in6_update_ifa().
 		 */
 		bzero(&pr0, sizeof(pr0));
 		pr0.ndpr_ifp = ifp;
 		pr0.ndpr_plen = in6_mask2len(&ifra->ifra_prefixmask.sin6_addr,
-					     NULL);
+		    NULL);
 		if (pr0.ndpr_plen == 128)
-			break;	/* we don't need to install a host route. */
+			break;	/* no need to install a host route. */
 		pr0.ndpr_prefix = ifra->ifra_addr;
 		pr0.ndpr_mask = ifra->ifra_prefixmask.sin6_addr;
-		/* apply the mask for safety. */
+		/* Apply the mask for safety. */
 		for (i = 0; i < 4; i++) {
 			pr0.ndpr_prefix.sin6_addr.s6_addr32[i] &=
-				ifra->ifra_prefixmask.sin6_addr.s6_addr32[i];
+			    ifra->ifra_prefixmask.sin6_addr.s6_addr32[i];
 		}
 		/*
-		 * XXX: since we don't have an API to set prefix (not address)
+		 * XXX: Since we don't have an API to set prefix (not address)
 		 * lifetimes, we just use the same lifetimes as addresses.
 		 * The (temporarily) installed lifetimes can be overridden by
 		 * later advertised RAs (when accept_rtadv is non 0), which is
@@ -754,11 +752,11 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		 */
 		pr0.ndpr_raf_onlink = 1; /* should be configurable? */
 		pr0.ndpr_raf_auto =
-			((ifra->ifra_flags & IN6_IFF_AUTOCONF) != 0);
+		    ((ifra->ifra_flags & IN6_IFF_AUTOCONF) != 0);
 		pr0.ndpr_vltime = ifra->ifra_lifetime.ia6t_vltime;
 		pr0.ndpr_pltime = ifra->ifra_lifetime.ia6t_pltime;
 
-		/* add the prefix if there's one. */
+		/* Add the prefix if there's one. */
 		if ((pr = nd6_prefix_lookup(&pr0)) == NULL) {
 			/*
 			 * nd6_prelist_add will install the corresponding
@@ -772,14 +770,18 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 				return (EINVAL); /* XXX panic here? */
 			}
 		}
-		if ((ia = in6ifa_ifpwithaddr(ifp, &ifra->ifra_addr.sin6_addr))
-		    == NULL) {
-		    	/* XXX: this should not happen! */
+
+		ia = in6ifa_ifpwithaddr(ifp, &ifra->ifra_addr.sin6_addr);
+		if (ia == NULL) {
+		    	/* XXX: This should not happen! */
 			log(LOG_ERR, "in6_control: addition succeeded, but"
 			    " no ifaddr\n");
 		} else {
 			if ((ia->ia6_flags & IN6_IFF_AUTOCONF) &&
-			    ia->ia6_ndpr == NULL) { /* new autoconfed addr */
+			    ia->ia6_ndpr == NULL) {
+				/*
+				 * New autoconf address
+				 */
 				ia->ia6_ndpr = pr;
 				pr->ndpr_refcnt++;
 
@@ -788,21 +790,20 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 				 * the prefix, create a temporary address
 				 * as well (when specified).
 				 */
-				if (ip6_use_tempaddr &&
-				    pr->ndpr_refcnt == 1) {
+				if (ip6_use_tempaddr && pr->ndpr_refcnt == 1) {
 					int e;
+
 					if ((e = in6_tmpifadd(ia, 1)) != 0) {
 						log(LOG_NOTICE, "in6_control: "
 						    "failed to create a "
 						    "temporary address, "
-						    "errno=%d\n",
-						    e);
+						    "errno=%d\n", e);
 					}
 				}
 			}
 
 			/*
-			 * this might affect the status of autoconfigured
+			 * This might affect the status of autoconfigured
 			 * addresses, that is, this address might make
 			 * other addresses detached.
 			 */
@@ -810,8 +811,8 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		}
 		if (error == 0 && ia) {
 			EVENTHANDLER_INVOKE(ifaddr_event, ifp,
-			iaIsNew ? IFADDR_EVENT_ADD : IFADDR_EVENT_CHANGE,
-			&ia->ia_ifa);
+			    iaIsNew ? IFADDR_EVENT_ADD : IFADDR_EVENT_CHANGE,
+			    &ia->ia_ifa);
 		}
 		break;
 	}
@@ -824,7 +825,7 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		/*
 		 * If the address being deleted is the only one that owns
 		 * the corresponding prefix, expire the prefix as well.
-		 * XXX: theoretically, we don't have to warry about such
+		 * XXX: Theoretically, we don't have to warry about such
 		 * relationship, since we separate the address management
 		 * and the prefix management.  We do this, however, to provide
 		 * as much backward compatibility as possible in terms of
@@ -833,40 +834,39 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		bzero(&pr0, sizeof(pr0));
 		pr0.ndpr_ifp = ifp;
 		pr0.ndpr_plen = in6_mask2len(&ia->ia_prefixmask.sin6_addr,
-					     NULL);
+		    NULL);
 		if (pr0.ndpr_plen == 128)
 			goto purgeaddr;
 		pr0.ndpr_prefix = ia->ia_addr;
 		pr0.ndpr_mask = ia->ia_prefixmask.sin6_addr;
 		for (i = 0; i < 4; i++) {
 			pr0.ndpr_prefix.sin6_addr.s6_addr32[i] &=
-				ia->ia_prefixmask.sin6_addr.s6_addr32[i];
+			    ia->ia_prefixmask.sin6_addr.s6_addr32[i];
 		}
 		/*
 		 * The logic of the following condition is a bit complicated.
 		 * We expire the prefix when
-		 * 1. the address obeys autoconfiguration and it is the
+		 * 1. The address obeys autoconfiguration and it is the
 		 *    only owner of the associated prefix, or
-		 * 2. the address does not obey autoconf and there is no
+		 * 2. The address does not obey autoconf and there is no
 		 *    other owner of the prefix.
 		 */
 		if ((pr = nd6_prefix_lookup(&pr0)) != NULL &&
 		    (((ia->ia6_flags & IN6_IFF_AUTOCONF) &&
-		       pr->ndpr_refcnt == 1) ||
+		      pr->ndpr_refcnt == 1) ||
 		     (!(ia->ia6_flags & IN6_IFF_AUTOCONF) &&
-		      pr->ndpr_refcnt == 0))) {
+		      pr->ndpr_refcnt == 0)))
 			pr->ndpr_expire = 1; /* XXX: just for expiration */
-		}
 
 purgeaddr:
 		EVENTHANDLER_INVOKE(ifaddr_event, ifp, IFADDR_EVENT_DELETE,
-				    &ia->ia_ifa);
+		    &ia->ia_ifa);
 		in6_purgeaddr(&ia->ia_ifa);
 		break;
 	}
 
 	default:
-		if (ifp == NULL || ifp->if_ioctl == NULL)
+		if (ifp->if_ioctl == NULL)
 			return (EOPNOTSUPP);
 		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
