@@ -132,9 +132,7 @@ AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER ServiceRou
     if (!acpi_sci_enabled())
 	return_ACPI_STATUS (AE_OK);
 
-    if (InterruptNumber < 0 || InterruptNumber > 255)
-	return_ACPI_STATUS (AE_BAD_PARAMETER);
-    if (ServiceRoutine == NULL)
+    if (InterruptNumber > 255 || ServiceRoutine == NULL)
 	return_ACPI_STATUS (AE_BAD_PARAMETER);
 
     if ((sc = devclass_get_softc(devclass_find("acpi"), 0)) == NULL)
