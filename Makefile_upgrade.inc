@@ -2746,6 +2746,7 @@ TO_REMOVE+=/usr/share/man/cat4/uscanner.4.gz
 TO_REMOVE+=/usr/share/man/man4/uscanner.4.gz
 TO_REMOVE+=/usr/share/man/cat4/uticom.4.gz
 TO_REMOVE+=/usr/share/man/man4/uticom.4.gz
+TO_REMOVE+=/usr/include/netinet6/in6_prefix.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
