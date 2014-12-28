@@ -32,7 +32,6 @@
  *
  *	@(#)dirent.h	8.3 (Berkeley) 8/10/94
  * $FreeBSD: src/sys/sys/dirent.h,v 1.11 1999/12/29 04:24:39 peter Exp $
- * $DragonFly: src/sys/sys/dirent.h,v 1.7 2007/11/20 21:03:46 dillon Exp $
  */
 
 #ifndef	_SYS_DIRENT_H_
@@ -62,7 +61,7 @@
 #include <sys/types.h>
 
 struct dirent {
-#if defined(_KERNEL) || !defined(__BSD_VISIBLE)
+#if defined(_KERNEL) || !__BSD_VISIBLE
 	ino_t		d_ino;		/* file number of entry */
 #else
 	ino_t		d_fileno;	/* file number of entry */
@@ -81,7 +80,7 @@ struct dirent {
 #define _DIRENT_HAVE_D_NAMLEN
 #define _DIRENT_HAVE_D_TYPE
 
-#if !defined(_KERNEL) && defined(__BSD_VISIBLE)
+#if !defined(_KERNEL) && __BSD_VISIBLE
 #define	d_ino		d_fileno
 #endif
 

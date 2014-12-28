@@ -32,7 +32,6 @@
  *
  *	@(#)select.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/select.h,v 1.6.2.1 2000/05/05 03:50:02 jlemon Exp $
- * $DragonFly: src/sys/sys/fd_set.h,v 1.3 2008/05/30 08:07:22 corecode Exp $
  */
 
 #ifndef _SYS_FD_SET_H_
@@ -71,7 +70,7 @@ typedef struct fd_set {
 /*
  * Expose classic BSD names if we're not running in conformance mode.
  */
-#ifdef __BSD_VISIBLE
+#if __BSD_VISIBLE
 
 #define fd_mask	__fd_mask
 #define NFDBITS	__NFDBITS

@@ -206,7 +206,7 @@ typedef __time_t	time_t;
 typedef __timer_t	timer_t;
 #endif
 
-#ifdef __BSD_VISIBLE
+#if __BSD_VISIBLE
 
 #include <sys/fd_set.h>
 #include <sys/_timeval.h>
