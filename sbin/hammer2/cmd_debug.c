@@ -454,6 +454,8 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	       (intmax_t)bref->key, (intmax_t)bref->keybits,
 	       (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid);
 	tab += SHOW_TAB;
+	if (bref->flags)
+		printf("flags=%02x ", bref->flags);
 
 	bytes = (size_t)1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 
