@@ -397,6 +397,39 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 	int privileged;
 	int error;
 
+	switch (cmd) {
+	case SIOCSIFPREFIX_IN6:
+	case SIOCDIFPREFIX_IN6:
+	case SIOCAIFPREFIX_IN6:
+	case SIOCCIFPREFIX_IN6:
+	case SIOCSGIFPREFIX_IN6:
+	case SIOCGIFPREFIX_IN6:
+		log(LOG_NOTICE, "prefix ioctls are now invalidated. "
+		    "please use ifconfig.\n");
+		return (EOPNOTSUPP);
+
+	case SIOCSIFADDR_IN6:
+	case SIOCSIFDSTADDR_IN6:
+	case SIOCSIFNETMASK_IN6:
+		/*
+		 * Since IPv6 allows a node to assign multiple addresses
+		 * on a single interface, SIOCSIFxxx ioctls are not suitable
+		 * and should be unused.
+		 */
+		/* we decided to obsolete this command (20000704) */
+		return (EINVAL);
+
+	case SIOCSIFADDR:
+	case SIOCSIFDSTADDR:
+	case SIOCSIFBRDADDR:
+	case SIOCSIFNETMASK:
+		/*
+		 * Do not pass those ioctl to driver handler since they are not
+		 * properly setup.  Instead just error out.
+		 */
+		return (EOPNOTSUPP);
+	}
+
 	privileged = 0;
 	if (priv_check(td, PRIV_ROOT) == 0)
 		privileged++;
@@ -434,19 +467,6 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 	case SIOCGNBRINFO_IN6:
 	case SIOCGDEFIFACE_IN6:
 		return (nd6_ioctl(cmd, data, ifp));
-	}
-
-	switch (cmd) {
-	case SIOCSIFPREFIX_IN6:
-	case SIOCDIFPREFIX_IN6:
-	case SIOCAIFPREFIX_IN6:
-	case SIOCCIFPREFIX_IN6:
-	case SIOCSGIFPREFIX_IN6:
-	case SIOCGIFPREFIX_IN6:
-		log(LOG_NOTICE,
-		    "prefix ioctls are now invalidated. "
-		    "please use ifconfig.\n");
-		return (EOPNOTSUPP);
 	}
 
 	switch (cmd) {
@@ -503,17 +523,6 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 	}
 
 	switch (cmd) {
-	case SIOCSIFADDR_IN6:
-	case SIOCSIFDSTADDR_IN6:
-	case SIOCSIFNETMASK_IN6:
-		/*
-		 * Since IPv6 allows a node to assign multiple addresses
-		 * on a single interface, SIOCSIFxxx ioctls are not suitable
-		 * and should be unused.
-		 */
-		/* we decided to obsolete this command (20000704) */
-		return (EINVAL);
-
 	case SIOCDIFADDR_IN6:
 		/*
 		 * for IPv4, we look for existing in_ifaddr here to allow
@@ -611,16 +620,6 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 		ifr->ifr_ifru.ifru_icmp6stat = *xtra->icmp6_ifstat;
 		break;
 
-	case SIOCSIFADDR:
-	case SIOCSIFDSTADDR:
-	case SIOCSIFBRDADDR:
-	case SIOCSIFNETMASK:
-		/*
-		 * Do not pass those ioctl to driver handler since they are not
-		 * properly setup.  Instead just error out.
-		 */
-		return (EOPNOTSUPP);
-		
 	case SIOCGIFALIFETIME_IN6:
 		ifr->ifr_ifru.ifru_lifetime = ia->ia6_lifetime;
 		break;
