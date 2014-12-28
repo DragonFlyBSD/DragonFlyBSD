@@ -134,6 +134,7 @@ int ttm_eu_reserve_buffers(struct list_head *list)
 retry:
 	list_for_each_entry(entry, list, head) {
 		struct ttm_buffer_object *bo = entry->bo;
+		int owned;
 
 		/* already slowpath reserved? */
 		if (entry->reserved)
@@ -145,10 +146,13 @@ retry:
 			break;
 		case -EBUSY:
 			ttm_eu_del_from_lru_locked(list);
-			lockmgr(&glob->lru_lock, LK_RELEASE);
+			owned = lockstatus(&glob->lru_lock, curthread);
+			if (owned == LK_EXCLUSIVE)
+				lockmgr(&glob->lru_lock, LK_RELEASE);
 			ret = ttm_bo_reserve_nolru(bo, true, false,
 						   true, val_seq);
-			lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
+			if (owned == LK_EXCLUSIVE)
+				lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 			if (!ret)
 				break;
 
