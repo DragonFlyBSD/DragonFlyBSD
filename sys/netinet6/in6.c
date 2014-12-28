@@ -329,15 +329,17 @@ in6_ifindex2scopeid(int idx)
 }
 
 int
-in6_mask2len(struct in6_addr *mask, u_char *lim0)
+in6_mask2len(const struct in6_addr *mask, const u_char *lim0)
 {
 	int x = 0, y;
-	u_char *lim = lim0, *p;
+	const u_char *lim = lim0, *p;
 
 	if (lim0 == NULL ||
-	    lim0 - (u_char *)mask > sizeof(*mask)) /* ignore the scope_id part */
-		lim = (u_char *)mask + sizeof(*mask);
-	for (p = (u_char *)mask; p < lim; x++, p++) {
+	    lim0 - (const u_char *)mask > sizeof(*mask)) {
+		/* Ignore the scope_id part */
+		lim = (const u_char *)mask + sizeof(*mask);
+	}
+	for (p = (const u_char *)mask; p < lim; x++, p++) {
 		if (*p != 0xff)
 			break;
 	}
@@ -350,7 +352,7 @@ in6_mask2len(struct in6_addr *mask, u_char *lim0)
 	}
 
 	/*
-	 * when the limit pointer is given, do a stricter check on the
+	 * When the limit pointer is given, do a stricter check on the
 	 * remaining bits.
 	 */
 	if (p < lim) {

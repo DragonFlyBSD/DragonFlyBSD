@@ -607,7 +607,7 @@ struct	in6_multi_mship *in6_joingroup(struct ifnet *, struct in6_addr *, int *);
 int	in6_leavegroup(struct in6_multi_mship *);
 
 extern int in6_ifindex2scopeid (int);
-extern int in6_mask2len (struct in6_addr *, u_char *);
+int	in6_mask2len(const struct in6_addr *, const u_char *);
 extern void in6_len2mask (struct in6_addr *, int);
 void	in6_control_dispatch(netmsg_t msg);
 int	in6_control (struct socket *,
