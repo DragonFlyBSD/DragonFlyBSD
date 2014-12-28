@@ -1848,7 +1848,7 @@ in6ifa_ifpforlinklocal(struct ifnet *ifp, int ignoreflags)
 struct in6_ifaddr *
 in6ifa_ifpwithaddr(struct ifnet *ifp, struct in6_addr *addr)
 {
-	struct ifaddr_container *ifac;
+	const struct ifaddr_container *ifac;
 
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 		struct ifaddr *ifa = ifac->ifa;
@@ -1858,12 +1858,9 @@ in6ifa_ifpwithaddr(struct ifnet *ifp, struct in6_addr *addr)
 		if (ifa->ifa_addr->sa_family != AF_INET6)
 			continue;
 		if (IN6_ARE_ADDR_EQUAL(addr, IFA_IN6(ifa)))
-			break;
+			return (struct in6_ifaddr *)ifa;
 	}
-	if (ifac != NULL)
-		return ((struct in6_ifaddr *)(ifac->ifa));
-	else
-		return (NULL);
+	return NULL;
 }
 
 /*
