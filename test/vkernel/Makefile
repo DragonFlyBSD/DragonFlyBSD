@@ -6,6 +6,7 @@ SRCDIR ?= ${.CURDIR}/../..
 PHYSMEM ?= 256m
 NCPUS ?= 2
 FSTYPE ?=
+EXTRAOPTS ?=
 
 all: help
 
@@ -45,6 +46,7 @@ help:
 	@echo "    run      - run vkernel with VKDIR/root.img"
 	@echo "    mount    - mount VKDIR/root.img at VKDIR/root"
 	@echo "    umount   - unmount"
+	@echo "    fsck	    - fsck VKDIR/root.img"
 	@echo ""
 	@echo "Individual target components:"
 	@echo ""
@@ -117,11 +119,16 @@ mount: check
 
 umount: check
 
+fsck: check
+	vnconfig -c -s labels `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
+	fsck -y /dev/`cat ${VKDIR}/vn.which`s1a
+	make umount
+
 # Install a fresh world & distribution, and kernel
 #
 install: mount
 	cd ${SRCDIR} && \
-	    make -j 4 DESTDIR=${VKDIR}/root installworld
+	    make -j 4 DESTDIR=${VKDIR}/root NO_BACKUP=TRUE installworld
 	cd ${SRCDIR}/etc && \
 	    make -j 4 DESTDIR=${VKDIR}/root distribution
 	echo '/dev/vkd0s1a	/	ufs	rw	1 1' > ${VKDIR}/root/etc/fstab
@@ -149,7 +156,8 @@ leaf: mount
 #
 #
 reinstall: mount
-	cd ${SRCDIR} && make -j 4 DESTDIR=${VKDIR}/root installworld
+	cd ${SRCDIR} && \
+	    make -j 4 DESTDIR=${VKDIR}/root NO_BACKUP=TRUE installworld
 
 reinstallkernel: mount
 	cd ${SRCDIR} && \
@@ -170,7 +178,7 @@ run: check
 	sysctl vm.vkernel_enable=1
 	cd ${VKDIR} && ./vkernel -m ${PHYSMEM} -n ${NCPUS} \
 			-r root.img -U -v \
-			-I /var/run/vknet
+			-I /var/run/vknet ${EXTRAOPTS}
 
 # When running w/ a NFS root
 #
