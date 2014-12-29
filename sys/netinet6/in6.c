@@ -470,7 +470,7 @@ in6_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	case SIOCAIFADDR_IN6:
 	case SIOCDIFADDR_IN6:
 		/*
-		 * Dispatch to netisr0 to run
+		 * Dispatch these SIOCs to netisr0.
 		 */
 		netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
 		    in6_control_internal_dispatch);
