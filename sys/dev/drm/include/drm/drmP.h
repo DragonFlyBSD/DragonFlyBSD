@@ -854,6 +854,11 @@ struct drm_pending_vblank_event {
 	struct drm_event_vblank event;
 };
 
+struct drm_sysctl_info {
+	struct sysctl_ctx_list ctx;
+	char   name[2];
+};
+
 /* Length for the array of resource pointers for drm_get_resource_*. */
 #define DRM_MAX_PCI_RESOURCE	6
 

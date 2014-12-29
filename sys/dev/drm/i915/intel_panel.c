@@ -499,10 +499,7 @@ sysctl_backlight_handler(SYSCTL_HANDLER_ARGS)
 
 	return(err);
 }
-struct drm_sysctl_info {
-	               struct sysctl_ctx_list ctx;
-	               char   name[2];
-	};
+
 int intel_panel_setup_backlight(struct drm_connector *connector)
 {
 	intel_panel_init_backlight(connector->dev);

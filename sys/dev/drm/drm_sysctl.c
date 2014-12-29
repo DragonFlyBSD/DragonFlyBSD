@@ -52,11 +52,6 @@ struct drm_sysctl_list {
 };
 #define DRM_SYSCTL_ENTRIES NELEM(drm_sysctl_list)
 
-struct drm_sysctl_info {
-	struct sysctl_ctx_list ctx;
-	char		       name[2];
-};
-
 int drm_sysctl_init(struct drm_device *dev)
 {
 	struct drm_sysctl_info *info;
