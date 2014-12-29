@@ -143,6 +143,9 @@ static int unix_connect(const char *path);
 static void usage_err(const char *ctl, ...);
 static void usage_help(_Bool);
 static void init_locks(void);
+static void handle_term(int);
+
+pid_t childpid;
 
 static int save_ac;
 static char **save_av;
@@ -178,7 +181,6 @@ int main(int ac, char **av) {
 	size_t msize;
 	size_t kenv_size;
 	size_t kenv_size2;
-	pid_t pid;
 	int status;
 	struct sigaction sa;
 
@@ -194,7 +196,7 @@ int main(int ac, char **av) {
 		exit(1);
 	}
 
-	while ((pid = fork()) != 0) {
+	while ((childpid = fork()) != 0) {
 		/* Ignore signals */
 		bzero(&sa, sizeof(sa));
 		sigemptyset(&sa.sa_mask);
@@ -204,10 +206,17 @@ int main(int ac, char **av) {
 		sigaction(SIGHUP, &sa, NULL);
 
 		/*
+		 * Forward SIGTERM to the child so that
+		 * the shutdown process initiates correctly.
+		 */
+		sa.sa_handler = handle_term;
+		sigaction(SIGTERM, &sa, NULL);
+
+		/*
 		 * Wait for child to terminate, exit if
 		 * someone stole our child.
 		 */
-		while (waitpid(pid, &status, 0) != pid) {
+		while (waitpid(childpid, &status, 0) != childpid) {
 			if (errno == ECHILD)
 				exit(1);
 		}
@@ -467,6 +476,14 @@ int main(int ac, char **av) {
 	mi_startup();
 	/* NOT REACHED */
 	exit(EX_SOFTWARE);
+}
+
+/* SIGTERM handler */
+static
+void
+handle_term(int sig)
+{
+	kill(childpid, sig);
 }
 
 /*
