@@ -219,7 +219,6 @@ in_control_internal_dispatch(netmsg_t msg)
  *
  * NOTE! td might be NULL.
  */
-/* ARGSUSED */
 int
 in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
     struct thread *td)
@@ -237,33 +236,29 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		if (!ifp)
 			return EINVAL;
 		return in_lifaddr_ioctl(so, cmd, data, ifp, td);
-	}
 
-	/*
-	 * IFADDR alterations are serialized by netisr0
-	 */
-	switch (cmd) {
+	/* change address */
 	case SIOCSIFDSTADDR:
 	case SIOCSIFBRDADDR:
 	case SIOCSIFADDR:
 	case SIOCSIFNETMASK:
 	case SIOCAIFADDR:
 	case SIOCDIFADDR:
-		netmsg_init(&msg.base, NULL, &curthread->td_msgport,
-			    0, in_control_internal_dispatch);
+		/*
+		 * Dispatch these SIOCs to netisr0.
+		 */
+		netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+		    in_control_internal_dispatch);
 		msg.nm_cmd = cmd;
 		msg.nm_data = data;
 		msg.nm_ifp = ifp;
 		msg.nm_td = td;
 		lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
-		error = msg.base.lmsg.ms_error;
-		break;
+		return msg.base.lmsg.ms_error;
 
 	default:
-		error = in_control_internal(cmd, data, ifp, td);
-		break;
+		return in_control_internal(cmd, data, ifp, td);
 	}
-	return error;
 }
 
 static void
