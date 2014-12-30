@@ -168,11 +168,10 @@ struct vm_object {
 	 */
 
 #define VMOBJ_DEBUG_ARRAY_SIZE		(32)
-	u_int debug_hold_bitmap;
-	thread_t debug_hold_thrs[VMOBJ_DEBUG_ARRAY_SIZE];
-	char *debug_hold_file[VMOBJ_DEBUG_ARRAY_SIZE];
+	char debug_hold_thrs[VMOBJ_DEBUG_ARRAY_SIZE][64];
+	const char *debug_hold_file[VMOBJ_DEBUG_ARRAY_SIZE];
 	int debug_hold_line[VMOBJ_DEBUG_ARRAY_SIZE];
-	u_int debug_hold_ovfl;
+	int	debug_index;
 #endif
 
 	union {
@@ -229,6 +228,10 @@ struct vm_object {
 #define IDX_TO_OFF(idx) (((vm_ooffset_t)(idx)) << PAGE_SHIFT)
 #define OFF_TO_IDX(off) ((vm_pindex_t)(((vm_ooffset_t)(off)) >> PAGE_SHIFT))
 
+#define VMOBJ_HSIZE	64
+#define VMOBJ_HMASK	(VMOBJ_HSIZE - 1)
+#define VMOBJ_HASH(obj)	(((intptr_t)(obj) >> 8) & VMOBJ_HMASK)
+
 #ifdef	_KERNEL
 
 #define OBJPC_SYNC	0x1			/* sync I/O */
@@ -244,10 +247,6 @@ struct vm_object_dealloc_list {
 };
 
 TAILQ_HEAD(object_q, vm_object);
-
-#define VMOBJ_HSIZE	64
-#define VMOBJ_HMASK	(VMOBJ_HSIZE - 1)
-#define VMOBJ_HASH(obj)	(((intptr_t)(obj) >> 8) & VMOBJ_HMASK)
 
 extern struct object_q vm_object_lists[VMOBJ_HSIZE];
 extern struct lwkt_token vmobj_tokens[VMOBJ_HSIZE];
@@ -312,8 +311,6 @@ vm_object_t vm_object_allocate_hold (objtype_t, vm_pindex_t);
 void _vm_object_allocate (objtype_t, vm_pindex_t, vm_object_t);
 boolean_t vm_object_coalesce (vm_object_t, vm_pindex_t, vm_size_t, vm_size_t);
 void vm_object_collapse (vm_object_t, struct vm_object_dealloc_list **);
-void vm_object_deallocate (vm_object_t);
-void vm_object_deallocate_locked (vm_object_t);
 void vm_object_deallocate_list(struct vm_object_dealloc_list **);
 void vm_object_terminate (vm_object_t);
 void vm_object_set_writeable_dirty (vm_object_t);
@@ -323,8 +320,6 @@ void vm_object_page_remove (vm_object_t, vm_pindex_t, vm_pindex_t, boolean_t);
 void vm_object_pmap_copy (vm_object_t, vm_pindex_t, vm_pindex_t);
 void vm_object_pmap_copy_1 (vm_object_t, vm_pindex_t, vm_pindex_t);
 void vm_object_pmap_remove (vm_object_t, vm_pindex_t, vm_pindex_t);
-void vm_object_reference_quick (vm_object_t);
-void vm_object_reference_locked (vm_object_t);
 void vm_object_chain_wait (vm_object_t object, int shared);
 void vm_object_chain_acquire(vm_object_t object, int shared);
 void vm_object_chain_release(vm_object_t object);
@@ -339,25 +334,48 @@ void vm_object_lock(vm_object_t);
 void vm_object_lock_shared(vm_object_t);
 void vm_object_unlock(vm_object_t);
 
-#ifndef DEBUG_LOCKS
-void vm_object_hold(vm_object_t);
-int vm_object_hold_try(vm_object_t);
-void vm_object_hold_shared(vm_object_t);
+#if defined(DEBUG_LOCKS)
+
+#define VMOBJDEBUG(x)	debug ## x
+#define VMOBJDBARGS	, char *file, int line
+#define VMOBJDBFWD	, file, line
+
+#define vm_object_hold(obj)			\
+		debugvm_object_hold(obj, __FILE__, __LINE__)
+#define vm_object_hold_try(obj)			\
+		debugvm_object_hold_try(obj, __FILE__, __LINE__)
+#define vm_object_hold_shared(obj)		\
+		debugvm_object_hold_shared(obj, __FILE__, __LINE__)
+#define vm_object_drop(obj)			\
+		debugvm_object_drop(obj, __FILE__, __LINE__)
+#define vm_object_reference_quick(obj)		\
+		debugvm_object_reference_quick(obj, __FILE__, __LINE__)
+#define vm_object_reference_locked(obj)		\
+		debugvm_object_reference_locked(obj, __FILE__, __LINE__)
+#define vm_object_deallocate(obj)		\
+		debugvm_object_deallocate(obj, __FILE__, __LINE__)
+#define vm_object_deallocate_locked(obj)	\
+		debugvm_object_deallocate_locked(obj, __FILE__, __LINE__)
+
 #else
-#define vm_object_hold(obj)		\
-	debugvm_object_hold(obj, __FILE__, __LINE__)
-void debugvm_object_hold(vm_object_t, char *, int);
-#define vm_object_hold_try(obj)		\
-	debugvm_object_hold_try(obj, __FILE__, __LINE__)
-int debugvm_object_hold_try(vm_object_t, char *, int);
-#define vm_object_hold_shared(obj)	\
-	debugvm_object_hold_shared(obj, __FILE__, __LINE__)
-void debugvm_object_hold_shared(vm_object_t, char *, int);
+
+#define VMOBJDEBUG(x)	x
+#define VMOBJDBARGS
+#define VMOBJDBFWD
+
 #endif
+
+void VMOBJDEBUG(vm_object_hold)(vm_object_t object VMOBJDBARGS);
+int VMOBJDEBUG(vm_object_hold_try)(vm_object_t object VMOBJDBARGS);
+void VMOBJDEBUG(vm_object_hold_shared)(vm_object_t object VMOBJDBARGS);
+void VMOBJDEBUG(vm_object_drop)(vm_object_t object VMOBJDBARGS);
+void VMOBJDEBUG(vm_object_reference_quick)(vm_object_t object VMOBJDBARGS);
+void VMOBJDEBUG(vm_object_reference_locked)(vm_object_t object VMOBJDBARGS);
+void VMOBJDEBUG(vm_object_deallocate)(vm_object_t object VMOBJDBARGS);
+void VMOBJDEBUG(vm_object_deallocate_locked)(vm_object_t object VMOBJDBARGS);
+
 void vm_object_upgrade(vm_object_t);
 void vm_object_downgrade(vm_object_t);
-
-void vm_object_drop(vm_object_t);
 
 #endif				/* _KERNEL */
 

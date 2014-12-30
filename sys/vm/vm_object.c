@@ -143,6 +143,42 @@ static struct vm_object vm_objects_init[VM_OBJECTS_INIT];
 struct object_q vm_object_lists[VMOBJ_HSIZE];
 struct lwkt_token vmobj_tokens[VMOBJ_HSIZE];
 
+#if defined(DEBUG_LOCKS)
+
+#define vm_object_vndeallocate(obj, vpp)	\
+                debugvm_object_vndeallocate(obj, vpp, __FILE__, __LINE__)
+
+/*
+ * Debug helper to track hold/drop/ref/deallocate calls.
+ */
+static void
+debugvm_object_add(vm_object_t obj, char *file, int line, int addrem)
+{
+	int i;
+
+	i = atomic_fetchadd_int(&obj->debug_index, 1);
+	i = i & (VMOBJ_DEBUG_ARRAY_SIZE - 1);
+	ksnprintf(obj->debug_hold_thrs[i],
+		  sizeof(obj->debug_hold_thrs[i]),
+		  "%c%d:(%d):%s",
+		  (addrem == -1 ? '-' : (addrem == 1 ? '+' : '=')),
+		  (curthread->td_proc ? curthread->td_proc->p_pid : -1),
+		  obj->ref_count,
+		  curthread->td_comm);
+	obj->debug_hold_file[i] = file;
+	obj->debug_hold_line[i] = line;
+#if 0
+	/* Uncomment for debugging obj refs/derefs in reproducable cases */
+	if (strcmp(curthread->td_comm, "sshd") == 0) {
+		kprintf("%d %p refs=%d ar=%d file: %s/%d\n",
+			(curthread->td_proc ? curthread->td_proc->p_pid : -1),
+			obj, obj->ref_count, addrem, file, line);
+	}
+#endif
+}
+
+#endif
+
 /*
  * Misc low level routines
  */
@@ -152,10 +188,9 @@ vm_object_lock_init(vm_object_t obj)
 #if defined(DEBUG_LOCKS)
 	int i;
 
-	obj->debug_hold_bitmap = 0;
-	obj->debug_hold_ovfl = 0;
+	obj->debug_index = 0;
 	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
-		obj->debug_hold_thrs[i] = NULL;
+		obj->debug_hold_thrs[i][0] = 0;
 		obj->debug_hold_file[i] = NULL;
 		obj->debug_hold_line[i] = 0;
 	}
@@ -216,11 +251,7 @@ vm_object_assert_held(vm_object_t obj)
 }
 
 void
-#ifndef DEBUG_LOCKS
-vm_object_hold(vm_object_t obj)
-#else
-debugvm_object_hold(vm_object_t obj, char *file, int line)
-#endif
+VMOBJDEBUG(vm_object_hold)(vm_object_t obj VMOBJDBARGS)
 {
 	KKASSERT(obj != NULL);
 
@@ -234,36 +265,12 @@ debugvm_object_hold(vm_object_t obj, char *file, int line)
 	vm_object_lock(obj);
 
 #if defined(DEBUG_LOCKS)
-	int i;
-	u_int mask;
-
-	for (;;) {
-		mask = ~obj->debug_hold_bitmap;
-		cpu_ccfence();
-		if (mask == 0xFFFFFFFFU) {
-			if (obj->debug_hold_ovfl == 0)
-				obj->debug_hold_ovfl = 1;
-			break;
-		}
-		i = ffs(mask) - 1;
-		if (atomic_cmpset_int(&obj->debug_hold_bitmap, ~mask,
-				      ~mask | (1 << i))) {
-			obj->debug_hold_bitmap |= (1 << i);
-			obj->debug_hold_thrs[i] = curthread;
-			obj->debug_hold_file[i] = file;
-			obj->debug_hold_line[i] = line;
-			break;
-		}
-	}
+	debugvm_object_add(obj, file, line, 1);
 #endif
 }
 
 int
-#ifndef DEBUG_LOCKS
-vm_object_hold_try(vm_object_t obj)
-#else
-debugvm_object_hold_try(vm_object_t obj, char *file, int line)
-#endif
+VMOBJDEBUG(vm_object_hold_try)(vm_object_t obj VMOBJDBARGS)
 {
 	KKASSERT(obj != NULL);
 
@@ -283,37 +290,13 @@ debugvm_object_hold_try(vm_object_t obj, char *file, int line)
 	}
 
 #if defined(DEBUG_LOCKS)
-	int i;
-	u_int mask;
-
-	for (;;) {
-		mask = ~obj->debug_hold_bitmap;
-		cpu_ccfence();
-		if (mask == 0xFFFFFFFFU) {
-			if (obj->debug_hold_ovfl == 0)
-				obj->debug_hold_ovfl = 1;
-			break;
-		}
-		i = ffs(mask) - 1;
-		if (atomic_cmpset_int(&obj->debug_hold_bitmap, ~mask,
-				      ~mask | (1 << i))) {
-			obj->debug_hold_bitmap |= (1 << i);
-			obj->debug_hold_thrs[i] = curthread;
-			obj->debug_hold_file[i] = file;
-			obj->debug_hold_line[i] = line;
-			break;
-		}
-	}
+	debugvm_object_add(obj, file, line, 1);
 #endif
 	return(1);
 }
 
 void
-#ifndef DEBUG_LOCKS
-vm_object_hold_shared(vm_object_t obj)
-#else
-debugvm_object_hold_shared(vm_object_t obj, char *file, int line)
-#endif
+VMOBJDEBUG(vm_object_hold_shared)(vm_object_t obj VMOBJDBARGS)
 {
 	KKASSERT(obj != NULL);
 
@@ -327,27 +310,7 @@ debugvm_object_hold_shared(vm_object_t obj, char *file, int line)
 	vm_object_lock_shared(obj);
 
 #if defined(DEBUG_LOCKS)
-	int i;
-	u_int mask;
-
-	for (;;) {
-		mask = ~obj->debug_hold_bitmap;
-		cpu_ccfence();
-		if (mask == 0xFFFFFFFFU) {
-			if (obj->debug_hold_ovfl == 0)
-				obj->debug_hold_ovfl = 1;
-			break;
-		}
-		i = ffs(mask) - 1;
-		if (atomic_cmpset_int(&obj->debug_hold_bitmap, ~mask,
-				      ~mask | (1 << i))) {
-			obj->debug_hold_bitmap |= (1 << i);
-			obj->debug_hold_thrs[i] = curthread;
-			obj->debug_hold_file[i] = file;
-			obj->debug_hold_line[i] = line;
-			break;
-		}
-	}
+	debugvm_object_add(obj, file, line, 1);
 #endif
 }
 
@@ -357,30 +320,10 @@ debugvm_object_hold_shared(vm_object_t obj, char *file, int line)
  * WARNING! Token might be shared.
  */
 void
-vm_object_drop(vm_object_t obj)
+VMOBJDEBUG(vm_object_drop)(vm_object_t obj VMOBJDBARGS)
 {
 	if (obj == NULL)
 		return;
-
-#if defined(DEBUG_LOCKS)
-	int found = 0;
-	int i;
-
-	for (i = 0; i < VMOBJ_DEBUG_ARRAY_SIZE; i++) {
-		if ((obj->debug_hold_bitmap & (1 << i)) &&
-		    (obj->debug_hold_thrs[i] == curthread)) {
-			obj->debug_hold_bitmap &= ~(1 << i);
-			obj->debug_hold_thrs[i] = NULL;
-			obj->debug_hold_file[i] = NULL;
-			obj->debug_hold_line[i] = 0;
-			found = 1;
-			break;
-		}
-	}
-
-	if (found == 0 && obj->debug_hold_ovfl == 0)
-		panic("vm_object: attempt to drop hold on non-self-held obj");
-#endif
 
 	/*
 	 * No new holders should be possible once we drop hold_count 1->0 as
@@ -388,6 +331,10 @@ vm_object_drop(vm_object_t obj)
 	 */
 	KKASSERT(obj->hold_count > 0);
 	if (refcount_release(&obj->hold_count)) {
+#if defined(DEBUG_LOCKS)
+		debugvm_object_add(obj, file, line, -1);
+#endif
+
 		if (obj->ref_count == 0 && (obj->flags & OBJ_DEAD)) {
 			vm_object_unlock(obj);
 			zfree(obj_zone, obj);
@@ -395,6 +342,9 @@ vm_object_drop(vm_object_t obj)
 			vm_object_unlock(obj);
 		}
 	} else {
+#if defined(DEBUG_LOCKS)
+		debugvm_object_add(obj, file, line, -1);
+#endif
 		vm_object_unlock(obj);
 	}
 }
@@ -532,7 +482,7 @@ vm_object_allocate_hold(objtype_t type, vm_pindex_t size)
  * we use an atomic op).
  */
 void
-vm_object_reference_locked(vm_object_t object)
+VMOBJDEBUG(vm_object_reference_locked)(vm_object_t object VMOBJDBARGS)
 {
 	KKASSERT(object != NULL);
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
@@ -542,17 +492,23 @@ vm_object_reference_locked(vm_object_t object)
 		vref(object->handle);
 		/* XXX what if the vnode is being destroyed? */
 	}
+#if defined(DEBUG_LOCKS)
+	debugvm_object_add(object, file, line, 1);
+#endif
 }
 
 /*
  * This version is only allowed for vnode objects.
  */
 void
-vm_object_reference_quick(vm_object_t object)
+VMOBJDEBUG(vm_object_reference_quick)(vm_object_t object VMOBJDBARGS)
 {
 	KKASSERT(object->type == OBJT_VNODE);
 	atomic_add_int(&object->ref_count, 1);
 	vref(object->handle);
+#if defined(DEBUG_LOCKS)
+	debugvm_object_add(object, file, line, 1);
+#endif
 }
 
 /*
@@ -752,7 +708,8 @@ vm_object_chain_release_all(vm_object_t first_object, vm_object_t stopobj)
  * the vp ourselves.
  */
 static void
-vm_object_vndeallocate(vm_object_t object, struct vnode **vpp)
+VMOBJDEBUG(vm_object_vndeallocate)(vm_object_t object, struct vnode **vpp
+				   VMOBJDBARGS)
 {
 	struct vnode *vp = (struct vnode *) object->handle;
 
@@ -783,6 +740,9 @@ vm_object_vndeallocate(vm_object_t object, struct vnode **vpp)
 		}
 		/* retry */
 	}
+#if defined(DEBUG_LOCKS)
+	debugvm_object_add(object, file, line, -1);
+#endif
 
 	/*
 	 * vrele or return the vp to vrele.  We can only safely vrele(vp)
@@ -813,13 +773,14 @@ vm_object_vndeallocate(vm_object_t object, struct vnode **vpp)
  * XXX Currently all deallocations require an exclusive lock.
  */
 void
-vm_object_deallocate(vm_object_t object)
+VMOBJDEBUG(vm_object_deallocate)(vm_object_t object VMOBJDBARGS)
 {
 	struct vnode *vp;
 	int count;
 
 	if (object == NULL)
 		return;
+
 	for (;;) {
 		count = object->ref_count;
 		cpu_ccfence();
@@ -833,6 +794,9 @@ vm_object_deallocate(vm_object_t object)
 		 * For vnode objects we only care about 1->0 transitions.
 		 */
 		if (count <= 3 || (object->type == OBJT_VNODE && count <= 1)) {
+#if defined(DEBUG_LOCKS)
+			debugvm_object_add(object, file, line, 0);
+#endif
 			vm_object_hold(object);
 			vm_object_deallocate_locked(object);
 			vm_object_drop(object);
@@ -850,6 +814,10 @@ vm_object_deallocate(vm_object_t object)
 			vp = (struct vnode *)object->handle;
 			if (atomic_cmpset_int(&object->ref_count,
 					      count, count - 1)) {
+#if defined(DEBUG_LOCKS)
+				debugvm_object_add(object, file, line, -1);
+#endif
+
 				vrele(vp);
 				break;
 			}
@@ -857,6 +825,9 @@ vm_object_deallocate(vm_object_t object)
 		} else {
 			if (atomic_cmpset_int(&object->ref_count,
 					      count, count - 1)) {
+#if defined(DEBUG_LOCKS)
+				debugvm_object_add(object, file, line, -1);
+#endif
 				break;
 			}
 			/* retry */
@@ -866,7 +837,7 @@ vm_object_deallocate(vm_object_t object)
 }
 
 void
-vm_object_deallocate_locked(vm_object_t object)
+VMOBJDEBUG(vm_object_deallocate_locked)(vm_object_t object VMOBJDBARGS)
 {
 	struct vm_object_dealloc_list *dlist = NULL;
 	struct vm_object_dealloc_list *dtmp;
@@ -915,6 +886,9 @@ again:
 		}
 		if (object->ref_count > 2) {
 			atomic_add_int(&object->ref_count, -1);
+#if defined(DEBUG_LOCKS)
+			debugvm_object_add(object, file, line, -1);
+#endif
 			break;
 		}
 
@@ -933,6 +907,9 @@ again:
 				vm_object_set_flag(object, OBJ_ONEMAPPING);
 			}
 			atomic_add_int(&object->ref_count, -1);
+#if defined(DEBUG_LOCKS)
+			debugvm_object_add(object, file, line, -1);
+#endif
 			break;
 		}
 
@@ -998,6 +975,9 @@ again:
 			 */
 			KKASSERT(object->ref_count == 2);
 			atomic_add_int(&object->ref_count, -1);
+#if defined(DEBUG_LOCKS)
+			debugvm_object_add(object, file, line, -1);
+#endif
 
 			/*
 			 * If our single parent is not collapseable just
@@ -1048,6 +1028,9 @@ skip:
 		KKASSERT(object->ref_count != 0);
 		if (object->ref_count >= 2) {
 			atomic_add_int(&object->ref_count, -1);
+#if defined(DEBUG_LOCKS)
+			debugvm_object_add(object, file, line, -1);
+#endif
 			break;
 		}
 		KKASSERT(object->ref_count == 1);
@@ -1080,6 +1063,12 @@ skip:
 		/*
 		 * It shouldn't be possible for the object to be chain locked
 		 * if we're removing the last ref on it.
+		 *
+		 * Removing object from temp's shadow list requires dropping
+		 * temp, which we will do on loop.
+		 *
+		 * NOTE! vnodes do not use the shadow list, but still have
+		 *	 the backing_object reference.
 		 */
 		KKASSERT((object->chainlk & (CHAINLK_EXCL|CHAINLK_MASK)) == 0);
 
@@ -1790,6 +1779,12 @@ shadowlookup:
  * range.  Replace the pointer and offset that was pointing at the existing
  * object with the pointer/offset for the new object.
  *
+ * If addref is non-zero the returned object is given an additional reference.
+ * This mechanic exists to avoid the situation where refs might be 1 and
+ * race against a collapse when the caller intends to bump it.  So the
+ * caller cannot add the ref after the fact.  Used when the caller is
+ * duplicating a vm_map_entry.
+ *
  * No other requirements.
  */
 void
@@ -1807,10 +1802,15 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 	 * We have to chain wait before adding the reference to avoid
 	 * racing a collapse or deallocation.
 	 *
-	 * Add the additional ref to source here to avoid racing a later
-	 * collapse or deallocation. Clear the ONEMAPPING flag whether
-	 * addref is TRUE or not in this case because the original object
-	 * will be shadowed.
+	 * Clear OBJ_ONEMAPPING flag when shadowing.
+	 *
+	 * The caller owns a ref on source via *objectp which we are going
+	 * to replace.  This ref is inherited by the backing_object assignment.
+	 * from nobject and does not need to be incremented here.
+	 *
+	 * However, we add a temporary extra reference to the original source
+	 * prior to holding nobject in case we block, to avoid races where
+	 * someone else might believe that the source can be collapsed.
 	 */
 	useshadowlist = 0;
 	if (source) {
@@ -1824,7 +1824,8 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 			     source->type == OBJT_SWAP)) {
 				if (addref) {
 					vm_object_reference_locked(source);
-					vm_object_clear_flag(source, OBJ_ONEMAPPING);
+					vm_object_clear_flag(source,
+							     OBJ_ONEMAPPING);
 				}
 				vm_object_drop(source);
 				return;
@@ -1846,8 +1847,12 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 	 * The source object currently has an extra reference to prevent
 	 * collapses into it while we mess with its shadow list, which
 	 * we will remove later in this routine.
+	 *
+	 * The target object may require a second reference if asked for one
+	 * by the caller.
 	 */
-	if ((result = vm_object_allocate(OBJT_DEFAULT, length)) == NULL)
+	result = vm_object_allocate(OBJT_DEFAULT, length);
+	if (result == NULL)
 		panic("vm_object_shadow: no object for shadowing");
 	vm_object_hold(result);
 	if (addref) {
@@ -1862,6 +1867,12 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 	 * Try to optimize the result object's page color when shadowing
 	 * in order to maintain page coloring consistency in the combined 
 	 * shadowed object.
+	 *
+	 * The backing_object reference to source requires adding a ref to
+	 * source.  We simply inherit the ref from the original *objectp
+	 * (which we are replacing) so no additional refs need to be added.
+	 * (we must still clean up the extra ref we had to prevent collapse
+	 * races).
 	 *
 	 * SHADOWING IS NOT APPLICABLE TO OBJT_VNODE OBJECTS
 	 */
@@ -2141,9 +2152,15 @@ vm_object_qcollapse(vm_object_t object, vm_object_t backing_object)
 {
 	if (backing_object->ref_count == 1) {
 		atomic_add_int(&backing_object->ref_count, 2);
+#if defined(DEBUG_LOCKS)
+		debugvm_object_add(backing_object, "qcollapse", 1, 2);
+#endif
 		vm_object_backing_scan(object, backing_object,
 				       OBSC_COLLAPSE_NOWAIT);
 		atomic_add_int(&backing_object->ref_count, -2);
+#if defined(DEBUG_LOCKS)
+		debugvm_object_add(backing_object, "qcollapse", 2, -2);
+#endif
 	}
 }
 
@@ -2289,6 +2306,9 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			/*
 			 * Object now shadows whatever backing_object did.
 			 * Remove object from backing_object's shadow_list.
+			 *
+			 * Removing object from backing_objects shadow list
+			 * requires releasing object, which we will do below.
 			 */
 			KKASSERT(object->backing_object == backing_object);
 			if (object->flags & OBJ_ONSHADOW) {
@@ -2313,6 +2333,12 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 					break;
 				vm_object_drop(bbobj);
 			}
+
+			/*
+			 * We are removing backing_object from bbobj's
+			 * shadow list and adding object to bbobj's shadow
+			 * list, so the ref_count on bbobj is unchanged.
+			 */
 			if (bbobj) {
 				if (backing_object->flags & OBJ_ONSHADOW) {
 					/* not locked exclusively if vnode */
@@ -2370,6 +2396,9 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			 *     of forcing destruction?
 			 */
 			atomic_add_int(&backing_object->ref_count, -1);
+#if defined(DEBUG_LOCKS)
+			debugvm_object_add(backing_object, "collapse", 1, -1);
+#endif
 			if ((backing_object->flags & OBJ_DEAD) == 0)
 				vm_object_terminate(backing_object);
 			object_collapses++;
@@ -2408,6 +2437,10 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			 *
 			 * Deallocating backing_object will not remove
 			 * it, since its reference count is at least 2.
+			 *
+			 * Removing object from backing_object's shadow
+			 * list requires releasing a ref, which we do
+			 * below by setting dodealloc to 1.
 			 */
 			KKASSERT(object->backing_object == backing_object);
 			if (object->flags & OBJ_ONSHADOW) {

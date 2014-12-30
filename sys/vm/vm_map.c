@@ -604,6 +604,11 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
  * possible to address offsets beyond the mapped area.  Just allocate
  * a maximally sized object for this case.
  *
+ * If addref is non-zero an additional reference is added to the returned
+ * entry.  This mechanic exists because the additional reference might have
+ * to be added atomically and not after return to prevent a premature
+ * collapse.
+ *
  * The vm_map must be exclusively locked.
  * No other requirements.
  */
@@ -1078,6 +1083,8 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 		 * map entry, we have to create a new map entry.  We
 		 * must bump the ref count on the extended object to
 		 * account for it.  object may be NULL.
+		 *
+		 * XXX if object is NULL should we set offset to 0 here ?
 		 */
 		object = prev_entry->object.vm_object;
 		offset = prev_entry->offset +
@@ -1087,6 +1094,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 			vm_object_chain_wait(object, 0);
 			vm_object_reference_locked(object);
 			must_drop = 1;
+			map_object = object;
 		}
 	}
 
@@ -3135,11 +3143,17 @@ vm_map_split(vm_map_entry_t entry)
 			useshadowlist = 1;
 			vm_object_hold(bobject);
 			vm_object_chain_wait(bobject, 0);
+			/* ref for shadowing below */
 			vm_object_reference_locked(bobject);
 			vm_object_chain_acquire(bobject, 0);
 			KKASSERT(bobject->backing_object == bobject);
 			KKASSERT((bobject->flags & OBJ_DEAD) == 0);
 		} else {
+			/*
+			 * vnodes are not placed on the shadow list but
+			 * they still get another ref for the backing_object
+			 * reference.
+			 */
 			vm_object_reference_quick(bobject);
 		}
 	}
@@ -3197,6 +3211,9 @@ vm_map_split(vm_map_entry_t entry)
 
 	/*
 	 * nobject shadows bobject (oobject already shadows bobject).
+	 *
+	 * Adding an object to bobject's shadow list requires refing bobject
+	 * which we did above in the useshadowlist case.
 	 */
 	if (bobject) {
 		nobject->backing_object_offset =
