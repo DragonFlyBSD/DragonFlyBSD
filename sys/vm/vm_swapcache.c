@@ -231,7 +231,8 @@ vm_swapcached_thread(void)
 		 * is present.
 		 */
 		if ((vm_swapcache_data_enable == 0 &&
-		     vm_swapcache_meta_enable == 0) ||
+		     vm_swapcache_meta_enable == 0 &&
+		     vm_swap_cache_use <= SWAPMAX(0)) ||
 		    vm_swap_max == 0) {
 			tsleep(&vm_swapcache_sleep, 0, "csleep", hz * 5);
 			continue;
