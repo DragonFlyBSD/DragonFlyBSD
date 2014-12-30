@@ -1821,7 +1821,7 @@ in6_delmulti(struct in6_multi *in6m)
 struct in6_ifaddr *
 in6ifa_ifpforlinklocal(struct ifnet *ifp, int ignoreflags)
 {
-	struct ifaddr_container *ifac;
+	const struct ifaddr_container *ifac;
 
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 		struct ifaddr *ifa = ifac->ifa;
@@ -1834,13 +1834,10 @@ in6ifa_ifpforlinklocal(struct ifnet *ifp, int ignoreflags)
 			if ((((struct in6_ifaddr *)ifa)->ia6_flags &
 			     ignoreflags) != 0)
 				continue;
-			break;
+			return (struct in6_ifaddr *)ifa;
 		}
 	}
-	if (ifac != NULL)
-		return ((struct in6_ifaddr *)(ifac->ifa));
-	else
-		return (NULL);
+	return NULL;
 }
 
 
@@ -1871,24 +1868,22 @@ in6ifa_ifpwithaddr(struct ifnet *ifp, struct in6_addr *addr)
 struct in6_ifaddr *
 in6ifa_llaonifp(struct ifnet *ifp)
 {
-        struct sockaddr_in6 *sin6;
-        struct ifaddr_container *ifac;
+	const struct ifaddr_container *ifac;
 
-        TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		const struct sockaddr_in6 *sin6;
 		struct ifaddr *ifa = ifac->ifa;
 
-                if (ifa->ifa_addr->sa_family != AF_INET6)
-                        continue;
-                sin6 = (struct sockaddr_in6 *)ifa->ifa_addr;
-                if (IN6_IS_SCOPE_LINKLOCAL(&sin6->sin6_addr) ||
-                    IN6_IS_ADDR_MC_INTFACELOCAL(&sin6->sin6_addr) ||
-                    IN6_IS_ADDR_MC_NODELOCAL(&sin6->sin6_addr))
-                        break;
-        }
-	if (ifac != NULL)
-		return ((struct in6_ifaddr *)(ifac->ifa));
-	else
-		return (NULL);
+		if (ifa->ifa_addr->sa_family != AF_INET6)
+			continue;
+		sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
+		if (IN6_IS_SCOPE_LINKLOCAL(&sin6->sin6_addr) ||
+		    /* XXX why are mcast addresses ifp address list? */
+		    IN6_IS_ADDR_MC_INTFACELOCAL(&sin6->sin6_addr) ||
+		    IN6_IS_ADDR_MC_NODELOCAL(&sin6->sin6_addr))
+			return (struct in6_ifaddr *)ifa;
+	}
+	return NULL;
 }
 
 /*
