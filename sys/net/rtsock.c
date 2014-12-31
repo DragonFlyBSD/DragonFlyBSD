@@ -115,6 +115,7 @@ static void	rt_msg_buffer (int, struct rt_addrinfo *, void *buf, int len);
 static int	rt_msgsize (int type, struct rt_addrinfo *rtinfo);
 static int	rt_xaddrs (char *, char *, struct rt_addrinfo *);
 static int	sysctl_dumpentry (struct radix_node *rn, void *vw);
+static int	sysctl_rttable(int af, struct sysctl_req *req, int op, int arg);
 static int	sysctl_iflist (int af, struct walkarg *w);
 static int	route_output(struct mbuf *, struct socket *, ...);
 static void	rt_setmetrics (u_long, struct rt_metrics *,
@@ -1382,12 +1383,36 @@ sysctl_iflist(int af, struct walkarg *w)
 }
 
 static int
+sysctl_rttable(int af, struct sysctl_req *req, int op, int arg)
+{
+	struct walkarg w;
+	int i, error = EINVAL;
+
+	bzero(&w, sizeof(w));
+	w.w_op = op;
+	w.w_arg = arg;
+	w.w_req = req;
+
+	for (i = 1; i <= AF_MAX; i++) {
+		struct radix_node_head *rnh;
+
+		if ((rnh = rt_tables[mycpuid][i]) && (af == 0 || af == i) &&
+		    (error = rnh->rnh_walktree(rnh, sysctl_dumpentry, &w)))
+			break;
+	}
+
+	if (w.w_tmem != NULL)
+		kfree(w.w_tmem, M_RTABLE);
+
+	return error;
+}
+
+static int
 sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 {
 	int	*name = (int *)arg1;
 	u_int	namelen = arg2;
-	struct radix_node_head *rnh;
-	int	i, error = EINVAL;
+	int	error = EINVAL;
 	int	origcpu;
 	u_char  af;
 	struct	walkarg w;
@@ -1416,24 +1441,20 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	} else {
 		origcpu = -1;
 	}
-	crit_enter();
+
 	switch (w.w_op) {
 	case NET_RT_DUMP:
 	case NET_RT_FLAGS:
-		for (i = 1; i <= AF_MAX; i++)
-			if ((rnh = rt_tables[mycpuid][i]) &&
-			    (af == 0 || af == i) &&
-			    (error = rnh->rnh_walktree(rnh,
-						       sysctl_dumpentry, &w)))
-				break;
+		error = sysctl_rttable(af, w.w_req, w.w_op, w.w_arg);
 		break;
 
 	case NET_RT_IFLIST:
 		error = sysctl_iflist(af, &w);
+		break;
 	}
-	crit_exit();
 	if (w.w_tmem != NULL)
 		kfree(w.w_tmem, M_RTABLE);
+
 	if (origcpu >= 0)
 		lwkt_migratecpu(origcpu);
 	return (error);
