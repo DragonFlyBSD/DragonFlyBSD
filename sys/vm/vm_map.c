@@ -1078,6 +1078,8 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 		 * map entry, we have to create a new map entry.  We
 		 * must bump the ref count on the extended object to
 		 * account for it.  object may be NULL.
+		 *
+		 * XXX if object is NULL should we set offset to 0 here ?
 		 */
 		object = prev_entry->object.vm_object;
 		offset = prev_entry->offset +
@@ -1087,6 +1089,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 			vm_object_chain_wait(object, 0);
 			vm_object_reference_locked(object);
 			must_drop = 1;
+			map_object = object;
 		}
 	}
 
