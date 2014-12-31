@@ -243,7 +243,9 @@ int	settimeofday(const struct timeval *, const struct timezone *);
 int	getitimer(int, struct itimerval *);
 int	gettimeofday(struct timeval *, struct timezone *);
 int	setitimer(int, const struct itimerval *, struct itimerval *);
-int	utimes(const char *, const struct timeval *);
+#if __BSD_VISIBLE || __XSI_VISIBLE <= 600
+int	utimes(const char *, const struct timeval *);		/* LEGACY */
+#endif
 #endif
 
 __END_DECLS

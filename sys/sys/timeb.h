@@ -37,7 +37,6 @@
  *
  *	@(#)timeb.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/timeb.h,v 1.6.2.1 2001/12/10 20:33:59 dwmalone Exp $
- * $DragonFly: src/sys/sys/timeb.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_TIMEB_H_
@@ -62,7 +61,9 @@ struct timeb {
 #endif
 
 __BEGIN_DECLS
-int ftime (struct timeb *);
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE <= 600)
+int ftime (struct timeb *);					/* LEGACY */
+#endif
 __END_DECLS
 #endif /* _KERNEL */
 

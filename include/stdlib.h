@@ -197,10 +197,14 @@ int	 mkstemp(char *);
 /* XXX XSI requires pollution from <sys/wait.h> here.  We'd rather not. */
 long	 a64l(const char *);
 double	 drand48(void);
-/* char	*ecvt(double, int, int * __restrict, int * __restrict); */
 double	 erand48(unsigned short[3]);
-/* char	*fcvt(double, int, int * __restrict, int * __restrict); */
-/* char	*gcvt(double, int, int * __restrict, int * __restrict); */
+#if 0
+#if __BSD_VISIBLE || __XSI_VISIBLE <= 600
+char	*ecvt(double, int, int * __restrict, int * __restrict);	/* LEGACY */
+char	*fcvt(double, int, int * __restrict, int * __restrict);	/* LEGACY */
+char	*gcvt(double, int, int * __restrict, int * __restrict);	/* LEGACY */
+#endif
+#endif
 int	 getsubopt(char **, char *const *, char **);
 int	 grantpt(int);
 char	*initstate(unsigned long /* XSI requires u_int */, char *, long);
@@ -209,7 +213,7 @@ char	*l64a(long);
 void	 lcong48(unsigned short[7]);
 long	 lrand48(void);
 #if !defined(_MKTEMP_DECLARED) && (__BSD_VISIBLE || __XSI_VISIBLE <= 600)
-char	*mktemp(char *);
+char	*mktemp(char *);					/* LEGACY */
 #define	_MKTEMP_DECLARED
 #endif
 long	 mrand48(void);

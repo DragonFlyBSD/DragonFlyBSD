@@ -475,7 +475,7 @@ void	*sbrk(intptr_t);
 #endif
 
 #if (__XSI_VISIBLE && __XSI_VISIBLE <= 600) || __BSD_VISIBLE
-char	*getwd(char *);			/* obsoleted by getcwd() */
+char	*getwd(char *);			/* LEGACY (obsoleted by getcwd()) */
 unsigned int
 	 ualarm(unsigned int, unsigned int);
 int	 usleep(unsigned int);

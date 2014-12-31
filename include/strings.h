@@ -39,9 +39,11 @@ typedef	__size_t	size_t;
 
 __BEGIN_DECLS
 #if !defined(_KERNEL_VIRTUAL)
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE <= 600)
 int	 bcmp(const void *, const void *, size_t) __pure;	/* LEGACY */
 void	 bcopy(const void *, void *, size_t);			/* LEGACY */
 void	 bzero(void *, size_t);					/* LEGACY */
+#endif
 int	 ffs(int) __pure2;
 #endif
 #ifdef __BSD_VISIBLE
@@ -54,8 +56,10 @@ int	 flsl(long) __pure2;
 int	 flsll(long long) __pure2;
 #endif
 #if !defined(_KERNEL_VIRTUAL)
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE <= 600)
 char	*index(const char *, int) __pure;			/* LEGACY */
 char	*rindex(const char *, int) __pure;			/* LEGACY */
+#endif
 int	 strcasecmp(const char *, const char *) __pure;
 int	 strncasecmp(const char *, const char *, size_t) __pure;
 #endif
