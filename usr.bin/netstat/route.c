@@ -762,9 +762,9 @@ p_rtentry(struct rtentry *rt)
 	sa_u addr, mask;
 
 	/*
-	 * Don't print protocol-cloned routes unless -a.
+	 * Don't print protocol-cloned routes unless -a or -A.
 	 */
-	if (rt->rt_flags & RTF_WASCLONED && !aflag) {
+	if (rt->rt_flags & RTF_WASCLONED && !(aflag || Aflag)) {
 		if (kget(rt->rt_parent, parent) != 0)
 			return;
 		if (parent.rt_flags & RTF_PRCLONING)
