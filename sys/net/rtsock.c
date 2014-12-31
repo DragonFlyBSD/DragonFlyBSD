@@ -112,7 +112,7 @@ struct walkarg {
 static struct mbuf *
 		rt_msg_mbuf (int, struct rt_addrinfo *);
 static void	rt_msg_buffer (int, struct rt_addrinfo *, void *buf, int len);
-static int	rt_msgsize (int type, struct rt_addrinfo *rtinfo);
+static int	rt_msgsize(int type, const struct rt_addrinfo *rtinfo);
 static int	rt_xaddrs (char *, char *, struct rt_addrinfo *);
 static int	sysctl_dumpentry (struct radix_node *rn, void *vw);
 static int	sysctl_rttable(int af, struct sysctl_req *req, int op, int arg);
@@ -847,7 +847,7 @@ rt_msghdrsize(int type)
 }
 
 static int
-rt_msgsize(int type, struct rt_addrinfo *rtinfo)
+rt_msgsize(int type, const struct rt_addrinfo *rtinfo)
 {
 	int len, i;
 
