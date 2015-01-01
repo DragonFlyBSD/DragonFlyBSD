@@ -168,7 +168,8 @@ MLINKS+=posix_spawnattr_getschedpolicy.3 posix_spawnattr_setschedpolicy.3
 MLINKS+=posix_spawnattr_getsigdefault.3 posix_spawnattr_setsigdefault.3
 MLINKS+=posix_spawnattr_getsigmask.3 posix_spawnattr_setsigmask.3
 MLINKS+=posix_spawnattr_init.3 posix_spawnattr_destroy.3
-MLINKS+=psignal.3 strsignal.3 psignal.3 sys_nsig.3 psignal.3 sys_siglist.3 \
+MLINKS+=psignal.3 psiginfo.3 \
+	psignal.3 strsignal.3 psignal.3 sys_nsig.3 psignal.3 sys_siglist.3 \
 	psignal.3 sys_signame.3
 MLINKS+=pwcache.3 group_from_gid.3 pwcache.3 user_from_uid.3
 MLINKS+=rand48.3 drand48.3 rand48.3 erand48.3 \

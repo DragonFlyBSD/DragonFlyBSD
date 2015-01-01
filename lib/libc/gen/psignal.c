@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/psignal.c,v 1.5 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/lib/libc/gen/psignal.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)psignal.c	8.1 (Berkeley) 6/4/93
  */
@@ -61,4 +60,10 @@ psignal(unsigned int sig, const char *s)
 	}
 	_write(STDERR_FILENO, c, strlen(c));
 	_write(STDERR_FILENO, "\n", 1);
+}
+
+void
+psiginfo(const siginfo_t *si, const char *s)
+{
+	psignal(si->si_signo, s);
 }

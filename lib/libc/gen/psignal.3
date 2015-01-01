@@ -28,11 +28,12 @@
 .\"     @(#)psignal.3	8.2 (Berkeley) 2/27/95
 .\" $FreeBSD: src/lib/libc/gen/psignal.3,v 1.10.2.5 2003/03/15 15:11:05 trhodes Exp $
 .\"
-.Dd February 27, 1995
+.Dd January 2, 2015
 .Dt PSIGNAL 3
 .Os
 .Sh NAME
 .Nm psignal ,
+.Nm psiginfo ,
 .Nm strsignal ,
 .Nm sys_siglist ,
 .Nm sys_signame ,
@@ -44,6 +45,8 @@
 .In signal.h
 .Ft void
 .Fn psignal "unsigned sig" "const char *s"
+.Ft void
+.Fn psiginfo "const siginfo_t *si" "const char *s"
 .Vt extern const char * const sys_siglist[] ;
 .Vt extern const char * const sys_signame[] ;
 .Vt extern const int sys_nsig ;
@@ -84,6 +87,16 @@ the string
 .Dq "Unknown signal"
 is produced.
 .Pp
+The
+.Fn psiginfo
+function is similar to
+.Fn psignal ,
+except that the signal number information is taken from the
+.Fa si
+argument which is a
+.Vt siginfo_t
+structure.
+.Pp
 The message strings can be accessed directly
 through the external array
 .Va sys_siglist ,
@@ -120,3 +133,7 @@ The
 .Fn psignal
 function appeared in
 .Bx 4.2 .
+The
+.Fn psiginfo
+function appeared in
+.Dx 4.1 .
