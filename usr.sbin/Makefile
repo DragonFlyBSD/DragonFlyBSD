@@ -112,6 +112,7 @@ SUBDIR= 802_11 \
 	sensorsd \
 	service \
 	setkey \
+	sshlockout \
 	sliplogin \
 	slstat \
 	spray \

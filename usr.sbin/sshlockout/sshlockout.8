@@ -1,0 +1,78 @@
+.\" Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd January 1, 2015
+.Dt SSHLOCKOUT 8
+.Os
+.Sh NAME
+.Nm sshlockout
+.Nd utility to block port 22 on preauth failures
+.Sh SYNOPSIS
+.Cd auth.info;authpriv.info		|exec /usr/sbin/sshlockout
+.Cd 3 3 * * *       ipfw delete 2100
+.Sh DESCRIPTION
+This program is generally installed in
+.Pa /etc/syslog.conf
+as a pipe to parse the
+.Xr sshd 8
+demons error log in realtime.
+In addition, a root crontab entry should generally be created to clean
+out
+.Xr ipfw 8
+rule 2100 at least once a day.
+The
+.Xr ipfw 8
+module must be loaded and operational as well.
+.Pp
+This program will monitor the ssh syslog output and keep track of attempts
+to login to unknown users as well as preauth failures.
+If 5 attempts fail in any one hour period, a permanent entry is added to
+rule 2100 in ipfw to block port 22 from the associated IP address.
+The cron entry you create cleans the block list out typically once a day.
+.Pp
+This program generally limits brute-force attempts to break into a machine
+via ssh.
+.Sh NOTICE
+This program is still a work in progress.
+Currently this program only operates on IPV4 addresses.
+.Sh SEE ALSO
+.Xr ssh 1 ,
+.Xr sshd 8 ,
+.Xr ipfw 8 ,
+.Xr syslog.conf 5
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Dx 4.1 .
+.Sh AUTHORS
+.An Matthew Dillon Aq Mt dillon@backplane.com
