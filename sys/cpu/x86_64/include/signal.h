@@ -45,7 +45,7 @@
 
 typedef int sig_atomic_t;
 
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
+#if __BSD_VISIBLE
 
 #include <machine/trap.h>	/* codes for SIGILL, SIGFPE */
 
@@ -99,6 +99,6 @@ struct	sigcontext {
 	int             sc_fpregs[256]; /* 1024 bytes */
 } __attribute__((aligned(64)));
 
-#endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */
+#endif /* __BSD_VISIBLE */
 
 #endif /* !_CPU_SIGNAL_H_ */

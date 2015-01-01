@@ -43,7 +43,7 @@
 
 typedef int sig_atomic_t;
 
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
+#if __BSD_VISIBLE
 
 /*
  * XXX temporarily use a <machine/bla.h> path instead of "bla.h" so the
@@ -110,6 +110,6 @@ struct	sigcontext {
 #define	sc_ps		sc_efl
 #define	sc_eflags	sc_efl
 
-#endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */
+#endif /* __BSD_VISIBLE */
 
 #endif /* !_CPU_SIGNAL_H_ */
