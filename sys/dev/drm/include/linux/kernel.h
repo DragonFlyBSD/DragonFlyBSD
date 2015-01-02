@@ -189,4 +189,6 @@ typedef struct pm_message {
 	b = _swap_tmp;			\
 })
 
+#define DIV_ROUND_CLOSEST(x, divisor)	(((x) + ((divisor) /2)) / (divisor))
+
 #endif	/* _LINUX_KERNEL_H_ */
