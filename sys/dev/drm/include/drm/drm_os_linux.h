@@ -66,7 +66,6 @@
 				} while (0)
 #define DRM_TIME_SLICE		(hz/20)  /* Time slice for GLXContexts	  */
 
-#define	do_div(a, b)		((a) /= (b))
 #define	lower_32_bits(n)	((u32)(n))
 
 #define	memset_io(a, b, c)	memset((a), (b), (c))

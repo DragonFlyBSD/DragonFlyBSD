@@ -31,6 +31,7 @@
 #define NSEC_PER_SEC	1000000000L
 
 #include <sys/time.h>
+#include <linux/math64.h>
 
 static inline struct timeval
 ns_to_timeval(const int64_t nsec)
