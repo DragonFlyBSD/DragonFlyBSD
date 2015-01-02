@@ -76,7 +76,7 @@ int	killpg(__pid_t, int);
 int	sigaltstack(const stack_t * __restrict, stack_t * __restrict);
 int	siginterrupt(int, int);
 int	sigpause(int);
-#if __BSD_VISIBLE || __XSI_VISIBLE <= 500
+#if __BSD_VISIBLE || __XSI_VISIBLE < 600
 int	sigstack(const struct sigstack *, struct sigstack *);
 #endif
 #endif /* __XSI_VISIBLE */
