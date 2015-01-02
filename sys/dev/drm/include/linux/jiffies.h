@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,6 +49,18 @@ timespec_to_jiffies(const struct timespec *ts)
 		result = LONG_MAX;
 
 	return result;
+}
+
+static inline
+unsigned long usecs_to_jiffies(const unsigned int u)
+{
+	unsigned long jiffies;
+
+	jiffies = (u * hz) / 1000000;
+	if (jiffies < 1)
+		return 1;
+	else
+		return jiffies;
 }
 
 #endif	/* _LINUX_JIFFIES_H_ */

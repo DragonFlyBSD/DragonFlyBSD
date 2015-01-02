@@ -52,19 +52,6 @@
 	ret__;								\
 })
 
-/* XXX: poor substitute for the Linux version of this routine */
-static inline
-unsigned long usecs_to_jiffies(const unsigned int u)
-{
-	unsigned long jiffies;
-
-	jiffies = (u * hz) / 1000000;
-	if (jiffies < 1)
-		return 1;
-	else
-		return jiffies;
-}
-
 #define wait_for_atomic_us(COND, US) ({ \
 	unsigned long timeout__ = jiffies + usecs_to_jiffies(US);	\
 	int ret__ = 0;							\
