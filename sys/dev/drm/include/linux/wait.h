@@ -32,6 +32,9 @@
 #include <sys/param.h>
 
 typedef struct {
+} wait_queue_t;
+
+typedef struct {
 	struct lock	lock;
 } wait_queue_head_t;
 
@@ -125,6 +128,19 @@ static inline int
 waitqueue_active(wait_queue_head_t *q)
 {
 	return 0;	/* XXX: not really implemented */
+}
+
+#define DEFINE_WAIT(name)	\
+	wait_queue_t name = {}
+
+static inline void
+prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
+{
+}
+
+static inline void
+finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
+{
 }
 
 #endif	/* _LINUX_WAIT_H_ */
