@@ -765,43 +765,23 @@ statinit:
 		in6_maxmtu = ifp->if_mtu;
 }
 
+/*
+ * NOTE: in6_ifdetach() does not support loopback if at this moment.
+ */
 static void
-in6_leavemcast_dispatch(netmsg_t nmsg)
+in6_ifdetach_dispatch(netmsg_t nmsg)
 {
 	struct lwkt_msg *lmsg = &nmsg->lmsg;
 	struct ifnet *ifp = lmsg->u.ms_resultp;
-	struct in6_multi *in6m;
-	struct in6_multi *in6m_next;
-
-	in6_pcbpurgeif0(&ripcbinfo, ifp);
-	in6_pcbpurgeif0(&udbinfo[0], ifp);
-
-	for (in6m = LIST_FIRST(&in6_multihead); in6m; in6m = in6m_next) {
-		in6m_next = LIST_NEXT(in6m, in6m_entry);
-		if (in6m->in6m_ifp != ifp)
-			continue;
-		in6_delmulti(in6m);
-		in6m = NULL;
-	}
-
-	lwkt_replymsg(lmsg, 0);
-}
-
-/*
- * NOTE: in6_ifdetach() does not support loopback if at this moment.
- * We don't need this function in bsdi, because interfaces are never removed
- * from the ifnet list in bsdi.
- */
-void
-in6_ifdetach(struct ifnet *ifp)
-{
 	struct in6_ifaddr *ia, *oia;
 	struct ifaddr_container *ifac, *next;
 	struct rtentry *rt;
 	short rtflags;
 	struct sockaddr_in6 sin6;
-	struct netmsg_base nmsg;
-	struct lwkt_msg *lmsg = &nmsg.lmsg;
+	struct in6_multi *in6m, *in6m_next;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	/* remove neighbor management table */
 	nd6_purge(ifp);
@@ -815,6 +795,9 @@ in6_ifdetach(struct ifnet *ifp)
 		in6_purgeaddr(ifa);
 	}
 
+	/*
+	 * XXX WTF are these?  Above code already deleted all inet6 address
+	 */
 	/* undo everything done by in6_ifattach(), just in case */
 	TAILQ_FOREACH_MUTABLE(ifac, &ifp->if_addrheads[mycpuid], ifa_link, next) {
 		struct ifaddr *ifa = ifac->ifa;
@@ -865,10 +848,15 @@ in6_ifdetach(struct ifnet *ifp)
 	}
 
 	/* leave from all multicast groups joined */
-	netmsg_init(&nmsg, NULL, &curthread->td_msgport, 0,
-	    in6_leavemcast_dispatch);
-	lmsg->u.ms_resultp = ifp;
-	lwkt_domsg(netisr_cpuport(0), lmsg, 0);
+	in6_pcbpurgeif0(&ripcbinfo, ifp);
+	in6_pcbpurgeif0(&udbinfo[0], ifp);
+	for (in6m = LIST_FIRST(&in6_multihead); in6m; in6m = in6m_next) {
+		in6m_next = LIST_NEXT(in6m, in6m_entry);
+		if (in6m->in6m_ifp != ifp)
+			continue;
+		in6_delmulti(in6m);
+		in6m = NULL;
+	}
 
 	/*
 	 * remove neighbor management table.  we call it twice just to make
@@ -892,6 +880,20 @@ in6_ifdetach(struct ifnet *ifp)
 		rtrequest(RTM_DELETE, (struct sockaddr *)rt_key(rt),
 			rt->rt_gateway, rt_mask(rt), rt->rt_flags, 0);
 	}
+
+	lwkt_replymsg(lmsg, 0);
+}
+
+void
+in6_ifdetach(struct ifnet *ifp)
+{
+	struct netmsg_base nmsg;
+	struct lwkt_msg *lmsg = &nmsg.lmsg;
+
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport, 0,
+	    in6_ifdetach_dispatch);
+	lmsg->u.ms_resultp = ifp;
+	lwkt_domsg(netisr_cpuport(0), lmsg, 0);
 }
 
 void
