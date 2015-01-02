@@ -483,5 +483,6 @@ bitmap_release_region(unsigned long *bitmap, int pos, int order)
 }
 
 #include <asm/bitops/non-atomic.h>
+#include <asm/bitops/const_hweight.h>
 
 #endif	/* _LINUX_BITOPS_H_ */
