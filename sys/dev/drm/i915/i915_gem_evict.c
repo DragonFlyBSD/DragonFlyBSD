@@ -27,8 +27,9 @@
  */
 
 #include <drm/drmP.h>
-#include <drm/i915_drm.h>
 #include "i915_drv.h"
+#include <drm/i915_drm.h>
+#include "i915_trace.h"
 
 static bool
 mark_free(struct drm_i915_gem_object *obj, struct list_head *unwind)
@@ -49,6 +50,8 @@ i915_gem_evict_something(struct drm_device *dev, int min_size,
 	struct list_head eviction_list, unwind_list;
 	struct drm_i915_gem_object *obj;
 	int ret = 0;
+
+	trace_i915_gem_evict(dev, min_size, alignment, mappable);
 
 	/*
 	 * The goal is to evict objects and amalgamate space in LRU order.
@@ -77,7 +80,7 @@ i915_gem_evict_something(struct drm_device *dev, int min_size,
 	if (mappable)
 		drm_mm_init_scan_with_range(&dev_priv->mm.gtt_space,
 					    min_size, alignment, cache_level,
-					    0, dev_priv->mm.gtt_mappable_end);
+					    0, dev_priv->gtt.mappable_end);
 	else
 		drm_mm_init_scan(&dev_priv->mm.gtt_space,
 				 min_size, alignment, cache_level);
@@ -159,6 +162,8 @@ i915_gem_evict_everything(struct drm_device *dev)
 		       list_empty(&dev_priv->mm.active_list));
 	if (lists_empty)
 		return -ENOSPC;
+
+	trace_i915_gem_evict_everything(dev);
 
 	/* The gpu_idle will flush everything in the write domain to the
 	 * active list. Then we must move everything off the active list

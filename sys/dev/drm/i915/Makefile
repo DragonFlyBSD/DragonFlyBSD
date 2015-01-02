@@ -8,9 +8,11 @@ SRCS	= \
 	i915_gem_execbuffer.c \
 	i915_gem_evict.c \
 	i915_gem_gtt.c \
+	i915_gem_stolen.c \
 	i915_gem_tiling.c \
 	i915_irq.c \
 	i915_suspend.c \
+	i915_ums.c \
 	intel_bios.c \
 	intel_crt.c \
 	intel_ddi.c \

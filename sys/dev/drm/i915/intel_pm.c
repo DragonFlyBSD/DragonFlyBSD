@@ -25,10 +25,9 @@
  *
  */
 
-#include <drm/drmP.h>
-#include "intel_drv.h"
 #include "i915_drv.h"
-#include <linux/kernel.h>
+#include "intel_drv.h"
+#include <linux/module.h>
 #include <machine/clock.h>
 
 #define FORCEWAKE_ACK_TIMEOUT_MS 2
@@ -271,7 +270,7 @@ static void intel_fbc_work_fn(struct work_struct *__work)
 	struct drm_device *dev = work->crtc->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
-	DRM_LOCK(dev);
+	mutex_lock(&dev->struct_mutex);
 	if (work == dev_priv->fbc_work) {
 		/* Double check that we haven't switched fb without cancelling
 		 * the prior work.
@@ -287,7 +286,7 @@ static void intel_fbc_work_fn(struct work_struct *__work)
 
 		dev_priv->fbc_work = NULL;
 	}
-	DRM_UNLOCK(dev);
+	mutex_unlock(&dev->struct_mutex);
 
 	kfree(work, M_DRM);
 }
@@ -447,12 +446,6 @@ void intel_update_fbc(struct drm_device *dev)
 		dev_priv->no_fbc_reason = FBC_MODULE_PARAM;
 		goto out_disable;
 	}
-	if (intel_fb->obj->base.size > dev_priv->cfb_size) {
-		DRM_DEBUG_KMS("framebuffer too large, disabling "
-			      "compression\n");
-		dev_priv->no_fbc_reason = FBC_STOLEN_TOO_SMALL;
-		goto out_disable;
-	}
 	if ((crtc->mode.flags & DRM_MODE_FLAG_INTERLACE) ||
 	    (crtc->mode.flags & DRM_MODE_FLAG_DBLSCAN)) {
 		DRM_DEBUG_KMS("mode incompatible with compression, "
@@ -487,6 +480,14 @@ void intel_update_fbc(struct drm_device *dev)
 	if (db_active)
 		goto out_disable;
 #endif
+
+	if (i915_gem_stolen_setup_compression(dev, intel_fb->obj->base.size)) {
+		DRM_INFO("not enough stolen space for compressed buffer (need %zd bytes), disabling\n", intel_fb->obj->base.size);
+		DRM_INFO("hint: you may be able to increase stolen memory size in the BIOS to avoid this\n");
+		DRM_DEBUG_KMS("framebuffer too large, disabling compression\n");
+		dev_priv->no_fbc_reason = FBC_STOLEN_TOO_SMALL;
+		goto out_disable;
+	}
 
 	/* If the scanout has not changed, don't modify the FBC settings.
 	 * Note that we make the fundamental assumption that the fb->obj
@@ -535,6 +536,7 @@ out_disable:
 		DRM_DEBUG_KMS("unsupported config, disabling FBC\n");
 		intel_disable_fbc(dev);
 	}
+	i915_gem_stolen_cleanup_compression(dev);
 }
 
 static void i915_pineview_get_mem_freq(struct drm_device *dev)
@@ -1287,7 +1289,7 @@ static void vlv_update_drain_latency(struct drm_device *dev)
 	}
 }
 
-#define single_plane_enabled(mask) ((mask) != 0 && powerof2(mask))
+#define single_plane_enabled(mask) is_power_of_2(mask)
 
 static void valleyview_update_wm(struct drm_device *dev)
 {
@@ -2262,7 +2264,7 @@ intel_alloc_context_page(struct drm_device *dev)
 	struct drm_i915_gem_object *ctx;
 	int ret;
 
-	DRM_LOCK_ASSERT(dev);
+	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
 
 	ctx = i915_gem_alloc_object(dev, 4096);
 	if (!ctx) {
@@ -2288,7 +2290,6 @@ err_unpin:
 	i915_gem_object_unpin(ctx);
 err_unref:
 	drm_gem_object_unreference(&ctx->base);
-	DRM_UNLOCK(dev);
 	return NULL;
 }
 
@@ -2300,7 +2301,7 @@ LOCK_SYSINIT(mchdev, &mchdev_lock, "mchdev", LK_CANRECURSE);
 
 /* Global for IPS driver to get at the current i915 device. Protected by
  * mchdev_lock. */
-struct drm_i915_private *i915_mch_dev;
+static struct drm_i915_private *i915_mch_dev;
 
 bool ironlake_set_drps(struct drm_device *dev, u8 val)
 {
@@ -2379,7 +2380,7 @@ static void ironlake_enable_drps(struct drm_device *dev)
 
 	if (wait_for_atomic((I915_READ(MEMSWCTL) & MEMCTL_CMD_STS) == 0, 10))
 		DRM_ERROR("stuck trying to change perf mode\n");
-	DELAY(1000);
+	mdelay(1);
 
 	ironlake_set_drps(dev, fstart);
 
@@ -2387,7 +2388,7 @@ static void ironlake_enable_drps(struct drm_device *dev)
 		I915_READ(0x112e0);
 	dev_priv->ips.last_time1 = jiffies_to_msecs(jiffies);
 	dev_priv->ips.last_count2 = I915_READ(0x112f4);
-	nanotime(&dev_priv->ips.last_time2);
+	getrawmonotonic(&dev_priv->ips.last_time2);
 
 	lockmgr(&mchdev_lock, LK_RELEASE);
 }
@@ -2397,7 +2398,7 @@ static void ironlake_disable_drps(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u16 rgvswctl;
 
-	lockmgr(&mchdev_lock, LK_RELEASE);
+	lockmgr(&mchdev_lock, LK_EXCLUSIVE);
 
 	rgvswctl = I915_READ16(MEMSWCTL);
 
@@ -2410,10 +2411,10 @@ static void ironlake_disable_drps(struct drm_device *dev)
 
 	/* Go back to the starting frequency */
 	ironlake_set_drps(dev, dev_priv->ips.fstart);
-	DELAY(1000);
+	mdelay(1);
 	rgvswctl |= MEMCTL_CMD_STS;
 	I915_WRITE(MEMSWCTL, rgvswctl);
-	DELAY(1000);
+	mdelay(1);
 
 	lockmgr(&mchdev_lock, LK_RELEASE);
 }
@@ -2452,6 +2453,7 @@ void gen6_set_rps(struct drm_device *dev, u8 val)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 limits = gen6_rps_limits(dev_priv, &val);
 
+	WARN_ON(!mutex_is_locked(&dev_priv->rps.hw_lock));
 	WARN_ON(val > dev_priv->rps.max_delay);
 	WARN_ON(val < dev_priv->rps.min_delay);
 
@@ -2471,6 +2473,8 @@ void gen6_set_rps(struct drm_device *dev, u8 val)
 	POSTING_READ(GEN6_RPNSWREQ);
 
 	dev_priv->rps.cur_delay = val;
+
+	trace_intel_gpu_freq_change(val * 50);
 }
 
 static void gen6_disable_rps(struct drm_device *dev)
@@ -2528,6 +2532,8 @@ static void gen6_enable_rps(struct drm_device *dev)
 	u32 gtfifodbg;
 	int rc6_mode;
 	int i, ret;
+
+	WARN_ON(!mutex_is_locked(&dev_priv->rps.hw_lock));
 
 	/* Here begins a magic sequence of register writes to enable
 	 * auto-downclocking.
@@ -2669,6 +2675,8 @@ static void gen6_update_ring_freq(struct drm_device *dev)
 	unsigned int ia_freq, max_ia_freq;
 	int scaling_factor = 180;
 
+	WARN_ON(!mutex_is_locked(&dev_priv->rps.hw_lock));
+
 #if 0
 	max_ia_freq = cpufreq_quick_get_max(0);
 	/*
@@ -2701,11 +2709,7 @@ static void gen6_update_ring_freq(struct drm_device *dev)
 			ia_freq = 800;
 		else
 			ia_freq = max_ia_freq - ((diff * scaling_factor) / 2);
-#if 0
 		ia_freq = DIV_ROUND_CLOSEST(ia_freq, 100);
-#else
-		ia_freq = (ia_freq + 50) / 100;
-#endif
 		ia_freq <<= GEN6_PCODE_FREQ_IA_RATIO_SHIFT;
 
 		sandybridge_pcode_write(dev_priv,
@@ -2781,6 +2785,8 @@ static void ironlake_enable_rc6(struct drm_device *dev)
 	if (!intel_enable_rc6(dev))
 		return;
 
+	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
+
 	ret = ironlake_setup_rc6(dev);
 	if (ret)
 		return;
@@ -2819,7 +2825,7 @@ static void ironlake_enable_rc6(struct drm_device *dev)
 	ret = intel_ring_idle(ring);
 	dev_priv->mm.interruptible = was_interruptible;
 	if (ret) {
-		DRM_ERROR("failed to enable ironlake power savings\n");
+		DRM_ERROR("failed to enable ironlake power power savings\n");
 		ironlake_teardown_rc6(dev);
 		return;
 	}
@@ -2897,9 +2903,9 @@ static unsigned long __i915_chipset_val(struct drm_i915_private *dev_priv)
 		}
 	}
 
-	diff = diff / diff1;
+	diff = div_u64(diff, diff1);
 	ret = ((m * diff) + c);
-	ret = ret / 10;
+	ret = div_u64(ret, 10);
 
 	dev_priv->ips.last_count1 = total_count;
 	dev_priv->ips.last_time1 = now;
@@ -3088,9 +3094,8 @@ static void __i915_update_gfx_val(struct drm_i915_private *dev_priv)
 	unsigned long diffms;
 	u32 count;
 
-	nanotime(&now);
-	diff1 = now;
-	timespecsub(&diff1, &dev_priv->ips.last_time2);
+	getrawmonotonic(&now);
+	diff1 = timespec_sub(now, dev_priv->ips.last_time2);
 
 	/* Don't divide by 0 */
 	diffms = diff1.tv_sec * 1000 + diff1.tv_nsec / 1000000;
@@ -3111,7 +3116,7 @@ static void __i915_update_gfx_val(struct drm_i915_private *dev_priv)
 
 	/* More magic constants... */
 	diff = diff * 1181;
-	diff = diff / (diffms * 10);
+	diff = div_u64(diff, diffms * 10);
 	dev_priv->ips.gfx_power = diff;
 }
 
@@ -3313,6 +3318,28 @@ out_unlock:
 	return ret;
 }
 
+#if 0
+/**
+ * Tells the intel_ips driver that the i915 driver is now loaded, if
+ * IPS got loaded first.
+ *
+ * This awkward dance is so that neither module has to depend on the
+ * other in order for IPS to do the appropriate communication of
+ * GPU turbo limits to i915.
+ */
+static void
+ips_ping_for_i915_load(void)
+{
+	void (*link)(void);
+
+	link = symbol_get(ips_link_to_i915_driver);
+	if (link) {
+		link();
+		symbol_put(ips_link_to_i915_driver);
+	}
+}
+#endif
+
 void intel_gpu_ips_init(struct drm_i915_private *dev_priv)
 {
 	/* We only register the i915 ips part with intel-ips once everything is
@@ -3328,7 +3355,6 @@ void intel_gpu_ips_teardown(void)
 	i915_mch_dev = NULL;
 	lockmgr(&mchdev_lock, LK_RELEASE);
 }
-
 static void intel_init_emon(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -3409,9 +3435,9 @@ void intel_disable_gt_powersave(struct drm_device *dev)
 		ironlake_disable_rc6(dev);
 	} else if (INTEL_INFO(dev)->gen >= 6 && !IS_VALLEYVIEW(dev)) {
 		cancel_delayed_work_sync(&dev_priv->rps.delayed_resume_work);
-		lockmgr(&dev_priv->rps.hw_lock, LK_EXCLUSIVE);
+		mutex_lock(&dev_priv->rps.hw_lock);
 		gen6_disable_rps(dev);
-		lockmgr(&dev_priv->rps.hw_lock, LK_RELEASE);
+		mutex_unlock(&dev_priv->rps.hw_lock);
 	}
 }
 
@@ -3422,10 +3448,10 @@ static void intel_gen6_powersave_work(struct work_struct *work)
 			     rps.delayed_resume_work.work);
 	struct drm_device *dev = dev_priv->dev;
 
-	lockmgr(&dev_priv->rps.hw_lock, LK_EXCLUSIVE);
+	mutex_lock(&dev_priv->rps.hw_lock);
 	gen6_enable_rps(dev);
 	gen6_update_ring_freq(dev);
-	lockmgr(&dev_priv->rps.hw_lock, LK_RELEASE);
+	mutex_unlock(&dev_priv->rps.hw_lock);
 }
 
 void intel_enable_gt_powersave(struct drm_device *dev)
@@ -3443,7 +3469,7 @@ void intel_enable_gt_powersave(struct drm_device *dev)
 		 * to make resume and init faster.
 		 */
 		schedule_delayed_work(&dev_priv->rps.delayed_resume_work,
-				      round_jiffies_up_relative(hz));
+				      round_jiffies_up_relative(HZ));
 	}
 }
 
@@ -3555,6 +3581,19 @@ static void cpt_init_clock_gating(struct drm_device *dev)
 	}
 }
 
+static void gen6_check_mch_setup(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	uint32_t tmp;
+
+	tmp = I915_READ(MCH_SSKPD);
+	if ((tmp & MCH_SSKPD_WM0_MASK) != MCH_SSKPD_WM0_VAL) {
+		DRM_INFO("Wrong MCH_SSKPD value: 0x%08x\n", tmp);
+		DRM_INFO("This can cause pipe underruns and display issues.\n");
+		DRM_INFO("Please upgrade your BIOS to fix this.\n");
+	}
+}
+
 static void gen6_init_clock_gating(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -3647,6 +3686,8 @@ static void gen6_init_clock_gating(struct drm_device *dev)
 	I915_WRITE(GEN6_GT_MODE, _MASKED_BIT_ENABLE(GEN6_GT_MODE_HI));
 
 	cpt_init_clock_gating(dev);
+
+	gen6_check_mch_setup(dev);
 }
 
 static void gen7_setup_fixed_func_scheduler(struct drm_i915_private *dev_priv)
@@ -3657,6 +3698,10 @@ static void gen7_setup_fixed_func_scheduler(struct drm_i915_private *dev_priv)
 	reg |= GEN7_FF_TS_SCHED_HW;
 	reg |= GEN7_FF_VS_SCHED_HW;
 	reg |= GEN7_FF_DS_SCHED_HW;
+
+	/* WaVSRefCountFullforceMissDisable */
+	if (IS_HASWELL(dev_priv->dev))
+		reg &= ~GEN7_FF_VS_REF_CNT_FFME;
 
 	I915_WRITE(GEN7_FF_THREAD_MODE, reg);
 }
@@ -3828,6 +3873,8 @@ static void ivybridge_init_clock_gating(struct drm_device *dev)
 	I915_WRITE(GEN6_MBCUNIT_SNPCR, snpcr);
 
 	cpt_init_clock_gating(dev);
+
+	gen6_check_mch_setup(dev);
 }
 
 static void valleyview_init_clock_gating(struct drm_device *dev)
@@ -4021,35 +4068,60 @@ void intel_init_clock_gating(struct drm_device *dev)
 	dev_priv->display.init_clock_gating(dev);
 }
 
-/* Starting with Haswell, we have different power wells for
- * different parts of the GPU. This attempts to enable them all.
- */
-void intel_init_power_wells(struct drm_device *dev)
+void intel_set_power_well(struct drm_device *dev, bool enable)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	unsigned long power_wells[] = {
-		HSW_PWR_WELL_CTL1,
-		HSW_PWR_WELL_CTL2,
-		HSW_PWR_WELL_CTL4
-	};
-	int i;
+	bool is_enabled, enable_requested;
+	uint32_t tmp;
 
 	if (!IS_HASWELL(dev))
 		return;
 
-	DRM_LOCK(dev);
+	if (!i915_disable_power_well && !enable)
+		return;
 
-	for (i = 0; i < ARRAY_SIZE(power_wells); i++) {
-		int well = I915_READ(power_wells[i]);
+	tmp = I915_READ(HSW_PWR_WELL_DRIVER);
+	is_enabled = tmp & HSW_PWR_WELL_STATE;
+	enable_requested = tmp & HSW_PWR_WELL_ENABLE;
 
-		if ((well & HSW_PWR_WELL_STATE) == 0) {
-			I915_WRITE(power_wells[i], well & HSW_PWR_WELL_ENABLE);
-			if (wait_for((I915_READ(power_wells[i]) & HSW_PWR_WELL_STATE), 20))
-				DRM_ERROR("Error enabling power well %lx\n", power_wells[i]);
+	if (enable) {
+		if (!enable_requested)
+			I915_WRITE(HSW_PWR_WELL_DRIVER, HSW_PWR_WELL_ENABLE);
+
+		if (!is_enabled) {
+			DRM_DEBUG_KMS("Enabling power well\n");
+			if (wait_for((I915_READ(HSW_PWR_WELL_DRIVER) &
+				      HSW_PWR_WELL_STATE), 20))
+				DRM_ERROR("Timeout enabling power well\n");
+		}
+	} else {
+		if (enable_requested) {
+			I915_WRITE(HSW_PWR_WELL_DRIVER, 0);
+			DRM_DEBUG_KMS("Requesting to disable the power well\n");
 		}
 	}
+}
 
-	DRM_UNLOCK(dev);
+/*
+ * Starting with Haswell, we have a "Power Down Well" that can be turned off
+ * when not needed anymore. We have 4 registers that can request the power well
+ * to be enabled, and it will only be disabled if none of the registers is
+ * requesting it to be enabled.
+ */
+void intel_init_power_well(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	if (!IS_HASWELL(dev))
+		return;
+
+	/* For now, we need the power well to be always enabled. */
+	intel_set_power_well(dev, true);
+
+	/* We're taking over the BIOS, so clear any requests made by it since
+	 * the driver is in charge now. */
+	if (I915_READ(HSW_PWR_WELL_BIOS) & HSW_PWR_WELL_ENABLE)
+		I915_WRITE(HSW_PWR_WELL_BIOS, 0);
 }
 
 /* Set up chip specific power management-related functions */
@@ -4314,10 +4386,8 @@ int __gen6_gt_wait_for_fifo(struct drm_i915_private *dev_priv)
 			udelay(10);
 			fifo = I915_READ_NOTRACE(GT_FIFO_FREE_ENTRIES);
 		}
-		if (loop < 0 && fifo <= GT_FIFO_NUM_RESERVED_ENTRIES) {
-			kprintf("%s loop\n", __func__);
+		if (WARN_ON(loop < 0 && fifo <= GT_FIFO_NUM_RESERVED_ENTRIES))
 			++ret;
-		}
 		dev_priv->gt_fifo_count = fifo;
 	}
 	dev_priv->gt_fifo_count--;
@@ -4392,6 +4462,7 @@ void intel_gt_init(struct drm_device *dev)
 
 int sandybridge_pcode_read(struct drm_i915_private *dev_priv, u8 mbox, u32 *val)
 {
+	WARN_ON(!mutex_is_locked(&dev_priv->rps.hw_lock));
 
 	if (I915_READ(GEN6_PCODE_MAILBOX) & GEN6_PCODE_READY) {
 		DRM_DEBUG_DRIVER("warning: pcode (read) mailbox access failed\n");
@@ -4415,6 +4486,7 @@ int sandybridge_pcode_read(struct drm_i915_private *dev_priv, u8 mbox, u32 *val)
 
 int sandybridge_pcode_write(struct drm_i915_private *dev_priv, u8 mbox, u32 val)
 {
+	WARN_ON(!mutex_is_locked(&dev_priv->rps.hw_lock));
 
 	if (I915_READ(GEN6_PCODE_MAILBOX) & GEN6_PCODE_READY) {
 		DRM_DEBUG_DRIVER("warning: pcode (write) mailbox access failed\n");

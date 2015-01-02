@@ -1411,7 +1411,7 @@ intel_tv_get_modes(struct drm_connector *connector)
 
 		tmp = (u64) tv_mode->refresh * mode_ptr->vtotal;
 		tmp *= mode_ptr->htotal;
-		tmp = tmp / 1000000;
+		tmp = div_u64(tmp, 1000000);
 		mode_ptr->clock = (int) tmp;
 
 		mode_ptr->type = DRM_MODE_TYPE_DRIVER;
@@ -1430,7 +1430,7 @@ intel_tv_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	drm_free(connector, M_DRM);
+	kfree(connector, M_DRM);
 }
 
 
@@ -1480,8 +1480,7 @@ intel_tv_set_property(struct drm_connector *connector, struct drm_property *prop
 	}
 
 	if (changed && crtc)
-		intel_set_mode(crtc, &crtc->mode,
-			       crtc->x, crtc->y, crtc->fb);
+		intel_crtc_restore_mode(crtc);
 out:
 	return ret;
 }
@@ -1489,7 +1488,6 @@ out:
 static const struct drm_encoder_helper_funcs intel_tv_helper_funcs = {
 	.mode_fixup = intel_tv_mode_fixup,
 	.mode_set = intel_tv_mode_set,
-	.disable = intel_encoder_noop,
 };
 
 static const struct drm_connector_funcs intel_tv_connector_funcs = {
@@ -1592,8 +1590,7 @@ intel_tv_init(struct drm_device *dev)
 	    (tv_dac_off & TVDAC_STATE_CHG_EN) != 0)
 		return;
 
-	intel_tv = kmalloc(sizeof(struct intel_tv), M_DRM,
-	    M_WAITOK | M_ZERO);
+	intel_tv = kmalloc(sizeof(struct intel_tv), M_DRM, M_WAITOK | M_ZERO);
 	if (!intel_tv) {
 		return;
 	}

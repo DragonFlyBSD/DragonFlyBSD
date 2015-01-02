@@ -90,10 +90,13 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
+MALLOC_DECLARE(M_DRM);
+
 #include <uapi_drm/drm.h>
 #include <uapi_drm/drm_sarea.h>
 
 #include <linux/atomic.h>
+#include <linux/bug.h>
 #include <linux/err.h>
 #include <linux/idr.h>
 #include <linux/pci.h>
@@ -104,10 +107,12 @@
 #include <linux/mm.h>
 #include <linux/moduleparam.h>
 #include <linux/mutex.h>
+#include <linux/scatterlist.h>
 #include <linux/timer.h>
 #include <asm/io.h>
 #include <linux/types.h>
 #include <linux/wait.h>
+#include <linux/workqueue.h>
 
 #include <asm/uaccess.h>
 
@@ -174,8 +179,6 @@ struct drm_device;
 #define	DRM_GEM_MAPPING_MAPOFF(o) \
     ((o) & ~(DRM_GEM_MAPPING_OFF(DRM_GEM_MAX_IDX) | DRM_GEM_MAPPING_KEY))
 
-MALLOC_DECLARE(M_DRM);
-
 SYSCTL_DECL(_hw_drm);
 
 #define DRM_MAX_CTXBITMAP (PAGE_SIZE * 8)
@@ -203,13 +206,13 @@ SYSCTL_DECL(_hw_drm);
 #define DRM_CURPROC		curthread
 #define DRM_STRUCTPROC		struct thread
 #define DRM_CURRENTPID		(curproc != NULL ? curproc->p_pid : -1)
-#define DRM_LOCK(dev)		lockmgr(&(dev)->dev_struct_lock, LK_EXCLUSIVE)
-#define DRM_UNLOCK(dev)		lockmgr(&(dev)->dev_struct_lock, LK_RELEASE)
+#define DRM_LOCK(dev)		lockmgr(&(dev)->struct_mutex, LK_EXCLUSIVE)
+#define DRM_UNLOCK(dev)		lockmgr(&(dev)->struct_mutex, LK_RELEASE)
 #define	DRM_LOCK_SLEEP(dev, chan, flags, msg, timeout)			\
-    (lksleep((chan), &(dev)->dev_struct_lock, (flags), (msg), (timeout)))
+    (lksleep((chan), &(dev)->struct_mutex, (flags), (msg), (timeout)))
 #if defined(INVARIANTS)
-#define	DRM_LOCK_ASSERT(dev)	KKASSERT(lockstatus(&(dev)->dev_struct_lock, curthread) != 0);
-#define	DRM_UNLOCK_ASSERT(dev)	KKASSERT(lockstatus(&(dev)->dev_struct_lock, curthread) == 0);
+#define	DRM_LOCK_ASSERT(dev)	KKASSERT(lockstatus(&(dev)->struct_mutex, curthread) != 0);
+#define	DRM_UNLOCK_ASSERT(dev)	KKASSERT(lockstatus(&(dev)->struct_mutex, curthread) == 0);
 #else
 #define	DRM_LOCK_ASSERT(d)
 #define	DRM_UNLOCK_ASSERT(d)
@@ -325,6 +328,11 @@ vm_page_t vm_phys_fictitious_to_vm_page(vm_paddr_t pa);
 #define DRM_DEBUG_DRIVER(fmt, ...) do {					\
 	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)			\
 		kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
+			__func__ , ##__VA_ARGS__);			\
+} while (0)
+
+#define DRM_LOG_KMS(fmt, ...) do {					\
+	kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,	\
 			__func__ , ##__VA_ARGS__);			\
 } while (0)
 
@@ -883,7 +891,6 @@ struct drm_device {
 	struct spinlock	  dma_lock;	/* protects dev->dma */
 	struct lwkt_serialize irq_lock;	/* protects irq condition checks */
 	struct lock	  dev_lock;	/* protects everything else */
-	struct lock	  dev_struct_lock;
 
 	/** \name Locks */
 	/*@{ */

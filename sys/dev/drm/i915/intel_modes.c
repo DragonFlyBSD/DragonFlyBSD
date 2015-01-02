@@ -24,11 +24,10 @@
  */
 
 #include <linux/i2c.h>
-#include <drm/drmP.h>
 #include <drm/drm_edid.h>
+#include <drm/drmP.h>
 #include "intel_drv.h"
 #include "i915_drv.h"
-#include <bus/iicbus/iiconf.h>
 
 /**
  * intel_connector_update_modes - update connector from edid
@@ -99,8 +98,9 @@ intel_attach_force_audio_property(struct drm_connector *connector)
 }
 
 static const struct drm_prop_enum_list broadcast_rgb_names[] = {
-	{ 0, "Full" },
-	{ 1, "Limited 16:235" },
+	{ INTEL_BROADCAST_RGB_AUTO, "Automatic" },
+	{ INTEL_BROADCAST_RGB_FULL, "Full" },
+	{ INTEL_BROADCAST_RGB_LIMITED, "Limited 16:235" },
 };
 
 void

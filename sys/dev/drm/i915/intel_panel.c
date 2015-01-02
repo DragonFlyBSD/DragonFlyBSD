@@ -28,9 +28,9 @@
  *      Chris Wilson <chris@chris-wilson.co.uk>
  */
 
-#include <drm/drmP.h>
-#include <drm/i915_drm.h>
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/moduleparam.h>
 #include "intel_drv.h"
 
 #define PCI_LBPC 0xf4 /* legacy/combination backlight modes */
@@ -206,14 +206,12 @@ u32 intel_panel_get_max_backlight(struct drm_device *dev)
 
 static int i915_panel_invert_brightness;
 TUNABLE_INT("drm.i915.panel_invert_brightness", &i915_panel_invert_brightness);
-#if 0
 MODULE_PARM_DESC(invert_brightness, "Invert backlight brightness "
 	"(-1 force normal, 0 machine defaults, 1 force inversion), please "
 	"report PCI device ID, subsystem vendor and subsystem device ID "
 	"to dri-devel@lists.freedesktop.org, if your machine needs it. "
 	"It will then be included in an upcoming module version.");
-#endif
-
+module_param_named(invert_brightness, i915_panel_invert_brightness, int, 0600);
 static u32 intel_panel_compute_brightness(struct drm_device *dev, u32 val)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;

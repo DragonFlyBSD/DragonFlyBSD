@@ -29,6 +29,7 @@
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include "intel_drv.h"
+
 #include <contrib/dev/acpica/source/include/acpi.h>
 #include <contrib/dev/acpica/source/include/accommon.h>
 #include <dev/acpica/acpivar.h>
@@ -346,8 +347,8 @@ static void intel_didl_outputs(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_opregion *opregion = &dev_priv->opregion;
 	struct drm_connector *connector;
+	ACPI_HANDLE handle, acpi_cdev, acpi_video_bus;
 	u32 device_id;
-	ACPI_HANDLE handle, acpi_video_bus, acpi_cdev;
 	ACPI_STATUS status;
 	u32 temp;
 	int i = 0;
@@ -379,17 +380,20 @@ static void intel_didl_outputs(struct drm_device *dev)
 	while (AcpiGetNextObject(ACPI_TYPE_DEVICE, acpi_video_bus, acpi_cdev,
 				 &acpi_cdev) != AE_NOT_FOUND) {
 		if (i >= 8) {
-			device_printf(dev->dev, "More than 8 outputs detected\n");
+			device_printf(dev->dev,
+				    "More than 8 outputs detected\n");
 			return;
 		}
 		status = acpi_GetInteger(acpi_cdev, "_ADR", &device_id);
 		if (ACPI_SUCCESS(status)) {
 			if (!device_id)
 				goto blind_set;
-			opregion->acpi->didl[i] = (u32)(device_id & 0x0f0f);
+			iowrite32((u32)(device_id & 0x0f0f),
+				  &opregion->acpi->didl[i]);
 			i++;
 		}
 	}
+
 end:
 	/* If fewer than 8 outputs, the list must be null terminated */
 	if (i < 8)

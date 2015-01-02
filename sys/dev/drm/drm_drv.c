@@ -164,8 +164,8 @@ static drm_ioctl_desc_t		  drm_ioctls[256] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_SETGAMMA, drm_mode_gamma_set_ioctl, DRM_MASTER|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETENCODER, drm_mode_getencoder, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETCONNECTOR, drm_mode_getconnector, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
-	DRM_IOCTL_DEF(DRM_IOCTL_MODE_ATTACHMODE, drm_mode_attachmode_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
-	DRM_IOCTL_DEF(DRM_IOCTL_MODE_DETACHMODE, drm_mode_detachmode_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_MODE_ATTACHMODE, drm_noop, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_MODE_DETACHMODE, drm_noop, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETPROPERTY, drm_mode_getproperty_ioctl, DRM_MASTER | DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_SETPROPERTY, drm_mode_connector_property_set_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETPROPBLOB, drm_mode_getblob_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
@@ -308,7 +308,7 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	lwkt_serialize_init(&dev->irq_lock);
 	lockinit(&dev->vbl_lock, "drmvbl", 0, LK_CANRECURSE);
 	lockinit(&dev->event_lock, "drmev", 0, LK_CANRECURSE);
-	lockinit(&dev->dev_struct_lock, "drmslk", 0, LK_CANRECURSE);
+	lockinit(&dev->struct_mutex, "drmslk", 0, LK_CANRECURSE);
 
 	error = drm_load(dev);
 	if (error)
@@ -553,7 +553,7 @@ error:
 	lockuninit(&dev->vbl_lock);
 	lockuninit(&dev->dev_lock);
 	lockuninit(&dev->event_lock);
-	lockuninit(&dev->dev_struct_lock);
+	lockuninit(&dev->struct_mutex);
 
 	return retcode;
 }
@@ -619,7 +619,7 @@ static void drm_unload(struct drm_device *dev)
 	lockuninit(&dev->vbl_lock);
 	lockuninit(&dev->dev_lock);
 	lockuninit(&dev->event_lock);
-	lockuninit(&dev->dev_struct_lock);
+	lockuninit(&dev->struct_mutex);
 }
 
 int drm_version(struct drm_device *dev, void *data, struct drm_file *file_priv)

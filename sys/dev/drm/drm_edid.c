@@ -26,8 +26,6 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- *
- * $FreeBSD: head/sys/dev/drm2/drm_edid.c 249041 2013-04-03 08:27:35Z dumbbell $
  */
 
 #include <linux/export.h>
@@ -1497,9 +1495,11 @@ add_detailed_modes(struct drm_connector *connector, struct edid *edid,
 #define VIDEO_BLOCK     0x02
 #define VENDOR_BLOCK    0x03
 #define SPEAKER_BLOCK	0x04
+#define VIDEO_CAPABILITY_BLOCK	0x07
 #define EDID_BASIC_AUDIO	(1 << 6)
 #define EDID_CEA_YCRCB444	(1 << 5)
 #define EDID_CEA_YCRCB422	(1 << 4)
+#define EDID_CEA_VCDB_QS	(1 << 6)
 
 /**
  * Search EDID for CEA extension block.
@@ -1531,7 +1531,7 @@ EXPORT_SYMBOL(drm_find_cea_extension);
  * Looks for a CEA mode matching given drm_display_mode.
  * Returns its CEA Video ID code, or 0 if not found.
  */
-u8 drm_match_cea_mode(struct drm_display_mode *to_match)
+u8 drm_match_cea_mode(const struct drm_display_mode *to_match)
 {
 	u8 mode;
 
@@ -1915,6 +1915,37 @@ end:
 EXPORT_SYMBOL(drm_detect_monitor_audio);
 
 /**
+ * drm_rgb_quant_range_selectable - is RGB quantization range selectable?
+ *
+ * Check whether the monitor reports the RGB quantization range selection
+ * as supported. The AVI infoframe can then be used to inform the monitor
+ * which quantization range (full or limited) is used.
+ */
+bool drm_rgb_quant_range_selectable(struct edid *edid)
+{
+	u8 *edid_ext;
+	int i, start, end;
+
+	edid_ext = drm_find_cea_extension(edid);
+	if (!edid_ext)
+		return false;
+
+	if (cea_db_offsets(edid_ext, &start, &end))
+		return false;
+
+	for_each_cea_db(edid_ext, i, start, end) {
+		if (cea_db_tag(&edid_ext[i]) == VIDEO_CAPABILITY_BLOCK &&
+		    cea_db_payload_len(&edid_ext[i]) == 2) {
+			DRM_DEBUG_KMS("CEA VCDB 0x%02x\n", edid_ext[i + 2]);
+			return edid_ext[i + 2] & EDID_CEA_VCDB_QS;
+		}
+	}
+
+	return false;
+}
+EXPORT_SYMBOL(drm_rgb_quant_range_selectable);
+
+/**
  * drm_add_display_info - pull display info out if present
  * @edid: EDID data
  * @info: display info (attached to connector)
@@ -2092,22 +2123,3 @@ int drm_add_modes_noedid(struct drm_connector *connector,
 	return num_modes;
 }
 EXPORT_SYMBOL(drm_add_modes_noedid);
-
-/**
- * drm_mode_cea_vic - return the CEA-861 VIC of a given mode
- * @mode: mode
- *
- * RETURNS:
- * The VIC number, 0 in case it's not a CEA-861 mode.
- */
-uint8_t drm_mode_cea_vic(const struct drm_display_mode *mode)
-{
-	uint8_t i;
-
-	for (i = 0; i < drm_num_cea_modes; i++)
-		if (drm_mode_equal(mode, &edid_cea_modes[i]))
-			return i + 1;
-
-	return 0;
-}
-EXPORT_SYMBOL(drm_mode_cea_vic);

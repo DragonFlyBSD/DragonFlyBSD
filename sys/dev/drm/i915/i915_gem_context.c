@@ -127,13 +127,8 @@ static int get_context_size(struct drm_device *dev)
 
 static void do_destroy(struct i915_hw_context *ctx)
 {
-	struct drm_device *dev = ctx->obj->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
-
 	if (ctx->file_priv)
 		idr_remove(&ctx->file_priv->context_idr, ctx->id);
-	else
-		BUG_ON(ctx != dev_priv->ring[RCS].default_context);
 
 	drm_gem_object_unreference(&ctx->obj->base);
 	kfree(ctx, M_DRM);
@@ -250,7 +245,6 @@ err_destroy:
 void i915_gem_context_init(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	uint32_t ctx_size;
 
 	if (!HAS_HW_CONTEXTS(dev)) {
 		dev_priv->hw_contexts_disabled = true;
@@ -262,11 +256,9 @@ void i915_gem_context_init(struct drm_device *dev)
 	    dev_priv->ring[RCS].default_context)
 		return;
 
-	ctx_size = get_context_size(dev);
-	dev_priv->hw_context_size = get_context_size(dev);
-	dev_priv->hw_context_size = round_up(dev_priv->hw_context_size, 4096);
+	dev_priv->hw_context_size = round_up(get_context_size(dev), 4096);
 
-	if (ctx_size <= 0 || ctx_size > (1<<20)) {
+	if (dev_priv->hw_context_size > (1<<20)) {
 		dev_priv->hw_contexts_disabled = true;
 		return;
 	}
@@ -311,10 +303,10 @@ void i915_gem_context_close(struct drm_device *dev, struct drm_file *file)
 {
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 
-	DRM_LOCK(dev);
+	mutex_lock(&dev->struct_mutex);
 	idr_for_each(&file_priv->context_idr, context_idr_cleanup, NULL);
 	idr_destroy(&file_priv->context_idr);
-	DRM_UNLOCK(dev);
+	mutex_unlock(&dev->struct_mutex);
 }
 
 static struct i915_hw_context *
@@ -501,7 +493,7 @@ int i915_gem_context_create_ioctl(struct drm_device *dev, void *data,
 		return ret;
 
 	ctx = create_hw_context(dev, file_priv);
-	DRM_UNLOCK(dev);
+	mutex_unlock(&dev->struct_mutex);
 	if (IS_ERR(ctx))
 		return PTR_ERR(ctx);
 
@@ -528,13 +520,13 @@ int i915_gem_context_destroy_ioctl(struct drm_device *dev, void *data,
 
 	ctx = i915_gem_context_get(file_priv, args->ctx_id);
 	if (!ctx) {
-		DRM_UNLOCK(dev);
+		mutex_unlock(&dev->struct_mutex);
 		return -ENOENT;
 	}
 
 	do_destroy(ctx);
 
-	DRM_UNLOCK(dev);
+	mutex_unlock(&dev->struct_mutex);
 
 	DRM_DEBUG_DRIVER("HW context %d destroyed\n", args->ctx_id);
 	return 0;

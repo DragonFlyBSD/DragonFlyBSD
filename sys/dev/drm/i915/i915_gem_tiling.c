@@ -272,18 +272,7 @@ i915_gem_object_fence_ok(struct drm_i915_gem_object *obj, int tiling_mode)
 			return false;
 	}
 
-	/*
-	 * Previous chips need to be aligned to the size of the smallest
-	 * fence register that can contain the object.
-	 */
-	if (INTEL_INFO(obj->base.dev)->gen == 3)
-		size = 1024*1024;
-	else
-		size = 512*1024;
-
-	while (size < obj->base.size)
-		size <<= 1;
-
+	size = i915_gem_get_gtt_size(obj->base.dev, obj->base.size, tiling_mode);
 	if (obj->gtt_space->size != size)
 		return false;
 
@@ -350,7 +339,7 @@ i915_gem_set_tiling(struct drm_device *dev, void *data,
 		}
 	}
 
-	DRM_LOCK(dev);
+	mutex_lock(&dev->struct_mutex);
 	if (args->tiling_mode != obj->tiling_mode ||
 	    args->stride != obj->stride) {
 		/* We need to rebind the object if its current allocation
@@ -368,15 +357,15 @@ i915_gem_set_tiling(struct drm_device *dev, void *data,
 
 		obj->map_and_fenceable =
 			obj->gtt_space == NULL ||
-			(obj->gtt_offset + obj->base.size <= dev_priv->mm.gtt_mappable_end &&
+			(obj->gtt_offset + obj->base.size <= dev_priv->gtt.mappable_end &&
 			 i915_gem_object_fence_ok(obj, args->tiling_mode));
 
 		/* Rebind if we need a change of alignment */
 		if (!obj->map_and_fenceable) {
 			u32 unfenced_alignment =
-				i915_gem_get_unfenced_gtt_alignment(dev,
-								    obj->base.size,
-								    args->tiling_mode);
+				i915_gem_get_gtt_alignment(dev, obj->base.size,
+							    args->tiling_mode,
+							    false);
 			if (obj->gtt_offset & (unfenced_alignment - 1))
 				ret = i915_gem_object_unbind(obj);
 		}
@@ -396,8 +385,20 @@ i915_gem_set_tiling(struct drm_device *dev, void *data,
 	/* we have to maintain this existing ABI... */
 	args->stride = obj->stride;
 	args->tiling_mode = obj->tiling_mode;
+
+	/* Try to preallocate memory required to save swizzling on put-pages */
+	if (i915_gem_object_needs_bit17_swizzle(obj)) {
+		if (obj->bit_17 == NULL) {
+			obj->bit_17 = kmalloc(BITS_TO_LONGS(obj->base.size >> PAGE_SHIFT) *
+					      sizeof(long), M_DRM, M_WAITOK);
+		}
+	} else {
+		drm_free(obj->bit_17, M_DRM);
+		obj->bit_17 = NULL;
+	}
+
 	drm_gem_object_unreference(&obj->base);
-	DRM_UNLOCK(dev);
+	mutex_unlock(&dev->struct_mutex);
 
 	return ret;
 }
@@ -417,7 +418,7 @@ i915_gem_get_tiling(struct drm_device *dev, void *data,
 	if (&obj->base == NULL)
 		return -ENOENT;
 
-	DRM_LOCK(dev);
+	mutex_lock(&dev->struct_mutex);
 
 	args->tiling_mode = obj->tiling_mode;
 	switch (obj->tiling_mode) {
@@ -441,7 +442,7 @@ i915_gem_get_tiling(struct drm_device *dev, void *data,
 		args->swizzle_mode = I915_BIT_6_SWIZZLE_9_10;
 
 	drm_gem_object_unreference(&obj->base);
-	DRM_UNLOCK(dev);
+	mutex_unlock(&dev->struct_mutex);
 
 	return 0;
 }
