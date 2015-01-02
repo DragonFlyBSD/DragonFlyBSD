@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2013 François Tigeot
+ * Copyright (c) 2013-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -126,6 +126,14 @@ static inline int atomic_add_unless(atomic_t *v, int a, int u)
 	__asm __volatile("lock andl %0, %1"	\
 		:				\
 		: "r" (~mask), "m" (*addr)	\
+		: "memory");
+
+/* atomic_set_mask: atomically set bits in a variable */
+#define atomic_set_mask(mask, addr)		\
+	/* atomic *addr |= mask; */		\
+	__asm __volatile("lock orl %0, %1"	\
+		:				\
+		: "r" (mask), "m" (*addr)	\
 		: "memory");
 
 #endif	/* _ASM_ATOMIC_H_ */
