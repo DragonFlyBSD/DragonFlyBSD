@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2013 François Tigeot
+/*-
+ * Copyright (c) 2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,13 +24,35 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_I2C_H_
-#define _LINUX_I2C_H_
+#ifndef	_LINUX_SCHED_H_
+#define	_LINUX_SCHED_H_
 
-#include <linux/sched.h>
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/proc.h>
+#include <sys/sched.h>
 
-#define i2c_msg iic_msg
+#define	TASK_RUNNING		0
+#define	TASK_INTERRUPTIBLE	1
+#define	TASK_UNINTERRUPTIBLE	2
 
-#define I2C_M_RD	IIC_M_RD
+/*
+ * schedule_timeout - sleep until timeout
+ * @timeout: timeout value in jiffies
+ */
+static inline long
+schedule_timeout(signed long timeout)
+{
+	static int dummy;
 
-#endif	/* _LINUX_I2C_H_ */
+	if (timeout < 0) {
+		kprintf("schedule_timeout(): timeout cannot be negative\n");
+		return 0;
+	}
+
+	tsleep(&dummy, 0, "lstim", timeout);
+
+	return 0;
+}
+
+#endif	/* _LINUX_SCHED_H_ */
