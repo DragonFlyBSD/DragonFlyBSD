@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,9 @@
 
 #include <sys/lock.h>
 
-#define mutex_is_locked(lock) (lockcount(lock) != 0)
+#define mutex_is_locked(lock)	(lockcount(lock) != 0)
+
+#define mutex_lock(lock)	lockmgr(lock, LK_EXCLUSIVE)
+#define mutex_unlock(lock)	lockmgr(lock, LK_RELEASE)
 
 #endif	/* _LINUX_MUTEX_H_ */
