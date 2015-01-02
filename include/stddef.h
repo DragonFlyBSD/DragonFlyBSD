@@ -33,12 +33,13 @@
  *	@(#)stddef.h	8.1 (Berkeley) 6/2/93
  *
  * $FreeBSD: src/include/stddef.h,v 1.2.8.4 2002/08/07 15:49:32 imp Exp $
- * $DragonFly: src/include/stddef.h,v 1.5 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _STDDEF_H_
 #define _STDDEF_H_
 
+#include <sys/cdefs.h>
+#include <sys/_null.h>
 #ifndef _SYS_STDINT_H_
 #include <sys/stdint.h>			/* __rune_t and friends */
 #endif
@@ -53,7 +54,7 @@ typedef	__size_t	size_t;		/* open group */
 typedef	__ptrdiff_t	ptrdiff_t;	/* open group */
 #endif
 
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
+#if __BSD_VISIBLE
 #ifndef _RUNE_T_DECLARED
 #define _RUNE_T_DECLARED
 typedef	__rune_t	rune_t;
@@ -66,8 +67,6 @@ typedef	__rune_t	rune_t;
 typedef __wchar_t	wchar_t;	/* open group */
 #endif
 #endif
-
-#include <sys/_null.h>
 
 #define	offsetof(type, member)	__offsetof(type, member)
 
