@@ -773,10 +773,8 @@ in6_ifdetach_dispatch(netmsg_t nmsg)
 {
 	struct lwkt_msg *lmsg = &nmsg->lmsg;
 	struct ifnet *ifp = lmsg->u.ms_resultp;
-	struct in6_ifaddr *ia, *oia;
 	struct ifaddr_container *ifac, *next;
 	struct rtentry *rt;
-	short rtflags;
 	struct sockaddr_in6 sin6;
 	struct in6_multi *in6m, *in6m_next;
 
@@ -796,55 +794,13 @@ in6_ifdetach_dispatch(netmsg_t nmsg)
 	}
 
 	/*
-	 * XXX WTF are these?  Above code already deleted all inet6 address
+	 * XXX
+	 * These were code trying to nuke inet6 addresses again, but all
+	 * inet6 addresses must have been deleted above; use assertion.
 	 */
-	/* undo everything done by in6_ifattach(), just in case */
-	TAILQ_FOREACH_MUTABLE(ifac, &ifp->if_addrheads[mycpuid], ifa_link, next) {
-		struct ifaddr *ifa = ifac->ifa;
-
-		if (ifa->ifa_addr->sa_family != AF_INET6
-		 || !IN6_IS_ADDR_LINKLOCAL(&satosin6(&ifa->ifa_addr)->sin6_addr)) {
-			continue;
-		}
-
-		ia = (struct in6_ifaddr *)ifa;
-
-		/* remove from the routing table */
-		if ((ia->ia_flags & IFA_ROUTE) &&
-		    (rt = rtpurelookup((struct sockaddr *)&ia->ia_addr))) {
-			rtflags = rt->rt_flags;
-			--rt->rt_refcnt;
-			rtrequest(RTM_DELETE,
-				(struct sockaddr *)&ia->ia_addr,
-				(struct sockaddr *)&ia->ia_addr,
-				(struct sockaddr *)&ia->ia_prefixmask,
-				rtflags, NULL);
-		}
-
-		/* remove from the linked list */
-		ifa_ifunlink((struct ifaddr *)ia, ifp);
-
-		/* also remove from the IPv6 address chain(itojun&jinmei) */
-		oia = ia;
-		if (oia == (ia = in6_ifaddr))
-			in6_ifaddr = ia->ia_next;
-		else {
-			while (ia->ia_next && (ia->ia_next != oia))
-				ia = ia->ia_next;
-			if (ia->ia_next)
-				ia->ia_next = oia->ia_next;
-			else {
-				nd6log((LOG_ERR,
-				    "%s: didn't unlink in6ifaddr from "
-				    "list\n", if_name(ifp)));
-			}
-		}
-
-		crit_enter();	/* XXX MP not MP safe */
-		_IFAFREE(&oia->ia_ifa, 0);
-		crit_exit();
-
-		ifa_destroy(&ia->ia_ifa);
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		KASSERT(ifac->ifa->ifa_addr->sa_family != AF_INET6,
+		    ("still has inet6 addr"));
 	}
 
 	/* leave from all multicast groups joined */
