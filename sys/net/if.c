@@ -3128,25 +3128,6 @@ ifnetinit(void *dummy __unused)
 	netisr_register_rollup(if_start_rollup, NETISR_ROLLUP_PRIO_IFSTART);
 }
 
-struct ifnet *
-ifnet_byindex(unsigned short idx)
-{
-	if (idx > if_index)
-		return NULL;
-	return ifindex2ifnet[idx];
-}
-
-struct ifaddr *
-ifaddr_byindex(unsigned short idx)
-{
-	struct ifnet *ifp;
-
-	ifp = ifnet_byindex(idx);
-	if (!ifp)
-		return NULL;
-	return TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa;
-}
-
 void
 if_register_com_alloc(u_char type,
     if_com_alloc_t *a, if_com_free_t *f)

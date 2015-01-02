@@ -312,13 +312,11 @@ ieee80211_ifattach(struct ieee80211com *ic,
 	ifp->if_input = null_input;	/* just in case */
 	ifp->if_resolvemulti = NULL;	/* NB: callers check */
 
-	ifa = ifaddr_byindex(ifp->if_index);
-	KASSERT(ifa != NULL, ("%s: no lladdr!", __func__));
+	ifa = TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa;
 	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
 	sdl->sdl_type = IFT_ETHER;		/* XXX IFT_IEEE80211? */
 	sdl->sdl_alen = IEEE80211_ADDR_LEN;
 	IEEE80211_ADDR_COPY(LLADDR(sdl), macaddr);
-//	IFAFREE(ifa);
 }
 
 /*
