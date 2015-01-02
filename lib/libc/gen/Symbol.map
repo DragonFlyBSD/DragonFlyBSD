@@ -210,6 +210,7 @@ DF402.0 {
     posix_spawnattr_setsigdefault;
     posix_spawnattr_setsigmask;
     posix_spawnp;
+    psiginfo;
     psignal;
     pthread_atfork;
     pthread_attr_destroy;
