@@ -156,7 +156,7 @@ nd6_ifattach(struct ifnet *ifp)
 
 	nd->initialized = 1;
 
-	nd->linkmtu = ifindex2ifnet[ifp->if_index]->if_mtu;
+	nd->linkmtu = ifp->if_mtu;
 	nd->chlim = IPV6_DEFHLIM;
 	nd->basereachable = REACHABLE_TIME;
 	nd->reachable = ND_COMPUTE_RTIME(nd->basereachable);
