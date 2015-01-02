@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * Copyright (c) 2014 Imre Vadász
  * All rights reserved.
  *
@@ -120,5 +120,11 @@ init_waitqueue_head(wait_queue_head_t *eq)
 
 #define wait_event_interruptible_timeout(wq, condition, timeout)	\
 		__wait_event_common(wq, condition, timeout, PCATCH)
+
+static inline int
+waitqueue_active(wait_queue_head_t *q)
+{
+	return 0;	/* XXX: not really implemented */
+}
 
 #endif	/* _LINUX_WAIT_H_ */
