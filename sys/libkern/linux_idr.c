@@ -318,8 +318,6 @@ idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 {
 	int resid;
 
-	KKASSERT(ptr != NULL);
-
 	/*
 	 * NOTE! Because the idp is initialized with a non-zero count,
 	 *	 sid might be < idp->idr_count but idr_maxwant might not
