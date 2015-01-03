@@ -33,7 +33,6 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.14 2008/11/11 00:55:49 pavalos Exp $
  */
 
 #ifndef _SYS_STAT_H_
@@ -213,7 +212,7 @@ struct stat {
 
 __BEGIN_DECLS
 int	chmod (const char *, mode_t);
-#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#if __POSIX_VISIBLE >= 200809
 int	fchmodat (int, const char *, mode_t, int);
 #endif
 int	fstat (int, struct stat *);
@@ -225,12 +224,12 @@ int	mknod(const char *, mode_t, dev_t);
 #endif
 int	stat (const char *, struct stat *);
 mode_t	umask (mode_t);
-#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#if __POSIX_VISIBLE >= 200809
 int	fstatat(int, const char *, struct stat *, int);
 int	mkdirat(int, const char *, mode_t);
 int	mkfifoat(int, const char *, mode_t);
 #endif
-#if __BSD_VISIBLE || __XSI_VISIBLE >= 700
+#if __XSI_VISIBLE >= 700
 int	mknodat(int, const char *, mode_t, dev_t);
 #endif
 

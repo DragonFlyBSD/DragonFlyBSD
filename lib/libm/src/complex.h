@@ -46,7 +46,7 @@ _Static_assert(__generic(_Complex_I, float _Complex, 1, 0),
 #define	complex		_Complex
 #define	I		_Complex_I
 
-#if __ISO_C_VISIBLE >= 2011 || __BSD_VISIBLE
+#if __ISO_C_VISIBLE >= 2011
 #ifdef __clang__
 #define	CMPLX(x, y)	((double complex){ x, y })
 #define	CMPLXF(x, y)	((float complex){ x, y })

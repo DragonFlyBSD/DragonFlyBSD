@@ -145,7 +145,7 @@ typedef	long double	float_t;
 /*
  * XOPEN/SVID
  */
-#if __BSD_VISIBLE || __XSI_VISIBLE
+#if __XSI_VISIBLE
 #define	M_E		2.7182818284590452354	/* e */
 #define	M_LOG2E		1.4426950408889634074	/* log 2e */
 #define	M_LOG10E	0.43429448190325182765	/* log 10e */
@@ -162,7 +162,7 @@ typedef	long double	float_t;
 
 #define	MAXFLOAT	((float)3.40282346638528860e+38)
 extern int signgam;
-#endif /* __BSD_VISIBLE || __XSI_VISIBLE */
+#endif /* __XSI_VISIBLE */
 
 #if __BSD_VISIBLE
 #if 0
@@ -264,7 +264,7 @@ double	fmod(double, double);
 /*
  * These functions are not in C90.
  */
-#if __BSD_VISIBLE || __ISO_C_VISIBLE >= 1999 || __XSI_VISIBLE
+#if __ISO_C_VISIBLE >= 1999 || __XSI_VISIBLE
 double	acosh(double);
 double	asinh(double);
 double	atanh(double);
@@ -289,9 +289,9 @@ double	nextafter(double, double);
 double	remainder(double, double);
 double	remquo(double, double, int *);
 double	rint(double);
-#endif /* __BSD_VISIBLE || __ISO_C_VISIBLE >= 1999 || __XSI_VISIBLE */
+#endif /* __ISO_C_VISIBLE >= 1999 || __XSI_VISIBLE */
 
-#if __BSD_VISIBLE || __XSI_VISIBLE
+#if __XSI_VISIBLE
 double	j0(double);
 double	j1(double);
 double	jn(int, double);
@@ -308,7 +308,7 @@ double	scalb(double, double);
 #endif
 #endif /* __BSD_VISIBLE || __XSI_VISIBLE */
 
-#if __BSD_VISIBLE || __ISO_C_VISIBLE >= 1999
+#if __ISO_C_VISIBLE >= 1999
 double	copysign(double, double) __pure2;
 double	fdim(double, double);
 double	fmax(double, double) __pure2;

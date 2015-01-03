@@ -51,7 +51,7 @@ typedef	__size_t	size_t;
 #define	_SIZE_T_DECLARED
 #endif
 
-#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#if __POSIX_VISIBLE >= 200809
 #ifndef _OFF_T_DECLARED
 #define	_OFF_T_DECLARED
 typedef	__off_t		off_t;
@@ -62,7 +62,7 @@ typedef	__ssize_t	ssize_t;
 #endif
 #endif
 
-#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
+#if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
 #ifndef _VA_LIST_DECLARED
 typedef	__va_list	va_list;
 #define	_VA_LIST_DECLARED
@@ -294,7 +294,7 @@ int	 putw(int, FILE *);
 char	*tempnam(const char *, const char *);
 #endif
 
-#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#if __POSIX_VISIBLE >= 200809
 ssize_t	 getdelim(char ** __restrict, size_t * __restrict, int,
 		  FILE * __restrict);
 int	 renameat(int, const char *, int, const char *);
@@ -339,7 +339,7 @@ ssize_t	 getline(char ** __restrict, size_t * __restrict, FILE * __restrict);
 int	 dprintf(int, const char * __restrict, ...) __printflike(2, 3);
 #endif
 
-#endif /* __BSD_VISIBLE || __POSIX_VISIBLE >= 200809 */
+#endif /* __POSIX_VISIBLE >= 200809 */
 
 /*
  * Routines that are purely local.

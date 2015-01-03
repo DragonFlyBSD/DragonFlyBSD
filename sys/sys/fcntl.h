@@ -96,7 +96,7 @@
 /* Attempt to bypass the buffer cache */
 #define O_DIRECT	0x00010000
 
-#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#if __POSIX_VISIBLE >= 200809
 #define O_CLOEXEC	0x00020000	/* atomically set FD_CLOEXEC */
 #endif
 #define O_FBLOCKING	0x00040000	/* force blocking I/O */
@@ -109,7 +109,7 @@
 #define O_FBUFFERED	0x02000000	/* force buffered I/O */
 #define O_MAPONREAD	0x04000000	/* memory map read buffer */
 
-#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#if __POSIX_VISIBLE >= 200809
 #define O_DIRECTORY	0x08000000	/* error if not a directory */
 #endif
 
@@ -194,7 +194,7 @@
 #define	F_SETLK		8		/* set record locking information */
 #define	F_SETLKW	9		/* F_SETLK; wait if blocked */
 #define	F_DUP2FD	10		/* duplicate file descriptor to arg */
-#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#if __POSIX_VISIBLE >= 200809
 #define	F_DUPFD_CLOEXEC	17		/* Like F_DUPFD with FD_CLOEXEC set */
 #endif
 #if __BSD_VISIBLE
@@ -252,7 +252,7 @@ union fcntl_dat {
 
 __BEGIN_DECLS
 int	open (const char *, int, ...);
-#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#if __POSIX_VISIBLE >= 200809
 int	openat (int, const char *, int, ...);
 #endif
 int	creat (const char *, mode_t);

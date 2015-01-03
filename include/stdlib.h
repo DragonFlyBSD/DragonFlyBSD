@@ -314,7 +314,7 @@ extern char *suboptarg;			/* getsubopt(3) external variable */
 /*
  * C11 functions.
  */
-#if __ISO_C_VISIBLE >= 2011 || __cplusplus >= 201103L || __BSD_VISIBLE
+#if __ISO_C_VISIBLE >= 2011 || __cplusplus >= 201103L
 int 	at_quick_exit(void (*func)(void));
 _Noreturn void
 	quick_exit(int);
