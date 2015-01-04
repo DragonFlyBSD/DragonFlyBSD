@@ -143,21 +143,39 @@ ua_mixer_init(struct snd_mixer *m)
 static int
 ua_mixer_set(struct snd_mixer *m, unsigned type, unsigned left, unsigned right)
 {
-	sndlock_t lock = uaudio_mixer_lock(m);
-	snd_mtxlock(lock);
+	struct lock *lock = mixer_get_lock(m);
+	uint8_t do_unlock;
+
+	if (lockstatus(lock, curthread)) {
+		do_unlock = 0;
+	} else {
+		do_unlock = 1;
+		lockmgr(lock, LK_EXCLUSIVE);
+	}
 	uaudio_mixer_set(mix_getdevinfo(m), type, left, right);
-	snd_mtxunlock(lock);
+	if (do_unlock) {
+		lockmgr(lock, LK_RELEASE);
+	}
 	return (left | (right << 8));
 }
 
 static uint32_t
 ua_mixer_setrecsrc(struct snd_mixer *m, uint32_t src)
 {
+	struct lock *lock = mixer_get_lock(m);
 	int retval;
-	sndlock_t lock = uaudio_mixer_lock(m);
-	snd_mtxlock(lock);
+	uint8_t do_unlock;
+
+	if (lockstatus(lock, curthread)) {
+		do_unlock = 0;
+	} else {
+		do_unlock = 1;
+		lockmgr(lock, LK_EXCLUSIVE);
+	}
 	retval = uaudio_mixer_setrecsrc(mix_getdevinfo(m), src);
-	snd_mtxunlock(lock);
+	if (do_unlock) {
+		lockmgr(lock, LK_RELEASE);
+	}
 	return (retval);
 }
 

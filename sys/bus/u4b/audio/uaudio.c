@@ -237,7 +237,7 @@ struct umidi_chan {
 };
 
 struct uaudio_softc {
-	sndlock_t lock;
+	struct lock sc_lock;
 
 	struct sbuf sc_sndstat;
 	struct sndcard_func sc_sndcard_func;
@@ -583,7 +583,8 @@ uaudio_attach(device_t dev)
 	struct usb_interface_descriptor *id;
 	device_t child;
 
-	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "softc lock");
+	lockinit(&sc->sc_lock, "uaudio", 0, 0);
+
 	sc->sc_play_chan.priv_sc = sc;
 	sc->sc_rec_chan.priv_sc = sc;
 	sc->sc_udev = uaa->device;
@@ -782,8 +783,8 @@ uaudio_detach(device_t dev)
 	sc->sc_sndstat_valid = 0;
 
 	umidi_detach(dev);
+	lockuninit(&sc->sc_lock);
 
-	snd_mtxfree(sc->lock);
 	return (0);
 }
 
@@ -3258,7 +3259,7 @@ uaudio_mixer_init_sub(struct uaudio_softc *sc, struct snd_mixer *m)
 
 	if (usbd_transfer_setup(sc->sc_udev, &sc->sc_mixer_iface_index,
 	    sc->sc_mixer_xfer, uaudio_mixer_config, 1, sc,
-	    sc->lock)) {
+	    &sc->sc_lock)) {
 		DPRINTFN(0, "could not allocate USB "
 		    "transfer for audio mixer!\n");
 		return (ENOMEM);
@@ -3885,13 +3886,6 @@ umidi_detach(device_t dev)
 	lockuninit(&chan->lock);
 
 	return (0);
-}
-
-sndlock_t
-uaudio_mixer_lock(struct snd_mixer *m)
-{
-	struct uaudio_softc *sc = mix_getdevinfo(m);
-	return sc->lock;
 }
 
 DRIVER_MODULE(uaudio, uhub, uaudio_driver, uaudio_devclass, NULL, NULL);
