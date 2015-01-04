@@ -610,8 +610,7 @@ extern int in6_ifindex2scopeid (int);
 int	in6_mask2len(const struct in6_addr *, const u_char *);
 extern void in6_len2mask (struct in6_addr *, int);
 void	in6_control_dispatch(netmsg_t msg);
-int	in6_control (struct socket *,
-			u_long, caddr_t, struct ifnet *, struct thread *);
+int	in6_control (u_long, caddr_t, struct ifnet *, struct thread *);
 int	in6_update_ifa (struct ifnet *, struct in6_aliasreq *,
 			struct in6_ifaddr *);
 void	in6_purgeaddr (struct ifaddr *);

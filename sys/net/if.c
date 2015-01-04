@@ -701,7 +701,7 @@ if_purgeaddrs_nolink(struct ifnet *ifp)
 			ifr.ifra_addr = *ifa->ifa_addr;
 			if (ifa->ifa_dstaddr)
 				ifr.ifra_broadaddr = *ifa->ifa_dstaddr;
-			if (in_control(NULL, SIOCDIFADDR, (caddr_t)&ifr, ifp,
+			if (in_control(SIOCDIFADDR, (caddr_t)&ifr, ifp,
 				       NULL) == 0)
 				continue;
 		}

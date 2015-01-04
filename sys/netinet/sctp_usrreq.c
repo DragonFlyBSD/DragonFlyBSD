@@ -4205,7 +4205,7 @@ sctp_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
 	if (req == PRU_CONTROL) {
 		switch (family) {
 		case PF_INET:
-			error = in_control(so, (long)m, (caddr_t)nam,
+			error = in_control((long)m, (caddr_t)nam,
 			    (struct ifnet *)control
 #if defined(__NetBSD__)
 			    , p
@@ -4214,7 +4214,7 @@ sctp_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
 			break;
 #ifdef INET6
 		case PF_INET6:
-			error = in6_control(so, (long)m, (caddr_t)nam,
+			error = in6_control((long)m, (caddr_t)nam,
 					    (struct ifnet *)control, p);
 			break;
 #endif

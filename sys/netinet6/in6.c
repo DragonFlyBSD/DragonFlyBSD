@@ -128,8 +128,8 @@ const struct in6_addr in6mask128 = IN6MASK128;
 const struct sockaddr_in6 sa6_any = {sizeof(sa6_any), AF_INET6,
 				     0, 0, IN6ADDR_ANY_INIT, 0};
 
-static int in6_lifaddr_ioctl (struct socket *, u_long, caddr_t,
-	struct ifnet *, struct thread *);
+static int in6_lifaddr_ioctl (u_long, caddr_t, struct ifnet *,
+	     struct thread *);
 static int in6_ifinit (struct ifnet *, struct in6_ifaddr *,
 			   struct sockaddr_in6 *, int);
 static void in6_unlink_ifa (struct in6_ifaddr *, struct ifnet *);
@@ -386,8 +386,7 @@ in6_control_dispatch(netmsg_t msg)
 {
 	int error;
 
-	error = in6_control(msg->control.base.nm_so,
-			    msg->control.nm_cmd,
+	error = in6_control(msg->control.nm_cmd,
 			    msg->control.nm_data,
 			    msg->control.nm_ifp,
 			    msg->control.nm_td);
@@ -395,11 +394,9 @@ in6_control_dispatch(netmsg_t msg)
 }
 
 int
-in6_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
-    struct thread *td)
+in6_control(u_long cmd, caddr_t data, struct ifnet *ifp, struct thread *td)
 {
 	struct netmsg_pru_control msg;
-	int error;
 
 	switch (cmd) {
 	case SIOCSIFPREFIX_IN6:
@@ -433,16 +430,6 @@ in6_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		 */
 		return (EOPNOTSUPP);
 
-	case SIOCALIFADDR:
-	case SIOCDLIFADDR:
-		if ((error = priv_check(td, PRIV_ROOT)) != 0)
-			return (error);
-		/* FALLTHROUGH */
-	case SIOCGLIFADDR:
-		if (ifp == NULL)
-			return (EOPNOTSUPP);
-		return in6_lifaddr_ioctl(so, cmd, data, ifp, td);
-
 	/* mroute */
 	case SIOCGETSGCNT_IN6:
 	case SIOCGETMIFCNT_IN6:
@@ -466,6 +453,8 @@ in6_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	case SIOCGSCOPE6:
 	case SIOCGSCOPE6DEF:
 	/* change address */
+	case SIOCALIFADDR:
+	case SIOCDLIFADDR:
 	case SIOCSIFALIFETIME_IN6:
 	case SIOCAIFADDR_IN6:
 	case SIOCDIFADDR_IN6:
@@ -510,6 +499,18 @@ in6_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	privileged = FALSE;
 	if (priv_check(td, PRIV_ROOT) == 0)
 		privileged = TRUE;
+
+	switch (cmd) {
+	case SIOCALIFADDR:
+	case SIOCDLIFADDR:
+		if (!privileged)
+			return (EPERM);
+		/* FALLTHROUGH */
+	case SIOCGLIFADDR:
+		if (ifp == NULL)
+			return (EOPNOTSUPP);
+		return in6_lifaddr_ioctl(cmd, data, ifp, td);
+	}
 
 	switch (cmd) {
 	case SIOCGETSGCNT_IN6:
@@ -1390,8 +1391,8 @@ in6_purgeif(struct ifnet *ifp)
  * address encoding scheme. (see figure on page 8)
  */
 static int
-in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
-		  struct ifnet *ifp, struct thread *td)
+in6_lifaddr_ioctl(u_long cmd, caddr_t data, struct ifnet *ifp,
+    struct thread *td)
 {
 	struct if_laddrreq *iflr = (struct if_laddrreq *)data;
 	struct sockaddr *sa;
@@ -1499,7 +1500,8 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 		in6_len2mask(&ifra.ifra_prefixmask.sin6_addr, prefixlen);
 
 		ifra.ifra_flags = iflr->flags & ~IFLR_PREFIX;
-		return in6_control(so, SIOCAIFADDR_IN6, (caddr_t)&ifra, ifp, td);
+		return in6_control_internal(SIOCAIFADDR_IN6, (caddr_t)&ifra,
+		    ifp, td);
 	    }
 	case SIOCGLIFADDR:
 	case SIOCDLIFADDR:
@@ -1619,8 +1621,8 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 			      ia->ia_prefixmask.sin6_len);
 
 			ifra.ifra_flags = ia->ia6_flags;
-			return in6_control(so, SIOCDIFADDR_IN6, (caddr_t)&ifra,
-				ifp, td);
+			return in6_control_internal(SIOCDIFADDR_IN6,
+			    (caddr_t)&ifra, ifp, td);
 		}
 	    }
 	}

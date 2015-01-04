@@ -921,7 +921,7 @@ vke_init_addr(struct ifnet *ifp, in_addr_t addr, in_addr_t mask)
 	 * it again before calling ifnet.if_ioctl().
 	 */
 	ifnet_deserialize_all(ifp);
-	ret = in_control(NULL, SIOCAIFADDR, (caddr_t)&ifra, ifp, NULL);
+	ret = in_control(SIOCAIFADDR, (caddr_t)&ifra, ifp, NULL);
 	ifnet_serialize_all(ifp);
 
 	return ret;

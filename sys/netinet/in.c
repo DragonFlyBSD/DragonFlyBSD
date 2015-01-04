@@ -63,8 +63,7 @@ MALLOC_DEFINE(M_IPMADDR, "in_multi", "internet multicast address");
 
 static int in_mask2len (struct in_addr *);
 static void in_len2mask (struct in_addr *, int);
-static int in_lifaddr_ioctl (struct socket *, u_long, caddr_t,
-	struct ifnet *, struct thread *);
+static int in_lifaddr_ioctl (u_long, caddr_t, struct ifnet *, struct thread *);
 
 static void	in_socktrim (struct sockaddr_in *);
 static int	in_ifinit(struct ifnet *, struct in_ifaddr *,
@@ -196,8 +195,8 @@ in_control_dispatch(netmsg_t msg)
 {
 	int error;
 
-	error = in_control(msg->base.nm_so, msg->control.nm_cmd,
-	    msg->control.nm_data, msg->control.nm_ifp, msg->control.nm_td);
+	error = in_control(msg->control.nm_cmd, msg->control.nm_data,
+	    msg->control.nm_ifp, msg->control.nm_td);
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -220,24 +219,14 @@ in_control_internal_dispatch(netmsg_t msg)
  * NOTE! td might be NULL.
  */
 int
-in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
-    struct thread *td)
+in_control(u_long cmd, caddr_t data, struct ifnet *ifp, struct thread *td)
 {
 	struct netmsg_pru_control msg;
-	int error;
 
 	switch (cmd) {
+	/* change address */
 	case SIOCALIFADDR:
 	case SIOCDLIFADDR:
-		if (td && (error = priv_check(td, PRIV_ROOT)) != 0)
-			return error;
-		/* FALLTHROUGH */
-	case SIOCGLIFADDR:
-		if (!ifp)
-			return EINVAL;
-		return in_lifaddr_ioctl(so, cmd, data, ifp, td);
-
-	/* change address */
 	case SIOCSIFDSTADDR:
 	case SIOCSIFBRDADDR:
 	case SIOCSIFADDR:
@@ -438,6 +427,18 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	struct sockaddr_in oldaddr;
 	int hostIsNew, iaIsNew, maskIsNew, ifpWasUp;
 	int error = 0;
+
+	switch (cmd) {
+	case SIOCALIFADDR:
+	case SIOCDLIFADDR:
+		if (td && (error = priv_check(td, PRIV_ROOT)) != 0)
+			return error;
+		/* FALLTHROUGH */
+	case SIOCGLIFADDR:
+		if (!ifp)
+			return EINVAL;
+		return in_lifaddr_ioctl(cmd, data, ifp, td);
+	}
 
 	iaIsNew = 0;
 	ifpWasUp = 0;
@@ -785,8 +786,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
  * NOTE! td might be NULL.
  */
 static int
-in_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
-		 struct thread *td)
+in_lifaddr_ioctl(u_long cmd, caddr_t data, struct ifnet *ifp, struct thread *td)
 {
 	struct if_laddrreq *iflr = (struct if_laddrreq *)data;
 
@@ -846,7 +846,8 @@ in_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		ifra.ifra_mask.sin_len = sizeof(struct sockaddr_in);
 		in_len2mask(&ifra.ifra_mask.sin_addr, iflr->prefixlen);
 
-		return in_control(so, SIOCAIFADDR, (caddr_t)&ifra, ifp, td);
+		return in_control_internal(SIOCAIFADDR, (caddr_t)&ifra, ifp,
+		    td);
 	    }
 	case SIOCGLIFADDR:
 	case SIOCDLIFADDR:
@@ -936,8 +937,8 @@ in_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 			bcopy(&ia->ia_sockmask, &ifra.ifra_dstaddr,
 				ia->ia_sockmask.sin_len);
 
-			return in_control(so, SIOCDIFADDR, (caddr_t)&ifra,
-					  ifp, td);
+			return in_control_internal(SIOCDIFADDR, (caddr_t)&ifra,
+			    ifp, td);
 		}
 	    }
 	}
