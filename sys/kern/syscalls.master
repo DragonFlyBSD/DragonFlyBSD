@@ -348,7 +348,7 @@
 224	STD	{ int msgctl(int msqid, int cmd, \
 			    struct msqid_ds *buf); }
 225	STD	{ int msgget(key_t key, int msgflg); }
-226	STD	{ int msgsnd(int msqid, void *msgp, size_t msgsz, \
+226	STD	{ int msgsnd(int msqid, const void *msgp, size_t msgsz, \
 			    int msgflg); }
 227	STD	{ int msgrcv(int msqid, void *msgp, size_t msgsz, \
 			    long msgtyp, int msgflg); }

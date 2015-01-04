@@ -365,7 +365,7 @@ sysvipc_msgctl(int msqid, int cmd, struct msqid_ds *buf) {
 }
 
 int
-sysvipc_msgsnd(int msqid, void *msgp, size_t msgsz, int msgflg)
+sysvipc_msgsnd(int msqid, const void *msgp, size_t msgsz, int msgflg)
 {
 	int segs_needed, error;
 	struct msg *msghdr;

@@ -6,9 +6,9 @@
 
 extern char sysvipc_userland;
 
-extern int __sys_msgsnd(int, void *, size_t, int);
+extern int __sys_msgsnd(int, const void *, size_t, int);
 
-int msgsnd(int msqid, void *msgp, size_t msgsz, int msgflg)
+int msgsnd(int msqid, const void *msgp, size_t msgsz, int msgflg)
 {
 	if (sysvipc_userland)
 		return (sysvipc_msgsnd(msqid, msgp, msgsz, msgflg));

@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/gen/msgsnd.3,v 1.9.2.5 2001/12/14 18:33:51 ru Exp $
 .\"
-.Dd January 4, 2014
+.Dd January 4, 2015
 .Dt MSGSND 2
 .Os
 .Sh NAME
@@ -44,7 +44,7 @@
 .In sys/ipc.h
 .In sys/msg.h
 .Ft int
-.Fn msgsnd "int msqid" "void *msgp" "size_t msgsz" "int msgflg"
+.Fn msgsnd "int msqid" "const void *msgp" "size_t msgsz" "int msgflg"
 .Sh DESCRIPTION
 The
 .Fn msgsnd

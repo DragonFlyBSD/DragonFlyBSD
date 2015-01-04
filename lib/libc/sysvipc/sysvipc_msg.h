@@ -120,7 +120,7 @@ struct msqid_pool {
 
 int sysvipc_msgctl (int, int, struct msqid_ds *);
 int sysvipc_msgget (key_t, int);
-int sysvipc_msgsnd (int, void *, size_t, int);
-int sysvipc_msgrcv (int, void*, size_t, long, int);
+int sysvipc_msgsnd (int, const void *, size_t, int);
+int sysvipc_msgrcv (int, void *, size_t, long, int);
 
 #endif /* !_SYSV_MSG_H_ */

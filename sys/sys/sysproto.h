@@ -1066,7 +1066,7 @@ struct	msgsnd_args {
 	struct sysmsg sysmsg;
 #endif
 	int	msqid;	char msqid_[PAD_(int)];
-	void *	msgp;	char msgp_[PAD_(void *)];
+	const void *	msgp;	char msgp_[PAD_(const void *)];
 	size_t	msgsz;	char msgsz_[PAD_(size_t)];
 	int	msgflg;	char msgflg_[PAD_(int)];
 };

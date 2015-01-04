@@ -456,7 +456,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 {
 	struct thread *td = curthread;
 	int msqid = uap->msqid;
-	void *user_msgp = uap->msgp;
+	const void *user_msgp = uap->msgp;
 	size_t msgsz = uap->msgsz;
 	int msgflg = uap->msgflg;
 	int segs_needed, eval;
@@ -686,7 +686,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 		wakeup((caddr_t)msqptr);
 		goto done;
 	}
-	user_msgp = (char *)user_msgp + sizeof(msghdr->msg_type);
+	user_msgp = (const char *)user_msgp + sizeof(msghdr->msg_type);
 
 	/*
 	 * Validate the message type
@@ -729,7 +729,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 			goto done;
 		}
 		msgsz -= tlen;
-		user_msgp = (char *)user_msgp + tlen;
+		user_msgp = (const char *)user_msgp + tlen;
 		next = msgmaps[next].next;
 	}
 	if (next != -1)
