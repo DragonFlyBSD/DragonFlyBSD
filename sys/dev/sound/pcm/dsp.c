@@ -85,6 +85,7 @@ static int dsp_filter_write(struct knote *, long);
 DEVFS_DECLARE_CLONE_BITMAP(dsp);
 
 struct dev_ops dsp_ops = {
+	{ "sound", 0, D_MPSAFE },
 	.d_open =	dsp_open,
 	.d_close =	dsp_close,
 	.d_read =	dsp_read,
@@ -432,17 +433,17 @@ static const struct {
 
 #define DSP_FIXUP_ERROR()		do {				\
 	prio = dsp_get_flags(i_dev);					\
-	if (!DSP_F_VALID(flags))					\
+	if (!DSP_F_VALID(flags)) 					\
 		error = EINVAL;						\
 	if (!DSP_F_DUPLEX(flags) &&					\
 	    ((DSP_F_READ(flags) && d->reccount == 0) ||			\
-	    (DSP_F_WRITE(flags) && d->playcount == 0)))			\
+	    (DSP_F_WRITE(flags) && d->playcount == 0))) 		\
 		error = ENOTSUP;					\
 	else if (!DSP_F_DUPLEX(flags) && (prio & SD_F_SIMPLEX) &&	\
 	    ((DSP_F_READ(flags) && (prio & SD_F_PRIO_WR)) ||		\
 	    (DSP_F_WRITE(flags) && (prio & SD_F_PRIO_RD))))		\
 		error = EBUSY;						\
-	else if (DSP_REGISTERED(d, i_dev))				\
+	else if (DSP_REGISTERED(d, i_dev)) 				\
 		error = EBUSY;						\
 } while (0)
 
@@ -702,6 +703,14 @@ dsp_close(struct dev_close_args *ap)
 	struct pcm_channel *rdch, *wrch, *volch;
 	struct snddev_info *d;
 	int sg_ids, rdref, wdref;
+	int subunit;
+
+	/*
+	 * subunit is a unique number for the cloned device, it
+	 * does NOT represent the virtual device channel.
+	 */
+	subunit = PCMSUBUNIT(i_dev);
+	kprintf("CLOSE DEVICE %p (%d) %s\n", i_dev, PCMSUBUNIT(i_dev), i_dev->si_name);
 
 	d = dsp_get_info(i_dev);
 	if (!DSP_REGISTERED(d, i_dev))
@@ -811,7 +820,16 @@ dsp_close(struct dev_close_args *ap)
 
 	PCM_GIANT_LEAVE(d);
 
-	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(dsp),0);
+	/*
+	 * PCMCHAN(i_dev) is not the actual channel but instead is
+	 * simply the unique subunit we assigned to the clone device.
+	 *
+	 * We do not do this here but instead do it when the clone is
+	 * GCd.
+	 */
+	/*
+	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(dsp), subunit);
+	*/
 
 	return (0);
 }
@@ -2354,109 +2372,61 @@ dsp_mmap_single(struct dev_mmap_single_args *ap)
 	return (0);
 }
 
-/* So much for dev_stdclone() */
-static int
-dsp_stdclone(const char *name, char *namep, char *sep, int use_sep, int *u, int *c)
-{
-	size_t len;
-
-	len = strlen(namep);
-
-	if (bcmp(name, namep, len) != 0)
-		return (ENODEV);
-
-	name += len;
-
-	if (isdigit(*name) == 0)
-		return (ENODEV);
-
-	len = strlen(sep);
-
-	if (*name == '0' && !(name[1] == '\0' || bcmp(name + 1, sep, len) == 0))
-		return (ENODEV);
-
-	for (*u = 0; isdigit(*name) != 0; name++) {
-		*u *= 10;
-		*u += *name - '0';
-		if (*u > dsp_umax)
-			return (ENODEV);
-	}
-
-	if (*name == '\0')
-		return ((use_sep == 0) ? 0 : ENODEV);
-
-	if (bcmp(name, sep, len) != 0 || isdigit(name[len]) == 0)
-		return (ENODEV);
-
-	name += len;
-
-	if (*name == '0' && name[1] != '\0')
-		return (ENODEV);
-
-	for (*c = 0; isdigit(*name) != 0; name++) {
-		*c *= 10;
-		*c += *name - '0';
-		if (*c > dsp_cmax)
-			return (ENODEV);
-	}
-
-	if (*name != '\0')
-		return (ENODEV);
-
-	return (0);
-}
-
 /*
- *     for i = 0 to channels of device N
- *     if dspN.i isn't busy and in the right dir, create a dev_t and return it
+ * for i = 0 to channels of device N
+ * if dspN.i isn't busy and in the right dir, create a dev_t and return it
  */
 int
 dsp_clone(struct dev_clone_args *ap)
 {
 	struct cdev *i_dev = ap->a_head.a_dev;
-	const char *name = ap->a_name;
 	struct snddev_info *d;
 	struct snd_clone_entry *ce;
 	struct pcm_channel *c;
 	int i, unit, udcmask, cunit, devtype, devhw, devcmax, tumax;
-	char *devname, *devcmp, *devsep;
+	size_t len;
+	char sname[64];
 	int err = EBUSY;
-	static struct cdev *dev;
+	static struct cdev *dev = NULL;
 
 	KASSERT(dsp_umax >= 0 && dsp_cmax >= 0, ("Uninitialized unit!"));
 
+	/*
+	 * unit already associated with device, we can just obtain it.
+	 * the default dsp device is a devfs alias to the correct
+	 * device so nothing to worry about there either.
+	 */
+	unit = PCMUNIT(i_dev);
+
+#if 0
+	/* not applicable to DFly */
 	d = dsp_get_info(i_dev);
 	if (d != NULL) {
 		return (ENODEV);
 	}
+#endif
 
-	unit = -1;
+	ksnprintf(sname, sizeof(sname), "%s", ap->a_name);
+	len = strlen(sname);
+	while (len && sname[len-1] >= '0' && sname[len-1] <= '9')
+		--len;
+	sname[len] = 0;
+
 	cunit = -1;
 	devtype = -1;
 	devhw = 0;
 	devcmax = -1;
 	tumax = -1;
-	devname = NULL;
-	devsep = NULL;
 
-	for (i = 0; unit == -1 &&
-	    i < (sizeof(dsp_cdevs) / sizeof(dsp_cdevs[0])); i++) {
+	for (i = 0; i < sizeof(dsp_cdevs) / sizeof(dsp_cdevs[0]); ++i) {
+		if (strcmp(dsp_cdevs[i].name, sname) != 0)
+			continue;
 		devtype = dsp_cdevs[i].type;
-		devcmp = dsp_cdevs[i].name;
-		devsep = dsp_cdevs[i].sep;
-		devname = dsp_cdevs[i].alias;
-		if (devname == NULL)
-			devname = devcmp;
 		devhw = dsp_cdevs[i].hw;
 		devcmax = dsp_cdevs[i].max - 1;
-		if (strcmp(name, devcmp) == 0)
-			unit = snd_unit;
-		else if (dsp_stdclone(name, devcmp, devsep,
-		    dsp_cdevs[i].use_sep, &unit, &cunit) != 0) {
-			unit = -1;
-			cunit = -1;
-		}
+		break;
 	}
+
 	unit = snd_unit;	/* XXX: I don't understand the freebsd code */
 
 	d = devclass_get_softc(pcm_devclass, unit);
@@ -2536,38 +2506,39 @@ dsp_clone(struct dev_clone_args *ap)
 		return (err);
 	}
 
+	/*
+	 * Allocate channel, create device if necessary.
+	 */
 dsp_clone_alloc:
 	ce = snd_clone_alloc(d->clones, &dev, &cunit, udcmask);
 	if (tumax != -1)
 		snd_clone_setmaxunit(d->clones, tumax);
 	if (ce != NULL) {
+		/*
+		 * NOTE: subunit is a unique number unrelated to the channel id.
+		 */
 		udcmask |= snd_c2unit(cunit);
 		int subunit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(dsp), 0);
 
-/* Code from master
-		pcm_chan->dsp_dev = make_only_dev(&dsp_ops,
-				PCMMKMINOR(PCMUNIT(i_dev), pcm_chan->chan_num),
-				UID_ROOT, GID_WHEEL,
-				0666,
-				"%s.%d",
-				devtoname(i_dev),
-				pcm_chan->chan_num);
-*/
 		dev = make_only_dev(&dsp_ops,
-		    PCMMKMINOR(unit,subunit),
+		    PCMMKMINOR(unit, devtype, subunit),
 		    UID_ROOT, GID_WHEEL, 0666, "%s%d.%d",
-		    devname, unit, subunit);
+		    sname, unit, subunit);
 		snd_clone_register(ce, dev);
+		err = 0;
+		kprintf("NEW DEVICE %p (%d) %s\n", dev, PCMSUBUNIT(dev), dev->si_name);
+	} else {
+		/*
+		 * Use device already registered, we must add a ref to the device.
+		 */
+		kprintf("REUSE DEVICE %p (%d) %s\n", dev, PCMSUBUNIT(dev), dev->si_name);
 		err = 0;
 	}
 
 	ap->a_dev = dev;
 
 	PCM_RELEASE_QUICK(d);
-#if 0
-	if (*dev != NULL)
-		dev_ref(*dev);
-#endif
+
 	return (err);
 }
 
@@ -2581,6 +2552,8 @@ dsp_sysinit(void *p)
 	dsp_umax = PCMMAXUNIT;
 	dsp_cmax = PCMMAXCHAN;
 	dsp_ehtag = EVENTHANDLER_REGISTER(dev_clone, dsp_clone, 0, 1000);
+
+	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(dsp));
 }
 
 static void

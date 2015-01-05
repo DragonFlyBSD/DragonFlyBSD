@@ -39,9 +39,11 @@ struct snd_clone;
 #define SND_CLONE_DEADLINE_DEFAULT	750
 
 /*
- * Fit within 24bit MAXMINOR.
+ * Fit within 24bit MAXMINOR.  In DragonFly the minor mask
+ * is 0xffff00ff so set this to something that won't mess up.
+ * (the assertions should just be removed, frankly).
  */
-#define SND_CLONE_MAXUNIT		0xffffff
+#define SND_CLONE_MAXUNIT		0xffffffff
 
 /*
  * Creation flags, mostly related to the behaviour of garbage collector.

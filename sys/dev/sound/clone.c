@@ -32,16 +32,16 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/devfs.h>
 
 #ifdef HAVE_KERNEL_OPTION_HEADERS
 #include "opt_snd.h"
 #endif
 
-#if defined(SND_DIAGNOSTIC) || defined(SND_DEBUG)
 #include <dev/sound/pcm/sound.h>
-#endif
-
 #include <dev/sound/clone.h>
+
+extern struct devfs_bitmap devfs_dsp_clone_bitmap;
 
 /*
  * So here we go again, another clonedevs manager. Unlike default clonedevs,
@@ -171,10 +171,6 @@ snd_clone_create(int typemask, int maxunit, int deadline, uint32_t flags)
 
 	SND_CLONE_ASSERT(!(typemask & ~SND_CLONE_MAXUNIT),
 	    ("invalid typemask: 0x%08x", typemask));
-	SND_CLONE_ASSERT(maxunit == -1 ||
-	    !(maxunit & ~(~typemask & SND_CLONE_MAXUNIT)),
-	    ("maxunit overflow: typemask=0x%08x maxunit=%d",
-	    typemask, maxunit));
 	SND_CLONE_ASSERT(!(flags & ~SND_CLONE_MASK),
 	    ("invalid clone flags=0x%08x", flags));
 
@@ -263,10 +259,6 @@ int
 snd_clone_setmaxunit(struct snd_clone *c, int maxunit)
 {
 	SND_CLONE_ASSERT(c != NULL, ("NULL snd_clone"));
-	SND_CLONE_ASSERT(maxunit == -1 ||
-	    !(maxunit & ~(~c->typemask & SND_CLONE_MAXUNIT)),
-	    ("maxunit overflow: typemask=0x%08x maxunit=%d",
-	    c->typemask, maxunit));
 
 	c->maxunit = (maxunit == -1) ? (~c->typemask & SND_CLONE_MAXUNIT) :
 	    maxunit;
@@ -401,6 +393,7 @@ snd_clone_gc(struct snd_clone *c)
 	struct snd_clone_entry *ce, *tce;
 	struct timespec now;
 	int pruned;
+	int subunit;
 
 	SND_CLONE_ASSERT(c != NULL, ("NULL snd_clone"));
 
@@ -434,7 +427,9 @@ snd_clone_gc(struct snd_clone *c)
 				ce->pid = -1;
 			} else {
 				TAILQ_REMOVE(&c->head, ce, link);
+				subunit = PCMSUBUNIT(ce->devt);
 				destroy_dev(ce->devt);
+				devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(dsp), subunit);
 				kfree(ce, M_DEVBUF);
 				c->size--;
 			}
@@ -450,14 +445,18 @@ void
 snd_clone_destroy(struct snd_clone *c)
 {
 	struct snd_clone_entry *ce, *tmp;
+	int subunit;
 
 	SND_CLONE_ASSERT(c != NULL, ("NULL snd_clone"));
 
 	ce = TAILQ_FIRST(&c->head);
 	while (ce != NULL) {
 		tmp = TAILQ_NEXT(ce, link);
-		if (ce->devt != NULL)
+		if (ce->devt != NULL) {
+			subunit = PCMSUBUNIT(ce->devt);
 			destroy_dev(ce->devt);
+			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(dsp), subunit);
+		}
 		kfree(ce, M_DEVBUF);
 		ce = tmp;
 	}

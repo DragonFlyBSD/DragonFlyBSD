@@ -99,26 +99,39 @@ struct snd_mixer;
 #define SOUND_MAXVER	SOUND_MODVER
 
 /*
- * We're abusing the fact that MAXMINOR still have enough room
- * for our bit twiddling and nobody ever need 512 unique soundcards,
- * 32 unique device types and 1024 unique cloneable devices for the
- * next 100 years...
+ * Minor number encoding: 0xFFFF00FF
+ *	unit		  0x000000FF
+ *	chan		  0x07FF0000
+ *	devtype		  0xF8000000
  */
 
-#define PCMMAXUNIT		(snd_max_u())
-#define PCMMAXDEV		(snd_max_d())
-#define PCMMAXCHAN		(snd_max_c())
+#define SND_U_MASK	0x000000FF
+#define SND_C_MASK	0x07FF0000
+#define SND_D_MASK	0xF8000000
 
-#define PCMMAXCLONE		PCMMAXCHAN
+#define PCMMAXUNIT	255
+#define PCMMAXDEV	31
+#define PCMMAXCHAN	2047
+#define PCMMAXCLONE	PCMMAXCHAN
 
-#define PCMUNIT(x)		(snd_unit2u(minor(x)))
-#define PCMDEV(x)		(snd_unit2d(minor(x)))
-#define PCMCHAN(x)		(snd_unit2c(minor(x)))
+/*
+ *
+ */
+#define PCMUNIT(x)		(minor(x) & 0x00FF)
+#define PCMSUBUNIT(x)		((minor(x) >> 16) & 0x07FF)
+#define PCMDEV(x)		((minor(x) >> 27) & 0x001F)
 
-/* XXX unit2minor compat */
-#define PCMMINOR(x)		snd_u2unit(x)
+#define PCMMKMINOR(u, d, sub)	(snd_u2unit(u) | snd_c2unit(sub) | snd_d2unit(d))
 
-#define PCMMKMINOR(u, c)	((((c) & PCMMAXCHAN) << 16) | ((u) & PCMMAXUNIT))
+#define snd_unit2u(m)		((m) & 0x00FF)
+#define snd_unit2c(m)		(((m) >> 16) & 0x07FF)
+#define snd_unit2d(m)		(((m) >> 27) & 0x001F)
+
+#define snd_u2unit(u)		((u) & 0x00FF)
+#define snd_c2unit(c)		(((c) & 0x07FF) << 16)
+#define snd_d2unit(d)		(((d) & 0x001F) << 27)
+
+#define snd_mkunit(u, d, c)	(snd_u2unit(u) | snd_d2unit(d) | snd_c2unit(c))
 
 /*
  * By design, limit possible channels for each direction.
@@ -416,12 +429,12 @@ struct snddev_info {
 void	sound_oss_sysinfo(oss_sysinfo *);
 int	sound_oss_card_info(oss_card_info *);
 
-#define PCM_LOCKOWNED(d)	lockstatus((d)->lock, curthread)
+#define PCM_LOCKOWNED(d)	(lockstatus((d)->lock, curthread) == LK_EXCLUSIVE)
 #define PCM_LOCK(d)		lockmgr((d)->lock, LK_EXCLUSIVE)
 #define PCM_UNLOCK(d)		lockmgr((d)->lock, LK_RELEASE)
 #define PCM_TRYLOCK(d)		lockmgr((d)->lock, LK_EXCLUSIVE|LK_NOWAIT)
-#define PCM_LOCKASSERT(d)	KKASSERT(lockstatus((d)->lock, curthread) != 0)
-#define PCM_UNLOCKASSERT(d)	KKASSERT(lockstatus((d)->lock, curthread) == 0)
+#define PCM_LOCKASSERT(d)	KKASSERT(lockstatus((d)->lock, curthread) == LK_EXCLUSIVE)
+#define PCM_UNLOCKASSERT(d)	KKASSERT(lockstatus((d)->lock, curthread) != LK_EXCLUSIVE)
 
 /*
  * For PCM_[WAIT | ACQUIRE | RELEASE], be sure to surround these

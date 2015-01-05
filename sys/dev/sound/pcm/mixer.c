@@ -156,12 +156,12 @@ mixer_set_softpcmvol(struct snd_mixer *m, struct snddev_info *d,
 	if (!PCM_REGISTERED(d))
 		return (EINVAL);
 
-	if (lockstatus(m->lock, curthread))
+	if (lockstatus(m->lock, curthread) == LK_EXCLUSIVE)
 		dropmtx = 1;
 	else
 		dropmtx = 0;
 	
-	if (!(d->flags & SD_F_MPSAFE) || lockstatus(d->lock, curthread) == 0)
+	if (!(d->flags & SD_F_MPSAFE) || lockstatus(d->lock, curthread) == LK_EXCLUSIVE)
 		acquiremtx = 0;
 	else
 		acquiremtx = 1;
@@ -209,12 +209,12 @@ mixer_set_eq(struct snd_mixer *m, struct snddev_info *d,
 	if (!PCM_REGISTERED(d))
 		return (EINVAL);
 
-	if (lockstatus(m->lock, curthread))
+	if (lockstatus(m->lock, curthread) == LK_EXCLUSIVE)
 		dropmtx = 1;
 	else
 		dropmtx = 0;
 	
-	if (!(d->flags & SD_F_MPSAFE) || lockstatus(d->lock, curthread) == 0)
+	if (!(d->flags & SD_F_MPSAFE) || lockstatus(d->lock, curthread) == LK_EXCLUSIVE)
 		acquiremtx = 0;
 	else
 		acquiremtx = 1;
@@ -265,7 +265,7 @@ mixer_set(struct snd_mixer *m, u_int dev, u_int lev)
 		return -1;
 
 	/* It is safe to drop this mutex due to Giant. */
-	if (!(d->flags & SD_F_MPSAFE) && lockstatus(m->lock, curthread) == 0)
+	if (!(d->flags & SD_F_MPSAFE) && lockstatus(m->lock, curthread) == LK_EXCLUSIVE)
 		dropmtx = 1;
 	else
 		dropmtx = 0;
@@ -347,7 +347,7 @@ mixer_setrecsrc(struct snd_mixer *mixer, u_int32_t src)
 	d = device_get_softc(mixer->dev);
 	if (d == NULL)
 		return -1;
-	if (!(d->flags & SD_F_MPSAFE) && lockstatus(mixer->lock, curthread) == 0)
+	if (!(d->flags & SD_F_MPSAFE) && lockstatus(mixer->lock, curthread) == LK_EXCLUSIVE)
 		dropmtx = 1;
 	else
 		dropmtx = 0;
@@ -727,7 +727,7 @@ mixer_init(device_t dev, kobj_class_t cls, void *devinfo)
 
 	unit = device_get_unit(dev);
 	devunit = snd_mkunit(unit, SND_DEV_CTL, 0);
-	pdev = make_dev(&mixer_cdevsw, PCMMKMINOR(unit,0),
+	pdev = make_dev(&mixer_cdevsw, PCMMKMINOR(unit, 0, 0),
 		 UID_ROOT, GID_WHEEL, 0666, "mixer%d", unit);
 	pdev->si_drv1 = m;
 	snddev->mixer_dev = pdev;

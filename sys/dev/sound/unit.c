@@ -35,6 +35,8 @@
 
 #include <dev/sound/unit.h>
 
+#if 0
+
 /*
  * Unit magic allocator for sound driver.
  *
@@ -195,4 +197,10 @@ snd_unit_init(void)
 		kprintf("%s() u=0x%08x [%d] d=0x%08x [%d] c=0x%08x [%d]\n",
 		    __func__, SND_U_MASK, snd_max_u() + 1,
 		    SND_D_MASK, snd_max_d() + 1, SND_C_MASK, snd_max_c() + 1);
+}
+#endif
+
+void
+snd_unit_init(void)
+{
 }

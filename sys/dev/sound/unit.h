@@ -29,24 +29,6 @@
 #ifndef _SND_UNIT_H_
 #define _SND_UNIT_H_
 
-#define SND_UNIT_UMIN	16
-#define SND_UNIT_UMAX	2048
-
-int snd_max_u(void);
-int snd_max_d(void);
-int snd_max_c(void);
-int snd_unit2u(int);
-int snd_unit2d(int);
-int snd_unit2c(int);
-int snd_u2unit(int);
-int snd_d2unit(int);
-int snd_c2unit(int);
-int snd_mkunit(int, int, int);
-
 void snd_unit_init(void);
-
-#define SND_U_MASK	(snd_u2unit(snd_max_u()))
-#define SND_D_MASK	(snd_d2unit(snd_max_d()))
-#define SND_C_MASK	(snd_c2unit(snd_max_c()))
 
 #endif /* !_SND_UNIT_H_ */

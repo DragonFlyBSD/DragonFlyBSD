@@ -56,8 +56,8 @@ extern SLIST_HEAD(pcm_synclist, pcmchan_syncgroup) snd_pcm_syncgroups;
 #define PCM_SG_LOCK()	    lockmgr(&snd_pcm_syncgroups_mtx, LK_EXCLUSIVE)
 #define PCM_SG_TRYLOCK()    mtx_trylock(&snd_pcm_syncgroups_mtx)
 #define PCM_SG_UNLOCK()	    lockmgr(&snd_pcm_syncgroups_mtx, LK_RELEASE)
-#define PCM_SG_ASSERTOWNED     KKASSERT(lockstatus(&snd_pcm_syncgroups_mtx, curthread) != 0)
-#define PCM_SG_ASSERTNOTOWNED  KKASSERT(lockstatus(&snd_pcm_syncgroups_mtx, curthread) == 0)
+#define PCM_SG_ASSERTOWNED     KKASSERT(lockstatus(&snd_pcm_syncgroups_mtx, curthread) == LK_EXCLUSIVE)
+#define PCM_SG_ASSERTNOTOWNED  KKASSERT(lockstatus(&snd_pcm_syncgroups_mtx, curthread) != LK_EXCLUSIVE)
 
 /**
  * @brief Specifies an audio device sync group
@@ -309,12 +309,12 @@ int chn_syncdestroy(struct pcm_channel *c);
 int chn_getpeaks(struct pcm_channel *c, int *lpeak, int *rpeak);
 #endif
 
-#define CHN_LOCKOWNED(c)	lockstatus((c)->lock, curthread)
+#define CHN_LOCKOWNED(c)	(lockstatus((c)->lock, curthread) == LK_EXCLUSIVE)
 #define CHN_LOCK(c)		lockmgr((c)->lock, LK_EXCLUSIVE)
 #define CHN_UNLOCK(c)		lockmgr((c)->lock, LK_RELEASE)
 #define CHN_TRYLOCK(c)		lockmgr((c)->lock, LK_EXCLUSIVE|LK_NOWAIT)
-#define CHN_LOCKASSERT(c)	KKASSERT(lockstatus((c)->lock, curthread) != 0)
-#define CHN_UNLOCKASSERT(c)	KKASSERT(lockstatus((c)->lock, curthread) == 0)
+#define CHN_LOCKASSERT(c)	KKASSERT(lockstatus((c)->lock, curthread) == LK_EXCLUSIVE)
+#define CHN_UNLOCKASSERT(c)	KKASSERT(lockstatus((c)->lock, curthread) != LK_EXCLUSIVE)
 
 int snd_fmtvalid(uint32_t fmt, uint32_t *fmtlist);
 

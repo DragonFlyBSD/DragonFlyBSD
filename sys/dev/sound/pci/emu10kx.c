@@ -2334,7 +2334,8 @@ emu10kx_dev_init(struct emu_sc_info *sc)
 		 LK_CANRECURSE);
 	unit = device_get_unit(sc->dev);
 
-	sc->cdev = make_dev(&emu10kx_ops, PCMMINOR(unit), UID_ROOT, GID_WHEEL, 0640, "emu10kx%d", unit);
+	sc->cdev = make_dev(&emu10kx_ops, PCMMKMINOR(unit, 0, 0),
+			    UID_ROOT, GID_WHEEL, 0640, "emu10kx%d", unit);
 	if (sc->cdev != NULL) {
 		sc->cdev->si_drv1 = sc;
 		return (0);

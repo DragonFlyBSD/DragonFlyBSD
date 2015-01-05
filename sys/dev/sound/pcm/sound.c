@@ -111,7 +111,7 @@ snd_mtxassert(void *m)
 #ifdef INVARIANTS
 	struct lock *lk = m;
 
-	KKASSERT(lockstatus(lk, curthread) != 0);
+	KKASSERT(lockstatus(lk, curthread) == LK_EXCLUSIVE);
 #endif
 }
 
@@ -1152,17 +1152,18 @@ pcm_register(device_t dev, void *devinfo, int numplay, int numrec)
 
 	/* XXX use make_autoclone_dev? */
 	/* XXX PCMMAXCHAN can be created for regular channels */
-#if 0
+#if 1
 	d->dsp_clonedev = make_dev(&dsp_ops,
-			    PCMMINOR(device_get_unit(dev)),
+			    PCMMKMINOR(device_get_unit(dev), SND_DEV_DSP, 0),
 			    UID_ROOT, GID_WHEEL, 0666, "dsp%d",
 			    device_get_unit(dev));
 	devfs_clone_handler_add(devtoname(d->dsp_clonedev), dsp_clone);
-#endif
+#else
 	d->dsp_clonedev = make_autoclone_dev(&dsp_ops,
 			    &DEVFS_CLONE_BITMAP(dsp), dsp_clone,
 			    UID_ROOT, GID_WHEEL, 0666, "dsp%d",
 			    device_get_unit(dev));
+#endif
 
 	sndstat_register(dev, d->status, sndstat_prepare_pcm);
 
