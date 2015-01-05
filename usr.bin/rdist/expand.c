@@ -293,7 +293,7 @@ matchdir(char *pattern)
 			return;
 		goto patherr2;
 	}
-	if (fstat(dirp->dd_fd, &stb) < 0)
+	if (fstat(dirfd(dirp), &stb) < 0)
 		goto patherr1;
 	if (!ISDIR(stb.st_mode)) {
 		errno = ENOTDIR;
