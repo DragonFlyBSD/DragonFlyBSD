@@ -385,8 +385,8 @@ int devfs_create_all_dev(struct devfs_node *);
 struct devfs_node *devfs_resolve_or_create_path(
 				struct devfs_node *, char *, int);
 int devfs_resolve_name_path(char *, char *, char **, char **);
-struct devfs_node *devfs_create_device_node(struct devfs_node *, cdev_t,
-		      char *, char *, ...) __printf0like(4, 5);
+struct devfs_node *devfs_create_device_node(struct devfs_node *, cdev_t, int *,
+		      char *, char *, ...) __printf0like(5, 6);
 
 int devfs_destroy_device_node(struct devfs_node *, cdev_t);
 int devfs_destroy_node(struct devfs_node *, char *);
