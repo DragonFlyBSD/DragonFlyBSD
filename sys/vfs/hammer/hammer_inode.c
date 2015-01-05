@@ -1861,7 +1861,8 @@ hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
 	 * not be anything to wakeup (ip).
 	 */
 	if (depth == 20 && TAILQ_FIRST(&ip->target_list)) {
-		krateprintf(&hammer_gen_krate,
+		if (hammer_debug_general & 0x10000)
+			krateprintf(&hammer_gen_krate,
 			    "HAMMER Warning: depth limit reached on "
 			    "setup recursion, inode %p %016llx\n",
 			    ip, (long long)ip->obj_id);
