@@ -405,7 +405,7 @@ hammer_rel_mem_record(struct hammer_record *record)
 			}
 
 			/*
-			 * Remove the record from the B-Tree
+			 * Remove the record from the RB-Tree
 			 */
 			if (record->flags & HAMMER_RECF_ONRBTREE) {
 				RB_REMOVE(hammer_rec_rb_tree,
@@ -453,7 +453,7 @@ hammer_rel_mem_record(struct hammer_record *record)
 			}
 
 			/*
-			 * Do this test after removing record from the B-Tree.
+			 * Do this test after removing record from the RB-Tree.
 			 */
 			if (target_ip) {
 				hammer_test_inode(target_ip);
