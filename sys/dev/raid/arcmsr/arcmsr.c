@@ -794,7 +794,6 @@ static void	arcmsr_srb_timeout(void *arg)
 	target = srb->pccb->ccb_h.target_id;
 	lun = srb->pccb->ccb_h.target_lun;
 	acb = srb->acb;
-	ARCMSR_LOCK_ACQUIRE(&acb->isr_lock);
 	if(srb->srb_state == ARCMSR_SRB_START)
 	{
 		cmd = srb->pccb->csio.cdb_io.cdb_bytes[0];
@@ -804,7 +803,6 @@ static void	arcmsr_srb_timeout(void *arg)
 		kprintf("arcmsr%d: scsi id %d lun %d cmd=0x%x srb='%p' ccb command time out!\n",
 				 acb->pci_unit, target, lun, cmd, srb);
 	}
-	ARCMSR_LOCK_RELEASE(&acb->isr_lock);
 #ifdef ARCMSR_DEBUG1
 	arcmsr_dump_data(acb);
 #endif
@@ -2634,7 +2632,7 @@ static void arcmsr_execute_srb(void *arg, bus_dma_segment_t *dm_segs, int nseg, 
 	arcmsr_post_srb(acb, srb);
 	if (pccb->ccb_h.timeout != CAM_TIME_INFINITY)
 	{
-		arcmsr_callout_init(&srb->ccb_callout);
+		callout_init_lk(&srb->ccb_callout, &srb->acb->isr_lock);
 		callout_reset(&srb->ccb_callout, ((pccb->ccb_h.timeout + (ARCMSR_TIMEOUT_DELAY * 1000)) * hz) / 1000, arcmsr_srb_timeout, srb);
 		srb->srb_flags |= SRB_FLAG_TIMER_START;
 	}
