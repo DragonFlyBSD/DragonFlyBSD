@@ -865,6 +865,8 @@ devfs_spec_open(struct vop_open_args *ap)
 	vn_lock(vp, LK_UPGRADE | LK_RETRY);
 
 	if (node && ap->a_fp) {
+		int exists;
+
 		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_open: -1.1-\n");
 		lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
@@ -874,12 +876,13 @@ devfs_spec_open(struct vop_open_args *ap)
 		if (ndev != NULL) {
 			newnode = devfs_create_device_node(
 					DEVFS_MNTDATA(vp->v_mount)->root_node,
-					ndev, NULL, NULL);
+					ndev, &exists, NULL, NULL);
 			/* XXX: possibly destroy device if this happens */
 
 			if (newnode != NULL) {
 				dev = ndev;
-				devfs_link_dev(dev);
+				if (exists == 0)
+					devfs_link_dev(dev);
 
 				devfs_debug(DEVFS_DEBUG_DEBUG,
 						"parent here is: %s, node is: |%s|\n",
@@ -891,7 +894,8 @@ devfs_spec_open(struct vop_open_args *ap)
 						((struct devfs_node *)(TAILQ_LAST(DEVFS_DENODE_HEAD(node->parent), devfs_node_head)))->d_dir.d_name);
 
 				/*
-				 * orig_vp is set to the original vp if we cloned.
+				 * orig_vp is set to the original vp if we
+				 * cloned.
 				 */
 				/* node->flags |= DEVFS_CLONED; */
 				devfs_allocv(&vp, newnode);
@@ -901,10 +905,10 @@ devfs_spec_open(struct vop_open_args *ap)
 		}
 		lockmgr(&devfs_lock, LK_RELEASE);
 		/*
-		 * Synchronize devfs here to make sure that, if the cloned device
-		 * creates other device nodes in addition to the cloned one,
-		 * all of them are created by the time we return from opening
-		 * the cloned one.
+		 * Synchronize devfs here to make sure that, if the cloned
+		 * device creates other device nodes in addition to the
+		 * cloned one, all of them are created by the time we return
+		 * from opening the cloned one.
 		 */
 		if (ndev)
 			devfs_config();

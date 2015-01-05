@@ -1430,7 +1430,7 @@ devfs_create_all_dev_worker(struct devfs_node *root)
 	KKASSERT(root);
 
 	TAILQ_FOREACH(dev, &devfs_dev_list, link) {
-		devfs_create_device_node(root, dev, NULL, NULL);
+		devfs_create_device_node(root, dev, NULL, NULL, NULL);
 	}
 
 	return 0;
@@ -1965,7 +1965,7 @@ devfs_resolve_name_path(char *fullpath, char *buf, char **pathp, char **namep)
  */
 struct devfs_node *
 devfs_create_device_node(struct devfs_node *root, cdev_t dev,
-			 char *dev_name, char *path_fmt, ...)
+			 int *existsp, char *dev_name, char *path_fmt, ...)
 {
 	struct devfs_node *parent, *node = NULL;
 	char *path = NULL;
@@ -1977,6 +1977,9 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 	char *names = "pqrsPQRS";
 
 	name_buf = kmalloc(PATH_MAX, M_TEMP, M_WAITOK);
+
+	if (existsp)
+		*existsp = 0;
 
 	if (path_fmt != NULL) {
 		__va_start(ap, path_fmt);
@@ -1995,9 +1998,23 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 		parent = devfs_resolve_or_create_path(parent, create_path, 1);
 
 
-	if (devfs_find_device_node_by_name(parent, name)) {
-		devfs_debug(DEVFS_DEBUG_WARNING, "devfs_create_device_node: "
-			"DEVICE %s ALREADY EXISTS!!! Ignoring creation request.\n", name);
+	node = devfs_find_device_node_by_name(parent, name);
+	if (node) {
+		if (node->d_dev == dev) {
+			/*
+			 * Allow case where device caches dev after the
+			 * close and might desire to reuse it.
+			 */
+			if (existsp)
+				*existsp = 1;
+		} else {
+			devfs_debug(DEVFS_DEBUG_WARNING,
+				    "devfs_create_device_node: "
+				    "DEVICE %s ALREADY EXISTS!!! "
+				    "Ignoring creation request.\n",
+				    name);
+			node = NULL;
+		}
 		goto out;
 	}
 
@@ -2175,7 +2192,7 @@ devfs_propagate_dev(cdev_t dev, int attach)
 		if (attach) {
 			/* Device is being attached */
 			devfs_create_device_node(mnt->root_node, dev,
-						 NULL, NULL );
+						 NULL, NULL, NULL);
 		} else {
 			/* Device is being detached */
 			devfs_alias_remove(dev);
