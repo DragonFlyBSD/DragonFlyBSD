@@ -83,6 +83,7 @@
 #include <sys/serial.h>
 #include <sys/thread2.h>
 #include <sys/conf.h>
+#include <sys/clist.h>
  
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
@@ -108,10 +109,8 @@ SYSCTL_INT(_hw_usb_ucom, OID_AUTO, debug, CTLFLAG_RW,
 
 #define	UCOM_CONS_BUFSIZE 1024
 
-#if 0
 static uint8_t ucom_cons_rx_buf[UCOM_CONS_BUFSIZE];
 static uint8_t ucom_cons_tx_buf[UCOM_CONS_BUFSIZE];
-#endif
 
 static unsigned int ucom_cons_rx_low = 0;
 static unsigned int ucom_cons_rx_high = 0;
@@ -178,8 +177,6 @@ static struct dev_ops ucom_ops = {
   .d_revoke =     ttyrevoke
 };
 
-devclass_t ucom_devclass;
-
 static moduledata_t ucom_mod = {
         "ucom",
         NULL,
@@ -189,6 +186,9 @@ static moduledata_t ucom_mod = {
 DECLARE_MODULE(ucom, ucom_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
 MODULE_DEPEND(ucom, usb, 1, 1, 1);
 MODULE_VERSION(ucom, UCOM_MODVER);
+
+/* XXXDF */
+#define tty_gone(tp) ((tp->t_state) & (TS_ZOMBIE))
 
 #if 0 /* XXXDF */
 static tsw_open_t ucom_open;
@@ -224,7 +224,6 @@ static void
 ucom_init(void *arg)
 {
 	DPRINTF("\n");
-	kprintf("ucom init\n");
 	ucom_unrhdr = new_unrhdr(0, UCOM_UNIT_MAX - 1, NULL);
 	lockinit(&ucom_lock, "UCOM LOCK", 0, 0);
 }
@@ -431,21 +430,20 @@ ucom_attach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 	char buf[32];			/* temporary TTY device name buffer */
 	cdev_t dev;
 
-	kprintf("attach tty\n");
-
 	lwkt_gettoken(&tty_token);
 	
-	kprintf("malloc: ");
 	sc->sc_tty = tp = ttymalloc(sc->sc_tty);
 
-	tp->t_oproc = ucom_start;
-	tp->t_param = ucom_param;
-	tp->t_stop = ucom_stop;
-	
 	if (tp == NULL) {
 		lwkt_reltoken(&tty_token);
 		return (ENOMEM);
 	}
+
+	tp->t_sc = (void *)sc;
+
+	tp->t_oproc = ucom_start;
+	tp->t_param = ucom_param;
+	tp->t_stop = ucom_stop;
 
 	/* Check if the client has a custom TTY name */
 	buf[0] = '\0';
@@ -937,19 +935,27 @@ ucom_dev_read(struct dev_read_args *ap)
         struct tty *tp;
         int error;
 
-        sc = devclass_get_softc(ucom_devclass, minor(dev));
+	sc = 0;
+
         lwkt_gettoken(&tty_token);
-        tp = sc->sc_tty;
+
+        tp = dev->si_tty;
+	KKASSERT(tp!=NULL);
+	sc = tp->t_sc;
+	KKASSERT(sc!=NULL);
 
         DPRINTF("ucomread: tp = %p, flag = 0x%x\n", tp, ap->a_ioflag);
 
-#if 0 /* XXXDF */
+#if 0 /* XXX */
         if (sc->sc_dying) {
                 lwkt_reltoken(&tty_token);
                 return (EIO);
         }
 #endif
+
+	UCOM_MTX_LOCK(sc);
         error = (*linesw[tp->t_line].l_read)(tp, ap->a_uio, ap->a_ioflag);
+	UCOM_MTX_UNLOCK(sc);
 
         DPRINTF("ucomread: error = %d\n", error);
 
@@ -965,20 +971,24 @@ ucom_dev_write(struct dev_write_args *ap)
         struct tty *tp;
         int error;
 
-        sc = devclass_get_softc(ucom_devclass, minor(dev));
         lwkt_gettoken(&tty_token);
-        tp = sc->sc_tty;
+        tp = dev->si_tty;
+	KKASSERT(tp!=NULL);
+	sc = tp->t_sc;
+	KKASSERT(sc!=NULL);
 
         DPRINTF("ucomwrite: tp = %p, flag = 0x%x\n", tp, ap->a_ioflag);
 
-#if 0 /* XXXDF */
+#if 0 /* XXX */
         if (sc->sc_dying) {
                 lwkt_reltoken(&tty_token);
                 return (EIO);
         }
 #endif
 
+	UCOM_MTX_LOCK(sc);
         error = (*linesw[tp->t_line].l_write)(tp, ap->a_uio, ap->a_ioflag);
+	UCOM_MTX_UNLOCK(sc);
 
         DPRINTF("ucomwrite: error = %d\n", error);
 
@@ -1077,10 +1087,8 @@ ucom_dev_ioctl(struct dev_ioctl_args *ap)
 static int
 ucom_modem(struct tty *tp, int sigon, int sigoff)
 {
-	struct ucom_softc *sc;
+	struct ucom_softc *sc = (struct ucom_softc *)tp->t_sc;
 	uint8_t onoff;
-
-        sc = devclass_get_softc(ucom_devclass, minor(tp->t_dev));
 
 	UCOM_MTX_ASSERT(sc, MA_OWNED);
 
@@ -1310,14 +1318,14 @@ ucom_cfg_status_change(struct usb_proc_msg *_task)
 
 		DPRINTF("DCD changed to %d\n", onoff);
 
-		/*
-		ttydisc_modem(tp, onoff);
-		*/
+        	(*linesw[tp->t_line].l_modem)(tp, onoff);
 	}
 
 	if ((lsr_delta & ULSR_BI) && (sc->sc_lsr & ULSR_BI)) {
 
 		DPRINTF("BREAK detected\n");
+
+        	(*linesw[tp->t_line].l_rint)(0, tp);
 
 		/*
 		ttydisc_rint(tp, 0, TRE_BREAK);
@@ -1329,6 +1337,7 @@ ucom_cfg_status_change(struct usb_proc_msg *_task)
 
 		DPRINTF("Frame error detected\n");
 
+        	(*linesw[tp->t_line].l_rint)(0, tp);
 		/*
 		ttydisc_rint(tp, 0, TRE_FRAMING);
 		ttydisc_rint_done(tp);
@@ -1339,6 +1348,7 @@ ucom_cfg_status_change(struct usb_proc_msg *_task)
 
 		DPRINTF("Parity error detected\n");
 
+        	(*linesw[tp->t_line].l_rint)(0, tp);
 		/*
 		ttydisc_rint(tp, 0, TRE_PARITY);
 		ttydisc_rint_done(tp);
@@ -1387,11 +1397,9 @@ ucom_cfg_param(struct usb_proc_msg *_task)
 static int
 ucom_param(struct tty *tp, struct termios *t)
 {
-	struct ucom_softc *sc;
+	struct ucom_softc *sc = (struct ucom_softc *)tp->t_sc;
 	uint8_t opened;
 	int error;
-
-	sc = devclass_get_softc(ucom_devclass, minor(tp->t_dev));
 
 	lwkt_gettoken(&tty_token);
 	UCOM_MTX_ASSERT(sc, MA_OWNED);
@@ -1467,9 +1475,7 @@ done:
 static void
 ucom_start(struct tty *tp)
 {
-	struct ucom_softc *sc;
-
-	sc = devclass_get_softc(ucom_devclass, minor(tp->t_dev));
+	struct ucom_softc *sc = (struct ucom_softc *)tp->t_sc;
 
 	UCOM_MTX_ASSERT(sc, MA_OWNED);
 
@@ -1490,6 +1496,8 @@ ucom_stop(struct tty *tp, int x)
 
 /*------------------------------------------------------------------------*
  *	ucom_get_data
+ * Input values:
+ * len: maximum length of data to get
  *
  * Return values:
  * 0: No data is available.
@@ -1499,11 +1507,12 @@ uint8_t
 ucom_get_data(struct ucom_softc *sc, struct usb_page_cache *pc,
     uint32_t offset, uint32_t len, uint32_t *actlen)
 {
-#if 0 /* XXX */
 	struct usb_page_search res;
 	struct tty *tp = sc->sc_tty;
 	uint32_t cnt;
 	uint32_t offset_orig;
+	u_char *data;
+	struct cblock *cbp;
 
 	UCOM_MTX_ASSERT(sc, MA_OWNED);
 
@@ -1546,17 +1555,28 @@ ucom_get_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 	}
 	offset_orig = offset;
 
+	lwkt_gettoken(&tty_token);
+	crit_enter();
 	while (len != 0) {
-
 		usbd_get_page(pc, offset, &res);
 
 		if (res.length > len) {
 			res.length = len;
 		}
 		/* copy data directly into USB buffer */
-		/*
-		cnt = ttydisc_getc(tp, res.buffer, res.length);
-		*/
+		data = tp->t_outq.c_cf;
+		cbp = (struct cblock *) ((intptr_t) tp->t_outq.c_cf & ~CROUND);
+		cnt = min((char *)(cbp+1) - tp->t_outq.c_cf, tp->t_outq.c_cc);
+
+		SET(tp->t_state, TS_BUSY);
+		memcpy(res.buffer, data, cnt);
+		CLR(tp->t_state, TS_BUSY);
+
+		if (ISSET(tp->t_state, TS_FLUSH))
+			CLR(tp->t_state, TS_FLUSH);
+		else
+			ndflush(&tp->t_outq,cnt);
+	       
 		offset += cnt;
 		len -= cnt;
 
@@ -1565,6 +1585,8 @@ ucom_get_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 			break;
 		}
 	}
+	crit_exit();
+	lwkt_reltoken(&tty_token);
 
 	actlen[0] = offset - offset_orig;
 
@@ -1573,7 +1595,6 @@ ucom_get_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 	if (actlen[0] == 0) {
 		return (0);
 	}
-#endif
 	return (1);
 }
 
@@ -1581,13 +1602,14 @@ void
 ucom_put_data(struct ucom_softc *sc, struct usb_page_cache *pc,
     uint32_t offset, uint32_t len)
 {
-#if 0 /* XXX */
 	struct usb_page_search res;
 	struct tty *tp = sc->sc_tty;
 	char *buf;
 	uint32_t cnt;
+	int lostcc;
 
 	UCOM_MTX_ASSERT(sc, MA_OWNED);
+	lwkt_gettoken(&tty_token);
 
 	if (sc->sc_flag & UCOM_FLAG_CONSOLE) {
 		unsigned int temp;
@@ -1614,19 +1636,22 @@ ucom_put_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 		ucom_cons_rx_high += temp;
 		ucom_cons_rx_high %= UCOM_CONS_BUFSIZE;
 
+		lwkt_reltoken(&tty_token);
 		return;
 	}
 
-	if (tty_gone(tp))
+	if (tty_gone(tp)) {
+		lwkt_reltoken(&tty_token);
 		return;			/* multiport device polling */
-
-	if (len == 0)
+	}
+	if (len == 0) {
+		lwkt_reltoken(&tty_token);
 		return;			/* no data */
+	}
 
 	/* set a flag to prevent recursation ? */
 
 	while (len > 0) {
-
 		usbd_get_page(pc, offset, &res);
 
 		if (res.length > len) {
@@ -1642,28 +1667,57 @@ ucom_put_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 
 		/* first check if we can pass the buffer directly */
 
-		if (ttydisc_can_bypass(tp)) {
-
+		crit_enter();
+		if (tp->t_state & TS_CAN_BYPASS_L_RINT) {
 			/* clear any jitter buffer */
 			sc->sc_jitterbuf_in = 0;
 			sc->sc_jitterbuf_out = 0;
 
+			if (tp->t_rawq.c_cc + cnt > tp->t_ihiwat
+			    && (sc->sc_flag & UCOM_FLAG_RTS_IFLOW
+				|| tp->t_iflag & IXOFF)
+			    && !(tp->t_state & TS_TBLOCK))
+			       ttyblock(tp);
+			lostcc = b_to_q((char *)buf, cnt, &tp->t_rawq);
+			tp->t_rawcc += cnt;
+			if (sc->hotchar) {
+				while (cnt) {
+					if (*buf == sc->hotchar)
+						break;
+					--cnt;
+					++buf;
+				}
+				if (cnt) 
+					setsofttty();
+			}
+			ttwakeup(tp);
+			if (tp->t_state & TS_TTSTOP
+			    && (tp->t_iflag & IXANY
+				|| tp->t_cc[VSTART] == tp->t_cc[VSTOP])) {
+				tp->t_state &= ~TS_TTSTOP;
+				tp->t_lflag &= ~FLUSHO;
+				ucom_start(tp);
+			}	
+			if (lostcc > 0)
+				kprintf("lost %d chars\n", lostcc);
+
+			/*
 			if (ttydisc_rint_bypass(tp, buf, cnt) != cnt) {
 				DPRINTF("tp=%p, data lost\n", tp);
 			}
-			continue;
-		}
+			*/
+		} else {
 		/* need to loop */
-
 		for (cnt = 0; cnt != res.length; cnt++) {
 			if (sc->sc_jitterbuf_in != sc->sc_jitterbuf_out ||
-			    ttydisc_rint(tp, buf[cnt], 0) == -1) {
+        		    (*linesw[tp->t_line].l_rint)(buf[cnt], tp) == -1) {
 				uint16_t end;
 				uint16_t pos;
 
 				pos = sc->sc_jitterbuf_in;
 				end = sc->sc_jitterbuf_out +
 				    UCOM_JITTERBUF_SIZE - 1;
+				
 				if (end >= UCOM_JITTERBUF_SIZE)
 					end -= UCOM_JITTERBUF_SIZE;
 
@@ -1687,9 +1741,13 @@ ucom_put_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 				break;
 			}
 		}
+		}
+		crit_exit();
 	}
+	lwkt_reltoken(&tty_token);
+	/*
 	ttydisc_rint_done(tp);
-#endif
+	*/
 }
 
 #if 0 /* XXX */

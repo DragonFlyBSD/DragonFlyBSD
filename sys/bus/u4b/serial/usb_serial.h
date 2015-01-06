@@ -71,6 +71,11 @@
 #include <sys/fcntl.h>
 #include <sys/sysctl.h>
 
+/* We should seriously clean this up! */
+#define SET(t, f)	(t) |= (f)
+#define CLR(t, f)	(t) &= ~((unsigned)(f))
+#define ISSET(t, f)	((t) & (f))
+
 /* Module interface related macros */
 #define	UCOM_MODVER	1
 
@@ -195,6 +200,8 @@ struct ucom_softc {
 #define	UCOM_LS_RTS	0x02
 #define	UCOM_LS_BREAK	0x04
 #define	UCOM_LS_RING	0x08
+
+	u_char	hotchar;
 	uint8_t sc_jitterbuf[UCOM_JITTERBUF_SIZE];
 };
 
