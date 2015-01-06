@@ -193,12 +193,10 @@ int mrsas_cam_attach(struct mrsas_softc *sc)
     }
     lockmgr(&sc->sim_lock, LK_RELEASE);
 
-#if (__FreeBSD_version <= 704000)
     if (mrsas_bus_scan(sc)){
         device_printf(sc->mrsas_dev, "Error in bus scan.\n");
         return(1);
     }
-#endif
     return(0);
 }
 
