@@ -443,7 +443,6 @@ _sem_open(const char *name, int oflag, ...)
 	char path[PATH_MAX];
 	char tmppath[PATH_MAX];
 	char const *prefix = NULL;
-	char *tmpname = NULL;
 	size_t path_len;
 	int error, fd, create;
 	sem_t *sem;
@@ -452,8 +451,7 @@ _sem_open(const char *name, int oflag, ...)
 	mode_t mode;
 	struct stat sbuf;
 	unsigned int value = 0;
-	unsigned int retry_count;
-	
+
 	create = 0;
 	error = 0;
 	fd = -1;
@@ -486,9 +484,6 @@ _sem_open(const char *name, int oflag, ...)
 	}
 
 retry:
-	tmpname = NULL;
-	retry_count = 10;
-
 	fd = __sys_open(path, O_RDWR | O_CLOEXEC);
 
 	if (fd > 0) {
@@ -541,25 +536,25 @@ retry:
 			goto error;	
 		}
 
-		while (retry_count-- > 0) {
-			tmpname = mktemp(tmppath);
 
-			if ( tmpname == NULL) {
-				errno = EINVAL;
-				goto error;
-			}
+		fd = mkstemp(tmppath);
 
-			fd = __sys_open(tmpname, O_RDWR | O_CLOEXEC | O_CREAT | O_EXCL, mode);
-
-			if (fd > 0 || errno != EEXIST) {
-				break;
-			}
-
+		if ( fd == -1 ) {
+			errno = EINVAL;
+			goto error;
 		}
 
-		if (retry_count == 0) {
+		error = fchmod(fd, mode);
+		if ( error == -1 ) {
 			__sys_close(fd);
-			errno = ENOSPC; /* XXX POSIX does not allow for EAGAIN */
+			errno = EINVAL;
+			goto error;
+		}
+
+		error = __sys_fcntl(fd, F_SETFD, FD_CLOEXEC);
+		if ( error == -1 ) {
+			__sys_close(fd);
+			errno = EINVAL;
 			goto error;
 		}
 
@@ -592,7 +587,7 @@ retry:
 			errno = ENOMEM;
 
 		if (create)
-			unlink(tmpname);
+			unlink(tmppath);
 
 		__sys_close(fd);	
 		goto error;
@@ -604,10 +599,10 @@ retry:
 		semtmp->count = (u_int32_t)value;
 		semtmp->semid = SEMID_NAMED;
 
-		if (link(tmpname, path) != 0) {
+		if (link(tmppath, path) != 0) {
 			munmap(semtmp, getpagesize());
 			__sys_close(fd);
-			unlink(tmpname);
+			unlink(tmppath);
 
 			if (errno == EEXIST && (oflag & O_EXCL) == 0) {
 				goto retry;
@@ -615,7 +610,7 @@ retry:
 
 			goto error;
 		}
-		unlink(tmpname);
+		unlink(tmppath);
 
 		if (_fstat(fd, &sbuf) != 0) {
 			/* Bad things happened, like another thread closing our descriptor */
