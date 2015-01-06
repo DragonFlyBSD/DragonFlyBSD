@@ -1543,7 +1543,6 @@ dev/video/cxm/cxm_saa7115.c	optional cxm pci
 dev/video/cxm/cxm_tuner.c	optional cxm pci
 dev/netif/dc/if_dc.c		optional dc
 dev/netif/de/if_de.c		optional de
-dev/netif/en_pci/if_en_pci.c	optional en pci
 dev/netif/pcn/if_pcn.c		optional pcn
 dev/netif/mn/if_mn.c		optional mn
 dev/netif/re/if_re.c		optional re
