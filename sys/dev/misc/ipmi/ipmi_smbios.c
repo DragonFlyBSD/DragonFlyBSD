@@ -46,10 +46,8 @@
 #include <dev/misc/ipmi/ipmivars.h>
 #endif
 
-#if __FreeBSD_version < 602110
 #define	pmap_mapbios		pmap_mapdev
 #define	pmap_unmapbios		pmap_unmapdev
-#endif
 
 struct ipmi_entry {
 	uint8_t		type;
