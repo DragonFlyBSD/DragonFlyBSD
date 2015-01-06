@@ -3455,7 +3455,7 @@ next_code:
 #endif
 		break;
 
-#if NAPM > 0
+#if __i386__ && NAPM > 0
 	    case SUSP:
 		apm_suspend(PMST_SUSPEND);
 		break;
