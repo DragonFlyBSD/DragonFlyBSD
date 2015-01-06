@@ -2448,12 +2448,17 @@ in6_ifawithifp(struct ifnet *ifp, struct in6_addr *dst)
 /*
  * perform DAD when interface becomes IFF_UP.
  */
-void
-in6_if_up(struct ifnet *ifp)
+static void
+in6_if_up_dispatch(netmsg_t nmsg)
 {
+	struct lwkt_msg *lmsg = &nmsg->lmsg;
+	struct ifnet *ifp = lmsg->u.ms_resultp;
 	struct ifaddr_container *ifac;
 	struct in6_ifaddr *ia;
 	int dad_delay;		/* delay ticks before DAD output */
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
 	/*
 	 * special cases, like 6to4, are handled in in6_ifattach
@@ -2470,6 +2475,21 @@ in6_if_up(struct ifnet *ifp)
 		if (ia->ia6_flags & IN6_IFF_TENTATIVE)
 			nd6_dad_start(ifa, &dad_delay);
 	}
+
+	lwkt_replymsg(lmsg, 0);
+}
+
+void
+in6_if_up(struct ifnet *ifp)
+{
+	struct netmsg_base nmsg;
+	struct lwkt_msg *lmsg = &nmsg.lmsg;
+
+	ASSERT_CANDOMSG_NETISR0(curthread);
+
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport, 0, in6_if_up_dispatch);
+	lmsg->u.ms_resultp = ifp;
+	lwkt_domsg(netisr_cpuport(0), lmsg, 0);
 }
 
 int
