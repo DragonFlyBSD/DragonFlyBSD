@@ -113,6 +113,7 @@ static void	ifnetinit(void *);
 static void	if_slowtimo(void *);
 static void	link_rtrequest(int, struct rtentry *);
 static int	if_rtdel(struct radix_node *, void *);
+static void	if_slowtimo_dispatch(netmsg_t);
 
 /* Helper functions */
 static void	ifsq_watchdog_reset(struct ifsubq_watchdog *);
@@ -152,7 +153,8 @@ MALLOC_DEFINE(M_IFNET, "ifnet", "interface structure");
 int			ifqmaxlen = IFQ_MAXLEN;
 struct ifnethead	ifnet = TAILQ_HEAD_INITIALIZER(ifnet);
 
-struct callout		if_slowtimo_timer;
+static struct callout		if_slowtimo_timer;
+static struct netmsg_base	if_slowtimo_netmsg;
 
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
@@ -204,7 +206,9 @@ ifinit(void *dummy)
 {
 	struct ifnet *ifp;
 
-	callout_init(&if_slowtimo_timer);
+	callout_init_mp(&if_slowtimo_timer);
+	netmsg_init(&if_slowtimo_netmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, if_slowtimo_dispatch);
 
 	crit_enter();
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
@@ -215,7 +219,8 @@ ifinit(void *dummy)
 	}
 	crit_exit();
 
-	if_slowtimo(0);
+	/* Start if_slowtimo */
+	lwkt_sendmsg(netisr_cpuport(0), &if_slowtimo_netmsg.lmsg);
 }
 
 static void
@@ -1448,13 +1453,21 @@ if_link_state_change(struct ifnet *ifp)
  * call the appropriate interface routine on expiration.
  */
 static void
-if_slowtimo(void *arg)
+if_slowtimo_dispatch(netmsg_t nmsg)
 {
+	struct globaldata *gd = mycpu;
 	struct ifnet *ifp;
 
-	crit_enter();
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
+	crit_enter_gd(gd);
+	lwkt_replymsg(&nmsg->lmsg, 0);  /* reply ASAP */
+	crit_exit_gd(gd);
 
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		crit_enter_gd(gd);
+
 		if (if_stats_compat) {
 			IFNET_STAT_GET(ifp, ipackets, ifp->if_ipackets);
 			IFNET_STAT_GET(ifp, ierrors, ifp->if_ierrors);
@@ -1469,8 +1482,10 @@ if_slowtimo(void *arg)
 			IFNET_STAT_GET(ifp, noproto, ifp->if_noproto);
 		}
 
-		if (ifp->if_timer == 0 || --ifp->if_timer)
+		if (ifp->if_timer == 0 || --ifp->if_timer) {
+			crit_exit_gd(gd);
 			continue;
+		}
 		if (ifp->if_watchdog) {
 			if (ifnet_tryserialize_all(ifp)) {
 				(*ifp->if_watchdog)(ifp);
@@ -1480,11 +1495,23 @@ if_slowtimo(void *arg)
 				++ifp->if_timer;
 			}
 		}
+
+		crit_exit_gd(gd);
 	}
 
-	crit_exit();
-
 	callout_reset(&if_slowtimo_timer, hz / IFNET_SLOWHZ, if_slowtimo, NULL);
+}
+
+static void
+if_slowtimo(void *arg __unused)
+{
+	struct lwkt_msg *lmsg = &if_slowtimo_netmsg.lmsg;
+
+	KASSERT(mycpuid == 0, ("not on cpu0"));
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), lmsg);
+	crit_exit();
 }
 
 /*
