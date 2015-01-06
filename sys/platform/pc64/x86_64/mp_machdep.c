@@ -1051,7 +1051,7 @@ ap_init(void)
 		kprintf("SMP: assigned cpuid = %d\n", mycpu->gd_cpuid);
 		kprintf("SMP: actual cpuid = %d lapicid %d\n",
 			cpu_id, (lapic->id & 0xff000000) >> 24);
-#if JGXXX
+#if 0 /* JGXXX */
 		kprintf("PTD[MPPTDI] = %p\n", (void *)PTD[MPPTDI]);
 #endif
 		panic("cpuid mismatch! boom!!");

@@ -97,7 +97,7 @@
 #include <machine/cpu.h>
 #include <machine/clock.h>
 #include <machine/specialreg.h>
-#if JG
+#if 0 /* JG */
 #include <machine/bootinfo.h>
 #endif
 #include <machine/md_var.h>
@@ -135,7 +135,7 @@ extern u_int64_t hammer_time(u_int64_t, u_int64_t);
 
 extern void printcpuinfo(void);	/* XXX header file */
 extern void identify_cpu(void);
-#if JG
+#if 0 /* JG */
 extern void finishidentcpu(void);
 #endif
 extern void panicifcpuunsupported(void);
@@ -786,7 +786,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	 * We also change eflags to be our emulated eflags, not the actual
 	 * eflags.
 	 */
-#if JG
+#if 0 /* JG */
 	if (regs->tf_eflags & PSL_VM) {
 		struct trapframe_vm86 *tf = (struct trapframe_vm86 *)regs;
 		struct vm86_kernel *vm86 = &lp->lwp_thread->td_pcb->pcb_ext->ext_vm86;
@@ -918,7 +918,7 @@ sys_sigreturn(struct sigreturn_args *uap)
 	/* VM (8086) mode not supported */
 	rflags &= ~PSL_VM_UNSUPP;
 
-#if JG
+#if 0 /* JG */
 	if (eflags & PSL_VM) {
 		struct trapframe_vm86 *tf = (struct trapframe_vm86 *)regs;
 		struct vm86_kernel *vm86;
@@ -1320,7 +1320,7 @@ SYSCTL_PROC(_machdep, CPU_ADJKERNTZ, adjkerntz, CTLTYPE_INT|CTLFLAG_RW,
 SYSCTL_INT(_machdep, CPU_DISRTCSET, disable_rtc_set,
 	CTLFLAG_RW, &disable_rtc_set, 0, "");
 
-#if JG
+#if 0 /* JG */
 SYSCTL_STRUCT(_machdep, CPU_BOOTINFO, bootinfo, 
 	CTLFLAG_RD, &bootinfo, bootinfo, "");
 #endif
@@ -1343,7 +1343,7 @@ SYSCTL_ULONG(_machdep, OID_AUTO, guessed_bootdev,
 int _default_ldt;
 struct user_segment_descriptor gdt[NGDT * MAXCPU];	/* global descriptor table */
 struct gate_descriptor idt_arr[MAXCPU][NIDT];
-#if JG
+#if 0 /* JG */
 union descriptor ldt[NLDT];		/* local descriptor table */
 #endif
 
@@ -1909,7 +1909,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 {
 	caddr_t kmdp;
 	int gsel_tss, x, cpu;
-#if JG
+#if 0 /* JG */
 	int metadata_missing, off;
 #endif
 	struct mdglobaldata *gd;
@@ -1932,7 +1932,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 	atdevbase = ISA_HOLE_START + PTOV_OFFSET;
 
-#if JG
+#if 0 /* JG */
 	metadata_missing = 0;
 	if (bootinfo.bi_modulep) {
 		preload_metadata = (caddr_t)bootinfo.bi_modulep + KERNBASE;
@@ -2041,7 +2041,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 */
 	cninit();
 
-#if JG
+#if 0 /* JG */
 	if (metadata_missing)
 		kprintf("WARNING: loader(8) metadata is missing!\n");
 #endif
@@ -2067,7 +2067,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 		Debugger("Boot flags requested debugger");
 #endif
 
-#if JG
+#if 0 /* JG */
 	finishidentcpu();	/* Final stage of CPU initialization */
 	setidt(6, &IDTVEC(ill),  SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	setidt(13, &IDTVEC(prot),  SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
@@ -2133,7 +2133,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	/* now running on new page tables, configured,and u/iom is accessible */
 
 	/* Map the message buffer. */
-#if JG
+#if 0 /* JG */
 	for (off = 0; off < round_page(MSGBUF_SIZE); off += PAGE_SIZE)
 		pmap_kenter((vm_offset_t)msgbufp + off, avail_end + off);
 #endif

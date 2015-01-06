@@ -323,7 +323,7 @@ cpu_reset_real(void)
 	kprintf("Keyboard reset did not work, attempting CPU shutdown\n");
 	DELAY(1000000);	/* wait 1 sec for kprintf to complete */
 #endif
-#if JG
+#if 0 /* JG */
 	/* force a shutdown by unmapping entire address space ! */
 	bzero((caddr_t) PTD, PAGE_SIZE);
 #endif

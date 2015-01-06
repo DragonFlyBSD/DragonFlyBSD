@@ -77,7 +77,7 @@
 #include <machine/segments.h>
 
 #include <machine/pmap.h>
-#if JG
+#if 0 /* JG */
 #include <machine_base/apic/apicreg.h>
 #endif
 #include <machine/lock.h>
@@ -396,7 +396,7 @@ ENTRY(cpu_heavy_restore)
 	movq	PCB_EXT(%rdx),%rdi	/* check for a PCB extension */
 	movq	$1,%rcx			/* maybe mark use of a private tss */
 	testq	%rdi,%rdi
-#if JG
+#if 0 /* JG */
 	jnz	2f
 #endif
 
@@ -410,7 +410,7 @@ ENTRY(cpu_heavy_restore)
 	/*leaq	-TF_SIZE(%rdx),%rcx*/
 	movq	%rcx, PCPU(common_tss) + TSS_RSP0
 
-#if JG
+#if 0 /* JG */
 	cmpl	$0,PCPU(private_tss)	/* don't have to reload if      */
 	je	3f			/* already using the common TSS */
 
@@ -483,7 +483,7 @@ ENTRY(cpu_heavy_restore)
 	movw	$KDSEL,%ax
 	movw	%ax,%es
 
-#if JG
+#if 0 /* JG */
 	/*
 	 * Restore the user LDT if we have one
 	 */
@@ -500,7 +500,7 @@ ENTRY(cpu_heavy_restore)
 	popl	%edx
 2:
 #endif
-#if JG
+#if 0 /* JG */
 	/*
 	 * Restore the user TLS if we have one
 	 */

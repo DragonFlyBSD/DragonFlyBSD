@@ -215,7 +215,7 @@ initializecpu(int cpu)
 	if ((amd_feature & AMDID_NX) != 0) {
 		msr = rdmsr(MSR_EFER) | EFER_NXE;
 		wrmsr(MSR_EFER, msr);
-#if JG
+#if 0 /* JG */
 		pg_nx = PG_NX;
 #endif
 	}

@@ -45,7 +45,7 @@
  * Manage physical address maps for x86-64 systems.
  */
 
-#if JG
+#if 0 /* JG */
 #include "opt_disable_pse.h"
 #include "opt_pmap.h"
 #endif

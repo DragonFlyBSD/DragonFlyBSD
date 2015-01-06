@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  */
 
-#if JG
+#if 0 /* JG */
 #include "opt_atpic.h"
 #endif
 #include "opt_compat.h"
@@ -516,7 +516,7 @@ ENTRY(fork_trampoline)
 	SUPERALIGN_TEXT
 MCOUNT_LABEL(bintr)
 
-#if JG
+#if 0 /* JG */
 #include <x86_64/x86_64/apic_vector.S>
 #endif
 

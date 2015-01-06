@@ -152,7 +152,7 @@ configure_final(void *dummy)
 	cninit_finish();
 
 	if (bootverbose) {
-#if JG
+#if 0 /* JG */
 		/*
 		 * Print out the BIOS's idea of the disk geometries.
 		 */

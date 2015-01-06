@@ -507,7 +507,7 @@ panicifcpuunsupported(void)
 }
 
 
-#if JG
+#if 0 /* JG */
 /* Update TSC freq with the value indicated by the caller. */
 static void
 tsc_freq_changed(void *arg, const struct cf_level *level, int status)

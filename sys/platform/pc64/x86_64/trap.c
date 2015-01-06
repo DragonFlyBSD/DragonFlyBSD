@@ -709,7 +709,7 @@ trap(struct trapframe *frame)
 			 * in kernel space because that is useful when
 			 * debugging the kernel.
 			 */
-#if JG
+#if 0 /* JG */
 			if (user_dbreg_trap()) {
 				/*
 				 * Reset breakpoint bits because the
@@ -890,7 +890,7 @@ trap_pfault(struct trapframe *frame, int usermode)
 	 */
 	if (frame->tf_err & PGEX_W)
 		ftype = VM_PROT_WRITE;
-#if JG
+#if 0 /* JG */
 	else if ((frame->tf_err & PGEX_I) && pg_nx != 0)
 		ftype = VM_PROT_EXECUTE;
 #endif
