@@ -284,7 +284,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			("%s: if_bridge not loaded!", __func__));
 		return bridge_output_p(ifp, m);
 	}
-#if XXX
+#if 0 /* XXX */
 	if (ifp->if_lagg) {
 		KASSERT(lagg_output_p != NULL,
 			("%s: if_lagg not loaded!", __func__));
