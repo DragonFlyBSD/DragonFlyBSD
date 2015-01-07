@@ -276,11 +276,11 @@ typedef struct __siginfo {
 } siginfo_t;
 #endif /* __POSIX_VISIBLE >= 199309 || __XSI_VISIBLE */
 
-#if __POSIX_VISIBLE || __XSI_VISIBLE
+/* #if __POSIX_VISIBLE || __XSI_VISIBLE */
 typedef struct __sigset {
 	unsigned int	__bits[_SIG_WORDS];
 } sigset_t;
-#endif
+/* #endif */
 
 /*
  * XXX - there are some nasty dependencies on include file order. Now that
@@ -335,7 +335,7 @@ typedef void __siginfohandler_t (int, struct __siginfo *, void *);
 /* XXX this should really be under __BSD_VISIBLE */
 typedef	__sighandler_t	*sig_t;	/* type of pointer to a signal function */
 
-#if __XSI_VISIBLE
+/* #if __XSI_VISIBLE */
 /*
  * Structure used in sigaltstack call.
  */
@@ -353,7 +353,7 @@ typedef	struct {
 #define	SS_DISABLE	0x0004	/* disable taking signals on alternate stack */
 #define	MINSIGSTKSZ	8192			/* minimum allowable stack */
 #define	SIGSTKSZ	(MINSIGSTKSZ + 32768)	/* recommended stack size */
-#endif
+/* #endif */
 
 /* Have enough typedefs for this now.  XXX */
 #include <sys/ucontext.h>
