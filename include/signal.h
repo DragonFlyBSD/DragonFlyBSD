@@ -39,7 +39,6 @@
 #define	_SIGNAL_H_
 
 #include <sys/cdefs.h>
-#include <sys/_posix.h>
 #include <machine/stdint.h>
 #include <sys/signal.h>
 #include <sys/time.h>
