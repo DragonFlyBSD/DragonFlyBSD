@@ -62,7 +62,6 @@
 #include <netinet/ip6.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
-#include <netinet/sctp.h>
 
 #include <dev/virtual/virtio/virtio/virtio.h>
 #include <dev/virtual/virtio/virtio/virtqueue.h>
@@ -204,7 +203,7 @@ struct vtnet_mac_filter {
 };
 
 #define VTNET_WATCHDOG_TIMEOUT	5
-#define VTNET_CSUM_OFFLOAD	(CSUM_TCP | CSUM_UDP)// | CSUM_SCTP)
+#define VTNET_CSUM_OFFLOAD	(CSUM_TCP | CSUM_UDP)
 
 /* Features desired/implemented by this driver. */
 #define VTNET_FEATURES 		\
@@ -1462,10 +1461,6 @@ vtnet_rx_csum(struct vtnet_softc *sc, struct mbuf *m,
 	case offsetof(struct tcphdr, th_sum):
 		m->m_pkthdr.csum_flags |= CSUM_DATA_VALID | CSUM_PSEUDO_HDR;
 		m->m_pkthdr.csum_data = 0xFFFF;
-		break;
-
-	case offsetof(struct sctphdr, checksum):
-		//m->m_pkthdr.csum_flags |= CSUM_SCTP_VALID;
 		break;
 
 	default:

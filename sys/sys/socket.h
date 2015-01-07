@@ -361,7 +361,7 @@ struct msghdr {
 #define	MSG_WAITALL	0x00000040	/* wait for full request or error */
 #define	MSG_DONTWAIT	0x00000080	/* this message should be nonblocking */
 #define	MSG_EOF		0x00000100	/* data completes connection */
-#define	MSG_NOTIFICATION 0x00000200	/* notification message */
+#define	MSG_UNUSED09	0x00000200	/* was: notification message (SCTP) */
 #define	MSG_NOSIGNAL	0x00000400	/* No SIGPIPE to unconnected socket stream */
 #define	MSG_SYNC	0x00000800	/* No asynchronized pru_send */
 

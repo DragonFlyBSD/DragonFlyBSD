@@ -223,7 +223,6 @@ MIASM =  \
 	getresgid.o \
 	kqueue.o \
 	kevent.o \
-	sctp_peeloff.o \
 	lchflags.o \
 	uuidgen.o \
 	sendfile.o \

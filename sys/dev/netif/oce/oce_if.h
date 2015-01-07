@@ -81,7 +81,6 @@
 
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
-#include <netinet/sctp.h>
 #if 0 /* XXX swildner: LRO */
 #include <netinet/tcp_lro.h>
 #endif

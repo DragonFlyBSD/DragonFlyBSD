@@ -1424,19 +1424,6 @@ netinet6/in6.c			optional inet6
 netinet6/in6_cksum.c		optional inet6
 netinet6/in6_gif.c		optional gif inet6
 netinet6/ip6_forward.c		optional inet6
-netinet/sctp_asconf.c		optional inet sctp
-netinet/sctp_crc32.c		optional inet sctp
-netinet/sctp_hashdriver.c	optional inet sctp
-netinet/sctp_indata.c		optional inet sctp
-netinet/sctp_input.c		optional inet sctp
-netinet/sctp_output.c		optional inet sctp
-netinet/sctp_pcb.c		optional inet sctp
-netinet/sctp_peeloff.c		optional inet sctp
-netinet/sctp_sha1.c		optional inet sctp
-netinet/sctp_timer.c		optional inet sctp
-netinet/sctp_usrreq.c		optional inet sctp
-netinet/sctputil.c		optional inet sctp
-netinet6/sctp6_usrreq.c		optional inet6 sctp
 net/ip6fw/ip6_fw.c		optional inet6 ipv6firewall
 netinet6/in6_ifattach.c		optional inet6
 netinet6/ip6_demux.c		optional inet6

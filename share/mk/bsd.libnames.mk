@@ -84,7 +84,6 @@ LIBREFUSE?=	${DESTDIR}${LIBDIR}/librefuse.a
 LIBRPCSVC?=	${DESTDIR}${LIBDIR}/librpcsvc.a
 LIBRT?=		${DESTDIR}${LIBDIR}/librt.a
 LIBSBUF?=	${DESTDIR}${LIBDIR}/libsbuf.a
-LIBSCTP?=	${DESTDIR}${LIBDIR}/libsctp.a
 LIBSDP?=	${DESTDIR}${LIBDIR}/libsdp.a
 LIBSMB?=	${DESTDIR}${LIBDIR}/libsmb.a
 LIBSSH?=	${DESTDIR}${LIBDIR}/libssh.a	# XXX in secure dist, not base

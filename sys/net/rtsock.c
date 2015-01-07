@@ -62,8 +62,6 @@
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
  */
 
-#include "opt_sctp.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -85,11 +83,6 @@
 #include <net/raw_cb.h>
 #include <net/netmsg2.h>
 #include <net/netisr2.h>
-
-#ifdef SCTP
-extern void sctp_add_ip_address(struct ifaddr *ifa);
-extern void sctp_delete_ip_address(struct ifaddr *ifa);
-#endif /* SCTP */
 
 MALLOC_DEFINE(M_RTABLE, "routetbl", "routing tables");
 
@@ -1093,18 +1086,6 @@ rt_rtmsg(int cmd, struct rtentry *rt, struct ifnet *ifp, int error)
 void
 rt_newaddrmsg(int cmd, struct ifaddr *ifa, int error, struct rtentry *rt)
 {
-#ifdef SCTP
-	/*
-	 * notify the SCTP stack
-	 * this will only get called when an address is added/deleted
-	 * XXX pass the ifaddr struct instead if ifa->ifa_addr...
-	 */
-	if (cmd == RTM_ADD)
-		sctp_add_ip_address(ifa);
-	else if (cmd == RTM_DELETE)
-		sctp_delete_ip_address(ifa);
-#endif /* SCTP */
-
 	if (route_cb.any_count == 0)
 		return;
 

@@ -75,7 +75,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	librefuse \
 	librpcsvc \
 	librt \
-	libsctp \
 	libsdp \
 	${_libsm} \
 	libsmb \

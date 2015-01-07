@@ -1664,7 +1664,6 @@ lagg_hashmbuf(struct lagg_softc *sc, struct mbuf *m, uint32_t key)
 		switch (ip->ip_p) {
 			case IPPROTO_TCP:
 			case IPPROTO_UDP:
-			case IPPROTO_SCTP:
 				iphlen = ip->ip_hl << 2;
 				if (iphlen < sizeof(*ip))
 					break;

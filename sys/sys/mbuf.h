@@ -34,7 +34,6 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.54 2008/10/19 08:39:55 sephe Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -255,7 +254,7 @@ struct mbuf {
 #define	M_CLCACHE	0x2000	/* mbuf allocated from the cluster cache */
 #define M_EXT_CLUSTER	0x4000	/* standard cluster else special */
 #define	M_PHCACHE	0x8000	/* mbuf allocated from the pkt header cache */
-#define M_NOTIFICATION	0x10000	/* notification event */
+#define M_UNUSED16	0x10000	/* was: notification event (SCTP) */
 #define M_VLANTAG	0x20000	/* ether_vlantag is valid */
 #define M_MPLSLABELED	0x40000	/* packet is mpls labeled */
 #define M_LENCHECKED	0x80000	/* packet proto lengths are checked */

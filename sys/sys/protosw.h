@@ -143,7 +143,7 @@ struct protosw {
 #define	PR_RIGHTS	0x10		/* passes capabilities */
 #define	PR_IMPLOPCL	0x20		/* implied open/close */
 #define	PR_LASTHDR	0x40		/* enforce ipsec policy; last header */
-#define	PR_ADDR_OPT	0x80		/* allow addresses during delivery */
+#define	PR_UNUSED07	0x80		/* was: allow addresses during delivery (SCTP) */
 #define PR_MPSAFE	0x0100		/* protocal is MPSAFE */
 #define PR_SYNC_PORT	0x0200		/* synchronous port (no proto thrds) */
 #define PR_ASYNC_SEND	0x0400		/* async pru_send */

@@ -114,9 +114,10 @@
  * 300901 - drm/i915 hardware context support added
  * 400000 - 4.0 release
  * 400100 - 4.1 development
+ * 400101 - Removal of SCTP support.
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400100	/* propagated to newvers */
+#define __DragonFly_version 400101	/* propagated to newvers */
 
 #include <sys/_null.h>
 

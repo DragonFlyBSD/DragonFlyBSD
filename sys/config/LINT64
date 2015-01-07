@@ -2303,18 +2303,6 @@ options 	ALTQ_DEBUG	#for debugging
 # especially with 100baseT
 #options 	HZ=1000
 
-# SCTP
-options		SCTP
-options		SCTP_DEBUG
-options		SCTP_USE_ADLER32
-options		SCTP_HIGH_SPEED
-options		SCTP_STAT_LOGGING
-options		SCTP_CWND_LOGGING
-options		SCTP_BLK_LOGGING
-options		SCTP_STR_LOGGING
-options		SCTP_FR_LOGGING
-options		SCTP_MAP_LOGGING
-
 # DSCHED stuff
 options		DSCHED_AS
 options		DSCHED_BFQ

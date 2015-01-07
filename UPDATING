@@ -12,6 +12,11 @@
 +         UPGRADING DRAGONFLY FROM 4.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+SCTP SUPPORT DROPPED
+--------------------
+
+Support for the SCTP protocol has been removed.
+
 OLD USB DRIVERS REMOVED
 -----------------------
 

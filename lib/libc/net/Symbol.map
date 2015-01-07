@@ -106,7 +106,6 @@ DF402.0 {
     rresvport;
     rresvport_af;
     ruserok;
-    sctp_peeloff;
     send;
     sethostent;
     setnetent;

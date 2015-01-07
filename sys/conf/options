@@ -663,18 +663,6 @@ DCONS_FORCE_GDB		opt_dcons.h
 # deprecated drivers and options
 I_WANT_DEPRECATED_STUFF	opt_deprecated.h
 
-# SCTP
-SCTP			opt_sctp.h
-SCTP_DEBUG		opt_sctp.h
-SCTP_USE_ADLER32	opt_sctp.h
-SCTP_HIGH_SPEED		opt_sctp.h
-SCTP_STAT_LOGGING	opt_sctp.h
-SCTP_CWND_LOGGING	opt_sctp.h
-SCTP_BLK_LOGGING	opt_sctp.h
-SCTP_STR_LOGGING	opt_sctp.h
-SCTP_FR_LOGGING		opt_sctp.h
-SCTP_MAP_LOGGING	opt_sctp.h
-
 # DSCHED stuff
 DSCHED_AS		opt_dsched.h
 DSCHED_BFQ		opt_dsched.h

@@ -34,7 +34,6 @@
 #include "opt_mrouting.h"
 #include "opt_ipsec.h"
 #include "opt_inet6.h"
-#include "opt_sctp.h"
 #include "opt_carp.h"
 
 #include <sys/param.h>
@@ -84,12 +83,6 @@
 #ifdef FAST_IPSEC
 #include <netproto/ipsec/ipsec.h>
 #endif /* FAST_IPSEC */
-
-#ifdef SCTP
-#include <netinet/sctp_pcb.h>
-#include <netinet/sctp.h>
-#include <netinet/sctp_var.h>
-#endif /* SCTP */
 
 #include <net/netisr.h>		/* for cpu0_soport */
 
@@ -152,61 +145,6 @@ struct protosw inetsw[] = {
 	.pr_drain = tcp_drain,
 	.pr_usrreqs = &tcp_usrreqs
     },
-#ifdef SCTP
-    /*
-     * Order is very important here, we add the good one in
-     * in this postion so it maps to the right ip_protox[]
-     * postion for SCTP. Don't move the one above below
-     * this one or IPv6/4 compatability will break
-     */
-    {
-	.pr_type = SOCK_DGRAM,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_SCTP,
-	.pr_flags = PR_ADDR_OPT|PR_WANTRCVD,
-
-	.pr_input = sctp_input,
-	.pr_output = NULL,
-	.pr_ctlinput = sctp_ctlinput,
-	.pr_ctloutput = sctp_ctloutput,
-
-	.pr_ctlport = cpu0_ctlport,
-	.pr_init = sctp_init,
-	.pr_drain = sctp_drain,
-	.pr_usrreqs = &sctp_usrreqs
-    },
-    {
-	.pr_type = SOCK_SEQPACKET,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_SCTP,
-	.pr_flags = PR_ADDR_OPT|PR_WANTRCVD,
-
-	.pr_input = sctp_input,
-	.pr_output = NULL,
-	.pr_ctlinput = sctp_ctlinput,
-	.pr_ctloutput = sctp_ctloutput,
-
-	.pr_ctlport = cpu0_ctlport,
-	.pr_drain = sctp_drain,
-	.pr_usrreqs = &sctp_usrreqs
-    },
-
-    {
-	.pr_type = SOCK_STREAM,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_SCTP,
-	.pr_flags = PR_CONNREQUIRED|PR_ADDR_OPT|PR_WANTRCVD,
-
-	.pr_input = sctp_input,
-	.pr_output = NULL,
-	.pr_ctlinput = sctp_ctlinput,
-	.pr_ctloutput = sctp_ctloutput,
-
-	.pr_ctlport = cpu0_ctlport,
-	.pr_drain = sctp_drain,
-	.pr_usrreqs = &sctp_usrreqs
-    },
-#endif /* SCTP */
     {
 	.pr_type = SOCK_RAW,
 	.pr_domain = &inetdomain,
