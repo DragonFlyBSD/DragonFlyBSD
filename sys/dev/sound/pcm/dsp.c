@@ -710,7 +710,6 @@ dsp_close(struct dev_close_args *ap)
 	 * does NOT represent the virtual device channel.
 	 */
 	subunit = PCMSUBUNIT(i_dev);
-	kprintf("CLOSE DEVICE %p (%d) %s\n", i_dev, PCMSUBUNIT(i_dev), i_dev->si_name);
 
 	d = dsp_get_info(i_dev);
 	if (!DSP_REGISTERED(d, i_dev))
@@ -2526,12 +2525,10 @@ dsp_clone_alloc:
 		    sname, unit, subunit);
 		snd_clone_register(ce, dev);
 		err = 0;
-		kprintf("NEW DEVICE %p (%d) %s\n", dev, PCMSUBUNIT(dev), dev->si_name);
 	} else {
 		/*
 		 * Use device already registered, we must add a ref to the device.
 		 */
-		kprintf("REUSE DEVICE %p (%d) %s\n", dev, PCMSUBUNIT(dev), dev->si_name);
 		err = 0;
 	}
 
