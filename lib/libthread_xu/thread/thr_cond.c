@@ -111,8 +111,10 @@ _pthread_cond_destroy(pthread_cond_t *cond)
 	struct pthread		*curthread = tls_get_curthread();
 	int			rval = 0;
 
-	if (*cond == NULL)
+	if (cond == NULL)
 		rval = EINVAL;
+	else if (*cond == NULL)
+		rval = 0;
 	else {
 		/* Lock the condition variable structure: */
 		THR_LOCK_ACQUIRE(curthread, &(*cond)->c_lock);

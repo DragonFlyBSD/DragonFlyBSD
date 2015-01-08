@@ -92,6 +92,8 @@ _pthread_rwlock_destroy (pthread_rwlock_t *rwlock)
 
 	if (rwlock == NULL)
 		ret = EINVAL;
+	else if (*rwlock == NULL)
+		ret = 0;
 	else {
 		pthread_rwlock_t prwlock;
 

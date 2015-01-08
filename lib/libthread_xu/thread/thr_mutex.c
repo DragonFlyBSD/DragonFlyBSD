@@ -213,8 +213,10 @@ _pthread_mutex_destroy(pthread_mutex_t *mutex)
 	pthread_mutex_t m;
 	int ret = 0;
 
-	if (mutex == NULL || *mutex == NULL)
+	if (mutex == NULL)
 		ret = EINVAL;
+	else if (*mutex == NULL)
+		ret = 0;
 	else {
 		/*
 		 * Try to lock the mutex structure, we only need to
