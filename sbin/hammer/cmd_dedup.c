@@ -101,6 +101,7 @@ struct pass2_dedup_entry {
 #define DEDUP_PASS2	0x0001 /* process_btree_elm() mode */
 
 static int SigInfoFlag;
+static int SigAlrmFlag;
 static int64_t DedupDataReads;
 static int64_t DedupCurrentRecords;
 static int64_t DedupTotalRecords;
@@ -254,7 +255,9 @@ hammer_cmd_dedup(char **av, int ac)
 	struct dedup_entry *de;
 	struct sha_dedup_entry *sha_de;
 	struct pass2_dedup_entry *pass2_de;
+	char *tmp;
 	char buf[8];
+	int needfree = 0;
 
 	if (TimeoutOpt > 0)
 		alarm(TimeoutOpt);
@@ -265,6 +268,23 @@ hammer_cmd_dedup(char **av, int ac)
 	STAILQ_INIT(&pass2_dedup_queue);
 
 	glob_fd = getpfs(&glob_pfs, av[0]);
+
+	/*
+	 * A cycle file is _required_ for resuming dedup after the timeout
+	 * specified with -t has expired. If no -c option, then place a
+	 * .dedup.cycle file either in the PFS snapshots directory or in
+	 * the default snapshots directory.
+	 */
+	if (!CyclePath) {
+		if (glob_pfs.ondisk->snapshots[0] != '/')
+			asprintf(&tmp, "%s/%s/.dedup.cycle",
+			    SNAPSHOTS_BASE, av[0]);
+		else
+			asprintf(&tmp, "%s/.dedup.cycle",
+			    glob_pfs.ondisk->snapshots);
+		CyclePath = tmp;
+		needfree = 1;
+	}
 
 	/*
 	 * Pre-pass to cache the btree
@@ -333,7 +353,7 @@ hammer_cmd_dedup(char **av, int ac)
 	relpfs(glob_fd, &glob_pfs);
 
 	humanize_unsigned(buf, sizeof(buf), dedup_ref_size, "B", 1024);
-	printf("Dedup ratio = %.2f\n"
+	printf("Dedup ratio = %.2f (in this run)\n"
 	       "    %8s referenced\n",
 	       ((dedup_alloc_size != 0) ?
 			(double)dedup_ref_size / dedup_alloc_size : 0),
@@ -354,6 +374,15 @@ hammer_cmd_dedup(char **av, int ac)
                (intmax_t)dedup_successes_count,
                (intmax_t)dedup_successes_bytes
 	);
+
+	/* Once completed remove cycle file */
+	hammer_reset_cycle();
+
+	/* We don't want to mess up with other directives */
+	if (needfree) {
+		free(tmp);
+		CyclePath = NULL;
+	}
 }
 
 static int
@@ -814,6 +843,12 @@ done:
 }
 
 static void
+sigAlrm(int signo __unused)
+{
+	SigAlrmFlag = 1;
+}
+
+static void
 sigInfo(int signo __unused)
 {
 	SigInfoFlag = 1;
@@ -834,9 +869,27 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 	DedupDataReads = 0;
 	DedupCurrentRecords = 0;
 	signal(SIGINFO, sigInfo);
+	signal(SIGALRM, sigAlrm);
 
+	/*
+	 * Deduplication happens per element so hammer(8) is in full
+	 * control of the ioctl()s to actually perform it. SIGALRM
+	 * needs to be handled within hammer(8) but a checkpoint
+	 * is needed for resuming. Use cycle file for that.
+	 *
+	 * Try to obtain the previous obj_id from the cycle file and
+	 * if not available just start from the beginning.
+	 */
 	bzero(&mirror, sizeof(mirror));
 	hammer_key_beg_init(&mirror.key_beg);
+	hammer_get_cycle(&mirror.key_beg, &mirror.tid_beg);
+
+	if (mirror.key_beg.obj_id != (int64_t)HAMMER_MIN_OBJID) {
+		if (VerboseOpt)
+			fprintf(stderr, "%s: mirror-read: Resuming at object %016jx\n",
+			    id, (uintmax_t)mirror.key_beg.obj_id);
+	}
+
 	hammer_key_end_init(&mirror.key_end);
 
 	mirror.tid_beg = glob_pfs.ondisk->sync_beg_tid;
@@ -905,8 +958,14 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 			}
 		}
 		mirror.key_beg = mirror.key_cur;
-		if (DidInterrupt) {
-			fprintf(stderr, "Interrupted\n");
+		if (DidInterrupt || SigAlrmFlag) {
+			if (VerboseOpt)
+				fprintf(stderr, "%s\n",
+				    (DidInterrupt ? "Interrupted" : "Timeout"));
+			hammer_set_cycle(&mirror.key_cur, mirror.tid_beg);
+			if (VerboseOpt)
+				fprintf(stderr, "Cyclefile %s updated for "
+				    "continuation\n", CyclePath);
 			exit(1);
 		}
 		if (SigInfoFlag) {
@@ -938,6 +997,7 @@ scan_pfs(char *filesystem, scan_pfs_cb_t func, const char *id)
 	} while (mirror.count != 0);
 
 	signal(SIGINFO, SIG_IGN);
+	signal(SIGALRM, SIG_IGN);
 
 	free(buf);
 }
