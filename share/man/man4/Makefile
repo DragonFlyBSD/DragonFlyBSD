@@ -285,11 +285,13 @@ MAN=	aac.4 \
 	snd_cmi.4 \
 	snd_cs4281.4 \
 	snd_emu10k1.4 \
+	snd_emu10kx.4 \
 	snd_envy24.4 \
 	snd_envy24ht.4 \
 	snd_es137x.4 \
 	snd_fm801.4 \
 	snd_hda.4 \
+	snd_hdspe.4 \
 	snd_ich.4 \
 	snd_maestro.4 \
 	snd_neomagic.4 \
@@ -509,11 +511,13 @@ MLINKS+=snd_atiixp.4 atiixp.4
 MLINKS+=snd_cmi.4 cmi.4
 MLINKS+=snd_cs4281.4 cs4281.4
 MLINKS+=snd_emu10k1.4 emu10k1.4
+MLINKS+=snd_emu10kx.4 emu10kx.4
 MLINKS+=snd_envy24.4 envy24.4
 MLINKS+=snd_envy24ht.4 envy24ht.4
 MLINKS+=snd_es137x.4 es137x.4
 MLINKS+=snd_fm801.4 fm801.4
 MLINKS+=snd_hda.4 hda.4
+MLINKS+=snd_hdspe.4 hdspe.4
 MLINKS+=snd_ich.4 ich.4
 MLINKS+=snd_maestro.4 maestro.4
 MLINKS+=snd_neomagic.4 neomagic.4

@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/snd_envy24ht.4,v 1.1.2.2 2007/06/13 13:46:01 joel Exp $
+.\" $FreeBSD: head/share/man/man4/snd_envy24ht.4 267938 2014-06-26 21:46:14Z bapt $
 .\"
-.Dd May 28, 2007
+.Dd January 8, 2015
 .Dt SND_ENVY24HT 4
 .Os
 .Sh NAME
@@ -34,7 +34,7 @@
 To compile this driver into the kernel, place the following lines in your
 kernel configuration file:
 .Bd -ragged -offset indent
-.Cd "device pcm"
+.Cd "device sound"
 .Cd "device snd_envy24ht"
 .Cd "device snd_spicds"
 .Ed
@@ -85,13 +85,15 @@ Terratec PHASE 22
 .It
 Terratec PHASE 28
 .El
+Only analog playback is supported.
+Recording and other features of these cards are not supported.
 .Sh SEE ALSO
 .Xr sound 4
 .Sh HISTORY
 The
 .Nm
 device driver first appeared in
-.Fx 7.0 .
+.Fx 6.3 .
 .Sh AUTHORS
 .An -nosplit
 The

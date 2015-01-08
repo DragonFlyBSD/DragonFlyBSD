@@ -1,4 +1,4 @@
-.\" Copyright (c) 2004 Atte Peltomaki
+.\" Copyright (c) 2012 Ruslan Bukin <br@bsdpad.com>
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -22,33 +22,44 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: head/share/man/man4/snd_solo.4 267938 2014-06-26 21:46:14Z bapt $
+.\" $FreeBSD: head/share/man/man4/snd_hdspe.4 235317 2012-05-12 03:25:46Z gjb $
 .\"
 .Dd January 8, 2015
-.Dt SND_SOLO 4
+.Dt SND_HDSPE 4
 .Os
 .Sh NAME
-.Nm snd_solo
-.Nd "ESS Solo-1/1E PCI bridge device driver"
+.Nm snd_hdspe
+.Nd "RME HDSPe bridge device driver"
 .Sh SYNOPSIS
+To compile this driver into the kernel, place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd "device sound"
-.Cd "device snd_solo"
+.Cd "device snd_hdspe"
+.Ed
+.Pp
+Alternatively, to load the driver as a module at boot time, place the
+following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+snd_hdspe_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
 bridge driver allows the generic audio driver
 .Xr sound 4
-to attach to the ESS Solo-1x PCI cards.
+to attach to RME HDSPe audio devices.
 .Sh HARDWARE
 The
 .Nm
-driver supports the following sound cards:
+driver supports the following audio devices:
 .Pp
 .Bl -bullet -compact
 .It
-ESS Solo-1 (ES1938 Chipset)
+RME HDSPe AIO
 .It
-ESS Solo-1E (ES1946 Chipset)
+RME HDSPe RayDAT
 .El
 .Sh SEE ALSO
 .Xr sound 4
@@ -56,6 +67,10 @@ ESS Solo-1E (ES1946 Chipset)
 The
 .Nm
 device driver first appeared in
-.Fx 4.1 .
+.Fx 10.0 .
 .Sh AUTHORS
-.An Cameron Grant Aq Mt cg@FreeBSD.org
+.An -nosplit
+The
+.Nm
+driver was written by
+.An Ruslan Bukin <br@bsdpad.com> .

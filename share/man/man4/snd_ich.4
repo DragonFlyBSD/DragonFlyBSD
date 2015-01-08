@@ -22,19 +22,19 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/snd_ich.4,v 1.6.2.2 2006/06/21 04:28:05 brueffer Exp $
+.\" $FreeBSD: head/share/man/man4/snd_ich.4 275990 2014-12-21 09:53:29Z brueffer $
 .\"
-.Dd December 15, 2005
+.Dd January 8, 2015
 .Dt SND_ICH 4
 .Os
 .Sh NAME
 .Nm snd_ich
-.Nd "Intel ICH PCI and compatible bridge device driver"
+.Nd "Intel ICH AC'97 and compatible bridge device driver"
 .Sh SYNOPSIS
 To compile this driver into the kernel, place the following lines in your
 kernel configuration file:
 .Bd -ragged -offset indent
-.Cd "device pcm"
+.Cd "device sound"
 .Cd "device snd_ich"
 .Ed
 .Pp
@@ -49,7 +49,12 @@ The
 .Nm
 bridge driver allows the generic audio driver
 .Xr sound 4
-to attach to Intel ICH and compatible audio devices.
+to attach to Intel ICH AC'97 and compatible audio devices.
+.Pp
+Some later chips, like ICH6/ICH7, depending on wiring can instead implement
+newer Intel HD Audio specification, which is supported by
+.Xr snd_hda 4
+driver.
 .Sh HARDWARE
 The
 .Nm
@@ -94,6 +99,7 @@ NVIDIA nForce4
 SiS 7012
 .El
 .Sh SEE ALSO
+.Xr snd_hda 4 ,
 .Xr sound 4
 .Sh HISTORY
 The

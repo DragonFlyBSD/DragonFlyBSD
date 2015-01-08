@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/snd_vibes.4,v 1.1.4.1 2006/01/09 12:48:39 joel Exp $
+.\" $FreeBSD: head/share/man/man4/snd_vibes.4 267938 2014-06-26 21:46:14Z bapt $
 .\"
-.Dd December 1, 2005
+.Dd January 8, 2015
 .Dt SND_VIBES 4
 .Os
 .Sh NAME
@@ -34,7 +34,7 @@
 To compile this driver into the kernel, place the following lines in your
 kernel configuration file:
 .Bd -ragged -offset indent
-.Cd "device pcm"
+.Cd "device sound"
 .Cd "device snd_vibes"
 .Ed
 .Pp

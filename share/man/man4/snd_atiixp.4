@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/snd_atiixp.4,v 1.2.2.2 2006/01/31 00:10:09 ariff Exp $
+.\" $FreeBSD: head/share/man/man4/snd_atiixp.4 267938 2014-06-26 21:46:14Z bapt $
 .\"
-.Dd November 28, 2005
+.Dd January 8, 2015
 .Dt SND_ATIIXP 4
 .Os
 .Sh NAME
@@ -34,7 +34,7 @@
 To compile this driver into the kernel, place the following lines in your
 kernel configuration file:
 .Bd -ragged -offset indent
-.Cd "device pcm"
+.Cd "device sound"
 .Cd "device snd_atiixp"
 .Ed
 .Pp
@@ -52,6 +52,21 @@ bridge driver allows the generic audio driver,
 to attach to ATI IXP audio devices.
 This driver supports 16bit playback and recording, and 32bit native playback
 and recording.
+.Ss Runtime Configuration
+The following
+.Xr sysctl 8
+variables are available in addition to those available to all
+.Xr sound 4
+devices:
+.Bl -tag -width ".Va dev.pcm.%d.polling" -offset indent
+.It Va dev.pcm.%d.polling
+Experimental polling mode, where the driver operates by querying the device
+state on each tick using
+.Xr callout 9 .
+Polling is disabled by default.
+Do not enable it unless you are facing weird interrupt problems or if the
+device cannot generate interrupts at all.
+.El
 .Sh HARDWARE
 The
 .Nm
