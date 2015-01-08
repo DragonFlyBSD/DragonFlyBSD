@@ -115,9 +115,10 @@
  * 400000 - 4.0 release
  * 400100 - 4.1 development
  * 400101 - Removal of SCTP support.
+ * 400102 - Sound system update from FreeBSD
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400101	/* propagated to newvers */
+#define __DragonFly_version 400102	/* propagated to newvers */
 
 #include <sys/_null.h>
 

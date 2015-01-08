@@ -12,6 +12,14 @@
 +         UPGRADING DRAGONFLY FROM 4.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+SOUND SYSTEM UPDATED FROM FreeBSD 11-CURRENT
+--------------------------------------------
+
+Many more sound devices may be detected.
+
+If the default device choosen isn't to your liking, setting the sysctl
+hw.snd.default_unit to a different number will change it.
+
 SCTP SUPPORT DROPPED
 --------------------
 
