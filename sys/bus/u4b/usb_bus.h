@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/sys/dev/usb/usb_bus.h 276717 2015-01-05 20:22:18Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -87,6 +87,11 @@ struct usb_bus {
 	 * This mutex protects the USB hardware:
 	 */
 	struct lock bus_lock;
+	/*
+	 * mpf: this is only used in ARM embedded USB controllers
+	 *      up to this point. Why is it not a spinlock?
+	struct lock bus_spin_lock; 
+	 */
 	struct usb_xfer_queue intr_q;
 	struct usb_callout power_wdog;	/* power management */
 
