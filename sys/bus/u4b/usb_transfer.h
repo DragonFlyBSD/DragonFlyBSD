@@ -1,3 +1,4 @@
+/* $FreeBSD: head/sys/dev/usb/usb_transfer.h 228056 2011-11-28 09:54:41Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *

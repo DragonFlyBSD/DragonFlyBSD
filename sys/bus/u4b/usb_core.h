@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/sys/dev/usb/usb_core.h 266394 2014-05-18 09:13:29Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -116,6 +116,8 @@ struct usb_xfer_flags_int {
 	uint8_t	can_cancel_immed:1;	/* set if USB transfer can be
 					 * cancelled immediately */
 	uint8_t	doing_callback:1;	/* set if executing the callback */
+	uint8_t maxp_was_clamped:1;	/* set if the max packet size
+					 * was outside its allowed range */
 	uint8_t onhwqueue:1;		/* on a hardware queue */
 	uint8_t doorbell_wait:1;	/* structure being reused */
 };

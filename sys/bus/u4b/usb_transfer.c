@@ -1,3 +1,4 @@
+/* $FreeBSD: head/sys/dev/usb/usb_transfer.c 276717 2015-01-05 20:22:18Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -343,6 +344,7 @@ usbd_transfer_setup_sub(struct usb_setup_params *parm)
 	usb_frcount_t n_frlengths;
 	usb_frcount_t n_frbuffers;
 	usb_frcount_t x;
+	uint16_t maxp_old;
 	uint8_t type;
 	uint8_t zmps;
 
@@ -430,6 +432,11 @@ usbd_transfer_setup_sub(struct usb_setup_params *parm)
 	if (xfer->max_packet_count > parm->hc_max_packet_count) {
 		xfer->max_packet_count = parm->hc_max_packet_count;
 	}
+
+	/* store max packet size value before filtering */
+
+	maxp_old = xfer->max_packet_size;
+
 	/* filter "wMaxPacketSize" according to HC capabilities */
 
 	if ((xfer->max_packet_size > parm->hc_max_packet_size) ||
@@ -462,6 +469,13 @@ usbd_transfer_setup_sub(struct usb_setup_params *parm)
 		}
 	}
 
+	/*
+	 * Check if the max packet size was outside its allowed range
+	 * and clamped to a valid value:
+	 */
+	if (maxp_old != xfer->max_packet_size)
+		xfer->flags_int.maxp_was_clamped = 1;
+	
 	/* compute "max_frame_size" */
 
 	usbd_update_max_frame_size(xfer);
@@ -2485,7 +2499,9 @@ usbd_transfer_enqueue(struct usb_xfer_queue *pq, struct usb_xfer *xfer)
 void
 usbd_transfer_done(struct usb_xfer *xfer, usb_error_t error)
 {
-	USB_BUS_LOCK_ASSERT(xfer->xroot->bus);
+	struct usb_xfer_root *info = xfer->xroot;
+
+	USB_BUS_LOCK_ASSERT(info->bus);
 
 	DPRINTF("err=%s\n", usbd_errstr(error));
 
@@ -2499,10 +2515,10 @@ usbd_transfer_done(struct usb_xfer *xfer, usb_error_t error)
 		xfer->flags_int.control_act = 0;
 		return;
 	}
-	/* only set transfer error if not already set */
-	if (!xfer->error) {
+	/* only set transfer error, if not already set */
+	if (xfer->error == USB_ERR_NORMAL_COMPLETION)
 		xfer->error = error;
-	}
+
 	/* stop any callouts */
 	usb_callout_stop(&xfer->timeout_handle);
 
@@ -2521,7 +2537,7 @@ usbd_transfer_done(struct usb_xfer *xfer, usb_error_t error)
 		 * If the private USB lock is not locked, then we assume
 		 * that the BUS-DMA load stage has been passed:
 		 */
-		pq = &xfer->xroot->dma_q;
+		pq = &info->dma_q;
 
 		if (pq->curr == xfer) {
 			/* start the next BUS-DMA load, if any */
@@ -2531,10 +2547,10 @@ usbd_transfer_done(struct usb_xfer *xfer, usb_error_t error)
 #endif
 	/* keep some statistics */
 	if (xfer->error) {
-		xfer->xroot->bus->stats_err.uds_requests
+		info->bus->stats_err.uds_requests
 		    [xfer->endpoint->edesc->bmAttributes & UE_XFERTYPE]++;
 	} else {
-		xfer->xroot->bus->stats_ok.uds_requests
+		info->bus->stats_ok.uds_requests
 		    [xfer->endpoint->edesc->bmAttributes & UE_XFERTYPE]++;
 	}
 
@@ -2774,7 +2790,7 @@ usbd_transfer_timeout_ms(struct usb_xfer *xfer,
 
 	/* defer delay */
 	usb_callout_reset(&xfer->timeout_handle,
-	    USB_MS_TO_TICKS(ms), cb, xfer);
+	    USB_MS_TO_TICKS(ms) + USB_CALLOUT_ZERO_TICKS, cb, xfer);
 }
 
 /*------------------------------------------------------------------------*
@@ -3466,4 +3482,14 @@ uint16_t
 usbd_xfer_get_timestamp(struct usb_xfer *xfer)
 {
 	return (xfer->isoc_time_complete);
+}
+
+/*
+ * The following function returns non-zero if the max packet size
+ * field was clamped to a valid value. Else it returns zero.
+ */
+uint8_t
+usbd_xfer_maxp_was_clamped(struct usb_xfer *xfer)
+{
+	return (xfer->flags_int.maxp_was_clamped);
 }
