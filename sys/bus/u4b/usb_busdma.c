@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/sys/dev/usb/usb_busdma.c 261505 2014-02-05 08:02:52Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -447,7 +447,7 @@ usb_pc_common_mem_cb(void *arg, bus_dma_segment_t *segs,
 		goto done;
 	}
 #endif
-	while (1) {
+	while (pc->ismultiseg) {
 		off += USB_PAGE_SIZE;
 		if (off >= (segs->ds_len + rem)) {
 			/* page crossing */
