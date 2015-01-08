@@ -22,20 +22,22 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/sound/pci/via82c686.c,v 1.34.2.2 2007/04/26 08:21:44 ariff Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 #include <sys/sysctl.h>
 
 #include <dev/sound/pci/via82c686.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/via82c686.c,v 1.10 2007/06/16 20:07:19 dillon Exp $");
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/via82c686.c 267581 2014-06-17 16:07:57Z jhb $");
 
 #define VIA_PCI_ID 0x30581106
 #define	NSEGS		4	/* Number of segments in SGD table */
@@ -88,14 +90,14 @@ struct via_info {
 	struct via_chinfo pch, rch;
 	struct via_dma_op *sgd_table;
 	u_int16_t codec_caps;
-	sndlock_t	lock;
+	struct mtx *lock;
 };
 
 static u_int32_t via_fmt[] = {
-	AFMT_U8,
-	AFMT_STEREO | AFMT_U8,
-	AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S16_LE,
+	SND_FORMAT(AFMT_U8, 1, 0),
+	SND_FORMAT(AFMT_U8, 2, 0),
+	SND_FORMAT(AFMT_S16_LE, 1, 0),
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
 	0
 };
 static struct pcmchan_caps via_vracaps = {4000, 48000, via_fmt, 0};
@@ -148,7 +150,7 @@ via_waitready_codec(struct via_info *via)
 	    (via_rd(via, VIA_CODEC_CTL, 4) & VIA_CODEC_BUSY); i++)
 		DELAY(1);
 	if (i >= TIMEOUT) {
-		kprintf("via: codec busy\n");
+		printf("via: codec busy\n");
 		return 1;
 	}
 
@@ -166,7 +168,7 @@ via_waitvalid_codec(struct via_info *via)
 	    !(via_rd(via, VIA_CODEC_CTL, 4) & VIA_CODEC_PRIVALID); i++)
 		    DELAY(1);
 	if (i >= TIMEOUT) {
-		kprintf("via: codec invalid\n");
+		printf("via: codec invalid\n");
 		return 1;
 	}
 
@@ -272,7 +274,7 @@ viachan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	ch->dir = dir;
 	snd_mtxunlock(via->lock);
 
-	if (sndbuf_alloc(ch->buffer, via->parent_dmat, via->bufsz) != 0)
+	if (sndbuf_alloc(ch->buffer, via->parent_dmat, 0, via->bufsz) != 0)
 		return NULL;
 
 	return ch;
@@ -286,12 +288,12 @@ viachan_setformat(kobj_t obj, void *data, u_int32_t format)
 	int mode, mode_set;
 
 	mode_set = 0;
-	if (format & AFMT_STEREO)
+	if (AFMT_CHANNEL(format) > 1)
 		mode_set |= VIA_RPMODE_STEREO;
 	if (format & AFMT_S16_LE)
 		mode_set |= VIA_RPMODE_16BIT;
 
-	DEB(kprintf("set format: dir = %d, format=%x\n", ch->dir, format));
+	DEB(printf("set format: dir = %d, format=%x\n", ch->dir, format));
 	snd_mtxlock(via->lock);
 	mode = via_rd(via, ch->mode, 1);
 	mode &= ~(VIA_RPMODE_16BIT | VIA_RPMODE_STEREO);
@@ -302,7 +304,7 @@ viachan_setformat(kobj_t obj, void *data, u_int32_t format)
 	return 0;
 }
 
-static int
+static u_int32_t
 viachan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct via_chinfo *ch = data;
@@ -325,7 +327,7 @@ viachan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 		return 48000;
 }
 
-static int
+static u_int32_t
 viachan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct via_chinfo *ch = data;
@@ -341,12 +343,14 @@ viachan_trigger(kobj_t obj, void *data, int go)
 {
 	struct via_chinfo *ch = data;
 	struct via_info *via = ch->parent;
+	struct via_dma_op *ado;
 	bus_addr_t sgd_addr = ch->sgd_addr;
 
-	if (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD)
+	if (!PCMTRIG_COMMON(go))
 		return 0;
 
-	DEB(kprintf("ado located at va=%p pa=%x\n", ado, sgd_addr));
+	ado = ch->sgd_table;
+	DEB(printf("ado located at va=%p pa=%x\n", ado, sgd_addr));
 
 	snd_mtxlock(via->lock);
 	if (go == PCMTRIG_START) {
@@ -357,18 +361,20 @@ viachan_trigger(kobj_t obj, void *data, int go)
 		via_wr(via, ch->ctrl, VIA_RPCTRL_TERMINATE, 1);
 	snd_mtxunlock(via->lock);
 
-	DEB(kprintf("viachan_trigger: go=%d\n", go));
+	DEB(printf("viachan_trigger: go=%d\n", go));
 	return 0;
 }
 
-static int
+static u_int32_t
 viachan_getptr(kobj_t obj, void *data)
 {
 	struct via_chinfo *ch = data;
 	struct via_info *via = ch->parent;
+	struct via_dma_op *ado;
 	bus_addr_t sgd_addr = ch->sgd_addr;
-	int ptr, base, base1, len, seg;
+	u_int32_t ptr, base, base1, len, seg;
 
+	ado = ch->sgd_table;
 	snd_mtxlock(via->lock);
 	base1 = via_rd(via, ch->base, 4);
 	len = via_rd(via, ch->count, 4);
@@ -377,7 +383,7 @@ viachan_getptr(kobj_t obj, void *data)
 		len = via_rd(via, ch->count, 4);
 	snd_mtxunlock(via->lock);
 
-	DEB(kprintf("viachan_getptr: len / base = %x / %x\n", len, base));
+	DEB(printf("viachan_getptr: len / base = %x / %x\n", len, base));
 
 	/* Base points to SGD segment to do, one past current */
 
@@ -394,7 +400,7 @@ viachan_getptr(kobj_t obj, void *data)
 		ptr = ptr & ~0x1f;
 	}
 
-	DEB(kprintf("return ptr=%d\n", ptr));
+	DEB(printf("return ptr=%u\n", ptr));
 	return ptr;
 }
 
@@ -426,7 +432,7 @@ via_intr(void *p)
 {
 	struct via_info *via = p;
 
-	/* DEB(kprintf("viachan_intr\n")); */
+	/* DEB(printf("viachan_intr\n")); */
 	/* Read channel */
 	snd_mtxlock(via->lock);
 	if (via_rd(via, VIA_PLAY_STAT, 1) & VIA_RPSTAT_INTR) {
@@ -471,18 +477,15 @@ dma_cb(void *p, bus_dma_segment_t *bds, int a, int b)
 static int
 via_attach(device_t dev)
 {
-	struct via_info *via = NULL;
+	struct via_info *via = 0;
 	char status[SND_STATUSLEN];
 	u_int32_t data, cnt;
 
-	via = kmalloc(sizeof *via, M_DEVBUF, M_WAITOK | M_ZERO);
-	via->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
+	via = malloc(sizeof(*via), M_DEVBUF, M_WAITOK | M_ZERO);
+	via->lock = snd_mtxcreate(device_get_nameunit(dev),
+	    "snd_via82c686 softc");
 
-	/* Get resources */
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
-	data |= (PCIM_CMD_PORTEN | PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, data, 2);
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
+	pci_enable_busmaster(dev);
 
 	/* Wake up and reset AC97 if necessary */
 	data = pci_read_config(dev, VIA_AC97STATUS, 1);
@@ -550,13 +553,14 @@ via_attach(device_t dev)
 			via->codec_caps & (AC97_EXTCAP_VRA | AC97_EXTCAP_VRM));
 
 	/* DMA tag for buffers */
-	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
+	if (bus_dma_tag_create(/*parent*/bus_get_dma_tag(dev), /*alignment*/2,
+		/*boundary*/0,
 		/*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/via->bufsz, /*nsegments*/1, /*maxsegz*/0x3ffff,
-		/*flags*/0,
-		&via->parent_dmat) != 0) {
+		/*flags*/0, /*lockfunc*/NULL,
+		/*lockarg*/NULL, &via->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
@@ -566,14 +570,15 @@ via_attach(device_t dev)
 	 *  requires a list in memory of work to do.  We need only 16 bytes
 	 *  for this list, and it is wasteful to allocate 16K.
 	 */
-	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
+	if (bus_dma_tag_create(/*parent*/bus_get_dma_tag(dev), /*alignment*/2,
+		/*boundary*/0,
 		/*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/NSEGS * sizeof(struct via_dma_op),
 		/*nsegments*/1, /*maxsegz*/0x3ffff,
-		/*flags*/0,
-		&via->sgd_dmat) != 0) {
+		/*flags*/0, /*lockfunc*/NULL,
+		/*lockarg*/NULL, &via->sgd_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
@@ -585,7 +590,7 @@ via_attach(device_t dev)
 	    NSEGS * sizeof(struct via_dma_op), dma_cb, via, 0) != 0)
 		goto bad;
 
-	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
+	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
 		 rman_get_start(via->reg), rman_get_start(via->irq),
 		 PCM_KLDSTRING(snd_via82c686));
 
@@ -601,11 +606,11 @@ bad:
 	if (via->ih) bus_teardown_intr(dev, via->irq, via->ih);
 	if (via->irq) bus_release_resource(dev, SYS_RES_IRQ, via->irqid, via->irq);
 	if (via->parent_dmat) bus_dma_tag_destroy(via->parent_dmat);
-	if (via->sgd_dmamap) bus_dmamap_unload(via->sgd_dmat, via->sgd_dmamap);
+	if (via->sgd_addr) bus_dmamap_unload(via->sgd_dmat, via->sgd_dmamap);
 	if (via->sgd_table) bus_dmamem_free(via->sgd_dmat, via->sgd_table, via->sgd_dmamap);
 	if (via->sgd_dmat) bus_dma_tag_destroy(via->sgd_dmat);
 	if (via->lock) snd_mtxfree(via->lock);
-	if (via) kfree(via, M_DEVBUF);
+	if (via) free(via, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -613,7 +618,7 @@ static int
 via_detach(device_t dev)
 {
 	int r;
-	struct via_info *via = NULL;
+	struct via_info *via = 0;
 
 	r = pcm_unregister(dev);
 	if (r)
@@ -628,7 +633,7 @@ via_detach(device_t dev)
 	bus_dmamem_free(via->sgd_dmat, via->sgd_table, via->sgd_dmamap);
 	bus_dma_tag_destroy(via->sgd_dmat);
 	snd_mtxfree(via->lock);
-	kfree(via, M_DEVBUF);
+	free(via, M_DEVBUF);
 	return 0;
 }
 
@@ -637,7 +642,7 @@ static device_method_t via_methods[] = {
 	DEVMETHOD(device_probe,		via_probe),
 	DEVMETHOD(device_attach,	via_attach),
 	DEVMETHOD(device_detach,	via_detach),
-	DEVMETHOD_END
+	{ 0, 0}
 };
 
 static driver_t via_driver = {
@@ -646,6 +651,6 @@ static driver_t via_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_via82c686, pci, via_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_via82c686, pci, via_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_via82c686, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_via82c686, 1);

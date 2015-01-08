@@ -1,6 +1,8 @@
 /*-
- * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
- * Portions Copyright by Luigi Rizzo - 1997-99
+ * Copyright (c) 2005-2009 Ariff Abdullah <ariff@FreeBSD.org>
+ * Portions Copyright (c) Ryan Beasley <ryan.beasley@gmail.com> - GSoC 2006
+ * Copyright (c) 1999 Cameron Grant <cg@FreeBSD.org>
+ * Portions Copyright (c) Luigi Rizzo <luigi@FreeBSD.org> - 1997-99
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,162 +25,327 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.99.2.5 2007/05/13 20:53:39 ariff Exp $
  */
 
+#include "opt_isa.h"
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
+
 #include <dev/sound/pcm/sound.h>
-#include <sys/vnode.h>		/* IO_NDELAY */
+#include <dev/sound/pcm/vchan.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.15 2008/01/05 13:34:22 corecode Exp $");
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pcm/channel.c 267992 2014-06-28 03:56:17Z hselasky $");
 
-#define MIN_CHUNK_SIZE 		256	/* for uiomove etc. */
-#if 0
-#define	DMA_ALIGN_THRESHOLD	4
-#define	DMA_ALIGN_MASK		(~(DMA_ALIGN_THRESHOLD - 1))
-#endif
-
-#define CANCHANGE(c) (!(c->flags & CHN_F_TRIGGERED))
-
-/*
-#define DEB(x) x
-*/
-
-static int chn_targetirqrate = 32;
-TUNABLE_INT("hw.snd.targetirqrate", &chn_targetirqrate);
-
-static int
-sysctl_hw_snd_targetirqrate(SYSCTL_HANDLER_ARGS)
-{
-	int err, val;
-
-	val = chn_targetirqrate;
-	err = sysctl_handle_int(oidp, &val, 0, req);
-	if (val < 16 || val > 512)
-		err = EINVAL;
-	else
-		chn_targetirqrate = val;
-
-	return err;
-}
-SYSCTL_PROC(_hw_snd, OID_AUTO, targetirqrate, CTLTYPE_INT | CTLFLAG_RW,
-	0, sizeof(int), sysctl_hw_snd_targetirqrate, "I", "");
-static int report_soft_formats = 1;
+int report_soft_formats = 1;
 SYSCTL_INT(_hw_snd, OID_AUTO, report_soft_formats, CTLFLAG_RW,
 	&report_soft_formats, 1, "report software-emulated formats");
 
-static int chn_buildfeeder(struct pcm_channel *c);
+int report_soft_matrix = 1;
+SYSCTL_INT(_hw_snd, OID_AUTO, report_soft_matrix, CTLFLAG_RW,
+	&report_soft_matrix, 1, "report software-emulated channel matrixing");
+
+int chn_latency = CHN_LATENCY_DEFAULT;
+TUNABLE_INT("hw.snd.latency", &chn_latency);
+
+static int
+sysctl_hw_snd_latency(SYSCTL_HANDLER_ARGS)
+{
+	int err, val;
+
+	val = chn_latency;
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	if (err != 0 || req->newptr == NULL)
+		return err;
+	if (val < CHN_LATENCY_MIN || val > CHN_LATENCY_MAX)
+		err = EINVAL;
+	else
+		chn_latency = val;
+
+	return err;
+}
+SYSCTL_PROC(_hw_snd, OID_AUTO, latency, CTLTYPE_INT | CTLFLAG_RW,
+	0, sizeof(int), sysctl_hw_snd_latency, "I",
+	"buffering latency (0=low ... 10=high)");
+
+int chn_latency_profile = CHN_LATENCY_PROFILE_DEFAULT;
+TUNABLE_INT("hw.snd.latency_profile", &chn_latency_profile);
+
+static int
+sysctl_hw_snd_latency_profile(SYSCTL_HANDLER_ARGS)
+{
+	int err, val;
+
+	val = chn_latency_profile;
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	if (err != 0 || req->newptr == NULL)
+		return err;
+	if (val < CHN_LATENCY_PROFILE_MIN || val > CHN_LATENCY_PROFILE_MAX)
+		err = EINVAL;
+	else
+		chn_latency_profile = val;
+
+	return err;
+}
+SYSCTL_PROC(_hw_snd, OID_AUTO, latency_profile, CTLTYPE_INT | CTLFLAG_RW,
+	0, sizeof(int), sysctl_hw_snd_latency_profile, "I",
+	"buffering latency profile (0=aggresive 1=safe)");
+
+static int chn_timeout = CHN_TIMEOUT;
+TUNABLE_INT("hw.snd.timeout", &chn_timeout);
+#ifdef SND_DEBUG
+static int
+sysctl_hw_snd_timeout(SYSCTL_HANDLER_ARGS)
+{
+	int err, val;
+
+	val = chn_timeout;
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	if (err != 0 || req->newptr == NULL)
+		return err;
+	if (val < CHN_TIMEOUT_MIN || val > CHN_TIMEOUT_MAX)
+		err = EINVAL;
+	else
+		chn_timeout = val;
+
+	return err;
+}
+SYSCTL_PROC(_hw_snd, OID_AUTO, timeout, CTLTYPE_INT | CTLFLAG_RW,
+	0, sizeof(int), sysctl_hw_snd_timeout, "I",
+	"interrupt timeout (1 - 10) seconds");
+#endif
+
+static int chn_vpc_autoreset = 1;
+SYSCTL_INT(_hw_snd, OID_AUTO, vpc_autoreset, CTLFLAG_RWTUN,
+	&chn_vpc_autoreset, 0, "automatically reset channels volume to 0db");
+
+static int chn_vol_0db_pcm = SND_VOL_0DB_PCM;
+TUNABLE_INT("hw.snd.vpc_0db", &chn_vol_0db_pcm);
+
+static void
+chn_vpc_proc(int reset, int db)
+{
+	struct snddev_info *d;
+	struct pcm_channel *c;
+	int i;
+
+	for (i = 0; pcm_devclass != NULL &&
+	    i < devclass_get_maxunit(pcm_devclass); i++) {
+		d = devclass_get_softc(pcm_devclass, i);
+		if (!PCM_REGISTERED(d))
+			continue;
+		PCM_LOCK(d);
+		PCM_WAIT(d);
+		PCM_ACQUIRE(d);
+		CHN_FOREACH(c, d, channels.pcm) {
+			CHN_LOCK(c);
+			CHN_SETVOLUME(c, SND_VOL_C_PCM, SND_CHN_T_VOL_0DB, db);
+			if (reset != 0)
+				chn_vpc_reset(c, SND_VOL_C_PCM, 1);
+			CHN_UNLOCK(c);
+		}
+		PCM_RELEASE(d);
+		PCM_UNLOCK(d);
+	}
+}
+
+static int
+sysctl_hw_snd_vpc_0db(SYSCTL_HANDLER_ARGS)
+{
+	int err, val;
+
+	val = chn_vol_0db_pcm;
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	if (err != 0 || req->newptr == NULL)
+		return (err);
+	if (val < SND_VOL_0DB_MIN || val > SND_VOL_0DB_MAX)
+		return (EINVAL);
+
+	chn_vol_0db_pcm = val;
+	chn_vpc_proc(0, val);
+
+	return (0);
+}
+SYSCTL_PROC(_hw_snd, OID_AUTO, vpc_0db, CTLTYPE_INT | CTLFLAG_RW,
+	0, sizeof(int), sysctl_hw_snd_vpc_0db, "I",
+	"0db relative level");
+
+static int
+sysctl_hw_snd_vpc_reset(SYSCTL_HANDLER_ARGS)
+{
+	int err, val;
+
+	val = 0;
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	if (err != 0 || req->newptr == NULL || val == 0)
+		return (err);
+
+	chn_vol_0db_pcm = SND_VOL_0DB_PCM;
+	chn_vpc_proc(1, SND_VOL_0DB_PCM);
+
+	return (0);
+}
+SYSCTL_PROC(_hw_snd, OID_AUTO, vpc_reset, CTLTYPE_INT | CTLFLAG_RW,
+	0, sizeof(int), sysctl_hw_snd_vpc_reset, "I",
+	"reset volume on all channels");
+
+static int chn_usefrags = 0;
+TUNABLE_INT("hw.snd.usefrags", &chn_usefrags);
+static int chn_syncdelay = -1;
+TUNABLE_INT("hw.snd.syncdelay", &chn_syncdelay);
+#ifdef SND_DEBUG
+SYSCTL_INT(_hw_snd, OID_AUTO, usefrags, CTLFLAG_RW,
+	&chn_usefrags, 1, "prefer setfragments() over setblocksize()");
+SYSCTL_INT(_hw_snd, OID_AUTO, syncdelay, CTLFLAG_RW,
+	&chn_syncdelay, 1,
+	"append (0-1000) millisecond trailing buffer delay on each sync");
+#endif
+
+/**
+ * @brief Channel sync group lock
+ *
+ * Clients should acquire this lock @b without holding any channel locks
+ * before touching syncgroups or the main syncgroup list.
+ */
+struct mtx snd_pcm_syncgroups_mtx;
+MTX_SYSINIT(pcm_syncgroup, &snd_pcm_syncgroups_mtx, "PCM channel sync group lock", MTX_DEF);
+/**
+ * @brief syncgroups' master list
+ *
+ * Each time a channel syncgroup is created, it's added to this list.  This
+ * list should only be accessed with @sa snd_pcm_syncgroups_mtx held.
+ *
+ * See SNDCTL_DSP_SYNCGROUP for more information.
+ */
+struct pcm_synclist snd_pcm_syncgroups = SLIST_HEAD_INITIALIZER(snd_pcm_syncgroups);
 
 static void
 chn_lockinit(struct pcm_channel *c, int dir)
 {
-	switch(dir) {
+	switch (dir) {
 	case PCMDIR_PLAY:
 		c->lock = snd_mtxcreate(c->name, "pcm play channel");
+		cv_init(&c->intr_cv, "pcmwr");
+		break;
+	case PCMDIR_PLAY_VIRTUAL:
+		c->lock = snd_mtxcreate(c->name, "pcm virtual play channel");
+		cv_init(&c->intr_cv, "pcmwrv");
 		break;
 	case PCMDIR_REC:
 		c->lock = snd_mtxcreate(c->name, "pcm record channel");
+		cv_init(&c->intr_cv, "pcmrd");
 		break;
-	case PCMDIR_VIRTUAL:
-		c->lock = snd_mtxcreate(c->name, "pcm virtual play channel");
+	case PCMDIR_REC_VIRTUAL:
+		c->lock = snd_mtxcreate(c->name, "pcm virtual record channel");
+		cv_init(&c->intr_cv, "pcmrdv");
 		break;
-	case 0:
-		c->lock = snd_mtxcreate(c->name, "pcm fake channel");
+	default:
+		panic("%s(): Invalid direction=%d", __func__, dir);
 		break;
 	}
+
+	cv_init(&c->cv, "pcmchn");
 }
 
 static void
 chn_lockdestroy(struct pcm_channel *c)
 {
+	CHN_LOCKASSERT(c);
+
+	CHN_BROADCAST(&c->cv);
+	CHN_BROADCAST(&c->intr_cv);
+
+	cv_destroy(&c->cv);
+	cv_destroy(&c->intr_cv);
+
 	snd_mtxfree(c->lock);
 }
 
+/**
+ * @brief Determine channel is ready for I/O
+ *
+ * @retval 1 = ready for I/O
+ * @retval 0 = not ready for I/O
+ */
 static int
 chn_polltrigger(struct pcm_channel *c)
 {
 	struct snd_dbuf *bs = c->bufsoft;
-	unsigned amt, lim;
+	u_int delta;
 
 	CHN_LOCKASSERT(c);
-	if (c->flags & CHN_F_MAPPED) {
-		if (sndbuf_getprevblocks(bs) == 0)
-			return 1;
+
+	if (c->flags & CHN_F_MMAP) {
+		if (sndbuf_getprevtotal(bs) < c->lw)
+			delta = c->lw;
 		else
-			return (sndbuf_getblocks(bs) > sndbuf_getprevblocks(bs))? 1 : 0;
+			delta = sndbuf_gettotal(bs) - sndbuf_getprevtotal(bs);
 	} else {
-		amt = (c->direction == PCMDIR_PLAY)? sndbuf_getfree(bs) : sndbuf_getready(bs);
-#if 0
-		lim = (c->flags & CHN_F_HAS_SIZE)? sndbuf_getblksz(bs) : 1;
-#endif
-		lim = 1;
-		return (amt >= lim)? 1 : 0;
+		if (c->direction == PCMDIR_PLAY)
+			delta = sndbuf_getfree(bs);
+		else
+			delta = sndbuf_getready(bs);
 	}
-	return 0;
+
+	return ((delta < c->lw) ? 0 : 1);
 }
 
-static int
+static void
 chn_pollreset(struct pcm_channel *c)
 {
-	struct snd_dbuf *bs = c->bufsoft;
 
 	CHN_LOCKASSERT(c);
-	sndbuf_updateprevtotal(bs);
-	return 1;
+	sndbuf_updateprevtotal(c->bufsoft);
 }
 
 static void
 chn_wakeup(struct pcm_channel *c)
 {
-	struct snd_dbuf *bs = c->bufsoft;
-	struct pcmchan_children *pce;
+	struct snd_dbuf *bs;
+	struct pcm_channel *ch;
 
 	CHN_LOCKASSERT(c);
-	if (SLIST_EMPTY(&c->children)) {
-		/*if (SEL_WAITING(sndbuf_getsel(bs)) && chn_polltrigger(c))*/
-		if (SLIST_FIRST(&sndbuf_getkq(bs)->ki_note) && chn_polltrigger(c)) {
+
+	bs = c->bufsoft;
+
+	if (CHN_EMPTY(c, children.busy)) {
+		if (SEL_WAITING(sndbuf_getsel(bs)) && chn_polltrigger(c))
+			selwakeuppri(sndbuf_getsel(bs), PRIBIO);
+		if (c->flags & CHN_F_SLEEPING) {
 			/*
-			 * XXX
-			 *
-			 * We would call KNOTE() here, but as we
-			 * are in interrupt context, we'd have to
-			 * acquire the MP lock before.
-			 * Instead, we'll queue a task in a software
-			 * interrupt, which will run with the MP lock
-			 * held.
-			 *
-			 * buffer.c:sndbuf_kqtask will then call
-			 * KNOTE() from safer context.
+			 * Ok, I can just panic it right here since it is
+			 * quite obvious that we never allow multiple waiters
+			 * from userland. I'm too generous...
 			 */
-			taskqueue_enqueue(taskqueue_swi, &bs->kqtask);
+			CHN_BROADCAST(&c->intr_cv);
 		}
 	} else {
-		SLIST_FOREACH(pce, &c->children, link) {
-			CHN_LOCK(pce->channel);
-			chn_wakeup(pce->channel);
-			CHN_UNLOCK(pce->channel);
+		CHN_FOREACH(ch, c, children.busy) {
+			CHN_LOCK(ch);
+			chn_wakeup(ch);
+			CHN_UNLOCK(ch);
 		}
 	}
-
-	wakeup(bs);
 }
 
 static int
-chn_sleep(struct pcm_channel *c, char *str, int timeout)
+chn_sleep(struct pcm_channel *c, int timeout)
 {
-    	struct snd_dbuf *bs = c->bufsoft;
 	int ret;
 
 	CHN_LOCKASSERT(c);
-#ifdef USING_MUTEX
-	ret = snd_mtxsleep(bs, c->lock, PCATCH, str, timeout);
-#else
-	ret = tsleep(bs, PRIBIO | PCATCH, str, timeout);
-#endif
 
-	return ret;
+	if (c->flags & CHN_F_DEAD)
+		return (EINVAL);
+
+	c->flags |= CHN_F_SLEEPING;
+	ret = cv_timedwait_sig(&c->intr_cv, c->lock, timeout);
+	c->flags &= ~CHN_F_SLEEPING;
+
+	return ((c->flags & CHN_F_DEAD) ? EINVAL : ret);
 }
 
 /*
@@ -200,104 +367,86 @@ chn_dmaupdate(struct pcm_channel *c)
 	delta = (sndbuf_getsize(b) + hwptr - old) % sndbuf_getsize(b);
 	sndbuf_sethwptr(b, hwptr);
 
-	DEB(
-	if (delta >= ((sndbuf_getsize(b) * 15) / 16)) {
-		if (!(c->flags & (CHN_F_CLOSING | CHN_F_ABORTING)))
-			device_printf(c->dev, "hwptr went backwards %d -> %d\n", old, hwptr);
-	}
-	);
-
 	if (c->direction == PCMDIR_PLAY) {
-		amt = MIN(delta, sndbuf_getready(b));
+		amt = min(delta, sndbuf_getready(b));
+		amt -= amt % sndbuf_getalign(b);
 		if (amt > 0)
 			sndbuf_dispose(b, NULL, amt);
 	} else {
-		amt = MIN(delta, sndbuf_getfree(b));
+		amt = min(delta, sndbuf_getfree(b));
+		amt -= amt % sndbuf_getalign(b);
 		if (amt > 0)
 		       sndbuf_acquire(b, NULL, amt);
+	}
+	if (snd_verbose > 3 && CHN_STARTED(c) && delta == 0) {
+		device_printf(c->dev, "WARNING: %s DMA completion "
+			"too fast/slow ! hwptr=%u, old=%u "
+			"delta=%u amt=%u ready=%u free=%u\n",
+			CHN_DIRSTR(c), hwptr, old, delta, amt,
+			sndbuf_getready(b), sndbuf_getfree(b));
 	}
 
 	return delta;
 }
 
-void
-chn_wrupdate(struct pcm_channel *c)
-{
-	int ret;
-
-	CHN_LOCKASSERT(c);
-	KASSERT(c->direction == PCMDIR_PLAY, ("chn_wrupdate on bad channel"));
-
-	if ((c->flags & (CHN_F_MAPPED | CHN_F_VIRTUAL)) || !(c->flags & CHN_F_TRIGGERED))
-		return;
-	chn_dmaupdate(c);
-	if (sndbuf_getsize(c->bufsoft) == 0) {
-		DEB(kprintf("chn_wrupdate: avoid calling chn_wrfeed without any data in soft buffer");)
-		return;
-	}
-	ret = chn_wrfeed(c);
-	/* tell the driver we've updated the primary buffer */
-	chn_trigger(c, PCMTRIG_EMLDMAWR);
-	DEB(if (ret)
-		kprintf("chn_wrupdate: chn_wrfeed returned %d\n", ret);)
-
-}
-
-int
+static void
 chn_wrfeed(struct pcm_channel *c)
 {
     	struct snd_dbuf *b = c->bufhard;
     	struct snd_dbuf *bs = c->bufsoft;
-	unsigned int ret, amt;
+	unsigned int amt, want, wasfree;
 
 	CHN_LOCKASSERT(c);
-#if 0
-    	DEB(
-	if (c->flags & CHN_F_CLOSING) {
-		sndbuf_dump(b, "b", 0x02);
-		sndbuf_dump(bs, "bs", 0x02);
-	})
-#endif
 
-	if (c->flags & CHN_F_MAPPED)
+	if ((c->flags & CHN_F_MMAP) && !(c->flags & CHN_F_CLOSING))
 		sndbuf_acquire(bs, NULL, sndbuf_getfree(bs));
 
-	amt = sndbuf_getfree(b);
-	KASSERT(amt <= sndbuf_getsize(bs),
-	    ("%s(%s): amt %d > source size %d, flags 0x%x", __func__, c->name,
-	   amt, sndbuf_getsize(bs), c->flags));
+	wasfree = sndbuf_getfree(b);
+	want = min(sndbuf_getsize(b),
+	    imax(0, sndbuf_xbytes(sndbuf_getsize(bs), bs, b) -
+	     sndbuf_getready(b)));
+	amt = min(wasfree, want);
+	if (amt > 0)
+		sndbuf_feed(bs, b, c, c->feeder, amt);
 
-	ret = (amt > 0) ? sndbuf_feed(bs, b, c, c->feeder, amt) : ENOSPC;
 	/*
 	 * Possible xruns. There should be no empty space left in buffer.
 	 */
-	if (sndbuf_getfree(b) > 0)
+	if (sndbuf_getready(b) < want)
 		c->xruns++;
 
-	if (ret == 0 && sndbuf_getfree(b) < amt)
+	if (sndbuf_getfree(b) < wasfree)
 		chn_wakeup(c);
-
-	return ret;
 }
+
+#if 0
+static void
+chn_wrupdate(struct pcm_channel *c)
+{
+
+	CHN_LOCKASSERT(c);
+	KASSERT(c->direction == PCMDIR_PLAY, ("%s(): bad channel", __func__));
+
+	if ((c->flags & (CHN_F_MMAP | CHN_F_VIRTUAL)) || CHN_STOPPED(c))
+		return;
+	chn_dmaupdate(c);
+	chn_wrfeed(c);
+	/* tell the driver we've updated the primary buffer */
+	chn_trigger(c, PCMTRIG_EMLDMAWR);
+}
+#endif
 
 static void
 chn_wrintr(struct pcm_channel *c)
 {
-	int ret;
 
 	CHN_LOCKASSERT(c);
 	/* update pointers in primary buffer */
 	chn_dmaupdate(c);
 	/* ...and feed from secondary to primary */
-	if (sndbuf_getsize(c->bufsoft) == 0) {
-		DEB(kprintf("chn_wrintr: avoid calling chn_wrfeed without any data in soft buffer");)
-		return;
-	}
-	ret = chn_wrfeed(c);
+	chn_wrfeed(c);
 	/* tell the driver we've updated the primary buffer */
 	chn_trigger(c, PCMTRIG_EMLDMAWR);
-	DEB(if (ret)
-		kprintf("chn_wrintr: chn_wrfeed returned %d\n", ret);)
 }
 
 /*
@@ -308,144 +457,87 @@ chn_wrintr(struct pcm_channel *c)
  */
 
 int
-chn_write(struct pcm_channel *c, struct uio *buf, int ioflags)
+chn_write(struct pcm_channel *c, struct uio *buf)
 {
-	int ret, timeout, newsize, count, sz;
-	int nbio;
 	struct snd_dbuf *bs = c->bufsoft;
 	void *off;
-	int t, x,togo,p;
+	int ret, timeout, sz, t, p;
 
 	CHN_LOCKASSERT(c);
-	/*
-	 * XXX Certain applications attempt to write larger size
-	 * of pcm data than c->blocksize2nd without blocking,
-	 * resulting partial write. Expand the block size so that
-	 * the write operation avoids blocking.
-	 */
-	nbio = (c->flags & CHN_F_NBIO) || (ioflags & IO_NDELAY);
-	if (nbio && buf->uio_resid > (size_t)sndbuf_getblksz(bs)) {
-		DEB(device_printf(c->dev, "broken app, nbio and tried to write %ld bytes with fragsz %d\n",
-			buf->uio_resid, sndbuf_getblksz(bs)));
-		newsize = 16;
-		while (newsize < (int)szmin(buf->uio_resid, CHN_2NDBUFMAXSIZE / 2))
-			newsize <<= 1;
-		chn_setblocksize(c, sndbuf_getblkcnt(bs), newsize);
-		DEB(device_printf(c->dev, "frags reset to %d x %d\n", sndbuf_getblkcnt(bs), sndbuf_getblksz(bs)));
-	}
 
 	ret = 0;
-	count = hz;
-	while (!ret && (buf->uio_resid > 0) && (count > 0)) {
-		sz = sndbuf_getfree(bs);
-		if (sz == 0) {
-			if (nbio)
-				ret = EWOULDBLOCK;
-			else {
-				int denom;
+	timeout = chn_timeout * hz;
 
-				/*
-				 * Ceiling of calculation, minimum 2 ticks.
-				 * 1 tick can timeout instantly if the next
-				 * tick interval occurs immediately.
-				 *
-				 * Also ensure the calculation is +1 to
-				 * handle other edge cases.  e.g. if the
-				 * fractional calculation is 3.9 ticks the
-				 * result is 4 + 1 = 5, because 4 can actually
-				 * be anywhere from 3 to 4 ticks.
-				 */
-				denom = sndbuf_getspd(bs) * sndbuf_getbps(bs);
-				timeout = (hz * sndbuf_getblksz(bs) +
-					   denom - 1) / denom + 1;
-				if (timeout < 2)
-					timeout = 2;
-	   			ret = chn_sleep(c, "pcmwr", timeout);
-				if (ret == EWOULDBLOCK) {
-					count -= timeout;
-					ret = 0;
-				} else if (ret == 0)
-					count = hz;
-			}
-		} else {
-			sz = (int)szmin(sz, buf->uio_resid);
-			KASSERT(sz > 0, ("confusion in chn_write"));
-			/* kprintf("sz: %d\n", sz); */
-
+	while (ret == 0 && buf->uio_resid > 0) {
+		sz = min(buf->uio_resid, sndbuf_getfree(bs));
+		if (sz > 0) {
 			/*
 			 * The following assumes that the free space in
 			 * the buffer can never be less around the
 			 * unlock-uiomove-lock sequence.
 			 */
-			togo = sz;
-			while (ret == 0 && togo> 0) {
+			while (ret == 0 && sz > 0) {
 				p = sndbuf_getfreeptr(bs);
-				t = MIN(togo, sndbuf_getsize(bs) - p);
+				t = min(sz, sndbuf_getsize(bs) - p);
 				off = sndbuf_getbufofs(bs, p);
 				CHN_UNLOCK(c);
 				ret = uiomove(off, t, buf);
 				CHN_LOCK(c);
-				togo -= t;
-				x = sndbuf_acquire(bs, NULL, t);
+				sz -= t;
+				sndbuf_acquire(bs, NULL, t);
 			}
 			ret = 0;
-			if (ret == 0 && !(c->flags & CHN_F_TRIGGERED))
-				chn_start(c, 0);
+			if (CHN_STOPPED(c) && !(c->flags & CHN_F_NOTRIGGER)) {
+				ret = chn_start(c, 0);
+				if (ret != 0)
+					c->flags |= CHN_F_DEAD;
+			}
+		} else if (c->flags & (CHN_F_NBIO | CHN_F_NOTRIGGER)) {
+			/**
+			 * @todo Evaluate whether EAGAIN is truly desirable.
+			 * 	 4Front drivers behave like this, but I'm
+			 * 	 not sure if it at all violates the "write
+			 * 	 should be allowed to block" model.
+			 *
+			 * 	 The idea is that, while set with CHN_F_NOTRIGGER,
+			 * 	 a channel isn't playing, *but* without this we
+			 * 	 end up with "interrupt timeout / channel dead".
+			 */
+			ret = EAGAIN;
+		} else {
+   			ret = chn_sleep(c, timeout);
+			if (ret == EAGAIN) {
+				ret = EINVAL;
+				c->flags |= CHN_F_DEAD;
+				device_printf(c->dev, "%s(): %s: "
+				    "play interrupt timeout, channel dead\n",
+				    __func__, c->name);
+			} else if (ret == ERESTART || ret == EINTR)
+				c->flags |= CHN_F_ABORTING;
 		}
 	}
-	/* kprintf("ret: %d left: %d\n", ret, buf->uio_resid); */
 
-	if (count <= 0) {
-		c->flags |= CHN_F_DEAD;
-		kprintf("%s: play interrupt timeout, channel dead\n", c->name);
-	}
-
-	return ret;
+	return (ret);
 }
-
-#if 0
-static int
-chn_rddump(struct pcm_channel *c, unsigned int cnt)
-{
-    	struct snd_dbuf *b = c->bufhard;
-
-	CHN_LOCKASSERT(c);
-#if 0
-	static uint32_t kk = 0;
-	printf("%u: dumping %d bytes\n", ++kk, cnt);
-#endif
-	c->xruns++;
-	sndbuf_setxrun(b, sndbuf_getxrun(b) + cnt);
-	return sndbuf_dispose(b, NULL, cnt);
-}
-#endif
 
 /*
  * Feed new data from the read buffer. Can be called in the bottom half.
  */
-int
+static void
 chn_rdfeed(struct pcm_channel *c)
 {
     	struct snd_dbuf *b = c->bufhard;
     	struct snd_dbuf *bs = c->bufsoft;
-	unsigned int ret, amt;
+	unsigned int amt;
 
 	CHN_LOCKASSERT(c);
-    	DEB(
-	if (c->flags & CHN_F_CLOSING) {
-		sndbuf_dump(b, "b", 0x02);
-		sndbuf_dump(bs, "bs", 0x02);
-	})
 
-#if 0
-	amt = sndbuf_getready(b);
-	if (sndbuf_getfree(bs) < amt) {
-		c->xruns++;
-		amt = sndbuf_getfree(bs);
-	}
-#endif
+	if (c->flags & CHN_F_MMAP)
+		sndbuf_dispose(bs, NULL, sndbuf_getready(bs));
+
 	amt = sndbuf_getfree(bs);
-	ret = (amt > 0)? sndbuf_feed(b, bs, c, c->feeder, amt) : 0;
+	if (amt > 0)
+		sndbuf_feed(b, bs, c, c->feeder, amt);
 
 	amt = sndbuf_getready(b);
 	if (amt > 0) {
@@ -453,33 +545,30 @@ chn_rdfeed(struct pcm_channel *c)
 		sndbuf_dispose(b, NULL, amt);
 	}
 
-	chn_wakeup(c);
-
-	return ret;
+	if (sndbuf_getready(bs) > 0)
+		chn_wakeup(c);
 }
 
-void
+#if 0
+static void
 chn_rdupdate(struct pcm_channel *c)
 {
-	int ret;
 
 	CHN_LOCKASSERT(c);
 	KASSERT(c->direction == PCMDIR_REC, ("chn_rdupdate on bad channel"));
 
-	if ((c->flags & CHN_F_MAPPED) || !(c->flags & CHN_F_TRIGGERED))
+	if ((c->flags & (CHN_F_MMAP | CHN_F_VIRTUAL)) || CHN_STOPPED(c))
 		return;
 	chn_trigger(c, PCMTRIG_EMLDMARD);
 	chn_dmaupdate(c);
-	ret = chn_rdfeed(c);
-	DEB(if (ret)
-		kprintf("chn_rdfeed: %d\n", ret);)
+	chn_rdfeed(c);
 }
+#endif
 
 /* read interrupt routine. Must be called with interrupts blocked. */
 static void
 chn_rdintr(struct pcm_channel *c)
 {
-	int ret;
 
 	CHN_LOCKASSERT(c);
 	/* tell the driver to update the primary buffer if non-dma */
@@ -487,7 +576,7 @@ chn_rdintr(struct pcm_channel *c)
 	/* update pointers in primary buffer */
 	chn_dmaupdate(c);
 	/* ...and feed from primary to secondary */
-	ret = chn_rdfeed(c);
+	chn_rdfeed(c);
 }
 
 /*
@@ -498,78 +587,87 @@ chn_rdintr(struct pcm_channel *c)
  */
 
 int
-chn_read(struct pcm_channel *c, struct uio *buf, int ioflags)
+chn_read(struct pcm_channel *c, struct uio *buf)
 {
-	int		ret, timeout, sz, count;
-	int nbio;
-	struct snd_dbuf       *bs = c->bufsoft;
+	struct snd_dbuf *bs = c->bufsoft;
 	void *off;
-	int t, x,togo,p;
+	int ret, timeout, sz, t, p;
 
 	CHN_LOCKASSERT(c);
-	nbio = (c->flags & CHN_F_NBIO) || (ioflags & IO_NDELAY);
-	if (!(c->flags & CHN_F_TRIGGERED))
-		chn_start(c, 0);
+
+	if (CHN_STOPPED(c) && !(c->flags & CHN_F_NOTRIGGER)) {
+		ret = chn_start(c, 0);
+		if (ret != 0) {
+			c->flags |= CHN_F_DEAD;
+			return (ret);
+		}
+	}
 
 	ret = 0;
-	count = hz;
-	while (!ret && (buf->uio_resid > 0) && (count > 0)) {
-		sz = (int)szmin(buf->uio_resid, sndbuf_getready(bs));
+	timeout = chn_timeout * hz;
 
+	while (ret == 0 && buf->uio_resid > 0) {
+		sz = min(buf->uio_resid, sndbuf_getready(bs));
 		if (sz > 0) {
 			/*
 			 * The following assumes that the free space in
 			 * the buffer can never be less around the
 			 * unlock-uiomove-lock sequence.
 			 */
-			togo = sz;
-			while (ret == 0 && togo> 0) {
+			while (ret == 0 && sz > 0) {
 				p = sndbuf_getreadyptr(bs);
-				t = MIN(togo, sndbuf_getsize(bs) - p);
+				t = min(sz, sndbuf_getsize(bs) - p);
 				off = sndbuf_getbufofs(bs, p);
 				CHN_UNLOCK(c);
 				ret = uiomove(off, t, buf);
 				CHN_LOCK(c);
-				togo -= t;
-				x = sndbuf_dispose(bs, NULL, t);
+				sz -= t;
+				sndbuf_dispose(bs, NULL, t);
 			}
 			ret = 0;
-		} else {
-			if (nbio) {
-				ret = EWOULDBLOCK;
-			} else {
-				timeout = (hz * sndbuf_getblksz(bs)) / (sndbuf_getspd(bs) * sndbuf_getbps(bs));
-				if (timeout < 1)
-					timeout = 1;
-	   			ret = chn_sleep(c, "pcmrd", timeout);
-				if (ret == EWOULDBLOCK) {
-					count -= timeout;
-					ret = 0;
-				} else {
-					count = hz;
-				}
-
-			}
+		} else if (c->flags & (CHN_F_NBIO | CHN_F_NOTRIGGER))
+			ret = EAGAIN;
+		else {
+   			ret = chn_sleep(c, timeout);
+			if (ret == EAGAIN) {
+				ret = EINVAL;
+				c->flags |= CHN_F_DEAD;
+				device_printf(c->dev, "%s(): %s: "
+				    "record interrupt timeout, channel dead\n",
+				    __func__, c->name);
+			} else if (ret == ERESTART || ret == EINTR)
+				c->flags |= CHN_F_ABORTING;
 		}
 	}
 
-	if (count <= 0) {
-		c->flags |= CHN_F_DEAD;
-		kprintf("%s: record interrupt timeout, channel dead\n", c->name);
-	}
+	return (ret);
+}
 
-	return ret;
+void
+chn_intr_locked(struct pcm_channel *c)
+{
+
+	CHN_LOCKASSERT(c);
+
+	c->interrupts++;
+
+	if (c->direction == PCMDIR_PLAY)
+		chn_wrintr(c);
+	else
+		chn_rdintr(c);
 }
 
 void
 chn_intr(struct pcm_channel *c)
 {
+
+	if (CHN_LOCKOWNED(c)) {
+		chn_intr_locked(c);
+		return;
+	}
+
 	CHN_LOCK(c);
-	c->interrupts++;
-	if (c->direction == PCMDIR_PLAY)
-		chn_wrintr(c);
-	else
-		chn_rdintr(c);
+	chn_intr_locked(c);
 	CHN_UNLOCK(c);
 }
 
@@ -579,38 +677,74 @@ chn_start(struct pcm_channel *c, int force)
 	u_int32_t i, j;
 	struct snd_dbuf *b = c->bufhard;
 	struct snd_dbuf *bs = c->bufsoft;
+	int err;
 
 	CHN_LOCKASSERT(c);
 	/* if we're running, or if we're prevented from triggering, bail */
-	if ((c->flags & CHN_F_TRIGGERED) || ((c->flags & CHN_F_NOTRIGGER) && !force))
-		return EINVAL;
+	if (CHN_STARTED(c) || ((c->flags & CHN_F_NOTRIGGER) && !force))
+		return (EINVAL);
 
-	i = (c->direction == PCMDIR_PLAY)? sndbuf_getready(bs) : sndbuf_getfree(bs);
-	j = (c->direction == PCMDIR_PLAY)? sndbuf_getfree(b) : sndbuf_getready(b);
-	if (force || (i >= j)) {
-		c->flags |= CHN_F_TRIGGERED;
-		/*
-		 * if we're starting because a vchan started, don't feed any data
-		 * or it becomes impossible to start vchans synchronised with the
-		 * first one.  the hardbuf should be empty so we top it up with
-		 * silence to give it something to chew.  the real data will be
-		 * fed at the first irq.
-		 */
-		if (c->direction == PCMDIR_PLAY) {
-			/*
-			 * Reduce pops during playback startup.
-			 */
-			sndbuf_fillsilence(b);
-			if (SLIST_EMPTY(&c->children))
-				chn_wrfeed(c);
+	err = 0;
+
+	if (force) {
+		i = 1;
+		j = 0;
+	} else {
+		if (c->direction == PCMDIR_REC) {
+			i = sndbuf_getfree(bs);
+			j = (i > 0) ? 1 : sndbuf_getready(b);
+		} else {
+			if (sndbuf_getfree(bs) == 0) {
+				i = 1;
+				j = 0;
+			} else {
+				struct snd_dbuf *pb;
+
+				pb = CHN_BUF_PARENT(c, b);
+				i = sndbuf_xbytes(sndbuf_getready(bs), bs, pb);
+				j = sndbuf_getalign(pb);
+			}
 		}
-		sndbuf_setrun(b, 1);
-		c->xruns = 0;
-	    	chn_trigger(c, PCMTRIG_START);
-		return 0;
+		if (snd_verbose > 3 && CHN_EMPTY(c, children))
+			device_printf(c->dev, "%s(): %s (%s) threshold "
+			    "i=%d j=%d\n", __func__, CHN_DIRSTR(c),
+			    (c->flags & CHN_F_VIRTUAL) ? "virtual" :
+			    "hardware", i, j);
 	}
 
-	return 0;
+	if (i >= j) {
+		c->flags |= CHN_F_TRIGGERED;
+		sndbuf_setrun(b, 1);
+		if (c->flags & CHN_F_CLOSING)
+			c->feedcount = 2;
+		else {
+			c->feedcount = 0;
+			c->interrupts = 0;
+			c->xruns = 0;
+		}
+		if (c->parentchannel == NULL) {
+			if (c->direction == PCMDIR_PLAY)
+				sndbuf_fillsilence_rl(b,
+				    sndbuf_xbytes(sndbuf_getsize(bs), bs, b));
+			if (snd_verbose > 3)
+				device_printf(c->dev,
+				    "%s(): %s starting! (%s/%s) "
+				    "(ready=%d force=%d i=%d j=%d "
+				    "intrtimeout=%u latency=%dms)\n",
+				    __func__,
+				    (c->flags & CHN_F_HAS_VCHAN) ?
+				    "VCHAN PARENT" : "HW", CHN_DIRSTR(c),
+				    (c->flags & CHN_F_CLOSING) ? "closing" :
+				    "running",
+				    sndbuf_getready(b),
+				    force, i, j, c->timeout,
+				    (sndbuf_getsize(b) * 1000) /
+				    (sndbuf_getalign(b) * sndbuf_getspd(b)));
+		}
+		err = chn_trigger(c, PCMTRIG_START);
+	}
+
+	return (err);
 }
 
 void
@@ -632,50 +766,156 @@ chn_resetbuf(struct pcm_channel *c)
 int
 chn_sync(struct pcm_channel *c, int threshold)
 {
-    	u_long rdy;
-    	int ret;
-    	struct snd_dbuf *bs = c->bufsoft;
+    	struct snd_dbuf *b, *bs;
+	int ret, count, hcount, minflush, resid, residp, syncdelay, blksz;
+	u_int32_t cflag;
 
 	CHN_LOCKASSERT(c);
 
+	if (c->direction != PCMDIR_PLAY)
+		return (EINVAL);
+
+	bs = c->bufsoft;
+
+	if ((c->flags & (CHN_F_DEAD | CHN_F_ABORTING)) ||
+	    (threshold < 1 && sndbuf_getready(bs) < 1))
+		return (0);
+
 	/* if we haven't yet started and nothing is buffered, else start*/
-	if (!(c->flags & CHN_F_TRIGGERED)) {
-		if (sndbuf_getready(bs) > 0) {
+	if (CHN_STOPPED(c)) {
+		if (threshold > 0 || sndbuf_getready(bs) > 0) {
 			ret = chn_start(c, 1);
-			if (ret)
-				return ret;
-		} else {
-			return 0;
-		}
+			if (ret != 0)
+				return (ret);
+		} else
+			return (0);
 	}
 
-	for (;;) {
-		rdy = (c->direction == PCMDIR_PLAY)? sndbuf_getfree(bs) : sndbuf_getready(bs);
-		if (rdy <= threshold) {
-	    		ret = chn_sleep(c, "pcmsyn", 1);
-	    		if (ret == ERESTART || ret == EINTR) {
-				DEB(kprintf("chn_sync: tsleep returns %d\n", ret));
-				return -1;
-	    		}
+	b = CHN_BUF_PARENT(c, c->bufhard);
+
+	minflush = threshold + sndbuf_xbytes(sndbuf_getready(b), b, bs);
+
+	syncdelay = chn_syncdelay;
+
+	if (syncdelay < 0 && (threshold > 0 || sndbuf_getready(bs) > 0))
+		minflush += sndbuf_xbytes(sndbuf_getsize(b), b, bs);
+
+	/*
+	 * Append (0-1000) millisecond trailing buffer (if needed)
+	 * for slower / high latency hardwares (notably USB audio)
+	 * to avoid audible truncation.
+	 */
+	if (syncdelay > 0)
+		minflush += (sndbuf_getalign(bs) * sndbuf_getspd(bs) *
+		    ((syncdelay > 1000) ? 1000 : syncdelay)) / 1000;
+
+	minflush -= minflush % sndbuf_getalign(bs);
+
+	if (minflush > 0) {
+		threshold = min(minflush, sndbuf_getfree(bs));
+		sndbuf_clear(bs, threshold);
+		sndbuf_acquire(bs, NULL, threshold);
+		minflush -= threshold;
+	}
+
+	resid = sndbuf_getready(bs);
+	residp = resid;
+	blksz = sndbuf_getblksz(b);
+	if (blksz < 1) {
+		device_printf(c->dev,
+		    "%s(): WARNING: blksz < 1 ! maxsize=%d [%d/%d/%d]\n",
+		    __func__, sndbuf_getmaxsize(b), sndbuf_getsize(b),
+		    sndbuf_getblksz(b), sndbuf_getblkcnt(b));
+		if (sndbuf_getblkcnt(b) > 0)
+			blksz = sndbuf_getsize(b) / sndbuf_getblkcnt(b);
+		if (blksz < 1)
+			blksz = 1;
+	}
+	count = sndbuf_xbytes(minflush + resid, bs, b) / blksz;
+	hcount = count;
+	ret = 0;
+
+	if (snd_verbose > 3)
+		device_printf(c->dev, "%s(): [begin] timeout=%d count=%d "
+		    "minflush=%d resid=%d\n", __func__, c->timeout, count,
+		    minflush, resid);
+
+	cflag = c->flags & CHN_F_CLOSING;
+	c->flags |= CHN_F_CLOSING;
+	while (count > 0 && (resid > 0 || minflush > 0)) {
+		ret = chn_sleep(c, c->timeout);
+    		if (ret == ERESTART || ret == EINTR) {
+			c->flags |= CHN_F_ABORTING;
+			break;
+		} else if (ret == 0 || ret == EAGAIN) {
+			resid = sndbuf_getready(bs);
+			if (resid == residp) {
+				--count;
+				if (snd_verbose > 3)
+					device_printf(c->dev,
+					    "%s(): [stalled] timeout=%d "
+					    "count=%d hcount=%d "
+					    "resid=%d minflush=%d\n",
+					    __func__, c->timeout, count,
+					    hcount, resid, minflush);
+			} else if (resid < residp && count < hcount) {
+				++count;
+				if (snd_verbose > 3)
+					device_printf(c->dev,
+					    "%s((): [resume] timeout=%d "
+					    "count=%d hcount=%d "
+					    "resid=%d minflush=%d\n",
+					    __func__, c->timeout, count,
+					    hcount, resid, minflush);
+			}
+			if (minflush > 0 && sndbuf_getfree(bs) > 0) {
+				threshold = min(minflush,
+				    sndbuf_getfree(bs));
+				sndbuf_clear(bs, threshold);
+				sndbuf_acquire(bs, NULL, threshold);
+				resid = sndbuf_getready(bs);
+				minflush -= threshold;
+			}
+			residp = resid;
 		} else
 			break;
-    	}
-    	return 0;
+	}
+	c->flags &= ~CHN_F_CLOSING;
+	c->flags |= cflag;
+
+	if (snd_verbose > 3)
+		device_printf(c->dev,
+		    "%s(): timeout=%d count=%d hcount=%d resid=%d residp=%d "
+		    "minflush=%d ret=%d\n",
+		    __func__, c->timeout, count, hcount, resid, residp,
+		    minflush, ret);
+
+    	return (0);
 }
 
 /* called externally, handle locking */
 int
 chn_poll(struct pcm_channel *c, int ev, struct thread *td)
 {
+	struct snd_dbuf *bs = c->bufsoft;
 	int ret;
 
 	CHN_LOCKASSERT(c);
-    	if (!(c->flags & CHN_F_MAPPED) && !(c->flags & CHN_F_TRIGGERED))
-		chn_start(c, 1);
+
+    	if (!(c->flags & (CHN_F_MMAP | CHN_F_TRIGGERED))) {
+		ret = chn_start(c, 1);
+		if (ret != 0)
+			return (0);
+	}
+
 	ret = 0;
-	if (chn_polltrigger(c) && chn_pollreset(c))
+	if (chn_polltrigger(c)) {
+		chn_pollreset(c);
 		ret = ev;
-	return ret;
+	} else
+		selrecord(td, sndbuf_getsel(bs));
+
+	return (ret);
 }
 
 /*
@@ -692,7 +932,7 @@ chn_abort(struct pcm_channel *c)
     	struct snd_dbuf *bs = c->bufsoft;
 
 	CHN_LOCKASSERT(c);
-	if (!(c->flags & CHN_F_TRIGGERED))
+	if (CHN_STOPPED(c))
 		return 0;
 	c->flags |= CHN_F_ABORTING;
 
@@ -702,7 +942,7 @@ chn_abort(struct pcm_channel *c)
 	sndbuf_setrun(b, 0);
 	if (!(c->flags & CHN_F_VIRTUAL))
 		chn_dmaupdate(c);
-    	missing = sndbuf_getready(bs) + sndbuf_getready(b);
+    	missing = sndbuf_getready(bs);
 
 	c->flags &= ~CHN_F_ABORTING;
 	return missing;
@@ -722,48 +962,14 @@ chn_abort(struct pcm_channel *c)
 int
 chn_flush(struct pcm_channel *c)
 {
-    	int ret, count, resid, resid_p;
     	struct snd_dbuf *b = c->bufhard;
-    	struct snd_dbuf *bs = c->bufsoft;
 
 	CHN_LOCKASSERT(c);
 	KASSERT(c->direction == PCMDIR_PLAY, ("chn_flush on bad channel"));
-    	DEB(kprintf("chn_flush: c->flags 0x%08x\n", c->flags));
-
-	/* if we haven't yet started and nothing is buffered, else start*/
-	if (!(c->flags & CHN_F_TRIGGERED)) {
-		if (sndbuf_getready(bs) > 0) {
-			ret = chn_start(c, 1);
-			if (ret)
-				return ret;
-		} else {
-			return 0;
-		}
-	}
+    	DEB(printf("chn_flush: c->flags 0x%08x\n", c->flags));
 
 	c->flags |= CHN_F_CLOSING;
-	resid = sndbuf_getready(bs) + sndbuf_getready(b);
-	resid_p = resid;
-	count = 10;
-	ret = 0;
-	while ((count > 0) && (resid > sndbuf_getsize(b)) && (ret == 0)) {
-		/* still pending output data. */
-		ret = chn_sleep(c, "pcmflu", hz / 10);
-		if (ret == EWOULDBLOCK)
-			ret = 0;
-		if (ret == 0) {
-			resid = sndbuf_getready(bs) + sndbuf_getready(b);
-			if (resid == resid_p)
-				count--;
-			if (resid > resid_p)
-				DEB(kprintf("chn_flush: buffer length increasind %d -> %d\n", resid_p, resid));
-			resid_p = resid;
-		}
-   	}
-	if (count == 0)
-		DEB(kprintf("chn_flush: timeout, hw %d, sw %d\n",
-			sndbuf_getready(b), sndbuf_getready(bs)));
-
+	chn_sync(c, 0);
 	c->flags &= ~CHN_F_TRIGGERED;
 	/* kill the channel */
 	chn_trigger(c, PCMTRIG_ABORT);
@@ -774,49 +980,204 @@ chn_flush(struct pcm_channel *c)
 }
 
 int
-fmtvalid(u_int32_t fmt, u_int32_t *fmtlist)
+snd_fmtvalid(uint32_t fmt, uint32_t *fmtlist)
 {
 	int i;
 
-	for (i = 0; fmtlist[i]; i++)
-		if (fmt == fmtlist[i])
-			return 1;
-	return 0;
+	for (i = 0; fmtlist[i] != 0; i++) {
+		if (fmt == fmtlist[i] ||
+		    ((fmt & AFMT_PASSTHROUGH) &&
+		    (AFMT_ENCODING(fmt) & fmtlist[i])))
+			return (1);
+	}
+
+	return (0);
+}
+
+static const struct {
+	char *name, *alias1, *alias2;
+	uint32_t afmt;
+} afmt_tab[] = {
+	{  "alaw",  NULL, NULL, AFMT_A_LAW  },
+	{ "mulaw",  NULL, NULL, AFMT_MU_LAW },
+	{    "u8",   "8", NULL, AFMT_U8     },
+	{    "s8",  NULL, NULL, AFMT_S8     },
+#if BYTE_ORDER == LITTLE_ENDIAN
+	{ "s16le", "s16", "16", AFMT_S16_LE },
+	{ "s16be",  NULL, NULL, AFMT_S16_BE },
+#else
+	{ "s16le",  NULL, NULL, AFMT_S16_LE },
+	{ "s16be", "s16", "16", AFMT_S16_BE },
+#endif
+	{ "u16le",  NULL, NULL, AFMT_U16_LE },
+	{ "u16be",  NULL, NULL, AFMT_U16_BE },
+	{ "s24le",  NULL, NULL, AFMT_S24_LE },
+	{ "s24be",  NULL, NULL, AFMT_S24_BE },
+	{ "u24le",  NULL, NULL, AFMT_U24_LE },
+	{ "u24be",  NULL, NULL, AFMT_U24_BE },
+#if BYTE_ORDER == LITTLE_ENDIAN
+	{ "s32le", "s32", "32", AFMT_S32_LE },
+	{ "s32be",  NULL, NULL, AFMT_S32_BE },
+#else
+	{ "s32le",  NULL, NULL, AFMT_S32_LE },
+	{ "s32be", "s32", "32", AFMT_S32_BE },
+#endif
+	{ "u32le",  NULL, NULL, AFMT_U32_LE },
+	{ "u32be",  NULL, NULL, AFMT_U32_BE },
+	{   "ac3",  NULL, NULL, AFMT_AC3    },
+	{    NULL,  NULL, NULL, 0           }
+};
+
+static const struct {
+	char *name, *alias1, *alias2;
+	int matrix_id;
+} matrix_id_tab[] = {
+	{ "1.0",  "1",   "mono", SND_CHN_MATRIX_1_0     },
+	{ "2.0",  "2", "stereo", SND_CHN_MATRIX_2_0     },
+	{ "2.1", NULL,     NULL, SND_CHN_MATRIX_2_1     },
+	{ "3.0",  "3",     NULL, SND_CHN_MATRIX_3_0     },
+	{ "3.1", NULL,     NULL, SND_CHN_MATRIX_3_1     },
+	{ "4.0",  "4",   "quad", SND_CHN_MATRIX_4_0     },
+	{ "4.1", NULL,     NULL, SND_CHN_MATRIX_4_1     },
+	{ "5.0",  "5",     NULL, SND_CHN_MATRIX_5_0     },
+	{ "5.1",  "6",     NULL, SND_CHN_MATRIX_5_1     },
+	{ "6.0", NULL,     NULL, SND_CHN_MATRIX_6_0     },
+	{ "6.1",  "7",     NULL, SND_CHN_MATRIX_6_1     },
+	{ "7.0", NULL,     NULL, SND_CHN_MATRIX_7_0     },
+	{ "7.1",  "8",     NULL, SND_CHN_MATRIX_7_1     },
+	{  NULL, NULL,     NULL, SND_CHN_MATRIX_UNKNOWN }
+};
+
+uint32_t
+snd_str2afmt(const char *req)
+{
+	uint32_t i, afmt;
+	int matrix_id;
+	char b1[8], b2[8];
+
+	i = sscanf(req, "%5[^:]:%6s", b1, b2);
+
+	if (i == 1) {
+		if (strlen(req) != strlen(b1))
+			return (0);
+		strlcpy(b2, "2.0", sizeof(b2));
+	} else if (i == 2) {
+		if (strlen(req) != (strlen(b1) + 1 + strlen(b2)))
+			return (0);
+	} else
+		return (0);
+
+	afmt = 0;
+	matrix_id = SND_CHN_MATRIX_UNKNOWN;
+
+	for (i = 0; afmt == 0 && afmt_tab[i].name != NULL; i++) {
+		if (strcasecmp(afmt_tab[i].name, b1) == 0 ||
+		    (afmt_tab[i].alias1 != NULL &&
+		    strcasecmp(afmt_tab[i].alias1, b1) == 0) ||
+		    (afmt_tab[i].alias2 != NULL &&
+		    strcasecmp(afmt_tab[i].alias2, b1) == 0)) {
+			afmt = afmt_tab[i].afmt;
+			strlcpy(b1, afmt_tab[i].name, sizeof(b1));
+		}
+	}
+
+	if (afmt == 0)
+		return (0);
+
+	for (i = 0; matrix_id == SND_CHN_MATRIX_UNKNOWN &&
+	    matrix_id_tab[i].name != NULL; i++) {
+		if (strcmp(matrix_id_tab[i].name, b2) == 0 ||
+		    (matrix_id_tab[i].alias1 != NULL &&
+		    strcmp(matrix_id_tab[i].alias1, b2) == 0) ||
+		    (matrix_id_tab[i].alias2 != NULL &&
+		    strcasecmp(matrix_id_tab[i].alias2, b2) == 0)) {
+			matrix_id = matrix_id_tab[i].matrix_id;
+			strlcpy(b2, matrix_id_tab[i].name, sizeof(b2));
+		}
+	}
+
+	if (matrix_id == SND_CHN_MATRIX_UNKNOWN)
+		return (0);
+
+#ifndef _KERNEL
+	printf("Parse OK: '%s' -> '%s:%s' %d\n", req, b1, b2,
+	    (int)(b2[0]) - '0' + (int)(b2[2]) - '0');
+#endif
+
+	return (SND_FORMAT(afmt, b2[0] - '0' + b2[2] - '0', b2[2] - '0'));
+}
+
+uint32_t
+snd_afmt2str(uint32_t afmt, char *buf, size_t len)
+{
+	uint32_t i, enc, ch, ext;
+	char tmp[AFMTSTR_LEN];
+
+	if (buf == NULL || len < AFMTSTR_LEN)
+		return (0);
+
+	
+	bzero(tmp, sizeof(tmp));
+
+	enc = AFMT_ENCODING(afmt);
+	ch = AFMT_CHANNEL(afmt);
+	ext = AFMT_EXTCHANNEL(afmt);
+
+	for (i = 0; afmt_tab[i].name != NULL; i++) {
+		if (enc == afmt_tab[i].afmt) {
+			strlcpy(tmp, afmt_tab[i].name, sizeof(tmp));
+			strlcat(tmp, ":", sizeof(tmp));
+			break;
+		}
+	}
+
+	if (strlen(tmp) == 0)
+		return (0);
+	
+	for (i = 0; matrix_id_tab[i].name != NULL; i++) {
+		if (ch == (matrix_id_tab[i].name[0] - '0' +
+		    matrix_id_tab[i].name[2] - '0') &&
+		    ext == (matrix_id_tab[i].name[2] - '0')) {
+			strlcat(tmp, matrix_id_tab[i].name, sizeof(tmp));
+			break;
+		}
+	}
+
+	if (strlen(tmp) == 0)
+		return (0);
+
+	strlcpy(buf, tmp, len);
+
+	return (snd_str2afmt(buf));
 }
 
 int
-chn_reset(struct pcm_channel *c, u_int32_t fmt)
+chn_reset(struct pcm_channel *c, uint32_t fmt, uint32_t spd)
 {
-	int hwspd, r;
+	int r;
 
 	CHN_LOCKASSERT(c);
+	c->feedcount = 0;
 	c->flags &= CHN_F_RESET;
 	c->interrupts = 0;
+	c->timeout = 1;
 	c->xruns = 0;
 
-	r = CHANNEL_RESET(c->methods, c->devinfo);
-	if (fmt != 0) {
-#if 0
-		hwspd = DSP_DEFAULT_SPEED;
-		/* only do this on a record channel until feederbuilder works */
-		if (c->direction == PCMDIR_REC)
-			RANGE(hwspd, chn_getcaps(c)->minspeed, chn_getcaps(c)->maxspeed);
-		c->speed = hwspd;
-#endif
-		hwspd = chn_getcaps(c)->minspeed;
-		c->speed = hwspd;
+	c->flags |= (pcm_getflags(c->dev) & SD_F_BITPERFECT) ?
+	    CHN_F_BITPERFECT : 0;
 
-		if (r == 0)
-			r = chn_setformat(c, fmt);
-		if (r == 0)
-			r = chn_setspeed(c, hwspd);
-#if 0
-		if (r == 0)
-			r = chn_setvolume(c, 100, 100);
-#endif
+	r = CHANNEL_RESET(c->methods, c->devinfo);
+	if (r == 0 && fmt != 0 && spd != 0) {
+		r = chn_setparam(c, fmt, spd);
+		fmt = 0;
+		spd = 0;
 	}
+	if (r == 0 && fmt != 0)
+		r = chn_setformat(c, fmt);
+	if (r == 0 && spd != 0)
+		r = chn_setspeed(c, spd);
 	if (r == 0)
-		r = chn_setblocksize(c, 0, 0);
+		r = chn_setlatency(c, chn_latency);
 	if (r == 0) {
 		chn_resetbuf(c);
 		r = CHANNEL_RESETDONE(c->methods, c->devinfo);
@@ -829,14 +1190,21 @@ chn_init(struct pcm_channel *c, void *devinfo, int dir, int direction)
 {
 	struct feeder_class *fc;
 	struct snd_dbuf *b, *bs;
-	int ret;
+	int i, ret;
+
+	if (chn_timeout < CHN_TIMEOUT_MIN || chn_timeout > CHN_TIMEOUT_MAX)
+		chn_timeout = CHN_TIMEOUT;
 
 	chn_lockinit(c, dir);
 
 	b = NULL;
 	bs = NULL;
+	CHN_INIT(c, children);
+	CHN_INIT(c, children.busy);
 	c->devinfo = NULL;
 	c->feeder = NULL;
+	c->latency = -1;
+	c->timeout = 1;
 
 	ret = ENOMEM;
 	b = sndbuf_create(c->dev, c->name, "primary", c);
@@ -867,9 +1235,24 @@ chn_init(struct pcm_channel *c, void *devinfo, int dir, int direction)
 	c->bufsoft = bs;
 	c->flags = 0;
 	c->feederflags = 0;
+	c->sm = NULL;
+	c->format = SND_FORMAT(AFMT_U8, 1, 0);
+	c->speed = DSP_DEFAULT_SPEED;
+
+	c->matrix = *feeder_matrix_id_map(SND_CHN_MATRIX_1_0);
+	c->matrix.id = SND_CHN_MATRIX_PCMCHANNEL;
+
+	for (i = 0; i < SND_CHN_T_MAX; i++) {
+		c->volume[SND_VOL_C_MASTER][i] = SND_VOL_0DB_MASTER;
+	}
+
+	c->volume[SND_VOL_C_MASTER][SND_CHN_T_VOL_0DB] = SND_VOL_0DB_MASTER;
+	c->volume[SND_VOL_C_PCM][SND_CHN_T_VOL_0DB] = chn_vol_0db_pcm;
+
+	chn_vpc_reset(c, SND_VOL_C_PCM, 1);
 
 	ret = ENODEV;
-	CHN_UNLOCK(c); /* XXX - Unlock for CHANNEL_INIT() kmalloc() call */
+	CHN_UNLOCK(c); /* XXX - Unlock for CHANNEL_INIT() malloc() call */
 	c->devinfo = CHANNEL_INIT(c->methods, devinfo, b, c, direction);
 	CHN_LOCK(c);
 	if (c->devinfo == NULL)
@@ -879,22 +1262,27 @@ chn_init(struct pcm_channel *c, void *devinfo, int dir, int direction)
 	if ((sndbuf_getsize(b) == 0) && ((c->flags & CHN_F_VIRTUAL) == 0))
 		goto out;
 
-	ret = chn_setdir(c, direction);
-	if (ret)
-		goto out;
+	ret = 0;
+	c->direction = direction;
 
-	ret = sndbuf_setfmt(b, AFMT_U8);
-	if (ret)
-		goto out;
+	sndbuf_setfmt(b, c->format);
+	sndbuf_setspd(b, c->speed);
+	sndbuf_setfmt(bs, c->format);
+	sndbuf_setspd(bs, c->speed);
 
-	ret = sndbuf_setfmt(bs, AFMT_U8);
-	if (ret)
-		goto out;
-
-	ret = chn_setvolume(c, 100, 100);
-	if (ret)
-		goto out;
-
+	/**
+	 * @todo Should this be moved somewhere else?  The primary buffer
+	 * 	 is allocated by the driver or via DMA map setup, and tmpbuf
+	 * 	 seems to only come into existence in sndbuf_resize().
+	 */
+	if (c->direction == PCMDIR_PLAY) {
+		bs->sl = sndbuf_getmaxsize(bs);
+		bs->shadbuf = malloc(bs->sl, M_DEVBUF, M_NOWAIT);
+		if (bs->shadbuf == NULL) {
+			ret = ENOMEM;
+			goto out;
+		}
+	}
 
 out:
 	CHN_UNLOCK(c);
@@ -907,6 +1295,7 @@ out:
 			sndbuf_destroy(bs);
 		if (b)
 			sndbuf_destroy(b);
+		CHN_LOCK(c);
 		c->flags |= CHN_F_DEAD;
 		chn_lockdestroy(c);
 
@@ -922,373 +1311,921 @@ chn_kill(struct pcm_channel *c)
     	struct snd_dbuf *b = c->bufhard;
     	struct snd_dbuf *bs = c->bufsoft;
 
-	if (c->flags & CHN_F_TRIGGERED)
+	if (CHN_STARTED(c)) {
+		CHN_LOCK(c);
 		chn_trigger(c, PCMTRIG_ABORT);
-	while (chn_removefeeder(c) == 0);
+		CHN_UNLOCK(c);
+	}
+	while (chn_removefeeder(c) == 0)
+		;
 	if (CHANNEL_FREE(c->methods, c->devinfo))
 		sndbuf_free(b);
-	c->flags |= CHN_F_DEAD;
 	sndbuf_destroy(bs);
 	sndbuf_destroy(b);
+	CHN_LOCK(c);
+	c->flags |= CHN_F_DEAD;
 	chn_lockdestroy(c);
-	return 0;
+
+	return (0);
 }
 
-int
-chn_setdir(struct pcm_channel *c, int dir)
-{
-	int r;
-
-	CHN_LOCKASSERT(c);
-	c->direction = dir;
-	r = CHANNEL_SETDIR(c->methods, c->devinfo, c->direction);
-	return r;
-}
-
+/* XXX Obsolete. Use *_matrix() variant instead. */
 int
 chn_setvolume(struct pcm_channel *c, int left, int right)
 {
-	CHN_LOCKASSERT(c);
-	/* should add a feeder for volume changing if channel returns -1 */
-	if (left > 100)
-		left = 100;
-	if (left < 0)
-		left = 0;
-	if (right > 100)
-		right = 100;
-	if (right < 0)
-		right = 0;
-	c->volume = left | (right << 8);
-	return 0;
+	int ret;
+
+	ret = chn_setvolume_matrix(c, SND_VOL_C_MASTER, SND_CHN_T_FL, left);
+	ret |= chn_setvolume_matrix(c, SND_VOL_C_MASTER, SND_CHN_T_FR,
+	    right) << 8;
+
+	return (ret);
 }
 
-static int
-chn_tryspeed(struct pcm_channel *c, int speed)
+int
+chn_setvolume_multi(struct pcm_channel *c, int vc, int left, int right,
+    int center)
 {
-	struct pcm_feeder *f;
-    	struct snd_dbuf *b = c->bufhard;
-    	struct snd_dbuf *bs = c->bufsoft;
-    	struct snd_dbuf *x;
-	int r, delta;
+	int i, ret;
 
-	CHN_LOCKASSERT(c);
-	DEB(kprintf("setspeed, channel %s\n", c->name));
-	DEB(kprintf("want speed %d, ", speed));
-	if (speed <= 0)
-		return EINVAL;
-	if (CANCHANGE(c)) {
-		r = 0;
-		c->speed = speed;
-		sndbuf_setspd(bs, speed);
-		RANGE(speed, chn_getcaps(c)->minspeed, chn_getcaps(c)->maxspeed);
-		DEB(kprintf("try speed %d, ", speed));
-		sndbuf_setspd(b, CHANNEL_SETSPEED(c->methods, c->devinfo, speed));
-		DEB(kprintf("got speed %d\n", sndbuf_getspd(b)));
+	ret = 0;
 
-		delta = sndbuf_getspd(b) - sndbuf_getspd(bs);
-		if (delta < 0)
-			delta = -delta;
-
-		c->feederflags &= ~(1 << FEEDER_RATE);
-		/*
-		 * Used to be 500. It was too big!
-		 */
-		if (delta > 25)
-			c->feederflags |= 1 << FEEDER_RATE;
+	for (i = 0; i < SND_CHN_T_MAX; i++) {
+		if ((1 << i) & SND_CHN_LEFT_MASK)
+			ret |= chn_setvolume_matrix(c, vc, i, left);
+		else if ((1 << i) & SND_CHN_RIGHT_MASK)
+			ret |= chn_setvolume_matrix(c, vc, i, right) << 8;
 		else
-			sndbuf_setspd(bs, sndbuf_getspd(b));
+			ret |= chn_setvolume_matrix(c, vc, i, center) << 16;
+	}
 
-		r = chn_buildfeeder(c);
-		DEB(kprintf("r = %d\n", r));
-		if (r)
-			goto out;
-
-		r = chn_setblocksize(c, 0, 0);
-		if (r)
-			goto out;
-
-		if (!(c->feederflags & (1 << FEEDER_RATE)))
-			goto out;
-
-		r = EINVAL;
-		f = chn_findfeeder(c, FEEDER_RATE);
-		DEB(kprintf("feedrate = %p\n", f));
-		if (f == NULL)
-			goto out;
-
-		x = (c->direction == PCMDIR_REC)? b : bs;
-		r = FEEDER_SET(f, FEEDRATE_SRC, sndbuf_getspd(x));
-		DEB(kprintf("feeder_set(FEEDRATE_SRC, %d) = %d\n", sndbuf_getspd(x), r));
-		if (r)
-			goto out;
-
-		x = (c->direction == PCMDIR_REC)? bs : b;
-		r = FEEDER_SET(f, FEEDRATE_DST, sndbuf_getspd(x));
-		DEB(kprintf("feeder_set(FEEDRATE_DST, %d) = %d\n", sndbuf_getspd(x), r));
-out:
-		if (!r)
-			r = CHANNEL_SETFORMAT(c->methods, c->devinfo,
-							sndbuf_getfmt(b));
-		if (!r)
-			sndbuf_setfmt(bs, c->format);
-		DEB(kprintf("setspeed done, r = %d\n", r));
-		return r;
-	} else
-		return EINVAL;
+	return (ret);
 }
 
 int
-chn_setspeed(struct pcm_channel *c, int speed)
+chn_setvolume_matrix(struct pcm_channel *c, int vc, int vt, int val)
 {
-	int r, oldspeed = c->speed;
+	int i;
 
-	r = chn_tryspeed(c, speed);
-	if (r) {
-		DEB(kprintf("Failed to set speed %d falling back to %d\n", speed, oldspeed));
-		r = chn_tryspeed(c, oldspeed);
-	}
-	return r;
-}
-
-static int
-chn_tryformat(struct pcm_channel *c, u_int32_t fmt)
-{
-	struct snd_dbuf *b = c->bufhard;
-	struct snd_dbuf *bs = c->bufsoft;
-	int r;
-
+	KASSERT(c != NULL && vc >= SND_VOL_C_MASTER && vc < SND_VOL_C_MAX &&
+	    (vc == SND_VOL_C_MASTER || (vc & 1)) &&
+	    (vt == SND_CHN_T_VOL_0DB || (vt >= SND_CHN_T_BEGIN &&
+	    vt <= SND_CHN_T_END)) && (vt != SND_CHN_T_VOL_0DB ||
+	    (val >= SND_VOL_0DB_MIN && val <= SND_VOL_0DB_MAX)),
+	    ("%s(): invalid volume matrix c=%p vc=%d vt=%d val=%d",
+	    __func__, c, vc, vt, val));
 	CHN_LOCKASSERT(c);
-	if (CANCHANGE(c)) {
-		DEB(kprintf("want format %d\n", fmt));
-		c->format = fmt;
-		r = chn_buildfeeder(c);
-		if (r == 0) {
-			sndbuf_setfmt(bs, c->format);
-			chn_resetbuf(c);
-			r = CHANNEL_SETFORMAT(c->methods, c->devinfo, sndbuf_getfmt(b));
-			if (r == 0)
-				r = chn_tryspeed(c, c->speed);
-		}
-		return r;
-	} else
-		return EINVAL;
+
+	if (val < 0)
+		val = 0;
+	if (val > 100)
+		val = 100;
+
+	c->volume[vc][vt] = val;
+
+	/*
+	 * Do relative calculation here and store it into class + 1
+	 * to ease the job of feeder_volume.
+	 */
+	if (vc == SND_VOL_C_MASTER) {
+		for (vc = SND_VOL_C_BEGIN; vc <= SND_VOL_C_END;
+		    vc += SND_VOL_C_STEP)
+			c->volume[SND_VOL_C_VAL(vc)][vt] =
+			    SND_VOL_CALC_VAL(c->volume, vc, vt);
+	} else if (vc & 1) {
+		if (vt == SND_CHN_T_VOL_0DB)
+			for (i = SND_CHN_T_BEGIN; i <= SND_CHN_T_END;
+			    i += SND_CHN_T_STEP) {
+				c->volume[SND_VOL_C_VAL(vc)][i] =
+				    SND_VOL_CALC_VAL(c->volume, vc, i);
+			}
+		else
+			c->volume[SND_VOL_C_VAL(vc)][vt] =
+			    SND_VOL_CALC_VAL(c->volume, vc, vt);
+	}
+
+	return (val);
 }
 
 int
-chn_setformat(struct pcm_channel *c, u_int32_t fmt)
+chn_getvolume_matrix(struct pcm_channel *c, int vc, int vt)
 {
-	u_int32_t oldfmt = c->format;
-	int r;
+	KASSERT(c != NULL && vc >= SND_VOL_C_MASTER && vc < SND_VOL_C_MAX &&
+	    (vt == SND_CHN_T_VOL_0DB ||
+	    (vt >= SND_CHN_T_BEGIN && vt <= SND_CHN_T_END)),
+	    ("%s(): invalid volume matrix c=%p vc=%d vt=%d",
+	    __func__, c, vc, vt));
+	CHN_LOCKASSERT(c);
 
-	r = chn_tryformat(c, fmt);
-	if (r) {
-		DEB(kprintf("Format change %d failed, reverting to %d\n", fmt, oldfmt));
-		chn_tryformat(c, oldfmt);
-	}
-	return r;
+	return (c->volume[vc][vt]);
 }
 
-static unsigned int
-round_bufsz (unsigned int bufsz, unsigned int min, unsigned int max)
+struct pcmchan_matrix *
+chn_getmatrix(struct pcm_channel *c)
 {
-	int pow=1, res;
-	if (bufsz < min) bufsz = min;
-	else if (bufsz > max) bufsz = max;
 
-	if (bufsz & (bufsz-1)) {
-		while (bufsz >> pow) pow++;
-		res = 1<<pow;
-	}
-	else res = bufsz;
-	if (res > max) return res>>1;
-	else return res;
+	KASSERT(c != NULL, ("%s(): NULL channel", __func__));
+	CHN_LOCKASSERT(c);
+
+	if (!(c->format & AFMT_CONVERTIBLE))
+		return (NULL);
+
+	return (&c->matrix);
+}
+
+int
+chn_setmatrix(struct pcm_channel *c, struct pcmchan_matrix *m)
+{
+
+	KASSERT(c != NULL && m != NULL,
+	    ("%s(): NULL channel or matrix", __func__));
+	CHN_LOCKASSERT(c);
+
+	if (!(c->format & AFMT_CONVERTIBLE))
+		return (EINVAL);
+
+	c->matrix = *m;
+	c->matrix.id = SND_CHN_MATRIX_PCMCHANNEL;
+
+	return (chn_setformat(c, SND_FORMAT(c->format, m->channels, m->ext)));
 }
 
 /*
- * set the channel's blocksize both for soft and hard buffers.
- *
- * blksz should be a power of 2 between 2**4 and 2**16 -- it is useful
- * that it has the same value for both bufsoft and bufhard.
- * blksz == -1 computes values according to a target irq rate.
- * blksz == 0 reuses previous values if available, otherwise
- * behaves as for -1
- *
- * blkcnt is set by the user, between 2 and (2**17)/blksz for bufsoft,
- * but should be a power of 2 for bufhard to simplify life to low
- * level drivers.
- * Note, for the rec channel a large blkcnt is ok,
- * but for the play channel we want blksz as small as possible to keep
- * the delay small, because routines in the write path always try to
- * keep bufhard full.
- *
- * Unless we have good reason to, use the values suggested by the caller.
+ * XXX chn_oss_* exists for the sake of compatibility.
  */
+int
+chn_oss_getorder(struct pcm_channel *c, unsigned long long *map)
+{
+
+	KASSERT(c != NULL && map != NULL,
+	    ("%s(): NULL channel or map", __func__));
+	CHN_LOCKASSERT(c);
+
+	if (!(c->format & AFMT_CONVERTIBLE))
+		return (EINVAL);
+
+	return (feeder_matrix_oss_get_channel_order(&c->matrix, map));
+}
+
+int
+chn_oss_setorder(struct pcm_channel *c, unsigned long long *map)
+{
+	struct pcmchan_matrix m;
+	int ret;
+
+	KASSERT(c != NULL && map != NULL,
+	    ("%s(): NULL channel or map", __func__));
+	CHN_LOCKASSERT(c);
+
+	if (!(c->format & AFMT_CONVERTIBLE))
+		return (EINVAL);
+
+	m = c->matrix;
+	ret = feeder_matrix_oss_set_channel_order(&m, map);
+	if (ret != 0)
+		return (ret);
+
+	return (chn_setmatrix(c, &m));
+}
+
+#define SND_CHN_OSS_FRONT	(SND_CHN_T_MASK_FL | SND_CHN_T_MASK_FR)
+#define SND_CHN_OSS_SURR	(SND_CHN_T_MASK_SL | SND_CHN_T_MASK_SR)
+#define SND_CHN_OSS_CENTER_LFE	(SND_CHN_T_MASK_FC | SND_CHN_T_MASK_LF)
+#define SND_CHN_OSS_REAR	(SND_CHN_T_MASK_BL | SND_CHN_T_MASK_BR)
+
+int
+chn_oss_getmask(struct pcm_channel *c, uint32_t *retmask)
+{
+	struct pcmchan_matrix *m;
+	struct pcmchan_caps *caps;
+	uint32_t i, format;
+
+	KASSERT(c != NULL && retmask != NULL,
+	    ("%s(): NULL channel or retmask", __func__));
+	CHN_LOCKASSERT(c);
+
+	caps = chn_getcaps(c);
+	if (caps == NULL || caps->fmtlist == NULL)
+		return (ENODEV);
+
+	for (i = 0; caps->fmtlist[i] != 0; i++) {
+		format = caps->fmtlist[i];
+		if (!(format & AFMT_CONVERTIBLE)) {
+			*retmask |= DSP_BIND_SPDIF;
+			continue;
+		}
+		m = CHANNEL_GETMATRIX(c->methods, c->devinfo, format);
+		if (m == NULL)
+			continue;
+		if (m->mask & SND_CHN_OSS_FRONT)
+			*retmask |= DSP_BIND_FRONT;
+		if (m->mask & SND_CHN_OSS_SURR)
+			*retmask |= DSP_BIND_SURR;
+		if (m->mask & SND_CHN_OSS_CENTER_LFE)
+			*retmask |= DSP_BIND_CENTER_LFE;
+		if (m->mask & SND_CHN_OSS_REAR)
+			*retmask |= DSP_BIND_REAR;
+	}
+
+	/* report software-supported binding mask */
+	if (!CHN_BITPERFECT(c) && report_soft_matrix)
+		*retmask |= DSP_BIND_FRONT | DSP_BIND_SURR |
+		    DSP_BIND_CENTER_LFE | DSP_BIND_REAR;
+
+	return (0);
+}
+
+void
+chn_vpc_reset(struct pcm_channel *c, int vc, int force)
+{
+	int i;
+
+	KASSERT(c != NULL && vc >= SND_VOL_C_BEGIN && vc <= SND_VOL_C_END,
+	    ("%s(): invalid reset c=%p vc=%d", __func__, c, vc));
+	CHN_LOCKASSERT(c);
+
+	if (force == 0 && chn_vpc_autoreset == 0)
+		return;
+
+	for (i = SND_CHN_T_BEGIN; i <= SND_CHN_T_END; i += SND_CHN_T_STEP)
+		CHN_SETVOLUME(c, vc, i, c->volume[vc][SND_CHN_T_VOL_0DB]);
+}
+
+static u_int32_t
+round_pow2(u_int32_t v)
+{
+	u_int32_t ret;
+
+	if (v < 2)
+		v = 2;
+	ret = 0;
+	while (v >> ret)
+		ret++;
+	ret = 1 << (ret - 1);
+	while (ret < v)
+		ret <<= 1;
+	return ret;
+}
+
+static u_int32_t
+round_blksz(u_int32_t v, int round)
+{
+	u_int32_t ret, tmp;
+
+	if (round < 1)
+		round = 1;
+
+	ret = min(round_pow2(v), CHN_2NDBUFMAXSIZE >> 1);
+
+	if (ret > v && (ret >> 1) > 0 && (ret >> 1) >= ((v * 3) >> 2))
+		ret >>= 1;
+
+	tmp = ret - (ret % round);
+	while (tmp < 16 || tmp < round) {
+		ret <<= 1;
+		tmp = ret - (ret % round);
+	}
+
+	return ret;
+}
+
+/*
+ * 4Front call it DSP Policy, while we call it "Latency Profile". The idea
+ * is to keep 2nd buffer short so that it doesn't cause long queue during
+ * buffer transfer.
+ *
+ *    Latency reference table for 48khz stereo 16bit: (PLAY)
+ *
+ *      +---------+------------+-----------+------------+
+ *      | Latency | Blockcount | Blocksize | Buffersize |
+ *      +---------+------------+-----------+------------+
+ *      |     0   |       2    |   64      |    128     |
+ *      +---------+------------+-----------+------------+
+ *      |     1   |       4    |   128     |    512     |
+ *      +---------+------------+-----------+------------+
+ *      |     2   |       8    |   512     |    4096    |
+ *      +---------+------------+-----------+------------+
+ *      |     3   |      16    |   512     |    8192    |
+ *      +---------+------------+-----------+------------+
+ *      |     4   |      32    |   512     |    16384   |
+ *      +---------+------------+-----------+------------+
+ *      |     5   |      32    |   1024    |    32768   |
+ *      +---------+------------+-----------+------------+
+ *      |     6   |      16    |   2048    |    32768   |
+ *      +---------+------------+-----------+------------+
+ *      |     7   |       8    |   4096    |    32768   |
+ *      +---------+------------+-----------+------------+
+ *      |     8   |       4    |   8192    |    32768   |
+ *      +---------+------------+-----------+------------+
+ *      |     9   |       2    |   16384   |    32768   |
+ *      +---------+------------+-----------+------------+
+ *      |    10   |       2    |   32768   |    65536   |
+ *      +---------+------------+-----------+------------+
+ *
+ * Recording need a different reference table. All we care is
+ * gobbling up everything within reasonable buffering threshold.
+ *
+ *    Latency reference table for 48khz stereo 16bit: (REC)
+ *
+ *      +---------+------------+-----------+------------+
+ *      | Latency | Blockcount | Blocksize | Buffersize |
+ *      +---------+------------+-----------+------------+
+ *      |     0   |     512    |   32      |    16384   |
+ *      +---------+------------+-----------+------------+
+ *      |     1   |     256    |   64      |    16384   |
+ *      +---------+------------+-----------+------------+
+ *      |     2   |     128    |   128     |    16384   |
+ *      +---------+------------+-----------+------------+
+ *      |     3   |      64    |   256     |    16384   |
+ *      +---------+------------+-----------+------------+
+ *      |     4   |      32    |   512     |    16384   |
+ *      +---------+------------+-----------+------------+
+ *      |     5   |      32    |   1024    |    32768   |
+ *      +---------+------------+-----------+------------+
+ *      |     6   |      16    |   2048    |    32768   |
+ *      +---------+------------+-----------+------------+
+ *      |     7   |       8    |   4096    |    32768   |
+ *      +---------+------------+-----------+------------+
+ *      |     8   |       4    |   8192    |    32768   |
+ *      +---------+------------+-----------+------------+
+ *      |     9   |       2    |   16384   |    32768   |
+ *      +---------+------------+-----------+------------+
+ *      |    10   |       2    |   32768   |    65536   |
+ *      +---------+------------+-----------+------------+
+ *
+ * Calculations for other data rate are entirely based on these reference
+ * tables. For normal operation, Latency 5 seems give the best, well
+ * balanced performance for typical workload. Anything below 5 will
+ * eat up CPU to keep up with increasing context switches because of
+ * shorter buffer space and usually require the application to handle it
+ * aggresively through possibly real time programming technique.
+ *
+ */
+#define CHN_LATENCY_PBLKCNT_REF				\
+	{{1, 2, 3, 4, 5, 5, 4, 3, 2, 1, 1},		\
+	{1, 2, 3, 4, 5, 5, 4, 3, 2, 1, 1}}
+#define CHN_LATENCY_PBUFSZ_REF				\
+	{{7, 9, 12, 13, 14, 15, 15, 15, 15, 15, 16},	\
+	{11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 17}}
+
+#define CHN_LATENCY_RBLKCNT_REF				\
+	{{9, 8, 7, 6, 5, 5, 4, 3, 2, 1, 1},		\
+	{9, 8, 7, 6, 5, 5, 4, 3, 2, 1, 1}}
+#define CHN_LATENCY_RBUFSZ_REF				\
+	{{14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 16},	\
+	{15, 15, 15, 15, 15, 16, 16, 16, 16, 16, 17}}
+
+#define CHN_LATENCY_DATA_REF	192000 /* 48khz stereo 16bit ~ 48000 x 2 x 2 */
+
+static int
+chn_calclatency(int dir, int latency, int bps, u_int32_t datarate,
+				u_int32_t max, int *rblksz, int *rblkcnt)
+{
+	static int pblkcnts[CHN_LATENCY_PROFILE_MAX + 1][CHN_LATENCY_MAX + 1] =
+	    CHN_LATENCY_PBLKCNT_REF;
+	static int  pbufszs[CHN_LATENCY_PROFILE_MAX + 1][CHN_LATENCY_MAX + 1] =
+	    CHN_LATENCY_PBUFSZ_REF;
+	static int rblkcnts[CHN_LATENCY_PROFILE_MAX + 1][CHN_LATENCY_MAX + 1] =
+	    CHN_LATENCY_RBLKCNT_REF;
+	static int  rbufszs[CHN_LATENCY_PROFILE_MAX + 1][CHN_LATENCY_MAX + 1] =
+	    CHN_LATENCY_RBUFSZ_REF;
+	u_int32_t bufsz;
+	int lprofile, blksz, blkcnt;
+
+	if (latency < CHN_LATENCY_MIN || latency > CHN_LATENCY_MAX ||
+	    bps < 1 || datarate < 1 ||
+	    !(dir == PCMDIR_PLAY || dir == PCMDIR_REC)) {
+		if (rblksz != NULL)
+			*rblksz = CHN_2NDBUFMAXSIZE >> 1;
+		if (rblkcnt != NULL)
+			*rblkcnt = 2;
+		printf("%s(): FAILED dir=%d latency=%d bps=%d "
+		    "datarate=%u max=%u\n",
+		    __func__, dir, latency, bps, datarate, max);
+		return CHN_2NDBUFMAXSIZE;
+	}
+
+	lprofile = chn_latency_profile;
+
+	if (dir == PCMDIR_PLAY) {
+		blkcnt = pblkcnts[lprofile][latency];
+		bufsz = pbufszs[lprofile][latency];
+	} else {
+		blkcnt = rblkcnts[lprofile][latency];
+		bufsz = rbufszs[lprofile][latency];
+	}
+
+	bufsz = round_pow2(snd_xbytes(1 << bufsz, CHN_LATENCY_DATA_REF,
+	    datarate));
+	if (bufsz > max)
+		bufsz = max;
+	blksz = round_blksz(bufsz >> blkcnt, bps);
+
+	if (rblksz != NULL)
+		*rblksz = blksz;
+	if (rblkcnt != NULL)
+		*rblkcnt = 1 << blkcnt;
+
+	return blksz << blkcnt;
+}
+
+static int
+chn_resizebuf(struct pcm_channel *c, int latency,
+					int blkcnt, int blksz)
+{
+	struct snd_dbuf *b, *bs, *pb;
+	int sblksz, sblkcnt, hblksz, hblkcnt, limit = 0, nsblksz, nsblkcnt;
+	int ret;
+
+	CHN_LOCKASSERT(c);
+
+	if ((c->flags & (CHN_F_MMAP | CHN_F_TRIGGERED)) ||
+	    !(c->direction == PCMDIR_PLAY || c->direction == PCMDIR_REC))
+		return EINVAL;
+
+	if (latency == -1) {
+		c->latency = -1;
+		latency = chn_latency;
+	} else if (latency == -2) {
+		latency = c->latency;
+		if (latency < CHN_LATENCY_MIN || latency > CHN_LATENCY_MAX)
+			latency = chn_latency;
+	} else if (latency < CHN_LATENCY_MIN || latency > CHN_LATENCY_MAX)
+		return EINVAL;
+	else {
+		c->latency = latency;
+	}
+
+	bs = c->bufsoft;
+	b = c->bufhard;
+
+	if (!(blksz == 0 || blkcnt == -1) &&
+	    (blksz < 16 || blksz < sndbuf_getalign(bs) || blkcnt < 2 ||
+	    (blksz * blkcnt) > CHN_2NDBUFMAXSIZE))
+		return EINVAL;
+
+	chn_calclatency(c->direction, latency, sndbuf_getalign(bs),
+	    sndbuf_getalign(bs) * sndbuf_getspd(bs), CHN_2NDBUFMAXSIZE,
+	    &sblksz, &sblkcnt);
+
+	if (blksz == 0 || blkcnt == -1) {
+		if (blkcnt == -1)
+			c->flags &= ~CHN_F_HAS_SIZE;
+		if (c->flags & CHN_F_HAS_SIZE) {
+			blksz = sndbuf_getblksz(bs);
+			blkcnt = sndbuf_getblkcnt(bs);
+		}
+	} else
+		c->flags |= CHN_F_HAS_SIZE;
+
+	if (c->flags & CHN_F_HAS_SIZE) {
+		/*
+		 * The application has requested their own blksz/blkcnt.
+		 * Just obey with it, and let them toast alone. We can
+		 * clamp it to the nearest latency profile, but that would
+		 * defeat the purpose of having custom control. The least
+		 * we can do is round it to the nearest ^2 and align it.
+		 */
+		sblksz = round_blksz(blksz, sndbuf_getalign(bs));
+		sblkcnt = round_pow2(blkcnt);
+	}
+
+	if (c->parentchannel != NULL) {
+		pb = c->parentchannel->bufsoft;
+		CHN_UNLOCK(c);
+		CHN_LOCK(c->parentchannel);
+		chn_notify(c->parentchannel, CHN_N_BLOCKSIZE);
+		CHN_UNLOCK(c->parentchannel);
+		CHN_LOCK(c);
+		if (c->direction == PCMDIR_PLAY) {
+			limit = (pb != NULL) ?
+			    sndbuf_xbytes(sndbuf_getsize(pb), pb, bs) : 0;
+		} else {
+			limit = (pb != NULL) ?
+			    sndbuf_xbytes(sndbuf_getblksz(pb), pb, bs) * 2 : 0;
+		}
+	} else {
+		hblkcnt = 2;
+		if (c->flags & CHN_F_HAS_SIZE) {
+			hblksz = round_blksz(sndbuf_xbytes(sblksz, bs, b),
+			    sndbuf_getalign(b));
+			hblkcnt = round_pow2(sndbuf_getblkcnt(bs));
+		} else
+			chn_calclatency(c->direction, latency,
+			    sndbuf_getalign(b),
+			    sndbuf_getalign(b) * sndbuf_getspd(b),
+			    CHN_2NDBUFMAXSIZE, &hblksz, &hblkcnt);
+
+		if ((hblksz << 1) > sndbuf_getmaxsize(b))
+			hblksz = round_blksz(sndbuf_getmaxsize(b) >> 1,
+			    sndbuf_getalign(b));
+
+		while ((hblksz * hblkcnt) > sndbuf_getmaxsize(b)) {
+			if (hblkcnt < 4)
+				hblksz >>= 1;
+			else
+				hblkcnt >>= 1;
+		}
+
+		hblksz -= hblksz % sndbuf_getalign(b);
+
+#if 0
+		hblksz = sndbuf_getmaxsize(b) >> 1;
+		hblksz -= hblksz % sndbuf_getalign(b);
+		hblkcnt = 2;
+#endif
+
+		CHN_UNLOCK(c);
+		if (chn_usefrags == 0 ||
+		    CHANNEL_SETFRAGMENTS(c->methods, c->devinfo,
+		    hblksz, hblkcnt) != 0)
+			sndbuf_setblksz(b, CHANNEL_SETBLOCKSIZE(c->methods,
+			    c->devinfo, hblksz));
+		CHN_LOCK(c);
+
+		if (!CHN_EMPTY(c, children)) {
+			nsblksz = round_blksz(
+			    sndbuf_xbytes(sndbuf_getblksz(b), b, bs),
+			    sndbuf_getalign(bs));
+			nsblkcnt = sndbuf_getblkcnt(b);
+			if (c->direction == PCMDIR_PLAY) {
+				do {
+					nsblkcnt--;
+				} while (nsblkcnt >= 2 &&
+				    nsblksz * nsblkcnt >= sblksz * sblkcnt);
+				nsblkcnt++;
+			}
+			sblksz = nsblksz;
+			sblkcnt = nsblkcnt;
+			limit = 0;
+		} else
+			limit = sndbuf_xbytes(sndbuf_getblksz(b), b, bs) * 2;
+	}
+
+	if (limit > CHN_2NDBUFMAXSIZE)
+		limit = CHN_2NDBUFMAXSIZE;
+
+#if 0
+	while (limit > 0 && (sblksz * sblkcnt) > limit) {
+		if (sblkcnt < 4)
+			break;
+		sblkcnt >>= 1;
+	}
+#endif
+
+	while ((sblksz * sblkcnt) < limit)
+		sblkcnt <<= 1;
+
+	while ((sblksz * sblkcnt) > CHN_2NDBUFMAXSIZE) {
+		if (sblkcnt < 4)
+			sblksz >>= 1;
+		else
+			sblkcnt >>= 1;
+	}
+
+	sblksz -= sblksz % sndbuf_getalign(bs);
+
+	if (sndbuf_getblkcnt(bs) != sblkcnt || sndbuf_getblksz(bs) != sblksz ||
+	    sndbuf_getsize(bs) != (sblkcnt * sblksz)) {
+		ret = sndbuf_remalloc(bs, sblkcnt, sblksz);
+		if (ret != 0) {
+			device_printf(c->dev, "%s(): Failed: %d %d\n",
+			    __func__, sblkcnt, sblksz);
+			return ret;
+		}
+	}
+
+	/*
+	 * Interrupt timeout
+	 */
+	c->timeout = ((u_int64_t)hz * sndbuf_getsize(bs)) /
+	    ((u_int64_t)sndbuf_getspd(bs) * sndbuf_getalign(bs));
+	if (c->parentchannel != NULL)
+		c->timeout = min(c->timeout, c->parentchannel->timeout);
+	if (c->timeout < 1)
+		c->timeout = 1;
+
+	/*
+	 * OSSv4 docs: "By default OSS will set the low water level equal
+	 * to the fragment size which is optimal in most cases."
+	 */
+	c->lw = sndbuf_getblksz(bs);
+	chn_resetbuf(c);
+
+	if (snd_verbose > 3)
+		device_printf(c->dev, "%s(): %s (%s) timeout=%u "
+		    "b[%d/%d/%d] bs[%d/%d/%d] limit=%d\n",
+		    __func__, CHN_DIRSTR(c),
+		    (c->flags & CHN_F_VIRTUAL) ? "virtual" : "hardware",
+		    c->timeout,
+		    sndbuf_getsize(b), sndbuf_getblksz(b),
+		    sndbuf_getblkcnt(b),
+		    sndbuf_getsize(bs), sndbuf_getblksz(bs),
+		    sndbuf_getblkcnt(bs), limit);
+
+	return 0;
+}
+
+int
+chn_setlatency(struct pcm_channel *c, int latency)
+{
+	CHN_LOCKASSERT(c);
+	/* Destroy blksz/blkcnt, enforce latency profile. */
+	return chn_resizebuf(c, latency, -1, 0);
+}
+
 int
 chn_setblocksize(struct pcm_channel *c, int blkcnt, int blksz)
 {
-	struct snd_dbuf *b = c->bufhard;
-	struct snd_dbuf *bs = c->bufsoft;
-	int irqhz, ret, maxsz, maxsize, reqblksz;
+	CHN_LOCKASSERT(c);
+	/* Destroy latency profile, enforce blksz/blkcnt */
+	return chn_resizebuf(c, -1, blkcnt, blksz);
+}
+
+int
+chn_setparam(struct pcm_channel *c, uint32_t format, uint32_t speed)
+{
+	struct pcmchan_caps *caps;
+	uint32_t hwspeed, delta;
+	int ret;
 
 	CHN_LOCKASSERT(c);
-	if (!CANCHANGE(c) || (c->flags & CHN_F_MAPPED)) {
-		KASSERT(sndbuf_getsize(bs) ==  0 ||
-		    sndbuf_getsize(bs) >= sndbuf_getsize(b),
-		    ("%s(%s): bufsoft size %d < bufhard size %d", __func__,
-		    c->name, sndbuf_getsize(bs), sndbuf_getsize(b)));
-		return EINVAL;
-	}
-	c->flags |= CHN_F_SETBLOCKSIZE;
 
-	ret = 0;
-	DEB(kprintf("%s(%d, %d)\n", __func__, blkcnt, blksz));
-	if (blksz == 0 || blksz == -1) { /* let the driver choose values */
-		if (blksz == -1)	/* delete previous values */
-			c->flags &= ~CHN_F_HAS_SIZE;
-		if (!(c->flags & CHN_F_HAS_SIZE)) { /* no previous value */
-			/*
-			 * compute a base blksz according to the target irq
-			 * rate, then round to a suitable power of 2
-			 * in the range 16.. 2^17/2.
-			 * Finally compute a suitable blkcnt.
-			 */
-			blksz = round_bufsz( (sndbuf_getbps(bs) *
-				sndbuf_getspd(bs)) / chn_targetirqrate,
-				16, CHN_2NDBUFMAXSIZE / 2);
-			blkcnt = CHN_2NDBUFMAXSIZE / blksz;
-		} else { /* use previously defined value */
-			blkcnt = sndbuf_getblkcnt(bs);
-			blksz = sndbuf_getblksz(bs);
-		}
-	} else {
-		/*
-		 * use supplied values if reasonable. Note that here we
-		 * might have blksz which is not a power of 2 if the
-		 * ioctl() to compute it allows such values.
-		 */
-		ret = EINVAL;
-		if ((blksz < 16) || (blkcnt < 2) || (blkcnt * blksz > CHN_2NDBUFMAXSIZE))
-			goto out;
-		ret = 0;
-		c->flags |= CHN_F_HAS_SIZE;
-	}
+	if (speed < 1 || format == 0 || CHN_STARTED(c))
+		return (EINVAL);
 
-	reqblksz = blksz;
-	if (reqblksz < sndbuf_getbps(bs))
-		reqblksz = sndbuf_getbps(bs);
-	if (reqblksz % sndbuf_getbps(bs))
-		reqblksz -= reqblksz % sndbuf_getbps(bs);
+	c->format = format;
+	c->speed = speed;
 
-	/* adjust for different hw format/speed */
-	/*
-	 * Now compute the approx irq rate for the given (soft) blksz,
-	 * reduce to the acceptable range and compute a corresponding blksz
-	 * for the hard buffer. Then set the channel's blocksize and
-	 * corresponding hardbuf value. The number of blocks used should
-	 * be set by the device-specific routine. In fact, even the
-	 * call to sndbuf_setblksz() should not be here! XXX
-	 */
+	caps = chn_getcaps(c);
 
-	irqhz = (sndbuf_getbps(bs) * sndbuf_getspd(bs)) / blksz;
-	RANGE(irqhz, 16, 512);
+	hwspeed = speed;
+	RANGE(hwspeed, caps->minspeed, caps->maxspeed);
 
-	maxsz = sndbuf_getmaxsize(b);
-	if (maxsz == 0) /* virtual channels don't appear to allocate bufhard */
-		maxsz = CHN_2NDBUFMAXSIZE;
-	blksz = round_bufsz( (sndbuf_getbps(b) * sndbuf_getspd(b)) / irqhz,
-			16, maxsz / 2);
+	sndbuf_setspd(c->bufhard, CHANNEL_SETSPEED(c->methods, c->devinfo,
+	    hwspeed));
+	hwspeed = sndbuf_getspd(c->bufhard);
 
-	/* Increase the size of bufsoft if before increasing bufhard. */
-	maxsize = sndbuf_getsize(b);
-	if (sndbuf_getsize(bs) > maxsize)
-		maxsize = sndbuf_getsize(bs);
-	if (reqblksz * blkcnt > maxsize)
-		maxsize = reqblksz * blkcnt;
-	if (sndbuf_getsize(bs) != maxsize || sndbuf_getblksz(bs) != reqblksz) {
-		ret = sndbuf_remalloc(bs, maxsize/reqblksz, reqblksz);
-		if (ret)
-			goto out1;
-	}
+	delta = (hwspeed > speed) ? (hwspeed - speed) : (speed - hwspeed);
 
-	CHN_UNLOCK(c);
-	sndbuf_setblksz(b, CHANNEL_SETBLOCKSIZE(c->methods, c->devinfo, blksz));
-	CHN_LOCK(c);
+	if (delta <= feeder_rate_round)
+		c->speed = hwspeed;
 
-	/* Decrease the size of bufsoft after decreasing bufhard. */
-	maxsize = sndbuf_getsize(b);
-	if (reqblksz * blkcnt > maxsize)
-		maxsize = reqblksz * blkcnt;
-	if (maxsize > sndbuf_getsize(bs))
-		kprintf("Danger! %s bufsoft size increasing from %d to %d after CHANNEL_SETBLOCKSIZE()\n",
-		    c->name, sndbuf_getsize(bs), maxsize);
-	if (sndbuf_getsize(bs) != maxsize || sndbuf_getblksz(bs) != reqblksz) {
-		ret = sndbuf_remalloc(bs, maxsize/reqblksz, reqblksz);
-		if (ret)
-			goto out1;
-	}
+	ret = feeder_chain(c);
 
-	chn_resetbuf(c);
-out1:
-	KASSERT(sndbuf_getsize(bs) ==  0 ||
-	    sndbuf_getsize(bs) >= sndbuf_getsize(b),
-	    ("%s(%s): bufsoft size %d < bufhard size %d, reqblksz=%d blksz=%d maxsize=%d blkcnt=%d",
-	    __func__, c->name, sndbuf_getsize(bs), sndbuf_getsize(b), reqblksz,
-	    blksz, maxsize, blkcnt));
-out:
-	c->flags &= ~CHN_F_SETBLOCKSIZE;
+	if (ret == 0)
+		ret = CHANNEL_SETFORMAT(c->methods, c->devinfo,
+		    sndbuf_getfmt(c->bufhard));
+
+	if (ret == 0)
+		ret = chn_resizebuf(c, -2, 0, 0);
+
+	return (ret);
+}
+
+int
+chn_setspeed(struct pcm_channel *c, uint32_t speed)
+{
+	uint32_t oldformat, oldspeed, format;
+	int ret;
+
 #if 0
-	if (1) {
-		static uint32_t kk = 0;
-		printf("%u: b %d/%d/%d : (%d)%d/0x%0x | bs %d/%d/%d : (%d)%d/0x%0x\n", ++kk,
-			sndbuf_getsize(b), sndbuf_getblksz(b), sndbuf_getblkcnt(b),
-			sndbuf_getbps(b),
-			sndbuf_getspd(b), sndbuf_getfmt(b),
-			sndbuf_getsize(bs), sndbuf_getblksz(bs), sndbuf_getblkcnt(bs),
-			sndbuf_getbps(bs),
-			sndbuf_getspd(bs), sndbuf_getfmt(bs));
-		if (sndbuf_getsize(b) % sndbuf_getbps(b) ||
-				sndbuf_getblksz(b) % sndbuf_getbps(b) ||
-				sndbuf_getsize(bs) % sndbuf_getbps(bs) ||
-				sndbuf_getblksz(b) % sndbuf_getbps(b)) {
-			printf("%u: bps/blksz alignment screwed!\n", kk);
+	/* XXX force 48k */
+	if (c->format & AFMT_PASSTHROUGH)
+		speed = AFMT_PASSTHROUGH_RATE;
+#endif
+
+	oldformat = c->format;
+	oldspeed = c->speed;
+	format = oldformat;
+
+	ret = chn_setparam(c, format, speed);
+	if (ret != 0) {
+		if (snd_verbose > 3)
+			device_printf(c->dev,
+			    "%s(): Setting speed %d failed, "
+			    "falling back to %d\n",
+			    __func__, speed, oldspeed);
+		chn_setparam(c, c->format, oldspeed);
+	}
+
+	return (ret);
+}
+
+int
+chn_setformat(struct pcm_channel *c, uint32_t format)
+{
+	uint32_t oldformat, oldspeed, speed;
+	int ret;
+
+	/* XXX force stereo */
+	if ((format & AFMT_PASSTHROUGH) && AFMT_CHANNEL(format) < 2) {
+		format = SND_FORMAT(format, AFMT_PASSTHROUGH_CHANNEL,
+		    AFMT_PASSTHROUGH_EXTCHANNEL);
+	}
+
+	oldformat = c->format;
+	oldspeed = c->speed;
+	speed = oldspeed;
+
+	ret = chn_setparam(c, format, speed);
+	if (ret != 0) {
+		if (snd_verbose > 3)
+			device_printf(c->dev,
+			    "%s(): Format change 0x%08x failed, "
+			    "falling back to 0x%08x\n",
+			    __func__, format, oldformat);
+		chn_setparam(c, oldformat, oldspeed);
+	}
+
+	return (ret);
+}
+
+void
+chn_syncstate(struct pcm_channel *c)
+{
+	struct snddev_info *d;
+	struct snd_mixer *m;
+
+	d = (c != NULL) ? c->parentsnddev : NULL;
+	m = (d != NULL && d->mixer_dev != NULL) ? d->mixer_dev->si_drv1 :
+	    NULL;
+
+	if (d == NULL || m == NULL)
+		return;
+
+	CHN_LOCKASSERT(c);
+
+	if (c->feederflags & (1 << FEEDER_VOLUME)) {
+		uint32_t parent;
+		int vol, pvol, left, right, center;
+
+		if (c->direction == PCMDIR_PLAY &&
+		    (d->flags & SD_F_SOFTPCMVOL)) {
+			/* CHN_UNLOCK(c); */
+			vol = mix_get(m, SOUND_MIXER_PCM);
+			parent = mix_getparent(m, SOUND_MIXER_PCM);
+			if (parent != SOUND_MIXER_NONE)
+				pvol = mix_get(m, parent);
+			else
+				pvol = 100 | (100 << 8);
+			/* CHN_LOCK(c); */
+		} else {
+			vol = 100 | (100 << 8);
+			pvol = vol;
+		}
+
+		if (vol == -1) {
+			device_printf(c->dev,
+			    "Soft PCM Volume: Failed to read pcm "
+			    "default value\n");
+			vol = 100 | (100 << 8);
+		}
+
+		if (pvol == -1) {
+			device_printf(c->dev,
+			    "Soft PCM Volume: Failed to read parent "
+			    "default value\n");
+			pvol = 100 | (100 << 8);
+		}
+
+		left = ((vol & 0x7f) * (pvol & 0x7f)) / 100;
+		right = (((vol >> 8) & 0x7f) * ((pvol >> 8) & 0x7f)) / 100;
+		center = (left + right) >> 1;
+
+		chn_setvolume_multi(c, SND_VOL_C_MASTER, left, right, center);
+	}
+
+	if (c->feederflags & (1 << FEEDER_EQ)) {
+		struct pcm_feeder *f;
+		int treble, bass, state;
+
+		/* CHN_UNLOCK(c); */
+		treble = mix_get(m, SOUND_MIXER_TREBLE);
+		bass = mix_get(m, SOUND_MIXER_BASS);
+		/* CHN_LOCK(c); */
+
+		if (treble == -1)
+			treble = 50;
+		else
+			treble = ((treble & 0x7f) +
+			    ((treble >> 8) & 0x7f)) >> 1;
+
+		if (bass == -1)
+			bass = 50;
+		else
+			bass = ((bass & 0x7f) + ((bass >> 8) & 0x7f)) >> 1;
+
+		f = chn_findfeeder(c, FEEDER_EQ);
+		if (f != NULL) {
+			if (FEEDER_SET(f, FEEDEQ_TREBLE, treble) != 0)
+				device_printf(c->dev,
+				    "EQ: Failed to set treble -- %d\n",
+				    treble);
+			if (FEEDER_SET(f, FEEDEQ_BASS, bass) != 0)
+				device_printf(c->dev,
+				    "EQ: Failed to set bass -- %d\n",
+				    bass);
+			if (FEEDER_SET(f, FEEDEQ_PREAMP, d->eqpreamp) != 0)
+				device_printf(c->dev,
+				    "EQ: Failed to set preamp -- %d\n",
+				    d->eqpreamp);
+			if (d->flags & SD_F_EQ_BYPASSED)
+				state = FEEDEQ_BYPASS;
+			else if (d->flags & SD_F_EQ_ENABLED)
+				state = FEEDEQ_ENABLE;
+			else
+				state = FEEDEQ_DISABLE;
+			if (FEEDER_SET(f, FEEDEQ_STATE, state) != 0)
+				device_printf(c->dev,
+				    "EQ: Failed to set state -- %d\n", state);
 		}
 	}
-#endif
-	return ret;
 }
 
 int
 chn_trigger(struct pcm_channel *c, int go)
 {
+#ifdef DEV_ISA
+    	struct snd_dbuf *b = c->bufhard;
+#endif
+	struct snddev_info *d = c->parentsnddev;
 	int ret;
 
 	CHN_LOCKASSERT(c);
-	ret = CHANNEL_TRIGGER(c->methods, c->devinfo, go);
+#ifdef DEV_ISA
+	if (SND_DMA(b) && (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD))
+		sndbuf_dmabounce(b);
+#endif
+	if (!PCMTRIG_COMMON(go))
+		return (CHANNEL_TRIGGER(c->methods, c->devinfo, go));
 
-	return ret;
+	if (go == c->trigger)
+		return (0);
+
+	ret = CHANNEL_TRIGGER(c->methods, c->devinfo, go);
+	if (ret != 0)
+		return (ret);
+
+	switch (go) {
+	case PCMTRIG_START:
+		if (snd_verbose > 3)
+			device_printf(c->dev,
+			    "%s() %s: calling go=0x%08x , "
+			    "prev=0x%08x\n", __func__, c->name, go,
+			    c->trigger);
+		if (c->trigger != PCMTRIG_START) {
+			c->trigger = go;
+			CHN_UNLOCK(c);
+			PCM_LOCK(d);
+			CHN_INSERT_HEAD(d, c, channels.pcm.busy);
+			PCM_UNLOCK(d);
+			CHN_LOCK(c);
+			chn_syncstate(c);
+		}
+		break;
+	case PCMTRIG_STOP:
+	case PCMTRIG_ABORT:
+		if (snd_verbose > 3)
+			device_printf(c->dev,
+			    "%s() %s: calling go=0x%08x , "
+			    "prev=0x%08x\n", __func__, c->name, go,
+			    c->trigger);
+		if (c->trigger == PCMTRIG_START) {
+			c->trigger = go;
+			CHN_UNLOCK(c);
+			PCM_LOCK(d);
+			CHN_REMOVE(d, c, channels.pcm.busy);
+			PCM_UNLOCK(d);
+			CHN_LOCK(c);
+		}
+		break;
+	default:
+		break;
+	}
+
+	return (0);
 }
 
+/**
+ * @brief Queries sound driver for sample-aligned hardware buffer pointer index
+ *
+ * This function obtains the hardware pointer location, then aligns it to
+ * the current bytes-per-sample value before returning.  (E.g., a channel
+ * running in 16 bit stereo mode would require 4 bytes per sample, so a
+ * hwptr value ranging from 32-35 would be returned as 32.)
+ *
+ * @param c	PCM channel context	
+ * @returns 	sample-aligned hardware buffer pointer index
+ */
 int
 chn_getptr(struct pcm_channel *c)
 {
-#if 0
-	int hwptr;
-	int a = (1 << c->align) - 1;
-
-	CHN_LOCKASSERT(c);
-	hwptr = (c->flags & CHN_F_TRIGGERED)? CHANNEL_GETPTR(c->methods, c->devinfo) : 0;
-	/* don't allow unaligned values in the hwa ptr */
-#if 1
-	hwptr &= ~a ; /* Apply channel align mask */
-#endif
-	hwptr &= DMA_ALIGN_MASK; /* Apply DMA align mask */
-	return hwptr;
-#endif
 	int hwptr;
 
 	CHN_LOCKASSERT(c);
-	hwptr = (c->flags & CHN_F_TRIGGERED)? CHANNEL_GETPTR(c->methods, c->devinfo) : 0;
-	return (hwptr - (hwptr % sndbuf_getbps(c->bufhard)));
+	hwptr = (CHN_STARTED(c)) ? CHANNEL_GETPTR(c->methods, c->devinfo) : 0;
+	return (hwptr - (hwptr % sndbuf_getalign(c->bufhard)));
 }
 
 struct pcmchan_caps *
@@ -1310,260 +2247,300 @@ chn_getformats(struct pcm_channel *c)
 		fmts |= fmtlist[i];
 
 	/* report software-supported formats */
-	if (report_soft_formats)
-		fmts |= AFMT_MU_LAW|AFMT_A_LAW|AFMT_U32_LE|AFMT_U32_BE|
-		    AFMT_S32_LE|AFMT_S32_BE|AFMT_U24_LE|AFMT_U24_BE|
-		    AFMT_S24_LE|AFMT_S24_BE|AFMT_U16_LE|AFMT_U16_BE|
-		    AFMT_S16_LE|AFMT_S16_BE|AFMT_U8|AFMT_S8;
+	if (!CHN_BITPERFECT(c) && report_soft_formats)
+		fmts |= AFMT_CONVERTIBLE;
 
-	return fmts;
-}
-
-static int
-chn_buildfeeder(struct pcm_channel *c)
-{
-	struct feeder_class *fc;
-	struct pcm_feederdesc desc;
-	u_int32_t tmp[2], type, flags, hwfmt, *fmtlist;
-	int err;
-
-	CHN_LOCKASSERT(c);
-	while (chn_removefeeder(c) == 0);
-	KASSERT((c->feeder == NULL), ("feeder chain not empty"));
-
-	c->align = sndbuf_getalign(c->bufsoft);
-
-	if (SLIST_EMPTY(&c->children)) {
-		fc = feeder_getclass(NULL);
-		KASSERT(fc != NULL, ("can't find root feeder"));
-
-		err = chn_addfeeder(c, fc, NULL);
-		if (err) {
-			DEB(kprintf("can't add root feeder, err %d\n", err));
-
-			return err;
-		}
-		c->feeder->desc->out = c->format;
-	} else {
-		if (c->flags & CHN_F_HAS_VCHAN) {
-			desc.type = FEEDER_MIXER;
-			desc.in = 0;
-		} else {
-			DEB(kprintf("can't decide which feeder type to use!\n"));
-			return EOPNOTSUPP;
-		}
-		desc.out = c->format;
-		desc.flags = 0;
-		fc = feeder_getclass(&desc);
-		if (fc == NULL) {
-			DEB(kprintf("can't find vchan feeder\n"));
-
-			return EOPNOTSUPP;
-		}
-
-		err = chn_addfeeder(c, fc, &desc);
-		if (err) {
-			DEB(kprintf("can't add vchan feeder, err %d\n", err));
-
-			return err;
-		}
-	}
-	c->feederflags &= ~(1 << FEEDER_VOLUME);
-	if (c->direction == PCMDIR_PLAY &&
-			!(c->flags & CHN_F_VIRTUAL) &&
-			c->parentsnddev && (c->parentsnddev->flags & SD_F_SOFTPCMVOL) &&
-			c->parentsnddev->mixer_dev)
-		c->feederflags |= 1 << FEEDER_VOLUME;
-	flags = c->feederflags;
-	fmtlist = chn_getcaps(c)->fmtlist;
-
-	DEB(kprintf("feederflags %x\n", flags));
-
-	for (type = FEEDER_RATE; type <= FEEDER_LAST; type++) {
-		if (flags & (1 << type)) {
-			desc.type = type;
-			desc.in = 0;
-			desc.out = 0;
-			desc.flags = 0;
-			DEB(kprintf("find feeder type %d, ", type));
-			fc = feeder_getclass(&desc);
-			DEB(kprintf("got %p\n", fc));
-			if (fc == NULL) {
-				DEB(kprintf("can't find required feeder type %d\n", type));
-
-				return EOPNOTSUPP;
-			}
-
- 			DEB(kprintf("build fmtchain from 0x%08x to 0x%08x: ", c->feeder->desc->out, fc->desc->in));
-			tmp[0] = fc->desc->in;
-			tmp[1] = 0;
-			if (chn_fmtchain(c, tmp) == 0) {
-				DEB(kprintf("failed\n"));
-
-				return ENODEV;
-			}
-			DEB(kprintf("ok\n"));
-
-			err = chn_addfeeder(c, fc, fc->desc);
-			if (err) {
-				DEB(kprintf("can't add feeder %p, output 0x%x, err %d\n", fc, fc->desc->out, err));
-
-				return err;
-			}
-			DEB(kprintf("added feeder %p, output 0x%x\n", fc, c->feeder->desc->out));
-		}
-	}
-
- 	if (c->direction == PCMDIR_REC) {
-	 	tmp[0] = c->format;
- 		tmp[1] = 0;
- 		hwfmt = chn_fmtchain(c, tmp);
- 	} else
- 		hwfmt = chn_fmtchain(c, fmtlist);
-
-	if (hwfmt == 0 || !fmtvalid(hwfmt, fmtlist)) {
-		DEB(kprintf("Invalid hardware format: 0x%08x\n", hwfmt));
-		return ENODEV;
-	}
-
-	sndbuf_setfmt(c->bufhard, hwfmt);
-
-	if ((flags & (1 << FEEDER_VOLUME))) {
-		struct dev_ioctl_args map;
-		u_int32_t parent = SOUND_MIXER_NONE;
-		int vol, left, right;
-
-		vol = 100 | (100 << 8);
-
-		CHN_UNLOCK(c);
-		/*
-		 * XXX This is ugly! The way mixer subs being so secretive
-		 * about its own internals force us to use this silly
-		 * monkey trick.
-		 */
-		map.a_head.a_dev = c->parentsnddev->mixer_dev;
-		map.a_cmd = MIXER_READ(SOUND_MIXER_PCM);
-		map.a_data = (caddr_t)&vol;
-		map.a_fflag = -1;
-		map.a_cred = NULL;
-		map.a_sysmsg = NULL;
-		if (mixer_ioctl(&map) != 0)
-			device_printf(c->dev, "Soft PCM Volume: Failed to read default value\n");
-		left = vol & 0x7f;
-		right = (vol >> 8) & 0x7f;
-		if (c->parentsnddev != NULL &&
-		    c->parentsnddev->mixer_dev != NULL &&
-		    c->parentsnddev->mixer_dev->si_drv1 != NULL)
-			parent = mix_getparent(
-			    c->parentsnddev->mixer_dev->si_drv1,
-			    SOUND_MIXER_PCM);
-		if (parent != SOUND_MIXER_NONE) {
-			vol = 100 | (100 << 8);
-			map.a_head.a_dev = c->parentsnddev->mixer_dev;
-			map.a_cmd = MIXER_READ(parent);
-			map.a_data = (caddr_t)&vol;
-			map.a_fflag = -1;
-			map.a_cred = NULL;
-			if (mixer_ioctl(&map) != 0)
-				device_printf(c->dev, "Soft Volume: Failed to read parent default value\n");
-			left = (left * (vol & 0x7f)) / 100;
-			right = (right * ((vol >> 8) & 0x7f)) / 100;
-		}
-
-		CHN_LOCK(c);
-		chn_setvolume(c, left, right);
-	}
-
-	return 0;
+	return (AFMT_ENCODING(fmts));
 }
 
 int
 chn_notify(struct pcm_channel *c, u_int32_t flags)
 {
-	struct pcmchan_children *pce;
-	struct pcm_channel *child;
-	int run;
+	struct pcm_channel *ch;
+	struct pcmchan_caps *caps;
+	uint32_t bestformat, bestspeed, besthwformat, *vchanformat, *vchanrate;
+	uint32_t vpflags;
+	int dirty, err, run, nrun;
 
-	CHN_LOCK(c);
+	CHN_LOCKASSERT(c);
 
-	if (SLIST_EMPTY(&c->children)) {
-		CHN_UNLOCK(c);
-		return ENODEV;
-	}
+	if (CHN_EMPTY(c, children))
+		return (ENODEV);
 
-	run = (c->flags & CHN_F_TRIGGERED)? 1 : 0;
+	err = 0;
+
 	/*
-	 * if the hwchan is running, we can't change its rate, format or
+	 * If the hwchan is running, we can't change its rate, format or
 	 * blocksize
 	 */
+	run = (CHN_STARTED(c)) ? 1 : 0;
 	if (run)
 		flags &= CHN_N_VOLUME | CHN_N_TRIGGER;
 
 	if (flags & CHN_N_RATE) {
 		/*
-		 * we could do something here, like scan children and decide on
-		 * the most appropriate rate to mix at, but we don't for now
+		 * XXX I'll make good use of this someday.
+		 *     However this is currently being superseded by
+		 *     the availability of CHN_F_VCHAN_DYNAMIC.
 		 */
 	}
+
 	if (flags & CHN_N_FORMAT) {
 		/*
-		 * we could do something here, like scan children and decide on
-		 * the most appropriate mixer feeder to use, but we don't for now
+		 * XXX I'll make good use of this someday.
+		 *     However this is currently being superseded by
+		 *     the availability of CHN_F_VCHAN_DYNAMIC.
 		 */
 	}
+
 	if (flags & CHN_N_VOLUME) {
 		/*
-		 * we could do something here but we don't for now
+		 * XXX I'll make good use of this someday, though
+		 *     soft volume control is currently pretty much
+		 *     integrated.
 		 */
 	}
+
 	if (flags & CHN_N_BLOCKSIZE) {
-		int blksz;
 		/*
-		 * scan the children, find the lowest blocksize and use that
-		 * for the hard blocksize
+		 * Set to default latency profile
 		 */
-		blksz = sndbuf_getmaxsize(c->bufhard) / 2;
-		SLIST_FOREACH(pce, &c->children, link) {
-			child = pce->channel;
-			CHN_LOCK(child);
-			if (sndbuf_getblksz(child->bufhard) < blksz)
-				blksz = sndbuf_getblksz(child->bufhard);
-			CHN_UNLOCK(child);
-		}
-		chn_setblocksize(c, 2, blksz);
+		chn_setlatency(c, chn_latency);
 	}
-	if (flags & CHN_N_TRIGGER) {
-		int nrun;
-		/*
-		 * scan the children, and figure out if any are running
-		 * if so, we need to be running, otherwise we need to be stopped
-		 * if we aren't in our target sstate, move to it
-		 */
-		nrun = 0;
-		SLIST_FOREACH(pce, &c->children, link) {
-			child = pce->channel;
-			CHN_LOCK(child);
-			if (child->flags & CHN_F_TRIGGERED)
-				nrun = 1;
-			CHN_UNLOCK(child);
-		}
+
+	if ((flags & CHN_N_TRIGGER) && !(c->flags & CHN_F_VCHAN_DYNAMIC)) {
+		nrun = CHN_EMPTY(c, children.busy) ? 0 : 1;
 		if (nrun && !run)
-			chn_start(c, 1);
+			err = chn_start(c, 1);
 		if (!nrun && run)
 			chn_abort(c);
+		flags &= ~CHN_N_TRIGGER;
 	}
-	CHN_UNLOCK(c);
-	return 0;
+
+	if (flags & CHN_N_TRIGGER) {
+		if (c->direction == PCMDIR_PLAY) {
+			vchanformat = &c->parentsnddev->pvchanformat;
+			vchanrate = &c->parentsnddev->pvchanrate;
+		} else {
+			vchanformat = &c->parentsnddev->rvchanformat;
+			vchanrate = &c->parentsnddev->rvchanrate;
+		}
+
+		/* Dynamic Virtual Channel */
+		if (!(c->flags & CHN_F_VCHAN_ADAPTIVE)) {
+			bestformat = *vchanformat;
+			bestspeed = *vchanrate;
+		} else {
+			bestformat = 0;
+			bestspeed = 0;
+		}
+
+		besthwformat = 0;
+		nrun = 0;
+		caps = chn_getcaps(c);
+		dirty = 0;
+		vpflags = 0;
+
+		CHN_FOREACH(ch, c, children.busy) {
+			CHN_LOCK(ch);
+			if ((ch->format & AFMT_PASSTHROUGH) &&
+			    snd_fmtvalid(ch->format, caps->fmtlist)) {
+				bestformat = ch->format;
+				bestspeed = ch->speed;
+				CHN_UNLOCK(ch);
+				vpflags = CHN_F_PASSTHROUGH;
+				nrun++;
+				break;
+			}
+			if ((ch->flags & CHN_F_EXCLUSIVE) && vpflags == 0) {
+				if (c->flags & CHN_F_VCHAN_ADAPTIVE) {
+					bestspeed = ch->speed;
+					RANGE(bestspeed, caps->minspeed,
+					    caps->maxspeed);
+					besthwformat = snd_fmtbest(ch->format,
+					    caps->fmtlist);
+					if (besthwformat != 0)
+						bestformat = besthwformat;
+				}
+				CHN_UNLOCK(ch);
+				vpflags = CHN_F_EXCLUSIVE;
+				nrun++;
+				continue;
+			}
+			if (!(c->flags & CHN_F_VCHAN_ADAPTIVE) ||
+			    vpflags != 0) {
+				CHN_UNLOCK(ch);
+				nrun++;
+				continue;
+			}
+			if (ch->speed > bestspeed) {
+				bestspeed = ch->speed;
+				RANGE(bestspeed, caps->minspeed,
+				    caps->maxspeed);
+			}
+			besthwformat = snd_fmtbest(ch->format, caps->fmtlist);
+			if (!(besthwformat & AFMT_VCHAN)) {
+				CHN_UNLOCK(ch);
+				nrun++;
+				continue;
+			}
+			if (AFMT_CHANNEL(besthwformat) >
+			    AFMT_CHANNEL(bestformat))
+				bestformat = besthwformat;
+			else if (AFMT_CHANNEL(besthwformat) ==
+			    AFMT_CHANNEL(bestformat) &&
+			    AFMT_BIT(besthwformat) > AFMT_BIT(bestformat))
+				bestformat = besthwformat;
+			CHN_UNLOCK(ch);
+			nrun++;
+		}
+
+		if (bestformat == 0)
+			bestformat = c->format;
+		if (bestspeed == 0)
+			bestspeed = c->speed;
+
+		if (bestformat != c->format || bestspeed != c->speed)
+			dirty = 1;
+
+		c->flags &= ~(CHN_F_PASSTHROUGH | CHN_F_EXCLUSIVE);
+		c->flags |= vpflags;
+
+		if (nrun && !run) {
+			if (dirty) {
+				bestspeed = CHANNEL_SETSPEED(c->methods,
+				    c->devinfo, bestspeed);
+				err = chn_reset(c, bestformat, bestspeed);
+			}
+			if (err == 0 && dirty) {
+				CHN_FOREACH(ch, c, children.busy) {
+					CHN_LOCK(ch);
+					if (VCHAN_SYNC_REQUIRED(ch))
+						vchan_sync(ch);
+					CHN_UNLOCK(ch);
+				}
+			}
+			if (err == 0) {
+				if (dirty)
+					c->flags |= CHN_F_DIRTY;
+				err = chn_start(c, 1);
+			}
+		}
+
+		if (nrun && run && dirty) {
+			chn_abort(c);
+			bestspeed = CHANNEL_SETSPEED(c->methods, c->devinfo,
+			    bestspeed);
+			err = chn_reset(c, bestformat, bestspeed);
+			if (err == 0) {
+				CHN_FOREACH(ch, c, children.busy) {
+					CHN_LOCK(ch);
+					if (VCHAN_SYNC_REQUIRED(ch))
+						vchan_sync(ch);
+					CHN_UNLOCK(ch);
+				}
+			}
+			if (err == 0) {
+				c->flags |= CHN_F_DIRTY;
+				err = chn_start(c, 1);
+			}
+		}
+
+		if (err == 0 && !(bestformat & AFMT_PASSTHROUGH) &&
+		    (bestformat & AFMT_VCHAN)) {
+			*vchanformat = bestformat;
+			*vchanrate = bestspeed;
+		}
+
+		if (!nrun && run) {
+			c->flags &= ~(CHN_F_PASSTHROUGH | CHN_F_EXCLUSIVE);
+			bestformat = *vchanformat;
+			bestspeed = *vchanrate;
+			chn_abort(c);
+			if (c->format != bestformat || c->speed != bestspeed)
+				chn_reset(c, bestformat, bestspeed);
+		}
+	}
+
+	return (err);
 }
 
-void
-chn_lock(struct pcm_channel *c)
+/**
+ * @brief Fetch array of supported discrete sample rates
+ *
+ * Wrapper for CHANNEL_GETRATES.  Please see channel_if.m:getrates() for
+ * detailed information.
+ *
+ * @note If the operation isn't supported, this function will just return 0
+ *       (no rates in the array), and *rates will be set to NULL.  Callers
+ *       should examine rates @b only if this function returns non-zero.
+ *
+ * @param c	pcm channel to examine
+ * @param rates	pointer to array of integers; rate table will be recorded here
+ *
+ * @return number of rates in the array pointed to be @c rates
+ */
+int
+chn_getrates(struct pcm_channel *c, int **rates)
 {
-	CHN_LOCK(c);
+	KASSERT(rates != NULL, ("rates is null"));
+	CHN_LOCKASSERT(c);
+	return CHANNEL_GETRATES(c->methods, c->devinfo, rates);
 }
 
-void
-chn_unlock(struct pcm_channel *c)
+/**
+ * @brief Remove channel from a sync group, if there is one.
+ *
+ * This function is initially intended for the following conditions:
+ *   - Starting a syncgroup (@c SNDCTL_DSP_SYNCSTART ioctl)
+ *   - Closing a device.  (A channel can't be destroyed if it's still in use.)
+ *
+ * @note Before calling this function, the syncgroup list mutex must be
+ * held.  (Consider pcm_channel::sm protected by the SG list mutex
+ * whether @c c is locked or not.)
+ *
+ * @param c	channel device to be started or closed
+ * @returns	If this channel was the only member of a group, the group ID
+ * 		is returned to the caller so that the caller can release it
+ * 		via free_unr() after giving up the syncgroup lock.  Else it
+ * 		returns 0.
+ */
+int
+chn_syncdestroy(struct pcm_channel *c)
 {
-	CHN_UNLOCK(c);
+	struct pcmchan_syncmember *sm;
+	struct pcmchan_syncgroup *sg;
+	int sg_id;
+
+	sg_id = 0;
+
+	PCM_SG_LOCKASSERT(MA_OWNED);
+
+	if (c->sm != NULL) {
+		sm = c->sm;
+		sg = sm->parent;
+		c->sm = NULL;
+
+		KASSERT(sg != NULL, ("syncmember has null parent"));
+
+		SLIST_REMOVE(&sg->members, sm, pcmchan_syncmember, link);
+		free(sm, M_DEVBUF);
+
+		if (SLIST_EMPTY(&sg->members)) {
+			SLIST_REMOVE(&snd_pcm_syncgroups, sg, pcmchan_syncgroup, link);
+			sg_id = sg->id;
+			free(sg, M_DEVBUF);
+		}
+	}
+
+	return sg_id;
 }
+
+#ifdef OSSV4_EXPERIMENT
+int
+chn_getpeaks(struct pcm_channel *c, int *lpeak, int *rpeak)
+{
+	CHN_LOCKASSERT(c);
+	return CHANNEL_GETPEAKS(c->methods, c->devinfo, lpeak, rpeak);
+}
+#endif

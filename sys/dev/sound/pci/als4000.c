@@ -22,8 +22,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/sound/pci/als4000.c,v 1.18.2.1 2005/12/30 19:55:53 netchild Exp $
  */
 
 /*
@@ -35,14 +33,20 @@
  * SB16 register descriptions.
  */
 
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
+
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pci/sb.h>
 #include <dev/sound/pci/als4000.h>
 
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 
 #include "mixer_if.h"
+
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/als4000.c 274035 2014-11-03 11:11:45Z bapt $");
 
 /* Debugging macro's */
 #undef DEB
@@ -75,7 +79,7 @@ struct sc_info {
 	struct resource		*reg, *irq;
 	int			regid, irqid;
 	void			*ih;
-	sndlock_t		lock;
+	struct mtx		*lock;
 
 	unsigned int		bufsz;
 	struct sc_chinfo	pch, rch;
@@ -84,10 +88,10 @@ struct sc_info {
 /* Channel caps */
 
 static u_int32_t als_format[] = {
-        AFMT_U8,
-        AFMT_STEREO | AFMT_U8,
-        AFMT_S16_LE,
-        AFMT_STEREO | AFMT_S16_LE,
+        SND_FORMAT(AFMT_U8, 1, 0),
+        SND_FORMAT(AFMT_U8, 2, 0),
+        SND_FORMAT(AFMT_S16_LE, 1, 0),
+        SND_FORMAT(AFMT_S16_LE, 2, 0),
         0
 };
 
@@ -216,12 +220,12 @@ alschan_init(kobj_t obj, void *devinfo,
 	ch->parent = sc;
 	ch->channel = c;
 	ch->bps = 1;
-	ch->format = AFMT_U8;
+	ch->format = SND_FORMAT(AFMT_U8, 1, 0);
 	ch->speed = DSP_DEFAULT_SPEED;
 	ch->buffer = b;
 	snd_mtxunlock(sc->lock);
 
-	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, sc->bufsz) != 0)
+	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, 0, sc->bufsz) != 0)
 		return NULL;
 
 	return ch;
@@ -236,7 +240,7 @@ alschan_setformat(kobj_t obj, void *data, u_int32_t format)
 	return 0;
 }
 
-static int
+static u_int32_t
 alschan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct	sc_chinfo *ch = data, *other;
@@ -254,7 +258,7 @@ alschan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 	return speed;
 }
 
-static int
+static u_int32_t
 alschan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct	sc_chinfo *ch = data;
@@ -267,7 +271,7 @@ alschan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 	return blocksize;
 }
 
-static int
+static u_int32_t
 alschan_getptr(kobj_t obj, void *data)
 {
 	struct sc_chinfo *ch = data;
@@ -299,7 +303,7 @@ als_set_speed(struct sc_chinfo *ch)
 		als_esp_wr(sc, ch->speed >> 8);
 		als_esp_wr(sc, ch->speed & 0xff);
 	} else {
-		DEB(kprintf("speed locked at %d (tried %d)\n",
+		DEB(printf("speed locked at %d (tried %d)\n",
 			   other->speed, ch->speed));
 	}
 }
@@ -310,16 +314,16 @@ als_set_speed(struct sc_chinfo *ch)
 #define ALS_8BIT_CMD(x, y)  { (x), (y), DSP_DMA8,  DSP_CMD_DMAPAUSE_8  }
 #define ALS_16BIT_CMD(x, y) { (x), (y),	DSP_DMA16, DSP_CMD_DMAPAUSE_16 }
 
-static const struct playback_command {
+struct playback_command {
 	u_int32_t pcm_format;	/* newpcm format */
 	u_int8_t  format_val;	/* sb16 format value */
 	u_int8_t  dma_prog;	/* sb16 dma program */
 	u_int8_t  dma_stop;	/* sb16 stop register */
-} playback_cmds[] = {
-	ALS_8BIT_CMD(AFMT_U8, DSP_MODE_U8MONO),
-	ALS_8BIT_CMD(AFMT_U8 | AFMT_STEREO, DSP_MODE_U8STEREO),
-	ALS_16BIT_CMD(AFMT_S16_LE, DSP_MODE_S16MONO),
-	ALS_16BIT_CMD(AFMT_S16_LE | AFMT_STEREO, DSP_MODE_S16STEREO),
+} static const playback_cmds[] = {
+	ALS_8BIT_CMD(SND_FORMAT(AFMT_U8, 1, 0), DSP_MODE_U8MONO),
+	ALS_8BIT_CMD(SND_FORMAT(AFMT_U8, 2, 0), DSP_MODE_U8STEREO),
+	ALS_16BIT_CMD(SND_FORMAT(AFMT_S16_LE, 1, 0), DSP_MODE_S16MONO),
+	ALS_16BIT_CMD(SND_FORMAT(AFMT_S16_LE, 2, 0), DSP_MODE_S16STEREO),
 };
 
 static const struct playback_command*
@@ -327,13 +331,13 @@ als_get_playback_command(u_int32_t format)
 {
 	u_int32_t i, n;
 
-	n = NELEM(playback_cmds);
+	n = sizeof(playback_cmds) / sizeof(playback_cmds[0]);
 	for (i = 0; i < n; i++) {
 		if (playback_cmds[i].pcm_format == format) {
 			return &playback_cmds[i];
 		}
 	}
-	DEB(kprintf("als_get_playback_command: invalid format 0x%08x\n",
+	DEB(printf("als_get_playback_command: invalid format 0x%08x\n",
 		   format));
 	return &playback_cmds[0];
 }
@@ -391,13 +395,19 @@ alspchan_trigger(kobj_t obj, void *data, int go)
 	struct	sc_chinfo *ch = data;
 	struct sc_info *sc = ch->parent;
 
+	if (!PCMTRIG_COMMON(go))
+		return 0;
+
 	snd_mtxlock(sc->lock);
 	switch(go) {
 	case PCMTRIG_START:
 		als_playback_start(ch);
 		break;
+	case PCMTRIG_STOP:
 	case PCMTRIG_ABORT:
 		als_playback_stop(ch);
+		break;
+	default:
 		break;
 	}
 	snd_mtxunlock(sc->lock);
@@ -423,13 +433,13 @@ static u_int8_t
 als_get_fifo_format(struct sc_info *sc, u_int32_t format)
 {
 	switch (format) {
-	case AFMT_U8:
+	case SND_FORMAT(AFMT_U8, 1, 0):
 		return ALS_FIFO1_8BIT;
-	case AFMT_U8 | AFMT_STEREO:
+	case SND_FORMAT(AFMT_U8, 2, 0):
 		return ALS_FIFO1_8BIT | ALS_FIFO1_STEREO;
-	case AFMT_S16_LE:
+	case SND_FORMAT(AFMT_S16_LE, 1, 0):
 		return ALS_FIFO1_SIGNED;
-	case AFMT_S16_LE | AFMT_STEREO:
+	case SND_FORMAT(AFMT_S16_LE, 2, 0):
 		return ALS_FIFO1_SIGNED | ALS_FIFO1_STEREO;
 	}
 	device_printf(sc->dev, "format not found: 0x%08x\n", format);
@@ -489,6 +499,7 @@ alsrchan_trigger(kobj_t obj, void *data, int go)
 	case PCMTRIG_START:
 		als_capture_start(ch);
 		break;
+	case PCMTRIG_STOP:
 	case PCMTRIG_ABORT:
 		als_capture_stop(ch);
 		break;
@@ -517,13 +528,13 @@ CHANNEL_DECLARE(alsrchan);
  * not yet a means to support.
  */
 
-static const struct sb16props {
+struct sb16props {
 	u_int8_t lreg;
 	u_int8_t rreg;
 	u_int8_t bits;
 	u_int8_t oselect;
 	u_int8_t iselect; /* left input mask */
-} amt[SOUND_MIXER_NRDEVICES] = {
+} static const amt[SOUND_MIXER_NRDEVICES] = {
 	[SOUND_MIXER_VOLUME]  = { 0x30, 0x31, 5, 0x00, 0x00 },
 	[SOUND_MIXER_PCM]     = { 0x32, 0x33, 5, 0x00, 0x00 },
 	[SOUND_MIXER_SYNTH]   = { 0x34, 0x35, 5, 0x60, 0x40 },
@@ -587,7 +598,7 @@ alsmix_set(struct snd_mixer *m, unsigned dev, unsigned left, unsigned right)
 	return 0;
 }
 
-static int
+static u_int32_t
 alsmix_setrecsrc(struct snd_mixer *m, u_int32_t src)
 {
 	struct sc_info *sc = mix_getdevinfo(m);
@@ -696,7 +707,7 @@ als_init(struct sc_info *sc)
 	/* Emulation mode */
 	v = als_gcr_rd(sc, ALS_GCR_DMA_EMULATION);
 	als_gcr_wr(sc, ALS_GCR_DMA_EMULATION, v);
-	DEB(kprintf("GCR_DMA_EMULATION 0x%08x\n", v));
+	DEB(printf("GCR_DMA_EMULATION 0x%08x\n", v));
 	return 0;
 }
 
@@ -725,15 +736,15 @@ als_resource_free(device_t dev, struct sc_info *sc)
 {
 	if (sc->reg) {
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->regid, sc->reg);
-		sc->reg = NULL;
+		sc->reg = 0;
 	}
 	if (sc->ih) {
 		bus_teardown_intr(dev, sc->irq, sc->ih);
-		sc->ih = NULL;
+		sc->ih = 0;
 	}
 	if (sc->irq) {
 		bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
-		sc->irq = NULL;
+		sc->irq = 0;
 	}
 	if (sc->parent_dmat) {
 		bus_dma_tag_destroy(sc->parent_dmat);
@@ -751,7 +762,7 @@ als_resource_grab(device_t dev, struct sc_info *sc)
 	sc->regid = PCIR_BAR(0);
 	sc->reg = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->regid, 0, ~0,
 				     ALS_CONFIG_SPACE_BYTES, RF_ACTIVE);
-	if (sc->reg == NULL) {
+	if (sc->reg == 0) {
 		device_printf(dev, "unable to allocate register space\n");
 		goto bad;
 	}
@@ -760,7 +771,7 @@ als_resource_grab(device_t dev, struct sc_info *sc)
 
 	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irqid,
 					 RF_ACTIVE | RF_SHAREABLE);
-	if (sc->irq == NULL) {
+	if (sc->irq == 0) {
 		device_printf(dev, "unable to allocate interrupt\n");
 		goto bad;
 	}
@@ -773,15 +784,15 @@ als_resource_grab(device_t dev, struct sc_info *sc)
 
 	sc->bufsz = pcm_getbuffersize(dev, 4096, ALS_DEFAULT_BUFSZ, 65536);
 
-	if (bus_dma_tag_create(/*parent*/NULL,
+	if (bus_dma_tag_create(/*parent*/bus_get_dma_tag(dev),
 			       /*alignment*/2, /*boundary*/0,
 			       /*lowaddr*/BUS_SPACE_MAXADDR_24BIT,
 			       /*highaddr*/BUS_SPACE_MAXADDR,
 			       /*filter*/NULL, /*filterarg*/NULL,
 			       /*maxsize*/sc->bufsz,
 			       /*nsegments*/1, /*maxsegz*/0x3ffff,
-			       /*flags*/0,
-			       &sc->parent_dmat) != 0) {
+			       /*flags*/0, /*lockfunc*/NULL,
+			       /*lockarg*/NULL, &sc->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
@@ -795,16 +806,13 @@ static int
 als_pci_attach(device_t dev)
 {
 	struct sc_info *sc;
-	u_int32_t data;
 	char status[SND_STATUSLEN];
 
-	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
+	sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "snd_als4000 softc");
 	sc->dev = dev;
 
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
-	data |= (PCIM_CMD_PORTEN | PCIM_CMD_MEMEN | PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, data, 2);
+	pci_enable_busmaster(dev);
 	/*
 	 * By default the power to the various components on the
          * ALS4000 is entirely controlled by the pci powerstate.  We
@@ -840,14 +848,14 @@ als_pci_attach(device_t dev)
 	pcm_addchan(dev, PCMDIR_PLAY, &alspchan_class, sc);
 	pcm_addchan(dev, PCMDIR_REC,  &alsrchan_class, sc);
 
-	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
+	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
 		 rman_get_start(sc->reg), rman_get_start(sc->irq),PCM_KLDSTRING(snd_als4000));
 	pcm_setstatus(dev, status);
 	return 0;
 
  bad_attach:
 	als_resource_free(dev, sc);
-	kfree(sc, M_DEVBUF);
+	free(sc, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -864,7 +872,7 @@ als_pci_detach(device_t dev)
 	sc = pcm_getdevinfo(dev);
 	als_uninit(sc);
 	als_resource_free(dev, sc);
-	kfree(sc, M_DEVBUF);
+	free(sc, M_DEVBUF);
 	return 0;
 }
 
@@ -919,7 +927,7 @@ static device_method_t als_methods[] = {
 	DEVMETHOD(device_detach,	als_pci_detach),
 	DEVMETHOD(device_suspend,	als_pci_suspend),
 	DEVMETHOD(device_resume,	als_pci_resume),
-	DEVMETHOD_END
+	{ 0, 0 }
 };
 
 static driver_t als_driver = {
@@ -928,6 +936,6 @@ static driver_t als_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_als4000, pci, als_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_als4000, pci, als_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_als4000, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_als4000, 1);

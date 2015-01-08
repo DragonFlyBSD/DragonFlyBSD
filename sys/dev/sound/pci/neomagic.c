@@ -24,19 +24,21 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/sound/pci/neomagic.c,v 1.34.2.1 2005/12/30 19:55:53 netchild Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pci/neomagic.h>
 #include <dev/sound/pci/neomagic-coeff.h>
 
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/neomagic.c,v 1.7 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/neomagic.c 254263 2013-08-12 23:30:01Z scottl $");
 
 /* -------------------------------------------------------------------- */
 
@@ -115,10 +117,10 @@ static int samplerates[9] = {
 /* -------------------------------------------------------------------- */
 
 static u_int32_t nm_fmt[] = {
-	AFMT_U8,
-	AFMT_STEREO | AFMT_U8,
-	AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S16_LE,
+	SND_FORMAT(AFMT_U8, 1, 0),
+	SND_FORMAT(AFMT_U8, 2, 0),
+	SND_FORMAT(AFMT_S16_LE, 1, 0),
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
 	0
 };
 static struct pcmchan_caps nm_caps = {4000, 48000, nm_fmt, 0};
@@ -336,7 +338,7 @@ nm_setch(struct sc_chinfo *ch)
 	x <<= 4;
 	x &= NM_RATE_MASK;
 	if (ch->fmt & AFMT_16BIT) x |= NM_RATE_BITS_16;
-	if (ch->fmt & AFMT_STEREO) x |= NM_RATE_STEREO;
+	if (AFMT_CHANNEL(ch->fmt) > 1) x |= NM_RATE_STEREO;
 
 	base = (ch->dir == PCMDIR_PLAY)? NM_PLAYBACK_REG_OFFSET : NM_RECORD_REG_OFFSET;
 	nm_wr(sc, base + NM_RATE_REG_OFFSET, x, 1);
@@ -382,7 +384,7 @@ nmchan_setformat(kobj_t obj, void *data, u_int32_t format)
 	return nm_setch(ch);
 }
 
-static int
+static u_int32_t
 nmchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct sc_chinfo *ch = data;
@@ -391,7 +393,7 @@ nmchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 	return nm_setch(ch)? 0 : ch->spd;
 }
 
-static int
+static u_int32_t
 nmchan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct sc_chinfo *ch = data;
@@ -408,11 +410,11 @@ nmchan_trigger(kobj_t obj, void *data, int go)
 	struct sc_info *sc = ch->parent;
 	int ssz;
 
-	if (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD)
+	if (!PCMTRIG_COMMON(go))
 		return 0;
 
 	ssz = (ch->fmt & AFMT_16BIT)? 2 : 1;
-	if (ch->fmt & AFMT_STEREO)
+	if (AFMT_CHANNEL(ch->fmt) > 1)
 		ssz <<= 1;
 
 	if (ch->dir == PCMDIR_PLAY) {
@@ -449,7 +451,7 @@ nmchan_trigger(kobj_t obj, void *data, int go)
 	return 0;
 }
 
-static int
+static u_int32_t
 nmchan_getptr(kobj_t obj, void *data)
 {
 	struct sc_chinfo *ch = data;
@@ -571,7 +573,7 @@ nm_init(struct sc_info *sc)
 
 	if (bootverbose)
 		device_printf(sc->dev, "buftop is 0x%08x\n", sc->buftop);
-	if ((nm_rdbuf(sc, ofs, 4) & NM_SIG_MASK) == NM_SIGNATURE) {
+ 	if ((nm_rdbuf(sc, ofs, 4) & NM_SIG_MASK) == NM_SIGNATURE) {
 		i = nm_rdbuf(sc, ofs + 4, 4);
 		if (i != 0 && i != 0xffffffff) {
 			if (bootverbose)
@@ -597,7 +599,7 @@ nm_pci_probe(device_t dev)
 {
 	struct sc_info *sc = NULL;
 	char *s = NULL;
-	u_int32_t subdev, i, data;
+	u_int32_t subdev, i;
 
 	subdev = (pci_get_subdevice(dev) << 16) | pci_get_subvendor(dev);
 	switch (pci_get_devid(dev)) {
@@ -609,11 +611,10 @@ nm_pci_probe(device_t dev)
 		/* Try to catch other non-ac97 cards */
 
 		if (i == NUM_BADCARDS) {
-			sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
-			data = pci_read_config(dev, PCIR_COMMAND, 2);
-			pci_write_config(dev, PCIR_COMMAND, data |
-					 PCIM_CMD_PORTEN | PCIM_CMD_MEMEN |
-					 PCIM_CMD_BUSMASTEREN, 2);
+			if (!(sc = malloc(sizeof(*sc), M_DEVBUF, M_NOWAIT | M_ZERO))) {
+				device_printf(dev, "cannot allocate softc\n");
+				return ENXIO;
+			}
 
 			sc->regid = PCIR_BAR(1);
 			sc->reg = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
@@ -622,8 +623,7 @@ nm_pci_probe(device_t dev)
 
 			if (!sc->reg) {
 				device_printf(dev, "unable to map register space\n");
-				pci_write_config(dev, PCIR_COMMAND, data, 2);
-				kfree(sc, M_DEVBUF);
+				free(sc, M_DEVBUF);
 				return ENXIO;
 			}
 
@@ -639,10 +639,9 @@ nm_pci_probe(device_t dev)
 				DEB(device_printf(dev, "subdev = 0x%x - badcard?\n",
 				    subdev));
 			}
-			pci_write_config(dev, PCIR_COMMAND, data, 2);
 			bus_release_resource(dev, SYS_RES_MEMORY, sc->regid,
 					     sc->reg);
-			kfree(sc, M_DEVBUF);
+			free(sc, M_DEVBUF);
 		}
 
 		if (i == NUM_BADCARDS)
@@ -664,19 +663,15 @@ nm_pci_probe(device_t dev)
 static int
 nm_pci_attach(device_t dev)
 {
-	u_int32_t	data;
 	struct sc_info *sc;
-	struct ac97_info *codec = NULL;
+	struct ac97_info *codec = 0;
 	char 		status[SND_STATUSLEN];
 
-	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+	sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->dev = dev;
 	sc->type = pci_get_devid(dev);
 
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
-	data |= (PCIM_CMD_PORTEN|PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, data, 2);
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
+	pci_enable_busmaster(dev);
 
 	sc->bufid = PCIR_BAR(0);
 	sc->buf = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &sc->bufid,
@@ -707,7 +702,7 @@ nm_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	ksnprintf(status, SND_STATUSLEN, "at memory 0x%lx, 0x%lx irq %ld %s",
+	snprintf(status, SND_STATUSLEN, "at memory 0x%lx, 0x%lx irq %ld %s",
 		 rman_get_start(sc->buf), rman_get_start(sc->reg),
 		 rman_get_start(sc->irq),PCM_KLDSTRING(snd_neomagic));
 
@@ -724,7 +719,7 @@ bad:
 	if (sc->reg) bus_release_resource(dev, SYS_RES_MEMORY, sc->regid, sc->reg);
 	if (sc->ih) bus_teardown_intr(dev, sc->irq, sc->ih);
 	if (sc->irq) bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
-	kfree(sc, M_DEVBUF);
+	free(sc, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -743,7 +738,7 @@ nm_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_MEMORY, sc->regid, sc->reg);
 	bus_teardown_intr(dev, sc->irq, sc->ih);
 	bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
-	kfree(sc, M_DEVBUF);
+	free(sc, M_DEVBUF);
 
 	return 0;
 }
@@ -811,7 +806,7 @@ static device_method_t nm_methods[] = {
 	DEVMETHOD(device_detach,	nm_pci_detach),
 	DEVMETHOD(device_suspend,	nm_pci_suspend),
 	DEVMETHOD(device_resume,	nm_pci_resume),
-	DEVMETHOD_END
+	{ 0, 0 }
 };
 
 static driver_t nm_driver = {
@@ -820,6 +815,6 @@ static driver_t nm_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_neomagic, pci, nm_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_neomagic, pci, nm_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_neomagic, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_neomagic, 1);

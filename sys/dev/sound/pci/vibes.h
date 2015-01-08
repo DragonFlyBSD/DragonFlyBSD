@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/vibes.h,v 1.2 2005/01/06 01:43:19 imp Exp $
- * $DragonFly: src/sys/dev/sound/pci/vibes.h,v 1.3 2007/01/04 21:47:02 corecode Exp $
+ * $FreeBSD: head/sys/dev/sound/pci/vibes.h 139749 2005-01-06 01:43:34Z imp $
  */
 
 /* ------------------------------------------------------------------------- */

@@ -1,5 +1,4 @@
-# $FreeBSD: src/sys/modules/sound/driver/atiixp/Makefile,v 1.1.2.1 2005/12/30 19:55:55 netchild Exp $
-# $DragonFly: src/sys/dev/sound/driver/atiixp/Makefile,v 1.1 2007/01/04 21:47:00 corecode Exp $
+# $FreeBSD: head/sys/modules/sound/driver/atiixp/Makefile 152851 2005-11-27 03:29:59Z ariff $
 
 .PATH: ${.CURDIR}/../../../../dev/sound/pci
 

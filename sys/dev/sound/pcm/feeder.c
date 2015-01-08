@@ -1,5 +1,6 @@
 /*-
- * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
+ * Copyright (c) 2005-2009 Ariff Abdullah <ariff@FreeBSD.org>
+ * Copyright (c) 1999 Cameron Grant <cg@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,17 +23,19 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/sound/pcm/feeder.c,v 1.33.2.3 2006/03/07 15:51:19 jhb Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/feeder.c,v 1.6 2007/01/04 21:47:03 corecode Exp $");
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pcm/feeder.c 227293 2011-11-07 06:44:47Z ed $");
 
-MALLOC_DEFINE(M_FEEDER, "feeder", "pcm feeder");
+static MALLOC_DEFINE(M_FEEDER, "feeder", "pcm feeder");
 
 #define MAXFEEDERS 	256
 #undef FEEDER_DEBUG
@@ -61,12 +64,63 @@ feeder_register(void *p)
 		KASSERT(fc->desc == NULL, ("first feeder not root: %s", fc->name));
 
 		SLIST_INIT(&feedertab);
-		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
+		fte = malloc(sizeof(*fte), M_FEEDER, M_NOWAIT | M_ZERO);
+		if (fte == NULL) {
+			printf("can't allocate memory for root feeder: %s\n",
+			    fc->name);
+
+			return;
+		}
 		fte->feederclass = fc;
 		fte->desc = NULL;
 		fte->idx = feedercnt;
 		SLIST_INSERT_HEAD(&feedertab, fte, link);
 		feedercnt++;
+
+		/* initialize global variables */
+
+		if (snd_verbose < 0 || snd_verbose > 4)
+			snd_verbose = 1;
+
+		/* initialize unit numbering */
+		snd_unit_init();
+		if (snd_unit < 0 || snd_unit > PCMMAXUNIT)
+			snd_unit = -1;
+		
+		if (snd_maxautovchans < 0 ||
+		    snd_maxautovchans > SND_MAXVCHANS)
+			snd_maxautovchans = 0;
+
+		if (chn_latency < CHN_LATENCY_MIN ||
+		    chn_latency > CHN_LATENCY_MAX)
+			chn_latency = CHN_LATENCY_DEFAULT;
+
+		if (chn_latency_profile < CHN_LATENCY_PROFILE_MIN ||
+		    chn_latency_profile > CHN_LATENCY_PROFILE_MAX)
+			chn_latency_profile = CHN_LATENCY_PROFILE_DEFAULT;
+
+		if (feeder_rate_min < FEEDRATE_MIN ||
+			    feeder_rate_max < FEEDRATE_MIN ||
+			    feeder_rate_min > FEEDRATE_MAX ||
+			    feeder_rate_max > FEEDRATE_MAX ||
+			    !(feeder_rate_min < feeder_rate_max)) {
+			feeder_rate_min = FEEDRATE_RATEMIN;
+			feeder_rate_max = FEEDRATE_RATEMAX;
+		}
+
+		if (feeder_rate_round < FEEDRATE_ROUNDHZ_MIN ||
+		    	    feeder_rate_round > FEEDRATE_ROUNDHZ_MAX)
+			feeder_rate_round = FEEDRATE_ROUNDHZ;
+
+		if (bootverbose)
+			printf("%s: snd_unit=%d snd_maxautovchans=%d "
+			    "latency=%d "
+			    "feeder_rate_min=%d feeder_rate_max=%d "
+			    "feeder_rate_round=%d\n",
+			    __func__, snd_unit, snd_maxautovchans,
+			    chn_latency,
+			    feeder_rate_min, feeder_rate_max,
+			    feeder_rate_round);
 
 		/* we've got our root feeder so don't veto pcm loading anymore */
 		pcm_veto_load = 0;
@@ -79,8 +133,13 @@ feeder_register(void *p)
 	/* beyond this point failure is non-fatal but may result in some translations being unavailable */
 	i = 0;
 	while ((feedercnt < MAXFEEDERS) && (fc->desc[i].type > 0)) {
-		/* kprintf("adding feeder %s, %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out); */
-		fte = kmalloc(sizeof(*fte), M_FEEDER, M_WAITOK | M_ZERO);
+		/* printf("adding feeder %s, %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out); */
+		fte = malloc(sizeof(*fte), M_FEEDER, M_NOWAIT | M_ZERO);
+		if (fte == NULL) {
+			printf("can't allocate memory for feeder '%s', %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out);
+
+			return;
+		}
 		fte->feederclass = fc;
 		fte->desc = &fc->desc[i];
 		fte->idx = feedercnt;
@@ -90,7 +149,7 @@ feeder_register(void *p)
 	}
 	feedercnt++;
 	if (feedercnt >= MAXFEEDERS)
-		kprintf("MAXFEEDERS (%d >= %d) exceeded\n", feedercnt, MAXFEEDERS);
+		printf("MAXFEEDERS (%d >= %d) exceeded\n", feedercnt, MAXFEEDERS);
 }
 
 static void
@@ -102,7 +161,7 @@ feeder_unregisterall(void *p)
 	while (next != NULL) {
 		fte = next;
 		next = SLIST_NEXT(fte, link);
-		kfree(fte, M_FEEDER);
+		free(fte, M_FEEDER);
 	}
 }
 
@@ -128,11 +187,10 @@ feeder_create(struct feeder_class *fc, struct pcm_feederdesc *desc)
 	struct pcm_feeder *f;
 	int err;
 
-	f = (void *)kobj_create((kobj_class_t)fc, M_FEEDER, M_WAITOK | M_ZERO);
+	f = (struct pcm_feeder *)kobj_create((kobj_class_t)fc, M_FEEDER, M_NOWAIT | M_ZERO);
 	if (f == NULL)
 		return NULL;
 
-	f->align = fc->align;
 	f->data = fc->data;
 	f->source = NULL;
 	f->parent = NULL;
@@ -151,7 +209,7 @@ feeder_create(struct feeder_class *fc, struct pcm_feederdesc *desc)
 
 	err = FEEDER_INIT(f);
 	if (err) {
-		kprintf("feeder_init(%p) on %s returned %d\n", f, fc->name, err);
+		printf("feeder_init(%p) on %s returned %d\n", f, fc->name, err);
 		feeder_destroy(f);
 
 		return NULL;
@@ -185,11 +243,6 @@ chn_addfeeder(struct pcm_channel *c, struct feeder_class *fc, struct pcm_feederd
 
 	nf->source = c->feeder;
 
-	/* XXX we should use the lowest common denominator for align */
-	if (nf->align > 0)
-		c->align += nf->align;
-	else if (nf->align < 0 && c->align < -nf->align)
-		c->align = -nf->align;
 	if (c->feeder != NULL)
 		c->feeder->parent = nf;
 	c->feeder = nf;
@@ -226,122 +279,109 @@ chn_findfeeder(struct pcm_channel *c, u_int32_t type)
 	return NULL;
 }
 
-static int
-chainok(struct pcm_feeder *test, struct pcm_feeder *stop)
+/*
+ * 14bit format scoring
+ * --------------------
+ *
+ *  13  12  11  10   9   8        2        1   0    offset
+ * +---+---+---+---+---+---+-------------+---+---+
+ * | X | X | X | X | X | X | X X X X X X | X | X |
+ * +---+---+---+---+---+---+-------------+---+---+
+ *   |   |   |   |   |   |        |        |   |
+ *   |   |   |   |   |   |        |        |   +--> signed?
+ *   |   |   |   |   |   |        |        |
+ *   |   |   |   |   |   |        |        +------> bigendian?
+ *   |   |   |   |   |   |        |
+ *   |   |   |   |   |   |        +---------------> total channels
+ *   |   |   |   |   |   |
+ *   |   |   |   |   |   +------------------------> AFMT_A_LAW
+ *   |   |   |   |   |
+ *   |   |   |   |   +----------------------------> AFMT_MU_LAW
+ *   |   |   |   |
+ *   |   |   |   +--------------------------------> AFMT_8BIT
+ *   |   |   |
+ *   |   |   +------------------------------------> AFMT_16BIT
+ *   |   |
+ *   |   +----------------------------------------> AFMT_24BIT
+ *   |
+ *   +--------------------------------------------> AFMT_32BIT
+ */
+#define score_signeq(s1, s2)	(((s1) & 0x1) == ((s2) & 0x1))
+#define score_endianeq(s1, s2)	(((s1) & 0x2) == ((s2) & 0x2))
+#define score_cheq(s1, s2)	(((s1) & 0xfc) == ((s2) & 0xfc))
+#define score_chgt(s1, s2)	(((s1) & 0xfc) > ((s2) & 0xfc))
+#define score_chlt(s1, s2)	(((s1) & 0xfc) < ((s2) & 0xfc))
+#define score_val(s1)		((s1) & 0x3f00)
+#define score_cse(s1)		((s1) & 0x7f)
+
+u_int32_t
+snd_fmtscore(u_int32_t fmt)
 {
-	u_int32_t visited[MAXFEEDERS / 32];
-	u_int32_t idx, mask;
+	u_int32_t ret;
 
-	bzero(visited, sizeof(visited));
-	while (test && (test != stop)) {
-		idx = test->desc->idx;
-		if (idx < 0)
-			panic("bad idx %d", idx);
-		if (idx >= MAXFEEDERS)
-			panic("bad idx %d", idx);
-		mask = 1 << (idx & 31);
-		idx >>= 5;
-		if (visited[idx] & mask)
-			return 0;
-		visited[idx] |= mask;
-		test = test->source;
-	}
-
-	return 1;
-}
-
-static struct pcm_feeder *
-feeder_fmtchain(u_int32_t *to, struct pcm_feeder *source, struct pcm_feeder *stop, int maxdepth)
-{
-	struct feedertab_entry *fte;
-	struct pcm_feeder *try, *ret;
-
-	DEB(kprintf("trying %s (0x%08x -> 0x%08x)...\n", source->class->name, source->desc->in, source->desc->out));
-	if (fmtvalid(source->desc->out, to)) {
-		DEB(kprintf("got it\n"));
-		return source;
-	}
-
-	if (maxdepth < 0)
-		return NULL;
-
-	SLIST_FOREACH(fte, &feedertab, link) {
-		if (fte->desc == NULL)
-			continue;
-		if (fte->desc->type != FEEDER_FMT)
-			continue;
-		if (fte->desc->in == source->desc->out) {
-			try = feeder_create(fte->feederclass, fte->desc);
-			if (try) {
-				try->source = source;
-				ret = chainok(try, stop)? feeder_fmtchain(to, try, stop, maxdepth - 1) : NULL;
-				if (ret != NULL)
-					return ret;
-				feeder_destroy(try);
-			}
-		}
-	}
-	/* kprintf("giving up %s...\n", source->class->name); */
-
-	return NULL;
-}
-
-int
-chn_fmtscore(u_int32_t fmt)
-{
-	if (fmt & AFMT_32BIT)
-		return 60;
-	if (fmt & AFMT_24BIT)
-		return 50;
-	if (fmt & AFMT_16BIT)
-		return 40;
-	if (fmt & (AFMT_U8|AFMT_S8))
-		return 30;
-	if (fmt & AFMT_MU_LAW)
-		return 20;
+	ret = 0;
+	if (fmt & AFMT_SIGNED)
+		ret |= 1 << 0;
+	if (fmt & AFMT_BIGENDIAN)
+		ret |= 1 << 1;
+	/*if (fmt & AFMT_STEREO)
+		ret |= (2 & 0x3f) << 2;
+	else
+		ret |= (1 & 0x3f) << 2;*/
+	ret |= (AFMT_CHANNEL(fmt) & 0x3f) << 2;
 	if (fmt & AFMT_A_LAW)
-		return 10;
-	return 0;
+		ret |= 1 << 8;
+	else if (fmt & AFMT_MU_LAW)
+		ret |= 1 << 9;
+	else if (fmt & AFMT_8BIT)
+		ret |= 1 << 10;
+	else if (fmt & AFMT_16BIT)
+		ret |= 1 << 11;
+	else if (fmt & AFMT_24BIT)
+		ret |= 1 << 12;
+	else if (fmt & AFMT_32BIT)
+		ret |= 1 << 13;
+
+	return ret;
 }
 
-u_int32_t
-chn_fmtbestbit(u_int32_t fmt, u_int32_t *fmts)
+static u_int32_t
+snd_fmtbestfunc(u_int32_t fmt, u_int32_t *fmts, int cheq)
 {
-	u_int32_t best;
-	int i, score, score2, oldscore;
+	u_int32_t best, score, score2, oldscore;
+	int i;
+
+	if (fmt == 0 || fmts == NULL || fmts[0] == 0)
+		return 0;
+
+	if (snd_fmtvalid(fmt, fmts))
+		return fmt;
 
 	best = 0;
-	score = chn_fmtscore(fmt);
+	score = snd_fmtscore(fmt);
 	oldscore = 0;
 	for (i = 0; fmts[i] != 0; i++) {
-		score2 = chn_fmtscore(fmts[i]);
-		if (oldscore == 0 || (score2 == score) ||
-			    (score2 > oldscore && score2 < score) ||
-			    (score2 < oldscore && score2 > score) ||
-			    (oldscore < score && score2 > oldscore)) {
-			best = fmts[i];
-			oldscore = score2;
-		}
-	}
-	return best;
-}
-
-u_int32_t
-chn_fmtbeststereo(u_int32_t fmt, u_int32_t *fmts)
-{
-	u_int32_t best;
-	int i, score, score2, oldscore;
-
-	best = 0;
-	score = chn_fmtscore(fmt);
-	oldscore = 0;
-	for (i = 0; fmts[i] != 0; i++) {
-		if ((fmt & AFMT_STEREO) == (fmts[i] & AFMT_STEREO)) {
-			score2 = chn_fmtscore(fmts[i]);
-			if (oldscore == 0 || (score2 == score) ||
-				    (score2 > oldscore && score2 < score) ||
-				    (score2 < oldscore && score2 > score) ||
-				    (oldscore < score && score2 > oldscore)) {
+		score2 = snd_fmtscore(fmts[i]);
+		if (cheq && !score_cheq(score, score2) &&
+		    (score_chlt(score2, score) ||
+		    (oldscore != 0 && score_chgt(score2, oldscore))))
+				continue;
+		if (oldscore == 0 ||
+			    (score_val(score2) == score_val(score)) ||
+			    (score_val(score2) == score_val(oldscore)) ||
+			    (score_val(score2) > score_val(oldscore) &&
+			    score_val(score2) < score_val(score)) ||
+			    (score_val(score2) < score_val(oldscore) &&
+			    score_val(score2) > score_val(score)) ||
+			    (score_val(oldscore) < score_val(score) &&
+			    score_val(score2) > score_val(oldscore))) {
+			if (score_val(oldscore) != score_val(score2) ||
+				    score_cse(score) == score_cse(score2) ||
+				    ((score_cse(oldscore) != score_cse(score) &&
+				    !score_endianeq(score, oldscore) &&
+				    (score_endianeq(score, score2) ||
+				    (!score_signeq(score, oldscore) &&
+				    score_signeq(score, score2)))))) {
 				best = fmts[i];
 				oldscore = score2;
 			}
@@ -351,21 +391,37 @@ chn_fmtbeststereo(u_int32_t fmt, u_int32_t *fmts)
 }
 
 u_int32_t
-chn_fmtbest(u_int32_t fmt, u_int32_t *fmts)
+snd_fmtbestbit(u_int32_t fmt, u_int32_t *fmts)
+{
+	return snd_fmtbestfunc(fmt, fmts, 0);
+}
+
+u_int32_t
+snd_fmtbestchannel(u_int32_t fmt, u_int32_t *fmts)
+{
+	return snd_fmtbestfunc(fmt, fmts, 1);
+}
+
+u_int32_t
+snd_fmtbest(u_int32_t fmt, u_int32_t *fmts)
 {
 	u_int32_t best1, best2;
-	int score, score1, score2;
+	u_int32_t score, score1, score2;
 
-	best1 = chn_fmtbeststereo(fmt, fmts);
-	best2 = chn_fmtbestbit(fmt, fmts);
+	if (snd_fmtvalid(fmt, fmts))
+		return fmt;
 
-	if (best1 != 0 && best2 != 0) {
-		if (fmt & AFMT_STEREO)
+	best1 = snd_fmtbestchannel(fmt, fmts);
+	best2 = snd_fmtbestbit(fmt, fmts);
+
+	if (best1 != 0 && best2 != 0 && best1 != best2) {
+		/*if (fmt & AFMT_STEREO)*/
+		if (AFMT_CHANNEL(fmt) > 1)
 			return best1;
 		else {
-			score = chn_fmtscore(fmt);
-			score1 = chn_fmtscore(best1);
-			score2 = chn_fmtscore(best2);
+			score = score_val(snd_fmtscore(fmt));
+			score1 = score_val(snd_fmtscore(best1));
+			score2 = score_val(snd_fmtscore(best2));
 			if (score1 == score2 || score1 == score)
 				return best1;
 			else if (score2 == score)
@@ -380,130 +436,18 @@ chn_fmtbest(u_int32_t fmt, u_int32_t *fmts)
 		return best2;
 }
 
-u_int32_t
-chn_fmtchain(struct pcm_channel *c, u_int32_t *to)
-{
-	struct pcm_feeder *try, *del, *stop;
-	u_int32_t tmpfrom[2], tmpto[2], best, *from;
-	int i, max, bestmax;
-
-	KASSERT(c != NULL, ("c == NULL"));
-	KASSERT(c->feeder != NULL, ("c->feeder == NULL"));
-	KASSERT(to != NULL, ("to == NULL"));
-	KASSERT(to[0] != 0, ("to[0] == 0"));
-
-	stop = c->feeder;
-
-	if (c->direction == PCMDIR_REC && c->feeder->desc->type == FEEDER_ROOT) {
-		from = chn_getcaps(c)->fmtlist;
-		if (fmtvalid(to[0], from))
-			from = to;
-		else {
-			best = chn_fmtbest(to[0], from);
-			if (best != 0) {
-				tmpfrom[0] = best;
-				tmpfrom[1] = 0;
-				from = tmpfrom;
-			}
-		}
-	} else {
-		tmpfrom[0] = c->feeder->desc->out;
-		tmpfrom[1] = 0;
-		from = tmpfrom;
-		if (to[1] != 0) {
-			if (fmtvalid(tmpfrom[0], to)) {
-				tmpto[0] = tmpfrom[0];
-				tmpto[1] = 0;
-				to = tmpto;
-			} else {
-				best = chn_fmtbest(tmpfrom[0], to);
-				if (best != 0) {
-					tmpto[0] = best;
-					tmpto[1] = 0;
-					to = tmpto;
-				}
-			}
-		}
-	}
-
-	i = 0;
-	best = 0;
-	bestmax = 100;
-	while (from[i] != 0) {
-		c->feeder->desc->out = from[i];
-		try = NULL;
-		max = 0;
-		while (try == NULL && max < 8) {
-			try = feeder_fmtchain(to, c->feeder, stop, max);
-			if (try == NULL)
-				max++;
-		}
-		if (try != NULL && max < bestmax) {
-			bestmax = max;
-			best = from[i];
-		}
-		while (try != NULL && try != stop) {
-			del = try;
-			try = try->source;
-			feeder_destroy(del);
-		}
-		i++;
-	}
-	if (best == 0)
-		return 0;
-
-	c->feeder->desc->out = best;
-	try = feeder_fmtchain(to, c->feeder, stop, bestmax);
-	if (try == NULL)
-		return 0;
-
-	c->feeder = try;
-	c->align = 0;
-#ifdef FEEDER_DEBUG
-	kprintf("\n\nchain: ");
-#endif
-	while (try && (try != stop)) {
-#ifdef FEEDER_DEBUG
-		kprintf("%s [%d]", try->class->name, try->desc->idx);
-		if (try->source)
-			kprintf(" -> ");
-#endif
-		if (try->source)
-			try->source->parent = try;
-		if (try->align > 0)
-			c->align += try->align;
-		else if (try->align < 0 && c->align < -try->align)
-			c->align = -try->align;
-		try = try->source;
-	}
-#ifdef FEEDER_DEBUG
-	kprintf("%s [%d]\n", try->class->name, try->desc->idx);
-#endif
-
-	if (c->direction == PCMDIR_REC) {
-		try = c->feeder;
-		while (try != NULL) {
-			if (try->desc->type == FEEDER_ROOT)
-				return try->desc->out;
-			try = try->source;
-		}
-		return best;
-	} else
-		return c->feeder->desc->out;
-}
-
 void
 feeder_printchain(struct pcm_feeder *head)
 {
 	struct pcm_feeder *f;
 
-	kprintf("feeder chain (head @%p)\n", head);
+	printf("feeder chain (head @%p)\n", head);
 	f = head;
 	while (f != NULL) {
-		kprintf("%s/%d @ %p\n", f->class->name, f->desc->idx, f);
+		printf("%s/%d @ %p\n", f->class->name, f->desc->idx, f);
 		f = f->source;
 	}
-	kprintf("[end]\n\n");
+	printf("[end]\n\n");
 }
 
 /*****************************************************************************/
@@ -512,28 +456,52 @@ static int
 feed_root(struct pcm_feeder *feeder, struct pcm_channel *ch, u_int8_t *buffer, u_int32_t count, void *source)
 {
 	struct snd_dbuf *src = source;
-	int l;
-	u_int8_t x;
+	int l, offset;
 
 	KASSERT(count > 0, ("feed_root: count == 0"));
-	/* count &= ~((1 << ch->align) - 1); */
-	KASSERT(count > 0, ("feed_root: aligned count == 0 (align = %d)", ch->align));
+
+	if (++ch->feedcount == 0)
+		ch->feedcount = 2;
 
 	l = min(count, sndbuf_getready(src));
-	sndbuf_dispose(src, buffer, l);
 
 	/* When recording only return as much data as available */
-	if (ch->direction == PCMDIR_REC)
+	if (ch->direction == PCMDIR_REC) {
+		sndbuf_dispose(src, buffer, l);
 		return l;
+	}
 
-/*
-	if (l < count)
-		kprintf("appending %d bytes\n", count - l);
-*/
 
-	x = (sndbuf_getfmt(src) & AFMT_SIGNED)? 0 : 0x80;
-	while (l < count)
-		buffer[l++] = x;
+	offset = count - l;
+
+	if (offset > 0) {
+		if (snd_verbose > 3)
+			printf("%s: (%s) %spending %d bytes "
+			    "(count=%d l=%d feed=%d)\n",
+			    __func__,
+			    (ch->flags & CHN_F_VIRTUAL) ? "virtual" : "hardware",
+			    (ch->feedcount == 1) ? "pre" : "ap",
+			    offset, count, l, ch->feedcount);
+
+		if (ch->feedcount == 1) {
+			memset(buffer,
+			    sndbuf_zerodata(sndbuf_getfmt(src)),
+			    offset);
+			if (l > 0)
+				sndbuf_dispose(src, buffer + offset, l);
+			else
+				ch->feedcount--;
+		} else {
+			if (l > 0)
+				sndbuf_dispose(src, buffer, l);
+			memset(buffer + l,
+			    sndbuf_zerodata(sndbuf_getfmt(src)),
+			    offset);
+			if (!(ch->flags & CHN_F_CLOSING))
+				ch->xruns++;
+		}
+	} else if (l > 0)
+		sndbuf_dispose(src, buffer, l);
 
 	return count;
 }
@@ -546,14 +514,8 @@ static struct feeder_class feeder_root_class = {
 	.name =		"feeder_root",
 	.methods =	feeder_root_methods,
 	.size =		sizeof(struct pcm_feeder),
-	.align =	0,
 	.desc =		NULL,
 	.data =		NULL,
 };
 SYSINIT(feeder_root, SI_SUB_DRIVERS, SI_ORDER_FIRST, feeder_register, &feeder_root_class);
 SYSUNINIT(feeder_root, SI_SUB_DRIVERS, SI_ORDER_FIRST, feeder_unregisterall, NULL);
-
-
-
-
-

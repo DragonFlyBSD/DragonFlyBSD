@@ -1,5 +1,6 @@
 /*-
- * Copyright 2003 FreeBSD, Inc. All rights reserved.
+ * Copyright (c) 2003 Orion Hodson
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.h,v 1.3.2.2 2007/04/26 08:30:52 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.h,v 1.5 2007/06/16 19:48:05 hasso Exp $
+ * $FreeBSD: head/sys/dev/sound/pcm/ac97_patch.h 168861 2007-04-19 13:54:22Z ariff $
  */
 
 typedef void (*ac97_patch)(struct ac97_info*);

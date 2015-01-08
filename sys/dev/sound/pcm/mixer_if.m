@@ -25,8 +25,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/dev/sound/pcm/mixer_if.m,v 1.6 2005/01/06 01:43:21 imp Exp $
-# $DragonFly: src/sys/dev/sound/pcm/mixer_if.m,v 1.4 2007/01/04 21:47:03 corecode Exp $
+# $FreeBSD: head/sys/dev/sound/pcm/mixer_if.m 139749 2005-01-06 01:43:34Z imp $
 #
 
 #include <dev/sound/pcm/sound.h>

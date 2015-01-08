@@ -22,7 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
- *
+ */
+
+/*
  * This driver exists largely as a result of other people's efforts.
  * Much of register handling is based on NetBSD CMI8x38 audio driver
  * by Takuya Shiozaki <AoiMoe@imou.to>.  Chen-Li Tien
@@ -38,25 +40,33 @@
  * rate drifts slightly between recordings (usually 0-3%).  No
  * differences visible in register dumps between times that work and
  * those that don't.
- *
- * $FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.32.2.2 2006/01/24 18:54:22 joel Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pci/cmireg.h>
+#include <dev/sound/pci/sb.h>
 
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 
 #include <sys/sysctl.h>
+#include <dev/sound/midi/mpu401.h>
 
 #include "mixer_if.h"
+#include "mpufoi_if.h"
+
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/cmi.c 254263 2013-08-12 23:30:01Z scottl $");
 
 /* Supported chip ID's */
 #define CMI8338A_PCI_ID   0x010013f6
 #define CMI8338B_PCI_ID   0x010113f6
 #define CMI8738_PCI_ID    0x011113f6
 #define CMI8738B_PCI_ID   0x011213f6
+#define CMI120_USB_ID     0x01030d8c
 
 /* Buffer size max is 64k for permitted DMA boundaries */
 #define CMI_DEFAULT_BUFSZ      16384
@@ -106,20 +116,27 @@ struct sc_info {
 	struct resource		*reg, *irq;
 	int			regid, irqid;
 	void 			*ih;
-	sndlock_t		lock;
+	struct mtx		*lock;
 
 	int			spdif_enabled;
 	unsigned int		bufsz;
 	struct sc_chinfo 	pch, rch;
+
+	struct mpu401	*mpu;
+	mpu401_intr_t		*mpu_intr;
+	struct resource *mpu_reg;
+	int mpu_regid;
+	bus_space_tag_t	mpu_bt;
+	bus_space_handle_t	mpu_bh;
 };
 
 /* Channel caps */
 
 static u_int32_t cmi_fmt[] = {
-	AFMT_U8,
-	AFMT_STEREO | AFMT_U8,
-	AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S16_LE,
+	SND_FORMAT(AFMT_U8, 1, 0),
+	SND_FORMAT(AFMT_U8, 2, 0),
+	SND_FORMAT(AFMT_S16_LE, 1, 0),
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
 	0
 };
 
@@ -139,7 +156,7 @@ cmi_rd(struct sc_info *sc, int regno, int size)
 	case 4:
 		return bus_space_read_4(sc->st, sc->sh, regno);
 	default:
-		DEB(kprintf("cmi_rd: failed 0x%04x %d\n", regno, size));
+		DEB(printf("cmi_rd: failed 0x%04x %d\n", regno, size));
 		return 0xFFFFFFFF;
 	}
 }
@@ -197,7 +214,7 @@ cmi_set4(struct sc_info *sc, int reg, u_int32_t mask)
 
 static int cmi_rates[] = {5512, 8000, 11025, 16000,
 			  22050, 32000, 44100, 48000};
-#define NUM_CMI_RATES NELEM(cmi_rates)
+#define NUM_CMI_RATES (sizeof(cmi_rates)/sizeof(cmi_rates[0]))
 
 /* cmpci_rate_to_regvalue returns sampling freq selector for FCR1
  * register - reg order is 5k,11k,22k,44k,8k,16k,32k,48k */
@@ -213,7 +230,7 @@ cmpci_rate_to_regvalue(int rate)
 		}
 	}
 
-	DEB(kprintf("cmpci_rate_to_regvalue: %d -> %d\n", rate, cmi_rates[i]));
+	DEB(printf("cmpci_rate_to_regvalue: %d -> %d\n", rate, cmi_rates[i]));
 
 	r = ((i >> 1) | (i << 2)) & 0x07;
 	return r;
@@ -225,7 +242,7 @@ cmpci_regvalue_to_rate(u_int32_t r)
 	int i;
 
 	i = ((r << 1) | (r >> 2)) & 0x07;
-	DEB(kprintf("cmpci_regvalue_to_rate: %d -> %d\n", r, i));
+	DEB(printf("cmpci_regvalue_to_rate: %d -> %d\n", r, i));
 	return cmi_rates[i];
 }
 
@@ -284,7 +301,7 @@ cmi_ch1_start(struct sc_info *sc, struct sc_chinfo *ch)
 	/* Enable Interrupts */
 	cmi_set4(sc, CMPCI_REG_INTR_CTRL,
 		 CMPCI_REG_CH1_INTR_ENABLE);
-	DEB(kprintf("cmi_ch1_start: dma prog\n"));
+	DEB(printf("cmi_ch1_start: dma prog\n"));
 	ch->dma_active = 1;
 }
 
@@ -335,12 +352,12 @@ cmichan_init(kobj_t obj, void *devinfo,
 	ch->parent     = sc;
 	ch->channel    = c;
 	ch->bps        = 1;
-	ch->fmt        = AFMT_U8;
+	ch->fmt        = SND_FORMAT(AFMT_U8, 1, 0);
 	ch->spd        = DSP_DEFAULT_SPEED;
 	ch->buffer     = b;
 	ch->dma_active = 0;
-	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, sc->bufsz) != 0) {
-		DEB(kprintf("cmichan_init failed\n"));
+	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, 0, sc->bufsz) != 0) {
+		DEB(printf("cmichan_init failed\n"));
 		return NULL;
 	}
 
@@ -371,7 +388,7 @@ cmichan_setformat(kobj_t obj, void *data, u_int32_t format)
 		ch->bps = 1;
 	}
 
-	if (format & AFMT_STEREO) {
+	if (AFMT_CHANNEL(format) > 1) {
 		f |= CMPCI_REG_FORMAT_STEREO;
 		ch->bps *= 2;
 	} else {
@@ -398,7 +415,7 @@ cmichan_setformat(kobj_t obj, void *data, u_int32_t format)
 	return 0;
 }
 
-static int
+static u_int32_t
 cmichan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct sc_chinfo *ch = data;
@@ -437,14 +454,14 @@ cmichan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 	snd_mtxunlock(sc->lock);
 	ch->spd = cmpci_regvalue_to_rate(r);
 
-	DEB(kprintf("cmichan_setspeed (%s) %d -> %d (%d)\n",
+	DEB(printf("cmichan_setspeed (%s) %d -> %d (%d)\n",
 		   (ch->dir == PCMDIR_PLAY) ? "play" : "rec",
 		   speed, ch->spd, cmpci_regvalue_to_rate(rsp)));
 
 	return ch->spd;
 }
 
-static int
+static u_int32_t
 cmichan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct sc_chinfo *ch = data;
@@ -465,12 +482,16 @@ cmichan_trigger(kobj_t obj, void *data, int go)
 	struct sc_chinfo	*ch = data;
 	struct sc_info		*sc = ch->parent;
 
+	if (!PCMTRIG_COMMON(go))
+		return 0;
+
 	snd_mtxlock(sc->lock);
 	if (ch->dir == PCMDIR_PLAY) {
 		switch(go) {
 		case PCMTRIG_START:
 			cmi_ch0_start(sc, ch);
 			break;
+		case PCMTRIG_STOP:
 		case PCMTRIG_ABORT:
 			cmi_ch0_stop(sc, ch);
 			break;
@@ -480,6 +501,7 @@ cmichan_trigger(kobj_t obj, void *data, int go)
 		case PCMTRIG_START:
 			cmi_ch1_start(sc, ch);
 			break;
+		case PCMTRIG_STOP:
 		case PCMTRIG_ABORT:
 			cmi_ch1_stop(sc, ch);
 			break;
@@ -489,7 +511,7 @@ cmichan_trigger(kobj_t obj, void *data, int go)
 	return 0;
 }
 
-static int
+static u_int32_t
 cmichan_getptr(kobj_t obj, void *data)
 {
 	struct sc_chinfo	*ch = data;
@@ -524,12 +546,12 @@ cmi_intr(void *data)
 		toclear = 0;
 		if (intrstat & CMPCI_REG_CH0_INTR) {
 			toclear |= CMPCI_REG_CH0_INTR_ENABLE;
-			/* cmi_clr4(sc, CMPCI_REG_INTR_CTRL, CMPCI_REG_CH0_INTR_ENABLE); */
+			//cmi_clr4(sc, CMPCI_REG_INTR_CTRL, CMPCI_REG_CH0_INTR_ENABLE);
 		}
 
 		if (intrstat & CMPCI_REG_CH1_INTR) {
 			toclear |= CMPCI_REG_CH1_INTR_ENABLE;
-			/* cmi_clr4(sc, CMPCI_REG_INTR_CTRL, CMPCI_REG_CH1_INTR_ENABLE); */
+			//cmi_clr4(sc, CMPCI_REG_INTR_CTRL, CMPCI_REG_CH1_INTR_ENABLE);
 		}
 
 		if (toclear) {
@@ -549,6 +571,9 @@ cmi_intr(void *data)
 			cmi_set4(sc, CMPCI_REG_INTR_CTRL, toclear);
 
 		}
+	}
+	if(sc->mpu_intr) {
+		(sc->mpu_intr)(sc->mpu);
 	}
 	snd_mtxunlock(sc->lock);
 	return;
@@ -589,14 +614,14 @@ cmimix_rd(struct sc_info *sc, u_int8_t port)
 	return (u_int8_t)cmi_rd(sc, CMPCI_REG_SBDATA, 1);
 }
 
-static const struct sb16props {
+struct sb16props {
 	u_int8_t  rreg;     /* right reg chan register */
 	u_int8_t  stereo:1; /* (no explanation needed, honest) */
 	u_int8_t  rec:1;    /* recording source */
 	u_int8_t  bits:3;   /* num bits to represent maximum gain rep */
 	u_int8_t  oselect;  /* output select mask */
 	u_int8_t  iselect;  /* right input select mask */
-} cmt[SOUND_MIXER_NRDEVICES] = {
+} static const cmt[SOUND_MIXER_NRDEVICES] = {
 	[SOUND_MIXER_SYNTH]   = {CMPCI_SB16_MIXER_FM_R,      1, 1, 5,
 				 CMPCI_SB16_SW_FM,   CMPCI_SB16_MIXER_FM_SRC_R},
 	[SOUND_MIXER_CD]      = {CMPCI_SB16_MIXER_CDDA_R,    1, 1, 5,
@@ -672,13 +697,13 @@ cmimix_set(struct snd_mixer *m, unsigned dev, unsigned left, unsigned right)
 		r = (right * max / 100) << (8 - cmt[dev].bits);
 		cmimix_wr(sc, MIXER_GAIN_REG_RTOL(cmt[dev].rreg), l);
 		cmimix_wr(sc, cmt[dev].rreg, r);
-		DEBMIX(kprintf("Mixer stereo write dev %d reg 0x%02x "\
+		DEBMIX(printf("Mixer stereo write dev %d reg 0x%02x "\
 			      "value 0x%02x:0x%02x\n",
 			      dev, MIXER_GAIN_REG_RTOL(cmt[dev].rreg), l, r));
 	} else {
 		r = l;
 		cmimix_wr(sc, cmt[dev].rreg, l);
-		DEBMIX(kprintf("Mixer mono write dev %d reg 0x%02x " \
+		DEBMIX(printf("Mixer mono write dev %d reg 0x%02x " \
 			      "value 0x%02x:0x%02x\n",
 			      dev, cmt[dev].rreg, l, l));
 	}
@@ -695,7 +720,7 @@ cmimix_set(struct snd_mixer *m, unsigned dev, unsigned left, unsigned right)
 	return 0;
 }
 
-static int
+static u_int32_t
 cmimix_setrecsrc(struct snd_mixer *m, u_int32_t src)
 {
 	struct sc_info *sc = mix_getdevinfo(m);
@@ -712,11 +737,11 @@ cmimix_setrecsrc(struct snd_mixer *m, u_int32_t src)
 		}
 	}
 	cmimix_wr(sc, CMPCI_SB16_MIXER_ADCMIX_R, sl|ml);
-	DEBMIX(kprintf("cmimix_setrecsrc: reg 0x%02x val 0x%02x\n",
+	DEBMIX(printf("cmimix_setrecsrc: reg 0x%02x val 0x%02x\n",
 		      CMPCI_SB16_MIXER_ADCMIX_R, sl|ml));
 	ml = CMPCI_SB16_MIXER_SRC_R_TO_L(ml);
 	cmimix_wr(sc, CMPCI_SB16_MIXER_ADCMIX_L, sl|ml);
-	DEBMIX(kprintf("cmimix_setrecsrc: reg 0x%02x val 0x%02x\n",
+	DEBMIX(printf("cmimix_setrecsrc: reg 0x%02x val 0x%02x\n",
 		      CMPCI_SB16_MIXER_ADCMIX_L, sl|ml));
 
 	return src;
@@ -727,13 +752,17 @@ cmimix_setrecsrc(struct snd_mixer *m, u_int32_t src)
 static int
 cmi_initsys(struct sc_info* sc)
 {
-#ifdef SND_DYNSYSCTL
-	SYSCTL_ADD_INT(snd_sysctl_tree(sc->dev), 
-		       SYSCTL_CHILDREN(snd_sysctl_tree_top(sc->dev)),
+	/* XXX: an user should be able to set this with a control tool,
+	   if not done before 7.0-RELEASE, this needs to be converted
+	   to a device specific sysctl "dev.pcm.X.yyy" via
+	   device_get_sysctl_*() as discussed on multimedia@ in msg-id
+	   <861wujij2q.fsf@xps.des.no> */
+	SYSCTL_ADD_INT(device_get_sysctl_ctx(sc->dev), 
+		       SYSCTL_CHILDREN(device_get_sysctl_tree(sc->dev)),
 		       OID_AUTO, "spdif_enabled", CTLFLAG_RW, 
 		       &sc->spdif_enabled, 0, 
 		       "enable SPDIF output at 44.1 kHz and above");
-#endif /* SND_DYNSYSCTL */
+
 	return 0;
 }
 
@@ -745,6 +774,75 @@ static kobj_method_t cmi_mixer_methods[] = {
 	KOBJMETHOD_END
 };
 MIXER_DECLARE(cmi_mixer);
+
+/*
+ * mpu401 functions
+ */
+
+static unsigned char
+cmi_mread(struct mpu401 *arg, void *sc, int reg)
+{	
+	unsigned int d;
+
+		d = bus_space_read_1(0,0, 0x330 + reg); 
+	/*	printf("cmi_mread: reg %x %x\n",reg, d);
+	*/
+	return d;
+}
+
+static void
+cmi_mwrite(struct mpu401 *arg, void *sc, int reg, unsigned char b)
+{
+
+	bus_space_write_1(0,0,0x330 + reg , b);
+}
+
+static int
+cmi_muninit(struct mpu401 *arg, void *cookie)
+{
+	struct sc_info *sc = cookie;
+
+	snd_mtxlock(sc->lock);
+	sc->mpu_intr = 0;
+	sc->mpu = 0;
+	snd_mtxunlock(sc->lock);
+
+	return 0;
+}
+
+static kobj_method_t cmi_mpu_methods[] = {
+    	KOBJMETHOD(mpufoi_read,		cmi_mread),
+    	KOBJMETHOD(mpufoi_write,	cmi_mwrite),
+    	KOBJMETHOD(mpufoi_uninit,	cmi_muninit),
+	KOBJMETHOD_END
+};
+
+static DEFINE_CLASS(cmi_mpu, cmi_mpu_methods, 0);
+
+static void
+cmi_midiattach(struct sc_info *sc) {
+/*
+	const struct {
+		int port,bits;
+	} *p, ports[] = { 
+		{0x330,0}, 
+		{0x320,1}, 
+		{0x310,2}, 
+		{0x300,3}, 
+		{0,0} } ;
+	Notes, CMPCI_REG_VMPUSEL sets the io port for the mpu.  Does
+	anyone know how to bus_space tag?
+*/
+	cmi_clr4(sc, CMPCI_REG_FUNC_1, CMPCI_REG_UART_ENABLE);
+	cmi_clr4(sc, CMPCI_REG_LEGACY_CTRL, 
+			CMPCI_REG_VMPUSEL_MASK << CMPCI_REG_VMPUSEL_SHIFT);
+	cmi_set4(sc, CMPCI_REG_LEGACY_CTRL, 
+			0 << CMPCI_REG_VMPUSEL_SHIFT );
+	cmi_set4(sc, CMPCI_REG_FUNC_1, CMPCI_REG_UART_ENABLE);
+	sc->mpu = mpu401_init(&cmi_mpu_class, sc, cmi_intr, &sc->mpu_intr);
+}
+
+
 
 /* ------------------------------------------------------------------------- */
 /* Power and reset */
@@ -801,6 +899,10 @@ cmi_uninit(struct sc_info *sc)
 		 CMPCI_REG_TDMA_INTR_ENABLE);
 	cmi_clr4(sc, CMPCI_REG_FUNC_0,
 		 CMPCI_REG_CH0_ENABLE | CMPCI_REG_CH1_ENABLE);
+	cmi_clr4(sc, CMPCI_REG_FUNC_1, CMPCI_REG_UART_ENABLE);
+
+	if( sc->mpu )
+		sc->mpu_intr = 0;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -821,6 +923,9 @@ cmi_probe(device_t dev)
 	case CMI8738B_PCI_ID:
 		device_set_desc(dev, "CMedia CMI8738B");
 		return BUS_PROBE_DEFAULT;
+	case CMI120_USB_ID:
+	        device_set_desc(dev, "CMedia CMI120");
+	        return BUS_PROBE_DEFAULT;
 	default:
 		return ENXIO;
 	}
@@ -830,15 +935,11 @@ static int
 cmi_attach(device_t dev)
 {
 	struct sc_info		*sc;
-	u_int32_t		data;
 	char			status[SND_STATUSLEN];
 
-	sc = kmalloc(sizeof(struct sc_info), M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
-	data |= (PCIM_CMD_PORTEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, data, 2);
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
+	sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "snd_cmi softc");
+	pci_enable_busmaster(dev);
 
 	sc->dev = dev;
 	sc->regid = PCIR_BAR(0);
@@ -851,6 +952,9 @@ cmi_attach(device_t dev)
 	sc->st = rman_get_bustag(sc->reg);
 	sc->sh = rman_get_bushandle(sc->reg);
 
+	if (0)
+		cmi_midiattach(sc);
+
 	sc->irqid = 0;
 	sc->irq   = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irqid,
 					   RF_ACTIVE | RF_SHAREABLE);
@@ -862,12 +966,15 @@ cmi_attach(device_t dev)
 
 	sc->bufsz = pcm_getbuffersize(dev, 4096, CMI_DEFAULT_BUFSZ, 65536);
 
-	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
+	if (bus_dma_tag_create(/*parent*/bus_get_dma_tag(dev), /*alignment*/2,
+			       /*boundary*/0,
 			       /*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 			       /*highaddr*/BUS_SPACE_MAXADDR,
 			       /*filter*/NULL, /*filterarg*/NULL,
 			       /*maxsize*/sc->bufsz, /*nsegments*/1,
 			       /*maxsegz*/0x3ffff, /*flags*/0,
+			       /*lockfunc*/NULL,
+			       /*lockfunc*/NULL,
 			       &sc->parent_dmat) != 0) {
 		device_printf(dev, "cmi_attach: Unable to create dma tag\n");
 		goto bad;
@@ -888,11 +995,11 @@ cmi_attach(device_t dev)
 	pcm_addchan(dev, PCMDIR_PLAY, &cmichan_class, sc);
 	pcm_addchan(dev, PCMDIR_REC, &cmichan_class, sc);
 
-	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
+	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
 		 rman_get_start(sc->reg), rman_get_start(sc->irq),PCM_KLDSTRING(snd_cmi));
 	pcm_setstatus(dev, status);
 
-	DEB(kprintf("cmi_attach: succeeded\n"));
+	DEB(printf("cmi_attach: succeeded\n"));
 	return 0;
 
  bad:
@@ -907,7 +1014,7 @@ cmi_attach(device_t dev)
 	if (sc->lock)
 		snd_mtxfree(sc->lock);
 	if (sc)
-		kfree(sc, M_DEVBUF);
+		free(sc, M_DEVBUF);
 
 	return ENXIO;
 }
@@ -928,9 +1035,14 @@ cmi_detach(device_t dev)
 	bus_dma_tag_destroy(sc->parent_dmat);
 	bus_teardown_intr(dev, sc->irq, sc->ih);
 	bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
+	if(sc->mpu)
+		mpu401_uninit(sc->mpu);
 	bus_release_resource(dev, SYS_RES_IOPORT, sc->regid, sc->reg);
+	if (sc->mpu_reg)
+	    bus_release_resource(dev, SYS_RES_IOPORT, sc->mpu_regid, sc->mpu_reg);
+
 	snd_mtxfree(sc->lock);
-	kfree(sc, M_DEVBUF);
+	free(sc, M_DEVBUF);
 
 	return 0;
 }
@@ -988,7 +1100,7 @@ static device_method_t cmi_methods[] = {
 	DEVMETHOD(device_detach,        cmi_detach),
 	DEVMETHOD(device_resume,        cmi_resume),
 	DEVMETHOD(device_suspend,       cmi_suspend),
-	DEVMETHOD_END
+	{ 0, 0 }
 };
 
 static driver_t cmi_driver = {
@@ -997,6 +1109,7 @@ static driver_t cmi_driver = {
 	PCM_SOFTC_SIZE
 };
 
-DRIVER_MODULE(snd_cmi, pci, cmi_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_cmi, pci, cmi_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_cmi, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
+MODULE_DEPEND(snd_cmi, midi, 1,1,1);
 MODULE_VERSION(snd_cmi, 1);

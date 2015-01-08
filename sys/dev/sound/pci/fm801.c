@@ -22,20 +22,22 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.27.2.1 2006/01/10 01:01:24 ariff Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.10 2007/01/04 21:47:02 corecode Exp $");
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/fm801.c 254263 2013-08-12 23:30:01Z scottl $");
 
 #define PCI_VENDOR_FORTEMEDIA	0x1319
-#define PCI_DEVICE_FORTEMEDIA1	0x08011319
-#define PCI_DEVICE_FORTEMEDIA2	0x08021319	/* ??? have no idea what's this... */
+#define PCI_DEVICE_FORTEMEDIA1	0x08011319	/* Audio controller */
+#define PCI_DEVICE_FORTEMEDIA2	0x08021319	/* Joystick controller */
 
 #define FM_PCM_VOLUME           0x00
 #define FM_FM_VOLUME            0x02
@@ -101,17 +103,17 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.10 2007/01/04 21
 #define FM801_DEFAULT_BUFSZ	4096	/* Other values do not work!!! */
 
 /* debug purposes */
-#define DPRINT	 if(0) kprintf
+#define DPRINT	 if(0) printf
 
 /*
 static int fm801ch_setup(struct pcm_channel *c);
 */
 
 static u_int32_t fmts[] = {
-	AFMT_U8,
-	AFMT_STEREO | AFMT_U8,
-	AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S16_LE,
+	SND_FORMAT(AFMT_U8, 1, 0),
+	SND_FORMAT(AFMT_U8, 2, 0),
+	SND_FORMAT(AFMT_S16_LE, 1, 0),
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
 	0
 };
 
@@ -216,7 +218,7 @@ fm801_rdcd(kobj_t obj, void *devinfo, int regno)
 		DPRINT("fm801 rdcd: 1 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		kprintf("fm801 rdcd: codec busy\n");
+		printf("fm801 rdcd: codec busy\n");
 		return 0;
 	}
 
@@ -228,7 +230,7 @@ fm801_rdcd(kobj_t obj, void *devinfo, int regno)
 		DPRINT("fm801 rdcd: 2 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		kprintf("fm801 rdcd: write codec invalid\n");
+		printf("fm801 rdcd: write codec invalid\n");
 		return 0;
 	}
 
@@ -251,7 +253,7 @@ fm801_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		DPRINT("fm801 rdcd: 1 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		kprintf("fm801 wrcd: read codec busy\n");
+		printf("fm801 wrcd: read codec busy\n");
 		return -1;
 	}
 
@@ -264,7 +266,7 @@ fm801_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		DPRINT("fm801 wrcd: 2 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		kprintf("fm801 wrcd: read codec busy\n");
+		printf("fm801 wrcd: read codec busy\n");
 		return -1;
 	}
 	DPRINT("fm801 wrcd release reg 0x%x val 0x%x\n",regno, data);
@@ -274,7 +276,7 @@ fm801_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 static kobj_method_t fm801_ac97_methods[] = {
     	KOBJMETHOD(ac97_read,		fm801_rdcd),
     	KOBJMETHOD(ac97_write,		fm801_wrcd),
-	KOBJMETHOD_END
+	DEVMETHOD_END
 };
 AC97_DECLARE(fm801_ac97);
 
@@ -336,7 +338,7 @@ fm801ch_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	ch->channel = c;
 	ch->buffer = b;
 	ch->dir = dir;
-	if (sndbuf_alloc(ch->buffer, fm801->parent_dmat, fm801->bufsz) != 0)
+	if (sndbuf_alloc(ch->buffer, fm801->parent_dmat, 0, fm801->bufsz) != 0)
 		return NULL;
 	return (void *)ch;
 }
@@ -348,19 +350,20 @@ fm801ch_setformat(kobj_t obj, void *data, u_int32_t format)
 	struct fm801_info *fm801 = ch->parent;
 
 	DPRINT("fm801ch_setformat 0x%x : %s, %s, %s, %s\n", format,
-		(format & AFMT_STEREO)?"stereo":"mono",
-		(format & (AFMT_S16_LE | AFMT_S16_BE | AFMT_U16_LE | AFMT_U16_BE)) ? "16bit":"8bit",
+		(AFMT_CHANNEL(format) > 1)?"stereo":"mono",
+		(format & AFMT_16BIT) ? "16bit":"8bit",
 		(format & AFMT_SIGNED)? "signed":"unsigned",
 		(format & AFMT_BIGENDIAN)?"bigendiah":"littleendian" );
 
 	if(ch->dir == PCMDIR_PLAY) {
-		fm801->play_fmt =  (format & AFMT_STEREO)? FM_PLAY_STEREO : 0;
+		fm801->play_fmt =
+		    (AFMT_CHANNEL(format) > 1)? FM_PLAY_STEREO : 0;
 		fm801->play_fmt |= (format & AFMT_16BIT) ? FM_PLAY_16BIT : 0;
 		return 0;
 	}
 
 	if(ch->dir == PCMDIR_REC ) {
-		fm801->rec_fmt = (format & AFMT_STEREO)? FM_REC_STEREO:0;
+		fm801->rec_fmt = (AFMT_CHANNEL(format) > 1)? FM_REC_STEREO:0;
 		fm801->rec_fmt |= (format & AFMT_16BIT) ? FM_PLAY_16BIT : 0;
 		return 0;
 	}
@@ -369,8 +372,8 @@ fm801ch_setformat(kobj_t obj, void *data, u_int32_t format)
 }
 
 struct {
-	int limit;
-	int rate;
+	u_int32_t limit;
+	u_int32_t rate;
 } fm801_rates[11] = {
 	{  6600,  5500 },
 	{  8750,  8000 },
@@ -386,7 +389,7 @@ struct {
 /* anything above -> 48000 */
 };
 
-static int
+static u_int32_t
 fm801ch_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct fm801_chinfo *ch = data;
@@ -413,21 +416,22 @@ fm801ch_setspeed(kobj_t obj, void *data, u_int32_t speed)
 	return fm801_rates[i].rate;
 }
 
-static int
+static u_int32_t
 fm801ch_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct fm801_chinfo *ch = data;
 	struct fm801_info *fm801 = ch->parent;
 
-	if(ch->dir == PCMDIR_PLAY) {
-		if(fm801->play_flip) return fm801->play_blksize;
+	/*
+	 * Don't mind for play_flip, set the blocksize to the
+	 * desired values in any case - otherwise sound playback
+	 * breaks here.
+	 */
+	if(ch->dir == PCMDIR_PLAY)
 		fm801->play_blksize = blocksize;
-	}
 
-	if(ch->dir == PCMDIR_REC) {
-		if(fm801->rec_flip) return fm801->rec_blksize;
+	if(ch->dir == PCMDIR_REC)
 		fm801->rec_blksize = blocksize;
-	}
 
 	DPRINT("fm801ch_setblocksize %d (dir %d)\n",blocksize, ch->dir);
 
@@ -444,9 +448,8 @@ fm801ch_trigger(kobj_t obj, void *data, int go)
 
 	DPRINT("fm801ch_trigger go %d , ", go);
 
-	if (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD) {
+	if (!PCMTRIG_COMMON(go))
 		return 0;
-	}
 
 	if (ch->dir == PCMDIR_PLAY) {
 		if (go == PCMTRIG_START) {
@@ -491,12 +494,12 @@ fm801ch_trigger(kobj_t obj, void *data, int go)
 }
 
 /* Almost ALSA copy */
-static int
+static u_int32_t
 fm801ch_getptr(kobj_t obj, void *data)
 {
 	struct fm801_chinfo *ch = data;
 	struct fm801_info *fm801 = ch->parent;
-	int result = 0;
+	u_int32_t result = 0;
 
 	if (ch->dir == PCMDIR_PLAY) {
 		result = fm801_rd(fm801,
@@ -527,7 +530,7 @@ static kobj_method_t fm801ch_methods[] = {
     	KOBJMETHOD(channel_trigger,		fm801ch_trigger),
     	KOBJMETHOD(channel_getptr,		fm801ch_getptr),
     	KOBJMETHOD(channel_getcaps,		fm801ch_getcaps),
-	KOBJMETHOD_END
+	DEVMETHOD_END
 };
 CHANNEL_DECLARE(fm801ch);
 
@@ -570,20 +573,16 @@ fm801_init(struct fm801_info *fm801)
 static int
 fm801_pci_attach(device_t dev)
 {
-	u_int32_t 		data;
-	struct ac97_info 	*codec = NULL;
+	struct ac97_info 	*codec = 0;
 	struct fm801_info 	*fm801;
 	int 			i;
 	int 			mapped = 0;
 	char 			status[SND_STATUSLEN];
 
-	fm801 = kmalloc(sizeof(*fm801), M_DEVBUF, M_WAITOK | M_ZERO);
+	fm801 = malloc(sizeof(*fm801), M_DEVBUF, M_WAITOK | M_ZERO);
 	fm801->type = pci_get_devid(dev);
 
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
-	data |= (PCIM_CMD_PORTEN|PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, data, 2);
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
+	pci_enable_busmaster(dev);
 
 	for (i = 0; (mapped == 0) && (i < PCI_MAXMAPS_0); i++) {
 		fm801->regid = PCIR_BAR(i);
@@ -628,18 +627,19 @@ fm801_pci_attach(device_t dev)
 		goto oops;
 	}
 
-	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
+	if (bus_dma_tag_create(/*parent*/bus_get_dma_tag(dev), /*alignment*/2,
+		/*boundary*/0,
 		/*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/fm801->bufsz, /*nsegments*/1, /*maxsegz*/0x3ffff,
-		/*flags*/0,
-		&fm801->parent_dmat) != 0) {
+		/*flags*/0, /*lockfunc*/busdma_lock_mutex,
+		/*lockarg*/&Giant, &fm801->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto oops;
 	}
 
-	ksnprintf(status, 64, "at %s 0x%lx irq %ld %s",
+	snprintf(status, 64, "at %s 0x%lx irq %ld %s",
 		(fm801->regtype == SYS_RES_IOPORT)? "io" : "memory",
 		rman_get_start(fm801->reg), rman_get_start(fm801->irq),PCM_KLDSTRING(snd_fm801));
 
@@ -660,7 +660,7 @@ oops:
 	if (fm801->ih) bus_teardown_intr(dev, fm801->irq, fm801->ih);
 	if (fm801->irq) bus_release_resource(dev, SYS_RES_IRQ, fm801->irqid, fm801->irq);
 	if (fm801->parent_dmat) bus_dma_tag_destroy(fm801->parent_dmat);
-	kfree(fm801, M_DEVBUF);
+	free(fm801, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -692,7 +692,7 @@ fm801_pci_detach(device_t dev)
 	bus_teardown_intr(dev, fm801->irq, fm801->ih);
 	bus_release_resource(dev, SYS_RES_IRQ, fm801->irqid, fm801->irq);
 	bus_dma_tag_destroy(fm801->parent_dmat);
-	kfree(fm801, M_DEVBUF);
+	free(fm801, M_DEVBUF);
 	return 0;
 }
 
@@ -716,7 +716,7 @@ fm801_pci_probe( device_t dev )
 
 static struct resource *
 fm801_alloc_resource(device_t bus, device_t child, int type, int *rid,
-    u_long start, u_long end, u_long count, u_int flags, int cpuid __unused)
+		     u_long start, u_long end, u_long count, u_int flags)
 {
 	struct fm801_info *fm801;
 
@@ -745,11 +745,11 @@ static device_method_t fm801_methods[] = {
 	DEVMETHOD(device_resume,	bus_generic_resume),
 
 	/* Bus interface */
-	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 	DEVMETHOD(bus_alloc_resource,	fm801_alloc_resource),
 	DEVMETHOD(bus_release_resource,	fm801_release_resource),
 	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
 	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
+
 	DEVMETHOD_END
 };
 
@@ -759,6 +759,6 @@ static driver_t fm801_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_fm801, pci, fm801_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_fm801, pci, fm801_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_fm801, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_fm801, 1);

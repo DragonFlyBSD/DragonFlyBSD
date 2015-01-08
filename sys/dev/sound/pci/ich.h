@@ -24,8 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/ich.h,v 1.4 2005/01/06 01:43:19 imp Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.h,v 1.4 2007/01/04 21:47:02 corecode Exp $
+ * $FreeBSD: head/sys/dev/sound/pci/ich.h 139749 2005-01-06 01:43:34Z imp $
  */
 
 #define PCIR_NAMBAR 0x10

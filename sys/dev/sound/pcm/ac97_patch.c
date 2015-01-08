@@ -1,5 +1,6 @@
 /*-
- * Copyright 2002 FreeBSD, Inc. All rights reserved.
+ * Copyright (c) 2002 Orion Hodson
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -21,16 +22,17 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/sound/pcm/ac97_patch.c,v 1.3.2.5 2007/10/31 03:59:24 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.7 2007/11/30 07:57:20 hasso Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pcm/ac97_patch.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97_patch.c,v 1.7 2007/11/30 07:57:20 hasso Exp $");
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pcm/ac97_patch.c 193640 2009-06-07 19:12:08Z ariff $");
 
 void ad1886_patch(struct ac97_info* codec)
 {

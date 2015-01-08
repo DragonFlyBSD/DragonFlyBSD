@@ -22,18 +22,20 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/sound/pci/t4dwave.c,v 1.48.2.1 2007/11/15 16:59:54 ariff Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pci/t4dwave.h>
 
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.11 2007/11/30 08:03:17 hasso Exp $");
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/t4dwave.c 254263 2013-08-12 23:30:01Z scottl $");
 
 /* -------------------------------------------------------------------- */
 
@@ -43,18 +45,22 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/t4dwave.c,v 1.11 2007/11/30 
 #define SPA_PCI_ID	0x70181039
 
 #define TR_DEFAULT_BUFSZ 	0x1000
+/* For ALi M5451 the DMA transfer size appears to be fixed to 64k. */
+#define ALI_BUFSZ	0x10000
+#define TR_BUFALGN	0x8
 #define TR_TIMEOUT_CDC	0xffff
+#define TR_MAXHWCH	64
+#define ALI_MAXHWCH	32
 #define TR_MAXPLAYCH	4
+#define ALI_MAXPLAYCH	1
 /*
- * Though, it's not clearly documented in trident datasheet, trident
- * audio cards can't handle DMA addresses located above 1GB. The LBA
- * (loop begin address) register which holds DMA base address is 32bits
- * register.
- * But the MSB 2bits are used for other purposes(I guess it is really
- * bad idea). This effectivly limits the DMA address space up to 1GB.
+ * Though, it's not clearly documented in the 4DWAVE datasheet, the
+ * DX and NX chips can't handle DMA addresses located above 1GB as the
+ * LBA (loop begin address) register which holds the DMA base address
+ * is 32-bit, but the two MSBs are used for other purposes.
  */
-#define TR_MAXADDR	((1 << 30) - 1)
-
+#define TR_MAXADDR	((1U << 30) - 1)
+#define ALI_MAXADDR	((1U << 31) - 1)
 
 struct tr_info;
 
@@ -93,8 +99,9 @@ struct tr_info {
 	int regtype, regid, irqid;
 	void *ih;
 
-	sndlock_t	lock;
+	struct mtx *lock;
 
+	u_int32_t hwchns;
 	u_int32_t playchns;
 	unsigned int bufsz;
 
@@ -105,27 +112,27 @@ struct tr_info {
 /* -------------------------------------------------------------------- */
 
 static u_int32_t tr_recfmt[] = {
-	AFMT_U8,
-	AFMT_STEREO | AFMT_U8,
-	AFMT_S8,
-	AFMT_STEREO | AFMT_S8,
-	AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S16_LE,
-	AFMT_U16_LE,
-	AFMT_STEREO | AFMT_U16_LE,
+	SND_FORMAT(AFMT_U8, 1, 0),
+	SND_FORMAT(AFMT_U8, 2, 0),
+	SND_FORMAT(AFMT_S8, 1, 0),
+	SND_FORMAT(AFMT_S8, 2, 0),
+	SND_FORMAT(AFMT_S16_LE, 1, 0),
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
+	SND_FORMAT(AFMT_U16_LE, 1, 0),
+	SND_FORMAT(AFMT_U16_LE, 2, 0),
 	0
 };
 static struct pcmchan_caps tr_reccaps = {4000, 48000, tr_recfmt, 0};
 
 static u_int32_t tr_playfmt[] = {
-	AFMT_U8,
-	AFMT_STEREO | AFMT_U8,
-	AFMT_S8,
-	AFMT_STEREO | AFMT_S8,
-	AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S16_LE,
-	AFMT_U16_LE,
-	AFMT_STEREO | AFMT_U16_LE,
+	SND_FORMAT(AFMT_U8, 1, 0),
+	SND_FORMAT(AFMT_U8, 2, 0),
+	SND_FORMAT(AFMT_S8, 1, 0),
+	SND_FORMAT(AFMT_S8, 2, 0),
+	SND_FORMAT(AFMT_S16_LE, 1, 0),
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
+	SND_FORMAT(AFMT_U16_LE, 1, 0),
+	SND_FORMAT(AFMT_U16_LE, 2, 0),
 	0
 };
 static struct pcmchan_caps tr_playcaps = {4000, 48000, tr_playfmt, 0};
@@ -195,7 +202,7 @@ tr_rdcd(kobj_t obj, void *devinfo, int regno)
 		trw=TNX_CDC_RWSTAT;
 		break;
 	default:
-		kprintf("!!! tr_rdcd defaulted !!!\n");
+		printf("!!! tr_rdcd defaulted !!!\n");
 		return -1;
 	}
 
@@ -223,7 +230,7 @@ tr_rdcd(kobj_t obj, void *devinfo, int regno)
 		       	j=tr_rd(tr, treg, 4);
 	}
 	snd_mtxunlock(tr->lock);
-	if (i == 0) kprintf("codec timeout during read of register %x\n", regno);
+	if (i == 0) printf("codec timeout during read of register %x\n", regno);
 	return (j >> TR_CDC_DATA) & 0xffff;
 }
 
@@ -248,7 +255,7 @@ tr_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		trw=TNX_CDC_RWSTAT | ((regno & 0x100)? TNX_CDC_SEC : 0);
 		break;
 	default:
-		kprintf("!!! tr_wrcd defaulted !!!");
+		printf("!!! tr_wrcd defaulted !!!");
 		return -1;
 	}
 
@@ -256,7 +263,7 @@ tr_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 
 	regno &= 0x7f;
 #if 0
-	kprintf("tr_wrcd: reg %x was %x", regno, tr_rdcd(devinfo, regno));
+	printf("tr_wrcd: reg %x was %x", regno, tr_rdcd(devinfo, regno));
 #endif
 	j=trw;
 	snd_mtxlock(tr->lock);
@@ -281,10 +288,10 @@ tr_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		tr_wr(tr, treg, (data << TR_CDC_DATA) | regno | trw, 4);
 	}
 #if 0
-	kprintf(" - wrote %x, now %x\n", data, tr_rdcd(devinfo, regno));
+	printf(" - wrote %x, now %x\n", data, tr_rdcd(devinfo, regno));
 #endif
 	snd_mtxunlock(tr->lock);
-	if (i==0) kprintf("codec timeout writing %x, data %x\n", regno, data);
+	if (i==0) printf("codec timeout writing %x, data %x\n", regno, data);
 	return (i > 0)? 0 : -1;
 }
 
@@ -396,7 +403,10 @@ tr_wrch(struct tr_chinfo *ch)
 	ch->ec		&= 0x00000fff;
 	ch->alpha	&= 0x00000fff;
 	ch->delta	&= 0x0000ffff;
-	ch->lba		&= 0x3fffffff;
+	if (tr->type == ALI_PCI_ID)
+		ch->lba &= ALI_MAXADDR;
+	else
+		ch->lba &= TR_MAXADDR;
 
 	cr[1]=ch->lba;
 	cr[3]=(ch->fmc<<14) | (ch->rvol<<7) | (ch->cvol);
@@ -439,7 +449,10 @@ tr_rdch(struct tr_chinfo *ch)
 	snd_mtxunlock(tr->lock);
 
 
-	ch->lba=	(cr[1] & 0x3fffffff);
+	if (tr->type == ALI_PCI_ID)
+		ch->lba=(cr[1] & ALI_MAXADDR);
+	else
+		ch->lba=(cr[1] & TR_MAXADDR);
 	ch->fmc=	(cr[3] & 0x0000c000) >> 14;
 	ch->rvol=	(cr[3] & 0x00003f80) >> 7;
 	ch->cvol=	(cr[3] & 0x0000007f);
@@ -475,7 +488,7 @@ tr_fmttobits(u_int32_t fmt)
 
 	bits = 0;
 	bits |= (fmt & AFMT_SIGNED)? 0x2 : 0;
-	bits |= (fmt & AFMT_STEREO)? 0x4 : 0;
+	bits |= (AFMT_CHANNEL(fmt) > 1)? 0x4 : 0;
 	bits |= (fmt & AFMT_16BIT)? 0x8 : 0;
 
 	return bits;
@@ -496,7 +509,7 @@ trpchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	ch->buffer = b;
 	ch->parent = tr;
 	ch->channel = c;
-	if (sndbuf_alloc(ch->buffer, tr->parent_dmat, tr->bufsz) != 0)
+	if (sndbuf_alloc(ch->buffer, tr->parent_dmat, 0, tr->bufsz) != 0)
 		return NULL;
 
 	return ch;
@@ -512,7 +525,7 @@ trpchan_setformat(kobj_t obj, void *data, u_int32_t format)
 	return 0;
 }
 
-static int
+static u_int32_t
 trpchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct tr_chinfo *ch = data;
@@ -521,7 +534,7 @@ trpchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 	return (ch->delta * 48000) >> 12;
 }
 
-static int
+static u_int32_t
 trpchan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct tr_chinfo *ch = data;
@@ -535,7 +548,7 @@ trpchan_trigger(kobj_t obj, void *data, int go)
 {
 	struct tr_chinfo *ch = data;
 
-	if (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD)
+	if (!PCMTRIG_COMMON(go))
 		return 0;
 
 	if (go == PCMTRIG_START) {
@@ -545,7 +558,7 @@ trpchan_trigger(kobj_t obj, void *data, int go)
 		ch->alpha = 0;
 		ch->lba = sndbuf_getbufaddr(ch->buffer);
 		ch->cso = 0;
-		ch->eso = (sndbuf_getsize(ch->buffer) / sndbuf_getbps(ch->buffer)) - 1;
+		ch->eso = (sndbuf_getsize(ch->buffer) / sndbuf_getalign(ch->buffer)) - 1;
 		ch->rvol = ch->cvol = 0x7f;
 		ch->gvsel = 0;
 		ch->pan = 0;
@@ -563,13 +576,13 @@ trpchan_trigger(kobj_t obj, void *data, int go)
 	return 0;
 }
 
-static int
+static u_int32_t
 trpchan_getptr(kobj_t obj, void *data)
 {
 	struct tr_chinfo *ch = data;
 
 	tr_rdch(ch);
-	return ch->cso * sndbuf_getbps(ch->buffer);
+	return ch->cso * sndbuf_getalign(ch->buffer);
 }
 
 static struct pcmchan_caps *
@@ -604,7 +617,7 @@ trrchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 	ch->buffer = b;
 	ch->parent = tr;
 	ch->channel = c;
-	if (sndbuf_alloc(ch->buffer, tr->parent_dmat, tr->bufsz) != 0)
+	if (sndbuf_alloc(ch->buffer, tr->parent_dmat, 0, tr->bufsz) != 0)
 		return NULL;
 
 	return ch;
@@ -626,10 +639,9 @@ trrchan_setformat(kobj_t obj, void *data, u_int32_t format)
 	tr_wr(tr, TR_REG_SBCTRL, i, 1);
 
 	return 0;
-
 }
 
-static int
+static u_int32_t
 trrchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct tr_rchinfo *ch = data;
@@ -643,7 +655,7 @@ trrchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 	return (48000 << 12) / ch->delta;
 }
 
-static int
+static u_int32_t
 trrchan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct tr_rchinfo *ch = data;
@@ -660,7 +672,7 @@ trrchan_trigger(kobj_t obj, void *data, int go)
 	struct tr_info *tr = ch->parent;
 	u_int32_t i;
 
-	if (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD)
+	if (!PCMTRIG_COMMON(go))
 		return 0;
 
 	if (go == PCMTRIG_START) {
@@ -685,7 +697,7 @@ trrchan_trigger(kobj_t obj, void *data, int go)
 	return 0;
 }
 
-static int
+static u_int32_t
 trrchan_getptr(kobj_t obj, void *data)
 {
  	struct tr_rchinfo *ch = data;
@@ -727,7 +739,7 @@ tr_intr(void *p)
 	intsrc = tr_rd(tr, TR_REG_MISCINT, 4);
 	if (intsrc & TR_INT_ADDR) {
 		chnum = 0;
-		while (chnum < 64) {
+		while (chnum < tr->hwchns) {
 			mask = 0x00000001;
 			active = tr_rd(tr, (chnum < 32)? TR_REG_ADDRINTA : TR_REG_ADDRINTB, 4);
 			bufhalf = tr_rd(tr, (chnum < 32)? TR_REG_CSPF_A : TR_REG_CSPF_B, 4);
@@ -737,7 +749,7 @@ tr_intr(void *p)
 						tmp = (bufhalf & mask)? 1 : 0;
 						if (chnum < tr->playchns) {
 							ch = &tr->chinfo[chnum];
-							/* kprintf("%d @ %d, ", chnum, trpchan_getptr(NULL, ch)); */
+							/* printf("%d @ %d, ", chnum, trpchan_getptr(NULL, ch)); */
 							if (ch->bufhalf != tmp) {
 								chn_intr(ch->channel);
 								ch->bufhalf = tmp;
@@ -810,16 +822,21 @@ tr_pci_probe(device_t dev)
 static int
 tr_pci_attach(device_t dev)
 {
-	u_int32_t	data;
 	struct tr_info *tr;
-	struct ac97_info *codec = NULL;
+	struct ac97_info *codec = 0;
+	bus_addr_t	lowaddr;
 	int		i, dacn;
 	char 		status[SND_STATUSLEN];
+#ifdef __sparc64__
+	device_t	*children;
+	int		nchildren;
+	u_int32_t	data;
+#endif
 
-	tr = kmalloc(sizeof(*tr), M_DEVBUF, M_WAITOK | M_ZERO);
+	tr = malloc(sizeof(*tr), M_DEVBUF, M_WAITOK | M_ZERO);
 	tr->type = pci_get_devid(dev);
 	tr->rev = pci_get_revid(dev);
-	tr->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
+	tr->lock = snd_mtxcreate(device_get_nameunit(dev), "snd_t4dwave softc");
 
 	if (resource_int_value(device_get_name(dev), device_get_unit(dev),
 	    "dac", &i) == 0) {
@@ -832,7 +849,7 @@ tr_pci_attach(device_t dev)
 	} else {
 		switch (tr->type) {
 		case ALI_PCI_ID:
-			dacn = 1;
+			dacn = ALI_MAXPLAYCH;
 			break;
 		default:
 			dacn = TR_MAXPLAYCH;
@@ -840,10 +857,7 @@ tr_pci_attach(device_t dev)
 		}
 	}
 
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
-	data |= (PCIM_CMD_PORTEN|PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, data, 2);
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
+	pci_enable_busmaster(dev);
 
 	tr->regid = PCIR_BAR(0);
 	tr->regtype = SYS_RES_IOPORT;
@@ -856,8 +870,6 @@ tr_pci_attach(device_t dev)
 		device_printf(dev, "unable to map register space\n");
 		goto bad;
 	}
-
-	tr->bufsz = pcm_getbuffersize(dev, 4096, TR_DEFAULT_BUFSZ, 65536);
 
 	if (tr_init(tr) == -1) {
 		device_printf(dev, "unable to initialize the card\n");
@@ -877,18 +889,66 @@ tr_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
-		/*lowaddr*/TR_MAXADDR,
+	if (tr->type == ALI_PCI_ID) {
+		/*
+		 * The M5451 generates 31 bit of DMA and in order to do
+		 * 32-bit DMA, the 31st bit can be set via its accompanying
+		 * ISA bridge.  Note that we can't predict whether bus_dma(9)
+		 * will actually supply us with a 32-bit buffer and even when
+		 * using a low address of BUS_SPACE_MAXADDR_32BIT for both
+		 * we might end up with the play buffer being in the 32-bit
+		 * range while the record buffer isn't or vice versa. So we
+		 * limit enabling the 31st bit to sparc64, where the IOMMU
+		 * guarantees that we're using a 32-bit address (and in turn
+		 * requires it).
+		 */
+		lowaddr = ALI_MAXADDR;
+#ifdef __sparc64__
+		if (device_get_children(device_get_parent(dev), &children,
+		    &nchildren) == 0) {
+			for (i = 0; i < nchildren; i++) {
+				if (pci_get_devid(children[i]) == 0x153310b9) {
+					lowaddr = BUS_SPACE_MAXADDR_32BIT;
+					data = pci_read_config(children[i],
+					    0x7e, 1);
+					if (bootverbose)
+						device_printf(dev,
+						    "M1533 0x7e: 0x%x -> ",
+						    data);
+					data |= 0x1;
+					if (bootverbose)
+						printf("0x%x\n", data);
+					pci_write_config(children[i], 0x7e,
+					    data, 1);
+					break;
+				}
+			}
+		}
+		free(children, M_TEMP);
+#endif
+		tr->hwchns = ALI_MAXHWCH;
+		tr->bufsz = ALI_BUFSZ;
+	} else {
+		lowaddr = TR_MAXADDR;
+		tr->hwchns = TR_MAXHWCH;
+		tr->bufsz = pcm_getbuffersize(dev, 4096, TR_DEFAULT_BUFSZ,
+		    65536);
+	}
+
+	if (bus_dma_tag_create(/*parent*/bus_get_dma_tag(dev),
+		/*alignment*/TR_BUFALGN,
+		/*boundary*/0,
+		/*lowaddr*/lowaddr,
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,
-		/*maxsize*/tr->bufsz, /*nsegments*/1, /*maxsegz*/0x3ffff,
-		/*flags*/0,
-		&tr->parent_dmat) != 0) {
+		/*maxsize*/tr->bufsz, /*nsegments*/1, /*maxsegz*/tr->bufsz,
+		/*flags*/0, /*lockfunc*/busdma_lock_mutex,
+		/*lockarg*/&Giant, &tr->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
 
-	ksnprintf(status, 64, "at io 0x%lx irq %ld %s",
+	snprintf(status, 64, "at io 0x%lx irq %ld %s",
 		 rman_get_start(tr->reg), rman_get_start(tr->irq),PCM_KLDSTRING(snd_t4dwave));
 
 	if (pcm_register(dev, tr, dacn, 1))
@@ -907,7 +967,7 @@ bad:
 	if (tr->irq) bus_release_resource(dev, SYS_RES_IRQ, tr->irqid, tr->irq);
 	if (tr->parent_dmat) bus_dma_tag_destroy(tr->parent_dmat);
 	if (tr->lock) snd_mtxfree(tr->lock);
-	kfree(tr, M_DEVBUF);
+	free(tr, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -927,7 +987,7 @@ tr_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, tr->irqid, tr->irq);
 	bus_dma_tag_destroy(tr->parent_dmat);
 	snd_mtxfree(tr->lock);
-	kfree(tr, M_DEVBUF);
+	free(tr, M_DEVBUF);
 
 	return 0;
 }
@@ -993,7 +1053,7 @@ static device_method_t tr_methods[] = {
 	DEVMETHOD(device_detach,	tr_pci_detach),
 	DEVMETHOD(device_suspend,	tr_pci_suspend),
 	DEVMETHOD(device_resume,	tr_pci_resume),
-	DEVMETHOD_END
+	{ 0, 0 }
 };
 
 static driver_t tr_driver = {
@@ -1002,6 +1062,6 @@ static driver_t tr_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_t4dwave, pci, tr_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_t4dwave, pci, tr_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_t4dwave, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_t4dwave, 1);

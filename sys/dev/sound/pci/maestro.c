@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	maestro.c,v 1.23.2.1 2003/10/03 18:21:38 taku Exp
- * $FreeBSD: src/sys/dev/sound/pci/maestro.c,v 1.28.2.3 2006/02/04 11:58:28 netchild Exp $
  */
 
 /*
@@ -48,17 +47,18 @@
  * John Baldwin <jhb@freebsd.org>.
  */
 
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
+
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 
 #include <dev/sound/pci/maestro_reg.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.10 2007/06/16 20:07:19 dillon Exp $");
-
-
-#define inline __inline
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/maestro.c 274035 2014-11-03 11:11:45Z bapt $");
 
 /*
  * PCI IDs of supported chips:
@@ -87,10 +87,6 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro.c,v 1.10 2007/06/16 
 #define AGG_DEFAULT_BUFSZ	0x4000 /* 0x1000, but gets underflows */
 
 
-/* compatibility */
-# define critical_enter()	crit_enter()
-# define critical_exit()	crit_exit()
-
 #ifndef PCIR_BAR
 #define PCIR_BAR(x)	(PCIR_MAPS + (x) * 4)
 #endif
@@ -108,6 +104,7 @@ struct agg_chinfo {
 	struct snd_dbuf		*buffer;
 
 	/* OS independent */
+	bus_dmamap_t		map;
 	bus_addr_t		phys;	/* channel buffer physical address */
 	bus_addr_t		base;	/* channel buffer segment base */
 	u_int32_t		blklen;	/* DMA block length in WORDs */
@@ -128,6 +125,7 @@ struct agg_rchinfo {
 	struct snd_dbuf		*buffer;
 
 	/* OS independent */
+	bus_dmamap_t		map;
 	bus_addr_t		phys;	/* channel buffer physical address */
 	bus_addr_t		base;	/* channel buffer segment base */
 	u_int32_t		blklen;	/* DMA block length in WORDs */
@@ -159,13 +157,12 @@ struct agg_info {
 	bus_dma_tag_t		stat_dmat;
 
 	/* FreeBSD SMPng related */
-#ifdef USING_MUTEX
-	sndlock_t		lock;
-#endif
+	struct mtx		lock;	/* mutual exclusion */
 	/* FreeBSD newpcm related */
 	struct ac97_info	*codec;
 
 	/* OS independent */
+	bus_dmamap_t		stat_map;
 	u_int8_t		*stat;	/* status buffer pointer */
 	bus_addr_t		phys;	/* status buffer physical address */
 	unsigned int		bufsz;	/* channel buffer size in bytes */
@@ -188,72 +185,83 @@ static unsigned int powerstate_idle   = PCI_POWERSTATE_D1;
 #endif
 static unsigned int powerstate_init   = PCI_POWERSTATE_D2;
 
-SYSCTL_NODE(_debug, OID_AUTO, maestro, CTLFLAG_RD, 0, "");
+/* XXX: this should move to a device specific sysctl dev.pcm.X.debug.Y via
+   device_get_sysctl_*() as discussed on multimedia@ in msg-id
+   <861wujij2q.fsf@xps.des.no> */
+static SYSCTL_NODE(_debug, OID_AUTO, maestro, CTLFLAG_RD, 0, "");
 SYSCTL_UINT(_debug_maestro, OID_AUTO, powerstate_active, CTLFLAG_RW,
 	    &powerstate_active, 0, "The Dx power state when active (0-1)");
 SYSCTL_UINT(_debug_maestro, OID_AUTO, powerstate_idle, CTLFLAG_RW,
 	    &powerstate_idle, 0, "The Dx power state when idle (0-2)");
 SYSCTL_UINT(_debug_maestro, OID_AUTO, powerstate_init, CTLFLAG_RW,
-	    &powerstate_init, 0, "The Dx power state prior to the first use (0-2)");
+	    &powerstate_init, 0,
+	    "The Dx power state prior to the first use (0-2)");
 
 
 /* -----------------------------
  * Prototypes
  */
 
-static inline void	 agg_lock(struct agg_info*);
-static inline void	 agg_unlock(struct agg_info*);
-static inline void	 agg_sleep(struct agg_info*, const char *wmesg, int msec);
+static void	agg_sleep(struct agg_info*, const char *wmesg, int msec);
 
-static inline u_int32_t	 agg_rd(struct agg_info*, int, int size);
-static inline void	 agg_wr(struct agg_info*, int, u_int32_t data, int size);
+#if 0
+static __inline u_int32_t	agg_rd(struct agg_info*, int, int size);
+static __inline void		agg_wr(struct agg_info*, int, u_int32_t data,
+								int size);
+#endif
+static int	agg_rdcodec(struct agg_info*, int);
+static int	agg_wrcodec(struct agg_info*, int, u_int32_t);
 
-static inline int	 agg_rdcodec(struct agg_info*, int);
-static inline int	 agg_wrcodec(struct agg_info*, int, u_int32_t);
+static void	ringbus_setdest(struct agg_info*, int, int);
 
-static inline void	 ringbus_setdest(struct agg_info*, int, int);
+static u_int16_t	wp_rdreg(struct agg_info*, u_int16_t);
+static void		wp_wrreg(struct agg_info*, u_int16_t, u_int16_t);
+static u_int16_t	wp_rdapu(struct agg_info*, unsigned, u_int16_t);
+static void	wp_wrapu(struct agg_info*, unsigned, u_int16_t, u_int16_t);
+static void	wp_settimer(struct agg_info*, u_int);
+static void	wp_starttimer(struct agg_info*);
+static void	wp_stoptimer(struct agg_info*);
 
-static inline u_int16_t	 wp_rdreg(struct agg_info*, u_int16_t);
-static inline void	 wp_wrreg(struct agg_info*, u_int16_t, u_int16_t);
-static inline u_int16_t	 wp_rdapu(struct agg_info*, unsigned, u_int16_t);
-static inline void	 wp_wrapu(struct agg_info*, unsigned, u_int16_t, u_int16_t);
-static inline void	 wp_settimer(struct agg_info*, u_int);
-static inline void	 wp_starttimer(struct agg_info*);
-static inline void	 wp_stoptimer(struct agg_info*);
+#if 0
+static u_int16_t	wc_rdreg(struct agg_info*, u_int16_t);
+#endif
+static void		wc_wrreg(struct agg_info*, u_int16_t, u_int16_t);
+#if 0
+static u_int16_t	wc_rdchctl(struct agg_info*, int);
+#endif
+static void		wc_wrchctl(struct agg_info*, int, u_int16_t);
 
-static inline u_int16_t	 wc_rdreg(struct agg_info*, u_int16_t);
-static inline void	 wc_wrreg(struct agg_info*, u_int16_t, u_int16_t);
-static inline u_int16_t	 wc_rdchctl(struct agg_info*, int);
-static inline void	 wc_wrchctl(struct agg_info*, int, u_int16_t);
+static void	agg_stopclock(struct agg_info*, int part, int st);
 
-static inline void	 agg_stopclock(struct agg_info*, int part, int st);
+static void	agg_initcodec(struct agg_info*);
+static void	agg_init(struct agg_info*);
+static void	agg_power(struct agg_info*, int);
 
-static inline void	 agg_initcodec(struct agg_info*);
-static void		 agg_init(struct agg_info*);
-static void		 agg_power(struct agg_info*, int);
+static void	aggch_start_dac(struct agg_chinfo*);
+static void	aggch_stop_dac(struct agg_chinfo*);
+static void	aggch_start_adc(struct agg_rchinfo*);
+static void	aggch_stop_adc(struct agg_rchinfo*);
+static void	aggch_feed_adc_stereo(struct agg_rchinfo*);
+static void	aggch_feed_adc_mono(struct agg_rchinfo*);
 
-static void		 aggch_start_dac(struct agg_chinfo*);
-static void		 aggch_stop_dac(struct agg_chinfo*);
-static void		 aggch_start_adc(struct agg_rchinfo*);
-static void		 aggch_stop_adc(struct agg_rchinfo*);
-static void		 aggch_feed_adc_stereo(struct agg_rchinfo*);
-static void		 aggch_feed_adc_mono(struct agg_rchinfo*);
+#ifdef AGG_JITTER_CORRECTION
+static void	suppress_jitter(struct agg_chinfo*);
+static void	suppress_rec_jitter(struct agg_rchinfo*);
+#endif
 
-static inline void	 suppress_jitter(struct agg_chinfo*);
-static inline void	 suppress_rec_jitter(struct agg_rchinfo*);
+static void	set_timer(struct agg_info*);
 
-static void		 set_timer(struct agg_info*);
+static void	agg_intr(void *);
+static int	agg_probe(device_t);
+static int	agg_attach(device_t);
+static int	agg_detach(device_t);
+static int	agg_suspend(device_t);
+static int	agg_resume(device_t);
+static int	agg_shutdown(device_t);
 
-static void		 agg_intr(void *);
-static int		 agg_probe(device_t);
-static int		 agg_attach(device_t);
-static int		 agg_detach(device_t);
-static int		 agg_suspend(device_t);
-static int		 agg_resume(device_t);
-static int		 agg_shutdown(device_t);
-
-static void	*dma_malloc(bus_dma_tag_t, u_int32_t, bus_addr_t*);
-static void	 dma_free(bus_dma_tag_t, void *);
+static void	*dma_malloc(bus_dma_tag_t, u_int32_t, bus_addr_t*,
+		    bus_dmamap_t *);
+static void	dma_free(bus_dma_tag_t, void *, bus_dmamap_t);
 
 
 /* -----------------------------
@@ -261,24 +269,10 @@ static void	 dma_free(bus_dma_tag_t, void *);
  */
 
 /* locking */
+#define agg_lock(sc)	snd_mtxlock(&((sc)->lock))
+#define agg_unlock(sc)	snd_mtxunlock(&((sc)->lock))
 
-static inline void
-agg_lock(struct agg_info *sc)
-{
-#ifdef USING_MUTEX
-	snd_mtxlock(sc->lock);
-#endif
-}
-
-static inline void
-agg_unlock(struct agg_info *sc)
-{
-#ifdef USING_MUTEX
-	snd_mtxunlock(sc->lock);
-#endif
-}
-
-static inline void
+static void
 agg_sleep(struct agg_info *sc, const char *wmesg, int msec)
 {
 	int timo;
@@ -286,17 +280,14 @@ agg_sleep(struct agg_info *sc, const char *wmesg, int msec)
 	timo = msec * hz / 1000;
 	if (timo == 0)
 		timo = 1;
-#ifdef USING_MUTEX
-	snd_mtxsleep(sc, sc->lock, 0, wmesg, timo);
-#else
-	tsleep(sc, PWAIT, wmesg, timo);
-#endif
+	msleep(sc, &sc->lock, PWAIT, wmesg, timo);
 }
 
 
 /* I/O port */
 
-static inline u_int32_t
+#if 0
+static __inline u_int32_t
 agg_rd(struct agg_info *sc, int regno, int size)
 {
 	switch (size) {
@@ -310,13 +301,15 @@ agg_rd(struct agg_info *sc, int regno, int size)
 		return ~(u_int32_t)0;
 	}
 }
+#endif
 
 #define AGG_RD(sc, regno, size)           \
 	bus_space_read_##size(            \
 	    ((struct agg_info*)(sc))->st, \
 	    ((struct agg_info*)(sc))->sh, (regno))
 
-static inline void
+#if 0
+static __inline void
 agg_wr(struct agg_info *sc, int regno, u_int32_t data, int size)
 {
 	switch (size) {
@@ -331,6 +324,7 @@ agg_wr(struct agg_info *sc, int regno, u_int32_t data, int size)
 		break;
 	}
 }
+#endif
 
 #define AGG_WR(sc, regno, data, size)     \
 	bus_space_write_##size(           \
@@ -341,7 +335,7 @@ agg_wr(struct agg_info *sc, int regno, u_int32_t data, int size)
 
 /* Codec/Ringbus */
 
-static inline int
+static int
 agg_codec_wait4idle(struct agg_info *ess)
 {
 	unsigned t = 26;
@@ -355,7 +349,7 @@ agg_codec_wait4idle(struct agg_info *ess)
 }
 
 
-static inline int
+static int
 agg_rdcodec(struct agg_info *ess, int regno)
 {
 	int ret;
@@ -382,7 +376,7 @@ agg_rdcodec(struct agg_info *ess, int regno)
 	return ret;
 }
 
-static inline int
+static int
 agg_wrcodec(struct agg_info *ess, int regno, u_int32_t data)
 {
 	/* We have to wait for a SAFE time to write addr/data */
@@ -405,7 +399,7 @@ agg_wrcodec(struct agg_info *ess, int regno, u_int32_t data)
 	return 0;
 }
 
-static inline void
+static void
 ringbus_setdest(struct agg_info *ess, int src, int dest)
 {
 	u_int32_t	data;
@@ -420,21 +414,21 @@ ringbus_setdest(struct agg_info *ess, int src, int dest)
 
 /* Wave Processor */
 
-static inline u_int16_t
+static u_int16_t
 wp_rdreg(struct agg_info *ess, u_int16_t reg)
 {
 	AGG_WR(ess, PORT_DSP_INDEX, reg, 2);
 	return AGG_RD(ess, PORT_DSP_DATA, 2);
 }
 
-static inline void
+static void
 wp_wrreg(struct agg_info *ess, u_int16_t reg, u_int16_t data)
 {
 	AGG_WR(ess, PORT_DSP_INDEX, reg, 2);
 	AGG_WR(ess, PORT_DSP_DATA, data, 2);
 }
 
-static inline int
+static int
 wp_wait_data(struct agg_info *ess, u_int16_t data)
 {
 	unsigned t = 0;
@@ -449,7 +443,7 @@ wp_wait_data(struct agg_info *ess, u_int16_t data)
 	return 0;
 }
 
-static inline u_int16_t
+static u_int16_t
 wp_rdapu(struct agg_info *ess, unsigned ch, u_int16_t reg)
 {
 	wp_wrreg(ess, WPREG_CRAM_PTR, reg | (ch << 4));
@@ -458,14 +452,15 @@ wp_rdapu(struct agg_info *ess, unsigned ch, u_int16_t reg)
 	return wp_rdreg(ess, WPREG_DATA_PORT);
 }
 
-static inline void
+static void
 wp_wrapu(struct agg_info *ess, unsigned ch, u_int16_t reg, u_int16_t data)
 {
 	wp_wrreg(ess, WPREG_CRAM_PTR, reg | (ch << 4));
 	if (wp_wait_data(ess, reg | (ch << 4)) == 0) {
 		wp_wrreg(ess, WPREG_DATA_PORT, data);
 		if (wp_wait_data(ess, data) != 0)
-			device_printf(ess->dev, "wp_wrapu() write timed out.\n");
+			device_printf(ess->dev,
+			    "wp_wrapu() write timed out.\n");
 	} else {
 		device_printf(ess->dev, "wp_wrapu() indexing timed out.\n");
 	}
@@ -489,7 +484,7 @@ apu_setparam(struct agg_info *ess, int apuch,
 	wp_wrapu(ess, apuch, APUREG_FREQ_HIWORD, dv >> 8);
 }
 
-static inline void
+static void
 wp_settimer(struct agg_info *ess, u_int divide)
 {
 	u_int prescale = 0;
@@ -510,7 +505,7 @@ wp_settimer(struct agg_info *ess, u_int divide)
 	wp_wrreg(ess, WPREG_TIMER_ENABLE, 1);
 }
 
-static inline void
+static void
 wp_starttimer(struct agg_info *ess)
 {
 	AGG_WR(ess, PORT_INT_STAT, 1, 2);
@@ -519,7 +514,7 @@ wp_starttimer(struct agg_info *ess)
 	wp_wrreg(ess, WPREG_TIMER_START, 1);
 }
 
-static inline void
+static void
 wp_stoptimer(struct agg_info *ess)
 {
 	AGG_WR(ess, PORT_HOSTINT_CTRL, ~HOSTINT_CTRL_DSOUND_INT_ENABLED
@@ -532,27 +527,31 @@ wp_stoptimer(struct agg_info *ess)
 
 /* WaveCache */
 
-static inline u_int16_t
+#if 0
+static u_int16_t
 wc_rdreg(struct agg_info *ess, u_int16_t reg)
 {
 	AGG_WR(ess, PORT_WAVCACHE_INDEX, reg, 2);
 	return AGG_RD(ess, PORT_WAVCACHE_DATA, 2);
 }
+#endif
 
-static inline void
+static void
 wc_wrreg(struct agg_info *ess, u_int16_t reg, u_int16_t data)
 {
 	AGG_WR(ess, PORT_WAVCACHE_INDEX, reg, 2);
 	AGG_WR(ess, PORT_WAVCACHE_DATA, data, 2);
 }
 
-static inline u_int16_t
+#if 0
+static u_int16_t
 wc_rdchctl(struct agg_info *ess, int ch)
 {
 	return wc_rdreg(ess, ch << 3);
 }
+#endif
 
-static inline void
+static void
 wc_wrchctl(struct agg_info *ess, int ch, u_int16_t data)
 {
 	wc_wrreg(ess, ch << 3, data);
@@ -561,7 +560,7 @@ wc_wrchctl(struct agg_info *ess, int ch, u_int16_t data)
 /* -------------------------------------------------------------------- */
 
 /* Power management */
-static inline void
+static void
 agg_stopclock(struct agg_info *ess, int part, int st)
 {
 	u_int32_t data;
@@ -585,7 +584,7 @@ agg_stopclock(struct agg_info *ess, int part, int st)
  * Controller.
  */
 
-static inline void
+static void
 agg_initcodec(struct agg_info* ess)
 {
 	u_int16_t data;
@@ -769,7 +768,8 @@ agg_power(struct agg_info *ess, int status)
 			DELAY(100);
 #if 0
 			if ((agg_rdcodec(ess, AC97_REG_POWER) & 3) != 3)
-				device_printf(ess->dev, "warning: codec not ready.\n");
+				device_printf(ess->dev,
+				    "warning: codec not ready.\n");
 #endif
 			AGG_WR(ess, PORT_RINGBUS_CTRL,
 			       (AGG_RD(ess, PORT_RINGBUS_CTRL, 4)
@@ -1064,7 +1064,7 @@ aggch_stop_adc(struct agg_rchinfo *ch)
  *
  * XXX - this function works in 16bit stereo format only.
  */
-static inline void
+static void
 interleave(int16_t *l, int16_t *r, int16_t *p, unsigned n)
 {
 	int16_t *end;
@@ -1106,7 +1106,7 @@ aggch_feed_adc_stereo(struct agg_rchinfo *ch)
  *
  * XXX - this function works in 16bit monoral format only.
  */
-static inline void
+static void
 mixdown(int16_t *src, int16_t *dest, unsigned n)
 {
 	int16_t *end;
@@ -1134,12 +1134,13 @@ aggch_feed_adc_mono(struct agg_rchinfo *ch)
 	ch->hwptr = cur;
 }
 
+#ifdef AGG_JITTER_CORRECTION
 /*
  * Stereo jitter suppressor.
  * Sometimes playback pointers differ in stereo-paired channels.
  * Calling this routine within intr fixes the problem.
  */
-static inline void
+static void
 suppress_jitter(struct agg_chinfo *ch)
 {
 	if (ch->stereo) {
@@ -1156,7 +1157,7 @@ suppress_jitter(struct agg_chinfo *ch)
 	}
 }
 
-static inline void
+static void
 suppress_rec_jitter(struct agg_rchinfo *ch)
 {
 	int cp1, cp2, diff /*, halfsize*/ ;
@@ -1171,8 +1172,9 @@ suppress_rec_jitter(struct agg_rchinfo *ch)
 			AGG_WR(ch->parent, PORT_DSP_DATA, cp1, 2);
 	}
 }
+#endif
 
-static inline u_int
+static u_int
 calc_timer_div(struct agg_chinfo *ch)
 {
 	u_int speed;
@@ -1180,7 +1182,7 @@ calc_timer_div(struct agg_chinfo *ch)
 	speed = ch->speed;
 #ifdef INVARIANTS
 	if (speed == 0) {
-		kprintf("snd_maestro: pch[%d].speed == 0, which shouldn't\n",
+		printf("snd_maestro: pch[%d].speed == 0, which shouldn't\n",
 		       ch->num);
 		speed = 1;
 	}
@@ -1189,7 +1191,7 @@ calc_timer_div(struct agg_chinfo *ch)
 		+ speed - 1) / speed;
 }
 
-static inline u_int
+static u_int
 calc_timer_div_rch(struct agg_rchinfo *ch)
 {
 	u_int speed;
@@ -1197,7 +1199,7 @@ calc_timer_div_rch(struct agg_rchinfo *ch)
 	speed = ch->speed;
 #ifdef INVARIANTS
 	if (speed == 0) {
-		kprintf("snd_maestro: rch.speed == 0, which shouldn't\n");
+		printf("snd_maestro: rch.speed == 0, which shouldn't\n");
 		speed = 1;
 	}
 #endif
@@ -1276,7 +1278,8 @@ AC97_DECLARE(agg_ac97);
 /* Playback channel. */
 
 static void *
-aggpch_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *c, int dir)
+aggpch_init(kobj_t obj, void *devinfo, struct snd_dbuf *b,
+						struct pcm_channel *c, int dir)
 {
 	struct agg_info *ess = devinfo;
 	struct agg_chinfo *ch;
@@ -1292,7 +1295,7 @@ aggpch_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *c
 	ch->buffer = b;
 	ch->num = ess->playchns;
 
-	p = dma_malloc(ess->buf_dmat, ess->bufsz, &physaddr);
+	p = dma_malloc(ess->buf_dmat, ess->bufsz, &physaddr, &ch->map);
 	if (p == NULL)
 		return NULL;
 	ch->phys = physaddr;
@@ -1338,9 +1341,9 @@ adjust_pchbase(struct agg_chinfo *chans, u_int n, u_int size)
 #undef BASE_SHIFT
 
 	if (bootverbose) {
-		kprintf("Total of %d bases are assigned.\n", k);
+		printf("Total of %d bases are assigned.\n", k);
 		for (i = 0; i < n; i++) {
-			kprintf("ch.%d: phys 0x%llx, wpwa 0x%llx\n",
+			printf("ch.%d: phys 0x%llx, wpwa 0x%llx\n",
 			       i, (long long)chans[i].phys,
 			       (long long)(chans[i].phys -
 					   chans[i].base) >> 1);
@@ -1354,8 +1357,8 @@ aggpch_free(kobj_t obj, void *data)
 	struct agg_chinfo *ch = data;
 	struct agg_info *ess = ch->parent;
 
-	/* kfree up buffer - called after channel stopped */
-	dma_free(ess->buf_dmat, sndbuf_getbuf(ch->buffer));
+	/* free up buffer - called after channel stopped */
+	dma_free(ess->buf_dmat, sndbuf_getbuf(ch->buffer), ch->map);
 
 	/* return 0 if ok */
 	return 0;
@@ -1369,7 +1372,7 @@ aggpch_setformat(kobj_t obj, void *data, u_int32_t format)
 	if (format & AFMT_BIGENDIAN || format & AFMT_U16_LE)
 		return EINVAL;
 	ch->stereo = ch->qs16 = ch->us = 0;
-	if (format & AFMT_STEREO)
+	if (AFMT_CHANNEL(format) > 1)
 		ch->stereo = 1;
 
 	if (format & AFMT_U8 || format & AFMT_S8) {
@@ -1380,13 +1383,16 @@ aggpch_setformat(kobj_t obj, void *data, u_int32_t format)
 	return 0;
 }
 
-static int
+static u_int32_t
 aggpch_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
-	return ((struct agg_chinfo*)data)->speed = speed;
+
+	((struct agg_chinfo*)data)->speed = speed;
+
+	return (speed);
 }
 
-static int
+static u_int32_t
 aggpch_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct agg_chinfo *ch = data;
@@ -1429,11 +1435,11 @@ aggpch_trigger(kobj_t obj, void *data, int go)
 	return 0;
 }
 
-static int
+static u_int32_t
 aggpch_getptr(kobj_t obj, void *data)
 {
 	struct agg_chinfo *ch = data;
-	u_int cp;
+	u_int32_t cp;
 
 	agg_lock(ch->parent);
 	cp = wp_rdapu(ch->parent, (ch->num << 1) | 32, APUREG_CURPTR);
@@ -1448,12 +1454,12 @@ static struct pcmchan_caps *
 aggpch_getcaps(kobj_t obj, void *data)
 {
 	static u_int32_t playfmt[] = {
-		AFMT_U8,
-		AFMT_STEREO | AFMT_U8,
-		AFMT_S8,
-		AFMT_STEREO | AFMT_S8,
-		AFMT_S16_LE,
-		AFMT_STEREO | AFMT_S16_LE,
+		SND_FORMAT(AFMT_U8, 1, 0),
+		SND_FORMAT(AFMT_U8, 2, 0),
+		SND_FORMAT(AFMT_S8, 1, 0),
+		SND_FORMAT(AFMT_S8, 2, 0),
+		SND_FORMAT(AFMT_S16_LE, 1, 0),
+		SND_FORMAT(AFMT_S16_LE, 2, 0),
 		0
 	};
 	static struct pcmchan_caps playcaps = {8000, 48000, playfmt, 0};
@@ -1481,7 +1487,8 @@ CHANNEL_DECLARE(aggpch);
 /* Recording channel. */
 
 static void *
-aggrch_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *c, int dir)
+aggrch_init(kobj_t obj, void *devinfo, struct snd_dbuf *b,
+						struct pcm_channel *c, int dir)
 {
 	struct agg_info *ess = devinfo;
 	struct agg_rchinfo *ch;
@@ -1517,20 +1524,23 @@ aggrch_setformat(kobj_t obj, void *data, u_int32_t format)
 
 	if (!(format & AFMT_S16_LE))
 		return EINVAL;
-	if (format & AFMT_STEREO)
+	if (AFMT_CHANNEL(format) > 1)
 		ch->stereo = 1;
 	else
 		ch->stereo = 0;
 	return 0;
 }
 
-static int
+static u_int32_t
 aggrch_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
-	return ((struct agg_rchinfo*)data)->speed = speed;
+
+	((struct agg_rchinfo*)data)->speed = speed;
+
+	return (speed);
 }
 
-static int
+static u_int32_t
 aggrch_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct agg_rchinfo *ch = data;
@@ -1577,7 +1587,7 @@ aggrch_trigger(kobj_t obj, void *sc, int go)
 	return 0;
 }
 
-static int
+static u_int32_t
 aggrch_getptr(kobj_t obj, void *sc)
 {
 	struct agg_rchinfo *ch = sc;
@@ -1589,8 +1599,8 @@ static struct pcmchan_caps *
 aggrch_getcaps(kobj_t obj, void *sc)
 {
 	static u_int32_t recfmt[] = {
-		AFMT_S16_LE,
-		AFMT_STEREO | AFMT_S16_LE,
+		SND_FORMAT(AFMT_S16_LE, 1, 0),
+		SND_FORMAT(AFMT_S16_LE, 2, 0),
 		0
 	};
 	static struct pcmchan_caps reccaps = {8000, 48000, recfmt, 0};
@@ -1703,32 +1713,33 @@ setmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 	*phys = error? 0 : segs->ds_addr;
 
 	if (bootverbose) {
-		kprintf("setmap (%lx, %lx), nseg=%d, error=%d\n",
+		printf("setmap (%lx, %lx), nseg=%d, error=%d\n",
 		    (unsigned long)segs->ds_addr, (unsigned long)segs->ds_len,
 		    nseg, error);
 	}
 }
 
 static void *
-dma_malloc(bus_dma_tag_t dmat, u_int32_t sz, bus_addr_t *phys)
+dma_malloc(bus_dma_tag_t dmat, u_int32_t sz, bus_addr_t *phys,
+    bus_dmamap_t *map)
 {
 	void *buf;
-	bus_dmamap_t map;
 
-	if (bus_dmamem_alloc(dmat, &buf, BUS_DMA_NOWAIT, &map))
+	if (bus_dmamem_alloc(dmat, &buf, BUS_DMA_NOWAIT, map))
 		return NULL;
-	if (bus_dmamap_load(dmat, map, buf, sz, setmap, phys, 0)
-	    || !*phys || map) {
-		bus_dmamem_free(dmat, buf, map);
+	if (bus_dmamap_load(dmat, *map, buf, sz, setmap, phys, 0) != 0 ||
+	    *phys == 0) {
+		bus_dmamem_free(dmat, buf, *map);
 		return NULL;
 	}
 	return buf;
 }
 
 static void
-dma_free(bus_dma_tag_t dmat, void *buf)
+dma_free(bus_dma_tag_t dmat, void *buf, bus_dmamap_t map)
 {
-	bus_dmamem_free(dmat, buf, NULL);
+	bus_dmamap_unload(dmat, map);
+	bus_dmamem_free(dmat, buf, map);
 }
 
 static int
@@ -1769,40 +1780,50 @@ agg_attach(device_t dev)
 	struct resource	*irq = NULL;
 	void	*ih = NULL;
 	char	status[SND_STATUSLEN];
-	int	ret = 0;
+	int	dacn, ret = 0;
 
-	ess = kmalloc(sizeof *ess, M_DEVBUF, M_WAITOK | M_ZERO);
+	ess = malloc(sizeof(*ess), M_DEVBUF, M_WAITOK | M_ZERO);
 	ess->dev = dev;
 
-#ifdef USING_MUTEX
-	ess->lock = snd_mtxcreate(device_get_desc(dev), "hardware status lock");
-	if (ess->lock == NULL) {
+	mtx_init(&ess->lock, device_get_desc(dev), "snd_maestro softc",
+		 MTX_DEF | MTX_RECURSE);
+	if (!mtx_initialized(&ess->lock)) {
 		device_printf(dev, "failed to create a mutex.\n");
 		ret = ENOMEM;
 		goto bad;
 	}
-#endif
+
+	if (resource_int_value(device_get_name(dev), device_get_unit(dev),
+	    "dac", &dacn) == 0) {
+	    	if (dacn < 1)
+			dacn = 1;
+		else if (dacn > AGG_MAXPLAYCH)
+			dacn = AGG_MAXPLAYCH;
+	} else
+		dacn = AGG_MAXPLAYCH;
 
 	ess->bufsz = pcm_getbuffersize(dev, 4096, AGG_DEFAULT_BUFSZ, 65536);
-	if (bus_dma_tag_create(/*parent*/ NULL,
+	if (bus_dma_tag_create(/*parent*/ bus_get_dma_tag(dev),
 			       /*align */ 4, 1 << (16+1),
 			       /*limit */ MAESTRO_MAXADDR, BUS_SPACE_MAXADDR,
 			       /*filter*/ NULL, NULL,
 			       /*size  */ ess->bufsz, 1, 0x3ffff,
 			       /*flags */ 0,
+			       /*lock  */ busdma_lock_mutex, &Giant,
 			       &ess->buf_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		ret = ENOMEM;
 		goto bad;
 	}
 
-	if (bus_dma_tag_create(/*parent*/NULL,
+	if (bus_dma_tag_create(/*parent*/ bus_get_dma_tag(dev),
 			       /*align */ 1 << WAVCACHE_BASEADDR_SHIFT,
 			                  1 << (16+1),
 			       /*limit */ MAESTRO_MAXADDR, BUS_SPACE_MAXADDR,
 			       /*filter*/ NULL, NULL,
 			       /*size  */ 3*ess->bufsz, 1, 0x3ffff,
 			       /*flags */ 0,
+			       /*lock  */ busdma_lock_mutex, &Giant,
 			       &ess->stat_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		ret = ENOMEM;
@@ -1810,7 +1831,8 @@ agg_attach(device_t dev)
 	}
 
 	/* Allocate the room for brain-damaging status buffer. */
-	ess->stat = dma_malloc(ess->stat_dmat, 3*ess->bufsz, &ess->phys);
+	ess->stat = dma_malloc(ess->stat_dmat, 3*ess->bufsz, &ess->phys,
+	    &ess->stat_map);
 	if (ess->stat == NULL) {
 		device_printf(dev, "cannot allocate status buffer\n");
 		ret = ENOMEM;
@@ -1824,15 +1846,10 @@ agg_attach(device_t dev)
 	ess->curpwr = PCI_POWERSTATE_D3;
 	pci_set_powerstate(dev, PCI_POWERSTATE_D0);
 
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
-	data |= (PCIM_CMD_PORTEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, data, 2);
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
+	pci_enable_busmaster(dev);
 
 	/* Allocate resources. */
-	if (data & PCIM_CMD_PORTEN)
-		reg = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &regid,
-		    RF_ACTIVE);
+	reg = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &regid, RF_ACTIVE);
 	if (reg != NULL) {
 		ess->reg = reg;
 		ess->regid = regid;
@@ -1886,7 +1903,7 @@ agg_attach(device_t dev)
 	}
 	ess->codec = codec;
 
-	ret = pcm_register(dev, ess, AGG_MAXPLAYCH, 1);
+	ret = pcm_register(dev, ess, dacn, 1);
 	if (ret)
 		goto bad;
 
@@ -1894,12 +1911,12 @@ agg_attach(device_t dev)
 	agg_lock(ess);
 	agg_power(ess, powerstate_init);
 	agg_unlock(ess);
-	for (data = 0; data < AGG_MAXPLAYCH; data++)
+	for (data = 0; data < dacn; data++)
 		pcm_addchan(dev, PCMDIR_PLAY, &aggpch_class, ess);
 	pcm_addchan(dev, PCMDIR_REC, &aggrch_class, ess);
 	adjust_pchbase(ess->pch, ess->playchns, ess->bufsz);
 
-	ksnprintf(status, SND_STATUSLEN,
+	snprintf(status, SND_STATUSLEN,
 	    "port 0x%lx-0x%lx irq %ld at device %d.%d on pci%d",
 	    rman_get_start(reg), rman_get_end(reg), rman_get_start(irq),
 	    pci_get_slot(dev), pci_get_function(dev), pci_get_bus(dev));
@@ -1918,16 +1935,14 @@ agg_attach(device_t dev)
 		bus_release_resource(dev, SYS_RES_IOPORT, regid, reg);
 	if (ess != NULL) {
 		if (ess->stat != NULL)
-			dma_free(ess->stat_dmat, ess->stat);
+			dma_free(ess->stat_dmat, ess->stat, ess->stat_map);
 		if (ess->stat_dmat != NULL)
 			bus_dma_tag_destroy(ess->stat_dmat);
 		if (ess->buf_dmat != NULL)
 			bus_dma_tag_destroy(ess->buf_dmat);
-#ifdef USING_MUTEX
-		if (ess->lock != NULL)
-			snd_mtxfree(ess->lock);
-#endif
-		kfree(ess, M_DEVBUF);
+		if (mtx_initialized(&ess->lock))
+			mtx_destroy(&ess->lock);
+		free(ess, M_DEVBUF);
 	}
 
 	return ret;
@@ -1964,13 +1979,11 @@ agg_detach(device_t dev)
 	bus_teardown_intr(dev, ess->irq, ess->ih);
 	bus_release_resource(dev, SYS_RES_IRQ, ess->irqid, ess->irq);
 	bus_release_resource(dev, SYS_RES_IOPORT, ess->regid, ess->reg);
-	dma_free(ess->stat_dmat, ess->stat);
+	dma_free(ess->stat_dmat, ess->stat, ess->stat_map);
 	bus_dma_tag_destroy(ess->stat_dmat);
 	bus_dma_tag_destroy(ess->buf_dmat);
-#ifdef USING_MUTEX
-	snd_mtxfree(ess->lock);
-#endif
-	kfree(ess, M_DEVBUF);
+	mtx_destroy(&ess->lock);
+	free(ess, M_DEVBUF);
 	return 0;
 }
 
@@ -1978,18 +1991,11 @@ static int
 agg_suspend(device_t dev)
 {
 	struct agg_info *ess = pcm_getdevinfo(dev);
-#ifndef USING_MUTEX
-	int x;
 
-	x = spltty();
-#endif
 	AGG_WR(ess, PORT_HOSTINT_CTRL, 0, 2);
 	agg_lock(ess);
 	agg_power(ess, PCI_POWERSTATE_D3);
 	agg_unlock(ess);
-#ifndef USING_MUTEX
-	splx(x);
-#endif
 
 	return 0;
 }
@@ -1999,11 +2005,7 @@ agg_resume(device_t dev)
 {
 	int i;
 	struct agg_info *ess = pcm_getdevinfo(dev);
-#ifndef USING_MUTEX
-	int x;
 
-	x = spltty();
-#endif
 	for (i = 0; i < ess->playchns; i++)
 		if (ess->active & (1 << i))
 			aggch_start_dac(ess->pch + i);
@@ -2014,9 +2016,6 @@ agg_resume(device_t dev)
 	if (!ess->active)
 		agg_power(ess, powerstate_init);
 	agg_unlock(ess);
-#ifndef USING_MUTEX
-	splx(x);
-#endif
 
 	if (mixer_reinit(dev)) {
 		device_printf(dev, "unable to reinitialize the mixer\n");
@@ -2047,7 +2046,7 @@ static device_method_t agg_methods[] = {
     DEVMETHOD(device_resume,	agg_resume),
     DEVMETHOD(device_shutdown,	agg_shutdown),
 
-    DEVMETHOD_END
+    { 0, 0 }
 };
 
 static driver_t agg_driver = {
@@ -2058,6 +2057,6 @@ static driver_t agg_driver = {
 
 /*static devclass_t pcm_devclass;*/
 
-DRIVER_MODULE(snd_maestro, pci, agg_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_maestro, pci, agg_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_maestro, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_maestro, 1);

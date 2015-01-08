@@ -23,16 +23,20 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.53.2.12 2007/07/12 06:39:38 ariff Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pci/ich.h>
 
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
+
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/ich.c 216518 2010-12-18 14:21:28Z tijl $");
 
 /* -------------------------------------------------------------------- */
 
@@ -80,7 +84,7 @@
 #if 0
 #define ICH_DEBUG(stmt)		do {	\
 	stmt				\
-} while(0)
+} while (0)
 #else
 #define ICH_DEBUG(...)
 #endif
@@ -91,19 +95,6 @@
 #define ICH_FIXED_RATE		(1 << 3)
 #define ICH_DMA_NOCACHE		(1 << 4)
 #define ICH_HIGH_LATENCY	(1 << 5)
-
-#if 0 /* TODO: No uncacheable DMA support in DragonFly. */
-#include <machine/specialreg.h>
-#define ICH_DMA_ATTR(sc, v, s, attr)	do {			\
-	vm_offset_t va = (vm_offset_t)(v);			\
-	vm_size_t sz = (vm_size_t)(s);				\
-	if ((sc) != NULL && ((sc)->flags & ICH_DMA_NOCACHE) &&	\
-	    va != 0 && sz != 0)					\
-		(void)pmap_change_attr(va, sz, (attr));	\
-} while(0)
-#else
-#define ICH_DMA_ATTR(...)
-#endif
 
 static const struct ich_type {
         uint16_t	vendor;
@@ -205,15 +196,13 @@ struct sc_info {
 	uint16_t vendor;
 	uint16_t devid;
 	uint32_t flags;
-	sndlock_t	ich_lock;
+	struct mtx *ich_lock;
 };
-
-#define IGNORE_PCR	0x01
 
 /* -------------------------------------------------------------------- */
 
 static uint32_t ich_fmt[] = {
-	AFMT_STEREO | AFMT_S16_LE,
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
 	0
 };
 static struct pcmchan_caps ich_vrcaps = {8000, 48000, ich_fmt, 0};
@@ -284,7 +273,7 @@ ich_rdcd(kobj_t obj, void *devinfo, int regno)
 }
 
 static int
-ich_wrcd(kobj_t obj, void *devinfo, int regno, uint16_t data)
+ich_wrcd(kobj_t obj, void *devinfo, int regno, uint32_t data)
 {
 	struct sc_info *sc = (struct sc_info *)devinfo;
 
@@ -426,33 +415,16 @@ ichchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *
 		ch->spdreg = 0;
 
 	ICH_UNLOCK(sc);
-	if (sndbuf_alloc(ch->buffer, sc->chan_dmat, sc->bufsz) != 0)
+	if (sndbuf_alloc(ch->buffer, sc->chan_dmat,
+	    ((sc->flags & ICH_DMA_NOCACHE) ? BUS_DMA_NOCACHE : 0),
+	    sc->bufsz) != 0)
 		return (NULL);
-
-	ICH_DMA_ATTR(sc, sndbuf_getbuf(ch->buffer),
-	    sndbuf_getmaxsize(ch->buffer), PAT_UNCACHEABLE);
 
 	ICH_LOCK(sc);
 	ich_wr(sc, ch->regbase + ICH_REG_X_BDBAR, (uint32_t)(ch->desc_addr), 4);
 	ICH_UNLOCK(sc);
 
 	return (ch);
-}
-
-static int
-ichchan_free(kobj_t obj, void *data)
-{
-	struct sc_chinfo *ch;
-	struct sc_info *sc;
-
-	ch = (struct sc_chinfo *)data;
-	sc = (ch != NULL) ? ch->parent : NULL;
-	if (ch != NULL && sc != NULL) {
-		ICH_DMA_ATTR(sc, sndbuf_getbuf(ch->buffer),
-		    sndbuf_getmaxsize(ch->buffer), PAT_WRITE_BACK);
-	}
-
-	return (1);
 }
 
 static int
@@ -471,7 +443,7 @@ ichchan_setformat(kobj_t obj, void *data, uint32_t format)
 	return (0);
 }
 
-static int
+static uint32_t
 ichchan_setspeed(kobj_t obj, void *data, uint32_t speed)
 {
 	struct sc_chinfo *ch = data;
@@ -505,7 +477,7 @@ ichchan_setspeed(kobj_t obj, void *data, uint32_t speed)
 	return (ch->spd);
 }
 
-static int
+static uint32_t
 ichchan_setblocksize(kobj_t obj, void *data, uint32_t blocksize)
 {
 	struct sc_chinfo *ch = data;
@@ -567,7 +539,7 @@ ichchan_trigger(kobj_t obj, void *data, int go)
 	return (0);
 }
 
-static int
+static uint32_t
 ichchan_getptr(kobj_t obj, void *data)
 {
 	struct sc_chinfo *ch = data;
@@ -609,7 +581,6 @@ ichchan_getcaps(kobj_t obj, void *data)
 
 static kobj_method_t ichchan_methods[] = {
 	KOBJMETHOD(channel_init,		ichchan_init),
-	KOBJMETHOD(channel_free,		ichchan_free),
 	KOBJMETHOD(channel_setformat,		ichchan_setformat),
 	KOBJMETHOD(channel_setspeed,		ichchan_setspeed),
 	KOBJMETHOD(channel_setblocksize,	ichchan_setblocksize),
@@ -698,13 +669,15 @@ ich_intr(void *p)
 static int
 ich_initsys(struct sc_info* sc)
 {
-#ifdef SND_DYNSYSCTL
-	SYSCTL_ADD_INT(snd_sysctl_tree(sc->dev),
-		       SYSCTL_CHILDREN(snd_sysctl_tree_top(sc->dev)),
+	/* XXX: this should move to a device specific sysctl "dev.pcm.X.yyy"
+	   via device_get_sysctl_*() as discussed on multimedia@ in msg-id
+	   <861wujij2q.fsf@xps.des.no> */
+	SYSCTL_ADD_INT(device_get_sysctl_ctx(sc->dev),
+		       SYSCTL_CHILDREN(device_get_sysctl_tree(sc->dev)),
 		       OID_AUTO, "ac97rate", CTLFLAG_RW,
 		       &sc->ac97rate, 48000,
 		       "AC97 link rate (default = 48000)");
-#endif /* SND_DYNSYSCTL */
+
 	return (0);
 }
 
@@ -713,7 +686,7 @@ ich_setstatus(struct sc_info *sc)
 {
 	char status[SND_STATUSLEN];
 
-	ksnprintf(status, SND_STATUSLEN,
+	snprintf(status, SND_STATUSLEN,
 	    "at io 0x%lx, 0x%lx irq %ld bufsz %u %s",
 	    rman_get_start(sc->nambar), rman_get_start(sc->nabmbar),
 	    rman_get_start(sc->irq), sc->bufsz,PCM_KLDSTRING(snd_ich));
@@ -828,8 +801,8 @@ ich_calibrate(void *arg)
 	if (bootverbose || sc->ac97rate != 48000) {
 		device_printf(sc->dev, "measured ac97 link rate at %d Hz", actual_48k_rate);
 		if (sc->ac97rate != actual_48k_rate)
-			kprintf(", will use %d Hz", sc->ac97rate);
-		kprintf("\n");
+			printf(", will use %d Hz", sc->ac97rate);
+	 	printf("\n");
 	}
 	sc->flags |= ICH_CALIBRATE_DONE;
 	ICH_UNLOCK(sc);
@@ -892,7 +865,7 @@ ich_pci_probe(device_t dev)
 
 	vendor = pci_get_vendor(dev);
 	devid = pci_get_device(dev);
-	for (i = 0; i < NELEM(ich_devs); i++) {
+	for (i = 0; i < sizeof(ich_devs)/sizeof(ich_devs[0]); i++) {
 		if (vendor == ich_devs[i].vendor &&
 				devid == ich_devs[i].devid) {
 			device_set_desc(dev, ich_devs[i].name);
@@ -914,7 +887,7 @@ ich_pci_attach(device_t dev)
 	struct sc_info 		*sc;
 	int			i;
 
-	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+	sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->ich_lock = snd_mtxcreate(device_get_nameunit(dev), "snd_ich softc");
 	sc->dev = dev;
 
@@ -1010,6 +983,10 @@ ich_pci_attach(device_t dev)
 	    device_get_unit(dev), "fixedrate", &i) == 0 && i != 0)
 		sc->flags |= ICH_FIXED_RATE;
 
+	if (resource_int_value(device_get_name(dev),
+	    device_get_unit(dev), "micchannel_enabled", &i) == 0 && i != 0)
+		sc->hasmic = 1;
+
 	sc->irqid = 0;
 	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irqid,
 	    RF_ACTIVE | RF_SHAREABLE);
@@ -1035,6 +1012,7 @@ ich_pci_attach(device_t dev)
 	switch (subdev) {
 	case 0x202f161f:	/* Gateway 7326GZ */
 	case 0x203a161f:	/* Gateway 4028GZ */
+	case 0x203e161f:	/* Gateway 3520GZ/M210 */
 	case 0x204c161f:	/* Kvazar-Micro Senator 3592XT */
 	case 0x8144104d:	/* Sony VAIO PCG-TR* */
 	case 0x8197104d:	/* Sony S1XP */
@@ -1056,35 +1034,32 @@ ich_pci_attach(device_t dev)
 	extcaps = ac97_getextcaps(sc->codec);
 	sc->hasvra = extcaps & AC97_EXTCAP_VRA;
 	sc->hasvrm = extcaps & AC97_EXTCAP_VRM;
-	sc->hasmic = ac97_getcaps(sc->codec) & AC97_CAP_MICCHANNEL;
+	sc->hasmic = (sc->hasmic != 0 &&
+	    (ac97_getcaps(sc->codec) & AC97_CAP_MICCHANNEL)) ? 1 : 0;
 	ac97_setextmode(sc->codec, sc->hasvra | sc->hasvrm);
 
 	sc->dtbl_size = sizeof(struct ich_desc) * ICH_DTBL_LENGTH *
 	    ((sc->hasmic) ? 3 : 2);
 
 	/* BDL tag */
-	if (bus_dma_tag_create(NULL, 8, 0,
+	if (bus_dma_tag_create(bus_get_dma_tag(dev), 8, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    sc->dtbl_size, 1, 0x3ffff, 0, &sc->dmat) != 0) {
+	    sc->dtbl_size, 1, 0x3ffff, 0, NULL, NULL, &sc->dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
 
 	/* PCM channel tag */
-	if (bus_dma_tag_create(NULL, ICH_MIN_BLKSZ, 0,
+	if (bus_dma_tag_create(bus_get_dma_tag(dev), ICH_MIN_BLKSZ, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    sc->bufsz, 1, 0x3ffff, 0, &sc->chan_dmat) != 0) {
+	    sc->bufsz, 1, 0x3ffff, 0, NULL, NULL, &sc->chan_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
-#if 0 /* TODO: No uncacheable DMA support in DragonFly. */
+
 	if (bus_dmamem_alloc(sc->dmat, (void **)&sc->dtbl, BUS_DMA_NOWAIT |
 	    ((sc->flags & ICH_DMA_NOCACHE) ? BUS_DMA_NOCACHE : 0),
 	    &sc->dtmap))
-#else
-	if (bus_dmamem_alloc(sc->dmat, (void **)&sc->dtbl, BUS_DMA_NOWAIT,
-	    &sc->dtmap))
-#endif
 		goto bad;
 
 	if (bus_dmamap_load(sc->dmat, sc->dtmap, sc->dtbl, sc->dtbl_size,
@@ -1107,7 +1082,6 @@ ich_pci_attach(device_t dev)
 
 		sc->intrhook.ich_func = ich_calibrate;
 		sc->intrhook.ich_arg = sc;
-		sc->intrhook.ich_desc = "snd_ich";
 		if (cold == 0 ||
 		    config_intrhook_establish(&sc->intrhook) != 0) {
 			sc->intrhook.ich_func = NULL;
@@ -1140,7 +1114,7 @@ bad:
 		bus_dma_tag_destroy(sc->dmat);
 	if (sc->ich_lock)
 		snd_mtxfree(sc->ich_lock);
-	kfree(sc, M_DEVBUF);
+	free(sc, M_DEVBUF);
 	return (ENXIO);
 }
 
@@ -1164,7 +1138,7 @@ ich_pci_detach(device_t dev)
 	bus_dma_tag_destroy(sc->chan_dmat);
 	bus_dma_tag_destroy(sc->dmat);
 	snd_mtxfree(sc->ich_lock);
-	kfree(sc, M_DEVBUF);
+	free(sc, M_DEVBUF);
 	return (0);
 }
 
@@ -1187,7 +1161,7 @@ ich_pci_codec_reset(struct sc_info *sc)
 	}
 
 	if (i <= 0)
-		kprintf("%s: time out\n", __func__);
+		printf("%s: time out\n", __func__);
 }
 
 static int
@@ -1217,12 +1191,6 @@ ich_pci_resume(device_t dev)
 	int i;
 
 	sc = pcm_getdevinfo(dev);
-
-	if (sc->regtype == SYS_RES_IOPORT)
-		pci_enable_io(dev, SYS_RES_IOPORT);
-	else
-		pci_enable_io(dev, SYS_RES_MEMORY);
-	pci_enable_busmaster(dev);
 
 	ICH_LOCK(sc);
 	/* Reinit audio device */
@@ -1258,7 +1226,7 @@ static device_method_t ich_methods[] = {
 	DEVMETHOD(device_detach,	ich_pci_detach),
 	DEVMETHOD(device_suspend, 	ich_pci_suspend),
 	DEVMETHOD(device_resume,	ich_pci_resume),
-	DEVMETHOD_END
+	{ 0, 0 }
 };
 
 static driver_t ich_driver = {
@@ -1267,6 +1235,6 @@ static driver_t ich_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_ich, pci, ich_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_ich, pci, ich_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_ich, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_ich, 1);

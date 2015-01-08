@@ -24,20 +24,24 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/sound/pci/emu10k1.c,v 1.55.2.1 2005/12/30 19:55:53 netchild Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
-#include <gnu/dev/sound/pci/emu10k1.h>
-#include "emu10k1-alsa%diked.h"
+#include <dev/sound/pci/emuxkireg.h>
 
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 #include <sys/queue.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.14 2008/01/06 16:55:51 swildner Exp $");
+#include <dev/sound/midi/mpu401.h>
+#include "mpufoi_if.h"
+
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/emu10k1.c 267581 2014-06-17 16:07:57Z jhb $");
 
 /* -------------------------------------------------------------------- */
 
@@ -62,18 +66,101 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.14 2008/01/06 
 
 #define	ENABLE		0xffffffff
 #define	DISABLE		0x00000000
-#define	ENV_ON		DCYSUSV_CHANNELENABLE_MASK
+#define	ENV_ON		EMU_CHAN_DCYSUSV_CHANNELENABLE_MASK
 #define	ENV_OFF		0x00	/* XXX: should this be 1? */
 
-#define	A_IOCFG_GPOUT_A	0x40	/* Analog Output */
-#define	A_IOCFG_GPOUT_D	0x04	/* Digital Output */
-#define	A_IOCFG_GPOUT_AD (A_IOCFG_GPOUT_A|A_IOCFG_GPOUT_D)  /* A_IOCFG_GPOUT0 */
+#define	EMU_A_IOCFG_GPOUT_A	0x40
+#define	EMU_A_IOCFG_GPOUT_D	0x04
+#define	EMU_A_IOCFG_GPOUT_AD (EMU_A_IOCFG_GPOUT_A|EMU_A_IOCFG_GPOUT_D)  /* EMU_A_IOCFG_GPOUT0 */
+
+#define	EMU_HCFG_GPOUT1		0x00000800
+
+/* instruction set */
+#define iACC3	 0x06
+#define iMACINT0 0x04
+#define iINTERP  0x0e
+
+#define C_00000000	0x40
+#define C_00000001	0x41
+#define C_00000004	0x44
+#define C_40000000	0x4d
+/* Audigy constants */
+#define A_C_00000000	0xc0
+#define A_C_40000000	0xcd
+
+/* GPRs */
+#define FXBUS(x)	(0x00 + (x))
+#define EXTIN(x)	(0x10 + (x))
+#define EXTOUT(x)	(0x20 + (x))
+
+#define GPR(x)		(EMU_FXGPREGBASE + (x))
+#define A_EXTIN(x)	(0x40 + (x))
+#define A_FXBUS(x)	(0x00 + (x))
+#define A_EXTOUT(x)	(0x60 + (x))
+#define A_GPR(x)	(EMU_A_FXGPREGBASE + (x))
+
+/* FX buses */
+#define FXBUS_PCM_LEFT		0x00
+#define FXBUS_PCM_RIGHT		0x01
+#define FXBUS_MIDI_LEFT		0x04
+#define FXBUS_MIDI_RIGHT	0x05
+#define FXBUS_MIDI_REVERB	0x0c
+#define FXBUS_MIDI_CHORUS	0x0d
+
+/* Inputs */
+#define EXTIN_AC97_L		0x00
+#define EXTIN_AC97_R		0x01
+#define EXTIN_SPDIF_CD_L	0x02
+#define EXTIN_SPDIF_CD_R	0x03
+#define EXTIN_TOSLINK_L		0x06
+#define EXTIN_TOSLINK_R		0x07
+#define EXTIN_COAX_SPDIF_L	0x0a
+#define EXTIN_COAX_SPDIF_R	0x0b
+/* Audigy Inputs */
+#define A_EXTIN_AC97_L		0x00
+#define A_EXTIN_AC97_R		0x01
+
+/* Outputs */
+#define EXTOUT_AC97_L	   0x00
+#define EXTOUT_AC97_R	   0x01
+#define EXTOUT_TOSLINK_L   0x02
+#define EXTOUT_TOSLINK_R   0x03
+#define EXTOUT_AC97_CENTER 0x04
+#define EXTOUT_AC97_LFE	   0x05
+#define EXTOUT_HEADPHONE_L 0x06
+#define EXTOUT_HEADPHONE_R 0x07
+#define EXTOUT_REAR_L	   0x08
+#define EXTOUT_REAR_R	   0x09
+#define EXTOUT_ADC_CAP_L   0x0a
+#define EXTOUT_ADC_CAP_R   0x0b
+#define EXTOUT_ACENTER	   0x11
+#define EXTOUT_ALFE	   0x12
+/* Audigy Outputs */
+#define A_EXTOUT_FRONT_L	0x00
+#define A_EXTOUT_FRONT_R	0x01
+#define A_EXTOUT_CENTER		0x02
+#define A_EXTOUT_LFE		0x03
+#define A_EXTOUT_HEADPHONE_L	0x04
+#define A_EXTOUT_HEADPHONE_R	0x05
+#define A_EXTOUT_REAR_L		0x06
+#define A_EXTOUT_REAR_R		0x07
+#define A_EXTOUT_AFRONT_L	0x08
+#define A_EXTOUT_AFRONT_R	0x09
+#define A_EXTOUT_ACENTER	0x0a
+#define A_EXTOUT_ALFE		0x0b
+#define A_EXTOUT_AREAR_L	0x0e
+#define A_EXTOUT_AREAR_R	0x0f
+#define A_EXTOUT_AC97_L		0x10
+#define A_EXTOUT_AC97_R		0x11
+#define A_EXTOUT_ADC_CAP_L	0x16
+#define A_EXTOUT_ADC_CAP_R	0x17
 
 struct emu_memblk {
 	SLIST_ENTRY(emu_memblk) link;
 	void *buf;
 	bus_addr_t buf_addr;
 	u_int32_t pte_start, pte_size;
+	bus_dmamap_t buf_map;
 };
 
 struct emu_mem {
@@ -82,12 +169,14 @@ struct emu_mem {
 	void *silent_page;
 	bus_addr_t silent_page_addr;
 	bus_addr_t ptb_pages_addr;
+	bus_dmamap_t ptb_map;
+	bus_dmamap_t silent_map;
 	SLIST_HEAD(, emu_memblk) blocks;
 };
 
 struct emu_voice {
 	int vnum;
-	int b16:1, stereo:1, busy:1, running:1, ismaster:1;
+	unsigned int b16:1, stereo:1, busy:1, running:1, ismaster:1;
 	int speed;
 	int start, end, vol;
 	int fxrt1;	/* FX routing */
@@ -129,7 +218,7 @@ struct sc_info {
 
 	struct resource *reg, *irq;
 	void		*ih;
-	sndlock_t	lock;
+	struct mtx	*lock;
 
 	unsigned int bufsz;
 	int timer, timerinterval;
@@ -139,6 +228,9 @@ struct sc_info {
 	struct emu_voice voice[64];
 	struct sc_pchinfo pch[EMU_MAX_CHANS];
 	struct sc_rchinfo rch[3];
+	struct mpu401   *mpu;
+	mpu401_intr_t           *mpu_intr;
+	int mputx;
 };
 
 /* -------------------------------------------------------------------- */
@@ -150,7 +242,7 @@ struct sc_info {
 /* stuff */
 static int emu_init(struct sc_info *);
 static void emu_intr(void *);
-static void *emu_malloc(struct sc_info *sc, u_int32_t sz, bus_addr_t *addr);
+static void *emu_malloc(struct sc_info *sc, u_int32_t sz, bus_addr_t *addr, bus_dmamap_t *map);
 static void *emu_memalloc(struct sc_info *sc, u_int32_t sz, bus_addr_t *addr);
 static int emu_memfree(struct sc_info *sc, void *buf);
 static int emu_memstart(struct sc_info *sc, void *buf);
@@ -165,18 +257,18 @@ static void emu_wr(struct sc_info *, int, u_int32_t, int);
 /* -------------------------------------------------------------------- */
 
 static u_int32_t emu_rfmt_ac97[] = {
-	AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S16_LE,
+	SND_FORMAT(AFMT_S16_LE, 1, 0),
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
 	0
 };
 
 static u_int32_t emu_rfmt_mic[] = {
-	AFMT_U8,
+	SND_FORMAT(AFMT_U8, 1, 0),
 	0
 };
 
 static u_int32_t emu_rfmt_efx[] = {
-	AFMT_STEREO | AFMT_S16_LE,
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
 	0
 };
 
@@ -187,10 +279,10 @@ static struct pcmchan_caps emu_reccaps[3] = {
 };
 
 static u_int32_t emu_pfmt[] = {
-	AFMT_U8,
-	AFMT_STEREO | AFMT_U8,
-	AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S16_LE,
+	SND_FORMAT(AFMT_U8, 1, 0),
+	SND_FORMAT(AFMT_U8, 2, 0),
+	SND_FORMAT(AFMT_S16_LE, 1, 0),
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
 	0
 };
 
@@ -240,9 +332,9 @@ emu_rdptr(struct sc_info *sc, int chn, int reg)
 {
 	u_int32_t ptr, val, mask, size, offset;
 
-	ptr = ((reg << 16) & sc->addrmask) | (chn & PTR_CHANNELNUM_MASK);
-	emu_wr(sc, PTR, ptr, 4);
-	val = emu_rd(sc, DATA, 4);
+	ptr = ((reg << 16) & sc->addrmask) | (chn & EMU_PTR_CHNO_MASK);
+	emu_wr(sc, EMU_PTR, ptr, 4);
+	val = emu_rd(sc, EMU_DATA, 4);
 	if (reg & 0xff000000) {
 		size = (reg >> 24) & 0x3f;
 		offset = (reg >> 16) & 0x1f;
@@ -258,23 +350,23 @@ emu_wrptr(struct sc_info *sc, int chn, int reg, u_int32_t data)
 {
 	u_int32_t ptr, mask, size, offset;
 
-	ptr = ((reg << 16) & sc->addrmask) | (chn & PTR_CHANNELNUM_MASK);
-	emu_wr(sc, PTR, ptr, 4);
+	ptr = ((reg << 16) & sc->addrmask) | (chn & EMU_PTR_CHNO_MASK);
+	emu_wr(sc, EMU_PTR, ptr, 4);
 	if (reg & 0xff000000) {
 		size = (reg >> 24) & 0x3f;
 		offset = (reg >> 16) & 0x1f;
 		mask = ((1 << size) - 1) << offset;
 		data <<= offset;
 		data &= mask;
-		data |= emu_rd(sc, DATA, 4) & ~mask;
+		data |= emu_rd(sc, EMU_DATA, 4) & ~mask;
 	}
-	emu_wr(sc, DATA, data, 4);
+	emu_wr(sc, EMU_DATA, data, 4);
 }
 
 static void
 emu_wrefx(struct sc_info *sc, unsigned int pc, unsigned int data)
 {
-	pc += sc->audigy ? AUDIGY_CODEBASE : MICROCODEBASE;
+	pc += sc->audigy ? EMU_A_MICROCODEBASE : EMU_MICROCODEBASE;
 	emu_wrptr(sc, 0, pc, data);
 }
 
@@ -287,8 +379,8 @@ emu_rdcd(kobj_t obj, void *devinfo, int regno)
 {
 	struct sc_info *sc = (struct sc_info *)devinfo;
 
-	emu_wr(sc, AC97ADDRESS, regno, 1);
-	return emu_rd(sc, AC97DATA, 2);
+	emu_wr(sc, EMU_AC97ADDR, regno, 1);
+	return emu_rd(sc, EMU_AC97DATA, 2);
 }
 
 static int
@@ -296,8 +388,8 @@ emu_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 {
 	struct sc_info *sc = (struct sc_info *)devinfo;
 
-	emu_wr(sc, AC97ADDRESS, regno, 1);
-	emu_wr(sc, AC97DATA, data, 2);
+	emu_wr(sc, EMU_AC97ADDR, regno, 1);
+	emu_wr(sc, EMU_AC97DATA, data, 2);
 	return 0;
 }
 
@@ -321,7 +413,7 @@ emu_settimer(struct sc_info *sc)
 	for (i = 0; i < sc->nchans; i++) {
 		pch = &sc->pch[i];
 		if (pch->buffer) {
-			tmp = (pch->spd * sndbuf_getbps(pch->buffer))
+			tmp = (pch->spd * sndbuf_getalign(pch->buffer))
 			    / pch->blksz;
 			if (tmp > rate)
 				rate = tmp;
@@ -331,7 +423,7 @@ emu_settimer(struct sc_info *sc)
 	for (i = 0; i < 3; i++) {
 		rch = &sc->rch[i];
 		if (rch->buffer) {
-			tmp = (rch->spd * sndbuf_getbps(rch->buffer))
+			tmp = (rch->spd * sndbuf_getalign(rch->buffer))
 			    / rch->blksz;
 			if (tmp > rate)
 				rate = tmp;
@@ -339,7 +431,7 @@ emu_settimer(struct sc_info *sc)
 	}
 	RANGE(rate, 48, 9600);
 	sc->timerinterval = 48000 / rate;
-	emu_wr(sc, TIMER, sc->timerinterval & 0x03ff, 2);
+	emu_wr(sc, EMU_TIMER, sc->timerinterval & 0x03ff, 2);
 
 	return sc->timerinterval;
 }
@@ -350,15 +442,15 @@ emu_enatimer(struct sc_info *sc, int go)
 	u_int32_t x;
 	if (go) {
 		if (sc->timer++ == 0) {
-			x = emu_rd(sc, INTE, 4);
-			x |= INTE_INTERVALTIMERENB;
-			emu_wr(sc, INTE, x, 4);
+			x = emu_rd(sc, EMU_INTE, 4);
+			x |= EMU_INTE_INTERTIMERENB;
+			emu_wr(sc, EMU_INTE, x, 4);
 		}
 	} else {
 		sc->timer = 0;
-		x = emu_rd(sc, INTE, 4);
-		x &= ~INTE_INTERVALTIMERENB;
-		emu_wr(sc, INTE, x, 4);
+		x = emu_rd(sc, EMU_INTE, 4);
+		x &= ~EMU_INTE_INTERTIMERENB;
+		emu_wr(sc, EMU_INTE, x, 4);
 	}
 	return 0;
 }
@@ -366,7 +458,7 @@ emu_enatimer(struct sc_info *sc, int go)
 static void
 emu_enastop(struct sc_info *sc, char channel, int enable)
 {
-	int reg = (channel & 0x20) ? SOLEH : SOLEL;
+	int reg = (channel & 0x20) ? EMU_SOLEH : EMU_SOLEL;
 	channel &= 0x1f;
 	reg |= 1 << 24;
 	reg |= channel << 16;
@@ -530,7 +622,7 @@ emu_vsetup(struct sc_pchinfo *ch)
 
 	if (ch->fmt) {
 		v->b16 = (ch->fmt & AFMT_16BIT) ? 1 : 0;
-		v->stereo = (ch->fmt & AFMT_STEREO) ? 1 : 0;
+		v->stereo = (AFMT_CHANNEL(ch->fmt) > 1) ? 1 : 0;
 		if (v->slave != NULL) {
 			v->slave->b16 = v->b16;
 			v->slave->stereo = v->stereo;
@@ -561,49 +653,49 @@ emu_vwrite(struct sc_info *sc, struct emu_voice *v)
 		r = v->ismaster ? 0 : r;
 	}
 
-	emu_wrptr(sc, v->vnum, CPF, v->stereo ? CPF_STEREO_MASK : 0);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_CPF, v->stereo ? EMU_CHAN_CPF_STEREO_MASK : 0);
 	val = v->stereo ? 28 : 30;
 	val *= v->b16 ? 1 : 2;
 	start = sa + val;
 
 	if (sc->audigy) {
-		emu_wrptr(sc, v->vnum, A_FXRT1, v->fxrt1);
-		emu_wrptr(sc, v->vnum, A_FXRT2, v->fxrt2);
-		emu_wrptr(sc, v->vnum, A_SENDAMOUNTS, 0);
+		emu_wrptr(sc, v->vnum, EMU_A_CHAN_FXRT1, v->fxrt1);
+		emu_wrptr(sc, v->vnum, EMU_A_CHAN_FXRT2, v->fxrt2);
+		emu_wrptr(sc, v->vnum, EMU_A_CHAN_SENDAMOUNTS, 0);
 	}
 	else
-		emu_wrptr(sc, v->vnum, FXRT, v->fxrt1 << 16);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_FXRT, v->fxrt1 << 16);
 
-	emu_wrptr(sc, v->vnum, PTRX, (x << 8) | r);
-	emu_wrptr(sc, v->vnum, DSL, ea | (y << 24));
-	emu_wrptr(sc, v->vnum, PSST, sa | (l << 24));
-	emu_wrptr(sc, v->vnum, CCCA, start | (v->b16 ? 0 : CCCA_8BITSELECT));
+	emu_wrptr(sc, v->vnum, EMU_CHAN_PTRX, (x << 8) | r);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_DSL, ea | (y << 24));
+	emu_wrptr(sc, v->vnum, EMU_CHAN_PSST, sa | (l << 24));
+	emu_wrptr(sc, v->vnum, EMU_CHAN_CCCA, start | (v->b16 ? 0 : EMU_CHAN_CCCA_8BITSELECT));
 
-	emu_wrptr(sc, v->vnum, Z1, 0);
-	emu_wrptr(sc, v->vnum, Z2, 0);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_Z1, 0);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_Z2, 0);
 
 	silent_page = ((u_int32_t)(sc->mem.silent_page_addr) << 1)
-	    | MAP_PTI_MASK;
-	emu_wrptr(sc, v->vnum, MAPA, silent_page);
-	emu_wrptr(sc, v->vnum, MAPB, silent_page);
+	    | EMU_CHAN_MAP_PTI_MASK;
+	emu_wrptr(sc, v->vnum, EMU_CHAN_MAPA, silent_page);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_MAPB, silent_page);
 
-	emu_wrptr(sc, v->vnum, CVCF, CVCF_CURRENTFILTER_MASK);
-	emu_wrptr(sc, v->vnum, VTFT, VTFT_FILTERTARGET_MASK);
-	emu_wrptr(sc, v->vnum, ATKHLDM, 0);
-	emu_wrptr(sc, v->vnum, DCYSUSM, DCYSUSM_DECAYTIME_MASK);
-	emu_wrptr(sc, v->vnum, LFOVAL1, 0x8000);
-	emu_wrptr(sc, v->vnum, LFOVAL2, 0x8000);
-	emu_wrptr(sc, v->vnum, FMMOD, 0);
-	emu_wrptr(sc, v->vnum, TREMFRQ, 0);
-	emu_wrptr(sc, v->vnum, FM2FRQ2, 0);
-	emu_wrptr(sc, v->vnum, ENVVAL, 0x8000);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_CVCF, EMU_CHAN_CVCF_CURRFILTER_MASK);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_VTFT, EMU_CHAN_VTFT_FILTERTARGET_MASK);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_ATKHLDM, 0);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_DCYSUSM, EMU_CHAN_DCYSUSM_DECAYTIME_MASK);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_LFOVAL1, 0x8000);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_LFOVAL2, 0x8000);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_FMMOD, 0);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_TREMFRQ, 0);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_FM2FRQ2, 0);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_ENVVAL, 0x8000);
 
-	emu_wrptr(sc, v->vnum, ATKHLDV,
-	    ATKHLDV_HOLDTIME_MASK | ATKHLDV_ATTACKTIME_MASK);
-	emu_wrptr(sc, v->vnum, ENVVOL, 0x8000);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_ATKHLDV,
+	    EMU_CHAN_ATKHLDV_HOLDTIME_MASK | EMU_CHAN_ATKHLDV_ATTACKTIME_MASK);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_ENVVOL, 0x8000);
 
-	emu_wrptr(sc, v->vnum, PEFE_FILTERAMOUNT, 0x7f);
-	emu_wrptr(sc, v->vnum, PEFE_PITCHAMOUNT, 0);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_PEFE_FILTERAMOUNT, 0x7f);
+	emu_wrptr(sc, v->vnum, EMU_CHAN_PEFE_PITCHAMOUNT, 0);
 
 	if (v->slave != NULL)
 		emu_vwrite(sc, v->slave);
@@ -624,29 +716,29 @@ emu_vtrigger(struct sc_info *sc, struct emu_voice *v, int go)
 		sample = v->b16 ? 0x00000000 : 0x80808080;
 
 		for (i = 0; i < cs; i++)
-			emu_wrptr(sc, v->vnum, CD0 + i, sample);
-		emu_wrptr(sc, v->vnum, CCR_CACHEINVALIDSIZE, 0);
-		emu_wrptr(sc, v->vnum, CCR_READADDRESS, cra);
-		emu_wrptr(sc, v->vnum, CCR_CACHEINVALIDSIZE, ccis);
+			emu_wrptr(sc, v->vnum, EMU_CHAN_CD0 + i, sample);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_CCR_CACHEINVALIDSIZE, 0);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_CCR_READADDRESS, cra);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_CCR_CACHEINVALIDSIZE, ccis);
 
-		emu_wrptr(sc, v->vnum, IFATN, 0xff00);
-		emu_wrptr(sc, v->vnum, VTFT, 0xffffffff);
-		emu_wrptr(sc, v->vnum, CVCF, 0xffffffff);
-		emu_wrptr(sc, v->vnum, DCYSUSV, 0x00007f7f);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_IFATN, 0xff00);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_VTFT, 0xffffffff);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_CVCF, 0xffffffff);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_DCYSUSV, 0x00007f7f);
 		emu_enastop(sc, v->vnum, 0);
 
 		pitch_target = emu_rate_to_linearpitch(v->speed);
 		initial_pitch = emu_rate_to_pitch(v->speed) >> 8;
-		emu_wrptr(sc, v->vnum, PTRX_PITCHTARGET, pitch_target);
-		emu_wrptr(sc, v->vnum, CPF_CURRENTPITCH, pitch_target);
-		emu_wrptr(sc, v->vnum, IP, initial_pitch);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_PTRX_PITCHTARGET, pitch_target);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_CPF_PITCH, pitch_target);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_IP, initial_pitch);
 	} else {
-		emu_wrptr(sc, v->vnum, PTRX_PITCHTARGET, 0);
-		emu_wrptr(sc, v->vnum, CPF_CURRENTPITCH, 0);
-		emu_wrptr(sc, v->vnum, IFATN, 0xffff);
-		emu_wrptr(sc, v->vnum, VTFT, 0x0000ffff);
-		emu_wrptr(sc, v->vnum, CVCF, 0x0000ffff);
-		emu_wrptr(sc, v->vnum, IP, 0);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_PTRX_PITCHTARGET, 0);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_CPF_PITCH, 0);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_IFATN, 0xffff);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_VTFT, 0x0000ffff);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_CVCF, 0x0000ffff);
+		emu_wrptr(sc, v->vnum, EMU_CHAN_IP, 0);
 		emu_enastop(sc, v->vnum, 1);
 	}
 	if (v->slave != NULL)
@@ -659,7 +751,7 @@ emu_vpos(struct sc_info *sc, struct emu_voice *v)
 	int s, ptr;
 
 	s = (v->b16 ? 1 : 0) + (v->stereo ? 1 : 0);
-	ptr = (emu_rdptr(sc, v->vnum, CCCA_CURRADDR) - (v->start >> s)) << s;
+	ptr = (emu_rdptr(sc, v->vnum, EMU_CHAN_CCCA_CURRADDR) - (v->start >> s)) << s;
 	return ptr & ~0x0000001f;
 }
 
@@ -683,12 +775,12 @@ emu_vdump(struct sc_info *sc, struct emu_voice *v)
 	};
 	int i, x;
 
-	kprintf("voice number %d\n", v->vnum);
+	printf("voice number %d\n", v->vnum);
 	for (i = 0, x = 0; i <= 0x1e; i++) {
 		if (regname[i] == NULL)
 			continue;
-		kprintf("%s\t[%08x]", regname[i], emu_rdptr(sc, v->vnum, i));
-		kprintf("%s", (x == 2) ? "\n" : "\t");
+		printf("%s\t[%08x]", regname[i], emu_rdptr(sc, v->vnum, i));
+		printf("%s", (x == 2) ? "\n" : "\t");
 		x++;
 		if (x > 2)
 			x = 0;
@@ -699,15 +791,15 @@ emu_vdump(struct sc_info *sc, struct emu_voice *v)
 		for (i = 0; i <= 0xe; i++) {
 			if (regname2[i] == NULL)
 				continue;
-			kprintf("%s\t[%08x]", regname2[i],
+			printf("%s\t[%08x]", regname2[i],
 			    emu_rdptr(sc, v->vnum, i + 0x70));
-			kprintf("%s", (x == 2)? "\n" : "\t");
+			printf("%s", (x == 2)? "\n" : "\t");
 			x++;
 			if (x > 2)
 				x = 0;
 		}
 	}
-	kprintf("\n\n");
+	printf("\n\n");
 }
 #endif
 
@@ -726,7 +818,7 @@ emupchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b,
 	ch->parent = sc;
 	ch->channel = c;
 	ch->blksz = sc->bufsz / 2;
-	ch->fmt = AFMT_U8;
+	ch->fmt = SND_FORMAT(AFMT_U8, 1, 0);
 	ch->spd = 8000;
 	snd_mtxlock(sc->lock);
 	ch->master = emu_valloc(sc);
@@ -761,7 +853,7 @@ emupchan_setformat(kobj_t obj, void *data, u_int32_t format)
 	return 0;
 }
 
-static int
+static u_int32_t
 emupchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct sc_pchinfo *ch = data;
@@ -770,16 +862,19 @@ emupchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 	return ch->spd;
 }
 
-static int
+static u_int32_t
 emupchan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct sc_pchinfo *ch = data;
 	struct sc_info *sc = ch->parent;
+	int irqrate, blksz;
 
 	ch->blksz = blocksize;
 	snd_mtxlock(sc->lock);
 	emu_settimer(sc);
+	irqrate = 48000 / sc->timerinterval;
 	snd_mtxunlock(sc->lock);
+	blksz = (ch->spd * sndbuf_getalign(ch->buffer)) / irqrate;
 	return blocksize;
 }
 
@@ -789,7 +884,7 @@ emupchan_trigger(kobj_t obj, void *data, int go)
 	struct sc_pchinfo *ch = data;
 	struct sc_info *sc = ch->parent;
 
-	if (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD)
+	if (!PCMTRIG_COMMON(go))
 		return 0;
 
 	snd_mtxlock(sc->lock);
@@ -799,7 +894,7 @@ emupchan_trigger(kobj_t obj, void *data, int go)
 		emu_settimer(sc);
 		emu_enatimer(sc, 1);
 #ifdef EMUDEBUG
-		kprintf("start [%d bit, %s, %d hz]\n",
+		printf("start [%d bit, %s, %d hz]\n",
 			ch->master->b16 ? 16 : 8,
 			ch->master->stereo ? "stereo" : "mono",
 			ch->master->speed);
@@ -813,7 +908,7 @@ emupchan_trigger(kobj_t obj, void *data, int go)
 	return 0;
 }
 
-static int
+static u_int32_t
 emupchan_getptr(kobj_t obj, void *data)
 {
 	struct sc_pchinfo *ch = data;
@@ -860,36 +955,36 @@ emurchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b,
 	ch->parent = sc;
 	ch->channel = c;
 	ch->blksz = sc->bufsz / 2;
-	ch->fmt = AFMT_U8;
+	ch->fmt = SND_FORMAT(AFMT_U8, 1, 0);
 	ch->spd = 8000;
 	ch->num = sc->rnum;
 	switch(sc->rnum) {
 	case 0:
-		ch->idxreg = sc->audigy ? A_ADCIDX : ADCIDX;
-		ch->basereg = ADCBA;
-		ch->sizereg = ADCBS;
-		ch->setupreg = ADCCR;
-		ch->irqmask = INTE_ADCBUFENABLE;
+		ch->idxreg = sc->audigy ? EMU_A_ADCIDX : EMU_ADCIDX;
+		ch->basereg = EMU_ADCBA;
+		ch->sizereg = EMU_ADCBS;
+		ch->setupreg = EMU_ADCCR;
+		ch->irqmask = EMU_INTE_ADCBUFENABLE;
 		break;
 
 	case 1:
-		ch->idxreg = FXIDX;
-		ch->basereg = FXBA;
-		ch->sizereg = FXBS;
-		ch->setupreg = FXWC;
-		ch->irqmask = INTE_EFXBUFENABLE;
+		ch->idxreg = EMU_FXIDX;
+		ch->basereg = EMU_FXBA;
+		ch->sizereg = EMU_FXBS;
+		ch->setupreg = EMU_FXWC;
+		ch->irqmask = EMU_INTE_EFXBUFENABLE;
 		break;
 
 	case 2:
-		ch->idxreg = MICIDX;
-		ch->basereg = MICBA;
-		ch->sizereg = MICBS;
+		ch->idxreg = EMU_MICIDX;
+		ch->basereg = EMU_MICBA;
+		ch->sizereg = EMU_MICBS;
 		ch->setupreg = 0;
-		ch->irqmask = INTE_MICBUFENABLE;
+		ch->irqmask = EMU_INTE_MICBUFENABLE;
 		break;
 	}
 	sc->rnum++;
-	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, sc->bufsz) != 0)
+	if (sndbuf_alloc(ch->buffer, sc->parent_dmat, 0, sc->bufsz) != 0)
 		return NULL;
 	else {
 		snd_mtxlock(sc->lock);
@@ -909,7 +1004,7 @@ emurchan_setformat(kobj_t obj, void *data, u_int32_t format)
 	return 0;
 }
 
-static int
+static u_int32_t
 emurchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct sc_rchinfo *ch = data;
@@ -928,16 +1023,19 @@ emurchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 	return ch->spd;
 }
 
-static int
+static u_int32_t
 emurchan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct sc_rchinfo *ch = data;
 	struct sc_info *sc = ch->parent;
+	int irqrate, blksz;
 
 	ch->blksz = blocksize;
 	snd_mtxlock(sc->lock);
 	emu_settimer(sc);
+	irqrate = 48000 / sc->timerinterval;
 	snd_mtxunlock(sc->lock);
+	blksz = (ch->spd * sndbuf_getalign(ch->buffer)) / irqrate;
 	return blocksize;
 }
 
@@ -949,29 +1047,32 @@ emurchan_trigger(kobj_t obj, void *data, int go)
 	struct sc_info *sc = ch->parent;
 	u_int32_t val, sz;
 
+	if (!PCMTRIG_COMMON(go))
+		return 0;
+
 	switch(sc->bufsz) {
 	case 4096:
-		sz = ADCBS_BUFSIZE_4096;
+		sz = EMU_RECBS_BUFSIZE_4096;
 		break;
 
 	case 8192:
-		sz = ADCBS_BUFSIZE_8192;
+		sz = EMU_RECBS_BUFSIZE_8192;
 		break;
 
 	case 16384:
-		sz = ADCBS_BUFSIZE_16384;
+		sz = EMU_RECBS_BUFSIZE_16384;
 		break;
 
 	case 32768:
-		sz = ADCBS_BUFSIZE_32768;
+		sz = EMU_RECBS_BUFSIZE_32768;
 		break;
 
 	case 65536:
-		sz = ADCBS_BUFSIZE_65536;
+		sz = EMU_RECBS_BUFSIZE_65536;
 		break;
 
 	default:
-		sz = ADCBS_BUFSIZE_4096;
+		sz = EMU_RECBS_BUFSIZE_4096;
 	}
 
 	snd_mtxlock(sc->lock);
@@ -981,23 +1082,23 @@ emurchan_trigger(kobj_t obj, void *data, int go)
 		emu_wrptr(sc, 0, ch->sizereg, sz);
 		if (ch->num == 0) {
 			if (sc->audigy) {
-				val = A_ADCCR_LCHANENABLE;
-				if (ch->fmt & AFMT_STEREO)
-					val |= A_ADCCR_RCHANENABLE;
+				val = EMU_A_ADCCR_LCHANENABLE;
+				if (AFMT_CHANNEL(ch->fmt) > 1)
+					val |= EMU_A_ADCCR_RCHANENABLE;
 				val |= audigy_recval(ch->spd);
 			} else {
-				val = ADCCR_LCHANENABLE;
-				if (ch->fmt & AFMT_STEREO)
-					val |= ADCCR_RCHANENABLE;
+				val = EMU_ADCCR_LCHANENABLE;
+				if (AFMT_CHANNEL(ch->fmt) > 1)
+					val |= EMU_ADCCR_RCHANENABLE;
 				val |= emu_recval(ch->spd);
 			}
 
 			emu_wrptr(sc, 0, ch->setupreg, 0);
 			emu_wrptr(sc, 0, ch->setupreg, val);
 		}
-		val = emu_rd(sc, INTE, 4);
+		val = emu_rd(sc, EMU_INTE, 4);
 		val |= ch->irqmask;
-		emu_wr(sc, INTE, val, 4);
+		emu_wr(sc, EMU_INTE, val, 4);
 		break;
 
 	case PCMTRIG_STOP:
@@ -1006,9 +1107,9 @@ emurchan_trigger(kobj_t obj, void *data, int go)
 		emu_wrptr(sc, 0, ch->sizereg, 0);
 		if (ch->setupreg)
 			emu_wrptr(sc, 0, ch->setupreg, 0);
-		val = emu_rd(sc, INTE, 4);
+		val = emu_rd(sc, EMU_INTE, 4);
 		val &= ~ch->irqmask;
-		emu_wr(sc, INTE, val, 4);
+		emu_wr(sc, EMU_INTE, val, 4);
 		break;
 
 	case PCMTRIG_EMLDMAWR:
@@ -1021,7 +1122,7 @@ emurchan_trigger(kobj_t obj, void *data, int go)
 	return 0;
 }
 
-static int
+static u_int32_t
 emurchan_getptr(kobj_t obj, void *data)
 {
 	struct sc_rchinfo *ch = data;
@@ -1055,8 +1156,66 @@ static kobj_method_t emurchan_methods[] = {
 };
 CHANNEL_DECLARE(emurchan);
 
+static unsigned char
+emu_mread(struct mpu401 *arg, void *sc, int reg)
+{	
+	unsigned int d;
+
+	d = emu_rd((struct sc_info *)sc, 0x18 + reg, 1); 
+	return d;
+}
+
+static void
+emu_mwrite(struct mpu401 *arg, void *sc, int reg, unsigned char b)
+{
+
+	emu_wr((struct sc_info *)sc, 0x18 + reg, b, 1);
+}
+
+static int
+emu_muninit(struct mpu401 *arg, void *cookie)
+{
+	struct sc_info *sc = cookie;
+
+	snd_mtxlock(sc->lock);
+	sc->mpu_intr = 0;
+	snd_mtxunlock(sc->lock);
+
+	return 0;
+}
+
+static kobj_method_t emu_mpu_methods[] = {
+    	KOBJMETHOD(mpufoi_read,		emu_mread),
+    	KOBJMETHOD(mpufoi_write,	emu_mwrite),
+    	KOBJMETHOD(mpufoi_uninit,	emu_muninit),
+	KOBJMETHOD_END
+};
+
+static DEFINE_CLASS(emu_mpu, emu_mpu_methods, 0);
+
+static void
+emu_intr2(void *p)
+{
+	struct sc_info *sc = (struct sc_info *)p;
+
+	if (sc->mpu_intr)
+	    (sc->mpu_intr)(sc->mpu);
+}
+
+static void
+emu_midiattach(struct sc_info *sc)
+{
+	int i;
+
+	i = emu_rd(sc, EMU_INTE, 4);
+	i |= EMU_INTE_MIDIRXENABLE;
+	emu_wr(sc, EMU_INTE, i, 4);
+
+	sc->mpu = mpu401_init(&emu_mpu_class, sc, emu_intr2, &sc->mpu_intr);
+}
 /* -------------------------------------------------------------------- */
 /* The interrupt handler */
+
 static void
 emu_intr(void *data)
 {
@@ -1065,47 +1224,52 @@ emu_intr(void *data)
 
 	snd_mtxlock(sc->lock);
 	while (1) {
-		stat = emu_rd(sc, IPR, 4);
+		stat = emu_rd(sc, EMU_IPR, 4);
 		if (stat == 0)
 			break;
 		ack = 0;
 
 		/* process irq */
-		if (stat & IPR_INTERVALTIMER)
-			ack |= IPR_INTERVALTIMER;
+		if (stat & EMU_IPR_INTERVALTIMER)
+			ack |= EMU_IPR_INTERVALTIMER;
 
-		if (stat & (IPR_ADCBUFFULL | IPR_ADCBUFHALFFULL))
-			ack |= stat & (IPR_ADCBUFFULL | IPR_ADCBUFHALFFULL);
+		if (stat & (EMU_IPR_ADCBUFFULL | EMU_IPR_ADCBUFHALFFULL))
+			ack |= stat & (EMU_IPR_ADCBUFFULL | EMU_IPR_ADCBUFHALFFULL);
 
-		if (stat & (IPR_EFXBUFFULL | IPR_EFXBUFHALFFULL))
-			ack |= stat & (IPR_EFXBUFFULL | IPR_EFXBUFHALFFULL);
+		if (stat & (EMU_IPR_EFXBUFFULL | EMU_IPR_EFXBUFHALFFULL))
+			ack |= stat & (EMU_IPR_EFXBUFFULL | EMU_IPR_EFXBUFHALFFULL);
 
-		if (stat & (IPR_MICBUFFULL | IPR_MICBUFHALFFULL))
-			ack |= stat & (IPR_MICBUFFULL | IPR_MICBUFHALFFULL);
+		if (stat & (EMU_IPR_MICBUFFULL | EMU_IPR_MICBUFHALFFULL))
+			ack |= stat & (EMU_IPR_MICBUFFULL | EMU_IPR_MICBUFHALFFULL);
 
-		if (stat & IPR_PCIERROR) {
-			ack |= IPR_PCIERROR;
+		if (stat & EMU_PCIERROR) {
+			ack |= EMU_PCIERROR;
 			device_printf(sc->dev, "pci error\n");
 			/* we still get an nmi with ecc ram even if we ack this */
 		}
-		if (stat & IPR_SAMPLERATETRACKER) {
-			ack |= IPR_SAMPLERATETRACKER;
+		if (stat & EMU_IPR_RATETRCHANGE) {
+			ack |= EMU_IPR_RATETRCHANGE;
 #ifdef EMUDEBUG
 			device_printf(sc->dev,
 			    "sample rate tracker lock status change\n");
 #endif
 		}
 
+	    if (stat & EMU_IPR_MIDIRECVBUFE)
+		if (sc->mpu_intr) {
+		    (sc->mpu_intr)(sc->mpu);
+		    ack |= EMU_IPR_MIDIRECVBUFE | EMU_IPR_MIDITRANSBUFE;
+ 		}
 		if (stat & ~ack)
 			device_printf(sc->dev, "dodgy irq: %x (harmless)\n",
 			    stat & ~ack);
 
-		emu_wr(sc, IPR, stat, 4);
+		emu_wr(sc, EMU_IPR, stat, 4);
 
 		if (ack) {
 			snd_mtxunlock(sc->lock);
 
-			if (ack & IPR_INTERVALTIMER) {
+			if (ack & EMU_IPR_INTERVALTIMER) {
 				x = 0;
 				for (i = 0; i < sc->nchans; i++) {
 					if (sc->pch[i].run) {
@@ -1118,15 +1282,15 @@ emu_intr(void *data)
 			}
 
 
-			if (ack & (IPR_ADCBUFFULL | IPR_ADCBUFHALFFULL)) {
+			if (ack & (EMU_IPR_ADCBUFFULL | EMU_IPR_ADCBUFHALFFULL)) {
 				if (sc->rch[0].channel)
 					chn_intr(sc->rch[0].channel);
 			}
-			if (ack & (IPR_EFXBUFFULL | IPR_EFXBUFHALFFULL)) {
+			if (ack & (EMU_IPR_EFXBUFFULL | EMU_IPR_EFXBUFHALFFULL)) {
 				if (sc->rch[1].channel)
 					chn_intr(sc->rch[1].channel);
 			}
-			if (ack & (IPR_MICBUFFULL | IPR_MICBUFHALFFULL)) {
+			if (ack & (EMU_IPR_MICBUFFULL | EMU_IPR_MICBUFHALFFULL)) {
 				if (sc->rch[2].channel)
 					chn_intr(sc->rch[2].channel);
 			}
@@ -1147,31 +1311,34 @@ emu_setmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 	*phys = error ? 0 : (bus_addr_t)segs->ds_addr;
 
 	if (bootverbose) {
-		kprintf("emu: setmap (%lx, %lx), nseg=%d, error=%d\n",
+		printf("emu: setmap (%lx, %lx), nseg=%d, error=%d\n",
 		    (unsigned long)segs->ds_addr, (unsigned long)segs->ds_len,
 		    nseg, error);
 	}
 }
 
 static void *
-emu_malloc(struct sc_info *sc, u_int32_t sz, bus_addr_t *addr)
+emu_malloc(struct sc_info *sc, u_int32_t sz, bus_addr_t *addr,
+    bus_dmamap_t *map)
 {
 	void *buf;
-	bus_dmamap_t map;
 
 	*addr = 0;
-	if (bus_dmamem_alloc(sc->parent_dmat, &buf, BUS_DMA_NOWAIT, &map))
+	if (bus_dmamem_alloc(sc->parent_dmat, &buf, BUS_DMA_NOWAIT, map))
 		return NULL;
-	if (bus_dmamap_load(sc->parent_dmat, map, buf, sz, emu_setmap, addr, 0)
-	    || !*addr)
+	if (bus_dmamap_load(sc->parent_dmat, *map, buf, sz, emu_setmap, addr, 0)
+	    || !*addr) {
+		bus_dmamem_free(sc->parent_dmat, buf, *map);
 		return NULL;
+	}
 	return buf;
 }
 
 static void
-emu_free(struct sc_info *sc, void *buf)
+emu_free(struct sc_info *sc, void *buf, bus_dmamap_t map)
 {
-	bus_dmamem_free(sc->parent_dmat, buf, NULL);
+	bus_dmamap_unload(sc->parent_dmat, map);
+	bus_dmamem_free(sc->parent_dmat, buf, map);
 }
 
 static void *
@@ -1185,7 +1352,7 @@ emu_memalloc(struct sc_info *sc, u_int32_t sz, bus_addr_t *addr)
 	blksz = sz / EMUPAGESIZE;
 	if (sz > (blksz * EMUPAGESIZE))
 		blksz++;
-	/* find a kfree block in the bitmap */
+	/* find a free block in the bitmap */
 	found = 0;
 	start = 1;
 	while (!found && start + blksz < EMUMAXPAGES) {
@@ -1198,26 +1365,28 @@ emu_memalloc(struct sc_info *sc, u_int32_t sz, bus_addr_t *addr)
 	}
 	if (!found)
 		return NULL;
-	blk = kmalloc(sizeof(*blk), M_DEVBUF, M_WAITOK);
-	buf = emu_malloc(sc, sz, &blk->buf_addr);
+	blk = malloc(sizeof(*blk), M_DEVBUF, M_NOWAIT);
+	if (blk == NULL)
+		return NULL;
+	buf = emu_malloc(sc, sz, &blk->buf_addr, &blk->buf_map);
 	*addr = blk->buf_addr;
 	if (buf == NULL) {
-		kfree(blk, M_DEVBUF);
+		free(blk, M_DEVBUF);
 		return NULL;
 	}
 	blk->buf = buf;
 	blk->pte_start = start;
 	blk->pte_size = blksz;
 #ifdef EMUDEBUG
-	kprintf("buf %p, pte_start %d, pte_size %d\n", blk->buf,
+	printf("buf %p, pte_start %d, pte_size %d\n", blk->buf,
 	    blk->pte_start, blk->pte_size);
 #endif
 	ofs = 0;
 	for (idx = start; idx < start + blksz; idx++) {
 		mem->bmap[idx >> 3] |= 1 << (idx & 7);
-		tmp = (u_int32_t)(u_long)((u_int8_t *)blk->buf_addr + ofs);
+		tmp = (uint32_t)(blk->buf_addr + ofs);
 #ifdef EMUDEBUG
-		kprintf("pte[%d] -> %x phys, %x virt\n", idx, tmp,
+		printf("pte[%d] -> %x phys, %x virt\n", idx, tmp,
 		    ((u_int32_t)buf) + ofs);
 #endif
 		mem->ptb_pages[idx] = (tmp << 1) | idx;
@@ -1242,13 +1411,13 @@ emu_memfree(struct sc_info *sc, void *buf)
 	if (blk == NULL)
 		return EINVAL;
 	SLIST_REMOVE(&mem->blocks, blk, emu_memblk, link);
-	emu_free(sc, buf);
+	emu_free(sc, buf, blk->buf_map);
 	tmp = (u_int32_t)(sc->mem.silent_page_addr) << 1;
 	for (idx = blk->pte_start; idx < blk->pte_start + blk->pte_size; idx++) {
 		mem->bmap[idx >> 3] &= ~(1 << (idx & 7));
 		mem->ptb_pages[idx] = tmp | idx;
 	}
-	kfree(blk, M_DEVBUF);
+	free(blk, M_DEVBUF);
 	return 0;
 }
 
@@ -1297,21 +1466,21 @@ audigy_initefx(struct sc_info *sc)
 		audigy_addefxop(sc, 0x0f, 0x0c0, 0x0c0, 0x0cf, 0x0c0, &pc);
 
 	for (i = 0; i < 512; i++)
-		emu_wrptr(sc, 0, A_FXGPREGBASE + i, 0x0);
+		emu_wrptr(sc, 0, EMU_A_FXGPREGBASE + i, 0x0);
 
 	pc = 16;
 
 	/* stop fx processor */
-	emu_wrptr(sc, 0, A_DBG, A_DBG_SINGLE_STEP);
+	emu_wrptr(sc, 0, EMU_A_DBG, EMU_A_DBG_SINGLE_STEP);
 
 	/* Audigy 2 (EMU10K2) DSP Registers:
 	   FX Bus
-		0x000-0x00f : 16 registers (???)
+		0x000-0x00f : 16 registers (?)
 	   Input
 		0x040/0x041 : AC97 Codec (l/r)
 		0x042/0x043 : ADC, S/PDIF (l/r)
 		0x044/0x045 : Optical S/PDIF in (l/r)
-		0x046/0x047 : ???
+		0x046/0x047 : ?
 		0x048/0x049 : Line/Mic 2 (l/r)
 		0x04a/0x04b : RCA S/PDIF (l/r)
 		0x04c/0x04d : Aux 2 (l/r)
@@ -1322,11 +1491,11 @@ audigy_initefx(struct sc_info *sc)
 		0x066/0x067 : Digital Rear (l/r)
 		0x068/0x069 : Analog Front (l/r)
 		0x06a/0x06b : Analog Center/LFE
-		0x06c/0x06d : ???
+		0x06c/0x06d : ?
 		0x06e/0x06f : Analog Rear (l/r)
 		0x070/0x071 : AC97 Output (l/r)
-		0x072/0x073 : ???
-		0x074/0x075 : ???
+		0x072/0x073 : ?
+		0x074/0x075 : ?
 		0x076/0x077 : ADC Recording Buffer (l/r)
 	   Constants
 		0x0c0 - 0x0c4 = 0 - 4
@@ -1335,9 +1504,9 @@ audigy_initefx(struct sc_info *sc)
 		0x0cb = 0x10000000, 0x0cc = 0x20000000, 0x0cd = 0x40000000
 		0x0ce = 0x80000000, 0x0cf = 0x7fffffff, 0x0d0 = 0xffffffff
 		0x0d1 = 0xfffffffe, 0x0d2 = 0xc0000000, 0x0d3 = 0x41fbbcdc
-		0x0d4 = 0x5a7ef9db, 0x0d5 = 0x00100000, 0x0dc = 0x00000001 (???)
+		0x0d4 = 0x5a7ef9db, 0x0d5 = 0x00100000, 0x0dc = 0x00000001 (?)
 	   Temporary Values
-		0x0d6 : Accumulator (???)
+		0x0d6 : Accumulator (?)
 		0x0d7 : Condition Register
 		0x0d8 : Noise source
 		0x0d9 : Noise source
@@ -1437,7 +1606,7 @@ audigy_initefx(struct sc_info *sc)
 			A_C_00000000, A_EXTIN(A_EXTIN_AC97_R), &pc);
 
 	/* resume normal operations */
-	emu_wrptr(sc, 0, A_DBG, 0);
+	emu_wrptr(sc, 0, EMU_A_DBG, 0);
 }
 
 static void
@@ -1453,7 +1622,7 @@ emu_initefx(struct sc_info *sc)
 	}
 
 	for (i = 0; i < 256; i++)
-		emu_wrptr(sc, 0, FXGPREGBASE + i, 0);
+		emu_wrptr(sc, 0, EMU_FXGPREGBASE + i, 0);
 
 	/* FX-8010 DSP Registers:
 	   FX Bus
@@ -1554,10 +1723,10 @@ emu_initefx(struct sc_info *sc)
 	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_ALFE), C_00000000,
 			GPR(1), GPR(2), &pc);
 	/* Digital Center = GPR[0] + GPR[2] */
-	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_CENTER), C_00000000,
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_AC97_CENTER), C_00000000,
 			GPR(0), GPR(2), &pc);
 	/* Digital Sub = GPR[1] + GPR[2] */
-	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_LFE), C_00000000,
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_AC97_LFE), C_00000000,
 			GPR(1), GPR(2), &pc);
 
 	/* Headphones[l/r] = GPR[0/1] */
@@ -1573,7 +1742,7 @@ emu_initefx(struct sc_info *sc)
 			C_00000000, EXTIN(EXTIN_AC97_R), &pc);
 
 	/* resume normal operations */
-	emu_wrptr(sc, 0, DBG, 0);
+	emu_wrptr(sc, 0, EMU_DBG, 0);
 }
 
 /* Probe and attach the card */
@@ -1584,69 +1753,69 @@ emu_init(struct sc_info *sc)
 
 	if (sc->audigy) {
 		/* enable additional AC97 slots */
-		emu_wrptr(sc, 0, AC97SLOT, AC97SLOT_CNTR | AC97SLOT_LFE);
+		emu_wrptr(sc, 0, EMU_AC97SLOT, EMU_AC97SLOT_CENTER | EMU_AC97SLOT_LFE);
 	}
 
 	/* disable audio and lock cache */
-	emu_wr(sc, HCFG,
-	    HCFG_LOCKSOUNDCACHE | HCFG_LOCKTANKCACHE_MASK | HCFG_MUTEBUTTONENABLE,
+	emu_wr(sc, EMU_HCFG,
+	    EMU_HCFG_LOCKSOUNDCACHE | EMU_HCFG_LOCKTANKCACHE_MASK | EMU_HCFG_MUTEBUTTONENABLE,
 	    4);
 
 	/* reset recording buffers */
-	emu_wrptr(sc, 0, MICBS, ADCBS_BUFSIZE_NONE);
-	emu_wrptr(sc, 0, MICBA, 0);
-	emu_wrptr(sc, 0, FXBS, ADCBS_BUFSIZE_NONE);
-	emu_wrptr(sc, 0, FXBA, 0);
-	emu_wrptr(sc, 0, ADCBS, ADCBS_BUFSIZE_NONE);
-	emu_wrptr(sc, 0, ADCBA, 0);
+	emu_wrptr(sc, 0, EMU_MICBS, EMU_RECBS_BUFSIZE_NONE);
+	emu_wrptr(sc, 0, EMU_MICBA, 0);
+	emu_wrptr(sc, 0, EMU_FXBS, EMU_RECBS_BUFSIZE_NONE);
+	emu_wrptr(sc, 0, EMU_FXBA, 0);
+	emu_wrptr(sc, 0, EMU_ADCBS, EMU_RECBS_BUFSIZE_NONE);
+	emu_wrptr(sc, 0, EMU_ADCBA, 0);
 
 	/* disable channel interrupt */
-	emu_wr(sc, INTE,
-	    INTE_INTERVALTIMERENB | INTE_SAMPLERATETRACKER | INTE_PCIERRORENABLE,
+	emu_wr(sc, EMU_INTE,
+	    EMU_INTE_INTERTIMERENB | EMU_INTE_SAMPLERATER | EMU_INTE_PCIERRENABLE,
 	    4);
-	emu_wrptr(sc, 0, CLIEL, 0);
-	emu_wrptr(sc, 0, CLIEH, 0);
-	emu_wrptr(sc, 0, SOLEL, 0);
-	emu_wrptr(sc, 0, SOLEH, 0);
+	emu_wrptr(sc, 0, EMU_CLIEL, 0);
+	emu_wrptr(sc, 0, EMU_CLIEH, 0);
+	emu_wrptr(sc, 0, EMU_SOLEL, 0);
+	emu_wrptr(sc, 0, EMU_SOLEH, 0);
 
 	/* wonder what these do... */
 	if (sc->audigy) {
-		emu_wrptr(sc, 0, SPBYPASS, 0xf00);
-		emu_wrptr(sc, 0, AC97SLOT, 0x3);
+		emu_wrptr(sc, 0, EMU_SPBYPASS, 0xf00);
+		emu_wrptr(sc, 0, EMU_AC97SLOT, 0x3);
 	}
 
 	/* init envelope engine */
 	for (ch = 0; ch < NUM_G; ch++) {
-		emu_wrptr(sc, ch, DCYSUSV, ENV_OFF);
-		emu_wrptr(sc, ch, IP, 0);
-		emu_wrptr(sc, ch, VTFT, 0xffff);
-		emu_wrptr(sc, ch, CVCF, 0xffff);
-		emu_wrptr(sc, ch, PTRX, 0);
-		emu_wrptr(sc, ch, CPF, 0);
-		emu_wrptr(sc, ch, CCR, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_DCYSUSV, ENV_OFF);
+		emu_wrptr(sc, ch, EMU_CHAN_IP, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_VTFT, 0xffff);
+		emu_wrptr(sc, ch, EMU_CHAN_CVCF, 0xffff);
+		emu_wrptr(sc, ch, EMU_CHAN_PTRX, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_CPF, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_CCR, 0);
 
-		emu_wrptr(sc, ch, PSST, 0);
-		emu_wrptr(sc, ch, DSL, 0x10);
-		emu_wrptr(sc, ch, CCCA, 0);
-		emu_wrptr(sc, ch, Z1, 0);
-		emu_wrptr(sc, ch, Z2, 0);
-		emu_wrptr(sc, ch, FXRT, 0xd01c0000);
+		emu_wrptr(sc, ch, EMU_CHAN_PSST, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_DSL, 0x10);
+		emu_wrptr(sc, ch, EMU_CHAN_CCCA, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_Z1, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_Z2, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_FXRT, 0xd01c0000);
 
-		emu_wrptr(sc, ch, ATKHLDM, 0);
-		emu_wrptr(sc, ch, DCYSUSM, 0);
-		emu_wrptr(sc, ch, IFATN, 0xffff);
-		emu_wrptr(sc, ch, PEFE, 0);
-		emu_wrptr(sc, ch, FMMOD, 0);
-		emu_wrptr(sc, ch, TREMFRQ, 24);	/* 1 Hz */
-		emu_wrptr(sc, ch, FM2FRQ2, 24);	/* 1 Hz */
-		emu_wrptr(sc, ch, TEMPENV, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_ATKHLDM, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_DCYSUSM, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_IFATN, 0xffff);
+		emu_wrptr(sc, ch, EMU_CHAN_PEFE, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_FMMOD, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_TREMFRQ, 24);	/* 1 Hz */
+		emu_wrptr(sc, ch, EMU_CHAN_FM2FRQ2, 24);	/* 1 Hz */
+		emu_wrptr(sc, ch, EMU_CHAN_TEMPENV, 0);
 
 		/*** these are last so OFF prevents writing ***/
-		emu_wrptr(sc, ch, LFOVAL2, 0);
-		emu_wrptr(sc, ch, LFOVAL1, 0);
-		emu_wrptr(sc, ch, ATKHLDV, 0);
-		emu_wrptr(sc, ch, ENVVOL, 0);
-		emu_wrptr(sc, ch, ENVVAL, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_LFOVAL2, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_LFOVAL1, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_ATKHLDV, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_ENVVOL, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_ENVVAL, 0);
 
 		if (sc->audigy) {
 			/* audigy cards need this to initialize correctly */
@@ -1655,9 +1824,9 @@ emu_init(struct sc_info *sc)
 			emu_wrptr(sc, ch, 0x4e, 0);
 			emu_wrptr(sc, ch, 0x4f, 0);
 			/* set default routing */
-			emu_wrptr(sc, ch, A_FXRT1, 0x03020100);
-			emu_wrptr(sc, ch, A_FXRT2, 0x3f3f3f3f);
-			emu_wrptr(sc, ch, A_SENDAMOUNTS, 0);
+			emu_wrptr(sc, ch, EMU_A_CHAN_FXRT1, 0x03020100);
+			emu_wrptr(sc, ch, EMU_A_CHAN_FXRT2, 0x3f3f3f3f);
+			emu_wrptr(sc, ch, EMU_A_CHAN_SENDAMOUNTS, 0);
 		}
 
 		sc->voice[ch].vnum = ch;
@@ -1688,13 +1857,13 @@ emu_init(struct sc_info *sc)
 	 *  AN                = 0     (Audio data)
 	 *  P                 = 0     (Consumer)
 	 */
-	spcs = SPCS_CLKACCY_1000PPM | SPCS_SAMPLERATE_48 |
-	    SPCS_CHANNELNUM_LEFT | SPCS_SOURCENUM_UNSPEC |
-	    SPCS_GENERATIONSTATUS | 0x00001200 | 0x00000000 |
-	    SPCS_EMPHASIS_NONE | SPCS_COPYRIGHT;
-	emu_wrptr(sc, 0, SPCS0, spcs);
-	emu_wrptr(sc, 0, SPCS1, spcs);
-	emu_wrptr(sc, 0, SPCS2, spcs);
+	spcs = EMU_SPCS_CLKACCY_1000PPM | EMU_SPCS_SAMPLERATE_48 |
+	    EMU_SPCS_CHANNELNUM_LEFT | EMU_SPCS_SOURCENUM_UNSPEC |
+	    EMU_SPCS_GENERATIONSTATUS | 0x00001200 | 0x00000000 |
+	    EMU_SPCS_EMPHASIS_NONE | EMU_SPCS_COPYRIGHT;
+	emu_wrptr(sc, 0, EMU_SPCS0, spcs);
+	emu_wrptr(sc, 0, EMU_SPCS1, spcs);
+	emu_wrptr(sc, 0, EMU_SPCS2, spcs);
 
 	if (!sc->audigy)
 		emu_initefx(sc);
@@ -1705,8 +1874,8 @@ emu_init(struct sc_info *sc)
 		u_int32_t tmp;
 
 		/* Setup SRCMulti_I2S SamplingRate */
-		tmp = emu_rdptr(sc, 0, A_SPDIF_SAMPLERATE) & 0xfffff1ff;
-		emu_wrptr(sc, 0, A_SPDIF_SAMPLERATE, tmp | 0x400);
+		tmp = emu_rdptr(sc, 0, EMU_A_SPDIF_SAMPLERATE) & 0xfffff1ff;
+		emu_wrptr(sc, 0, EMU_A_SPDIF_SAMPLERATE, tmp | 0x400);
 
 		/* Setup SRCSel (Enable SPDIF, I2S SRCMulti) */
 		emu_wr(sc, 0x20, 0x00600000, 4);
@@ -1719,14 +1888,14 @@ emu_init(struct sc_info *sc)
 
 	SLIST_INIT(&sc->mem.blocks);
 	sc->mem.ptb_pages = emu_malloc(sc, EMUMAXPAGES * sizeof(u_int32_t),
-	    &sc->mem.ptb_pages_addr);
+	    &sc->mem.ptb_pages_addr, &sc->mem.ptb_map);
 	if (sc->mem.ptb_pages == NULL)
 		return -1;
 
 	sc->mem.silent_page = emu_malloc(sc, EMUPAGESIZE,
-	    &sc->mem.silent_page_addr);
+	    &sc->mem.silent_page_addr, &sc->mem.silent_map);
 	if (sc->mem.silent_page == NULL) {
-		emu_free(sc, sc->mem.ptb_pages);
+		emu_free(sc, sc->mem.ptb_pages, sc->mem.ptb_map);
 		return -1;
 	}
 	/* Clear page with silence & setup all pointers to this page */
@@ -1735,13 +1904,13 @@ emu_init(struct sc_info *sc)
 	for (i = 0; i < EMUMAXPAGES; i++)
 		sc->mem.ptb_pages[i] = tmp | i;
 
-	emu_wrptr(sc, 0, PTB, (sc->mem.ptb_pages_addr));
-	emu_wrptr(sc, 0, TCB, 0);	/* taken from original driver */
-	emu_wrptr(sc, 0, TCBS, 0);	/* taken from original driver */
+	emu_wrptr(sc, 0, EMU_PTB, (sc->mem.ptb_pages_addr));
+	emu_wrptr(sc, 0, EMU_TCB, 0);	/* taken from original driver */
+	emu_wrptr(sc, 0, EMU_TCBS, 0);	/* taken from original driver */
 
 	for (ch = 0; ch < NUM_G; ch++) {
-		emu_wrptr(sc, ch, MAPA, tmp | MAP_PTI_MASK);
-		emu_wrptr(sc, ch, MAPB, tmp | MAP_PTI_MASK);
+		emu_wrptr(sc, ch, EMU_CHAN_MAPA, tmp | EMU_CHAN_MAP_PTI_MASK);
+		emu_wrptr(sc, ch, EMU_CHAN_MAPB, tmp | EMU_CHAN_MAP_PTI_MASK);
 	}
 
 	/* emu_memalloc(sc, EMUPAGESIZE); */
@@ -1769,19 +1938,19 @@ emu_init(struct sc_info *sc)
 	 */
 
 	if (sc->audigy) {
-		tmp = HCFG_AUTOMUTE | HCFG_JOYENABLE;
+		tmp = EMU_HCFG_AUTOMUTE | EMU_HCFG_JOYENABLE;
 		if (sc->audigy2)	/* Audigy 2 */
-			tmp = HCFG_AUDIOENABLE | HCFG_AC3ENABLE_CDSPDIF |
-			    HCFG_AC3ENABLE_GPSPDIF;
-		emu_wr(sc, HCFG, tmp, 4);
+			tmp = EMU_HCFG_AUDIOENABLE | EMU_HCFG_AC3ENABLE_CDSPDIF |
+			    EMU_HCFG_AC3ENABLE_GPSPDIF;
+		emu_wr(sc, EMU_HCFG, tmp, 4);
 
 		audigy_initefx(sc);
 
 		/* from ALSA initialization code: */
 
 		/* enable audio and disable both audio/digital outputs */
-		emu_wr(sc, HCFG, emu_rd(sc, HCFG, 4) | HCFG_AUDIOENABLE, 4);
-		emu_wr(sc, A_IOCFG, emu_rd(sc, A_IOCFG, 4) & ~A_IOCFG_GPOUT_AD,
+		emu_wr(sc, EMU_HCFG, emu_rd(sc, EMU_HCFG, 4) | EMU_HCFG_AUDIOENABLE, 4);
+		emu_wr(sc, EMU_A_IOCFG, emu_rd(sc, EMU_A_IOCFG, 4) & ~EMU_A_IOCFG_GPOUT_AD,
 		    4);
 		if (sc->audigy2) {	/* Audigy 2 */
 			/* Unmute Analog.
@@ -1789,27 +1958,27 @@ emu_init(struct sc_info *sc)
 			 * init Alice3 I2SOut beyond 48kHz.
 			 * So, sequence is important.
 			 */
-			emu_wr(sc, A_IOCFG,
-			    emu_rd(sc, A_IOCFG, 4) | A_IOCFG_GPOUT_A, 4);
+			emu_wr(sc, EMU_A_IOCFG,
+			    emu_rd(sc, EMU_A_IOCFG, 4) | EMU_A_IOCFG_GPOUT_A, 4);
 		}
 	} else {
 		/* EMU10K1 initialization code */
-		tmp = HCFG_AUDIOENABLE | HCFG_LOCKTANKCACHE_MASK 
-		    | HCFG_AUTOMUTE;
+		tmp = EMU_HCFG_AUDIOENABLE | EMU_HCFG_LOCKTANKCACHE_MASK 
+		    | EMU_HCFG_AUTOMUTE;
 		if (sc->rev >= 6)
-			tmp |= HCFG_JOYENABLE;
+			tmp |= EMU_HCFG_JOYENABLE;
 
-		emu_wr(sc, HCFG, tmp, 4);
+		emu_wr(sc, EMU_HCFG, tmp, 4);
 
 		/* TOSLink detection */
 		sc->tos_link = 0;
-		tmp = emu_rd(sc, HCFG, 4);
-		if (tmp & (HCFG_GPINPUT0 | HCFG_GPINPUT1)) {
-			emu_wr(sc, HCFG, tmp | HCFG_GPOUT1, 4);
+		tmp = emu_rd(sc, EMU_HCFG, 4);
+		if (tmp & (EMU_HCFG_GPINPUT0 | EMU_HCFG_GPINPUT1)) {
+			emu_wr(sc, EMU_HCFG, tmp | EMU_HCFG_GPOUT1, 4);
 			DELAY(50);
-			if (tmp != (emu_rd(sc, HCFG, 4) & ~HCFG_GPOUT1)) {
+			if (tmp != (emu_rd(sc, EMU_HCFG, 4) & ~EMU_HCFG_GPOUT1)) {
 				sc->tos_link = 1;
-				emu_wr(sc, HCFG, tmp, 4);
+				emu_wr(sc, EMU_HCFG, tmp, 4);
 			}
 		}
 	}
@@ -1822,49 +1991,51 @@ emu_uninit(struct sc_info *sc)
 {
 	u_int32_t ch;
 
-	emu_wr(sc, INTE, 0, 4);
+	emu_wr(sc, EMU_INTE, 0, 4);
 	for (ch = 0; ch < NUM_G; ch++)
-		emu_wrptr(sc, ch, DCYSUSV, ENV_OFF);
+		emu_wrptr(sc, ch, EMU_CHAN_DCYSUSV, ENV_OFF);
 	for (ch = 0; ch < NUM_G; ch++) {
-		emu_wrptr(sc, ch, VTFT, 0);
-		emu_wrptr(sc, ch, CVCF, 0);
-		emu_wrptr(sc, ch, PTRX, 0);
-		emu_wrptr(sc, ch, CPF, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_VTFT, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_CVCF, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_PTRX, 0);
+		emu_wrptr(sc, ch, EMU_CHAN_CPF, 0);
 	}
 
 	if (sc->audigy) {	/* stop fx processor */
-		emu_wrptr(sc, 0, A_DBG, A_DBG_SINGLE_STEP);
+		emu_wrptr(sc, 0, EMU_A_DBG, EMU_A_DBG_SINGLE_STEP);
 	}
 
 	/* disable audio and lock cache */
-	emu_wr(sc, HCFG,
-	    HCFG_LOCKSOUNDCACHE | HCFG_LOCKTANKCACHE_MASK | HCFG_MUTEBUTTONENABLE,
+	emu_wr(sc, EMU_HCFG,
+	    EMU_HCFG_LOCKSOUNDCACHE | EMU_HCFG_LOCKTANKCACHE_MASK | EMU_HCFG_MUTEBUTTONENABLE,
 	    4);
 
-	emu_wrptr(sc, 0, PTB, 0);
+	emu_wrptr(sc, 0, EMU_PTB, 0);
 	/* reset recording buffers */
-	emu_wrptr(sc, 0, MICBS, ADCBS_BUFSIZE_NONE);
-	emu_wrptr(sc, 0, MICBA, 0);
-	emu_wrptr(sc, 0, FXBS, ADCBS_BUFSIZE_NONE);
-	emu_wrptr(sc, 0, FXBA, 0);
-	emu_wrptr(sc, 0, FXWC, 0);
-	emu_wrptr(sc, 0, ADCBS, ADCBS_BUFSIZE_NONE);
-	emu_wrptr(sc, 0, ADCBA, 0);
-	emu_wrptr(sc, 0, TCB, 0);
-	emu_wrptr(sc, 0, TCBS, 0);
+	emu_wrptr(sc, 0, EMU_MICBS, EMU_RECBS_BUFSIZE_NONE);
+	emu_wrptr(sc, 0, EMU_MICBA, 0);
+	emu_wrptr(sc, 0, EMU_FXBS, EMU_RECBS_BUFSIZE_NONE);
+	emu_wrptr(sc, 0, EMU_FXBA, 0);
+	emu_wrptr(sc, 0, EMU_FXWC, 0);
+	emu_wrptr(sc, 0, EMU_ADCBS, EMU_RECBS_BUFSIZE_NONE);
+	emu_wrptr(sc, 0, EMU_ADCBA, 0);
+	emu_wrptr(sc, 0, EMU_TCB, 0);
+	emu_wrptr(sc, 0, EMU_TCBS, 0);
 
 	/* disable channel interrupt */
-	emu_wrptr(sc, 0, CLIEL, 0);
-	emu_wrptr(sc, 0, CLIEH, 0);
-	emu_wrptr(sc, 0, SOLEL, 0);
-	emu_wrptr(sc, 0, SOLEH, 0);
+	emu_wrptr(sc, 0, EMU_CLIEL, 0);
+	emu_wrptr(sc, 0, EMU_CLIEH, 0);
+	emu_wrptr(sc, 0, EMU_SOLEL, 0);
+	emu_wrptr(sc, 0, EMU_SOLEH, 0);
 
 	/* init envelope engine */
 	if (!SLIST_EMPTY(&sc->mem.blocks))
 		device_printf(sc->dev, "warning: memblock list not empty\n");
-	emu_free(sc, sc->mem.ptb_pages);
-	emu_free(sc, sc->mem.silent_page);
+	emu_free(sc, sc->mem.ptb_pages, sc->mem.ptb_map);
+	emu_free(sc, sc->mem.silent_page, sc->mem.silent_map);
 
+	if(sc->mpu)
+	    mpu401_uninit(sc->mpu);
 	return 0;
 }
 
@@ -1894,7 +2065,7 @@ emu_pci_probe(device_t dev)
 	}
 
 	device_set_desc(dev, s);
-	return BUS_PROBE_DEFAULT;
+	return BUS_PROBE_LOW_PRIORITY;
 }
 
 static int
@@ -1902,25 +2073,20 @@ emu_pci_attach(device_t dev)
 {
 	struct ac97_info *codec = NULL;
 	struct sc_info *sc;
-	u_int32_t data;
 	int i, gotmic;
 	char status[SND_STATUSLEN];
 
-	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
-
-	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "sound softc");
+	sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "snd_emu10k1 softc");
 	sc->dev = dev;
 	sc->type = pci_get_devid(dev);
 	sc->rev = pci_get_revid(dev);
 	sc->audigy = sc->type == EMU10K2_PCI_ID || sc->type == EMU10K3_PCI_ID;
 	sc->audigy2 = (sc->audigy && sc->rev == 0x04);
 	sc->nchans = sc->audigy ? 8 : 4;
-	sc->addrmask = sc->audigy ? A_PTR_ADDRESS_MASK : PTR_ADDRESS_MASK;
+	sc->addrmask = sc->audigy ? EMU_A_PTR_ADDR_MASK : EMU_PTR_ADDR_MASK;
 
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
-	data |= (PCIM_CMD_PORTEN | PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, data, 2);
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
+	pci_enable_busmaster(dev);
 
 	i = PCIR_BAR(0);
 	sc->reg = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &i, RF_ACTIVE);
@@ -1933,13 +2099,14 @@ emu_pci_attach(device_t dev)
 
 	sc->bufsz = pcm_getbuffersize(dev, 4096, EMU_DEFAULT_BUFSZ, 65536);
 
-	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
-		/*lowaddr*/1 << 31, /* can only access 0-2gb */
+	if (bus_dma_tag_create(/*parent*/bus_get_dma_tag(dev), /*alignment*/2,
+		/*boundary*/0,
+		/*lowaddr*/(1U << 31) - 1, /* can only access 0-2gb */
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,
 		/*maxsize*/sc->bufsz, /*nsegments*/1, /*maxsegz*/0x3ffff,
-		/*flags*/0,
-		&sc->parent_dmat) != 0) {
+		/*flags*/0, /*lockfunc*/busdma_lock_mutex,
+		/*lockarg*/&Giant, &sc->parent_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		goto bad;
 	}
@@ -1954,6 +2121,8 @@ emu_pci_attach(device_t dev)
 	gotmic = (ac97_getcaps(codec) & AC97_CAP_MICCHANNEL) ? 1 : 0;
 	if (mixer_init(dev, ac97_getmixerclass(), codec) == -1) goto bad;
 
+	emu_midiattach(sc);
+
 	i = 0;
 	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &i,
 	    RF_ACTIVE | RF_SHAREABLE);
@@ -1963,7 +2132,7 @@ emu_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
+	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
 	    rman_get_start(sc->reg), rman_get_start(sc->irq),
 	    PCM_KLDSTRING(snd_emu10k1));
 
@@ -1984,7 +2153,7 @@ bad:
 	if (sc->irq) bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
 	if (sc->parent_dmat) bus_dma_tag_destroy(sc->parent_dmat);
 	if (sc->lock) snd_mtxfree(sc->lock);
-	kfree(sc, M_DEVBUF);
+	free(sc, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -2007,7 +2176,7 @@ emu_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
 	bus_dma_tag_destroy(sc->parent_dmat);
 	snd_mtxfree(sc->lock);
-	kfree(sc, M_DEVBUF);
+	free(sc, M_DEVBUF);
 
 	return 0;
 }
@@ -2029,9 +2198,9 @@ static driver_t emu_driver = {
 };
 
 DRIVER_MODULE(snd_emu10k1, pci, emu_driver, pcm_devclass, NULL, NULL);
-DRIVER_MODULE(snd_emu10k1, cardbus, emu_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_emu10k1, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_emu10k1, 1);
+MODULE_DEPEND(snd_emu10k1, midi, 1, 1, 1);
 
 /* dummy driver to silence the joystick device */
 static int
@@ -2057,12 +2226,14 @@ emujoy_pci_probe(device_t dev)
 static int
 emujoy_pci_attach(device_t dev)
 {
+
 	return 0;
 }
 
 static int
 emujoy_pci_detach(device_t dev)
 {
+
 	return 0;
 }
 
@@ -2077,10 +2248,9 @@ static device_method_t emujoy_methods[] = {
 static driver_t emujoy_driver = {
 	"emujoy",
 	emujoy_methods,
-	8,
+	1	/* no softc */
 };
 
 static devclass_t emujoy_devclass;
 
 DRIVER_MODULE(emujoy, pci, emujoy_driver, emujoy_devclass, NULL, NULL);
-

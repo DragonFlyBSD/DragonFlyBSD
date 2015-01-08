@@ -18,13 +18,17 @@
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHERIN CONTRACT, STRICT
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/driver.c,v 1.13.2.3 2007/05/13 21:11:40 ariff Exp $
+ * $FreeBSD: head/sys/dev/sound/driver.c 193640 2009-06-07 19:12:08Z ariff $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 
@@ -38,7 +42,7 @@ snd_modevent(module_t mod, int type, void *data)
 	case MOD_UNLOAD:
 		break;
 	default:
-		return (EOPNOTSUPP);
+		return (ENOTSUP);
 		break;
 	}
 	return 0;
@@ -57,10 +61,7 @@ MODULE_DEPEND(snd_driver, snd_atiixp, 1, 1, 1);
 /* MODULE_DEPEND(snd_driver, snd_aureal, 1, 1, 1); */
 MODULE_DEPEND(snd_driver, snd_cmi, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_cs4281, 1, 1, 1);
-MODULE_DEPEND(snd_driver, snd_csa, 1, 1, 1);
-/* MODULE_DEPEND(snd_driver, snd_csapcm, 1, 1, 1); in csa */
-MODULE_DEPEND(snd_driver, snd_ds1, 1, 1, 1);
-MODULE_DEPEND(snd_driver, snd_emu10k1, 1, 1, 1);
+MODULE_DEPEND(snd_driver, snd_emu10kx, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_envy24, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_envy24ht, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_es137x, 1, 1, 1);
@@ -68,7 +69,6 @@ MODULE_DEPEND(snd_driver, snd_fm801, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_hda, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_ich, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_maestro, 1, 1, 1);
-MODULE_DEPEND(snd_driver, snd_maestro3, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_neomagic, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_solo, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_spicds, 1, 1, 1);

@@ -696,6 +696,15 @@ TDMA_TXRATE_QUARTER_DEFAULT	opt_tdma.h
 TDMA_TXRATE_11NA_DEFAULT	opt_tdma.h
 TDMA_TXRATE_11NG_DEFAULT	opt_tdma.h
 
+# Sound options
+SND_DEBUG		opt_snd.h
+SND_DIAGNOSTIC		opt_snd.h
+SND_FEEDER_MULTIFORMAT	opt_snd.h
+SND_FEEDER_FULL_MULTIFORMAT	opt_snd.h
+SND_FEEDER_RATE_HP	opt_snd.h
+SND_PCM_64		opt_snd.h
+SND_OLDSTEREO		opt_snd.h
+
 PANIC_REBOOT_WAIT_TIME	opt_panic.h
 
 # Obsolete options (will be removed in the future)

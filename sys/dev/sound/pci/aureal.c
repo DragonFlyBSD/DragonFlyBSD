@@ -22,37 +22,39 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/sound/pci/aureal.c,v 1.32 2005/03/01 08:58:05 imp Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pci/aureal.h>
 
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/aureal.c,v 1.11 2007/06/16 20:07:19 dillon Exp $");
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/aureal.c 254263 2013-08-12 23:30:01Z scottl $");
 
 /* PCI IDs of supported chips */
 #define AU8820_PCI_ID 0x000112eb
 
 /* channel interface */
 static u_int32_t au_playfmt[] = {
-	AFMT_U8,
-	AFMT_STEREO | AFMT_U8,
-	AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S16_LE,
+	SND_FORMAT(AFMT_U8, 1, 0),
+	SND_FORMAT(AFMT_U8, 2, 0),
+	SND_FORMAT(AFMT_S16_LE, 1, 0),
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
 	0
 };
 static struct pcmchan_caps au_playcaps = {4000, 48000, au_playfmt, 0};
 
 static u_int32_t au_recfmt[] = {
-	AFMT_U8,
-	AFMT_STEREO | AFMT_U8,
-	AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S16_LE,
+	SND_FORMAT(AFMT_U8, 1, 0),
+	SND_FORMAT(AFMT_U8, 2, 0),
+	SND_FORMAT(AFMT_S16_LE, 1, 0),
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
 	0
 };
 static struct pcmchan_caps au_reccaps = {4000, 48000, au_recfmt, 0};
@@ -75,7 +77,7 @@ struct au_info {
 	bus_space_handle_t sh[3];
 
 	bus_dma_tag_t	parent_dmat;
-	sndlock_t	lock;
+	struct mtx *lock;
 
 	u_int32_t	x[32], y[128];
 	char		z[128];
@@ -135,7 +137,7 @@ au_rdcd(kobj_t obj, void *arg, int regno)
 		DELAY(j * 200 + 2000);
 		j++;
 	}
-	if (j==50) kprintf("pcm%d: codec timeout reading register %x (%x)\n",
+	if (j==50) printf("pcm%d: codec timeout reading register %x (%x)\n",
 		au->unit, (regno & AU_CDC_REGMASK)>>16, i);
 	return i & AU_CDC_DATAMASK;
 }
@@ -152,7 +154,7 @@ au_wrcd(kobj_t obj, void *arg, int regno, u_int32_t data)
 			DELAY(2000);
 			j++;
 		}
-		if (j==50) kprintf("codec timeout during write of register %x, data %x\n",
+		if (j==50) printf("codec timeout during write of register %x, data %x\n",
 				  regno, data);
 		au_wr(au, 0, AU_REG_CODECIO, (regno<<16) | AU_CDC_REGSET | data, 4);
 /*		DELAY(20000);
@@ -160,7 +162,7 @@ au_wrcd(kobj_t obj, void *arg, int regno, u_int32_t data)
 */		tries++;
 	} while (0); /* (i != data && tries < 3); */
 	/*
-	if (tries == 3) kprintf("giving up writing 0x%4x to codec reg %2x\n", data, regno);
+	if (tries == 3) printf("giving up writing 0x%4x to codec reg %2x\n", data, regno);
 	*/
 
 	return 0;
@@ -244,13 +246,13 @@ static void
 au_prepareoutput(struct au_chinfo *ch, u_int32_t format)
 {
 	struct au_info *au = ch->parent;
-	int i, stereo = (format & AFMT_STEREO)? 1 : 0;
+	int i, stereo = (AFMT_CHANNEL(format) > 1)? 1 : 0;
 	u_int32_t baseaddr = sndbuf_getbufaddr(ch->buffer);
 
 	au_wr(au, 0, 0x1061c, 0, 4);
 	au_wr(au, 0, 0x10620, 0, 4);
 	au_wr(au, 0, 0x10624, 0, 4);
-	switch(format & ~AFMT_STEREO) {
+	switch(AFMT_ENCODING(format)) {
 		case 1:
 			i=0xb000;
 			break;
@@ -305,7 +307,7 @@ auchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel *c
 	ch->channel = c;
 	ch->buffer = b;
 	ch->dir = dir;
-	if (sndbuf_alloc(ch->buffer, au->parent_dmat, AU_BUFFSIZE) != 0)
+	if (sndbuf_alloc(ch->buffer, au->parent_dmat, 0, AU_BUFFSIZE) != 0)
 		return NULL;
 	return ch;
 }
@@ -341,12 +343,12 @@ auchan_trigger(kobj_t obj, void *data, int go)
 	struct au_chinfo *ch = data;
 	struct au_info *au = ch->parent;
 
-	if (go == PCMTRIG_EMLDMAWR || go == PCMTRIG_EMLDMARD)
+	if (!PCMTRIG_COMMON(go))
 		return 0;
 
 	if (ch->dir == PCMDIR_PLAY) {
 		au_setadb(au, 0x11, (go)? 1 : 0);
-		if (!go) {
+		if (go != PCMTRIG_START) {
 			au_wr(au, 0, 0xf800, 0, 4);
 			au_wr(au, 0, 0xf804, 0, 4);
 			au_delroute(au, 0x58);
@@ -398,9 +400,9 @@ au_intr (void *p)
 
 	au->interrupts++;
 	intsrc=au_rd(au, 0, AU_REG_IRQSRC, 4);
-	kprintf("pcm%d: interrupt with src %x\n", au->unit, intsrc);
-	if (intsrc & AU_IRQ_FATAL) kprintf("pcm%d: fatal error irq\n", au->unit);
-	if (intsrc & AU_IRQ_PARITY) kprintf("pcm%d: parity error irq\n", au->unit);
+	printf("pcm%d: interrupt with src %x\n", au->unit, intsrc);
+	if (intsrc & AU_IRQ_FATAL) printf("pcm%d: fatal error irq\n", au->unit);
+	if (intsrc & AU_IRQ_PARITY) printf("pcm%d: parity error irq\n", au->unit);
 	if (intsrc & AU_IRQ_UNKNOWN) {
 		(void)au_rd(au, 0, AU_REG_UNK1, 4);
 		au_wr(au, 0, AU_REG_UNK1, 0, 4);
@@ -529,7 +531,7 @@ au_testirq(struct au_info *au)
 	au_wr(au, 0, AU_REG_IRQEN, 0x00001030, 4);
 	au_wr(au, 0, AU_REG_IRQSRC, 0x000007ff, 4);
 	DELAY(1000000);
-	if (au->interrupts==0) kprintf("pcm%d: irq test failed\n", au->unit);
+	if (au->interrupts==0) printf("pcm%d: irq test failed\n", au->unit);
 	/* this apparently generates an irq */
 	return 0;
 }
@@ -548,25 +550,21 @@ au_pci_probe(device_t dev)
 static int
 au_pci_attach(device_t dev)
 {
-	u_int32_t	data;
 	struct au_info *au;
 	int		type[10];
 	int		regid[10];
 	struct resource *reg[10];
 	int		i, j, mapped = 0;
 	int		irqid;
-	struct resource *irq = NULL;
-	void		*ih = NULL;
+	struct resource *irq = 0;
+	void		*ih = 0;
 	struct ac97_info *codec;
 	char 		status[SND_STATUSLEN];
 
-	au = kmalloc(sizeof(*au), M_DEVBUF, M_WAITOK | M_ZERO);
+	au = malloc(sizeof(*au), M_DEVBUF, M_WAITOK | M_ZERO);
 	au->unit = device_get_unit(dev);
 
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
-	data |= (PCIM_CMD_PORTEN|PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, data, 2);
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
+	pci_enable_busmaster(dev);
 
 	j=0;
 	/* XXX dfr: is this strictly necessary? */
@@ -574,11 +572,11 @@ au_pci_attach(device_t dev)
 #if 0
 		/* Slapped wrist: config_id and map are private structures */
 		if (bootverbose) {
-			kprintf("pcm%d: map %d - allocating ", unit, i+1);
-			kprintf("0x%x bytes of ", 1<<config_id->map[i].ln2size);
-			kprintf("%s space ", (config_id->map[i].type & PCI_MAPPORT)?
+			printf("pcm%d: map %d - allocating ", unit, i+1);
+			printf("0x%x bytes of ", 1<<config_id->map[i].ln2size);
+			printf("%s space ", (config_id->map[i].type & PCI_MAPPORT)?
 					    "io" : "memory");
-			kprintf("at 0x%x...", config_id->map[i].base);
+			printf("at 0x%x...", config_id->map[i].base);
 		}
 #endif
 		regid[j] = PCIR_BAR(i);
@@ -596,7 +594,7 @@ au_pci_attach(device_t dev)
 			mapped++;
 		}
 #if 0
-		if (bootverbose) kprintf("%s\n", mapped? "ok" : "failed");
+		if (bootverbose) printf("%s\n", mapped? "ok" : "failed");
 #endif
 		if (mapped) j++;
 		if (j == 10) {
@@ -608,8 +606,8 @@ au_pci_attach(device_t dev)
 
 #if 0
 	if (j < config_id->nummaps) {
-		kprintf("pcm%d: unable to map a required resource\n", unit);
-		kfree(au, M_DEVBUF);
+		printf("pcm%d: unable to map a required resource\n", unit);
+		free(au, M_DEVBUF);
 		return;
 	}
 #endif
@@ -635,7 +633,8 @@ au_pci_attach(device_t dev)
 	if (codec == NULL) goto bad;
 	if (mixer_init(dev, ac97_getmixerclass(), codec) == -1) goto bad;
 
-	if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
+	if (bus_dma_tag_create(/*parent*/bus_get_dma_tag(dev), /*alignment*/2,
+		/*boundary*/0,
 		/*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 		/*highaddr*/BUS_SPACE_MAXADDR,
 		/*filter*/NULL, /*filterarg*/NULL,
@@ -646,7 +645,7 @@ au_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld %s",
+	snprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld %s",
 		 (type[0] == SYS_RES_IOPORT)? "io" : "memory",
 		 rman_get_start(reg[0]), rman_get_start(irq),PCM_KLDSTRING(snd_aureal));
 
@@ -658,7 +657,7 @@ au_pci_attach(device_t dev)
 	return 0;
 
  bad:
-	if (au) kfree(au, M_DEVBUF);
+	if (au) free(au, M_DEVBUF);
 	for (i = 0; i < j; i++)
 		bus_release_resource(dev, type[i], regid[i], reg[i]);
 	if (ih) bus_teardown_intr(dev, irq, ih);
@@ -671,7 +670,7 @@ static device_method_t au_methods[] = {
 	DEVMETHOD(device_probe,		au_pci_probe),
 	DEVMETHOD(device_attach,	au_pci_attach),
 
-	DEVMETHOD_END
+	{ 0, 0 }
 };
 
 static driver_t au_driver = {
@@ -680,6 +679,6 @@ static driver_t au_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_aureal, pci, au_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_aureal, pci, au_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_aureal, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_aureal, 1);

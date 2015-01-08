@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2001 Katsurajima Naoto <raven@katsurajima.seya.yokohama.jp>
  * All rights reserved.
  *
@@ -20,25 +20,28 @@
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHERIN CONTRACT, STRICT
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/envy24.c,v 1.11.2.2 2007/06/11 19:33:27 ariff Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pci/spicds.h>
 #include <dev/sound/pci/envy24.h>
 
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/envy24.c,v 1.3 2008/01/05 14:02:38 swildner Exp $");
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/envy24.c 274035 2014-11-03 11:11:45Z bapt $");
 
-MALLOC_DEFINE(M_ENVY24, "envy24", "envy24 audio");
+static MALLOC_DEFINE(M_ENVY24, "envy24", "envy24 audio");
 
 /* -------------------------------------------------------------------- */
 
@@ -52,14 +55,12 @@ struct sc_info;
 
 #define ENVY24_TIMEOUT 1000
 
-#define ENVY24_DEFAULT_FORMAT (AFMT_STEREO | AFMT_S16_LE)
+#define ENVY24_DEFAULT_FORMAT	SND_FORMAT(AFMT_S16_LE, 2, 0)
 
 #define ENVY24_NAMELEN 32
 
 #define SDA_GPIO 0x10
 #define SCL_GPIO 0x20
-
-#define abs(i) (i < 0 ? -i : i)
 
 struct envy24_sample {
         volatile u_int32_t buffer;
@@ -115,7 +116,7 @@ struct cfg_info {
 /* device private data */
 struct sc_info {
 	device_t	dev;
-	sndlock_t	lock;
+	struct mtx	*lock;
 
 	/* Control/Status registor */
 	struct resource *cs;
@@ -162,6 +163,7 @@ struct sc_info {
 	u_int32_t	psize, rsize; /* DMA buffer size(byte) */
 	u_int16_t	blk[2]; /* transfer check blocksize(dword) */
 	bus_dmamap_t	pmap, rmap;
+	bus_addr_t	paddr, raddr;
 
 	/* current status */
 	u_int32_t	speed;
@@ -190,10 +192,10 @@ static void envy24_r32sl(struct sc_chinfo *);
 /* channel interface */
 static void *envy24chan_init(kobj_t, void *, struct snd_dbuf *, struct pcm_channel *, int);
 static int envy24chan_setformat(kobj_t, void *, u_int32_t);
-static int envy24chan_setspeed(kobj_t, void *, u_int32_t);
-static int envy24chan_setblocksize(kobj_t, void *, u_int32_t);
+static u_int32_t envy24chan_setspeed(kobj_t, void *, u_int32_t);
+static u_int32_t envy24chan_setblocksize(kobj_t, void *, u_int32_t);
 static int envy24chan_trigger(kobj_t, void *, int);
-static int envy24chan_getptr(kobj_t, void *);
+static u_int32_t envy24chan_getptr(kobj_t, void *);
 static struct pcmchan_caps *envy24chan_getcaps(kobj_t, void *);
 
 /* mixer interface */
@@ -281,7 +283,7 @@ static struct cfg_info cfg_table[] = {
 		"Envy24 audio (M Audio Delta Dio 2496)",
 		0x1412, 0xd631,
 		0x10, 0x80, 0xf0, 0x03,
-		0xff, 0x00, 0x00,
+		0x02, 0xc0, 0xfd,
 		0x10, 0x20, 0x40, 0x00, 0x00,
 		0x00,
 		&delta_codec,
@@ -304,6 +306,51 @@ static struct cfg_info cfg_table[] = {
 		0x00,
  		&delta_codec,
  	},
+        {
+                "Envy24 audio (M Audio Delta 66)",
+                0x1412, 0xd632,
+                0x15, 0x80, 0xf0, 0x03,
+                0x02, 0xc0, 0xfd,
+                0x10, 0x20, 0x40, 0x00, 0x00,
+                0x00,
+                &delta_codec,
+        },
+        {
+                "Envy24 audio (M Audio Delta 44)",
+                0x1412, 0xd633,
+                0x15, 0x80, 0xf0, 0x00,
+                0x02, 0xc0, 0xfd,
+                0x10, 0x20, 0x40, 0x00, 0x00,
+                0x00,
+                &delta_codec,
+        },
+        {
+                "Envy24 audio (M Audio Delta 1010)",
+                0x1412, 0xd630,
+                0x1f, 0x80, 0xf0, 0x03,
+                0x22, 0xd0, 0xdd,
+                0x10, 0x20, 0x40, 0x00, 0x00,
+                0x00,
+                &delta_codec,
+        },
+        {
+                "Envy24 audio (M Audio Delta 1010LT)",
+                0x1412, 0xd63b,
+                0x1f, 0x80, 0x72, 0x03,
+                0x04, 0x7e, 0xfb,
+                0x08, 0x02, 0x70, 0x00, 0x00,
+                0x00,
+                &delta_codec,
+        },
+        {
+                "Envy24 audio (Terratec EWX 2496)",
+                0x153b, 0x1130,
+                0x10, 0x80, 0xf0, 0x03,
+                0xc0, 0x3f, 0x3f,
+                0x10, 0x20, 0x01, 0x01, 0x00,
+                0x00,
+                &delta_codec,
+        },
 	{
 		"Envy24 audio (Generic)",
 		0, 0,
@@ -316,16 +363,16 @@ static struct cfg_info cfg_table[] = {
 };
 
 static u_int32_t envy24_recfmt[] = {
-	AFMT_STEREO | AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S32_LE,
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
+	SND_FORMAT(AFMT_S32_LE, 2, 0),
 	0
 };
 static struct pcmchan_caps envy24_reccaps = {8000, 96000, envy24_recfmt, 0};
 
 static u_int32_t envy24_playfmt[] = {
-	AFMT_STEREO | AFMT_U8,
-	AFMT_STEREO | AFMT_S16_LE,
-	AFMT_STEREO | AFMT_S32_LE,
+	SND_FORMAT(AFMT_U8, 2, 0),
+	SND_FORMAT(AFMT_S16_LE, 2, 0),
+	SND_FORMAT(AFMT_S32_LE, 2, 0),
 	0
 };
 
@@ -338,15 +385,15 @@ struct envy24_emldma {
 };
 
 static struct envy24_emldma envy24_pemltab[] = {
-	{AFMT_STEREO | AFMT_U8, envy24_p8u, 2},
-	{AFMT_STEREO | AFMT_S16_LE, envy24_p16sl, 4},
-	{AFMT_STEREO | AFMT_S32_LE, envy24_p32sl, 8},
+	{SND_FORMAT(AFMT_U8, 2, 0), envy24_p8u, 2},
+	{SND_FORMAT(AFMT_S16_LE, 2, 0), envy24_p16sl, 4},
+	{SND_FORMAT(AFMT_S32_LE, 2, 0), envy24_p32sl, 8},
 	{0, NULL, 0}
 };
 
 static struct envy24_emldma envy24_remltab[] = {
-	{AFMT_STEREO | AFMT_S16_LE, envy24_r16sl, 4},
-	{AFMT_STEREO | AFMT_S32_LE, envy24_r32sl, 8},
+	{SND_FORMAT(AFMT_S16_LE, 2, 0), envy24_r16sl, 4},
+	{SND_FORMAT(AFMT_S32_LE, 2, 0), envy24_r32sl, 8},
 	{0, NULL, 0}
 };
 
@@ -439,7 +486,7 @@ envy24_rdi2c(struct sc_info *sc, u_int32_t dev, u_int32_t addr)
 	u_int32_t data;
 	int i;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_rdi2c(sc, 0x%02x, 0x%02x)\n", dev, addr);
 #endif
 	for (i = 0; i < ENVY24_TIMEOUT; i++) {
@@ -465,7 +512,7 @@ envy24_rdi2c(struct sc_info *sc, u_int32_t dev, u_int32_t addr)
 	}
 	data = envy24_rdcs(sc, ENVY24_CCS_I2CDATA, 1);
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_rdi2c(): return 0x%x\n", data);
 #endif
 	return (int)data;
@@ -478,7 +525,7 @@ envy24_wri2c(struct sc_info *sc, u_int32_t dev, u_int32_t addr, u_int32_t data)
 	u_int32_t tmp;
 	int i;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_rdi2c(sc, 0x%02x, 0x%02x)\n", dev, addr);
 #endif
 	for (i = 0; i < ENVY24_TIMEOUT; i++) {
@@ -513,12 +560,12 @@ envy24_rdrom(struct sc_info *sc, u_int32_t addr)
 {
 	u_int32_t data;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_rdrom(sc, 0x%02x)\n", addr);
 #endif
 	data = envy24_rdcs(sc, ENVY24_CCS_I2CSTAT, 1);
 	if ((data & ENVY24_CCS_I2CSTAT_ROM) == 0) {
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24_rdrom(): E2PROM not presented\n");
 #endif
 		return -1;
@@ -534,17 +581,23 @@ envy24_rom2cfg(struct sc_info *sc)
 	int size;
 	int i;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_rom2cfg(sc)\n");
 #endif
 	size = envy24_rdrom(sc, ENVY24_E2PROM_SIZE);
 	if (size < ENVY24_E2PROM_GPIODIR + 1) {
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24_rom2cfg(): ENVY24_E2PROM_SIZE-->%d\n", size);
 #endif
 		return NULL;
 	}
-	buff = kmalloc(sizeof(*buff), M_ENVY24, M_WAITOK);
+	buff = malloc(sizeof(*buff), M_ENVY24, M_NOWAIT);
+	if (buff == NULL) {
+#if(0)
+		device_printf(sc->dev, "envy24_rom2cfg(): malloc()\n");
+#endif
+		return NULL;
+	}
 	buff->free = 1;
 
 	buff->subvendor = envy24_rdrom(sc, ENVY24_E2PROM_SUBVENDOR) << 8;
@@ -574,7 +627,7 @@ envy24_cfgfree(struct cfg_info *cfg) {
 	if (cfg == NULL)
 		return;
 	if (cfg->free)
-		kfree(cfg, M_ENVY24);
+		free(cfg, M_ENVY24);
 	return;
 }
 
@@ -589,7 +642,7 @@ envy24_coldcd(struct sc_info *sc)
 	u_int32_t data;
 	int i;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_coldcd()\n");
 #endif
 	envy24_wrmt(sc, ENVY24_MT_AC97CMD, ENVY24_MT_AC97CMD_CLD, 1);
@@ -613,7 +666,7 @@ envy24_slavecd(struct sc_info *sc)
 	u_int32_t data;
 	int i;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_slavecd()\n");
 #endif
 	envy24_wrmt(sc, ENVY24_MT_AC97CMD,
@@ -639,7 +692,7 @@ envy24_rdcd(kobj_t obj, void *devinfo, int regno)
 	u_int32_t data;
 	int i;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_rdcd(obj, sc, 0x%02x)\n", regno);
 #endif
 	envy24_wrmt(sc, ENVY24_MT_AC97IDX, (u_int32_t)regno, 1);
@@ -651,7 +704,7 @@ envy24_rdcd(kobj_t obj, void *devinfo, int regno)
 	}
 	data = envy24_rdmt(sc, ENVY24_MT_AC97DLO, 2);
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_rdcd(): return 0x%x\n", data);
 #endif
 	return (int)data;
@@ -664,7 +717,7 @@ envy24_wrcd(kobj_t obj, void *devinfo, int regno, u_int16_t data)
 	u_int32_t cmd;
 	int i;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_wrcd(obj, sc, 0x%02x, 0x%04x)\n", regno, data);
 #endif
 	envy24_wrmt(sc, ENVY24_MT_AC97IDX, (u_int32_t)regno, 1);
@@ -700,7 +753,7 @@ envy24_gpiord(struct sc_info *sc)
 static void
 envy24_gpiowr(struct sc_info *sc, u_int32_t data)
 {
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_gpiowr(sc, 0x%02x)\n", data & 0xff);
 	return;
 #endif
@@ -755,7 +808,7 @@ envy24_gpio_i2c_ctl(void *codec, unsigned int scl, unsigned int sda)
 {
         u_int32_t data = 0;
         struct envy24_delta_ak4524_codec *ptr = codec;
-#if 0
+#if(0)
         device_printf(ptr->parent->dev, "--> %d, %d\n", scl, sda);
 #endif
         data = envy24_gpiord(ptr->parent);
@@ -860,7 +913,7 @@ envy24_delta_ak4524_ctl(void *codec, unsigned int cs, unsigned int cclk, unsigne
 	u_int32_t data = 0;
 	struct envy24_delta_ak4524_codec *ptr = codec;
 
-#if 0
+#if(0)
 	device_printf(ptr->parent->dev, "--> %d, %d, %d\n", cs, cclk, cdti);
 #endif
 	data = envy24_gpiord(ptr->parent);
@@ -878,11 +931,13 @@ envy24_delta_ak4524_create(device_t dev, void *info, int dir, int num)
 	struct sc_info *sc = info;
 	struct envy24_delta_ak4524_codec *buff = NULL;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_delta_ak4524_create(dev, sc, %d, %d)\n", dir, num);
 #endif
 	
-	buff = kmalloc(sizeof(*buff), M_ENVY24, M_WAITOK);
+	buff = malloc(sizeof(*buff), M_ENVY24, M_NOWAIT);
+	if (buff == NULL)
+		return NULL;
 
 	if (dir == PCMDIR_REC && sc->adc[num] != NULL)
 		buff->info = ((struct envy24_delta_ak4524_codec *)sc->adc[num])->info;
@@ -891,7 +946,7 @@ envy24_delta_ak4524_create(device_t dev, void *info, int dir, int num)
 	else
 		buff->info = spicds_create(dev, buff, num, envy24_delta_ak4524_ctl);
 	if (buff->info == NULL) {
-		kfree(buff, M_ENVY24);
+		free(buff, M_ENVY24);
 		return NULL;
 	}
 
@@ -908,7 +963,7 @@ envy24_delta_ak4524_destroy(void *codec)
 	struct envy24_delta_ak4524_codec *ptr = codec;
 	if (ptr == NULL)
 		return;
-#if 0
+#if(0)
 	device_printf(ptr->parent->dev, "envy24_delta_ak4524_destroy()\n");
 #endif
 
@@ -921,7 +976,7 @@ envy24_delta_ak4524_destroy(void *codec)
 			spicds_destroy(ptr->info);
 	}
 
-	kfree(codec, M_ENVY24);
+	free(codec, M_ENVY24);
 }
 
 static void
@@ -933,7 +988,7 @@ envy24_delta_ak4524_init(void *codec)
 	struct envy24_delta_ak4524_codec *ptr = codec;
 	if (ptr == NULL)
 		return;
-#if 0
+#if(0)
 	device_printf(ptr->parent->dev, "envy24_delta_ak4524_init()\n");
 #endif
 
@@ -985,7 +1040,7 @@ envy24_delta_ak4524_reinit(void *codec)
 	struct envy24_delta_ak4524_codec *ptr = codec;
 	if (ptr == NULL)
 		return;
-#if 0
+#if(0)
 	device_printf(ptr->parent->dev, "envy24_delta_ak4524_reinit()\n");
 #endif
 
@@ -998,7 +1053,7 @@ envy24_delta_ak4524_setvolume(void *codec, int dir, unsigned int left, unsigned 
 	struct envy24_delta_ak4524_codec *ptr = codec;
 	if (ptr == NULL)
 		return;
-#if 0
+#if(0)
 	device_printf(ptr->parent->dev, "envy24_delta_ak4524_set()\n");
 #endif
 
@@ -1037,12 +1092,12 @@ static struct {
 	{0, 0x10}
 };
 
-static int
+static u_int32_t
 envy24_setspeed(struct sc_info *sc, u_int32_t speed) {
 	u_int32_t code;
 	int i = 0;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_setspeed(sc, %d)\n", speed);
 #endif
 	if (speed == 0) {
@@ -1056,7 +1111,7 @@ envy24_setspeed(struct sc_info *sc, u_int32_t speed) {
 		}
 		code = envy24_speedtab[i].code;
 	}
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_setspeed(): speed %d/code 0x%04x\n", envy24_speedtab[i].speed, code);
 #endif
 	if (code < 0x10) {
@@ -1072,7 +1127,7 @@ envy24_setspeed(struct sc_info *sc, u_int32_t speed) {
 	else
 		speed = 0;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_setspeed(): return %d\n", speed);
 #endif
 	return speed;
@@ -1081,7 +1136,7 @@ envy24_setspeed(struct sc_info *sc, u_int32_t speed) {
 static void
 envy24_setvolume(struct sc_info *sc, unsigned ch)
 {
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_setvolume(sc, %d)\n", ch);
 #endif
 if (sc->cfg->subvendor==0x153b  && sc->cfg->subdevice==0x1138 ) {
@@ -1102,7 +1157,7 @@ envy24_mutevolume(struct sc_info *sc, unsigned ch)
 {
 	u_int32_t vol;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_mutevolume(sc, %d)\n", ch);
 #endif
 	vol = ENVY24_VOL_MUTE << 8 | ENVY24_VOL_MUTE;
@@ -1118,7 +1173,7 @@ envy24_gethwptr(struct sc_info *sc, int dir)
 	int unit, regno;
 	u_int32_t ptr, rtn;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_gethwptr(sc, %d)\n", dir);
 #endif
 	if (dir == PCMDIR_PLAY) {
@@ -1136,7 +1191,7 @@ envy24_gethwptr(struct sc_info *sc, int dir)
 	rtn -= (ptr + 1);
 	rtn /= unit;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_gethwptr(): return %d\n", rtn);
 #endif
 	return rtn;
@@ -1150,7 +1205,7 @@ envy24_updintr(struct sc_info *sc, int dir)
 	u_int32_t ptr, size, cnt;
 	u_int16_t blk;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_updintr(sc, %d)\n", dir);
 #endif
 	if (dir == PCMDIR_PLAY) {
@@ -1175,16 +1230,16 @@ envy24_updintr(struct sc_info *sc, int dir)
 		cnt = blk - 1;
 	*/
 	cnt = blk - 1;
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_updintr():ptr = %d, blk = %d, cnt = %d\n", ptr, blk, cnt);
 #endif
 	envy24_wrmt(sc, regintr, cnt, 2);
 	intr = envy24_rdmt(sc, ENVY24_MT_INT, 1);
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_updintr():intr = 0x%02x, mask = 0x%02x\n", intr, mask);
 #endif
 	envy24_wrmt(sc, ENVY24_MT_INT, intr & mask, 1);
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_updintr():INT-->0x%02x\n",
 		      envy24_rdmt(sc, ENVY24_MT_INT, 1));
 #endif
@@ -1198,7 +1253,7 @@ envy24_maskintr(struct sc_info *sc, int dir)
 {
 	u_int32_t mask, intr;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_maskintr(sc, %d)\n", dir);
 #endif
 	if (dir == PCMDIR_PLAY)
@@ -1217,7 +1272,7 @@ envy24_checkintr(struct sc_info *sc, int dir)
 {
 	u_int32_t mask, stat, intr, rtn;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_checkintr(sc, %d)\n", dir);
 #endif
 	intr = envy24_rdmt(sc, ENVY24_MT_INT, 1);
@@ -1244,7 +1299,7 @@ envy24_start(struct sc_info *sc, int dir)
 {
 	u_int32_t stat, sw;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_start(sc, %d)\n", dir);
 #endif
 	if (dir == PCMDIR_PLAY)
@@ -1254,7 +1309,7 @@ envy24_start(struct sc_info *sc, int dir)
 
 	stat = envy24_rdmt(sc, ENVY24_MT_PCTL, 1);
 	envy24_wrmt(sc, ENVY24_MT_PCTL, stat | sw, 1);
-#if 0
+#if(0)
 	DELAY(100);
 	device_printf(sc->dev, "PADDR:0x%08x\n", envy24_rdmt(sc, ENVY24_MT_PADDR, 4));
 	device_printf(sc->dev, "PCNT:%ld\n", envy24_rdmt(sc, ENVY24_MT_PCNT, 2));
@@ -1268,7 +1323,7 @@ envy24_stop(struct sc_info *sc, int dir)
 {
 	u_int32_t stat, sw;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_stop(sc, %d)\n", dir);
 #endif
 	if (dir == PCMDIR_PLAY)
@@ -1288,7 +1343,7 @@ envy24_route(struct sc_info *sc, int dac, int class, int adc, int rev)
 	u_int32_t reg, mask;
 	u_int32_t left, right;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_route(sc, %d, %d, %d, %d)\n",
 	    dac, class, adc, rev);
 #endif
@@ -1311,7 +1366,7 @@ envy24_route(struct sc_info *sc, int dac, int class, int adc, int rev)
 		reg = class | class << 2 |
 			((adc << 1 | left) | left << 3) << 8 |
 			((adc << 1 | right) | right << 3) << 12;
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24_route(): MT_SPDOUT-->0x%04x\n", reg);
 #endif
 		envy24_wrmt(sc, ENVY24_MT_SPDOUT, reg, 2);
@@ -1320,7 +1375,7 @@ envy24_route(struct sc_info *sc, int dac, int class, int adc, int rev)
 		mask = ~(0x0303 << dac * 2);
 		reg = envy24_rdmt(sc, ENVY24_MT_PSDOUT, 2);
 		reg = (reg & mask) | ((class | class << 8) << dac * 2);
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24_route(): MT_PSDOUT-->0x%04x\n", reg);
 #endif
 		envy24_wrmt(sc, ENVY24_MT_PSDOUT, reg, 2);
@@ -1329,7 +1384,7 @@ envy24_route(struct sc_info *sc, int dac, int class, int adc, int rev)
 		reg = (reg & mask) |
 			(((adc << 1 | left) | left << 3) |
 			 ((adc << 1 | right) | right << 3) << 4) << dac * 8;
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24_route(): MT_RECORD-->0x%08x\n", reg);
 #endif
 		envy24_wrmt(sc, ENVY24_MT_RECORD, reg, 4);
@@ -1383,7 +1438,7 @@ envy24_p16sl(struct sc_chinfo *ch)
 	int src, dst, ssize, dsize, slot;
 	int i;
 
-#if 0
+#if(0)
 	device_printf(ch->parent->dev, "envy24_p16sl()\n");
 #endif
 	length = sndbuf_getready(ch->buffer) / 4;
@@ -1394,14 +1449,14 @@ envy24_p16sl(struct sc_chinfo *ch)
 	ssize = ch->size / 2;
 	dsize = ch->size / 4;
 	slot = ch->num * 2;
-#if 0
+#if(0)
 	device_printf(ch->parent->dev, "envy24_p16sl():%lu-->%lu(%lu)\n", src, dst, length);
 #endif
 	
 	for (i = 0; i < length; i++) {
 		dmabuf[dst * ENVY24_PLAY_CHNUM + slot].buffer = (u_int32_t)data[src] << 16;
 		dmabuf[dst * ENVY24_PLAY_CHNUM + slot + 1].buffer = (u_int32_t)data[src + 1] << 16;
-#if 0
+#if(0)
 		if (i < 16) {
 			printf("%08x", dmabuf[dst * ENVY24_PLAY_CHNUM + slot]);
 			printf("%08x", dmabuf[dst * ENVY24_PLAY_CHNUM + slot + 1]);
@@ -1412,7 +1467,7 @@ envy24_p16sl(struct sc_chinfo *ch)
 		src += 2;
 		src %= ssize;
 	}
-#if 0
+#if(0)
 	printf("\n");
 #endif
 	
@@ -1430,7 +1485,7 @@ envy24_p8u(struct sc_chinfo *ch)
 
 	length = sndbuf_getready(ch->buffer) / 2;
 	dmabuf = ch->parent->pbuf;
-	data = ch->data;
+	data = (u_int8_t *)ch->data;
 	src = sndbuf_getreadyptr(ch->buffer);
 	dst = src / 2 + ch->offset;
 	ssize = ch->size;
@@ -1519,7 +1574,7 @@ envy24chan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channe
 	struct sc_chinfo *ch;
 	unsigned num;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24chan_init(obj, devinfo, b, c, %d)\n", dir);
 #endif
 	snd_mtxlock(sc->lock);
@@ -1532,8 +1587,12 @@ envy24chan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channe
 
 	ch = &sc->chan[num];
 	ch->size = 8 * ENVY24_SAMPLE_NUM;
-	ch->data = kmalloc(ch->size, M_ENVY24, M_WAITOK);
-	{
+	ch->data = malloc(ch->size, M_ENVY24, M_NOWAIT);
+	if (ch->data == NULL) {
+		ch->size = 0;
+		ch = NULL;
+	}
+	else {
 		ch->buffer = b;
 		ch->channel = c;
 		ch->parent = sc;
@@ -1558,12 +1617,12 @@ envy24chan_free(kobj_t obj, void *data)
 	struct sc_chinfo *ch = data;
 	struct sc_info *sc = ch->parent;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24chan_free()\n");
 #endif
 	snd_mtxlock(sc->lock);
 	if (ch->data != NULL) {
-		kfree(ch->data, M_ENVY24);
+		free(ch->data, M_ENVY24);
 		ch->data = NULL;
 	}
 	snd_mtxunlock(sc->lock);
@@ -1580,7 +1639,7 @@ envy24chan_setformat(kobj_t obj, void *data, u_int32_t format)
 	/* unsigned int bcnt, bsize; */
 	int i;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24chan_setformat(obj, data, 0x%08x)\n", format);
 #endif
 	snd_mtxlock(sc->lock);
@@ -1623,7 +1682,7 @@ envy24chan_setformat(kobj_t obj, void *data, u_int32_t format)
 #endif
 	snd_mtxunlock(sc->lock);
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24chan_setformat(): return 0x%08x\n", 0);
 #endif
 	return 0;
@@ -1637,14 +1696,14 @@ envy24chan_setformat(kobj_t obj, void *data, u_int32_t format)
   start triggerd, some other channel is running, and that channel's
   speed isn't same with, then trigger function will fail.
 */
-static int
+static u_int32_t
 envy24chan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct sc_chinfo *ch = data;
 	u_int32_t val, prev;
 	int i;
 
-#if 0
+#if(0)
 	device_printf(ch->parent->dev, "envy24chan_setspeed(obj, data, %d)\n", speed);
 #endif
 	prev = 0x7fffffff;
@@ -1656,13 +1715,13 @@ envy24chan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 	}
 	ch->speed = prev;
 	
-#if 0
+#if(0)
 	device_printf(ch->parent->dev, "envy24chan_setspeed(): return %d\n", ch->speed);
 #endif
 	return ch->speed;
 }
 
-static int
+static u_int32_t
 envy24chan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
 	struct sc_chinfo *ch = data;
@@ -1670,7 +1729,7 @@ envy24chan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 	u_int32_t size, prev;
         unsigned int bcnt, bsize;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24chan_setblocksize(obj, data, %d)\n", blocksize);
 #endif
 	prev = 0x7fffffff;
@@ -1698,7 +1757,7 @@ envy24chan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
         sndbuf_resize(ch->buffer, bcnt, bsize);
 	/* snd_mtxunlock(sc->lock); */
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24chan_setblocksize(): return %d\n", prev);
 #endif
 	return prev;
@@ -1712,6 +1771,7 @@ envy24chan_trigger(kobj_t obj, void *data, int go)
 	struct sc_info *sc = ch->parent;
 	u_int32_t ptr;
 	int slot;
+	int error = 0;
 #if 0
 	int i;
 
@@ -1724,7 +1784,7 @@ envy24chan_trigger(kobj_t obj, void *data, int go)
 		slot = 1;
 	switch (go) {
 	case PCMTRIG_START:
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24chan_trigger(): start\n");
 #endif
 		/* check or set channel speed */
@@ -1733,8 +1793,10 @@ envy24chan_trigger(kobj_t obj, void *data, int go)
 			sc->caps[0].minspeed = sc->caps[0].maxspeed = sc->speed;
 			sc->caps[1].minspeed = sc->caps[1].maxspeed = sc->speed;
 		}
-		else if (ch->speed != 0 && ch->speed != sc->speed)
-			return -1;
+		else if (ch->speed != 0 && ch->speed != sc->speed) {
+			error = -1;
+			goto fail;
+		}
 		if (ch->speed == 0)
 			ch->channel->speed = sc->speed;
 		/* start or enable channel */
@@ -1761,24 +1823,28 @@ envy24chan_trigger(kobj_t obj, void *data, int go)
 		ch->run = 1;
 		break;
 	case PCMTRIG_EMLDMAWR:
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24chan_trigger(): emldmawr\n");
 #endif
-		if (ch->run != 1)
-			return -1;
+		if (ch->run != 1) {
+			error = -1;
+			goto fail;
+		}
 		ch->emldma(ch);
 		break;
 	case PCMTRIG_EMLDMARD:
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24chan_trigger(): emldmard\n");
 #endif
-		if (ch->run != 1)
-			return -1;
+		if (ch->run != 1) {
+			error = -1;
+			goto fail;
+		}
 		ch->emldma(ch);
 		break;
 	case PCMTRIG_ABORT:
 		if (ch->run) {
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24chan_trigger(): abort\n");
 #endif
 		ch->run = 0;
@@ -1805,20 +1871,19 @@ envy24chan_trigger(kobj_t obj, void *data, int go)
 		}
 		break;
 	}
+fail:
 	snd_mtxunlock(sc->lock);
-
-	return 0;
+	return (error);
 }
 
-static int
+static u_int32_t
 envy24chan_getptr(kobj_t obj, void *data)
 {
 	struct sc_chinfo *ch = data;
 	struct sc_info *sc = ch->parent;
-	u_int32_t ptr;
-	int rtn;
+	u_int32_t ptr, rtn;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24chan_getptr()\n");
 #endif
 	snd_mtxlock(sc->lock);
@@ -1826,7 +1891,7 @@ envy24chan_getptr(kobj_t obj, void *data)
 	rtn = ptr * ch->unit;
 	snd_mtxunlock(sc->lock);
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24chan_getptr(): return %d\n",
 	    rtn);
 #endif
@@ -1840,7 +1905,7 @@ envy24chan_getcaps(kobj_t obj, void *data)
 	struct sc_info *sc = ch->parent;
 	struct pcmchan_caps *rtn;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24chan_getcaps()\n");
 #endif
 	snd_mtxlock(sc->lock);
@@ -1883,7 +1948,7 @@ envy24mixer_init(struct snd_mixer *m)
 {
 	struct sc_info *sc = mix_getdevinfo(m);
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24mixer_init()\n");
 #endif
 	if (sc == NULL)
@@ -1907,7 +1972,7 @@ envy24mixer_reinit(struct snd_mixer *m)
 
 	if (sc == NULL)
 		return -1;
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24mixer_reinit()\n");
 #endif
 
@@ -1921,7 +1986,7 @@ envy24mixer_uninit(struct snd_mixer *m)
 
 	if (sc == NULL)
 		return -1;
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24mixer_uninit()\n");
 #endif
 
@@ -1943,7 +2008,7 @@ envy24mixer_set(struct snd_mixer *m, unsigned dev, unsigned left, unsigned right
 	if (dev != 0 && ch == -1)
 		return -1;
 	hwch = envy24_chanmap[ch];
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24mixer_set(m, %d, %d, %d)\n",
 	    dev, left, right);
 #endif
@@ -1975,7 +2040,7 @@ envy24mixer_setrecsrc(struct snd_mixer *m, u_int32_t src)
 {
 	struct sc_info *sc = mix_getdevinfo(m);
 	int ch = envy24_mixmap[src];
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24mixer_setrecsrc(m, %d)\n", src);
 #endif
 
@@ -2005,27 +2070,27 @@ envy24_intr(void *p)
 	u_int32_t ptr, dsize, feed;
 	int i;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_intr()\n");
 #endif
 	snd_mtxlock(sc->lock);
 	if (envy24_checkintr(sc, PCMDIR_PLAY)) {
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24_intr(): play\n");
 #endif
 		dsize = sc->psize / 4;
 		ptr = dsize - envy24_rdmt(sc, ENVY24_MT_PCNT, 2) - 1;
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24_intr(): ptr = %d-->", ptr);
 #endif
 		ptr -= ptr % sc->blk[0];
 		feed = (ptr + dsize - sc->intr[0]) % dsize; 
-#if 0
+#if(0)
 		printf("%d intr = %d feed = %d\n", ptr, sc->intr[0], feed);
 #endif
 		for (i = ENVY24_CHAN_PLAY_DAC1; i <= ENVY24_CHAN_PLAY_SPDIF; i++) {
 			ch = &sc->chan[i];
-#if 0
+#if(0)
 			if (ch->run)
 				device_printf(sc->dev, "envy24_intr(): chan[%d].blk = %d\n", i, ch->blk);
 #endif
@@ -2039,7 +2104,7 @@ envy24_intr(void *p)
 		envy24_updintr(sc, PCMDIR_PLAY);
 	}
 	if (envy24_checkintr(sc, PCMDIR_REC)) {
-#if 0
+#if(0)
 		device_printf(sc->dev, "envy24_intr(): rec\n");
 #endif
 		dsize = sc->rsize / 4;
@@ -2072,7 +2137,7 @@ envy24_pci_probe(device_t dev)
 	u_int16_t sv, sd;
 	int i;
 
-#if 0
+#if(0)
 	printf("envy24_pci_probe()\n");
 #endif
 	if (pci_get_device(dev) == PCID_ENVY24 &&
@@ -2086,13 +2151,13 @@ envy24_pci_probe(device_t dev)
 			}
 		}
 		device_set_desc(dev, cfg_table[i].name);
-#if 0
+#if(0)
 		printf("envy24_pci_probe(): return 0\n");
 #endif
 		return 0;
 	}
 	else {
-#if 0
+#if(0)
 		printf("envy24_pci_probe(): return ENXIO\n");
 #endif
 		return ENXIO;
@@ -2102,15 +2167,16 @@ envy24_pci_probe(device_t dev)
 static void
 envy24_dmapsetmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 {
-	/* struct sc_info *sc = (struct sc_info *)arg; */
+	struct sc_info *sc = (struct sc_info *)arg;
 
-#if 0
+	sc->paddr = segs->ds_addr;
+#if(0)
 	device_printf(sc->dev, "envy24_dmapsetmap()\n");
 	if (bootverbose) {
 		printf("envy24(play): setmap %lx, %lx; ",
 		    (unsigned long)segs->ds_addr,
 		    (unsigned long)segs->ds_len);
-		printf("%p -> %lx\n", sc->pmap, (unsigned long)vtophys(sc->pmap));
+		printf("%p -> %lx\n", sc->pmap, sc->paddr);
 	}
 #endif
 }
@@ -2118,15 +2184,16 @@ envy24_dmapsetmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 static void
 envy24_dmarsetmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 {
-	/* struct sc_info *sc = (struct sc_info *)arg; */
+	struct sc_info *sc = (struct sc_info *)arg;
 
-#if 0
+	sc->raddr = segs->ds_addr;
+#if(0)
 	device_printf(sc->dev, "envy24_dmarsetmap()\n");
 	if (bootverbose) {
 		printf("envy24(record): setmap %lx, %lx; ",
 		    (unsigned long)segs->ds_addr,
 		    (unsigned long)segs->ds_len);
-		printf("%p -> %lx\n", sc->rmap, (unsigned long)vtophys(sc->pmap));
+		printf("%p -> %lx\n", sc->rmap, sc->raddr);
 	}
 #endif
 }
@@ -2134,21 +2201,19 @@ envy24_dmarsetmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 static void
 envy24_dmafree(struct sc_info *sc)
 {
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_dmafree():");
-	if (sc->rmap) printf(" sc->rmap(0x%08x)", (u_int32_t)sc->rmap);
-	else printf(" sc->rmap(null)");
-	if (sc->pmap) printf(" sc->pmap(0x%08x)", (u_int32_t)sc->pmap);
-	else printf(" sc->pmap(null)");
+	printf(" sc->raddr(0x%08x)", (u_int32_t)sc->raddr);
+	printf(" sc->paddr(0x%08x)", (u_int32_t)sc->paddr);
 	if (sc->rbuf) printf(" sc->rbuf(0x%08x)", (u_int32_t)sc->rbuf);
 	else printf(" sc->rbuf(null)");
 	if (sc->pbuf) printf(" sc->pbuf(0x%08x)\n", (u_int32_t)sc->pbuf);
 	else printf(" sc->pbuf(null)\n");
 #endif
-#if 0
-	if (sc->rmap)
+#if(0)
+	if (sc->raddr)
 		bus_dmamap_unload(sc->dmat, sc->rmap);
-	if (sc->pmap)
+	if (sc->paddr)
 		bus_dmamap_unload(sc->dmat, sc->pmap);
 	if (sc->rbuf)
 		bus_dmamem_free(sc->dmat, sc->rbuf, sc->rmap);
@@ -2161,7 +2226,7 @@ envy24_dmafree(struct sc_info *sc)
 	bus_dmamem_free(sc->dmat, sc->pbuf, sc->pmap);
 #endif
 
-	sc->rmap = sc->pmap = NULL;
+	sc->raddr = sc->paddr = 0;
 	sc->pbuf = NULL;
 	sc->rbuf = NULL;
 
@@ -2171,9 +2236,8 @@ envy24_dmafree(struct sc_info *sc)
 static int
 envy24_dmainit(struct sc_info *sc)
 {
-	u_int32_t addr;
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_dmainit()\n");
 #endif
 	/* init values */
@@ -2181,26 +2245,26 @@ envy24_dmainit(struct sc_info *sc)
 	sc->rsize = ENVY24_REC_BUFUNIT * ENVY24_SAMPLE_NUM;
 	sc->pbuf = NULL;
 	sc->rbuf = NULL;
-	sc->pmap = sc->rmap = NULL;
+	sc->paddr = sc->raddr = 0;
 	sc->blk[0] = sc->blk[1] = 0;
 
 	/* allocate DMA buffer */
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_dmainit(): bus_dmamem_alloc(): sc->pbuf\n");
 #endif
 	if (bus_dmamem_alloc(sc->dmat, (void **)&sc->pbuf, BUS_DMA_NOWAIT, &sc->pmap))
 		goto bad;
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_dmainit(): bus_dmamem_alloc(): sc->rbuf\n");
 #endif
 	if (bus_dmamem_alloc(sc->dmat, (void **)&sc->rbuf, BUS_DMA_NOWAIT, &sc->rmap))
 		goto bad;
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_dmainit(): bus_dmamem_load(): sc->pmap\n");
 #endif
 	if (bus_dmamap_load(sc->dmat, sc->pmap, sc->pbuf, sc->psize, envy24_dmapsetmap, sc, 0))
 		goto bad;
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_dmainit(): bus_dmamem_load(): sc->rmap\n");
 #endif
 	if (bus_dmamap_load(sc->dmat, sc->rmap, sc->rbuf, sc->rsize, envy24_dmarsetmap, sc, 0))
@@ -2209,21 +2273,19 @@ envy24_dmainit(struct sc_info *sc)
 	bzero(sc->rbuf, sc->rsize);
 
 	/* set values to register */
-	addr = vtophys(sc->pbuf);
-#if 0
-	device_printf(sc->dev, "pbuf(0x%08x)\n", addr);
+#if(0)
+	device_printf(sc->dev, "paddr(0x%08x)\n", sc->paddr);
 #endif
-	envy24_wrmt(sc, ENVY24_MT_PADDR, addr, 4);
-#if 0
+	envy24_wrmt(sc, ENVY24_MT_PADDR, sc->paddr, 4);
+#if(0)
 	device_printf(sc->dev, "PADDR-->(0x%08x)\n", envy24_rdmt(sc, ENVY24_MT_PADDR, 4));
 	device_printf(sc->dev, "psize(%ld)\n", sc->psize / 4 - 1);
 #endif
 	envy24_wrmt(sc, ENVY24_MT_PCNT, sc->psize / 4 - 1, 2);
-#if 0
+#if(0)
 	device_printf(sc->dev, "PCNT-->(%ld)\n", envy24_rdmt(sc, ENVY24_MT_PCNT, 2));
 #endif
-	addr = vtophys(sc->rbuf);
-	envy24_wrmt(sc, ENVY24_MT_RADDR, addr, 4);
+	envy24_wrmt(sc, ENVY24_MT_RADDR, sc->raddr, 4);
 	envy24_wrmt(sc, ENVY24_MT_RCNT, sc->rsize / 4 - 1, 2);
 
 	return 0;
@@ -2236,84 +2298,84 @@ static void
 envy24_putcfg(struct sc_info *sc)
 {
 	device_printf(sc->dev, "system configuration\n");
-	kprintf("  SubVendorID: 0x%04x, SubDeviceID: 0x%04x\n",
+	printf("  SubVendorID: 0x%04x, SubDeviceID: 0x%04x\n",
 	    sc->cfg->subvendor, sc->cfg->subdevice);
-	kprintf("  XIN2 Clock Source: ");
+	printf("  XIN2 Clock Source: ");
 	switch (sc->cfg->scfg & PCIM_SCFG_XIN2) {
 	case 0x00:
-		kprintf("22.5792MHz(44.1kHz*512)\n");
+		printf("22.5792MHz(44.1kHz*512)\n");
 		break;
 	case 0x40:
-		kprintf("16.9344MHz(44.1kHz*384)\n");
+		printf("16.9344MHz(44.1kHz*384)\n");
 		break;
 	case 0x80:
-		kprintf("from external clock synthesizer chip\n");
+		printf("from external clock synthesizer chip\n");
 		break;
 	default:
-		kprintf("illegal system setting\n");
+		printf("illeagal system setting\n");
 	}
-	kprintf("  MPU-401 UART(s) #: ");
+	printf("  MPU-401 UART(s) #: ");
 	if (sc->cfg->scfg & PCIM_SCFG_MPU)
-		kprintf("2\n");
+		printf("2\n");
 	else
-		kprintf("1\n");
-	kprintf("  AC'97 codec: ");
+		printf("1\n");
+	printf("  AC'97 codec: ");
 	if (sc->cfg->scfg & PCIM_SCFG_AC97)
-		kprintf("not exist\n");
+		printf("not exist\n");
 	else
-		kprintf("exist\n");
-	kprintf("  ADC #: ");
-	kprintf("%d\n", sc->adcn);
-	kprintf("  DAC #: ");
-	kprintf("%d\n", sc->dacn);
-	kprintf("  Multi-track converter type: ");
+		printf("exist\n");
+	printf("  ADC #: ");
+	printf("%d\n", sc->adcn);
+	printf("  DAC #: ");
+	printf("%d\n", sc->dacn);
+	printf("  Multi-track converter type: ");
 	if ((sc->cfg->acl & PCIM_ACL_MTC) == 0) {
-		kprintf("AC'97(SDATA_OUT:");
+		printf("AC'97(SDATA_OUT:");
 		if (sc->cfg->acl & PCIM_ACL_OMODE)
-			kprintf("packed");
+			printf("packed");
 		else
-			kprintf("split");
-		kprintf("|SDATA_IN:");
+			printf("split");
+		printf("|SDATA_IN:");
 		if (sc->cfg->acl & PCIM_ACL_IMODE)
-			kprintf("packed");
+			printf("packed");
 		else
-			kprintf("split");
-		kprintf(")\n");
+			printf("split");
+		printf(")\n");
 	}
 	else {
-		kprintf("I2S(");
+		printf("I2S(");
 		if (sc->cfg->i2s & PCIM_I2S_VOL)
-			kprintf("with volume, ");
+			printf("with volume, ");
 		if (sc->cfg->i2s & PCIM_I2S_96KHZ)
-			kprintf("96KHz support, ");
+			printf("96KHz support, ");
 		switch (sc->cfg->i2s & PCIM_I2S_RES) {
 		case PCIM_I2S_16BIT:
-			kprintf("16bit resolution, ");
+			printf("16bit resolution, ");
 			break;
 		case PCIM_I2S_18BIT:
-			kprintf("18bit resolution, ");
+			printf("18bit resolution, ");
 			break;
 		case PCIM_I2S_20BIT:
-			kprintf("20bit resolution, ");
+			printf("20bit resolution, ");
 			break;
 		case PCIM_I2S_24BIT:
-			kprintf("24bit resolution, ");
+			printf("24bit resolution, ");
 			break;
 		}
-		kprintf("ID#0x%x)\n", sc->cfg->i2s & PCIM_I2S_ID);
+		printf("ID#0x%x)\n", sc->cfg->i2s & PCIM_I2S_ID);
 	}
-	kprintf("  S/PDIF(IN/OUT): ");
+	printf("  S/PDIF(IN/OUT): ");
 	if (sc->cfg->spdif & PCIM_SPDIF_IN)
-		kprintf("1/");
+		printf("1/");
 	else
-		kprintf("0/");
+		printf("0/");
 	if (sc->cfg->spdif & PCIM_SPDIF_OUT)
-		kprintf("1 ");
+		printf("1 ");
 	else
-		kprintf("0 ");
+		printf("0 ");
 	if (sc->cfg->spdif & (PCIM_SPDIF_IN | PCIM_SPDIF_OUT))
-		kprintf("ID# 0x%02x\n", (sc->cfg->spdif & PCIM_SPDIF_ID) >> 2);
-	kprintf("  GPIO(mask/dir/state): 0x%02x/0x%02x/0x%02x\n",
+		printf("ID# 0x%02x\n", (sc->cfg->spdif & PCIM_SPDIF_ID) >> 2);
+	printf("  GPIO(mask/dir/state): 0x%02x/0x%02x/0x%02x\n",
 	    sc->cfg->gpiomask, sc->cfg->gpiodir, sc->cfg->gpiostate);
 }
 
@@ -2321,14 +2383,14 @@ static int
 envy24_init(struct sc_info *sc)
 {
 	u_int32_t data;
-#if 0
+#if(0)
 	int rtn;
 #endif
 	int i;
 	u_int32_t sv, sd;
 
 
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_init()\n");
 #endif
 
@@ -2350,7 +2412,7 @@ envy24_init(struct sc_info *sc)
 		sv = pci_get_subvendor(sc->dev);
 		sd = pci_get_subdevice(sc->dev);
 		if (sv == cfg_table[i].subvendor && sd == cfg_table[i].subdevice) {
-#if 0
+#if(0)
 			device_printf(sc->dev, "Set configuration from table\n");
 #endif
 			sc->cfg = &cfg_table[i];
@@ -2386,7 +2448,7 @@ envy24_init(struct sc_info *sc)
 	}
 
 	/* initialize DMA buffer */
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_init(): initialize DMA buffer\n");
 #endif
 	if (envy24_dmainit(sc))
@@ -2408,7 +2470,7 @@ envy24_init(struct sc_info *sc)
 	data = envy24_rdcs(sc, ENVY24_CCS_IMASK, 1);
 	envy24_wrcs(sc, ENVY24_CCS_IMASK, data & ~ENVY24_CCS_IMASK_PMT, 1);
 	data = envy24_rdcs(sc, ENVY24_CCS_IMASK, 1);
-#if 0
+#if(0)
 	device_printf(sc->dev, "envy24_init(): CCS_IMASK-->0x%02x\n", data);
 #endif
 
@@ -2443,7 +2505,7 @@ envy24_alloc_resource(struct sc_info *sc)
 	sc->dsh = rman_get_bushandle(sc->ds);
 	sc->mtt = rman_get_bustag(sc->mt);
 	sc->mth = rman_get_bushandle(sc->mt);
-#if 0
+#if(0)
 	device_printf(sc->dev,
 	    "IO port register values\nCCS: 0x%lx\nDDMA: 0x%lx\nDS: 0x%lx\nMT: 0x%lx\n",
 	    pci_read_config(sc->dev, PCIR_CCS, 4),
@@ -2452,7 +2514,7 @@ envy24_alloc_resource(struct sc_info *sc)
 	    pci_read_config(sc->dev, PCIR_MT, 4));
 #endif
 
-	/* allocate interupt resource */
+	/* allocate interrupt resource */
 	sc->irqid = 0;
 	sc->irq = bus_alloc_resource(sc->dev, SYS_RES_IRQ, &sc->irqid,
 				 0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
@@ -2463,7 +2525,7 @@ envy24_alloc_resource(struct sc_info *sc)
 	}
 
 	/* allocate DMA resource */
-	if (bus_dma_tag_create(/*parent*/NULL,
+	if (bus_dma_tag_create(/*parent*/bus_get_dma_tag(sc->dev),
 	    /*alignment*/4,
 	    /*boundary*/0,
 	    /*lowaddr*/BUS_SPACE_MAXADDR_ENVY24,
@@ -2471,7 +2533,8 @@ envy24_alloc_resource(struct sc_info *sc)
 	    /*filter*/NULL, /*filterarg*/NULL,
 	    /*maxsize*/BUS_SPACE_MAXSIZE_ENVY24,
 	    /*nsegments*/1, /*maxsegsz*/0x3ffff,
-	    /*flags*/0, &sc->dmat) != 0) {
+	    /*flags*/0, /*lockfunc*/busdma_lock_mutex,
+	    /*lockarg*/&Giant, &sc->dmat) != 0) {
 		device_printf(sc->dev, "unable to create dma tag\n");
 		return ENXIO;
 	}
@@ -2482,25 +2545,26 @@ envy24_alloc_resource(struct sc_info *sc)
 static int
 envy24_pci_attach(device_t dev)
 {
-	u_int32_t		data;
 	struct sc_info 		*sc;
 	char 			status[SND_STATUSLEN];
 	int			err = 0;
 	int			i;
 
-#if 0
+#if(0)
 	device_printf(dev, "envy24_pci_attach()\n");
 #endif
 	/* get sc_info data area */
-	sc = kmalloc(sizeof(*sc), M_ENVY24, M_WAITOK | M_ZERO);
+	if ((sc = malloc(sizeof(*sc), M_ENVY24, M_NOWAIT)) == NULL) {
+		device_printf(dev, "cannot allocate softc\n");
+		return ENXIO;
+	}
+
+	bzero(sc, sizeof(*sc));
 	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "snd_envy24 softc");
 	sc->dev = dev;
 
 	/* initialize PCI interface */
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
-	data |= (PCIM_CMD_PORTEN | PCIM_CMD_BUSMASTEREN);
-	pci_write_config(dev, PCIR_COMMAND, data, 2);
-	data = pci_read_config(dev, PCIR_COMMAND, 2);
+	pci_enable_busmaster(dev);
 
 	/* allocate resources */
 	err = envy24_alloc_resource(sc);
@@ -2534,7 +2598,7 @@ envy24_pci_attach(device_t dev)
 	}
 
 	/* set status iformation */
-	ksnprintf(status, SND_STATUSLEN,
+	snprintf(status, SND_STATUSLEN,
 	    "at io 0x%lx:%ld,0x%lx:%ld,0x%lx:%ld,0x%lx:%ld irq %ld",
 	    rman_get_start(sc->cs),
 	    rman_get_end(sc->cs) - rman_get_start(sc->cs) + 1,
@@ -2574,7 +2638,7 @@ bad:
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->mtid, sc->mt);
 	if (sc->lock)
 		snd_mtxfree(sc->lock);
-	kfree(sc, M_ENVY24);
+	free(sc, M_ENVY24);
 	return err;
 }
 
@@ -2585,7 +2649,7 @@ envy24_pci_detach(device_t dev)
 	int r;
 	int i;
 
-#if 0
+#if(0)
 	device_printf(dev, "envy24_pci_detach()\n");
 #endif
 	sc = pcm_getdevinfo(dev);
@@ -2611,7 +2675,7 @@ envy24_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IOPORT, sc->dsid, sc->ds);
 	bus_release_resource(dev, SYS_RES_IOPORT, sc->mtid, sc->mt);
 	snd_mtxfree(sc->lock);
-	kfree(sc, M_ENVY24);
+	free(sc, M_ENVY24);
 	return 0;
 }
 
@@ -2620,20 +2684,16 @@ static device_method_t envy24_methods[] = {
 	DEVMETHOD(device_probe,		envy24_pci_probe),
 	DEVMETHOD(device_attach,	envy24_pci_attach),
 	DEVMETHOD(device_detach,	envy24_pci_detach),
-	DEVMETHOD_END
+	{ 0, 0 }
 };
 
 static driver_t envy24_driver = {
 	"pcm",
 	envy24_methods,
-#if __FreeBSD_version > 500000
 	PCM_SOFTC_SIZE,
-#else
-	sizeof(struct snddev_info),
-#endif
 };
 
-DRIVER_MODULE(snd_envy24, pci, envy24_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_envy24, pci, envy24_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_envy24, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_DEPEND(snd_envy24, snd_spicds, 1, 1, 1);
 MODULE_VERSION(snd_envy24, 1);

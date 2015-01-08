@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2006 Konstantin Dimitrov <kosio.dimitrov@gmail.com>
  * Copyright (c) 2001 Katsurajima Naoto <raven@katsurajima.seya.yokohama.jp>
  * All rights reserved.
@@ -24,8 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/envy24ht.h,v 1.4.2.2 2007/06/11 19:33:27 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/envy24ht.h,v 1.1 2007/06/16 19:48:05 hasso Exp $
+ * $FreeBSD: head/sys/dev/sound/pci/envy24ht.h 250286 2013-05-05 19:09:34Z mav $
  */
 
 
@@ -177,8 +176,6 @@
 #define ENVY24HT_VOL_MIN   96 /* -144db(negate) */
 #define ENVY24HT_VOL_MUTE 127 /* mute */
 
-#define BUS_SPACE_MAXADDR_ENVY24 0x0fffffff /* Address space beyond 256MB is not
- supported */
 #define BUS_SPACE_MAXSIZE_ENVY24 0x3fffc /* 64k x 4byte(1dword) */
 
 #define ENVY24HT_CCS_GPIO_HDATA 0x1E

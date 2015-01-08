@@ -1,5 +1,7 @@
 /*-
- * Copyright (c) 1999 Cameron Grant <cg@freebsd.org>
+ * Copyright (c) 2005-2009 Ariff Abdullah <ariff@FreeBSD.org>
+ * Portions Copyright (c) Ryan Beasley <ryan.beasley@gmail.com> - GSoC 2006
+ * Copyright (c) 1999 Cameron Grant <cg@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,13 +25,20 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/dsp.h,v 1.9 2005/01/06 01:43:20 imp Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.h,v 1.4 2007/06/14 21:48:36 corecode Exp $
+ * $FreeBSD: head/sys/dev/sound/pcm/dsp.h 193640 2009-06-07 19:12:08Z ariff $
  */
 
-#include <sys/device.h>
+#ifndef _PCMDSP_H_
+#define _PCMDSP_H_
 
-extern struct dev_ops dsp_ops;
-extern d_clone_t dsp_clone;
+extern struct cdevsw dsp_cdevsw;
 
-struct snddev_info *dsp_get_info(struct cdev *dev);
+struct dsp_cdevinfo;
+
+char *dsp_unit2name(char *, size_t, int);
+int dsp_oss_audioinfo(struct cdev *, oss_audioinfo *);
+
+void dsp_cdevinfo_init(struct snddev_info *);
+void dsp_cdevinfo_flush(struct snddev_info *);
+
+#endif /* !_PCMDSP_H_ */

@@ -22,22 +22,28 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
- *
+ */
+
+/*
  * The order of pokes in the initiation sequence is based on Linux
  * driver by Thomas Sailer, gw boynton (wesb@crystal.cirrus.com), tom
  * woller (twoller@crystal.cirrus.com).  Shingo Watanabe (nabe@nabechan.org)
  * contributed towards power management.
- *
- * $FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.22 2005/03/01 08:58:05 imp Exp $
  */
+
+#ifdef HAVE_KERNEL_OPTION_HEADERS
+#include "opt_snd.h"
+#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 
-#include <bus/pci/pcireg.h>
-#include <bus/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
 
 #include <dev/sound/pci/cs4281.h>
+
+SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/cs4281.c 274035 2014-11-03 11:11:45Z bapt $");
 
 #define CS4281_DEFAULT_BUFSZ 16384
 
@@ -117,18 +123,18 @@ static u_int32_t cs4281_format_to_bps(u_int32_t);
 /* formats (do not add formats without editing cs_fmt_tab)              */
 
 static u_int32_t cs4281_fmts[] = {
-    AFMT_U8,
-    AFMT_U8 | AFMT_STEREO,
-    AFMT_S8,
-    AFMT_S8 | AFMT_STEREO,
-    AFMT_S16_LE,
-    AFMT_S16_LE | AFMT_STEREO,
-    AFMT_U16_LE,
-    AFMT_U16_LE | AFMT_STEREO,
-    AFMT_S16_BE,
-    AFMT_S16_BE | AFMT_STEREO,
-    AFMT_U16_BE,
-    AFMT_U16_BE | AFMT_STEREO,
+    SND_FORMAT(AFMT_U8, 1, 0),
+    SND_FORMAT(AFMT_U8, 2, 0),
+    SND_FORMAT(AFMT_S8, 1, 0),
+    SND_FORMAT(AFMT_S8, 2, 0),
+    SND_FORMAT(AFMT_S16_LE, 1, 0),
+    SND_FORMAT(AFMT_S16_LE, 2, 0),
+    SND_FORMAT(AFMT_U16_LE, 1, 0),
+    SND_FORMAT(AFMT_U16_LE, 2, 0),
+    SND_FORMAT(AFMT_S16_BE, 1, 0),
+    SND_FORMAT(AFMT_S16_BE, 2, 0),
+    SND_FORMAT(AFMT_U16_BE, 1, 0),
+    SND_FORMAT(AFMT_U16_BE, 2, 0),
     0
 };
 
@@ -171,7 +177,7 @@ cs4281_waitset(struct sc_info *sc, int regno, u_int32_t mask, int tries)
 {
     u_int32_t v;
 
-    while(tries > 0) {
+    while (tries > 0) {
 	DELAY(100);
 	v = cs4281_rd(sc, regno);
 	if ((v & mask) == mask) break;
@@ -185,7 +191,7 @@ cs4281_waitclr(struct sc_info *sc, int regno, u_int32_t mask, int tries)
 {
     u_int32_t v;
 
-    while(tries > 0) {
+    while (tries > 0) {
 	DELAY(100);
 	v = ~ cs4281_rd(sc, regno);
 	if (v & mask) break;
@@ -198,7 +204,7 @@ cs4281_waitclr(struct sc_info *sc, int regno, u_int32_t mask, int tries)
 /* Register value mapping functions */
 
 static u_int32_t cs4281_rates[] = {48000, 44100, 22050, 16000, 11025, 8000};
-#define CS4281_NUM_RATES NELEM(cs4281_rates)
+#define CS4281_NUM_RATES sizeof(cs4281_rates)/sizeof(cs4281_rates[0])
 
 static u_int8_t
 cs4281_rate_to_rv(u_int32_t rate)
@@ -229,7 +235,7 @@ cs4281_format_to_dmr(u_int32_t format)
 {
     u_int32_t dmr = 0;
     if (AFMT_8BIT & format)      dmr |= CS4281PCI_DMR_SIZE8;
-    if (!(AFMT_STEREO & format)) dmr |= CS4281PCI_DMR_MONO;
+    if (AFMT_CHANNEL(format) < 2) dmr |= CS4281PCI_DMR_MONO;
     if (AFMT_BIGENDIAN & format) dmr |= CS4281PCI_DMR_BEND;
     if (!(AFMT_SIGNED & format)) dmr |= CS4281PCI_DMR_USIGN;
     return dmr;
@@ -238,16 +244,20 @@ cs4281_format_to_dmr(u_int32_t format)
 static inline u_int32_t
 cs4281_format_to_bps(u_int32_t format)
 {
-    return ((AFMT_8BIT & format) ? 1 : 2) * ((AFMT_STEREO & format) ? 2 : 1);
+    return ((AFMT_8BIT & format) ? 1 : 2) *
+	((AFMT_CHANNEL(format) > 1) ? 2 : 1);
 }
 
 /* -------------------------------------------------------------------- */
 /* ac97 codec */
 
-static u_int32_t
+static int
 cs4281_rdcd(kobj_t obj, void *devinfo, int regno)
 {
     struct sc_info *sc = (struct sc_info *)devinfo;
+    int codecno;
+
+    codecno = regno >> 8;
     regno &= 0xff;
 
     /* Remove old state */
@@ -263,22 +273,25 @@ cs4281_rdcd(kobj_t obj, void *devinfo, int regno)
     /* Wait for read to complete */
     if (cs4281_waitclr(sc, CS4281PCI_ACCTL, CS4281PCI_ACCTL_DCV, 250) == 0) {
 	device_printf(sc->dev, "cs4281_rdcd: DCV did not go\n");
-	return 0xffffffff;
+	return -1;
     }
 
     /* Wait for valid status */
     if (cs4281_waitset(sc, CS4281PCI_ACSTS, CS4281PCI_ACSTS_VSTS, 250) == 0) {
 	device_printf(sc->dev,"cs4281_rdcd: VSTS did not come\n");
-	return 0xffffffff;
+	return -1;
     }
 
     return cs4281_rd(sc, CS4281PCI_ACSDA);
 }
 
-static void
+static int
 cs4281_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 {
     struct sc_info *sc = (struct sc_info *)devinfo;
+    int codecno;
+
+    codecno = regno >> 8;
     regno &= 0xff;
 
     cs4281_wr(sc, CS4281PCI_ACCAD, regno);
@@ -289,12 +302,14 @@ cs4281_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
     if (cs4281_waitclr(sc, CS4281PCI_ACCTL, CS4281PCI_ACCTL_DCV, 250) == 0) {
 	device_printf(sc->dev,"cs4281_wrcd: DCV did not go\n");
     }
+
+    return 0;
 }
 
 static kobj_method_t cs4281_ac97_methods[] = {
         KOBJMETHOD(ac97_read,           cs4281_rdcd),
         KOBJMETHOD(ac97_write,          cs4281_wrcd),
-        KOBJMETHOD_END
+	KOBJMETHOD_END
 };
 AC97_DECLARE(cs4281_ac97);
 
@@ -308,13 +323,13 @@ cs4281chan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channe
     struct sc_chinfo *ch = (dir == PCMDIR_PLAY) ? &sc->pch : &sc->rch;
 
     ch->buffer = b;
-    if (sndbuf_alloc(ch->buffer, sc->parent_dmat, sc->bufsz) != 0) {
+    if (sndbuf_alloc(ch->buffer, sc->parent_dmat, 0, sc->bufsz) != 0) {
 	return NULL;
     }
     ch->parent = sc;
     ch->channel = c;
 
-    ch->fmt = AFMT_U8;
+    ch->fmt = SND_FORMAT(AFMT_U8, 1, 0);
     ch->spd = DSP_DEFAULT_SPEED;
     ch->bps = 1;
     ch->blksz = sndbuf_getsize(ch->buffer);
@@ -328,7 +343,7 @@ cs4281chan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channe
     return ch;
 }
 
-static int
+static u_int32_t
 cs4281chan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
 {
     struct sc_chinfo *ch = data;
@@ -345,12 +360,12 @@ cs4281chan_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
     adcdac_prog(ch);
     adcdac_go(ch, go);
 
-    DEB(kprintf("cs4281chan_setblocksize: blksz %d Setting %d\n", blocksize, ch->blksz));
+    DEB(printf("cs4281chan_setblocksize: blksz %d Setting %d\n", blocksize, ch->blksz));
 
     return ch->blksz;
 }
 
-static int
+static u_int32_t
 cs4281chan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
     struct sc_chinfo *ch = data;
@@ -393,7 +408,7 @@ cs4281chan_setformat(kobj_t obj, void *data, u_int32_t format)
     return 0;
 }
 
-static int
+static u_int32_t
 cs4281chan_getptr(kobj_t obj, void *data)
 {
     struct sc_chinfo *ch = data;
@@ -419,6 +434,7 @@ cs4281chan_trigger(kobj_t obj, void *data, int go)
 	adcdac_prog(ch);
 	adcdac_go(ch, 1);
 	break;
+    case PCMTRIG_STOP:
     case PCMTRIG_ABORT:
 	adcdac_go(ch, 0);
 	break;
@@ -537,7 +553,7 @@ cs4281_power(struct sc_info *sc, int state)
         break;
     }
 
-    DEB(kprintf("cs4281_power %d -> %d\n", sc->power, state));
+    DEB(printf("cs4281_power %d -> %d\n", sc->power, state));
     sc->power = state;
 
     return 0;
@@ -744,16 +760,13 @@ cs4281_pci_attach(device_t dev)
 {
     struct sc_info *sc;
     struct ac97_info *codec = NULL;
-    u_int32_t data;
     char status[SND_STATUSLEN];
 
-    sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+    sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
     sc->dev = dev;
     sc->type = pci_get_devid(dev);
 
-    data = pci_read_config(dev, PCIR_COMMAND, 2);
-    data |= (PCIM_CMD_PORTEN | PCIM_CMD_MEMEN | PCIM_CMD_BUSMASTEREN);
-    pci_write_config(dev, PCIR_COMMAND, data, 2);
+    pci_enable_busmaster(dev);
 
     if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
 	/* Reset the power state. */
@@ -802,14 +815,15 @@ cs4281_pci_attach(device_t dev)
 
     sc->bufsz = pcm_getbuffersize(dev, 4096, CS4281_DEFAULT_BUFSZ, 65536);
 
-    if (bus_dma_tag_create(/*parent*/NULL, /*alignment*/2, /*boundary*/0,
+    if (bus_dma_tag_create(/*parent*/bus_get_dma_tag(dev), /*alignment*/2,
+			   /*boundary*/0,
 			   /*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
 			   /*highaddr*/BUS_SPACE_MAXADDR,
 			   /*filter*/NULL, /*filterarg*/NULL,
 			   /*maxsize*/sc->bufsz, /*nsegments*/1,
 			   /*maxsegz*/0x3ffff,
-			   /*flags*/0,
-			   &sc->parent_dmat) != 0) {
+			   /*flags*/0, /*lockfunc*/busdma_lock_mutex,
+			   /*lockarg*/&Giant, &sc->parent_dmat) != 0) {
 	device_printf(dev, "unable to create dma tag\n");
 	goto bad;
     }
@@ -836,7 +850,7 @@ cs4281_pci_attach(device_t dev)
     pcm_addchan(dev, PCMDIR_PLAY, &cs4281chan_class, sc);
     pcm_addchan(dev, PCMDIR_REC, &cs4281chan_class, sc);
 
-    ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld %s",
+    snprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld %s",
 	     (sc->regtype == SYS_RES_IOPORT)? "io" : "memory",
 	     rman_get_start(sc->reg), rman_get_start(sc->irq),PCM_KLDSTRING(snd_cs4281));
     pcm_setstatus(dev, status);
@@ -856,7 +870,7 @@ cs4281_pci_attach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
     if (sc->parent_dmat)
 	bus_dma_tag_destroy(sc->parent_dmat);
-    kfree(sc, M_DEVBUF);
+    free(sc, M_DEVBUF);
 
     return ENXIO;
 }
@@ -881,7 +895,7 @@ cs4281_pci_detach(device_t dev)
     bus_teardown_intr(dev, sc->irq, sc->ih);
     bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
     bus_dma_tag_destroy(sc->parent_dmat);
-    kfree(sc, M_DEVBUF);
+    free(sc, M_DEVBUF);
 
     return 0;
 }
@@ -944,7 +958,7 @@ static device_method_t cs4281_methods[] = {
     DEVMETHOD(device_detach,		cs4281_pci_detach),
     DEVMETHOD(device_suspend,		cs4281_pci_suspend),
     DEVMETHOD(device_resume,		cs4281_pci_resume),
-    DEVMETHOD_END
+    { 0, 0 }
 };
 
 static driver_t cs4281_driver = {
@@ -953,6 +967,6 @@ static driver_t cs4281_driver = {
     PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_cs4281, pci, cs4281_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(snd_cs4281, pci, cs4281_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_cs4281, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_cs4281, 1);

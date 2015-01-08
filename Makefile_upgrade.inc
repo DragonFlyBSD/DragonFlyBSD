@@ -2810,3 +2810,10 @@ TO_REMOVE+=/usr/share/man/man4/iwl.4.gz
 TO_REMOVE+=/boot/kernel/if_rtw.ko
 TO_REMOVE+=/usr/share/man/cat4/rtw.4.gz
 TO_REMOVE+=/usr/share/man/man4/rtw.4.gz
+
+TO_REMOVE+=/usr/share/man/man4/snd_csa.4.gz
+TO_REMOVE+=/usr/share/man/man4/csa.4.gz
+TO_REMOVE+=/usr/share/man/man4/snd_ds1.4.gz
+TO_REMOVE+=/usr/share/man/man4/ds1.4.gz
+TO_REMOVE+=/usr/share/man/man4/snd_maestro3.4.gz
+TO_REMOVE+=/usr/share/man/man4/maestro3.4.gz

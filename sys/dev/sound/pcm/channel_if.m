@@ -1,7 +1,9 @@
 #-
 # KOBJ
 #
-# Copyright (c) 2000 Cameron Grant <cg@freebsd.org>
+# Copyright (c) 2005-2009 Ariff Abdullah <ariff@FreeBSD.org>
+# Portions Copyright (c) Ryan Beasley <ryan.beasley@gmail.com> - GSoC 2006
+# Copyright (c) 2000 Cameron Grant <cg@FreeBSD.org>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,8 +27,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/dev/sound/pcm/channel_if.m,v 1.5 2005/01/06 01:43:20 imp Exp $
-# $DragonFly: src/sys/dev/sound/pcm/channel_if.m,v 1.3 2007/01/04 21:47:03 corecode Exp $
+# $FreeBSD: head/sys/dev/sound/pcm/channel_if.m 193640 2009-06-07 19:12:08Z ariff $
 #
 
 #include <dev/sound/pcm/sound.h>
@@ -34,12 +35,6 @@
 INTERFACE channel;
 
 CODE {
-
-	static int
-	channel_nosetdir(kobj_t obj, void *data, int dir)
-	{
-		return 0;
-	}
 
 	static int
 	channel_noreset(kobj_t obj, void *data)
@@ -71,6 +66,37 @@ CODE {
 		return 0;
 	}
 
+	static int
+	channel_nogetpeaks(kobj_t obj, void *data, int *lpeak, int *rpeak)
+	{
+		return -1;
+	}
+
+	static int
+	channel_nogetrates(kobj_t obj, void *data, int **rates)
+	{
+		*rates = NULL;
+		return 0;
+	}
+
+	static int
+	channel_nosetfragments(kobj_t obj, void *data, u_int32_t blocksize, u_int32_t blockcount)
+	{
+		return ENOTSUP;
+	}
+
+	static struct pcmchan_matrix *
+	channel_nogetmatrix(kobj_t obj, void *data, u_int32_t format)
+	{
+		format = feeder_matrix_default_format(format);
+		return (feeder_matrix_format_map(format));
+	}
+
+	static int
+	channel_nosetmatrix(kobj_t obj, void *data, struct pcmchan_matrix *m)
+	{
+		return ENOTSUP;
+	}
 };
 
 METHOD void* init {
@@ -96,13 +122,7 @@ METHOD int resetdone {
 	void *data;
 } DEFAULT channel_noresetdone;
 
-METHOD int setdir {
-	kobj_t obj;
-	void *data;
-	int dir;
-} DEFAULT channel_nosetdir;
-
-METHOD u_int32_t setformat {
+METHOD int setformat {
 	kobj_t obj;
 	void *data;
 	u_int32_t format;
@@ -119,6 +139,13 @@ METHOD u_int32_t setblocksize {
 	void *data;
 	u_int32_t blocksize;
 };
+
+METHOD int setfragments {
+	kobj_t obj;
+	void *data;
+	u_int32_t blocksize;
+	u_int32_t blockcount;
+} DEFAULT channel_nosetfragments;
 
 METHOD int trigger {
 	kobj_t obj;
@@ -141,3 +168,66 @@ METHOD int notify {
 	void *data;
 	u_int32_t changed;
 } DEFAULT channel_nonotify;
+
+/**
+ * @brief Retrieve channel peak values
+ *
+ * This function is intended to obtain peak volume values for samples
+ * played/recorded on a channel.  Values are on a linear scale from 0 to
+ * 32767.  If the channel is monaural, a single value should be recorded
+ * in @c lpeak.
+ *
+ * If hardware support isn't available, the SNDCTL_DSP_GET[IO]PEAKS
+ * operation should return EINVAL.  However, we may opt to provide
+ * software support that the user may toggle via sysctl/mixext.
+ *
+ * @param obj	standard kobj object (usually @c channel->methods)
+ * @param data	driver-specific data (usually @c channel->devinfo)
+ * @param lpeak	pointer to store left peak level
+ * @param rpeak	pointer to store right peak level
+ *
+ * @retval -1	Error; usually operation isn't supported.
+ * @retval 0	success
+ */
+METHOD int getpeaks {
+	kobj_t obj;
+	void *data;
+	int *lpeak;
+	int *rpeak;
+} DEFAULT channel_nogetpeaks;
+
+/**
+ * @brief Retrieve discrete supported sample rates
+ *
+ * Some cards operate at fixed rates, and this call is intended to retrieve
+ * those rates primarily for when in-kernel rate adjustment is undesirable
+ * (e.g., application wants direct DMA access after setting a channel to run
+ * "uncooked").
+ *
+ * The parameter @c rates is a double pointer which will be reset to
+ * point to an array of supported sample rates.  The number of elements
+ * in the array is returned to the caller.
+ *
+ * @param obj	standard kobj object (usually @c channel->methods)
+ * @param data	driver-specific data (usually @c channel->devinfo)
+ * @param rates	rate array pointer
+ *
+ * @return Number of rates in the array
+ */
+METHOD int getrates {
+	kobj_t obj;
+	void *data;
+	int **rates;
+} DEFAULT channel_nogetrates;
+
+METHOD struct pcmchan_matrix * getmatrix {
+	kobj_t obj;
+	void *data;
+	u_int32_t format;
+} DEFAULT channel_nogetmatrix;
+
+METHOD int setmatrix {
+	kobj_t obj;
+	void *data;
+	struct pcmchan_matrix *m;
+} DEFAULT channel_nosetmatrix;

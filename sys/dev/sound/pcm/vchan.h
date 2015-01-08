@@ -1,5 +1,6 @@
 /*-
- * Copyright (c) 2001 Cameron Grant <cg@freebsd.org>
+ * Copyright (c) 2005-2009 Ariff Abdullah <ariff@FreeBSD.org>
+ * Copyright (c) 2001 Cameron Grant <cg@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,12 +24,47 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pcm/vchan.h,v 1.4 2005/01/06 01:43:21 imp Exp $
- * $DragonFly: src/sys/dev/sound/pcm/vchan.h,v 1.3 2007/01/04 21:47:03 corecode Exp $
+ * $FreeBSD: head/sys/dev/sound/pcm/vchan.h 193640 2009-06-07 19:12:08Z ariff $
  */
 
-int vchan_create(struct pcm_channel *parent);
-int vchan_destroy(struct pcm_channel *c);
-int vchan_initsys(device_t dev);
+#ifndef _SND_VCHAN_H_
+#define _SND_VCHAN_H_
 
+int vchan_create(struct pcm_channel *, int);
+int vchan_destroy(struct pcm_channel *);
 
+#ifdef SND_DEBUG
+int vchan_passthrough(struct pcm_channel *, const char *);
+#define vchan_sync(c)		vchan_passthrough(c, __func__)
+#else
+int vchan_sync(struct pcm_channel *);
+#endif
+
+#define VCHAN_SYNC_REQUIRED(c)						\
+	(((c)->flags & CHN_F_VIRTUAL) && (((c)->flags & CHN_F_DIRTY) ||	\
+	sndbuf_getfmt((c)->bufhard) != (c)->parentchannel->format ||	\
+	sndbuf_getspd((c)->bufhard) != (c)->parentchannel->speed))
+
+void vchan_initsys(device_t);
+
+/*
+ * Default format / rate
+ */
+#define VCHAN_DEFAULT_FORMAT	SND_FORMAT(AFMT_S16_LE, 2, 0)
+#define VCHAN_DEFAULT_RATE	48000
+
+#define VCHAN_PLAY		0
+#define VCHAN_REC		1
+
+/*
+ * Offset by +/- 1 so we can distinguish bogus pointer.
+ */
+#define VCHAN_SYSCTL_DATA(x, y)						\
+		((void *)((intptr_t)(((((x) + 1) & 0xfff) << 2) |	\
+		(((VCHAN_##y) + 1) & 0x3))))
+
+#define VCHAN_SYSCTL_DATA_SIZE	sizeof(void *)
+#define VCHAN_SYSCTL_UNIT(x)	((int)(((intptr_t)(x) >> 2) & 0xfff) - 1)
+#define VCHAN_SYSCTL_DIR(x)	((int)((intptr_t)(x) & 0x3) - 1)
+
+#endif	/* _SND_VCHAN_H_ */

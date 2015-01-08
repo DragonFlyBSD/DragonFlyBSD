@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2001 Katsurajima Naoto <raven@katsurajima.seya.yokohama.jp>
  * All rights reserved.
  *
@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THEPOSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sound/pci/envy24.h,v 1.1.2.2 2007/06/11 19:33:27 ariff Exp $
- * $DragonFly: src/sys/dev/sound/pci/envy24.h,v 1.1 2007/06/16 19:48:05 hasso Exp $
+ * $FreeBSD: head/sys/dev/sound/pci/envy24.h 205859 2010-03-29 20:27:17Z joel $
  */
 
 

@@ -1,5 +1,4 @@
-# $FreeBSD: src/sys/modules/sound/driver/driver/Makefile,v 1.4 2003/02/07 15:05:37 nyan Exp $
-# $DragonFly: src/sys/dev/sound/driver/driver/Makefile,v 1.1 2007/01/04 21:47:01 corecode Exp $
+# $FreeBSD: head/sys/modules/sound/driver/driver/Makefile 110502 2003-02-07 15:05:37Z nyan $
 
 .PATH: ${.CURDIR}/../../../../dev/sound
 
