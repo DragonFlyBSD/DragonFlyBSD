@@ -403,20 +403,10 @@ struct usb_attach_arg {
  */
 struct usb_callout {
 	struct callout co;
-	struct lock *uco_lock;
-	void (*uco_func)(void *);
-	void *uco_arg;
-	int uco_flags;
 };
 
-void usb_callout_timeout_wrapper(void *arg);
-void usb_callout_init_mtx_dfly(struct usb_callout *uco, struct lock *lock,
-	 int flags); 
-void usb_callout_reset_dfly(struct usb_callout *uco, int ticks,
-	 timeout_t *func, void *arg);    
-
-#define	usb_callout_init_mtx(c,m,f) usb_callout_init_mtx_dfly(c, m, f) 
-#define	usb_callout_reset(c,t,f,d) usb_callout_reset_dfly(c, t, f, d)
+#define	usb_callout_init_mtx(c,m,f) callout_init_lk(&(c)->co, m) 
+#define	usb_callout_reset(c,t,f,d)  callout_reset(&(c)->co, t, f, d)
 #define	usb_callout_stop(c) callout_stop(&(c)->co)
 #define	usb_callout_drain(c) callout_stop_sync(&(c)->co)
 #define	usb_callout_pending(c) callout_pending(&(c)->co)
