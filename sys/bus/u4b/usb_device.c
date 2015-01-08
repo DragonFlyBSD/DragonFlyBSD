@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/sys/dev/usb/usb_device.c 269566 2014-08-05 06:38:21Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -93,7 +93,7 @@ static void	usb_init_attach_arg(struct usb_device *,
 		    struct usb_attach_arg *);
 static void	usb_suspend_resume_sub(struct usb_device *, device_t,
 		    uint8_t);
-static void	usbd_clear_stall_proc(struct usb_proc_msg *_pm);
+static usb_proc_callback_t usbd_clear_stall_proc;
 static usb_error_t usb_config_parse(struct usb_device *, uint8_t, uint8_t);
 static void	usbd_set_device_strings(struct usb_device *);
 #if USB_HAVE_DEVCTL
@@ -444,6 +444,72 @@ usb_endpoint_foreach(struct usb_device *udev, struct usb_endpoint *ep)
 		ep++;
 	}
 	return (NULL);
+}
+
+#if USB_HAVE_UGEN
+static uint16_t
+usb_get_refcount(struct usb_device *udev)
+{
+	if (usb_proc_is_called_from(USB_BUS_EXPLORE_PROC(udev->bus)) ||
+	    usb_proc_is_called_from(USB_BUS_CONTROL_XFER_PROC(udev->bus)))
+		return (1);
+	return (2);
+}
+#endif
+
+/*------------------------------------------------------------------------*
+ *	usb_wait_pending_ref_locked
+ *
+ * This function will wait for any USB references to go away before
+ * returning and disable further USB device refcounting on the
+ * specified USB device. This function is used when detaching a USB
+ * device.
+ *------------------------------------------------------------------------*/
+static void
+usb_wait_pending_ref_locked(struct usb_device *udev)
+{
+#if USB_HAVE_UGEN
+	const uint16_t refcount = usb_get_refcount(udev);
+
+	DPRINTF("Refcount = %d\n", (int)refcount); 
+
+	while (1) {
+		/* wait for any pending references to go away */
+		lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
+		if (udev->refcount == refcount) {
+			/* prevent further refs being taken */
+			udev->refcount = USB_DEV_REF_MAX;
+			lockmgr(&usb_ref_lock, LK_RELEASE);
+			break;
+		}
+		usbd_enum_unlock(udev);
+		cv_wait(&udev->ref_cv, &usb_ref_lock);
+		lockmgr(&usb_ref_lock, LK_RELEASE);
+		(void) usbd_enum_lock(udev);
+	}
+#endif
+}
+
+/*------------------------------------------------------------------------*
+ *	usb_ref_restore_locked
+ *
+ * This function will restore the reference count value after a call
+ * to "usb_wait_pending_ref_locked()".
+ *------------------------------------------------------------------------*/
+static void
+usb_ref_restore_locked(struct usb_device *udev)
+{
+#if USB_HAVE_UGEN
+	const uint16_t refcount = usb_get_refcount(udev);
+
+	DPRINTF("Refcount = %d\n", (int)refcount); 
+
+	/* restore reference count and wakeup waiters, if any */
+	lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
+	udev->refcount = refcount;
+	cv_broadcast(&udev->ref_cv);
+	lockmgr(&usb_ref_lock, LK_RELEASE);
+#endif
 }
 
 /*------------------------------------------------------------------------*
@@ -1118,9 +1184,10 @@ usb_detach_device(struct usb_device *udev, uint8_t iface_index,
 	}
 	DPRINTFN(4, "udev=%p\n", udev);
 
-#if 0
-	sx_assert(&udev->enum_sx, SA_LOCKED);
-#endif
+	KKASSERT(lockowned(&udev->enum_lock));
+
+	/* wait for pending refs to go away */
+	usb_wait_pending_ref_locked(udev);
 
 	/*
 	 * First detach the child to give the child's detach routine a
@@ -1148,6 +1215,8 @@ usb_detach_device(struct usb_device *udev, uint8_t iface_index,
 		usb_detach_device_sub(udev, &iface->subdev,
 		    &iface->pnpinfo, flag);
 	}
+
+	usb_ref_restore_locked(udev);
 }
 
 /*------------------------------------------------------------------------*
@@ -1441,9 +1510,7 @@ usb_suspend_resume(struct usb_device *udev, uint8_t do_suspend)
 	}
 	DPRINTFN(4, "udev=%p do_suspend=%d\n", udev, do_suspend);
 
-#if 0
-	sx_assert(&udev->sr_sx, SA_LOCKED);
-#endif
+	KKASSERT(lockowned(&udev->sr_lock));
 
 	USB_BUS_LOCK(udev->bus);
 	/* filter the suspend events */
@@ -1477,7 +1544,7 @@ usb_suspend_resume(struct usb_device *udev, uint8_t do_suspend)
 static void
 usbd_clear_stall_proc(struct usb_proc_msg *_pm)
 {
-	struct usb_clear_stall_msg *pm = (void *)_pm;
+	struct usb_udev_msg *pm = (void *)_pm;
 	struct usb_device *udev = pm->udev;
 
 	/* Change lock */
@@ -2075,6 +2142,8 @@ usb_free_device(struct usb_device *udev, uint8_t flag)
 	DPRINTFN(4, "udev=%p port=%d\n", udev, udev->port_no);
 
 	bus = udev->bus;
+
+	/* set DETACHED state to prevent any further references */
 	usb_set_device_state(udev, USB_STATE_DETACHED);
 
 #if USB_HAVE_DEVCTL
@@ -2090,23 +2159,6 @@ usb_free_device(struct usb_device *udev, uint8_t flag)
 		usb_free_symlink(udev->ugen_symlink);
 		udev->ugen_symlink = NULL;
 	}
-#endif
-	/*
-	 * Unregister our device first which will prevent any further
-	 * references:
-	 */
-	usb_bus_port_set_device(bus, udev->parent_hub ?
-	    udev->parent_hub->hub->ports + udev->port_index : NULL,
-	    NULL, USB_ROOT_HUB_ADDR);
-
-#if USB_HAVE_UGEN
-	/* wait for all pending references to go away: */
-	lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
-	udev->refcount--;
-	while (udev->refcount != 0) {
-		cv_wait(&udev->ref_cv, &usb_ref_lock);
-	}
-	lockmgr(&usb_ref_lock, LK_RELEASE);
 
 	usb_destroy_dev(udev->ctrl_dev);
 #endif
@@ -2118,6 +2170,11 @@ usb_free_device(struct usb_device *udev, uint8_t flag)
 
 	/* the following will get the device unconfigured in software */
 	usb_unconfigure(udev, USB_UNCFG_FLAG_FREE_EP0);
+
+	/* final device unregister after all character devices are closed */
+	usb_bus_port_set_device(bus, udev->parent_hub ?
+	    udev->parent_hub->hub->ports + udev->port_index : NULL,
+	    NULL, USB_ROOT_HUB_ADDR);
 
 	/* unsetup any leftover default USB transfers */
 	usbd_transfer_unsetup(udev->ctrl_xfer, USB_CTRL_XFER_MAX);
@@ -2623,8 +2680,14 @@ usb_fifo_free_wrap(struct usb_device *udev,
 			/* no need to free this FIFO */
 			continue;
 		}
+		/* wait for pending refs to go away */
+		usb_wait_pending_ref_locked(udev);
+
 		/* free this FIFO */
 		usb_fifo_free(f);
+
+		/* restore refcount */
+		usb_ref_restore_locked(udev);
 	}
 }
 #endif
@@ -2656,8 +2719,14 @@ usb_set_device_state(struct usb_device *udev, enum usb_dev_state state)
 
 	DPRINTF("udev %p state %s -> %s\n", udev,
 	    usb_statestr(udev->state), usb_statestr(state));
-	udev->state = state;
 
+#if USB_HAVE_UGEN
+	lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
+#endif
+	udev->state = state;
+#if USB_HAVE_UGEN
+	lockmgr(&usb_ref_lock, LK_RELEASE);
+#endif
 	if (udev->bus->methods->device_state_change != NULL)
 		(udev->bus->methods->device_state_change) (udev);
 }
@@ -2694,9 +2763,6 @@ usbd_enum_lock(struct usb_device *udev)
 	 * are locked before locking Giant. Else the lock can be
 	 * locked multiple times.
 	 */
-#if 0
-	mtx_lock(&Giant);
-#endif
 	return (1);
 }
 
@@ -2705,9 +2771,6 @@ usbd_enum_lock(struct usb_device *udev)
 void
 usbd_enum_unlock(struct usb_device *udev)
 {
-#if 0
-	mtx_unlock(&Giant);
-#endif
 	lockmgr(&udev->enum_lock, LK_RELEASE);
 	lockmgr(&udev->sr_lock, LK_RELEASE);
 }
@@ -2723,9 +2786,6 @@ usbd_sr_lock(struct usb_device *udev)
 	 * are locked before locking Giant. Else the lock can be
 	 * locked multiple times.
 	 */
-#if 0
-	mtx_lock(&Giant);
-#endif
 }
 
 /* The following function unlocks suspend and resume. */
@@ -2733,9 +2793,6 @@ usbd_sr_lock(struct usb_device *udev)
 void
 usbd_sr_unlock(struct usb_device *udev)
 {
-#if 0
-	mtx_unlock(&Giant);
-#endif
 	lockmgr(&udev->sr_lock, LK_RELEASE);
 }
 

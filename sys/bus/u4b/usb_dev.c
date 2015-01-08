@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/sys/dev/usb/usb_dev.c 272480 2014-10-03 16:09:46Z hselasky $ */
 /*-
  * Copyright (c) 2006-2008 Hans Petter Selasky. All rights reserved.
  *
@@ -101,7 +101,7 @@ static void	usb_dev_uninit(void *);
 static int	usb_fifo_uiomove(struct usb_fifo *, void *, int,
 		    struct uio *);
 static void	usb_fifo_check_methods(struct usb_fifo_methods *);
-static struct	usb_fifo *usb_fifo_alloc(void);
+static struct	usb_fifo *usb_fifo_alloc(struct lock *lock);
 static struct	usb_endpoint *usb_dev_get_ep(struct usb_device *, uint8_t,
 		    uint8_t);
 static void	usb_loc_fill(struct usb_fs_privdata *,
@@ -215,12 +215,13 @@ usb_ref_device(struct usb_cdev_privdata *cpd,
 		DPRINTFN(2, "device is detached\n");
 		goto error;
 	}
-	if (cpd->udev->refcount == USB_DEV_REF_MAX) {
-		DPRINTFN(2, "no dev ref\n");
-		goto error;
-	}
 	if (need_uref) {
 		DPRINTFN(2, "ref udev - needed\n");
+
+		if (cpd->udev->refcount == USB_DEV_REF_MAX) {
+			DPRINTFN(2, "no dev ref\n");
+			goto error;
+		}
 		cpd->udev->refcount++;
 
 		lockmgr(&usb_ref_lock, LK_RELEASE);
@@ -294,12 +295,15 @@ error:
 		usbd_enum_unlock(cpd->udev);
 
 	if (crd->is_uref) {
-		if (--(cpd->udev->refcount) == 0) {
-			cv_signal(&cpd->udev->ref_cv);
-		}
+		cpd->udev->refcount--;
+		cv_broadcast(&cpd->udev->ref_cv);
 	}
 	lockmgr(&usb_ref_lock, LK_RELEASE);
 	DPRINTFN(2, "fail\n");
+
+	/* clear all refs */
+	memset(crd, 0, sizeof(*crd));
+
 	return (USB_ERR_INVAL);
 }
 
@@ -362,24 +366,25 @@ usb_unref_device(struct usb_cdev_privdata *cpd,
 		crd->is_write = 0;
 	}
 	if (crd->is_uref) {
-		if (--(cpd->udev->refcount) == 0) {
-			cv_signal(&cpd->udev->ref_cv);
-		}
 		crd->is_uref = 0;
+		cpd->udev->refcount--;
+		cv_broadcast(&cpd->udev->ref_cv);
 	}
 	lockmgr(&usb_ref_lock, LK_RELEASE);
 }
 
 static struct usb_fifo *
-usb_fifo_alloc(void)
+usb_fifo_alloc(struct lock *lock)
 {
 	struct usb_fifo *f;
 
 	f = kmalloc(sizeof(*f), M_USBDEV, M_WAITOK | M_ZERO);
-	if (f) {
+	if (f != NULL) {
 		cv_init(&f->cv_io, "FIFO-IO");
 		cv_init(&f->cv_drain, "FIFO-DRAIN");
+		f->priv_lock = lock;
 		f->refcount = 1;
+		/* mpf: knlist_init_mtx? the lock is used here in free */
 	}
 	return (f);
 }
@@ -503,7 +508,7 @@ usb_fifo_create(struct usb_cdev_privdata *cpd,
 			DPRINTFN(5, "dev_get_endpoint returned NULL\n");
 			return (EINVAL);
 		}
-		f = usb_fifo_alloc();
+		f = usb_fifo_alloc(&udev->device_lock);
 		if (f == NULL) {
 			DPRINTFN(5, "could not alloc tx fifo\n");
 			return (ENOMEM);
@@ -511,7 +516,6 @@ usb_fifo_create(struct usb_cdev_privdata *cpd,
 		/* update some fields */
 		f->fifo_index = n + USB_FIFO_TX;
 		f->dev_ep_index = e;
-		f->priv_lock = &udev->device_lock;
 		f->priv_sc0 = ep;
 		f->methods = &usb_ugen_methods;
 		f->iface_index = ep->iface_index;
@@ -530,7 +534,7 @@ usb_fifo_create(struct usb_cdev_privdata *cpd,
 			DPRINTFN(5, "dev_get_endpoint returned NULL\n");
 			return (EINVAL);
 		}
-		f = usb_fifo_alloc();
+		f = usb_fifo_alloc(&udev->device_lock);
 		if (f == NULL) {
 			DPRINTFN(5, "could not alloc rx fifo\n");
 			return (ENOMEM);
@@ -538,7 +542,6 @@ usb_fifo_create(struct usb_cdev_privdata *cpd,
 		/* update some fields */
 		f->fifo_index = n + USB_FIFO_RX;
 		f->dev_ep_index = e;
-		f->priv_lock = &udev->device_lock;
 		f->priv_sc0 = ep;
 		f->methods = &usb_ugen_methods;
 		f->iface_index = ep->iface_index;
@@ -623,6 +626,11 @@ usb_fifo_free(struct usb_fifo *f)
 	cv_destroy(&f->cv_io);
 	cv_destroy(&f->cv_drain);
 
+	/* XXX mpf
+	knlist_clear(&f->selinfo.si_note, 0);
+	seldrain(&f->selinfo);
+	knlist_destroy(&f->selinfo.si_note);
+	*/
 	kfree(f, M_USBDEV);
 }
 
@@ -777,7 +785,9 @@ usb_fifo_close(struct usb_fifo *f, int fflags)
 	lockmgr(f->priv_lock, LK_EXCLUSIVE);
 
 	/* clear current cdev private data pointer */
+	lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
 	f->curr_cpd = NULL;
+	lockmgr(&usb_ref_lock, LK_RELEASE);
 
 	/* check if we are selected */
 	if (f->flag_isselect) {
@@ -1994,8 +2004,8 @@ usb_fifo_attach(struct usb_device *udev, void *priv_sc,
 		break;
 	}
 
-	f_tx = usb_fifo_alloc();
-	f_rx = usb_fifo_alloc();
+	f_tx = usb_fifo_alloc(priv_lock);
+	f_rx = usb_fifo_alloc(priv_lock);
 
 	if ((f_tx == NULL) || (f_rx == NULL)) {
 		usb_fifo_free(f_tx);
