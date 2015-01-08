@@ -1543,7 +1543,7 @@ movecard(void)
 }
 
 const char *const basicinstructions[] = {
-	"Here are brief instuctions to the game of Canfield:\n\n",
+	"Here are brief instructions to the game of Canfield:\n\n",
 	"     If you have never played solitaire before, it is recom-\n",
 	"mended  that  you  consult  a solitaire instruction book. In\n",
 	"Canfield, tableau cards may be built on each other  downward\n",
