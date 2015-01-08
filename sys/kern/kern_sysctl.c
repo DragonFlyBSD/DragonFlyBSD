@@ -586,7 +586,6 @@ sysctl_sysctl_debug_dump_node(struct sysctl_oid_list *l, int i)
 		}
 
 	}
-	SYSCTL_XUNLOCK();
 }
 
 static int
