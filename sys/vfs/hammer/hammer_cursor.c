@@ -641,8 +641,7 @@ hammer_cursor_down(hammer_cursor_t cursor)
 
 	/*
 	 * Ok, push down into elm.  If elm specifies an internal or leaf
-	 * node the current node must be an internal node.  If elm specifies
-	 * a spike then the current node must be a leaf node.
+	 * node the current node must be an internal node.
 	 */
 	switch(elm->base.btype) {
 	case HAMMER_BTREE_TYPE_INTERNAL:

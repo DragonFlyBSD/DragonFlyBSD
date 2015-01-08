@@ -1007,8 +1007,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
  * 
  * INSERTIONS: The search will split full nodes and leaves on its way down
  * and guarentee that the leaf it ends up on is not full.  If we run out
- * of space the search continues to the leaf (to position the cursor for
- * the spike), but ENOSPC is returned.
+ * of space the search continues to the leaf, but ENOSPC is returned.
  *
  * The search is only guarenteed to end up on a leaf if an error code of 0
  * is returned, or if inserting and an error code of ENOENT is returned.
@@ -1314,9 +1313,8 @@ btree_search(hammer_cursor_t cursor, int flags)
 		 * prepend and append an empty leaf node in order to make
 		 * the boundary correction.
 		 *
-		 * If we run out of space we set enospc and continue on
-		 * to a leaf to provide the spike code with a good point
-		 * of entry.
+		 * If we run out of space we set enospc but continue on
+		 * to a leaf.
 		 */
 		if ((flags & HAMMER_CURSOR_INSERT) && enospc == 0) {
 			if (btree_node_is_full(node)) {
@@ -1460,7 +1458,7 @@ failed:
 	/*
 	 * We reached a leaf but did not find the key we were looking for.
 	 * If this is an insert we will be properly positioned for an insert
-	 * (ENOENT) or spike (ENOSPC) operation.
+	 * (ENOENT) or unable to insert (ENOSPC).
 	 */
 	error = enospc ? ENOSPC : ENOENT;
 done:
@@ -1790,9 +1788,6 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * right to try to optimize node fill and flag it.  If we hit
 	 * that same leaf again our heuristic failed and we don't try
 	 * to optimize node fill (it could lead to a degenerate case).
-	 *
-	 * Spikes are made up of two leaf elements which cannot be
-	 * safely split.
 	 */
 	leaf = cursor->node;
 	ondisk = leaf->ondisk;
