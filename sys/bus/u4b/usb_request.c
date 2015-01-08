@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/sys/dev/usb/usb_request.c 276701 2015-01-05 15:04:17Z hselasky $ */
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc. All rights reserved.
  * Copyright (c) 1998 Lennart Augustsson. All rights reserved.
@@ -725,6 +725,17 @@ done:
 	if (lock != NULL)
 		lockmgr(lock, LK_EXCLUSIVE);
 
+	switch (err) {
+	case USB_ERR_NORMAL_COMPLETION:
+	case USB_ERR_SHORT_XFER:
+	case USB_ERR_STALLED:
+	case USB_ERR_CANCELLED:
+		break;
+	default:
+		DPRINTF("I/O error - waiting a bit for TT cleanup\n");
+		usb_pause_mtx(lock, hz / 16);
+		break;
+	}
 	return ((usb_error_t)err);
 }
 
@@ -996,11 +1007,12 @@ usbd_req_get_desc(struct usb_device *udev,
 	DPRINTFN(4, "id=%d, type=%d, index=%d, max_len=%d\n",
 	    id, type, index, max_len);
 
+	req.bmRequestType = UT_READ_DEVICE;
+	req.bRequest = UR_GET_DESCRIPTOR;
+	USETW2(req.wValue, type, index);
+	USETW(req.wIndex, id);
+
 	while (1) {
-		req.bmRequestType = UT_READ_DEVICE;
-		req.bRequest = UR_GET_DESCRIPTOR;
-		USETW2(req.wValue, type, index);
-		USETW(req.wIndex, id);
 
 		if ((min_len < 2) || (max_len < 2)) {
 			err = USB_ERR_INVAL;
@@ -2017,6 +2029,7 @@ usbd_req_re_enumerate(struct usb_device *udev, struct lock *lock)
 		return (USB_ERR_INVAL);
 	}
 retry:
+#if USB_HAVE_TT_SUPPORT
 	/*
 	 * Try to reset the High Speed parent HUB of a LOW- or FULL-
 	 * speed device, if any.
@@ -2024,15 +2037,24 @@ retry:
 	if (udev->parent_hs_hub != NULL &&
 	    udev->speed != USB_SPEED_HIGH) {
 		DPRINTF("Trying to reset parent High Speed TT.\n");
-		err = usbd_req_reset_tt(udev->parent_hs_hub, NULL,
-		    udev->hs_port_no);
+		if (udev->parent_hs_hub == parent_hub &&
+		    (uhub_count_active_host_ports(parent_hub, USB_SPEED_LOW) +
+		     uhub_count_active_host_ports(parent_hub, USB_SPEED_FULL)) == 1) {
+			/* we can reset the whole TT */
+			err = usbd_req_reset_tt(parent_hub, NULL,
+			    udev->hs_port_no);
+		} else {
+			/* only reset a particular device and endpoint */
+			err = usbd_req_clear_tt_buffer(udev->parent_hs_hub, NULL,
+			    udev->hs_port_no, old_addr, UE_CONTROL, 0);
+		}
 		if (err) {
 			DPRINTF("Resetting parent High "
 			    "Speed TT failed (%s).\n",
 			    usbd_errstr(err));
 		}
 	}
-
+#endif
 	/* Try to warm reset first */
 	if (parent_hub->speed == USB_SPEED_SUPER)
 		usbd_req_warm_reset_port(parent_hub, lock, udev->port_no);
