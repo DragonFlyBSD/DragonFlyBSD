@@ -1116,14 +1116,9 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * (If inserting we aren't doing an as-of search so we don't have
 	 *  to worry about create_check).
 	 */
-	while ((flags & HAMMER_CURSOR_INSERT) && enospc == 0) {
-		if (cursor->node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL) {
-			if (btree_node_is_full(cursor->node->ondisk) == 0)
-				break;
-		} else {
-			if (btree_node_is_full(cursor->node->ondisk) ==0)
-				break;
-		}
+	while (flags & HAMMER_CURSOR_INSERT) {
+		if (btree_node_is_full(cursor->node->ondisk) == 0)
+			break;
 		if (cursor->node->ondisk->parent == 0 ||
 		    cursor->parent->ondisk->count != HAMMER_BTREE_INT_ELMS) {
 			break;
