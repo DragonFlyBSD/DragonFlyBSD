@@ -1233,7 +1233,6 @@ device		"snd_neomagic"
 device		"snd_solo"
 device		"snd_spicds"
 device		"snd_t4dwave"
-device		"snd_uaudio"
 device		"snd_via8233"
 device		"snd_via82c686"
 device		"snd_vibes"
@@ -1244,8 +1243,8 @@ options		SND_FEEDER_FULL_MULTIFORMAT
 options		SND_FEEDER_RATE_HP
 options		SND_PCM_64
 options		SND_OLDSTEREO
- # USB
-#device		"snd_uaudio"
+# USB
+device		"snd_uaudio"
 
 #
 # Miscellaneous hardware:

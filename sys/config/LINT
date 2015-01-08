@@ -1361,12 +1361,11 @@ device		"snd_neomagic"
 device		"snd_solo"
 device		"snd_spicds"
 device		"snd_t4dwave"
-device		"snd_uaudio"
 device		"snd_via8233"
 device		"snd_via82c686"
 device		"snd_vibes"
 # USB
-#device		"snd_uaudio"
+device		"snd_uaudio"
 
 #
 # Miscellaneous hardware:
