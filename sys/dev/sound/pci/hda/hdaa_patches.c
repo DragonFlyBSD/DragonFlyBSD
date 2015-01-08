@@ -41,6 +41,7 @@
 #include <dev/sound/pci/hda/hdac.h>
 #include <dev/sound/pci/hda/hdaa.h>
 #include <dev/sound/pci/hda/hda_reg.h>
+#include <dev/sound/pci/hda/hdaa_patches.h>
 
 SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/hda/hdaa_patches.c 269158 2014-07-27 20:14:22Z adrian $");
 
@@ -284,6 +285,24 @@ hdac_pin_patch(struct hdaa_widget *w)
 	}
 
 	/* New patches */
+	if (id == HDA_CODEC_ALC283 && subid == ACER_C720_SUBVENDOR) {
+		switch (nid) {
+		case 20:
+			patch = "as=2 seq=0";
+			break;
+		case 25:
+			patch = "as=1 seq=0";
+			break;
+		case 27:
+			/*
+			patch = "device=Headphones conn=Fixed as=2 seq=15";
+			w->enable = 1;
+			*/
+			break;
+		case 33:
+			break;
+		}
+	} else
 	if (id == HDA_CODEC_AD1984A &&
 	    subid == LENOVO_X300_SUBVENDOR) {
 		switch (nid) {
@@ -420,6 +439,10 @@ hdaa_widget_patch(struct hdaa_widget *w)
 	struct hdaa_devinfo *devinfo = w->devinfo;
 	uint32_t orig;
 	nid_t beeper = -1;
+	uint32_t id, subid;
+
+	id = hdaa_codec_id(devinfo);
+	subid = hdaa_card_id(devinfo);
 
 	orig = w->param.widget_cap;
 	/* On some codecs beeper is an input pin, but it is not recordable
@@ -464,6 +487,23 @@ hdaa_widget_patch(struct hdaa_widget *w)
 			    w->nid, orig, w->param.widget_cap);
 		}
 	);
+
+#if 1
+	/*
+	 * Redirect the headphone plug sense (NID 33 -> redir to 12).
+	 *
+	 * Disable the remixer (NID 11).  There was a comment in the linux
+	 * driver that disabling the remixer removes low level whitenoise.
+	 * this makes sense since the mixer's unconnected inputs might have
+	 * noise on them that leaks through.
+	 */
+	if (id == HDA_CODEC_ALC283 && subid == ACER_C720_SUBVENDOR) {
+		if (w->nid == 33)
+			w->senseredir = 12;
+		if (w->nid == 11)
+			w->enable = 0;
+	}
+#endif
 
 	if (w->type == HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX)
 		hdac_pin_patch(w);
@@ -736,4 +776,27 @@ hdaa_patch_direct(struct hdaa_devinfo *devinfo)
 			hda_command(dev, HDA_CMD_SET_PROCESSING_COEFF(0, 0x20, val|0x80));
 		}
 	}
+	if (id == HDA_CODEC_ALC283) {
+		if (subid == ACER_C720_SUBVENDOR)
+			hdaa_patch_direct_acer_c720(devinfo);
+	}
+}
+
+/* XXX move me to a better place */
+uint32_t
+hda_read_coef_idx(device_t dev, nid_t nid, unsigned int coef_idx)
+{
+	uint32_t val;
+
+	hda_command(dev, HDA_CMD_SET_COEFF_INDEX(0, nid, coef_idx));
+	val = hda_command(dev, HDA_CMD_GET_PROCESSING_COEFF(0, nid));
+	return val;
+}
+
+void
+hda_write_coef_idx(device_t dev, nid_t nid, unsigned int coef_idx,
+		   unsigned coef_val)
+{
+	hda_command(dev, HDA_CMD_SET_COEFF_INDEX(0, nid, coef_idx));
+	hda_command(dev, HDA_CMD_SET_PROCESSING_COEFF(0, nid, coef_val));
 }
