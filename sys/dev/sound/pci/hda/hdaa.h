@@ -99,7 +99,6 @@ struct hdaa_widget {
 	int nconns, selconn;
 	int waspin;
 	uint32_t pflags;
-	int senseredir;
 	int bindas;
 	int bindseqmask;
 	int ossdev;

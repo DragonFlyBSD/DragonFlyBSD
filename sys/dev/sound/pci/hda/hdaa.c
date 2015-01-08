@@ -385,17 +385,6 @@ hdaa_hpredir_handler(struct hdaa_widget *w)
 	uint32_t val;
 	int j, connected = w->wclass.pin.connected;
 
-	if (w->senseredir) {
-		for (j = 0; j < w->nconns; j++) {
-			if (w->conns[j] == w->senseredir && connected)
-				break;
-			else if (w->conns[j] != w->senseredir && !connected)
-				break;
-		}
-		if (j != w->nconns)
-			hdaa_widget_connection_select(w, j);
-	}
-
 	HDA_BOOTVERBOSE(
 		device_printf((as->pdevinfo && as->pdevinfo->dev) ?
 		    as->pdevinfo->dev : devinfo->dev,
@@ -404,7 +393,7 @@ hdaa_hpredir_handler(struct hdaa_widget *w)
 	);
 	/* (Un)Mute headphone pin. */
 	ctl = hdaa_audio_ctl_amp_get(devinfo,
-				     w->nid, HDAA_CTL_IN, -1, 1);
+	    w->nid, HDAA_CTL_IN, -1, 1);
 	if (ctl != NULL && ctl->mute) {
 		/* If pin has muter - use it. */
 		val = connected ? 0 : 1;
@@ -433,30 +422,8 @@ hdaa_hpredir_handler(struct hdaa_widget *w)
 	for (j = 0; j < 15; j++) {
 		if (as->pins[j] <= 0)
 			continue;
-		w1 = hdaa_widget_get(devinfo, as->pins[j]);
-		if (w == w1)
-			continue;
-
-		/*
-		 * When senseredir is set (typically in hdaa_patches.c) in
-		 * a microphone nid it specifies which mux nid is being
-		 * routed.
-		 */
-		if (w->senseredir && w1) {
-			int k;
-
-			for (k = 0; k < w1->nconns; k++) {
-				if (w1->conns[k] == w->senseredir && connected)
-					break;
-				else if (w1->conns[k] != w->senseredir && !connected)
-					break;
-			}
-			if (k != w1->nconns)
-				hdaa_widget_connection_select(w1, k);
-		}
-
 		ctl = hdaa_audio_ctl_amp_get(devinfo,
-					     as->pins[j], HDAA_CTL_IN, -1, 1);
+		    as->pins[j], HDAA_CTL_IN, -1, 1);
 		if (ctl != NULL && ctl->mute) {
 			/* If pin has muter - use it. */
 			val = connected ? 1 : 0;
@@ -469,6 +436,7 @@ hdaa_hpredir_handler(struct hdaa_widget *w)
 			continue;
 		}
 		/* If there is no muter - disable pin output. */
+		w1 = hdaa_widget_get(devinfo, as->pins[j]);
 		if (w1 != NULL) {
 			if (connected)
 				val = w1->wclass.pin.ctrl &
@@ -593,11 +561,8 @@ hdaa_presence_handler(struct hdaa_widget *w)
 	);
 
 	as = &devinfo->as[w->bindas];
-	if (w->senseredir)
+	if (as->hpredir >= 0 && as->pins[15] == w->nid)
 		hdaa_hpredir_handler(w);
-	else if (as->hpredir >= 0 && as->pins[15] == w->nid)
-		hdaa_hpredir_handler(w);
-
 	if (as->dir == HDAA_CTL_IN && old != 2)
 		hdaa_autorecsrc_handler(as, w);
 	if (old != 2)
