@@ -1,3 +1,4 @@
+/* $FreeBSD: head/sys/dev/usb/usb_hid.c 246122 2013-01-30 15:26:04Z hselasky $ */
 /*	$NetBSD: hid.c,v 1.17 2001/11/13 06:24:53 lukem Exp $	*/
 
 
