@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/sys/dev/usb/usb_mbuf.h 196219 2009-08-14 20:03:53Z jhb $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
