@@ -1,7 +1,7 @@
 # $FreeBSD: head/sys/modules/sound/sound/Makefile 212523 2010-09-13 02:05:42Z imp $
 
-.PATH: ${.CURDIR}/../../../dev/sound
-.PATH: ${.CURDIR}/../../../dev/sound/pcm
+.PATH: ${.CURDIR}/..
+.PATH: ${.CURDIR}/../pcm
 
 KMOD=	sound
 SRCS=	device_if.h bus_if.h pci_if.h
