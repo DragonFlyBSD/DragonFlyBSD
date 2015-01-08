@@ -206,6 +206,8 @@ acpi_tz_attach(device_t dev)
     char			oidname[8];
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+    if (device_get_unit(dev) == 0)
+	ACPI_LOCK_INIT(thermal, "acpitz");
 
     sc = device_get_softc(dev);
     sc->tz_dev = dev;
