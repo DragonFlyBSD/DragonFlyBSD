@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/sys/dev/sound/usb/uaudio_pcm.c 246128 2013-01-30 18:01:20Z sbz $ */
 
 /*-
  * Copyright (c) 2000-2002 Hiroyuki Aizu <aizu@navi.org>
@@ -27,9 +27,7 @@
  */
 
 
-#ifdef HAVE_KERNEL_OPTION_HEADERS
 #include "opt_snd.h"
-#endif
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/chip.h>
@@ -72,13 +70,11 @@ ua_chan_setblocksize(kobj_t obj, void *data, uint32_t blocksize)
 	return (uaudio_chan_set_param_blocksize(data, blocksize));
 }
 
-#if 0
 static int
 ua_chan_setfragments(kobj_t obj, void *data, uint32_t blocksize, uint32_t blockcount)
 {
 	return (uaudio_chan_set_param_fragments(data, blocksize, blockcount));
 }
-#endif
 
 static int
 ua_chan_trigger(kobj_t obj, void *data, int go)
@@ -105,13 +101,11 @@ ua_chan_getcaps(kobj_t obj, void *data)
 	return (uaudio_chan_getcaps(data));
 }
 
-#if 0
 static struct pcmchan_matrix *
 ua_chan_getmatrix(kobj_t obj, void *data, uint32_t format)
 {
 	return (uaudio_chan_getmatrix(data, format));
 }
-#endif
 
 static kobj_method_t ua_chan_methods[] = {
 	KOBJMETHOD(channel_init, ua_chan_init),
@@ -119,15 +113,11 @@ static kobj_method_t ua_chan_methods[] = {
 	KOBJMETHOD(channel_setformat, ua_chan_setformat),
 	KOBJMETHOD(channel_setspeed, ua_chan_setspeed),
 	KOBJMETHOD(channel_setblocksize, ua_chan_setblocksize),
-#if 0
 	KOBJMETHOD(channel_setfragments, ua_chan_setfragments),
-#endif
 	KOBJMETHOD(channel_trigger, ua_chan_trigger),
 	KOBJMETHOD(channel_getptr, ua_chan_getptr),
 	KOBJMETHOD(channel_getcaps, ua_chan_getcaps),
-#if 0
 	KOBJMETHOD(channel_getmatrix, ua_chan_getmatrix),
-#endif
 	KOBJMETHOD_END
 };
 
@@ -146,7 +136,7 @@ ua_mixer_set(struct snd_mixer *m, unsigned type, unsigned left, unsigned right)
 	struct lock *lock = mixer_get_lock(m);
 	uint8_t do_unlock;
 
-	if (lockstatus(lock, curthread)) {
+	if (lockowned(lock)) {
 		do_unlock = 0;
 	} else {
 		do_unlock = 1;
@@ -166,7 +156,7 @@ ua_mixer_setrecsrc(struct snd_mixer *m, uint32_t src)
 	int retval;
 	uint8_t do_unlock;
 
-	if (lockstatus(lock, curthread)) {
+	if (lockowned(lock)) {
 		do_unlock = 0;
 	} else {
 		do_unlock = 1;
@@ -244,7 +234,7 @@ static driver_t ua_pcm_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(ua_pcm, uaudio, ua_pcm_driver, pcm_devclass, NULL, NULL);
+DRIVER_MODULE(ua_pcm, uaudio, ua_pcm_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(ua_pcm, uaudio, 1, 1, 1);
 MODULE_DEPEND(ua_pcm, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(ua_pcm, 1);

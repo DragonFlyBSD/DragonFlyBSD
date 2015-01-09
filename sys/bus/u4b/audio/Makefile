@@ -1,6 +1,8 @@
-KMOD=   uaudio
+# $FreeBSD: head/sys/modules/sound/driver/uaudio/Makefile 266006 2014-05-14 07:33:06Z hselasky $
 
-SRCS=   opt_bus.h opt_usb.h opt_snd.h device_if.h bus_if.h usb_if.h usbdevs.h \
-	mixer_if.h feeder_if.h channel_if.h uaudio.c uaudio_pcm.c
+KMOD=	uaudio
+SRCS=	bus_if.h device_if.h mixer_if.h usb_if.h
+SRCS+=	opt_usb.h opt_bus.h opt_snd.h feeder_if.h channel_if.h usbdevs.h
+SRCS+=	uaudio_pcm.c uaudio.c 
 
-.include <bsd.kmod.mk>  
+.include <bsd.kmod.mk>
