@@ -629,9 +629,16 @@ in6_nigroup(struct ifnet *ifp, const char *name, int namelen,
 	return 0;
 }
 
-void
-in6_nigroup_attach(const char *name, int namelen)
+struct netmsg_nigroup {
+	struct netmsg_base	nmsg;
+	const char		*name;
+	int			namelen;
+};
+
+static void
+in6_nigroup_attach_dispatch(netmsg_t msg)
 {
+	struct netmsg_nigroup *nmsg = (struct netmsg_nigroup *)msg;
 	struct ifnet *ifp;
 	struct sockaddr_in6 mltaddr;
 	struct in6_multi *in6m;
@@ -640,8 +647,9 @@ in6_nigroup_attach(const char *name, int namelen)
 	bzero(&mltaddr, sizeof(mltaddr));
 	mltaddr.sin6_family = AF_INET6;
 	mltaddr.sin6_len = sizeof(struct sockaddr_in6);
-	if (in6_nigroup(NULL, name, namelen, &mltaddr.sin6_addr) != 0)
-		return;
+	if (in6_nigroup(NULL, nmsg->name, nmsg->namelen,
+	    &mltaddr.sin6_addr) != 0)
+		goto done;
 
 	TAILQ_FOREACH(ifp, &ifnet, if_list) {
 		mltaddr.sin6_addr.s6_addr16[1] = htons(ifp->if_index);
@@ -655,11 +663,26 @@ in6_nigroup_attach(const char *name, int namelen)
 			}
 		}
 	}
+done:
+	lwkt_replymsg(&nmsg->nmsg.lmsg, 0);
 }
 
 void
-in6_nigroup_detach(const char *name, int namelen)
+in6_nigroup_attach(const char *name, int namelen)
 {
+	struct netmsg_nigroup nmsg;
+
+	netmsg_init(&nmsg.nmsg, NULL, &curthread->td_msgport, 0,
+	    in6_nigroup_attach_dispatch);
+	nmsg.name = name;
+	nmsg.namelen = namelen;
+	lwkt_domsg(netisr_cpuport(0), &nmsg.nmsg.lmsg, 0);
+}
+
+static void
+in6_nigroup_detach_dispatch(netmsg_t msg)
+{
+	struct netmsg_nigroup *nmsg = (struct netmsg_nigroup *)msg;
 	struct ifnet *ifp;
 	struct sockaddr_in6 mltaddr;
 	struct in6_multi *in6m;
@@ -667,8 +690,9 @@ in6_nigroup_detach(const char *name, int namelen)
 	bzero(&mltaddr, sizeof(mltaddr));
 	mltaddr.sin6_family = AF_INET6;
 	mltaddr.sin6_len = sizeof(struct sockaddr_in6);
-	if (in6_nigroup(NULL, name, namelen, &mltaddr.sin6_addr) != 0)
-		return;
+	if (in6_nigroup(NULL, nmsg->name, nmsg->namelen,
+	    &mltaddr.sin6_addr) != 0)
+		goto done;
 
 	TAILQ_FOREACH(ifp, &ifnet, if_list) {
 		mltaddr.sin6_addr.s6_addr16[1] = htons(ifp->if_index);
@@ -676,6 +700,20 @@ in6_nigroup_detach(const char *name, int namelen)
 		if (in6m)
 			in6_delmulti(in6m);
 	}
+done:
+	lwkt_replymsg(&nmsg->nmsg.lmsg, 0);
+}
+
+void
+in6_nigroup_detach(const char *name, int namelen)
+{
+	struct netmsg_nigroup nmsg;
+
+	netmsg_init(&nmsg.nmsg, NULL, &curthread->td_msgport, 0,
+	    in6_nigroup_detach_dispatch);
+	nmsg.name = name;
+	nmsg.namelen = namelen;
+	lwkt_domsg(netisr_cpuport(0), &nmsg.nmsg.lmsg, 0);
 }
 
 /*
