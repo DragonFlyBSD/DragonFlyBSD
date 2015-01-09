@@ -64,6 +64,8 @@
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/route.h>
+#include <net/netisr2.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
@@ -191,10 +193,19 @@ nd6_setmtu(struct ifnet *ifp)
 	nd6_setmtu0(ifp, ND_IFINFO(ifp));
 }
 
+struct netmsg_nd6setmtu {
+	struct netmsg_base	nmsg;
+	struct ifnet		*ifp;
+	struct nd_ifinfo	*ndi;
+};
+
 /* XXX todo: do not maintain copy of ifp->if_mtu in ndi->maxmtu */
-void
-nd6_setmtu0(struct ifnet *ifp, struct nd_ifinfo *ndi)
+static void
+nd6_setmtu0_dispatch(netmsg_t msg)
 {
+	struct netmsg_nd6setmtu *nmsg = (struct netmsg_nd6setmtu *)msg;
+	struct ifnet *ifp = nmsg->ifp;
+	struct nd_ifinfo *ndi = nmsg->ndi;
 	u_long oldmaxmtu;
 	u_long oldlinkmtu;
 
@@ -242,6 +253,20 @@ nd6_setmtu0(struct ifnet *ifp, struct nd_ifinfo *ndi)
 		}
 	}
 #undef MIN
+
+	lwkt_replymsg(&nmsg->nmsg.lmsg, 0);
+}
+
+void
+nd6_setmtu0(struct ifnet *ifp, struct nd_ifinfo *ndi)
+{
+	struct netmsg_nd6setmtu nmsg;
+
+	netmsg_init(&nmsg.nmsg, NULL, &curthread->td_msgport, 0,
+	    nd6_setmtu0_dispatch);
+	nmsg.ifp = ifp;
+	nmsg.ndi = ndi;
+	lwkt_domsg(netisr_cpuport(0), &nmsg.nmsg.lmsg, 0);
 }
 
 void
