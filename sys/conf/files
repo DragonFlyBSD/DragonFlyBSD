@@ -1711,6 +1711,7 @@ dev/sound/pci/es137x.c		optional snd_es137x pci
 dev/sound/pci/fm801.c		optional snd_fm801 pci
 dev/sound/pci/hda/hdaa.c	optional snd_hda pci
 dev/sound/pci/hda/hdaa_patches.c	optional snd_hda pci
+gnu/dev/sound/pci/hda/hda_acer_c720_patch.c optional snd_hda pci
 dev/sound/pci/hda/hdac.c	optional snd_hda pci
 dev/sound/pci/hda/hdac_if.m	optional snd_hda pci
 dev/sound/pci/hda/hdacc.c	optional snd_hda pci
