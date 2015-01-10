@@ -944,7 +944,7 @@ static device_method_t i915_methods[] = {
 	DEVMETHOD(device_attach,	i915_attach),
 	DEVMETHOD(device_suspend,	i915_suspend),
 	DEVMETHOD(device_resume,	i915_resume),
-	DEVMETHOD(device_detach,	drm_detach),
+	DEVMETHOD(device_detach,	drm_release),
 	DEVMETHOD_END
 };
 

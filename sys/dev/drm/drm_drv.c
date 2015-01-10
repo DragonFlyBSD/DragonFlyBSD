@@ -52,7 +52,6 @@ unsigned int drm_vblank_offdelay = 5000;    /* Default to 5000 msecs. */
 unsigned int drm_timestamp_precision = 20;  /* Default to 20 usecs. */
 
 static int drm_load(struct drm_device *dev);
-static void drm_unload(struct drm_device *dev);
 drm_pci_id_list_t *drm_find_description(int vendor, int device,
     drm_pci_id_list_t *idlist);
 
@@ -347,23 +346,6 @@ drm_create_cdevs(device_t kdev)
 	return (error);
 }
 
-int drm_detach(device_t kdev)
-{
-	struct drm_device *dev;
-
-	dev = device_get_softc(kdev);
-	drm_unload(dev);
-	if (dev->irqr) {
-		bus_release_resource(dev->dev, SYS_RES_IRQ, dev->irqrid,
-		    dev->irqr);
-		if (dev->msi_enabled) {
-			pci_release_msi(dev->dev);
-			DRM_INFO("MSI released\n");
-		}
-	}
-	return (0);
-}
-
 #ifndef DRM_DEV_NAME
 #define DRM_DEV_NAME "drm"
 #endif
@@ -394,7 +376,7 @@ drm_pci_id_list_t *drm_find_description(int vendor, int device,
  *
  * \sa drm_device
  */
-static int drm_lastclose(struct drm_device *dev)
+int drm_lastclose(struct drm_device * dev)
 {
 	drm_magic_entry_t *pt, *next;
 	int i;
@@ -556,70 +538,6 @@ error:
 	lockuninit(&dev->struct_mutex);
 
 	return retcode;
-}
-
-static void drm_unload(struct drm_device *dev)
-{
-	int i;
-
-	DRM_DEBUG("\n");
-
-	drm_sysctl_cleanup(dev);
-	if (dev->devnode != NULL)
-		destroy_dev(dev->devnode);
-
-	drm_ctxbitmap_cleanup(dev);
-
-	if (dev->driver->driver_features & DRIVER_GEM)
-		drm_gem_destroy(dev);
-
-	if (dev->agp && dev->agp->agp_mtrr) {
-		int __unused retcode;
-
-		retcode = drm_mtrr_del(0, dev->agp->agp_info.ai_aperture_base,
-		    dev->agp->agp_info.ai_aperture_size, DRM_MTRR_WC);
-		DRM_DEBUG("mtrr_del = %d", retcode);
-	}
-
-	drm_vblank_cleanup(dev);
-
-	DRM_LOCK(dev);
-	drm_lastclose(dev);
-	DRM_UNLOCK(dev);
-
-	/* Clean up PCI resources allocated by drm_bufs.c.  We're not really
-	 * worried about resource consumption while the DRM is inactive (between
-	 * lastclose and firstopen or unload) because these aren't actually
-	 * taking up KVA, just keeping the PCI resource allocated.
-	 */
-	for (i = 0; i < DRM_MAX_PCI_RESOURCE; i++) {
-		if (dev->pcir[i] == NULL)
-			continue;
-		bus_release_resource(dev->dev, SYS_RES_MEMORY,
-		    dev->pcirid[i], dev->pcir[i]);
-		dev->pcir[i] = NULL;
-	}
-
-	if (dev->agp) {
-		drm_free(dev->agp, M_DRM);
-		dev->agp = NULL;
-	}
-
-	if (dev->driver->unload != NULL) {
-		DRM_LOCK(dev);
-		dev->driver->unload(dev);
-		DRM_UNLOCK(dev);
-	}
-
-	drm_mem_uninit();
-
-	if (pci_disable_busmaster(dev->dev))
-		DRM_ERROR("Request to disable bus-master failed.\n");
-
-	lockuninit(&dev->vbl_lock);
-	lockuninit(&dev->dev_lock);
-	lockuninit(&dev->event_lock);
-	lockuninit(&dev->struct_mutex);
 }
 
 int drm_version(struct drm_device *dev, void *data, struct drm_file *file_priv)

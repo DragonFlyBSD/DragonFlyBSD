@@ -1095,12 +1095,17 @@ extern unsigned int drm_timestamp_monotonic;
 int	drm_probe(device_t kdev, drm_pci_id_list_t *idlist);
 int	drm_attach(device_t kdev, drm_pci_id_list_t *idlist);
 int	drm_create_cdevs(device_t kdev);
-int	drm_detach(device_t kdev);
+
 d_ioctl_t drm_ioctl;
+extern int drm_lastclose(struct drm_device *dev);
+
+				/* Device support (drm_fops.h) */
 d_open_t drm_open;
 d_close_t drm_close;
 d_read_t drm_read;
 d_kqfilter_t drm_kqfilter;
+int drm_release(device_t kdev);
+
 d_mmap_t drm_mmap;
 d_mmap_single_t drm_mmap_single;
 extern drm_local_map_t	*drm_getsarea(struct drm_device *dev);

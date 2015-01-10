@@ -491,7 +491,7 @@ static device_method_t radeon_methods[] = {
 	DEVMETHOD(device_attach,	radeon_attach),
 	DEVMETHOD(device_suspend,	radeon_suspend),
 	DEVMETHOD(device_resume,	radeon_resume),
-	DEVMETHOD(device_detach,	drm_detach),
+	DEVMETHOD(device_detach,	drm_release),
 	DEVMETHOD_END
 };
 

@@ -183,6 +183,192 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 	return retcode;
 }
 
+/**
+ * Release file.
+ *
+ * \param inode device inode
+ * \param file_priv DRM file private.
+ * \return zero on success or a negative number on failure.
+ *
+ * If the hardware lock is held then free it, and take it again for the kernel
+ * context since it's necessary to reclaim buffers. Unlink the file private
+ * data from its list and free it. Decreases the open count and if it reaches
+ * zero calls drm_lastclose().
+ */
+
+#if 0 /* old drm_release equivalent from DragonFly */
+void drm_cdevpriv_dtor(void *cd)
+{
+	struct drm_file *file_priv = cd;
+	struct drm_device *dev = file_priv->dev;
+	int retcode = 0;
+
+	DRM_DEBUG("open_count = %d\n", dev->open_count);
+
+	DRM_LOCK(dev);
+
+	if (dev->driver->preclose != NULL)
+		dev->driver->preclose(dev, file_priv);
+
+	/* ========================================================
+	 * Begin inline drm_release
+	 */
+
+	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
+	    DRM_CURRENTPID, (long)dev->dev, dev->open_count);
+
+	if (dev->driver->driver_features & DRIVER_GEM)
+		drm_gem_release(dev, file_priv);
+
+	if (dev->primary->master->lock.hw_lock
+	    && _DRM_LOCK_IS_HELD(dev->primary->master->lock.hw_lock->lock)
+	    && dev->primary->master->lock.file_priv == file_priv) {
+		DRM_DEBUG("Process %d dead, freeing lock for context %d\n",
+			  DRM_CURRENTPID,
+			  _DRM_LOCKING_CONTEXT(dev->primary->master->lock.hw_lock->lock));
+		if (dev->driver->reclaim_buffers_locked != NULL)
+			dev->driver->reclaim_buffers_locked(dev, file_priv);
+
+		drm_lock_free(&dev->primary->master->lock,
+		    _DRM_LOCKING_CONTEXT(dev->primary->master->lock.hw_lock->lock));
+
+				/* FIXME: may require heavy-handed reset of
+                                   hardware at this point, possibly
+                                   processed via a callback to the X
+                                   server. */
+	} else if (dev->driver->reclaim_buffers_locked != NULL &&
+	    dev->primary->master->lock.hw_lock != NULL) {
+		/* The lock is required to reclaim buffers */
+		for (;;) {
+			if (!dev->primary->master->lock.hw_lock) {
+				/* Device has been unregistered */
+				retcode = EINTR;
+				break;
+			}
+			if (drm_lock_take(&dev->primary->master->lock, DRM_KERNEL_CONTEXT)) {
+				dev->primary->master->lock.file_priv = file_priv;
+				dev->primary->master->lock.lock_time = jiffies;
+				atomic_inc(&dev->counts[_DRM_STAT_LOCKS]);
+				break;	/* Got lock */
+			}
+			/* Contention */
+			retcode = DRM_LOCK_SLEEP(dev, &dev->primary->master->lock.lock_queue,
+			    PCATCH, "drmlk2", 0);
+			if (retcode)
+				break;
+		}
+		if (retcode == 0) {
+			dev->driver->reclaim_buffers_locked(dev, file_priv);
+			drm_lock_free(&dev->primary->master->lock, DRM_KERNEL_CONTEXT);
+		}
+	}
+
+	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA) &&
+	    !dev->driver->reclaim_buffers_locked)
+		drm_reclaim_buffers(dev, file_priv);
+
+	funsetown(&dev->buf_sigio);
+
+	if (dev->driver->postclose != NULL)
+		dev->driver->postclose(dev, file_priv);
+	list_del(&file_priv->lhead);
+
+
+	/* ========================================================
+	 * End inline drm_release
+	 */
+
+	atomic_inc(&dev->counts[_DRM_STAT_CLOSES]);
+	device_unbusy(dev->dev);
+	if (--dev->open_count == 0) {
+		retcode = drm_lastclose(dev);
+	}
+
+	DRM_UNLOCK(dev);
+}
+#endif
+
+static void drm_unload(struct drm_device *dev)
+{
+	int i;
+
+	DRM_DEBUG("\n");
+
+	drm_sysctl_cleanup(dev);
+	if (dev->devnode != NULL)
+		destroy_dev(dev->devnode);
+
+	drm_ctxbitmap_cleanup(dev);
+
+	if (dev->driver->driver_features & DRIVER_GEM)
+		drm_gem_destroy(dev);
+
+	if (dev->agp && dev->agp->agp_mtrr) {
+		int __unused retcode;
+
+		retcode = drm_mtrr_del(0, dev->agp->agp_info.ai_aperture_base,
+		    dev->agp->agp_info.ai_aperture_size, DRM_MTRR_WC);
+		DRM_DEBUG("mtrr_del = %d", retcode);
+	}
+
+	drm_vblank_cleanup(dev);
+
+	DRM_LOCK(dev);
+	drm_lastclose(dev);
+	DRM_UNLOCK(dev);
+
+	/* Clean up PCI resources allocated by drm_bufs.c.  We're not really
+	 * worried about resource consumption while the DRM is inactive (between
+	 * lastclose and firstopen or unload) because these aren't actually
+	 * taking up KVA, just keeping the PCI resource allocated.
+	 */
+	for (i = 0; i < DRM_MAX_PCI_RESOURCE; i++) {
+		if (dev->pcir[i] == NULL)
+			continue;
+		bus_release_resource(dev->dev, SYS_RES_MEMORY,
+		    dev->pcirid[i], dev->pcir[i]);
+		dev->pcir[i] = NULL;
+	}
+
+	if (dev->agp) {
+		drm_free(dev->agp, M_DRM);
+		dev->agp = NULL;
+	}
+
+	if (dev->driver->unload != NULL) {
+		DRM_LOCK(dev);
+		dev->driver->unload(dev);
+		DRM_UNLOCK(dev);
+	}
+
+	drm_mem_uninit();
+
+	if (pci_disable_busmaster(dev->dev))
+		DRM_ERROR("Request to disable bus-master failed.\n");
+
+	lockuninit(&dev->vbl_lock);
+	lockuninit(&dev->dev_lock);
+	lockuninit(&dev->event_lock);
+	lockuninit(&dev->struct_mutex);
+}
+
+int drm_release(device_t kdev)
+{
+	struct drm_device *dev;
+
+	dev = device_get_softc(kdev);
+	drm_unload(dev);
+	if (dev->irqr) {
+		bus_release_resource(dev->dev, SYS_RES_IRQ, dev->irqrid,
+		    dev->irqr);
+		if (dev->msi_enabled) {
+			pci_release_msi(dev->dev);
+			DRM_INFO("MSI released\n");
+		}
+	}
+	return (0);
+}
+
 static bool
 drm_dequeue_event(struct drm_device *dev, struct drm_file *file_priv,
     struct uio *uio, struct drm_pending_event **out)
