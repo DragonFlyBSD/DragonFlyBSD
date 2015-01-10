@@ -220,6 +220,9 @@ dev_pager_dealloc(vm_object_t object)
 
 /*
  * No requirements.
+ *
+ * WARNING! Do not obtain dev_pager_mtx here, doing so will cause a
+ *	    deadlock in DRMs VM paging code.
  */
 static int
 dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
@@ -227,14 +230,11 @@ dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	vm_page_t page;
 	int error;
 
-	mtx_lock(&dev_pager_mtx);
-
 	page = *mpp;
 
-	error = object->un_pager.devp.ops->cdev_pg_fault(object,
-            IDX_TO_OFF(page->pindex), PROT_READ, mpp);
-
-	mtx_unlock(&dev_pager_mtx);
+	error = object->un_pager.devp.ops->cdev_pg_fault(
+			object, IDX_TO_OFF(page->pindex),
+			PROT_READ, mpp);
 
 	return (error);
 }
