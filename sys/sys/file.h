@@ -123,6 +123,7 @@ struct file {
 	struct nchandle f_nchandle; /* namecache reference */
 	struct spinlock f_spin;	/* NOT USED */
 	struct klist 	f_klist;/* knotes attached to fp/kq */
+	void	*private_data;	/* Linux per-file data */
 };
 
 #define	DTYPE_VNODE	1	/* file */

@@ -1906,7 +1906,7 @@ static void r600_cp_init_ring_buffer(struct drm_device *dev,
 	RADEON_WRITE(R600_LAST_CLEAR_REG, 0);
 
 	/* reset sarea copies of these */
-	master_priv = file_priv->masterp->driver_priv;
+	master_priv = file_priv->master->driver_priv;
 	if (master_priv->sarea_priv) {
 		master_priv->sarea_priv->last_frame = 0;
 		master_priv->sarea_priv->last_dispatch = 0;
@@ -1965,7 +1965,7 @@ int r600_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 		    struct drm_file *file_priv)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
-	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;
+	struct drm_radeon_master_private *master_priv = file_priv->master->driver_priv;
 
 	DRM_DEBUG("\n");
 
@@ -2401,7 +2401,7 @@ int r600_cp_dispatch_indirect(struct drm_device *dev,
 void r600_cp_dispatch_swap(struct drm_device *dev, struct drm_file *file_priv)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
-	struct drm_master *master = file_priv->masterp;
+	struct drm_master *master = file_priv->master;
 	struct drm_radeon_master_private *master_priv = master->driver_priv;
 	drm_radeon_sarea_t *sarea_priv = master_priv->sarea_priv;
 	int nbox = sarea_priv->nbox;
@@ -2523,7 +2523,7 @@ int r600_cp_dispatch_texture(struct drm_device *dev,
 
 		r600_blit_copy(dev, src_offset, dst_offset, pass_size);
 
-		radeon_cp_discard_buffer(dev, file_priv->masterp, buf);
+		radeon_cp_discard_buffer(dev, file_priv->master, buf);
 
 		/* Update the input parameters for next time */
 		image->data = (const u8 __user *)image->data + pass_size;
@@ -2588,7 +2588,7 @@ static void r600_ib_free(struct drm_device *dev, struct drm_buf *buf,
 	if (buf) {
 		if (!r)
 			r600_cp_dispatch_indirect(dev, buf, 0, l * 4);
-		radeon_cp_discard_buffer(dev, fpriv->masterp, buf);
+		radeon_cp_discard_buffer(dev, fpriv->master, buf);
 		COMMIT_RING();
 	}
 }

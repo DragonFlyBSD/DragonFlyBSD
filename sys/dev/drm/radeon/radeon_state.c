@@ -1533,7 +1533,7 @@ static void radeon_cp_dispatch_vertex(struct drm_device * dev,
 				      drm_radeon_tcl_prim_t * prim)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
-	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;
+	struct drm_radeon_master_private *master_priv = file_priv->master->driver_priv;
 	drm_radeon_sarea_t *sarea_priv = master_priv->sarea_priv;
 	int offset = dev_priv->gart_buffers_offset + buf->offset + prim->start;
 	int numverts = (int)prim->numverts;
@@ -1915,7 +1915,7 @@ static int radeon_cp_dispatch_texture(struct drm_device * dev,
 		ADVANCE_RING();
 		COMMIT_RING();
 
-		radeon_cp_discard_buffer(dev, file_priv->masterp, buf);
+		radeon_cp_discard_buffer(dev, file_priv->master, buf);
 
 		/* Update the input parameters for next time */
 		image->y += height;
@@ -2155,7 +2155,7 @@ static int radeon_surface_free(struct drm_device *dev, void *data, struct drm_fi
 static int radeon_cp_clear(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
-	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;
+	struct drm_radeon_master_private *master_priv = file_priv->master->driver_priv;
 	drm_radeon_sarea_t *sarea_priv = master_priv->sarea_priv;
 	drm_radeon_clear_t *clear = data;
 	drm_radeon_clear_rect_t depth_boxes[RADEON_NR_SAREA_CLIPRECTS];
@@ -2172,7 +2172,7 @@ static int radeon_cp_clear(struct drm_device *dev, void *data, struct drm_file *
 			       sarea_priv->nbox * sizeof(depth_boxes[0])))
 		return -EFAULT;
 
-	radeon_cp_dispatch_clear(dev, file_priv->masterp, clear, depth_boxes);
+	radeon_cp_dispatch_clear(dev, file_priv->master, clear, depth_boxes);
 
 	COMMIT_RING();
 	return 0;
@@ -2219,9 +2219,9 @@ static int radeon_cp_flip(struct drm_device *dev, void *data, struct drm_file *f
 	RING_SPACE_TEST_WITH_RETURN(dev_priv);
 
 	if (!dev_priv->page_flipping)
-		radeon_do_init_pageflip(dev, file_priv->masterp);
+		radeon_do_init_pageflip(dev, file_priv->master);
 
-	radeon_cp_dispatch_flip(dev, file_priv->masterp);
+	radeon_cp_dispatch_flip(dev, file_priv->master);
 
 	COMMIT_RING();
 	return 0;
@@ -2230,7 +2230,7 @@ static int radeon_cp_flip(struct drm_device *dev, void *data, struct drm_file *f
 static int radeon_cp_swap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
-	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;
+	struct drm_radeon_master_private *master_priv = file_priv->master->driver_priv;
 	drm_radeon_sarea_t *sarea_priv = master_priv->sarea_priv;
 
 	DRM_DEBUG("\n");
@@ -2245,7 +2245,7 @@ static int radeon_cp_swap(struct drm_device *dev, void *data, struct drm_file *f
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
 		r600_cp_dispatch_swap(dev, file_priv);
 	else
-		radeon_cp_dispatch_swap(dev, file_priv->masterp);
+		radeon_cp_dispatch_swap(dev, file_priv->master);
 	sarea_priv->ctx_owner = 0;
 
 	COMMIT_RING();
@@ -2255,7 +2255,7 @@ static int radeon_cp_swap(struct drm_device *dev, void *data, struct drm_file *f
 static int radeon_cp_vertex(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
-	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;
+	struct drm_radeon_master_private *master_priv = file_priv->master->driver_priv;
 	drm_radeon_sarea_t *sarea_priv;
 	struct drm_device_dma *dma = dev->dma;
 	struct drm_buf *buf;
@@ -2324,7 +2324,7 @@ static int radeon_cp_vertex(struct drm_device *dev, void *data, struct drm_file 
 	}
 
 	if (vertex->discard) {
-		radeon_cp_discard_buffer(dev, file_priv->masterp, buf);
+		radeon_cp_discard_buffer(dev, file_priv->master, buf);
 	}
 
 	COMMIT_RING();
@@ -2334,7 +2334,7 @@ static int radeon_cp_vertex(struct drm_device *dev, void *data, struct drm_file 
 static int radeon_cp_indices(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
-	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;
+	struct drm_radeon_master_private *master_priv = file_priv->master->driver_priv;
 	drm_radeon_sarea_t *sarea_priv;
 	struct drm_device_dma *dma = dev->dma;
 	struct drm_buf *buf;
@@ -2413,9 +2413,9 @@ static int radeon_cp_indices(struct drm_device *dev, void *data, struct drm_file
 	prim.numverts = RADEON_MAX_VB_VERTS;	/* duh */
 	prim.vc_format = sarea_priv->vc_format;
 
-	radeon_cp_dispatch_indices(dev, file_priv->masterp, buf, &prim);
+	radeon_cp_dispatch_indices(dev, file_priv->master, buf, &prim);
 	if (elts->discard) {
-		radeon_cp_discard_buffer(dev, file_priv->masterp, buf);
+		radeon_cp_discard_buffer(dev, file_priv->master, buf);
 	}
 
 	COMMIT_RING();
@@ -2531,7 +2531,7 @@ static int radeon_cp_indirect(struct drm_device *dev, void *data, struct drm_fil
 	}
 
 	if (indirect->discard) {
-		radeon_cp_discard_buffer(dev, file_priv->masterp, buf);
+		radeon_cp_discard_buffer(dev, file_priv->master, buf);
 	}
 
 	COMMIT_RING();
@@ -2541,7 +2541,7 @@ static int radeon_cp_indirect(struct drm_device *dev, void *data, struct drm_fil
 static int radeon_cp_vertex2(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
-	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;
+	struct drm_radeon_master_private *master_priv = file_priv->master->driver_priv;
 	drm_radeon_sarea_t *sarea_priv;
 	struct drm_device_dma *dma = dev->dma;
 	struct drm_buf *buf;
@@ -2613,7 +2613,7 @@ static int radeon_cp_vertex2(struct drm_device *dev, void *data, struct drm_file
 			tclprim.offset = prim.numverts * 64;
 			tclprim.numverts = RADEON_MAX_VB_VERTS;	/* duh */
 
-			radeon_cp_dispatch_indices(dev, file_priv->masterp, buf, &tclprim);
+			radeon_cp_dispatch_indices(dev, file_priv->master, buf, &tclprim);
 		} else {
 			tclprim.numverts = prim.numverts;
 			tclprim.offset = 0;	/* not used */
@@ -2626,7 +2626,7 @@ static int radeon_cp_vertex2(struct drm_device *dev, void *data, struct drm_file
 	}
 
 	if (vertex->discard) {
-		radeon_cp_discard_buffer(dev, file_priv->masterp, buf);
+		radeon_cp_discard_buffer(dev, file_priv->master, buf);
 	}
 
 	COMMIT_RING();
@@ -2964,7 +2964,7 @@ static int radeon_cp_cmdbuf(struct drm_device *dev, void *data,
 				goto err;
 			}
 
-			radeon_cp_discard_buffer(dev, file_priv->masterp, buf);
+			radeon_cp_discard_buffer(dev, file_priv->master, buf);
 			break;
 
 		case RADEON_CMD_PACKET3:
@@ -3127,7 +3127,7 @@ static int radeon_cp_getparam(struct drm_device *dev, void *data, struct drm_fil
 static int radeon_cp_setparam(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
-	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;
+	struct drm_radeon_master_private *master_priv = file_priv->master->driver_priv;
 	drm_radeon_setparam_t *sp = data;
 	struct drm_radeon_driver_file_fields *radeon_priv;
 

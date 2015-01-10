@@ -1,4 +1,14 @@
-/*-
+/**
+ * \file drm_context.c
+ * IOCTLs for generic contexts
+ *
+ * \author Rickard E. (Rik) Faith <faith@valinux.com>
+ * \author Gareth Hughes <gareth@valinux.com>
+ */
+
+/*
+ * Created: Fri Nov 24 18:31:37 2000 by gareth@valinux.com
+ *
  * Copyright 1999, 2000 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
@@ -21,131 +31,143 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Authors:
- *    Rickard E. (Rik) Faith <faith@valinux.com>
- *    Gareth Hughes <gareth@valinux.com>
- *
- * $FreeBSD: src/sys/dev/drm2/drm_context.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
-/** @file drm_context.c
- * Implementation of the context management ioctls.
+/*
+ * ChangeLog:
+ *  2001-11-16	Torsten Duwe <duwe@caldera.de>
+ *		added context constructor/destructor hooks,
+ *		needed by SiS driver's memory management.
  */
 
 #include <drm/drmP.h>
 
-/* ================================================================
- * Context bitmap support
+/******************************************************************/
+/** \name Context bitmap support */
+/*@{*/
+
+/**
+ * Free a handle from the context bitmap.
+ *
+ * \param dev DRM device.
+ * \param ctx_handle context handle.
+ *
+ * Clears the bit specified by \p ctx_handle in drm_device::ctx_bitmap and the entry
+ * in drm_device::ctx_idr, while holding the drm_device::struct_mutex
+ * lock.
  */
-
-void drm_ctxbitmap_free(struct drm_device *dev, int ctx_handle)
+void drm_ctxbitmap_free(struct drm_device * dev, int ctx_handle)
 {
-	if (ctx_handle < 0 || ctx_handle >= DRM_MAX_CTXBITMAP || 
-	    dev->ctx_bitmap == NULL) {
-		DRM_ERROR("Attempt to free invalid context handle: %d\n",
-		   ctx_handle);
-		return;
-	}
-
-	DRM_LOCK(dev);
-	clear_bit(ctx_handle, dev->ctx_bitmap);
-	dev->context_sareas[ctx_handle] = NULL;
-	DRM_UNLOCK(dev);
-	return;
+	mutex_lock(&dev->struct_mutex);
+	idr_remove(&dev->ctx_idr, ctx_handle);
+	mutex_unlock(&dev->struct_mutex);
 }
 
-int drm_ctxbitmap_next(struct drm_device *dev)
+/**
+ * Context bitmap allocation.
+ *
+ * \param dev DRM device.
+ * \return (non-negative) context handle on success or a negative number on failure.
+ *
+ * Allocate a new idr from drm_device::ctx_idr while holding the
+ * drm_device::struct_mutex lock.
+ */
+static int drm_ctxbitmap_next(struct drm_device * dev)
 {
-	int bit;
+	int new_id;
+	int ret;
 
-	if (dev->ctx_bitmap == NULL)
-		return -1;
-
-	DRM_LOCK(dev);
-	bit = find_first_zero_bit(dev->ctx_bitmap, DRM_MAX_CTXBITMAP);
-	if (bit >= DRM_MAX_CTXBITMAP) {
-		DRM_UNLOCK(dev);
-		return -1;
+again:
+	if (idr_pre_get(&dev->ctx_idr, GFP_KERNEL) == 0) {
+		DRM_ERROR("Out of memory expanding drawable idr\n");
+		return -ENOMEM;
 	}
+	mutex_lock(&dev->struct_mutex);
+	ret = idr_get_new_above(&dev->ctx_idr, NULL,
+				DRM_RESERVED_CONTEXTS, &new_id);
+	mutex_unlock(&dev->struct_mutex);
+	if (ret == -EAGAIN)
+		goto again;
+	else if (ret)
+		return ret;
 
-	set_bit(bit, dev->ctx_bitmap);
-	DRM_DEBUG("bit : %d\n", bit);
-	if ((bit+1) > dev->max_context) {
-		drm_local_map_t **ctx_sareas;
-		int max_ctx = (bit+1);
-
-		ctx_sareas = krealloc(dev->context_sareas,
-		    max_ctx * sizeof(*dev->context_sareas),
-		    M_DRM, M_WAITOK | M_NULLOK);
-		if (ctx_sareas == NULL) {
-			clear_bit(bit, dev->ctx_bitmap);
-			DRM_DEBUG("failed to allocate bit : %d\n", bit);
-			DRM_UNLOCK(dev);
-			return -1;
-		}
-		dev->max_context = max_ctx;
-		dev->context_sareas = ctx_sareas;
-		dev->context_sareas[bit] = NULL;
-	}
-	DRM_UNLOCK(dev);
-	return bit;
+	return new_id;
 }
 
-int drm_ctxbitmap_init(struct drm_device *dev)
+/**
+ * Context bitmap initialization.
+ *
+ * \param dev DRM device.
+ *
+ * Initialise the drm_device::ctx_idr
+ */
+int drm_ctxbitmap_init(struct drm_device * dev)
 {
-	int i;
-   	int temp;
-
-	DRM_LOCK(dev);
-	dev->ctx_bitmap = kmalloc(PAGE_SIZE, M_DRM,
-				  M_WAITOK | M_NULLOK | M_ZERO);
-	if (dev->ctx_bitmap == NULL) {
-		DRM_UNLOCK(dev);
-		return ENOMEM;
-	}
-	dev->context_sareas = NULL;
-	dev->max_context = -1;
-	DRM_UNLOCK(dev);
-
-	for (i = 0; i < DRM_RESERVED_CONTEXTS; i++) {
-		temp = drm_ctxbitmap_next(dev);
-		DRM_DEBUG("drm_ctxbitmap_init : %d\n", temp);
-	}
-
+	idr_init(&dev->ctx_idr);
 	return 0;
 }
 
-void drm_ctxbitmap_cleanup(struct drm_device *dev)
+/**
+ * Context bitmap cleanup.
+ *
+ * \param dev DRM device.
+ *
+ * Free all idr members using drm_ctx_sarea_free helper function
+ * while holding the drm_device::struct_mutex lock.
+ */
+void drm_ctxbitmap_cleanup(struct drm_device * dev)
 {
-	DRM_LOCK(dev);
-	if (dev->context_sareas != NULL)
-		drm_free(dev->context_sareas, M_DRM);
-	drm_free(dev->ctx_bitmap, M_DRM);
-	DRM_UNLOCK(dev);
+	mutex_lock(&dev->struct_mutex);
+	idr_destroy(&dev->ctx_idr);
+	mutex_unlock(&dev->struct_mutex);
 }
 
-/* ================================================================
- * Per Context SAREA Support
- */
+/*@}*/
 
+/******************************************************************/
+/** \name Per Context SAREA Support */
+/*@{*/
+
+/**
+ * Get per-context SAREA.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument pointing to a drm_ctx_priv_map structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Gets the map from drm_device::ctx_idr with the handle specified and
+ * returns its handle.
+ */
 int drm_getsareactx(struct drm_device *dev, void *data,
 		    struct drm_file *file_priv)
 {
 	struct drm_ctx_priv_map *request = data;
-	drm_local_map_t *map;
+	struct drm_local_map *map;
+	struct drm_map_list *_entry;
 
-	DRM_LOCK(dev);
-	if (dev->max_context < 0 ||
-	    request->ctx_id >= (unsigned) dev->max_context) {
-		DRM_UNLOCK(dev);
-		return EINVAL;
+	mutex_lock(&dev->struct_mutex);
+
+	map = idr_find(&dev->ctx_idr, request->ctx_id);
+	if (!map) {
+		mutex_unlock(&dev->struct_mutex);
+		return -EINVAL;
 	}
 
-	map = dev->context_sareas[request->ctx_id];
-	DRM_UNLOCK(dev);
+	request->handle = NULL;
+	list_for_each_entry(_entry, &dev->maplist, head) {
+		if (_entry->map == map) {
+			request->handle =
+			    (void *)(unsigned long)_entry->user_token;
+			break;
+		}
+	}
 
-	request->handle = (void *)map->handle;
+	mutex_unlock(&dev->struct_mutex);
+
+	if (request->handle == NULL)
+		return -EINVAL;
 
 	return 0;
 }
@@ -169,24 +191,27 @@ int drm_setsareactx(struct drm_device *dev, void *data,
 	struct drm_local_map *map = NULL;
 	struct drm_map_list *r_list = NULL;
 
-	DRM_LOCK(dev);
+	mutex_lock(&dev->struct_mutex);
 	list_for_each_entry(r_list, &dev->maplist, head) {
 		if (r_list->map
-		    && r_list->map->handle == request->handle) {
-			if (dev->max_context < 0)
-				goto bad;
-			if (request->ctx_id >= (unsigned) dev->max_context)
-				goto bad;
-			map = r_list->map;
-			dev->context_sareas[request->ctx_id] = map;
-			DRM_UNLOCK(dev);
-			return 0;
-		}
+		    && r_list->user_token == (unsigned long) request->handle)
+			goto found;
 	}
+      bad:
+	mutex_unlock(&dev->struct_mutex);
+	return -EINVAL;
 
-bad:
-	DRM_UNLOCK(dev);
-	return EINVAL;
+      found:
+	map = r_list->map;
+	if (!map)
+		goto bad;
+
+	if (IS_ERR(idr_replace(&dev->ctx_idr, map, request->ctx_id)))
+		goto bad;
+
+	mutex_unlock(&dev->struct_mutex);
+
+	return 0;
 }
 
 /*@}*/
@@ -233,11 +258,13 @@ static int drm_context_switch(struct drm_device * dev, int old, int new)
  * hardware lock is held, clears the drm_device::context_flag and wakes up
  * drm_device::context_wait.
  */
-static int drm_context_switch_complete(struct drm_device *dev, int new)
+static int drm_context_switch_complete(struct drm_device *dev,
+				       struct drm_file *file_priv, int new)
 {
-	dev->last_context = new;  /* PRE/POST: This is the _only_ writer. */
+	dev->last_context = new;	/* PRE/POST: This is the _only_ writer. */
+	dev->last_switch = jiffies;
 
-	if (!_DRM_LOCK_IS_HELD(dev->lock.hw_lock->lock)) {
+	if (!_DRM_LOCK_IS_HELD(file_priv->master->lock.hw_lock->lock)) {
 		DRM_ERROR("Lock isn't held after context switch\n");
 	}
 
@@ -245,23 +272,33 @@ static int drm_context_switch_complete(struct drm_device *dev, int new)
 	   when the kernel holds the lock, release
 	   that lock here. */
 	clear_bit(0, &dev->context_flag);
+	wake_up(&dev->context_wait);
 
 	return 0;
 }
 
-int drm_resctx(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/**
+ * Reserve contexts.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument pointing to a drm_ctx_res structure.
+ * \return zero on success or a negative number on failure.
+ */
+int drm_resctx(struct drm_device *dev, void *data,
+	       struct drm_file *file_priv)
 {
 	struct drm_ctx_res *res = data;
 	struct drm_ctx ctx;
 	int i;
 
 	if (res->count >= DRM_RESERVED_CONTEXTS) {
-		bzero(&ctx, sizeof(ctx));
+		memset(&ctx, 0, sizeof(ctx));
 		for (i = 0; i < DRM_RESERVED_CONTEXTS; i++) {
 			ctx.handle = i;
-			if (DRM_COPY_TO_USER(&res->contexts[i],
-			    &ctx, sizeof(ctx)))
-				return EFAULT;
+			if (copy_to_user(&res->contexts[i], &ctx, sizeof(ctx)))
+				return -EFAULT;
 		}
 	}
 	res->count = DRM_RESERVED_CONTEXTS;
@@ -269,8 +306,21 @@ int drm_resctx(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	return 0;
 }
 
-int drm_addctx(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/**
+ * Add context.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument pointing to a drm_ctx structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Get a new handle for the context and copy to userspace.
+ */
+int drm_addctx(struct drm_device *dev, void *data,
+	       struct drm_file *file_priv)
 {
+	struct drm_ctx_list *ctx_entry;
 	struct drm_ctx *ctx = data;
 
 	ctx->handle = drm_ctxbitmap_next(dev);
@@ -282,14 +332,23 @@ int drm_addctx(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	if (ctx->handle == -1) {
 		DRM_DEBUG("Not enough free contexts.\n");
 		/* Should this return -EBUSY instead? */
-		return ENOMEM;
+		return -ENOMEM;
 	}
 
-	if (dev->driver->context_ctor && ctx->handle != DRM_KERNEL_CONTEXT) {
-		DRM_LOCK(dev);
-		dev->driver->context_ctor(dev, ctx->handle);
-		DRM_UNLOCK(dev);
+	ctx_entry = kmalloc(sizeof(*ctx_entry), M_DRM, M_WAITOK);
+	if (!ctx_entry) {
+		DRM_DEBUG("out of memory\n");
+		return -ENOMEM;
 	}
+
+	INIT_LIST_HEAD(&ctx_entry->head);
+	ctx_entry->handle = ctx->handle;
+	ctx_entry->tag = file_priv;
+
+	mutex_lock(&dev->ctxlist_mutex);
+	list_add(&ctx_entry->head, &dev->ctxlist);
+	++dev->ctx_count;
+	mutex_unlock(&dev->ctxlist_mutex);
 
 	return 0;
 }
@@ -300,6 +359,15 @@ int drm_modctx(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	return 0;
 }
 
+/**
+ * Get context.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument pointing to a drm_ctx structure.
+ * \return zero on success or a negative number on failure.
+ */
 int drm_getctx(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	struct drm_ctx *ctx = data;
@@ -310,6 +378,17 @@ int drm_getctx(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	return 0;
 }
 
+/**
+ * Switch context.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument pointing to a drm_ctx structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Calls context_switch().
+ */
 int drm_switchctx(struct drm_device *dev, void *data,
 		  struct drm_file *file_priv)
 {
@@ -319,30 +398,66 @@ int drm_switchctx(struct drm_device *dev, void *data,
 	return drm_context_switch(dev, dev->last_context, ctx->handle);
 }
 
-int drm_newctx(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/**
+ * New context.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument pointing to a drm_ctx structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Calls context_switch_complete().
+ */
+int drm_newctx(struct drm_device *dev, void *data,
+	       struct drm_file *file_priv)
 {
 	struct drm_ctx *ctx = data;
 
 	DRM_DEBUG("%d\n", ctx->handle);
-	drm_context_switch_complete(dev, ctx->handle);
+	drm_context_switch_complete(dev, file_priv, ctx->handle);
 
 	return 0;
 }
 
-int drm_rmctx(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/**
+ * Remove context.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument pointing to a drm_ctx structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * If not the special kernel context, calls ctxbitmap_free() to free the specified context.
+ */
+int drm_rmctx(struct drm_device *dev, void *data,
+	      struct drm_file *file_priv)
 {
 	struct drm_ctx *ctx = data;
 
 	DRM_DEBUG("%d\n", ctx->handle);
 	if (ctx->handle != DRM_KERNEL_CONTEXT) {
-		if (dev->driver->context_dtor) {
-			DRM_LOCK(dev);
+		if (dev->driver->context_dtor)
 			dev->driver->context_dtor(dev, ctx->handle);
-			DRM_UNLOCK(dev);
-		}
-
 		drm_ctxbitmap_free(dev, ctx->handle);
 	}
 
+	mutex_lock(&dev->ctxlist_mutex);
+	if (!list_empty(&dev->ctxlist)) {
+		struct drm_ctx_list *pos, *n;
+
+		list_for_each_entry_safe(pos, n, &dev->ctxlist, head) {
+			if (pos->handle == ctx->handle) {
+				list_del(&pos->head);
+				kfree(pos, M_DRM);
+				--dev->ctx_count;
+			}
+		}
+	}
+	mutex_unlock(&dev->ctxlist_mutex);
+
 	return 0;
 }
+
+/*@}*/

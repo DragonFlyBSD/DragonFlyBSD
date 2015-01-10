@@ -62,7 +62,7 @@ int drm_lock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	}
 
 	DRM_DEBUG("%d (pid %d) requests lock (0x%08x), flags = 0x%08x\n",
-	    lock->context, DRM_CURRENTPID, dev->lock.hw_lock->lock,
+	    lock->context, DRM_CURRENTPID, dev->primary->master->lock.hw_lock->lock,
 	    lock->flags);
 
 	if (drm_core_check_feature(dev, DRIVER_DMA_QUEUE) &&
@@ -71,15 +71,15 @@ int drm_lock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 
 	DRM_LOCK(dev);
 	for (;;) {
-		if (drm_lock_take(&dev->lock, lock->context)) {
-			dev->lock.file_priv = file_priv;
-			dev->lock.lock_time = jiffies;
+		if (drm_lock_take(&dev->primary->master->lock, lock->context)) {
+			dev->primary->master->lock.file_priv = file_priv;
+			dev->primary->master->lock.lock_time = jiffies;
 			atomic_inc(&dev->counts[_DRM_STAT_LOCKS]);
 			break;  /* Got lock */
 		}
 
 		/* Contention */
-		ret = DRM_LOCK_SLEEP(dev, &dev->lock.lock_queue,
+		ret = DRM_LOCK_SLEEP(dev, &dev->primary->master->lock.lock_queue,
 		    PCATCH, "drmlk2", 0);
 		if (ret != 0)
 			break;
@@ -109,7 +109,7 @@ int drm_unlock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	struct drm_lock *lock = data;
 
 	DRM_DEBUG("%d (pid %d) requests unlock (0x%08x), flags = 0x%08x\n",
-	    lock->context, DRM_CURRENTPID, dev->lock.hw_lock->lock,
+	    lock->context, DRM_CURRENTPID, dev->primary->master->lock.hw_lock->lock,
 	    lock->flags);
 
 	if (lock->context == DRM_KERNEL_CONTEXT) {
@@ -121,9 +121,9 @@ int drm_unlock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	atomic_inc(&dev->counts[_DRM_STAT_UNLOCKS]);
 
 	DRM_LOCK(dev);
-	drm_lock_transfer(&dev->lock, DRM_KERNEL_CONTEXT);
+	drm_lock_transfer(&dev->primary->master->lock, DRM_KERNEL_CONTEXT);
 
-	if (drm_lock_free(&dev->lock, DRM_KERNEL_CONTEXT)) {
+	if (drm_lock_free(&dev->primary->master->lock, DRM_KERNEL_CONTEXT)) {
 		DRM_ERROR("\n");
 	}
 	DRM_UNLOCK(dev);
