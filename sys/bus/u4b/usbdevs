@@ -643,6 +643,7 @@ vendor ABOCOM2		0x1482	AboCom Systems
 vendor SILICOM		0x1485	Silicom
 vendor RALINK		0x148f	Ralink Technology
 vendor IMAGINATION	0x149a	Imagination Technologies
+vendor ATP		0x14af	ATP Electronics
 vendor CONCEPTRONIC2	0x14b2	Conceptronic
 vendor SUPERTOP		0x14cd	Super Top
 vendor PLANEX3		0x14ea	Planex Communications
@@ -712,6 +713,7 @@ vendor LONGCHEER	0x1c9e	Longcheer Holdings, Ltd.
 vendor MPMAN		0x1cae	MpMan
 vendor DRESDENELEKTRONIK 0x1cf1 dresden elektronik
 vendor NEOTEL		0x1d09	Neotel
+vendor DREAMLINK	0x1d34	Dream Link
 vendor PEGATRON		0x1d4d	Pegatron
 vendor QISDA		0x1da5  Qisda
 vendor METAGEEK2	0x1dd5	MetaGeek
@@ -1156,6 +1158,9 @@ product ATEN UC232A		0x2008	Serial
 product ATEN UC210T		0x2009	UC-210T Ethernet
 product ATEN DSB650C		0x4000	DSB-650C
 
+/* ATP Electronics products */
+product ATP EUSB		0xaf01	ATP IG eUSB SSD
+
 /* Atheros Communications products */
 product ATHEROS AR5523		0x0001	AR5523
 product ATHEROS AR5523_NF	0x0002	AR5523 (no firmware)
@@ -1431,6 +1436,7 @@ product COREGA FETHER_USB_TXC	0x9601	FEther USB-TXC
 
 /* Corsair products */
 product CORSAIR K60		0x0a60	Corsair Vengeance K60 keyboard
+product CORSAIR K70		0x1b09	Corsair Vengeance K70 keyboard
 
 /* Creative products */
 product CREATIVE NOMAD_II	0x1002	Nomad II MP3 player
@@ -1599,6 +1605,9 @@ product DMI DISK		0x2bcf	Generic Disk
 
 /* DrayTek products */
 product DRAYTEK VIGOR550	0x0550	Vigor550
+
+/* Dream Link products */
+product DREAMLINK DL100B	0x0004	USB Webmail Notifier
 
 /* dresden elektronik products */
 product DRESDENELEKTRONIK SENSORTERMINALBOARD  0x0001 SensorTerminalBoard
@@ -2454,6 +2463,7 @@ product KEYSPAN UIA11		0x0202	UIA-11 remote control
 /* Kingston products */
 product KINGSTON XX1		0x0008	Ethernet
 product KINGSTON KNU101TX	0x000a	KNU101TX USB Ethernet
+product KINGSTON HYPERX3_0	0x162b	DT HyperX 3.0
 
 /* Kawasaki products */
 product KLSI DUH3E10BT		0x0008	USB Ethernet
@@ -2530,6 +2540,7 @@ product LENOVO ETHERNET		0x7203	USB 2.0 Ethernet
 /* Lexar products */
 product LEXAR JUMPSHOT		0x0001	jumpSHOT CompactFlash Reader
 product LEXAR CF_READER		0xb002	USB CF Reader
+product LEXAR JUMPDRIVE		0xa833	USB Jumpdrive Flash Drive
 
 /* Lexmark products */
 product LEXMARK S2450		0x0009	Optra S 2450
@@ -3111,6 +3122,7 @@ product NETCHIP TURBOCONNECT	0x1080	Turbo-Connect
 product NETCHIP CLIK_40		0xa140	USB Clik! 40
 product NETCHIP GADGETZERO	0xa4a0	Linux Gadget Zero
 product NETCHIP ETHERNETGADGET	0xa4a2	Linux Ethernet/RNDIS gadget on pxa210/25x/26x
+product NETCHIP POCKETBOOK	0xa4a5	PocketBook
 
 /* Netgear products */
 product NETGEAR EA101		0x1001	Ethernet
@@ -3648,6 +3660,7 @@ product REALTEK RTL8188CU_2	0x817b	RTL8188CU
 product REALTEK RTL8187		0x8187	RTL8187 Wireless Adapter
 product REALTEK RTL8187B_0	0x8189	RTL8187B Wireless Adapter
 product REALTEK RTL8188CUS	0x818a	RTL8188CUS
+product REALTEK RTL8196EU	0x8196	RTL8196EU
 product REALTEK RTL8187B_1	0x8197	RTL8187B Wireless Adapter
 product REALTEK RTL8187B_2	0x8198	RTL8187B Wireless Adapter
 product REALTEK RTL8188CU_COMBO	0x8754	RTL8188CU
@@ -4387,8 +4400,28 @@ product WESTERN COMBO		0x0200	Firewire USB Combo
 product WESTERN EXTHDD		0x0400	External HDD
 product WESTERN HUB		0x0500	USB HUB
 product WESTERN MYBOOK		0x0901	MyBook External HDD
-product WESTERN MYPASSWORD	0x0704	MyPassword External HDD
-product WESTERN MYPASSPORT	0x0748	MyPassport External HDD
+product WESTERN MYPASSPORT_00	0x0704	MyPassport External HDD
+product WESTERN MYPASSPORT_11	0x0741	MyPassport External HDD
+product WESTERN MYPASSPORT_01	0x0746	MyPassport External HDD
+product WESTERN MYPASSPORT_02	0x0748	MyPassport External HDD
+product WESTERN MYPASSPORT_03	0x074A	MyPassport External HDD
+product WESTERN MYPASSPORT_04	0x074C	MyPassport External HDD
+product WESTERN MYPASSPORT_05	0x074E	MyPassport External HDD
+product WESTERN MYPASSPORT_06	0x07A6	MyPassport External HDD
+product WESTERN MYPASSPORT_07	0x07A8	MyPassport External HDD
+product WESTERN MYPASSPORT_08	0x07AA	MyPassport External HDD
+product WESTERN MYPASSPORT_09	0x07AC	MyPassport External HDD
+product WESTERN MYPASSPORT_10	0x07AE	MyPassport External HDD
+product WESTERN MYPASSPORTES_00	0x070A	MyPassport Essential External HDD
+product WESTERN MYPASSPORTES_01	0x071A	MyPassport Essential External HDD
+product WESTERN MYPASSPORTES_02	0x0730	MyPassport Essential External HDD
+product WESTERN MYPASSPORTES_03	0x0732	MyPassport Essential External HDD
+product WESTERN MYPASSPORTES_04	0x0740	MyPassport Essential External HDD
+product WESTERN MYPASSPORTES_05	0x0742	MyPassport Essential External HDD
+product WESTERN MYPASSPORTES_06	0x0750	MyPassport Essential External HDD
+product WESTERN MYPASSPORTES_07	0x0752	MyPassport Essential External HDD
+product WESTERN MYPASSPORTES_08	0x07A0	MyPassport Essential External HDD
+product WESTERN MYPASSPORTES_09	0x07A2	MyPassport Essential External HDD
 
 /* WeTelecom products */
 product WETELECOM WM_D200	0x6801	WM-D200

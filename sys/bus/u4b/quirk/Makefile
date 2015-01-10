@@ -1,5 +1,5 @@
 #
-# $FreeBSD: src/sys/modules/usb/quirk/Makefile,v 1.1 2009/02/23 18:32:59 thompsa Exp $
+# $FreeBSD: head/sys/modules/usb/quirk/Makefile 188943 2009-02-23 18:32:59Z thompsa $
 #
 # Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
 #
