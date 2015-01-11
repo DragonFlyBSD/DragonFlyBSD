@@ -89,14 +89,14 @@ main(int ac, char **av)
     const char *sysfile = NULL;
 
     while ((ch = getopt(ac, av, "M:N:")) != -1) {
-	switch(ch) {   
+	switch(ch) {
 	case 'M':
 	    corefile = optarg;
 	    break;
-	case 'N': 
+	case 'N':
 	    sysfile = optarg;
-	    break; 
-	default:  
+	    break;
+	default:
 	    fprintf(stderr, "%s [-M core] [-N system]\n", av[0]);
 	    exit(1);
 	}
@@ -123,18 +123,21 @@ void
 dumptcb(kvm_t *kd, intptr_t tcbaddr)
 {
     struct inpcbinfo info;
+    struct inpcbportinfo pinfo;
+    intptr_t pinfoaddr;
     int i;
 
     kkread(kd, tcbaddr, &info, sizeof(info));
+    kkread(kd, (intptr_t)info.portinfo, &pinfo, sizeof(pinfo));
     printf("    hashbase %p\n", info.hashbase);
     printf("    hashmask %ld\n", info.hashmask);
-    printf("    porthashbase %p\n", info.porthashbase);
-    printf("    porthashmask %lu\n", info.porthashmask);
+    printf("    porthashbase %p\n", pinfo.porthashbase);
+    printf("    porthashmask %lu\n", pinfo.porthashmask);
     printf("    wildcardhashbase %p\n", info.wildcardhashbase);
     printf("    wildcardhashmask %lu\n", info.wildcardhashmask);
-    printf("    lastport %d\n", (int)info.lastport);
-    printf("    lastlow %d\n", (int)info.lastlow);
-    printf("    lasthi %d\n", (int)info.lasthi);
+    printf("    lastport %d\n", (int)pinfo.lastport);
+    printf("    lastlow %d\n", (int)pinfo.lastlow);
+    printf("    lasthi %d\n", (int)pinfo.lasthi);
     printf("    ipi_size %zu\n", info.ipi_size);
     printf("    ipi_count %d\n", (int)info.ipi_count);
     printf("    ipi_gencnt %lld\n", (long long)info.ipi_gencnt);
