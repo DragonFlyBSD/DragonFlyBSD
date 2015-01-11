@@ -111,10 +111,7 @@ static struct dev_ops pass_ops = {
 	{ "pass", 0, 0 },
 	.d_open =	passopen,
 	.d_close =	passclose,
-	.d_read =	noread,
-	.d_write =	nowrite,
 	.d_ioctl =	passioctl,
-	.d_strategy =	nostrategy,
 };
 
 static struct extend_array *passperiphs;
