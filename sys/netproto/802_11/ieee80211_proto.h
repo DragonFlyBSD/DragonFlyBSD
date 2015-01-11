@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211_proto.h 199187 2009-11-11 15:00:56Z antoine $
+ * $FreeBSD$
  */
 #ifndef _NET80211_IEEE80211_PROTO_H_
 #define _NET80211_IEEE80211_PROTO_H_
@@ -61,20 +61,65 @@ void	ieee80211_syncflag(struct ieee80211vap *, int flag);
 void	ieee80211_syncflag_ht(struct ieee80211vap *, int flag);
 void	ieee80211_syncflag_ext(struct ieee80211vap *, int flag);
 
+#define	IEEE80211_R_NF		0x0000001	/* global NF value valid */
+#define	IEEE80211_R_RSSI	0x0000002	/* global RSSI value valid */
+#define	IEEE80211_R_C_CHAIN	0x0000004	/* RX chain count valid */
+#define	IEEE80211_R_C_NF	0x0000008	/* per-chain NF value valid */
+#define	IEEE80211_R_C_RSSI	0x0000010	/* per-chain RSSI value valid */
+#define	IEEE80211_R_C_EVM	0x0000020	/* per-chain EVM valid */
+#define	IEEE80211_R_C_HT40	0x0000040	/* RX'ed packet is 40mhz, pilots 4,5 valid */
+
+struct ieee80211_rx_stats {
+	uint32_t r_flags;		/* IEEE80211_R_* flags */
+	uint8_t c_chain;		/* number of RX chains involved */
+	int16_t	c_nf_ctl[IEEE80211_MAX_CHAINS];	/* per-chain NF */
+	int16_t	c_nf_ext[IEEE80211_MAX_CHAINS];	/* per-chain NF */
+	int16_t	c_rssi_ctl[IEEE80211_MAX_CHAINS];	/* per-chain RSSI */
+	int16_t	c_rssi_ext[IEEE80211_MAX_CHAINS];	/* per-chain RSSI */
+	uint8_t nf;			/* global NF */
+	uint8_t rssi;			/* global RSSI */
+	uint8_t evm[IEEE80211_MAX_CHAINS][IEEE80211_MAX_EVM_PILOTS];
+					/* per-chain, per-pilot EVM values */
+};
+
+#if defined(__DragonFly__)
+struct route;
+#endif
+
 #define	ieee80211_input(ni, m, rssi, nf) \
 	((ni)->ni_vap->iv_input(ni, m, rssi, nf))
 int	ieee80211_input_all(struct ieee80211com *, struct mbuf *, int, int);
+
+int	ieee80211_input_mimo(struct ieee80211_node *, struct mbuf *,
+	    struct ieee80211_rx_stats *);
+int	ieee80211_input_mimo_all(struct ieee80211com *, struct mbuf *,
+	    struct ieee80211_rx_stats *);
+
 struct ieee80211_bpf_params;
 int	ieee80211_mgmt_output(struct ieee80211_node *, struct mbuf *, int,
 		struct ieee80211_bpf_params *);
 int	ieee80211_raw_xmit(struct ieee80211_node *, struct mbuf *,
 		const struct ieee80211_bpf_params *);
+#if defined(__DragonFly__)
 int	ieee80211_output(struct ifnet *, struct mbuf *,
                struct sockaddr *, struct rtentry *rt);
+#elif __FreeBSD_version >= 1000031
+int	ieee80211_output(struct ifnet *, struct mbuf *,
+               const struct sockaddr *, struct route *ro);
+#else
+int	ieee80211_output(struct ifnet *, struct mbuf *,
+               struct sockaddr *, struct route *ro);
+#endif
+int	ieee80211_vap_pkt_send_dest(struct ieee80211vap *, struct mbuf *,
+		struct ieee80211_node *);
+int	ieee80211_raw_output(struct ieee80211vap *, struct ieee80211_node *,
+		struct mbuf *, const struct ieee80211_bpf_params *);
 void	ieee80211_send_setup(struct ieee80211_node *, struct mbuf *, int, int,
         const uint8_t [IEEE80211_ADDR_LEN], const uint8_t [IEEE80211_ADDR_LEN],
         const uint8_t [IEEE80211_ADDR_LEN]);
-void	ieee80211_start(struct ifnet *, struct ifaltq_subque *);
+void	ieee80211_vap_start(struct ifnet *ifp, struct ifaltq_subque *ifsq);
+int	ieee80211_vap_transmit(struct ifnet *ifp, struct mbuf *m);
+void	ieee80211_vap_qflush(struct ifnet *ifp);
 int	ieee80211_send_nulldata(struct ieee80211_node *);
 int	ieee80211_classify(struct ieee80211_node *, struct mbuf *m);
 struct mbuf *ieee80211_mbuf_adjust(struct ieee80211vap *, int,
@@ -88,7 +133,9 @@ int	ieee80211_send_probereq(struct ieee80211_node *ni,
 		const uint8_t da[IEEE80211_ADDR_LEN],
 		const uint8_t bssid[IEEE80211_ADDR_LEN],
 		const uint8_t *ssid, size_t ssidlen);
-void    ieee80211_tx_complete(struct ieee80211_node *,
+struct mbuf *	ieee80211_ff_encap1(struct ieee80211vap *, struct mbuf *,
+		const struct ether_header *);
+void	ieee80211_tx_complete(struct ieee80211_node *,
 		struct mbuf *, int);
 
 /*
@@ -110,6 +157,9 @@ struct mbuf *ieee80211_alloc_cts(struct ieee80211com *,
 
 uint8_t *ieee80211_add_rates(uint8_t *, const struct ieee80211_rateset *);
 uint8_t *ieee80211_add_xrates(uint8_t *, const struct ieee80211_rateset *);
+uint8_t *ieee80211_add_wpa(uint8_t *, const struct ieee80211vap *);
+uint8_t *ieee80211_add_rsn(uint8_t *, const struct ieee80211vap *);
+uint8_t *ieee80211_add_qos(uint8_t *, const struct ieee80211_node *);
 uint16_t ieee80211_getcapinfo(struct ieee80211vap *,
 		struct ieee80211_channel *);
 
@@ -191,7 +241,7 @@ struct ieee80211_aclator {
 	int	(*iac_attach)(struct ieee80211vap *);
 	void	(*iac_detach)(struct ieee80211vap *);
 	int	(*iac_check)(struct ieee80211vap *,
-			const uint8_t mac[IEEE80211_ADDR_LEN]);
+			const struct ieee80211_frame *wh);
 	int	(*iac_add)(struct ieee80211vap *,
 			const uint8_t mac[IEEE80211_ADDR_LEN]);
 	int	(*iac_remove)(struct ieee80211vap *,
@@ -287,10 +337,10 @@ void	ieee80211_stop_all(struct ieee80211com *);
 void	ieee80211_suspend_all(struct ieee80211com *);
 void	ieee80211_resume_all(struct ieee80211com *);
 void	ieee80211_dturbo_switch(struct ieee80211vap *, int newflags);
-void	ieee80211_swbmiss_callout(void *arg);
+void	ieee80211_swbmiss(void *arg);
 void	ieee80211_beacon_miss(struct ieee80211com *);
 int	ieee80211_new_state(struct ieee80211vap *, enum ieee80211_state, int);
-int     ieee80211_new_state_locked(struct ieee80211vap *, enum ieee80211_state,
+int	ieee80211_new_state_locked(struct ieee80211vap *, enum ieee80211_state,
 		int);
 void	ieee80211_print_essid(const uint8_t *, int);
 void	ieee80211_dump_pkt(struct ieee80211com *,
@@ -322,6 +372,7 @@ struct ieee80211_beacon_offsets {
 	uint16_t	bo_appie_len;	/* AppIE length in bytes */
 	uint16_t	bo_csa_trailer_len;
 	uint8_t		*bo_csa;	/* start of CSA element */
+	uint8_t		*bo_quiet;	/* start of Quiet element */
 	uint8_t		*bo_meshconf;	/* start of MESHCONF element */
 	uint8_t		*bo_spare[3];
 };

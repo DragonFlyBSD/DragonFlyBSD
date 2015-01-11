@@ -21,9 +21,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_crypto_wep.c 186302 2008-12-18 23:00:09Z sam $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * IEEE 802.11 WEP crypto support.
@@ -43,7 +44,6 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>
-#include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 
@@ -213,13 +213,9 @@ wep_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 {
 	struct wep_ctx *ctx = k->wk_private;
 	struct ieee80211vap *vap = ctx->wc_vap;
-#ifdef IEEE80211_DEBUG
 	struct ieee80211_frame *wh;
-#endif
 
-#ifdef IEEE80211_DEBUG
 	wh = mtod(m, struct ieee80211_frame *);
-#endif
 
 	/*
 	 * Check if the device handled the decrypt in hardware.
@@ -361,8 +357,8 @@ wep_encrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 		if (m->m_next == NULL) {
 			if (data_len != 0) {		/* out of data */
 				IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_CRYPTO,
-				    mtod(m0,
-					struct ieee80211_frame *)->i_addr2,
+				    ether_sprintf(mtod(m0,
+					struct ieee80211_frame *)->i_addr2),
 				    "out of data for WEP (data_len %zu)",
 				    data_len);
 				/* XXX stat */

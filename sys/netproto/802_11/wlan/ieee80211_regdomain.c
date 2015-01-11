@@ -21,9 +21,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_regdomain.c 188782 2009-02-19 05:21:54Z sam $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * IEEE 802.11 regdomain support.
@@ -33,12 +34,14 @@
 #include <sys/param.h>
 #include <sys/systm.h> 
 #include <sys/kernel.h>
+#include <sys/malloc.h>
  
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_media.h>
-#include <net/route.h>
+#include <net/ethernet.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
@@ -105,7 +108,12 @@ addchan(struct ieee80211com *ic, int ieee, int flags)
 	c->ic_freq = ieee80211_ieee2mhz(ieee, flags);
 	c->ic_ieee = ieee;
 	c->ic_flags = flags;
-	c->ic_extieee = 0;
+	if (flags & IEEE80211_CHAN_HT40U)
+		c->ic_extieee = ieee + 4;
+	else if (flags & IEEE80211_CHAN_HT40D)
+		c->ic_extieee = ieee - 4;
+	else
+		c->ic_extieee = 0;
 }
 
 /*
@@ -123,7 +131,8 @@ ieee80211_init_channels(struct ieee80211com *ic,
 	/* XXX just do something for now */
 	ic->ic_nchans = 0;
 	if (isset(bands, IEEE80211_MODE_11B) ||
-	    isset(bands, IEEE80211_MODE_11G)) {
+	    isset(bands, IEEE80211_MODE_11G) ||
+	    isset(bands, IEEE80211_MODE_11NG)) {
 		int maxchan = 11;
 		if (rd != NULL && rd->ecm)
 			maxchan = 14;
@@ -132,15 +141,67 @@ ieee80211_init_channels(struct ieee80211com *ic,
 				addchan(ic, i, IEEE80211_CHAN_B);
 			if (isset(bands, IEEE80211_MODE_11G))
 				addchan(ic, i, IEEE80211_CHAN_G);
+			if (isset(bands, IEEE80211_MODE_11NG)) {
+				addchan(ic, i,
+				    IEEE80211_CHAN_G | IEEE80211_CHAN_HT20);
+			}
+			if ((ic->ic_htcaps & IEEE80211_HTCAP_CHWIDTH40) == 0)
+				continue;
+			if (i <= 7) {
+				addchan(ic, i,
+				    IEEE80211_CHAN_G | IEEE80211_CHAN_HT40U);
+				addchan(ic, i + 4,
+				    IEEE80211_CHAN_G | IEEE80211_CHAN_HT40D);
+			}
 		}
 	}
-	if (isset(bands, IEEE80211_MODE_11A)) {
-		for (i = 36; i <= 64; i += 4)
+	if (isset(bands, IEEE80211_MODE_11A) ||
+	    isset(bands, IEEE80211_MODE_11NA)) {
+		for (i = 36; i <= 64; i += 4) {
 			addchan(ic, i, IEEE80211_CHAN_A);
-		for (i = 100; i <= 140; i += 4)
+			if (isset(bands, IEEE80211_MODE_11NA)) {
+				addchan(ic, i,
+				    IEEE80211_CHAN_A | IEEE80211_CHAN_HT20);
+			}
+			if ((ic->ic_htcaps & IEEE80211_HTCAP_CHWIDTH40) == 0)
+				continue;
+			if ((i % 8) == 4) {
+				addchan(ic, i,
+				    IEEE80211_CHAN_A | IEEE80211_CHAN_HT40U);
+				addchan(ic, i + 4,
+				    IEEE80211_CHAN_A | IEEE80211_CHAN_HT40D);
+			}
+		}
+		for (i = 100; i <= 140; i += 4) {
 			addchan(ic, i, IEEE80211_CHAN_A);
-		for (i = 149; i <= 161; i += 4)
+			if (isset(bands, IEEE80211_MODE_11NA)) {
+				addchan(ic, i,
+				    IEEE80211_CHAN_A | IEEE80211_CHAN_HT20);
+			}
+			if ((ic->ic_htcaps & IEEE80211_HTCAP_CHWIDTH40) == 0)
+				continue;
+			if ((i % 8) == 4 && i != 140) {
+				addchan(ic, i,
+				    IEEE80211_CHAN_A | IEEE80211_CHAN_HT40U);
+				addchan(ic, i + 4,
+				    IEEE80211_CHAN_A | IEEE80211_CHAN_HT40D);
+			}
+		}
+		for (i = 149; i <= 161; i += 4) {
 			addchan(ic, i, IEEE80211_CHAN_A);
+			if (isset(bands, IEEE80211_MODE_11NA)) {
+				addchan(ic, i,
+				    IEEE80211_CHAN_A | IEEE80211_CHAN_HT20);
+			}
+			if ((ic->ic_htcaps & IEEE80211_HTCAP_CHWIDTH40) == 0)
+				continue;
+			if ((i % 8) == 5) {
+				addchan(ic, i,
+				    IEEE80211_CHAN_A | IEEE80211_CHAN_HT40U);
+				addchan(ic, i + 4,
+				    IEEE80211_CHAN_A | IEEE80211_CHAN_HT40D);
+			}
+		}
 	}
 	if (rd != NULL)
 		ic->ic_regdomain = *rd;
@@ -242,6 +303,12 @@ ieee80211_alloc_countryie(struct ieee80211com *ic)
 
 	aie = kmalloc(IEEE80211_COUNTRY_MAX_SIZE, M_80211_NODE_IE,
 	    M_INTWAIT | M_ZERO);
+	if (aie == NULL) {
+		if_printf(ic->ic_ifp,
+		    "%s: unable to allocate memory for country ie\n", __func__);
+		/* XXX stat */
+		return NULL;
+	}
 	ie = (struct ieee80211_country_ie *) aie->ie_data;
 	ie->ie = IEEE80211_ELEMID_COUNTRY;
 	if (rd->isocc[0] == '\0') {
@@ -316,6 +383,7 @@ allvapsdown(struct ieee80211com *ic)
 {
 	struct ieee80211vap *vap;
 
+	IEEE80211_LOCK_ASSERT(ic);
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
 		if (vap->iv_state != IEEE80211_S_INIT)
 			return 0;
@@ -377,8 +445,10 @@ ieee80211_setregdomain(struct ieee80211vap *vap,
 		if (c->ic_maxpower == 0)
 			c->ic_maxpower = 2*c->ic_maxregpower;
 	}
+	IEEE80211_LOCK(ic);
 	/* XXX bandaid; a running vap will likely crash */
 	if (!allvapsdown(ic)) {
+		IEEE80211_UNLOCK(ic);
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_IOCTL,
 		    "%s: reject: vaps are running\n", __func__);
 		return EBUSY;
@@ -386,6 +456,7 @@ ieee80211_setregdomain(struct ieee80211vap *vap,
 	error = ic->ic_setregdomain(ic, &reg->rd,
 	    reg->chaninfo.ic_nchans, reg->chaninfo.ic_chans);
 	if (error != 0) {
+		IEEE80211_UNLOCK(ic);
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_IOCTL,
 		    "%s: driver rejected request, error %u\n", __func__, error);
 		return error;
@@ -432,6 +503,7 @@ ieee80211_setregdomain(struct ieee80211vap *vap,
 		/* NB: may be NULL if not present in new channel list */
 		vap->iv_des_chan = (c != NULL) ? c : IEEE80211_CHAN_ANYC;
 	}
+	IEEE80211_UNLOCK(ic);
 
 	return 0;
 }

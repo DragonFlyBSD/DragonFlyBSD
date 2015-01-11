@@ -21,9 +21,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_crypto_ccmp.c 193840 2009-06-09 16:32:07Z sam $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * IEEE 802.11i AES-CCMP crypto support.
@@ -46,7 +47,6 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>
-#include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 
@@ -226,7 +226,8 @@ ccmp_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 	}
 	tid = ieee80211_gettid(wh);
 	pn = READ_6(ivp[0], ivp[1], ivp[4], ivp[5], ivp[6], ivp[7]);
-	if (pn <= k->wk_keyrsc[tid]) {
+	if (pn <= k->wk_keyrsc[tid] &&
+	    (k->wk_flags & IEEE80211_KEY_NOREPLAY) == 0) {
 		/*
 		 * Replay violation.
 		 */
@@ -600,7 +601,7 @@ ccmp_decrypt(struct ieee80211_key *key, u_int64_t pn, struct mbuf *m, int hdrlen
 			space_next = len > space ? len - space : 0;
 			KASSERT(m->m_len >= space_next,
 				("not enough data in following buffer, "
-				"m_len %u need %u", m->m_len, space_next));
+				"m_len %u need %u\n", m->m_len, space_next));
 
 			xor_block(b+space, pos_next, space_next);
 			CCMP_DECRYPT(i, b, b0, pos, a, space);

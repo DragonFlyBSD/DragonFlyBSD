@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211_ht.h 195377 2009-07-05 17:59:19Z sam $
+ * $FreeBSD$
  */
 #ifndef _NET80211_IEEE80211_HT_H_
 #define _NET80211_IEEE80211_HT_H_
@@ -44,7 +44,7 @@ struct ieee80211_tx_ampdu {
 #define	IEEE80211_AGGR_SETUP		0x0008	/* deferred state setup */
 #define	IEEE80211_AGGR_NAK		0x0010	/* peer NAK'd ADDBA request */
 #define	IEEE80211_AGGR_BARPEND		0x0020	/* BAR response pending */
-	uint8_t		txa_ac;
+	uint8_t		txa_tid;
 	uint8_t		txa_token;	/* dialog token */
 	int		txa_lastsample;	/* ticks @ last traffic sample */
 	int		txa_pkts;	/* packets over last sample interval */
@@ -142,7 +142,8 @@ struct ieee80211_rx_ampdu {
 	int		rxa_age;	/* age of oldest frame in window */
 	int		rxa_nframes;	/* frames since ADDBA */
 	struct mbuf *rxa_m[IEEE80211_AGGR_BAWMAX];
-	uint64_t	rxa_pad[4];
+	void		*rxa_private;
+	uint64_t	rxa_pad[3];
 };
 
 void	ieee80211_ht_attach(struct ieee80211com *);
@@ -158,7 +159,7 @@ struct ieee80211_mcs_rates {
 	uint16_t	ht40_rate_800ns;
 	uint16_t	ht40_rate_400ns;
 };
-extern const struct ieee80211_mcs_rates ieee80211_htrates[16];
+extern const struct ieee80211_mcs_rates ieee80211_htrates[];
 const struct ieee80211_htrateset *ieee80211_get_suphtrates(
 		struct ieee80211com *, const struct ieee80211_channel *);
 
@@ -183,7 +184,7 @@ void	ieee80211_htprot_update(struct ieee80211com *, int protmode);
 void	ieee80211_ht_timeout(struct ieee80211com *);
 void	ieee80211_parse_htcap(struct ieee80211_node *, const uint8_t *);
 void	ieee80211_parse_htinfo(struct ieee80211_node *, const uint8_t *);
-void	ieee80211_ht_updateparams(struct ieee80211_node *, const uint8_t *,
+int	ieee80211_ht_updateparams(struct ieee80211_node *, const uint8_t *,
 		const uint8_t *);
 void	ieee80211_ht_updatehtcap(struct ieee80211_node *, const uint8_t *);
 int	ieee80211_ampdu_request(struct ieee80211_node *,

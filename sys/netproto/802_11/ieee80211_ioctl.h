@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211_ioctl.h 203556 2010-02-06 19:24:16Z rpaulo $
+ * $FreeBSD$
  */
 #ifndef _NET80211_IEEE80211_IOCTL_H_
 #define _NET80211_IEEE80211_IOCTL_H_
@@ -241,8 +241,12 @@ struct ieee80211_stats {
 	uint32_t	is_mesh_notproxy;	/* dropped 'cuz not proxying */
 	uint32_t	is_rx_badalign;		/* dropped 'cuz misaligned */
 	uint32_t	is_hwmp_proxy;		/* PREP for proxy route */
-	
-	uint32_t	is_spare[11];
+	uint32_t	is_beacon_bad;		/* Number of bad beacons */
+	uint32_t	is_ampdu_bar_tx;	/* A-MPDU BAR frames TXed */
+	uint32_t	is_ampdu_bar_tx_retry;	/* A-MPDU BAR frames TX rtry */
+	uint32_t	is_ampdu_bar_tx_fail;	/* A-MPDU BAR frames TX fail */
+
+	uint32_t	is_spare[7];
 };
 
 /*
@@ -335,8 +339,10 @@ enum {
 
 struct ieee80211req_mesh_route {
 	uint8_t		imr_flags;
-#define	IEEE80211_MESHRT_FLAGS_VALID	0x01
-#define	IEEE80211_MESHRT_FLAGS_PROXY	0x02
+#define	IEEE80211_MESHRT_FLAGS_DISCOVER	0x01
+#define	IEEE80211_MESHRT_FLAGS_VALID	0x02
+#define	IEEE80211_MESHRT_FLAGS_PROXY	0x04
+#define	IEEE80211_MESHRT_FLAGS_GATE	0x08
 	uint8_t		imr_dest[IEEE80211_ADDR_LEN];
 	uint8_t		imr_nexthop[IEEE80211_ADDR_LEN];
 	uint16_t	imr_nhops;
@@ -569,16 +575,16 @@ struct ieee80211req_sta_vlan {
 	uint16_t	sv_vlan;
 };
 
-#ifdef __DragonFly__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 /*
- * DragonFlyBSD-style ioctls.
+ * FreeBSD-style ioctls.
  */
 /* the first member must be matched with struct ifreq */
 struct ieee80211req {
 	char		i_name[IFNAMSIZ];	/* if_name, e.g. "wi0" */
 	uint16_t	i_type;			/* req type */
 	int16_t		i_val;			/* Index or simple value */
-	int16_t		i_len;			/* Index or simple value */
+	uint16_t	i_len;			/* Index or simple value */
 	void		*i_data;		/* Extra data */
 };
 #define	SIOCS80211		 _IOW('i', 234, struct ieee80211req)
@@ -705,6 +711,7 @@ struct ieee80211req {
 #define	IEEE80211_IOC_MESH_PR_SIG	178	/* mesh sig protocol */
 #define	IEEE80211_IOC_MESH_PR_CC	179	/* mesh congestion protocol */
 #define	IEEE80211_IOC_MESH_PR_AUTH	180	/* mesh auth protocol */
+#define	IEEE80211_IOC_MESH_GATE		181	/* mesh gate XXX: 173? */
 
 #define	IEEE80211_IOC_HWMP_ROOTMODE	190	/* HWMP root mode */
 #define	IEEE80211_IOC_HWMP_MAXHOPS	191	/* number of hops before drop */
@@ -715,6 +722,11 @@ struct ieee80211req {
 #define	IEEE80211_IOC_TDMA_SLOTLEN	203	/* TDMA: slot length (usecs) */
 #define	IEEE80211_IOC_TDMA_BINTERVAL	204	/* TDMA: beacon intvl (slots) */
 
+#define	IEEE80211_IOC_QUIET		205	/* Quiet Enable/Disable */
+#define	IEEE80211_IOC_QUIET_PERIOD	206	/* Quiet Period */
+#define	IEEE80211_IOC_QUIET_OFFSET	207	/* Quiet Offset */
+#define	IEEE80211_IOC_QUIET_DUR		208	/* Quiet Duration */
+#define	IEEE80211_IOC_QUIET_COUNT	209	/* Quiet Count */
 /*
  * Parameters for controlling a scan requested with
  * IEEE80211_IOC_SCAN_REQ.
@@ -844,6 +856,6 @@ struct ieee80211_clone_params {
 #define	IEEE80211_CLONE_WDSLEGACY	0x0004	/* legacy WDS processing */
 #define	IEEE80211_CLONE_MACADDR		0x0008	/* use specified mac addr */
 #define	IEEE80211_CLONE_TDMA		0x0010	/* operate in TDMA mode */
-#endif /* __DragonFly__ */
+#endif /* __FreeBSD__ */
 
 #endif /* _NET80211_IEEE80211_IOCTL_H_ */

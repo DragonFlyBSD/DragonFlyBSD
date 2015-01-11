@@ -615,7 +615,7 @@ rtbuf_len(void)
 static int bsd_sta_deauth(void *priv, const u8 *own_addr, const u8 *addr,
 			  int reason_code);
 
-static const char *
+const char *
 ether_sprintf(const u8 *addr)
 {
 	static char buf[sizeof(MACSTR)];

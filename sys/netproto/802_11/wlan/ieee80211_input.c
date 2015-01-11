@@ -22,9 +22,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_input.c 205986 2010-03-31 16:07:36Z rpaulo $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include "opt_wlan.h"
 
@@ -39,9 +40,10 @@
  
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_llc.h>
 #include <net/if_media.h>
-#include <net/route.h>
+#include <net/vlan/if_vlan_var.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_input.h>
@@ -53,10 +55,56 @@
 
 #ifdef INET
 #include <netinet/in.h>
+#include <net/ethernet.h>
 #endif
+
+static void
+ieee80211_process_mimo(struct ieee80211_node *ni, struct ieee80211_rx_stats *rx)
+{
+	int i;
+
+	/* Verify the required MIMO bits are set */
+	if ((rx->r_flags & (IEEE80211_R_C_CHAIN | IEEE80211_R_C_NF | IEEE80211_R_C_RSSI)) !=
+	    (IEEE80211_R_C_CHAIN | IEEE80211_R_C_NF | IEEE80211_R_C_RSSI))
+		return;
+
+	/* XXX This assumes the MIMO radios have both ctl and ext chains */
+	for (i = 0; i < MIN(rx->c_chain, IEEE80211_MAX_CHAINS); i++) {
+		IEEE80211_RSSI_LPF(ni->ni_mimo_rssi_ctl[i], rx->c_rssi_ctl[i]);
+		IEEE80211_RSSI_LPF(ni->ni_mimo_rssi_ext[i], rx->c_rssi_ext[i]);
+	}
+
+	/* XXX This also assumes the MIMO radios have both ctl and ext chains */
+	for(i = 0; i < MIN(rx->c_chain, IEEE80211_MAX_CHAINS); i++) {
+		ni->ni_mimo_noise_ctl[i] = rx->c_nf_ctl[i];
+		ni->ni_mimo_noise_ext[i] = rx->c_nf_ext[i];
+	}
+	ni->ni_mimo_chains = rx->c_chain;
+}
+
+int
+ieee80211_input_mimo(struct ieee80211_node *ni, struct mbuf *m,
+    struct ieee80211_rx_stats *rx)
+{
+	/* XXX should assert IEEE80211_R_NF and IEEE80211_R_RSSI are set */
+	ieee80211_process_mimo(ni, rx);
+	return ieee80211_input(ni, m, rx->rssi, rx->nf);
+}
 
 int
 ieee80211_input_all(struct ieee80211com *ic, struct mbuf *m, int rssi, int nf)
+{
+	struct ieee80211_rx_stats rx;
+
+	rx.r_flags = IEEE80211_R_NF | IEEE80211_R_RSSI;
+	rx.nf = nf;
+	rx.rssi = rssi;
+	return ieee80211_input_mimo_all(ic, m, &rx);
+}
+
+int
+ieee80211_input_mimo_all(struct ieee80211com *ic, struct mbuf *m,
+    struct ieee80211_rx_stats *rx)
 {
 	struct ieee80211vap *vap;
 	int type = -1;
@@ -94,7 +142,7 @@ ieee80211_input_all(struct ieee80211com *ic, struct mbuf *m, int rssi, int nf)
 			m = NULL;
 		}
 		ni = ieee80211_ref_node(vap->iv_bss);
-		type = ieee80211_input(ni, mcopy, rssi, nf);
+		type = ieee80211_input_mimo(ni, mcopy, rx);
 		ieee80211_free_node(ni);
 	}
 	if (m != NULL)			/* no vaps, reclaim mbuf */
@@ -143,8 +191,10 @@ ieee80211_defrag(struct ieee80211_node *ni, struct mbuf *m, int hdrspace)
 		m_freem(m);
 		return NULL;
 	}
+	IEEE80211_NODE_LOCK(ni->ni_table);
 	mfrag = ni->ni_rxfrag[0];
 	ni->ni_rxfrag[0] = NULL;
+	IEEE80211_NODE_UNLOCK(ni->ni_table);
 
 	/*
 	 * Validate new fragment is in order and
@@ -201,7 +251,10 @@ ieee80211_deliver_data(struct ieee80211vap *vap,
 	struct ifnet *ifp = vap->iv_ifp;
 
 	/* clear driver/net80211 flags before passing up */
-	m->m_flags &= ~(M_80211_RX | M_MCAST | M_BCAST);
+	m->m_flags &= ~(M_MCAST | M_BCAST);
+#if __FreeBSD_version >= 1000046
+	m_clrprotoflags(m);
+#endif
 
 	/* NB: see hostap_deliver_data, this path doesn't handle hostap */
 	KASSERT(vap->iv_opmode != IEEE80211_M_HOSTAP, ("gack, hostap"));
@@ -220,7 +273,11 @@ ieee80211_deliver_data(struct ieee80211vap *vap,
 
 	if (ni->ni_vlan != 0) {
 		/* attach vlan tag */
+#if defined(__DragonFly__)
 		m->m_pkthdr.ether_vlantag = ni->ni_vlan;
+#else
+		m->m_pkthdr.ether_vtag = ni->ni_vlan;
+#endif
 		m->m_flags |= M_VLANTAG;
 	}
 	ifp->if_input(ifp, m, NULL, -1);
@@ -247,7 +304,9 @@ ieee80211_decap(struct ieee80211vap *vap, struct mbuf *m, int hdrlen)
 	if (llc->llc_dsap == LLC_SNAP_LSAP && llc->llc_ssap == LLC_SNAP_LSAP &&
 	    llc->llc_control == LLC_UI && llc->llc_snap.org_code[0] == 0 &&
 	    llc->llc_snap.org_code[1] == 0 && llc->llc_snap.org_code[2] == 0 &&
-	    !(llc->llc_snap.ether_type == htons(ETHERTYPE_IPX))) {
+	    /* NB: preserve AppleTalk frames that have a native SNAP hdr */
+	    !(llc->llc_snap.ether_type == htons(ETHERTYPE_AARP) ||
+	      llc->llc_snap.ether_type == htons(ETHERTYPE_IPX))) {
 		m_adj(m, hdrlen + sizeof(struct llc) - sizeof(*eh));
 		llc = NULL;
 	} else {
@@ -272,13 +331,13 @@ ieee80211_decap(struct ieee80211vap *vap, struct mbuf *m, int hdrlen)
 		IEEE80211_ADDR_COPY(eh->ether_shost, wh.i_addr4);
 		break;
 	}
-#ifdef ALIGNED_POINTER
+#ifndef __NO_STRICT_ALIGNMENT
 	if (!ALIGNED_POINTER(mtod(m, caddr_t) + sizeof(*eh), uint32_t)) {
 		m = ieee80211_realign(vap, m, sizeof(*eh));
 		if (m == NULL)
 			return NULL;
 	}
-#endif /* ALIGNED_POINTER */
+#endif /* !__NO_STRICT_ALIGNMENT */
 	if (llc != NULL) {
 		eh = mtod(m, struct ether_header *);
 		eh->ether_type = htons(m->m_pkthdr.len - sizeof(*eh));
@@ -471,6 +530,9 @@ ieee80211_parse_beacon(struct ieee80211_node *ni, struct mbuf *m,
 		case IEEE80211_ELEMID_CSA:
 			scan->csa = frm;
 			break;
+		case IEEE80211_ELEMID_QUIET:
+			scan->quiet = frm;
+			break;
 		case IEEE80211_ELEMID_FHPARMS:
 			if (ic->ic_phytype == IEEE80211_T_FH) {
 				scan->fhdwell = LE_READ_2(&frm[2]);
@@ -598,7 +660,8 @@ ieee80211_parse_beacon(struct ieee80211_node *ni, struct mbuf *m,
 	      scan->bintval <= IEEE80211_BINTVAL_MAX)) {
 		IEEE80211_DISCARD(vap,
 		    IEEE80211_MSG_ELEMID | IEEE80211_MSG_INPUT,
-		    wh, NULL, "bogus beacon interval %u", scan->bintval);
+		    wh, NULL, "bogus beacon interval (%d TU)",
+		    (int) scan->bintval);
 		vap->iv_stats.is_rx_badbintval++;
 		scan->status |= IEEE80211_BPARSE_BINTVAL_INVALID;
 	}
@@ -671,7 +734,6 @@ ieee80211_parse_action(struct ieee80211_node *ni, struct mbuf *m)
 	IEEE80211_NODE_STAT(ni, rx_action);
 
 	/* verify frame payloads but defer processing */
-	/* XXX maybe push this to method */
 	switch (ia->ia_category) {
 	case IEEE80211_ACTION_CAT_BA:
 		switch (ia->ia_action) {
@@ -706,15 +768,66 @@ ieee80211_parse_action(struct ieee80211_node *ni, struct mbuf *m)
 			break;
 		}
 		break;
+#ifdef IEEE80211_SUPPORT_MESH
+	case IEEE80211_ACTION_CAT_MESH:
+		switch (ia->ia_action) {
+		case IEEE80211_ACTION_MESH_LMETRIC:
+			/*
+			 * XXX: verification is true only if we are using
+			 * Airtime link metric (default)
+			 */
+			IEEE80211_VERIFY_LENGTH(efrm - frm,
+			    sizeof(struct ieee80211_meshlmetric_ie),
+			    return EINVAL);
+			break;
+		case IEEE80211_ACTION_MESH_HWMP:
+			/* verify something */
+			break;
+		case IEEE80211_ACTION_MESH_GANN:
+			IEEE80211_VERIFY_LENGTH(efrm - frm,
+			    sizeof(struct ieee80211_meshgann_ie),
+			    return EINVAL);
+			break;
+		case IEEE80211_ACTION_MESH_CC:
+		case IEEE80211_ACTION_MESH_MCCA_SREQ:
+		case IEEE80211_ACTION_MESH_MCCA_SREP:
+		case IEEE80211_ACTION_MESH_MCCA_AREQ:
+		case IEEE80211_ACTION_MESH_MCCA_ADVER:
+		case IEEE80211_ACTION_MESH_MCCA_TRDOWN:
+		case IEEE80211_ACTION_MESH_TBTT_REQ:
+		case IEEE80211_ACTION_MESH_TBTT_RES:
+			/* reject these early on, not implemented */
+			IEEE80211_DISCARD(vap,
+			    IEEE80211_MSG_ELEMID | IEEE80211_MSG_INPUT,
+			    wh, NULL, "not implemented yet, act=0x%02X",
+			    ia->ia_action);
+			return EINVAL;
+		}
+		break;
+	case IEEE80211_ACTION_CAT_SELF_PROT:
+		/* If TA or RA group address discard silently */
+		if (IEEE80211_IS_MULTICAST(wh->i_addr1) ||
+			IEEE80211_IS_MULTICAST(wh->i_addr2))
+			return EINVAL;
+		/*
+		 * XXX: Should we verify complete length now or it is
+		 * to varying in sizes?
+		 */
+		switch (ia->ia_action) {
+		case IEEE80211_ACTION_MESHPEERING_CONFIRM:
+		case IEEE80211_ACTION_MESHPEERING_CLOSE:
+			/* is not a peering candidate (yet) */
+			if (ni == vap->iv_bss)
+				return EINVAL;
+			break;
+		}
+		break;
+#endif
 	}
 	return 0;
 }
 
-/*
- * Modules may be compiled with debugging even if wlan isn't
- */
-/*#ifdef IEEE80211_DEBUG*/
-#if 1
+#ifdef IEEE80211_DEBUG
 /*
  * Debugging support.
  */
@@ -722,10 +835,8 @@ void
 ieee80211_ssid_mismatch(struct ieee80211vap *vap, const char *tag,
 	uint8_t mac[IEEE80211_ADDR_LEN], uint8_t *ssid)
 {
-	char ethstr[ETHER_ADDRSTRLEN + 1];
-
 	kprintf("[%s] discard %s frame, ssid mismatch: ",
-	    kether_ntoa(mac, ethstr), tag);
+		ether_sprintf(mac), tag);
 	ieee80211_print_essid(ssid + 2, ssid[1]);
 	kprintf("\n");
 }
@@ -734,7 +845,8 @@ ieee80211_ssid_mismatch(struct ieee80211vap *vap, const char *tag,
  * Return the bssid of a frame.
  */
 static const uint8_t *
-ieee80211_getbssid(const struct ieee80211vap *vap, const struct ieee80211_frame *wh)
+ieee80211_getbssid(const struct ieee80211vap *vap,
+	const struct ieee80211_frame *wh)
 {
 	if (vap->iv_opmode == IEEE80211_M_STA)
 		return wh->i_addr2;
@@ -751,11 +863,11 @@ void
 ieee80211_note(const struct ieee80211vap *vap, const char *fmt, ...)
 {
 	char buf[128];		/* XXX */
-	__va_list ap;
+	osdep_va_list ap;
 
-	__va_start(ap, fmt);
+	osdep_va_start(ap, fmt);
 	kvsnprintf(buf, sizeof(buf), fmt, ap);
-	__va_end(ap);
+	osdep_va_end(ap);
 
 	if_printf(vap->iv_ifp, "%s", buf);	/* NB: no \n */
 }
@@ -766,14 +878,13 @@ ieee80211_note_frame(const struct ieee80211vap *vap,
 	const char *fmt, ...)
 {
 	char buf[128];		/* XXX */
-	__va_list ap;
-	char ethstr[ETHER_ADDRSTRLEN + 1];
+	osdep_va_list ap;
 
-	__va_start(ap, fmt);
+	osdep_va_start(ap, fmt);
 	kvsnprintf(buf, sizeof(buf), fmt, ap);
-	__va_end(ap);
+	osdep_va_end(ap);
 	if_printf(vap->iv_ifp, "[%s] %s\n",
-	    kether_ntoa(ieee80211_getbssid(vap, wh), ethstr), buf);
+		ether_sprintf(ieee80211_getbssid(vap, wh)), buf);
 }
 
 void
@@ -782,13 +893,12 @@ ieee80211_note_mac(const struct ieee80211vap *vap,
 	const char *fmt, ...)
 {
 	char buf[128];		/* XXX */
-	__va_list ap;
-	char ethstr[ETHER_ADDRSTRLEN + 1];
+	osdep_va_list ap;
 
-	__va_start(ap, fmt);
+	osdep_va_start(ap, fmt);
 	kvsnprintf(buf, sizeof(buf), fmt, ap);
-	__va_end(ap);
-	if_printf(vap->iv_ifp, "[%s] %s\n", kether_ntoa(mac, ethstr), buf);
+	osdep_va_end(ap);
+	if_printf(vap->iv_ifp, "[%s] %s\n", ether_sprintf(mac), buf);
 }
 
 void
@@ -796,20 +906,19 @@ ieee80211_discard_frame(const struct ieee80211vap *vap,
 	const struct ieee80211_frame *wh,
 	const char *type, const char *fmt, ...)
 {
-	__va_list ap;
-	char ethstr[ETHER_ADDRSTRLEN + 1];
+	osdep_va_list ap;
 
 	if_printf(vap->iv_ifp, "[%s] discard ",
-	    kether_ntoa(ieee80211_getbssid(vap, wh), ethstr));
+		ether_sprintf(ieee80211_getbssid(vap, wh)));
 	if (type == NULL) {
 		kprintf("%s frame, ", ieee80211_mgt_subtype_name[
 			(wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) >>
 			IEEE80211_FC0_SUBTYPE_SHIFT]);
 	} else
 		kprintf("%s frame, ", type);
-	__va_start(ap, fmt);
+	osdep_va_start(ap, fmt);
 	kvprintf(fmt, ap);
-	__va_end(ap);
+	osdep_va_end(ap);
 	kprintf("\n");
 }
 
@@ -818,18 +927,17 @@ ieee80211_discard_ie(const struct ieee80211vap *vap,
 	const struct ieee80211_frame *wh,
 	const char *type, const char *fmt, ...)
 {
-	__va_list ap;
-	char ethstr[ETHER_ADDRSTRLEN + 1];
+	osdep_va_list ap;
 
 	if_printf(vap->iv_ifp, "[%s] discard ",
-	    kether_ntoa(ieee80211_getbssid(vap, wh), ethstr));
+		ether_sprintf(ieee80211_getbssid(vap, wh)));
 	if (type != NULL)
 		kprintf("%s information element, ", type);
 	else
 		kprintf("information element, ");
-	__va_start(ap, fmt);
+	osdep_va_start(ap, fmt);
 	kvprintf(fmt, ap);
-	__va_end(ap);
+	osdep_va_end(ap);
 	kprintf("\n");
 }
 
@@ -838,17 +946,16 @@ ieee80211_discard_mac(const struct ieee80211vap *vap,
 	const uint8_t mac[IEEE80211_ADDR_LEN],
 	const char *type, const char *fmt, ...)
 {
-	__va_list ap;
-	char ethstr[ETHER_ADDRSTRLEN + 1];
+	osdep_va_list ap;
 
-	if_printf(vap->iv_ifp, "[%s] discard ", kether_ntoa(mac, ethstr));
+	if_printf(vap->iv_ifp, "[%s] discard ", ether_sprintf(mac));
 	if (type != NULL)
 		kprintf("%s frame, ", type);
 	else
 		kprintf("frame, ");
-	__va_start(ap, fmt);
+	osdep_va_start(ap, fmt);
 	kvprintf(fmt, ap);
-	__va_end(ap);
+	osdep_va_end(ap);
 	kprintf("\n");
 }
 #endif /* IEEE80211_DEBUG */

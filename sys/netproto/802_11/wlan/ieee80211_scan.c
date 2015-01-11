@@ -21,9 +21,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_scan.c 195618 2009-07-11 15:02:45Z rpaulo $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * IEEE 802.11 scanning support.
@@ -34,14 +35,14 @@
 #include <sys/systm.h> 
 #include <sys/proc.h>
 #include <sys/kernel.h>
- 
 #include <sys/condvar.h>
+
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>
-#include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 
@@ -94,8 +95,7 @@ struct scan_state {
 
 static	void scan_curchan(struct ieee80211_scan_state *, unsigned long);
 static	void scan_mindwell(struct ieee80211_scan_state *);
-static	void scan_signal_callout(void *);
-static	void scan_signal(struct ieee80211_scan_state *ss);
+static	void scan_signal(void *);
 static	void scan_task(void *, int);
 
 MALLOC_DEFINE(M_80211_SCAN, "80211scan", "802.11 scan state");
@@ -111,8 +111,8 @@ ieee80211_scan_attach(struct ieee80211com *ic)
 		ic->ic_scan = NULL;
 		return;
 	}
-	wlan_cv_init(&ss->ss_scan_cv, "scan");
-	callout_init(&ss->ss_scan_timer);
+	callout_init_mtx(&ss->ss_scan_timer, IEEE80211_LOCK_OBJ(ic), 0);
+	cv_init(&ss->ss_scan_cv, "scan");
 	TASK_INIT(&ss->ss_scan_task, 0, scan_task, ss);
 	ic->ic_scan = &ss->base;
 	ss->base.ss_ic = ic;
@@ -127,10 +127,12 @@ ieee80211_scan_detach(struct ieee80211com *ic)
 	struct ieee80211_scan_state *ss = ic->ic_scan;
 
 	if (ss != NULL) {
+		IEEE80211_LOCK(ic);
 		SCAN_PRIVATE(ss)->ss_iflags |= ISCAN_ABORT;
 		scan_signal(ss);
+		IEEE80211_UNLOCK(ic);
 		ieee80211_draintask(ic, &SCAN_PRIVATE(ss)->ss_scan_task);
-		callout_stop(&SCAN_PRIVATE(ss)->ss_scan_timer);
+		callout_drain(&SCAN_PRIVATE(ss)->ss_scan_timer);
 		KASSERT((ic->ic_flags & IEEE80211_F_SCAN) == 0,
 		    ("scan still running"));
 		if (ss->ss_ops != NULL) {
@@ -182,6 +184,7 @@ ieee80211_scan_vdetach(struct ieee80211vap *vap)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_scan_state *ss;
 
+	IEEE80211_LOCK(ic);
 	ss = ic->ic_scan;
 	if (ss != NULL && ss->ss_vap == vap) {
 		if (ic->ic_flags & IEEE80211_F_SCAN) {
@@ -194,6 +197,7 @@ ieee80211_scan_vdetach(struct ieee80211vap *vap)
 		}
 		ss->ss_vap = NULL;
 	}
+	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -263,6 +267,8 @@ scan_update_locked(struct ieee80211vap *vap,
 {
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_scan_state *ss = ic->ic_scan;
+
+	IEEE80211_LOCK_ASSERT(ic);
 
 #ifdef IEEE80211_DEBUG
 	if (ss->ss_vap != vap || ss->ss_ops != scan) {
@@ -378,6 +384,8 @@ start_scan_locked(const struct ieee80211_scanner *scan,
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_scan_state *ss = ic->ic_scan;
 
+	IEEE80211_LOCK_ASSERT(ic);
+
 	if (ic->ic_flags & IEEE80211_F_CSAPENDING) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
 		    "%s: scan inhibited by pending channel change\n", __func__);
@@ -409,6 +417,8 @@ start_scan_locked(const struct ieee80211_scanner *scan,
 				vap->iv_stats.is_scan_passive++;
 			if (flags & IEEE80211_SCAN_FLUSH)
 				ss->ss_ops->scan_flush(ss);
+			if (flags & IEEE80211_SCAN_BGSCAN)
+				ic->ic_flags_ext |= IEEE80211_FEXT_BGSCAN;
 
 			/* NB: flush frames rx'd before 1st channel change */
 			SCAN_PRIVATE(ss)->ss_iflags |= ISCAN_DISCARD;
@@ -425,12 +435,13 @@ start_scan_locked(const struct ieee80211_scanner *scan,
 			ic->ic_flags |= IEEE80211_F_SCAN;
 			ieee80211_runtask(ic, &SCAN_PRIVATE(ss)->ss_scan_task);
 		}
+		return 1;
 	} else {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
 		    "%s: %s scan already in progress\n", __func__,
 		    ss->ss_flags & IEEE80211_SCAN_ACTIVE ? "active" : "passive");
 	}
-	return (ic->ic_flags & IEEE80211_F_SCAN);
+	return 0;
 }
 
 /*
@@ -441,6 +452,7 @@ ieee80211_start_scan(struct ieee80211vap *vap, int flags,
 	u_int duration, u_int mindwell, u_int maxdwell,
 	u_int nssid, const struct ieee80211_scan_ssid ssids[])
 {
+	struct ieee80211com *ic = vap->iv_ic;
 	const struct ieee80211_scanner *scan;
 	int result;
 
@@ -453,8 +465,10 @@ ieee80211_start_scan(struct ieee80211vap *vap, int flags,
 		return 0;
 	}
 
+	IEEE80211_LOCK(ic);
 	result = start_scan_locked(scan, vap, flags, duration,
 	    mindwell, maxdwell, nssid, ssids);
+	IEEE80211_UNLOCK(ic);
 
 	return result;
 }
@@ -476,7 +490,7 @@ ieee80211_check_scan(struct ieee80211vap *vap, int flags,
 	scan = ieee80211_scanner_get(vap->iv_opmode);
 	if (scan == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
-		    "%s: no scanner support for %d mode\n",
+		    "%s: no scanner support for %s mode\n",
 		    __func__, vap->iv_opmode);
 		/* XXX stat */
 		return 0;
@@ -487,6 +501,7 @@ ieee80211_check_scan(struct ieee80211vap *vap, int flags,
 	 * XXX want more than the ap we're currently associated with
 	 */
 
+	IEEE80211_LOCK(ic);
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
 	    "%s: %s scan, %s%s%s%s%s\n"
 	    , __func__
@@ -535,12 +550,14 @@ ieee80211_check_scan(struct ieee80211vap *vap, int flags,
 			SCAN_PRIVATE(ss)->ss_iflags &= ~ISCAN_DISCARD;
 			if (result) {
 				ieee80211_notify_scan_done(vap);
+				IEEE80211_UNLOCK(ic);
 				return 1;
 			}
 		}
 	}
 	result = start_scan_locked(scan, vap, flags, duration,
 	    mindwell, maxdwell, nssid, ssids);
+	IEEE80211_UNLOCK(ic);
 
 	return result;
 }
@@ -572,12 +589,13 @@ ieee80211_bg_scan(struct ieee80211vap *vap, int flags)
 	scan = ieee80211_scanner_get(vap->iv_opmode);
 	if (scan == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
-		    "%s: no scanner support for %d mode\n",
+		    "%s: no scanner support for %s mode\n",
 		    __func__, vap->iv_opmode);
 		/* XXX stat */
 		return 0;
 	}
 
+	IEEE80211_LOCK(ic);
 	if ((ic->ic_flags & IEEE80211_F_SCAN) == 0) {
 		u_int duration;
 		/*
@@ -589,7 +607,7 @@ ieee80211_bg_scan(struct ieee80211vap *vap, int flags)
 		duration = IEEE80211_SCAN_OFFCHANNEL;
 
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
-		    "%s: %s scan, ticks %u duration %u\n", __func__,
+		    "%s: %s scan, ticks %u duration %lu\n", __func__,
 		    ss->ss_flags & IEEE80211_SCAN_ACTIVE ? "active" : "passive",
 		    ticks, duration);
 
@@ -651,6 +669,7 @@ ieee80211_bg_scan(struct ieee80211vap *vap, int flags)
 		    "%s: %s scan already in progress\n", __func__,
 		    ss->ss_flags & IEEE80211_SCAN_ACTIVE ? "active" : "passive");
 	}
+	IEEE80211_UNLOCK(ic);
 
 	/* NB: racey, does it matter? */
 	return (ic->ic_flags & IEEE80211_F_SCAN);
@@ -665,6 +684,7 @@ ieee80211_cancel_scan(struct ieee80211vap *vap)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_scan_state *ss = ic->ic_scan;
 
+	IEEE80211_LOCK(ic);
 	if ((ic->ic_flags & IEEE80211_F_SCAN) &&
 	    ss->ss_vap == vap &&
 	    (SCAN_PRIVATE(ss)->ss_iflags & ISCAN_CANCEL) == 0) {
@@ -679,6 +699,7 @@ ieee80211_cancel_scan(struct ieee80211vap *vap)
 		/* wake up the scan task */
 		scan_signal(ss);
 	}
+	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -690,6 +711,7 @@ ieee80211_cancel_anyscan(struct ieee80211vap *vap)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_scan_state *ss = ic->ic_scan;
 
+	IEEE80211_LOCK(ic);
 	if ((ic->ic_flags & IEEE80211_F_SCAN) &&
 	    (SCAN_PRIVATE(ss)->ss_iflags & ISCAN_CANCEL) == 0) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN,
@@ -703,6 +725,7 @@ ieee80211_cancel_anyscan(struct ieee80211vap *vap)
 		/* wake up the scan task */
 		scan_signal(ss);
 	}
+	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -716,7 +739,9 @@ ieee80211_scan_next(struct ieee80211vap *vap)
 	struct ieee80211_scan_state *ss = ic->ic_scan;
 
 	/* wake up the scan task */
+	IEEE80211_LOCK(ic);
 	scan_signal(ss);
+	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -729,9 +754,11 @@ ieee80211_scan_done(struct ieee80211vap *vap)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_scan_state *ss;
 
+	IEEE80211_LOCK(ic);
 	ss = ic->ic_scan;
 	ss->ss_next = ss->ss_last; /* all channels are complete */
 	scan_signal(ss);
+	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -780,26 +807,22 @@ scan_curchan(struct ieee80211_scan_state *ss, unsigned long maxdwell)
 {
 	struct ieee80211vap *vap  = ss->ss_vap;
 
+	IEEE80211_LOCK(vap->iv_ic);
 	if (ss->ss_flags & IEEE80211_SCAN_ACTIVE)
 		ieee80211_probe_curchan(vap, 0);
 	callout_reset(&SCAN_PRIVATE(ss)->ss_scan_timer,
-		      maxdwell, scan_signal_callout, ss);
+	    maxdwell, scan_signal, ss);
+	IEEE80211_UNLOCK(vap->iv_ic);
 }
 
 static void
-scan_signal_callout(void *arg)
+scan_signal(void *arg)
 {
 	struct ieee80211_scan_state *ss = (struct ieee80211_scan_state *) arg;
 
-	wlan_serialize_enter();
-	scan_signal(ss);
-	wlan_serialize_exit();
-}
+	IEEE80211_LOCK_ASSERT(ss->ss_ic);
 
-static void
-scan_signal(struct ieee80211_scan_state *ss)
-{
-	wlan_cv_signal(&SCAN_PRIVATE(ss)->ss_scan_cv, 0);
+	cv_signal(&SCAN_PRIVATE(ss)->ss_scan_cv);
 }
 
 /*
@@ -809,7 +832,11 @@ scan_signal(struct ieee80211_scan_state *ss)
 static void
 scan_mindwell(struct ieee80211_scan_state *ss)
 {
+	struct ieee80211com *ic = ss->ss_ic;
+
+	IEEE80211_LOCK(ic);
 	scan_signal(ss);
+	IEEE80211_UNLOCK(ic);
 }
 
 static void
@@ -817,16 +844,13 @@ scan_task(void *arg, int pending)
 {
 #define	ISCAN_REP	(ISCAN_MINDWELL | ISCAN_DISCARD)
 	struct ieee80211_scan_state *ss = (struct ieee80211_scan_state *) arg;
-	struct ieee80211vap *vap;
-	struct ieee80211com *ic;
+	struct ieee80211vap *vap = ss->ss_vap;
+	struct ieee80211com *ic = ss->ss_ic;
 	struct ieee80211_channel *chan;
 	unsigned long maxdwell, scanend;
 	int scandone = 0;
 
-	wlan_serialize_enter();
-	vap = ss->ss_vap;
-	ic = ss->ss_ic;
-
+	IEEE80211_LOCK(ic);
 	if (vap == NULL || (ic->ic_flags & IEEE80211_F_SCAN) == 0 ||
 	    (SCAN_PRIVATE(ss)->ss_iflags & ISCAN_ABORT)) {
 		/* Cancelled before we started */
@@ -844,21 +868,23 @@ scan_task(void *arg, int pending)
 	    vap->iv_state == IEEE80211_S_RUN) {
 		if ((vap->iv_bss->ni_flags & IEEE80211_NODE_PWR_MGT) == 0) {
 			/* Enable station power save mode */
-			ieee80211_sta_pwrsave(vap, 1);
+			vap->iv_sta_ps(vap, 1);
 			/*
 			 * Use an 1ms delay so the null data frame has a chance
-			 * to go out.  Minimum one tick.
+			 * to go out.
 			 * XXX Should use M_TXCB mechanism to eliminate this.
 			 */
-			wlan_cv_timedwait(&SCAN_PRIVATE(ss)->ss_scan_cv,
-					  hz / 1000 + 1);
+			cv_timedwait(&SCAN_PRIVATE(ss)->ss_scan_cv,
+			    IEEE80211_LOCK_OBJ(ic), hz / 1000);
 			if (SCAN_PRIVATE(ss)->ss_iflags & ISCAN_ABORT)
 				goto done;
 		}
 	}
 
 	scanend = ticks + SCAN_PRIVATE(ss)->ss_duration;
+	IEEE80211_UNLOCK(ic);
 	ic->ic_scan_start(ic);		/* notify driver */
+	IEEE80211_LOCK(ic);
 
 	for (;;) {
 		scandone = (ss->ss_next >= ss->ss_last) ||
@@ -894,6 +920,7 @@ scan_task(void *arg, int pending)
 		 */
 		ic->ic_curchan = chan;
 		ic->ic_rt = ieee80211_get_ratetable(chan);
+		IEEE80211_UNLOCK(ic);
 		/*
 		 * Perform the channel change and scan unlocked so the driver
 		 * may sleep. Once set_channel returns the hardware has
@@ -915,6 +942,7 @@ scan_task(void *arg, int pending)
 		 * and allows it to be signalled for abort.
 		 */
 		ic->ic_scan_curchan(ss, maxdwell);
+		IEEE80211_LOCK(ic);
 
 		SCAN_PRIVATE(ss)->ss_chanmindwell = ticks + ss->ss_mindwell;
 		/* clear mindwell lock and initial channel change flush */
@@ -924,12 +952,27 @@ scan_task(void *arg, int pending)
 			continue;
 
 		/* Wait to be signalled to scan the next channel */
-		wlan_cv_wait(&SCAN_PRIVATE(ss)->ss_scan_cv);
+		cv_wait(&SCAN_PRIVATE(ss)->ss_scan_cv, IEEE80211_LOCK_OBJ(ic));
 	}
 	if (SCAN_PRIVATE(ss)->ss_iflags & ISCAN_ABORT)
 		goto done;
 
+	IEEE80211_UNLOCK(ic);
 	ic->ic_scan_end(ic);		/* notify driver */
+	IEEE80211_LOCK(ic);
+
+	/*
+	 * Since a cancellation may have occured during one of the
+	 * driver calls (whilst unlocked), update scandone.
+	 */
+	if (scandone == 0 &&
+	    ((SCAN_PRIVATE(ss)->ss_iflags & ISCAN_CANCEL) != 0)) {
+		/* XXX printf? */
+		if_printf(vap->iv_ifp,
+		    "%s: OOPS! scan cancelled during driver call!\n",
+		    __func__);
+	}
+	scandone |= ((SCAN_PRIVATE(ss)->ss_iflags & ISCAN_CANCEL) != 0);
 
 	/*
 	 * Record scan complete time.  Note that we also do
@@ -942,8 +985,10 @@ scan_task(void *arg, int pending)
 	if (ic->ic_bsschan != IEEE80211_CHAN_ANYC &&
 	    ic->ic_curchan != ic->ic_bsschan) {
 		ieee80211_setupcurchan(ic, ic->ic_bsschan);
+		IEEE80211_UNLOCK(ic);
 		ic->ic_set_channel(ic);
 		ieee80211_radiotap_chan_change(ic);
+		IEEE80211_LOCK(ic);
 	}
 	/* clear internal flags and any indication of a pick */
 	SCAN_PRIVATE(ss)->ss_iflags &= ~ISCAN_REP;
@@ -973,7 +1018,8 @@ scan_task(void *arg, int pending)
 
 		ss->ss_ops->scan_restart(ss, vap);	/* XXX? */
 		ieee80211_runtask(ic, &SCAN_PRIVATE(ss)->ss_scan_task);
-		goto done2;
+		IEEE80211_UNLOCK(ic);
+		return;
 	}
 
 	/* past here, scandone is ``true'' if not in bg mode */
@@ -1003,7 +1049,7 @@ done:
 	 * waiting for us.
 	 */
 	if (scandone) {
-		ieee80211_sta_pwrsave(vap, 0);
+		vap->iv_sta_ps(vap, 0);
 		if (ss->ss_next >= ss->ss_last) {
 			ieee80211_notify_scan_done(vap);
 			ic->ic_flags_ext &= ~IEEE80211_FEXT_BGSCAN;
@@ -1011,8 +1057,7 @@ done:
 	}
 	SCAN_PRIVATE(ss)->ss_iflags &= ~(ISCAN_CANCEL|ISCAN_ABORT);
 	ss->ss_flags &= ~(IEEE80211_SCAN_ONCE | IEEE80211_SCAN_PICK1ST);
-done2:
-	wlan_serialize_exit();
+	IEEE80211_UNLOCK(ic);
 #undef ISCAN_REP
 }
 
@@ -1047,10 +1092,9 @@ dump_probe_beacon(uint8_t subtype, int isnew,
 	const uint8_t mac[IEEE80211_ADDR_LEN],
 	const struct ieee80211_scanparams *sp, int rssi)
 {
-	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	kprintf("[%s] %s%s on chan %u (bss chan %u) ",
-	    kether_ntoa(mac, ethstr), isnew ? "new " : "",
+	    ether_sprintf(mac), isnew ? "new " : "",
 	    ieee80211_mgt_subtype_name[subtype >> IEEE80211_FC0_SUBTYPE_SHIFT],
 	    sp->chan, sp->bchan);
 	ieee80211_print_essid(sp->ssid + 2, sp->ssid[1]);
@@ -1058,7 +1102,7 @@ dump_probe_beacon(uint8_t subtype, int isnew,
 
 	if (isnew) {
 		kprintf("[%s] caps 0x%x bintval %u erp 0x%x",
-			kether_ntoa(mac, ethstr), sp->capinfo, sp->bintval, sp->erp);
+			ether_sprintf(mac), sp->capinfo, sp->bintval, sp->erp);
 		if (sp->country != NULL)
 			dump_country(sp->country);
 		kprintf("\n");
@@ -1196,6 +1240,8 @@ ieee80211_scan_pickchannel(struct ieee80211com *ic, int flags)
 {
 	struct ieee80211_scan_state *ss = ic->ic_scan;
 
+	IEEE80211_LOCK_ASSERT(ic);
+
 	if (ss == NULL || ss->ss_ops == NULL || ss->ss_vap == NULL) {
 		/* XXX printf? */
 		return NULL;
@@ -1203,7 +1249,7 @@ ieee80211_scan_pickchannel(struct ieee80211com *ic, int flags)
 	if (ss->ss_ops->scan_pickchan == NULL) {
 		IEEE80211_DPRINTF(ss->ss_vap, IEEE80211_MSG_SCAN,
 		    "%s: scan module does not support picking a channel, "
-		    "opmode %d\n", __func__, ss->ss_vap->iv_opmode);
+		    "opmode %s\n", __func__, ss->ss_vap->iv_opmode);
 		return NULL;
 	}
 	return ss->ss_ops->scan_pickchan(ss, flags);

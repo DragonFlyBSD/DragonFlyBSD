@@ -21,9 +21,12 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * $FreeBSD: head/sys/net80211/ieee80211_adhoc.c 203422 2010-02-03 10:07:43Z rpaulo $
  */
+
+#include <sys/cdefs.h>
+#ifdef __FreeBSD__
+__FBSDID("$FreeBSD$");
+#endif
 
 /*
  * IEEE 802.11 IBSS mode support.
@@ -45,10 +48,10 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_media.h>
 #include <net/if_llc.h>
 #include <net/ethernet.h>
-#include <net/route.h>
 
 #include <net/bpf.h>
 
@@ -61,6 +64,7 @@
 #ifdef IEEE80211_SUPPORT_TDMA
 #include <netproto/802_11/ieee80211_tdma.h>
 #endif
+#include <netproto/802_11/ieee80211_sta.h>
 
 #define	IEEE80211_RATE2MBS(r)	(((r) & IEEE80211_RATE_VAL) / 2)
 
@@ -130,9 +134,8 @@ adhoc_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_node *ni;
 	enum ieee80211_state ostate;
-#ifdef IEEE80211_DEBUG
-	char ethstr[ETHER_ADDRSTRLEN + 1];
-#endif
+
+	IEEE80211_LOCK_ASSERT(vap->iv_ic);
 
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s (%d)\n",
@@ -169,7 +172,9 @@ adhoc_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 				 * Already have a channel; bypass the
 				 * scan and startup immediately.
 				 */
-				ieee80211_create_ibss(vap, vap->iv_des_chan);
+				ieee80211_create_ibss(vap,
+				    ieee80211_ht_adjust_channel(ic,
+				    vap->iv_des_chan, vap->iv_flags_ht));
 				break;
 			}
 			/*
@@ -214,7 +219,7 @@ adhoc_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 			if (ieee80211_msg_debug(vap)) {
 				ieee80211_note(vap,
 				    "synchronized with %s ssid ",
-				    kether_ntoa(ni->ni_bssid, ethstr));
+				    ether_sprintf(ni->ni_bssid));
 				ieee80211_print_essid(vap->iv_bss->ni_essid,
 				    ni->ni_esslen);
 				/* XXX MCS/HT */
@@ -241,7 +246,7 @@ adhoc_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 			ic->ic_newassoc(ni, ostate != IEEE80211_S_RUN);
 		break;
 	case IEEE80211_S_SLEEP:
-		ieee80211_sta_pwrsave(vap, 0);
+		vap->iv_sta_ps(vap, 0);
 		break;
 	default:
 	invalid:
@@ -284,7 +289,6 @@ doprint(struct ieee80211vap *vap, int subtype)
 static int
 adhoc_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 {
-#define	SEQ_LEQ(a,b)	((int)((a)-(b)) <= 0)
 #define	HAS_SEQ(type)	((type & 0x4) == 0)
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211com *ic = ni->ni_ic;
@@ -296,9 +300,6 @@ adhoc_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 	uint8_t dir, type, subtype, qos;
 	uint8_t *bssid;
 	uint16_t rxseq;
-#ifdef IEEE80211_DEBUG
-	char ethstr[ETHER_ADDRSTRLEN + 1];
-#endif
 
 	if (m->m_flags & M_AMPDU_MPDU) {
 		/*
@@ -414,9 +415,7 @@ adhoc_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 			    TID_TO_WME_AC(tid) >= WME_AC_VI)
 				ic->ic_wme.wme_hipri_traffic++;
 			rxseq = le16toh(*(uint16_t *)wh->i_seq);
-			if ((ni->ni_flags & IEEE80211_NODE_HT) == 0 &&
-			    (wh->i_fc[1] & IEEE80211_FC1_RETRY) &&
-			    SEQ_LEQ(rxseq, ni->ni_rxseqs[tid])) {
+			if (! ieee80211_check_rxseq(ni, wh)) {
 				/* duplicate, discard */
 				IEEE80211_DISCARD_MAC(vap, IEEE80211_MSG_INPUT,
 				    bssid, "duplicate",
@@ -476,7 +475,7 @@ adhoc_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 		 * crypto cipher modules used to do delayed update
 		 * of replay sequence numbers.
 		 */
-		if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
+		if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED) {
 			if ((vap->iv_flags & IEEE80211_F_PRIVACY) == 0) {
 				/*
 				 * Discard encrypted frames when privacy is off.
@@ -494,7 +493,7 @@ adhoc_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 				goto out;
 			}
 			wh = mtod(m, struct ieee80211_frame *);
-			wh->i_fc[1] &= ~IEEE80211_FC1_WEP;
+			wh->i_fc[1] &= ~IEEE80211_FC1_PROTECTED;
 		} else {
 			/* XXX M_WEP and IEEE80211_F_PRIVACY */
 			key = NULL;
@@ -629,10 +628,10 @@ adhoc_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 			if_printf(ifp, "received %s from %s rssi %d\n",
 			    ieee80211_mgt_subtype_name[subtype >>
 				IEEE80211_FC0_SUBTYPE_SHIFT],
-			    kether_ntoa(wh->i_addr2, ethstr), rssi);
+			    ether_sprintf(wh->i_addr2), rssi);
 		}
 #endif
-		if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
+		if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED) {
 			IEEE80211_DISCARD(vap, IEEE80211_MSG_INPUT,
 			    wh, NULL, "%s", "WEP set but not permitted");
 			vap->iv_stats.is_rx_mgtdiscard++; /* XXX */
@@ -662,7 +661,6 @@ out:
 		m_freem(m);
 	}
 	return type;
-#undef SEQ_LEQ
 }
 
 static int
@@ -689,8 +687,11 @@ adhoc_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ieee80211_frame *wh;
-	uint8_t *frm, *efrm;
+	uint8_t *frm, *efrm, *sfrm;
 	uint8_t *ssid, *rates, *xrates;
+#if 0
+	int ht_state_change = 0;
+#endif
 
 	wh = mtod(m0, struct ieee80211_frame *);
 	frm = (uint8_t *)&wh[1];
@@ -751,10 +752,42 @@ adhoc_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 				memcpy(ni->ni_tstamp.data, scan.tstamp,
 					sizeof(ni->ni_tstamp));
 			}
+			/*
+			 * This isn't enabled yet - otherwise it would
+			 * update the HT parameters and channel width
+			 * from any node, which could lead to lots of
+			 * strange behaviour if the 11n nodes aren't
+			 * exactly configured to match.
+			 */
+#if 0
+			if (scan.htcap != NULL && scan.htinfo != NULL &&
+			    (vap->iv_flags_ht & IEEE80211_FHT_HT)) {
+				if (ieee80211_ht_updateparams(ni,
+				    scan.htcap, scan.htinfo))
+					ht_state_change = 1;
+			}
+#endif
 			if (ni != NULL) {
 				IEEE80211_RSSI_LPF(ni->ni_avgrssi, rssi);
 				ni->ni_noise = nf;
 			}
+			/*
+			 * Same here - the channel width change should
+			 * be applied to the specific peer node, not
+			 * to the ic.  Ie, the interface configuration
+			 * should stay in its current channel width;
+			 * but it should change the rate control and
+			 * any queued frames for the given node only.
+			 *
+			 * Since there's no (current) way to inform
+			 * the driver that a channel width change has
+			 * occured for a single node, just stub this
+			 * out.
+			 */
+#if 0
+			if (ht_state_change)
+				ieee80211_update_chw(ic);
+#endif
 		}
 		break;
 	}
@@ -782,6 +815,7 @@ adhoc_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 		 *	[tlv] extended supported rates
 		 */
 		ssid = rates = xrates = NULL;
+		sfrm = frm;
 		while (efrm - frm > 1) {
 			IEEE80211_VERIFY_LENGTH(efrm - frm, frm[1] + 2, return);
 			switch (*frm) {
@@ -824,80 +858,44 @@ adhoc_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 		    is11bclient(rates, xrates) ? IEEE80211_SEND_LEGACY_11B : 0);
 		break;
 
-	case IEEE80211_FC0_SUBTYPE_ACTION: {
-		const struct ieee80211_action *ia;
-
-		if (vap->iv_state != IEEE80211_S_RUN) {
+	case IEEE80211_FC0_SUBTYPE_ACTION:
+	case IEEE80211_FC0_SUBTYPE_ACTION_NOACK:
+		if (ni == vap->iv_bss) {
+			IEEE80211_DISCARD(vap, IEEE80211_MSG_INPUT,
+			    wh, NULL, "%s", "unknown node");
+			vap->iv_stats.is_rx_mgtdiscard++;
+		} else if (!IEEE80211_ADDR_EQ(vap->iv_myaddr, wh->i_addr1) &&
+		    !IEEE80211_IS_MULTICAST(wh->i_addr1)) {
+			IEEE80211_DISCARD(vap, IEEE80211_MSG_INPUT,
+			    wh, NULL, "%s", "not for us");
+			vap->iv_stats.is_rx_mgtdiscard++;
+		} else if (vap->iv_state != IEEE80211_S_RUN) {
 			IEEE80211_DISCARD(vap, IEEE80211_MSG_INPUT,
 			    wh, NULL, "wrong state %s",
 			    ieee80211_state_name[vap->iv_state]);
 			vap->iv_stats.is_rx_mgtdiscard++;
-			return;
+		} else {
+			if (ieee80211_parse_action(ni, m0) == 0)
+				(void)ic->ic_recv_action(ni, wh, frm, efrm);
 		}
-		/*
-		 * action frame format:
-		 *	[1] category
-		 *	[1] action
-		 *	[tlv] parameters
-		 */
-		IEEE80211_VERIFY_LENGTH(efrm - frm,
-			sizeof(struct ieee80211_action), return);
-		ia = (const struct ieee80211_action *) frm;
-
-		vap->iv_stats.is_rx_action++;
-		IEEE80211_NODE_STAT(ni, rx_action);
-
-		/* verify frame payloads but defer processing */
-		/* XXX maybe push this to method */
-		switch (ia->ia_category) {
-		case IEEE80211_ACTION_CAT_BA:
-			switch (ia->ia_action) {
-			case IEEE80211_ACTION_BA_ADDBA_REQUEST:
-				IEEE80211_VERIFY_LENGTH(efrm - frm,
-				    sizeof(struct ieee80211_action_ba_addbarequest),
-				    return);
-				break;
-			case IEEE80211_ACTION_BA_ADDBA_RESPONSE:
-				IEEE80211_VERIFY_LENGTH(efrm - frm,
-				    sizeof(struct ieee80211_action_ba_addbaresponse),
-				    return);
-				break;
-			case IEEE80211_ACTION_BA_DELBA:
-				IEEE80211_VERIFY_LENGTH(efrm - frm,
-				    sizeof(struct ieee80211_action_ba_delba),
-				    return);
-				break;
-			}
-			break;
-		case IEEE80211_ACTION_CAT_HT:
-			switch (ia->ia_action) {
-			case IEEE80211_ACTION_HT_TXCHWIDTH:
-				IEEE80211_VERIFY_LENGTH(efrm - frm,
-				    sizeof(struct ieee80211_action_ht_txchwidth),
-				    return);
-				break;
-			}
-			break;
-		}
-		ic->ic_recv_action(ni, wh, frm, efrm);
 		break;
-	}
 
-	case IEEE80211_FC0_SUBTYPE_AUTH:
 	case IEEE80211_FC0_SUBTYPE_ASSOC_REQ:
-	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
 	case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:
+	case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
 	case IEEE80211_FC0_SUBTYPE_REASSOC_RESP:
-	case IEEE80211_FC0_SUBTYPE_DEAUTH:
+	case IEEE80211_FC0_SUBTYPE_ATIM:
 	case IEEE80211_FC0_SUBTYPE_DISASSOC:
+	case IEEE80211_FC0_SUBTYPE_AUTH:
+	case IEEE80211_FC0_SUBTYPE_DEAUTH:
 		IEEE80211_DISCARD(vap, IEEE80211_MSG_INPUT,
-		     wh, NULL, "%s", "not handled");
+		    wh, NULL, "%s", "not handled");
 		vap->iv_stats.is_rx_mgtdiscard++;
-		return;
+		break;
 
 	default:
 		IEEE80211_DISCARD(vap, IEEE80211_MSG_ANY,
-		     wh, "mgt", "subtype 0x%x not handled", subtype);
+		    wh, "mgt", "subtype 0x%x not handled", subtype);
 		vap->iv_stats.is_rx_badsubtype++;
 		break;
 	}
@@ -911,6 +909,7 @@ ahdemo_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 {
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211com *ic = ni->ni_ic;
+	struct ieee80211_frame *wh;
 
 	/*
 	 * Process management frames when scanning; useful for doing
@@ -918,11 +917,42 @@ ahdemo_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 	 */
 	if (ic->ic_flags & IEEE80211_F_SCAN)
 		adhoc_recv_mgmt(ni, m0, subtype, rssi, nf);
-	else
-		vap->iv_stats.is_rx_mgtdiscard++;
+	else {
+		wh = mtod(m0, struct ieee80211_frame *);
+		switch (subtype) {
+		case IEEE80211_FC0_SUBTYPE_ASSOC_REQ:
+		case IEEE80211_FC0_SUBTYPE_ASSOC_RESP:
+		case IEEE80211_FC0_SUBTYPE_REASSOC_REQ:
+		case IEEE80211_FC0_SUBTYPE_REASSOC_RESP:
+		case IEEE80211_FC0_SUBTYPE_PROBE_REQ:
+		case IEEE80211_FC0_SUBTYPE_PROBE_RESP:
+		case IEEE80211_FC0_SUBTYPE_BEACON:
+		case IEEE80211_FC0_SUBTYPE_ATIM:
+		case IEEE80211_FC0_SUBTYPE_DISASSOC:
+		case IEEE80211_FC0_SUBTYPE_AUTH:
+		case IEEE80211_FC0_SUBTYPE_DEAUTH:
+		case IEEE80211_FC0_SUBTYPE_ACTION:
+		case IEEE80211_FC0_SUBTYPE_ACTION_NOACK:
+			IEEE80211_DISCARD(vap, IEEE80211_MSG_INPUT,
+			     wh, NULL, "%s", "not handled");
+			vap->iv_stats.is_rx_mgtdiscard++;
+			break;
+		default:
+			IEEE80211_DISCARD(vap, IEEE80211_MSG_ANY,
+			     wh, "mgt", "subtype 0x%x not handled", subtype);
+			vap->iv_stats.is_rx_badsubtype++;
+			break;
+		}
+	}
 }
 
 static void
-adhoc_recv_ctl(struct ieee80211_node *ni, struct mbuf *m0, int subtype)
+adhoc_recv_ctl(struct ieee80211_node *ni, struct mbuf *m, int subtype)
 {
+
+	switch (subtype) {
+	case IEEE80211_FC0_SUBTYPE_BAR:
+		ieee80211_recv_bar(ni, m);
+		break;
+	}
 }

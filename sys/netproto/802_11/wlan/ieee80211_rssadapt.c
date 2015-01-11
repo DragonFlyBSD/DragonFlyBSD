@@ -1,4 +1,4 @@
-/*	$FreeBSD: head/sys/net80211/ieee80211_rssadapt.c 206358 2010-04-07 15:29:13Z rpaulo $	*/
+/*	$FreeBSD$	*/
 /* $NetBSD: ieee80211_rssadapt.c,v 1.9 2005/02/26 22:45:09 perry Exp $ */
 /*-
  * Copyright (c) 2010 Rui Paulo <rpaulo@FreeBSD.org>
@@ -33,13 +33,17 @@
 #include "opt_wlan.h"
 
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_media.h>
+#include <net/ethernet.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_rssadapt.h>
@@ -128,9 +132,12 @@ rssadapt_init(struct ieee80211vap *vap)
 	KASSERT(vap->iv_rs == NULL, ("%s: iv_rs already initialized",
 	    __func__));
 	
-	rs = kmalloc(sizeof(struct ieee80211_rssadapt), M_80211_RATECTL,
-	    M_WAITOK|M_ZERO);
-	vap->iv_rs = rs;
+	vap->iv_rs = rs = kmalloc(sizeof(struct ieee80211_rssadapt),
+	    M_80211_RATECTL, M_INTWAIT|M_ZERO);
+	if (rs == NULL) {
+		if_printf(vap->iv_ifp, "couldn't alloc ratectl structure\n");
+		return;
+	}
 	rs->vap = vap;
 	rssadapt_setinterval(vap, 500 /* msecs */);
 	rssadapt_sysctlattach(vap, vap->iv_sysctl, vap->iv_oid);
@@ -162,16 +169,21 @@ static void
 rssadapt_node_init(struct ieee80211_node *ni)
 {
 	struct ieee80211_rssadapt_node *ra;
-	struct ieee80211_rssadapt *rsa = ni->ni_vap->iv_rs;
+	struct ieee80211vap *vap = ni->ni_vap;
+	struct ieee80211_rssadapt *rsa = vap->iv_rs;
 	const struct ieee80211_rateset *rs = &ni->ni_rates;
 
 	if (ni->ni_rctls == NULL) {
 		ni->ni_rctls = ra =
 		    kmalloc(sizeof(struct ieee80211_rssadapt_node),
-			M_80211_RATECTL, M_WAITOK|M_ZERO);
-	} else {
+		        M_80211_RATECTL, M_INTWAIT|M_ZERO);
+		if (ra == NULL) {
+			if_printf(vap->iv_ifp, "couldn't alloc per-node ratectl "
+			    "structure\n");
+			return;
+		}
+	} else
 		ra = ni->ni_rctls;
-	}
 	ra->ra_rs = rsa;
 	ra->ra_rates = *rs;
 	rssadapt_updatestats(ra);
@@ -324,12 +336,10 @@ rssadapt_sysctl_interval(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	error = sysctl_handle_int(oidp, &msecs, 0, req);
-	wlan_serialize_enter();
-	if (error == 0 && req->newptr)
-		rssadapt_setinterval(vap, msecs);
-	wlan_serialize_exit();
-
-	return error;
+	if (error || !req->newptr)
+		return error;
+	rssadapt_setinterval(vap, msecs);
+	return 0;
 }
 
 static void

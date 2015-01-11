@@ -906,7 +906,7 @@ iwl2100_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			bpf_mtap(ic->ic_rawbpf, m);
 
 		wh = mtod(m, struct ieee80211_frame *);
-		if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
+		if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED) {
 			if (ieee80211_crypto_encap(ic, ni, m) == NULL) {
 				ieee80211_free_node(ni);
 				m_freem(m);
@@ -919,7 +919,7 @@ iwl2100_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 * TX radio tap
 		 */
 		if (sc->sc_drvbpf != NULL) {
-			if (wh->i_fc[1] & IEEE80211_FC1_WEP)
+			if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED)
 				sc->sc_tx_th.wt_flags = IEEE80211_RADIOTAP_F_WEP;
 			else
 				sc->sc_tx_th.wt_flags = 0;
@@ -3063,7 +3063,7 @@ iwl2100_rxeof_data(struct iwl2100_softc *sc, int i)
 	 * RX radio tap
 	 */
 	if (sc->sc_drvbpf != NULL) {
-		if (wh->i_fc[1] & IEEE80211_FC1_WEP)
+		if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED)
 			sc->sc_rx_th.wr_flags = IEEE80211_RADIOTAP_F_WEP;
 		else
 			sc->sc_rx_th.wr_flags = 0;
@@ -3323,7 +3323,7 @@ iwl2100_encap(struct iwl2100_softc *sc, struct mbuf *m)
 		IEEE80211_ADDR_COPY(dst, wh->i_addr3);
 	else
 		IEEE80211_ADDR_COPY(dst, wh->i_addr1);
-	if (wh->i_fc[1] & IEEE80211_FC1_WEP)
+	if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED)
 		host_enc = 1;
 	else
 		host_enc = 0;

@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211_node.h 206358 2010-04-07 15:29:13Z rpaulo $
+ * $FreeBSD$
  */
 #ifndef _NET80211_IEEE80211_NODE_H_
 #define _NET80211_IEEE80211_NODE_H_
@@ -151,7 +151,7 @@ struct ieee80211_node {
 #define IEEE80211_NODE_BOOST	0x0080		/* Dynamic Turbo boosted */
 	uint16_t		ni_ath_defkeyix;/* Atheros def key index */
 	const struct ieee80211_txparam *ni_txparms;
-	time_t			ni_jointime;	/* time of join (time_uptime) */
+	uint32_t		ni_jointime;	/* time of join (secs) */
 	uint32_t		*ni_challenge;	/* shared-key challenge */
 	struct ieee80211_ies	ni_ies;		/* captured ie's */
 						/* tx seq per-tid */
@@ -165,6 +165,13 @@ struct ieee80211_node {
 	/* hardware */
 	uint32_t		ni_avgrssi;	/* recv ssi state */
 	int8_t			ni_noise;	/* noise floor */
+
+	/* mimo statistics */
+	uint32_t		ni_mimo_rssi_ctl[IEEE80211_MAX_CHAINS];
+	uint32_t		ni_mimo_rssi_ext[IEEE80211_MAX_CHAINS];
+	uint8_t			ni_mimo_noise_ctl[IEEE80211_MAX_CHAINS];
+	uint8_t			ni_mimo_noise_ext[IEEE80211_MAX_CHAINS];
+	uint8_t			ni_mimo_chains;
 
 	/* header */
 	uint8_t			ni_macaddr[IEEE80211_ADDR_LEN];
@@ -197,6 +204,8 @@ struct ieee80211_node {
 	struct callout		ni_mltimer;	/* link mesh timer */
 	uint8_t			ni_mlrcnt;	/* link mesh retry counter */
 	uint8_t			ni_mltval;	/* link mesh timer value */
+	struct callout		ni_mlhtimer;	/* link mesh backoff timer */
+	uint8_t			ni_mlhcnt;	/* link mesh holding counter */
 
 	/* 11n state */
 	uint16_t		ni_htcap;	/* HT capabilities */
@@ -207,7 +216,7 @@ struct ieee80211_node {
 	uint8_t			ni_htstbc;	/* HT */
 	uint8_t			ni_chw;		/* negotiated channel width */
 	struct ieee80211_htrateset ni_htrates;	/* negotiated ht rate set */
-	struct ieee80211_tx_ampdu ni_tx_ampdu[WME_NUM_AC];
+	struct ieee80211_tx_ampdu ni_tx_ampdu[WME_NUM_TID];
 	struct ieee80211_rx_ampdu ni_rx_ampdu[WME_NUM_TID];
 
 	/* others */
@@ -292,8 +301,6 @@ ieee80211_unref_node(struct ieee80211_node **ni)
 	*ni = NULL;			/* guard against use */
 }
 
-struct ieee80211com;
-
 void	ieee80211_node_attach(struct ieee80211com *);
 void	ieee80211_node_lateattach(struct ieee80211com *);
 void	ieee80211_node_detach(struct ieee80211com *);
@@ -319,6 +326,7 @@ void	ieee80211_sync_curchan(struct ieee80211com *);
 void	ieee80211_setupcurchan(struct ieee80211com *,
 	    struct ieee80211_channel *);
 void	ieee80211_setcurchan(struct ieee80211com *, struct ieee80211_channel *);
+void	ieee80211_update_chw(struct ieee80211com *);
 int	ieee80211_ibss_merge(struct ieee80211_node *);
 struct ieee80211_scan_entry;
 int	ieee80211_sta_join(struct ieee80211vap *, struct ieee80211_channel *,
@@ -342,11 +350,13 @@ void	ieee80211_ies_expand(struct ieee80211_ies *);
  */
 struct ieee80211_node_table {
 	struct ieee80211com	*nt_ic;		/* back reference */
+	ieee80211_node_lock_t	nt_nodelock;	/* on node table */
 	TAILQ_HEAD(, ieee80211_node) nt_node;	/* information of all nodes */
 	LIST_HEAD(, ieee80211_node) nt_hash[IEEE80211_NODE_HASHSIZE];
 	struct ieee80211_node	**nt_keyixmap;	/* key ix -> node map */
 	int			nt_keyixmax;	/* keyixmap size */
 	const char		*nt_name;	/* table name for debug msgs */
+	ieee80211_scan_lock_t	nt_scanlock;	/* on nt_scangen */
 	u_int			nt_scangen;	/* gen# for iterators */
 	int			nt_inact_init;	/* initial node inact setting */
 };
@@ -427,8 +437,11 @@ struct ieee80211_node *ieee80211_find_txnode(struct ieee80211vap *,
 		const uint8_t macaddr[IEEE80211_ADDR_LEN]);
 #endif
 int	ieee80211_node_delucastkey(struct ieee80211_node *);
+void	ieee80211_node_timeout(void *arg);
 
 typedef void ieee80211_iter_func(void *, struct ieee80211_node *);
+int	ieee80211_iterate_nt(struct ieee80211_node_table *,
+		struct ieee80211_node **, uint16_t);
 void	ieee80211_iterate_nodes(struct ieee80211_node_table *,
 		ieee80211_iter_func *, void *);
 

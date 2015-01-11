@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211_scan.h 195618 2009-07-11 15:02:45Z rpaulo $
+ * $FreeBSD$
  */
 #ifndef _NET80211_IEEE80211_SCAN_H_
 #define _NET80211_IEEE80211_SCAN_H_
@@ -213,6 +213,7 @@ struct ieee80211_scanparams {
 	uint8_t		*ath;
 	uint8_t		*tdma;
 	uint8_t		*csa;
+	uint8_t		*quiet;
 	uint8_t		*meshid;
 	uint8_t		*meshconf;
 	uint8_t		*spare[3];

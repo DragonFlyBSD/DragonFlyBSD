@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2009 Sam Leffler, Errno Consulting
+ * Copyright (c) 2011 Adrian Chadd, Xenion Lty Ltd
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,29 +24,30 @@
  *
  * $FreeBSD$
  */
-#ifndef _NET80211_IEEE80211_ACTION_H_
-#define _NET80211_IEEE80211_ACTION_H_
+#ifndef	__IEEE80211_ALQ_H__
+#define	__IEEE80211_ALQ_H__
+
+#define	IEEE80211_ALQ_PAYLOAD_SIZE	24
 
 /*
- * 802.11 send/recv action frame support.
+ * timestamp
+ * wlan interface
+ * operation
+ * sub-operation
+ * rest of structure - operation specific
  */
+struct ieee80211_alq_rec {
+	uint32_t	r_timestamp;	/* XXX may wrap! */
+	uint32_t	r_threadid;	/* current thread id */
+	uint16_t	r_wlan;		/* wlan interface number */
+	uint8_t		r_version;	/* version */
+	uint8_t		r_op;		/* top-level operation id */
+	u_char		r_payload[IEEE80211_ALQ_PAYLOAD_SIZE];
+					/* operation-specific payload */
+};
 
-struct ieee80211_node;
-struct ieee80211_frame;
+/* General logging function */
+extern	void ieee80211_alq_log(struct ieee80211vap *vap, uint8_t op,
+	    u_char *p, int l);
 
-typedef int ieee80211_send_action_func(struct ieee80211_node *,
-    int, int, void *);
-int	ieee80211_send_action_register(int cat, int act,
-		ieee80211_send_action_func *f);
-void	ieee80211_send_action_unregister(int cat, int act);
-int	ieee80211_send_action(struct ieee80211_node *, int, int, void *);
-
-typedef int ieee80211_recv_action_func(struct ieee80211_node *,
-    const struct ieee80211_frame *, const uint8_t *, const uint8_t *);
-int	ieee80211_recv_action_register(int cat, int act,
-		ieee80211_recv_action_func *);
-void	ieee80211_recv_action_unregister(int cat, int act);
-int	ieee80211_recv_action(struct ieee80211_node *,
-		const struct ieee80211_frame *,
-		const uint8_t *, const uint8_t *);
-#endif /* _NET80211_IEEE80211_ACTION_H_ */
+#endif	/* __IEEE80211_ALQ_H__ */

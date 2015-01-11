@@ -16,10 +16,10 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_amrr.c 206358 2010-04-07 15:29:13Z rpaulo $
  */
 
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*-
  * Naive implementation of the Adaptive Multi Rate Retry algorithm:
@@ -38,7 +38,9 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_media.h>
+#include <net/ethernet.h>
 
 #ifdef INET
 #include <netinet/in.h>
@@ -46,6 +48,7 @@
 #endif
 
 #include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_ht.h>
 #include <netproto/802_11/ieee80211_amrr.h>
 #include <netproto/802_11/ieee80211_ratectl.h>
 
@@ -110,9 +113,12 @@ amrr_init(struct ieee80211vap *vap)
 
 	KASSERT(vap->iv_rs == NULL, ("%s called multiple times", __func__));
 
-	vap->iv_rs = kmalloc(sizeof(struct ieee80211_amrr), M_80211_RATECTL,
-	    M_WAITOK|M_ZERO);
-	amrr = vap->iv_rs;
+	amrr = vap->iv_rs = kmalloc(sizeof(struct ieee80211_amrr),
+	    M_80211_RATECTL, M_INTWAIT|M_ZERO);
+	if (amrr == NULL) {
+		if_printf(vap->iv_ifp, "couldn't alloc ratectl structure\n");
+		return;
+	}
 	amrr->amrr_min_success_threshold = IEEE80211_AMRR_MIN_SUCCESS_THRESHOLD;
 	amrr->amrr_max_success_threshold = IEEE80211_AMRR_MAX_SUCCESS_THRESHOLD;
 	amrr_setinterval(vap, 500 /* ms */);
@@ -125,44 +131,101 @@ amrr_deinit(struct ieee80211vap *vap)
 	kfree(vap->iv_rs, M_80211_RATECTL);
 }
 
+/*
+ * Return whether 11n rates are possible.
+ *
+ * Some 11n devices may return HT information but no HT rates.
+ * Thus, we shouldn't treat them as an 11n node.
+ */
+static int
+amrr_node_is_11n(struct ieee80211_node *ni)
+{
+
+	if (ni->ni_chan == NULL)
+		return (0);
+	if (ni->ni_chan == IEEE80211_CHAN_ANYC)
+		return (0);
+	if (IEEE80211_IS_CHAN_HT(ni->ni_chan) && ni->ni_htrates.rs_nrates == 0)
+		return (0);
+	return (IEEE80211_IS_CHAN_HT(ni->ni_chan));
+}
+
 static void
 amrr_node_init(struct ieee80211_node *ni)
 {
-	const struct ieee80211_rateset *rs = &ni->ni_rates;
+	const struct ieee80211_rateset *rs = NULL;
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211_amrr *amrr = vap->iv_rs;
 	struct ieee80211_amrr_node *amn;
+	uint8_t rate;
 
 	if (ni->ni_rctls == NULL) {
-		ni->ni_rctls = amn =
-		    kmalloc(sizeof(struct ieee80211_amrr_node),
-			M_80211_RATECTL, M_WAITOK|M_ZERO);
-	} else {
+		ni->ni_rctls = amn = kmalloc(sizeof(struct ieee80211_amrr_node),
+		    M_80211_RATECTL, M_INTWAIT|M_ZERO);
+		if (amn == NULL) {
+			if_printf(vap->iv_ifp, "couldn't alloc per-node ratectl "
+			    "structure\n");
+			return;
+		}
+	} else
 		amn = ni->ni_rctls;
-	}
 	amn->amn_amrr = amrr;
 	amn->amn_success = 0;
 	amn->amn_recovery = 0;
 	amn->amn_txcnt = amn->amn_retrycnt = 0;
 	amn->amn_success_threshold = amrr->amrr_min_success_threshold;
 
-	/* pick initial rate */
-	for (amn->amn_rix = rs->rs_nrates - 1;
-	     amn->amn_rix > 0 && (rs->rs_rates[amn->amn_rix] & IEEE80211_RATE_VAL) > 72;
-	     amn->amn_rix--)
-		;
-	ni->ni_txrate = rs->rs_rates[amn->amn_rix] & IEEE80211_RATE_VAL;
+	/* 11n or not? Pick the right rateset */
+	if (amrr_node_is_11n(ni)) {
+		/* XXX ew */
+		IEEE80211_NOTE(ni->ni_vap, IEEE80211_MSG_RATECTL, ni,
+		    "%s: 11n node", __func__);
+		rs = (struct ieee80211_rateset *) &ni->ni_htrates;
+	} else {
+		IEEE80211_NOTE(ni->ni_vap, IEEE80211_MSG_RATECTL, ni,
+		    "%s: non-11n node", __func__);
+		rs = &ni->ni_rates;
+	}
+
+	/* Initial rate - lowest */
+	rate = rs->rs_rates[0];
+
+	/* XXX clear the basic rate flag if it's not 11n */
+	if (! amrr_node_is_11n(ni))
+		rate &= IEEE80211_RATE_VAL;
+
+	/* pick initial rate from the rateset - HT or otherwise */
+	/* Pick something low that's likely to succeed */
+	for (amn->amn_rix = rs->rs_nrates - 1; amn->amn_rix > 0;
+	    amn->amn_rix--) {
+		/* legacy - anything < 36mbit, stop searching */
+		/* 11n - stop at MCS4 */
+		if (amrr_node_is_11n(ni)) {
+			if ((rs->rs_rates[amn->amn_rix] & 0x1f) < 4)
+				break;
+		} else if ((rs->rs_rates[amn->amn_rix] & IEEE80211_RATE_VAL) <= 72)
+			break;
+	}
+	rate = rs->rs_rates[amn->amn_rix] & IEEE80211_RATE_VAL;
+
+	/* if the rate is an 11n rate, ensure the MCS bit is set */
+	if (amrr_node_is_11n(ni))
+		rate |= IEEE80211_RATE_MCS;
+
+	/* Assign initial rate from the rateset */
+	ni->ni_txrate = rate;
 	amn->amn_ticks = ticks;
 
 	IEEE80211_NOTE(ni->ni_vap, IEEE80211_MSG_RATECTL, ni,
-	    "AMRR initial rate %d", ni->ni_txrate);
+	    "AMRR: nrates=%d, initial rate %d",
+	    rs->rs_nrates,
+	    rate);
 }
 
 static void
 amrr_node_deinit(struct ieee80211_node *ni)
 {
 	kfree(ni->ni_rctls, M_80211_RATECTL);
-	ni->ni_rctls = NULL;
 }
 
 static int
@@ -170,19 +233,42 @@ amrr_update(struct ieee80211_amrr *amrr, struct ieee80211_amrr_node *amn,
     struct ieee80211_node *ni)
 {
 	int rix = amn->amn_rix;
+	const struct ieee80211_rateset *rs = NULL;
 
 	KASSERT(is_enough(amn), ("txcnt %d", amn->amn_txcnt));
 
+	/* 11n or not? Pick the right rateset */
+	if (amrr_node_is_11n(ni)) {
+		/* XXX ew */
+		rs = (struct ieee80211_rateset *) &ni->ni_htrates;
+	} else {
+		rs = &ni->ni_rates;
+	}
+
+	IEEE80211_NOTE(ni->ni_vap, IEEE80211_MSG_RATECTL, ni,
+	    "AMRR: current rate %d, txcnt=%d, retrycnt=%d",
+	    rs->rs_rates[rix] & IEEE80211_RATE_VAL,
+	    amn->amn_txcnt,
+	    amn->amn_retrycnt);
+
+	/*
+	 * XXX This is totally bogus for 11n, as although high MCS
+	 * rates for each stream may be failing, the next stream
+	 * should be checked.
+	 *
+	 * Eg, if MCS5 is ok but MCS6/7 isn't, and we can go up to
+	 * MCS23, we should skip 6/7 and try 8 onwards.
+	 */
 	if (is_success(amn)) {
 		amn->amn_success++;
 		if (amn->amn_success >= amn->amn_success_threshold &&
-		    rix + 1 < ni->ni_rates.rs_nrates) {
+		    rix + 1 < rs->rs_nrates) {
 			amn->amn_recovery = 1;
 			amn->amn_success = 0;
 			rix++;
 			IEEE80211_NOTE(ni->ni_vap, IEEE80211_MSG_RATECTL, ni,
 			    "AMRR increasing rate %d (txcnt=%d retrycnt=%d)",
-			    ni->ni_rates.rs_rates[rix] & IEEE80211_RATE_VAL,
+			    rs->rs_rates[rix] & IEEE80211_RATE_VAL,
 			    amn->amn_txcnt, amn->amn_retrycnt);
 		} else {
 			amn->amn_recovery = 0;
@@ -203,7 +289,7 @@ amrr_update(struct ieee80211_amrr *amrr, struct ieee80211_amrr_node *amn,
 			rix--;
 			IEEE80211_NOTE(ni->ni_vap, IEEE80211_MSG_RATECTL, ni,
 			    "AMRR decreasing rate %d (txcnt=%d retrycnt=%d)",
-			    ni->ni_rates.rs_rates[rix] & IEEE80211_RATE_VAL,
+			    rs->rs_rates[rix] & IEEE80211_RATE_VAL,
 			    amn->amn_txcnt, amn->amn_retrycnt);
 		}
 		amn->amn_recovery = 0;
@@ -226,14 +312,27 @@ amrr_rate(struct ieee80211_node *ni, void *arg __unused, uint32_t iarg __unused)
 {
 	struct ieee80211_amrr_node *amn = ni->ni_rctls;
 	struct ieee80211_amrr *amrr = amn->amn_amrr;
+	const struct ieee80211_rateset *rs = NULL;
 	int rix;
+
+	/* 11n or not? Pick the right rateset */
+	if (amrr_node_is_11n(ni)) {
+		/* XXX ew */
+		rs = (struct ieee80211_rateset *) &ni->ni_htrates;
+	} else {
+		rs = &ni->ni_rates;
+	}
 
 	if (is_enough(amn) && (ticks - amn->amn_ticks) > amrr->amrr_interval) {
 		rix = amrr_update(amrr, amn, ni);
 		if (rix != amn->amn_rix) {
 			/* update public rate */
-			ni->ni_txrate =
-			    ni->ni_rates.rs_rates[rix] & IEEE80211_RATE_VAL;
+			ni->ni_txrate = rs->rs_rates[rix];
+			/* XXX strip basic rate flag from txrate, if non-11n */
+			if (amrr_node_is_11n(ni))
+				ni->ni_txrate |= IEEE80211_RATE_MCS;
+			else
+				ni->ni_txrate &= IEEE80211_RATE_VAL;
 			amn->amn_rix = rix;
 		}
 		amn->amn_ticks = ticks;
@@ -287,12 +386,10 @@ amrr_sysctl_interval(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	error = sysctl_handle_int(oidp, &msecs, 0, req);
-	wlan_serialize_enter();
-	if (error == 0 && req->newptr)
-		amrr_setinterval(vap, msecs);
-	wlan_serialize_exit();
-
-	return error;
+	if (error || !req->newptr)
+		return error;
+	amrr_setinterval(vap, msecs);
+	return 0;
 }
 
 static void
@@ -305,10 +402,10 @@ amrr_sysctlattach(struct ieee80211vap *vap,
 	    "amrr_rate_interval", CTLTYPE_INT | CTLFLAG_RW, vap,
 	    0, amrr_sysctl_interval, "I", "amrr operation interval (ms)");
 	/* XXX bounds check values */
-	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "amrr_max_sucess_threshold", CTLFLAG_RW,
 	    &amrr->amrr_max_success_threshold, 0, "");
-	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 	    "amrr_min_sucess_threshold", CTLFLAG_RW,
 	    &amrr->amrr_min_success_threshold, 0, "");
 }

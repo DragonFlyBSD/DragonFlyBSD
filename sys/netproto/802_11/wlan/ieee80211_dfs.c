@@ -21,9 +21,12 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_dfs.c 196785 2009-09-03 16:29:02Z sam $
  */
+
+#include <sys/cdefs.h>
+#ifdef __FreeBSD__
+__FBSDID("$FreeBSD$");
+#endif
 
 /*
  * IEEE 802.11 DFS/Radar support.
@@ -34,6 +37,7 @@
 #include <sys/param.h>
 #include <sys/systm.h> 
 #include <sys/mbuf.h>   
+#include <sys/malloc.h>
 #include <sys/kernel.h>
 
 #include <sys/socket.h>
@@ -44,10 +48,13 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_media.h>
-#include <net/route.h>
+#include <net/ethernet.h>
 
 #include <netproto/802_11/ieee80211_var.h>
+
+static MALLOC_DEFINE(M_80211_DFS, "80211dfs", "802.11 DFS state");
 
 static	int ieee80211_nol_timeout = 30*60;		/* 30 minutes */
 SYSCTL_INT(_net_wlan, OID_AUTO, nol_timeout, CTLFLAG_RW,
@@ -59,13 +66,43 @@ SYSCTL_INT(_net_wlan, OID_AUTO, cac_timeout, CTLFLAG_RW,
 	&ieee80211_cac_timeout, 0, "CAC timeout (secs)");
 #define	CAC_TIMEOUT	msecs_to_ticks(ieee80211_cac_timeout*1000)
 
+/*
+ DFS* In order to facilitate  debugging, a couple of operating
+ * modes aside from the default are needed.
+ *
+ * 0 - default CAC/NOL behaviour - ie, start CAC, place
+ *     channel on NOL list.
+ * 1 - send CAC, but don't change channel or add the channel
+ *     to the NOL list.
+ * 2 - just match on radar, don't send CAC or place channel in
+ *     the NOL list.
+ */
+static	int ieee80211_dfs_debug = DFS_DBG_NONE;
+
+/*
+ * This option must not be included in the default kernel
+ * as it allows users to plainly disable CAC/NOL handling.
+ */
+#ifdef	IEEE80211_DFS_DEBUG
+SYSCTL_INT(_net_wlan, OID_AUTO, dfs_debug, CTLFLAG_RW,
+	&ieee80211_dfs_debug, 0, "DFS debug behaviour");
+#endif
+
+static int
+null_set_quiet(struct ieee80211_node *ni, u_int8_t *quiet_elm)
+{
+	return ENOSYS;
+}
+
 void
 ieee80211_dfs_attach(struct ieee80211com *ic)
 {
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 
-	callout_init(&dfs->nol_timer);
-	callout_init(&dfs->cac_timer);
+	callout_init_mtx(&dfs->nol_timer, IEEE80211_LOCK_OBJ(ic), 0);
+	callout_init_mtx(&dfs->cac_timer, IEEE80211_LOCK_OBJ(ic), 0);
+
+	ic->ic_set_quiet = null_set_quiet;
 }
 
 void
@@ -83,27 +120,24 @@ ieee80211_dfs_reset(struct ieee80211com *ic)
 
 	/* NB: we assume no locking is needed */
 	/* NB: cac_timer should be cleared by the state machine */
-	callout_stop(&dfs->nol_timer);
+	callout_drain(&dfs->nol_timer);
 	for (i = 0; i < ic->ic_nchans; i++)
 		ic->ic_channels[i].ic_state = 0;
 	dfs->lastchan = NULL;
 }
 
 static void
-cac_timeout_callout(void *arg)
+cac_timeout(void *arg)
 {
 	struct ieee80211vap *vap = arg;
-	struct ieee80211com *ic;
-	struct ieee80211_dfs_state *dfs;
+	struct ieee80211com *ic = vap->iv_ic;
+	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 	int i;
 
-	wlan_serialize_enter();
-	ic = vap->iv_ic;
-	dfs = &ic->ic_dfs;
-	if (vap->iv_state != IEEE80211_S_CAC) {	/* NB: just in case */
-		wlan_serialize_exit();
+	IEEE80211_LOCK_ASSERT(ic);
+
+	if (vap->iv_state != IEEE80211_S_CAC)	/* NB: just in case */
 		return;
-	}
 	/*
 	 * When radar is detected during a CAC we are woken
 	 * up prematurely to switch to a new channel.
@@ -141,7 +175,6 @@ cac_timeout_callout(void *arg)
 		    IEEE80211_NOTIFY_CAC_EXPIRE);
 		ieee80211_cac_completeswitch(vap);
 	}
-	wlan_serialize_exit();
 }
 
 /*
@@ -155,7 +188,9 @@ ieee80211_dfs_cac_start(struct ieee80211vap *vap)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 
-	callout_reset(&dfs->cac_timer, CAC_TIMEOUT, cac_timeout_callout, vap);
+	IEEE80211_LOCK_ASSERT(ic);
+
+	callout_reset(&dfs->cac_timer, CAC_TIMEOUT, cac_timeout, vap);
 	if_printf(vap->iv_ifp, "start %d second CAC timer on channel %u (%u MHz)\n",
 	    ticks_to_secs(CAC_TIMEOUT),
 	    ic->ic_curchan->ic_ieee, ic->ic_curchan->ic_freq);
@@ -170,6 +205,8 @@ ieee80211_dfs_cac_stop(struct ieee80211vap *vap)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
+
+	IEEE80211_LOCK_ASSERT(ic);
 
 	/* NB: racey but not important */
 	if (callout_pending(&dfs->cac_timer)) {
@@ -195,14 +232,15 @@ ieee80211_dfs_cac_clear(struct ieee80211com *ic,
 }
 
 static void
-dfs_timeout_callout(void *arg)
+dfs_timeout(void *arg)
 {
 	struct ieee80211com *ic = arg;
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 	struct ieee80211_channel *c;
 	int i, oldest, now;
 
-	wlan_serialize_enter();
+	IEEE80211_LOCK_ASSERT(ic);
+
 	now = oldest = ticks;
 	for (i = 0; i < ic->ic_nchans; i++) {
 		c = &ic->ic_channels[i];
@@ -229,10 +267,9 @@ dfs_timeout_callout(void *arg)
 	}
 	if (oldest != now) {
 		/* arrange to process next channel up for a status change */
-		callout_reset(&dfs->nol_timer, oldest + NOL_TIMEOUT - now,
-		    dfs_timeout_callout, ic);
+		callout_schedule_dfly(&dfs->nol_timer, oldest + NOL_TIMEOUT - now,
+				dfs_timeout, ic);
 	}
-	wlan_serialize_exit();
 }
 
 static void
@@ -263,26 +300,46 @@ ieee80211_dfs_notify_radar(struct ieee80211com *ic, struct ieee80211_channel *ch
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 	int i, now;
 
+	IEEE80211_LOCK_ASSERT(ic);
+
 	/*
-	 * Mark all entries with this frequency.  Notify user
-	 * space and arrange for notification when the radar
-	 * indication is cleared.  Then kick the NOL processing
-	 * thread if not already running.
+	 * If doing DFS debugging (mode 2), don't bother
+	 * running the rest of this function.
+	 *
+	 * Simply announce the presence of the radar and continue
+	 * along merrily.
 	 */
-	now = ticks;
-	for (i = 0; i < ic->ic_nchans; i++) {
-		struct ieee80211_channel *c = &ic->ic_channels[i];
-		if (c->ic_freq == chan->ic_freq) {
-			c->ic_state &= ~IEEE80211_CHANSTATE_CACDONE;
-			c->ic_state |= IEEE80211_CHANSTATE_RADAR;
-			dfs->nol_event[i] = now;
-		}
+	if (ieee80211_dfs_debug == DFS_DBG_NOCSANOL) {
+		announce_radar(ic->ic_ifp, chan, chan);
+		ieee80211_notify_radar(ic, chan);
+		return;
 	}
-	ieee80211_notify_radar(ic, chan);
-	chan->ic_state |= IEEE80211_CHANSTATE_NORADAR;
-	if (!callout_pending(&dfs->nol_timer)) {
-		callout_reset(&dfs->nol_timer, NOL_TIMEOUT,
-				dfs_timeout_callout, ic);
+
+	/*
+	 * Don't mark the channel and don't put it into NOL
+	 * if we're doing DFS debugging.
+	 */
+	if (ieee80211_dfs_debug == DFS_DBG_NONE) {
+		/*
+		 * Mark all entries with this frequency.  Notify user
+		 * space and arrange for notification when the radar
+		 * indication is cleared.  Then kick the NOL processing
+		 * thread if not already running.
+		 */
+		now = ticks;
+		for (i = 0; i < ic->ic_nchans; i++) {
+			struct ieee80211_channel *c = &ic->ic_channels[i];
+			if (c->ic_freq == chan->ic_freq) {
+				c->ic_state &= ~IEEE80211_CHANSTATE_CACDONE;
+				c->ic_state |= IEEE80211_CHANSTATE_RADAR;
+				dfs->nol_event[i] = now;
+			}
+		}
+		ieee80211_notify_radar(ic, chan);
+		chan->ic_state |= IEEE80211_CHANSTATE_NORADAR;
+		if (!callout_pending(&dfs->nol_timer))
+			callout_reset(&dfs->nol_timer, NOL_TIMEOUT,
+			    dfs_timeout, ic);
 	}
 
 	/*
@@ -298,15 +355,20 @@ ieee80211_dfs_notify_radar(struct ieee80211com *ic, struct ieee80211_channel *ch
 	 */
 	if (chan == ic->ic_bsschan) {
 		/* XXX need a way to defer to user app */
-		dfs->newchan = ieee80211_dfs_pickchannel(ic);
+
+		/*
+		 * Don't flip over to a new channel if
+		 * we are currently doing DFS debugging.
+		 */
+		if (ieee80211_dfs_debug == DFS_DBG_NONE)
+			dfs->newchan = ieee80211_dfs_pickchannel(ic);
+		else
+			dfs->newchan = chan;
 
 		announce_radar(ic->ic_ifp, chan, dfs->newchan);
 
-#ifdef notyet
-		if (callout_pending(&dfs->cac_timer)) {
-			callout_reset(&dfs->cac_timer, 0,
-					cac_timeout_callout, vap);
-		}
+		if (callout_pending(&dfs->cac_timer))
+			callout_schedule_dfly(&dfs->cac_timer, 0, cac_timeout, dfs->cac_timer.c_arg);
 		else if (dfs->newchan != NULL) {
 			/* XXX mode 1, switch count 2 */
 			/* XXX calculate switch count based on max
@@ -319,8 +381,9 @@ ieee80211_dfs_notify_radar(struct ieee80211com *ic, struct ieee80211_channel *ch
 			 * on the NOL to expire.
 			 */
 			/*XXX*/
+			if_printf(ic->ic_ifp, "%s: No free channels; waiting for entry "
+			    "on NOL to expire\n", __func__);
 		}
-#endif
 	} else {
 		/*
 		 * Issue rate-limited console msgs.

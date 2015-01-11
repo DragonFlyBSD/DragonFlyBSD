@@ -22,9 +22,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_crypto.c 195812 2009-07-21 19:36:32Z sam $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * IEEE 802.11 generic crypto support.
@@ -41,7 +42,6 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>		/* XXX ETHER_HDR_LEN */
-#include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 
@@ -323,10 +323,6 @@ ieee80211_crypto_newkey(struct ieee80211vap *vap,
 		    __func__, cip->ic_name);
 		flags |= IEEE80211_KEY_SWCRYPT;
 	}
-	if (ieee80211_force_swcrypto) {
-		flags |= IEEE80211_KEY_SWCRYPT;
-		flags |= IEEE80211_KEY_SWMIC;
-	}
 	/*
 	 * Hardware TKIP with software MIC is an important
 	 * combination; we handle it by flagging each key,
@@ -492,16 +488,13 @@ int
 ieee80211_crypto_setkey(struct ieee80211vap *vap, struct ieee80211_key *key)
 {
 	const struct ieee80211_cipher *cip = key->wk_cipher;
-#ifdef IEEE80211_DEBUG
-	char ethstr[ETHER_ADDRSTRLEN + 1];
-#endif
 
 	KASSERT(cip != NULL, ("No cipher!"));
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_CRYPTO,
 	    "%s: %s keyix %u flags 0x%x mac %s rsc %ju tsc %ju len %u\n",
 	    __func__, cip->ic_name, key->wk_keyix,
-	    key->wk_flags, kether_ntoa(key->wk_macaddr, ethstr),
+	    key->wk_flags, ether_sprintf(key->wk_macaddr),
 	    key->wk_keyrsc[IEEE80211_NONQOS_TID], key->wk_keytsc,
 	    key->wk_keylen);
 

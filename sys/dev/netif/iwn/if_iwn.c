@@ -3105,7 +3105,7 @@ iwn_rx_compressed_ba(struct iwn_softc *sc, struct iwn_rx_desc *desc,
 	qid = le16toh(ba->qid);
 	txq = &sc->txq[ba->qid];
 	tap = sc->qid2tap[ba->qid];
-	tid = tap->txa_ac;
+	tid = tap->txa_tid;
 	wn = (void *)tap->txa_ni;
 
 	res = NULL;
@@ -3597,7 +3597,7 @@ iwn_ampdu_tx_done(struct iwn_softc *sc, int qid, int idx, int nframes,
 			 * layer.
 			 */
 			tap = sc->qid2tap[qid];
-			tid = tap->txa_ac;
+			tid = tap->txa_tid;
 			wn = (void *)tap->txa_ni;
 			ni = tap->txa_ni;
 			ieee80211_ratectl_tx_complete(ni->ni_vap, ni,
@@ -3629,7 +3629,7 @@ iwn_ampdu_tx_done(struct iwn_softc *sc, int qid, int idx, int nframes,
 		bitmap |= 1ULL << bit;
 	}
 	tap = sc->qid2tap[qid];
-	tid = tap->txa_ac;
+	tid = tap->txa_tid;
 	wn = (void *)tap->txa_ni;
 	wn->agg[tid].bitmap = bitmap;
 	wn->agg[tid].startidx = start;
@@ -4310,7 +4310,7 @@ iwn_tx_data(struct iwn_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 	}
 
 	/* Encrypt the frame if need be. */
-	if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
+	if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED) {
 		/* Retrieve key for TX. */
 		k = ieee80211_crypto_encap(ni, m);
 		if (k == NULL) {
@@ -7089,7 +7089,7 @@ iwn_addba_response(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
 {
 	struct iwn_softc *sc = ni->ni_ic->ic_ifp->if_softc;
 	int qid = *(int *)tap->txa_private;
-	uint8_t tid = tap->txa_ac;
+	uint8_t tid = tap->txa_tid;
 	int ret;
 
 	DPRINTF(sc, IWN_DEBUG_TRACE, "->Doing %s\n", __func__);
@@ -7152,7 +7152,7 @@ iwn_ampdu_tx_stop(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap)
 {
 	struct iwn_softc *sc = ni->ni_ic->ic_ifp->if_softc;
 	struct iwn_ops *ops = &sc->ops;
-	uint8_t tid = tap->txa_ac;
+	uint8_t tid = tap->txa_tid;
 	int qid;
 
 	DPRINTF(sc, IWN_DEBUG_TRACE, "->Doing %s\n", __func__);

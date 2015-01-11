@@ -3174,7 +3174,7 @@ rtw_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 		wh = mtod(m0, struct ieee80211_frame_min *);
 
-		if ((wh->i_fc[1] & IEEE80211_FC1_WEP) != 0 &&
+		if ((wh->i_fc[1] & IEEE80211_FC1_PROTECTED) != 0 &&
 		    (k = ieee80211_crypto_encap(ic, ni, m0)) == NULL) {
 			ieee80211_free_node(ni);
 			m_freem(m0);

@@ -21,9 +21,12 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_monitor.c 193287 2009-06-02 00:04:10Z sam $
  */
+
+#include <sys/cdefs.h>
+#ifdef __FreeBSD__
+__FBSDID("$FreeBSD$");
+#endif
 
 /*
  * IEEE 802.11 Monitor mode support.
@@ -45,10 +48,10 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_media.h>
 #include <net/if_llc.h>
 #include <net/ethernet.h>
-#include <net/route.h>
 
 #include <net/bpf.h>
 
@@ -92,6 +95,8 @@ monitor_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 	enum ieee80211_state ostate;
+
+	IEEE80211_LOCK_ASSERT(ic);
 
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s (%d)\n",

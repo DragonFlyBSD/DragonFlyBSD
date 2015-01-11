@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211_dfs.h 186107 2008-12-15 01:26:33Z sam $
+ * $FreeBSD$
  */
 #ifndef _NET80211_IEEE80211_DFS_H_
 #define _NET80211_IEEE80211_DFS_H_
@@ -30,6 +30,12 @@
 /*
  * 802.11h/DFS definitions.
  */
+
+typedef enum {
+	DFS_DBG_NONE		= 0,
+	DFS_DBG_NONOL		= 1,
+	DFS_DBG_NOCSANOL	= 2
+} dfs_debug_t;
 
 struct ieee80211_dfs_state {
 	int		nol_event[IEEE80211_CHAN_MAX];

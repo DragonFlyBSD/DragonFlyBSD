@@ -22,9 +22,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211.c 206358 2010-04-07 15:29:13Z rpaulo $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * IEEE 802.11 generic handler
@@ -36,15 +37,13 @@
 #include <sys/kernel.h>
 
 #include <sys/socket.h>
-#include <sys/thread.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
-#include <net/ifq_var.h>
 #include <net/ethernet.h>
-#include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
@@ -114,9 +113,6 @@ static const struct ieee80211_rateset ieee80211_rateset_11b =
 static const struct ieee80211_rateset ieee80211_rateset_11g =
 	{ 12, { B(2), B(4), B(11), B(22), 12, 18, 24, 36, 48, 72, 96, 108 } };
 #undef B
-
-/* Global token used for wlan layer and wireless NIC driver layer */
-lwkt_token wlan_token;
 
 /*
  * Fill in 802.11 available channel set, mark
@@ -211,6 +207,15 @@ ieee80211_chan_init(struct ieee80211com *ic)
 	DEFAULTRATES(IEEE80211_MODE_11NG,	 ieee80211_rateset_11g);
 
 	/*
+	 * Setup required information to fill the mcsset field, if driver did
+	 * not. Assume a 2T2R setup for historic reasons.
+	 */
+	if (ic->ic_rxstream == 0)
+		ic->ic_rxstream = 2;
+	if (ic->ic_txstream == 0)
+		ic->ic_txstream = 2;
+
+	/*
 	 * Set auto mode to reset active channel state and any desired channel.
 	 */
 	(void) ieee80211_setmode(ic, IEEE80211_MODE_AUTO);
@@ -237,20 +242,50 @@ null_transmit(struct ifnet *ifp, struct mbuf *m)
 	return EACCES;		/* XXX EIO/EPERM? */
 }
 
+#if defined(__DragonFly__)
 static int
 null_output(struct ifnet *ifp, struct mbuf *m,
-	struct sockaddr *dst, struct rtentry *ro)
+	    struct sockaddr *dst, struct rtentry *ro)
+#elif __FreeBSD_version >= 1000031
+static int
+null_output(struct ifnet *ifp, struct mbuf *m,
+	const struct sockaddr *dst, struct route *ro)
+#else
+static int
+null_output(struct ifnet *ifp, struct mbuf *m,
+	struct sockaddr *dst, struct route *ro)
+#endif
 {
 	if_printf(ifp, "discard raw packet\n");
 	return null_transmit(ifp, m);
 }
 
+#if defined(__DragonFly__)
+
 static void
 null_input(struct ifnet *ifp, struct mbuf *m,
-	const struct pktinfo *pi, int cpuid)
+	   const struct pktinfo *pi, int cpuid)
 {
 	if_printf(ifp, "if_input should not be called\n");
 	m_freem(m);
+}
+
+#else
+
+static void
+null_input(struct ifnet *ifp, struct mbuf *m)
+{
+	if_printf(ifp, "if_input should not be called\n");
+	m_freem(m);
+}
+
+#endif
+
+static void
+null_update_chw(struct ieee80211com *ic)
+{
+
+	if_printf(ic->ic_ifp, "%s: need callback\n", __func__);
 }
 
 /*
@@ -267,13 +302,20 @@ ieee80211_ifattach(struct ieee80211com *ic,
 
 	KASSERT(ifp->if_type == IFT_IEEE80211, ("if_type %d", ifp->if_type));
 
+	IEEE80211_LOCK_INIT(ic, ifp->if_xname);
+	IEEE80211_TX_LOCK_INIT(ic, ifp->if_xname);
 	TAILQ_INIT(&ic->ic_vaps);
 
 	/* Create a taskqueue for all state changes */
 	ic->ic_tq = taskqueue_create("ic_taskq", M_WAITOK | M_ZERO,
 	    taskqueue_thread_enqueue, &ic->ic_tq);
+#if defined(__DragonFly__)
 	taskqueue_start_threads(&ic->ic_tq, 1, TDPRI_KERN_DAEMON, -1,
-	    "%s taskq", ifp->if_xname);
+				"%s net80211 taskq", ifp->if_xname);
+#else
+	taskqueue_start_threads(&ic->ic_tq, 1, PI_NET, "%s net80211 taskq",
+	    ifp->if_xname);
+#endif
 	/*
 	 * Fill in 802.11 available channel set, mark all
 	 * available channels as active, and pick a default
@@ -283,8 +325,9 @@ ieee80211_ifattach(struct ieee80211com *ic,
 
 	ic->ic_update_mcast = null_update_mcast;
 	ic->ic_update_promisc = null_update_promisc;
+	ic->ic_update_chw = null_update_chw;
 
-	ic->ic_hash_key = karc4random();
+	ic->ic_hash_key = arc4random();
 	ic->ic_bintval = IEEE80211_BINTVAL_DEFAULT;
 	ic->ic_lintval = ic->ic_bintval;
 	ic->ic_txpowlimit = IEEE80211_TXPOWER_MAX;
@@ -305,7 +348,15 @@ ieee80211_ifattach(struct ieee80211com *ic,
 
 	ifp->if_addrlen = IEEE80211_ADDR_LEN;
 	ifp->if_hdrlen = 0;
+
+	CURVNET_SET(vnet0);
+
+#if defined(__DragonFly__)
 	if_attach(ifp, &wlan_global_serializer);
+#else
+	if_attach(ifp);
+#endif
+
 	ifp->if_mtu = IEEE80211_MTU_MAX;
 	ifp->if_broadcastaddr = ieee80211broadcastaddr;
 	ifp->if_output = null_output;
@@ -317,6 +368,8 @@ ieee80211_ifattach(struct ieee80211com *ic,
 	sdl->sdl_type = IFT_ETHER;		/* XXX IFT_IEEE80211? */
 	sdl->sdl_alen = IEEE80211_ADDR_LEN;
 	IEEE80211_ADDR_COPY(LLADDR(sdl), macaddr);
+
+	CURVNET_RESTORE();
 }
 
 /*
@@ -331,10 +384,18 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct ieee80211vap *vap;
 
-	wlan_serialize_exit();
+	/*
+	 * This detaches the main interface, but not the vaps.
+	 * Each VAP may be in a separate VIMAGE.
+	 */
+	CURVNET_SET(ifp->if_vnet);
 	if_detach(ifp);
-	wlan_serialize_enter();
+	CURVNET_RESTORE();
 
+	/*
+	 * The VAP is responsible for setting and clearing
+	 * the VIMAGE context.
+	 */
 	while ((vap = TAILQ_FIRST(&ic->ic_vaps)) != NULL)
 		ieee80211_vap_destroy(vap);
 	ieee80211_waitfor_parent(ic);
@@ -353,8 +414,12 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 	ieee80211_power_detach(ic);
 	ieee80211_node_detach(ic);
 
+	/* XXX VNET needed? */
 	ifmedia_removeall(&ic->ic_media);
+
 	taskqueue_free(ic->ic_tq);
+	IEEE80211_TX_LOCK_DESTROY(ic);
+	IEEE80211_LOCK_DESTROY(ic);
 }
 
 /*
@@ -379,9 +444,9 @@ default_reset(struct ieee80211vap *vap, u_long cmd)
  */
 int
 ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
-	const char name[IFNAMSIZ], int unit, int opmode, int flags,
-	const uint8_t bssid[IEEE80211_ADDR_LEN],
-	const uint8_t macaddr[IEEE80211_ADDR_LEN])
+    const char name[IFNAMSIZ], int unit, enum ieee80211_opmode opmode,
+    int flags, const uint8_t bssid[IEEE80211_ADDR_LEN],
+    const uint8_t macaddr[IEEE80211_ADDR_LEN])
 {
 	struct ifnet *ifp;
 
@@ -394,14 +459,13 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 	if_initname(ifp, name, unit);
 	ifp->if_softc = vap;			/* back pointer */
 	ifp->if_flags = IFF_SIMPLEX | IFF_BROADCAST | IFF_MULTICAST;
-	ifp->if_start = ieee80211_start;
+	ifp->if_start = ieee80211_vap_start;
+#if 0
+	ifp->if_transmit = ieee80211_vap_transmit;
+	ifp->if_qflush = ieee80211_vap_qflush;
+#endif
 	ifp->if_ioctl = ieee80211_ioctl;
 	ifp->if_init = ieee80211_init;
-	/* NB: input+output filled in by ether_ifattach */
-	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
-#ifdef notyet
-	ifq_set_ready(&ifp->if_snd);
-#endif
 
 	vap->iv_ifp = ifp;
 	vap->iv_ic = ic;
@@ -410,6 +474,7 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 	vap->iv_flags_ven = ic->ic_flags_ven;
 	vap->iv_caps = ic->ic_caps &~ IEEE80211_C_OPMODE;
 	vap->iv_htcaps = ic->ic_htcaps;
+	vap->iv_htextcaps = ic->ic_htextcaps;
 	vap->iv_opmode = opmode;
 	vap->iv_caps |= ieee80211_opcap[opmode];
 	switch (opmode) {
@@ -442,6 +507,8 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 		}
 		break;
 #endif
+	default:
+		break;
 	}
 	/* auto-enable s/w beacon miss support */
 	if (flags & IEEE80211_CLONE_NOBEACONS)
@@ -457,13 +524,11 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 		vap->iv_flags |= IEEE80211_F_WME;
 	if (vap->iv_caps & IEEE80211_C_BURST)
 		vap->iv_flags |= IEEE80211_F_BURST;
+	/* NB: bg scanning only makes sense for station mode right now */
 #if 0
 	/*
-	 * NB: bg scanning only makes sense for station mode right now
-	 *
-	 * XXX: bgscan is not necessarily stable, so do not enable it by
-	 *	default.  It messes up atheros drivers for sure.
-	 *	(tested w/ AR9280).
+	 * DISABLE BGSCAN BY DEFAULT, many issues can crop up including
+	 * the link going dead.
 	 */
 	if (vap->iv_opmode == IEEE80211_M_STA &&
 	    (vap->iv_caps & IEEE80211_C_BGSCAN))
@@ -538,20 +603,17 @@ ieee80211_vap_attach(struct ieee80211vap *vap,
 	if (maxrate)
 		ifp->if_baudrate = IF_Mbps(maxrate);
 
+#if defined(__DragonFly__)
 	ether_ifattach(ifp, vap->iv_myaddr, &wlan_global_serializer);
-	if (vap->iv_opmode == IEEE80211_M_MONITOR) {
-		/* NB: disallow transmit */
-#ifdef __FreeBSD__
-		ifp->if_transmit = null_transmit;
+#else
+	ether_ifattach(ifp, vap->iv_myaddr);
 #endif
-		ifp->if_output = null_output;
-	} else {
-		/* hook output method setup by ether_ifattach */
-		vap->iv_output = ifp->if_output;
-		ifp->if_output = ieee80211_output;
-	}
+	/* hook output method setup by ether_ifattach */
+	vap->iv_output = ifp->if_output;
+	ifp->if_output = ieee80211_output;
 	/* NB: if_mtu set by ether_ifattach to ETHERMTU */
 
+	IEEE80211_LOCK(ic);
 	TAILQ_INSERT_TAIL(&ic->ic_vaps, vap, iv_next);
 	ieee80211_syncflag_locked(ic, IEEE80211_F_WME);
 #ifdef IEEE80211_SUPPORT_SUPERG
@@ -563,6 +625,7 @@ ieee80211_vap_attach(struct ieee80211vap *vap,
 	ieee80211_syncflag_ht_locked(ic, IEEE80211_FHT_USEHT40);
 	ieee80211_syncifflag_locked(ic, IFF_PROMISC);
 	ieee80211_syncifflag_locked(ic, IFF_ALLMULTI);
+	IEEE80211_UNLOCK(ic);
 
 	return 1;
 }
@@ -579,35 +642,29 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ifnet *ifp = vap->iv_ifp;
 
+	CURVNET_SET(ifp->if_vnet);
+
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s parent %s\n",
 	    __func__, ieee80211_opmode_name[vap->iv_opmode],
 	    ic->ic_ifp->if_xname);
 
-	/*
-	 * NB: bpfdetach is called by ether_ifdetach and claims all taps
-	 *
-	 * ether_ifdetach() must be called without the serializer held.
-	 */
-	wlan_assert_serialized();
-	wlan_serialize_exit();	/* exit to block */
+	/* NB: bpfdetach is called by ether_ifdetach and claims all taps */
 	ether_ifdetach(ifp);
 
-	wlan_serialize_enter();	/* then reenter */
 	ieee80211_stop(vap);
 
 	/*
 	 * Flush any deferred vap tasks.
 	 */
-	wlan_serialize_exit();	/* exit to block */
 	ieee80211_draintask(ic, &vap->iv_nstate_task);
 	ieee80211_draintask(ic, &vap->iv_swbmiss_task);
-	wlan_serialize_enter();	/* then reenter */
 
-#ifdef __FreeBSD__
+#if !defined(__DragonFly__)
 	/* XXX band-aid until ifnet handles this for us */
 	taskqueue_drain(taskqueue_swi, &ifp->if_linktask);
 #endif
 
+	IEEE80211_LOCK(ic);
 	KASSERT(vap->iv_state == IEEE80211_S_INIT , ("vap still running"));
 	TAILQ_REMOVE(&ic->ic_vaps, vap, iv_next);
 	ieee80211_syncflag_locked(ic, IEEE80211_F_WME);
@@ -622,6 +679,7 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 	ieee80211_syncflag_ext_locked(ic, IEEE80211_FEXT_BPF);
 	ieee80211_syncifflag_locked(ic, IFF_PROMISC);
 	ieee80211_syncifflag_locked(ic, IFF_ALLMULTI);
+	IEEE80211_UNLOCK(ic);
 
 	ifmedia_removeall(&vap->iv_media);
 
@@ -640,6 +698,8 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 	ieee80211_sysctl_vdetach(vap);
 
 	if_free(ifp);
+
+	CURVNET_RESTORE();
 }
 
 /*
@@ -653,6 +713,8 @@ ieee80211_syncifflag_locked(struct ieee80211com *ic, int flag)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct ieee80211vap *vap;
 	int bit, oflags;
+
+	IEEE80211_LOCK_ASSERT(ic);
 
 	bit = 0;
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
@@ -677,7 +739,7 @@ ieee80211_syncifflag_locked(struct ieee80211com *ic, int flag)
 		ifp->if_flags &= ~flag;
 	if ((ifp->if_flags ^ oflags) & flag) {
 		/* XXX should we return 1/0 and let caller do this? */
-		if (ifp->if_flags & IFF_RUNNING) {
+		if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
 			if (flag == IFF_PROMISC)
 				ieee80211_runtask(ic, &ic->ic_promisc_task);
 			else if (flag == IFF_ALLMULTI)
@@ -697,6 +759,8 @@ ieee80211_syncflag_locked(struct ieee80211com *ic, int flag)
 	struct ieee80211vap *vap;
 	int bit;
 
+	IEEE80211_LOCK_ASSERT(ic);
+
 	bit = 0;
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
 		if (vap->iv_flags & flag) {
@@ -714,12 +778,14 @@ ieee80211_syncflag(struct ieee80211vap *vap, int flag)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 
+	IEEE80211_LOCK(ic);
 	if (flag < 0) {
 		flag = -flag;
 		vap->iv_flags &= ~flag;
 	} else
 		vap->iv_flags |= flag;
 	ieee80211_syncflag_locked(ic, flag);
+	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -732,6 +798,8 @@ ieee80211_syncflag_ht_locked(struct ieee80211com *ic, int flag)
 {
 	struct ieee80211vap *vap;
 	int bit;
+
+	IEEE80211_LOCK_ASSERT(ic);
 
 	bit = 0;
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
@@ -750,12 +818,14 @@ ieee80211_syncflag_ht(struct ieee80211vap *vap, int flag)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 
+	IEEE80211_LOCK(ic);
 	if (flag < 0) {
 		flag = -flag;
 		vap->iv_flags_ht &= ~flag;
 	} else
 		vap->iv_flags_ht |= flag;
 	ieee80211_syncflag_ht_locked(ic, flag);
+	IEEE80211_UNLOCK(ic);
 }
 
 /*
@@ -768,6 +838,8 @@ ieee80211_syncflag_ext_locked(struct ieee80211com *ic, int flag)
 {
 	struct ieee80211vap *vap;
 	int bit;
+
+	IEEE80211_LOCK_ASSERT(ic);
 
 	bit = 0;
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next)
@@ -786,12 +858,14 @@ ieee80211_syncflag_ext(struct ieee80211vap *vap, int flag)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 
+	IEEE80211_LOCK(ic);
 	if (flag < 0) {
 		flag = -flag;
 		vap->iv_flags_ext &= ~flag;
 	} else
 		vap->iv_flags_ext |= flag;
 	ieee80211_syncflag_ext_locked(ic, flag);
+	IEEE80211_UNLOCK(ic);
 }
 
 static __inline int
@@ -1006,7 +1080,8 @@ ieee80211_media_setup(struct ieee80211com *ic,
 	struct ifmedia *media, int caps, int addsta,
 	ifm_change_cb_t media_change, ifm_stat_cb_t media_stat)
 {
-	int i, j, mode, rate, maxrate, mword, r;
+	int i, j, rate, maxrate, mword, r;
+	enum ieee80211_phymode mode;
 	const struct ieee80211_rateset *rs;
 	struct ieee80211_rateset allrates;
 
@@ -1074,10 +1149,18 @@ ieee80211_media_setup(struct ieee80211com *ic,
 	    isset(ic->ic_modecaps, IEEE80211_MODE_11NG)) {
 		addmedia(media, caps, addsta,
 		    IEEE80211_MODE_AUTO, IFM_IEEE80211_MCS);
-		/* XXX could walk htrates */
-		/* XXX known array size */
-		if (ieee80211_htrates[15].ht40_rate_400ns > maxrate)
-			maxrate = ieee80211_htrates[15].ht40_rate_400ns;
+		i = ic->ic_txstream * 8 - 1;
+		if ((ic->ic_htcaps & IEEE80211_HTCAP_CHWIDTH40) &&
+		    (ic->ic_htcaps & IEEE80211_HTCAP_SHORTGI40))
+			rate = ieee80211_htrates[i].ht40_rate_400ns;
+		else if ((ic->ic_htcaps & IEEE80211_HTCAP_CHWIDTH40))
+			rate = ieee80211_htrates[i].ht40_rate_800ns;
+		else if ((ic->ic_htcaps & IEEE80211_HTCAP_SHORTGI20))
+			rate = ieee80211_htrates[i].ht20_rate_400ns;
+		else
+			rate = ieee80211_htrates[i].ht20_rate_800ns;
+		if (rate > maxrate)
+			maxrate = rate;
 	}
 	return maxrate;
 }
@@ -1127,7 +1210,8 @@ void
 ieee80211_announce(struct ieee80211com *ic)
 {
 	struct ifnet *ifp = ic->ic_ifp;
-	int i, mode, rate, mword;
+	int i, rate, mword;
+	enum ieee80211_phymode mode;
 	const struct ieee80211_rateset *rs;
 
 	/* NB: skip AUTO since it has no rates */
@@ -1520,6 +1604,67 @@ ieee80211_rate2media(struct ieee80211com *ic, int rate, enum ieee80211_phymode m
 		{  13, IFM_IEEE80211_MCS },
 		{  14, IFM_IEEE80211_MCS },
 		{  15, IFM_IEEE80211_MCS },
+		{  16, IFM_IEEE80211_MCS },
+		{  17, IFM_IEEE80211_MCS },
+		{  18, IFM_IEEE80211_MCS },
+		{  19, IFM_IEEE80211_MCS },
+		{  20, IFM_IEEE80211_MCS },
+		{  21, IFM_IEEE80211_MCS },
+		{  22, IFM_IEEE80211_MCS },
+		{  23, IFM_IEEE80211_MCS },
+		{  24, IFM_IEEE80211_MCS },
+		{  25, IFM_IEEE80211_MCS },
+		{  26, IFM_IEEE80211_MCS },
+		{  27, IFM_IEEE80211_MCS },
+		{  28, IFM_IEEE80211_MCS },
+		{  29, IFM_IEEE80211_MCS },
+		{  30, IFM_IEEE80211_MCS },
+		{  31, IFM_IEEE80211_MCS },
+		{  32, IFM_IEEE80211_MCS },
+		{  33, IFM_IEEE80211_MCS },
+		{  34, IFM_IEEE80211_MCS },
+		{  35, IFM_IEEE80211_MCS },
+		{  36, IFM_IEEE80211_MCS },
+		{  37, IFM_IEEE80211_MCS },
+		{  38, IFM_IEEE80211_MCS },
+		{  39, IFM_IEEE80211_MCS },
+		{  40, IFM_IEEE80211_MCS },
+		{  41, IFM_IEEE80211_MCS },
+		{  42, IFM_IEEE80211_MCS },
+		{  43, IFM_IEEE80211_MCS },
+		{  44, IFM_IEEE80211_MCS },
+		{  45, IFM_IEEE80211_MCS },
+		{  46, IFM_IEEE80211_MCS },
+		{  47, IFM_IEEE80211_MCS },
+		{  48, IFM_IEEE80211_MCS },
+		{  49, IFM_IEEE80211_MCS },
+		{  50, IFM_IEEE80211_MCS },
+		{  51, IFM_IEEE80211_MCS },
+		{  52, IFM_IEEE80211_MCS },
+		{  53, IFM_IEEE80211_MCS },
+		{  54, IFM_IEEE80211_MCS },
+		{  55, IFM_IEEE80211_MCS },
+		{  56, IFM_IEEE80211_MCS },
+		{  57, IFM_IEEE80211_MCS },
+		{  58, IFM_IEEE80211_MCS },
+		{  59, IFM_IEEE80211_MCS },
+		{  60, IFM_IEEE80211_MCS },
+		{  61, IFM_IEEE80211_MCS },
+		{  62, IFM_IEEE80211_MCS },
+		{  63, IFM_IEEE80211_MCS },
+		{  64, IFM_IEEE80211_MCS },
+		{  65, IFM_IEEE80211_MCS },
+		{  66, IFM_IEEE80211_MCS },
+		{  67, IFM_IEEE80211_MCS },
+		{  68, IFM_IEEE80211_MCS },
+		{  69, IFM_IEEE80211_MCS },
+		{  70, IFM_IEEE80211_MCS },
+		{  71, IFM_IEEE80211_MCS },
+		{  72, IFM_IEEE80211_MCS },
+		{  73, IFM_IEEE80211_MCS },
+		{  74, IFM_IEEE80211_MCS },
+		{  75, IFM_IEEE80211_MCS },
+		{  76, IFM_IEEE80211_MCS },
 	};
 	int m;
 
@@ -1529,7 +1674,7 @@ ieee80211_rate2media(struct ieee80211com *ic, int rate, enum ieee80211_phymode m
 	if (mode == IEEE80211_MODE_11NA) {
 		if (rate & IEEE80211_RATE_MCS) {
 			rate &= ~IEEE80211_RATE_MCS;
-			m = findmedia(htrates, NELEM(htrates), rate);
+			m = findmedia(htrates, nitems(htrates), rate);
 			if (m != IFM_AUTO)
 				return m | IFM_IEEE80211_11NA;
 		}
@@ -1537,7 +1682,7 @@ ieee80211_rate2media(struct ieee80211com *ic, int rate, enum ieee80211_phymode m
 		/* NB: 12 is ambiguous, it will be treated as an MCS */
 		if (rate & IEEE80211_RATE_MCS) {
 			rate &= ~IEEE80211_RATE_MCS;
-			m = findmedia(htrates, NELEM(htrates), rate);
+			m = findmedia(htrates, nitems(htrates), rate);
 			if (m != IFM_AUTO)
 				return m | IFM_IEEE80211_11NG;
 		}
@@ -1550,22 +1695,25 @@ ieee80211_rate2media(struct ieee80211com *ic, int rate, enum ieee80211_phymode m
 	case IEEE80211_MODE_11NA:
 	case IEEE80211_MODE_TURBO_A:
 	case IEEE80211_MODE_STURBO_A:
-		return findmedia(rates, NELEM(rates), rate | IFM_IEEE80211_11A);
+		return findmedia(rates, nitems(rates),
+		    rate | IFM_IEEE80211_11A);
 	case IEEE80211_MODE_11B:
-		return findmedia(rates, NELEM(rates), rate | IFM_IEEE80211_11B);
+		return findmedia(rates, nitems(rates),
+		    rate | IFM_IEEE80211_11B);
 	case IEEE80211_MODE_FH:
-		return findmedia(rates, NELEM(rates), rate | IFM_IEEE80211_FH);
+		return findmedia(rates, nitems(rates),
+		    rate | IFM_IEEE80211_FH);
 	case IEEE80211_MODE_AUTO:
 		/* NB: ic may be NULL for some drivers */
 		if (ic != NULL && ic->ic_phytype == IEEE80211_T_FH)
-			return findmedia(rates, NELEM(rates),
+			return findmedia(rates, nitems(rates),
 			    rate | IFM_IEEE80211_FH);
 		/* NB: hack, 11g matches both 11b+11a rates */
 		/* fall thru... */
 	case IEEE80211_MODE_11G:
 	case IEEE80211_MODE_11NG:
 	case IEEE80211_MODE_TURBO_G:
-		return findmedia(rates, NELEM(rates), rate | IFM_IEEE80211_11G);
+		return findmedia(rates, nitems(rates), rate | IFM_IEEE80211_11G);
 	}
 	return IFM_AUTO;
 }
@@ -1600,7 +1748,7 @@ ieee80211_media2rate(int mword)
 		54,		/* IFM_IEEE80211_OFDM27 */
 		-1,		/* IFM_IEEE80211_MCS */
 	};
-	return IFM_SUBTYPE(mword) < NELEM(ieeerates) ?
+	return IFM_SUBTYPE(mword) < nitems(ieeerates) ?
 		ieeerates[IFM_SUBTYPE(mword)] : 0;
 }
 

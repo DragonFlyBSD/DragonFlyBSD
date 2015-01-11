@@ -1172,7 +1172,7 @@ acx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			bpf_mtap(ic->ic_rawbpf, m);
 
 		f = mtod(m, struct ieee80211_frame *);
-		if ((f->i_fc[1] & IEEE80211_FC1_WEP) && !sc->chip_hw_crypt) {
+		if ((f->i_fc[1] & IEEE80211_FC1_PROTECTED) && !sc->chip_hw_crypt) {
 			KASSERT(ni != NULL, ("TX node is NULL (WEP)"));
 			if (ieee80211_crypto_encap(ic, ni, m) == NULL) {
 				ieee80211_free_node(ni);
@@ -1495,7 +1495,7 @@ acx_rxeof(struct acx_softc *sc)
 		m->m_pkthdr.rcvif = &ic->ic_if;
 
 		wh = mtod(m, struct ieee80211_frame_min *);
-		is_priv = (wh->i_fc[1] & IEEE80211_FC1_WEP);
+		is_priv = (wh->i_fc[1] & IEEE80211_FC1_PROTECTED);
 
 		if (sc->sc_drvbpf != NULL) {
 			sc->sc_rx_th.wr_tsf = htole32(head->rbh_time);
@@ -1536,7 +1536,7 @@ acx_rxeof(struct acx_softc *sc)
 
 			if (is_priv && sc->chip_hw_crypt) {
 				/* Short circuit software WEP */
-				wh->i_fc[1] &= ~IEEE80211_FC1_WEP;
+				wh->i_fc[1] &= ~IEEE80211_FC1_PROTECTED;
 
 				/* Do chip specific RX buffer processing */
 				if (sc->chip_proc_wep_rxbuf != NULL) {
@@ -2479,7 +2479,7 @@ acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
 
 		wh = mtod(m, struct ieee80211_frame_min *);
 		sc->sc_tx_th.wt_flags = 0;
-		if (wh->i_fc[1] & IEEE80211_FC1_WEP)
+		if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED)
 			sc->sc_tx_th.wt_flags |= IEEE80211_RADIOTAP_F_WEP;
 		sc->sc_tx_th.wt_rate = rate;
 

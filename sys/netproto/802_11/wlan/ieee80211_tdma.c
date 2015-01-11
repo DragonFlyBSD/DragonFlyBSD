@@ -22,9 +22,12 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_tdma.c 193114 2009-05-30 19:57:31Z sam $
  */
+
+#include <sys/cdefs.h>
+#ifdef __FreeBSD__
+__FBSDID("$FreeBSD$");
+#endif
 
 /*
  * IEEE 802.11 TDMA mode support.
@@ -32,6 +35,8 @@
 #include "opt_inet.h"
 #include "opt_tdma.h"
 #include "opt_wlan.h"
+
+#ifdef	IEEE80211_SUPPORT_TDMA
 
 #include <sys/param.h>
 #include <sys/systm.h> 
@@ -50,7 +55,6 @@
 #include <net/if_media.h>
 #include <net/if_llc.h>
 #include <net/ethernet.h>
-#include <net/route.h>
 
 #include <net/bpf.h>
 
@@ -146,8 +150,7 @@ ieee80211_tdma_vattach(struct ieee80211vap *vap)
 	     ("not a tdma vap, caps 0x%x", vap->iv_caps));
 
 	ts = (struct ieee80211_tdma_state *) kmalloc(
-	     sizeof(struct ieee80211_tdma_state), M_80211_VAP,
-	     M_INTWAIT | M_ZERO);
+	     sizeof(struct ieee80211_tdma_state), M_80211_VAP, M_INTWAIT | M_ZERO);
 	if (ts == NULL) {
 		kprintf("%s: cannot allocate TDMA state block\n", __func__);
 		/* NB: fall back to adhdemo mode */
@@ -222,6 +225,8 @@ tdma_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	enum ieee80211_state ostate;
 	int status;
 
+	IEEE80211_LOCK_ASSERT(ic);
+
 	ostate = vap->iv_state;
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s (%d)\n",
 	    __func__, ieee80211_state_name[ostate],
@@ -273,7 +278,7 @@ tdma_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		    ((ts->tdma_slotcnt * ts->tdma_slotlen) / 1024));
 		vap->iv_swbmiss_count = 0;
 		callout_reset(&vap->iv_swbmiss, vap->iv_swbmiss_period,
-			      ieee80211_swbmiss_callout, vap);
+			ieee80211_swbmiss, vap);
 	}
 	return status;
 }
@@ -283,6 +288,8 @@ tdma_beacon_miss(struct ieee80211vap *vap)
 {
 	struct ieee80211_tdma_state *ts = vap->iv_tdma;
 
+	IEEE80211_LOCK_ASSERT(vap->iv_ic);
+
 	KASSERT((vap->iv_ic->ic_flags & IEEE80211_F_SCAN) == 0, ("scanning"));
 	KASSERT(vap->iv_state == IEEE80211_S_RUN,
 	    ("wrong state %d", vap->iv_state));
@@ -291,6 +298,8 @@ tdma_beacon_miss(struct ieee80211vap *vap)
 		IEEE80211_MSG_STATE | IEEE80211_MSG_TDMA | IEEE80211_MSG_DEBUG,
 		"beacon miss, mode %u state %s\n",
 		vap->iv_opmode, ieee80211_state_name[vap->iv_state]);
+
+	callout_stop(&vap->iv_swbmiss);
 
 	if (ts->tdma_peer != NULL) {	/* XXX? can this be null? */
 		ieee80211_notify_node_leave(vap->iv_bss);
@@ -602,7 +611,7 @@ tdma_process_params(struct ieee80211_node *ni, const u_int8_t *ie,
 			    "slot %u collision rxtsf %llu tsf %llu\n",
 			    tdma->tdma_slot,
 			    (unsigned long long) le64toh(ni->ni_tstamp.tsf),
-			    (unsigned long long)vap->iv_bss->ni_tstamp.tsf);
+			    vap->iv_bss->ni_tstamp.tsf);
 			setbit(ts->tdma_inuse, tdma->tdma_slot);
 
 			(void) tdma_update(vap, tdma, ni, 1);
@@ -735,7 +744,7 @@ tdma_ioctl_get80211(struct ieee80211vap *vap, struct ieee80211req *ireq)
 	struct ieee80211_tdma_state *ts = vap->iv_tdma;
 
 	if ((vap->iv_caps & IEEE80211_C_TDMA) == 0)
-		return EOPNOTSUPP;
+		return ENOSYS;
 
 	switch (ireq->i_type) {
 	case IEEE80211_IOC_TDMA_SLOT:
@@ -763,7 +772,7 @@ tdma_ioctl_set80211(struct ieee80211vap *vap, struct ieee80211req *ireq)
 	struct ieee80211_tdma_state *ts = vap->iv_tdma;
 
 	if ((vap->iv_caps & IEEE80211_C_TDMA) == 0)
-		return EOPNOTSUPP;
+		return ENOSYS;
 
 	switch (ireq->i_type) {
 	case IEEE80211_IOC_TDMA_SLOT:
@@ -813,3 +822,5 @@ restart:
 	return ERESTART;
 }
 IEEE80211_IOCTL_SET(tdma, tdma_ioctl_set80211);
+
+#endif	/* IEEE80211_SUPPORT_TDMA */

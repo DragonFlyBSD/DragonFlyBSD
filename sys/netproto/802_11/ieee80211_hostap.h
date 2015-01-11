@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211_hostap.h 178354 2008-04-20 20:35:46Z sam $
+ * $FreeBSD$
  */
 #ifndef _NET80211_IEEE80211_HOSTAP_H_
 #define _NET80211_IEEE80211_HOSTAP_H_
@@ -32,4 +32,10 @@
  */
 void	ieee80211_hostap_attach(struct ieee80211com *);
 void	ieee80211_hostap_detach(struct ieee80211com *);
+
+/*
+ * This method can be overridden
+ */
+void ieee80211_recv_pspoll(struct ieee80211_node *, struct mbuf *);
+
 #endif /* !_NET80211_IEEE80211_HOSTAP_H_ */

@@ -257,7 +257,7 @@ extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 		    /* 0x80E0 - 0x80E3	   Allen-Bradley */
 		    /* 0x80E4 - 0x80F0	   Datability */
 #define	ETHERTYPE_RETIX		0x80F2	/* Retix */
-			     /* 0x80F3	   AppleTalk AARP */
+#define ETHERTYPE_AARP		0x80F3	/* AppleTalk AARP */
 		    /* 0x80F4 - 0x80F5	   Kinetics */
 #define	ETHERTYPE_APOLLO	0x80F7	/* Apollo Computer */
 #define ETHERTYPE_VLAN		0x8100	/* IEEE 802.1Q VLAN tagging (XXX conflicts) */

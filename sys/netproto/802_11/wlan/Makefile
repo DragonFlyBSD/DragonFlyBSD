@@ -1,6 +1,6 @@
 KMOD	 = wlan
 SRCS	 = ieee80211.c ieee80211_action.c ieee80211_adhoc.c ieee80211_ageq.c
-#SRCS	+= ieee80211_amrr.c
+#SRCS	+= ieee80211_amrr.c ieee80211_alq.c
 SRCS	+= ieee80211_crypto.c ieee80211_crypto_none.c ieee80211_ddb.c
 SRCS	+= ieee80211_dfs.c ieee80211_dragonfly.c ieee80211_hostap.c
 SRCS	+= ieee80211_ht.c ieee80211_hwmp.c ieee80211_input.c ieee80211_ioctl.c

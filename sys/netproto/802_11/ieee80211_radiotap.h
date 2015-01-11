@@ -1,4 +1,4 @@
-/* $FreeBSD: head/sys/net80211/ieee80211_radiotap.h 174568 2007-12-13 01:23:40Z sam $ */
+/* $FreeBSD$ */
 /* $NetBSD: ieee80211_radiotap.h,v 1.16 2007/01/06 05:51:15 dyoung Exp $ */
 
 /*-
@@ -53,6 +53,12 @@
 #endif /* defined(__KERNEL__) || defined(_KERNEL) */
 
 #define	IEEE80211_RADIOTAP_HDRLEN	64	/* XXX deprecated */
+
+struct ieee80211_radiotap_vendor_header {
+	uint8_t		vh_oui[3];	/* 3 byte vendor OUI */
+	uint8_t		vh_sub_ns;	/* Sub namespace of this section */
+	uint16_t	vh_skip_len;	/* Length of this vendor section */
+} __packed;
 
 /*
  * The radio capture header precedes the 802.11 header.
@@ -188,8 +194,21 @@ enum ieee80211_radiotap_type {
 	IEEE80211_RADIOTAP_ANTENNA = 11,
 	IEEE80211_RADIOTAP_DB_ANTSIGNAL = 12,
 	IEEE80211_RADIOTAP_DB_ANTNOISE = 13,
-	/* NB: gap for netbsd definitions */
+	/*
+	 * 14-17 are from Linux, they overlap the netbsd-specific
+	 * fields.
+	 */
+	IEEE80211_RADIOTAP_RX_FLAGS = 14,
+	IEEE80211_RADIOTAP_TX_FLAGS = 15,
+	IEEE80211_RADIOTAP_RTS_RETRIES = 16,
+	IEEE80211_RADIOTAP_DATA_RETRIES = 17,
+
 	IEEE80211_RADIOTAP_XCHANNEL = 18,
+	IEEE80211_RADIOTAP_MCS = 19,
+	IEEE80211_RADIOTAP_AMPDU_STATUS = 20,
+
+        IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE = 29,
+	IEEE80211_RADIOTAP_VENDOREXT = 30,
 	IEEE80211_RADIOTAP_EXT = 31,
 };
 

@@ -34,6 +34,7 @@
 #include <sys/serialize.h>
 #include <sys/sysctl.h>
 #include <sys/condvar.h>
+#include <sys/lock.h>
 #include <sys/taskqueue.h>
 
 #include <sys/mutex2.h>
@@ -66,8 +67,14 @@ extern int ieee80211_force_swcrypto;
 
 #define wlan_serialize_enter()	_wlan_serialize_enter(__func__)
 #define wlan_serialize_exit()	_wlan_serialize_exit(__func__)
+#define wlan_serialize_push()	_wlan_serialize_push(__func__)
+#define wlan_serialize_pop(wst)	_wlan_serialize_pop(__func__, wst)
+#define wlan_is_serialized()	_wlan_is_serialized()
 void _wlan_serialize_enter(const char *funcname);
 void _wlan_serialize_exit(const char *funcname);
+int  _wlan_serialize_push(const char *funcname);
+void _wlan_serialize_pop(const char *funcname, int wst);
+int  _wlan_is_serialized(void);
 int wlan_serialize_sleep(void *ident, int flags, const char *wmesg, int timo);
 
 static __inline void
@@ -75,14 +82,6 @@ wlan_assert_serialized(void)
 {
 	ASSERT_SERIALIZED(&wlan_global_serializer);
 }
-
-/*
- * wlan condition variables.  Assume the global serializer is held.
- */
-void wlan_cv_init(struct cv *cv, const char *desc);
-int wlan_cv_timedwait(struct cv *cv, int ticks);
-void wlan_cv_wait(struct cv *cv);
-void wlan_cv_signal(struct cv *cv, int broadcast);
 
 /*
  * Node reference counting definitions.
@@ -108,9 +107,12 @@ int	ieee80211_node_dectestref(struct ieee80211_node *ni);
 
 struct ifqueue;
 struct ieee80211vap;
+struct ieee80211com;
 void	ieee80211_flush_ifq(struct ifaltq *, struct ieee80211vap *);
 
 void	ieee80211_vap_destroy(struct ieee80211vap *);
+int	ieee80211_vap_xmitpkt(struct ieee80211vap *vap, struct mbuf *m);
+int	ieee80211_parent_xmitpkt(struct ieee80211com *ic, struct mbuf *m);
 int	ieee80211_handoff(struct ifnet *, struct mbuf *);
 uint16_t ieee80211_txtime(struct ieee80211_node *, u_int, uint8_t, uint32_t);
 
@@ -226,8 +228,6 @@ wlan_##name##_modevent(module_t mod, int type, void *unused)		\
 	policy##_setup * const *iter, f;				\
 	int error;							\
 									\
-	wlan_serialize_enter();						\
-									\
 	switch (type) {							\
 	case MOD_LOAD:							\
 		SET_FOREACH(iter, policy##_set) {			\
@@ -254,8 +254,6 @@ wlan_##name##_modevent(module_t mod, int type, void *unused)		\
 		error = EINVAL;						\
 		break;							\
 	}								\
-									\
-	wlan_serialize_exit();						\
 									\
 	return error;							\
 }									\
@@ -491,4 +489,107 @@ struct ieee80211_bpf_params {
 	uint8_t		ibp_try3;	/* series 4 try count */
 	uint8_t		ibp_rate3;	/* series 4 IEEE tx rate */
 };
+
+/*
+ * FreeBSD overrides
+ */
+const char *ether_sprintf(const u_char *buf);
+
+#define V_ifnet	ifnet
+#define IFF_DRV_RUNNING	IFF_RUNNING
+#define if_drv_flags	if_flags
+
+typedef struct lock	ieee80211_psq_lock_t;
+typedef struct lock	ieee80211_ageq_lock_t;
+typedef struct lock	ieee80211_node_lock_t;
+typedef struct lock	ieee80211_scan_lock_t;
+typedef struct lock	ieee80211_com_lock_t;
+typedef struct lock	ieee80211_tx_lock_t;
+typedef struct lock	ieee80211_ageq_lock_t;
+typedef struct lock	ieee80211_scan_table_lock_t;
+typedef struct lock	acl_lock_t;
+
+#define IEEE80211_LOCK_OBJ(ic)			(&(ic)->ic_comlock)
+
+#define IEEE80211_LOCK_INIT(ic, name)		lockinit(&(ic)->ic_comlock, name, 0, LK_CANRECURSE)
+#define IEEE80211_NODE_LOCK_INIT(ic, name)	lockinit(&(nt)->nt_nodelock, name, 0, LK_CANRECURSE)
+#define IEEE80211_NODE_ITERATE_LOCK_INIT(ic, name)	lockinit(&(nt)->nt_scanlock, name, 0, LK_CANRECURSE)
+#define IEEE80211_SCAN_TABLE_LOCK_INIT(st, name)	lockinit(&(st)->st_lock, name, 0, LK_CANRECURSE)
+#define IEEE80211_TX_LOCK_INIT(ic, name)	lockinit(&(ic)->ic_txlock, name, 0, LK_CANRECURSE)
+#define IEEE80211_AGEQ_LOCK_INIT(aq, name)	lockinit(&(aq)->aq_lock, name, 0, LK_CANRECURSE)
+#define IEEE80211_PSQ_INIT(psq, name)		lockinit(&(psq)->psq_lock, name, 0, LK_CANRECURSE)
+#define ACL_LOCK_INIT(as, name)		lockinit(&(as)->as_lock, name, 0, LK_CANRECURSE)
+
+#define IEEE80211_LOCK_DESTROY(ic)		lockuninit(&(ic)->ic_comlock)
+#define IEEE80211_NODE_LOCK_DESTROY(nt)		lockuninit(&(nt)->nt_nodelock)
+#define IEEE80211_NODE_ITERATE_LOCK_DESTROY(nt)	lockuninit(&(nt)->nt_scanlock)
+#define IEEE80211_SCAN_TABLE_LOCK_DESTROY(st)	lockuninit(&(st)->st_lock)
+#define IEEE80211_TX_LOCK_DESTROY(ic)		lockuninit(&(ic)->ic_txlock)
+#define IEEE80211_AGEQ_LOCK_DESTROY(aq)		lockuninit(&(aq)->aq_lock)
+#define IEEE80211_PSQ_DESTROY(psq)		lockuninit(&(psq)->psq_lock)
+#define ACL_LOCK_DESTROY(as)			lockuninit(&(as)->as_lock)
+
+#define IEEE80211_LOCK(ic)			lockmgr(&(ic)->ic_comlock, LK_EXCLUSIVE)
+#define IEEE80211_NODE_LOCK(nt)			lockmgr(&(nt)->nt_nodelock, LK_EXCLUSIVE)
+#define IEEE80211_NODE_ITERATE_LOCK(nt)		lockmgr(&(nt)->nt_scanlock, LK_EXCLUSIVE)
+#define IEEE80211_SCAN_TABLE_LOCK(st)		lockmgr(&(st)->st_lock, LK_EXCLUSIVE)
+#define IEEE80211_TX_LOCK(ic)			lockmgr(&(ic)->ic_txlock, LK_EXCLUSIVE)
+#define IEEE80211_AGEQ_LOCK(aq)			lockmgr(&(aq)->aq_lock, LK_EXCLUSIVE)
+#define IEEE80211_PSQ_LOCK(psq)			lockmgr(&(psq)->psq_lock, LK_EXCLUSIVE)
+#define ACL_LOCK(as)				lockmgr(&(as)->as_lock, LK_EXCLUSIVE)
+
+#define IEEE80211_UNLOCK(ic)			lockmgr(&(ic)->ic_comlock, LK_RELEASE)
+#define IEEE80211_NODE_UNLOCK(nt)		lockmgr(&(nt)->nt_nodelock, LK_RELEASE)
+#define IEEE80211_NODE_ITERATE_UNLOCK(nt)	lockmgr(&(nt)->nt_scanlock, LK_RELEASE)
+#define IEEE80211_SCAN_TABLE_UNLOCK(nt)		lockmgr(&(st)->st_lock, LK_RELEASE)
+#define IEEE80211_TX_UNLOCK(ic)			lockmgr(&(ic)->ic_txlock, LK_RELEASE)
+#define IEEE80211_AGEQ_UNLOCK(aq)		lockmgr(&(aq)->aq_lock, LK_RELEASE)
+#define IEEE80211_PSQ_UNLOCK(psq)		lockmgr(&(psq)->psq_lock, LK_RELEASE)
+#define ACL_UNLOCK(as)				lockmgr(&(as)->as_lock, LK_RELEASE)
+
+#define IEEE80211_LOCK_ASSERT(ic)		\
+				KKASSERT(lockstatus(&(ic)->ic_comlock, curthread) == LK_EXCLUSIVE)
+#define IEEE80211_NODE_LOCK_ASSERT(nt)		\
+				KKASSERT(lockstatus(&(nt)->nt_nodelock, curthread) == LK_EXCLUSIVE)
+#define IEEE80211_NODE_ITERATE_LOCK_ASSERT(nt)		\
+				KKASSERT(lockstatus(&(nt)->nt_scanlock, curthread) == LK_EXCLUSIVE)
+#define IEEE80211_TX_LOCK_ASSERT(ic)		\
+				KKASSERT(lockstatus(&(ic)->ic_txlock, curthread) == LK_EXCLUSIVE)
+#define IEEE80211_TX_UNLOCK_ASSERT(ic)		\
+				KKASSERT(lockstatus(&(ic)->ic_txlock, curthread) != LK_EXCLUSIVE)
+#define IEEE80211_AGEQ_LOCK_ASSERT(aq)		\
+				KKASSERT(lockstatus(&(aq)->aq_lock, curthread) == LK_EXCLUSIVE)
+#define ACL_LOCK_ASSERT(as)		\
+				KKASSERT(lockstatus(&(as)->as_lock, curthread) == LK_EXCLUSIVE)
+
+#define IEEE80211_NODE_IS_LOCKED(nt)		\
+				(lockstatus(&(nt)->nt_nodelock, curthread) == LK_EXCLUSIVE)
+
+#define arc4random	karc4random
+
+#define IEEE80211_AGEQ_INIT(aq, name)
+#define IEEE80211_AGEQ_DESTROY(aq)
+#define CURVNET_SET(x)
+#define CURVNET_RESTORE()
+#define ifa_free(ifa)
+
+#define ALIGNED_POINTER(p, t)	(((uintptr_t)(p) & (sizeof(t) - 1)) == 0)
+
+#define osdep_va_list		__va_list
+#define osdep_va_start		__va_start
+#define osdep_va_end		__va_end
+
+/*
+ * DragonFly does not implement _SAFE macros because they are generally not
+ * actually safe in a MP environment, and so it is bad programming practice
+ * to use them.
+ */
+#define TAILQ_FOREACH_SAFE(scan, list, next, save)	\
+	for (scan = TAILQ_FIRST(list); (save = scan ? TAILQ_NEXT(scan, next) : NULL), scan; scan = save) 	\
+
+#define callout_init_mtx(callo, lk, flags)		\
+				callout_init_lk(callo, lk)
+#define callout_schedule_dfly(callo, timo, func, args)	\
+				callout_reset(callo, timo, func, args)
+
 #endif /* _NET80211_IEEE80211_DRAGONFLY_H_ */

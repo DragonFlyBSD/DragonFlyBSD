@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/ieee80211_ageq.h 195379 2009-07-05 18:17:37Z sam $
+ * $FreeBSD$
  */
 #ifndef _NET80211_IEEE80211_STAGEQ_H_
 #define _NET80211_IEEE80211_STAGEQ_H_
@@ -31,6 +31,7 @@ struct ieee80211_node;
 struct mbuf;
 
 struct ieee80211_ageq {
+	ieee80211_ageq_lock_t	aq_lock;
 	int			aq_len;		/* # items on queue */
 	int			aq_maxlen;	/* max queue length */
 	int			aq_drops;	/* frames dropped */

@@ -1549,7 +1549,7 @@ ath_tx_normal_setup(struct ath_softc *sc, struct ieee80211_node *ni,
 	ATH_TX_LOCK_ASSERT(sc);
 
 	wh = mtod(m0, struct ieee80211_frame *);
-	iswep = wh->i_fc[1] & IEEE80211_FC1_WEP;
+	iswep = wh->i_fc[1] & IEEE80211_FC1_PROTECTED;
 	ismcast = IEEE80211_IS_MULTICAST(wh->i_addr1);
 	isfrag = m0->m_flags & M_FRAG;
 	hdrlen = ieee80211_anyhdrsize(wh);
@@ -2194,7 +2194,7 @@ ath_tx_raw_start(struct ath_softc *sc, struct ieee80211_node *ni,
 
 		sc->sc_tx_th.wt_tsf = htole64(tsf);
 		sc->sc_tx_th.wt_flags = sc->sc_hwmap[rix].txflags;
-		if (wh->i_fc[1] & IEEE80211_FC1_WEP)
+		if (wh->i_fc[1] & IEEE80211_FC1_PROTECTED)
 			sc->sc_tx_th.wt_flags |= IEEE80211_RADIOTAP_F_WEP;
 		if (m0->m_flags & M_FRAG)
 			sc->sc_tx_th.wt_flags |= IEEE80211_RADIOTAP_F_FRAG;
@@ -5698,7 +5698,7 @@ ath_addba_request(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
     int dialogtoken, int baparamset, int batimeout)
 {
 	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
-	int tid = tap->txa_ac;
+	int tid = tap->txa_tid;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
 
@@ -5775,7 +5775,7 @@ ath_addba_response(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
     int status, int code, int batimeout)
 {
 	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
-	int tid = tap->txa_ac;
+	int tid = tap->txa_tid;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
 	int r;
@@ -5821,7 +5821,7 @@ void
 ath_addba_stop(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap)
 {
 	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
-	int tid = tap->txa_ac;
+	int tid = tap->txa_tid;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
 	ath_bufhead bf_cq;
@@ -5954,7 +5954,7 @@ ath_bar_response(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
     int status)
 {
 	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
-	int tid = tap->txa_ac;
+	int tid = tap->txa_tid;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
 	int attempts = tap->txa_attempts;
@@ -5965,7 +5965,7 @@ ath_bar_response(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
 	    ",  txa_start=%d, txa_seqpending=%d\n",
 	    __func__,
 	    ath_hal_ether_sprintf(ni->ni_macaddr),
-	    tap->txa_ac,
+	    tap->txa_tid,
 	    atid->tid,
 	    status,
 	    attempts,
@@ -6026,7 +6026,7 @@ ath_addba_response_timeout(struct ieee80211_node *ni,
     struct ieee80211_tx_ampdu *tap)
 {
 	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
-	int tid = tap->txa_ac;
+	int tid = tap->txa_tid;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
 

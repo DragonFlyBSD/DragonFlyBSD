@@ -385,9 +385,6 @@ struct ath_txq {
 /* already serialized by wlan_serializer */
 #define IF_LOCK(ifp)
 #define IF_UNLOCK(ifp)
-#define IEEE80211_LOCK_ASSERT(ic)
-#define IEEE80211_LOCK(ic)
-#define IEEE80211_UNLOCK(ic)
 #endif
 
 #define	ATH_TXQ_LOCK_INIT(_sc, _tq)

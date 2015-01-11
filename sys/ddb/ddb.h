@@ -97,7 +97,11 @@ struct vm_map	*db_map_addr (vm_offset_t);
 boolean_t	db_map_current (struct vm_map *);
 boolean_t	db_map_equal (struct vm_map *, struct vm_map *);
 void		db_print_loc_and_inst (db_addr_t loc, db_regs_t *regs);
-void		db_printf (const char *fmt, ...) __printflike(1, 2);
+
+/*void		db_printf (const char *fmt, ...) __printflike(1, 2);*/
+/* can't use __printflike due to use of %nD */
+void		db_printf (const char *fmt, ...);
+
 void		db_vprintf (const char *fmt, __va_list va) __printflike(1, 0);
 void		db_read_bytes (vm_offset_t addr, size_t size, char *data);
 				/* machine-dependent */

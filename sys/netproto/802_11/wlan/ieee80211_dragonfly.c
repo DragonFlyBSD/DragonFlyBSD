@@ -155,17 +155,20 @@ wlan_clone_destroy(struct ifnet *ifp)
 	struct ieee80211vap *vap = ifp->if_softc;
 	struct ieee80211com *ic = vap->iv_ic;
 
-	wlan_serialize_enter();	/* WARNING must be global serializer */
 	ic->ic_vap_delete(vap);
-	wlan_serialize_exit();
 
 	return 0;
 }
 
 const char *wlan_last_enter_func;
 const char *wlan_last_exit_func;
+
 /*
  * These serializer functions are used by wlan and all drivers.
+ * They are not recursive.  The serializer must be held on
+ * any OACTIVE interactions.  Dragonfly automatically holds
+ * the serializer on most ifp->if_*() calls but calls made
+ * from wlan into ath might not.
  */
 void
 _wlan_serialize_enter(const char *funcname)
@@ -180,6 +183,36 @@ _wlan_serialize_exit(const char *funcname)
 	lwkt_serialize_exit(&wlan_global_serializer);
 	wlan_last_exit_func = funcname;
 }
+
+int
+_wlan_is_serialized(void)
+{
+	return (IS_SERIALIZED(&wlan_global_serializer));
+}
+
+/*
+ * Push/pop allows the wlan serializer to be entered recursively.
+ */
+int
+_wlan_serialize_push(const char *funcname)
+{
+	if (IS_SERIALIZED(&wlan_global_serializer)) {
+		return 0;
+	} else {
+		_wlan_serialize_enter(funcname);
+		return 1;
+	}
+}
+
+void
+_wlan_serialize_pop(const char *funcname, int wst)
+{
+	if (wst) {
+		_wlan_serialize_exit(funcname);
+	}
+}
+
+#if 0
 
 int
 wlan_serialize_sleep(void *ident, int flags, const char *wmesg, int timo)
@@ -229,16 +262,59 @@ wlan_cv_signal(struct cv *cv, int broadcast)
 	}
 }
 
+#endif
+
 /*
  * Misc
  */
+int
+ieee80211_vap_xmitpkt(struct ieee80211vap *vap, struct mbuf *m)
+{
+	struct ifnet *ifp = vap->iv_ifp;
+	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
+	int error;
+	int wst;
+
+	/*
+	 * When transmitting via the VAP, we shouldn't hold
+	 * any IC TX lock as the VAP TX path will acquire it.
+	 */
+	IEEE80211_TX_UNLOCK_ASSERT(vap->iv_ic);
+
+	error = ifsq_enqueue(ifsq, m, NULL);
+	wst = wlan_serialize_push();
+	ifp->if_start(ifp, ifsq);
+	wlan_serialize_pop(wst);
+
+	return error;
+}
+
+int
+ieee80211_parent_xmitpkt(struct ieee80211com *ic, struct mbuf *m)
+{
+	struct ifnet *parent = ic->ic_ifp;
+	struct ifaltq_subque *ifsq = ifq_get_subq_default(&parent->if_snd);
+	int error;
+	int wst;
+
+	/*
+	 * Assert the IC TX lock is held - this enforces the
+	 * processing -> queuing order is maintained
+	 */
+	IEEE80211_TX_LOCK_ASSERT(ic);
+
+	error = ifsq_enqueue(ifsq, m, NULL);
+	wst = wlan_serialize_push();
+	parent->if_start(parent, ifsq);
+	wlan_serialize_pop(wst);
+
+	return error;
+}
+
 void
 ieee80211_vap_destroy(struct ieee80211vap *vap)
 {
-	wlan_assert_serialized();
-	wlan_serialize_exit();
 	if_clone_destroy(vap->iv_ifp->if_xname);
-	wlan_serialize_enter();
 }
 
 /*
@@ -268,10 +344,8 @@ ieee80211_sysctl_inact(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	error = sysctl_handle_int(oidp, &inact, 0, req);
-	wlan_serialize_enter();
 	if (error == 0 && req->newptr)
 		*(int *)arg1 = inact / IEEE80211_INACT_WAIT;
-	wlan_serialize_exit();
 
 	return error;
 }
@@ -292,10 +366,8 @@ ieee80211_sysctl_radar(SYSCTL_HANDLER_ARGS)
 	int t = 0, error;
 
 	error = sysctl_handle_int(oidp, &t, 0, req);
-	wlan_serialize_enter();
 	if (error == 0 && req->newptr)
 		ieee80211_dfs_notify_radar(ic, ic->ic_curchan);
-	wlan_serialize_exit();
 
 	return error;
 }
@@ -407,6 +479,7 @@ ieee80211_node_dectestref(struct ieee80211_node *ni)
 	return atomic_cmpset_int(&ni->ni_refcnt, 0, 1);
 }
 
+#if 0
 /* XXX this breaks ALTQ's packet scheduler */
 void
 ieee80211_flush_ifq(struct ifaltq *ifq, struct ieee80211vap *vap)
@@ -464,6 +537,7 @@ ieee80211_flush_ifq(struct ifaltq *ifq, struct ieee80211vap *vap)
 
 	ALTQ_SQ_UNLOCK(ifsq);
 }
+#endif
 
 /*
  * As above, for mbufs allocated with m_gethdr/MGETHDR
@@ -574,17 +648,6 @@ ieee80211_add_callback(struct mbuf *m,
 	m_tag_prepend(m, mtag);
 	m->m_flags |= M_TXCB;
 	return 1;
-}
-
-void
-ieee80211_tx_complete(struct ieee80211_node *ni, struct mbuf *m, int status)
-{
-	if (ni != NULL) {
-		if (m->m_flags & M_TXCB)
-			ieee80211_process_callback(ni, m, status);
-		ieee80211_free_node(ni);
-	}
-	m_freem(m);
 }
 
 void
@@ -827,30 +890,6 @@ ieee80211_notify_radio(struct ieee80211com *ic, int state)
 	rt_ieee80211msg(ifp, RTM_IEEE80211_RADIO, &iev, sizeof(iev));
 }
 
-int
-ieee80211_handoff(struct ifnet *dst_ifp, struct mbuf *m)
-{
-        struct mbuf *m0;
-
-	/* We may be sending a fragment so traverse the mbuf */
-	wlan_assert_serialized();
-	wlan_serialize_exit();
-	for (; m; m = m0) {
-		struct altq_pktattr pktattr;
-
-		m0 = m->m_nextpkt;
-		m->m_nextpkt = NULL;
-
-		if (ifq_is_enabled(&dst_ifp->if_snd))
-			altq_etherclassify(&dst_ifp->if_snd, m, &pktattr);
-
-		ifq_dispatch(dst_ifp, m, &pktattr);
-	}
-	wlan_serialize_enter();
-
-	return (0);
-}
-
 /* IEEE Std 802.11a-1999, page 9, table 79 */
 #define IEEE80211_OFDM_SYM_TIME                 4
 #define IEEE80211_OFDM_PREAMBLE_TIME            16
@@ -950,8 +989,8 @@ bpf_track_event(void *arg, struct ifnet *ifp, int dlt, int attach)
 {
 	/* NB: identify vap's by if_start */
 
-	wlan_serialize_enter();
-	if (dlt == DLT_IEEE802_11_RADIO && ifp->if_start == ieee80211_start) {
+	if (dlt == DLT_IEEE802_11_RADIO &&
+	    ifp->if_start == ieee80211_vap_start) {
 		struct ieee80211vap *vap = ifp->if_softc;
 		/*
 		 * Track bpf radiotap listener state.  We mark the vap
@@ -970,7 +1009,16 @@ bpf_track_event(void *arg, struct ifnet *ifp, int dlt, int attach)
 				atomic_subtract_int(&vap->iv_ic->ic_montaps, 1);
 		}
 	}
-	wlan_serialize_exit();
+}
+
+const char *
+ether_sprintf(const u_char *buf)
+{
+	static char ethstr[MAXCPU][ETHER_ADDRSTRLEN + 1];
+	char *ptr = ethstr[mycpu->gd_cpuid];
+
+	kether_ntoa(buf, ptr);
+	return (ptr);
 }
 
 static void
@@ -979,9 +1027,7 @@ wlan_iflladdr_event(void *arg __unused, struct ifnet *ifp)
 	struct ieee80211com *ic = ifp->if_l2com;
 	struct ieee80211vap *vap, *next;
 
-	wlan_serialize_enter();
 	if (ifp->if_type != IFT_IEEE80211 || ic == NULL) {
-		wlan_serialize_exit();
 		return;
 	}
 
@@ -993,13 +1039,10 @@ wlan_iflladdr_event(void *arg __unused, struct ifnet *ifp)
 		if (vap->iv_ic == ic &&
 		    (vap->iv_flags_ext & IEEE80211_FEXT_UNIQMAC) == 0) {
 			IEEE80211_ADDR_COPY(vap->iv_myaddr, IF_LLADDR(ifp));
-			wlan_serialize_exit();
 			if_setlladdr(vap->iv_ifp, IF_LLADDR(ifp),
 				     IEEE80211_ADDR_LEN);
-			wlan_serialize_enter();
 		}
 	}
-	wlan_serialize_exit();
 }
 
 /*
@@ -1011,8 +1054,6 @@ static int
 wlan_modevent(module_t mod, int type, void *unused)
 {
 	int error;
-
-	wlan_serialize_enter();
 
 	switch (type) {
 	case MOD_LOAD:
@@ -1048,8 +1089,6 @@ wlan_modevent(module_t mod, int type, void *unused)
 		error = EINVAL;
 		break;
 	}
-	wlan_serialize_exit();
-
 	return error;
 }
 

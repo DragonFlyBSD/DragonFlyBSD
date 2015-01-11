@@ -21,9 +21,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_crypto_tkip.c 203673 2010-02-08 18:16:59Z bschmidt $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * IEEE 802.11i TKIP crypto support.
@@ -47,7 +48,6 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>
-#include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 
@@ -281,7 +281,8 @@ tkip_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 
 	tid = ieee80211_gettid(wh);
 	ctx->rx_rsc = READ_6(ivp[2], ivp[0], ivp[4], ivp[5], ivp[6], ivp[7]);
-	if (ctx->rx_rsc <= k->wk_keyrsc[tid]) {
+	if (ctx->rx_rsc <= k->wk_keyrsc[tid] &&
+	    (k->wk_flags & IEEE80211_KEY_NOREPLAY) == 0) {
 		/*
 		 * Replay violation; notify upper layer.
 		 */
@@ -621,7 +622,7 @@ wep_encrypt(u8 *key, struct mbuf *m0, u_int off, size_t data_len,
 		m = m->m_next;
 		if (m == NULL) {
 			KASSERT(data_len == 0,
-			    ("out of buffers with data_len %zu", data_len));
+			    ("out of buffers with data_len %zu\n", data_len));
 			break;
 		}
 		pos = mtod(m, uint8_t *);
@@ -679,7 +680,7 @@ wep_decrypt(u8 *key, struct mbuf *m, u_int off, size_t data_len)
 		m = m->m_next;
 		if (m == NULL) {
 			KASSERT(data_len == 0,
-			    ("out of buffers with data_len %zu", data_len));
+			    ("out of buffers with data_len %zu\n", data_len));
 			break;
 		}
 		pos = mtod(m, uint8_t *);
@@ -846,7 +847,7 @@ michael_mic(struct tkip_ctx *ctx, const u8 *key,
 			break;
 		m = m->m_next;
 		if (m == NULL) {
-			KASSERT(0, ("out of data, data_len %zu", data_len));
+			KASSERT(0, ("out of data, data_len %zu\n", data_len));
 			break;
 		}
 		if (space != 0) {
@@ -857,7 +858,7 @@ michael_mic(struct tkip_ctx *ctx, const u8 *key,
 			data_next = mtod(m, const uint8_t *);
 			KASSERT(m->m_len >= sizeof(uint32_t) - space,
 				("not enough data in following buffer, "
-				"m_len %u need %zu", m->m_len,
+				"m_len %u need %zu\n", m->m_len,
 				sizeof(uint32_t) - space));
 			switch (space) {
 			case 1:
@@ -895,7 +896,7 @@ michael_mic(struct tkip_ctx *ctx, const u8 *key,
 	 * do then we'll need more involved logic.
 	 */
 	KASSERT(data_len <= space,
-	    ("not enough data, data_len %zu space %u", data_len, space));
+	    ("not enough data, data_len %zu space %u\n", data_len, space));
 
 	/* Last block and padding (0x5a, 4..7 x 0) */
 	switch (data_len) {

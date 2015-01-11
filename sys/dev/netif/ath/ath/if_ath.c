@@ -127,11 +127,6 @@
  */
 #define	ATH_SW_PSQ
 
-#ifdef __DragonFly__
-#define CURVNET_SET(name)
-#define CURVNET_RESTORE()
-#endif
-
 /*
  * ATH_BCBUF determines the number of vap's that can transmit
  * beacons and also (currently) the number of vap's that can
@@ -2529,7 +2524,13 @@ ath_txrx_stop_locked(struct ath_softc *sc)
 	    sc->sc_txstart_cnt || sc->sc_intr_cnt) {
 		if (i <= 0)
 			break;
-		wlan_serialize_sleep(sc, 0, "ath_txrx_stop", (hz + 99) / 100);
+		if (wlan_is_serialized()) {
+			wlan_serialize_exit();
+			tsleep(sc, 0, "ath_txrx_stop", (hz + 99) / 100);
+			wlan_serialize_enter();
+		} else {
+			tsleep(sc, 0, "ath_txrx_stop", (hz + 99) / 100);
+		}
 		i--;
 	}
 
@@ -2594,8 +2595,13 @@ ath_reset_grablock(struct ath_softc *sc, int dowait)
 			break;
 		}
 		ATH_PCU_UNLOCK(sc);
-		wlan_serialize_sleep(sc, 0, "ath_reset_grablock",
-				     (hz + 9) / 10);
+		if (wlan_is_serialized()) {
+			wlan_serialize_exit();
+			tsleep(sc, 0, "ath_reset_grablock", (hz + 9) / 10);
+			wlan_serialize_enter();
+		} else {
+			tsleep(sc, 0, "ath_reset_grablock", (hz + 9) / 10);
+		}
 		i--;
 		ATH_PCU_LOCK(sc);
 	} while (i > 0);
@@ -5762,9 +5768,13 @@ ath_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	if (ostate == IEEE80211_S_CSA && nstate == IEEE80211_S_RUN)
 		csa_run_transition = 1;
 
-	wlan_serialize_exit();
-	callout_stop_sync(&sc->sc_cal_ch);
-	wlan_serialize_enter();
+	if (wlan_is_serialized()) {
+		wlan_serialize_exit();
+		callout_stop_sync(&sc->sc_cal_ch);
+		wlan_serialize_enter();
+	} else {
+		callout_stop_sync(&sc->sc_cal_ch);
+	}
 	ath_hal_setledstate(ah, leds[nstate]);	/* set LED */
 
 	if (nstate == IEEE80211_S_SCAN) {
@@ -6366,12 +6376,14 @@ ath_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct ath_softc *sc = ifp->if_softc;
 	struct mbuf *m;
+	int wst;
 
-	wlan_assert_serialized();
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+	wst = wlan_serialize_push();
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || sc->sc_invalid) {
 		ifq_purge(&ifp->if_snd);
+		wlan_serialize_pop(wst);
 		return;
 	}
 	ifq_set_oactive(&ifp->if_snd);
@@ -6382,6 +6394,7 @@ ath_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		ath_transmit(ifp, m);
 	}
 	ifq_clr_oactive(&ifp->if_snd);
+	wlan_serialize_pop(wst);
 }
 
 /*
@@ -6550,11 +6563,13 @@ ath_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
 		    rt->info[sc->sc_txrix].dot11Rate &~ IEEE80211_RATE_BASIC;
 		if (rt->info[sc->sc_txrix].phy & IEEE80211_T_HT)
 			sc->sc_stats.ast_tx_rate |= IEEE80211_RATE_MCS;
-		return copyout(&sc->sc_stats,
-		    ifr->ifr_data, sizeof (sc->sc_stats));
+		error = copyout(&sc->sc_stats, ifr->ifr_data,
+				sizeof (sc->sc_stats));
+		break;
 	case SIOCGATHAGSTATS:
-		return copyout(&sc->sc_aggr_stats,
-		    ifr->ifr_data, sizeof (sc->sc_aggr_stats));
+		error = copyout(&sc->sc_aggr_stats, ifr->ifr_data,
+				sizeof (sc->sc_aggr_stats));
+		break;
 	case SIOCZATHSTATS:
 		error = priv_check(curthread, PRIV_DRIVER);
 		if (error == 0) {

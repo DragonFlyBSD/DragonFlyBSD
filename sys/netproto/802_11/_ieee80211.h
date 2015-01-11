@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/sys/net80211/_ieee80211.h 195618 2009-07-11 15:02:45Z rpaulo $
+ * $FreeBSD$
  */
 #ifndef _NET80211__IEEE80211_H_
 #define _NET80211__IEEE80211_H_
@@ -133,7 +133,7 @@ enum ieee80211_roamingmode {
  */
 struct ieee80211_channel {
 	uint32_t	ic_flags;	/* see below */
-	uint16_t	ic_freq;	/* setting in Mhz */
+	uint16_t	ic_freq;	/* setting in MHz */
 	uint8_t		ic_ieee;	/* IEEE channel number */
 	int8_t		ic_maxregpower;	/* maximum regulatory tx power in dBm */
 	int8_t		ic_maxpower;	/* maximum tx power in .5 dBm */
@@ -242,6 +242,8 @@ struct ieee80211_channel {
 	(((_c)->ic_flags & (IEEE80211_CHAN_OFDM | IEEE80211_CHAN_DYN)) != 0)
 #define	IEEE80211_IS_CHAN_CCK(_c) \
 	(((_c)->ic_flags & (IEEE80211_CHAN_CCK | IEEE80211_CHAN_DYN)) != 0)
+#define	IEEE80211_IS_CHAN_DYN(_c) \
+	(((_c)->ic_flags & IEEE80211_CHAN_DYN) == IEEE80211_CHAN_DYN)
 #define	IEEE80211_IS_CHAN_GFSK(_c) \
 	(((_c)->ic_flags & IEEE80211_CHAN_GFSK) != 0)
 #define	IEEE80211_IS_CHAN_TURBO(_c) \
@@ -335,7 +337,7 @@ struct ieee80211_rateset {
  * the structure such that it can be used interchangeably
  * with an ieee80211_rateset (modulo structure size).
  */
-#define	IEEE80211_HTRATE_MAXSIZE 127
+#define	IEEE80211_HTRATE_MAXSIZE	77
 
 struct ieee80211_htrateset {
 	uint8_t		rs_nrates;
@@ -387,9 +389,16 @@ struct ieee80211_regdomain {
 /*
  * MIMO antenna/radio state.
  */
+
+#define	IEEE80211_MAX_CHAINS		3
+#define	IEEE80211_MAX_EVM_PILOTS	6
+
+/*
+ * XXX This doesn't yet export both ctl/ext chain details
+ */
 struct ieee80211_mimo_info {
-	int8_t		rssi[3];	/* per-antenna rssi */
-	int8_t		noise[3];	/* per-antenna noise floor */
+	int8_t		rssi[IEEE80211_MAX_CHAINS];	/* per-antenna rssi */
+	int8_t		noise[IEEE80211_MAX_CHAINS];	/* per-antenna noise floor */
 	uint8_t		pad[2];
 	uint32_t	evm[3];		/* EVM data */
 };

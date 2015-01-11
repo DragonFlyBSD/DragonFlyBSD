@@ -21,9 +21,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_radiotap.c 193761 2009-06-08 21:16:06Z sam $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * IEEE 802.11 radiotap support.
@@ -41,18 +42,40 @@
  
 #include <net/bpf.h>
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_llc.h>
 #include <net/if_media.h>
-#include <net/route.h>
+#include <net/ethernet.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 
-static int radiotap_offset(struct ieee80211_radiotap_header *, int);
+#if defined(__DragonFly__)
+#define bpf_mtap2(rawbpf, rh, len, m)			\
+	{						\
+		bpf_gettoken();				\
+		if (rawbpf)				\
+			bpf_ptap(rawbpf, m, rh, len);	\
+		bpf_reltoken();				\
+	}
+#endif
+
+static int radiotap_offset(struct ieee80211_radiotap_header *, int, int);
 
 void
 ieee80211_radiotap_attach(struct ieee80211com *ic,
 	struct ieee80211_radiotap_header *th, int tlen, uint32_t tx_radiotap,
 	struct ieee80211_radiotap_header *rh, int rlen, uint32_t rx_radiotap)
+{
+	ieee80211_radiotap_attachv(ic, th, tlen, 0, tx_radiotap,
+	    rh, rlen, 0, rx_radiotap);
+}
+
+void
+ieee80211_radiotap_attachv(struct ieee80211com *ic,
+	struct ieee80211_radiotap_header *th,
+	int tlen, int n_tx_v, uint32_t tx_radiotap,
+	struct ieee80211_radiotap_header *rh,
+	int rlen, int n_rx_v, uint32_t rx_radiotap)
 {
 #define	B(_v)	(1<<(_v))
 	int off;
@@ -63,11 +86,11 @@ ieee80211_radiotap_attach(struct ieee80211com *ic,
 	/* calculate offset to channel data */
 	off = -1;
 	if (tx_radiotap & B(IEEE80211_RADIOTAP_CHANNEL))
-		off = radiotap_offset(th, IEEE80211_RADIOTAP_CHANNEL);
+		off = radiotap_offset(th, n_tx_v, IEEE80211_RADIOTAP_CHANNEL);
 	else if (tx_radiotap & B(IEEE80211_RADIOTAP_XCHANNEL))
-		off = radiotap_offset(th, IEEE80211_RADIOTAP_XCHANNEL);
+		off = radiotap_offset(th, n_tx_v, IEEE80211_RADIOTAP_XCHANNEL);
 	if (off == -1) {
-		if_printf(ic->ic_ifp, "%s: no tx channel, radiotap 0x%x",
+		if_printf(ic->ic_ifp, "%s: no tx channel, radiotap 0x%x\n",
 		    __func__, tx_radiotap);
 		/* NB: we handle this case but data will have no chan spec */
 	} else
@@ -79,11 +102,11 @@ ieee80211_radiotap_attach(struct ieee80211com *ic,
 	/* calculate offset to channel data */
 	off = -1;
 	if (rx_radiotap & B(IEEE80211_RADIOTAP_CHANNEL))
-		off = radiotap_offset(rh, IEEE80211_RADIOTAP_CHANNEL);
+		off = radiotap_offset(rh, n_rx_v, IEEE80211_RADIOTAP_CHANNEL);
 	else if (rx_radiotap & B(IEEE80211_RADIOTAP_XCHANNEL))
-		off = radiotap_offset(rh, IEEE80211_RADIOTAP_XCHANNEL);
+		off = radiotap_offset(rh, n_rx_v, IEEE80211_RADIOTAP_XCHANNEL);
 	if (off == -1) {
-		if_printf(ic->ic_ifp, "%s: no rx channel, radiotap 0x%x",
+		if_printf(ic->ic_ifp, "%s: no rx channel, radiotap 0x%x\n",
 		    __func__, rx_radiotap);
 		/* NB: we handle this case but data will have no chan spec */
 	} else
@@ -103,10 +126,17 @@ ieee80211_radiotap_vattach(struct ieee80211vap *vap)
 	struct ieee80211_radiotap_header *th = ic->ic_th;
 
 	if (th != NULL && ic->ic_rh != NULL) {
-		/* radiotap DLT for raw 802.11 frames */
+#if defined(__DragonFly__)
 		bpfattach_dlt(vap->iv_ifp, DLT_IEEE802_11_RADIO,
+			      sizeof(struct ieee80211_frame) +
+				le16toh(th->it_len),
+			      &vap->iv_rawbpf);
+#else
+		/* radiotap DLT for raw 802.11 frames */
+		bpfattach2(vap->iv_ifp, DLT_IEEE802_11_RADIO,
 		    sizeof(struct ieee80211_frame) + le16toh(th->it_len),
 		    &vap->iv_rawbpf);
+#endif
 	}
 }
 
@@ -183,14 +213,8 @@ spam_vaps(struct ieee80211vap *vap0, struct mbuf *m,
 		if (vap != vap0 &&
 		    vap->iv_opmode == IEEE80211_M_MONITOR &&
 		    (vap->iv_flags_ext & IEEE80211_FEXT_BPF) &&
-		    vap->iv_state != IEEE80211_S_INIT) {
-			if (vap->iv_rawbpf) {
-				bpf_gettoken();
-				if (vap->iv_rawbpf)
-					bpf_ptap(vap->iv_rawbpf, m, rh, len);
-				bpf_reltoken();
-			}
-		}
+		    vap->iv_state != IEEE80211_S_INIT)
+			bpf_mtap2(vap->iv_rawbpf, rh, len, m);
 	}
 }
 
@@ -207,14 +231,8 @@ ieee80211_radiotap_tx(struct ieee80211vap *vap0, struct mbuf *m)
 	KASSERT(th != NULL, ("no tx radiotap header"));
 	len = le16toh(th->it_len);
 
-	if (vap0->iv_flags_ext & IEEE80211_FEXT_BPF) {
-		if (vap0->iv_rawbpf) {
-			bpf_gettoken();
-			if (vap0->iv_rawbpf)
-				bpf_ptap(vap0->iv_rawbpf, m, th, len);
-			bpf_reltoken();
-		}
-	}
+	if (vap0->iv_flags_ext & IEEE80211_FEXT_BPF)
+		bpf_mtap2(vap0->iv_rawbpf, th, len, m);
 	/*
 	 * Spam monitor mode vaps.
 	 */
@@ -235,14 +253,8 @@ ieee80211_radiotap_rx(struct ieee80211vap *vap0, struct mbuf *m)
 	KASSERT(rh != NULL, ("no rx radiotap header"));
 	len = le16toh(rh->it_len);
 
-	if (vap0->iv_flags_ext & IEEE80211_FEXT_BPF) {
-		if (vap0->iv_rawbpf) {
-			bpf_gettoken();
-			if (vap0->iv_rawbpf)
-				bpf_ptap(vap0->iv_rawbpf, m, rh, len);
-			bpf_reltoken();
-		}
-	}
+	if (vap0->iv_flags_ext & IEEE80211_FEXT_BPF)
+		bpf_mtap2(vap0->iv_rawbpf, rh, len, m);
 	/*
 	 * Spam monitor mode vaps with unicast frames.  Multicast
 	 * frames are handled by passing through ieee80211_input_all
@@ -267,14 +279,8 @@ ieee80211_radiotap_rx_all(struct ieee80211com *ic, struct mbuf *m)
 	/* XXX locking? */
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 		if (ieee80211_radiotap_active_vap(vap) &&
-		    vap->iv_state != IEEE80211_S_INIT) {
-			if (vap->iv_rawbpf) {
-				bpf_gettoken();
-				if (vap->iv_rawbpf)
-					bpf_ptap(vap->iv_rawbpf, m, rh, len);
-				bpf_reltoken();
-			}
-		}
+		    vap->iv_state != IEEE80211_S_INIT)
+			bpf_mtap2(vap->iv_rawbpf, rh, len, m);
 	}
 }
 
@@ -284,7 +290,8 @@ ieee80211_radiotap_rx_all(struct ieee80211com *ic, struct mbuf *m)
  * known -1 is returned.
  */
 static int
-radiotap_offset(struct ieee80211_radiotap_header *rh, int item)
+radiotap_offset(struct ieee80211_radiotap_header *rh,
+    int n_vendor_attributes, int item)
 {
 	static const struct {
 		size_t	align, width;
@@ -349,11 +356,17 @@ radiotap_offset(struct ieee80211_radiotap_header *rh, int item)
 		    .align	= sizeof(uint32_t),
 		    .width	= 2*sizeof(uint32_t),
 		},
+		[IEEE80211_RADIOTAP_MCS] = {
+		    .align	= sizeof(uint8_t),
+		    .width	= 3*sizeof(uint8_t),
+		},
 	};
 	uint32_t present = le32toh(rh->it_present);
 	int off, i;
 
 	off = sizeof(struct ieee80211_radiotap_header);
+	off += n_vendor_attributes * (sizeof(uint32_t));
+
 	for (i = 0; i < IEEE80211_RADIOTAP_EXT; i++) {
 		if ((present & (1<<i)) == 0)
 			continue;

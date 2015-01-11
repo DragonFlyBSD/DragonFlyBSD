@@ -21,9 +21,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/net80211/ieee80211_acl.c 186302 2008-12-18 23:00:09Z sam $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * IEEE 802.11 MAC ACL support.
@@ -74,8 +75,9 @@ struct acl {
 	uint8_t			acl_macaddr[IEEE80211_ADDR_LEN];
 };
 struct aclstate {
+	acl_lock_t		as_lock;
 	int			as_policy;
-	int			as_nacls;
+	uint32_t		as_nacls;
 	TAILQ_HEAD(, acl)	as_list;	/* list of all ACL's */
 	LIST_HEAD(, acl)	as_hash[ACL_HASHSIZE];
 	struct ieee80211vap	*as_vap;
@@ -85,7 +87,7 @@ struct aclstate {
 #define	ACL_HASH(addr)	\
 	(((const uint8_t *)(addr))[IEEE80211_ADDR_LEN - 1] % ACL_HASHSIZE)
 
-MALLOC_DEFINE(M_80211_ACL, "acl", "802.11 station acl");
+static MALLOC_DEFINE(M_80211_ACL, "acl", "802.11 station acl");
 
 static	int acl_free_all(struct ieee80211vap *);
 
@@ -101,6 +103,7 @@ acl_attach(struct ieee80211vap *vap)
 		M_80211_ACL, M_INTWAIT | M_ZERO);
 	if (as == NULL)
 		return 0;
+	ACL_LOCK_INIT(as, "acl");
 	TAILQ_INIT(&as->as_list);
 	as->as_policy = ACL_POLICY_OPEN;
 	as->as_vap = vap;
@@ -119,6 +122,7 @@ acl_detach(struct ieee80211vap *vap)
 
 	acl_free_all(vap);
 	vap->iv_as = NULL;
+	ACL_LOCK_DESTROY(as);
 	kfree(as, M_80211_ACL);
 }
 
@@ -139,6 +143,7 @@ _find_acl(struct aclstate *as, const uint8_t *macaddr)
 static void
 _acl_free(struct aclstate *as, struct acl *acl)
 {
+	ACL_LOCK_ASSERT(as);
 
 	TAILQ_REMOVE(&as->as_list, acl, acl_list);
 	LIST_REMOVE(acl, acl_hash);
@@ -147,7 +152,7 @@ _acl_free(struct aclstate *as, struct acl *acl)
 }
 
 static int
-acl_check(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
+acl_check(struct ieee80211vap *vap, const struct ieee80211_frame *wh)
 {
 	struct aclstate *as = vap->iv_as;
 
@@ -156,9 +161,9 @@ acl_check(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	case ACL_POLICY_RADIUS:
 		return 1;
 	case ACL_POLICY_ALLOW:
-		return _find_acl(as, mac) != NULL;
+		return _find_acl(as, wh->i_addr2) != NULL;
 	case ACL_POLICY_DENY:
-		return _find_acl(as, mac) == NULL;
+		return _find_acl(as, wh->i_addr2) == NULL;
 	}
 	return 0;		/* should not happen */
 }
@@ -168,26 +173,25 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct aclstate *as = vap->iv_as;
 	struct acl *acl, *new;
-#ifdef IEEE80211_DEBUG
-	char ethstr[ETHER_ADDRSTRLEN + 1];
-#endif
 	int hash;
 
 	new = (struct acl *) kmalloc(sizeof(struct acl), M_80211_ACL, M_INTWAIT | M_ZERO);
 	if (new == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
-		    "ACL: add %s failed, no memory\n", kether_ntoa(mac, ethstr));
+			"ACL: add %s failed, no memory\n", ether_sprintf(mac));
 		/* XXX statistic */
 		return ENOMEM;
 	}
 
+	ACL_LOCK(as);
 	hash = ACL_HASH(mac);
 	LIST_FOREACH(acl, &as->as_hash[hash], acl_hash) {
 		if (IEEE80211_ADDR_EQ(acl->acl_macaddr, mac)) {
+			ACL_UNLOCK(as);
 			kfree(new, M_80211_ACL);
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
 				"ACL: add %s failed, already present\n",
-				kether_ntoa(mac, ethstr));
+				ether_sprintf(mac));
 			return EEXIST;
 		}
 	}
@@ -195,9 +199,10 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	TAILQ_INSERT_TAIL(&as->as_list, new, acl_list);
 	LIST_INSERT_HEAD(&as->as_hash[hash], new, acl_hash);
 	as->as_nacls++;
+	ACL_UNLOCK(as);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
-	    "ACL: add %s\n", kether_ntoa(mac, ethstr));
+		"ACL: add %s\n", ether_sprintf(mac));
 	return 0;
 }
 
@@ -206,16 +211,15 @@ acl_remove(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct aclstate *as = vap->iv_as;
 	struct acl *acl;
-#ifdef IEEE80211_DEBUG
-	char ethstr[ETHER_ADDRSTRLEN + 1];
-#endif
 
+	ACL_LOCK(as);
 	acl = _find_acl(as, mac);
 	if (acl != NULL)
 		_acl_free(as, acl);
+	ACL_UNLOCK(as);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
-	    "ACL: remove %s%s\n", kether_ntoa(mac, ethstr),
+		"ACL: remove %s%s\n", ether_sprintf(mac),
 		acl == NULL ? ", not present" : "");
 
 	return (acl == NULL ? ENOENT : 0);
@@ -229,8 +233,10 @@ acl_free_all(struct ieee80211vap *vap)
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL, "ACL: %s\n", "free all");
 
+	ACL_LOCK(as);
 	while ((acl = TAILQ_FIRST(&as->as_list)) != NULL)
 		_acl_free(as, acl);
+	ACL_UNLOCK(as);
 
 	return 0;
 }
@@ -283,7 +289,8 @@ acl_getioctl(struct ieee80211vap *vap, struct ieee80211req *ireq)
 	struct aclstate *as = vap->iv_as;
 	struct acl *acl;
 	struct ieee80211req_maclist *ap;
-	int error, space, i;
+	int error;
+	uint32_t i, space;
 
 	switch (ireq->i_val) {
 	case IEEE80211_MACCMD_POLICY:
@@ -300,10 +307,12 @@ acl_getioctl(struct ieee80211vap *vap, struct ieee80211req *ireq)
 		if (ap == NULL)
 			return ENOMEM;
 		i = 0;
+		ACL_LOCK(as);
 		TAILQ_FOREACH(acl, &as->as_list, acl_list) {
 			IEEE80211_ADDR_COPY(ap[i].ml_macaddr, acl->acl_macaddr);
 			i++;
 		}
+		ACL_UNLOCK(as);
 		if (ireq->i_len >= space) {
 			error = copyout(ap, ireq->i_data, space);
 			ireq->i_len = space;
