@@ -101,6 +101,20 @@ DEVOP_DESC_INIT(clone);
  */
 struct dev_ops dead_dev_ops;
 
+static d_open_t		noopen;
+static d_close_t	noclose;
+static d_read_t		noread;
+static d_write_t	nowrite;
+static d_ioctl_t	noioctl;
+static d_mmap_t		nommap;
+static d_mmap_single_t	nommap_single;
+static d_strategy_t	nostrategy;
+static d_dump_t		nodump;
+static d_psize_t	nopsize;
+static d_kqfilter_t	nokqfilter;
+static d_clone_t	noclone;
+static d_revoke_t	norevoke;
+
 struct dev_ops default_dev_ops = {
 	{ "null" },
 	.d_default = NULL,	/* must be NULL */
@@ -672,69 +686,69 @@ dev_ops_restore(cdev_t dev, struct dev_ops *oops)
  * Unsupported devswitch functions (e.g. for writing to read-only device).
  * XXX may belong elsewhere.
  */
-int
+static int
 norevoke(struct dev_revoke_args *ap)
 {
 	/* take no action */
 	return(0);
 }
 
-int
+static int
 noclone(struct dev_clone_args *ap)
 {
 	/* take no action */
 	return (0);	/* allow the clone */
 }
 
-int
+static int
 noopen(struct dev_open_args *ap)
 {
 	return (ENODEV);
 }
 
-int
+static int
 noclose(struct dev_close_args *ap)
 {
 	return (ENODEV);
 }
 
-int
+static int
 noread(struct dev_read_args *ap)
 {
 	return (ENODEV);
 }
 
-int
+static int
 nowrite(struct dev_write_args *ap)
 {
 	return (ENODEV);
 }
 
-int
+static int
 noioctl(struct dev_ioctl_args *ap)
 {
 	return (ENODEV);
 }
 
-int
+static int
 nokqfilter(struct dev_kqfilter_args *ap)
 {
 	return (ENODEV);
 }
 
-int
+static int
 nommap(struct dev_mmap_args *ap)
 {
 	return (ENODEV);
 }
 
-int
+static int
 nommap_single(struct dev_mmap_single_args *ap)
 {
 	return (ENODEV);
 }
 
-int
+static int
 nostrategy(struct dev_strategy_args *ap)
 {
 	struct bio *bio = ap->a_bio;
@@ -745,14 +759,14 @@ nostrategy(struct dev_strategy_args *ap)
 	return(0);
 }
 
-int
+static int
 nopsize(struct dev_psize_args *ap)
 {
 	ap->a_result = 0;
 	return(0);
 }
 
-int
+static int
 nodump(struct dev_dump_args *ap)
 {
 	return (ENODEV);

@@ -343,21 +343,6 @@ int dev_dflags(cdev_t dev);
 int dev_doperate(struct dev_generic_args *ap);
 int dev_doperate_ops(struct dev_ops *, struct dev_generic_args *ap);
 
-d_default_t	nodefault;
-d_open_t	noopen;
-d_close_t	noclose;
-d_read_t	noread;
-d_write_t	nowrite;
-d_ioctl_t	noioctl;
-d_mmap_t	nommap;
-d_mmap_single_t	nommap_single;
-d_strategy_t	nostrategy;
-d_dump_t	nodump;
-d_psize_t	nopsize;
-d_kqfilter_t	nokqfilter;
-d_clone_t	noclone;
-d_revoke_t	norevoke;
-
 d_open_t	nullopen;
 d_close_t	nullclose;
 
