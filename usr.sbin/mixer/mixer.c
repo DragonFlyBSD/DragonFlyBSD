@@ -10,190 +10,203 @@
  *
  * ditto for my modifications (John-Mark Gurney, 1997)
  *
- * $FreeBSD: src/usr.sbin/mixer/mixer.c,v 1.11.2.6 2001/07/30 10:22:58 dd Exp $
- * $DragonFly: src/usr.sbin/mixer/mixer.c,v 1.6 2004/04/15 12:58:12 joerg Exp $
+ * $FreeBSD: head/usr.sbin/mixer/mixer.c 230611 2012-01-27 09:15:55Z mav $
  */
 
 #include <err.h>
 #include <fcntl.h>
+#include <libgen.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/soundcard.h>
 
-#define LEFT(vol) (vol & 0x7f)
-#define RIGHT(vol) ((vol >> 8) & 0x7f)
-
 static const char *names[SOUND_MIXER_NRDEVICES] = SOUND_DEVICE_NAMES;
-static const char *defaultdev = "/dev/mixer";
 
 static void	usage(int devmask, int recmask);
 static int	res_name(const char *name, int mask);
-static void	print_recsrc(int recsrc);
-static void	print_recsrc_short(int recsrc);
+static void	print_recsrc(int recsrc, int recmask, int sflag);
 
-void
+static void
 usage(int devmask, int recmask)
 {
-	int i, n;
+	int	i, n;
 
-	printf("usage: mixer [-f device] [-s] [dev [+|-][voll[:[+|-]volr]] ...\n"
-	       "       mixer [-f device] [-s] recsrc ...\n"
-	       "       mixer [-f device] [-s] {^|+|-|=}rec recdev ...\n"
-	       "       mixer -h\n");
-	printf(" devices: ");
-	for (i = 0, n = 0; i < SOUND_MIXER_NRDEVICES; i++) {
-		if ((1 << i) & devmask)  {
-			if (n)
-				printf(", ");
-			printf("%s", names[i]);
-			n = 1;
+	printf("usage: mixer [-f device] [-s | -S] [dev [+|-][voll[:[+|-]volr]] ...\n"
+	    "       mixer [-f device] [-s | -S] recsrc ...\n"
+	    "       mixer [-f device] [-s | -S] {^|+|-|=}rec rdev ...\n");
+	if (devmask != 0) {
+		printf(" devices: ");
+		for (i = 0, n = 0; i < SOUND_MIXER_NRDEVICES; i++) {
+			if ((1 << i) & devmask)  {
+				if (n)
+					printf(", ");
+				printf("%s", names[i]);
+				n++;
+			}
 		}
 	}
-	printf("\n rec devices: ");
-	for (i = 0, n = 0; i < SOUND_MIXER_NRDEVICES; i++) {
-		if ((1 << i) & recmask)  {
-			if (n)
-				printf(", ");
-			printf("%s", names[i]);
-			n = 1;
+	if (recmask != 0) {
+		printf("\n rec devices: ");
+		for (i = 0, n = 0; i < SOUND_MIXER_NRDEVICES; i++) {
+			if ((1 << i) & recmask)  {
+				if (n)
+					printf(", ");
+				printf("%s", names[i]);
+				n++;
+			}
 		}
 	}
 	printf("\n");
 	exit(1);
 }
 
-int
+static int
 res_name(const char *name, int mask)
 {
-	int i;
+	int	i;
 
 	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++)
-		if ((1 << i) & mask && !strcmp(names[i], name))
+		if ((1 << i) & mask && strcmp(names[i], name) == 0)
 			break;
 
 	if (i == SOUND_MIXER_NRDEVICES)
-		return(-1);
+		return (-1);
 
-	return(i);
+	return (i);
 }
 
-void
-print_recsrc(int recsrc)
+static void
+print_recsrc(int recsrc, int recmask, int sflag)
 {
-	int i, n = 0;
-	printf("Recording source: ");
+	int	i, n;
 
-	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++) {
+	if (recmask == 0)
+		return;
+
+	if (!sflag)
+		printf("Recording source: ");
+
+	for (i = 0, n = 0; i < SOUND_MIXER_NRDEVICES; i++) {
 		if ((1 << i) & recsrc) {
-			if (n)
+			if (sflag)
+				printf("%srec ", n ? " +" : "=");
+			else if (n)
 				printf(", ");
 			printf("%s", names[i]);
-			n = 1;
+			n++;
 		}
 	}
-	printf("\n");
-}
-
-void
-print_recsrc_short(int recsrc)
-{
-	int i, first;
-
-	first = 1;
-
-	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++) {
-		if ((1 << i) & recsrc) {
-			if (first) {
-				printf("=rec ");
-				first = 0;
-			}
-			printf("%s ", names[i]);
-		}
-	}
+	if (!sflag)
+		printf("\n");
 }
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
-	int i, mset, fd, dev;
-	int devmask = 0, recmask = 0, recsrc = 0, orecsrc;
-	int dusage = 0, drecsrc = 0, shortflag = 0;
-	int l = 0, r = 0, t = 0;
-	int n = 0, lrel = 0, rrel = 0;
-	char lstr[8], rstr[8];
-	char ch;
+	char	mixer[PATH_MAX] = "/dev/mixer";
+	char	lstr[5], rstr[5];
+	char	*name, *eptr;
+	int	devmask = 0, recmask = 0, recsrc = 0, orecsrc;
+	int	dusage = 0, drecsrc = 0, sflag = 0, Sflag = 0;
+	int	l, r, lrel, rrel;
+	int	ch, i, bar, baz, dev, m, n, t;
 
-	const char *name = defaultdev;
+	if ((name = strdup(basename(argv[0]))) == NULL)
+		err(1, "strdup()");
+	if (strncmp(name, "mixer", 5) == 0 && name[5] != '\0') {
+		n = strtol(name + 5, &eptr, 10) - 1;
+		if (n > 0 && *eptr == '\0')
+			snprintf(mixer, PATH_MAX - 1, "/dev/mixer%d", n);
+	}
+	free(name);
+	name = mixer;
 
-	while ((ch = getopt(argc, argv, "f:sh")) != -1)
-		switch (ch) {
-			case 'f':
-				name = optarg;
-				break;
-			case 's':
-				shortflag = 1;
-				break;
-			case 'h': /* Fall through */
-			default:
+	n = 1;
+	for (;;) {
+		if (n >= argc || *argv[n] != '-')
+			break;
+		if (strlen(argv[n]) != 2) {
+			if (strcmp(argv[n] + 1, "rec") != 0)
 				dusage = 1;
+			break;
 		}
-	argc -= optind;
-	argv += optind;
+		ch = *(argv[n] + 1);
+		if (ch == 'f' && n < argc - 1) {
+			name = argv[n + 1];
+			n += 2;
+		} else if (ch == 's') {
+			sflag = 1;
+			n++;
+		} else if (ch == 'S') {
+			Sflag = 1;
+			n++;
+		} else {
+			dusage = 1;
+			break;
+		}
+	}
+	if (sflag && Sflag)
+		dusage = 1;
 
-	if ((fd = open(name, O_RDWR)) < 0)
+	argc -= n - 1;
+	argv += n - 1;
+
+	if ((baz = open(name, O_RDWR)) < 0)
 		err(1, "%s", name);
-	if (ioctl(fd, SOUND_MIXER_READ_DEVMASK, &devmask) == -1)
+	if (ioctl(baz, SOUND_MIXER_READ_DEVMASK, &devmask) == -1)
 		err(1, "SOUND_MIXER_READ_DEVMASK");
-	if (ioctl(fd, SOUND_MIXER_READ_RECMASK, &recmask) == -1)
+	if (ioctl(baz, SOUND_MIXER_READ_RECMASK, &recmask) == -1)
 		err(1, "SOUND_MIXER_READ_RECMASK");
-	if (ioctl(fd, SOUND_MIXER_READ_RECSRC, &recsrc) == -1)
+	if (ioctl(baz, SOUND_MIXER_READ_RECSRC, &recsrc) == -1)
 		err(1, "SOUND_MIXER_READ_RECSRC");
 	orecsrc = recsrc;
 
-	if (dusage) {
-		close(fd);
-		usage(devmask, recmask); /* Does not return */
-	}
-
-	if (argc == 0) {
-		for (i = 0; i < SOUND_MIXER_NRDEVICES; i++) {
-			if (!((1 << i) & devmask)) 
+	if (argc == 1 && dusage == 0) {
+		for (i = 0, n = 0; i < SOUND_MIXER_NRDEVICES; i++) {
+			if (!((1 << i) & devmask))
 				continue;
-			if (ioctl(fd, MIXER_READ(i),&mset)== -1) {
+			if (ioctl(baz, MIXER_READ(i),&bar) == -1) {
 			   	warn("MIXER_READ");
 				continue;
 			}
-			if (shortflag)
-				printf("%s %d:%d ", names[i], LEFT(mset),
-				       RIGHT(mset));
-			else
-				printf("Mixer %-8s is currently set to %3d:%d\n",
-				       names[i], LEFT(mset), RIGHT(mset));
+			if (Sflag || sflag) {
+				printf("%s%s%c%d:%d", n ? " " : "",
+				    names[i], Sflag ? ':' : ' ',
+				    bar & 0x7f, (bar >> 8) & 0x7f);
+				n++;
+			} else
+				printf("Mixer %-8s is currently set to "
+				    "%3d:%d\n", names[i], bar & 0x7f,
+				    (bar >> 8) & 0x7f);
 		}
-		if (ioctl(fd, SOUND_MIXER_READ_RECSRC, &recsrc) == -1)
-			err(1, "SOUND_MIXER_READ_RECSRC");
-		if (shortflag) {
-			print_recsrc_short(recsrc);
-			if (isatty(STDOUT_FILENO))
-				printf("\n");
-		} else
-			print_recsrc(recsrc);
-		exit(0);
+		if (n && recmask)
+			printf(" ");
+		print_recsrc(recsrc, recmask, Sflag || sflag);
+		return (0);
 	}
 
+	argc--;
+	argv++;
 
-
-	while (argc > 0) {
-		if (!strcmp("recsrc", *argv)) {
+	n = 0;
+	while (argc > 0 && dusage == 0) {
+		if (strcmp("recsrc", *argv) == 0) {
 			drecsrc = 1;
-			argc--; argv++;
+			argc--;
+			argv++;
 			continue;
-		} else if (argc > 1 && !strcmp("rec", *argv + 1)) {
+		} else if (strcmp("rec", *argv + 1) == 0) {
 			if (**argv != '+' && **argv != '-' &&
 			    **argv != '=' && **argv != '^') {
 				warnx("unknown modifier: %c", **argv);
+				dusage = 1;
+				break;
+			}
+			if (argc <= 1) {
+				warnx("no recording device specified");
 				dusage = 1;
 				break;
 			}
@@ -202,7 +215,7 @@ main(int argc, char **argv)
 				dusage = 1;
 				break;
 			}
-			switch(**argv) {
+			switch (**argv) {
 			case '+':
 				recsrc |= (1 << dev);
 				break;
@@ -217,65 +230,70 @@ main(int argc, char **argv)
 				break;
 			}
 			drecsrc = 1;
-			argc -= 2; argv += 2;
+			argc -= 2;
+			argv += 2;
 			continue;
 		}
 
-		if ((t = sscanf(*argv, "%d:%d", &l, &r)) > 0) {
+		if ((t = sscanf(*argv, "%d:%d", &l, &r)) > 0)
 			dev = 0;
-		}
-		else if((dev = res_name(*argv, devmask)) == -1) {
+		else if ((dev = res_name(*argv, devmask)) == -1) {
 			warnx("unknown device: %s", *argv);
 			dusage = 1;
 			break;
 		}
 
-#define	issign(c)	(((c) == '+') || ((c) == '-'))
-
+		lrel = rrel = 0;
 		if (argc > 1) {
-			n = sscanf(argv[1], "%7[^:]:%7s", lstr, rstr);
-			if (n > 0) {
-				if (issign(lstr[0]))
+			m = sscanf(argv[1], "%7[^:]:%7s", lstr, rstr);
+			if (m > 0) {
+				if (*lstr == '+' || *lstr == '-')
 					lrel = rrel = 1;
-				l = atoi(lstr);
+				l = strtol(lstr, NULL, 10);
 			}
-			if (n > 1) {
-				rrel = 0;
-				if (issign(rstr[0]))
+			if (m > 1) {
+				if (*rstr == '+' || *rstr == '-')
 					rrel = 1;
-				r = atoi(rstr);
+				r = strtol(rstr, NULL, 10);
 			}
 		}
 
-		switch(argc > 1 ? n : t) {
+		switch (argc > 1 ? m : t) {
 		case 0:
-			if (ioctl(fd, MIXER_READ(dev),&mset)== -1) {
+			if (ioctl(baz, MIXER_READ(dev), &bar) == -1) {
 				warn("MIXER_READ");
-				argc--; argv++;
+				argc--;
+				argv++;
 				continue;
 			}
-			if (shortflag)
-				printf("%s %d:%d ", names[dev], LEFT(mset),
-				       RIGHT(mset));
-			else
-				printf("Mixer %-8s is currently set to %3d:%d\n",
-				       names[dev], LEFT(mset), RIGHT(mset));
+			if (Sflag || sflag) {
+				printf("%s%s%c%d:%d", n ? " " : "",
+				    names[dev], Sflag ? ':' : ' ',
+				    bar & 0x7f, (bar >> 8) & 0x7f);
+				n++;
+			} else
+				printf("Mixer %-8s is currently set to "
+				    "%3d:%d\n", names[dev], bar & 0x7f,
+				    (bar >> 8) & 0x7f);
 
-			argc--; argv++;
+			argc--;
+			argv++;
 			break;
 		case 1:
 			r = l;
+			/* FALLTHROUGH */
 		case 2:
-			if (ioctl(fd, MIXER_READ(dev),&mset)== -1) {
+			if (ioctl(baz, MIXER_READ(dev), &bar) == -1) {
 				warn("MIXER_READ");
-				argc--; argv++;
+				argc--;
+				argv++;
 				continue;
 			}
 
 			if (lrel)
-				l += LEFT(mset);
+				l = (bar & 0x7f) + l;
 			if (rrel)
-				r += RIGHT(mset);
+				r = ((bar >> 8) & 0x7f) + r;
 
 			if (l < 0)
 				l = 0;
@@ -286,29 +304,38 @@ main(int argc, char **argv)
 			else if (r > 100)
 				r = 100;
 
-			printf("Setting the mixer %s to %d:%d.\n", names[dev],
-			       l, r);
+			if (!Sflag)
+				printf("Setting the mixer %s from %d:%d to "
+				    "%d:%d.\n", names[dev], bar & 0x7f,
+				    (bar >> 8) & 0x7f, l, r);
 
 			l |= r << 8;
-			if (ioctl(fd, MIXER_WRITE(dev), &l) == -1)
+			if (ioctl(baz, MIXER_WRITE(dev), &l) == -1)
 				warn("WRITE_MIXER");
 
-			argc -= 2; argv += 2;
+			argc -= 2;
+			argv += 2;
  			break;
 		}
 	}
 
-	if (orecsrc != recsrc)
-		if (ioctl(fd, SOUND_MIXER_WRITE_RECSRC, &recsrc) == -1)
-			err(1, "SOUND_MIXER_WRITE_RECSRC");
- 
-	if (drecsrc) {
-		if (ioctl(fd, SOUND_MIXER_READ_RECSRC, &recsrc) == -1)
-			err(1, "SOUND_MIXER_READ_RECSRC");
-		print_recsrc(recsrc);
+	if (dusage) {
+		close(baz);
+		usage(devmask, recmask);
+		/* NOTREACHED */
 	}
 
-	close(fd);
+	if (orecsrc != recsrc) {
+		if (ioctl(baz, SOUND_MIXER_WRITE_RECSRC, &recsrc) == -1)
+			err(1, "SOUND_MIXER_WRITE_RECSRC");
+		if (ioctl(baz, SOUND_MIXER_READ_RECSRC, &recsrc) == -1)
+			err(1, "SOUND_MIXER_READ_RECSRC");
+	}
 
-	exit(0);
+	if (drecsrc)
+		print_recsrc(recsrc, recmask, Sflag || sflag);
+
+	close(baz);
+
+	return (0);
 }

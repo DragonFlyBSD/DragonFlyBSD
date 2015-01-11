@@ -1,5 +1,4 @@
-# $FreeBSD: src/usr.sbin/mixer/Makefile,v 1.6.2.2 2001/07/30 10:22:58 dd Exp $
-# $DragonFly: src/usr.sbin/mixer/Makefile,v 1.3 2005/01/17 01:49:24 cpressey Exp $
+# $FreeBSD: head/usr.sbin/mixer/Makefile 201390 2010-01-02 11:07:44Z ed $
 
 PROG=	mixer
 MAN=	mixer.8
