@@ -603,18 +603,19 @@ ieee80211_realign(struct ieee80211vap *vap, struct mbuf *m, size_t align)
 
 	pktlen = m->m_pkthdr.len;
 	space = pktlen + align;
-	if (space < MINCLSIZE)
+	if (space < MINCLSIZE) {
 		n = m_gethdr(MB_DONTWAIT, MT_DATA);
-#ifdef notyet
-	else {
-		n = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR,
-		    space <= MCLBYTES ?     MCLBYTES :
-#if MJUMPAGESIZE != MCLBYTES
-		    space <= MJUMPAGESIZE ? MJUMPAGESIZE :
-#endif
-		    space <= MJUM9BYTES ?   MJUM9BYTES : MJUM16BYTES);
+	} else {
+		if (space <= MCLBYTES)
+			space = MCLBYTES;
+		else if (space <= MJUMPAGESIZE)
+			space = MJUMPAGESIZE;
+		else if (space <= MJUM9BYTES)
+			space = MJUM9BYTES;
+		else
+			space = MJUM16BYTES;
+		n = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, space);
 	}
-#endif
 	if (__predict_true(n != NULL)) {
 		m_move_pkthdr(n, m);
 		n->m_data = (caddr_t)(ALIGN(n->m_data + align) - align);
