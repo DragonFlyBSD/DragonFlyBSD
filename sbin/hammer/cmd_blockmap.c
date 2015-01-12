@@ -250,6 +250,15 @@ collect_get(hammer_off_t phys_offset)
 }
 
 static
+void
+collect_rel(collect_t collect)
+{
+	free(collect->layer2);
+	free(collect->track2);
+	free(collect);
+}
+
+static
 struct hammer_blockmap_layer2 *
 collect_get_track(collect_t collect, hammer_off_t offset,
 		  struct hammer_blockmap_layer2 *layer2)
@@ -271,14 +280,15 @@ static
 void
 dump_collect_table(void)
 {
-	collect_t collect;
+	collect_t collect, tmp;
 	int i;
 
 	for (i = 0; i < COLLECT_HSIZE; ++i) {
-		for (collect = CollectHash[i];
-		     collect;
-		     collect = collect->hnext) {
+		for (collect = CollectHash[i]; collect; ) {
 			dump_collect(collect);
+			tmp = collect;
+			collect = collect->hnext;
+			collect_rel(tmp);
 		}
 	}
 }
