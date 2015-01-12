@@ -267,7 +267,7 @@ int drm_getstats(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	for (i = 0; i < dev->counters; i++) {
 		if (dev->types[i] == _DRM_STAT_LOCK)
 			stats->data[i].value =
-			    (dev->primary->master->lock.hw_lock ? dev->primary->master->lock.hw_lock->lock : 0);
+			    (dev->lock.hw_lock ? dev->lock.hw_lock->lock : 0);
 		else 
 			stats->data[i].value = atomic_read(&dev->counts[i]);
 		stats->data[i].type = dev->types[i];

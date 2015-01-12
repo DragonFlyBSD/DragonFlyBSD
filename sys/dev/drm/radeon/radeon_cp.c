@@ -833,7 +833,7 @@ static void radeon_cp_init_ring_buffer(struct drm_device * dev,
 	RADEON_WRITE(RADEON_LAST_CLEAR_REG, 0);
 
 	/* reset sarea copies of these */
-	master_priv = file_priv->master->driver_priv;
+	master_priv = file_priv->masterp->driver_priv;
 	if (master_priv->sarea_priv) {
 		master_priv->sarea_priv->last_frame = 0;
 		master_priv->sarea_priv->last_dispatch = 0;
@@ -1162,7 +1162,7 @@ static int radeon_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 			     struct drm_file *file_priv)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
-	struct drm_radeon_master_private *master_priv = file_priv->master->driver_priv;
+	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;
 
 	DRM_DEBUG("\n");
 

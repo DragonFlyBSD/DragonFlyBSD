@@ -311,7 +311,7 @@ static int drm_clients_info DRM_SYSCTL_HANDLER_ARGS
 		priv = &tempprivs[i];
 		DRM_SYSCTL_PRINT("%c %-12s %5d %5d %10u %10lu\n",
 			       priv->authenticated ? 'y' : 'n',
-			       devtoname(priv->minor->dev->devnode),
+			       devtoname(priv->dev->devnode),
 			       priv->pid,
 			       priv->uid,
 			       priv->magic,

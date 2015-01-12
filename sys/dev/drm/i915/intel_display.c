@@ -2251,24 +2251,43 @@ intel_finish_fb(struct drm_framebuffer *old_fb)
 static void intel_crtc_update_sarea_pos(struct drm_crtc *crtc, int x, int y)
 {
 	struct drm_device *dev = crtc->dev;
+#if 0
 	struct drm_i915_master_private *master_priv;
+#else
+	drm_i915_private_t *dev_priv = dev->dev_private;
+#endif
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 
+#if 0
 	if (!dev->primary->master)
 		return;
 
 	master_priv = dev->primary->master->driver_priv;
 	if (!master_priv->sarea_priv)
 		return;
+#else
+	if (!dev_priv->sarea_priv)
+		return;
+#endif
 
 	switch (intel_crtc->pipe) {
 	case 0:
+#if 0
 		master_priv->sarea_priv->pipeA_x = x;
 		master_priv->sarea_priv->pipeA_y = y;
+#else
+		dev_priv->sarea_priv->planeA_x = x;
+		dev_priv->sarea_priv->planeA_y = y;
+#endif
 		break;
 	case 1:
+#if 0
 		master_priv->sarea_priv->pipeB_x = x;
 		master_priv->sarea_priv->pipeB_y = y;
+#else
+		dev_priv->sarea_priv->planeB_x = x;
+		dev_priv->sarea_priv->planeB_y = y;
+#endif
 		break;
 	default:
 		break;
@@ -3712,25 +3731,43 @@ static void intel_crtc_update_sarea(struct drm_crtc *crtc,
 				    bool enabled)
 {
 	struct drm_device *dev = crtc->dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+#if 0
 	struct drm_i915_master_private *master_priv;
+#endif
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 	int pipe = intel_crtc->pipe;
 
+#if 0
 	if (!dev->primary->master)
 		return;
 
 	master_priv = dev->primary->master->driver_priv;
 	if (!master_priv->sarea_priv)
 		return;
+#else
+	if (!dev_priv->sarea_priv)
+		return;
+#endif
 
 	switch (pipe) {
 	case 0:
+#if 0
 		master_priv->sarea_priv->pipeA_w = enabled ? crtc->mode.hdisplay : 0;
 		master_priv->sarea_priv->pipeA_h = enabled ? crtc->mode.vdisplay : 0;
+#else
+		dev_priv->sarea_priv->planeA_w = enabled ? crtc->mode.hdisplay : 0;
+		dev_priv->sarea_priv->planeA_h = enabled ? crtc->mode.vdisplay : 0;
+#endif
 		break;
 	case 1:
+#if 0
 		master_priv->sarea_priv->pipeB_w = enabled ? crtc->mode.hdisplay : 0;
 		master_priv->sarea_priv->pipeB_h = enabled ? crtc->mode.vdisplay : 0;
+#else
+		dev_priv->sarea_priv->planeB_w = enabled ? crtc->mode.hdisplay : 0;
+		dev_priv->sarea_priv->planeB_h = enabled ? crtc->mode.vdisplay : 0;
+#endif
 		break;
 	default:
 		DRM_ERROR("Can't update pipe %c in SAREA\n", pipe_name(pipe));
@@ -9259,7 +9296,6 @@ void intel_modeset_cleanup(struct drm_device *dev)
 #if 0
 	intel_unregister_dsm_handler();
 #endif
-
 
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
 		/* Skip inactive CRTCs */

@@ -180,12 +180,15 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 		map->offset = (unsigned long)map->handle;
 		if (map->flags & _DRM_CONTAINS_LOCK) {
 			/* Prevent a 2nd X Server from creating a 2nd lock */
-			if (dev->primary->master->lock.hw_lock != NULL) {
+			DRM_LOCK(dev);
+			if (dev->lock.hw_lock != NULL) {
+				DRM_UNLOCK(dev);
 				drm_free(map->handle, M_DRM);
 				drm_free(map, M_DRM);
-				return -EBUSY;
+				return EBUSY;
 			}
-			dev->sigdata.lock = dev->primary->master->lock.hw_lock = map->handle;	/* Pointer to lock */
+			dev->lock.hw_lock = map->handle; /* Pointer to lock */
+			DRM_UNLOCK(dev);
 		}
 		break;
 	case _DRM_AGP:
@@ -279,10 +282,11 @@ int drm_addmap_ioctl(struct drm_device *dev, void *data,
 	if (!DRM_SUSER(DRM_CURPROC) && request->type != _DRM_AGP)
 		return EACCES;
 
+	DRM_LOCK(dev);
 	err = drm_addmap(dev, request->offset, request->size, request->type,
 	    request->flags, &map);
-
-	if (err)
+	DRM_UNLOCK(dev);
+	if (err != 0)
 		return err;
 
 	request->offset = map->offset;
@@ -295,38 +299,29 @@ int drm_addmap_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
-/**
- * Remove a map private from list and deallocate resources if the mapping
- * isn't in use.
- *
- * Searches the map on drm_device::maplist, removes it from the list, see if
- * its being used, and free any associate resource (such as MTRR's) if it's not
- * being on use.
- *
- * \sa drm_addmap
- */
-int drm_rmmap_locked(struct drm_device *dev, struct drm_local_map *map)
+void drm_rmmap(struct drm_device *dev, struct drm_local_map *map)
 {
 	struct drm_map_list *r_list = NULL, *list_t;
 	drm_dma_handle_t dmah;
 	int found = 0;
-	struct drm_master *master;
+
+	DRM_LOCK_ASSERT(dev);
+
+	if (map == NULL)
+		return;
 
 	/* Find the list entry for the map and remove it */
 	list_for_each_entry_safe(r_list, list_t, &dev->maplist, head) {
 		if (r_list->map == map) {
-			master = r_list->master;
 			list_del(&r_list->head);
-			drm_ht_remove_key(&dev->map_hash,
-					  r_list->user_token >> PAGE_SHIFT);
-			kfree(r_list, M_DRM);
+			drm_free(r_list, M_DRM);
 			found = 1;
 			break;
 		}
 	}
 
 	if (!found)
-		return -EINVAL;
+		return;
 
 	switch (map->type) {
 	case _DRM_REGISTERS:
@@ -334,20 +329,15 @@ int drm_rmmap_locked(struct drm_device *dev, struct drm_local_map *map)
 		/* FALLTHROUGH */
 	case _DRM_FRAME_BUFFER:
 		if (map->mtrr) {
-			int retcode;
-			retcode = drm_mtrr_del(0, map->offset, map->size, DRM_MTRR_WC);
-			DRM_DEBUG("mtrr_del=%d\n", retcode);
+			int __unused retcode;
+			
+			retcode = drm_mtrr_del(0, map->offset, map->size,
+			    DRM_MTRR_WC);
+			DRM_DEBUG("mtrr_del = %d\n", retcode);
 		}
 		break;
 	case _DRM_SHM:
 		drm_free(map->handle, M_DRM);
-		if (master) {
-			if (dev->sigdata.lock == master->lock.hw_lock)
-				dev->sigdata.lock = NULL;
-			master->lock.hw_lock = NULL;   /* SHM removed */
-			master->lock.file_priv = NULL;
-			wake_up_interruptible_all(&master->lock.lock_queue);
-		}
 		break;
 	case _DRM_AGP:
 	case _DRM_SCATTER_GATHER:
@@ -357,27 +347,13 @@ int drm_rmmap_locked(struct drm_device *dev, struct drm_local_map *map)
 		dmah.busaddr = map->offset;
 		drm_pci_free(dev, &dmah);
 		break;
-	case _DRM_GEM:
-		DRM_ERROR("tried to rmmap GEM object\n");
+	default:
+		DRM_ERROR("Bad map type %d\n", map->type);
 		break;
 	}
+
 	drm_free(map, M_DRM);
-
-	return 0;
 }
-EXPORT_SYMBOL(drm_rmmap_locked);
-
-int drm_rmmap(struct drm_device *dev, struct drm_local_map *map)
-{
-	int ret;
-
-	mutex_lock(&dev->struct_mutex);
-	ret = drm_rmmap_locked(dev, map);
-	mutex_unlock(&dev->struct_mutex);
-
-	return ret;
-}
-EXPORT_SYMBOL(drm_rmmap);
 
 /* The rmmap ioctl appears to be unnecessary.  All mappings are torn down on
  * the last close of the device, and this is necessary for cleanup when things

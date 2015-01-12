@@ -34,14 +34,22 @@
  * open/close, and ioctl dispatch.
  */
 
-#include <sys/file.h>
-
-#include <linux/export.h>
+#include <sys/devfs.h>
+#include <machine/limits.h>
 
 #include <drm/drmP.h>
 #include <drm/drm_core.h>
 
+#ifdef DRM_DEBUG_DEFAULT_ON
+int drm_debug = (DRM_DEBUGBITS_DEBUG | DRM_DEBUGBITS_KMS |
+    DRM_DEBUGBITS_FAILED_IOCTL);
+#else
+int drm_debug = 0;
+#endif
 int drm_notyet_flag = 0;
+
+unsigned int drm_vblank_offdelay = 5000;    /* Default to 5000 msecs. */
+unsigned int drm_timestamp_precision = 20;  /* Default to 20 usecs. */
 
 static int drm_load(struct drm_device *dev);
 drm_pci_id_list_t *drm_find_description(int vendor, int device,
@@ -171,7 +179,7 @@ static drm_ioctl_desc_t		  drm_ioctls[256] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_DESTROY_DUMB, drm_mode_destroy_dumb_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 };
 
-struct dev_ops drm_cdevsw = {
+static struct dev_ops drm_cdevsw = {
 	{ "drm", 0, D_TRACKCLOSE | D_MPSAFE },
 	.d_open =	drm_open,
 	.d_close =	drm_close,
@@ -305,6 +313,10 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	if (error)
 		goto error;
 
+	error = drm_create_cdevs(kdev);
+	if (error)
+		goto error;
+
 	return (error);
 error:
 	if (dev->irqr) {
@@ -314,6 +326,23 @@ error:
 	if (dev->msi_enabled) {
 		pci_release_msi(dev->dev);
 	}
+	return (error);
+}
+
+int
+drm_create_cdevs(device_t kdev)
+{
+	struct drm_device *dev;
+	int error, unit;
+
+	unit = device_get_unit(kdev);
+	dev = device_get_softc(kdev);
+
+	dev->devnode = make_dev(&drm_cdevsw, unit, DRM_DEV_UID, DRM_DEV_GID,
+				DRM_DEV_MODE, "dri/card%d", unit);
+	error = 0;
+	if (error == 0)
+		dev->devnode->si_drv1 = dev;
 	return (error);
 }
 
@@ -349,17 +378,31 @@ drm_pci_id_list_t *drm_find_description(int vendor, int device,
  */
 int drm_lastclose(struct drm_device * dev)
 {
+	drm_magic_entry_t *pt, *next;
+	int i;
 
 	DRM_DEBUG("\n");
 
 	if (dev->driver->lastclose != NULL)
 		dev->driver->lastclose(dev);
-	DRM_DEBUG("driver lastclose completed\n");
 
-	if (dev->irq_enabled && !drm_core_check_feature(dev, DRIVER_MODESET))
+	if (!drm_core_check_feature(dev, DRIVER_MODESET) && dev->irq_enabled)
 		drm_irq_uninstall(dev);
 
-	mutex_lock(&dev->struct_mutex);
+	DRM_LOCK(dev);
+	if (dev->unique) {
+		drm_free(dev->unique, M_DRM);
+		dev->unique = NULL;
+		dev->unique_len = 0;
+	}
+	/* Clear pid list */
+	for (i = 0; i < DRM_HASH_SIZE; i++) {
+		for (pt = dev->magiclist[i].head; pt; pt = next) {
+			next = pt->next;
+			drm_free(pt, M_DRM);
+		}
+		dev->magiclist[i].head = dev->magiclist[i].tail = NULL;
+	}
 
 	/* Clear AGP information */
 	if (dev->agp) {
@@ -390,10 +433,12 @@ int drm_lastclose(struct drm_device * dev)
 	}
 
 	drm_dma_takedown(dev);
-
-	mutex_unlock(&dev->struct_mutex);
-
-	DRM_DEBUG("lastclose completed\n");
+	if (dev->lock.hw_lock) {
+		dev->lock.hw_lock = NULL; /* SHM removed */
+		dev->lock.file_priv = NULL;
+		DRM_WAKEUP_INT((void *)&dev->lock.lock_queue);
+	}
+	DRM_UNLOCK(dev);
 
 	return 0;
 }
@@ -528,25 +573,116 @@ int drm_close(struct dev_close_args *ap)
 	return 0;
 }
 
+void drm_cdevpriv_dtor(void *cd)
+{
+	struct drm_file *file_priv = cd;
+	struct drm_device *dev = file_priv->dev;
+	int retcode = 0;
+
+	DRM_DEBUG("open_count = %d\n", dev->open_count);
+
+	DRM_LOCK(dev);
+
+	if (dev->driver->preclose != NULL)
+		dev->driver->preclose(dev, file_priv);
+
+	/* ========================================================
+	 * Begin inline drm_release
+	 */
+
+	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
+	    DRM_CURRENTPID, (long)dev->dev, dev->open_count);
+
+	if (dev->driver->driver_features & DRIVER_GEM)
+		drm_gem_release(dev, file_priv);
+
+	if (dev->lock.hw_lock && _DRM_LOCK_IS_HELD(dev->lock.hw_lock->lock)
+	    && dev->lock.file_priv == file_priv) {
+		DRM_DEBUG("Process %d dead, freeing lock for context %d\n",
+			  DRM_CURRENTPID,
+			  _DRM_LOCKING_CONTEXT(dev->lock.hw_lock->lock));
+		if (dev->driver->reclaim_buffers_locked != NULL)
+			dev->driver->reclaim_buffers_locked(dev, file_priv);
+
+		drm_lock_free(&dev->lock,
+		    _DRM_LOCKING_CONTEXT(dev->lock.hw_lock->lock));
+
+				/* FIXME: may require heavy-handed reset of
+                                   hardware at this point, possibly
+                                   processed via a callback to the X
+                                   server. */
+	} else if (dev->driver->reclaim_buffers_locked != NULL &&
+	    dev->lock.hw_lock != NULL) {
+		/* The lock is required to reclaim buffers */
+		for (;;) {
+			if (!dev->lock.hw_lock) {
+				/* Device has been unregistered */
+				retcode = EINTR;
+				break;
+			}
+			if (drm_lock_take(&dev->lock, DRM_KERNEL_CONTEXT)) {
+				dev->lock.file_priv = file_priv;
+				dev->lock.lock_time = jiffies;
+				atomic_inc(&dev->counts[_DRM_STAT_LOCKS]);
+				break;	/* Got lock */
+			}
+			/* Contention */
+			retcode = DRM_LOCK_SLEEP(dev, &dev->lock.lock_queue,
+			    PCATCH, "drmlk2", 0);
+			if (retcode)
+				break;
+		}
+		if (retcode == 0) {
+			dev->driver->reclaim_buffers_locked(dev, file_priv);
+			drm_lock_free(&dev->lock, DRM_KERNEL_CONTEXT);
+		}
+	}
+
+	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA) &&
+	    !dev->driver->reclaim_buffers_locked)
+		drm_reclaim_buffers(dev, file_priv);
+
+	funsetown(&dev->buf_sigio);
+
+	if (dev->driver->postclose != NULL)
+		dev->driver->postclose(dev, file_priv);
+	list_del(&file_priv->lhead);
+
+
+	/* ========================================================
+	 * End inline drm_release
+	 */
+
+	atomic_inc(&dev->counts[_DRM_STAT_CLOSES]);
+	device_unbusy(dev->dev);
+	if (--dev->open_count == 0) {
+		retcode = drm_lastclose(dev);
+	}
+
+	DRM_UNLOCK(dev);
+}
+
 /* drm_ioctl is called whenever a process performs an ioctl on /dev/drm.
  */
 int drm_ioctl(struct dev_ioctl_args *ap)
 {
-	struct file *filp = ap->a_fp;
-	struct drm_file *file_priv = filp->private_data;
-	struct drm_device *dev;
+	struct cdev *kdev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
 	caddr_t data = ap->a_data;
 	struct thread *p = curthread;
+	struct drm_device *dev = drm_get_device_from_kdev(kdev);
 	int retcode = 0;
 	drm_ioctl_desc_t *ioctl;
 	int (*func)(struct drm_device *dev, void *data, struct drm_file *file_priv);
 	int nr = DRM_IOCTL_NR(cmd);
 	int is_driver_ioctl = 0;
+	struct drm_file *file_priv;
 
-	dev = file_priv->minor->dev;
-	if (!dev)
-		return -EINVAL;
+	retcode = devfs_get_cdevpriv(ap->a_fp, (void **)&file_priv);
+	if (retcode !=0) {
+		DRM_ERROR("can't find authenticator\n");
+		return EINVAL;
+	}
 
 	atomic_inc(&dev->counts[_DRM_STAT_IOCTLS]);
 	++file_priv->ioctl_count;
@@ -659,13 +795,14 @@ drm_add_busid_modesetting(struct drm_device *dev, struct sysctl_ctx_list *ctx,
 int
 drm_mmap_single(struct dev_mmap_single_args *ap)
 {
+	struct drm_device *dev;
 	struct cdev *kdev = ap->a_head.a_dev;
-	struct drm_device *dev = drm_get_device_from_kdev(kdev);
 	vm_ooffset_t *offset = ap->a_offset;
 	vm_size_t size = ap->a_size;
 	struct vm_object **obj_res = ap->a_object;
 	int nprot = ap->a_nprot;
 
+	dev = drm_get_device_from_kdev(kdev);
 	if (dev->drm_ttm_bdev != NULL) {
 		return (ttm_bo_mmap_single(dev->drm_ttm_bdev, offset, size,
 		    obj_res, nprot));
@@ -716,7 +853,6 @@ drm_core_init(void *arg)
 {
 
 	drm_global_init();
-	idr_init(&drm_minors_idr);
 
 #if DRM_LINUX
 	linux_ioctl_register_handler(&drm_handler);
@@ -736,7 +872,6 @@ drm_core_exit(void *arg)
 #endif /* DRM_LINUX */
 
 	drm_global_release();
-	idr_destroy(&drm_minors_idr);
 }
 
 SYSINIT(drm_register, SI_SUB_DRIVERS, SI_ORDER_MIDDLE,

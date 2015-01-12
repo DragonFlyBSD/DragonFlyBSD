@@ -2635,7 +2635,10 @@ out_err1:
 
 /**
  * drm_fb_release - remove and free the FBs on this file
- * @priv: drm file for the ioctl
+ * @filp: file * from the ioctl
+ *
+ * LOCKING:
+ * Takes mode config lock.
  *
  * Destroy all the FBs associated with @filp.
  *
@@ -2646,23 +2649,18 @@ out_err1:
  */
 void drm_fb_release(struct drm_file *priv)
 {
+#if 1
+	struct drm_device *dev = priv->dev;
+#else
 	struct drm_device *dev = priv->minor->dev;
+#endif
 	struct drm_framebuffer *fb, *tfb;
 
-	mutex_lock(&priv->fbs_lock);
+	lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
 	list_for_each_entry_safe(fb, tfb, &priv->fbs, filp_head) {
-
-		mutex_lock(&dev->mode_config.fb_lock);
-		/* Mark fb as reaped, we still have a ref from fpriv->fbs. */
-		__drm_framebuffer_unregister(dev, fb);
-		mutex_unlock(&dev->mode_config.fb_lock);
-
-		list_del_init(&fb->filp_head);
-
-		/* This will also drop the fpriv->fbs reference. */
 		drm_framebuffer_remove(fb);
 	}
-	mutex_unlock(&priv->fbs_lock);
+	lockmgr(&dev->mode_config.mutex, LK_RELEASE);
 }
 
 struct drm_property *drm_property_create(struct drm_device *dev, int flags,

@@ -590,7 +590,6 @@ static int
 i915_attach(device_t kdev)
 {
 	struct drm_device *dev;
-	int ret;
 
 	dev = device_get_softc(kdev);
 
@@ -600,17 +599,6 @@ i915_attach(device_t kdev)
 		driver.driver_features |= DRIVER_MODESET;
 
 	dev->driver = &driver;
-
-	/* XXX shoud be in drm_get_pci_dev() */
-	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
-		ret = drm_get_minor(kdev, dev, &dev->control, DRM_MINOR_CONTROL);
-		if (ret)
-			return -ENODEV;
-	}
-
-	if ((ret = drm_get_minor(kdev, dev, &dev->primary, DRM_MINOR_LEGACY)))
-		return -ENODEV;
-
 	return (drm_attach(kdev, i915_attach_list));
 }
 
@@ -921,30 +909,25 @@ i915_pci_probe(device_t kdev)
 }
 
 static struct drm_driver driver = {
-	/* Don't use MTRRs here; the Xserver or userspace app should
-	 * deal with them for Intel hardware.
-	 */
-	.driver_features =
-	    DRIVER_USE_AGP | DRIVER_REQUIRE_AGP | /* DRIVER_USE_MTRR |*/
-	    DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED | DRIVER_GEM,
+	.driver_features =   DRIVER_USE_AGP | DRIVER_REQUIRE_AGP |
+	    DRIVER_USE_MTRR | DRIVER_HAVE_IRQ | DRIVER_LOCKLESS_IRQ |
+	    DRIVER_GEM /*| DRIVER_MODESET*/,
+
+	.buf_priv_size	= sizeof(drm_i915_private_t),
 	.load		= i915_driver_load,
-	.unload		= i915_driver_unload,
 	.open		= i915_driver_open,
-	.lastclose	= i915_driver_lastclose,
+	.unload		= i915_driver_unload,
 	.preclose	= i915_driver_preclose,
+	.lastclose	= i915_driver_lastclose,
 	.postclose	= i915_driver_postclose,
-
 	.device_is_agp	= i915_driver_device_is_agp,
-	.master_create = i915_master_create,
-	.master_destroy = i915_master_destroy,
-
 	.gem_init_object = i915_gem_init_object,
 	.gem_free_object = i915_gem_free_object,
 	.gem_pager_ops	= &i915_gem_pager_ops,
-
 	.dumb_create	= i915_gem_dumb_create,
 	.dumb_map_offset = i915_gem_mmap_gtt,
 	.dumb_destroy	= i915_gem_dumb_destroy,
+
 	.ioctls		= i915_ioctls,
 
 	.name		= DRIVER_NAME,
