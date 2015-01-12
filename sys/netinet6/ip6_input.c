@@ -133,8 +133,6 @@ extern struct protosw inet6sw[];
 u_char ip6_protox[IPPROTO_MAX];
 struct in6_ifaddr *in6_ifaddr;
 
-extern struct callout in6_tmpaddrtimer_ch;
-
 int ip6_forward_srcrt;			/* XXX */
 int ip6_sourcecheck;			/* XXX */
 int ip6_sourcecheck_interval;		/* XXX */
@@ -210,12 +208,7 @@ ip6_init2(void *dummy)
 	callout_init(&nd6_timer_ch);
 	callout_reset(&nd6_timer_ch, hz, nd6_timer, NULL);
 
-	/* timer for regeneranation of temporary addresses randomize ID */
-	callout_init(&in6_tmpaddrtimer_ch);
-	callout_reset(&in6_tmpaddrtimer_ch,
-		      (ip6_temp_preferred_lifetime - ip6_desync_factor -
-		       ip6_temp_regen_advance) * hz,
-		      in6_tmpaddrtimer, NULL);
+	in6_tmpaddrtimer_init();
 }
 
 /* cheat */

@@ -119,7 +119,6 @@ static int regen_tmpaddr (struct in6_ifaddr *);
 
 struct callout nd6_slowtimo_ch;
 struct callout nd6_timer_ch;
-extern struct callout in6_tmpaddrtimer_ch;
 
 void
 nd6_init(void)

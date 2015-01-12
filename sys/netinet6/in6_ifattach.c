@@ -71,7 +71,8 @@ int ip6_auto_linklocal = IP6_AUTO_LINKLOCAL;
 int ip6_auto_linklocal = 1;	/* enable by default */
 #endif
 
-struct callout in6_tmpaddrtimer_ch;
+static struct callout in6_tmpaddrtimer_ch;
+static struct netmsg_base in6_tmpaddrtimer_netmsg;
 
 extern struct inpcbinfo ripcbinfo;
 
@@ -913,19 +914,31 @@ in6_get_tmpifid(struct ifnet *ifp, u_int8_t *retbuf, const u_int8_t *baseid,
 	bcopy(ndi->randomid, retbuf, 8);
 }
 
-void
-in6_tmpaddrtimer(void *ignored_arg)
+static void
+in6_tmpaddrtimer(void *arg __unused)
+{
+	struct lwkt_msg *lmsg = &in6_tmpaddrtimer_netmsg.lmsg;
+
+	KASSERT(mycpuid == 0, ("not on cpu0"));
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), lmsg);
+	crit_exit();
+}
+
+static void
+in6_tmpaddrtimer_dispatch(netmsg_t nmsg)
 {
 	struct nd_ifinfo *ndi;
 	u_int8_t nullbuf[8];
 	struct ifnet *ifp;
 
-	crit_enter();
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
 
-	callout_reset(&in6_tmpaddrtimer_ch,
-		      (ip6_temp_preferred_lifetime - ip6_desync_factor -
-		       ip6_temp_regen_advance) * hz,
-		      in6_tmpaddrtimer, NULL);
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);  /* reply ASAP */
+	crit_exit();
 
 	bzero(nullbuf, sizeof(nullbuf));
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list)) {
@@ -943,5 +956,21 @@ in6_tmpaddrtimer(void *ignored_arg)
 		}
 	}
 
-	crit_exit();
+	callout_reset(&in6_tmpaddrtimer_ch,
+		      (ip6_temp_preferred_lifetime - ip6_desync_factor -
+		       ip6_temp_regen_advance) * hz,
+		      in6_tmpaddrtimer, NULL);
+}
+
+/*
+ * Timer for regeneranation of temporary addresses randomize ID
+ */
+void
+in6_tmpaddrtimer_init(void)
+{
+	callout_init_mp(&in6_tmpaddrtimer_ch);
+	netmsg_init(&in6_tmpaddrtimer_netmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, in6_tmpaddrtimer_dispatch);
+
+	lwkt_sendmsg(netisr_cpuport(0), &in6_tmpaddrtimer_netmsg.lmsg);
 }
