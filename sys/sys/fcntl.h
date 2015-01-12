@@ -128,7 +128,9 @@
 #define	FFLAGS(oflags)	((oflags) + 1)
 #define	OFLAGS(fflags)	((fflags) - 1)
 
-/* bits to save after open */
+/*
+ * Bits to save after open from the ap.  Remaining bits are retained.
+ */
 #define	FMASK		(FREAD|FWRITE|FAPPEND|FASYNC|FFSYNC|FNONBLOCK|\
 			 FAPPENDONLY|FREVOKED|O_DIRECT|O_MAPONREAD)
 /* bits settable by fcntl(F_SETFL, ...) */

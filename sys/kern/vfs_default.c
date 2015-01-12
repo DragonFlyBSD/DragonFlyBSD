@@ -1171,7 +1171,8 @@ vop_stdopen(struct vop_open_args *ap)
 			fp->f_type = DTYPE_VNODE;
 			break;
 		}
-		fp->f_flag = ap->a_mode & FMASK;
+		/* retain flags not to be copied */
+		fp->f_flag = (fp->f_flag & ~FMASK) | (ap->a_mode & FMASK);
 		fp->f_ops = &vnode_fileops;
 		fp->f_data = vp;
 		vref(vp);
