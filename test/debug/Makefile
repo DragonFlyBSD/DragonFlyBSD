@@ -2,6 +2,7 @@
 
 TARGETS=  buserr revoke fdpassing posixlock seekbench umtx vmpageinfo wildcardinfo
 TARGETS+= kmapinfo kwrite kshowprocs mbufinfo ncptrace ttyinfo vnodeinfo zallocinfo
+TARGETS+= evfilt_user
 
 CFLAGS= -O0 -g -I ../../sys
 
@@ -9,6 +10,9 @@ all: ${TARGETS}
 
 buserr:
 	$(CC) $(CFLAGS) buserr.c -o ${.TARGET}
+
+evfilt_user:
+	$(CC) $(CFLAGS) evfilt_user.c -lpthread -o ${.TARGET}
 
 fdpassing:
 	$(CC) $(CFLAGS) fdpassing.c -o ${.TARGET}
