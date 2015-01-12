@@ -1206,11 +1206,7 @@ devfs_fo_read(struct file *fp, struct uio *uio,
 	} else if (fp->f_flag & FNONBLOCK) {
 		ioflag |= IO_NDELAY;
 	}
-	if (flags & O_FBUFFERED) {
-		/* ioflag &= ~IO_DIRECT; */
-	} else if (flags & O_FUNBUFFERED) {
-		ioflag |= IO_DIRECT;
-	} else if (fp->f_flag & O_DIRECT) {
+	if (fp->f_flag & O_DIRECT) {
 		ioflag |= IO_DIRECT;
 	}
 	ioflag |= sequential_heuristic(uio, fp);
@@ -1273,11 +1269,7 @@ devfs_fo_write(struct file *fp, struct uio *uio,
 	} else if (fp->f_flag & FNONBLOCK) {
 		ioflag |= IO_NDELAY;
 	}
-	if (flags & O_FBUFFERED) {
-		/* ioflag &= ~IO_DIRECT; */
-	} else if (flags & O_FUNBUFFERED) {
-		ioflag |= IO_DIRECT;
-	} else if (fp->f_flag & O_DIRECT) {
+	if (fp->f_flag & O_DIRECT) {
 		ioflag |= IO_DIRECT;
 	}
 	if (flags & O_FASYNCWRITE) {

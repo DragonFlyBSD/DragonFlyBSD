@@ -105,8 +105,8 @@
 #define O_FOFFSET	0x00200000	/* force specific offset */
 #define O_FSYNCWRITE	0x00400000	/* force synchronous write */
 #define O_FASYNCWRITE	0x00800000	/* force asynchronous write */
-#define O_FUNBUFFERED	0x01000000	/* force unbuffered (direct) I/O */
-#define O_FBUFFERED	0x02000000	/* force buffered I/O */
+#define O_UNUSED24	0x01000000
+#define O_UNUSED25	0x02000000
 #define O_MAPONREAD	0x04000000	/* memory map read buffer */
 
 #if __POSIX_VISIBLE >= 200809
@@ -121,8 +121,7 @@
 #endif
 
 #define O_FMASK		(O_FBLOCKING|O_FNONBLOCKING|O_FAPPEND|O_FOFFSET|\
-			 O_FSYNCWRITE|O_FASYNCWRITE|O_FUNBUFFERED|O_FBUFFERED|\
-			 O_MAPONREAD)
+			 O_FSYNCWRITE|O_FASYNCWRITE|O_MAPONREAD)
 
 #ifdef _KERNEL
 /* convert from open() flags to/from fflags; convert O_RD/WR to FREAD/FWRITE */
