@@ -172,6 +172,7 @@ struct ucom_softc {
 	struct ucom_super_softc *sc_super;
 	struct tty *sc_tty;
 	struct dev *sc_dev;
+	cdev_t sc_cdev; 
 	struct lock *sc_lock;
 	void   *sc_parent;
 	int sc_subunit;
