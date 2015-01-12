@@ -105,7 +105,7 @@
 #define O_FOFFSET	0x00200000	/* force specific offset */
 #define O_FSYNCWRITE	0x00400000	/* force synchronous write */
 #define O_FASYNCWRITE	0x00800000	/* force asynchronous write */
-#define O_UNUSED24	0x01000000
+#define FCDEVPRIV	0x01000000	/* f_data1 used for cdevpriv */
 #define O_UNUSED25	0x02000000
 #define O_MAPONREAD	0x04000000	/* memory map read buffer */
 
