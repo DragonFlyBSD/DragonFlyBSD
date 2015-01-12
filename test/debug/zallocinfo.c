@@ -64,6 +64,7 @@
 #include <fcntl.h>
 #include <kvm.h>
 #include <nlist.h>
+#include <err.h>
 #include <getopt.h>
 
 struct nlist Nl[] = {
@@ -84,11 +85,13 @@ main(int ac, char **av)
     const char *corefile = NULL;
     const char *sysfile = NULL;
     struct SLGlobalData slab;
+    struct mdglobaldata gd;
+    u_long baseptr;
     kvm_t *kd;
     int offset;
     int ncpus;
     int ch;
-    int i;
+    int cpu;
 
     while ((ch = getopt(ac, av, "M:N:dv")) != -1) {
 	switch(ch) {
@@ -122,10 +125,18 @@ main(int ac, char **av)
     }
 
     kkread(kd, Nl[1].n_value, &ncpus, sizeof(ncpus));
-    offset = offsetof(struct privatespace, mdglobaldata.mi.gd_slab);
-    for (i = 0; i < ncpus; ++i) {
-	    kkread(kd, Nl[0].n_value + sizeof(struct privatespace) * i + offset, &slab, sizeof(slab));
-	    dumpslab(kd, i, &slab);
+
+    for (cpu = 0; cpu < ncpus; cpu++) {
+	    /*
+	     * Get the CPU_prvspace base pointer, that is the address to
+	     * CPU_prvspace[i] from where other addresses can be built
+	     */
+	    kkread(kd, Nl[0].n_value + cpu * sizeof(baseptr),
+		    &baseptr, sizeof(baseptr));
+	    /* Now get globaldata struct for the current cpu */
+	    kkread(kd, baseptr + offsetof(struct mdglobaldata, mi.gd_slab),
+		&slab, sizeof(slab));
+	    dumpslab(kd, cpu, &slab);
     }
     printf("Done\n");
     return(0);
@@ -138,57 +149,58 @@ dumpslab(kvm_t *kd, int cpu, struct SLGlobalData *slab)
     struct SLZone zone;
     SLChunk *chunkp;
     SLChunk chunk;
-    int i;
+    int z = 0;
     int rcount;
     int first;
     int64_t save;
     int64_t extra = 0;
 
-    printf("cpu %d NFreeZones=%d\n", cpu, slab->NFreeZones);
+    printf("cpu %d NFreeZones=%d JunkIndex=%d\n", cpu, slab->NFreeZones,
+	slab->JunkIndex);
 
-    for (i = 0; i < NZONES; ++i) {
-	if ((zonep = slab->ZoneAry[i]) == NULL)
-		continue;
-	printf("    zone %2d", i);
+    zonep = LIST_FIRST(slab->ZoneAry);
+    kkread(kd, (u_long)zonep, &zone, sizeof(zone));
+
+    for (z = 0; z < NZONES; z++) {
+	printf("    zone %2d", z);
 	first = 1;
 	save = extra;
-	while (zonep) {
-		kkread(kd, (u_long)zonep, &zone, sizeof(zone));
-		if (first) {
-			printf(" chunk=%-5d elms=%-4d free:",
-				zone.z_ChunkSize, zone.z_NMax);
-		}
-		if (first == 0)
-			printf(",");
-		printf(" %d", zone.z_NFree);
-		extra += zone.z_NFree * zone.z_ChunkSize;
-		zonep = zone.z_Next;
-		first = 0;
+	if (first)
+		printf(" chunk=%-5d elms=%-4d free:",
+		    zone.z_ChunkSize, zone.z_NMax);
 
-		chunkp = zone.z_RChunks;
-		rcount = 0;
-		while (chunkp) {
-			kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
-			chunkp = chunk.c_Next;
-			++rcount;
-		}
-		if (rcount) {
-			printf(" rchunks=%d", rcount);
-			extra += rcount * zone.z_ChunkSize;
-		}
-		chunkp = zone.z_LChunks;
-		rcount = 0;
-		while (chunkp) {
-			kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
-			chunkp = chunk.c_Next;
-			++rcount;
-		}
-		if (rcount) {
-			printf(" lchunks=%d", rcount);
-			extra += rcount * zone.z_ChunkSize;
-		}
+	if (first == 0)
+		printf(",");
+	printf(" %d", zone.z_NFree);
+	extra += zone.z_NFree * zone.z_ChunkSize;
+	first = 0;
+
+	chunkp = zone.z_RChunks;
+	rcount = 0;
+	while (chunkp) {
+		kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
+		chunkp = chunk.c_Next;
+		++rcount;
+	}
+	if (rcount) {
+		printf(" rchunks=%d", rcount);
+		extra += rcount * zone.z_ChunkSize;
+	}
+	chunkp = zone.z_LChunks;
+	rcount = 0;
+	while (chunkp) {
+		kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
+		chunkp = chunk.c_Next;
+		++rcount;
+	}
+	if (rcount) {
+		printf(" lchunks=%d", rcount);
+		extra += rcount * zone.z_ChunkSize;
 	}
 	printf(" (%jdK free)\n", (intmax_t)(extra - save) / 1024);
+	zonep = LIST_NEXT(&zone, z_Entry);
+	if (zonep)
+		kkread(kd, (u_long)zonep, &zone, sizeof(zone));
     }
     printf("    TotalUnused %jdM\n", (intmax_t)extra / 1024 / 1024);
 }
