@@ -66,6 +66,7 @@ typedef struct iphist {
 #define HMASK		(HSIZE - 1)
 #define MAXHIST		100
 #define SSHLIMIT	5		/* per hour */
+#define MAX_TABLE_NAME	20		/* PF table name limit */
 
 static iphist_t *hist_base;
 static iphist_t **hist_tail = &hist_base;
@@ -78,6 +79,20 @@ static void init_iphist(void);
 static void checkline(char *buf);
 static int insert_iph(const char *ips);
 static void delete_iph(iphist_t *ip);
+
+static
+void
+block_ip(char *ips) {
+	char buf[128];
+	int r = snprintf(buf, sizeof(buf),
+			 "pfctl -t%s -Tadd %s", pftable, ips);
+	if ((int)strlen(buf) == r) {
+		system(buf);
+	}
+	else {
+		syslog(LOG_ERR, "sshlockout: command size overflow");
+	}
+}
 
 /*
  * Stupid simple string hash
@@ -101,7 +116,8 @@ main(int ac, char **av)
 
 	init_iphist();
 
-	if (ac == 2 && av[1] != NULL) {
+	if (ac == 2 && av[1] != NULL &&
+            strlen(av[1]) > 0 && strlen(av[1]) < MAX_TABLE_NAME) {
 		pftable = av[1];
 	}
 	else {
@@ -125,14 +141,30 @@ main(int ac, char **av)
 
 static
 void
-checkline(char *buf)
-{
+checkip(const char *str, const char *reason) {
 	char ips[128];
-	char *str;
 	int n1;
 	int n2;
 	int n3;
 	int n4;
+
+	if (sscanf(str, "%d.%d.%d.%d", &n1, &n2, &n3, &n4) == 4) {
+		snprintf(ips, sizeof(ips), "%d.%d.%d.%d", n1, n2, n3, n4);
+		if (insert_iph(ips)) {
+			syslog(LOG_ERR,
+			       "Detected ssh password login attempt "
+			       "for %s, locking out %s\n",
+			       reason, ips);
+			block_ip(ips);
+		}
+	}
+}
+
+static
+void
+checkline(char *buf)
+{
+	char *str;
 
 	/*
 	 * ssh login attempt with password (only hit if ssh allows
@@ -142,20 +174,7 @@ checkline(char *buf)
 	    (str = strstr(buf, "Failed password for admin from")) != NULL) {
 		while (*str && (*str < '0' || *str > '9'))
 			++str;
-		if (sscanf(str, "%d.%d.%d.%d", &n1, &n2, &n3, &n4) == 4) {
-			snprintf(ips, sizeof(ips), "%d.%d.%d.%d",
-				 n1, n2, n3, n4);
-			if (insert_iph(ips)) {
-				syslog(LOG_ERR,
-				       "Detected ssh password login attempt "
-				       "for root or admin, locking out %s\n",
-				       ips);
-				snprintf(buf, sizeof(buf),
-					 "pfctl -t%s -Tadd %s",
-					 pftable, ips);
-				system(buf);
-			}
-		}
+		checkip(str, "root or admin");
 		return;
 	}
 
@@ -169,20 +188,8 @@ checkline(char *buf)
 			++str;
 		while (*str && *str != ' ')
 			++str;
-		if (strncmp(str, " from", 5) == 0 &&
-		    sscanf(str + 5, "%d.%d.%d.%d", &n1, &n2, &n3, &n4) == 4) {
-			snprintf(ips, sizeof(ips), "%d.%d.%d.%d",
-				 n1, n2, n3, n4);
-			if (insert_iph(ips)) {
-				syslog(LOG_ERR,
-				       "Detected ssh password login attempt "
-				       "for an invalid user, locking out %s\n",
-				       ips);
-				snprintf(buf, sizeof(buf),
-					 "pfctl -t%s -Tadd %s",
-					 pftable, ips);
-				system(buf);
-			}
+		if (strncmp(str, " from", 5) == 0) {
+			checkip(str + 5, "an invalid user"); 
 		}
 		return;
 	}
@@ -193,20 +200,7 @@ checkline(char *buf)
 	 */
 	if ((str = strstr(buf, "Received disconnect from ")) != NULL &&
 	    strstr(buf, "[preauth]") != NULL) {
-		if (sscanf(str + 25, "%d.%d.%d.%d", &n1, &n2, &n3, &n4) == 4) {
-			snprintf(ips, sizeof(ips), "%d.%d.%d.%d",
-				 n1, n2, n3, n4);
-			if (insert_iph(ips)) {
-				syslog(LOG_ERR,
-				       "Detected ssh password login attempt "
-				       "for an invalid user, locking out %s\n",
-				       ips);
-				snprintf(buf, sizeof(buf),
-					 "pfctl -t%s -Tadd %s",
-					 pftable, ips);
-				system(buf);
-			}
-		}
+		checkip(str + 25, "an inalid user");
 		return;
 	}
 }
