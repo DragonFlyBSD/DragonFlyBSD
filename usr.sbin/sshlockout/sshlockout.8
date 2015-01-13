@@ -37,8 +37,10 @@
 .Nm sshlockout
 .Nd utility to block port 22 on preauth failures
 .Sh SYNOPSIS
-.Cd auth.info;authpriv.info		|exec /usr/sbin/sshlockout
-.Cd 3 3 * * *       ipfw delete 2100
+.Nm
+.Ar table
+.Cd auth.info;authpriv.info		|exec /usr/sbin/sshlockout "lockout"
+.Cd 3 3 * * *       pfctl -tlockout -Tflush
 .Sh DESCRIPTION
 This program is generally installed in
 .Pa /etc/syslog.conf
@@ -46,17 +48,22 @@ as a pipe to parse the
 .Xr sshd 8
 demons error log in realtime.
 In addition, a root crontab entry should generally be created to clean
-out
-.Xr ipfw 8
-rule 2100 at least once a day.
-The
-.Xr ipfw 8
+out the
+.Xr pf 4
+.Ar table
+at least once a day. The
+.Xr pf 4
 module must be loaded and operational as well.
 .Pp
 This program will monitor the ssh syslog output and keep track of attempts
 to login to unknown users as well as preauth failures.
-If 5 attempts fail in any one hour period, a permanent entry is added to
-rule 2100 in ipfw to block port 22 from the associated IP address.
+If 5 attempts fail in any one hour period, a permanent entry is added to the
+.Xr pf 4
+.Ar table
+for the associated IP address.
+You still have to add a rule to
+.Xr pf.conf 5
+to block IP addresses listed in this table.
 The cron entry you create cleans the block list out typically once a day.
 .Pp
 This program generally limits brute-force attempts to break into a machine
@@ -67,7 +74,7 @@ Currently this program only operates on IPV4 addresses.
 .Sh SEE ALSO
 .Xr ssh 1 ,
 .Xr sshd 8 ,
-.Xr ipfw 8 ,
+.Xr pf 4 ,
 .Xr syslog.conf 5
 .Sh HISTORY
 The

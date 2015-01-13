@@ -36,13 +36,13 @@
  * Use: pipe syslog auth output to this program.
  *
  * Detects failed ssh login attempts and maps out the originating IP and
- * issues 'ipfw add' commands adding a lockout for rule 2100.
+ * issues adds to a PF table <lockout> using 'pfctl -tlockout -Tadd' commands.
  *
  * /etc/syslog.conf line example:
- *	auth.info;authpriv.info			|exec /usr/sbin/sshlockout
+ *	auth.info;authpriv.info		|exec /usr/sbin/sshlockout lockout
  *
- * Also suggest a cron entry to clean out the ipfw list at least once a day.
- *	3 3 * * *       ipfw delete 2100
+ * Also suggest a cron entry to clean out the PF table at least once a day.
+ *	3 3 * * *       pfctl -tlockout -Tflush
  */
 
 #include <sys/types.h>
@@ -67,11 +67,14 @@ typedef struct iphist {
 #define MAXHIST		100
 #define SSHLIMIT	5		/* per hour */
 
-iphist_t *hist_base;
-iphist_t **hist_tail = &hist_base;
-iphist_t *hist_hash[HSIZE];
-int hist_count;
+static iphist_t *hist_base;
+static iphist_t **hist_tail = &hist_base;
+static iphist_t *hist_hash[HSIZE];
+static int hist_count = 0;
 
+static char *pftable = NULL;
+
+static void init_iphist(void);
 static void checkline(char *buf);
 static int insert_iph(const char *ips);
 static void delete_iph(iphist_t *ip);
@@ -92,9 +95,19 @@ iphash(const char *str)
 }
 
 int
-main(int ac __unused, char **av __unused)
+main(int ac, char **av)
 {
 	char buf[1024];
+
+	init_iphist();
+
+	if (ac == 2 && av[1] != NULL) {
+		pftable = av[1];
+	}
+	else {
+		syslog(LOG_ERR, "sshlockout: invalid argument");
+		return(1);
+	}
 
 	openlog("sshlockout", LOG_PID|LOG_CONS, LOG_AUTH);
 	syslog(LOG_ERR, "sshlockout starting up");
@@ -135,12 +148,11 @@ checkline(char *buf)
 			if (insert_iph(ips)) {
 				syslog(LOG_ERR,
 				       "Detected ssh password login attempt "
-				       "for root, locking out %s\n",
+				       "for root or admin, locking out %s\n",
 				       ips);
 				snprintf(buf, sizeof(buf),
-					 "ipfw add 2100 deny tcp from "
-					 "%s to me 22",
-					 ips);
+					 "pfctl -t%s -Tadd %s",
+					 pftable, ips);
 				system(buf);
 			}
 		}
@@ -167,9 +179,8 @@ checkline(char *buf)
 				       "for an invalid user, locking out %s\n",
 				       ips);
 				snprintf(buf, sizeof(buf),
-					 "ipfw add 2100 deny tcp from "
-					 "%s to me 22",
-					 ips);
+					 "pfctl -t%s -Tadd %s",
+					 pftable, ips);
 				system(buf);
 			}
 		}
@@ -191,9 +202,8 @@ checkline(char *buf)
 				       "for an invalid user, locking out %s\n",
 				       ips);
 				snprintf(buf, sizeof(buf),
-					 "ipfw add 2100 deny tcp from "
-					 "%s to me 22",
-					 ips);
+					 "pfctl -t%s -Tadd %s",
+					 pftable, ips);
 				system(buf);
 			}
 		}
@@ -276,4 +286,15 @@ delete_iph(iphist_t *ip)
 
 	--hist_count;
 	free(ip);
+}
+
+static
+void
+init_iphist(void) {
+	hist_base = NULL;
+	hist_tail = &hist_base;
+	for (int i = 0; i < HSIZE; i++) {
+		hist_hash[i] = NULL;
+	}
+	hist_count = 0;
 }
