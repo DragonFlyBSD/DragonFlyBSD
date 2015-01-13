@@ -40,8 +40,12 @@
 #include <machine/stdint.h>
 #include <cpu/types.h>
 
+#ifdef _KERNEL
+
 /* Interrupt mask (spl, xxx_imask, etc) */
 typedef __uint32_t	intrmask_t;
+
+#endif
 
 #endif /* !_MACHINE_TYPES_H_ */
 
