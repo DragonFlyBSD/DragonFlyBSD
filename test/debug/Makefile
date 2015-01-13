@@ -2,11 +2,14 @@
 
 TARGETS=  buserr revoke fdpassing posixlock seekbench umtx vmpageinfo wildcardinfo
 TARGETS+= kmapinfo kwrite kshowprocs mbufinfo ncptrace ttyinfo vnodeinfo zallocinfo
-TARGETS+= evfilt_user
+TARGETS+= evfilt_user bufqueues
 
 CFLAGS= -O0 -g -I ../../sys
 
 all: ${TARGETS}
+
+bufqueues:
+	$(CC) $(CFLAGS) bufqueues.c -lkvm -o ${.TARGET}
 
 buserr:
 	$(CC) $(CFLAGS) buserr.c -o ${.TARGET}
