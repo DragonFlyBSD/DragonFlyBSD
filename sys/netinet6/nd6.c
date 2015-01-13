@@ -114,10 +114,13 @@ int nd6_recalc_reachtm_interval = ND6_RECALC_REACHTM_INTERVAL;
 static struct sockaddr_in6 all1_sa;
 
 static void nd6_setmtu0 (struct ifnet *, struct nd_ifinfo *);
-static void nd6_slowtimo (void *);
 static int regen_tmpaddr (struct in6_ifaddr *);
+static void nd6_slowtimo(void *);
+static void nd6_slowtimo_dispatch(netmsg_t);
 
-struct callout nd6_slowtimo_ch;
+static struct callout nd6_slowtimo_ch;
+static struct netmsg_base nd6_slowtimo_netmsg;
+
 struct callout nd6_timer_ch;
 
 void
@@ -142,9 +145,11 @@ nd6_init(void)
 	nd6_init_done = 1;
 
 	/* start timer */
-	callout_init(&nd6_slowtimo_ch);
-	callout_reset(&nd6_slowtimo_ch, ND6_SLOWTIMER_INTERVAL * hz,
-	    nd6_slowtimo, NULL);
+	callout_init_mp(&nd6_slowtimo_ch);
+	netmsg_init(&nd6_slowtimo_netmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, nd6_slowtimo_dispatch);
+	callout_reset_bycpu(&nd6_slowtimo_ch, ND6_SLOWTIMER_INTERVAL * hz,
+	    nd6_slowtimo, NULL, 0);
 }
 
 struct nd_ifinfo *
@@ -1771,14 +1776,31 @@ fail:
 }
 
 static void
-nd6_slowtimo(void *ignored_arg)
+nd6_slowtimo(void *arg __unused)
+{
+	struct lwkt_msg *lmsg = &nd6_slowtimo_netmsg.lmsg;
+
+	KASSERT(mycpuid == 0, ("not on cpu0"));
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), lmsg);
+	crit_exit();
+}
+
+static void
+nd6_slowtimo_dispatch(netmsg_t nmsg)
 {
 	struct nd_ifinfo *nd6if;
 	struct ifnet *ifp;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
+	crit_exit();
+
 	mtx_lock(&nd6_mtx);
-	callout_reset(&nd6_slowtimo_ch, ND6_SLOWTIMER_INTERVAL * hz,
-			nd6_slowtimo, NULL);
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list)) {
 		if (ifp->if_afdata[AF_INET6] == NULL)
 			continue;
@@ -1796,6 +1818,9 @@ nd6_slowtimo(void *ignored_arg)
 		}
 	}
 	mtx_unlock(&nd6_mtx);
+
+	callout_reset(&nd6_slowtimo_ch, ND6_SLOWTIMER_INTERVAL * hz,
+	    nd6_slowtimo, NULL);
 }
 
 #define gotoerr(e) { error = (e); goto bad;}
