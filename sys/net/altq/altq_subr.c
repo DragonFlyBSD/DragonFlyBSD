@@ -50,6 +50,8 @@
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>
+#include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -72,6 +74,7 @@
  * internal function prototypes
  */
 static void	tbr_timeout(void *);
+static void	tbr_timeout_dispatch(netmsg_t);
 static int	altq_enable_locked(struct ifaltq *);
 static int	altq_disable_locked(struct ifaltq *);
 static int	altq_detach_locked(struct ifaltq *);
@@ -80,6 +83,7 @@ static int	tbr_set_locked(struct ifaltq *, struct tb_profile *);
 int (*altq_input)(struct mbuf *, int) = NULL;
 static int tbr_timer = 0;	/* token bucket regulator timer */
 static struct callout tbr_callout;
+static struct netmsg_base tbr_timeout_netmsg;
 
 int pfaltq_running;	/* keep track of running state */
 
@@ -309,7 +313,7 @@ tbr_set_locked(struct ifaltq *ifq, struct tb_profile *profile)
 	if (otbr != NULL)
 		kfree(otbr, M_ALTQ);
 	else if (tbr_timer == 0) {
-		callout_reset(&tbr_callout, 1, tbr_timeout, NULL);
+		callout_reset_bycpu(&tbr_callout, 1, tbr_timeout, NULL, 0);
 		tbr_timer = 1;
 	}
 	return (0);
@@ -326,18 +330,36 @@ tbr_set(struct ifaltq *ifq, struct tb_profile *profile)
 	return error;
 }
 
+static void
+tbr_timeout(void *arg __unused)
+{
+	struct lwkt_msg *lmsg = &tbr_timeout_netmsg.lmsg;
+
+	KASSERT(mycpuid == 0, ("not on cpu0"));
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), lmsg);
+	crit_exit();
+}
+
 /*
  * tbr_timeout goes through the interface list, and kicks the drivers
  * if necessary.
  */
 static void
-tbr_timeout(void *arg)
+tbr_timeout_dispatch(netmsg_t nmsg)
 {
 	struct ifnet *ifp;
 	int active;
 
-	active = 0;
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
 	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
+	crit_exit();
+
+	active = 0;
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list)) {
 		struct ifaltq_subque *ifsq;
 
@@ -352,7 +374,6 @@ tbr_timeout(void *arg)
 			ifsq_deserialize_hw(ifsq);
 		}
 	}
-	crit_exit();
 	if (active > 0)
 		callout_reset(&tbr_callout, 1, tbr_timeout, NULL);
 	else
@@ -800,7 +821,9 @@ uint32_t machclk_per_tick = 0;
 void
 init_machclk(void)
 {
-	callout_init(&tbr_callout);
+	callout_init_mp(&tbr_callout);
+	netmsg_init(&tbr_timeout_netmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, tbr_timeout_dispatch);
 
 #ifdef ALTQ_NOPCC
 	machclk_usepcc = 0;
