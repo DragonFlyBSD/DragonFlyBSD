@@ -141,7 +141,7 @@ main(int ac, char **av)
 
 static
 void
-checkip(const char *str, const char *reason) {
+checkip(const char *str, const char *reason1, const char *reason2) {
 	char ips[128];
 	int n1;
 	int n2;
@@ -149,8 +149,14 @@ checkip(const char *str, const char *reason) {
 	int n4;
 	time_t t = time(NULL);
 
+	ips[0] = '\0';
+
 	if (sscanf(str, "%d.%d.%d.%d", &n1, &n2, &n3, &n4) == 4) {
 		snprintf(ips, sizeof(ips), "%d.%d.%d.%d", n1, n2, n3, n4);
+	}
+	// TODO: Check for IPv6 address
+
+	if (strlen(ips) > 0) {
 
 		/*
 		 * Check for DoS attack. When connections from too many
@@ -176,9 +182,9 @@ checkip(const char *str, const char *reason) {
 
 		if (insert_iph(ips, t)) {
 			syslog(LOG_ERR,
-			       "Detected ssh password login attempt "
+			       "Detected ssh %s attempt "
 			       "for %s, locking out %s\n",
-			       reason, ips);
+			       reason1, reason2, ips);
 			block_ip(ips);
 		}
 	}
@@ -198,7 +204,7 @@ checkline(char *buf)
 	    (str = strstr(buf, "Failed password for admin from")) != NULL) {
 		while (*str && (*str < '0' || *str > '9'))
 			++str;
-		checkip(str, "root or admin");
+		checkip(str, "password login", "root or admin");
 		return;
 	}
 
@@ -213,7 +219,22 @@ checkline(char *buf)
 		while (*str && *str != ' ')
 			++str;
 		if (strncmp(str, " from", 5) == 0) {
-			checkip(str + 5, "an invalid user"); 
+			checkip(str + 5, "password login", "an invalid user");
+		}
+		return;
+	}
+
+	/*
+	 * ssh login attempt for non-existant user.
+	 */
+	if ((str = strstr(buf, "Invalid user")) != NULL) {
+		str += 12;
+		while (*str == ' ')
+			++str;
+		while (*str && *str != ' ')
+			++str;
+		if (strncmp(str, " from", 5) == 0) {
+			checkip(str + 5, "login", "an invalid user");
 		}
 		return;
 	}
@@ -224,7 +245,7 @@ checkline(char *buf)
 	 */
 	if ((str = strstr(buf, "Received disconnect from ")) != NULL &&
 	    strstr(buf, "[preauth]") != NULL) {
-		checkip(str + 25, "an inalid user");
+		checkip(str + 25, "preauth", "an inalid user");
 		return;
 	}
 }
