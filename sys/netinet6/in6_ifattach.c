@@ -971,6 +971,7 @@ in6_tmpaddrtimer_init(void)
 	callout_init_mp(&in6_tmpaddrtimer_ch);
 	netmsg_init(&in6_tmpaddrtimer_netmsg, NULL, &netisr_adone_rport,
 	    MSGF_PRIORITY, in6_tmpaddrtimer_dispatch);
-
-	lwkt_sendmsg(netisr_cpuport(0), &in6_tmpaddrtimer_netmsg.lmsg);
+	callout_reset_bycpu(&in6_tmpaddrtimer_ch,
+	    (ip6_temp_preferred_lifetime - ip6_desync_factor -
+	     ip6_temp_regen_advance) * hz, in6_tmpaddrtimer, NULL, 0);
 }
