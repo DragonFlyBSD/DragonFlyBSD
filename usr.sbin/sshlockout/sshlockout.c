@@ -77,12 +77,12 @@ static char *pftable = NULL;
 
 static void init_iphist(void);
 static void checkline(char *buf);
-static int insert_iph(const char *ips);
+static int insert_iph(const char *ips, time_t t);
 static void delete_iph(iphist_t *ip);
 
 static
 void
-block_ip(char *ips) {
+block_ip(const char *ips) {
 	char buf[128];
 	int r = snprintf(buf, sizeof(buf),
 			 "pfctl -t%s -Tadd %s", pftable, ips);
@@ -147,10 +147,34 @@ checkip(const char *str, const char *reason) {
 	int n2;
 	int n3;
 	int n4;
+	time_t t = time(NULL);
 
 	if (sscanf(str, "%d.%d.%d.%d", &n1, &n2, &n3, &n4) == 4) {
 		snprintf(ips, sizeof(ips), "%d.%d.%d.%d", n1, n2, n3, n4);
-		if (insert_iph(ips)) {
+
+		/*
+		 * Check for DoS attack. When connections from too many
+		 * IP addresses come in at the same time, our hash table
+		 * would overflow, so we delete the oldest entries AND
+		 * block it's IP when they are younger than 10 seconds.
+		 * This prevents massive attacks from arbitrary IPs.
+		 */
+		if (hist_count > MAXHIST + 16) {
+			while (hist_count > MAXHIST) {
+				iphist_t *iph = hist_base;
+				int dt = (int)(t - iph->t);
+				if (dt < 10) {
+					syslog(LOG_ERR,
+					       "Detected overflow attack, "
+					       "locking out %s\n",
+					       iph->ips);
+					block_ip(iph->ips);
+				}
+				delete_iph(iph);
+			}
+		}
+
+		if (insert_iph(ips, t)) {
 			syslog(LOG_ERR,
 			       "Detected ssh password login attempt "
 			       "for %s, locking out %s\n",
@@ -210,11 +234,10 @@ checkline(char *buf)
  */
 static
 int
-insert_iph(const char *ips)
+insert_iph(const char *ips, time_t t)
 {
 	iphist_t *ip = malloc(sizeof(*ip));
 	iphist_t *scan;
-	time_t t = time(NULL);
 	int found;
 
 	ip->hv = iphash(ips);
