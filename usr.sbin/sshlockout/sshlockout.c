@@ -53,6 +53,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <syslog.h>
+#include <ctype.h>
 
 typedef struct iphist {
 	struct iphist *next;
@@ -154,7 +155,27 @@ checkip(const char *str, const char *reason1, const char *reason2) {
 	if (sscanf(str, "%d.%d.%d.%d", &n1, &n2, &n3, &n4) == 4) {
 		snprintf(ips, sizeof(ips), "%d.%d.%d.%d", n1, n2, n3, n4);
 	}
-	// TODO: Check for IPv6 address
+	else {
+		/*
+		 * Check for IPv6 address (primitive way)
+		 */
+		int cnt = 0;
+		while (str[cnt] == ':' || isxdigit(str[cnt])) {
+			++cnt;
+		}
+		if (cnt > 0 && cnt < (int)sizeof(ips)) {
+			memcpy(ips, str, cnt);
+			ips[cnt] = '\0';
+		}
+	}
+
+	/*
+	 * We do not block localhost as is makes no sense.
+	 */
+	if (strcmp(ips, "127.0.0.1") == 0)
+		return;
+	if (strcmp(ips, "::1") == 0)
+		return;
 
 	if (strlen(ips) > 0) {
 
