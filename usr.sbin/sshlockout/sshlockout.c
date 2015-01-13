@@ -245,7 +245,7 @@ checkline(char *buf)
 	 */
 	if ((str = strstr(buf, "Received disconnect from ")) != NULL &&
 	    strstr(buf, "[preauth]") != NULL) {
-		checkip(str + 25, "preauth", "an inalid user");
+		checkip(str + 25, "preauth", "an invalid user");
 		return;
 	}
 }
