@@ -42,6 +42,7 @@
 #include <sys/rman.h>
 #include <sys/sysctl.h>
 #include <sys/msgport2.h>
+#include <sys/cpu_topology.h>
 
 #include <net/netisr2.h>
 #include <net/netmsg2.h>
@@ -123,6 +124,7 @@ static struct acpi_pst_domain *
 static struct acpi_pst_domain *
 		acpi_pst_domain_alloc(uint32_t, uint32_t, uint32_t);
 static int	acpi_pst_domain_set_pstate(struct acpi_pst_domain *, int);
+static void	acpi_pst_domain_check_nproc(device_t, struct acpi_pst_domain *);
 static int	acpi_pst_global_set_pstate(int);
 
 static int	acpi_pst_check_csr(struct acpi_pst_softc *);
@@ -156,6 +158,9 @@ static int			acpi_npstates;
 static struct acpi_pstate	*acpi_pstates;
 
 static const struct acpi_pst_md	*acpi_pst_md;
+
+static int			acpi_pst_ht_reuse_domain = 1;
+TUNABLE_INT("hw.acpi.cpu.pst.ht_reuse_domain", &acpi_pst_ht_reuse_domain);
 
 static device_method_t acpi_pst_methods[] = {
 	/* Device interface */
@@ -225,6 +230,24 @@ acpi_pst_probe(device_t dev)
 	handle = acpi_get_handle(dev);
 
 	/*
+	 * Check _PSD package
+	 *
+	 * NOTE:
+	 * Some BIOSes do not expose _PCT for the second thread of
+	 * CPU cores.  In this case, _PSD should be enough to get the
+	 * P-state of the second thread working, since it must have
+	 * the same _PCT and _PSS as the first thread in the same
+	 * core.
+	 */
+	buf.Pointer = NULL;
+	buf.Length = ACPI_ALLOCATE_BUFFER;
+	status = AcpiEvaluateObject(handle, "_PSD", NULL, &buf);
+	if (!ACPI_FAILURE(status)) {
+		AcpiOsFree((ACPI_OBJECT *)buf.Pointer);
+		goto done;
+	}
+
+	/*
 	 * Check _PCT package
 	 */
 	buf.Pointer = NULL;
@@ -266,6 +289,7 @@ acpi_pst_probe(device_t dev)
 	}
 	AcpiOsFree(obj);
 
+done:
 	device_set_desc(dev, "ACPI CPU P-State");
 	return 0;
 }
@@ -350,24 +374,7 @@ acpi_pst_attach(device_t dev)
 	}
 
 	/* Make sure that adding us will not overflow our domain */
-	i = 0;
-	LIST_FOREACH(pst, &dom->pd_pstlist, pst_link)
-		++i;
-	if (i == dom->pd_nproc) {
-		device_printf(dev, "Domain%u already contains %d P-States, "
-			      "invalid _PSD package\n",
-			      dom->pd_dom, dom->pd_nproc);
-#if 0
-		/*
-		 * Some stupid BIOSes will set wrong "# of processors",
-		 * e.g. 1 for CPU w/ hyperthreading; Be lenient here.
-		 */
-		return ENXIO;
-#else
-		dom->pd_nproc++;
-#endif
-	}
-	KKASSERT(i < dom->pd_nproc);
+	acpi_pst_domain_check_nproc(dev, dom);
 
 	/*
 	 * Get control/status registers from _PCT
@@ -376,6 +383,70 @@ acpi_pst_attach(device_t dev)
 	buf.Length = ACPI_ALLOCATE_BUFFER;
 	status = AcpiEvaluateObject(sc->pst_handle, "_PCT", NULL, &buf);
 	if (ACPI_FAILURE(status)) {
+		/*
+		 * No _PCT.  See the comment in acpi_pst_probe() near
+		 * _PSD check.
+		 *
+		 * Use control/status registers of another CPU in the
+		 * same domain, or in the same core, if the type of
+		 * these registers are "Fixed Hardware", e.g. on most
+		 * of the model Intel CPUs.
+		 */
+		pst = LIST_FIRST(&dom->pd_pstlist);
+		if (pst == NULL) {
+			cpumask_t mask;
+
+			mask = get_cpumask_from_level(sc->pst_cpuid,
+			    CORE_LEVEL);
+			if (CPUMASK_TESTNZERO(mask)) {
+				struct acpi_pst_domain *dom1;
+
+				LIST_FOREACH(dom1, &acpi_pst_domains, pd_link) {
+					LIST_FOREACH(pst, &dom1->pd_pstlist,
+					    pst_link) {
+						if (CPUMASK_TESTBIT(mask,
+						    pst->pst_cpuid))
+							break;
+					}
+					if (pst != NULL)
+						break;
+				}
+				if (pst != NULL && acpi_pst_ht_reuse_domain) {
+					/*
+					 * Use the same domain for CPUs in the
+					 * same core.
+					 */
+					device_printf(dev, "Destroy domain%u, "
+					    "reuse domain%u\n",
+					    dom->pd_dom, dom1->pd_dom);
+					LIST_REMOVE(dom, pd_link);
+					kfree(dom, M_DEVBUF);
+					dom = dom1;
+					/*
+					 * Make sure that adding us will not
+					 * overflow the domain containing
+					 * siblings in the same core.
+					 */
+					acpi_pst_domain_check_nproc(dev, dom);
+				}
+			}
+		}
+		if (pst != NULL &&
+		    pst->pst_creg.pr_res == NULL &&
+		    pst->pst_creg.pr_rid == 0 &&
+		    pst->pst_creg.pr_gas.SpaceId ==
+		    ACPI_ADR_SPACE_FIXED_HARDWARE &&
+		    pst->pst_sreg.pr_res == NULL &&
+		    pst->pst_sreg.pr_rid == 0 &&
+		    pst->pst_sreg.pr_gas.SpaceId ==
+		    ACPI_ADR_SPACE_FIXED_HARDWARE) {
+			sc->pst_creg = pst->pst_creg;
+			sc->pst_sreg = pst->pst_sreg;
+			device_printf(dev,
+			    "No _PCT; reuse %s control/status regs\n",
+			    device_get_nameunit(pst->pst_dev));
+			goto fetch_pss;
+		}
 		device_printf(dev, "Can't get _PCT package - %s\n",
 			      AcpiFormatException(status));
 		return ENXIO;
@@ -415,6 +486,7 @@ acpi_pst_attach(device_t dev)
 	/* Free _PCT */
 	AcpiOsFree(obj);
 
+fetch_pss:
 	/*
 	 * Create P-State table according to _PSS
 	 */
@@ -422,6 +494,17 @@ acpi_pst_attach(device_t dev)
 	buf.Length = ACPI_ALLOCATE_BUFFER;
 	status = AcpiEvaluateObject(sc->pst_handle, "_PSS", NULL, &buf);
 	if (ACPI_FAILURE(status)) {
+		/*
+		 * No _PSS.  See the comment in acpi_pst_probe() near
+		 * _PSD check.
+		 *
+		 * Assume _PSS are same across all CPUs; well, they
+		 * should/have to be so.
+		 */
+		if (acpi_npstates > 0 && acpi_pstates != NULL) {
+			device_printf(dev, "No _PSS\n");
+			goto fetch_ppc;
+		}
 		device_printf(dev, "Can't get _PSS package - %s\n",
 			      AcpiFormatException(status));
 		return ENXIO;
@@ -524,6 +607,7 @@ acpi_pst_attach(device_t dev)
 		kfree(pstate, M_TEMP);
 	}
 
+fetch_ppc:
 	/* By default, we start from P-State table's first entry */
 	sc->pst_sstart = 0;
 
@@ -1175,4 +1259,27 @@ acpi_pst_alloc_resource(device_t dev, ACPI_OBJECT *obj, int idx,
 		res->pr_rid = 0;
 	}
 	return 0;
+}
+
+static void
+acpi_pst_domain_check_nproc(device_t dev, struct acpi_pst_domain *dom)
+{
+	struct acpi_pst_softc *pst;
+	int i;
+
+	i = 0;
+	LIST_FOREACH(pst, &dom->pd_pstlist, pst_link)
+		++i;
+	if (i == dom->pd_nproc) {
+		/*
+		 * Some stupid BIOSes will set wrong "# of processors",
+		 * e.g. 1 for CPU w/ hyperthreading; Be lenient here.
+		 */
+		if (bootverbose) {
+			device_printf(dev, "domain%u already contains %d "
+			    "P-States\n", dom->pd_dom, dom->pd_nproc);
+		}
+		dom->pd_nproc++;
+	}
+	KKASSERT(i < dom->pd_nproc);
 }
