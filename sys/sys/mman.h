@@ -107,9 +107,10 @@
 /*
  * Mapping type
  */
-#define	MAP_FILE	0x0000	/* map from file (default) */
-#define	MAP_ANON	0x1000	/* allocated from memory, swap space */
-#define MAP_VPAGETABLE	0x2000	/* manage with virtualized page table */
+#define	MAP_FILE	0x0000		/* map from file (default) */
+#define MAP_ANONYMOUS	0x1000		/* allocated from memory, swap space */
+#define	MAP_ANON	MAP_ANONYMOUS	/* alias for backwards compatibility */
+#define MAP_VPAGETABLE	0x2000		/* manage with virtualized page table */
 
 /*
  * Extended flags
