@@ -1833,7 +1833,7 @@ cam_periph_error(union ccb *ccb, cam_flags camflags,
 	 * If we have an error and are booting verbosely, whine
 	 * *unless* this was a non-retryable selection timeout.
 	 */
-	if (error != 0 && bootverbose &&
+	if (error != 0 && bootverbose && (sense_flags & SF_NO_PRINT) == 0 &&
 	    !(status == CAM_SEL_TIMEOUT && (camflags & CAM_RETRY_SELTO) == 0)) {
 
 

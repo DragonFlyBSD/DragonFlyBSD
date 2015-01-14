@@ -6101,8 +6101,8 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 			}
 		} else if (cam_periph_error(done_ccb, 0,
 					    done_ccb->ccb_h.target_lun > 0
-					    ? SF_RETRY_UA|SF_QUIET_IR
-					    : SF_RETRY_UA,
+					    ? SF_RETRY_UA|SF_QUIET_IR|SF_NO_PRINT
+					    : SF_RETRY_UA|SF_NO_PRINT,
 					    &softc->saved_ccb) == ERESTART) {
 			return;
 		} else if ((done_ccb->ccb_h.status & CAM_DEV_QFRZN) != 0) {
