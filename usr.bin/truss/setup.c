@@ -113,7 +113,9 @@ setup_and_wait(char *command[]) {
   asprintf(&buf, "%s/%d/mem", procfs_path, pid);
   if (buf == NULL)
     err(1, "Out of memory");
-  fd = open(buf, O_RDWR);
+  do {
+    fd = open(buf, O_RDWR);
+  } while(fd == -1 && errno == EAGAIN);
   free(buf);
   if (fd == -1)
     err(5, "cannot open %s", buf);
@@ -144,7 +146,9 @@ start_tracing(int pid, int flags) {
   asprintf(&buf, "%s/%d/mem", procfs_path, pid);
   if (buf == NULL)
     err(1, "Out of memory");
-  fd = open(buf, O_RDWR);
+  do {
+    fd = open(buf, O_RDWR);
+  } while(fd == -1 && errno == EAGAIN);
   free(buf);
   if (fd == -1) {
     /*
