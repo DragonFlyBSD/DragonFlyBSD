@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2014.12.14
-#	Date:    2014-12-14 03:15:01
+#	Version: 2015.01.05
+#	Date:    2015-01-05 03:15:01
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -1980,6 +1980,7 @@
 		1002 0310  FirePro S9000
 		1002 0420  Radeon Sky 700
 		1002 0422  Radeon Sky 900
+		1002 0710  FirePro S9050
 		1002 0b0e  FirePro S10000 Passive
 		1002 0b2a  FirePro S10000
 		1028 030c  FirePro W8000
@@ -2001,6 +2002,8 @@
 		1043 9999  ARES II
 		1092 3000  Tahiti XT2 [Radeon HD 7970 GHz Edition]
 		1458 2261  Tahiti XT2 [Radeon HD 7970 GHz Edition OC]
+# GV-R928XOC-3GD
+		1458 3001  Tahiti XTL [Radeon R9 280X OC]
 		1462 2774  MSI R7970 TF 3GD5/OC BE
 		1682 3211  Double D HD 7970 Black Edition
 # FX-797A-TNBC
@@ -2683,6 +2686,7 @@
 	6921  Amethyst XT [Radeon R9 M295X]
 	692b  Tonga PRO GL [FirePro W7100]
 	692f  Tonga XT GL [FirePro W8100]
+	6938  Amethyst XT [Radeon R9 M295X Mac Edition]
 	6939  Tonga PRO [Radeon R9 285]
 	700f  RS100 AGP Bridge
 	7010  RS200/RS250 AGP Bridge
@@ -4021,6 +4025,8 @@
 		1028 1f03  PERC 5/i Integrated RAID Controller
 	0016  PowerEdge Expandable RAID controller S300
 		1028 1f24  PERC S300 Controller
+# NV-RAM Adapter used in Dell DR appliances
+	0073  NV-RAM Adapter
 1029  Siemens Nixdorf IS
 102a  LSI Logic
 	0000  HYDRA
@@ -7091,6 +7097,7 @@
 		1369 c001  LX6464ES
 		1369 c201  LX1616ES
 		14b4 d10a  DekTec DTA-110T
+		14b4 d128  Dektec DTA-140
 		14b4 d140  Dektec DTA-140
 		1a0e 006f  Dektec DTA-111
 	9060  PCI9060 32-bit 33MHz PCI <-> IOBus Bridge
@@ -10034,6 +10041,7 @@
 	13d7  GM204M [GeForce GTX 980M]
 	13d8  GM204M [GeForce GTX 970M]
 	13d9  GM204M [GeForce GTX 965M]
+	17f0  GM200GL [Quadro M6000]
 10df  Emulex Corporation
 	0720  OneConnect NIC (Skyhawk)
 		17aa 1056  ThinkServer OCm14102-UX-L AnyFabric
@@ -11562,6 +11570,8 @@
 		153b 1176  Cinergy 1200 DVB-C (MK3)
 		1894 0020  KNC One DVB-C V1.0
 		1894 0023  TVStation DVB-C plus
+# http://www.knc1.com/gb.htm
+		1894 0054  TV-Station DVB-S
 	7160  SAA7160
 		1458 9009  E8000 DVB-T/Analog TV/FM tuner
 		1461 1455  AVerTV Hybrid Speedy PCI-E (H788)
@@ -15131,6 +15141,7 @@
 	5086  T580-5086 Unified Wire Ethernet Controller
 	5087  T580-5087 Unified Wire Ethernet Controller
 	5088  T570-5088 Unified Wire Ethernet Controller
+	5089  T520-5089 Unified Wire Ethernet Controller
 	5401  T520-CR Unified Wire Ethernet Controller
 	5402  T522-CR Unified Wire Ethernet Controller
 	5403  T540-CR Unified Wire Ethernet Controller
@@ -15161,6 +15172,7 @@
 	5486  T580-5086 Unified Wire Ethernet Controller
 	5487  T580-5087 Unified Wire Ethernet Controller
 	5488  T570-5088 Unified Wire Ethernet Controller
+	5489  T520-5089 Unified Wire Ethernet Controller
 	5501  T520-CR Unified Wire Storage Controller
 	5502  T522-CR Unified Wire Storage Controller
 	5503  T540-CR Unified Wire Storage Controller
@@ -15191,6 +15203,7 @@
 	5586  T580-5086 Unified Wire Storage Controller
 	5587  T580-5087 Unified Wire Storage Controller
 	5588  T570-5088 Unified Wire Storage Controller
+	5589  T520-5089 Unified Wire Storage Controller
 	5601  T520-CR Unified Wire Storage Controller
 	5602  T522-CR Unified Wire Storage Controller
 	5603  T540-CR Unified Wire Storage Controller
@@ -15221,6 +15234,7 @@
 	5686  T580-5086 Unified Wire Storage Controller
 	5687  T580-5087 Unified Wire Storage Controller
 	5688  T570-5088 Unified Wire Storage Controller
+	5689  T520-5089 Unified Wire Storage Controller
 	5701  T520-CR Unified Wire Ethernet Controller
 	5702  T522-CR Unified Wire Ethernet Controller
 	5703  T540-CR Unified Wire Ethernet Controller
@@ -15251,6 +15265,7 @@
 	5786  T580-5086 Unified Wire Ethernet Controller
 	5787  T580-5087 Unified Wire Ethernet Controller
 	5788  T570-5088 Unified Wire Ethernet Controller
+	5789  T520-5089 Unified Wire Ethernet Controller
 	5801  T520-CR Unified Wire Ethernet Controller [VF]
 	5802  T522-CR Unified Wire Ethernet Controller [VF]
 	5803  T540-CR Unified Wire Ethernet Controller [VF]
@@ -15281,6 +15296,7 @@
 	5886  T580-5086 Unified Wire Ethernet Controller [VF]
 	5887  T580-5087 Unified Wire Ethernet Controller [VF]
 	5888  T570-5088 Unified Wire Ethernet Controller [VF]
+	5889  T520-5089 Unified Wire Ethernet Controller [VF]
 	a000  PE10K Unified Wire Ethernet Controller
 1426  Storage Technology Corp.
 1427  Better On-Line Solutions
@@ -15528,6 +15544,8 @@
 14c2  DTK Computer
 14c3  MEDIATEK Corp.
 	7630  MT7630e 802.11bgn Wireless Network Adapter
+# MT7612E too?
+	7662  MT7662E 802.11ac PCI Express Wireless Network Adapter
 14c4  IWASAKI Information Systems Co Ltd
 14c5  Automation Products AB
 14c6  Data Race Inc
@@ -16157,6 +16175,7 @@
 	4333  Serial (EDGE/GPRS modem part of Option GT Combo Edge)
 	4344  EDGE/GPRS data and 802.11b/g combo cardbus [GC89]
 	4350  BCM43222 Wireless Network Adapter
+	4351  BCM43222 802.11abgn Wireless Network Adapter
 	4353  BCM43224 802.11a/b/g/n
 		1028 000e  Wireless 1520 Half-size Mini PCIe Card
 		103c 1509  WMIB-275N Half-size Mini PCIe Card
@@ -16173,19 +16192,18 @@
 	4365  BCM43142 802.11b/g/n
 		1028 0016  Wireless 1704 802.11n + BT 4.0
 	43a0  BCM4360 802.11ac Wireless Network Adapter
+	43a1  BCM4360 802.11ac Wireless Network Adapter
+	43a2  BCM4360 802.11ac Wireless Network Adapter
 	43a9  BCM43217 802.11b/g/n
 	43aa  BCM43131 802.11b/g/n
 	43b1  BCM4352 802.11ac Wireless Network Adapter
 	43ba  BCM43602 802.11ac Wireless LAN SoC
 	43bb  BCM43602 802.11ac Wireless LAN SoC
 	43bc  BCM43602 802.11ac Wireless LAN SoC
-# If you have more information please add.
-	43d3  BCM43567
-# If you have more information please add.
-	43d9  BCM43570
+	43d3  BCM43567 802.11ac Wireless Network Adapter
+	43d9  BCM43570 802.11ac Wireless Network Adapter
 	43df  BCM4354 802.11ac Wireless LAN SoC
-# If you have more information please add.
-	43ec  BCM4356
+	43ec  BCM4356 802.11ac Wireless Network Adapter
 	4401  BCM4401 100Base-T
 		1025 0035  TravelMate 660
 		103c 08b0  tc1100 tablet
@@ -16515,11 +16533,15 @@
 		5654 2388  GoTView PCI Hybrid Audio Capture Device
 	8852  CX23885 PCI Video and Audio Decoder
 		0070 8010  WinTV HVR-1400 ExpressCard
+		0070 f038  WinTV HVR-5525
 		107d 6f22  WinFast PxTV1200
 		13c2 3013  TT-budget CT2-4500 CI
 		1461 c039  AVerTV Hybrid Express (A577)
 		153b 117e  Cinergy T PCIe Dual
 		18ac db78  FusionHDTV DVB-T Dual Express
+		4254 0950  S950
+		4254 0952  S952
+		4254 0982  T982
 		4254 9580  T9580
 		4254 980c  T980C
 	8880  CX23887/8 PCIe Broadcast Audio and Video Decoder with 3D Comb
@@ -17386,6 +17408,8 @@
 # Also used as Gigabyte GC-WB150 on a PCIe-to-mini-PCIe converter
 		1a3b 2100  AW-NB100H 802.11n Wireless Mini PCIe Card
 	003c  QCA988x 802.11ac Wireless Network Adapter
+# all QCA6174 devices?
+	003e  Killer N1525 Wireless-AC
 	0207  AR5210 Wireless Network Adapter [AR5000 802.11a]
 	1014  AR5212 802.11abg NIC
 		1014 058a  ThinkPad 11a/b/g Wireless LAN Mini Express Adapter (AR5BXB6)
@@ -18624,6 +18648,8 @@
 	0200  Wil6200 PCI Express Port
 	0201  Wil6200 Wireless PCI Express Port
 	0301  Wil6200 802.11ad Wireless Network Adapter
+	0302  Wil6200 802.11ad Wireless Network Adapter
+	0310  Wil6200 802.11ad Wireless Network Adapter
 1aec  Wolfson Microelectronics
 # nee Fusion-io
 1aed  SanDisk
@@ -18691,6 +18717,9 @@
 		1af4 1100  QEMU Virtual Machine
 1b37  Signal Processing Devices Sweden AB
 	0014  ADQ412
+# now owned by HGST (a Western Digital subsidiary)
+1b39  sTec, Inc.
+	0001  S1120 PCIe Accelerator SSD
 1b3a  Westar Display Technologies
 	7589  HRED J2000 - JPEG 2000 Video Codec Device
 1b3e  Teradata Corp.
@@ -18776,6 +18805,8 @@
 1bfd  EeeTOP
 1c1c  Symphony
 	0001  82C101
+1c28  Lite-On IT Corp. / Plextor
+	0122  M6e PCI Express SSD [Marvell 88SS9183]
 1c2c  Fiberblaze
 	000a  Capture
 	000f  SmartNIC
