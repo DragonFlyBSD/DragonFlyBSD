@@ -105,7 +105,6 @@ crypto/bn/asm/ia64.S
 crypto/bn/asm/mips-mont.pl
 crypto/bn/asm/mips.pl
 crypto/bn/asm/mips3-mont.pl
-crypto/bn/asm/mips3.s
 crypto/bn/asm/pa-risc2.s
 crypto/bn/asm/pa-risc2W.s
 crypto/bn/asm/parisc-mont.pl
@@ -348,16 +347,7 @@ crypto/x509v3/tabtest.c
 crypto/x509v3/v3conf.c
 crypto/x509v3/v3prin.c
 demos/
-doc/HOWTO/
-doc/README
-doc/c-indentation.el
-doc/fingerprints.txt
-doc/openssl-shared.txt
-doc/openssl.txt
-doc/openssl_button.gif
-doc/openssl_button.html
-doc/ssleay.txt
-doc/standards.txt
+doc/
 engines/Makefile
 engines/alpha.opt
 engines/axp.opt
@@ -416,6 +406,7 @@ util/fixNT.sh
 util/install.sh
 util/libeay.num
 util/mk1mf.pl
+util/mkbuildinf.pl
 util/mkcerts.sh
 util/mkdef.pl
 util/mkdir-p.pl
