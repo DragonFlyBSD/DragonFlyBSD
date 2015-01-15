@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "EVP_EncryptInit 3"
-.TH EVP_EncryptInit 3 "2014-10-15" "1.0.1j" "OpenSSL"
+.TH EVP_EncryptInit 3 "2015-01-15" "1.0.1l" "OpenSSL"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -243,7 +243,7 @@ writes the encrypted version to \fBout\fR. This function can be called
 multiple times to encrypt successive blocks of data. The amount
 of data written depends on the block alignment of the encrypted data:
 as a result the amount of data written may be anything from zero bytes
-to (inl + cipher_block_size \- 1) so \fBoutl\fR should contain sufficient
+to (inl + cipher_block_size \- 1) so \fBout\fR should contain sufficient
 room. The actual number of bytes written is placed in \fBoutl\fR.
 .PP
 If padding is enabled (the default) then \fIEVP_EncryptFinal_ex()\fR encrypts
