@@ -30,9 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.12 2008/04/14 20:17:41 dillon Exp $
-.\"
-.Dd February 21, 2005
+.Dd January 15, 2015
 .Dt UMTX 2
 .Os
 .Sh NAME
@@ -44,9 +42,9 @@
 .Sh SYNOPSIS
 .In unistd.h
 .Ft int
-.Fn umtx_sleep "const int *ptr" "int value" "int timeout"
+.Fn umtx_sleep "volatile const int *ptr" "int value" "int timeout"
 .Ft int
-.Fn umtx_wakeup "const int *ptr" "int count"
+.Fn umtx_wakeup "volatile const int *ptr" "int count"
 .Sh DESCRIPTION
 The
 .Fn umtx_sleep
