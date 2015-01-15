@@ -50,6 +50,8 @@ SRCS+=		chared.c \
 SRCS+=		common.h emacs.h fcns.h help.h vi.h
 SRCS+=  	fcns.c help.c tokenizern.c historyn.c
 
+INCS=		histedit.h
+
 MAN=		editline.3 editrc.5
 
 MLINKS= 	editline.3 el_init.3 \
