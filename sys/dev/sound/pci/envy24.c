@@ -2312,7 +2312,7 @@ envy24_putcfg(struct sc_info *sc)
 		kprintf("from external clock synthesizer chip\n");
 		break;
 	default:
-		kprintf("illeagal system setting\n");
+		kprintf("illegal system setting\n");
 	}
 	kprintf("  MPU-401 UART(s) #: ");
 	if (sc->cfg->scfg & PCIM_SCFG_MPU)

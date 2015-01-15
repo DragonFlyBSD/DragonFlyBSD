@@ -2212,7 +2212,7 @@ envy24ht_putcfg(struct sc_info *sc)
 		kprintf("reserved\n");
 		break;
 	default:
-		kprintf("illeagal system setting\n");
+		kprintf("illegal system setting\n");
 	}
 	kprintf("  MPU-401 UART(s) #: ");
 	if (sc->cfg->scfg & ENVY24HT_CCSM_SCFG_MPU)
