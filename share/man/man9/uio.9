@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/uio.9,v 1.5.2.4 2001/12/17 11:30:19 ru Exp $
 .\"
-.Dd November 10, 2008
+.Dd January 16, 2015
 .Dt UIO 9
 .Os
 .Sh NAME
@@ -47,7 +47,7 @@ struct uio {
 };
 .Ed
 .Ft int
-.Fn uiomove "caddr_t buf" "int howmuch" "struct uio *uiop"
+.Fn uiomove "caddr_t buf" "size_t howmuch" "struct uio *uiop"
 .Sh DESCRIPTION
 The function
 .Fn uiomove
