@@ -27,7 +27,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd April 23, 2009
+.Dd January 16, 2015
 .Dt YPCLNT 3
 .Os
 .Sh NAME
@@ -59,7 +59,7 @@
 .Ft int
 .Fn yp_get_default_domain "char **domp"
 .Ft int
-.Fn yp_master "char *indomain" "char *inmap" "**outname"
+.Fn yp_master "char *indomain" "char *inmap" "char **outname"
 .Ft int
 .Fn yp_match "char *indomain" "char *inmap" "const char *inkey" "int inkeylen" "char **outval" "int *outvallen"
 .Ft int
