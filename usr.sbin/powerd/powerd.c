@@ -63,8 +63,8 @@ int DomEnd;
 int NCpus;
 int CpuCount[256];	/* # of cpus in any given domain */
 int CpuToDom[256];	/* domain a particular cpu belongs to */
-int Hysteresis = 10;
-double TriggerUp = 0.25;/* load per cpu to force max freq */
+int Hysteresis = 10;	/* percentage */
+double TriggerUp = 0.25;/* single-cpu load to force max freq */
 double TriggerDown; /* load per cpu to force the min freq */
 
 static void sigintr(int signo);
@@ -73,12 +73,20 @@ int
 main(int ac, char **av)
 {
 	double qavg;
-	double savg;
+	double uavg;	/* uavg - used for speeding up */
+	double davg;	/* davg - used for slowing down */
+	double srt;
+	double pollrate;
 	int ch;
+	int ustate;
+	int dstate;
 	int nstate;
 	char buf[64];
 
-	while ((ch = getopt(ac, av, "dp:tu:")) != -1) {
+	srt = 8.0;	/* time for samples - 8 seconds */
+	pollrate = 1.0;	/* polling rate in seconds */
+
+	while ((ch = getopt(ac, av, "dp:r:tu:T:")) != -1) {
 		switch(ch) {
 		case 'd':
 			DebugOpt = 1;
@@ -91,6 +99,12 @@ main(int ac, char **av)
 			break;
 		case 'u':
 			TriggerUp = (double)strtol(optarg, NULL, 10) / 100;
+			break;
+		case 'r':
+			pollrate = strtod(optarg, NULL);
+			break;
+		case 'T':
+			srt = strtod(optarg, NULL);
 			break;
 		default:
 			usage();
@@ -156,11 +170,10 @@ main(int ac, char **av)
 		 * dom0 exists.
 		 */
 		getcputime();
-		savg = 0.0;
 
 		setupdominfo();
 		if (DomBeg >= DomEnd) {
-			sleep(1);
+			usleep((int)(pollrate * 1000000.0));
 			continue;
 		}
 
@@ -174,6 +187,13 @@ main(int ac, char **av)
 	 */
 	signal(SIGINT, sigintr);
 	signal(SIGTERM, sigintr);
+	uavg = 0.0;
+	davg = 0.0;
+
+	srt = srt / pollrate;	/* convert to sample count */
+
+	if (DebugOpt)
+		printf("samples for downgrading: %5.2f\n", srt);
 
 	/*
 	 * Monitoring loop
@@ -184,21 +204,32 @@ main(int ac, char **av)
 	 */
 	for (;;) {
 		qavg = getcputime();
-		savg = (savg * 7.0 + qavg) / 8.0;
+		uavg = (uavg * 2.0 + qavg) / 3.0;	/* speeding up */
+		davg = (davg * srt + qavg) / (srt + 1);	/* slowing down */
+		if (davg < uavg)
+			davg = uavg;
 
-		nstate = savg / TriggerUp;
-		if (nstate < CpuLimit)
-			nstate = savg / TriggerDown;
+		ustate = uavg / TriggerUp;
+		if (ustate < CpuLimit)
+			ustate = uavg / TriggerDown;
+		dstate = davg / TriggerUp;
+		if (dstate < CpuLimit)
+			dstate = davg / TriggerDown;
+
+		nstate = (ustate > dstate) ? ustate : dstate;
 		if (nstate > NCpus)
 			nstate = NCpus;
+
 		if (DebugOpt) {
-			printf("\rqavg=%5.2f savg=%5.2f %2d/%2d ncpus=%d\r",
-				qavg, savg, CpuLimit, DomLimit, nstate);
+			printf("\rqavg=%5.2f uavg=%5.2f davg=%5.2f "
+			       "%2d/%2d ncpus=%d\r",
+				qavg, uavg, davg,
+				CpuLimit, DomLimit, nstate);
 			fflush(stdout);
 		}
 		if (nstate != CpuLimit)
 			acpi_setcpufreq(nstate);
-		sleep(1);
+		usleep((int)(pollrate * 1000000.0));
 	}
 }
 

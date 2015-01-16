@@ -12,6 +12,8 @@
 .Op Fl dt
 .Op Fl p Ar hysteresis
 .Op Fl u Ar trigger_up
+.Op Fl r Ar poll_time
+.Op Fl T Ar sample_time
 .Sh DESCRIPTION
 The
 .Nm
@@ -35,6 +37,7 @@ to not go to the background and prints some debug output to
 .It Fl p Ar hysteresis
 Percent of the upper limit to subtract as an hysteresis value to scale
 down to the min frequency.
+The default is 10 (meaning 10%).
 .It Fl t
 Turbo mode.
 Disables switching to turbo mode as maximum frequency completely.
@@ -42,6 +45,21 @@ Switching to turbo mode as maximum frequency is enabled by default,
 if the CPU supports it.
 .It Fl u Ar trigger_up
 Per CPU load limit in percent to force maximum frequency.
+The default is 25 (meaning an instantanious load of 0.25 on a
+single cpu).  The load is calculated over 3 polls.
+It is suggested that this value not be made lower than
+around 7.
+.It Fl r Ar poll_time
+Polling time in seconds.  Default is 1.0.
+Setting this value lower will poll for load changes faster.
+For example, a workstation might want to use 0.2 or 0.4.
+.Nm can become unstable if you make this value too small.
+.It Fl T Ar sample_time
+Total sample interval in seconds.  Default is 8.0.
+This effects how quickly powerd ratchets down the frequency
+and cpus on an idle machine.  Longer times will ratchet down
+more slowly.
+For example, a workstation might want to use a value of 30.0.
 .El
 .Sh DIAGNOSTICS
 The
