@@ -55,7 +55,7 @@ INCLUDES+= -I$S/dev/netif/ath/ath_hal -I$S/contrib/dev/ath/ath_hal
 # Same thing for drm includes
 INCLUDES+= -I$S/dev/drm/include
 
-COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -include opt_global.h
+COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS -include opt_global.h
 CFLAGS=	${COPTFLAGS} ${CWARNFLAGS} ${DEBUG} ${COPTS}
 
 # XXX LOCORE means "don't declare C stuff" not "for locore.s".

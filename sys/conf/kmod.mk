@@ -136,7 +136,7 @@ CFLAGS+=	-I@/../include -I${DESTDIR}/usr/include
 
 .if defined(BUILDING_WITH_KERNEL) && \
     exists(${BUILDING_WITH_KERNEL}/opt_global.h)
-CFLAGS+=	-include ${BUILDING_WITH_KERNEL}/opt_global.h
+CFLAGS+=	-DHAVE_KERNEL_OPTION_HEADERS -include ${BUILDING_WITH_KERNEL}/opt_global.h
 .endif
 
 CFLAGS+=	${DEBUG_FLAGS}
