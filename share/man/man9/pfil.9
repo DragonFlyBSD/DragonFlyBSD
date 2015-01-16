@@ -1,5 +1,4 @@
 .\"	$NetBSD: pfil.9,v 1.24 2004/01/01 15:24:35 wiz Exp $
-.\" $DragonFly: src/share/man/man9/pfil.9,v 1.9 2008/09/20 06:08:13 sephe Exp $
 .\"
 .\" Copyright (c) 1996 Matthew R. Green
 .\" All rights reserved.
@@ -27,7 +26,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd September 15, 2008
+.Dd January 16, 2015
 .Dt PFIL 9
 .Os
 .Sh NAME
@@ -52,9 +51,9 @@
 .Fn pfil_head_unregister "struct pfil_head *pfh"
 .Ft struct pfil_head *
 .Fn pfil_head_get "int type" "u_long val"
-.Ft void
+.Ft int
 .Fn pfil_add_hook "pfil_func_t func" "void *arg" "int flags" "struct pfil_head *ph"
-.Ft void
+.Ft int
 .Fn pfil_remove_hook "pfil_func_t func" "void *arg" "int flags" "struct pfil_head *ph"
 .Ft int
 .Fn pfil_run_hooks "struct pfil_head *ph" "struct mbuf **mp" "struct ifnet *ifp" "int dir"
