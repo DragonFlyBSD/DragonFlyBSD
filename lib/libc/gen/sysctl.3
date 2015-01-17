@@ -28,7 +28,7 @@
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.33.2.13 2002/04/07 04:57:14 dd Exp $
 .\"
-.Dd November 24, 2013
+.Dd January 17, 2015
 .Dt SYSCTL 3
 .Os
 .Sh NAME
@@ -448,8 +448,12 @@ For the following names, an array of
 .Va struct kinfo_proc
 structures is returned,
 whose size depends on the current number of such objects in the system.
+Adding the flag
+.Dv KERN_PROC_FLAG_LWP
+to the third level name signals that information about all
+light weight processes of the selected processes should be returned.
 .Bl -column "Third level nameXXXXXX" "Fourth level is:XXXXXX" -offset indent
-.It "Third level name	Fourth level is:"
+.It Sy "Third level name	Fourth level is:"
 .It "KERN\_PROC\_ALL	None"
 .It "KERN\_PROC\_PID	A process ID"
 .It "KERN\_PROC\_PGRP	A process group"
@@ -458,22 +462,27 @@ whose size depends on the current number of such objects in the system.
 .It "KERN\_PROC\_RUID	A real user ID"
 .El
 .Pp
-Adding the flag
-.Li KERN_PROC_FLAG_LWP
-to the third level name signals that information about all
-light weight processes of the selected processes should be returned.
-.Dv KERN_PROC_PATHNAME ,
-the path of the
-process' text file is stored.
-For
-.Dv KERN_PROC_PATHNAME ,
-a process ID of
-.Li \-1
-implies the current process.
+For the following names, a NUL-terminated string is returned.
 .Bl -column "Third level nameXXXXXX" "Fourth level is:XXXXXX" -offset indent
 .It Sy "Third level name	Fourth level is:"
 .It Dv KERN_PROC_ARGS Ta "A process ID"
+.It Dv KERN_PROC_CWD Ta "A process ID"
 .It Dv KERN_PROC_PATHNAME Ta "A process ID"
+.El
+.Pp
+The variables are as follows:
+.Bl -tag -width 6n
+.It Dv KERN_PROC_ARGS
+Returns the command line argument array of a process, in a flattened form,
+i.e. NUL-terminated arguments follow each other.
+A process ID of
+.Li \-1
+implies the current process.
+A process can set its own process title by changing this value.
+.It Dv KERN_PROC_CWD
+Returns the current working directory of a process.
+.It Dv KERN_PROC_PATHNAME
+Returns the path of a process' text file.
 .El
 .It Li KERN_PROF
 Return profiling information about the kernel.
