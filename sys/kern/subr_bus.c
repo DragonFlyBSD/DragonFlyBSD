@@ -2124,6 +2124,14 @@ resource_string_value(const char *name, int unit, const char *resname,
 {
 	int error;
 	struct config_resource *res;
+	char buf[64];
+	const char *env;
+
+	ksnprintf(buf, sizeof(buf), "%s%d.%s", name, unit, resname);
+	if ((env = kgetenv(buf)) != NULL) {
+		*result = env;
+		return 0;
+	}
 
 	if ((error = resource_find(name, unit, resname, &res)) != 0)
 		return(error);
