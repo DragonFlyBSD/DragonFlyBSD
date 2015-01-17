@@ -624,8 +624,7 @@ found_aliased:
 		 * the mount is rw.
 		 */
 		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
-				   (buf_offset & ~HAMMER_OFF_ZONE_MASK) |
-				   HAMMER_ZONE_RAW_BUFFER);
+				   hammer_xlate_to_zone2(buf_offset));
 		if (buffer) {
 			kprintf("HAMMER: recovered aliased %016jx\n",
 				(intmax_t)buf_offset);

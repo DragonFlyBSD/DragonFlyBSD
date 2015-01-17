@@ -282,9 +282,8 @@ again:
 	 * The bigblock might be reserved by another zone.  If it is reserved
 	 * by our zone we may have to move next_offset past the append_off.
 	 */
-	base_off = (next_offset &
-		    (~HAMMER_LARGEBLOCK_MASK64 & ~HAMMER_OFF_ZONE_MASK)) | 
-		    HAMMER_ZONE_RAW_BUFFER;
+	base_off = hammer_xlate_to_zone2(next_offset &
+					~HAMMER_LARGEBLOCK_MASK64);
 	resv = RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root, base_off);
 	if (resv) {
 		if (resv->zone != zone) {
@@ -560,9 +559,8 @@ again:
 	 * The bigblock might be reserved by another zone.  If it is reserved
 	 * by our zone we may have to move next_offset past the append_off.
 	 */
-	base_off = (next_offset &
-		    (~HAMMER_LARGEBLOCK_MASK64 & ~HAMMER_OFF_ZONE_MASK)) |
-		    HAMMER_ZONE_RAW_BUFFER;
+	base_off = hammer_xlate_to_zone2(next_offset &
+					~HAMMER_LARGEBLOCK_MASK64);
 	resv = RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root, base_off);
 	if (resv) {
 		if (resv->zone != zone) {
@@ -723,9 +721,8 @@ hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone, int bytes,
 		goto failed;
 	}
 
-	base_off = (zone_offset &
-		    (~HAMMER_LARGEBLOCK_MASK64 & ~HAMMER_OFF_ZONE_MASK)) |
-		    HAMMER_ZONE_RAW_BUFFER;
+	base_off = hammer_xlate_to_zone2(zone_offset &
+					~HAMMER_LARGEBLOCK_MASK64);
 	resv = RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root, base_off);
 	if (resv) {
 		if (resv->zone != zone) {
@@ -1039,7 +1036,8 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	 * occuring.
 	 */
 	if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
-		base_off = (zone_offset & (~HAMMER_LARGEBLOCK_MASK64 & ~HAMMER_OFF_ZONE_MASK)) | HAMMER_ZONE_RAW_BUFFER;
+		base_off = hammer_xlate_to_zone2(zone_offset &
+						~HAMMER_LARGEBLOCK_MASK64);
 
 		hammer_reserve_setdelay_offset(hmp, base_off, zone, layer2);
 		if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
@@ -1398,11 +1396,11 @@ failed:
 
 
 /*
- * Lookup a blockmap offset.
+ * Lookup a blockmap offset and verify blockmap layers.
  */
 hammer_off_t
-hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
-		       int *errorp)
+hammer_blockmap_lookup_verify(hammer_mount_t hmp, hammer_off_t zone_offset,
+			int *errorp)
 {
 	hammer_volume_t root_volume;
 	hammer_blockmap_t freemap;
@@ -1420,19 +1418,7 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 	 * Calculate the zone-2 offset.
 	 */
 	zone = HAMMER_ZONE_DECODE(zone_offset);
-	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
-
-	result_offset = (zone_offset & ~HAMMER_OFF_ZONE_MASK) |
-			HAMMER_ZONE_RAW_BUFFER;
-
-	/*
-	 * We can actually stop here, normal blockmaps are now direct-mapped
-	 * onto the freemap and so represent zone-2 addresses.
-	 */
-	if (hammer_verify_zone == 0) {
-		*errorp = 0;
-		return(result_offset);
-	}
+	result_offset = hammer_xlate_to_zone2(zone_offset);
 
 	/*
 	 * Validate the allocation zone
@@ -1469,13 +1455,14 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 	if (*errorp)
 		goto failed;
 	if (layer2->zone == 0) {
-		base_off = (zone_offset & (~HAMMER_LARGEBLOCK_MASK64 & ~HAMMER_OFF_ZONE_MASK)) | HAMMER_ZONE_RAW_BUFFER;
+		base_off = hammer_xlate_to_zone2(zone_offset &
+						~HAMMER_LARGEBLOCK_MASK64);
 		resv = RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root,
 				 base_off);
 		KKASSERT(resv && resv->zone == zone);
 
 	} else if (layer2->zone != zone) {
-		panic("hammer_blockmap_lookup: bad zone %d/%d",
+		panic("hammer_blockmap_lookup_verify: bad zone %d/%d",
 			layer2->zone, zone);
 	}
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
@@ -1490,7 +1477,7 @@ failed:
 		hammer_rel_buffer(buffer, 0);
 	hammer_rel_volume(root_volume, 0);
 	if (hammer_debug_general & 0x0800) {
-		kprintf("hammer_blockmap_lookup: %016llx -> %016llx\n",
+		kprintf("hammer_blockmap_lookup_verify: %016llx -> %016llx\n",
 			(long long)zone_offset, (long long)result_offset);
 	}
 	return(result_offset);
