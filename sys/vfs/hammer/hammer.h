@@ -1347,18 +1347,18 @@ void hammer_blockmap_reserve_complete(hammer_mount_t hmp,
 			hammer_reserve_t resv);
 void hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 void hammer_blockmap_free(hammer_transaction_t trans,
-			hammer_off_t bmap_off, int bytes);
+			hammer_off_t zone_offset, int bytes);
 int hammer_blockmap_dedup(hammer_transaction_t trans,
-			hammer_off_t bmap_off, int bytes);
+			hammer_off_t zone_offset, int bytes);
 int hammer_blockmap_finalize(hammer_transaction_t trans,
 			hammer_reserve_t resv,
-			hammer_off_t bmap_off, int bytes);
-int hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t bmap_off,
+			hammer_off_t zone_offset, int bytes);
+int hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 			int *curp, int *errorp);
 hammer_off_t hammer_blockmap_lookup_verify(hammer_mount_t hmp,
 			hammer_off_t zone_offset, int *errorp);
 
-hammer_off_t hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
+hammer_off_t hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 			int *errorp);
 int64_t hammer_undo_used(hammer_transaction_t trans);
 int64_t hammer_undo_space(hammer_transaction_t trans);
