@@ -1355,8 +1355,9 @@ int hammer_blockmap_finalize(hammer_transaction_t trans,
 			hammer_off_t bmap_off, int bytes);
 int hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t bmap_off,
 			int *curp, int *errorp);
-hammer_off_t hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
-			int *errorp);
+hammer_off_t hammer_blockmap_lookup_verify(hammer_mount_t hmp,
+			hammer_off_t zone_offset, int *errorp);
+
 hammer_off_t hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
 			int *errorp);
 int64_t hammer_undo_used(hammer_transaction_t trans);
@@ -1612,6 +1613,37 @@ hammer_modify_node_done(hammer_node_t node)
 		hammer_ref_node(node);
 	}
 	hammer_modify_buffer_done(node->buffer);
+}
+
+/*
+ * Translate a zone address to zone-2 address.
+ */
+#define hammer_xlate_to_zone2(offset) \
+	(((offset) & ~HAMMER_OFF_ZONE_MASK) | HAMMER_ZONE_RAW_BUFFER)
+
+/*
+ * Lookup a blockmap offset.
+ */
+static __inline hammer_off_t
+hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
+			int *errorp)
+{
+#if defined INVARIANTS
+	int zone = HAMMER_ZONE_DECODE(zone_offset);
+	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+#endif
+
+	/*
+	 * We can actually skip blockmap verify by default,
+	 * as normal blockmaps are now direct-mapped onto the freemap
+	 * and so represent zone-2 addresses.
+	 */
+	if (hammer_verify_zone == 0) {
+		*errorp = 0;
+		return hammer_xlate_to_zone2(zone_offset);
+	}
+
+	return hammer_blockmap_lookup_verify(hmp, zone_offset, errorp);
 }
 #endif
 
