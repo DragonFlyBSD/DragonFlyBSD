@@ -278,8 +278,9 @@ privilege may change the value.
 .It Dv HW_PHYSMEM Ta "integer" Ta "no"
 .It Dv HW_USERMEM Ta "integer" Ta "no"
 .It Dv HW_PAGESIZE Ta "integer" Ta "no"
-.It Dv HW_FLOATINGPOINT Ta "integer" Ta "no"
+.It Dv HW_FLOATINGPT Ta "integer" Ta "no"
 .It Dv HW_MACHINE_ARCH Ta "string" Ta "no"
+.It Dv HW_MACHINE_PLATFORM Ta "string" Ta "no"
 .\".It Dv HW_DISKNAMES Ta "integer" Ta "no"
 .\".It Dv HW_DISKSTATS Ta "integer" Ta "no"
 .It Dv HW_SENSORS Ta "node" Ta "not applicable"
@@ -292,17 +293,19 @@ The machine model
 .It Dv HW_NCPU
 The number of cpus.
 .It Dv HW_BYTEORDER
-The byteorder (4,321, or 1,234).
+The byteorder (4321, or 1234).
 .It Dv HW_PHYSMEM
 The bytes of physical memory.
 .It Dv HW_USERMEM
 The bytes of non-kernel memory.
 .It Dv HW_PAGESIZE
 The software page size.
-.It Dv HW_FLOATINGPOINT
+.It Dv HW_FLOATINGPT
 Nonzero if the floating point support is in hardware.
 .It Dv HW_MACHINE_ARCH
 The machine dependent architecture type.
+.It Dv HW_MACHINE_PLATFORM
+The platform architecture type.
 .\".It Dv HW_DISKNAMES
 .\".It Dv HW_DISKSTATS
 .It Dv HW_SENSORS
