@@ -3,7 +3,7 @@
 .\"	$NetBSD: ptrace.2,v 1.2 1995/02/27 12:35:37 cgd Exp $
 .\"
 .\" This file is in the public domain.
-.Dd December 18, 2013
+.Dd January 18, 2015
 .Dt PTRACE 2
 .Os
 .Sh NAME
@@ -92,6 +92,37 @@ and
 except that they write rather than read.  The
 .Fa data
 argument supplies the value to be written.
+.It Dv PT_IO
+This request allows reading and writing arbitrary amounts of data in
+the traced process's address space.
+The
+.Fa addr
+argument specifies a pointer to a
+.Vt "struct ptrace_io_desc" ,
+which is defined as follows:
+.Bd -literal
+struct ptrace_io_desc {
+	int	piod_op;	/* I/O operation */
+	void	*piod_offs;	/* child offset */
+	void	*piod_addr;	/* parent offset */
+	size_t	piod_len;	/* request length */
+};
+
+/*
+ * Operations in piod_op.
+ */
+#define PIOD_READ_D	1	/* Read from D space */
+#define PIOD_WRITE_D	2	/* Write to D space */
+#define PIOD_READ_I	3	/* Read from I space */
+#define PIOD_WRITE_I	4	/* Write to I space */
+.Ed
+.Pp
+The
+.Fa data
+argument is ignored.
+The actual number of bytes read or written is stored in
+.Va piod_len
+upon return.
 .It Dv PT_CONTINUE
 The traced process continues execution.
 .Fa addr
