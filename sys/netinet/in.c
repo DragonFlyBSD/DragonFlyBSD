@@ -188,8 +188,6 @@ in_len2mask(struct in_addr *mask, int len)
 		p[i] = (0xff00 >> (len % 8)) & 0xff;
 }
 
-static int in_interfaces;	/* number of external internet interfaces */
-
 void
 in_control_dispatch(netmsg_t msg)
 {
@@ -528,15 +526,6 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 				iac->ia_ifac = ifac;
 			}
 
-			/*
-			 * Protect from NETISR_IP traversing address list
-			 * while we're modifying it.
-			 */
-			crit_enter();
-
-			in_ialink(ia);
-			ifa_iflink(ifa, ifp, 1);
-
 			ifa->ifa_addr = (struct sockaddr *)&ia->ia_addr;
 			ifa->ifa_dstaddr = (struct sockaddr *)&ia->ia_dstaddr;
 			ifa->ifa_netmask = (struct sockaddr *)&ia->ia_sockmask;
@@ -547,11 +536,10 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 				ia->ia_broadaddr.sin_family = AF_INET;
 			}
 			ia->ia_ifp = ifp;
-			if (!(ifp->if_flags & IFF_LOOPBACK))
-				in_interfaces++;
 			iaIsNew = 1;
 
-			crit_exit();
+			in_ialink(ia);
+			ifa_iflink(ifa, ifp, 1);
 		}
 		break;
 
