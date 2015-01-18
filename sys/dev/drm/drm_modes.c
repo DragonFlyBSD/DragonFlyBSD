@@ -30,7 +30,6 @@
  * authorization from the copyright holder(s) and author(s).
  */
 
-#include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/export.h>
 #include <drm/drmP.h>
@@ -506,6 +505,74 @@ drm_gtf_mode(struct drm_device *dev, int hdisplay, int vdisplay, int vrefresh,
 }
 EXPORT_SYMBOL(drm_gtf_mode);
 
+#if 0
+#if IS_ENABLED(CONFIG_VIDEOMODE)
+int drm_display_mode_from_videomode(const struct videomode *vm,
+				    struct drm_display_mode *dmode)
+{
+	dmode->hdisplay = vm->hactive;
+	dmode->hsync_start = dmode->hdisplay + vm->hfront_porch;
+	dmode->hsync_end = dmode->hsync_start + vm->hsync_len;
+	dmode->htotal = dmode->hsync_end + vm->hback_porch;
+
+	dmode->vdisplay = vm->vactive;
+	dmode->vsync_start = dmode->vdisplay + vm->vfront_porch;
+	dmode->vsync_end = dmode->vsync_start + vm->vsync_len;
+	dmode->vtotal = dmode->vsync_end + vm->vback_porch;
+
+	dmode->clock = vm->pixelclock / 1000;
+
+	dmode->flags = 0;
+	if (vm->dmt_flags & VESA_DMT_HSYNC_HIGH)
+		dmode->flags |= DRM_MODE_FLAG_PHSYNC;
+	else if (vm->dmt_flags & VESA_DMT_HSYNC_LOW)
+		dmode->flags |= DRM_MODE_FLAG_NHSYNC;
+	if (vm->dmt_flags & VESA_DMT_VSYNC_HIGH)
+		dmode->flags |= DRM_MODE_FLAG_PVSYNC;
+	else if (vm->dmt_flags & VESA_DMT_VSYNC_LOW)
+		dmode->flags |= DRM_MODE_FLAG_NVSYNC;
+	if (vm->data_flags & DISPLAY_FLAGS_INTERLACED)
+		dmode->flags |= DRM_MODE_FLAG_INTERLACE;
+	if (vm->data_flags & DISPLAY_FLAGS_DOUBLESCAN)
+		dmode->flags |= DRM_MODE_FLAG_DBLSCAN;
+	drm_mode_set_name(dmode);
+
+	return 0;
+}
+#endif
+
+#if IS_ENABLED(CONFIG_OF_VIDEOMODE)
+/**
+ * of_get_drm_display_mode - get a drm_display_mode from devicetree
+ * @np: device_node with the timing specification
+ * @dmode: will be set to the return value
+ * @index: index into the list of display timings in devicetree
+ *
+ * This function is expensive and should only be used, if only one mode is to be
+ * read from DT. To get multiple modes start with of_get_display_timings and
+ * work with that instead.
+ */
+int of_get_drm_display_mode(struct device_node *np,
+			    struct drm_display_mode *dmode, int index)
+{
+	struct videomode vm;
+	int ret;
+
+	ret = of_get_videomode(np, &vm, index);
+	if (ret)
+		return ret;
+
+	drm_display_mode_from_videomode(&vm, dmode);
+
+	pr_debug("%s: got %dx%d display mode from %s\n",
+		of_node_full_name(np), vm.hactive, vm.vactive, np->name);
+	drm_mode_debug_printmodeline(dmode);
+
+	return 0;
+}
+#endif
+#endif
+
 /**
  * drm_mode_set_name - set the name on a mode
  * @mode: name will be set in this mode
@@ -832,6 +899,43 @@ void drm_mode_validate_size(struct drm_device *dev,
 EXPORT_SYMBOL(drm_mode_validate_size);
 
 /**
+ * drm_mode_validate_clocks - validate modes against clock limits
+ * @dev: DRM device
+ * @mode_list: list of modes to check
+ * @min: minimum clock rate array
+ * @max: maximum clock rate array
+ * @n_ranges: number of clock ranges (size of arrays)
+ *
+ * LOCKING:
+ * Caller must hold a lock protecting @mode_list.
+ *
+ * Some code may need to check a mode list against the clock limits of the
+ * device in question.  This function walks the mode list, testing to make
+ * sure each mode falls within a given range (defined by @min and @max
+ * arrays) and sets @mode->status as needed.
+ */
+void drm_mode_validate_clocks(struct drm_device *dev,
+			      struct list_head *mode_list,
+			      int *min, int *max, int n_ranges)
+{
+	struct drm_display_mode *mode;
+	int i;
+
+	list_for_each_entry(mode, mode_list, head) {
+		bool good = false;
+		for (i = 0; i < n_ranges; i++) {
+			if (mode->clock >= min[i] && mode->clock <= max[i]) {
+				good = true;
+				break;
+			}
+		}
+		if (!good)
+			mode->status = MODE_CLOCK_RANGE;
+	}
+}
+EXPORT_SYMBOL(drm_mode_validate_clocks);
+
+/**
  * drm_mode_prune_invalid - remove invalid modes from mode list
  * @dev: DRM device
  * @mode_list: list of modes to check
@@ -979,7 +1083,7 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 	int i;
 	enum drm_connector_force force = DRM_FORCE_UNSPECIFIED;
 
-#ifdef XXX_CONFIG_FB
+#ifdef CONFIG_FB
 	if (!mode_option)
 		mode_option = fb_mode_option;
 #endif
@@ -1084,7 +1188,8 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 	}
 done:
 	if (i >= 0) {
-		kprintf("parse error at position %i in video mode '%s'\n",
+		printk(KERN_WARNING
+			"parse error at position %i in video mode '%s'\n",
 			i, name);
 		mode->specified = false;
 		return false;
