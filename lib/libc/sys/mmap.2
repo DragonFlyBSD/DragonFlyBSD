@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)mmap.2	8.4 (Berkeley) 5/11/95
 .\" $FreeBSD: src/lib/libc/sys/mmap.2,v 1.22.2.12 2002/02/27 03:40:13 dd Exp $
-.\" $DragonFly: src/lib/libc/sys/mmap.2,v 1.9 2007/05/17 08:19:00 swildner Exp $
 .\"
 .Dd January 18, 2015
 .Dt MMAP 2
@@ -109,7 +108,9 @@ The
 .Fa offset
 parameter is ignored.
 .It Dv MAP_ANONYMOUS
-This flag is an alias for MAP_ANON and is provided for compatibility.
+This flag is an alias for
+.Dv MAP_ANON
+and is provided for compatibility.
 .\".It Dv MAP_FILE
 .\"Mapped from a regular file or character-special device memory.
 .It Dv MAP_FIXED
