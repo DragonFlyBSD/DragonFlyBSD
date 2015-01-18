@@ -359,6 +359,7 @@ static DEFINE_CLASS_0(bnx, bnx_driver, bnx_methods, sizeof(struct bnx_softc));
 static devclass_t bnx_devclass;
 
 DECLARE_DUMMY_MODULE(if_bnx);
+MODULE_DEPEND(if_bnx, miibus, 1, 1, 1);
 DRIVER_MODULE(if_bnx, pci, bnx_driver, bnx_devclass, NULL, NULL);
 DRIVER_MODULE(miibus, bnx, miibus_driver, miibus_devclass, NULL, NULL);
 

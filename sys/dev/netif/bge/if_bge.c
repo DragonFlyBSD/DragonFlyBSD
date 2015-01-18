@@ -470,6 +470,7 @@ static DEFINE_CLASS_0(bge, bge_driver, bge_methods, sizeof(struct bge_softc));
 static devclass_t bge_devclass;
 
 DECLARE_DUMMY_MODULE(if_bge);
+MODULE_DEPEND(if_bge, miibus, 1, 1, 1);
 DRIVER_MODULE(if_bge, pci, bge_driver, bge_devclass, NULL, NULL);
 DRIVER_MODULE(miibus, bge, miibus_driver, miibus_devclass, NULL, NULL);
 
