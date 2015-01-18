@@ -305,7 +305,6 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 
 	lockinit(&dev->dev_lock, "drmdev", 0, LK_CANRECURSE);
 	lwkt_serialize_init(&dev->irq_lock);
-	lockinit(&dev->vbl_lock, "drmvbl", 0, LK_CANRECURSE);
 	lockinit(&dev->event_lock, "drmev", 0, LK_CANRECURSE);
 	lockinit(&dev->struct_mutex, "drmslk", 0, LK_CANRECURSE);
 

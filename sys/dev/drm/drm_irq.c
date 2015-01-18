@@ -198,10 +198,11 @@ EXPORT_SYMBOL(drm_vblank_cleanup);
 
 int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 {
-	int i;
+	int i, ret = -ENOMEM;
 
 	setup_timer(&dev->vblank_disable_timer, vblank_disable_fn,
 		    (unsigned long)dev);
+	lockinit(&dev->vbl_lock, "drmvbl", 0, LK_CANRECURSE);
 	lockinit(&dev->vblank_time_lock, "drmvtl", 0, LK_CANRECURSE);
 
 	dev->num_crtcs = num_crtcs;
@@ -221,8 +222,12 @@ int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 	    M_DRM, M_WAITOK | M_ZERO);
 	dev->vblank_inmodeset = kmalloc(num_crtcs * sizeof(int),
 	    M_DRM, M_WAITOK | M_ZERO);
+
 	dev->_vblank_time = kmalloc(num_crtcs * DRM_VBLANKTIME_RBSIZE *
 	    sizeof(struct timeval), M_DRM, M_WAITOK | M_ZERO);
+	if (!dev->_vblank_time)
+		goto err;
+
 	DRM_INFO("Supports vblank timestamp caching Rev 1 (10.10.2010).\n");
 
 	/* Driver specific high-precision vblank timestamping supported? */
@@ -240,6 +245,10 @@ int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 
 	dev->vblank_disable_allowed = 0;
 	return 0;
+
+err:
+	drm_vblank_cleanup(dev);
+	return ret;
 }
 EXPORT_SYMBOL(drm_vblank_init);
 
