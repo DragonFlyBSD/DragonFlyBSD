@@ -83,7 +83,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		return (EINVAL);
 	}
 
-	if (hmp->nvolumes + 1 >= HAMMER_MAX_VOLUMES) {
+	if (hmp->nvolumes >= HAMMER_MAX_VOLUMES) {
 		kprintf("Max number of HAMMER volumes exceeded\n");
 		return (EINVAL);
 	}
