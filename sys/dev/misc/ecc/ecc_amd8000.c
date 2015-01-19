@@ -63,8 +63,12 @@ struct ecc_amd8000_softc {
 	device_printf((sc)->ecc_mydev, fmt , ##arg)
 
 static void	ecc_amd8000_callout(void *);
+static void	ecc_amd8000_stop(device_t);
+
 static int	ecc_amd8000_probe(device_t);
 static int	ecc_amd8000_attach(device_t);
+static int	ecc_amd8000_detach(device_t);
+static void	ecc_amd8000_shutdown(device_t);
 
 static const struct ecc_amd8000_memctrl ecc_memctrls[] = {
 	{ 0x1022, 0x1100, "AMD 8000 memory controller" },
@@ -76,7 +80,8 @@ static device_method_t ecc_amd8000_methods[] = {
         /* Device interface */
 	DEVMETHOD(device_probe,		ecc_amd8000_probe),
 	DEVMETHOD(device_attach,	ecc_amd8000_attach),
-	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
+	DEVMETHOD(device_detach,	ecc_amd8000_detach),
+	DEVMETHOD(device_shutdown,	ecc_amd8000_shutdown),
 	DEVMETHOD(device_suspend,	bus_generic_suspend),
 	DEVMETHOD(device_resume,	bus_generic_resume),
 	DEVMETHOD_END
@@ -119,6 +124,8 @@ ecc_amd8000_attach(device_t dev)
 	struct ecc_amd8000_softc *sc = device_get_softc(dev);
 	uint32_t draminfo, eccinfo;
 	int bus, slot, poll = 0;
+
+	callout_init_mp(&sc->ecc_callout);
 
 	dev = sc->ecc_device; /* XXX */
 
@@ -167,7 +174,6 @@ ecc_amd8000_attach(device_t dev)
 		v32 &= 0x7F801EFC;
 		pcib_write_config(dev, bus, slot, 3, 0x4C, v32, 4);
 
-		callout_init_mp(&sc->ecc_callout);
 		callout_reset(&sc->ecc_callout, hz, ecc_amd8000_callout, sc);
 	}
 	return (0);
@@ -199,4 +205,25 @@ ecc_amd8000_callout(void *xsc)
 		pcib_write_config(dev, bus, slot, 3, 0x4C, v32 & 0x7F801EFC, 4);
 	}
 	callout_reset(&sc->ecc_callout, hz, ecc_amd8000_callout, sc);
+}
+
+static void
+ecc_amd8000_stop(device_t dev)
+{
+	struct ecc_amd8000_softc *sc = device_get_softc(dev);
+
+	callout_stop_sync(&sc->ecc_callout);
+}
+
+static int
+ecc_amd8000_detach(device_t dev)
+{
+	ecc_amd8000_stop(dev);
+	return 0;
+}
+
+static void
+ecc_amd8000_shutdown(device_t dev)
+{
+	ecc_amd8000_stop(dev);
 }

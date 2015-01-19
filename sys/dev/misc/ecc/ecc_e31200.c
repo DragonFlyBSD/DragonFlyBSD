@@ -77,6 +77,8 @@ struct ecc_e31200_softc {
 
 static int	ecc_e31200_probe(device_t);
 static int	ecc_e31200_attach(device_t);
+static int	ecc_e31200_detach(device_t);
+static void	ecc_e31200_shutdown(device_t);
 
 static void	ecc_e31200_chaninfo(struct ecc_e31200_softc *, uint32_t,
 		    const char *);
@@ -97,13 +99,14 @@ static const struct ecc_e31200_memctrl ecc_memctrls[] = {
 };
 
 static device_method_t ecc_e31200_methods[] = {
-        /* Device interface */
-        DEVMETHOD(device_probe,		ecc_e31200_probe),
-        DEVMETHOD(device_attach,	ecc_e31200_attach),
-        DEVMETHOD(device_shutdown,	bus_generic_shutdown),
-        DEVMETHOD(device_suspend,	bus_generic_suspend),
-        DEVMETHOD(device_resume,	bus_generic_resume),
-        DEVMETHOD_END
+	/* Device interface */
+	DEVMETHOD(device_probe,		ecc_e31200_probe),
+	DEVMETHOD(device_attach,	ecc_e31200_attach),
+	DEVMETHOD(device_detach,	ecc_e31200_detach),
+	DEVMETHOD(device_shutdown,	ecc_e31200_shutdown),
+	DEVMETHOD(device_suspend,	bus_generic_suspend),
+	DEVMETHOD(device_resume,	bus_generic_resume),
+	DEVMETHOD_END
 };
 
 static driver_t ecc_e31200_driver = {
@@ -145,6 +148,8 @@ ecc_e31200_attach(device_t dev)
 	uint32_t capa, dmfc, mch_barlo, mch_barhi;
 	uint64_t mch_bar;
 	int bus, slot, dmfc_parsed = 1;
+
+	callout_init_mp(&sc->ecc_callout);
 
 	dev = sc->ecc_device; /* XXX */
 
@@ -275,6 +280,7 @@ ecc_e31200_attach(device_t dev)
 		if (!ecc_active) {
 			pmap_unmapdev((vm_offset_t)sc->ecc_addr,
 			    MCH_E31200_SIZE);
+			sc->ecc_addr = NULL;
 			return 0;
 		}
 	} else {
@@ -282,7 +288,6 @@ ecc_e31200_attach(device_t dev)
 	}
 
 	ecc_e31200_status(sc);
-	callout_init_mp(&sc->ecc_callout);
 	callout_reset(&sc->ecc_callout, hz, ecc_e31200_callout, sc);
 
 	return 0;
@@ -416,4 +421,23 @@ ecc_e31200_errlog_ch(struct ecc_e31200_softc *sc,
 	    __SHIFTOUT(err0, MCH_E31200_ERRLOG0_ERRSYND),
 	    __SHIFTOUT(err1, MCH_E31200_ERRLOG1_ERRROW),
 	    __SHIFTOUT(err1, MCH_E31200_ERRLOG1_ERRCOL));
+}
+
+static int
+ecc_e31200_detach(device_t dev)
+{
+	struct ecc_e31200_softc *sc = device_get_softc(dev);
+
+	callout_stop_sync(&sc->ecc_callout);
+	if (sc->ecc_addr != NULL)
+		pmap_unmapdev((vm_offset_t)sc->ecc_addr, MCH_E31200_SIZE);
+	return 0;
+}
+
+static void
+ecc_e31200_shutdown(device_t dev)
+{
+	struct ecc_e31200_softc *sc = device_get_softc(dev);
+
+	callout_stop_sync(&sc->ecc_callout);
 }
