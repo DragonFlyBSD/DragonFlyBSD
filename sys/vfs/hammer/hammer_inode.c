@@ -252,6 +252,11 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 /*
  * Inform the kernel that the inode is dirty.  This will be checked
  * by vn_unlock().
+ *
+ * Theoretically in order to reclaim a vnode the hammer_vop_reclaim()
+ * must be called which will interlock against our inode lock, so
+ * if VRECLAIMED is not set vp->v_mount (as used by vsetisdirty())
+ * should be stable without having to acquire any new locks.
  */
 void
 hammer_inode_dirty(struct hammer_inode *ip)
@@ -259,7 +264,8 @@ hammer_inode_dirty(struct hammer_inode *ip)
 	struct vnode *vp;
 
 	if ((ip->flags & HAMMER_INODE_MODMASK) &&
-	    (vp = ip->vp) != NULL) {
+	    (vp = ip->vp) != NULL &&
+	    (vp->v_flag & (VRECLAIMED | VISDIRTY)) == 0) {
 		vsetisdirty(vp);
 	}
 }
