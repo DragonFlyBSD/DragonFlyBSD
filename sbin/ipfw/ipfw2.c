@@ -3488,7 +3488,7 @@ ipfw_readfile(int ac, char *av[])
 #define WHITESP		" \t\f\v\n\r"
 	char	buf[BUFSIZ];
 	char	*a, *p, *args[MAX_ARGS], *cmd = NULL;
-	char	linename[10];
+	char	linename[20];
 	int	i=0, lineno=0, qflag=0, pflag=0, status;
 	FILE	*f = NULL;
 	pid_t	preproc = 0;
@@ -3580,7 +3580,7 @@ ipfw_readfile(int ac, char *av[])
 
 	while (fgets(buf, BUFSIZ, f)) {
 		lineno++;
-		sprintf(linename, "Line %d", lineno);
+		snprintf(linename, sizeof(linename), "Line %d", lineno);
 		args[0] = linename;
 
 		if (*buf == '#')
