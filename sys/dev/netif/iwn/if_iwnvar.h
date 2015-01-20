@@ -1,4 +1,4 @@
-/*	$FreeBSD: head/sys/dev/iwn/if_iwnvar.h 258035 2013-11-12 05:58:23Z adrian $	*/
+/*	$FreeBSD$	*/
 /*	$OpenBSD: if_iwnvar.h,v 1.18 2010/04/30 16:06:46 damien Exp $	*/
 
 /*-
@@ -20,9 +20,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-#include <netproto/802_11/ieee80211_amrr.h>
-
 enum iwn_rxon_ctx_id {
 		IWN_RXON_BSS_CTX,
 		IWN_RXON_PAN_CTX,
@@ -118,15 +115,6 @@ struct iwn_tx_ring {
 	int			read;
 };
 
-struct iwn_amrr {
-	struct			ieee80211_node ni;      /* must be the first */
-	int			txcnt;
-	int			retrycnt;
-	int			success;
-	int			success_threshold;
-	int			recovery;
-};
-
 struct iwn_softc;
 
 struct iwn_rx_data {
@@ -153,7 +141,6 @@ struct iwn_node {
 		int			startidx;
 		int			nframes;
 	} agg[IEEE80211_TID_SIZE];
-	struct  ieee80211_amrr_node     amn;
 };
 
 struct iwn_calib_state {
@@ -239,7 +226,6 @@ struct iwn_vap {
 
 	int			(*iv_newstate)(struct ieee80211vap *,
 				    enum ieee80211_state, int);
-	struct  ieee80211_amrr_node     iv_amrr;
 	int			ctx;
 	int			beacon_int;
 	uint8_t		macaddr[IEEE80211_ADDR_LEN];
@@ -248,13 +234,12 @@ struct iwn_vap {
 #define	IWN_VAP(_vap)	((struct iwn_vap *)(_vap))
 
 struct iwn_softc {
-	struct arpcom		arpcom;
 	device_t		sc_dev;
 
 	struct ifnet		*sc_ifp;
 	int			sc_debug;
 
-	struct mtx		sc_mtx;
+	struct lock		sc_mtx;
 
 	u_int			sc_flags;
 #define IWN_FLAG_HAS_OTPROM	(1 << 1)
@@ -266,6 +251,7 @@ struct iwn_softc {
 #define IWN_FLAG_ADV_BTCOEX	(1 << 8)
 #define IWN_FLAG_PAN_SUPPORT	(1 << 9)
 #define IWN_FLAG_BTCOEX		(1 << 10)
+#define IWN_FLAG_HWSTOPPED	(1 << 11)
 
 	uint8_t 		hw_type;
 	/* subdevice_id used to adjust configuration */
@@ -315,7 +301,6 @@ struct iwn_softc {
 	bus_space_tag_t		sc_st;
 	bus_space_handle_t	sc_sh;
 	struct resource		*irq;
-	bus_dma_tag_t		sc_dmat;
 	void 			*sc_ih;
 	bus_size_t		sc_sz;
 	int			sc_cap_off;	/* PCIe Capabilities. */
@@ -430,4 +415,16 @@ struct iwn_softc {
 
 	/* For specific params */
 	const struct iwn_base_params *base_params;
+
+#define	IWN_UCODE_API(ver)	(((ver) & 0x0000FF00) >> 8)
+	uint32_t		ucode_rev;
 };
+
+#define IWN_LOCK_INIT(_sc) \
+	lockinit(&(_sc)->sc_mtx, device_get_nameunit((_sc)->sc_dev), 0, 0)
+#define IWN_LOCK(_sc)			lockmgr(&(_sc)->sc_mtx, LK_EXCLUSIVE)
+#define IWN_LOCK_ASSERT(_sc)		KKASSERT(lockstatus(&(_sc)->sc_mtx, curthread) == LK_EXCLUSIVE)
+#define IWN_UNLOCK(_sc)			lockmgr(&(_sc)->sc_mtx, LK_RELEASE)
+#define IWN_LOCK_DESTROY(_sc)		lockuninit(&(_sc)->sc_mtx)
+
+int iwndev_printf(device_t dev, const char *ctl, ...);

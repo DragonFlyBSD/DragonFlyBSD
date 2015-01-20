@@ -5,4 +5,6 @@ SRCS    = if_iwn.c device_if.h bus_if.h pci_if.h opt_iwn.h opt_wlan.h
 
 SUBDIR	= fw
 
+CFLAGS += -DIWN_DEBUG
+
 .include <bsd.kmod.mk>
