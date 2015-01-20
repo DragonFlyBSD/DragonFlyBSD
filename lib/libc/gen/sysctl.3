@@ -229,7 +229,7 @@ Each time it runs,
 gets the list of debugging variables from the kernel and
 displays their current values.
 The system defines twenty
-.Vt ( struct ctldebug )
+.Vt struct ctldebug
 variables named
 .Nm debug0
 through
@@ -389,19 +389,19 @@ The maximum bytes of argument to
 The full pathname of the file from which the kernel was loaded.
 .It Dv KERN_BOOTTIME
 A
-.Va struct timeval
+.Vt struct timeval
 structure is returned.
 This structure contains the time that the system was booted.
 .It Dv KERN_CLOCKRATE
 A
-.Va struct clockinfo
+.Vt struct clockinfo
 structure is returned.
 This structure contains the clock, statistics clock and profiling clock
 frequencies, the number of micro-seconds per hz tick and the skew rate.
 .It Dv KERN_FILE
 Return the entire file table.
 The returned data consists of an array of
-.Va struct kinfo_file ,
+.Vt struct kinfo_file ,
 whose size depends on the current number of such objects in the system.
 .It Dv KERN_HOSTID
 Get or set the host id.
@@ -450,7 +450,7 @@ attempts to comply.
 Return selected information about specific running processes.
 .Pp
 For the following names, an array of
-.Va struct kinfo_proc
+.Vt struct kinfo_proc
 structures is returned,
 whose size depends on the current number of such objects in the system.
 Adding the flag
@@ -524,7 +524,7 @@ Array of statistical program counter counts.
 Array indexed by program counter of call-from points.
 .It Dv GPROF_TOS
 Array of
-.Va struct tostruct
+.Vt struct tostruct
 describing destination of calls and their counts.
 .It Dv GPROF_GMONPARAM
 Structure giving the sizes of the above arrays.
@@ -547,9 +547,9 @@ the system.
 The returned data consists of an array whose size depends on the
 current number of such objects in the system.
 Each element of the array contains the kernel address of a vnode
-.Va struct vnode *
+.Vt struct vnode *
 followed by the vnode itself
-.Va struct vnode .
+.Vt struct vnode .
 .El
 .Ss CTL_MACHDEP
 The set of variables defined is architecture dependent.
@@ -771,11 +771,11 @@ privilege may change the value.
 .It Dv VM_LOADAVG
 Return the load average history.
 The returned data consists of a
-.Va struct loadavg .
+.Vt struct loadavg .
 .It Dv VM_METER
 Return the system wide virtual memory statistics.
 The returned data consists of a
-.Va struct vmtotal .
+.Vt struct vmtotal .
 .It Dv VM_PAGEOUT_ALGORITHM
 0 if the statistics-based page management algorithm is in use
 or 1 if the near-LRU algorithm is in use.
