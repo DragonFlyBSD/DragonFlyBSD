@@ -28,6 +28,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * PCI/Cardbus front-end for the Atheros Wireless LAN controller driver.
@@ -57,8 +58,17 @@
 
 #include <dev/netif/ath/ath/if_athvar.h>
 
+#if defined(__DragonFly__)
+
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
+
+#else
+
+#include <dev/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
+
+#endif
 
 /* For EEPROM firmware */
 #ifdef	ATH_EEPROM_FIRMWARE
@@ -76,6 +86,98 @@ struct ath_pci_softc {
 	struct resource		*sc_irq;	/* irq resource */
 	void			*sc_ih;		/* interrupt handler */
 };
+
+/*
+ * XXX eventually this should be some system level definition
+ * so modules will hvae probe/attach information like USB.
+ * But for now..
+ */
+struct pci_device_id {
+	int vendor_id;
+	int device_id;
+
+	int sub_vendor_id;
+	int sub_device_id;
+
+	int driver_data;
+
+	int match_populated:1;
+	int match_vendor_id:1;
+	int match_device_id:1;
+	int match_sub_vendor_id:1;
+	int match_sub_device_id:1;
+};
+
+#define	PCI_VDEVICE(v, s) \
+	.vendor_id = (v), \
+	.device_id = (s), \
+	.match_populated = 1, \
+	.match_vendor_id = 1, \
+	.match_device_id = 1
+
+#define	PCI_DEVICE_SUB(v, d, dv, ds) \
+	.match_populated = 1, \
+	.vendor_id = (v), .match_vendor_id = 1, \
+	.device_id = (d), .match_device_id = 1, \
+	.sub_vendor_id = (dv), .match_sub_vendor_id = 1, \
+	.sub_device_id = (ds), .match_sub_device_id = 1
+
+#define	PCI_VENDOR_ID_ATHEROS		0x168c
+#define	PCI_VENDOR_ID_SAMSUNG		0x144d
+#define	PCI_VENDOR_ID_AZWAVE		0x1a3b
+#define	PCI_VENDOR_ID_FOXCONN		0x105b
+#define	PCI_VENDOR_ID_ATTANSIC		0x1969
+#define	PCI_VENDOR_ID_ASUSTEK		0x1043
+#define	PCI_VENDOR_ID_DELL		0x1028
+#define	PCI_VENDOR_ID_QMI		0x1a32
+#define	PCI_VENDOR_ID_LENOVO		0x17aa
+#define	PCI_VENDOR_ID_HP		0x103c
+
+#include "if_ath_pci_devlist.h"
+
+/*
+ * Attempt to find a match for the given device in
+ * the given device table.
+ *
+ * Returns the device structure or NULL if no matching
+ * PCI device is found.
+ */
+static const struct pci_device_id *
+ath_pci_probe_device(device_t dev, const struct pci_device_id *dev_table, int nentries)
+{
+	int i;
+	int vendor_id, device_id;
+	int sub_vendor_id, sub_device_id;
+
+	vendor_id = pci_get_vendor(dev);
+	device_id = pci_get_device(dev);
+	sub_vendor_id = pci_get_subvendor(dev);
+	sub_device_id = pci_get_subdevice(dev);
+
+	for (i = 0; i < nentries; i++) {
+		/* Don't match on non-populated (eg empty) entries */
+		if (! dev_table[i].match_populated)
+			continue;
+
+		if (dev_table[i].match_vendor_id &&
+		    (dev_table[i].vendor_id != vendor_id))
+			continue;
+		if (dev_table[i].match_device_id &&
+		    (dev_table[i].device_id != device_id))
+			continue;
+		if (dev_table[i].match_sub_vendor_id &&
+		    (dev_table[i].sub_vendor_id != sub_vendor_id))
+			continue;
+		if (dev_table[i].match_sub_device_id &&
+		    (dev_table[i].sub_device_id != sub_device_id))
+			continue;
+
+		/* Match */
+		return (&dev_table[i]);
+	}
+
+	return (NULL);
+}
 
 #define	BS_BAR	0x10
 #define	PCIR_RETRY_TIMEOUT	0x41
@@ -147,8 +249,14 @@ ath_pci_attach(device_t dev)
 	const struct firmware *fw = NULL;
 	const char *buf;
 #endif
+	const struct pci_device_id *pd;
 
 	sc->sc_dev = dev;
+
+	/* Do this lookup anyway; figure out what to do with it later */
+	pd = ath_pci_probe_device(dev, ath_pci_id_table, nitems(ath_pci_id_table));
+	if (pd)
+		sc->sc_pci_devinfo = pd->driver_data;
 
 	/*
 	 * Enable bus mastering.
@@ -170,8 +278,7 @@ ath_pci_attach(device_t dev)
 		device_printf(dev, "cannot map register space\n");
 		goto bad;
 	}
-	/* XXX uintptr_t is a bandaid for ia64; to be fixed */
-	sc->sc_st = (HAL_BUS_TAG)(uintptr_t) rman_get_bustag(psc->sc_sr);
+	sc->sc_st = (HAL_BUS_TAG) rman_get_bustag(psc->sc_sr);
 	sc->sc_sh = (HAL_BUS_HANDLE) rman_get_bushandle(psc->sc_sr);
 	/*
 	 * Mark device invalid so any interrupts (shared or otherwise)
@@ -189,6 +296,7 @@ ath_pci_attach(device_t dev)
 		device_printf(dev, "could not map interrupt\n");
 		goto bad1;
 	}
+#if defined(__DragonFly__)
 	if (bus_setup_intr(dev, psc->sc_irq,
 			   INTR_MPSAFE,
 			   ath_intr, sc, &psc->sc_ih,
@@ -196,19 +304,35 @@ ath_pci_attach(device_t dev)
 		device_printf(dev, "could not establish interrupt\n");
 		goto bad2;
 	}
+#else
+	if (bus_setup_intr(dev, psc->sc_irq,
+			   INTR_TYPE_NET | INTR_MPSAFE,
+			   NULL, ath_intr, sc, &psc->sc_ih)) {
+		device_printf(dev, "could not establish interrupt\n");
+		goto bad2;
+	}
+#endif
 
 	/*
 	 * Setup DMA descriptor area.
 	 */
 	if (bus_dma_tag_create(bus_get_dma_tag(dev),	/* parent */
-			       PAGE_SIZE, 0,			/* alignment, bounds */
+#if defined(__DragonFly__)
+			       4, 0,			/* alignment, bounds */
+#else
+			       1, 0,			/* alignment, bounds */
+#endif
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
 			       NULL, NULL,		/* filter, filterarg */
-			       4096*256,		/* maxsize XXX */
+			       0x3ffff,			/* maxsize XXX */
 			       ATH_MAX_SCATTER,		/* nsegments */
 			       0x3ffff,			/* maxsegsize XXX */
 			       BUS_DMA_ALLOCNOW,	/* flags */
+#if !defined(__DragonFly__)
+			       NULL,			/* lockfunc */
+			       NULL,			/* lockarg */
+#endif
 			       &sc->sc_dmat)) {
 		device_printf(dev, "cannot allocate DMA tag\n");
 		goto bad3;
@@ -252,9 +376,7 @@ ath_pci_attach(device_t dev)
 	ATH_TX_IC_LOCK_INIT(sc);
 	ATH_TXSTATUS_LOCK_INIT(sc);
 
-	wlan_serialize_enter();
 	error = ath_attach(pci_get_device(dev), sc);
-	wlan_serialize_exit();
 	if (error == 0)					/* success */
 		return 0;
 
@@ -362,10 +484,7 @@ static driver_t ath_pci_driver = {
 	sizeof (struct ath_pci_softc)
 };
 static	devclass_t ath_devclass;
-DRIVER_MODULE(ath_pci, pci, ath_pci_driver, ath_devclass, NULL, NULL);
+DRIVER_MODULE(ath_pci, pci, ath_pci_driver, ath_devclass, 0, 0);
 MODULE_VERSION(ath_pci, 1);
 MODULE_DEPEND(ath_pci, wlan, 1, 1, 1);		/* 802.11 media layer */
 MODULE_DEPEND(ath_pci, if_ath, 1, 1, 1);	/* if_ath driver */
-MODULE_DEPEND(ath_pci, ath_hal, 1, 1, 1);	/* Atheros HAL */
-MODULE_DEPEND(ath_pci, ath_rate, 1, 1, 1);	/* rate control alg */
-MODULE_DEPEND(ath_pci, ath_dfs, 1, 1, 1);	/* wtf */

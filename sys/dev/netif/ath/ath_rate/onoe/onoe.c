@@ -28,6 +28,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * Atsushi Onoe's rate control algorithm.
@@ -43,7 +44,9 @@
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/errno.h>
+
 #include <sys/bus.h>
+
 #include <sys/socket.h>
  
 #include <net/if.h>
@@ -438,34 +441,34 @@ ath_rate_detach(struct ath_ratectrl *arc)
 static int
 onoe_modevent(module_t mod, int type, void *unused)
 {
-	int error;
+       int error;
 
-	wlan_serialize_enter();
+       wlan_serialize_enter();
 
-	switch (type) {
-	case MOD_LOAD:
-		if (bootverbose) {
-			kprintf("ath_rate: <Atsushi Onoe's rate "
-				"control algorithm>\n");
-		}
-		error = 0;
-		break;
-	case MOD_UNLOAD:
-		error = 0;
-		break;
-	default:
-		error = EINVAL;
-		break;
-	}
-	wlan_serialize_exit();
+       switch (type) {
+       case MOD_LOAD:
+	       if (bootverbose) {
+		       kprintf("ath_rate: <Atsushi Onoe's rate "
+			       "control algorithm>\n");
+	       }
+	       error = 0;
+	       break;
+       case MOD_UNLOAD:
+	       error = 0;
+	       break;
+       default:
+	       error = EINVAL;
+	       break;
+       }
+       wlan_serialize_exit();
 
-	return error;
+       return error;
 }
 
 static moduledata_t onoe_mod = {
-	"ath_rate",
-	onoe_modevent,
-	0
+       "ath_rate",
+       onoe_modevent,
+       0
 };
 
 DECLARE_MODULE(ath_rate, onoe_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);

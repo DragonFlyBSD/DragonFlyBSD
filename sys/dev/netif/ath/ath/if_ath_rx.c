@@ -28,6 +28,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * Driver for the Atheros Wireless LAN controller.
@@ -110,7 +111,7 @@
 #include <dev/netif/ath/ath/if_athdfs.h>
 
 #ifdef ATH_TX99_DIAG
-#include <dev/netif/ath/ath_tx99/ath_tx99.h>
+#include <dev/netif/ath/ath/ath_tx99/ath_tx99.h>
 #endif
 
 #ifdef	ATH_DEBUG_ALQ
@@ -253,7 +254,7 @@ ath_legacy_rxbuf_init(struct ath_softc *sc, struct ath_buf *bf)
 		 * multiple of the cache line size.  Not doing this
 		 * causes weird stuff to happen (for the 5210 at least).
 		 */
-		m = m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL) {
 			DPRINTF(sc, ATH_DEBUG_ANY,
 				"%s: no mbuf/cluster\n", __func__);
@@ -262,10 +263,17 @@ ath_legacy_rxbuf_init(struct ath_softc *sc, struct ath_buf *bf)
 		}
 		m->m_pkthdr.len = m->m_len = m->m_ext.ext_size;
 
+#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
 					     bf->bf_dmamap, m,
 					     bf->bf_segs, 1, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
+#else
+		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat,
+					     bf->bf_dmamap, m,
+					     bf->bf_segs, &bf->bf_nseg,
+					     BUS_DMA_NOWAIT);
+#endif
 		if (error != 0) {
 			DPRINTF(sc, ATH_DEBUG_ANY,
 			    "%s: bus_dmamap_load_mbuf_sg failed; error %d\n",
@@ -341,7 +349,7 @@ ath_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m,
 
 #define	TU_TO_TSF(_tu)	(((u_int64_t)(_tu)) << 10)
 	tsf_intval = 1;
-	if (ni != NULL && ni->ni_intval > 0) {
+	if (ni->ni_intval > 0) {
 		tsf_intval = TU_TO_TSF(ni->ni_intval);
 	}
 #undef	TU_TO_TSF
@@ -701,7 +709,11 @@ ath_rx_pkt(struct ath_softc *sc, struct ath_rx_status *rs, HAL_STATUS status,
 					rs->rs_keyix-32 : rs->rs_keyix);
 			}
 		}
-		ifp->if_ierrors++;
+#if defined(__DragonFly__)
+		++ifp->if_ierrors;
+#else
+		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
+#endif
 rx_error:
 		/*
 		 * Cleanup any pending partial frame.
@@ -827,7 +839,11 @@ rx_accept:
 			rs->rs_antenna |= 0x4;
 	}
 
-	ifp->if_ipackets++;
+#if defined(__DragonFly__)
+	++ifp->if_ipackets;
+#else
+	if_inc_counter(ifp, IFCOUNTER_IPACKETS, 1);
+#endif
 	sc->sc_stats.ast_ant_rx[rs->rs_antenna]++;
 
 	/*
@@ -1013,7 +1029,9 @@ ath_rx_proc(struct ath_softc *sc, int resched)
 	kickpcu = sc->sc_kickpcu;
 	ATH_PCU_UNLOCK(sc);
 
+	ATH_LOCK(sc);
 	ath_power_set_power_state(sc, HAL_PM_AWAKE);
+	ATH_UNLOCK(sc);
 
 	DPRINTF(sc, ATH_DEBUG_RX_PROC, "%s: called\n", __func__);
 	ngood = 0;
@@ -1121,7 +1139,6 @@ rx_proc_next:
 		sc->sc_rxedma[HAL_RX_QUEUE_HP].m_holdbf = bf;
 	} while (ret == 0);
 
-
 	/* rx signal state monitoring */
 	ath_hal_rxmonitor(ah, &sc->sc_halstats, sc->sc_curchan);
 	if (ngood)
@@ -1186,19 +1203,30 @@ rx_proc_next:
 	}
 
 	/* XXX check this inside of IF_LOCK? */
+#if defined(__DragonFly__)
 	if (resched && !ifq_is_oactive(&ifp->if_snd)) {
+#else
+	if (resched && (ifp->if_drv_flags & IFF_DRV_OACTIVE) == 0) {
+#endif
 #ifdef IEEE80211_SUPPORT_SUPERG
 		ieee80211_ff_age_all(ic, 100);
 #endif
+#if defined(__DragonFly__)
 		if (!ifq_is_empty(&ifp->if_snd))
 			ath_tx_kick(sc);
+#else
+		if (!IFQ_IS_EMPTY(&ifp->if_snd))
+			ath_tx_kick(sc);
+#endif
 	}
 #undef PA2DESC
 
 	/*
 	 * Put the hardware to sleep again if we're done with it.
 	 */
+	ATH_LOCK(sc);
 	ath_power_restore_power_state(sc);
+	ATH_UNLOCK(sc);
 
 	/*
 	 * If we hit the maximum number of frames in this round,
@@ -1226,7 +1254,6 @@ ath_legacy_rx_tasklet(void *arg, int npending)
 {
 	struct ath_softc *sc = arg;
 
-	wlan_serialize_enter();
 	ATH_KTR(sc, ATH_KTR_RXPROC, 1, "ath_rx_proc: pending=%d", npending);
 	DPRINTF(sc, ATH_DEBUG_RX_PROC, "%s: pending %u\n", __func__, npending);
 	ATH_PCU_LOCK(sc);
@@ -1234,13 +1261,11 @@ ath_legacy_rx_tasklet(void *arg, int npending)
 		device_printf(sc->sc_dev,
 		    "%s: sc_inreset_cnt > 0; skipping\n", __func__);
 		ATH_PCU_UNLOCK(sc);
-		wlan_serialize_exit();
 		return;
 	}
 	ATH_PCU_UNLOCK(sc);
 
 	ath_rx_proc(sc, 1);
-	wlan_serialize_exit();
 }
 
 static void
@@ -1254,52 +1279,52 @@ static void
 ath_legacy_flush_rxpending(struct ath_softc *sc)
 {
 
-       /* XXX ATH_RX_LOCK_ASSERT(sc); */
+	/* XXX ATH_RX_LOCK_ASSERT(sc); */
 
-       if (sc->sc_rxedma[HAL_RX_QUEUE_LP].m_rxpending != NULL) {
-	       m_freem(sc->sc_rxedma[HAL_RX_QUEUE_LP].m_rxpending);
-	       sc->sc_rxedma[HAL_RX_QUEUE_LP].m_rxpending = NULL;
-       }
-       if (sc->sc_rxedma[HAL_RX_QUEUE_HP].m_rxpending != NULL) {
-	       m_freem(sc->sc_rxedma[HAL_RX_QUEUE_HP].m_rxpending);
-	       sc->sc_rxedma[HAL_RX_QUEUE_HP].m_rxpending = NULL;
-       }
+	if (sc->sc_rxedma[HAL_RX_QUEUE_LP].m_rxpending != NULL) {
+		m_freem(sc->sc_rxedma[HAL_RX_QUEUE_LP].m_rxpending);
+		sc->sc_rxedma[HAL_RX_QUEUE_LP].m_rxpending = NULL;
+	}
+	if (sc->sc_rxedma[HAL_RX_QUEUE_HP].m_rxpending != NULL) {
+		m_freem(sc->sc_rxedma[HAL_RX_QUEUE_HP].m_rxpending);
+		sc->sc_rxedma[HAL_RX_QUEUE_HP].m_rxpending = NULL;
+	}
 }
 
 static int
 ath_legacy_flush_rxholdbf(struct ath_softc *sc)
 {
-       struct ath_buf *bf;
+	struct ath_buf *bf;
 
-       /* XXX ATH_RX_LOCK_ASSERT(sc); */
-       /*
-	* If there are RX holding buffers, free them here and return
-	* them to the list.
-	*
-	* XXX should just verify that bf->bf_m is NULL, as it must
-	* be at this point!
-	*/
-       bf = sc->sc_rxedma[HAL_RX_QUEUE_HP].m_holdbf;
-       if (bf != NULL) {
-	       if (bf->bf_m != NULL)
-		       m_freem(bf->bf_m);
-	       bf->bf_m = NULL;
-	       TAILQ_INSERT_TAIL(&sc->sc_rxbuf, bf, bf_list);
-	       (void) ath_rxbuf_init(sc, bf);
-       }
-       sc->sc_rxedma[HAL_RX_QUEUE_HP].m_holdbf = NULL;
+	/* XXX ATH_RX_LOCK_ASSERT(sc); */
+	/*
+	 * If there are RX holding buffers, free them here and return
+	 * them to the list.
+	 *
+	 * XXX should just verify that bf->bf_m is NULL, as it must
+	 * be at this point!
+	 */
+	bf = sc->sc_rxedma[HAL_RX_QUEUE_HP].m_holdbf;
+	if (bf != NULL) {
+		if (bf->bf_m != NULL)
+			m_freem(bf->bf_m);
+		bf->bf_m = NULL;
+		TAILQ_INSERT_TAIL(&sc->sc_rxbuf, bf, bf_list);
+		(void) ath_rxbuf_init(sc, bf);
+	}
+	sc->sc_rxedma[HAL_RX_QUEUE_HP].m_holdbf = NULL;
 
-       bf = sc->sc_rxedma[HAL_RX_QUEUE_LP].m_holdbf;
-       if (bf != NULL) {
-	       if (bf->bf_m != NULL)
-		       m_freem(bf->bf_m);
-	       bf->bf_m = NULL;
-	       TAILQ_INSERT_TAIL(&sc->sc_rxbuf, bf, bf_list);
-	       (void) ath_rxbuf_init(sc, bf);
-       }
-       sc->sc_rxedma[HAL_RX_QUEUE_LP].m_holdbf = NULL;
+	bf = sc->sc_rxedma[HAL_RX_QUEUE_LP].m_holdbf;
+	if (bf != NULL) {
+		if (bf->bf_m != NULL)
+			m_freem(bf->bf_m);
+		bf->bf_m = NULL;
+		TAILQ_INSERT_TAIL(&sc->sc_rxbuf, bf, bf_list);
+		(void) ath_rxbuf_init(sc, bf);
+	}
+	sc->sc_rxedma[HAL_RX_QUEUE_LP].m_holdbf = NULL;
 
-       return (0);
+	return (0);
 }
 
 /*
@@ -1312,6 +1337,8 @@ ath_legacy_stoprecv(struct ath_softc *sc, int dodelay)
 	((struct ath_desc *)((caddr_t)(_sc)->sc_rxdma.dd_desc + \
 		((_pa) - (_sc)->sc_rxdma.dd_desc_paddr)))
 	struct ath_hal *ah = sc->sc_ah;
+
+	ATH_RX_LOCK(sc);
 
 	ath_hal_stoppcurecv(ah);	/* disable PCU */
 	ath_hal_setrxfilter(ah, 0);	/* clear recv filter */
@@ -1351,8 +1378,16 @@ ath_legacy_stoprecv(struct ath_softc *sc, int dodelay)
 	(void) ath_legacy_flush_rxholdbf(sc);
 
 	sc->sc_rxlink = NULL;		/* just in case */
+
+	ATH_RX_UNLOCK(sc);
 #undef PA2DESC
 }
+
+/*
+ * XXX TODO: something was calling startrecv without calling
+ * stoprecv.  Let's figure out what/why.  It was showing up
+ * as a mbuf leak (rxpending) and ath_buf leak (holdbf.)
+ */
 
 /*
  * Enable the receive h/w following a reset.
@@ -1363,6 +1398,11 @@ ath_legacy_startrecv(struct ath_softc *sc)
 	struct ath_hal *ah = sc->sc_ah;
 	struct ath_buf *bf;
 
+	ATH_RX_LOCK(sc);
+
+	/*
+	 * XXX should verify these are already all NULL!
+	 */
 	sc->sc_rxlink = NULL;
 	(void) ath_legacy_flush_rxpending(sc);
 	(void) ath_legacy_flush_rxholdbf(sc);
@@ -1385,6 +1425,8 @@ ath_legacy_startrecv(struct ath_softc *sc)
 	ath_hal_rxena(ah);		/* enable recv descriptors */
 	ath_mode_init(sc);		/* set filters, etc. */
 	ath_hal_startpcurecv(ah);	/* re-enable PCU/DMA engine */
+
+	ATH_RX_UNLOCK(sc);
 	return 0;
 }
 

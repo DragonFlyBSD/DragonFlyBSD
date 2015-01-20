@@ -28,6 +28,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * Driver for the Atheros Wireless LAN controller.
@@ -68,6 +69,7 @@
 #include <sys/module.h>
 #include <sys/ktr.h>
 
+
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_dl.h>
@@ -98,7 +100,7 @@
 #include <dev/netif/ath/ath/if_ath_beacon.h>
 
 #ifdef ATH_TX99_DIAG
-#include <dev/netif/ath/ath_tx99/ath_tx99.h>
+#include <dev/netif/ath/ath/ath_tx99/ath_tx99.h>
 #endif
 
 /*
@@ -201,9 +203,15 @@ ath_beacon_alloc(struct ath_softc *sc, struct ieee80211_node *ni)
 		sc->sc_stats.ast_be_nombuf++;
 		return ENOMEM;
 	}
+#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(sc->sc_dmat, bf->bf_dmamap, m,
 				     bf->bf_segs, 1, &bf->bf_nseg,
 				     BUS_DMA_NOWAIT);
+#else
+	error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
+				     bf->bf_segs, &bf->bf_nseg,
+				     BUS_DMA_NOWAIT);
+#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: cannot map mbuf, bus_dmamap_load_mbuf_sg returns %d\n",
@@ -240,7 +248,7 @@ ath_beacon_alloc(struct ath_softc *sc, struct ieee80211_node *ni)
 		    "%s: %s beacons bslot %d intval %u tsfadjust %llu\n",
 		    __func__, sc->sc_stagbeacons ? "stagger" : "burst",
 		    avp->av_bslot, ni->ni_intval,
-		    (unsigned long long) le64toh(tsfadjust));
+		    (long long unsigned) le64toh(tsfadjust));
 
 		wh = mtod(m, struct ieee80211_frame *);
 		memcpy(&wh[1], &tsfadjust, sizeof(tsfadjust));
@@ -712,10 +720,16 @@ ath_beacon_generate(struct ath_softc *sc, struct ieee80211vap *vap)
 	if (ieee80211_beacon_update(bf->bf_node, &avp->av_boff, m, nmcastq)) {
 		/* XXX too conservative? */
 		bus_dmamap_unload(sc->sc_dmat, bf->bf_dmamap);
+#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
 					     bf->bf_dmamap, m,
 					     bf->bf_segs, 1, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
+#else
+		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
+					     bf->bf_segs, &bf->bf_nseg,
+					     BUS_DMA_NOWAIT);
+#endif
 		if (error != 0) {
 			if_printf(vap->iv_ifp,
 			    "%s: bus_dmamap_load_mbuf_sg failed, error %u\n",
@@ -745,6 +759,11 @@ ath_beacon_generate(struct ath_softc *sc, struct ieee80211vap *vap)
 			 * stop? What if it fails?
 			 *
 			 * More thought is required here.
+			 */
+			/*
+			 * XXX can we even stop TX DMA here? Check what the
+			 * reference driver does for cabq for beacons, given
+			 * that stopping TX requires RX is paused.
 			 */
 			ath_tx_draintxq(sc, cabq);
 		}
@@ -824,10 +843,16 @@ ath_beacon_start_adhoc(struct ath_softc *sc, struct ieee80211vap *vap)
 	if (ieee80211_beacon_update(bf->bf_node, &avp->av_boff, m, 0)) {
 		/* XXX too conservative? */
 		bus_dmamap_unload(sc->sc_dmat, bf->bf_dmamap);
+#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
 					     bf->bf_dmamap, m,
 					     bf->bf_segs, 1, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
+#else
+		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
+					     bf->bf_segs, &bf->bf_nseg,
+					     BUS_DMA_NOWAIT);
+#endif
 		if (error != 0) {
 			if_printf(vap->iv_ifp,
 			    "%s: bus_dmamap_load_mbuf_sg failed, error %u\n",
@@ -930,7 +955,9 @@ ath_beacon_config(struct ath_softc *sc, struct ieee80211vap *vap)
 
 	ni = ieee80211_ref_node(vap->iv_bss);
 
+	ATH_LOCK(sc);
 	ath_power_set_power_state(sc, HAL_PM_AWAKE);
+	ATH_UNLOCK(sc);
 
 	/* extract tstamp from last beacon and convert to TU */
 	nexttbtt = TSF_TO_TU(LE_READ_4(ni->ni_tstamp.data + 4),
@@ -1171,7 +1198,9 @@ ath_beacon_config(struct ath_softc *sc, struct ieee80211vap *vap)
 	}
 	ieee80211_free_node(ni);
 
+	ATH_LOCK(sc);
 	ath_power_restore_power_state(sc);
+	ATH_UNLOCK(sc);
 #undef FUDGE
 #undef TSF_TO_TU
 }

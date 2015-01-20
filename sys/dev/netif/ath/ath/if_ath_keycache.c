@@ -28,6 +28,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * Driver for the Atheros Wireless LAN controller.
@@ -77,8 +78,6 @@
 #include <dev/netif/ath/ath/if_ath_keycache.h>
 #include <dev/netif/ath/ath/if_ath_misc.h>
 
-extern  const char* ath_hal_ether_sprintf(const uint8_t *mac);
-
 #ifdef ATH_DEBUG
 static void
 ath_keyprint(struct ath_softc *sc, const char *tag, u_int ix,
@@ -97,7 +96,7 @@ ath_keyprint(struct ath_softc *sc, const char *tag, u_int ix,
 	kprintf("%s: [%02u] %-7s ", tag, ix, ciphers[hk->kv_type]);
 	for (i = 0, n = hk->kv_len; i < n; i++)
 		kprintf("%02x", hk->kv_val[i]);
-	kprintf(" mac %s", ath_hal_ether_sprintf(mac));
+	kprintf(" mac %s", ether_sprintf(mac));
 	if (hk->kv_type == HAL_CIPHER_TKIP) {
 		kprintf(" %s ", sc->sc_splitmic ? "mic" : "rxmic");
 		for (i = 0; i < sizeof(hk->kv_mic); i++)
@@ -252,6 +251,7 @@ ath_keyset(struct ath_softc *sc, struct ieee80211vap *vap,
 	} else
 		mac = k->wk_macaddr;
 
+	ATH_LOCK(sc);
 	ath_power_set_power_state(sc, HAL_PM_AWAKE);
 	if (hk.kv_type == HAL_CIPHER_TKIP &&
 	    (k->wk_flags & IEEE80211_KEY_SWMIC) == 0) {
@@ -261,6 +261,7 @@ ath_keyset(struct ath_softc *sc, struct ieee80211vap *vap,
 		ret = ath_hal_keyset(ah, k->wk_keyix, &hk, mac);
 	}
 	ath_power_restore_power_state(sc);
+	ATH_UNLOCK(sc);
 
 	return (ret);
 #undef N
@@ -497,6 +498,7 @@ ath_key_delete(struct ieee80211vap *vap, const struct ieee80211_key *k)
 
 	DPRINTF(sc, ATH_DEBUG_KEYCACHE, "%s: delete key %u\n", __func__, keyix);
 
+	ATH_LOCK(sc);
 	ath_power_set_power_state(sc, HAL_PM_AWAKE);
 	ath_hal_keyreset(ah, keyix);
 	/*
@@ -522,6 +524,7 @@ ath_key_delete(struct ieee80211vap *vap, const struct ieee80211_key *k)
 		}
 	}
 	ath_power_restore_power_state(sc);
+	ATH_UNLOCK(sc);
 	return 1;
 }
 

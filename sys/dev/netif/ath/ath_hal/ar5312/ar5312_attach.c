@@ -30,8 +30,6 @@
 #define AH_5212_COMMON
 #include "ar5212/ar5212.ini"
 
-#ifdef AH_SUPPORT_AR5312
-
 static  HAL_BOOL ar5312GetMacAddr(struct ath_hal *ah);
 
 static void
@@ -64,7 +62,7 @@ ar5312AniSetup(struct ath_hal *ah)
 static struct ath_hal *
 ar5312Attach(uint16_t devid, HAL_SOFTC sc,
 	HAL_BUS_TAG st, HAL_BUS_HANDLE sh, uint16_t *eepromdata,
-	HAL_STATUS *status)
+	HAL_OPS_CONFIG *ah_config, HAL_STATUS *status)
 {
 	struct ath_hal_5212 *ahp = AH_NULL;
 	struct ath_hal *ah;
@@ -110,18 +108,18 @@ ar5312Attach(uint16_t devid, HAL_SOFTC sc,
 	} else
 #endif
 	{
-		ahp->ah_priv.h.ah_gpioCfgOutput	= ar5312GpioCfgOutput;
-		ahp->ah_priv.h.ah_gpioCfgInput	= ar5312GpioCfgInput;
-		ahp->ah_priv.h.ah_gpioGet	= ar5312GpioGet;
-		ahp->ah_priv.h.ah_gpioSet	= ar5312GpioSet;
-		ahp->ah_priv.h.ah_gpioSetIntr	= ar5312GpioSetIntr;
+		ahp->ah_priv.ah_gpioCfgOutput	= ar5312GpioCfgOutput;
+		ahp->ah_priv.ah_gpioCfgInput	= ar5312GpioCfgInput;
+		ahp->ah_priv.ah_gpioGet		= ar5312GpioGet;
+		ahp->ah_priv.ah_gpioSet		= ar5312GpioSet;
+		ahp->ah_priv.ah_gpioSetIntr	= ar5312GpioSetIntr;
 	}
 
-	ah->ah_gpioCfgInput		= ahp->ah_priv.h.ah_gpioCfgInput;
-	ah->ah_gpioCfgOutput		= ahp->ah_priv.h.ah_gpioCfgOutput;
-	ah->ah_gpioGet			= ahp->ah_priv.h.ah_gpioGet;
-	ah->ah_gpioSet			= ahp->ah_priv.h.ah_gpioSet;
-	ah->ah_gpioSetIntr		= ahp->ah_priv.h.ah_gpioSetIntr;
+	ah->ah_gpioCfgInput		= ahp->ah_priv.ah_gpioCfgInput;
+	ah->ah_gpioCfgOutput		= ahp->ah_priv.ah_gpioCfgOutput;
+	ah->ah_gpioGet			= ahp->ah_priv.ah_gpioGet;
+	ah->ah_gpioSet			= ahp->ah_priv.ah_gpioSet;
+	ah->ah_gpioSetIntr		= ahp->ah_priv.ah_gpioSetIntr;
 
 	/* setup common ini data; rf backends handle remainder */
 	HAL_INI_INIT(&ahp->ah_ini_modes, ar5212Modes, 6);
@@ -335,5 +333,3 @@ ar5312Probe(uint16_t vendorid, uint16_t devid)
 	return AH_NULL;
 }
 AH_CHIP(AR5312, ar5312Probe, ar5312Attach);
-
-#endif

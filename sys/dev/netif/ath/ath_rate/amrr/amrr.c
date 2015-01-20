@@ -37,6 +37,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * AMRR rate control. See:
@@ -55,7 +56,9 @@
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/errno.h>
+
 #include <sys/bus.h>
+
 #include <sys/socket.h>
  
 #include <net/if.h>
@@ -470,34 +473,34 @@ ath_rate_detach(struct ath_ratectrl *arc)
 static int
 amrr_modevent(module_t mod, int type, void *unused)
 {
-	int error;
+       int error;
 
-	wlan_serialize_enter();
+       wlan_serialize_enter();
 
-	switch (type) {
-	case MOD_LOAD:
-		if (bootverbose) {
-			kprintf("ath_rate: <AMRR rate control "
-				"algorithm> version 0.1\n");
-		}
-		error = 0;
-		break;
-	case MOD_UNLOAD:
-		error = 0;
-		break;
-	default:
-		error = EINVAL;
-		break;
-	}
-	wlan_serialize_exit();
+       switch (type) {
+       case MOD_LOAD:
+	       if (bootverbose) {
+		       kprintf("ath_rate: <AMRR rate control "
+			       "algorithm> version 0.1\n");
+	       }
+	       error = 0;
+	       break;
+       case MOD_UNLOAD:
+	       error = 0;
+	       break;
+       default:
+	       error = EINVAL;
+	       break;
+       }
+       wlan_serialize_exit();
 
-	return error;
+       return error;
 }
 
 static moduledata_t amrr_mod = {
-        "ath_rate",
-	amrr_modevent,
-	0
+	"ath_rate",
+       amrr_modevent,
+       0
 };
 
 DECLARE_MODULE(ath_rate, amrr_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);

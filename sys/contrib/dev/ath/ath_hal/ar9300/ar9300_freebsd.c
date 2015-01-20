@@ -70,9 +70,6 @@ void
 ar9300_attach_freebsd_ops(struct ath_hal *ah)
 {
 
-	/* stub everything first */
-	ar9300_set_stub_functions(ah);
-
 	/* Global functions */
 	ah->ah_detach		= ar9300_detach;
 	ah->ah_getRateTable		= ar9300_get_rate_table;
@@ -252,12 +249,21 @@ ar9300_attach_freebsd_ops(struct ath_hal *ah)
 	ah->ah_btCoexDisable		= ar9300_bt_coex_disable;
 	ah->ah_btCoexEnable		= ar9300_bt_coex_enable;
 
+	/* MCI bluetooth functions */
+	if (AR_SREV_JUPITER(ah) || AR_SREV_APHRODITE(ah)) {
+		ah->ah_btCoexSetWeights = ar9300_mci_bt_coex_set_weights;
+		ah->ah_btCoexDisable = ar9300_mci_bt_coex_disable;
+		ah->ah_btCoexEnable = ar9300_mci_bt_coex_enable;
+	}
+	ah->ah_btMciSetup		= ar9300_mci_setup;
+	ah->ah_btMciSendMessage		= ar9300_mci_send_message;
+	ah->ah_btMciGetInterrupt	= ar9300_mci_get_interrupt;
+	ah->ah_btMciGetState		= ar9300_mci_state;
+	ah->ah_btMciDetach		= ar9300_mci_detach;
+
 	/* LNA diversity functions */
 	ah->ah_divLnaConfGet = ar9300_ant_div_comb_get_config;
 	ah->ah_divLnaConfSet = ar9300_ant_div_comb_set_config;
-
-	/* Setup HAL configuration defaults */
-	ah->ah_config.ath_hal_ant_ctrl_comm2g_switch_enable = 0x000bbb88;
 }
 
 HAL_BOOL
@@ -341,9 +347,11 @@ ar9300_ani_poll_freebsd(struct ath_hal *ah,
  * wants.
  */
 void
-ar9300_config_defaults_freebsd(struct ath_hal *ah)
+ar9300_config_defaults_freebsd(struct ath_hal *ah, HAL_OPS_CONFIG *ah_config)
 {
 
+	/* Until FreeBSD's HAL does this by default - just copy */
+	OS_MEMCPY(&ah->ah_config, ah_config, sizeof(HAL_OPS_CONFIG));
 	ah->ah_config.ath_hal_enable_ani = AH_TRUE;
 }
 
@@ -471,11 +479,13 @@ ar9300_freebsd_setup_x_tx_desc(struct ath_hal *ah, struct ath_desc *ds,
     u_int txRate3, u_int txTries3)
 {
 
+#if 0
 	ath_hal_printf(ah, "%s: called, 0x%x/%d, 0x%x/%d, 0x%x/%d\n",
 	    __func__,
 	    txRate1, txTries1,
 	    txRate2, txTries2,
 	    txRate3, txTries3);
+#endif
 
 	/* XXX should only be called during probe */
 	return (AH_TRUE);
@@ -596,8 +606,8 @@ ar9300_freebsd_beacon_init(struct ath_hal *ah, uint32_t next_beacon,
     uint32_t beacon_period)
 {
 
-	ar9300_beacon_init(ah, AH_PRIVATE(ah)->ah_opmode,
-	    next_beacon, beacon_period);
+	ar9300_beacon_init(ah, next_beacon, beacon_period,
+	    AH_PRIVATE(ah)->ah_opmode);
 }
 
 HAL_BOOL

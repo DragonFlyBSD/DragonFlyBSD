@@ -84,9 +84,12 @@ enum {
 	ATH_KTR_TX		= 0x00000080,
 };
 
-#ifdef __DragonFly__		/* XXX: port to our ktr */
-#define	ATH_KTR(_sc, _km, _kf, ...)	do { } while (0)
+#if defined(__DragonFly__)
+
+#define	ATH_KTR(_sc, _km, _kf, ...)
+
 #else
+
 #define	ATH_KTR(_sc, _km, _kf, ...)	do {	\
 	if (sc->sc_ktrdebug & (_km))		\
 		CTR##_kf(KTR_DEV, __VA_ARGS__);	\
@@ -98,14 +101,31 @@ extern uint64_t ath_debug;
 #define	IFF_DUMPPKTS(sc, m) \
 	((sc->sc_debug & (m)) || \
 	    (sc->sc_ifp->if_flags & (IFF_DEBUG|IFF_LINK2)) == (IFF_DEBUG|IFF_LINK2))
+
+#if defined(__DragonFly__)
+
+/* doesn't support %6D (requires hacking gcc, not gonna do it) */
+#define	DPRINTF(sc, m, fmt, ...) do {				\
+	if (sc->sc_debug & (m))					\
+		athdev_printf(sc->sc_dev, fmt, __VA_ARGS__);		\
+} while (0)
+
+#else
+
 #define	DPRINTF(sc, m, fmt, ...) do {				\
 	if (sc->sc_debug & (m))					\
 		device_printf(sc->sc_dev, fmt, __VA_ARGS__);		\
 } while (0)
+
+#endif
+
+
 #define	KEYPRINTF(sc, ix, hk, mac) do {				\
 	if (sc->sc_debug & ATH_DEBUG_KEYCACHE)			\
 		ath_keyprint(sc, __func__, ix, hk, mac);	\
 } while (0)
+
+extern int athdev_printf(device_t dev, const char *, ...);
 
 extern	void ath_printrxbuf(struct ath_softc *, const struct ath_buf *bf,
 	u_int ix, int);

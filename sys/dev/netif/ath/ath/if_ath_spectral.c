@@ -29,6 +29,7 @@
  * $FreeBSD$
  */
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * Implement some basic spectral scan control logic.
@@ -45,7 +46,9 @@
 #include <sys/malloc.h>
 #include <sys/mutex.h>
 #include <sys/errno.h>
+
 #include <sys/bus.h>
+
 #include <sys/socket.h>
  
 #include <net/if.h>

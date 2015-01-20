@@ -285,7 +285,7 @@ ar9300_gpio_cfg_output_led_off(
         AR_GPIO_OUTPUT_MUX_AS_SMARTANT_CTRL1,
         AR_GPIO_OUTPUT_MUX_AS_SMARTANT_CTRL2
     };
-    HALASSERT(gpio < AH_PRIVATE(ah)->ah_caps.halNumGpioPins);
+    HALASSERT(gpio < AH_PRIVATE(ah)->ah_caps.hal_num_gpio_pins);
 
     /* Convert HAL signal type definitions to hardware-specific values. */
     if ((int) halSignalType < ARRAY_LENGTH(mux_signal_conversion_table))

@@ -36,6 +36,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * John Bicket's SampleRate control algorithm.
@@ -53,7 +54,9 @@
 #include <sys/malloc.h>
 #include <sys/mutex.h>
 #include <sys/errno.h>
+
 #include <sys/bus.h>
+
 #include <sys/socket.h>
  
 #include <net/if.h>
@@ -75,8 +78,6 @@
 #include <dev/netif/ath/ath_rate/sample/sample.h>
 #include <dev/netif/ath/ath_hal/ah_desc.h>
 #include <dev/netif/ath/ath_rate/sample/tx_schedules.h>
-
-extern  const char* ath_hal_ether_sprintf(const uint8_t *mac);
 
 /*
  * This file is an implementation of the SampleRate algorithm
@@ -1089,8 +1090,8 @@ ath_rate_ctl_reset(struct ath_softc *sc, struct ieee80211_node *ni)
 	if (ieee80211_msg(ni->ni_vap, IEEE80211_MSG_RATECTL)) {
 		uint64_t mask;
 
-		ieee80211_note(ni->ni_vap, "[%s] %s: size 1600 rate/tt",
-		    ath_hal_ether_sprintf(ni->ni_macaddr), __func__);
+		ieee80211_note(ni->ni_vap, "[%6D] %s: size 1600 rate/tt",
+		    ni->ni_macaddr, ":", __func__);
 		for (mask = sn->ratemask, rix = 0; mask != 0; mask >>= 1, rix++) {
 			if ((mask & 1) == 0)
 				continue;
@@ -1249,8 +1250,7 @@ sample_stats(void *arg, struct ieee80211_node *ni)
 	int rix, y;
 
 	kprintf("\n[%s] refcnt %d static_rix (%d %s) ratemask 0x%jx\n",
-	    ath_hal_ether_sprintf(ni->ni_macaddr),
-	    ieee80211_node_refcnt(ni),
+	    ether_sprintf(ni->ni_macaddr), ieee80211_node_refcnt(ni),
 	    dot11rate(rt, sn->static_rix),
 	    dot11rate_label(rt, sn->static_rix),
 	    (uintmax_t)sn->ratemask);
@@ -1396,28 +1396,28 @@ ath_rate_detach(struct ath_ratectrl *arc)
 static int
 sample_modevent(module_t mod, int type, void *unused)
 {
-        int error;
+	int error;
 
-        wlan_serialize_enter();
+	wlan_serialize_enter();
 
-        switch (type) {
-        case MOD_LOAD:
-                if (bootverbose) {
-                        kprintf("ath_rate: <SampleRate bit-rate "
-                                "selection algorithm>\n");
-                }
-                error = 0;
-                break;
-        case MOD_UNLOAD:
-                error = 0;
-                break;
-        default:
-                error = EINVAL;
-                break;
-        }
-        wlan_serialize_exit();
+	switch (type) {
+	case MOD_LOAD:
+		if (bootverbose) {
+			kprintf("ath_rate: <SampleRate bit-rate "
+				"selection algorithm>\n");
+		}
+		error = 0;
+		break;
+	case MOD_UNLOAD:
+		error = 0;
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+	wlan_serialize_exit();
 
-        return error;
+	return error;
 }
 
 static moduledata_t sample_mod = {

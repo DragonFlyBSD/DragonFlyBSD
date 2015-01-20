@@ -28,6 +28,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * Driver for the Atheros Wireless LAN controller.
@@ -471,19 +472,22 @@ ath_tdma_update(struct ieee80211_node *ni,
 	tsfdelta = (int32_t)((nextslot % TU_TO_TSF(HAL_BEACON_PERIOD + 1)) - nexttbtt);
 
 	DPRINTF(sc, ATH_DEBUG_TDMA_TIMER,
-	    "rs->rstamp %ju rstamp %ju tsf %ju txtime %d, nextslot %ju, "
+	    "rs->rstamp %llu rstamp %llu tsf %llu txtime %d, nextslot %llu, "
 	    "nextslottu %d, nextslottume %d\n",
-	    (uintmax_t)rs->rs_tstamp, (uintmax_t)rstamp, (uintmax_t)tsf, txtime,
-	    (uintmax_t)nextslot, nextslottu, TSF_TO_TU(nextslot >> 32, nextslot));
+	    (unsigned long long) rs->rs_tstamp,
+	    (unsigned long long) rstamp,
+	    (unsigned long long) tsf, txtime,
+	    (unsigned long long) nextslot,
+	    nextslottu, TSF_TO_TU(nextslot >> 32, nextslot));
 	DPRINTF(sc, ATH_DEBUG_TDMA,
-	    "  beacon tstamp: %ju (0x%016jx)\n",
-	    (uintmax_t)le64toh(ni->ni_tstamp.tsf),
-	    (uintmax_t)le64toh(ni->ni_tstamp.tsf));
+	    "  beacon tstamp: %llu (0x%016llx)\n",
+	    (unsigned long long) le64toh(ni->ni_tstamp.tsf),
+	    (unsigned long long) le64toh(ni->ni_tstamp.tsf));
 
 	DPRINTF(sc, ATH_DEBUG_TDMA_TIMER,
-	    "nexttbtt %ju (0x%08jx) tsfdelta %d avg +%d/-%d\n",
-	    (uintmax_t)nexttbtt,
-	    (uintmax_t)nexttbtt,
+	    "nexttbtt %llu (0x%08llx) tsfdelta %d avg +%d/-%d\n",
+	    (unsigned long long) nexttbtt,
+	    (long long) nexttbtt,
 	    tsfdelta,
 	    TDMA_AVG(sc->sc_avgtsfdeltap), TDMA_AVG(sc->sc_avgtsfdeltam));
 
@@ -574,9 +578,9 @@ ath_tdma_update(struct ieee80211_node *ni,
 		tsf = ath_hal_gettsf64(ah);
 		ath_hal_settsf64(ah, tsf + tsfdelta);
 		DPRINTF(sc, ATH_DEBUG_TDMA_TIMER,
-		    "%s: calling ath_hal_adjusttsf: TSF=%ju, tsfdelta=%d\n",
+		    "%s: calling ath_hal_adjusttsf: TSF=%llu, tsfdelta=%d\n",
 		    __func__,
-		    (uintmax_t)tsf,
+		    (unsigned long long) tsf,
 		    tsfdelta);
 
 #ifdef	ATH_DEBUG_ALQ

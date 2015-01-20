@@ -28,6 +28,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include "opt_inet.h"
 #include "opt_ath.h"
@@ -83,7 +84,7 @@
 #include <dev/netif/ath/ath_tx99/ath_tx99.h>
 #endif
 
-#include <dev/netif/ath/ath/if_ath_tx.h>  /* XXX for some support functions */
+#include <dev/netif/ath/ath/if_ath_tx.h>		/* XXX for some support functions */
 #include <dev/netif/ath/ath/if_ath_tx_ht.h>
 #include <dev/netif/ath/ath/if_athrate.h>
 #include <dev/netif/ath/ath/if_ath_debug.h>

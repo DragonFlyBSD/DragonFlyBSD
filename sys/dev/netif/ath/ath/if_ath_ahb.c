@@ -29,6 +29,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * AHB bus front-end for the Atheros Wireless LAN controller driver.
@@ -59,12 +60,11 @@
 
 #include <dev/netif/ath/ath/if_athvar.h>
 
-#define MIPS_KSEG1_START                ((intptr_t)(int32_t)0xa0000000)
-#define MIPS_PHYS_TO_KSEG1(x)           ((uintptr_t)(x) | MIPS_KSEG1_START)
-
-#include <dev/netif/ath/ath_hal/ar71xx/ar71xxreg.h>
-#include <dev/netif/ath/ath_hal/ar91xx/ar91xxreg.h>
-#include <dev/netif/ath/ath_hal/ar71xx/ar71xx_cpudef.h>
+#if 0
+#include <mips/atheros/ar71xxreg.h>
+#include <mips/atheros/ar91xxreg.h>
+#include <mips/atheros/ar71xx_cpudef.h>
+#endif
 
 /*
  * bus glue.
@@ -164,8 +164,7 @@ ath_ahb_attach(device_t dev)
 		goto bad0;
 	}
 
-	/* XXX uintptr_t is a bandaid for ia64; to be fixed */
-	sc->sc_st = (HAL_BUS_TAG)(uintptr_t) rman_get_bustag(psc->sc_sr);
+	sc->sc_st = (HAL_BUS_TAG) rman_get_bustag(psc->sc_sr);
 	sc->sc_sh = (HAL_BUS_HANDLE) rman_get_bushandle(psc->sc_sr);
 	/*
 	 * Mark device invalid so any interrupts (shared or otherwise)
@@ -199,19 +198,33 @@ ath_ahb_attach(device_t dev)
 		device_printf(dev, "could not map interrupt\n");
 		goto bad1;
 	}
+
+#if defined(__DragonFly__)
 	if (bus_setup_intr(dev, psc->sc_irq,
-			   INTR_MPSAFE, ath_intr,
-			   sc, &psc->sc_ih,
+			   INTR_MPSAFE,
+			   ath_intr, sc, &psc->sc_ih,
 			   &wlan_global_serializer)) {
 		device_printf(dev, "could not establish interrupt\n");
 		goto bad2;
 	}
+#else
+	if (bus_setup_intr(dev, psc->sc_irq,
+			   INTR_TYPE_NET | INTR_MPSAFE,
+			   NULL, ath_intr, sc, &psc->sc_ih)) {
+		device_printf(dev, "could not establish interrupt\n");
+		goto bad2;
+	}
+#endif
 
 	/*
 	 * Setup DMA descriptor area.
 	 */
 	if (bus_dma_tag_create(bus_get_dma_tag(dev),	/* parent */
+#if defined(__DragonFly__)
 			       4, 0,			/* alignment, bounds */
+#else
+			       1, 0,			/* alignment, bounds */
+#endif
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
 			       NULL, NULL,		/* filter, filterarg */
@@ -219,6 +232,10 @@ ath_ahb_attach(device_t dev)
 			       ATH_MAX_SCATTER,		/* nsegments */
 			       0x3ffff,			/* maxsegsize XXX */
 			       BUS_DMA_ALLOCNOW,	/* flags */
+#if !defined(__DragonFly__)
+			       NULL,			/* lockfunc */
+			       NULL,			/* lockarg */
+#endif
 			       &sc->sc_dmat)) {
 		device_printf(dev, "cannot allocate DMA tag\n");
 		goto bad3;
@@ -244,9 +261,7 @@ ath_ahb_attach(device_t dev)
 	ATH_TX_IC_LOCK_INIT(sc);
 	ATH_TXSTATUS_LOCK_INIT(sc);
 
-	wlan_serialize_enter();
 	error = ath_attach(device_id, sc);
-	wlan_serialize_exit();
 	if (error == 0)					/* success */
 		return 0;
 
@@ -350,10 +365,7 @@ static driver_t ath_ahb_driver = {
 	sizeof (struct ath_ahb_softc)
 };
 static	devclass_t ath_devclass;
-DRIVER_MODULE(ath_ahb, nexus, ath_ahb_driver, ath_devclass, NULL, NULL);
-MODULE_VERSION(ath_ahb, 1);
-MODULE_DEPEND(ath_ahb, wlan, 1, 1, 1);          /* 802.11 media layer */
-MODULE_DEPEND(ath_ahb, if_ath, 1, 1, 1);        /* if_ath driver */
-MODULE_DEPEND(ath_ahb, ath_hal, 1, 1, 1);       /* Atheros HAL */
-MODULE_DEPEND(ath_ahb, ath_rate, 1, 1, 1);      /* rate control alg */
-MODULE_DEPEND(ath_ahb, ath_dfs, 1, 1, 1);	/* wtf */
+DRIVER_MODULE(ath, nexus, ath_ahb_driver, ath_devclass, 0, 0);
+MODULE_VERSION(ath, 1);
+MODULE_DEPEND(ath, wlan, 1, 1, 1);		/* 802.11 media layer */
+MODULE_DEPEND(ath, if_ath, 1, 1, 1);		/* if_ath driver */

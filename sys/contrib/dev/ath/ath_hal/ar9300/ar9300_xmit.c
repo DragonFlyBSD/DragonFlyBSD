@@ -699,7 +699,7 @@ ar9300_stop_tx_dma_indv_que(struct ath_hal *ah, u_int q, u_int timeout)
 #define AH_TIME_QUANTUM        100     /* usec */
     u_int wait;
 
-    HALASSERT(q < AH_PRIVATE(ah)->ah_caps.halTotalQueues);
+    HALASSERT(q < AH_PRIVATE(ah)->ah_caps.hal_total_queues);
 
     HALASSERT(AH9300(ah)->ah_txq[q].tqi_type != HAL_TX_QUEUE_INACTIVE);
 

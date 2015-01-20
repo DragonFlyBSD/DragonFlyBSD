@@ -37,11 +37,8 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/endian.h>
-#include <sys/bus.h>
-#include <sys/spinlock.h>
 #include <sys/linker_set.h>
-
-#include <sys/spinlock2.h>
+#include <sys/bus.h>
 
 /*
  * Bus i/o type definitions.

@@ -28,6 +28,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * Driver for the Atheros Wireless LAN controller.
@@ -465,8 +466,7 @@ ath_edma_setup_txfifo(struct ath_softc *sc, int qnum)
 	struct ath_tx_edma_fifo *te = &sc->sc_txedma[qnum];
 
 	te->m_fifo = kmalloc(sizeof(struct ath_buf *) * HAL_TXFIFO_DEPTH,
-	    M_ATHDEV,
-	    M_INTWAIT | M_ZERO);
+			     M_ATHDEV, M_INTWAIT | M_ZERO);
 	if (te->m_fifo == NULL) {
 		device_printf(sc->sc_dev, "%s: malloc failed\n",
 		    __func__);
@@ -534,9 +534,7 @@ ath_edma_dma_txteardown(struct ath_softc *sc)
 static void
 ath_edma_tx_drain(struct ath_softc *sc, ATH_RESET_TYPE reset_type)
 {
-#if 0
 	struct ifnet *ifp = sc->sc_ifp;
-#endif
 	int i;
 
 	DPRINTF(sc, ATH_DEBUG_RESET, "%s: called\n", __func__);
@@ -578,12 +576,13 @@ ath_edma_tx_drain(struct ath_softc *sc, ATH_RESET_TYPE reset_type)
 
 	/* XXX dump out the frames */
 
-#if 0
-	/* remove, DragonFly uses OACTIVE to control if_start calls */
 	IF_LOCK(&ifp->if_snd);
+#if defined(__DragonFly__)
 	ifq_clr_oactive(&ifp->if_snd);
-	IF_UNLOCK(&ifp->if_snd);
+#else
+	ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
 #endif
+	IF_UNLOCK(&ifp->if_snd);
 	sc->sc_wd_timer = 0;
 }
 
@@ -600,9 +599,7 @@ ath_edma_tx_proc(void *arg, int npending)
 	DPRINTF(sc, ATH_DEBUG_TX_PROC, "%s: called, npending=%d\n",
 	    __func__, npending);
 #endif
-	wlan_serialize_enter();
 	ath_edma_tx_processq(sc, 1);
-	wlan_serialize_exit();
 }
 
 /*
@@ -838,14 +835,15 @@ ath_edma_tx_processq(struct ath_softc *sc, int dosched)
 
 	sc->sc_wd_timer = 0;
 
-#if 0
-	/* remove, DragonFly uses OACTIVE to control if_start calls */
 	if (idx > 0) {
 		IF_LOCK(&sc->sc_ifp->if_snd);
+#if defined(__DragonFly__)
 		ifq_clr_oactive(&sc->sc_ifp->if_snd);
+#else
+		sc->sc_ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+#endif
 		IF_UNLOCK(&sc->sc_ifp->if_snd);
 	}
-#endif
 
 	/* Kick software scheduler */
 	/*
@@ -873,12 +871,14 @@ ath_xmit_setup_edma(struct ath_softc *sc)
 	(void) ath_hal_gettxstatuslen(sc->sc_ah, &sc->sc_tx_statuslen);
 	(void) ath_hal_getntxmaps(sc->sc_ah, &sc->sc_tx_nmaps);
 
-	device_printf(sc->sc_dev, "TX descriptor length: %d\n",
-	    sc->sc_tx_desclen);
-	device_printf(sc->sc_dev, "TX status length: %d\n",
-	    sc->sc_tx_statuslen);
-	device_printf(sc->sc_dev, "TX buffers per descriptor: %d\n",
-	    sc->sc_tx_nmaps);
+	if (bootverbose) {
+		device_printf(sc->sc_dev, "TX descriptor length: %d\n",
+		    sc->sc_tx_desclen);
+		device_printf(sc->sc_dev, "TX status length: %d\n",
+		    sc->sc_tx_statuslen);
+		device_printf(sc->sc_dev, "TX buffers per descriptor: %d\n",
+		    sc->sc_tx_nmaps);
+	}
 
 	sc->sc_tx.xmit_setup = ath_edma_dma_txsetup;
 	sc->sc_tx.xmit_teardown = ath_edma_dma_txteardown;
