@@ -125,8 +125,6 @@ extern uint64_t ath_debug;
 		ath_keyprint(sc, __func__, ix, hk, mac);	\
 } while (0)
 
-extern int athdev_printf(device_t dev, const char *, ...);
-
 extern	void ath_printrxbuf(struct ath_softc *, const struct ath_buf *bf,
 	u_int ix, int);
 extern	void ath_printtxbuf(struct ath_softc *, const struct ath_buf *bf,

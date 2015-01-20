@@ -1040,6 +1040,7 @@ void	ath_resume(struct ath_softc *);
 void	ath_suspend(struct ath_softc *);
 void	ath_shutdown(struct ath_softc *);
 void	ath_intr(void *);
+int	athdev_printf(device_t dev, const char *, ...);
 
 #if defined(__DragonFly__)
 
