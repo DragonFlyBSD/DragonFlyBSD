@@ -75,6 +75,7 @@ struct ecc_e31200_softc {
 #define ecc_printf(sc, fmt, arg...) \
 	device_printf((sc)->ecc_mydev, fmt , ##arg)
 
+static void	ecc_e31200_identify(driver_t *, device_t);
 static int	ecc_e31200_probe(device_t);
 static int	ecc_e31200_attach(device_t);
 static int	ecc_e31200_detach(device_t);
@@ -100,6 +101,7 @@ static const struct ecc_e31200_memctrl ecc_memctrls[] = {
 
 static device_method_t ecc_e31200_methods[] = {
 	/* Device interface */
+	DEVMETHOD(device_identify,	ecc_e31200_identify),
 	DEVMETHOD(device_probe,		ecc_e31200_probe),
 	DEVMETHOD(device_attach,	ecc_e31200_attach),
 	DEVMETHOD(device_detach,	ecc_e31200_detach),
@@ -118,14 +120,37 @@ static devclass_t ecc_devclass;
 DRIVER_MODULE(ecc_e31200, hostb, ecc_e31200_driver, ecc_devclass, NULL, NULL);
 MODULE_DEPEND(ecc_e31200, pci, 1, 1, 1);
 
-static int
-ecc_e31200_probe(device_t dev)
+static void
+ecc_e31200_identify(driver_t *driver, device_t parent)
 {
 	const struct ecc_e31200_memctrl *mc;
 	uint16_t vid, did;
 
-	vid = pci_get_vendor(dev);
-	did = pci_get_device(dev);
+	/* Already identified */
+	if (device_find_child(parent, "ecc", -1) != NULL)
+		return;
+
+	vid = pci_get_vendor(parent);
+	did = pci_get_device(parent);
+
+	for (mc = ecc_memctrls; mc->desc != NULL; ++mc) {
+		if (mc->vid == vid && mc->did == did) {
+			if (device_add_child(parent, "ecc", -1) == NULL)
+				device_printf(parent, "add ecc child failed\n");
+			return;
+		}
+	}
+}
+
+static int
+ecc_e31200_probe(device_t dev)
+{
+	device_t parent = device_get_parent(dev);
+	const struct ecc_e31200_memctrl *mc;
+	uint16_t vid, did;
+
+	vid = pci_get_vendor(parent);
+	did = pci_get_device(parent);
 
 	for (mc = ecc_memctrls; mc->desc != NULL; ++mc) {
 		if (mc->vid == vid && mc->did == did) {
@@ -133,7 +158,7 @@ ecc_e31200_probe(device_t dev)
 
 			device_set_desc(dev, mc->desc);
 			sc->ecc_mydev = dev;
-			sc->ecc_device = device_get_parent(dev);
+			sc->ecc_device = parent;
 			sc->ecc_ver = mc->ver;
 			return (0);
 		}

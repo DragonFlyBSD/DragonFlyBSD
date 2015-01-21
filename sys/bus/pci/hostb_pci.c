@@ -81,7 +81,6 @@ pci_hostb_attach(device_t dev)
 	 */
 	if (pci_find_extcap(dev, PCIY_AGP, NULL) == 0)
 		device_add_child(dev, "agp", -1);
-	device_add_child(dev, "ecc", -1);
 	bus_generic_attach(dev);
 	return (0);
 }

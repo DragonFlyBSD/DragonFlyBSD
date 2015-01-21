@@ -93,7 +93,7 @@ static driver_t ecc_amd8000_driver = {
 	sizeof(struct ecc_amd8000_softc)
 };
 static devclass_t ecc_devclass;
-DRIVER_MODULE(ecc_amd8000, hostb, ecc_amd8000_driver, ecc_devclass, NULL, NULL);
+DRIVER_MODULE(ecc_amd8000, pci, ecc_amd8000_driver, ecc_devclass, NULL, NULL);
 MODULE_DEPEND(ecc_amd8000, pci, 1, 1, 1);
 
 static int
