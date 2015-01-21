@@ -43,7 +43,6 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcibus.h>
 #include <bus/pci/pci_cfgreg.h>
-#include <bus/pci/pcib_private.h>
 
 #include <vm/pmap.h>
 
@@ -63,8 +62,7 @@ struct ecc_e31200_memctrl {
 };
 
 struct ecc_e31200_softc {
-	device_t	ecc_device;
-	device_t	ecc_mydev;
+	device_t	ecc_dev;
 	struct callout	ecc_callout;
 	int		ecc_ver;	/* ECC_E31200_VER_ */
 	volatile uint8_t *ecc_addr;
@@ -73,7 +71,7 @@ struct ecc_e31200_softc {
 #define CSR_READ_4(sc, ofs)	(*(volatile uint32_t *)((sc)->ecc_addr + (ofs)))
 
 #define ecc_printf(sc, fmt, arg...) \
-	device_printf((sc)->ecc_mydev, fmt , ##arg)
+	device_printf((sc)->ecc_dev, fmt , ##arg)
 
 static void	ecc_e31200_identify(driver_t *, device_t);
 static int	ecc_e31200_probe(device_t);
@@ -145,20 +143,17 @@ ecc_e31200_identify(driver_t *driver, device_t parent)
 static int
 ecc_e31200_probe(device_t dev)
 {
-	device_t parent = device_get_parent(dev);
 	const struct ecc_e31200_memctrl *mc;
 	uint16_t vid, did;
 
-	vid = pci_get_vendor(parent);
-	did = pci_get_device(parent);
+	vid = pci_get_vendor(dev);
+	did = pci_get_device(dev);
 
 	for (mc = ecc_memctrls; mc->desc != NULL; ++mc) {
 		if (mc->vid == vid && mc->did == did) {
 			struct ecc_e31200_softc *sc = device_get_softc(dev);
 
 			device_set_desc(dev, mc->desc);
-			sc->ecc_mydev = dev;
-			sc->ecc_device = parent;
 			sc->ecc_ver = mc->ver;
 			return (0);
 		}
@@ -172,24 +167,19 @@ ecc_e31200_attach(device_t dev)
 	struct ecc_e31200_softc *sc = device_get_softc(dev);
 	uint32_t capa, dmfc, mch_barlo, mch_barhi;
 	uint64_t mch_bar;
-	int bus, slot, dmfc_parsed = 1;
+	int dmfc_parsed = 1;
 
 	callout_init_mp(&sc->ecc_callout);
+	sc->ecc_dev = dev;
 
-	dev = sc->ecc_device; /* XXX */
-
-	bus = pci_get_bus(dev);
-	slot = pci_get_slot(dev);
-
-	capa = pcib_read_config(dev, bus, slot, 0, PCI_E31200_CAPID0_A, 4);
+	capa = pci_read_config(dev, PCI_E31200_CAPID0_A, 4);
 
 	if (sc->ecc_ver == ECC_E31200_VER_1) {
 		dmfc = __SHIFTOUT(capa, PCI_E31200_CAPID0_A_DMFC);
 	} else { /* V2/V3 */
 		uint32_t capb;
 
-		capb = pcib_read_config(dev, bus, slot, 0,
-		    PCI_E31200_CAPID0_B, 4);
+		capb = pci_read_config(dev, PCI_E31200_CAPID0_B, 4);
 		dmfc = __SHIFTOUT(capb, PCI_E31200_CAPID0_B_DMFC);
 	}
 
@@ -232,10 +222,8 @@ ecc_e31200_attach(device_t dev)
 		kprintf("ECC\n");
 	}
 
-	mch_barlo = pcib_read_config(dev, bus, slot, 0,
-	    PCI_E31200_MCHBAR_LO, 4);
-	mch_barhi = pcib_read_config(dev, bus, slot, 0,
-	    PCI_E31200_MCHBAR_HI, 4);
+	mch_barlo = pci_read_config(dev, PCI_E31200_MCHBAR_LO, 4);
+	mch_barhi = pci_read_config(dev, PCI_E31200_MCHBAR_HI, 4);
 
 	mch_bar = (uint64_t)mch_barlo | (((uint64_t)mch_barhi) << 32);
 	if (bootverbose)
@@ -330,14 +318,10 @@ ecc_e31200_callout(void *xsc)
 static void
 ecc_e31200_status(struct ecc_e31200_softc *sc)
 {
-	device_t dev = sc->ecc_device;
+	device_t dev = sc->ecc_dev;
 	uint16_t errsts;
-	int bus, slot;
 
-	bus = pci_get_bus(dev);
-	slot = pci_get_slot(dev);
-
-	errsts = pcib_read_config(dev, bus, slot, 0, PCI_E31200_ERRSTS, 2);
+	errsts = pci_read_config(dev, PCI_E31200_ERRSTS, 2);
 	if (errsts & PCI_E31200_ERRSTS_DMERR)
 		ecc_printf(sc, "Uncorrectable multilple-bit ECC error\n");
 	else if (errsts & PCI_E31200_ERRSTS_DSERR)
@@ -348,8 +332,7 @@ ecc_e31200_status(struct ecc_e31200_softc *sc)
 			ecc_e31200_errlog(sc);
 
 		/* Clear pending errors */
-		pcib_write_config(dev, bus, slot, 0, PCI_E31200_ERRSTS,
-		    errsts, 2);
+		pci_write_config(dev, PCI_E31200_ERRSTS, errsts, 2);
 	}
 }
 

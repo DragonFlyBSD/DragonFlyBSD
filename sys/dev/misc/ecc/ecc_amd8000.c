@@ -54,13 +54,12 @@ struct ecc_amd8000_memctrl {
 };
 
 struct ecc_amd8000_softc {
-	device_t	ecc_device;
-	device_t	ecc_mydev;
+	device_t	ecc_dev;
 	struct callout	ecc_callout;
 };
 
 #define ecc_printf(sc, fmt, arg...) \
-	device_printf((sc)->ecc_mydev, fmt , ##arg)
+	device_printf((sc)->ecc_dev, fmt , ##arg)
 
 static void	ecc_amd8000_callout(void *);
 static void	ecc_amd8000_stop(device_t);
@@ -107,11 +106,7 @@ ecc_amd8000_probe(device_t dev)
 
 	for (mc = ecc_memctrls; mc->desc != NULL; ++mc) {
 		if (mc->vid == vid && mc->did == did) {
-			struct ecc_amd8000_softc *sc = device_get_softc(dev);
-
 			device_set_desc(dev, mc->desc);
-			sc->ecc_mydev = dev;
-			sc->ecc_device = device_get_parent(dev);
 			return (0);
 		}
 	}
@@ -126,8 +121,7 @@ ecc_amd8000_attach(device_t dev)
 	int bus, slot, poll = 0;
 
 	callout_init_mp(&sc->ecc_callout);
-
-	dev = sc->ecc_device; /* XXX */
+	sc->ecc_dev = dev;
 
 	bus = pci_get_bus(dev);
 	slot = pci_get_slot(dev);
@@ -183,7 +177,7 @@ static void
 ecc_amd8000_callout(void *xsc)
 {
 	struct ecc_amd8000_softc *sc = xsc;
-	device_t dev = sc->ecc_device;
+	device_t dev = sc->ecc_dev;
 	uint32_t v32, addr;
 	int bus, slot;
 
