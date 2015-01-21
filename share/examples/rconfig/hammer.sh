@@ -66,7 +66,7 @@ disklabel64 -R ${disk}s1 /tmp/label
 
 # Create file systems
 newfs /dev/${disk}s1a
-newfs_hammer -L ROOT /dev/${disk}s1d
+newfs_hammer -f -L ROOT /dev/${disk}s1d
 
 # Mount it
 #
@@ -203,6 +203,11 @@ if ( ! -f /mnt/etc/ssh/ssh_host_dsa_key ) then
     cd /mnt/etc/ssh
     ssh-keygen -t dsa -f ssh_host_dsa_key -N ""
 endif
+
+# Misc cleanups
+#
+rm -R /mnt/README* /mnt/autorun* /mnt/index.html /mnt/dflybsd.ico
+rm /mnt/boot.catalog
 
 # take CD out and reboot
 # 
