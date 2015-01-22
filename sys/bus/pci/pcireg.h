@@ -728,6 +728,15 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define PCIEM_LNKCTL_ASPM_DISABLE	0x0
 #define PCIEM_LNKCTL_ASPM_L0S		0x1
 #define PCIEM_LNKCTL_ASPM_L1		0x2
+#define PCIEM_LNKCTL_RCB		0x8
+#define PCIEM_LNKCTL_LINK_DIS		0x0010
+#define PCIEM_LNKCTL_RETRAIN_LINK	0x0020
+#define PCIEM_LNKCTL_COMMON_CLOCK	0x0040
+#define PCIEM_LNKCTL_EXTENDED_SYNC	0x0080
+#define PCIEM_LNKCTL_ECPM		0x0100
+#define PCIEM_LNKCTL_HAWD		0x0200
+#define PCIEM_LNKCTL_LBMIE		0x0400
+#define PCIEM_LNKCTL_LABIE		0x0800
 
 /* PCI Express link status, 16bits */
 #define PCIER_LINKSTAT			0x12
