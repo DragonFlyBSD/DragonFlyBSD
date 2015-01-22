@@ -94,7 +94,7 @@
 #define PCIEM_CTL_MAX_PAYLOAD		PCIEM_DEVCTL_MAX_PAYLOAD_MASK
 
 /* Tunables. */
-static int alc_msi_enable = 0;
+static int alc_msi_enable = 1;
 TUNABLE_INT("hw.alc.msi.enable", &alc_msi_enable);
 
 /*
@@ -1321,10 +1321,7 @@ alc_config_msi(struct alc_softc *sc)
 		if (mod == 0)
 			mod = 1;
 		ctl |= mod;
-		if ((sc->alc_flags & ALC_FLAG_MSIX) != 0)
-			CSR_WRITE_4(sc, ALC_MSI_RETRANS_TIMER, ctl |
-			    MSI_RETRANS_MASK_SEL_STD);
-		else if ((sc->alc_flags & ALC_FLAG_MSI) != 0)
+		if (sc->alc_irq_type == PCI_INTR_TYPE_MSI)
 			CSR_WRITE_4(sc, ALC_MSI_RETRANS_TIMER, ctl |
 			    MSI_RETRANS_MASK_SEL_LINE);
 		else
@@ -1551,9 +1548,7 @@ alc_attach(device_t dev)
 	taskqueue_start_threads(&sc->alc_tq, 1, TDPRI_KERN_DAEMON, -1, "%s taskq",
 	    device_get_nameunit(sc->alc_dev));
 
-#if 0
 	alc_config_msi(sc);
-#endif
 	if ((sc->alc_flags & ALC_FLAG_MSIX) != 0)
 		msic = ALC_MSIX_MESSAGES;
 	else if ((sc->alc_flags & ALC_FLAG_MSI) != 0)
@@ -1575,8 +1570,7 @@ alc_attach(device_t dev)
 		goto fail;
 	}
 #else
-	if (alc_msi_enable)
-		alc_config_msi(sc);
+	alc_config_msi(sc);
 	error = bus_setup_intr(dev, sc->alc_irq, INTR_MPSAFE, alc_intr, sc,
 	    &sc->alc_intrhand, ifp->if_serializer);
 	if (error) {
