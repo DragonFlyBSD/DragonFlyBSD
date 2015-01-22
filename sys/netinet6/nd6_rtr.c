@@ -332,17 +332,6 @@ nd6_ra_input(struct mbuf *m, int off, int icmp6len)
 				continue;
 			}
 
-			/* aggregatable unicast address, rfc2374 */
-			if ((pi->nd_opt_pi_prefix.s6_addr8[0] & 0xe0) == 0x20
-			 && pi->nd_opt_pi_prefix_len != 64) {
-				nd6log((LOG_INFO,
-				    "nd6_ra_input: invalid prefixlen "
-				    "%d for rfc2374 prefix %s, ignored\n",
-				    pi->nd_opt_pi_prefix_len,
-				    ip6_sprintf(&pi->nd_opt_pi_prefix)));
-				continue;
-			}
-
 			bzero(&pr, sizeof(pr));
 			pr.ndpr_prefix.sin6_family = AF_INET6;
 			pr.ndpr_prefix.sin6_len = sizeof(pr.ndpr_prefix);
