@@ -52,6 +52,13 @@
 /* Water mark to kick reclaiming Tx buffers. */
 #define	ALC_TX_DESC_HIWAT	((ALC_TX_RING_CNT * 6) / 10)
 
+/*
+ * AR816x controllers support up to 16 messages but this driver
+ * uses single message.
+ */
+#define	ALC_MSI_MESSAGES        1
+#define	ALC_MSIX_MESSAGES       1
+
 #define	ALC_TX_RING_SZ		\
 	(sizeof(struct tx_desc) * ALC_TX_RING_CNT)
 #define	ALC_RX_RING_SZ		\
@@ -220,17 +227,21 @@ struct alc_softc {
 	int			alc_pmcap;
 	int			alc_flags;
 #define	ALC_FLAG_PCIE		0x0001
+#define ALC_FLAG_PCIX           0x0002
+#define ALC_FLAG_MSI            0x0004
+#define ALC_FLAG_MSIX           0x0008
 #define ALC_FLAG_PM		0x0010
 #define	ALC_FLAG_FASTETHER	0x0020
 #define	ALC_FLAG_JUMBO		0x0040
-#define	ALC_FLAG_ASPM_MON	0x0080
 #define	ALC_FLAG_CMB_BUG	0x0100
 #define	ALC_FLAG_SMB_BUG	0x0200
 #define ALC_FLAG_L0S		0x0400
 #define ALC_FLAG_L1S		0x0800
 #define ALC_FLAG_APS		0x1000
-#define	ALC_FLAG_DETACH		0x4000
+#define	ALC_FLAG_AR816X_FAMILY	0x2000
+#define	ALC_FLAG_LINK_WAR	0x4000
 #define	ALC_FLAG_LINK		0x8000
+#define	ALC_FLAG_DETACH		0x10000
 
 	struct callout		alc_tick_ch;
 	struct alc_hw_stats	alc_stats;

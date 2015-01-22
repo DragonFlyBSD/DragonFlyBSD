@@ -84,6 +84,7 @@ oui xxINTEL			0x00f800	Intel
 
 /* some vendors have the bits swapped within bytes
 	(ie, ordered as on the wire) */
+/* oui xxATHEROS			0x00c82e	Atheros Communications */
 oui xxALTIMA			0x000895	Altima Communications
 oui xxBROADCOM			0x000818	Broadcom Corporation
 oui xxICS			0x00057d	Integrated Circuit Systems
@@ -124,15 +125,22 @@ model xxALTIMA AC101		0x0021 AC101 10/100 media interface
 /* AMD Am79C875 have ALTIMA OUI */
 model xxALTIMA Am79C875		0x0014 Am79C875 10/100 media interface
 
+/* Atheros Communications/Attansic PHYs */
+model ATHEROS F1		0x0001 Atheros F1 10/100/1000 PHY
+model ATHEROS F2		0x0002 Atheros F2 10/100 PHY
+model ATHEROS AR8021		0x0004 Atheros AR8021 10/100/1000 PHY
+model ATHEROS F1_7		0x0007 Atheros F1 10/100/1000 PHY
+
+/* Atheros Communications PHYs */
+/* model xxATHEROS F1		0x0001 Atheros F1 10/100/1000 PHY */
+/* model xxATHEROS F2		0x0002 Atheros F2 10/100 PHY */
+/* model xxATHEROS AR8021		0x0004 Atheros AR8021 10/100/1000 PHY */
+/* model xxATHEROS F1_7		0x0007 Atheros F1 10/100/1000 PHY */
+
 /* Advanced Micro Devices PHYs */
 model xxAMD 79C873		0x0000 Am79C873 10/100 media interface
 model AMD 79c973phy		0x0036 Am79c973 internal PHY
 model AMD 79c978		0x0039 Am79c978 HomePNA PHY
-
-/* Atheros Communications/Attansic PHYs. */
-model ATHEROS F1		0x0001 Atheros F1 10/100/1000 PHY
-model ATHEROS F2		0x0002 Atheros F2 10/100 PHY
-model ATHEROS F1_7		0x0007 Atheros F1 10/100/1000 PHY
 
 /* Broadcom Corp. PHYs. */
 model BROADCOM BCM5400		0x0004 BCM5400 100/1000baseT PHY
