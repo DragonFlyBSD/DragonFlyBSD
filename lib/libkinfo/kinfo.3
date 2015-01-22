@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 21, 2015
+.Dd January 22, 2015
 .Dt KINFO 3
 .Os
 .Sh NAME
@@ -75,7 +75,7 @@
 .Ft int
 .Fn kinfo_get_tty_tk_nout "uint64_t *tk_nout"
 .Ft int
-.Fn kinfo_get_vfs_bufspace "int *bufspace"
+.Fn kinfo_get_vfs_bufspace "long *bufspace"
 .\".Ft void
 .\".Fn cputime_pcpu_statistics "struct kinfo_cputime *percpu" "struct kinfo_cputime *total" "int ncpu"
 .\".Ft void
