@@ -774,6 +774,7 @@ static const struct agp_i810_match {
 		.name = "Haswell desktop GT2 IG",
 		.driver = &agp_i810_sb_driver
 	},
+	{	0x041e, "Haswell", &agp_i810_sb_driver },
 	{	0x0422, "Haswell", &agp_i810_sb_driver },
 	{
 		.devid = 0x0406,
