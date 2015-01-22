@@ -1567,11 +1567,12 @@ static int
 ni6_addrs(struct icmp6_nodeinfo *ni6, struct mbuf *m, struct ifnet **ifpp,
 	  char *subj)
 {
-	struct ifnet *ifp;
+	const struct ifnet_array *arr;
 	struct in6_ifaddr *ifa6;
 	struct sockaddr_in6 *subj_ip6 = NULL; /* XXX pedant */
 	int addrs = 0, addrsofif, iffound = 0;
 	int niflags = ni6->ni_flags;
+	int i;
 
 	if ((niflags & NI_NODEADDR_FLAG_ALL) == 0) {
 		switch (ni6->ni_code) {
@@ -1589,8 +1590,9 @@ ni6_addrs(struct icmp6_nodeinfo *ni6, struct mbuf *m, struct ifnet **ifpp,
 		}
 	}
 
-	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list))
-	{
+	arr = ifnet_array_get();
+	for (i = 0; i < arr->ifnet_count; ++i) {
+		struct ifnet *ifp = arr->ifnet_arr[i];
 		struct ifaddr_container *ifac;
 
 		addrsofif = 0;
@@ -1663,21 +1665,31 @@ static int
 ni6_store_addrs(struct icmp6_nodeinfo *ni6, struct icmp6_nodeinfo *nni6,
 		struct ifnet *ifp0, int resid)
 {
-	struct ifnet *ifp = ifp0 ? ifp0 : TAILQ_FIRST(&ifnet);
+	const struct ifnet_array *arr;
 	struct in6_ifaddr *ifa6;
-	struct ifnet *ifp_dep = NULL;
 	int copied = 0, allow_deprecated = 0;
 	u_char *cp = (u_char *)(nni6 + 1);
 	int niflags = ni6->ni_flags;
 	u_int32_t ltime;
+	int idx, idx_dep = -1;
 
 	if (ifp0 == NULL && !(niflags & NI_NODEADDR_FLAG_ALL))
 		return (0);	/* needless to copy */
 
+	arr = ifnet_array_get();
+	if (ifp0 == NULL) {
+		idx = 0;
+	} else {
+		for (idx = 0; idx < arr->ifnet_count; ++idx) {
+			if (arr->ifnet_arr[idx] == ifp0)
+				break;
+		}
+	}
+
 again:
 
-	for (; ifp; ifp = TAILQ_NEXT(ifp, if_list))
-	{
+	for (; idx < arr->ifnet_count; ++idx) {
+		struct ifnet *ifp = arr->ifnet_arr[idx];
 		struct ifaddr_container *ifac;
 
 		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
@@ -1695,8 +1707,8 @@ again:
 				 */
 
 				/* record the interface for later search */
-				if (ifp_dep == NULL)
-					ifp_dep = ifp;
+				if (idx_dep < 0)
+					idx_dep = idx;
 
 				continue;
 			}
@@ -1790,8 +1802,8 @@ again:
 			break;
 	}
 
-	if (allow_deprecated == 0 && ifp_dep != NULL) {
-		ifp = ifp_dep;
+	if (allow_deprecated == 0 && idx_dep >= 0) {
+		idx = idx_dep;
 		allow_deprecated = 1;
 
 		goto again;

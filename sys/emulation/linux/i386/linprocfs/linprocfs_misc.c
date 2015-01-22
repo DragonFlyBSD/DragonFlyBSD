@@ -650,8 +650,8 @@ linprocfs_donetdev(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	    "bytes    packets errs drop fifo frame compressed",
 	    "bytes    packets errs drop fifo frame compressed");
 
-	crit_enter();
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	ifnet_lock();
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		linux_ifname(ifp, ifname, sizeof ifname);
 		sbuf_printf(sb, "%6.6s:", ifname);
 		sbuf_printf(sb, "%8lu %7lu %4lu %4lu %4lu %5lu %10lu %9lu ",
@@ -659,7 +659,7 @@ linprocfs_donetdev(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		sbuf_printf(sb, "%8lu %7lu %4lu %4lu %4lu %5lu %7lu %10lu\n",
 		    0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL);
 	}
-	crit_exit();
+	ifnet_unlock();
 	sbuf_finish(sb);
 	error = uiomove_frombuf(sbuf_data(sb), sbuf_len(sb), uio);
 	sbuf_delete(sb);

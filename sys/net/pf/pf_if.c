@@ -113,10 +113,13 @@ pfi_initialize(void)
 	if ((pfi_all = pfi_kif_get(IFG_ALL)) == NULL)
 		panic("pfi_kif_get for pfi_all failed");
 
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	/* XXX ALMOST MPSAFE */
+	ifnet_lock();
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		if (ifp->if_dunit != IF_DUNIT_NONE)
 			pfi_attach_ifnet(ifp);
 	}
+	ifnet_unlock();
 	pfi_attach_cookie = EVENTHANDLER_REGISTER(ifnet_attach_event,
 	    pfi_attach_ifnet_event, NULL, EVENTHANDLER_PRI_ANY);
 	pfi_detach_cookie = EVENTHANDLER_REGISTER(ifnet_detach_event,
@@ -139,12 +142,15 @@ pfi_cleanup(void)
 	EVENTHANDLER_DEREGISTER(if_clone_event, pfi_clone_cookie);
 
 	/* release PFI_IFLAG_INSTANCE */
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	/* XXX ALMOST MPSAFE */
+	ifnet_lock();
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		strlcpy(key.pfik_name, ifp->if_xname, sizeof(key.pfik_name));
 		p = RB_FIND(pfi_ifhead, &pfi_ifs, &key);
 		if (p != NULL)
 			pfi_detach_ifnet(ifp);
 	}
+	ifnet_unlock();
 
 	/* XXX clear all other interface group */
 	while ((p = RB_MIN(pfi_ifhead, &pfi_ifs))) {

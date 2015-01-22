@@ -1062,9 +1062,12 @@ netmap_get_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 	if (error || *na != NULL) /* valid match in netmap_get_bdg_na() */
 		return error;
 
+	ifnet_lock();
+
 	ifp = ifunit(nmr->nr_name);
 	if (ifp == NULL) {
-	        return ENXIO;
+		error = ENXIO;
+		goto out;
 	}
 
 	error = netmap_get_hw_na(ifp, &ret);
@@ -1082,10 +1085,7 @@ netmap_get_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 		netmap_adapter_get(ret);
 	}
 out:
-#if 0
-	if_rele(ifp);
-#endif
-
+	ifnet_unlock();
 	return error;
 }
 

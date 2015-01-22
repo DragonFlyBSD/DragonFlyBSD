@@ -819,6 +819,8 @@ lagg_port_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct lagg_port *lp = NULL;
 	int error = 0;
 
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
 	/* Should be checked by the caller */
 	if (ifp->if_type != IFT_IEEE8023ADLAG ||
 	    (lp = ifp->if_lagg) == NULL || (sc = lp->lp_softc) == NULL)
@@ -826,11 +828,25 @@ lagg_port_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	switch (cmd) {
 	case SIOCGLAGGPORT:
-		if (rp->rp_portname[0] == '\0' ||
-		    ifunit(rp->rp_portname) != ifp) {
+		if (rp->rp_portname[0] == '\0') {
 			error = EINVAL;
 			break;
 		}
+
+		/*
+		 * Release ifp serializers before ifnet_lock
+		 * to prevent lock order reversal.
+		 */
+		ifnet_deserialize_all(ifp);
+		ifnet_lock();
+		if (ifunit(rp->rp_portname) != ifp) {
+			ifnet_unlock();
+			ifnet_serialize_all(ifp);
+			error = EINVAL;
+			break;
+		}
+		ifnet_unlock();
+		ifnet_serialize_all(ifp);
 
 		LAGG_RLOCK(sc);
 		if ((lp = ifp->if_lagg) == NULL || lp->lp_softc != sc) {
@@ -1125,8 +1141,16 @@ lagg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		LAGG_WUNLOCK(sc);
 		break;
 	case SIOCGLAGGPORT:
+		/*
+		 * Release ifp serializers before ifnet_lock
+		 * to prevent lock order reversal.
+		 */
+		ifnet_deserialize_all(ifp);
+		ifnet_lock();
 		if (rp->rp_portname[0] == '\0' ||
 		    (tpif = ifunit(rp->rp_portname)) == NULL) {
+			ifnet_unlock();
+			ifnet_serialize_all(ifp);
 			error = EINVAL;
 			break;
 		}
@@ -1136,31 +1160,53 @@ lagg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		    lp->lp_softc != sc) {
 			error = ENOENT;
 			LAGG_RUNLOCK(sc);
+			ifnet_unlock();
+			ifnet_serialize_all(ifp);
 			break;
 		}
 
 		lagg_port2req(lp, rp);
 		LAGG_RUNLOCK(sc);
+		ifnet_unlock();
+		ifnet_serialize_all(ifp);
 		break;
 	case SIOCSLAGGPORT:
 		error = priv_check(td, PRIV_NET_LAGG);
 		if (error)
 			break;
+		/*
+		 * Release ifp serializers before ifnet_lock
+		 * to prevent lock order reversal.
+		 */
+		ifnet_deserialize_all(ifp);
+		ifnet_lock();
 		if (rp->rp_portname[0] == '\0' ||
 		    (tpif = ifunit(rp->rp_portname)) == NULL) {
+			ifnet_unlock();
+			ifnet_serialize_all(ifp);
 			error = EINVAL;
 			break;
 		}
 		LAGG_WLOCK(sc);
 		error = lagg_port_create(sc, tpif);
 		LAGG_WUNLOCK(sc);
+		ifnet_unlock();
+		ifnet_serialize_all(ifp);
 		break;
 	case SIOCSLAGGDELPORT:
 		error = priv_check(td, PRIV_NET_LAGG);
 		if (error)
 			break;
+		/*
+		 * Release ifp serializers before ifnet_lock
+		 * to prevent lock order reversal.
+		 */
+		ifnet_deserialize_all(ifp);
+		ifnet_lock();
 		if (rp->rp_portname[0] == '\0' ||
 		    (tpif = ifunit(rp->rp_portname)) == NULL) {
+			ifnet_unlock();
+			ifnet_serialize_all(ifp);
 			error = EINVAL;
 			break;
 		}
@@ -1170,11 +1216,15 @@ lagg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		    lp->lp_softc != sc) {
 			error = ENOENT;
 			LAGG_WUNLOCK(sc);
+			ifnet_unlock();
+			ifnet_serialize_all(ifp);
 			break;
 		}
 
 		error = lagg_port_destroy(lp, 1);
 		LAGG_WUNLOCK(sc);
+		ifnet_unlock();
+		ifnet_serialize_all(ifp);
 		break;
 	case SIOCSIFFLAGS:
 		/* Set flags on ports too */

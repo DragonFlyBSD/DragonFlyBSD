@@ -1302,7 +1302,9 @@ sysctl_iflist(int af, struct walkarg *w)
 	int msglen, error;
 
 	bzero(&rtinfo, sizeof(struct rt_addrinfo));
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+
+	ifnet_lock();
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		struct ifaddr_container *ifac;
 		struct ifaddr *ifa;
 
@@ -1312,8 +1314,10 @@ sysctl_iflist(int af, struct walkarg *w)
 		ifa = ifac->ifa;
 		rtinfo.rti_ifpaddr = ifa->ifa_addr;
 		msglen = rt_msgsize(RTM_IFINFO, &rtinfo);
-		if (w->w_tmemsize < msglen && resizewalkarg(w, msglen) != 0)
+		if (w->w_tmemsize < msglen && resizewalkarg(w, msglen) != 0) {
+			ifnet_unlock();
 			return (ENOMEM);
+		}
 		rt_msg_buffer(RTM_IFINFO, &rtinfo, w->w_tmem, msglen);
 		rtinfo.rti_ifpaddr = NULL;
 		if (w->w_req != NULL && w->w_tmem != NULL) {
@@ -1325,8 +1329,10 @@ sysctl_iflist(int af, struct walkarg *w)
 			ifm->ifm_data = ifp->if_data;
 			ifm->ifm_addrs = rtinfo.rti_addrs;
 			error = SYSCTL_OUT(w->w_req, ifm, msglen);
-			if (error)
+			if (error) {
+				ifnet_unlock();
 				return (error);
+			}
 		}
 		while ((ifac = TAILQ_NEXT(ifac, ifa_link)) != NULL) {
 			ifa = ifac->ifa;
@@ -1341,8 +1347,10 @@ sysctl_iflist(int af, struct walkarg *w)
 			rtinfo.rti_bcastaddr = ifa->ifa_dstaddr;
 			msglen = rt_msgsize(RTM_NEWADDR, &rtinfo);
 			if (w->w_tmemsize < msglen &&
-			    resizewalkarg(w, msglen) != 0)
+			    resizewalkarg(w, msglen) != 0) {
+				ifnet_unlock();
 				return (ENOMEM);
+			}
 			rt_msg_buffer(RTM_NEWADDR, &rtinfo, w->w_tmem, msglen);
 			if (w->w_req != NULL) {
 				struct ifa_msghdr *ifam = w->w_tmem;
@@ -1352,14 +1360,17 @@ sysctl_iflist(int af, struct walkarg *w)
 				ifam->ifam_metric = ifa->ifa_metric;
 				ifam->ifam_addrs = rtinfo.rti_addrs;
 				error = SYSCTL_OUT(w->w_req, w->w_tmem, msglen);
-				if (error)
+				if (error) {
+					ifnet_unlock();
 					return (error);
+				}
 			}
 		}
 		rtinfo.rti_netmask = NULL;
 		rtinfo.rti_ifaaddr = NULL;
 		rtinfo.rti_bcastaddr = NULL;
 	}
+	ifnet_unlock();
 	return (0);
 }
 

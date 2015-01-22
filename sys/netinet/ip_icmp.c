@@ -1027,7 +1027,8 @@ icmp_reflect(struct mbuf *m)
 	 * net.inet.icmp.reply_src (default not set). Otherwise continue
 	 * with normal source selection.
 	 */
-	if (icmp_reply_src[0] != '\0' && (ifp = ifunit(icmp_reply_src))) {
+	if (icmp_reply_src[0] != '\0' &&
+	    (ifp = ifunit_netisr(icmp_reply_src))) {
 		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 			struct ifaddr *ifa = ifac->ifa;
 

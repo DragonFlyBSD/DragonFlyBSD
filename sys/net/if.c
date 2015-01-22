@@ -118,6 +118,12 @@ static void	if_slowtimo_dispatch(netmsg_t);
 /* Helper functions */
 static void	ifsq_watchdog_reset(struct ifsubq_watchdog *);
 static int	if_delmulti_serialized(struct ifnet *, struct sockaddr *);
+static struct ifnet_array *ifnet_array_alloc(int);
+static void	ifnet_array_free(struct ifnet_array *);
+static struct ifnet_array *ifnet_array_add(struct ifnet *,
+		    const struct ifnet_array *);
+static struct ifnet_array *ifnet_array_del(struct ifnet *,
+		    const struct ifnet_array *);
 
 #ifdef INET6
 /*
@@ -153,12 +159,16 @@ MALLOC_DEFINE(M_IFNET, "ifnet", "interface structure");
 int			ifqmaxlen = IFQ_MAXLEN;
 struct ifnethead	ifnet = TAILQ_HEAD_INITIALIZER(ifnet);
 
+static struct ifnet_array	ifnet_array0;
+static struct ifnet_array	*ifnet_array = &ifnet_array0;
+
 static struct callout		if_slowtimo_timer;
 static struct netmsg_base	if_slowtimo_netmsg;
 
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
 static struct thread	ifnet_threads[MAXCPU];
+static struct mtx	ifnet_mtx = MTX_INITIALIZER;
 
 static struct ifsubq_stage_head	ifsubq_stage_heads[MAXCPU];
 
@@ -210,14 +220,15 @@ ifinit(void *dummy)
 	netmsg_init(&if_slowtimo_netmsg, NULL, &netisr_adone_rport,
 	    MSGF_PRIORITY, if_slowtimo_dispatch);
 
-	crit_enter();
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	/* XXX is this necessary? */
+	ifnet_lock();
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		if (ifp->if_snd.altq_maxlen == 0) {
 			if_printf(ifp, "XXX: driver didn't set altq_maxlen\n");
 			ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 		}
 	}
-	crit_exit();
+	ifnet_unlock();
 
 	/* Start if_slowtimo */
 	lwkt_sendmsg(netisr_cpuport(0), &if_slowtimo_netmsg.lmsg);
@@ -456,9 +467,11 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 {
 	unsigned socksize, ifasize;
 	int namelen, masklen;
-	struct sockaddr_dl *sdl;
+	struct sockaddr_dl *sdl, *sdl_addr;
 	struct ifaddr *ifa;
 	struct ifaltq *ifq;
+	struct ifnet **old_ifindex2ifnet = NULL;
+	struct ifnet_array *old_ifnet_array;
 	int i, q;
 
 	static int if_indexlim = 8;
@@ -505,10 +518,6 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	}
 
 	mtx_init(&ifp->if_ioctl_mtx);
-	mtx_lock(&ifp->if_ioctl_mtx);
-
-	lwkt_gettoken(&ifnet_token);	/* protect if_index and ifnet tailq */
-	ifp->if_index = ++if_index;
 
 	/*
 	 * XXX -
@@ -525,23 +534,6 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	TAILQ_INIT(&ifp->if_multiaddrs);
 	TAILQ_INIT(&ifp->if_groups);
 	getmicrotime(&ifp->if_lastchange);
-	if (ifindex2ifnet == NULL || if_index >= if_indexlim) {
-		unsigned int n;
-		struct ifnet **q;
-
-		if_indexlim <<= 1;
-
-		/* grow ifindex2ifnet */
-		n = if_indexlim * sizeof(*q);
-		q = kmalloc(n, M_IFADDR, M_WAITOK | M_ZERO);
-		if (ifindex2ifnet) {
-			bcopy(ifindex2ifnet, q, n/2);
-			kfree(ifindex2ifnet, M_IFADDR);
-		}
-		ifindex2ifnet = q;
-	}
-
-	ifindex2ifnet[if_index] = ifp;
 
 	/*
 	 * create a Link Level name for this device
@@ -554,12 +546,11 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	socksize = RT_ROUNDUP(socksize);
 	ifasize = sizeof(struct ifaddr) + 2 * socksize;
 	ifa = ifa_create(ifasize, M_WAITOK);
-	sdl = (struct sockaddr_dl *)(ifa + 1);
+	sdl = sdl_addr = (struct sockaddr_dl *)(ifa + 1);
 	sdl->sdl_len = socksize;
 	sdl->sdl_family = AF_LINK;
 	bcopy(ifp->if_xname, sdl->sdl_data, namelen);
 	sdl->sdl_nlen = namelen;
-	sdl->sdl_index = ifp->if_index;
 	sdl->sdl_type = ifp->if_type;
 	ifp->if_lladdr = ifa;
 	ifa->ifa_ifp = ifp;
@@ -631,18 +622,78 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	}
 	ifq_set_classic(ifq);
 
+	/*
+	 * Install this ifp into ifindex2inet, ifnet queue and ifnet
+	 * array after it is setup.
+	 *
+	 * Protect ifindex2ifnet, ifnet queue and ifnet array changes
+	 * by ifnet lock, so that non-netisr threads could get a
+	 * consistent view.
+	 */
+	ifnet_lock();
+
+	/* Don't update if_index until ifindex2ifnet is setup */
+	ifp->if_index = if_index + 1;
+	sdl_addr->sdl_index = ifp->if_index;
+
+	/*
+	 * Install this ifp into ifindex2ifnet
+	 */
+	if (ifindex2ifnet == NULL || ifp->if_index >= if_indexlim) {
+		unsigned int n;
+		struct ifnet **q;
+
+		/*
+		 * Grow ifindex2ifnet
+		 */
+		if_indexlim <<= 1;
+		n = if_indexlim * sizeof(*q);
+		q = kmalloc(n, M_IFADDR, M_WAITOK | M_ZERO);
+		if (ifindex2ifnet != NULL) {
+			bcopy(ifindex2ifnet, q, n/2);
+			/* Free old ifindex2ifnet after sync all netisrs */
+			old_ifindex2ifnet = ifindex2ifnet;
+		}
+		ifindex2ifnet = q;
+	}
+	ifindex2ifnet[ifp->if_index] = ifp;
+	/*
+	 * Update if_index after this ifp is installed into ifindex2ifnet,
+	 * so that netisrs could get a consistent view of ifindex2ifnet.
+	 */
+	cpu_sfence();
+	if_index = ifp->if_index;
+
+	/*
+	 * Install this ifp into ifnet array.
+	 */
+	/* Free old ifnet array after sync all netisrs */
+	old_ifnet_array = ifnet_array;
+	ifnet_array = ifnet_array_add(ifp, old_ifnet_array);
+
+	/*
+	 * Install this ifp into ifnet queue.
+	 */
+	TAILQ_INSERT_TAIL(&ifnetlist, ifp, if_link);
+
+	ifnet_unlock();
+
+	/*
+	 * Sync all netisrs so that the old ifindex2ifnet and ifnet array
+	 * are no longer accessed and we can free them safely later on.
+	 */
+	netmsg_service_sync();
+	if (old_ifindex2ifnet != NULL)
+		kfree(old_ifindex2ifnet, M_IFADDR);
+	ifnet_array_free(old_ifnet_array);
+
 	if (!SLIST_EMPTY(&domains))
 		if_attachdomain1(ifp);
-
-	TAILQ_INSERT_TAIL(&ifnet, ifp, if_link);
-	lwkt_reltoken(&ifnet_token);
 
 	/* Announce the interface. */
 	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 	devctl_notify("IFNET", ifp->if_xname, "ATTACH", NULL);
 	rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
-
-	mtx_unlock(&ifp->if_ioctl_mtx);
 }
 
 static void
@@ -650,10 +701,10 @@ if_attachdomain(void *dummy)
 {
 	struct ifnet *ifp;
 
-	crit_enter();
-	TAILQ_FOREACH(ifp, &ifnet, if_list)
+	ifnet_lock();
+	TAILQ_FOREACH(ifp, &ifnetlist, if_list)
 		if_attachdomain1(ifp);
-	crit_exit();
+	ifnet_unlock();
 }
 SYSINIT(domainifattach, SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_FIRST,
 	if_attachdomain, NULL);
@@ -796,11 +847,53 @@ if_rtdel_dispatch(netmsg_t msg)
 void
 if_detach(struct ifnet *ifp)
 {
+	struct ifnet_array *old_ifnet_array;
 	struct netmsg_if_rtdel msg;
 	struct domain *dp;
 	int q;
 
+	/* Announce that the interface is gone. */
 	EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
+	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
+	devctl_notify("IFNET", ifp->if_xname, "DETACH", NULL);
+
+	/*
+	 * Remove this ifp from ifindex2inet, ifnet queue and ifnet
+	 * array before it is whacked.
+	 *
+	 * Protect ifindex2ifnet, ifnet queue and ifnet array changes
+	 * by ifnet lock, so that non-netisr threads could get a
+	 * consistent view.
+	 */
+	ifnet_lock();
+
+	/*
+	 * Remove this ifp from ifindex2ifnet and maybe decrement if_index.
+	 */
+	ifindex2ifnet[ifp->if_index] = NULL;
+	while (if_index > 0 && ifindex2ifnet[if_index] == NULL)
+		if_index--;
+
+	/*
+	 * Remove this ifp from ifnet queue.
+	 */
+	TAILQ_REMOVE(&ifnetlist, ifp, if_link);
+
+	/*
+	 * Remove this ifp from ifnet array.
+	 */
+	/* Free old ifnet array after sync all netisrs */
+	old_ifnet_array = ifnet_array;
+	ifnet_array = ifnet_array_del(ifp, old_ifnet_array);
+
+	ifnet_unlock();
+
+	/*
+	 * Sync all netisrs so that the old ifnet array is no longer
+	 * accessed and we can free it safely later on.
+	 */
+	netmsg_service_sync();
+	ifnet_array_free(old_ifnet_array);
 
 	/*
 	 * Remove routes and flush queues.
@@ -863,24 +956,10 @@ if_detach(struct ifnet *ifp)
 	msg.ifp = ifp;
 	rt_domsg_global(&msg.base);
 
-	/* Announce that the interface is gone. */
-	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
-	devctl_notify("IFNET", ifp->if_xname, "DETACH", NULL);
-
 	SLIST_FOREACH(dp, &domains, dom_next)
 		if (dp->dom_ifdetach && ifp->if_afdata[dp->dom_family])
 			(*dp->dom_ifdetach)(ifp,
 				ifp->if_afdata[dp->dom_family]);
-
-	/*
-	 * Remove interface from ifindex2ifp[] and maybe decrement if_index.
-	 */
-	lwkt_gettoken(&ifnet_token);
-	ifindex2ifnet[ifp->if_index] = NULL;
-	while (if_index > 0 && ifindex2ifnet[if_index] == NULL)
-		if_index--;
-	TAILQ_REMOVE(&ifnet, ifp, if_link);
-	lwkt_reltoken(&ifnet_token);
 
 	kfree(ifp->if_addrheads, M_IFADDR);
 
@@ -1143,9 +1222,12 @@ if_rtdel(struct radix_node *rn, void *arg)
 struct ifaddr *
 ifa_ifwithaddr(struct sockaddr *addr)
 {
-	struct ifnet *ifp;
+	const struct ifnet_array *arr;
+	int i;
 
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	arr = ifnet_array_get();
+	for (i = 0; i < arr->ifnet_count; ++i) {
+		struct ifnet *ifp = arr->ifnet_arr[i];
 		struct ifaddr_container *ifac;
 
 		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
@@ -1171,9 +1253,12 @@ ifa_ifwithaddr(struct sockaddr *addr)
 struct ifaddr *
 ifa_ifwithdstaddr(struct sockaddr *addr)
 {
-	struct ifnet *ifp;
+	const struct ifnet_array *arr;
+	int i;
 
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	arr = ifnet_array_get();
+	for (i = 0; i < arr->ifnet_count; ++i) {
+		struct ifnet *ifp = arr->ifnet_arr[i];
 		struct ifaddr_container *ifac;
 
 		if (!(ifp->if_flags & IFF_POINTOPOINT))
@@ -1199,10 +1284,11 @@ ifa_ifwithdstaddr(struct sockaddr *addr)
 struct ifaddr *
 ifa_ifwithnet(struct sockaddr *addr)
 {
-	struct ifnet *ifp;
 	struct ifaddr *ifa_maybe = NULL;
 	u_int af = addr->sa_family;
 	char *addr_data = addr->sa_data, *cplim;
+	const struct ifnet_array *arr;
+	int i;
 
 	/*
 	 * AF_LINK addresses can be looked up directly by their index number,
@@ -1219,7 +1305,9 @@ ifa_ifwithnet(struct sockaddr *addr)
 	 * Scan though each interface, looking for ones that have
 	 * addresses in this address family.
 	 */
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	arr = ifnet_array_get();
+	for (i = 0; i < arr->ifnet_count; ++i) {
+		struct ifnet *ifp = arr->ifnet_arr[i];
 		struct ifaddr_container *ifac;
 
 		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
@@ -1456,7 +1544,8 @@ static void
 if_slowtimo_dispatch(netmsg_t nmsg)
 {
 	struct globaldata *gd = mycpu;
-	struct ifnet *ifp;
+	const struct ifnet_array *arr;
+	int i;
 
 	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
 	    ("not in netisr0"));
@@ -1465,7 +1554,10 @@ if_slowtimo_dispatch(netmsg_t nmsg)
 	lwkt_replymsg(&nmsg->lmsg, 0);  /* reply ASAP */
 	crit_exit_gd(gd);
 
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	arr = ifnet_array_get();
+	for (i = 0; i < arr->ifnet_count; ++i) {
+		struct ifnet *ifp = arr->ifnet_arr[i];
+
 		crit_enter_gd(gd);
 
 		if (if_stats_compat) {
@@ -1526,41 +1618,34 @@ ifunit(const char *name)
 	/*
 	 * Search all the interfaces for this name/number
 	 */
+	KASSERT(mtx_owned(&ifnet_mtx), ("ifnet is not locked"));
 
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		if (strncmp(ifp->if_xname, name, IFNAMSIZ) == 0)
 			break;
 	}
 	return (ifp);
 }
 
-
-/*
- * Map interface name in a sockaddr_dl to
- * interface structure pointer.
- */
 struct ifnet *
-if_withname(struct sockaddr *sa)
+ifunit_netisr(const char *name)
 {
-	char ifname[IFNAMSIZ+1];
-	struct sockaddr_dl *sdl = (struct sockaddr_dl *)sa;
-
-	if ( (sa->sa_family != AF_LINK) || (sdl->sdl_nlen == 0) ||
-	     (sdl->sdl_nlen > IFNAMSIZ) )
-		return NULL;
+	const struct ifnet_array *arr;
+	int i;
 
 	/*
-	 * ifunit wants a null-terminated name.  It may not be null-terminated
-	 * in the sockaddr.  We don't want to change the caller's sockaddr,
-	 * and there might not be room to put the trailing null anyway, so we
-	 * make a local copy that we know we can null terminate safely.
+	 * Search all the interfaces for this name/number
 	 */
 
-	bcopy(sdl->sdl_data, ifname, sdl->sdl_nlen);
-	ifname[sdl->sdl_nlen] = '\0';
-	return ifunit(ifname);
-}
+	arr = ifnet_array_get();
+	for (i = 0; i < arr->ifnet_count; ++i) {
+		struct ifnet *ifp = arr->ifnet_arr[i];
 
+		if (strncmp(ifp->if_xname, name, IFNAMSIZ) == 0)
+			return ifp;
+	}
+	return NULL;
+}
 
 /*
  * Interface ioctls.
@@ -1613,11 +1698,14 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	 * Nominal ioctl through interface, lookup the ifp and obtain a
 	 * lock to serialize the ifconfig ioctl operation.
 	 */
+	ifnet_lock();
+
 	ifp = ifunit(ifr->ifr_name);
-	if (ifp == NULL)
+	if (ifp == NULL) {
+		ifnet_unlock();
 		return (ENXIO);
+	}
 	error = 0;
-	mtx_lock(&ifp->if_ioctl_mtx);
 
 	switch (cmd) {
 	case SIOCGIFINDEX:
@@ -1984,7 +2072,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 	}
 
-	mtx_unlock(&ifp->if_ioctl_mtx);
+	ifnet_unlock();
 	return (error);
 }
 
@@ -2054,7 +2142,9 @@ ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 	int space = ifc->ifc_len, error = 0;
 
 	ifrp = ifc->ifc_req;
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+
+	ifnet_lock();
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		struct ifaddr_container *ifac;
 		int addrs;
 
@@ -2125,6 +2215,8 @@ ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 			ifrp++;
 		}
 	}
+	ifnet_unlock();
+
 	ifc->ifc_len -= space;
 	return (error);
 }
@@ -2474,7 +2566,8 @@ if_getanyethermac(uint16_t *node, int minlen)
 	struct ifnet *ifp;
 	struct sockaddr_dl *sdl;
 
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	ifnet_lock();
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		if (ifp->if_type != IFT_ETHER)
 			continue;
 		sdl = IF_LLSOCKADDR(ifp);
@@ -2482,8 +2575,10 @@ if_getanyethermac(uint16_t *node, int minlen)
 			continue;
 		bcopy(((struct arpcom *)ifp->if_softc)->ac_enaddr, node,
 		      minlen);
+		ifnet_unlock();
 		return(0);
 	}
+	ifnet_unlock();
 	return (ENOENT);
 }
 
@@ -3274,4 +3369,120 @@ ifsq_watchdog_stop(struct ifsubq_watchdog *wd)
 {
 	wd->wd_timer = 0;
 	callout_stop(&wd->wd_callout);
+}
+
+void
+ifnet_lock(void)
+{
+	KASSERT(curthread->td_type != TD_TYPE_NETISR,
+	    ("try holding ifnet lock in netisr"));
+	mtx_lock(&ifnet_mtx);
+}
+
+void
+ifnet_unlock(void)
+{
+	KASSERT(curthread->td_type != TD_TYPE_NETISR,
+	    ("try holding ifnet lock in netisr"));
+	mtx_unlock(&ifnet_mtx);
+}
+
+static struct ifnet_array *
+ifnet_array_alloc(int count)
+{
+	struct ifnet_array *arr;
+
+	arr = kmalloc(__offsetof(struct ifnet_array, ifnet_arr[count]),
+	    M_IFNET, M_WAITOK);
+	arr->ifnet_count = count;
+
+	return arr;
+}
+
+static void
+ifnet_array_free(struct ifnet_array *arr)
+{
+	if (arr == &ifnet_array0)
+		return;
+	kfree(arr, M_IFNET);
+}
+
+static struct ifnet_array *
+ifnet_array_add(struct ifnet *ifp, const struct ifnet_array *old_arr)
+{
+	struct ifnet_array *arr;
+	int count, i;
+
+	KASSERT(old_arr->ifnet_count >= 0,
+	    ("invalid ifnet array count %d", old_arr->ifnet_count));
+	count = old_arr->ifnet_count + 1;
+	arr = ifnet_array_alloc(count);
+
+	/*
+	 * Save the old ifnet array and append this ifp to the end of
+	 * the new ifnet array.
+	 */
+	for (i = 0; i < old_arr->ifnet_count; ++i) {
+		KASSERT(old_arr->ifnet_arr[i] != ifp,
+		    ("%s is already in ifnet array", ifp->if_xname));
+		arr->ifnet_arr[i] = old_arr->ifnet_arr[i];
+	}
+	KASSERT(i == count - 1,
+	    ("add %s, ifnet array index mismatch, should be %d, but got %d",
+	     ifp->if_xname, count - 1, i));
+	arr->ifnet_arr[i] = ifp;
+
+	return arr;
+}
+
+static struct ifnet_array *
+ifnet_array_del(struct ifnet *ifp, const struct ifnet_array *old_arr)
+{
+	struct ifnet_array *arr;
+	int count, i, idx, found = 0;
+
+	KASSERT(old_arr->ifnet_count > 0,
+	    ("invalid ifnet array count %d", old_arr->ifnet_count));
+	count = old_arr->ifnet_count - 1;
+	arr = ifnet_array_alloc(count);
+
+	/*
+	 * Save the old ifnet array, but skip this ifp.
+	 */
+	idx = 0;
+	for (i = 0; i < old_arr->ifnet_count; ++i) {
+		if (old_arr->ifnet_arr[i] == ifp) {
+			KASSERT(!found,
+			    ("dup %s is in ifnet array", ifp->if_xname));
+			found = 1;
+			continue;
+		}
+		KASSERT(idx < count,
+		    ("invalid ifnet array index %d, count %d", idx, count));
+		arr->ifnet_arr[idx] = old_arr->ifnet_arr[i];
+		++idx;
+	}
+	KASSERT(found, ("%s is not in ifnet array", ifp->if_xname));
+	KASSERT(idx == count,
+	    ("del %s, ifnet array count mismatch, should be %d, but got %d ",
+	     ifp->if_xname, count, idx));
+
+	return arr;
+}
+
+const struct ifnet_array *
+ifnet_array_get(void)
+{
+	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
+	return ifnet_array;
+}
+
+int
+ifnet_array_isempty(void)
+{
+	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
+	if (ifnet_array->ifnet_count == 0)
+		return 1;
+	else
+		return 0;
 }

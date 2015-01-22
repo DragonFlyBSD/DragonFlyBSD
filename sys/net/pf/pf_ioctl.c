@@ -660,8 +660,12 @@ pf_enable_altq(struct pf_altq *altq)
 	struct tb_profile	 tb;
 	int			 error = 0;
 
-	if ((ifp = ifunit(altq->ifname)) == NULL)
+	ifnet_lock();
+
+	if ((ifp = ifunit(altq->ifname)) == NULL) {
+		ifnet_unlock();
 		return (EINVAL);
+	}
 
 	if (ifp->if_snd.altq_type != ALTQT_NONE)
 		error = altq_enable(&ifp->if_snd);
@@ -675,6 +679,7 @@ pf_enable_altq(struct pf_altq *altq)
 		crit_exit();
 	}
 
+	ifnet_unlock();
 	return (error);
 }
 
@@ -685,15 +690,21 @@ pf_disable_altq(struct pf_altq *altq)
 	struct tb_profile	 tb;
 	int			 error;
 
-	if ((ifp = ifunit(altq->ifname)) == NULL)
+	ifnet_lock();
+
+	if ((ifp = ifunit(altq->ifname)) == NULL) {
+		ifnet_unlock();
 		return (EINVAL);
+	}
 
 	/*
 	 * when the discipline is no longer referenced, it was overridden
 	 * by a new one.  if so, just return.
 	 */
-	if (altq->altq_disc != ifp->if_snd.altq_disc)
+	if (altq->altq_disc != ifp->if_snd.altq_disc) {
+		ifnet_unlock();
 		return (0);
+	}
 
 	error = altq_disable(&ifp->if_snd);
 
@@ -705,6 +716,7 @@ pf_disable_altq(struct pf_altq *altq)
 		crit_exit();
 	}
 
+	ifnet_unlock();
 	return (error);
 }
 #endif /* ALTQ */
@@ -1904,11 +1916,13 @@ pfioctl(struct dev_ioctl_args *ap)
 		if (psp->ifname[0] != 0) {
 			/* Can we completely trust user-land? */
 			strlcpy(ps.ifname, psp->ifname, IFNAMSIZ);
+			ifnet_lock();
 			ifp = ifunit(ps.ifname);
 			if (ifp )
 				psp->baudrate = ifp->if_baudrate;
 			else
 				error = EINVAL;
+			ifnet_unlock();
 		} else
 			error = EINVAL;
 		break;

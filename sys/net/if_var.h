@@ -707,6 +707,13 @@ EVENTHANDLER_DECLARE(ifnet_attach_event, ifnet_attach_event_handler_t);
 typedef void (*ifnet_detach_event_handler_t)(void *, struct ifnet *);
 EVENTHANDLER_DECLARE(ifnet_detach_event, ifnet_detach_event_handler_t);
 
+/* Array of all ifnets in the system */
+struct ifnet_array {
+	int		ifnet_count;	/* # of elem. in ifnet_arr */
+	int		ifnet_pad;	/* explicit */
+	struct ifnet	*ifnet_arr[];
+};
+
 /*
  * interface groups
  */
@@ -862,11 +869,44 @@ ifnet_serialize_array_assert(lwkt_serialize_t *_arr, int _arrcnt,
 #define REINPUT_KEEPRCVIF	0x0001	/* ether_reinput_oncpu() */
 #define REINPUT_RUNBPF 		0x0002	/* ether_reinput_oncpu() */
 
-extern	struct ifnethead ifnet;
-extern struct	ifnet	**ifindex2ifnet;
+/*
+ * MPSAFE NOTE for ifnet queue (ifnet), ifnet array, ifunit() and
+ * ifindex2ifnet.
+ *
+ * - ifnet queue must only be accessed by non-netisr threads and
+ *   ifnet lock must be held (by ifnet_lock()).
+ * - If accessing ifnet queue is needed in netisrs, ifnet array
+ *   (obtained through ifnet_array_get()) must be used instead.
+ *   There is no need to (must not, actually) hold ifnet lock for
+ *   ifnet array accessing.
+ * - ifindex2ifnet could be accessed by both non-netisr threads and
+ *   netisrs.  Accessing ifindex2ifnet in non-netisr threads must be
+ *   protected by ifnet lock (by ifnet_lock()).  Accessing
+ *   ifindex2ifnet in netisrs is lockless MPSAFE and ifnet lock must
+ *   not be held.  However, ifindex2ifnet should be saved in a stack
+ *   variable to get a consistent view of ifindex2ifnet, if
+ *   ifindex2ifnet is accessed multiple times from a function in
+ *   netisrs.
+ * - ifunit() must only be called in non-netisr threads and ifnet
+ *   lock must be held before calling this function and for the
+ *   accessing of the ifp returned by this function.
+ * - If ifunit() is needed in netisr, ifunit_netisr() must be used
+ *   instead.  There is no need to (must not, actually) hold ifnet
+ *   lock for ifunit_netisr() and the returned ifp.
+ */
+extern struct ifnethead	ifnet;
+#define ifnetlist	ifnet	/* easily distinguished ifnet alias */
+
+extern struct ifnet	**ifindex2ifnet;
+extern int		if_index;
+
+struct ifnet		*ifunit(const char *);
+struct ifnet		*ifunit_netisr(const char *);
+const struct ifnet_array *ifnet_array_get(void);
+int			ifnet_array_isempty(void);
+
 extern	int ifqmaxlen;
 extern	struct ifnet loif[];
-extern	int if_index;
 
 struct ip;
 struct tcphdr;
@@ -912,8 +952,6 @@ void	if_up(struct ifnet *);
 /*void	ifinit(void);*/ /* declared in systm.h for main() */
 int	ifioctl(struct socket *, u_long, caddr_t, struct ucred *);
 int	ifpromisc(struct ifnet *, int);
-struct	ifnet *ifunit(const char *);
-struct	ifnet *if_withname(struct sockaddr *);
 
 struct	ifg_group *if_creategroup(const char *);
 int     if_addgroup(struct ifnet *, const char *);
@@ -942,6 +980,9 @@ int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
 void	if_devstart(struct ifnet *ifp); /* COMPAT */
 void	if_devstart_sched(struct ifnet *ifp); /* COMPAT */
 int	if_ring_count2(int cnt, int cnt_max);
+
+void	ifnet_lock(void);
+void	ifnet_unlock(void);
 
 #define IF_LLSOCKADDR(ifp)						\
     ((struct sockaddr_dl *)(ifp)->if_lladdr->ifa_addr)

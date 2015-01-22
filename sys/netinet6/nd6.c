@@ -1822,8 +1822,9 @@ nd6_slowtimo(void *arg __unused)
 static void
 nd6_slowtimo_dispatch(netmsg_t nmsg)
 {
+	const struct ifnet_array *arr;
 	struct nd_ifinfo *nd6if;
-	struct ifnet *ifp;
+	int i;
 
 	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
 	    ("not in netisr0"));
@@ -1832,8 +1833,12 @@ nd6_slowtimo_dispatch(netmsg_t nmsg)
 	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
 	crit_exit();
 
+	arr = ifnet_array_get();
+
 	mtx_lock(&nd6_mtx);
-	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list)) {
+	for (i = 0; i < arr->ifnet_count; ++i) {
+		struct ifnet *ifp = arr->ifnet_arr[i];
+
 		if (ifp->if_afdata[AF_INET6] == NULL)
 			continue;
 		nd6if = ND_IFINFO(ifp);

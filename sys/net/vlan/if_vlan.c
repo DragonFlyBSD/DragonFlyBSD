@@ -686,7 +686,7 @@ vlan_config_dispatch(netmsg_t msg)
 
 	/* Assert in netisr0 */
 
-	ifp_p = ifunit(vmsg->nv_parent_name);
+	ifp_p = ifunit_netisr(vmsg->nv_parent_name);
 	if (ifp_p == NULL) {
 		error = ENOENT;
 		goto reply;

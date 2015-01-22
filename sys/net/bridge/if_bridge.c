@@ -1158,7 +1158,7 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 	bifp = sc->sc_ifp;
 	ASSERT_IFNET_SERIALIZED_ALL(bifp);
 
-	ifs = ifunit(req->ifbr_ifsname);
+	ifs = ifunit_netisr(req->ifbr_ifsname);
 	if (ifs == NULL)
 		return (ENOENT);
 
@@ -1734,7 +1734,7 @@ bridge_ioctl_addspan(struct bridge_softc *sc, void *arg)
 	struct ifnet *ifs;
 	struct bridge_ifinfo *bif_info;
 
-	ifs = ifunit(req->ifbr_ifsname);
+	ifs = ifunit_netisr(req->ifbr_ifsname);
 	if (ifs == NULL)
 		return (ENOENT);
 
@@ -1781,7 +1781,7 @@ bridge_ioctl_delspan(struct bridge_softc *sc, void *arg)
 	struct bridge_iflist *bif;
 	struct ifnet *ifs;
 
-	ifs = ifunit(req->ifbr_ifsname);
+	ifs = ifunit_netisr(req->ifbr_ifsname);
 	if (ifs == NULL)
 		return (ENOENT);
 

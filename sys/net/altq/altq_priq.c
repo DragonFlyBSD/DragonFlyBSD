@@ -97,16 +97,24 @@ priq_add_altq(struct pf_altq *a)
 	struct priq_if *pif;
 	struct ifnet *ifp;
 
-	if ((ifp = ifunit(a->ifname)) == NULL)
+	ifnet_lock();
+
+	if ((ifp = ifunit(a->ifname)) == NULL) {
+		ifnet_unlock();
 		return (EINVAL);
-	if (!ifq_is_ready(&ifp->if_snd))
+	}
+	if (!ifq_is_ready(&ifp->if_snd)) {
+		ifnet_unlock();
 		return (ENODEV);
+	}
 
 	pif = kmalloc(sizeof(*pif), M_ALTQ, M_WAITOK | M_ZERO);
 	pif->pif_bandwidth = a->ifbandwidth;
 	pif->pif_maxpri = -1;
 	pif->pif_ifq = &ifp->if_snd;
 	ifq_purge_all(&ifp->if_snd);
+
+	ifnet_unlock();
 
 	/* keep the state in pf_altq */
 	a->altq_disc = pif;
@@ -217,21 +225,28 @@ priq_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 	if (*nbytes < sizeof(stats))
 		return (EINVAL);
 
+	ifnet_lock();
+
 	/* XXX not MP safe */
-	if ((pif = altq_lookup(a->ifname, ALTQT_PRIQ)) == NULL)
+	if ((pif = altq_lookup(a->ifname, ALTQT_PRIQ)) == NULL) {
+		ifnet_unlock();
 		return (EBADF);
+	}
 	ifq = pif->pif_ifq;
 
 	PRIQ_LOCK(ifq);
 
 	if ((cl = clh_to_clp(pif, a->qid)) == NULL) {
 		PRIQ_UNLOCK(ifq);
+		ifnet_unlock();
 		return (EINVAL);
 	}
 
 	get_class_stats(&stats, cl);
 
 	PRIQ_UNLOCK(ifq);
+
+	ifnet_unlock();
 
 	if ((error = copyout((caddr_t)&stats, ubuf, sizeof(stats))) != 0)
 		return (error);

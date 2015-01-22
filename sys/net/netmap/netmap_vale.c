@@ -569,6 +569,7 @@ netmap_get_bdg_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 	 * try see if there is a matching NIC with this name
 	 * (after the bridge's name)
 	 */
+	ifnet_lock();
 	ifp = ifunit(name + b->bdg_namelen + 1);
 	if (!ifp) { /* this is a virtual port */
 		/* Create a temporary NA with arguments, then
@@ -576,6 +577,8 @@ netmap_get_bdg_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 		 * and attach it to the ifp
 		 */
 		struct netmap_adapter tmp_na;
+
+		ifnet_unlock();
 
 		if (nmr->nr_cmd) {
 			/* nr_cmd must be 0 for a virtual port */
@@ -643,9 +646,8 @@ netmap_get_bdg_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 		ret = NA(fake_ifp);
 		if (nmr->nr_arg1 != NETMAP_BDG_HOST)
 			cand2 = -1; /* only need one port */
-#if 0
-		if_rele(ifp);
-#endif
+
+		ifnet_unlock();
 	}
 	vpna = (struct netmap_vp_adapter *)ret;
 
@@ -672,10 +674,7 @@ netmap_get_bdg_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 	return 0;
 
 out:
-#if 0
-	if_rele(ifp);
-#endif
-
+	ifnet_unlock();
 	return error;
 }
 

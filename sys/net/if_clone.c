@@ -61,8 +61,12 @@ if_clone_create(char *name, int len, caddr_t params)
 	if (ifc == NULL)
 		return (EINVAL);
 
-	if (ifunit(name) != NULL)
+	ifnet_lock();
+	if (ifunit(name) != NULL) {
+		ifnet_unlock();
 		return (EEXIST);
+	}
+	ifnet_unlock();
 
 	bytoff = bitoff = 0;
 	wildcard = (unit < 0);
@@ -137,16 +141,26 @@ if_clone_destroy(const char *name)
 	if (unit < ifc->ifc_minifs)
 		return (EINVAL);
 
-	ifp = ifunit(name);
-	if (ifp == NULL)
-		return (ENXIO);
+	ifnet_lock();
 
-	if (ifc->ifc_destroy == NULL)
+	ifp = ifunit(name);
+	if (ifp == NULL) {
+		ifnet_unlock();
+		return (ENXIO);
+	}
+
+	if (ifc->ifc_destroy == NULL) {
+		ifnet_unlock();
 		return (EOPNOTSUPP);
+	}
 
 	error = ifc->ifc_destroy(ifp);
-	if (error)
+	if (error) {
+		ifnet_unlock();
 		return error;
+	}
+
+	ifnet_unlock();
 
 	/*
 	 * Compute offset in the bitmap and deallocate the unit.

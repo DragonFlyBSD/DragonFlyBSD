@@ -349,8 +349,8 @@ tbr_timeout(void *arg __unused)
 static void
 tbr_timeout_dispatch(netmsg_t nmsg)
 {
-	struct ifnet *ifp;
-	int active;
+	const struct ifnet_array *arr;
+	int active, i;
 
 	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
 	    ("not in netisr0"));
@@ -360,7 +360,9 @@ tbr_timeout_dispatch(netmsg_t nmsg)
 	crit_exit();
 
 	active = 0;
-	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list)) {
+	arr = ifnet_array_get();
+	for (i = 0; i < arr->ifnet_count; ++i) {
+		struct ifnet *ifp = arr->ifnet_arr[i];
 		struct ifaltq_subque *ifsq;
 
 		if (ifp->if_snd.altq_tbr == NULL)
@@ -416,9 +418,13 @@ altq_pfattach(struct pf_altq *a)
 	if (a->altq_disc == NULL)
 		return EINVAL;
 
+	ifnet_lock();
+
 	ifp = ifunit(a->ifname);
-	if (ifp == NULL)
+	if (ifp == NULL) {
+		ifnet_unlock();
 		return EINVAL;
+	}
 	ifq = &ifp->if_snd;
 
 	ifq_lock_all(ifq);
@@ -464,6 +470,7 @@ altq_pfattach(struct pf_altq *a)
 	}
 back:
 	ifq_unlock_all(ifq);
+	ifnet_unlock();
 	return (error);
 }
 
@@ -479,14 +486,20 @@ altq_pfdetach(struct pf_altq *a)
 	struct ifaltq *ifq;
 	int error = 0;
 
+	ifnet_lock();
+
 	ifp = ifunit(a->ifname);
-	if (ifp == NULL)
+	if (ifp == NULL) {
+		ifnet_unlock();
 		return (EINVAL);
+	}
 	ifq = &ifp->if_snd;
 
 	/* if this discipline is no longer referenced, just return */
-	if (a->altq_disc == NULL)
+	if (a->altq_disc == NULL) {
+		ifnet_unlock();
 		return (0);
+	}
 
 	ifq_lock_all(ifq);
 
@@ -500,6 +513,7 @@ altq_pfdetach(struct pf_altq *a)
 
 back:
 	ifq_unlock_all(ifq);
+	ifnet_unlock();
 	return (error);
 }
 

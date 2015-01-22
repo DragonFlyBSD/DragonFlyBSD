@@ -339,9 +339,12 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	b = &priv->fec_bundle;
 	ifp = &priv->arpcom.ac_if;
 
+	ifnet_lock();
+
 	/* Find the interface */
 	bifp = ifunit(iface);
 	if (bifp == NULL) {
+		ifnet_unlock();
 		kprintf("fec%d: tried to add iface %s, which "
 		    "doesn't seem to exist\n", priv->unit, iface);
 		return(ENOENT);
@@ -349,6 +352,7 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 
 	/* See if we have room in the bundle */
 	if (b->fec_ifcnt == FEC_BUNDLESIZ) {
+		ifnet_unlock();
 		kprintf("fec%d: can't add new iface; bundle is full\n",
 		    priv->unit);
 		return(ENOSPC);
@@ -357,6 +361,7 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	/* See if the interface is already in the bundle */
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		if (p->fec_if == bifp) {
+			ifnet_unlock();
 			kprintf("fec%d: iface %s is already in this "
 			    "bundle\n", priv->unit, iface);
 			return(EINVAL);
@@ -365,8 +370,10 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 
 	/* Allocate new list entry. */
 	new = kmalloc(sizeof(struct ng_fec_portlist), M_NETGRAPH, M_NOWAIT);
-	if (new == NULL)
+	if (new == NULL) {
+		ifnet_unlock();
 		return(ENOMEM);
+	}
 
 	ac = (struct arpcom *)bifp;
 	ac->ac_netgraph = priv->node;
@@ -401,6 +408,8 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	new->fec_if = bifp;
 	TAILQ_INSERT_TAIL(&b->ng_fec_ports, new, fec_list);
 
+	ifnet_unlock();
+
 	return(0);
 }
 
@@ -418,9 +427,12 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 
 	b = &priv->fec_bundle;
 
+	ifnet_lock();
+
 	/* Find the interface */
 	bifp = ifunit(iface);
 	if (bifp == NULL) {
+		ifnet_unlock();
 		kprintf("fec%d: tried to remove iface %s, which "
 		    "doesn't seem to exist\n", priv->unit, iface);
 		return(ENOENT);
@@ -432,6 +444,7 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 	}
 
 	if (p == NULL) {
+		ifnet_unlock();
 		kprintf("fec%d: tried to remove iface %s which "
 		    "is not in our bundle\n", priv->unit, iface);
 		return(EINVAL);
@@ -451,6 +464,8 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 	TAILQ_REMOVE(&b->ng_fec_ports, p, fec_list);
 	kfree(p, M_NETGRAPH);
 	b->fec_ifcnt--;
+
+	ifnet_unlock();
 
 	return(0);
 }

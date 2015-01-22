@@ -666,7 +666,7 @@ rip_bind(netmsg_t msg)
 	    ("not in netisr0"));
 
 	if (nam->sa_len == sizeof(*addr)) {
-		if (TAILQ_EMPTY(&ifnet) ||
+		if (ifnet_array_isempty() ||
 		    ((addr->sin_family != AF_INET) &&
 		     (addr->sin_family != AF_IMPLINK)) ||
 		    (addr->sin_addr.s_addr != INADDR_ANY &&
@@ -696,7 +696,7 @@ rip_connect(netmsg_t msg)
 
 	if (nam->sa_len != sizeof(*addr)) {
 		error = EINVAL;
-	} else if (TAILQ_EMPTY(&ifnet)) {
+	} else if (ifnet_array_isempty()) {
 		error = EADDRNOTAVAIL;
 	} else {
 		if ((addr->sin_family != AF_INET) &&

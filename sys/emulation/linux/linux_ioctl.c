@@ -939,7 +939,7 @@ linux_ifname(struct ifnet *ifp, char *buffer, size_t buflen)
 
 	/* Determine the (relative) unit number for ethernet interfaces */
 	ethno = 0;
-	TAILQ_FOREACH(ifscan, &ifnet, if_link) {
+	TAILQ_FOREACH(ifscan, &ifnetlist, if_link) {
 		if (ifscan == ifp)
 			return (ksnprintf(buffer, buflen, "eth%d", ethno));
 		if (IFP_IS_ETH(ifscan))
@@ -974,7 +974,7 @@ ifname_linux_to_bsd(const char *lxname, char *bsdname)
 		return (NULL);
 	index = 0;
 	is_eth = (len == 3 && !strncmp(lxname, "eth", len)) ? 1 : 0;
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		/*
 		 * Allow Linux programs to use FreeBSD names. Don't presume
 		 * we never have an interface named "eth", so don't make
@@ -1015,7 +1015,8 @@ linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 	ethno = 0;
 
 	/* Return all AF_INET addresses of all interfaces */
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	ifnet_lock();
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		struct ifaddr_container *ifac;
 
 		if (uio.uio_resid <= 0)
@@ -1043,11 +1044,14 @@ linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 
 				error = uiomove((caddr_t)&ifr, sizeof ifr,
 				    &uio);
-				if (error != 0)
+				if (error != 0) {
+					ifnet_unlock();
 					return (error);
+				}
 			}
 		}
 	}
+	ifnet_unlock();
 
 	ifc->ifc_len -= uio.uio_resid;
 
@@ -1072,11 +1076,17 @@ linux_ioctl_SIOCGIFFLAGS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 	}
 #endif
 
-	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
-	if (ifp == NULL)
-		return (EINVAL);
+	ifnet_lock();
 
+	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
+	if (ifp == NULL) {
+		ifnet_unlock();
+		return (EINVAL);
+	}
 	flags = ifp->if_flags;
+
+	ifnet_unlock();
+
 	/* these flags have no Linux equivalent */
 	flags &= ~(IFF_SMART|IFF_SIMPLEX| IFF_LINK0|IFF_LINK1|IFF_LINK2);
 	/* Linux' multicast flag is in a different bit */
@@ -1101,15 +1111,20 @@ linux_ioctl_SIOCGIFINDEX(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 	char ifname[IFNAMSIZ];
 	l_int index;
 
-	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
-	if (ifp == NULL)
-		return EINVAL;
+	ifnet_lock();
 
+	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
+	if (ifp == NULL) {
+		ifnet_unlock();
+		return EINVAL;
+	}
 #if DEBUG
 	kprintf("Interface index: %d\n", ifp->if_index);
 #endif
-
 	index = ifp->if_index;
+
+	ifnet_unlock();
+
 	return (copyout(&index, &ifr->ifr_ifindex, sizeof(index)));
 }
 
@@ -1121,11 +1136,17 @@ linux_ioctl_SIOCGIFMETRIC(struct file *fp, u_long cmd, u_long ocmd, caddr_t data
 	char ifname[IFNAMSIZ];
 	l_int metric;
 
-	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
-	if (ifp == NULL)
-		return EINVAL;
+	ifnet_lock();
 
+	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
+	if (ifp == NULL) {
+		ifnet_unlock();
+		return EINVAL;
+	}
 	metric = ifp->if_metric;
+
+	ifnet_unlock();
+
 	return (copyout(&metric, &ifr->ifr_ifmetric, sizeof(metric)));
 }
 
@@ -1139,19 +1160,25 @@ linux_ioctl_SIOGIFHWADDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 	struct l_sockaddr lsa;
 	struct ifaddr_container *ifac;
 
+	ifnet_lock();
+
 	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
 	if (ifp == NULL) {
+		ifnet_unlock();
 		return EINVAL;
 	}
 
 	if (ifp->if_type == IFT_LOOP) {
+		ifnet_unlock();
 		bzero(&ifr->ifr_hwaddr, sizeof lsa);
 		ifr->ifr_hwaddr.sa_family = ARPHRD_LOOPBACK;
 		return (0);
 	}
 	
-	if (ifp->if_type != IFT_ETHER)
+	if (ifp->if_type != IFT_ETHER) {
+		ifnet_unlock();
 		return (ENOENT);
+	}
 
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 		struct ifaddr *ifa = ifac->ifa;
@@ -1162,10 +1189,12 @@ linux_ioctl_SIOGIFHWADDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 			bzero(&ifr->ifr_hwaddr, sizeof lsa);
 			ifr->ifr_hwaddr.sa_family = ARPHRD_ETHER;
 			bcopy(LLADDR(sdl), ifr->ifr_hwaddr.sa_data, LINUX_IFHWADDRLEN);
+			ifnet_unlock();
 			return (0);
 		}
 	}
-	
+
+	ifnet_unlock();
 	return (ENOENT);
 }
 
@@ -1199,12 +1228,15 @@ linux_ioctl_map_ifname(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, s
 	kprintf("%s(): ioctl %d on %.*s\n", __func__,
 		(int)(cmd & 0xffff), LINUX_IFNAMSIZ, lifname);
 #endif
+	ifnet_lock();
 	/* Replace linux ifname with bsd ifname */
 	ifp = ifname_linux_to_bsd(lifname, oifname);
 	if (ifp == NULL) {
 		error = EINVAL;
+		ifnet_unlock():
 		goto clean_ifname;
 	}
+	ifnet_unlock():
 
 #ifdef DEBUG
 	kprintf("%s(): %s translated to %s\n", __func__,

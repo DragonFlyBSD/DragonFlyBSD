@@ -2080,9 +2080,10 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst, struct ucred *cred)
 {
 	int dst_scope =	in6_addrscope(dst), src_scope, best_scope = 0;
 	int blen = -1;
-	struct ifnet *ifp;
 	struct in6_ifaddr *ifa_best = NULL;
 	int jailed = 0;
+	const struct ifnet_array *arr;
+	int i;
 
 	if(cred && cred->cr_prison)
 		jailed = 1;
@@ -2099,8 +2100,9 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst, struct ucred *cred)
 	 * Comparing an interface with the outgoing interface will be done
 	 * only at the final stage of tiebreaking.
 	 */
-	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list))
-	{
+	arr = ifnet_array_get();
+	for (i = 0; i < arr->ifnet_count; ++i) {
+		struct ifnet *ifp = arr->ifnet_arr[i];
 		struct ifaddr_container *ifac;
 
 		/*
@@ -2536,13 +2538,16 @@ void
 in6_setmaxmtu(void)
 {
 	unsigned long maxmtu = 0;
-	struct ifnet *ifp;
+	const struct ifnet_array *arr;
+	int i;
 
 	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
 	    ("not in netisr0"));
 
-	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list))
-	{
+	arr = ifnet_array_get();
+	for (i = 0; i < arr->ifnet_count; ++i) {
+		struct ifnet *ifp = arr->ifnet_arr[i];
+
 		/* this function can be called during ifnet initialization */
 		if (ifp->if_afdata[AF_INET6] == NULL)
 			continue;

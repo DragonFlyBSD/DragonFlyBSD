@@ -156,16 +156,24 @@ hfsc_add_altq(struct pf_altq *a)
 	struct hfsc_if *hif;
 	struct ifnet *ifp;
 
-	if ((ifp = ifunit(a->ifname)) == NULL)
+	ifnet_lock();
+
+	if ((ifp = ifunit(a->ifname)) == NULL) {
+		ifnet_unlock();
 		return (EINVAL);
-	if (!ifq_is_ready(&ifp->if_snd))
+	}
+	if (!ifq_is_ready(&ifp->if_snd)) {
+		ifnet_unlock();
 		return (ENODEV);
+	}
 
 	hif = kmalloc(sizeof(struct hfsc_if), M_ALTQ, M_WAITOK | M_ZERO);
 
 	hif->hif_eligible = ellist_alloc();
 	hif->hif_ifq = &ifp->if_snd;
 	ifq_purge_all(&ifp->if_snd);
+
+	ifnet_unlock();
 
 	/* keep the state in pf_altq */
 	a->altq_disc = hif;
@@ -293,21 +301,28 @@ hfsc_getqstats(struct pf_altq *a, void *ubuf, int *nbytes)
 	if (*nbytes < sizeof(stats))
 		return (EINVAL);
 
+	ifnet_lock();
+
 	/* XXX not MP safe */
-	if ((hif = altq_lookup(a->ifname, ALTQT_HFSC)) == NULL)
+	if ((hif = altq_lookup(a->ifname, ALTQT_HFSC)) == NULL) {
+		ifnet_unlock();
 		return (EBADF);
+	}
 	ifq = hif->hif_ifq;
 
 	HFSC_LOCK(ifq);
 
 	if ((cl = clh_to_clp(hif, a->qid)) == NULL) {
 		HFSC_UNLOCK(ifq);
+		ifnet_unlock();
 		return (EINVAL);
 	}
 
 	get_class_stats(&stats, cl);
 
 	HFSC_UNLOCK(ifq);
+
+	ifnet_unlock();
 
 	if ((error = copyout((caddr_t)&stats, ubuf, sizeof(stats))) != 0)
 		return (error);

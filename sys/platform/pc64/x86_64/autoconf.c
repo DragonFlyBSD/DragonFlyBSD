@@ -436,7 +436,8 @@ pxe_setup_nfsdiskless(void)
 		kprintf("PXE: no hardware address\n");
 		return;
 	}
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	ifnet_lock();
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		struct ifaddr_container *ifac;
 
 		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
@@ -448,16 +449,20 @@ pxe_setup_nfsdiskless(void)
 				    (sdl->sdl_alen == ourdl.sdl_alen) &&
 				    !bcmp(sdl->sdl_data + sdl->sdl_nlen,
 					  ourdl.sdl_data + ourdl.sdl_nlen, 
-					  sdl->sdl_alen))
-				    goto match_done;
+					  sdl->sdl_alen)) {
+					strlcpy(nd->myif.ifra_name,
+					    ifp->if_xname,
+					    sizeof(nd->myif.ifra_name));
+					ifnet_unlock();
+					goto match_done;
+				}
 			}
 		}
 	}
+	ifnet_unlock();
 	kprintf("PXE: no interface\n");
 	return;	/* no matching interface */
 match_done:
-	strlcpy(nd->myif.ifra_name, ifp->if_xname, sizeof(nd->myif.ifra_name));
-	
 	/* set up gateway */
 	inaddr_to_sockaddr("boot.netif.gateway", &nd->mygateway);
 

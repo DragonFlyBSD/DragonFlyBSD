@@ -1106,7 +1106,16 @@ pfsyncioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			break;
 		}
 
-		if ((sifp = ifunit(pfsyncr.pfsyncr_syncdev)) == NULL) {
+		/*
+		 * XXX not that MPSAFE; pfsync needs serious rework
+		 */
+		ifnet_deserialize_all(ifp);
+		ifnet_lock();
+		sifp = ifunit(pfsyncr.pfsyncr_syncdev);
+		ifnet_unlock();
+		ifnet_serialize_all(ifp);
+
+		if (sifp == NULL) {
 			lwkt_reltoken(&pf_token);
 			return (EINVAL);
 		}

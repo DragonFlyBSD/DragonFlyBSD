@@ -672,7 +672,7 @@ rip6_bind(netmsg_t msg)
 		goto out;
 	}
 
-	if (TAILQ_EMPTY(&ifnet) || addr->sin6_family != AF_INET6) {
+	if (ifnet_array_isempty() || addr->sin6_family != AF_INET6) {
 		error = EADDRNOTAVAIL;
 		goto out;
 	}
@@ -720,7 +720,7 @@ rip6_connect(netmsg_t msg)
 		error = EINVAL;
 		goto out;
 	}
-	if (TAILQ_EMPTY(&ifnet)) {
+	if (ifnet_array_isempty()) {
 		error = EADDRNOTAVAIL;
 		goto out;
 	}

@@ -1028,9 +1028,13 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 	int error;
 	struct ifnet *theywant;
 
+	ifnet_lock();
+
 	theywant = ifunit(ifr->ifr_name);
-	if (theywant == NULL)
+	if (theywant == NULL) {
+		ifnet_unlock();
 		return(ENXIO);
+	}
 
 	/*
 	 * Look through attached interfaces for the named one.
@@ -1051,8 +1055,10 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 		 */
 		if (d->bd_sbuf == NULL) {
 			error = bpf_allocbufs(d);
-			if (error != 0)
+			if (error != 0) {
+				ifnet_unlock();
 				return(error);
+			}
 		}
 		if (bp != d->bd_bif) {
 			if (d->bd_bif != NULL) {
@@ -1065,8 +1071,12 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 			bpf_attachd(d, bp);
 		}
 		bpf_resetd(d);
+
+		ifnet_unlock();
 		return(0);
 	}
+
+	ifnet_unlock();
 
 	/* Not found. */
 	return(ENXIO);
