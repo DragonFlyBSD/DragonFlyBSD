@@ -593,6 +593,11 @@ acpi_res_set_ext_irq(device_t dev, void *context, uint32_t *irq, int count,
     if (count != 1)
 	return;
 
+    /* There is no such IRQ at all */
+    if (machintr_legacy_intr_find(*irq,
+	INTR_TRIGGER_CONFORM, INTR_POLARITY_CONFORM) < 0)
+	return;
+
     bus_set_resource(dev, SYS_RES_IRQ, cp->ar_nirq++, *irq, 1,
         machintr_legacy_intr_cpuid(*irq));
 }
