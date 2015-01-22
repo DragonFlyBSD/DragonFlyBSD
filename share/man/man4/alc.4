@@ -22,14 +22,14 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/alc.4,v 1.1 2009/06/10 02:19:54 yongari Exp $
+.\" $FreeBSD: head/share/man/man4/alc.4 272731 2014-10-08 05:49:10Z yongari $
 .\"
-.Dd February 14, 2010
+.Dd January 22, 2015
 .Dt ALC 4
 .Os
 .Sh NAME
 .Nm alc
-.Nd Atheros AR8131/AR8132 Gigabit/Fast Ethernet driver
+.Nd Atheros AR813x/AR815x/AR816x/AR817x Gigabit/Fast Ethernet driver
 .Sh SYNOPSIS
 To compile this driver into the kernel,
 place the following lines in your
@@ -48,9 +48,8 @@ if_alc_load="YES"
 .Sh DESCRIPTION
 The
 .Nm
-device driver provides support for Atheros AR8131 PCI Express
-Gigabit Ethernet controllers and Atheros AR8132 PCI Express
-Fast Ethernet controllers.
+device driver provides support for Atheros AR813x, AR815x, AR816x
+and AR817x PCI Express Gigabit/Fast Ethernet controllers.
 .Pp
 All LOMs supported by the
 .Nm
@@ -59,8 +58,9 @@ segmentation offload (TSO), hardware VLAN tag stripping/insertion
 features, Wake On Lan (WOL) and an interrupt moderation mechanism
 as well as a 64-bit multicast hash filter.
 .Pp
-The AR8131/AR8132 supports Jumbo Frames (up to 9216 bytes), which can
-be configured via the interface MTU setting.
+The AR813x, AR815x, AR816x and AR817x supports Jumbo Frames (up to
+9216, 6144, 9216 and 9216 bytes, respectively), which can be
+configured via the interface MTU setting.
 Selecting an MTU larger than 1500 bytes with the
 .Xr ifconfig 8
 utility configures the adapter to receive and transmit Jumbo Frames.
@@ -104,6 +104,24 @@ device driver provides support for the following Ethernet controllers:
 Atheros AR8131 PCI Express Gigabit Ethernet controller
 .It
 Atheros AR8132 PCI Express Fast Ethernet controller
+.It
+Atheros AR8151 v1.0 PCI Express Gigabit Ethernet controller
+.It
+Atheros AR8151 v2.0 PCI Express Gigabit Ethernet controller
+.It
+Atheros AR8152 v1.1 PCI Express Fast Ethernet controller
+.It
+Atheros AR8152 v2.0 PCI Express Fast Ethernet controller
+.It
+Atheros AR8161 PCI Express Gigabit Ethernet controller
+.It
+Atheros AR8162 PCI Express Fast Ethernet controller
+.It
+Atheros AR8171 PCI Express Gigabit Ethernet controller
+.It
+Atheros AR8172 PCI Express Fast Ethernet controller
+.It
+Killer E2200 Gigabit Ethernet controller
 .El
 .Sh LOADER TUNABLES
 Tunables can be set at the
@@ -111,12 +129,12 @@ Tunables can be set at the
 prompt before booting the kernel or stored in
 .Xr loader.conf 5 .
 .Bl -tag -width "xxxxxx"
-.It Va hw.alc.msi_disable
-This tunable disables MSI support on the Ethernet hardware.
-The default value is 0.
-.It Va hw.alc.msix_disable
-This tunable disables MSI-X support on the Ethernet hardware.
-The default value is 0.
+.It Va hw.alc.msi.enable
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting this tunable to 0.
+.\".It Va hw.alc.msix_disable
+.\"This tunable disables MSI-X support on the Ethernet hardware.
+.\"The default value is 0.
 .El
 .Sh SYSCTL VARIABLES
 The following variables are available as both
@@ -133,7 +151,7 @@ Value 0 completely disables the interrupt moderation.
 .It Va dev.alc.%d.int_tx_mod
 Maximum amount of time to delay transmit interrupt processing in
 units of 1us.
-The accepted range is 0 to 130000, the default is 50000(50ms).
+The accepted range is 0 to 130000, the default is 1000(1ms).
 Value 0 completely disables the interrupt moderation.
 .It Va dev.alc.%d.process_limit
 Maximum amount of Rx frames to be processed in the event loop before
