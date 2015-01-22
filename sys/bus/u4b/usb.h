@@ -51,7 +51,6 @@ SYSCTL_DECL(_hw_usb);
 
 MALLOC_DECLARE(M_USB);
 MALLOC_DECLARE(M_USBDEV);
-MALLOC_DECLARE(M_USBHC);
 #endif /* _KERNEL */
 
 #include <bus/u4b/usb_endian.h>
