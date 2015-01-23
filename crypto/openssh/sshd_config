@@ -1,4 +1,4 @@
-#	$OpenBSD: sshd_config,v 1.87 2012/07/10 02:19:15 djm Exp $
+#	$OpenBSD: sshd_config,v 1.93 2014/01/10 05:59:19 djm Exp $
 
 # This is the sshd server system-wide configuration file.  See
 # sshd_config(5) for more information.
@@ -13,7 +13,7 @@
 # Note that some of DragonFly's defaults differ from OpenBSD's, and
 # DragonFly has a few additional options.
 
-#VersionAddendum DragonFly-20121028
+#VersionAddendum DragonFly-20150122
 
 #Port 22
 #AddressFamily any
@@ -29,10 +29,14 @@
 #HostKey /etc/ssh/ssh_host_rsa_key
 #HostKey /etc/ssh/ssh_host_dsa_key
 #HostKey /etc/ssh/ssh_host_ecdsa_key
+#HostKey /etc/ssh/ssh_host_ed25519_key
 
 # Lifetime and size of ephemeral version 1 server key
 #KeyRegenerationInterval 1h
 #ServerKeyBits 1024
+
+# Ciphers and keying
+#RekeyLimit default none
 
 # Logging
 # obsoletes QuietMode and FascistLogging
@@ -57,6 +61,9 @@ PermitRootLogin without-password
 AuthorizedKeysFile	.ssh/authorized_keys
 
 #AuthorizedPrincipalsFile none
+
+#AuthorizedKeysCommand none
+#AuthorizedKeysCommandUser nobody
 
 # For this to work you will also need host keys in /etc/ssh/ssh_known_hosts
 RhostsRSAAuthentication no
@@ -88,8 +95,8 @@ ChallengeResponseAuthentication no
 #GSSAPIAuthentication no
 #GSSAPICleanupCredentials yes
 
-# Set this to 'yes' to enable PAM authentication, account processing, 
-# and session processing. If this is enabled, PAM authentication will 
+# Set this to 'yes' to enable PAM authentication, account processing,
+# and session processing. If this is enabled, PAM authentication will
 # be allowed through the ChallengeResponseAuthentication and
 # PasswordAuthentication.  Depending on your PAM configuration,
 # PAM authentication via ChallengeResponseAuthentication may bypass
@@ -105,6 +112,7 @@ ChallengeResponseAuthentication no
 #X11Forwarding yes
 #X11DisplayOffset 10
 #X11UseLocalhost yes
+#PermitTTY yes
 #PrintMotd yes
 #PrintLastLog yes
 #TCPKeepAlive yes
@@ -116,7 +124,7 @@ UsePrivilegeSeparation sandbox		# Default for new installations.
 #ClientAliveCountMax 3
 #UseDNS yes
 #PidFile /var/run/sshd.pid
-#MaxStartups 10
+#MaxStartups 10:30:100
 #PermitTunnel no
 #ChrootDirectory none
 
@@ -146,4 +154,5 @@ Subsystem	sftp	/usr/libexec/sftp-server
 #Match User anoncvs
 #	X11Forwarding no
 #	AllowTcpForwarding no
+#	PermitTTY no
 #	ForceCommand cvs server

@@ -1,4 +1,4 @@
-/* $OpenBSD: sshconnect1.c,v 1.70 2006/11/06 21:25:28 markus Exp $ */
+/* $OpenBSD: sshconnect1.c,v 1.76 2014/07/15 15:54:14 millert Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -19,7 +19,6 @@
 #include <sys/socket.h>
 
 #include <openssl/bn.h>
-#include <openssl/md5.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -39,14 +38,15 @@
 #include "kex.h"
 #include "uidswap.h"
 #include "log.h"
+#include "misc.h"
 #include "readconf.h"
 #include "authfd.h"
 #include "sshconnect.h"
 #include "authfile.h"
-#include "misc.h"
 #include "canohost.h"
 #include "hostfile.h"
 #include "auth.h"
+#include "digest.h"
 
 /* Session id for the current session. */
 u_char session_id[16];
@@ -84,7 +84,7 @@ try_agent_authentication(void)
 
 		/* Try this identity. */
 		debug("Trying RSA authentication via agent with '%.100s'", comment);
-		xfree(comment);
+		free(comment);
 
 		/* Tell the server that we are willing to authenticate using this key. */
 		packet_start(SSH_CMSG_AUTH_RSA);
@@ -120,7 +120,7 @@ try_agent_authentication(void)
 			 * return a wrong value.
 			 */
 			logit("Authentication agent failed to decrypt challenge.");
-			memset(response, 0, sizeof(response));
+			explicit_bzero(response, sizeof(response));
 		}
 		key_free(key);
 		debug("Sending response to RSA challenge.");
@@ -161,12 +161,12 @@ static void
 respond_to_rsa_challenge(BIGNUM * challenge, RSA * prv)
 {
 	u_char buf[32], response[16];
-	MD5_CTX md;
+	struct ssh_digest_ctx *md;
 	int i, len;
 
 	/* Decrypt the challenge using the private key. */
 	/* XXX think about Bleichenbacher, too */
-	if (rsa_private_decrypt(challenge, challenge, prv) <= 0)
+	if (rsa_private_decrypt(challenge, challenge, prv) != 0)
 		packet_disconnect(
 		    "respond_to_rsa_challenge: rsa_private_decrypt failed");
 
@@ -179,10 +179,12 @@ respond_to_rsa_challenge(BIGNUM * challenge, RSA * prv)
 
 	memset(buf, 0, sizeof(buf));
 	BN_bn2bin(challenge, buf + sizeof(buf) - len);
-	MD5_Init(&md);
-	MD5_Update(&md, buf, 32);
-	MD5_Update(&md, session_id, 16);
-	MD5_Final(response, &md);
+	if ((md = ssh_digest_start(SSH_DIGEST_MD5)) == NULL ||
+	    ssh_digest_update(md, buf, 32) < 0 ||
+	    ssh_digest_update(md, session_id, 16) < 0 ||
+	    ssh_digest_final(md, response, sizeof(response)) < 0)
+		fatal("%s: md5 failed", __func__);
+	ssh_digest_free(md);
 
 	debug("Sending response to host key RSA challenge.");
 
@@ -193,9 +195,9 @@ respond_to_rsa_challenge(BIGNUM * challenge, RSA * prv)
 	packet_send();
 	packet_write_wait();
 
-	memset(buf, 0, sizeof(buf));
-	memset(response, 0, sizeof(response));
-	memset(&md, 0, sizeof(md));
+	explicit_bzero(buf, sizeof(buf));
+	explicit_bzero(response, sizeof(response));
+	explicit_bzero(&md, sizeof(md));
 }
 
 /*
@@ -231,7 +233,7 @@ try_rsa_authentication(int idx)
 	 */
 	if (type == SSH_SMSG_FAILURE) {
 		debug("Server refused our key.");
-		xfree(comment);
+		free(comment);
 		return 0;
 	}
 	/* Otherwise, the server should respond with a challenge. */
@@ -251,7 +253,7 @@ try_rsa_authentication(int idx)
 	 * load the private key.  Try first with empty passphrase; if it
 	 * fails, ask for a passphrase.
 	 */
-	if (public->flags & KEY_FLAG_EXT)
+	if (public->flags & SSHKEY_FLAG_EXT)
 		private = public;
 	else
 		private = key_load_private_type(KEY_RSA1, authfile, "", NULL,
@@ -269,15 +271,15 @@ try_rsa_authentication(int idx)
 				debug2("no passphrase given, try next key");
 				quit = 1;
 			}
-			memset(passphrase, 0, strlen(passphrase));
-			xfree(passphrase);
+			explicit_bzero(passphrase, strlen(passphrase));
+			free(passphrase);
 			if (private != NULL || quit)
 				break;
 			debug2("bad passphrase given, try again...");
 		}
 	}
 	/* We no longer need the comment. */
-	xfree(comment);
+	free(comment);
 
 	if (private == NULL) {
 		if (!options.batch_mode && perm_ok)
@@ -300,7 +302,7 @@ try_rsa_authentication(int idx)
 	respond_to_rsa_challenge(challenge, private->rsa);
 
 	/* Destroy the private key unless it in external hardware. */
-	if (!(private->flags & KEY_FLAG_EXT))
+	if (!(private->flags & SSHKEY_FLAG_EXT))
 		key_free(private);
 
 	/* We no longer need the challenge. */
@@ -412,7 +414,7 @@ try_challenge_response_authentication(void)
 		packet_check_eom();
 		snprintf(prompt, sizeof prompt, "%s%s", challenge,
 		    strchr(challenge, '\n') ? "" : "\nResponse: ");
-		xfree(challenge);
+		free(challenge);
 		if (i != 0)
 			error("Permission denied, please try again.");
 		if (options.cipher == SSH_CIPHER_NONE)
@@ -420,13 +422,13 @@ try_challenge_response_authentication(void)
 			    "Response will be transmitted in clear text.");
 		response = read_passphrase(prompt, 0);
 		if (strcmp(response, "") == 0) {
-			xfree(response);
+			free(response);
 			break;
 		}
 		packet_start(SSH_CMSG_AUTH_TIS_RESPONSE);
 		ssh_put_password(response);
-		memset(response, 0, strlen(response));
-		xfree(response);
+		explicit_bzero(response, strlen(response));
+		free(response);
 		packet_send();
 		packet_write_wait();
 		type = packet_read();
@@ -458,8 +460,8 @@ try_password_authentication(char *prompt)
 		password = read_passphrase(prompt, 0);
 		packet_start(SSH_CMSG_AUTH_PASSWORD);
 		ssh_put_password(password);
-		memset(password, 0, strlen(password));
-		xfree(password);
+		explicit_bzero(password, strlen(password));
+		free(password);
 		packet_send();
 		packet_write_wait();
 
@@ -542,9 +544,6 @@ ssh_kex(char *host, struct sockaddr *hostaddr)
 
 	derive_ssh1_session_id(host_key->rsa->n, server_key->rsa->n, cookie, session_id);
 
-	/* Generate a session key. */
-	arc4random_stir();
-
 	/*
 	 * Generate an encryption key for the session.   The key is a 256 bit
 	 * random number, interpreted as a 32-byte key, with the least
@@ -593,8 +592,9 @@ ssh_kex(char *host, struct sockaddr *hostaddr)
 			    BN_num_bits(server_key->rsa->n),
 			    SSH_KEY_BITS_RESERVED);
 		}
-		rsa_public_encrypt(key, key, server_key->rsa);
-		rsa_public_encrypt(key, key, host_key->rsa);
+		if (rsa_public_encrypt(key, key, server_key->rsa) != 0 ||
+		    rsa_public_encrypt(key, key, host_key->rsa) != 0)
+			fatal("%s: rsa_public_encrypt failed", __func__);
 	} else {
 		/* Host key has smaller modulus (or they are equal). */
 		if (BN_num_bits(server_key->rsa->n) <
@@ -605,8 +605,9 @@ ssh_kex(char *host, struct sockaddr *hostaddr)
 			    BN_num_bits(host_key->rsa->n),
 			    SSH_KEY_BITS_RESERVED);
 		}
-		rsa_public_encrypt(key, key, host_key->rsa);
-		rsa_public_encrypt(key, key, server_key->rsa);
+		if (rsa_public_encrypt(key, key, host_key->rsa) != 0 ||
+		    rsa_public_encrypt(key, key, server_key->rsa) != 0)
+			fatal("%s: rsa_public_encrypt failed", __func__);
 	}
 
 	/* Destroy the public keys since we no longer need them. */
@@ -653,8 +654,11 @@ ssh_kex(char *host, struct sockaddr *hostaddr)
 	/* Set the encryption key. */
 	packet_set_encryption_key(session_key, SSH_SESSION_KEY_LENGTH, options.cipher);
 
-	/* We will no longer need the session key here.  Destroy any extra copies. */
-	memset(session_key, 0, sizeof(session_key));
+	/*
+	 * We will no longer need the session key here.
+	 * Destroy any extra copies.
+	 */
+	explicit_bzero(session_key, sizeof(session_key));
 
 	/*
 	 * Expect a success message from the server.  Note that this message
