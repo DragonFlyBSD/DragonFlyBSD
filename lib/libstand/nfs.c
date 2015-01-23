@@ -396,7 +396,7 @@ nfs_open(const char *upath, struct open_file *f)
 		return(EINVAL);
 
 	/* Bind to a reserved port. */
-	desc->myport = htons(--rpc_port);
+	desc->myport = htons(rpc_newport());
 	desc->destip = rootip;
 	if ((error = nfs_getrootfh(desc, rootpath, nfs_root_node.fh)))
 		return (error);
