@@ -330,8 +330,6 @@ extern int nd6_debug;
 
 #define nd6log(x)	do { if (nd6_debug) log x; } while (0)
 
-extern struct callout nd6_timer_ch;
-
 /* nd6_rtr.c */
 extern int nd6_defifindex;
 extern int ip6_desync_factor;	/* seconds */
@@ -372,6 +370,7 @@ union nd_opts {
 /* XXX: need nd6_var.h?? */
 /* nd6.c */
 void nd6_init (void);
+void nd6_timer_init(void);
 struct nd_ifinfo *nd6_ifattach (struct ifnet *);
 void nd6_ifdetach (struct nd_ifinfo *);
 int nd6_is_addr_neighbor (struct sockaddr_in6 *, struct ifnet *);
@@ -380,7 +379,6 @@ struct nd_opt_hdr *nd6_option (union nd_opts *);
 int nd6_options (union nd_opts *);
 struct	rtentry *nd6_lookup (struct in6_addr *, int, struct ifnet *);
 void nd6_setmtu (struct ifnet *);
-void nd6_timer (void *);
 void nd6_purge (struct ifnet *);
 struct llinfo_nd6 *nd6_free (struct rtentry *);
 void nd6_nud_hint (struct rtentry *, struct in6_addr *, int);

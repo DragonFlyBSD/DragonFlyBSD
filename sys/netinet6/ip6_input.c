@@ -204,10 +204,7 @@ ip6_init(void)
 static void
 ip6_init2(void *dummy)
 {
-	/* nd6_timer_init */
-	callout_init(&nd6_timer_ch);
-	callout_reset(&nd6_timer_ch, hz, nd6_timer, NULL);
-
+	nd6_timer_init();
 	in6_tmpaddrtimer_init();
 }
 

@@ -117,11 +117,14 @@ static void nd6_setmtu0 (struct ifnet *, struct nd_ifinfo *);
 static int regen_tmpaddr (struct in6_ifaddr *);
 static void nd6_slowtimo(void *);
 static void nd6_slowtimo_dispatch(netmsg_t);
+static void nd6_timer(void *);
+static void nd6_timer_dispatch(netmsg_t);
 
 static struct callout nd6_slowtimo_ch;
 static struct netmsg_base nd6_slowtimo_netmsg;
 
-struct callout nd6_timer_ch;
+static struct callout nd6_timer_ch;
+static struct netmsg_base nd6_timer_netmsg;
 
 void
 nd6_init(void)
@@ -420,8 +423,8 @@ skip1:
 /*
  * ND6 timer routine to expire default route list and prefix list
  */
-void
-nd6_timer(void *ignored_arg)
+static void
+nd6_timer_dispatch(netmsg_t nmsg)
 {
 	struct llinfo_nd6 *ln;
 	struct nd_defrouter *dr;
@@ -429,9 +432,14 @@ nd6_timer(void *ignored_arg)
 	struct ifnet *ifp;
 	struct in6_ifaddr *ia6, *nia6;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
+	crit_exit();
+
 	mtx_lock(&nd6_mtx);
-	callout_reset(&nd6_timer_ch, nd6_prune * hz,
-		      nd6_timer, NULL);
 
 	ln = llinfo_nd6.ln_next;
 	while (ln && ln != &llinfo_nd6) {
@@ -644,7 +652,31 @@ addrloop:
 		} else
 			pr = pr->ndpr_next;
 	}
+
 	mtx_unlock(&nd6_mtx);
+
+	callout_reset(&nd6_timer_ch, nd6_prune * hz, nd6_timer, NULL);
+}
+
+static void
+nd6_timer(void *arg __unused)
+{
+	struct lwkt_msg *lmsg = &nd6_timer_netmsg.lmsg;
+
+	KASSERT(mycpuid == 0, ("not on cpu0"));
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), lmsg);
+	crit_exit();
+}
+
+void
+nd6_timer_init(void)
+{
+	callout_init_mp(&nd6_timer_ch);
+	netmsg_init(&nd6_timer_netmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, nd6_timer_dispatch);
+	callout_reset_bycpu(&nd6_timer_ch, hz, nd6_timer, NULL, 0);
 }
 
 static int
