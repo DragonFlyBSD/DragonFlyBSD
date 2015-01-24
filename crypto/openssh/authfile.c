@@ -48,7 +48,6 @@
 #include "atomicio.h"
 #include "sshbuf.h"
 #include "ssherr.h"
-#include "pathnames.h"
 
 #define MAX_KEY_FILE_SIZE	(1024 * 1024)
 
@@ -411,116 +410,6 @@ sshkey_load_public(const char *filename, struct sshkey **keyp, char **commentp)
 	}
 	sshkey_free(pub);
 	return r;
-}
-
-char *
-blacklist_filename(const Key *key)
-{
-	char *name;
-
-	xasprintf(&name, "%s.%s-%u",
-	    _PATH_BLACKLIST, key_type(key), key_size(key));
-	return name;
-}
-
-/* Scan a blacklist of known-vulnerable keys. */
-int
-blacklisted_key(Key *key)
-{
-	char *blacklist_file;
-	int fd = -1;
-	char *dgst_hex = NULL;
-	char *dgst_packed = NULL, *p;
-	int i;
-	size_t line_len;
-	struct stat st;
-	char buf[256];
-	off_t start, lower, upper;
-	int ret = 0;
-
-	blacklist_file = blacklist_filename(key);
-	debug("Checking blacklist file %s", blacklist_file);
-	fd = open(blacklist_file, O_RDONLY);
-	if (fd < 0)
-		goto out;
-
-	dgst_hex = key_fingerprint(key, SSH_FP_MD5, SSH_FP_HEX);
-	/* Remove all colons */
-	dgst_packed = xcalloc(1, strlen(dgst_hex) + 1);
-	for (i = 0, p = dgst_packed; dgst_hex[i]; i++)
-		if (dgst_hex[i] != ':')
-			*p++ = dgst_hex[i];
-	/* Only compare least-significant 80 bits (to keep the blacklist
-	 * size down)
-	 */
-	line_len = strlen(dgst_packed + 12);
-	if (line_len > 32)
-		goto out;
-
-	/* Skip leading comments */
-	start = 0;
-	for (;;) {
-		ssize_t r;
-		char *newline;
-
-		r = atomicio(read, fd, buf, 256);
-		if (r <= 0)
-			goto out;
-		if (buf[0] != '#')
-			break;
-
-		newline = memchr(buf, '\n', 256);
-		if (!newline)
-			goto out;
-		start += newline + 1 - buf;
-		if (lseek(fd, start, SEEK_SET) < 0)
-			goto out;
-	}
-
-	/* Initialise binary search record numbers */
-	if (fstat(fd, &st) < 0)
-		goto out;
-	lower = 0;
-	upper = (st.st_size - start) / (line_len + 1);
-
-	while (lower != upper) {
-		off_t cur;
-		char buf[32];
-		int cmp;
-
-		cur = lower + (upper - lower) / 2;
-
-		/* Read this line and compare to digest; this is
-		 * overflow-safe since cur < max(off_t) / (line_len + 1) */
-		if (lseek(fd, start + cur * (line_len + 1), SEEK_SET) < 0)
-			break;
-		if (atomicio(read, fd, buf, line_len) != line_len)
-			break;
-		cmp = memcmp(buf, dgst_packed + 12, line_len);
-		if (cmp < 0) {
-			if (cur == lower)
-				break;
-			lower = cur;
-		} else if (cmp > 0) {
-			if (cur == upper)
-				break;
-			upper = cur;
-		} else {
-			debug("Found %s in blacklist", dgst_hex);
-			ret = 1;
-			break;
-		}
-	}
-
-out:
-	if (dgst_packed)
-		xfree(dgst_packed);
-	if (dgst_hex)
-		xfree(dgst_hex);
-	if (fd >= 0)
-		close(fd);
-	xfree(blacklist_file);
-	return ret;
 }
 
 /* Load the certificate associated with the named private key */

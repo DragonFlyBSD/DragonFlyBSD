@@ -1,6 +1,0 @@
-# In the window of time that libssl had a weak key generator, openssh was
-# no longer capable of generating DSA-2048 keys.  As a result, this file
-# is empty.  This causes openssh-vulnkey to report that it knows about
-# this key type/size and that there are correctly no matching keys.
-#
-# $DragonFly: src/secure/lib/libssh/DSA-2048.all,v 1.1 2008/05/21 14:07:39 corecode Exp $

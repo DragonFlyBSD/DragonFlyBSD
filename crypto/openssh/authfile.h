@@ -44,7 +44,4 @@ int sshkey_load_private_pem(int, int, const char *, struct sshkey **, char **);
 int sshkey_perm_ok(int, const char *);
 int sshkey_in_file(struct sshkey *, const char *, int);
 
-char	*blacklist_filename(const Key *key);
-int	 blacklisted_key(Key *key);
-
 #endif

@@ -1721,21 +1721,6 @@ main(int ac, char **av)
 
 	for (i = 0; i < options.num_host_key_files; i++) {
 		key = key_load_private(options.host_key_files[i], "", NULL);
-		if (key && blacklisted_key(key)) {
-			char *fp;
-			fp = key_fingerprint(key, SSH_FP_MD5, SSH_FP_HEX);
-			if (options.permit_blacklisted_keys)
-				error("Host key %s blacklisted (see "
-				    "ssh-vulnkey(1)); continuing anyway", fp);
-			else
-				error("Host key %s blacklisted (see "
-				    "ssh-vulnkey(1))", fp);
-			xfree(fp);
-			if (!options.permit_blacklisted_keys) {
-				sensitive_data.host_keys[i] = NULL;
-				continue;
-			}
-		}
 		pubkey = key_load_public(options.host_key_files[i], NULL);
 		sensitive_data.host_keys[i] = key;
 		sensitive_data.host_pubkeys[i] = pubkey;

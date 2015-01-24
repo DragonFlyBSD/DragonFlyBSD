@@ -2783,6 +2783,14 @@ TO_REMOVE+=/usr/share/man/man4/maestro3.4.gz
 TO_REMOVE+=/usr/share/man/man4/snd_csa.4.gz
 TO_REMOVE+=/usr/share/man/man4/snd_ds1.4.gz
 TO_REMOVE+=/usr/share/man/man4/snd_maestro3.4.gz
+TO_REMOVE+=/usr/bin/ssh-vulnkey
+TO_REMOVE+=/usr/share/man/cat1/ssh-vulnkey.1.gz
+TO_REMOVE+=/usr/share/man/man1/ssh-vulnkey.1.gz
+TO_REMOVE+=/etc/ssh/blacklist.DSA-1024
+TO_REMOVE+=/etc/ssh/blacklist.DSA-2048
+TO_REMOVE+=/etc/ssh/blacklist.RSA-1024
+TO_REMOVE+=/etc/ssh/blacklist.RSA-2048
+TO_REMOVE+=/etc/ssh/blacklist.RSA-4096
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

@@ -45,8 +45,6 @@
 /* Backwards compatibility */
 #define _PATH_DH_PRIMES			SSHDIR "/primes"
 
-#define _PATH_BLACKLIST			SSHDIR "/blacklist"
-
 #ifndef _PATH_SSH_PROGRAM
 #define _PATH_SSH_PROGRAM		"/usr/bin/ssh"
 #endif

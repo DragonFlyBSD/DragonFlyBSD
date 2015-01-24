@@ -53,7 +53,6 @@
 #include "compat.h"
 #include "key.h"
 #include "hostfile.h"
-#include "authfile.h"
 #include "auth.h"
 #include "pathnames.h"
 #include "uidswap.h"
@@ -651,22 +650,8 @@ user_key_command_allowed2(struct passwd *user_pw, Key *key)
 int
 user_key_allowed(struct passwd *pw, Key *key)
 {
-	char *fp;
 	u_int success, i;
 	char *file;
-
-	if (blacklisted_key(key)) {
-		fp = key_fingerprint(key, SSH_FP_MD5, SSH_FP_HEX);
-		if (options.permit_blacklisted_keys)
-			logit("Public key %s blacklisted (see "
-			    "ssh-vulnkey(1)); continuing anyway", fp);
-		else
-			logit("Public key %s blacklisted (see "
-			    "ssh-vulnkey(1))", fp);
-		xfree(fp);
-		if (!options.permit_blacklisted_keys)
-			return 0;
-	}
 
 	if (auth_key_is_revoked(key))
 		return 0;

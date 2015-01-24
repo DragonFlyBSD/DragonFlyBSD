@@ -15,39 +15,4 @@ FILESMODE=	644
 ${SSHDIR}/moduli:
 	@true
 
-BLACKLISTS!=	ls ${.CURDIR}/[RD]SA-*.?e* | sed -e 's/\.[^.]*$$//' | sort -u
-
-.for bl in ${BLACKLISTS}
-FILES+=	blacklist.${bl:T}
-CLEANFILES+= blacklist.${bl:T}
-
-${bl:T}_input!=	echo ${bl}*
-
-blacklist.${bl:T}: ${${bl:T}_input}
-	@printf "# After these initial comments, all the lines in this file must be\n" > ${.TARGET}
-	@printf "# exactly the same length, and must be in sorted order. Each line must\n" >> ${.TARGET}
-	@printf "# consist of the lower-case key fingerprint (ssh-keygen -l -f\n" >> ${.TARGET}
-	@printf "# /path/to/key), without colons, and with the first 12 characters\n" >> ${.TARGET}
-	@printf "# removed (that is, the lower 80 bits of the fingerprint). Unless these\n" >> ${.TARGET}
-	@printf "# rules are followed, the blacklist will not work properly. See\n" >> ${.TARGET}
-	@printf "# ssh-vulnkey(1).\n" >> ${.TARGET}
-	@printf "#\n" >> ${.TARGET}
-	@printf "# Copyright: (C) 2008 Canonical, Ltd., License: GPL-3.\n" >> ${.TARGET}
-	grep -h '^#' ${.ALLSRC} >> ${.TARGET}
-
-	grep -hv '^#' ${.ALLSRC} | cut -b13- | sort >> ${.TARGET}
-
-.endfor
-
-ALLBLACKLIST!=	ls ${.CURDIR}/[DR]SA-*.all
-
-.for abl in ${ALLBLACKLIST}
-.for bl in ${abl:T:R:S/^/blacklist./}
-FILES+=	${bl}
-CLEANFILES+= 	${bl}
-${bl}: ${abl}
-	cat ${.ALLSRC} > ${.TARGET}
-.endfor
-.endfor
-
 .include <bsd.prog.mk>

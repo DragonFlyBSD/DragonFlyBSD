@@ -40,7 +40,6 @@
 #include "key.h"
 #include "auth-options.h"
 #include "hostfile.h"
-#include "authfile.h"
 #include "auth.h"
 #ifdef GSSAPI
 #include "ssh-gss.h"
@@ -190,7 +189,6 @@ rsa_key_allowed_in_file(struct passwd *pw, char *file,
 		char *cp;
 		char *key_options;
 		int keybits;
-		char *fp;
 
 		/* Skip leading whitespace, empty and comment lines. */
 		for (cp = line; *cp == ' ' || *cp == '\t'; cp++)
@@ -246,19 +244,6 @@ rsa_key_allowed_in_file(struct passwd *pw, char *file,
 		/* Never accept a revoked key */
 		if (auth_key_is_revoked(key))
 			break;
-
-		if (blacklisted_key(key)) {
-			fp = key_fingerprint(key, SSH_FP_MD5, SSH_FP_HEX);
-			if (options.permit_blacklisted_keys)
-				logit("Public key %s blacklisted (see "
-				    "ssh-vulnkey(1)); continuing anyway", fp);
-			else
-				logit("Public key %s blacklisted (see "
-				    "ssh-vulnkey(1))", fp);
-			xfree(fp);
-			if (!options.permit_blacklisted_keys)
-				continue;
-		}
 
 		/* We have found the desired key. */
 		/*
