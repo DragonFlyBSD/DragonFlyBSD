@@ -636,14 +636,22 @@ main(int ac, char **av)
 			}
 			break;
 		case 'V':
-			fprintf(stderr, "%s, %s\n",
-			    SSH_RELEASE,
+			if (options.version_addendum &&
+			    *options.version_addendum != '\0')
+				fprintf(stderr, "%s%s %s, %s\n", SSH_RELEASE,
+				    options.hpn_disabled ? "" : SSH_VERSION_HPN,
+				    options.version_addendum,
+				    SSLeay_version(SSLEAY_VERSION));
+			else
+				fprintf(stderr, "%s%s, %s\n",
+				    SSH_RELEASE,
+				    options.hpn_disabled ? "" : SSH_VERSION_HPN,
 #ifdef WITH_OPENSSL
-			    SSLeay_version(SSLEAY_VERSION)
+				    SSLeay_version(SSLEAY_VERSION)
 #else
-			    "without OpenSSL"
+				    "without OpenSSL"
 #endif
-			);
+				);
 			if (opt == 'V')
 				exit(0);
 			break;
@@ -1293,6 +1301,8 @@ control_persist_detach(void)
 	setproctitle("%s [mux]", options.control_path);
 }
 
+extern const EVP_CIPHER *evp_aes_ctr_mt(void);
+
 /* Do fork() after authentication. Used by "ssh -f" */
 static void
 fork_postauth(void)
@@ -1766,7 +1776,6 @@ ssh_session2_open(void)
 				debug ("HPNBufferSize set to user TCPRcvBuf: %d", options.hpn_buffer_size);
 			}
 		}
-
 	}
 
 	debug("Final hpn_buffer_size = %d", options.hpn_buffer_size);
@@ -1785,9 +1794,10 @@ ssh_session2_open(void)
 	    "session", SSH_CHANNEL_OPENING, in, out, err,
 	    window, packetmax, CHAN_EXTENDED_WRITE,
 	    "client-session", /*nonblock*/0);
+
 	if ((options.tcp_rcv_buf_poll > 0) && (!options.hpn_disabled)) {
 		c->dynamic_window = 1;
-		debug ("Enabled Dynamic Window Scaling\n");
+		debug ("Enabled Dynamic Window Scaling");
 	}
 	debug3("ssh_session2_open: channel_new: %d", c->self);
 

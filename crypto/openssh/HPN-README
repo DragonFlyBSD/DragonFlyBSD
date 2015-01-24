@@ -123,6 +123,7 @@ is 2MB.
 Credits: This patch was conceived, designed, and led by Chris Rapier (rapier@psc.edu)
          The majority of the actual coding for versions up to HPN12v1 was performed
          by Michael Stevens (mstevens@andrew.cmu.edu). The MT-AES-CTR cipher was 
-	 implemented by Ben Bennet (ben@psc.edu). This work was financed, in part,
-         by Cisco System, Inc., the National Library of Medicine, 
-	 and the National Science Foundation. 
+	 implemented by Ben Bennet (ben@psc.edu) and improved by Mike Tasota 
+	 (tasota@gmail.com) an NSF REU grant recipient for 2013. 
+	 This work was financed, in part, by Cisco System, Inc., the National 
+         Library of Medicine, and the National Science Foundation. 

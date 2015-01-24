@@ -467,11 +467,9 @@ kex_choose_conf(Kex *kex)
 	u_int mode, ctos, need, dh_need, authlen;
 	int first_kex_follows, type;
 	int log_flag = 0;
-
 	int auth_flag;
 
 	auth_flag = packet_authentication_state();
-
 	debug ("AUTH STATE IS %d", auth_flag);
 
 	my   = kex_buf2prop(&kex->my, NULL);
@@ -512,7 +510,7 @@ kex_choose_conf(Kex *kex)
 		choose_comp(&newkeys->comp, cprop[ncomp], sprop[ncomp]);
 		debug("REQUESTED ENC.NAME is '%s'", newkeys->enc.name);
 		if (strcmp(newkeys->enc.name, "none") == 0) {
-				debug("Requesting NONE. Authflag is %d", auth_flag);
+			debug("Requesting NONE. Authflag is %d", auth_flag);
 			if (auth_flag == 1) {
 				debug("None requested post authentication.");
 			} else {

@@ -851,8 +851,8 @@ int channel_tcpwinsz () {
 	ret = getsockopt(packet_get_connection_in(),
 			 SOL_SOCKET, SO_RCVBUF, &tcpwinsz, &optsz);
 	/* return no more than 64MB */
-	if ((ret == 0) && tcpwinsz > BUFFER_MAX_LEN_HPN)
-	    tcpwinsz = BUFFER_MAX_LEN_HPN;
+	if ((ret == 0) && tcpwinsz > SSHBUF_SIZE_MAX)
+	    tcpwinsz = SSHBUF_SIZE_MAX;
 	debug2("tcpwinsz: %d for connection: %d", tcpwinsz,
 	       packet_get_connection_in());
 	return(tcpwinsz);

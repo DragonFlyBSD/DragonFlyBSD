@@ -3,8 +3,8 @@ SSHDIR=		${.CURDIR}/../../../crypto/openssh
 CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${SSHDIR} -include ssh_namespace.h
 
 .if ${.CURDIR:T} != "libssh"
-DPADD+=	${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
-LDADD+=	-lssh -lcrypto -lutil -lz
+DPADD+=	${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ} ${LIBPTHREAD}
+LDADD+=	-lssh -lcrypto -lutil -lz -lpthread
 .endif
 
-.PATH:	${SSHDIR}
+.PATH:	${SSHDIR} ${SSHDIR}/openbsd-compat

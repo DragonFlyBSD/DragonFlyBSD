@@ -12,5 +12,3 @@ LDADD+=	-ledit -ltermcap
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
-
-.PATH:	${SSHDIR}/openbsd-compat

@@ -3,6 +3,7 @@
 
 PROG=	ssh-keysign
 SRCS=	ssh-keysign.c readconf.c roaming_dummy.c
+SRCS+=	fmt_scaled.c
 MAN=	ssh-keysign.8
 .if defined(ENABLE_SUID_SSH)
 BINMODE=4511

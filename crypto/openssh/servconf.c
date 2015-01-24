@@ -54,6 +54,7 @@
 #include "packet.h"
 #include "hostfile.h"
 #include "auth.h"
+#include "version.h"
 
 static void add_listen_addr(ServerOptions *, char *, int);
 static void add_one_listen_addr(ServerOptions *, char *, int);
@@ -314,12 +315,9 @@ fill_default_server_options(ServerOptions *options)
 	}
 	if (options->permit_tun == -1)
 		options->permit_tun = SSH_TUNMODE_NO;
-	if (options->ip_qos_interactive == -1)
-		options->ip_qos_interactive = IPTOS_LOWDELAY;
-	if (options->ip_qos_bulk == -1)
-		options->ip_qos_bulk = IPTOS_THROUGHPUT;
-
-	if (options->hpn_disabled == -1)
+	if (options->none_enabled == -1) 
+		options->none_enabled = 0;
+	if (options->hpn_disabled == -1) 
 		options->hpn_disabled = 0;
 
 	if (options->hpn_buffer_size == -1) {
@@ -332,13 +330,13 @@ fill_default_server_options(ServerOptions *options)
 			/*create a socket but don't connect it */
 			/* we use that the get the rcv socket size */
 			sock = socket(AF_INET, SOCK_STREAM, 0);
-			getsockopt(sock, SOL_SOCKET, SO_RCVBUF,
+			getsockopt(sock, SOL_SOCKET, SO_RCVBUF, 
 				   &socksize, &socksizelen);
 			close(sock);
 			options->hpn_buffer_size = socksize;
 			debug ("HPN Buffer Size: %d", options->hpn_buffer_size);
-
-		}
+			
+		} 
 	} else {
 		/* we have to do this incase the user sets both values in a contradictory */
 		/* manner. hpn_disabled overrrides hpn_buffer_size*/
@@ -355,8 +353,12 @@ fill_default_server_options(ServerOptions *options)
 			options->hpn_buffer_size = CHAN_TCP_WINDOW_DEFAULT;
 	}
 
+	if (options->ip_qos_interactive == -1)
+		options->ip_qos_interactive = IPTOS_LOWDELAY;
+	if (options->ip_qos_bulk == -1)
+		options->ip_qos_bulk = IPTOS_THROUGHPUT;
 	if (options->version_addendum == NULL)
-		options->version_addendum = xstrdup("");
+		options->version_addendum = xstrdup(SSH_VERSION_DRAGONFLY);
 	if (options->fwd_opts.streamlocal_bind_mask == (mode_t)-1)
 		options->fwd_opts.streamlocal_bind_mask = 0177;
 	if (options->fwd_opts.streamlocal_bind_unlink == -1)
@@ -534,10 +536,10 @@ static struct {
 	{ "revokedkeys", sRevokedKeys, SSHCFG_ALL },
 	{ "trustedusercakeys", sTrustedUserCAKeys, SSHCFG_ALL },
 	{ "authorizedprincipalsfile", sAuthorizedPrincipalsFile, SSHCFG_ALL },
-	{ "noneenabled", sNoneEnabled },
-	{ "hpndisabled", sHPNDisabled },
-	{ "hpnbuffersize", sHPNBufferSize },
-	{ "tcprcvbufpoll", sTcpRcvBufPoll },
+	{ "noneenabled", sNoneEnabled, SSHCFG_ALL },
+	{ "hpndisabled", sHPNDisabled, SSHCFG_ALL },
+	{ "hpnbuffersize", sHPNBufferSize, SSHCFG_ALL },
+	{ "tcprcvbufpoll", sTcpRcvBufPoll, SSHCFG_ALL },
 	{ "kexalgorithms", sKexAlgorithms, SSHCFG_GLOBAL },
 	{ "ipqos", sIPQoS, SSHCFG_ALL },
 	{ "authorizedkeyscommand", sAuthorizedKeysCommand, SSHCFG_ALL },

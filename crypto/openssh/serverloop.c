@@ -840,8 +840,8 @@ void
 server_loop2(Authctxt *authctxt)
 {
 	fd_set *readset = NULL, *writeset = NULL;
-	int rekeying = 0, max_fd;
 	double start_time, total_time;
+	int rekeying = 0, max_fd;
 	u_int nalloc = 0;
 	u_int64_t rekey_timeout_ms = 0;
 

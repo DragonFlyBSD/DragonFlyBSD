@@ -992,7 +992,7 @@ packet_send2_wrapped(void)
 		set_newkeys(MODE_OUT);
 	else if (type == SSH2_MSG_USERAUTH_SUCCESS && active_state->server_side)
 		packet_enable_delayed_compress();
-	return(packet_length);
+	return (len-4);
 }
 
 static int
@@ -1740,8 +1740,11 @@ packet_disconnect(const char *fmt,...)
 int
 packet_write_poll(void)
 {
-	int len = buffer_len(&active_state->output);
+
+	int len = 0;
 	int cont;
+
+	len = buffer_len(&active_state->output);
 
 	if (len > 0) {
 		cont = 0;
@@ -1958,6 +1961,7 @@ packet_send_ignore(int nbytes)
 	}
 }
 
+/* this supports the forced rekeying required for the NONE cipher */
 int rekey_requested = 0;
 void
 packet_request_rekeying(void)
@@ -2045,6 +2049,18 @@ void *
 packet_get_newkeys(int mode)
 {
 	return (void *)active_state->newkeys[mode];
+}
+
+void *
+packet_get_receive_context(void)
+{
+  return (void*)&(active_state->receive_context);
+}
+
+void *
+packet_get_send_context(void)
+{
+  return (void*)&(active_state->send_context);
 }
 
 /*

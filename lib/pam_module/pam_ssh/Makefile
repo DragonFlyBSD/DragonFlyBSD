@@ -7,6 +7,7 @@ MAN=	pam_ssh.8
 LDADD=	-lssh -lcrypto -lcrypt
 DPADD=	${LIBSSH} ${LIBCRYPTO} ${LIBCRYPT}
 
+WARNS?=	4
 SSHDIR=		${.CURDIR}/../../../crypto/openssh
 CFLAGS+=	-I${SSHDIR} -include ssh_namespace.h
 

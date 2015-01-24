@@ -436,7 +436,7 @@ sshd_exchange_identification(int sock_in, int sock_out)
 	}
 
 	xasprintf(&server_version_string, "SSH-%d.%d-%.100s%s%s%s",
-	    major, minor, SSH_VERSION,
+	    major, minor, SSH_RELEASE,
 	    *options.version_addendum == '\0' ? "" : " ",
 	    options.version_addendum, newline);
 
@@ -2207,6 +2207,23 @@ main(int ac, char **av)
 	    options.client_alive_count_max);
 
 	/* Start session. */
+
+	/* if we are using aes-ctr there can be issues in either a fork or sandbox
+         * so the initial aes-ctr is defined to point ot the original single process
+	 * evp. After authentication we'll be past the fork and the sandboxed privsep
+	 * so we repoint the define to the multithreaded evp. To start the threads we
+	 * then force a rekey
+	 */
+        CipherContext *ccsend;
+        ccsend = (CipherContext*)packet_get_send_context();
+
+	/* only rekey if necessary. If we don't do this gcm mode cipher breaks */
+	if (strstr(cipher_return_name((Cipher*)ccsend->cipher), "ctr")) {
+		debug ("Single to Multithreaded CTR cipher swap - server request");
+		cipher_reset_multithreaded();
+		packet_request_rekeying();
+	}
+
 	do_authenticated(authctxt);
 
 	/* The connection has been terminated. */

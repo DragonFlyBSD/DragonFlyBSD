@@ -1932,10 +1932,10 @@ client_request_agent(const char *request_type, int rchan)
 	    SSH_CHANNEL_OPEN, sock, sock, -1,
 		    CHAN_X11_WINDOW_DEFAULT, CHAN_TCP_WINDOW_DEFAULT, 0,
 		    "authentication agent connection", 1);
-       else
+	else
 	c = channel_new("authentication agent connection",
 	    SSH_CHANNEL_OPEN, sock, sock, -1,
-                   options.hpn_buffer_size, options.hpn_buffer_size, 0,
+	    options.hpn_buffer_size, options.hpn_buffer_size, 0,
 	    "authentication agent connection", 1);
 	c->force_drain = 1;
 	return c;

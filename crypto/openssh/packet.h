@@ -23,9 +23,7 @@
 #include <openssl/ec.h>
 #endif
 
-void
-packet_request_rekeying(void);
-
+void	 packet_request_rekeying(void);
 void     packet_set_connection(int, int);
 void     packet_set_timeout(int, int);
 void     packet_set_nonblocking(void);
@@ -41,7 +39,8 @@ void     packet_set_interactive(int, int, int);
 int      packet_is_interactive(void);
 void     packet_set_server(void);
 void     packet_set_authenticated(void);
-int	 packet_authentication_state(void);
+void*	 packet_get_receive_context(void);
+void*	 packet_get_send_context(void);
 
 void     packet_start(u_char);
 void     packet_put_char(int ch);
@@ -106,6 +105,10 @@ void	 packet_set_alive_timeouts(int);
 int	 packet_inc_alive_timeouts(void);
 int	 packet_set_maxsize(u_int);
 u_int	 packet_get_maxsize(void);
+
+/* for forced packet rekeying post auth */
+void	packet_request_rekeying(void);
+int	packet_authentication_state(void);
 
 /* don't allow remaining bytes after the end of the message */
 #define packet_check_eom() \
