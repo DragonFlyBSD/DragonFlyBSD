@@ -157,7 +157,7 @@ bp_whoami(int sockfd)
 		return (-1);
 
 	/* RPC: portmap/callit */
-	d->myport = htons(--rpc_port);
+	d->myport = htons(rpc_newport());
 	d->destip.s_addr = INADDR_BROADCAST;	/* XXX: subnet bcast? */
 	/* rpc_call will set d->destport */
 
@@ -272,7 +272,7 @@ bp_getfile(int sockfd, char *key, struct in_addr *serv_addr, char *pathname)
 	}
 
 	/* RPC: bootparam/getfile */
-	d->myport = htons(--rpc_port);
+	d->myport = htons(rpc_newport());
 	d->destip   = bp_server_addr;
 	/* rpc_call will set d->destport */
 

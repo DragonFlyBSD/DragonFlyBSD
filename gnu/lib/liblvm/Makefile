@@ -7,7 +7,7 @@ SHLIB_MAJOR?=	0
 
 LVM2_DISTDIR=	${LVM2_DIR}/dist
 
-CFLAGS+=	-D_XOPEN_SOURCE=600
+CFLAGS+=	-D_XOPEN_SOURCE=700
 CFLAGS+=	-I${LVM2_DISTDIR}/include
 
 SRCS+=		activate.c lvmcache.c toolcontext.c config.c btree.c \

@@ -34,6 +34,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <stddef.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -74,13 +75,19 @@ struct nfs_read_args {
 	n_long	xxx;			/* XXX what's this for? */
 };
 
-/* Data part of nfs rpc reply (also the largest thing we receive) */
-#define NFSREAD_SIZE 1024
+/*
+ * Data part of nfs rpc reply (also the largest thing we receive).
+ * Worry about the size of the structure declared on the stack.
+ */
+
+#define NFSREAD_MIN_SIZE 1024
+#define NFSREAD_MAX_SIZE 4096
+
 struct nfs_read_repl {
 	n_long	errno;
 	struct	nfsv2_fattrs fa;
 	n_long	count;
-	u_char	data[NFSREAD_SIZE];
+	u_char	data[NFSREAD_MAX_SIZE];
 };
 
 #ifndef NFS_NOSYMLINK
@@ -140,6 +147,8 @@ struct fs_ops nfs_fsops = {
 	nfs_readdir
 };
 
+static int nfs_read_size = NFSREAD_MIN_SIZE;
+
 /*
  * Fetch the root file handle (call mount daemon)
  * Return zero or error number.
@@ -193,6 +202,17 @@ nfs_getrootfh(struct iodesc *d, char *path, u_char *fhp)
 	if (repl->errno)
 		return (ntohl(repl->errno));
 	bcopy(repl->fh, fhp, sizeof(repl->fh));
+
+	/*
+	 * Improve boot performance over NFS
+	 */
+	if (getenv("nfs.read_size") != NULL)
+		nfs_read_size = strtol(getenv("nfs.read_size"), NULL, 0);
+	if (nfs_read_size < NFSREAD_MIN_SIZE)
+		nfs_read_size = NFSREAD_MIN_SIZE;
+	if (nfs_read_size > NFSREAD_MAX_SIZE)
+		nfs_read_size = NFSREAD_MAX_SIZE;
+
 	return (0);
 }
 
@@ -330,11 +350,11 @@ nfs_readdata(struct nfs_iodesc *d, off_t off, void *addr, size_t len)
 
 	bcopy(d->fh, args->fh, NFS_FHSIZE);
 	args->off = htonl((n_long)off);
-	if (len > NFSREAD_SIZE)
-		len = NFSREAD_SIZE;
+	if (len > nfs_read_size)
+		len = nfs_read_size;
 	args->len = htonl((n_long)len);
 	args->xxx = htonl((n_long)0);
-	hlen = sizeof(*repl) - NFSREAD_SIZE;
+	hlen = offsetof(struct nfs_read_repl, data[0]);
 
 	cc = rpc_call(d->iodesc, NFS_PROG, NFS_VER2, NFSPROC_READ,
 	    args, sizeof(*args),
@@ -396,7 +416,7 @@ nfs_open(const char *upath, struct open_file *f)
 		return(EINVAL);
 
 	/* Bind to a reserved port. */
-	desc->myport = htons(--rpc_port);
+	desc->myport = htons(rpc_newport());
 	desc->destip = rootip;
 	if ((error = nfs_getrootfh(desc, rootpath, nfs_root_node.fh)))
 		return (error);

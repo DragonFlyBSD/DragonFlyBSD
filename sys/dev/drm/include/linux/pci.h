@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,9 +37,21 @@
 
 #include <linux/pci_ids.h>
 
+struct pci_device_id {
+	uint32_t class;
+	uint32_t class_mask;
+	uint32_t vendor;
+	uint32_t device;
+	uint32_t subvendor;
+	uint32_t subdevice;
+	unsigned long driver_data;
+};
+
 struct pci_dev {
 	struct device	*dev;
 };
+
+#define PCI_DEVFN(slot, func)   ((((slot) & 0x1f) << 3) | ((func) & 0x07))
 
 static inline int
 pci_read_config_byte(struct pci_dev *pdev, int where, u8 *val)

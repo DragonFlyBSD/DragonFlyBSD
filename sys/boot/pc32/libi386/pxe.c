@@ -65,6 +65,7 @@ static BOOTPLAYER	bootplayer;	/* PXE Cached information. */
 static int 	pxe_debug = 0;
 static int	pxe_sock = -1;
 static int	pxe_opens = 0;
+static int	bugged_bios_pxe = 0;
 
 void		pxe_enable(void *pxeinfo);
 static void	(*pxe_call)(int func);
@@ -310,6 +311,13 @@ pxe_open(struct open_file *f, ...)
 
 		setenv("boot.nfsroot.server", inet_ntoa(rootip), 1);
 		setenv("boot.nfsroot.path", rootpath, 1);
+
+		if (bootplayer.yip != INADDR_ANY &&
+		    bootplayer.yip != myip.s_addr) {
+			printf("Warning: PXE negotiated a different IP "
+			       "in the preloader\n");
+			bugged_bios_pxe = 1;
+		}
 	}
     }
     pxe_opens++;
@@ -601,9 +609,18 @@ readudp(struct iodesc *h, void *pkt, size_t len, time_t timeout)
 	
 	uh = (struct udphdr *) pkt - 1;
 	ip = (struct ip *)uh - 1;
+again:
 	bzero(udpread_p, sizeof(*udpread_p));
-	
-	udpread_p->dest_ip        = h->myip.s_addr;
+
+	/*
+	 * Bugged BIOSes (e.g. Gigabyte H97N-WIFI) can wind up asking for
+	 * a different IP than we negotiated, then using that IP instead
+	 * of the one we specified in the udpopen().
+	 */
+	if (bugged_bios_pxe)
+		udpread_p->dest_ip = INADDR_ANY;
+	else
+		udpread_p->dest_ip = h->myip.s_addr;
 	udpread_p->d_port         = h->myport;
 	udpread_p->buffer_size    = len;
 	udpread_p->buffer.segment = VTOPSEG(data_buffer);
@@ -611,16 +628,29 @@ readudp(struct iodesc *h, void *pkt, size_t len, time_t timeout)
 
 	pxe_call(PXENV_UDP_READ);
 
-#if 0
-	/* XXX - I dont know why we need this. */
-	delay(1000);
-#endif
 	if (udpread_p->status != 0) {
 		/* XXX: This happens a lot.  It shouldn't. */
 		if (udpread_p->status != 1)
 			printf("readudp failed %x\n", udpread_p->status);
 		return -1;
 	}
+
+	/*
+	 * If the BIOS is bugged in this manner we were forced to allow
+	 * any address in dest_ip and have to filter the packets ourselves.
+	 * The bugged BIOS used the wrong IP in the udpwrite (it used the
+	 * previously negotiated bootplayer.yip IP).  So make sure the IP
+	 * is either that one or the one we negotiated and specified in the
+	 * udpopen ourselves.
+	 */
+	if (bugged_bios_pxe) {
+		if (udpread_p->dest_ip != h->myip.s_addr &&
+		    udpread_p->dest_ip != bootplayer.yip &&
+		    udpread_p->dest_ip != INADDR_ANY) {
+			goto again;
+		}
+	}
+
 	bcopy(data_buffer, pkt, udpread_p->buffer_size);
 	uh->uh_sport = udpread_p->s_port;
 	ip->ip_src.s_addr = udpread_p->src_ip;

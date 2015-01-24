@@ -47,6 +47,7 @@
 #include <unistd.h>
 #include "un-namespace.h"
 
+#include "gen_private.h"
 
 #define DEFAULT_FLAGS (DTF_HIDEW | DTF_NODUP)
 

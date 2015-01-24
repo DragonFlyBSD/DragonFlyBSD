@@ -54,8 +54,7 @@ ssize_t	rpc_call(struct iodesc *, n_long, n_long, n_long,
 void	rpc_fromaddr(void *, struct in_addr *, u_short *);
 int	rpc_pmap_getcache(struct in_addr, u_int, u_int);
 void	rpc_pmap_putcache(struct in_addr, u_int, u_int, int);
-
-extern int rpc_port;	/* decrement before bind */
+int	rpc_newport();
 
 /*
  * How much space to leave in front of RPC requests.

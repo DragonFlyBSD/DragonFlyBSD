@@ -227,7 +227,7 @@ for i in base default ${bootp_ipbca} ${bootp_ipa} ; do
 	done
 done
 
-# - Create all required MFS filesystems and populate them from
+# - Create all required TMPFS filesystems and populate them from
 #   our templates.  Support both a direct template and a dir.cpio.gz
 #   archive.  Support dir.remove files containing a list of relative
 #   paths to remove.

@@ -35,7 +35,7 @@
  */
 
 #ifndef _DIRENT_H_
-#define _DIRENT_H_
+#define	_DIRENT_H_
 
 /*
  * The kernel defines the format of directory entries returned by
@@ -43,67 +43,64 @@
  */
 #include <sys/dirent.h>
 
-#ifdef _POSIX_SOURCE
-typedef void *	DIR;
-#else
+#if __BSD_VISIBLE
 
 /* definitions for library routines operating on directories. */
 #define	DIRBLKSIZ	1024
 
-/* structure describing an open directory. */
-typedef struct _dirdesc {
-	int	dd_fd;		/* file descriptor associated with directory */
-	long	dd_loc;		/* offset in current buffer */
-	long	dd_size;	/* amount of data returned by getdirentries */
-	char	*dd_buf;	/* data buffer */
-	int	dd_len;		/* size of data buffer */
-	long	dd_lastseek;	/* last seek index */
-	long	dd_rewind;	/* magic cookie for rewinding */
-	int	dd_flags;	/* flags for readdir */
-	void	*dd_lock;	/* hack to avoid include <pthread.h> */
-	off_t	dd_seek;	/* new magic cookie returned by getdirentries */
-} DIR;
-
-#define	dirfd(dirp)	((dirp)->dd_fd)
+struct _dirdesc;
+typedef struct _dirdesc	DIR;
 
 /* flags for opendir2 */
-#define DTF_HIDEW	0x0001	/* hide whiteout entries */
-#define DTF_NODUP	0x0002	/* don't return duplicate names */
-#define DTF_REWIND	0x0004	/* rewind after reading union stack */
-#define __DTF_READALL	0x0008	/* everything has been read */
-#define __DTF_SKIPME	0x0010	/* next entry to read not current entry */
+#define	DTF_HIDEW	0x0001	/* hide whiteout entries */
+#define	DTF_NODUP	0x0002	/* don't return duplicate names */
+#define	DTF_REWIND	0x0004	/* rewind after reading union stack */
+#define	__DTF_READALL	0x0008	/* everything has been read */
+#define	__DTF_SKIPME	0x0010	/* next entry to read not current entry */
 
 #include <sys/_null.h>
 
-#endif /* _POSIX_SOURCE */
+#else /* !__BSD_VISIBLE */
+
+typedef void *	DIR;
+
+#endif /* __BSD_VISIBLE */
 
 #ifndef _KERNEL
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-DIR *opendir (const char *);
-DIR *fdopendir (int);
-struct dirent *readdir (DIR *);
-void rewinddir (DIR *);
-int closedir (DIR *);
-#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE >= 700 || !defined(_POSIX_SOURCE)
-int alphasort (const struct dirent **, const struct dirent **);
-int scandir(const char *, struct dirent ***, int (*)(const struct dirent *),
-	int (*)(const struct dirent **, const struct dirent **));
+DIR	*opendir(const char *);
+DIR	*fdopendir(int);
+struct dirent *
+	 readdir(DIR *);
+void	 rewinddir(DIR *);
+int	 closedir(DIR *);
+#if __POSIX_VISIBLE >= 199506 || __XSI_VISIBLE >= 500
+int	 readdir_r(DIR *, struct dirent *, struct dirent **);
 #endif
-#ifndef _POSIX_SOURCE
-DIR *__opendir2 (const char *, int);
-DIR *__fdopendir2 (int, int);
-long telldir(DIR *);
-struct dirent *_readdir_unlocked(DIR *, int);
-void seekdir(DIR *, long);
-void _reclaim_telldir(DIR *);
-void _seekdir (DIR *, long);
-int getdents (int, char *, int);
-int getdirentries (int, char *, int, long *);
-int readdir_r (DIR *, struct dirent *, struct dirent **);
-#endif /* not POSIX */
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE >= 700
+int	 alphasort(const struct dirent **, const struct dirent **);
+int	 dirfd(DIR *);
+int	 scandir(const char *, struct dirent ***,
+	    int (*)(const struct dirent *),
+	    int (*)(const struct dirent **, const struct dirent **));
+#endif
+#if __XSI_VISIBLE
+void	 seekdir(DIR *, long);
+long	 telldir(DIR *);
+#endif
+#if __BSD_VISIBLE
+DIR	*__opendir2(const char *, int);
+DIR	*__fdopendir2(int, int);
+struct dirent *
+	 _readdir_unlocked(DIR *, int);
+void	 _reclaim_telldir(DIR *);
+void	 _seekdir(DIR *, long);
+int	 getdents(int, char *, int);
+int	 getdirentries(int, char *, int, long *);
+#endif /* __BSD_VISIBLE */
 __END_DECLS
 
 #endif /* !_KERNEL */

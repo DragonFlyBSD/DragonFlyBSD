@@ -28,6 +28,7 @@
 #include <linux/i2c.h>
 #include <linux/types.h>
 #include <linux/idr.h>
+#include <linux/fb.h>
 #include <uapi_drm/drm_mode.h>
 
 #include <uapi_drm/drm_fourcc.h>

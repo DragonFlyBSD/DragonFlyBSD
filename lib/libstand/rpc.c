@@ -103,7 +103,15 @@ static	ssize_t recvrpc(struct iodesc *, void *, size_t, time_t);
 static	int rpc_getport(struct iodesc *, n_long, n_long);
 
 int rpc_xid;
-int rpc_port = 0x400;	/* predecrement */
+static int rpc_port = 0x400;
+
+int
+rpc_newport(void)
+{
+	if (rpc_port <= 256)		/* recycle after a while */
+		rpc_port = 0x400;
+	return (--rpc_port);
+}
 
 /*
  * Make a rpc call; return length of answer

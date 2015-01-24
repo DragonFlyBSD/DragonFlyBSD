@@ -63,7 +63,7 @@
  * 64K X-bufs are used for blocks >= a file's 1MB mark.
  *
  * Per-volume storage limit: 52 bits		4096 TB
- * Per-Zone storage limit: 59 bits		512 KTB (due to blockmap)
+ * Per-Zone storage limit: 60 bits		1 MTB
  * Per-filesystem storage limit: 60 bits	1 MTB
  */
 #define HAMMER_BUFSIZE		16384
@@ -104,7 +104,7 @@
  *
  * Hammer offsets are used for FIFO indexing and embed a cycle counter
  * and volume number in addition to the offset.  Most offsets are required
- * to be 64-byte aligned.
+ * to be 16 KB aligned.
  */
 typedef u_int64_t hammer_tid_t;
 typedef u_int64_t hammer_off_t;
@@ -134,6 +134,7 @@ typedef u_int32_t hammer_crc_t;
  * zone 8 (z,v,o):	B-Tree		- actually zone-2 address
  * zone 9 (z,v,o):	Record		- actually zone-2 address
  * zone 10 (z,v,o):	Large-data	- actually zone-2 address
+ * zone 11 (z,v,o):	Small-data	- actually zone-2 address
  * zone 15:		reserved for sanity
  *
  * layer1/layer2 direct map:
@@ -201,9 +202,9 @@ typedef u_int32_t hammer_crc_t;
  * Large-Block backing store
  *
  * A blockmap is a two-level map which translates a blockmap-backed zone
- * offset into a raw zone 2 offset.  Each layer handles 18 bits.  The 8M
- * large-block size is 23 bits so two layers gives us 23+18+18 = 59 bits
- * of address space.
+ * offset into a raw zone 2 offset.  The layer 1 handles 18 bits and the
+ * layer 2 handles 19 bits.  The 8M large-block size is 23 bits so two
+ * layers gives us 18+19+23 = 60 bits of address space.
  *
  * When using hinting for a blockmap lookup, the hint is lost when the
  * scan leaves the HINTBLOCK, which is typically several LARGEBLOCK's.
@@ -273,7 +274,7 @@ typedef struct hammer_blockmap *hammer_blockmap_t;
  * thus any space allocated via the freemap can be directly translated
  * to a zone:2 (or zone:8-15) address.
  *
- * zone-X blockmap offset: [z:4][layer1:18][layer2:19][bigblock:23]
+ * zone-X blockmap offset: [zone:4][layer1:18][layer2:19][bigblock:23]
  */
 struct hammer_blockmap_layer1 {
 	hammer_off_t	blocks_free;	/* big-blocks free */
@@ -324,7 +325,7 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 #define HAMMER_BLOCKMAP_RADIX2_PERBUFFER	\
 	(HAMMER_BLOCKMAP_RADIX2 / (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE))
 
-#define HAMMER_BLOCKMAP_LAYER1	/* 18+19+23 */		\
+#define HAMMER_BLOCKMAP_LAYER1	/* 18+19+23 - 1EB */		\
 	(HAMMER_BLOCKMAP_RADIX1 * HAMMER_BLOCKMAP_LAYER2)
 #define HAMMER_BLOCKMAP_LAYER2	/* 19+23 - 4TB */		\
 	(HAMMER_BLOCKMAP_RADIX2 * HAMMER_LARGEBLOCK_SIZE64)
