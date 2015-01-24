@@ -43,9 +43,7 @@
  */
 #include <sys/dirent.h>
 
-#ifdef _POSIX_SOURCE
-typedef void *	DIR;
-#else
+#if __BSD_VISIBLE
 
 /* definitions for library routines operating on directories. */
 #define	DIRBLKSIZ	1024
@@ -62,7 +60,11 @@ typedef struct _dirdesc	DIR;
 
 #include <sys/_null.h>
 
-#endif /* _POSIX_SOURCE */
+#else /* !__BSD_VISIBLE */
+
+typedef void *	DIR;
+
+#endif /* __BSD_VISIBLE */
 
 #ifndef _KERNEL
 
@@ -75,26 +77,30 @@ struct dirent *
 	 readdir(DIR *);
 void	 rewinddir(DIR *);
 int	 closedir(DIR *);
-#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE >= 700 || !defined(_POSIX_SOURCE)
+#if __POSIX_VISIBLE >= 199506 || __XSI_VISIBLE >= 500
+int	 readdir_r(DIR *, struct dirent *, struct dirent **);
+#endif
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE >= 700
 int	 alphasort(const struct dirent **, const struct dirent **);
 int	 dirfd(DIR *);
 int	 scandir(const char *, struct dirent ***,
 	    int (*)(const struct dirent *),
 	    int (*)(const struct dirent **, const struct dirent **));
 #endif
-#ifndef _POSIX_SOURCE
+#if __XSI_VISIBLE
+void	 seekdir(DIR *, long);
+long	 telldir(DIR *);
+#endif
+#if __BSD_VISIBLE
 DIR	*__opendir2(const char *, int);
 DIR	*__fdopendir2(int, int);
-long	 telldir(DIR *);
 struct dirent *
 	 _readdir_unlocked(DIR *, int);
-void	 seekdir(DIR *, long);
 void	 _reclaim_telldir(DIR *);
 void	 _seekdir(DIR *, long);
 int	 getdents(int, char *, int);
 int	 getdirentries(int, char *, int, long *);
-int	 readdir_r(DIR *, struct dirent *, struct dirent **);
-#endif /* not POSIX */
+#endif /* __BSD_VISIBLE */
 __END_DECLS
 
 #endif /* !_KERNEL */
