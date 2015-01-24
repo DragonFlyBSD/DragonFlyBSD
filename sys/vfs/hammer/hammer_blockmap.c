@@ -356,7 +356,7 @@ again:
 
 	/*
 	 * If we are allocating from the base of a new buffer we can avoid
-	 * a disk read by calling hammer_bnew().
+	 * a disk read by calling hammer_bnew_ext().
 	 */
 	if ((next_offset & HAMMER_BUFMASK) == 0) {
 		hammer_bnew_ext(trans->hmp, next_offset, bytes,

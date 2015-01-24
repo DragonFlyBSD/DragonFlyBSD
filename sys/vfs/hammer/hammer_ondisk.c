@@ -99,8 +99,8 @@ RB_GENERATE2(hammer_nod_rb_tree, hammer_node, rb_node,
  ************************************************************************
  *
  * Load a HAMMER volume by name.  Returns 0 on success or a positive error
- * code on failure.  Volumes must be loaded at mount time, get_volume() will
- * not load a new volume.
+ * code on failure.  Volumes must be loaded at mount time, hammer_get_volume()
+ * will not load a new volume.
  *
  * The passed devvp is vref()'d but not locked.  This function consumes the
  * ref (typically by associating it with the volume structure).

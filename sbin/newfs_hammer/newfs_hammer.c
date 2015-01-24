@@ -533,8 +533,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 	vol->vol_alloc += MemAreaSize;
 
 	/*
-	 * The remaining area is the zone 2 buffer allocation area.  These
-	 * buffers
+	 * The remaining area is the zone 2 buffer allocation area.
 	 */
 	ondisk->vol_buf_beg = vol->vol_alloc;
 	ondisk->vol_buf_end = vol->size & ~(int64_t)HAMMER_BUFMASK;

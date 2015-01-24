@@ -272,9 +272,8 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	/*
-	 *
+	 * Reblock filesystem
 	 */
-
 	hmp->volume_to_remove = volume->vol_no;
 
 	struct hammer_ioc_reblock reblock;
@@ -861,7 +860,7 @@ hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
 	ondisk->vol_buf_end = vol_size & ~(int64_t)HAMMER_BUFMASK;
 
 	if (ondisk->vol_buf_end < ondisk->vol_buf_beg) {
-		kprintf("volume %d %s is too small to hold the volume header",
+		kprintf("volume %d %s is too small to hold the volume header\n",
 		     ondisk->vol_no, ondisk->vol_name);
 		error = EFTYPE;
 		goto late_failure;
