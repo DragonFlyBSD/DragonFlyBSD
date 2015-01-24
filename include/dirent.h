@@ -35,7 +35,7 @@
  */
 
 #ifndef _DIRENT_H_
-#define _DIRENT_H_
+#define	_DIRENT_H_
 
 /*
  * The kernel defines the format of directory entries returned by
@@ -67,11 +67,11 @@ typedef struct _dirdesc {
 #define	dirfd(dirp)	((dirp)->dd_fd)
 
 /* flags for opendir2 */
-#define DTF_HIDEW	0x0001	/* hide whiteout entries */
-#define DTF_NODUP	0x0002	/* don't return duplicate names */
-#define DTF_REWIND	0x0004	/* rewind after reading union stack */
-#define __DTF_READALL	0x0008	/* everything has been read */
-#define __DTF_SKIPME	0x0010	/* next entry to read not current entry */
+#define	DTF_HIDEW	0x0001	/* hide whiteout entries */
+#define	DTF_NODUP	0x0002	/* don't return duplicate names */
+#define	DTF_REWIND	0x0004	/* rewind after reading union stack */
+#define	__DTF_READALL	0x0008	/* everything has been read */
+#define	__DTF_SKIPME	0x0010	/* next entry to read not current entry */
 
 #include <sys/_null.h>
 
@@ -82,27 +82,30 @@ typedef struct _dirdesc {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-DIR *opendir (const char *);
-DIR *fdopendir (int);
-struct dirent *readdir (DIR *);
-void rewinddir (DIR *);
-int closedir (DIR *);
+DIR	*opendir(const char *);
+DIR	*fdopendir(int);
+struct dirent *
+	 readdir(DIR *);
+void	 rewinddir(DIR *);
+int	 closedir(DIR *);
 #if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE >= 700 || !defined(_POSIX_SOURCE)
-int alphasort (const struct dirent **, const struct dirent **);
-int scandir(const char *, struct dirent ***, int (*)(const struct dirent *),
-	int (*)(const struct dirent **, const struct dirent **));
+int	 alphasort(const struct dirent **, const struct dirent **);
+int	 scandir(const char *, struct dirent ***,
+	    int (*)(const struct dirent *),
+	    int (*)(const struct dirent **, const struct dirent **));
 #endif
 #ifndef _POSIX_SOURCE
-DIR *__opendir2 (const char *, int);
-DIR *__fdopendir2 (int, int);
-long telldir(DIR *);
-struct dirent *_readdir_unlocked(DIR *, int);
-void seekdir(DIR *, long);
-void _reclaim_telldir(DIR *);
-void _seekdir (DIR *, long);
-int getdents (int, char *, int);
-int getdirentries (int, char *, int, long *);
-int readdir_r (DIR *, struct dirent *, struct dirent **);
+DIR	*__opendir2(const char *, int);
+DIR	*__fdopendir2(int, int);
+long	 telldir(DIR *);
+struct dirent *
+	 _readdir_unlocked(DIR *, int);
+void	 seekdir(DIR *, long);
+void	 _reclaim_telldir(DIR *);
+void	 _seekdir(DIR *, long);
+int	 getdents(int, char *, int);
+int	 getdirentries(int, char *, int, long *);
+int	 readdir_r(DIR *, struct dirent *, struct dirent **);
 #endif /* not POSIX */
 __END_DECLS
 
