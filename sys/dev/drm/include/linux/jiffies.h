@@ -35,11 +35,19 @@
 
 #define HZ			hz
 
+#define MAX_JIFFY_OFFSET	((LONG_MAX >> 1) - 1)
+
 #define jiffies_to_msecs(x)	(((int64_t)(x)) * 1000 / hz)
 #define msecs_to_jiffies(x)	(((int64_t)(x)) * hz / 1000)
 #define jiffies			ticks
 #define time_after(a,b)		((long)(b) - (long)(a) < 0)
 #define time_after_eq(a,b)	((long)(b) - (long)(a) <= 0)
+
+#define time_before(a,b)	time_after(b,a)
+#define time_before_eq(a,b)	time_after_eq(b,a)
+
+#define time_in_range(a,b,c)	\
+	time_after_eq(a,b) && time_before_eq(a,c)
 
 static inline unsigned long
 timespec_to_jiffies(const struct timespec *ts)
