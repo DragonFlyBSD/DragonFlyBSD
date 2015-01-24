@@ -32,6 +32,9 @@ MLINKS+=	libmagic.3 magic_check.3
 MLINKS+=	libmagic.3 magic_compile.3
 MLINKS+=	libmagic.3 magic_list.3
 MLINKS+=	libmagic.3 magic_load.3
+MLINKS+=	libmagic.3 magic_load_buffers.3
+MLINKS+=	libmagic.3 magic_setparam.3
+MLINKS+=	libmagic.3 magic_getparam.3
 MLINKS+=	libmagic.3 magic_version.3
 
 CLEANFILES+=	magic magic.mgc libmagic.3
