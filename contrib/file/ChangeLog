@@ -1,10 +1,157 @@
+2015-01-02  15:15  Christos Zoulas <christos@zoulas.com>
+
+	* release 5.22
+
+2015-01-01  12:01  Christos Zoulas <christos@zoulas.com>
+
+	* add indirect relative for TIFF/Exif
+
+2014-12-16  18:10  Christos Zoulas <christos@zoulas.com>
+	
+	* restructure elf note printing to avoid repeated messages
+	* add note limit, suggested by Alexander Cherepanov
+
+2014-12-16  16:53  Christos Zoulas <christos@zoulas.com>
+	
+	* Bail out on partial pread()'s (Alexander Cherepanov)
+	* Fix incorrect bounds check in file_printable (Alexander Cherepanov)
+
+2014-12-11  20:01  Christos Zoulas <christos@zoulas.com>
+
+	* PR/405: ignore SIGPIPE from uncompress programs
+	* change printable -> file_printable and use it in
+	  more places for safety
+	* in ELF, instead of "(uses dynamic libraries)" when PT_INTERP
+	  is present print the interpreter name.
+	
+2014-12-10  20:01  Christos Zoulas <christos@zoulas.com>
+
+	* release 5.21
+
+2014-11-27  18:40  Christos Zoulas <christos@zoulas.com>
+
+	* Allow setting more parameters from the command line.
+	* Split name/use and indirect magic recursion limits.
+
+2014-11-27  11:12  Christos Zoulas <christos@zoulas.com>
+
+	* Adjust ELF parameters and the default recursion
+	  level.
+	* Allow setting the recursion level dynamically.
+
+2014-11-24   8:55  Christos Zoulas <christos@zoulas.com>
+
+	* The following fixes resulted from Thomas Jarosch's fuzzing
+	  tests that revealed severe performance issues on pathological
+	  input:
+	    - limit number of elf program and sections processing
+	    - abort elf note processing quickly
+	    - reduce the number of recursion levels from 20 to 10
+	    - preserve error messages in indirect magic handling
+
+	This is tracked as CVE-2014-8116 and CVE-2014-8117
+
+2014-11-12  10:30  Christos Zoulas <christos@zoulas.com>
+
+	* fix bogus free in the user buffer case.
+
+2014-11-11  12:35  Christos Zoulas <christos@zoulas.com>
+
+	* fix out of bounds read for pascal strings
+	* fix memory leak (not freeing the head of each mlist)
+
+2014-11-07  10:25  Christos Zoulas <christos@zoulas.com>
+
+	* When printing strings from a file, convert them to printable
+	  on a byte by byte basis, so that we don't get issues with
+	  locale's trying to interpret random byte streams as UTF-8 and
+	  having printf error out with EILSEQ.
+	  
+2014-10-17  11:48  Christos Zoulas <christos@zoulas.com>
+
+	* fix bounds in note reading (Francisco Alonso / Red Hat)
+
+2014-10-11  15:02  Christos Zoulas <christos@zoulas.com>
+
+	* fix autoconf glue for setlocale and locale_t; some OS's
+	  have locale_t in xlocale.h
+
+2014-10-10  15:01  Christos Zoulas <christos@zoulas.com>
+
+	* release 5.20
+
+2014-08-17  10:01  Christos Zoulas <christos@zoulas.com>
+
+	* recognize encrypted CDF documents
+
+2014-08-04   9:18  Christos Zoulas <christos@zoulas.com>
+
+	* add magic_load_buffers from Brooks Davis
+
+2014-07-24  16:40  Christos Zoulas <christos@zoulas.com>
+
+	* add thumbs.db support
+
+2014-06-12  12:28  Christos Zoulas <christos@zoulas.com>
+
+	* release 5.19
+
+2014-06-09   9:04  Christos Zoulas <christos@zoulas.com>
+	
+	* Misc buffer overruns and missing buffer size tests in cdf parsing
+	  (Francisco Alonso, Jan Kaluza)
+
+2014-06-02  14:50  Christos Zoulas <christos@zoulas.com>
+
+	* Enforce limit of 8K on regex searches that have no limits
+	* Allow the l modifier for regex to mean line count. Default
+	  to byte count. If line count is specified, assume a max
+	  of 80 characters per line to limit the byte count.
+	* Don't allow conversions to be used for dates, allowing
+	  the mask field to be used as an offset.
+
+2014-05-30  12:51  Christos Zoulas <christos@zoulas.com>
+
+	* Make the range operator limit the length of the
+	  regex search.
+
+2014-05-14  19:23  Christos Zoulas <christos@zoulas.com>
+
+	* PR/347: Windows fixes
+	* PR/352: Hangul word processor recognition
+	* PR/354: Encoding irregularities in text files
+
+2014-05-06  6:12  Christos Zoulas <christos@zoulas.com>
+
+	* Fix uninitialized title in CDF files (Jan Kaluza)
+
+2014-05-04  14:55  Christos Zoulas <christos@zoulas.com>
+
+	* PR/351: Fix compilation of empty files 
+
+2014-04-30  17:39  Christos Zoulas <christos@zoulas.com>
+
+	* Fix integer formats: We don't specify 'l' or
+	  'h' and 'hh' specifiers anymore, only 'll' for
+	  quads and nothing for the rest. This is so that
+	  magic writing is simpler.
+
+2014-04-01  15:25  Christos Zoulas <christos@zoulas.com>
+
+	* PR/341: Jan Kaluza, fix memory leak
+	* PR/342: Jan Kaluza, fix out of bounds read
+
+2014-03-28  15:25  Christos Zoulas <christos@zoulas.com>
+
+	* Fix issue with long formats not matching fmtcheck
+
 2014-03-26  11:25  Christos Zoulas <christos@zoulas.com>
 
 	* release 5.18
 
 2014-03-15  17:45  Christos Zoulas <christos@zoulas.com>
 
-        * add fmtcheck(3) for those who don't have it
+	* add fmtcheck(3) for those who don't have it
 
 2014-03-14  15:12  Christos Zoulas <christos@zoulas.com>
 
@@ -1040,7 +1187,7 @@
 
 	* Identify gnu tar vs. posix tar
 
-	* When keep going, don't print spurious newlines (Radek Vokál)
+	* When keep going, don't print spurious newlines (Radek Vokal)
 
 2006-04-01 12:02 Christos Zoulas <christos@astron.com>
 
@@ -1064,7 +1211,7 @@
 2005-10-31 8:54 Christos Zoulas <christos@astron.com>
 
 	* Fix regression where the core info was not completely processed
-	    (Radek Vokál)
+	    (Radek Vokal)
 
 2005-10-20 11:15 Christos Zoulas <christos@astron.com>
 
@@ -1081,7 +1228,7 @@
 2005-09-20 13:33 Christos Zoulas <christos@astron.com>
 
 	* Don't print SVR4 Style in core files multiple times
-	    (Radek Vokál)
+	    (Radek Vokal)
 
 2005-08-27 04:09 Christos Zoulas <christos@astron.com>
 

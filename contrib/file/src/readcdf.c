@@ -26,7 +26,7 @@
 #include "file.h"
 
 #ifndef lint
-FILE_RCSID("@(#)$File: readcdf.c,v 1.40 2014/03/06 15:23:33 christos Exp $")
+FILE_RCSID("@(#)$File: readcdf.c,v 1.49 2014/12/04 15:56:46 christos Exp $")
 #endif
 
 #include <assert.h>
@@ -35,9 +35,6 @@ FILE_RCSID("@(#)$File: readcdf.c,v 1.40 2014/03/06 15:23:33 christos Exp $")
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
-#if defined(HAVE_LOCALE_H)
-#include <locale.h>
-#endif
 
 #include "cdf.h"
 #include "magic.h"
@@ -75,13 +72,19 @@ static const struct cv {
 	const char *mime;
 } clsid2mime[] = {
 	{
-		{ 0x00000000000c1084LLU, 0x46000000000000c0LLU },
+		{ 0x00000000000c1084ULL, 0x46000000000000c0ULL  },
 		"x-msi",
-	}
+	},
+	{	{ 0,			 0			},
+		NULL,
+	},
 }, clsid2desc[] = {
 	{
-		{ 0x00000000000c1084LLU, 0x46000000000000c0LLU },
+		{ 0x00000000000c1084ULL, 0x46000000000000c0ULL  },
 		"MSI Installer",
+	},
+	{	{ 0,			 0			},
+		NULL,
 	},
 };
 
@@ -101,26 +104,29 @@ cdf_app_to_mime(const char *vbuf, const struct nv *nv)
 {
 	size_t i;
 	const char *rv = NULL;
-	char *old_lc_ctype;
+#ifdef USE_C_LOCALE
+	locale_t old_lc_ctype, c_lc_ctype;
 
-	old_lc_ctype = setlocale(LC_CTYPE, NULL);
+	c_lc_ctype = newlocale(LC_CTYPE_MASK, "C", 0);
+	assert(c_lc_ctype != NULL);
+	old_lc_ctype = uselocale(c_lc_ctype);
 	assert(old_lc_ctype != NULL);
-	old_lc_ctype = strdup(old_lc_ctype);
-	assert(old_lc_ctype != NULL);
-	(void)setlocale(LC_CTYPE, "C");
+#endif
 	for (i = 0; nv[i].pattern != NULL; i++)
 		if (strcasestr(vbuf, nv[i].pattern) != NULL) {
 			rv = nv[i].mime;
 			break;
 		}
-	(void)setlocale(LC_CTYPE, old_lc_ctype);
-	free(old_lc_ctype);
+#ifdef USE_C_LOCALE
+	(void)uselocale(old_lc_ctype);
+	freelocale(c_lc_ctype);
+#endif
 	return rv;
 }
 
 private int
 cdf_file_property_info(struct magic_set *ms, const cdf_property_info_t *info,
-    size_t count, const uint64_t clsid[2])
+    size_t count, const cdf_directory_t *root_storage)
 {
         size_t i;
         cdf_timestamp_t tp;
@@ -130,8 +136,9 @@ cdf_file_property_info(struct magic_set *ms, const cdf_property_info_t *info,
         const char *s;
         int len;
 
-        if (!NOTMIME(ms))
-		str = cdf_clsid_to_mime(clsid, clsid2mime);
+        if (!NOTMIME(ms) && root_storage)
+		str = cdf_clsid_to_mime(root_storage->d_storage_uuid,
+		    clsid2mime);
 
         for (i = 0; i < count; i++) {
                 cdf_print_property_name(buf, sizeof(buf), info[i].pi_id);
@@ -173,12 +180,11 @@ cdf_file_property_info(struct magic_set *ms, const cdf_property_info_t *info,
                                 if (info[i].pi_type == CDF_LENGTH32_WSTRING)
                                     k++;
                                 s = info[i].pi_str.s_buf;
-                                for (j = 0; j < sizeof(vbuf) && len--;
-                                    j++, s += k) {
+                                for (j = 0; j < sizeof(vbuf) && len--; s += k) {
                                         if (*s == '\0')
                                                 break;
                                         if (isprint((unsigned char)*s))
-                                                vbuf[j] = *s;
+                                                vbuf[j++] = *s;
                                 }
                                 if (j == sizeof(vbuf))
                                         --j;
@@ -235,8 +241,39 @@ cdf_file_property_info(struct magic_set *ms, const cdf_property_info_t *info,
 }
 
 private int
+cdf_file_catalog(struct magic_set *ms, const cdf_header_t *h,
+    const cdf_stream_t *sst)
+{
+	cdf_catalog_t *cat;
+	size_t i;
+	char buf[256];
+	cdf_catalog_entry_t *ce;
+
+        if (NOTMIME(ms)) {
+		if (file_printf(ms, "Microsoft Thumbs.db [") == -1)
+			return -1;
+		if (cdf_unpack_catalog(h, sst, &cat) == -1)
+			return -1;
+		ce = cat->cat_e;
+		/* skip first entry since it has a , or paren */
+		for (i = 1; i < cat->cat_num; i++)
+			if (file_printf(ms, "%s%s",
+			    cdf_u16tos8(buf, ce[i].ce_namlen, ce[i].ce_name),
+			    i == cat->cat_num - 1 ? "]" : ", ") == -1) {
+				free(cat);
+				return -1;
+			}
+		free(cat);
+	} else {
+		if (file_printf(ms, "application/CDFV2") == -1)
+			return -1;
+	}
+	return 1;
+}
+
+private int
 cdf_file_summary_info(struct magic_set *ms, const cdf_header_t *h,
-    const cdf_stream_t *sst, const uint64_t clsid[2])
+    const cdf_stream_t *sst, const cdf_directory_t *root_storage)
 {
         cdf_summary_info_header_t si;
         cdf_property_info_t *info;
@@ -276,13 +313,17 @@ cdf_file_summary_info(struct magic_set *ms, const cdf_header_t *h,
                                 return -2;
                         break;
                 }
-		str = cdf_clsid_to_mime(clsid, clsid2desc);
-		if (str)
-                        if (file_printf(ms, ", %s", str) == -1)
-				return -2;
-        }
+		if (root_storage) {
+			str = cdf_clsid_to_mime(root_storage->d_storage_uuid,
+			    clsid2desc);
+			if (str) {
+				if (file_printf(ms, ", %s", str) == -1)
+					return -2;
+			}
+		}
+	}
 
-        m = cdf_file_property_info(ms, info, count, clsid);
+        m = cdf_file_property_info(ms, info, count, root_storage);
         free(info);
 
         return m == -1 ? -2 : m;
@@ -293,11 +334,11 @@ private char *
 format_clsid(char *buf, size_t len, const uint64_t uuid[2]) {
 	snprintf(buf, len, "%.8" PRIx64 "-%.4" PRIx64 "-%.4" PRIx64 "-%.4" 
 	    PRIx64 "-%.12" PRIx64,
-	    (uuid[0] >> 32) & (uint64_t)0x000000000ffffffffLLU,
-	    (uuid[0] >> 16) & (uint64_t)0x0000000000000ffffLLU,
-	    (uuid[0] >>  0) & (uint64_t)0x0000000000000ffffLLU, 
-	    (uuid[1] >> 48) & (uint64_t)0x0000000000000ffffLLU,
-	    (uuid[1] >>  0) & (uint64_t)0x0000fffffffffffffLLU);
+	    (uuid[0] >> 32) & (uint64_t)0x000000000ffffffffULL,
+	    (uuid[0] >> 16) & (uint64_t)0x0000000000000ffffULL,
+	    (uuid[0] >>  0) & (uint64_t)0x0000000000000ffffULL, 
+	    (uuid[1] >> 48) & (uint64_t)0x0000000000000ffffULL,
+	    (uuid[1] >>  0) & (uint64_t)0x0000fffffffffffffULL);
 	return buf;
 }
 #endif
@@ -314,6 +355,7 @@ file_trycdf(struct magic_set *ms, int fd, const unsigned char *buf,
         int i;
         const char *expn = "";
         const char *corrupt = "corrupt: ";
+        const cdf_directory_t *root_storage;
 
         info.i_fd = fd;
         info.i_buf = buf;
@@ -347,7 +389,6 @@ file_trycdf(struct magic_set *ms, int fd, const unsigned char *buf,
                 goto out2;
         }
 
-        const cdf_directory_t *root_storage;
         if ((i = cdf_read_short_stream(&info, &h, &sat, &dir, &sst,
 	    &root_storage)) == -1) {
                 expn = "Cannot read short stream";
@@ -368,11 +409,51 @@ file_trycdf(struct magic_set *ms, int fd, const unsigned char *buf,
 	}
 #endif
 
+	if ((i = cdf_read_user_stream(&info, &h, &sat, &ssat, &sst, &dir,
+	    "FileHeader", &scn)) != -1) {
+#define HWP5_SIGNATURE "HWP Document File"
+		if (scn.sst_dirlen >= sizeof(HWP5_SIGNATURE) - 1
+		    && memcmp(scn.sst_tab, HWP5_SIGNATURE,
+		    sizeof(HWP5_SIGNATURE) - 1) == 0) {
+		    if (NOTMIME(ms)) {
+			if (file_printf(ms,
+			    "Hangul (Korean) Word Processor File 5.x") == -1)
+			    return -1;
+		    } else {
+			if (file_printf(ms, "application/x-hwp") == -1)
+			    return -1;
+		    }
+		    i = 1;
+		    goto out5;
+		} else {
+		    free(scn.sst_tab);
+		    scn.sst_tab = NULL;
+		    scn.sst_len = 0;
+		    scn.sst_dirlen = 0;
+		}
+	}
+
         if ((i = cdf_read_summary_info(&info, &h, &sat, &ssat, &sst, &dir,
             &scn)) == -1) {
                 if (errno == ESRCH) {
-                        corrupt = expn;
-                        expn = "No summary info";
+			if ((i = cdf_read_catalog(&info, &h, &sat, &ssat, &sst,
+			    &dir, &scn)) == -1) {
+				corrupt = expn;
+				if ((i = cdf_read_encrypted_package(&info, &h,
+				    &sat, &ssat, &sst, &dir, &scn)) == -1)
+					expn = "No summary info";
+				else {
+					expn = "Encrypted";
+					i = -1;
+				}
+				goto out4;
+			}
+#ifdef CDF_DEBUG
+			cdf_dump_catalog(&h, &scn);
+#endif
+			if ((i = cdf_file_catalog(ms, &h, &scn))
+			    < 0)
+				expn = "Can't expand catalog";
                 } else {
                         expn = "Cannot read summary info";
                 }
@@ -381,9 +462,8 @@ file_trycdf(struct magic_set *ms, int fd, const unsigned char *buf,
 #ifdef CDF_DEBUG
         cdf_dump_summary_info(&h, &scn);
 #endif
-        if ((i = cdf_file_summary_info(ms, &h, &scn,
-	    root_storage->d_storage_uuid)) < 0)
-                expn = "Can't expand summary_info";
+        if ((i = cdf_file_summary_info(ms, &h, &scn, root_storage)) < 0)
+            expn = "Can't expand summary_info";
 
 	if (i == 0) {
 		const char *str = NULL;
@@ -412,6 +492,7 @@ file_trycdf(struct magic_set *ms, int fd, const unsigned char *buf,
 			i = 1;
 		}
 	}
+out5:
         free(scn.sst_tab);
 out4:
         free(sst.sst_tab);
@@ -431,7 +512,8 @@ out0:
 		    if (file_printf(ms, ", %s%s", corrupt, expn) == -1)
 			return -1;
 	    } else {
-		if (file_printf(ms, "application/CDFV2-corrupt") == -1)
+		if (file_printf(ms, "application/CDFV2-%s",
+		    *corrupt ? "corrupt" : "encrypted") == -1)
 		    return -1;
 	    }
 	    i = 1;

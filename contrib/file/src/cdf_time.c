@@ -27,7 +27,7 @@
 #include "file.h"
 
 #ifndef lint
-FILE_RCSID("@(#)$File: cdf_time.c,v 1.13 2014/02/25 20:52:02 christos Exp $")
+FILE_RCSID("@(#)$File: cdf_time.c,v 1.15 2014/05/14 23:15:42 christos Exp $")
 #endif
 
 #include <time.h>
@@ -117,7 +117,7 @@ cdf_timestamp_to_timespec(struct timespec *ts, cdf_timestamp_t t)
 	tm.tm_hour = (int)(t % 24);
 	t /= 24;
 
-	// XXX: Approx
+	/* XXX: Approx */
 	tm.tm_year = (int)(CDF_BASE_YEAR + (t / 365));
 
 	rdays = cdf_getdays(tm.tm_year);
@@ -171,7 +171,8 @@ cdf_ctime(const time_t *sec, char *buf)
 	char *ptr = ctime_r(sec, buf);
 	if (ptr != NULL)
 		return buf;
-	(void)snprintf(buf, 26, "*Bad* 0x%16.16llx\n", (long long)*sec);
+	(void)snprintf(buf, 26, "*Bad* 0x%16.16" INT64_T_FORMAT "x\n",
+	    (long long)*sec);
 	return buf;
 }
 

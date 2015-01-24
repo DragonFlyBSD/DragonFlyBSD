@@ -1,5 +1,5 @@
 #------------------------------------------------------------------------------
-# $File: compress,v 1.54 2014/03/14 18:47:29 christos Exp $
+# $File: compress,v 1.62 2014/09/13 14:27:12 christos Exp $
 # compress:  file(1) magic for pure-compression formats (no archives)
 #
 # compress, gzip, pack, compact, huf, squeeze, crunch, freeze, yabba, etc.
@@ -210,9 +210,12 @@
 !:mime	application/x-lrzip
 
 # http://fastcompression.blogspot.fi/2013/04/lz4-streaming-format-final.html
-0	lelong		0x184d2204	LZ4 compressed data
+0	lelong		0x184d2204	LZ4 compressed data (v1.4+)
 !:mime	application/x-lz4
-0	lelong		0x184c2102	LZ4 compressed data, legacy format
+# Added by osm0sis@xda-developers.com
+0 	lelong		0x184c2103	LZ4 compressed data (v1.0-v1.3)
+!:mime	application/x-lz4
+0	lelong		0x184c2102	LZ4 compressed data (v0.1-v0.9)
 !:mime	application/x-lz4
 
 # AFX compressed files (Wolfram Kleff)
@@ -244,3 +247,17 @@
 >0x4	lelong	x		\b, version %u
 >0x8	lelong	x		\b, %u entries
 
+# Snappy framing format
+# http://code.google.com/p/snappy/source/browse/trunk/framing_format.txt
+0	string	\377\006\0\0sNaPpY	snappy framed data
+!:mime	application/x-snappy-framed
+
+# qpress, http://www.quicklz.com/
+0	string	qpress10	qpress compressed data
+!:mime	application/x-qpress
+
+# Zlib https://www.ietf.org/rfc/rfc6713.txt
+0	beshort%31	=0	
+>0	byte&0xf	=8
+>>0	byte&0x80 	=0	zlib compressed data
+!:mime	application/zlib
