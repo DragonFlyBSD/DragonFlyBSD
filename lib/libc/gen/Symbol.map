@@ -48,6 +48,7 @@ DF402.0 {
     daemon;
     devname;
     devname_r;
+    dirfd;
     dirname;
     dl_iterate_phdr;
     dladdr;

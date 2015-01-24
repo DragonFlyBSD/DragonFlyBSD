@@ -11,7 +11,7 @@ CMAPS+=	${.CURDIR}/gen/Symbol.map
 SRCS+=  _once_stub.c _pthread_stubs.c _rand48.c _spinlock_stub.c \
 	_thread_init.c alarm.c arc4random.c assert.c basename.c \
 	clock.c closedir.c confstr.c \
-	ctermid.c daemon.c devname.c dirname.c disklabel.c disktab.c \
+	ctermid.c daemon.c devname.c dirfd.c dirname.c disklabel.c disktab.c \
 	dlfcn.c drand48.c elf_utils.c erand48.c err.c errlst.c exec.c \
 	fdevname.c fmtcheck.c fmtmsg.c fnmatch.c fpclassify.c \
 	frexp.c fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \

@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/readdir.c,v 1.5.2.4 2002/02/26 22:53:57 alfred Exp $
- * $DragonFly: src/lib/libc/gen/readdir.c,v 1.10 2008/05/03 22:07:37 dillon Exp $
  *
  * @(#)readdir.c	8.3 (Berkeley) 9/29/94
  */
@@ -46,6 +45,7 @@
 #include "un-namespace.h"
 
 #include "libc_private.h"
+#include "gen_private.h"
 
 /*
  * get next entry in a directory.
@@ -90,10 +90,10 @@ readdir(DIR *dirp)
 	struct dirent	*dp;
 
 	if (__isthreaded)
-		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
+		_pthread_mutex_lock(&dirp->dd_lock);
 	dp = _readdir_unlocked(dirp, 1);
 	if (__isthreaded)
-		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
+		_pthread_mutex_unlock(&dirp->dd_lock);
 
 	return (dp);
 }
@@ -107,11 +107,11 @@ readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result)
 	saved_errno = errno;
 	errno = 0;
 	if (__isthreaded)
-		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
+		_pthread_mutex_lock(&dirp->dd_lock);
 	if ((dp = _readdir_unlocked(dirp, 1)) != NULL)
 		memcpy(entry, dp, _DIRENT_MINSIZ(dp));
 	if (__isthreaded)
-		_pthread_mutex_unlock((pthread_mutex_t *)&dirp->dd_lock);
+		_pthread_mutex_unlock(&dirp->dd_lock);
 
 	if (errno != 0) {
 		if (dp == NULL) {

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1990, 1993
+ * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -30,19 +26,33 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/rewinddir.c,v 1.2.8.1 2001/03/05 09:52:13 obrien Exp $
- *
- * @(#)rewinddir.c	8.1 (Berkeley) 6/8/93
+ * $FreeBSD: head/lib/libc/gen/gen-private.h 268531 2014-07-11 16:16:26Z jhb $
  */
 
-#include <dirent.h>
+#ifndef _GEN_PRIVATE_H_
+#define	_GEN_PRIVATE_H_
 
-#include "gen_private.h"
+struct pthread_mutex;
 
-void
-rewinddir(DIR *dirp)
-{
-	_seekdir(dirp, dirp->dd_rewind);
-	_reclaim_telldir(dirp);
-	dirp->dd_rewind = telldir(dirp);
-}
+/*
+ * Structure describing an open directory.
+ *
+ * NOTE. Change structure layout with care, at least dd_fd field has to
+ * remain unchanged to guarantee backward compatibility.
+ */
+struct _dirdesc {
+	int	dd_fd;		/* file descriptor associated with directory */
+	long	dd_loc;		/* offset in current buffer */
+	long	dd_size;	/* amount of data returned by getdirentries */
+	char	*dd_buf;	/* data buffer */
+	int	dd_len;		/* size of data buffer */
+	long	dd_lastseek;	/* last seek index */
+	long	dd_rewind;	/* magic cookie for rewinding */
+	int	dd_flags;	/* flags for readdir */
+	struct pthread_mutex	*dd_lock;	/* lock */
+	off_t	dd_seek;	/* new magic cookie returned by getdirentries */
+};
+
+#define	_dirfd(dirp)	((dirp)->dd_fd)
+
+#endif /* !_GEN_PRIVATE_H_ */

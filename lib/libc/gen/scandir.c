@@ -51,6 +51,8 @@
 #include <string.h>
 #include "un-namespace.h"
 
+#include "gen_private.h"
+
 int
 scandir(const char *dirname, struct dirent ***namelist,
 	int (*select)(const struct dirent *),

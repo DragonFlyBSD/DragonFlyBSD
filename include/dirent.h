@@ -50,21 +50,8 @@ typedef void *	DIR;
 /* definitions for library routines operating on directories. */
 #define	DIRBLKSIZ	1024
 
-/* structure describing an open directory. */
-typedef struct _dirdesc {
-	int	dd_fd;		/* file descriptor associated with directory */
-	long	dd_loc;		/* offset in current buffer */
-	long	dd_size;	/* amount of data returned by getdirentries */
-	char	*dd_buf;	/* data buffer */
-	int	dd_len;		/* size of data buffer */
-	long	dd_lastseek;	/* last seek index */
-	long	dd_rewind;	/* magic cookie for rewinding */
-	int	dd_flags;	/* flags for readdir */
-	void	*dd_lock;	/* hack to avoid include <pthread.h> */
-	off_t	dd_seek;	/* new magic cookie returned by getdirentries */
-} DIR;
-
-#define	dirfd(dirp)	((dirp)->dd_fd)
+struct _dirdesc;
+typedef struct _dirdesc	DIR;
 
 /* flags for opendir2 */
 #define	DTF_HIDEW	0x0001	/* hide whiteout entries */
@@ -90,6 +77,7 @@ void	 rewinddir(DIR *);
 int	 closedir(DIR *);
 #if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE >= 700 || !defined(_POSIX_SOURCE)
 int	 alphasort(const struct dirent **, const struct dirent **);
+int	 dirfd(DIR *);
 int	 scandir(const char *, struct dirent ***,
 	    int (*)(const struct dirent *),
 	    int (*)(const struct dirent **, const struct dirent **));
