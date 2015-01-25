@@ -25,6 +25,7 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <rpc/rpc.h>
 
 #include <ctype.h>
 #include <errno.h>
