@@ -285,7 +285,7 @@ thread_loop(void *x)
 
 static int
 ssh_aes_ctr(EVP_CIPHER_CTX *ctx, u_char *dest, const u_char *src,
-    u_int len)
+    LIBCRYPTO_EVP_INL_TYPE len)
 {
 	struct ssh_aes_ctr_ctx *c;
 	struct kq *q, *oldq;

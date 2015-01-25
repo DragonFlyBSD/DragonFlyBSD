@@ -27,7 +27,7 @@ SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c explicit_bzero.c \
 
 MAN=	moduli.5
 
-WARNS?=	0
+WARNS?=	2
 
 .include "../../Makefile.ssh.common"
 .include <bsd.lib.mk>
