@@ -61,7 +61,7 @@
 #define typeof(x)			__typeof(x)
 
 #define __read_mostly
-#define __always_unused
+#define __always_unused			__unused
 #define __must_check			__heedresult
 
 #endif	/* _LINUX_COMPILER_H_ */

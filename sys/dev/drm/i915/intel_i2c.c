@@ -321,7 +321,7 @@ gmbus_wait_hw_status(struct drm_i915_private *dev_priv,
 	 * need to wake up periodically and check that ourselves. */
 	I915_WRITE(GMBUS4 + reg_offset, gmbus4_irq_en);
 
-	for (i = 0; i < msecs_to_jiffies(50) + 1; i++) {
+	for (i = 0; i < msecs_to_jiffies_timeout(50); i++) {
 		prepare_to_wait(&dev_priv->gmbus_wait_queue, &wait,
 				TASK_UNINTERRUPTIBLE);
 
@@ -356,7 +356,8 @@ gmbus_wait_idle(struct drm_i915_private *dev_priv)
 	/* Important: The hw handles only the first bit, so set only one! */
 	I915_WRITE(GMBUS4 + reg_offset, GMBUS_IDLE_EN);
 
-	ret = wait_event_timeout(dev_priv->gmbus_wait_queue, C, 10);
+	ret = wait_event_timeout(dev_priv->gmbus_wait_queue, C,
+				 msecs_to_jiffies_timeout(10));
 
 	I915_WRITE(GMBUS4 + reg_offset, 0);
 
@@ -759,7 +760,9 @@ intel_setup_gmbus(struct drm_device *dev)
 	device_t iic_dev;
 	int i, ret;
 
-	if (HAS_PCH_SPLIT(dev))
+	if (HAS_PCH_NOP(dev))
+		return 0;
+	else if (HAS_PCH_SPLIT(dev))
 		dev_priv->gpio_mmio_base = PCH_GPIOA - GPIOA;
 	else if (IS_VALLEYVIEW(dev))
 		dev_priv->gpio_mmio_base = VLV_DISPLAY_BASE;

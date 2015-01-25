@@ -72,15 +72,7 @@ intel_read_legacy_status_page(struct drm_i915_private *dev_priv, int reg)
 
 void i915_update_dri1_breadcrumb(struct drm_device *dev)
 {
-	/*
-	 * The dri breadcrumb update races against the drm master disappearing.
-	 * Instead of trying to fix this (this is by far not the only ums issue)
-	 * just don't do the update in kms mode.
-	 */
-	if (drm_core_check_feature(dev, DRIVER_MODESET))
-		return;
-
-	/* XXX: don't do it at all actually */
+	/* XXX: We don't care about dri1 */
 	return;
 }
 
@@ -138,9 +130,7 @@ void i915_kernel_lost_context(struct drm_device * dev)
 	if (ring->space < 0)
 		ring->space += ring->size;
 
-#if 1
-	KIB_NOTYET();
-#else
+#if 0
 	if (!dev->primary->master)
 		return;
 #endif
@@ -153,7 +143,6 @@ static int i915_dma_cleanup(struct drm_device * dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	int i;
-
 
 	/* Make sure interrupts are disabled here because the uninstall ioctl
 	 * may not have been called from userspace and after dev_private
@@ -658,6 +647,7 @@ static int i915_batchbuffer(struct drm_device *dev, void *data,
 
 fail_free:
 	kfree(cliprects);
+
 	return ret;
 }
 
@@ -686,7 +676,7 @@ static int i915_cmdbuffer(struct drm_device *dev, void *data,
 	if (batch_data == NULL)
 		return -ENOMEM;
 
-	ret = -copyin(cmdbuf->buf, batch_data, cmdbuf->sz);
+	ret = copy_from_user(batch_data, cmdbuf->buf, cmdbuf->sz);
 	if (ret != 0) {
 		ret = -EFAULT;
 		goto fail_batch_free;
@@ -722,9 +712,9 @@ static int i915_cmdbuffer(struct drm_device *dev, void *data,
 		sarea_priv->last_dispatch = READ_BREADCRUMB(dev_priv);
 
 fail_clip_free:
-	drm_free(cliprects, M_DRM);
+	kfree(cliprects);
 fail_batch_free:
-	drm_free(batch_data, M_DRM);
+	kfree(batch_data);
 	return ret;
 }
 
@@ -1287,6 +1277,10 @@ static int i915_load_modeset_init(struct drm_device *dev)
 	/* Always safe in the mode setting case. */
 	/* FIXME: do pre/post-mode set stuff in core KMS code */
 	dev->vblank_disable_allowed = 1;
+	if (INTEL_INFO(dev)->num_pipes == 0) {
+		dev_priv->mm.suspended = 0;
+		return 0;
+	}
 
 	ret = intel_fbdev_init(dev);
 	if (ret)
@@ -1357,6 +1351,22 @@ static void i915_kick_out_firmware_fb(struct drm_i915_private *dev_priv)
 
 	kfree(ap);
 }
+
+/**
+ * intel_early_sanitize_regs - clean up BIOS state
+ * @dev: DRM device
+ *
+ * This function must be called before we do any I915_READ or I915_WRITE. Its
+ * purpose is to clean up any state left by the BIOS that may affect us when
+ * reading and/or writing registers.
+ */
+static void intel_early_sanitize_regs(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	if (IS_HASWELL(dev))
+		I915_WRITE_NOTRACE(FPGA_DBG, FPGA_DBG_RM_NOCLAIM);
+}
 #endif
 
 /**
@@ -1373,13 +1383,21 @@ static void i915_kick_out_firmware_fb(struct drm_i915_private *dev_priv)
 int i915_driver_load(struct drm_device *dev, unsigned long flags)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	const struct intel_device_info *info;
 	unsigned long base, size;
-	int ret = 0, mmio_bar;
+	int ret = 0, mmio_bar, mmio_size;
+	uint32_t aperture_size;
 	static struct pci_dev i915_pdev;
 
 	/* XXX: struct pci_dev */
 	i915_pdev.dev = dev->dev;
 	dev->pdev = &i915_pdev;
+
+	info = i915_get_device_id(dev->pci_device);
+
+	/* Refuse to load on gen6+ without kms enabled. */
+	if (info->gen >= 6 && !drm_core_check_feature(dev, DRIVER_MODESET))
+		return -ENODEV;
 
 	/* i915 has 4 more counters */
 	dev->counters += 4;
@@ -1395,12 +1413,36 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 
 	dev->dev_private = (void *)dev_priv;
 	dev_priv->dev = dev;
-	dev_priv->info = i915_get_device_id(dev->pci_device);
+	dev_priv->info = info;
 
 	if (i915_get_bridge_dev(dev)) {
 		ret = -EIO;
 		goto free_priv;
 	}
+
+	mmio_bar = IS_GEN2(dev) ? 1 : 0;
+	/* Before gen4, the registers and the GTT are behind different BARs.
+	 * However, from gen4 onwards, the registers and the GTT are shared
+	 * in the same BAR, so we want to restrict this ioremap from
+	 * clobbering the GTT which we want ioremap_wc instead. Fortunately,
+	 * the register BAR remains the same size for all the earlier
+	 * generations up to Ironlake.
+	 */
+	if (info->gen < 5)
+		mmio_size = 512*1024;
+	else
+		mmio_size = 2*1024*1024;
+
+#if 0
+	dev_priv->regs = pci_iomap(dev->pdev, mmio_bar, mmio_size);
+	if (!dev_priv->regs) {
+		DRM_ERROR("failed to map registers\n");
+		ret = -EIO;
+		goto put_bridge;
+	}
+
+	intel_early_sanitize_regs(dev);
+#endif
 
 	ret = i915_gem_gtt_init(dev);
 	if (ret)
@@ -1428,29 +1470,9 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 		dma_set_coherent_mask(&dev->pdev->dev, DMA_BIT_MASK(32));
 #endif
 
-	mmio_bar = IS_GEN2(dev) ? 1 : 0;
-	/* Before gen4, the registers and the GTT are behind different BARs.
-	 * However, from gen4 onwards, the registers and the GTT are shared
-	 * in the same BAR, so we want to restrict this ioremap from
-	 * clobbering the GTT which we want ioremap_wc instead. Fortunately,
-	 * the register BAR remains the same size for all the earlier
-	 * generations up to Ironlake.
-	 */
-#if 0
-	if (info->gen < 5)
-		mmio_size = 512*1024;
-	else
-		mmio_size = 2*1024*1024;
-
-	dev_priv->regs = pci_iomap(dev->pdev, mmio_bar, mmio_size);
-	if (!dev_priv->regs) {
-		DRM_ERROR("failed to map registers\n");
-		ret = -EIO;
-		goto put_gmch;
-	}
-
 	aperture_size = dev_priv->mm.gtt->gtt_mappable_entries << PAGE_SHIFT;
 
+#if 0
 	dev_priv->gtt.mappable =
 		io_mapping_create_wc(dev_priv->gtt.mappable_base,
 				     aperture_size);
@@ -1528,16 +1550,15 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	lockinit(&dev_priv->rps.hw_lock, "i915 rps.hw_lock", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->modeset_restore_lock, "i915mrl", 0, LK_CANRECURSE);
 
-	if (IS_IVYBRIDGE(dev) || IS_HASWELL(dev))
-		dev_priv->num_pipe = 3;
-	else if (IS_MOBILE(dev) || !IS_GEN2(dev))
-		dev_priv->num_pipe = 2;
-	else
-		dev_priv->num_pipe = 1;
+	dev_priv->num_plane = 1;
+	if (IS_VALLEYVIEW(dev))
+		dev_priv->num_plane = 2;
 
-	ret = drm_vblank_init(dev, dev_priv->num_pipe);
-	if (ret)
-		goto out_gem_unload;
+	if (INTEL_INFO(dev)->num_pipes) {
+		ret = drm_vblank_init(dev, INTEL_INFO(dev)->num_pipes);
+		if (ret)
+			goto out_gem_unload;
+	}
 
 	/* Start out suspended */
 	dev_priv->mm.suspended = 1;
@@ -1554,11 +1575,13 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	i915_setup_sysfs(dev);
 #endif
 
-	/* Must be done after probing outputs */
-	intel_opregion_init(dev);
+	if (INTEL_INFO(dev)->num_pipes) {
+		/* Must be done after probing outputs */
+		intel_opregion_init(dev);
 #if 0
-	acpi_video_register();
+		acpi_video_register();
 #endif
+	}
 
 	if (IS_GEN5(dev))
 		intel_gpu_ips_init(dev_priv);
@@ -1713,16 +1736,22 @@ void i915_driver_lastclose(struct drm_device * dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
 
-	if (!dev_priv || drm_core_check_feature(dev, DRIVER_MODESET)) {
-#if 1
-		KIB_NOTYET();
-#else
-		drm_fb_helper_restore();
+	/* On gen6+ we refuse to init without kms enabled, but then the drm core
+	 * goes right around and calls lastclose. Check for this and don't clean
+	 * up anything. */
+	if (!dev_priv)
+		return;
+
+	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
+#if 0
+		intel_fb_restore_mode(dev);
 		vga_switcheroo_process_delayed_switch();
 #endif
 		return;
 	}
+
 	i915_gem_lastclose(dev);
+
 	i915_dma_cleanup(dev);
 }
 
