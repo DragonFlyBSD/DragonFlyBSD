@@ -77,13 +77,14 @@ libhammer_find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster)
 	 * this function.
 	 */
 	while(curmount >= 0) {
+		struct statfs *mnt = &mntbuf[curmount];
 		/*
 		 * We need to avoid that PFS belonging to other HAMMER
 		 * filesystems are showed as mounted, so we compare
 		 * against the FSID, which is presumable to be unique.
 		 */
 		bzero(&hi, sizeof(hi));
-		if ((fd = open(mntbuf[curmount].f_mntfromname, O_RDONLY)) < 0) {
+		if ((fd = open(mnt->f_mntfromname, O_RDONLY)) < 0) {
 			curmount--;
 			continue;
 		}
@@ -94,20 +95,18 @@ libhammer_find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster)
 			continue;
 		}
 
-		if (strstr(mntbuf[curmount].f_mntfromname, trailstr) != NULL &&
+		if (strstr(mnt->f_mntfromname, trailstr) != NULL &&
 		    (uuid_compare(&hi.vol_fsid, &parentuuid, NULL)) == 0) {
 			if (ismaster) {
-				if (strstr(mntbuf[curmount].f_mntfromname,
+				if (strstr(mnt->f_mntfromname,
 				    "@@-1") != NULL) {
-					retval =
-					    strdup(mntbuf[curmount].f_mntonname);
+					retval = strdup(mnt->f_mntonname);
 					break;
 				}
 			} else {
-				if (strstr(mntbuf[curmount].f_mntfromname,
+				if (strstr(mnt->f_mntfromname,
 				    "@@0x") != NULL ) {
-					retval =
-					    strdup(mntbuf[curmount].f_mntonname);
+					retval = strdup(mnt->f_mntonname);
 					break;
 				}
 			}
