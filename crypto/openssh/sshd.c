@@ -435,8 +435,9 @@ sshd_exchange_identification(int sock_in, int sock_out)
 		minor = PROTOCOL_MINOR_1;
 	}
 
-	xasprintf(&server_version_string, "SSH-%d.%d-%.100s%s%s%s",
+	xasprintf(&server_version_string, "SSH-%d.%d-%.100s%s%s%s%s",
 	    major, minor, SSH_RELEASE,
+	    options.hpn_disabled ? "" : SSH_VERSION_HPN,
 	    *options.version_addendum == '\0' ? "" : " ",
 	    options.version_addendum, newline);
 
@@ -940,8 +941,8 @@ drop_connection(int startups)
 static void
 usage(void)
 {
-	fprintf(stderr, "%s, %s\n",
-	    SSH_RELEASE,
+	fprintf(stderr, "%s%s %s, %s\n",
+	    SSH_RELEASE, SSH_VERSION_HPN, SSH_VERSION_DRAGONFLY,
 #ifdef WITH_OPENSSL
 	    SSLeay_version(SSLEAY_VERSION)
 #else

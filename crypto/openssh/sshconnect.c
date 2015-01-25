@@ -548,13 +548,12 @@ static void
 send_client_banner(int connection_out, int minor1)
 {
 	/* Send our own protocol version identification. */
-	if (compat20) {
-		xasprintf(&client_version_string, "SSH-%d.%d-%.100s\r\n",
-		    PROTOCOL_MAJOR_2, PROTOCOL_MINOR_2, SSH_RELEASE);
-	} else {
-		xasprintf(&client_version_string, "SSH-%d.%d-%.100s\n",
-		    PROTOCOL_MAJOR_1, minor1, SSH_RELEASE);
-	}
+	xasprintf(&client_version_string, "SSH-%d.%d-%.100s%s%s%s%s",
+	    compat20 ? PROTOCOL_MAJOR_2 : PROTOCOL_MAJOR_1,
+	    compat20 ? PROTOCOL_MINOR_2 : minor1,
+	    SSH_RELEASE, options.hpn_disabled ? "" : SSH_VERSION_HPN,
+	    *options.version_addendum == '\0' ? "" : " ",
+	    options.version_addendum, compat20 ? "\r\n" : "\n");
 	if (roaming_atomicio(vwrite, connection_out, client_version_string,
 	    strlen(client_version_string)) != strlen(client_version_string))
 		fatal("write: %.100s", strerror(errno));

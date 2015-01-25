@@ -5,9 +5,10 @@ A list of deleted files is in README.DELETED.
 
 Upgrading notes:
 ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-sandbox=rlimit \
-	--with-pam --with-tcp-wrappers --with-libedit --with-ssl-engine
+	--with-pam --with-libedit --with-ssl-engine
 
-Update config.h and version.h in secure/lib/libssh.
+Update SSH_VERSION_DRAGONFLY in version.h.
+Update config.h in secure/lib/libssh.
 Update ssh{,d}_config and ssh{,d}_config.5.
 Update ssh_namespace.h
 

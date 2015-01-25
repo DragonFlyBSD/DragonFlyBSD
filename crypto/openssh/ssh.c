@@ -636,22 +636,14 @@ main(int ac, char **av)
 			}
 			break;
 		case 'V':
-			if (options.version_addendum &&
-			    *options.version_addendum != '\0')
-				fprintf(stderr, "%s%s %s, %s\n", SSH_RELEASE,
-				    options.hpn_disabled ? "" : SSH_VERSION_HPN,
-				    options.version_addendum,
-				    SSLeay_version(SSLEAY_VERSION));
-			else
-				fprintf(stderr, "%s%s, %s\n",
-				    SSH_RELEASE,
-				    options.hpn_disabled ? "" : SSH_VERSION_HPN,
+			fprintf(stderr, "%s%s %s, %s\n", SSH_RELEASE,
+			    SSH_VERSION_HPN, SSH_VERSION_DRAGONFLY,
 #ifdef WITH_OPENSSL
-				    SSLeay_version(SSLEAY_VERSION)
+			    SSLeay_version(SSLEAY_VERSION)
 #else
-				    "without OpenSSL"
+			    "without OpenSSL"
 #endif
-				);
+			);
 			if (opt == 'V')
 				exit(0);
 			break;
