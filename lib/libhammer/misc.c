@@ -64,7 +64,7 @@ libhammer_find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster)
 	if (mntsize <= 0)
 		return retval;
 
-	mntbufsize = (mntsize) * sizeof(struct statfs);
+	mntbufsize = mntsize * sizeof(struct statfs);
 	mntbuf = _libhammer_malloc(mntbufsize);
 
 	mntsize = getfsstat(mntbuf, (long)mntbufsize, MNT_NOWAIT);
@@ -88,7 +88,7 @@ libhammer_find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster)
 			continue;
 		}
 
-		if ((ioctl(fd, HAMMERIOC_GET_INFO, &hi)) < 0) {
+		if (ioctl(fd, HAMMERIOC_GET_INFO, &hi) < 0) {
 			close(fd);
 			curmount--;
 			continue;

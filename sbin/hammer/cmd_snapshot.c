@@ -43,8 +43,6 @@
 #include <string.h>
 #include <time.h>
 
-extern char *find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster);
-
 #define DEFAULT_SNAPSHOT_NAME "snap-%Y%m%d-%H%M"
 
 static void snapshot_usage(int exit_code);
