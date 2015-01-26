@@ -118,6 +118,22 @@ typedef struct hammer2_ioc_inode hammer2_ioc_inode_t;
 #define HAMMER2IOC_INODE_FLAG_COPIES	0x00000004
 
 /*
+ * Ioctl for bulkfree scan
+ */
+struct hammer2_ioc_bulkfree {
+	hammer2_off_t		sbase;	/* starting storage offset */
+	hammer2_off_t		sstop;	/* (set on return) */
+	size_t			size;	/* swapable kernel memory to use */
+	hammer2_off_t		count_allocated;  /* alloc fixups this run */
+	hammer2_off_t		count_freed;	  /* bytes freed this run */
+	hammer2_off_t		total_fragmented; /* merged result */
+	hammer2_off_t		total_allocated;  /* merged result */
+	hammer2_off_t		total_scanned;	  /* bytes of storage */
+};
+
+typedef struct hammer2_ioc_bulkfree hammer2_ioc_bulkfree_t;
+
+/*
  * Ioctl list
  */
 
@@ -144,7 +160,7 @@ typedef struct hammer2_ioc_inode hammer2_ioc_inode_t;
 /*#define HAMMER2IOC_INODE_COMP_SET	_IOWR('h', 88, struct hammer2_ioc_inode) //set compression mode on inode
 #define HAMMER2IOC_INODE_COMP_REC_SET	_IOWR('h', 89, struct hammer2_ioc_inode)
 #define HAMMER2IOC_INODE_COMP_REC_SET2	_IOWR('h', 90, struct hammer2_ioc_inode)*/
-
 #define HAMMER2IOC_DEBUG_DUMP	_IOWR('h', 91, int)
+#define HAMMER2IOC_BULKFREE_SCAN _IOWR('h', 92, struct hammer2_ioc_bulkfree)
 
 #endif /* !_VFS_HAMMER2_IOCTL_H_ */

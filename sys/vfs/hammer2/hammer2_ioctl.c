@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -61,6 +61,7 @@ static int hammer2_ioctl_debug_dump(hammer2_inode_t *ip);
 //static int hammer2_ioctl_inode_comp_set(hammer2_inode_t *ip, void *data);
 //static int hammer2_ioctl_inode_comp_rec_set(hammer2_inode_t *ip, void *data);
 //static int hammer2_ioctl_inode_comp_rec_set2(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data);
 
 int
 hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
@@ -132,6 +133,9 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	case HAMMER2IOC_INODE_SET:
 		if (error == 0)
 			error = hammer2_ioctl_inode_set(ip, data);
+		break;
+	case HAMMER2IOC_BULKFREE_SCAN:
+		error = hammer2_ioctl_bulkfree_scan(ip, data);
 		break;
 	/*case HAMMER2IOC_INODE_COMP_SET:
 		error = hammer2_ioctl_inode_comp_set(ip, data);
@@ -692,4 +696,18 @@ hammer2_ioctl_debug_dump(hammer2_inode_t *ip)
 		hammer2_dump_chain(chain, 0, &count, 'i');
 	}
 	return 0;
+}
+
+static
+int
+hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
+{
+	hammer2_ioc_bulkfree_t *bfi = data;
+	hammer2_mount_t *hmp = ip->pmp->iroot->cluster.focus->hmp;
+	int error;
+
+	/* XXX run local cluster targets only */
+	error = hammer2_bulkfree_pass(hmp, bfi);
+
+	return error;
 }

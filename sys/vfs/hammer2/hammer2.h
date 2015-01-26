@@ -223,7 +223,7 @@ typedef struct hammer2_iocb hammer2_iocb_t;
 #define HAMMER2_IOCB_ONQ	0x00000002
 #define HAMMER2_IOCB_DONE	0x00000004
 #define HAMMER2_IOCB_INPROG	0x00000008
-#define HAMMER2_IOCB_DIDBP	0x00000010	/* loaded dio->buf */
+#define HAMMER2_IOCB_UNUSED10	0x00000010
 #define HAMMER2_IOCB_QUICK	0x00010000
 #define HAMMER2_IOCB_ZERO	0x00020000
 #define HAMMER2_IOCB_READ	0x00040000
@@ -250,7 +250,7 @@ struct hammer2_io {
 typedef struct hammer2_io hammer2_io_t;
 
 #define HAMMER2_DIO_INPROG	0x80000000	/* bio in progress */
-#define HAMMER2_DIO_GOOD	0x40000000	/* buf data is good */
+#define HAMMER2_DIO_GOOD	0x40000000	/* dio->bp is stable */
 #define HAMMER2_DIO_WAITING	0x20000000	/* (old) */
 #define HAMMER2_DIO_DIRTY	0x10000000	/* flush on last drop */
 
@@ -558,7 +558,7 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_TRANS_CONCURRENT	0x0002	/* concurrent w/flush */
 #define HAMMER2_TRANS_BUFCACHE		0x0004	/* from bioq strategy write */
 #define HAMMER2_TRANS_NEWINODE		0x0008	/* caller allocating inode */
-#define HAMMER2_TRANS_FREEBATCH		0x0010	/* batch freeing code */
+#define HAMMER2_TRANS_UNUSED0010	0x0010
 #define HAMMER2_TRANS_PREFLUSH		0x0020	/* preflush state */
 
 #define HAMMER2_FREEMAP_HEUR_NRADIX	4	/* pwr 2 PBUFRADIX-MINIORADIX */
@@ -668,6 +668,14 @@ typedef struct hammer2_pfsmount hammer2_pfsmount_t;
 #define HAMMER2_LWINPROG_WAITING	0x80000000
 #define HAMMER2_LWINPROG_MASK		0x7FFFFFFF
 
+/*
+ * Bulkscan
+ */
+#define HAMMER2_BULK_ABORT	0x00000001
+
+/*
+ * Misc
+ */
 #if defined(_KERNEL)
 
 MALLOC_DECLARE(M_HAMMER2);
@@ -1061,6 +1069,11 @@ int hammer2_cluster_snapshot(hammer2_trans_t *trans,
 			hammer2_cluster_t *ocluster, hammer2_ioc_pfs_t *pfs);
 hammer2_cluster_t *hammer2_cluster_parent(hammer2_cluster_t *cluster);
 
+int hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
+			int (*func)(hammer2_chain_t *chain, void *info),
+			void *info);
+int hammer2_bulkfree_pass(hammer2_mount_t *hmp,
+			struct hammer2_ioc_bulkfree *bfi);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

@@ -6,8 +6,9 @@
     HAMMER2 Media is broken down into 2 GByte zones.  Each 2 GByte zone
     contains a 4 MByte header (64 x 64K blocks = 0.2% of storage).  The
     blocks in this header are reserved for various purposes.  For example,
-    block #0 is reserved for a volume headers.  Most of the remaining
-    64KB blocks in this header are reserved for use by the freemap.
+    block #0 is reserved for a volume header in the first four zones.  Most
+    of the remaining 64KB blocks in this header are reserved for use by the
+    freemap.
 
     The freemap only uses blocks from these reserved areas.  In order to
     ensure that any of the four volume headers can be used by the mount code
@@ -27,19 +28,19 @@
       you have to stick with it.
 
     - One copy for live operations.  This allows HAMMER2 to retire the
-      related buffer (or for the OS to retire the buffer cache buffer)
-      prior to the next flush and also allows the buffers to be flushed
-      asynchronously.
+      related buffer asynchronously in the background (or for the OS to
+      retire the buffer cache buffer on its own) prior to the formal
+      flush.  The later formal flush then has less work to do.
 
     - The two remaining copies add robustness to the specification.  For
-      example, with appropriate feature code the filesystem can tolerate
-      a limited number of bad blocks in the reserved area.
+      example, with appropriate feature code added the filesystem can
+      tolerate a limited number of bad blocks in the reserved area.
 
     For the moment we use a simple calculation for the freemap block.  In
     a later version I would like to mix the blocks up a bit so the blocks
     in each set of 8 are not situated near each other.
 
-				RW Mount Restrictions
+			    RW Mount Restrictions
 
     If an older volume header is explicitly selected by the mount code, any
     newer (presumably corrupt since the mount code didn't select it) volume
@@ -106,12 +107,13 @@
 
     The freemap does not have to be flushed by fsync/sync, but should probably
     be flushed at least once a minute by the normal filesystem sync.  The
-    reason it does not have to be flushed every time is that freemap recovery
+    reason it does not have to be flushed with fsync is that freemap recovery
     is executed on-mount and will use the last fully flushed freemap TID
     stored in the volume header to do an incremental meta-data scan of the
     H2 filesystem between that TID and the last flushed TID.  All blocks not
     found to have been marked allocated will be marked allocated.  Simple as
-    that.
+    that.  Since the scan is incremental, this typically costs very little
+    time.
 
 				Freemap Granularity
 
@@ -189,12 +191,11 @@
 
 			        Initial Conditions
 
-    The freemap is a multi-indirect block structure but there is no real
-    reason to pre-format it in newfs_hammer2.  Instead, newfs_hammer2 simply
-    leaves the associated top-level indirect blocks empty and uses the
-    (voldata->allocator_beg) field to allocate space linearly, then leaves
-    it to the live filesystem to initialize the freemap as more space gets
-    allocated.
+    newfs_hammer2 does not need to format the freemap.  Instead, newfs_hammer2
+    simply leaves the associated top-level indirect blocks empty and uses
+    the (voldata->allocator_beg) field to allocate space linearly, then
+    leaves it to the live filesystem to initialize the freemap as more space
+    gets allocated.
 
     The freemap does NOT use a fixed 5-level radix tree.  It uses the same
     blockmap algorithm used for file blocks but restricts any recursion to
@@ -208,71 +209,80 @@
     contains a linear allocation offset that can keep track of sub-16KB
     allocations with certain restrictions.  More random sub-16KB allocations
     are tracked in-memory, but will be lost (assumed to be a full 16KB) if
-    a crash occurs.
+    a crash occurs.  Each 16KB chunk is denoted by a 2-bit pattern 00, 01, 10,
+    or 11.
 
     NOTE!  All operations on the freemap occur on the current live version
 	   of the freemap, including bulkfree operations.
 
     Blocks are allocated by transitioning the 2-bit pattern in the leaf
-    to 11.  That is, (00, 01, 10) -> (11).  This handles races between the
-    live allocator and the asynchronous bulkfree code.  A live allocation
-    which occurs while the asynchronous bulkfree process is running will
-    operate race-free by transitioning the (01) an (10) states back
-    to (11), which prevents bulkfree from later marking those blocks
-    FREE (00).
+    to 11.  That is, (00, 01, 10) -> (11).
 
-    Blocks can be freed several ways, but all block freeing operations
-    require at least two passes before the related blocks can actually be
-    reused.
+    The primary mechanism used to free a block is via the asynchronous
+    bulkfree scan.  This scans all filesystem meta-data in two major passes
+    (and potentially multiple sub-passes).
 
-    Method #1 - Removal in the filesystem marks the related freemap bitmap
-		POSSIBLY FREE (either 01 or 10).  The asynchronous bulkfree
-		process later determines that the block is actually free and
-		transitions it to FREE (00), or moves it back to
-		ALLOCATED (11).
+    Pass#1 - The first pass figures which blocks might be freeable.  The
+	     most recently flushed meta-data topology (including all four
+	     volume headers and all snapshots) is scanned and an in-memory
+	     copy of the FreeMap is built from scratch.  Multiple sub-scans
+	     might be required to break the larger scan up into more easily
+	     digested pieces based on the amount of memory available to hold
+	     the temporary freemap.
 
-		This works whether the blocks can actually be freed or not,
-		so we don't care if the related blocks are part of some other
-		snapshot or not.  bulkfree will figure it out.
+	     Any allocated blocks in the live freemap are then transitioned
+	     from (11) to either (10) or (01) if after the scan they are
+	     found to not be allocated.
 
-    Method #2 - Removal in the filesystem ignores the freemap.  The freemap
-		blocks are left alone (typically ALLOCATED (11)).
+	     The blocks are still assumed to be allocated at this time and
+	     any new allocations will transition them back to (11).
 
-		In this situation bulkfree must make extra passes to determine
-		if blocks are possibly free, then transition the leaf bitmap
-		entries to POSSIBLY FREE (01 or 10).  bulkfree cannot directly
-		transition the entries to FREE (00) without another pass.
+    Pass#2 - The second pass is required to deal with races against the
+	     live filesystem while the freemap scan was running. It also
+	     allows the freemap scans to run asynchronously from any flush,
+	     improving concurrency.  However, at least one synchronous flush
+	     is required between Pass#1 and Pass#2.
 
-		However, this method has numerous advantages including making
-		snapshot manipulation (including deletions) instantanious
-		and allow whole subtrees and/or large-files to be rm -rf'd
-		with only a single disk write to update the inode in the
-		best case.
+	     The second pass is a duplicate of the first pass.  The meta-data
+	     topology is scanned and a freemap is built in-memory and then
+	     compared against the live freemap.  Instead transitioning from
+	     (11)->(10)/(01) this pass transitions from (10)/(01) to (00).
 
-    Method #3 - Brute force.  *ALL* freemap bitmap entries are marked
-		POSSIBLY FREE and bulkfree then must do multiple passes
-		(particularly in order to ensure that its memory use remains
-		bounded) to again transition all the freemap bitmap entries
-		to either FREE (00) or ALLOCATED (11).
+	     If a block that it thinks is free is (11), no transition occurs
+	     because this could be due to a race against the live filesystem.
 
-		This method can be faster than #2 but wastes a considerable
-		amount of write-bandwidth (and SSD wear if the target drive
-		is a SSD).
+	     This pass will incidentally transition (10)/(01) back to (11)
+	     if the block was found not to be allocated, but it is perfectly
+	     acceptable for the block to remain in a (10)/(01) state after
+	     completion.
 
-    In all cases the bulkfree code must make a final pass on the filesystem
-    to do the final transition of POSSIBLY FREE blocks to FREE (00) or
-    ALLOCATED (11).  Again, races for the FREE (00) are handled by observing
-    if the bitmap code was moved to ALLOCATED (11) by the live system while
-    bulkfree ran asynchrnously and not transitioning the element to FREE (00)
-    in that situation.
+    NOTE! The meta-data scanning passes must also explicitly scan blocks
+	  associated with any open files, since these might represent
+	  open-but-deleted files.  These blocks must not be accidently freed
+	  while the system is still using the file.  Again, since this is
+	  done in two passes it does not have to be synchronized against
+	  frontend operations.  So in total:
 
-    All bulkfree passes are done on meta-data.  Actual data blocks do not
-    need to be read unless the media is being verified.  H2 uses method #2
-    by default and efficiency depends on how much ram the system has to
-    cache scan information.  That said, the bulkfree process is not only
-    incremental but it is also interruptable and restartable.  It does not
-    interfere with live operations other than using disk bandwidth, so
-    there are several ways to run it including in the background.
+	  * Topology under all four volume headers.  This includes all
+	    PFSs and snapshots.
+
+	  * Topology under all open hammer2 files.
+
+    The Bulk-free operation is expensive but uses a bounded amount of ram.
+    The ADVANTAGE of this mechanism is that deletions in the live filesystem
+    do not have to clean up the freemap and thus do not have to recurse
+    the topology during the deletion.  In fact, a 'rm -rf' equivalent of a
+    directory topology can be handled simply by blowing away the top-level
+    directory inode.  This is instantanious and thus can be dangerous but
+    you always have your snapshots to fall-back on.
+
+    The DISADVANTAGE is that all meta-data must be scanned.  Twice.  This
+    can be mitigated by using swapcache(8) to cache the meta-data on a SSD.
+    This is also mitigated by the fact that you can do the bulkfree scan less
+    often on very large filesystems which presumably have a lot of freespace
+    (so the interval is not as big an issue).  In a sense the operation does
+    scale in that it takes longer on larger filesystems but also can be run
+    less often.
 
     The biggest issue is that *NO* space can be freed up by the live
     filesystem without the bulkfree process unless we optimize the case
@@ -326,9 +336,17 @@
     deletions in order to allow a system operator to recover from a
     filesystem full condition.
 
-    Despite this, situations may come up, due to having snapshots, where
-    deletions eat up available blocks but fail to create freeable space.
-    When this situation occurs the system operator may be forced to issue
-    emergency in-place deletions which replace existing blocks rather then
-    allocate new blocks.  For the moment the spec for dealing with these
-    situations remains incomplete.
+    However, due to the snapshot capability as well as the possibility of
+    fragmentation, it is possible for the administrator to not delete enough
+    to actually be able to free up blocks.  Once the reserve is used up
+    the filesystem can become unwritable.
+
+    When this situation occurs the only way to recover is to update blocks
+    in-place.  Updating blocks in-place will destroy the data on any
+    related snapshots or otherwise corrupt the snapshots.  Emergency recovery
+    thus recommends that all related snapshots be destroyed.  You can choose
+    not to do this in which case your snapshots might wind up containing
+    broken links and generate CRC failure messages.
+
+    For the moment the spec for dealing with these situations remains
+    incomplete.

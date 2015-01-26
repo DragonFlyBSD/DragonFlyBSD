@@ -271,11 +271,44 @@
 #define HAMMER2_ZONE_FREEMAP_03		13	/* normal freemap rotation */
 #define HAMMER2_ZONE_FREEMAP_04		17	/* normal freemap rotation */
 #define HAMMER2_ZONE_FREEMAP_05		21	/* normal freemap rotation */
-#define HAMMER2_ZONE_FREEMAP_06		25	/* batch freeing code only */
-#define HAMMER2_ZONE_FREEMAP_07		29	/* batch freeing code only */
-#define HAMMER2_ZONE_FREEMAP_08		33	/* (non-inclusive) */
+#define HAMMER2_ZONE_FREEMAP_06		25	/* normal freemap rotation */
+#define HAMMER2_ZONE_FREEMAP_07		29	/* normal freemap rotation */
+#define HAMMER2_ZONE_FREEMAP_END	33	/* (non-inclusive) */
+
+#define HAMMER2_ZONE_UNUSED33		33
+#define HAMMER2_ZONE_UNUSED34		34
+#define HAMMER2_ZONE_UNUSED35		35
+#define HAMMER2_ZONE_UNUSED36		36
+#define HAMMER2_ZONE_UNUSED37		37
+#define HAMMER2_ZONE_UNUSED38		38
+#define HAMMER2_ZONE_UNUSED39		39
+#define HAMMER2_ZONE_UNUSED40		40
+#define HAMMER2_ZONE_UNUSED41		41
+#define HAMMER2_ZONE_UNUSED42		42
+#define HAMMER2_ZONE_UNUSED43		43
+#define HAMMER2_ZONE_UNUSED44		44
+#define HAMMER2_ZONE_UNUSED45		45
+#define HAMMER2_ZONE_UNUSED46		46
+#define HAMMER2_ZONE_UNUSED47		47
+#define HAMMER2_ZONE_UNUSED48		48
+#define HAMMER2_ZONE_UNUSED49		49
+#define HAMMER2_ZONE_UNUSED50		50
+#define HAMMER2_ZONE_UNUSED51		51
+#define HAMMER2_ZONE_UNUSED52		52
+#define HAMMER2_ZONE_UNUSED53		53
+#define HAMMER2_ZONE_UNUSED54		54
+#define HAMMER2_ZONE_UNUSED55		55
+#define HAMMER2_ZONE_UNUSED56		56
+#define HAMMER2_ZONE_UNUSED57		57
+#define HAMMER2_ZONE_UNUSED58		58
+#define HAMMER2_ZONE_UNUSED59		59
+#define HAMMER2_ZONE_UNUSED60		60
+#define HAMMER2_ZONE_UNUSED61		61
 #define HAMMER2_ZONE_UNUSED62		62
 #define HAMMER2_ZONE_UNUSED63		63
+#define HAMMER2_ZONE_END		64	/* non-inclusive */
+
+#define HAMMER2_NFREEMAPS		8	/* FREEMAP_00 - FREEMAP_07 */
 
 						/* relative to FREEMAP_x */
 #define HAMMER2_ZONEFM_LEVEL1		0	/* 2GB leafmap */
@@ -284,14 +317,12 @@
 #define HAMMER2_ZONEFM_LEVEL4		3	/* 2EB indmap */
 /* LEVEL5 is a set of 8 blockrefs in the volume header 16EB */
 
-
 /*
- * Freemap radii.  Please note that LEVEL 1 blockref array entries
- * point to 256-byte sections of the bitmap representing 2MB of storage.
- * Even though the chain structures represent only 256 bytes, they are
- * mapped using larger 16K or 64K buffer cache buffers.
+ * Freemap radii.  Note that the LEVEL 1 blockref points to a 64KB freemap
+ * block containing 1024 x LEVEL0 hammer2_bmap_data structures.  LEVEL 0
+ * represents one structure.
  */
-#define HAMMER2_FREEMAP_LEVEL5_RADIX	64	/* 16EB */
+#define HAMMER2_FREEMAP_LEVEL5_RADIX	64	/* 16EB (end) */
 #define HAMMER2_FREEMAP_LEVEL4_RADIX	61	/* 2EB */
 #define HAMMER2_FREEMAP_LEVEL3_RADIX	51	/* 2PB */
 #define HAMMER2_FREEMAP_LEVEL2_RADIX	41	/* 2TB */
@@ -300,11 +331,36 @@
 
 #define HAMMER2_FREEMAP_LEVELN_PSIZE	65536	/* physical bytes */
 
+#define HAMMER2_FREEMAP_LEVEL4_SIZE	((hammer2_off_t)1 <<		\
+					 HAMMER2_FREEMAP_LEVEL4_RADIX)
+#define HAMMER2_FREEMAP_LEVEL3_SIZE	((hammer2_off_t)1 <<		\
+					 HAMMER2_FREEMAP_LEVEL3_RADIX)
+#define HAMMER2_FREEMAP_LEVEL2_SIZE	((hammer2_off_t)1 <<		\
+					 HAMMER2_FREEMAP_LEVEL2_RADIX)
+#define HAMMER2_FREEMAP_LEVEL1_SIZE	((hammer2_off_t)1 <<		\
+					 HAMMER2_FREEMAP_LEVEL1_RADIX)
+#define HAMMER2_FREEMAP_LEVEL0_SIZE	((hammer2_off_t)1 <<		\
+					 HAMMER2_FREEMAP_LEVEL0_RADIX)
+
+#define HAMMER2_FREEMAP_LEVEL4_MASK	(HAMMER2_FREEMAP_LEVEL4_SIZE - 1)
+#define HAMMER2_FREEMAP_LEVEL3_MASK	(HAMMER2_FREEMAP_LEVEL3_SIZE - 1)
+#define HAMMER2_FREEMAP_LEVEL2_MASK	(HAMMER2_FREEMAP_LEVEL2_SIZE - 1)
+#define HAMMER2_FREEMAP_LEVEL1_MASK	(HAMMER2_FREEMAP_LEVEL1_SIZE - 1)
+#define HAMMER2_FREEMAP_LEVEL0_MASK	(HAMMER2_FREEMAP_LEVEL0_SIZE - 1)
+
 #define HAMMER2_FREEMAP_COUNT		(int)(HAMMER2_FREEMAP_LEVELN_PSIZE / \
 					 sizeof(hammer2_bmap_data_t))
 #define HAMMER2_FREEMAP_BLOCK_RADIX	14
 #define HAMMER2_FREEMAP_BLOCK_SIZE	(1 << HAMMER2_FREEMAP_BLOCK_RADIX)
 #define HAMMER2_FREEMAP_BLOCK_MASK	(HAMMER2_FREEMAP_BLOCK_SIZE - 1)
+
+/*
+ * bitmap[] structure.  2 bits per HAMMER2_FREEMAP_BLOCK_SIZE.  Each bitmap[]
+ * element is 32 bits and thus represents 16 blocks (radix 4).
+ */
+#define HAMMER2_BMAP_INDEX_RADIX	4
+#define HAMMER2_BMAP_INDEX_SIZE		(HAMMER2_FREEMAP_BLOCK_SIZE * 16)
+#define HAMMER2_BMAP_INDEX_MASK		(HAMMER2_BMAP_INDEX_SIZE - 1)
 
 /*
  * Two linear areas can be reserved after the initial 2MB segment in the base

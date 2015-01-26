@@ -62,13 +62,6 @@ struct hammer2_cleanupcb_info {
 	int	count;
 };
 
-#define HAMMER2_DIO_INPROG	0x80000000
-#define HAMMER2_DIO_GOOD	0x40000000	/* buf/bio is good */
-#define HAMMER2_DIO_WAITING	0x20000000	/* iocb's queued */
-#define HAMMER2_DIO_DIRTY	0x10000000	/* flush on last drop */
-
-#define HAMMER2_DIO_MASK	0x0FFFFFFF
-
 #define HAMMER2_GETBLK_GOOD	0
 #define HAMMER2_GETBLK_QUEUED	1
 #define HAMMER2_GETBLK_OWNED	2
@@ -95,7 +88,7 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
 	KKASSERT(pbase != 0 && ((lbase + lsize - 1) & pmask) == pbase);
 
 	/*
-	 * Access/Allocate the DIO
+	 * Access/Allocate the DIO, bump dio->refs to prevent destruction.
 	 */
 	spin_lock_shared(&hmp->io_spin);
 	dio = RB_LOOKUP(hammer2_io_tree, &hmp->iotree, pbase);
@@ -149,9 +142,14 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
 		}
 
 		/*
-		 * Try to own the buffer.  If we cannot we queue the iocb.
+		 * Try to own the DIO by setting INPROG so we can issue
+		 * I/O on it.
 		 */
 		if (refs & HAMMER2_DIO_INPROG) {
+			/*
+			 * If DIO_INPROG is already set then set WAITING and
+			 * queue the iocb.
+			 */
 			spin_lock(&dio->spin);
 			if (atomic_cmpset_int(&dio->refs, refs,
 					      refs | HAMMER2_DIO_WAITING)) {
@@ -164,6 +162,10 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
 			spin_unlock(&dio->spin);
 			/* retry */
 		} else {
+			/*
+			 * If DIO_INPROG is not set then set it and issue the
+			 * callback immediately to start I/O.
+			 */
 			if (atomic_cmpset_int(&dio->refs, refs,
 					      refs | HAMMER2_DIO_INPROG)) {
 				iocb->flags |= HAMMER2_IOCB_INPROG;
@@ -179,7 +181,7 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
 }
 
 /*
- * The iocb is done.
+ * The originator of the iocb is finished with it.
  */
 void
 hammer2_io_complete(hammer2_iocb_t *iocb)
@@ -191,9 +193,10 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 	uint32_t nflags;
 
 	/*
-	 * If IOCB_INPROG is not set then the completion was synchronous.
-	 * We can set IOCB_DONE safely without having to worry about waiters.
-	 * XXX
+	 * If IOCB_INPROG was not set completion is synchronous due to the
+	 * buffer already being good.  We can simply set IOCB_DONE and return.
+	 * In this situation DIO_INPROG is not set and we have no visibility
+	 * on dio->bp.
 	 */
 	if ((iocb->flags & HAMMER2_IOCB_INPROG) == 0) {
 		iocb->flags |= HAMMER2_IOCB_DONE;
@@ -201,26 +204,28 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 	}
 
 	/*
-	 * bp is held for all comers, make sure the lock is not owned by
-	 * a particular thread.
+	 * The iocb was queued, obtained DIO_INPROG, and its callback was
+	 * made.  The callback is now complete.  We still own DIO_INPROG.
+	 *
+	 * We can set DIO_GOOD if no error occurred, which gives certain
+	 * stability guarantees to dio->bp and allows other accessors to
+	 * short-cut access.  DIO_GOOD cannot be cleared until the last
+	 * ref is dropped.
 	 */
-	if (iocb->flags & HAMMER2_IOCB_DIDBP)
+	KKASSERT(dio->refs & HAMMER2_DIO_INPROG);
+	if (dio->bp) {
 		BUF_KERNPROC(dio->bp);
-
-	/*
-	 * Set the GOOD bit on completion with no error if dio->bp is
-	 * not NULL.  Only applicable if INPROG was set.
-	 */
-	if (dio->bp && iocb->error == 0)
-		atomic_set_int(&dio->refs, HAMMER2_DIO_GOOD);
+		if ((dio->bp->b_flags & B_ERROR) == 0) {
+			KKASSERT(dio->bp->b_flags & B_CACHE);
+			atomic_set_int(&dio->refs, HAMMER2_DIO_GOOD);
+		}
+	}
 
 	for (;;) {
 		oflags = iocb->flags;
 		cpu_ccfence();
 		nflags = oflags;
-		nflags &= ~(HAMMER2_IOCB_DIDBP |
-			    HAMMER2_IOCB_WAKEUP |
-			    HAMMER2_IOCB_INPROG);
+		nflags &= ~(HAMMER2_IOCB_WAKEUP | HAMMER2_IOCB_INPROG);
 		nflags |= HAMMER2_IOCB_DONE;
 
 		if (atomic_cmpset_int(&iocb->flags, oflags, nflags)) {
@@ -229,12 +234,14 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 			/* SMP: iocb is now stale */
 			break;
 		}
+		/* retry */
 	}
 	iocb = NULL;
 
 	/*
-	 * Now finish up the dio.  If another iocb is pending chain to it,
-	 * otherwise clear INPROG (and WAITING).
+	 * Now finish up the dio.  If another iocb is pending chain to it
+	 * leaving DIO_INPROG set.  Otherwise clear DIO_INPROG
+	 * (and DIO_WAITING).
 	 */
 	for (;;) {
 		orefs = dio->refs;
@@ -260,7 +267,7 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 }
 
 /*
- *
+ * Wait for an iocb's I/O to finish.
  */
 void
 hammer2_iocb_wait(hammer2_iocb_t *iocb)
@@ -283,8 +290,10 @@ hammer2_iocb_wait(hammer2_iocb_t *iocb)
 }
 
 /*
- * Release our ref on *diop, dispose of the underlying buffer, and flush
- * on last drop if it was dirty.
+ * Release our ref on *diop.
+ *
+ * On the last ref we must atomically clear DIO_GOOD and set DIO_INPROG,
+ * then dispose of the underlying buffer.
  */
 void
 hammer2_io_putblk(hammer2_io_t **diop)
@@ -400,6 +409,9 @@ hammer2_io_putblk(hammer2_io_t **diop)
 
 /*
  * Cleanup any dio's with (INPROG | refs) == 0.
+ *
+ * Called to clean up cached DIOs on umount after all activity has been
+ * flushed.
  */
 static
 int
@@ -465,17 +477,19 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 	int gbctl = (iocb->flags & HAMMER2_IOCB_QUICK) ? GETBLK_NOWAIT : 0;
 
 	/*
-	 * If INPROG is not set the dio already has a good buffer and we
+	 * If IOCB_INPROG is not set the dio already has a good buffer and we
 	 * can't mess with it other than zero the requested range.
 	 *
-	 * If INPROG is set it gets a bit messy.
+	 * If IOCB_INPROG is set we also own DIO_INPROG at this time and can
+	 * do what needs to be done with dio->bp.
 	 */
 	if (iocb->flags & HAMMER2_IOCB_INPROG) {
 		if ((iocb->flags & HAMMER2_IOCB_READ) == 0) {
 			if (iocb->lsize == dio->psize) {
 				/*
 				 * Fully covered buffer, try to optimize to
-				 * avoid any I/O.
+				 * avoid any I/O.  We might already have the
+				 * buffer due to iocb chaining.
 				 */
 				if (dio->bp == NULL) {
 					dio->bp = getblk(dio->hmp->devvp,
@@ -484,21 +498,28 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 				}
 				if (dio->bp) {
 					vfs_bio_clrbuf(dio->bp);
-					if (iocb->flags & HAMMER2_IOCB_QUICK) {
-						dio->bp->b_flags |= B_CACHE;
-						bqrelse(dio->bp);
-						dio->bp = NULL;
-					}
+					dio->bp->b_flags |= B_CACHE;
 				}
 			} else if (iocb->flags & HAMMER2_IOCB_QUICK) {
 				/*
 				 * Partial buffer, quick mode.  Do nothing.
+				 * Do not instantiate the buffer or try to
+				 * mark it B_CACHE because other portions of
+				 * the buffer might have to be read by other
+				 * accessors.
 				 */
 			} else if (dio->bp == NULL ||
 				   (dio->bp->b_flags & B_CACHE) == 0) {
 				/*
 				 * Partial buffer, normal mode, requires
 				 * read-before-write.  Chain the read.
+				 *
+				 * We might already have the buffer due to
+				 * iocb chaining.  XXX unclear if we really
+				 * need to write/release it and reacquire
+				 * in that case.
+				 *
+				 * QUEUE ASYNC I/O, IOCB IS NOT YET COMPLETE.
 				 */
 				if (dio->bp) {
 					if (dio->refs & HAMMER2_DIO_DIRTY)
@@ -513,7 +534,7 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 					hammer2_io_callback, iocb);
 				return;
 			} /* else buffer is good */
-		}
+		} /* else callback from breadcb is complete */
 	}
 	if (dio->bp) {
 		if (iocb->flags & HAMMER2_IOCB_ZERO)
@@ -576,8 +597,28 @@ hammer2_iocb_bread_callback(hammer2_iocb_t *iocb)
 	off_t peof;
 	int error;
 
+	/*
+	 * If IOCB_INPROG is not set the dio already has a good buffer and we
+	 * can't mess with it other than zero the requested range.
+	 *
+	 * If IOCB_INPROG is set we also own DIO_INPROG at this time and can
+	 * do what needs to be done with dio->bp.
+	 */
 	if (iocb->flags & HAMMER2_IOCB_INPROG) {
-		if (hammer2_cluster_enable) {
+		if (dio->bp && (dio->bp->b_flags & B_CACHE)) {
+			/*
+			 * Already good, likely due to being chained from
+			 * another iocb.
+			 */
+			error = 0;
+		} else if (hammer2_cluster_enable) {
+			/*
+			 * Synchronous cluster I/O for now.
+			 */
+			if (dio->bp) {
+				bqrelse(dio->bp);
+				dio->bp = NULL;
+			}
 			peof = (dio->pbase + HAMMER2_SEGMASK64) &
 			       ~HAMMER2_SEGMASK64;
 			error = cluster_read(dio->hmp->devvp, peof, dio->pbase,
@@ -585,6 +626,13 @@ hammer2_iocb_bread_callback(hammer2_iocb_t *iocb)
 					     dio->psize, HAMMER2_PBUFSIZE*4,
 					     &dio->bp);
 		} else {
+			/*
+			 * Synchronous I/O for now.
+			 */
+			if (dio->bp) {
+				bqrelse(dio->bp);
+				dio->bp = NULL;
+			}
 			error = bread(dio->hmp->devvp, dio->pbase,
 				      dio->psize, &dio->bp);
 		}

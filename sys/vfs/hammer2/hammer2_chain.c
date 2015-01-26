@@ -1222,10 +1222,14 @@ skip2:
 	if (chain->parent)
 		hammer2_chain_setflush(trans, chain->parent);
 
+#if 0
 	/*
 	 * Adjust the freemap bitmap to indicate that the related blocks
 	 * MIGHT be freeable.  Bulkfree must still determine that the blocks
 	 * are actually freeable.
+	 *
+	 * We no longer do this in the normal filesystem operations path
+	 * as it interferes with the bulkfree algorithm.
 	 */
 	if (obref.type != HAMMER2_BREF_TYPE_FREEMAP_NODE &&
 	    obref.type != HAMMER2_BREF_TYPE_FREEMAP_LEAF &&
@@ -1233,6 +1237,7 @@ skip2:
 		hammer2_freemap_adjust(trans, hmp,
 				       &obref, HAMMER2_FREEMAP_DOMAYFREE);
 	}
+#endif
 }
 
 /*
@@ -2619,11 +2624,15 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 	}
 
+#if 0
 	/*
 	 * If the deletion is permanent (i.e. the chain is not simply being
 	 * moved within the topology), adjust the freemap to indicate that
 	 * the block *might* be freeable.  bulkfree must still determine
 	 * that it is actually freeable.
+	 *
+	 * We no longer do this in the normal filesystem operations path
+	 * as it interferes with the bulkfree algorithm.
 	 */
 	if ((flags & HAMMER2_DELETE_PERMANENT) &&
 	    chain->bref.type != HAMMER2_BREF_TYPE_FREEMAP_NODE &&
@@ -2632,6 +2641,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		hammer2_freemap_adjust(trans, hmp, &chain->bref,
 				       HAMMER2_FREEMAP_DOMAYFREE);
 	}
+#endif
 }
 
 /*

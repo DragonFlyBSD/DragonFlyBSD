@@ -2174,26 +2174,43 @@ hammer2_strategy_read_callback(hammer2_iocb_t *iocb)
 	 * is the cluster index for iteration.
 	 */
 	cluster = iocb->cluster;
-	dio = iocb->dio;	/* can be NULL */
+	dio = iocb->dio;	/* can be NULL if iocb not in progress */
 
 	/*
-	 * Work to do if INPROG set, else data already available.
+	 * Work to do if INPROG set, else dio is already good or dio is
+	 * NULL (which is the shortcut case if chain->data is already good).
 	 */
 	if (iocb->flags & HAMMER2_IOCB_INPROG) {
 		/*
-		 * read not issued yet, chain the iocb to execute the
-		 * read operation.
+		 * Read attempt not yet made.  Issue an asynchronous read
+		 * if necessary and return, operation will chain back to
+		 * this function.
 		 */
 		if ((iocb->flags & HAMMER2_IOCB_READ) == 0) {
-			iocb->flags |= HAMMER2_IOCB_READ;
-			breadcb(dio->hmp->devvp, dio->pbase, dio->psize,
-				hammer2_io_callback, iocb);
-			return;
+			if (dio->bp == NULL ||
+			    (dio->bp->b_flags & B_CACHE) == 0) {
+				if (dio->bp) {
+					bqrelse(dio->bp);
+					dio->bp = NULL;
+				}
+				iocb->flags |= HAMMER2_IOCB_READ;
+				breadcb(dio->hmp->devvp,
+					dio->pbase, dio->psize,
+					hammer2_io_callback, iocb);
+				return;
+			}
 		}
+	}
 
-		/*
-		 * check results.
-		 */
+	/*
+	 * If we have a DIO it is now done, check for an error and
+	 * calculate the data.
+	 *
+	 * If there is no DIO it is an optimization by
+	 * hammer2_cluster_load_async(), the data is available in
+	 * chain->data.
+	 */
+	if (dio) {
 		if (dio->bp->b_flags & B_ERROR) {
 			i = (int)iocb->lbase + 1;
 			if (i >= cluster->nchains) {
@@ -2203,7 +2220,7 @@ hammer2_strategy_read_callback(hammer2_iocb_t *iocb)
 				biodone(bio);
 				hammer2_cluster_unlock(cluster);
 			} else {
-				hammer2_io_complete(iocb);
+				hammer2_io_complete(iocb); /* XXX */
 				chain = cluster->array[i];
 				kprintf("hammer2: IO CHAIN-%d %p\n", i, chain);
 				hammer2_adjreadcounter(&chain->bref,
@@ -2222,6 +2239,9 @@ hammer2_strategy_read_callback(hammer2_iocb_t *iocb)
 		chain = iocb->chain;
 		data = hammer2_io_data(dio, chain->bref.data_off);
 	} else {
+		/*
+		 * Special synchronous case, data present in chain->data.
+		 */
 		chain = iocb->chain;
 		data = (void *)chain->data;
 	}
@@ -2272,9 +2292,17 @@ hammer2_strategy_read_callback(hammer2_iocb_t *iocb)
 			hammer2_io_bqrelse(&dio);
 		panic("hammer2_strategy_read: unknown bref type");
 	}
-	hammer2_io_complete(iocb);
-	hammer2_cluster_unlock(cluster);
-	biodone(bio);
+
+	/*
+	 * Once the iocb is cleaned up the DIO (if any) will no longer be
+	 * in-progress but will still have a ref.  Be sure to release
+	 * the ref.
+	 */
+	hammer2_io_complete(iocb);		/* physical management */
+	if (dio)				/* physical dio & buffer */
+		hammer2_io_bqrelse(&dio);
+	hammer2_cluster_unlock(cluster);	/* cluster management */
+	biodone(bio);				/* logical buffer */
 }
 
 static
