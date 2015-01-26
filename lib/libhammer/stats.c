@@ -168,33 +168,43 @@ libhammer_stats_btree_searches(int64_t *value)
 int
 libhammer_btree_stats(struct libhammer_btree_stats *bstats)
 {
-	int error = 0;
-
-	error = libhammer_stats_btree_elements(&bstats->elements);
-	error = libhammer_stats_btree_iterations(&bstats->iterations);
-	error = libhammer_stats_btree_splits(&bstats->splits);
-	error = libhammer_stats_btree_inserts(&bstats->inserts);
-	error = libhammer_stats_btree_deletes(&bstats->deletes);
-	error = libhammer_stats_btree_lookups(&bstats->lookups);
-	error = libhammer_stats_btree_searches(&bstats->searches);
-
-	return error;
+	if (libhammer_stats_btree_elements(&bstats->elements) < 0)
+		return -1;
+	if (libhammer_stats_btree_iterations(&bstats->iterations) < 0)
+		return -1;
+	if (libhammer_stats_btree_splits(&bstats->splits) < 0)
+		return -1;
+	if (libhammer_stats_btree_inserts(&bstats->inserts) < 0)
+		return -1;
+	if (libhammer_stats_btree_deletes(&bstats->deletes) < 0)
+		return -1;
+	if (libhammer_stats_btree_lookups(&bstats->lookups) < 0)
+		return -1;
+	if (libhammer_stats_btree_searches(&bstats->searches) < 0)
+		return -1;
+	return 0;
 }
 
 int
 libhammer_io_stats(struct libhammer_io_stats *iostats)
 {
-	int error = 0;
-
-	error = libhammer_stats_undo(&iostats->undo);
-	error = libhammer_stats_commits(&iostats->commits);
-	error = libhammer_stats_inode_flushes(&iostats->inode_flushes);
-	error = libhammer_stats_disk_write(&iostats->dev_writes);
-	error = libhammer_stats_disk_read(&iostats->dev_reads);
-	error = libhammer_stats_file_iopsw(&iostats->file_iop_writes);
-	error = libhammer_stats_file_iopsr(&iostats->file_iop_reads);
-	error = libhammer_stats_file_write(&iostats->file_writes);
-	error = libhammer_stats_file_read(&iostats->file_reads);
-
-	return error;
+	if (libhammer_stats_undo(&iostats->undo) < 0)
+		return -1;
+	if (libhammer_stats_commits(&iostats->commits) < 0)
+		return -1;
+	if (libhammer_stats_inode_flushes(&iostats->inode_flushes) < 0)
+		return -1;
+	if (libhammer_stats_disk_write(&iostats->dev_writes) < 0)
+		return -1;
+	if (libhammer_stats_disk_read(&iostats->dev_reads) < 0)
+		return -1;
+	if (libhammer_stats_file_iopsw(&iostats->file_iop_writes) < 0)
+		return -1;
+	if (libhammer_stats_file_iopsr(&iostats->file_iop_reads) < 0)
+		return -1;
+	if (libhammer_stats_file_write(&iostats->file_writes) < 0)
+		return -1;
+	if (libhammer_stats_file_read(&iostats->file_reads) < 0)
+		return -1;
+	return 0;
 }
