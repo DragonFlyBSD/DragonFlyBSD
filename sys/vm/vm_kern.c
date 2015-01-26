@@ -89,8 +89,61 @@ struct vm_map clean_map;
 struct vm_map buffer_map;
 
 /*
+ * Allocate pageable swap-backed anonymous memory
+ */
+void *
+kmem_alloc_swapbacked(kmem_anon_desc_t *kp, vm_size_t size)
+{
+	int error;
+	vm_pindex_t npages;
+
+	size = round_page(size);
+	npages = size / PAGE_SIZE;
+
+	if (kp->map == NULL)
+		kp->map = &kernel_map;
+	kp->data = vm_map_min(&kernel_map);
+	kp->size = size;
+	kp->object = vm_object_allocate(OBJT_DEFAULT, npages);
+
+	error = vm_map_find(kp->map, kp->object, NULL, 0,
+			    &kp->data, size,
+			    PAGE_SIZE,
+			    1, VM_MAPTYPE_NORMAL,
+			    VM_PROT_ALL, VM_PROT_ALL, 0);
+	if (error) {
+		kprintf("kmem_alloc_swapbacked: %zd bytes failed %d\n",
+			size, error);
+		kp->data = (vm_offset_t)0;
+		kmem_free_swapbacked(kp);
+		return NULL;
+	}
+	return ((void *)(intptr_t)kp->data);
+}
+
+void
+kmem_free_swapbacked(kmem_anon_desc_t *kp)
+{
+	if (kp->data) {
+		/*
+		 * The object will be deallocated by kmem_free().
+		 */
+		kmem_free(kp->map, kp->data, kp->size);
+		kp->data = (vm_offset_t)0;
+	} else {
+		/*
+		 * Failure during allocation, object must be deallocated
+		 * manually.
+		 */
+		vm_object_deallocate(kp->object);
+	}
+	kp->object = NULL;
+}
+
+/*
  * Allocate pageable memory to the kernel's address map.  "map" must
- * be kernel_map or a submap of kernel_map.
+ * be kernel_map or a submap of kernel_map.  Caller must adjust map or
+ * enter VM pages itself.
  *
  * No requirements.
  */

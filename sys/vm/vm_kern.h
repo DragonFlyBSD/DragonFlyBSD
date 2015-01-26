@@ -75,6 +75,20 @@
 #include <vm/vm_map.h>
 #endif
 
+struct vm_object;
+
+/*
+ * Anonymous swap-backed kernel memory descriptor
+ */
+struct kmem_anon_desc {
+	vm_map_t	map;
+	vm_size_t	size;
+	vm_offset_t	data;
+	struct vm_object *object;
+};
+
+typedef struct kmem_anon_desc kmem_anon_desc_t;
+
 /*
  * kmem_alloc3() flags
  */

@@ -118,6 +118,8 @@ void vmspace_ref (struct vmspace *);
 void vmspace_rel (struct vmspace *);
 void vmspace_relexit (struct vmspace *);
 void vmspace_exitfree (struct proc *);
+void *kmem_alloc_swapbacked(kmem_anon_desc_t *kp, vm_size_t size);
+void kmem_free_swapbacked(kmem_anon_desc_t *kp);
 
 struct vmspace *vmspace_fork (struct vmspace *);
 void vmspace_exec (struct proc *, struct vmspace *);
