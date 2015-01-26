@@ -35,7 +35,7 @@
  */
 
 #ifndef _SYS_MMAN_H_
-#define _SYS_MMAN_H_
+#define	_SYS_MMAN_H_
 
 #ifndef _SYS__POSIX_H_
 #include <sys/_posix.h>
@@ -50,9 +50,9 @@
 /*
  * Inheritance for minherit()
  */
-#define INHERIT_SHARE  0
-#define INHERIT_COPY   1
-#define INHERIT_NONE   2
+#define	INHERIT_SHARE  0
+#define	INHERIT_COPY   1
+#define	INHERIT_NONE   2
 
 /*
  * Protections are chosen from these bits, or-ed together
@@ -86,38 +86,38 @@
 /*
  * Process memory locking
  */
-#define MCL_CURRENT	0x0001	/* Lock only current memory */
-#define MCL_FUTURE	0x0002	/* Lock all future memory as well */
+#define	MCL_CURRENT	0x0001	/* Lock only current memory */
+#define	MCL_FUTURE	0x0002	/* Lock all future memory as well */
 
 #endif /* _P1003_1B_VISIBLE */
 
 /*
  * Error return from mmap()
  */
-#define MAP_FAILED	((void *)-1)
+#define	MAP_FAILED	((void *)-1)
 
 /*
  * msync() flags
  */
 #define	MS_SYNC		0x0000	/* msync synchronously */
-#define MS_ASYNC	0x0001	/* return immediately */
-#define MS_INVALIDATE	0x0002	/* invalidate all cached data */
+#define	MS_ASYNC	0x0001	/* return immediately */
+#define	MS_INVALIDATE	0x0002	/* invalidate all cached data */
 
 
 /*
  * Mapping type
  */
 #define	MAP_FILE	0x0000		/* map from file (default) */
-#define MAP_ANON	0x1000		/* allocated from memory, swap space */
+#define	MAP_ANON	0x1000		/* allocated from memory, swap space */
 #define	MAP_ANONYMOUS	MAP_ANON	/* alias for compatibility */
-#define MAP_VPAGETABLE	0x2000		/* manage with virtualized page table */
+#define	MAP_VPAGETABLE	0x2000		/* manage with virtualized page table */
 
 /*
  * Extended flags
  */
 #define	MAP_TRYFIXED	0x00010000 /* attempt hint address, even within heap */
 #define	MAP_NOCORE	0x00020000 /* dont include these pages in a coredump */
-#define MAP_SIZEALIGN	0x00040000 /* size is also an alignment requirement */
+#define	MAP_SIZEALIGN	0x00040000 /* size is also an alignment requirement */
 
 /*
  * Advice to madvise
@@ -132,8 +132,8 @@
 #define	MADV_AUTOSYNC	7	/* revert to default flushing strategy */
 #define	MADV_NOCORE	8	/* do not include these pages in a core file */
 #define	MADV_CORE	9	/* revert to including pages in a core file */
-#define MADV_INVAL	10	/* virt page tables have changed, inval pmap */
-#define MADV_SETMAP	11	/* set page table directory page for map */
+#define	MADV_INVAL	10	/* virt page tables have changed, inval pmap */
+#define	MADV_SETMAP	11	/* set page table directory page for map */
 
 /*
  * Advice to posix_madvise()
@@ -149,8 +149,8 @@
 /*
  * mcontrol() must be used for these functions instead of madvise()
  */
-#define MADV_CONTROL_START	MADV_INVAL
-#define MADV_CONTROL_END	MADV_SETMAP
+#define	MADV_CONTROL_START	MADV_INVAL
+#define	MADV_CONTROL_END	MADV_SETMAP
 
 /*
  * Return bits from mincore
@@ -164,28 +164,28 @@
 
 __BEGIN_DECLS
 #ifdef _P1003_1B_VISIBLE
-int	mlockall (int);
-int	munlockall (void);
-int	shm_open (const char *, int, mode_t);
-int	shm_unlink (const char *);
+int	mlockall(int);
+int	munlockall(void);
+int	shm_open(const char *, int, mode_t);
+int	shm_unlink(const char *);
 #endif /* _P1003_1B_VISIBLE */
-int	mlock (const void *, size_t);
+int	mlock(const void *, size_t);
 #ifndef _MMAP_DECLARED
 #define	_MMAP_DECLARED
-void *	mmap (void *, size_t, int, int, int, off_t);
+void *	mmap(void *, size_t, int, int, int, off_t);
 #endif
-int	mprotect (void *, size_t, int);
-int	msync (void *, size_t, int);
-int	munlock (const void *, size_t);
-int	munmap (void *, size_t);
+int	mprotect(void *, size_t, int);
+int	msync(void *, size_t, int);
+int	munlock(const void *, size_t);
+int	munmap(void *, size_t);
 #if __POSIX_VISIBLE >= 200112
 int	posix_madvise(void *, size_t, int);
 #endif
 #ifndef _POSIX_SOURCE
-int	madvise (void *, size_t, int);
-int	mcontrol (void *, size_t, int, off_t);
-int	mincore (const void *, size_t, char *);
-int	minherit (void *, size_t, int);
+int	madvise(void *, size_t, int);
+int	mcontrol(void *, size_t, int, off_t);
+int	mincore(const void *, size_t, char *);
+int	minherit(void *, size_t, int);
 #endif
 __END_DECLS
 
