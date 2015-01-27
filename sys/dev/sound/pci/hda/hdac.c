@@ -1637,6 +1637,10 @@ hdac_detach(device_t dev)
 	taskqueue_drain(taskqueue_thread[mycpuid], &sc->unsolq_task);
 	hdac_irq_free(sc);
 
+	/* give pending interrupts stuck on the lock a chance to clear */
+	/* bad hack */
+	tsleep(&sc->irq, 0, "hdaslp", hz / 10);
+
 	for (i = 0; i < sc->num_ss; i++)
 		hdac_dma_free(sc, &sc->streams[i].bdl);
 	kfree(sc->streams, M_HDAC);
