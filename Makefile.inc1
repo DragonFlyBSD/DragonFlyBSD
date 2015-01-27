@@ -494,7 +494,7 @@ installworld: installcheck
 	sync
 	@echo "installworld is done.  If things work as expected after a"
 	@echo "full reboot, consider updating the rescue image with"
-	@echo "'make rescue'.  Do not do it until rebooting."
+	@echo "'make rescue'.  Do not do it until after rebooting."
 
 installworld-force:
 	@echo "Doing a forced installworld.  This will install to a temporary directory,"
