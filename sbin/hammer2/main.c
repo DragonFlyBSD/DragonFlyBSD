@@ -397,9 +397,17 @@ main(int ac, char **av)
 			fprintf(stderr,
 				"printinode: requires directory/file path\n");
 			usage(1);
-		}
-		else
+		} else {
 			print_inode(av[1]);
+		}
+	} else if (strcmp(av[0], "bulkfree") == 0) {
+		if (ac != 2) {
+			fprintf(stderr,
+				"bulkfree: requires path to mount\n");
+			usage(1);
+		} else {
+			ecode = cmd_bulkfree(av[1]);
+		}
 	} else {
 		fprintf(stderr, "Unrecognized command: %s\n", av[0]);
 		usage(1);
@@ -474,6 +482,8 @@ usage(int code)
 			"Set check algo to crc64\n"
 		"    setsha192 path...            "
 			"Set check algo to sha192\n"
+		"    bulkfree path...             "
+			"Run bulkfree pass\n"
 	);
 	exit(code);
 }

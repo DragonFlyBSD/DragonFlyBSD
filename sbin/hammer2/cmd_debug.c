@@ -670,7 +670,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 			    media.bmdata[i].avail == 0) {
 				continue;
 			}
-			tabprintf(tab + 4, "%04d.%04x (avail=%5d) "
+			tabprintf(tab + 4, "%04d.%04x (avail=%7d) "
 				  "%08x %08x %08x %08x %08x %08x %08x %08x\n",
 				  i, media.bmdata[i].class,
 				  media.bmdata[i].avail,
