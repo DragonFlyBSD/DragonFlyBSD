@@ -6298,7 +6298,8 @@ hdaa_unconfigure(device_t dev)
 		device_printf(dev, "Pin sense deinit...\n");
 	);
 	hdaa_sense_deinit(devinfo);
-	kfree(devinfo->ctl, M_HDAA);
+	if (devinfo->ctlcnt > 0)
+		kfree(devinfo->ctl, M_HDAA);
 	devinfo->ctl = NULL;
 	devinfo->ctlcnt = 0;
 	kfree(devinfo->as, M_HDAA);

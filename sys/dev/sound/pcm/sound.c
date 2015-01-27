@@ -778,9 +778,11 @@ pcm_best_unit(int old)
 			destroy_dev_alias(old_d, "dsp");
 		if ((old_d = devfs_find_device_by_name("mixer%d", snd_unit)))
 			destroy_dev_alias(old_d, "mixer");
-		d = devclass_get_softc(pcm_devclass, best);
-		make_dev_alias(d->dsp_clonedev, "dsp");
-		make_dev_alias(d->mixer_dev, "mixer");
+		if (best >= 0) {
+			d = devclass_get_softc(pcm_devclass, best);
+			make_dev_alias(d->dsp_clonedev, "dsp");
+			make_dev_alias(d->mixer_dev, "mixer");
+		}
 	}
 
 	return (best);
@@ -1254,6 +1256,8 @@ pcm_unregister(device_t dev)
 		snd_clone_destroy(d->clones);
 		d->clones = NULL;
 	}
+	devfs_clone_handler_del(devtoname(d->dsp_clonedev));
+	destroy_dev(d->dsp_clonedev);
 
 	if (d->play_sysctl_tree != NULL) {
 		sysctl_ctx_free(&d->play_sysctl_ctx);
