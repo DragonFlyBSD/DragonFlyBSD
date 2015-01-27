@@ -28,7 +28,7 @@
 .\"     @(#)sigaltstack.2	8.2 (Berkeley) 5/1/95
 .\" $FreeBSD: src/lib/libc/sys/sigaltstack.2,v 1.11.2.7 2002/09/15 00:32:41 archie Exp $
 .\"
-.Dd June 1, 2013
+.Dd January 27, 2015
 .Dt SIGALTSTACK 2
 .Os
 .Sh NAME
@@ -81,7 +81,7 @@ Trying to disable an active stack will cause
 to return -1 with
 .Va errno
 set to
-.Er EINVAL .
+.Er EPERM .
 A disabled stack will cause all signals to be
 taken on the regular user stack.
 If the stack is later re-enabled then all signals that were specified
@@ -152,10 +152,10 @@ member pointed to by
 .Fa ss
 contains flags other than
 .Dv SS_DISABLE .
-.It Bq Er EINVAL
-An attempt was made to disable an active stack.
 .It Bq Er ENOMEM
 Size of alternate stack area is less than or equal to
+.It Bq Er EPERM
+An attempt was made to modify an active stack.
 .Dv MINSIGSTKSZ .
 .El
 .Sh SEE ALSO

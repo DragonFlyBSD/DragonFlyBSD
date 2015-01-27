@@ -609,7 +609,7 @@ kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss)
 			return (EINVAL);
 		if (ss->ss_flags & SS_DISABLE) {
 			if (lp->lwp_sigstk.ss_flags & SS_ONSTACK)
-				return (EINVAL);
+				return (EPERM);
 			lp->lwp_flags &= ~LWP_ALTSTACK;
 			lp->lwp_sigstk.ss_flags = ss->ss_flags;
 		} else {
