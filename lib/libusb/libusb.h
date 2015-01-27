@@ -1,4 +1,4 @@
-/* $FreeBSD: head/lib/libusb/libusb.h 260315 2014-01-05 10:41:43Z hselasky $ */
+/* $FreeBSD: head/lib/libusb/libusb.h 277245 2015-01-16 12:11:01Z hselasky $ */
 /*-
  * Copyright (c) 2009 Sylvestre Gallon. All rights reserved.
  *
@@ -33,6 +33,8 @@
 #include <sys/types.h>
 #endif
 
+#define	LIBUSB_CALL
+
 #ifdef __cplusplus
 extern	"C" {
 #endif
@@ -49,10 +51,18 @@ enum libusb_class_code {
 	LIBUSB_CLASS_COMM = 2,
 	LIBUSB_CLASS_HID = 3,
 	LIBUSB_CLASS_PTP = 6,
+	LIBUSB_CLASS_IMAGE = 6,
 	LIBUSB_CLASS_PRINTER = 7,
 	LIBUSB_CLASS_MASS_STORAGE = 8,
 	LIBUSB_CLASS_HUB = 9,
 	LIBUSB_CLASS_DATA = 10,
+	LIBUSB_CLASS_SMART_CARD = 11,
+	LIBUSB_CLASS_CONTENT_SECURITY = 13,
+	LIBUSB_CLASS_VIDEO = 14,
+	LIBUSB_CLASS_PERSONAL_HEALTHCARE = 15,
+	LIBUSB_CLASS_DIAGNOSTIC_DEVICE = 0xdc,
+	LIBUSB_CLASS_WIRELESS = 0xe0,
+	LIBUSB_CLASS_APPLICATION = 0xfe,
 	LIBUSB_CLASS_VENDOR_SPEC = 0xff,
 };
 
@@ -118,6 +128,8 @@ enum libusb_standard_request {
 	LIBUSB_REQUEST_GET_INTERFACE = 0x0A,
 	LIBUSB_REQUEST_SET_INTERFACE = 0x0B,
 	LIBUSB_REQUEST_SYNCH_FRAME = 0x0C,
+	LIBUSB_REQUEST_SET_SEL = 0x30,
+	LIBUSB_REQUEST_SET_ISOCH_DELAY = 0x31,
 };
 
 enum libusb_request_type {
@@ -197,7 +209,7 @@ enum libusb_log_level {
 	LIBUSB_LOG_LEVEL_ERROR,
 	LIBUSB_LOG_LEVEL_WARNING,
 	LIBUSB_LOG_LEVEL_INFO,
-  	LIBUSB_LOG_LEVEL_DEBUG
+	LIBUSB_LOG_LEVEL_DEBUG
 };
 
 /* 

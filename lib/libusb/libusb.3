@@ -24,7 +24,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: head/lib/libusb/libusb.3 260315 2014-01-05 10:41:43Z hselasky $
+.\" $FreeBSD: head/lib/libusb/libusb.3 277165 2015-01-14 06:46:25Z hselasky $
 .\"
 .Dd January 5, 2014
 .Dt LIBUSB 3
@@ -41,9 +41,9 @@ The
 .Nm
 library contains interfaces for directly managing a usb device.
 The current implementation supports v1.0 of the libusb API.
-.Sh LIBRARY INITIALISATION / DEINITIALISATION
+.Sh LIBRARY INITIALISATION AND DEINITIALISATION
 .Ft int
-.Fn libusb_init libusb_context **ctx
+.Fn libusb_init "libusb_context **ctx"
 This function initialises libusb.
 It must be called at the beginning
 of the program, before other libusb routines are used.

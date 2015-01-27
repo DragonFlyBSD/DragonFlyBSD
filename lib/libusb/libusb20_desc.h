@@ -1,4 +1,4 @@
-/* $FreeBSD: head/lib/libusb/libusb20_desc.h 248236 2013-03-13 12:23:14Z hselasky $ */
+/* $FreeBSD: head/lib/libusb/libusb20_desc.h 277245 2015-01-16 12:11:01Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  * Copyright (c) 2007-2008 Daniel Drake.  All rights reserved.
@@ -481,6 +481,12 @@ enum libusb20_standard_request {
 
 	/** Set then report an endpoint's synchronization frame */
 	LIBUSB20_REQUEST_SYNCH_FRAME = 0x0C,
+
+	/** Set U1 and U2 system exit latency */
+	LIBUSB20_REQUEST_SET_SEL = 0x30,
+
+	/** Set isochronous delay */
+	LIBUSB20_REQUEST_SET_ISOCH_DELAY = 0x31,
 };
 
 /** \ingroup misc

@@ -1,4 +1,4 @@
-# $FreeBSD: head/lib/libusb/libusb-1.0.pc 253637 2013-07-25 03:54:08Z rpaulo $
+# $FreeBSD: head/lib/libusb/libusb-1.0.pc 267110 2014-06-05 14:19:32Z emaste $
 prefix=/usr
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
@@ -6,6 +6,6 @@ includedir=${prefix}/include
 
 Name: libusb-1.0
 Description: Library that abstracts ways to access USB devices (v1.0)
-Version: 1.0.9
+Version: 1.0.13
 Libs: -L${libdir} -lusb
 Cflags: -I${includedir}

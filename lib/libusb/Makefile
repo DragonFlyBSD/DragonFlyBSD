@@ -1,5 +1,5 @@
 #
-# $FreeBSD: head/lib/libusb/Makefile 260315 2014-01-05 10:41:43Z hselasky $
+# $FreeBSD: head/lib/libusb/Makefile 275024 2014-11-25 11:07:26Z bapt $
 #
 # Makefile for the FreeBSD specific LibUSB 2.0
 #
@@ -15,12 +15,11 @@ INCS+=		libusb20_desc.h
 MAN=		libusb.3 libusb20.3
 MKLINT=		no
 NOGCCERROR=
-PTHREAD_LIBS?=	-lpthread
 
-WARNS?=		2
+WARNS?=		3
 
 DPADD=		${LIBPTHREAD}
-LDADD=		${PTHREAD_LIBS}
+LDADD=		-lpthread
 
 MLINKS+=	libusb.3 usb.3
 

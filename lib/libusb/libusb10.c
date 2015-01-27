@@ -1,4 +1,4 @@
-/* $FreeBSD: head/lib/libusb/libusb10.c 261224 2014-01-28 07:21:46Z hselasky $ */
+/* $FreeBSD: head/lib/libusb/libusb10.c 264344 2014-04-11 14:11:55Z hselasky $ */
 /*-
  * Copyright (c) 2009 Sylvestre Gallon. All rights reserved.
  * Copyright (c) 2009 Hans Petter Selasky. All rights reserved.
@@ -934,6 +934,9 @@ libusb10_get_buffsize(struct libusb20_device *pdev, libusb_transfer *xfer)
 			break;
 		case LIBUSB20_SPEED_FULL:
 			ret = 4096;
+			break;
+		case LIBUSB20_SPEED_SUPER:
+			ret = 65536;
 			break;
 		default:
 			ret = 16384;
