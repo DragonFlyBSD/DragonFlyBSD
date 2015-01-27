@@ -426,6 +426,23 @@ pcm_setmaxautovchans(struct snddev_info *d, int num)
 	pcm_clonereset(d);
 }
 
+static void
+pcm_set_dev_alias(int unit)
+{
+	struct snddev_info *d;
+	cdev_t old_d;
+
+	if ((old_d = devfs_find_device_by_name("dsp%d", snd_unit)))
+		destroy_dev_alias(old_d, "dsp");
+	if ((old_d = devfs_find_device_by_name("mixer%d", snd_unit)))
+		destroy_dev_alias(old_d, "mixer");
+	if (unit >= 0) {
+		d = devclass_get_softc(pcm_devclass, unit);
+		make_dev_alias(d->dsp_clonedev, "dsp");
+		make_dev_alias(d->mixer_dev, "mixer");
+	}
+}
+
 static int
 sysctl_hw_snd_default_unit(SYSCTL_HANDLER_ARGS)
 {
@@ -752,7 +769,6 @@ pcm_best_unit(int old)
 {
 	struct snddev_info *d;
 	int i, best, bestprio, prio;
-	cdev_t old_d;
 
 	best = -1;
 	bestprio = -100;
@@ -773,17 +789,8 @@ pcm_best_unit(int old)
 	}
 
 	/* Change default devfs entries to new best device if needed */
-	if (snd_unit != best) {
-		if ((old_d = devfs_find_device_by_name("dsp%d", snd_unit)))
-			destroy_dev_alias(old_d, "dsp");
-		if ((old_d = devfs_find_device_by_name("mixer%d", snd_unit)))
-			destroy_dev_alias(old_d, "mixer");
-		if (best >= 0) {
-			d = devclass_get_softc(pcm_devclass, best);
-			make_dev_alias(d->dsp_clonedev, "dsp");
-			make_dev_alias(d->mixer_dev, "mixer");
-		}
-	}
+	if (snd_unit != best)
+		pcm_set_dev_alias(best);
 
 	return (best);
 }
@@ -823,10 +830,14 @@ pcm_setstatus(device_t dev, char *str)
 
 	if (snd_unit_auto < 0)
 		snd_unit_auto = (snd_unit < 0) ? 1 : 0;
-	if (snd_unit < 0 || snd_unit_auto > 1)
-		snd_unit = device_get_unit(dev);
-	else if (snd_unit_auto == 1)
+	if (snd_unit < 0 || snd_unit_auto > 1) {
+		if (device_get_unit(dev) != snd_unit) {
+			pcm_set_dev_alias(device_get_unit(dev));
+			snd_unit = device_get_unit(dev);
+		}
+	} else if (snd_unit_auto == 1) {
 		snd_unit = pcm_best_unit(snd_unit);
+	}
 
 	return (0);
 }
