@@ -30,7 +30,9 @@ OBJCLIBS?= -lobjc
 LDADD+=	${OBJCLIBS}
 .endif
 
+.if !empty(SRCS)
 OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
+.endif
 
 .if !target(${PROG})
 ${PROG}: ${OBJS}

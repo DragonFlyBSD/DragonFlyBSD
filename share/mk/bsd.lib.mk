@@ -121,7 +121,9 @@ LDFLAGS+=	-Wl,--version-script=${VERSION_MAP}
 .include <bsd.patch.mk>
 
 .if defined(LIB) && !empty(LIB) || defined(SHLIB_NAME)
+. if !empty(SRCS)
 OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
+. endif
 .endif
 
 .if defined(LIB) && !empty(LIB)
