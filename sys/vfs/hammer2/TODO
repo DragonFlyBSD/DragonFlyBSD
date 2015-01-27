@@ -1,4 +1,21 @@
 
+* bulkfree - sync between passes and enforce serialization of operation
+
+* bulkfree - signal check, allow interrupt
+
+* bulkfree - sub-passes when kernel memory block isn't large enough
+
+* bulkfree - limit kernel memory allocation for bmap space
+
+* bulkfree - must include any detached vnodes in scan so open unlinked files
+	     are not ripped out from under the system.
+
+* bulkfree - must include all volume headers in scan so they can be used
+	     for recovery or automatic snapshot retrieval.
+
+* bulkfree - snapshot duplicate sub-tree cache and tests needed to reduce
+	     unnecessary re-scans.
+
 * Currently the check code (bref.methods / crc, sha, etc) is being checked
   every single blasted time a chain is locked, even if the underlying buffer
   was previously checked for that chain.  This needs an optimization to
