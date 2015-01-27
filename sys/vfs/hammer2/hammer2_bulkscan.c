@@ -179,14 +179,23 @@ hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
  * Bulkfree callback info
  */
 typedef struct hammer2_bulkfree_info {
+	hammer2_mount_t		*hmp;
+	hammer2_trans_t		*trans;
 	kmem_anon_desc_t	kp;
 	hammer2_off_t		sbase;		/* sub-loop iteration */
 	hammer2_off_t		sstop;
 	hammer2_bmap_data_t	*bmap;
+	long			count_10_00;
+	long			count_11_10;
+	long			count_10_11;
+	long			count_l0cleans;
+	long			count_linadjusts;
 } hammer2_bulkfree_info_t;
 
 static int h2_bulkfree_callback(hammer2_chain_t *chain, void *info);
 static void h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo);
+static void h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
+			hammer2_bmap_data_t *live, hammer2_bmap_data_t *bmap);
 
 int
 hammer2_bulkfree_pass(hammer2_mount_t *hmp, hammer2_ioc_bulkfree_t *bfi)
@@ -196,9 +205,13 @@ hammer2_bulkfree_pass(hammer2_mount_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	size_t size;
 	int doabort = 0;
 
+	/* hammer2_vfs_sync(hmp->mp, MNT_WAIT); XXX */
+
 	bzero(&cbinfo, sizeof(cbinfo));
 	size = (bfi->size + HAMMER2_FREEMAP_LEVELN_PSIZE - 1) &
 	       ~(size_t)(HAMMER2_FREEMAP_LEVELN_PSIZE - 1);
+	cbinfo.trans = &trans;
+	cbinfo.hmp = hmp;
 	cbinfo.bmap = kmem_alloc_swapbacked(&cbinfo.kp, size);
 	cbinfo.sbase = 0;
 	cbinfo.sstop = cbinfo.sbase +
@@ -213,6 +226,13 @@ hammer2_bulkfree_pass(hammer2_mount_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	hammer2_trans_done(&trans);
 
 	kmem_free_swapbacked(&cbinfo.kp);
+
+	kprintf("bulkfree pass statistics:\n");
+	kprintf("    transition->free   %ld\n", cbinfo.count_10_00);
+	kprintf("    transition->staged %ld\n", cbinfo.count_11_10);
+	kprintf("    raced on           %ld\n", cbinfo.count_10_11);
+	kprintf("    ~2MB segs cleaned  %ld\n", cbinfo.count_l0cleans);
+	kprintf("    linear adjusts     %ld\n", cbinfo.count_linadjusts);
 
 	return doabort;
 }
@@ -316,12 +336,19 @@ h2_bulkfree_callback(hammer2_chain_t *chain, void *info)
 	 */
 	while (bytes > 0) {
 		int bindex;
-		int bmask;
+		uint32_t bmask;
 
 		bindex = (int)data_off >> (HAMMER2_FREEMAP_BLOCK_RADIX +
 					   HAMMER2_BMAP_INDEX_RADIX);
 		bmask = 3 << ((((int)data_off & HAMMER2_BMAP_INDEX_MASK) >>
 			     HAMMER2_FREEMAP_BLOCK_RADIX) << 1);
+
+		/*
+		 * NOTE: The 'avail' calculation will not be correct because
+		 *	 it does not take into account distinct sub-16K
+		 *	 allocations (which we can't track without eating a
+		 *	 lot more memory).  Use it here only as a hint.
+		 */
 		if ((bmap->bitmap[bindex] & bmask) == 0) {
 			if (bytes >= HAMMER2_FREEMAP_BLOCK_SIZE)
 				bmap->avail -= HAMMER2_FREEMAP_BLOCK_SIZE;
@@ -338,12 +365,30 @@ h2_bulkfree_callback(hammer2_chain_t *chain, void *info)
 	return error;
 }
 
+/*
+ * Synchronize the in-memory bitmap with the live freemap.  This is not a
+ * direct copy.  Instead the bitmaps must be compared:
+ *
+ *	In-memory	Live-freemap
+ *	   00		  11 -> 10
+ *			  10 -> 00
+ *	   11		  10 -> 11	handles race against live
+ *			  ** -> 11	nominally warn of corruption
+ * 
+ */
 static void
 h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 {
 	hammer2_off_t data_off;
+	hammer2_key_t key;
+	hammer2_key_t key_dummy;
 	hammer2_bmap_data_t *bmap;
-	int didl1;
+	hammer2_bmap_data_t *live;
+	hammer2_chain_t *live_parent;
+	hammer2_chain_t *live_chain;
+	int cache_index = -1;
+	int bmapindex;
+	int ddflag;
 
 	kprintf("hammer2_bulkfree - range %016jx-%016jx\n",
 		(intmax_t)cbinfo->sbase,
@@ -351,30 +396,180 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		
 	data_off = cbinfo->sbase;
 	bmap = cbinfo->bmap;
-	didl1 = 0;
+
+	live_parent = &cbinfo->hmp->fchain;
+	hammer2_chain_lock(live_parent, HAMMER2_RESOLVE_ALWAYS);
+	live_chain = NULL;
 
 	while (data_off < cbinfo->sstop) {
-		if (bmap->class) {
-			kprintf("%016jx %04d.%04x (avail=%7d) "
-				"%08x %08x %08x %08x %08x %08x %08x %08x\n",
-				(intmax_t)data_off,
-				(int)((data_off &
-				       HAMMER2_FREEMAP_LEVEL1_MASK) >>
-				      HAMMER2_FREEMAP_LEVEL0_RADIX),
-				bmap->class,
-				bmap->avail,
-				bmap->bitmap[0], bmap->bitmap[1],
-				bmap->bitmap[2], bmap->bitmap[3],
-				bmap->bitmap[4], bmap->bitmap[5],
-				bmap->bitmap[6], bmap->bitmap[7]);
-			didl1 = 1;
+		/*
+		 * The freemap is not used below allocator_beg or beyond
+		 * volu_size.
+		 */
+		if (data_off < cbinfo->hmp->voldata.allocator_beg)
+			goto next;
+		if (data_off > cbinfo->hmp->voldata.volu_size)
+			goto next;
+
+		/*
+		 * Locate the freemap leaf on the live filesystem
+		 */
+		key = (data_off & ~HAMMER2_FREEMAP_LEVEL1_MASK);
+		if (live_chain == NULL || live_chain->bref.key != key) {
+			if (live_chain)
+				hammer2_chain_unlock(live_chain);
+			live_chain = hammer2_chain_lookup(
+					    &live_parent,
+					    &key_dummy,
+					    key,
+					    key + HAMMER2_FREEMAP_LEVEL1_MASK,
+					    &cache_index,
+					    HAMMER2_LOOKUP_ALWAYS,
+					    &ddflag);
+			if (live_chain)
+				kprintf("live_chain %016jx\n", (intmax_t)key);
+					
 		}
+		if (live_chain == NULL) {
+			if (bmap->class &&
+			    bmap->avail != HAMMER2_FREEMAP_LEVEL0_SIZE) {
+				kprintf("hammer2_bulkfree: cannot locate "
+					"live leaf for allocated data "
+					"near %016jx\n",
+					(intmax_t)data_off);
+			}
+			goto next;
+		}
+
+		bmapindex = (data_off & HAMMER2_FREEMAP_LEVEL1_MASK) >>
+			    HAMMER2_FREEMAP_LEVEL0_RADIX;
+		live = &live_chain->data->bmdata[bmapindex];
+
+		/*
+		 * For now just handle the 11->10, 10->00, and 10->11
+		 * transitions.
+		 */
+		if (live->class == 0 ||
+		    live->avail == HAMMER2_FREEMAP_LEVEL0_SIZE) {
+			goto next;
+		}
+		if (bcmp(live->bitmap, bmap->bitmap, sizeof(bmap->bitmap)) == 0)
+			goto next;
+		kprintf("live %016jx %04d.%04x (avail=%d)\n",
+			data_off, bmapindex, live->class, live->avail);
+
+		hammer2_chain_modify(cbinfo->trans, live_chain, 0);
+		h2_bulkfree_sync_adjust(cbinfo, live, bmap);
+next:
 		data_off += HAMMER2_FREEMAP_LEVEL0_SIZE;
 		++bmap;
-		if ((data_off & HAMMER2_FREEMAP_LEVEL1_MASK) == 0) {
-			if (didl1)
-				kprintf("\n");
-			didl1 = 0;
+	}
+	if (live_chain)
+		hammer2_chain_unlock(live_chain);
+	if (live_parent)
+		hammer2_chain_unlock(live_parent);
+}
+
+static
+void
+h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
+			hammer2_bmap_data_t *live, hammer2_bmap_data_t *bmap)
+{
+	int bindex;
+	int scount;
+	uint32_t lmask;
+	uint32_t mmask;
+
+	for (bindex = 0; bindex < 8; ++bindex) {
+		lmask = live->bitmap[bindex];
+		mmask = bmap->bitmap[bindex];
+		if (lmask == mmask)
+			continue;
+
+		for (scount = 0; scount < 32; scount += 2) {
+			if ((mmask & 3) == 0) {
+				/*
+				 * in-memory 00		live 11 -> 10
+				 *			live 10 -> 00
+				 */
+				switch (lmask & 3) {
+				case 0:	/* 00 */
+					break;
+				case 1:	/* 01 */
+					kprintf("hammer2_bulkfree: cannot "
+						"transition m=00/l=01\n");
+					break;
+				case 2:	/* 10 -> 00 */
+					live->bitmap[bindex] &= ~(2 << scount);
+					++cbinfo->count_10_00;
+					break;
+				case 3:	/* 11 -> 10 */
+					live->bitmap[bindex] &= ~(1 << scount);
+					++cbinfo->count_11_10;
+					break;
+				}
+			} else if ((lmask & 3) == 3) {
+				/*
+				 * in-memory 11		live 10 -> 11
+				 *			live ** -> 11
+				 */
+				switch (lmask & 3) {
+				case 0:	/* 00 */
+					kprintf("hammer2_bulkfree: cannot "
+						"transition m=11/l=00\n");
+					break;
+				case 1:	/* 01 */
+					kprintf("hammer2_bulkfree: cannot "
+						"transition m=11/l=01\n");
+					break;
+				case 2:	/* 10 -> 11 */
+					live->bitmap[bindex] |= (1 << scount);
+					++cbinfo->count_10_11;
+					break;
+				case 3:	/* 11 */
+					break;
+				}
+			}
+			mmask >>= 2;
+			lmask >>= 2;
 		}
 	}
+
+	/*
+	 * Determine if the live bitmap is completely free and reset its
+	 * fields if so.  Otherwise check to see if we can reduce the linear
+	 * offset.
+	 */
+	for (bindex = 7; bindex >= 0; --bindex) {
+		if (live->bitmap[bindex] != 0)
+			break;
+	}
+	if (bindex < 0) {
+		live->avail = HAMMER2_FREEMAP_LEVEL0_SIZE;
+		live->class = 0;
+		live->linear = 0;
+		++cbinfo->count_l0cleans;
+	} else if (bindex < 7) {
+		++bindex;
+		if (live->linear > bindex * HAMMER2_FREEMAP_BLOCK_SIZE)
+			live->linear = bindex * HAMMER2_FREEMAP_BLOCK_SIZE;
+			++cbinfo->count_linadjusts;
+	}
+
+#if 0
+	if (bmap->class) {
+		kprintf("%016jx %04d.%04x (avail=%7d) "
+			"%08x %08x %08x %08x %08x %08x %08x %08x\n",
+			(intmax_t)data_off,
+			(int)((data_off &
+			       HAMMER2_FREEMAP_LEVEL1_MASK) >>
+			      HAMMER2_FREEMAP_LEVEL0_RADIX),
+			bmap->class,
+			bmap->avail,
+			bmap->bitmap[0], bmap->bitmap[1],
+			bmap->bitmap[2], bmap->bitmap[3],
+			bmap->bitmap[4], bmap->bitmap[5],
+			bmap->bitmap[6], bmap->bitmap[7]);
+	}
+#endif
 }
