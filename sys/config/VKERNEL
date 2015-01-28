@@ -58,7 +58,6 @@ options 	PROCFS			#Process filesystem
 options 	COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
 options 	UCONSOLE		#Allow users to grab the console
 options 	KTRACE			#ktrace(1) support
-options 	P1003_1B		#Posix P1003_1B real-time extensions
 options 	_KPOSIX_PRIORITY_SCHEDULING
 options 	ICMP_BANDLIM		#Rate limit bad replies
 
