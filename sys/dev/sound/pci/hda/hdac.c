@@ -530,10 +530,15 @@ hdac_dma_cb(void *callback_arg, bus_dma_segment_t *segs, int nseg, int error)
 static int
 hdac_dma_alloc(struct hdac_softc *sc, struct hdac_dma *dma, bus_size_t size)
 {
-	bus_size_t roundsz;
+	bus_size_t alignment, roundsz;
 	int result;
 
-	roundsz = roundup2(size, HDA_DMA_ALIGNMENT);
+	if (sc->flags & HDAC_F_DMA_NOCACHE)
+		alignment = roundup2(HDA_DMA_ALIGNMENT, PAGE_SIZE);
+	else
+		alignment = HDA_DMA_ALIGNMENT;
+
+	roundsz = roundup2(size, alignment);
 	bzero(dma, sizeof(*dma));
 
 	/*
@@ -541,7 +546,7 @@ hdac_dma_alloc(struct hdac_softc *sc, struct hdac_dma *dma, bus_size_t size)
 	 */
 	result = bus_dma_tag_create(
 	    bus_get_dma_tag(sc->dev),		/* parent */
-	    HDA_DMA_ALIGNMENT,			/* alignment */
+	    alignment,				/* alignment */
 	    0,					/* boundary */
 	    (sc->support_64bit) ? BUS_SPACE_MAXADDR :
 		BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
@@ -1151,6 +1156,7 @@ hdac_attach(device_t dev)
 		);
 	}
 
+	sc->flags |= HDAC_F_DMA_NOCACHE;
 	/*
 	 * Try to enable PCIe snoop to avoid messing around with
 	 * uncacheable DMA attribute.
