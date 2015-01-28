@@ -43,9 +43,6 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#ifndef _SYS__POSIX_H_
-#include <sys/_posix.h>
-#endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
