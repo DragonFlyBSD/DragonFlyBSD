@@ -2791,6 +2791,7 @@ TO_REMOVE+=/etc/ssh/blacklist.DSA-2048
 TO_REMOVE+=/etc/ssh/blacklist.RSA-1024
 TO_REMOVE+=/etc/ssh/blacklist.RSA-2048
 TO_REMOVE+=/etc/ssh/blacklist.RSA-4096
+TO_REMOVE+=/usr/include/sys/_posix.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
