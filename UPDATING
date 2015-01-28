@@ -12,6 +12,12 @@
 +         UPGRADING DRAGONFLY FROM 4.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+_KPOSIX_VERSION and P1003_1B OPTIONS REMOVED
+--------------------------------------------
+
+The _KPOSIX_VERSION and P1003_1B kernel options have been changed to
+no-ops. They can be removed from custom kernel configurations.
+
 SOUND SYSTEM UPDATED FROM FreeBSD 11-CURRENT
 --------------------------------------------
 
