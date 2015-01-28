@@ -20,12 +20,14 @@
 all: objwarn
 
 .if defined(LIB) && !empty(LIB)
+. if !empty(SRCS)
 OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.no/g}
-.for _PATCH in ${SRCS:T:N*.no_obj.patch:N*.h.patch:M*.patch}
-.for _OBJ in ${_PATCH:R:R:S/$/.no/}
+.  for _PATCH in ${SRCS:T:N*.no_obj.patch:N*.h.patch:M*.patch}
+.   for _OBJ in ${_PATCH:R:R:S/$/.no/}
 OBJS:=	${OBJS:N${_OBJ}} ${_OBJ}
-.endfor
-.endfor
+.   endfor
+.  endfor
+. endif
 .endif
 
 .if defined(LIB) && !empty(LIB)
