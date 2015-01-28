@@ -43,6 +43,7 @@
 #include <sys/proc.h>
 #include <sys/lockf.h>
 #include <sys/jail.h>
+#include <sys/unistd.h>
 #include <machine/smp.h>
 
 SYSCTL_NODE(, 0,	  sysctl, CTLFLAG_RW, 0,
@@ -109,7 +110,7 @@ SYSCTL_INT(_kern, KERN_ARGMAX, argmax, CTLFLAG_RD,
     0, ARG_MAX, "Maximum bytes of argument to execve(2)");
 
 SYSCTL_INT(_kern, KERN_POSIX1, posix1version, CTLFLAG_RD, 
-    0, _KPOSIX_VERSION, "Version of POSIX attempting to comply to");
+    0, _POSIX_VERSION, "Version of POSIX attempting to comply to");
 
 SYSCTL_INT(_kern, KERN_NGROUPS, ngroups, CTLFLAG_RD, 
     0, NGROUPS_MAX, "Maximum number of groups a user can belong to");
