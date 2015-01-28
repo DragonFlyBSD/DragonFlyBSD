@@ -37,14 +37,8 @@
  * $FreeBSD: src/sys/posix4/semaphore.h,v 1.6 2000/01/20 07:55:42 jasone Exp $
  */
 
-#include <sys/_posix.h>
 #include <sys/_timespec.h>
 #include <machine/limits.h>
-
-#ifdef _P1003_1B_INCLUDE_MAYBES
-#include <sys/types.h>
-#include <fcntl.h>
-#endif
 
 /* Opaque type definition. */
 struct sem;
