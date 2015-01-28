@@ -1031,7 +1031,6 @@ sys_mlock(struct mlock_args *uap)
 int
 sys_mlockall(struct mlockall_args *uap)
 {
-#ifdef _P1003_1B_VISIBLE
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	vm_map_t map = &p->p_vmspace->vm_map;
@@ -1063,9 +1062,6 @@ sys_mlockall(struct mlockall_args *uap)
 	vm_map_unlock(map);
 
 	return (rc);
-#else /* !_P1003_1B_VISIBLE */
-	return (ENOSYS);
-#endif /* _P1003_1B_VISIBLE */
 }
 
 /*
