@@ -1,4 +1,4 @@
-/*	$FreeBSD: src/sys/dev/wpi/if_wpivar.h,v 1.6.2.1 2009/08/03 08:13:06 kensmith Exp $	*/
+/*	$FreeBSD$	*/
 
 /*-
  * Copyright (c) 2006,2007
@@ -106,12 +106,6 @@ struct wpi_amrr {
 	int	recovery;
 };
 
-struct wpi_node {
-        struct  ieee80211_node ni;      /* must be the first */
-        struct  ieee80211_amrr_node     amn;
-};
-#define	WPI_NODE(ni)	((struct wpi_node *)(ni))
-
 struct wpi_power_sample {
 	uint8_t	index;
 	int8_t	power;
@@ -127,7 +121,6 @@ struct wpi_power_group {
 
 struct wpi_vap {
 	struct ieee80211vap	vap;
-	struct ieee80211_amrr	amrr;
 
 	int			(*newstate)(struct ieee80211vap *,
 				    enum ieee80211_state, int);
@@ -135,11 +128,9 @@ struct wpi_vap {
 #define	WPI_VAP(vap)	((struct wpi_vap *)(vap))
 
 struct wpi_softc {
-	struct arpcom		arpcom;
-	struct ifnet		*sc_ifp;
 	device_t		sc_dev;
-
-	struct fw_image 	*sc_fw_image;
+	struct ifnet		*sc_ifp;
+	struct lock		sc_mtx;
 
 	/* Flags indicating the current state the driver
 	 * expects the hardware to be in
@@ -158,21 +149,19 @@ struct wpi_softc {
 	struct wpi_rx_ring	rxq;
 
 	/* TX Thermal Callibration */
-	struct callout		calib_to_callout;
+	struct callout		calib_to;
 	int			calib_cnt;
 
 	/* Watch dog timer */
-	struct callout		watchdog_to_callout;
+	struct callout		watchdog_to;
 	/* Hardware switch polling timer */
-	struct callout		hwswitch_to_callout;
+	struct callout		hwswitch_to;
 
 	struct resource		*irq;
 	struct resource		*mem;
 	bus_space_tag_t		sc_st;
 	bus_space_handle_t	sc_sh;
 	void			*sc_ih;
-	int			mem_rid;
-	int			irq_rid;
 
 	struct wpi_config	config;
 	int			temp;
@@ -205,8 +194,10 @@ struct wpi_softc {
 	char			domain[4];	/*reglatory domain XXX */
 };
 
-#define WPI_LOCK_INIT()
-#define WPI_LOCK() wlan_serialize_enter();
-#define WPI_UNLOCK() wlan_serialize_exit();
-#define WPI_LOCK_DESTROY()
-#define WPI_LOCK_ASSERT() wlan_assert_serialized();
+#define WPI_LOCK_INIT(_sc) \
+        lockinit(&(_sc)->sc_mtx, device_get_nameunit((_sc)->sc_dev), 0, 0)
+#define WPI_LOCK(_sc)                   lockmgr(&(_sc)->sc_mtx, LK_EXCLUSIVE)
+#define WPI_UNLOCK(_sc)                 lockmgr(&(_sc)->sc_mtx, LK_RELEASE)
+#define WPI_LOCK_ASSERT(_sc)            KKASSERT(lockstatus(&(_sc)->sc_mtx, curthread) == LK_EXCLUSIVE)
+#define WPI_LOCK_DESTROY(_sc)           lockuninit(&(_sc)->sc_mtx)
+

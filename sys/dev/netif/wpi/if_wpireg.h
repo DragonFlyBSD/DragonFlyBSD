@@ -1,4 +1,4 @@
-/*	$FreeBSD: src/sys/dev/wpi/if_wpireg.h,v 1.4.2.1 2009/08/03 08:13:06 kensmith Exp $	*/
+/*	$FreeBSD$	*/
 
 /*-
  * Copyright (c) 2006,2007
@@ -143,7 +143,7 @@
 
 /* possible flags for register WPI_UC_CTL */
 #define WPI_UC_ENABLE	(1 << 30)
-#define WPI_UC_RUN	(1 << 31)
+#define WPI_UC_RUN	(1U << 31)
 
 /* possible flags for register WPI_INTR_CSR */
 #define WPI_ALIVE_INTR	(1 << 0)
@@ -151,7 +151,7 @@
 #define WPI_SW_ERROR	(1 << 25)
 #define WPI_TX_INTR	(1 << 27)
 #define WPI_HW_ERROR	(1 << 29)
-#define WPI_RX_INTR	(1 << 31)
+#define WPI_RX_INTR	(1U << 31)
 
 #define WPI_INTR_MASK							\
 	(WPI_SW_ERROR | WPI_HW_ERROR | WPI_TX_INTR | WPI_RX_INTR |	\
@@ -511,7 +511,7 @@ struct {
 	struct {
 	    uint8_t		id;
 	    uint8_t		esslen;
-	    uint8_t		essid[32];
+	    uint8_t		essid[IEEE80211_NWID_LEN];
 	}scan_essids[WPI_SCAN_MAX_ESSIDS];
 	/* followed by probe request body */
 	/* followed by nchan x wpi_scan_chan */

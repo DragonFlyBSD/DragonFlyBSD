@@ -14,11 +14,12 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * $FreeBSD: src/sys/dev/wpi/if_wpi.c,v 1.27.2.2 2010/02/14 09:34:27 gavin Exp $
  */
 
 #define VERSION "20071127"
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * Driver for Intel PRO/Wireless 3945ABG 802.11 network adapters.
@@ -28,7 +29,7 @@
  * state and told to load boot firmware. The boot firmware loads an init and a
  * main  binary firmware image into SRAM on the card via DMA.
  * Once the firmware is loaded, the driver/hw then
- * communicate by way of circular dma rings via the the SRAM to the firmware.
+ * communicate by way of circular dma rings via the SRAM to the firmware.
  *
  * There is 6 memory rings. 1 command ring, 1 rx data ring & 4 tx data rings.
  * The 4 tx data rings allow for prioritization QoS.
@@ -58,6 +59,8 @@
  * via the firmware.
  */
 
+#include "opt_wlan.h"
+
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <sys/sockio.h>
@@ -74,7 +77,7 @@
 #include <sys/linker.h>
 #include <sys/firmware.h>
 
-#include <sys/resource.h>
+#include <sys/stdbool.h>
 #include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
@@ -82,12 +85,13 @@
 
 #include <net/bpf.h>
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_arp.h>
-#include <net/ifq_var.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
@@ -100,11 +104,8 @@
 #include <netinet/ip.h>
 #include <netinet/if_ether.h>
 
-/* XXX: move elsewhere */
-#define abs(x) (((x) < 0) ? -(x) : (x))
-
-#include "if_wpireg.h"
-#include "if_wpivar.h"
+#include <dev/netif/wpi/if_wpireg.h>
+#include <dev/netif/wpi/if_wpivar.h>
 
 #define WPI_DEBUG
 
@@ -129,7 +130,7 @@ enum {
 	WPI_DEBUG_ANY		= 0xffffffff
 };
 
-static int wpi_debug = 1;
+static int wpi_debug;
 SYSCTL_INT(_debug, OID_AUTO, wpi, CTLFLAG_RW, &wpi_debug, 0, "wpi debug level");
 TUNABLE_INT("debug.wpi", &wpi_debug);
 
@@ -159,10 +160,9 @@ static const struct wpi_ident wpi_ident_table[] = {
 };
 
 static struct ieee80211vap *wpi_vap_create(struct ieee80211com *,
-		    const char name[IFNAMSIZ], int unit,
-		    enum ieee80211_opmode opmode,
-		    int flags, const uint8_t bssid[IEEE80211_ADDR_LEN],
-		    const uint8_t mac[IEEE80211_ADDR_LEN]);
+		    const char [IFNAMSIZ], int, enum ieee80211_opmode, int,
+		    const uint8_t [IEEE80211_ADDR_LEN],
+		    const uint8_t [IEEE80211_ADDR_LEN]);
 static void	wpi_vap_delete(struct ieee80211vap *);
 static int	wpi_dma_contig_alloc(struct wpi_softc *, struct wpi_dma_info *,
 		    void **, bus_size_t, bus_size_t, int);
@@ -177,8 +177,6 @@ static int	wpi_alloc_tx_ring(struct wpi_softc *, struct wpi_tx_ring *,
 		    int, int);
 static void	wpi_reset_tx_ring(struct wpi_softc *, struct wpi_tx_ring *);
 static void	wpi_free_tx_ring(struct wpi_softc *, struct wpi_tx_ring *);
-static struct ieee80211_node *wpi_node_alloc(struct ieee80211vap *,
-			    const uint8_t mac[IEEE80211_ADDR_LEN]);
 static int	wpi_newstate(struct ieee80211vap *, enum ieee80211_state, int);
 static void	wpi_mem_lock(struct wpi_softc *);
 static void	wpi_mem_unlock(struct wpi_softc *);
@@ -199,7 +197,7 @@ static void	wpi_cmd_intr(struct wpi_softc *, struct wpi_rx_desc *);
 static void	wpi_notif_intr(struct wpi_softc *);
 static void	wpi_intr(void *);
 static uint8_t	wpi_plcp_signal(int);
-static void	wpi_watchdog_callout(void *);
+static void	wpi_watchdog(void *);
 static int	wpi_tx_data(struct wpi_softc *, struct mbuf *,
 		    struct ieee80211_node *, int);
 static void	wpi_start(struct ifnet *, struct ifaltq_subque *);
@@ -231,8 +229,8 @@ static int	wpi_config(struct wpi_softc *);
 static void	wpi_stop_master(struct wpi_softc *);
 static int	wpi_power_up(struct wpi_softc *);
 static int	wpi_reset(struct wpi_softc *);
-static void	wpi_hwreset_task(void *, int);
-static void	wpi_rfreset_task(void *, int);
+static void	wpi_hwreset(void *, int);
+static void	wpi_rfreset(void *, int);
 static void	wpi_hw_config(struct wpi_softc *);
 static void	wpi_init(void *);
 static void	wpi_init_locked(struct wpi_softc *, int);
@@ -241,7 +239,7 @@ static void	wpi_stop_locked(struct wpi_softc *);
 
 static int	wpi_set_txpower(struct wpi_softc *, struct ieee80211_channel *,
 		    int);
-static void	wpi_calib_timeout_callout(void *);
+static void	wpi_calib_timeout(void *);
 static void	wpi_power_calibration(struct wpi_softc *, int);
 static int	wpi_get_power_index(struct wpi_softc *,
 		    struct wpi_power_group *, struct ieee80211_channel *, int);
@@ -255,6 +253,10 @@ static int wpi_shutdown(device_t);
 static int wpi_suspend(device_t);
 static int wpi_resume(device_t);
 
+#if defined(__DragonFly__)
+static int  wpi_sleep(struct wpi_softc *sc, void *wchan,
+		int flags, const char *wmsg, int timo);
+#endif
 
 static device_method_t wpi_methods[] = {
 	/* Device interface */
@@ -278,6 +280,8 @@ static devclass_t wpi_devclass;
 
 DRIVER_MODULE(wpi, pci, wpi_driver, wpi_devclass, NULL, NULL);
 
+MODULE_VERSION(wpi, 1);
+
 static const uint8_t wpi_ridx_to_plcp[] = {
 	/* OFDM: IEEE Std 802.11a-1999, pp. 14 Table 80 */
 	/* R1-R4 (ral/ural is R4-R1) */
@@ -285,27 +289,24 @@ static const uint8_t wpi_ridx_to_plcp[] = {
 	/* CCK: device-dependent */
 	10, 20, 55, 110
 };
+
 static const uint8_t wpi_ridx_to_rate[] = {
 	12, 18, 24, 36, 48, 72, 96, 108, /* OFDM */
 	2, 4, 11, 22 /*CCK */
 };
-
 
 static int
 wpi_probe(device_t dev)
 {
 	const struct wpi_ident *ident;
 
-	wlan_serialize_enter();
 	for (ident = wpi_ident_table; ident->name != NULL; ident++) {
 		if (pci_get_vendor(dev) == ident->vendor &&
 		    pci_get_device(dev) == ident->device) {
 			device_set_desc(dev, ident->name);
-			wlan_serialize_exit();
-			return 0;
+			return (BUS_PROBE_DEFAULT);
 		}
 	}
-	wlan_serialize_exit();
 	return ENXIO;
 }
 
@@ -330,18 +331,19 @@ wpi_load_firmware(struct wpi_softc *sc)
 	DPRINTFN(WPI_DEBUG_FIRMWARE,
 	    ("Attempting Loading Firmware from wpi_fw module\n"));
 
-	wlan_assert_serialized();
-	wlan_serialize_exit();
+	WPI_UNLOCK(sc);
+
 	if (sc->fw_fp == NULL && (sc->fw_fp = firmware_get("wpifw")) == NULL) {
 		device_printf(sc->sc_dev,
-		    "could not load firmware image 'wpifw_fw'\n");
+		    "could not load firmware image 'wpifw'\n");
 		error = ENOENT;
-		wlan_serialize_enter();
+		WPI_LOCK(sc);
 		goto fail;
 	}
-	wlan_serialize_enter();
 
 	fp = sc->fw_fp;
+
+	WPI_LOCK(sc);
 
 	/* Validate the firmware is minimum a particular version */
 	if (fp->version < WPI_FW_MINVERSION) {
@@ -439,11 +441,19 @@ wpi_load_firmware(struct wpi_softc *sc)
 	WPI_WRITE(sc, WPI_RESET, 0);
 
 	/* wait at most one second for the first alive notification */
-	if ((error = zsleep(sc, &wlan_global_serializer, 0, "wpiinit", hz)) != 0) {
+#if defined(__DragonFly__)
+	if ((error = wpi_sleep(sc, sc, PCATCH, "wpiinit", hz)) != 0) {
 		device_printf(sc->sc_dev,
 		    "timeout waiting for adapter to initialize\n");
 		goto fail;
 	}
+#else
+	if ((error = msleep(sc, &sc->sc_mtx, PCATCH, "wpiinit", hz)) != 0) {
+		device_printf(sc->sc_dev,
+		    "timeout waiting for adapter to initialize\n");
+		goto fail;
+	}
+#endif
 
 	/* copy runtime images into pre-allocated DMA-sage memory */
 	memcpy(dma->vaddr, rdata, rdatasz);
@@ -460,11 +470,19 @@ wpi_load_firmware(struct wpi_softc *sc)
 	wpi_mem_unlock(sc);
 
 	/* wait at most one second for the first alive notification */
-	if ((error = zsleep(sc, &wlan_global_serializer, 0, "wpiinit", hz)) != 0) {
+#if defined(__DragonFly__)
+	if ((error = wpi_sleep(sc, sc, PCATCH, "wpiinit", hz)) != 0) {
 		device_printf(sc->sc_dev,
 		    "timeout waiting for adapter to initialize2\n");
 		goto fail;
 	}
+#else
+	if ((error = msleep(sc, &sc->sc_mtx, PCATCH, "wpiinit", hz)) != 0) {
+		device_printf(sc->sc_dev,
+		    "timeout waiting for adapter to initialize2\n");
+		goto fail;
+	}
+#endif
 
 	DPRINTFN(WPI_DEBUG_FIRMWARE,
 	    ("Firmware loaded to driver successfully\n"));
@@ -480,11 +498,11 @@ fail:
 static void
 wpi_unload_firmware(struct wpi_softc *sc)
 {
+
 	if (sc->fw_fp) {
-		wlan_assert_serialized();
-		wlan_serialize_exit();
+		WPI_UNLOCK(sc);
 		firmware_put(sc->fw_fp, FIRMWARE_UNLOAD);
-		wlan_serialize_enter();
+		WPI_LOCK(sc);
 		sc->fw_fp = NULL;
 	}
 }
@@ -492,16 +510,14 @@ wpi_unload_firmware(struct wpi_softc *sc)
 static int
 wpi_attach(device_t dev)
 {
-	struct wpi_softc *sc;
+	struct wpi_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp;
 	struct ieee80211com *ic;
-	int ac, error, supportsa = 1;
+	int ac, error, rid, supportsa = 1;
 	uint32_t tmp;
 	const struct wpi_ident *ident;
 	uint8_t macaddr[IEEE80211_ADDR_LEN];
 
-	wlan_serialize_enter();
-	sc = device_get_softc(dev);
 	sc->sc_dev = dev;
 
 	if (bootverbose || WPI_DEBUG_SET)
@@ -521,17 +537,13 @@ wpi_attach(device_t dev)
 	}
 
 	/* Create the tasks that can be queued */
-	TASK_INIT(&sc->sc_restarttask, 0, wpi_hwreset_task, sc);
-	TASK_INIT(&sc->sc_radiotask, 0, wpi_rfreset_task, sc);
+	TASK_INIT(&sc->sc_restarttask, 0, wpi_hwreset, sc);
+	TASK_INIT(&sc->sc_radiotask, 0, wpi_rfreset, sc);
 
-	callout_init(&sc->calib_to_callout);
-	callout_init(&sc->watchdog_to_callout);
+	WPI_LOCK_INIT(sc);
 
-	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
-		device_printf(dev, "chip is in D%d power mode "
-		    "-- setting to D0\n", pci_get_powerstate(dev));
-		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
-	}
+	callout_init_mtx(&sc->calib_to, &sc->sc_mtx, 0);
+	callout_init_mtx(&sc->watchdog_to, &sc->sc_mtx, 0);
 
 	/* disable the retry timeout register */
 	pci_write_config(dev, 0x41, 0, 1);
@@ -539,8 +551,8 @@ wpi_attach(device_t dev)
 	/* enable bus-mastering */
 	pci_enable_busmaster(dev);
 
-	sc->mem_rid = PCIR_BAR(0);
-	sc->mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &sc->mem_rid,
+	rid = PCIR_BAR(0);
+	sc->mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
 	    RF_ACTIVE);
 	if (sc->mem == NULL) {
 		device_printf(dev, "could not allocate memory resource\n");
@@ -551,8 +563,8 @@ wpi_attach(device_t dev)
 	sc->sc_st = rman_get_bustag(sc->mem);
 	sc->sc_sh = rman_get_bushandle(sc->mem);
 
-	sc->irq_rid = 0;
-	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irq_rid,
+	rid = 0;
+	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 	    RF_ACTIVE | RF_SHAREABLE);
 	if (sc->irq == NULL) {
 		device_printf(dev, "could not allocate interrupt resource\n");
@@ -667,14 +679,16 @@ wpi_attach(device_t dev)
 	ifp->if_init = wpi_init;
 	ifp->if_ioctl = wpi_ioctl;
 	ifp->if_start = wpi_start;
-	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
-#ifdef notyet
-	ifq_set_ready(&ifp->if_snd);
+#if defined(__DragonFly__)
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
+#else
+	IFQ_SET_MAXLEN(&ifp->if_snd, ifqmaxlen);
+	ifp->if_snd.ifq_drv_maxlen = ifqmaxlen;
+	IFQ_SET_READY(&ifp->if_snd);
 #endif
 
 	ieee80211_ifattach(ic, macaddr);
 	/* override default methods */
-	ic->ic_node_alloc = wpi_node_alloc;
 	ic->ic_raw_xmit = wpi_raw_xmit;
 	ic->ic_wme.wme_update = wpi_wme_update;
 	ic->ic_scan_start = wpi_scan_start;
@@ -695,8 +709,13 @@ wpi_attach(device_t dev)
 	/*
 	 * Hook our interrupt after all initialization is complete.
 	 */
+#if defined (__DragonFly__)
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 	    wpi_intr, sc, &sc->sc_ih, &wlan_global_serializer);
+#else
+	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET |INTR_MPSAFE,
+	    NULL, wpi_intr, sc, &sc->sc_ih);
+#endif
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
 		goto fail;
@@ -707,37 +726,35 @@ wpi_attach(device_t dev)
 #ifdef XXX_DEBUG
 	ieee80211_announce_channels(ic);
 #endif
-	wlan_serialize_exit();
 	return 0;
 
-fail:
-	wlan_serialize_exit();
-	wpi_detach(dev);
+fail:	wpi_detach(dev);
 	return ENXIO;
 }
 
 static int
 wpi_detach(device_t dev)
 {
-	struct wpi_softc *sc;
-	struct ifnet *ifp;
+	struct wpi_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic;
 	int ac;
 
-	wlan_serialize_enter();
-	sc = device_get_softc(dev);
-	ifp = sc->sc_ifp;
+	if (sc->irq != NULL)
+		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
+
 	if (ifp != NULL) {
 		ic = ifp->if_l2com;
 
 		ieee80211_draintask(ic, &sc->sc_restarttask);
 		ieee80211_draintask(ic, &sc->sc_radiotask);
 		wpi_stop(sc);
-		callout_stop(&sc->watchdog_to_callout);
-		callout_stop(&sc->calib_to_callout);
+		callout_drain(&sc->watchdog_to);
+		callout_drain(&sc->calib_to);
 		ieee80211_ifdetach(ic);
 	}
 
+	WPI_LOCK(sc);
 	if (sc->txq[0].data_dmat) {
 		for (ac = 0; ac < WME_NUM_AC; ac++)
 			wpi_free_tx_ring(sc, &sc->txq[ac]);
@@ -753,28 +770,28 @@ wpi_detach(device_t dev)
 
 	if (sc->fw_dma.tag)
 		wpi_free_fwmem(sc);
+	WPI_UNLOCK(sc);
 
-	if (sc->irq != NULL) {
-		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
-		bus_release_resource(dev, SYS_RES_IRQ, sc->irq_rid, sc->irq);
-	}
-
+	if (sc->irq != NULL)
+		bus_release_resource(dev, SYS_RES_IRQ, rman_get_rid(sc->irq),
+		    sc->irq);
 	if (sc->mem != NULL)
-		bus_release_resource(dev, SYS_RES_MEMORY, sc->mem_rid, sc->mem);
+		bus_release_resource(dev, SYS_RES_MEMORY,
+		    rman_get_rid(sc->mem), sc->mem);
 
 	if (ifp != NULL)
 		if_free(ifp);
 
-	wlan_serialize_exit();
+	WPI_LOCK_DESTROY(sc);
+
 	return 0;
 }
 
 static struct ieee80211vap *
-wpi_vap_create(struct ieee80211com *ic,
-	const char name[IFNAMSIZ], int unit,
-	enum ieee80211_opmode opmode, int flags,
-	const uint8_t bssid[IEEE80211_ADDR_LEN],
-	const uint8_t mac[IEEE80211_ADDR_LEN])
+wpi_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
+    enum ieee80211_opmode opmode, int flags,
+    const uint8_t bssid[IEEE80211_ADDR_LEN],
+    const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct wpi_vap *wvp;
 	struct ieee80211vap *vap;
@@ -792,7 +809,6 @@ wpi_vap_create(struct ieee80211com *ic,
 	vap->iv_newstate = wpi_newstate;
 
 	ieee80211_ratectl_init(vap);
-
 	/* complete setup */
 	ieee80211_vap_attach(vap, ieee80211_media_change, ieee80211_media_status);
 	ic->ic_opmode = opmode;
@@ -849,11 +865,19 @@ wpi_dma_contig_alloc(struct wpi_softc *sc, struct wpi_dma_info *dma,
 		align = alignment;
 		reqsize = size;
 	}
-	error = bus_dma_tag_create(dma->tag, align,
+#if defined(__DragonFly__)
+	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), align,
 	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    NULL, NULL, reqsize,
 	    1, reqsize, flags,
 	    &dma->tag);
+#else
+	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), align,
+	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+	    NULL, NULL, reqsize,
+	    1, reqsize, flags,
+	    NULL, NULL, &dma->tag);
+#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not create shared page DMA tag\n");
@@ -915,13 +939,13 @@ static void
 wpi_dma_contig_free(struct wpi_dma_info *dma)
 {
 	if (dma->tag) {
-		if (dma->map != NULL) {
+		if (dma->vaddr_start != NULL) {
 			if (dma->paddr_start != 0) {
 				bus_dmamap_sync(dma->tag, dma->map,
 				    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
 				bus_dmamap_unload(dma->tag, dma->map);
 			}
-			bus_dmamem_free(dma->tag, &dma->vaddr_start, dma->map);
+			bus_dmamem_free(dma->tag, dma->vaddr_start, dma->map);
 		}
 		bus_dma_tag_destroy(dma->tag);
 	}
@@ -973,10 +997,17 @@ wpi_alloc_rx_ring(struct wpi_softc *sc, struct wpi_rx_ring *ring)
 		goto fail;
 	}
 
-        error = bus_dma_tag_create(ring->data_dmat, 1, 0,
+#if defined(__DragonFly__)
+        error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0, 
 	    BUS_SPACE_MAXADDR_32BIT,
             BUS_SPACE_MAXADDR, NULL, NULL, MJUMPAGESIZE, 1,
             MJUMPAGESIZE, BUS_DMA_NOWAIT, &ring->data_dmat);
+#else
+        error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0, 
+	    BUS_SPACE_MAXADDR_32BIT,
+            BUS_SPACE_MAXADDR, NULL, NULL, MJUMPAGESIZE, 1,
+            MJUMPAGESIZE, BUS_DMA_NOWAIT, NULL, NULL, &ring->data_dmat);
+#endif
         if (error != 0) {
                 device_printf(sc->sc_dev,
 		    "%s: bus_dma_tag_create_failed, error %d\n",
@@ -1018,7 +1049,7 @@ wpi_alloc_rx_ring(struct wpi_softc *sc, struct wpi_rx_ring *ring)
 			error = ENOMEM;	/* XXX unique code */
 			goto fail;
 		}
-		bus_dmamap_sync(ring->data_dmat, data->map,
+		bus_dmamap_sync(ring->data_dmat, data->map, 
 		    BUS_DMASYNC_PREWRITE);
 
 		data->m = m;
@@ -1064,9 +1095,18 @@ wpi_free_rx_ring(struct wpi_softc *sc, struct wpi_rx_ring *ring)
 
 	wpi_dma_contig_free(&ring->desc_dma);
 
-	for (i = 0; i < WPI_RX_RING_COUNT; i++)
-		if (ring->data[i].m != NULL)
-			m_freem(ring->data[i].m);
+	for (i = 0; i < WPI_RX_RING_COUNT; i++) {
+		struct wpi_rx_data *data = &ring->data[i];
+
+		if (data->m != NULL) {
+			bus_dmamap_sync(ring->data_dmat, data->map,
+			    BUS_DMASYNC_POSTREAD);
+			bus_dmamap_unload(ring->data_dmat, data->map);
+			m_freem(data->m);
+		}
+		if (data->map != NULL)
+			bus_dmamap_destroy(ring->data_dmat, data->map);
+	}
 }
 
 static int
@@ -1112,10 +1152,17 @@ wpi_alloc_tx_ring(struct wpi_softc *sc, struct wpi_tx_ring *ring, int count,
 		goto fail;
 	}
 
-	error = bus_dma_tag_create(ring->data_dmat, 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MJUMPAGESIZE,
-	    WPI_MAX_SCATTER - 1, MJUMPAGESIZE, BUS_DMA_NOWAIT,
+#if defined(__DragonFly__)
+	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
+	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES,
+	    WPI_MAX_SCATTER - 1, MCLBYTES, BUS_DMA_NOWAIT,
 	    &ring->data_dmat);
+#else
+	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
+	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES,
+	    WPI_MAX_SCATTER - 1, MCLBYTES, BUS_DMA_NOWAIT, NULL, NULL,
+	    &ring->data_dmat);
+#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create data DMA tag\n");
 		goto fail;
@@ -1207,13 +1254,12 @@ wpi_free_tx_ring(struct wpi_softc *sc, struct wpi_tx_ring *ring)
 static int
 wpi_shutdown(device_t dev)
 {
-	struct wpi_softc *sc;
+	struct wpi_softc *sc = device_get_softc(dev);
 
-	wlan_serialize_enter();
-	sc = device_get_softc(dev);
+	WPI_LOCK(sc);
 	wpi_stop_locked(sc);
 	wpi_unload_firmware(sc);
-	wlan_serialize_exit();
+	WPI_UNLOCK(sc);
 
 	return 0;
 }
@@ -1221,45 +1267,23 @@ wpi_shutdown(device_t dev)
 static int
 wpi_suspend(device_t dev)
 {
-	struct wpi_softc *sc;
+	struct wpi_softc *sc = device_get_softc(dev);
+	struct ieee80211com *ic = sc->sc_ifp->if_l2com;
 
-	wlan_serialize_enter();
-	sc = device_get_softc(dev);
-	wpi_stop(sc);
-	wlan_serialize_exit();
+	ieee80211_suspend_all(ic);
 	return 0;
 }
 
 static int
 wpi_resume(device_t dev)
 {
-	struct wpi_softc *sc;
-	struct ifnet *ifp;
+	struct wpi_softc *sc = device_get_softc(dev);
+	struct ieee80211com *ic = sc->sc_ifp->if_l2com;
 
-	wlan_serialize_enter();
-	sc = device_get_softc(dev);
-	ifp = sc->sc_ifp;
 	pci_write_config(dev, 0x41, 0, 1);
 
-	if (ifp->if_flags & IFF_UP) {
-		wpi_init(ifp->if_softc);
-		if (ifp->if_flags & IFF_RUNNING)
-			if_devstart(ifp);
-	}
-	wlan_serialize_exit();
+	ieee80211_resume_all(ic);
 	return 0;
-}
-
-/* ARGSUSED */
-static struct ieee80211_node *
-wpi_node_alloc(struct ieee80211vap *vap __unused,
-	const uint8_t mac[IEEE80211_ADDR_LEN] __unused)
-{
-	struct wpi_node *wn;
-
-	wn = kmalloc(sizeof (struct wpi_node), M_80211_NODE, M_INTWAIT | M_ZERO);
-
-	return &wn->ni;
 }
 
 /**
@@ -1278,8 +1302,27 @@ wpi_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		ieee80211_state_name[vap->iv_state],
 		ieee80211_state_name[nstate], sc->flags));
 
-	if (nstate == IEEE80211_S_AUTH) {
-		/* The node must be registered in the firmware before auth */
+	IEEE80211_UNLOCK(ic);
+	WPI_LOCK(sc);
+	if (nstate == IEEE80211_S_SCAN && vap->iv_state != IEEE80211_S_INIT) {
+		/*
+		 * On !INIT -> SCAN transitions, we need to clear any possible
+		 * knowledge about associations.
+		 */
+		error = wpi_config(sc);
+		if (error != 0) {
+			device_printf(sc->sc_dev,
+			    "%s: device config failed, error %d\n",
+			    __func__, error);
+		}
+	}
+	if (nstate == IEEE80211_S_AUTH ||
+	    (nstate == IEEE80211_S_ASSOC && vap->iv_state == IEEE80211_S_RUN)) {
+		/*
+		 * The node must be registered in the firmware before auth.
+		 * Also the associd must be cleared on RUN -> ASSOC
+		 * transitions.
+		 */
 		error = wpi_auth(sc, vap);
 		if (error != 0) {
 			device_printf(sc->sc_dev,
@@ -1297,9 +1340,11 @@ wpi_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	}
 	if (nstate == IEEE80211_S_RUN) {
 		/* RUN -> RUN transition; just restart the timers */
-		wpi_calib_timeout_callout(sc);
+		wpi_calib_timeout(sc);
 		/* XXX split out rate control timer */
 	}
+	WPI_UNLOCK(sc);
+	IEEE80211_LOCK(ic);
 	return wvp->newstate(vap, nstate, arg);
 }
 
@@ -1468,10 +1513,15 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 
 	if (stat->len > WPI_STAT_MAXLEN) {
 		device_printf(sc->sc_dev, "invalid rx statistic header\n");
-		IFNET_STAT_INC(ifp, ierrors, 1);
+#if defined(__DragonFly__)
+		++ifp->if_ierrors;
+#else
+		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
+#endif
 		return;
 	}
 
+	bus_dmamap_sync(ring->data_dmat, data->map, BUS_DMASYNC_POSTREAD);
 	head = (struct wpi_rx_head *)((caddr_t)(stat + 1) + stat->len);
 	tail = (struct wpi_rx_tail *)((caddr_t)(head + 1) + le16toh(head->len));
 
@@ -1484,13 +1534,21 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 	if ((le32toh(tail->flags) & WPI_RX_NOERROR) != WPI_RX_NOERROR) {
 		DPRINTFN(WPI_DEBUG_RX, ("%s: rx flags error %x\n", __func__,
 		    le32toh(tail->flags)));
-		IFNET_STAT_INC(ifp, ierrors, 1);
+#if defined(__DragonFly__)
+		++ifp->if_ierrors;
+#else
+		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
+#endif
 		return;
 	}
 	if (le16toh(head->len) < sizeof (struct ieee80211_frame)) {
 		DPRINTFN(WPI_DEBUG_RX, ("%s: frame too short: %d\n", __func__,
 		    le16toh(head->len)));
-		IFNET_STAT_INC(ifp, ierrors, 1);
+#if defined(__DragonFly__)
+		++ifp->if_ierrors;
+#else
+		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
+#endif
 		return;
 	}
 
@@ -1499,9 +1557,15 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 	if (mnew == NULL) {
 		DPRINTFN(WPI_DEBUG_RX, ("%s: no mbuf to restock ring\n",
 		    __func__));
-		IFNET_STAT_INC(ifp, ierrors, 1);
+#if defined(__DragonFly__)
+		++ifp->if_ierrors;
+#else
+		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
+#endif
 		return;
 	}
+	bus_dmamap_unload(ring->data_dmat, data->map);
+
 	error = bus_dmamap_load(ring->data_dmat, data->map,
 	    mtod(mnew, caddr_t), MJUMPAGESIZE,
 	    wpi_dma_map_addr, &paddr, BUS_DMA_NOWAIT);
@@ -1509,7 +1573,11 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 		device_printf(sc->sc_dev,
 		    "%s: bus_dmamap_load failed, error %d\n", __func__, error);
 		m_freem(mnew);
-		IFNET_STAT_INC(ifp, ierrors, 1);
+#if defined(__DragonFly__)
+		++ifp->if_ierrors;
+#else
+		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
+#endif
 		return;
 	}
 	bus_dmamap_sync(ring->data_dmat, data->map, BUS_DMASYNC_PREWRITE);
@@ -1558,12 +1626,16 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 			tap->wr_flags |= IEEE80211_RADIOTAP_F_SHORTPRE;
 	}
 
+	WPI_UNLOCK(sc);
+
 	ni = ieee80211_find_rxnode(ic, mtod(m, struct ieee80211_frame_min *));
 	if (ni != NULL) {
 		(void) ieee80211_input(ni, m, stat->rssi, 0);
 		ieee80211_free_node(ni);
 	} else
 		(void) ieee80211_input_all(ic, m, stat->rssi, 0);
+
+	WPI_LOCK(sc);
 }
 
 static void
@@ -1593,13 +1665,20 @@ wpi_tx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc)
 		retrycnt = 1;
 	}
 	ieee80211_ratectl_tx_complete(vap, ni, IEEE80211_RATECTL_TX_SUCCESS,
-		&retrycnt, NULL);
+	    &retrycnt, NULL);
 
 	/* XXX oerrors should only count errors !maxtries */
+#if defined(__DragonFly__)
 	if ((le32toh(stat->status) & 0xff) != 1)
-		IFNET_STAT_INC(ifp, oerrors, 1);
+		++ifp->if_oerrors;
 	else
-		IFNET_STAT_INC(ifp, opackets, 1);
+		++ifp->if_opackets;
+#else
+	if ((le32toh(stat->status) & 0xff) != 1)
+		if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
+	else
+		if_inc_counter(ifp, IFCOUNTER_OPACKETS, 1);
+#endif
 
 	bus_dmamap_sync(ring->data_dmat, txdata->map, BUS_DMASYNC_POSTWRITE);
 	bus_dmamap_unload(ring->data_dmat, txdata->map);
@@ -1612,7 +1691,11 @@ wpi_tx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc)
 	ring->queued--;
 
 	sc->sc_tx_timer = 0;
+#if defined(__DragonFly__)
 	ifq_clr_oactive(&ifp->if_snd);
+#else
+	ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+#endif
 	wpi_start_locked(ifp);
 }
 
@@ -1652,9 +1735,15 @@ wpi_notif_intr(struct wpi_softc *sc)
 	struct wpi_rx_data *data;
 	uint32_t hw;
 
+	bus_dmamap_sync(sc->shared_dma.tag, sc->shared_dma.map,
+	    BUS_DMASYNC_POSTREAD);
+
 	hw = le32toh(sc->shared->next);
 	while (sc->rxq.cur != hw) {
 		data = &sc->rxq.data[sc->rxq.cur];
+
+		bus_dmamap_sync(sc->rxq.data_dmat, data->map,
+		    BUS_DMASYNC_POSTREAD);
 		desc = (void *)data->m->m_ext.ext_buf;
 
 		DPRINTFN(WPI_DEBUG_NOTIFY,
@@ -1707,7 +1796,11 @@ wpi_notif_intr(struct wpi_softc *sc)
 				device_printf(sc->sc_dev,
 				    "Radio transmitter is switched off\n");
 				sc->flags |= WPI_FLAG_HW_RADIO_OFF;
+#if defined(__DragonFly__)
 				ifp->if_flags &= ~IFF_RUNNING;
+#else
+				ifp->if_drv_flags &= ~IFF_DRV_RUNNING;
+#endif
 				/* Disable firmware commands */
 				WPI_WRITE(sc, WPI_UCODE_SET, WPI_DISABLE_CMD);
 			}
@@ -1772,8 +1865,11 @@ wpi_intr(void *arg)
 	struct wpi_softc *sc = arg;
 	uint32_t r;
 
+	WPI_LOCK(sc);
+
 	r = WPI_READ(sc, WPI_INTR);
 	if (r == 0 || r == 0xffffffff) {
+		WPI_UNLOCK(sc);
 		return;
 	}
 
@@ -1794,6 +1890,7 @@ wpi_intr(void *arg)
 			ieee80211_cancel_scan(vap);
 		ieee80211_runtask(ic, &sc->sc_restarttask);
 		sc->flags &= ~WPI_FLAG_BUSY;
+		WPI_UNLOCK(sc);
 		return;
 	}
 
@@ -1807,6 +1904,7 @@ wpi_intr(void *arg)
 	if (sc->sc_ifp->if_flags & IFF_UP)
 		WPI_WRITE(sc, WPI_MASK, WPI_INTR_MASK);
 
+	WPI_UNLOCK(sc);
 }
 
 static uint8_t
@@ -1932,7 +2030,7 @@ wpi_tx_data(struct wpi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
 #if 0
 	tx->data_ntries = tp->maxretry;
 #else
-	tx->data_ntries = 30;		/* XXX way too high */
+	tx->data_ntries = 15;		/* XXX way too high */
 #endif
 
 	if (ieee80211_radiotap_active_vap(vap)) {
@@ -1950,8 +2048,13 @@ wpi_tx_data(struct wpi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
 	m_copydata(m0, 0, hdrlen, (caddr_t)&tx->wh);
 	m_adj(m0, hdrlen);
 
-	error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map, m0, segs,
-	    1, &nsegs, BUS_DMA_NOWAIT);
+#if defined(__DragonFly__)
+	error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map,
+	    m0, segs, 1, &nsegs, BUS_DMA_NOWAIT);
+#else
+	error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map, m0, segs,
+	    &nsegs, BUS_DMA_NOWAIT);
+#endif
 	if (error != 0 && error != EFBIG) {
 		device_printf(sc->sc_dev, "could not map mbuf (error %d)\n",
 		    error);
@@ -1969,8 +2072,13 @@ wpi_tx_data(struct wpi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
 		}
 		m0 = mnew;
 
-		error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map,
-		    m0, segs, 1, &nsegs, BUS_DMA_NOWAIT);
+#if defined(__DragonFly__)
+		error = bus_dmamap_load_mbuf_segment(ring->data_dmat,
+		    data->map, m0, segs, 1, &nsegs, BUS_DMA_NOWAIT);
+#else
+		error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map,
+		    m0, segs, &nsegs, BUS_DMA_NOWAIT);
+#endif
 		if (error != 0) {
 			device_printf(sc->sc_dev,
 			    "could not map mbuf (error %d)\n", error);
@@ -2015,8 +2123,11 @@ wpi_tx_data(struct wpi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
 static void
 wpi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
-	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+	struct wpi_softc *sc = ifp->if_softc;
+
+	WPI_LOCK(sc);
 	wpi_start_locked(ifp);
+	WPI_UNLOCK(sc);
 }
 
 static void
@@ -2027,30 +2138,44 @@ wpi_start_locked(struct ifnet *ifp)
 	struct mbuf *m;
 	int ac;
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0) {
-		ifq_purge(&ifp->if_snd);
+	WPI_LOCK_ASSERT(sc);
+
+#if defined(__DragonFly__)
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
-	}
+#else
+	if ((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0)
+		return;
+#endif
 
 	for (;;) {
+#if defined(__DragonFly__)
 		m = ifq_dequeue(&ifp->if_snd);
+#else
+		IFQ_DRV_DEQUEUE(&ifp->if_snd, m);
+#endif
 		if (m == NULL)
 			break;
 		ac = M_WME_GETAC(m);
 		if (sc->txq[ac].queued > sc->txq[ac].count - 8) {
 			/* there is no place left in this ring */
-			/*
-			 * XXX: we CANNOT do it this way. If something
-			 * is prepended already, this is going to blow.
-			 */
-			ifq_set_oactive(&ifp->if_snd);
+#if defined(__DragonFly__)
 			ifq_prepend(&ifp->if_snd, m);
+			ifq_set_oactive(&ifp->if_snd);
+#else
+			IFQ_DRV_PREPEND(&ifp->if_snd, m);
+			ifp->if_drv_flags |= IFF_DRV_OACTIVE;
+#endif
 			break;
 		}
 		ni = (struct ieee80211_node *) m->m_pkthdr.rcvif;
 		if (wpi_tx_data(sc, m, ni, ac) != 0) {
 			ieee80211_free_node(ni);
-			IFNET_STAT_INC(ifp, oerrors, 1);
+#if defined(__DragonFly__)
+			++ifp->if_oerrors;
+#else
+			if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
+#endif
 			break;
 		}
 		sc->sc_tx_timer = 5;
@@ -2066,35 +2191,60 @@ wpi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	struct wpi_softc *sc = ifp->if_softc;
 
 	/* prevent management frames from being sent if we're not ready */
+#if defined(__DragonFly__)
 	if (!(ifp->if_flags & IFF_RUNNING)) {
 		m_freem(m);
 		ieee80211_free_node(ni);
 		return ENETDOWN;
 	}
+#else
+	if (!(ifp->if_drv_flags & IFF_DRV_RUNNING)) {
+		m_freem(m);
+		ieee80211_free_node(ni);
+		return ENETDOWN;
+	}
+#endif
+	WPI_LOCK(sc);
 
 	/* management frames go into ring 0 */
 	if (sc->txq[0].queued > sc->txq[0].count - 8) {
+#if defined(__DragonFly__)
 		ifq_set_oactive(&ifp->if_snd);
+#else
+		ifp->if_drv_flags |= IFF_DRV_OACTIVE;
+#endif
 		m_freem(m);
+		WPI_UNLOCK(sc);
 		ieee80211_free_node(ni);
 		return ENOBUFS;		/* XXX */
 	}
 
-	IFNET_STAT_INC(ifp, opackets, 1);
+#if defined(__DragonFly__)
+	++ifp->if_opackets;
+#else
+	if_inc_counter(ifp, IFCOUNTER_OPACKETS, 1);
+#endif
 	if (wpi_tx_data(sc, m, ni, 0) != 0)
 		goto bad;
 	sc->sc_tx_timer = 5;
-	callout_reset(&sc->watchdog_to_callout, hz, wpi_watchdog_callout, sc);
+	callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
 
+	WPI_UNLOCK(sc);
 	return 0;
 bad:
-	IFNET_STAT_INC(ifp, oerrors, 1);
+#if defined(__DragonFly__)
+	++ifp->if_oerrors;
+#else
+	if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
+#endif
+	WPI_UNLOCK(sc);
 	ieee80211_free_node(ni);
 	return EIO;		/* XXX */
 }
 
 static int
-wpi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
+wpi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
+    struct ucred *cred __unused)
 {
 	struct wpi_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = ifp->if_l2com;
@@ -2103,6 +2253,8 @@ wpi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
+		WPI_LOCK(sc);
+#if defined(__DragonFly__)
 		if ((ifp->if_flags & IFF_UP)) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
 				wpi_init_locked(sc, 0);
@@ -2111,6 +2263,17 @@ wpi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 		} else if ((ifp->if_flags & IFF_RUNNING) ||
 			   (sc->flags & WPI_FLAG_HW_RADIO_OFF))
 			wpi_stop_locked(sc);
+#else
+		if ((ifp->if_flags & IFF_UP)) {
+			if (!(ifp->if_drv_flags & IFF_DRV_RUNNING)) {
+				wpi_init_locked(sc, 0);
+				startall = 1;
+			}
+		} else if ((ifp->if_drv_flags & IFF_DRV_RUNNING) ||
+			   (sc->flags & WPI_FLAG_HW_RADIO_OFF))
+			wpi_stop_locked(sc);
+#endif
+		WPI_UNLOCK(sc);
 		if (startall)
 			ieee80211_start_all(ic);
 		break;
@@ -2167,7 +2330,7 @@ wpi_cmd(struct wpi_softc *sc, int code, const void *buf, int size, int async)
 
 #ifdef WPI_DEBUG
 	if (!async) {
-		wlan_assert_serialized();
+		WPI_LOCK_ASSERT(sc);
 	}
 #endif
 
@@ -2207,7 +2370,11 @@ wpi_cmd(struct wpi_softc *sc, int code, const void *buf, int size, int async)
 		return 0;
 	}
 
-	return zsleep(cmd, &wlan_global_serializer, 0, "wpicmd", hz);
+#if defined(__DragonFly__)
+	return wpi_sleep(sc, cmd, PCATCH, "wpicmd", hz);
+#else
+	return msleep(cmd, &sc->sc_mtx, PCATCH, "wpicmd", hz);
+#endif
 }
 
 static int
@@ -2279,7 +2446,7 @@ wpi_mrr_setup(struct wpi_softc *sc)
 	}
 
 	/* setup MRR for control frames */
-	mrr.which = htole32(WPI_MRR_CTL);
+	mrr.which = WPI_MRR_CTL;
 	error = wpi_cmd(sc, WPI_CMD_MRR_SETUP, &mrr, sizeof mrr, 0);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
@@ -2288,7 +2455,7 @@ wpi_mrr_setup(struct wpi_softc *sc)
 	}
 
 	/* setup MRR for data frames */
-	mrr.which = htole32(WPI_MRR_DATA);
+	mrr.which = WPI_MRR_DATA;
 	error = wpi_cmd(sc, WPI_CMD_MRR_SETUP, &mrr, sizeof mrr, 0);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
@@ -2413,7 +2580,7 @@ static int
 wpi_auth(struct wpi_softc *sc, struct ieee80211vap *vap)
 {
 	struct ieee80211com *ic = vap->iv_ic;
-	struct ieee80211_node *ni;
+	struct ieee80211_node *ni = vap->iv_bss;
 	struct wpi_node_info node;
 	int error;
 
@@ -2421,11 +2588,13 @@ wpi_auth(struct wpi_softc *sc, struct ieee80211vap *vap)
 	/* update adapter's configuration */
 	sc->config.associd = 0;
 	sc->config.filter &= ~htole32(WPI_FILTER_BSS);
-	ni = ieee80211_ref_node(vap->iv_bss);
 	IEEE80211_ADDR_COPY(sc->config.bssid, ni->ni_bssid);
 	sc->config.chan = ieee80211_chan2ieee(ic, ni->ni_chan);
 	if (IEEE80211_IS_CHAN_2GHZ(ni->ni_chan)) {
 		sc->config.flags |= htole32(WPI_CONFIG_AUTO |
+		    WPI_CONFIG_24GHZ);
+	} else {
+		sc->config.flags &= ~htole32(WPI_CONFIG_AUTO |
 		    WPI_CONFIG_24GHZ);
 	}
 	if (IEEE80211_IS_CHAN_A(ni->ni_chan)) {
@@ -2446,21 +2615,18 @@ wpi_auth(struct wpi_softc *sc, struct ieee80211vap *vap)
 		sizeof (struct wpi_config), 1);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not configure\n");
-		ieee80211_free_node(ni);
 		return error;
 	}
 
 	/* configuration has changed, set Tx power accordingly */
 	if ((error = wpi_set_txpower(sc, ni->ni_chan, 1)) != 0) {
 		device_printf(sc->sc_dev, "could not set Tx power\n");
-		ieee80211_free_node(ni);
 		return error;
 	}
 
 	/* add default node */
 	memset(&node, 0, sizeof node);
 	IEEE80211_ADDR_COPY(node.bssid, ni->ni_bssid);
-	ieee80211_free_node(ni);
 	node.id = WPI_ID_BSS;
 	node.rate = (ic->ic_curmode == IEEE80211_MODE_11A) ?
 	    wpi_plcp_signal(12) : wpi_plcp_signal(2);
@@ -2477,7 +2643,7 @@ static int
 wpi_run(struct wpi_softc *sc, struct ieee80211vap *vap)
 {
 	struct ieee80211com *ic = vap->iv_ic;
-	struct ieee80211_node *ni;
+	struct ieee80211_node *ni = vap->iv_bss;
 	int error;
 
 	if (vap->iv_opmode == IEEE80211_M_MONITOR) {
@@ -2486,7 +2652,6 @@ wpi_run(struct wpi_softc *sc, struct ieee80211vap *vap)
 		return 0;
 	}
 
-	ni = ieee80211_ref_node(vap->iv_bss);
 	wpi_enable_tsf(sc, ni);
 
 	/* update adapter's configuration */
@@ -2508,12 +2673,10 @@ wpi_run(struct wpi_softc *sc, struct ieee80211vap *vap)
 		    wpi_config), 1);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not update configuration\n");
-		ieee80211_free_node(ni);
 		return error;
 	}
 
 	error = wpi_set_txpower(sc, ni->ni_chan, 1);
-	ieee80211_free_node(ni);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could set txpower\n");
 		return error;
@@ -2523,7 +2686,7 @@ wpi_run(struct wpi_softc *sc, struct ieee80211vap *vap)
 	wpi_set_led(sc, WPI_LED_LINK, 0, 1);
 
 	/* start automatic rate control timer */
-	callout_reset(&sc->calib_to_callout, 60*hz, wpi_calib_timeout_callout, sc);
+	callout_reset(&sc->calib_to, 60*hz, wpi_calib_timeout, sc);
 
 	return (error);
 }
@@ -2553,13 +2716,13 @@ wpi_scan(struct wpi_softc *sc)
 	struct ieee80211_channel *c;
 	enum ieee80211_phymode mode;
 	uint8_t *frm;
-	int nrates, pktlen, error, i, nssid;
+	int pktlen, error, i, nssid;
 	bus_addr_t physaddr;
 
 	desc = &ring->desc[ring->cur];
 	data = &ring->data[ring->cur];
 
-	data->m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
+	data->m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (data->m == NULL) {
 		device_printf(sc->sc_dev,
 		    "could not allocate mbuf for scan command\n");
@@ -2602,7 +2765,7 @@ wpi_scan(struct wpi_softc *sc)
 	nssid = MIN(ss->ss_nssid, WPI_SCAN_MAX_ESSIDS);
 	for (i = 0; i < nssid; i++) {
 		hdr->scan_essids[i].id = IEEE80211_ELEMID_SSID;
-		hdr->scan_essids[i].esslen = MIN(ss->ss_ssid[i].len, 32);
+		hdr->scan_essids[i].esslen = MIN(ss->ss_ssid[i].len, IEEE80211_NWID_LEN);
 		memcpy(hdr->scan_essids[i].essid, ss->ss_ssid[i].ssid,
 		    hdr->scan_essids[i].esslen);
 #ifdef WPI_DEBUG
@@ -2619,7 +2782,7 @@ wpi_scan(struct wpi_softc *sc)
 	 * Build a probe request frame.  Most of the following code is a
 	 * copy & paste of what is done in net80211.
 	 */
-	wh = (struct ieee80211_frame *)&hdr->scan_essids[4];
+	wh = (struct ieee80211_frame *)&hdr->scan_essids[WPI_SCAN_MAX_ESSIDS];
 	wh->i_fc[0] = IEEE80211_FC0_VERSION_0 | IEEE80211_FC0_TYPE_MGT |
 		IEEE80211_FC0_SUBTYPE_PROBE_REQ;
 	wh->i_fc[1] = IEEE80211_FC1_DIR_NODS;
@@ -2631,30 +2794,12 @@ wpi_scan(struct wpi_softc *sc)
 
 	frm = (uint8_t *)(wh + 1);
 
-	/* add essid IE, the hardware will fill this in for us */
-	*frm++ = IEEE80211_ELEMID_SSID;
-	*frm++ = 0;
-
 	mode = ieee80211_chan2mode(ic->ic_curchan);
 	rs = &ic->ic_sup_rates[mode];
 
-	/* add supported rates IE */
-	*frm++ = IEEE80211_ELEMID_RATES;
-	nrates = rs->rs_nrates;
-	if (nrates > IEEE80211_RATE_SIZE)
-		nrates = IEEE80211_RATE_SIZE;
-	*frm++ = nrates;
-	memcpy(frm, rs->rs_rates, nrates);
-	frm += nrates;
-
-	/* add supported xrates IE */
-	if (rs->rs_nrates > IEEE80211_RATE_SIZE) {
-		nrates = rs->rs_nrates - IEEE80211_RATE_SIZE;
-		*frm++ = IEEE80211_ELEMID_XRATES;
-		*frm++ = nrates;
-		memcpy(frm, rs->rs_rates + IEEE80211_RATE_SIZE, nrates);
-		frm += nrates;
-	}
+	frm = ieee80211_add_ssid(frm, NULL, 0);
+	frm = ieee80211_add_rates(frm, rs);
+	frm = ieee80211_add_xrates(frm, rs);
 
 	/* setup length of probe request */
 	hdr->tx.len = htole16(frm - (uint8_t *)wh);
@@ -3017,8 +3162,13 @@ wpi_rfkill_resume(struct wpi_softc *sc)
 		return;
 	}
 
+#if defined(__DragonFly__)
 	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_flags |= IFF_RUNNING;
+#else
+	ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+	ifp->if_drv_flags |= IFF_DRV_RUNNING;
+#endif
 	sc->flags &= ~WPI_FLAG_HW_RADIO_OFF;
 
 	if (vap != NULL) {
@@ -3034,7 +3184,7 @@ wpi_rfkill_resume(struct wpi_softc *sc)
 		}
 	}
 
-	callout_reset(&sc->watchdog_to_callout, hz, wpi_watchdog_callout, sc);
+	callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
 }
 
 static void
@@ -3140,10 +3290,15 @@ wpi_init_locked(struct wpi_softc *sc, int force)
 		return;
 	}
 
+#if defined(__DragonFly__)
 	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_flags |= IFF_RUNNING;
+#else
+	ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+	ifp->if_drv_flags |= IFF_DRV_RUNNING;
+#endif
 out:
-	callout_reset(&sc->watchdog_to_callout, hz, wpi_watchdog_callout, sc);
+	callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
 }
 
 static void
@@ -3153,10 +3308,17 @@ wpi_init(void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211com *ic = ifp->if_l2com;
 
+	WPI_LOCK(sc);
 	wpi_init_locked(sc, 0);
+	WPI_UNLOCK(sc);
 
+#if defined(__DragonFly__)
 	if (ifp->if_flags & IFF_RUNNING)
 		ieee80211_start_all(ic);		/* start all vaps */
+#else
+	if (ifp->if_drv_flags & IFF_DRV_RUNNING)
+		ieee80211_start_all(ic);		/* start all vaps */
+#endif
 }
 
 static void
@@ -3168,12 +3330,15 @@ wpi_stop_locked(struct wpi_softc *sc)
 
 	sc->sc_tx_timer = 0;
 	sc->sc_scan_timer = 0;
-	ifp->if_flags &= ~IFF_RUNNING;
+#if defined(__DragonFly__)
 	ifq_clr_oactive(&ifp->if_snd);
+	ifp->if_flags &= ~IFF_RUNNING;
+#else
+	ifp->if_drv_flags &= ~(IFF_DRV_RUNNING | IFF_DRV_OACTIVE);
+#endif
 	sc->flags &= ~WPI_FLAG_HW_RADIO_OFF;
-	callout_stop(&sc->watchdog_to_callout);
-	callout_stop(&sc->calib_to_callout);
-
+	callout_stop_sync(&sc->watchdog_to);
+	callout_stop_sync(&sc->calib_to);
 
 	/* disable interrupts */
 	WPI_WRITE(sc, WPI_MASK, 0);
@@ -3209,11 +3374,13 @@ wpi_stop_locked(struct wpi_softc *sc)
 static void
 wpi_stop(struct wpi_softc *sc)
 {
+	WPI_LOCK(sc);
 	wpi_stop_locked(sc);
+	WPI_UNLOCK(sc);
 }
 
 static void
-wpi_calib_timeout_callout(void *arg)
+wpi_calib_timeout(void *arg)
 {
 	struct wpi_softc *sc = arg;
 	struct ifnet *ifp = sc->sc_ifp;
@@ -3230,7 +3397,7 @@ wpi_calib_timeout_callout(void *arg)
 
 	wpi_power_calibration(sc, temp);
 
-	callout_reset(&sc->calib_to_callout, 60*hz, wpi_calib_timeout_callout, sc);
+	callout_reset(&sc->calib_to, 60*hz, wpi_calib_timeout, sc);
 }
 
 /*
@@ -3513,7 +3680,9 @@ wpi_scan_start(struct ieee80211com *ic)
 	struct ifnet *ifp = ic->ic_ifp;
 	struct wpi_softc *sc = ifp->if_softc;
 
+	WPI_LOCK(sc);
 	wpi_set_led(sc, WPI_LED_LINK, 20, 2);
+	WPI_UNLOCK(sc);
 }
 
 /**
@@ -3543,7 +3712,9 @@ wpi_set_channel(struct ieee80211com *ic)
 	 * are already taken care of by their respective firmware commands.
 	 */
 	if (ic->ic_opmode == IEEE80211_M_MONITOR) {
+		WPI_LOCK(sc);
 		error = wpi_config(sc);
+		WPI_UNLOCK(sc);
 		if (error != 0)
 			device_printf(sc->sc_dev,
 			    "error %d settting channel\n", error);
@@ -3562,8 +3733,10 @@ wpi_scan_curchan(struct ieee80211_scan_state *ss, unsigned long maxdwell)
 	struct ifnet *ifp = vap->iv_ic->ic_ifp;
 	struct wpi_softc *sc = ifp->if_softc;
 
+	WPI_LOCK(sc);
 	if (wpi_scan(sc))
 		ieee80211_cancel_scan(vap);
+	WPI_UNLOCK(sc);
 }
 
 /**
@@ -3579,25 +3752,23 @@ wpi_scan_mindwell(struct ieee80211_scan_state *ss)
 }
 
 static void
-wpi_hwreset_task(void *arg, int pending)
+wpi_hwreset(void *arg, int pending)
 {
-	struct wpi_softc *sc;
+	struct wpi_softc *sc = arg;
 
-	wlan_serialize_enter();
-	sc = arg;
+	WPI_LOCK(sc);
 	wpi_init_locked(sc, 0);
-	wlan_serialize_exit();
+	WPI_UNLOCK(sc);
 }
 
 static void
-wpi_rfreset_task(void *arg, int pending)
+wpi_rfreset(void *arg, int pending)
 {
-	struct wpi_softc *sc;
+	struct wpi_softc *sc = arg;
 
-	wlan_serialize_enter();
-	sc = arg;
+	WPI_LOCK(sc);
 	wpi_rfkill_resume(sc);
-	wlan_serialize_exit();
+	WPI_UNLOCK(sc);
 }
 
 /*
@@ -3619,21 +3790,17 @@ wpi_free_fwmem(struct wpi_softc *sc)
 }
 
 /**
- * Called every second, wpi_watchdog_callout used by the watch dog timer
+ * Called every second, wpi_watchdog used by the watch dog timer
  * to check that the card is still alive
  */
 static void
-wpi_watchdog_callout(void *arg)
+wpi_watchdog(void *arg)
 {
-	struct wpi_softc *sc;
-	struct ifnet *ifp;
-	struct ieee80211com *ic;
+	struct wpi_softc *sc = arg;
+	struct ifnet *ifp = sc->sc_ifp;
+	struct ieee80211com *ic = ifp->if_l2com;
 	uint32_t tmp;
 
-	wlan_serialize_enter();
-	sc = arg;
-	ifp = sc->sc_ifp;
-	ic = ifp->if_l2com;
 	DPRINTFN(WPI_DEBUG_WATCHDOG,("Watchdog: tick\n"));
 
 	if (sc->flags & WPI_FLAG_HW_RADIO_OFF) {
@@ -3642,24 +3809,24 @@ wpi_watchdog_callout(void *arg)
 
 		if ((tmp & 0x1) == 0) {
 			/* Radio kill switch is still off */
-			callout_reset(&sc->watchdog_to_callout, hz, wpi_watchdog_callout, sc);
-			wlan_serialize_exit();
+			callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
 			return;
 		}
 
 		device_printf(sc->sc_dev, "Hardware Switch Enabled\n");
 		ieee80211_runtask(ic, &sc->sc_radiotask);
-		wlan_serialize_exit();
 		return;
 	}
 
 	if (sc->sc_tx_timer > 0) {
 		if (--sc->sc_tx_timer == 0) {
 			device_printf(sc->sc_dev,"device timeout\n");
-			IFNET_STAT_INC(ifp, oerrors, 1);
-			wlan_serialize_exit();
+#if defined(__DragonFly__)
+			++ifp->if_oerrors;
+#else
+			if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
+#endif
 			ieee80211_runtask(ic, &sc->sc_restarttask);
-			wlan_serialize_enter();
 		}
 	}
 	if (sc->sc_scan_timer > 0) {
@@ -3667,17 +3834,36 @@ wpi_watchdog_callout(void *arg)
 		if (--sc->sc_scan_timer == 0 && vap != NULL) {
 			device_printf(sc->sc_dev,"scan timeout\n");
 			ieee80211_cancel_scan(vap);
-			wlan_serialize_exit();
 			ieee80211_runtask(ic, &sc->sc_restarttask);
-			wlan_serialize_enter();
 		}
 	}
 
+#if defined(__DragonFly__)
 	if (ifp->if_flags & IFF_RUNNING)
-		callout_reset(&sc->watchdog_to_callout, hz, wpi_watchdog_callout, sc);
-
-	wlan_serialize_exit();
+		callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
+#else
+	if (ifp->if_drv_flags & IFF_DRV_RUNNING)
+		callout_reset(&sc->watchdog_to, hz, wpi_watchdog, sc);
+#endif
 }
+
+#if defined(__DragonFly__)
+static int
+wpi_sleep(struct wpi_softc *sc, void *wchan,
+	int flags, const char *wmsg, int timo)
+{
+	int iws;
+	int error;
+	iws = wlan_is_serialized();
+	if (iws)
+		wlan_serialize_exit();
+	error = lksleep(wchan, &sc->sc_mtx, flags, wmsg, timo);
+	if (iws)
+		wlan_serialize_enter();
+	return error;
+}
+#endif
+
 
 #ifdef WPI_DEBUG
 static const char *wpi_cmd_str(int cmd)
@@ -3699,7 +3885,7 @@ static const char *wpi_cmd_str(int cmd)
 	case WPI_CMD_BLUETOOTH:	return "WPI_CMD_BLUETOOTH";
 
 	default:
-		KASSERT(1, ("Unknown Command: %d", cmd));
+		KASSERT(1, ("Unknown Command: %d\n", cmd));
 		return "UNKNOWN CMD";	/* Make the compiler happy */
 	}
 }
@@ -3708,4 +3894,3 @@ static const char *wpi_cmd_str(int cmd)
 MODULE_DEPEND(wpi, pci,  1, 1, 1);
 MODULE_DEPEND(wpi, wlan, 1, 1, 1);
 MODULE_DEPEND(wpi, firmware, 1, 1, 1);
-MODULE_DEPEND(wpi, wlan_amrr, 1, 1, 1);
