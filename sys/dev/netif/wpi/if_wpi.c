@@ -2125,6 +2125,8 @@ wpi_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct wpi_softc *sc = ifp->if_softc;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+
 	WPI_LOCK(sc);
 	wpi_start_locked(ifp);
 	WPI_UNLOCK(sc);
