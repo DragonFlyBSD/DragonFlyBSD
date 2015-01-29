@@ -77,7 +77,14 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
 	hammer2_io_t *xio;
 	off_t pbase;
 	off_t pmask;
-	int psize = hammer2_devblksize(lsize);
+	/*
+	 * XXX after free, buffer reuse case w/ different size can clash
+	 * with dio cache.  Lets avoid it for now.  Ultimate we need to
+	 * invalidate the dio cache when freeing blocks to allow a mix
+	 * of 16KB and 64KB block sizes).
+	 */
+	/*int psize = hammer2_devblksize(lsize);*/
+	int psize = HAMMER2_PBUFSIZE;
 	int refs;
 
 	pmask = ~(hammer2_off_t)(psize - 1);

@@ -190,6 +190,7 @@ typedef struct hammer2_bulkfree_info {
 	long			count_10_11;
 	long			count_l0cleans;
 	long			count_linadjusts;
+	hammer2_off_t		adj_free;
 } hammer2_bulkfree_info_t;
 
 static int h2_bulkfree_callback(hammer2_chain_t *chain, void *info);
@@ -223,8 +224,20 @@ hammer2_bulkfree_pass(hammer2_mount_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	doabort |= hammer2_bulk_scan(&trans, &hmp->vchain,
 					h2_bulkfree_callback, &cbinfo);
 	h2_bulkfree_sync(&cbinfo);
-	hammer2_trans_done(&trans);
 
+	/*
+	 * Adjust bytes free in the volume header before ending the
+	 * transaction.
+	 */
+	hammer2_voldata_lock(hmp);
+	hammer2_voldata_modify(hmp);
+	hmp->voldata.allocator_free += cbinfo.adj_free;
+	hammer2_voldata_unlock(hmp);
+
+	/*
+	 * Cleanup
+	 */
+	hammer2_trans_done(&trans);
 	kmem_free_swapbacked(&cbinfo.kp);
 
 	kprintf("bulkfree pass statistics:\n");
@@ -344,16 +357,16 @@ h2_bulkfree_callback(hammer2_chain_t *chain, void *info)
 			     HAMMER2_FREEMAP_BLOCK_RADIX) << 1);
 
 		/*
-		 * NOTE: The 'avail' calculation will not be correct because
-		 *	 it does not take into account distinct sub-16K
-		 *	 allocations (which we can't track without eating a
-		 *	 lot more memory).  Use it here only as a hint.
+		 * NOTE! The (avail) calculation is bitmap-granular.  Multiple
+		 *	 sub-granular records can wind up at the same bitmap
+		 *	 position.
 		 */
 		if ((bmap->bitmap[bindex] & bmask) == 0) {
-			if (bytes >= HAMMER2_FREEMAP_BLOCK_SIZE)
+			if (bytes < HAMMER2_FREEMAP_BLOCK_SIZE) {
 				bmap->avail -= HAMMER2_FREEMAP_BLOCK_SIZE;
-			else
+			} else {
 				bmap->avail -= bytes;
+			}
 			bmap->bitmap[bindex] |= bmask;
 		}
 		data_off += HAMMER2_FREEMAP_BLOCK_SIZE;
@@ -501,6 +514,10 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 					break;
 				case 2:	/* 10 -> 00 */
 					live->bitmap[bindex] &= ~(2 << scount);
+					live->avail +=
+						HAMMER2_FREEMAP_BLOCK_SIZE;
+					cbinfo->adj_free +=
+						HAMMER2_FREEMAP_BLOCK_SIZE;
 					++cbinfo->count_10_00;
 					break;
 				case 3:	/* 11 -> 10 */

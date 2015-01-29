@@ -390,13 +390,33 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 
 		error = ENOSPC;
 		for (count = 0; count < HAMMER2_FREEMAP_COUNT; ++count) {
+			int availchk;
+
 			if (start + count >= HAMMER2_FREEMAP_COUNT &&
 			    start - count < 0) {
 				break;
 			}
+
+			/*
+			 * Calculate bmap pointer
+			 *
+			 * NOTE: bmap pointer is invalid if n >= FREEMAP_COUNT.
+			 */
 			n = start + count;
 			bmap = &chain->data->bmdata[n];
-			if (n < HAMMER2_FREEMAP_COUNT && bmap->avail &&
+
+			if (n >= HAMMER2_FREEMAP_COUNT) {
+				availchk = 0;
+			} else if (bmap->avail) {
+				availchk = 1;
+			} else if (radix < HAMMER2_FREEMAP_BLOCK_RADIX &&
+			          (bmap->linear & HAMMER2_FREEMAP_BLOCK_MASK)) {
+				availchk = 1;
+			} else {
+				availchk = 0;
+			}
+
+			if (availchk &&
 			    (bmap->class == 0 || bmap->class == class)) {
 				base_key = key + n * l0size;
 				error = hammer2_bmap_alloc(trans, hmp, bmap,
@@ -407,9 +427,28 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 					break;
 				}
 			}
+
+			/*
+			 * Must recalculate after potentially having called
+			 * hammer2_bmap_alloc() above in case chain was
+			 * reallocated.
+			 *
+			 * NOTE: bmap pointer is invalid if n < 0.
+			 */
 			n = start - count;
 			bmap = &chain->data->bmdata[n];
-			if (n >= 0 && bmap->avail &&
+			if (n < 0) {
+				availchk = 0;
+			} else if (bmap->avail) {
+				availchk = 1;
+			} else if (radix < HAMMER2_FREEMAP_BLOCK_RADIX &&
+			          (bmap->linear & HAMMER2_FREEMAP_BLOCK_MASK)) {
+				availchk = 1;
+			} else {
+				availchk = 0;
+			}
+
+			if (availchk &&
 			    (bmap->class == 0 || bmap->class == class)) {
 				base_key = key + n * l0size;
 				error = hammer2_bmap_alloc(trans, hmp, bmap,
@@ -478,7 +517,7 @@ hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 {
 	hammer2_io_t *dio;
 	size_t size;
-	size_t bsize;
+	size_t bgsize;
 	int bmradix;
 	uint32_t bmmask;
 	int offset;
@@ -493,11 +532,9 @@ hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 
 	if (radix <= HAMMER2_FREEMAP_BLOCK_RADIX) {
 		bmradix = 2;
-		bsize = HAMMER2_FREEMAP_BLOCK_SIZE;
 		/* (16K) 2 bits per allocation block */
 	} else {
 		bmradix = 2 << (radix - HAMMER2_FREEMAP_BLOCK_RADIX);
-		bsize = size;
 		/* (32K-256K) 4, 8, 16, 32 bits per allocation block */
 	}
 
@@ -612,21 +649,46 @@ success:
 		}
 	}
 #endif
+	/*
+	 * Calculate the bitmap-granular change in bgsize for the volume
+	 * header.  We cannot use the fine-grained change here because
+	 * the bulkfree code can't undo it.  If the bitmap element is already
+	 * marked allocated it has already been accounted for.
+	 */
+	if (radix < HAMMER2_FREEMAP_BLOCK_RADIX) {
+		if (bmap->bitmap[i] & bmmask)
+			bgsize = 0;
+		else
+			bgsize = HAMMER2_FREEMAP_BLOCK_SIZE;
+	} else {
+		bgsize = size;
+	}
 
 	/*
-	 * Adjust the linear iterator, set the radix if necessary (might as
-	 * well just set it unconditionally), adjust *basep to return the
-	 * allocated data offset.
+	 * Adjust the bitmap, set the class (it might have been 0),
+	 * and available bytes, update the allocation offset (*basep)
+	 * from the L0 base to the actual offset.
+	 *
+	 * avail must reflect the bitmap-granular availability.  The allocator
+	 * tests will also check the linear iterator.
 	 */
 	bmap->bitmap[i] |= bmmask;
 	bmap->class = class;
-	bmap->avail -= size;
+	bmap->avail -= bgsize;
 	*basep += offset;
 
-	hammer2_voldata_lock(hmp);
-	hammer2_voldata_modify(hmp);
-	hmp->voldata.allocator_free -= size;  /* XXX */
-	hammer2_voldata_unlock(hmp);
+	/*
+	 * Adjust the volume header's allocator_free parameter.  This
+	 * parameter has to be fixed up by bulkfree which has no way to
+	 * figure out sub-16K chunking, so it must be adjusted by the
+	 * bitmap-granular size.
+	 */
+	if (bgsize) {
+		hammer2_voldata_lock(hmp);
+		hammer2_voldata_modify(hmp);
+		hmp->voldata.allocator_free -= bgsize;
+		hammer2_voldata_unlock(hmp);
+	}
 
 	return(0);
 }
@@ -758,6 +820,8 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	int error;
 	int ddflag;
 
+	KKASSERT(how == HAMMER2_FREEMAP_DORECOVER);
+
 	radix = (int)data_off & HAMMER2_OFF_MASK_RADIX;
 	data_off &= ~HAMMER2_OFF_MASK_RADIX;
 	KKASSERT(radix <= HAMMER2_RADIX_MAX);
@@ -883,8 +947,10 @@ again:
 					modified = 1;
 					goto again;
 				}
-				if ((*bitmap & bmmask11) == bmmask00)
-					bmap->avail -= 1 << radix;
+				if ((*bitmap & bmmask11) == bmmask00) {
+					bmap->avail -=
+						HAMMER2_FREEMAP_BLOCK_SIZE;
+				}
 				if (bmap->class == 0)
 					bmap->class = class;
 				*bitmap |= bmmask11;
@@ -901,7 +967,13 @@ again:
 					bref->type, data_off, bytes);
 				*/
 			}
-		} else if ((*bitmap & bmmask11) == bmmask11) {
+		}
+#if 0
+		/*
+		 * XXX this stuff doesn't work, avail is miscalculated and
+		 * code 10 means something else now.
+		 */
+		else if ((*bitmap & bmmask11) == bmmask11) {
 			/*
 			 * Mayfree/Realfree request and bitmap is currently
 			 * marked as being fully allocated.
@@ -937,6 +1009,7 @@ again:
 			      "Illegal state %08x(%08x)",
 			      *bitmap, *bitmap & bmmask11);
 		}
+#endif
 		--count;
 		bmmask01 <<= 2;
 		bmmask10 <<= 2;
