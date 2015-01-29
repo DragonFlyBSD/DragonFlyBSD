@@ -1514,7 +1514,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 	if (stat->len > WPI_STAT_MAXLEN) {
 		device_printf(sc->sc_dev, "invalid rx statistic header\n");
 #if defined(__DragonFly__)
-		++ifp->if_ierrors;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 #else
 		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
 #endif
@@ -1535,7 +1535,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 		DPRINTFN(WPI_DEBUG_RX, ("%s: rx flags error %x\n", __func__,
 		    le32toh(tail->flags)));
 #if defined(__DragonFly__)
-		++ifp->if_ierrors;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 #else
 		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
 #endif
@@ -1545,7 +1545,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 		DPRINTFN(WPI_DEBUG_RX, ("%s: frame too short: %d\n", __func__,
 		    le16toh(head->len)));
 #if defined(__DragonFly__)
-		++ifp->if_ierrors;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 #else
 		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
 #endif
@@ -1558,7 +1558,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 		DPRINTFN(WPI_DEBUG_RX, ("%s: no mbuf to restock ring\n",
 		    __func__));
 #if defined(__DragonFly__)
-		++ifp->if_ierrors;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 #else
 		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
 #endif
@@ -1574,7 +1574,7 @@ wpi_rx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 		    "%s: bus_dmamap_load failed, error %d\n", __func__, error);
 		m_freem(mnew);
 #if defined(__DragonFly__)
-		++ifp->if_ierrors;
+		IFNET_STAT_INC(ifp, ierrors, 1);
 #else
 		if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
 #endif
@@ -1670,9 +1670,9 @@ wpi_tx_intr(struct wpi_softc *sc, struct wpi_rx_desc *desc)
 	/* XXX oerrors should only count errors !maxtries */
 #if defined(__DragonFly__)
 	if ((le32toh(stat->status) & 0xff) != 1)
-		++ifp->if_oerrors;
+		IFNET_STAT_INC(ifp, oerrors, 1);
 	else
-		++ifp->if_opackets;
+		IFNET_STAT_INC(ifp, opackets, 1);
 #else
 	if ((le32toh(stat->status) & 0xff) != 1)
 		if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
@@ -2172,7 +2172,7 @@ wpi_start_locked(struct ifnet *ifp)
 		if (wpi_tx_data(sc, m, ni, ac) != 0) {
 			ieee80211_free_node(ni);
 #if defined(__DragonFly__)
-			++ifp->if_oerrors;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 #else
 			if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
 #endif
@@ -2220,7 +2220,7 @@ wpi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	}
 
 #if defined(__DragonFly__)
-	++ifp->if_opackets;
+	IFNET_STAT_INC(ifp, opackets, 1);
 #else
 	if_inc_counter(ifp, IFCOUNTER_OPACKETS, 1);
 #endif
@@ -2233,7 +2233,7 @@ wpi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 	return 0;
 bad:
 #if defined(__DragonFly__)
-	++ifp->if_oerrors;
+	IFNET_STAT_INC(ifp, oerrors, 1);
 #else
 	if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
 #endif
@@ -3822,7 +3822,7 @@ wpi_watchdog(void *arg)
 		if (--sc->sc_tx_timer == 0) {
 			device_printf(sc->sc_dev,"device timeout\n");
 #if defined(__DragonFly__)
-			++ifp->if_oerrors;
+			IFNET_STAT_INC(ifp, oerrors, 1);
 #else
 			if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
 #endif
@@ -3885,7 +3885,7 @@ static const char *wpi_cmd_str(int cmd)
 	case WPI_CMD_BLUETOOTH:	return "WPI_CMD_BLUETOOTH";
 
 	default:
-		KASSERT(1, ("Unknown Command: %d\n", cmd));
+		KASSERT(1, ("Unknown Command: %d", cmd));
 		return "UNKNOWN CMD";	/* Make the compiler happy */
 	}
 }
