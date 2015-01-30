@@ -418,6 +418,7 @@ iwn_attach(device_t dev)
 	struct ifnet *ifp;
 	int i, error, rid;
 	uint8_t macaddr[IEEE80211_ADDR_LEN];
+	char ethstr[ETHER_ADDRSTRLEN + 1];
 
 	wlan_serialize_enter();
 
@@ -612,9 +613,9 @@ iwn_attach(device_t dev)
 	    ((sc->rxchainmask >> 1) & 1) +
 	    ((sc->rxchainmask >> 0) & 1);
 	if (bootverbose) {
-		iwndev_printf(dev, "MIMO %dT%dR, %.4s, address %6D\n",
+		iwndev_printf(dev, "MIMO %dT%dR, %.4s, address %s\n",
 		    sc->ntxchains, sc->nrxchains, sc->eeprom_domain,
-		    macaddr, ":");
+		    kether_ntoa(macaddr, ethstr));
 	}
 
 	if (sc->sc_flags & IWN_FLAG_HAS_11N) {
