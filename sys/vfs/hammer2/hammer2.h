@@ -773,6 +773,7 @@ extern mtx_t thread_protect;
 #define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
 #define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
 
+int hammer2_signal_check(time_t *timep);
 hammer2_cluster_t *hammer2_inode_lock_ex(hammer2_inode_t *ip);
 hammer2_cluster_t *hammer2_inode_lock_sh(hammer2_inode_t *ip);
 void hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_cluster_t *chain);

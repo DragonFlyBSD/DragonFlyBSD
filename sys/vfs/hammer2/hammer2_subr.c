@@ -422,3 +422,17 @@ hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes)
 	}
 	*counterp += bytes;
 }
+
+int
+hammer2_signal_check(time_t *timep)
+{
+	int error = 0;
+
+	lwkt_user_yield();
+	if (*timep != time_second) {
+		*timep = time_second;
+		if (CURSIG(curthread->td_lwp) != 0)
+			error = EINTR;
+	}
+	return error;
+}

@@ -249,18 +249,24 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 	 * Now finish up the dio.  If another iocb is pending chain to it
 	 * leaving DIO_INPROG set.  Otherwise clear DIO_INPROG
 	 * (and DIO_WAITING).
+	 *
+	 * NOTE: The TAILQ is not stable until the spin-lock is held.
 	 */
 	for (;;) {
 		orefs = dio->refs;
 		nrefs = orefs & ~(HAMMER2_DIO_WAITING | HAMMER2_DIO_INPROG);
 
-		if ((orefs & HAMMER2_DIO_WAITING) && TAILQ_FIRST(&dio->iocbq)) {
+		if (orefs & HAMMER2_DIO_WAITING) {
 			spin_lock(&dio->spin);
 			iocb = TAILQ_FIRST(&dio->iocbq);
 			if (iocb) {
 				TAILQ_REMOVE(&dio->iocbq, iocb, entry);
 				spin_unlock(&dio->spin);
 				iocb->callback(iocb);	/* chained */
+				break;
+			} else if (atomic_cmpset_int(&dio->refs,
+						     orefs, nrefs)) {
+				spin_unlock(&dio->spin);
 				break;
 			}
 			spin_unlock(&dio->spin);
