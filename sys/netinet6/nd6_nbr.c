@@ -160,7 +160,7 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 				"(wrong ip6 dst)\n"));
 			goto bad;
 		}
-	} else {
+	} else if (!nd6_onlink_ns_rfc4861) {
 		/*
 		 * Make sure the source address is from a neighbor's address.
 		 *
