@@ -3,7 +3,7 @@
 LIB=		crypto
 SHLIB_MAJOR=	5
 SHLIBDIR?=	/lib
-WARNS?=		0
+WARNS?=		2
 
 SUBDIR=	engines
 
@@ -186,7 +186,6 @@ SRCS+=	ecs_lib.c ecs_asn1.c ecs_ossl.c ecs_sign.c ecs_vrf.c ecs_err.c
 INCS+=	ecdsa.h
 
 # engine
-CFLAGS+=-DHAVE_CRYPTODEV
 SRCS+=	eng_err.c eng_lib.c eng_list.c eng_init.c eng_ctrl.c \
 	eng_table.c eng_pkey.c eng_fat.c eng_all.c \
 	tb_rsa.c tb_dsa.c tb_ecdsa.c tb_dh.c tb_ecdh.c tb_rand.c tb_store.c \
