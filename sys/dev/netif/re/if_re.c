@@ -2532,8 +2532,10 @@ re_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	 */
 	if (sc->re_ldata.re_tx_free <= RE_TXDESC_SPARE) {
 		if (!ifq_is_oactive(&ifp->if_snd)) {
+#if 0
 			if_printf(ifp, "Debug: OACTIVE was not set when "
 			    "re_tx_free was below minimum!\n");
+#endif
 			ifq_set_oactive(&ifp->if_snd);
 		}
 	}
