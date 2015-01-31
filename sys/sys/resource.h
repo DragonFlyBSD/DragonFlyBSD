@@ -32,7 +32,6 @@
  *
  *	@(#)resource.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resource.h,v 1.12.2.2 2002/08/20 18:42:20 dillon Exp $
- * $DragonFly: src/sys/sys/resource.h,v 1.10 2008/06/18 09:36:07 hasso Exp $
  */
 
 #ifndef _SYS_RESOURCE_H_
@@ -48,8 +47,8 @@
  */
 #define	PRIO_MIN	-20
 #define	PRIO_MAX	20
-#define IOPRIO_MIN	1
-#define IOPRIO_MAX	10
+#define	IOPRIO_MIN	1
+#define	IOPRIO_MAX	10
 
 #define	PRIO_PROCESS	0
 #define	PRIO_PGRP	1
@@ -104,11 +103,9 @@ struct	rusage {
 
 #define	RLIM_INFINITY	((rlim_t)(((u_quad_t)1 << 63) - 1))
 
-
 /*
  * Resource limit string identifiers
  */
-
 #ifdef _RLIMIT_IDENT
 static char *rlimit_ident[] = {
 	"cpu",
@@ -144,30 +141,29 @@ struct loadavg {
 /*
  * CPU state fields as reported by the sysctl kern.cp_time
  */
-#define CP_USER         0
-#define CP_NICE         1
-#define CP_SYS          2
-#define CP_INTR         3
-#define CP_IDLE         4
-#define CPUSTATES       5
+#define	CP_USER         0
+#define	CP_NICE         1
+#define	CP_SYS          2
+#define	CP_INTR         3
+#define	CP_IDLE         4
+#define	CPUSTATES       5
 
 #ifdef _KERNEL
 extern struct loadavg averunnable;
 
-int	dosetrlimit (u_int which, struct rlimit *limp);
-
+int	dosetrlimit(u_int which, struct rlimit *limp);
 #else
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	getpriority (int, int);
-int	ioprio_get (int, int);
-int	getrlimit (int, struct rlimit *);
-int	getrusage (int, struct rusage *);
-int	setpriority (int, int, int);
-int	ioprio_set (int, int, int);
-int	setrlimit (int, const struct rlimit *);
+int	getpriority(int, int);
+int	ioprio_get(int, int);
+int	getrlimit(int, struct rlimit *);
+int	getrusage(int, struct rusage *);
+int	setpriority(int, int, int);
+int	ioprio_set(int, int, int);
+int	setrlimit(int, const struct rlimit *);
 __END_DECLS
-
 #endif	/* _KERNEL */
+
 #endif	/* !_SYS_RESOURCE_H_ */
