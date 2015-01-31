@@ -68,7 +68,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	 * A fill level <= 20% is considered an emergency.  free_level is
 	 * inverted from fill_level.
 	 */
-	if (reblock->free_level >= HAMMER_LARGEBLOCK_SIZE * 8 / 10)
+	if (reblock->free_level >= HAMMER_BIGBLOCK_SIZE * 8 / 10)
 		slop = HAMMER_CHKSPC_EMERGENCY;
 	else
 		slop = HAMMER_CHKSPC_REBLOCK;
@@ -421,9 +421,9 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	/*
 	 * Move the data.  Note that we must invalidate any cached
 	 * data buffer in the cursor before calling blockmap_free.
-	 * The blockmap_free may free up the entire large-block and
+	 * The blockmap_free may free up the entire big-block and
 	 * will not be able to invalidate it if the cursor is holding
-	 * a data buffer cached in that large block.
+	 * a data buffer cached in that big block.
 	 */
 	hammer_modify_buffer(cursor->trans, data_buffer, NULL, 0);
 	bcopy(cursor->data, ndata, elm->leaf.data_len);

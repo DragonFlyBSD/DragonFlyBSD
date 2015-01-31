@@ -112,10 +112,10 @@ dump_blockmap(const char *label, int zone)
 			continue;
 		for (scan2 = scan1;
 		     scan2 < scan1 + HAMMER_BLOCKMAP_LAYER2;
-		     scan2 += HAMMER_LARGEBLOCK_SIZE
+		     scan2 += HAMMER_BIGBLOCK_SIZE
 		) {
 			/*
-			 * Dive layer 2, each entry represents a large-block.
+			 * Dive layer 2, each entry represents a big-block.
 			 */
 			layer2_offset = layer1->phys_offset +
 					HAMMER_BLOCKMAP_LAYER2_OFFSET(scan2);
@@ -238,13 +238,13 @@ collect_get(hammer_off_t phys_offset)
 			return(collect);
 	}
 	collect = calloc(sizeof(*collect), 1);
-	collect->track2 = malloc(HAMMER_LARGEBLOCK_SIZE);
-	collect->layer2 = malloc(HAMMER_LARGEBLOCK_SIZE);
+	collect->track2 = malloc(HAMMER_BIGBLOCK_SIZE);
+	collect->layer2 = malloc(HAMMER_BIGBLOCK_SIZE);
 	collect->phys_offset = phys_offset;
 	collect->hnext = CollectHash[hv];
 	CollectHash[hv] = collect;
-	bzero(collect->track2, HAMMER_LARGEBLOCK_SIZE);
-	bzero(collect->layer2, HAMMER_LARGEBLOCK_SIZE);
+	bzero(collect->track2, HAMMER_BIGBLOCK_SIZE);
+	bzero(collect->layer2, HAMMER_BIGBLOCK_SIZE);
 
 	return (collect);
 }
@@ -270,7 +270,7 @@ collect_get_track(collect_t collect, hammer_off_t offset,
 	track2 = &collect->track2[i];
 	if (track2->entry_crc == 0) {
 		collect->layer2[i] = *layer2;
-		track2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
+		track2->bytes_free = HAMMER_BIGBLOCK_SIZE;
 		track2->entry_crc = 1;	/* steal field to tag track load */
 	}
 	return (track2);
@@ -315,13 +315,13 @@ dump_collect(collect_t collect)
 		if (track2->bytes_free != layer2->bytes_free) {
 			printf("BM\tblock=%016jx calc %d free, got %d\n",
 				(intmax_t)(collect->phys_offset +
-					   i * HAMMER_LARGEBLOCK_SIZE),
+					   i * HAMMER_BIGBLOCK_SIZE),
 				track2->bytes_free,
 				layer2->bytes_free);
 		} else if (VerboseOpt) {
 			printf("\tblock=%016jx %d free (correct)\n",
 				(intmax_t)(collect->phys_offset +
-					   i * HAMMER_LARGEBLOCK_SIZE),
+					   i * HAMMER_BIGBLOCK_SIZE),
 				track2->bytes_free);
 		}
 	}

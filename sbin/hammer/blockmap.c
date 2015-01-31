@@ -86,7 +86,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 		result_offset = zone_offset;
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
 		i = (zone_offset & HAMMER_OFF_SHORT_MASK) /
-		    HAMMER_LARGEBLOCK_SIZE;
+		    HAMMER_BIGBLOCK_SIZE;
 		if (AssertOnFailure) {
 			assert(zone_offset < blockmap->alloc_offset);
 		} else {
@@ -97,7 +97,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 			}
 		}
 		result_offset = root_volume->ondisk->vol0_undo_array[i] +
-				(zone_offset & HAMMER_LARGEBLOCK_MASK64);
+				(zone_offset & HAMMER_BIGBLOCK_MASK64);
 	} else {
 		result_offset = (zone_offset & ~HAMMER_OFF_ZONE_MASK) |
 				HAMMER_ZONE_RAW_BUFFER;
@@ -148,7 +148,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 		*save_layer1 = *layer1;
 
 	/*
-	 * Dive layer 2, each entry represents a large-block.
+	 * Dive layer 2, each entry represents a big-block.
 	 */
 	layer2_offset = layer1->phys_offset +
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);

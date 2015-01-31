@@ -1073,7 +1073,7 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	 */
 	_hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE, &breserved);
 	mp->mnt_stat.f_files = ondisk->vol0_stat_inodes;
-	bfree = ondisk->vol0_stat_freebigblocks * HAMMER_LARGEBLOCK_SIZE;
+	bfree = ondisk->vol0_stat_freebigblocks * HAMMER_BIGBLOCK_SIZE;
 	hammer_rel_volume(volume, 0);
 
 	mp->mnt_stat.f_bfree = (bfree - breserved) / HAMMER_BUFSIZE;
@@ -1109,7 +1109,7 @@ hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	 */
 	_hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE, &breserved);
 	mp->mnt_vstat.f_files = ondisk->vol0_stat_inodes;
-	bfree = ondisk->vol0_stat_freebigblocks * HAMMER_LARGEBLOCK_SIZE;
+	bfree = ondisk->vol0_stat_freebigblocks * HAMMER_BIGBLOCK_SIZE;
 	hammer_rel_volume(volume, 0);
 
 	mp->mnt_vstat.f_bfree = (bfree - breserved) / HAMMER_BUFSIZE;

@@ -226,9 +226,9 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname,
 			bp = NULL;
 		}
 		hmp->mp->mnt_stat.f_blocks += ondisk->vol0_stat_bigblocks *
-			(HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
+			(HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
 		hmp->mp->mnt_vstat.f_blocks += ondisk->vol0_stat_bigblocks *
-			(HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
+			(HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
 	}
 late_failure:
 	if (bp)
@@ -879,7 +879,7 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 		 * hammer_io_read() is allowed to do.
 		 *
 		 * We cannot read-ahead in the large-data zone and we cannot
-		 * cross a largeblock boundary as the next largeblock might
+		 * cross a big-block boundary as the next big-block might
 		 * use a different buffer size.
 		 */
 		if (isnew) {
@@ -892,8 +892,8 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 			hammer_off_t limit;
 
 			limit = (buffer->zone2_offset +
-				 HAMMER_LARGEBLOCK_MASK64) &
-				~HAMMER_LARGEBLOCK_MASK64;
+				 HAMMER_BIGBLOCK_MASK64) &
+				~HAMMER_BIGBLOCK_MASK64;
 			limit -= buffer->zone2_offset;
 			error = hammer_io_read(volume->devvp, &buffer->io,
 					       limit);

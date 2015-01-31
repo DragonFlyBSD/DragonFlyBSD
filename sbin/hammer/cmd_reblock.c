@@ -90,8 +90,8 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 			reblock_usage(1);
 	}
 	reblock.free_level = (int)((int64_t)perc *
-				   HAMMER_LARGEBLOCK_SIZE / 100);
-	reblock.free_level = HAMMER_LARGEBLOCK_SIZE - reblock.free_level;
+				   HAMMER_BIGBLOCK_SIZE / 100);
+	reblock.free_level = HAMMER_BIGBLOCK_SIZE - reblock.free_level;
 	if (reblock.free_level < 0)
 		reblock.free_level = 0;
 	printf("reblock start %016jx:%04x free level %d\n",

@@ -185,9 +185,9 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Bigblock count changed so recompute the total number of blocks.
 	 */
 	mp->mnt_stat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-	    (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
+	    (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
 	mp->mnt_vstat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-	    (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
+	    (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
 
 	/*
 	 * Increase the number of free bigblocks
@@ -418,9 +418,9 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Bigblock count changed so recompute the total number of blocks.
 	 */
 	mp->mnt_stat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-	    (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
+	    (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
 	mp->mnt_vstat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-	    (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
+	    (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
 
 	hammer_unlock(&hmp->blkmap_lock);
 	hammer_sync_unlock(trans);
@@ -516,7 +516,7 @@ hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
 	 */
 	aligned_buf_end_off = (HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no,
 		(volume->ondisk->vol_buf_end - volume->ondisk->vol_buf_beg)
-		& ~HAMMER_LARGEBLOCK_MASK64));
+		& ~HAMMER_BIGBLOCK_MASK64));
 
 	/*
 	 * Iterate the volume's address space in chunks of 4 TB, where each
@@ -530,7 +530,7 @@ hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
 	     phys_off += HAMMER_BLOCKMAP_LAYER2) {
 		for (block_off = 0;
 		     block_off < HAMMER_BLOCKMAP_LAYER2;
-		     block_off += HAMMER_LARGEBLOCK_SIZE) {
+		     block_off += HAMMER_BIGBLOCK_SIZE) {
 			layer2_off = phys_off +
 				HAMMER_BLOCKMAP_LAYER2_OFFSET(block_off);
 			layer2 = hammer_bread(hmp, layer2_off, &error, &buffer);
@@ -583,7 +583,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 	hammer_off_t aligned_buf_end_off;
 	aligned_buf_end_off = (HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no,
 		(volume->ondisk->vol_buf_end - volume->ondisk->vol_buf_beg)
-		& ~HAMMER_LARGEBLOCK_MASK64));
+		& ~HAMMER_BIGBLOCK_MASK64));
 
 	if (layer1) {
 		KKASSERT(layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL);
@@ -606,7 +606,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 			 * The first entry represents the L2 bigblock itself.
 			 */
 			layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
-			layer2->append_off = HAMMER_LARGEBLOCK_SIZE;
+			layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 			layer2->bytes_free = 0;
 			++stat->total_bigblocks;
 		} else if (phys_off + block_off < aligned_buf_end_off) {
@@ -615,7 +615,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 			 */
 			layer2->zone = 0;
 			layer2->append_off = 0;
-			layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
+			layer2->bytes_free = HAMMER_BIGBLOCK_SIZE;
 			++stat->total_bigblocks;
 			++stat->counter;
 		} else {
@@ -624,7 +624,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 			 * space
 			 */
 			layer2->zone = HAMMER_ZONE_UNAVAIL_INDEX;
-			layer2->append_off = HAMMER_LARGEBLOCK_SIZE;
+			layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 			layer2->bytes_free = 0;
 		}
 
@@ -700,7 +700,7 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 		}
 
 		if (layer2->append_off == 0 &&
-		    layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
+		    layer2->bytes_free == HAMMER_BIGBLOCK_SIZE) {
 			if (stat) {
 				++stat->total_bigblocks;
 				++stat->total_free_bigblocks;

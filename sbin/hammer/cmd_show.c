@@ -398,16 +398,16 @@ print_bigblock_fill(hammer_off_t offset)
 		printf("z%d:%lld=BADZ",
 			HAMMER_ZONE_DECODE(offset),
 			(offset & ~HAMMER_OFF_ZONE_MASK) /
-			    HAMMER_LARGEBLOCK_SIZE
+			    HAMMER_BIGBLOCK_SIZE
 		);
 	} else {
-		fill = layer2.bytes_free * 100 / HAMMER_LARGEBLOCK_SIZE;
+		fill = layer2.bytes_free * 100 / HAMMER_BIGBLOCK_SIZE;
 		fill = 100 - fill;
 
 		printf("z%d:%lld=%d%%",
 			HAMMER_ZONE_DECODE(offset),
 			(offset & ~HAMMER_OFF_ZONE_MASK) /
-			    HAMMER_LARGEBLOCK_SIZE,
+			    HAMMER_BIGBLOCK_SIZE,
 			fill
 		);
 	}

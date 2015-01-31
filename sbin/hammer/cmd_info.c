@@ -125,11 +125,11 @@ show_info(char *path)
 	fprintf(stdout, "Space information\n");
 
 	/* Space information */
-	totalbytes = (hvi->bigblocks << HAMMER_LARGEBLOCK_BITS);
-	usedbytes = (usedbigblocks << HAMMER_LARGEBLOCK_BITS);
-	rsvbytes = (hvi->rsvbigblocks << HAMMER_LARGEBLOCK_BITS);
+	totalbytes = (hvi->bigblocks << HAMMER_BIGBLOCK_BITS);
+	usedbytes = (usedbigblocks << HAMMER_BIGBLOCK_BITS);
+	rsvbytes = (hvi->rsvbigblocks << HAMMER_BIGBLOCK_BITS);
 	freebytes = ((hvi->freebigblocks - hvi->rsvbigblocks)
-	    << HAMMER_LARGEBLOCK_BITS);
+	    << HAMMER_BIGBLOCK_BITS);
 
 	fprintf(stdout, "\tNo. Inodes %10jd\n", (intmax_t)hvi->inodes);
 	humanize_number(buf, sizeof(buf)  - (totalbytes < 0 ? 0 : 1),

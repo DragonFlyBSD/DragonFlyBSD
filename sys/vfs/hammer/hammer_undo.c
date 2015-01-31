@@ -62,9 +62,9 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 	KKASSERT(HAMMER_ZONE_DECODE(undomap->alloc_offset) == HAMMER_ZONE_UNDO_INDEX);
 	KKASSERT(zone3_off < undomap->alloc_offset);
 
-	i = (zone3_off & HAMMER_OFF_SHORT_MASK) / HAMMER_LARGEBLOCK_SIZE;
+	i = (zone3_off & HAMMER_OFF_SHORT_MASK) / HAMMER_BIGBLOCK_SIZE;
 	result_offset = root_volume->ondisk->vol0_undo_array[i] +
-			(zone3_off & HAMMER_LARGEBLOCK_MASK64);
+			(zone3_off & HAMMER_BIGBLOCK_MASK64);
 
 	hammer_rel_volume(root_volume, 0);
 	return(result_offset);

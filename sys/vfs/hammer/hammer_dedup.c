@@ -274,7 +274,7 @@ hammer_dedup_scancmp(hammer_dedup_cache_t dc, void *data)
 
 	if (dc->data_offset < off)
 		return (-1);
-	if (dc->data_offset >= off + HAMMER_LARGEBLOCK_SIZE)
+	if (dc->data_offset >= off + HAMMER_BIGBLOCK_SIZE)
 		return (1);
 
 	return (0);

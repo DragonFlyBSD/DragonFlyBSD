@@ -199,35 +199,35 @@ typedef u_int32_t hammer_crc_t;
 	HAMMER_SHORT_OFF_ENCODE(offset))
 
 /*
- * Large-Block backing store
+ * Big-Block backing store
  *
  * A blockmap is a two-level map which translates a blockmap-backed zone
  * offset into a raw zone 2 offset.  The layer 1 handles 18 bits and the
- * layer 2 handles 19 bits.  The 8M large-block size is 23 bits so two
+ * layer 2 handles 19 bits.  The 8M big-block size is 23 bits so two
  * layers gives us 18+19+23 = 60 bits of address space.
  *
  * When using hinting for a blockmap lookup, the hint is lost when the
- * scan leaves the HINTBLOCK, which is typically several LARGEBLOCK's.
+ * scan leaves the HINTBLOCK, which is typically several BIGBLOCK's.
  * HINTBLOCK is a heuristic.
  */
-#define HAMMER_HINTBLOCK_SIZE		(HAMMER_LARGEBLOCK_SIZE * 4)
+#define HAMMER_HINTBLOCK_SIZE		(HAMMER_BIGBLOCK_SIZE * 4)
 #define HAMMER_HINTBLOCK_MASK64		((u_int64_t)HAMMER_HINTBLOCK_SIZE - 1)
-#define HAMMER_LARGEBLOCK_SIZE		(8192 * 1024)
-#define HAMMER_LARGEBLOCK_OVERFILL	(6144 * 1024)
-#define HAMMER_LARGEBLOCK_SIZE64	((u_int64_t)HAMMER_LARGEBLOCK_SIZE)
-#define HAMMER_LARGEBLOCK_MASK		(HAMMER_LARGEBLOCK_SIZE - 1)
-#define HAMMER_LARGEBLOCK_MASK64	((u_int64_t)HAMMER_LARGEBLOCK_SIZE - 1)
-#define HAMMER_LARGEBLOCK_BITS		23
-#if (1 << HAMMER_LARGEBLOCK_BITS) != HAMMER_LARGEBLOCK_SIZE
-#error "HAMMER_LARGEBLOCK_BITS BROKEN"
+#define HAMMER_BIGBLOCK_SIZE		(8192 * 1024)
+#define HAMMER_BIGBLOCK_OVERFILL	(6144 * 1024)
+#define HAMMER_BIGBLOCK_SIZE64		((u_int64_t)HAMMER_BIGBLOCK_SIZE)
+#define HAMMER_BIGBLOCK_MASK		(HAMMER_BIGBLOCK_SIZE - 1)
+#define HAMMER_BIGBLOCK_MASK64		((u_int64_t)HAMMER_BIGBLOCK_SIZE - 1)
+#define HAMMER_BIGBLOCK_BITS		23
+#if (1 << HAMMER_BIGBLOCK_BITS) != HAMMER_BIGBLOCK_SIZE
+#error "HAMMER_BIGBLOCK_BITS BROKEN"
 #endif
 
-#define HAMMER_BUFFERS_PER_LARGEBLOCK			\
-	(HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE)
-#define HAMMER_BUFFERS_PER_LARGEBLOCK_MASK		\
-	(HAMMER_BUFFERS_PER_LARGEBLOCK - 1)
-#define HAMMER_BUFFERS_PER_LARGEBLOCK_MASK64		\
-	((hammer_off_t)HAMMER_BUFFERS_PER_LARGEBLOCK_MASK)
+#define HAMMER_BUFFERS_PER_BIGBLOCK			\
+	(HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE)
+#define HAMMER_BUFFERS_PER_BIGBLOCK_MASK		\
+	(HAMMER_BUFFERS_PER_BIGBLOCK - 1)
+#define HAMMER_BUFFERS_PER_BIGBLOCK_MASK64		\
+	((hammer_off_t)HAMMER_BUFFERS_PER_BIGBLOCK_MASK)
 
 /*
  * Maximum number of mirrors operating in master mode (multi-master
@@ -295,7 +295,7 @@ typedef struct hammer_blockmap_layer1 *hammer_blockmap_layer1_t;
  *
  * NOTE: bytes_free is signed and can legally go negative if/when data
  *	 de-dup occurs.  This field will never go higher than
- *	 HAMMER_LARGEBLOCK_SIZE.  If exactly HAMMER_LARGEBLOCK_SIZE
+ *	 HAMMER_BIGBLOCK_SIZE.  If exactly HAMMER_BIGBLOCK_SIZE
  *	 the big-block is completely free.
  */
 struct hammer_blockmap_layer2 {
@@ -316,19 +316,19 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 #define HAMMER_BLOCKMAP_UNAVAIL	((hammer_off_t)-1LL)
 
 #define HAMMER_BLOCKMAP_RADIX1	/* 262144 (18) */	\
-	(HAMMER_LARGEBLOCK_SIZE / sizeof(struct hammer_blockmap_layer1))
+	(HAMMER_BIGBLOCK_SIZE / sizeof(struct hammer_blockmap_layer1))
 #define HAMMER_BLOCKMAP_RADIX2	/* 524288 (19) */	\
-	(HAMMER_LARGEBLOCK_SIZE / sizeof(struct hammer_blockmap_layer2))
+	(HAMMER_BIGBLOCK_SIZE / sizeof(struct hammer_blockmap_layer2))
 
 #define HAMMER_BLOCKMAP_RADIX1_PERBUFFER	\
-	(HAMMER_BLOCKMAP_RADIX1 / (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE))
+	(HAMMER_BLOCKMAP_RADIX1 / (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE))
 #define HAMMER_BLOCKMAP_RADIX2_PERBUFFER	\
-	(HAMMER_BLOCKMAP_RADIX2 / (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE))
+	(HAMMER_BLOCKMAP_RADIX2 / (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE))
 
 #define HAMMER_BLOCKMAP_LAYER1	/* 18+19+23 - 1EB */		\
 	(HAMMER_BLOCKMAP_RADIX1 * HAMMER_BLOCKMAP_LAYER2)
 #define HAMMER_BLOCKMAP_LAYER2	/* 19+23 - 4TB */		\
-	(HAMMER_BLOCKMAP_RADIX2 * HAMMER_LARGEBLOCK_SIZE64)
+	(HAMMER_BLOCKMAP_RADIX2 * HAMMER_BIGBLOCK_SIZE64)
 
 #define HAMMER_BLOCKMAP_LAYER1_MASK	(HAMMER_BLOCKMAP_LAYER1 - 1)
 #define HAMMER_BLOCKMAP_LAYER2_MASK	(HAMMER_BLOCKMAP_LAYER2 - 1)
@@ -343,7 +343,7 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 
 #define HAMMER_BLOCKMAP_LAYER2_OFFSET(zone2_offset)	\
 	(((zone2_offset) & HAMMER_BLOCKMAP_LAYER2_MASK) /	\
-	HAMMER_LARGEBLOCK_SIZE64 * sizeof(struct hammer_blockmap_layer2))
+	HAMMER_BIGBLOCK_SIZE64 * sizeof(struct hammer_blockmap_layer2))
 
 /*
  * HAMMER UNDO parameters.  The UNDO fifo is mapped directly in the volume

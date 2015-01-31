@@ -105,8 +105,8 @@ main(int ac, char **av)
 			break;
 		case 'u':
 			UndoBufferSize = getsize(optarg,
-					 HAMMER_LARGEBLOCK_SIZE,
-					 HAMMER_LARGEBLOCK_SIZE *
+					 HAMMER_BIGBLOCK_SIZE,
+					 HAMMER_BIGBLOCK_SIZE *
 					 HAMMER_UNDO_LAYER2, 2);
 			if (UndoBufferSize < 500*1024*1024 && ForceOpt == 0)
 				errx(1, "The minimum UNDO/REDO FIFO size is "
@@ -553,7 +553,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 	vol->vol_free_off = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
 	vol->vol_free_end = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no,
 				(ondisk->vol_buf_end - ondisk->vol_buf_beg) &
-				~HAMMER_LARGEBLOCK_MASK64);
+				~HAMMER_BIGBLOCK_MASK64);
 
 	/*
 	 * Format the root volume.
@@ -570,7 +570,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		freeblks = initialize_freemap(vol);
 		ondisk->vol0_stat_freebigblocks = freeblks;
 
-		freebytes = freeblks * HAMMER_LARGEBLOCK_SIZE64;
+		freebytes = freeblks * HAMMER_BIGBLOCK_SIZE64;
 		if (freebytes < 10*GIG && ForceOpt == 0) {
 			errx(1, "Cannot create a HAMMER filesystem less than "
 				"10GB unless you use -f.  HAMMER filesystems\n"

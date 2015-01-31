@@ -524,7 +524,7 @@ initialize_freemap(struct volume_info *vol)
 	 */
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
-	     phys_offset += HAMMER_LARGEBLOCK_SIZE) {
+	     phys_offset += HAMMER_BIGBLOCK_SIZE) {
 		modified1 = 0;
 		layer1_offset = layer1_base +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
@@ -543,7 +543,7 @@ initialize_freemap(struct volume_info *vol)
 			 */
 			if (layer2->zone == 0) {
 				layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
-				layer2->append_off = HAMMER_LARGEBLOCK_SIZE;
+				layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 				layer2->bytes_free = 0;
 			}
 		} else if (phys_offset < vol->vol_free_end) {
@@ -551,12 +551,12 @@ initialize_freemap(struct volume_info *vol)
 			buffer1->cache.modified = 1;
 			layer2->zone = 0;
 			layer2->append_off = 0;
-			layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
+			layer2->bytes_free = HAMMER_BIGBLOCK_SIZE;
 			++count;
 			modified1 = 1;
 		} else {
 			layer2->zone = HAMMER_ZONE_UNAVAIL_INDEX;
-			layer2->append_off = HAMMER_LARGEBLOCK_SIZE;
+			layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 			layer2->bytes_free = 0;
 		}
 		layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
@@ -603,7 +603,7 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	result_offset = volume->vol_free_off;
 	if (result_offset >= volume->vol_free_end)
 		panic("alloc_bigblock: Ran out of room, filesystem too small");
-	volume->vol_free_off += HAMMER_LARGEBLOCK_SIZE;
+	volume->vol_free_off += HAMMER_BIGBLOCK_SIZE;
 
 	/*
 	 * Update the freemap.
@@ -623,7 +623,7 @@ alloc_bigblock(struct volume_info *volume, int zone)
 		layer2 = get_buffer_data(layer_offset, &buffer, 0);
 		assert(layer2->zone == 0);
 		layer2->zone = zone;
-		layer2->append_off = HAMMER_LARGEBLOCK_SIZE;
+		layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 		layer2->bytes_free = 0;
 		layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 		buffer->cache.modified = 1;
@@ -656,8 +656,8 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 	u_int32_t seqno;
 
 	/*
-	 * Size the undo buffer in multiples of HAMMER_LARGEBLOCK_SIZE,
-	 * up to HAMMER_UNDO_LAYER2 large blocks.  Size to approximately
+	 * Size the undo buffer in multiples of HAMMER_BIGBLOCK_SIZE,
+	 * up to HAMMER_UNDO_LAYER2 big blocks.  Size to approximately
 	 * 0.1% of the disk.
 	 *
 	 * The minimum UNDO fifo size is 500MB, or approximately 1% of
@@ -672,12 +672,12 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 		if (undo_limit < 500*1024*1024)
 			undo_limit = 500*1024*1024;
 	}
-	undo_limit = (undo_limit + HAMMER_LARGEBLOCK_MASK64) &
-		     ~HAMMER_LARGEBLOCK_MASK64;
-	if (undo_limit < HAMMER_LARGEBLOCK_SIZE)
-		undo_limit = HAMMER_LARGEBLOCK_SIZE;
-	if (undo_limit > HAMMER_LARGEBLOCK_SIZE * HAMMER_UNDO_LAYER2)
-		undo_limit = HAMMER_LARGEBLOCK_SIZE * HAMMER_UNDO_LAYER2;
+	undo_limit = (undo_limit + HAMMER_BIGBLOCK_MASK64) &
+		     ~HAMMER_BIGBLOCK_MASK64;
+	if (undo_limit < HAMMER_BIGBLOCK_SIZE)
+		undo_limit = HAMMER_BIGBLOCK_SIZE;
+	if (undo_limit > HAMMER_BIGBLOCK_SIZE * HAMMER_UNDO_LAYER2)
+		undo_limit = HAMMER_BIGBLOCK_SIZE * HAMMER_UNDO_LAYER2;
 	UndoBufferSize = undo_limit;
 
 	blockmap = &ondisk->vol0_blockmap[undo_zone];
@@ -690,14 +690,14 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 
 	n = 0;
 	scan = blockmap->next_offset;
-	limit_index = undo_limit / HAMMER_LARGEBLOCK_SIZE;
+	limit_index = undo_limit / HAMMER_BIGBLOCK_SIZE;
 
 	assert(limit_index <= HAMMER_UNDO_LAYER2);
 
 	for (n = 0; n < limit_index; ++n) {
 		ondisk->vol0_undo_array[n] = alloc_bigblock(NULL,
 							HAMMER_ZONE_UNDO_INDEX);
-		scan += HAMMER_LARGEBLOCK_SIZE;
+		scan += HAMMER_BIGBLOCK_SIZE;
 	}
 	while (n < HAMMER_UNDO_LAYER2) {
 		ondisk->vol0_undo_array[n] = HAMMER_BLOCKMAP_UNAVAIL;
@@ -832,12 +832,12 @@ again:
 	if (layer2->zone == 0) {
 		--layer1->blocks_free;
 		layer2->zone = zone;
-		assert(layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE);
+		assert(layer2->bytes_free == HAMMER_BIGBLOCK_SIZE);
 		assert(layer2->append_off == 0);
 	}
 	if (layer2->zone != zone) {
-		blockmap->next_offset = (blockmap->next_offset + HAMMER_LARGEBLOCK_SIZE) &
-					~HAMMER_LARGEBLOCK_MASK64;
+		blockmap->next_offset = (blockmap->next_offset + HAMMER_BIGBLOCK_SIZE) &
+					~HAMMER_BIGBLOCK_MASK64;
 		goto again;
 	}
 
@@ -845,12 +845,12 @@ again:
 	buffer2->cache.modified = 1;
 	volume->cache.modified = 1;
 	assert(layer2->append_off ==
-	       (blockmap->next_offset & HAMMER_LARGEBLOCK_MASK));
+	       (blockmap->next_offset & HAMMER_BIGBLOCK_MASK));
 	layer2->bytes_free -= bytes;
 	*result_offp = blockmap->next_offset;
 	blockmap->next_offset += bytes;
 	layer2->append_off = (int)blockmap->next_offset &
-			      HAMMER_LARGEBLOCK_MASK;
+			      HAMMER_BIGBLOCK_MASK;
 
 	layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 	layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
