@@ -37,6 +37,7 @@
 #ifndef _SYS_RESOURCE_H_
 #define	_SYS_RESOURCE_H_
 
+#include <sys/cdefs.h>
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -47,8 +48,11 @@
  */
 #define	PRIO_MIN	-20
 #define	PRIO_MAX	20
+
+#if __BSD_VISIBLE
 #define	IOPRIO_MIN	1
 #define	IOPRIO_MAX	10
+#endif
 
 #define	PRIO_PROCESS	0
 #define	PRIO_PGRP	1
@@ -101,7 +105,9 @@ struct	rusage {
 
 #define	RLIM_NLIMITS	12		/* number of resource limits */
 
-#define	RLIM_INFINITY	((rlim_t)(((u_quad_t)1 << 63) - 1))
+#define	RLIM_INFINITY	((rlim_t)(((u_quad_t)1 << 63) - 1))	/* no limit */
+#define	RLIM_SAVED_MAX	RLIM_INFINITY	/* unrepresentable hard limit */
+#define	RLIM_SAVED_CUR	RLIM_INFINITY	/* unrepresentable soft limit */
 
 /*
  * Resource limit string identifiers
@@ -123,14 +129,15 @@ static char *rlimit_ident[] = {
 };
 #endif
 
-struct orlimit {
-	int32_t	rlim_cur;		/* current (soft) limit */
-	int32_t	rlim_max;		/* maximum value for rlim_cur */
-};
-
 struct rlimit {
 	rlim_t	rlim_cur;		/* current (soft) limit */
 	rlim_t	rlim_max;		/* maximum value for rlim_cur */
+};
+
+#if __BSD_VISIBLE
+struct orlimit {
+	int32_t	rlim_cur;		/* current (soft) limit */
+	int32_t	rlim_max;		/* maximum value for rlim_cur */
 };
 
 struct loadavg {
@@ -147,22 +154,23 @@ struct loadavg {
 #define	CP_INTR         3
 #define	CP_IDLE         4
 #define	CPUSTATES       5
+#endif /* __BSD_VISIBLE */
 
 #ifdef _KERNEL
 extern struct loadavg averunnable;
 
 int	dosetrlimit(u_int which, struct rlimit *limp);
 #else
-#include <sys/cdefs.h>
-
 __BEGIN_DECLS
 int	getpriority(int, int);
-int	ioprio_get(int, int);
 int	getrlimit(int, struct rlimit *);
 int	getrusage(int, struct rusage *);
 int	setpriority(int, int, int);
-int	ioprio_set(int, int, int);
 int	setrlimit(int, const struct rlimit *);
+#if __BSD_VISIBLE
+int	ioprio_get(int, int);
+int	ioprio_set(int, int, int);
+#endif
 __END_DECLS
 #endif	/* _KERNEL */
 
