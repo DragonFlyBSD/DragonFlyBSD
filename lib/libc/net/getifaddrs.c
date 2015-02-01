@@ -34,12 +34,10 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
-#ifdef	NET_RT_IFLIST
 #include <sys/param.h>
 #include <net/route.h>
 #include <sys/sysctl.h>
 #include <net/if_dl.h>
-#endif
 
 #include <errno.h>
 #include <ifaddrs.h>
@@ -68,20 +66,6 @@
 #define	ALIGN(p)	(((u_long)(p) + ALIGNBYTES) &~ ALIGNBYTES)
 #endif
 
-#if	_BSDI_VERSION >= 199701
-#define	HAVE_IFM_DATA
-#endif
-
-#if	_BSDI_VERSION >= 199802
-/* ifam_data is very specific to recent versions of bsdi */
-#define	HAVE_IFAM_DATA
-#endif
-
-#if defined(__NetBSD__) || defined(__OpenBSD__) || \
-    defined(__FreeBSD__) || defined(__DragonFly__)
-#define	HAVE_IFM_DATA
-#endif
-
 #define MAX_SYSCTL_TRY 5
 
 int
@@ -90,7 +74,6 @@ getifaddrs(struct ifaddrs **pif)
 	int icnt = 1;
 	int dcnt = 0;
 	int ncnt = 0;
-#ifdef	NET_RT_IFLIST
 	int ntry = 0;
 	int mib[6];
 	size_t needed;
@@ -105,19 +88,11 @@ getifaddrs(struct ifaddrs **pif)
 	struct sockaddr *sa;
 	struct ifaddrs *ifa, *ift;
 	u_short idx = 0;
-#else	/* NET_RT_IFLIST */
-	char buf[1024];
-	int sock;
-	struct ifconf ifc;
-	struct ifreq *ifr;
-	struct ifreq *lifr;
-#endif	/* NET_RT_IFLIST */
 	int i;
 	size_t len, alen;
 	char *data;
 	char *names;
 
-#ifdef	NET_RT_IFLIST
 	mib[0] = CTL_NET;
 	mib[1] = PF_ROUTE;
 	mib[2] = 0;             /* protocol */
@@ -163,9 +138,7 @@ getifaddrs(struct ifaddrs **pif)
 				dl = (struct sockaddr_dl *)(void *)(ifm + 1);
 				dcnt += SA_RLEN((struct sockaddr *)(void*)dl) +
 				    ALIGNBYTES;
-#ifdef	HAVE_IFM_DATA
 				dcnt += sizeof(ifm->ifm_data);
-#endif	/* HAVE_IFM_DATA */
 				ncnt += dl->sdl_nlen + 1;
 			} else
 				idx = 0;
@@ -181,9 +154,6 @@ getifaddrs(struct ifaddrs **pif)
 				break;
 			p = (char *)(void *)(ifam + 1);
 			++icnt;
-#ifdef	HAVE_IFAM_DATA
-			dcnt += sizeof(ifam->ifam_data) + ALIGNBYTES;
-#endif	/* HAVE_IFAM_DATA */
 			/* Scan to look for length of address */
 			alen = 0;
 			for (p0 = p, i = 0; i < RTAX_MAX; i++) {
@@ -213,34 +183,6 @@ getifaddrs(struct ifaddrs **pif)
 			break;
 		}
 	}
-#else	/* NET_RT_IFLIST */
-	ifc.ifc_buf = buf;
-	ifc.ifc_len = sizeof(buf);
-
-	if ((sock = _socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		return (-1);
-	i =  _ioctl(sock, SIOCGIFCONF, (char *)&ifc);
-	_close(sock);
-	if (i < 0)
-		return (-1);
-
-	ifr = ifc.ifc_req;
-	lifr = (struct ifreq *)&ifc.ifc_buf[ifc.ifc_len];
-
-	while (ifr < lifr) {
-		struct sockaddr *sa;
-
-		sa = &ifr->ifr_addr;
-		++icnt;
-		dcnt += SA_RLEN(sa);
-		ncnt += sizeof(ifr->ifr_name) + 1;
-		
-		if (SA_LEN(sa) < sizeof(*sa))
-			ifr = (struct ifreq *)(((char *)sa) + sizeof(*sa));
-		else
-			ifr = (struct ifreq *)(((char *)sa) + SA_LEN(sa));
-	}
-#endif	/* NET_RT_IFLIST */
 
 	if (icnt + dcnt + ncnt == 1) {
 		*pif = NULL;
@@ -260,7 +202,6 @@ getifaddrs(struct ifaddrs **pif)
 	memset(ifa, 0, sizeof(struct ifaddrs) * icnt);
 	ift = ifa;
 
-#ifdef	NET_RT_IFLIST
 	idx = 0;
 	for (next = buf; next < buf + needed; next += rtm->rtm_msglen) {
 		rtm = (struct rt_msghdr *)(void *)next;
@@ -287,15 +228,10 @@ getifaddrs(struct ifaddrs **pif)
 				    (void *)dl));
 				data += SA_RLEN((struct sockaddr *)(void *)dl);
 
-#ifdef	HAVE_IFM_DATA
 				/* ifm_data needs to be aligned */
 				ift->ifa_data = data = (void *)ALIGN(data);
 				memcpy(data, &ifm->ifm_data, sizeof(ifm->ifm_data));
  				data += sizeof(ifm->ifm_data);
-#else	/* HAVE_IFM_DATA */
-				ift->ifa_data = NULL;
-#endif	/* HAVE_IFM_DATA */
-
 				ift = (ift->ifa_next = ift + 1);
 			} else
 				idx = 0;
@@ -362,41 +298,12 @@ getifaddrs(struct ifaddrs **pif)
 				p += len;
 			}
 
-#ifdef	HAVE_IFAM_DATA
-			/* ifam_data needs to be aligned */
-			ift->ifa_data = data = (void *)ALIGN(data);
-			memcpy(data, &ifam->ifam_data, sizeof(ifam->ifam_data));
-			data += sizeof(ifam->ifam_data);
-#endif	/* HAVE_IFAM_DATA */
-
 			ift = (ift->ifa_next = ift + 1);
 			break;
 		}
 	}
 
 	free(buf);
-#else	/* NET_RT_IFLIST */
-	ifr = ifc.ifc_req;
-	lifr = (struct ifreq *)&ifc.ifc_buf[ifc.ifc_len];
-
-	while (ifr < lifr) {
-		struct sockaddr *sa;
-
-		ift->ifa_name = names;
-		names[sizeof(ifr->ifr_name)] = 0;
-		strncpy(names, ifr->ifr_name, sizeof(ifr->ifr_name));
-		while (*names++)
-			;
-
-		ift->ifa_addr = (struct sockaddr *)data;
-		sa = &ifr->ifr_addr;
-		memcpy(data, sa, SA_LEN(sa));
-		data += SA_RLEN(sa);
-		
-		ifr = (struct ifreq *)(((char *)sa) + SA_LEN(sa));
-		ift = (ift->ifa_next = ift + 1);
-	}
-#endif	/* NET_RT_IFLIST */
 	if (--ift >= ifa) {
 		ift->ifa_next = NULL;
 		*pif = ifa;
