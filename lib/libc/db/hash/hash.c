@@ -383,13 +383,13 @@ hdestroy(HTAB *hashp)
 	save_errno = 0;
 
 #ifdef HASH_STATISTICS
-	fprintf(stderr, "hdestroy: accesses %ld collisions %ld\n",
+	fprintf(stderr, "hdestroy: accesses %d collisions %d\n",
 	    hash_accesses, hash_collisions);
-	fprintf(stderr, "hdestroy: expansions %ld\n",
+	fprintf(stderr, "hdestroy: expansions %d\n",
 	    hash_expansions);
-	fprintf(stderr, "hdestroy: overflows %ld\n",
+	fprintf(stderr, "hdestroy: overflows %d\n",
 	    hash_overflows);
-	fprintf(stderr, "keys %ld maxp %d segmentcount %d\n",
+	fprintf(stderr, "keys %d maxp %d segmentcount %d\n",
 	    hashp->NKEYS, hashp->MAX_BUCKET, hashp->nsegs);
 
 	for (i = 0; i < NCACHED; i++)
