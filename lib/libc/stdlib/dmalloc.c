@@ -862,7 +862,7 @@ memrealloc(void *ptr, size_t nsize)
 	slab_t slab;
 	size_t osize;
 	char *obj;
-	int flags;
+	int flags = 0;
 
 	/*
 	 * If 0 bytes is requested we have to return a unique pointer, allocate
