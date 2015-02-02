@@ -1,4 +1,4 @@
-/*	$FreeBSD: src/sys/dev/usb/wlan/if_rumreg.h,v 1.4 2012/11/17 01:52:23 svnexp Exp $	*/
+/*	$FreeBSD: head/sys/dev/usb/wlan/if_rumreg.h 258780 2013-11-30 22:17:27Z eadler $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -139,7 +139,7 @@
 #define RT2573_BBP_BUSY	(1 << 16)
 /* possible flags for register PHY_CSR4 */
 #define RT2573_RF_20BIT	(20 << 24)
-#define RT2573_RF_BUSY	(1 << 31)
+#define RT2573_RF_BUSY	(1U << 31)
 
 /* LED values */
 #define RT2573_LED_RADIO	(1 << 8)

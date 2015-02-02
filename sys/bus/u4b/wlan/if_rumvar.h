@@ -1,4 +1,4 @@
-/*	$FreeBSD: src/sys/dev/usb/wlan/if_rumvar.h,v 1.10 2013/02/11 00:34:54 svnexp Exp $	*/
+/*	$FreeBSD: head/sys/dev/usb/wlan/if_rumvar.h 253757 2013-07-29 05:54:13Z hselasky $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -29,7 +29,7 @@ struct rum_rx_radiotap_header {
 	int8_t		wr_antsignal;
 	int8_t		wr_antnoise;
 	uint8_t		wr_antenna;
-};
+} __packed __aligned(8);
 
 #define RT2573_RX_RADIOTAP_PRESENT					\
 	((1 << IEEE80211_RADIOTAP_FLAGS) |				\
@@ -47,7 +47,7 @@ struct rum_tx_radiotap_header {
 	uint16_t	wt_chan_freq;
 	uint16_t	wt_chan_flags;
 	uint8_t		wt_antenna;
-};
+} __packed __aligned(8);
 
 #define RT2573_TX_RADIOTAP_PRESENT					\
 	((1 << IEEE80211_RADIOTAP_FLAGS) |				\
