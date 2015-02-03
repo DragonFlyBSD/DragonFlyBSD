@@ -589,9 +589,7 @@ ATH_DIAGAPI		opt_ath.h
 ATH_ENABLE_DFS		opt_ath.h
 #ATH_ENABLE_RADIOTAP_VENDOR_EXT opt_ath.h
 ATH_KTR_INTR_DEBUG	opt_ath.h
-ATH_RXBUF		opt_ath.h
 #ATH_TX99_DIAG		opt_ath.h
-ATH_TXBUF		opt_ath.h
 
 # ...and its HAL
 AH_AR5416_INTERRUPT_MITIGATION opt_ah.h

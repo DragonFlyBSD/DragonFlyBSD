@@ -146,8 +146,6 @@ device		ath		# Atheros AR521x
 options 	AH_SUPPORT_AR5416
 device		ath_hal		# Atheros Hardware Access Layer
 device		ath_rate_sample # Atheros Sample TX rate control algorithm
-options	ATH_RXBUF=80	# number of RX buffers to allocate
-options	ATH_TXBUF=400	# number of TX buffers to allocate
 
 # Pseudo devices - the number indicates how many units to allocate.
 pseudo-device	loop		# Network loopback
