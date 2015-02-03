@@ -2627,11 +2627,27 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		);
 	}
 
+	/*
+	 * If the packet is for us, set the packets source as the
+	 * bridge, and return the packet back to ifnet.if_input for
+	 * local processing.
+	 */
 	if (memcmp(eh->ether_dhost, IF_LLADDR(bifp), ETHER_ADDR_LEN) == 0) {
 		/*
-		 * If the packet is for us, set the packets source as the
-		 * bridge, and return the packet back to ifnet.if_input for
-		 * local processing.
+		 * We must still record the source interface in our
+		 * addr cache, otherwise our bridge won't know where
+		 * to send responses and will broadcast them.
+		 */
+		bif = bridge_lookup_member_if(sc, ifp);
+		if ((bif->bif_flags & IFBIF_LEARNING) &&
+		    ((bif->bif_flags & IFBIF_STP) == 0 ||
+		     bif->bif_state != BSTP_IFSTATE_BLOCKING)) {
+			bridge_rtupdate(sc, eh->ether_shost,
+					ifp, IFBAF_DYNAMIC);
+		}
+
+		/*
+		 * Perform pfil hooks.
 		 */
 		m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
 		KASSERT(bifp->if_bridge == NULL,
@@ -2648,6 +2664,11 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 					goto out;
 			}
 		}
+
+		/*
+		 * Set new_ifp and skip to the end.  This will trigger code
+		 * to reinput the packet and run it into our stack.
+		 */
 		new_ifp = bifp;
 		goto out;
 	}
@@ -2847,6 +2868,8 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	 * Perform the bridge forwarding function, but disallow bridging
 	 * to interfaces in the blocking state if the packet came in on
 	 * an interface in the blocking state.
+	 *
+	 * (bridge_forward also updates the addr cache).
 	 */
 	bridge_forward(sc, m);
 	m = NULL;
