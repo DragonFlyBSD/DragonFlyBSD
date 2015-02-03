@@ -72,6 +72,7 @@ Multicast and broadcast packets are always forwarded to all
 interfaces that are part of the bridge.
 For unicast traffic, the bridge learns which MAC addresses are associated
 with which interfaces and will forward the traffic selectively.
+By default the bridge can keep track of 1024 MAC addresses.
 .Pp
 The bridge operates in a safe mode by default, setting the MAC source in
 the link header on outgoing packets to the outgoing interface MAC.
