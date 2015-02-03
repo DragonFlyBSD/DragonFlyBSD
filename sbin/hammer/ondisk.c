@@ -48,6 +48,8 @@ static void *alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 			struct buffer_info **bufferp);
 static hammer_off_t alloc_bigblock(struct volume_info *volume, int zone);
 static void get_buffer_readahead(struct buffer_info *base);
+static __inline void *get_ondisk(hammer_off_t buf_offset,
+			struct buffer_info **bufferp, int isnew);
 #if 0
 static void init_fifo_head(hammer_fifo_head_t head, u_int16_t hdr_type);
 static hammer_off_t hammer_alloc_fifo(int32_t base_bytes, int32_t ext_bytes,
@@ -356,6 +358,11 @@ rel_buffer(struct buffer_info *buffer)
 	}
 }
 
+/*
+ * Retrieve a pointer to a buffer data given a buffer offset.  The underlying
+ * bufferp is freed if isnew or the offset is out of range of the cached data.
+ * If bufferp is freed a referenced buffer is loaded into it.
+ */
 void *
 get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 		int isnew)
@@ -369,11 +376,7 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 			buffer = *bufferp = NULL;
 		}
 	}
-	if (buffer == NULL)
-		buffer = *bufferp = get_buffer(buf_offset, isnew);
-	if (buffer == NULL)
-		return (NULL);
-	return((char *)buffer->ondisk + ((int32_t)buf_offset & HAMMER_BUFMASK));
+	return get_ondisk(buf_offset, bufferp, isnew);
 }
 
 /*
@@ -383,17 +386,33 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 hammer_node_ondisk_t
 get_node(hammer_off_t node_offset, struct buffer_info **bufp)
 {
-	struct buffer_info *buf;
-
-	if (*bufp)
+	if (*bufp) {
 		rel_buffer(*bufp);
-	*bufp = buf = get_buffer(node_offset, 0);
-	if (buf) {
-		return((void *)((char *)buf->ondisk +
-				(int32_t)(node_offset & HAMMER_BUFMASK)));
-	} else {
-		return(NULL);
+		*bufp = NULL;
 	}
+	return get_ondisk(node_offset, bufp, 0);
+}
+
+/*
+ * Return a pointer to a buffer data given a buffer offset.
+ * If *bufferp is NULL acquire the buffer otherwise use that buffer.
+ */
+static __inline
+void *
+get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp,
+	int isnew)
+{
+	struct buffer_info *buffer;
+
+	buffer = *bufferp;
+	if (buffer == NULL) {
+		buffer = *bufferp = get_buffer(buf_offset, isnew);
+		if (buffer == NULL)
+			return(NULL);
+	}
+
+	return (char *)buffer->ondisk +
+		((int32_t)buf_offset & HAMMER_BUFMASK);
 }
 
 /*
