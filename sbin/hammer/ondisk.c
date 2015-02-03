@@ -367,13 +367,11 @@ void *
 get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 		int isnew)
 {
-	struct buffer_info *buffer;
-
-	if ((buffer = *bufferp) != NULL) {
+	if (*bufferp != NULL) {
 		if (isnew > 0 ||
-		    ((buffer->buf_offset ^ buf_offset) & ~HAMMER_BUFMASK64)) {
-			rel_buffer(buffer);
-			buffer = *bufferp = NULL;
+		    (((*bufferp)->buf_offset ^ buf_offset) & ~HAMMER_BUFMASK64)) {
+			rel_buffer(*bufferp);
+			*bufferp = NULL;
 		}
 	}
 	return get_ondisk(buf_offset, bufferp, isnew);
@@ -381,16 +379,16 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 
 /*
  * Retrieve a pointer to a B-Tree node given a cluster offset.  The underlying
- * bufp is freed if non-NULL and a referenced buffer is loaded into it.
+ * bufferp is freed if non-NULL and a referenced buffer is loaded into it.
  */
 hammer_node_ondisk_t
-get_node(hammer_off_t node_offset, struct buffer_info **bufp)
+get_node(hammer_off_t node_offset, struct buffer_info **bufferp)
 {
-	if (*bufp) {
-		rel_buffer(*bufp);
-		*bufp = NULL;
+	if (*bufferp != NULL) {
+		rel_buffer(*bufferp);
+		*bufferp = NULL;
 	}
-	return get_ondisk(node_offset, bufp, 0);
+	return get_ondisk(node_offset, bufferp, 0);
 }
 
 /*
