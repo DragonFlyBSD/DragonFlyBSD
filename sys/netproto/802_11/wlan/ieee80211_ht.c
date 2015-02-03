@@ -1954,8 +1954,8 @@ ht_recv_action_ba_addba_response(struct ieee80211_node *ni,
 		IEEE80211_DISCARD_MAC(vap,
 		    IEEE80211_MSG_ACTION | IEEE80211_MSG_11N,
 		    ni->ni_macaddr, "ADDBA response",
-		    "policy mismatch: expecting %s, "
-		    "received %s, tid %d code %d",
+		    "policy mismatch: expecting %d, "
+		    "received %d, tid %d code %d",
 		    tap->txa_flags & IEEE80211_AGGR_IMMEDIATE,
 		    policy, tid, code);
 		vap->iv_stats.is_addba_badpolicy++;

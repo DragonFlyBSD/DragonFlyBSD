@@ -603,7 +603,8 @@ ieee80211_fix_rate(struct ieee80211_node *ni,
 	     fixedrate != ucastrate)) {
 		IEEE80211_NOTE(vap, IEEE80211_MSG_XRATE | IEEE80211_MSG_11N, ni,
 		    "%s: flags 0x%x okrate %d error %d fixedrate 0x%x "
-		    "ucastrate %x\n", __func__, fixedrate, ucastrate, flags);
+		    "ucastrate %x\n", __func__, flags, okrate, error,
+		    fixedrate, ucastrate);
 		return badrate | IEEE80211_RATE_BASIC;
 	} else
 		return RV(okrate);

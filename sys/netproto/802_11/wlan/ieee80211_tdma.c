@@ -611,7 +611,7 @@ tdma_process_params(struct ieee80211_node *ni, const u_int8_t *ie,
 			    "slot %u collision rxtsf %llu tsf %llu\n",
 			    tdma->tdma_slot,
 			    (unsigned long long) le64toh(ni->ni_tstamp.tsf),
-			    vap->iv_bss->ni_tstamp.tsf);
+			    (unsigned long long) vap->iv_bss->ni_tstamp.tsf);
 			setbit(ts->tdma_inuse, tdma->tdma_slot);
 
 			(void) tdma_update(vap, tdma, ni, 1);

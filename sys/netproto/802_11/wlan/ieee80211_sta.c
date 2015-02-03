@@ -1021,7 +1021,7 @@ sta_auth_shared(struct ieee80211_node *ni, struct ieee80211_frame *wh,
 		if ((frm[1] + 2) > (efrm - frm)) {
 			IEEE80211_DISCARD_MAC(vap, IEEE80211_MSG_AUTH,
 			    ni->ni_macaddr, "shared key auth",
-			    "ie %d/%d too long",
+			    "ie %d/%ld too long",
 			    frm[0], (frm[1] + 2) - (efrm - frm));
 			vap->iv_stats.is_rx_bad_auth++;
 			estatus = IEEE80211_STATUS_CHALLENGE;
@@ -1226,7 +1226,7 @@ ieee80211_parse_csaparams(struct ieee80211vap *vap, uint8_t *frm,
 			IEEE80211_NOTE_FRAME(vap, IEEE80211_MSG_DOTH, wh,
 			    "CSA ie mismatch, initial ie <%d,%d,%d>, "
 			    "this ie <%d,%d,%d>", ic->ic_csa_mode,
-			    ic->ic_csa_newchan, ic->ic_csa_count,
+			    ic->ic_csa_newchan->ic_ieee, ic->ic_csa_count,
 			    csa->csa_mode, csa->csa_newchan, csa->csa_count);
 			ieee80211_csa_cancelswitch(ic);
 		} else {

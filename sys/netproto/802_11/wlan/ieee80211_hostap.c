@@ -1048,7 +1048,7 @@ hostap_auth_shared(struct ieee80211_node *ni, struct ieee80211_frame *wh,
 		if ((frm[1] + 2) > (efrm - frm)) {
 			IEEE80211_DISCARD_MAC(vap, IEEE80211_MSG_AUTH,
 			    ni->ni_macaddr, "shared key auth",
-			    "ie %d/%d too long",
+			    "ie %d/%ld too long",
 			    frm[0], (frm[1] + 2) - (efrm - frm));
 			vap->iv_stats.is_rx_bad_auth++;
 			estatus = IEEE80211_STATUS_CHALLENGE;
@@ -1640,7 +1640,7 @@ htcapmismatch(struct ieee80211_node *ni, const struct ieee80211_frame *wh,
 	int reassoc, int resp)
 {
 	IEEE80211_NOTE_MAC(ni->ni_vap, IEEE80211_MSG_ANY, wh->i_addr2,
-	    "deny %s request, %s missing HT ie", reassoc ? "reassoc" : "assoc");
+	    "deny %s request, missing HT ie", reassoc ? "reassoc" : "assoc");
 	/* XXX no better code */
 	IEEE80211_SEND_MGMT(ni, resp, IEEE80211_STATUS_MISSING_HT_CAPS);
 	ieee80211_node_leave(ni);
