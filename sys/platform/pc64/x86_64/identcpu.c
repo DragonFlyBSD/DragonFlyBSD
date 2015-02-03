@@ -549,8 +549,15 @@ identify_cpu(void)
 	if (cpu_high >= 5) {
 		do_cpuid(5, regs);
 		cpu_mwait_feature = regs[2];
-		if (cpu_mwait_feature & CPUID_MWAIT_EXT)
+		if (cpu_mwait_feature & CPUID_MWAIT_EXT) {
 			cpu_mwait_extemu = regs[3];
+			/* At least one C1 */
+			if (CPUID_MWAIT_CX_SUBCNT(cpu_mwait_extemu, 1) == 0) {
+				/* No C1 at all, no MWAIT EXT then */
+				cpu_mwait_feature &= ~CPUID_MWAIT_EXT;
+				cpu_mwait_extemu = 0;
+			}
+		}
 	}
 	if (cpu_high >= 6) {
 		do_cpuid(6, regs);
