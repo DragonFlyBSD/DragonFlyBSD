@@ -1754,6 +1754,7 @@ bus/isa/pnpeat.c		optional isa
 dev/misc/amdsbwd/amdsbwd.c	optional amdsbwd
 dev/misc/ecc/ecc_amd8000.c	optional ecc
 dev/misc/ecc/ecc_e31200.c	optional ecc
+dev/misc/ecc/ecc_e5.c		optional ecc
 # not ready yet
 #dev/misc/ecc/ecc_x3400.c	optional ecc
 dev/misc/joy/joy.c		optional joy
