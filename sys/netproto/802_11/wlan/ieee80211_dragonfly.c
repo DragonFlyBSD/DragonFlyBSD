@@ -314,6 +314,7 @@ ieee80211_parent_xmitpkt(struct ieee80211com *ic, struct mbuf *m)
 void
 ieee80211_vap_destroy(struct ieee80211vap *vap)
 {
+	wlan_assert_notserialized();
 	if_clone_destroy(vap->iv_ifp->if_xname);
 }
 

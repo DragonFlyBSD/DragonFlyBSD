@@ -83,6 +83,12 @@ wlan_assert_serialized(void)
 	ASSERT_SERIALIZED(&wlan_global_serializer);
 }
 
+static __inline void
+wlan_assert_notserialized(void)
+{
+	ASSERT_NOT_SERIALIZED(&wlan_global_serializer);
+}
+
 /*
  * Node reference counting definitions.
  *

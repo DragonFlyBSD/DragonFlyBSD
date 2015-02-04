@@ -300,6 +300,12 @@ ieee80211_ifattach(struct ieee80211com *ic,
 	struct sockaddr_dl *sdl;
 	struct ifaddr *ifa;
 
+	/*
+	 * This function must _not_ be serialized by the WLAN serializer,
+	 * since it could dead-lock the domsg to netisrs in if_attach().
+	 */
+	wlan_assert_notserialized();
+
 	KASSERT(ifp->if_type == IFT_IEEE80211, ("if_type %d", ifp->if_type));
 
 	IEEE80211_LOCK_INIT(ic, ifp->if_xname);
@@ -385,6 +391,23 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 	struct ieee80211vap *vap;
 
 	/*
+	 * WLAN serializer must _not_ be held for if_detach()
+	 * or ieee80211_vap_destroy(), since it could dead-lock
+	 * the domsg to netisrs.
+	 *
+	 * NOTE:
+	 * It is safe to release the WLAN serializer for the
+	 * ic_vaps, since the physical/parent ifnet is no longer
+	 * visible after the if_detach().
+	 *
+	 * XXX
+	 * This function actually should _not_ be serialized
+	 * by the WLAN serializer, however, all 802.11 device
+	 * drivers serialize it ...
+	 */
+	wlan_serialize_exit();
+
+	/*
 	 * This detaches the main interface, but not the vaps.
 	 * Each VAP may be in a separate VIMAGE.
 	 */
@@ -398,6 +421,9 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 	 */
 	while ((vap = TAILQ_FIRST(&ic->ic_vaps)) != NULL)
 		ieee80211_vap_destroy(vap);
+
+	wlan_serialize_enter();
+
 	ieee80211_waitfor_parent(ic);
 
 	ieee80211_sysctl_detach(ic);
@@ -582,6 +608,12 @@ ieee80211_vap_attach(struct ieee80211vap *vap,
 	struct ifmediareq imr;
 	int maxrate;
 
+	/*
+	 * This function must _not_ be serialized by the WLAN serializer,
+	 * since it could dead-lock the domsg to netisrs in ether_ifattach().
+	 */
+	wlan_assert_notserialized();
+
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE,
 	    "%s: %s parent %s flags 0x%x flags_ext 0x%x\n",
 	    __func__, ieee80211_opmode_name[vap->iv_opmode],
@@ -641,6 +673,12 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 {
 	struct ieee80211com *ic = vap->iv_ic;
 	struct ifnet *ifp = vap->iv_ifp;
+
+	/*
+	 * This function must _not_ be serialized by the WLAN serializer,
+	 * since it could dead-lock the domsg to netisrs in ether_ifdettach().
+	 */
+	wlan_assert_notserialized();
 
 	CURVNET_SET(ifp->if_vnet);
 
