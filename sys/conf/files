@@ -617,7 +617,7 @@ iwn5150fw.fwo			optional iwnfw				\
 	no-implicit-rule						\
 	clean		"iwn5150fw.fwo"
 iwn5150.fw			optional iwnfw				\
-	dependency	"$S/contrib/dev/iwn/iwlwifi-5150-8.24.2.2.fw.uu"\
+	dependency	"$S/contrib/dev/iwn/iwlwifi-5150-8.24.2.2.fw.uu" \
 	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwn5150.fw"
