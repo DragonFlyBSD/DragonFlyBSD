@@ -410,7 +410,7 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	error = 0;
 done:
 	pfs_pdone(procp);
-	return 0;
+	return error;
 }
 
 /*
