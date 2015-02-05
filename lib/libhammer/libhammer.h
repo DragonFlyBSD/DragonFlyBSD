@@ -166,7 +166,7 @@ int libhammer_stats_btree_searches(int64_t *);
 int libhammer_btree_stats(struct libhammer_btree_stats *);
 int libhammer_io_stats(struct libhammer_io_stats *);
 
-char *libhammer_find_pfs_mount(int, uuid_t, int);
+char *libhammer_find_pfs_mount(uuid_t *);
 void *_libhammer_malloc(size_t);
 __END_DECLS
 

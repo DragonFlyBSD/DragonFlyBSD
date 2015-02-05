@@ -494,7 +494,7 @@ snapshot_ls(const char *path)
 	struct tm *tp;
 	time_t t;
 	u_int32_t i;
-	int fd, ismaster;
+	int fd;
 	char snapts[64];
 	char *mntpoint;
 
@@ -520,12 +520,10 @@ snapshot_ls(const char *path)
 		/* not reached */
         }
 
-	ismaster = (pfs_od.mirror_flags & HAMMER_PFSD_SLAVE) ? 0 : 1;
-	mntpoint = libhammer_find_pfs_mount(pfs.pfs_id, info.vol_fsid, ismaster);
+	mntpoint = libhammer_find_pfs_mount(&pfs.ondisk->unique_uuid);
 
-	/* Note the degenerate case of PFS #0 */
 	printf("Snapshots on %s\tPFS #%d\n",
-	    pfs.pfs_id == 0 ? path : mntpoint, pfs.pfs_id);
+	    mntpoint ? mntpoint : path, pfs.pfs_id);
 	printf("Transaction ID\t\tTimestamp\t\tNote\n");
 
 	if (mntpoint)

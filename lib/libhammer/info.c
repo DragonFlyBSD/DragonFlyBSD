@@ -95,12 +95,6 @@ libhammer_get_volinfo(const char *path)
 			pfstmp->ismaster =
 			    (pfs_od->mirror_flags & HAMMER_PFSD_SLAVE) ? 0 : 1;
 
-			if (pi.pos == 0)
-				pfstmp->mountedon = strdup(path);
-			else
-				pfstmp->mountedon =
-				    libhammer_find_pfs_mount(pi.pos,
-					hvi->vol_fsid, pfstmp->ismaster);
 			/*
 			 * Fill in structs used in the library. We don't rely on
 			 * HAMMER own struct but we do fill our own.
@@ -110,6 +104,8 @@ libhammer_get_volinfo(const char *path)
 			pfstmp->mirror_flags = pfs_od->mirror_flags;
 			pfstmp->beg_tid = pfs_od->sync_beg_tid;
 			pfstmp->end_tid = pfs_od->sync_end_tid;
+			pfstmp->mountedon =
+			    libhammer_find_pfs_mount(&pfs_od->unique_uuid);
 			pfstmp->snapcount = count_snapshots(hvi->version,
 			    pfstmp->snapshots, pfstmp->mountedon,
 			    &pfstmp->head.error);

@@ -46,15 +46,16 @@
 #include "libhammer.h"
 
 char *
-libhammer_find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster)
+libhammer_find_pfs_mount(uuid_t *unique_uuid)
 {
-	struct hammer_ioc_info hi;
+	struct hammer_ioc_pseudofs_rw pfs;
+	struct hammer_pseudofs_data pfsd;
 	struct statfs *mntbuf;
 	int mntsize;
 	int curmount;
 	int fd;
 	size_t	mntbufsize;
-	char *trailstr;
+	uuid_t uuid;
 	char *retval;
 
 	retval = NULL;
@@ -70,8 +71,6 @@ libhammer_find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster)
 	mntsize = getfsstat(mntbuf, (long)mntbufsize, MNT_NOWAIT);
 	curmount = mntsize - 1;
 
-	asprintf(&trailstr, ":%05d", pfsid);
-
 	/*
 	 * Iterate all the mounted points looking for the PFS passed to
 	 * this function.
@@ -79,42 +78,36 @@ libhammer_find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster)
 	while(curmount >= 0) {
 		struct statfs *mnt = &mntbuf[curmount];
 		/*
-		 * We need to avoid that PFS belonging to other HAMMER
-		 * filesystems are showed as mounted, so we compare
-		 * against the FSID, which is presumable to be unique.
+		 * Discard any non null(5) or hammer(5) filesystems as synthetic
+		 * filesystems like procfs(5) could accept ioctl calls and thus
+		 * produce bogus results.
 		 */
-		bzero(&hi, sizeof(hi));
-		if ((fd = open(mnt->f_mntfromname, O_RDONLY)) < 0) {
+		if ((strcmp("hammer", mnt->f_fstypename) != 0) &&
+		    (strcmp("null", mnt->f_fstypename) != 0)) {
 			curmount--;
 			continue;
 		}
-
-		if (ioctl(fd, HAMMERIOC_GET_INFO, &hi) < 0) {
+		bzero(&pfs, sizeof(pfs));
+		bzero(&pfsd, sizeof(pfsd));
+		pfs.pfs_id = -1;
+		pfs.ondisk = &pfsd;
+		pfs.bytes = sizeof(struct hammer_pseudofs_data);
+		fd = open(mnt->f_mntonname, O_RDONLY);
+		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
 			close(fd);
 			curmount--;
 			continue;
 		}
 
-		if (strstr(mnt->f_mntfromname, trailstr) != NULL &&
-		    (uuid_compare(&hi.vol_fsid, &parentuuid, NULL)) == 0) {
-			if (ismaster) {
-				if (strstr(mnt->f_mntfromname,
-				    "@@-1") != NULL) {
-					retval = strdup(mnt->f_mntonname);
-					break;
-				}
-			} else {
-				if (strstr(mnt->f_mntfromname,
-				    "@@0x") != NULL ) {
-					retval = strdup(mnt->f_mntonname);
-					break;
-				}
-			}
+		memcpy(&uuid, &pfs.ondisk->unique_uuid, sizeof(uuid));
+		if (uuid_compare(unique_uuid, &uuid, NULL) == 0) {
+			    retval = strdup(mnt->f_mntonname);
+			    break;
 		}
+
 		curmount--;
 		close(fd);
 	}
-	free(trailstr);
 	free(mntbuf);
 
 	return retval;
