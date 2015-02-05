@@ -337,7 +337,7 @@ SYSINIT(clocks2, SI_BOOT2_POST_SMP, SI_ORDER_ANY, initclocks_other, NULL)
  * This sets the current real time of day.  Timespecs are in seconds and
  * nanoseconds.  We do not mess with gd_time_seconds and gd_cpuclock_base,
  * instead we adjust basetime so basetime + gd_* results in the current
- * time of day.  This way the gd_* fields are guarenteed to represent
+ * time of day.  This way the gd_* fields are guaranteed to represent
  * a monotonically increasing 'uptime' value.
  *
  * When set_timeofday() is called from userland, the system call forces it
@@ -370,7 +370,7 @@ set_timeofday(struct timespec *ts)
 	 * can simply assign boottime to basetime.  
 	 *
 	 * Note that nanouptime() is based on gd_time_seconds which is drift
-	 * compensated up to a point (it is guarenteed to remain monotonically
+	 * compensated up to a point (it is guaranteed to remain monotonically
 	 * increasing).  gd_time_seconds is thus our best uptime guess and
 	 * suitable for use in the boottime calculation.  It is already taken
 	 * into account in the basetime calculation above.
@@ -713,7 +713,7 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 			/*
 			 * IPI processing code will bump gd_intr_nesting_level
 			 * up by one, which breaks following CLKF_INTR testing,
-			 * so we substract it by one here.
+			 * so we subtract it by one here.
 			 */
 			--intr_nest;
 		}
@@ -890,7 +890,7 @@ schedclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 /*
  * Compute number of ticks for the specified amount of time.  The 
  * return value is intended to be used in a clock interrupt timed
- * operation and guarenteed to meet or exceed the requested time.
+ * operation and guaranteed to meet or exceed the requested time.
  * If the representation overflows, return INT_MAX.  The minimum return
  * value is 1 ticks and the function will average the calculation up.
  * If any value greater then 0 microseconds is supplied, a value
@@ -1083,12 +1083,12 @@ SYSCTL_PROC(_kern, KERN_CLOCKRATE, clockrate, CTLTYPE_STRUCT|CTLFLAG_RD,
  * time relative to system boot, these are well suited for time
  * interval measurements.
  *
- * Each cpu independantly maintains the current time of day, so all
+ * Each cpu independently maintains the current time of day, so all
  * we need to do to protect ourselves from changes is to do a loop
  * check on the seconds field changing out from under us.
  *
  * The system timer maintains a 32 bit count and due to various issues
- * it is possible for the calculated delta to occassionally exceed
+ * it is possible for the calculated delta to occasionally exceed
  * sys_cputimer->freq.  If this occurs the sys_cputimer->freq64_nsec
  * multiplication can easily overflow, so we deal with the case.  For
  * uniformity we deal with the case in the usec case too.
