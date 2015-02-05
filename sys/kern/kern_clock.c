@@ -177,9 +177,11 @@ SYSCTL_PROC(_kern, OID_AUTO, cp_time, (CTLTYPE_LONG|CTLFLAG_RD), 0, 0,
  * The gd_time_seconds and gd_cpuclock_base fields remain fairly monotonic.
  * Slight adjustments to gd_cpuclock_base are made to phase-lock it to
  * the real time.
+ *
+ * WARNING! time_second can backstep on time corrections.
  */
 struct timespec boottime;	/* boot time (realtime) for reference only */
-time_t time_second;		/* read-only 'passive' uptime in seconds */
+time_t time_second;		/* read-only 'passive' realtime in seconds */
 time_t time_uptime;		/* read-only 'passive' uptime in seconds */
 
 /*
