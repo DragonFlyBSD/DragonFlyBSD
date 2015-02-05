@@ -178,7 +178,9 @@ SYSCTL_PROC(_kern, OID_AUTO, cp_time, (CTLTYPE_LONG|CTLFLAG_RD), 0, 0,
  * Slight adjustments to gd_cpuclock_base are made to phase-lock it to
  * the real time.
  *
- * WARNING! time_second can backstep on time corrections.
+ * WARNING! time_second can backstep on time corrections. Also, unlike
+ *          time second, time_uptime is not a "real" time_t (seconds
+ *          since the Epoch) but seconds since booting.
  */
 struct timespec boottime;	/* boot time (realtime) for reference only */
 time_t time_second;		/* read-only 'passive' realtime in seconds */
