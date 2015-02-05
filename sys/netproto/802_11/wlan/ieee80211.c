@@ -391,14 +391,15 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 	struct ieee80211vap *vap;
 
 	/*
-	 * WLAN serializer must _not_ be held for if_detach()
-	 * or ieee80211_vap_destroy(), since it could dead-lock
-	 * the domsg to netisrs.
-	 *
-	 * NOTE:
-	 * It is safe to release the WLAN serializer for the
-	 * ic_vaps, since the physical/parent ifnet is no longer
-	 * visible after the if_detach().
+	 * The VAP is responsible for setting and clearing
+	 * the VIMAGE context.
+	 */
+	while ((vap = TAILQ_FIRST(&ic->ic_vaps)) != NULL)
+		ieee80211_vap_destroy(vap);
+
+	/*
+	 * WLAN serializer must _not_ be held for if_detach(),
+	 * since it could dead-lock the domsg to netisrs.
 	 *
 	 * XXX
 	 * This function actually should _not_ be serialized
@@ -410,18 +411,16 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 	/*
 	 * This detaches the main interface, but not the vaps.
 	 * Each VAP may be in a separate VIMAGE.
+	 *
+	 * Detach the main interface _after_ all vaps are
+	 * destroyed, since the main interface is referenced
+	 * on vaps' detach path.
 	 */
 	CURVNET_SET(ifp->if_vnet);
 	if_detach(ifp);
 	CURVNET_RESTORE();
 
-	/*
-	 * The VAP is responsible for setting and clearing
-	 * the VIMAGE context.
-	 */
-	while ((vap = TAILQ_FIRST(&ic->ic_vaps)) != NULL)
-		ieee80211_vap_destroy(vap);
-
+	/* Re-hold WLAN serializer */
 	wlan_serialize_enter();
 
 	ieee80211_waitfor_parent(ic);

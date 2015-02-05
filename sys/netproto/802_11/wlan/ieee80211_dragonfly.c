@@ -314,8 +314,13 @@ ieee80211_parent_xmitpkt(struct ieee80211com *ic, struct mbuf *m)
 void
 ieee80211_vap_destroy(struct ieee80211vap *vap)
 {
-	wlan_assert_notserialized();
+	/*
+	 * WLAN serializer must _not_ be held for if_clone_destroy(),
+	 * since it could dead-lock the domsg to netisrs.
+	 */
+	wlan_serialize_exit();
 	if_clone_destroy(vap->iv_ifp->if_xname);
+	wlan_serialize_enter();
 }
 
 /*
