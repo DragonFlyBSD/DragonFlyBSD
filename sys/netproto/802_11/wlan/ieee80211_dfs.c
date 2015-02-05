@@ -54,8 +54,6 @@ __FBSDID("$FreeBSD$");
 
 #include <netproto/802_11/ieee80211_var.h>
 
-static MALLOC_DEFINE(M_80211_DFS, "80211dfs", "802.11 DFS state");
-
 static	int ieee80211_nol_timeout = 30*60;		/* 30 minutes */
 SYSCTL_INT(_net_wlan, OID_AUTO, nol_timeout, CTLFLAG_RW,
 	&ieee80211_nol_timeout, 0, "NOL timeout (secs)");
