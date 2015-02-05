@@ -2233,15 +2233,18 @@ emx_create_tx_ring(struct emx_txdata *tdata)
 		tdata->tx_intr_nsegs = tdata->oact_tx_desc;
 
 	/*
-	 * Pullup extra 4bytes into the first data segment, see:
+	 * Pullup extra 4bytes into the first data segment for TSO, see:
 	 * 82571/82572 specification update errata #7
+	 *
+	 * Same applies to I217 (and maybe I218).
 	 *
 	 * NOTE:
 	 * 4bytes instead of 2bytes, which are mentioned in the errata,
 	 * are pulled; mainly to keep rest of the data properly aligned.
 	 */
 	if (tdata->sc->hw.mac.type == e1000_82571 ||
-	    tdata->sc->hw.mac.type == e1000_82572)
+	    tdata->sc->hw.mac.type == e1000_82572 ||
+	    tdata->sc->hw.mac.type == e1000_pch_lpt)
 		tdata->tx_flags |= EMX_TXFLAG_TSO_PULLEX;
 
 	return (0);

@@ -480,9 +480,13 @@ em_attach(device_t dev)
 	switch (adapter->hw.mac.type) {
 	case e1000_82571:
 	case e1000_82572:
+	case e1000_pch_lpt:
 		/*
-		 * Pullup extra 4bytes into the first data segment, see:
+		 * Pullup extra 4bytes into the first data segment for
+		 * TSO, see:
 		 * 82571/82572 specification update errata #7
+		 *
+		 * Same applies to I217 (and maybe I218).
 		 *
 		 * NOTE:
 		 * 4bytes instead of 2bytes, which are mentioned in the
