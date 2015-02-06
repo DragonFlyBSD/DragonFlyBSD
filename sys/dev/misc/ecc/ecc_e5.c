@@ -203,7 +203,7 @@ ecc_e5_probe(device_t dev)
 			node = __SHIFTOUT(val,
 			    PCI_E5_UBOX0_CPUNODEID_LCLNODEID);
 
-			ksnprintf(desc, sizeof(desc), "%s node%d, channel%d",
+			ksnprintf(desc, sizeof(desc), "%s node%d channel%d",
 			    t->desc, node, t->chan);
 			device_set_desc_copy(dev, desc);
 
