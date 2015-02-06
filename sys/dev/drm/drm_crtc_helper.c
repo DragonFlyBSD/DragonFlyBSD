@@ -281,7 +281,8 @@ drm_encoder_disable(struct drm_encoder *encoder)
 	if (encoder_funcs->disable)
 		(*encoder_funcs->disable)(encoder);
 	else
-		(*encoder_funcs->dpms)(encoder, DRM_MODE_DPMS_OFF);
+		if (encoder_funcs->dpms)
+			(*encoder_funcs->dpms)(encoder, DRM_MODE_DPMS_OFF);
 }
 
 /**
@@ -322,7 +323,8 @@ void drm_helper_disable_unused_functions(struct drm_device *dev)
 			if (crtc_funcs->disable)
 				(*crtc_funcs->disable)(crtc);
 			else
-				(*crtc_funcs->dpms)(crtc, DRM_MODE_DPMS_OFF);
+				if (crtc_funcs->dpms)
+					(*crtc_funcs->dpms)(crtc, DRM_MODE_DPMS_OFF);
 			crtc->fb = NULL;
 		}
 	}

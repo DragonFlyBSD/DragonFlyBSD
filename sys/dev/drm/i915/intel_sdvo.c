@@ -2057,10 +2057,6 @@ done:
 #undef CHECK_PROPERTY
 }
 
-static const struct drm_encoder_helper_funcs intel_sdvo_helper_funcs = {
-	.disable = intel_encoder_noop,
-};
-
 static const struct drm_connector_funcs intel_sdvo_connector_funcs = {
 	.dpms = intel_sdvo_dpms,
 	.detect = intel_sdvo_detect,
@@ -2883,8 +2879,6 @@ bool intel_sdvo_init(struct drm_device *dev, uint32_t sdvo_reg, bool is_sdvob)
 		intel_encoder->hpd_pin =
 			intel_sdvo->is_sdvob ?  HPD_SDVO_B : HPD_SDVO_C;
 	}
-
-	drm_encoder_helper_add(&intel_encoder->base, &intel_sdvo_helper_funcs);
 
 	intel_encoder->compute_config = intel_sdvo_compute_config;
 	intel_encoder->disable = intel_disable_sdvo;
