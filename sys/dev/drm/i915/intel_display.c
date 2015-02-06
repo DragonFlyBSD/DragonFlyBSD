@@ -6565,7 +6565,7 @@ intel_framebuffer_create(struct drm_device *dev,
 	struct intel_framebuffer *intel_fb;
 	int ret;
 
-	intel_fb = kmalloc(sizeof(*intel_fb), M_DRM, M_WAITOK | M_ZERO);
+	intel_fb = kzalloc(sizeof(*intel_fb), GFP_KERNEL);
 	if (!intel_fb) {
 		drm_gem_object_unreference_unlocked(&obj->base);
 		return ERR_PTR(-ENOMEM);
@@ -6884,7 +6884,7 @@ struct drm_display_mode *intel_crtc_mode_get(struct drm_device *dev,
 	int vtot = I915_READ(VTOTAL(cpu_transcoder));
 	int vsync = I915_READ(VSYNC(cpu_transcoder));
 
-	mode = kmalloc(sizeof(*mode), M_DRM, M_WAITOK | M_ZERO);
+	mode = kzalloc(sizeof(*mode), GFP_KERNEL);
 	if (!mode)
 		return NULL;
 
@@ -7393,7 +7393,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	     fb->pitches[0] != crtc->fb->pitches[0]))
 		return -EINVAL;
 
-	work = kmalloc(sizeof *work, M_DRM, M_WAITOK | M_ZERO);
+	work = kzalloc(sizeof *work, GFP_KERNEL);
 	if (work == NULL)
 		return -ENOMEM;
 
@@ -7643,7 +7643,7 @@ intel_modeset_pipe_config(struct drm_crtc *crtc,
 	struct intel_crtc_config *pipe_config;
 	int plane_bpp;
 
-	pipe_config = kmalloc(sizeof(*pipe_config), M_DRM, M_WAITOK | M_ZERO);
+	pipe_config = kzalloc(sizeof(*pipe_config), GFP_KERNEL);
 	if (!pipe_config)
 		return ERR_PTR(-ENOMEM);
 
@@ -8360,7 +8360,7 @@ static int intel_crtc_set_config(struct drm_mode_set *set)
 	dev = set->crtc->dev;
 
 	ret = -ENOMEM;
-	config = kmalloc(sizeof(*config), M_DRM, M_WAITOK | M_ZERO);
+	config = kzalloc(sizeof(*config), GFP_KERNEL);
 	if (!config)
 		goto out_config;
 
@@ -8456,9 +8456,7 @@ static void intel_crtc_init(struct drm_device *dev, int pipe)
 	struct intel_crtc *intel_crtc;
 	int i;
 
-	intel_crtc = kmalloc(sizeof(struct intel_crtc) +
-	    (INTELFB_CONN_LIMIT * sizeof(struct drm_connector *)),
-	    M_DRM, M_WAITOK | M_ZERO);
+	intel_crtc = kzalloc(sizeof(struct intel_crtc) + (INTELFB_CONN_LIMIT * sizeof(struct drm_connector *)), GFP_KERNEL);
 	if (intel_crtc == NULL)
 		return;
 

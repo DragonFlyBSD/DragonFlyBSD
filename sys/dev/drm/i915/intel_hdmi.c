@@ -1080,13 +1080,11 @@ void intel_hdmi_init(struct drm_device *dev, int hdmi_reg, enum port port)
 	struct drm_encoder *encoder;
 	struct intel_connector *intel_connector;
 
-	intel_dig_port = kmalloc(sizeof(struct intel_digital_port), M_DRM,
-	    M_WAITOK | M_ZERO);
+	intel_dig_port = kzalloc(sizeof(struct intel_digital_port), GFP_KERNEL);
 	if (!intel_dig_port)
 		return;
 
-	intel_connector = kmalloc(sizeof(struct intel_connector), M_DRM,
-	    M_WAITOK | M_ZERO);
+	intel_connector = kzalloc(sizeof(struct intel_connector), GFP_KERNEL);
 	if (!intel_connector) {
 		kfree(intel_dig_port);
 		return;

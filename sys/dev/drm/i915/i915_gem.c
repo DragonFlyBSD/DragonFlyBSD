@@ -1630,7 +1630,7 @@ i915_add_request(struct intel_ring_buffer *ring,
 	if (ret)
 		return ret;
 
-	request = kmalloc(sizeof(*request), M_DRM, M_WAITOK | M_ZERO);
+	request = kmalloc(sizeof(*request), M_DRM, M_WAITOK);
 	if (request == NULL)
 		return -ENOMEM;
 
@@ -3850,8 +3850,7 @@ static int i915_gem_init_phys_object(struct drm_device *dev,
 	if (dev_priv->mm.phys_objs[id - 1] || !size)
 		return 0;
 
-	phys_obj = kmalloc(sizeof(struct drm_i915_gem_phys_object), M_DRM,
-	    M_WAITOK | M_ZERO);
+	phys_obj = kzalloc(sizeof(struct drm_i915_gem_phys_object), GFP_KERNEL);
 	if (!phys_obj)
 		return -ENOMEM;
 

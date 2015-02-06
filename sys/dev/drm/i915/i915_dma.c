@@ -1406,8 +1406,7 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	dev->types[8] = _DRM_STAT_SECONDARY;
 	dev->types[9] = _DRM_STAT_DMA;
 
-	dev_priv = kmalloc(sizeof(drm_i915_private_t), M_DRM,
-	    M_ZERO | M_WAITOK);
+	dev_priv = kzalloc(sizeof(drm_i915_private_t), GFP_KERNEL);
 	if (dev_priv == NULL)
 		return -ENOMEM;
 
@@ -1706,7 +1705,7 @@ int i915_driver_open(struct drm_device *dev, struct drm_file *file)
 	struct drm_i915_file_private *file_priv;
 
 	DRM_DEBUG_DRIVER("\n");
-	file_priv = kmalloc(sizeof(*file_priv), M_DRM, M_WAITOK | M_ZERO);
+	file_priv = kmalloc(sizeof(*file_priv), M_DRM, M_WAITOK);
 	if (!file_priv)
 		return -ENOMEM;
 

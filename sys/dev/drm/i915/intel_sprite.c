@@ -894,8 +894,7 @@ intel_plane_init(struct drm_device *dev, enum i915_pipe pipe, int plane)
 	if (INTEL_INFO(dev)->gen < 5)
 		return -ENODEV;
 
-	intel_plane = kmalloc(sizeof(struct intel_plane), M_DRM,
-	    M_WAITOK | M_ZERO);
+	intel_plane = kzalloc(sizeof(struct intel_plane), GFP_KERNEL);
 	if (!intel_plane)
 		return -ENOMEM;
 

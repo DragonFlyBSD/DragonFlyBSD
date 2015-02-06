@@ -1099,13 +1099,11 @@ bool intel_lvds_init(struct drm_device *dev)
 		}
 	}
 
-	lvds_encoder = kmalloc(sizeof(struct intel_lvds_encoder), M_DRM,
-	    M_WAITOK | M_ZERO);
+	lvds_encoder = kzalloc(sizeof(struct intel_lvds_encoder), GFP_KERNEL);
 	if (!lvds_encoder)
 		return false;
 
-	lvds_connector = kmalloc(sizeof(struct intel_lvds_connector), M_DRM,
-	    M_WAITOK | M_ZERO);
+	lvds_connector = kzalloc(sizeof(struct intel_lvds_connector), GFP_KERNEL);
 	if (!lvds_connector) {
 		kfree(lvds_encoder);
 		return false;

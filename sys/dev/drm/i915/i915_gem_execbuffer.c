@@ -60,9 +60,9 @@ eb_create(struct drm_i915_gem_execbuffer2 *args)
 		BUILD_BUG_ON_NOT_POWER_OF_2(PAGE_SIZE / sizeof(struct hlist_head));
 		while (count > 2*size)
 			count >>= 1;
-		eb = kmalloc(count*sizeof(struct hlist_head) +
+		eb = kzalloc(count*sizeof(struct hlist_head) +
 			     sizeof(struct eb_objects),
-			     M_DRM, M_WAITOK | M_ZERO);
+			     GFP_TEMPORARY);
 		if (eb == NULL)
 			return eb;
 

@@ -258,8 +258,8 @@ static int gen6_ppgtt_init(struct i915_hw_ppgtt *ppgtt)
 	ppgtt->clear_range = gen6_ppgtt_clear_range;
 	ppgtt->insert_entries = gen6_ppgtt_insert_entries;
 	ppgtt->cleanup = gen6_ppgtt_cleanup;
-	ppgtt->pt_pages = kmalloc(sizeof(vm_page_t) * ppgtt->num_pd_entries,
-	    M_DRM, M_WAITOK | M_ZERO);
+	ppgtt->pt_pages = kzalloc(sizeof(struct vm_page *)*ppgtt->num_pd_entries,
+				  GFP_KERNEL);
 	if (!ppgtt->pt_pages)
 		return -ENOMEM;
 
@@ -290,7 +290,7 @@ static int i915_gem_init_aliasing_ppgtt(struct drm_device *dev)
 	struct i915_hw_ppgtt *ppgtt;
 	int ret;
 
-	ppgtt = kmalloc(sizeof(*ppgtt), M_DRM, M_WAITOK | M_ZERO);
+	ppgtt = kzalloc(sizeof(*ppgtt), GFP_KERNEL);
 	if (!ppgtt)
 		return -ENOMEM;
 

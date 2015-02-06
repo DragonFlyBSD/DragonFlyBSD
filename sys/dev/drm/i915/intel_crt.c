@@ -731,12 +731,11 @@ void intel_crt_init(struct drm_device *dev)
 	if (dmi_check_system(intel_no_crt))
 		return;
 
-	crt = kmalloc(sizeof(struct intel_crt), M_DRM, M_WAITOK | M_ZERO);
+	crt = kzalloc(sizeof(struct intel_crt), GFP_KERNEL);
 	if (!crt)
 		return;
 
-	intel_connector = kmalloc(sizeof(struct intel_connector), M_DRM,
-	    M_WAITOK | M_ZERO);
+	intel_connector = kzalloc(sizeof(struct intel_connector), GFP_KERNEL);
 	if (!intel_connector) {
 		kfree(crt);
 		return;

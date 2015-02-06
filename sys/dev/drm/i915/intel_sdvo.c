@@ -447,9 +447,14 @@ static const char *cmd_status_names[] = {
 static bool intel_sdvo_write_cmd(struct intel_sdvo *intel_sdvo, u8 cmd,
 				 const void *args, int args_len)
 {
-	u8 buf[args_len*2 + 2], status;
+	u8 *buf, status;
 	struct iic_msg msgs[args_len + 3];
-	int i, ret;
+	int i, ret = true;
+
+	/* Would be simpler to allocate both in one go ? */
+	buf = kzalloc(args_len * 2 + 2, GFP_KERNEL);
+	if (!buf)
+		return false;
 
 	intel_sdvo_debug_write(intel_sdvo, cmd, args, args_len);
 
@@ -483,7 +488,8 @@ static bool intel_sdvo_write_cmd(struct intel_sdvo *intel_sdvo, u8 cmd,
 	ret = iicbus_transfer(intel_sdvo->i2c, msgs, i+3);
 	if (ret != 0) {
 		DRM_DEBUG_KMS("I2c transfer returned %d\n", ret);
-		return (false);
+		ret = false;
+		goto out;
 	}
 #if 0
 	if (ret != i+3) {
@@ -493,7 +499,9 @@ static bool intel_sdvo_write_cmd(struct intel_sdvo *intel_sdvo, u8 cmd,
 	}
 #endif
 
-	return true;
+out:
+	kfree(buf);
+	return ret;
 }
 
 static bool intel_sdvo_read_response(struct intel_sdvo *intel_sdvo,
@@ -2264,8 +2272,7 @@ intel_sdvo_dvi_init(struct intel_sdvo *intel_sdvo, int device)
 	struct intel_connector *intel_connector;
 	struct intel_sdvo_connector *intel_sdvo_connector;
 
-	intel_sdvo_connector = kmalloc(sizeof(struct intel_sdvo_connector),
-	    M_DRM, M_WAITOK | M_ZERO);
+	intel_sdvo_connector = kzalloc(sizeof(struct intel_sdvo_connector), GFP_KERNEL);
 	if (!intel_sdvo_connector)
 		return false;
 
@@ -2313,8 +2320,7 @@ intel_sdvo_tv_init(struct intel_sdvo *intel_sdvo, int type)
 	struct intel_connector *intel_connector;
 	struct intel_sdvo_connector *intel_sdvo_connector;
 
-	intel_sdvo_connector = kmalloc(sizeof(struct intel_sdvo_connector),
-	    M_DRM, M_WAITOK | M_ZERO);
+	intel_sdvo_connector = kzalloc(sizeof(struct intel_sdvo_connector), GFP_KERNEL);
 	if (!intel_sdvo_connector)
 		return false;
 
@@ -2352,8 +2358,7 @@ intel_sdvo_analog_init(struct intel_sdvo *intel_sdvo, int device)
 	struct intel_connector *intel_connector;
 	struct intel_sdvo_connector *intel_sdvo_connector;
 
-	intel_sdvo_connector = kmalloc(sizeof(struct intel_sdvo_connector),
-	    M_DRM, M_WAITOK | M_ZERO);
+	intel_sdvo_connector = kzalloc(sizeof(struct intel_sdvo_connector), GFP_KERNEL);
 	if (!intel_sdvo_connector)
 		return false;
 
@@ -2384,8 +2389,7 @@ intel_sdvo_lvds_init(struct intel_sdvo *intel_sdvo, int device)
 	struct intel_connector *intel_connector;
 	struct intel_sdvo_connector *intel_sdvo_connector;
 
-	intel_sdvo_connector = kmalloc(sizeof(struct intel_sdvo_connector),
-	    M_DRM, M_WAITOK | M_ZERO);
+	intel_sdvo_connector = kzalloc(sizeof(struct intel_sdvo_connector), GFP_KERNEL);
 	if (!intel_sdvo_connector)
 		return false;
 
@@ -2831,8 +2835,7 @@ bool intel_sdvo_init(struct drm_device *dev, uint32_t sdvo_reg, bool is_sdvob)
 	u32 hotplug_mask;
 	int i;
 
-	intel_sdvo = kmalloc(sizeof(struct intel_sdvo), M_DRM,
-	    M_WAITOK | M_ZERO);
+	intel_sdvo = kzalloc(sizeof(struct intel_sdvo), GFP_KERNEL);
 	if (!intel_sdvo)
 		return false;
 

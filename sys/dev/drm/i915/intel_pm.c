@@ -325,7 +325,7 @@ void intel_enable_fbc(struct drm_crtc *crtc, unsigned long interval)
 
 	intel_cancel_fbc_work(dev_priv);
 
-	work = kmalloc(sizeof(*work), M_DRM, M_WAITOK | M_ZERO);
+	work = kzalloc(sizeof *work, GFP_KERNEL);
 	if (work == NULL) {
 		dev_priv->display.enable_fbc(crtc, interval);
 		return;
