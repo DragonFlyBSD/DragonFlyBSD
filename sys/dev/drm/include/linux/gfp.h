@@ -24,16 +24,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_SLAB_H_
-#define _LINUX_SLAB_H_
+#ifndef _LINUX_GFP_H_
+#define _LINUX_GFP_H_
 
-#include <linux/gfp.h>
+#define GFP_KERNEL	M_WAITOK
+#define GFP_TEMPORARY	M_WAITOK
 
-#define kzalloc(size, flags)	kmalloc(size, M_DRM, flags | M_ZERO)
-
-#define kfree(ptr)	do {		\
-	if (ptr != NULL)		\
-		kfree(ptr, M_DRM);	\
-} while (0)
-
-#endif	/* _LINUX_SLAB_H_ */
+#endif	/* _LINUX_GFP_H_ */
