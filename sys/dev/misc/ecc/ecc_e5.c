@@ -220,7 +220,6 @@ ecc_e5_attach(device_t dev)
 {
 	struct ecc_e5_softc *sc = device_get_softc(dev);
 	uint32_t mcmtr;
-	uint32_t dimmmtr[PCI_E5_IMC_DIMM_MAX];
 	int dimm, rank;
 
 	callout_init_mp(&sc->ecc_callout);
@@ -236,18 +235,18 @@ ecc_e5_attach(device_t dev)
 	rank = 0;
 	for (dimm = 0; dimm < PCI_E5_IMC_DIMM_MAX; ++dimm) {
 		const char *width;
+		uint32_t dimmmtr;
 		int rank_cnt, r;
 		int density;
 		int val;
 
-		dimmmtr[dimm] = IMC_CTAD_READ_4(sc->ecc_dev, sc->ecc_chan,
+		dimmmtr = IMC_CTAD_READ_4(sc->ecc_dev, sc->ecc_chan,
 		    PCI_E5_IMC_CTAD_DIMMMTR(dimm));
 
-		if ((dimmmtr[dimm] & PCI_E5_IMC_CTAD_DIMMMTR_DIMM_POP) == 0)
+		if ((dimmmtr & PCI_E5_IMC_CTAD_DIMMMTR_DIMM_POP) == 0)
 			continue;
 
-		val = __SHIFTOUT(dimmmtr[dimm],
-		    PCI_E5_IMC_CTAD_DIMMMTR_RANK_CNT);
+		val = __SHIFTOUT(dimmmtr, PCI_E5_IMC_CTAD_DIMMMTR_RANK_CNT);
 		switch (val) {
 		case PCI_E5_IMC_CTAD_DIMMMTR_RANK_CNT_SR:
 			rank_cnt = 1;
@@ -263,8 +262,7 @@ ecc_e5_attach(device_t dev)
 			return ENXIO;
 		}
 
-		val = __SHIFTOUT(dimmmtr[dimm],
-		    PCI_E5_IMC_CTAD_DIMMMTR_DDR3_WIDTH);
+		val = __SHIFTOUT(dimmmtr, PCI_E5_IMC_CTAD_DIMMMTR_DDR3_WIDTH);
 		switch (val) {
 		case PCI_E5_IMC_CTAD_DIMMMTR_DDR3_WIDTH_4:
 			width = "x4";
@@ -280,8 +278,7 @@ ecc_e5_attach(device_t dev)
 			return ENXIO;
 		}
 
-		val = __SHIFTOUT(dimmmtr[dimm],
-		    PCI_E5_IMC_CTAD_DIMMMTR_DDR3_DNSTY);
+		val = __SHIFTOUT(dimmmtr, PCI_E5_IMC_CTAD_DIMMMTR_DDR3_DNSTY);
 		switch (val) {
 		case PCI_E5_IMC_CTAD_DIMMMTR_DDR3_DNSTY_1G:
 			density = 1;
