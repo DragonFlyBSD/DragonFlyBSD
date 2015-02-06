@@ -438,6 +438,7 @@ dev/powermng/perfbias/perfbias.c	optional perfbias
 dev/powermng/coretemp/coretemp.c	optional coretemp
 dev/powermng/kate/kate.c	optional kate pci
 dev/powermng/km/km.c		optional km pci
+dev/powermng/memtemp/memtemp_e5.c	optional memtemp
 dev/misc/cpuctl/cpuctl.c	optional cpuctl
 dev/raid/ida/ida.c		optional ida
 dev/raid/ida/ida_disk.c	optional ida
