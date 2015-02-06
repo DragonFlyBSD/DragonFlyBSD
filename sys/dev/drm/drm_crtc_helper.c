@@ -27,11 +27,10 @@
  *	Eric Anholt <eric@anholt.net>
  *      Dave Airlie <airlied@linux.ie>
  *      Jesse Barnes <jesse.barnes@intel.com>
- *
- * $FreeBSD: src/sys/dev/drm2/drm_crtc_helper.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 #include <linux/export.h>
+#include <linux/moduleparam.h>
 
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
@@ -144,6 +143,7 @@ int drm_helper_probe_single_connector_modes(struct drm_connector *connector,
 		connector->helper_private;
 	int count = 0;
 	int mode_flags = 0;
+	bool verbose_prune = true;
 
 	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n", connector->base.id,
 			drm_get_connector_name(connector));
@@ -172,6 +172,7 @@ int drm_helper_probe_single_connector_modes(struct drm_connector *connector,
 		DRM_DEBUG_KMS("[CONNECTOR:%d:%s] disconnected\n",
 			connector->base.id, drm_get_connector_name(connector));
 		drm_mode_connector_update_edid_property(connector, NULL);
+		verbose_prune = false;
 		goto prune;
 	}
 
@@ -205,7 +206,7 @@ int drm_helper_probe_single_connector_modes(struct drm_connector *connector,
 	}
 
 prune:
-	drm_mode_prune_invalid(dev, &connector->modes, true);
+	drm_mode_prune_invalid(dev, &connector->modes, verbose_prune);
 
 	if (list_empty(&connector->modes))
 		return 0;
@@ -612,12 +613,25 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set)
 
 	/* Allocate space for the backup of all (non-pointer) crtc, encoder and
 	 * connector data. */
-	save_crtcs = kmalloc(dev->mode_config.num_crtc * sizeof(struct drm_crtc),
-	    M_DRM, M_WAITOK | M_ZERO);
-	save_encoders = kmalloc(dev->mode_config.num_encoder *
-	    sizeof(struct drm_encoder), M_DRM, M_WAITOK | M_ZERO);
-	save_connectors = kmalloc(dev->mode_config.num_connector *
-	    sizeof(struct drm_connector), M_DRM, M_WAITOK | M_ZERO);
+	save_crtcs = kzalloc(dev->mode_config.num_crtc *
+			     sizeof(struct drm_crtc), GFP_KERNEL);
+	if (!save_crtcs)
+		return -ENOMEM;
+
+	save_encoders = kzalloc(dev->mode_config.num_encoder *
+				sizeof(struct drm_encoder), GFP_KERNEL);
+	if (!save_encoders) {
+		kfree(save_crtcs);
+		return -ENOMEM;
+	}
+
+	save_connectors = kzalloc(dev->mode_config.num_connector *
+				sizeof(struct drm_connector), GFP_KERNEL);
+	if (!save_connectors) {
+		kfree(save_crtcs);
+		kfree(save_encoders);
+		return -ENOMEM;
+	}
 
 	/* Copy data. Note that driver private data is not affected.
 	 * Should anything bad happen only the expected state is
@@ -657,6 +671,9 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set)
 			mode_changed = true;
 		} else if (set->fb->bits_per_pixel !=
 			   set->crtc->fb->bits_per_pixel) {
+			mode_changed = true;
+		} else if (set->fb->pixel_format !=
+			   set->crtc->fb->pixel_format) {
 			mode_changed = true;
 		} else
 			fb_changed = true;
@@ -815,9 +832,9 @@ fail:
 				      save_set.y, save_set.fb))
 		DRM_ERROR("failed to restore config after modeset failure\n");
 
-	drm_free(save_connectors, M_DRM);
-	drm_free(save_encoders, M_DRM);
-	drm_free(save_crtcs, M_DRM);
+	kfree(save_connectors);
+	kfree(save_encoders);
+	kfree(save_crtcs);
 	return ret;
 }
 EXPORT_SYMBOL(drm_crtc_helper_set_config);
@@ -971,19 +988,20 @@ EXPORT_SYMBOL(drm_helper_resume_force_mode);
 
 void drm_kms_helper_hotplug_event(struct drm_device *dev)
 {
-#if 0
 	/* send a uevent + call fbdev */
+#if 0
 	drm_sysfs_hotplug_event(dev);
+#endif
 	if (dev->mode_config.funcs->output_poll_changed)
 		dev->mode_config.funcs->output_poll_changed(dev);
-#endif
 }
 EXPORT_SYMBOL(drm_kms_helper_hotplug_event);
 
-#define DRM_OUTPUT_POLL_PERIOD (10 * hz)
-static void output_poll_execute(void *ctx, int pending)
+#define DRM_OUTPUT_POLL_PERIOD (10*HZ)
+static void output_poll_execute(struct work_struct *work)
 {
-	struct drm_device *dev;
+	struct delayed_work *delayed_work = to_delayed_work(work);
+	struct drm_device *dev = container_of(delayed_work, struct drm_device, mode_config.output_poll_work);
 	struct drm_connector *connector;
 	enum drm_connector_status old_status;
 	bool repoll = false, changed = false;
@@ -991,9 +1009,7 @@ static void output_poll_execute(void *ctx, int pending)
 	if (!drm_kms_helper_poll)
 		return;
 
-	dev = ctx;
-
-	lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
+	mutex_lock(&dev->mode_config.mutex);
 	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
 
 		/* Ignore forced connectors. */
@@ -1015,32 +1031,36 @@ static void output_poll_execute(void *ctx, int pending)
 			continue;
 
 		connector->status = connector->funcs->detect(connector, false);
-		DRM_DEBUG_KMS("[CONNECTOR:%d:%s] status updated from %d to %d\n",
-			      connector->base.id,
-			      drm_get_connector_name(connector),
-			      old_status, connector->status);
-		if (old_status != connector->status)
+		if (old_status != connector->status) {
+			const char *old, *new;
+
+			old = drm_get_connector_status_name(old_status);
+			new = drm_get_connector_status_name(connector->status);
+
+			DRM_DEBUG_KMS("[CONNECTOR:%d:%s] "
+				      "status updated from %s to %s\n",
+				      connector->base.id,
+				      drm_get_connector_name(connector),
+				      old, new);
+
 			changed = true;
+		}
 	}
 
-	lockmgr(&dev->mode_config.mutex, LK_RELEASE);
+	mutex_unlock(&dev->mode_config.mutex);
 
 	if (changed)
 		drm_kms_helper_hotplug_event(dev);
 
-	if (repoll) {
-		taskqueue_enqueue_timeout(taskqueue_thread[mycpuid],
-		    &dev->mode_config.output_poll_task,
-		    DRM_OUTPUT_POLL_PERIOD);
-	}
+	if (repoll)
+		schedule_delayed_work(delayed_work, DRM_OUTPUT_POLL_PERIOD);
 }
 
 void drm_kms_helper_poll_disable(struct drm_device *dev)
 {
 	if (!dev->mode_config.poll_enabled)
 		return;
-	taskqueue_cancel_timeout(taskqueue_thread[mycpuid],
-	    &dev->mode_config.output_poll_task, NULL);
+	cancel_delayed_work_sync(&dev->mode_config.output_poll_work);
 }
 EXPORT_SYMBOL(drm_kms_helper_poll_disable);
 
@@ -1058,17 +1078,14 @@ void drm_kms_helper_poll_enable(struct drm_device *dev)
 			poll = true;
 	}
 
-	if (poll) {
-		taskqueue_enqueue_timeout(taskqueue_thread[mycpuid],
-		    &dev->mode_config.output_poll_task, DRM_OUTPUT_POLL_PERIOD);
-	}
+	if (poll)
+		schedule_delayed_work(&dev->mode_config.output_poll_work, DRM_OUTPUT_POLL_PERIOD);
 }
 EXPORT_SYMBOL(drm_kms_helper_poll_enable);
 
 void drm_kms_helper_poll_init(struct drm_device *dev)
 {
-	TIMEOUT_TASK_INIT(taskqueue_thread[mycpuid], &dev->mode_config.output_poll_task,
-	    0, output_poll_execute, dev);
+	INIT_DELAYED_WORK(&dev->mode_config.output_poll_work, output_poll_execute);
 	dev->mode_config.poll_enabled = true;
 
 	drm_kms_helper_poll_enable(dev);
@@ -1090,7 +1107,7 @@ void drm_helper_hpd_irq_event(struct drm_device *dev)
 	if (!dev->mode_config.poll_enabled)
 		return;
 
-	lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
+	mutex_lock(&dev->mode_config.mutex);
 	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
 
 		/* Only handle HPD capable connectors. */
@@ -1100,15 +1117,16 @@ void drm_helper_hpd_irq_event(struct drm_device *dev)
 		old_status = connector->status;
 
 		connector->status = connector->funcs->detect(connector, false);
-		DRM_DEBUG_KMS("[CONNECTOR:%d:%s] status updated from %d to %d\n",
+		DRM_DEBUG_KMS("[CONNECTOR:%d:%s] status updated from %s to %s\n",
 			      connector->base.id,
 			      drm_get_connector_name(connector),
-			      old_status, connector->status);
+			      drm_get_connector_status_name(old_status),
+			      drm_get_connector_status_name(connector->status));
 		if (old_status != connector->status)
 			changed = true;
 	}
 
-	lockmgr(&dev->mode_config.mutex, LK_RELEASE);
+	mutex_unlock(&dev->mode_config.mutex);
 
 	if (changed)
 		drm_kms_helper_hotplug_event(dev);

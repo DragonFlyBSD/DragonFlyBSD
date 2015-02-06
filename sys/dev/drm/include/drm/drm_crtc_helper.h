@@ -21,8 +21,6 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * $FreeBSD: src/sys/dev/drm2/drm_crtc_helper.h,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /*
@@ -37,6 +35,8 @@
 
 #include <linux/types.h>
 #include <linux/idr.h>
+
+#include <linux/fb.h>
 
 enum mode_set_atomic {
 	LEAVE_ATOMIC_MODE_SET,

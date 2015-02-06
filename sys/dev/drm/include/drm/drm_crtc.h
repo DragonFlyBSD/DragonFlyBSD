@@ -576,7 +576,9 @@ enum drm_connector_force {
  */
 struct drm_connector {
 	struct drm_device *dev;
-	/* struct device kdev; XXXKIB */
+#if 0
+	struct device kdev;
+#endif
 	struct device_attribute *attr;
 	struct list_head head;
 
@@ -814,7 +816,7 @@ struct drm_mode_config {
 	/* output poll support */
 	bool poll_enabled;
 	bool poll_running;
-	struct timeout_task output_poll_task;
+	struct delayed_work output_poll_work;
 
 	/* pointers to standard properties */
 	struct list_head property_blob_list;
@@ -904,9 +906,9 @@ extern char *drm_get_tv_subconnector_name(int val);
 extern char *drm_get_tv_select_name(int val);
 extern void drm_fb_release(struct drm_file *file_priv);
 extern int drm_mode_group_init_legacy_group(struct drm_device *dev, struct drm_mode_group *group);
-extern bool drm_probe_ddc(device_t adapter);
+extern bool drm_probe_ddc(struct device *adapter);
 extern struct edid *drm_get_edid(struct drm_connector *connector,
-				 device_t adapter);
+				 struct device *adapter);
 extern int drm_add_edid_modes(struct drm_connector *connector, struct edid *edid);
 extern void drm_mode_probed_add(struct drm_connector *connector, struct drm_display_mode *mode);
 extern void drm_mode_remove(struct drm_connector *connector, struct drm_display_mode *mode);
