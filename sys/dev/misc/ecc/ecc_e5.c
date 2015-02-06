@@ -187,9 +187,7 @@ ecc_e5_probe(device_t dev)
 			for (dimm = 0; dimm < PCI_E5_IMC_DIMM_MAX; ++dimm) {
 				val = IMC_CTAD_READ_4(dev, t->chan,
 				    PCI_E5_IMC_CTAD_DIMMMTR(dimm));
-				if ((val & PCI_E5_IMC_CTAD_DIMMMTR_DIMM_POP) &&
-				(val & PCI_E5_IMC_CTAD_DIMMMTR_RANK_DISABLE_ALL)
-				 != PCI_E5_IMC_CTAD_DIMMMTR_RANK_DISABLE_ALL)
+				if (val & PCI_E5_IMC_CTAD_DIMMMTR_DIMM_POP)
 					break;
 			}
 			if (dimm == PCI_E5_IMC_DIMM_MAX)
