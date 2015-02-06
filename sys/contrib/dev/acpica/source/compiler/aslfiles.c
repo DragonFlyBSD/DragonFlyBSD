@@ -580,7 +580,7 @@ FlOpenMiscOutputFiles (
             Gbl_DebugFlag = FALSE;
 #ifdef __DragonFly__
             stderr = NULL;
-            temp_fd = dup(1);
+            temp_fd = dup(STDERR_FILENO);
             if (temp_fd >= 0) {
                 stderr = fdopen(temp_fd, "w");
                 if (stderr != NULL)
