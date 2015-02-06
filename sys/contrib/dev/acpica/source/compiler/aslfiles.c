@@ -41,6 +41,10 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
+#ifdef __DragonFly__
+#include <unistd.h>
+#endif
+
 #include "aslcompiler.h"
 #include "acapps.h"
 
@@ -565,12 +569,33 @@ FlOpenMiscOutputFiles (
 
         if (!Gbl_Files[ASL_FILE_DEBUG_OUTPUT].Handle)
         {
+#ifdef __DragonFly__
+            int temp_fd;
+#endif
+
             /*
              * A problem with freopen is that on error,
              * we no longer have stderr.
              */
             Gbl_DebugFlag = FALSE;
+#ifdef __DragonFly__
+            stderr = NULL;
+            temp_fd = dup(1);
+            if (temp_fd >= 0) {
+                stderr = fdopen(temp_fd, "w");
+                if (stderr != NULL)
+                    setvbuf(stderr, NULL, _IONBF, 0);
+                else
+                    close(temp_fd);
+            }
+            if (stderr == NULL) {
+                /* This is wrong, but better than nothing */
+                stderr = stdout;
+            }
+#else
+            /* WTF */
             memcpy (stderr, stdout, sizeof (FILE));
+#endif
             FlFileError (ASL_FILE_DEBUG_OUTPUT, ASL_MSG_DEBUG_FILENAME);
             AslAbort ();
         }
