@@ -25,7 +25,9 @@
  * Authors:
  *	Eric Anholt <eric@anholt.net>
  */
-
+#include <linux/i2c.h>
+#include <linux/delay.h>
+#include <linux/export.h>
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_edid.h>
@@ -68,7 +70,7 @@ static const char *tv_format_names[] = {
 struct intel_sdvo {
 	struct intel_encoder base;
 
-	device_t i2c;
+	struct device *i2c;
 	u8 slave_addr;
 
 	device_t ddc_iic_bus, ddc;
@@ -268,7 +270,7 @@ static void intel_sdvo_write_sdvox(struct intel_sdvo *intel_sdvo, u32 val)
 
 static bool intel_sdvo_read_byte(struct intel_sdvo *intel_sdvo, u8 addr, u8 *ch)
 {
-	struct iic_msg msgs[] = {
+	struct i2c_msg msgs[] = {
 		{
 			.slave = intel_sdvo->slave_addr << 1,
 			.flags = 0,
@@ -277,7 +279,7 @@ static bool intel_sdvo_read_byte(struct intel_sdvo *intel_sdvo, u8 addr, u8 *ch)
 		},
 		{
 			.slave = intel_sdvo->slave_addr << 1,
-			.flags = IIC_M_RD,
+			.flags = I2C_M_RD,
 			.len = 1,
 			.buf = ch,
 		}
@@ -481,7 +483,7 @@ static bool intel_sdvo_write_cmd(struct intel_sdvo *intel_sdvo, u8 cmd,
 	msgs[i+1].buf = &status;
 
 	msgs[i+2].slave = intel_sdvo->slave_addr << 1;
-	msgs[i+2].flags = IIC_M_RD;
+	msgs[i+2].flags = I2C_M_RD;
 	msgs[i+2].len = 1;
 	msgs[i+2].buf = &status;
 
@@ -495,7 +497,7 @@ static bool intel_sdvo_write_cmd(struct intel_sdvo *intel_sdvo, u8 cmd,
 	if (ret != i+3) {
 		/* failure in I2C transfer */
 		DRM_DEBUG_KMS("I2c transfer returned %d/%d\n", ret, i+3);
-		return false;
+		ret = false;
 	}
 #endif
 
@@ -1544,7 +1546,7 @@ intel_sdvo_tmds_sink_detect(struct drm_connector *connector)
 			}
 		} else
 			status = connector_status_disconnected;
-		drm_free(edid, M_DRM);
+		kfree(edid);
 	}
 
 	if (status == connector_status_connected) {
@@ -1657,7 +1659,7 @@ static void intel_sdvo_get_ddc_modes(struct drm_connector *connector)
 			drm_add_edid_modes(connector, edid);
 		}
 
-		drm_free(edid, M_DRM);
+		kfree(edid);
 	}
 }
 
@@ -1872,7 +1874,7 @@ static void intel_sdvo_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	drm_free(intel_sdvo_connector, M_DRM);
+	kfree(intel_sdvo_connector);
 }
 
 static bool intel_sdvo_detect_hdmi_audio(struct drm_connector *connector)
@@ -1887,6 +1889,7 @@ static bool intel_sdvo_detect_hdmi_audio(struct drm_connector *connector)
 	edid = intel_sdvo_get_edid(connector);
 	if (edid != NULL && edid->input & DRM_EDID_INPUT_DIGITAL)
 		has_audio = drm_detect_monitor_audio(edid);
+	kfree(edid);
 
 	return has_audio;
 }
@@ -2763,17 +2766,15 @@ intel_sdvo_ddc_proxy_reset(device_t idev, u_char speed, u_char addr,
 	    oldaddr));
 }
 
-static int
-intel_sdvo_ddc_proxy_transfer(device_t idev, struct iic_msg *msgs, uint32_t num)
+static int intel_sdvo_ddc_proxy_xfer(struct device *adapter,
+				     struct i2c_msg *msgs,
+				     int num)
 {
-	struct intel_sdvo_ddc_proxy_sc *sc;
-	struct intel_sdvo *sdvo;
-	
-	sc = device_get_softc(idev);
-	sdvo = sc->intel_sdvo;
+	struct intel_sdvo_ddc_proxy_sc *sc = device_get_softc(adapter);
+	struct intel_sdvo *sdvo = sc->intel_sdvo;
 
 	if (!intel_sdvo_set_control_bus_switch(sdvo, sdvo->ddc_bus))
-		return (EIO);
+		return -EIO;
 
 	return (iicbus_transfer(sdvo->i2c, msgs, num));
 }
@@ -2811,7 +2812,7 @@ static device_method_t intel_sdvo_ddc_proxy_methods[] = {
 	DEVMETHOD(device_attach,	intel_sdvo_ddc_proxy_attach),
 	DEVMETHOD(device_detach,	intel_sdvo_ddc_proxy_detach),
 	DEVMETHOD(iicbus_reset,		intel_sdvo_ddc_proxy_reset),
-	DEVMETHOD(iicbus_transfer,	intel_sdvo_ddc_proxy_transfer),
+	DEVMETHOD(iicbus_transfer,	intel_sdvo_ddc_proxy_xfer),
 	DEVMETHOD_END
 };
 static driver_t intel_sdvo_ddc_proxy_driver = {
@@ -2830,7 +2831,6 @@ bool intel_sdvo_init(struct drm_device *dev, uint32_t sdvo_reg, bool is_sdvob)
 	struct intel_sdvo *intel_sdvo;
 	u32 hotplug_mask;
 	int i;
-
 	intel_sdvo = kzalloc(sizeof(struct intel_sdvo), GFP_KERNEL);
 	if (!intel_sdvo)
 		return false;
@@ -2839,10 +2839,8 @@ bool intel_sdvo_init(struct drm_device *dev, uint32_t sdvo_reg, bool is_sdvob)
 	intel_sdvo->is_sdvob = is_sdvob;
 	intel_sdvo->slave_addr = intel_sdvo_get_slave_addr(dev, intel_sdvo) >> 1;
 	intel_sdvo_select_i2c_bus(dev_priv, intel_sdvo, sdvo_reg);
-	if (!intel_sdvo_init_ddc_proxy(intel_sdvo, dev, sdvo_reg)) {
-		kfree(intel_sdvo);
-		return false;
-	}
+	if (!intel_sdvo_init_ddc_proxy(intel_sdvo, dev, sdvo_reg))
+		goto err_i2c_bus;
 
 	/* encoder type will be decided later */
 	intel_encoder = &intel_sdvo->base;
@@ -2870,14 +2868,6 @@ bool intel_sdvo_init(struct drm_device *dev, uint32_t sdvo_reg, bool is_sdvob)
 	} else {
 		hotplug_mask = intel_sdvo->is_sdvob ?
 			SDVOB_HOTPLUG_INT_STATUS_I915 : SDVOC_HOTPLUG_INT_STATUS_I915;
-	}
-
-	/* Only enable the hotplug irq if we need it, to work around noisy
-	 * hotplug lines.
-	 */
-	if (intel_sdvo->hotplug_active) {
-		intel_encoder->hpd_pin =
-			intel_sdvo->is_sdvob ?  HPD_SDVO_B : HPD_SDVO_C;
 	}
 
 	intel_encoder->compute_config = intel_sdvo_compute_config;
@@ -2950,6 +2940,7 @@ err_output:
 
 err:
 	drm_encoder_cleanup(&intel_encoder->base);
+err_i2c_bus:
 	intel_sdvo_unselect_i2c_bus(intel_sdvo);
 	kfree(intel_sdvo);
 
