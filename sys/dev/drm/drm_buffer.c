@@ -23,7 +23,7 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- * $FreeBSD: head/sys/dev/drm2/drm_buffer.c 254794 2013-08-24 16:14:20Z dumbbell $
+ *
  **************************************************************************/
 /*
  * Multipart buffer for coping data which is larger than the page size.
@@ -32,6 +32,7 @@
  * Pauli Nieminen <suokkos-at-gmail-dot-com>
  */
 
+#include <linux/export.h>
 #include <drm/drm_buffer.h>
 
 /**
@@ -47,8 +48,8 @@ int drm_buffer_alloc(struct drm_buffer **buf, int size)
 
 	/* Allocating pointer table to end of structure makes drm_buffer
 	 * variable sized */
-	*buf = kmalloc(sizeof(struct drm_buffer) + nr_pages*sizeof(char *),
-			M_DRM, M_ZERO | M_WAITOK);
+	*buf = kzalloc(sizeof(struct drm_buffer) + nr_pages*sizeof(char *),
+			GFP_KERNEL);
 
 	if (*buf == NULL) {
 		DRM_ERROR("Failed to allocate drm buffer object to hold"
@@ -81,14 +82,15 @@ error_out:
 
 	/* Only last element can be null pointer so check for it first. */
 	if ((*buf)->data[idx])
-		drm_free((*buf)->data[idx], M_DRM);
+		kfree((*buf)->data[idx]);
 
 	for (--idx; idx >= 0; --idx)
-		drm_free((*buf)->data[idx], M_DRM);
+		kfree((*buf)->data[idx]);
 
-	drm_free(*buf, M_DRM);
+	kfree(*buf);
 	return -ENOMEM;
 }
+EXPORT_SYMBOL(drm_buffer_alloc);
 
 /**
  * Copy the user data to the begin of the buffer and reset the processing
@@ -125,6 +127,7 @@ int drm_buffer_copy_from_user(struct drm_buffer *buf,
 	buf->iterator = 0;
 	return 0;
 }
+EXPORT_SYMBOL(drm_buffer_copy_from_user);
 
 /**
  * Free the drm buffer object
@@ -137,11 +140,12 @@ void drm_buffer_free(struct drm_buffer *buf)
 		int nr_pages = buf->size / PAGE_SIZE + 1;
 		int idx;
 		for (idx = 0; idx < nr_pages; ++idx)
-			drm_free(buf->data[idx], M_DRM);
+			kfree(buf->data[idx]);
 
-		drm_free(buf, M_DRM);
+		kfree(buf);
 	}
 }
+EXPORT_SYMBOL(drm_buffer_free);
 
 /**
  * Read an object from buffer that may be split to multiple parts. If object
@@ -178,3 +182,4 @@ void *drm_buffer_read_object(struct drm_buffer *buf,
 	drm_buffer_advance(buf, objsize);
 	return obj;
 }
+EXPORT_SYMBOL(drm_buffer_read_object);
