@@ -350,6 +350,64 @@ idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 	return (0);
 }
 
+/*
+ * start: minimum id, inclusive
+ * end:   maximum id, exclusive or INT_MAX if end is negative
+ */
+int
+idr_alloc(struct idr *idp, void *ptr, int start, int end, unsigned gfp_mask)
+{
+	int lim = end > 0 ? end - 1 : INT_MAX;
+	int result, id;
+
+	kprintf("idr_alloc: %p, %p, %d, %d\n", idp, ptr, start, end);
+
+	if (start < 0)
+		return -EINVAL;
+
+	if (lim < start)
+		return -ENOSPC;
+
+	lwkt_gettoken(&idp->idr_token);
+
+	/*
+	 * Grow if necessary (or if forced by the loop)
+	 */
+	if (start >= idp->idr_count)
+		idr_grow(idp, start);
+
+	/*
+	 * Check if a spot is available, break and return 0 if true,
+	 * unless the available spot is beyond our limit.  It is
+	 * possible to exceed the limit due to the way array growth
+	 * works.
+	 */
+	id = idr_find_free(idp, start, lim);
+	if (id == -1) {
+		result = -ENOSPC;
+		goto done;
+	}
+
+	if (id >= lim) {
+		result = -ENOSPC;
+		goto done;
+	}
+
+	if (id >= idp->idr_count)
+		panic("idr_get_new_above(): illegal resid %d", id);
+	if (id > idp->idr_lastindex)
+		idp->idr_lastindex = id;
+	if (start <= idp->idr_freeindex)
+		idp->idr_freeindex = id;
+	result = id;
+	idr_reserve(idp, id, 1);
+	idp->idr_nodes[id].data = ptr;
+
+done:
+	lwkt_reltoken(&idp->idr_token);
+	return result;
+}
+
 int
 idr_get_new(struct idr *idp, void *ptr, int *id)
 {

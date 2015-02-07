@@ -83,6 +83,7 @@ int	 idr_pre_get(struct idr *idp, unsigned gfp_mask);
 
 void	 idr_init(struct idr *idp);
 
+int idr_alloc(struct idr *idp, void *ptr, int start, int end, unsigned gfp_mask);
 
 #endif /* _KERNEL */
 
