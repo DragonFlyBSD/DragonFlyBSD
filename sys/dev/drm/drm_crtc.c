@@ -271,30 +271,21 @@ EXPORT_SYMBOL(drm_get_connector_status_name);
 static int drm_mode_object_get(struct drm_device *dev,
 			       struct drm_mode_object *obj, uint32_t obj_type)
 {
-	int new_id = 0;
 	int ret;
 
-again:
-	if (idr_pre_get(&dev->mode_config.crtc_idr, GFP_KERNEL) == 0) {
-		DRM_ERROR("Ran out memory getting a mode number\n");
-		return -ENOMEM;
-	}
-
-	lockmgr(&dev->mode_config.idr_mutex, LK_EXCLUSIVE);
-	ret = idr_get_new_above(&dev->mode_config.crtc_idr, obj, 1, &new_id);
-	lockmgr(&dev->mode_config.idr_mutex, LK_RELEASE);
-	if (ret == -EAGAIN)
-		goto again;
-	else if (ret)
-		return ret;
-
+	mutex_lock(&dev->mode_config.idr_mutex);
+	ret = idr_alloc(&dev->mode_config.crtc_idr, obj, 1, 0, GFP_KERNEL);
+	if (ret >= 0) {
 		/*
 		 * Set up the object linking under the protection of the idr
 		 * lock so that other users can't see inconsistent state.
 		 */
-	obj->id = new_id;
-	obj->type = obj_type;
-	return 0;
+		obj->id = ret;
+		obj->type = obj_type;
+	}
+	mutex_unlock(&dev->mode_config.idr_mutex);
+
+	return ret < 0 ? ret : 0;
 }
 
 /**
