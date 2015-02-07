@@ -360,8 +360,6 @@ idr_alloc(struct idr *idp, void *ptr, int start, int end, unsigned gfp_mask)
 	int lim = end > 0 ? end - 1 : INT_MAX;
 	int result, id;
 
-	kprintf("idr_alloc: %p, %p, %d, %d\n", idp, ptr, start, end);
-
 	if (start < 0)
 		return -EINVAL;
 
