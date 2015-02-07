@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2012, Intel Corporation 
+  Copyright (c) 2001-2014, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -59,6 +59,7 @@
 #define E1000_SCTL	0x00024  /* SerDes Control - RW */
 #define E1000_FCAL	0x00028  /* Flow Control Address Low - RW */
 #define E1000_FCAH	0x0002C  /* Flow Control Address High -RW */
+#define E1000_FEXT	0x0002C  /* Future Extended - RW */
 #define E1000_FEXTNVM	0x00028  /* Future Extended NVM - RW */
 #define E1000_FEXTNVM3	0x0003C  /* Future Extended NVM 3 - RW */
 #define E1000_FEXTNVM4	0x00024  /* Future Extended NVM 4 - RW */
@@ -494,8 +495,6 @@
 #define E1000_PBACL	0x05B68  /* MSIx PBA Clear - Read/Write 1's to clear */
 #define E1000_FFLT	0x05F00  /* Flexible Filter Length Table - RW Array */
 #define E1000_HOST_IF	0x08800  /* Host Interface */
-#define E1000_FFMT	0x09000  /* Flexible Filter Mask Table - RW Array */
-#define E1000_FFVT	0x09800  /* Flexible Filter Value Table - RW Array */
 #define E1000_HIBBA	0x8F40   /* Host Interface Buffer Base Address */
 /* Flexible Host Filter Table */
 #define E1000_FHFT(_n)	(0x09000 + ((_n) * 0x100))

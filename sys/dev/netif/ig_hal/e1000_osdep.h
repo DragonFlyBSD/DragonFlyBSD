@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2008, Intel Corporation 
+  Copyright (c) 2001-2014, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -43,6 +43,7 @@
 #include <bus/pci/pcireg.h>
 
 #define usec_delay(x)		DELAY(x)
+#define usec_delay_irq usec_delay
 #define msec_delay(x)		DELAY(1000*(x))
 /* TODO: Should we be paranoid about delaying in interrupt context? */
 #define msec_delay_irq(x)	DELAY(1000*(x))

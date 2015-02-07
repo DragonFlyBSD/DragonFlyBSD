@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2012, Intel Corporation 
+  Copyright (c) 2001-2014, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -308,7 +308,7 @@ s32 e1000_read_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 *data)
 	 * the lower time out
 	 */
 	for (i = 0; i < (E1000_GEN_POLL_TIMEOUT * 3); i++) {
-		usec_delay(50);
+		usec_delay_irq(50);
 		mdic = E1000_READ_REG(hw, E1000_MDIC);
 		if (mdic & E1000_MDIC_READY)
 			break;
@@ -333,7 +333,7 @@ s32 e1000_read_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 *data)
 	 * reading duplicate data in the next MDIC transaction.
 	 */
 	if (hw->mac.type == e1000_pch2lan)
-		usec_delay(100);
+		usec_delay_irq(100);
 
 	return E1000_SUCCESS;
 }
@@ -374,7 +374,7 @@ s32 e1000_write_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 data)
 	 * the lower time out
 	 */
 	for (i = 0; i < (E1000_GEN_POLL_TIMEOUT * 3); i++) {
-		usec_delay(50);
+		usec_delay_irq(50);
 		mdic = E1000_READ_REG(hw, E1000_MDIC);
 		if (mdic & E1000_MDIC_READY)
 			break;
@@ -398,7 +398,7 @@ s32 e1000_write_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 data)
 	 * reading duplicate data in the next MDIC transaction.
 	 */
 	if (hw->mac.type == e1000_pch2lan)
-		usec_delay(100);
+		usec_delay_irq(100);
 
 	return E1000_SUCCESS;
 }
@@ -1060,16 +1060,12 @@ s32 e1000_copper_link_setup_82577(struct e1000_hw *hw)
 		}
 	}
 
-	/* Enable CRS on Tx. This must be set for half-duplex operation.
-	 * Not required on some PHYs.
-	 */
+	/* Enable CRS on Tx. This must be set for half-duplex operation. */
 	ret_val = hw->phy.ops.read_reg(hw, I82577_CFG_REG, &phy_data);
 	if (ret_val)
 		return ret_val;
 
-	if ((hw->phy.type != e1000_phy_82579) &&
-	    (hw->phy.type != e1000_phy_i217))
-		phy_data |= I82577_CFG_ASSERT_CRS_ON_TX;
+	phy_data |= I82577_CFG_ASSERT_CRS_ON_TX;
 
 	/* Enable downshift */
 	phy_data |= I82577_CFG_ENABLE_DOWNSHIFT;
@@ -1338,6 +1334,10 @@ s32 e1000_copper_link_setup_m88_gen2(struct e1000_hw *hw)
 		DEBUGOUT("Error committing the PHY changes\n");
 		return ret_val;
 	}
+
+	ret_val = e1000_set_master_slave_mode(hw);
+	if (ret_val)
+		return ret_val;
 
 	return E1000_SUCCESS;
 }
@@ -2352,19 +2352,23 @@ s32 e1000_phy_has_link_generic(struct e1000_hw *hw, u32 iterations,
 		 * it across the board.
 		 */
 		ret_val = hw->phy.ops.read_reg(hw, PHY_STATUS, &phy_status);
-		if (ret_val)
+		if (ret_val) {
 			/* If the first read fails, another entity may have
 			 * ownership of the resources, wait and try again to
 			 * see if they have relinquished the resources yet.
 			 */
-			usec_delay(usec_interval);
+			if (usec_interval >= 1000)
+				msec_delay(usec_interval/1000);
+			else
+				usec_delay(usec_interval);
+		}
 		ret_val = hw->phy.ops.read_reg(hw, PHY_STATUS, &phy_status);
 		if (ret_val)
 			break;
 		if (phy_status & MII_SR_LINK_STATUS)
 			break;
 		if (usec_interval >= 1000)
-			msec_delay_irq(usec_interval/1000);
+			msec_delay(usec_interval/1000);
 		else
 			usec_delay(usec_interval);
 	}
@@ -3413,11 +3417,12 @@ static s32 e1000_access_phy_wakeup_reg_bm(struct e1000_hw *hw, u32 offset,
 					  u16 *data, bool read, bool page_set)
 {
 	s32 ret_val;
-	u16 reg = BM_PHY_REG_NUM(offset);
-	u16 page __unused = BM_PHY_REG_PAGE(offset);
+	u16 reg, page;
 	u16 phy_reg = 0;
 
 	DEBUGFUNC("e1000_access_phy_wakeup_reg_bm");
+	reg = BM_PHY_REG_NUM(offset);
+	page = BM_PHY_REG_PAGE(offset);
 
 	/* Gig must be disabled for MDIO accesses to Host Wakeup reg page */
 	if ((hw->mac.type == e1000_pchlan) &&
@@ -3787,8 +3792,8 @@ static s32 e1000_access_phy_debug_regs_hv(struct e1000_hw *hw, u32 offset,
 	DEBUGFUNC("e1000_access_phy_debug_regs_hv");
 
 	/* This takes care of the difference with desktop vs mobile phy */
-	addr_reg = (hw->phy.type == e1000_phy_82578) ?
-		   I82578_ADDR_REG : I82577_ADDR_REG;
+	addr_reg = ((hw->phy.type == e1000_phy_82578) ?
+		    I82578_ADDR_REG : I82577_ADDR_REG);
 	data_reg = addr_reg + 1;
 
 	/* All operations in this function are phy address 2 */
@@ -3844,8 +3849,8 @@ s32 e1000_link_stall_workaround_hv(struct e1000_hw *hw)
 	if (ret_val)
 		return ret_val;
 
-	data &= BM_CS_STATUS_LINK_UP | BM_CS_STATUS_RESOLVED |
-		BM_CS_STATUS_SPEED_MASK;
+	data &= (BM_CS_STATUS_LINK_UP | BM_CS_STATUS_RESOLVED |
+		 BM_CS_STATUS_SPEED_MASK);
 
 	if (data != (BM_CS_STATUS_LINK_UP | BM_CS_STATUS_RESOLVED |
 		     BM_CS_STATUS_SPEED_1000))

@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2012, Intel Corporation 
+  Copyright (c) 2001-2014, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -37,7 +37,7 @@
 static s32 e1000_validate_mdi_setting_generic(struct e1000_hw *hw);
 static void e1000_set_lan_id_multi_port_pcie(struct e1000_hw *hw);
 static void e1000_config_collision_dist_generic(struct e1000_hw *hw);
-static void e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index);
+static int e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index);
 
 /**
  *  e1000_init_mac_ops_generic - Initialize MAC function pointers
@@ -145,14 +145,14 @@ void e1000_null_write_vfta(struct e1000_hw E1000_UNUSEDARG *hw,
 }
 
 /**
- *  e1000_null_rar_set - No-op function, return void
+ *  e1000_null_rar_set - No-op function, return 0
  *  @hw: pointer to the HW structure
  **/
-void e1000_null_rar_set(struct e1000_hw E1000_UNUSEDARG *hw,
+int e1000_null_rar_set(struct e1000_hw E1000_UNUSEDARG *hw,
 			u8 E1000_UNUSEDARG *h, u32 E1000_UNUSEDARG a)
 {
 	DEBUGFUNC("e1000_null_rar_set");
-	return;
+	return E1000_SUCCESS;
 }
 
 /**
@@ -410,13 +410,8 @@ s32 e1000_check_alt_mac_addr_generic(struct e1000_hw *hw)
 	if (ret_val)
 		return ret_val;
 
-#if !defined(NO_82542_SUPPORT) || !defined(NO_82543_SUPPORT) || !defined(NO_82540_SUPPORT) || !defined(NO_82541_SUPPORT)
 	/* not supported on older hardware or 82573 */
 	if ((hw->mac.type < e1000_82571) || (hw->mac.type == e1000_82573))
-#else
-	/* not supported on 82573 */
-	if (hw->mac.type == e1000_82573)
-#endif
 		return E1000_SUCCESS;
 
 	/* Alternate MAC address is handled by the option ROM for 82580
@@ -480,7 +475,7 @@ s32 e1000_check_alt_mac_addr_generic(struct e1000_hw *hw)
  *  Sets the receive address array register at index to the address passed
  *  in by addr.
  **/
-static void e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index)
+static int e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index)
 {
 	u32 rar_low, rar_high;
 
@@ -506,6 +501,8 @@ static void e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index)
 	E1000_WRITE_FLUSH(hw);
 	E1000_WRITE_REG(hw, E1000_RAH(index), rar_high);
 	E1000_WRITE_FLUSH(hw);
+
+	return E1000_SUCCESS;
 }
 
 /**

@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2012, Intel Corporation 
+  Copyright (c) 2001-2014, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -84,7 +84,7 @@ static const u16 e1000_igp_cable_length_table[] = {
 static s32 e1000_init_phy_params_82541(struct e1000_hw *hw)
 {
 	struct e1000_phy_info *phy = &hw->phy;
-	s32 ret_val = E1000_SUCCESS;
+	s32 ret_val;
 
 	DEBUGFUNC("e1000_init_phy_params_82541");
 

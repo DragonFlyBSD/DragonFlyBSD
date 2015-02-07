@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2004 Joerg Sonnenberger <joerg@bec.de>.  All rights reserved.
  *
- * Copyright (c) 2001-2008, Intel Corporation
+ * Copyright (c) 2001-2014, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -116,7 +116,7 @@
 #define DEBUG_HW 0
 
 #define EM_NAME	"Intel(R) PRO/1000 Network Connection "
-#define EM_VER	" 7.3.8"
+#define EM_VER	" 7.4.2"
 
 #define _EM_DEVICE(id, ret)	\
 	{ EM_VENDOR_ID, E1000_DEV_ID_##id, ret, EM_NAME #id EM_VER }
@@ -237,6 +237,10 @@ static const struct em_vendor_info em_vendor_info_array[] = {
 	EM_EMX_DEVICE(PCH_LPT_I217_V),
 	EM_EMX_DEVICE(PCH_LPTLP_I218_LM),
 	EM_EMX_DEVICE(PCH_LPTLP_I218_V),
+	EM_EMX_DEVICE(PCH_I218_LM2),
+	EM_EMX_DEVICE(PCH_I218_V2),
+	EM_EMX_DEVICE(PCH_I218_LM3),
+	EM_EMX_DEVICE(PCH_I218_V3),
 
 	/* required last entry */
 	EM_DEVICE_NULL
@@ -670,6 +674,9 @@ em_attach(device_t dev)
 		error = EIO;
 		goto fail;
 	}
+
+	/* Disable ULP support */
+	e1000_disable_ulp_lpt_lp(&adapter->hw, TRUE);
 
 	/* Allocate transmit descriptors and buffers */
 	error = em_create_tx_ring(adapter);

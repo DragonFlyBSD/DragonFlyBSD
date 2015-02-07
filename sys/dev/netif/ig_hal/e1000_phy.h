@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2012, Intel Corporation 
+  Copyright (c) 2001-2014, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -218,6 +218,7 @@ bool e1000_is_mphy_ready(struct e1000_hw *hw);
 #define HV_M_STATUS_AUTONEG_COMPLETE	0x1000
 #define HV_M_STATUS_SPEED_MASK		0x0300
 #define HV_M_STATUS_SPEED_1000		0x0200
+#define HV_M_STATUS_SPEED_100		0x0100
 #define HV_M_STATUS_LINK_UP		0x0040
 
 #define E1000_82580_PM_GO_LINKD		0x0020 /* Go Link Disconnect */
