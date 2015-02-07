@@ -93,7 +93,7 @@ libhammer_find_pfs_mount(uuid_t *unique_uuid)
 		pfs.ondisk = &pfsd;
 		pfs.bytes = sizeof(struct hammer_pseudofs_data);
 		fd = open(mnt->f_mntonname, O_RDONLY);
-		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
+		if (fd < 0 || (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0)) {
 			close(fd);
 			curmount--;
 			continue;
@@ -101,8 +101,9 @@ libhammer_find_pfs_mount(uuid_t *unique_uuid)
 
 		memcpy(&uuid, &pfs.ondisk->unique_uuid, sizeof(uuid));
 		if (uuid_compare(unique_uuid, &uuid, NULL) == 0) {
-			    retval = strdup(mnt->f_mntonname);
-			    break;
+			retval = strdup(mnt->f_mntonname);
+			close(fd);
+			break;
 		}
 
 		curmount--;
