@@ -69,10 +69,9 @@
 
 #include <net/ip_mroute/ip_mroute.h>
 #include <net/ipfw/ip_fw.h>
-#include <net/dummynet/ip_dummynet.h>
-
 #include <net/ipfw2/ip_fw.h>
-#include <net/dummynet2/ip_dummynet.h>
+#include <net/dummynet/ip_dummynet.h>
+#include <net/dummynet2/ip_dummynet2.h>
 
 #ifdef FAST_IPSEC
 #include <netproto/ipsec/ipsec.h>
@@ -87,10 +86,9 @@ struct	inpcbportinfo ripcbportinfo;
 
 /* control hooks for ipfw and dummynet */
 ip_fw_ctl_t *ip_fw_ctl_ptr;
+ip_fw_ctl_t *ip_fw_ctl_x_ptr;
 ip_dn_ctl_t *ip_dn_ctl_ptr;
 
-
-ip_fw2_ctl_t *ip_fw2_ctl_x_ptr;
 
 /*
  * hooks for multicast routing. They all default to NULL,
@@ -436,7 +434,7 @@ rip_ctloutput(netmsg_t msg)
 			break;
 		case IP_FW_X:
 			if (IPFW2_LOADED)
-				error = ip_fw2_ctl_x_ptr(sopt);
+				error = ip_fw_ctl_x_ptr(sopt);
 			else
 				 error = ENOPROTOOPT;
 			break;

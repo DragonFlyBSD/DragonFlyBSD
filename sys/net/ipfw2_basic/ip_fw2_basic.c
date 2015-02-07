@@ -858,7 +858,7 @@ ipfw_basic_stop(void)
 	struct ipfw_state_context *state_ctx;
 	struct ip_fw_state *state,*the_state;
 	struct ipfw_context *ctx;
-	if (unregister_ipfw_module(MODULE_BASIC_ID)==0) {
+	if (unregister_ipfw_module(MODULE_BASIC_ID) ==0 ) {
 		ipfw_basic_flush_state_prt = NULL;
 		ipfw_basic_append_state_prt = NULL;
 
@@ -896,22 +896,26 @@ ipfw_basic_stop(void)
 static int
 ipfw_basic_modevent(module_t mod, int type, void *data)
 {
+	int err;
 	switch (type) {
 		case MOD_LOAD:
-			return ipfw_basic_init();
-		case MOD_UNLOAD:
-			return ipfw_basic_stop();
-		default:
+			err = ipfw_basic_init();
 			break;
+		case MOD_UNLOAD:
+			err = ipfw_basic_stop();
+			break;
+		default:
+			err = 1;
 	}
-	return 0;
+	kprintf("err = %d\n", err);
+	return err;
 }
 
 static moduledata_t ipfw_basic_mod = {
-	"ipfw_basic",
+	"ipfw2_basic",
 	ipfw_basic_modevent,
 	NULL
 };
-DECLARE_MODULE(ipfw_basic, ipfw_basic_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
-MODULE_DEPEND(ipfw_basic, ipfw2, 1, 1, 1);
-MODULE_VERSION(ipfw_basic, 1);
+DECLARE_MODULE(ipfw2_basic, ipfw_basic_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
+MODULE_DEPEND(ipfw2_basic, ipfw2, 1, 1, 1);
+MODULE_VERSION(ipfw2_basic, 1);

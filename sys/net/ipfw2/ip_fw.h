@@ -32,8 +32,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IP_FW_H
-#define _IP_FW_H
+#ifndef _IP_FW_V2_H
+#define _IP_FW_V2_H
 
 #include <net/ipfw2/ip_fw2.h>
 

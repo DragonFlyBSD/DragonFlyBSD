@@ -133,6 +133,7 @@ ipfw_basic_append_state_t *ipfw_basic_append_state_prt = NULL;
 static struct ipfw_context	*ipfw_ctx[MAXCPU];
 static struct ipfw_nat_context *ipfw_nat_ctx;
 
+extern int ip_fw_loaded;
 static uint32_t static_count;	/* # of static rules */
 static uint32_t static_ioc_len;	/* bytes of static rules */
 static int ipfw_flushing;
@@ -144,22 +145,22 @@ static int autoinc_step = IPFW_AUTOINC_STEP_DEF;
 static int	ipfw_sysctl_enable(SYSCTL_HANDLER_ARGS);
 static int	ipfw_sysctl_autoinc_step(SYSCTL_HANDLER_ARGS);
 
-SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw, CTLFLAG_RW, 0, "Firewall");
-SYSCTL_PROC(_net_inet_ip_fw, OID_AUTO, enable, CTLTYPE_INT | CTLFLAG_RW,
-	&fw_enable, 0, ipfw_sysctl_enable, "I", "Enable ipfw");
-SYSCTL_PROC(_net_inet_ip_fw, OID_AUTO, autoinc_step, CTLTYPE_INT | CTLFLAG_RW,
+SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw2, CTLFLAG_RW, 0, "Firewall");
+SYSCTL_PROC(_net_inet_ip_fw2, OID_AUTO, enable, CTLTYPE_INT | CTLFLAG_RW,
+	&fw2_enable, 0, ipfw_sysctl_enable, "I", "Enable ipfw");
+SYSCTL_PROC(_net_inet_ip_fw2, OID_AUTO, autoinc_step, CTLTYPE_INT | CTLFLAG_RW,
 	&autoinc_step, 0, ipfw_sysctl_autoinc_step, "I",
 	"Rule number autincrement step");
-SYSCTL_INT(_net_inet_ip_fw, OID_AUTO,one_pass,CTLFLAG_RW,
-	&fw_one_pass, 0,
+SYSCTL_INT(_net_inet_ip_fw2, OID_AUTO,one_pass,CTLFLAG_RW,
+	&fw2_one_pass, 0,
 	"Only do a single pass through ipfw when using dummynet(4)");
-SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, debug, CTLFLAG_RW,
+SYSCTL_INT(_net_inet_ip_fw2, OID_AUTO, debug, CTLFLAG_RW,
 	&fw_debug, 0, "Enable printing of debug ip_fw statements");
-SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, verbose, CTLFLAG_RW,
+SYSCTL_INT(_net_inet_ip_fw2, OID_AUTO, verbose, CTLFLAG_RW,
 	&fw_verbose, 0, "Log matches to ipfw rules");
-SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, verbose_limit, CTLFLAG_RW,
+SYSCTL_INT(_net_inet_ip_fw2, OID_AUTO, verbose_limit, CTLFLAG_RW,
 	&verbose_limit, 0, "Set upper limit of matches of ipfw rules logged");
-SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, static_count, CTLFLAG_RD,
+SYSCTL_INT(_net_inet_ip_fw2, OID_AUTO, static_count, CTLFLAG_RD,
 	&static_count, 0, "Number of static rules");
 
 filter_func filter_funcs[MAX_MODULE][MAX_OPCODE_PER_MODULE];
@@ -429,11 +430,11 @@ after_ip_checks:
 		 * Packet has already been tagged. Look for the next rule
 		 * to restart processing.
 		 *
-		 * If fw_one_pass != 0 then just accept it.
+		 * If fw2_one_pass != 0 then just accept it.
 		 * XXX should not happen here, but optimized out in
 		 * the caller.
 		 */
-		if (fw_one_pass)
+		if (fw2_one_pass)
 			return IP_FW_PASS;
 
 		/* This rule is being/has been flushed */
@@ -1791,7 +1792,11 @@ static void
 ipfw_hook(void)
 {
 	struct pfil_head *pfh;
-
+	if (ip_fw_loaded == 1) {
+		kprintf("ipfw2 cannot be activated "
+			"while the ipfw is in use.\n");
+		return;
+	}
 	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
 
 	pfh = pfil_head_get(PFIL_TYPE_AF, AF_INET);
@@ -1823,14 +1828,15 @@ ipfw_sysctl_enable_dispatch(netmsg_t nmsg)
 	struct lwkt_msg *lmsg = &nmsg->lmsg;
 	int enable = lmsg->u.ms_result;
 
-	if (fw_enable == enable)
+	if (fw2_enable == enable)
 		goto reply;
 
-	fw_enable = enable;
-	if (fw_enable)
+	fw2_enable = enable;
+	if (fw2_enable)
 		ipfw_hook();
 	else
 		ipfw_dehook();
+
 reply:
 	lwkt_replymsg(lmsg, 0);
 }
@@ -1842,7 +1848,7 @@ ipfw_sysctl_enable(SYSCTL_HANDLER_ARGS)
 	struct lwkt_msg *lmsg;
 	int enable, error;
 
-	enable = fw_enable;
+	enable = fw2_enable;
 	error = sysctl_handle_int(oidp, &enable, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
@@ -1915,7 +1921,7 @@ ipfw_init_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_ipfw fwmsg;
 	int error = 0;
-	if (IPFW_LOADED) {
+	if (IPFW2_LOADED) {
 		kprintf("IP firewall already loaded\n");
 		error = EEXIST;
 		goto reply;
@@ -1948,8 +1954,9 @@ ipfw_init_dispatch(netmsg_t nmsg)
 		kprintf("limited to %d packets/entry by default ",
 				verbose_limit);
 	}
-	ip_fw_loaded = 1;
-	if (fw_enable)
+	kprintf("\n");
+	ip_fw2_loaded = 1;
+	if (fw2_enable)
 		ipfw_hook();
 reply:
 	lwkt_replymsg(&nmsg->lmsg, error);
@@ -1972,7 +1979,7 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 {
 	int error = 0, cpu;
 
-	ip_fw_loaded = 0;
+	ip_fw2_loaded = 0;
 
 	ipfw_dehook();
 	netmsg_service_sync();
@@ -1989,7 +1996,7 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 	}
 	kfree(ipfw_nat_ctx,M_IPFW2);
 	ipfw_nat_ctx = NULL;
-	kprintf("\nIP firewall unloaded ");
+	kprintf("IP firewall unloaded\n");
 
 	lwkt_replymsg(&nmsg->lmsg, error);
 }
@@ -2016,6 +2023,7 @@ ipfw_modevent(module_t mod, int type, void *unused)
 			break;
 
 		case MOD_UNLOAD:
+
 #ifndef KLD_MODULE
 			kprintf("ipfw statically compiled, cannot unload\n");
 			err = EBUSY;

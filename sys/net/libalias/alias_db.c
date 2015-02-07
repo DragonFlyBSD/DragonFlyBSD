@@ -141,21 +141,12 @@ __FBSDID("$FreeBSD: src/sys/netinet/libalias/alias_db.c,v 1.71.2.2.2.1 2008/11/2
 
 	See HISTORY file for additional revisions.
 */
-#ifdef _KERNEL
 #include <stdarg.h>
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/syslog.h>
 #include <sys/queue.h>
-#else
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/errno.h>
-#include <sys/time.h>
-#include <unistd.h>
-#endif
 
 #include <sys/socket.h>
 #include <netinet/tcp.h>

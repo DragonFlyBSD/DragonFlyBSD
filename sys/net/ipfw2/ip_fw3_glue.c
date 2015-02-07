@@ -45,11 +45,9 @@
 
 #include <net/ipfw2/ip_fw2.h>
 
-ip_fw_chk_t *ip_fw_chk_ptr;
-ip_fw_dn_io_t *ip_fw_dn_io_ptr;
-int ip_fw_loaded;
-int fw_enable = 1;
-int fw_one_pass = 1;
+int ip_fw2_loaded;
+int fw2_enable = 1;
+int fw2_one_pass = 1;
 
 static void	ip_fw2_sockopt_dispatch(netmsg_t msg);
 
@@ -58,18 +56,8 @@ ip_fw2_sockopt(struct sockopt *sopt)
 {
 	struct netmsg_base smsg;
 
-	/*
-	 * Disallow modifications in really-really secure mode, but still allow
-	 * the logging counters to be reset.
-	 */
-	if (sopt->sopt_name == IP_FW_ADD ||
-	    (sopt->sopt_dir == SOPT_SET && sopt->sopt_name != IP_FW_RESETLOG)) {
-		if (securelevel >= 3)
-			return EPERM;
-	}
-
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
-		    0, ip_fw_sockopt_dispatch);
+		    0, ip_fw2_sockopt_dispatch);
 	smsg.lmsg.u.ms_resultp = sopt;
 	return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
 }
@@ -82,7 +70,7 @@ ip_fw2_sockopt_dispatch(netmsg_t msg)
 
 	KKASSERT(mycpuid == 0);
 
-	if (IPFW_LOADED)
+	if (IPFW2_LOADED)
 		error = ip_fw_ctl_x_ptr(sopt);
 	else
 		error = ENOPROTOOPT;

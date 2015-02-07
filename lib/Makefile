@@ -54,6 +54,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libfsid \
 	libftpio \
 	libhammer \
+	libipfw2 \
 	libipsec \
 	libkcore \
 	libkiconv \

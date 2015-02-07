@@ -111,19 +111,9 @@ __FBSDID("$FreeBSD$");
 	See HISTORY file for additional revisions.
 */
 
-#ifdef _KERNEL
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
-#else
-#include <sys/types.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <ctype.h>
-#include <dlfcn.h>
-#include <errno.h>
-#include <string.h>
-#endif
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
@@ -132,16 +122,9 @@ __FBSDID("$FreeBSD$");
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 
-#ifdef _KERNEL
 #include "alias.h"
 #include "alias_local.h"
 #include "alias_mod.h"
-#else
-#include <err.h>
-#include "alias.h"
-#include "alias_local.h"
-#include "alias_mod.h"
-#endif
 
 static __inline int
 twowords(void *p)

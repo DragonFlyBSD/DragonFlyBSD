@@ -160,7 +160,8 @@ struct libalias {
 #ifdef _KERNEL
 #define LIBALIAS_LOCK_INIT(l) \
 		lockinit(&l->mutex, "per-instance libalias mutex", 0, LK_CANRECURSE);
-#define LIBALIAS_LOCK_ASSERT(l) KKASSERT(lockstatus(&l->mutex, curthread) != 0)
+//#define LIBALIAS_LOCK_ASSERT(l) KKASSERT(lockstatus(&l->mutex, curthread) != 0)
+#define LIBALIAS_LOCK_ASSERT(l)
 #define LIBALIAS_LOCK(l) lockmgr(&l->mutex, LK_EXCLUSIVE);
 #define LIBALIAS_UNLOCK(l) lockmgr(&l->mutex, LK_RELEASE);
 #define LIBALIAS_LOCK_DESTROY(l)	lockuninit(&l->mutex)

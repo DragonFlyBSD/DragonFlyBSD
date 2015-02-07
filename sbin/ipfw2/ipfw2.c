@@ -71,8 +71,7 @@
 #define MAX_KEYWORD_LEN	20
 #define MAX_ARGS	32
 #define WHITESP		" \t\f\v\n\r"
-#define IPFW_LIB_PATH	"/usr/lib/lib_ipfw_%s.so"
-
+#define IPFW_LIB_PATH	"/usr/lib/libipfw2%s.so"
 #define	IP_MASK_ALL	0xffffffff
 #define NAT_BUF_LEN	1024
 /*

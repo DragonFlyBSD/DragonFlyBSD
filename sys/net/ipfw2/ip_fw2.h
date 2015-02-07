@@ -25,12 +25,20 @@
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
  */
 
-#ifndef _IPFW2_H
-#define _IPFW2_H
+#ifndef _IP_FW2_V2_H
+#define _IP_FW2_V2_H
 
 #ifdef _KERNEL
 #include <net/netisr2.h>
+
+int     ip_fw2_sockopt(struct sockopt *);
+extern int ip_fw2_loaded;
+
 #endif
+
+#define	IPFW2_LOADED	(ip_fw2_loaded)
+
+#ifndef _IPFW2_H
 
 #define		RESERVED_SIZE		12
 #define		SIZE_OF_IPFWINSN	8
@@ -306,20 +314,18 @@ struct sockopt;
 struct dn_flow_set;
 
 typedef int	ip_fw_chk_t(struct ip_fw_args *);
-typedef int	ip_fw2_ctl_t(struct sockopt *);
+typedef int	ip_fw_ctl_t(struct sockopt *);
 typedef int	ipfw_nat_cfg_t(struct sockopt *);
 typedef void ip_fw_dn_io_t(struct mbuf *, int, int, struct ip_fw_args *);
 
 
 extern ip_fw_chk_t	*ip_fw_chk_ptr;
-extern ip_fw2_ctl_t	*ip_fw_ctl_x_ptr;
+extern ip_fw_ctl_t	*ip_fw_ctl_x_ptr;
 extern ip_fw_dn_io_t	*ip_fw_dn_io_ptr;
 
-extern int fw_one_pass;
-extern int fw_enable;
+extern int fw2_one_pass;
+extern int fw2_enable;
 
-extern int ip_fw_loaded;
-#define	IPFW_LOADED	(ip_fw_loaded)
 
 #define IPFW_CFGCPUID	0
 #define IPFW_CFGPORT	netisr_cpuport(IPFW_CFGCPUID)
@@ -511,4 +517,7 @@ typedef void ipfw_basic_append_state_t(struct ipfw_ioc_state *);
 #define IP_FW_STATE_ADD		56   /* add one state */
 #define IP_FW_STATE_DEL		57   /* delete states of one rulenum */
 #define IP_FW_STATE_FLUSH	58   /* flush all states */
+#endif
+
 #endif /* _IPFW2_H */
+

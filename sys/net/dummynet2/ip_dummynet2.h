@@ -28,8 +28,10 @@
  * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.19 2008/09/20 04:36:51 sephe Exp $
  */
 
+#ifndef _IP_DUMMYNET_V2_H
+#define _IP_DUMMYNET_V2_H
+
 #ifndef _IP_DUMMYNET_H
-#define _IP_DUMMYNET_H
 
 #define MODULE_DUMMYNET_ID	2
 #define MODULE_DUMMYNET_NAME	"dummynet"
@@ -465,4 +467,5 @@ struct dn_ioc_pipe {
  */
 #define DN_PIPE_NR_MAX		65536
 
+#endif
 #endif /* !_IP_DUMMYNET_H */
