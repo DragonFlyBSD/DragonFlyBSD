@@ -597,6 +597,15 @@ struct drm_map_list {
 	struct drm_mm_node *file_offset_node;	/**< fake offset */
 };
 
+/**
+ * Context handle list
+ */
+struct drm_ctx_list {
+	struct list_head head;		/**< list head */
+	drm_context_t handle;		/**< context handle */
+	struct drm_file *tag;		/**< associated fd private data */
+};
+
 struct drm_vblank_info {
 	wait_queue_head_t queue;	/* vblank wait queue */
 	atomic_t count;			/* number of VBLANK interrupts */
@@ -930,15 +939,21 @@ struct drm_device {
 	int map_count;			/**< Number of mappable regions */
 	struct drm_open_hash map_hash;	/**< User token hash table for maps */
 
-	drm_local_map_t	  **context_sareas;
-	int		  max_context;
+	/** \name Context handle management */
+	/*@{ */
+	struct list_head ctxlist;	/**< Linked list of context handles */
+	int ctx_count;			/**< Number of context handles */
+	struct lock ctxlist_mutex;	/**< For ctxlist */
+
+	struct idr ctx_idr;
+
+	/*@} */
 
 	struct drm_lock_data lock;	/* Information on hardware lock	   */
 
 				/* DMA queues (contexts) */
 	drm_device_dma_t  *dma;		/* Optional pointer for DMA support */
 
-				/* Context support */
 	int		  irq;		/* Interrupt used by board	   */
 	int		  msi_enabled;	/* MSI enabled */
 	int		  irqrid;	/* Interrupt used by board */
@@ -958,7 +973,12 @@ struct drm_device {
 	/*@{ */
 	int irq_enabled;		/**< True if irq handler is enabled */
 	__volatile__ long context_flag;	/**< Context swapping flag */
+	__volatile__ long interrupt_flag; /**< Interruption handler flag */
+	__volatile__ long dma_flag;	/**< DMA dispatch flag */
+	wait_queue_head_t context_wait;	/**< Processes waiting on ctx switch */
+	int last_checked;		/**< Last context checked for DMA */
 	int last_context;		/**< Last current context */
+	unsigned long last_switch;	/**< jiffies at last context switch */
 	/*@} */
 
 	int		  num_crtcs;
@@ -1180,7 +1200,6 @@ int	drm_mtrr_del(int handle, unsigned long offset, size_t size, int flags);
 int	drm_ctxbitmap_init(struct drm_device *dev);
 void	drm_ctxbitmap_cleanup(struct drm_device *dev);
 void	drm_ctxbitmap_free(struct drm_device *dev, int ctx_handle);
-int	drm_ctxbitmap_next(struct drm_device *dev);
 
 /* Locking IOCTL support (drm_lock.c) */
 int	drm_lock_take(struct drm_lock_data *lock_data,
