@@ -3423,6 +3423,15 @@ out:
 	return ret;
 }
 
+/*
+ * The Linux version of kfree() is a macro and can't be called
+ * directly via a function pointer
+ */
+static void drm_kms_free(void *arg)
+{
+	kfree(arg);
+}
+
 int drm_mode_page_flip_ioctl(struct drm_device *dev,
 			     void *data, struct drm_file *file_priv)
 {
@@ -3507,7 +3516,7 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 		e->base.event = &e->event.base;
 		e->base.file_priv = file_priv;
 		e->base.destroy =
-			(void (*) (struct drm_pending_event *)) kfree;
+			(void (*) (struct drm_pending_event *))drm_kms_free;
 	}
 
 	old_fb = crtc->fb;
