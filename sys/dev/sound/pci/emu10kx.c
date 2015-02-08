@@ -2354,6 +2354,7 @@ emu10kx_dev_uninit(struct emu_sc_info *sc)
 	if (sc->cdev)
 		destroy_dev(sc->cdev);
 	sc->cdev = 0;
+	lockmgr(&sc->emu10kx_lock, LK_RELEASE);
 
 	lockuninit(&sc->emu10kx_lock);
 	return (0);
