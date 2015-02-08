@@ -250,7 +250,7 @@ printcpuinfo(void)
 				"\011TM2"	/* Thermal Monitor 2 */
 				"\012SSSE3"	/* SSSE3 */
 				"\013CNXT-ID"	/* L1 context ID available */
-				"\014<b11>"
+				"\014SDBG"	/* IA-32 silicon debug */
 				"\015FMA"	/* Fused Multiply Add */
 				"\016CX16"	/* CMPXCHG16B Instruction */
 				"\017xTPR"	/* Send Task Priority Messages */
