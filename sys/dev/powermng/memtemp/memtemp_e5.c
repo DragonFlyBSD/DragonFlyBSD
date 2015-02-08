@@ -49,50 +49,25 @@
 
 #include "pcib_if.h"
 
-#include <dev/misc/ecc/ecc_e5_reg.h>
-
-#define UBOX_READ(dev, ofs, w)				\
-	pcib_read_config((dev), pci_get_bus((dev)),	\
-	    PCISLOT_E5_UBOX0, PCIFUNC_E5_UBOX0, (ofs), w)
-#define UBOX_READ_2(dev, ofs)		UBOX_READ((dev), (ofs), 2)
-#define UBOX_READ_4(dev, ofs)		UBOX_READ((dev), (ofs), 4)
-
-#define IMC_CPGC_READ(dev, ofs, w)			\
-	pcib_read_config((dev), pci_get_bus((dev)),	\
-	    PCISLOT_E5_IMC_CPGC, PCIFUNC_E5_IMC_CPGC, (ofs), w)
-#define IMC_CPGC_READ_2(dev, ofs)	IMC_CPGC_READ((dev), (ofs), 2)
-#define IMC_CPGC_READ_4(dev, ofs)	IMC_CPGC_READ((dev), (ofs), 4)
-
-#define IMC_CTAD_READ(dev, c, ofs, w)			\
-	pcib_read_config((dev), pci_get_bus((dev)),	\
-	    PCISLOT_E5_IMC_CTAD, PCIFUNC_E5_IMC_CTAD((c)), (ofs), w)
-#define IMC_CTAD_READ_2(dev, c, ofs)	IMC_CTAD_READ((dev), (c), (ofs), 2)
-#define IMC_CTAD_READ_4(dev, c, ofs)	IMC_CTAD_READ((dev), (c), (ofs), 4)
-
-struct memtemp_e5_type {
-	uint16_t	did;
-	int		slot;
-	int		func;
-	int		chan;
-	const char	*desc;
-};
+#include <dev/misc/ecc/e5_imc_reg.h>
+#include <dev/misc/ecc/e5_imc_var.h>
 
 struct memtemp_e5_softc;
 
 struct memtemp_e5_dimm {
-	TAILQ_ENTRY(memtemp_e5_dimm) dimm_link;
-	struct ksensordev	dimm_sensordev;
-	struct ksensor		dimm_sensor;
-	struct memtemp_e5_softc	*dimm_parent;
-	int			dimm_id;
-	int			dimm_extid;
+	TAILQ_ENTRY(memtemp_e5_dimm)	dimm_link;
+	struct ksensordev		dimm_sensordev;
+	struct ksensor			dimm_sensor;
+	struct memtemp_e5_softc		*dimm_parent;
+	int				dimm_id;
+	int				dimm_extid;
 };
 
 struct memtemp_e5_softc {
-	device_t		temp_dev;
-	int			temp_chan;
-	int			temp_node;
-	TAILQ_HEAD(, memtemp_e5_dimm) temp_dimm;
+	device_t			temp_dev;
+	const struct e5_imc_chan	*temp_chan;
+	int				temp_node;
+	TAILQ_HEAD(, memtemp_e5_dimm)	temp_dimm;
 };
 
 static int	memtemp_e5_probe(device_t);
@@ -101,28 +76,31 @@ static int	memtemp_e5_detach(device_t);
 
 static void	memtemp_e5_sensor_task(void *);
 
-#define MEMTEMP_E5_TYPE_V2(c) \
-{ \
-	.did	= PCI_E5_IMC_THERMAL_CHN##c##_DID_ID, \
-	.slot	= PCISLOT_E5_IMC_THERMAL, \
-	.func	= PCIFUNC_E5_IMC_THERMAL_CHN##c, \
-	.chan	= c, \
-	.desc	= "Intel E5 v2 memory thermal sensor" \
+#define MEMTEMP_E5_CHAN(v, imc, c, c_ext)			\
+{								\
+	.did		= PCI_E5V##v##_IMC##imc##_THERMAL_CHN##c##_DID_ID, \
+	.slot		= PCISLOT_E5V##v##_IMC##imc##_THERMAL_CHN##c, \
+	.func		= PCIFUNC_E5V##v##_IMC##imc##_THERMAL_CHN##c, \
+	.desc		= "Intel E5 v" #v " memory thermal sensor", \
+								\
+	E5_IMC_CHAN_FIELDS(v, imc, c, c_ext)			\
 }
 
-#define MEMTEMP_E5_TYPE_END		{ 0, 0, 0, 0, NULL }
+#define MEMTEMP_E5_CHAN_V2(c)	MEMTEMP_E5_CHAN(2, 0, c, c)
+#define MEMTEMP_E5_CHAN_END	E5_IMC_CHAN_END
 
-static const struct memtemp_e5_type memtemp_types[] = {
-	MEMTEMP_E5_TYPE_V2(0),
-	MEMTEMP_E5_TYPE_V2(1),
-	MEMTEMP_E5_TYPE_V2(2),
-	MEMTEMP_E5_TYPE_V2(3),
+static const struct e5_imc_chan memtemp_e5_chans[] = {
+	MEMTEMP_E5_CHAN_V2(0),
+	MEMTEMP_E5_CHAN_V2(1),
+	MEMTEMP_E5_CHAN_V2(2),
+	MEMTEMP_E5_CHAN_V2(3),
 
-	MEMTEMP_E5_TYPE_END
+	MEMTEMP_E5_CHAN_END
 };
 
-#undef MEMTEMP_E5_TYPE_V2
-#undef MEMTEMP_E5_TYPE_END
+#undef MEMTEMP_E5_CHAN_END
+#undef MEMTEMP_E5_CHAN_V2
+#undef MEMTEMP_E5_CHAN
 
 static device_method_t memtemp_e5_methods[] = {
 	/* Device interface */
@@ -147,69 +125,33 @@ MODULE_DEPEND(memtemp_e5, pci, 1, 1, 1);
 static int
 memtemp_e5_probe(device_t dev)
 {
-	const struct memtemp_e5_type *t;
+	const struct e5_imc_chan *c;
 	uint16_t vid, did;
 	int slot, func;
 
 	vid = pci_get_vendor(dev);
-	if (vid != PCI_E5_VID_ID)
+	if (vid != PCI_E5_IMC_VID_ID)
 		return ENXIO;
 
 	did = pci_get_device(dev);
 	slot = pci_get_slot(dev);
 	func = pci_get_function(dev);
 
-	for (t = memtemp_types; t->desc != NULL; ++t) {
-		if (t->did == did && t->slot == slot && t->func == func) {
+	for (c = memtemp_e5_chans; c->desc != NULL; ++c) {
+		if (c->did == did && c->slot == slot && c->func == func) {
 			struct memtemp_e5_softc *sc = device_get_softc(dev);
 			char desc[128];
-			uint32_t val;
-			int node, dimm;
+			int node;
 
-			/* Check CPGC vid/did */
-			if (IMC_CPGC_READ_2(dev, PCIR_VENDOR) !=
-			    PCI_E5_VID_ID ||
-			    IMC_CPGC_READ_2(dev, PCIR_DEVICE) !=
-			    PCI_E5_IMC_CPGC_DID_ID)
+			node = e5_imc_node_probe(dev, c);
+			if (node < 0)
 				break;
-
-			/* Is this channel disabled */
-			val = IMC_CPGC_READ_4(dev, PCI_E5_IMC_CPGC_MCMTR);
-			if (val & PCI_E5_IMC_CPGC_MCMTR_CHN_DISABLE(t->chan))
-				break;
-
-			/* Check CTAD vid/did */
-			if (IMC_CTAD_READ_2(dev, t->chan, PCIR_VENDOR) !=
-			    PCI_E5_VID_ID ||
-			    IMC_CTAD_READ_2(dev, t->chan, PCIR_DEVICE) !=
-			    PCI_E5_IMC_CTAD_DID_ID(t->chan))
-				break;
-
-			/* Are there any DIMMs populated? */
-			for (dimm = 0; dimm < PCI_E5_IMC_DIMM_MAX; ++dimm) {
-				val = IMC_CTAD_READ_4(dev, t->chan,
-				    PCI_E5_IMC_CTAD_DIMMMTR(dimm));
-				if (val & PCI_E5_IMC_CTAD_DIMMMTR_DIMM_POP)
-					break;
-			}
-			if (dimm == PCI_E5_IMC_DIMM_MAX)
-				break;
-
-			/* Check UBOX vid/did */
-			if (UBOX_READ_2(dev, PCIR_VENDOR) != PCI_E5_VID_ID ||
-			    UBOX_READ_2(dev, PCIR_DEVICE) !=
-			    PCI_E5_UBOX0_DID_ID)
-				break;
-
-			val = UBOX_READ_4(dev, PCI_E5_UBOX0_CPUNODEID);
-			node = __SHIFTOUT(val,
-			    PCI_E5_UBOX0_CPUNODEID_LCLNODEID);
 
 			ksnprintf(desc, sizeof(desc), "%s node%d channel%d",
-			    t->desc, node, t->chan);
+			    c->desc, node, c->chan_ext);
 			device_set_desc_copy(dev, desc);
 
-			sc->temp_chan = t->chan;
+			sc->temp_chan = c;
 			sc->temp_node = node;
 
 			return 0;
@@ -227,7 +169,7 @@ memtemp_e5_attach(device_t dev)
 	sc->temp_dev = dev;
 	TAILQ_INIT(&sc->temp_dimm);
 
-	for (dimm = 0; dimm < PCI_E5_IMC_DIMM_MAX; ++dimm) {
+	for (dimm = 0; dimm < PCI_E5_IMC_CHN_DIMM_MAX; ++dimm) {
 		struct memtemp_e5_dimm *dimm_sc;
 		uint32_t dimmmtr;
 
@@ -242,8 +184,8 @@ memtemp_e5_attach(device_t dev)
 		dimm_sc->dimm_id = dimm;
 		dimm_sc->dimm_parent = sc;
 		dimm_sc->dimm_extid =
-		    (sc->temp_node * PCI_E5_IMC_CHN_MAX * PCI_E5_IMC_DIMM_MAX) +
-		    (sc->temp_chan * PCI_E5_IMC_DIMM_MAX) + dimm;
+		(sc->temp_node * PCI_E5_IMC_CHN_MAX * PCI_E5_IMC_CHN_DIMM_MAX) +
+		(sc->temp_chan->chan_ext * PCI_E5_IMC_CHN_DIMM_MAX) + dimm;
 
 		ksnprintf(dimm_sc->dimm_sensordev.xname,
 		    sizeof(dimm_sc->dimm_sensordev.xname),

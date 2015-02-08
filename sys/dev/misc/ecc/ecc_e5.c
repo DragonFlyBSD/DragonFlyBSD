@@ -47,33 +47,8 @@
 
 #include "pcib_if.h"
 
-#include <dev/misc/ecc/ecc_e5_reg.h>
-
-#define UBOX_READ(dev, ofs, w)				\
-	pcib_read_config((dev), pci_get_bus((dev)),	\
-	    PCISLOT_E5_UBOX0, PCIFUNC_E5_UBOX0, (ofs), w)
-#define UBOX_READ_2(dev, ofs)		UBOX_READ((dev), (ofs), 2)
-#define UBOX_READ_4(dev, ofs)		UBOX_READ((dev), (ofs), 4)
-
-#define IMC_CPGC_READ(dev, ofs, w)			\
-	pcib_read_config((dev), pci_get_bus((dev)),	\
-	    PCISLOT_E5_IMC_CPGC, PCIFUNC_E5_IMC_CPGC, (ofs), w)
-#define IMC_CPGC_READ_2(dev, ofs)	IMC_CPGC_READ((dev), (ofs), 2)
-#define IMC_CPGC_READ_4(dev, ofs)	IMC_CPGC_READ((dev), (ofs), 4)
-
-#define IMC_CTAD_READ(dev, c, ofs, w)			\
-	pcib_read_config((dev), pci_get_bus((dev)),	\
-	    PCISLOT_E5_IMC_CTAD, PCIFUNC_E5_IMC_CTAD((c)), (ofs), w)
-#define IMC_CTAD_READ_2(dev, c, ofs)	IMC_CTAD_READ((dev), (c), (ofs), 2)
-#define IMC_CTAD_READ_4(dev, c, ofs)	IMC_CTAD_READ((dev), (c), (ofs), 4)
-
-struct ecc_e5_type {
-	uint16_t	did;
-	int		slot;
-	int		func;
-	int		chan;
-	const char	*desc;
-};
+#include <dev/misc/ecc/e5_imc_reg.h>
+#include <dev/misc/ecc/e5_imc_var.h>
 
 struct ecc_e5_rank {
 	int		rank_dimm;	/* owner dimm */
@@ -82,7 +57,7 @@ struct ecc_e5_rank {
 
 struct ecc_e5_softc {
 	device_t		ecc_dev;
-	int			ecc_chan;
+	const struct e5_imc_chan *ecc_chan;
 	int			ecc_node;
 	int			ecc_rank_cnt;
 	struct ecc_e5_rank	ecc_rank[PCI_E5_IMC_ERROR_RANK_MAX];
@@ -99,28 +74,31 @@ static void	ecc_e5_shutdown(device_t);
 
 static void	ecc_e5_callout(void *);
 
-#define ECC_E5_TYPE_V2(c) \
-{ \
-	.did	= PCI_E5_IMC_ERROR_CHN##c##_DID_ID, \
-	.slot	= PCISLOT_E5_IMC_ERROR, \
-	.func	= PCIFUNC_E5_IMC_ERROR_CHN##c, \
-	.chan	= c, \
-	.desc	= "Intel E5 v2 ECC" \
+#define ECC_E5_CHAN(v, imc, c, c_ext)				\
+{								\
+	.did		= PCI_E5V##v##_IMC##imc##_ERROR_CHN##c##_DID_ID, \
+	.slot		= PCISLOT_E5V##v##_IMC##imc##_ERROR_CHN##c, \
+	.func		= PCIFUNC_E5V##v##_IMC##imc##_ERROR_CHN##c, \
+	.desc		= "Intel E5 v" #v " ECC",		\
+								\
+	E5_IMC_CHAN_FIELDS(v, imc, c, c_ext)			\
 }
 
-#define ECC_E5_TYPE_END		{ 0, 0, 0, 0, NULL }
+#define ECC_E5_CHAN_V2(c)	ECC_E5_CHAN(2, 0, c, c)
+#define ECC_E5_CHAN_END		E5_IMC_CHAN_END
 
-static const struct ecc_e5_type ecc_types[] = {
-	ECC_E5_TYPE_V2(0),
-	ECC_E5_TYPE_V2(1),
-	ECC_E5_TYPE_V2(2),
-	ECC_E5_TYPE_V2(3),
+static const struct e5_imc_chan ecc_e5_chans[] = {
+	ECC_E5_CHAN_V2(0),
+	ECC_E5_CHAN_V2(1),
+	ECC_E5_CHAN_V2(2),
+	ECC_E5_CHAN_V2(3),
 
-	ECC_E5_TYPE_END
+	ECC_E5_CHAN_END
 };
 
-#undef ECC_E5_TYPE_V2
-#undef ECC_E5_TYPE_END
+#undef ECC_E5_CHAN_END
+#undef ECC_E5_CHAN_V2
+#undef ECC_E5_CHAN
 
 static device_method_t ecc_e5_methods[] = {
 	/* Device interface */
@@ -145,69 +123,33 @@ MODULE_DEPEND(ecc_e5, pci, 1, 1, 1);
 static int
 ecc_e5_probe(device_t dev)
 {
-	const struct ecc_e5_type *t;
+	const struct e5_imc_chan *c;
 	uint16_t vid, did;
 	int slot, func;
 
 	vid = pci_get_vendor(dev);
-	if (vid != PCI_E5_VID_ID)
+	if (vid != PCI_E5_IMC_VID_ID)
 		return ENXIO;
 
 	did = pci_get_device(dev);
 	slot = pci_get_slot(dev);
 	func = pci_get_function(dev);
 
-	for (t = ecc_types; t->desc != NULL; ++t) {
-		if (t->did == did && t->slot == slot && t->func == func) {
+	for (c = ecc_e5_chans; c->desc != NULL; ++c) {
+		if (c->did == did && c->slot == slot && c->func == func) {
 			struct ecc_e5_softc *sc = device_get_softc(dev);
 			char desc[32];
-			uint32_t val;
-			int node, dimm;
+			int node;
 
-			/* Check CPGC vid/did */
-			if (IMC_CPGC_READ_2(dev, PCIR_VENDOR) !=
-			    PCI_E5_VID_ID ||
-			    IMC_CPGC_READ_2(dev, PCIR_DEVICE) !=
-			    PCI_E5_IMC_CPGC_DID_ID)
+			node = e5_imc_node_probe(dev, c);
+			if (node < 0)
 				break;
-
-			/* Is this channel disabled */
-			val = IMC_CPGC_READ_4(dev, PCI_E5_IMC_CPGC_MCMTR);
-			if (val & PCI_E5_IMC_CPGC_MCMTR_CHN_DISABLE(t->chan))
-				break;
-
-			/* Check CTAD vid/did */
-			if (IMC_CTAD_READ_2(dev, t->chan, PCIR_VENDOR) !=
-			    PCI_E5_VID_ID ||
-			    IMC_CTAD_READ_2(dev, t->chan, PCIR_DEVICE) !=
-			    PCI_E5_IMC_CTAD_DID_ID(t->chan))
-				break;
-
-			/* Are there any DIMMs populated? */
-			for (dimm = 0; dimm < PCI_E5_IMC_DIMM_MAX; ++dimm) {
-				val = IMC_CTAD_READ_4(dev, t->chan,
-				    PCI_E5_IMC_CTAD_DIMMMTR(dimm));
-				if (val & PCI_E5_IMC_CTAD_DIMMMTR_DIMM_POP)
-					break;
-			}
-			if (dimm == PCI_E5_IMC_DIMM_MAX)
-				break;
-
-			/* Check UBOX vid/did */
-			if (UBOX_READ_2(dev, PCIR_VENDOR) != PCI_E5_VID_ID ||
-			    UBOX_READ_2(dev, PCIR_DEVICE) !=
-			    PCI_E5_UBOX0_DID_ID)
-				break;
-
-			val = UBOX_READ_4(dev, PCI_E5_UBOX0_CPUNODEID);
-			node = __SHIFTOUT(val,
-			    PCI_E5_UBOX0_CPUNODEID_LCLNODEID);
 
 			ksnprintf(desc, sizeof(desc), "%s node%d channel%d",
-			    t->desc, node, t->chan);
+			    c->desc, node, c->chan_ext);
 			device_set_desc_copy(dev, desc);
 
-			sc->ecc_chan = t->chan;
+			sc->ecc_chan = c;
 			sc->ecc_node = node;
 			return 0;
 		}
@@ -225,15 +167,23 @@ ecc_e5_attach(device_t dev)
 	callout_init_mp(&sc->ecc_callout);
 	sc->ecc_dev = dev;
 
-	mcmtr = IMC_CPGC_READ_4(sc->ecc_dev, PCI_E5_IMC_CPGC_MCMTR);
+	mcmtr = IMC_CPGC_READ_4(sc->ecc_dev, sc->ecc_chan,
+	    PCI_E5_IMC_CPGC_MCMTR);
 	if (bootverbose) {
+		if (sc->ecc_chan->ver == E5_IMC_CHAN_VER3 &&
+		    (mcmtr & PCI_E5V3_IMC_CPGC_MCMTR_DDR4))
+			ecc_printf(sc, "DDR4 ");
 		if (__SHIFTOUT(mcmtr, PCI_E5_IMC_CPGC_MCMTR_IMC_MODE) ==
-		    PCI_E5_IMC_CPGC_MCMTR_IMC_MODE_DDR3)
-			ecc_printf(sc, "native DDR3\n");
+		    PCI_E5_IMC_CPGC_MCMTR_IMC_MODE_DDR3) {
+			ecc_printf(sc, "native %s",
+			    sc->ecc_chan->ver == E5_IMC_CHAN_VER2 ?
+			    "DDR3" : "DDR");
+		}
+		kprintf("\n");
 	}
 
 	rank = 0;
-	for (dimm = 0; dimm < PCI_E5_IMC_DIMM_MAX; ++dimm) {
+	for (dimm = 0; dimm < PCI_E5_IMC_CHN_DIMM_MAX; ++dimm) {
 		const char *width;
 		uint32_t dimmmtr;
 		int rank_cnt, r;
@@ -257,6 +207,12 @@ ecc_e5_attach(device_t dev)
 		case PCI_E5_IMC_CTAD_DIMMMTR_RANK_CNT_QR:
 			rank_cnt = 4;
 			break;
+		case PCI_E5V3_IMC_CTAD_DIMMMTR_RANK_CNT_8R:
+			if (sc->ecc_chan->ver >= E5_IMC_CHAN_VER3) {
+				rank_cnt = 8;
+				break;
+			}
+			/* FALL THROUGH */
 		default:
 			ecc_printf(sc, "unknown rank count 0x%x\n", val);
 			return ENXIO;
@@ -280,9 +236,6 @@ ecc_e5_attach(device_t dev)
 
 		val = __SHIFTOUT(dimmmtr, PCI_E5_IMC_CTAD_DIMMMTR_DDR3_DNSTY);
 		switch (val) {
-		case PCI_E5_IMC_CTAD_DIMMMTR_DDR3_DNSTY_1G:
-			density = 1;
-			break;
 		case PCI_E5_IMC_CTAD_DIMMMTR_DDR3_DNSTY_2G:
 			density = 2;
 			break;
@@ -292,6 +245,12 @@ ecc_e5_attach(device_t dev)
 		case PCI_E5_IMC_CTAD_DIMMMTR_DDR3_DNSTY_8G:
 			density = 8;
 			break;
+		case PCI_E5_IMC_CTAD_DIMMMTR_DDR3_DNSTY_1G:
+			if (sc->ecc_chan->ver < E5_IMC_CHAN_VER3) {
+				density = 1;
+				break;
+			}
+			/* FALL THROUGH */
 		default:
 			ecc_printf(sc, "unknown ddr3 density 0x%x\n", val);
 			return ENXIO;
@@ -335,7 +294,7 @@ ecc_e5_attach(device_t dev)
 			if (rank & 1)
 				mask = PCI_E5_IMC_ERROR_COR_ERR_TH_HI;
 			else
-				mask = PCI_E5_IMC_ERROR_COR_ERR_TH_HI;
+				mask = PCI_E5_IMC_ERROR_COR_ERR_TH_LO;
 
 			thr = pci_read_config(sc->ecc_dev, ofs, 4);
 			ecc_printf(sc, "DIMM%d rank%d, "
@@ -378,7 +337,7 @@ ecc_e5_callout(void *xsc)
 			err = pci_read_config(sc->ecc_dev, ofs, 4);
 			ecc_printf(sc, "node%d channel%d DIMM%d rank%d, "
 			    "too many errors %d",
-			    sc->ecc_node, sc->ecc_chan,
+			    sc->ecc_node, sc->ecc_chan->chan_ext,
 			    rk->rank_dimm, rk->rank_dimm_rank,
 			    __SHIFTOUT(err, mask));
 		}
