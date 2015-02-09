@@ -402,12 +402,10 @@ clntunix_create(struct sockaddr_un *raddr, u_long prog, u_long vers, int *sockp,
 		u_int sendsz, u_int recvsz)
 {
 	struct netbuf *svcaddr;
-	struct netconfig *nconf;
 	CLIENT *cl;
 	int len;
 
 	cl = NULL;
-	nconf = NULL;
 	svcaddr = NULL;
 	if ((raddr->sun_len == 0) ||
 	   ((svcaddr = malloc(sizeof(struct netbuf))) == NULL ) ||

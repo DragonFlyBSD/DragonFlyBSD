@@ -263,7 +263,8 @@ _dns_getnetbyaddr(void *rval, void *cb_data __unused, va_list ap)
 	int net_type;
 	char *buffer;
 	size_t buflen;
-	int *errnop, *h_errnop;
+	int *errnop __unused;
+	int *h_errnop;
 	struct netent *nptr, ne;
 	struct netent_data *ned;
 	unsigned int netbr[4];
@@ -368,7 +369,8 @@ _dns_getnetbyname(void *rval, void *cb_data __unused, va_list ap)
 	const char *net;
 	char *buffer;
 	size_t buflen;
-	int *errnop, *h_errnop;
+	int *errnop __unused;
+	int *h_errnop;
 	struct netent *nptr, ne;
 	struct netent_data *ned;
 	int anslen, error;

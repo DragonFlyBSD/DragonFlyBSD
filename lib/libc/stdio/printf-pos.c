@@ -245,7 +245,6 @@ __find_arguments(const char *fmt0, va_list ap, union arg **argtable)
 	int n;			/* handy integer (short term usage) */
 	int error;
 	int flags;		/* flags as above */
-	int width;		/* width from format (%8d), or 0 */
 	struct typetable types;	/* table of types */
 
 	fmt = __DECONST(char *, fmt0);
@@ -263,7 +262,6 @@ __find_arguments(const char *fmt0, va_list ap, union arg **argtable)
 		fmt++;		/* skip over '%' */
 
 		flags = 0;
-		width = 0;
 
 rflag:		ch = *fmt++;
 reswitch:	switch (ch) {
@@ -301,7 +299,6 @@ reswitch:	switch (ch) {
 				types.nextarg = n;
 				goto rflag;
 			}
-			width = n;
 			goto reswitch;
 #ifndef NO_FLOATING_POINT
 		case 'L':
@@ -436,7 +433,6 @@ __find_warguments(const wchar_t *fmt0, va_list ap, union arg **argtable)
 	int n;			/* handy integer (short term usage) */
 	int error;
 	int flags;		/* flags as above */
-	int width;		/* width from format (%8d), or 0 */
 	struct typetable types;	/* table of types */
 
 	fmt = __DECONST(wchar_t *, fmt0);
@@ -454,7 +450,6 @@ __find_warguments(const wchar_t *fmt0, va_list ap, union arg **argtable)
 		fmt++;		/* skip over '%' */
 
 		flags = 0;
-		width = 0;
 
 rflag:		ch = *fmt++;
 reswitch:	switch (ch) {
@@ -492,7 +487,6 @@ reswitch:	switch (ch) {
 				types.nextarg = n;
 				goto rflag;
 			}
-			width = n;
 			goto reswitch;
 #ifndef NO_FLOATING_POINT
 		case 'L':

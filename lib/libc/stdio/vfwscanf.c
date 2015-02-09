@@ -261,7 +261,7 @@ convert_string(FILE *fp, char * mbp, int width, locale_t locale)
 static __inline int
 convert_wstring(FILE *fp, wchar_t *wcp, int width, locale_t locale)
 {
-	wchar_t *wcp0;
+	wchar_t *wcp0 __unused;
 	wint_t wi;
 	int nread;
 

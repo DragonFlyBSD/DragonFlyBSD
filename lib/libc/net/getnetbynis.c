@@ -135,7 +135,8 @@ _nis_getnetbyname(void *rval, void *cb_data __unused, va_list ap)
 	const char *name;
 	char *buffer;
 	size_t buflen;
-	int *errnop, *h_errnop;
+	int *errnop __unused;
+	int *h_errnop;
 	struct netent *nptr, ne;
 	struct netent_data *ned;
 	res_state statp;
@@ -178,7 +179,8 @@ _nis_getnetbyaddr(void *rval, void *cb_data __unused, va_list ap)
 	int af;
 	char *buffer;
 	size_t buflen;
-	int *errnop, *h_errnop;
+	int *errnop __unused;
+	int *h_errnop;
 	struct netent *nptr, ne;
 	struct netent_data *ned;
 	char *str, *cp;

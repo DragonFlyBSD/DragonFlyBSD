@@ -109,14 +109,11 @@ static int							\
 _citrus_prop_read_##_func_(struct _memstream * __restrict ms,	\
     _citrus_prop_object_t * __restrict obj)			\
 {								\
-	int base, ch, neg;					\
+	int base, ch;						\
 								\
 	_memstream_skip_ws(ms);					\
 	ch = _memstream_getc(ms);				\
-	neg = 0;						\
 	switch (ch) {						\
-	case '-':						\
-		neg = 1;					\
 	case '+':						\
 		ch = _memstream_getc(ms);			\
 	}							\

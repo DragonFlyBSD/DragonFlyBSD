@@ -260,7 +260,8 @@ _nis_gethostbyname(void *rval, void *cb_data __unused, va_list ap)
 	int af;
 	char *buffer;
 	size_t buflen;
-	int *errnop, *h_errnop;
+	int *errnop __unused;
+	int *h_errnop;
 	struct hostent *hptr, he;
 	struct hostent_data *hed;
 	res_state statp;
@@ -307,7 +308,8 @@ _nis_gethostbyaddr(void *rval, void *cb_data __unused, va_list ap)
 	int af;
 	char *buffer;
 	size_t buflen;
-	int *errnop, *h_errnop;
+	int *errnop __unused;
+	int *h_errnop;
 	struct hostent *hptr, he;
 	struct hostent_data *hed;
 	res_state statp;

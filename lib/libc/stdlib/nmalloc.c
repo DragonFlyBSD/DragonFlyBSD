@@ -688,7 +688,7 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
 	bigalloc_t *bigp;
 	bigalloc_t big;
 	size_t chunking;
-	int zi;
+	int zi __unused;
 
 	/*
 	 * OpenGroup spec issue 6 checks

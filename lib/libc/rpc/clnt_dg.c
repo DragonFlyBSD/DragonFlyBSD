@@ -303,7 +303,7 @@ clnt_dg_call(CLIENT	*cl,		/* client handle */
 	struct sockaddr *sa;
 	sigset_t mask;
 	sigset_t newmask;
-	socklen_t inlen, salen;
+	socklen_t salen;
 	ssize_t recvlen = 0;
 	int kin_len, n, rpc_lock_value;
 	u_int32_t xid;
@@ -469,7 +469,6 @@ get_reply:
 			goto send_again;
 		}
 	}
-	inlen = (socklen_t)recvlen;
 
 	/*
 	 * now decode and validate the response

@@ -144,7 +144,7 @@ send_credentials(struct cached_connection_ *connection, int type)
 	struct kevent eventlist;
 	int nevents;
 	ssize_t result;
-	int res;
+	int res __unused;
 
 	struct msghdr cred_hdr;
 	struct iovec iov;
@@ -472,7 +472,7 @@ int
 __close_cached_mp_write_session(struct cached_connection_ *ws)
 {
 	int notification;
-	int result;
+	int result __unused;
 
 	notification = CET_MP_WRITE_SESSION_CLOSE_NOTIFICATION;
 	result = safe_write(ws, &notification, sizeof(int));
