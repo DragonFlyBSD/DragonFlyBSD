@@ -2796,6 +2796,19 @@ TO_REMOVE+=/usr/share/man/cat9/posix4.9.gz
 TO_REMOVE+=/usr/share/man/man9/posix4.9.gz
 TO_REMOVE+=/usr/share/man/cat9/p1003_1b.9.gz
 TO_REMOVE+=/usr/share/man/man9/p1003_1b.9.gz
+TO_REMOVE+=/usr/include/c++/4.4
+TO_REMOVE+=/usr/lib/gcc44
+TO_REMOVE+=/usr/libexec/gcc44
+TO_REMOVE+=/usr/libdata/gcc44
+TO_REMOVE+=/usr/share/man/man1/cpp44.1.gz
+TO_REMOVE+=/usr/share/man/man1/g++44.1.gz
+TO_REMOVE+=/usr/share/man/man1/gcc44.1.gz
+TO_REMOVE+=/usr/share/man/man1/gcov44.1.gz
+TO_REMOVE+=/usr/share/mk/bsd.cpu.gcc44.mk
+TO_REMOVE+=/usr/share/info/cpp44.info.gz
+TO_REMOVE+=/usr/share/info/cppinternals44.info.gz
+TO_REMOVE+=/usr/share/info/gcc44.info.gz
+TO_REMOVE+=/usr/share/info/gccint44.info.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

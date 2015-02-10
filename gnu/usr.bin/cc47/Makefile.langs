@@ -2,12 +2,8 @@
 
 COMPVERSION=	gcc47
 
-.if !defined(NO_CXX)
 lang_tree_files+=	cp/cp-tree.def
-.endif
-.if !defined(NO_OBJC)
 lang_tree_files+=	objc/objc-tree.def
-.endif
 
 optionsfiles=	${GCCDIR}/gcc/c-family/c.opt
 optionsfiles+=	${GCCDIR}/gcc/common.opt
@@ -16,13 +12,9 @@ optionsfiles+=	${GCCDIR}/gcc/config/${GCC_CPU}/${GCC_CPU}.opt
 optionsfiles+=  ${GCCDIR}/gcc/config/rpath.opt
 optionsfiles+=  ${GCCDIR}/gcc/config/freebsd.opt
 
-LANG_SPECS_FILES=	lto/lang-specs.h
-.if !defined(NO_CXX)
-LANG_SPECS_FILES+=	cp/lang-specs.h
-.endif
-.if !defined(NO_OBJC)
+LANG_SPECS_FILES=	lto/lang-specs.h \
+			cp/lang-specs.h
 LANG_SPECS_FILES+=	objc/lang-specs.h
-.endif
 
 # Object files for gcc driver.
 GCC_SRCS = gcc.c ggc-none.c
@@ -83,7 +75,6 @@ GTFILES = $(CPP_ID_DATA_H) $(srcdir)/input.h $(srcdir)/coretypes.h \
   $(srcdir)/target-globals.h \
   $(srcdir)/ipa-inline.h \
 
-.if !defined(NO_CXX)
 GTFILES_CPP= \
   [cp] \
   $(srcdir)/cp/rtti.c \
@@ -114,7 +105,6 @@ GTFILES_CPP= \
   $(srcdir)/cp/cp-lang.c \
   $(srcdir)/cp/except.c
 GTFILES+= ${GTFILES_CPP}
-.endif
 
 GTFILES_LTO= \
   [lto] \
@@ -123,7 +113,6 @@ GTFILES_LTO= \
   $(srcdir)/lto/lto.c 
 GTFILES+= ${GTFILES_LTO}
 
-.if !defined(NO_OBJC)
 GTFILES_OBJC= \
   [objc] \
   $(srcdir)/objc/objc-map.h \
@@ -177,7 +166,6 @@ GTFILES_OBJC= \
   $(srcdir)/objc/objc-next-runtime-abi-02.c \
   $(srcdir)/c-family/c-cppbuiltin.c 
 GTFILES+= ${GTFILES_OBJC}
-.endif
 
 # C
 GTFILES_C+= \

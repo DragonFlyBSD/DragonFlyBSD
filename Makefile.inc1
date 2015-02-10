@@ -901,25 +901,25 @@ bstrap-${_tool}!
 _share=	share/syscons/scrnmaps
 .endif
 
-_gcc_common_cross= gnu/usr.bin/gmp gnu/usr.bin/mpfr
-.if !defined(NO_GCC44)
-_gcc44_cross= gnu/usr.bin/cc44
-_gcc44_tools= gnu/usr.bin/cc44/cc_prep gnu/usr.bin/cc44/cc_tools
+_gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
+.if !defined(NO_GCC50)
+_gcc50_cross= gnu/usr.bin/cc50
+_gcc50_tools= gnu/usr.bin/cc50/cc_prep gnu/usr.bin/cc50/cc_tools
 .endif
-_gcc47_cross= lib/libz gnu/usr.bin/mpc gnu/usr.bin/cc47
+_gcc47_cross= gnu/usr.bin/cc47
 _gcc47_tools= gnu/usr.bin/cc47/cc_prep gnu/usr.bin/cc47/cc_tools
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
 
-BTOOLSDIRS= ${_gcc44_tools} ${_gcc47_tools} ${_share}
+BTOOLSDIRS= ${_gcc47_tools} ${_gcc50_tools} ${_share}
 
 build-tools: build-tools-targets
 	touch ${BTOOLSDEST}/.build_done
 
 build-tools-targets: ${BTOOLSDIRS:S/^/btools-/}
 
-.ORDER: ${_gcc44_tools:S/^/btools-/}
 .ORDER: ${_gcc47_tools:S/^/btools-/}
+.ORDER: ${_gcc50_tools:S/^/btools-/}
 
 .for _tool in ${BTOOLSDIRS}
 btools-${_tool}!
@@ -941,7 +941,7 @@ _btxld=	usr.sbin/btxld
 CTOOLSDIRS= ${_btxld} ${_binutils} \
 		usr.bin/objformat usr.bin/crunch/crunchide \
 		${_gcc_common_cross} \
-		${_gcc44_cross} ${_gcc47_cross} ${_custom_cross}
+		${_gcc47_cross} ${_gcc50_cross} ${_custom_cross}
 
 cross-tools: cross-tools-targets
 	touch ${CTOOLSDEST}/.cross_done
@@ -978,10 +978,10 @@ libraries:
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
 		make -f Makefile.inc1 _startup_libs47;
-.if !defined(NO_GCC44)
+.if !defined(NO_GCC50)
 	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc44 \
-		make -f Makefile.inc1 _startup_libs44;
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc50 \
+		make -f Makefile.inc1 _startup_libs50;
 .endif
 	cd ${.CURDIR}; \
 	    make -f Makefile.inc1 _startup_libs; \
@@ -1001,10 +1001,12 @@ _startup_libs47=	gnu/usr.bin/cc47/cc_prep \
 			gnu/lib/gcc47/libgcc \
 			gnu/lib/gcc47/libgcc_eh \
 			gnu/lib/gcc47/libgcc_pic
-_startup_libs44=	gnu/usr.bin/cc44/cc_prep \
-			gnu/usr.bin/cc44/cc_tools \
-			gnu/lib/gcc44/csu \
-			gnu/lib/gcc44/libgcc
+_startup_libs50=	gnu/usr.bin/cc50/cc_prep \
+			gnu/usr.bin/cc50/cc_tools \
+			gnu/lib/gcc50/csu \
+			gnu/lib/gcc50/libgcc \
+			gnu/lib/gcc50/libgcc_eh \
+			gnu/lib/gcc50/libgcc_pic
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
 
 _prebuild_libs=		lib/libbz2 lib/liblzma lib/libz
@@ -1036,7 +1038,7 @@ _prebuild_libs+= lib/libradius lib/libsbuf lib/libtacplus lib/libm \
 
 _generic_libs+=	usr.bin/flex/lib
 
-.for _lib in ${_startup_libs44} ${_startup_libs47} \
+.for _lib in ${_startup_libs47} ${_startup_libs50} \
 		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
 ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
@@ -1050,7 +1052,7 @@ ${_lib}__L: .PHONY
 
 _startup_libs: ${_startup_libs:S/$/__L/}
 _startup_libs47: ${_startup_libs47:S/$/__L/}
-_startup_libs44: ${_startup_libs44:S/$/__L/}
+_startup_libs50: ${_startup_libs50:S/$/__L/}
 _prebuild_libs: ${_prebuild_libs:S/$/__L/}
 _generic_libs: ${_generic_libs:S/$/__L/}
 
@@ -1058,7 +1060,7 @@ _generic_libs: ${_generic_libs:S/$/__L/}
 # races (e.g. generation of tconfig.h)
 #
 .ORDER: ${_startup_libs47:S/$/__L/}
-.ORDER: ${_startup_libs44:S/$/__L/}
+.ORDER: ${_startup_libs50:S/$/__L/}
 .ORDER: ${_startup_libs:S/$/__L/}
 .ORDER: ${_prebuild_libs:S/$/__L/}
 .ORDER: ${_generic_libs:S/$/__L/}

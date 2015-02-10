@@ -118,7 +118,7 @@ We currently recommend that an override NOT be set in
 Currently accepted values for compilers which are part of
 .Dx
 are
-.Dq gcc44
+.Dq gcc50
 and
 .Dq gcc47
 (default).
@@ -392,9 +392,9 @@ Set to not build CVS.
 .It Va NO_GAMES
 .Pq Vt bool
 Set to not build games.
-.It Va NO_GCC44
+.It Va NO_GCC50
 .Pq Vt bool
-Set to not build the older version of GCC (4.4).
+Set to not build the alternative version of GCC (5.0).
 .It Va NO_GDB
 .Pq Vt bool
 Set to not build
@@ -415,9 +415,6 @@ and related programs.
 Set to not build the
 .Xr mailwrapper 8
 MTA selector.
-.It Va NO_OBJC
-.Pq Vt bool
-Set to not build Objective C support.
 .It Va NO_OPENSSH
 .Pq Vt bool
 Set to not build OpenSSH.

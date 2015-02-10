@@ -1,8 +1,8 @@
 # The libobjc header conflict between base compilers has been resolved
 # Maximum parallelism can be restored by setting SUBDIR_ORDERED to null
 
-.if !defined(NO_GCC44)
-SUBDIR= gcc44
+.if !defined(NO_GCC50)
+SUBDIR= gcc50
 .endif
 
 SUBDIR+= gcc47

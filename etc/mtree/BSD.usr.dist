@@ -18,11 +18,25 @@
         ..
         engines
         ..
-        gcc44
+        gcc47
+            plugin
+                include
+                    c-family
+                    ..
+                    objc
+                    ..
+                    config
+                        i386
+                        ..
+                    ..
+                    cp
+                    ..
+                ..
+            ..
             profile
             ..
         ..
-        gcc47
+        gcc50
             plugin
                 include
                     c-family
@@ -56,11 +70,13 @@
         ..
     ..
     libdata
-        gcc44
+        gcc47
             objc
             ..
+            ssp
+            ..
         ..
-        gcc47
+        gcc50
             objc
             ..
             ssp
@@ -84,9 +100,9 @@
         ..
         custom
         ..
-        gcc44
-        ..
         gcc47
+        ..
+        gcc50
         ..
         lpr
             ru

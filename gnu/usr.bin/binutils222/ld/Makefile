@@ -36,8 +36,8 @@ CFLAGS+= -DTOOLBINDIR=\"${TOOLS_PREFIX}${LIBEXEC_BINUTILS}\"
 CFLAGS+= -DENABLE_PLUGINS -DHAVE_CONFIG_H
 CFLAGS+= -DTARGET_SYSTEM_ROOT=\"${USRDATA_PREFIX}\"
 # link-time optimization requires dlopen() which means ld cannot be built
-# statically (e.g. NOSHARED=yes) and also support -plugin.
-#NOSHARED?= yes
+# statically and also support -plugin, not even for cross-tools.
+.undef NOSHARED
 
 CLEANDIRS+=	ldscripts tmpdir
 CLEANFILES+=	ldemul-list.h stringify.sed

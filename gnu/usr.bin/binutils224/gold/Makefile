@@ -20,4 +20,8 @@ LDADD+=	${RELTOP}/libiberty/libiberty.a
 DPADD+=	${LIBZ}
 LDADD+=	-lz
 
+# link-time optimization requires dlopen() which means ld cannot be built
+# statically and also support -plugin, not even for cross-tools.
+.undef NOSHARED
+
 .include <bsd.prog.mk>

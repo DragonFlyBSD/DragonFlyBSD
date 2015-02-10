@@ -22,11 +22,11 @@ SUBDIR+= mpfr
 SUBDIR+= mpc
 SUBDIR+= cc47
 
-.if defined(NO_GCC44)
+.if defined(NO_GCC50)
 .ORDER: ${BU_PRIMARY} gmp mpfr mpc cc47
 .else
-SUBDIR+= cc44
-.ORDER: ${BU_PRIMARY} gmp mpfr mpc cc47 cc44
+SUBDIR+= cc50
+.ORDER: ${BU_PRIMARY} gmp mpfr mpc cc47 cc50
 .endif
 
 # maximum parallelism

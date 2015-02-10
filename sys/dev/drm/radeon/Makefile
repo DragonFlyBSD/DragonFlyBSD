@@ -105,8 +105,4 @@ CFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
 
 CFLAGS+= -I${SYSDIR}/dev/drm/include
 
-.if ${CCVER} == "gcc44"
-CFLAGS+= -fms-extensions
-.endif
-
 .include <bsd.kmod.mk>

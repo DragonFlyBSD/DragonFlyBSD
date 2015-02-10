@@ -4,12 +4,8 @@
 CONTRIBDIR=	${GCCDIR}/gcc
 
 LANG1=c
-.if !defined(NO_CXX)
 LANG2=, c++
-.endif
-.if !defined(NO_OBJC)
 LANG3=, objc
-.endif
 LANG4=, LTO
 
 version.c: ${CONTRIBDIR}/version.c Makefile ../Makefile.inc

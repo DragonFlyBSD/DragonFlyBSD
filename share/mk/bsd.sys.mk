@@ -24,7 +24,7 @@ CFLAGS		+= -std=${CSTD}
 . if defined(WARNS)
 .  if ${WARNS} >= 1
 CWARNFLAGS	+=	-Wmissing-include-dirs -Wsystem-headers
-.   if !defined(NO_WERROR) && (${CCVER} == "gcc44" || ${CCVER} == "gcc47")
+.   if !defined(NO_WERROR) && ${CCVER:Mgcc*}
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
@@ -47,7 +47,7 @@ CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs\
 .  if ${WARNS} >= 2 && ${WARNS} <= 4
 # XXX Delete -Wmaybe-uninitialized by default for now -- the compiler doesn't
 # XXX always get it right.
-.   if ${CCVER} == "gcc47"
+.   if ${CCVER:Mgcc*}
 CWARNFLAGS	+=	-Wno-maybe-uninitialized
 .   else
 CWARNFLAGS	+=	-Wno-uninitialized
@@ -56,10 +56,10 @@ CWARNFLAGS	+=	-Wno-uninitialized
 # Activate gcc47's -Wunused-but-set-variable (which is in -Wall) and
 # -Wunused-but-set-parameter (which is in -Wextra) only at WARNS >= 4
 # (which is the level when also -Wunused-parameter comes into play).
-.  if ${WARNS} >= 2 && ${WARNS} <= 3 && ${CCVER} == "gcc47"
+.  if ${WARNS} >= 2 && ${WARNS} <= 3 && ${CCVER:Mgcc*}
 CWARNFLAGS	+=	-Wno-unused-but-set-variable
 .  endif
-.  if ${WARNS} == 3 && ${CCVER} == "gcc47"
+.  if ${WARNS} == 3 && ${CCVER:Mgcc*}
 CWARNFLAGS	+=	-Wno-unused-but-set-parameter
 .  endif
 . endif
@@ -70,7 +70,7 @@ WFORMAT		=	1
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
 CWARNFLAGS	+=	-Wformat=2 -Wno-format-extra-args
-.   if !defined(NO_WERROR) && (${CCVER} == "gcc47" || ${CCVER} == "gcc44")
+.   if !defined(NO_WERROR) && ${CCVER:Mgcc*}
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif

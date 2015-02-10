@@ -77,7 +77,7 @@ KMODMODE?=	${BINMODE}
 
 .SUFFIXES: .out .o .c .cc .cxx .C .y .l .s .S
 
-.if !defined(NO_WERROR) && (${CCVER} == "gcc44" || ${CCVER} == "gcc47")
+.if !defined(NO_WERROR) && (${CCVER} == "gcc47" || ${CCVER} == "gcc50")
 WERROR=-Werror
 .endif
 
