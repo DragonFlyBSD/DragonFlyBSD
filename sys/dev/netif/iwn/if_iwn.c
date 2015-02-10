@@ -670,13 +670,7 @@ iwn_attach(device_t dev)
 	IFQ_SET_READY(&ifp->if_snd);
 #endif
 
-	wlan_serialize_exit();
-	/*
-	 * WLAN serializer must _not_ be held for ieee80211_ifattach(),
-	 * since it could dead-lock the domsg to netisrs.
-	 */
 	ieee80211_ifattach(ic, macaddr);
-	wlan_serialize_enter();
 	ic->ic_vap_create = iwn_vap_create;
 	ic->ic_vap_delete = iwn_vap_delete;
 	ic->ic_raw_xmit = iwn_raw_xmit;

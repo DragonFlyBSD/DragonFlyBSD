@@ -300,12 +300,6 @@ ieee80211_ifattach(struct ieee80211com *ic,
 	struct sockaddr_dl *sdl;
 	struct ifaddr *ifa;
 
-	/*
-	 * This function must _not_ be serialized by the WLAN serializer,
-	 * since it could dead-lock the domsg to netisrs in if_attach().
-	 */
-	wlan_assert_notserialized();
-
 	KASSERT(ifp->if_type == IFT_IEEE80211, ("if_type %d", ifp->if_type));
 
 	IEEE80211_LOCK_INIT(ic, ifp->if_xname);
@@ -357,11 +351,17 @@ ieee80211_ifattach(struct ieee80211com *ic,
 
 	CURVNET_SET(vnet0);
 
+	/*
+	 * This function must _not_ be serialized by the WLAN serializer,
+	 * since it could dead-lock the domsg to netisrs in if_attach().
+	 */
+	wlan_serialize_exit();
 #if defined(__DragonFly__)
 	if_attach(ifp, &wlan_global_serializer);
 #else
 	if_attach(ifp);
 #endif
+	wlan_serialize_enter();
 
 	ifp->if_mtu = IEEE80211_MTU_MAX;
 	ifp->if_broadcastaddr = ieee80211broadcastaddr;

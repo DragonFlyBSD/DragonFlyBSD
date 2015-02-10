@@ -1180,15 +1180,8 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 
 	/* NB: used to size node table key mapping array */
 	ic->ic_max_keyix = sc->sc_keymax;
-	/*
-	 * Call MI attach routine.
-	 *
-	 * WLAN serializer must _not_ be held for ieee80211_ifattach(),
-	 * since it could dead-lock the domsg to netisrs.
-	 */
-	wlan_serialize_exit();
+	/* Call MI attach routine. */
 	ieee80211_ifattach(ic, macaddr);
-	wlan_serialize_enter();
 	ic->ic_setregdomain = ath_setregdomain;
 	ic->ic_getradiocaps = ath_getradiocaps;
 	sc->sc_opmode = HAL_M_STA;

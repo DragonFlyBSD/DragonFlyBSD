@@ -926,7 +926,10 @@ got_crypto:
 		if (r == 0)
 			ic->ic_caps |= IEEE80211_C_TXPMGT;
 
+		/* ieee80211_ifattach() assumes that WLAN serializer is held */
+		wlan_serialize_enter();
 		ieee80211_ifattach(ic, eaddr);
+		wlan_serialize_exit();
 		ic->ic_raw_xmit = ndis_raw_xmit;
 		ic->ic_scan_start = ndis_scan_start;
 		ic->ic_scan_end = ndis_scan_end;

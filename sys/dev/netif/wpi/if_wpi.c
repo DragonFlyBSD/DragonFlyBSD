@@ -687,7 +687,10 @@ wpi_attach(device_t dev)
 	IFQ_SET_READY(&ifp->if_snd);
 #endif
 
+	/* ieee80211_ifattach() assumes that WLAN serializer is held */
+	wlan_serialize_enter();
 	ieee80211_ifattach(ic, macaddr);
+	wlan_serialize_exit();
 	/* override default methods */
 	ic->ic_raw_xmit = wpi_raw_xmit;
 	ic->ic_wme.wme_update = wpi_wme_update;
