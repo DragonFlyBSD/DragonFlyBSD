@@ -66,6 +66,9 @@ CWARNFLAGS	+=	-Wno-unused-but-set-parameter
 .  if ${WARNS} == 3 && (${CCVER:Mgcc4[89]} || ${CCVER:Mgcc5*})
 CWARNFLAGS	+=	-Wno-unused-local-typedefs
 .  endif
+.  if ${WARNS} == 3 && (${CCVER:Mgcc49} || ${CCVER:Mgcc5*})
+CWARNFLAGS	+=	-Wno-unused-value
+.  endif
 . endif
 
 . if defined(FORMAT_AUDIT)
