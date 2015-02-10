@@ -2270,11 +2270,13 @@ rum_ratectl_task(void *arg, int pending)
 	/* read and clear statistic registers (STA_CSR0 to STA_CSR10) */
 	rum_read_multi(sc, RT2573_STA_CSR0, sc->sta, sizeof(sc->sta));
 
-	ok = (le32toh(sc->sta[4]) >> 16) +	/* TX ok w/o retry */
-	    (le32toh(sc->sta[5]) & 0xffff);	/* TX ok w/ retry */
+	ok = (le32toh(sc->sta[4]) & 0xffff) +	/* TX no-retry ok count */
+	    (le32toh(sc->sta[4]) >> 16) +	/* TX one-retry ok count */
+	    (le32toh(sc->sta[5]) & 0xffff);	/* TX more-retry ok count */
 	fail = (le32toh(sc->sta[5]) >> 16);	/* TX retry-fail count */
 	sum = ok+fail;
-	retrycnt = (le32toh(sc->sta[5]) & 0xffff) + fail;
+	retrycnt = (le32toh(sc->sta[4]) >> 16) +
+	    (le32toh(sc->sta[5]) & 0xffff) + fail;
 
 	ni = ieee80211_ref_node(vap->iv_bss);
 	ieee80211_ratectl_tx_update(vap, ni, &sum, &ok, &retrycnt);
