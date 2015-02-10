@@ -32,12 +32,16 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#include <assert.h>
 #include <fcntl.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -113,6 +117,35 @@ libhammer_find_pfs_mount(uuid_t *unique_uuid)
 
 	return retval;
 }
+
+/*
+ * Find out the path that can be used to open(2) a PFS
+ * when it is not mounted. It allocates *path so the
+ * caller is in charge of freeing it up.
+ */
+void
+libhammer_pfs_canonical_path(char * mtpt, libhammer_pfsinfo_t pip, char **path)
+{
+	struct statfs st;
+
+	assert(pip != NULL);
+	assert(mtpt != NULL);
+
+	if ((statfs(mtpt, &st) < 0) ||
+	    ((strcmp("hammer", st.f_fstypename) != 0) &&
+	    (strcmp("null", st.f_fstypename) != 0))) {
+		*path = NULL;
+		return;
+	}
+
+	if (pip->ismaster)
+		asprintf(path, "%s/@@-1:%.5d", mtpt,
+		    pip->pfs_id);
+	else
+		asprintf(path, "%s/@@0x%016jx:%.5d", mtpt,
+		    pip->end_tid, pip->pfs_id);
+}
+
 
 /*
  * Allocate len bytes of memory and return the pointer.

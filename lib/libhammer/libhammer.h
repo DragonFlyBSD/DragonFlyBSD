@@ -81,6 +81,16 @@ struct libhammer_head {
 	int32_t rsv[2];
 };
 
+typedef struct libhammer_snapinfo {
+	struct libhammer_head head; /* Additional error and flags */
+
+	TAILQ_ENTRY(libhammer_snapinfo) entries;
+	hammer_tid_t    tid;
+	u_int64_t       ts;
+	char            label[64];
+	u_int64_t       rsv;
+} *libhammer_snapinfo_t;
+
 typedef struct libhammer_pfsinfo {
 	struct libhammer_head head; /* Additional error and flags */
 
@@ -93,14 +103,14 @@ typedef struct libhammer_pfsinfo {
 	char      snapshots[64];    /* softlink dir for pruning */
 	uuid_t    unique_uuid;      /* unique uuid of this master/slave */
 	TAILQ_ENTRY(libhammer_pfsinfo) entries;
-
+	TAILQ_HEAD(snaplist, libhammer_snapinfo) list_snap;
 	hammer_tid_t beg_tid;       /* Earliest TID with full history */
 	hammer_tid_t end_tid;       /* Current synchronisation TID */
 
 	uint64_t rsv[4];
 } *libhammer_pfsinfo_t;
 
-typedef struct libhammer_volinfo {
+typedef struct libhammer_fsinfo {
 	struct libhammer_head head; /* Additional error and flags */
 
 	char     vol_name[TXTLEN];  /* Volume name */
@@ -113,7 +123,7 @@ typedef struct libhammer_volinfo {
 	int64_t  rsvbigblocks;      /* Reserved big blocks */
 	int32_t  rsv[8];
 	TAILQ_HEAD(pfslist, libhammer_pfsinfo) list_pseudo;
-} *libhammer_volinfo_t;
+} *libhammer_fsinfo_t;
 
 struct libhammer_btree_stats {
 	int64_t elements;
@@ -141,8 +151,8 @@ struct libhammer_io_stats {
  * Function prototypes
  */
 __BEGIN_DECLS
-libhammer_volinfo_t libhammer_get_volinfo(const char *);
-void libhammer_free_volinfo(libhammer_volinfo_t);
+libhammer_fsinfo_t libhammer_get_fsinfo(const char *);
+void libhammer_free_fsinfo(libhammer_fsinfo_t);
 
 int libhammer_stats_redo(int64_t *);
 int libhammer_stats_undo(int64_t *);
@@ -166,10 +176,17 @@ int libhammer_stats_btree_searches(int64_t *);
 int libhammer_btree_stats(struct libhammer_btree_stats *);
 int libhammer_io_stats(struct libhammer_io_stats *);
 
+int libhammer_pfs_get_snapshots(libhammer_fsinfo_t, libhammer_pfsinfo_t);
+
 char *libhammer_find_pfs_mount(uuid_t *);
+void libhammer_pfs_canonical_path(char *, libhammer_pfsinfo_t, char **);
 void *_libhammer_malloc(size_t);
+void libhammer_compat_old_snapcount(libhammer_pfsinfo_t);
 __END_DECLS
 
+/*
+ * Wrappers to operate PFS TAILQ for each HAMMER filesystem
+ */
 static __inline libhammer_pfsinfo_t
 libhammer_get_next_pfs(libhammer_pfsinfo_t pfsinfo)
 {
@@ -183,15 +200,42 @@ libhammer_get_prev_pfs(libhammer_pfsinfo_t pfsinfo)
 }
 
 static __inline libhammer_pfsinfo_t
-libhammer_get_first_pfs(libhammer_volinfo_t volinfo)
+libhammer_get_first_pfs(libhammer_fsinfo_t fip)
 {
-	return TAILQ_FIRST(&volinfo->list_pseudo);
+	return TAILQ_FIRST(&fip->list_pseudo);
 }
 
 static __inline libhammer_pfsinfo_t
-libhammer_get_last_pfs(libhammer_volinfo_t volinfo)
+libhammer_get_last_pfs(libhammer_fsinfo_t fip)
 {
-	return TAILQ_LAST(&volinfo->list_pseudo, pfslist);
+	return TAILQ_LAST(&fip->list_pseudo, pfslist);
+}
+
+/*
+ * Wrappers to operate snapshot TAILQ for each PFS
+ */
+static __inline libhammer_snapinfo_t
+libhammer_get_next_snap(libhammer_snapinfo_t sip)
+{
+	return TAILQ_NEXT(sip, entries);
+}
+
+static __inline libhammer_snapinfo_t
+libhammer_get_prev_snap(libhammer_snapinfo_t sip)
+{
+	return TAILQ_PREV(sip, snaplist, entries);
+}
+
+static __inline libhammer_snapinfo_t
+libhammer_get_first_snap(libhammer_pfsinfo_t pip)
+{
+	return TAILQ_FIRST(&pip->list_snap);
+}
+
+static __inline libhammer_snapinfo_t
+libhammer_get_last_snap(libhammer_pfsinfo_t pip)
+{
+	return TAILQ_LAST(&pip->list_snap, snaplist);
 }
 
 #endif

@@ -78,7 +78,7 @@ hammer_cmd_info(char **av, int ac)
 void
 show_info(char *path)
 {
-	libhammer_volinfo_t hvi;
+	libhammer_fsinfo_t fip;
 	libhammer_pfsinfo_t pi, pi_first;
 	int64_t	    usedbigblocks;
 	int64_t	    usedbytes, rsvbytes;
@@ -91,47 +91,47 @@ show_info(char *path)
 
 	usedbytes = totalbytes = rsvbytes = freebytes = 0;
 
-	hvi = libhammer_get_volinfo(path);
-	if (hvi == NULL) {
-		perror("libhammer_get_volinfo");
+	fip = libhammer_get_fsinfo(path);
+	if (fip == NULL) {
+		perror("libhammer_get_fsinfo");
 		exit(EXIT_FAILURE);
 	}
 
 	/* Find out the UUID strings */
-	uuid_to_string(&hvi->vol_fsid, &fsid, NULL);
+	uuid_to_string(&fip->vol_fsid, &fsid, NULL);
 
 	/* Volume information */
 	fprintf(stdout, "Volume identification\n");
-	fprintf(stdout, "\tLabel               %s\n", hvi->vol_name);
-	fprintf(stdout, "\tNo. Volumes         %d\n", hvi->nvolumes);
+	fprintf(stdout, "\tLabel               %s\n", fip->vol_name);
+	fprintf(stdout, "\tNo. Volumes         %d\n", fip->nvolumes);
 	fprintf(stdout, "\tFSID                %s\n", fsid);
-	fprintf(stdout, "\tHAMMER Version      %d\n", hvi->version);
+	fprintf(stdout, "\tHAMMER Version      %d\n", fip->version);
 
 	/* Big blocks information */
-	usedbigblocks = hvi->bigblocks - hvi->freebigblocks;
+	usedbigblocks = fip->bigblocks - fip->freebigblocks;
 
 	fprintf(stdout, "Big block information\n");
-	fprintf(stdout, "\tTotal      %10jd\n", (intmax_t)hvi->bigblocks);
+	fprintf(stdout, "\tTotal      %10jd\n", (intmax_t)fip->bigblocks);
 	fprintf(stdout, "\tUsed       %10jd (%.2lf%%)\n"
 			"\tReserved   %10jd (%.2lf%%)\n"
 			"\tFree       %10jd (%.2lf%%)\n",
 			(intmax_t)usedbigblocks,
-			percent(usedbigblocks, hvi->bigblocks),
-			(intmax_t)hvi->rsvbigblocks,
-			percent(hvi->rsvbigblocks, hvi->bigblocks),
-			(intmax_t)(hvi->freebigblocks - hvi->rsvbigblocks),
-			percent(hvi->freebigblocks - hvi->rsvbigblocks,
-				hvi->bigblocks));
+			percent(usedbigblocks, fip->bigblocks),
+			(intmax_t)fip->rsvbigblocks,
+			percent(fip->rsvbigblocks, fip->bigblocks),
+			(intmax_t)(fip->freebigblocks - fip->rsvbigblocks),
+			percent(fip->freebigblocks - fip->rsvbigblocks,
+				fip->bigblocks));
 	fprintf(stdout, "Space information\n");
 
 	/* Space information */
-	totalbytes = (hvi->bigblocks << HAMMER_BIGBLOCK_BITS);
+	totalbytes = (fip->bigblocks << HAMMER_BIGBLOCK_BITS);
 	usedbytes = (usedbigblocks << HAMMER_BIGBLOCK_BITS);
-	rsvbytes = (hvi->rsvbigblocks << HAMMER_BIGBLOCK_BITS);
-	freebytes = ((hvi->freebigblocks - hvi->rsvbigblocks)
+	rsvbytes = (fip->rsvbigblocks << HAMMER_BIGBLOCK_BITS);
+	freebytes = ((fip->freebigblocks - fip->rsvbigblocks)
 	    << HAMMER_BIGBLOCK_BITS);
 
-	fprintf(stdout, "\tNo. Inodes %10jd\n", (intmax_t)hvi->inodes);
+	fprintf(stdout, "\tNo. Inodes %10jd\n", (intmax_t)fip->inodes);
 	humanize_number(buf, sizeof(buf)  - (totalbytes < 0 ? 0 : 1),
 	    totalbytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
 	fprintf(stdout, "\tTotal size     %6s (%jd bytes)\n",
@@ -157,7 +157,7 @@ show_info(char *path)
 	fprintf(stdout, "\tPFS ID  Mode    Snaps  Mounted on\n");
 
 	/* Iterate all the PFSs found */
-	pi_first = libhammer_get_first_pfs(hvi);
+	pi_first = libhammer_get_first_pfs(fip);
 	for (pi = pi_first; pi != NULL; pi = libhammer_get_next_pfs(pi)) {
 		fprintf(stdout, "\t%6d  %-6s",
 		    pi->pfs_id, (pi->ismaster ? "MASTER" : "SLAVE"));
@@ -175,7 +175,7 @@ show_info(char *path)
 
 	free(fsid);
 
-	libhammer_free_volinfo(hvi);
+	libhammer_free_fsinfo(fip);
 
 }
 
