@@ -35,7 +35,7 @@
 #define _IP_FW_LAYER2_H
 
 #define MODULE_LAYER2_ID	1
-#define MODULE_LAYER2_NAME "layer2"
+#define MODULE_LAYER2_NAME	"layer2"
 
 #ifdef _KERNEL
 //placeholder for kernel

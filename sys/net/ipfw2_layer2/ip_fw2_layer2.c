@@ -71,9 +71,18 @@ void
 check_mac(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	/* XXX TODO check the mac address */
-	*cmd_val = 0;
 	*cmd_ctl = IP_FW_CTL_NO;
+	if ((*args)->eh != NULL) {
+		uint32_t *want = (uint32_t *)((ipfw_insn_mac *)cmd)->addr;
+		uint32_t *mask = (uint32_t *)((ipfw_insn_mac *)cmd)->mask;
+		uint32_t *hdr = (uint32_t *)(*args)->eh;
+		*cmd_val =
+			(want[0] == (hdr[0] & mask[0]) &&
+			 want[1] == (hdr[1] & mask[1]) &&
+			 want[2] == (hdr[2] & mask[2]));
+	} else {
+		*cmd_val = IP_FW_NOT_MATCH;
+	}
 }
 
 static int
