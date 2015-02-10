@@ -425,7 +425,7 @@ static
 void
 trim_volume(struct volume_info *vol)
 {
-	if (strncmp(vol->type, "DEVICE", sizeof(vol->type)) == 0) {
+	if (strncmp(vol->type, "DEVICE", sizeof("DEVICE")) == 0) {
 		off_t ioarg[2];
 		
 		/* 1MB offset to prevent destroying disk-reserved area */
