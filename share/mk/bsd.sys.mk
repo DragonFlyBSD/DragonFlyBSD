@@ -56,11 +56,15 @@ CWARNFLAGS	+=	-Wno-uninitialized
 # Activate gcc47's -Wunused-but-set-variable (which is in -Wall) and
 # -Wunused-but-set-parameter (which is in -Wextra) only at WARNS >= 4
 # (which is the level when also -Wunused-parameter comes into play).
+# unused-local-typedef warnings were introduced by gcc4.8, are in -Wall
 .  if ${WARNS} >= 2 && ${WARNS} <= 3 && ${CCVER:Mgcc*}
 CWARNFLAGS	+=	-Wno-unused-but-set-variable
 .  endif
 .  if ${WARNS} == 3 && ${CCVER:Mgcc*}
 CWARNFLAGS	+=	-Wno-unused-but-set-parameter
+.  endif
+.  if ${WARNS} == 3 && (${CCVER:Mgcc4[89]} || ${CCVER:Mgcc5*})
+CWARNFLAGS	+=	-Wno-unused-local-typedefs
 .  endif
 . endif
 
