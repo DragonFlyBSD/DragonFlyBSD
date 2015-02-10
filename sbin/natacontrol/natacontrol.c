@@ -518,8 +518,8 @@ main(int argc, char **argv)
 		if (config.type == AR_RAID0 ||
 		    config.type == AR_RAID01 ||
 		    config.type == AR_RAID5) {
-			if (argc < 4 ||
-			    !sscanf(argv[3], "%d", &config.interleave) == 1) {
+			if (argc < 4 || !(sscanf(argv[3], "%d",
+				&config.interleave) == 1)) {
 				fprintf(stderr,
 					"natacontrol: Invalid interleave %s\n",
 					argv[3]);
