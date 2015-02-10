@@ -62,7 +62,7 @@
 
 int Procfd;
 
-static inline void
+static void
 usage(void)
 {
   fprintf(stderr, "%s\n%s\n",
