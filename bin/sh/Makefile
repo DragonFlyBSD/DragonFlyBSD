@@ -13,6 +13,7 @@ GENHDRS= builtins.h nodes.h syntax.h token.h
 SRCS= ${SHSRCS} ${GENSRCS} ${GENHDRS}
 
 WARNS?= 3
+NO_WERROR=	yes # [-Werror=clobbered] on gcc50
 
 # MLINKS for Shell built in commands for which there are no userland
 # utilities of the same name are handled with the associated manpage,
