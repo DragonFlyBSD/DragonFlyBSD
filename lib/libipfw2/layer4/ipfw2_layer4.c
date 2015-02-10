@@ -46,7 +46,7 @@
 #include <net/pfil.h>
 #include <netinet/in.h>
 
-#include "../../../sys/net/ipfw2/ip_fw2.h"
+#include "../../../sys/net/ipfw2/ip_fw3.h"
 #include "../../../sbin/ipfw2/ipfw.h"
 #include "ipfw2_layer4.h"
 
