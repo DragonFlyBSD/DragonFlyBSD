@@ -495,7 +495,9 @@ lookup(DOS_FS *fs, u_int clus, const char *name, DOS_DE **dep)
                         if ((ok = xdn == 1)) {
                             for (x = 0, i = 0; i < 11; i++)
                                 x = ((((x & 1) << 7) | (x >> 1)) +
-                                     dir[ent].de.name[i]) & 0xff;
+                                     ((i < 8) ? dir[ent].de.name[i] :
+                                                dir[ent].de.ext[i - 8])
+                                     ) & 0xff;
                             ok = chk == x &&
                                 !strcasecmp(name, (const char *)lfn);
                         }
