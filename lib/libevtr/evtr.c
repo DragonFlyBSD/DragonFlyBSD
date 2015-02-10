@@ -1434,8 +1434,21 @@ evtr_close(evtr_t evtr)
 
 	if (evtr->flags & EVTRF_WR) {
 		hashtab_destroy(&evtr->fmts->tab);
-		for (i = 0; i < EVTR_NS_MAX; ++i)
-			hashtab_destroy(&evtr->strings[i]->tab);
+		/*
+		 * Brute force soluion - the following loop fails to build
+		 * with gcc48+ with the error "iteration 3u invokes undefined
+		 * behavior [-Werror=aggressive-loop-optimizations]
+		 * EVTR_NS_MAX is a constant 4.  Apparently it's the
+		 * "strings" field causing the issue, because "maps" below
+		 * compiles fine with same compiler.
+		 *
+		 * for (i = 0; i < EVTR_NS_MAX; ++i)
+		 *         hashtab_destroy(&evtr->strings[i]->tab);
+		 */
+		hashtab_destroy(&evtr->strings[0]->tab);
+		hashtab_destroy(&evtr->strings[1]->tab);
+		hashtab_destroy(&evtr->strings[2]->tab);
+		hashtab_destroy(&evtr->strings[3]->tab);
 	} else {
 		id_tree_free(&evtr->fmtmap.root);
 		for (i = 0; i < EVTR_NS_MAX - 1; ++i) {
