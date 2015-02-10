@@ -2310,6 +2310,7 @@ for_each_path (const struct path_prefix *paths,
 	  len = strlen (pl->prefix);
 	  memcpy (path, pl->prefix, len);
 
+#if 0 /* MACHINE/VERSION isn't used anywhere DragonFly */
 	  /* Look first in MACHINE/VERSION subdirectory.  */
 	  if (!skip_multi_dir)
 	    {
@@ -2318,6 +2319,7 @@ for_each_path (const struct path_prefix *paths,
 	      if (ret)
 		break;
 	    }
+#endif
 
 	  /* Some paths are tried with just the machine (ie. target)
 	     subdir.  This is used for finding as, ld, etc.  */
@@ -3948,6 +3950,7 @@ process_command (unsigned int decoded_options_count,
   /* FIXME: make_relative_prefix doesn't yet work for VMS.  */
   if (!gcc_exec_prefix)
     {
+#if 0  /* Never use relative prefix (not bootstrapped) */
       gcc_exec_prefix = get_relative_prefix (decoded_options[0].arg,
 					     standard_bindir_prefix,
 					     standard_exec_prefix);
@@ -3956,6 +3959,7 @@ process_command (unsigned int decoded_options_count,
 					     standard_libexec_prefix);
       if (gcc_exec_prefix)
 	xputenv (concat ("GCC_EXEC_PREFIX=", gcc_exec_prefix, NULL));
+#endif
     }
   else
     {
@@ -4000,11 +4004,13 @@ process_command (unsigned int decoded_options_count,
 	    len -= sizeof ("/lib/gcc/") - 1;
 	}
 
+#if 0  /* Bad Paths */
       set_std_prefix (gcc_exec_prefix, len);
       add_prefix (&exec_prefixes, gcc_libexec_prefix, "GCC",
 		  PREFIX_PRIORITY_LAST, 0, 0);
       add_prefix (&startfile_prefixes, gcc_exec_prefix, "GCC",
 		  PREFIX_PRIORITY_LAST, 0, 0);
+#endif
     }
 
   /* COMPILER_PATH and LIBRARY_PATH have values
@@ -4249,15 +4255,21 @@ process_command (unsigned int decoded_options_count,
   if (!gcc_exec_prefix)
     {
 #ifndef OS2
+      add_prefix (&exec_prefixes, standard_libexec_prefix, NULL,
+		  PREFIX_PRIORITY_LAST, 0, 0);
+#  if 0  /* Bad paths */
       add_prefix (&exec_prefixes, standard_libexec_prefix, "GCC",
 		  PREFIX_PRIORITY_LAST, 1, 0);
       add_prefix (&exec_prefixes, standard_libexec_prefix, "BINUTILS",
 		  PREFIX_PRIORITY_LAST, 2, 0);
       add_prefix (&exec_prefixes, standard_exec_prefix, "BINUTILS",
 		  PREFIX_PRIORITY_LAST, 2, 0);
+#  endif
 #endif
+#if 0  /* Bad paths */
       add_prefix (&startfile_prefixes, standard_exec_prefix, "BINUTILS",
 		  PREFIX_PRIORITY_LAST, 1, 0);
+#endif
     }
 
   gcc_assert (!IS_ABSOLUTE_PATH (tooldir_base_prefix));
@@ -4272,12 +4284,14 @@ process_command (unsigned int decoded_options_count,
 	      accel_dir_suffix, dir_separator_str, tooldir_prefix2, NULL);
   free (tooldir_prefix2);
 
+#if 0  /* Bad paths */
   add_prefix (&exec_prefixes,
 	      concat (tooldir_prefix, "bin", dir_separator_str, NULL),
 	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, 0);
   add_prefix (&startfile_prefixes,
 	      concat (tooldir_prefix, "lib", dir_separator_str, NULL),
 	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, 1);
+#endif
   free (tooldir_prefix);
 
 #if defined(TARGET_SYSTEM_ROOT_RELOCATABLE) && !defined(VMS)
@@ -7434,9 +7448,7 @@ driver::maybe_print_and_exit () const
 {
   if (print_search_dirs)
     {
-      printf (_("install: %s%s\n"),
-	      gcc_exec_prefix ? gcc_exec_prefix : standard_exec_prefix,
-	      gcc_exec_prefix ? "" : machine_suffix);
+      printf (_("install: %s\n"), STD_EXEC_PATH);
       printf (_("programs: %s\n"),
 	      build_search_list (&exec_prefixes, "", false, false));
       printf (_("libraries: %s\n"),

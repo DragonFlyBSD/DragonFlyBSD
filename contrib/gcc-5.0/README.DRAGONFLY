@@ -1,0 +1,19 @@
+GCC-5.0.0 SNAPSHOT
+==================
+
+Original source can be downloaded from:
+http://ftp.gnu.org/gnu/gcc
+
+file = gcc-5-20150201.tar.bz2
+date = 1 Febuary 2015
+size = 89749171
+sha1 = 0558cb236c982b5e1931ed18fc06967b3da1cd99
+
+The file README.DELETED contains a list of deleted files and directories.
+
+
+The following files have been patched (* planned)
+=================================================
+* gcc/c-family/c-format.c 
+  gcc/gcc.c
+* gcc/tree-inline.c
