@@ -776,6 +776,8 @@ libstdc++-v3/config/cpu/powerpc/
 libstdc++-v3/config/cpu/sh/
 libstdc++-v3/config/cpu/sparc/
 libstdc++-v3/config/locale/darwin/
+libstdc++-v3/config/locale/generic/c_locale.cc
+libstdc++-v3/config/locale/generic/ctype_members.cc
 libstdc++-v3/config/locale/gnu/
 libstdc++-v3/config/locale/ieee_1003.1-2001/
 libstdc++-v3/config/locale/newlib/
