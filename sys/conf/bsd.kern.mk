@@ -20,7 +20,7 @@ CFLAGS+=	-Wold-style-declaration \
 		-finline-limit=${INLINE_LIMIT} \
 		--param inline-unit-growth=100 \
 		--param large-function-growth=1000
-.if ${CCVER} == "gcc47"
+.if ${CCVER:Mgcc4[789]} || ${CCVER:Mgcc5*}
 CWARNFLAGS+=	-Wno-unused-but-set-variable
 .endif
 .endif
