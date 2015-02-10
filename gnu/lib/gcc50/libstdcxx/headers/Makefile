@@ -49,12 +49,6 @@ host_headers_extraNAME_c_locale.h=		c++locale.h
 host_headers_extraNAME_c_io_stdio.h+=		c++io.h
 host_headers_extraNAME_new_allocator_base.h=	c++allocator.h
 
-unwind.h: unwind-generic.h
-	cp ${.ALLSRC} ${.TARGET}
-
-unwind-cxx.h: ${SRCDIR}/libsupc++/unwind-cxx.h
-	cp ${.ALLSRC} ${.TARGET}
-
 cxxabi_forced.h: ${SRCDIR}/libsupc++/cxxabi_forced.h
 	cp ${.ALLSRC} ${.TARGET}
 
@@ -109,6 +103,6 @@ c++config.h: config.h
 	echo "#endif // _GLIBCXX_CXX_CONFIG_H" >> ${.TARGET}
 
 CLEANFILES=	gthr.h gthr-default.h gthr-single.h gthr-posix.h \
-		c++config.h 
+		c++config.h cxxabi_forced.h
 
 .include <bsd.lib.mk>

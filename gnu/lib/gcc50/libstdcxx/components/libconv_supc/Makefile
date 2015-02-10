@@ -3,7 +3,7 @@ RELUP=	/../..
 SRCDIR=	${GCCDIR}/libstdc++-v3
 .include "Makefile.src"
 
-LIB=			supc++convenience
+LIB=			supcxxconvenience
 INTERNALLIB=		yes
 NOPROFILE=		yes
 INSTALL_PIC_ARCHIVE=	yes
@@ -12,11 +12,11 @@ INSTALL_PIC_ARCHIVE=	yes
 .PATH:	${GCCDIR}/libgcc
 .PATH:	${SRCDIR}/libsupc++
 
-CFLAGS+=	-I${.OBJDIR}
-CFLAGS+=	-I${GCCDIR}/libgcc
-CXXFLAGS+=	-fno-implicit-templates
-CXXFLAGS+=	-fdiagnostics-show-location=once
-CXXFLAGS+=	-ffunction-sections -fdata-sections
+CFLAGS+=		-I${.OBJDIR}
+CFLAGS+=		-I${GCCDIR}/libgcc
+CXXFLAGS+=		-fno-implicit-templates
+CXXFLAGS+=		-fdiagnostics-show-location=once
+CXXFLAGS+=		-ffunction-sections -fdata-sections
 SHARED_CXXFLAGS=	-D_GLIBCXX_SHARED
 
 FLAGS_GROUPS=		gnu11 gnu14 mangle
@@ -30,6 +30,13 @@ gnu14_FLAGS_FILES=	del_ops.cc del_opvs.cc
 mangle_FLAGS=		-DIN_GLIBCPP_V3
 mangle_FLAGS_FILES=	cp-demangle.c
 
-SRCS=	${libsupc__convenience_la_SOURCES}
+SRCS=			${libsupc__convenience_la_SOURCES}
+
+unwind.h: unwind-generic.h
+	cp ${.ALLSRC} ${.TARGET}
+
+GENHD=		unwind.h
+CLEANFILES=	${GENHD}
+beforedepend:	${GENHD}
 
 .include <bsd.lib.mk>
