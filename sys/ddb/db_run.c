@@ -176,7 +176,7 @@ db_restart_at_pc(boolean_t watchpt)
 	if ((db_run_mode == STEP_COUNT) ||
 	    (db_run_mode == STEP_RETURN) ||
 	    (db_run_mode == STEP_CALLT)) {
-	    db_expr_t		ins;
+	    db_expr_t	ins __unused;	/* seems used but gcc thinks not */
 
 	    /*
 	     * We are about to execute this instruction,

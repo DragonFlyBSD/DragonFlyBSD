@@ -273,7 +273,6 @@ static __inline void
 runningbufwakeup(struct buf *bp)
 {
 	long totalspace;
-	long limit;
 	long flags;
 
 	if ((totalspace = bp->b_runningbufspace) != 0) {
@@ -284,7 +283,6 @@ runningbufwakeup(struct buf *bp)
 		/*
 		 * see waitrunningbufspace() for limit test.
 		 */
-		limit = hirunningspace * 3 / 6;
 		for (;;) {
 			flags = runningbufreq;
 			cpu_ccfence();

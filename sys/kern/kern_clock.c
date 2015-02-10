@@ -1404,7 +1404,11 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 	sysclock_t delta;
 	pps_seq_t *pseq;
 	int foff;
+#ifdef PPS_SYNC
 	int fhard;
+#else
+	int fhard __unused;
+#endif
 
 	gd = mycpu;
 

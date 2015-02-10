@@ -2794,7 +2794,7 @@ sysctl_kern_file_callback(struct proc *p, void *data)
 
 	if (p->p_stat == SIDL || p->p_stat == SZOMB)
 		return(0);
-	if (!PRISON_CHECK(info->req->td->td_ucred, p->p_ucred) != 0)
+	if (!(PRISON_CHECK(info->req->td->td_ucred, p->p_ucred) != 0))
 		return(0);
 
 	/*

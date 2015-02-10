@@ -669,7 +669,7 @@ dsched_strategy_request_polling(struct disk *dp, struct bio *bio, struct dsched_
 void
 dsched_disk_ctx_ref(struct dsched_disk_ctx *diskctx)
 {
-	int refcount;
+	int refcount __unused;
 
 	refcount = atomic_fetchadd_int(&diskctx->refcount, 1);
 }
@@ -677,7 +677,7 @@ dsched_disk_ctx_ref(struct dsched_disk_ctx *diskctx)
 void
 dsched_thread_io_ref(struct dsched_thread_io *tdio)
 {
-	int refcount;
+	int refcount __unused;
 
 	refcount = atomic_fetchadd_int(&tdio->refcount, 1);
 }
@@ -685,7 +685,7 @@ dsched_thread_io_ref(struct dsched_thread_io *tdio)
 void
 dsched_thread_ctx_ref(struct dsched_thread_ctx *tdctx)
 {
-	int refcount;
+	int refcount __unused;
 
 	refcount = atomic_fetchadd_int(&tdctx->refcount, 1);
 }
