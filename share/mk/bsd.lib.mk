@@ -129,11 +129,13 @@ OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
 .if defined(LIB) && !empty(LIB)
 _LIBS=		lib${LIB}.a
 
+.if ! target(lib${LIB}.a)
 lib${LIB}.a: ${OBJS} ${STATICOBJS}
 	@${ECHO} building static ${LIB} library
 	rm -f ${.TARGET}
 	${AR} cq ${.TARGET} `lorder ${OBJS} ${STATICOBJS} | tsort -q` ${ARADD}
 	${RANLIB} ${.TARGET}
+. endif
 .endif
 
 .if !defined(INTERNALLIB) && !defined(NOPROFILE) && defined(LIB) && !empty(LIB)
