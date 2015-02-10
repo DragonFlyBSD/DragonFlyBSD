@@ -156,7 +156,7 @@ check_gid(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 }
 
 static int
-ipfw_layer4_init(void)
+ipfw2_layer4_init(void)
 {
 	register_ipfw_module(MODULE_LAYER4_ID, MODULE_LAYER4_NAME);
 	register_ipfw_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_TCPFLAG,
@@ -169,30 +169,30 @@ ipfw_layer4_init(void)
 }
 
 static int
-ipfw_layer4_stop(void)
+ipfw2_layer4_stop(void)
 {
 	return unregister_ipfw_module(MODULE_LAYER4_ID);
 }
 
 static int
-ipfw_layer4_modevent(module_t mod, int type, void *data)
+ipfw2_layer4_modevent(module_t mod, int type, void *data)
 {
 	switch (type) {
 	case MOD_LOAD:
-		return ipfw_layer4_init();
+		return ipfw2_layer4_init();
 	case MOD_UNLOAD:
-		return ipfw_layer4_stop();
+		return ipfw2_layer4_stop();
 	default:
 		break;
 	}
 	return 0;
 }
 
-static moduledata_t ipfw_layer4_mod = {
+static moduledata_t ipfw2_layer4_mod = {
 	"ipfw2_layer4",
-	ipfw_layer4_modevent,
+	ipfw2_layer4_modevent,
 	NULL
 };
-DECLARE_MODULE(ipfw2_layer4, ipfw_layer4_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
+DECLARE_MODULE(ipfw2_layer4, ipfw2_layer4_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
 MODULE_DEPEND(ipfw2_layer4, ipfw2_basic, 1, 1, 1);
 MODULE_VERSION(ipfw2_layer4, 1);

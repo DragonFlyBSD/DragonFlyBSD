@@ -97,7 +97,8 @@ SYSCTL_PROC(_net_inet_ip_fw_basic, OID_AUTO, state_hash_size,
 
 SYSCTL_INT(_net_inet_ip_fw_basic, OID_AUTO, state_lifetime, CTLFLAG_RW,
 		&state_lifetime, 0, "default life time");
-SYSCTL_INT(_net_inet_ip_fw_basic, OID_AUTO, state_expiry_check_interval, CTLFLAG_RW,
+SYSCTL_INT(_net_inet_ip_fw_basic, OID_AUTO,
+		state_expiry_check_interval, CTLFLAG_RW,
 		&state_expiry_check_interval, 0,
 		"default state expiry check interval");
 SYSCTL_INT(_net_inet_ip_fw_basic, OID_AUTO, state_count_max, CTLFLAG_RW,
@@ -163,8 +164,9 @@ adjust_hash_size_dispatch(netmsg_t nmsg)
 		}
 	}
 	kfree(ctx->state_ctx,M_IPFW2_BASIC);
-	ctx->state_ctx = kmalloc(state_hash_size * sizeof(struct ipfw_state_context),
-		M_IPFW2_BASIC, M_WAITOK | M_ZERO);
+	ctx->state_ctx = kmalloc(state_hash_size *
+				sizeof(struct ipfw_state_context),
+				M_IPFW2_BASIC, M_WAITOK | M_ZERO);
 	ctx->state_hash_size = state_hash_size;
 	ifnet_forwardmsg(&nmsg->lmsg, mycpuid + 1);
 }
@@ -212,7 +214,8 @@ static __inline int
 hash_packet(struct ipfw_flow_id *id)
 {
 	uint32_t i;
-	i = (id->proto) ^ (id->dst_ip) ^ (id->src_ip) ^ (id->dst_port) ^ (id->src_port);
+	i = (id->proto) ^ (id->dst_ip) ^ (id->src_ip) ^
+		(id->dst_port) ^ (id->src_port);
 	i &= state_hash_size - 1;
 	return i;
 }
@@ -265,12 +268,14 @@ lookup_state(struct ip_fw_args *args, ipfw_insn *cmd, int *limited, int all)
 			while (state != NULL) {
 				if (cmd->arg1) {
 					if ((cmd->arg3 == 1 &&
-						fid->src_ip == state->flow_id.src_ip) ||
+						fid->src_ip ==
+						state->flow_id.src_ip) ||
 						(cmd->arg3 == 2 &&
 						fid->src_port ==
 						state->flow_id.src_port) ||
 						(cmd->arg3 == 3 &&
-						fid->dst_ip == state->flow_id.dst_ip) ||
+						fid->dst_ip ==
+						state->flow_id.dst_ip) ||
 						(cmd->arg3 == 4 &&
 						fid->dst_port ==
 						state->flow_id.dst_port)) {
@@ -284,20 +289,28 @@ lookup_state(struct ip_fw_args *args, ipfw_insn *cmd, int *limited, int all)
 				}
 
 				if (fid->proto == state->flow_id.proto) {
-					if (fid->src_ip == state->flow_id.src_ip &&
-						fid->dst_ip == state->flow_id.dst_ip &&
-						(fid->src_port == state->flow_id.src_port
-						|| state->flow_id.src_port == 0) &&
-						(fid->dst_port == state->flow_id.dst_port
-						|| state->flow_id.dst_port == 0)) {
+					if (fid->src_ip ==
+					state->flow_id.src_ip &&
+					fid->dst_ip ==
+					state->flow_id.dst_ip &&
+					(fid->src_port ==
+					state->flow_id.src_port ||
+					state->flow_id.src_port == 0) &&
+					(fid->dst_port ==
+					state->flow_id.dst_port ||
+					state->flow_id.dst_port == 0)) {
 						goto done;
 					}
-					if (fid->src_ip == state->flow_id.dst_ip &&
-						fid->dst_ip == state->flow_id.src_ip &&
-						(fid->src_port == state->flow_id.dst_port
-						 ||state->flow_id.dst_port == 0) &&
-						(fid->dst_port == state->flow_id.src_port
-						 || state->flow_id.src_port == 0)) {
+					if (fid->src_ip ==
+					state->flow_id.dst_ip &&
+					fid->dst_ip ==
+					state->flow_id.src_ip &&
+					(fid->src_port ==
+					state->flow_id.dst_port ||
+					state->flow_id.dst_port == 0) &&
+					(fid->dst_port ==
+					state->flow_id.src_port ||
+					state->flow_id.src_port == 0)) {
 						goto done;
 					}
 				}
@@ -316,7 +329,8 @@ install_state(struct ip_fw *rule, ipfw_insn *cmd, struct ip_fw_args *args)
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 	struct ipfw_state_context *state_ctx;
 	state_ctx = &ctx->state_ctx[hash_packet(&args->f_id)];
-	state = kmalloc(sizeof(struct ip_fw_state), M_IPFW2_BASIC, M_NOWAIT | M_ZERO);
+	state = kmalloc(sizeof(struct ip_fw_state),
+			M_IPFW2_BASIC, M_NOWAIT | M_ZERO);
 	if (state == NULL) {
 		return NULL;
 	}
@@ -326,11 +340,10 @@ install_state(struct ip_fw *rule, ipfw_insn *cmd, struct ip_fw_args *args)
 	state->expiry = 0;
 	bcopy(&args->f_id,&state->flow_id,sizeof(struct ipfw_flow_id));
 	//append the state into the state chian
-	if (state_ctx->last != NULL) {
+	if (state_ctx->last != NULL)
 		state_ctx->last->next = state;
-	} else {
+	else
 		state_ctx->state = state;
-	}
 	state_ctx->last = state;
 	state_ctx->count++;
 	return state;
@@ -364,7 +377,8 @@ iface_match(struct ifnet *ifp, ipfw_insn_if *cmd)
 			if (ia->ifa_addr->sa_family != AF_INET)
 				continue;
 			if (cmd->p.ip.s_addr ==
-				((struct sockaddr_in *)(ia->ifa_addr))->sin_addr.s_addr)
+				((struct sockaddr_in *)
+				(ia->ifa_addr))->sin_addr.s_addr)
 					return(1);	/* match */
 
 		}
@@ -473,7 +487,8 @@ check_via(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
 	*cmd_ctl = IP_FW_CTL_NO;
-	*cmd_val = iface_match((*args)->oif ? (*args)->oif : (*args)->m->m_pkthdr.rcvif,
+	*cmd_val = iface_match((*args)->oif ?
+			(*args)->oif : (*args)->m->m_pkthdr.rcvif,
 			(ipfw_insn_if *)cmd);
 }
 
@@ -490,7 +505,7 @@ check_prob(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
 	*cmd_ctl = IP_FW_CTL_NO;
-	*cmd_val = ((krandom() % 100) < cmd->arg1);
+	*cmd_val = (krandom() % 100) < cmd->arg1;
 }
 
 void
@@ -507,7 +522,8 @@ check_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
 		hlen = ip->ip_hl << 2;
 	}
-	*cmd_val = (hlen > 0 && ((ipfw_insn_ip *)cmd)->addr.s_addr == src_ip.s_addr);
+	*cmd_val = (hlen > 0 &&
+			((ipfw_insn_ip *)cmd)->addr.s_addr == src_ip.s_addr);
 	*cmd_ctl = IP_FW_CTL_NO;
 }
 
@@ -525,7 +541,8 @@ check_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		 ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
 		hlen = ip->ip_hl << 2;
 	}
-	*cmd_val = (hlen > 0 &&((ipfw_insn_ip *)cmd)->addr.s_addr == dst_ip.s_addr);
+	*cmd_val = (hlen > 0 &&
+			((ipfw_insn_ip *)cmd)->addr.s_addr == dst_ip.s_addr);
 	*cmd_ctl = IP_FW_CTL_NO;
 }
 
@@ -559,12 +576,13 @@ void
 check_tag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	struct m_tag *mtag = m_tag_locate((*args)->m, MTAG_IPFW, cmd->arg1, NULL);
+	struct m_tag *mtag = m_tag_locate((*args)->m,
+			MTAG_IPFW, cmd->arg1, NULL);
 	if (mtag == NULL) {
 		mtag = m_tag_alloc(MTAG_IPFW,cmd->arg1, 0, M_NOWAIT);
-		if (mtag != NULL) {
+		if (mtag != NULL)
 			m_tag_prepend((*args)->m, mtag);
-		}
+
 	}
 	(*f)->pcnt++;
 	(*f)->bcnt += ip_len;
@@ -576,10 +594,11 @@ void
 check_untag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	struct m_tag *mtag = m_tag_locate((*args)->m, MTAG_IPFW, cmd->arg1, NULL);
-	if (mtag != NULL) {
+	struct m_tag *mtag = m_tag_locate((*args)->m,
+			MTAG_IPFW, cmd->arg1, NULL);
+	if (mtag != NULL)
 		m_tag_delete((*args)->m, mtag);
-	}
+
 	(*f)->pcnt++;
 	(*f)->bcnt += ip_len;
 	(*f)->timestamp = time_second;
@@ -604,7 +623,8 @@ ipfw_basic_add_state(struct ipfw_ioc_state *ioc_state)
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 	struct ipfw_state_context *state_ctx;
 	state_ctx = &ctx->state_ctx[hash_packet(&(ioc_state->flow_id))];
-	state = kmalloc(sizeof(struct ip_fw_state), M_IPFW2_BASIC, M_WAITOK | M_ZERO);
+	state = kmalloc(sizeof(struct ip_fw_state),
+			M_IPFW2_BASIC, M_WAITOK | M_ZERO);
 	struct ip_fw *rule = ctx->ipfw_rule_chain;
 	while (rule != NULL) {
 		if (rule->rulenum == ioc_state->rulenum) {
@@ -621,7 +641,8 @@ ipfw_basic_add_state(struct ipfw_ioc_state *ioc_state)
 		state_lifetime : ioc_state->lifetime ;
 	state->timestamp = time_second;
 	state->expiry = ioc_state->expiry;
-	bcopy(&ioc_state->flow_id, &state->flow_id, sizeof(struct ipfw_flow_id));
+	bcopy(&ioc_state->flow_id, &state->flow_id,
+			sizeof(struct ipfw_flow_id));
 	//append the state into the state chian
 	if (state_ctx->last != NULL)
 		state_ctx->last->next = state;
@@ -736,7 +757,8 @@ ipfw_tick(void *dummy __unused)
 	msg = &the_msg;
 	bzero(msg,sizeof(struct netmsg_base));
 
-	netmsg_init(msg, NULL, &curthread->td_msgport, 0, ipfw_cleanup_expired_state);
+	netmsg_init(msg, NULL, &curthread->td_msgport, 0,
+			ipfw_cleanup_expired_state);
 	ifnet_domsg(&msg->lmsg, 0);
 }
 
@@ -872,10 +894,12 @@ ipfw_basic_stop(void)
 						while (state != NULL) {
 							the_state = state;
 							state = state->next;
-							if (the_state == state_ctx->last)
-								state_ctx->last = NULL;
+							if (the_state ==
+								state_ctx->last)
+							state_ctx->last = NULL;
 
-							kfree(the_state, M_IPFW2_BASIC);
+							kfree(the_state,
+								M_IPFW2_BASIC);
 						}
 					}
 				}
@@ -894,7 +918,7 @@ ipfw_basic_stop(void)
 
 
 static int
-ipfw_basic_modevent(module_t mod, int type, void *data)
+ipfw2_basic_modevent(module_t mod, int type, void *data)
 {
 	int err;
 	switch (type) {
@@ -910,11 +934,11 @@ ipfw_basic_modevent(module_t mod, int type, void *data)
 	return err;
 }
 
-static moduledata_t ipfw_basic_mod = {
+static moduledata_t ipfw2_basic_mod = {
 	"ipfw2_basic",
-	ipfw_basic_modevent,
+	ipfw2_basic_modevent,
 	NULL
 };
-DECLARE_MODULE(ipfw2_basic, ipfw_basic_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
+DECLARE_MODULE(ipfw2_basic, ipfw2_basic_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
 MODULE_DEPEND(ipfw2_basic, ipfw2, 1, 1, 1);
 MODULE_VERSION(ipfw2_basic, 1);

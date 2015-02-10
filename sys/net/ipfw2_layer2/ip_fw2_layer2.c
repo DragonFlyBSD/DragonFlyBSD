@@ -86,7 +86,7 @@ check_mac(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 }
 
 static int
-ipfw_layer2_init(void)
+ipfw2_layer2_init(void)
 {
 	register_ipfw_module(MODULE_LAYER2_ID, MODULE_LAYER2_NAME);
 	register_ipfw_filter_funcs(MODULE_LAYER2_ID,
@@ -97,30 +97,30 @@ ipfw_layer2_init(void)
 }
 
 static int
-ipfw_layer2_stop(void)
+ipfw2_layer2_stop(void)
 {
 	return unregister_ipfw_module(MODULE_LAYER2_ID);
 }
 
 static int
-ipfw_layer2_modevent(module_t mod, int type, void *data)
+ipfw2_layer2_modevent(module_t mod, int type, void *data)
 {
 	switch (type) {
 		case MOD_LOAD:
-			return ipfw_layer2_init();
+			return ipfw2_layer2_init();
 		case MOD_UNLOAD:
-			return ipfw_layer2_stop();
+			return ipfw2_layer2_stop();
 		default:
 			break;
 	}
 	return 0;
 }
 
-static moduledata_t ipfw_layer2_mod = {
+static moduledata_t ipfw2_layer2_mod = {
 	"ipfw2_layer2",
-	ipfw_layer2_modevent,
+	ipfw2_layer2_modevent,
 	NULL
 };
-DECLARE_MODULE(ipfw2_layer2, ipfw_layer2_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
+DECLARE_MODULE(ipfw2_layer2, ipfw2_layer2_mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
 MODULE_DEPEND(ipfw2_layer2, ipfw2_basic, 1, 1, 1);
 MODULE_VERSION(ipfw2_layer2, 1);

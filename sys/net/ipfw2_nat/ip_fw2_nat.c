@@ -142,11 +142,13 @@ del_redir_spool_cfg(struct cfg_nat *n, struct redir_chain *head)
 			case REDIR_ADDR:
 			case REDIR_PROTO:
 				/* Delete all libalias redirect entry. */
-				for (i = 0; i < num; i++) {
-					LibAliasRedirectDelete(n->lib, r->alink[i]);
-				}
+				for (i = 0; i < num; i++)
+					LibAliasRedirectDelete(n->lib,
+							r->alink[i]);
+
 				/* Del spool cfg if any. */
-				LIST_FOREACH_MUTABLE(s, &r->spool_chain, _next, tmp_s) {
+				LIST_FOREACH_MUTABLE(s, &r->spool_chain,
+						_next, tmp_s) {
 					LIST_REMOVE(s, _next);
 					kfree(s, M_IPFW_NAT);
 				}
@@ -185,19 +187,20 @@ add_redir_spool_cfg(char *buf, struct cfg_nat *ptr)
 				break;
 			case REDIR_PORT:
 				for (i = 0 ; i < r->pport_cnt; i++) {
-					/* If remotePort is all ports, set it to 0. */
+					/*
+					 * If remotePort is all ports
+					 * set it to 0.
+					 */
 					u_short remotePortCopy = r->rport + i;
 					if (r->rport_cnt == 1 && r->rport == 0)
 						remotePortCopy = 0;
+						r->alink[i] =
 
-					r->alink[i] = LibAliasRedirectPort(ptr->lib,
-								r->laddr,
-								htons(r->lport + i),
-								r->raddr,
-								htons(remotePortCopy),
-								r->paddr,
-								htons(r->pport + i),
-								r->proto);
+						LibAliasRedirectPort(ptr->lib,
+						r->laddr,htons(r->lport + i),
+						r->raddr,htons(remotePortCopy),
+						r->paddr,htons(r->pport + i),
+						r->proto);
 
 					if (r->alink[i] == NULL) {
 						r->alink[0] = NULL;
@@ -206,8 +209,8 @@ add_redir_spool_cfg(char *buf, struct cfg_nat *ptr)
 				}
 				break;
 			case REDIR_PROTO:
-				r->alink[0] = LibAliasRedirectProto(ptr->lib ,r->laddr,
-							r->raddr, r->paddr, r->proto);
+				r->alink[0] = LibAliasRedirectProto(ptr->lib,
+					r->laddr, r->raddr, r->paddr, r->proto);
 				break;
 			default:
 				kprintf("unknown redirect mode: %u\n", r->mode);
@@ -219,10 +222,11 @@ add_redir_spool_cfg(char *buf, struct cfg_nat *ptr)
 		} else /* LSNAT handling. */
 			for (i = 0; i < r->spool_cnt; i++) {
 				ser_s = (struct cfg_spool *)&buf[off];
-				s = kmalloc(SOF_REDIR, M_IPFW_NAT, M_WAITOK | M_ZERO);
+				s = kmalloc(SOF_REDIR, M_IPFW_NAT,
+						M_WAITOK | M_ZERO);
 				memcpy(s, ser_s, SOF_SPOOL);
 				LibAliasAddServer(ptr->lib, r->alink[0],
-					s->addr, htons(s->port));
+						s->addr, htons(s->port));
 				off += SOF_SPOOL;
 				/* Hook spool entry. */
 				HOOK_SPOOL(&r->spool_chain, s);
@@ -268,9 +272,11 @@ ipfw_nat_get_cfg(struct sockopt *sopt)
 				if (off + SOF_REDIR < size) {
 					bcopy(r, &data[off], SOF_REDIR);
 					off += SOF_REDIR;
-					LIST_FOREACH(s, &r->spool_chain, _next) {
+					LIST_FOREACH(s, &r->spool_chain,
+						_next) {
 						if (off + SOF_SPOOL < size) {
-							bcopy(s, &data[off],SOF_SPOOL);
+							bcopy(s, &data[off],
+								SOF_SPOOL);
 							off += SOF_SPOOL;
 						} else
 							goto nospace;
@@ -440,7 +446,8 @@ int ipfw_nat_cfg(struct sockopt *sopt)
 
 	if (ptr == NULL) {
 		/* New rule: allocate and init new instance. */
-		ptr = kmalloc(sizeof(struct cfg_nat), M_IPFW_NAT, M_WAITOK | M_ZERO);
+		ptr = kmalloc(sizeof(struct cfg_nat), M_IPFW_NAT,
+				M_WAITOK | M_ZERO);
 
 		if (ptr == NULL) {
 			kfree(buf, M_IPFW_NAT);
@@ -526,7 +533,8 @@ static
 int ipfw_nat_init(void)
 {
 	register_ipfw_module(MODULE_NAT_ID, MODULE_NAT_NAME);
-	register_ipfw_filter_funcs(MODULE_NAT_ID, O_NAT_NAT, (filter_func)check_nat);
+	register_ipfw_filter_funcs(MODULE_NAT_ID, O_NAT_NAT,
+			(filter_func)check_nat);
 	ipfw_nat_cfg_ptr = ipfw_nat_cfg;
 	ipfw_nat_del_ptr = ipfw_nat_del;
 	ipfw_nat_flush_ptr = ipfw_nat_flush;
@@ -575,7 +583,8 @@ static moduledata_t ipfw_nat_mod = {
 	NULL
 };
 
-DECLARE_MODULE(ipfw2_nat, ipfw_nat_mod, SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_ANY);
+DECLARE_MODULE(ipfw2_nat, ipfw_nat_mod,
+		SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_ANY);
 MODULE_DEPEND(ipfw2_nat, libalias, 1, 1, 1);
 MODULE_DEPEND(ipfw2_nat, ipfw2_basic, 1, 1, 1);
 MODULE_VERSION(ipfw2_nat, 1);
