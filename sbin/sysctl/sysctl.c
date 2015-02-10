@@ -202,7 +202,7 @@ parse(const char *string)
 	
 		switch (kind & CTLTYPE) {
 			case CTLTYPE_INT:
-				if (!strcmp(fmt, "IK") == 0) {
+				if (!(strcmp(fmt, "IK") == 0)) {
 					if (!set_IK(newval, &intval))
 						errx(1, "invalid value '%s'",
 						    (char *)newval);
