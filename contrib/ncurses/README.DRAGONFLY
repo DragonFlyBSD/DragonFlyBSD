@@ -22,6 +22,7 @@ The .h files copied into base where created using configure opts:
 	--with-terminfo-dirs=/usr/share/terminfo
 
 The following files have been modified:
+	ncurses/base/Mklib_gen.sh
 	ncurses/tinfo/comp_scan.c
 	misc/terminfo.src [1]
 
