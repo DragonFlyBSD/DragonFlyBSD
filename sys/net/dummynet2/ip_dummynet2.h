@@ -28,8 +28,8 @@
  * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.19 2008/09/20 04:36:51 sephe Exp $
  */
 
-#ifndef _IP_DUMMYNET_V2_H
-#define _IP_DUMMYNET_V2_H
+#ifndef _IP_DUMMYNET2_H_V2
+#define _IP_DUMMYNET2_H_V2
 
 #ifndef _IP_DUMMYNET_H
 

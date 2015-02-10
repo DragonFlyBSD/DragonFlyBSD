@@ -66,7 +66,7 @@
 #include <netinet/ip_var.h>
 
 #include <net/dummynet2/ip_dummynet2.h>
-#include <net/ipfw2/ip_fw2.h>
+#include <net/ipfw2/ip_fw.h>
 
 void check_pipe(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);

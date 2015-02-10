@@ -49,7 +49,7 @@
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
 
-#include <net/ipfw2/ip_fw2.h>
+#include <net/ipfw2/ip_fw.h>
 
 #include "ip_fw2_layer2.h"
 

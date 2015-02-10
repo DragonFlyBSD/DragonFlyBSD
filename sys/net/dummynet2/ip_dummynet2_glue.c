@@ -52,8 +52,8 @@
 #include <netinet/ip.h>
 #include <netinet/ip_var.h>
 
-#include <net/ipfw/ip_fw2.h>
-#include <net/dummynet/ip_dummynet.h>
+#include <net/ipfw2/ip_fw.h>
+#include <net/dummynet2/ip_dummynet.h>
 
 static void	ip_dn_ether_output(netmsg_t);
 static void	ip_dn_ether_demux(netmsg_t);

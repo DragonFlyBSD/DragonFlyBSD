@@ -65,7 +65,7 @@
 #include <netinet/ip_divert.h>
 #include <netinet/if_ether.h>
 
-#include <net/ipfw2/ip_fw2.h>
+#include <net/ipfw2/ip_fw.h>
 
 #include "ip_fw2_basic.h"
 
@@ -907,7 +907,6 @@ ipfw_basic_modevent(module_t mod, int type, void *data)
 		default:
 			err = 1;
 	}
-	kprintf("err = %d\n", err);
 	return err;
 }
 

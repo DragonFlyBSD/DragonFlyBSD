@@ -1,8 +1,8 @@
 /*
- * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Sepherosa Ziehau <sepherosa@gmail.com>
+ * by Bill Yuan <bycn82@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,48 +30,11 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
-#include <sys/param.h>
-#include <sys/socketvar.h>
+#ifndef _IP_DUMMYNET_H_V2
+#define _IP_DUMMYNET_H_V2
 
-#include <net/if.h>
-#include <net/netisr.h>
-#include <net/netmsg2.h>
+#include <net/dummynet2/ip_dummynet2.h>
 
-#include <netinet/in.h>
-
-#include <net/ipfw2/ip_fw.h>
-
-int ip_fw2_loaded;
-int fw2_enable = 1;
-int fw2_one_pass = 1;
-
-static void	ip_fw2_sockopt_dispatch(netmsg_t msg);
-
-int
-ip_fw2_sockopt(struct sockopt *sopt)
-{
-	struct netmsg_base smsg;
-
-	netmsg_init(&smsg, NULL, &curthread->td_msgport,
-		    0, ip_fw2_sockopt_dispatch);
-	smsg.lmsg.u.ms_resultp = sopt;
-	return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
-}
-
-static void
-ip_fw2_sockopt_dispatch(netmsg_t msg)
-{
-	struct sockopt *sopt = msg->lmsg.u.ms_resultp;
-	int error;
-
-	KKASSERT(mycpuid == 0);
-
-	if (IPFW2_LOADED)
-		error = ip_fw_ctl_x_ptr(sopt);
-	else
-		error = ENOPROTOOPT;
-	lwkt_replymsg(&msg->lmsg, error);
-}
+#endif /* _IP_DUMMYNET_V2_H */

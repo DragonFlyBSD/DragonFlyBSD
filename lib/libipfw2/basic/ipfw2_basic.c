@@ -791,12 +791,12 @@ load_module(register_func function, register_keyword keyword)
 	function(MODULE_BASIC_ID, O_BASIC_PROB,
 			(parser_func)parse_prob, (shower_func)show_prob);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_KEEP_STATE, "keep-state", 
+	keyword(MODULE_BASIC_ID, O_BASIC_KEEP_STATE, "keep-state",
 			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_KEEP_STATE,
 			(parser_func)parse_keep_state, (shower_func)show_keep_state);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_CHECK_STATE, "check-state", 
+	keyword(MODULE_BASIC_ID, O_BASIC_CHECK_STATE, "check-state",
 			IPFW_KEYWORD_TYPE_OTHERS);
 	function(MODULE_BASIC_ID, O_BASIC_CHECK_STATE,
 			(parser_func)parse_check_state, (shower_func)show_check_state);

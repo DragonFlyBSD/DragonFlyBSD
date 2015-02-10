@@ -63,7 +63,7 @@
 #include <net/netisr2.h>
 #include <net/route.h>
 
-#include <net/ipfw2/ip_fw2.h>
+#include <net/ipfw2/ip_fw.h>
 
 #include "ip_fw2_layer4.h"
 
