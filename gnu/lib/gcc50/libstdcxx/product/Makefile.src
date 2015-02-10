@@ -1,0 +1,16 @@
+# verbatim from libstdc++/src/Makefile.in
+
+ldbl_compat_sources = 
+cxx98_sources = \
+	compatibility.cc \
+	compatibility-debug_list.cc \
+	compatibility-debug_list-2.cc \
+	${ldbl_compat_sources} 
+cxx11_sources = \
+	compatibility-c++0x.cc \
+	compatibility-atomic-c++0x.cc \
+	compatibility-thread-c++0x.cc \
+	compatibility-chrono.cc \
+	compatibility-condvar.cc
+
+libstdc___la_SOURCES = $(cxx98_sources) $(cxx11_sources)

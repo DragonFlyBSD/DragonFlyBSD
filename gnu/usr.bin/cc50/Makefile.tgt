@@ -1,0 +1,58 @@
+TARGET_ARCH?=	${MACHINE_ARCH}
+
+version=	${GCCCOMPLETEVER}
+target_machine=	${TARGET_ARCH}-pc-dragonflybsd
+
+# try to remove next two lines
+BYTESLONG=	8
+HWI_TYPE=	long
+
+# from gcc/Makefile
+srcdir= ${GCCDIR}/gcc
+
+host_xm_file_list=	${STOPDIR}/cc_prep/auto-host.h
+host_xm_file_list+=	${GCCDIR}/include/ansidecl.h
+HASHTAB_H=		${GCCDIR}/include/hashtab.h
+SPLAY_TREE_H=		${GCCDIR}/include/splay-tree.h
+SYMTAB_H=		${GCCDIR}/libcpp/include/symtab.h
+CPP_ID_DATA_H=		${GCCDIR}/libcpp/include/line-map.h \
+			${GCCDIR}/libcpp/include/cpplib.h \
+			${GCCDIR}/libcpp/include/cpp-id-data.h
+
+md_file=		${GCCDIR}/gcc/config/i386/i386.md
+out_file=		$(srcdir)/config/i386/i386.c
+
+EXTRA_GCC_SRCS=		driver-i386.c
+GTFILES_SRCDIR=		$(srcdir)
+
+
+# This is ordered to avoid build warnings/errors
+
+TARGET_INC=	options.h
+TARGET_INC+=	insn-constants.h
+TARGET_INC+=	config/vxworks-dummy.h
+TARGET_INC+=	config/i386/biarch64.h
+TARGET_INC+=	config/i386/i386.h
+TARGET_INC+=	config/i386/unix.h
+TARGET_INC+=	config/i386/att.h
+TARGET_INC+=	config/dbxelf.h
+TARGET_INC+=	config/elfos.h
+TARGET_INC+=	config/dragonfly.h
+TARGET_INC+=	config/dragonfly-stdint.h
+TARGET_INC+=	config/i386/x86-64.h
+TARGET_INC+=	config/i386/dragonfly.h
+TARGET_INC+=	config/initfini-array.h
+TARGET_INC+=	dragonfly-native.h
+
+#
+# Use TARGET_INC as a template and build a list of target specific
+# include files for gengtype to scan
+#
+.for H in ${TARGET_INC}
+. for D in ${GCCDIR}/gcc/config ${GCCDIR}/gcc \
+	${STOPDIR}/cc_prep/config ${STOPDIR}/cc_prep ${OTOPDIR}/cc_prep
+.  if exists($D/$H) && empty(tm_file_list:M*/$H)
+tm_file_list+=	$D/$H
+.  endif
+. endfor
+.endfor

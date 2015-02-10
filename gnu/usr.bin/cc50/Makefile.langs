@@ -1,0 +1,254 @@
+.include "Makefile.inc"
+
+COMPVERSION=	gcc50
+
+lang_tree_files+=	cp/cp-tree.def
+lang_tree_files+=	objc/objc-tree.def
+
+optionsfiles=		${GCCDIR}/gcc/lto/lang.opt
+optionsfiles+=		${GCCDIR}/gcc/c-family/c.opt
+optionsfiles+=		${GCCDIR}/gcc/common.opt
+optionsfiles+=		${GCCDIR}/gcc/config/i386/i386.opt
+optionsfiles+=  	${GCCDIR}/gcc/config/rpath.opt
+optionsfiles+=  	${GCCDIR}/gcc/config/dragonfly.opt
+
+header_name=		config.h system.h coretypes.h options.h tm.h
+header_name_save=	config.h system.h coretypes.h tm.h
+
+LANG_SPECS_FILES=	cp/lang-specs.h \
+			objc/lang-specs.h \
+			lto/lang-specs.h
+
+# Object files for gcc driver.
+GCC_SRCS = gcc.c ggc-none.c
+EXTRA_GCC_SRCS = driver-i386.c
+
+# this is directly from GCC's Makefile, beware evil
+# gtype-desc.h will generate wrong if language order changed
+GTFILES = $(CPP_ID_DATA_H) $(srcdir)/input.h $(srcdir)/coretypes.h \
+  $(host_xm_file_list) \
+  $(tm_file_list) $(HASHTAB_H) $(SPLAY_TREE_H) $(srcdir)/bitmap.h \
+  $(srcdir)/wide-int.h $(srcdir)/alias.h $(srcdir)/coverage.c $(srcdir)/rtl.h \
+  $(srcdir)/optabs.h $(srcdir)/tree.h $(srcdir)/tree-core.h \
+  $(srcdir)/libfuncs.h $(SYMTAB_H) \
+  $(srcdir)/real.h $(srcdir)/function.h $(srcdir)/insn-addr.h $(srcdir)/hwint.h \
+  $(srcdir)/fixed-value.h \
+  $(srcdir)/output.h $(srcdir)/cfgloop.h $(srcdir)/cfg.h \
+  $(srcdir)/cselib.h $(srcdir)/basic-block.h  $(srcdir)/ipa-ref.h $(srcdir)/cgraph.h \
+  $(srcdir)/reload.h $(srcdir)/caller-save.c $(srcdir)/symtab.c \
+  $(srcdir)/alias.c $(srcdir)/bitmap.c $(srcdir)/cselib.c $(srcdir)/cgraph.c \
+  $(srcdir)/ipa-prop.c $(srcdir)/ipa-cp.c $(srcdir)/ipa-utils.h \
+  $(srcdir)/dbxout.c \
+  $(srcdir)/signop.h \
+  $(srcdir)/dwarf2out.h \
+  $(srcdir)/dwarf2asm.c \
+  $(srcdir)/dwarf2cfi.c \
+  $(srcdir)/dwarf2out.c \
+  $(srcdir)/tree-vect-generic.c \
+  $(srcdir)/dojump.c \
+  $(srcdir)/emit-rtl.c $(srcdir)/except.h $(srcdir)/explow.c $(srcdir)/expr.c \
+  $(srcdir)/expr.h \
+  $(srcdir)/function.c $(srcdir)/except.c \
+  $(srcdir)/gcse.c $(srcdir)/godump.c \
+  $(srcdir)/lists.c $(srcdir)/optabs.c \
+  $(srcdir)/profile.c $(srcdir)/mcf.c \
+  $(srcdir)/reg-stack.c $(srcdir)/cfgrtl.c \
+  $(srcdir)/sdbout.c $(srcdir)/stor-layout.c \
+  $(srcdir)/stringpool.c $(srcdir)/tree.c $(srcdir)/varasm.c \
+  $(srcdir)/gimple.h \
+  $(srcdir)/gimple-ssa.h \
+  $(srcdir)/tree-chkp.c \
+  $(srcdir)/tree-ssanames.c $(srcdir)/tree-eh.c $(srcdir)/tree-ssa-address.c \
+  $(srcdir)/tree-cfg.c \
+  $(srcdir)/tree-dfa.c \
+  $(srcdir)/tree-iterator.c $(srcdir)/gimple-expr.c \
+  $(srcdir)/tree-chrec.h \
+  $(srcdir)/tree-scalar-evolution.c \
+  $(srcdir)/tree-ssa-operands.h \
+  $(srcdir)/tree-profile.c $(srcdir)/tree-nested.c \
+  $(srcdir)/tree-parloops.c \
+  $(srcdir)/omp-low.c \
+  $(srcdir)/omp-low.h \
+  $(srcdir)/targhooks.c $(out_file) $(srcdir)/passes.c $(srcdir)/cgraphunit.c \
+  $(srcdir)/cgraphclones.c \
+  $(srcdir)/tree-phinodes.c \
+  $(srcdir)/tree-ssa-alias.h \
+  $(srcdir)/tree-ssanames.h \
+  $(srcdir)/ipa-prop.h \
+  $(srcdir)/trans-mem.c \
+  $(srcdir)/lto-streamer.h \
+  $(srcdir)/target-globals.h \
+  $(srcdir)/ipa-inline.h \
+  $(srcdir)/vtable-verify.c \
+  $(srcdir)/asan.c \
+  $(srcdir)/ubsan.c \
+  $(srcdir)/tsan.c \
+  $(srcdir)/sanopt.c \
+  $(srcdir)/ipa-devirt.c \
+  $(srcdir)/internal-fn.h \
+
+
+GTFILES_CPP= \
+  [cp] \
+  $(srcdir)/cp/rtti.c \
+  $(srcdir)/cp/mangle.c \
+  $(srcdir)/cp/name-lookup.h \
+  $(srcdir)/cp/name-lookup.c \
+  $(srcdir)/cp/cp-tree.h \
+  $(srcdir)/cp/decl.h \
+  $(srcdir)/cp/call.c \
+  $(srcdir)/cp/decl.c \
+  $(srcdir)/cp/decl2.c \
+  $(srcdir)/cp/pt.c \
+  $(srcdir)/cp/repo.c \
+  $(srcdir)/cp/semantics.c \
+  $(srcdir)/cp/tree.c \
+  $(srcdir)/cp/parser.h \
+  $(srcdir)/cp/parser.c \
+  $(srcdir)/cp/method.c \
+  $(srcdir)/cp/typeck2.c \
+  $(srcdir)/c-family/c-common.c \
+  $(srcdir)/c-family/c-common.h \
+  $(srcdir)/c-family/c-objc.h \
+  $(srcdir)/c-family/c-lex.c \
+  $(srcdir)/c-family/c-pragma.h \
+  $(srcdir)/c-family/c-pragma.c \
+  $(srcdir)/cp/class.c \
+  $(srcdir)/cp/cp-objcp-common.c \
+  $(srcdir)/cp/cp-lang.c \
+  $(srcdir)/cp/except.c \
+  $(srcdir)/cp/vtable-class-hierarchy.c \
+  $(srcdir)/cp/constexpr.c 
+
+GTFILES+= ${GTFILES_CPP}
+
+GTFILES_LTO= \
+  [lto] \
+  $(srcdir)/lto/lto-tree.h \
+  $(srcdir)/lto/lto-lang.c \
+  $(srcdir)/lto/lto.c \
+  $(srcdir)/lto/lto.h 
+
+GTFILES+= ${GTFILES_LTO}
+
+GTFILES_OBJC= \
+  [objc] \
+  $(srcdir)/objc/objc-map.h \
+  $(srcdir)/c-family/c-objc.h \
+  $(srcdir)/objc/objc-act.h \
+  $(srcdir)/objc/objc-act.c \
+  $(srcdir)/objc/objc-runtime-shared-support.c \
+  $(srcdir)/objc/objc-gnu-runtime-abi-01.c \
+  $(srcdir)/objc/objc-next-runtime-abi-01.c \
+  $(srcdir)/objc/objc-next-runtime-abi-02.c \
+  $(srcdir)/c/c-parser.c \
+  $(srcdir)/c/c-tree.h \
+  $(srcdir)/c/c-decl.c \
+  $(srcdir)/c/c-lang.h \
+  $(srcdir)/c/c-objc-common.c \
+  $(srcdir)/c-family/c-common.c \
+  $(srcdir)/c-family/c-common.h \
+  $(srcdir)/c-family/c-cppbuiltin.c \
+  $(srcdir)/c-family/c-pragma.h \
+  $(srcdir)/c-family/c-pragma.c \
+  [objcp] \
+  $(srcdir)/cp/rtti.c \
+  $(srcdir)/cp/mangle.c \
+  $(srcdir)/cp/name-lookup.h \
+  $(srcdir)/cp/name-lookup.c \
+  $(srcdir)/cp/cp-tree.h \
+  $(srcdir)/cp/decl.h \
+  $(srcdir)/cp/call.c \
+  $(srcdir)/cp/decl.c \
+  $(srcdir)/cp/decl2.c \
+  $(srcdir)/cp/pt.c \
+  $(srcdir)/cp/repo.c \
+  $(srcdir)/cp/semantics.c \
+  $(srcdir)/cp/tree.c \
+  $(srcdir)/cp/parser.h \
+  $(srcdir)/cp/parser.c \
+  $(srcdir)/cp/method.c \
+  $(srcdir)/cp/typeck2.c \
+  $(srcdir)/c-family/c-common.c \
+  $(srcdir)/c-family/c-common.h \
+  $(srcdir)/c-family/c-objc.h \
+  $(srcdir)/c-family/c-lex.c \
+  $(srcdir)/c-family/c-pragma.h \
+  $(srcdir)/c-family/c-pragma.c \
+  $(srcdir)/cp/class.c \
+  $(srcdir)/cp/cp-objcp-common.c \
+  $(srcdir)/cp/except.c \
+  $(srcdir)/cp/vtable-class-hierarchy.c \
+  $(srcdir)/cp/constexpr.c \
+  $(srcdir)/objc/objc-map.h \
+  $(srcdir)/objc/objc-act.h \
+  $(srcdir)/objc/objc-act.c \
+  $(srcdir)/objc/objc-runtime-shared-support.c \
+  $(srcdir)/objc/objc-gnu-runtime-abi-01.c \
+  $(srcdir)/objc/objc-next-runtime-abi-01.c \
+  $(srcdir)/objc/objc-next-runtime-abi-02.c \
+  $(srcdir)/c-family/c-cppbuiltin.c
+
+GTFILES+= ${GTFILES_OBJC}
+
+# C
+GTFILES_C+= \
+  [c] \
+  $(srcdir)/c/c-lang.c \
+  $(srcdir)/c/c-tree.h \
+  $(srcdir)/c/c-decl.c \
+  $(srcdir)/c-family/c-common.c \
+  $(srcdir)/c-family/c-common.h \
+  $(srcdir)/c-family/c-objc.h \
+  $(srcdir)/c-family/c-cppbuiltin.c \
+  $(srcdir)/c-family/c-pragma.h \
+  $(srcdir)/c-family/c-pragma.c \
+  $(srcdir)/c/c-objc-common.c \
+  $(srcdir)/c/c-parser.c \
+  $(srcdir)/c/c-lang.h 
+
+GTFILES+= ${GTFILES_C}
+
+# verbatim from gcc/Makefile and gcc/c/Make-lang.in
+# Language-specific object files shared by all C-family front ends.
+C_COMMON_OBJS = c-family/c-common.o c-family/c-cppbuiltin.o c-family/c-dump.o \
+  c-family/c-format.o c-family/c-gimplify.o c-family/c-lex.o \
+  c-family/c-omp.o c-family/c-opts.o c-family/c-pch.o \
+  c-family/c-ppoutput.o c-family/c-pragma.o c-family/c-pretty-print.o \
+  c-family/c-semantics.o c-family/c-ada-spec.o \
+  c-family/c-cilkplus.o \
+  c-family/array-notation-common.o c-family/cilk.o c-family/c-ubsan.o
+
+C_TARGET_OBJS=i386-c.o default-c.o
+
+CXX_TARGET_OBJS=i386-c.o default-c.o
+
+C_AND_OBJC_OBJS = attribs.o c/c-errors.o c/c-decl.o c/c-typeck.o \
+  c/c-convert.o c/c-aux-info.o c/c-objc-common.o c/c-parser.o \
+  c/c-array-notation.o $(C_COMMON_OBJS) $(C_TARGET_OBJS)
+
+C_OBJS = c/c-lang.o c-family/stub-objc.o $(C_AND_OBJC_OBJS)
+
+CXX_C_OBJS = attribs.o incpath.o \
+	$(C_COMMON_OBJS) $(CXX_TARGET_OBJS)
+
+# verbatim from cp/Make-lang.in
+# Language-specific object files for C++ and Objective C++.
+CXX_AND_OBJCXX_OBJS = cp/call.o cp/decl.o cp/expr.o cp/pt.o cp/typeck2.o \
+ cp/class.o cp/decl2.o cp/error.o cp/lex.o cp/parser.o cp/ptree.o cp/rtti.o \
+ cp/typeck.o cp/cvt.o cp/except.o cp/friend.o cp/init.o cp/method.o \
+ cp/search.o cp/semantics.o cp/tree.o cp/repo.o cp/dump.o cp/optimize.o \
+ cp/mangle.o cp/cp-objcp-common.o cp/name-lookup.o cp/cxx-pretty-print.o \
+ cp/cp-cilkplus.o \
+ cp/cp-gimplify.o cp/cp-array-notation.o cp/lambda.o \
+ cp/vtable-class-hierarchy.o cp/constexpr.o cp/cp-ubsan.o $(CXX_C_OBJS)
+
+# verbatim from gcc/objc/Make-lang.in
+# Language-specific object files for Objective C.
+OBJC_OBJS = objc/objc-lang.o objc/objc-act.o hash-table.o \
+   objc/objc-runtime-shared-support.o \
+   objc/objc-gnu-runtime-abi-01.o \
+   objc/objc-next-runtime-abi-01.o \
+   objc/objc-next-runtime-abi-02.o \
+   objc/objc-encoding.o \
+   objc/objc-map.o

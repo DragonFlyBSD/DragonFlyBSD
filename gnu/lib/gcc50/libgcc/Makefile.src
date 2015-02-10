@@ -1,0 +1,56 @@
+# build/x86-64-portbuild-dragonfly4.1/libgcc/Makefile
+# Library members defined in libgcc2.c.
+lib2funcs = _muldi3 _negdi2 _lshrdi3 _ashldi3 _ashrdi3 _cmpdi2 _ucmpdi2	   \
+	    _clear_cache _trampoline __main _absvsi2 \
+	    _absvdi2 _addvsi3 _addvdi3 _subvsi3 _subvdi3 _mulvsi3 _mulvdi3 \
+	    _negvsi2 _negvdi2 _ctors _ffssi2 _ffsdi2 _clz _clzsi2 _clzdi2  \
+	    _ctzsi2 _ctzdi2 _popcount_tab _popcountsi2 _popcountdi2	   \
+	    _paritysi2 _paritydi2 _powisf2 _powidf2 _powixf2 _powitf2	   \
+	    _mulsc3 _muldc3 _mulxc3 _multc3 _divsc3 _divdc3 _divxc3	   \
+	    _divtc3 _bswapsi2 _bswapdi2 _clrsbsi2 _clrsbdi2
+
+.for f in sf df xf
+lib2funcs+=	_fixuns${f}si
+lib2funcs+=	_fixuns${f}di 
+lib2funcs+=	_fix${f}di 
+lib2funcs+=	_floatdi${f}
+lib2funcs+=	_floatundi${f}
+nowsoft+=	extend${f}tf2
+.endfor
+
+.for f in si di ti
+nowsoft+=	fixtf${f}
+nowsoft+=	fixunstf${f}
+nowsoft+=	float${f}tf
+nowsoft+=	floatun${f}tf
+.endfor
+
+LIB2_DIVMOD_FUNCS = _divdi3 _moddi3 _udivdi3 _umoddi3 _udiv_w_sdiv _udivmoddi4 
+
+# from gcc/Makefile.in
+LIB2FUNCS_ST = _eprintf __gcc_bcmp
+
+# softfp functions and enable-execute-stack don't use L_ definitions
+SOFTFUNCS=	addtf3 divtf3 eqtf2 getf2 letf2 multf3 negtf2 subtf3 unordtf2 
+SOFTFUNCS+=	enable-execute-stack cpuinfo
+SOFTFUNCS+=	${nowsoft}
+FUNCS=		${lib2funcs} ${LIB2_DIVMOD_FUNCS} ${LIB2FUNCS_ST}
+
+#stack_FLAGS=		-D__LIBGCC_TRAMPOLINE_SIZE__=${TRAMPSIZE}
+#stack_FLAGS_FILES=	enable-execute-stack.c
+
+FLAG_GROUPS=		raise
+raise_FLAGS=		-fexceptions -fnon-call-exceptions
+raise_FLAGS_FILES=	${LIB2_DIVMOD_FUNCS:S/$/.c/}
+
+${FUNCS:S/$/.o/}: ${GCCDIR}/libgcc/libgcc2.c
+	${CC} ${STATIC_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC} \
+		-o ${.TARGET}
+
+${FUNCS:S/$/.po/}: ${GCCDIR}/libgcc/libgcc2.c
+	${CC} ${PO_FLAG} ${STATIC_CFLAGS} ${PO_CFLAGS} -DL${.TARGET:R} \
+		-c ${.ALLSRC} -o ${.TARGET}
+
+${FUNCS:S/$/.So/}: ${GCCDIR}/libgcc/libgcc2.c
+	${CC} ${PICFLAG} -DPIC ${SHARED_CFLAGS} ${CFLAGS} -DL${.TARGET:R} \
+		-c ${.ALLSRC} -o ${.TARGET}

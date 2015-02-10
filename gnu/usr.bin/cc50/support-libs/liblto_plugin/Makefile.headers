@@ -1,0 +1,224 @@
+# The logic to define PLUGIN_HEADERS is filled with dozens of variables that
+# is impossible for a human to wade through.  To keep this simple, generate
+# a list manually from a vendor-built and installed version of gcc, e.g.
+# stage/usr/local/lib/gcc5/gcc/x86_64-portbld-dragonfly4.1/5.0.0/plugin/include
+
+PLUGIN_HEADERS= \
+	alias.h \
+	all-tree.def \
+	alloc-pool.h \
+	ansidecl.h \
+	attribs.h \
+	auto-host.h \
+	b-header-vars \
+	basic-block.h \
+	bitmap.h \
+	builtins.def \
+	bversion.h \
+	c-tree.h \
+	calls.h \
+	cfg-flags.def \
+	cfgexpand.h \
+	cfghooks.h \
+	cfgloop.h \
+	cgraph.h \
+	cif-code.def \
+	cilk-builtins.def \
+	cilkplus.def \
+	config.h \
+	configargs.h \
+	context.h \
+	coretypes.h \
+	cppdefault.h \
+	cpplib.h \
+	debug.h \
+	defaults.h \
+	df.h \
+	diagnostic-color.h \
+	diagnostic-core.h \
+	diagnostic.def \
+	diagnostic.h \
+	double-int.h \
+	dumpfile.h \
+	emit-rtl.h \
+	except.h \
+	filenames.h \
+	fixed-value.h \
+	flag-types.h \
+	flags.h \
+	fold-const.h \
+	function.h \
+	gcc-plugin.h \
+	gcc-symtab.h \
+	genrtl.h \
+	ggc.h \
+	gimple-builder.h \
+	gimple-expr.h \
+	gimple-fold.h \
+	gimple-iterator.h \
+	gimple-low.h \
+	gimple-pretty-print.h \
+	gimple-ssa.h \
+	gimple-walk.h \
+	gimple.def \
+	gimple.h \
+	gimplify-me.h \
+	gimplify.h \
+	gsstruct.def \
+	gtm-builtins.def \
+	gtype-desc.h \
+	hard-reg-set.h \
+	hash-map.h \
+	hash-set.h \
+	hash-table.h \
+	hashtab.h \
+	highlev-plugin-common.h \
+	hwint.h \
+	inchash.h \
+	incpath.h \
+	input.h \
+	insn-codes.h \
+	insn-constants.h \
+	insn-flags.h \
+	insn-modes.h \
+	insn-notes.def \
+	internal-fn.def \
+	internal-fn.h \
+	intl.h \
+	ipa-prop.h \
+	ipa-ref.h \
+	ipa-reference.h \
+	ipa-utils.h \
+	is-a.h \
+	langhooks.h \
+	libiberty.h \
+	line-map.h \
+	machmode.h \
+	md5.h \
+	mode-classes.def \
+	obstack.h \
+	omp-builtins.def \
+	options.h \
+	opts.h \
+	output.h \
+	params.def \
+	params.h \
+	pass-instances.def \
+	pass_manager.h \
+	plugin-api.h \
+	plugin-version.h \
+	plugin.def \
+	plugin.h \
+	predict.def \
+	predict.h \
+	prefix.h \
+	pretty-print.h \
+	print-rtl.h \
+	print-tree.h \
+	real.h \
+	realmpfr.h \
+	reg-notes.def \
+	regset.h \
+	resource.h \
+	rtl.def \
+	rtl.h \
+	safe-ctype.h \
+	sanitizer.def \
+	sbitmap.h \
+	signop.h \
+	splay-tree.h \
+	ssa-iterators.h \
+	statistics.h \
+	stmt.h \
+	stor-layout.h \
+	stringpool.h \
+	symtab.h \
+	sync-builtins.def \
+	system.h \
+	target-hooks-macros.h \
+	target.def \
+	target.h \
+	timevar.def \
+	timevar.h \
+	tm-preds.h \
+	tm.h \
+	tm_p.h \
+	toplev.h \
+	tree-cfg.h \
+	tree-cfgcleanup.h \
+	tree-check.h \
+	tree-core.h \
+	tree-dfa.h \
+	tree-dump.h \
+	tree-eh.h \
+	tree-hasher.h \
+	tree-inline.h \
+	tree-into-ssa.h \
+	tree-iterator.h \
+	tree-nested.h \
+	tree-object-size.h \
+	tree-outof-ssa.h \
+	tree-parloops.h \
+	tree-pass.h \
+	tree-phinodes.h \
+	tree-pretty-print.h \
+	tree-ssa-address.h \
+	tree-ssa-alias.h \
+	tree-ssa-coalesce.h \
+	tree-ssa-dom.h \
+	tree-ssa-loop-ivopts.h \
+	tree-ssa-loop-manip.h \
+	tree-ssa-loop-niter.h \
+	tree-ssa-loop.h \
+	tree-ssa-operands.h \
+	tree-ssa-sccvn.h \
+	tree-ssa-ter.h \
+	tree-ssa-threadedge.h \
+	tree-ssa-threadupdate.h \
+	tree-ssa.h \
+	tree-ssanames.h \
+	tree.def \
+	tree.h \
+	treestruct.def \
+	varasm.h \
+	vec.h \
+	version.h \
+	wide-int-print.h \
+	wide-int.h
+
+PLUGIN_HEADERS_CFAMILY= \
+	c-common.def \
+	c-common.h \
+	c-objc.h \
+	c-pragma.h \
+	c-pretty-print.h
+
+PLUGIN_HEADERS_CP= \
+	cp-tree.def \
+	cp-tree.h \
+	cxx-pretty-print.h \
+	name-lookup.h \
+	type-utils.h
+
+PLUGIN_HEADERS_OBJC= \
+	objc-tree.def
+
+PLUGIN_HEADERS_CONFIG= \
+	dbxelf.h \
+	dragonfly-stdint.h \
+	dragonfly.h \
+	elfos.h \
+	initfini-array.h \
+	vxworks-dummy.h
+
+PLUGIN_HEADERS_CONFIG_I386= \
+	att.h \
+	biarch64.h \
+	dragonfly.h \
+	i386-opts.h \
+	i386-protos.h \
+	i386.h \
+	stringop.def \
+	unix.h \
+	x86-64.h \
+	x86-tune.def

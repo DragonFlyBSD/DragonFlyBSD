@@ -1,0 +1,227 @@
+# This does the same job as bsd.hostlib.mk except .c files are bult with c++
+# and it does not contain "afterdepend: all" which forces everything to be
+# built under the "depend" target
+
+.include <bsd.init.mk>
+
+.SUFFIXES:
+.SUFFIXES: .out .no .c .cc .cpp .cxx .C .y .l
+
+.c.no .cc.no .C.no .cpp.no .cxx.no:
+	${NXCXX} ${_${.IMPSRC}_FLAGS} ${NXCXXFLAGS:N-std=*} -c ${.IMPSRC} -o ${.TARGET}
+	@${NXLD} -o ${.TARGET}.tmp -x -r ${.TARGET}
+	@mv ${.TARGET}.tmp ${.TARGET}
+
+all: objwarn
+
+.if defined(LIB) && !empty(LIB) && !empty(SRCS)
+OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.no/g}
+.endif
+
+.if defined(LIB) && !empty(LIB)
+_LIBS=		lib${LIB}.na
+
+lib${LIB}.na: ${OBJS} ${STATICOBJS}
+	@${ECHO} building native static ${LIB} library
+	rm -f ${.TARGET}
+	${NXAR} cq ${.TARGET} `lorder ${OBJS} ${STATICOBJS} | tsort -q` ${ARADD}
+	${NXRANLIB} ${.TARGET}
+.endif
+
+all: ${_LIBS}
+
+## 
+#  HEAD: embedded equivalent bsd.dep.mk
+##
+
+CTAGS?=		gtags
+MKDEPCMD?=	CC=c++ mkdep
+DEPENDFILE?=	.depend
+GTAGSFLAGS?=	-o
+CTAGSFLAGS?=
+HTAGSFLAGS?=
+
+.if !target(tags) && defined(SRCS) && !defined(NOTAGS)
+tags: ${SRCS}
+. if ${CTAGS:T} == "ctags"
+	@${CTAGS} ${CTAGSFLAGS} -f /dev/stdout \
+	    ${.ALLSRC:N*.h} | sed "s;${.CURDIR}/;;" > ${.TARGET}
+. elif ${CTAGS:T} == "gtags"
+	@cd ${.CURDIR} && ${CTAGS} ${GTAGSFLAGS} ${.OBJDIR}
+.  if defined(HTML)
+	@cd ${.CURDIR} && htags ${HTAGSFLAGS} -d ${.OBJDIR} ${.OBJDIR}
+.  endif
+. endif
+.endif
+
+.if defined(SRCS)
+
+CLEANFILES?=
+
+. for _LSRC in ${SRCS:M*.l:N*/*}
+.  for _LC in ${_LSRC:R}.c
+${_LC}: ${_LSRC}
+	${LEX} -t ${LFLAGS} ${.ALLSRC} > ${.TARGET}
+SRCS:=	${SRCS:S/${_LSRC}/${_LC}/}
+CLEANFILES+= ${_LC}
+.  endfor
+. endfor
+
+. for _YSRC in ${SRCS:M*.y:N*/*}
+.  for _YC in ${_YSRC:R}.c
+SRCS:=	${SRCS:S/${_YSRC}/${_YC}/}
+CLEANFILES+= ${_YC}
+.   if !empty(YFLAGS:M-d) && !empty(SRCS:My.tab.h)
+.ORDER: ${_YC} y.tab.h
+${_YC} y.tab.h: ${_YSRC}
+	${YACC} ${YFLAGS} ${.ALLSRC}
+	cp y.tab.c ${_YC}
+CLEANFILES+= y.tab.c y.tab.h
+.   elif !empty(YFLAGS:M-d)
+.     for _YH in ${_YC:S/.c/.h/}
+${_YH}: ${_YC}
+${_YC}: ${_YSRC}
+	${YACC} ${YFLAGS} -o ${_YC} ${.ALLSRC}
+SRCS+= ${_YH}
+CLEANFILES+= ${_YH}
+.     endfor
+.   else
+${_YC}: ${_YSRC}
+	${YACC} ${YFLAGS} -o ${_YC} ${.ALLSRC}
+.   endif
+.  endfor
+. endfor
+.endif
+
+.if !target(depend)
+. if defined(SRCS)
+depend: beforedepend _dependincs ${DEPENDFILE} afterdepend
+
+.NOPATH: ${DEPENDFILE}
+
+__FLAGS=
+__FLAGS_FILES=	${SRCS}
+.  for _FG in ${FLAGS_GROUPS}
+.   for _FFILE in ${${_FG}_FLAGS_FILES}
+__FLAGS_FILES:=	${__FLAGS_FILES:N${_FFILE}}
+.   endfor
+.  endfor
+
+_DEPENDFILES=	${FLAGS_GROUPS:S/^/.depend_/g}
+
+${DEPENDFILE}: ${_DEPENDFILES}
+
+_ALL_DEPENDS=${__FLAGS_FILES:N*.[sS]:N*.c:N*.cc:N*.C:N*.cpp:N*.cpp:N*.cxx:N*.m}
+
+.  for _FG in _ ${FLAGS_GROUPS}
+.   depend${_FG:S/^/_/:N__}: ${${_FG}_FLAGS_FILES} ${_ALL_DEPENDS}
+	-rm -f ${DEPENDFILE}
+	-> ${DEPENDFILE}
+.   if ${${_FG}_FLAGS_FILES:M*.[sS]} != ""
+	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
+	    ${${_FG}_FLAGS} \
+	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
+	    ${CFLAGS:M-std=*} \
+	    ${.ALLSRC:M*.[sS]}
+.   endif
+.   if ${${_FG}_FLAGS_FILES:M*.cc} != "" || \
+    ${${_FG}_FLAGS_FILES:M*.[Cc]} != "" || \
+    ${${_FG}_FLAGS_FILES:M*.cpp} != "" || \
+    ${${_FG}_FLAGS_FILES:M*.cxx} != ""
+	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
+	    ${${_FG}_FLAGS} \
+	    ${CXXFLAGS:M-nostdinc*} ${CXXFLAGS:M-[BID]*} \
+	    ${.ALLSRC:M*.cc} ${.ALLSRC:M*.[Cc]} ${.ALLSRC:M*.cpp} ${.ALLSRC:M*.cxx}
+.   endif
+.   if ${${_FG}_FLAGS_FILES:M*.m} != ""
+	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
+	    ${${_FG}_FLAGS} \
+	    ${OBJCFLAGS:M-nostdinc*} ${OBJCFLAGS:M-[BID]*} \
+	    ${OBJCFLAGS:M-Wno-import*} \
+	    ${.ALLSRC:M*.m}
+.   endif
+.   if !empty(${_FG:M_}) && !empty(_DEPENDFILES)
+	cat ${_DEPENDFILES} >> ${.TARGET}
+.   endif
+.  endfor
+
+.  if target(_EXTRADEPEND)
+_EXTRADEPEND: .USE
+${DEPENDFILE}: _EXTRADEPEND
+.  endif
+
+. else
+depend: beforedepend _dependincs afterdepend
+. endif
+. if !target(beforedepend)
+beforedepend:
+. endif
+. if !target(afterdepend)
+afterdepend:
+. endif
+.endif
+
+.if !target(cleandepend)
+cleandepend:
+. if defined(SRCS)
+.  if ${CTAGS:T} == "ctags"
+	rm -f ${DEPENDFILE} ${_DEPENDFILES} tags
+.  elif ${CTAGS:T} == "gtags"
+	rm -f ${DEPENDFILE} ${_DEPENDFILES} GPATH GRTAGS GSYMS GTAGS
+.   if defined(HTML)
+	rm -rf HTML
+.   endif
+.  endif
+. endif
+.endif
+
+.if !target(checkdpadd) && (defined(DPADD) || defined(LDADD))
+checkdpadd:
+	@ldadd=`echo \`for lib in ${DPADD} ; do \
+		echo $$lib | sed 's;^/usr/lib/lib\(.*\)\.a;-l\1;' ; \
+	done \`` ; \
+	ldadd1=`echo ${LDADD}` ; \
+	if [ "$$ldadd" != "$$ldadd1" ] ; then \
+		echo ${.CURDIR} ; \
+		echo "DPADD -> $$ldadd" ; \
+		echo "LDADD -> $$ldadd1" ; \
+	fi
+.endif
+
+.if defined(INCS) && make(depend)
+_dependincs: buildincludes .WAIT installincludes
+.else
+_dependincs:
+.endif
+
+.ORDER: beforedepend _dependincs ${DEPENDFILE} afterdepend
+
+##
+#  TAIL: embedded equivalent bsd.dep.mk
+##
+
+.if !exists(${.OBJDIR}/${DEPENDFILE})
+. if defined(LIB) && !empty(LIB)
+${OBJS} ${STATICOBJS}: ${SRCS:M*.h}
+. endif
+.endif
+
+.if !target(clean)
+clean:
+. if defined(CLEANFILES) && !empty(CLEANFILES)
+	rm -f ${CLEANFILES}
+. endif
+. if defined(LIB) && !empty(LIB)
+	rm -f a.out ${OBJS} ${OBJS:S/$/.tmp/} ${STATICOBJS}
+. endif
+. if defined(_LIBS) && !empty(_LIBS)
+	rm -f ${_LIBS}
+. endif
+. if defined(CLEANDIRS) && !empty(CLEANDIRS)
+	rm -rf ${CLEANDIRS}
+. endif
+.endif
+
+.include <bsd.obj.mk>
+.include <bsd.sys.mk>
+
