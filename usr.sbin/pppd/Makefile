@@ -20,6 +20,7 @@ SRCS+=	cbcp.c
 
 # Filter support
 CFLAGS+=-DPPP_FILTER -I${.CURDIR}/../../contrib/libpcap
+CFLAGS+=-include ${.CURDIR}/../../lib/libpcap/config.h
 LDADD+=	-lpcap
 DPADD+=	${LIBPCAP}
 
