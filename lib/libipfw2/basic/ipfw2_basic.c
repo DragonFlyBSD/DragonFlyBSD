@@ -124,7 +124,6 @@ match_token2(struct char_int_map *table, int val)
 	return NULL;
 };
 
-
 static void
 fill_iface(ipfw_insn_if *cmd, char *arg)
 {
@@ -141,7 +140,6 @@ fill_iface(ipfw_insn_if *cmd, char *arg)
 		errx(EX_DATAERR, "bad ip address ``%s''", arg);
 }
 
-
 static int
 lookup_host (char *host, struct in_addr *ipaddr)
 {
@@ -154,7 +152,6 @@ lookup_host (char *host, struct in_addr *ipaddr)
 	}
 	return(0);
 }
-
 
 /*
  * Like strtol, but also translates service names into port numbers
@@ -222,7 +219,6 @@ strtoport(char *s, char **end, int base, int proto)
 	}
 	return 0; 	/* not found */
 }
-
 
 static int
 contigmask(u_char *p, int len)
@@ -315,8 +311,9 @@ fill_ip(ipfw_insn_ip *cmd, char *av)
 			if (s == av) /* no parameter */
 				break;
 			if (a < low || a > high) {
-				fprintf(stderr, "addr %d out of range [%d-%d]\n",
-				a, low, high);
+				fprintf(stderr,
+					"addr %d out of range [%d-%d]\n",
+						a, low, high);
 				exit(0);
 			}
 			a -= low;
@@ -418,31 +415,54 @@ void
 parse_forward(ipfw_insn **cmd, int *ac, char **av[])
 {
 	ipfw_insn_sa *p = (ipfw_insn_sa *)(*cmd);
-	char *s, *end;
-	int i;
-	NEXT_ARG1;
-	(*cmd)->opcode = O_BASIC_FORWARD;
-	(*cmd)->len = F_INSN_SIZE(ipfw_insn_sa);
+	struct sockaddr_in *sa;
+	char *tok, *end = '\0';
+	char *str;
+	int count, port;
 
-	p->sa.sin_len = sizeof(struct sockaddr_in);
-	p->sa.sin_family = AF_INET;
-	p->sa.sin_port = 0;
-	/*
-	 * locate the address-port separator (':' or ', ')
-	 */
-	s = strchr(**av, ':');
-	if (s == NULL)
-		s = strchr(**av, ',');
-	if (s != NULL) {
-		*(s++) = '\0';
-		i = strtoport(s, &end, 0 /* base */, 0 /* proto */);
-		if (s == end)
-			errx(EX_DATAERR,
-				"illegal forwarding port ``%s''", s);
-		p->sa.sin_port = (u_short)i;
-	}
-	lookup_host(**av, &(p->sa.sin_addr));
+	(*cmd)->opcode = O_BASIC_FORWARD;
 	NEXT_ARG1;
+	/*
+	 * multiple forward destinations are seperated by colon
+	 * ip address and port are seperated by comma
+	 * e.g. 192.168.1.1:80,192.168.1.2:8080
+	 *      192.168.1.1,192.168.1.2 or keep the port the same
+	 */
+	tok = strtok(**av, ",");
+	sa = &p->sa;
+	count = 0;
+	while (tok != NULL) {
+		sa->sin_len = sizeof(struct sockaddr_in);
+		sa->sin_family = AF_INET;
+		sa->sin_port = 0;
+		str = strchr(tok,':');
+		if (str != NULL) {
+			*(str++) = '\0';
+			port = strtoport(str, &end, 0, 0);
+			sa->sin_port = (u_short)port;
+		}
+		lookup_host(tok, &(sa->sin_addr));
+		tok = strtok (NULL, ",");
+		sa++;
+		count++;
+	}
+	(*cmd)->arg3 = count;
+	if (count == 0) {
+		errx(EX_DATAERR, "forward `%s' not recognizable", **av);
+	}
+	NEXT_ARG1;
+	if (count > 1) {
+		if (strcmp(**av, "round-robin") == 0) {
+			NEXT_ARG1;
+			(*cmd)->arg1 = 1;
+		} else if (strcmp(**av, "sticky") == 0) {
+			NEXT_ARG1;
+			(*cmd)->arg1 = 2;
+		} else {
+			(*cmd)->arg1 = 0;
+		}
+	}
+	(*cmd)->len = LEN_OF_IPFWINSN + count * sizeof(struct sockaddr_in);
 }
 
 void
@@ -628,11 +648,29 @@ show_skipto(ipfw_insn *cmd)
 void
 show_forward(ipfw_insn *cmd)
 {
+	struct sockaddr_in *sa;
+	int i;
+
 	ipfw_insn_sa *s = (ipfw_insn_sa *)cmd;
-	printf(" fwd %s", inet_ntoa(s->sa.sin_addr));
-	if (s->sa.sin_port) {
-		printf(", %d", s->sa.sin_port);
+	sa = &s->sa;
+	printf(" forward");
+	for (i = 0; i < cmd->arg3; i++){
+		if (i > 0)
+			printf(",");
+		else
+			printf(" ");
+
+		printf("%s", inet_ntoa(sa->sin_addr));
+		if (sa->sin_port != 0)
+			printf(":%d", sa->sin_port);
+
+		sa++;
 	}
+	if (cmd->arg1 == 1)
+		printf(" round-robin");
+	else if (cmd->arg1 == 2)
+		printf(" sticky");
+
 }
 
 void
@@ -742,16 +780,18 @@ show_untag(ipfw_insn *cmd)
 void
 load_module(register_func function, register_keyword keyword)
 {
-	keyword(MODULE_BASIC_ID, O_BASIC_COUNT, "count", IPFW_KEYWORD_TYPE_ACTION);
+	keyword(MODULE_BASIC_ID, O_BASIC_COUNT, "count",
+			IPFW_KEYWORD_TYPE_ACTION);
 	function(MODULE_BASIC_ID, O_BASIC_COUNT,
 			(parser_func)parse_count, (shower_func)show_count);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_SKIPTO, "skipto", IPFW_KEYWORD_TYPE_ACTION);
+	keyword(MODULE_BASIC_ID, O_BASIC_SKIPTO, "skipto",
+			IPFW_KEYWORD_TYPE_ACTION);
 	function(MODULE_BASIC_ID, O_BASIC_SKIPTO,
 			(parser_func)parse_skipto, (shower_func)show_skipto);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_FORWARD, "forward", IPFW_KEYWORD_TYPE_ACTION);
-	keyword(MODULE_BASIC_ID, O_BASIC_FORWARD, "fwd", IPFW_KEYWORD_TYPE_ACTION);
+	keyword(MODULE_BASIC_ID, O_BASIC_FORWARD, "forward",
+			IPFW_KEYWORD_TYPE_ACTION);
 	function(MODULE_BASIC_ID, O_BASIC_FORWARD,
 			(parser_func)parse_forward, (shower_func)show_forward);
 
@@ -767,53 +807,64 @@ load_module(register_func function, register_keyword keyword)
 	function(MODULE_BASIC_ID, O_BASIC_VIA,
 			(parser_func)parse_via, (shower_func)show_via);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_XMIT, "xmit", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_XMIT, "xmit",
+			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_XMIT,
 			(parser_func)parse_via, (shower_func)show_via);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_RECV, "recv", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_RECV, "recv",
+			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_RECV,
 			(parser_func)parse_via, (shower_func)show_via);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC, "from", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC, "from",
+			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC,
 			(parser_func)parse_from, (shower_func)show_from);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST, "to", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST, "to",
+			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST,
 			(parser_func)parse_to, (shower_func)show_to);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_PROTO, "proto", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_PROTO, "proto",
+			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_PROTO,
 			(parser_func)parse_proto, (shower_func)show_proto);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_PROB, "prob", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_PROB, "prob",
+			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_PROB,
 			(parser_func)parse_prob, (shower_func)show_prob);
 
 	keyword(MODULE_BASIC_ID, O_BASIC_KEEP_STATE, "keep-state",
 			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_KEEP_STATE,
-			(parser_func)parse_keep_state, (shower_func)show_keep_state);
+			(parser_func)parse_keep_state,
+			(shower_func)show_keep_state);
 
 	keyword(MODULE_BASIC_ID, O_BASIC_CHECK_STATE, "check-state",
 			IPFW_KEYWORD_TYPE_OTHERS);
 	function(MODULE_BASIC_ID, O_BASIC_CHECK_STATE,
-			(parser_func)parse_check_state, (shower_func)show_check_state);
+			(parser_func)parse_check_state,
+			(shower_func)show_check_state);
 
 	keyword(MODULE_BASIC_ID, O_BASIC_TAG, "tag", IPFW_KEYWORD_TYPE_OTHERS);
 	function(MODULE_BASIC_ID, O_BASIC_TAG,
 			(parser_func)parse_tag, (shower_func)show_tag);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_UNTAG, "untag", IPFW_KEYWORD_TYPE_OTHERS);
+	keyword(MODULE_BASIC_ID, O_BASIC_UNTAG, "untag",
+			IPFW_KEYWORD_TYPE_OTHERS);
 	function(MODULE_BASIC_ID, O_BASIC_UNTAG,
 			(parser_func)parse_untag, (shower_func)show_untag);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_TAGGED, "tagged", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_TAGGED, "tagged",
+			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_TAGGED,
 			(parser_func)parse_tagged, (shower_func)show_tagged);
 
-	keyword(MODULE_BASIC_ID, O_BASIC_COMMENT, "//", IPFW_KEYWORD_TYPE_FILTER);
+	keyword(MODULE_BASIC_ID, O_BASIC_COMMENT, "//",
+			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_COMMENT,
 			(parser_func)parse_comment, (shower_func)show_comment);
 }
