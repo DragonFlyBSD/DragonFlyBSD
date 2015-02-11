@@ -2,8 +2,9 @@
 
 LDADD+= -lpcap -lutil
 DPADD+=	${LIBPCAP} ${LIBUTIL}
-CFLAGS+= -DHAVE_SNPRINTF -I${.CURDIR}/../../contrib/libpcap
-WARNS?=	3
+CFLAGS+=-I${.CURDIR}/../../contrib/libpcap
+CFLAGS+=-include ${.CURDIR}/../../lib/libpcap/config.h
+WARNS?=	5
 
 PROG=	pflogd
 SRCS=	pflogd.c privsep.c privsep_fdpass.c
