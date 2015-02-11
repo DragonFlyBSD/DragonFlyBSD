@@ -248,8 +248,8 @@ v9287EepromReadCTLInfo(struct ath_hal *ah, HAL_EEPROM_9287 *ee)
 	
 	HALASSERT(AR9287_NUM_CTLS <= sizeof(ee->ee_rdEdgesPower)/NUM_EDGES);
 
-	for (i = 0; ee->ee_base.ctlIndex[i] != 0 && i < AR9287_NUM_CTLS; i++) {
-		for (j = 0; j < NUM_EDGES; j ++) {
+	for (i = 0; i < AR9287_NUM_CTLS && ee->ee_base.ctlIndex[i] != 0 ; i++) {
+		for (j = 0; j < AR9287_NUM_BAND_EDGES; j++) {
 			/* XXX Confirm this is the right thing to do when an invalid channel is stored */
 			if (ee->ee_base.ctlData[i].ctlEdges[CTL_CHAIN][j].bChannel == AR5416_BCHAN_UNUSED) {
 				rep[j].rdEdge = 0;
