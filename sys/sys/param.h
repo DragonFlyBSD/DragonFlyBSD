@@ -116,9 +116,10 @@
  * 400100 - 4.1 development
  * 400101 - Removal of SCTP support.
  * 400102 - Sound system update from FreeBSD
+ * 400103 - Milestone - availability of gcc50 in base
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400102	/* propagated to newvers */
+#define __DragonFly_version 400103	/* propagated to newvers */
 
 #include <sys/_null.h>
 
