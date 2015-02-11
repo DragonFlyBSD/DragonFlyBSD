@@ -2142,7 +2142,7 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst, struct ucred *cred)
 
 			/* Skip adresses not valid for current jail */
 			if (jailed &&
-			    !jailed_ip(cred->cr_prison, (struct sockaddr *)(ifa->ifa_addr)) != 0)
+			    !(jailed_ip(cred->cr_prison, (struct sockaddr *)(ifa->ifa_addr)) != 0))
 				continue;
 
 			/*

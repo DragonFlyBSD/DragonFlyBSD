@@ -9182,7 +9182,7 @@ intel_check_plane_mapping(struct intel_crtc *crtc)
 	val = I915_READ(reg);
 
 	if ((val & DISPLAY_PLANE_ENABLE) &&
-	    (!!(val & DISPPLANE_SEL_PIPE_MASK) == crtc->pipe))
+	    (!!( (val & DISPPLANE_SEL_PIPE_MASK) == crtc->pipe) ))
 		return false;
 
 	return true;
