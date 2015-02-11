@@ -50,6 +50,30 @@ unknown:
 
 They should be removed or commented out in such custom kernel configs.
 
+GCC 5.0
+-------
+
+The GCC 4.4 compiler has been retired.  It has been replaced by a
+[prerelease] version of GCC 5.0.  The following make.conf variables no
+longer work: NO_GCC44, NO_OBJC, and NO_CXX.  The latter was never
+documented and the latest versions of GCC are partially written in C++
+so a C++ compiler is no longer optional.  In practical terms it has not
+been optional for many years as other base components are also written in
+C++.  The resource savings by avoiding building Objective-C compiler is
+so small, the complexity added by NO_OBJC internally was deemed a bad
+tradeoff so that is the reason for its removal.  Also note that no "info"
+pages are installed with GCC 5.0.  This is intentional; they are available
+via the internet if desired over the installed man pages.
+
+Currently, GCC 4.7 is still designated as the primary compiler.  After
+GCC 5.0 is released, this may change and these update notes will be
+revised accordingly.  DPorts will use GCC 5.0 on this release regardless.
+If GCC 5.0 is unwanted, the make.conf variable NO_GCC50 will block its
+building and installation.
+
+To use GCC 5.0 to build world and kernel, set WORLD_CCVER=gcc50 in
+make.conf before building those targets.
+
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.8 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
