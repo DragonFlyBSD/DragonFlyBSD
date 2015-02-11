@@ -5123,8 +5123,8 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 		   u_short *reason)
 {
 	struct pf_addr	*saddr = pd->src, *daddr = pd->dst;
-	u_int16_t	 icmpid = 0, *icmpsum;
-	u_int8_t	 icmptype;
+	u_int16_t	 icmpid = 0, *icmpsum = NULL;
+	u_int8_t	 icmptype = 0;
 	int		 state_icmp = 0;
 	int		 error;
 	struct pf_state_key_cmp key;

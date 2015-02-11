@@ -1651,6 +1651,8 @@ twe_describe_controller(struct twe_softc *sc)
 
     TWE_IO_LOCK(sc);
 
+    ports = 0;
+    size = 0;
     /* get the port count */
     twe_get_param_1(sc, TWE_PARAM_CONTROLLER, TWE_PARAM_CONTROLLER_PortCount, &ports);
 
