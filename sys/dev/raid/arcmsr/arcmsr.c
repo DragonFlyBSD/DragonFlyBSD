@@ -4381,7 +4381,7 @@ static int arcmsr_detach(device_t dev)
 	bus_teardown_intr(dev, acb->irqres, acb->ih);
 	arcmsr_shutdown(dev);
 	arcmsr_free_resource(acb);
-	for(i=0; (acb->sys_res_arcmsr[i]!=NULL) && (i<2); i++) {
+	for(i=0; i<2 && (acb->sys_res_arcmsr[i]!=NULL); i++) {
 		bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BAR(i), acb->sys_res_arcmsr[i]);
 	}
 	bus_release_resource(dev, SYS_RES_IRQ, 0, acb->irqres);

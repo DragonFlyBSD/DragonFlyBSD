@@ -971,7 +971,7 @@ pccard_probe_nomatch(device_t bus, device_t child)
 	    "at function %d\n", sc->card.manufacturer, sc->card.product,
 	    pf->function, pf->number);
 	device_printf(bus, "   CIS info: ");
-	for (i = 0; sc->card.cis1_info[i] != NULL && i < 4; i++)
+	for (i = 0; i < 4 && sc->card.cis1_info[i] != NULL; i++)
 		kprintf("%s%s", i > 0 ? ", " : "", sc->card.cis1_info[i]);
 	kprintf("\n");
 	return;
