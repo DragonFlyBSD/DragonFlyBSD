@@ -185,6 +185,9 @@ device		wbsio1	at isa? port 0x4e
 device		lm#3	at wbsio?
 # Intel Core and newer CPUs on-die digital thermal sensor support
 device		coretemp
+device		coremctl	# support Intel Core and E3 memory controller
+device		ecc		# support AMD8000, Intel E3 and Intel E5 ECC
+				# requires coremctl.
 
 # PCCARD (PCMCIA) support
 device		pccard

@@ -1273,6 +1273,7 @@ options		SND_OLDSTEREO
 # Miscellaneous hardware:
 #
 # bktr: Brooktree bt848/848a/849a/878/879 video capture and TV Tuner board
+# coremctl: Intel Core/E3 memory controller (required by ecc(4))
 # ecc: ECC memory controller
 # ipmi: Intelligent Platform Management Interface
 # joy: joystick
@@ -1288,6 +1289,7 @@ options		SND_OLDSTEREO
 #  The Rev 2 host cards use a 32K chunk, on a 32K boundary.
 #  The cards can use an IRQ of 11, 12 or 15.
 
+device		coremctl
 device		ecc
 device		joy0	at isa? port IO_GAME
 device		nrp

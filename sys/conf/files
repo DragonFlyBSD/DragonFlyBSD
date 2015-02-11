@@ -1753,8 +1753,10 @@ bus/isa/isa_common.c		optional isa
 bus/isa/isahint.c		optional isa
 bus/isa/pnpeat.c		optional isa
 dev/misc/amdsbwd/amdsbwd.c	optional amdsbwd
+dev/misc/coremctl/coremctl.c	optional coremctl
+dev/misc/coremctl/coremctl_if.m	optional coremctl
 dev/misc/ecc/ecc_amd8000.c	optional ecc
-dev/misc/ecc/ecc_e31200.c	optional ecc
+dev/misc/ecc/ecc_e3.c		optional ecc
 dev/misc/ecc/ecc_e5.c		optional ecc
 # not ready yet
 #dev/misc/ecc/ecc_x3400.c	optional ecc
