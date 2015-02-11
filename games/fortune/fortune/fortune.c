@@ -97,7 +97,7 @@ bool All_forts	= false;	/* any fortune allowed */
 bool Equal_probs= false;	/* scatter un-allocted prob equally */
 bool Match	= false;	/* dump fortunes matching a pattern */
 #ifdef DEBUG
-bool Debug = false;		/* print debug messages */
+int Debug = 0;			/* print debug messages */
 #endif
 
 char *Fortbuf = NULL;		/* fortune buffer for -m */

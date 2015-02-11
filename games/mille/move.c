@@ -140,7 +140,7 @@ acc:
 		for (i = 1; i < HAND_SZ; i++)
 			if (pp->hand[i] == C_INIT) {
 				for (j = 0; pp->hand[j] == C_INIT; j++)
-					if (j >= HAND_SZ) {
+					if (j == HAND_SZ - 1) {
 						j = 0;
 						break;
 					}
@@ -193,6 +193,7 @@ playcard(PLAY *pp)
 {
 	int	v;
 	CARD	card;
+	bool	blockNext;
 
 	/*
 	 * check and see if player has picked
@@ -212,7 +213,7 @@ mustpick:
 	if (Debug)
 		fprintf(outf, "PLAYCARD: Card = %s\n", C_name[card]);
 #endif
-	Next = FALSE;
+	blockNext = FALSE;
 	switch (card) {
 	  case C_200:
 		if (pp->nummiles[C_200] == 2)
@@ -322,18 +323,18 @@ protected:
 			if (!pp->can_go && isrepair(pp->battle))
 				pp->can_go = TRUE;
 		}
-		Next = -1;
+		blockNext = TRUE;
 		break;
 
 	  case C_INIT:
 		error("no card there");
-		Next = -1;
+		blockNext = TRUE;
 		break;
 	}
 	if (pp == &Player[PLAYER])
 		account(card);
 	pp->hand[Card_no] = C_INIT;
-	Next = (Next == -1 ? FALSE : TRUE);
+	Next = !blockNext;
 	return TRUE;
 }
 
