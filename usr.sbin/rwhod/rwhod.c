@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.24 2007/12/27 15:29:40 matthias Exp $ 
  */
 
 #include <sys/param.h>
@@ -170,7 +169,7 @@ main(int argc, char *argv[])
 	gid_t unpriv_gid;
 	long tmp;
 	time_t delta = 0;
-	struct timeval next, now;
+	struct timeval next = { .tv_sec = 0 }, now;
 
 	if (getuid())
 		errx(1, "not super user");

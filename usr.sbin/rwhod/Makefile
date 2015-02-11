@@ -7,6 +7,4 @@ MAN=	rwhod.8
 LDADD+= -lutil
 DPADD+= ${LIBUTIL}
 
-WARNS=	2
-
 .include <bsd.prog.mk>
