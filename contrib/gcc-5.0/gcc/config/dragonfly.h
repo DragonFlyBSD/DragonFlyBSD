@@ -90,7 +90,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #undef  LINK_SPEC
 #define LINK_SPEC DFBSD_LINK_SPEC
 
-#define DFBSD_DYNAMIC_LINKER "/usr/libexec/ld-elf.so.2"
+#define DFBSD_DYNAMIC_LINKER "/libexec/ld-elf.so.2"
 
 
 /* Use --as-needed -lgcc_s for eh support.  */

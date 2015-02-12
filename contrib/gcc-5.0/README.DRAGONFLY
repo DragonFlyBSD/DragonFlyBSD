@@ -15,6 +15,7 @@ The file README.DELETED contains a list of deleted files and directories.
 The following files have been patched (* planned)
 =================================================
   gcc/c-family/c-format.c
+  gcc/config/dragonfly.h
   gcc/gcc.c
   gcc/ginclude/stddef.h
 * gcc/tree-inline.c
