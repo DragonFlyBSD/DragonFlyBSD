@@ -188,6 +188,9 @@ device		coretemp
 device		coremctl	# support Intel Core and E3 memory controller
 device		ecc		# support AMD8000, Intel E3 and Intel E5 ECC
 				# requires coremctl.
+device		memtemp		# support Intel Core, E3 and E5 memory thermal
+				# sensor.
+				# requires coremctl.
 
 # PCCARD (PCMCIA) support
 device		pccard

@@ -65,16 +65,21 @@ struct coremctl_softc {
 	device_t	sc_dev;
 	int		sc_ver;	/* COREMCTL_VER_ */
 	device_t	sc_ecc;
+	device_t	sc_temp;
 	volatile uint8_t *sc_mch;
 };
 
-#define CSR_READ_4(sc, ofs)	(*(volatile uint32_t *)((sc)->sc_mch + (ofs)))
+#define CSR_READ_4(sc, ofs)		\
+	(*(volatile uint32_t *)((sc)->sc_mch + (ofs)))
+#define CSR_WRITE_4(sc, ofs, val)	\
+	(*(volatile uint32_t *)((sc)->sc_mch + (ofs)) = (val))
 
 static void	coremctl_identify(driver_t *, device_t);
 static int	coremctl_probe(device_t);
 static int	coremctl_attach(device_t);
 static int	coremctl_detach(device_t);
 static int	coremctl_mch_readreg(device_t, int, uint32_t *);
+static int	coremctl_mch_writereg(device_t, int, uint32_t);
 static int	coremctl_pci_read_ivar(device_t, device_t, int, uintptr_t *);
 static uint32_t	coremctl_pci_read_config(device_t, device_t, int, int);
 static void	coremctl_pci_write_config(device_t, device_t, int, uint32_t,
@@ -118,6 +123,7 @@ static device_method_t coremctl_methods[] = {
 
 	/* Core memory controller interface */
 	DEVMETHOD(coremctl_mch_read,	coremctl_mch_readreg),
+	DEVMETHOD(coremctl_mch_write,	coremctl_mch_writereg),
 
 	DEVMETHOD_END
 };
@@ -265,6 +271,23 @@ coremctl_attach(device_t dev)
 		device_printf(dev, "MCHBAR is not enabled\n");
 	}
 
+	if (sc->sc_ver == COREMCTL_VER_3 && sc->sc_mch != NULL) {
+		uint32_t ptm_ctl;
+
+		/*
+		 * XXX
+		 * It seems that memory thermal sensor is available,
+		 * if any of the following bits are set.
+		 */
+		ptm_ctl = CSR_READ_4(sc, MCH_CORE_DDR_PTM_CTL0);
+		if (ptm_ctl & (MCH_CORE_DDR_PTM_CTL0_CLTM |
+		    MCH_CORE_DDR_PTM_CTL0_EXTTS | MCH_CORE_DDR_PTM_CTL0_OLTM)) {
+			sc->sc_temp = device_add_child(dev, "memtemp", -1);
+			if (sc->sc_temp == NULL)
+				device_printf(dev, "add memtemp failed\n");
+		}
+	}
+
 	bus_generic_attach(dev);
 
 	return 0;
@@ -327,6 +350,8 @@ coremctl_detach(device_t dev)
 
 	if (sc->sc_ecc != NULL)
 		device_delete_child(dev, sc->sc_ecc);
+	if (sc->sc_temp != NULL)
+		device_delete_child(dev, sc->sc_temp);
 	bus_generic_detach(dev);
 
 	if (sc->sc_mch != NULL)
@@ -343,6 +368,18 @@ coremctl_mch_readreg(device_t dev, int reg, uint32_t *val)
 		return EOPNOTSUPP;
 
 	*val = CSR_READ_4(sc, reg);
+	return 0;
+}
+
+static int
+coremctl_mch_writereg(device_t dev, int reg, uint32_t val)
+{
+	struct coremctl_softc *sc = device_get_softc(dev);
+
+	if (sc->sc_mch == NULL)
+		return EOPNOTSUPP;
+
+	CSR_WRITE_4(sc, reg, val);
 	return 0;
 }
 

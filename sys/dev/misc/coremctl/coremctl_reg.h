@@ -5,6 +5,9 @@
 #include <sys/bitops.h>
 #endif
 
+#define PCI_CORE_MEMCTL_CHN_MAX		2
+#define PCI_CORE_MEMCTL_CHN_DIMM_MAX	2
+
 #define PCI_CORE_MEMCTL_VID		0x8086
 #define PCI_E3V1_MEMCTL_DID		0x0108
 #define PCI_E3V2_MEMCTL_DID		0x0158
@@ -79,5 +82,16 @@
 #define MCH_CORE_DIMM_HORI		__BIT(26)	/* v3 */
 /* high order rank interleave address (addr bits [20,27]) */
 #define MCH_CORE_DIMM_HORIADDR		__BITS(27, 29)	/* v3 */
+
+#define MCH_CORE_DDR_PTM_CTL0		0x5880	/* v3 */
+#define MCH_CORE_DDR_PTM_CTL0_EXTTS	__BIT(4)
+#define MCH_CORE_DDR_PTM_CTL0_CLTM	__BIT(1)
+#define MCH_CORE_DDR_PTM_CTL0_OLTM	__BIT(0)
+
+#define MCH_CORE_DIMM_TEMP_CH0		0x58b0	/* v3 */
+#define MCH_CORE_DIMM_TEMP_CH1		0x58b4	/* v3 */
+
+#define MCH_CORE_DIMM_TEMP_DIMM0	__BITS(0, 7)
+#define MCH_CORE_DIMM_TEMP_DIMM1	__BITS(8, 15)
 
 #endif	/* !_COREMCTL_REG_H_ */
