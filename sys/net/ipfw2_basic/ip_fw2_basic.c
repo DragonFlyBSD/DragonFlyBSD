@@ -414,18 +414,20 @@ void
 check_forward(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
+	struct sockaddr_in *sin;
+	struct m_tag *mtag;
+
+	if ((*args)->eh) {	/* not valid on layer2 pkts */
+		*cmd_ctl=IP_FW_CTL_NEXT;
+		return;
+	}
+
 	(*f)->pcnt++;
 	(*f)->bcnt += ip_len;
 	(*f)->timestamp = time_second;
 	if ((*f)->next_rule == NULL)
 		lookup_next_rule(*f);
 
-	if ((*args)->eh) {	/* not valid on layer2 pkts */
-		*cmd_ctl=IP_FW_CTL_NEXT;
-		return;
-	}
-	struct sockaddr_in *sin;
-	struct m_tag *mtag;
 	mtag = m_tag_get(PACKET_TAG_IPFORWARD,
 			sizeof(*sin), MB_DONTWAIT);
 	if (mtag == NULL) {
@@ -434,10 +436,22 @@ check_forward(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		return;
 	}
 	sin = m_tag_data(mtag);
-
-	/* Structure copy */
 	*sin = ((ipfw_insn_sa *)cmd)->sa;
-
+	/* arg3: count of the dest, arg1: type of fwd */
+	int i;
+	if(cmd->arg3 == 1) {
+		i = 0;
+	} else {
+		if (cmd->arg1 == 0) {		/* type: random */
+			i = krandom() % cmd->arg3;
+		} else if (cmd->arg1 == 1) {	/* type: round-robin */
+			i = cmd->arg2++ % cmd->arg3;
+		} else if (cmd->arg1 == 2) {	/* type: sticky */
+			struct ip *ip = mtod((*args)->m, struct ip *);
+			i = ip->ip_src.s_addr & (cmd->arg3 - 1);
+		}
+	}
+	sin += i;
 	m_tag_prepend((*args)->m, mtag);
 	(*args)->m->m_pkthdr.fw_flags |= IPFORWARD_MBUF_TAGGED;
 	(*args)->m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;

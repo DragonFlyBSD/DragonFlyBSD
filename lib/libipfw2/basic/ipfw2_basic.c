@@ -411,6 +411,10 @@ parse_skipto(ipfw_insn **cmd, int *ac, char **av[])
 	NEXT_ARG1;
 }
 
+/*
+ * cmd->arg3 is count of the destination
+ * cmd->arg1 is the type, random 0, round-robin 1, sticky 2
+ */
 void
 parse_forward(ipfw_insn **cmd, int *ac, char **av[])
 {
@@ -459,6 +463,7 @@ parse_forward(ipfw_insn **cmd, int *ac, char **av[])
 			NEXT_ARG1;
 			(*cmd)->arg1 = 2;
 		} else {
+			/* random */
 			(*cmd)->arg1 = 0;
 		}
 	}
