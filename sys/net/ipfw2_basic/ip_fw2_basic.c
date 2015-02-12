@@ -414,7 +414,7 @@ void
 check_forward(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	struct sockaddr_in *sin;
+	struct sockaddr_in *sin, *sa;
 	struct m_tag *mtag;
 
 	if ((*args)->eh) {	/* not valid on layer2 pkts */
@@ -436,12 +436,10 @@ check_forward(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		return;
 	}
 	sin = m_tag_data(mtag);
-	*sin = ((ipfw_insn_sa *)cmd)->sa;
+	sa = &((ipfw_insn_sa *)cmd)->sa;
 	/* arg3: count of the dest, arg1: type of fwd */
-	int i;
-	if(cmd->arg3 == 1) {
-		i = 0;
-	} else {
+	int i = 0;
+	if(cmd->arg3 > 1) {
 		if (cmd->arg1 == 0) {		/* type: random */
 			i = krandom() % cmd->arg3;
 		} else if (cmd->arg1 == 1) {	/* type: round-robin */
@@ -450,8 +448,9 @@ check_forward(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 			struct ip *ip = mtod((*args)->m, struct ip *);
 			i = ip->ip_src.s_addr & (cmd->arg3 - 1);
 		}
+		sa += i;
 	}
-	sin += i;
+	*sin = *sa;	/* apply the destination */
 	m_tag_prepend((*args)->m, mtag);
 	(*args)->m->m_pkthdr.fw_flags |= IPFORWARD_MBUF_TAGGED;
 	(*args)->m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
