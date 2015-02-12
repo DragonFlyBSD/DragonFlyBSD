@@ -46,16 +46,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 /* This avoids lossage on SunOS but only if stdtypes.h comes first.
    There's no way to win with the other order!  Sun lossage.  */
 
-/* On 4.3bsd-net2, make sure ansi.h is included, so we have
-   one less case to deal with in the following.  */
-#if defined (__BSD_NET2__) || defined (____386BSD____) || (defined (__FreeBSD__) && (__FreeBSD__ < 5)) || defined(__NetBSD__)
-#include <machine/ansi.h>
-#endif
-/* On FreeBSD 5, machine/ansi.h does not exist anymore... */
-#if defined (__FreeBSD__) && (__FreeBSD__ >= 5)
-#include <sys/_types.h>
-#endif
-
 /* In 4.3bsd-net2, machine/ansi.h defines these symbols, which are
    defined if the corresponding type is *not* defined.
    FreeBSD-2.1 defines _MACHINE_ANSI_H_ instead of _ANSI_H_.
@@ -297,26 +287,6 @@ typedef long ssize_t;
 typedef _BSD_RUNE_T_ rune_t;
 #define _BSD_WCHAR_T_DEFINED_
 #define _BSD_RUNE_T_DEFINED_	/* Darwin */
-#if defined (__FreeBSD__) && (__FreeBSD__ < 5)
-/* Why is this file so hard to maintain properly?  In contrast to
-   the comment above regarding BSD/386 1.1, on FreeBSD for as long
-   as the symbol has existed, _BSD_RUNE_T_ must not stay defined or
-   redundant typedefs will occur when stdlib.h is included after this file. */
-#undef _BSD_RUNE_T_
-#endif
-#endif
-#endif
-#endif
-/* FreeBSD 5 can't be handled well using "traditional" logic above
-   since it no longer defines _BSD_RUNE_T_ yet still desires to export
-   rune_t in some cases... */
-#if defined (__FreeBSD__) && (__FreeBSD__ >= 5)
-#if !defined (_ANSI_SOURCE) && !defined (_POSIX_SOURCE)
-#if __BSD_VISIBLE
-#ifndef _RUNE_T_DECLARED
-typedef __rune_t        rune_t;
-#define _RUNE_T_DECLARED
-#endif
 #endif
 #endif
 #endif

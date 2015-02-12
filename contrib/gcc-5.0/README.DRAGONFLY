@@ -16,4 +16,5 @@ The following files have been patched (* planned)
 =================================================
   gcc/c-family/c-format.c
   gcc/gcc.c
+  gcc/ginclude/stddef.h
 * gcc/tree-inline.c
