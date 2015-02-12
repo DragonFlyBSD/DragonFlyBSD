@@ -660,7 +660,8 @@ emx_attach(device_t dev)
 	tx_ring_max = 1;
 	if (sc->hw.mac.type == e1000_82571 ||
 	    sc->hw.mac.type == e1000_82572 ||
-	    sc->hw.mac.type == e1000_80003es2lan)
+	    sc->hw.mac.type == e1000_80003es2lan ||
+	    sc->hw.mac.type == e1000_pch_lpt)
 		tx_ring_max = EMX_NTX_RING;
 	sc->tx_ring_cnt = device_getenv_int(dev, "txr", emx_txr);
 	sc->tx_ring_cnt = if_ring_count2(sc->tx_ring_cnt, tx_ring_max);
