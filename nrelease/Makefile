@@ -19,6 +19,7 @@ ISODIR?=	/usr/release
 ISOROOT?=	${ISODIR}/root
 OBJSYS=		${.OBJDIR}/../sys
 GITHOST?=	git.dragonflybsd.org
+GITHOST_DPORTS?=mirror-master.dragonflybsd.org
 
 MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 
@@ -49,8 +50,10 @@ DPORTS_PACKAGES?=	devel/git \
 # dports options to use when building packages
 #
 DPORTS_OPTIONS+=		-DBATCH
-.if !make(gui)
-DPORTS_OPTIONS.devel_git+=	-DWITHOUT_CONTRIB -DWITHOUT_PERL
+.if make(gui)
+DPORTS_OPTIONS.devel_git+=	WITH="GUI"
+.else
+DPORTS_OPTIONS.devel_git+=	WITHOUT="CONTRIB PERL"
 .endif
 
 # Specify which root skeletons are required, and let the user include
@@ -60,7 +63,7 @@ DPORTS_OPTIONS.devel_git+=	-DWITHOUT_CONTRIB -DWITHOUT_PERL
 REQ_ROOTSKELS=	${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
-.if make(notyet)
+.if make(gui)
 # LIST OF PACKAGES NOT INCLUDED DUE TO BUILD ISSUES:
 #	chat/pidgin		textproc/enchant dependency is broken
 #	x11/rxvt-unicode	broken configure
@@ -78,34 +81,27 @@ IMGFILE?=		${ISODIR}/dfly-gui.img
 #
 #
 .if !make(nopkgs)
-PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-libs \
-			meta-pkgs/modular-xorg-fonts \
-			meta-pkgs/modular-xorg-apps \
-			meta-pkgs/modular-xorg-drivers \
-			x11/libXinerama \
-			wm/fluxbox \
-			wm/fvwm \
+DPORTS_PACKAGES+=	x11/xorg \
+			x11-wm/fluxbox \
+			x11-wm/fvwm \
 			www/firefox \
-			print/xpdf \
+			graphics/xpdf \
 			shells/zsh \
 			editors/emacs \
 			editors/vim \
-			chat/irssi \
-			x11/modular-xorg-server \
-			x11/eterm \
+			irc/irssi \
 			lang/perl5 \
 			editors/nano \
 			shells/bash \
-			devel/exctags \
+			devel/ctags \
 			archivers/zip \
 			security/sudo \
-			www/links-gui \
-			net/wget \
-			fonts/terminus-font \
+			www/links \
+			ftp/wget \
+			x11-fonts/terminus-font \
 			net/rsync \
-			time/asclock \
-			misc/screen \
-			devel/scmgit-gitk
+			x11-clocks/asclock \
+			sysutils/screen
 .endif
 
 ROOTSKELS+=		${.CURDIR}/gui
@@ -213,7 +209,7 @@ buildiso:
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
-# The GUI build includes the pkgsrc tree (~1G+) while the nominal release
+# The GUI build includes the ports tree (~1G+) while the nominal release
 # build does not.
 #
 # The GUI build includes full sources while the nominal release build
@@ -221,15 +217,16 @@ buildiso:
 #
 srcs:
 .if !defined(WITHOUT_SRCS)
-.if make(notyet)
+.if make(gui)
 	rm -f ${ISOROOT}/usr/src-sys.tgz
 	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
-	cd ${ISOROOT}/usr && make pkgsrc-create-repo GITHOST=${GITHOST}
+	cd ${ISOROOT}/usr && make dports-create GITHOST_DPORTS=${GITHOST_DPORTS}
 	# NOTE: Adding the git gc --aggressive helps by significantly
 	#	reducing the disk space required.
 	#
-	cd ${ISOROOT}/usr/pkgsrc && git gc --aggressive
+	cd ${ISOROOT}/usr/dports && git gc --aggressive
 	cd ${ISOROOT}/usr && make src-create-repo GITHOST=${GITHOST}
+	# XXX: git gc --aggressive
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
 	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
@@ -407,6 +404,7 @@ help all:
 	@echo ""
 	@echo "DPORTS_EXTRA_PACKAGES may be used to add additional pkgs"
 	@echo "GITHOST may be used to override git.dragonflybsd.org"
+	@echo "GITHOST_DPORTS may be used to override mirror-master.dragonflybsd.org"
 	@echo "IMGSIZE may be used to override the .img (in 512-byte sectors)"
 
 .PHONY: release quickrel realquickrel
