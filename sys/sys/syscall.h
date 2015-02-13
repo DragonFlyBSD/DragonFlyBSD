@@ -376,4 +376,5 @@
 #define	SYS_vmm_guest_ctl	534
 #define	SYS_vmm_guest_sync_addr	535
 #define	SYS_procctl	536
-#define	SYS_MAXSYSCALL	537
+#define	SYS_chflagsat	537
+#define	SYS_MAXSYSCALL	538

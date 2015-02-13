@@ -3081,6 +3081,40 @@ sys_fchflags(struct fchflags_args *uap)
 	return (error);
 }
 
+/*
+ * chflagsat_args(int fd, const char *path, int flags, int atflags)
+ * change flags given a pathname relative to a filedescriptor
+ */
+int sys_chflagsat(struct chflagsat_args *uap)
+{
+	struct nlookupdata nd;
+	struct vnode *vp;
+	struct file *fp;
+	int error;
+	int lookupflags;
+
+	if (uap->atflags & ~AT_SYMLINK_NOFOLLOW)
+		return (EINVAL);
+
+	lookupflags = (uap->atflags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
+
+	vp = NULL;
+	error = nlookup_init_at(&nd, &fp, uap->fd,  uap->path, UIO_USERSPACE, lookupflags);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = ncp_writechk(&nd.nl_nch);
+	if (error == 0)
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &vp);
+	nlookup_done_at(&nd, fp);
+	if (error == 0) {
+		error = setfflags(vp, uap->flags);
+		vrele(vp);
+	}
+	return (error);
+}
+
+
 static int
 setfmode(struct vnode *vp, int mode)
 {

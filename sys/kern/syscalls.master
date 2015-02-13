@@ -743,3 +743,4 @@
 534	STD	{ int vmm_guest_ctl(int op, struct vmm_guest_options *options); }
 535	STD	{ int vmm_guest_sync_addr(long *dstaddr, long *srcaddr); }
 536	STD	{ int procctl(idtype_t idtype, id_t id, int cmd, void *data); }
+537	STD	{ int chflagsat(int fd, const char *path, int flags, int atflags);}

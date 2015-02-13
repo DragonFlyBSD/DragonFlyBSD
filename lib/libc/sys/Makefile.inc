@@ -105,7 +105,7 @@ MLINKS+=access.2 eaccess.2 \
 	access.2 faccessat.2
 MLINKS+=brk.2 sbrk.2
 MLINKS+=chdir.2 fchdir.2
-MLINKS+=chflags.2 fchflags.2 chflags.2 lchflags.2
+MLINKS+=chflags.2 fchflags.2 chflags.2 lchflags.2 chflags.2 chflagsat.2
 MLINKS+=chmod.2 fchmod.2 chmod.2 lchmod.2 chmod.2 fchmodat.2
 MLINKS+=chown.2 fchown.2 chown.2 lchown.2 chown.2 fchownat.2
 MLINKS+=chroot.2 chroot_kernel.2

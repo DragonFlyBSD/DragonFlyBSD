@@ -2269,6 +2269,15 @@ struct	procctl_args {
 	int	cmd;	char cmd_[PAD_(int)];
 	void *	data;	char data_[PAD_(void *)];
 };
+struct	chflagsat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	fd;	char fd_[PAD_(int)];
+	const char *	path;	char path_[PAD_(const char *)];
+	int	flags;	char flags_[PAD_(int)];
+	int	atflags;	char atflags_[PAD_(int)];
+};
 
 #ifdef COMPAT_43
 
@@ -2875,6 +2884,7 @@ int	sys_lpathconf (struct lpathconf_args *);
 int	sys_vmm_guest_ctl (struct vmm_guest_ctl_args *);
 int	sys_vmm_guest_sync_addr (struct vmm_guest_sync_addr_args *);
 int	sys_procctl (struct procctl_args *);
+int	sys_chflagsat (struct chflagsat_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

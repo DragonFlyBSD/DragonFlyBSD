@@ -407,4 +407,5 @@ union sysunion {
 	struct	vmm_guest_ctl_args vmm_guest_ctl;
 	struct	vmm_guest_sync_addr_args vmm_guest_sync_addr;
 	struct	procctl_args procctl;
+	struct	chflagsat_args chflagsat;
 };

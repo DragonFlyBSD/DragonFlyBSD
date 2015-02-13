@@ -299,4 +299,5 @@ MIASM =  \
 	lpathconf.o \
 	vmm_guest_ctl.o \
 	vmm_guest_sync_addr.o \
-	procctl.o
+	procctl.o \
+	chflagsat.o

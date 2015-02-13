@@ -237,6 +237,7 @@ int	mknodat(int, const char *, mode_t, dev_t);
 int	chflags (const char *, u_long);
 int	fchflags (int, u_long);
 int	lchflags (const char *, u_long);
+int	chflagsat(int, const char, u_long, int);
 int	fchmod (int, mode_t);
 int	lchmod (const char *, mode_t);
 int	lstat (const char *, struct stat *);

@@ -29,13 +29,14 @@
 .\" $FreeBSD: src/lib/libc/sys/chflags.2,v 1.11.2.7 2001/12/14 18:34:00 ru Exp $
 .\" $DragonFly: src/lib/libc/sys/chflags.2,v 1.5 2008/11/11 00:55:49 pavalos Exp $
 .\"
-.Dd November 10, 2008
+.Dd February 13, 2015
 .Dt CHFLAGS 2
 .Os
 .Sh NAME
 .Nm chflags ,
 .Nm lchflags ,
-.Nm fchflags
+.Nm fchflags ,
+.Nm chflagsat
 .Nd set file flags
 .Sh LIBRARY
 .Lb libc
@@ -48,6 +49,8 @@
 .Fn lchflags "const char *path" "u_long flags"
 .Ft int
 .Fn fchflags "int fd" "u_long flags"
+.Ft int
+.Fn chflagsat "int fd" "const char *path" "u_long flags" "int atflag"
 .Sh DESCRIPTION
 The file whose name
 is given by
@@ -66,6 +69,45 @@ in which case
 .Fn lchflags
 will change the flags of the link itself,
 rather than the file it points to.
+.Pp
+The
+.Fn chflagsat
+is equivalent to either
+.Fn chflags
+or
+.Fn lchflags
+depending on the
+.Fa atflag
+except in the case where
+.Fa path
+specifies a relative path.
+In this case the file to be changed is determined relative to the directory
+associated with the file descriptor
+.Fa fd
+instead of the current working directory.
+The values for the
+.Fa atflag
+are constructed by a bitwise-inclusive OR of flags from the following list,
+defined in
+.In fcntl.h :
+.Bl -tag -width indent
+.It Dv AT_SYMLINK_NOFOLLOW
+If
+.Fa path
+names a symbolic link, then the flags of the symbolic link are changed.
+.El
+.Pp
+If
+.Fn chflagsat
+is passed the special value
+.Dv AT_FDCWD
+in the
+.Fa fd
+parameter, the current working directory is used.
+If also
+.Fa atflag
+is zero, the behavior is identical to a call to
+.Fn chflags .
 .Pp
 The flags specified are formed by
 .Em or Ns 'ing
