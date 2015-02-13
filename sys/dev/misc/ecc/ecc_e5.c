@@ -181,14 +181,13 @@ ecc_e5_attach(device_t dev)
 	if (bootverbose) {
 		if (sc->ecc_chan->ver == E5_IMC_CHAN_VER3 &&
 		    (mcmtr & PCI_E5V3_IMC_CPGC_MCMTR_DDR4))
-			ecc_printf(sc, "DDR4 ");
+			ecc_printf(sc, "DDR4\n");
 		if (__SHIFTOUT(mcmtr, PCI_E5_IMC_CPGC_MCMTR_IMC_MODE) ==
 		    PCI_E5_IMC_CPGC_MCMTR_IMC_MODE_DDR3) {
-			ecc_printf(sc, "native %s",
+			ecc_printf(sc, "native %s\n",
 			    sc->ecc_chan->ver == E5_IMC_CHAN_VER2 ?
 			    "DDR3" : "DDR");
 		}
-		kprintf("\n");
 	}
 
 	rank = 0;
