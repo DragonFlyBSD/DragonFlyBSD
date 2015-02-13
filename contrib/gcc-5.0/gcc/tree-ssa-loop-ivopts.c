@@ -138,6 +138,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-ssa-propagate.h"
 #include "tree-ssa-address.h"
 #include "builtins.h"
+#include "tree-vectorizer.h"
 
 /* FIXME: Expressions are expanded to RTL in this pass to determine the
    cost of different addressing modes.  This should be moved to a TBD
@@ -318,6 +319,7 @@ struct ivopts_data
 {
   /* The currently optimized loop.  */
   struct loop *current_loop;
+  source_location loop_loc;
 
   /* Numbers of iterations for all exits of the current loop.  */
   hash_map<edge, tree_niter_desc *> *niters;
@@ -1079,13 +1081,40 @@ determine_biv_step (gphi *phi)
   return integer_zerop (iv.step) ? NULL_TREE : iv.step;
 }
 
+/* Return the first non-invariant ssa var found in EXPR.  */
+
+static tree
+extract_single_var_from_expr (tree expr)
+{
+  int i, n;
+  tree tmp;
+  enum tree_code code;
+
+  if (!expr || is_gimple_min_invariant (expr))
+    return NULL;
+
+  code = TREE_CODE (expr);
+  if (IS_EXPR_CODE_CLASS (TREE_CODE_CLASS (code)))
+    {
+      n = TREE_OPERAND_LENGTH (expr);
+      for (i = 0; i < n; i++)
+	{
+	  tmp = extract_single_var_from_expr (TREE_OPERAND (expr, i));
+
+	  if (tmp)
+	    return tmp;
+	}
+    }
+  return (TREE_CODE (expr) == SSA_NAME) ? expr : NULL;
+}
+
 /* Finds basic ivs.  */
 
 static bool
 find_bivs (struct ivopts_data *data)
 {
   gphi *phi;
-  tree step, type, base;
+  tree step, type, base, stop;
   bool found = false;
   struct loop *loop = data->current_loop;
   gphi_iterator psi;
@@ -1102,7 +1131,13 @@ find_bivs (struct ivopts_data *data)
 	continue;
 
       base = PHI_ARG_DEF_FROM_EDGE (phi, loop_preheader_edge (loop));
-      base = expand_simple_operations (base);
+      /* Stop expanding iv base at the first ssa var referred by iv step.
+	 Ideally we should stop at any ssa var, because that's expensive
+	 and unusual to happen, we just do it on the first one.
+
+	 See PR64705 for the rationale.  */
+      stop = extract_single_var_from_expr (step);
+      base = expand_simple_operations (base, stop);
       if (contains_abnormal_ssa_name_p (base)
 	  || contains_abnormal_ssa_name_p (step))
 	continue;
@@ -1174,7 +1209,7 @@ mark_bivs (struct ivopts_data *data)
 static bool
 find_givs_in_stmt_scev (struct ivopts_data *data, gimple stmt, affine_iv *iv)
 {
-  tree lhs;
+  tree lhs, stop;
   struct loop *loop = data->current_loop;
 
   iv->base = NULL_TREE;
@@ -1189,13 +1224,19 @@ find_givs_in_stmt_scev (struct ivopts_data *data, gimple stmt, affine_iv *iv)
 
   if (!simple_iv (loop, loop_containing_stmt (stmt), lhs, iv, true))
     return false;
-  iv->base = expand_simple_operations (iv->base);
 
+  /* Stop expanding iv base at the first ssa var referred by iv step.
+     Ideally we should stop at any ssa var, because that's expensive
+     and unusual to happen, we just do it on the first one.
+
+     See PR64705 for the rationale.  */
+  stop = extract_single_var_from_expr (iv->step);
+  iv->base = expand_simple_operations (iv->base, stop);
   if (contains_abnormal_ssa_name_p (iv->base)
       || contains_abnormal_ssa_name_p (iv->step))
     return false;
 
-  /* If STMT could throw, then do not consider STMT as defining a GIV.  
+  /* If STMT could throw, then do not consider STMT as defining a GIV.
      While this will suppress optimizations, we can not safely delete this
      GIV and associated statements, even if it appears it is not used.  */
   if (stmt_could_throw_p (stmt))
@@ -3324,12 +3365,12 @@ get_address_cost (bool symbol_present, bool var_present,
 	  XEXP (addr, 1) = gen_int_mode (off, address_mode);
 	  if (memory_address_addr_space_p (mem_mode, addr, as))
 	    break;
-	  /* For some TARGET, like ARM THUMB1, the offset should be nature
-	     aligned.  Try an aligned offset if address_mode is not QImode.  */
-	  off = (address_mode == QImode)
-		? 0
-		: ((unsigned HOST_WIDE_INT) 1 << i)
-		    - GET_MODE_SIZE (address_mode);
+	  /* For some strict-alignment targets, the offset must be naturally
+	     aligned.  Try an aligned offset if mem_mode is not QImode.  */
+	  off = mem_mode != QImode
+		? ((unsigned HOST_WIDE_INT) 1 << i)
+		    - GET_MODE_SIZE (mem_mode)
+		: 0;
 	  if (off > 0)
 	    {
 	      XEXP (addr, 1) = gen_int_mode (off, address_mode);
@@ -3597,22 +3638,26 @@ get_shiftadd_cost (tree expr, machine_mode mode, comp_cost cost0,
   tree multop = TREE_OPERAND (mult, 0);
   int m = exact_log2 (int_cst_value (cst));
   int maxm = MIN (BITS_PER_WORD, GET_MODE_BITSIZE (mode));
-  int sa_cost;
-  bool equal_p = false;
+  int as_cost, sa_cost;
+  bool mult_in_op1;
 
   if (!(m >= 0 && m < maxm))
     return false;
 
-  if (operand_equal_p (op1, mult, 0))
-    equal_p = true;
+  mult_in_op1 = operand_equal_p (op1, mult, 0);
 
+  as_cost = add_cost (speed, mode) + shift_cost (speed, mode, m);
+
+  /* If the target has a cheap shift-and-add or shift-and-sub instruction,
+     use that in preference to a shift insn followed by an add insn.  */
   sa_cost = (TREE_CODE (expr) != MINUS_EXPR
              ? shiftadd_cost (speed, mode, m)
-             : (equal_p
+             : (mult_in_op1
                 ? shiftsub1_cost (speed, mode, m)
                 : shiftsub0_cost (speed, mode, m)));
-  res = new_cost (sa_cost, 0);
-  res = add_costs (res, equal_p ? cost0 : cost1);
+
+  res = new_cost (MIN (as_cost, sa_cost), 0);
+  res = add_costs (res, mult_in_op1 ? cost0 : cost1);
 
   STRIP_NOPS (multop);
   if (!is_gimple_val (multop))
@@ -6336,7 +6381,12 @@ create_new_ivs (struct ivopts_data *data, struct iv_ca *set)
 
   if (dump_file && (dump_flags & TDF_DETAILS))
     {
-      fprintf (dump_file, "\nSelected IV set: \n");
+      fprintf (dump_file, "Selected IV set for loop %d",
+	       data->current_loop->num);
+      if (data->loop_loc != UNKNOWN_LOCATION)
+	fprintf (dump_file, " at %s:%d", LOCATION_FILE (data->loop_loc),
+		 LOCATION_LINE (data->loop_loc));
+      fprintf (dump_file, ", %lu IVs:\n", bitmap_count_bits (set->cands));
       EXECUTE_IF_SET_IN_BITMAP (set->cands, 0, i, bi)
         {
           cand = iv_cand (data, i);
@@ -6939,11 +6989,16 @@ tree_ssa_iv_optimize_loop (struct ivopts_data *data, struct loop *loop)
 
   gcc_assert (!data->niters);
   data->current_loop = loop;
+  data->loop_loc = find_loop_location (loop);
   data->speed = optimize_loop_for_speed_p (loop);
 
   if (dump_file && (dump_flags & TDF_DETAILS))
     {
-      fprintf (dump_file, "Processing loop %d\n", loop->num);
+      fprintf (dump_file, "Processing loop %d", loop->num);
+      if (data->loop_loc != UNKNOWN_LOCATION)
+	fprintf (dump_file, " at %s:%d", LOCATION_FILE (data->loop_loc),
+		 LOCATION_LINE (data->loop_loc));
+      fprintf (dump_file, "\n");
 
       if (exit)
 	{

@@ -1324,7 +1324,8 @@ cgraph_edge::redirect_call_stmt_to_callee (void)
 		     (int64_t)e->count);
 	  gcc_assert (e2->speculative);
 	  push_cfun (DECL_STRUCT_FUNCTION (e->caller->decl));
-	  new_stmt = gimple_ic (e->call_stmt, dyn_cast<cgraph_node *> (ref->referred),
+	  new_stmt = gimple_ic (e->call_stmt,
+				dyn_cast<cgraph_node *> (ref->referred),
 				e->count || e2->count
 				?  RDIV (e->count * REG_BR_PROB_BASE,
 					 e->count + e2->count)
@@ -1463,6 +1464,9 @@ cgraph_edge::redirect_call_stmt_to_callee (void)
       gimple_call_set_chain (new_stmt, NULL);
       update_stmt_fn (DECL_STRUCT_FUNCTION (e->caller->decl), new_stmt);
     }
+
+  maybe_remove_unused_call_args (DECL_STRUCT_FUNCTION (e->caller->decl),
+				 new_stmt);
 
   e->caller->set_call_stmt_including_clones (e->call_stmt, new_stmt, false);
 
@@ -1842,20 +1846,7 @@ cgraph_node::local_info (tree decl)
   cgraph_node *node = get (decl);
   if (!node)
     return NULL;
-  return &node->local;
-}
-
-/* Return global info for the compiled function.  */
-
-cgraph_global_info *
-cgraph_node::global_info (tree decl)
-{
-  gcc_assert (TREE_CODE (decl) == FUNCTION_DECL
-    && symtab->global_info_ready);
-  cgraph_node *node = get (decl);
-  if (!node)
-    return NULL;
-  return &node->global;
+  return &node->ultimate_alias_target ()->local;
 }
 
 /* Return local info for the compiled function.  */
@@ -1865,11 +1856,13 @@ cgraph_node::rtl_info (tree decl)
 {
   gcc_assert (TREE_CODE (decl) == FUNCTION_DECL);
   cgraph_node *node = get (decl);
-  if (!node
-      || (decl != current_function_decl
-	  && !TREE_ASM_WRITTEN (node->decl)))
+  if (!node)
     return NULL;
-  return &node->rtl;
+  node = node->ultimate_alias_target ();
+  if (node->decl != current_function_decl
+      && !TREE_ASM_WRITTEN (node->decl))
+    return NULL;
+  return &node->ultimate_alias_target ()->rtl;
 }
 
 /* Return a string describing the failure REASON.  */
