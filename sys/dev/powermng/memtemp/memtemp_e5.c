@@ -86,7 +86,10 @@ static void	memtemp_e5_sensor_task(void *);
 	E5_IMC_CHAN_FIELDS(v, imc, c, c_ext)			\
 }
 
-#define MEMTEMP_E5_CHAN_V2(c)	MEMTEMP_E5_CHAN(2, 0, c, c)
+#define MEMTEMP_E5_CHAN_V2(c)		MEMTEMP_E5_CHAN(2, 0, c, c)
+#define MEMTEMP_E5_CHAN_IMC0_V3(c)	MEMTEMP_E5_CHAN(3, 0, c, c)
+#define MEMTEMP_E5_CHAN_IMC1_V3(c, c_ext) \
+					MEMTEMP_E5_CHAN(3, 1, c, c_ext)
 #define MEMTEMP_E5_CHAN_END	E5_IMC_CHAN_END
 
 static const struct e5_imc_chan memtemp_e5_chans[] = {
@@ -94,6 +97,13 @@ static const struct e5_imc_chan memtemp_e5_chans[] = {
 	MEMTEMP_E5_CHAN_V2(1),
 	MEMTEMP_E5_CHAN_V2(2),
 	MEMTEMP_E5_CHAN_V2(3),
+
+	MEMTEMP_E5_CHAN_IMC0_V3(0),
+	MEMTEMP_E5_CHAN_IMC0_V3(1),
+	MEMTEMP_E5_CHAN_IMC0_V3(2),
+	MEMTEMP_E5_CHAN_IMC0_V3(3),
+	MEMTEMP_E5_CHAN_IMC1_V3(0, 2),	/* IMC1 chan0 -> channel2 */
+	MEMTEMP_E5_CHAN_IMC1_V3(1, 3),	/* IMC1 chan1 -> channel3 */
 
 	MEMTEMP_E5_CHAN_END
 };
