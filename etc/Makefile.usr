@@ -3,6 +3,7 @@
 # Provides simple targets to download and maintain /usr/src, /usr/dports etc.
 
 GITHOST?=git.dragonflybsd.org
+GITHOST_DPORTS?=mirror-master.dragonflybsd.org
 
 THISGIT!= which git 2>/dev/null; echo
 DPTBALL=/tmp/dports.tar.gz
@@ -141,7 +142,7 @@ dports-create:
 .else
 	@echo "If problems occur you may have to rm -rf dports and try again."
 	@echo
-	git clone git://mirror-master.dragonflybsd.org/dports.git ${.CURDIR}/dports
+	git clone git://${GITHOST_DPORTS}/dports.git ${.CURDIR}/dports
 .if exists(${.CURDIR}/pkg)
 	@echo ${WSTARS}
 	@echo ${WARNPS}
@@ -157,7 +158,7 @@ dports-create-shallow:
 .else
 	@echo "If problems occur you may have to rm -rf dports and try again."
 	@echo
-	git clone --depth=1 git://mirror-master.dragonflybsd.org/dports.git \
+	git clone --depth=1 git://${GITHOST_DPORTS}/dports.git \
 	   ${.CURDIR}/dports
 .if exists(${.CURDIR}/pkg)
 	@echo ${WSTARS}
