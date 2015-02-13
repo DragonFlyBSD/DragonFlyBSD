@@ -383,7 +383,11 @@ symbol_table::remove_unreachable_nodes (FILE *file)
       /* If we are processing symbol in boundary, mark its AUX pointer for
 	 possible later re-processing in enqueue_node.  */
       if (in_boundary_p)
-	node->aux = (void *)2;
+	{
+	  node->aux = (void *)2;
+	  if (node->alias && node->analyzed)
+	    enqueue_node (node->get_alias_target (), &first, &reachable);
+	}
       else
 	{
 	  if (TREE_CODE (node->decl) == FUNCTION_DECL
@@ -486,6 +490,9 @@ symbol_table::remove_unreachable_nodes (FILE *file)
 		}
 
 	    }
+	  else if (cnode->thunk.thunk_p)
+	    enqueue_node (cnode->callees->callee, &first, &reachable);
+	      
 	  /* If any reachable function has simd clones, mark them as
 	     reachable as well.  */
 	  if (cnode->simd_clones)
@@ -530,11 +537,17 @@ symbol_table::remove_unreachable_nodes (FILE *file)
       /* If node is unreachable, remove its body.  */
       else if (!reachable.contains (node))
         {
-	  if (!body_needed_for_clonning.contains (node->decl))
+	  /* We keep definitions of thunks and aliases in the boundary so
+	     we can walk to the ultimate alias targets and function symbols
+	     reliably.  */
+	  if (node->alias || node->thunk.thunk_p)
+	    ;
+	  else if (!body_needed_for_clonning.contains (node->decl)
+	      && !node->alias && !node->thunk.thunk_p)
 	    node->release_body ();
 	  else if (!node->clone_of)
 	    gcc_assert (in_lto_p || DECL_RESULT (node->decl));
-	  if (node->definition)
+	  if (node->definition && !node->alias && !node->thunk.thunk_p)
 	    {
 	      if (file)
 		fprintf (file, " %s/%i", node->name (), node->order);
@@ -554,7 +567,6 @@ symbol_table::remove_unreachable_nodes (FILE *file)
 	      if (!node->in_other_partition)
 		node->local.local = false;
 	      node->remove_callees ();
-	      node->remove_from_same_comdat_group ();
 	      node->remove_all_references ();
 	      changed = true;
 	      if (node->thunk.thunk_p
@@ -597,12 +609,24 @@ symbol_table::remove_unreachable_nodes (FILE *file)
 	     or not.  */
 	  && (!flag_ltrans || !DECL_EXTERNAL (vnode->decl)))
 	{
+	  struct ipa_ref *ref = NULL;
+
+	  /* First remove the aliases, so varpool::remove can possibly lookup
+	     the constructor and save it for future use.  */
+	  while (vnode->iterate_direct_aliases (0, ref))
+	    {
+	      if (file)
+		fprintf (file, " %s/%i", ref->referred->name (),
+			 ref->referred->order);
+	      ref->referring->remove ();
+	    }
 	  if (file)
 	    fprintf (file, " %s/%i", vnode->name (), vnode->order);
+          vnext = next_variable (vnode);
 	  vnode->remove ();
 	  changed = true;
 	}
-      else if (!reachable.contains (vnode))
+      else if (!reachable.contains (vnode) && !vnode->alias)
         {
 	  tree init;
 	  if (vnode->definition)

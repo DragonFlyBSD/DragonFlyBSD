@@ -1164,9 +1164,6 @@ public:
   /* Return local info for the compiled function.  */
   static cgraph_local_info *local_info (tree decl);
 
-  /* Return global info for the compiled function.  */
-  static cgraph_global_info *global_info (tree);
-
   /* Return local info for the compiled function.  */
   static cgraph_rtl_info *rtl_info (tree);
 
@@ -1186,10 +1183,6 @@ public:
   {
     return node->used_from_object_file_p ();
   }
-
-  /* Return true when cgraph_node can not be local.
-     Worker for cgraph_local_node_p.  */
-  static bool non_local_p (cgraph_node *node, void *);
 
   /* Verify whole cgraph structure.  */
   static void DEBUG_FUNCTION verify_cgraph_nodes (void);
@@ -1296,6 +1289,8 @@ public:
      other operation that could make previously non-trapping memory
      accesses trapping.  */
   unsigned nonfreeing_fn : 1;
+  /* True if there was multiple COMDAT bodies merged by lto-symtab.  */
+  unsigned merged : 1;
 };
 
 /* A cgraph node set is a collection of cgraph nodes.  A cgraph node

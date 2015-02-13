@@ -2391,6 +2391,7 @@ c_parser_declspecs (c_parser *parser, struct c_declspecs *specs,
 	  attrs_ok = true;
 	  seen_type = true;
 	  t = c_parser_enum_specifier (parser);
+          invoke_plugin_callbacks (PLUGIN_FINISH_TYPE, t.spec);
 	  declspecs_add_type (loc, specs, t);
 	  break;
 	case RID_STRUCT:
@@ -6232,8 +6233,8 @@ c_parser_binary_expression (c_parser *parser, struct c_expr *after,
     if (__builtin_expect (omp_atomic_lhs != NULL_TREE, 0) && sp == 1	      \
 	&& c_parser_peek_token (parser)->type == CPP_SEMICOLON		      \
 	&& ((1 << stack[sp].prec)					      \
-	    & (1 << (PREC_BITOR | PREC_BITXOR | PREC_BITAND | PREC_SHIFT      \
-		     | PREC_ADD | PREC_MULT)))				      \
+	    & ((1 << PREC_BITOR) | (1 << PREC_BITXOR) | (1 << PREC_BITAND)    \
+	       | (1 << PREC_SHIFT) | (1 << PREC_ADD) | (1 << PREC_MULT)))     \
 	&& stack[sp].op != TRUNC_MOD_EXPR				      \
 	&& stack[0].expr.value != error_mark_node			      \
 	&& stack[1].expr.value != error_mark_node			      \
@@ -12610,6 +12611,7 @@ restart:
 	    {
 	    case MULT_EXPR:
 	    case TRUNC_DIV_EXPR:
+	    case RDIV_EXPR:
 	    case PLUS_EXPR:
 	    case MINUS_EXPR:
 	    case LSHIFT_EXPR:

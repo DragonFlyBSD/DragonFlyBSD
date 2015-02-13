@@ -560,10 +560,7 @@ gather_caller_stats (struct cgraph_node *node, void *data)
   struct cgraph_edge *cs;
 
   for (cs = node->callers; cs; cs = cs->next_caller)
-    if (cs->caller->thunk.thunk_p)
-      cs->caller->call_for_symbol_thunks_and_aliases (gather_caller_stats,
-						    stats, false);
-    else
+    if (!cs->caller->thunk.thunk_p)
       {
 	stats->count_sum += cs->count;
 	stats->freq_sum += cs->frequency;
@@ -942,7 +939,8 @@ ipa_value_from_jfunc (struct ipa_node_params *info, struct ipa_jump_func *jfunc)
 	{
 	  ipcp_lattice<tree> *lat;
 
-	  if (!info->lattices)
+	  if (!info->lattices
+	      || idx >= ipa_get_param_count (info))
 	    return NULL_TREE;
 	  lat = ipa_get_scalar_lat (info, idx);
 	  if (!lat->is_single_const ())
@@ -1004,7 +1002,8 @@ ipa_context_from_jfunc (ipa_node_params *info, cgraph_edge *cs, int csidx,
 	}
       else
 	{
-	  if (!info->lattices)
+	  if (!info->lattices
+	      || srcidx >= ipa_get_param_count (info))
 	    return ctx;
 	  ipcp_lattice<ipa_polymorphic_call_context> *lat;
 	  lat = ipa_get_poly_ctx_lat (info, srcidx);
@@ -2641,7 +2640,7 @@ propagate_constants_topo (struct ipa_topo_info *topo)
 	  for (cs = v->callees; cs; cs = cs->next_callee)
 	    if (ipa_edge_within_scc (cs)
 		&& propagate_constants_accross_call (cs))
-	      push_node_to_stack (topo, cs->callee);
+	      push_node_to_stack (topo, cs->callee->function_symbol ());
 	  v = pop_node_from_stack (topo);
 	}
 
