@@ -73,7 +73,7 @@
 /* Define if you want more run-time sanity checks. This one gets a grab bag of
    miscellaneous but relatively cheap checks. */
 #ifndef USED_FOR_TARGET
-#define ENABLE_CHECKING 1
+/* #undef ENABLE_CHECKING */
 #endif
 
 
@@ -180,7 +180,7 @@
 /* Define if you want RTL flag accesses to be checked against the RTL codes
    that are supported for each access macro. This is relatively cheap. */
 #ifndef USED_FOR_TARGET
-#define ENABLE_RTL_FLAG_CHECKING 1
+/* #undef ENABLE_RTL_FLAG_CHECKING */
 #endif
 
 

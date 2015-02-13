@@ -16,7 +16,7 @@
 #define ENABLE_CANONICAL_SYSTEM_HEADERS 1
 
 /* Define if you want more run-time sanity checks. */
-#define ENABLE_CHECKING 1
+/* #undef ENABLE_CHECKING */
 
 /* Define to 1 if translation of program messages to the user's native
    language is requested. */

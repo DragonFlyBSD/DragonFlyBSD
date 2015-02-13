@@ -20,7 +20,7 @@ LANG_SPECS_FILES=	cp/lang-specs.h \
 			lto/lang-specs.h
 
 # Object files for gcc driver.
-GCC_SRCS = gcc.c ggc-none.c
+GCC_SRCS = gcc.c gcc-main.c ggc-none.c
 EXTRA_GCC_SRCS = driver-i386.c
 
 # this is directly from GCC's Makefile, beware evil
