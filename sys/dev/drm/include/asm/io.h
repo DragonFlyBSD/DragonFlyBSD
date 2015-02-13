@@ -28,6 +28,7 @@
 #define _ASM_IO_H_
 
 #include <machine/pmap.h>
+#include <vm/vm.h>
 
 #define ioread8(addr)		*(volatile uint8_t *)((char *)addr)
 #define ioread16(addr)		*(volatile uint16_t *)((char *)addr)

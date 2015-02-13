@@ -27,6 +27,7 @@
 #ifndef _LINUX_GFP_H_
 #define _LINUX_GFP_H_
 
+#define GFP_ATOMIC	M_NOWAIT
 #define GFP_KERNEL	M_WAITOK
 #define GFP_TEMPORARY	M_WAITOK
 

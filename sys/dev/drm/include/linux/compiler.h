@@ -2,6 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
+ * Copyright (c) 2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -63,5 +64,7 @@
 #define __read_mostly
 #define __always_unused			__unused
 #define __must_check			__heedresult
+
+#define __printf(a,b)			__printflike(a,b)
 
 #endif	/* _LINUX_COMPILER_H_ */

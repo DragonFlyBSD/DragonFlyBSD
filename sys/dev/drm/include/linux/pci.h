@@ -32,6 +32,7 @@
 #include <sys/bus.h>
 #include <bus/pci/pcivar.h>
 
+#include <linux/types.h>
 #include <linux/device.h>
 #include <linux/io.h>
 

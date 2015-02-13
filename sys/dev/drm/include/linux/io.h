@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@
 #define _LINUX_IO_H_
 
 #include <asm/io.h>
+#include <linux/kernel.h>
 
 #if defined(writel)
 #undef writel
@@ -37,6 +38,19 @@ static inline void
 writel(uint32_t value, void *addr)
 {
 	*(volatile uint32_t *)addr = value;
+}
+
+static inline int
+arch_phys_wc_add(unsigned long base, unsigned long size)
+{
+	/* The DragonFly kernel is PAT-enabled, do nothing */
+	return 0;
+}
+
+static inline void
+arch_phys_wc_del(int handle)
+{
+	BUG_ON(handle != 0);
 }
 
 #endif	/* _LINUX_IO_H_ */

@@ -93,6 +93,7 @@ sg_set_buf(struct scatterlist *sg, const void *buf, unsigned int buflen)
 	sg_set_page(sg, virt_to_page(buf), buflen,
 	    ((uintptr_t)buf) & ~PAGE_MASK);
 }
+#endif
 
 static inline void
 sg_init_table(struct scatterlist *sg, unsigned int nents)
@@ -100,7 +101,6 @@ sg_init_table(struct scatterlist *sg, unsigned int nents)
 	bzero(sg, sizeof(*sg) * nents);
 	sg[nents - 1].flags = SG_END;
 }
-#endif
 
 static inline struct scatterlist *
 sg_next(struct scatterlist *sg)
@@ -164,7 +164,6 @@ static inline void sg_mark_end(struct scatterlist *sg)
         sg->flags = SG_END;
 }
 
-#if 0
 /**
  * __sg_free_table - Free a previously mapped sg table
  * @table:      The sg table header to use
@@ -265,7 +264,7 @@ __sg_alloc_table(struct sg_table *table, unsigned int nents,
 
 		left -= sg_size;
 
-		sg = kmalloc(alloc_size * sizeof(struct scatterlist), gfp_mask);
+		sg = kmalloc(alloc_size * sizeof(struct scatterlist), M_DRM, gfp_mask);
 		if (unlikely(!sg)) {
 		/*
 		 * Adjust entry count to reflect that the last
@@ -327,7 +326,6 @@ sg_alloc_table(struct sg_table *table, unsigned int nents, gfp_t gfp_mask)
 
 	return ret;
 }
-#endif
 
 #define	for_each_sg(sglist, sg, sgmax, _itr)				\
 	for (_itr = 0, sg = (sglist); _itr < (sgmax); _itr++, sg = sg_next(sg))
