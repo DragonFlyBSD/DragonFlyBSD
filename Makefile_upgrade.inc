@@ -2819,6 +2819,7 @@ TO_REMOVE+=/usr/share/man/man1/g++44.1.gz
 TO_REMOVE+=/usr/share/man/man1/gcc44.1.gz
 TO_REMOVE+=/usr/share/man/man1/gcov44.1.gz
 TO_REMOVE+=/usr/share/mk/bsd.cpu.gcc44.mk
+TO_REMOVE+=/usr/libdata/gcc50/stddef.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

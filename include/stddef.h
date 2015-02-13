@@ -70,4 +70,12 @@ typedef __wchar_t	wchar_t;	/* open group */
 
 #define	offsetof(type, member)	__offsetof(type, member)
 
+#if (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L) || \
+    (defined(__cplusplus) && __cplusplus >= 201103L))
+typedef struct {
+	long long __max_align_nonce1 __aligned(__alignof(long long));
+	long double __max_align_nonce2 __aligned(__alignof(long double));
+} max_align_t;
+#endif
+
 #endif /* _STDDEF_H_ */
