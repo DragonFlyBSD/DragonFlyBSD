@@ -491,6 +491,17 @@ actively passing data.  This requires pf to be active to be meaningful
 but is capable of displaying connection state for all packet traffic
 passing through the machine, even for connections that do not originate
 or terminate on the machine.
+.Pp
+You need a wide ~100 column window to display pftop reasonably well.
+IPV6 addresses are truncated (just the first two and last two words
+are displayed) for brevity.  Generally speaking 'rcv' is data received
+by the first IP and 'snd' is data sent to the second IP.  'ttl' is
+the sum total data sent plus received tracked by the state.
+.Pp
+The display is sorted by average rx+tx bandwidth calculated on a 1/8 decay
+curve to prevent fields from jumping around too much.  Units for all rows
+are selected based on the largest bandwidth measurement for uniformity.
+Note that two states will be present for any connection operating over NAT.
 .It Ic altq
 Display packet filter altq statistics.
 The ALTQ operates in conjunction with the packet filter (pf) on the

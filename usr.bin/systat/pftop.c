@@ -81,9 +81,14 @@
 struct mypfstate {
 	RB_ENTRY(mypfstate)	rb_node;
 	int			seq;
+	double			save_bw;
+	double			best_bw;
 	struct pfsync_state	state;
 	struct pfsync_state	last_state;
 };
+
+double delta_time;
+double highestbw;
 
 static int
 mypfstate_cmp(struct mypfstate *pf1, struct mypfstate *pf2)
@@ -106,7 +111,10 @@ mypfstate_cmp(struct mypfstate *pf1, struct mypfstate *pf2)
 	} else {
 		nk2 = &pf2->state.key[PF_SK_STACK];
 	}
-	if (pf1->state.proto == IPPROTO_TCP || pf1->state.proto == IPPROTO_UDP) {
+	if (pf1->state.proto == IPPROTO_TCP ||
+	    pf1->state.proto == IPPROTO_UDP ||
+	    pf1->state.proto == IPPROTO_ICMP ||
+	    pf1->state.proto == IPPROTO_ICMPV6) {
 		if (ntohs(nk1->port[0]) >= 1024 &&
 		    ntohs(nk2->port[0]) >= 1024) {
 			if (ntohs(nk1->port[1]) < ntohs(nk2->port[1]))
@@ -161,7 +169,12 @@ mypfstate_cmp(struct mypfstate *pf1, struct mypfstate *pf2)
 		if (r)
 			return(r);
 	}
-	return(0);
+
+	/*
+	 * Unique Identifier to prevent overloading which messes up
+	 * the bandwidth calculations.
+	 */
+	return (memcmp(pf1->state.id, pf2->state.id, sizeof(pf1->state.id)));
 }
 
 struct mypfstate_tree;
@@ -174,12 +187,15 @@ static struct timeval tv_curr;
 static struct timeval tv_last;
 static int tcp_pcb_seq;
 
-static const char *numtok(double value);
+static const char *numtok(double value, double template);
 static const char *netaddrstr(sa_family_t af, struct pf_addr *addr,
 			u_int16_t port);
+static const char *statestr(int proto);
 static void updatestate(struct pfsync_state *state);
 static int statebwcmp(const void *data1, const void *data2);
 
+#define GETBYTES64(field)	\
+	(be64toh(*(uint64_t *)elm->state.field))
 #define DELTARATE(field)	\
 	((double)(be64toh(*(uint64_t *)elm->state.field) - \
 		  be64toh(*(uint64_t *)elm->last_state.field)) / delta_time)
@@ -248,6 +264,7 @@ fetchpftop(void)
 
 	++tcp_pcb_seq;
 
+	highestbw = 0.0;
 	for (i = 0; i < nstates; ++i)
 		updatestate(&states[i]);
 	free(ps.ps_buf);
@@ -277,7 +294,6 @@ labelpftop(void)
 void
 showpftop(void)
 {
-	double delta_time;
 	struct mypfstate *elm;
 	struct mypfstate *delm;
 	struct mypfstate **array;
@@ -285,6 +301,8 @@ showpftop(void)
 	size_t n;
 	struct pfsync_state_key *nk;
 	int row;
+	int rxdir;
+	int txdir;
 
 	delta_time = (double)(tv_curr.tv_sec - tv_last.tv_sec) - 1.0 +
 		     (tv_curr.tv_usec + 1000000 - tv_last.tv_usec) / 1e6;
@@ -298,16 +316,15 @@ showpftop(void)
 	i = 0;
 	n = 1024;
 	array = malloc(n * sizeof(*array));
+
 	RB_FOREACH(elm, mypfstate_tree, &mypf_tree) {
 		if (delm) {
 			RB_REMOVE(mypfstate_tree, &mypf_tree, delm);
 			free(delm);
 			delm = NULL;
 		}
-		if (elm->seq == tcp_pcb_seq &&
-		    (DELTARATE(bytes[0]) ||
-		     DELTARATE(bytes[1]))
-		) {
+
+		if (elm->seq == tcp_pcb_seq && elm->save_bw > 0) {
 			array[i++] = elm;
 			if (i == n) {
 				n *= 2;
@@ -327,21 +344,44 @@ showpftop(void)
 	row = 2;
 	n = i;
 	for (i = 0; i < n; ++i) {
+		int64_t ttl;
+
 		elm = array[i];
 		if (elm->state.direction == PF_OUT) {
 			nk = &elm->state.key[PF_SK_WIRE];
+			rxdir = 0;
+			txdir = 1;
 		} else {
 			nk = &elm->state.key[PF_SK_STACK];
+			rxdir = 1;
+			txdir = 0;
 		}
+		ttl = GETBYTES64(bytes[0]) + GETBYTES64(bytes[1]);
 		mvwprintw(wnd, row, 0,
-			  "%s %s "
+			  "%s %s | %s "
 			  /*"rxb %s txb %s "*/
-			  "rcv %s snd %s ",
+			  "rcv %s snd %s ttl %s",
+			  statestr(elm->state.proto),
 			  netaddrstr(elm->state.af, &nk->addr[0], nk->port[0]),
 			  netaddrstr(elm->state.af, &nk->addr[1], nk->port[1]),
-			  numtok(DELTARATE(bytes[0])),
-			  numtok(DELTARATE(bytes[1]))
+			  numtok(DELTARATE(bytes[rxdir]), highestbw),
+			  numtok(DELTARATE(bytes[txdir]), highestbw),
+			  numtok(ttl, ttl)
 		);
+#if 0
+		mvwprintw(wnd, row, 0,
+			  "%s %s %s "
+			  /*"rxb %s txb %s "*/
+			  "rcv %jd-%jd snd %jd-%jd ",
+			  statestr(elm->state.proto),
+			  netaddrstr(elm->state.af, &nk->addr[0], nk->port[0]),
+			  netaddrstr(elm->state.af, &nk->addr[1], nk->port[1]),
+			  be64toh(*(uint64_t *)elm->state.bytes[0]),
+			  be64toh(*(uint64_t *)elm->last_state.bytes[0]),
+			  be64toh(*(uint64_t *)elm->state.bytes[1]),
+			  be64toh(*(uint64_t *)elm->last_state.bytes[1])
+		);
+#endif
 		wclrtoeol(wnd);
 		if (++row >= LINES-3)
 			break;
@@ -361,22 +401,14 @@ statebwcmp(const void *data1, const void *data2)
 {
 	const struct mypfstate *elm1 = *__DECONST(struct mypfstate **, data1);
 	const struct mypfstate *elm2 = *__DECONST(struct mypfstate **, data2);
-	uint64_t v1;
-	uint64_t v2;
+	double dv;
 
-	v1 = be64toh(*(const uint64_t *)elm1->state.bytes[0]) +
-	     be64toh(*(const uint64_t *)elm1->state.bytes[1]);
-	v1 -= be64toh(*(const uint64_t *)elm1->last_state.bytes[0]) +
-	     be64toh(*(const uint64_t *)elm1->last_state.bytes[1]);
-	v2 = be64toh(*(const uint64_t *)elm2->state.bytes[0]) +
-	     be64toh(*(const uint64_t *)elm2->state.bytes[1]);
-	v2 -= be64toh(*(const uint64_t *)elm2->last_state.bytes[0]) +
-	     be64toh(*(const uint64_t *)elm2->last_state.bytes[1]);
-	if (v1 < v2)
-		return(1);
-	if (v1 > v2)
-		return(-1);
-	return(0);
+	dv = elm1->save_bw - elm2->save_bw;
+	if (dv < 0)
+		return 1;
+	if (dv > 0)
+		return -1;
+	return 0;
 }
 
 #if 0
@@ -395,7 +427,7 @@ cmdpftop(const char *cmd __unused, char *args __unused)
 
 static
 const char *
-numtok(double value)
+numtok(double value, double template)
 {
 	static char buf[MAXINDEXES][32];
 	static int nexti;
@@ -403,20 +435,21 @@ numtok(double value)
 	int suffix = 0;
 	const char *fmt;
 
-	while (value >= 1000.0 && suffixes[suffix+1]) {
+	while (template >= 1000.0 && suffixes[suffix+1]) {
 		value /= 1000.0;
+		template /= 1000.0;
 		++suffix;
 	}
 	nexti = (nexti + 1) % MAXINDEXES;
 	if (value < 0.001) {
 		fmt = "      ";
-	} else if (value < 1.0) {
+	} else if (template < 1.0) {
 		fmt = "%5.3f%s";
-	} else if (value < 10.0) {
+	} else if (template < 10.0) {
 		fmt = "%5.3f%s";
-	} else if (value < 100.0) {
+	} else if (template < 100.0) {
 		fmt = "%5.2f%s";
-	} else if (value < 1000.0) {
+	} else if (template < 1000.0) {
 		fmt = "%5.1f%s";
 	} else {
 		fmt = "<huge>";
@@ -445,8 +478,9 @@ netaddrstr(sa_family_t af, struct pf_addr *addr, u_int16_t port)
 			 (ntohl(addr->v4.s_addr) >> 8) & 255,
 			 (ntohl(addr->v4.s_addr) >> 0) & 255);
 		snprintf(buf[nexta], sizeof(buf[nexta]),
-			 "%15s:%-5d", bufip, port);
+			 "%-20s %-5d", bufip, port);
 	} else if (af == AF_INET6) {
+#if defined(PFTOP_WIDE)
 		snprintf(bufip, sizeof(bufip),
 			 "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
 			 ntohs(addr->v6.s6_addr16[0]),
@@ -458,7 +492,17 @@ netaddrstr(sa_family_t af, struct pf_addr *addr, u_int16_t port)
 			 ntohs(addr->v6.s6_addr16[6]),
 			 ntohs(addr->v6.s6_addr16[7]));
 		snprintf(buf[nexta], sizeof(buf[nexta]),
-			 "%39s:%-5d", bufip, port);
+			 "%39s %-5d", bufip, port);
+#else
+		snprintf(bufip, sizeof(bufip),
+			 "%04x:%04x--%04x:%04x",
+			 ntohs(addr->v6.s6_addr16[0]),
+			 ntohs(addr->v6.s6_addr16[1]),
+			 ntohs(addr->v6.s6_addr16[6]),
+			 ntohs(addr->v6.s6_addr16[7]));
+		snprintf(buf[nexta], sizeof(buf[nexta]),
+			 "%20s %-5d", bufip, port);
+#endif
 	} else {
 		snprintf(bufip, sizeof(bufip), "<unknown>:%-5d", port);
 		snprintf(buf[nexta], sizeof(buf[nexta]),
@@ -480,14 +524,45 @@ updatestate(struct pfsync_state *state)
 		bzero(elm, sizeof(*elm));
 		elm->state = *state;
 		elm->last_state = *state;
+		elm->best_bw = DELTARATE(bytes[0]) + DELTARATE(bytes[1]);
+		elm->save_bw = elm->best_bw;
 		bzero(elm->last_state.bytes,
 			sizeof(elm->last_state.bytes));
 		bzero(elm->last_state.packets,
 			sizeof(elm->last_state.packets));
 		RB_INSERT(mypfstate_tree, &mypf_tree, elm);
+		if (highestbw < elm->save_bw)
+			highestbw = elm->save_bw;
 	} else {
 		elm->last_state = elm->state;
 		elm->state = *state;
+		elm->best_bw = DELTARATE(bytes[0]) + DELTARATE(bytes[1]);
+		if (elm->save_bw < elm->best_bw)
+			elm->save_bw = elm->best_bw;
+		else
+			elm->save_bw = (elm->save_bw * 7 + elm->best_bw) / 8;
+		if (highestbw < elm->save_bw)
+			highestbw = elm->save_bw;
 	}
 	elm->seq = tcp_pcb_seq;
+}
+
+const char *
+statestr(int proto)
+{
+	static char buf[32];
+
+	switch(proto) {
+	case IPPROTO_TCP:
+		return ("tcp  ");
+	case IPPROTO_UDP:
+		return ("udp  ");
+	case IPPROTO_ICMP:
+		return ("icmp ");
+	case IPPROTO_ICMPV6:
+		return ("icmp6");
+	default:
+		snprintf(buf, sizeof(buf), "%-5d", proto);
+		return buf;
+	}
 }
