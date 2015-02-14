@@ -28,7 +28,7 @@
 #ifndef _LINUX_WAIT_H_
 #define _LINUX_WAIT_H_
 
-#include <sys/spinlock2.h>
+#include <linux/spinlock.h>
 #include <sys/param.h>
 
 typedef struct {
