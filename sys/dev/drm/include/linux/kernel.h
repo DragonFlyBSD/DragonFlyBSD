@@ -68,6 +68,8 @@
 	unlikely(__ret);						\
 })
 
+#define WARN_ON_SMP(condition)	WARN_ON(condition)
+
 #define WARN_ON_ONCE(condition) ({					\
 	static int __warned;						\
 	int __ret = !!(condition);					\
@@ -82,6 +84,7 @@
 #undef	ALIGN
 #define	ALIGN(x, y)		roundup2((x), (y))
 #define	DIV_ROUND_UP		howmany
+#define DIV_ROUND_UP_ULL(X, N)	DIV_ROUND_UP((unsigned long long)(X), (N))
 
 #define	printk(X...)		kprintf(X)
 #define	pr_debug(fmt, ...)	printk(KERN_DEBUG # fmt, ##__VA_ARGS__)
@@ -161,10 +164,14 @@
 #define	simple_strtoul	strtoul
 #define	simple_strtol	strtol
 
-#define min(x, y)	(x < y ? x : y)
-#define max(x, y)	(x > y ? x : y)
-#define min_t(type, _x, _y)	(type)(_x) < (type)(_y) ? (type)(_x) : (_y)
-#define max_t(type, _x, _y)	(type)(_x) > (type)(_y) ? (type)(_x) : (_y)
+#define min(x, y)			(x < y ? x : y)
+#define max(x, y)			(x > y ? x : y)
+
+#define max3(a, b, c)			max(a, max(b,c))
+
+#define min_t(type, _x, _y)		(type)(_x) < (type)(_y) ? (type)(_x) : (_y)
+#define max_t(type, _x, _y)		(type)(_x) > (type)(_y) ? (type)(_x) : (_y)
+#define clamp_t(type, _x, min, max)	min_t(type, max_t(type, _x, min), max)
 
 /*
  * This looks more complex than it should be. But we need to
