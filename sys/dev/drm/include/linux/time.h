@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -119,6 +119,12 @@ timespec_valid(const struct timespec *ts)
 	    ts->tv_nsec < 0 || ts->tv_nsec >= 1000000000)
 		return (0);
 	return (1);
+}
+
+static inline unsigned long
+get_seconds(void)
+{
+	return time_uptime;
 }
 
 #endif	/* _LINUX_TIME_H_ */
