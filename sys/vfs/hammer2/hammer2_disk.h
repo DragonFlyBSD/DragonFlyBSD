@@ -318,7 +318,7 @@
 /* LEVEL5 is a set of 8 blockrefs in the volume header 16EB */
 
 /*
- * Freemap radii.  Note that the LEVEL 1 blockref points to a 64KB freemap
+ * Freemap radix.  Note that the LEVEL 1 blockref points to a 64KB freemap
  * block containing 1024 x LEVEL0 hammer2_bmap_data structures.  LEVEL 0
  * represents one structure.
  */

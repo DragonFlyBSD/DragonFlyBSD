@@ -2439,7 +2439,7 @@ hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 }
 
 /*
- * Support code for hammer2_mount().  Read, verify, and install the volume
+ * Support code for hammer2_vfs_mount().  Read, verify, and install the volume
  * header into the HMP
  *
  * XXX read four volhdrs and use the one with the highest TID whos CRC
