@@ -38,6 +38,7 @@
 #include <linux/compiler.h>
 #include <linux/log2.h>
 #include <linux/types.h>
+#include <linux/printk.h>
 
 #define KERN_CONT       ""
 #define	KERN_EMERG	"<0>"
