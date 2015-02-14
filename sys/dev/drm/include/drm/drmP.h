@@ -1416,7 +1416,14 @@ extern drm_dma_handle_t *drm_pci_alloc(struct drm_device *dev, size_t size,
 void	drm_pci_free(struct drm_device *dev, drm_dma_handle_t *dmah);
 
 			       /* sysfs support (drm_sysfs.c) */
-extern char *drm_get_connector_status_name(enum drm_connector_status status);
+struct drm_sysfs_class;
+extern struct class *drm_sysfs_create(struct module *owner, char *name);
+extern void drm_sysfs_destroy(void);
+extern int drm_sysfs_device_add(struct drm_minor *minor);
+extern void drm_sysfs_hotplug_event(struct drm_device *dev);
+extern void drm_sysfs_device_remove(struct drm_minor *minor);
+extern int drm_sysfs_connector_add(struct drm_connector *connector);
+extern void drm_sysfs_connector_remove(struct drm_connector *connector);
 
 /* Graphics Execution Manager library functions (drm_gem.c) */
 int drm_gem_init(struct drm_device *dev);

@@ -223,8 +223,6 @@ struct drm_mode_get_connector {
 	__u32 connection;
 	__u32 mm_width, mm_height; /**< HxW in millimeters */
 	__u32 subpixel;
-
-	__u32 pad;
 };
 
 #define DRM_MODE_PROP_PENDING	(1<<0)
@@ -388,6 +386,19 @@ struct drm_mode_cursor {
 	__u32 height;
 	/* driver specific handle */
 	__u32 handle;
+};
+
+struct drm_mode_cursor2 {
+	__u32 flags;
+	__u32 crtc_id;
+	__s32 x;
+	__s32 y;
+	__u32 width;
+	__u32 height;
+	/* driver specific handle */
+	__u32 handle;
+	__s32 hot_x;
+	__s32 hot_y;
 };
 
 struct drm_mode_crtc_lut {
