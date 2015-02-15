@@ -1318,7 +1318,7 @@ void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			hammer_off_t hint, int *errorp);
 
 int hammer_generate_undo(hammer_transaction_t trans,
-			hammer_off_t zone1_offset, void *base, int len);
+			hammer_off_t zone_offset, void *base, int len);
 int hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 			hammer_off_t file_offset, u_int32_t flags,
 			void *base, int len);
