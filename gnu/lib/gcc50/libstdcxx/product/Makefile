@@ -1,6 +1,7 @@
 RELUP=	/..
 .include "../../Makefile.inc"
 SRCDIR=	${GCCDIR}/libstdc++-v3
+PREDIR=	${SRCDIR}/config/abi/pre
 .include "Makefile.src"
 
 LIB=		stdc++
@@ -14,7 +15,7 @@ CXXFLAGS+=	-fno-implicit-templates
 CXXFLAGS+=	-fdiagnostics-show-location=once
 CXXFLAGS+=	-ffunction-sections -fdata-sections
 LDFLAGS+=	-Wl,-z -Wl,relro -Wl,--gc-sections
-VERSION_MAP=	${.CURDIR}/libstdc++-symbols.ver
+VERSION_MAP=	${.OBJDIR}/libstdcxx.map
 
 FLAGS_GROUPS=		gnu11
 gnu11_FLAGS=		-std=gnu++11
@@ -33,6 +34,7 @@ ARADD=		${CONVARCS} ${LIBM}
 
 SRCS=		${libstdc___la_SOURCES:S|++|xx|}
 PROBLEMS=	${libstdc___la_SOURCES:M*++*}
+PROBLEMSXX=	${PROBLEMS:S|++|xx|}
 
 libstdc++.a: ${SRCS:.cc=.o} script.ar
 	@${ECHO} building static ${LIB} library via script
@@ -40,7 +42,7 @@ libstdc++.a: ${SRCS:.cc=.o} script.ar
 	${AR} -M < script.ar
 	mv libstdcxx.a ${.TARGET}
 
-${PROBLEMS:S|++|xx|}: ${PROBLEMS}
+${PROBLEMSXX}: ${PROBLEMS}
 	cp ${SRCDIR}/src/c++11/${.TARGET:S|xx|++|} ${.TARGET}
 
 gstdint.h:
@@ -57,7 +59,12 @@ script.ar:
 	@echo "SAVE"			>> ${.TARGET}
 	@echo "END"			>> ${.TARGET}
 
-beforedepend:	gstdint.h script.ar ${PROBLEMS:S|++|xx|}
-CLEANFILES=	gstdint.h script.ar ${PROBLEMS:S|++|xx|}
+libstdcxx.map: ${PREDIR}/gnu.ver ${PREDIR}/float128.ver
+	cat ${.ALLSRC} | grep -E -v '^[ 	]*#(#| |$)' | \
+	${CC} -E -P -include ${.CURDIR}/../headers/config.h - > ${.TARGET}
+
+GENFILES=	gstdint.h script.ar ${PROBLEMSXX} libstdcxx.map
+CLEANFILES=	${GENFILES}
+beforedepend:	${GENFILES}
 
 .include <bsd.lib.mk>
