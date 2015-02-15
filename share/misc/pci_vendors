@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2015.01.05
-#	Date:    2015-01-05 03:15:01
+#	Version: 2015.02.14
+#	Date:    2015-02-14 03:15:02
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -349,9 +349,9 @@
 		1028 1f48  PERC H730P Mini (for blades)
 		1028 1f49  PERC H730 Mini
 		1028 1f4a  PERC H730 Mini (for blades)
-		1028 1f4d  PERC FS33xS
+		1028 1f4d  PERC FD33xS
 		1028 1f4f  PERC H730P Slim
-		1028 1f54  PERC FS33xD
+		1028 1f54  PERC FD33xD
 		17aa 1052  ThinkServer RAID 720i
 		17aa 1053  ThinkServer RAID 720ix
 	005e  SAS1066 PCI-X Fusion-MPT SAS
@@ -3491,6 +3491,7 @@
 	0160  64bit/66MHz PCI ATM 155 MMF
 	016e  GXT4000P Graphics Adapter
 	0170  GXT6000P Graphics Adapter
+		1092 0172  Fire GL2
 	017d  GXT300P Graphics Adapter
 	0180  Snipe chipset SCSI controller
 		1014 0241  iSeries 2757 DASD IOA
@@ -9437,6 +9438,8 @@
 	0e0b  GK106 HDMI Audio Controller
 	0e0c  GF114 HDMI Audio Controller
 	0e0f  GK208 HDMI/DP Audio Controller
+	0e12  TegraK1 PCIe x4 Bridge
+	0e13  TegraK1 PCIe x1 Bridge
 	0e1a  GK110 HDMI Audio
 	0e1b  GK107 HDMI Audio Controller
 		103c 197b  ZBook 15
@@ -9622,6 +9625,7 @@
 	10c5  GT218 [GeForce 405]
 	10d8  GT218 [NVS 300]
 	1140  GF117M [GeForce 610M/710M/820M / GT 620M/625M/630M/720M]
+		1019 999f  GeForce GT 720M
 		1025 0600  GeForce GT 620M
 		1025 0606  GeForce GT 620M
 		1025 064a  GeForce GT 620M
@@ -9662,6 +9666,7 @@
 		1025 0821  GeForce GT 720M
 		1025 0823  GeForce GT 720M
 		1025 0830  GeForce GT 720M
+		1025 0833  GeForce GT 720M
 		1025 0837  GeForce GT 720M
 		1025 083e  GeForce 820M
 		1025 0841  GeForce 710M
@@ -9678,8 +9683,18 @@
 		1025 087c  GeForce 810M
 		1025 0881  GeForce 820M
 		1025 088a  GeForce 820M
+		1025 089b  GeForce 820M
 		1025 090f  GeForce 820M
 		1025 0921  GeForce 820M
+		1025 092e  GeForce 810M
+		1025 092f  GeForce 820M
+		1025 093a  GeForce 820M
+		1025 093c  GeForce 820M
+		1025 093f  GeForce 820M
+		1025 0941  GeForce 820M
+		1025 0945  GeForce 820M
+		1025 0954  GeForce 820M
+		1025 0965  GeForce 820M
 		1028 054d  GeForce GT 630M
 		1028 054e  GeForce GT 630M
 		1028 0554  GeForce GT 620M
@@ -9699,8 +9714,12 @@
 		1028 05e0  GeForce GT 720M
 		1028 05e8  GeForce GT 630M
 		1028 05f4  GeForce GT 720M
+		1028 060f  GeForce GT 720M
 		1028 064e  GeForce 820M
 		1028 0652  GeForce 820M
+		1028 0653  GeForce 820M
+		1028 0655  GeForce 820M
+		1028 065e  GeForce 820M
 		1028 0662  GeForce 820M
 		1028 068d  GeForce 820M
 		103c 18ef  GeForce GT 630M
@@ -9708,6 +9727,8 @@
 		103c 18fb  GeForce GT 630M
 		103c 18fd  GeForce GT 630M
 		103c 18ff  GeForce GT 630M
+		103c 2335  GeForce 820M
+		103c 2337  GeForce 820M
 		103c 2aef  GeForce GT 720A
 		103c 2af9  GeForce 710A
 		1043 10dd  NVS 5200M
@@ -9741,7 +9762,26 @@
 		1043 224a  GeForce GT 710M
 		1043 227a  GeForce 820M
 		1043 228a  GeForce 820M
+		1043 232a  GeForce 820M
+		1043 233a  GeForce 820M
+		1043 236a  GeForce 820M
+		1043 238a  GeForce 820M
 		1043 8595  GeForce GT 720M
+		1043 85ea  GeForce GT 720M
+		1043 85eb  GeForce 820M
+		1043 85ec  GeForce 820M
+		1043 85ee  GeForce GT 720M
+		1043 85f3  GeForce 820M
+		1043 860e  GeForce 820M
+		1043 861a  GeForce 820M
+		1043 861b  GeForce 820M
+		1043 8628  GeForce 820M
+		1043 8643  GeForce 820M
+		1043 864c  GeForce 820M
+		1043 8652  GeForce 820M
+		105b 0dac  GeForce GT 720M
+		105b 0dad  GeForce GT 720M
+		105b 0ef3  GeForce GT 720M
 		1072 152d  GeForce GT 720M
 		10cf 17f5  GeForce GT 720M
 		1179 fa01  GeForce 710M
@@ -9774,17 +9814,27 @@
 		144d c0e2  NVS 5200M
 		144d c0e3  NVS 5200M
 		144d c0e4  NVS 5200M
+		144d c10d  GeForce 820M
 		144d c652  GeForce GT 620M
 		144d c709  GeForce 710M
 		144d c711  GeForce 710M
 		144d c736  GeForce 710M
+		144d c737  GeForce 710M
+		144d c745  GeForce 820M
+		144d c750  GeForce 820M
 		1462 10b8  GeForce GT 710M
 		1462 10e9  GeForce GT 720M
 		1462 1116  GeForce 820M
 		1462 aa33  GeForce 720M
 		1462 aaa2  GeForce GT 720M
 		1462 aaa3  GeForce 820M
+		1462 acb2  GeForce GT 720M
+		1462 acc1  GeForce GT 720M
+		1462 ae61  GeForce 720M
+		1462 ae65  GeForce GT 720M
+		1462 ae6a  GeForce 820M
 		1462 ae71  GeForce GT 720M
+		14c0 0083  GeForce 820M
 		152d 0926  GeForce 620M
 		152d 0982  GeForce GT 630M
 		152d 0983  GeForce GT 630M
@@ -9796,6 +9846,7 @@
 		152d 1067  GeForce GT 720M
 		152d 1072  GeForce GT 720M
 		152d 1086  GeForce 820M
+		152d 1092  GeForce 820M
 		17aa 2200  NVS 5200M
 		17aa 2213  GeForce GT 720M
 		17aa 2220  GeForce GT 720M
@@ -9813,6 +9864,7 @@
 		17aa 369c  GeForce 820A
 		17aa 369d  GeForce 820A
 		17aa 369e  GeForce 820A
+		17aa 36a9  GeForce 820A
 		17aa 3800  GeForce GT 720M
 		17aa 3801  GeForce GT 720M
 		17aa 3802  GeForce GT 720M
@@ -9828,13 +9880,18 @@
 		17aa 3813  GeForce 820M
 		17aa 3816  GeForce 820M
 		17aa 3818  GeForce 820M
+		17aa 381a  GeForce 820M
+		17aa 381c  GeForce 820M
 		17aa 3901  GeForce 610M / GT 620M
 		17aa 3902  GeForce 710M
 		17aa 3903  GeForce 610M/710M
 		17aa 3904  GeForce GT 620M/625M
 		17aa 3905  GeForce GT 720M
+		17aa 3907  GeForce 820M
 		17aa 3910  GeForce 720M
 		17aa 3912  GeForce 720M
+		17aa 3913  GeForce 820M
+		17aa 3915  GeForce 820M
 		17aa 3977  GeForce GT 720M
 		17aa 3983  GeForce 610M
 		17aa 5001  GeForce 610M
@@ -9866,7 +9923,10 @@
 		1854 0192  GeForce GT 720M
 		1b0a 20dd  GeForce GT 620M
 		1b0a 20df  GeForce GT 620M
+		1b0a 210e  GeForce 820M
 		1b0a 2202  GeForce GT 720M
+		1b0a 90d7  GeForce 820M
+		1b0a 90dd  GeForce 820M
 	1180  GK104 [GeForce GTX 680]
 		1043 83f1  GTX680-DC2-2GD5
 		3842 3682  GeForce GTX 680 Mac Edition
@@ -10010,6 +10070,7 @@
 		103c 2b22  GeForce GT 810A
 	1296  GK208M [GeForce 825M]
 	1298  GK208M [GeForce GT 720M]
+	1299  GK208M [GeForce 920M]
 	12a0  GK208
 	12b9  GK208GLM [Quadro K610M]
 	12ba  GK208GLM [Quadro K510M]
@@ -10019,20 +10080,28 @@
 		17aa 3697  GeForce 840A
 		17aa 3699  GeForce 840A
 		17aa 369c  GeForce 840A
+	1346  GM108M [GeForce 930M]
+	1347  GM108M [GeForce 940M]
 	1380  GM107 [GeForce GTX 750 Ti]
 	1381  GM107 [GeForce GTX 750]
 	1382  GM107 [GeForce GTX 745]
-	1389  GM107GL [GRID M3]
+	1389  GM107GL [GRID M30]
 	1390  GM107M [GeForce 845M]
 	1391  GM107M [GeForce GTX 850M]
 		17aa 3697  GeForce GTX 850A
 		17aa a125  GeForce GTX 850A
 	1392  GM107M [GeForce GTX 860M]
 	1393  GM107M [GeForce 840M]
+	1398  GM107M [GeForce 845M]
+	139a  GM107M [GeForce GTX 950M]
+	139b  GM107M [GeForce GTX 960M]
+	139c  GM107M [GeForce 940M]
+	13b0  GM107GLM [N16P-Q3]
 	13b3  GM107GLM [Quadro K2200M]
 	13ba  GM107GL [Quadro K2200]
 	13bb  GM107GL [Quadro K620]
-	13bd  GM107GL [Tesla M40]
+	13bc  GM107GL [Quadro K1200]
+	13bd  GM107GL [GRID M40]
 	13c0  GM204 [GeForce GTX 980]
 		1043 8504  GTX980-4GD5
 	13c1  GM204
@@ -10041,6 +10110,7 @@
 	13d7  GM204M [GeForce GTX 980M]
 	13d8  GM204M [GeForce GTX 970M]
 	13d9  GM204M [GeForce GTX 965M]
+	1401  GM206 [GeForce GTX 960]
 	17f0  GM200GL [Quadro M6000]
 10df  Emulex Corporation
 	0720  OneConnect NIC (Skyhawk)
@@ -10198,6 +10268,8 @@
 	5249  RTS5249 PCI Express Card Reader
 		103c 1909  ZBook 15
 	5288  RTS5288 PCI Express Card Reader
+	5289  RTL8411 PCI Express Card Reader
+		1043 1457  K55A Laptop
 	8029  RTL-8029(AS)
 		10b8 2011  EZ-Card (SMC1208)
 		10ec 8029  RTL-8029(AS)
@@ -10639,6 +10711,12 @@
 		1458 0691  VT82C691 Apollo Pro System Controller
 	0693  VT82C693 [Apollo Pro Plus]
 	0698  VT82C693A [Apollo Pro133 AGP]
+	0709  VX11 Standard Host Bridge
+	070a  VX11 PCI Express Root Port
+	070b  VX11 PCI Express Root Port
+	070c  VX11 PCI Express Root Port
+	070d  VX11 PCI Express Root Port
+	070e  VX11 PCI Express Root Port
 	0926  VT82C926 [Amazon]
 	1000  VT82C570MV
 	1106  VT82C570MV
@@ -10894,6 +10972,14 @@
 		1458 5000  GA-7VAX Mainboard
 # probably all K7VT2/4*/6
 		1849 3189  K7VT series Motherboards
+	31b0  VX11 Standard Host Bridge
+	31b1  VX11 Standard Host Bridge
+	31b2  VX11 DRAM Controller
+	31b3  VX11 Power Management Controller
+	31b4  VX11 I/O APIC
+	31b5  VX11 Scratch Device
+	31b7  VX11 Standard Host Bridge
+	31b8  VX11 PCI to PCI Bridge
 	3204  K8M800 Host Bridge
 	3205  VT8378 [KM400/A] Chipset Host Bridge
 		1458 5000  GA-7VM400M Motherboard
@@ -10946,6 +11032,9 @@
 	3410  VX900 DRAM Bus Control
 		19da a179  ZBOX nano VD01
 	3432  VL80x xHCI USB 3.0 Controller
+	3456  VX11 Standard Host Bridge
+	345b  VX11 Miscellaneous Bus
+	3a01  VX11 Graphics [Chrome 645/640]
 	4149  VIA VT6420 (ATA133) Controller
 	4204  K8M800 Host Bridge
 	4208  PT890 Host Bridge
@@ -11046,6 +11135,9 @@
 	8d01  PN133/PN133T [S3 Twister]
 	8d04  KM266/P4M266/P4M266A/P4N266 [S3 ProSavageDDR]
 	9001  VX900 Serial ATA Controller
+	9082  Standard AHCI 1.0 SATA Controller
+	9140  HDMI Audio Device
+	9201  USB3.0 Controller
 	9530  Secure Digital Memory Card Controller
 	95d0  SDIO Host Controller
 	a208  PT890 PCI to PCI Bridge Controller
@@ -11596,6 +11688,7 @@
 		0070 8993  WinTV HVR-2200
 		0070 89a0  WinTV HVR-2200
 		0070 89a1  WinTV HVR-2200
+		0070 f123  WinTV HVR-2205
 	7231  SAA7231
 		5ace 8000  Behold TV H8
 		5ace 8001  Behold TV H8
@@ -15629,6 +15722,7 @@
 	080f  Sentry5 DDR/SDR RAM Controller
 	0811  Sentry5 External Interface Core
 	0816  BCM3302 Sentry5 MIPS32 CPU
+	1570  720p FaceTime HD Camera
 	1600  NetXtreme BCM5752 Gigabit Ethernet PCI Express
 		1028 01c1  Precision 490
 		1028 01c2  Latitude D620
@@ -16727,6 +16821,7 @@
 1541  MACHONE Communications
 1542  Concurrent Computer Corporation
 	9260  RCIM-II Real-Time Clock & Interrupt Module
+	9271  RCIM-III Real-Time Clock & Interrupt Module (PCIe)
 	9272  Pulse Width Modulator Card
 	9277  5 Volt Delta Sigma Converter Card
 	9278  10 Volt Delta Sigma Converter Card
@@ -17517,6 +17612,12 @@
 	6302  XMC Module with user-configurable Virtex-6 FPGA, 365k logic cells, SFP front I/O
 	6303  XMC Module with user-configurable Virtex-6 FPGA, 240k logic cells, no front I/O
 	6304  XMC Module with user-configurable Virtex-6 FPGA, 365k logic cells, no front I/O
+	7000  XMC-7K325F: User-configurable Kintex-7 FPGA, 325k logic cells plus SFP front I/O
+	7001  XMC-7K410F: User-configurable Kintex-7 FPGA, 410k logic cells plus SFP front I/O
+	7002  XMC-7K325AX: User-Configurable Kintex-7 FPGA, 325k logic cells with AXM Plug-In I/O
+	7003  XMC-7K410AX: User-Configurable Kintex-7 FPGA, 410k logic cells with AXM Plug-In I/O
+	7004  XMC-7K325CC: User-Configurable Kintex-7 FPGA, 325k logic cells, conduction-cooled
+	7005  XMC-7K410CC: User-Configurable Kintex-7 FPGA, 410k logic cells, conduction-cooled
 16da  Advantech Co., Ltd.
 	0011  INES GPIB-PCI
 16df  PIKA Technologies Inc.
@@ -17672,6 +17773,7 @@
 	0010  PCIe Counter Timer
 	0011  SIS1100-e single link
 	0012  SIS1100-e quad link
+	0015  SIS8100 [Gigabit link, MicroTCA]
 1797  Techwell Inc.
 	6801  TW6802 multimedia video card
 	6802  TW6802 multimedia other device
@@ -18843,6 +18945,9 @@
 1cf7  Subspace Dynamics
 # CEM Solutions Pvt. Ltd.
 1d21  Allo
+1d26  Kalray Inc.
+	0040  Turbocard2 Accelerator
+	e004  AB01/EMB01 Development Board
 1d44  DPT
 	a400  PM2x24/PM3224
 1d5c  Fantasia Trading LLC
@@ -18946,6 +19051,10 @@
 3513  ARCOM Control Systems Ltd
 37d9  ITD Firm ltd.
 	1138  SCHD-PH-8 Phase detector
+# 12-ch Relay Actuator Card
+	1140  VR-12-PCI
+# multiport serial board
+	1141  PCI-485(422)
 3842  eVga.com. Corp.
 38ef  4Links
 3d3d  3DLabs
@@ -20050,6 +20159,7 @@
 	0a22  Haswell-ULT Integrated Graphics Controller
 	0a26  Haswell-ULT Integrated Graphics Controller
 	0a2a  Haswell-ULT Integrated Graphics Controller
+	0a2e  Haswell-ULT Integrated Graphics Controller
 	0be0  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
 	0be1  Atom Processor D2xxx/N2xxx Integrated Graphics Controller
 		105b 0d7c  D270S/D250S Motherboard
@@ -20270,11 +20380,16 @@
 	0f0a  Atom Processor Z36xxx/Z37xxx Series LPIO1 HSUART Controller #1
 	0f0c  Atom Processor Z36xxx/Z37xxx Series LPIO1 HSUART Controller #2
 	0f0e  Atom Processor Z36xxx/Z37xxx Series LPIO1 SPI Controller
+	0f12  Atom Processor E3800 Series SMBus Controller
 	0f14  Atom Processor Z36xxx/Z37xxx Series SDIO Controller
 	0f15  Atom Processor Z36xxx/Z37xxx Series SDIO Controller
 	0f16  Atom Processor Z36xxx/Z37xxx Series SDIO Controller
 	0f18  Atom Processor Z36xxx/Z37xxx Series Trusted Execution Engine
 	0f1c  Atom Processor Z36xxx/Z37xxx Series Power Control Unit
+	0f20  Atom Processor E3800 Series SATA IDE Controller
+	0f21  Atom Processor E3800 Series SATA IDE Controller
+	0f22  Atom Processor E3800 Series SATA AHCI Controller
+	0f23  Atom Processor E3800 Series SATA AHCI Controller
 	0f28  Atom Processor Z36xxx/Z37xxx Series LPE Audio Controller
 	0f31  Atom Processor Z36xxx/Z37xxx Series Graphics & Display
 	0f34  Atom Processor Z36xxx/Z37xxx Series USB EHCI
@@ -20289,6 +20404,11 @@
 	0f45  Atom Processor Z36xxx/Z37xxx Series LPIO2 I2C Controller #5
 	0f46  Atom Processor Z36xxx/Z37xxx Series LPIO2 I2C Controller #6
 	0f47  Atom Processor Z36xxx/Z37xxx Series LPIO2 I2C Controller #7
+	0f48  Atom Processor E3800 Series PCI Express Root Port 1
+	0f4a  Atom Processor E3800 Series PCI Express Root Port 2
+	0f4c  Atom Processor E3800 Series PCI Express Root Port 3
+	0f4e  Atom Processor E3800 Series PCI Express Root Port 4
+	0f50  Atom Processor E3800 Series eMMC 4.5 Controller
 	1000  82542 Gigabit Ethernet Controller (Fiber)
 		0e11 b0df  NC6132 Gigabit Ethernet Adapter (1000-SX)
 		0e11 b0e0  NC6133 Gigabit Ethernet Adapter (1000-LX)
@@ -21163,6 +21283,11 @@
 	15a1  Ethernet Connection (2) I218-V
 	15a2  Ethernet Connection (3) I218-LM
 	15a3  Ethernet Connection (3) I218-V
+	15a8  Ethernet Connection X552 Virtual Function
+	15aa  Ethernet Connection X552 10 GbE Backplane
+	15ab  Ethernet Connection X552 10 GbE Backplane
+	15ac  Ethernet Connection X552 10 GbE SFP+
+	15ad  Ethernet Connection X552/X557-AT 10GBASE-T
 	15b7  Ethernet Connection (2) I219-LM
 	15b8  Ethernet Connection (2) I219-V
 	1600  Broadwell-U Host Bridge -OPI
