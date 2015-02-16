@@ -444,7 +444,7 @@ main(int ac, char **av)
 	}
 
 	if (strncmp(av[0], "history", 7) == 0) {
-		hammer_cmd_history(av[0] + 8, av + 1, ac - 1);
+		hammer_cmd_history(av[0] + 7, av + 1, ac - 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "rebalance") == 0) {
