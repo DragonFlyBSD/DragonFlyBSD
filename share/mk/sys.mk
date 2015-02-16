@@ -60,8 +60,10 @@ CXX_LINK	?=	${CXX}
 NXCXX		?=	${NXENV} ${CXX}
 NXCXX_LINK	?=	${NXENV} ${CXX_LINK}
 CXXFLAGS	?=	${CXXINCLUDES} ${CFLAGS:N-std=*:N-Wnested-externs:N-W*-prototypes:N-Wno-pointer-sign:N-Wold-style-definition}
-.if !defined(SYSBUILD) && ${.MAKE.BUILT.BY:Mgcc47}
+.if !defined(SYSBUILD)
+. if ${.MAKE.BUILT.BY:Mgcc47}
 CXXFLAGS	+=	-D_GLIBCXX_USE_CXX11_ABI=0
+. endif
 .endif
 
 CPP		?=	cpp
