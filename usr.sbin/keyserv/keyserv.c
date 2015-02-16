@@ -442,7 +442,7 @@ key_get_conv_2_svc_prog(uid_t uid, keybuf arg)
 
 	if (debugging)
 		fprintf(stderr, "get_conv(%d, %.*s) = ", uid,
-			(int)sizeof (xdrproc_t), arg);
+			(int)sizeof (keybuf), arg);
 
 
 	res.status = pk_get_conv_key(uid, arg, &res);
