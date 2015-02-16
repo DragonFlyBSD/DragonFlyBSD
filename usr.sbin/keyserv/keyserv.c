@@ -323,7 +323,7 @@ key_set_1_svc_prog(uid_t uid, keybuf key)
 	static keystatus status;
 
 	if (debugging) {
-		fprintf(stderr, "set(%ld, %.*s) = ", uid,
+		fprintf(stderr, "set(%d, %.*s) = ", uid,
 				(int) sizeof (keybuf), key);
 	}
 	status = pk_setkey(uid, key);
@@ -340,7 +340,7 @@ key_encrypt_pk_2_svc_prog(uid_t uid, cryptkeyarg2 *arg)
 	static cryptkeyres res;
 
 	if (debugging) {
-		fprintf(stderr, "encrypt(%ld, %s, %08x%08x) = ", uid,
+		fprintf(stderr, "encrypt(%d, %s, %08x%08x) = ", uid,
 				arg->remotename, arg->deskey.key.high,
 				arg->deskey.key.low);
 	}
@@ -366,7 +366,7 @@ key_decrypt_pk_2_svc_prog(uid_t uid, cryptkeyarg2 *arg)
 	static cryptkeyres res;
 
 	if (debugging) {
-		fprintf(stderr, "decrypt(%ld, %s, %08x%08x) = ", uid,
+		fprintf(stderr, "decrypt(%d, %s, %08x%08x) = ", uid,
 				arg->remotename, arg->deskey.key.high,
 				arg->deskey.key.low);
 	}
@@ -414,7 +414,7 @@ key_net_get_2_svc_prog(uid_t uid, void *arg)
 	static key_netstres keynetname;
 
 	if (debugging)
-		fprintf(stderr, "net_get(%ld) = ", uid);
+		fprintf(stderr, "net_get(%d) = ", uid);
 
 	keynetname.status = pk_netget(uid, &keynetname.key_netstres_u.knet);
 	if (debugging) {
@@ -441,7 +441,7 @@ key_get_conv_2_svc_prog(uid_t uid, keybuf arg)
 	static cryptkeyres  res;
 
 	if (debugging)
-		fprintf(stderr, "get_conv(%ld, %.*s) = ", uid,
+		fprintf(stderr, "get_conv(%d, %.*s) = ", uid,
 			(int)sizeof (xdrproc_t), arg);
 
 
@@ -467,7 +467,7 @@ key_encrypt_1_svc_prog(uid_t uid, cryptkeyarg *arg)
 	static cryptkeyres res;
 
 	if (debugging) {
-		fprintf(stderr, "encrypt(%ld, %s, %08x%08x) = ", uid,
+		fprintf(stderr, "encrypt(%d, %s, %08x%08x) = ", uid,
 				arg->remotename, arg->deskey.key.high,
 				arg->deskey.key.low);
 	}
@@ -493,7 +493,7 @@ key_decrypt_1_svc_prog(uid_t uid, cryptkeyarg *arg)
 	static cryptkeyres res;
 
 	if (debugging) {
-		fprintf(stderr, "decrypt(%ld, %s, %08x%08x) = ", uid,
+		fprintf(stderr, "decrypt(%d, %s, %08x%08x) = ", uid,
 				arg->remotename, arg->deskey.key.high,
 				arg->deskey.key.low);
 	}
@@ -727,7 +727,7 @@ root_auth(SVCXPRT *trans, struct svc_req *rqstp)
 	}
 
 	if (debugging)
-		fprintf(stderr, "local_uid  %ld\n", uid);
+		fprintf(stderr, "local_uid  %d\n", uid);
 	if (uid == 0)
 		return (1);
 	if (rqstp->rq_cred.oa_flavor == AUTH_SYS) {
@@ -738,7 +738,7 @@ root_auth(SVCXPRT *trans, struct svc_req *rqstp)
 		} else {
 			if (debugging)
 				fprintf(stderr,
-			"local_uid  %ld mismatches auth %ld\n", uid,
+			"local_uid  %d mismatches auth %u\n", uid,
 ((uid_t) ((struct authunix_parms *)rqstp->rq_clntcred)->aup_uid));
 			return (0);
 		}
