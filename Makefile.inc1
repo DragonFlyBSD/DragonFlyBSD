@@ -263,7 +263,7 @@ BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 
 BMAKE=		${BMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
 		-DNOINFO -DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
-		-DNO_WERROR -DNO_NLS
+		-DNO_WERROR -DNO_NLS -DSYSBUILD
 
 # build-tool stage
 #
@@ -274,7 +274,8 @@ TMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		M4=${BTOOLSDEST}/usr/bin/m4 \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
-TMAKE=		${TMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING -DNOSHARED
+TMAKE=		${TMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
+		-DNOSHARED -DSYSBUILD
 
 # cross-tool stage
 #
@@ -294,7 +295,7 @@ XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		PATH=${BTOOLSPATH}:${PATH}
 
 XMAKE=		${XMAKEENV} make -f Makefile.inc1 -DNO_GDB \
-		-DBOOTSTRAPPING -DNOSHARED
+		-DBOOTSTRAPPING -DNOSHARED -DSYSBUILD
 
 # world stage, note the strict path and note that TOOLS_PREFIX is left
 # unset and USRDATA_PREFIX (which defaults to TOOLS_PREFIX) is set to empty,
@@ -321,13 +322,13 @@ WMAKEENV=	${CROSSENV} \
 		M4=${BTOOLSDEST}/usr/bin/m4 \
 		PATH=${STRICTTMPPATH}
 
-WMAKE=		${WMAKEENV} make -f Makefile.inc1
+WMAKE=		${WMAKEENV} make -f Makefile.inc1 -DSYSBUILD
 
 # install stage
 #
 IMAKEENV=	${CROSSENV} \
 		PATH=${STRICTTMPPATH}
-IMAKE=		${IMAKEENV} make -f Makefile.inc1
+IMAKE=		${IMAKEENV} make -f Makefile.inc1 -DSYSBUILD
 
 # kernel stage
 #
@@ -977,16 +978,16 @@ hierarchy:
 libraries:
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
-		make -f Makefile.inc1 _startup_libs47;
+		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD;
 .if !defined(NO_GCC50)
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc50 \
-		make -f Makefile.inc1 _startup_libs50;
+		make -f Makefile.inc1 _startup_libs50 -DSYSBUILD;
 .endif
 	cd ${.CURDIR}; \
-	    make -f Makefile.inc1 _startup_libs; \
-	    make -f Makefile.inc1 _prebuild_libs; \
-	    make -f Makefile.inc1 _generic_libs;
+	    make -f Makefile.inc1 _startup_libs -DSYSBUILD; \
+	    make -f Makefile.inc1 _prebuild_libs -DSYSBUILD; \
+	    make -f Makefile.inc1 _generic_libs -DSYSBUILD;
 	touch ${WORLDDEST}/.libraries_done
 
 # These dependencies are not automatically generated:
@@ -1088,25 +1089,25 @@ par-${__target}: ${SUBDIR:S/$/.${__target}__D/}
 # world build environment.
 #
 wmake:
-	@echo '${WMAKEENV} make ${WMAKE_ARGS}'
+	@echo '${WMAKEENV} make ${WMAKE_ARGS} -DSYSBUILD'
 
 wmakeenv:
 	@echo '${WMAKEENV} /bin/sh'
 
 bmake:
-	@echo '${BMAKEENV} make ${BMAKE_ARGS}'
+	@echo '${BMAKEENV} make ${BMAKE_ARGS} -DSYSBUILD'
 
 bmakeenv:
 	@echo '${BMAKEENV} /bin/sh'
 
 tmake:
-	@echo '${TMAKEENV} make ${TMAKE_ARGS}'
+	@echo '${TMAKEENV} make ${TMAKE_ARGS} -DSYSBUILD'
 
 tmakeenv:
 	@echo '${TMAKEENV} /bin/sh'
 
 xmake:
-	@echo '${XMAKEENV} make ${XMAKE_ARGS}'
+	@echo '${XMAKEENV} make ${XMAKE_ARGS} -DSYSBUILD'
 
 xmakeenv:
 	@echo '${XMAKEENV} /bin/sh'
