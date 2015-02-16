@@ -160,10 +160,21 @@ memtemp_e5_probe(device_t dev)
 		if (c->did == did && c->slot == slot && c->func == func) {
 			struct memtemp_e5_softc *sc = device_get_softc(dev);
 			char desc[128];
+			uint32_t cfg;
 			int node;
 
 			node = e5_imc_node_probe(dev, c);
 			if (node < 0)
+				break;
+
+			/*
+			 * XXX
+			 * It seems that memory thermal sensor is available,
+			 * only if CLTT is set (OLTT_EN does not seem matter).
+			 */
+			cfg = pci_read_config(dev,
+			    PCI_E5_IMC_THERMAL_CHN_TEMP_CFG, 4);
+			if ((cfg & PCI_E5_IMC_THERMAL_CHN_TEMP_CFG_CLTT) == 0)
 				break;
 
 			ksnprintf(desc, sizeof(desc), "%s node%d channel%d",
