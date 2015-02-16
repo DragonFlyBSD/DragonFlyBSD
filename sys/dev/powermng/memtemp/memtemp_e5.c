@@ -227,24 +227,6 @@ memtemp_e5_attach(device_t dev)
 		dimm_sc->dimm_id = dimm;
 		dimm_sc->dimm_parent = sc;
 
-		dimm_extid =
-		(sc->temp_node * PCI_E5_IMC_CHN_MAX * PCI_E5_IMC_CHN_DIMM_MAX) +
-		(sc->temp_chan->chan_ext * PCI_E5_IMC_CHN_DIMM_MAX) + dimm;
-		ksnprintf(dimm_sc->dimm_sensordev.xname,
-		    sizeof(dimm_sc->dimm_sensordev.xname),
-		    "dimm%d", dimm_extid);
-		dimm_sc->dimm_sensor.type = SENSOR_TEMP;
-		sensor_attach(&dimm_sc->dimm_sensordev, &dimm_sc->dimm_sensor);
-		if (sensor_task_register(dimm_sc, memtemp_e5_sensor_task, 2)) {
-			device_printf(dev, "DIMM%d sensor task register "
-			    "failed\n", dimm);
-			kfree(dimm_sc, M_DEVBUF);
-			continue;
-		}
-		sensordev_install(&dimm_sc->dimm_sensordev);
-
-		TAILQ_INSERT_TAIL(&sc->temp_dimm, dimm_sc, dimm_link);
-
 		temp_th = pci_read_config(dev,
 		    PCI_E5_IMC_THERMAL_DIMM_TEMP_TH(dimm), 4);
 
@@ -290,6 +272,24 @@ memtemp_e5_attach(device_t dev)
 		    temp_histr, temp_midstr, temp_lostr);
 		device_printf(dev, "DIMM%d hiwat %dC, lowat %dC\n", dimm,
 		    dimm_sc->dimm_temp_hiwat, dimm_sc->dimm_temp_lowat);
+
+		dimm_extid =
+		(sc->temp_node * PCI_E5_IMC_CHN_MAX * PCI_E5_IMC_CHN_DIMM_MAX) +
+		(sc->temp_chan->chan_ext * PCI_E5_IMC_CHN_DIMM_MAX) + dimm;
+		ksnprintf(dimm_sc->dimm_sensordev.xname,
+		    sizeof(dimm_sc->dimm_sensordev.xname),
+		    "dimm%d", dimm_extid);
+		dimm_sc->dimm_sensor.type = SENSOR_TEMP;
+		sensor_attach(&dimm_sc->dimm_sensordev, &dimm_sc->dimm_sensor);
+		if (sensor_task_register(dimm_sc, memtemp_e5_sensor_task, 2)) {
+			device_printf(dev, "DIMM%d sensor task register "
+			    "failed\n", dimm);
+			kfree(dimm_sc, M_DEVBUF);
+			continue;
+		}
+		sensordev_install(&dimm_sc->dimm_sensordev);
+
+		TAILQ_INSERT_TAIL(&sc->temp_dimm, dimm_sc, dimm_link);
 	}
 	return 0;
 }
