@@ -11,9 +11,10 @@ you didn't get a copy, you may request one from <license@inner.net>.
 	Modified by cmetz for OPIE 2.4. Use struct opie_otpkey, isolate variables.
 	Created by cmetz for OPIE 2.3.
 
-$FreeBSD: src/contrib/opie/libopie/hashlen.c,v 1.3.6.2 2002/07/15 14:48:47 des Exp $
-$DragonFly: src/contrib/opie/libopie/hashlen.c,v 1.2 2003/06/17 04:24:05 dillon Exp $
+$FreeBSD: head/contrib/opie/libopie/hashlen.c 239169 2012-08-10 04:48:58Z delphij $
 */
+
+#include <sys/endian.h>
 
 #include "opie_cfg.h"
 #include "opie.h"
@@ -37,6 +38,13 @@ VOIDPTR in AND struct opie_otpkey *out AND int n)
       SHA1_Final((unsigned char *)digest, &sha);
       results[0] = digest[0] ^ digest[2] ^ digest[4];
       results[1] = digest[1] ^ digest[3];
+
+      /*
+       * RFC2289 mandates that we convert SHA1 digest from big-endian to little
+       * see Appendix A.
+       */
+      results[0] = bswap32(results[0]);
+      results[1] = bswap32(results[1]);
       break;
     }
     case 4: {

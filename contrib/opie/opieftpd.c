@@ -48,8 +48,7 @@ License Agreement applies to this software.
 
 	        There is some really, really ugly code in here.
 
-$FreeBSD: src/contrib/opie/opieftpd.c,v 1.2.6.5 2002/07/15 14:48:43 des Exp $
-$DragonFly: src/contrib/opie/opieftpd.c,v 1.2 2003/06/17 04:24:05 dillon Exp $
+$FreeBSD: head/contrib/opie/opieftpd.c 92914 2002-03-21 23:42:52Z markm $
 */
 /*
  * Copyright (c) 1985, 1988, 1990 Regents of the University of California.
