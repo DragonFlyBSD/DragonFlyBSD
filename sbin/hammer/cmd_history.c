@@ -70,6 +70,8 @@ hammer_cmd_history(const char *offset_str, char **av, int ac)
 				printf("%s: %s\n", strerror(errno), rptr);
 				exit(1);
 			}
+			if (len < 0)
+				len = 32;
 		}
 	} else {
 		off = -1;
