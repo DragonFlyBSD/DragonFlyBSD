@@ -2106,8 +2106,8 @@ options		DCONS_FORCE_GDB=1	# force to be the gdb device
 # Drivers are ports from openbsd with some simple enhancements that have
 # been fed back to openbsd (and hopefully will be included).
 
-pseudo-device	crypto		# core crypto support
-pseudo-device	cryptodev	# /dev/crypto for access to h/w
+device		crypto		# core crypto support
+device		cryptodev	# /dev/crypto for access to h/w
 
 device		rndtest		# FIPS 140-2 entropy tester
 

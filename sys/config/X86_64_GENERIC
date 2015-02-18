@@ -314,7 +314,8 @@ pseudo-device	carp
 # Be aware of the administrative consequences of enabling this!
 pseudo-device	bpf		#Berkeley packet filter
 
-pseudo-device	crypto		# core crypto support, used by wlan
+device		crypto		# core crypto support, used by wlan
+device		cryptodev	# /dev/crypto for access to h/w
 
 # USB support
 #
