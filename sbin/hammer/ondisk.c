@@ -374,7 +374,7 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 			*bufferp = NULL;
 		}
 	}
-	return get_ondisk(buf_offset, bufferp, isnew);
+	return(get_ondisk(buf_offset, bufferp, isnew));
 }
 
 /*
@@ -388,7 +388,7 @@ get_node(hammer_off_t node_offset, struct buffer_info **bufferp)
 		rel_buffer(*bufferp);
 		*bufferp = NULL;
 	}
-	return get_ondisk(node_offset, bufferp, 0);
+	return(get_ondisk(node_offset, bufferp, 0));
 }
 
 /*
@@ -409,8 +409,8 @@ get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp,
 			return(NULL);
 	}
 
-	return (char *)buffer->ondisk +
-		((int32_t)buf_offset & HAMMER_BUFMASK);
+	return((char *)buffer->ondisk +
+		((int32_t)buf_offset & HAMMER_BUFMASK));
 }
 
 /*
