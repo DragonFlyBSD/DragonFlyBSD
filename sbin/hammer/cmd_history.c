@@ -174,4 +174,3 @@ timestr32(u_int32_t time32)
 	strftime(timebuf, sizeof(timebuf), "%d-%b-%Y %H:%M:%S", tp);
 	return(timebuf);
 }
-
