@@ -41,6 +41,7 @@
 #include <sys/mbuf.h>
 #include <sys/eventhandler.h>
 #include <sys/filio.h>
+#include <sys/msgport2.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/kernel.h>
@@ -49,6 +50,8 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/netisr2.h>
+#include <net/netmsg2.h>
 #include <net/route.h>
 
 #include <netinet/in.h>
@@ -542,15 +545,31 @@ pfi_table_update(struct pfr_ktable *kt, struct pfi_kif *kif, int net, int flags)
 		    "into table %s: %d\n", pfi_buffer_cnt, kt->pfrkt_name, e);
 }
 
-void
-pfi_instance_add(struct ifnet *ifp, int net, int flags)
+struct netmsg_pfiadd {
+	struct netmsg_base	base;
+	struct ifnet		*ifp;
+	int			net;
+	int			flags;
+};
+
+static void
+pfi_instance_add_dispatch(netmsg_t nmsg)
 {
+	struct netmsg_pfiadd *msg = (struct netmsg_pfiadd *)nmsg;
 	struct ifaddr_container *ifac;
 	int		 got4 = 0, got6 = 0;
 	int		 net2, af;
+	struct ifnet *ifp = msg->ifp;
+	int net = msg->net, flags = msg->flags;
 
 	if (ifp == NULL)
-		return;
+		goto done;
+	/*
+	 * The ifaddr processing in the following loop will block,
+	 * however, this function is called in netisr0, in which
+	 * ifaddr list changes happen, so we don't care about the
+	 * blockness of the ifaddr processing here.
+	 */
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 		struct ifaddr *ia = ifac->ifa;
 
@@ -609,6 +628,23 @@ pfi_instance_add(struct ifnet *ifp, int net, int flags)
 		else
 			pfi_address_add(ia->ifa_addr, af, net2);
 	}
+done:
+	lwkt_replymsg(&nmsg->lmsg, 0);
+}
+
+void
+pfi_instance_add(struct ifnet *ifp, int net, int flags)
+{
+	struct netmsg_pfiadd msg;
+
+	ASSERT_CANDOMSG_NETISR0(curthread);
+
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+	    pfi_instance_add_dispatch);
+	msg.ifp = ifp;
+	msg.net = net;
+	msg.flags = flags;
+	lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
 }
 
 void

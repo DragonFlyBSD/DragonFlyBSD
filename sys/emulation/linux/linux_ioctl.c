@@ -1017,7 +1017,9 @@ linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 	/* Return all AF_INET addresses of all interfaces */
 	ifnet_lock();
 	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
-		struct ifaddr_container *ifac;
+		struct ifaddr_container *ifac, *ifac_mark;
+		struct ifaddr_marker mark;
+		struct ifaddrhead *head;
 
 		if (uio.uio_resid <= 0)
 			break;
@@ -1029,10 +1031,26 @@ linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 		else
 			strlcpy(ifr.ifr_name, ifp->if_xname, LINUX_IFNAMSIZ);
 
-		/* Walk the address list */
-		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		/*
+		 * Walk the address list
+		 *
+		 * Add a marker, since uiomove() could block and during that
+		 * period the list could be changed.  Inserting the marker to
+		 * the header of the list will not cause trouble for the code
+		 * assuming that the first element of the list is AF_LINK; the
+		 * marker will be moved to the next position w/o blocking.
+		 */
+		ifa_marker_init(&mark, ifp);
+		ifac_mark = &mark.ifac;
+		head = &ifp->if_addrheads[mycpuid];
+
+		TAILQ_INSERT_HEAD(head, ifac_mark, ifa_link);
+		while ((ifac = TAILQ_NEXT(ifac_mark, ifa_link)) != NULL) {
 			struct ifaddr *ifa = ifac->ifa;
 			struct sockaddr *sa = ifa->ifa_addr;
+
+			TAILQ_REMOVE(head, ifac_mark, ifa_link);
+			TAILQ_INSERT_AFTER(head, ifac, ifac_mark, ifa_link);
 
 			if (uio.uio_resid <= 0)
 				break;
@@ -1045,11 +1063,13 @@ linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 				error = uiomove((caddr_t)&ifr, sizeof ifr,
 				    &uio);
 				if (error != 0) {
+					TAILQ_REMOVE(head, ifac_mark, ifa_link);
 					ifnet_unlock();
 					return (error);
 				}
 			}
 		}
+		TAILQ_REMOVE(head, ifac_mark, ifa_link);
 	}
 	ifnet_unlock();
 

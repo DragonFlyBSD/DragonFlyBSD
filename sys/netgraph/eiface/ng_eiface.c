@@ -440,8 +440,12 @@ ng_eiface_rcvmsg(node_p node, struct ng_mesg *msg,
 			/* Determine size of response and allocate it */
 			buflen = 0;
 			TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid],
-				      ifa_link)
+				      ifa_link) {
+				/* Ignore marker */
+				if (ifac->ifa->ifa_addr->sa_family == AF_UNSPEC)
+					 continue;
 				buflen += SA_SIZE(ifac->ifa->ifa_addr);
+			}
 			NG_MKRESPONSE(resp, msg, buflen, M_NOWAIT);
 			if (resp == NULL) {
 				error = ENOMEM;
@@ -454,6 +458,10 @@ ng_eiface_rcvmsg(node_p node, struct ng_mesg *msg,
 				      ifa_link) {
 				struct ifaddr *ifa = ifac->ifa;
 				const int len = SA_SIZE(ifa->ifa_addr);
+
+				/* Ignore marker */
+				if (ifa->ifa_addr->sa_family == AF_UNSPEC)
+					 continue;
 
 				if (buflen < len) {
 					log(LOG_ERR, "%s: len changed?\n",

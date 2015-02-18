@@ -1305,12 +1305,21 @@ sysctl_iflist(int af, struct walkarg *w)
 
 	ifnet_lock();
 	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
-		struct ifaddr_container *ifac;
+		struct ifaddr_container *ifac, *ifac_mark;
+		struct ifaddr_marker mark;
+		struct ifaddrhead *head;
 		struct ifaddr *ifa;
 
 		if (w->w_arg && w->w_arg != ifp->if_index)
 			continue;
-		ifac = TAILQ_FIRST(&ifp->if_addrheads[mycpuid]);
+		head = &ifp->if_addrheads[mycpuid];
+		/*
+		 * There is no need to reference the first ifaddr
+		 * even if the following resizewalkarg() blocks,
+		 * since the first ifaddr will not be destroyed
+		 * when the ifnet lock is held.
+		 */
+		ifac = TAILQ_FIRST(head);
 		ifa = ifac->ifa;
 		rtinfo.rti_ifpaddr = ifa->ifa_addr;
 		msglen = rt_msgsize(RTM_IFINFO, &rtinfo);
@@ -1334,8 +1343,22 @@ sysctl_iflist(int af, struct walkarg *w)
 				return (error);
 			}
 		}
-		while ((ifac = TAILQ_NEXT(ifac, ifa_link)) != NULL) {
+		/*
+		 * Add a marker, since SYSCTL_OUT() could block and during
+		 * that period the list could be changed.
+		 */
+		ifa_marker_init(&mark, ifp);
+		ifac_mark = &mark.ifac;
+		TAILQ_INSERT_AFTER(head, ifac, ifac_mark, ifa_link);
+		while ((ifac = TAILQ_NEXT(ifac_mark, ifa_link)) != NULL) {
+			TAILQ_REMOVE(head, ifac_mark, ifa_link);
+			TAILQ_INSERT_AFTER(head, ifac, ifac_mark, ifa_link);
+
 			ifa = ifac->ifa;
+
+			/* Ignore marker */
+			if (ifa->ifa_addr->sa_family == AF_UNSPEC)
+				continue;
 
 			if (af && af != ifa->ifa_addr->sa_family)
 				continue;
@@ -1346,8 +1369,16 @@ sysctl_iflist(int af, struct walkarg *w)
 			rtinfo.rti_netmask = ifa->ifa_netmask;
 			rtinfo.rti_bcastaddr = ifa->ifa_dstaddr;
 			msglen = rt_msgsize(RTM_NEWADDR, &rtinfo);
+			/*
+			 * Keep a reference on this ifaddr, so that it will
+			 * not be destroyed if the following resizewalkarg()
+			 * blocks.
+			 */
+			IFAREF(ifa);
 			if (w->w_tmemsize < msglen &&
 			    resizewalkarg(w, msglen) != 0) {
+				IFAFREE(ifa);
+				TAILQ_REMOVE(head, ifac_mark, ifa_link);
 				ifnet_unlock();
 				return (ENOMEM);
 			}
@@ -1361,11 +1392,15 @@ sysctl_iflist(int af, struct walkarg *w)
 				ifam->ifam_addrs = rtinfo.rti_addrs;
 				error = SYSCTL_OUT(w->w_req, w->w_tmem, msglen);
 				if (error) {
+					IFAFREE(ifa);
+					TAILQ_REMOVE(head, ifac_mark, ifa_link);
 					ifnet_unlock();
 					return (error);
 				}
 			}
+			IFAFREE(ifa);
 		}
+		TAILQ_REMOVE(head, ifac_mark, ifa_link);
 		rtinfo.rti_netmask = NULL;
 		rtinfo.rti_ifaaddr = NULL;
 		rtinfo.rti_bcastaddr = NULL;

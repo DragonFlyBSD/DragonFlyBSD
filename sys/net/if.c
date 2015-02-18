@@ -728,14 +728,29 @@ if_attachdomain1(struct ifnet *ifp)
 /*
  * Purge all addresses whose type is _not_ AF_LINK
  */
-void
-if_purgeaddrs_nolink(struct ifnet *ifp)
+static void
+if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 {
+	struct lwkt_msg *lmsg = &nmsg->lmsg;
+	struct ifnet *ifp = lmsg->u.ms_resultp;
 	struct ifaddr_container *ifac, *next;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+
+	/*
+	 * The ifaddr processing in the following loop will block,
+	 * however, this function is called in netisr0, in which
+	 * ifaddr list changes happen, so we don't care about the
+	 * blockness of the ifaddr processing here.
+	 */
 	TAILQ_FOREACH_MUTABLE(ifac, &ifp->if_addrheads[mycpuid],
 			      ifa_link, next) {
 		struct ifaddr *ifa = ifac->ifa;
+
+		/* Ignore marker */
+		if (ifa->ifa_addr->sa_family == AF_UNSPEC)
+			continue;
 
 		/* Leave link ifaddr as it is */
 		if (ifa->ifa_addr->sa_family == AF_LINK)
@@ -781,6 +796,22 @@ if_purgeaddrs_nolink(struct ifnet *ifp)
 		ifa_ifunlink(ifa, ifp);
 		ifa_destroy(ifa);
 	}
+
+	lwkt_replymsg(lmsg, 0);
+}
+
+void
+if_purgeaddrs_nolink(struct ifnet *ifp)
+{
+	struct netmsg_base nmsg;
+	struct lwkt_msg *lmsg = &nmsg.lmsg;
+
+	ASSERT_CANDOMSG_NETISR0(curthread);
+
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport, 0,
+	    if_purgeaddrs_nolink_dispatch);
+	lmsg->u.ms_resultp = ifp;
+	lwkt_domsg(netisr_cpuport(0), lmsg, 0);
 }
 
 static void
@@ -1447,43 +1478,89 @@ link_rtrequest(int cmd, struct rtentry *rt)
 	}
 }
 
+struct netmsg_ifroute {
+	struct netmsg_base	base;
+	struct ifnet		*ifp;
+	int			flag;
+	int			fam;
+};
+
 /*
- * Mark an interface down and notify protocols of
- * the transition.
- * NOTE: must be called at splnet or eqivalent.
+ * Mark an interface down and notify protocols of the transition.
  */
-void
-if_unroute(struct ifnet *ifp, int flag, int fam)
+static void
+if_unroute_dispatch(netmsg_t nmsg)
 {
+	struct netmsg_ifroute *msg = (struct netmsg_ifroute *)nmsg;
+	struct ifnet *ifp = msg->ifp;
+	int flag = msg->flag, fam = msg->fam;
 	struct ifaddr_container *ifac;
 
 	ifp->if_flags &= ~flag;
 	getmicrotime(&ifp->if_lastchange);
+	/*
+	 * The ifaddr processing in the following loop will block,
+	 * however, this function is called in netisr0, in which
+	 * ifaddr list changes happen, so we don't care about the
+	 * blockness of the ifaddr processing here.
+	 */
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 		struct ifaddr *ifa = ifac->ifa;
+
+		/* Ignore marker */
+		if (ifa->ifa_addr->sa_family == AF_UNSPEC)
+			continue;
 
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
 			kpfctlinput(PRC_IFDOWN, ifa->ifa_addr);
 	}
 	ifq_purge_all(&ifp->if_snd);
 	rt_ifmsg(ifp);
+
+	lwkt_replymsg(&nmsg->lmsg, 0);
+}
+
+void
+if_unroute(struct ifnet *ifp, int flag, int fam)
+{
+	struct netmsg_ifroute msg;
+
+	ASSERT_CANDOMSG_NETISR0(curthread);
+
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+	    if_unroute_dispatch);
+	msg.ifp = ifp;
+	msg.flag = flag;
+	msg.fam = fam;
+	lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
 }
 
 /*
- * Mark an interface up and notify protocols of
- * the transition.
- * NOTE: must be called at splnet or eqivalent.
+ * Mark an interface up and notify protocols of the transition.
  */
-void
-if_route(struct ifnet *ifp, int flag, int fam)
+static void
+if_route_dispatch(netmsg_t nmsg)
 {
+	struct netmsg_ifroute *msg = (struct netmsg_ifroute *)nmsg;
+	struct ifnet *ifp = msg->ifp;
+	int flag = msg->flag, fam = msg->fam;
 	struct ifaddr_container *ifac;
 
 	ifq_purge_all(&ifp->if_snd);
 	ifp->if_flags |= flag;
 	getmicrotime(&ifp->if_lastchange);
+	/*
+	 * The ifaddr processing in the following loop will block,
+	 * however, this function is called in netisr0, in which
+	 * ifaddr list changes happen, so we don't care about the
+	 * blockness of the ifaddr processing here.
+	 */
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 		struct ifaddr *ifa = ifac->ifa;
+
+		/* Ignore marker */
+		if (ifa->ifa_addr->sa_family == AF_UNSPEC)
+			continue;
 
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
 			kpfctlinput(PRC_IFUP, ifa->ifa_addr);
@@ -1492,6 +1569,23 @@ if_route(struct ifnet *ifp, int flag, int fam)
 #ifdef INET6
 	in6_if_up(ifp);
 #endif
+
+	lwkt_replymsg(&nmsg->lmsg, 0);
+}
+
+void
+if_route(struct ifnet *ifp, int flag, int fam)
+{
+	struct netmsg_ifroute msg;
+
+	ASSERT_CANDOMSG_NETISR0(curthread);
+
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+	    if_route_dispatch);
+	msg.ifp = ifp;
+	msg.flag = flag;
+	msg.fam = fam;
+	lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
 }
 
 /*
@@ -1831,7 +1925,6 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 
 		strlcpy(ifp->if_xname, new_name, sizeof(ifp->if_xname));
 		ifa = TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa;
-		/* XXX IFA_LOCK(ifa); */
 		sdl = (struct sockaddr_dl *)ifa->ifa_addr;
 		namelen = strlen(new_name);
 		onamelen = sdl->sdl_nlen;
@@ -1850,7 +1943,6 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		bzero(sdl->sdl_data, onamelen);
 		while (namelen != 0)
 			sdl->sdl_data[--namelen] = 0xff;
-		/* XXX IFA_UNLOCK(ifa) */
 
 		EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 
@@ -2145,7 +2237,9 @@ ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 
 	ifnet_lock();
 	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
-		struct ifaddr_container *ifac;
+		struct ifaddr_container *ifac, *ifac_mark;
+		struct ifaddr_marker mark;
+		struct ifaddrhead *head;
 		int addrs;
 
 		if (space <= sizeof ifr)
@@ -2162,9 +2256,28 @@ ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 			break;
 		}
 
+		/*
+		 * Add a marker, since copyout() could block and during that
+		 * period the list could be changed.  Inserting the marker to
+		 * the header of the list will not cause trouble for the code
+		 * assuming that the first element of the list is AF_LINK; the
+		 * marker will be moved to the next position w/o blocking.
+		 */
+		ifa_marker_init(&mark, ifp);
+		ifac_mark = &mark.ifac;
+		head = &ifp->if_addrheads[mycpuid];
+
 		addrs = 0;
-		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		TAILQ_INSERT_HEAD(head, ifac_mark, ifa_link);
+		while ((ifac = TAILQ_NEXT(ifac_mark, ifa_link)) != NULL) {
 			struct ifaddr *ifa = ifac->ifa;
+
+			TAILQ_REMOVE(head, ifac_mark, ifa_link);
+			TAILQ_INSERT_AFTER(head, ifac, ifac_mark, ifa_link);
+
+			/* Ignore marker */
+			if (ifa->ifa_addr->sa_family == AF_UNSPEC)
+				continue;
 
 			if (space <= sizeof ifr)
 				break;
@@ -2173,6 +2286,12 @@ ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 			    prison_if(cred, sa))
 				continue;
 			addrs++;
+			/*
+			 * Keep a reference on this ifaddr, so that it will
+			 * not be destroyed when its address is copied to
+			 * the userland, which could block.
+			 */
+			IFAREF(ifa);
 #ifdef COMPAT_43
 			if (cmd == OSIOCGIFCONF) {
 				struct osockaddr *osa =
@@ -2189,8 +2308,10 @@ ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 				ifrp++;
 			} else {
 				if (space < (sizeof ifr) + sa->sa_len -
-					    sizeof(*sa))
+					    sizeof(*sa)) {
+					IFAFREE(ifa);
 					break;
+				}
 				space -= sa->sa_len - sizeof(*sa);
 				error = copyout(&ifr, ifrp,
 						sizeof ifr.ifr_name);
@@ -2200,10 +2321,12 @@ ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 				ifrp = (struct ifreq *)
 					(sa->sa_len + (caddr_t)&ifrp->ifr_addr);
 			}
+			IFAFREE(ifa);
 			if (error)
 				break;
 			space -= sizeof ifr;
 		}
+		TAILQ_REMOVE(head, ifac_mark, ifa_link);
 		if (error)
 			break;
 		if (!addrs) {
@@ -3485,4 +3608,20 @@ ifnet_array_isempty(void)
 		return 1;
 	else
 		return 0;
+}
+
+void
+ifa_marker_init(struct ifaddr_marker *mark, struct ifnet *ifp)
+{
+	struct ifaddr *ifa;
+
+	memset(mark, 0, sizeof(*mark));
+	ifa = &mark->ifa;
+
+	mark->ifac.ifa = ifa;
+
+	ifa->ifa_addr = &mark->addr;
+	ifa->ifa_dstaddr = &mark->dstaddr;
+	ifa->ifa_netmask = &mark->netmask;
+	ifa->ifa_ifp = ifp;
 }

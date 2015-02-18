@@ -654,6 +654,14 @@ struct ifmultiaddr {
 
 #ifdef _KERNEL
 
+struct ifaddr_marker {
+	struct ifaddr		ifa;
+	struct ifaddr_container	ifac;
+	struct sockaddr		addr;
+	struct sockaddr		netmask;
+	struct sockaddr		dstaddr;
+};
+
 /*
  * ifaddr statistics update macro
  */
@@ -974,6 +982,7 @@ void	*ifa_create(int, int);
 void	ifa_destroy(struct ifaddr *);
 void	ifa_iflink(struct ifaddr *, struct ifnet *, int);
 void	ifa_ifunlink(struct ifaddr *, struct ifnet *);
+void	ifa_marker_init(struct ifaddr_marker *, struct ifnet *);
 
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
