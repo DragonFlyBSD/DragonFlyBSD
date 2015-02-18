@@ -985,7 +985,7 @@ exec_free_args(struct image_args *args)
  *	[ps_strings]			top of user stack
  *
  */
-register_t *
+static register_t *
 exec_copyout_strings(struct image_params *imgp)
 {
 	int argc, envc, sgap;

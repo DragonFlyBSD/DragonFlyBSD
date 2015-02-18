@@ -789,7 +789,7 @@ elf_hash(const char *name)
     return h;
 }
 
-int
+static int
 link_elf_lookup_symbol(linker_file_t lf, const char* name, c_linker_sym_t* sym)
 {
     elf_file_t ef = lf->priv;

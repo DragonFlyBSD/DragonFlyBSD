@@ -1207,7 +1207,7 @@ diskpsize(struct dev_psize_args *ap)
 	return(0);
 }
 
-int
+static int
 diskdump(struct dev_dump_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;

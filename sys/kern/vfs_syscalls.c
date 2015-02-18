@@ -1836,7 +1836,7 @@ error_nond:
  * determine whether it is legal to chdir to the vnode.  The vnode's state
  * is not changed by this call.
  */
-int
+static int
 checkvp_chdir(struct vnode *vp, struct thread *td)
 {
 	int error;

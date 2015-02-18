@@ -172,7 +172,7 @@ disk_iocom_reconnect(struct disk *dp, struct file *fp)
 	return (0);
 }
 
-int
+static int
 disk_rcvdmsg(kdmsg_msg_t *msg)
 {
 	struct disk *dp = msg->state->iocom->handle;

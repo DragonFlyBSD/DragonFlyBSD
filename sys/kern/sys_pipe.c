@@ -951,7 +951,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 /*
  * we implement a very minimal set of ioctls for compatibility with sockets.
  */
-int
+static int
 pipe_ioctl(struct file *fp, u_long cmd, caddr_t data,
 	   struct ucred *cred, struct sysmsg *msg)
 {

@@ -634,7 +634,7 @@ static struct filterops mm_read_filtops =
 static struct filterops mm_write_filtops =
         { FILTEROP_ISFD|FILTEROP_MPSAFE, NULL, dummy_filter_detach, mm_filter_write };
 
-int
+static int
 mmkqfilter(struct dev_kqfilter_args *ap)
 {
 	struct knote *kn = ap->a_kn;

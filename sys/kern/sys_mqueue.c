@@ -221,7 +221,7 @@ mqueue_linear_insert(struct mqueue *mq, struct mq_msg *msg)
 /*
  * Validate input.
  */
-int
+static int
 itimespecfix(struct timespec *ts)
 {
 	if (ts->tv_sec < 0 || ts->tv_nsec < 0 || ts->tv_nsec >= 1000000000)
@@ -234,7 +234,7 @@ itimespecfix(struct timespec *ts)
 /*
  * Compute number of ticks in the specified amount of time.
  */
-int
+static int
 tstohz(const struct timespec *ts)
 {
 	struct timeval tv;

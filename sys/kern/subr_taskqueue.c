@@ -308,7 +308,7 @@ taskqueue_unblock(struct taskqueue *queue)
 	TQ_UNLOCK(queue);
 }
 
-void
+static void
 taskqueue_run(struct taskqueue *queue, int lock_held)
 {
 	struct task *task;

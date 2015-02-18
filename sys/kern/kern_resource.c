@@ -527,7 +527,7 @@ ioprio_set_callback(struct proc *p, void *data)
 	return(0);
 }
 
-int
+static int
 doionice(struct proc *chgp, int n)
 {
 	struct ucred *cr = curthread->td_ucred;

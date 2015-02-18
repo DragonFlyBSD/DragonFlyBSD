@@ -1178,7 +1178,7 @@ sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
  * to, and return the resulting error code.
  */
 
-int
+static int
 sysctl_root(SYSCTL_HANDLER_ARGS)
 {
 	struct thread *td = req->td;

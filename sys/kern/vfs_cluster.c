@@ -1013,7 +1013,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
  *
  * The returned bio is &bp->b_bio1
  */
-void
+static void
 cluster_callback(struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
