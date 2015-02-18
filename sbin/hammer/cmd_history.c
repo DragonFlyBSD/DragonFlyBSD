@@ -157,6 +157,7 @@ dumpat(const char *path, off_t off, int len)
 				putc('.', stdout);
 		}
 	}
+	close(fd);
 }
 
 /*
