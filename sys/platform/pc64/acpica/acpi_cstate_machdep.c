@@ -72,7 +72,7 @@ acpi_cst_md_cx_setup(struct acpi_cst_cx *cx)
 		/*
 		 * No optimization for non-Intel CPUs so far.
 		 *
-		 * Hardware fixed resouce is not supported for
+		 * Hardware fixed resource is not supported for
 		 * C1+ state yet.
 		 */
 		if (cx->type == ACPI_STATE_C1 &&
