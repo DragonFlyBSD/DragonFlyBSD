@@ -35,10 +35,13 @@
  */
 
 #include "hammer.h"
+#include <limits.h>
 
 static void hammer_do_history(const char *path, off_t off, int len);
 static void dumpat(const char *path, off_t off, int len);
 static const char *timestr32(u_int32_t time32);
+static __inline int test_strtol(int res, long val);
+static __inline int test_strtoll(int res, long long val);
 
 /*
  * history <file1> ... <fileN>
@@ -46,22 +49,34 @@ static const char *timestr32(u_int32_t time32);
 void
 hammer_cmd_history(const char *offset_str, char **av, int ac)
 {
-	off_t off;
 	int i;
-	int len;
+	long long off;
+	long len;
 	char *rptr;
 
 	len = 32;
 	if (*offset_str == '@') {
+		errno = 0; /* clear */
 		off = strtoll(offset_str + 1, &rptr, 0);
-		if (*rptr == ',')
+		if (test_strtoll(errno, off)) {
+			*rptr = '\0'; /* side effect */
+			printf("%s: %s\n", strerror(errno), offset_str);
+			exit(1);
+		}
+		if (*rptr == ',') {
+			errno = 0; /* clear */
 			len = strtol(rptr + 1, NULL, 0);
+			if (test_strtol(errno, len)) {
+				printf("%s: %s\n", strerror(errno), rptr);
+				exit(1);
+			}
+		}
 	} else {
 		off = -1;
 	}
 
 	for (i = 0; i < ac; ++i)
-		hammer_do_history(av[i], off, len);
+		hammer_do_history(av[i], (off_t)off, (int)len);
 }
 
 static void
@@ -173,4 +188,19 @@ timestr32(u_int32_t time32)
 	tp = localtime(&t);
 	strftime(timebuf, sizeof(timebuf), "%d-%b-%Y %H:%M:%S", tp);
 	return(timebuf);
+}
+
+/*
+ * Return non-zero on either overflow or underflow
+ */
+static __inline int
+test_strtol(int res, long val)
+{
+	return(res == ERANGE && (val == LONG_MIN || val == LONG_MAX));
+}
+
+static __inline int
+test_strtoll(int res, long long val)
+{
+	return(res == ERANGE && (val == LLONG_MIN || val == LLONG_MAX));
 }
