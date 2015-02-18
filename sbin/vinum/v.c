@@ -34,7 +34,6 @@
  *
  * $Id: v.c,v 1.31 2000/09/03 01:29:26 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/v.c,v 1.26.2.3 2001/03/13 03:04:06 grog Exp $
- * $DragonFly: src/sbin/vinum/v.c,v 1.6 2007/07/22 22:46:09 corecode Exp $
  */
 
 #include <ctype.h>
@@ -99,8 +98,6 @@ jmp_buf command_fail;					    /* return on a failed command */
 int superdev;						    /* vinum super device */
 
 void start_daemon(void);
-
-#define ofs(x) ((void *) (& ((struct confdata *) 0)->x))    /* offset of x in struct confdata */
 
 char *token[MAXARGS];					    /* pointers to individual tokens */
 int tokens;						    /* number of tokens */
