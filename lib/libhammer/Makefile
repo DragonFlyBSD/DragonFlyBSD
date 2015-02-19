@@ -7,14 +7,24 @@ INCS=	libhammer.h
 
 SRCS+= crc32.c
 
-MAN+=	 libhammer_get_volinfo.3
+MAN+=	 libhammer.3
+MAN+=	 libhammer_fsinfo.3
+MAN+=	 libhammer_snapshot.3
 MAN+=	 libhammer_stats.3
 
-MLINKS+= libhammer_get_volinfo.3 libhammer_get_next_pfs.3
-MLINKS+= libhammer_get_volinfo.3 libhammer_get_prev_pfs.3
-MLINKS+= libhammer_get_volinfo.3 libhammer_get_first_pfs.3
-MLINKS+= libhammer_get_volinfo.3 libhammer_get_last_pfs.3
-MLINKS+= libhammer_get_volinfo.3 libhammer_free_volinfo.3
+MLINKS+= libhammer_fsinfo.3 libhammer_get_fsinfo.3
+MLINKS+= libhammer_fsinfo.3 libhammer_get_next_pfs.3
+MLINKS+= libhammer_fsinfo.3 libhammer_get_prev_pfs.3
+MLINKS+= libhammer_fsinfo.3 libhammer_get_first_pfs.3
+MLINKS+= libhammer_fsinfo.3 libhammer_get_last_pfs.3
+MLINKS+= libhammer_fsinfo.3 libhammer_free_fsinfo.3
+
+MLINKS+= libhammer_snapshot.3 libhammer_pfs_get_snapshots.3
+MLINKS+= libhammer_snapshot.3 libhammer_get_next_snap.3
+MLINKS+= libhammer_snapshot.3 libhammer_get_prev_snap.3
+MLINKS+= libhammer_snapshot.3 libhammer_get_first_snap.3
+MLINKS+= libhammer_snapshot.3 libhammer_get_last_snap.3
+MLINKS+= libhammer_snapshot.3 libhammer_pfs_free_snapshots.3
 
 MLINKS+= libhammer_stats.3 libhammer_stats_redo.3
 MLINKS+= libhammer_stats.3 libhammer_stats_undo.3

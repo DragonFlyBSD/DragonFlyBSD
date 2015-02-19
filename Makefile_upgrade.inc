@@ -2820,6 +2820,10 @@ TO_REMOVE+=/usr/share/man/man1/gcc44.1.gz
 TO_REMOVE+=/usr/share/man/man1/gcov44.1.gz
 TO_REMOVE+=/usr/share/mk/bsd.cpu.gcc44.mk
 TO_REMOVE+=/usr/libdata/gcc50/stddef.h
+TO_REMOVE+=/usr/share/man/man3/libhammer_get_volinfo.3.gz
+TO_REMOVE+=/usr/share/man/cat3/libhammer_get_volinfo.3.gz
+TO_REMOVE+=/usr/share/man/man3/libhammer_free_volinfo.3.gz
+TO_REMOVE+=/usr/share/man/cat3/libhammer_free_volinfo.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

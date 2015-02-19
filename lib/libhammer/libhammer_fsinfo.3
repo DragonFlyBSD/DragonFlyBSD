@@ -1,0 +1,127 @@
+.\"
+.\" Copyright (c) 2011 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Antonio Huete Jimenez <tuxillo@quantumachine.net>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd February 19, 2015
+.Dt LIBHAMMER 3
+.Os
+.Sh NAME
+.Nm libhammer_get_fsinfo ,
+.Nm libhammer_get_next_pfs ,
+.Nm libhammer_get_prev_pfs ,
+.Nm libhammer_get_first_pfs ,
+.Nm libhammer_get_last_pfs ,
+.Nm libhammer_free_fsinfo
+.Nd libhammer information functions
+.Sh LIBRARY
+.Lb libhammer
+.Sh SYNOPSIS
+.In libhammer.h
+.Ft libhammer_fsinfo_t
+.Fn libhammer_get_fsinfo "const char *path"
+.Ft libhammer_pfsinfo_t
+.Fn libhammer_get_first_pfs "libhammer_fsinfo_t fsinfo"
+.Ft libhammer_pfsinfo_t
+.Fn libhammer_get_last_pfs "libhammer_fsinfo_t fsinfo"
+.Ft libhammer_pfsinfo_t
+.Fn libhammer_get_next_pfs "libhammer_pfsinfo_t pfsinfo"
+.Ft libhammer_pfsinfo_t
+.Fn libhammer_get_prev_pfs "libhammer_pfsinfo_t pfsinfo"
+.Ft void
+.Fn libhammer_free_fsinfo "libhammer_fsinfo_t fsinfo"
+.Sh DESCRIPTION
+The
+.Fn libhammer_get_fsinfo
+iterates all the PFSs from a given path belonging to a
+.Nm HAMMER
+filesystem and returns
+.Vt libhammer_fsinfo_t
+.Fa fsinfo
+which holds a
+.Nm TAILQ
+of
+.Vt libhammer_pfsinfo
+structs, one per PFS found.
+.Pp
+The list of found PFSs can be iterated with
+.Fn libhammer_get_first_pfs ,
+.Fn libhammer_get_last_pfs ,
+.Fn libhammer_get_next_pfs
+and
+.Fn libhammer_get_prev_pfs .
+.Pp
+Note that to use the next and previous functions described above you need
+to store the returning
+.Vt libhammer_pfsinfo_t
+value from the first and last functions.
+.Pp
+.Fn libhammer_free_fsinfo
+frees up all the resources allocated previously by
+.Fn libhammer_get_fsinfo .
+.Sh RETURN VALUES
+.Fn libhammer_get_fsinfo
+returns a
+.Vt libhammer_fsinfo_t
+in any case where path is in a
+.Nm HAMMER
+filesystem or
+.Dv NULL
+if there was any other problem.
+You can check
+.Nm errno
+in the error cases.
+.Pp
+.Fn libhammer_get_first_pfs
+and
+.Fn libhammer_get_last_pfs
+must return a
+.Vt libhammer_pfs_t
+if the
+.Fa fsinfo
+passed in is valid.
+.Fn libhammer_get_next_pfs
+and
+.Fn libhammer_get_prev_pfs
+return a
+.Vt libhammer_pfsinfo_t
+or
+.Dv NULL
+in case there are no more elements.
+.Sh SEE ALSO
+.Xr HAMMER 5 ,
+.Xr hammer 8 ,
+.Xr libhammer 3 ,
+.Xr libhammer_snapshot 3 ,
+.Xr libhammer_stats 3
+.Sh AUTHORS
+This manpage was written by
+.An Antonio Huete Jimenez Aq Mt tuxillo@quantumachine.net .

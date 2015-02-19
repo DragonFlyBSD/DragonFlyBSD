@@ -1,0 +1,116 @@
+.\"
+.\" Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Antonio Huete Jimenez <tuxillo@quantumachine.net>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd February 19, 2015
+.Dt LIBHAMMER 3
+.Os
+.Sh NAME
+.Nm hammer
+.Nd HAMMER filesystem interface
+.Sh LIBRARY
+.Lb libhammer
+.Sh SYNOPSIS
+.In libhammer.h
+.Sh DESCRIPTION
+The
+.Xr hammer 3
+library provides a set of functions which serve as an interface to applications
+that need to obtain information or perform maintenance operations in
+.Xr HAMMER 5
+file systems.
+.Sh INTRODUCTION
+This library is an attempt to factor out most of the code in the initial
+.Xr hammer 8
+program greatly reducing its complexity and taking advantage of all the
+functionality it contained helping other programs to reuse it.
+.Pp
+There are several parts of the
+.Xr HAMMER 5
+file system for which this library provides an API:
+.Bl -bullet
+.It
+.Em Information facilities:
+The following information is gathered and exposed by this library:
+.Bl -dash -offset indent
+.It
+File system specific information such as size, bigblock details, version,
+PFSes, snapshots, mount points.
+.It
+Statistical data like number of B-Tree operations, number of device operations,
+number of undo operations.
+.El
+.It
+.Em Pseudo-filesystems:
+These are independent sub file systems within a HAMMER filesystem.
+After
+.Nm
+library initialisation the list of pseudo-file systems will be available in the
+.Vt libhammer_fsinfo
+structure within a
+.Dv TAILQ .
+.Pp
+Creating and deleting pseudo-filesystems is not yet supported by this library.
+.It
+.Em Snapshots:
+Per PFS point in time snapshots are kept in the filesystem metadata since
+HAMMER version 3.
+A list of snaptshots is collected and placed within a
+.Dv TAILQ
+for each PFS.
+.Pp
+Creating and deleting snapshots is not yet supported by this library.
+.El
+.Sh INITIALISATION
+Before any API call the library must be initalised with the
+.Fn libhammer_get_fsinfo
+function.
+This will perform all the operations needed to initialise the data strutures in
+which the API function rely for the specified HAMMER file system.
+.Pp
+Once you are done, the special function
+.Fn libhammer_free_fsinfo
+will release all the resources used by the library during its initialisation and
+usage.
+.Sh SEE ALSO
+.Xr HAMMER 5 ,
+.Xr hammer 8 ,
+.Xr libhammer_fsinfo 3 ,
+.Xr libhammer_snapshot 3 ,
+.Xr libhammer_stats 3
+.Sh AUTHORS
+This manpage was written by
+.An Antonio Huete Jimenez Aq Mt tuxillo@quantumachine.net .
+.Sh BUGS
+Please note that, at the moment of writing this man page, the
+.Nm
+library is incomplete.
