@@ -348,17 +348,9 @@ struct mbstat {
 };
 
 /*
- * Flags specifying how an allocation should be made.
+ * objcache(9) ocflags sanitizing
  */
-
-#define	MB_DONTWAIT	0x4
-#define	MB_TRYWAIT	0x8
-#define	MB_WAIT		MB_TRYWAIT
-
-/*
- * Mbuf to Malloc Flag Conversion.
- */
-#define	MBTOM(how)	((how) & MB_TRYWAIT ? M_WAITOK : M_NOWAIT)
+#define	MB_OCFLAG(how)	((how) & M_WAITOK ? M_WAITOK : M_NOWAIT)
 
 /*
  * These are identifying numbers passed to the m_mballoc_wait function,
@@ -460,7 +452,7 @@ struct mbstat {
 /*
  * Arrange to prepend space of size plen to mbuf m.
  * If a new mbuf must be allocated, how specifies whether to wait.
- * If how is MB_DONTWAIT and allocation fails, the original mbuf chain
+ * If how is M_NOWAIT and allocation fails, the original mbuf chain
  * is freed and m is set to NULL.
  */
 #define	M_PREPEND(m, plen, how) do {					\
@@ -483,7 +475,7 @@ struct mbstat {
 #define	M_COPYALL	1000000000
 
 /* Compatibility with 4.3 */
-#define	m_copy(m, o, l)	m_copym((m), (o), (l), MB_DONTWAIT)
+#define	m_copy(m, o, l)	m_copym((m), (o), (l), M_NOWAIT)
 
 #ifdef _KERNEL
 extern	u_int		 m_clalloc_wid;	/* mbuf cluster wait count */

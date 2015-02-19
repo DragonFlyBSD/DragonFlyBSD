@@ -668,9 +668,9 @@ ndis_ptom(struct mbuf **m0, ndis_packet *p)
 	for (buf = priv->npp_head; buf != NULL; buf = buf->mdl_next) {
 		if (buf == priv->npp_head) {
 			/* XXX swildner: why not MT_HEADER? (see FreeBSD) */
-			MGETHDR(m, MB_DONTWAIT, MT_DATA);
+			MGETHDR(m, M_NOWAIT, MT_DATA);
 		} else {
-			MGET(m, MB_DONTWAIT, MT_DATA);
+			MGET(m, M_NOWAIT, MT_DATA);
 		}
 		if (m == NULL) {
 			m_freem(*m0);

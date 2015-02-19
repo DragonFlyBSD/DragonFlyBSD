@@ -1416,7 +1416,7 @@ send_pkt(struct ipfw_flow_id *id, uint32_t seq, uint32_t ack, int flags)
 	struct tcphdr *tcp;
 	struct route sro;	/* fake route */
 
-	MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+	MGETHDR(m, M_NOWAIT, MT_HEADER);
 	if (m == NULL)
 		return;
 	m->m_pkthdr.rcvif = NULL;
@@ -2321,7 +2321,7 @@ check_body:
 					break;
 
 				mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT,
-						 sizeof(*divinfo), MB_DONTWAIT);
+						 sizeof(*divinfo), M_NOWAIT);
 				if (mtag == NULL) {
 					retval = IP_FW_DENY;
 					goto done;
@@ -2392,7 +2392,7 @@ check_body:
 					struct sockaddr_in *sin;
 
 					mtag = m_tag_get(PACKET_TAG_IPFORWARD,
-					       sizeof(*sin), MB_DONTWAIT);
+					       sizeof(*sin), M_NOWAIT);
 					if (mtag == NULL) {
 						retval = IP_FW_DENY;
 						goto done;
@@ -2458,7 +2458,7 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 
 	M_ASSERTPKTHDR(m);
 
-	mtag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*pkt), MB_DONTWAIT);
+	mtag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*pkt), M_NOWAIT);
 	if (mtag == NULL) {
 		m_freem(m);
 		return;

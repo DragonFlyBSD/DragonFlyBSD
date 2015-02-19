@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/mld6.c,v 1.4.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/mld6.c,v 1.6 2005/06/03 19:56:08 eirikn Exp $	*/
 /*	$KAME: mld6.c,v 1.27 2001/04/04 05:17:30 itojun Exp $	*/
 
 /*
@@ -423,10 +422,10 @@ mld6_sendpkt(struct in6_multi *in6m, int type, const struct in6_addr *dst)
 	 * We allocate 2 mbufs and make chain in advance because
 	 * it is more convenient when inserting the hop-by-hop option later.
 	 */
-	MGETHDR(mh, MB_DONTWAIT, MT_HEADER);
+	MGETHDR(mh, M_NOWAIT, MT_HEADER);
 	if (mh == NULL)
 		return;
-	MGET(md, MB_DONTWAIT, MT_DATA);
+	MGET(md, M_NOWAIT, MT_DATA);
 	if (md == NULL) {
 		m_free(mh);
 		return;

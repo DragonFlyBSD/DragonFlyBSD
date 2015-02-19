@@ -355,7 +355,7 @@ udp_mcast_input(struct udp_mcast_arg *arg)
 			;
 		else
 #endif /*FAST_IPSEC*/
-		if ((n = m_copypacket(m, MB_DONTWAIT)) != NULL)
+		if ((n = m_copypacket(m, M_NOWAIT)) != NULL)
 			udp_append(last, ip, n,
 			    arg->iphlen + sizeof(struct udphdr),
 			    arg->udp_in);
@@ -985,7 +985,7 @@ udp_send(netmsg_t msg)
 	 * Calculate data length and get a mbuf
 	 * for UDP and IP headers.
 	 */
-	M_PREPEND(m, sizeof(struct udpiphdr), MB_DONTWAIT);
+	M_PREPEND(m, sizeof(struct udpiphdr), M_NOWAIT);
 	if (m == NULL) {
 		error = ENOBUFS;
 		goto release;
@@ -1105,7 +1105,7 @@ udp_send(netmsg_t msg)
 			 * XXX optimize this?
 			 */
 			m_opt = m_copym(inp->inp_options, 0, M_COPYALL,
-			    MB_WAIT);
+			    M_WAITOK);
 		}
 		if ((pru_flags & PRUS_NOREPLY) == 0) {
 			/*

@@ -154,7 +154,7 @@ in6_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 	}
 	
 	/* prepend new IP header */
-	M_PREPEND(m, sizeof(struct ip6_hdr), MB_DONTWAIT);
+	M_PREPEND(m, sizeof(struct ip6_hdr), M_NOWAIT);
 	if (m && m->m_len < sizeof(struct ip6_hdr))
 		m = m_pullup(m, sizeof(struct ip6_hdr));
 	if (m == NULL) {

@@ -798,7 +798,7 @@ get_rx_buf(struct sbni_softc *sc)
 {
 	struct mbuf *m;
 
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
+	MGETHDR(m, M_NOWAIT, MT_DATA);
 	if (m == NULL) {
 		kprintf("%s: cannot allocate header mbuf\n",
 		       sc->arpcom.ac_if.if_xname);
@@ -813,7 +813,7 @@ get_rx_buf(struct sbni_softc *sc)
 	 */
 	if (ETHER_MAX_LEN + 2 > MHLEN) {
 		/* Attach an mbuf cluster */
-		MCLGET(m, MB_DONTWAIT);
+		MCLGET(m, M_NOWAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 			m_freem(m);
 			return (0);

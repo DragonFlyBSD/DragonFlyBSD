@@ -1319,9 +1319,9 @@ wi_rx_intr(struct wi_softc *sc)
 	}
 
 	if (off + len > MHLEN)
-		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 	else
-		m = m_gethdr(MB_DONTWAIT, MT_DATA);
+		m = m_gethdr(M_NOWAIT, MT_DATA);
 	if (m == NULL) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
 		IFNET_STAT_INC(ifp, ierrors, 1);

@@ -1881,7 +1881,7 @@ xl_newbuf(struct xl_softc *sc, struct xl_chain_onefrag *c, int init)
 	int			error, nsegs;
 	bus_dma_segment_t	seg;
 
-	m_new = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m_new = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL)
 		return(ENOBUFS);
 

@@ -2680,7 +2680,7 @@ emx_newbuf(struct emx_rxdata *rdata, int i, int init)
 	struct emx_rxbuf *rx_buffer;
 	int error, nseg;
 
-	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
 		if (init) {
 			if_printf(&rdata->sc->arpcom.ac_if,

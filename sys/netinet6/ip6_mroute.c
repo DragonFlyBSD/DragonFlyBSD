@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.18 2008/06/21 12:30:19 aggelos Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*
@@ -1492,7 +1491,7 @@ register_send(struct ip6_hdr *ip6, struct mif6 *mif, struct mbuf *m)
 	++pim6stat.pim6s_snd_registers;
 
 	/* Make a copy of the packet to send to the user level process */
-	MGETHDR(mm, MB_DONTWAIT, MT_HEADER);
+	MGETHDR(mm, M_NOWAIT, MT_HEADER);
 	if (mm == NULL)
 		return ENOBUFS;
 	mm->m_pkthdr.rcvif = NULL;

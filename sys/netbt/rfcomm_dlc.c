@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/rfcomm_dlc.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: src/sys/netbt/rfcomm_dlc.c,v 1.2 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: rfcomm_dlc.c,v 1.4 2007/11/03 17:20:17 plunky Exp $ */
 
@@ -380,7 +379,7 @@ rfcomm_dlc_start(struct rfcomm_dlc *dlc)
 			 */
 			m = dlc->rd_txbuf;
 			if (len < m->m_pkthdr.len) {
-				dlc->rd_txbuf = m_split(m, len, MB_DONTWAIT);
+				dlc->rd_txbuf = m_split(m, len, M_NOWAIT);
 				if (dlc->rd_txbuf == NULL) {
 					dlc->rd_txbuf = m;
 					break;

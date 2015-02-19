@@ -908,9 +908,9 @@ send:
 		m->m_data -= hdrlen;
 #else
 #ifndef INET6
-		m = m_gethdr(MB_DONTWAIT, MT_HEADER);
+		m = m_gethdr(M_NOWAIT, MT_HEADER);
 #else
-		m = m_getl(hdrlen + max_linkhdr, MB_DONTWAIT, MT_HEADER,
+		m = m_getl(hdrlen + max_linkhdr, M_NOWAIT, MT_HEADER,
 			   M_PKTHDR, NULL);
 #endif
 		if (m == NULL) {
@@ -951,7 +951,7 @@ send:
 		else
 			tcpstat.tcps_sndwinup++;
 
-		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+		MGETHDR(m, M_NOWAIT, MT_HEADER);
 		if (m == NULL) {
 			error = ENOBUFS;
 			goto after_th;

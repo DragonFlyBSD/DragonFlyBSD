@@ -683,7 +683,7 @@ ngmn_connect(hook_p hook)
 	/* Setup a transmit chain with one descriptor */
 	/* XXX: we actually send a 1 byte packet */
 	dp = mn_alloc_desc();
-	MGETHDR(m, MB_WAIT, MT_DATA);
+	MGETHDR(m, M_WAITOK, MT_DATA);
 	if (m == NULL)
 		return (ENOBUFS);
 	m->m_pkthdr.len = 0;
@@ -700,12 +700,12 @@ ngmn_connect(hook_p hook)
 
 	dp = mn_alloc_desc();
 	m = NULL;
-	MGETHDR(m, MB_WAIT, MT_DATA);
+	MGETHDR(m, M_WAITOK, MT_DATA);
 	if (m == NULL) {
 		mn_free_desc(dp);
 		return (ENOBUFS);
 	}
-	MCLGET(m, MB_WAIT);
+	MCLGET(m, M_WAITOK);
 	if ((m->m_flags & M_EXT) == 0) {
 		mn_free_desc(dp);
 		m_freem(m);
@@ -723,13 +723,13 @@ ngmn_connect(hook_p hook)
 		dp2 = dp;
 		dp = mn_alloc_desc();
 		m = NULL;
-		MGETHDR(m, MB_WAIT, MT_DATA);
+		MGETHDR(m, M_WAITOK, MT_DATA);
 		if (m == NULL) {
 			mn_free_desc(dp);
 			m_freem(m);
 			return (ENOBUFS);
 		}
-		MCLGET(m, MB_WAIT);
+		MCLGET(m, M_WAITOK);
 		if ((m->m_flags & M_EXT) == 0) {
 			mn_free_desc(dp);
 			m_freem(m);
@@ -1171,12 +1171,12 @@ mn_rx_intr(struct softc *sc, u_int32_t vector)
 
 		/* Replenish desc + mbuf supplies */
 		if (!m) {
-			MGETHDR(m, MB_DONTWAIT, MT_DATA);
+			MGETHDR(m, M_NOWAIT, MT_DATA);
 			if (m == NULL) {
 				mn_free_desc(dp);
 				return; /* ENOBUFS */
 			}
-			MCLGET(m, MB_DONTWAIT);
+			MCLGET(m, M_NOWAIT);
 			if((m->m_flags & M_EXT) == 0) {
 				mn_free_desc(dp);
 				m_freem(m);

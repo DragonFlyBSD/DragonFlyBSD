@@ -1686,7 +1686,7 @@ ar_get_packets(struct ar_softc *sc)
 	while(ar_packet_avail(sc, &len, &rxstat)) {
 		TRC(kprintf("apa: len %d, rxstat %x\n", len, rxstat));
 		if(((rxstat & SCA_DESC_ERRORS) == 0) && (len < MCLBYTES)) {
-			m =  m_getl(len, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
+			m =  m_getl(len, M_NOWAIT, MT_DATA, M_PKTHDR, NULL);
 			if(m == NULL) {
 				/* eat packet if get mbuf fail!! */
 				ar_eat_packet(sc, 1);

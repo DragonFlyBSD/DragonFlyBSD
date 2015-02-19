@@ -3867,7 +3867,7 @@ bce_newbuf_std(struct bce_rx_ring *rxr, uint16_t *prod, uint16_t chain_prod,
 	int error, nseg;
 
 	/* This is a new mbuf allocation. */
-	m_new = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m_new = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL)
 		return ENOBUFS;
 

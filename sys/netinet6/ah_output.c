@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ah_output.c,v 1.1.2.5 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_output.c,v 1.9 2006/10/24 06:18:42 hsu Exp $	*/
 /*	$KAME: ah_output.c,v 1.31 2001/07/26 06:53:15 jinmei Exp $	*/
 
 /*
@@ -209,7 +208,7 @@ ah4_output(struct mbuf *m, struct ipsecrequest *isr)
 		panic("ah4_output: assumption failed (first mbuf length)");
 	if (M_LEADINGSPACE(m->m_next) < ahlen) {
 		struct mbuf *n;
-		MGET(n, MB_DONTWAIT, MT_DATA);
+		MGET(n, M_NOWAIT, MT_DATA);
 		if (!n) {
 			ipseclog((LOG_DEBUG, "ENOBUFS in ah4_output %d\n",
 			    __LINE__));
@@ -386,7 +385,7 @@ ah6_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 		return EINVAL;
 	}
 
-	mah = m_getb(ahlen, MB_DONTWAIT, MT_DATA, 0);
+	mah = m_getb(ahlen, M_NOWAIT, MT_DATA, 0);
 	if (mah == NULL) {
 		m_freem(m);
 		return ENOBUFS;

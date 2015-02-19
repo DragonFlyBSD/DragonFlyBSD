@@ -1467,7 +1467,7 @@ age_encap(struct age_softc *sc, struct mbuf **m_head)
 		error = EFBIG;
 	}
 	if (error == EFBIG) {
-		m = m_defrag(*m_head, MB_DONTWAIT);
+		m = m_defrag(*m_head, M_NOWAIT);
 		if (m == NULL) {
 			m_freem(*m_head);
 			*m_head = NULL;
@@ -2747,7 +2747,7 @@ age_newbuf(struct age_softc *sc, struct age_rxdesc *rxd, int init)
 	bus_dmamap_t map;
 	int error;
 
-	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return (ENOBUFS);
 

@@ -223,7 +223,7 @@ rel:
 		 */
 		ifq_classify(&ifp->if_snd, m, af, &pktattr);
 
-		M_PREPEND(m, sizeof(int32_t), MB_DONTWAIT);
+		M_PREPEND(m, sizeof(int32_t), M_NOWAIT);
 		if (m == NULL)
 			return(ENOBUFS);
 		afp = mtod(m, int32_t *);

@@ -703,7 +703,7 @@ esp_cbc_decrypt(struct mbuf *m, size_t off, struct secasvar *sav,
 			if (d)
 				dp = d;
 			i = m->m_pkthdr.len - (soff + sn);
-			d = m_getb(i, MB_DONTWAIT, MT_DATA, 0);
+			d = m_getb(i, M_NOWAIT, MT_DATA, 0);
 			if (!d) {
 				m_freem(m);
 				if (d0)
@@ -901,7 +901,7 @@ esp_cbc_encrypt(struct mbuf *m, size_t off, size_t plen, struct secasvar *sav,
 			if (d)
 				dp = d;
 			i = m->m_pkthdr.len - (soff + sn);
-			d = m_getb(i, MB_DONTWAIT, MT_DATA, 0);
+			d = m_getb(i, M_NOWAIT, MT_DATA, 0);
 			if (!d) {
 				m_freem(m);
 				if (d0)

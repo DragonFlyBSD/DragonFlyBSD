@@ -2009,7 +2009,7 @@ ipsec4_encapsulate(struct mbuf *m, struct secasvar *sav)
 	 */
 	if (M_LEADINGSPACE(m->m_next) < hlen) {
 		struct mbuf *n;
-		MGET(n, MB_DONTWAIT, MT_DATA);
+		MGET(n, M_NOWAIT, MT_DATA);
 		if (!n) {
 			m_freem(m);
 			return ENOBUFS;
@@ -2106,7 +2106,7 @@ ipsec6_encapsulate(struct mbuf *m, struct secasvar *sav)
 		panic("ipsec6_encapsulate: assumption failed (first mbuf length)");
 	if (M_LEADINGSPACE(m->m_next) < sizeof(struct ip6_hdr)) {
 		struct mbuf *n;
-		MGET(n, MB_DONTWAIT, MT_DATA);
+		MGET(n, M_NOWAIT, MT_DATA);
 		if (!n) {
 			m_freem(m);
 			return ENOBUFS;
@@ -3102,7 +3102,7 @@ ipsec4_splithdr(struct mbuf *m)
 	hlen = ip->ip_hl << 2;
 #endif
 	if (m->m_len > hlen) {
-		MGETHDR(mh, MB_DONTWAIT, MT_HEADER);
+		MGETHDR(mh, M_NOWAIT, MT_HEADER);
 		if (!mh) {
 			m_freem(m);
 			return NULL;
@@ -3137,7 +3137,7 @@ ipsec6_splithdr(struct mbuf *m)
 	ip6 = mtod(m, struct ip6_hdr *);
 	hlen = sizeof(struct ip6_hdr);
 	if (m->m_len > hlen) {
-		MGETHDR(mh, MB_DONTWAIT, MT_HEADER);
+		MGETHDR(mh, M_NOWAIT, MT_HEADER);
 		if (!mh) {
 			m_freem(m);
 			return NULL;
@@ -3348,16 +3348,16 @@ ipsec_copypkt(struct mbuf *m)
 				struct mbuf *mm;
 
 				if (n->m_flags & M_PKTHDR) {
-					MGETHDR(mnew, MB_DONTWAIT, MT_HEADER);
+					MGETHDR(mnew, M_NOWAIT, MT_HEADER);
 					if (mnew == NULL)
 						goto fail;
-					if (!m_dup_pkthdr(mnew, n, MB_DONTWAIT)) {
+					if (!m_dup_pkthdr(mnew, n, M_NOWAIT)) {
 						m_free(mnew);
 						goto fail;
 					}
 				}
 				else {
-					MGET(mnew, MB_DONTWAIT, MT_DATA);
+					MGET(mnew, M_NOWAIT, MT_DATA);
 					if (mnew == NULL)
 						goto fail;
 				}
@@ -3381,7 +3381,7 @@ ipsec_copypkt(struct mbuf *m)
 					if (remain <= (mm->m_flags & M_PKTHDR ? MHLEN : MLEN))
 						len = remain;
 					else { /* allocate a cluster */
-						MCLGET(mm, MB_DONTWAIT);
+						MCLGET(mm, M_NOWAIT);
 						if (!(mm->m_flags & M_EXT)) {
 							m_free(mm);
 							goto fail;
@@ -3401,7 +3401,7 @@ ipsec_copypkt(struct mbuf *m)
 						break;
 
 					/* need another mbuf */
-					MGETHDR(mn, MB_DONTWAIT, MT_HEADER);
+					MGETHDR(mn, M_NOWAIT, MT_HEADER);
 					if (mn == NULL)
 						goto fail;
 					mn->m_pkthdr.rcvif = NULL;
@@ -3444,7 +3444,7 @@ ipsec_addhist(struct mbuf *m, int proto, u_int32_t spi)
 	struct ipsec_history *p;
 
 	tag = m_tag_get(PACKET_TAG_IPSEC_HISTORY,
-			sizeof (struct ipsec_history), MB_DONTWAIT);
+			sizeof (struct ipsec_history), M_NOWAIT);
 	if (tag == NULL)
 		return ENOBUFS;
 	p = (struct ipsec_history *)m_tag_data(tag);

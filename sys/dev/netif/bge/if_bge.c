@@ -1021,7 +1021,7 @@ bge_newbuf_std(struct bge_softc *sc, int i, int init)
 	bus_dmamap_t map;
 	int error, nsegs;
 
-	m_new = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m_new = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL)
 		return ENOBUFS;
 	m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
@@ -1084,7 +1084,7 @@ bge_newbuf_jumbo(struct bge_softc *sc, int i, int init)
 	bus_addr_t paddr;
 
 	/* Allocate the mbuf. */
-	MGETHDR(m_new, init ? MB_WAIT : MB_DONTWAIT, MT_DATA);
+	MGETHDR(m_new, init ? M_WAITOK : M_NOWAIT, MT_DATA);
 	if (m_new == NULL)
 		return ENOBUFS;
 
@@ -3573,7 +3573,7 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx,
 		 * DMA read operation.  If it fails, keep moving on using
 		 * the original mbuf chain.
 		 */
-		m_new = m_defrag(m_head, MB_DONTWAIT);
+		m_new = m_defrag(m_head, M_NOWAIT);
 		if (m_new != NULL)
 			*m_head0 = m_head = m_new;
 	}
@@ -5041,7 +5041,7 @@ bge_defrag_shortdma(struct mbuf *m)
 	}
 
 	if (found > 1)
-		n = m_defrag(m, MB_DONTWAIT);
+		n = m_defrag(m, M_NOWAIT);
 	else
 		n = m;
 	return n;

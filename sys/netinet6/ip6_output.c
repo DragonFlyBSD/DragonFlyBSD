@@ -1019,7 +1019,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 		 */
 		m0 = m;
 		for (off = hlen; off < tlen; off += len) {
-			MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+			MGETHDR(m, M_NOWAIT, MT_HEADER);
 			if (!m) {
 				error = ENOBUFS;
 				ip6stat.ip6s_odropped++;
@@ -1136,7 +1136,7 @@ copyexthdr(void *h, struct mbuf **mp)
 	if (hlen > MCLBYTES)
 		return ENOBUFS;	/* XXX */
 
-	m = m_getb(hlen, MB_DONTWAIT, MT_DATA, 0);
+	m = m_getb(hlen, M_NOWAIT, MT_DATA, 0);
 	if (!m)
 		return ENOBUFS;
 	m->m_len = hlen;
@@ -1166,7 +1166,7 @@ ip6_insert_jumboopt(struct ip6_exthdrs *exthdrs, u_int32_t plen)
 	 * Otherwise, use it to store the options.
 	 */
 	if (exthdrs->ip6e_hbh == NULL) {
-		MGET(mopt, MB_DONTWAIT, MT_DATA);
+		MGET(mopt, M_NOWAIT, MT_DATA);
 		if (mopt == NULL)
 			return (ENOBUFS);
 		mopt->m_len = JUMBOOPTLEN;
@@ -1198,7 +1198,7 @@ ip6_insert_jumboopt(struct ip6_exthdrs *exthdrs, u_int32_t plen)
 			 * As a consequence, we must always prepare a cluster
 			 * at this point.
 			 */
-			n = m_getcl(MB_DONTWAIT, MT_DATA, 0);
+			n = m_getcl(M_NOWAIT, MT_DATA, 0);
 			if (!n)
 				return (ENOBUFS);
 			n->m_len = oldoptlen + JUMBOOPTLEN;
@@ -1245,7 +1245,7 @@ ip6_insertfraghdr(struct mbuf *m0, struct mbuf *m, int hlen,
 
 	if (hlen > sizeof(struct ip6_hdr)) {
 		n = m_copym(m0, sizeof(struct ip6_hdr),
-			    hlen - sizeof(struct ip6_hdr), MB_DONTWAIT);
+			    hlen - sizeof(struct ip6_hdr), M_NOWAIT);
 		if (n == NULL)
 			return (ENOBUFS);
 		m->m_next = n;
@@ -1267,7 +1267,7 @@ ip6_insertfraghdr(struct mbuf *m0, struct mbuf *m, int hlen,
 		/* allocate a new mbuf for the fragment header */
 		struct mbuf *mfrg;
 
-		MGET(mfrg, MB_DONTWAIT, MT_DATA);
+		MGET(mfrg, M_NOWAIT, MT_DATA);
 		if (mfrg == NULL)
 			return (ENOBUFS);
 		mfrg->m_len = sizeof(struct ip6_frag);
@@ -1715,7 +1715,7 @@ do { \
 					break;
 				}
 				/* XXX */
-				MGET(m, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT, MT_HEADER);
+				MGET(m, sopt->sopt_td ? M_WAITOK : M_NOWAIT, MT_HEADER);
 				if (m == NULL) {
 					error = ENOBUFS;
 					break;
@@ -1823,7 +1823,7 @@ do { \
 				if (in6p->in6p_options) {
 					struct mbuf *m;
 					m = m_copym(in6p->in6p_options,
-					    0, M_COPYALL, MB_WAIT);
+					    0, M_COPYALL, M_WAITOK);
 					error = soopt_from_mbuf(sopt, m);
 					if (error == 0)
 						m_freem(m);
@@ -2766,7 +2766,7 @@ ip6_getmoptions(int optname, struct ip6_moptions *im6o, struct mbuf **mp)
 {
 	u_int *hlim, *loop, *ifindex;
 
-	*mp = m_get(MB_WAIT, MT_HEADER);		/* XXX */
+	*mp = m_get(M_WAITOK, MT_HEADER);		/* XXX */
 
 	switch (optname) {
 
@@ -3331,7 +3331,7 @@ ip6_splithdr(struct mbuf *m)
 	if (m->m_len <= sizeof(struct ip6_hdr))		/* no payload */
 		return (m);
 
-	MGETHDR(mh, MB_DONTWAIT, MT_HEADER);
+	MGETHDR(mh, M_NOWAIT, MT_HEADER);
 	if (mh == NULL)
 		return (NULL);
 	mh->m_len = sizeof(struct ip6_hdr);

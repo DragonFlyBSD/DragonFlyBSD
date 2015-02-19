@@ -440,7 +440,7 @@ nd6_ns_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 		return;
 	}
 
-	m = m_getb(max_linkhdr + maxlen, MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getb(max_linkhdr + maxlen, M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return;
 
@@ -920,7 +920,7 @@ nd6_na_output(struct ifnet *ifp, const struct in6_addr *daddr6,
 		return;
 	}
 
-	m = m_getb(max_linkhdr + maxlen, MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getb(max_linkhdr + maxlen, M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return;
 

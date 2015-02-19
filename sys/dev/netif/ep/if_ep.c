@@ -663,7 +663,7 @@ read_again:
     rx_fifo = rx_fifo2 = status & RX_BYTES_MASK;
 
     if (EP_FTST(sc, F_RX_FIRST)) {
-	m = m_getl(rx_fifo, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
+	m = m_getl(rx_fifo, M_NOWAIT, MT_DATA, M_PKTHDR, NULL);
 	if (!m)
 	    goto out;
 	sc->top = sc->mcur = top = m;
@@ -689,7 +689,7 @@ read_again:
 	lenthisone = min(rx_fifo, M_TRAILINGSPACE(m));
 	if (lenthisone == 0) {	/* no room in this one */
 	    mcur = m;
-	    m = m_getl(rx_fifo, MB_DONTWAIT, MT_DATA, 0, NULL);
+	    m = m_getl(rx_fifo, M_NOWAIT, MT_DATA, 0, NULL);
 	    if (!m)
 		goto out;
 	    m->m_len = 0;

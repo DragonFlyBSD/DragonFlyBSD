@@ -892,7 +892,7 @@ an_rxeof(struct an_softc *sc)
 			}
 			BPF_TAP(ifp, bpf_buf, len);
 		} else {
-			m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+			m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 			if (m == NULL) {
 				IFNET_STAT_INC(ifp, ierrors, 1);
 				return;
@@ -970,7 +970,7 @@ an_rxeof(struct an_softc *sc)
 			if (an_rx_desc.an_done && !an_rx_desc.an_valid) {
 				buf = sc->an_rx_buffer[count].an_dma_vaddr;
 
-				m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+				m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 				if (m == NULL) {
 					IFNET_STAT_INC(ifp, ierrors, 1);
 					return;

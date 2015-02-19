@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.25 2008/10/27 02:56:30 sephe Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -373,7 +372,7 @@ stf_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		bpf_reltoken();
 	}
 
-	M_PREPEND(m, sizeof(struct ip), MB_DONTWAIT);
+	M_PREPEND(m, sizeof(struct ip), M_NOWAIT);
 	if (m && m->m_len < sizeof(struct ip))
 		m = m_pullup(m, sizeof(struct ip));
 	if (m == NULL)

@@ -2324,7 +2324,7 @@ igb_newbuf(struct igb_rx_ring *rxr, int i, boolean_t wait)
 	struct igb_rx_buf *rxbuf;
 	int error, nseg;
 
-	m = m_getcl(wait ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(wait ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
 		if (wait) {
 			if_printf(&rxr->sc->arpcom.ac_if,

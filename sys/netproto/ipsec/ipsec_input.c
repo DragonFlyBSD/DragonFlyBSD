@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec_input.c,v 1.2.4.2 2003/03/28 20:32:53 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.13 2008/05/27 01:10:44 dillon Exp $	*/
 /*	$OpenBSD: ipsec_input.c,v 1.63 2003/02/20 18:35:43 deraadt Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -389,7 +388,7 @@ ipsec4_common_input_cb(struct mbuf *m, struct secasvar *sav,
 	 */
 	if (mt == NULL && sproto != IPPROTO_IPCOMP) {
 		mtag = m_tag_get(PACKET_TAG_IPSEC_IN_DONE,
-				 sizeof(struct tdb_ident), MB_DONTWAIT);
+				 sizeof(struct tdb_ident), M_NOWAIT);
 		if (mtag == NULL) {
 			DPRINTF(("ipsec4_common_input_cb: failed to get tag\n"));
 			IPSEC_ISTAT(sproto, espstat.esps_hdrops,
@@ -713,7 +712,7 @@ ipsec6_common_input_cb(struct mbuf *m, struct secasvar *sav, int skip, int proto
 	 */
 	if (mt == NULL && sproto != IPPROTO_IPCOMP) {
 		mtag = m_tag_get(PACKET_TAG_IPSEC_IN_DONE,
-				 sizeof(struct tdb_ident), MB_DONTWAIT);
+				 sizeof(struct tdb_ident), M_NOWAIT);
 		if (mtag == NULL) {
 			DPRINTF(("ipsec_common_input_cb: failed to "
 			    "get tag\n"));

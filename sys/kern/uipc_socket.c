@@ -889,7 +889,7 @@ restart:
 		    } else do {
 			if (resid > INT_MAX)
 				resid = INT_MAX;
-			m = m_getl((int)resid, MB_WAIT, MT_DATA,
+			m = m_getl((int)resid, M_WAITOK, MT_DATA,
 				   top == NULL ? M_PKTHDR : 0, &mlen);
 			if (top == NULL) {
 				m->m_pkthdr.len = 0;
@@ -1049,7 +1049,7 @@ restart:
 		} else {
 			int nsize;
 
-			top = m_getl(uio->uio_resid + hdrlen, MB_WAIT,
+			top = m_getl(uio->uio_resid + hdrlen, M_WAITOK,
 			    MT_DATA, M_PKTHDR, &nsize);
 			KASSERT(nsize >= uio->uio_resid + hdrlen,
 			    ("sosendudp invalid nsize %d, "
@@ -1184,10 +1184,10 @@ restart:
 			if (resid > INT_MAX)
 				resid = INT_MAX;
 			if (tcp_sosend_jcluster) {
-				m = m_getlj((int)resid, MB_WAIT, MT_DATA,
+				m = m_getlj((int)resid, M_WAITOK, MT_DATA,
 					   top == NULL ? M_PKTHDR : 0, &mlen);
 			} else {
-				m = m_getl((int)resid, MB_WAIT, MT_DATA,
+				m = m_getl((int)resid, M_WAITOK, MT_DATA,
 					   top == NULL ? M_PKTHDR : 0, &mlen);
 			}
 			if (top == NULL) {
@@ -1309,7 +1309,7 @@ soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
 	else
 		flags = 0;
 	if (flags & MSG_OOB) {
-		m = m_get(MB_WAIT, MT_DATA);
+		m = m_get(M_WAITOK, MT_DATA);
 		if (m == NULL)
 			return (ENOBUFS);
 		error = so_pru_rcvoob(so, m, flags & MSG_PEEK);
@@ -1524,7 +1524,7 @@ dontblock:
 				moff += len;
 			} else {
 				if (sio) {
-					n = m_copym(m, 0, len, MB_WAIT);
+					n = m_copym(m, 0, len, M_WAITOK);
 					if (n)
 						sbappend(sio, n);
 				}
@@ -1639,7 +1639,7 @@ sorecvtcp(struct socket *so, struct sockaddr **psa, struct uio *uio,
 	else
 		flags = 0;
 	if (flags & MSG_OOB) {
-		m = m_get(MB_WAIT, MT_DATA);
+		m = m_get(M_WAITOK, MT_DATA);
 		if (m == NULL)
 			return (ENOBUFS);
 		error = so_pru_rcvoob(so, m, flags & MSG_PEEK);
@@ -1851,7 +1851,7 @@ dontblock:
 		if (offset) {
 			KKASSERT(m);
 			if (sio) {
-				n = m_copym(m, 0, offset, MB_WAIT);
+				n = m_copym(m, 0, offset, M_WAITOK);
 				if (n)
 					sbappend(sio, n);
 			}
@@ -2415,7 +2415,7 @@ soopt_getm(struct sockopt *sopt, struct mbuf **mp)
 	struct mbuf *m, *m_prev;
 	int sopt_size = sopt->sopt_valsize, msize;
 
-	m = m_getl(sopt_size, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT, MT_DATA,
+	m = m_getl(sopt_size, sopt->sopt_td ? M_WAITOK : M_NOWAIT, MT_DATA,
 		   0, &msize);
 	if (m == NULL)
 		return (ENOBUFS);
@@ -2425,7 +2425,7 @@ soopt_getm(struct sockopt *sopt, struct mbuf **mp)
 	m_prev = m;
 
 	while (sopt_size > 0) {
-		m = m_getl(sopt_size, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT,
+		m = m_getl(sopt_size, sopt->sopt_td ? M_WAITOK : M_NOWAIT,
 			   MT_DATA, 0, &msize);
 		if (m == NULL) {
 			m_freem(*mp);

@@ -1177,7 +1177,7 @@ syncache_respond(struct syncache *sc, struct mbuf *m)
 	if (m)
 		m_freem(m);
 
-	m = m_gethdr(MB_DONTWAIT, MT_HEADER);
+	m = m_gethdr(M_NOWAIT, MT_HEADER);
 	if (m == NULL)
 		return (ENOBUFS);
 	m->m_data += max_linkhdr;

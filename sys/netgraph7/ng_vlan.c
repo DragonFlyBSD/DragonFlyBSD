@@ -410,7 +410,7 @@ ng_vlan_rcvdata(hook_p hook, item_p item)
 				NG_FREE_M(m);
 				return (EOPNOTSUPP);
 			}
-			M_PREPEND(m, ETHER_VLAN_ENCAP_LEN, MB_DONTWAIT);
+			M_PREPEND(m, ETHER_VLAN_ENCAP_LEN, M_NOWAIT);
 			/* M_PREPEND takes care of m_len and m_pkthdr.len. */
 			if (m == NULL || (m->m_len < sizeof(*evl) &&
 			    (m = m_pullup(m, sizeof(*evl))) == NULL)) {

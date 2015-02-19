@@ -141,7 +141,7 @@ key_sendup0(struct rawcb *rp, struct mbuf *m, int promisc)
 	if (promisc) {
 		struct sadb_msg *pmsg;
 
-		M_PREPEND(m, sizeof(struct sadb_msg), MB_DONTWAIT);
+		M_PREPEND(m, sizeof(struct sadb_msg), M_NOWAIT);
 		if (m && m->m_len < sizeof(struct sadb_msg))
 			m = m_pullup(m, sizeof(struct sadb_msg));
 		if (!m) {
@@ -213,7 +213,7 @@ key_sendup(struct socket *so, struct sadb_msg *msg, u_int len, int target)
 	while (tlen > 0) {
 		int nsize;
 
-		n = m_getl(tlen, MB_DONTWAIT, MT_DATA,
+		n = m_getl(tlen, M_NOWAIT, MT_DATA,
 			   (tlen == len) ? M_PKTHDR : 0, &nsize);
 		if (n == NULL) {
 			m_freem(m);

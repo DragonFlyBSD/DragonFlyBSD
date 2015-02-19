@@ -1300,7 +1300,7 @@ rl_encap(struct rl_softc *sc, struct mbuf *m_head)
 	 * TX buffers, plus we can only have one fragment buffer
 	 * per packet.  We have to copy pretty much all the time.
 	 */
-	m_new = m_defrag(m_head, MB_DONTWAIT);
+	m_new = m_defrag(m_head, M_NOWAIT);
 	if (m_new == NULL) {
 		m_freem(m_head);
 		return ENOBUFS;

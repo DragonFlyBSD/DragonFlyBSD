@@ -1524,7 +1524,7 @@ ng_btsocket_l2cap_data_input(struct mbuf *m, hook_p hook)
 			 * it is a broadcast traffic after all
 			 */
 
-			copy = m_dup(m, MB_DONTWAIT);
+			copy = m_dup(m, M_NOWAIT);
 			if (copy != NULL) {
 				sbappendrecord(&pcb->so->so_rcv.sb, copy);
 				sorwakeup(pcb->so);
@@ -2592,12 +2592,12 @@ ng_btsocket_l2cap_send2(ng_btsocket_l2cap_pcb_p pcb)
 	if (pcb->so->so_snd.sb.sb_cc == 0)
 		return (EINVAL); /* XXX */
 
-	m = m_dup(pcb->so->so_snd.sb.sb_mb, MB_DONTWAIT);
+	m = m_dup(pcb->so->so_snd.sb.sb_mb, M_NOWAIT);
 	if (m == NULL)
 		return (ENOBUFS);
 
 	/* Create L2CA packet header */
-	M_PREPEND(m, sizeof(*hdr), MB_DONTWAIT);
+	M_PREPEND(m, sizeof(*hdr), M_NOWAIT);
 	if (m != NULL)
 		if (m->m_len < sizeof(*hdr))
 			m = m_pullup(m, sizeof(*hdr));

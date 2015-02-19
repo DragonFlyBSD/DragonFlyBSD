@@ -1,6 +1,5 @@
 /*
  * $FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/in_gif.c,v 1.18 2008/10/27 02:56:30 sephe Exp $
  * $KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $
  */
 /*
@@ -174,7 +173,7 @@ in_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 		ip_ecn_ingress(ECN_NOCARE, &iphdr.ip_tos, &tos);
 
 	/* prepend new IP header */
-	M_PREPEND(m, sizeof(struct ip), MB_DONTWAIT);
+	M_PREPEND(m, sizeof(struct ip), M_NOWAIT);
 	if (m && m->m_len < sizeof(struct ip))
 		m = m_pullup(m, sizeof(struct ip));
 	if (m == NULL) {

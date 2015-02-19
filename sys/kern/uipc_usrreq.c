@@ -1502,7 +1502,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 			error = E2BIG;
 			goto done;
 		}
-		MCLGET(control, MB_WAIT);
+		MCLGET(control, M_WAITOK);
 		if (!(control->m_flags & M_EXT)) {
 			error = ENOBUFS;
 			goto done;

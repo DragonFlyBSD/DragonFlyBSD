@@ -724,7 +724,7 @@ msk_newbuf(struct msk_if_softc *sc_if, int idx, int init)
 	bus_dmamap_t map;
 	int error, nseg;
 
-	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return (ENOBUFS);
 
@@ -773,7 +773,7 @@ msk_jumbo_newbuf(struct msk_if_softc *sc_if, int idx)
 	int nsegs;
 	void *buf;
 
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
+	MGETHDR(m, M_NOWAIT, MT_DATA);
 	if (m == NULL)
 		return (ENOBUFS);
 	buf = msk_jalloc(sc_if);
@@ -2427,7 +2427,7 @@ msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 		}
 	}
 	if (defrag) {
-		m = m_defrag(*m_head, MB_DONTWAIT);
+		m = m_defrag(*m_head, M_NOWAIT);
 		if (m == NULL) {
 			m_freem(*m_head);
 			*m_head = NULL;

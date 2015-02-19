@@ -29,7 +29,6 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.33 2008/09/02 16:17:52 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -561,7 +560,7 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 	if ((so->so_state & SS_ASYNC) && so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGIO, 0);
 	if (ssb->ssb_flags & SSB_UPCALL)
-		(*so->so_upcall)(so, so->so_upcallarg, MB_DONTWAIT);
+		(*so->so_upcall)(so, so->so_upcallarg, M_NOWAIT);
 	KNOTE(&kqinfo->ki_note, 0);
 
 	/*

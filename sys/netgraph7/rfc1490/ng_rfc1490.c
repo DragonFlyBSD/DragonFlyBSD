@@ -387,7 +387,7 @@ switch_on_etype:		etype = ntohs(*((const u_int16_t *)ptr));
 			break;
 		}
 	} else if (hook == priv->ppp) {
-		M_PREPEND(m, 2, MB_DONTWAIT);	/* Prepend PPP NLPID */
+		M_PREPEND(m, 2, M_NOWAIT);	/* Prepend PPP NLPID */
 		if (!m)
 			ERROUT(ENOBUFS);
 		mtod(m, u_char *)[0] = HDLC_UI;
@@ -396,7 +396,7 @@ switch_on_etype:		etype = ntohs(*((const u_int16_t *)ptr));
 	} else if (hook == priv->inet) {
 		switch (priv->enc->method) {
 		case NG_RFC1490_ENCAP_IETF_IP:
-			M_PREPEND(m, 2, MB_DONTWAIT);	/* Prepend IP NLPID */
+			M_PREPEND(m, 2, M_NOWAIT);	/* Prepend IP NLPID */
 			if (!m)
 				ERROUT(ENOBUFS);
 			mtod(m, u_char *)[0] = HDLC_UI;
@@ -408,7 +408,7 @@ switch_on_etype:		etype = ntohs(*((const u_int16_t *)ptr));
 			 *  HDLC_UI  PAD  NLIPID  OUI      PID
 			 *  03      00   80      00 00 00  08 00
 			 */
-			M_PREPEND(m, 8, MB_DONTWAIT);
+			M_PREPEND(m, 8, M_NOWAIT);
 			if (!m)
 				ERROUT(ENOBUFS);
 			mtod(m, u_char *)[0] = HDLC_UI;
@@ -419,7 +419,7 @@ switch_on_etype:		etype = ntohs(*((const u_int16_t *)ptr));
 			    = htons(ETHERTYPE_IP);  /* PID */
 			break;
 		case NG_RFC1490_ENCAP_CISCO:
-			M_PREPEND(m, 2, MB_DONTWAIT);	/* Prepend IP ethertype */
+			M_PREPEND(m, 2, M_NOWAIT);	/* Prepend IP ethertype */
 			if (!m)
 				ERROUT(ENOBUFS);
 			*((u_int16_t *)mtod(m, u_int16_t *)) = htons(ETHERTYPE_IP);
@@ -427,7 +427,7 @@ switch_on_etype:		etype = ntohs(*((const u_int16_t *)ptr));
 		}
 		NG_FWD_NEW_DATA(error, item, priv->downlink, m);
 	} else if (hook == priv->ethernet) {
-		M_PREPEND(m, 8, MB_DONTWAIT);	/* Prepend NLPID, OUI, PID */
+		M_PREPEND(m, 8, M_NOWAIT);	/* Prepend NLPID, OUI, PID */
 		if (!m)
 			ERROUT(ENOBUFS);
 		mtod(m, u_char *)[0] = HDLC_UI;

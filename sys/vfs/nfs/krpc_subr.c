@@ -149,7 +149,7 @@ krpc_portmap(struct sockaddr_in *sin,	/* server address */
 		return 0;
 	}
 
-	m = m_get(MB_WAIT, MT_DATA);
+	m = m_get(M_WAITOK, MT_DATA);
 	if (m == NULL)
 		return ENOBUFS;
 	sdata = mtod(m, struct sdata *);
@@ -274,7 +274,7 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 	/*
 	 * Prepend RPC message header.
 	 */
-	mhead = m_gethdr(MB_WAIT, MT_DATA);
+	mhead = m_gethdr(M_WAITOK, MT_DATA);
 	mhead->m_next = *data;
 	call = mtod(mhead, struct rpc_call *);
 	mhead->m_len = sizeof(*call);
@@ -316,7 +316,7 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 	timo = 0;
 	for (;;) {
 		/* Send RPC request (or re-send). */
-		m = m_copym(mhead, 0, M_COPYALL, MB_WAIT);
+		m = m_copym(mhead, 0, M_COPYALL, M_WAITOK);
 		if (m == NULL) {
 			error = ENOBUFS;
 			goto out;
@@ -471,7 +471,7 @@ xdr_string_encode(char *str, int len)
 	if (mlen > MCLBYTES)		/* If too big, we just can't do it. */
 		return (NULL);
 
-	m = m_getl(mlen, MB_WAIT, MT_DATA, 0, NULL);
+	m = m_getl(mlen, M_WAITOK, MT_DATA, 0, NULL);
 	xs = mtod(m, struct xdr_string *);
 	m->m_len = mlen;
 	xs->len = txdr_unsigned(len);

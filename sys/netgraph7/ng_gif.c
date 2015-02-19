@@ -63,7 +63,6 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_gif.c,v 1.19 2005/06/10 16:49:21 brooks Exp $
- * $DragonFly: src/sys/netgraph7/ng_gif.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -311,7 +310,7 @@ ng_gif_glue_af(struct mbuf **mp, int af)
 	 * hopefully everything after that will not
 	 * need one. So let's just use M_PREPEND.
 	 */
-	M_PREPEND(m, sizeof (tmp_af), MB_DONTWAIT);
+	M_PREPEND(m, sizeof (tmp_af), M_NOWAIT);
 	if (m == NULL) {
 		error = ENOBUFS;
 		goto done;

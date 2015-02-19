@@ -110,7 +110,7 @@ igmp_init(void)
 	/*
 	 * Construct a Router Alert option to use in outgoing packets
 	 */
-	MGET(router_alert, MB_DONTWAIT, MT_DATA);
+	MGET(router_alert, M_NOWAIT, MT_DATA);
 	ra = mtod(router_alert, struct ipoption *);
 	ra->ipopt_dst.s_addr = 0;
 	ra->ipopt_list[0] = IPOPT_RA;	/* Router Alert Option */
@@ -485,7 +485,7 @@ igmp_sendpkt(struct in_multi *inm, int type, unsigned long addr)
 	struct ip *ip;
 	struct ip_moptions imo;
 
-	MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+	MGETHDR(m, M_NOWAIT, MT_HEADER);
 	if (m == NULL)
 		return;
 

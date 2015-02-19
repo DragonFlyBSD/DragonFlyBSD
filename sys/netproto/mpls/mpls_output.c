@@ -27,8 +27,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/netproto/mpls/mpls_output.c,v 1.2 2008/08/05 15:11:32 nant Exp $
  */
 
 #include <sys/param.h>
@@ -155,7 +153,7 @@ mpls_push(struct mbuf **m, mpls_label_t label, mpls_s_t s, mpls_exp_t exp, mpls_
 	struct mpls *mpls;
 	u_int32_t buf = 0;	/* Silence warning */
 
-	M_PREPEND(*m, sizeof(struct mpls), MB_DONTWAIT);
+	M_PREPEND(*m, sizeof(struct mpls), M_NOWAIT);
 	if (*m == NULL)
 		return (ENOBUFS);
 

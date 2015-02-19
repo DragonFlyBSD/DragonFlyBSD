@@ -949,7 +949,7 @@ pass:
 			tmp = length = m->m_pkthdr.len;
 
 			while ((length -= mbuf_frag_size) >= 1) {
-				m1 = m_split(m, length, MB_DONTWAIT);
+				m1 = m_split(m, length, M_NOWAIT);
 				if (m1 == NULL)
 					break;
 				m2 = m;
@@ -1140,7 +1140,7 @@ smart_frag_failure:
 		struct mbuf *m;
 		int mhlen = sizeof(struct ip);
 
-		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+		MGETHDR(m, M_NOWAIT, MT_HEADER);
 		if (m == NULL) {
 			error = ENOBUFS;
 			ipstat.ips_odropped++;
@@ -1260,7 +1260,7 @@ ip_insertoptions(struct mbuf *m, struct mbuf *opt, int *phlen)
 	if (p->ipopt_dst.s_addr)
 		ip->ip_dst = p->ipopt_dst;
 	if (m->m_flags & M_EXT || m->m_data - optlen < m->m_pktdat) {
-		MGETHDR(n, MB_DONTWAIT, MT_HEADER);
+		MGETHDR(n, M_NOWAIT, MT_HEADER);
 		if (n == NULL) {
 			*phlen = 0;
 			return (m);
@@ -1390,7 +1390,7 @@ ip_ctloutput(netmsg_t msg)
 				error = EMSGSIZE;
 				break;
 			}
-			MGET(m, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT, MT_HEADER);
+			MGET(m, sopt->sopt_td ? M_WAITOK : M_NOWAIT, MT_HEADER);
 			if (m == NULL) {
 				error = ENOBUFS;
 				break;
@@ -2157,7 +2157,7 @@ ip_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in *dst,
 	struct ip *ip;
 	struct mbuf *copym;
 
-	copym = m_copypacket(m, MB_DONTWAIT);
+	copym = m_copypacket(m, M_NOWAIT);
 	if (copym != NULL && (copym->m_flags & M_EXT || copym->m_len < hlen))
 		copym = m_pullup(copym, hlen);
 	if (copym != NULL) {

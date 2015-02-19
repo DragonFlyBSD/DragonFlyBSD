@@ -2336,7 +2336,7 @@ acx_newbuf(struct acx_softc *sc, struct acx_rxbuf *rb, int wait)
 
 	bd = &sc->sc_buf_data;
 
-	m = m_getcl(wait ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(wait ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return ENOBUFS;
 
@@ -2401,7 +2401,7 @@ acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
 	if (error) {	/* error == EFBIG */
 		struct mbuf *m_new;
 
-		m_new = m_defrag(m, MB_DONTWAIT);
+		m_new = m_defrag(m, M_NOWAIT);
 		if (m_new == NULL) {
 			if_printf(&sc->sc_ic.ic_if, "can't defrag tx mbuf\n");
 			error = ENOBUFS;

@@ -712,7 +712,7 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	len = 0;
 	i = 0;
 	while (len < NFS_MAXPATHLEN) {
-		mp1 = m_getcl(MB_WAIT, MT_DATA, 0);
+		mp1 = m_getcl(M_WAITOK, MT_DATA, 0);
 		mp1->m_len = MCLBYTES;
 		if (len == 0)
 			mp3 = mp2 = mp1;
@@ -913,7 +913,7 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 				i++;
 			}
 			if (left > 0) {
-				m = m_getcl(MB_WAIT, MT_DATA, 0);
+				m = m_getcl(M_WAITOK, MT_DATA, 0);
 				m->m_len = 0;
 				m2->m_next = m;
 				m2 = m;

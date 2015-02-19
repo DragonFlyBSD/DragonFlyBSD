@@ -226,7 +226,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) != (IFF_UP | IFF_RUNNING))
 		gotoerr(ENETDOWN);
 
-	M_PREPEND(m, sizeof(struct ether_header), MB_DONTWAIT);
+	M_PREPEND(m, sizeof(struct ether_header), M_NOWAIT);
 	if (m == NULL)
 		return (ENOBUFS);
 	m->m_pkthdr.csum_lhlen = sizeof(struct ether_header);
@@ -311,7 +311,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		if ((m->m_flags & M_BCAST) || (loop_copy > 0)) {
 			struct mbuf *n;
 
-			if ((n = m_copypacket(m, MB_DONTWAIT)) != NULL) {
+			if ((n = m_copypacket(m, M_NOWAIT)) != NULL) {
 				n->m_pkthdr.csum_flags |= csum_flags;
 				if (csum_flags & CSUM_DATA_VALID)
 					n->m_pkthdr.csum_data = 0xffff;
@@ -910,7 +910,7 @@ ether_restore_header(struct mbuf **m0, const struct ether_header *eh,
 	} else {
 		ether_prepend_hdr++;
 
-		M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
+		M_PREPEND(m, ETHER_HDR_LEN, M_NOWAIT);
 		if (m != NULL) {
 			bcopy(save_eh, mtod(m, struct ether_header *),
 			      ETHER_HDR_LEN);
@@ -1101,7 +1101,7 @@ post_stats:
 			 * Put back the ethernet header so netgraph has a
 			 * consistent view of inbound packets.
 			 */
-			M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
+			M_PREPEND(m, ETHER_HDR_LEN, M_NOWAIT);
 			if (m == NULL) {
 				/*
 				 * M_PREPEND frees the mbuf in case of failure.

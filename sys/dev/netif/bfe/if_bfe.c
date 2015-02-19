@@ -565,7 +565,7 @@ bfe_newbuf(struct bfe_softc *sc, int c, int init)
 	struct mbuf *m;
 	int error, nsegs;
 
-	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return ENOBUFS;
 	m->m_len = m->m_pkthdr.len = MCLBYTES;

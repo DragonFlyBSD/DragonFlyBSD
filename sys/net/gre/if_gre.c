@@ -312,7 +312,7 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 			if ((m->m_data - msiz) < m->m_pktdat) {
 				/* need new mbuf */
-				MGETHDR(m0, MB_DONTWAIT, MT_HEADER);
+				MGETHDR(m0, M_NOWAIT, MT_HEADER);
 				if (m0 == NULL) {
 					m_freem(m);
 					error = ENOBUFS;
@@ -353,7 +353,7 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			error = EAFNOSUPPORT;
 			goto end;
 		}
-		M_PREPEND(m, sizeof(struct greip), MB_DONTWAIT);
+		M_PREPEND(m, sizeof(struct greip), M_NOWAIT);
 	} else {
 		m_freem(m);
 		error = EINVAL;

@@ -355,7 +355,7 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	/* prepend sockaddr? this may abort if the mbuf allocation fails */
 	if (tp->tun_flags & TUN_LMODE) {
 		/* allocate space for sockaddr */
-		M_PREPEND(m0, dst->sa_len, MB_DONTWAIT);
+		M_PREPEND(m0, dst->sa_len, M_NOWAIT);
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
@@ -368,7 +368,7 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 
 	if (tp->tun_flags & TUN_IFHEAD) {
 		/* Prepend the address family */
-		M_PREPEND(m0, 4, MB_DONTWAIT);
+		M_PREPEND(m0, 4, M_NOWAIT);
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
@@ -598,7 +598,7 @@ tunwrite(struct dev_write_args *ap)
 	tlen = uio->uio_resid;
 
 	/* get a header mbuf */
-	MGETHDR(m, MB_WAIT, MT_DATA);
+	MGETHDR(m, M_WAITOK, MT_DATA);
 	if (m == NULL)
 		return ENOBUFS;
 	mlen = MHLEN;
@@ -611,7 +611,7 @@ tunwrite(struct dev_write_args *ap)
 		*mp = m;
 		mp = &m->m_next;
 		if (uio->uio_resid > 0) {
-			MGET (m, MB_WAIT, MT_DATA);
+			MGET (m, M_WAITOK, MT_DATA);
 			if (m == NULL) {
 				error = ENOBUFS;
 				break;

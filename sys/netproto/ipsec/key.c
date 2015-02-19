@@ -1603,7 +1603,7 @@ key_gather_mbuf(struct mbuf *m, const struct sadb_msghdr *mhp,
 			if (len > MHLEN)
 				panic("assumption failed");
 #endif
-			MGETHDR(n, MB_DONTWAIT, MT_DATA);
+			MGETHDR(n, M_NOWAIT, MT_DATA);
 			if (!n)
 				goto fail;
 			n->m_len = len;
@@ -1622,7 +1622,7 @@ key_gather_mbuf(struct mbuf *m, const struct sadb_msghdr *mhp,
 			    mtod(n, caddr_t));
 		} else {
 			n = m_copym(m, mhp->extoff[idx], mhp->extlen[idx],
-			    MB_DONTWAIT);
+			    M_NOWAIT);
 		}
 		if (n == NULL)
 			goto fail;
@@ -2041,7 +2041,7 @@ key_spddelete2(struct socket *so, struct mbuf *m,
 
 	if (len > MCLBYTES)
 		return key_senderror(so, m, ENOBUFS);
-	n = m_getb(len, MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	n = m_getb(len, M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (!n)
 		return key_senderror(so, m, ENOBUFS);
 	n->m_len = len;
@@ -2055,7 +2055,7 @@ key_spddelete2(struct socket *so, struct mbuf *m,
 #endif
 
 	n->m_next = m_copym(m, mhp->extoff[SADB_X_EXT_POLICY],
-	    mhp->extlen[SADB_X_EXT_POLICY], MB_DONTWAIT);
+	    mhp->extlen[SADB_X_EXT_POLICY], M_NOWAIT);
 	if (!n->m_next) {
 		m_freem(n);
 		return key_senderror(so, m, ENOBUFS);
@@ -3228,7 +3228,7 @@ key_setdumpsa(struct secasvar *sav, u_int8_t type, u_int8_t satype,
 		if ((!m && !p) || (m && p))
 			goto fail;
 		if (p && tres) {
-			M_PREPEND(tres, l, MB_DONTWAIT);
+			M_PREPEND(tres, l, M_NOWAIT);
 			if (!tres)
 				goto fail;
 			bcopy(p, mtod(tres, caddr_t), l);
@@ -3279,7 +3279,7 @@ key_setsadbmsg(u_int8_t type, u_int16_t tlen, u_int8_t satype, u_int32_t seq,
 	len = PFKEY_ALIGN8(sizeof(struct sadb_msg));
 	if (len > MCLBYTES)
 		return NULL;
-	m = m_getb(len, MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getb(len, M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (!m)
 		return NULL;
 	m->m_pkthdr.len = m->m_len = len;
@@ -4313,7 +4313,7 @@ key_getspi(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 	    PFKEY_ALIGN8(sizeof(struct sadb_sa));
 	if (len > MCLBYTES)
 		return key_senderror(so, m, ENOBUFS);
-	n = m_getb(len, MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	n = m_getb(len, M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (!n)
 		return key_senderror(so, m, ENOBUFS);
 	n->m_len = len;
@@ -5161,7 +5161,7 @@ key_getcomb_esp(void)
 			KASSERT(l <= MLEN,
 				("key_getcomb_esp: l=%u > MLEN=%lu",
 				l, (u_long) MLEN));
-			MGET(m, MB_DONTWAIT, MT_DATA);
+			MGET(m, M_NOWAIT, MT_DATA);
 			if (m) {
 				M_ALIGN(m, l);
 				m->m_len = l;
@@ -5261,14 +5261,14 @@ key_getcomb_ah(void)
 			KASSERT(l <= MLEN,
 				("key_getcomb_ah: l=%u > MLEN=%lu",
 				l, (u_long) MLEN));
-			MGET(m, MB_DONTWAIT, MT_DATA);
+			MGET(m, M_NOWAIT, MT_DATA);
 			if (m) {
 				M_ALIGN(m, l);
 				m->m_len = l;
 				m->m_next = NULL;
 			}
 		} else
-			M_PREPEND(m, l, MB_DONTWAIT);
+			M_PREPEND(m, l, M_NOWAIT);
 		if (!m)
 			return NULL;
 
@@ -5306,14 +5306,14 @@ key_getcomb_ipcomp(void)
 			KASSERT(l <= MLEN,
 				("key_getcomb_ipcomp: l=%u > MLEN=%lu",
 				l, (u_long) MLEN));
-			MGET(m, MB_DONTWAIT, MT_DATA);
+			MGET(m, M_NOWAIT, MT_DATA);
 			if (m) {
 				M_ALIGN(m, l);
 				m->m_len = l;
 				m->m_next = NULL;
 			}
 		} else
-			M_PREPEND(m, l, MB_DONTWAIT);
+			M_PREPEND(m, l, M_NOWAIT);
 		if (!m)
 			return NULL;
 
@@ -5355,7 +5355,7 @@ key_getprop(const struct secasindex *saidx)
 
 	if (!m)
 		return NULL;
-	M_PREPEND(m, l, MB_DONTWAIT);
+	M_PREPEND(m, l, M_NOWAIT);
 	if (!m)
 		return NULL;
 
@@ -5843,7 +5843,7 @@ key_register(struct socket *so, struct mbuf *m,
 
 	if (len > MCLBYTES)
 		return key_senderror(so, m, ENOBUFS);
-	n = m_getb(len, MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	n = m_getb(len, M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (!n)
 		return key_senderror(so, m, ENOBUFS);
 	n->m_pkthdr.len = n->m_len = len;
@@ -6369,7 +6369,7 @@ key_parse(struct mbuf *m, struct socket *so)
 	if (m->m_next) {
 		struct mbuf *n;
 
-		n = m_getb(m->m_pkthdr.len, MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		n = m_getb(m->m_pkthdr.len, M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (!n) {
 			m_freem(m);
 			return ENOBUFS;
@@ -6940,7 +6940,7 @@ key_alloc_mbuf(int l)
 
 	len = l;
 	while (len > 0) {
-		n = m_getb(len, MB_DONTWAIT, MT_DATA, 0);
+		n = m_getb(len, M_NOWAIT, MT_DATA, 0);
 		if (!n) {
 			m_freem(m);
 			return NULL;

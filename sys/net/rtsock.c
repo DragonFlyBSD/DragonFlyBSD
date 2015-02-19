@@ -910,7 +910,7 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 	hlen = rt_msghdrsize(type);
 	KASSERT(hlen <= MCLBYTES, ("rt_msg_mbuf: hlen %d doesn't fit", hlen));
 
-	m = m_getl(hlen, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
+	m = m_getl(hlen, M_NOWAIT, MT_DATA, M_PKTHDR, NULL);
 	if (m == NULL)
 		return (NULL);
 	mbuftrackid(m, 32);
@@ -1183,8 +1183,8 @@ rt_ieee80211msg(struct ifnet *ifp, int what, void *data, size_t data_len)
 	 * NB: we assume m is a single mbuf.
 	 */
 	if (data_len > M_TRAILINGSPACE(m)) {
-		/* XXX use m_getb(data_len, MB_DONTWAIT, MT_DATA, 0); */
-		struct mbuf *n = m_get(MB_DONTWAIT, MT_DATA);
+		/* XXX use m_getb(data_len, M_NOWAIT, MT_DATA, 0); */
+		struct mbuf *n = m_get(M_NOWAIT, MT_DATA);
 		if (n == NULL) {
 			m_freem(m);
 			return;

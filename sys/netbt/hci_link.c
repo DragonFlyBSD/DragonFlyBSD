@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/hci_link.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: src/sys/netbt/hci_link.c,v 1.7 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: hci_link.c,v 1.16 2007/11/10 23:12:22 plunky Exp $ */
 
@@ -566,7 +565,7 @@ hci_acl_send(struct mbuf *m, struct hci_link *link,
 
 	while (plen > 0) {
 		if (plen > mlen) {
-			n = m_split(m, mlen, MB_DONTWAIT);
+			n = m_split(m, mlen, M_NOWAIT);
 			if (n == NULL)
 				goto nomem;
 		} else {
@@ -655,7 +654,7 @@ hci_acl_start(struct hci_link *link)
 			handle = HCI_MK_CON_HANDLE(link->hl_handle,
 						HCI_PACKET_FRAGMENT, 0);
 
-		M_PREPEND(m, sizeof(*hdr), MB_DONTWAIT);
+		M_PREPEND(m, sizeof(*hdr), M_NOWAIT);
 		if (m == NULL)
 			break;
 

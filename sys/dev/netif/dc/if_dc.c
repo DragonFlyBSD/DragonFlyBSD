@@ -2318,7 +2318,7 @@ dc_newbuf(struct dc_softc *sc, int i, struct mbuf *m)
 	c = &sc->dc_ldata->dc_rx_list[i];
 
 	if (m == NULL) {
-		m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		m_new = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (m_new == NULL)
 			return (ENOBUFS);
 		m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
@@ -3128,7 +3128,7 @@ dc_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			}
 
 			/* only coalesce if have >1 mbufs */
-			m_defragged = m_defrag(m_head, MB_DONTWAIT);
+			m_defragged = m_defrag(m_head, M_NOWAIT);
 			if (m_defragged == NULL) {
 				ifq_set_oactive(&ifp->if_snd);
 				ifq_prepend(&ifp->if_snd, m_head);

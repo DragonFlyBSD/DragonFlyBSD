@@ -664,7 +664,7 @@ lge_newbuf(struct lge_softc *sc, struct lge_rx_desc *c, struct mbuf *m)
 	struct lge_jslot *buf;
 
 	if (m == NULL) {
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, M_NOWAIT, MT_DATA);
 		if (m_new == NULL) {
 			kprintf("lge%d: no memory for rx list "
 			    "-- packet dropped!\n", sc->lge_unit);
@@ -1168,7 +1168,7 @@ again:
 				continue;
 			}
 
-			m_defragged = m_defrag(m_head, MB_DONTWAIT);
+			m_defragged = m_defrag(m_head, M_NOWAIT);
 			if (m_defragged == NULL) {
 				m_freem(m_head);
 				continue;

@@ -762,7 +762,7 @@ sk_newbuf_jumbo(struct sk_if_softc *sc_if, int idx, int wait)
 
 	KKASSERT(idx < SK_RX_RING_CNT && idx >= 0);
 
-	MGETHDR(m_new, wait ? MB_WAIT : MB_DONTWAIT, MT_DATA);
+	MGETHDR(m_new, wait ? M_WAITOK : M_NOWAIT, MT_DATA);
 	if (m_new == NULL)
 		return ENOBUFS;
 
@@ -818,7 +818,7 @@ sk_newbuf_std(struct sk_if_softc *sc_if, int idx, int wait)
 
 	KKASSERT(idx < SK_RX_RING_CNT && idx >= 0);
 
-	m_new = m_getcl(wait ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m_new = m_getcl(wait ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL)
 		return ENOBUFS;
 

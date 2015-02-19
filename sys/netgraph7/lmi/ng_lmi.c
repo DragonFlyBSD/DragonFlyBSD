@@ -319,7 +319,7 @@ nglmi_inquire(sc_p sc, int full)
 
 	if (sc->lmi_channel == NULL)
 		return;
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
+	MGETHDR(m, M_NOWAIT, MT_DATA);
 	if (m == NULL) {
 		log(LOG_ERR, "nglmi: unable to start up LMI processing\n");
 		return;
@@ -330,7 +330,7 @@ nglmi_inquire(sc_p sc, int full)
 	 * that device driver would put it in the beginning of queue */
 
 	ptag = (struct ng_tag_prio *)m_tag_alloc(NGM_GENERIC_COOKIE, NG_TAG_PRIO,
-	    (sizeof(struct ng_tag_prio) - sizeof(struct m_tag)), MB_DONTWAIT);
+	    (sizeof(struct ng_tag_prio) - sizeof(struct m_tag)), M_NOWAIT);
 	if (ptag != NULL) {	/* if it failed, well, it was optional anyhow */
 		ptag->priority = NG_PRIO_LINKSTATE;
 		ptag->discardability = -1;

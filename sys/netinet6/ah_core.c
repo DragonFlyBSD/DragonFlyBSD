@@ -1171,7 +1171,7 @@ again:
 				error = EMSGSIZE;
 				goto fail;
 			}
-			n = m_getb(hlen, MB_DONTWAIT, MT_DATA, 0);
+			n = m_getb(hlen, M_NOWAIT, MT_DATA, 0);
 			if (n == NULL) {
 				error = ENOBUFS;
 				goto fail;
@@ -1279,7 +1279,7 @@ again:
 				error = EMSGSIZE;
 				goto fail;
 			}
-			n = m_getb(totlen, MB_DONTWAIT, MT_DATA, 0);
+			n = m_getb(totlen, M_NOWAIT, MT_DATA, 0);
 			if (n == NULL) {
 				error = ENOBUFS;
 				goto fail;
@@ -1419,7 +1419,7 @@ again:
 				error = EMSGSIZE;
 				goto fail;
 			}
-			n = m_getb(newoff - off, MB_DONTWAIT, MT_DATA, 0);
+			n = m_getb(newoff - off, M_NOWAIT, MT_DATA, 0);
 			if (n == NULL) {
 				error = ENOBUFS;
 				goto fail;
@@ -1447,7 +1447,7 @@ again:
 			error = EMSGSIZE;
 			goto fail;
 		}
-		n = m_getb(newoff - off, MB_DONTWAIT, MT_DATA, 0);
+		n = m_getb(newoff - off, M_NOWAIT, MT_DATA, 0);
 		if (n == NULL) {
 			error = ENOBUFS;
 			goto fail;

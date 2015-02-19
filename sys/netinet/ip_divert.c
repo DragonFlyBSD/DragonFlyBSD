@@ -336,7 +336,7 @@ div_output(struct socket *so, struct mbuf *m,
 	 * with a 0 tag in mh_data is effectively untagged,
 	 * so we could optimize that case.
 	 */
-	mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT, sizeof(*divinfo), MB_DONTWAIT);
+	mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT, sizeof(*divinfo), M_NOWAIT);
 	if (mtag == NULL) {
 		error = ENOBUFS;
 		goto cantsend;
@@ -553,7 +553,7 @@ ip_divert_out(struct mbuf *m, int tee)
 
 	/* Clone packet if we're doing a 'tee' */
 	if (tee)
-		clone = m_dup(m, MB_DONTWAIT);
+		clone = m_dup(m, M_NOWAIT);
 
 	/*
 	 * XXX
@@ -652,7 +652,7 @@ ip_divert_in(struct mbuf *m, int tee)
 
 	/* Clone packet if we're doing a 'tee' */
 	if (tee)
-		clone = m_dup(m, MB_DONTWAIT);
+		clone = m_dup(m, M_NOWAIT);
 
 	/*
 	 * Restore packet header fields to original

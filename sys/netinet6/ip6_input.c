@@ -278,7 +278,7 @@ ip6_input(netmsg_t msg)
 	if (m && m->m_next != NULL && m->m_pkthdr.len < MCLBYTES) {
 		struct mbuf *n;
 
-		n = m_getb(m->m_pkthdr.len, MB_DONTWAIT, MT_HEADER, M_PKTHDR);
+		n = m_getb(m->m_pkthdr.len, M_NOWAIT, MT_HEADER, M_PKTHDR);
 		if (n == NULL)
 			goto bad;
 		M_MOVE_PKTHDR(n, m);
@@ -1468,7 +1468,7 @@ ip6_pullexthdr(struct mbuf *m, size_t off, int nxt)
 	else
 		elen = (ip6e.ip6e_len + 1) << 3;
 
-	n = m_getb(elen, MB_DONTWAIT, MT_DATA, 0);
+	n = m_getb(elen, M_NOWAIT, MT_DATA, 0);
 	if (n == NULL)
 		return NULL;
 	n->m_len = 0;
@@ -1641,7 +1641,7 @@ ip6_addaux(struct mbuf *m)
 	if (!tag) {
 		tag = m_tag_get(PACKET_TAG_IPV6_INPUT,
 				sizeof (struct ip6aux),
-				MB_DONTWAIT);
+				M_NOWAIT);
 		if (tag)
 			m_tag_prepend(m, tag);
 	}

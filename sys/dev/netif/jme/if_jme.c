@@ -3069,7 +3069,7 @@ jme_newbuf(struct jme_rxdata *rdata, struct jme_rxdesc *rxd, int init)
 	bus_dmamap_t map;
 	int error, nsegs;
 
-	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return ENOBUFS;
 	/*

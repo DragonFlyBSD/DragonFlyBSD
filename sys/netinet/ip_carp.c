@@ -1242,7 +1242,7 @@ carp_input(void *v, struct mbuf *m)
 		if ((sc->sc_if.if_flags & IFF_UP) == 0)
 			continue;
 
-		m0 = m_dup(m, MB_DONTWAIT);
+		m0 = m_dup(m, M_NOWAIT);
 		if (m0 == NULL)
 			continue;
 
@@ -1349,7 +1349,7 @@ carp_send_ad(struct carp_softc *sc)
 	if (sc->sc_ia != NULL) {
 		struct ip *ip;
 
-		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+		MGETHDR(m, M_NOWAIT, MT_HEADER);
 		if (m == NULL) {
 			IFNET_STAT_INC(cifp, oerrors, 1);
 			carpstats.carps_onomem++;
@@ -1418,7 +1418,7 @@ carp_send_ad(struct carp_softc *sc)
 	if (sc->sc_ia6) {
 		struct ip6_hdr *ip6;
 
-		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+		MGETHDR(m, M_NOWAIT, MT_HEADER);
 		if (m == NULL) {
 			IFNET_STAT_INC(cifp, oerrors, 1);
 			carpstats.carps_onomem++;
@@ -1664,7 +1664,7 @@ carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
 				struct ifnet *ifp = &sc->sc_if;
 
 				mtag = m_tag_get(PACKET_TAG_CARP,
-				    sizeof(struct ifnet *), MB_DONTWAIT);
+				    sizeof(struct ifnet *), M_NOWAIT);
 				if (mtag == NULL) {
 					/* better a bit than nothing */
 					return (IF_LLADDR(ifp));

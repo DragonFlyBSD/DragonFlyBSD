@@ -28,8 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.29 2008/05/14 11:59:22 sephe Exp $
- *
  */
 
 /*
@@ -738,7 +736,7 @@ vxget(struct vx_softc *sc, u_int totlen)
     m = sc->mb[sc->next_mb];
     sc->mb[sc->next_mb] = NULL;
     if (m == NULL) {
-        MGETHDR(m, MB_DONTWAIT, MT_DATA);
+        MGETHDR(m, M_NOWAIT, MT_DATA);
         if (m == NULL)
             return NULL;
     } else {
@@ -777,7 +775,7 @@ vxget(struct vx_softc *sc, u_int totlen)
             m = sc->mb[sc->next_mb];
             sc->mb[sc->next_mb] = NULL;
             if (m == NULL) {
-                MGET(m, MB_DONTWAIT, MT_DATA);
+                MGET(m, M_NOWAIT, MT_DATA);
                 if (m == NULL) {
                     crit_exit();
                     m_freem(top);
@@ -789,7 +787,7 @@ vxget(struct vx_softc *sc, u_int totlen)
             len = MLEN;
         }
         if (totlen >= MINCLSIZE) {
-	    MCLGET(m, MB_DONTWAIT);
+	    MCLGET(m, M_NOWAIT);
 	    if (m->m_flags & M_EXT)
 		len = MCLBYTES;
         }
@@ -963,7 +961,7 @@ vxmbuffill_serialized(void *sp)
     i = sc->last_mb;
     do {
 	if (sc->mb[i] == NULL)
-	    MGET(sc->mb[i], MB_DONTWAIT, MT_DATA);
+	    MGET(sc->mb[i], M_NOWAIT, MT_DATA);
 	if (sc->mb[i] == NULL)
 	    break;
 	i = (i + 1) % MAX_MBS;

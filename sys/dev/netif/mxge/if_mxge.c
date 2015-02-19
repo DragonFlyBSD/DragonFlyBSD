@@ -2058,9 +2058,9 @@ mxge_get_buf_small(mxge_rx_ring_t *rx, bus_dmamap_t map, int idx,
 	struct mbuf *m;
 	int cnt, err, mflag;
 
-	mflag = MB_DONTWAIT;
+	mflag = M_NOWAIT;
 	if (__predict_false(init))
-		mflag = MB_WAIT;
+		mflag = M_WAITOK;
 
 	m = m_gethdr(mflag, MT_DATA);
 	if (m == NULL) {
@@ -2108,9 +2108,9 @@ mxge_get_buf_big(mxge_rx_ring_t *rx, bus_dmamap_t map, int idx,
 	struct mbuf *m;
 	int cnt, err, mflag;
 
-	mflag = MB_DONTWAIT;
+	mflag = M_NOWAIT;
 	if (__predict_false(init))
-		mflag = MB_WAIT;
+		mflag = M_WAITOK;
 
 	if (rx->cl_size == MCLBYTES)
 		m = m_getcl(mflag, MT_DATA, M_PKTHDR);

@@ -29,7 +29,6 @@
  *
  * @(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_sockbuf.c,v 1.3 2007/08/09 01:10:04 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -248,7 +247,7 @@ sbappendaddr(struct sockbuf *sb, const struct sockaddr *asa, struct mbuf *m0,
 	}
 	if (asa->sa_len > MLEN)
 		return (0);
-	MGET(m, MB_DONTWAIT, MT_SONAME);
+	MGET(m, M_NOWAIT, MT_SONAME);
 	if (m == NULL)
 		return (0);
 	KKASSERT(m->m_nextpkt == NULL);
@@ -591,7 +590,7 @@ sbcreatecontrol(caddr_t p, int size, int type, int level)
 
 	if (CMSG_SPACE((u_int)size) > MCLBYTES)
 		return (NULL);
-	m = m_getl(CMSG_SPACE((u_int)size), MB_DONTWAIT, MT_CONTROL, 0, NULL);
+	m = m_getl(CMSG_SPACE((u_int)size), M_NOWAIT, MT_CONTROL, 0, NULL);
 	if (m == NULL)
 		return (NULL);
 	m->m_len = CMSG_SPACE(size);

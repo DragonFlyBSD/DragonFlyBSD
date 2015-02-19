@@ -1183,7 +1183,7 @@ vtnet_alloc_rxbuf(struct vtnet_softc *sc, int nbufs, struct mbuf **m_tailp)
 
 	/*use getcl instead of getjcl. see  if_mxge.c comment line 2398*/
 	//m_head = m_getjcl(M_DONTWAIT, MT_DATA, M_PKTHDR, clsize);
-	m_head = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR );
+	m_head = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR );
 	if (m_head == NULL)
 		goto fail;
 
@@ -1196,7 +1196,7 @@ vtnet_alloc_rxbuf(struct vtnet_softc *sc, int nbufs, struct mbuf **m_tailp)
 
 		for (i = 0; i < nbufs - 1; i++) {
 			//m = m_getjcl(M_DONTWAIT, MT_DATA, 0, clsize);
-			m = m_getcl(MB_DONTWAIT, MT_DATA, 0);
+			m = m_getcl(M_NOWAIT, MT_DATA, 0);
 			if (m == NULL)
 				goto fail;
 
@@ -1850,8 +1850,8 @@ again:
 		if (collapsed)
 			goto fail;
 
-		//m = m_collapse(m, MB_DONTWAIT, VTNET_MAX_TX_SEGS - 1);
-		m = m_defrag(m, MB_DONTWAIT);
+		//m = m_collapse(m, M_NOWAIT, VTNET_MAX_TX_SEGS - 1);
+		m = m_defrag(m, M_NOWAIT);
 		if (m == NULL)
 			goto fail;
 
@@ -1878,13 +1878,13 @@ vtnet_vlan_tag_insert(struct mbuf *m)
 	struct ether_vlan_header *evl;
 
 	if (M_WRITABLE(m) == 0) {
-		n = m_dup(m, MB_DONTWAIT);
+		n = m_dup(m, M_NOWAIT);
 		m_freem(m);
 		if ((m = n) == NULL)
 			return (NULL);
 	}
 
-	M_PREPEND(m, ETHER_VLAN_ENCAP_LEN, MB_DONTWAIT);
+	M_PREPEND(m, ETHER_VLAN_ENCAP_LEN, M_NOWAIT);
 	if (m == NULL)
 		return (NULL);
 	if (m->m_len < sizeof(struct ether_vlan_header)) {

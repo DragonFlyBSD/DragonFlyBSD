@@ -1106,7 +1106,7 @@ tbdinit:
 				continue;
 			}
 
-			mn = m_dup(mb_head, MB_DONTWAIT);
+			mn = m_dup(mb_head, M_NOWAIT);
 			if (mn == NULL) {
 				m_freem(mb_head);
 				IFNET_STAT_INC(ifp, oerrors, 1);
@@ -1957,7 +1957,7 @@ fxp_add_rfabuf(struct fxp_softc *sc, struct mbuf *oldm)
 	struct mbuf *m;
 	struct fxp_rfa *rfa, *p_rfa;
 
-	m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) { /* try to recycle the old mbuf instead */
 		if (oldm == NULL)
 			return 1;

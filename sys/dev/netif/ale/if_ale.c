@@ -1540,7 +1540,7 @@ ale_encap(struct ale_softc *sc, struct mbuf **m_head)
 				      *m_head, ale_dmamap_buf_cb, &ctx,
 				      BUS_DMA_NOWAIT);
 	if (error == EFBIG) {
-		m = m_defrag(*m_head, MB_DONTWAIT);
+		m = m_defrag(*m_head, M_NOWAIT);
 		if (m == NULL) {
 			m_freem(*m_head);
 			*m_head = NULL;

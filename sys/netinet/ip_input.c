@@ -380,7 +380,7 @@ ip_init(void)
 		/*
 		 * Preallocate mbuf template for forwarding
 		 */
-		MGETHDR(ipforward_mtemp[cpu], MB_WAIT, MT_DATA);
+		MGETHDR(ipforward_mtemp[cpu], M_WAITOK, MT_DATA);
 
 		/*
 		 * Initialize per-cpu ip fragments queues
@@ -1791,7 +1791,7 @@ save_rte(struct mbuf *m, u_char *option, struct in_addr dst)
 	struct ip_srcrt_opt *opt;
 	unsigned olen;
 
-	mtag = m_tag_get(PACKET_TAG_IPSRCRT, sizeof(*opt), MB_DONTWAIT);
+	mtag = m_tag_get(PACKET_TAG_IPSRCRT, sizeof(*opt), M_NOWAIT);
 	if (mtag == NULL)
 		return;
 	opt = m_tag_data(mtag);
@@ -1834,7 +1834,7 @@ ip_srcroute(struct mbuf *m0)
 
 	if (opt->ip_nhops == 0)
 		return (NULL);
-	m = m_get(MB_DONTWAIT, MT_HEADER);
+	m = m_get(M_NOWAIT, MT_HEADER);
 	if (m == NULL)
 		return (NULL);
 
@@ -1990,7 +1990,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		    m_tag_first(mtemp) == NULL,
 		    ("ip_forward invalid mtemp1"));
 
-		if (!m_dup_pkthdr(mtemp, m, MB_DONTWAIT)) {
+		if (!m_dup_pkthdr(mtemp, m, M_NOWAIT)) {
 			/*
 			 * It's probably ok if the pkthdr dup fails (because
 			 * the deep copy of the tag chain failed), but for now
@@ -2085,7 +2085,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	KASSERT((mtemp->m_flags & M_EXT) == 0 &&
 	    mtemp->m_data == mtemp->m_pktdat,
 	    ("ip_forward invalid mtemp2"));
-	mcopy = m_copym(mtemp, 0, mtemp->m_len, MB_DONTWAIT);
+	mcopy = m_copym(mtemp, 0, mtemp->m_len, M_NOWAIT);
 	if (mcopy == NULL)
 		goto done;
 

@@ -492,7 +492,7 @@ ah4_input(struct mbuf **mp, int *offp, int proto)
 			 */
 			struct mbuf *n;
 
-			n = m_split(m, off, MB_DONTWAIT);
+			n = m_split(m, off, M_NOWAIT);
 			if (n == NULL) {
 				/* m is retained by m_split */
 				goto fail;
@@ -903,7 +903,7 @@ ah6_input(struct mbuf **mp, int *offp, int proto)
 			 */
 			struct mbuf *n;
 
-			n = m_split(m, off, MB_DONTWAIT);
+			n = m_split(m, off, M_NOWAIT);
 			if (n == NULL) {
 				/* m is retained by m_split */
 				goto fail;

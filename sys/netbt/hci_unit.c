@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/hci_unit.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: src/sys/netbt/hci_unit.c,v 1.8 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: hci_unit.c,v 1.9 2007/12/30 18:26:42 plunky Exp $ */
 
@@ -290,7 +289,7 @@ hci_send_cmd(struct hci_unit *unit, uint16_t opcode, void *buf, uint8_t len)
 
 	KKASSERT(unit != NULL);
 
-	m = m_gethdr(MB_DONTWAIT, MT_DATA);
+	m = m_gethdr(M_NOWAIT, MT_DATA);
 	if (m == NULL)
 		return ENOMEM;
 

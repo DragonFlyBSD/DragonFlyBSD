@@ -30,7 +30,6 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.32 2008/05/14 11:59:23 sephe Exp $
  */
 
 /*
@@ -746,7 +745,7 @@ sl_btom(struct sl_softc *sc, int len)
 	if (len >= MCLBYTES)
 		return (NULL);
 
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
+	MGETHDR(m, M_NOWAIT, MT_DATA);
 	if (m == NULL)
 		return (NULL);
 
@@ -758,7 +757,7 @@ sl_btom(struct sl_softc *sc, int len)
 	 * guarantees that packet will fit in a cluster.
 	 */
 	if (len >= MHLEN) {
-		MCLGET(m, MB_DONTWAIT);
+		MCLGET(m, M_NOWAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 			/*
 			 * we couldn't get a cluster - if memory's this

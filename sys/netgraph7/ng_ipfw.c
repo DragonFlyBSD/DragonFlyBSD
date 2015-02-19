@@ -287,7 +287,7 @@ ng_ipfw_input(struct mbuf **m0, int dir, struct ip_fw_args *fwa, int tee)
 		*m0 = NULL;	/* it belongs now to netgraph */
 
 		if ((ngit = (struct ng_ipfw_tag *)m_tag_alloc(NGM_IPFW_COOKIE,
-		    0, TAGSIZ, MB_DONTWAIT)) == NULL) {
+		    0, TAGSIZ, M_NOWAIT)) == NULL) {
 			m_freem(m);
 			return (ENOMEM);
 		}
@@ -297,7 +297,7 @@ ng_ipfw_input(struct mbuf **m0, int dir, struct ip_fw_args *fwa, int tee)
 		m_tag_prepend(m, &ngit->mt);
 
 	} else
-		if ((m = m_dup(*m0, MB_DONTWAIT)) == NULL)
+		if ((m = m_dup(*m0, M_NOWAIT)) == NULL)
 			return (ENOMEM);	/* which is ignored */
 
 	if (m->m_len < sizeof(struct ip) &&

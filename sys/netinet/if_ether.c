@@ -358,7 +358,7 @@ arpreq_alloc(struct ifnet *ifp, const struct in_addr *sip,
 	struct arphdr *ah;
 	u_short ar_hrd;
 
-	if ((m = m_gethdr(MB_DONTWAIT, MT_DATA)) == NULL)
+	if ((m = m_gethdr(M_NOWAIT, MT_DATA)) == NULL)
 		return NULL;
 	m->m_pkthdr.rcvif = NULL;
 

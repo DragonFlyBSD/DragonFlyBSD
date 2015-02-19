@@ -2202,7 +2202,7 @@ nfe_newbuf_std(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	struct mbuf *m;
 	int nsegs, error;
 
-	m = m_getcl(wait ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(wait ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return ENOBUFS;
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
@@ -2251,7 +2251,7 @@ nfe_newbuf_jumbo(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	struct nfe_jbuf *jbuf;
 	struct mbuf *m;
 
-	MGETHDR(m, wait ? MB_WAIT : MB_DONTWAIT, MT_DATA);
+	MGETHDR(m, wait ? M_WAITOK : M_NOWAIT, MT_DATA);
 	if (m == NULL)
 		return ENOBUFS;
 

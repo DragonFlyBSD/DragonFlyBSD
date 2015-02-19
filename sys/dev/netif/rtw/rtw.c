@@ -1203,7 +1203,7 @@ rtw_rxsoft_alloc(struct rtw_softc *sc, struct rtw_rxsoft *rs, int waitok)
 	struct mbuf *m;
 	int rc;
 
-	m = m_getcl(waitok ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(waitok ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return ENOBUFS;
 
@@ -3066,7 +3066,7 @@ rtw_load_txbuf(struct rtw_softc *sc, struct rtw_txsoft *ts,
 		if (error == 0)
 			bus_dmamap_unload(sc->sc_txsoft_dmat, ts->ts_dmamap);
 
-		m_new = m_defrag(m, MB_DONTWAIT);
+		m_new = m_defrag(m, M_NOWAIT);
 		if (m_new == NULL) {
 			if_printf(&sc->sc_ic.ic_if, "can't defrag tx mbuf\n");
 			error = ENOBUFS;

@@ -1528,7 +1528,7 @@ stge_fixup_rx(struct stge_softc *sc, struct mbuf *m)
 		m->m_data += ETHER_HDR_LEN;
 		n = m;
 	} else {
-		MGETHDR(n, MB_DONTWAIT, MT_DATA);
+		MGETHDR(n, M_NOWAIT, MT_DATA);
 		if (n != NULL) {
 			bcopy(m->m_data, n->m_data, ETHER_HDR_LEN);
 			m->m_data += ETHER_HDR_LEN;
@@ -2325,7 +2325,7 @@ stge_newbuf(struct stge_softc *sc, int idx, int waitok)
 	bus_dmamap_t map;
 	int error, nseg;
 
-	m = m_getcl(waitok ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(waitok ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return ENOBUFS;
 	m->m_len = m->m_pkthdr.len = MCLBYTES;

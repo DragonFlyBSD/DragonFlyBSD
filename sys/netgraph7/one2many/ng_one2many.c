@@ -38,7 +38,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_one2many.c,v 1.21 2005/03/11 10:29:38 glebius Exp $
- * $DragonFly: src/sys/netgraph7/ng_one2many.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -462,7 +461,7 @@ ng_one2many_rcvdata(hook_p hook, item_p item)
 				struct ng_one2many_link *mdst;
 
 				mdst = &priv->many[priv->activeMany[i]];
-				m2 = m_dup(m, MB_DONTWAIT);        /* XXX m_copypacket() */
+				m2 = m_dup(m, M_NOWAIT);        /* XXX m_copypacket() */
 				if (m2 == NULL) {
 					mdst->stats.memoryFailures++;
 					NG_FREE_ITEM(item);

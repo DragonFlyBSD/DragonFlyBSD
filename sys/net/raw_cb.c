@@ -28,7 +28,6 @@
  *
  *	@(#)raw_cb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_cb.c,v 1.16 1999/08/28 00:48:27 peter Exp $
- * $DragonFly: src/sys/net/raw_cb.c,v 1.11 2006/09/05 00:55:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -121,7 +120,7 @@ raw_bind(struct socket *so, struct mbuf *nam)
 	if (ifnet == NULL)
 		return (EADDRNOTAVAIL);
 	rp = sotorawcb(so);
-	nam = m_copym(nam, 0, M_COPYALL, MB_TRYWAIT);
+	nam = m_copym(nam, 0, M_COPYALL, M_WAITOK);
 	rp->rcb_laddr = mtod(nam, struct sockaddr *);
 	return (0);
 }

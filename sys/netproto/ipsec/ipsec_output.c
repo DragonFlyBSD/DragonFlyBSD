@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_output.c,v 1.3.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.12 2008/05/27 01:10:44 dillon Exp $
  */
 
 /*
@@ -131,7 +130,7 @@ ipsec_process_done(struct mbuf *m, struct ipsecrequest *isr)
 	 * packet.
 	 */
 	mtag = m_tag_get(PACKET_TAG_IPSEC_OUT_DONE,
-			 sizeof(struct tdb_ident), MB_DONTWAIT);
+			 sizeof(struct tdb_ident), M_NOWAIT);
 	if (mtag == NULL) {
 		DPRINTF(("ipsec_process_done: could not get packet tag\n"));
 		error = ENOMEM;
@@ -487,7 +486,7 @@ ipsec6_splithdr(struct mbuf *m)
 	ip6 = mtod(m, struct ip6_hdr *);
 	hlen = sizeof(struct ip6_hdr);
 	if (m->m_len > hlen) {
-		MGETHDR(mh, MB_DONTWAIT, MT_HEADER);
+		MGETHDR(mh, M_NOWAIT, MT_HEADER);
 		if (!mh) {
 			m_freem(m);
 			return NULL;
@@ -598,7 +597,7 @@ ipsec6_encapsulate(struct mbuf *m, struct secasvar *sav)
 	plen = m->m_pkthdr.len;
 	if (M_LEADINGSPACE(m->m_next) < sizeof(struct ip6_hdr)) {
 		struct mbuf *n;
-		MGET(n, MB_DONTWAIT, MT_DATA);
+		MGET(n, M_NOWAIT, MT_DATA);
 		if (!n) {
 			m_freem(m);
 			return ENOBUFS;

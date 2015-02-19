@@ -765,14 +765,14 @@ xe_intr(void *xscp)
 	 * packet length (we always read 16-bit words).
 	 * XXX - Surely there's a better way to do this alignment?
 	 */
-	MGETHDR(mbp, MB_DONTWAIT, MT_DATA);
+	MGETHDR(mbp, M_NOWAIT, MT_DATA);
 	if (mbp == NULL) {
 	  IFNET_STAT_INC(ifp, iqdrops, 1);
 	  continue;
 	}
 
 	if (len + 3 > MHLEN) {
-	  MCLGET(mbp, MB_DONTWAIT);
+	  MCLGET(mbp, M_NOWAIT);
 	  if ((mbp->m_flags & M_EXT) == 0) {
 	    m_freem(mbp);
 	    IFNET_STAT_INC(ifp, iqdrops, 1);

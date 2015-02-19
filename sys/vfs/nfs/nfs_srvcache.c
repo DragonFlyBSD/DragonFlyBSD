@@ -210,7 +210,7 @@ loop:
 			} else if (rp->rc_flag & RC_REPMBUF) {
 				nfsstats.srvcache_nonidemdonehits++;
 				*repp = m_copym(rp->rc_reply, 0, M_COPYALL,
-						MB_WAIT);
+						M_WAITOK);
 				ret = RC_REPLY;
 			} else {
 				nfsstats.srvcache_idemdonehits++;
@@ -337,7 +337,7 @@ loop:
 						rp->rc_flag &= ~RC_REPMBUF;
 					}
 					rp->rc_reply = m_copym(repmbuf, 0,
-							M_COPYALL, MB_WAIT);
+							M_COPYALL, M_WAITOK);
 					rp->rc_flag |= RC_REPMBUF;
 				}
 			}

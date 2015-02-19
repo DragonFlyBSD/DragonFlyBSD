@@ -316,7 +316,7 @@ vke_init(void *xsc)
 	sc->sc_rxfifo->array = kmalloc(ringsize, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	for (i = 0; i < sc->sc_ringsize; i++) {
-		sc->sc_rxfifo->array[i] = m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
+		sc->sc_rxfifo->array[i] = m_getcl(M_WAITOK, MT_DATA, M_PKTHDR);
 		sc->sc_txfifo->array[i] = NULL;
 		sc->sc_txfifo_done->array[i] = NULL;
 	}
@@ -536,7 +536,7 @@ vke_rx_intr(cothread_t cotd)
 	cothread_unlock(cotd, 0);
 
 	while ((m = vke_rxfifo_sniff(sc)) != NULL) {
-		nm = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		nm = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (nm) {
 			vke_rxfifo_dequeue(sc, nm);
 			ifp->if_input(ifp, m, NULL, -1);

@@ -510,7 +510,7 @@ epic_ifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		/* If packet was more than EPIC_MAX_FRAGS parts, */
 		/* recopy packet to new allocated mbuf cluster */
 		if (NULL != m) {
-			m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+			m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 			if (NULL == m) {
 				m_freem(m0);
 				IFNET_STAT_INC(ifp, oerrors, 1);
@@ -584,7 +584,7 @@ epic_rx_done(epic_softc_t *sc)
 		m = buf->mbuf;
 
 		/* Try to get mbuf cluster */
-		buf->mbuf = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		buf->mbuf = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (NULL == buf->mbuf) {
 			buf->mbuf = m;
 			desc->status = 0x8000;
@@ -1289,7 +1289,7 @@ epic_queue_last_packet(epic_softc_t *sc)
 	if ((desc->status & 0x8000) || (buf->mbuf != NULL))
 		return (EBUSY);
 
-	MGETHDR(m0, MB_DONTWAIT, MT_DATA);
+	MGETHDR(m0, M_NOWAIT, MT_DATA);
 	if (NULL == m0)
 		return (ENOBUFS);
 
@@ -1420,7 +1420,7 @@ epic_init_rings(epic_softc_t *sc)
 			return EFAULT;
 		}
 
-		buf->mbuf = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		buf->mbuf = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (NULL == buf->mbuf) {
 			epic_free_rings(sc);
 			return ENOBUFS;

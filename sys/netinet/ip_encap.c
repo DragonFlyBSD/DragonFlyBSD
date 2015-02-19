@@ -463,7 +463,7 @@ encap_fillarg(struct mbuf *m, const struct encaptab *ep)
 {
 	struct m_tag *tag;
 
-	tag = m_tag_get(PACKET_TAG_ENCAP, sizeof(void *), MB_DONTWAIT);
+	tag = m_tag_get(PACKET_TAG_ENCAP, sizeof(void *), M_NOWAIT);
 	if (tag != NULL) {
 		*(void **)m_tag_data(tag) = ep->arg;
 		m_tag_prepend(m, tag);

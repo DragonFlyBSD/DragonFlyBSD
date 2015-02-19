@@ -659,9 +659,9 @@ ath_edma_rxbuf_init(struct ath_softc *sc, struct ath_buf *bf)
 	ATH_RX_LOCK_ASSERT(sc);
 
 #if defined(__DragonFly__)
-	m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, sc->sc_edma_bufsize);
+	m = m_getjcl(M_NOWAIT, MT_DATA, M_PKTHDR, sc->sc_edma_bufsize);
 #else
-	m = m_getm(NULL, sc->sc_edma_bufsize, MB_DONTWAIT, MT_DATA);
+	m = m_getm(NULL, sc->sc_edma_bufsize, M_NOWAIT, MT_DATA);
 #endif
 	if (! m)
 		return (ENOBUFS);		/* XXX ?*/

@@ -156,7 +156,7 @@ get_export_dgram(priv_p priv)
 		struct netflow_v5_export_dgram *dgram;
 		struct mbuf *m;
 
-		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL)
 			return (NULL);
 		item = ng_package_data(m, NG_NOFLAGS);

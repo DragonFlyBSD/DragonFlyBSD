@@ -377,7 +377,7 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 		code = icmp6->icmp6_code;
 	}
 
-	M_PREPEND(m, sizeof(*ip6), MB_WAIT);
+	M_PREPEND(m, sizeof(*ip6), M_WAITOK);
 	ip6 = mtod(m, struct ip6_hdr *);
 
 	/*

@@ -527,7 +527,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 						}
 						nfsrv_rcv(slp->ns_so,
 							  (caddr_t)slp,
-							  MB_WAIT);
+							  M_WAITOK);
 						nfs_slpunlock(slp);
 						break;
 					}
@@ -564,7 +564,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 				if (NFSRV_RECLIMIT(slp) == 0 &&
 				    (slp->ns_flag & SLP_NEEDQ)) {
 					nfsrv_rcv(slp->ns_so, (caddr_t)slp,
-						  MB_WAIT);
+						  M_WAITOK);
 				}
 				nfs_slpunlock(slp);
 			}
@@ -712,7 +712,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			 * Record Mark.
 			 */
 			if (sotype == SOCK_STREAM) {
-				M_PREPEND(m, NFSX_UNSIGNED, MB_WAIT);
+				M_PREPEND(m, NFSX_UNSIGNED, M_WAITOK);
 				if (m == NULL) {
 					error = ENOBUFS;
 					slplocked = 0;

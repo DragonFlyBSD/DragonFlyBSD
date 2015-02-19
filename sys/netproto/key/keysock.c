@@ -138,7 +138,7 @@ key_sendup0(struct rawcb *rp, struct mbuf *m, int promisc)
 	if (promisc) {
 		struct sadb_msg *pmsg;
 
-		M_PREPEND(m, sizeof(struct sadb_msg), MB_DONTWAIT);
+		M_PREPEND(m, sizeof(struct sadb_msg), M_NOWAIT);
 		if (m && m->m_len < sizeof(struct sadb_msg))
 			m = m_pullup(m, sizeof(struct sadb_msg));
 		if (!m) {
@@ -213,10 +213,10 @@ key_sendup(struct socket *so, struct sadb_msg *msg, u_int len,
 	m = mprev = NULL;
 	while (tlen > 0) {
 		if (tlen == len) {
-			MGETHDR(n, MB_DONTWAIT, MT_DATA);
+			MGETHDR(n, M_NOWAIT, MT_DATA);
 			n->m_len = MHLEN;
 		} else {
-			MGET(n, MB_DONTWAIT, MT_DATA);
+			MGET(n, M_NOWAIT, MT_DATA);
 			n->m_len = MLEN;
 		}
 		if (!n) {
@@ -224,7 +224,7 @@ key_sendup(struct socket *so, struct sadb_msg *msg, u_int len,
 			return ENOBUFS;
 		}
 		if (tlen >= MCLBYTES) {	/*XXX better threshold? */
-			MCLGET(n, MB_DONTWAIT);
+			MCLGET(n, M_NOWAIT);
 			if ((n->m_flags & M_EXT) == 0) {
 				m_free(n);
 				m_freem(m);

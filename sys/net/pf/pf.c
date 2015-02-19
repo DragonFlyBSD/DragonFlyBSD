@@ -2143,7 +2143,7 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 	 * DragonFly doesn't zero the auxillary pkghdr fields, only fw_flags,
 	 * so make sure pf.flags is clear.
 	 */
-	m = m_gethdr(MB_DONTWAIT, MT_HEADER);
+	m = m_gethdr(M_NOWAIT, MT_HEADER);
 	if (m == NULL) {
 		return;
 	}
@@ -6022,7 +6022,7 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	}
 
 	if (r->rt == PF_DUPTO) {
-		if ((m0 = m_dup(*m, MB_DONTWAIT)) == NULL) {
+		if ((m0 = m_dup(*m, M_NOWAIT)) == NULL) {
 			return;
 		}
 	} else {
@@ -6212,7 +6212,7 @@ pf_route6(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	}
 
 	if (r->rt == PF_DUPTO) {
-		if ((m0 = m_dup(*m, MB_DONTWAIT)) == NULL)
+		if ((m0 = m_dup(*m, M_NOWAIT)) == NULL)
 			return;
 	} else {
 		if ((r->rt == PF_REPLYTO) == (r->direction == dir))

@@ -771,7 +771,7 @@ pppoutput_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
      * (This assumes M_LEADINGSPACE is always 0 for a cluster mbuf.)
      */
     if (M_LEADINGSPACE(m0) < PPP_HDRLEN) {
-	m0 = m_prepend(m0, PPP_HDRLEN, MB_DONTWAIT);
+	m0 = m_prepend(m0, PPP_HDRLEN, M_NOWAIT);
 	if (m0 == NULL) {
 	    error = ENOBUFS;
 	    goto bad;
@@ -1353,13 +1353,13 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
 	}
 
 	/* Copy the PPP and IP headers into a new mbuf. */
-	MGETHDR(mp, MB_DONTWAIT, MT_DATA);
+	MGETHDR(mp, M_NOWAIT, MT_DATA);
 	if (mp == NULL)
 	    goto bad;
 	mp->m_len = 0;
 	mp->m_next = NULL;
 	if (hlen + PPP_HDRLEN > MHLEN) {
-	    MCLGET(mp, MB_DONTWAIT);
+	    MCLGET(mp, M_NOWAIT);
 	    if (M_TRAILINGSPACE(mp) < hlen + PPP_HDRLEN) {
 		m_freem(mp);
 		goto bad;	/* lose if big headers and no clusters */
@@ -1415,7 +1415,7 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
      * whole cluster on it.
      */
     if (ilen <= MHLEN && M_IS_CLUSTER(m)) {
-	MGETHDR(mp, MB_DONTWAIT, MT_DATA);
+	MGETHDR(mp, M_NOWAIT, MT_DATA);
 	if (mp != NULL) {
 	    m_copydata(m, 0, ilen, mtod(mp, caddr_t));
 	    m_freem(m);

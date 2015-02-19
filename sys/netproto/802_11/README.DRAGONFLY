@@ -22,14 +22,10 @@
       pci_find_cap -> pci_find_extcap
 
       In kmalloc calls, M_NOWAIT -> M_INTWAIT
-      In mbuf related calls, M_NOWAIT -> MB_DONTWAIT
-
-      verify that M_NOWAIT is not used in any mbuf related calls.
 
     * mbuf related calls
 
-      m_collapse(m, M_NOWAIT, blah)	->	m_defrag(m, MB_DONTWAIT)
-      m_getjcl(...)			->	just fix to use MB_DONTWAIT
+      m_collapse(m, M_NOWAIT, blah)	->	m_defrag(m, M_NOWAIT)
 
       bus_dmamap_load_mbuf_sg(dmat, map, m, segs, &nsegs, BUS_DMA_NOWAIT) ->
 	bus_dmamap_load_mbuf_segment(dmat, map, m, segs, maxscatter,

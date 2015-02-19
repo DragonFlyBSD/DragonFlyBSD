@@ -1517,7 +1517,7 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 		 * (Assuming we have a mask)
 		 */
 		if (netmask != NULL) {
-			m = m_get(MB_DONTWAIT, MT_SONAME);
+			m = m_get(M_NOWAIT, MT_SONAME);
 			if (m == NULL)
 				return (ENOBUFS);
 			mbuftrackid(m, 34);

@@ -324,7 +324,7 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	 * after:  IP ... ESP IV payload
 	 */
 	if (M_LEADINGSPACE(md) < esphlen || (md->m_flags & M_EXT)) {
-		MGET(n, MB_DONTWAIT, MT_DATA);
+		MGET(n, M_NOWAIT, MT_DATA);
 		if (!n) {
 			m_freem(m);
 			error = ENOBUFS;
@@ -479,7 +479,7 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	} else {
 		struct mbuf *nn;
 
-		MGET(nn, MB_DONTWAIT, MT_DATA);
+		MGET(nn, M_NOWAIT, MT_DATA);
 		if (!nn) {
 			ipseclog((LOG_DEBUG, "esp%d_output: can't alloc mbuf",
 			    afnumber));
@@ -608,7 +608,7 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	} else {
 		struct mbuf *nn;
 
-		MGET(nn, MB_DONTWAIT, MT_DATA);
+		MGET(nn, M_NOWAIT, MT_DATA);
 		if (!nn) {
 			ipseclog((LOG_DEBUG, "can't alloc mbuf in esp%d_output",
 			    afnumber));

@@ -930,7 +930,7 @@ vr_newbuf(struct vr_softc *sc, struct vr_chain_onefrag *c, struct mbuf *m)
 	struct mbuf *m_new = NULL;
 
 	if (m == NULL) {
-		m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		m_new = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (m_new == NULL)
 			return (ENOBUFS);
 		m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;

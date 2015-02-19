@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/tools/tools/netrate/pktgen/pktgen.c,v 1.4 2008/04/02 14:18:55 sephe Exp $
  */
 
 #define _IP_VHL
@@ -442,7 +440,7 @@ pktgen_start_ifsq_handler(netmsg_t nmsg)
 	 */
 	next = &head;
 	for (i = 0; i < alloc_cnt; ++i) {
-		MGETHDR(m, MB_WAIT, MT_DATA);
+		MGETHDR(m, M_WAITOK, MT_DATA);
 		*next = m;
 		next = &m->m_nextpkt;
 	}
@@ -587,7 +585,7 @@ pktgen_buf_send(netmsg_t msg)
 	lwkt_replymsg(&pb->pb_nmsg.lmsg, 0);
 	crit_exit();
 
-	MGETHDR(m, MB_WAIT, MT_DATA);
+	MGETHDR(m, M_WAITOK, MT_DATA);
 	pktgen_mbuf(pb, m);
 	ifq_dispatch(pb->pb_ifp, m, NULL);
 }
@@ -624,7 +622,7 @@ pktgen_buf_free(void *arg)
 		return;
 	}
 
-	MGETHDR(m, MB_WAIT, MT_DATA);
+	MGETHDR(m, M_WAITOK, MT_DATA);
 	pktgen_mbuf(pb, m);
 	ifsq_enqueue(pb->pb_ifsq, m, NULL);
 }

@@ -692,7 +692,7 @@ ti_newbuf_std(struct ti_softc *sc, int i, struct mbuf *m)
 	struct ti_rx_desc *r;
 
 	if (m == NULL) {
-		m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		m_new = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (m_new == NULL)
 			return (ENOBUFS);
 		m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
@@ -728,7 +728,7 @@ ti_newbuf_mini(struct ti_softc *sc, int i, struct mbuf *m)
 	struct ti_rx_desc *r;
 
 	if (m == NULL) {
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, M_NOWAIT, MT_DATA);
 		if (m_new == NULL) {
 			return(ENOBUFS);
 		}
@@ -766,7 +766,7 @@ ti_newbuf_jumbo(struct ti_softc *sc, int i, struct mbuf *m)
 
 	if (m == NULL) {
 		/* Allocate the mbuf. */
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, M_NOWAIT, MT_DATA);
 		if (m_new == NULL) {
 			return(ENOBUFS);
 		}

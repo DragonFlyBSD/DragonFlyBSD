@@ -274,7 +274,7 @@ sys_osendmsg(struct osendmsg_args *uap)
 			error = EINVAL;
 			goto cleanup;
 		}
-		control = m_get(MB_WAIT, MT_CONTROL);
+		control = m_get(M_WAITOK, MT_CONTROL);
 		if (control == NULL) {
 			error = ENOBUFS;
 			goto cleanup;
@@ -293,7 +293,7 @@ sys_osendmsg(struct osendmsg_args *uap)
 		 * control data with the proper cmsghdr structure
 		 * so that the kernel recognizes it as access rights.
 		 */
-		M_PREPEND(control, sizeof(*cm), MB_WAIT);
+		M_PREPEND(control, sizeof(*cm), M_WAITOK);
 		if (control == NULL) {
 			error = ENOBUFS;
 			goto cleanup;

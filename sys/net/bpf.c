@@ -212,7 +212,7 @@ bpf_movein(struct uio *uio, int linktype, struct mbuf **mp,
 	if ((unsigned)len > MCLBYTES)
 		return(EIO);
 
-	m = m_getl(len, MB_WAIT, MT_DATA, M_PKTHDR, NULL);
+	m = m_getl(len, M_WAITOK, MT_DATA, M_PKTHDR, NULL);
 	if (m == NULL)
 		return(ENOBUFS);
 	m->m_pkthdr.len = m->m_len = len;

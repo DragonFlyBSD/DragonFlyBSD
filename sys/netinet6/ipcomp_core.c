@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_core.c,v 1.1.2.5 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_core.c,v 1.7 2006/09/29 03:37:04 hsu Exp $	*/
 /*	$KAME: ipcomp_core.c,v 1.25 2001/07/26 06:53:17 jinmei Exp $	*/
 
 /*
@@ -138,7 +137,7 @@ do { \
 	}							\
 								\
 	/* get a fresh reply buffer */				\
-	n = m_getcl(MB_DONTWAIT, MT_DATA, 0);			\
+	n = m_getcl(M_NOWAIT, MT_DATA, 0);			\
 	if (!n) {						\
 		error = ENOBUFS;				\
 		goto fail;					\

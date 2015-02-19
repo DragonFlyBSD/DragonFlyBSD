@@ -116,7 +116,7 @@ l2cap_ctloutput(netmsg_t msg)
 
 	switch(sopt->sopt_dir) {
 	case PRCO_GETOPT:
-		m = m_get(MB_DONTWAIT, MT_DATA);
+		m = m_get(M_NOWAIT, MT_DATA);
 		if (m == NULL) {
 		    error = ENOMEM;
 		    break;
@@ -429,13 +429,13 @@ l2cap_ssend(netmsg_t msg)
 		goto out;
 	}
 
-	m0 = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
+	m0 = m_copym(m, 0, M_COPYALL, M_NOWAIT);
 	if (m0 == NULL) {
 		error = ENOMEM;
 		goto out;
 	}
 
-	m0 = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
+	m0 = m_copym(m, 0, M_COPYALL, M_NOWAIT);
 	if (m0 == NULL) {
 		error = ENOMEM;
 		goto out;

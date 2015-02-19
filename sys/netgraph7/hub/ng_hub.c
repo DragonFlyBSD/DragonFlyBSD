@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_hub.c,v 1.3 2004/06/26 22:24:16 julian Exp $
- * $DragonFly: src/sys/netgraph7/ng_hub.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +76,7 @@ ng_hub_rcvdata(hook_p hook, item_p item)
 		if (--nhooks == 1)
 			NG_FWD_ITEM_HOOK(error, item, hook2);
 		else {
-			if ((m2 = m_dup(m, MB_DONTWAIT)) == NULL) {
+			if ((m2 = m_dup(m, M_NOWAIT)) == NULL) {
 				NG_FREE_ITEM(item);
 				return (ENOBUFS);
 			}

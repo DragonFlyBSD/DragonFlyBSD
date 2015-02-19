@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/rfcomm_session.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: src/sys/netbt/rfcomm_session.c,v 1.3 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: rfcomm_session.c,v 1.12 2008/01/31 19:30:23 plunky Exp $ */
 
@@ -1462,7 +1461,7 @@ rfcomm_session_send_frame(struct rfcomm_session *rs, int type, int dlci)
 	if (credit == NULL)
 		return ENOMEM;
 
-	m = m_gethdr(MB_DONTWAIT, MT_DATA);
+	m = m_gethdr(M_NOWAIT, MT_DATA);
 	if (m == NULL) {
 		zfree(rfcomm_credit_pool, credit);
 		return ENOMEM;
@@ -1552,7 +1551,7 @@ rfcomm_session_send_uih(struct rfcomm_session *rs, struct rfcomm_dlc *dlc,
 	 * If there are credits to be sent, we will set the PF
 	 * flag and include them in the frame.
 	 */
-	m0 = m_gethdr(MB_DONTWAIT, MT_DATA);
+	m0 = m_gethdr(M_NOWAIT, MT_DATA);
 	if (m0 == NULL)
 		goto nomem;
 
@@ -1636,7 +1635,7 @@ rfcomm_session_send_mcc(struct rfcomm_session *rs, int cr,
 	uint8_t *hdr;
 	int hlen;
 
-	m = m_gethdr(MB_DONTWAIT, MT_DATA);
+	m = m_gethdr(M_NOWAIT, MT_DATA);
 	if (m == NULL)
 		return ENOMEM;
 

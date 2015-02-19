@@ -1653,7 +1653,7 @@ iwl2100_alloc_cmd(struct iwl2100_softc *sc)
 {
 	KKASSERT(sc->sc_cmd == NULL);
 
-	sc->sc_cmd = m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
+	sc->sc_cmd = m_getcl(M_WAITOK, MT_DATA, M_PKTHDR);
 	if (sc->sc_cmd == NULL)
 		return ENOBUFS;
 	return 0;
@@ -1673,7 +1673,7 @@ iwl2100_newbuf(struct iwl2100_softc *sc, int buf_idx, int init)
 	KKASSERT(buf_idx < IWL2100_RX_NDESC);
 	rb = &rr->rr_buf[buf_idx];
 
-	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
 		error = ENOBUFS;
 
@@ -3332,7 +3332,7 @@ iwl2100_encap(struct iwl2100_softc *sc, struct mbuf *m)
 	/*
 	 * Prepend and setup hardware TX header
 	 */
-	M_PREPEND(m, sizeof(*th), MB_DONTWAIT);
+	M_PREPEND(m, sizeof(*th), M_NOWAIT);
 	if (m == NULL) {
 		if_printf(&sc->sc_ic.ic_if, "prepend TX header failed\n");
 		return ENOBUFS;
@@ -3372,7 +3372,7 @@ iwl2100_encap(struct iwl2100_softc *sc, struct mbuf *m)
 	if (error) {	/* error == EFBIG */
 		struct mbuf *m_new;
 
-		m_new = m_defrag(m, MB_DONTWAIT);
+		m_new = m_defrag(m, M_NOWAIT);
 		if (m_new == NULL) {
 			if_printf(&sc->sc_ic.ic_if, "can't defrag TX mbuf\n");
 			error = ENOBUFS;

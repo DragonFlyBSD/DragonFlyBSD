@@ -175,7 +175,7 @@ rip_input(struct mbuf **mp, int *offp, int proto)
 		    inp->inp_faddr.s_addr != ip->ip_src.s_addr)
 			continue;
 		if (last) {
-			struct mbuf *n = m_copypacket(m, MB_DONTWAIT);
+			struct mbuf *n = m_copypacket(m, M_NOWAIT);
 
 #ifdef IPSEC
 			/* check AH/ESP integrity. */
@@ -285,7 +285,7 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 			m_freem(m);
 			return(EMSGSIZE);
 		}
-		M_PREPEND(m, sizeof(struct ip), MB_WAIT);
+		M_PREPEND(m, sizeof(struct ip), M_WAITOK);
 		if (m == NULL)
 			return(ENOBUFS);
 		ip = mtod(m, struct ip *);

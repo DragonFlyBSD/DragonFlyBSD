@@ -751,14 +751,14 @@ sln_tx(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		if (m_head == NULL)
 			break;
 
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, M_NOWAIT, MT_DATA);
 		if (m_new == NULL) {
 			if_printf(ifp, "no memory for tx descriptor");
 			m_freem(m_head);
 			break;
 		}
 		if ((m_head->m_pkthdr.len > MHLEN) || (60 > MHLEN)) {
-			MCLGET(m_new, MB_DONTWAIT);
+			MCLGET(m_new, M_NOWAIT);
 			if (!(m_new->m_flags & M_EXT)) {
 				m_freem(m_new);
 				m_freem(m_head);

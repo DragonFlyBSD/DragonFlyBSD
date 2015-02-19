@@ -927,7 +927,7 @@ tapwrite(struct dev_write_args *ap)
 	tlen = uio->uio_resid;
 
 	/* get a header mbuf */
-	MGETHDR(m, MB_WAIT, MT_DATA);
+	MGETHDR(m, M_WAITOK, MT_DATA);
 	if (m == NULL)
 		return (ENOBUFS);
 	mlen = MHLEN;
@@ -942,7 +942,7 @@ tapwrite(struct dev_write_args *ap)
 		*mp = m;
 		mp = &m->m_next;
 		if (uio->uio_resid > 0) {
-			MGET(m, MB_WAIT, MT_DATA);
+			MGET(m, M_WAITOK, MT_DATA);
 			if (m == NULL) {
 				error = ENOBUFS;
 				break;

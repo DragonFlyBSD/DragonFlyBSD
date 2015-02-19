@@ -1345,7 +1345,7 @@ tl_newbuf(struct tl_softc *sc, struct tl_chain_onefrag *c)
 {
 	struct mbuf *m_new;
 
-	m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m_new = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL)
 		return (ENOBUFS);
 
@@ -1771,7 +1771,7 @@ tl_encap(struct tl_softc *sc, struct tl_chain *c, struct mbuf *m_head)
 	if (m != NULL) {
 		struct mbuf *m_new;
 
-		m_new = m_getl(m_head->m_pkthdr.len, MB_DONTWAIT, MT_DATA,
+		m_new = m_getl(m_head->m_pkthdr.len, M_NOWAIT, MT_DATA,
 			       M_PKTHDR, NULL);
 		if (m_new == NULL) {
 			if_printf(&sc->arpcom.ac_if, "no memory for tx list\n");

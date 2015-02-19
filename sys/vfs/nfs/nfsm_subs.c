@@ -113,7 +113,7 @@ static u_int32_t nfs_xid = 0;
 void
 nfsm_reqhead(nfsm_info_t info, struct vnode *vp, u_long procid, int hsiz)
 {
-	info->mb = m_getl(hsiz, MB_WAIT, MT_DATA, 0, NULL);
+	info->mb = m_getl(hsiz, M_WAITOK, MT_DATA, 0, NULL);
 	info->mb->m_len = 0;
 	info->mreq = info->mb;
 	info->bpos = mtod(info->mb, caddr_t);
@@ -140,7 +140,7 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 
 	authsiz = nfsm_rndup(auth_len);
 	dsiz = authsiz + 10 * NFSX_UNSIGNED;
-	info.mb = m_getl(dsiz, MB_WAIT, MT_DATA, M_PKTHDR, NULL);
+	info.mb = m_getl(dsiz, M_WAITOK, MT_DATA, M_PKTHDR, NULL);
 	if (dsiz < MINCLSIZE) {
 		if (dsiz < MHLEN)
 			MH_ALIGN(info.mb, dsiz);
@@ -198,7 +198,7 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 		siz = auth_len;
 		while (siz > 0) {
 			if (M_TRAILINGSPACE(info.mb) == 0) {
-				mb2 = m_getl(siz, MB_WAIT, MT_DATA, 0, NULL);
+				mb2 = m_getl(siz, M_WAITOK, MT_DATA, 0, NULL);
 				mb2->m_len = 0;
 				info.mb->m_next = mb2;
 				info.mb = mb2;
@@ -229,7 +229,7 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 		siz = verf_len;
 		while (siz > 0) {
 			if (M_TRAILINGSPACE(info.mb) == 0) {
-				mb2 = m_getl(siz, MB_WAIT, MT_DATA,
+				mb2 = m_getl(siz, M_WAITOK, MT_DATA,
 						  0, NULL);
 				mb2->m_len = 0;
 				info.mb->m_next = mb2;
@@ -266,7 +266,7 @@ nfsm_build(nfsm_info_t info, int bytes)
 	void *ptr;
 
 	if (bytes > M_TRAILINGSPACE(info->mb)) {
-		MGET(mb2, MB_WAIT, MT_DATA);
+		MGET(mb2, M_WAITOK, MT_DATA);
 		if (bytes > MLEN)
 			panic("build > MLEN");
 		info->mb->m_next = mb2;
@@ -973,7 +973,7 @@ _nfsm_clget(nfsm_info_t info, struct mbuf **mp1, struct mbuf **mp2,
 	if (*bp >= *be) {
 		if (*mp1 == info->mb)
 			(*mp1)->m_len += *bp - info->bpos;
-		*mp1 = m_getcl(MB_WAIT, MT_DATA, 0);
+		*mp1 = m_getcl(M_WAITOK, MT_DATA, 0);
 		(*mp1)->m_len = MCLBYTES;
 		(*mp2)->m_next = *mp1;
 		*mp2 = *mp1;
@@ -1199,9 +1199,9 @@ nfsm_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 			mlen = M_TRAILINGSPACE(mp);
 			if (mlen == 0) {
 				if (getcluster)
-					mp = m_getcl(MB_WAIT, MT_DATA, 0);
+					mp = m_getcl(M_WAITOK, MT_DATA, 0);
 				else
-					mp = m_get(MB_WAIT, MT_DATA);
+					mp = m_get(M_WAITOK, MT_DATA);
 				mp->m_len = 0;
 				mp2->m_next = mp;
 				mp2 = mp;
@@ -1231,7 +1231,7 @@ nfsm_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 	}
 	if (rem > 0) {
 		if (rem > M_TRAILINGSPACE(mp)) {
-			MGET(mp, MB_WAIT, MT_DATA);
+			MGET(mp, M_WAITOK, MT_DATA);
 			mp->m_len = 0;
 			mp2->m_next = mp;
 		}
@@ -1273,9 +1273,9 @@ nfsm_biotombuf(struct bio *bio, struct mbuf **mq, int off,
 		mlen = M_TRAILINGSPACE(mp);
 		if (mlen == 0) {
 			if (getcluster)
-				mp = m_getcl(MB_WAIT, MT_DATA, 0);
+				mp = m_getcl(M_WAITOK, MT_DATA, 0);
 			else
-				mp = m_get(MB_WAIT, MT_DATA);
+				mp = m_get(M_WAITOK, MT_DATA);
 			mp->m_len = 0;
 			mp2->m_next = mp;
 			mp2 = mp;
@@ -1289,7 +1289,7 @@ nfsm_biotombuf(struct bio *bio, struct mbuf **mq, int off,
 	}
 	if (rem > 0) {
 		if (rem > M_TRAILINGSPACE(mp)) {
-			MGET(mp, MB_WAIT, MT_DATA);
+			MGET(mp, M_WAITOK, MT_DATA);
 			mp->m_len = 0;
 			mp2->m_next = mp;
 		}
@@ -1334,7 +1334,7 @@ nfsm_disct(struct mbuf **mdp, caddr_t *dposp, int siz, int left, caddr_t *cp2)
 	} else if (siz > MHLEN) {
 		panic("nfs S too big");
 	} else {
-		MGET(mp2, MB_WAIT, MT_DATA);
+		MGET(mp2, M_WAITOK, MT_DATA);
 		mp2->m_next = mp->m_next;
 		mp->m_next = mp2;
 		mp->m_len -= left;
@@ -1421,7 +1421,7 @@ nfsm_strtmbuf(struct mbuf **mb, char **bpos, const char *cp, long siz)
 	while (siz > 0) {
 		int msize;
 
-		m1 = m_getl(siz, MB_WAIT, MT_DATA, 0, &msize);
+		m1 = m_getl(siz, M_WAITOK, MT_DATA, 0, &msize);
 		m1->m_len = msize;
 		m2->m_next = m1;
 		m2 = m1;

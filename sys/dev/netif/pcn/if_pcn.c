@@ -723,11 +723,11 @@ pcn_newbuf(struct pcn_softc *sc, int idx, struct mbuf *m)
 	c = &sc->pcn_ldata->pcn_rx_list[idx];
 
 	if (m == NULL) {
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, M_NOWAIT, MT_DATA);
 		if (m_new == NULL)
 			return(ENOBUFS);
 
-		MCLGET(m_new, MB_DONTWAIT);
+		MCLGET(m_new, M_NOWAIT);
 		if (!(m_new->m_flags & M_EXT)) {
 			m_freem(m_new);
 			return(ENOBUFS);
@@ -1039,7 +1039,7 @@ again:
 				break;
 			}
 
-			m_defragged = m_defrag(m_head, MB_DONTWAIT);
+			m_defragged = m_defrag(m_head, M_NOWAIT);
 			if (m_defragged == NULL) {
 				m_freem(m_head);
 				continue;

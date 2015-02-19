@@ -2080,7 +2080,7 @@ deliver:
 			/* Split off next fragment as "m2" */
 			m2 = m;
 			if (!lastFragment) {
-				struct mbuf *n = m_split(m, len, MB_DONTWAIT);
+				struct mbuf *n = m_split(m, len, M_NOWAIT);
 
 				if (n == NULL) {
 					NG_FREE_M(m);
@@ -2088,7 +2088,7 @@ deliver:
 						NG_FREE_ITEM(item);
 					return (ENOMEM);
 				}
-				m_tag_copy_chain(n, m, MB_DONTWAIT);
+				m_tag_copy_chain(n, m, M_NOWAIT);
 				m = n;
 			}
 
@@ -2432,7 +2432,7 @@ ng_ppp_cutproto(struct mbuf *m, uint16_t *proto)
 static struct mbuf *
 ng_ppp_prepend(struct mbuf *m, const void *buf, int len)
 {
-	M_PREPEND(m, len, MB_DONTWAIT);
+	M_PREPEND(m, len, M_NOWAIT);
 	if (m == NULL || (m->m_len < len && (m = m_pullup(m, len)) == NULL))
 		return (NULL);
 	bcopy(buf, mtod(m, uint8_t *), len);

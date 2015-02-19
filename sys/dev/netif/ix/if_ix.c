@@ -3931,9 +3931,9 @@ ix_newbuf(struct ix_rx_ring *rxr, int i, boolean_t wait)
 	struct ix_rx_buf *rxbuf;
 	int flags, error, nseg;
 
-	flags = MB_DONTWAIT;
+	flags = M_NOWAIT;
 	if (__predict_false(wait))
-		flags = MB_WAIT;
+		flags = M_WAITOK;
 
 	m = m_getjcl(flags, MT_DATA, M_PKTHDR, rxr->rx_mbuf_sz);
 	if (m == NULL) {

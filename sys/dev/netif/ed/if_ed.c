@@ -2756,7 +2756,7 @@ ed_get_packet(struct ed_softc *sc, char *buf, u_short len)
 	 * to the header. The +2 is to compensate for the alignment
 	 * fixup below.
 	 */
-	m = m_getl(len + 2, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
+	m = m_getl(len + 2, M_NOWAIT, MT_DATA, M_PKTHDR, NULL);
 	if (m == NULL)
 		return;
 	m->m_pkthdr.rcvif = ifp;

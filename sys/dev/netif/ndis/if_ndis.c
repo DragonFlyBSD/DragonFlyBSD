@@ -1166,7 +1166,7 @@ ndis_rxeof_eth(ndis_handle adapter, ndis_handle ctx, char *addr, void *hdr,
 
 	block = adapter;
 
-	m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return;
 
@@ -1399,7 +1399,7 @@ ndis_rxeof(ndis_handle adapter, ndis_packet **packets, uint32_t pktcnt)
 		} else {
 #ifdef notdef
 			if (p->np_oob.npo_status == NDIS_STATUS_RESOURCES) {
-				m = m_dup(m0, MB_DONTWAIT);
+				m = m_dup(m0, M_NOWAIT);
 				/*
 				 * NOTE: we want to destroy the mbuf here, but
 				 * we don't actually want to return it to the
@@ -1417,7 +1417,7 @@ ndis_rxeof(ndis_handle adapter, ndis_packet **packets, uint32_t pktcnt)
 			} else
 				p->np_oob.npo_status = NDIS_STATUS_PENDING;
 #endif
-			m = m_dup(m0, MB_DONTWAIT);
+			m = m_dup(m0, M_NOWAIT);
 			if (p->np_oob.npo_status == NDIS_STATUS_RESOURCES)
 				p->np_refcnt++;
 			else

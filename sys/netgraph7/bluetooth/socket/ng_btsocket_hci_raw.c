@@ -307,7 +307,7 @@ ng_btsocket_hci_raw_node_rcvdata(hook_p hook, item_p item)
 	 * for now
 	 */
 
-	MGET(nam, MB_DONTWAIT, MT_SONAME);
+	MGET(nam, M_NOWAIT, MT_SONAME);
 	if (nam != NULL) {
 		struct sockaddr_hci	*sa = mtod(nam, struct sockaddr_hci *);
 
@@ -517,7 +517,7 @@ ng_btsocket_hci_raw_data_input(struct mbuf *nam)
 		 * will check if socket has enough buffer space.
 		 */
 
-		m = m_dup(m0, MB_DONTWAIT);
+		m = m_dup(m0, M_NOWAIT);
 		if (m != NULL) {
 			struct mbuf	*ctl = NULL;
 
@@ -1665,7 +1665,7 @@ ng_btsocket_hci_raw_send(netmsg_t msg)
 		sa = (struct sockaddr *) &pcb->addr;
 	}
 
-	MGET(nam, MB_DONTWAIT, MT_SONAME);
+	MGET(nam, M_NOWAIT, MT_SONAME);
 	if (nam == NULL) {
 		lockmgr(&pcb->pcb_lock, LK_RELEASE);
 		error = ENOBUFS;

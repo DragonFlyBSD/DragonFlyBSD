@@ -839,12 +839,12 @@ cs_get_packet(struct cs_softc *sc)
 		return -1;
 	}
 
-	MGETHDR(m, MB_DONTWAIT, MT_DATA);
+	MGETHDR(m, M_NOWAIT, MT_DATA);
 	if (m==NULL)
 		return -1;
 
 	if (length > MHLEN) {
-		MCLGET(m, MB_DONTWAIT);
+		MCLGET(m, M_NOWAIT);
 		if (!(m->m_flags & M_EXT)) {
 			m_freem(m);
 			return -1;

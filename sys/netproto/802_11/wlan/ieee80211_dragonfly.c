@@ -588,7 +588,7 @@ ieee80211_getmgtframe(uint8_t **frm, int headroom, int pktlen)
 	len = roundup2(headroom + pktlen, 4);
 	KASSERT(len <= MCLBYTES, ("802.11 mgt frame too large: %u", len));
 	if (len < MINCLSIZE) {
-		m = m_gethdr(MB_DONTWAIT, MT_DATA);
+		m = m_gethdr(M_NOWAIT, MT_DATA);
 		/*
 		 * Align the data in case additional headers are added.
 		 * This should only happen when a WEP header is added
@@ -598,7 +598,7 @@ ieee80211_getmgtframe(uint8_t **frm, int headroom, int pktlen)
 		if (m != NULL)
 			MH_ALIGN(m, len);
 	} else {
-		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (m != NULL)
 			MC_ALIGN(m, len);
 	}
@@ -622,7 +622,7 @@ ieee80211_realign(struct ieee80211vap *vap, struct mbuf *m, size_t align)
 	pktlen = m->m_pkthdr.len;
 	space = pktlen + align;
 	if (space < MINCLSIZE) {
-		n = m_gethdr(MB_DONTWAIT, MT_DATA);
+		n = m_gethdr(M_NOWAIT, MT_DATA);
 	} else {
 		if (space <= MCLBYTES)
 			space = MCLBYTES;
@@ -632,7 +632,7 @@ ieee80211_realign(struct ieee80211vap *vap, struct mbuf *m, size_t align)
 			space = MJUM9BYTES;
 		else
 			space = MJUM16BYTES;
-		n = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, space);
+		n = m_getjcl(M_NOWAIT, MT_DATA, M_PKTHDR, space);
 	}
 	if (__predict_true(n != NULL)) {
 		m_move_pkthdr(n, m);

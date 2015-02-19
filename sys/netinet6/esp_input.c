@@ -789,7 +789,7 @@ noreplaycheck:
 			 */
 			struct mbuf *n;
 
-			n = m_split(m, off, MB_DONTWAIT);
+			n = m_split(m, off, M_NOWAIT);
 			if (n == NULL) {
 				/* m is retained by m_split */
 				goto bad;
@@ -811,7 +811,7 @@ noreplaycheck:
 			struct mbuf *n = NULL;
 			int maxlen;
 
-			n = m_getb(m->m_pkthdr.len, MB_DONTWAIT, MT_HEADER,
+			n = m_getb(m->m_pkthdr.len, M_NOWAIT, MT_HEADER,
 				   M_PKTHDR);
 			if (!n) {
 				kprintf("esp6_input: mbuf allocation failed\n");

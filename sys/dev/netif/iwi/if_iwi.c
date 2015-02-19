@@ -782,7 +782,7 @@ iwi_alloc_rx_ring(struct iwi_softc *sc, struct iwi_rx_ring *ring, int count)
 			goto fail;
 		}
 
-		data->m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		data->m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (data->m == NULL) {
 			device_printf(sc->sc_dev,
 			    "could not allocate rx mbuf\n");
@@ -1232,7 +1232,7 @@ iwi_frame_intr(struct iwi_softc *sc, struct iwi_rx_data *data, int i,
 	 * drop the received packet and reuse the old mbuf. In the unlikely
 	 * case that the old mbuf can't be reloaded either, explicitly panic.
 	 */
-	mnew = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	mnew = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (mnew == NULL) {
 		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
@@ -1859,7 +1859,7 @@ iwi_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni,
 		return error;
 	}
 	if (error != 0) {
-		mnew = m_defrag(m0, MB_DONTWAIT);
+		mnew = m_defrag(m0, M_NOWAIT);
 		if (mnew == NULL) {
 			device_printf(sc->sc_dev,
 			    "could not defragment mbuf\n");

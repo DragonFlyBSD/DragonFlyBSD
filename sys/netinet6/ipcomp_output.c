@@ -167,12 +167,12 @@ ipcomp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	 * compromise two m_copym().  we will be going through every byte of
 	 * the payload during compression process anyways.
 	 */
-	mcopy = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
+	mcopy = m_copym(m, 0, M_COPYALL, M_NOWAIT);
 	if (mcopy == NULL) {
 		error = ENOBUFS;
 		return 0;
 	}
-	md0 = m_copym(md, 0, M_COPYALL, MB_DONTWAIT);
+	md0 = m_copym(md, 0, M_COPYALL, M_NOWAIT);
 	if (md0 == NULL) {
 		m_freem(mcopy);
 		error = ENOBUFS;
@@ -264,7 +264,7 @@ ipcomp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	 * after:  IP ... ipcomp payload
 	 */
 	if (M_LEADINGSPACE(md) < complen) {
-		MGET(n, MB_DONTWAIT, MT_DATA);
+		MGET(n, M_NOWAIT, MT_DATA);
 		if (!n) {
 			m_freem(m);
 			error = ENOBUFS;

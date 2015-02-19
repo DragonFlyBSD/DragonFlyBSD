@@ -468,12 +468,12 @@ bsd_compress(void *state, struct mbuf **mret, struct mbuf *mp,
 	*wptr++ = (v);					\
 	if (wptr >= cp_end) {				\
 	    m->m_len = wptr - mtod(m, u_char *);	\
-	    MGET(m->m_next, MB_DONTWAIT, MT_DATA);	\
+	    MGET(m->m_next, M_NOWAIT, MT_DATA);		\
 	    m = m->m_next;				\
 	    if (m) {					\
 		m->m_len = 0;				\
 		if (maxolen - olen > MLEN)		\
-		    MCLGET(m, MB_DONTWAIT);		\
+		    MCLGET(m, M_NOWAIT);		\
 		wptr = mtod(m, u_char *);		\
 		cp_end = wptr + M_TRAILINGSPACE(m);	\
 	    } else					\
@@ -510,12 +510,12 @@ bsd_compress(void *state, struct mbuf **mret, struct mbuf *mp,
 	maxolen = slen;
 
     /* Allocate one mbuf to start with. */
-    MGET(m, MB_DONTWAIT, MT_DATA);
+    MGET(m, M_NOWAIT, MT_DATA);
     *mret = m;
     if (m != NULL) {
 	m->m_len = 0;
 	if (maxolen + db->hdrlen > MLEN)
-	    MCLGET(m, MB_DONTWAIT);
+	    MCLGET(m, M_NOWAIT);
 	m->m_data += db->hdrlen;
 	wptr = mtod(m, u_char *);
 	cp_end = wptr + M_TRAILINGSPACE(m);
@@ -840,13 +840,13 @@ bsd_decompress(void *state, struct mbuf *cmp, struct mbuf **dmpp)
     /*
      * Allocate one mbuf to start with.
      */
-    MGETHDR(dmp, MB_DONTWAIT, MT_DATA);
+    MGETHDR(dmp, M_NOWAIT, MT_DATA);
     if (dmp == NULL)
 	return DECOMP_ERROR;
     mret = dmp;
     dmp->m_len = 0;
     dmp->m_next = NULL;
-    MCLGET(dmp, MB_DONTWAIT);
+    MCLGET(dmp, M_NOWAIT);
     dmp->m_data += db->hdrlen;
     wptr = mtod(dmp, u_char *);
     space = M_TRAILINGSPACE(dmp) - PPP_HDRLEN + 1;
@@ -952,7 +952,7 @@ bsd_decompress(void *state, struct mbuf *cmp, struct mbuf **dmpp)
 	 */
 	if ((space -= codelen + extra) < 0) {
 	    dmp->m_len = wptr - mtod(dmp, u_char *);
-	    MGET(m, MB_DONTWAIT, MT_DATA);
+	    MGET(m, M_NOWAIT, MT_DATA);
 	    if (m == NULL) {
 		m_freem(mret);
 		return DECOMP_ERROR;
@@ -960,7 +960,7 @@ bsd_decompress(void *state, struct mbuf *cmp, struct mbuf **dmpp)
 	    m->m_len = 0;
 	    m->m_next = NULL;
 	    dmp->m_next = m;
-	    MCLGET(m, MB_DONTWAIT);
+	    MCLGET(m, M_NOWAIT);
 	    space = M_TRAILINGSPACE(m) - (codelen + extra);
 	    if (space < 0) {
 		/* now that's what I call *compression*. */

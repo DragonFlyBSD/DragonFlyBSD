@@ -868,7 +868,7 @@ linux_sendmsg(struct linux_sendmsg_args *args, size_t *res)
 			error = EINVAL;
 			goto cleanup;
 		}
-		control = m_get(MB_WAIT, MT_CONTROL);
+		control = m_get(M_WAITOK, MT_CONTROL);
 		if (control == NULL) {
 			error = ENOBUFS;
 			goto cleanup;

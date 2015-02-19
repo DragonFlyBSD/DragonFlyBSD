@@ -181,7 +181,7 @@ ng_UI_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		m_adj(m, ptr - start);
 		NG_SEND_DATA(error, priv->uplink, m, meta);	/* m -> NULL */
 	} else if (hook == priv->uplink) {
-		M_PREPEND(m, 1, MB_DONTWAIT);	/* Prepend IP NLPID */
+		M_PREPEND(m, 1, M_NOWAIT);	/* Prepend IP NLPID */
 		if (!m)
 			ERROUT(ENOBUFS);
 		mtod(m, u_char *)[0] = HDLC_UI;

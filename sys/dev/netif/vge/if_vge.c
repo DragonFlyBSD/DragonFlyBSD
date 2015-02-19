@@ -1112,7 +1112,7 @@ vge_newbuf(struct vge_softc *sc, int idx, struct mbuf *m)
 	int i, error;
 
 	if (m == NULL) {
-		n = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		n = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (n == NULL)
 			return (ENOBUFS);
 		m = n;
@@ -1638,7 +1638,7 @@ vge_encap(struct vge_softc *sc, struct mbuf *m_head, int idx)
 	if (error || arg.vge_maxsegs == 0) {
 		struct mbuf *m_new;
 
-		m_new = m_defrag(m_head, MB_DONTWAIT);
+		m_new = m_defrag(m_head, M_NOWAIT);
 		if (m_new == NULL) {
 			error = ENOBUFS;
 			goto fail;

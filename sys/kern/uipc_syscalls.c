@@ -813,7 +813,7 @@ sys_sendmsg(struct sendmsg_args *uap)
 			error = EINVAL;
 			goto cleanup;
 		}
-		control = m_get(MB_WAIT, MT_CONTROL);
+		control = m_get(M_WAITOK, MT_CONTROL);
 		if (control == NULL) {
 			error = ENOBUFS;
 			goto cleanup;
@@ -1758,7 +1758,7 @@ retry_lookup:
 		/*
 		 * Get an mbuf header and set it up as having external storage.
 		 */
-		MGETHDR(m, MB_WAIT, MT_DATA);
+		MGETHDR(m, M_WAITOK, MT_DATA);
 		if (m == NULL) {
 			error = ENOBUFS;
 			vm_page_wakeup(pg);

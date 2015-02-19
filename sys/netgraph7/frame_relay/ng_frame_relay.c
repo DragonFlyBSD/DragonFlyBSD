@@ -38,7 +38,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_frame_relay.c,v 1.25 2006/01/14 21:49:31 glebius Exp $
- * $DragonFly: src/sys/netgraph7/ng_frame_relay.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_frame_relay.c,v 1.20 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -363,7 +362,7 @@ ngfrm_rcvdata(hook_p hook, item_p item)
 	alen = sc->addrlen;
 	if (alen == 0)
 		alen = 2;	/* default value for transmit */
-	M_PREPEND(m, alen, MB_DONTWAIT);
+	M_PREPEND(m, alen, M_NOWAIT);
 	if (m == NULL) {
 		error = ENOBUFS;
 		goto bad;

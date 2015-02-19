@@ -814,7 +814,7 @@ re_diag(struct re_softc *sc)
 
 	/* Allocate a single mbuf */
 
-	MGETHDR(m0, MB_DONTWAIT, MT_DATA);
+	MGETHDR(m0, M_NOWAIT, MT_DATA);
 	if (m0 == NULL)
 		return(ENOBUFS);
 
@@ -1741,7 +1741,7 @@ re_newbuf_std(struct re_softc *sc, int idx, int init)
 	struct mbuf *m;
 	int error, nsegs;
 
-	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
 		error = ENOBUFS;
 
@@ -1798,7 +1798,7 @@ re_newbuf_jumbo(struct re_softc *sc, int idx, int init)
 	struct re_jbuf *jbuf;
 	int error = 0;
 
-	MGETHDR(m, init ? MB_WAIT : MB_DONTWAIT, MT_DATA);
+	MGETHDR(m, init ? M_WAITOK : M_NOWAIT, MT_DATA);
 	if (m == NULL) {
 		error = ENOBUFS;
 		if (init) {

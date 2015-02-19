@@ -28,7 +28,6 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
- * $DragonFly: src/sys/net/raw_usrreq.c,v 1.14 2007/06/24 20:00:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -104,7 +103,7 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 		if (last) {
 			struct mbuf *n;
 
-			n = m_copypacket(m, MB_DONTWAIT);
+			n = m_copypacket(m, M_NOWAIT);
 			if (n != NULL) {
 				lwkt_gettoken(&last->so_rcv.ssb_token);
 				if (ssb_appendaddr(&last->so_rcv, src, n,

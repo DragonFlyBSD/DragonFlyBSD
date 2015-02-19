@@ -929,7 +929,7 @@ wb_newbuf(struct wb_softc *sc, struct wb_chain_onefrag *c, struct mbuf *m)
 	struct mbuf *m_new = NULL;
 
 	if (m == NULL) {
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, M_NOWAIT, MT_DATA);
 		if (m_new == NULL)
 			return(ENOBUFS);
 
@@ -1247,11 +1247,11 @@ wb_encap(struct wb_softc *sc, struct wb_chain *c, struct mbuf *m_head)
 	if (m != NULL) {
 		struct mbuf *m_new = NULL;
 
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, M_NOWAIT, MT_DATA);
 		if (m_new == NULL)
 			return(1);
 		if (m_head->m_pkthdr.len > MHLEN) {
-			MCLGET(m_new, MB_DONTWAIT);
+			MCLGET(m_new, M_NOWAIT);
 			if ((m_new->m_flags & M_EXT) == 0) {
 				m_freem(m_new);
 				return(1);

@@ -71,7 +71,7 @@ mb_init(struct mbchain *mbp)
 {
 	struct mbuf *m;
 
-	m = m_gethdr(MB_WAIT, MT_DATA);
+	m = m_gethdr(M_WAITOK, MT_DATA);
 	if (m == NULL) 
 		return ENOBUFS;
 	m->m_pkthdr.rcvif = NULL;
@@ -129,7 +129,7 @@ mb_reserve(struct mbchain *mbp, int size)
 		panic("mb_reserve: size = %d", size);
 	m = mbp->mb_cur;
 	if (mbp->mb_mleft < size) {
-		mn = m_get(MB_WAIT, MT_DATA);
+		mn = m_get(M_WAITOK, MT_DATA);
 		if (mn == NULL)
 			return NULL;
 		mbp->mb_cur = m->m_next = mn;
@@ -207,7 +207,7 @@ mb_put_mem(struct mbchain *mbp, c_caddr_t source, int size, int type)
 	while (size > 0) {
 		if (mleft == 0) {
 			if (m->m_next == NULL) {
-				m->m_next = m_getc(size, MB_WAIT, MT_DATA);
+				m->m_next = m_getc(size, M_WAITOK, MT_DATA);
 				if (m->m_next == NULL)
 					return ENOBUFS;
 			}
@@ -311,7 +311,7 @@ md_init(struct mdchain *mdp)
 {
 	struct mbuf *m;
 
-	m = m_gethdr(MB_WAIT, MT_DATA);
+	m = m_gethdr(M_WAITOK, MT_DATA);
 	if (m == NULL) 
 		return ENOBUFS;
 	m->m_pkthdr.rcvif = NULL;
@@ -520,7 +520,7 @@ md_get_mbuf(struct mdchain *mdp, int size, struct mbuf **ret)
 {
 	struct mbuf *m = mdp->md_cur, *rm;
 
-	rm = m_copym(m, mdp->md_pos - mtod(m, u_char*), size, MB_WAIT);
+	rm = m_copym(m, mdp->md_pos - mtod(m, u_char*), size, M_WAITOK);
 	if (rm == NULL)
 		return EBADRPC;
 	md_get_mem(mdp, NULL, size, MB_MZERO);

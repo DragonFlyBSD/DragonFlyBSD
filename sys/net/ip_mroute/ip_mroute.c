@@ -1253,7 +1253,7 @@ X_ip_mforward(struct ip *ip, struct ifnet *ifp, struct mbuf *m,
 		return ENOBUFS;
 	}
 
-	mb0 = m_copypacket(m, MB_DONTWAIT);
+	mb0 = m_copypacket(m, M_NOWAIT);
 	if (mb0 && (M_HASCL(mb0) || mb0->m_len < hlen))
 	    mb0 = m_pullup(mb0, hlen);
 	if (mb0 == NULL) {
@@ -1624,7 +1624,7 @@ phyint_send(struct ip *ip, struct vif *vifp, struct mbuf *m)
      * the IP header is actually copied, not just referenced,
      * so that ip_output() only scribbles on the copy.
      */
-    mb_copy = m_copypacket(m, MB_DONTWAIT);
+    mb_copy = m_copypacket(m, M_NOWAIT);
     if (mb_copy && (M_HASCL(mb_copy) || mb_copy->m_len < hlen))
 	mb_copy = m_pullup(mb_copy, hlen);
     if (mb_copy == NULL)
@@ -1654,13 +1654,13 @@ encap_send(struct ip *ip, struct vif *vifp, struct mbuf *m)
      * new mbuf so we can modify it.  Try to fill the new
      * mbuf since if we don't the ethernet driver will.
      */
-    MGETHDR(mb_copy, MB_DONTWAIT, MT_HEADER);
+    MGETHDR(mb_copy, M_NOWAIT, MT_HEADER);
     if (mb_copy == NULL)
 	return;
     mb_copy->m_data += max_linkhdr;
     mb_copy->m_len = sizeof(multicast_encap_iphdr);
 
-    if ((mb_copy->m_next = m_copypacket(m, MB_DONTWAIT)) == NULL) {
+    if ((mb_copy->m_next = m_copypacket(m, M_NOWAIT)) == NULL) {
 	m_freem(mb_copy);
 	return;
     }
@@ -2568,7 +2568,7 @@ bw_upcalls_send(void)
      * Allocate a new mbuf, initialize it with the header and
      * the payload for the pending calls.
      */
-    MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+    MGETHDR(m, M_NOWAIT, MT_HEADER);
     if (m == NULL) {
 	log(LOG_WARNING, "bw_upcalls_send: cannot allocate mbuf\n");
 	return;
@@ -2857,7 +2857,7 @@ pim_register_prepare(struct ip *ip, struct mbuf *m)
      * Copy the old packet & pullup its IP header into the
      * new mbuf so we can modify it.
      */
-    mb_copy = m_copypacket(m, MB_DONTWAIT);
+    mb_copy = m_copypacket(m, M_NOWAIT);
     if (mb_copy == NULL)
 	return NULL;
     mb_copy = m_pullup(mb_copy, ip->ip_hl << 2);
@@ -2902,7 +2902,7 @@ pim_register_send_upcall(struct ip *ip, struct vif *vifp,
     /*
      * Add a new mbuf with an upcall header
      */
-    MGETHDR(mb_first, MB_DONTWAIT, MT_HEADER);
+    MGETHDR(mb_first, M_NOWAIT, MT_HEADER);
     if (mb_first == NULL) {
 	m_freem(mb_copy);
 	return ENOBUFS;
@@ -2960,7 +2960,7 @@ pim_register_send_rp(struct ip *ip, struct vif *vifp,
     /*
      * Add a new mbuf with the encapsulating header
      */
-    MGETHDR(mb_first, MB_DONTWAIT, MT_HEADER);
+    MGETHDR(mb_first, M_NOWAIT, MT_HEADER);
     if (mb_first == NULL) {
 	m_freem(mb_copy);
 	return ENOBUFS;

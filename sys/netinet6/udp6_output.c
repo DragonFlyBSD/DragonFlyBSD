@@ -215,7 +215,7 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 	 * Calculate data length and get a mbuf
 	 * for UDP and IP6 headers.
 	 */
-	M_PREPEND(m, hlen + sizeof(struct udphdr), MB_DONTWAIT);
+	M_PREPEND(m, hlen + sizeof(struct udphdr), M_NOWAIT);
 	if (m == NULL) {
 		error = ENOBUFS;
 		goto release;

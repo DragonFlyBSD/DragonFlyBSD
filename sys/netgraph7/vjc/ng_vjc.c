@@ -473,7 +473,7 @@ ng_vjc_rcvdata(hook_p hook, item_p item)
 		m_adj(m, vjlen);
 
 		/* Copy the reconstructed TCP/IP headers into a new mbuf */
-		MGETHDR(hm, MB_DONTWAIT, MT_DATA);
+		MGETHDR(hm, M_NOWAIT, MT_DATA);
 		if (hm == NULL) {
 			priv->slc.sls_errorin++;
 			NG_FREE_M(m);
@@ -483,7 +483,7 @@ ng_vjc_rcvdata(hook_p hook, item_p item)
 		hm->m_len = 0;
 		hm->m_pkthdr.rcvif = NULL;
 		if (hlen > MHLEN) {		/* unlikely, but can happen */
-			MCLGET(hm, MB_DONTWAIT);
+			MCLGET(hm, M_NOWAIT);
 			if ((hm->m_flags & M_EXT) == 0) {
 				m_freem(hm);
 				priv->slc.sls_errorin++;

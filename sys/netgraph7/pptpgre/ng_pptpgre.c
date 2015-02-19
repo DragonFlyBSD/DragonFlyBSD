@@ -38,7 +38,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pptpgre.c,v 1.42 2008/03/26 21:19:03 mav Exp $
- * $DragonFly: src/sys/netgraph7/ng_pptpgre.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_pptpgre.c,v 1.7 1999/12/08 00:10:06 archie Exp $
  */
 
@@ -600,7 +599,7 @@ ng_pptpgre_xmit(hpriv_p hpriv, item_p item)
 	/* Prepend GRE header to outgoing frame */
 	grelen = sizeof(*gre) + sizeof(u_int32_t) * (gre->hasSeq + gre->hasAck);
 	if (m == NULL) {
-		MGETHDR(m, MB_DONTWAIT, MT_DATA);
+		MGETHDR(m, M_NOWAIT, MT_DATA);
 		if (m == NULL) {
 			priv->stats.memoryFailures++;
 			ERROUT(ENOBUFS);
@@ -608,7 +607,7 @@ ng_pptpgre_xmit(hpriv_p hpriv, item_p item)
 		m->m_len = m->m_pkthdr.len = grelen;
 		m->m_pkthdr.rcvif = NULL;
 	} else {
-		M_PREPEND(m, grelen, MB_DONTWAIT);
+		M_PREPEND(m, grelen, M_NOWAIT);
 		if (m == NULL || (m->m_len < grelen
 		    && (m = m_pullup(m, grelen)) == NULL)) {
 			priv->stats.memoryFailures++;

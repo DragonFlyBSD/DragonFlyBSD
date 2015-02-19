@@ -683,7 +683,7 @@ ex_rx_intr(struct ex_softc *sc)
 		pkt_len = inw(iobase + IO_PORT_REG);
 
 		if (rx_status & RCV_OK_bit) {
-			MGETHDR(m, MB_DONTWAIT, MT_DATA);
+			MGETHDR(m, M_NOWAIT, MT_DATA);
 			ipkt = m;
 			if (ipkt == NULL) {
 				IFNET_STAT_INC(ifp, iqdrops, 1);
@@ -694,7 +694,7 @@ ex_rx_intr(struct ex_softc *sc)
 
 				while (pkt_len > 0) {
 					if (pkt_len > MINCLSIZE) {
-						MCLGET(m, MB_DONTWAIT);
+						MCLGET(m, M_NOWAIT);
 						if (m->m_flags & M_EXT) {
 							m->m_len = MCLBYTES;
 						} else {
@@ -719,7 +719,7 @@ ex_rx_intr(struct ex_softc *sc)
 					pkt_len -= m->m_len;
 
 					if (pkt_len > 0) {
-						MGET(m->m_next, MB_DONTWAIT, MT_DATA);
+						MGET(m->m_next, M_NOWAIT, MT_DATA);
 						if (m->m_next == NULL) {
 							m_freem(ipkt);
 							IFNET_STAT_INC(ifp, iqdrops, 1);

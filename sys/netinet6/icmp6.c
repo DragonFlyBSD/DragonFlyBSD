@@ -343,7 +343,7 @@ icmp6_error(struct mbuf *m, int type, int code, int param)
 		m_adj(m, ICMPV6_PLD_MAXLEN - m->m_pkthdr.len);
 
 	preplen = sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr);
-	M_PREPEND(m, preplen, MB_DONTWAIT);
+	M_PREPEND(m, preplen, M_NOWAIT);
 	if (m && m->m_len < preplen)
 		m = m_pullup(m, preplen);
 	if (m == NULL) {
@@ -557,7 +557,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 				m_freem(n0);
 				break;
 			}
-			n = m_getb(maxlen, MB_DONTWAIT, n0->m_type, M_PKTHDR);
+			n = m_getb(maxlen, M_NOWAIT, n0->m_type, M_PKTHDR);
 			if (n == NULL) {
 				/* Give up remote */
 				m_freem(n0);
@@ -611,7 +611,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			icmp6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_mldquery);
 		else
 			icmp6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_mldreport);
-		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, M_NOWAIT)) == NULL) {
 			/* give up local */
 			mld6_input(m, off);
 			m = NULL;
@@ -672,12 +672,12 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 				/* Give up remote */
 				break;
 			}
-			n = m_getb(maxlen, MB_DONTWAIT, m->m_type, M_PKTHDR);
+			n = m_getb(maxlen, M_NOWAIT, m->m_type, M_PKTHDR);
 			if (n == NULL) {
 				/* Give up remote */
 				break;
 			}
-			if (!m_dup_pkthdr(n, m, MB_DONTWAIT)) {
+			if (!m_dup_pkthdr(n, m, M_NOWAIT)) {
 				/*
 				 * Previous code did a blind M_COPY_PKTHDR
 				 * and said "just for rcvif".  If true, then
@@ -728,7 +728,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			goto badcode;
 		if (icmp6len < sizeof(struct nd_router_solicit))
 			goto badlen;
-		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, M_NOWAIT)) == NULL) {
 			/* give up local */
 			nd6_rs_input(m, off, icmp6len);
 			m = NULL;
@@ -744,7 +744,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			goto badcode;
 		if (icmp6len < sizeof(struct nd_router_advert))
 			goto badlen;
-		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, M_NOWAIT)) == NULL) {
 			/* give up local */
 			nd6_ra_input(m, off, icmp6len);
 			m = NULL;
@@ -760,7 +760,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			goto badcode;
 		if (icmp6len < sizeof(struct nd_neighbor_solicit))
 			goto badlen;
-		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, M_NOWAIT)) == NULL) {
 			/* give up local */
 			nd6_ns_input(m, off, icmp6len);
 			m = NULL;
@@ -776,7 +776,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			goto badcode;
 		if (icmp6len < sizeof(struct nd_neighbor_advert))
 			goto badlen;
-		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, M_NOWAIT)) == NULL) {
 			/* give up local */
 			nd6_na_input(m, off, icmp6len);
 			m = NULL;
@@ -792,7 +792,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			goto badcode;
 		if (icmp6len < sizeof(struct nd_redirect))
 			goto badlen;
-		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, M_NOWAIT)) == NULL) {
 			/* give up local */
 			icmp6_redirect_input(m, off);
 			m = NULL;
@@ -1328,7 +1328,7 @@ ni6_input(struct mbuf *m, int off)
 		 */
 		goto bad;
 	}
-	n = m_getb(replylen, MB_DONTWAIT, m->m_type, M_PKTHDR);
+	n = m_getb(replylen, M_NOWAIT, m->m_type, M_PKTHDR);
 	if (n == NULL) {
 		m_freem(m);
 		return (NULL);
@@ -1426,7 +1426,7 @@ ni6_nametodns(const char *name, int namelen,
 		len = MCLBYTES;
 
 	/* because MAXHOSTNAMELEN is usually 256, we use cluster mbuf */
-	m = m_getb(len, MB_DONTWAIT, MT_DATA, 0);
+	m = m_getb(len, M_NOWAIT, MT_DATA, 0);
 	if (!m)
 		goto fail;
 
@@ -2393,7 +2393,7 @@ icmp6_redirect_output(struct mbuf *m0, struct rtentry *rt)
 #if IPV6_MMTU >= MCLBYTES
 # error assumption failed about IPV6_MMTU and MCLBYTES
 #endif
-	m = m_getb(IPV6_MMTU, MB_DONTWAIT, MT_HEADER, M_PKTHDR);
+	m = m_getb(IPV6_MMTU, M_NOWAIT, MT_HEADER, M_PKTHDR);
 	if (!m)
 		goto fail;
 	m->m_len = 0;

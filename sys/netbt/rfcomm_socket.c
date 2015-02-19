@@ -113,7 +113,7 @@ rfcomm_ctloutput(netmsg_t msg)
 
 	switch(sopt->sopt_dir) {
 	case PRCO_GETOPT:
-		m = m_get(MB_WAIT, MT_DATA);
+		m = m_get(M_WAITOK, MT_DATA);
 		crit_enter();
 		m->m_len = rfcomm_getopt(pcb, sopt->sopt_name, mtod(m, void *));
 		crit_exit();		
@@ -439,7 +439,7 @@ rfcomm_ssend(netmsg_t msg)
 		control = NULL;
 	}
 
-	m0 = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
+	m0 = m_copym(m, 0, M_COPYALL, M_NOWAIT);
 	if (m0) {
 		sbappendstream(&so->so_snd.sb, m);
 		error = rfcomm_send(pcb, m0);

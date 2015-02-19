@@ -847,14 +847,14 @@ m_get(int how, int type)
 {
 	struct mbuf *m;
 	int ntries = 0;
-	int ocf = MBTOM(how);
+	int ocf = MB_OCFLAG(how);
 
 retryonce:
 
 	m = objcache_get(mbuf_cache, ocf);
 
 	if (m == NULL) {
-		if ((how & MB_TRYWAIT) && ntries++ == 0) {
+		if ((ocf & M_WAITOK) && ntries++ == 0) {
 			struct objcache *reclaimlist[] = {
 				mbufphdr_cache,
 				mbufcluster_cache,
@@ -884,7 +884,7 @@ struct mbuf *
 m_gethdr(int how, int type)
 {
 	struct mbuf *m;
-	int ocf = MBTOM(how);
+	int ocf = MB_OCFLAG(how);
 	int ntries = 0;
 
 retryonce:
@@ -892,7 +892,7 @@ retryonce:
 	m = objcache_get(mbufphdr_cache, ocf);
 
 	if (m == NULL) {
-		if ((how & MB_TRYWAIT) && ntries++ == 0) {
+		if ((ocf & M_WAITOK) && ntries++ == 0) {
 			struct objcache *reclaimlist[] = {
 				mbuf_cache,
 				mbufcluster_cache, mbufphdrcluster_cache,
@@ -937,7 +937,7 @@ m_getcl_cache(int how, short type, int flags, struct objcache *mbclc,
     struct objcache *mbphclc, u_long *cl_stats)
 {
 	struct mbuf *m = NULL;
-	int ocflags = MBTOM(how);
+	int ocflags = MB_OCFLAG(how);
 	int ntries = 0;
 
 retryonce:
@@ -948,7 +948,7 @@ retryonce:
 		m = objcache_get(mbclc, ocflags);
 
 	if (m == NULL) {
-		if ((how & MB_TRYWAIT) && ntries++ == 0) {
+		if ((ocflags & M_WAITOK) && ntries++ == 0) {
 			struct objcache *reclaimlist[1];
 
 			if (flags & M_PKTHDR)
@@ -1077,7 +1077,7 @@ m_mclget(struct mbuf *m, int how)
 	struct mbcluster *mcl;
 
 	KKASSERT((m->m_flags & M_EXT) == 0);
-	mcl = objcache_get(mclmeta_cache, MBTOM(how));
+	mcl = objcache_get(mclmeta_cache, MB_OCFLAG(how));
 	if (mcl != NULL) {
 		linkcluster(m, mcl);
 		++mbstat[mycpu->gd_cpuid].m_clusters;
@@ -1363,7 +1363,7 @@ m_prepend(struct mbuf *m, int len, int how)
 /*
  * Make a copy of an mbuf chain starting "off0" bytes from the beginning,
  * continuing for "len" bytes.  If len is M_COPYALL, copy to end of mbuf.
- * The wait parameter is a choice of MB_WAIT/MB_DONTWAIT from caller.
+ * The wait parameter is a choice of M_WAITOK/M_NOWAIT from caller.
  * Note that the copy is read-only, because clusters are not copied,
  * only their reference counts are incremented.
  */
@@ -1601,8 +1601,8 @@ nospace0:
  * copying any mbuf clusters.  This is typically used to realign a data
  * chain by nfs_realign().
  *
- * The original chain is left intact.  how should be MB_WAIT or MB_DONTWAIT
- * and NULL can be returned if MB_DONTWAIT is passed.
+ * The original chain is left intact.  how should be M_WAITOK or M_NOWAIT
+ * and NULL can be returned if M_NOWAIT is passed.
  *
  * Be careful to use cluster mbufs, a large mbuf chain converted to non
  * cluster mbufs can exhaust our supply of mbufs.
@@ -1964,9 +1964,9 @@ m_pullup(struct mbuf *n, int len)
 		if (len > MHLEN)
 			goto bad;
 		if (n->m_flags & M_PKTHDR)
-			m = m_gethdr(MB_DONTWAIT, n->m_type);
+			m = m_gethdr(M_NOWAIT, n->m_type);
 		else
-			m = m_get(MB_DONTWAIT, n->m_type);
+			m = m_get(M_NOWAIT, n->m_type);
 		if (m == NULL)
 			goto bad;
 		m->m_len = 0;
@@ -2086,7 +2086,7 @@ m_devget(char *buf, int len, int offset, struct ifnet *ifp,
 	flags = M_PKTHDR;
 
 	while (len > 0) {
-		m = m_getl(len, MB_DONTWAIT, MT_DATA, flags, &nsize);
+		m = m_getl(len, M_NOWAIT, MT_DATA, flags, &nsize);
 		if (m == NULL) {
 			m_freem(mfirst);
 			return (NULL);
@@ -2141,7 +2141,7 @@ m_devpad(struct mbuf *m, int padto)
 			struct mbuf *n;
 
 			/* Allocate new empty mbuf, pad it.  Compact later. */
-			MGET(n, MB_DONTWAIT, MT_DATA);
+			MGET(n, M_NOWAIT, MT_DATA);
 			if (n == NULL)
 				return ENOBUFS;
 			n->m_len = 0;
@@ -2177,7 +2177,7 @@ m_copyback(struct mbuf *m0, int off, int len, caddr_t cp)
 		off -= mlen;
 		totlen += mlen;
 		if (m->m_next == NULL) {
-			n = m_getclr(MB_DONTWAIT, m->m_type);
+			n = m_getclr(M_NOWAIT, m->m_type);
 			if (n == NULL)
 				goto out;
 			n->m_len = min(MLEN, len + off);
@@ -2196,7 +2196,7 @@ m_copyback(struct mbuf *m0, int off, int len, caddr_t cp)
 		if (len == 0)
 			break;
 		if (m->m_next == NULL) {
-			n = m_get(MB_DONTWAIT, m->m_type);
+			n = m_get(M_NOWAIT, m->m_type);
 			if (n == NULL)
 				break;
 			n->m_len = min(MLEN, len);
@@ -2240,7 +2240,7 @@ m_append(struct mbuf *m0, int len, c_caddr_t cp)
 		 * Allocate a new mbuf; could check space
 		 * and allocate a cluster instead.
 		 */
-		n = m_get(MB_DONTWAIT, m->m_type);
+		n = m_get(M_NOWAIT, m->m_type);
 		if (n == NULL)
 			break;
 		n->m_len = min(MLEN, remainder);
@@ -2468,7 +2468,7 @@ m_uiomove(struct uio *uio)
 			resid = INT_MAX;
 		else
 			resid = (int)uio->uio_resid;
-		m = m_getl(resid, MB_WAIT, MT_DATA, flags, &nsize);
+		m = m_getl(resid, M_WAITOK, MT_DATA, flags, &nsize);
 		if (flags) {
 			m->m_pkthdr.len = 0;
 			/* Leave room for protocol headers. */

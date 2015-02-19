@@ -1293,7 +1293,7 @@ sis_newbuf(struct sis_softc *sc, int idx, int init)
 	struct mbuf *m;
 	int nseg, error;
 
-	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
 		if (init)
 			if_printf(&sc->arpcom.ac_if, "can't alloc RX mbuf\n");

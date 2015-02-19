@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/l2cap_signal.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: src/sys/netbt/l2cap_signal.c,v 1.3 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: l2cap_signal.c,v 1.9 2007/11/10 23:12:23 plunky Exp $ */
 
@@ -952,7 +951,7 @@ l2cap_send_signal(struct hci_link *link, uint8_t code, uint8_t ident,
 		    device_get_nameunit(link->hl_unit->hci_dev));
 #endif
 
-	m = m_gethdr(MB_DONTWAIT, MT_DATA);
+	m = m_gethdr(M_NOWAIT, MT_DATA);
 	if (m == NULL)
 		return ENOMEM;
 

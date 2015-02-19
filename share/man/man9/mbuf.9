@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/mbuf.9,v 1.27.2.1 2003/05/28 13:53:18 yar Exp $
 .\"
-.Dd September 17, 2010
+.Dd February 19, 2015
 .Dt MBUF 9
 .Os
 .\"
@@ -241,14 +241,14 @@ on failure.
 The
 .Fa how
 argument is to be set to
-.Dv MB_WAIT
+.Dv M_WAITOK
 or
-.Dv MB_DONTWAIT .
+.Dv M_NOWAIT .
 It specifies whether the caller is willing to block if necessary.
 If
 .Fa how
 is set to
-.Dv MB_WAIT ,
+.Dv M_WAITOK ,
 a failed allocation will result in the caller being put
 to sleep for a designated
 .Va kern.ipc.mbuf_wait
@@ -258,14 +258,6 @@ number of ticks.
 A number of other mbuf-related
 functions and macros have the same argument because they may
 at some point need to allocate new mbufs.
-.Pp
-Programmers should be careful not to confuse the mbuf allocation flag
-.Dv MB_DONTWAIT
-with the
-.Xr kmalloc 9
-allocation flag,
-.Dv M_NOWAIT .
-They are not the same.
 .It Fn MGETHDR mbuf how type
 Allocate an mbuf and initialize it to contain a packet header
 and internal data.

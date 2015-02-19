@@ -591,7 +591,7 @@ tryagain:
 			goto tryagain;
 		}
 		while (rep && (rep->r_flags & R_NEEDSXMIT)) {
-			m = m_copym(rep->r_mreq, 0, M_COPYALL, MB_WAIT);
+			m = m_copym(rep->r_mreq, 0, M_COPYALL, M_WAITOK);
 			nfsstats.rpcretries++;
 			error = nfs_send(so, rep->r_nmp->nm_nam, m, rep);
 			if (error) {
@@ -1237,7 +1237,7 @@ nfs_request_auth(struct nfsreq *rep)
 	 * For stream protocols, insert a Sun RPC Record Mark.
 	 */
 	if (nmp->nm_sotype == SOCK_STREAM) {
-		M_PREPEND(m, NFSX_UNSIGNED, MB_WAIT);
+		M_PREPEND(m, NFSX_UNSIGNED, M_WAITOK);
 		if (m == NULL) {
 			kfree(rep, M_NFSREQ);
 			return (ENOBUFS);
@@ -1328,7 +1328,7 @@ nfs_request_try(struct nfsreq *rep)
 		if (nmp->nm_soflags & PR_CONNREQUIRED)
 			error = nfs_sndlock(nmp, rep);
 		if (error == 0 && (rep->r_flags & R_NEEDSXMIT)) {
-			m2 = m_copym(rep->r_mreq, 0, M_COPYALL, MB_WAIT);
+			m2 = m_copym(rep->r_mreq, 0, M_COPYALL, M_WAITOK);
 			error = nfs_send(nmp->nm_so, nmp->nm_nam, m2, rep);
 			rep->r_flags &= ~R_NEEDSXMIT;
 			if ((rep->r_flags & R_SENT) == 0) {
@@ -1597,7 +1597,7 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 	struct nfsm_info info;
 
 	siz += RPC_REPLYSIZ;
-	info.mb = m_getl(max_hdr + siz, MB_WAIT, MT_DATA, M_PKTHDR, NULL);
+	info.mb = m_getl(max_hdr + siz, M_WAITOK, MT_DATA, M_PKTHDR, NULL);
 	info.mreq = info.mb;
 	info.mreq->m_pkthdr.len = 0;
 	/*
@@ -1901,7 +1901,7 @@ nfs_timer_req(struct nfsreq *req)
 	 */
 	if (ssb_space(&so->so_snd) >= req->r_mreq->m_pkthdr.len &&
 	    (req->r_flags & (R_SENT | R_NEEDSXMIT)) &&
-	   (m = m_copym(req->r_mreq, 0, M_COPYALL, MB_DONTWAIT))){
+	   (m = m_copym(req->r_mreq, 0, M_COPYALL, M_NOWAIT))){
 		if ((nmp->nm_flag & NFSMNT_NOCONN) == 0)
 		    error = so_pru_send(so, 0, m, NULL, NULL, td);
 		else
@@ -2238,7 +2238,7 @@ nfs_rcvunlock(struct nfsmount *nmp)
  * not occur with NFS/UDP and is supposed to only occassionally occur
  * with TCP.  Use vfs.nfs.realign_count and realign_test to check this.
  *
- * NOTE!  MB_DONTWAIT cannot be used here.  The mbufs must be acquired
+ * NOTE!  M_NOWAIT cannot be used here.  The mbufs must be acquired
  *	  because the rpc request OR reply cannot be thrown away.  TCP NFS
  *	  mounts do not retry their RPCs unless the TCP connection itself
  *	  is dropped so throwing away a RPC will basically cause the NFS
@@ -2265,7 +2265,7 @@ nfs_realign(struct mbuf **pm, int hsiz)
 	 */
 	if (m) {
 		++nfs_realign_count;
-		n = m_dup_data(m, MB_WAIT);
+		n = m_dup_data(m, M_WAITOK);
 		m_freem(*pm);
 		*pm = n;
 	}
@@ -2531,7 +2531,7 @@ nfs_msg(struct thread *td, char *server, char *msg)
 
 /*
  * Socket upcall routine for nfsd sockets.  This runs in the protocol
- * thread and passes waitflag == MB_DONTWAIT.
+ * thread and passes waitflag == M_NOWAIT.
  */
 void
 nfsrv_rcv_upcall(struct socket *so, void *arg, int waitflag)
@@ -2554,7 +2554,7 @@ nfsrv_rcv_upcall(struct socket *so, void *arg, int waitflag)
 
 /*
  * Process new data on a receive socket.  Essentially do as much as we can
- * non-blocking, else punt and it will be called with MB_WAIT from an nfsd.
+ * non-blocking, else punt and it will be called with M_WAITOK from an nfsd.
  *
  * slp->ns_token is held on call
  */
@@ -2584,7 +2584,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	 *
 	 * Note that the same service socket can be dispatched to several
 	 * nfs servers simultaniously.  The tcp protocol callback calls us
-	 * with MB_DONTWAIT.  nfsd calls us with MB_WAIT (typically).
+	 * with M_NOWAIT.  nfsd calls us with M_WAITOK (typically).
 	 */
 	if (NFSRV_RECLIMIT(slp))
 		return;
@@ -2651,7 +2651,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 						 NULL, &flags);
 			if (sio.sb_mb) {
 				struct nfsrv_rec *rec;
-				int mf = (waitflag & MB_DONTWAIT) ?
+				int mf = (waitflag & M_NOWAIT) ?
 					    M_NOWAIT : M_WAITOK;
 				rec = kmalloc(sizeof(struct nfsrv_rec),
 					     M_NFSRVDESC, mf);
@@ -2691,7 +2691,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	 */
 done:
 	/* XXX this code is currently not executed (nfsrv_rcv_upcall) */
-	if (waitflag == MB_DONTWAIT && (slp->ns_flag & SLP_ACTION_MASK)) {
+	if (waitflag == M_NOWAIT && (slp->ns_flag & SLP_ACTION_MASK)) {
 		lwkt_gettoken(&nfs_token);
 		nfsrv_wakenfsd(slp, nparallel_wakeup);
 		lwkt_reltoken(&nfs_token);
@@ -2809,7 +2809,7 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag, int *countp)
 	    *mpp = recm;
 	    if (slp->ns_flag & SLP_LASTFRAG) {
 		struct nfsrv_rec *rec;
-		int mf = (waitflag & MB_DONTWAIT) ? M_NOWAIT : M_WAITOK;
+		int mf = (waitflag & M_NOWAIT) ? M_NOWAIT : M_WAITOK;
 		rec = kmalloc(sizeof(struct nfsrv_rec), M_NFSRVDESC, mf);
 		if (!rec) {
 		    m_freem(slp->ns_frag);

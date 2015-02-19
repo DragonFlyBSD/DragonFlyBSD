@@ -2104,7 +2104,7 @@ et_newbuf(struct et_rxbuf_data *rbd, int buf_idx, int init, int len0)
 	KKASSERT(buf_idx < ET_RX_NDESC);
 	rb = &rbd->rbd_buf[buf_idx];
 
-	m = m_getl(len0, init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR, &len);
+	m = m_getl(len0, init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR, &len);
 	if (m == NULL) {
 		error = ENOBUFS;
 
@@ -2363,7 +2363,7 @@ et_newbuf_jumbo(struct et_rxbuf_data *rbd, int buf_idx, int init)
 
 	error = ENOBUFS;
 
-	MGETHDR(m, init ? MB_WAIT : MB_DONTWAIT, MT_DATA);
+	MGETHDR(m, init ? M_WAITOK : M_NOWAIT, MT_DATA);
 	if (m == NULL) {
 		if (init) {
 			if_printf(&sc->arpcom.ac_if, "MGETHDR failed\n");

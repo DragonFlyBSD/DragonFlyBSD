@@ -382,7 +382,7 @@ l2cap_send(struct l2cap_channel *chan, struct mbuf *m)
 		plen, chan->lc_lcid, chan->lc_pending);
 
 	/* Encapsulate with B-Frame */
-	M_PREPEND(m, sizeof(l2cap_hdr_t), MB_DONTWAIT);
+	M_PREPEND(m, sizeof(l2cap_hdr_t), M_NOWAIT);
 	if (m == NULL)
 		return ENOMEM;
 

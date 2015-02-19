@@ -695,9 +695,9 @@ musycc_intr0_rx_eom(struct softc *sc, int ch)
 		m->m_len = m->m_pkthdr.len = status & 0x3fff;
 		error = (status >> 16) & 0xf;
 		if (error == 0) {
-			MGETHDR(m2, MB_DONTWAIT, MT_DATA);
+			MGETHDR(m2, M_NOWAIT, MT_DATA);
 			if (m2 != NULL) {
-				MCLGET(m2, MB_DONTWAIT);
+				MCLGET(m2, M_NOWAIT);
 				if((m2->m_flags & M_EXT) != 0) {
 					/* Substitute the mbuf+cluster. */
 					md->m = m2;
@@ -1278,13 +1278,13 @@ musycc_connect(hook_p hook)
 		sc->mdt[ch][i].m = NULL;
 		sc->mdt[ch][i].data = 0;
 
-		MGETHDR(m, MB_WAIT, MT_DATA);
+		MGETHDR(m, M_WAITOK, MT_DATA);
 		if (m == NULL)
 			goto errfree;
-		MCLGET(m, MB_WAIT);
+		MCLGET(m, M_WAITOK);
 		if ((m->m_flags & M_EXT) == 0) {
 			/* We've waited mbuf_wait and still got nothing.
-			   We're calling with MB_TRYWAIT anyway - a little
+			   We're calling with MB_WAITOK anyway - a little
 			   defensive programming costs us very little - if
 			   anything at all in the case of error. */
 			m_free(m);

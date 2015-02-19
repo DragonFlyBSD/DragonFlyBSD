@@ -1111,7 +1111,7 @@ ng_ksocket_incoming2(node_p node, hook_p hook, void *arg1, int arg2)
 
 			stag = (struct sa_tag *)m_tag_alloc(NGM_KSOCKET_COOKIE,
 			    NG_KSOCKET_TAG_SOCKADDR, sizeof(ng_ID_t) +
-			    sa->sa_len, MB_DONTWAIT);
+			    sa->sa_len, M_NOWAIT);
 			if (stag == NULL) {
 				kfree(sa, M_SONAME);
 				goto sendit;
@@ -1133,7 +1133,7 @@ sendit:		/* Forward data with optional peer sockaddr as packet tag */
 	if (so->so_state & SS_CANTRCVMORE && !(priv->flags & KSF_EOFSEEN)) {
 		struct mbuf *m;
 
-		MGETHDR(m, MB_DONTWAIT, MT_DATA);
+		MGETHDR(m, M_NOWAIT, MT_DATA);
 		if (m != NULL) {
 			m->m_len = m->m_pkthdr.len = 0;
 			NG_SEND_DATA_ONLY(error, priv->hook, m);

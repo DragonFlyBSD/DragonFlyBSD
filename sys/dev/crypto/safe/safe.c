@@ -1321,15 +1321,15 @@ safe_process(device_t dev, struct cryptop *crp, int hint)
 				totlen = re->re_src_mapsize;
 				if (re->re_src_m->m_flags & M_PKTHDR) {
 					len = MHLEN;
-					MGETHDR(m, MB_DONTWAIT, MT_DATA);
+					MGETHDR(m, M_NOWAIT, MT_DATA);
 					if (m && !m_dup_pkthdr(m, re->re_src_m,
-					    MB_DONTWAIT)) {
+					    M_NOWAIT)) {
 						m_free(m);
 						m = NULL;
 					}
 				} else {
 					len = MLEN;
-					MGET(m, MB_DONTWAIT, MT_DATA);
+					MGET(m, M_NOWAIT, MT_DATA);
 				}
 				if (m == NULL) {
 					safestats.st_nombuf++;
@@ -1337,7 +1337,7 @@ safe_process(device_t dev, struct cryptop *crp, int hint)
 					goto errout;
 				}
 				if (totlen >= MINCLSIZE) {
-					MCLGET(m, MB_DONTWAIT);
+					MCLGET(m, M_NOWAIT);
 					if ((m->m_flags & M_EXT) == 0) {
 						m_free(m);
 						safestats.st_nomcl++;
@@ -1353,7 +1353,7 @@ safe_process(device_t dev, struct cryptop *crp, int hint)
 
 				while (totlen > 0) {
 					if (top) {
-						MGET(m, MB_DONTWAIT, MT_DATA);
+						MGET(m, M_NOWAIT, MT_DATA);
 						if (m == NULL) {
 							m_freem(top);
 							safestats.st_nombuf++;
@@ -1364,7 +1364,7 @@ safe_process(device_t dev, struct cryptop *crp, int hint)
 						len = MLEN;
 					}
 					if (top && totlen >= MINCLSIZE) {
-						MCLGET(m, MB_DONTWAIT);
+						MCLGET(m, M_NOWAIT);
 						if ((m->m_flags & M_EXT) == 0) {
 							*mp = m;
 							m_freem(top);

@@ -3091,7 +3091,7 @@ em_newbuf(struct adapter *adapter, int i, int init)
 	struct em_buffer *rx_buffer;
 	int error, nseg;
 
-	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
 		adapter->mbuf_cluster_failed++;
 		if (init) {

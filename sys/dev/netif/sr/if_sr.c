@@ -1992,7 +1992,7 @@ sr_get_packets(struct sr_softc *sc)
 			       sc->unit, rxstat, len);
 #endif
 
-			MGETHDR(m, MB_DONTWAIT, MT_DATA);
+			MGETHDR(m, M_NOWAIT, MT_DATA);
 			if (m == NULL) {
 				/*
 				 * eat (flush) packet if get mbuf fail!!
@@ -2010,7 +2010,7 @@ sr_get_packets(struct sr_softc *sc)
 #endif /* NETGRAPH */
 			m->m_pkthdr.len = m->m_len = len;
 			if (len > MHLEN) {
-				MCLGET(m, MB_DONTWAIT);
+				MCLGET(m, M_NOWAIT);
 				if ((m->m_flags & M_EXT) == 0) {
 					/*
 					 * We couldn't get a big enough

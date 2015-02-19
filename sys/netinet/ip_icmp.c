@@ -188,7 +188,7 @@ icmp_error(struct mbuf *n, int type, int code, n_long dest, int destmtu)
 	/*
 	 * First, formulate icmp message
 	 */
-	m = m_gethdr(MB_DONTWAIT, MT_HEADER);
+	m = m_gethdr(M_NOWAIT, MT_HEADER);
 	if (m == NULL)
 		goto freeit;
 	icmplen = min(oiplen + 8, oip->ip_len);
@@ -1066,7 +1066,7 @@ match:
 		 */
 		cp = (u_char *) (ip + 1);
 		if ((opts = ip_srcroute(m)) == NULL &&
-		    (opts = m_gethdr(MB_DONTWAIT, MT_HEADER))) {
+		    (opts = m_gethdr(M_NOWAIT, MT_HEADER))) {
 			opts->m_len = sizeof(struct in_addr);
 			mtod(opts, struct in_addr *)->s_addr = 0;
 		}

@@ -811,7 +811,7 @@ bnx_newbuf_std(struct bnx_rx_ret_ring *ret, int i, int init)
 	rb = &ret->bnx_std->bnx_rx_std_buf[i];
 	KASSERT(!rb->bnx_rx_refilled, ("RX buf %dth has been refilled", i));
 
-	m_new = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m_new = m_getcl(init ? M_WAITOK : M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL) {
 		error = ENOBUFS;
 		goto back;
@@ -883,7 +883,7 @@ bnx_newbuf_jumbo(struct bnx_softc *sc, int i, int init)
 	bus_addr_t paddr;
 
 	/* Allocate the mbuf. */
-	MGETHDR(m_new, init ? MB_WAIT : MB_DONTWAIT, MT_DATA);
+	MGETHDR(m_new, init ? M_WAITOK : M_NOWAIT, MT_DATA);
 	if (m_new == NULL)
 		return ENOBUFS;
 
@@ -3447,7 +3447,7 @@ bnx_encap(struct bnx_tx_ring *txr, struct mbuf **m_head0, uint32_t *txidx,
 		 * DMA read operation.  If it fails, keep moving on using
 		 * the original mbuf chain.
 		 */
-		m_new = m_defrag(m_head, MB_DONTWAIT);
+		m_new = m_defrag(m_head, M_NOWAIT);
 		if (m_new != NULL)
 			*m_head0 = m_head = m_new;
 	}
@@ -5039,7 +5039,7 @@ bnx_defrag_shortdma(struct mbuf *m)
 	}
 
 	if (found > 1)
-		n = m_defrag(m, MB_DONTWAIT);
+		n = m_defrag(m, M_NOWAIT);
 	else
 		n = m;
 	return n;

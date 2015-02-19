@@ -39,7 +39,6 @@
  *
  * $Whistle: ng_mppc.c,v 1.4 1999/11/25 00:10:12 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_mppc.c,v 1.31 2007/05/18 15:28:01 mav Exp $
- * $DragonFly: src/sys/netgraph7/ng_mppc.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -564,7 +563,7 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 		}
 
 		/* We must own the mbuf chain exclusively to modify it. */
-		m = m_unshare(m, MB_DONTWAIT);
+		m = m_unshare(m, M_NOWAIT);
 		if (m == NULL)
 			return (ENOMEM);
 
@@ -582,7 +581,7 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 	MPPC_CCOUNT_INC(d->cc);
 
 	/* Install header */
-	M_PREPEND(m, MPPC_HDRLEN, MB_DONTWAIT);
+	M_PREPEND(m, MPPC_HDRLEN, M_NOWAIT);
 	if (m != NULL)
 		*(mtod(m, uint16_t *)) = htons(header);
 
@@ -683,7 +682,7 @@ ng_mppc_decompress(node_p node, struct mbuf **datap)
 		}
 
 		/* We must own the mbuf chain exclusively to modify it. */
-		m = m_unshare(m, MB_DONTWAIT);
+		m = m_unshare(m, M_NOWAIT);
 		if (m == NULL)
 			return (ENOMEM);
 
