@@ -36,7 +36,7 @@
 .Os
 .Sh NAME
 .Nm hammer
-.Nd HAMMER filesystem interface
+.Nd HAMMER file system interface
 .Sh LIBRARY
 .Lb libhammer
 .Sh SYNOPSIS
@@ -63,15 +63,15 @@ file system for which this library provides an API:
 The following information is gathered and exposed by this library:
 .Bl -dash -offset indent
 .It
-File system specific information such as size, bigblock details, version,
+File system specific information such as size, big block details, version,
 PFSes, snapshots, mount points.
 .It
 Statistical data like number of B-Tree operations, number of device operations,
 number of undo operations.
 .El
 .It
-.Em Pseudo-filesystems:
-These are independent sub file systems within a HAMMER filesystem.
+.Em Pseudo-file systems:
+These are independent sub file systems within a HAMMER file system.
 After
 .Nm
 library initialisation the list of pseudo-file systems will be available in the
@@ -79,12 +79,12 @@ library initialisation the list of pseudo-file systems will be available in the
 structure within a
 .Dv TAILQ .
 .Pp
-Creating and deleting pseudo-filesystems is not yet supported by this library.
+Creating and deleting pseudo-file systems is not yet supported by this library.
 .It
 .Em Snapshots:
-Per PFS point in time snapshots are kept in the filesystem metadata since
+Per PFS point in time snapshots are kept in the file system meta-data since
 HAMMER version 3.
-A list of snaptshots is collected and placed within a
+A list of snapshots is collected and placed within a
 .Dv TAILQ
 for each PFS.
 .Pp
@@ -94,7 +94,7 @@ Creating and deleting snapshots is not yet supported by this library.
 Before any API call the library must be initalised with the
 .Fn libhammer_get_fsinfo
 function.
-This will perform all the operations needed to initialise the data strutures in
+This will perform all the operations needed to initialise the data structures in
 which the API function rely for the specified HAMMER file system.
 .Pp
 Once you are done, the special function
@@ -108,7 +108,7 @@ usage.
 .Xr libhammer_snapshot 3 ,
 .Xr libhammer_stats 3
 .Sh AUTHORS
-This manpage was written by
+This man page was written by
 .An Antonio Huete Jimenez Aq Mt tuxillo@quantumachine.net .
 .Sh BUGS
 Please note that, at the moment of writing this man page, the
