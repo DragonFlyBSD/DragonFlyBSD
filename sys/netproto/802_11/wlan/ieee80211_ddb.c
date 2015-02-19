@@ -889,8 +889,9 @@ _db_show_mesh(const struct ieee80211_mesh_state *ms)
 	db_printf("routing table:\n");
 	i = 0;
 	TAILQ_FOREACH(rt, &ms->ms_routes, rt_next) {
-		db_printf("entry %d:\tdest: %6D nexthop: %6D metric: %p", i,
-		    rt->rt_dest, ":", rt->rt_nexthop, ":", rt->rt_metric);
+		db_printf("entry %d:\tdest: %s nexthop: %s metric: %u", i,
+		    ether_sprintf(rt->rt_dest), ether_sprintf(rt->rt_nexthop),
+		    rt->rt_metric);
 
 		db_printf("\tlifetime: %u lastseq: %u priv: %p\n",
 		    ieee80211_mesh_rt_update(rt, 0),

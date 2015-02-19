@@ -1126,8 +1126,8 @@ ieee80211_mesh_forward_to_gates(struct ieee80211vap *vap,
 		if (rt_gate == NULL) {
 			IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_HWMP,
 				rt_dest->rt_dest,
-				"mesh gate with no path %6D",
-				gr->gr_addr, ":");
+				"mesh gate with no path %s",
+				ether_sprintf(gr->gr_addr));
 			continue;
 		}
 		if ((rt_gate->rt_flags & IEEE80211_MESHRT_FLAGS_VALID) == 0)
@@ -1429,7 +1429,7 @@ mesh_recv_indiv_data_to_fwrd(struct ieee80211vap *vap, struct mbuf *m,
 	rt_meshda = ieee80211_mesh_rt_find(vap, qwh->i_addr3);
 	if (rt_meshda == NULL) {
 		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, qwh->i_addr2,
-		    "no route to meshDA(%6D)", qwh->i_addr3, ":");
+		    "no route to meshDA(%s)", ether_sprintf(qwh->i_addr3));
 		/*
 		 * [Optional] any of the following three actions:
 		 * o silently discard 				[X]
@@ -1516,8 +1516,9 @@ mesh_recv_indiv_data_to_me(struct ieee80211vap *vap, struct mbuf *m,
 		 * addressed according to 13.11.3.2.
 		 */
 		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_OUTPUT, qwh->i_addr2,
-		    "forward frame to DS, SA(%6D) DA(%6D)",
-		    mc10->mc_addr6, ":", mc10->mc_addr5, ":");
+		    "forward frame to DS, SA(%s) DA(%s)",
+		    ether_sprintf(mc10->mc_addr6),
+		    ether_sprintf(mc10->mc_addr5));
 	}
 	return (0); /* process locally */
 }
@@ -2638,7 +2639,8 @@ mesh_recv_action_meshgate(struct ieee80211_node *ni,
 		return 0;
 
 	IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, ni->ni_macaddr,
-	    "received GANN, meshgate: %6D (seq %u)", ie.gann_addr, ":",
+	    "received GANN, meshgate: %s (seq %u)",
+	    ether_sprintf(ie.gann_addr),
 	    ie.gann_seq);
 
 	if (ms == NULL)

@@ -101,25 +101,10 @@ extern uint64_t ath_debug;
 #define	IFF_DUMPPKTS(sc, m) \
 	((sc->sc_debug & (m)) || \
 	    (sc->sc_ifp->if_flags & (IFF_DEBUG|IFF_LINK2)) == (IFF_DEBUG|IFF_LINK2))
-
-#if defined(__DragonFly__)
-
-/* doesn't support %6D (requires hacking gcc, not gonna do it) */
 #define	DPRINTF(sc, m, fmt, ...) do {				\
 	if (sc->sc_debug & (m))					\
-		athdev_printf(sc->sc_dev, fmt, __VA_ARGS__);		\
+		device_printf(sc->sc_dev, fmt, __VA_ARGS__);	\
 } while (0)
-
-#else
-
-#define	DPRINTF(sc, m, fmt, ...) do {				\
-	if (sc->sc_debug & (m))					\
-		device_printf(sc->sc_dev, fmt, __VA_ARGS__);		\
-} while (0)
-
-#endif
-
-
 #define	KEYPRINTF(sc, ix, hk, mac) do {				\
 	if (sc->sc_debug & ATH_DEBUG_KEYCACHE)			\
 		ath_keyprint(sc, __func__, ix, hk, mac);	\

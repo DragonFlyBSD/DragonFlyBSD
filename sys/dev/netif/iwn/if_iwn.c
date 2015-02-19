@@ -613,7 +613,7 @@ iwn_attach(device_t dev)
 	    ((sc->rxchainmask >> 1) & 1) +
 	    ((sc->rxchainmask >> 0) & 1);
 	if (bootverbose) {
-		iwndev_printf(dev, "MIMO %dT%dR, %.4s, address %s\n",
+		device_printf(dev, "MIMO %dT%dR, %.4s, address %s\n",
 		    sc->ntxchains, sc->nrxchains, sc->eeprom_domain,
 		    kether_ntoa(macaddr, ethstr));
 	}
@@ -9121,23 +9121,6 @@ iwn_debug_register(struct iwn_softc *sc)
 	DPRINTF(sc, IWN_DEBUG_REGISTER,"%s","\n");
 }
 #endif
-
-/*
- * A device_printf() equivalent that does not require gcc hacks
- */
-int
-iwndev_printf(device_t dev, const char *ctl, ...)
-{
-	__va_list va;
-	int retval;
-
-	retval = device_print_prettyname(dev);
-	__va_start(va, ctl);
-	retval += kvprintf(ctl, va);
-	__va_end(va);
-
-	return retval;
-}
 
 #if defined(__DragonFly__)
 

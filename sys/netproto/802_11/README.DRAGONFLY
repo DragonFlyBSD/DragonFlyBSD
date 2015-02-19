@@ -141,9 +141,11 @@
 			 size, 1, size,
 			 BUS_DMA_NOWAIT, &dma->tag);
 
-    * device_printf() may be used with "%6D".  This is effectively asking
-      to print an ether address, but it required hacking gcc to actually
-      accept the "%6D" in a __printflike() function.  So instead, rename
-      any such calls to blahdev_printf() and write a blahdev_printf()
-      function (see athdev_printf() in netif/ath for an example).
-
+    * device_printf() may be used with "%6D".  This is a FreeBSD specific
+      conversion specifier that was removed from DragonFly.  There is a
+      generic kether_ntoa() helper function that can be used for printing
+      MAC addresses. ath(4) also has an ath_hal_ether_sprintf() for this
+      purpose and the wlan stack has an ether_sprintf(). Simply removing
+      the __printflike() to silence the warning is wrong since that will
+      still not print the MAC address correctly (due to removed support
+      in the kprintf() functions).

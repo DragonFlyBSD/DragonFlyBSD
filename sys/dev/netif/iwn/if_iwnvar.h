@@ -426,5 +426,3 @@ struct iwn_softc {
 #define IWN_LOCK_ASSERT(_sc)		KKASSERT(lockstatus(&(_sc)->sc_mtx, curthread) == LK_EXCLUSIVE)
 #define IWN_UNLOCK(_sc)			lockmgr(&(_sc)->sc_mtx, LK_RELEASE)
 #define IWN_LOCK_DESTROY(_sc)		lockuninit(&(_sc)->sc_mtx)
-
-int iwndev_printf(device_t dev, const char *ctl, ...);

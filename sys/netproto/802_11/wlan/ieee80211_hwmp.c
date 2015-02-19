@@ -918,8 +918,8 @@ hwmp_update_transmitter(struct ieee80211vap *vap, struct ieee80211_node *ni,
 		rttran = ieee80211_mesh_rt_add(vap, ni->ni_macaddr);
 		if (rttran == NULL) {
 			IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-			    "unable to add path to transmitter %6D of %s",
-			    ni->ni_macaddr, ":", hwmp_frame);
+			    "unable to add path to transmitter %s of %s",
+			    ether_sprintf(ni->ni_macaddr), hwmp_frame);
 			vap->iv_stats.is_mesh_rtaddfailed++;
 			return;
 		}
@@ -929,9 +929,10 @@ hwmp_update_transmitter(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	    rttran->rt_metric > metric)
 	{
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-		    "%s path to transmitter %6D of %s, metric %d:%d",
+		    "%s path to transmitter %s of %s, metric %d:%d",
 		    rttran->rt_flags & IEEE80211_MESHRT_FLAGS_VALID ?
-		    "prefer" : "update", ni->ni_macaddr, ":", hwmp_frame,
+		    "prefer" : "update", ether_sprintf(ni->ni_macaddr),
+		    hwmp_frame,
 		    rttran->rt_metric, metric);
 		IEEE80211_ADDR_COPY(rttran->rt_nexthop, ni->ni_macaddr);
 		rttran->rt_metric = metric;
@@ -967,8 +968,9 @@ hwmp_recv_preq(struct ieee80211vap *vap, struct ieee80211_node *ni,
 		return;
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-	    "received PREQ, orig %6D, targ(0) %6D", preq->preq_origaddr, ":",
-	    PREQ_TADDR(0), ":");
+	    "received PREQ, orig %s, targ(0) %s",
+	    ether_sprintf(preq->preq_origaddr),
+	    ether_sprintf(PREQ_TADDR(0)));
 
 	/*
 	 * Acceptance criteria: (if the PREQ is not for us or not broadcast,
@@ -999,8 +1001,8 @@ hwmp_recv_preq(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	    !IEEE80211_ADDR_EQ(vap->iv_myaddr, PREQ_TADDR(0))) {
 		IEEE80211_DISCARD_MAC(vap, IEEE80211_MSG_HWMP,
 		    preq->preq_origaddr, NULL,
-		    "unicast addressed PREQ of unknown target %6D",
-		    PREQ_TADDR(0), ":");
+		    "unicast addressed PREQ of unknown target %s",
+		    ether_sprintf(PREQ_TADDR(0)));
 		return;
 	}
 
@@ -1011,13 +1013,14 @@ hwmp_recv_preq(struct ieee80211vap *vap, struct ieee80211_node *ni,
 		rtorig = ieee80211_mesh_rt_add(vap, preq->preq_origaddr);
 		if (rtorig == NULL) {
 			IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-			    "unable to add orig path to %6D",
-			    preq->preq_origaddr, ":");
+			    "unable to add orig path to %s",
+			    ether_sprintf(preq->preq_origaddr));
 			vap->iv_stats.is_mesh_rtaddfailed++;
 			return;
 		}
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-		    "adding originator %6D", preq->preq_origaddr, ":");
+		    "adding originator %s",
+		    ether_sprintf(preq->preq_origaddr));
 	}
 	hrorig = IEEE80211_MESH_ROUTE_PRIV(rtorig, struct ieee80211_hwmp_route);
 
@@ -1047,9 +1050,9 @@ hwmp_recv_preq(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	    (rtorig->rt_flags & IEEE80211_MESHRT_FLAGS_VALID &&
 	    preqid >= preq->preq_id)) {
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-		    "discard PREQ from %6D, old seqno %u <= %u,"
+		    "discard PREQ from %s, old seqno %u <= %u,"
 		    " or old preqid %u < %u",
-		    preq->preq_origaddr, ":",
+		    ether_sprintf(preq->preq_origaddr),
 		    preq->preq_origseq, hrorig->hr_seq,
 		    preq->preq_id, preqid);
 		return;
@@ -1081,7 +1084,8 @@ hwmp_recv_preq(struct ieee80211vap *vap, struct ieee80211_node *ni,
 		if (rttarg != NULL && /* if NULL it means we are the target */
 		    rttarg->rt_flags & IEEE80211_MESHRT_FLAGS_PROXY) {
 			IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-			    "reply for proxy %6D", rttarg->rt_dest, ":");
+			    "reply for proxy %s",
+			    ether_sprintf(rttarg->rt_dest));
 			prep.prep_flags |= IEEE80211_MESHPREP_FLAGS_AE;
 			IEEE80211_ADDR_COPY(prep.prep_target_ext_addr,
 			    rttarg->rt_dest);
@@ -1101,7 +1105,7 @@ hwmp_recv_preq(struct ieee80211vap *vap, struct ieee80211_node *ni,
 		prep.prep_origseq = preq->preq_origseq;
 
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-		    "reply to %6D", preq->preq_origaddr, ":");
+		    "reply to %s", ether_sprintf(preq->preq_origaddr));
 		hwmp_send_prep(vap, wh->i_addr2, &prep);
 		return;
 	}
@@ -1114,8 +1118,8 @@ hwmp_recv_preq(struct ieee80211vap *vap, struct ieee80211_node *ni,
 			    preq->preq_orig_ext_addr);
 			if (rtorig_ext == NULL) {
 				IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-				    "unable to add orig ext proxy to %6D",
-				    preq->preq_orig_ext_addr, ":");
+				    "unable to add orig ext proxy to %s",
+				    ether_sprintf(preq->preq_orig_ext_addr));
 				vap->iv_stats.is_mesh_rtaddfailed++;
 				return;
 			}
@@ -1132,7 +1136,8 @@ hwmp_recv_preq(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	if (IEEE80211_ADDR_EQ(PREQ_TADDR(0), broadcastaddr) &&
 	    (PREQ_TFLAGS(0) & IEEE80211_MESHPREQ_TFLAGS_TO)) {
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-		    "root mesh station @ %6D", preq->preq_origaddr, ":");
+		    "root mesh station @ %s",
+		    ether_sprintf(preq->preq_origaddr));
 
 		/* Check if root is a mesh gate, mark it */
 		if (preq->preq_flags & IEEE80211_MESHPREQ_FLAGS_GATE) {
@@ -1191,8 +1196,8 @@ hwmp_recv_preq(struct ieee80211vap *vap, struct ieee80211_node *ni,
 				struct ieee80211_meshprep_ie prep;
 
 				IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-				    "intermediate reply for PREQ from %6D",
-				    preq->preq_origaddr, ":");
+				    "intermediate reply for PREQ from %s",
+				    ether_sprintf(preq->preq_origaddr));
 				prep.prep_flags = 0;
 				prep.prep_hopcount = rttarg->rt_nhops;
 				prep.prep_ttl = ms->ms_ttl;
@@ -1216,8 +1221,8 @@ hwmp_recv_preq(struct ieee80211vap *vap, struct ieee80211_node *ni,
 		}
 
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-		    "forward PREQ from %6D",
-		    preq->preq_origaddr, ":");
+		    "forward PREQ from %s",
+		    ether_sprintf(preq->preq_origaddr));
 		ppreq.preq_hopcount += 1;
 		ppreq.preq_ttl -= 1;
 		ppreq.preq_metric += ms->ms_pmetric->mpm_metric(ni);
@@ -1282,8 +1287,9 @@ hwmp_recv_prep(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	const uint8_t *addr;
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-	    "received PREP, orig %6D, targ %6D", prep->prep_origaddr, ":",
-	    prep->prep_targetaddr, ":");
+	    "received PREP, orig %s, targ %s",
+	    ether_sprintf(prep->prep_origaddr),
+	    ether_sprintf(prep->prep_targetaddr));
 
 	/*
 	 * Acceptance criteria: (If the corresponding PREP was not generated
@@ -1295,8 +1301,8 @@ hwmp_recv_prep(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	    (rtorig != NULL && IS_PROXY(rtorig) && !PROXIED_BY_US(rtorig))) &&
 	    !(ms->ms_flags & IEEE80211_MESHFLAGS_FWD)){
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-		    "discard PREP, orig(%6D) not proxied or generated by us",
-		    prep->prep_origaddr, ":");
+		    "discard PREP, orig(%s) not proxied or generated by us",
+		    ether_sprintf(prep->prep_origaddr));
 		return;
 	}
 
@@ -1314,13 +1320,13 @@ hwmp_recv_prep(struct ieee80211vap *vap, struct ieee80211_node *ni,
 		rt = ieee80211_mesh_rt_add(vap, prep->prep_targetaddr);
 		if (rt == NULL) {
 			IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-			    "unable to add PREP path to %6D",
-			    prep->prep_targetaddr, ":");
+			    "unable to add PREP path to %s",
+			    ether_sprintf(prep->prep_targetaddr));
 			vap->iv_stats.is_mesh_rtaddfailed++;
 			return;
 		}
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-		    "adding target %6D", prep->prep_targetaddr, ":");
+		    "adding target %s", ether_sprintf(prep->prep_targetaddr));
 	}
 	hr = IEEE80211_MESH_ROUTE_PRIV(rt, struct ieee80211_hwmp_route);
 	/* update path metric */
@@ -1328,25 +1334,25 @@ hwmp_recv_prep(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	if ((rt->rt_flags & IEEE80211_MESHRT_FLAGS_VALID)) {
 		if (HWMP_SEQ_LT(prep->prep_targetseq, hr->hr_seq)) {
 			IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-			    "discard PREP from %6D, old seq no %u < %u",
-			    prep->prep_targetaddr, ":",
+			    "discard PREP from %s, old seq no %u < %u",
+			    ether_sprintf(prep->prep_targetaddr),
 			    prep->prep_targetseq, hr->hr_seq);
 			return;
 		} else if (HWMP_SEQ_LEQ(prep->prep_targetseq, hr->hr_seq) &&
 		    metric > rt->rt_metric) {
 			IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-			    "discard PREP from %6D, new metric %u > %u",
-			    prep->prep_targetaddr, ":",
+			    "discard PREP from %s, new metric %u > %u",
+			    ether_sprintf(prep->prep_targetaddr),
 			    metric, rt->rt_metric);
 			return;
 		}
 	}
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-	    "%s path to %6D, hopcount %d:%d metric %d:%d",
+	    "%s path to %s, hopcount %d:%d metric %d:%d",
 	    rt->rt_flags & IEEE80211_MESHRT_FLAGS_VALID ?
 	    "prefer" : "update",
-	    prep->prep_targetaddr, ":",
+	    ether_sprintf(prep->prep_targetaddr),
 	    rt->rt_nhops, prep->prep_hopcount + 1,
 	    rt->rt_metric, metric);
 
@@ -1380,14 +1386,14 @@ hwmp_recv_prep(struct ieee80211vap *vap, struct ieee80211_node *ni,
 		 */
 		if (rtorig == NULL) {
 			IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-			    "received PREP for an unknown orig(%6D)",
-			    prep->prep_origaddr, ":");
+			    "received PREP for an unknown orig(%s)",
+			    ether_sprintf(prep->prep_origaddr));
 			return;
 		}
 
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-		    "propagate PREP from %6D",
-		    prep->prep_targetaddr, ":");
+		    "propagate PREP from %s",
+		    ether_sprintf(prep->prep_targetaddr));
 
 		memcpy(&pprep, prep, sizeof(pprep));
 		pprep.prep_hopcount += 1;
@@ -1411,17 +1417,17 @@ hwmp_recv_prep(struct ieee80211vap *vap, struct ieee80211_node *ni,
 				prep->prep_target_ext_addr);
 			if (rtext == NULL) {
 				IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-				    "unable to add PREP path to proxy %6D",
-				    prep->prep_targetaddr, ":");
+				    "unable to add PREP path to proxy %s",
+				    ether_sprintf(prep->prep_targetaddr));
 				vap->iv_stats.is_mesh_rtaddfailed++;
 				return;
 			}
 		}
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-		    "%s path to %6D, hopcount %d:%d metric %d:%d",
+		    "%s path to %s, hopcount %d:%d metric %d:%d",
 		    rtext->rt_flags & IEEE80211_MESHRT_FLAGS_VALID ?
 		    "prefer" : "update",
-		    prep->prep_target_ext_addr, ":",
+		    ether_sprintf(prep->prep_target_ext_addr),
 		    rtext->rt_nhops, prep->prep_hopcount + 1,
 		    rtext->rt_metric, metric);
 
@@ -1549,7 +1555,7 @@ hwmp_recv_perr(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	int i, j = 0, forward = 0;
 
 	IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-	    "received PERR from %6D", wh->i_addr2, ":");
+	    "received PERR from %s", ether_sprintf(wh->i_addr2));
 
 	/*
 	 * if forwarding is true, prepare pperr
@@ -1625,7 +1631,7 @@ hwmp_recv_perr(struct ieee80211vap *vap, struct ieee80211_node *ni,
 	 */
 	if (forward && perr->perr_ttl > 1) {
 		IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP, ni,
-		    "propagate PERR from %6D", wh->i_addr2, ":");
+		    "propagate PERR from %s", ether_sprintf(wh->i_addr2));
 		pperr->perr_ndests = j;
 		pperr->perr_ttl--;
 		hwmp_send_perr(vap, broadcastaddr, pperr);
@@ -1782,8 +1788,8 @@ hwmp_recv_rann(struct ieee80211vap *vap, struct ieee80211_node *ni,
 		rt = ieee80211_mesh_rt_add(vap, rann->rann_addr);
 		if (rt == NULL) {
 			IEEE80211_DISCARD(vap, IEEE80211_MSG_HWMP, wh, NULL,
-			    "unable to add mac for RANN root %6D",
-			    rann->rann_addr, ":");
+			    "unable to add mac for RANN root %s",
+			    ether_sprintf(rann->rann_addr));
 			    vap->iv_stats.is_mesh_rtaddfailed++;
 			return;
 		}
@@ -1935,8 +1941,8 @@ hwmp_discover(struct ieee80211vap *vap,
 			rt = ieee80211_mesh_rt_add(vap, dest);
 			if (rt == NULL) {
 				IEEE80211_NOTE(vap, IEEE80211_MSG_HWMP,
-				    ni, "unable to add discovery path to %6D",
-				    dest, ":");
+				    ni, "unable to add discovery path to %s",
+				    ether_sprintf(dest));
 				vap->iv_stats.is_mesh_rtaddfailed++;
 				goto done;
 			}

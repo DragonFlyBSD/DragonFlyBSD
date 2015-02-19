@@ -382,9 +382,9 @@ ieee80211_start_pkt(struct ieee80211vap *vap, struct mbuf *m)
 				return (ENOBUFS);
 			}
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
-			    "forward frame from DS SA(%6D), DA(%6D)\n",
-			    eh->ether_shost, ":",
-			    eh->ether_dhost, ":");
+			    "forward frame from DS SA(%s), DA(%s)\n",
+			    ether_sprintf(eh->ether_shost),
+			    ether_sprintf(eh->ether_dhost));
 			ieee80211_mesh_proxy_check(vap, eh->ether_shost);
 		}
 		ni = ieee80211_mesh_discover(vap, eh->ether_dhost, m);
@@ -2201,7 +2201,7 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_DEBUG | IEEE80211_MSG_DUMPPKTS,
 	    "send probe req on channel %u bssid %s ssid \"%.*s\"\n",
 	    ieee80211_chan2ieee(ic, ic->ic_curchan), ether_sprintf(bssid),
-	    ssidlen, ssid);
+	    (int)ssidlen, ssid);
 
 	memset(&params, 0, sizeof(params));
 	params.ibp_pri = M_WME_GETAC(m);
