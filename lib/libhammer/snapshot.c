@@ -117,3 +117,15 @@ out:
 
 	return (ret);
 }
+
+void
+libhammer_pfs_free_snapshots(libhammer_pfsinfo_t pip)
+{
+	struct libhammer_snapinfo *si;
+
+	while(!TAILQ_EMPTY(&pip->list_snap)) {
+		si = TAILQ_FIRST(&pip->list_snap);
+		TAILQ_REMOVE(&pip->list_snap, si, entries);
+		free(si);
+	}
+}

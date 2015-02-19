@@ -177,6 +177,7 @@ int libhammer_btree_stats(struct libhammer_btree_stats *);
 int libhammer_io_stats(struct libhammer_io_stats *);
 
 int libhammer_pfs_get_snapshots(libhammer_fsinfo_t, libhammer_pfsinfo_t);
+void libhammer_pfs_free_snapshots(libhammer_pfsinfo_t);
 
 char *libhammer_find_pfs_mount(uuid_t *);
 void libhammer_pfs_canonical_path(char *, libhammer_pfsinfo_t, char **);

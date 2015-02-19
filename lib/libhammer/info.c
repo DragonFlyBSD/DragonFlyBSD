@@ -133,6 +133,7 @@ libhammer_free_fsinfo(libhammer_fsinfo_t fip)
 
 	while(!TAILQ_EMPTY(&fip->list_pseudo)) {
 		pfstmp = TAILQ_FIRST(&fip->list_pseudo);
+		libhammer_pfs_free_snapshots(pfstmp);
 		if (pfstmp->mountedon)
 			free(pfstmp->mountedon);
 		TAILQ_REMOVE(&fip->list_pseudo, pfstmp, entries);
