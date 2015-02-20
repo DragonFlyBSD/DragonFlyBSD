@@ -416,7 +416,8 @@ check_constexpr_bind_expr_vars (tree t)
 
   for (tree var = BIND_EXPR_VARS (t); var; var = DECL_CHAIN (var))
     if (TREE_CODE (var) == TYPE_DECL
-	&& DECL_IMPLICIT_TYPEDEF_P (var))
+	&& DECL_IMPLICIT_TYPEDEF_P (var)
+	&& !LAMBDA_TYPE_P (TREE_TYPE (var)))
       return false;
   return true;
 }
@@ -3638,7 +3639,6 @@ maybe_constant_value (tree t, tree decl)
 
   r = cxx_eval_outermost_constant_expr (t, true, true, decl);
 #ifdef ENABLE_CHECKING
-  /* cp_tree_equal looks through NOPs, so allow them.  */
   gcc_assert (r == t
 	      || CONVERT_EXPR_P (t)
 	      || TREE_CODE (t) == VIEW_CONVERT_EXPR
