@@ -87,7 +87,7 @@ struct mypfstate {
 	struct pfsync_state	last_state;
 };
 
-double delta_time;
+double delta_time = 1.0;	/* for DELTARATE() initial state */
 double highestbw;
 
 static int
@@ -306,8 +306,10 @@ showpftop(void)
 
 	delta_time = (double)(tv_curr.tv_sec - tv_last.tv_sec) - 1.0 +
 		     (tv_curr.tv_usec + 1000000 - tv_last.tv_usec) / 1e6;
-	if (delta_time < 0.1)
+	if (delta_time < 0.1) {
+		delta_time = 0.1;	/* don't implode DELTARATE */
 		return;
+	}
 
 	/*
 	 * Delete and collect pass
