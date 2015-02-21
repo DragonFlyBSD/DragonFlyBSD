@@ -31,6 +31,7 @@ SRCS	= \
 	drm_scatter.c \
 	drm_stub.c \
 	drm_sysctl.c \
+	drm_sysfs.c \
 	drm_vm.c \
 	linux_shmem.c \
 	ttm_lock.c \
