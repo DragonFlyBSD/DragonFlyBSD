@@ -52,8 +52,6 @@ static __inline void *get_ondisk(hammer_off_t buf_offset,
 			struct buffer_info **bufferp, int isnew);
 #if 0
 static void init_fifo_head(hammer_fifo_head_t head, u_int16_t hdr_type);
-static hammer_off_t hammer_alloc_fifo(int32_t base_bytes, int32_t ext_bytes,
-			struct buffer_info **bufp, u_int16_t hdr_type);
 static void readhammerbuf(struct volume_info *vol, void *data,
 			int64_t offset);
 #endif
@@ -414,10 +412,7 @@ get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp,
 }
 
 /*
- * Allocate HAMMER elements - btree nodes, data storage, and record elements
- *
- * NOTE: hammer_alloc_fifo() initializes the fifo header for the returned
- * item and zero's out the remainder, so don't bzero() it.
+ * Allocate HAMMER elements - btree nodes, data storage
  */
 void *
 alloc_btree_element(hammer_off_t *offp)
