@@ -28,9 +28,13 @@
 #ifndef _I915_TRACE_H_
 #define _I915_TRACE_H_
 
+#define trace_i915_flip_complete(a,b)
+#define trace_i915_flip_request(a,b)
+
 #define trace_i915_gem_evict(a,b,c,d)
 #define trace_i915_gem_evict_everything(a)
 
+#define trace_i915_gem_object_bind(a, b)
 #define trace_i915_gem_object_change_domain(a,b,c)
 
 #define trace_i915_ring_wait_begin(a)

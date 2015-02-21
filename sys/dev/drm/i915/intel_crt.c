@@ -24,6 +24,8 @@
  *	Eric Anholt <eric@anholt.net>
  */
 
+#include <linux/dmi.h>
+#include <linux/i2c.h>
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
@@ -81,6 +83,28 @@ static bool intel_crt_get_hw_state(struct intel_encoder *encoder,
 	return true;
 }
 
+static void intel_crt_get_config(struct intel_encoder *encoder,
+				 struct intel_crtc_config *pipe_config)
+{
+	struct drm_i915_private *dev_priv = encoder->base.dev->dev_private;
+	struct intel_crt *crt = intel_encoder_to_crt(encoder);
+	u32 tmp, flags = 0;
+
+	tmp = I915_READ(crt->adpa_reg);
+
+	if (tmp & ADPA_HSYNC_ACTIVE_HIGH)
+		flags |= DRM_MODE_FLAG_PHSYNC;
+	else
+		flags |= DRM_MODE_FLAG_NHSYNC;
+
+	if (tmp & ADPA_VSYNC_ACTIVE_HIGH)
+		flags |= DRM_MODE_FLAG_PVSYNC;
+	else
+		flags |= DRM_MODE_FLAG_NVSYNC;
+
+	pipe_config->adjusted_mode.flags |= flags;
+}
+
 /* Note: The caller is required to filter out dpms modes not supported by the
  * platform. */
 static void intel_crt_set_dpms(struct intel_encoder *encoder, int mode)
@@ -124,7 +148,7 @@ static void intel_enable_crt(struct intel_encoder *encoder)
 	intel_crt_set_dpms(encoder, crt->connector->base.dpms);
 }
 
-
+/* Special dpms function to support cloning between dvo/sdvo/crt. */
 static void intel_crt_dpms(struct drm_connector *connector, int mode)
 {
 	struct drm_device *dev = connector->dev;
@@ -155,6 +179,8 @@ static void intel_crt_dpms(struct drm_connector *connector, int mode)
 	else
 		encoder->connectors_active = true;
 
+	/* We call connector dpms manually below in case pipe dpms doesn't
+	 * change due to cloning. */
 	if (mode < old_dpms) {
 		/* From off to on, enable the pipe first. */
 		intel_crtc_update_dpms(crtc);
@@ -203,6 +229,10 @@ static bool intel_crt_compute_config(struct intel_encoder *encoder,
 
 	if (HAS_PCH_SPLIT(dev))
 		pipe_config->has_pch_encoder = true;
+
+	/* LPT FDI RX only supports 8bpc. */
+	if (HAS_PCH_LPT(dev))
+		pipe_config->pipe_bpp = 24;
 
 	return true;
 }
@@ -428,7 +458,7 @@ static bool intel_crt_detect_ddc(struct drm_connector *connector)
 
 	BUG_ON(crt->base.type != INTEL_OUTPUT_ANALOG);
 
-	i2c = intel_gmbus_get_adapter(dev_priv, dev_priv->crt_ddc_pin);
+	i2c = intel_gmbus_get_adapter(dev_priv, dev_priv->vbt.crt_ddc_pin);
 	edid = intel_crt_get_edid(connector, i2c);
 
 	if (edid) {
@@ -449,7 +479,7 @@ static bool intel_crt_detect_ddc(struct drm_connector *connector)
 		DRM_DEBUG_KMS("CRT not detected via DDC:0x50 [no valid EDID found]\n");
 	}
 
-	drm_free(edid, M_DRM);
+	kfree(edid);
 
 	return false;
 }
@@ -622,11 +652,9 @@ intel_crt_detect(struct drm_connector *connector, bool force)
 
 static void intel_crt_destroy(struct drm_connector *connector)
 {
-#if 0
 	drm_sysfs_connector_remove(connector);
-#endif
 	drm_connector_cleanup(connector);
-	drm_free(connector, M_DRM);
+	kfree(connector);
 }
 
 static int intel_crt_get_modes(struct drm_connector *connector)
@@ -636,7 +664,7 @@ static int intel_crt_get_modes(struct drm_connector *connector)
 	int ret;
 	struct device *i2c;
 
-	i2c = intel_gmbus_get_adapter(dev_priv, dev_priv->crt_ddc_pin);
+	i2c = intel_gmbus_get_adapter(dev_priv, dev_priv->vbt.crt_ddc_pin);
 	ret = intel_crt_ddc_get_modes(connector, i2c);
 	if (ret || !IS_G4X(dev))
 		return ret;
@@ -773,6 +801,7 @@ void intel_crt_init(struct drm_device *dev)
 	crt->base.compute_config = intel_crt_compute_config;
 	crt->base.disable = intel_disable_crt;
 	crt->base.enable = intel_enable_crt;
+	crt->base.get_config = intel_crt_get_config;
 	if (I915_HAS_HOTPLUG(dev))
 		crt->base.hpd_pin = HPD_CRT;
 	if (HAS_DDI(dev))
@@ -784,9 +813,7 @@ void intel_crt_init(struct drm_device *dev)
 	drm_encoder_helper_add(&crt->base.base, &crt_encoder_funcs);
 	drm_connector_helper_add(connector, &intel_crt_connector_helper_funcs);
 
-#if 0
 	drm_sysfs_connector_add(connector);
-#endif
 
 	if (!I915_HAS_HOTPLUG(dev))
 		intel_connector->polled = DRM_CONNECTOR_POLL_CONNECT;

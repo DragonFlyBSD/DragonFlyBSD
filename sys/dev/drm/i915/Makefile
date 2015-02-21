@@ -13,6 +13,7 @@ SRCS	= \
 	i915_irq.c \
 	i915_suspend.c \
 	i915_ums.c \
+	intel_acpi.c \
 	intel_bios.c \
 	intel_crt.c \
 	intel_ddi.c \
@@ -24,6 +25,7 @@ SRCS	= \
 	intel_lvds.c \
 	intel_modes.c \
 	intel_opregion.c \
+	intel_sideband.c \
 	intel_overlay.c \
 	intel_panel.c \
 	intel_pm.c \

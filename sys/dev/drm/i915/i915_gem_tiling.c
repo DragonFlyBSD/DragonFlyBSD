@@ -485,7 +485,7 @@ i915_gem_object_do_bit_17_swizzle(struct drm_i915_gem_object *obj)
 	for (i = 0; i < page_count; i++) {
 		char new_bit_17 = VM_PAGE_TO_PHYS(obj->pages[i]) >> 17;
 		if ((new_bit_17 & 0x1) !=
-		    (test_bit(i, obj->bit_17) ? 1 : 0)) {
+		    (test_bit(i, obj->bit_17) != 0)) {
 			i915_gem_swizzle_page(obj->pages[i]);
 			vm_page_dirty(obj->pages[i]);
 		}
