@@ -1,4 +1,4 @@
-/* $FreeBSD: head/sys/dev/usb/usb_core.h 266394 2014-05-18 09:13:29Z hselasky $ */
+/* $FreeBSD: head/sys/dev/usb/usb_core.h 278071 2015-02-02 11:06:41Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -100,6 +100,7 @@ struct usb_xfer_flags_int {
 					 * sent */
 	uint8_t	control_act:1;		/* set if control transfer is active */
 	uint8_t	control_stall:1;	/* set if control transfer should be stalled */
+	uint8_t control_did_data:1;	/* set if control DATA has been transferred */
 
 	uint8_t	short_frames_ok:1;	/* filtered version */
 	uint8_t	short_xfer_ok:1;	/* filtered version */
