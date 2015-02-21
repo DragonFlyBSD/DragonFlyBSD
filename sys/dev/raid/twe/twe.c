@@ -1645,7 +1645,7 @@ twe_describe_controller(struct twe_softc *sc)
     TWE_Param		*p[6];
     u_int8_t		ports;
     u_int32_t		size;
-    int			i;
+    int			i, error;
 
     debug_called(2);
 
@@ -1654,12 +1654,13 @@ twe_describe_controller(struct twe_softc *sc)
     ports = 0;
     size = 0;
     /* get the port count */
-    twe_get_param_1(sc, TWE_PARAM_CONTROLLER, TWE_PARAM_CONTROLLER_PortCount, &ports);
+    error = twe_get_param_1(sc, TWE_PARAM_CONTROLLER,
+	TWE_PARAM_CONTROLLER_PortCount, &ports);
 
     /* get version strings */
     p[0] = twe_get_param(sc, TWE_PARAM_VERSION, TWE_PARAM_VERSION_FW,   16, NULL);
     p[1] = twe_get_param(sc, TWE_PARAM_VERSION, TWE_PARAM_VERSION_BIOS, 16, NULL);
-    if (p[0] && p[1])
+    if (error == 0 && p[0] && p[1])
 	 twe_printf(sc, "%d ports, Firmware %.16s, BIOS %.16s\n", ports, p[0]->data, p[1]->data);
 
     if (bootverbose) {
@@ -1691,9 +1692,10 @@ twe_describe_controller(struct twe_softc *sc)
 	for (i = 0; i < ports; i++) {
 	    if (p[0]->data[i] != TWE_PARAM_DRIVESTATUS_Present)
 		continue;
-	    twe_get_param_4(sc, TWE_PARAM_DRIVEINFO + i, TWE_PARAM_DRIVEINFO_Size, &size);
+	    error = twe_get_param_4(sc, TWE_PARAM_DRIVEINFO + i,
+		TWE_PARAM_DRIVEINFO_Size, &size);
 	    p[1] = twe_get_param(sc, TWE_PARAM_DRIVEINFO + i, TWE_PARAM_DRIVEINFO_Model, 40, NULL);
-	    if (p[1] != NULL) {
+	    if (error == 0 && p[1] != NULL) {
 		twe_printf(sc, "port %d: %.40s %dMB\n", i, p[1]->data, size / 2048);
 		kfree(p[1], M_DEVBUF);
 	    } else {

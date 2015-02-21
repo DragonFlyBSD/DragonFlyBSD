@@ -682,7 +682,7 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 
 #define HAMMER_FIXKEY_SYMLINK		1
 
-#define HAMMER_OBJTYPE_UNKNOWN		0	/* (never exists on-disk) */
+#define HAMMER_OBJTYPE_UNKNOWN		0	/* never exists on-disk as unknown */
 #define HAMMER_OBJTYPE_DIRECTORY	1
 #define HAMMER_OBJTYPE_REGFILE		2
 #define HAMMER_OBJTYPE_DBFILE		3
