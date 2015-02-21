@@ -97,6 +97,8 @@ EXTRA_HEADERS = \
 	${GCCDIR}/gcc/config/i386/avx512vbmivlintrin.h \
 	${GCCDIR}/gcc/config/i386/clwbintrin.h \
 	${GCCDIR}/gcc/config/i386/pcommitintrin.h \
+	${GCCDIR}/gcc/ginclude/stdatomic.h \
+	${GCCDIR}/gcc/ginclude/stdfix.h \
 	${GCCDIR}/gcc/ginclude/tgmath.h
 
 #generated sources
