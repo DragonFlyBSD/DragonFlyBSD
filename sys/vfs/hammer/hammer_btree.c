@@ -3031,7 +3031,7 @@ btree_node_is_full(hammer_node_ondisk_t node)
 			return(1);
 		break;
 	default:
-		panic("illegal btree subtype");
+		panic("illegal btree type");
 	}
 	return(0);
 }

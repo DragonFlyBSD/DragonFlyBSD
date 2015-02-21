@@ -177,7 +177,7 @@ union hammer_btree_elm {
 typedef union hammer_btree_elm *hammer_btree_elm_t;
 
 /*
- * B-Tree node (normal or meta)	(64x64 = 4K structure)
+ * B-Tree node (64x64 = 4K structure)
  *
  * Each node contains 63 elements.  The last element for an internal node
  * is the right-boundary so internal nodes have one fewer logical elements
@@ -189,13 +189,8 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
  * The use of a fairly large radix is designed to reduce the number of
  * discrete disk accesses required to locate something.  Keep in mind
  * that nodes are allocated out of 16K hammer buffers so supported values
- * are (256-1), (128-1), (64-1), (32-1), or (16-1).
- *
- * NOTE: The node head for an internal does not contain the subtype
- * (The B-Tree node type for the nodes referenced by its elements). 
- * Instead, each element specifies the subtype (elm->base.subtype).
- * This allows us to maintain an unbalanced B-Tree and to easily identify
- * special inter-cluster link elements.
+ * are (256-1), (128-1), (64-1), (32-1), or (16-1). HAMMER uses 63-way
+ * so the node size is (64x(1+(64-1))) = 4KB.
  *
  * NOTE: FUTURE EXPANSION: The reserved fields in hammer_node_ondisk are
  * reserved for left/right leaf linkage fields, flags, and other future
@@ -203,13 +198,6 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
  */
 #define HAMMER_BTREE_LEAF_ELMS	63
 #define HAMMER_BTREE_INT_ELMS	(HAMMER_BTREE_LEAF_ELMS - 1)
-
-/*
- * It is safe to combine two adjacent nodes if the total number of elements
- * is less then or equal to the *_FILL constant.
- */
-#define HAMMER_BTREE_LEAF_FILL	(HAMMER_BTREE_LEAF_ELMS - 3)
-#define HAMMER_BTREE_INT_FILL	(HAMMER_BTREE_INT_ELMS - 3)
 
 #define HAMMER_BTREE_TYPE_INTERNAL	((u_int8_t)'I')
 #define HAMMER_BTREE_TYPE_LEAF		((u_int8_t)'L')
@@ -249,4 +237,3 @@ struct hammer_node_ondisk {
 	(sizeof(struct hammer_node_ondisk) - sizeof(hammer_crc_t))
 
 typedef struct hammer_node_ondisk *hammer_node_ondisk_t;
-
