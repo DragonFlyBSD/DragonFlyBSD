@@ -359,6 +359,10 @@ ucom_detach(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 	if (!(ssc->sc_flag & UCOM_FLAG_ATTACHED))
 		return;		/* not initialized */
 
+	destroy_dev(sc->sc_cdev);
+
+	lwkt_gettoken(&tty_token);
+
 	if (ssc->sc_sysctl_ttyname != NULL) {
 		sysctl_remove_oid(ssc->sc_sysctl_ttyname, 1, 0);
 		ssc->sc_sysctl_ttyname = NULL;
@@ -373,7 +377,6 @@ ucom_detach(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 
 	for (subunit = 0; subunit < ssc->sc_subunits; subunit++) {
 		if (sc[subunit].sc_flag & UCOM_FLAG_ATTACHED) {
-
 			ucom_detach_tty(ssc, &sc[subunit]);
 
 			/* avoid duplicate detach */
@@ -389,7 +392,8 @@ ucom_detach(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 
 	/* make sure we don't detach twice */
 	ssc->sc_flag &= ~UCOM_FLAG_ATTACHED;
-	destroy_dev(sc->sc_cdev);
+
+	lwkt_reltoken(&tty_token);
 }
 
 void
@@ -532,9 +536,6 @@ ucom_detach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 		}
 		ucom_close(sc);	/* close, if any */
 
-		/*tty_rel_gone(tp);
-		 */
-
 		/*
 		 * make sure that read and write transfers are stopped
 		 */
@@ -548,6 +549,9 @@ ucom_detach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 	} else {
 		DPRINTF("no tty\n");
 	}
+
+	dev_ops_remove_minor(&ucom_ops,ssc->sc_unit);
+
 	lwkt_reltoken(&tty_token);
 	ucom_unref(ssc);
 }
