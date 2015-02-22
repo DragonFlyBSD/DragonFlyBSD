@@ -9695,7 +9695,7 @@ intel_check_plane_mapping(struct intel_crtc *crtc)
 	val = I915_READ(reg);
 
 	if ((val & DISPLAY_PLANE_ENABLE) &&
-	    /* gcc5.0 -Werror=logical-not-parenthesis fix */
+	    /* gcc5.0 -Werror=logical-not-parentheses fix */
 	    (!!( (val & DISPPLANE_SEL_PIPE_MASK) == crtc->pipe) ))
 		return false;
 
