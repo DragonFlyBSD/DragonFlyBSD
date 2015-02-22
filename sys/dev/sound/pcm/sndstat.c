@@ -221,6 +221,17 @@ sndstat_find(int type, int unit)
 	return NULL;
 }
 
+/* XXX profmakx
+ * The following two functions are called from
+ * pcm_register and pcm_unregister in kernel
+ * which means that td_proc of curthread can be NULL
+ * because this is called from a kernel thread.
+ * We handle this as a separate case for the time
+ * being.
+ *
+ * Should the kernel be able to override ownership of sndstat?
+ */
+
 int
 sndstat_acquire(struct thread *td)
 {
@@ -232,7 +243,11 @@ sndstat_acquire(struct thread *td)
 		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBUSY;
 	}
-	SNDSTAT_PID_SET(sndstat_dev, td->td_proc->p_pid);
+	if (td->td_proc == NULL) {
+		SNDSTAT_PID_SET(sndstat_dev, -1);
+	} else {
+		SNDSTAT_PID_SET(sndstat_dev, td->td_proc->p_pid);
+	}
 	lockmgr(&sndstat_lock, LK_RELEASE);
 	return 0;
 }
@@ -244,9 +259,16 @@ sndstat_release(struct thread *td)
 		return EBADF;
 
 	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
-	if (SNDSTAT_PID(sndstat_dev) != td->td_proc->p_pid) {
-		lockmgr(&sndstat_lock, LK_RELEASE);
-		return EBADF;
+	if (td->td_proc == NULL) {
+		if (SNDSTAT_PID(sndstat_dev) != -1) {
+			lockmgr(&sndstat_lock, LK_RELEASE);
+			return EBADF;
+		}
+	} else {
+		if (SNDSTAT_PID(sndstat_dev) != td->td_proc->p_pid) {
+			lockmgr(&sndstat_lock, LK_RELEASE);
+			return EBADF;
+		}
 	}
 	SNDSTAT_PID_SET(sndstat_dev, 0);
 	lockmgr(&sndstat_lock, LK_RELEASE);
