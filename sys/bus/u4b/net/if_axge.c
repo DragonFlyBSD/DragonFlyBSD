@@ -22,9 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/dev/usb/net/if_axge.c 271832 2014-09-18 21:09:22Z glebius $
  */
+
+/* $FreeBSD: head/sys/dev/usb/net/if_axge.c 276701 2015-01-05 15:04:17Z hselasky $ */
 
 /*
  * ASIX Electronics AX88178A/AX88179 USB 2.0/3.0 gigabit ethernet driver.
