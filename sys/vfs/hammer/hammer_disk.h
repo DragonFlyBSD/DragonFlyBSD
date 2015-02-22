@@ -708,10 +708,6 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
  *
  * NOTE: Future note on directory hardlinks.  We can implement a record type
  * which allows us to point to multiple parent directories.
- *
- * NOTE: atime is stored in the inode's B-Tree element and not in the inode
- * data.  This allows the atime to be updated without having to lay down a
- * new record.
  */
 struct hammer_inode_data {
 	u_int16_t version;	/* inode data version */
