@@ -1,3 +1,4 @@
+/* $FreeBSD: head/sys/dev/usb/controller/ohci.h 228483 2011-12-14 00:28:54Z hselasky $ */
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.

@@ -1,3 +1,4 @@
+/* $FreeBSD: head/sys/dev/usb/controller/uhci.c 278883 2015-02-17 07:52:50Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  * Copyright (c) 1998 The NetBSD Foundation, Inc. All rights reserved.
@@ -1171,8 +1172,13 @@ uhci_non_isoc_done_sub(struct usb_xfer *xfer)
 		    (status & UHCI_TD_SPD) ? "[SPD]" : "");
 	}
 #endif
-	return (status & UHCI_TD_STALLED) ?
-	    USB_ERR_STALLED : USB_ERR_NORMAL_COMPLETION;
+	if (status & UHCI_TD_STALLED) {
+		/* try to separate I/O errors from STALL */
+		if (UHCI_TD_GET_ERRCNT(status) == 0)
+			return (USB_ERR_IOERROR);
+		return (USB_ERR_STALLED);
+	}
+	return (USB_ERR_NORMAL_COMPLETION);
 }
 
 static void
@@ -1465,7 +1471,8 @@ uhci_interrupt(uhci_softc_t *sc)
 	    UHCI_STS_USBEI |
 	    UHCI_STS_RD |
 	    UHCI_STS_HSE |
-	    UHCI_STS_HCPE);
+	    UHCI_STS_HCPE |
+	    UHCI_STS_HCH);
 
 	if (status == 0) {
 		/* nothing to acknowledge */
