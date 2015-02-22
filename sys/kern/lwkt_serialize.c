@@ -99,9 +99,7 @@ void
 lwkt_serialize_init(lwkt_serialize_t s)
 {
     atomic_intr_init(&s->interlock);
-#ifdef INVARIANTS
     s->last_td = (void *)-4;
-#endif
 }
 
 void
@@ -112,9 +110,7 @@ lwkt_serialize_enter(lwkt_serialize_t s)
     logslz(enter_beg, s);
     atomic_intr_cond_enter(&s->interlock, lwkt_serialize_sleep, s);
     logslz(enter_end, s);
-#ifdef INVARIANTS
     s->last_td = curthread;
-#endif
 }
 
 /*
@@ -129,9 +125,7 @@ lwkt_serialize_try(lwkt_serialize_t s)
 
     logslz(try, s);
     if ((error = atomic_intr_cond_try(&s->interlock)) == 0) {
-#ifdef INVARIANTS
 	s->last_td = curthread;
-#endif
 	logslz(tryok, s);
 	return(1);
     }
@@ -143,9 +137,7 @@ void
 lwkt_serialize_exit(lwkt_serialize_t s)
 {
     ASSERT_SERIALIZED(s);
-#ifdef INVARIANTS
     s->last_td = (void *)-2;
-#endif
     logslz(exit_beg, s);
     atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
     logslz(exit_end, s);
@@ -179,16 +171,12 @@ lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *, void *),
 	logslz(enter_beg, s);
 	atomic_intr_cond_enter(&s->interlock, lwkt_serialize_sleep, s);
 	logslz(enter_end, s);
-#ifdef INVARIANTS
 	s->last_td = curthread;
-#endif
 	if (atomic_intr_handler_is_enabled(&s->interlock) == 0)
 	    func(arg, frame);
 
 	ASSERT_SERIALIZED(s);
-#ifdef INVARIANTS
 	s->last_td = (void *)-2;
-#endif
 	logslz(exit_beg, s);
 	atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
 	logslz(exit_end, s);
@@ -210,17 +198,13 @@ lwkt_serialize_handler_try(lwkt_serialize_t s, void (*func)(void *, void *),
     if (atomic_intr_handler_is_enabled(&s->interlock) == 0) {
 	logslz(try, s);
 	if (atomic_intr_cond_try(&s->interlock) == 0) {
-#ifdef INVARIANTS
 	    s->last_td = curthread;
-#endif
 	    logslz(tryok, s);
 
 	    func(arg, frame);
 
 	    ASSERT_SERIALIZED(s);
-#ifdef INVARIANTS
 	    s->last_td = (void *)-2;
-#endif
 	    logslz(exit_beg, s);
 	    atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
 	    logslz(exit_end, s);
@@ -262,9 +246,7 @@ lwkt_serialize_adaptive_enter(lwkt_serialize_t s)
     logslz(adapt_beg, s);
 
     if (atomic_intr_cond_try(&s->interlock) == 0) {
-#ifdef INVARIANTS
 	s->last_td = curthread;
-#endif
 	logslz(adapt_end, s);
 	return;
     }
@@ -281,9 +263,7 @@ restart:
     for (try = SLZ_ADAPTIVE_SPINMAX; try; --try) {
 	if (atomic_intr_cond_test(&s->interlock) == 0 &&
 	    atomic_intr_cond_try(&s->interlock) == 0) {
-#ifdef INVARIANTS
 	    s->last_td = curthread;
-#endif
 	    logslz_spinend(s, try);
 	    return;
 	}
@@ -294,9 +274,7 @@ restart:
     tsleep_interlock(s, 0);
     if (atomic_intr_cond_try(&s->interlock) == 0) {
 	atomic_intr_cond_dec(&s->interlock);
-#ifdef INVARIANTS
 	s->last_td = curthread;
-#endif
 	logslz_spinend(s, 0);
 	return;
     } else {

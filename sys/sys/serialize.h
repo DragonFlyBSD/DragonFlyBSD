@@ -23,14 +23,7 @@ struct lwkt_serialize {
 
 #define LWKT_SERIALIZE_INITIALIZER      { 0, NULL }
 
-#ifdef INVARIANTS
-/*
- * Note that last_td is only maintained when INVARIANTS is turned on,
- * so this check is only useful as part of a [K]KASSERT.
- */
 #define IS_SERIALIZED(ss)		((ss)->last_td == curthread)
-#endif
-
 #define ASSERT_SERIALIZED(ss)		KKASSERT(IS_SERIALIZED((ss)))
 #define ASSERT_NOT_SERIALIZED(ss)	KKASSERT(!IS_SERIALIZED((ss)))
 
