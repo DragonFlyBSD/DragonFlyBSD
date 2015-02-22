@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/sys/dev/usb/net/usb_ethernet.c 271832 2014-09-18 21:09:22Z glebius $ */
 /*-
  * Copyright (c) 2009 Andrew Thompson (thompsa@FreeBSD.org)
  *
@@ -211,7 +211,6 @@ ue_attach_post_task(struct usb_proc_msg *_task)
 	KKASSERT(!lockowned(ue->ue_lock));
 	error = 0;
 
-	KKASSERT(!lockowned(ue->ue_lock));
 	ifp->if_softc = ue;
 	if_initname(ifp, "ue", ue->ue_unit);
 	if (ue->ue_methods->ue_attach_post_sub != NULL) {
@@ -282,7 +281,7 @@ uether_ifdetach(struct usb_ether *ue)
 		UE_LOCK(ue);
 		ifp->if_flags &= ~IFF_RUNNING;
 		UE_UNLOCK(ue);
-		
+
 		/* drain any callouts */
 		usb_callout_drain(&ue->ue_watchdog);
 
@@ -343,6 +342,7 @@ ue_start_task(struct usb_proc_msg *_task)
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
+
 	if (ue->ue_methods->ue_tick != NULL)
 		usb_callout_reset(&ue->ue_watchdog, hz, ue_watchdog, ue);
 }
