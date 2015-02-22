@@ -1,3 +1,4 @@
+/* $FreeBSD: head/sys/dev/usb/controller/ehci.c 269569 2014-08-05 08:24:41Z n_hibma $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  * Copyright (c) 2004 The NetBSD Foundation, Inc. All rights reserved.
