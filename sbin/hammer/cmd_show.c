@@ -474,6 +474,9 @@ print_record(hammer_btree_elm_t elm)
 	hammer_off_t data_offset;
 	int32_t data_len;
 	hammer_data_ondisk_t data;
+	u_int32_t status;
+	char *str1 = NULL;
+	char *str2 = NULL;
 
 	data_offset = elm->leaf.data_offset;
 	data_len = elm->leaf.data_len;
@@ -485,6 +488,10 @@ print_record(hammer_btree_elm_t elm)
 		data = NULL;
 
 	switch(elm->leaf.base.rec_type) {
+	case HAMMER_RECTYPE_UNKNOWN:
+		printf("\n%17s", "");
+		printf("unknown");
+		break;
 	case HAMMER_RECTYPE_INODE:
 		printf("\n%17s", "");
 		printf("size=%jd nlinks=%jd",
@@ -522,6 +529,36 @@ print_record(hammer_btree_elm_t elm)
 			break;
 		default:
 			break;
+		}
+		break;
+	case HAMMER_RECTYPE_PFS:
+		printf("\n%17s", "");
+		printf("sync_beg_tid=%016jx sync_end_tid=%016jx\n",
+			(intmax_t)data->pfsd.sync_beg_tid,
+			(intmax_t)data->pfsd.sync_end_tid);
+		uuid_to_string(&data->pfsd.shared_uuid, &str1, &status);
+		uuid_to_string(&data->pfsd.unique_uuid, &str2, &status);
+		printf("%17s", "");
+		printf("shared_uuid=%s\n", str1);
+		printf("%17s", "");
+		printf("unique_uuid=%s\n", str2);
+		printf("%17s", "");
+		printf("mirror_flags=%08x label=\"%s\"",
+			data->pfsd.mirror_flags, data->pfsd.label);
+		if (data->pfsd.snapshots[0])
+			printf(" snapshots=\"%s\"", data->pfsd.snapshots);
+		free(str1);
+		free(str2);
+		break;
+	case HAMMER_RECTYPE_SNAPSHOT:
+		printf("\n%17s", "");
+		printf("tid=%016jx label=\"%s\"",
+			(intmax_t)data->snap.tid, data->snap.label);
+		break;
+	case HAMMER_RECTYPE_CONFIG:
+		if (VerboseOpt > 2) {
+			printf("\n%17s", "");
+			printf("text=\"%s\"", data->config.text);
 		}
 		break;
 	default:
