@@ -489,8 +489,10 @@ dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 	printf("    sync-end-tid=0x%016jx\n", (uintmax_t)pfsd->sync_end_tid);
 	uuid_to_string(&pfsd->shared_uuid, &str, &status);
 	printf("    shared-uuid=%s\n", str);
+	free(str);
 	uuid_to_string(&pfsd->unique_uuid, &str, &status);
 	printf("    unique-uuid=%s\n", str);
+	free(str);
 	if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
 		printf("    slave\n");
 	}
