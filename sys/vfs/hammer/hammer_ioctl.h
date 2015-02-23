@@ -42,6 +42,7 @@
 
 #include <sys/types.h>
 #include <sys/ioccom.h>
+#include <sys/param.h>
 #include "hammer_disk.h"
 
 /*
