@@ -804,7 +804,7 @@ struct hammer_symlink_data {
 /*
  * The root inode for the primary filesystem and root inode for any
  * pseudo-fs may be tagged with an optional data structure using
- * HAMMER_RECTYPE_FIX/HAMMER_FIXKEY_PSEUDOFS.  This structure allows
+ * HAMMER_RECTYPE_PFS and localization id.  This structure allows
  * the node to be used as a mirroring master or slave.
  *
  * When operating as a slave CD's into the node automatically become read-only
