@@ -914,7 +914,7 @@ uint64_t radeon_vm_map_gart(struct radeon_device *rdev, uint64_t addr)
 	result = rdev->gart.pages_addr[addr >> PAGE_SHIFT];
 
 	/* in case cpu page size != gpu page size*/
-	result |= addr & (~PAGE_MASK);
+	result |= addr & (PAGE_MASK);
 
 	return result;
 }
