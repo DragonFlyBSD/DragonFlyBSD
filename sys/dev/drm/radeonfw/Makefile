@@ -1,5 +1,3 @@
-# $FreeBSD: head/sys/modules/drm2/radeonkmsfw/Makefile 254885 2013-08-25 19:37:15Z dumbbell $
-
 SUBDIR=									\
 	ARUBA_me							\
 	ARUBA_pfp							\
@@ -7,30 +5,91 @@ SUBDIR=									\
 	BARTS_mc							\
 	BARTS_me							\
 	BARTS_pfp							\
+	BARTS_smc							\
+	BONAIRE_ce							\
+	BONAIRE_mc							\
+	BONAIRE_mc2							\
+	BONAIRE_me							\
+	BONAIRE_mec							\
+	BONAIRE_pfp							\
+	BONAIRE_rlc							\
+	BONAIRE_sdma							\
+	BONAIRE_smc							\
+	BONAIRE_uvd							\
+	BONAIRE_vce							\
 	BTC_rlc								\
 	CAICOS_mc							\
 	CAICOS_me							\
 	CAICOS_pfp							\
+	CAICOS_smc							\
 	CAYMAN_mc							\
 	CAYMAN_me							\
 	CAYMAN_pfp							\
 	CAYMAN_rlc							\
+	CAYMAN_smc							\
 	CEDAR_me							\
 	CEDAR_pfp							\
 	CEDAR_rlc							\
+	CEDAR_smc							\
 	CYPRESS_me							\
 	CYPRESS_pfp							\
 	CYPRESS_rlc							\
+	CYPRESS_smc							\
+	CYPRESS_uvd							\
+	HAINAN_ce							\
+	HAINAN_mc							\
+	HAINAN_mc2							\
+	HAINAN_me							\
+	HAINAN_pfp							\
+	HAINAN_rlc							\
+	HAINAN_smc							\
+	HAWAII_ce							\
+	HAWAII_mc							\
+	HAWAII_mc2							\
+	HAWAII_me							\
+	HAWAII_mec							\
+	HAWAII_pfp							\
+	HAWAII_rlc							\
+	HAWAII_sdma							\
+	HAWAII_smc							\
 	JUNIPER_me							\
 	JUNIPER_pfp							\
 	JUNIPER_rlc							\
+	JUNIPER_smc							\
+	KABINI_ce							\
+	KABINI_me							\
+	KABINI_mec							\
+	KABINI_pfp							\
+	KABINI_rlc							\
+	KABINI_sdma							\
+	KAVERI_ce							\
+	KAVERI_me							\
+	KAVERI_mec							\
+	KAVERI_pfp							\
+	KAVERI_rlc							\
+	KAVERI_sdma							\
+	MULLINS_ce							\
+	MULLINS_me							\
+	MULLINS_mec							\
+	MULLINS_pfp							\
+	MULLINS_rlc							\
+	MULLINS_sdma							\
+	OLAND_ce							\
+	OLAND_mc							\
+	OLAND_mc2							\
+	OLAND_me							\
+	OLAND_pfp							\
+	OLAND_rlc							\
+	OLAND_smc							\
 	PALM_me								\
 	PALM_pfp							\
 	PITCAIRN_ce							\
 	PITCAIRN_mc							\
+	PITCAIRN_mc2							\
 	PITCAIRN_me							\
 	PITCAIRN_pfp							\
 	PITCAIRN_rlc							\
+	PITCAIRN_smc							\
 	R100_cp								\
 	R200_cp								\
 	R300_cp								\
@@ -39,14 +98,17 @@ SUBDIR=									\
 	R600_me								\
 	R600_pfp							\
 	R600_rlc							\
+	R600_uvd							\
 	R700_rlc							\
 	REDWOOD_me							\
 	REDWOOD_pfp							\
 	REDWOOD_rlc							\
+	REDWOOD_smc							\
 	RS600_cp							\
 	RS690_cp							\
 	RS780_me							\
 	RS780_pfp							\
+	RS780_uvd							\
 	RV610_me							\
 	RV610_pfp							\
 	RV620_me							\
@@ -59,27 +121,105 @@ SUBDIR=									\
 	RV670_pfp							\
 	RV710_me							\
 	RV710_pfp							\
+	RV710_smc							\
+	RV710_uvd							\
 	RV730_me							\
 	RV730_pfp							\
+	RV730_smc							\
+	RV740_smc							\
 	RV770_me							\
 	RV770_pfp							\
+	RV770_smc							\
+	RV770_uvd							\
 	SUMO2_me							\
 	SUMO2_pfp							\
 	SUMO_me								\
 	SUMO_pfp							\
 	SUMO_rlc							\
+	SUMO_uvd							\
 	TAHITI_ce							\
 	TAHITI_mc							\
+	TAHITI_mc2							\
 	TAHITI_me							\
 	TAHITI_pfp							\
 	TAHITI_rlc							\
+	TAHITI_smc							\
+	TAHITI_uvd							\
 	TURKS_mc							\
 	TURKS_me							\
 	TURKS_pfp							\
+	TURKS_smc							\
 	VERDE_ce							\
 	VERDE_mc							\
+	VERDE_mc2							\
 	VERDE_me							\
 	VERDE_pfp							\
-	VERDE_rlc
+	VERDE_rlc							\
+	VERDE_smc							\
+	bonaire_ce							\
+	bonaire_mc							\
+	bonaire_me							\
+	bonaire_mec							\
+	bonaire_pfp							\
+	bonaire_rlc							\
+	bonaire_sdma							\
+	bonaire_smc							\
+	hainan_ce							\
+	hainan_mc							\
+	hainan_me							\
+	hainan_pfp							\
+	hainan_rlc							\
+	hainan_smc							\
+	hawaii_ce							\
+	hawaii_mc							\
+	hawaii_me							\
+	hawaii_mec							\
+	hawaii_pfp							\
+	hawaii_rlc							\
+	hawaii_sdma							\
+	hawaii_smc							\
+	kabini_ce							\
+	kabini_me							\
+	kabini_mec							\
+	kabini_pfp							\
+	kabini_rlc							\
+	kabini_sdma							\
+	kaveri_ce							\
+	kaveri_me							\
+	kaveri_mec							\
+	kaveri_mec2							\
+	kaveri_pfp							\
+	kaveri_rlc							\
+	kaveri_sdma							\
+	mullins_ce							\
+	mullins_me							\
+	mullins_mec							\
+	mullins_pfp							\
+	mullins_rlc							\
+	mullins_sdma							\
+	oland_ce							\
+	oland_mc							\
+	oland_me							\
+	oland_pfp							\
+	oland_rlc							\
+	oland_smc							\
+	pitcairn_ce							\
+	pitcairn_mc							\
+	pitcairn_me							\
+	pitcairn_pfp							\
+	pitcairn_rlc							\
+	pitcairn_smc							\
+	tahiti_ce							\
+	tahiti_mc							\
+	tahiti_me							\
+	tahiti_pfp							\
+	tahiti_rlc							\
+	tahiti_smc							\
+	verde_ce							\
+	verde_mc							\
+	verde_me							\
+	verde_pfp							\
+	verde_rlc							\
+	verde_smc
 
 .include <bsd.subdir.mk>

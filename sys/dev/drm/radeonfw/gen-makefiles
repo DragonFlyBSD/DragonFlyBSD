@@ -1,10 +1,9 @@
 #!/bin/sh
-# $FreeBSD: head/sys/modules/drm2/radeonkmsfw/gen-makefiles 254885 2013-08-25 19:37:15Z dumbbell $
 
 set -e
 
 scriptdir=$(cd $(dirname $0) && pwd)
-fwdir=$scriptdir/../../../contrib/dev/drm2/radeonkmsfw
+fwdir=$scriptdir/../../../contrib/dev/drm/radeonfw
 
 for dir in $scriptdir/*; do
 	if [ ! -d $dir ]; then
@@ -20,7 +19,7 @@ for file in $fwdir/*.uu; do
 
 	mkdir -p $scriptdir/$img
 	cat > $scriptdir/$img/Makefile <<EOF
-# \$FreeBSD: head/sys/modules/drm2/radeonkmsfw/gen-makefiles 254885 2013-08-25 19:37:15Z dumbbell $
+# \$FreeBSD: head/sys/modules/drm2/radeonkmsfw/$img/Makefile 254885 2013-08-25 19:37:15Z dumbbell $
 
 KMOD=	radeonkmsfw_$img
 IMG=	$img
@@ -28,3 +27,18 @@ IMG=	$img
 .include <bsd.kmod.mk>
 EOF
 done
+
+rm $scriptdir/Makefile
+echo "SUBDIR=\t\t\t\t\t\t\t\t\t\\" >> $scriptdir/Makefile
+
+for dir in $scriptdir/*; do
+	if [ ! -d $dir ]; then
+		continue
+	fi
+	img=$(basename $dir)
+	img=${img%.bin.uu}
+	echo "\t$img\t\t\t\t\t\t\t\\" >> $scriptdir/Makefile
+done
+
+echo >> $scriptdir/Makefile
+echo ".include <bsd.subdir.mk>" >> $scriptdir/Makefile
