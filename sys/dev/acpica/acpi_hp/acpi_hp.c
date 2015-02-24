@@ -591,6 +591,7 @@ acpi_hp_detach(device_t dev)
 			ACPI_WMI_REMOVE_EVENT_HANDLER(dev,
 			    ACPI_HP_WMI_EVENT_GUID);
 		}
+		sysctl_ctx_free(&sc->sysctl_ctx);
 		if (sc->hpcmi_bufptr != -1) {
 			sbuf_delete(&sc->hpcmi_sbuf);
 			sc->hpcmi_bufptr = -1;
