@@ -34,6 +34,7 @@ SRCS	= \
 	drm_sysfs.c \
 	drm_vm.c \
 	linux_shmem.c \
+	linux_hdmi.c \
 	ttm_lock.c \
 	ttm_object.c \
 	ttm_tt.c \
