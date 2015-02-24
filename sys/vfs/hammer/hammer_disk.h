@@ -775,11 +775,11 @@ struct hammer_inode_data {
  * offset.  A portion of the namekey is an iterator/randomizer to deal
  * with collisions.
  *
- * NOTE: base.base.obj_type from the related B-Tree leaf entry holds
+ * NOTE: leaf.base.obj_type from the related B-Tree leaf entry holds
  * the filesystem object type of obj_id, e.g. a den_type equivalent.
  * It is not stored in hammer_entry_data.
  *
- * NOTE: den_name / the filename data reference is NOT terminated with \0.
+ * NOTE: name field / the filename data reference is NOT terminated with \0.
  */
 struct hammer_entry_data {
 	int64_t obj_id;			/* object being referenced */
@@ -796,7 +796,7 @@ struct hammer_entry_data {
  * FIX type record.
  */
 struct hammer_symlink_data {
-	char	name[16];
+	char	name[16];		/* name (extended) */
 };
 
 #define HAMMER_SYMLINK_NAME_OFF	offsetof(struct hammer_symlink_data, name[0])
