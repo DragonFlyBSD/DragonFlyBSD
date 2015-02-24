@@ -49,6 +49,7 @@ static int hammer_pfs_delete_at_cursor(hammer_cursor_t cursor,
  * Get mirroring/pseudo-fs information
  *
  * NOTE: The ip used for ioctl is not necessarily related to the PFS
+ * since this ioctl only requires PFS id (or upper 16 bits of ip localization).
  */
 int
 hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
@@ -96,6 +97,7 @@ hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
  * Set mirroring/pseudo-fs information
  *
  * NOTE: The ip used for ioctl is not necessarily related to the PFS
+ * since this ioctl only requires PFS id (or upper 16 bits of ip localization).
  */
 int
 hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
@@ -151,6 +153,7 @@ hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
  * rollback.
  *
  * NOTE: The ip used for ioctl is not necessarily related to the PFS
+ * since this ioctl only requires PFS id (or upper 16 bits of ip localization).
  */
 int
 hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
@@ -199,6 +202,7 @@ hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
  * then upgrades again.
  *
  * NOTE: The ip used for ioctl is not necessarily related to the PFS
+ * since this ioctl only requires PFS id (or upper 16 bits of ip localization).
  */
 int
 hammer_ioc_downgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
@@ -236,6 +240,7 @@ hammer_ioc_downgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
  * filesystem.
  *
  * NOTE: The ip used for ioctl is not necessarily related to the PFS
+ * since this ioctl only requires PFS id (or upper 16 bits of ip localization).
  */
 int
 hammer_ioc_destroy_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
