@@ -112,7 +112,6 @@ hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	localization = (u_int32_t)pfs->pfs_id << 16;
 	if (pfs->version != HAMMER_IOC_PSEUDOFS_VERSION)
 		error = EINVAL;
-	localization = (u_int32_t)pfs->pfs_id << 16;
 
 	if (error == 0 && pfs->ondisk) {
 		/*
