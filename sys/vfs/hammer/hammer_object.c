@@ -256,7 +256,9 @@ RB_GENERATE(hammer_rec_rb_tree, hammer_record, rb_node, hammer_rec_rb_compare);
 
 /*
  * Allocate a record for the caller to finish filling in.  The record is
- * returned referenced.
+ * returned referenced.  In order to manually set data call this function
+ * with data_len=0 and then manually set record->leaf.data_len and
+ * record->data later.
  */
 hammer_record_t
 hammer_alloc_mem_record(hammer_inode_t ip, int data_len)
@@ -874,16 +876,16 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 /*
  * Add a record to an inode.
  *
- * The caller must allocate the record with hammer_alloc_mem_record(ip) and
- * initialize the following additional fields:
+ * The caller must allocate the record with hammer_alloc_mem_record(ip,len) and
+ * initialize the following additional fields that are not initialized by these
+ * functions.
  *
  * The related inode should be share-locked by the caller.  The caller is
  * on the frontend.
  *
- * record->rec.entry.base.base.key
- * record->rec.entry.base.base.rec_type
- * record->rec.entry.base.base.data_len
- * record->data		(a copy will be kmalloc'd if it cannot be embedded)
+ * record->leaf.base.key
+ * record->leaf.base.rec_type
+ * record->leaf.base.localization
  */
 int
 hammer_ip_add_record(struct hammer_transaction *trans, hammer_record_t record)
