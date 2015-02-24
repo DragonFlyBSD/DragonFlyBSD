@@ -33,5 +33,7 @@
 	device_printf((dev), "warning: " fmt, ## __VA_ARGS__)
 #define	dev_info(dev, fmt, ...)						\
 	device_printf((dev), "info: " fmt, ## __VA_ARGS__)
+#define	dev_printk(level, dev, fmt, ...)						\
+	device_printf((dev), "%s: " fmt, level, ## __VA_ARGS__)
 
 #endif	/* _LINUX_DEVICE_H_ */
