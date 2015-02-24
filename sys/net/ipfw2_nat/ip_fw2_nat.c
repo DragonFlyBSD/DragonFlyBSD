@@ -115,9 +115,9 @@ check_nat(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		nat_id = cmd->arg1;
 		LOOKUP_NAT((*ipfw_nat_ctx), nat_id, t);
 		if (t == NULL) {
+			lockmgr(&nat_lock, LK_RELEASE);
 			*cmd_val = IP_FW_DENY;
 			*cmd_ctl = IP_FW_CTL_DONE;
-			lockmgr(&nat_lock, LK_RELEASE);
 			return;
 		}
 		((ipfw_insn_nat *)cmd)->nat = t;
@@ -535,6 +535,7 @@ ipfw_nat_flush(struct sockopt *sopt)
 static
 int ipfw_nat_init(void)
 {
+	lockinit(&nat_lock, "ipfw2 nat lock", 0, 0);
 	register_ipfw_module(MODULE_NAT_ID, MODULE_NAT_NAME);
 	register_ipfw_filter_funcs(MODULE_NAT_ID, O_NAT_NAT,
 			(filter_func)check_nat);
@@ -550,7 +551,7 @@ static int
 ipfw_nat_stop(void)
 {
 	struct cfg_nat *ptr, *ptr_temp;
-
+	lockuninit(&nat_lock);
 	LIST_FOREACH_MUTABLE(ptr, &(ipfw_nat_ctx->nat), _next, ptr_temp) {
 		LIST_REMOVE(ptr, _next);
 		del_redir_spool_cfg(ptr, &ptr->redir_chain);
