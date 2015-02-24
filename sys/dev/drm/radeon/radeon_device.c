@@ -91,6 +91,7 @@ static const char radeon_family_name[][16] = {
 	"TAHITI",
 	"PITCAIRN",
 	"VERDE",
+	"OLAND",
 	"LAST",
 };
 
@@ -755,6 +756,11 @@ int radeon_atombios_init(struct radeon_device *rdev)
 	atom_card_info->pll_write = cail_pll_write;
 
 	rdev->mode_info.atom_context = atom_parse(atom_card_info, rdev->bios);
+	if (!rdev->mode_info.atom_context) {
+		radeon_atombios_fini(rdev);
+		return -ENOMEM;
+	}
+
 	lockinit(&rdev->mode_info.atom_context->mutex, "rmiacmtx", 0,
 		 LK_CANRECURSE);
 	radeon_atom_initialize_bios_scratch_regs(rdev->ddev);
@@ -774,11 +780,12 @@ int radeon_atombios_init(struct radeon_device *rdev)
 void radeon_atombios_fini(struct radeon_device *rdev)
 {
 	if (rdev->mode_info.atom_context) {
-		drm_free(rdev->mode_info.atom_context->scratch,
-			 M_DRM);
-		atom_destroy(rdev->mode_info.atom_context);
+		drm_free(rdev->mode_info.atom_context->scratch, M_DRM);
 	}
+	drm_free(rdev->mode_info.atom_context, M_DRM);
+	rdev->mode_info.atom_context = NULL;
 	drm_free(rdev->mode_info.atom_card_info, M_DRM);
+	rdev->mode_info.atom_card_info = NULL;
 }
 
 /* COMBIOS */

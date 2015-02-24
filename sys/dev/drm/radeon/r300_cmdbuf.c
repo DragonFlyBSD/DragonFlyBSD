@@ -30,6 +30,8 @@
  * Authors:
  *    Nicolai Haehnle <prefect_@gmx.net>
  *
+ * ------------------------ This file is DEPRECATED! -------------------------
+ *
  * $FreeBSD: head/sys/dev/drm2/radeon/r300_cmdbuf.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 

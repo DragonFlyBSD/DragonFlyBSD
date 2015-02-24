@@ -25,6 +25,8 @@
  *     Dave Airlie <airlied@redhat.com>
  *     Alex Deucher <alexander.deucher@amd.com>
  *
+ * ------------------------ This file is DEPRECATED! -------------------------
+ *
  * $FreeBSD: head/sys/dev/drm2/radeon/r600_cp.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 

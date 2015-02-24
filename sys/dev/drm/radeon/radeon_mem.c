@@ -28,6 +28,8 @@
  * Authors:
  *    Keith Whitwell <keith@tungstengraphics.com>
  *
+ * ------------------------ This file is DEPRECATED! -------------------------
+ *
  * $FreeBSD: head/sys/dev/drm2/radeon/radeon_mem.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 

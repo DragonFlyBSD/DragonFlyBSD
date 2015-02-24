@@ -29,6 +29,8 @@
  *    Keith Whitwell <keith@tungstengraphics.com>
  *    Michel D�zer <michel@daenzer.net>
  *
+ * ------------------------ This file is DEPRECATED! -------------------------
+ *
  * $FreeBSD: head/sys/dev/drm2/radeon/radeon_irq.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
