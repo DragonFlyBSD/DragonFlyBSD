@@ -429,7 +429,7 @@ check_forward(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		lookup_next_rule(*f);
 
 	mtag = m_tag_get(PACKET_TAG_IPFORWARD,
-			sizeof(*sin), MB_DONTWAIT);
+			sizeof(*sin), M_NOWAIT);
 	if (mtag == NULL) {
 		*cmd_val = IP_FW_DENY;
 		*cmd_ctl = IP_FW_CTL_DONE;
@@ -592,7 +592,7 @@ check_tag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct m_tag *mtag = m_tag_locate((*args)->m,
 			MTAG_IPFW, cmd->arg1, NULL);
 	if (mtag == NULL) {
-		mtag = m_tag_alloc(MTAG_IPFW,cmd->arg1, 0, M_DONTWAIT);
+		mtag = m_tag_alloc(MTAG_IPFW,cmd->arg1, 0, M_NOWAIT);
 		if (mtag != NULL)
 			m_tag_prepend((*args)->m, mtag);
 
