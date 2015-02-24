@@ -1810,11 +1810,6 @@ static void
 ipfw_hook(void)
 {
 	struct pfil_head *pfh;
-	if (ip_fw_loaded == 1) {
-		kprintf("ipfw2 cannot be activated "
-			"while the ipfw is in use.\n");
-		return;
-	}
 	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
 
 	pfh = pfil_head_get(PFIL_TYPE_AF, AF_INET);

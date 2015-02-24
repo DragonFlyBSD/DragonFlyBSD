@@ -117,6 +117,7 @@ check_nat(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		if (t == NULL) {
 			*cmd_val = IP_FW_DENY;
 			*cmd_ctl = IP_FW_CTL_DONE;
+			lockmgr(&nat_lock, LK_RELEASE);
 			return;
 		}
 		((ipfw_insn_nat *)cmd)->nat = t;
@@ -302,7 +303,7 @@ static int
 ipfw_nat_get_log(struct sockopt *sopt)
 {
 	struct cfg_nat *ptr;
-	int i, size, cnt, sof;
+	int cnt, data_size, i, size, sof;
 	uint8_t *data;
 
 	data = NULL;
@@ -310,16 +311,21 @@ ipfw_nat_get_log(struct sockopt *sopt)
 	cnt = 0;
 
 	size = i = 0;
+	data_size = 1024;
+
+	data = krealloc(data, data_size, M_IPFW_NAT, M_WAITOK);
+
 	lockmgr(&nat_lock, LK_SHARED);
 	LIST_FOREACH(ptr, &((*ipfw_nat_ctx).nat), _next) {
 		if (ptr->lib->logDesc == NULL)
 			continue;
 		cnt++;
 		size = cnt * (sof + sizeof(int));
-		data = krealloc(data, size, M_IPFW_NAT, M_NOWAIT | M_ZERO);
-		if (data == NULL) {
-			return ENOSPC;
+		if (size > data_size) {
+			data_size = data_size * 2 + 256;
+			data = krealloc(data, data_size, M_IPFW_NAT, M_WAITOK);
 		}
+
 		bcopy(&ptr->id, &data[i], sizeof(int));
 		i += sizeof(int);
 		bcopy(ptr->lib->logDesc, &data[i], sof);
@@ -449,15 +455,11 @@ int ipfw_nat_cfg(struct sockopt *sopt)
 		ptr = kmalloc(sizeof(struct cfg_nat), M_IPFW_NAT,
 				M_WAITOK | M_ZERO);
 
-		if (ptr == NULL) {
-			kfree(buf, M_IPFW_NAT);
-			return ENOSPC;
-		}
-
 		ptr->lib = LibAliasInit(NULL);
 		if (ptr->lib == NULL) {
 			kfree(ptr, M_IPFW_NAT);
 			kfree(buf, M_IPFW_NAT);
+			lockmgr(&nat_lock, LK_RELEASE);
 			return EINVAL;
 		}
 
@@ -503,6 +505,7 @@ ipfw_nat_del(struct sockopt *sopt)
 	lockmgr(&nat_lock, LK_EXCLUSIVE);
 	LOOKUP_NAT((*ipfw_nat_ctx), *i, n);
 	if (n == NULL) {
+		lockmgr(&nat_lock, LK_RELEASE);
 		return EINVAL;
 	}
 	UNHOOK_NAT(n);

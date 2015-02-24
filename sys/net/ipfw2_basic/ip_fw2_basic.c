@@ -592,7 +592,7 @@ check_tag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct m_tag *mtag = m_tag_locate((*args)->m,
 			MTAG_IPFW, cmd->arg1, NULL);
 	if (mtag == NULL) {
-		mtag = m_tag_alloc(MTAG_IPFW,cmd->arg1, 0, M_NOWAIT);
+		mtag = m_tag_alloc(MTAG_IPFW,cmd->arg1, 0, M_DONTWAIT);
 		if (mtag != NULL)
 			m_tag_prepend((*args)->m, mtag);
 
