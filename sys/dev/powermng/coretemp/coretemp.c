@@ -83,6 +83,7 @@ static driver_t coretemp_driver = {
 
 static devclass_t coretemp_devclass;
 DRIVER_MODULE(coretemp, cpu, coretemp_driver, coretemp_devclass, NULL, NULL);
+MODULE_VERSION(coretemp, 1);
 
 static void
 coretemp_identify(driver_t *driver, device_t parent)
