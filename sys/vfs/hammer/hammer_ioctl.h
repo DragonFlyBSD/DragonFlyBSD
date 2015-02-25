@@ -40,9 +40,8 @@
 #ifndef VFS_HAMMER_IOCTL_H_
 #define VFS_HAMMER_IOCTL_H_
 
-#include <sys/types.h>
-#include <sys/ioccom.h>
 #include <sys/param.h>
+#include <sys/ioccom.h>
 #include "hammer_disk.h"
 
 /*
