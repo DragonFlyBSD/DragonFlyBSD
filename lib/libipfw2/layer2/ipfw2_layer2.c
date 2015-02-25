@@ -142,7 +142,7 @@ parse_layer2(ipfw_insn **cmd, int *ac, char **av[])
 void
 parse_mac(ipfw_insn **cmd, int *ac, char **av[])
 {
-	NEED(*ac, 3, "MAC dst src");
+	NEED(*ac, 3, "mac dst src");
 	NEXT_ARG1;
 	(*cmd)->opcode = O_LAYER2_MAC;
 	(*cmd)->module = MODULE_LAYER2_ID;

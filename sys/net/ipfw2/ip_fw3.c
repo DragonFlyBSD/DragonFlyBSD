@@ -531,12 +531,10 @@ check_body: /* check the body of the rule again.*/
 					l = f->cmd_len - f->act_ofs;
 					goto check_body;
 			}
-			if (cmd->len & F_NOT) {
+			if (cmd->len & F_NOT)
 				cmd_val= !cmd_val;
-			}
-			if (!cmd_val) {
+			if (!cmd_val)
 				break;
-			}
 		}	/* end of inner for, scan opcodes */
 
 next_rule:;		/* try next rule		*/
