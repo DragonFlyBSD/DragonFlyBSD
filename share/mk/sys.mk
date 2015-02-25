@@ -63,7 +63,7 @@ CXXFLAGS	?=	${CXXINCLUDES} ${CFLAGS:N-std=*:N-Wnested-externs:N-W*-prototypes:N-
 # XXX gcc50 (at least) warns about its own C++ headers with
 #     -Wunused-local-typedefs, so disable until fixed
 #
-.if (${CCVER:Mgcc4[89]} || ${CCVER:Mgcc5*})
+.if defined(CCVER) && (${CCVER:Mgcc4[89]} || ${CCVER:Mgcc5*})
 CXXFLAGS	+=	-Wno-unused-local-typedefs
 .endif
 .if !defined(SYSBUILD) && defined(.MAKE.BUILT.BY) && ${.MAKE.BUILT.BY:Mgcc47}
