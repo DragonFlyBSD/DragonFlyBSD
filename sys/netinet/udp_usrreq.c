@@ -260,7 +260,7 @@ udp_ctloutput(netmsg_t msg)
 	struct sockopt *sopt = msg->ctloutput.nm_sopt;
 	struct	inpcb *inp = so->so_pcb;
 
-	if (sopt->sopt_level == IPPROTO_IP) {
+	if (sopt->sopt_level == IPPROTO_IP && sopt->sopt_dir == SOPT_SET) {
 		switch (sopt->sopt_name) {
 		case IP_MULTICAST_IF:
 		case IP_MULTICAST_VIF:
