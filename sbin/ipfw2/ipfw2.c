@@ -57,7 +57,7 @@
 #include <net/ethernet.h>
 
 
-#include "../../sys/net/ipfw2/ip_fw2.h"
+#include "../../sys/net/ipfw2/ip_fw3.h"
 #include "../../sys/net/dummynet2/ip_dummynet2.h"
 #include "../../sys/net/libalias/alias.h"
 #include "../../sys/net/ipfw2_basic/ip_fw2_basic.h"
@@ -992,34 +992,6 @@ sets_handler(int ac, char *av[])
 	} else
 		errx(EX_USAGE, "invalid set command %s\n", *av);
 }
-
-static void
-sysctl_handler(int ac, char *av[], int which)
-{
-	NEXT_ARG;
-
-	if (*av == NULL) {
-		warnx("missing keyword to enable/disable\n");
-	} else if (strncmp(*av, "firewall", strlen(*av)) == 0) {
-		sysctlbyname("net.inet.ip.fw.enable", NULL, 0,
-			&which, sizeof(which));
-	} else if (strncmp(*av, "one_pass", strlen(*av)) == 0) {
-		sysctlbyname("net.inet.ip.fw.one_pass", NULL, 0,
-			&which, sizeof(which));
-	} else if (strncmp(*av, "debug", strlen(*av)) == 0) {
-		sysctlbyname("net.inet.ip.fw.debug", NULL, 0,
-			&which, sizeof(which));
-	} else if (strncmp(*av, "verbose", strlen(*av)) == 0) {
-		sysctlbyname("net.inet.ip.fw.verbose", NULL, 0,
-			&which, sizeof(which));
-	} else if (strncmp(*av, "dyn_keepalive", strlen(*av)) == 0) {
-		sysctlbyname("net.inet.ip.fw.dyn_keepalive", NULL, 0,
-			&which, sizeof(which));
-	} else {
-		warnx("unrecognize enable/disable keyword: %s\n", *av);
-	}
-}
-
 
 static void
 add_state(int ac, char *av[])
@@ -2997,10 +2969,6 @@ ipfw_main(int ac, char **av)
 		} else {
 			errx(EX_USAGE, "bad ipfw module command `%s'", *av);
 		}
-	} else if (!strncmp(*av, "enable", strlen(*av))) {
-		sysctl_handler(ac, av, 1);
-	} else if (!strncmp(*av, "disable", strlen(*av))) {
-		sysctl_handler(ac, av, 0);
 	} else if (!strncmp(*av, "resetlog", strlen(*av))) {
 		resetlog(ac, av);
 	} else if (!strncmp(*av, "log", strlen(*av))) {
