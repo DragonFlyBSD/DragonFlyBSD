@@ -286,14 +286,18 @@ udp_ctloutput(netmsg_t msg)
 		case IP_MULTICAST_LOOP:
 		case IP_ADD_MEMBERSHIP:
 		case IP_DROP_MEMBERSHIP:
-			if (&curthread->td_msgport != netisr_cpuport(0)) {
-				/*
-				 * This pr_ctloutput msg will be forwarded
-				 * to netisr0 to run; we can't do direct
-				 * detaching anymore.
-				 */
-				inp->inp_flags &= ~INP_DIRECT_DETACH;
-			}
+			/*
+			 * This pr_ctloutput msg will be forwarded
+			 * to netisr0 to run; we can't do direct
+			 * detaching anymore.
+			 *
+			 * NOTE:
+			 * Don't optimize for the sockets whose
+			 * current so_port is netisr0's msgport.
+			 * These sockets could be connect(2)'ed
+			 * later and the so_port will be changed.
+			 */
+			inp->inp_flags &= ~INP_DIRECT_DETACH;
 			break;
 		}
 	}
