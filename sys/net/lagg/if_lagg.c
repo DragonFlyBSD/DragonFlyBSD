@@ -223,7 +223,6 @@ lagg_modevent(module_t mod, int type, void *data)
 		EVENTHANDLER_DEREGISTER(ifnet_departure_event,
 		    lagg_detach_cookie);
 		lagg_input_p = NULL;
-		if_clone_detach(&lagg_cloner);
 		lockuninit(&lagg_list_lock);
 		break;
 	default:
