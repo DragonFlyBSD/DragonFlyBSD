@@ -356,8 +356,7 @@ lagg_clone_create(struct if_clone *ifc, int unit, caddr_t params __unused)
 	 * This uses the callout lock rather than the rmlock; one can't
 	 * hold said rmlock during SWI.
 	 */
-	callout_init(&sc->sc_callout);
-	/*, &sc->sc_call_lock, 0); */
+	callout_init_lk(&sc->sc_callout, &sc->sc_call_lock);
 
 	/* Initialise pseudo media types */
 	ifmedia_init(&sc->sc_media, 0, lagg_media_change,
@@ -432,7 +431,8 @@ lagg_clone_destroy(struct ifnet *ifp)
 	sysctl_ctx_free(&sc->ctx);
 	ifmedia_removeall(&sc->sc_media);
 	ether_ifdetach(ifp);
-	if_free(ifp);
+	/* This ifp is part of lagg_softc, don't free it! */
+	/* if_free(ifp); */
 
 	/* This grabs sc_callout_mtx, serialising it correctly */
 	callout_drain(&sc->sc_callout);
