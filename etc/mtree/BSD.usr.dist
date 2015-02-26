@@ -157,8 +157,6 @@
                 contrib
                 ..
             ..
-            cvsup
-            ..
             diskless
             ..
             drivers
