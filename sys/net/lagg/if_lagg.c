@@ -222,7 +222,6 @@ lagg_modevent(module_t mod, int type, void *data)
 	case MOD_UNLOAD:
 		EVENTHANDLER_DEREGISTER(ifnet_departure_event,
 		    lagg_detach_cookie);
-		if_clone_detach(&lagg_cloner);
 		lagg_input_p = NULL;
 		if_clone_detach(&lagg_cloner);
 		lockuninit(&lagg_list_lock);
