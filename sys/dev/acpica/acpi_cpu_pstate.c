@@ -162,6 +162,9 @@ static const struct acpi_pst_md	*acpi_pst_md;
 static int			acpi_pst_ht_reuse_domain = 1;
 TUNABLE_INT("hw.acpi.cpu.pst.ht_reuse_domain", &acpi_pst_ht_reuse_domain);
 
+static int			acpi_pst_force_pkg_domain = 0;
+TUNABLE_INT("hw.acpi.cpu.pst.force_pkg_domain", &acpi_pst_force_pkg_domain);
+
 static device_method_t acpi_pst_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,			acpi_pst_probe),
@@ -297,7 +300,7 @@ done:
 static int
 acpi_pst_attach(device_t dev)
 {
-	struct acpi_pst_softc *sc = device_get_softc(dev), *pst;
+	struct acpi_pst_softc *sc = device_get_softc(dev);
 	struct acpi_pst_domain *dom = NULL;
 	ACPI_BUFFER buf;
 	ACPI_STATUS status;
@@ -383,6 +386,8 @@ acpi_pst_attach(device_t dev)
 	buf.Length = ACPI_ALLOCATE_BUFFER;
 	status = AcpiEvaluateObject(sc->pst_handle, "_PCT", NULL, &buf);
 	if (ACPI_FAILURE(status)) {
+		struct acpi_pst_softc *pst;
+
 		/*
 		 * No _PCT.  See the comment in acpi_pst_probe() near
 		 * _PSD check.
@@ -642,6 +647,53 @@ fetch_ppc:
 	}
 
 	sc->pst_state = sc->pst_sstart;
+
+	/*
+	 * Some CPUs only have package P-states, but some BIOSes put each
+	 * hyperthread to its own P-state domain; allow user to override.
+	 */
+	if (LIST_EMPTY(&dom->pd_pstlist) && acpi_pst_force_pkg_domain) {
+		cpumask_t mask;
+
+		mask = get_cpumask_from_level(sc->pst_cpuid, CHIP_LEVEL);
+		if (CPUMASK_TESTNZERO(mask)) {
+			struct acpi_pst_softc *pst = NULL;
+			struct acpi_pst_domain *dom1;
+
+			LIST_FOREACH(dom1, &acpi_pst_domains, pd_link) {
+				LIST_FOREACH(pst, &dom1->pd_pstlist,
+				    pst_link) {
+					if (CPUMASK_TESTBIT(mask,
+					    pst->pst_cpuid))
+						break;
+				}
+				if (pst != NULL)
+					break;
+			}
+			if (pst != NULL &&
+			    memcmp(&pst->pst_creg, &sc->pst_creg,
+			        sizeof(sc->pst_creg)) == 0 &&
+			    memcmp(&pst->pst_sreg, &sc->pst_sreg,
+			        sizeof(sc->pst_sreg)) == 0) {
+				/*
+				 * Use the same domain for CPUs in the
+				 * same package.
+				 */
+				device_printf(dev, "Destroy domain%u, "
+				    "force pkg domain%u\n",
+				    dom->pd_dom, dom1->pd_dom);
+				LIST_REMOVE(dom, pd_link);
+				kfree(dom, M_DEVBUF);
+				dom = dom1;
+				/*
+				 * Make sure that adding us will not
+				 * overflow the domain containing
+				 * siblings in the same package.
+				 */
+				acpi_pst_domain_check_nproc(dev, dom);
+			}
+		}
+	}
 
 	/* Link us with the domain */
 	sc->pst_domain = dom;
