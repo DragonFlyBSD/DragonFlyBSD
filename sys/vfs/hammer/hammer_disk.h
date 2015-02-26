@@ -749,7 +749,7 @@ struct hammer_inode_data {
 	offsetof(struct hammer_inode_data, mtime)
 
 #define HAMMER_INODE_DATA_VERSION	1
-#define HAMMER_OBJID_ROOT		1
+#define HAMMER_OBJID_ROOT		1	/* root inodes # */
 #define HAMMER_INODE_BASESYMLEN		24	/* see ext.symlink */
 
 /*

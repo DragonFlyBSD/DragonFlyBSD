@@ -991,8 +991,8 @@ retry:
 	}
 
 	/*
-	 * PFS records are stored in the root inode (not the PFS root inode,
-	 * but the real root).  Avoid an infinite recursion if loading
+	 * PFS records are associated with the root inode (not the PFS root
+	 * inode, but the real root).  Avoid an infinite recursion if loading
 	 * the PFS for the real root.
 	 */
 	if (localization) {
@@ -1063,6 +1063,10 @@ hammer_save_pseudofs(hammer_transaction_t trans, hammer_pseudofs_inmem_t pfsm)
 	hammer_inode_t ip;
 	int error;
 
+	/*
+	 * PFS records are associated with the root inode (not the PFS root
+	 * inode, but the real root).
+	 */
 	ip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT, HAMMER_MAX_TID,
 			      HAMMER_DEF_LOCALIZATION, 0, &error);
 retry:
