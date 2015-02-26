@@ -60,12 +60,6 @@ CXX_LINK	?=	${CXX}
 NXCXX		?=	${NXENV} ${CXX}
 NXCXX_LINK	?=	${NXENV} ${CXX_LINK}
 CXXFLAGS	?=	${CXXINCLUDES} ${CFLAGS:N-std=*:N-Wnested-externs:N-W*-prototypes:N-Wno-pointer-sign:N-Wold-style-definition}
-# XXX gcc50 (at least) warns about its own C++ headers with
-#     -Wunused-local-typedefs, so disable until fixed
-#
-.if defined(CCVER) && (${CCVER:Mgcc4[89]} || ${CCVER:Mgcc5*})
-CXXFLAGS	+=	-Wno-unused-local-typedefs
-.endif
 .if !defined(SYSBUILD) && defined(.MAKE.BUILT.BY) && ${.MAKE.BUILT.BY:Mgcc47}
 CXXFLAGS	+=	-D_GLIBCXX_USE_CXX11_ABI=0
 .endif

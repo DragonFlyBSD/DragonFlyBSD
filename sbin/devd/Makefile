@@ -13,6 +13,12 @@ LDADD=	-ll -lutil
 
 YFLAGS+=-v
 CFLAGS+=-I. -I${.CURDIR}
+# XXX gcc50 (at least) warns about its own C++ headers with
+#     -Wunused-local-typedefs, so disable until fixed
+#
+.if (${CCVER:Mgcc4[89]} || ${CCVER:Mgcc5*})
+CXXFLAGS+=-Wno-unused-local-typedefs
+.endif
 
 CLEANFILES= y.output
 
