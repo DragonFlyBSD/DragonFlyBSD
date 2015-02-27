@@ -53,7 +53,7 @@ static const char *check_data_crc(hammer_btree_elm_t elm);
 static void print_record(hammer_btree_elm_t elm);
 static void print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 			int flags, const char *label, const char *ext);
-static int print_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
+static int get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			hammer_btree_elm_t elm, u_int8_t btype,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
@@ -184,7 +184,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 			ext = NULL;
 		}
 
-		flags = print_elm_flags(node, node_offset,
+		flags = get_elm_flags(node, node_offset,
 					elm, elm->base.btype,
 					left_bound, right_bound);
 		print_btree_elm(elm, i, node->type, flags, "ELM", ext);
@@ -192,7 +192,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		elm = &node->elms[i];
 
-		flags = print_elm_flags(node, node_offset,
+		flags = get_elm_flags(node, node_offset,
 					elm, 'I',
 					left_bound, right_bound);
 		print_btree_elm(elm, i, node->type, flags, "RBN", NULL);
@@ -309,7 +309,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 
 static
 int
-print_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
+get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		hammer_btree_elm_t elm, u_int8_t btype,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
