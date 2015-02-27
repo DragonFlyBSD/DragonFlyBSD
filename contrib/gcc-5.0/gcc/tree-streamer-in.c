@@ -224,7 +224,7 @@ static void
 unpack_ts_fixed_cst_value_fields (struct bitpack_d *bp, tree expr)
 {
   FIXED_VALUE_TYPE *fp = ggc_alloc<fixed_value> ();
-  fp->mode = bp_unpack_enum (bp, machine_mode, MAX_MACHINE_MODE);
+  fp->mode = bp_unpack_machine_mode (bp);
   fp->data.low = bp_unpack_var_len_int (bp);
   fp->data.high = bp_unpack_var_len_int (bp);
   TREE_FIXED_CST_PTR (expr) = fp;
@@ -236,7 +236,7 @@ unpack_ts_fixed_cst_value_fields (struct bitpack_d *bp, tree expr)
 static void
 unpack_ts_decl_common_value_fields (struct bitpack_d *bp, tree expr)
 {
-  DECL_MODE (expr) = bp_unpack_enum (bp, machine_mode, MAX_MACHINE_MODE);
+  DECL_MODE (expr) = bp_unpack_machine_mode (bp);
   DECL_NONLOCAL (expr) = (unsigned) bp_unpack_value (bp, 1);
   DECL_VIRTUAL_P (expr) = (unsigned) bp_unpack_value (bp, 1);
   DECL_IGNORED_P (expr) = (unsigned) bp_unpack_value (bp, 1);
@@ -247,7 +247,10 @@ unpack_ts_decl_common_value_fields (struct bitpack_d *bp, tree expr)
   DECL_EXTERNAL (expr) = (unsigned) bp_unpack_value (bp, 1);
   DECL_GIMPLE_REG_P (expr) = (unsigned) bp_unpack_value (bp, 1);
   DECL_ALIGN (expr) = (unsigned) bp_unpack_var_len_unsigned (bp);
-
+#ifdef ACCEL_COMPILER
+  if (DECL_ALIGN (expr) > targetm.absolute_biggest_alignment)
+    DECL_ALIGN (expr) = targetm.absolute_biggest_alignment;
+#endif
   if (TREE_CODE (expr) == LABEL_DECL)
     {
       EH_LANDING_PAD_NR (expr) = (int) bp_unpack_var_len_unsigned (bp);
@@ -373,7 +376,7 @@ unpack_ts_type_common_value_fields (struct bitpack_d *bp, tree expr)
 {
   machine_mode mode;
 
-  mode = bp_unpack_enum (bp, machine_mode, MAX_MACHINE_MODE);
+  mode = bp_unpack_machine_mode (bp);
   SET_TYPE_MODE (expr, mode);
   TYPE_STRING_FLAG (expr) = (unsigned) bp_unpack_value (bp, 1);
   TYPE_NO_FORCE_BLK (expr) = (unsigned) bp_unpack_value (bp, 1);
@@ -391,6 +394,10 @@ unpack_ts_type_common_value_fields (struct bitpack_d *bp, tree expr)
   TYPE_READONLY (expr) = (unsigned) bp_unpack_value (bp, 1);
   TYPE_PRECISION (expr) = bp_unpack_var_len_unsigned (bp);
   TYPE_ALIGN (expr) = bp_unpack_var_len_unsigned (bp);
+#ifdef ACCEL_COMPILER
+  if (TYPE_ALIGN (expr) > targetm.absolute_biggest_alignment)
+    TYPE_ALIGN (expr) = targetm.absolute_biggest_alignment;
+#endif
   TYPE_ALIAS_SET (expr) = bp_unpack_var_len_int (bp);
 }
 
@@ -552,7 +559,11 @@ streamer_read_tree_bitfields (struct lto_input_block *ib,
 
 #ifndef ACCEL_COMPILER
   if (CODE_CONTAINS_STRUCT (code, TS_TARGET_OPTION))
-    cl_target_option_stream_in (data_in, &bp, TREE_TARGET_OPTION (expr));
+    {
+      cl_target_option_stream_in (data_in, &bp, TREE_TARGET_OPTION (expr));
+      if (targetm.target_option.post_stream_in)
+	targetm.target_option.post_stream_in (TREE_TARGET_OPTION (expr));
+    }
 #endif
 
   if (code == OMP_CLAUSE)
