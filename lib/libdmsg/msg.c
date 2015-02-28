@@ -1313,21 +1313,32 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 		assert(hoff <= hbytes && aoff <= abytes);
 
 		if (hoff < hbytes) {
+			size_t maxlen = hbytes - hoff;
+			if (maxlen > sizeof(ioq->buf) / 2)
+				maxlen = sizeof(ioq->buf) / 2;
 			iov[iovcnt].iov_base = (char *)&msg->any.head + hoff;
-			iov[iovcnt].iov_len = hbytes - hoff;
-			nact += hbytes - hoff;
+			iov[iovcnt].iov_len = maxlen;
+			nact += maxlen;
 			++iovcnt;
-			if (iovcnt == DMSG_IOQ_MAXIOVEC)
+			if (iovcnt == DMSG_IOQ_MAXIOVEC ||
+			    maxlen != hbytes - hoff) {
 				break;
+			}
 		}
 		if (aoff < abytes) {
+			size_t maxlen = abytes - aoff;
+			if (maxlen > sizeof(ioq->buf) / 2)
+				maxlen = sizeof(ioq->buf) / 2;
+
 			assert(msg->aux_data != NULL);
 			iov[iovcnt].iov_base = (char *)msg->aux_data + aoff;
-			iov[iovcnt].iov_len = abytes - aoff;
-			nact += abytes - aoff;
+			iov[iovcnt].iov_len = maxlen;
+			nact += maxlen;
 			++iovcnt;
-			if (iovcnt == DMSG_IOQ_MAXIOVEC)
+			if (iovcnt == DMSG_IOQ_MAXIOVEC ||
+			    maxlen != abytes - aoff) {
 				break;
+			}
 		}
 		hoff = 0;
 		aoff = 0;
