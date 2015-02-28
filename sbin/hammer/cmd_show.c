@@ -355,11 +355,15 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		}
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
-		if (elm->base.create_tid &&
+		if (node->mirror_tid == 0 &&
+		    !(node->parent == 0 && node->count == 2)) {
+			flags |= FLAG_BADMIRRORTID;
+		}
+		if (elm->base.create_tid && node->mirror_tid &&
 		    elm->base.create_tid > node->mirror_tid) {
 			flags |= FLAG_BADMIRRORTID;
 		}
-		if (elm->base.delete_tid &&
+		if (elm->base.delete_tid && node->mirror_tid &&
 		    elm->base.delete_tid > node->mirror_tid) {
 			flags |= FLAG_BADMIRRORTID;
 		}

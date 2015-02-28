@@ -614,6 +614,9 @@ format_root(const char *label)
 	hammer_btree_elm_t elm;
 	u_int64_t xtime;
 
+	/*
+	 * Allocate zero-filled root btree node and data
+	 */
 	bnode = alloc_btree_element(&btree_off);
 	idata = alloc_data_element(&data_off, sizeof(*idata), &data_buffer1);
 	pfsd = alloc_data_element(&pfsd_off, sizeof(*pfsd), &data_buffer2);
