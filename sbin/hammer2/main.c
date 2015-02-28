@@ -68,6 +68,8 @@ main(int ac, char **av)
 			all_opt = 1;
 			break;
 		case 'd':
+			if (DebugOpt)
+				DMsgDebugOpt = 1;
 			DebugOpt = 1;
 			break;
 		case 'f':
