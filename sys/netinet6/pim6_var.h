@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/pim6_var.h,v 1.2.2.1 2000/07/15 07:14:36 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/pim6_var.h,v 1.5 2006/09/30 20:03:44 swildner Exp $	*/
 /*	$KAME: pim6_var.h,v 1.8 2000/06/06 08:07:43 jinmei Exp $	*/
 
 /*
@@ -56,13 +55,13 @@ struct pim6stat {
 	u_quad_t pim6s_snd_registers;	/* sent registers		*/
 };
 
-#if (defined(KERNEL)) || (defined(_KERNEL))
+#ifdef _KERNEL
 
 struct mbuf;
 
 int pim6_input (struct mbuf **, int*, int);
 
-#endif /* KERNEL */
+#endif /* _KERNEL */
 
 /*
  * Names for PIM sysctl objects
