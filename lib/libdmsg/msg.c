@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -325,6 +325,12 @@ dmsg_msg_alloc_locked(dmsg_state_t *state,
 		RB_INSERT(dmsg_state_tree, &iocom->statewr_tree, state);
 		TAILQ_INSERT_TAIL(&pstate->subq, state, entry);
 		state->flags |= DMSG_STATE_INSERTED;
+
+		if (DMsgDebugOpt) {
+			fprintf(stderr,
+				"create state %p id=%08x on iocom statewr %p\n",
+				state, (uint32_t)state->msgid, iocom);
+		}
 	} else {
 		/*
 		 * Otherwise the message is transmitted over the existing
@@ -341,6 +347,11 @@ dmsg_msg_alloc_locked(dmsg_state_t *state,
 		*(int *)((char *)msg +
 			 offsetof(struct dmsg_msg, any.head) + hbytes) =
 				 0x71B2C3D4;
+		if (DMsgDebugOpt) {
+			fprintf(stderr,
+				"allo msg %p id=%08x on iocom %p\n",
+				msg, (int)msg->any.head.msgid, iocom);
+		}
 #if 0
 		msg = malloc(sizeof(*msg));
 		bzero(msg, sizeof(*msg));
@@ -404,6 +415,12 @@ void
 dmsg_msg_free_locked(dmsg_msg_t *msg)
 {
 	/*dmsg_iocom_t *iocom = msg->iocom;*/
+
+	if (DMsgDebugOpt) {
+		fprintf(stderr,
+			"free msg %p id=%08x on (aux %p)\n",
+			msg, (int)msg->any.head.msgid, msg->aux_data);
+	}
 #if 1
 	int hbytes = (msg->any.head.cmd & DMSGF_SIZE) * DMSG_ALIGN;
 	if (*(int *)((char *)msg +
@@ -1391,7 +1408,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 		 * beg .... cdx ............ cdn ............. end
 		 * [WRITABLE] [PARTIALENCRYPT] [NOTYETENCRYPTED]
 		 *
-		 * Advance beg on a successful write.
+		 * Advance fifo_beg on a successful write.
 		 */
 		iovcnt = dmsg_crypto_encrypt(iocom, ioq, iov, iovcnt, &nact);
 		n = writev(iocom->sock_fd, iov, iovcnt);
@@ -2235,8 +2252,7 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 		assert(lstate->relay == NULL);
 		assert(rpstate != NULL);
 
-		rmsg = dmsg_msg_alloc(rpstate,
-				      lmsg->aux_size,
+		rmsg = dmsg_msg_alloc(rpstate, 0,
 				      lmsg->any.head.cmd,
 				      dmsg_state_relay, NULL);
 		rstate = rmsg->state;
@@ -2252,8 +2268,7 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 		rstate = lstate->relay;
 		assert(rstate != NULL);
 
-		rmsg = dmsg_msg_alloc(rstate,
-				      lmsg->aux_size,
+		rmsg = dmsg_msg_alloc(rstate, 0,
 				      lmsg->any.head.cmd,
 				      dmsg_state_relay, NULL);
 	}
@@ -2264,6 +2279,7 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 	rmsg->any.head.error = lmsg->any.head.error;
 	rmsg->any.head.reserved02 = lmsg->any.head.reserved02;
 	rmsg->any.head.reserved18 = lmsg->any.head.reserved18;
+	rmsg->aux_size = lmsg->aux_size;
 	rmsg->aux_data = lmsg->aux_data;
 	lmsg->aux_data = NULL;
 	/*
