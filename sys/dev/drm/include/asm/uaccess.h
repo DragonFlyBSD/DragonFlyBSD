@@ -47,4 +47,40 @@ copy_from_user(void *to, const void *from, unsigned long n)
 	return 0;
 }
 
+static inline int
+__copy_to_user(void *to, const void *from, unsigned len)
+{
+	if (copyout(from, to, len))
+		return len;
+	return 0;
+}
+
+static inline unsigned long
+__copy_from_user(void *to, const void *from, unsigned len)
+{
+	if (copyin(from, to, len))
+		return len;
+	return 0;
+}
+
+static inline int
+__copy_to_user_inatomic(void __user *to, const void *from, unsigned n)
+{
+	return (copyout_nofault(from, to, n) != 0 ? n : 0);
+}
+
+static inline unsigned long
+__copy_from_user_inatomic_nocache(void *to, const void __user *from,
+    unsigned long n)
+{
+	/*
+	 * XXXKIB.  Equivalent Linux function is implemented using
+	 * MOVNTI for aligned moves.  For unaligned head and tail,
+	 * normal move is performed.  As such, it is not incorrect, if
+	 * only somewhat slower, to use normal copyin.  All uses
+	 * except shmem_pwrite_fast() have the destination mapped WC.
+	 */
+	return ((copyin_nofault(__DECONST(void *, from), to, n) != 0 ? n : 0));
+}
+
 #endif	/* _ASM_UACCESS_H_ */
