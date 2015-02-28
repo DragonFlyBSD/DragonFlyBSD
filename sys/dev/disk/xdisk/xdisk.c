@@ -465,7 +465,13 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 			sc->info.d_ncylinders = 0;
 			if (sc->fs_label[0])
 				sc->info.d_serialno = sc->fs_label;
-			disk_setdiskinfo_sync(&sc->disk, &sc->info);
+			/*
+			 * WARNING! disk_setdiskinfo() must be asynchronous
+			 *	    because we are in the rxmsg thread.  If
+			 *	    it is synchronous and issues more disk
+			 *	    I/Os, we will deadlock.
+			 */
+			disk_setdiskinfo(&sc->disk, &sc->info);
 			xa_restart_deferred(sc);	/* eats serializing */
 		} else {
 			kprintf("(found spancnt %d sc=%p)\n", sc->spancnt, sc);
@@ -700,11 +706,10 @@ xa_strategy(struct dev_strategy_args *ap)
 	struct bio *bio = ap->a_bio;
 
 	/*
-	 * Allow potentially temporary link failures to fail the I/Os
-	 * only if the device is not open.  That is, we allow the disk
-	 * probe code prior to mount to fail.
+	 * Only BUF_CMD_READ is allowed (for probes) if opencnt is zero.
+	 * Otherwise a BLK_OPEN transaction is required.
 	 */
-	if (sc->opencnt == 0) {
+	if (sc->opencnt == 0 && bio->bio_buf->b_cmd != BUF_CMD_READ) {
 		bio->bio_buf->b_error = ENXIO;
 		bio->bio_buf->b_flags |= B_ERROR;
 		biodone(bio);
@@ -784,10 +789,27 @@ xa_start(xa_tag_t *tag, kdmsg_msg_t *msg, int async)
 
 		switch(bp->b_cmd) {
 		case BUF_CMD_READ:
-			msg = kdmsg_msg_alloc(sc->open_tag->state,
-					      DMSG_BLK_READ |
-					      DMSGF_CREATE | DMSGF_DELETE,
-					      xa_bio_completion, tag);
+			if (sc->opencnt == 0 || sc->open_tag == NULL) {
+				kdmsg_state_t *span;
+
+				TAILQ_FOREACH(span, &sc->spanq, user_entry) {
+					if ((span->rxcmd & DMSGF_DELETE) == 0)
+						break;
+				}
+				if (span == NULL)
+					break;
+				msg = kdmsg_msg_alloc(span,
+						      DMSG_BLK_READ |
+						      DMSGF_CREATE |
+						      DMSGF_DELETE,
+						      xa_bio_completion, tag);
+			} else {
+				msg = kdmsg_msg_alloc(sc->open_tag->state,
+						      DMSG_BLK_READ |
+						      DMSGF_CREATE |
+						      DMSGF_DELETE,
+						      xa_bio_completion, tag);
+			}
 			msg->any.blk_read.keyid = sc->keyid;
 			msg->any.blk_read.offset = bio->bio_offset;
 			msg->any.blk_read.bytes = bp->b_bcount;

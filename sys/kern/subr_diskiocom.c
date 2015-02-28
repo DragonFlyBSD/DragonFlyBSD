@@ -196,7 +196,11 @@ disk_rcvdmsg(kdmsg_msg_t *msg)
 	}
 
 	/*
-	 * All remaining messages must be in a transaction
+	 * All remaining messages must be in a transaction. 
+	 *
+	 * NOTE!  We currently don't care if the transaction is just
+	 *	  the span transaction (for disk probes) or if it is the
+	 *	  BLK_OPEN transaction.
 	 *
 	 * NOTE!  We are switching on the first message's command.  The
 	 *	  actual message command within the transaction may be
@@ -212,6 +216,9 @@ disk_rcvdmsg(kdmsg_msg_t *msg)
 		disk_blk_open(dp, msg);
 		break;
 	case DMSG_BLK_READ:
+		/*
+		 * not reached normally but leave in for completeness
+		 */
 		disk_blk_read(dp, msg);
 		break;
 	case DMSG_BLK_WRITE:
