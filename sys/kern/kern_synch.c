@@ -67,7 +67,6 @@ TAILQ_HEAD(tslpque, thread);
 static void sched_setup (void *dummy);
 SYSINIT(sched_setup, SI_SUB_KICK_SCHEDULER, SI_ORDER_FIRST, sched_setup, NULL)
 
-int	hogticks;
 int	lbolt;
 void	*lbolt_syncer;
 int	sched_quantum;		/* Roundrobin scheduling quantum in ticks. */
@@ -129,7 +128,6 @@ sysctl_kern_quantum(SYSCTL_HANDLER_ARGS)
 	if (new_val < ustick)
 		return (EINVAL);
 	sched_quantum = new_val / ustick;
-	hogticks = 2 * sched_quantum;
 	return (0);
 }
 
@@ -327,8 +325,6 @@ sleep_gdinit(globaldata_t gd)
 
 	if (gd->gd_cpuid == 0) {
 		sched_quantum = (hz + 24) / 25;
-		hogticks = 2 * sched_quantum;
-
 		gd->gd_tsleep_hash = slpque_cpu0;
 	} else {
 		gd->gd_tsleep_hash = kmalloc(sizeof(slpque_cpu0), 

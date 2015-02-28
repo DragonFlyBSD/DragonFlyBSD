@@ -498,7 +498,6 @@ extern void stopevent(struct proc*, unsigned int, unsigned int);
 extern struct proc proc0;		/* Process slot for swapper. */
 extern struct lwp lwp0;			/* LWP slot for swapper. */
 extern struct thread thread0;		/* Thread slot for swapper. */
-extern int hogticks;			/* Limit on kernel cpu hogs. */
 extern int nprocs, maxproc;		/* Current and max number of procs. */
 extern int maxprocperuid;		/* Max procs per uid. */
 extern int sched_quantum;		/* Scheduling quantum in ticks */
