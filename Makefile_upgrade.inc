@@ -2825,6 +2825,7 @@ TO_REMOVE+=/usr/share/man/cat3/libhammer_get_volinfo.3.gz
 TO_REMOVE+=/usr/share/man/man3/libhammer_free_volinfo.3.gz
 TO_REMOVE+=/usr/share/man/cat3/libhammer_free_volinfo.3.gz
 TO_REMOVE+=/usr/share/examples/cvsup
+TO_REMOVE+=/usr/include/sys/xwait.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

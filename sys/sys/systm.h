@@ -128,7 +128,6 @@ struct mtx;
 struct lwkt_serialize;
 struct malloc_type;
 struct proc;
-struct xwait;
 struct timeval;
 struct tty;
 struct uio;

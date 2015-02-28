@@ -50,7 +50,6 @@
 #ifdef KTRACE
 #include <sys/ktrace.h>
 #endif
-#include <sys/xwait.h>
 #include <sys/ktr.h>
 #include <sys/serialize.h>
 
