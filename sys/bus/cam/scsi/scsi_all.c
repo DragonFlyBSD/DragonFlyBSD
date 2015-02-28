@@ -2882,7 +2882,7 @@ scsi_error_action(struct ccb_scsiio *csio, struct scsi_inquiry_data *inq_data,
 			}
 		}
 	}
-#ifdef KERNEL
+#ifdef _KERNEL
 	if (bootverbose)
 		sense_flags |= SF_PRINT_ALWAYS;
 #endif
