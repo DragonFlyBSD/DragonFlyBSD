@@ -1357,6 +1357,9 @@ int	drm_getmagic(struct drm_device *dev, void *data,
 int	drm_authmagic(struct drm_device *dev, void *data,
 		      struct drm_file *file_priv);
 
+/* Cache management (drm_cache.c) */
+void drm_clflush_virt_range(char *addr, unsigned long length);
+
 /* Buffer management support (drm_bufs.c) */
 int	drm_addmap_ioctl(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv);
