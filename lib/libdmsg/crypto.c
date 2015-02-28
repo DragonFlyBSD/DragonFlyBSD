@@ -209,10 +209,12 @@ dmsg_crypto_gcm_encrypt_chunk(dmsg_ioq_t *ioq, char *ct, char *pt,
 	if (!ok)
 		goto fail;
 
+	u_len = 0;	/* safety */
 	ok = EVP_EncryptUpdate(&ioq->ctx, ct, &u_len, pt, in_size);
 	if (!ok)
 		goto fail;
 
+	f_len = 0;	/* safety */
 	ok = EVP_EncryptFinal(&ioq->ctx, ct + u_len, &f_len);
 	if (!ok)
 		goto fail;
