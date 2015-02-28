@@ -25,12 +25,6 @@
 .Brq Cm delete | zero | resetlog
 .Op Cm set
 .Op Ar number ...
-.Nm
-.Cm enable
-.Brq Cm firewall | one_pass | debug | verbose | dyn_keepalive
-.Nm
-.Cm disable
-.Brq Cm firewall | one_pass | debug | verbose | dyn_keepalive
 .Pp
 .Nm
 .Cm set Oo Cm disable Ar number ... Oc Op Cm enable Ar number ...
@@ -507,7 +501,7 @@ The search continues with the next rule.
 .It Cm deny
 Discard packets that match this rule.
 The search terminates.
-.It Cm fwd Ar ipaddr Oo Ar :port Oc Oo Ar forward-option Oc
+.It Cm forward Ar ipaddr Oo Ar :port Oc Oo Ar forward-option Oc
 Change the next-hop on matching packets to
 .Ar ipaddr ,
 which can be an IP address in dotted quad format or a host name.
@@ -527,9 +521,12 @@ is not a local address, then the port number
 forwarded to the remote address, using the route as found in
 the local routing table for that IP. and use comma to sperate
 multiple ip addresses.
-.br
+.Pp
+forward-option can be 'round-robin' or 'sticky'. 'sticky' is caculated based on
+the src ip addresses, and if no forward-option, by default it will be 'random'.
+.Pp
 A
-.Ar fwd
+.Ar forward
 rule will not match layer-2 packets (those received
 on
 .Fn ether_input
@@ -537,7 +534,7 @@ or
 .Fn ether_output ) .
 .br
 The
-.Cm fwd
+.Cm forward
 action does not change the contents of the packet at all.
 In particular, the destination address remains unmodified, so
 packets forwarded to another system will usually be rejected by that system
@@ -1610,7 +1607,6 @@ And states can be manipulated by using the ipfw utility.
 .Pp
 .Dl "ipfw state add rule 1000 udp 192.168.1.100:0 8.8.8.8:53 expiry 600"
 .Pp
-
 .El
 .Sh EXAMPLES
 There are far too many possible uses of
