@@ -74,4 +74,6 @@ io_remap_pfn_range(struct vm_area_struct *vma,
 	return (0);
 }
 
+#define offset_in_page(off)	((off) & PAGE_MASK)
+
 #endif	/* _LINUX_MM_H_ */
