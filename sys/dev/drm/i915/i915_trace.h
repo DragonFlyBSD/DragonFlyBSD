@@ -36,6 +36,7 @@
 
 #define trace_i915_gem_object_bind(a, b)
 #define trace_i915_gem_object_change_domain(a,b,c)
+#define trace_i915_gem_object_create(obj)
 
 #define trace_i915_ring_wait_begin(a)
 #define trace_i915_ring_wait_end(a)
