@@ -204,7 +204,7 @@ void	trapsignal (struct lwp *p, int sig, u_long code);
  * Machine-dependent functions:
  */
 void	sendsig (sig_t action, int sig, sigset_t *retmask, u_long code);
-void	sigexit (struct lwp *lp, int sig);
+void	sigexit (struct lwp *lp, int sig) __dead2;
 int	checkpoint_signal_handler(struct lwp *p);
 
 #endif	/* _KERNEL */

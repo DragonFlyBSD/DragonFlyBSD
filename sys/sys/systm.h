@@ -157,7 +157,7 @@ void	*phashinit_ext (int count, size_t size,
 int	cpu_sanitize_frame (struct trapframe *);
 int	cpu_sanitize_tls (struct savetls *);
 void	cpu_spinlock_contested(void);
-void	cpu_halt (void);
+void	cpu_halt (void) __dead2;
 void	cpu_reset (void);
 void	cpu_boot (int);
 void	cpu_rootconf (void);
