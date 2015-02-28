@@ -751,8 +751,13 @@ dmsg_crypto_encrypt(dmsg_iocom_t *iocom __unused, dmsg_ioq_t *ioq,
 			used += DMSG_CRYPTO_CHUNK_SIZE;
 			p_len -= DMSG_CRYPTO_CHUNK_SIZE;
 
-			ioq->fifo_cdx += (size_t)ct_used;	/* crypted count */
-			ioq->fifo_cdn += (size_t)ct_used;	/* crypted count */
+			/*
+			 * NOTE: crypted count will eventually differ from
+			 *	 nmax, but for now we have not yet introduced
+			 *	 random armor.
+			 */
+			ioq->fifo_cdx += (size_t)ct_used;
+			ioq->fifo_cdn += (size_t)ct_used;
 			ioq->fifo_end += (size_t)ct_used;
 			nmax -= (size_t)ct_used;
 #ifdef CRYPTO_DEBUG

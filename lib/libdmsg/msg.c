@@ -1359,8 +1359,13 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 	 * be greater depending on the crypto mechanic.  iov[] is adjusted
 	 * to point at the FIFO if necessary.
 	 *
-	 * NOTE: The return value from the writev() is the post-encrypted
-	 *	 byte count, not the plaintext count.
+	 * NOTE: nact is the number of bytes eaten from the message.  For
+	 *	 encrypted data this is the number of bytes processed for
+	 *	 encryption and not necessarily the number of bytes writable.
+	 *	 The return value from the writev() is the post-encrypted
+	 *	 byte count which might be larger.
+	 *
+	 * NOTE: For direct writes, nact is the return value from the writev().
 	 */
 	if (iocom->flags & DMSG_IOCOMF_CRYPTED) {
 		/*
@@ -1382,12 +1387,16 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 			ioq->fifo_beg = 0;
 		}
 
+		/* 
+		 * beg .... cdx ............ cdn ............. end
+		 * [WRITABLE] [PARTIALENCRYPT] [NOTYETENCRYPTED]
+		 *
+		 * Advance beg on a successful write.
+		 */
 		iovcnt = dmsg_crypto_encrypt(iocom, ioq, iov, iovcnt, &nact);
 		n = writev(iocom->sock_fd, iov, iovcnt);
 		if (n > 0) {
 			ioq->fifo_beg += n;
-			ioq->fifo_cdn += n;
-			ioq->fifo_cdx += n;
 			if (ioq->fifo_beg == ioq->fifo_end) {
 				ioq->fifo_beg = 0;
 				ioq->fifo_cdn = 0;
@@ -1405,7 +1414,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 		/*
 		 * In this situation we are not staging the messages to the
 		 * FIFO but instead writing them directly from the msg
-		 * structure(s), so (nact) is basically (n).
+		 * structure(s) unencrypted, so (nact) is basically (n).
 		 */
 		n = writev(iocom->sock_fd, iov, iovcnt);
 		if (n > 0)
