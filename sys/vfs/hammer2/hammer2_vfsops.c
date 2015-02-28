@@ -656,9 +656,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 *
 		 * Automatic LNK_CONN
 		 * Automatic handling of received LNK_SPAN
-		 * Automatic handling of received LNK_CIRC
 		 * No automatic LNK_SPAN generation - we do this ourselves
-		 * No automatic LNK_CIRC generation - we do this ourselves
 		 */
 		kdmsg_iocom_init(&hmp->iocom, hmp,
 				 KDMSG_IOCOMF_AUTOCONN |

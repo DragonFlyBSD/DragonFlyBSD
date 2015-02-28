@@ -293,7 +293,7 @@ kdmsg_iocom_thread_rd(void *arg)
 			break;
 		}
 		hbytes = (hdr.cmd & DMSGF_SIZE) * DMSG_ALIGN;
-		if (hbytes < sizeof(hdr) || hbytes > DMSG_AUX_MAX) {
+		if (hbytes < sizeof(hdr) || hbytes > DMSG_HDR_MAX) {
 			kprintf("kdmsg: bad header size %zd\n", hbytes);
 			error = EINVAL;
 			break;
@@ -1495,6 +1495,28 @@ kdmsg_msg_free(kdmsg_msg_t *msg)
 	msg->aux_size = 0;
 
 	kfree(msg, iocom->mmsg);
+}
+
+void
+kdmsg_detach_aux_data(kdmsg_msg_t *msg, kdmsg_data_t *data)
+{
+	if (msg->flags & KDMSG_FLAG_AUXALLOC) {
+		data->aux_data = msg->aux_data;
+		data->aux_size = msg->aux_size;
+		data->iocom = msg->state->iocom;
+		msg->flags &= ~KDMSG_FLAG_AUXALLOC;
+	} else {
+		data->aux_data = NULL;
+		data->aux_size = 0;
+		data->iocom = msg->state->iocom;
+	}
+}
+
+void
+kdmsg_free_aux_data(kdmsg_data_t *data)
+{
+	if (data->aux_data)
+		kfree(data->aux_data, data->iocom->mmsg);
 }
 
 /*

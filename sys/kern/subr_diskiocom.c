@@ -67,6 +67,7 @@ struct dios_open {
 struct dios_io {
 	int	count;
 	int	eof;
+	kdmsg_data_t data;
 };
 
 static MALLOC_DEFINE(M_DMSG_DISK, "dmsg_disk", "disk dmsg");
@@ -417,10 +418,12 @@ disk_blk_write(struct disk *dp, kdmsg_msg_t *msg)
 		bp->b_resid = bp->b_bcount;
 		if (msg->aux_size >= msg->any.blk_write.bytes) {
 			bp->b_data = msg->aux_data;
+			kdmsg_detach_aux_data(msg, &iost->data);
 		} else {
 			bcopy(msg->aux_data, bp->b_data, msg->aux_size);
 			bzero(bp->b_data + msg->aux_size,
 			      msg->any.blk_write.bytes - msg->aux_size);
+			bzero(&iost->data, sizeof(iost->data));
 		}
 		bio->bio_offset = msg->any.blk_write.offset;
 		bio->bio_caller_info1.ptr = msg->state;
@@ -578,6 +581,7 @@ diskiodone(struct bio *bio)
 			error = 0;
 			resid = bp->b_resid;
 		}
+		kdmsg_free_aux_data(&iost->data);
 		break;
 	case BUF_CMD_FLUSH:
 	case BUF_CMD_FREEBLKS:

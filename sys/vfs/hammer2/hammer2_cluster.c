@@ -1269,7 +1269,7 @@ hammer2_cluster_load_async(hammer2_cluster_t *cluster,
  *
  * Each resynchronization pass virtually snapshots the PFS on the good nodes
  * and synchronizes using that snapshot against the target node.  This
- * ensures a consistent chain topology and also avoid interference between
+ * ensures a consistent chain topology and also avoids interference between
  * the resynchronization thread and frontend operations.
  *
  * Since these are per-node threads it is possible to resynchronize several

@@ -229,9 +229,17 @@ typedef struct dmsg_hdr dmsg_hdr_t;
 
 /*
  * Administrative protocol limits.
+ *
+ * NOTE: A dmsg header must completely fit in the (fifo) buffer, but
+ *	 dmsg aux data does not have to completely fit.  The dmsg
+ *	 structure allows headers up to 255*64 = 16320 bytes.  There
+ *	 is no real limit on the aux_data other than what we deem
+ *	 reasonable and defenseable (i.e. not run processes or the
+ *	 kernel out of memory).  But it should be able to handle at
+ *	 least MAXPHYS bytes which is typically 128KB or 256KB.
  */
-#define DMSG_HDR_MAX		2048	/* <= 65535 */
-#define DMSG_AUX_MAX		65536	/* <= 1MB */
+#define DMSG_HDR_MAX		2048		/* <= 8192 */
+#define DMSG_AUX_MAX		(1024*1024)	/* <= 1MB */
 #define DMSG_BUF_SIZE		(DMSG_HDR_MAX * 4)
 #define DMSG_BUF_MASK		(DMSG_BUF_SIZE - 1)
 
@@ -692,6 +700,7 @@ struct xa_softc;
 struct kdmsg_iocom;
 struct kdmsg_state;
 struct kdmsg_msg;
+struct kdmsg_data;
 
 /*
  * msg_ctl flags (atomic)
@@ -748,11 +757,18 @@ struct kdmsg_msg {
 	dmsg_any_t	any;			/* variable sized */
 };
 
+struct kdmsg_data {
+	char		*aux_data;
+	size_t		aux_size;
+	struct kdmsg_iocom *iocom;
+};
+
 #define KDMSG_FLAG_AUXALLOC	0x0001
 
 typedef struct kdmsg_link kdmsg_link_t;
 typedef struct kdmsg_state kdmsg_state_t;
 typedef struct kdmsg_msg kdmsg_msg_t;
+typedef struct kdmsg_data kdmsg_data_t;
 
 struct kdmsg_state_tree;
 int kdmsg_state_cmp(kdmsg_state_t *state1, kdmsg_state_t *state2);
@@ -823,6 +839,8 @@ void kdmsg_msg_reply(kdmsg_msg_t *msg, uint32_t error);
 void kdmsg_msg_result(kdmsg_msg_t *msg, uint32_t error);
 void kdmsg_state_reply(kdmsg_state_t *state, uint32_t error);
 void kdmsg_state_result(kdmsg_state_t *state, uint32_t error);
+void kdmsg_detach_aux_data(kdmsg_msg_t *msg, kdmsg_data_t *data);
+void kdmsg_free_aux_data(kdmsg_data_t *data);
 
 #endif
 
