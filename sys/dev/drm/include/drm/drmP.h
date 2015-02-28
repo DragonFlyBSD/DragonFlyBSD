@@ -1188,7 +1188,8 @@ int drm_prime_lookup_obj(struct drm_device *dev, struct dma_buf *buf,
 			 struct drm_gem_object **obj);
 #endif /* DUMBBELL_WIP */
 
-/* Memory management support (drm_memory.c) */
+				/* Memory management support (drm_memory.h) */
+#include <drm/drm_memory.h>
 void	drm_mem_init(void);
 void	drm_mem_uninit(void);
 void	*drm_ioremap_wc(struct drm_device *dev, drm_local_map_t *map);
