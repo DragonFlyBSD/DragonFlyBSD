@@ -14,5 +14,6 @@ A list of files and directories removed is in README.DELETED
 Local modifications applied to following files:
 	src/chartype.h
 	src/el.c
+	src/eln.c
 	src/filecomplete.c
 	src/sys.h

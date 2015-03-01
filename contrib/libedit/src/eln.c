@@ -75,10 +75,18 @@ public const char *
 el_gets(EditLine *el, int *nread)
 {
 	const wchar_t *tmp;
+	int nwread;
 
-	el->el_flags |= IGNORE_EXTCHARS;
-	tmp = el_wgets(el, nread);
-	el->el_flags &= ~IGNORE_EXTCHARS;
+	*nread = 0;
+
+	if (!(el->el_flags & CHARSET_IS_UTF8))
+		el->el_flags |= IGNORE_EXTCHARS;
+	tmp = el_wgets(el, &nwread);
+	if (!(el->el_flags & CHARSET_IS_UTF8))
+		el->el_flags &= ~IGNORE_EXTCHARS;
+	for (int i = 0; i < nwread; i++)
+		*nread += ct_enc_width(tmp[i]);
+
 	return ct_encode_string(tmp, &el->el_lgcyconv);
 }
 
