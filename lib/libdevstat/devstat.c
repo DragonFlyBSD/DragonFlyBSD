@@ -49,6 +49,7 @@ char devstat_errbuf[DEVSTAT_ERRBUF_SIZE];
  */
 struct devstat_match_table match_table[] = {
 	{"da",		DEVSTAT_TYPE_DIRECT,	DEVSTAT_MATCH_TYPE},
+	{"xa",		DEVSTAT_TYPE_DIRECT,	DEVSTAT_MATCH_TYPE},
 	{"cd",		DEVSTAT_TYPE_CDROM,	DEVSTAT_MATCH_TYPE},
 	{"scsi",	DEVSTAT_TYPE_IF_SCSI,	DEVSTAT_MATCH_IF},
 	{"ide",		DEVSTAT_TYPE_IF_IDE,	DEVSTAT_MATCH_IF},
