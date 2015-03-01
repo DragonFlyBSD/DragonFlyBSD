@@ -30,8 +30,6 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * $FreeBSD: head/sys/dev/drm2/drmP.h 255045 2013-08-29 23:09:34Z jkim $
  */
 
 #ifndef _DRM_P_H_
@@ -1442,6 +1440,10 @@ int drm_gem_flink_ioctl(struct drm_device *dev, void *data,
 int drm_gem_open_ioctl(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv);
 void drm_gem_object_handle_free(struct drm_gem_object *obj);
+
+int i915_gem_pager_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
+    vm_ooffset_t foff, struct ucred *cred, u_short *color);
+void i915_gem_pager_dtor(void * handle);
 
 #include <drm/drm_global.h>
 

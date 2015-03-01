@@ -1542,7 +1542,6 @@ struct drm_i915_file_private {
 #define INTEL_RC6pp_ENABLE			(1<<2)
 
 extern struct drm_ioctl_desc i915_ioctls[];
-extern struct cdev_pager_ops i915_gem_pager_ops;
 extern int i915_max_ioctl;
 extern unsigned int i915_fbpercrtc __always_unused;
 extern int i915_panel_ignore_lid __read_mostly;
@@ -1783,8 +1782,8 @@ int __i915_add_request(struct intel_ring_buffer *ring,
 	__i915_add_request(ring, NULL, NULL, seqno)
 int __must_check i915_wait_seqno(struct intel_ring_buffer *ring,
 				 uint32_t seqno);
-int i915_gem_fault(struct drm_device *dev, uint64_t offset, int prot,
-    uint64_t *phys);
+int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot,
+    vm_page_t *mres);
 int __must_check
 i915_gem_object_set_to_gtt_domain(struct drm_i915_gem_object *obj,
 				  bool write);

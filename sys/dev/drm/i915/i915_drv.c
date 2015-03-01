@@ -996,6 +996,12 @@ i915_pci_probe(device_t kdev)
 	return ENXIO;
 }
 
+static struct cdev_pager_ops i915_gem_vm_ops = {
+	.cdev_pg_fault	= i915_gem_fault,
+	.cdev_pg_ctor	= i915_gem_pager_ctor,
+	.cdev_pg_dtor	= i915_gem_pager_dtor
+};
+
 static struct drm_driver driver = {
 	.driver_features =   DRIVER_USE_AGP | DRIVER_REQUIRE_AGP |
 	    DRIVER_USE_MTRR | DRIVER_HAVE_IRQ | DRIVER_LOCKLESS_IRQ |
@@ -1011,7 +1017,7 @@ static struct drm_driver driver = {
 	.device_is_agp	= i915_driver_device_is_agp,
 	.gem_init_object = i915_gem_init_object,
 	.gem_free_object = i915_gem_free_object,
-	.gem_pager_ops	= &i915_gem_pager_ops,
+	.gem_pager_ops	= &i915_gem_vm_ops,
 	.dumb_create	= i915_gem_dumb_create,
 	.dumb_map_offset = i915_gem_mmap_gtt,
 	.dumb_destroy	= i915_gem_dumb_destroy,

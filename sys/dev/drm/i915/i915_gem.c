@@ -1311,6 +1311,8 @@ out:
 	return (error);
 }
 
+int i915_intr_pf;
+
 /**
  * i915_gem_fault - fault a page into the GTT
  * vma: VMA in question
@@ -1327,26 +1329,79 @@ out:
  * suffer if the GTT working set is large or there are few fence registers
  * left.
  */
-#if 0
-int i915_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+int
+i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot,
+    vm_page_t *mres)
 {
-	struct drm_i915_gem_object *obj = to_intel_bo(vma->vm_private_data);
-	struct drm_device *dev = obj->base.dev;
-	drm_i915_private_t *dev_priv = dev->dev_private;
-	pgoff_t page_offset;
-	unsigned long pfn;
-	int ret = 0;
-	bool write = !!(vmf->flags & FAULT_FLAG_WRITE);
+	struct drm_gem_object *gem_obj;
+	struct drm_i915_gem_object *obj;
+	struct drm_device *dev;
+	drm_i915_private_t *dev_priv;
+	vm_page_t m, oldm;
+	int cause, ret;
+	bool write;
 
-	/* We don't use vmf->pgoff since that has the fake offset */
-	page_offset = ((unsigned long)vmf->virtual_address - vma->vm_start) >>
-		PAGE_SHIFT;
+	gem_obj = vm_obj->handle;
+	obj = to_intel_bo(gem_obj);
+	dev = obj->base.dev;
+	dev_priv = dev->dev_private;
+#if 0
+	write = (prot & VM_PROT_WRITE) != 0;
+#else
+	write = true;
+#endif
+	vm_object_pip_add(vm_obj, 1);
 
-	ret = i915_mutex_lock_interruptible(dev);
-	if (ret)
-		goto out;
+	/*
+	 * Remove the placeholder page inserted by vm_fault() from the
+	 * object before dropping the object lock. If
+	 * i915_gem_release_mmap() is active in parallel on this gem
+	 * object, then it owns the drm device sx and might find the
+	 * placeholder already. Then, since the page is busy,
+	 * i915_gem_release_mmap() sleeps waiting for the busy state
+	 * of the page cleared. We will be not able to acquire drm
+	 * device lock until i915_gem_release_mmap() is able to make a
+	 * progress.
+	 */
+	if (*mres != NULL) {
+		oldm = *mres;
+		vm_page_remove(oldm);
+		*mres = NULL;
+	} else
+		oldm = NULL;
+retry:
+	VM_OBJECT_UNLOCK(vm_obj);
+unlocked_vmobj:
+	cause = ret = 0;
+	m = NULL;
 
-	trace_i915_gem_object_fault(obj, page_offset, true, write);
+	if (i915_intr_pf) {
+		ret = i915_mutex_lock_interruptible(dev);
+		if (ret != 0) {
+			cause = 10;
+			goto out;
+		}
+	} else
+		mutex_lock(&dev->struct_mutex);
+
+	/*
+	 * Since the object lock was dropped, other thread might have
+	 * faulted on the same GTT address and instantiated the
+	 * mapping for the page.  Recheck.
+	 */
+	VM_OBJECT_LOCK(vm_obj);
+	m = vm_page_lookup(vm_obj, OFF_TO_IDX(offset));
+	if (m != NULL) {
+		if ((m->flags & PG_BUSY) != 0) {
+			mutex_unlock(&dev->struct_mutex);
+#if 0 /* XXX */
+			vm_page_sleep(m, "915pee");
+#endif
+			goto retry;
+		}
+		goto have_page;
+	} else
+		VM_OBJECT_UNLOCK(vm_obj);
 
 	/* Access to snoopable pages through the GTT is incoherent. */
 	if (obj->cache_level != I915_CACHE_NONE && !HAS_LLC(dev)) {
@@ -1355,65 +1410,83 @@ int i915_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	}
 
 	/* Now bind it into the GTT if needed */
-	ret = i915_gem_object_pin(obj, 0, true, false);
-	if (ret)
+	if (!obj->map_and_fenceable) {
+		ret = i915_gem_object_unbind(obj);
+		if (ret != 0) {
+			cause = 20;
+			goto unlock;
+		}
+	}
+	if (!obj->gtt_space) {
+		ret = i915_gem_object_bind_to_gtt(obj, 0, true, false);
+		if (ret != 0) {
+			cause = 30;
+			goto unlock;
+		}
+
+		ret = i915_gem_object_set_to_gtt_domain(obj, write);
+		if (ret != 0) {
+			cause = 40;
+			goto unlock;
+		}
+	}
+
+	if (obj->tiling_mode == I915_TILING_NONE)
+		ret = i915_gem_object_put_fence(obj);
+	else
+		ret = i915_gem_object_get_fence(obj);
+	if (ret != 0) {
+		cause = 50;
 		goto unlock;
+	}
 
-	ret = i915_gem_object_set_to_gtt_domain(obj, write);
-	if (ret)
-		goto unpin;
-
-	ret = i915_gem_object_get_fence(obj);
-	if (ret)
-		goto unpin;
+	if (i915_gem_object_is_inactive(obj))
+		list_move_tail(&obj->mm_list, &dev_priv->mm.inactive_list);
 
 	obj->fault_mappable = true;
+	VM_OBJECT_LOCK(vm_obj);
+	m = vm_phys_fictitious_to_vm_page(dev->agp->base + obj->gtt_offset +
+	    offset);
+	if (m == NULL) {
+		cause = 60;
+		ret = -EFAULT;
+		goto unlock;
+	}
+	KASSERT((m->flags & PG_FICTITIOUS) != 0,
+	    ("not fictitious %p", m));
+	KASSERT(m->wire_count == 1, ("wire_count not 1 %p", m));
 
-	pfn = ((dev_priv->gtt.mappable_base + obj->gtt_offset) >> PAGE_SHIFT) +
-		page_offset;
+	if ((m->flags & PG_BUSY) != 0) {
+		mutex_unlock(&dev->struct_mutex);
+#if 0 /* XXX */
+		vm_page_sleep(m, "915pbs");
+#endif
+		goto retry;
+	}
+	m->valid = VM_PAGE_BITS_ALL;
+	vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
+have_page:
+	*mres = m;
+	vm_page_busy_try(m, false);
 
-	/* Finally, remap it using the new GTT offset */
-	ret = vm_insert_pfn(vma, (unsigned long)vmf->virtual_address, pfn);
-unpin:
-	i915_gem_object_unpin(obj);
+	mutex_unlock(&dev->struct_mutex);
+	if (oldm != NULL) {
+		vm_page_free(oldm);
+	}
+	vm_object_pip_wakeup(vm_obj);
+	return (VM_PAGER_OK);
+
 unlock:
 	mutex_unlock(&dev->struct_mutex);
 out:
-	switch (ret) {
-	case -EIO:
-		/* If this -EIO is due to a gpu hang, give the reset code a
-		 * chance to clean up the mess. Otherwise return the proper
-		 * SIGBUS. */
-		if (i915_terminally_wedged(&dev_priv->gpu_error))
-			return VM_FAULT_SIGBUS;
-	case -EAGAIN:
-		/* Give the error handler a chance to run and move the
-		 * objects off the GPU active list. Next time we service the
-		 * fault, we should be able to transition the page into the
-		 * GTT without touching the GPU (and so avoid further
-		 * EIO/EGAIN). If the GPU is wedged, then there is no issue
-		 * with coherency, just lost writes.
-		 */
-		set_need_resched();
-	case 0:
-	case -ERESTARTSYS:
-	case -EINTR:
-	case -EBUSY:
-		/*
-		 * EBUSY is ok: this just means that another thread
-		 * already did the job.
-		 */
-		return VM_FAULT_NOPAGE;
-	case -ENOMEM:
-		return VM_FAULT_OOM;
-	case -ENOSPC:
-		return VM_FAULT_SIGBUS;
-	default:
-		WARN_ONCE(ret, "unhandled error in i915_gem_fault: %i\n", ret);
-		return VM_FAULT_SIGBUS;
+	KASSERT(ret != 0, ("i915_gem_pager_fault: wrong return"));
+	if (ret == -EAGAIN || ret == -EIO || ret == -EINTR) {
+		goto unlocked_vmobj;
 	}
+	VM_OBJECT_LOCK(vm_obj);
+	vm_object_pip_wakeup(vm_obj);
+	return (VM_PAGER_ERROR);
 }
-#endif
 
 /**
  * i915_gem_release_mmap - remove physical page mappings
@@ -4481,7 +4554,7 @@ void i915_gem_release(struct drm_device *dev, struct drm_file *file)
 	spin_unlock(&file_priv->mm.lock);
 }
 
-static int
+int
 i915_gem_pager_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
     vm_ooffset_t foff, struct ucred *cred, u_short *color)
 {
@@ -4490,168 +4563,7 @@ i915_gem_pager_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
 	return (0);
 }
 
-int i915_intr_pf;
-
-static int
-i915_gem_pager_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot,
-    vm_page_t *mres)
-{
-	struct drm_gem_object *gem_obj;
-	struct drm_i915_gem_object *obj;
-	struct drm_device *dev;
-	drm_i915_private_t *dev_priv;
-	vm_page_t m, oldm;
-	int cause, ret;
-	bool write;
-
-	gem_obj = vm_obj->handle;
-	obj = to_intel_bo(gem_obj);
-	dev = obj->base.dev;
-	dev_priv = dev->dev_private;
-#if 0
-	write = (prot & VM_PROT_WRITE) != 0;
-#else
-	write = true;
-#endif
-	vm_object_pip_add(vm_obj, 1);
-
-	/*
-	 * Remove the placeholder page inserted by vm_fault() from the
-	 * object before dropping the object lock. If
-	 * i915_gem_release_mmap() is active in parallel on this gem
-	 * object, then it owns the drm device sx and might find the
-	 * placeholder already. Then, since the page is busy,
-	 * i915_gem_release_mmap() sleeps waiting for the busy state
-	 * of the page cleared. We will be not able to acquire drm
-	 * device lock until i915_gem_release_mmap() is able to make a
-	 * progress.
-	 */
-	if (*mres != NULL) {
-		oldm = *mres;
-		vm_page_remove(oldm);
-		*mres = NULL;
-	} else
-		oldm = NULL;
-retry:
-	VM_OBJECT_UNLOCK(vm_obj);
-unlocked_vmobj:
-	cause = ret = 0;
-	m = NULL;
-
-	if (i915_intr_pf) {
-		ret = i915_mutex_lock_interruptible(dev);
-		if (ret != 0) {
-			cause = 10;
-			goto out;
-		}
-	} else
-		mutex_lock(&dev->struct_mutex);
-
-	/*
-	 * Since the object lock was dropped, other thread might have
-	 * faulted on the same GTT address and instantiated the
-	 * mapping for the page.  Recheck.
-	 */
-	VM_OBJECT_LOCK(vm_obj);
-	m = vm_page_lookup(vm_obj, OFF_TO_IDX(offset));
-	if (m != NULL) {
-		if ((m->flags & PG_BUSY) != 0) {
-			mutex_unlock(&dev->struct_mutex);
-#if 0 /* XXX */
-			vm_page_sleep(m, "915pee");
-#endif
-			goto retry;
-		}
-		goto have_page;
-	} else
-		VM_OBJECT_UNLOCK(vm_obj);
-
-	/* Access to snoopable pages through the GTT is incoherent. */
-	if (obj->cache_level != I915_CACHE_NONE && !HAS_LLC(dev)) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	/* Now bind it into the GTT if needed */
-	if (!obj->map_and_fenceable) {
-		ret = i915_gem_object_unbind(obj);
-		if (ret != 0) {
-			cause = 20;
-			goto unlock;
-		}
-	}
-	if (!obj->gtt_space) {
-		ret = i915_gem_object_bind_to_gtt(obj, 0, true, false);
-		if (ret != 0) {
-			cause = 30;
-			goto unlock;
-		}
-
-		ret = i915_gem_object_set_to_gtt_domain(obj, write);
-		if (ret != 0) {
-			cause = 40;
-			goto unlock;
-		}
-	}
-
-	if (obj->tiling_mode == I915_TILING_NONE)
-		ret = i915_gem_object_put_fence(obj);
-	else
-		ret = i915_gem_object_get_fence(obj);
-	if (ret != 0) {
-		cause = 50;
-		goto unlock;
-	}
-
-	if (i915_gem_object_is_inactive(obj))
-		list_move_tail(&obj->mm_list, &dev_priv->mm.inactive_list);
-
-	obj->fault_mappable = true;
-	VM_OBJECT_LOCK(vm_obj);
-	m = vm_phys_fictitious_to_vm_page(dev->agp->base + obj->gtt_offset +
-	    offset);
-	if (m == NULL) {
-		cause = 60;
-		ret = -EFAULT;
-		goto unlock;
-	}
-	KASSERT((m->flags & PG_FICTITIOUS) != 0,
-	    ("not fictitious %p", m));
-	KASSERT(m->wire_count == 1, ("wire_count not 1 %p", m));
-
-	if ((m->flags & PG_BUSY) != 0) {
-		mutex_unlock(&dev->struct_mutex);
-#if 0 /* XXX */
-		vm_page_sleep(m, "915pbs");
-#endif
-		goto retry;
-	}
-	m->valid = VM_PAGE_BITS_ALL;
-	vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
-have_page:
-	*mres = m;
-	vm_page_busy_try(m, false);
-
-	mutex_unlock(&dev->struct_mutex);
-	if (oldm != NULL) {
-		vm_page_free(oldm);
-	}
-	vm_object_pip_wakeup(vm_obj);
-	return (VM_PAGER_OK);
-
-unlock:
-	mutex_unlock(&dev->struct_mutex);
-out:
-	KASSERT(ret != 0, ("i915_gem_pager_fault: wrong return"));
-	if (ret == -EAGAIN || ret == -EIO || ret == -EINTR) {
-		goto unlocked_vmobj;
-	}
-	VM_OBJECT_LOCK(vm_obj);
-	vm_object_pip_wakeup(vm_obj);
-	return (VM_PAGER_ERROR);
-}
-
-static void
+void
 i915_gem_pager_dtor(void *handle)
 {
 	struct drm_gem_object *obj;
@@ -4666,12 +4578,6 @@ i915_gem_pager_dtor(void *handle)
 	drm_gem_object_unreference(obj);
 	mutex_unlock(&dev->struct_mutex);
 }
-
-struct cdev_pager_ops i915_gem_pager_ops = {
-	.cdev_pg_fault	= i915_gem_pager_fault,
-	.cdev_pg_ctor	= i915_gem_pager_ctor,
-	.cdev_pg_dtor	= i915_gem_pager_dtor
-};
 
 #define	GEM_PARANOID_CHECK_GTT 0
 #if GEM_PARANOID_CHECK_GTT
