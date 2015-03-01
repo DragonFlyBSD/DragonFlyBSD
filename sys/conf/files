@@ -2020,7 +2020,6 @@ dev/drm/ttm/ttm_bo_vm.c			optional drm
 #dev/drm/radeon/radeon_agp.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_asic.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_atombios.c	optional radeonkmsdrm drm
-#dev/drm/radeon/radeon_atpx_handler.c	optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_benchmark.c	optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_bios.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_clocks.c		optional radeonkmsdrm drm

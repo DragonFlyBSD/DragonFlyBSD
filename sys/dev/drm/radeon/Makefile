@@ -17,7 +17,6 @@ SRCS	+=								\
 	radeon_agp.c							\
 	radeon_asic.c							\
 	radeon_atombios.c						\
-	radeon_atpx_handler.c						\
 	radeon_benchmark.c						\
 	radeon_bios.c							\
 	radeon_clocks.c							\
