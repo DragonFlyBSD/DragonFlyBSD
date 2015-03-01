@@ -72,6 +72,10 @@ struct dios_io {
 
 static MALLOC_DEFINE(M_DMSG_DISK, "dmsg_disk", "disk dmsg");
 
+static int blk_active;
+SYSCTL_INT(_debug, OID_AUTO, blk_active, CTLFLAG_RW, &blk_active, 0,
+           "Number of active iocom IOs");
+
 static int disk_iocom_reconnect(struct disk *dp, struct file *fp);
 static int disk_rcvdmsg(kdmsg_msg_t *msg);
 
@@ -354,8 +358,9 @@ disk_blk_read(struct disk *dp, kdmsg_msg_t *msg)
 		bio->bio_offset = msg->any.blk_read.offset;
 		bio->bio_caller_info1.ptr = msg->state;
 		bio->bio_done = diskiodone;
-		/* kdmsg_state_hold(msg->state); */
 
+		/* kdmsg_state_hold(msg->state); */
+		atomic_add_int(&blk_active, 1);
 		atomic_add_int(&iost->count, 1);
 		if (msg->any.head.cmd & DMSGF_DELETE)
 			iost->eof = 1;
@@ -428,8 +433,9 @@ disk_blk_write(struct disk *dp, kdmsg_msg_t *msg)
 		bio->bio_offset = msg->any.blk_write.offset;
 		bio->bio_caller_info1.ptr = msg->state;
 		bio->bio_done = diskiodone;
-		/* kdmsg_state_hold(msg->state); */
 
+		/* kdmsg_state_hold(msg->state); */
+		atomic_add_int(&blk_active, 1);
 		atomic_add_int(&iost->count, 1);
 		if (msg->any.head.cmd & DMSGF_DELETE)
 			iost->eof = 1;
@@ -479,8 +485,9 @@ disk_blk_flush(struct disk *dp, kdmsg_msg_t *msg)
 		bio->bio_offset = msg->any.blk_flush.offset;
 		bio->bio_caller_info1.ptr = msg->state;
 		bio->bio_done = diskiodone;
-		/* kdmsg_state_hold(msg->state); */
 
+		/* kdmsg_state_hold(msg->state); */
+		atomic_add_int(&blk_active, 1);
 		atomic_add_int(&iost->count, 1);
 		if (msg->any.head.cmd & DMSGF_DELETE)
 			iost->eof = 1;
@@ -529,8 +536,9 @@ disk_blk_freeblks(struct disk *dp, kdmsg_msg_t *msg)
 		bio->bio_offset = msg->any.blk_freeblks.offset;
 		bio->bio_caller_info1.ptr = msg->state;
 		bio->bio_done = diskiodone;
-		/* kdmsg_state_hold(msg->state); */
 
+		/* kdmsg_state_hold(msg->state); */
+		atomic_add_int(&blk_active, 1);
 		atomic_add_int(&iost->count, 1);
 		if (msg->any.head.cmd & DMSGF_DELETE)
 			iost->eof = 1;
@@ -618,6 +626,7 @@ diskiodone(struct bio *bio)
 	} else {
 		atomic_add_int(&iost->count, -1);
 	}
+	atomic_add_int(&blk_active, -1);
 	cmd |= DMSGF_REPLY;
 
 	/*

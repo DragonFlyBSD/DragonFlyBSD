@@ -705,7 +705,7 @@ struct kdmsg_data;
 /*
  * msg_ctl flags (atomic)
  */
-#define KDMSG_CLUSTERCTL_KILL		0x00000001
+#define KDMSG_CLUSTERCTL_UNUSED01	0x00000001
 #define KDMSG_CLUSTERCTL_KILLRX		0x00000002 /* staged helper exit */
 #define KDMSG_CLUSTERCTL_KILLTX		0x00000004 /* staged helper exit */
 #define KDMSG_CLUSTERCTL_SLEEPING	0x00000008 /* interlocked w/msglk */
@@ -745,6 +745,8 @@ struct kdmsg_state {
 #define KDMSG_STATE_ABORTING	0x0008		/* avoids recursive abort */
 #define KDMSG_STATE_OPPOSITE	0x0010		/* opposite direction */
 #define KDMSG_STATE_DYING	0x0020		/* indicates circuit failure */
+#define KDMSG_STATE_INTERLOCK	0x0040
+#define KDMSG_STATE_SIGNAL	0x0080
 
 struct kdmsg_msg {
 	TAILQ_ENTRY(kdmsg_msg) qentry;		/* serialized queue */
