@@ -588,7 +588,6 @@ unlock:
 	return ret;
 }
 
-#if 0
 /* This is the fast write path which cannot handle
  * page faults in the source data
  */
@@ -605,7 +604,7 @@ fast_user_write(struct io_mapping *mapping,
 
 	vaddr_atomic = io_mapping_map_atomic_wc(mapping, page_base);
 	/* We can use the cpu mem copy function because this is X86. */
-	vaddr = (void __force*)vaddr_atomic + page_offset;
+	vaddr = (char __force*)vaddr_atomic + page_offset;
 	unwritten = __copy_from_user_inatomic_nocache(vaddr,
 						      user_data, length);
 	io_mapping_unmap_atomic(vaddr_atomic);
@@ -676,27 +675,6 @@ i915_gem_gtt_pwrite_fast(struct drm_device *dev,
 out_unpin:
 	i915_gem_object_unpin(obj);
 out:
-	return ret;
-}
-#endif
-
-static int
-i915_gem_gtt_write(struct drm_device *dev, struct drm_i915_gem_object *obj,
-    uint64_t data_ptr, uint64_t size, uint64_t offset, struct drm_file *file)
-{
-	vm_offset_t mkva;
-	int ret;
-
-	/*
-	 * Pass the unaligned physical address and size to pmap_mapdev_attr()
-	 * so it can properly calculate whether an extra page needs to be
-	 * mapped or not to cover the requested range.  The function will
-	 * add the page offset into the returned mkva for us.
-	 */
-	mkva = (vm_offset_t)pmap_mapdev_attr(dev->agp->base + obj->gtt_offset +
-	    offset, size, PAT_WRITE_COMBINING);
-	ret = -copyin_nofault((void *)(uintptr_t)data_ptr, (char *)mkva, size);
-	pmap_unmapdev(mkva, size);
 	return ret;
 }
 
@@ -848,29 +826,26 @@ i915_gem_pwrite_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_i915_gem_pwrite *args = data;
 	struct drm_i915_gem_object *obj;
-	vm_page_t *ma;
-	vm_offset_t start, end;
-	int npages, ret;
+	int ret;
 
 	if (args->size == 0)
 		return 0;
 
-	start = trunc_page(args->data_ptr);
-	end = round_page(args->data_ptr + args->size);
-	npages = howmany(end - start, PAGE_SIZE);
-	ma = kmalloc(npages * sizeof(vm_page_t), M_DRM, M_WAITOK |
-	    M_ZERO);
-	npages = vm_fault_quick_hold_pages(&curproc->p_vmspace->vm_map,
-	    (vm_offset_t)args->data_ptr, args->size,
-	    VM_PROT_READ, ma, npages);
-	if (npages == -1) {
-		ret = -EFAULT;
-		goto free_ma;
-	}
+#if 0
+	if (!access_ok(VERIFY_READ,
+		       to_user_ptr(args->data_ptr),
+		       args->size))
+		return -EFAULT;
+
+	ret = fault_in_multipages_readable(to_user_ptr(args->data_ptr),
+					   args->size);
+	if (ret)
+		return -EFAULT;
+#endif
 
 	ret = i915_mutex_lock_interruptible(dev);
-	if (ret != 0)
-		goto unlocked;
+	if (ret)
+		return ret;
 
 	obj = to_intel_bo(drm_gem_object_lookup(dev, file, args->handle));
 	if (&obj->base == NULL) {
@@ -885,37 +860,46 @@ i915_gem_pwrite_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
+	/* prime objects have no backing filp to GEM pread/pwrite
+	 * pages from.
+	 */
+#if 0
+	if (!obj->base.filp) {
+		ret = -EINVAL;
+		goto out;
+	}
+#endif
+
+	trace_i915_gem_object_pwrite(obj, args->offset, args->size);
+
+	ret = -EFAULT;
+	/* We can only do the GTT pwrite on untiled buffers, as otherwise
+	 * it would end up going through the fenced access, and we'll get
+	 * different detiling behavior between reading and writing.
+	 * pread/pwrite currently are reading and writing from the CPU
+	 * perspective, requiring manual detiling by the client.
+	 */
 	if (obj->phys_obj) {
 		ret = i915_gem_phys_pwrite(dev, obj, args, file);
-	} else if (obj->gtt_space &&
-		    obj->base.write_domain != I915_GEM_DOMAIN_CPU) {
-		ret = i915_gem_object_pin(obj, 0, true, false);
-		if (ret != 0)
-			goto out;
-		ret = i915_gem_object_set_to_gtt_domain(obj, true);
-		if (ret != 0)
-			goto out_unpin;
-		ret = i915_gem_object_put_fence(obj);
-		if (ret != 0)
-			goto out_unpin;
-		ret = i915_gem_gtt_write(dev, obj, args->data_ptr, args->size,
-		    args->offset, file);
-out_unpin:
-		i915_gem_object_unpin(obj);
-	} else {
-		ret = i915_gem_object_set_to_cpu_domain(obj, true);
-		if (ret != 0)
-			goto out;
-		ret = i915_gem_shmem_pwrite(dev, obj, args, file);
+		goto out;
 	}
+
+	if (obj->cache_level == I915_CACHE_NONE &&
+	    obj->tiling_mode == I915_TILING_NONE &&
+	    obj->base.write_domain != I915_GEM_DOMAIN_CPU) {
+		ret = i915_gem_gtt_pwrite_fast(dev, obj, args, file);
+		/* Note that the gtt paths might fail with non-page-backed user
+		 * pointers (e.g. gtt mappings when moving data between
+		 * textures). Fallback to the shmem path in that case. */
+	}
+
+	if (ret == -EFAULT || ret == -ENOSPC)
+		ret = i915_gem_shmem_pwrite(dev, obj, args, file);
+
 out:
 	drm_gem_object_unreference(&obj->base);
 unlock:
 	mutex_unlock(&dev->struct_mutex);
-unlocked:
-	vm_page_unhold_pages(ma, npages);
-free_ma:
-	drm_free(ma, M_DRM);
 	return ret;
 }
 
