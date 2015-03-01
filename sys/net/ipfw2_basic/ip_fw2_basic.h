@@ -46,7 +46,7 @@ enum ipfw_basic_opcodes {
 	O_BASIC_DENY,		/* deny */
 	O_BASIC_COUNT,		/* count */
 	O_BASIC_SKIPTO,		/* skipto action->arg1	*/
-	O_BASIC_FORWARD,	/* fwd action->arg1 */
+	O_BASIC_FORWARD,	/* arg3 count of dest, arg1 type of fwd */
 
 	O_BASIC_IN,		/* in */
 	O_BASIC_OUT,		/* out */
