@@ -37,6 +37,9 @@
 
 int DMsgDebugOpt;
 int dmsg_state_count;
+#ifdef DMSG_BLOCK_DEBUG
+static int biocount;
+#endif
 
 static int dmsg_state_msgrx(dmsg_msg_t *msg);
 static void dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg);
@@ -478,6 +481,9 @@ dmsg_iocom_core(dmsg_iocom_t *iocom)
 		 * context of the current thread.  However, modifications
 		 * still require atomic ops.
 		 */
+#if 0
+		fprintf(stderr, "iocom %p %08x\n", iocom, iocom->flags);
+#endif
 		if ((iocom->flags & (DMSG_IOCOMF_RWORK |
 				     DMSG_IOCOMF_WWORK |
 				     DMSG_IOCOMF_PWORK |
@@ -570,8 +576,6 @@ dmsg_iocom_core(dmsg_iocom_t *iocom)
 			read(iocom->wakeupfds[0], dummybuf, sizeof(dummybuf));
 			atomic_set_int(&iocom->flags, DMSG_IOCOMF_RWORK);
 			atomic_set_int(&iocom->flags, DMSG_IOCOMF_WWORK);
-			if (TAILQ_FIRST(&iocom->txmsgq))
-				dmsg_iocom_flush1(iocom);
 		}
 
 		/*
@@ -1188,6 +1192,7 @@ skip:
 				(intmax_t)msg->any.head.msgid,
 				(intmax_t)msg->any.head.circuit);
 		}
+
 		error = dmsg_state_msgrx(msg);
 
 		if (error) {
@@ -1305,6 +1310,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 	size_t hoff;
 	size_t aoff;
 	int iovcnt;
+	int save_errno;
 
 	if (ioq->error) {
 		dmsg_iocom_drain(iocom);
@@ -1360,7 +1366,12 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 		hoff = 0;
 		aoff = 0;
 	}
-	if (iovcnt == 0)
+
+	/*
+	 * Shortcut if no work to do.  Be sure to check for old work still
+	 * pending in the FIFO.
+	 */
+	if (iovcnt == 0 && ioq->fifo_beg == ioq->fifo_cdx)
 		return;
 
 	/*
@@ -1412,6 +1423,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 		 */
 		iovcnt = dmsg_crypto_encrypt(iocom, ioq, iov, iovcnt, &nact);
 		n = writev(iocom->sock_fd, iov, iovcnt);
+		save_errno = errno;
 		if (n > 0) {
 			ioq->fifo_beg += n;
 			if (ioq->fifo_beg == ioq->fifo_end) {
@@ -1421,6 +1433,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 				ioq->fifo_end = 0;
 			}
 		}
+
 		/*
 		 * We don't mess with the nact returned by the crypto_encrypt
 		 * call, which represents the filling of the FIFO.  (n) tells
@@ -1434,6 +1447,7 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 		 * structure(s) unencrypted, so (nact) is basically (n).
 		 */
 		n = writev(iocom->sock_fd, iov, iovcnt);
+		save_errno = errno;
 		if (n > 0)
 			nact = n;
 		else
@@ -1442,8 +1456,9 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 
 	/*
 	 * Clean out the transmit queue based on what we successfully
-	 * sent (nact is the plaintext count).  ioq->hbytes/abytes
-	 * represents the portion of the first message previously sent.
+	 * encrypted (nact is the plaintext count) and is now in the FIFO.
+	 * ioq->hbytes/abytes represents the portion of the first message
+	 * previously sent.
 	 */
 	while ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		hbytes = (msg->any.head.cmd & DMSGF_SIZE) *
@@ -1473,6 +1488,42 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 			(intmax_t)msg->any.head.circuit);
 #endif
 
+#ifdef DMSG_BLOCK_DEBUG
+		uint32_t tcmd;
+
+		if (msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE)) {
+			if ((msg->state->flags & DMSG_STATE_ROOT) == 0) {
+				tcmd = (msg->state->icmd & DMSGF_BASECMDMASK) |
+					    (msg->any.head.cmd & (DMSGF_CREATE |
+								  DMSGF_DELETE |
+								  DMSGF_REPLY));
+			} else {
+				tcmd = 0;
+			}
+		} else {
+			tcmd = msg->any.head.cmd & DMSGF_CMDSWMASK;
+		}
+
+		switch (tcmd) {
+		case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE:
+		case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE:
+			fprintf(stderr, "write BIO %-3d %016jx %d@%016jx\n",
+				biocount, msg->any.head.msgid,
+				msg->any.blk_read.bytes,
+				msg->any.blk_read.offset);
+			break;
+		case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
+		case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
+			fprintf(stderr, "wretr BIO %-3d %016jx %d@%016jx\n",
+				biocount, msg->any.head.msgid,
+				msg->any.blk_read.bytes,
+				msg->any.blk_read.offset);
+			break;
+		default:
+			break;
+		}
+#endif
+
 		TAILQ_REMOVE(&ioq->msgq, msg, qentry);
 		--ioq->msgcount;
 		ioq->hbytes = 0;
@@ -1485,9 +1536,9 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 	 * Process the return value from the write w/regards to blocking.
 	 */
 	if (n < 0) {
-		if (errno != EINTR &&
-		    errno != EINPROGRESS &&
-		    errno != EAGAIN) {
+		if (save_errno != EINTR &&
+		    save_errno != EINPROGRESS &&
+		    save_errno != EAGAIN) {
 			/*
 			 * Fatal write error
 			 */
@@ -1495,13 +1546,23 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 			dmsg_iocom_drain(iocom);
 		} else {
 			/*
-			 * Wait for socket buffer space
+			 * Wait for socket buffer space, do not try to
+			 * process more packets for transmit until space
+			 * is available.
 			 */
 			atomic_set_int(&iocom->flags, DMSG_IOCOMF_WREQ);
 		}
-	} else {
-		atomic_set_int(&iocom->flags, DMSG_IOCOMF_WREQ);
+	} else if (TAILQ_FIRST(&ioq->msgq) ||
+		   TAILQ_FIRST(&iocom->txmsgq) ||
+		   ioq->fifo_beg != ioq->fifo_cdx) {
+		/*
+		 * If the write succeeded and more messages are pending
+		 * in either msgq, or the FIFO WWORK must remain set.
+		 */
+		atomic_set_int(&iocom->flags, DMSG_IOCOMF_WWORK);
 	}
+	/* else no transmit-side work remains */
+
 	if (ioq->error) {
 		dmsg_iocom_drain(iocom);
 	}
@@ -2215,7 +2276,7 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 	 * always have a DMSGF_CREATE and/or DMSGF_DELETE flag.
 	 */
 	if (msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE)) {
-		if ((state->flags & DMSG_STATE_ROOT) == 0) {
+		if ((msg->state->flags & DMSG_STATE_ROOT) == 0) {
 			msg->tcmd = (msg->state->icmd & DMSGF_BASECMDMASK) |
 				    (msg->any.head.cmd & (DMSGF_CREATE |
 							  DMSGF_DELETE |
@@ -2226,6 +2287,28 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 	} else {
 		msg->tcmd = msg->any.head.cmd & DMSGF_CMDSWMASK;
 	}
+
+#ifdef DMSG_BLOCK_DEBUG
+	switch (msg->tcmd) {
+	case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE:
+	case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE:
+		fprintf(stderr, "read  BIO %-3d %016jx %d@%016jx\n",
+			biocount, msg->any.head.msgid,
+			msg->any.blk_read.bytes,
+			msg->any.blk_read.offset);
+		break;
+	case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
+	case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
+		fprintf(stderr, "rread BIO %-3d %016jx %d@%016jx\n",
+			biocount, msg->any.head.msgid,
+			msg->any.blk_read.bytes,
+			msg->any.blk_read.offset);
+		break;
+	default:
+		break;
+	}
+#endif
+
 	return (error);
 }
 
@@ -2240,6 +2323,29 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 	dmsg_state_t *lstate;
 	dmsg_state_t *rstate;
 	dmsg_msg_t *rmsg;
+
+#ifdef DMSG_BLOCK_DEBUG
+	switch (lmsg->tcmd) {
+	case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE:
+	case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE:
+		atomic_add_int(&biocount, 1);
+		fprintf(stderr, "relay BIO %-3d %016jx %d@%016jx\n",
+			biocount, lmsg->any.head.msgid,
+			lmsg->any.blk_read.bytes,
+			lmsg->any.blk_read.offset);
+		break;
+	case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
+	case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
+		fprintf(stderr, "retrn BIO %-3d %016jx %d@%016jx\n",
+			biocount, lmsg->any.head.msgid,
+			lmsg->any.blk_read.bytes,
+			lmsg->any.blk_read.offset);
+		atomic_add_int(&biocount, -1);
+		break;
+	default:
+		break;
+	}
+#endif
 
 	if ((lmsg->any.head.cmd & (DMSGF_CREATE | DMSGF_REPLY)) ==
 	    DMSGF_CREATE) {
