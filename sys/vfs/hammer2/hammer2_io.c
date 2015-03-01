@@ -142,8 +142,18 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
 		/*
 		 * Issue the iocb immediately if the buffer is already good.
 		 * Once set GOOD cannot be cleared until refs drops to 0.
+		 *
+		 * There is a race here if a chained DIO_INPROG is present
+		 * (typically DIO_INPROG and DIO_WAITING are both set
+		 *  along with GOOD).  The DIO can become GOOD but not
+		 * yet have finished its INPROG processing, causing an
+		 * assertion in putblk later on.
+		 *
+		 * To deal with this we do not take the shortcut if INPROG
+		 * is still set.
 		 */
-		if (refs & HAMMER2_DIO_GOOD) {
+		if ((refs & (HAMMER2_DIO_GOOD | HAMMER2_DIO_INPROG)) ==
+		    HAMMER2_DIO_GOOD) {
 			iocb->callback(iocb);
 			break;
 		}
