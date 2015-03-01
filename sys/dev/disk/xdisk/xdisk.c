@@ -72,6 +72,13 @@ struct xa_softc_tree;
 RB_HEAD(xa_softc_tree, xa_softc);
 RB_PROTOTYPE(xa_softc_tree, xa_softc, rbnode, xa_softc_cmp);
 
+static int xa_active;
+SYSCTL_INT(_debug, OID_AUTO, xa_active, CTLFLAG_RW, &xa_active, 0,
+	   "Number of active xdisk IOs");
+static uint64_t xa_last;
+SYSCTL_ULONG(_debug, OID_AUTO, xa_last, CTLFLAG_RW, &xa_last, 0,
+	   "Offset of last xdisk IO");
+
 /*
  * Track a BIO tag
  */
@@ -95,6 +102,7 @@ struct xa_softc {
 	struct kdmsg_state_list spanq;
 	RB_ENTRY(xa_softc) rbnode;
 	cdev_t		dev;
+	struct devstat	stats;
 	struct disk_info info;
 	struct disk	disk;
 	uuid_t		pfs_fsid;
@@ -348,6 +356,8 @@ xaio_exit(kdmsg_iocom_t *iocom)
 	TAILQ_REMOVE(&xaiocomq, xaio, entry);
 	lwkt_reltoken(&xdisk_token);
 
+	kdmsg_iocom_uninit(&xaio->iocom);
+
 	kfree(xaio, M_XDISK);
 }
 
@@ -365,7 +375,8 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 	xa_iocom_t	*xaio = state->iocom->handle;
 	xa_softc_t	*sc;
 
-	kprintf("xdisk_rcvdmsg %08x\n", msg->any.head.cmd);
+	kprintf("xdisk_rcvdmsg %08x (state cmd %08x)\n",
+		msg->any.head.cmd, msg->tcmd);
 	lwkt_gettoken(&xdisk_token);
 
 	switch(msg->tcmd) {
@@ -391,8 +402,9 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 		      sizeof(xaio->dummysc.fs_label));
 		xaio->dummysc.fs_label[sizeof(xaio->dummysc.fs_label) - 1] = 0;
 
-		kprintf("xdisk: %s LNK_SPAN create ",
-			msg->any.lnk_span.fs_label);
+		kprintf("xdisk: %s LNK_SPAN create state=%p ",
+			msg->any.lnk_span.fs_label,
+			msg->state);
 
 		sc = RB_FIND(xa_softc_tree, &xa_device_tree, &xaio->dummysc);
 		if (sc == NULL) {
@@ -448,6 +460,12 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 				dev = disk_create(unit, &sc->disk, &xa_ops);
 				dev->si_drv1 = sc;
 				sc->dev = dev;
+				devstat_add_entry(&sc->stats, "xa", unit,
+						  DEV_BSIZE,
+						  DEVSTAT_NO_ORDERED_TAGS,
+						  DEVSTAT_TYPE_DIRECT |
+						  DEVSTAT_TYPE_IF_OTHER,
+						  DEVSTAT_PRIORITY_OTHER);
 			}
 
 			sc->info.d_media_blksize =
@@ -486,20 +504,21 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 		kdmsg_msg_result(msg, 0);
 		break;
 	case DMSG_LNK_SPAN | DMSGF_DELETE:
-	case DMSG_LNK_SPAN | DMSGF_DELETE | DMSGF_REPLY:
 		/*
 		 * Manage the tracking node for the remote LNK_SPAN.
 		 *
 		 * Return a final result, closing our end of the transaction.
 		 */
 		sc = msg->state->any.xa_sc;
-		kprintf("xdisk: %s LNK_SPAN terminate\n", sc->fs_label);
+		kprintf("xdisk: %s LNK_SPAN terminate state=%p\n",
+			sc->fs_label, msg->state);
 		msg->state->any.xa_sc = NULL;
 		TAILQ_REMOVE(&sc->spanq, msg->state, user_entry);
 		--sc->spancnt;
 		xa_terminate_check(sc);
 		kdmsg_msg_reply(msg, 0);
 		break;
+	case DMSG_LNK_SPAN | DMSGF_DELETE | DMSGF_REPLY:
 	case DMSG_LNK_SPAN | DMSGF_REPLY:
 		/*
 		 * Ignore unimplemented streaming replies on our LNK_SPAN
@@ -583,6 +602,7 @@ xa_terminate_check(struct xa_softc *sc)
 
 	if (sc->dev) {
 		disk_destroy(&sc->disk);
+		devstat_remove_entry(&sc->stats);
 		sc->dev->si_drv1 = NULL;
 		sc->dev = NULL;
 	}
@@ -594,6 +614,7 @@ xa_terminate_check(struct xa_softc *sc)
 		tag->sc = NULL;
 		kfree(tag, M_XDISK);
 	}
+
 	kfree(sc, M_XDISK);
 }
 
@@ -632,6 +653,8 @@ again:
 	 * Serialize initial open
 	 */
 	if (sc->opencnt++ > 0) {
+		sc->serializing = 0;
+		wakeup(sc);
 		lwkt_reltoken(&xdisk_token);
 		return(0);
 	}
@@ -715,10 +738,15 @@ xa_strategy(struct dev_strategy_args *ap)
 		biodone(bio);
 		return(0);
 	}
+	devstat_start_transaction(&sc->stats);
+	atomic_add_int(&xa_active, 1);
+	xa_last = bio->bio_offset;
 
+	lwkt_gettoken(&sc->tok);
 	tag = xa_setup_cmd(sc, bio);
 	if (tag)
 		xa_start(tag, NULL, 1);
+	lwkt_reltoken(&sc->tok);
 	return(0);
 }
 
@@ -846,6 +874,8 @@ xa_start(xa_tag_t *tag, kdmsg_msg_t *msg, int async)
 		default:
 			bp->b_flags |= B_ERROR;
 			bp->b_error = EIO;
+			devstat_end_transaction_buf(&sc->stats, bp);
+			atomic_add_int(&xa_active, -1);
 			biodone(bio);
 			tag->bio = NULL;
 			break;
@@ -894,6 +924,11 @@ xa_done(xa_tag_t *tag, int wasbio)
 		xa_release(tag, wasbio);
 }
 
+/*
+ * Release a tag.  If everything looks ok and there are pending BIOs
+ * (due to all tags in-use), we can use the tag to start the next BIO.
+ * Do not try to restart if the connection is currently failed.
+ */
 static
 void
 xa_release(xa_tag_t *tag, int wasbio)
@@ -902,11 +937,12 @@ xa_release(xa_tag_t *tag, int wasbio)
 	struct bio *bio;
 
 	lwkt_gettoken(&sc->tok);
-	if (wasbio && (bio = TAILQ_FIRST(&sc->bioq)) != NULL) {
+	if (wasbio && sc->open_tag &&
+	    (bio = TAILQ_FIRST(&sc->bioq)) != NULL) {
 		TAILQ_REMOVE(&sc->bioq, bio, bio_act);
 		tag->bio = bio;
-		lwkt_reltoken(&sc->tok);
 		xa_start(tag, NULL, 1);
+		lwkt_reltoken(&sc->tok);
 	} else {
 		TAILQ_REMOVE(&sc->tag_pendq, tag, entry);
 		TAILQ_INSERT_TAIL(&sc->tag_freeq, tag, entry);
@@ -1072,6 +1108,8 @@ xa_bio_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 		} else {
 			bp->b_resid = 0;
 		}
+		devstat_end_transaction_buf(&sc->stats, bp);
+		atomic_add_int(&xa_active, -1);
 		biodone(bio);
 		tag->bio = NULL;
 		break;
