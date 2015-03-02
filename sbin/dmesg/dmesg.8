@@ -45,6 +45,7 @@
 .Op Fl f[f]
 .Op Fl M Ar core
 .Op Fl N Ar system
+.Op Fl n Ar dumpnr
 .Sh DESCRIPTION
 The
 .Nm
@@ -89,6 +90,8 @@ instead of the default
 .It Fl N
 Extract the name list from the specified system instead of the default,
 which is the kernel image the system has booted from.
+.It Fl n Ar dumnr
+Use the kernel core dump file numbered dumpnr for debugging.
 .El
 .Sh FILES
 .Bl -tag -width ".Pa /var/run/dmesg.boot" -compact

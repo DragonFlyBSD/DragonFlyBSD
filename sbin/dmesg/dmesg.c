@@ -73,12 +73,13 @@ main(int argc, char **argv)
 	int clear = 0;
 	int pri = 0;
 	int tailmode = 0;
+	int kno;
 	unsigned int rindex;
 	size_t buflen, bufpos;
 
 	setlocale(LC_CTYPE, "");
 	memf = nlistf = NULL;
-	while ((ch = getopt(argc, argv, "acfM:N:")) != -1) {
+	while ((ch = getopt(argc, argv, "acfM:N:n:")) != -1) {
 		switch(ch) {
 		case 'a':
 			all_opt++;
@@ -94,6 +95,11 @@ main(int argc, char **argv)
 			break;
 		case 'N':
 			nlistf = optarg;
+			break;
+		case 'n':
+			kno = strtol(optarg, NULL, 0);
+			asprintf(&memf, "/var/crash/vmcore.%d", kno);
+			asprintf(&nlistf, "/var/crash/kern.%d", kno);
 			break;
 		case '?':
 		default:
