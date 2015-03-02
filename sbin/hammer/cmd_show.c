@@ -472,6 +472,19 @@ check_data_crc(hammer_btree_elm_t elm)
 
 static
 void
+print_config(char *cfgtxt)
+{
+	char *token;
+
+	printf("\n%17stext=\"\n", "");
+	while((token = strsep(&cfgtxt, "\r\n")) != NULL) {
+		printf("%17s  %s\n", "", token);
+	}
+	printf("%17s\"", "");
+}
+
+static
+void
 print_record(hammer_btree_elm_t elm)
 {
 	struct buffer_info *data_buffer;
@@ -561,8 +574,7 @@ print_record(hammer_btree_elm_t elm)
 		break;
 	case HAMMER_RECTYPE_CONFIG:
 		if (VerboseOpt > 2) {
-			printf("\n%17s", "");
-			printf("text=\"%s\"", data->config.text);
+			print_config(data->config.text);
 		}
 		break;
 	default:
