@@ -49,7 +49,6 @@ DIRS+=	secure/lib/libssh \
 .endif
 DIRS+=	secure/usr.bin/openssl
 .endif
-DIRS+=	libexec/dma
 
 # Files that should be installed read-only-executable (555) root:wheel
 #
