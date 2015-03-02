@@ -579,11 +579,17 @@ print_record(hammer_btree_elm_t elm)
 		}
 		break;
 	case HAMMER_RECTYPE_DATA:
-	case HAMMER_RECTYPE_EXT:
-	case HAMMER_RECTYPE_DB:
-		if (VerboseOpt > 2)
+		if (VerboseOpt > 3) {
 			printf("\n");
 			hexdump(data, data_len, "\t\t  ", 0);
+		}
+		break;
+	case HAMMER_RECTYPE_EXT:
+	case HAMMER_RECTYPE_DB:
+		if (VerboseOpt > 2) {
+			printf("\n");
+			hexdump(data, data_len, "\t\t  ", 0);
+		}
 		break;
 	default:
 		break;
