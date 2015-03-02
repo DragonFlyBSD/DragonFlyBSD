@@ -752,13 +752,13 @@ ng_ether_mod_event(module_t mod, int event, void *data)
 #endif
 
 		/* Create nodes for any already-existing Ethernet interfaces */
-		IFNET_RLOCK();
-		TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		ifnet_lock();
+		TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 			if (ifp->if_type == IFT_ETHER
 			    || ifp->if_type == IFT_L2VLAN)
 				ng_ether_attach(ifp);
 		}
-		IFNET_RUNLOCK();
+		ifnet_unlock();
 		break;
 
 	case MOD_UNLOAD:

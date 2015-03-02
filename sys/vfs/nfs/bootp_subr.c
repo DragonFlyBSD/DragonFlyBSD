@@ -393,7 +393,8 @@ bootpboot_p_iflist(void)
 	struct ifaddr_container *ifac;
 	
 	kprintf("Interface list:\n");
-	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+	ifnet_lock();
+	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
 		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 			struct ifaddr *ifa = ifac->ifa;
 
@@ -401,6 +402,7 @@ bootpboot_p_iflist(void)
 				bootpboot_p_if(ifp, ifa);
 		}
 	}
+	ifnet_unlock();
 }
 #endif /* defined(BOOTP_DEBUG) */
 

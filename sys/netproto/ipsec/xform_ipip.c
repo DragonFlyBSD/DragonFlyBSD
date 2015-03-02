@@ -158,7 +158,6 @@ static void
 _ipip_input(struct mbuf *m, int iphlen, struct ifnet *gifp)
 {
 	struct sockaddr_in *sin;
-	struct ifnet *ifp;
 	struct ifaddr *ifa;
 	struct ip *ipo;
 #ifdef INET6
@@ -307,8 +306,14 @@ _ipip_input(struct mbuf *m, int iphlen, struct ifnet *gifp)
 	if ((m->m_pkthdr.rcvif == NULL ||
 	    !(m->m_pkthdr.rcvif->if_flags & IFF_LOOPBACK)) &&
 	    ipip_allow != 2) {
-		TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		struct ifnet_array *arr;
+		int i;
+
+		arr = ifnet_array_get();
+		for (i = 0; i < arr->ifnet_count; ++i) {
+			struct ifnet *ifp = arr->ifnet_arr[i];
 			struct ifaddr_container *ifac;
+
 			TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 				ifa = ifac->ifa;
 #ifdef INET
