@@ -33,6 +33,7 @@
  */
 
 #include "hammer.h"
+#include <libutil.h>
 
 #define FLAG_TOOFARLEFT		0x0001
 #define FLAG_TOOFARRIGHT	0x0002
@@ -576,6 +577,13 @@ print_record(hammer_btree_elm_t elm)
 		if (VerboseOpt > 2) {
 			print_config(data->config.text);
 		}
+		break;
+	case HAMMER_RECTYPE_DATA:
+	case HAMMER_RECTYPE_EXT:
+	case HAMMER_RECTYPE_DB:
+		if (VerboseOpt > 2)
+			printf("\n");
+			hexdump(data, data_len, "\t\t  ", 0);
 		break;
 	default:
 		break;
