@@ -49,7 +49,8 @@ typedef struct btree_search {
 static void print_btree_node(hammer_off_t node_offset, btree_search_t search,
 			int depth, hammer_tid_t mirror_tid,
 			hammer_base_elm_t left_bound,
-			hammer_base_elm_t right_bound);
+			hammer_base_elm_t right_bound,
+			int this_index);
 static const char *check_data_crc(hammer_btree_elm_t elm);
 static void print_record(hammer_btree_elm_t elm);
 static void print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
@@ -102,7 +103,7 @@ hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
 			(uintmax_t)node_offset, lo, (uintmax_t)obj_id, depth);
 	}
 	print_btree_node(node_offset, searchp, depth, HAMMER_MAX_TID,
-			 left_bound, right_bound);
+			 left_bound, right_bound, -1);
 
 	AssertOnFailure = 1;
 }
@@ -110,7 +111,8 @@ hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
 static void
 print_btree_node(hammer_off_t node_offset, btree_search_t search,
 		int depth, hammer_tid_t mirror_tid,
-		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
+		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound,
+		int this_index)
 {
 	struct buffer_info *buffer = NULL;
 	hammer_node_ondisk_t node;
@@ -135,11 +137,18 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	else
 		badc = 'B';
 
-	if (node->mirror_tid <= mirror_tid) {
-		badm = ' ';
+	/*
+	 * Workaround for the root split that is not an error
+	 */
+	if (this_index == 0 && depth == 1 && mirror_tid == 0) {
+		badm = ' ';  /* could use unique mark */
 	} else {
-		badm = 'M';
-		badc = 'B';
+		if (node->mirror_tid <= mirror_tid) {
+			badm = ' ';
+		} else {
+			badm = 'M';
+			badc = 'B';
+		}
 	}
 
 	printf("%c%c   NODE %016jx cnt=%02d p=%016jx "
@@ -221,7 +230,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 				print_btree_node(elm->internal.subtree_offset,
 						 search, depth + 1,
 						 elm->internal.mirror_tid,
-						 &elm[0].base, &elm[1].base);
+						 &elm[0].base, &elm[1].base, i);
 				/*
 				 * Cause show to iterate after seeking to
 				 * the lo:objid
@@ -242,6 +251,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 		int flags, const char *label, const char *ext)
 {
 	char flagstr[8] = { 0, '-', '-', '-', '-', '-', '-', 0 };
+	char deleted;
 
 	flagstr[0] = flags ? 'B' : 'G';
 	if (flags & FLAG_TOOFARLEFT)
@@ -255,6 +265,22 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	if (flags & FLAG_BADMIRRORTID)
 		flagstr[6] = 'M';
 
+	/*
+	 * Workaround for the root split that is not actual delete
+	 */
+	if (elm->base.delete_tid) {
+		if (type == HAMMER_BTREE_TYPE_INTERNAL &&
+		    i == 0 &&
+		    elm->base.create_tid == 1 &&
+		    elm->base.delete_tid == 1 &&
+		    elm->internal.mirror_tid == 0)
+			deleted = ' ';  /* could use unique mark */
+		else
+			deleted = 'd';
+	} else {
+		deleted = ' ';
+	}
+
 	printf("%s\t%s %2d %c ",
 	       flagstr, label, i,
 	       (elm->base.btype ? elm->base.btype : '?'));
@@ -265,7 +291,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	       (uintmax_t)elm->base.key,
 	       elm->base.obj_type);
 	printf("\t       %c tids %016jx:%016jx ",
-		(elm->base.delete_tid ? 'd' : ' '),
+	       deleted,
 	       (uintmax_t)elm->base.create_tid,
 	       (uintmax_t)elm->base.delete_tid);
 
