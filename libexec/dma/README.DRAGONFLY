@@ -1,0 +1,20 @@
+DragonFly Mail Agent (DMA)
+==========================
+
+While dma originated on DragonFly, the official repository is now
+considered to be at GitHub:
+
+https://github.com/corecode/dma
+
+Synced commit 22 SEP 2014: b1056e4384472dbbedd6b075819abd6154ac0d69
+
+Local modifications applied to following files:
+	aliases_scan.1	(flex fix)
+	dma.8		(typo)
+	dma.c		(typos, byacc fix, period script integration)
+	dma.h		(byacc fix)
+	spool.c		(fixed i386 build)
+
+Not imported:
+	get-version.sh
+	test/

@@ -1,8 +1,9 @@
 /*
+ * Copyright (c) 2008-2014, Simon Schubert <2@0x2c.org>.
  * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Simon 'corecode' Schubert <corecode@fs.ei.tum.de>.
+ * by Simon Schubert <2@0x2c.org>.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -374,7 +375,9 @@ readmail(struct queue *queue, int nodot, int recp_from_header)
 		if (fgets(line, sizeof(line) - 1, stdin) == NULL)
 			break;
 		if (had_last_line)
-			errlogx(1, "bad mail input format");
+			errlogx(1, "bad mail input format:"
+				" from %s (uid %d) (envelope-from %s)",
+				username, useruid, queue->sender);
 		linelen = strlen(line);
 		if (linelen == 0 || line[linelen - 1] != '\n') {
 			/*
