@@ -1,6 +1,0 @@
-# $DragonFly: src/etc/dma/virtusertable,v 1.1 2008/02/02 18:24:00 matthias Exp $
-#
-# Virtual user table for address rewriting.  If you want to use this file
-# don't forget to uncomment VIRTUAL option in dma.conf.
-#
-# Format: localuser:my-real@email-address.example.com
