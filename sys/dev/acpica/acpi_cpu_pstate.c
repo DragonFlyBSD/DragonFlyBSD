@@ -606,8 +606,14 @@ fetch_pss:
 			   sizeof(*pstate) * npstate) != 0) {
 			device_printf(dev, "Inconsistent _PSS "
 				      "cross Processor objects\n");
+#if 0
+			/*
+			 * Some BIOSes create different P-State tables;
+			 * just trust the one from the BSP and move on.
+			 */
 			kfree(pstate, M_TEMP);
 			return ENXIO;
+#endif
 		}
 		kfree(pstate, M_TEMP);
 	}
