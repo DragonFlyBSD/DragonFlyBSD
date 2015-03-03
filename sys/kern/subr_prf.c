@@ -905,8 +905,9 @@ kvcreinitspin(void)
 static void
 constty_daemon(void)
 {
-	int rindex = -1;
-	int windex = -1;
+	u_int rindex;
+	u_int xindex;
+	u_int n;
         struct msgbuf *mbp;
 	struct tty *tp;
 
@@ -914,54 +915,64 @@ constty_daemon(void)
                               constty_td, SHUTDOWN_PRI_FIRST);
         constty_td->td_flags |= TDF_SYSTHREAD;
 
+	mbp = msgbufp;
+	rindex = mbp->msg_bufr;		/* persistent loop variable */
+	xindex = mbp->msg_bufx - 1;	/* anything different than bufx */
+	cpu_ccfence();
+
         for (;;) {
                 kproc_suspend_loop();
 
 		crit_enter();
-		mbp = msgbufp;
-		if (mbp == NULL || msgbufmapped == 0 ||
-		    windex == mbp->msg_bufx) {
+		if (mbp != msgbufp)
+			mbp = msgbufp;
+		if (xindex == mbp->msg_bufx ||
+		    mbp == NULL ||
+		    msgbufmapped == 0) {
 			tsleep(constty_td, 0, "waiting", hz*60);
 			crit_exit();
 			continue;
 		}
-		windex = mbp->msg_bufx;
 		crit_exit();
 
 		/*
 		 * Get message buf FIFO indices.  rindex is tracking.
 		 */
+		xindex = mbp->msg_bufx;
+		cpu_ccfence();
 		if ((tp = constty) == NULL) {
-			rindex = mbp->msg_bufx;
+			rindex = xindex;
 			continue;
 		}
 
 		/*
-		 * Don't blow up if the message buffer is broken
+		 * Check if the calculated bytes has rolled the whole
+		 * message buffer.
 		 */
-		if (windex < 0 || windex >= mbp->msg_size)
-			continue;
-		if (rindex < 0 || rindex >= mbp->msg_size)
-			rindex = windex;
+		n = xindex - rindex;
+		if (n > mbp->msg_size - 1024) {
+			rindex = xindex - mbp->msg_size + 2048;
+			n = xindex - rindex;
+		}
 
 		/*
 		 * And dump it.  If constty gets stuck will give up.
 		 */
-		while (rindex != windex) {
-			if (tputchar((uint8_t)mbp->msg_ptr[rindex], tp) < 0) {
+		while (rindex != xindex) {
+			u_int ri = rindex % mbp->msg_size;
+			if (tputchar((uint8_t)mbp->msg_ptr[ri], tp) < 0) {
 				constty = NULL;
-				rindex = mbp->msg_bufx;
+				rindex = xindex;
 				break;
 			}
-			if (++rindex >= mbp->msg_size)
-				rindex = 0;
                         if (tp->t_outq.c_cc >= tp->t_ohiwat) {
 				tsleep(constty_daemon, 0, "blocked", hz / 10);
 				if (tp->t_outq.c_cc >= tp->t_ohiwat) {
-					rindex = windex;
+					rindex = xindex;
 					break;
 				}
 			}
+			++rindex;
 		}
 	}
 }
@@ -1021,36 +1032,51 @@ static void
 msgaddchar(int c, void *dummy)
 {
 	struct msgbuf *mbp;
-	int rindex;
-	int windex;
+	u_int lindex;
+	u_int rindex;
+	u_int xindex;
+	u_int n;
 
 	if (!msgbufmapped)
 		return;
 	mbp = msgbufp;
-	windex = mbp->msg_bufx;
-	mbp->msg_ptr[windex] = c;
-	if (++windex >= mbp->msg_size)
-		windex = 0;
+	lindex = mbp->msg_bufl;
 	rindex = mbp->msg_bufr;
-	if (windex == rindex) {
-		rindex += 32;
-		if (rindex >= mbp->msg_size)
-			rindex -= mbp->msg_size;
+	xindex = mbp->msg_bufx++;	/* Allow SMP race */
+	cpu_ccfence();
+
+	mbp->msg_ptr[xindex % mbp->msg_size] = c;
+	n = xindex - lindex;
+	if (n > mbp->msg_size - 1024) {
+		lindex = xindex - mbp->msg_size + 2048;
+		cpu_ccfence();
+		mbp->msg_bufl = lindex;
+	}
+	n = xindex - rindex;
+	if (n > mbp->msg_size - 1024) {
+		rindex = xindex - mbp->msg_size + 2048;
+		cpu_ccfence();
 		mbp->msg_bufr = rindex;
 	}
-	mbp->msg_bufx = windex;
 }
 
 static void
 msgbufcopy(struct msgbuf *oldp)
 {
-	int pos;
+	u_int rindex;
+	u_int xindex;
+	u_int n;
 
-	pos = oldp->msg_bufr;
-	while (pos != oldp->msg_bufx) {
-		msglogchar(oldp->msg_ptr[pos], -1);
-		if (++pos >= oldp->msg_size)
-			pos = 0;
+	rindex = oldp->msg_bufr;
+	xindex = oldp->msg_bufx;
+	cpu_ccfence();
+
+	n = xindex - rindex;
+	if (n > oldp->msg_size - 1024)
+		rindex = xindex - oldp->msg_size + 2048;
+	while (rindex != xindex) {
+		msglogchar(oldp->msg_ptr[rindex % oldp->msg_size], -1);
+		++rindex;
 	}
 }
 
@@ -1063,8 +1089,7 @@ msgbufinit(void *ptr, size_t size)
 	size -= sizeof(*msgbufp);
 	cp = (char *)ptr;
 	msgbufp = (struct msgbuf *) (cp + size);
-	if (msgbufp->msg_magic != MSG_MAGIC || msgbufp->msg_size != size ||
-	    msgbufp->msg_bufx >= size || msgbufp->msg_bufr >= size) {
+	if (msgbufp->msg_magic != MSG_MAGIC || msgbufp->msg_size != size) {
 		bzero(cp, size);
 		bzero(msgbufp, sizeof(*msgbufp));
 		msgbufp->msg_magic = MSG_MAGIC;
@@ -1073,6 +1098,7 @@ msgbufinit(void *ptr, size_t size)
 	msgbufp->msg_ptr = cp;
 	if (msgbufmapped && oldp != msgbufp)
 		msgbufcopy(oldp);
+	cpu_mfence();
 	msgbufmapped = 1;
 	oldp = msgbufp;
 }
@@ -1082,8 +1108,14 @@ msgbufinit(void *ptr, size_t size)
 static int
 sysctl_kern_msgbuf(SYSCTL_HANDLER_ARGS)
 {
+        struct msgbuf *mbp;
 	struct ucred *cred;
 	int error;
+	u_int rindex_modulo;
+	u_int xindex_modulo;
+	u_int rindex;
+	u_int xindex;
+	u_int n;
 
 	/*
 	 * Only wheel or root can access the message log.
@@ -1102,15 +1134,44 @@ sysctl_kern_msgbuf(SYSCTL_HANDLER_ARGS)
 	/*
 	 * Unwind the buffer, so that it's linear (possibly starting with
 	 * some initial nulls).
+	 *
+	 * We don't push the entire buffer like we did before because
+	 * bufr (and bufl) now advance in chunks when the fifo is full,
+	 * rather than one character.
 	 */
-	error = sysctl_handle_opaque(oidp, msgbufp->msg_ptr + msgbufp->msg_bufx,
-	    msgbufp->msg_size - msgbufp->msg_bufx, req);
+	mbp = msgbufp;
+	rindex = mbp->msg_bufr;
+	xindex = mbp->msg_bufx;
+	n = xindex - rindex;
+	if (n > mbp->msg_size - 1024) {
+		rindex = xindex - mbp->msg_size + 2048;
+		n = xindex - rindex;
+	}
+	rindex_modulo = rindex % mbp->msg_size;
+	xindex_modulo = xindex % mbp->msg_size;
+
+	if (rindex_modulo < xindex_modulo) {
+		error = sysctl_handle_opaque(oidp,
+					     mbp->msg_ptr + rindex_modulo,
+					     xindex_modulo - rindex_modulo,
+					     req);
+	} else if (n <= mbp->msg_size - rindex_modulo) {
+		error = sysctl_handle_opaque(oidp,
+					     mbp->msg_ptr + rindex_modulo,
+					     n - rindex_modulo,
+					     req);
+	} else {
+		error = sysctl_handle_opaque(oidp,
+					     mbp->msg_ptr + rindex_modulo,
+					     mbp->msg_size - rindex_modulo,
+					     req);
+		n -= mbp->msg_size - rindex_modulo;
+		if (error == 0)
+			error = sysctl_handle_opaque(oidp, mbp->msg_ptr,
+						     n, req);
+	}
 	if (error)
 		return (error);
-	if (msgbufp->msg_bufx > 0) {
-		error = sysctl_handle_opaque(oidp, msgbufp->msg_ptr,
-		    msgbufp->msg_bufx, req);
-	}
 	return (error);
 }
 
@@ -1126,8 +1187,9 @@ sysctl_kern_msgbuf_clear(SYSCTL_HANDLER_ARGS)
 	error = sysctl_handle_int(oidp, oidp->oid_arg1, oidp->oid_arg2, req);
 	if (!error && req->newptr) {
 		/* Clear the buffer and reset write pointer */
+		msgbufp->msg_bufr = msgbufp->msg_bufx;
+		msgbufp->msg_bufl = msgbufp->msg_bufx;
 		bzero(msgbufp->msg_ptr, msgbufp->msg_size);
-		msgbufp->msg_bufr = msgbufp->msg_bufx = 0;
 		msgbuf_clear = 0;
 	}
 	return (error);
@@ -1141,7 +1203,9 @@ SYSCTL_PROC(_kern, OID_AUTO, msgbuf_clear,
 
 DB_SHOW_COMMAND(msgbuf, db_show_msgbuf)
 {
-	int i, j;
+	u_int rindex;
+	u_int i;
+	u_int j;
 
 	if (!msgbufmapped) {
 		db_printf("msgbuf not mapped yet\n");
@@ -1149,10 +1213,14 @@ DB_SHOW_COMMAND(msgbuf, db_show_msgbuf)
 	}
 	db_printf("msgbufp = %p\n", msgbufp);
 	db_printf("magic = %x, size = %d, r= %d, w = %d, ptr = %p\n",
-	    msgbufp->msg_magic, msgbufp->msg_size, msgbufp->msg_bufr,
-	    msgbufp->msg_bufx, msgbufp->msg_ptr);
+		  msgbufp->msg_magic, msgbufp->msg_size,
+		  msgbufp->msg_bufr % msgbufp->msg_size,
+		  msgbufp->msg_bufx % msgbufp->msg_size,
+		  msgbufp->msg_ptr);
+
+	rindex = msgbufp->msg_bufr;
 	for (i = 0; i < msgbufp->msg_size; i++) {
-		j = (i + msgbufp->msg_bufr) % msgbufp->msg_size;
+		j = (i + rindex) % msgbufp->msg_size;
 		db_printf("%c", msgbufp->msg_ptr[j]);
 	}
 	db_printf("\n");

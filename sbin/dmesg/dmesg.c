@@ -74,7 +74,6 @@ main(int argc, char **argv)
 	int pri = 0;
 	int tailmode = 0;
 	int kno;
-	unsigned int rindex;
 	size_t buflen, bufpos;
 
 	setlocale(LC_CTYPE, "");
@@ -115,9 +114,9 @@ main(int argc, char **argv)
 
 	if (memf == NULL && nlistf == NULL && tailmode == 0) {
 		/* Running kernel. Use sysctl. */
+		buflen = 0;
 		if (sysctlbyname("kern.msgbuf", NULL, &buflen, NULL, 0) == -1)
 			err(1, "sysctl kern.msgbuf");
-		buflen += 4096;		/* add some slop */
 		if ((bp = malloc(buflen)) == NULL)
 			errx(1, "malloc failed");
 		if (sysctlbyname("kern.msgbuf", bp, &buflen, NULL, 0) == -1)
@@ -126,6 +125,12 @@ main(int argc, char **argv)
 		bufpos = 0;
 		dumpbuf(bp, bufpos, buflen, &newl, &skip, &pri);
 	} else {
+		u_int rindex;
+		u_int xindex;
+		u_int ri;
+		u_int xi;
+		u_int n;
+
 		/* Read in kernel message buffer, do sanity checks. */
 		kd = kvm_open(nlistf, memf, NULL, O_RDONLY, "dmesg");
 		if (kd == NULL)
@@ -142,38 +147,51 @@ main(int argc, char **argv)
 			errx(1, "kvm_read: %s", kvm_geterr(kd));
 		if (KREAD((long)bufp, cur))
 			errx(1, "kvm_read: %s", kvm_geterr(kd));
-		if (cur.msg_magic != MSG_MAGIC)
+		if (cur.msg_magic != MSG_MAGIC && cur.msg_magic != MSG_OMAGIC)
 			errx(1, "kernel message buffer has different magic "
 			    "number");
 
 		/*
-		 * Start point.  Use rindex == bufx as our end-of-buffer
-		 * indication but for the initial rindex from the kernel
-		 * this means the buffer has cycled and is 100% full.
+		 * NOTE: current algorithm is compatible with both old and
+		 *	 new msgbuf structures.  The new structure doesn't
+		 *	 modulo the indexes (so we do), and adds a separate
+		 *	 log index which we don't access here.
 		 */
+
 		rindex = cur.msg_bufr;
-		if (rindex == cur.msg_bufx) {
-			if (++rindex >= cur.msg_size)
-				rindex = 0;
-		}
 
 		for (;;) {
-			if (cur.msg_bufx >= rindex)
-				buflen = cur.msg_bufx - rindex;
+			/*
+			 * Calculate index for dump and do sanity clipping.
+			 */
+			xindex = cur.msg_bufx;
+			n = xindex - rindex;
+			if (n > cur.msg_size - 1024) {
+				rindex = xindex - cur.msg_size + 2048;
+				n = xindex - rindex;
+			}
+			ri = rindex % cur.msg_size;
+			xi = xindex % cur.msg_size;
+
+			if (ri < xi)
+				buflen = xi - ri;
 			else
-				buflen = cur.msg_size - rindex;
+				buflen = cur.msg_size - ri;
+			if (buflen > n)
+				buflen = n;
 			if (buflen > INCRBUFSIZE)
 				buflen = INCRBUFSIZE;
-			if (kvm_read(kd, (long)cur.msg_ptr + rindex,
+
+			if (kvm_read(kd, (long)cur.msg_ptr + ri,
 				     bp, buflen) != (ssize_t)buflen) {
 				errx(1, "kvm_read: %s", kvm_geterr(kd));
 			}
 			if (buflen)
 				dumpbuf(bp, 0, buflen, &newl, &skip, &pri);
+			ri = (ri + buflen) % cur.msg_size;
+			n = n - buflen;
 			rindex += buflen;
-			if (rindex >= cur.msg_size)
-				rindex = 0;
-			if (rindex == cur.msg_bufx) {
+			if ((int)n <= 0) {
 				if (tailmode == 0)
 					break;
 				fflush(stdout);
@@ -224,7 +242,7 @@ dumpbuf(char *bp, size_t bufpos, size_t buflen,
 				*skip = 0;
 				*newl = 1;
 			} if (ch == '>') {
-				if (LOG_FAC(*pri) == LOG_KERN || all_opt)
+				if (LOG_FAC(*pri) == LOG_KERN)
 					*newl = *skip = 0;
 			} else if (ch >= '0' && ch <= '9') {
 				*pri *= 10;
@@ -232,14 +250,14 @@ dumpbuf(char *bp, size_t bufpos, size_t buflen,
 			}
 			continue;
 		}
-		if (*newl && ch == '<') {
+		if (*newl && ch == '<' && all_opt == 0) {
 			*pri = 0;
 			*skip = 1;
 			continue;
 		}
 		if (ch == '\0')
 			continue;
-		*newl = ch == '\n';
+		*newl = (ch == '\n');
 		vis(buf, ch, 0, 0);
 		if (buf[1] == 0)
 			putchar(buf[0]);

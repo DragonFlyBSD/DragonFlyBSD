@@ -109,7 +109,7 @@ static	int
 logclose(struct dev_close_args *ap)
 {
 	log_open = 0;
-	callout_stop(&logsoftc.sc_callout);
+	callout_stop_sync(&logsoftc.sc_callout);
 	logsoftc.sc_state = 0;
 	funsetown(&logsoftc.sc_sigio);
 	return (0);
@@ -121,38 +121,67 @@ logread(struct dev_read_args *ap)
 {
 	struct uio *uio = ap->a_uio;
 	struct msgbuf *mbp = msgbufp;
-	long l;
 	int error = 0;
+	u_int lindex;
+	u_int xindex;
+	u_int lindex_modulo;
+	u_int n;
 
-	crit_enter();
-	while (mbp->msg_bufr == mbp->msg_bufx) {
+	/*
+	 * Handle blocking
+	 */
+	while (mbp->msg_bufl == mbp->msg_bufx) {
+		crit_enter();
 		if (ap->a_ioflag & IO_NDELAY) {
 			crit_exit();
 			return (EWOULDBLOCK);
 		}
-		logsoftc.sc_state |= LOG_RDWAIT;
+		atomic_set_int(&logsoftc.sc_state, LOG_RDWAIT);
 		if ((error = tsleep((caddr_t)mbp, PCATCH, "klog", 0))) {
 			crit_exit();
 			return (error);
 		}
+		/* don't bother clearing LOG_RDWAIT */
+		crit_exit();
 	}
-	crit_exit();
-	logsoftc.sc_state &= ~LOG_RDWAIT;
 
-	while (uio->uio_resid > 0) {
-		l = (long)mbp->msg_bufx - (long)mbp->msg_bufr;
-		if (l < 0)
-			l = mbp->msg_size - mbp->msg_bufr;
-		l = (long)szmin(l, uio->uio_resid);
-		if (l == 0)
-			break;
-		error = uiomove((caddr_t)msgbufp->msg_ptr + mbp->msg_bufr,
-				(size_t)l, uio);
+	/*
+	 * Loop reading data
+	 */
+	while (uio->uio_resid > 0 && mbp->msg_bufl != mbp->msg_bufx) {
+		lindex = mbp->msg_bufl;
+		xindex = mbp->msg_bufx;
+		cpu_ccfence();
+
+		/*
+		 * Clean up if too much time has passed causing us to wrap
+		 * the buffer.  This will lose some data.  If more than ~4GB
+		 * then this will lose even more data.
+		 */
+		n = xindex - lindex;
+		if (n > mbp->msg_size - 1024) {
+			lindex = xindex - mbp->msg_size + 2048;
+			n = xindex - lindex;
+		}
+
+		/*
+		 * Calculates contiguous bytes we can read in one loop.
+		 */
+		lindex_modulo = lindex % mbp->msg_size;
+		n = mbp->msg_size - lindex_modulo;
+		if (n > xindex - lindex)
+			n = xindex - lindex;
+		if ((size_t)n > uio->uio_resid)
+			n = (u_int)uio->uio_resid;
+
+		/*
+		 * Copy (n) bytes of data.
+		 */
+		error = uiomove((caddr_t)msgbufp->msg_ptr + lindex_modulo,
+				(size_t)n, uio);
 		if (error)
 			break;
-		mbp->msg_bufr += l;
-		if (mbp->msg_bufr >= mbp->msg_size)
-			mbp->msg_bufr = 0;
+		mbp->msg_bufl = lindex + n;
 	}
 	return (error);
 }
@@ -195,7 +224,7 @@ logfiltread(struct knote *kn, long hint)
 	int ret = 0;
 
 	crit_enter();
-	if (msgbufp->msg_bufr != msgbufp->msg_bufx)
+	if (msgbufp->msg_bufl != msgbufp->msg_bufx)
 		ret = 1;
 	crit_exit();
 
@@ -217,8 +246,8 @@ logtimeout(void *arg)
 	if ((logsoftc.sc_state & LOG_ASYNC) && logsoftc.sc_sigio != NULL)
 		pgsigio(logsoftc.sc_sigio, SIGIO, 0);
 	if (logsoftc.sc_state & LOG_RDWAIT) {
+		atomic_clear_int(&logsoftc.sc_state, LOG_RDWAIT);
 		wakeup((caddr_t)msgbufp);
-		logsoftc.sc_state &= ~LOG_RDWAIT;
 	}
 	callout_reset(&logsoftc.sc_callout, hz / log_wakeups_per_second,
 		      logtimeout, NULL);
@@ -228,24 +257,35 @@ logtimeout(void *arg)
 static	int
 logioctl(struct dev_ioctl_args *ap)
 {
-	long l;
+	struct msgbuf *mbp = msgbufp;
+	u_int lindex;
+	u_int xindex;
+	u_int n;
 
 	switch (ap->a_cmd) {
 	case FIONREAD:
-		/* return number of characters immediately available */
-		crit_enter();
-		l = msgbufp->msg_bufx - msgbufp->msg_bufr;
-		crit_exit();
-		if (l < 0)
-			l += msgbufp->msg_size;
-		*(int *)ap->a_data = l;
+		lindex = mbp->msg_bufl;
+		xindex = mbp->msg_bufx;
+		cpu_ccfence();
+
+		/*
+		 * Clean up if too much time has passed causing us to wrap
+		 * the buffer.  This will lose some data.  If more than ~4GB
+		 * then this will lose even more data.
+		 */
+		n = xindex - lindex;
+		if (n > mbp->msg_size - 1024) {
+			lindex = xindex - mbp->msg_size + 2048;
+			n = xindex - lindex;
+		}
+		*(int *)ap->a_data = n;
 		break;
 
 	case FIOASYNC:
 		if (*(int *)ap->a_data)
-			logsoftc.sc_state |= LOG_ASYNC;
+			atomic_set_int(&logsoftc.sc_state, LOG_ASYNC);
 		else
-			logsoftc.sc_state &= ~LOG_ASYNC;
+			atomic_clear_int(&logsoftc.sc_state, LOG_ASYNC);
 		break;
 
 	case FIOSETOWN:

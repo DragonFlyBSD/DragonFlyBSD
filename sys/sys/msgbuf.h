@@ -42,13 +42,22 @@
 #include <sys/types.h>
 #endif
 
+/*
+ * NOTE!  The indices are not masked against msg_size.  All accessors
+ *	  must mask the indices against msg_size to get actual buffer
+ *	  indexes.  For relative block sizes, simple subtraction can be
+ *	  used using unsigned integers.
+ */
 struct	msgbuf {
-#define	MSG_MAGIC	0x063062
+#define	MSG_MAGIC	0x063064
+#define	MSG_OMAGIC	0x063062
 	unsigned int	msg_magic;
 	unsigned int	msg_size;		/* size of buffer area */
-	unsigned int	msg_bufx;		/* write pointer */
-	unsigned int	msg_bufr;		/* read pointer */
+	unsigned int	msg_bufx;		/* write index - kernel */
+	unsigned int	msg_bufr;		/* base index  - kernel */
 	char * 		msg_ptr;		/* pointer to buffer */
+	unsigned int	msg_bufl;		/* read index - log device */
+	unsigned int	msg_unused01;
 };
 
 #ifdef _KERNEL

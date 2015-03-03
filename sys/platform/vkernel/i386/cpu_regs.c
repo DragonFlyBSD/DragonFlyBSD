@@ -150,52 +150,6 @@ SYSCTL_PROC(_hw, HW_USERMEM, usermem, CTLTYPE_INT|CTLFLAG_RD,
 
 SYSCTL_ULONG(_hw, OID_AUTO, availpages, CTLFLAG_RD, &Maxmem, 0, "");
 
-#if 0
-
-static int
-sysctl_machdep_msgbuf(SYSCTL_HANDLER_ARGS)
-{
-	int error;
-
-	/* Unwind the buffer, so that it's linear (possibly starting with
-	 * some initial nulls).
-	 */
-	error=sysctl_handle_opaque(oidp,msgbufp->msg_ptr+msgbufp->msg_bufr,
-		msgbufp->msg_size-msgbufp->msg_bufr,req);
-	if(error) return(error);
-	if(msgbufp->msg_bufr>0) {
-		error=sysctl_handle_opaque(oidp,msgbufp->msg_ptr,
-			msgbufp->msg_bufr,req);
-	}
-	return(error);
-}
-
-SYSCTL_PROC(_machdep, OID_AUTO, msgbuf, CTLTYPE_STRING|CTLFLAG_RD,
-	0, 0, sysctl_machdep_msgbuf, "A","Contents of kernel message buffer");
-
-static int msgbuf_clear;
-
-static int
-sysctl_machdep_msgbuf_clear(SYSCTL_HANDLER_ARGS)
-{
-	int error;
-	error = sysctl_handle_int(oidp, oidp->oid_arg1, oidp->oid_arg2,
-		req);
-	if (!error && req->newptr) {
-		/* Clear the buffer and reset write pointer */
-		bzero(msgbufp->msg_ptr,msgbufp->msg_size);
-		msgbufp->msg_bufr=msgbufp->msg_bufx=0;
-		msgbuf_clear=0;
-	}
-	return (error);
-}
-
-SYSCTL_PROC(_machdep, OID_AUTO, msgbuf_clear, CTLTYPE_INT|CTLFLAG_RW,
-	&msgbuf_clear, 0, sysctl_machdep_msgbuf_clear, "I",
-	"Clear kernel message buffer");
-
-#endif
-
 /*
  * Send an interrupt to process.
  *
