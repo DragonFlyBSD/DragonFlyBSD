@@ -906,13 +906,14 @@ Matches IP packets whose time to live is
 Matches IP packets whose IP version field is
 .Ar ver .
 .It Cm keep-state
-Upon a match, the firewall will create a dynamic rule, whose
+Upon a match, the firewall will create a state, whose
 default behaviour is to match bidirectional traffic between
 source and destination IP/port using the same protocol.
 The rule has a limited lifetime (controlled by a set of
 .Xr sysctl 8
 variables), and the lifetime is refreshed every time a matching
 packet is found.
+the state can be manually created/deleted using the ipfw2 utility.
 .It Cm layer2
 Matches only layer2 packets, i.e. those passed to
 .Nm
