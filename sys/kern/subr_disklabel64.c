@@ -150,6 +150,7 @@ l64_readdisklabel(cdev_t dev, struct diskslice *sp, disklabel_t *lpp,
 	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bcount = bpsize;
 	bp->b_flags &= ~B_INVAL;
+	bp->b_flags |= B_FAILONDIS;
 	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(dev, &bp->b_bio1);
 
@@ -324,6 +325,7 @@ l64_writedisklabel(cdev_t dev, struct diskslices *ssp,
 	bp->b_bio1.bio_done = biodone_sync;
 	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bcount = bpsize;
+	bp->b_flags |= B_FAILONDIS;
 
 	/*
 	 * Because our I/O is larger then the label, and because we do not

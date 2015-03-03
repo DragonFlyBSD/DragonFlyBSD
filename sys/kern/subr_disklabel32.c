@@ -184,6 +184,7 @@ l32_readdisklabel(cdev_t dev, struct diskslice *sp, disklabel_t *lpp,
 	bp->b_bcount = secsize;
 	bp->b_flags &= ~B_INVAL;
 	bp->b_cmd = BUF_CMD_READ;
+	bp->b_flags |= B_FAILONDIS;
 	dev_dstrategy(dev, &bp->b_bio1);
 	if (biowait(&bp->b_bio1, "labrd"))
 		msg = "I/O error";
@@ -312,6 +313,7 @@ l32_writedisklabel(cdev_t dev, struct diskslices *ssp, struct diskslice *sp,
 	bp->b_bio1.bio_done = biodone_sync;
 	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bcount = lp->d_secsize;
+	bp->b_flags |= B_FAILONDIS;
 
 #if 1
 	/*

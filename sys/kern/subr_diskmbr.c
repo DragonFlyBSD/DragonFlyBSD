@@ -131,6 +131,7 @@ reread_mbr:
 	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bcount = info->d_media_blksize;
 	bp->b_cmd = BUF_CMD_READ;
+	bp->b_flags |= B_FAILONDIS;
 	dev_dstrategy(wdev, &bp->b_bio1);
 	if (biowait(&bp->b_bio1, "mbrrd") != 0) {
 		if ((info->d_dsflags & DSO_MBRQUIET) == 0) {
@@ -438,6 +439,7 @@ mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bcount = info->d_media_blksize;
 	bp->b_cmd = BUF_CMD_READ;
+	bp->b_flags |= B_FAILONDIS;
 	dev_dstrategy(dev, &bp->b_bio1);
 	if (biowait(&bp->b_bio1, "mbrrd") != 0) {
 		diskerr(&bp->b_bio1, dev,

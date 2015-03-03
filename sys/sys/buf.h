@@ -312,7 +312,7 @@ struct buf {
 #define	B_HEAVY		0x00100000	/* Heavy-weight buffer */
 #define	B_DIRTY		0x00200000	/* Needs writing later. */
 #define	B_RELBUF	0x00400000	/* Release VMIO buffer. */
-#define	B_UNUSED23	0x00800000	/* Request wakeup on done */
+#define	B_FAILONDIS	0x00800000	/* Fail on disconnect */
 #define	B_VNCLEAN	0x01000000	/* On vnode clean list */
 #define	B_VNDIRTY	0x02000000	/* On vnode dirty list */
 #define	B_PAGING	0x04000000	/* volatile paging I/O -- bypass VMIO */

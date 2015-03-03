@@ -45,7 +45,7 @@ static int dmsg_state_msgrx(dmsg_msg_t *msg);
 static void dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg);
 static void dmsg_msg_free_locked(dmsg_msg_t *msg);
 static void dmsg_state_free(dmsg_state_t *state);
-static void dmsg_msg_simulate_failure(dmsg_state_t *state, int error);
+static void dmsg_simulate_failure(dmsg_state_t *state, int error);
 
 RB_GENERATE(dmsg_state_tree, dmsg_state, rbnode, dmsg_state_cmp);
 
@@ -327,7 +327,8 @@ dmsg_msg_alloc_locked(dmsg_state_t *state,
 
 		RB_INSERT(dmsg_state_tree, &iocom->statewr_tree, state);
 		TAILQ_INSERT_TAIL(&pstate->subq, state, entry);
-		state->flags |= DMSG_STATE_INSERTED;
+		state->flags |= DMSG_STATE_SUBINSERTED |
+				DMSG_STATE_RBINSERTED;
 
 		if (DMsgDebugOpt) {
 			fprintf(stderr,
@@ -661,7 +662,6 @@ dmsg_ioq_read(dmsg_iocom_t *iocom)
 {
 	dmsg_ioq_t *ioq = &iocom->ioq_rx;
 	dmsg_msg_t *msg;
-	dmsg_state_t *state;
 	dmsg_hdr_t *head;
 	ssize_t n;
 	size_t bytes;
@@ -678,6 +678,11 @@ again:
 	 */
 	if ((msg = TAILQ_FIRST(&ioq->msgq)) != NULL) {
 		TAILQ_REMOVE(&ioq->msgq, msg, qentry);
+
+		if (msg->state == &iocom->state0) {
+			atomic_set_int(&iocom->flags, DMSG_IOCOMF_EOF);
+			fprintf(stderr, "EOF ON SOCKET %d\n", iocom->sock_fd);
+		}
 		return (msg);
 	}
 	atomic_clear_int(&iocom->flags, DMSG_IOCOMF_RREQ | DMSG_IOCOMF_RWORK);
@@ -1069,9 +1074,7 @@ again:
 	 *	 to update them when breaking out.
 	 */
 	if (ioq->error) {
-		dmsg_state_t *tmp_state;
 skip:
-		fprintf(stderr, "IOQ ERROR %d\n", ioq->error);
 		/*
 		 * An unrecoverable error causes all active receive
 		 * transactions to be terminated with a LNK_ERROR message.
@@ -1081,6 +1084,7 @@ skip:
 		 * message, which should cause master processing loops to
 		 * terminate.
 		 */
+		fprintf(stderr, "IOQ ERROR %d\n", ioq->error);
 		assert(ioq->msg == msg);
 		if (msg) {
 			dmsg_msg_free(msg);
@@ -1109,24 +1113,7 @@ skip:
 		 */
 		pthread_mutex_lock(&iocom->mtx);
 		dmsg_iocom_drain(iocom);
-
-		tmp_state = NULL;
-		RB_FOREACH(state, dmsg_state_tree, &iocom->staterd_tree) {
-			atomic_set_int(&state->flags, DMSG_STATE_DYING);
-			if (tmp_state == NULL && TAILQ_EMPTY(&state->subq))
-				tmp_state = state;
-		}
-		RB_FOREACH(state, dmsg_state_tree, &iocom->statewr_tree) {
-			atomic_set_int(&state->flags, DMSG_STATE_DYING);
-			if (tmp_state == NULL && TAILQ_EMPTY(&state->subq))
-				tmp_state = state;
-		}
-
-		if (tmp_state) {
-			dmsg_msg_simulate_failure(tmp_state, ioq->error);
-		} else {
-			dmsg_msg_simulate_failure(&iocom->state0, ioq->error);
-		}
+		dmsg_simulate_failure(&iocom->state0, ioq->error);
 		pthread_mutex_unlock(&iocom->mtx);
 		if (TAILQ_FIRST(&ioq->msgq))
 			goto again;
@@ -1211,6 +1198,10 @@ skip:
 			ioq->error = error;
 			goto skip;
 		}
+
+		/*
+		 * No error and not routed
+		 */
 		/* no error, not routed.  Fall through and return msg */
 	}
 	return (msg);
@@ -1606,19 +1597,22 @@ dmsg_msg_write(dmsg_msg_t *msg)
 	pthread_mutex_lock(&iocom->mtx);
 	state = msg->state;
 
+#if 0
 	/*
 	 * Make sure the parent transaction is still open in the transmit
 	 * direction.  If it isn't the message is dead and we have to
 	 * potentially simulate a rxmsg terminating the transaction.
 	 */
-	if (state->parent->txcmd & DMSGF_DELETE) {
+	if ((state->parent->txcmd & DMSGF_DELETE) ||
+	    (state->parent->rxcmd & DMSGF_DELETE)) {
 		fprintf(stderr, "dmsg_msg_write: EARLY TERMINATION\n");
-		dmsg_msg_simulate_failure(state, DMSG_ERR_LOSTLINK);
+		dmsg_simulate_failure(state, DMSG_ERR_LOSTLINK);
 		dmsg_state_cleanuptx(iocom, msg);
 		dmsg_msg_free(msg);
 		pthread_mutex_unlock(&iocom->mtx);
 		return;
 	}
+#endif
 
 	/*
 	 * Process state data into the message as needed, then update the
@@ -1666,44 +1660,45 @@ dmsg_msg_write(dmsg_msg_t *msg)
 }
 
 /*
+ * Simulate reception of a transaction DELETE message when the link goes
+ * bad.  This routine must recurse through state->subq and generate messages
+ * and callbacks bottom-up.
+ *
  * iocom->mtx must be held by caller.
  */
 static
 void
-dmsg_msg_simulate_failure(dmsg_state_t *state, int error)
+dmsg_simulate_failure(dmsg_state_t *state, int error)
 {
-	dmsg_iocom_t *iocom = state->iocom;
+	dmsg_state_t *substate;
+	dmsg_iocom_t *iocom;
 	dmsg_msg_t *msg;
 
-	msg = NULL;
+	while ((substate = TAILQ_FIRST(&state->subq)) != NULL) {
+		dmsg_simulate_failure(substate, error);
+	}
 
+	iocom = state->iocom;
 	if (state == &iocom->state0) {
 		/*
 		 * No active local or remote transactions remain.
-		 * Generate a final LNK_ERROR and flag EOF.
+		 * Generate a final LNK_ERROR.  EOF will be flagged
+		 * when the message is returned by dmsg_ioq_read().
 		 */
 		msg = dmsg_msg_alloc_locked(&iocom->state0, 0,
 					    DMSG_LNK_ERROR,
 					    NULL, NULL);
 		msg->any.head.error = error;
-		atomic_set_int(&iocom->flags, DMSG_IOCOMF_EOF);
-		fprintf(stderr, "EOF ON SOCKET %d\n", iocom->sock_fd);
 	} else if (state->flags & DMSG_STATE_OPPOSITE) {
 		/*
 		 * Active remote transactions are still present.
 		 * Simulate the other end sending us a DELETE.
 		 */
-		if (state->rxcmd & DMSGF_DELETE) {
-			fprintf(stderr,
-				"iocom: ioq error(rd) %d sleeping "
-				"state %p rxcmd %08x txcmd %08x "
-				"func %p\n",
-				error, state, state->rxcmd,
-				state->txcmd, state->func);
-			usleep(100000);	/* XXX */
-			atomic_set_int(&iocom->flags,
-				       DMSG_IOCOMF_RWORK);
-		} else {
+		if (state->flags & DMSG_STATE_SUBINSERTED) {
+			TAILQ_REMOVE(&state->parent->subq, state, entry);
+			state->flags &= ~DMSG_STATE_SUBINSERTED;
+		}
+		if ((state->rxcmd & DMSGF_DELETE) == 0) {
 			fprintf(stderr, "SIMULATE ERROR1\n");
 			msg = dmsg_msg_alloc_locked(&iocom->state0, 0,
 					     DMSG_LNK_ERROR,
@@ -1719,23 +1714,19 @@ dmsg_msg_simulate_failure(dmsg_state_t *state, int error)
 			     DMSG_STATE_OPPOSITE) == 0) {
 				msg->any.head.cmd |= DMSGF_REVCIRC;
 			}
+		} else {
+			msg = NULL;
 		}
 	} else {
 		/*
 		 * Active local transactions are still present.
 		 * Simulate the other end sending us a DELETE.
 		 */
-		if (state->rxcmd & DMSGF_DELETE) {
-			fprintf(stderr,
-				"iocom: ioq error(wr) %d sleeping "
-				"state %p rxcmd %08x txcmd %08x "
-				"func %p\n",
-				error, state, state->rxcmd,
-				state->txcmd, state->func);
-			usleep(100000);	/* XXX */
-			atomic_set_int(&iocom->flags,
-				       DMSG_IOCOMF_RWORK);
-		} else {
+		if (state->flags & DMSG_STATE_SUBINSERTED) {
+			TAILQ_REMOVE(&state->parent->subq, state, entry);
+			state->flags &= ~DMSG_STATE_SUBINSERTED;
+		}
+		if ((state->rxcmd & DMSGF_DELETE) == 0) {
 			fprintf(stderr, "SIMULATE ERROR1\n");
 			msg = dmsg_msg_alloc_locked(&iocom->state0, 0,
 					     DMSG_LNK_ERROR,
@@ -1754,6 +1745,8 @@ dmsg_msg_simulate_failure(dmsg_state_t *state, int error)
 			}
 			if ((state->rxcmd & DMSGF_CREATE) == 0)
 				msg->any.head.cmd |= DMSGF_CREATE;
+		} else {
+			msg = NULL;
 		}
 	}
 	if (msg) {
@@ -1973,6 +1966,13 @@ dmsg_state_result(dmsg_state_t *state, uint32_t error)
  *
  * --
  *
+ * The message may be running over a circuit.  If the circuit is half-deleted
+ * The message is typically racing against a link failure and must be thrown
+ * out.  As the circuit deletion propagates the library will automatically
+ * generate terminations for sub states.
+ *
+ * --
+ *
  * ABORT sequences work by setting the ABORT flag along with normal message
  * state.  However, ABORTs can also be sent on half-closed messages, that is
  * even if the command or reply side has already sent a DELETE, as long as
@@ -2128,7 +2128,8 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		pthread_mutex_lock(&iocom->mtx);
 		RB_INSERT(dmsg_state_tree, &iocom->staterd_tree, state);
 		TAILQ_INSERT_TAIL(&pstate->subq, state, entry);
-		state->flags |= DMSG_STATE_INSERTED;
+		state->flags |= DMSG_STATE_SUBINSERTED |
+				DMSG_STATE_RBINSERTED;
 
 		/*
 		 * If the parent is a relay set up the state handler to
@@ -2428,7 +2429,7 @@ dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 		state->rxcmd |= DMSGF_DELETE;
 
 		if (state->txcmd & DMSGF_DELETE) {
-			assert(state->flags & DMSG_STATE_INSERTED);
+			assert(state->flags & DMSG_STATE_RBINSERTED);
 			if (state->rxcmd & DMSGF_REPLY) {
 				assert(msg->any.head.cmd & DMSGF_REPLY);
 				RB_REMOVE(dmsg_state_tree,
@@ -2438,11 +2439,14 @@ dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 				RB_REMOVE(dmsg_state_tree,
 					  &iocom->staterd_tree, state);
 			}
-			pstate = state->parent;
-			TAILQ_REMOVE(&pstate->subq, state, entry);
-			state->flags &= ~DMSG_STATE_INSERTED;
+			state->flags &= ~DMSG_STATE_RBINSERTED;
+			if (state->flags & DMSG_STATE_SUBINSERTED) {
+				pstate = state->parent;
+				TAILQ_REMOVE(&pstate->subq, state, entry);
+				state->flags &= ~DMSG_STATE_SUBINSERTED;
+				dmsg_state_drop(pstate);
+			}
 			state->parent = NULL;
-			dmsg_state_drop(pstate);
 
 			if (state->relay) {
 				dmsg_state_drop(state->relay);
@@ -2494,7 +2498,7 @@ dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 		assert((state->txcmd & DMSGF_DELETE) == 0);
 		state->txcmd |= DMSGF_DELETE;
 		if (state->rxcmd & DMSGF_DELETE) {
-			assert(state->flags & DMSG_STATE_INSERTED);
+			assert(state->flags & DMSG_STATE_RBINSERTED);
 			if (state->txcmd & DMSGF_REPLY) {
 				assert(msg->any.head.cmd & DMSGF_REPLY);
 				RB_REMOVE(dmsg_state_tree,
@@ -2504,9 +2508,12 @@ dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 				RB_REMOVE(dmsg_state_tree,
 					  &iocom->statewr_tree, state);
 			}
+			state->flags &= ~DMSG_STATE_RBINSERTED;
 			pstate = state->parent;
-			TAILQ_REMOVE(&pstate->subq, state, entry);
-			state->flags &= ~DMSG_STATE_INSERTED;
+			if (state->flags & DMSG_STATE_SUBINSERTED) {
+				TAILQ_REMOVE(&pstate->subq, state, entry);
+				state->flags &= ~DMSG_STATE_SUBINSERTED;
+			}
 			state->parent = NULL;
 			dmsg_state_drop(pstate);
 
@@ -2547,7 +2554,9 @@ dmsg_state_free(dmsg_state_t *state)
 		fprintf(stderr, "terminate state %p id=%08x\n",
 			state, (uint32_t)state->msgid);
 	}
-	assert((state->flags & (DMSG_STATE_ROOT | DMSG_STATE_INSERTED)) == 0);
+	assert((state->flags & (DMSG_STATE_ROOT |
+				DMSG_STATE_SUBINSERTED |
+				DMSG_STATE_RBINSERTED)) == 0);
 	assert(TAILQ_EMPTY(&state->subq));
 	assert(state->refs == 0);
 	if (state->any.any != NULL)   /* XXX avoid deadlock w/exit & kernel */

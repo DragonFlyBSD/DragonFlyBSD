@@ -105,6 +105,9 @@
  * sub-transaction.  Note that msgids must still be unique on an
  * iocom-by-iocom basis.
  *
+ * Messages can race closing circuits.  When a circuit is lost,
+ * messages are simulated to delete any sub-transactions.
+ *
  *			    MESSAGE TRANSACTIONAL STATES
  *
  * Message transactions are handled by the CREATE, DELETE, REPLY, ABORT, and
@@ -724,6 +727,7 @@ struct kdmsg_state {
 	TAILQ_ENTRY(kdmsg_state) user_entry;	/* available to devices */
 	struct kdmsg_iocom *iocom;
 	struct kdmsg_state *parent;
+	int		refs;			/* refs */
 	uint32_t	icmd;			/* record cmd creating state */
 	uint32_t	txcmd;			/* mostly for CMDF flags */
 	uint32_t	rxcmd;			/* mostly for CMDF flags */
@@ -739,14 +743,15 @@ struct kdmsg_state {
 	} any;
 };
 
-#define KDMSG_STATE_INSERTED	0x0001
+#define KDMSG_STATE_SUBINSERTED	0x0001
 #define KDMSG_STATE_DYNAMIC	0x0002
 #define KDMSG_STATE_DELPEND	0x0004		/* transmit delete pending */
 #define KDMSG_STATE_ABORTING	0x0008		/* avoids recursive abort */
 #define KDMSG_STATE_OPPOSITE	0x0010		/* opposite direction */
 #define KDMSG_STATE_DYING	0x0020		/* indicates circuit failure */
 #define KDMSG_STATE_INTERLOCK	0x0040
-#define KDMSG_STATE_SIGNAL	0x0080
+#define KDMSG_STATE_RBINSERTED	0x0080
+#define KDMSG_STATE_SIGNAL	0x0400
 
 struct kdmsg_msg {
 	TAILQ_ENTRY(kdmsg_msg) qentry;		/* serialized queue */

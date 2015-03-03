@@ -118,7 +118,7 @@ struct xa_softc {
 	TAILQ_HEAD(, bio) bioq;		/* pending BIOs */
 	TAILQ_HEAD(, xa_tag) tag_freeq;	/* available I/O tags */
 	TAILQ_HEAD(, xa_tag) tag_pendq;	/* running I/O tags */
-	struct lwkt_token tok;
+	struct lock	lk;
 };
 
 typedef struct xa_softc	xa_softc_t;
@@ -189,9 +189,9 @@ static struct dev_ops xa_ops = {
 	.d_psize =	xa_size
 };
 
-static struct lwkt_token xdisk_token = LWKT_TOKEN_INITIALIZER(xdisk_token);
 static int xdisk_opencount;
 static cdev_t xdisk_dev;
+struct lock xdisk_lk;
 static TAILQ_HEAD(, xa_iocom) xaiocomq;
 
 /*
@@ -204,6 +204,7 @@ xdisk_modevent(module_t mod, int type, void *data)
 	case MOD_LOAD:
 		TAILQ_INIT(&xaiocomq);
 		RB_INIT(&xa_device_tree);
+		lockinit(&xdisk_lk, "xdisk", 0, 0);
 		xdisk_dev = make_dev(&xdisk_ops, 0,
 				     UID_ROOT, GID_WHEEL, 0600, "xdisk");
 		break;
@@ -238,18 +239,18 @@ xa_softc_cmp(xa_softc_t *sc1, xa_softc_t *sc2)
 static int
 xdisk_open(struct dev_open_args *ap)
 {
-	lwkt_gettoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_EXCLUSIVE);
 	++xdisk_opencount;
-	lwkt_reltoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_RELEASE);
 	return(0);
 }
 
 static int
 xdisk_close(struct dev_close_args *ap)
 {
-	lwkt_gettoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_EXCLUSIVE);
 	--xdisk_opencount;
-	lwkt_reltoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_RELEASE);
 	return(0);
 }
 
@@ -285,11 +286,10 @@ xdisk_attach(struct xdisk_attach_ioctl *xaioc)
 	/*
 	 * Normalize ioctl params
 	 */
-	kprintf("xdisk_attach1\n");
 	fp = holdfp(curproc->p_fd, xaioc->fd, -1);
 	if (fp == NULL)
 		return EINVAL;
-	kprintf("xdisk_attach2\n");
+	kprintf("xdisk_attach fp=%p\n", fp);
 
 	/*
 	 * See if the serial number is already present.  If we are
@@ -297,10 +297,9 @@ xdisk_attach(struct xdisk_attach_ioctl *xaioc)
 	 * duplicate entries not yet removed so we wait a bit and
 	 * retry.
 	 */
-	lwkt_gettoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_EXCLUSIVE);
 
 	xaio = kmalloc(sizeof(*xaio), M_XDISK, M_WAITOK | M_ZERO);
-	kprintf("xdisk_attach3\n");
 	kdmsg_iocom_init(&xaio->iocom, xaio,
 			 KDMSG_IOCOMF_AUTOCONN,
 			 M_XDISK, xaio_rcvdmsg);
@@ -331,7 +330,8 @@ xdisk_attach(struct xdisk_attach_ioctl *xaioc)
 	 */
 	TAILQ_INSERT_TAIL(&xaiocomq, xaio, entry);
 	kdmsg_iocom_autoinitiate(&xaio->iocom, NULL);
-	lwkt_reltoken(&xdisk_token);
+
+	lockmgr(&xdisk_lk, LK_RELEASE);
 
 	return 0;
 }
@@ -351,10 +351,10 @@ xaio_exit(kdmsg_iocom_t *iocom)
 {
 	xa_iocom_t *xaio = iocom->handle;
 
-	kprintf("xdisk_detach -xaio_exit\n");
-	lwkt_gettoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_EXCLUSIVE);
+	kprintf("xdisk_detach [xaio_exit()]\n");
 	TAILQ_REMOVE(&xaiocomq, xaio, entry);
-	lwkt_reltoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_RELEASE);
 
 	kdmsg_iocom_uninit(&xaio->iocom);
 
@@ -375,9 +375,12 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 	xa_iocom_t	*xaio = state->iocom->handle;
 	xa_softc_t	*sc;
 
-	kprintf("xdisk_rcvdmsg %08x (state cmd %08x)\n",
-		msg->any.head.cmd, msg->tcmd);
-	lwkt_gettoken(&xdisk_token);
+	if (state) {
+		kprintf("xdisk - rcvmsg state=%p rx=%08x tx=%08x msgcmd=%08x\n",
+			state, state->rxcmd, state->txcmd,
+			msg->any.head.cmd);
+	}
+	lockmgr(&xdisk_lk, LK_EXCLUSIVE);
 
 	switch(msg->tcmd) {
 	case DMSG_LNK_SPAN | DMSGF_CREATE | DMSGF_DELETE:
@@ -402,9 +405,8 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 		      sizeof(xaio->dummysc.fs_label));
 		xaio->dummysc.fs_label[sizeof(xaio->dummysc.fs_label) - 1] = 0;
 
-		kprintf("xdisk: %s LNK_SPAN create state=%p ",
-			msg->any.lnk_span.fs_label,
-			msg->state);
+		kprintf("xdisk: LINK_SPAN state %p create for %s\n",
+			msg->state, msg->any.lnk_span.fs_label);
 
 		sc = RB_FIND(xa_softc_tree, &xa_device_tree, &xaio->dummysc);
 		if (sc == NULL) {
@@ -415,7 +417,6 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 			int n;
 
 			sc = kmalloc(sizeof(*sc), M_XDISK, M_WAITOK | M_ZERO);
-			kprintf("(not found - create %p)\n", sc);
 			bcopy(msg->any.lnk_span.cl_label, sc->cl_label,
 			      sizeof(sc->cl_label));
 			sc->cl_label[sizeof(sc->cl_label) - 1] = 0;
@@ -437,11 +438,13 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 			sc->unit = unit;
 			sc->serializing = 1;
 			sc->spancnt = 1;
-			lwkt_token_init(&sc->tok, "xa");
+			lockinit(&sc->lk, "xalk", 0, 0);
 			TAILQ_INIT(&sc->spanq);
 			TAILQ_INIT(&sc->bioq);
 			TAILQ_INIT(&sc->tag_freeq);
 			TAILQ_INIT(&sc->tag_pendq);
+
+			lockmgr(&sc->lk, LK_EXCLUSIVE);
 			RB_INSERT(xa_softc_tree, &xa_device_tree, sc);
 			TAILQ_INSERT_TAIL(&sc->spanq, msg->state, user_entry);
 			msg->state->any.xa_sc = sc;
@@ -491,8 +494,9 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 			 */
 			disk_setdiskinfo(&sc->disk, &sc->info);
 			xa_restart_deferred(sc);	/* eats serializing */
+			lockmgr(&sc->lk, LK_RELEASE);
 		} else {
-			kprintf("(found spancnt %d sc=%p)\n", sc->spancnt, sc);
+			lockmgr(&sc->lk, LK_EXCLUSIVE);
 			++sc->spancnt;
 			TAILQ_INSERT_TAIL(&sc->spanq, msg->state, user_entry);
 			msg->state->any.xa_sc = sc;
@@ -500,7 +504,9 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 				sc->serializing = 1;
 				xa_restart_deferred(sc); /* eats serializing */
 			}
+			lockmgr(&sc->lk, LK_RELEASE);
 		}
+		kprintf("xdisk: sc %p spancnt %d\n", sc, sc->spancnt);
 		kdmsg_msg_result(msg, 0);
 		break;
 	case DMSG_LNK_SPAN | DMSGF_DELETE:
@@ -510,20 +516,51 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 		 * Return a final result, closing our end of the transaction.
 		 */
 		sc = msg->state->any.xa_sc;
-		kprintf("xdisk: %s LNK_SPAN terminate state=%p\n",
-			sc->fs_label, msg->state);
+		kprintf("xdisk: LINK_SPAN state %p delete for %s (sc=%p)\n",
+			msg->state, (sc ? sc->fs_label : "(null)"), sc);
+		lockmgr(&sc->lk, LK_EXCLUSIVE);
 		msg->state->any.xa_sc = NULL;
 		TAILQ_REMOVE(&sc->spanq, msg->state, user_entry);
 		--sc->spancnt;
-		xa_terminate_check(sc);
+
+		kprintf("xdisk: sc %p spancnt %d\n", sc, sc->spancnt);
+
+		/*
+		 * Spans can come and go as the graph stabilizes, so if
+		 * we lose a span along with sc->open_tag we may be able
+		 * to restart the I/Os on a different span.
+		 */
+		if (sc->spancnt &&
+		    sc->serializing == 0 && sc->open_tag == NULL) {
+			sc->serializing = 1;
+			xa_restart_deferred(sc);
+		}
+		lockmgr(&sc->lk, LK_RELEASE);
 		kdmsg_msg_reply(msg, 0);
+
+#if 0
+		/*
+		 * Termination
+		 */
+		if (sc->spancnt == 0)
+			xa_terminate_check(sc);
+#endif
 		break;
 	case DMSG_LNK_SPAN | DMSGF_DELETE | DMSGF_REPLY:
+		/*
+		 * Ignore unimplemented streaming replies on our LNK_SPAN
+		 * transaction.
+		 */
+		kprintf("xdisk: LINK_SPAN state %p delete+reply\n",
+			msg->state);
+		break;
 	case DMSG_LNK_SPAN | DMSGF_REPLY:
 		/*
 		 * Ignore unimplemented streaming replies on our LNK_SPAN
 		 * transaction.
 		 */
+		kprintf("xdisk: LINK_SPAN state %p reply\n",
+			msg->state);
 		break;
 	case DMSG_DBG_SHELL:
 		/*
@@ -566,7 +603,7 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 			kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	}
-	lwkt_reltoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_RELEASE);
 
 	return 0;
 }
@@ -574,7 +611,7 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 /*
  * Determine if we can destroy the xa_softc.
  *
- * Called with xdisk_token held.
+ * Called with xdisk_lk held.
  */
 static
 void
@@ -594,18 +631,25 @@ xa_terminate_check(struct xa_softc *sc)
 		kprintf("(leave intact)\n");
 		return;
 	}
-	kprintf("(remove from tree)\n");
-	sc->serializing = 1;
-	KKASSERT(TAILQ_EMPTY(&sc->tag_pendq));
 
+	/*
+	 * Remove from device tree, a race with a new incoming span
+	 * will create a new softc and disk.
+	 */
 	RB_REMOVE(xa_softc_tree, &xa_device_tree, sc);
 
+	/*
+	 * Device has to go first to prevent device ops races.
+	 */
 	if (sc->dev) {
 		disk_destroy(&sc->disk);
 		devstat_remove_entry(&sc->stats);
 		sc->dev->si_drv1 = NULL;
 		sc->dev = NULL;
 	}
+
+	kprintf("(remove from tree)\n");
+	sc->serializing = 1;
 	KKASSERT(sc->opencnt == 0);
 	KKASSERT(TAILQ_EMPTY(&sc->tag_pendq));
 
@@ -636,11 +680,11 @@ xa_open(struct dev_open_args *ap)
 	 * Interlock open with opencnt, wait for attachment operations
 	 * to finish.
 	 */
-	lwkt_gettoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_EXCLUSIVE);
 again:
 	sc = dev->si_drv1;
 	if (sc == NULL) {
-		lwkt_reltoken(&xdisk_token);
+		lockmgr(&xdisk_lk, LK_RELEASE);
 		return ENXIO;	/* raced destruction */
 	}
 	if (sc->serializing) {
@@ -655,10 +699,9 @@ again:
 	if (sc->opencnt++ > 0) {
 		sc->serializing = 0;
 		wakeup(sc);
-		lwkt_reltoken(&xdisk_token);
+		lockmgr(&xdisk_lk, LK_RELEASE);
 		return(0);
 	}
-	lwkt_reltoken(&xdisk_token);
 
 	/*
 	 * Issue BLK_OPEN if necessary.  ENXIO is returned if we have trouble.
@@ -669,13 +712,14 @@ again:
 		sc->serializing = 0;
 		wakeup(sc);
 	}
+	lockmgr(&xdisk_lk, LK_RELEASE);
 
 	/*
 	 * Wait for completion of the BLK_OPEN
 	 */
-	lwkt_gettoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_EXCLUSIVE);
 	while (sc->serializing)
-		tsleep(sc, 0, "xaopen", hz);
+		lksleep(sc, &xdisk_lk, 0, "xaopen", hz);
 
 	error = sc->last_error;
 	if (error) {
@@ -684,7 +728,7 @@ again:
 		xa_terminate_check(sc);
 		sc = NULL;	/* sc may be invalid now */
 	}
-	lwkt_reltoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_RELEASE);
 
 	return (error);
 }
@@ -699,8 +743,8 @@ xa_close(struct dev_close_args *ap)
 	sc = dev->si_drv1;
 	if (sc == NULL)
 		return ENXIO;	/* raced destruction */
-	lwkt_gettoken(&xdisk_token);
-	lwkt_gettoken(&sc->tok);
+	lockmgr(&xdisk_lk, LK_EXCLUSIVE);
+	lockmgr(&sc->lk, LK_EXCLUSIVE);
 
 	/*
 	 * NOTE: Clearing open_tag allows a concurrent open to re-open
@@ -709,14 +753,16 @@ xa_close(struct dev_close_args *ap)
 	if (sc->opencnt == 1 && sc->open_tag) {
 		tag = sc->open_tag;
 		sc->open_tag = NULL;
+		lockmgr(&sc->lk, LK_RELEASE);
 		kdmsg_state_reply(tag->state, 0);	/* close our side */
 		xa_wait(tag);				/* wait on remote */
+	} else {
+		lockmgr(&sc->lk, LK_RELEASE);
 	}
-	lwkt_reltoken(&sc->tok);
 	KKASSERT(sc->opencnt > 0);
 	--sc->opencnt;
 	xa_terminate_check(sc);
-	lwkt_reltoken(&xdisk_token);
+	lockmgr(&xdisk_lk, LK_RELEASE);
 
 	return(0);
 }
@@ -728,25 +774,16 @@ xa_strategy(struct dev_strategy_args *ap)
 	xa_tag_t *tag;
 	struct bio *bio = ap->a_bio;
 
-	/*
-	 * Only BUF_CMD_READ is allowed (for probes) if opencnt is zero.
-	 * Otherwise a BLK_OPEN transaction is required.
-	 */
-	if (sc->opencnt == 0 && bio->bio_buf->b_cmd != BUF_CMD_READ) {
-		bio->bio_buf->b_error = ENXIO;
-		bio->bio_buf->b_flags |= B_ERROR;
-		biodone(bio);
-		return(0);
-	}
 	devstat_start_transaction(&sc->stats);
 	atomic_add_int(&xa_active, 1);
 	xa_last = bio->bio_offset;
 
-	lwkt_gettoken(&sc->tok);
+	lockmgr(&sc->lk, LK_EXCLUSIVE);
 	tag = xa_setup_cmd(sc, bio);
 	if (tag)
 		xa_start(tag, NULL, 1);
-	lwkt_reltoken(&sc->tok);
+	lockmgr(&sc->lk, LK_RELEASE);
+
 	return(0);
 }
 
@@ -772,6 +809,7 @@ xa_size(struct dev_psize_args *ap)
  ************************************************************************
  *
  * Implement tag/msg setup and related functions.
+ * Called with sc->lk held.
  */
 static xa_tag_t *
 xa_setup_cmd(xa_softc_t *sc, struct bio *bio)
@@ -781,7 +819,6 @@ xa_setup_cmd(xa_softc_t *sc, struct bio *bio)
 	/*
 	 * Only get a tag if we have a valid virtual circuit to the server.
 	 */
-	lwkt_gettoken(&sc->tok);
 	if ((tag = TAILQ_FIRST(&sc->tag_freeq)) != NULL) {
 		TAILQ_REMOVE(&sc->tag_freeq, tag, entry);
 		tag->bio = bio;
@@ -794,11 +831,13 @@ xa_setup_cmd(xa_softc_t *sc, struct bio *bio)
 	if (tag == NULL && bio) {
 		TAILQ_INSERT_TAIL(&sc->bioq, bio, bio_act);
 	}
-	lwkt_reltoken(&sc->tok);
 
 	return (tag);
 }
 
+/*
+ * Called with sc->lk held
+ */
 static void
 xa_start(xa_tag_t *tag, kdmsg_msg_t *msg, int async)
 {
@@ -810,6 +849,18 @@ xa_start(xa_tag_t *tag, kdmsg_msg_t *msg, int async)
 	if (msg == NULL) {
 		struct bio *bio;
 		struct buf *bp;
+		kdmsg_state_t *trans;
+
+		if (sc->opencnt == 0 || sc->open_tag == NULL) {
+			TAILQ_FOREACH(trans, &sc->spanq, user_entry) {
+				if ((trans->rxcmd & DMSGF_DELETE) == 0)
+					break;
+			}
+		} else {
+			trans = sc->open_tag->state;
+		}
+		if (trans == NULL)
+			goto skip;
 
 		KKASSERT(tag->bio);
 		bio = tag->bio;
@@ -817,33 +868,17 @@ xa_start(xa_tag_t *tag, kdmsg_msg_t *msg, int async)
 
 		switch(bp->b_cmd) {
 		case BUF_CMD_READ:
-			if (sc->opencnt == 0 || sc->open_tag == NULL) {
-				kdmsg_state_t *span;
-
-				TAILQ_FOREACH(span, &sc->spanq, user_entry) {
-					if ((span->rxcmd & DMSGF_DELETE) == 0)
-						break;
-				}
-				if (span == NULL)
-					break;
-				msg = kdmsg_msg_alloc(span,
-						      DMSG_BLK_READ |
-						      DMSGF_CREATE |
-						      DMSGF_DELETE,
-						      xa_bio_completion, tag);
-			} else {
-				msg = kdmsg_msg_alloc(sc->open_tag->state,
-						      DMSG_BLK_READ |
-						      DMSGF_CREATE |
-						      DMSGF_DELETE,
-						      xa_bio_completion, tag);
-			}
+			msg = kdmsg_msg_alloc(trans,
+					      DMSG_BLK_READ |
+					      DMSGF_CREATE |
+					      DMSGF_DELETE,
+					      xa_bio_completion, tag);
 			msg->any.blk_read.keyid = sc->keyid;
 			msg->any.blk_read.offset = bio->bio_offset;
 			msg->any.blk_read.bytes = bp->b_bcount;
 			break;
 		case BUF_CMD_WRITE:
-			msg = kdmsg_msg_alloc(sc->open_tag->state,
+			msg = kdmsg_msg_alloc(trans,
 					      DMSG_BLK_WRITE |
 					      DMSGF_CREATE | DMSGF_DELETE,
 					      xa_bio_completion, tag);
@@ -854,7 +889,7 @@ xa_start(xa_tag_t *tag, kdmsg_msg_t *msg, int async)
 			msg->aux_size = bp->b_bcount;
 			break;
 		case BUF_CMD_FLUSH:
-			msg = kdmsg_msg_alloc(sc->open_tag->state,
+			msg = kdmsg_msg_alloc(trans,
 					      DMSG_BLK_FLUSH |
 					      DMSGF_CREATE | DMSGF_DELETE,
 					      xa_bio_completion, tag);
@@ -863,7 +898,7 @@ xa_start(xa_tag_t *tag, kdmsg_msg_t *msg, int async)
 			msg->any.blk_flush.bytes = bp->b_bcount;
 			break;
 		case BUF_CMD_FREEBLKS:
-			msg = kdmsg_msg_alloc(sc->open_tag->state,
+			msg = kdmsg_msg_alloc(trans,
 					      DMSG_BLK_FREEBLKS |
 					      DMSGF_CREATE | DMSGF_DELETE,
 					      xa_bio_completion, tag);
@@ -882,12 +917,18 @@ xa_start(xa_tag_t *tag, kdmsg_msg_t *msg, int async)
 		}
 	}
 
+	/*
+	 * If no msg was allocated this ia failure
+	 */
+skip:
 	if (msg) {
 		tag->state = msg->state;
 		kdmsg_msg_write(msg);
 	} else {
+		lockmgr(&sc->lk, LK_RELEASE);
 		tag->status.head.error = DMSG_ERR_IO;
 		xa_done(tag, 1);
+		lockmgr(&sc->lk, LK_EXCLUSIVE);
 	}
 }
 
@@ -897,13 +938,12 @@ xa_wait(xa_tag_t *tag)
 	xa_softc_t *sc = tag->sc;
 	uint32_t error;
 
-	kprintf("xdisk: xa_wait  %p\n", tag);
-
-	lwkt_gettoken(&sc->tok);
+	lockmgr(&sc->lk, LK_EXCLUSIVE);
 	tag->waiting = 1;
 	while (tag->done == 0)
-		tsleep(tag, 0, "xawait", 0);
-	lwkt_reltoken(&sc->tok);
+		lksleep(tag, &sc->lk, 0, "xawait", 0);
+	lockmgr(&sc->lk, LK_RELEASE);
+
 	error = tag->status.head.error;
 	tag->waiting = 0;
 	xa_release(tag, 0);
@@ -936,18 +976,29 @@ xa_release(xa_tag_t *tag, int wasbio)
 	xa_softc_t *sc = tag->sc;
 	struct bio *bio;
 
-	lwkt_gettoken(&sc->tok);
+	if ((bio = tag->bio) != NULL) {
+		struct buf *bp = bio->bio_buf;
+
+		bp->b_error = EIO;
+		bp->b_flags |= B_ERROR;
+		devstat_end_transaction_buf(&sc->stats, bp);
+		atomic_add_int(&xa_active, -1);
+		biodone(bio);
+		tag->bio = NULL;
+	}
+
+	lockmgr(&sc->lk, LK_EXCLUSIVE);
+
 	if (wasbio && sc->open_tag &&
 	    (bio = TAILQ_FIRST(&sc->bioq)) != NULL) {
 		TAILQ_REMOVE(&sc->bioq, bio, bio_act);
 		tag->bio = bio;
 		xa_start(tag, NULL, 1);
-		lwkt_reltoken(&sc->tok);
 	} else {
 		TAILQ_REMOVE(&sc->tag_pendq, tag, entry);
 		TAILQ_INSERT_TAIL(&sc->tag_freeq, tag, entry);
-		lwkt_reltoken(&sc->tok);
 	}
+	lockmgr(&sc->lk, LK_RELEASE);
 }
 
 /*
@@ -965,6 +1016,9 @@ xa_sync_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 	 * of the transaction and we are waiting for the other side to
 	 * close.
 	 */
+	kprintf("xa_sync_completion: tag %p msg %08x state %p\n",
+		tag, msg->any.head.cmd, msg->state);
+
 	if (tag == NULL) {
 		if (msg->any.head.cmd & DMSGF_CREATE)
 			kdmsg_state_reply(state, DMSG_ERR_LOSTLINK);
@@ -975,7 +1029,7 @@ xa_sync_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 	/*
 	 * Validate the tag
 	 */
-	lwkt_gettoken(&sc->tok);
+	lockmgr(&sc->lk, LK_EXCLUSIVE);
 
 	/*
 	 * Handle initial response to our open and restart any deferred
@@ -1027,7 +1081,8 @@ xa_sync_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 			xa_done(tag, 0);
 		}
 	}
-	lwkt_reltoken(&sc->tok);
+	lockmgr(&sc->lk, LK_RELEASE);
+
 	return (0);
 }
 
@@ -1136,11 +1191,23 @@ handle_done:
 	 * Handle the case where the transaction failed due to a
 	 * connectivity issue.  The tag is put away with wasbio=0
 	 * and we put the BIO back onto the bioq for a later restart.
+	 *
+	 * probe I/Os (where the device is not open) will be failed
+	 * instead of requeued.
 	 */
 handle_repend:
-	lwkt_gettoken(&sc->tok);
-	kprintf("BIO CIRC FAILURE, REPEND BIO %p\n", bio);
 	tag->bio = NULL;
+	if (bio->bio_buf->b_flags & B_FAILONDIS) {
+		kprintf("xa_strategy: disconnected, fail bp %p\n",
+			bio->bio_buf);
+		bio->bio_buf->b_error = ENXIO;
+		bio->bio_buf->b_flags |= B_ERROR;
+		biodone(bio);
+		bio = NULL;
+		kprintf("BIO CIRC FAILURE, FAIL BIO %p\n", bio);
+	} else {
+		kprintf("BIO CIRC FAILURE, REPEND BIO %p\n", bio);
+	}
 	xa_done(tag, 0);
 	if ((state->txcmd & DMSGF_DELETE) == 0)
 		kdmsg_msg_reply(msg, 0);
@@ -1148,9 +1215,11 @@ handle_repend:
 	/*
 	 * Requeue the bio
 	 */
-	TAILQ_INSERT_TAIL(&sc->bioq, bio, bio_act);
-
-	lwkt_reltoken(&sc->tok);
+	if (bio) {
+		lockmgr(&sc->lk, LK_EXCLUSIVE);
+		TAILQ_INSERT_TAIL(&sc->bioq, bio, bio_act);
+		lockmgr(&sc->lk, LK_RELEASE);
+	}
 	return (0);
 }
 
@@ -1158,7 +1227,7 @@ handle_repend:
  * Restart as much deferred I/O as we can.  The serializer is set and we
  * eat it (clear it) when done.
  *
- * Called with sc->tok held
+ * Called with sc->lk held
  */
 static
 void
@@ -1201,13 +1270,14 @@ xa_restart_deferred(xa_softc_t *sc)
 				error = ENXIO;
 		}
 		if (error == 0) {
-			kprintf("xdisk: BLK_OPEN\n");
 			sc->open_tag = tag;
 			msg = kdmsg_msg_alloc(span,
 					      DMSG_BLK_OPEN |
 					      DMSGF_CREATE,
 					      xa_sync_completion, tag);
 			msg->any.blk_open.modes = DMSG_BLKOPEN_RD;
+			kprintf("xdisk: BLK_OPEN tag %p state %p span-state %p\n",
+				tag, msg->state, span);
 			xa_start(tag, msg, 0);
 		}
 		if (error) {

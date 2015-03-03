@@ -179,13 +179,14 @@ struct dmsg_state {
 	dmsg_media_t	*media;
 };
 
-#define DMSG_STATE_INSERTED	0x0001
+#define DMSG_STATE_SUBINSERTED	0x0001
 #define DMSG_STATE_DYNAMIC	0x0002
 #define DMSG_STATE_NODEID	0x0004		/* manages a node id */
 #define DMSG_STATE_UNUSED_0008	0x0008
 #define DMSG_STATE_OPPOSITE	0x0010		/* initiated by other end */
 #define DMSG_STATE_CIRCUIT	0x0020		/* LNK_SPAN special case */
 #define DMSG_STATE_DYING	0x0040		/* indicates circuit failure */
+#define DMSG_STATE_RBINSERTED	0x0080
 #define DMSG_STATE_ROOT		0x8000		/* iocom->state0 */
 
 /*
