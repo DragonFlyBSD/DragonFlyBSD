@@ -1151,16 +1151,31 @@ sysctl_kern_msgbuf(SYSCTL_HANDLER_ARGS)
 	xindex_modulo = xindex % mbp->msg_size;
 
 	if (rindex_modulo < xindex_modulo) {
+		/*
+		 * Can handle in one linear section.
+		 */
 		error = sysctl_handle_opaque(oidp,
 					     mbp->msg_ptr + rindex_modulo,
 					     xindex_modulo - rindex_modulo,
 					     req);
+	} else if (rindex_modulo == xindex_modulo) {
+		/*
+		 * Empty buffer, just return a single newline
+		 */
+		error = sysctl_handle_opaque(oidp, "\n", 1, req);
 	} else if (n <= mbp->msg_size - rindex_modulo) {
+		/*
+		 * Can handle in one linear section.
+		 */
 		error = sysctl_handle_opaque(oidp,
 					     mbp->msg_ptr + rindex_modulo,
 					     n - rindex_modulo,
 					     req);
 	} else {
+		/*
+		 * Glue together two linear sections into one contiguous
+		 * output.
+		 */
 		error = sysctl_handle_opaque(oidp,
 					     mbp->msg_ptr + rindex_modulo,
 					     mbp->msg_size - rindex_modulo,

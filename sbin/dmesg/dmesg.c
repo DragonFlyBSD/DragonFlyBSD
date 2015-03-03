@@ -117,6 +117,9 @@ main(int argc, char **argv)
 		buflen = 0;
 		if (sysctlbyname("kern.msgbuf", NULL, &buflen, NULL, 0) == -1)
 			err(1, "sysctl kern.msgbuf");
+		if (buflen == 0)	/* can happen if msgbuf was cleared */
+			buflen = 1;
+
 		if ((bp = malloc(buflen)) == NULL)
 			errx(1, "malloc failed");
 		if (sysctlbyname("kern.msgbuf", bp, &buflen, NULL, 0) == -1)
