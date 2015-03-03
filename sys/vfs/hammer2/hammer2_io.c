@@ -135,6 +135,9 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
 	 */
 	iocb->dio = dio;
 
+	if (dio->act < 5)	/* SMP race ok */
+		++dio->act;
+
 	for (;;) {
 		refs = dio->refs;
 		cpu_ccfence();
@@ -142,18 +145,8 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
 		/*
 		 * Issue the iocb immediately if the buffer is already good.
 		 * Once set GOOD cannot be cleared until refs drops to 0.
-		 *
-		 * There is a race here if a chained DIO_INPROG is present
-		 * (typically DIO_INPROG and DIO_WAITING are both set
-		 *  along with GOOD).  The DIO can become GOOD but not
-		 * yet have finished its INPROG processing, causing an
-		 * assertion in putblk later on.
-		 *
-		 * To deal with this we do not take the shortcut if INPROG
-		 * is still set.
 		 */
-		if ((refs & (HAMMER2_DIO_GOOD | HAMMER2_DIO_INPROG)) ==
-		    HAMMER2_DIO_GOOD) {
+		if (refs & HAMMER2_DIO_GOOD) {
 			iocb->callback(iocb);
 			break;
 		}
@@ -193,8 +186,6 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
 		}
 		/* retry */
 	}
-	if (dio->act < 5)
-		++dio->act;
 }
 
 /*
@@ -204,6 +195,7 @@ void
 hammer2_io_complete(hammer2_iocb_t *iocb)
 {
 	hammer2_io_t *dio = iocb->dio;
+	hammer2_iocb_t *cbtmp;
 	uint32_t orefs;
 	uint32_t nrefs;
 	uint32_t oflags;
@@ -216,7 +208,7 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 	 * on dio->bp.
 	 */
 	if ((iocb->flags & HAMMER2_IOCB_INPROG) == 0) {
-		iocb->flags |= HAMMER2_IOCB_DONE;
+		atomic_set_int(&iocb->flags, HAMMER2_IOCB_DONE);
 		return;
 	}
 
@@ -238,6 +230,54 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 		}
 	}
 
+	/*
+	 * Clean up the dio before marking the iocb as being done.  If another
+	 * iocb is pending we chain to it while leaving DIO_INPROG set (it
+	 * will call io completion and presumably clear DIO_INPROG).
+	 *
+	 * Otherwise if no other iocbs are pending we clear DIO_INPROG before
+	 * finishing up the cbio.  This means that DIO_INPROG is cleared at
+	 * the end of the chain before ANY of the cbios are marked done.
+	 *
+	 * NOTE: The TAILQ is not stable until the spin-lock is held.
+	 */
+	for (;;) {
+		orefs = dio->refs;
+		nrefs = orefs & ~(HAMMER2_DIO_WAITING | HAMMER2_DIO_INPROG);
+
+		if (orefs & HAMMER2_DIO_WAITING) {
+			spin_lock(&dio->spin);
+			cbtmp = TAILQ_FIRST(&dio->iocbq);
+			if (cbtmp) {
+				/*
+				 * NOTE: flags not adjusted in this case.
+				 *	 Flags will be adjusted by the last
+				 *	 iocb.
+				 */
+				TAILQ_REMOVE(&dio->iocbq, cbtmp, entry);
+				spin_unlock(&dio->spin);
+				cbtmp->callback(cbtmp);	/* chained */
+				break;
+			} else if (atomic_cmpset_int(&dio->refs,
+						     orefs, nrefs)) {
+				spin_unlock(&dio->spin);
+				break;
+			}
+			spin_unlock(&dio->spin);
+			/* retry */
+		} else if (atomic_cmpset_int(&dio->refs, orefs, nrefs)) {
+			break;
+		} /* else retry */
+		/* retry */
+	}
+
+	/*
+	 * Mark the iocb as done and wakeup any waiters.  This is done after
+	 * all iocb chains have been called back and after DIO_INPROG has been
+	 * cleared.  This avoids races against ref count drops by the waiting
+	 * threads (a hard but not impossible SMP race) which might result in
+	 * a 1->0 transition of the refs while DIO_INPROG is still set.
+	 */
 	for (;;) {
 		oflags = iocb->flags;
 		cpu_ccfence();
@@ -255,38 +295,6 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 	}
 	iocb = NULL;
 
-	/*
-	 * Now finish up the dio.  If another iocb is pending chain to it
-	 * leaving DIO_INPROG set.  Otherwise clear DIO_INPROG
-	 * (and DIO_WAITING).
-	 *
-	 * NOTE: The TAILQ is not stable until the spin-lock is held.
-	 */
-	for (;;) {
-		orefs = dio->refs;
-		nrefs = orefs & ~(HAMMER2_DIO_WAITING | HAMMER2_DIO_INPROG);
-
-		if (orefs & HAMMER2_DIO_WAITING) {
-			spin_lock(&dio->spin);
-			iocb = TAILQ_FIRST(&dio->iocbq);
-			if (iocb) {
-				TAILQ_REMOVE(&dio->iocbq, iocb, entry);
-				spin_unlock(&dio->spin);
-				iocb->callback(iocb);	/* chained */
-				break;
-			} else if (atomic_cmpset_int(&dio->refs,
-						     orefs, nrefs)) {
-				spin_unlock(&dio->spin);
-				break;
-			}
-			spin_unlock(&dio->spin);
-			/* retry */
-		} else if (atomic_cmpset_int(&dio->refs, orefs, nrefs)) {
-			break;
-		} /* else retry */
-		/* retry */
-	}
-	/* SMP: dio is stale now */
 }
 
 /*
@@ -340,6 +348,20 @@ hammer2_io_putblk(hammer2_io_t **diop)
 		refs = dio->refs;
 
 		if ((refs & HAMMER2_DIO_MASK) == 1) {
+			if (refs & HAMMER2_DIO_INPROG) {
+				hammer2_iocb_t *xcb;
+
+				xcb = TAILQ_FIRST(&dio->iocbq);
+				kprintf("BAD REFS dio %p %08x/%08x, cbio %p\n",
+					dio, refs, dio->refs, xcb);
+				if (xcb)
+					kprintf("   IOCB: func=%p dio=%p cl=%p ch=%p ptr=%p\n",
+						xcb->callback,
+						xcb->dio,
+						xcb->cluster,
+						xcb->chain,
+						xcb->ptr);
+			}
 			KKASSERT((refs & HAMMER2_DIO_INPROG) == 0);
 			if (atomic_cmpset_int(&dio->refs, refs,
 					      ((refs - 1) &
@@ -551,7 +573,7 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 						bqrelse(dio->bp);
 					dio->bp = NULL;
 				}
-				iocb->flags |= HAMMER2_IOCB_READ;
+				atomic_set_int(&iocb->flags, HAMMER2_IOCB_READ);
 				breadcb(dio->hmp->devvp,
 					dio->pbase, dio->psize,
 					hammer2_io_callback, iocb);
