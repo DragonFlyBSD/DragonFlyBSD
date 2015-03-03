@@ -108,7 +108,7 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	newl = 0;
+	newl = 1;
 	skip = 0;
 	pri = 0;
 
