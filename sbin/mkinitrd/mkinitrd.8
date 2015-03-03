@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd December 12, 2011
+.Dd March 3, 2015
 .Dt MKINITRD 8
 .Os
 .Sh NAME
@@ -37,6 +37,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl b Ar bootdir
+.Op Fl c Ar contentsdir
 .Op Fl t Ar tmpdir
 .Sh DESCRIPTION
 The
@@ -52,6 +53,9 @@ utilities.
 It will also copy the contents of
 .Pa /usr/share/initrd
 onto the ramdisk, maintaining the same hierarchy.
+This directory can be changed with the
+.Fl c
+option.
 .Pp
 On completion, the final image will be copied to
 .Pa /boot/kernel/initrd.img.gz ,

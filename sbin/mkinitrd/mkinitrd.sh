@@ -96,22 +96,24 @@ print_info()
 
 usage()
 {
-	echo "usage: $0 [-b bootdir] [-t tmpdir]"
+	echo "usage: $0 [-b bootdir] [-c contentsdir] [-t tmpdir]"
 	exit 2
 }
 
-args=`getopt b:t: $*`
+args=`getopt b:c:t: $*`
 test $? -ne 0 && usage
 
 set -- $args
 for i; do
 	case "$i" in
 	-b)	BOOT_DIR="$2"; shift; shift;;
+	-c)	CONTENT_DIR="$2"; shift; shift;;
 	-t)	TMP_DIR="$2"; shift; shift;;
 	--)	shift; break;
 	esac
 done
 test ! -d ${BOOT_DIR} && usage
+test ! -d ${CONTENT_DIR} && usage
 test ! -d ${TMP_DIR} && usage
 test ! -z $1 && usage
 BUILD_DIR="${TMP_DIR}/initrd"
