@@ -6,5 +6,5 @@ dummy			/var		tmpfs	rw,-C		0	0
 dummy			/tmp		tmpfs	rw,-C		0	0
 dummy			/etc		tmpfs	rw,-C		0	0
 dummy			/usr/local/etc	tmpfs	rw,-C		0	0
-dummy			/usr/obj	tmpfs	rw,		0	0
+dummy			/usr/obj	tmpfs	rw		0	0
 proc			/proc		procfs	rw		0	0
