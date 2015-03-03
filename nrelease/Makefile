@@ -205,6 +205,12 @@ buildiso:
 	done
 	rm -rf ${ISOROOT}/boot/kernel.old
 	ln -sf kernel ${ISOROOT}/boot/kernel/kernel.BOOTP
+	# This next mkinitrd has to be the INSTALLED version because else we
+	# can't rely on the -c option being present, but it needs to be run
+	# OUTSIDE of the chroot because it might want to load vn(4) and can't
+	# do so from inside of it.
+	#
+	${ISOROOT}/sbin/mkinitrd -c ${ISOROOT}/usr/share/initrd -b ${ISOROOT}/boot
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
