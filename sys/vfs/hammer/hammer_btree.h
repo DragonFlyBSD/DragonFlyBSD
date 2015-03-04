@@ -57,6 +57,8 @@
  *
  * The recursion radix of an internal node is reduced by 1 relative to
  * a normal B-Tree in order to accomodate the right-hand boundary.
+ * The left-hand boundary (B in the left) is integrated into the first
+ * element so it doesn't require 2 elements to accomodate boundaries.
  *
  * The big benefit to using a B-Tree with built-in bounds information is
  * that it makes it possible to cache pointers into the middle of the tree
@@ -112,8 +114,8 @@ struct hammer_base_elm {
 typedef struct hammer_base_elm *hammer_base_elm_t;
 
 /*
- * Localization has sorting priority over the obj_id and is used to
- * localize inodes for very fast directory scans.
+ * Localization has sorting priority over the obj_id,rec_type,key and
+ * is used to localize inodes for very fast directory scans.
  *
  * Localization can also be used to create pseudo-filesystems within
  * a HAMMER filesystem.  Pseudo-filesystems would be suitable
@@ -137,8 +139,7 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
 /*
  * Internal element (40 + 24 = 64 bytes).
  *
- * An internal element contains the left-hand boundary, right-hand boundary,
- * and a recursion to another B-Tree node.
+ * An internal element contains a recursion to another B-Tree node.
  */
 struct hammer_btree_internal_elm {
 	struct hammer_base_elm base;

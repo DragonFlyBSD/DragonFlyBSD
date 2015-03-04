@@ -41,7 +41,7 @@
  * of the tree), but adds two additional boundary elements which describe
  * the left-most and right-most element a node is able to represent.  In
  * otherwords, we have boundary elements at the two ends of a B-Tree node
- * instead of sub-tree pointers.
+ * with no valid sub-tree pointer for the right-most element.
  *
  * A B-Tree internal node looks like this:
  *
@@ -54,6 +54,8 @@
  *
  * The radix for an internal node is 1 less then a leaf but we get a
  * number of significant benefits for our troubles.
+ * The left-hand boundary (B in the left) is integrated into the first
+ * element so it doesn't require 2 elements to accomodate boundaries.
  *
  * The big benefit to using a B-Tree containing boundary information
  * is that it is possible to cache pointers into the middle of the tree
@@ -1747,8 +1749,6 @@ done:
 
 /*
  * Same as the above, but splits a full leaf node.
- *
- * This function
  */
 static
 int
