@@ -51,9 +51,9 @@ DPORTS_PACKAGES?=	devel/git \
 #
 DPORTS_OPTIONS+=		-DBATCH
 .if make(gui)
-DPORTS_OPTIONS.devel_git+=	WITH="GUI"
+DPORTS_OPTIONS.devel_git+=	-DWITH_GUI
 .else
-DPORTS_OPTIONS.devel_git+=	WITHOUT="CONTRIB PERL"
+DPORTS_OPTIONS.devel_git+=	-DWITHOUT_CONTRIB -DWITHOUT_PERL
 .endif
 
 # Specify which root skeletons are required, and let the user include
