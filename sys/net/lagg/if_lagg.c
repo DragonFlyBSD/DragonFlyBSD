@@ -356,7 +356,7 @@ lagg_clone_create(struct if_clone *ifc, int unit, caddr_t params __unused)
 	 * This uses the callout lock rather than the rmlock; one can't
 	 * hold said rmlock during SWI.
 	 */
-	callout_init_lk(&sc->sc_callout, &sc->sc_call_lock);
+	callout_init_mp(&sc->sc_callout);
 
 	/* Initialise pseudo media types */
 	ifmedia_init(&sc->sc_media, 0, lagg_media_change,
