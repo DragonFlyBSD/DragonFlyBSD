@@ -272,8 +272,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 		if (type == HAMMER_BTREE_TYPE_INTERNAL &&
 		    i == 0 &&
 		    elm->base.create_tid == 1 &&
-		    elm->base.delete_tid == 1 &&
-		    elm->internal.mirror_tid == 0)
+		    elm->base.delete_tid == 1)
 			deleted = ' ';  /* could use unique mark */
 		else
 			deleted = 'd';
