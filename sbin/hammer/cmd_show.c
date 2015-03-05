@@ -245,6 +245,38 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	rel_buffer(buffer);
 }
 
+static __inline
+int
+is_root_btree_beg(u_int8_t type, int i, hammer_btree_elm_t elm)
+{
+	return (type == HAMMER_BTREE_TYPE_INTERNAL &&
+		i == 0 &&
+		elm->base.localization == 0 &&
+		elm->base.obj_id == (int64_t)-0x8000000000000000LL &&
+		elm->base.key == (int64_t)-0x8000000000000000LL &&
+		elm->base.create_tid == 1 &&
+		elm->base.delete_tid == 1 &&
+		elm->base.rec_type == 0 &&
+		elm->base.obj_type == 0 &&
+		elm->base.btype != 0);  /* depends on the original node */
+}
+
+static __inline
+int
+is_root_btree_end(u_int8_t type, int i, hammer_btree_elm_t elm)
+{
+	return (type == HAMMER_BTREE_TYPE_INTERNAL &&
+		i != 0 &&
+		elm->base.localization == 0xFFFFFFFFU &&
+		elm->base.obj_id == 0x7FFFFFFFFFFFFFFFLL &&
+		elm->base.key == 0x7FFFFFFFFFFFFFFFLL &&
+		elm->base.create_tid == 0xFFFFFFFFFFFFFFFFULL &&
+		elm->base.delete_tid == 0 &&
+		elm->base.rec_type == 0xFFFFU &&
+		elm->base.obj_type == 0 &&
+		elm->base.btype == 0);  /* not initialized */
+}
+
 static
 void
 print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
@@ -252,6 +284,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 {
 	char flagstr[8] = { 0, '-', '-', '-', '-', '-', '-', 0 };
 	char deleted;
+	char rootelm;
 
 	flagstr[0] = flags ? 'B' : 'G';
 	if (flags & FLAG_TOOFARLEFT)
@@ -266,19 +299,19 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 		flagstr[6] = 'M';
 
 	/*
-	 * Workaround for the root split that is not actual delete
+	 * Check if elm is derived from root split
 	 */
-	if (elm->base.delete_tid) {
-		if (type == HAMMER_BTREE_TYPE_INTERNAL &&
-		    i == 0 &&
-		    elm->base.create_tid == 1 &&
-		    elm->base.delete_tid == 1)
-			deleted = ' ';  /* could use unique mark */
-		else
-			deleted = 'd';
-	} else {
+	if (is_root_btree_beg(type, i, elm))
+		rootelm = '>';
+	else if (is_root_btree_end(type, i, elm))
+		rootelm = '<';
+	else
+		rootelm = ' ';
+
+	if (elm->base.delete_tid)
+		deleted = 'd';
+	else
 		deleted = ' ';
-	}
 
 	printf("%s\t%s %2d %c ",
 	       flagstr, label, i,
@@ -290,7 +323,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	       (uintmax_t)elm->base.key,
 	       elm->base.obj_type);
 	printf("\t       %c tids %016jx:%016jx ",
-	       deleted,
+	       (rootelm == ' ' ? deleted : rootelm),
 	       (uintmax_t)elm->base.create_tid,
 	       (uintmax_t)elm->base.delete_tid);
 
