@@ -213,7 +213,8 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 			r = hammer_btree_cmp(&cursor->key_end, &elm[0].base);
 			s = hammer_btree_cmp(&cursor->key_beg, &elm[1].base);
 			if (hammer_debug_btree) {
-				kprintf("BRACKETL %016llx[%d] %016llx %02x %016llx lo=%02x %d (td=%p)\n",
+				kprintf("BRACKETL %016llx[%d] %016llx %02x "
+					"key=%016llx lo=%02x %d (td=%p)\n",
 					(long long)cursor->node->node_offset,
 					cursor->index,
 					(long long)elm[0].internal.base.obj_id,
@@ -223,7 +224,8 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 					r,
 					curthread
 				);
-				kprintf("BRACKETR %016llx[%d] %016llx %02x %016llx lo=%02x %d\n",
+				kprintf("BRACKETR %016llx[%d] %016llx %02x "
+					"key=%016llx lo=%02x %d\n",
 					(long long)cursor->node->node_offset,
 					cursor->index + 1,
 					(long long)elm[1].internal.base.obj_id,
@@ -291,7 +293,8 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 			elm = &node->elms[cursor->index];
 			r = hammer_btree_cmp(&cursor->key_end, &elm->base);
 			if (hammer_debug_btree) {
-				kprintf("ELEMENT  %016llx:%d %c %016llx %02x %016llx lo=%02x %d\n",
+				kprintf("ELEMENT  %016llx:%d %c %016llx %02x "
+					"key=%016llx lo=%02x %d\n",
 					(long long)cursor->node->node_offset,
 					cursor->index,
 					(elm[0].leaf.base.btype ?
@@ -366,7 +369,8 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		if (hammer_debug_btree) {
 			int i = cursor->index;
 			hammer_btree_elm_t elm = &cursor->node->ondisk->elms[i];
-			kprintf("ITERATE  %p:%d %016llx %02x %016llx lo=%02x\n",
+			kprintf("ITERATE  %p:%d %016llx %02x "
+				"key=%016llx lo=%02x\n",
 				cursor->node, i,
 				(long long)elm->internal.base.obj_id,
 				elm->internal.base.rec_type,
@@ -501,7 +505,8 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 			r = hammer_btree_cmp(&cursor->key_end, &elm[0].base);
 			s = hammer_btree_cmp(&cursor->key_beg, &elm[1].base);
 			if (hammer_debug_btree) {
-				kprintf("BRACKETL %016llx[%d] %016llx %02x %016llx lo=%02x %d\n",
+				kprintf("BRACKETL %016llx[%d] %016llx %02x "
+					"key=%016llx lo=%02x %d\n",
 					(long long)cursor->node->node_offset,
 					cursor->index,
 					(long long)elm[0].internal.base.obj_id,
@@ -510,7 +515,8 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 					elm[0].internal.base.localization,
 					r
 				);
-				kprintf("BRACKETR %016llx[%d] %016llx %02x %016llx lo=%02x %d\n",
+				kprintf("BRACKETR %016llx[%d] %016llx %02x "
+					"key=%016llx lo=%02x %d\n",
 					(long long)cursor->node->node_offset,
 					cursor->index + 1,
 					(long long)elm[1].internal.base.obj_id,
@@ -551,7 +557,8 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 			elm = &node->elms[cursor->index];
 			s = hammer_btree_cmp(&cursor->key_beg, &elm->base);
 			if (hammer_debug_btree) {
-				kprintf("ELEMENT  %016llx:%d %c %016llx %02x %016llx lo=%02x %d\n",
+				kprintf("ELEMENT  %016llx:%d %c %016llx %02x "
+					"key=%016llx lo=%02x %d\n",
 					(long long)cursor->node->node_offset,
 					cursor->index,
 					(elm[0].leaf.base.btype ?
@@ -603,7 +610,8 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 		if (hammer_debug_btree) {
 			int i = cursor->index;
 			hammer_btree_elm_t elm = &cursor->node->ondisk->elms[i];
-			kprintf("ITERATE  %p:%d %016llx %02x %016llx lo=%02x\n",
+			kprintf("ITERATE  %p:%d %016llx %02x "
+				"key=%016llx lo=%02x\n",
 				cursor->node, i,
 				(long long)elm->internal.base.obj_id,
 				elm->internal.base.rec_type,
