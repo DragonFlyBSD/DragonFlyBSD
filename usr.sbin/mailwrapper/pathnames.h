@@ -1,5 +1,4 @@
 /* $FreeBSD: src/usr.sbin/mailwrapper/pathnames.h,v 1.3 2000/01/10 03:20:13 imp Exp $ */
-/* $DragonFly: src/usr.sbin/mailwrapper/pathnames.h,v 1.2 2003/06/17 04:29:57 dillon Exp $ */
 
 /*
  * Copyright (c) 1998
@@ -33,4 +32,4 @@
  */
 
 #define _PATH_MAILERCONF	"/etc/mail/mailer.conf"
-#define _PATH_DEFAULTMTA	"/usr/libexec/sendmail/sendmail"
+#define _PATH_DEFAULTMTA	"/usr/libexec/dma"
