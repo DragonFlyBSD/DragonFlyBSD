@@ -502,18 +502,20 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 		KKASSERT(cursor->index != node->count);
 		if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 			elm = &node->elms[cursor->index];
+
 			r = hammer_btree_cmp(&cursor->key_end, &elm[0].base);
 			s = hammer_btree_cmp(&cursor->key_beg, &elm[1].base);
 			if (hammer_debug_btree) {
 				kprintf("BRACKETL %016llx[%d] %016llx %02x "
-					"key=%016llx lo=%02x %d\n",
+					"key=%016llx lo=%02x %d (td=%p)\n",
 					(long long)cursor->node->node_offset,
 					cursor->index,
 					(long long)elm[0].internal.base.obj_id,
 					elm[0].internal.base.rec_type,
 					(long long)elm[0].internal.base.key,
 					elm[0].internal.base.localization,
-					r
+					r,
+					curthread
 				);
 				kprintf("BRACKETR %016llx[%d] %016llx %02x "
 					"key=%016llx lo=%02x %d\n",
@@ -557,7 +559,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 			elm = &node->elms[cursor->index];
 			s = hammer_btree_cmp(&cursor->key_beg, &elm->base);
 			if (hammer_debug_btree) {
-				kprintf("ELEMENT  %016llx:%d %c %016llx %02x "
+				kprintf("ELEMENTR %016llx:%d %c %016llx %02x "
 					"key=%016llx lo=%02x %d\n",
 					(long long)cursor->node->node_offset,
 					cursor->index,
@@ -610,7 +612,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 		if (hammer_debug_btree) {
 			int i = cursor->index;
 			hammer_btree_elm_t elm = &cursor->node->ondisk->elms[i];
-			kprintf("ITERATE  %p:%d %016llx %02x "
+			kprintf("ITERATER %p:%d %016llx %02x "
 				"key=%016llx lo=%02x\n",
 				cursor->node, i,
 				(long long)elm->internal.base.obj_id,
@@ -1058,7 +1060,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	++hammer_stats_btree_searches;
 
 	if (hammer_debug_btree) {
-		kprintf("SEARCH   %016llx[%d] %016llx %02x key=%016llx cre=%016llx lo=%02x (td = %p)\n",
+		kprintf("SEARCH   %016llx[%d] %016llx %02x key=%016llx cre=%016llx lo=%02x (td=%p)\n",
 			(long long)cursor->node->node_offset,
 			cursor->index,
 			(long long)cursor->key_beg.obj_id,
@@ -1069,7 +1071,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 			curthread
 		);
 		if (cursor->parent)
-		    kprintf("SEARCHP %016llx[%d] (%016llx/%016llx %016llx/%016llx) (%p/%p %p/%p)\n",
+		    kprintf("SEARCHP  %016llx[%d] (%016llx/%016llx %016llx/%016llx) (%p/%p %p/%p)\n",
 			(long long)cursor->parent->node_offset,
 			cursor->parent_index,
 			(long long)cursor->left_bound->obj_id,
