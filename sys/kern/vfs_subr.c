@@ -122,6 +122,8 @@ static int	vfs_free_netcred (struct radix_node *rn, void *w);
 static int	vfs_hang_addrlist (struct mount *mp, struct netexport *nep,
 				       const struct export_args *argp);
 
+int	prtactive = 0;		/* 1 => print out reclaim of active vnodes */
+
 /*
  * Red black tree functions
  */

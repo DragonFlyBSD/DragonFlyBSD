@@ -33,7 +33,6 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.24 2008/01/02 22:42:37 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -54,8 +53,6 @@
 #include "dir.h"
 #include "dirhash.h"
 #endif
-
-int	prtactive = 0;		/* 1 => print out reclaim of active vnodes */
 
 /*
  * Last reference to an inode.  If necessary, write or delete it.
