@@ -137,7 +137,19 @@ preupgrade:
 	(pw -V ${DESTDIR}/etc groupshow _dhcp -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc groupadd _dhcp -g 77
 
-upgrade_etc:	preupgrade remove-obsolete-files
+upgrade_check:
+	@if [ -n "`grep '^sendmail.*/usr/libexec/sendmail/sendmail' ${DESTDIR}/etc/mail/mailer.conf`" ]; then \
+		echo "==================================================================" ; \
+		echo "=  sendmail is being removed from the base system." ; \
+		echo "=  /etc/mail/mailer.conf is still configured to use sendmail." ; \
+		echo "=  See http://www.dragonflybsd.com/docs/docs/newhandbook/mta/" ; \
+		echo "=  Quick: echo > ${DESTDIR}/etc/mail/mailer.conf, then make upgrade " ; \
+		echo "=  then cp ${DESTDIR}/etc/mail/mailer.conf.dma ${DESTDIR}/etc/mail/mailer.conf" ; \
+		echo "==================================================================" ; \
+		/usr/bin/false ; \
+	fi
+
+upgrade_etc:	upgrade_check preupgrade remove-obsolete-files
 	# files that should be dirs (not possible with Makefile_upgrade.inc)
 .for f in usr/include/dev/misc/ppi usr/share/initrd/sbin
 	[ -d ${DESTDIR}/${f} ] || rm -f ${DESTDIR}/${f}
