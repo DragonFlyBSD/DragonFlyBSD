@@ -1,0 +1,9 @@
+#
+# Set the Mail Transfer Agent to DPorts Sendmail
+#
+
+sendmail	/usr/local/sbin/sendmail
+mailq		/usr/local/bin/mailq
+newaliases	/usr/local/bin/newaliases
+hoststat	/usr/local/bin/hoststat
+purgestat	/usr/local/bin/purgestat

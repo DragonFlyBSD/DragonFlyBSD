@@ -1,0 +1,9 @@
+#
+# Set the Mail Transfer Agent to DPorts OpenSMTPD
+#
+
+sendmail	/usr/local/sbin/smtpctl
+mailq		/usr/local/sbin/smtpctl
+newaliases	/usr/local/sbin/smtpctl
+hoststat	true
+purgestat	true
