@@ -188,7 +188,8 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
  * then leaf nodes.
  *
  * 'count' always refers to the number of elements and is non-inclusive of
- * the right-hand boundary for an internal node.
+ * the right-hand boundary for an internal node. For a leaf node, 'count'
+ * refers to the number of elements and there is no idea of boundaries.
  *
  * The use of a fairly large radix is designed to reduce the number of
  * discrete disk accesses required to locate something.  Keep in mind

@@ -359,9 +359,6 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 			if (error)
 				break;
 		}
-		/*
-		 * node pointer invalid after loop
-		 */
 
 		/*
 		 * Return entry
@@ -602,9 +599,6 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 			if (error)
 				break;
 		}
-		/*
-		 * node pointer invalid after loop
-		 */
 
 		/*
 		 * Return entry
@@ -755,7 +749,6 @@ hammer_btree_last(hammer_cursor_t cursor)
 /*
  * Extract the record and/or data associated with the cursor's current
  * position.  Any prior record or data stored in the cursor is replaced.
- * The cursor must be positioned at a leaf node.
  *
  * NOTE: All extractions occur at the leaf of the B-Tree.
  */
@@ -852,12 +845,10 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
  *
  * The caller must call hammer_btree_lookup() with the HAMMER_CURSOR_INSERT
  * flag set and that call must return ENOENT before this function can be
- * called.
+ * called. ENOSPC is returned if there is no room to insert a new record.
  *
  * The caller may depend on the cursor's exclusive lock after return to
  * interlock frontend visibility (see HAMMER_RECF_CONVERT_DELETE).
- *
- * ENOSPC is returned if there is no room to insert a new record.
  */
 int
 hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm,
@@ -879,8 +870,7 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm,
 	 * possible.  The root inode can never be deleted so the leaf should
 	 * never be empty.
 	 *
-	 * Remember that the right-hand boundary is not included in the
-	 * count.
+	 * Remember that leaf nodes do not have boundaries.
 	 */
 	hammer_modify_node_all(cursor->trans, cursor->node);
 	node = cursor->node->ondisk;
@@ -1009,7 +999,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 }
 
 /*
- * PRIMAY B-TREE SEARCH SUPPORT PROCEDURE
+ * PRIMARY B-TREE SEARCH SUPPORT PROCEDURE
  *
  * Search the filesystem B-Tree for cursor->key_beg, return the matching node.
  *
