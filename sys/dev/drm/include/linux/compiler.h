@@ -67,4 +67,8 @@
 
 #define __printf(a,b)			__printflike(a,b)
 
+
+#define barrier()	cpu_ccfence()
+
+
 #endif	/* _LINUX_COMPILER_H_ */
