@@ -1,3 +1,29 @@
+/*
+ * Copyright © 2008 Intel Corporation
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ * Authors:
+ *    Eric Anholt <eric@anholt.net>
+ *
+ */
 /*-
  * Copyright (c) 2011 The FreeBSD Foundation
  * All rights reserved.
@@ -25,8 +51,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: head/sys/dev/drm2/drm_gem.c 247835 2013-03-05 09:49:34Z kib $"
  */
 
 #include "opt_vm.h"
@@ -41,7 +65,36 @@
 #include <vm/vm.h>
 #include <vm/vm_page.h>
 
+#include <linux/module.h>
 #include <drm/drmP.h>
+
+/** @file drm_gem.c
+ *
+ * This file provides some of the base ioctls and library routines for
+ * the graphics memory manager implemented by each device driver.
+ *
+ * Because various devices have different requirements in terms of
+ * synchronization and migration strategies, implementing that is left up to
+ * the driver, and all that the general API provides should be generic --
+ * allocating objects, reading/writing data with the cpu, freeing objects.
+ * Even there, platform-dependent optimizations for reading/writing data with
+ * the CPU mean we'll likely hook those out to driver-specific calls.  However,
+ * the DRI2 implementation wants to have at least allocate/mmap be generic.
+ *
+ * The goal was to have swap-backed object allocation managed through
+ * struct file.  However, file descriptors as handles to a struct file have
+ * two major failings:
+ * - Process limits prevent more than 1024 or so being used at a time by
+ *   default.
+ * - Inability to allocate high fds will aggravate the X Server's select()
+ *   handling, and likely that of many GL client applications as well.
+ *
+ * This led to a plan of using our own integer IDs (called handles, following
+ * DRM terminology) to mimic fds, and implement the fd syscalls we need as
+ * ioctls.  The objects themselves will still include the struct file so
+ * that we can transition to fds if the required kernel infrastructure shows
+ * up at a later date, and as our interface with shmfs for memory allocation.
+ */
 
 /*
  * We make up offsets for buffer objects so we can recognize them at
@@ -52,7 +105,7 @@
  * the faked up offset will fit
  */
 
-#if ULONG_MAX == UINT64_MAX
+#if BITS_PER_LONG == 64
 #define DRM_FILE_PAGE_OFFSET_START ((0xFFFFFFFFUL >> PAGE_SHIFT) + 1)
 #define DRM_FILE_PAGE_OFFSET_SIZE ((0xFFFFFFFFUL >> PAGE_SHIFT) * 16)
 #else
@@ -72,7 +125,7 @@ drm_gem_init(struct drm_device *dev)
 	lockinit(&dev->object_name_lock, "objnam", 0, LK_CANRECURSE);
 	idr_init(&dev->object_name_idr);
 
-	mm = kmalloc(sizeof(*mm), M_DRM, M_WAITOK);
+	mm = kzalloc(sizeof(struct drm_gem_mm), GFP_KERNEL);
 	if (!mm) {
 		DRM_ERROR("out of memory\n");
 		return -ENOMEM;
@@ -81,7 +134,7 @@ drm_gem_init(struct drm_device *dev)
 	dev->mm_private = mm;
 
 	if (drm_ht_create(&mm->offset_hash, 12)) {
-		drm_free(mm, M_DRM);
+		kfree(mm);
 		return -ENOMEM;
 	}
 
@@ -96,7 +149,7 @@ drm_gem_destroy(struct drm_device *dev)
 
 	drm_ht_remove(&mm->offset_hash);
 	delete_unrhdr(mm->idxunr);
-	drm_free(mm, M_DRM);
+	kfree(mm);
 	dev->mm_private = NULL;
 }
 
@@ -107,9 +160,7 @@ drm_gem_destroy(struct drm_device *dev)
 int drm_gem_object_init(struct drm_device *dev,
 			struct drm_gem_object *obj, size_t size)
 {
-
-	KASSERT((size & (PAGE_SIZE - 1)) == 0,
-	    ("Bad size %ju", (uintmax_t)size));
+	BUG_ON((size & (PAGE_SIZE - 1)) != 0);
 
 	obj->dev = dev;
 	obj->vm_obj = default_pager_alloc(NULL, size,
@@ -119,8 +170,9 @@ int drm_gem_object_init(struct drm_device *dev,
 	atomic_set(&obj->handle_count, 0);
 	obj->size = size;
 
-	return (0);
+	return 0;
 }
+EXPORT_SYMBOL(drm_gem_object_init);
 
 /**
  * Initialize an already allocated GEM object of the specified size with
@@ -130,9 +182,7 @@ int drm_gem_object_init(struct drm_device *dev,
 int drm_gem_private_object_init(struct drm_device *dev,
 			struct drm_gem_object *obj, size_t size)
 {
-
-	KASSERT((size & (PAGE_SIZE - 1)) == 0,
-	    ("Bad size %ju", (uintmax_t)size));
+	BUG_ON((size & (PAGE_SIZE - 1)) != 0);
 
 	obj->dev = dev;
 	obj->vm_obj = NULL;
@@ -141,16 +191,22 @@ int drm_gem_private_object_init(struct drm_device *dev,
 	atomic_set(&obj->handle_count, 0);
 	obj->size = size;
 
-	return (0);
+	return 0;
 }
+EXPORT_SYMBOL(drm_gem_private_object_init);
 
-
+/**
+ * Allocate a GEM object of the specified size with shmfs backing store
+ */
 struct drm_gem_object *
 drm_gem_object_alloc(struct drm_device *dev, size_t size)
 {
 	struct drm_gem_object *obj;
 
-	obj = kmalloc(sizeof(*obj), M_DRM, M_WAITOK | M_ZERO);
+	obj = kzalloc(sizeof(*obj), GFP_KERNEL);
+	if (!obj)
+		goto free;
+
 	if (drm_gem_object_init(dev, obj, size) != 0)
 		goto free;
 
@@ -161,59 +217,24 @@ drm_gem_object_alloc(struct drm_device *dev, size_t size)
 dealloc:
 	vm_object_deallocate(obj->vm_obj);
 free:
-	drm_free(obj, M_DRM);
-	return (NULL);
+	kfree(obj);
+	return NULL;
 }
+EXPORT_SYMBOL(drm_gem_object_alloc);
 
-/**
- * Called after the last reference to the object has been lost.
- * Must be called holding struct_ mutex
- *
- * Frees the object
- */
-void
-drm_gem_object_free(struct kref *kref)
+static void
+drm_gem_remove_prime_handles(struct drm_gem_object *obj, struct drm_file *filp)
 {
-	struct drm_gem_object *obj = (struct drm_gem_object *) kref;
-	struct drm_device *dev = obj->dev;
-
-	DRM_LOCK_ASSERT(dev);
-	if (dev->driver->gem_free_object != NULL)
-		dev->driver->gem_free_object(obj);
-}
-
-static void drm_gem_object_ref_bug(struct kref *list_kref)
-{
-	panic("BUG");
-}
-
-/**
- * Called after the last handle to the object has been closed
- *
- * Removes any name for the object. Note that this must be
- * called before drm_gem_object_free or we'll be touching
- * freed memory
- */
-void drm_gem_object_handle_free(struct drm_gem_object *obj)
-{
-	struct drm_device *dev = obj->dev;
-
-	/* Remove any name for this object */
-	lockmgr(&dev->object_name_lock, LK_EXCLUSIVE);
-	if (obj->name) {
-		idr_remove(&dev->object_name_idr, obj->name);
-		obj->name = 0;
-		lockmgr(&dev->object_name_lock, LK_RELEASE);
-		/*
-		 * The object name held a reference to this object, drop
-		 * that now.
-		*
-		* This cannot be the last reference, since the handle holds one too.
-		 */
-		kref_put(&obj->refcount, drm_gem_object_ref_bug);
-	} else
-		lockmgr(&dev->object_name_lock, LK_RELEASE);
-
+#if 0
+	if (obj->import_attach) {
+		drm_prime_remove_buf_handle(&filp->prime,
+				obj->import_attach->dmabuf);
+	}
+	if (obj->export_dma_buf) {
+		drm_prime_remove_buf_handle(&filp->prime,
+				obj->export_dma_buf);
+	}
+#endif
 }
 
 /**
@@ -248,12 +269,15 @@ drm_gem_handle_delete(struct drm_file *filp, u32 handle)
 	idr_remove(&filp->object_idr, handle);
 	lockmgr(&filp->table_lock, LK_RELEASE);
 
+	drm_gem_remove_prime_handles(obj, filp);
+
 	if (dev->driver->gem_close_object)
 		dev->driver->gem_close_object(obj, filp);
 	drm_gem_object_handle_unreference_unlocked(obj);
 
 	return 0;
 }
+EXPORT_SYMBOL(drm_gem_handle_delete);
 
 /**
  * Create a handle for this object. This adds a handle reference
@@ -297,6 +321,65 @@ again:
 
 	return 0;
 }
+EXPORT_SYMBOL(drm_gem_handle_create);
+
+
+/**
+ * drm_gem_free_mmap_offset - release a fake mmap offset for an object
+ * @obj: obj in question
+ *
+ * This routine frees fake offsets allocated by drm_gem_create_mmap_offset().
+ */
+void
+drm_gem_free_mmap_offset(struct drm_gem_object *obj)
+{
+	struct drm_device *dev = obj->dev;
+	struct drm_gem_mm *mm = dev->mm_private;
+	struct drm_hash_item *list;
+
+	if (!obj->on_map)
+		return;
+	list = &obj->map_list;
+
+	drm_ht_remove_item(&mm->offset_hash, list);
+	free_unr(mm->idxunr, list->key);
+	obj->on_map = false;
+}
+EXPORT_SYMBOL(drm_gem_free_mmap_offset);
+
+/**
+ * drm_gem_create_mmap_offset - create a fake mmap offset for an object
+ * @obj: obj in question
+ *
+ * GEM memory mapping works by handing back to userspace a fake mmap offset
+ * it can use in a subsequent mmap(2) call.  The DRM core code then looks
+ * up the object based on the offset and sets up the various memory mapping
+ * structures.
+ *
+ * This routine allocates and attaches a fake offset for @obj.
+ */
+int
+drm_gem_create_mmap_offset(struct drm_gem_object *obj)
+{
+	struct drm_device *dev = obj->dev;
+	struct drm_gem_mm *mm = dev->mm_private;
+	int ret;
+
+	if (obj->on_map)
+		return (0);
+	ret = 0;
+
+	obj->map_list.key = alloc_unr(mm->idxunr);
+	ret = drm_ht_insert_item(&mm->offset_hash, &obj->map_list);
+	if (ret != 0) {
+		DRM_ERROR("failed to add to map hash\n");
+		free_unr(mm->idxunr, obj->map_list.key);
+		return (ret);
+	}
+	obj->on_map = true;
+	return 0;
+}
+EXPORT_SYMBOL(drm_gem_create_mmap_offset);
 
 /** Returns a reference to the object named by the handle. */
 struct drm_gem_object *
@@ -320,16 +403,19 @@ drm_gem_object_lookup(struct drm_device *dev, struct drm_file *filp,
 
 	return obj;
 }
+EXPORT_SYMBOL(drm_gem_object_lookup);
 
+/**
+ * Releases the handle to an mm object.
+ */
 int
 drm_gem_close_ioctl(struct drm_device *dev, void *data,
-    struct drm_file *file_priv)
+		    struct drm_file *file_priv)
 {
-	struct drm_gem_close *args;
+	struct drm_gem_close *args = data;
 
 	if (!drm_core_check_feature(dev, DRIVER_GEM))
 		return (ENODEV);
-	args = data;
 
 	return (drm_gem_handle_delete(file_priv, args->handle));
 }
@@ -401,9 +487,6 @@ drm_gem_open_ioctl(struct drm_device *dev, void *data,
 	int ret;
 	u32 handle;
 
-#if 0
-	if (!drm_core_check_feature(dev, DRIVER_GEM))
-#endif
 	if (!(dev->driver->driver_features & DRIVER_GEM))
 		return -ENODEV;
 
@@ -448,22 +531,14 @@ drm_gem_object_release_handle(int id, void *ptr, void *data)
 	struct drm_gem_object *obj = ptr;
 	struct drm_device *dev = obj->dev;
 
+	drm_gem_remove_prime_handles(obj, file_priv);
+
 	if (dev->driver->gem_close_object)
 		dev->driver->gem_close_object(obj, file_priv);
 
 	drm_gem_object_handle_unreference_unlocked(obj);
 
 	return 0;
-}
-
-void
-drm_gem_object_release(struct drm_gem_object *obj)
-{
-
-	/*
-	 * obj->vm_obj can be NULL for private gem objects.
-	 */
-	vm_object_deallocate(obj->vm_obj);
 }
 
 /**
@@ -476,10 +551,73 @@ drm_gem_release(struct drm_device *dev, struct drm_file *file_private)
 {
 	idr_for_each(&file_private->object_idr,
 		     &drm_gem_object_release_handle, file_private);
-
-	idr_remove_all(&file_private->object_idr);
 	idr_destroy(&file_private->object_idr);
 }
+
+void
+drm_gem_object_release(struct drm_gem_object *obj)
+{
+
+	/*
+	 * obj->vm_obj can be NULL for private gem objects.
+	 */
+	vm_object_deallocate(obj->vm_obj);
+}
+EXPORT_SYMBOL(drm_gem_object_release);
+
+/**
+ * Called after the last reference to the object has been lost.
+ * Must be called holding struct_ mutex
+ *
+ * Frees the object
+ */
+void
+drm_gem_object_free(struct kref *kref)
+{
+	struct drm_gem_object *obj = (struct drm_gem_object *) kref;
+	struct drm_device *dev = obj->dev;
+
+	BUG_ON(!mutex_is_locked(&dev->struct_mutex));
+
+	if (dev->driver->gem_free_object != NULL)
+		dev->driver->gem_free_object(obj);
+}
+EXPORT_SYMBOL(drm_gem_object_free);
+
+static void drm_gem_object_ref_bug(struct kref *list_kref)
+{
+	BUG();
+}
+
+/**
+ * Called after the last handle to the object has been closed
+ *
+ * Removes any name for the object. Note that this must be
+ * called before drm_gem_object_free or we'll be touching
+ * freed memory
+ */
+void drm_gem_object_handle_free(struct drm_gem_object *obj)
+{
+	struct drm_device *dev = obj->dev;
+
+	/* Remove any name for this object */
+	lockmgr(&dev->object_name_lock, LK_EXCLUSIVE);
+	if (obj->name) {
+		idr_remove(&dev->object_name_idr, obj->name);
+		obj->name = 0;
+		lockmgr(&dev->object_name_lock, LK_RELEASE);
+		/*
+		 * The object name held a reference to this object, drop
+		 * that now.
+		*
+		* This cannot be the last reference, since the handle holds one too.
+		 */
+		kref_put(&obj->refcount, drm_gem_object_ref_bug);
+	} else
+		lockmgr(&dev->object_name_lock, LK_RELEASE);
+
+}
+EXPORT_SYMBOL(drm_gem_object_handle_free);
 
 static struct drm_gem_object *
 drm_gem_object_from_offset(struct drm_device *dev, vm_ooffset_t offset)
@@ -500,46 +638,6 @@ drm_gem_object_from_offset(struct drm_device *dev, vm_ooffset_t offset)
 	}
 	obj = container_of(map_list, struct drm_gem_object, map_list);
 	return (obj);
-}
-
-int
-drm_gem_create_mmap_offset(struct drm_gem_object *obj)
-{
-	struct drm_device *dev;
-	struct drm_gem_mm *mm;
-	int ret;
-
-	if (obj->on_map)
-		return (0);
-	dev = obj->dev;
-	mm = dev->mm_private;
-	ret = 0;
-
-	obj->map_list.key = alloc_unr(mm->idxunr);
-	ret = drm_ht_insert_item(&mm->offset_hash, &obj->map_list);
-	if (ret != 0) {
-		DRM_ERROR("failed to add to map hash\n");
-		free_unr(mm->idxunr, obj->map_list.key);
-		return (ret);
-	}
-	obj->on_map = true;
-	return (0);
-}
-
-void
-drm_gem_free_mmap_offset(struct drm_gem_object *obj)
-{
-	struct drm_hash_item *list;
-	struct drm_gem_mm *mm;
-
-	if (!obj->on_map)
-		return;
-	mm = obj->dev->mm_private;
-	list = &obj->map_list;
-
-	drm_ht_remove_item(&mm->offset_hash, list);
-	free_unr(mm->idxunr, list->key);
-	obj->on_map = false;
 }
 
 int
