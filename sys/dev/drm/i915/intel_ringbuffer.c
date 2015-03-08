@@ -506,7 +506,7 @@ init_pipe_control(struct intel_ring_buffer *ring)
 		goto err_unref;
 
 	pc->gtt_offset = obj->gtt_offset;
-	pc->cpu_page = (uint32_t *)kmem_alloc_nofault(&kernel_map, PAGE_SIZE, PAGE_SIZE);
+	pc->cpu_page = kmap(obj->pages[0]);
 	if (pc->cpu_page == NULL) {
 		ret = -ENOMEM;
 		goto err_unpin;
@@ -1238,8 +1238,7 @@ static int init_status_page(struct intel_ring_buffer *ring)
 	}
 
 	ring->status_page.gfx_addr = obj->gtt_offset;
-	ring->status_page.page_addr = (void *)kmem_alloc_nofault(&kernel_map,
-	    PAGE_SIZE, PAGE_SIZE);
+	ring->status_page.page_addr = kmap(obj->pages[0]);
 	if (ring->status_page.page_addr == NULL) {
 		ret = -ENOMEM;
 		goto err_unpin;
