@@ -641,6 +641,7 @@ struct drm_ati_pcigart_info {
  * GEM specific mm private for tracking GEM objects
  */
 struct drm_gem_mm {
+	struct drm_mm offset_manager;	/**< Offset mgmt for buffer objects */
 	struct drm_open_hash offset_hash; /**< User token hash table for maps */
 	struct unrhdr *idxunr;
 };

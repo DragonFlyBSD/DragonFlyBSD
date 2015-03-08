@@ -139,6 +139,8 @@ drm_gem_init(struct drm_device *dev)
 	}
 
 	mm->idxunr = new_unrhdr(0, DRM_GEM_MAX_IDX, NULL);
+	drm_mm_init(&mm->offset_manager, DRM_FILE_PAGE_OFFSET_START,
+		    DRM_FILE_PAGE_OFFSET_SIZE);
 	return 0;
 }
 
@@ -147,6 +149,7 @@ drm_gem_destroy(struct drm_device *dev)
 {
 	struct drm_gem_mm *mm = dev->mm_private;
 
+	drm_mm_takedown(&mm->offset_manager);
 	drm_ht_remove(&mm->offset_hash);
 	delete_unrhdr(mm->idxunr);
 	kfree(mm);
