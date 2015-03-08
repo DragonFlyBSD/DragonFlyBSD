@@ -2852,6 +2852,7 @@ TO_REMOVE+=/usr/share/man/man8/rmail.8.gz
 TO_REMOVE+=/usr/share/man/man8/sendmail.8.gz
 TO_REMOVE+=/usr/share/man/man8/smrsh.8.gz
 TO_REMOVE+=/usr/share/sendmail
+TO_REMOVE+=/usr/share/libg++
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
