@@ -110,7 +110,8 @@ struct symbol_compare_hashmap_traits: default_hashmap_traits
   equal_keys (const symbol_compare_collection *a,
 	      const symbol_compare_collection *b)
   {
-    if (a->m_references.length () != b->m_references.length ())
+    if (a->m_references.length () != b->m_references.length ()
+	|| a->m_interposables.length () != b->m_interposables.length ())
       return false;
 
     for (unsigned i = 0; i < a->m_references.length (); i++)
@@ -241,6 +242,17 @@ protected:
   /* Cached, once calculated hash for the item.  */
   hashval_t hash;
 
+  /* Accumulate to HSTATE a hash of constructor expression EXP.  */
+  static void add_expr (const_tree exp, inchash::hash &hstate);
+
+  /* For a given symbol table nodes N1 and N2, we check that FUNCTION_DECLs
+     point to a same function. Comparison can be skipped if IGNORED_NODES
+     contains these nodes.  ADDRESS indicate if address is taken.  */
+  bool compare_cgraph_references (hash_map <symtab_node *, sem_item *>
+				  &ignored_nodes,
+				  symtab_node *n1, symtab_node *n2,
+				  bool address);
+
 private:
   /* Initialize internal data structures. Bitmap STACK is used for
      bitmap memory allocation process.  */
@@ -289,7 +301,7 @@ public:
   }
 
   /* Improve accumulated hash for HSTATE based on a gimple statement STMT.  */
-  void hash_stmt (inchash::hash *inchash, gimple stmt);
+  void hash_stmt (gimple stmt, inchash::hash &inchash);
 
   /* Return true if polymorphic comparison must be processed.  */
   bool compare_polymorphic_p (void);
@@ -350,13 +362,6 @@ private:
      ICF flags are the same.  */
   bool compare_edge_flags (cgraph_edge *e1, cgraph_edge *e2);
 
-  /* For a given symbol table nodes N1 and N2, we check that FUNCTION_DECLs
-     point to a same function. Comparison can be skipped if IGNORED_NODES
-     contains these nodes.  */
-  bool compare_cgraph_references (hash_map <symtab_node *, sem_item *>
-				  &ignored_nodes,
-				  symtab_node *n1, symtab_node *n2);
-
   /* Processes function equality comparison.  */
   bool equals_private (sem_item *item,
 		       hash_map <symtab_node *, sem_item *> &ignored_nodes);
@@ -388,7 +393,6 @@ public:
   inline virtual void init (void)
   {
     decl = get_node ()->decl;
-    ctor = ctor_for_folding (decl);
   }
 
   virtual hashval_t get_hash (void);
@@ -398,12 +402,8 @@ public:
 		       hash_map <symtab_node *, sem_item *> &ignored_nodes);
 
   /* Fast equality variable based on knowledge known in WPA.  */
-  inline virtual bool equals_wpa (sem_item *item,
-				  hash_map <symtab_node *, sem_item *> & ARG_UNUSED(ignored_nodes))
-  {
-    gcc_assert (item->type == VAR);
-    return true;
-  }
+  virtual bool equals_wpa (sem_item *item,
+			   hash_map <symtab_node *, sem_item *> &ignored_nodes);
 
   /* Returns varpool_node.  */
   inline varpool_node *get_node (void)
@@ -413,9 +413,6 @@ public:
 
   /* Parser function that visits a varpool NODE.  */
   static sem_variable *parse (varpool_node *node, bitmap_obstack *stack);
-
-  /* Variable constructor.  */
-  tree ctor;
 
 private:
   /* Iterates though a constructor and identifies tree references
@@ -427,7 +424,6 @@ private:
 
   /* Compare that symbol sections are either NULL or have same name.  */
   bool compare_sections (sem_variable *alias);
-
 }; // class sem_variable
 
 class sem_item_optimizer;
@@ -474,8 +470,10 @@ public:
      read-only variables that can be merged.  */
   void parse_funcs_and_vars (void);
 
-  /* Optimizer entry point.  */
-  void execute (void);
+  /* Optimizer entry point which returns true in case it processes
+     a merge operation. True is returned if there's a merge operation
+     processed.  */
+  bool execute (void);
 
   /* Dump function. */
   void dump (void);
@@ -549,8 +547,9 @@ private:
 
   /* After reduction is done, we can declare all items in a group
      to be equal. PREV_CLASS_COUNT is start number of classes
-     before reduction.  */
-  void merge_classes (unsigned int prev_class_count);
+     before reduction. True is returned if there's a merge operation
+     processed.  */
+  bool merge_classes (unsigned int prev_class_count);
 
   /* Adds a newly created congruence class CLS to worklist.  */
   void worklist_push (congruence_class *cls);
