@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.19 (Berkeley) 1/14/97
 # $FreeBSD: src/etc/sendmail/Makefile,v 1.31 2004/01/22 17:51:02 ru Exp $
-# $DragonFly: src/etc/sendmail/Makefile,v 1.9 2007/04/14 17:43:48 gshapiro Exp $
 
 M4=		m4
 CHMOD=		chmod
@@ -68,8 +67,6 @@ distribution: dragonfly.cf dragonfly.submit.cf
 	    ${.CURDIR}/dragonfly.mc dragonfly.cf ${DESTDIR}/etc/mail
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${.CURDIR}/dragonfly.submit.mc dragonfly.submit.cf ${DESTDIR}/etc/mail
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${SMDIR}/helpfile ${DESTDIR}/etc/mail
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 640 \
 	    /dev/null ${DESTDIR}/var/log/sendmail.st
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
@@ -82,8 +79,6 @@ upgrade:
 	    ${.CURDIR}/dragonfly.mc ${DESTDIR}/etc/mail
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${.CURDIR}/dragonfly.submit.mc ${DESTDIR}/etc/mail
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${SMDIR}/helpfile ${DESTDIR}/etc/mail
 
 install:
 .if defined(INSTALL_CF) && ${INSTALL_CF} != ${DEST_CF}
