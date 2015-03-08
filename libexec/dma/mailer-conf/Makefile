@@ -6,7 +6,8 @@ SHAREOWN=	root
 SHAREGRP=	mail
 FILESMODE=	640
 
-FILES+=		mailer.conf.dma \
+FILES+=		README \
+		mailer.conf.dma \
 		mailer.conf.opensmtpd \
 		mailer.conf.postfix \
 		mailer.conf.sendmail

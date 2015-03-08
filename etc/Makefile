@@ -65,7 +65,7 @@ MTREE+=	BSD.sendmail.dist
 
 PPPCNF=	ppp.conf
 
-ETCMAIL=Makefile README mailer.conf access.sample virtusertable.sample \
+ETCMAIL=Makefile mailer.conf access.sample virtusertable.sample \
 	mailertable.sample aliases
 
 # List of libraries in /usr/lib/compat that might have to be removed
