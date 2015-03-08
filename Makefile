@@ -128,27 +128,33 @@ STARTTIME!= LC_ALL=C date
 #
 world:
 	@echo "--------------------------------------------------------------"
-	@echo ">>> elf make world started on ${STARTTIME}"
+	@echo ">>> make world started on ${STARTTIME}"
 	@echo "--------------------------------------------------------------"
 .if target(pre-world)
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Making 'pre-world' target"
+	@echo ">>> starting pre-world target"
 	@echo "--------------------------------------------------------------"
 	@cd ${.CURDIR}; ${MAKE} pre-world
+	@echo "--------------------------------------------------------------"
+	@echo ">>> pre-world target complete"
+	@echo "--------------------------------------------------------------"
 .endif
 	@cd ${.CURDIR}; ${MAKE} buildworld
 	@cd ${.CURDIR}; ${MAKE} -B installworld
 .if target(post-world)
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Making 'post-world' target"
+	@echo ">>> starting post-world target"
 	@echo "--------------------------------------------------------------"
 	@cd ${.CURDIR}; ${MAKE} post-world
+	@echo "--------------------------------------------------------------"
+	@echo ">>> post-world target complete"
+	@echo "--------------------------------------------------------------"
 .endif
 	@echo
 	@echo "--------------------------------------------------------------"
-	@printf ">>> elf make world completed on `LC_ALL=C date`\n                        (started ${STARTTIME})\n"
+	@printf ">>> make world completed on `LC_ALL=C date`\n                        (started ${STARTTIME})\n"
 	@echo "--------------------------------------------------------------"
 
 #

@@ -421,6 +421,26 @@ everything:
 	@echo ">>> stage 4d: building everything.."
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} all
+_bwinit:
+	@echo "--------------------------------------------------------------"
+	@echo ">>> starting buildworld target"
+	@echo "--------------------------------------------------------------"
+_bwdone:
+	@echo "--------------------------------------------------------------"
+	@echo ">>> buildworld target complete"
+	@echo "--------------------------------------------------------------"
+_qwinit:
+	@echo "--------------------------------------------------------------"
+	@echo ">>> starting quickworld target"
+	@echo "--------------------------------------------------------------"
+_qwdone:
+	@echo "--------------------------------------------------------------"
+	@echo ">>> quickworld target complete"
+	@echo "--------------------------------------------------------------"
+_iwinit:
+	@echo "--------------------------------------------------------------"
+	@echo ">>> starting installworld target"
+	@echo "--------------------------------------------------------------"
 
 # note: buildworld no longer depends on _cleanobj because we rm -rf the
 # entire object tree and built the bootstrap tools in a different location.
@@ -442,25 +462,26 @@ WMAKE_TGTS+=	_cross-tools
 .endif
 WMAKE_TGTS+=	_includes _libraries _depend everything
 
-buildworld: ${WMAKE_TGTS}
+buildworld: _bwinit ${WMAKE_TGTS} _bwdone
 
-quickworld: _mtreetmp _obj _includes _libraries _depend everything
+quickworld: _qwinit _mtreetmp _obj _includes _libraries _depend everything _qwdone
 
-realquickworld: _mtreetmp _obj _includes _libraries everything
+realquickworld: _qwinit _mtreetmp _obj _includes _libraries everything _qwdone
 
 crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 
-.ORDER: ${WMAKE_TGTS}
+.ORDER: _bwinit ${WMAKE_TGTS} _bwdone
 .ORDER: _obj _includes
-.ORDER: _mtreetmp _obj
+.ORDER: _qwinit _mtreetmp _obj
 .ORDER: installcheck backupworld-auto
+.ORDER: everything _qwdone
 
 #
 # installcheck
 #
 # Checks to be sure system is ready for installworld
 #
-installcheck:
+installcheck: _iwinit
 .if !defined(NO_SENDMAIL)
 	@pw usershow smmsp || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
 	@pw groupshow smmsp || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
@@ -493,9 +514,11 @@ installworld: installcheck
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
 	sync
-	@echo "installworld is done.  If things work as expected after a"
-	@echo "full reboot, consider updating the rescue image with"
-	@echo "'make rescue'.  Do not do it until after rebooting."
+	@echo "--------------------------------------------------------------"
+	@echo ">>> installworld target complete"
+	@echo "--------------------------------------------------------------"
+	@echo "If things work as expected after a full reboot, consider updating the rescue"
+	@echo "image with 'make rescue'.  Do not do it until after rebooting."
 
 installworld-force:
 	@echo "Doing a forced installworld.  This will install to a temporary directory,"
