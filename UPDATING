@@ -12,6 +12,21 @@
 +         UPGRADING DRAGONFLY FROM 4.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+SENDMAIL REMOVED FROM BASE
+--------------------------
+
+The only Mail Transfer Agent provided now is DragonFly Mail Agent (dma).
+If the system being upgraded is still configured to use the sendmail
+binaries from base, the "make upgrade" command will fail.
+
+The administrator must change /etc/mail/mailer.conf to switch the
+mailwrapper to dma or a DPorts-based MTA prior to running the upgrade
+command that permanently removes sendmail executables and could
+potentially break a running mail server.
+
+Refer: http://www.dragonflybsd.com/docs/docs/newhandbook/mta/ for
+detailed instructions on how to configure the MTA selection.
+
 _KPOSIX_VERSION and P1003_1B OPTIONS REMOVED
 --------------------------------------------
 
