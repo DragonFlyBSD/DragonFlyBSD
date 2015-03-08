@@ -150,4 +150,3 @@ AliasHandleDummy(struct libalias *la, struct ip *ip, struct alias_data *ah)
 {
 	; /* Dummy. */
 }
-

@@ -88,14 +88,14 @@ char *newpacket;
 #define DBprintf(a)
 
 static void
-AliasHandleIrcOut(struct libalias *, struct ip *, struct alias_link *,	
+AliasHandleIrcOut(struct libalias *, struct ip *, struct alias_link *,
 		  int maxpacketsize);
 
-static int 
+static int
 fingerprint(struct libalias *la, struct ip *pip, struct alias_data *ah)
 {
 
-	if (ah->dport == NULL || ah->dport == NULL || ah->lnk == NULL || 
+	if (ah->dport == NULL || ah->dport == NULL || ah->lnk == NULL ||
 	    ah->maxpktsize == 0)
 		return (-1);
 	if (ntohs(*ah->dport) == IRC_CONTROL_PORT_NUMBER_1
@@ -104,7 +104,7 @@ fingerprint(struct libalias *la, struct ip *pip, struct alias_data *ah)
 	return (-1);
 }
 
-static int 
+static int
 protohandler(struct libalias *la, struct ip *pip, struct alias_data *ah)
 {
 
@@ -117,13 +117,13 @@ protohandler(struct libalias *la, struct ip *pip, struct alias_data *ah)
 }
 
 struct proto_handler handlers[] = {
-	{ 
-	  .pri = 90, 
-	  .dir = OUT, 
-	  .proto = TCP, 
-	  .fingerprint = &fingerprint, 
+	{
+	  .pri = 90,
+	  .dir = OUT,
+	  .proto = TCP,
+	  .fingerprint = &fingerprint,
 	  .protohandler = &protohandler
-	}, 
+	},
 	{ EOH }
 };
 
@@ -148,7 +148,7 @@ mod_handler(module_t mod, int type, void *data)
 }
 
 #ifdef _KERNEL
-static 
+static
 #endif
 moduledata_t alias_mod = {
        "alias_irc", mod_handler, NULL

@@ -129,16 +129,16 @@ __FBSDID("$FreeBSD: src/sys/netinet/libalias/alias_smedia.c,v 1.17.6.1 2008/11/2
 #define TFTP_PORT_NUMBER 69
 
 static void
-AliasHandleRtspOut(struct libalias *, struct ip *, struct alias_link *,	
+AliasHandleRtspOut(struct libalias *, struct ip *, struct alias_link *,
 		  int maxpacketsize);
-static int 
+static int
 fingerprint(struct libalias *la, struct ip *pip, struct alias_data *ah)
 {
 
 	if (ah->dport != NULL && ah->aport != NULL && ah->sport != NULL &&
             ntohs(*ah->dport) == TFTP_PORT_NUMBER)
 		return (0);
-	if (ah->dport == NULL || ah->sport == NULL || ah->lnk == NULL || 
+	if (ah->dport == NULL || ah->sport == NULL || ah->lnk == NULL ||
 	    ah->maxpktsize == 0)
 		return (-1);
 	if (ntohs(*ah->dport) == RTSP_CONTROL_PORT_NUMBER_1
@@ -149,25 +149,25 @@ fingerprint(struct libalias *la, struct ip *pip, struct alias_data *ah)
 	return (-1);
 }
 
-static int 
+static int
 protohandler(struct libalias *la, struct ip *pip, struct alias_data *ah)
 {
-	
+
 	if (ntohs(*ah->dport) == TFTP_PORT_NUMBER)
 		FindRtspOut(la, pip->ip_src, pip->ip_dst,
  			    *ah->sport, *ah->aport, IPPROTO_UDP);
-	else AliasHandleRtspOut(la, pip, ah->lnk, ah->maxpktsize);	
+	else AliasHandleRtspOut(la, pip, ah->lnk, ah->maxpktsize);
 	return (0);
 }
 
 struct proto_handler handlers[] = {
-	{ 
-	  .pri = 100, 
-	  .dir = OUT, 
+	{
+	  .pri = 100,
+	  .dir = OUT,
 	  .proto = TCP|UDP,
-	  .fingerprint = &fingerprint, 
+	  .fingerprint = &fingerprint,
 	  .protohandler = &protohandler
-	}, 
+	},
 	{ EOH }
 };
 
@@ -192,7 +192,7 @@ mod_handler(module_t mod, int type, void *data)
 }
 
 #ifdef _KERNEL
-static 
+static
 #endif
 moduledata_t alias_mod = {
        "alias_smedia", mod_handler, NULL

@@ -149,4 +149,3 @@ load_module(register_func function, register_keyword keyword)
 	function(MODULE_LAYER4_ID, O_LAYER4_GID,
 			(parser_func)parse_gid, (shower_func)show_gid);
 }
-

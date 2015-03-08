@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 1998 Brian Somers <brian@Awfulhak.org>
- *					with the aid of code written by
- *					Junichi SATOH <junichi@astec.co.jp> 1996, 1997.
+ * with the aid of code written by
+ * Junichi SATOH <junichi@astec.co.jp> 1996, 1997.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

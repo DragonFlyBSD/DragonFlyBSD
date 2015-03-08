@@ -1,6 +1,6 @@
 SRCDIR=	${.CURDIR}/
 
-LIB=    ipfw2basic
+LIB=	ipfw2basic
 SRCS=	ipfw2_basic.c
 
 INCS=	ipfw2_basic.h

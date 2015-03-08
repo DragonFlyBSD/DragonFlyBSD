@@ -1,8 +1,8 @@
 # $FreeBSD: src/sys/modules/dummynet/Makefile,v 1.1.2.2 2003/04/08 10:18:00 maxim Exp $
 # $DragonFly: src/sys/net/dummynet/Makefile,v 1.7 2008/09/16 12:30:57 sephe Exp $
 
-KMOD=   dummynet2
-SRCS=   ip_dummynet2.c
+KMOD=	dummynet2
+SRCS=	ip_dummynet2.c
 SRCS+=	opt_ipdn.h
 
 .ifndef BUILDING_WITH_KERNEL

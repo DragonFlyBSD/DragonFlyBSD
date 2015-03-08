@@ -38,30 +38,30 @@
 /* Protocol handlers struct & function. */
 
 /* Packet flow direction. */
-#define IN                              1 
-#define OUT                             2 
+#define IN                              1
+#define OUT                             2
 
 /* Working protocol. */
 #define IP                              1
 #define TCP                             2
 #define UDP                             4
 
-/* 
+/*
  * Data passed to protocol handler module, it must be filled
  * right before calling find_handler() to determine which
  * module is elegible to be called.
  */
 
-struct alias_data {	
-	struct alias_link       *lnk;            
+struct alias_data {
+	struct alias_link       *lnk;
 	struct in_addr          *oaddr;         /* Original address. */
-	struct in_addr          *aaddr;         /* Alias address. */ 
+	struct in_addr          *aaddr;         /* Alias address. */
 	uint16_t                *aport;         /* Alias port. */
 	uint16_t                *sport, *dport;	/* Source & destination port */
 	uint16_t                maxpktsize;     /* Max packet size. */
-}; 
+};
 
-/* 
+/*
  * This structure contains all the information necessary to make
  * a protocol handler correctly work.
  */
@@ -69,29 +69,29 @@ struct alias_data {
 struct proto_handler {
 	u_int pri;                                              /* Handler priority. */
         int16_t dir;                                            /* Flow direction. */
-	uint8_t proto;                                          /* Working protocol. */	
+	uint8_t proto;                                          /* Working protocol. */
 	int (*fingerprint)(struct libalias *la,                 /* Fingerprint * function. */
 		 struct ip *pip, struct alias_data *ah);
 	int (*protohandler)(struct libalias *la,                /* Aliasing * function. */
-		 struct ip *pip, struct alias_data *ah);                 
+		 struct ip *pip, struct alias_data *ah);
 	LIST_ENTRY(proto_handler) entries;
 };
 
 
-/* 
+/*
  * Used only in userland when libalias needs to keep track of all
  * module loaded. In kernel land (kld mode) we don't need to care
  * care about libalias modules cause it's kld to do it for us.
  */
 
 #define DLL_LEN         32
-struct dll {	
+struct dll {
 	char            name[DLL_LEN];  /* Name of module. */
-	void            *handle;        /* 
+	void            *handle;        /*
 					 * Ptr to shared obj obtained through
 					 * dlopen() - use this ptr to get access
-					 * to any symbols from a loaded module 					 
-					 * via dlsym(). 
+					 * to any symbols from a loaded module
+					 * via dlsym().
 					 */
 	SLIST_ENTRY(dll)        next;
 };
@@ -103,7 +103,7 @@ void            handler_chain_destroy(void);
 int             LibAliasAttachHandlers(struct proto_handler *);
 int             LibAliasDetachHandlers(struct proto_handler *);
 int             detach_handler(struct proto_handler *);
-int             find_handler(int8_t, int8_t, struct libalias *, 
+int             find_handler(int8_t, int8_t, struct libalias *,
 			   struct ip *, struct alias_data *);
 struct proto_handler *first_handler(void);
 
@@ -118,7 +118,7 @@ struct dll      *walk_dll_chain(void);
 /* End of handlers. */
 #define EOH     -1
 
-/* 
+/*
  * Some defines borrowed from sys/module.h used to compile a kld
  * in userland as a shared lib.
  */
@@ -132,7 +132,7 @@ typedef enum modeventtype {
         MOD_SHUTDOWN,
         MOD_QUIESCE
 } modeventtype_t;
-        
+
 typedef struct module *module_t;
 typedef int (*modeventhand_t)(module_t, int /* modeventtype_t */, void *);
 

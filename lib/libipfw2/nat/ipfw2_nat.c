@@ -70,4 +70,3 @@ load_module(register_func function, register_keyword keyword)
 	function(MODULE_NAT_ID, O_NAT_NAT,
 		(parser_func)parse_nat, (shower_func)show_nat);
 }
-

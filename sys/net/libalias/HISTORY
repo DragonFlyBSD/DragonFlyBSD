@@ -114,7 +114,7 @@ Version 2.2: July, 1997 (cjm)
 Version 2.3: August 11, 1997 (cjm)
     - Problem associated with socket file descriptor
       accumulation in alias_db.c corrected.  The sockets
-      had to be closed when a binding failed.  Problem 
+      had to be closed when a binding failed.  Problem
       in code located by Gordon Burditt.
 
 Version 2.4: September 1, 1997 (cjm)
@@ -140,6 +140,6 @@ Version 3.1: May, 2000 (Erik Salander, erik@whistle.com)
       FTP servers in passive mode.
     - Added support for PPTP aliasing.
 
-Version 3.2: July, 2000 (Erik Salander, erik@whistle.com and 
+Version 3.2: July, 2000 (Erik Salander, erik@whistle.com and
       Junichi Satoh, junichi@junichi.org)
     - Added support for streaming media (RTSP and PNA) aliasing.

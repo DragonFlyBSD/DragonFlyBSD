@@ -41,7 +41,7 @@
 MALLOC_DEFINE(M_IPFW2_BASIC,"IPFW2_BASIC", "ip_fw2 basic module");
 #endif
 
-enum ipfw_basic_opcodes {	
+enum ipfw_basic_opcodes {
 	O_BASIC_ACCEPT,		/* accept */
 	O_BASIC_DENY,		/* deny */
 	O_BASIC_COUNT,		/* count */
@@ -55,7 +55,7 @@ enum ipfw_basic_opcodes {
 	O_BASIC_RECV,		/* recv */
 
 	O_BASIC_PROTO,		/*  arg1=protocol	*/
-	O_BASIC_IP_SRC,			
+	O_BASIC_IP_SRC,
 	O_BASIC_IP_SRC_MASK,	/*  ip = IP/mask*/
 	O_BASIC_IP_SRC_ME,	/*  me  */
 	O_BASIC_IP_SRC_SET,	/*  u32=base, arg1=len, bitmap	*/
@@ -79,8 +79,8 @@ enum ipfw_basic_opcodes {
 
 #define IS_EXPIRED(state)  (state->lifetime > 0 && 			\
 		(state->timestamp + state->lifetime) < time_second) ||	\
-		((state->expiry != 0) && (state->expiry < time_second))	
+		((state->expiry != 0) && (state->expiry < time_second))
 
 #define IPFW_BASIC_LOADED   (ip_fw_basic_loaded)
 
-#endif 
+#endif

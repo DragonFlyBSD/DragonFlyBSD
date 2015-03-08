@@ -180,4 +180,3 @@ load_module(register_func function, register_keyword keyword)
 	function(MODULE_LAYER2_ID, O_LAYER2_MAC,
 			(parser_func)parse_mac,(shower_func)show_mac);
 }
-
