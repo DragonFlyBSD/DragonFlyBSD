@@ -1152,7 +1152,7 @@ backupworld-auto:
 .if (exists(${DESTDIR}/sbin) && exists(${DESTDIR}/bin) && \
      exists(${DESTDIR}/usr/sbin) && exists(${DESTDIR}/usr/bin) && \
      exists(${DESTDIR}/usr/lib) && exists(${DESTDIR}/usr/libexec))
-	tar -czf ${AUTO_BACKUP}/binaries.tar.gz -C ${DESTDIR}/ \
+	/usr/bin/tar -czf ${AUTO_BACKUP}/binaries.tar.gz -C ${DESTDIR}/ \
 		--options gzip:compression-level=1 \
 		sbin bin usr/sbin usr/bin usr/lib usr/libexec
 .endif
