@@ -108,8 +108,6 @@
             ru
             ..
         ..
-        sendmail
-        ..
         sm.bin
         ..
         uucp
@@ -387,8 +385,6 @@
             ..
         ..
         installer
-        ..
-        libg++
         ..
         locale
             UTF-8
@@ -1207,8 +1203,6 @@
                 man7
                 ..
             ..
-        ..
-        sendmail
         ..
         skel
         ..
