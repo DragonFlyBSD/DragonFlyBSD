@@ -2,9 +2,7 @@
 # and OpenSMTPD from ports.  They are overwritten during each installworld
 
 FILESDIR=	/etc/mail/
-SHAREOWN=	root
-SHAREGRP=	mail
-FILESMODE=	640
+FILESMODE=	644
 
 FILES+=		README \
 		mailer.conf.dma \
