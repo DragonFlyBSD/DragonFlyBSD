@@ -24,13 +24,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_SPINLOCK_H_
-#define _LINUX_SPINLOCK_H_
+#ifndef _ASM_BARRIER_H_
+#define _ASM_BARRIER_H_
 
-#include <sys/spinlock2.h>
+#define mb()		cpu_mfence()
+#define rmb()		cpu_lfence()
+#define wmb()		cpu_sfence()
 
-#include <asm/barrier.h>
+#define smp_mb()	mb()
+#define smp_rmb()	rmb()
+#define smp_wmb()	barrier()
 
-#define spin_is_locked(x)	spin_held(x)
-
-#endif	/* _LINUX_SPINLOCK_H_ */
+#endif	/* _ASM_BARRIER_H_ */
