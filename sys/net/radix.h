@@ -168,8 +168,11 @@ struct radix_node_head {
 		     struct radix_node_head *head, struct radix_node nodes[]);
 	struct	radix_node *(*rnh_delpkt)	/* remove based on packet hdr */
 		    (void *v, char *mask, struct radix_node_head *head);
-	struct	radix_node *(*rnh_matchpkt)	/* locate based on packet hdr */
-		    (void *v, struct radix_node_head *head);
+
+	/* traverse tree starting from a */
+	int	(*rnh_walktree_at)
+		    (struct radix_node_head *head, const char *a, const char *m,
+		     walktree_f_t *f, void *w);
 
 	struct radix_node_head *rnh_maskhead;
 };

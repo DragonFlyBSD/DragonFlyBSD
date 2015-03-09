@@ -55,6 +55,8 @@
 static int rn_walktree_from(struct radix_node_head *h, char *a, char *m,
 			    walktree_f_t *f, void *w);
 static int rn_walktree(struct radix_node_head *, walktree_f_t *, void *);
+static int rn_walktree_at(struct radix_node_head *h, const char *a,
+			    const char *m, walktree_f_t *f, void *w);
 
 static struct radix_node
     *rn_insert(char *, struct radix_node_head *, boolean_t *,
@@ -979,7 +981,8 @@ rn_walktree_from(struct radix_node_head *h, char *xa, char *xm,
 }
 
 static int
-rn_walktree(struct radix_node_head *h, walktree_f_t *f, void *w)
+rn_walktree_at(struct radix_node_head *h, const char *a, const char *m,
+    walktree_f_t *f, void *w)
 {
 	struct radix_node *base, *next;
 	struct radix_node *rn = h->rnh_treetop;
@@ -990,9 +993,16 @@ rn_walktree(struct radix_node_head *h, walktree_f_t *f, void *w)
 	 * while applying the function f to it, so we need to calculate
 	 * the successor node in advance.
 	 */
-	/* First time through node, go left */
-	while (rn->rn_bit >= 0)
-		rn = rn->rn_left;
+	if (a == NULL) {
+		/* First time through node, go left */
+		while (rn->rn_bit >= 0)
+			rn = rn->rn_left;
+	} else {
+		if (m != NULL)
+			rn = rn_search_m(a, rn, m);
+		else
+			rn = rn_search(a, rn);
+	}
 	for (;;) {
 		base = rn;
 		/* If at right child go back up, otherwise, go right */
@@ -1014,6 +1024,12 @@ rn_walktree(struct radix_node_head *h, walktree_f_t *f, void *w)
 			return (0);
 	}
 	/* NOTREACHED */
+}
+
+static int
+rn_walktree(struct radix_node_head *h, walktree_f_t *f, void *w)
+{
+	return rn_walktree_at(h, NULL, NULL, f, w);
 }
 
 int
@@ -1053,6 +1069,7 @@ rn_inithead(void **head, struct radix_node_head *maskhead, int off)
 	rnh->rnh_lookup = rn_lookup;
 	rnh->rnh_walktree = rn_walktree;
 	rnh->rnh_walktree_from = rn_walktree_from;
+	rnh->rnh_walktree_at = rn_walktree_at;
 
 	return (1);
 }

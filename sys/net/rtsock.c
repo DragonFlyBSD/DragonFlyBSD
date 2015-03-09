@@ -102,12 +102,37 @@ struct walkarg {
 	struct sysctl_req *w_req;
 };
 
+#ifndef RTTABLE_DUMP_MSGCNT_MAX
+/* Should be large enough for dupkeys */
+#define RTTABLE_DUMP_MSGCNT_MAX		64
+#endif
+
+struct rttable_walkarg {
+	int	w_op;
+	int	w_arg;
+	int	w_bufsz;
+	void	*w_buf;
+
+	int	w_buflen;
+
+	const char *w_key;
+	const char *w_mask;
+
+	struct sockaddr_storage w_key0;
+	struct sockaddr_storage w_mask0;
+};
+
+struct netmsg_rttable_walk {
+	struct netmsg_base	base;
+	int			af;
+	struct rttable_walkarg	*w;
+};
+
 static struct mbuf *
 		rt_msg_mbuf (int, struct rt_addrinfo *);
 static void	rt_msg_buffer (int, struct rt_addrinfo *, void *buf, int len);
 static int	rt_msgsize(int type, const struct rt_addrinfo *rtinfo);
 static int	rt_xaddrs (char *, char *, struct rt_addrinfo *);
-static int	sysctl_dumpentry (struct radix_node *rn, void *vw);
 static int	sysctl_rttable(int af, struct sysctl_req *req, int op, int arg);
 static int	sysctl_iflist (int af, struct walkarg *w);
 static int	route_output(struct mbuf *, struct socket *, ...);
@@ -1234,51 +1259,6 @@ resizewalkarg(struct walkarg *w, int len)
 	return (0);
 }
 
-/*
- * This is used in dumping the kernel table via sysctl().
- */
-int
-sysctl_dumpentry(struct radix_node *rn, void *vw)
-{
-	struct walkarg *w = vw;
-	struct rtentry *rt = (struct rtentry *)rn;
-	struct rt_addrinfo rtinfo;
-	int error, msglen;
-
-	if (w->w_op == NET_RT_FLAGS && !(rt->rt_flags & w->w_arg))
-		return 0;
-
-	bzero(&rtinfo, sizeof(struct rt_addrinfo));
-	rtinfo.rti_dst = rt_key(rt);
-	rtinfo.rti_gateway = rt->rt_gateway;
-	rtinfo.rti_netmask = rt_mask(rt);
-	rtinfo.rti_genmask = rt->rt_genmask;
-	if (rt->rt_ifp != NULL) {
-		rtinfo.rti_ifpaddr =
-		TAILQ_FIRST(&rt->rt_ifp->if_addrheads[mycpuid])->ifa->ifa_addr;
-		rtinfo.rti_ifaaddr = rt->rt_ifa->ifa_addr;
-		if (rt->rt_ifp->if_flags & IFF_POINTOPOINT)
-			rtinfo.rti_bcastaddr = rt->rt_ifa->ifa_dstaddr;
-	}
-	msglen = rt_msgsize(RTM_GET, &rtinfo);
-	if (w->w_tmemsize < msglen && resizewalkarg(w, msglen) != 0)
-		return (ENOMEM);
-	rt_msg_buffer(RTM_GET, &rtinfo, w->w_tmem, msglen);
-	if (w->w_req != NULL) {
-		struct rt_msghdr *rtm = w->w_tmem;
-
-		rtm->rtm_flags = rt->rt_flags;
-		rtm->rtm_use = rt->rt_use;
-		rtm->rtm_rmx = rt->rt_rmx;
-		rtm->rtm_index = rt->rt_ifp->if_index;
-		rtm->rtm_errno = rtm->rtm_pid = rtm->rtm_seq = 0;
-		rtm->rtm_addrs = rtinfo.rti_addrs;
-		error = SYSCTL_OUT(w->w_req, rtm, msglen);
-		return (error);
-	}
-	return (0);
-}
-
 static void
 ifnet_compute_stats(struct ifnet *ifp)
 {
@@ -1410,27 +1390,215 @@ sysctl_iflist(int af, struct walkarg *w)
 }
 
 static int
-sysctl_rttable(int af, struct sysctl_req *req, int op, int arg)
+rttable_walkarg_create(struct rttable_walkarg *w, int op, int arg)
 {
-	struct walkarg w;
-	int i, error = EINVAL;
+	struct rt_addrinfo rtinfo;
+	struct sockaddr_storage ss;
+	int i, msglen;
 
-	bzero(&w, sizeof(w));
-	w.w_op = op;
-	w.w_arg = arg;
-	w.w_req = req;
+	memset(w, 0, sizeof(*w));
+	w->w_op = op;
+	w->w_arg = arg;
 
-	for (i = 1; i <= AF_MAX; i++) {
-		struct radix_node_head *rnh;
+	memset(&ss, 0, sizeof(ss));
+	ss.ss_len = sizeof(ss);
 
-		if ((rnh = rt_tables[mycpuid][i]) && (af == 0 || af == i) &&
-		    (error = rnh->rnh_walktree(rnh, sysctl_dumpentry, &w)))
-			break;
+	memset(&rtinfo, 0, sizeof(rtinfo));
+	for (i = 0; i < RTAX_MAX; ++i)
+		rtinfo.rti_info[i] = (struct sockaddr *)&ss;
+	msglen = rt_msgsize(RTM_GET, &rtinfo);
+
+	w->w_bufsz = msglen * RTTABLE_DUMP_MSGCNT_MAX;
+	w->w_buf = kmalloc(w->w_bufsz, M_TEMP, M_WAITOK | M_NULLOK);
+	if (w->w_buf == NULL)
+		return ENOMEM;
+	return 0;
+}
+
+static void
+rttable_walkarg_destroy(struct rttable_walkarg *w)
+{
+	kfree(w->w_buf, M_TEMP);
+}
+
+static void
+rttable_entry_rtinfo(struct rt_addrinfo *rtinfo, struct radix_node *rn)
+{
+	struct rtentry *rt = (struct rtentry *)rn;
+
+	bzero(rtinfo, sizeof(*rtinfo));
+	rtinfo->rti_dst = rt_key(rt);
+	rtinfo->rti_gateway = rt->rt_gateway;
+	rtinfo->rti_netmask = rt_mask(rt);
+	rtinfo->rti_genmask = rt->rt_genmask;
+	if (rt->rt_ifp != NULL) {
+		rtinfo->rti_ifpaddr =
+		TAILQ_FIRST(&rt->rt_ifp->if_addrheads[mycpuid])->ifa->ifa_addr;
+		rtinfo->rti_ifaaddr = rt->rt_ifa->ifa_addr;
+		if (rt->rt_ifp->if_flags & IFF_POINTOPOINT)
+			rtinfo->rti_bcastaddr = rt->rt_ifa->ifa_dstaddr;
+	}
+}
+
+static int
+rttable_walk_entry(struct radix_node *rn, void *xw)
+{
+	struct rttable_walkarg *w = xw;
+	struct rtentry *rt = (struct rtentry *)rn;
+	struct rt_addrinfo rtinfo;
+	struct rt_msghdr *rtm;
+	boolean_t save = FALSE;
+	int msglen, w_bufleft;
+	void *ptr;
+
+	rttable_entry_rtinfo(&rtinfo, rn);
+	msglen = rt_msgsize(RTM_GET, &rtinfo);
+
+	w_bufleft = w->w_bufsz - w->w_buflen;
+
+	if (rn->rn_dupedkey != NULL) {
+		struct radix_node *rn1 = rn;
+		int total_msglen = msglen;
+
+		/*
+		 * Make sure that we have enough space left for all
+		 * dupedkeys, since rn_walktree_at always starts
+		 * from the first dupedkey.
+		 */
+		while ((rn1 = rn1->rn_dupedkey) != NULL) {
+			struct rt_addrinfo rtinfo1;
+			int msglen1;
+
+			if (rn1->rn_flags & RNF_ROOT)
+				continue;
+
+			rttable_entry_rtinfo(&rtinfo1, rn1);
+			msglen1 = rt_msgsize(RTM_GET, &rtinfo1);
+			total_msglen += msglen1;
+		}
+
+		if (total_msglen > w_bufleft) {
+			if (total_msglen > w->w_bufsz) {
+				static int logged = 0;
+
+				if (!logged) {
+					kprintf("buffer is too small for "
+					    "all dupedkeys, increase "
+					    "RTTABLE_DUMP_MSGCNT_MAX\n");
+					logged = 1;
+				}
+				return ENOMEM;
+			}
+			save = TRUE;
+		}
+	} else if (msglen > w_bufleft) {
+		save = TRUE;
 	}
 
-	if (w.w_tmem != NULL)
-		kfree(w.w_tmem, M_RTABLE);
+	if (save) {
+		/*
+		 * Not enough buffer left; remember the position
+		 * to start from upon next round.
+		 */
+		KASSERT(msglen <= w->w_bufsz, ("msg too long %d", msglen));
 
+		KASSERT(rtinfo.rti_dst->sa_len <= sizeof(w->w_key0),
+		    ("key too long %d", rtinfo.rti_dst->sa_len));
+		memset(&w->w_key0, 0, sizeof(w->w_key0));
+		memcpy(&w->w_key0, rtinfo.rti_dst, rtinfo.rti_dst->sa_len);
+		w->w_key = (const char *)&w->w_key0;
+
+		if (rtinfo.rti_netmask != NULL) {
+			KASSERT(
+			    rtinfo.rti_netmask->sa_len <= sizeof(w->w_mask0),
+			    ("mask too long %d", rtinfo.rti_netmask->sa_len));
+			memset(&w->w_mask0, 0, sizeof(w->w_mask0));
+			memcpy(&w->w_mask0, rtinfo.rti_netmask,
+			    rtinfo.rti_netmask->sa_len);
+			w->w_mask = (const char *)&w->w_mask0;
+		} else {
+			w->w_mask = NULL;
+		}
+		return EJUSTRETURN;
+	}
+
+	ptr = ((uint8_t *)w->w_buf) + w->w_buflen;
+	rt_msg_buffer(RTM_GET, &rtinfo, ptr, msglen);
+
+	rtm = (struct rt_msghdr *)ptr;
+	rtm->rtm_flags = rt->rt_flags;
+	rtm->rtm_use = rt->rt_use;
+	rtm->rtm_rmx = rt->rt_rmx;
+	rtm->rtm_index = rt->rt_ifp->if_index;
+	rtm->rtm_errno = rtm->rtm_pid = rtm->rtm_seq = 0;
+	rtm->rtm_addrs = rtinfo.rti_addrs;
+
+	w->w_buflen += msglen;
+
+	return 0;
+}
+
+static void
+rttable_walk_dispatch(netmsg_t msg)
+{
+	struct netmsg_rttable_walk *nmsg = (struct netmsg_rttable_walk *)msg;
+	struct radix_node_head *rnh = rt_tables[mycpuid][nmsg->af];
+	struct rttable_walkarg *w = nmsg->w;
+	int error;
+
+	error = rnh->rnh_walktree_at(rnh, w->w_key, w->w_mask,
+	    rttable_walk_entry, w);
+	lwkt_replymsg(&nmsg->base.lmsg, error);
+}
+
+static int
+sysctl_rttable(int af, struct sysctl_req *req, int op, int arg)
+{
+	struct rttable_walkarg w;
+	int error, i;
+
+	error = rttable_walkarg_create(&w, op, arg);
+	if (error)
+		return error;
+
+	error = EINVAL;
+	for (i = 1; i <= AF_MAX; i++) {
+		if (rt_tables[mycpuid][i] != NULL && (af == 0 || af == i)) {
+			w.w_key = NULL;
+			w.w_mask = NULL;
+			for (;;) {
+				struct netmsg_rttable_walk nmsg;
+
+				netmsg_init(&nmsg.base, NULL,
+				    &curthread->td_msgport, 0,
+				    rttable_walk_dispatch);
+				nmsg.af = i;
+				nmsg.w = &w;
+
+				w.w_buflen = 0;
+
+				error = lwkt_domsg(netisr_cpuport(mycpuid),
+				    &nmsg.base.lmsg, 0);
+				if (error && error != EJUSTRETURN)
+					goto done;
+
+				if (req != NULL && w.w_buflen > 0) {
+					int error1;
+
+					error1 = SYSCTL_OUT(req, w.w_buf,
+					    w.w_buflen);
+					if (error1) {
+						error = error1;
+						goto done;
+					}
+				}
+				if (error == 0) /* done */
+					break;
+			}
+		}
+	}
+done:
+	rttable_walkarg_destroy(&w);
 	return error;
 }
 
