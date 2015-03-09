@@ -715,7 +715,9 @@ again:
 	 * Issue BLK_OPEN if necessary.  ENXIO is returned if we have trouble.
 	 */
 	if (sc->open_tag == NULL) {
+		lockmgr(&sc->lk, LK_EXCLUSIVE);
 		xa_restart_deferred(sc); /* eats serializing */
+		lockmgr(&sc->lk, LK_RELEASE);
 	} else {
 		sc->serializing = 0;
 		wakeup(sc);
@@ -786,6 +788,10 @@ xa_strategy(struct dev_strategy_args *ap)
 	atomic_add_int(&xa_active, 1);
 	xa_last = bio->bio_offset;
 
+	/*
+	 * If no tags are available NULL is returned and the bio is
+	 * placed on sc->bioq.
+	 */
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
 	tag = xa_setup_cmd(sc, bio);
 	if (tag)
@@ -853,6 +859,7 @@ xa_start(xa_tag_t *tag, kdmsg_msg_t *msg, int async)
 
 	tag->done = 0;
 	tag->async = async;
+	tag->status.head.error = DMSG_ERR_IO;	/* fallback error */
 
 	if (msg == NULL) {
 		struct bio *bio;
@@ -926,13 +933,32 @@ xa_start(xa_tag_t *tag, kdmsg_msg_t *msg, int async)
 	}
 
 	/*
-	 * If no msg was allocated this ia failure
+	 * If no msg was allocated we likely could not find a good span.
 	 */
 skip:
 	if (msg) {
+		/*
+		 * Message was passed in or constructed.
+		 */
 		tag->state = msg->state;
+		lockmgr(&sc->lk, LK_RELEASE);
 		kdmsg_msg_write(msg);
+		lockmgr(&sc->lk, LK_EXCLUSIVE);
+	} else if (tag->bio &&
+		   (tag->bio->bio_buf->b_flags & B_FAILONDIS) == 0) {
+		/*
+		 * No spans available but BIO is not allowed to fail
+		 * on connectivity problems.  Requeue the BIO.
+		 */
+		TAILQ_INSERT_TAIL(&sc->bioq, tag->bio, bio_act);
+		tag->bio = NULL;
+		lockmgr(&sc->lk, LK_RELEASE);
+		xa_done(tag, 1);
+		lockmgr(&sc->lk, LK_EXCLUSIVE);
 	} else {
+		/*
+		 * No spans available, bio is allowed to fail.
+		 */
 		lockmgr(&sc->lk, LK_RELEASE);
 		tag->status.head.error = DMSG_ERR_IO;
 		xa_done(tag, 1);
