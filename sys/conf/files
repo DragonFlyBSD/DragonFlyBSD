@@ -679,13 +679,7 @@ iwn6050.fw			optional iwnfw				\
 	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwn6050.fw"
-dev/netif/iwl/if_iwl.c	optional iwl
-dev/netif/iwl/iwl2100.c	optional iwl
 dev/netif/jme/if_jme.c	optional jme
-dev/netif/acx/if_acx.c	optional acx
-dev/netif/acx/acxcmd.c	optional acx
-dev/netif/acx/acx100.c	optional acx
-dev/netif/acx/acx111.c	optional acx
 dev/netif/ral/if_ral_pci.c	optional ral
 dev/netif/ral/rt2560.c		optional ral
 dev/netif/ral/rt2661.c		optional ral
@@ -959,11 +953,6 @@ wpi.fw			optional wpifw					\
 	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"wpi.fw"
-dev/netif/rtw/rtw.c			optional rtw
-dev/netif/rtw/rtwphy.c			optional rtw
-dev/netif/rtw/rtwphyio.c		optional rtw
-dev/netif/rtw/smc93cx6.c		optional rtw
-dev/netif/rtw/if_rtw_pci.c		optional rtw pci
 dev/netif/xe/if_xe.c			optional xe
 dev/netif/xe/if_xe_pccard.c		optional xe pccard
 gnu/vfs/ext2fs/ext2_alloc.c		optional ext2fs

@@ -403,14 +403,7 @@ MAN=	aac.4 \
 # XXX re-add when pfsync(4) has been fixed
 #	pfsync.4 \
 
-# XXX re-add when adjusted to the new 802.11 framework
-#	acx.4 \
-#	bwi.4 \
-#	iwl.4 \
-#	rtw.4 \
-
 MLINKS=	acpi_thermal.4 acpi_tz.4
-#MLINKS+=acx.4 if_acx.4
 MLINKS+=ae.4 if_ae.4
 MLINKS+=age.4 if_age.4
 MLINKS+=agp.4 agpgart.4
@@ -427,7 +420,6 @@ MLINKS+=bge.4 if_bge.4
 MLINKS+=bktr.4 brooktree.4
 MLINKS+=bnx.4 if_bnx.4
 MLINKS+=bridge.4 if_bridge.4
-#MLINKS+=bwi.4 if_bwi.4
 MLINKS+=bwn.4 if_bwn.4
 MLINKS+=crypto.4 cryptodev.4
 MLINKS+=cue.4 if_cue.4
@@ -459,7 +451,6 @@ MLINKS+=ipfirewall.4 ipaccounting.4 \
 	ipfirewall.4 ipfw.4
 MLINKS+=ipheth.4 if_ipheth.4
 MLINKS+=iwi.4 if_iwi.4
-#MLINKS+=iwl.4 if_iwl.4
 MLINKS+=iwn.4 if_iwn.4
 MLINKS+=ix.4 if_ix.4 \
 	ix.4 ixgbe.4 \
@@ -492,7 +483,6 @@ MLINKS+=ral.4 if_ral.4
 MLINKS+=random.4 urandom.4
 MLINKS+=re.4 if_re.4
 MLINKS+=rl.4 if_rl.4
-#MLINKS+=rtw.4 if_rtw.4
 #MLINKS+=rue.4 if_rue.4
 MLINKS+=rum.4 if_rum.4
 MLINKS+=run.4 if_run.4

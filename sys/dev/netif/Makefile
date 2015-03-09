@@ -9,8 +9,4 @@ SUBDIR= an age alc ale ath bce bfe bge bwn \
 SUBDIR+=ar ed sbni sr
 .endif
 
-# XXX need to be updated to the new net80211 stack
-# SUBDIR+= acx bwi iwl rtw
-# .endif
-
 .include <bsd.subdir.mk>

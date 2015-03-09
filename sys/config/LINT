@@ -1307,13 +1307,10 @@ device		bwn		# Broadcom BCM43xx NICs using v4 firmware
 options		BWN_DEBUG	# turn on debugging output
 options		BWN_RXRING_SLOTS=128	# number of RX slots to allocate
 options		BWN_TXRING_SLOTS=128	# number of TX slots to allocate
-#device		iwl		# Intel PRO/Wireless 2100
 device		iwi		# Intel PRO/Wireless 2200BG/2915ABG
 device		iwn		# Intel WiFi Link 4965/1000/5000/5150/5300/6000/6050
 options		IWN_DEBUG	# turn on debugging output
 device		wi		# WaveLAN/IEEE, PRISM-II, Spectrum24 802.11DS
-#device		rtw		# RealTek 8180
-#device		acx		# TI ACX100/ACX111.
 device		xe		# Xircom PCMCIA
 device		ral		# Ralink Technology 802.11 wireless NIC
 device		wpi

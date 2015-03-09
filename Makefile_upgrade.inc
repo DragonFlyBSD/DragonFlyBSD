@@ -2854,6 +2854,18 @@ TO_REMOVE+=/usr/share/man/man8/smrsh.8.gz
 TO_REMOVE+=/usr/share/sendmail
 TO_REMOVE+=/usr/share/libg++
 TO_REMOVE+=/etc/mail/helpfile
+TO_REMOVE+=/boot/kernel/if_acx.ko
+TO_REMOVE+=/usr/share/man/cat4/acx.4.gz
+TO_REMOVE+=/usr/share/man/man4/acx.4.gz
+TO_REMOVE+=/boot/kernel/if_bwi.ko
+TO_REMOVE+=/usr/share/man/cat4/bwi.4.gz
+TO_REMOVE+=/usr/share/man/man4/bwi.4.gz
+TO_REMOVE+=/boot/kernel/if_iwl.ko
+TO_REMOVE+=/usr/share/man/cat4/iwl.4.gz
+TO_REMOVE+=/usr/share/man/man4/iwl.4.gz
+TO_REMOVE+=/boot/kernel/if_rtw.ko
+TO_REMOVE+=/usr/share/man/cat4/rtw.4.gz
+TO_REMOVE+=/usr/share/man/man4/rtw.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
@@ -2880,17 +2892,3 @@ TO_REMOVE+=/boot/kernel/ng_sync_sr.ko
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/cat4/pfsync.4.gz
 TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz
-
-# XXX Remove when adjusted to the new 802.11 framework
-TO_REMOVE+=/boot/kernel/if_acx.ko
-TO_REMOVE+=/usr/share/man/cat4/acx.4.gz
-TO_REMOVE+=/usr/share/man/man4/acx.4.gz
-TO_REMOVE+=/boot/kernel/if_bwi.ko
-TO_REMOVE+=/usr/share/man/cat4/bwi.4.gz
-TO_REMOVE+=/usr/share/man/man4/bwi.4.gz
-TO_REMOVE+=/boot/kernel/if_iwl.ko
-TO_REMOVE+=/usr/share/man/cat4/iwl.4.gz
-TO_REMOVE+=/usr/share/man/man4/iwl.4.gz
-TO_REMOVE+=/boot/kernel/if_rtw.ko
-TO_REMOVE+=/usr/share/man/cat4/rtw.4.gz
-TO_REMOVE+=/usr/share/man/man4/rtw.4.gz
