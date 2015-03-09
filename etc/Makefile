@@ -143,8 +143,8 @@ upgrade_check:
 		echo "=  sendmail is being removed from the base system." ; \
 		echo "=  /etc/mail/mailer.conf is still configured to use sendmail." ; \
 		echo "=  See http://www.dragonflybsd.com/docs/docs/newhandbook/mta/" ; \
-		echo "=  Quick: echo > ${DESTDIR}/etc/mail/mailer.conf, then make upgrade " ; \
-		echo "=  then cp ${DESTDIR}/etc/mail/mailer.conf.dma ${DESTDIR}/etc/mail/mailer.conf" ; \
+		echo "=  Quick: cp /usr/src/libexec/dma/mailer-conf/mailer.conf.dma " ; \
+		echo "=            ${DESTDIR}/etc/mail/mailer.conf ; make upgrade" ; \
 		echo "==================================================================" ; \
 		/usr/bin/false ; \
 	fi
