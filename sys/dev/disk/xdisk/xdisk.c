@@ -492,12 +492,14 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 			 *	    it is synchronous and issues more disk
 			 *	    I/Os, we will deadlock.
 			 */
+			kprintf("xdisk: A1\n");
 			disk_setdiskinfo(&sc->disk, &sc->info);
 			xa_restart_deferred(sc);	/* eats serializing */
 			lockmgr(&sc->lk, LK_RELEASE);
 		} else {
 			lockmgr(&sc->lk, LK_EXCLUSIVE);
 			++sc->spancnt;
+			kprintf("xdisk: A2 (%d) ser=%d otag=%p\n", sc->spancnt, sc->serializing, sc->open_tag);
 			TAILQ_INSERT_TAIL(&sc->spanq, msg->state, user_entry);
 			msg->state->any.xa_sc = sc;
 			if (sc->serializing == 0 && sc->open_tag == NULL) {
@@ -505,6 +507,12 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 				xa_restart_deferred(sc); /* eats serializing */
 			}
 			lockmgr(&sc->lk, LK_RELEASE);
+			if (sc->dev && sc->dev->si_disk) {
+				kprintf("reprobe\n");
+				disk_msg_send(DISK_DISK_REPROBE,
+					      sc->dev->si_disk,
+					      NULL);
+			}
 		}
 		kprintf("xdisk: sc %p spancnt %d\n", sc, sc->spancnt);
 		kdmsg_msg_result(msg, 0);
@@ -1276,7 +1284,8 @@ xa_restart_deferred(xa_softc_t *sc)
 					      DMSGF_CREATE,
 					      xa_sync_completion, tag);
 			msg->any.blk_open.modes = DMSG_BLKOPEN_RD;
-			kprintf("xdisk: BLK_OPEN tag %p state %p span-state %p\n",
+			kprintf("xdisk: BLK_OPEN tag %p state %p "
+				"span-state %p\n",
 				tag, msg->state, span);
 			xa_start(tag, msg, 0);
 		}
