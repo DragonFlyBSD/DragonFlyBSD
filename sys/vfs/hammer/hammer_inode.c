@@ -2573,8 +2573,21 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 	} else {
 		ip->flags &= ~HAMMER_INODE_REFLUSH;
 	}
-	if (ip->flags & HAMMER_INODE_MODMASK)
+
+	/*
+	 * The fs token is held but the inode lock is not held.  Because this
+	 * is a backend flush it is possible that the vnode has no references
+	 * and cause a reclaim race inside vsetisdirty() if/when it blocks.
+	 *
+	 * Therefore, we must lock the inode around this particular dirtying
+	 * operation.  We don't have to around other dirtying operations
+	 * where the vnode is implicitly or explicitly held.
+	 */
+	if (ip->flags & HAMMER_INODE_MODMASK) {
+		hammer_lock_ex(&ip->lock);
 		hammer_inode_dirty(ip);
+		hammer_unlock(&ip->lock);
+	}
 
 	/*
 	 * Adjust the flush state.
