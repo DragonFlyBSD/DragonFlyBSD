@@ -100,13 +100,6 @@ SUBDIR+= compat/${MACHINE_ARCH}
 _libc_r=	libc_r
 .endif
 
-.if !defined(NO_SENDMAIL)
-_libmilter=	libmilter
-_libsm=		libsm
-_libsmdb=	libsmdb
-_libsmutil=	libsmutil
-.endif
-
 .if defined(WANT_NETGRAPH7) 
 _libnetgraph=	libnetgraph7
 .else

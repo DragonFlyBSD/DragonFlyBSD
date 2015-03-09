@@ -1,6 +1,5 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/bin/Makefile,v 1.15.2.2 2000/10/31 09:43:57 dougb Exp $
-# $DragonFly: src/bin/Makefile,v 1.10 2008/05/27 17:10:48 dillon Exp $
 
 SUBDIR= cat \
 	chio \
@@ -37,10 +36,6 @@ SUBDIR= cat \
 	test \
 	uuidgen \
 	varsym
-
-.if !defined(NO_SENDMAIL)
-SUBDIR+=rmail
-.endif
 
 # maximum parallelism
 #

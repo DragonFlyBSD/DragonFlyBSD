@@ -1,9 +1,7 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
 
-.if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
-.endif
 
 # Files that should be installed read-only (444)
 #
@@ -59,9 +57,6 @@ DEFAULTS= compilers.conf devfs.conf make.conf mkinitrd.conf periodic.conf \
 
 MTREE=	BSD.include.dist BSD.local.dist BSD.root.dist BSD.usr.dist \
 	BSD.var.dist
-.if !defined(NO_SENDMAIL)
-MTREE+=	BSD.sendmail.dist
-.endif
 
 PPPCNF=	ppp.conf
 
@@ -108,14 +103,6 @@ preupgrade:
 		pw -V ${DESTDIR}/etc useradd mail -u 6 -g 6 \
 		   -c "Mail user" \
 		   -d /nonexistent -s /sbin/nologin
-.if !defined(NO_SENDMAIL)
-	(pw -V ${DESTDIR}/etc groupshow smmsp -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc groupadd smmsp -g 25
-	(pw -V ${DESTDIR}/etc usershow smmsp -q > /dev/null) || \
-		pw -V ${DESTDIR}/etc useradd smmsp -u 25 \
-		   -c "Sendmail Submission User" \
-		   -d /var/spool/clientmqueue -s /sbin/nologin
-.endif
 	(pw -V ${DESTDIR}/etc usershow _pflogd -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc useradd _pflogd -u 64 \
 		   -c "pflogd privsep user" \
@@ -178,11 +165,6 @@ upgrade_etc:	upgrade_check preupgrade remove-obsolete-files
 	${LN} -fs /usr/share/misc/termcap ${DESTDIR}/etc/termcap
 	# "../usr.sbin/rmt/make etc-rmt" expanded inline here:
 	${LN} -fs /usr/sbin/rmt ${DESTDIR}/etc/rmt
-.if !defined(BINARY_UPGRADE) # XXX not yet handled by binary upgrade
-.if !defined(NO_SENDMAIL)
-	cd ${UPGRADE_SRCDIR}/sendmail; ${MAKE} upgrade
-.endif
-.endif
 	cd ${UPGRADE_SRCDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${MTREE} ${DESTDIR}/etc/mtree
 	cd ${UPGRADE_SRCDIR}/bluetooth; ${MAKE} install
@@ -290,10 +272,6 @@ distribution:
 	cd ${.CURDIR}; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 		Makefile.usr ${DESTDIR}/usr/Makefile
-.if !defined(NO_SENDMAIL)
-	cd ${.CURDIR}/sendmail; ${MAKE} obj
-	cd ${.CURDIR}/sendmail; ${MAKE} distribution
-.endif
 .for dir in ${DIRS}
 .if exists(${.CURDIR}/../${dir}/Makefile.etc)
 	cd ${.CURDIR}/../${dir}; ${MAKE} -f Makefile.etc obj
@@ -376,9 +354,6 @@ distrib-dirs:
 	mtree -deU -f ${.CURDIR}/mtree/BSD.usr.dist -p ${DESTDIR}/usr
 	mtree -deU -f ${.CURDIR}/mtree/BSD.include.dist \
 		-p ${DESTDIR}/usr/include
-.if !defined(NO_SENDMAIL)
-	mtree -deU -f ${.CURDIR}/mtree/BSD.sendmail.dist -p ${DESTDIR}/
-.endif
 	cd ${DESTDIR}/; test -e sys || (rm -f sys;  ${LN} -s usr/src/sys sys)
 	cd ${DESTDIR}/usr/share/man/en.ISO8859-1; ${LN} -sf ../man* .
 	cd ${DESTDIR}/usr/share/man; \

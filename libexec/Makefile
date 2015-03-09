@@ -31,10 +31,6 @@ SUBDIR=	atrun \
 	utmp_update \
 	ypxfr
 
-.if !defined(NO_SENDMAIL)
-SUBDIR+=mail.local smrsh
-.endif
-
 # maximum parallelism
 #
 SUBDIR_ORDERED=

@@ -256,11 +256,6 @@ SUBDIR+=bc \
 	dc
 .endif
 
-
-.if !defined(NO_SENDMAIL)
-SUBDIR+=vacation 
-.endif
-
 .if ${MACHINE_ARCH} == "i386"
 # Things that don't compile on x86_64 or are i386 specific:
 SUBDIR+=smbutil

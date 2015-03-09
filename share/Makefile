@@ -7,10 +7,6 @@ SUBDIR= colldef dict doc examples i18n initrd \
 	man me misc mk mklocale monetdef msgdef \
 	numericdef skel syscons tabset termcap terminfo timedef zoneinfo
 
-.if !defined(NO_SENDMAIL)
-SUBDIR+= sendmail
-.endif
-
 .if defined(WANT_INSTALLER)
 SUBDIR+= installer
 .endif

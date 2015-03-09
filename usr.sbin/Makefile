@@ -151,14 +151,6 @@ SUBDIR+=lpr
 SUBDIR+=nscd
 .endif
 
-.if !defined(NO_SENDMAIL)
-SUBDIR+=editmap \
-	mailstats \
-	makemap \
-	praliases \
-	sendmail
-.endif
-
 .if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
 SUBDIR+=apm \
 	apmd \

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
 .\"
-.Dd November 28, 2014
+.Dd March 9, 2015
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -516,34 +516,6 @@ when building a
 file from a
 .Pa .mc
 file.
-.It Va SENDMAIL_CFLAGS
-.Pq Vt str
-Flags to pass to the compile command when building
-.Xr sendmail 8 .
-The
-.Va SENDMAIL_*
-flags can be used to provide SASL support with setting such as:
-.Bd -literal -offset indent
-SENDMAIL_CFLAGS=-I/usr/local/include -DSASL
-SENDMAIL_LDFLAGS=-L/usr/local/lib
-SENDMAIL_LDADD=-lsasl
-.Ed
-.It Va SENDMAIL_LDFLAGS
-.Pq Vt str
-Flags to pass to the
-.Xr ld 1
-command when building
-.Xr sendmail 8 .
-.It Va SENDMAIL_LDADD
-.Pq Vt str
-Flags to add to the end of the
-.Xr ld 1
-command when building
-.Xr sendmail 8 .
-.It Va SENDMAIL_DPADD
-.Pq Vt str
-Extra dependencies to add when building
-.Xr sendmail 8 .
 .It Va SENDMAIL_SET_USER_ID
 .Pq Vt bool
 If set, install

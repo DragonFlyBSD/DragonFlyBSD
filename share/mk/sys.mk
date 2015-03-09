@@ -312,13 +312,6 @@ __MAKE_CONF?=/etc/make.conf
 .include "${__MAKE_CONF}"
 .endif
 
-# Temporary - hardcode NO_SENDMAIL after make.conf inclusion to ensure
-# sendmail will not be built.  After verifying sendmail is effectively out
-# of base and DMA functions a replacement, sendmail and NO_SENDMAIL will
-# be properly removed from code base.
-
-NO_SENDMAIL=	yes
-
 .include <bsd.cpu.mk>
 
 .if exists(/etc/make.conf.local)

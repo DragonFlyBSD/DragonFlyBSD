@@ -482,10 +482,6 @@ crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 # Checks to be sure system is ready for installworld
 #
 installcheck: _iwinit
-.if !defined(NO_SENDMAIL)
-	@pw usershow smmsp || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
-	@pw groupshow smmsp || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
-.endif
 	@pw usershow _pflogd || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
 	@pw groupshow authpf || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)
 	@pw groupshow _pflogd || (echo "You may need to run 'make preupgrade' first"; /usr/bin/false)

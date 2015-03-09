@@ -55,9 +55,6 @@ LIBMAGIC?=	${DESTDIR}${LIBDIR}/libmagic.a
 LIBMANDOC?=	${DESTDIR}${LIBDIR}/libmandoc.a
 LIBMD?=		${DESTDIR}${LIBDIR}/libmd.a
 LIBMENU?=	${DESTDIR}${LIBDIR}/libmenu.a
-.if !defined(NO_SENDMAIL)
-LIBMILTER?=	${DESTDIR}${LIBDIR}/libmilter.a
-.endif
 LIBMYTINFO?=	"don't use LIBMYTINFO, use LIBNCURSES"
 LIBNCURSES?=	${DESTDIR}${LIBDIR}/libncurses.a
 LIBNCURSESW?=	${DESTDIR}${LIBDIR}/libncursesw.a
