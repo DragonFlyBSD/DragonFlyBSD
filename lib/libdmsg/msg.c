@@ -35,17 +35,22 @@
 
 #include "dmsg_local.h"
 
+#define DMSG_BLOCK_DEBUG
+
 int DMsgDebugOpt;
 int dmsg_state_count;
 #ifdef DMSG_BLOCK_DEBUG
 static int biocount;
 #endif
 
-static int dmsg_state_msgrx(dmsg_msg_t *msg);
+static int dmsg_state_msgrx(dmsg_msg_t *msg, int mstate);
 static void dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg);
 static void dmsg_msg_free_locked(dmsg_msg_t *msg);
 static void dmsg_state_free(dmsg_state_t *state);
-static void dmsg_simulate_failure(dmsg_state_t *state, int error);
+static void dmsg_subq_delete(dmsg_state_t *state);
+static void dmsg_simulate_failure(dmsg_state_t *state, int meto, int error);
+static void dmsg_state_abort(dmsg_state_t *state);
+static void dmsg_state_dying(dmsg_state_t *state);
 
 RB_GENERATE(dmsg_state_tree, dmsg_state, rbnode, dmsg_state_cmp);
 
@@ -121,8 +126,6 @@ dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 	pthread_mutex_init(&iocom->mtx, NULL);
 	RB_INIT(&iocom->staterd_tree);
 	RB_INIT(&iocom->statewr_tree);
-	TAILQ_INIT(&iocom->freeq);
-	TAILQ_INIT(&iocom->freeq_aux);
 	TAILQ_INIT(&iocom->txmsgq);
 	iocom->sock_fd = sock_fd;
 	iocom->alt_fd = alt_fd;
@@ -218,8 +221,6 @@ dmsg_iocom_signal(dmsg_iocom_t *iocom)
 void
 dmsg_iocom_done(dmsg_iocom_t *iocom)
 {
-	dmsg_msg_t *msg;
-
 	if (iocom->sock_fd >= 0) {
 		close(iocom->sock_fd);
 		iocom->sock_fd = -1;
@@ -230,16 +231,6 @@ dmsg_iocom_done(dmsg_iocom_t *iocom)
 	}
 	dmsg_ioq_done(iocom, &iocom->ioq_rx);
 	dmsg_ioq_done(iocom, &iocom->ioq_tx);
-	while ((msg = TAILQ_FIRST(&iocom->freeq)) != NULL) {
-		TAILQ_REMOVE(&iocom->freeq, msg, qentry);
-		free(msg);
-	}
-	while ((msg = TAILQ_FIRST(&iocom->freeq_aux)) != NULL) {
-		TAILQ_REMOVE(&iocom->freeq_aux, msg, qentry);
-		free(msg->aux_data);
-		msg->aux_data = NULL;
-		free(msg);
-	}
 	if (iocom->wakeupfds[0] >= 0) {
 		close(iocom->wakeupfds[0]);
 		iocom->wakeupfds[0] = -1;
@@ -286,35 +277,27 @@ dmsg_msg_alloc_locked(dmsg_state_t *state,
 	int hbytes;
 	size_t aligned_size;
 
-#if 0
-	if (aux_size) {
-		aligned_size = DMSG_DOALIGN(aux_size);
-		if ((msg = TAILQ_FIRST(&iocom->freeq_aux)) != NULL)
-			TAILQ_REMOVE(&iocom->freeq_aux, msg, qentry);
-	} else {
-		aligned_size = 0;
-		if ((msg = TAILQ_FIRST(&iocom->freeq)) != NULL)
-			TAILQ_REMOVE(&iocom->freeq, msg, qentry);
-	}
-#endif
 	aligned_size = DMSG_DOALIGN(aux_size);
-	msg = NULL;
 	if ((cmd & (DMSGF_CREATE | DMSGF_REPLY)) == DMSGF_CREATE) {
 		/*
 		 * When CREATE is set without REPLY the caller is
 		 * initiating a new transaction stacked under the specified
 		 * circuit.
 		 *
+		 * It is possible to race a circuit failure, inherit the
+		 * parent's STATE_DYING flag to trigger an abort sequence
+		 * in the transmit path.  By not inheriting ABORTING the
+		 * abort sequence can recurse.
+		 *
 		 * NOTE: CREATE in txcmd handled by dmsg_msg_write()
 		 * NOTE: DELETE in txcmd handled by dmsg_state_cleanuptx()
 		 */
 		pstate = state;
 		state = malloc(sizeof(*state));
-		atomic_add_int(&dmsg_state_count, 1);
 		bzero(state, sizeof(*state));
+		atomic_add_int(&dmsg_state_count, 1);
+
 		TAILQ_INIT(&state->subq);
-		dmsg_state_hold(pstate);
-		state->refs = 1;
 		state->parent = pstate;
 		state->iocom = iocom;
 		state->flags = DMSG_STATE_DYNAMIC;
@@ -325,42 +308,30 @@ dmsg_msg_alloc_locked(dmsg_state_t *state,
 		state->func = func;
 		state->any.any = data;
 
-		RB_INSERT(dmsg_state_tree, &iocom->statewr_tree, state);
-		TAILQ_INSERT_TAIL(&pstate->subq, state, entry);
 		state->flags |= DMSG_STATE_SUBINSERTED |
 				DMSG_STATE_RBINSERTED;
-
-		if (DMsgDebugOpt) {
-			fprintf(stderr,
-				"create state %p id=%08x on iocom statewr %p\n",
-				state, (uint32_t)state->msgid, iocom);
-		}
+		state->flags |= pstate->flags & DMSG_STATE_DYING;
+		if (TAILQ_EMPTY(&pstate->subq))
+			dmsg_state_hold(pstate);
+		RB_INSERT(dmsg_state_tree, &iocom->statewr_tree, state);
+		TAILQ_INSERT_TAIL(&pstate->subq, state, entry);
+		dmsg_state_hold(state);		/* state on pstate->subq */
+		dmsg_state_hold(state);		/* state on rbtree */
+		dmsg_state_hold(state);		/* msg->state */
 	} else {
 		/*
 		 * Otherwise the message is transmitted over the existing
 		 * open transaction.
 		 */
 		pstate = state->parent;
+		dmsg_state_hold(state);		/* msg->state */
 	}
 
 	/* XXX SMP race for state */
 	hbytes = (cmd & DMSGF_SIZE) * DMSG_ALIGN;
-	if (msg == NULL) {
-		msg = malloc(offsetof(struct dmsg_msg, any.head) + hbytes + 4);
-		bzero(msg, offsetof(struct dmsg_msg, any.head));
-		*(int *)((char *)msg +
-			 offsetof(struct dmsg_msg, any.head) + hbytes) =
-				 0x71B2C3D4;
-		if (DMsgDebugOpt) {
-			fprintf(stderr,
-				"allo msg %p id=%08x on iocom %p\n",
-				msg, (int)msg->any.head.msgid, iocom);
-		}
-#if 0
-		msg = malloc(sizeof(*msg));
-		bzero(msg, sizeof(*msg));
-#endif
-	}
+	assert((size_t)hbytes >= sizeof(struct dmsg_hdr));
+	msg = malloc(offsetof(struct dmsg_msg, any.head) + hbytes);
+	bzero(msg, offsetof(struct dmsg_msg, any.head));
 
 	/*
 	 * [re]allocate the auxillary data buffer.  The caller knows that
@@ -395,8 +366,7 @@ dmsg_msg_alloc_locked(dmsg_state_t *state,
 	/*
 	 * Finish filling out the header.
 	 */
-	if (hbytes)
-		bzero(&msg->any.head, hbytes);
+	bzero(&msg->any.head, hbytes);
 	msg->hdr_size = hbytes;
 	msg->any.head.magic = DMSG_HDR_MAGIC;
 	msg->any.head.cmd = cmd;
@@ -418,35 +388,18 @@ static
 void
 dmsg_msg_free_locked(dmsg_msg_t *msg)
 {
-	/*dmsg_iocom_t *iocom = msg->iocom;*/
+	dmsg_state_t *state;
 
-	if (DMsgDebugOpt) {
-		fprintf(stderr,
-			"free msg %p id=%08x on (aux %p)\n",
-			msg, (int)msg->any.head.msgid, msg->aux_data);
+	if ((state = msg->state) != NULL) {
+		dmsg_state_drop(state);
+		msg->state = NULL;	/* safety */
 	}
-#if 1
-	int hbytes = (msg->any.head.cmd & DMSGF_SIZE) * DMSG_ALIGN;
-	if (*(int *)((char *)msg +
-		     offsetof(struct  dmsg_msg, any.head) + hbytes) !=
-	     0x71B2C3D4) {
-		fprintf(stderr, "MSGFREE FAILED CMD %08x\n", msg->any.head.cmd);
-		assert(0);
-	}
-#endif
-	msg->state = NULL;	/* safety */
 	if (msg->aux_data) {
 		free(msg->aux_data);
-		msg->aux_data = NULL;
+		msg->aux_data = NULL;	/* safety */
 	}
 	msg->aux_size = 0;
 	free (msg);
-#if 0
-	if (msg->aux_data)
-		TAILQ_INSERT_TAIL(&iocom->freeq_aux, msg, qentry);
-	else
-		TAILQ_INSERT_TAIL(&iocom->freeq, msg, qentry);
-#endif
 }
 
 void
@@ -598,7 +551,9 @@ dmsg_iocom_core(dmsg_iocom_t *iocom)
 						dmsg_msg_str(msg));
 				}
 				iocom->rcvmsg_callback(msg);
+				pthread_mutex_lock(&iocom->mtx);
 				dmsg_state_cleanuprx(iocom, msg);
+				pthread_mutex_unlock(&iocom->mtx);
 			}
 		}
 
@@ -828,6 +783,7 @@ again:
 		 */
 		assert(msg != NULL);
 		if (bytes < ioq->hbytes) {
+			assert(nmax > 0);
 			n = read(iocom->sock_fd,
 				 ioq->buf + ioq->fifo_end,
 				 nmax);
@@ -964,6 +920,7 @@ again:
 		 * Read and decrypt more of the payload.
 		 */
 		if (msg->aux_size < ioq->abytes) {
+			assert(nmax > 0);
 			assert(bytes == 0);
 			n = read(iocom->sock_fd,
 				 ioq->buf + ioq->fifo_end,
@@ -1113,7 +1070,7 @@ skip:
 		 */
 		pthread_mutex_lock(&iocom->mtx);
 		dmsg_iocom_drain(iocom);
-		dmsg_simulate_failure(&iocom->state0, ioq->error);
+		dmsg_simulate_failure(&iocom->state0, 0, ioq->error);
 		pthread_mutex_unlock(&iocom->mtx);
 		if (TAILQ_FIRST(&ioq->msgq))
 			goto again;
@@ -1174,13 +1131,12 @@ skip:
 		 */
 		if (DMsgDebugOpt >= 5) {
 			fprintf(stderr,
-				"rxmsg cmd=%08x msgid=%016jx circ=%016jx\n",
+				"rxmsg cmd=%08x circ=%016jx\n",
 				msg->any.head.cmd,
-				(intmax_t)msg->any.head.msgid,
 				(intmax_t)msg->any.head.circuit);
 		}
 
-		error = dmsg_state_msgrx(msg);
+		error = dmsg_state_msgrx(msg, 0);
 
 		if (error) {
 			/*
@@ -1236,6 +1192,10 @@ dmsg_iocom_flush1(dmsg_iocom_t *iocom)
 	}
 	pthread_mutex_unlock(&iocom->mtx);
 
+	/*
+	 * Flush queue, doing all required encryption and CRC generation,
+	 * with the mutex unlocked.
+	 */
 	while ((msg = TAILQ_FIRST(&tmpq)) != NULL) {
 		/*
 		 * Process terminal connection errors.
@@ -1255,8 +1215,11 @@ dmsg_iocom_flush1(dmsg_iocom_t *iocom)
 		msg->any.head.magic = DMSG_HDR_MAGIC;
 		msg->any.head.salt = (random() << 8) | (ioq->seq & 255);
 		++ioq->seq;
-		if ((ioq->seq & 32767) == 0)
+		if ((ioq->seq & 32767) == 0) {
+			pthread_mutex_lock(&iocom->mtx);
 			srandomdev();
+			pthread_mutex_unlock(&iocom->mtx);
+		}
 
 		/*
 		 * Calculate aux_crc if 0, then calculate hdr_crc.
@@ -1473,9 +1436,8 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 
 #if 0
 		fprintf(stderr,
-			"txmsg cmd=%08x msgid=%016jx circ=%016jx\n",
+			"txmsg cmd=%08x circ=%016jx\n",
 			msg->any.head.cmd,
-			(intmax_t)msg->any.head.msgid,
 			(intmax_t)msg->any.head.circuit);
 #endif
 
@@ -1597,6 +1559,16 @@ dmsg_msg_write(dmsg_msg_t *msg)
 	pthread_mutex_lock(&iocom->mtx);
 	state = msg->state;
 
+	if (DMsgDebugOpt) {
+		fprintf(stderr,
+			"msgtx: cmd=%08x msgid=%016jx "
+			"state %p(%08x) error=%d\n",
+			msg->any.head.cmd, msg->any.head.msgid,
+			state, (state ? state->icmd : 0),
+			msg->any.head.error);
+	}
+
+
 #if 0
 	/*
 	 * Make sure the parent transaction is still open in the transmit
@@ -1613,7 +1585,6 @@ dmsg_msg_write(dmsg_msg_t *msg)
 		return;
 	}
 #endif
-
 	/*
 	 * Process state data into the message as needed, then update the
 	 * state based on the message.
@@ -1634,6 +1605,7 @@ dmsg_msg_write(dmsg_msg_t *msg)
 		    DMSGF_CREATE) {
 			state->txcmd = msg->any.head.cmd & ~DMSGF_DELETE;
 			state->icmd = state->txcmd & DMSGF_BASECMDMASK;
+			state->flags &= ~DMSG_STATE_NEW;
 		}
 		msg->any.head.msgid = state->msgid;
 
@@ -1641,22 +1613,93 @@ dmsg_msg_write(dmsg_msg_t *msg)
 			state->txcmd = msg->any.head.cmd & ~DMSGF_DELETE;
 		}
 	}
-	dmsg_state_cleanuptx(iocom, msg);
-
-#if 0
-	fprintf(stderr,
-		"MSGWRITE %016jx %08x\n",
-		msg->any.head.msgid, msg->any.head.cmd);
-#endif
 
 	/*
-	 * Queue it for output, wake up the I/O pthread.  Note that the
-	 * I/O thread is responsible for generating the CRCs and encryption.
+	 * Discard messages sent to transactions which are already dead.
 	 */
-	TAILQ_INSERT_TAIL(&iocom->txmsgq, msg, qentry);
-	dummy = 0;
-	write(iocom->wakeupfds[1], &dummy, 1);	/* XXX optimize me */
+	if (state && (state->txcmd & DMSGF_DELETE)) {
+		printf("dmsg_msg_write: drop msg %08x to dead "
+		       "circuit state=%p\n",
+		       msg->any.head.cmd, state);
+		dmsg_msg_free(msg);
+		return;
+	}
+
+	/*
+	 * Normally we queue the msg for output.  However, if the circuit is
+	 * dead or dying we must simulate a failure in the return direction
+	 * and throw the message away.  The other end is not expecting any
+	 * further messages from us on this state.
+	 *
+	 * Note that the I/O thread is responsible for generating the CRCs
+	 * and encryption.
+	 */
+	if (state->flags & DMSG_STATE_DYING) {
+#if 0
+	if ((state->parent->txcmd & DMSGF_DELETE) ||
+	    (state->parent->flags & DMSG_STATE_DYING) ||
+	    (state->flags & DMSG_STATE_DYING)) {
+#endif
+		/* 
+		 * Illegal message, kill state and related sub-state.
+		 * Cannot transmit if state is already dying.
+		 */
+		printf("dmsg_msg_write: Write to dying circuit "
+			"ptxcmd=%08x prxcmd=%08x flags=%08x\n",
+			state->parent->rxcmd,
+			state->parent->txcmd,
+			state->parent->flags);
+		dmsg_state_hold(state);
+		dmsg_state_cleanuptx(iocom, msg);
+		if ((state->flags & DMSG_STATE_ABORTING) == 0) {
+			dmsg_simulate_failure(state, 1, DMSG_ERR_LOSTLINK);
+		}
+		dmsg_state_drop(state);
+		dmsg_msg_free(msg);
+	} else {
+		/*
+		 * Queue the message, clean up transmit state prior to queueing
+		 * to avoid SMP races.
+		 */
+		if (DMsgDebugOpt)
+		printf("dmsg_msg_write: commit msg state=%p to txkmsgq\n", state);
+		dmsg_state_cleanuptx(iocom, msg);
+		TAILQ_INSERT_TAIL(&iocom->txmsgq, msg, qentry);
+		dummy = 0;
+		write(iocom->wakeupfds[1], &dummy, 1);	/* XXX optimize me */
+	}
 	pthread_mutex_unlock(&iocom->mtx);
+}
+
+/*
+ * Remove state from its parent's subq.  This can wind up recursively
+ * dropping the parent upward.
+ *
+ * NOTE: iocom must be locked.
+ *
+ * NOTE: Once we drop the parent, our pstate pointer may become invalid.
+ */
+static
+void
+dmsg_subq_delete(dmsg_state_t *state)
+{
+	dmsg_state_t *pstate;
+
+	if (state->flags & DMSG_STATE_SUBINSERTED) {
+		pstate = state->parent;
+		assert(pstate);
+		if (pstate->scan == state)
+			pstate->scan = NULL;
+		TAILQ_REMOVE(&pstate->subq, state, entry);
+		state->flags &= ~DMSG_STATE_SUBINSERTED;
+		state->parent = NULL;
+		if (TAILQ_EMPTY(&pstate->subq))
+			dmsg_state_drop(pstate);/* pstate->subq */
+		pstate = NULL;			/* safety */
+		dmsg_state_drop(state);         /* pstate->subq */
+	} else {
+		assert(state->parent == NULL);
+	}
 }
 
 /*
@@ -1668,90 +1711,108 @@ dmsg_msg_write(dmsg_msg_t *msg)
  */
 static
 void
-dmsg_simulate_failure(dmsg_state_t *state, int error)
+dmsg_simulate_failure(dmsg_state_t *state, int meto, int error)
 {
 	dmsg_state_t *substate;
+
+	dmsg_state_hold(state);
+	if (meto)
+		dmsg_state_abort(state);
+
+	/*
+	 * Recurse through sub-states.
+	 */
+again:
+	TAILQ_FOREACH(substate, &state->subq, entry) {
+		if (substate->flags & DMSG_STATE_ABORTING)
+			continue;
+		state->scan = substate;
+		dmsg_simulate_failure(substate, 1, error);
+		if (state->scan != substate)
+			goto again;
+	}
+
+	dmsg_state_drop(state);
+}
+
+static
+void
+dmsg_state_abort(dmsg_state_t *state)
+{
 	dmsg_iocom_t *iocom;
 	dmsg_msg_t *msg;
 
-	while ((substate = TAILQ_FIRST(&state->subq)) != NULL) {
-		dmsg_simulate_failure(substate, error);
+	/*
+	 * Set ABORTING and DYING, return if already set.  If the state was
+	 * just allocated we defer the abort operation until the related
+	 * message is processed.
+	 */
+	if (state->flags & DMSG_STATE_ABORTING)
+		return;
+	state->flags |= DMSG_STATE_ABORTING;
+	dmsg_state_dying(state);
+	if (state->flags & DMSG_STATE_NEW) {
+		printf("dmsg_state_abort(0): state %p rxcmd %08x txcmd %08x "
+		       "flags %08x - in NEW state\n",
+		       state, state->rxcmd, state->txcmd, state->flags);
+		return;
 	}
 
-	iocom = state->iocom;
-	if (state == &iocom->state0) {
-		/*
-		 * No active local or remote transactions remain.
-		 * Generate a final LNK_ERROR.  EOF will be flagged
-		 * when the message is returned by dmsg_ioq_read().
-		 */
-		msg = dmsg_msg_alloc_locked(&iocom->state0, 0,
-					    DMSG_LNK_ERROR,
+	/*
+	 * Simulate parent state failure before child states.  Device
+	 * drivers need to understand this and flag the situation but might
+	 * have asynchronous operations in progress that they cannot stop.
+	 * To make things easier, parent states will not actually disappear
+	 * until the children are all gone.
+	 */
+	if ((state->rxcmd & DMSGF_DELETE) == 0) {
+		fprintf(stderr, "SIMULATE ERROR\n");
+		msg = dmsg_msg_alloc_locked(state, 0, DMSG_LNK_ERROR,
 					    NULL, NULL);
-		msg->any.head.error = error;
-	} else if (state->flags & DMSG_STATE_OPPOSITE) {
+		if ((state->rxcmd & DMSGF_CREATE) == 0)
+			msg->any.head.cmd |= DMSGF_CREATE;
+		msg->any.head.cmd |= DMSGF_DELETE |
+				     (state->rxcmd & DMSGF_REPLY);
+		msg->any.head.cmd ^= (DMSGF_REVTRANS | DMSGF_REVCIRC);
+		msg->any.head.error = DMSG_ERR_LOSTLINK;
+		msg->any.head.cmd |= DMSGF_ABORT;
+
 		/*
-		 * Active remote transactions are still present.
-		 * Simulate the other end sending us a DELETE.
+		 * Issue callback synchronously even though this isn't
+		 * the receiver thread.  We need to issue the callback
+		 * before removing state from the subq in order to allow
+		 * the callback to reply.
 		 */
-		if (state->flags & DMSG_STATE_SUBINSERTED) {
-			TAILQ_REMOVE(&state->parent->subq, state, entry);
-			state->flags &= ~DMSG_STATE_SUBINSERTED;
-		}
-		if ((state->rxcmd & DMSGF_DELETE) == 0) {
-			fprintf(stderr, "SIMULATE ERROR1\n");
-			msg = dmsg_msg_alloc_locked(&iocom->state0, 0,
-					     DMSG_LNK_ERROR,
-					     NULL, NULL);
-			/*state->txcmd |= DMSGF_DELETE;*/
-			msg->state = state;
-			msg->any.head.error = error;
-			msg->any.head.msgid = state->msgid;
-			msg->any.head.circuit = state->parent->msgid;
-			msg->any.head.cmd |= DMSGF_ABORT |
-					     DMSGF_DELETE;
-			if ((state->parent->flags &
-			     DMSG_STATE_OPPOSITE) == 0) {
-				msg->any.head.cmd |= DMSGF_REVCIRC;
-			}
-		} else {
-			msg = NULL;
-		}
-	} else {
-		/*
-		 * Active local transactions are still present.
-		 * Simulate the other end sending us a DELETE.
-		 */
-		if (state->flags & DMSG_STATE_SUBINSERTED) {
-			TAILQ_REMOVE(&state->parent->subq, state, entry);
-			state->flags &= ~DMSG_STATE_SUBINSERTED;
-		}
-		if ((state->rxcmd & DMSGF_DELETE) == 0) {
-			fprintf(stderr, "SIMULATE ERROR1\n");
-			msg = dmsg_msg_alloc_locked(&iocom->state0, 0,
-					     DMSG_LNK_ERROR,
-					     NULL, NULL);
-			msg->state = state;
-			msg->any.head.error = error;
-			msg->any.head.msgid = state->msgid;
-			msg->any.head.circuit = state->parent->msgid;
-			msg->any.head.cmd |= DMSGF_ABORT |
-					     DMSGF_DELETE |
-					     DMSGF_REVTRANS |
-					     DMSGF_REPLY;
-			if ((state->parent->flags &
-			     DMSG_STATE_OPPOSITE) == 0) {
-				msg->any.head.cmd |= DMSGF_REVCIRC;
-			}
-			if ((state->rxcmd & DMSGF_CREATE) == 0)
-				msg->any.head.cmd |= DMSGF_CREATE;
-		} else {
-			msg = NULL;
-		}
-	}
-	if (msg) {
+		iocom = state->iocom;
+		dmsg_state_msgrx(msg, 1);
+		pthread_mutex_unlock(&iocom->mtx);
+		iocom->rcvmsg_callback(msg);
+		pthread_mutex_lock(&iocom->mtx);
+		dmsg_state_cleanuprx(iocom, msg);
+#if 0
 		TAILQ_INSERT_TAIL(&iocom->ioq_rx.msgq, msg, qentry);
 		atomic_set_int(&iocom->flags, DMSG_IOCOMF_RWORK);
+#endif
+	}
+}
+
+
+/*
+ * Recursively sets DMSG_STATE_DYING on state and all sub-states, preventing
+ * the transmission of any new messages on these states.  This is done
+ * atomically when parent state is terminating, whereas setting ABORTING is
+ * not atomic and can leak races.
+ */
+static
+void
+dmsg_state_dying(dmsg_state_t *state)
+{
+	dmsg_state_t *scan;
+
+	if ((state->flags & DMSG_STATE_DYING) == 0) {
+		state->flags |= DMSG_STATE_DYING;
+		TAILQ_FOREACH(scan, &state->subq, entry)
+			dmsg_state_dying(scan);
 	}
 }
 
@@ -2012,7 +2073,7 @@ dmsg_state_result(dmsg_state_t *state, uint32_t error)
  * will typically just contain status updates.
  */
 static int
-dmsg_state_msgrx(dmsg_msg_t *msg)
+dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 {
 	dmsg_iocom_t *iocom = msg->state->iocom;
 	dmsg_state_t *state;
@@ -2022,12 +2083,29 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 
 	pthread_mutex_lock(&iocom->mtx);
 
+	if (DMsgDebugOpt) {
+		fprintf(stderr,
+			"msgrx: cmd=%08x msgid=%016jx "
+			"circuit=%016jx error=%d\n",
+			msg->any.head.cmd,
+			msg->any.head.msgid,
+			msg->any.head.circuit,
+			msg->any.head.error);
+	}
+
 	/*
 	 * Lookup the circuit (pstate).  The circuit will be an open
 	 * transaction.  The REVCIRC bit in the message tells us which side
 	 * initiated it.
+	 *
+	 * If mstate is non-zero the state has already been incorporated
+	 * into the message as part of a simulated abort.  Note that in this
+	 * situation the parent state may have already been removed from
+	 * the RBTREE.
 	 */
-	if (msg->any.head.circuit) {
+	if (mstate) {
+		pstate = msg->state->parent;
+	} else if (msg->any.head.circuit) {
 		sdummy.msgid = msg->any.head.circuit;
 
 		if (msg->any.head.cmd & DMSGF_REVCIRC) {
@@ -2039,36 +2117,74 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 					 &iocom->staterd_tree,
 					 &sdummy);
 		}
+
+		/*
+		 * If we cannot find the circuit throw the message away.
+		 * The state will have already been taken care of by
+		 * the simulated failure code.  This case can occur due
+		 * to a failure propagating in one direction crossing a
+		 * request on the failed circuit propagating in the other
+		 * direction.
+		 */
 		if (pstate == NULL) {
 			fprintf(stderr,
 				"missing parent in stacked trans %s\n",
 				dmsg_msg_str(msg));
-			error = DMSG_IOQ_ERROR_TRANS;
 			pthread_mutex_unlock(&iocom->mtx);
-			assert(0);
+			error = DMSG_IOQ_ERROR_EALREADY;
+
+			return error;
 		}
 	} else {
 		pstate = &iocom->state0;
 	}
+	/* WARNING: pstate not (yet) refd */
 
 	/*
 	 * Lookup the msgid.
+	 *
+	 * If mstate is non-zero the state has already been incorporated
+	 * into the message as part of a simulated abort.  Note that in this
+	 * situation the state may have already been removed from the RBTREE.
 	 *
 	 * If received msg is a command state is on staterd_tree.
 	 * If received msg is a reply state is on statewr_tree.
 	 * Otherwise there is no state (retain &iocom->state0)
 	 */
-	sdummy.msgid = msg->any.head.msgid;
-	if (msg->any.head.cmd & DMSGF_REVTRANS)
-		state = RB_FIND(dmsg_state_tree, &iocom->statewr_tree, &sdummy);
-	else
-		state = RB_FIND(dmsg_state_tree, &iocom->staterd_tree, &sdummy);
+	if (mstate) {
+		state = msg->state;
+	} else {
+		sdummy.msgid = msg->any.head.msgid;
+		if (msg->any.head.cmd & DMSGF_REVTRANS) {
+			state = RB_FIND(dmsg_state_tree,
+					&iocom->statewr_tree, &sdummy);
+		} else {
+			state = RB_FIND(dmsg_state_tree,
+					&iocom->staterd_tree, &sdummy);
+		}
+	}
 
-	if (state) {
+	if (DMsgDebugOpt) {
+		fprintf(stderr,
+			"msgrx:\tstate %p(%08x)",
+			state, (state ? state->icmd : 0));
+		if (pstate != &iocom->state0) {
+			fprintf(stderr,
+				" pstate %p(%08x)",
+				pstate, pstate->icmd);
+		}
+		fprintf(stderr, "\n");
+	}
+
+	if (mstate) {
+		/* state already assigned to msg */
+	} else if (state) {
 		/*
 		 * Message over an existing transaction (CREATE should not
 		 * be set).
 		 */
+		dmsg_state_drop(msg->state);
+		dmsg_state_hold(state);
 		msg->state = state;
 		assert(pstate == state->parent);
 	} else {
@@ -2077,8 +2193,6 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		 */
 		state = pstate;
 	}
-
-	pthread_mutex_unlock(&iocom->mtx);
 
 	/*
 	 * Switch on CREATE, DELETE, REPLY, and also handle ABORT from
@@ -2111,11 +2225,11 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		 * Allocate the new state.
 		 */
 		state = malloc(sizeof(*state));
-		atomic_add_int(&dmsg_state_count, 1);
 		bzero(state, sizeof(*state));
+		atomic_add_int(&dmsg_state_count, 1);
+
 		TAILQ_INIT(&state->subq);
 		dmsg_state_hold(pstate);
-		state->refs = 1;
 		state->parent = pstate;
 		state->iocom = iocom;
 		state->flags = DMSG_STATE_DYNAMIC |
@@ -2124,12 +2238,18 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		state->txcmd = DMSGF_REPLY;
 		state->rxcmd = msg->any.head.cmd & ~DMSGF_DELETE;
 		state->icmd = state->rxcmd & DMSGF_BASECMDMASK;
+		state->flags &= ~DMSG_STATE_NEW;
 		msg->state = state;
-		pthread_mutex_lock(&iocom->mtx);
+
 		RB_INSERT(dmsg_state_tree, &iocom->staterd_tree, state);
+		if (TAILQ_EMPTY(&pstate->subq))
+			dmsg_state_hold(pstate);/* pstate->subq */
 		TAILQ_INSERT_TAIL(&pstate->subq, state, entry);
 		state->flags |= DMSG_STATE_SUBINSERTED |
 				DMSG_STATE_RBINSERTED;
+		dmsg_state_hold(state);		/* pstate->subq */
+		dmsg_state_hold(state);		/* state on rbtree */
+		dmsg_state_hold(state);		/* msg->state */
 
 		/*
 		 * If the parent is a relay set up the state handler to
@@ -2140,14 +2260,7 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		 */
 		if (pstate->relay)
 			state->func = dmsg_state_relay;
-		pthread_mutex_unlock(&iocom->mtx);
 		error = 0;
-
-		if (DMsgDebugOpt) {
-			fprintf(stderr,
-				"create state %p id=%08x on iocom staterd %p\n",
-				state, (uint32_t)state->msgid, iocom);
-		}
 		break;
 	case DMSGF_DELETE:
 		/*
@@ -2278,7 +2391,7 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 	 */
 	if (msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE)) {
 		if ((msg->state->flags & DMSG_STATE_ROOT) == 0) {
-			msg->tcmd = (msg->state->icmd & DMSGF_BASECMDMASK) |
+			msg->tcmd = (state->icmd & DMSGF_BASECMDMASK) |
 				    (msg->any.head.cmd & (DMSGF_CREATE |
 							  DMSGF_DELETE |
 							  DMSGF_REPLY));
@@ -2310,6 +2423,48 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 	}
 #endif
 
+	/*
+	 * Adjust state, mark receive side as DELETED if appropriate and
+	 * adjust RB tree if both sides are DELETED.  cleanuprx handles
+	 * the rest after the state callback returns.
+	 */
+	assert(msg->state->iocom == iocom);
+	assert(msg->state == state);
+
+	if (state->flags & DMSG_STATE_ROOT) {
+		/*
+		 * Nothing to do for non-transactional messages.
+		 */
+	} else if (msg->any.head.cmd & DMSGF_DELETE) {
+		/*
+		 * Message terminating transaction, remove the state from
+		 * the RB tree if the full transaction is now complete.
+		 * The related state, subq, and parent link is retained
+		 * until after the state callback is complete.
+		 */
+		assert((state->rxcmd & DMSGF_DELETE) == 0);
+		state->rxcmd |= DMSGF_DELETE;
+		if (state->txcmd & DMSGF_DELETE) {
+			assert(state->flags & DMSG_STATE_RBINSERTED);
+			if (state->rxcmd & DMSGF_REPLY) {
+				assert(msg->any.head.cmd & DMSGF_REPLY);
+				RB_REMOVE(dmsg_state_tree,
+					  &iocom->statewr_tree, state);
+			} else {
+				assert((msg->any.head.cmd & DMSGF_REPLY) == 0);
+				RB_REMOVE(dmsg_state_tree,
+					  &iocom->staterd_tree, state);
+			}
+			state->flags &= ~DMSG_STATE_RBINSERTED;
+			dmsg_state_drop(state);
+		}
+	}
+
+	pthread_mutex_unlock(&iocom->mtx);
+
+	if (DMsgDebugOpt && error)
+		fprintf(stderr, "msgrx: error %d\n", error);
+
 	return (error);
 }
 
@@ -2327,6 +2482,12 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 
 #ifdef DMSG_BLOCK_DEBUG
 	switch (lmsg->tcmd) {
+	case DMSG_BLK_OPEN | DMSGF_CREATE:
+		fprintf(stderr, "relay BIO_OPEN (CREATE)\n");
+		break;
+	case DMSG_BLK_OPEN | DMSGF_DELETE:
+		fprintf(stderr, "relay BIO_OPEN (DELETE)\n");
+		break;
 	case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE:
 	case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE:
 		atomic_add_int(&biocount, 1);
@@ -2375,6 +2536,17 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 		rstate = lstate->relay;
 		assert(rstate != NULL);
 
+		assert((rstate->txcmd & DMSGF_DELETE) == 0);
+
+#if 0
+		if (lstate->flags & DMSG_STATE_ABORTING) {
+			fprintf(stderr,
+				"relay: relay lost link l=%p r=%p\n",
+				lstate, rstate);
+			dmsg_simulate_failure(rstate, 0, DMSG_ERR_LOSTLINK);
+		}
+#endif
+
 		rmsg = dmsg_msg_alloc(rstate, 0,
 				      lmsg->any.head.cmd,
 				      dmsg_state_relay, NULL);
@@ -2389,6 +2561,7 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 	rmsg->aux_size = lmsg->aux_size;
 	rmsg->aux_data = lmsg->aux_data;
 	lmsg->aux_data = NULL;
+
 	/*
 	fprintf(stderr, "RELAY %08x\n", rmsg->any.head.cmd);
 	*/
@@ -2396,13 +2569,16 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 }
 
 /*
- * Cleanup and retire msg after processing
+ * Cleanup and retire msg after issuing the state callback.  The state
+ * has already been removed from the RB tree.  The subq and msg must be
+ * cleaned up.
+ *
+ * Called with the iocom mutex held (to handle subq disconnection).
  */
 void
 dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 {
 	dmsg_state_t *state;
-	dmsg_state_t *pstate;
 
 	assert(msg->state->iocom == iocom);
 	state = msg->state;
@@ -2412,52 +2588,18 @@ dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 		 * to worry about.
 		 */
 		dmsg_msg_free(msg);
-	} else if (msg->any.head.cmd & DMSGF_DELETE) {
+	} else if ((state->flags & DMSG_STATE_SUBINSERTED) &&
+		   (state->rxcmd & DMSGF_DELETE) &&
+		   (state->txcmd & DMSGF_DELETE)) {
 		/*
-		 * Message terminating transaction, destroy the related
-		 * state, the original message, and this message (if it
-		 * isn't the original message due to a CREATE|DELETE).
-		 *
-		 * It's possible for governing state to terminate while
-		 * sub-transactions still exist.  This is allowed but
-		 * will cause sub-transactions to recursively fail.
-		 * Further reception of sub-transaction messages will be
-		 * impossible because the circuit will no longer exist.
-		 * (XXX need code to make sure that happens properly).
+		 * Must disconnect from parent and drop relay.
 		 */
-		pthread_mutex_lock(&iocom->mtx);
-		state->rxcmd |= DMSGF_DELETE;
-
-		if (state->txcmd & DMSGF_DELETE) {
-			assert(state->flags & DMSG_STATE_RBINSERTED);
-			if (state->rxcmd & DMSGF_REPLY) {
-				assert(msg->any.head.cmd & DMSGF_REPLY);
-				RB_REMOVE(dmsg_state_tree,
-					  &iocom->statewr_tree, state);
-			} else {
-				assert((msg->any.head.cmd & DMSGF_REPLY) == 0);
-				RB_REMOVE(dmsg_state_tree,
-					  &iocom->staterd_tree, state);
-			}
-			state->flags &= ~DMSG_STATE_RBINSERTED;
-			if (state->flags & DMSG_STATE_SUBINSERTED) {
-				pstate = state->parent;
-				TAILQ_REMOVE(&pstate->subq, state, entry);
-				state->flags &= ~DMSG_STATE_SUBINSERTED;
-				dmsg_state_drop(pstate);
-			}
-			state->parent = NULL;
-
-			if (state->relay) {
-				dmsg_state_drop(state->relay);
-				state->relay = NULL;
-			}
-			dmsg_msg_free(msg);
-			dmsg_state_drop(state);
-		} else {
-			dmsg_msg_free(msg);
+		dmsg_subq_delete(state);
+		if (state->relay) {
+			dmsg_state_drop(state->relay);
+			state->relay = NULL;
 		}
-		pthread_mutex_unlock(&iocom->mtx);
+		dmsg_msg_free(msg);
 	} else {
 		/*
 		 * Message not terminating transaction, leave state intact
@@ -2470,15 +2612,19 @@ dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 /*
  * Clean up the state after pulling out needed fields and queueing the
  * message for transmission.   This occurs in dmsg_msg_write().
+ *
+ * Called with the mutex locked.
  */
 static void
 dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 {
 	dmsg_state_t *state;
-	dmsg_state_t *pstate;
 
 	assert(iocom == msg->state->iocom);
 	state = msg->state;
+
+	dmsg_state_hold(state);
+
 	if (state->flags & DMSG_STATE_ROOT) {
 		;
 	} else if (msg->any.head.cmd & DMSGF_DELETE) {
@@ -2493,11 +2639,15 @@ dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 		 * Further reception of sub-transaction messages will be
 		 * impossible because the circuit will no longer exist.
 		 * (XXX need code to make sure that happens properly).
+		 *
+		 * NOTE: It is possible for a fafilure to terminate the
+		 *	 state after we have written the message but before
+		 *	 we are able to call cleanuptx, so txcmd might already
+		 *	 have DMSGF_DELETE set.
 		 */
-		pthread_mutex_lock(&iocom->mtx);
-		assert((state->txcmd & DMSGF_DELETE) == 0);
-		state->txcmd |= DMSGF_DELETE;
-		if (state->rxcmd & DMSGF_DELETE) {
+		if ((state->txcmd & DMSGF_DELETE) == 0 &&
+		    (state->rxcmd & DMSGF_DELETE)) {
+			state->txcmd |= DMSGF_DELETE;
 			assert(state->flags & DMSG_STATE_RBINSERTED);
 			if (state->txcmd & DMSGF_REPLY) {
 				assert(msg->any.head.cmd & DMSGF_REPLY);
@@ -2509,22 +2659,31 @@ dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 					  &iocom->statewr_tree, state);
 			}
 			state->flags &= ~DMSG_STATE_RBINSERTED;
-			pstate = state->parent;
-			if (state->flags & DMSG_STATE_SUBINSERTED) {
-				TAILQ_REMOVE(&pstate->subq, state, entry);
-				state->flags &= ~DMSG_STATE_SUBINSERTED;
-			}
-			state->parent = NULL;
-			dmsg_state_drop(pstate);
+			dmsg_subq_delete(state);
 
 			if (state->relay) {
 				dmsg_state_drop(state->relay);
 				state->relay = NULL;
 			}
-			dmsg_state_drop(state);	/* usually the last drop */
+			dmsg_state_drop(state);	/* state->rbtree */
+		} else if ((state->txcmd & DMSGF_DELETE) == 0) {
+			state->txcmd |= DMSGF_DELETE;
 		}
-		pthread_mutex_unlock(&iocom->mtx);
 	}
+
+	/*
+	 * Deferred abort after transmission.
+	 */
+	if ((state->flags & (DMSG_STATE_ABORTING | DMSG_STATE_DYING)) &&
+	    (state->rxcmd & DMSGF_DELETE) == 0) {
+		printf("kdmsg_state_cleanuptx: state=%p "
+			"executing deferred abort\n",
+			state);
+		state->flags &= ~DMSG_STATE_ABORTING;
+		dmsg_simulate_failure(state, 1, DMSG_ERR_LOSTLINK);
+	}
+
+	dmsg_state_drop(state);
 }
 
 /*
@@ -2539,6 +2698,7 @@ dmsg_state_hold(dmsg_state_t *state)
 void
 dmsg_state_drop(dmsg_state_t *state)
 {
+	assert(state->refs > 0);
 	if (atomic_fetchadd_int(&state->refs, -1) == 1)
 		dmsg_state_free(state);
 }
@@ -2551,8 +2711,7 @@ dmsg_state_free(dmsg_state_t *state)
 {
 	atomic_add_int(&dmsg_state_count, -1);
 	if (DMsgDebugOpt) {
-		fprintf(stderr, "terminate state %p id=%08x\n",
-			state, (uint32_t)state->msgid);
+		fprintf(stderr, "terminate state %p\n", state);
 	}
 	assert((state->flags & (DMSG_STATE_ROOT |
 				DMSG_STATE_SUBINSERTED |

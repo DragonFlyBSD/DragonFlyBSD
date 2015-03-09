@@ -157,6 +157,7 @@ typedef struct dmsg_media dmsg_media_t;
  */
 struct dmsg_state {
 	RB_ENTRY(dmsg_state) rbnode;		/* by state->msgid */
+	struct dmsg_state	*scan;		/* scan check */
 	TAILQ_HEAD(, dmsg_state) subq;		/* active stacked states */
 	TAILQ_ENTRY(dmsg_state) entry;		/* on parent subq */
 	struct dmsg_iocom *iocom;
@@ -181,12 +182,13 @@ struct dmsg_state {
 
 #define DMSG_STATE_SUBINSERTED	0x0001
 #define DMSG_STATE_DYNAMIC	0x0002
-#define DMSG_STATE_NODEID	0x0004		/* manages a node id */
-#define DMSG_STATE_UNUSED_0008	0x0008
+#define DMSG_STATE_UNUSED0004	0x0004
+#define DMSG_STATE_ABORTING	0x0008
 #define DMSG_STATE_OPPOSITE	0x0010		/* initiated by other end */
 #define DMSG_STATE_CIRCUIT	0x0020		/* LNK_SPAN special case */
 #define DMSG_STATE_DYING	0x0040		/* indicates circuit failure */
 #define DMSG_STATE_RBINSERTED	0x0080
+#define DMSG_STATE_NEW		0x0400		/* defer abort processing */
 #define DMSG_STATE_ROOT		0x8000		/* iocom->state0 */
 
 /*
@@ -195,6 +197,8 @@ struct dmsg_state {
  * will point to &iocom->state0 for non-transactional messages.
  *
  * Message headers are embedded while auxillary data is separately allocated.
+ * The 'any' portion of the message is allocated dynamically based on
+ * hdr_size.
  */
 struct dmsg_msg {
 	TAILQ_ENTRY(dmsg_msg) qentry;
@@ -279,8 +283,6 @@ struct dmsg_iocom {
 	char		*label;			/* label for error reporting */
 	dmsg_ioq_t	ioq_rx;
 	dmsg_ioq_t	ioq_tx;
-	dmsg_msg_queue_t freeq;			/* free msgs hdr only */
-	dmsg_msg_queue_t freeq_aux;		/* free msgs w/aux_data */
 	dmsg_state_t	state0;			/* root state for stacking */
 	struct dmsg_state_tree  staterd_tree;   /* active transactions */
 	struct dmsg_state_tree  statewr_tree;   /* active transactions */

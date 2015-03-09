@@ -418,6 +418,7 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		RB_INIT(&conn->tree);
 		state->iocom->conn = conn;	/* XXX only one */
 		state->iocom->conn_msgid = state->msgid;
+		dmsg_state_hold(state);
 		conn->state = state;
 		state->func = dmsg_lnk_conn;
 		state->any.conn = conn;
@@ -493,6 +494,7 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		dmsg_free(conn);
 
 		dmsg_msg_reply(msg, 0);
+		dmsg_state_drop(state);
 		/* state invalid after reply */
 		break;
 	default:
@@ -610,6 +612,7 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		 *	 allows such a feature to be added in the future.
 		 */
 		assert(state->any.link == NULL);
+		dmsg_state_hold(state);
 		slink = dmsg_alloc(sizeof(*slink));
 		TAILQ_INIT(&slink->relayq);
 		slink->node = node;
@@ -645,6 +648,7 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 	 */
 	if (msg->any.head.cmd & DMSGF_DELETE) {
 		slink = state->any.link;
+		assert(slink->state == state);
 		assert(slink != NULL);
 		node = slink->node;
 		cls = node->cls;
@@ -683,6 +687,7 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		state->any.link = NULL;
 		slink->state = NULL;
 		slink->node = NULL;
+		dmsg_state_drop(state);
 		dmsg_free(slink);
 
 		/*
@@ -1026,6 +1031,7 @@ dmsg_generate_relay(h2span_conn_t *conn, h2span_link_t *slink)
 	h2span_relay_t *relay;
 	dmsg_msg_t *msg;
 
+	dmsg_state_hold(slink->state);
 	relay = dmsg_alloc(sizeof(*relay));
 	relay->conn = conn;
 	relay->source_rt = slink->state;
@@ -1039,6 +1045,7 @@ dmsg_generate_relay(h2span_conn_t *conn, h2span_link_t *slink)
 	msg = dmsg_msg_alloc(&conn->state->iocom->state0,
 			     0, DMSG_LNK_SPAN | DMSGF_CREATE,
 			     dmsg_lnk_relay, relay);
+	dmsg_state_hold(msg->state);
 	relay->target_rt = msg->state;
 
 	msg->any.lnk_span = slink->lnk_span;
@@ -1110,6 +1117,7 @@ dmsg_relay_delete(h2span_relay_t *relay)
 	if (relay->target_rt) {
 		relay->target_rt->any.relay = NULL;
 		dmsg_state_reply(relay->target_rt, 0);
+		dmsg_state_drop(relay->target_rt);
 		/* state invalid after reply */
 		relay->target_rt = NULL;
 	}
@@ -1119,7 +1127,10 @@ dmsg_relay_delete(h2span_relay_t *relay)
 	 *	 state, not by this relay structure.
 	 */
 	relay->conn = NULL;
-	relay->source_rt = NULL;
+	if (relay->source_rt) {
+		dmsg_state_drop(relay->source_rt);
+		relay->source_rt = NULL;
+	}
 	dmsg_free(relay);
 }
 

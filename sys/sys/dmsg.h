@@ -717,11 +717,22 @@ struct kdmsg_data;
  * Transactional state structure, representing an open transaction.  The
  * transaction might represent a cache state (and thus have a chain
  * association), or a VOP op, LNK_SPAN, or other things.
+ *
+ * NOTE: A non-empty subq represents one ref.
+ *	 If we are inserted on a parent's subq, that's one ref (SUBINSERTED).
+ *	 If we are inserted on a RB tree, that's one ref (RBINSERTED).
+ *	 msg->state represents a ref.
+ *	 Other code references may hold refs.
+ *
+ * NOTE: The parent association stays intact as long as a state has a
+ *	 non-empty subq.  Otherwise simulated failures might not be able
+ *	 to reach the children.
  */
 TAILQ_HEAD(kdmsg_state_list, kdmsg_state);
 
 struct kdmsg_state {
 	RB_ENTRY(kdmsg_state) rbnode;		/* indexed by msgid */
+	struct kdmsg_state	*scan;		/* scan check */
 	struct kdmsg_state_list	subq;		/* active stacked states */
 	TAILQ_ENTRY(kdmsg_state) entry;		/* on parent subq */
 	TAILQ_ENTRY(kdmsg_state) user_entry;	/* available to devices */
@@ -745,13 +756,14 @@ struct kdmsg_state {
 
 #define KDMSG_STATE_SUBINSERTED	0x0001
 #define KDMSG_STATE_DYNAMIC	0x0002
-#define KDMSG_STATE_DELPEND	0x0004		/* transmit delete pending */
+#define KDMSG_STATE_UNUSED0004	0x0004
 #define KDMSG_STATE_ABORTING	0x0008		/* avoids recursive abort */
 #define KDMSG_STATE_OPPOSITE	0x0010		/* opposite direction */
-#define KDMSG_STATE_DYING	0x0020		/* indicates circuit failure */
+#define KDMSG_STATE_DYING	0x0020		/* atomic recursive circ fail */
 #define KDMSG_STATE_INTERLOCK	0x0040
 #define KDMSG_STATE_RBINSERTED	0x0080
 #define KDMSG_STATE_SIGNAL	0x0400
+#define KDMSG_STATE_NEW		0x0800		/* defer abort processing */
 
 struct kdmsg_msg {
 	TAILQ_ENTRY(kdmsg_msg) qentry;		/* serialized queue */

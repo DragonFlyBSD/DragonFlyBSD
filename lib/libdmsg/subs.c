@@ -125,8 +125,10 @@ dmsg_connect(const char *hostname)
 	}
 	if (connect(fd, (struct sockaddr *)&lsin, sizeof(lsin)) < 0) {
 		close(fd);
-		fprintf(stderr, "debug: connect failed: %s\n",
-			strerror(errno));
+		if (DMsgDebugOpt > 2) {
+			fprintf(stderr, "debug: Connect failed: %s\n",
+				strerror(errno));
+		}
 		return -1;
 	}
 	return (fd);
