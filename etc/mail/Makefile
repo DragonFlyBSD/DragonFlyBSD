@@ -82,10 +82,7 @@ ${SENDMAIL_SUBMIT_MC}:
 .endif
 
 INSTALL_CF=		${SENDMAIL_MC:R}.cf
-
-.ifndef SENDMAIL_SET_USER_ID
 INSTALL_SUBMIT_CF=	${SENDMAIL_SUBMIT_MC:R}.cf
-.endif
 
 SENDMAIL_ALIASES?=	/etc/mail/aliases
 
@@ -191,11 +188,7 @@ depend:
 
 cf:		${INSTALL_CF} ${INSTALL_SUBMIT_CF}
 
-.ifdef SENDMAIL_SET_USER_ID
-install: install-cf
-.else
 install: install-cf install-submit-cf
-.endif
 
 install-cf:	${INSTALL_CF}
 .if ${INSTALL_CF} != /etc/mail/sendmail.cf
@@ -204,15 +197,8 @@ install-cf:	${INSTALL_CF}
 
 
 install-submit-cf:	${INSTALL_SUBMIT_CF}
-.ifdef SENDMAIL_SET_USER_ID
-	@echo ">>> ERROR: You should not create a submit.cf file if you are using a"
-	@echo "           set-user-ID sendmail binary (SENDMAIL_SET_USER_ID is set"
-	@echo "           in make.conf)."
-	@false
-.else
 .if ${INSTALL_SUBMIT_CF} != /etc/mail/submit.cf
 	${INSTALL} -m ${SHAREMODE} ${INSTALL_SUBMIT_CF} /etc/mail/submit.cf
-.endif
 .endif
 
 aliases:	${SENDMAIL_ALIASES:%=%.db}

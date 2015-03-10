@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
 .\"
-.Dd March 9, 2015
+.Dd March 10, 2015
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -516,16 +516,6 @@ when building a
 file from a
 .Pa .mc
 file.
-.It Va SENDMAIL_SET_USER_ID
-.Pq Vt bool
-If set, install
-.Xr sendmail 8
-as a set-user-ID root binary instead of a set-group-ID binary
-and do not install
-.Pa /etc/mail/submit.{cf,mc} .
-Use of this flag is not recommended and the alternative advice in
-.Pa /etc/mail/README
-should be followed instead if at all possible.
 .It Va SENDMAIL_MAP_PERMS
 .Pq Vt str
 Mode to use when generating alias and map database files using
@@ -596,8 +586,7 @@ or
 .Xr gcc 1 ,
 .Xr install 1 ,
 .Xr make 1 ,
-.Xr lpd 8 ,
-.Xr sendmail 8
+.Xr lpd 8
 .Sh HISTORY
 The
 .Nm
