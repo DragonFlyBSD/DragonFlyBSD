@@ -471,9 +471,6 @@ file, e.g.,
 .Pa /etc/mail/myconfig.mc .
 Use with caution as a make install will overwrite any existing
 .Pa /etc/mail/sendmail.cf .
-Note that
-.Va SENDMAIL_CF
-is now deprecated.
 .It Va SENDMAIL_SUBMIT_MC
 .Pq Vt str
 The default
@@ -507,6 +504,8 @@ configuration files used to build a
 file from a
 .Pa .mc
 file.
+The default is
+.Pa /usr/local/share/sendmail/cf .
 .It Va SENDMAIL_M4_FLAGS
 .Pq Vt str
 Flags passed to

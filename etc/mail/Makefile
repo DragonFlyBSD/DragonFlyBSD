@@ -1,6 +1,5 @@
 #
 # $FreeBSD: src/etc/mail/Makefile,v 1.9.2.23 2003/02/12 03:57:52 gshapiro Exp $
-# $DragonFly: src/etc/mail/Makefile,v 1.3 2005/07/25 00:24:31 gshapiro Exp $
 #
 # This Makefile provides an easy way to generate the configuration
 # file and database maps for the sendmail(8) daemon.
@@ -87,16 +86,6 @@ INSTALL_SUBMIT_CF=	${SENDMAIL_SUBMIT_MC:R}.cf
 SENDMAIL_ALIASES?=	/etc/mail/aliases
 
 #
-# This is the directory where the sendmail configuration files are
-# located.
-#
-.if exists(/usr/share/sendmail/cf)
-SENDMAIL_CF_DIR?=	/usr/share/sendmail/cf
-.elif exists(/usr/src/contrib/sendmail/cf)
-SENDMAIL_CF_DIR?=	/usr/src/contrib/sendmail/cf
-.endif
-
-#
 # The sendmail startup script
 #
 SENDMAIL_START_SCRIPT?=	/etc/rc.sendmail
@@ -104,12 +93,9 @@ SENDMAIL_START_SCRIPT?=	/etc/rc.sendmail
 #
 # Some useful programs we need.
 #
-SENDMAIL?=		/usr/sbin/sendmail
-MAKEMAP?=		/usr/sbin/makemap
+SENDMAIL?=		/usr/local/sbin/sendmail
+MAKEMAP?=		/usr/local/sbin/makemap
 M4?=			/usr/bin/m4
-
-# Permissions for generated maps
-SENDMAIL_MAP_PERMS?=	0640
 
 # Set a reasonable default
 .MAIN:	all
@@ -225,11 +211,6 @@ restart restart-mta restart-mspq:
 		sh ${SENDMAIL_START_SCRIPT} $@; \
 		echo '.'; \
 	fi
-
-# User defined targets
-.if exists(Makefile.local)
-.include "Makefile.local"
-.endif
 
 # For the definition of $SHAREMODE
 .include <bsd.own.mk>

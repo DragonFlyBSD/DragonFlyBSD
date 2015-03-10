@@ -12,11 +12,7 @@ divert(-1)
 # 2. Redistributions in binary form must reproduce the above copyright
 #    notice, this list of conditions and the following disclaimer in the
 #    documentation and/or other materials provided with the distribution.
-# 3. All advertising materials mentioning features or use of this software
-#    must display the following acknowledgement:
-#	This product includes software developed by the University of
-#	California, Berkeley and its contributors.
-# 4. Neither the name of the University nor the names of its contributors
+# 3. Neither the name of the University nor the names of its contributors
 #    may be used to endorse or promote products derived from this software
 #    without specific prior written permission.
 #
@@ -34,17 +30,20 @@ divert(-1)
 #
 
 #
-#  This is a generic configuration file for DragonFlyBSD and later systems.
-#  If you want to customize it, copy it to a name appropriate for your
-#  environment and do the modifications there.
+#  This is a template configuration file for DragonFlyBSD and later systems.
+#  It will be overwritten so do not edit it!
+#
+#  If you want sendmail.cf to be based on a customized version of this file,
+#  copy it to /etc/mail/<hostname>.mc and modify -or-
+#  copy it to any location and set SENDMAIL_MC in /etc/make.conf
+#  to its path, then modify it as desired.
 #
 #  The best documentation for this .mc file is:
-#  /usr/share/sendmail/cf/README or
-#  /usr/src/contrib/sendmail/cf/README
+#  /usr/local/share/sendmail/cf/README
 #
 
 divert(0)
-VERSIONID(`$DragonFly: src/etc/sendmail/dragonfly.mc,v 1.1 2005/07/25 00:24:31 gshapiro Exp $')
+VERSIONID(`DragonFly: 10 MARCH 2015')
 OSTYPE(dragonfly)
 DOMAIN(generic)
 
@@ -88,5 +87,7 @@ DAEMON_OPTIONS(`Name=IPv6, Family=inet6, Modifiers=O')
 define(`confBIND_OPTS', `WorkAroundBrokenAAAA')
 define(`confNO_RCPT_ACTION', `add-to-undisclosed')
 define(`confPRIVACY_FLAGS', `authwarnings,noexpn,novrfy')
+define(`confEBINDIR', `/usr/local/libexec')
+define(`UUCP_MAILER_PATH', `/usr/local/bin/uux')
 MAILER(local)
 MAILER(smtp)

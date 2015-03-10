@@ -27,20 +27,15 @@ DEST_SUBMIT_CF=	${DESTDIR}/etc/mail/submit.cf
 ALL=		dragonfly.cf dragonfly.submit.cf
 CLEANFILES=	dragonfly.cf dragonfly.submit.cf
 
-# Local SENDMAIL_MC or SENDMAIL_CF may be set in /etc/make.conf.
+# Local SENDMAIL_MC may be set in /etc/make.conf.
 # Warning!  If set, this causes 'make install' to always copy it
 # over /etc/mail/sendmail.cf!!!
 # Caveat emptor!  Be sure you want this before you enable it.
-.if defined(SENDMAIL_MC) && defined(SENDMAIL_CF)
-.error Both SENDMAIL_MC and SENDMAIL_CF cannot be set.
-.elif defined(SENDMAIL_MC)
+.if defined(SENDMAIL_MC)
 INSTALL_CF=	${SENDMAIL_MC:T:R}.cf
 ALL+=		${INSTALL_CF}
 CLEANFILES+=	${SENDMAIL_MC:T:R}.cf
 ${INSTALL_CF}: ${SENDMAIL_MC}
-.elif defined(SENDMAIL_CF)
-ALL+=		${SENDMAIL_CF}
-INSTALL_CF=	${SENDMAIL_CF}
 .endif
 
 .if defined(SENDMAIL_SUBMIT_MC)

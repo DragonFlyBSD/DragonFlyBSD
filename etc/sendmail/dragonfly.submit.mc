@@ -10,19 +10,26 @@ divert(-1)
 #
 
 #
-#  This is the DragonFly BSD configuration for a set-group-ID sm-msp sendmail
-#  that acts as a initial mail submission program.
+#  This is the DragonFly BSD template configuration for a set-group-ID
+#  sm-msp sendmail that acts as a initial mail submission program.
 #
+#  If you want sendmail.submit.cf to be based on a customized version of
+#  this file, copy it to /etc/mail/<hostname>.submit.mc and modify -or-
+#  copy it to any location and set SENDMAIL_SUBMIT_MC in /etc/make.conf
+#  to its path, then modify it as desired.
 #
 
 divert(0)dnl
-VERSIONID(`$DragonFly: src/etc/sendmail/dragonfly.submit.mc,v 1.1 2005/07/25 00:24:31 gshapiro Exp $')
-define(`confCF_VERSION', `Submit')dnl
+VERSIONID(`$DragonFly: 10 March 2015')
+define(`confCF_VERSION', `Submit')
 define(`__OSTYPE__',`')dnl dirty hack to keep proto.m4 from complaining
 define(`_USE_DECNET_SYNTAX_', `1')dnl support DECnet
-define(`confTIME_ZONE', `USE_TZ')dnl
-define(`confDONT_INIT_GROUPS', `True')dnl
-define(`confBIND_OPTS', `WorkAroundBrokenAAAA')dnl
+define(`confTIME_ZONE', `USE_TZ')
+define(`confDONT_INIT_GROUPS', `True')
+define(`confBIND_OPTS', `WorkAroundBrokenAAAA')
 dnl
 dnl If you use IPv6 only, change [127.0.0.1] to [IPv6:::1]
 FEATURE(`msp', `[127.0.0.1]')dnl
+dnl
+dnl To deliver all local mail to your mailhub
+dnl FEATURE(`msp','[mailhub.do.main]`)
