@@ -2889,6 +2889,12 @@ TO_REMOVE+=/boot/kernel/ng_sync_ar.ko
 TO_REMOVE+=/boot/kernel/ng_sync_sr.ko
 .endif
 
+.if !defined(WANT_INSTALLER)
+TO_REMOVE+=/usr/sbin/dfuibe_installer
+TO_REMOVE+=/usr/sbin/dfuife_curses
+TO_REMOVE+=/usr/sbin/installer
+.endif
+
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/cat4/pfsync.4.gz
 TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz
