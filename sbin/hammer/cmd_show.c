@@ -49,8 +49,7 @@ typedef struct btree_search {
 static void print_btree_node(hammer_off_t node_offset, btree_search_t search,
 			int depth, hammer_tid_t mirror_tid,
 			hammer_base_elm_t left_bound,
-			hammer_base_elm_t right_bound,
-			int this_index);
+			hammer_base_elm_t right_bound);
 static const char *check_data_crc(hammer_btree_elm_t elm);
 static void print_record(hammer_btree_elm_t elm);
 static void print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
@@ -103,7 +102,7 @@ hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
 			(uintmax_t)node_offset, lo, (uintmax_t)obj_id, depth);
 	}
 	print_btree_node(node_offset, searchp, depth, HAMMER_MAX_TID,
-			 left_bound, right_bound, -1);
+			 left_bound, right_bound);
 
 	AssertOnFailure = 1;
 }
@@ -111,8 +110,7 @@ hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
 static void
 print_btree_node(hammer_off_t node_offset, btree_search_t search,
 		int depth, hammer_tid_t mirror_tid,
-		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound,
-		int this_index)
+		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct buffer_info *buffer = NULL;
 	hammer_node_ondisk_t node;
@@ -137,18 +135,11 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	else
 		badc = 'B';
 
-	/*
-	 * Workaround for the root split that is not an error
-	 */
-	if (this_index == 0 && depth == 1 && mirror_tid == 0) {
-		badm = ' ';  /* could use unique mark */
+	if (node->mirror_tid <= mirror_tid) {
+		badm = ' ';
 	} else {
-		if (node->mirror_tid <= mirror_tid) {
-			badm = ' ';
-		} else {
-			badm = 'M';
-			badc = 'B';
-		}
+		badm = 'M';
+		badc = 'B';
 	}
 
 	printf("%c%c   NODE %016jx cnt=%02d p=%016jx "
@@ -230,7 +221,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 				print_btree_node(elm->internal.subtree_offset,
 						 search, depth + 1,
 						 elm->internal.mirror_tid,
-						 &elm[0].base, &elm[1].base, i);
+						 &elm[0].base, &elm[1].base);
 				/*
 				 * Cause show to iterate after seeking to
 				 * the lo:objid
