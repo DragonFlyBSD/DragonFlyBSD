@@ -60,8 +60,8 @@ MTREE=	BSD.include.dist BSD.local.dist BSD.root.dist BSD.usr.dist \
 
 PPPCNF=	ppp.conf
 
-ETCMAIL=Makefile mailer.conf access.sample virtusertable.sample \
-	mailertable.sample aliases
+ETCMAIL=aliases mailer.conf access.sample virtusertable.sample \
+	mailertable.sample
 
 # List of libraries in /usr/lib/compat that might have to be removed
 # from /usr/lib.

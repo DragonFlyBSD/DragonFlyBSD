@@ -4,8 +4,7 @@
 FILESDIR=	/etc/mail/
 FILESMODE=	644
 
-FILES+=		README \
-		mailer.conf.dma \
+FILES+=		mailer.conf.dma \
 		mailer.conf.opensmtpd \
 		mailer.conf.postfix \
 		mailer.conf.sendmail

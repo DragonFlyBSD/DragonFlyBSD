@@ -19,11 +19,14 @@ if both sendmail_enable and sendmail_submit_enable are set to "NO", you
 must do the following for command line submitted mail:
 
    Designate an alternative host for the submission agent to contact
-   by altering /etc/mail/dragonfly.submit.mc (or setting SENDMAIL_SUBMIT_MC
-   in /etc/make.conf to an alternate .mc file) and using
-   'make install-submit-cf' in /etc/mail/.  Change the FEATURE(msp) line
-   to FEATURE(msp, hostname) where hostname is the fully qualified hostname
-   of the alternative host.
+   by creating /etc/mail/<hostname>.submit.mc or using an alternate .mc
+   file and setting SENDMAIL_SUBMIT_MC in /etc/make.conf.  Do not edit
+   dragonfly.submit.mc directly as it will be overwritten eventually, but
+   it certainly can be copied to be used as a template.
+
+   Type 'make install-submit-cf' in /etc/mail/ to generate the submit.cf
+   file.  Change the FEATURE(msp) line to FEATURE(msp, hostname) where
+   hostname is the fully qualified hostname of the alternative host.
 
 Also, as of 8.12, a new queue-running daemon is started to make sure mail
 doesn't remain in the client mail queue.  By default, it simply runs the

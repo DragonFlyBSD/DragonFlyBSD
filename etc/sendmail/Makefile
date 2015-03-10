@@ -1,92 +1,19 @@
-#	@(#)Makefile	8.19 (Berkeley) 1/14/97
-# $FreeBSD: src/etc/sendmail/Makefile,v 1.31 2004/01/22 17:51:02 ru Exp $
+# This installs the sendmail mc templates and the makefile used to
+# generate sendmail.cf and sendmail.submit.cf.  A README is also installed
 
-M4=		m4
-CHMOD=		chmod
-ROMODE=		444
-RM=		rm -f
+FILESDIR=	/etc/mail/
+FILESMODE=	644
 
-SENDMAIL_DIR=	${.CURDIR}/../../contrib/sendmail-8.14
-SMDIR=		${SENDMAIL_DIR}/sendmail
-SENDMAIL_CF_DIR?=${SENDMAIL_DIR}/cf
+FILES+=		Makefile \
+		README \
+		dragonfly.mc \
+		dragonfly.submit.mc
 
-# this is overkill, but....
-M4FILES!=	find ${SENDMAIL_CF_DIR} -type f -name '*.m4' -print
+CLEANFILES=	Makefile
 
-.SUFFIXES: .mc .cf
+Makefile: Makefile.4install
+	cp ${.ALLSRC} ${.TARGET}
 
-.mc.cf: ${M4FILES}
-	${RM} ${.TARGET}
-	${M4} -D_CF_DIR_=${SENDMAIL_CF_DIR}/ ${SENDMAIL_M4_FLAGS} \
-	    ${SENDMAIL_CF_DIR}/m4/cf.m4 ${.IMPSRC} > ${.TARGET}
-	${CHMOD} ${ROMODE} ${.TARGET}
-
-DEST_CF=	${DESTDIR}/etc/mail/sendmail.cf
-DEST_SUBMIT_CF=	${DESTDIR}/etc/mail/submit.cf
-
-ALL=		dragonfly.cf dragonfly.submit.cf
-CLEANFILES=	dragonfly.cf dragonfly.submit.cf
-
-# Local SENDMAIL_MC may be set in /etc/make.conf.
-# Warning!  If set, this causes 'make install' to always copy it
-# over /etc/mail/sendmail.cf!!!
-# Caveat emptor!  Be sure you want this before you enable it.
-.if defined(SENDMAIL_MC)
-INSTALL_CF=	${SENDMAIL_MC:T:R}.cf
-ALL+=		${INSTALL_CF}
-CLEANFILES+=	${SENDMAIL_MC:T:R}.cf
-${INSTALL_CF}: ${SENDMAIL_MC}
-.endif
-
-.if defined(SENDMAIL_SUBMIT_MC)
-INSTALL_SUBMIT_CF= ${SENDMAIL_SUBMIT_MC:T:R}.cf
-ALL+=		${INSTALL_SUBMIT_CF}
-CLEANFILES+=	${INSTALL_SUBMIT_CF}
-${INSTALL_SUBMIT_CF}: ${SENDMAIL_SUBMIT_MC}
-.endif
-
-# Additional .cf files to build.
-.if defined(SENDMAIL_ADDITIONAL_MC)
-SENDMAIL_ADDITIONAL_CF= ${SENDMAIL_ADDITIONAL_MC:T:S/.mc$/.cf/}
-ALL+=		${SENDMAIL_ADDITIONAL_CF}
-CLEANFILES+=	${SENDMAIL_ADDITIONAL_CF}
-.for mc in ${SENDMAIL_ADDITIONAL_MC}
-${mc:T:R}.cf: ${mc}
-.endfor
-.endif
-
-all: ${ALL}
-
-distribution: dragonfly.cf dragonfly.submit.cf
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${.CURDIR}/dragonfly.mc dragonfly.cf ${DESTDIR}/etc/mail
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${.CURDIR}/dragonfly.submit.mc dragonfly.submit.cf ${DESTDIR}/etc/mail
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 640 \
-	    /dev/null ${DESTDIR}/var/log/sendmail.st
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-	    dragonfly.cf ${DEST_CF}
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    dragonfly.submit.cf ${DEST_SUBMIT_CF}
-
-upgrade:
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${.CURDIR}/dragonfly.mc ${DESTDIR}/etc/mail
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${.CURDIR}/dragonfly.submit.mc ${DESTDIR}/etc/mail
-
-install:
-.if defined(INSTALL_CF) && ${INSTALL_CF} != ${DEST_CF}
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-	    ${INSTALL_CF} ${DEST_CF}
-.endif
-.if defined(SENDMAIL_ADDITIONAL_CF)
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-	    ${SENDMAIL_ADDITIONAL_CF} ${DESTDIR}/etc/mail
-.endif
-.if defined(INSTALL_SUBMIT_CF) && ${INSTALL_SUBMIT_CF} != ${DEST_SUBMIT_CF}
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-	    ${INSTALL_SUBMIT_CF} ${DEST_SUBMIT_CF}
-.endif
+beforedepend:	Makefile
 
 .include <bsd.prog.mk>
