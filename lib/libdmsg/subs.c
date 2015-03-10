@@ -96,8 +96,8 @@ dmsg_connect(const char *hostname)
 	 * Acquire socket and set options
 	 */
 	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "cmd_debug: socket(): %s\n",
-			strerror(errno));
+		dm_printf(1, "cmd_debug: socket(): %s\n",
+			  strerror(errno));
 		return -1;
 	}
 	opt = 1;
@@ -115,8 +115,7 @@ dmsg_connect(const char *hostname)
 		hen = gethostbyname2(hostname, AF_INET);
 		if (hen == NULL) {
 			if (inet_pton(AF_INET, hostname, &lsin.sin_addr) != 1) {
-				fprintf(stderr,
-					"Cannot resolve %s\n", hostname);
+				dm_printf(3, "Cannot resolve %s\n", hostname);
 				return -1;
 			}
 		} else {
@@ -126,8 +125,8 @@ dmsg_connect(const char *hostname)
 	if (connect(fd, (struct sockaddr *)&lsin, sizeof(lsin)) < 0) {
 		close(fd);
 		if (DMsgDebugOpt > 2) {
-			fprintf(stderr, "debug: Connect failed: %s\n",
-				strerror(errno));
+			dm_printf(3, "debug: Connect failed: %s\n",
+				  strerror(errno));
 		}
 		return -1;
 	}

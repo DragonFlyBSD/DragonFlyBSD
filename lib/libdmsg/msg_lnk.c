@@ -332,6 +332,7 @@ static struct dmsg_media_queue mediaq = TAILQ_HEAD_INITIALIZER(mediaq);
 
 static void dmsg_lnk_span(dmsg_msg_t *msg);
 static void dmsg_lnk_conn(dmsg_msg_t *msg);
+static void dmsg_lnk_ping(dmsg_msg_t *msg);
 static void dmsg_lnk_relay(dmsg_msg_t *msg);
 static void dmsg_relay_scan(h2span_conn_t *conn, h2span_node_t *node);
 static void dmsg_relay_delete(h2span_relay_t *relay);
@@ -364,6 +365,9 @@ dmsg_msg_lnk(dmsg_msg_t *msg)
 	case DMSG_LNK_SPAN:
 		dmsg_lnk_span(msg);
 		break;
+	case DMSG_LNK_PING:
+		dmsg_lnk_ping(msg);
+		break;
 	default:
 		iocom->usrmsg_callback(msg, 1);
 		/* state invalid after reply */
@@ -390,7 +394,7 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 
 	pthread_mutex_lock(&cluster_mtx);
 
-	fprintf(stderr,
+	dmio_printf(iocom, 3,
 		"dmsg_lnk_conn: msg %p cmd %08x state %p "
 		"txcmd %08x rxcmd %08x\n",
 		msg, msg->any.head.cmd, state,
@@ -404,7 +408,7 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		 * acknowledge the request, leaving the transaction open.
 		 * We then relay priority-selected SPANs.
 		 */
-		fprintf(stderr, "LNK_CONN(%08x): %s/%s/%s\n",
+		dmio_printf(iocom, 3, "LNK_CONN(%08x): %s/%s/%s\n",
 			(uint32_t)msg->any.head.msgid,
 			dmsg_uuid_to_str(&msg->any.lnk_conn.pfs_clid,
 					    &alloc),
@@ -455,7 +459,7 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		 * On transaction terminate we clean out our h2span_conn
 		 * and acknowledge the request, closing the transaction.
 		 */
-		fprintf(stderr, "LNK_CONN: Terminated\n");
+		dmio_printf(iocom, 3, "%s\n", "LNK_CONN: Terminated");
 		conn = state->any.conn;
 		assert(conn);
 
@@ -467,7 +471,7 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		media = state->media;
 		--media->refs;
 		if (media->refs == 0) {
-			fprintf(stderr, "Media shutdown\n");
+			dmio_printf(iocom, 3, "%s\n", "Media shutdown");
 			TAILQ_REMOVE(&mediaq, media, entry);
 			pthread_mutex_unlock(&cluster_mtx);
 			iocom->usrmsg_callback(msg, 0);
@@ -537,7 +541,8 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 	 * we can ignore that too.
 	 */
 	if (msg->any.head.cmd & DMSGF_REPLY) {
-		printf("Ignore reply to LNK_SPAN\n");
+		dmio_printf(iocom, 2, "%s\n",
+			    "Ignore reply to LNK_SPAN");
 		return;
 	}
 
@@ -622,14 +627,14 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 
 		RB_INSERT(h2span_link_tree, &node->tree, slink);
 
-		fprintf(stderr,
-			"LNK_SPAN(thr %p): %p %s cl=%s fs=%s dist=%d\n",
-			iocom,
-			slink,
-			dmsg_uuid_to_str(&msg->any.lnk_span.pfs_clid, &alloc),
-			msg->any.lnk_span.cl_label,
-			msg->any.lnk_span.fs_label,
-			msg->any.lnk_span.dist);
+		dmio_printf(iocom, 3,
+			    "LNK_SPAN(thr %p): %p %s cl=%s fs=%s dist=%d\n",
+			    iocom, slink,
+			    dmsg_uuid_to_str(&msg->any.lnk_span.pfs_clid,
+					     &alloc),
+			    msg->any.lnk_span.cl_label,
+			    msg->any.lnk_span.fs_label,
+			    msg->any.lnk_span.dist);
 		free(alloc);
 #if 0
 		dmsg_relay_scan(NULL, node);
@@ -653,12 +658,12 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		node = slink->node;
 		cls = node->cls;
 
-		fprintf(stderr, "LNK_DELE(thr %p): %p %s cl=%s fs=%s\n",
-			iocom,
-			slink,
-			dmsg_uuid_to_str(&cls->pfs_clid, &alloc),
-			cls->cl_label,
-			node->fs_label);
+		dmio_printf(iocom, 3,
+			    "LNK_DELE(thr %p): %p %s cl=%s fs=%s\n",
+			    iocom, slink,
+			    dmsg_uuid_to_str(&cls->pfs_clid, &alloc),
+			    cls->cl_label,
+			    node->fs_label);
 		free(alloc);
 
 		/*
@@ -710,6 +715,26 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 	}
 
 	pthread_mutex_unlock(&cluster_mtx);
+}
+
+/*
+ * Respond to a PING with a PING|REPLY, forward replies to the usermsg
+ * callback.
+ */
+static
+void
+dmsg_lnk_ping(dmsg_msg_t *msg)
+{
+	dmsg_msg_t *rep;
+
+	if (msg->any.head.cmd & DMSGF_REPLY) {
+		msg->state->iocom->usrmsg_callback(msg, 1);
+	} else {
+		rep = dmsg_msg_alloc(msg->state, 0,
+				     DMSG_LNK_PING | DMSGF_REPLY,
+				     NULL, NULL);
+		dmsg_msg_write(rep);
+	}
 }
 
 /*
@@ -826,8 +851,7 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 	if (relay)
 		assert(relay->source_rt->any.link->node == node);
 
-	if (DMsgDebugOpt > 8)
-		fprintf(stderr, "relay scan for connection %p\n", conn);
+	dm_printf(9, "relay scan for connection %p\n", conn);
 
 	/*
 	 * Iterate the node's links (received SPANs) in distance order,
@@ -978,7 +1002,7 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 	 */
 	while (relay && relay->source_rt->any.link->node == node) {
 		next_relay = RB_NEXT(h2span_relay_tree, &conn->tree, relay);
-		fprintf(stderr, "RELAY DELETE FROM EXTRAS\n");
+		dm_printf(9, "%s\n", "RELAY DELETE FROM EXTRAS");
 		dmsg_relay_delete(relay);
 		relay = next_relay;
 	}
@@ -1013,7 +1037,7 @@ dmsg_findspan(const char *label)
 done:
 	pthread_mutex_unlock(&cluster_mtx);
 
-	fprintf(stderr, "findspan: %p\n", state);
+	dm_printf(8, "findspan: %p\n", state);
 
 	return state;
 }
@@ -1083,7 +1107,7 @@ dmsg_lnk_relay(dmsg_msg_t *msg)
 
 	if (msg->any.head.cmd & DMSGF_DELETE) {
 		pthread_mutex_lock(&cluster_mtx);
-		fprintf(stderr, "RELAY DELETE FROM LNK_RELAY MSG\n");
+		dm_printf(8, "%s\n", "RELAY DELETE FROM LNK_RELAY MSG");
 		if ((relay = state->any.relay) != NULL) {
 			dmsg_relay_delete(relay);
 		} else {
@@ -1100,16 +1124,16 @@ static
 void
 dmsg_relay_delete(h2span_relay_t *relay)
 {
-	fprintf(stderr,
-		"RELAY DELETE %p RELAY %p ON CLS=%p NODE=%p "
-		"DIST=%d FD %d STATE %p\n",
-		relay->source_rt->any.link,
-		relay,
-		relay->source_rt->any.link->node->cls,
-		relay->source_rt->any.link->node,
-		relay->source_rt->any.link->lnk_span.dist,
-		relay->conn->state->iocom->sock_fd,
-		relay->target_rt);
+	dm_printf(8,
+		  "RELAY DELETE %p RELAY %p ON CLS=%p NODE=%p "
+		  "DIST=%d FD %d STATE %p\n",
+		  relay->source_rt->any.link,
+		  relay,
+		  relay->source_rt->any.link->node->cls,
+		  relay->source_rt->any.link->node,
+		  relay->source_rt->any.link->lnk_span.dist,
+		  relay->conn->state->iocom->sock_fd,
+		  relay->target_rt);
 
 	RB_REMOVE(h2span_relay_tree, &relay->conn->tree, relay);
 	TAILQ_REMOVE(&relay->source_rt->any.link->relayq, relay, entry);

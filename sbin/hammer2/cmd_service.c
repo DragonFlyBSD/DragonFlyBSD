@@ -703,8 +703,11 @@ autoconn_connect_thread(void *data)
 	while (ac->stopme == 0) {
 		fd = dmsg_connect(ac->host);
 		if (fd < 0) {
-			fprintf(stderr, "autoconn: Connect failure: %s\n",
-				ac->host);
+			if (DMsgDebugOpt > 2) {
+				fprintf(stderr,
+					"autoconn: Connect failure: %s\n",
+					ac->host);
+			}
 			sleep(5);
 			continue;
 		}

@@ -51,6 +51,17 @@
 
 #define DMSG_LISTEN_PORT	987
 
+#define dm_printf(level, ctl, ...)		\
+	if (DMsgDebugOpt >= (level))		\
+		fprintf(stderr, "libdmsg: " ctl, __VA_ARGS__)
+#define dmx_printf(level, ctl, ...)		\
+	if (DMsgDebugOpt >= (level))		\
+		fprintf(stderr, ctl, __VA_ARGS__)
+#define dmio_printf(iocom, level, ctl, ...)	\
+	if (DMsgDebugOpt >= (level))		\
+		fprintf(stderr, "libdmsg: " ctl, __VA_ARGS__)
+
+
 /***************************************************************************
  *				CRYPTO HANDSHAKE			   *
  ***************************************************************************

@@ -71,9 +71,9 @@ dmsg_master_service(void *data)
 	dmsg_iocom_core(&iocom);
 	dmsg_iocom_done(&iocom);
 
-	fprintf(stderr,
-		"iocom on fd %d terminated error rx=%d, tx=%d\n",
-		info->fd, iocom.ioq_rx.error, iocom.ioq_tx.error);
+	dmio_printf(iocom, 1,
+		    "iocom on fd %d terminated error rx=%d, tx=%d\n",
+		    info->fd, iocom.ioq_rx.error, iocom.ioq_tx.error);
 	close(info->fd);
 	info->fd = -1;	/* safety */
 	if (info->exit_callback)

@@ -435,9 +435,8 @@ dmsg_iocom_core(dmsg_iocom_t *iocom)
 		 * context of the current thread.  However, modifications
 		 * still require atomic ops.
 		 */
-#if 0
-		fprintf(stderr, "iocom %p %08x\n", iocom, iocom->flags);
-#endif
+		dmio_printf(iocom, 5, "iocom %p %08x\n",
+			    iocom, iocom->flags);
 		if ((iocom->flags & (DMSG_IOCOMF_RWORK |
 				     DMSG_IOCOMF_WWORK |
 				     DMSG_IOCOMF_PWORK |
@@ -546,10 +545,8 @@ dmsg_iocom_core(dmsg_iocom_t *iocom)
 		if (iocom->flags & DMSG_IOCOMF_RWORK) {
 			while ((iocom->flags & DMSG_IOCOMF_EOF) == 0 &&
 			       (msg = dmsg_ioq_read(iocom)) != NULL) {
-				if (DMsgDebugOpt) {
-					fprintf(stderr, "receive %s\n",
-						dmsg_msg_str(msg));
-				}
+				dmio_printf(iocom, 4, "receive %s\n",
+					    dmsg_msg_str(msg));
 				iocom->rcvmsg_callback(msg);
 				pthread_mutex_lock(&iocom->mtx);
 				dmsg_state_cleanuprx(iocom, msg);
@@ -636,7 +633,9 @@ again:
 
 		if (msg->state == &iocom->state0) {
 			atomic_set_int(&iocom->flags, DMSG_IOCOMF_EOF);
-			fprintf(stderr, "EOF ON SOCKET %d\n", iocom->sock_fd);
+			dmio_printf(iocom, 1,
+				    "EOF ON SOCKET %d\n",
+				    iocom->sock_fd);
 		}
 		return (msg);
 	}
@@ -721,10 +720,12 @@ again:
 		head = (void *)(ioq->buf + ioq->fifo_beg);
 		if (head->magic != DMSG_HDR_MAGIC &&
 		    head->magic != DMSG_HDR_MAGIC_REV) {
-			fprintf(stderr, "%s: head->magic is bad %02x\n",
-				iocom->label, head->magic);
+			dmio_printf(iocom, 1,
+				    "%s: head->magic is bad %02x\n",
+				    iocom->label, head->magic);
 			if (iocom->flags & DMSG_IOCOMF_CRYPTED)
-				fprintf(stderr, "(on encrypted link)\n");
+				dmio_printf(iocom, 1, "%s\n",
+					    "(on encrypted link)");
 			ioq->error = DMSG_IOQ_ERROR_SYNC;
 			break;
 		}
@@ -839,9 +840,9 @@ again:
 		head->hdr_crc = 0;
 		if (dmsg_icrc32(head, ioq->hbytes) != xcrc32) {
 			ioq->error = DMSG_IOQ_ERROR_XCRC;
-			fprintf(stderr, "BAD-XCRC(%08x,%08x) %s\n",
-				xcrc32, dmsg_icrc32(head, ioq->hbytes),
-				dmsg_msg_str(msg));
+			dmio_printf(iocom, 1, "BAD-XCRC(%08x,%08x) %s\n",
+				    xcrc32, dmsg_icrc32(head, ioq->hbytes),
+				    dmsg_msg_str(msg));
 			assert(0);
 			break;
 		}
@@ -984,14 +985,14 @@ again:
 		xcrc32 = dmsg_icrc32(msg->aux_data, ioq->abytes);
 		if (xcrc32 != msg->any.head.aux_crc) {
 			ioq->error = DMSG_IOQ_ERROR_ACRC;
-			fprintf(stderr,
-				"iocom: ACRC error %08x vs %08x "
-				"msgid %016jx msgcmd %08x auxsize %d\n",
-				xcrc32,
-				msg->any.head.aux_crc,
-				(intmax_t)msg->any.head.msgid,
-				msg->any.head.cmd,
-				msg->any.head.aux_bytes);
+			dmio_printf(iocom, 1,
+				    "iocom: ACRC error %08x vs %08x "
+				    "msgid %016jx msgcmd %08x auxsize %d\n",
+				    xcrc32,
+				    msg->any.head.aux_crc,
+				    (intmax_t)msg->any.head.msgid,
+				    msg->any.head.cmd,
+				    msg->any.head.aux_bytes);
 			break;
 		}
 		break;
@@ -1041,7 +1042,7 @@ skip:
 		 * message, which should cause master processing loops to
 		 * terminate.
 		 */
-		fprintf(stderr, "IOQ ERROR %d\n", ioq->error);
+		dmio_printf(iocom, 1, "IOQ ERROR %d\n", ioq->error);
 		assert(ioq->msg == msg);
 		if (msg) {
 			dmsg_msg_free(msg);
@@ -1129,12 +1130,10 @@ skip:
 		 *
 		 * State processing only occurs for messages destined for us.
 		 */
-		if (DMsgDebugOpt >= 5) {
-			fprintf(stderr,
-				"rxmsg cmd=%08x circ=%016jx\n",
-				msg->any.head.cmd,
-				(intmax_t)msg->any.head.circuit);
-		}
+		dmio_printf(iocom, 5,
+			    "rxmsg cmd=%08x circ=%016jx\n",
+			    msg->any.head.cmd,
+			    (intmax_t)msg->any.head.circuit);
 
 		error = dmsg_state_msgrx(msg, 0);
 
@@ -1434,12 +1433,10 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 		nact -= abytes - ioq->abytes;
 		/* ioq->abytes = abytes; optimized out */
 
-#if 0
-		fprintf(stderr,
-			"txmsg cmd=%08x circ=%016jx\n",
-			msg->any.head.cmd,
-			(intmax_t)msg->any.head.circuit);
-#endif
+		dmio_printf(iocom, 5,
+			    "txmsg cmd=%08x circ=%016jx\n",
+			    msg->any.head.cmd,
+			    (intmax_t)msg->any.head.circuit);
 
 #ifdef DMSG_BLOCK_DEBUG
 		uint32_t tcmd;
@@ -1460,17 +1457,19 @@ dmsg_iocom_flush2(dmsg_iocom_t *iocom)
 		switch (tcmd) {
 		case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE:
 		case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE:
-			fprintf(stderr, "write BIO %-3d %016jx %d@%016jx\n",
-				biocount, msg->any.head.msgid,
-				msg->any.blk_read.bytes,
-				msg->any.blk_read.offset);
+			dmio_printf(iocom, 4,
+				    "write BIO %-3d %016jx %d@%016jx\n",
+				    biocount, msg->any.head.msgid,
+				    msg->any.blk_read.bytes,
+				    msg->any.blk_read.offset);
 			break;
 		case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
 		case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
-			fprintf(stderr, "wretr BIO %-3d %016jx %d@%016jx\n",
-				biocount, msg->any.head.msgid,
-				msg->any.blk_read.bytes,
-				msg->any.blk_read.offset);
+			dmio_printf(iocom, 4,
+				    "wretr BIO %-3d %016jx %d@%016jx\n",
+				    biocount, msg->any.head.msgid,
+				    msg->any.blk_read.bytes,
+				    msg->any.blk_read.offset);
 			break;
 		default:
 			break;
@@ -1559,14 +1558,12 @@ dmsg_msg_write(dmsg_msg_t *msg)
 	pthread_mutex_lock(&iocom->mtx);
 	state = msg->state;
 
-	if (DMsgDebugOpt) {
-		fprintf(stderr,
-			"msgtx: cmd=%08x msgid=%016jx "
-			"state %p(%08x) error=%d\n",
-			msg->any.head.cmd, msg->any.head.msgid,
-			state, (state ? state->icmd : 0),
-			msg->any.head.error);
-	}
+	dmio_printf(iocom, 5,
+		    "msgtx: cmd=%08x msgid=%016jx "
+		    "state %p(%08x) error=%d\n",
+		    msg->any.head.cmd, msg->any.head.msgid,
+		    state, (state ? state->icmd : 0),
+		    msg->any.head.error);
 
 
 #if 0
@@ -1577,7 +1574,7 @@ dmsg_msg_write(dmsg_msg_t *msg)
 	 */
 	if ((state->parent->txcmd & DMSGF_DELETE) ||
 	    (state->parent->rxcmd & DMSGF_DELETE)) {
-		fprintf(stderr, "dmsg_msg_write: EARLY TERMINATION\n");
+		dmio_printf(iocom, 4, "dmsg_msg_write: EARLY TERMINATION\n");
 		dmsg_simulate_failure(state, DMSG_ERR_LOSTLINK);
 		dmsg_state_cleanuptx(iocom, msg);
 		dmsg_msg_free(msg);
@@ -1618,9 +1615,10 @@ dmsg_msg_write(dmsg_msg_t *msg)
 	 * Discard messages sent to transactions which are already dead.
 	 */
 	if (state && (state->txcmd & DMSGF_DELETE)) {
-		printf("dmsg_msg_write: drop msg %08x to dead "
-		       "circuit state=%p\n",
-		       msg->any.head.cmd, state);
+		dmio_printf(iocom, 4,
+			    "dmsg_msg_write: drop msg %08x to dead "
+			    "circuit state=%p\n",
+			    msg->any.head.cmd, state);
 		dmsg_msg_free(msg);
 		return;
 	}
@@ -1644,11 +1642,12 @@ dmsg_msg_write(dmsg_msg_t *msg)
 		 * Illegal message, kill state and related sub-state.
 		 * Cannot transmit if state is already dying.
 		 */
-		printf("dmsg_msg_write: Write to dying circuit "
-			"ptxcmd=%08x prxcmd=%08x flags=%08x\n",
-			state->parent->rxcmd,
-			state->parent->txcmd,
-			state->parent->flags);
+		dmio_printf(iocom, 4,
+			    "dmsg_msg_write: Write to dying circuit "
+			    "ptxcmd=%08x prxcmd=%08x flags=%08x\n",
+			    state->parent->rxcmd,
+			    state->parent->txcmd,
+			    state->parent->flags);
 		dmsg_state_hold(state);
 		dmsg_state_cleanuptx(iocom, msg);
 		if ((state->flags & DMSG_STATE_ABORTING) == 0) {
@@ -1661,8 +1660,9 @@ dmsg_msg_write(dmsg_msg_t *msg)
 		 * Queue the message, clean up transmit state prior to queueing
 		 * to avoid SMP races.
 		 */
-		if (DMsgDebugOpt)
-		printf("dmsg_msg_write: commit msg state=%p to txkmsgq\n", state);
+		dmio_printf(iocom, 5,
+			    "dmsg_msg_write: commit msg state=%p to txkmsgq\n",
+			    state);
 		dmsg_state_cleanuptx(iocom, msg);
 		TAILQ_INSERT_TAIL(&iocom->txmsgq, msg, qentry);
 		dummy = 0;
@@ -1752,9 +1752,11 @@ dmsg_state_abort(dmsg_state_t *state)
 	state->flags |= DMSG_STATE_ABORTING;
 	dmsg_state_dying(state);
 	if (state->flags & DMSG_STATE_NEW) {
-		printf("dmsg_state_abort(0): state %p rxcmd %08x txcmd %08x "
-		       "flags %08x - in NEW state\n",
-		       state, state->rxcmd, state->txcmd, state->flags);
+		dmio_printf(iocom, 4,
+			    "dmsg_state_abort(0): state %p rxcmd %08x "
+			    "txcmd %08x flags %08x - in NEW state\n",
+			    state, state->rxcmd,
+			    state->txcmd, state->flags);
 		return;
 	}
 
@@ -1766,7 +1768,9 @@ dmsg_state_abort(dmsg_state_t *state)
 	 * until the children are all gone.
 	 */
 	if ((state->rxcmd & DMSGF_DELETE) == 0) {
-		fprintf(stderr, "SIMULATE ERROR\n");
+		dmio_printf(iocom, 5,
+			    "dmsg_state_abort() on state %p\n",
+			    state);
 		msg = dmsg_msg_alloc_locked(state, 0, DMSG_LNK_ERROR,
 					    NULL, NULL);
 		if ((state->rxcmd & DMSGF_CREATE) == 0)
@@ -2084,13 +2088,13 @@ dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 	pthread_mutex_lock(&iocom->mtx);
 
 	if (DMsgDebugOpt) {
-		fprintf(stderr,
-			"msgrx: cmd=%08x msgid=%016jx "
-			"circuit=%016jx error=%d\n",
-			msg->any.head.cmd,
-			msg->any.head.msgid,
-			msg->any.head.circuit,
-			msg->any.head.error);
+		dmio_printf(iocom, 5,
+			    "msgrx: cmd=%08x msgid=%016jx "
+			    "circuit=%016jx error=%d\n",
+			    msg->any.head.cmd,
+			    msg->any.head.msgid,
+			    msg->any.head.circuit,
+			    msg->any.head.error);
 	}
 
 	/*
@@ -2127,9 +2131,9 @@ dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 		 * direction.
 		 */
 		if (pstate == NULL) {
-			fprintf(stderr,
-				"missing parent in stacked trans %s\n",
-				dmsg_msg_str(msg));
+			dmio_printf(iocom, 4,
+				    "missing parent in stacked trans %s\n",
+				    dmsg_msg_str(msg));
 			pthread_mutex_unlock(&iocom->mtx);
 			error = DMSG_IOQ_ERROR_EALREADY;
 
@@ -2165,15 +2169,14 @@ dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 	}
 
 	if (DMsgDebugOpt) {
-		fprintf(stderr,
-			"msgrx:\tstate %p(%08x)",
-			state, (state ? state->icmd : 0));
+		dmio_printf(iocom, 5, "msgrx:\tstate %p(%08x)",
+			    state, (state ? state->icmd : 0));
 		if (pstate != &iocom->state0) {
-			fprintf(stderr,
-				" pstate %p(%08x)",
-				pstate, pstate->icmd);
+			dmio_printf(iocom, 5,
+				    " pstate %p(%08x)",
+				    pstate, pstate->icmd);
 		}
-		fprintf(stderr, "\n");
+		dmio_printf(iocom, 5, "%s\n", "");
 	}
 
 	if (mstate) {
@@ -2213,9 +2216,9 @@ dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 		 * iocom-based instead of state-based).
 		 */
 		if (state != pstate) {
-			fprintf(stderr,
-				"duplicate transaction %s\n",
-				dmsg_msg_str(msg));
+			dmio_printf(iocom, 2,
+				    "duplicate transaction %s\n",
+				    dmsg_msg_str(msg));
 			error = DMSG_IOQ_ERROR_TRANS;
 			assert(0);
 			break;
@@ -2273,8 +2276,9 @@ dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = DMSG_IOQ_ERROR_EALREADY;
 			} else {
-				fprintf(stderr, "missing-state %s\n",
-					dmsg_msg_str(msg));
+				dmio_printf(iocom, 2,
+					    "missing-state %s\n",
+					    dmsg_msg_str(msg));
 				error = DMSG_IOQ_ERROR_TRANS;
 				assert(0);
 			}
@@ -2289,8 +2293,9 @@ dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = DMSG_IOQ_ERROR_EALREADY;
 			} else {
-				fprintf(stderr, "reused-state %s\n",
-					dmsg_msg_str(msg));
+				dmio_printf(iocom, 2,
+					    "reused-state %s\n",
+					    dmsg_msg_str(msg));
 				error = DMSG_IOQ_ERROR_TRANS;
 				assert(0);
 			}
@@ -2319,8 +2324,8 @@ dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 		 * persistent state message should already exist.
 		 */
 		if (state == pstate) {
-			fprintf(stderr, "no-state(r) %s\n",
-				dmsg_msg_str(msg));
+			dmio_printf(iocom, 2, "no-state(r) %s\n",
+				    dmsg_msg_str(msg));
 			error = DMSG_IOQ_ERROR_TRANS;
 			assert(0);
 			break;
@@ -2338,8 +2343,9 @@ dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = DMSG_IOQ_ERROR_EALREADY;
 			} else {
-				fprintf(stderr, "no-state(r,d) %s\n",
-					dmsg_msg_str(msg));
+				dmio_printf(iocom, 2,
+					    "no-state(r,d) %s\n",
+					    dmsg_msg_str(msg));
 				error = DMSG_IOQ_ERROR_TRANS;
 				assert(0);
 			}
@@ -2355,8 +2361,9 @@ dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = DMSG_IOQ_ERROR_EALREADY;
 			} else {
-				fprintf(stderr, "reused-state(r,d) %s\n",
-					dmsg_msg_str(msg));
+				dmio_printf(iocom, 2,
+					    "reused-state(r,d) %s\n",
+					    dmsg_msg_str(msg));
 				error = DMSG_IOQ_ERROR_TRANS;
 				assert(0);
 			}
@@ -2406,17 +2413,19 @@ dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 	switch (msg->tcmd) {
 	case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE:
 	case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE:
-		fprintf(stderr, "read  BIO %-3d %016jx %d@%016jx\n",
-			biocount, msg->any.head.msgid,
-			msg->any.blk_read.bytes,
-			msg->any.blk_read.offset);
+		dmio_printf(iocom, 4,
+			    "read  BIO %-3d %016jx %d@%016jx\n",
+			    biocount, msg->any.head.msgid,
+			    msg->any.blk_read.bytes,
+			    msg->any.blk_read.offset);
 		break;
 	case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
 	case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
-		fprintf(stderr, "rread BIO %-3d %016jx %d@%016jx\n",
-			biocount, msg->any.head.msgid,
-			msg->any.blk_read.bytes,
-			msg->any.blk_read.offset);
+		dmio_printf(iocom, 4,
+			    "rread BIO %-3d %016jx %d@%016jx\n",
+			    biocount, msg->any.head.msgid,
+			    msg->any.blk_read.bytes,
+			    msg->any.blk_read.offset);
 		break;
 	default:
 		break;
@@ -2463,7 +2472,7 @@ dmsg_state_msgrx(dmsg_msg_t *msg, int mstate)
 	pthread_mutex_unlock(&iocom->mtx);
 
 	if (DMsgDebugOpt && error)
-		fprintf(stderr, "msgrx: error %d\n", error);
+		dmio_printf(iocom, 1, "msgrx: error %d\n", error);
 
 	return (error);
 }
@@ -2483,25 +2492,29 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 #ifdef DMSG_BLOCK_DEBUG
 	switch (lmsg->tcmd) {
 	case DMSG_BLK_OPEN | DMSGF_CREATE:
-		fprintf(stderr, "relay BIO_OPEN (CREATE)\n");
+		dmio_printf(iocom, 4, "%s\n",
+			    "relay BIO_OPEN (CREATE)");
 		break;
 	case DMSG_BLK_OPEN | DMSGF_DELETE:
-		fprintf(stderr, "relay BIO_OPEN (DELETE)\n");
+		dmio_printf(iocom, 4, "%s\n",
+			    "relay BIO_OPEN (DELETE)");
 		break;
 	case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE:
 	case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE:
 		atomic_add_int(&biocount, 1);
-		fprintf(stderr, "relay BIO %-3d %016jx %d@%016jx\n",
-			biocount, lmsg->any.head.msgid,
-			lmsg->any.blk_read.bytes,
-			lmsg->any.blk_read.offset);
+		dmio_printf(iocom, 4,
+			    "relay BIO %-3d %016jx %d@%016jx\n",
+			    biocount, lmsg->any.head.msgid,
+			    lmsg->any.blk_read.bytes,
+			    lmsg->any.blk_read.offset);
 		break;
 	case DMSG_BLK_READ | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
 	case DMSG_BLK_WRITE | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
-		fprintf(stderr, "retrn BIO %-3d %016jx %d@%016jx\n",
-			biocount, lmsg->any.head.msgid,
-			lmsg->any.blk_read.bytes,
-			lmsg->any.blk_read.offset);
+		dmio_printf(iocom, 4,
+			    "retrn BIO %-3d %016jx %d@%016jx\n",
+			    biocount, lmsg->any.head.msgid,
+			    lmsg->any.blk_read.bytes,
+			    lmsg->any.blk_read.offset);
 		atomic_add_int(&biocount, -1);
 		break;
 	default:
@@ -2540,9 +2553,9 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 
 #if 0
 		if (lstate->flags & DMSG_STATE_ABORTING) {
-			fprintf(stderr,
-				"relay: relay lost link l=%p r=%p\n",
-				lstate, rstate);
+			dmio_printf(iocom, 4,
+				    "relay: relay lost link l=%p r=%p\n",
+				    lstate, rstate);
 			dmsg_simulate_failure(rstate, 0, DMSG_ERR_LOSTLINK);
 		}
 #endif
@@ -2562,9 +2575,6 @@ dmsg_state_relay(dmsg_msg_t *lmsg)
 	rmsg->aux_data = lmsg->aux_data;
 	lmsg->aux_data = NULL;
 
-	/*
-	fprintf(stderr, "RELAY %08x\n", rmsg->any.head.cmd);
-	*/
 	dmsg_msg_write(rmsg);
 }
 
@@ -2676,9 +2686,10 @@ dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 	 */
 	if ((state->flags & (DMSG_STATE_ABORTING | DMSG_STATE_DYING)) &&
 	    (state->rxcmd & DMSGF_DELETE) == 0) {
-		printf("kdmsg_state_cleanuptx: state=%p "
-			"executing deferred abort\n",
-			state);
+		dmio_printf(iocom, 4,
+			    "cleanuptx: state=%p "
+			    "executing deferred abort\n",
+			    state);
 		state->flags &= ~DMSG_STATE_ABORTING;
 		dmsg_simulate_failure(state, 1, DMSG_ERR_LOSTLINK);
 	}
@@ -2710,9 +2721,7 @@ static void
 dmsg_state_free(dmsg_state_t *state)
 {
 	atomic_add_int(&dmsg_state_count, -1);
-	if (DMsgDebugOpt) {
-		fprintf(stderr, "terminate state %p\n", state);
-	}
+	dmio_printf(state->iocom, 5, "terminate state %p\n", state);
 	assert((state->flags & (DMSG_STATE_ROOT |
 				DMSG_STATE_SUBINSERTED |
 				DMSG_STATE_RBINSERTED)) == 0);

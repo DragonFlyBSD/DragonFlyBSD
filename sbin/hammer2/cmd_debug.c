@@ -236,6 +236,7 @@ shell_ttymsg(dmsg_iocom_t *iocom)
  * Debug session back-end (on remote side)
  */
 static void shell_span(dmsg_msg_t *msg, char *cmdbuf);
+static void shell_ping(dmsg_msg_t *msg, char *cmdbuf);
 
 void
 hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged)
@@ -246,9 +247,14 @@ hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged)
 	uint32_t cmd;
 
 	/*
-	 * Filter on debug shell commands only
+	 * Filter on debug shell commands and ping responses only
 	 */
 	cmd = msg->any.head.cmd;
+	if ((cmd & DMSGF_CMDSWMASK) == (DMSG_LNK_PING | DMSGF_REPLY)) {
+		dmsg_printf(iocom, "ping reply\n");
+		return;
+	}
+
 	if ((cmd & DMSGF_PROTOS) != DMSG_PROTO_DBG) {
 		if (unmanaged)
 			dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
@@ -268,6 +274,8 @@ hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged)
 
 	if (cmdp == NULL || *cmdp == 0) {
 		;
+	} else if (strcmp(cmdp, "ping") == 0) {
+		shell_ping(msg, cmdbuf);
 	} else if (strcmp(cmdp, "span") == 0) {
 		shell_span(msg, cmdbuf);
 	} else if (strcmp(cmdp, "tree") == 0) {
@@ -281,6 +289,17 @@ hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged)
 		dmsg_printf(iocom, "Unrecognized command: %s\n", cmdp);
 	}
 	dmsg_printf(iocom, "debug> ");
+}
+
+static void
+shell_ping(dmsg_msg_t *msg, char *cmdbuf __unused)
+{
+	dmsg_iocom_t *iocom = msg->state->iocom;
+	dmsg_msg_t *m2;
+
+	dmsg_printf(iocom, "sending ping\n");
+	m2 = dmsg_msg_alloc(msg->state, 0, DMSG_LNK_PING, NULL, NULL);
+	dmsg_msg_write(m2);
 }
 
 static void
