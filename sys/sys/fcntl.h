@@ -94,33 +94,33 @@
 #define	O_NOCTTY	0x8000		/* don't assign controlling terminal */
 
 /* Attempt to bypass the buffer cache */
-#define O_DIRECT	0x00010000
+#define	O_DIRECT	0x00010000
 
 #if __POSIX_VISIBLE >= 200809
-#define O_CLOEXEC	0x00020000	/* atomically set FD_CLOEXEC */
+#define	O_CLOEXEC	0x00020000	/* atomically set FD_CLOEXEC */
 #endif
-#define O_FBLOCKING	0x00040000	/* force blocking I/O */
-#define O_FNONBLOCKING	0x00080000	/* force non-blocking I/O */
-#define O_FAPPEND	0x00100000	/* force append mode for write */
-#define O_FOFFSET	0x00200000	/* force specific offset */
-#define O_FSYNCWRITE	0x00400000	/* force synchronous write */
-#define O_FASYNCWRITE	0x00800000	/* force asynchronous write */
-#define FCDEVPRIV	0x01000000	/* f_data1 used for cdevpriv */
-#define O_UNUSED25	0x02000000
-#define O_MAPONREAD	0x04000000	/* memory map read buffer */
+#define	O_FBLOCKING	0x00040000	/* force blocking I/O */
+#define	O_FNONBLOCKING	0x00080000	/* force non-blocking I/O */
+#define	O_FAPPEND	0x00100000	/* force append mode for write */
+#define	O_FOFFSET	0x00200000	/* force specific offset */
+#define	O_FSYNCWRITE	0x00400000	/* force synchronous write */
+#define	O_FASYNCWRITE	0x00800000	/* force asynchronous write */
+#define	FCDEVPRIV	0x01000000	/* f_data1 used for cdevpriv */
+#define	O_UNUSED25	0x02000000
+#define	O_MAPONREAD	0x04000000	/* memory map read buffer */
 
 #if __POSIX_VISIBLE >= 200809
-#define O_DIRECTORY	0x08000000	/* error if not a directory */
+#define	O_DIRECTORY	0x08000000	/* error if not a directory */
 #endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-#define FREVOKED	0x10000000	/* revoked by fdrevoke() */
-#define FAPPENDONLY	0x20000000	/* O_APPEND cannot be changed */
-#define FOFFSETLOCK	0x40000000	/* f_offset locked */
-#define FOFFSETWAKE	0x80000000	/* f_offset wakeup */
+#define	FREVOKED	0x10000000	/* revoked by fdrevoke() */
+#define	FAPPENDONLY	0x20000000	/* O_APPEND cannot be changed */
+#define	FOFFSETLOCK	0x40000000	/* f_offset locked */
+#define	FOFFSETWAKE	0x80000000	/* f_offset wakeup */
 #endif
 
-#define O_FMASK		(O_FBLOCKING|O_FNONBLOCKING|O_FAPPEND|O_FOFFSET|\
+#define	O_FMASK		(O_FBLOCKING|O_FNONBLOCKING|O_FAPPEND|O_FOFFSET|\
 			 O_FSYNCWRITE|O_FASYNCWRITE|O_MAPONREAD)
 
 #ifdef _KERNEL
@@ -171,11 +171,11 @@
 /*
  * Constants used by "at" family of system calls.
  */
-#define AT_FDCWD		0xFFFAFDCD	/* invalid file descriptor */
-#define AT_SYMLINK_NOFOLLOW	1
-#define AT_REMOVEDIR		2
-#define AT_EACCESS		4
-#define AT_SYMLINK_FOLLOW	8
+#define	AT_FDCWD		0xFFFAFDCD	/* invalid file descriptor */
+#define	AT_SYMLINK_NOFOLLOW	1
+#define	AT_REMOVEDIR		2
+#define	AT_EACCESS		4
+#define	AT_SYMLINK_FOLLOW	8
 
 /*
  * Constants used for fcntl(2)
@@ -252,14 +252,14 @@ union fcntl_dat {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	open (const char *, int, ...);
+int	open(const char *, int, ...);
 #if __POSIX_VISIBLE >= 200809
-int	openat (int, const char *, int, ...);
+int	openat(int, const char *, int, ...);
 #endif
-int	creat (const char *, mode_t);
-int	fcntl (int, int, ...);
+int	creat(const char *, mode_t);
+int	fcntl(int, int, ...);
 #ifndef _POSIX_SOURCE
-int	flock (int, int);
+int	flock(int, int);
 #endif /* !_POSIX_SOURCE */
 __END_DECLS
 #endif
