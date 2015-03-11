@@ -1,7 +1,6 @@
 /*
  * DragonFly specific device routines are added to this file.
  */
-#undef _XOPEN_SOURCE
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>

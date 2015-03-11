@@ -22,8 +22,6 @@ SRCS=		dumpconfig.c formats.c lvchange.c lvconvert.c lvcreate.c \
 		vgmknodes.c vgreduce.c vgremove.c vgrename.c vgscan.c \
 		vgsplit.c lvm.c
 
-
-CFLAGS+=	-D_XOPEN_SOURCE=600
 CFLAGS+=	-I${LVM2_DISTDIR}/lib -I${LVM2_DISTDIR}/include \
 		-I. -I${LVM2_DISTDIR}/tools \
 		-I${LIBDM_DISTDIR}

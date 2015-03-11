@@ -13,7 +13,6 @@ MAN=		dmsetup.8
 
 CSTD?=		gnu89
 
-CFLAGS+=	-D_XOPEN_SOURCE=600
 CFLAGS+=	-I${LIBDM_DISTDIR}/ -I${LIBDM_DISTDIR}/misc \
 		-I. -I${LIBDM_DISTDIR}/ioctl -I${LVM2_DISTDIR}/include
 
