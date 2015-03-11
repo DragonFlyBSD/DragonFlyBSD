@@ -47,7 +47,8 @@ blockmap_lookup(hammer_off_t zone_offset,
 	hammer_blockmap_t freemap;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
-	struct buffer_info *buffer = NULL;
+	struct buffer_info *buffer1 = NULL;
+	struct buffer_info *buffer2 = NULL;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
 	hammer_off_t result_offset;
@@ -130,7 +131,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 	 */
 	layer1_offset = freemap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
-	layer1 = get_buffer_data(layer1_offset, &buffer, 0);
+	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 	if (AssertOnFailure) {
 		assert(layer1);
 		assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
@@ -152,7 +153,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 	 */
 	layer2_offset = layer1->phys_offset +
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
-	layer2 = get_buffer_data(layer2_offset, &buffer, 0);
+	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
 	if (AssertOnFailure) {
 		assert(layer2);
@@ -171,8 +172,10 @@ blockmap_lookup(hammer_off_t zone_offset,
 		*save_layer2 = *layer2;
 
 done:
-	if (buffer)
-		rel_buffer(buffer);
+	if (buffer1)
+		rel_buffer(buffer1);
+	if (buffer2)
+		rel_buffer(buffer2);
 	if (root_volume)
 		rel_volume(root_volume);
 
