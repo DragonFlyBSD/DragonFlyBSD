@@ -267,7 +267,7 @@ int	creat(const char *, mode_t);
 int	fcntl(int, int, ...);
 #if __BSD_VISIBLE
 int	flock(int, int);
-#endif /* !_POSIX_SOURCE */
+#endif /* __BSD_VISIBLE */
 __END_DECLS
 #endif
 
