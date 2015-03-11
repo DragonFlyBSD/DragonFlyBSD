@@ -513,8 +513,30 @@ check_data_crc(hammer_btree_elm_t elm)
 	}
 	if (data_buffer)
 		rel_buffer(data_buffer);
-	if (error)
-		return("BO");		/* bad offset */
+	if (error) {
+		switch (error) {	/* bad offset */
+		case -1:
+			return("BO-ZL");
+		case -2:
+			return("BO-ZG");
+		case -3:
+			return("BO-RV");
+		case -4:
+			return("BO-AO");
+		case -5:
+			return("BO-DE");
+		case -6:
+			return("BO-L1");
+		case -7:
+			return("BO-LU");
+		case -8:
+			return("BO-L2");
+		case -9:
+			return("BO-LZ");
+		default:
+			return("BO-??");
+		}
+	}
 	if (crc == elm->leaf.data_crc)
 		return("");
 	return("BX");			/* bad crc */

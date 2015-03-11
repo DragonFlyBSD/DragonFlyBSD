@@ -68,11 +68,11 @@ blockmap_lookup(hammer_off_t zone_offset,
 		assert(RootVolNo >= 0);
 	} else {
 		if (zone <= HAMMER_ZONE_RAW_VOLUME_INDEX)
-			error = EDOM;
+			error = -1;
 		if (zone >= HAMMER_MAX_ZONES)
-			error = EDOM;
+			error = -2;
 		if (RootVolNo < 0)
-			error = EDOM;
+			error = -3;
 		if (error) {
 			result_offset = HAMMER_OFF_BAD;
 			goto done;
@@ -91,7 +91,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 			assert(zone_offset < blockmap->alloc_offset);
 		} else {
 			if (zone_offset >= blockmap->alloc_offset) {
-				error = EDOM;
+				error = -4;
 				result_offset = HAMMER_OFF_BAD;
 				goto done;
 			}
@@ -114,7 +114,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 		assert(HAMMER_ZONE_DECODE(blockmap->alloc_offset) == zone);
 	} else {
 		if (HAMMER_ZONE_DECODE(blockmap->alloc_offset) != zone) {
-			error = EDOM;
+			error = -5;
 			goto done;
 		}
 	}
@@ -136,11 +136,11 @@ blockmap_lookup(hammer_off_t zone_offset,
 		assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 	} else {
 		if (layer1 == NULL) {
-			error = EDOM;
+			error = -6;
 			goto done;
 		}
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
-			error = EDOM;
+			error = -7;
 			goto done;
 		}
 	}
@@ -159,11 +159,11 @@ blockmap_lookup(hammer_off_t zone_offset,
 		assert(layer2->zone == zone);
 	} else {
 		if (layer2 == NULL) {
-			error = EDOM;
+			error = -8;
 			goto done;
 		}
 		if (layer2->zone != zone) {
-			error = EDOM;
+			error = -9;
 			goto done;
 		}
 	}
