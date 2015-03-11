@@ -27,7 +27,6 @@ SRCS+=		activate.c lvmcache.c toolcontext.c config.c btree.c \
 		filter_dragonfly.c snapshot.c mirrored.c dev_manager.c fs.c \
 		lvm-globals.c dev.c
 
-CSTD?=		gnu89
 WARNS?=		1
 
 .PATH:	${LVM2_DISTDIR}/lib/

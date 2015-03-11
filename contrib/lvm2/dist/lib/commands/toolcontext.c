@@ -55,6 +55,7 @@
 #include <sys/utsname.h>
 #include <syslog.h>
 #include <time.h>
+#include <unistd.h>
 
 #ifdef linux
 #  include <malloc.h>

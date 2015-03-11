@@ -8,8 +8,6 @@ LVM2_DISTDIR=	${LVM2_DIR}/dist
 LIB=		devmapper
 SHLIB_MAJOR?=	0
 
-CSTD?=		gnu89
-
 CFLAGS+=	-I${LIBDM_DISTDIR} -I${LIBDM_DISTDIR}/misc -I${LIBDM_DISTDIR}/mm \
 		-I${LIBDM_DISTDIR}/datastruct -I${LIBDM_DISTDIR}/ioctl \
 		-I${LVM2_DISTDIR}/include \
@@ -24,6 +22,8 @@ SRCS+=		bitset.c hash.c list.c libdm-common.c libdm-file.c \
 		libdm-deptree.c	libdm-string.c libdm-report.c \
 		dbg_malloc.c pool.c matcher.c parse_rx.c ttree.c \
 		libdm-dragonfly-iface.c libdm_dragonfly.c
+
+WARNS?=		1
 
 .PATH: ${LIBDM_DISTDIR}/
 .PATH: ${LIBDM_DISTDIR}/datastruct

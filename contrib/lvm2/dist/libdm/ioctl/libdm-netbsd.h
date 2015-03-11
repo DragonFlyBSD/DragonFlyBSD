@@ -33,6 +33,7 @@
 #define __LIB_DM_H__
 
 #include <libprop/proplib.h>
+#include <unistd.h>
 
 #  define MAJOR(x) major((x))
 #  define MINOR(x) minor((x))

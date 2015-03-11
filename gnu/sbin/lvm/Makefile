@@ -9,8 +9,6 @@ LIBDM_SRCDIR= ${LVM2_DIR}/lib/libdevmapper
 
 PROG=		lvm
 
-CSTD?=		gnu89
-
 SRCS=		dumpconfig.c formats.c lvchange.c lvconvert.c lvcreate.c \
 		lvdisplay.c lvextend.c lvmchange.c lvmcmdline.c \
 		lvmdiskscan.c lvreduce.c lvremove.c lvrename.c lvresize.c \
@@ -21,6 +19,8 @@ SRCS=		dumpconfig.c formats.c lvchange.c lvconvert.c lvcreate.c \
 		vgdisplay.c vgexport.c vgextend.c vgimport.c vgmerge.c \
 		vgmknodes.c vgreduce.c vgremove.c vgrename.c vgscan.c \
 		vgsplit.c lvm.c
+
+WARNS?=		1
 
 CFLAGS+=	-I${LVM2_DISTDIR}/lib -I${LVM2_DISTDIR}/include \
 		-I. -I${LVM2_DISTDIR}/tools \
