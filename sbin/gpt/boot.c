@@ -78,7 +78,7 @@ bootset(int fd)
 		err(1, "unable to find uuid for 'DragonFly Label32'");
 	entry = 0;
 	block = 0;
-	size = 768 * 1024 * 1024 / 512;
+	size = (off_t)1024 * 1024 * 1024 / 512;		/* 1GB */
 
 	gpt = map_find(MAP_TYPE_PRI_GPT_HDR);
 	if (gpt == NULL)
