@@ -101,7 +101,7 @@ static int batchfreevnodes = 5;
 SYSCTL_INT(_debug, OID_AUTO, batchfreevnodes, CTLFLAG_RW,
 	&batchfreevnodes, 0, "Number of vnodes to free at once");
 #ifdef TRACKVNODE
-static ulong trackvnode;
+static u_long trackvnode;
 SYSCTL_ULONG(_debug, OID_AUTO, trackvnode, CTLFLAG_RW,
 		&trackvnode, 0, "");
 #endif
@@ -158,7 +158,7 @@ void
 _vactivate(struct vnode *vp)
 {
 #ifdef TRACKVNODE
-	if ((ulong)vp == trackvnode)
+	if ((u_long)vp == trackvnode)
 		kprintf("_vactivate %p %08x\n", vp, vp->v_flag);
 #endif
 	spin_lock(&vfs_spin);
@@ -194,7 +194,7 @@ void
 _vinactive(struct vnode *vp)
 {
 #ifdef TRACKVNODE
-	if ((ulong)vp == trackvnode) {
+	if ((u_long)vp == trackvnode) {
 		kprintf("_vinactive %p %08x\n", vp, vp->v_flag);
 		print_backtrace(-1);
 	}
@@ -740,7 +740,7 @@ skip:
 		KKASSERT(vp->v_state == VS_INACTIVE);
 		spin_unlock(&vfs_spin);
 #ifdef TRACKVNODE
-		if ((ulong)vp == trackvnode)
+		if ((u_long)vp == trackvnode)
 			kprintf("cleanfreevnode %p %08x\n", vp, vp->v_flag);
 #endif
 

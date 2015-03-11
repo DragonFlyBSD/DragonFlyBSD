@@ -746,7 +746,7 @@ retry:
 		return (EFAULT);
 	if ((uval & FUTEX_TID_MASK) == p->p_pid) {
 		mval = (uval & FUTEX_WAITERS) | FUTEX_OWNER_DIED;
-		nval = casuword((ulong *)uaddr, uval, mval);
+		nval = casuword((u_long *)uaddr, uval, mval);
 
 		if (nval == -1)
 			return (EFAULT);

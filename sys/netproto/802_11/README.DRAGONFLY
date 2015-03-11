@@ -42,7 +42,7 @@
       if_start() and if_ioctl() have an additional argument.
 
 	  void blah_start(struct ifnet *, struct ifaltq_subque *);
-	  int  blah_ioctl(struct ifnet *, ulong, caddr_t, struct ucred *);
+	  int  blah_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 
 	  In this situation the additional argument can usually be ignored.
 
