@@ -117,9 +117,10 @@
  * 400101 - Removal of SCTP support.
  * 400102 - Sound system update from FreeBSD
  * 400103 - Milestone - availability of gcc50 in base
+ * 400104 - struct lwp_params (a public struct) members renaming
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400103	/* propagated to newvers */
+#define __DragonFly_version 400104	/* propagated to newvers */
 
 #include <sys/_null.h>
 

@@ -201,11 +201,11 @@ sys_lwp_create(struct lwp_create_args *uap)
 	error = cpu_prepare_lwp(lp, &params);
 	if (error)
 		goto fail;
-	if (params.tid1 != NULL &&
-	    (error = copyout(&lp->lwp_tid, params.tid1, sizeof(lp->lwp_tid))))
+	if (params.lwp_tid1 != NULL &&
+	    (error = copyout(&lp->lwp_tid, params.lwp_tid1, sizeof(lp->lwp_tid))))
 		goto fail;
-	if (params.tid2 != NULL &&
-	    (error = copyout(&lp->lwp_tid, params.tid2, sizeof(lp->lwp_tid))))
+	if (params.lwp_tid2 != NULL &&
+	    (error = copyout(&lp->lwp_tid, params.lwp_tid2, sizeof(lp->lwp_tid))))
 		goto fail;
 
 	/*

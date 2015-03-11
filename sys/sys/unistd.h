@@ -28,7 +28,6 @@
  *
  *	@(#)unistd.h	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sys/sys/unistd.h,v 1.50 2009/01/31 10:04:36 trhodes Exp $
- * $DragonFly: src/sys/sys/unistd.h,v 1.10 2008/09/22 09:13:21 hasso Exp $
  */
 
 #ifndef _SYS_UNISTD_H_
@@ -204,11 +203,11 @@
  * Parameters for the creation of a new lwp.
  */
 struct lwp_params {
-	void (*func)(void *);	/* Function to start execution */
-	void *arg;		/* Parameter to this function */
-	void *stack;		/* Stack address to use */
-	lwpid_t *tid1;		/* Address to copy out new tid */
-	lwpid_t *tid2;		/* Same */
+	void (*lwp_func)(void *); /* Function to start execution */
+	void *lwp_arg;		/* Parameter to this function */
+	void *lwp_stack;	/* Stack address to use */
+	lwpid_t *lwp_tid1;	/* Address to copy out new tid */
+	lwpid_t *lwp_tid2;	/* Same */
 };
 
 #endif /* __BSD_VISIBLE */
