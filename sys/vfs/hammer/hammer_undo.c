@@ -157,6 +157,7 @@ hammer_generate_undo(hammer_transaction_t trans,
 		}
 		if (error)
 			break;
+		/* no undo recursion */
 		hammer_modify_buffer(NULL, buffer, NULL, 0);
 
 		/*

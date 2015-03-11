@@ -449,10 +449,6 @@ typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
 #define HAMMER_HEAD_SIGNATURE	0xC84EU
 #define HAMMER_TAIL_SIGNATURE	0xC74FU
 
-#define HAMMER_HEAD_SEQ_BEG	0x80000000U
-#define HAMMER_HEAD_SEQ_END	0x40000000U
-#define HAMMER_HEAD_SEQ_MASK	0x3FFFFFFFU
-
 /*
  * Misc FIFO structures.
  *
@@ -460,7 +456,7 @@ typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
  */
 struct hammer_fifo_undo {
 	struct hammer_fifo_head	head;
-	hammer_off_t		undo_offset;	/* zone-1 offset */
+	hammer_off_t		undo_offset;	/* zone-1,2 offset */
 	int32_t			undo_data_bytes;
 	int32_t			undo_reserved01;
 	/* followed by data */
