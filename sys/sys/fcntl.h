@@ -42,6 +42,7 @@
 #ifndef _SYS_FCNTL_H_
 #define	_SYS_FCNTL_H_
 
+#include <sys/cdefs.h>
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -67,20 +68,22 @@
  * FREAD and FWRITE are excluded from the #ifdef _KERNEL so that TIOCFLUSH,
  * which was documented to use FREAD/FWRITE, continues to work.
  */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	FREAD		0x0001
 #define	FWRITE		0x0002
 #endif
 #define	O_NONBLOCK	0x0004		/* no delay */
 #define	O_APPEND	0x0008		/* set append mode */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	O_SHLOCK	0x0010		/* open with shared file lock */
 #define	O_EXLOCK	0x0020		/* open with exclusive file lock */
 #define	O_ASYNC		0x0040		/* signal pgrp when data ready */
 #define	O_FSYNC		0x0080		/* synchronous writes */
-#define	O_NOFOLLOW	0x0100		/* don't follow symlinks */
 #endif
 #define	O_SYNC		0x0080		/* Same as O_FSYNC, but POSIX */
+#if __POSIX_VISIBLE >= 200809
+#define	O_NOFOLLOW	0x0100		/* don't follow symlinks */
+#endif
 #define	O_CREAT		0x0200		/* create if nonexistent */
 #define	O_TRUNC		0x0400		/* truncate to zero length */
 #define	O_EXCL		0x0800		/* error if already exists */
@@ -93,8 +96,10 @@
 /* Defined by POSIX 1003.1; BSD default, but must be distinct from O_RDONLY. */
 #define	O_NOCTTY	0x8000		/* don't assign controlling terminal */
 
+#if __BSD_VISIBLE
 /* Attempt to bypass the buffer cache */
 #define	O_DIRECT	0x00010000
+#endif
 
 #if __POSIX_VISIBLE >= 200809
 #define	O_CLOEXEC	0x00020000	/* atomically set FD_CLOEXEC */
@@ -143,7 +148,7 @@
  * and by fcntl.  We retain the F* names for the kernel f_flag field
  * and for backward compatibility for fcntl.
  */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 #define	FAPPEND		O_APPEND	/* kernel/compat */
 #define	FASYNC		O_ASYNC		/* kernel/compat */
 #define	FFSYNC		O_FSYNC		/* kernel */
@@ -158,7 +163,7 @@
  * initial open syscall.  Those bits can thus be given a
  * different meaning for fcntl(2).
  */
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 
 /*
  * Set by shm_open(3) to get automatic MAP_ASYNC behavior
@@ -168,6 +173,7 @@
 #define	FPOSIXSHM	O_NOFOLLOW
 #endif
 
+#if __POSIX_VISIBLE >= 200809
 /*
  * Constants used by "at" family of system calls.
  */
@@ -176,6 +182,7 @@
 #define	AT_REMOVEDIR		2
 #define	AT_EACCESS		4
 #define	AT_SYMLINK_FOLLOW	8
+#endif
 
 /*
  * Constants used for fcntl(2)
@@ -187,14 +194,16 @@
 #define	F_SETFD		2		/* set file descriptor flags */
 #define	F_GETFL		3		/* get file status flags */
 #define	F_SETFL		4		/* set file status flags */
-#ifndef _POSIX_SOURCE
+#if __XSI_VISIBLE || __POSIX_VISIBLE >= 200112
 #define	F_GETOWN	5		/* get SIGIO/SIGURG proc/pgrp */
 #define	F_SETOWN	6		/* set SIGIO/SIGURG proc/pgrp */
 #endif
 #define	F_GETLK		7		/* get record locking information */
 #define	F_SETLK		8		/* set record locking information */
 #define	F_SETLKW	9		/* F_SETLK; wait if blocked */
+#if __BSD_VISIBLE
 #define	F_DUP2FD	10		/* duplicate file descriptor to arg */
+#endif
 #if __POSIX_VISIBLE >= 200809
 #define	F_DUPFD_CLOEXEC	17		/* Like F_DUPFD with FD_CLOEXEC set */
 #endif
@@ -240,7 +249,7 @@ union fcntl_dat {
 #endif /* _KERNEL */
 
 
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 /* lock operations for flock(2) */
 #define	LOCK_SH		0x01		/* shared file lock */
 #define	LOCK_EX		0x02		/* exclusive file lock */
@@ -249,8 +258,6 @@ union fcntl_dat {
 #endif
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
-#include <sys/cdefs.h>
-
 __BEGIN_DECLS
 int	open(const char *, int, ...);
 #if __POSIX_VISIBLE >= 200809
@@ -258,7 +265,7 @@ int	openat(int, const char *, int, ...);
 #endif
 int	creat(const char *, mode_t);
 int	fcntl(int, int, ...);
-#ifndef _POSIX_SOURCE
+#if __BSD_VISIBLE
 int	flock(int, int);
 #endif /* !_POSIX_SOURCE */
 __END_DECLS
