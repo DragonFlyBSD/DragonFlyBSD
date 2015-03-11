@@ -156,18 +156,19 @@ struct acpi_prw_data {
 extern struct lock acpi_lock;
 /* acpi_thermal does lock recurs on purpose */
 /* I bet I should use some other locks here */
-#define ACPI_LOCK(sys)                  lockmgr(&sys##_lock, LK_EXCLUSIVE|LK_RETRY|LK_CANRECURSE);
-#define ACPI_UNLOCK(sys)                lockmgr(&sys##_lock, LK_RELEASE);
-#define ACPI_LOCK_ASSERT(sys)           KKASSERT(lockstatus(&sys##_lock, curthread) == LK_EXCLUSIVE);
+#define ACPI_LOCK(sys)                  lockmgr(&sys##_lock, LK_EXCLUSIVE|LK_RETRY|LK_CANRECURSE)
+#define ACPI_UNLOCK(sys)                lockmgr(&sys##_lock, LK_RELEASE)
+#define ACPI_LOCK_ASSERT(sys)           KKASSERT(lockstatus(&sys##_lock, curthread) == LK_EXCLUSIVE)
 #define ACPI_ASSERTLOCK ACPI_LOCK_ASSERT
-#define ACPI_LOCK_DECL(sys, name)       static struct lock sys##_lock;
-#define ACPI_LOCK_INIT(sys, name)       lockinit(&sys##_lock, name, 0, 0);
+#define ACPI_LOCK_DECL(sys, name)       static struct lock sys##_lock
+#define ACPI_LOCK_INIT(sys, name)       lockinit(&sys##_lock, name, 0, 0)
 
-#define ACPI_SERIAL_INIT(sys)           lockinit(&sys##_serial, #sys, 0, 0);
-#define ACPI_SERIAL_BEGIN(sys)          lockmgr(&sys##_serial, LK_EXCLUSIVE|LK_RETRY);
-#define ACPI_SERIAL_END(sys)            lockmgr(&sys##_serial, LK_RELEASE);
-#define ACPI_SERIAL_ASSERT(sys)         KKASSERT(lockstatus(&sys##_serial, curthread) == LK_EXCLUSIVE);
-#define ACPI_SERIAL_DECL(sys, name)     static struct lock sys##_serial;
+#define ACPI_SERIAL_INIT(sys)           lockinit(&sys##_serial, #sys, 0, 0)
+#define ACPI_SERIAL_BEGIN(sys)          lockmgr(&sys##_serial, LK_EXCLUSIVE|LK_RETRY)
+#define ACPI_SERIAL_END(sys)            lockmgr(&sys##_serial, LK_RELEASE)
+#define ACPI_SERIAL_ASSERT(sys)         KKASSERT(lockstatus(&sys##_serial, curthread) == LK_EXCLUSIVE)
+#define ACPI_SERIAL_DECL(sys, name)     static struct lock sys##_serial
+
 /*
  * ACPICA does not define layers for non-ACPICA drivers.
  * We define some here within the range provided.
