@@ -71,7 +71,7 @@ MALLOC_DEFINE(M_ACPIDEV, "acpidev", "ACPI devices");
 
 /* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_BUS
-ACPI_MODULE_NAME("ACPI")
+ACPI_MODULE_NAME("ACPI");
 
 static d_open_t		acpiopen;
 static d_close_t	acpiclose;
@@ -218,7 +218,7 @@ static devclass_t acpi_devclass;
 DRIVER_MODULE(acpi, nexus, acpi_driver, acpi_devclass, acpi_modevent, NULL);
 MODULE_VERSION(acpi, 1);
 
-ACPI_SERIAL_DECL(acpi, "ACPI serializer")
+ACPI_SERIAL_DECL(acpi, "ACPI serializer");
 
 /* Local pools for managing system resources for ACPI child devices. */
 static struct rman acpi_rman_io, acpi_rman_mem;
