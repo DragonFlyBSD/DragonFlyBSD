@@ -89,4 +89,3 @@ load_module(register_func function, register_keyword keyword)
 	function(MODULE_DUMMYNET_ID,O_DUMMYNET_QUEUE,
 			(parser_func)parse_queue, (shower_func)show_queue);
 }
-

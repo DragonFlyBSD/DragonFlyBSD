@@ -1250,7 +1250,7 @@ LibAliasInLocked(struct libalias *la, char *ptr, int maxpacketsize)
 		case IPPROTO_TCP:
 			iresult = TcpAliasIn(la, pip);
 			break;
- 		case IPPROTO_GRE: {
+		case IPPROTO_GRE: {
 			int error;
 			struct alias_data ad = {
 				.lnk = NULL,
@@ -1392,7 +1392,7 @@ LibAliasOutLocked(struct libalias *la, char *ptr,	/* valid IP packet */
 			case IPPROTO_TCP:
 			iresult = TcpAliasOut(la, pip, maxpacketsize, create);
 			break;
- 		case IPPROTO_GRE: {
+		case IPPROTO_GRE: {
 			int error;
 			struct alias_data ad = {
 				.lnk = NULL,
@@ -1406,11 +1406,11 @@ LibAliasOutLocked(struct libalias *la, char *ptr,	/* valid IP packet */
 			/* Walk out chain. */
 			error = find_handler(OUT, IP, la, pip, &ad);
 			if (error == 0)
- 				iresult = PKT_ALIAS_OK;
- 			else
- 				iresult = ProtoAliasOut(la, pip, create);
+				iresult = PKT_ALIAS_OK;
+			else
+				iresult = ProtoAliasOut(la, pip, create);
 		}
- 			break;
+			break;
 		default:
 			iresult = ProtoAliasOut(la, pip, create);
 			break;

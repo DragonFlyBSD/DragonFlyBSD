@@ -98,8 +98,8 @@ struct cfg_nat {
 
 /* Nat command. */
 typedef struct	_ipfw_insn_nat {
- 	ipfw_insn	o;
- 	struct cfg_nat *nat;
+	ipfw_insn	o;
+	struct cfg_nat *nat;
 } ipfw_insn_nat;
 
 #define LOOKUP_NAT(l, i, p) do {			\

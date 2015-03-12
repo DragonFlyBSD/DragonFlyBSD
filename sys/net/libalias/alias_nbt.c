@@ -114,7 +114,7 @@ protohandler2in(struct libalias *la, struct ip *pip, struct alias_data *ah)
 {
 
 	AliasHandleUdpNbtNS(la, pip, ah->lnk, ah->aaddr, ah->aport,
- 			    ah->oaddr, ah->dport);
+			    ah->oaddr, ah->dport);
 	return (0);
 }
 
@@ -123,7 +123,7 @@ protohandler2out(struct libalias *la, struct ip *pip, struct alias_data *ah)
 {
 
 	AliasHandleUdpNbtNS(la, pip, ah->lnk, &pip->ip_src, ah->sport,
- 			    ah->aaddr, ah->aport);
+			    ah->aaddr, ah->aport);
 	return (0);
 }
 
