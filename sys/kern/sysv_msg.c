@@ -172,7 +172,7 @@ msginit(void *dummy)
 		msqids[i].msg_perm.mode = 0;
 	}
 }
-SYSINIT(sysv_msg, SI_SUB_SYSV_MSG, SI_ORDER_FIRST, msginit, NULL)
+SYSINIT(sysv_msg, SI_SUB_SYSV_MSG, SI_ORDER_FIRST, msginit, NULL);
 
 static void
 msg_freehdr(struct msg *msghdr)

@@ -140,7 +140,7 @@ cpu_initclocks(void *arg __unused)
 	cputimer_register(&vkernel_cputimer);
 	cputimer_select(&vkernel_cputimer, 0);
 }
-SYSINIT(clocksvk, SI_BOOT2_CLOCKREG, SI_ORDER_FIRST, cpu_initclocks, NULL)
+SYSINIT(clocksvk, SI_BOOT2_CLOCKREG, SI_ORDER_FIRST, cpu_initclocks, NULL);
 
 /*
  * Constructor to initialize timer->base and get an initial count.

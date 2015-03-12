@@ -50,7 +50,7 @@ struct _prop_string {
 
 #define	PS_F_NOCOPY		0x01
 
-_PROP_POOL_INIT(_prop_string_pool, sizeof(struct _prop_string), "propstng")
+_PROP_POOL_INIT(_prop_string_pool, sizeof(struct _prop_string), "propstng");
 
 _PROP_MALLOC_DEFINE(M_PROP_STRING, "prop string",
 		    "property string container object")

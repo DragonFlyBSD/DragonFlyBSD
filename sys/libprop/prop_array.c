@@ -49,7 +49,7 @@ struct _prop_array {
 
 #define PA_F_IMMUTABLE		0x01	/* array is immutable */
 
-_PROP_POOL_INIT(_prop_array_pool, sizeof(struct _prop_array), "proparay")
+_PROP_POOL_INIT(_prop_array_pool, sizeof(struct _prop_array), "proparay");
 _PROP_MALLOC_DEFINE(M_PROP_ARRAY, "prop array",
 		    "property array container object")
 

@@ -842,4 +842,4 @@ lapic_sysinit(void *dummy __unused)
 		icu_reinit_noioapic();
 	}
 }
-SYSINIT(lapic, SI_BOOT2_LAPIC, SI_ORDER_FIRST, lapic_sysinit, NULL)
+SYSINIT(lapic, SI_BOOT2_LAPIC, SI_ORDER_FIRST, lapic_sysinit, NULL);

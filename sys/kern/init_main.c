@@ -109,7 +109,7 @@ SYSCTL_ULONG(_kern, OID_AUTO, usched_global_cpumask, CTLFLAG_RW,
  * symbol is not undefined.  A subsystem ID of SI_SPECIAL_DUMMY is never
  * executed.
  */
-SYSINIT(placeholder, SI_SPECIAL_DUMMY, SI_ORDER_ANY, NULL, NULL)
+SYSINIT(placeholder, SI_SPECIAL_DUMMY, SI_ORDER_ANY, NULL, NULL);
 
 /*
  * The sysinit table itself.  Items are checked off as the are run.
@@ -295,7 +295,7 @@ print_caddr_t(void *data)
 {
 	kprintf("%s", (char *)data);
 }
-SYSINIT(announce, SI_BOOT1_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright)
+SYSINIT(announce, SI_BOOT1_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright);
 
 /*
  * Leave the critical section that protected us from spurious interrupts
@@ -313,7 +313,7 @@ leavecrit(void *dummy __unused)
 	if (bootverbose)
 		kprintf("Leaving critical section, allowing interrupts\n");
 }
-SYSINIT(leavecrit, SI_BOOT2_LEAVE_CRIT, SI_ORDER_ANY, leavecrit, NULL)
+SYSINIT(leavecrit, SI_BOOT2_LEAVE_CRIT, SI_ORDER_ANY, leavecrit, NULL);
 
 /*
  * This is called after the threading system is up and running,
@@ -324,7 +324,7 @@ tsleepworks(void *dummy __unused)
 {
 	tsleep_now_works = 1;
 }
-SYSINIT(tsleepworks, SI_BOOT2_FINISH_SMP, SI_ORDER_SECOND, tsleepworks, NULL)
+SYSINIT(tsleepworks, SI_BOOT2_FINISH_SMP, SI_ORDER_SECOND, tsleepworks, NULL);
 
 /*
  * This is called after devices have configured.  Tell the kernel we are
@@ -335,7 +335,7 @@ endofcoldboot(void *dummy __unused)
 {
 	cold = 0;
 }
-SYSINIT(endofcoldboot, SI_SUB_ISWARM, SI_ORDER_ANY, endofcoldboot, NULL)
+SYSINIT(endofcoldboot, SI_SUB_ISWARM, SI_ORDER_ANY, endofcoldboot, NULL);
 
 /*
  ***************************************************************************
@@ -452,7 +452,7 @@ proc0_init(void *dummy __unused)
 	(void)chgproccnt(p->p_ucred->cr_uidinfo, 1, 0);
 	vm_init_limits(p);
 }
-SYSINIT(p0init, SI_BOOT2_PROC0, SI_ORDER_FIRST, proc0_init, NULL)
+SYSINIT(p0init, SI_BOOT2_PROC0, SI_ORDER_FIRST, proc0_init, NULL);
 
 static int proc0_post_callback(struct proc *p, void *data __unused);
 
@@ -483,7 +483,7 @@ proc0_post_callback(struct proc *p, void *data __unused)
 	return(0);
 }
 
-SYSINIT(p0post, SI_SUB_PROC0_POST, SI_ORDER_FIRST, proc0_post, NULL)
+SYSINIT(p0post, SI_SUB_PROC0_POST, SI_ORDER_FIRST, proc0_post, NULL);
 
 /*
  ***************************************************************************
@@ -708,7 +708,7 @@ create_init(const void *udata __unused)
 	cpu_set_fork_handler(lp, start_init, NULL);
 	crit_exit();
 }
-SYSINIT(init, SI_SUB_CREATE_INIT, SI_ORDER_FIRST, create_init, NULL)
+SYSINIT(init, SI_SUB_CREATE_INIT, SI_ORDER_FIRST, create_init, NULL);
 
 /*
  * Make it runnable now.
@@ -718,7 +718,7 @@ kick_init(const void *udata __unused)
 {
 	start_forked_proc(&lwp0, initproc);
 }
-SYSINIT(kickinit, SI_SUB_KTHREAD_INIT, SI_ORDER_FIRST, kick_init, NULL)
+SYSINIT(kickinit, SI_SUB_KTHREAD_INIT, SI_ORDER_FIRST, kick_init, NULL);
 
 static void
 kpmap_init(const void *udata __unused)
@@ -740,7 +740,7 @@ kpmap_init(const void *udata __unused)
 	kpmap->header[5].offset = offsetof(struct sys_kpmap, tick_freq);
 	kpmap->version = KPMAP_VERSION;
 }
-SYSINIT(kpmapinit, SI_BOOT1_POST, SI_ORDER_FIRST, kpmap_init, NULL)
+SYSINIT(kpmapinit, SI_BOOT1_POST, SI_ORDER_FIRST, kpmap_init, NULL);
 
 /*
  * Machine independant globaldata initialization

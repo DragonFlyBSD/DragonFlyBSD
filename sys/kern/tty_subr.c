@@ -60,7 +60,7 @@
 #include <sys/thread2.h>
 
 static void clist_init (void *);
-SYSINIT(clist, SI_SUB_CLIST, SI_ORDER_FIRST, clist_init, NULL)
+SYSINIT(clist, SI_SUB_CLIST, SI_ORDER_FIRST, clist_init, NULL);
 
 static struct cblock *cfreelist = NULL;
 int cfreecount = 0;

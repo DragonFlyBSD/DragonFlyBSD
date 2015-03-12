@@ -204,7 +204,7 @@ vm_pager_init(void *arg __unused)
 	TAILQ_INIT(&bswlist_raw);
 	TAILQ_INIT(&bswlist_kva);
 }
-SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_SECOND, vm_pager_init, NULL)
+SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_SECOND, vm_pager_init, NULL);
 
 /*
  * Called from the low level boot code only.

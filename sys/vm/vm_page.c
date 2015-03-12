@@ -499,7 +499,7 @@ vm_page_startup_finish(void *dummy __unused)
 		(intmax_t)vm_contig_alist.bl_free * (PAGE_SIZE / 1024));
 }
 SYSINIT(vm_pgend, SI_SUB_PROC0_POST, SI_ORDER_ANY,
-	vm_page_startup_finish, NULL)
+	vm_page_startup_finish, NULL);
 
 
 /*

@@ -123,7 +123,7 @@ ap_finish(void)
                 kprintf("Active CPU Mask: %08x\n", smp_active_mask);
 }
 
-SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)
+SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL);
 
 
 void *

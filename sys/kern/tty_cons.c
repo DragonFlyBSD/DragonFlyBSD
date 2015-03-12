@@ -563,4 +563,4 @@ cn_drvinit(void *unused)
 					  0600, "console");
 }
 
-SYSINIT(cndev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,cn_drvinit,NULL)
+SYSINIT(cndev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR, cn_drvinit, NULL);

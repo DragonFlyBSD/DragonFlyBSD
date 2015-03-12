@@ -2368,7 +2368,7 @@ static struct kproc_desc buf_kp = {
 	&bufdaemon_td
 };
 SYSINIT(bufdaemon, SI_SUB_KTHREAD_BUF, SI_ORDER_FIRST,
-	kproc_start, &buf_kp)
+	kproc_start, &buf_kp);
 
 static struct kproc_desc bufhw_kp = {
 	"bufdaemon_hw",
@@ -2376,7 +2376,7 @@ static struct kproc_desc bufhw_kp = {
 	&bufdaemonhw_td
 };
 SYSINIT(bufdaemon_hw, SI_SUB_KTHREAD_BUF, SI_ORDER_FIRST,
-	kproc_start, &bufhw_kp)
+	kproc_start, &bufhw_kp);
 
 static void
 buf_daemon1(struct thread *td, int queue, int (*buf_limit_fn)(long), 

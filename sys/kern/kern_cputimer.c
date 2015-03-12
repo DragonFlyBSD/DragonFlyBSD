@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/kern_cputimer.c,v 1.5 2008/06/05 18:06:32 swildner Exp $
  */
 /*
  * Generic cputimer - access to a reliable, free-running counter.
@@ -448,7 +446,7 @@ cputimer_intr_initclocks(void)
 }
 /* NOTE: Must be SECOND to allow platform initialization to go first */
 SYSINIT(cputimer_intr, SI_BOOT2_CLOCKREG, SI_ORDER_SECOND,
-	cputimer_intr_initclocks, NULL)
+	cputimer_intr_initclocks, NULL);
 
 static int
 sysctl_cputimer_intr_reglist(SYSCTL_HANDLER_ARGS)

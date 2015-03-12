@@ -673,7 +673,7 @@ static struct kproc_desc vnlru_kp = {
 	vnlru_proc,
 	&vnlruthread
 };
-SYSINIT(vnlru, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &vnlru_kp)
+SYSINIT(vnlru, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &vnlru_kp);
 
 /*
  * Move a vnode from one mount queue to another.

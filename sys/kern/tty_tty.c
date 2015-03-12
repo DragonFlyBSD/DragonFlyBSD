@@ -331,4 +331,5 @@ ctty_drvinit(void *unused __unused)
 	make_dev(&ctty_ops, 0, 0, 0, 0666, "tty");
 }
 
-SYSINIT(cttydev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,ctty_drvinit,NULL)
+SYSINIT(cttydev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR, ctty_drvinit,
+    NULL);

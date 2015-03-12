@@ -230,7 +230,7 @@ SYSCTL_PROC(_kern_ipc, OID_AUTO, showmbufs, CTLFLAG_RD|CTLTYPE_STRING,
 #endif
 
 static void mbinit(void *);
-SYSINIT(mbuf, SI_BOOT2_MACHDEP, SI_ORDER_FIRST, mbinit, NULL)
+SYSINIT(mbuf, SI_BOOT2_MACHDEP, SI_ORDER_FIRST, mbinit, NULL);
 
 struct mbtypes_stat {
 	u_long	stats[MT_NTYPES];

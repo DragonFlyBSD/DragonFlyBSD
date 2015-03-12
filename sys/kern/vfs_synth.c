@@ -135,4 +135,4 @@ synthinit(void *arg __unused)
 	synth_inited = 1;
 }
 
-SYSINIT(synthinit, SI_SUB_VFS, SI_ORDER_ANY, synthinit, NULL)
+SYSINIT(synthinit, SI_SUB_VFS, SI_ORDER_ANY, synthinit, NULL);

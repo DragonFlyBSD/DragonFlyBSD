@@ -66,7 +66,6 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.15 2008/06/01 19:27:35 dillon Exp $
  */
 /*
  * Manage vnode VOP operations vectors
@@ -225,7 +224,7 @@ vfsinit(void *dummy)
 	 */
 	vattr_null(&va_null);
 }
-SYSINIT(vfs, SI_SUB_VFS, SI_ORDER_FIRST, vfsinit, NULL)
+SYSINIT(vfs, SI_SUB_VFS, SI_ORDER_FIRST, vfsinit, NULL);
 
 /*
  * vfsconf related functions/data.

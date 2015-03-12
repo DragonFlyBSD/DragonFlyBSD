@@ -2340,4 +2340,4 @@ usched_dfly_cpu_init(void)
 	}
 }
 SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
-	usched_dfly_cpu_init, NULL)
+	usched_dfly_cpu_init, NULL);

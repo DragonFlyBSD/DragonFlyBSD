@@ -983,7 +983,7 @@ static struct kproc_desc constty_kp = {
         &constty_td
 };
 SYSINIT(bufdaemon, SI_SUB_KTHREAD_UPDATE, SI_ORDER_ANY,
-        kproc_start, &constty_kp)
+        kproc_start, &constty_kp);
 
 /*
  * Put character in log buffer with a particular priority.

@@ -758,5 +758,6 @@ mem_drvinit(void *unused)
 	make_dev(&mem_ops, 14, UID_ROOT, GID_WHEEL, 0600, "io");
 }
 
-SYSINIT(memdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,mem_drvinit,NULL)
+SYSINIT(memdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR, mem_drvinit,
+    NULL);
 

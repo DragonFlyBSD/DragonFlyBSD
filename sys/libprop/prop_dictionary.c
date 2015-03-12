@@ -73,9 +73,9 @@ struct _prop_dictionary_keysym {
 
 #define	PDK_MAXKEY		128
 
-_PROP_POOL_INIT(_prop_dictionary_keysym16_pool, PDK_SIZE_16, "pdict16")
-_PROP_POOL_INIT(_prop_dictionary_keysym32_pool, PDK_SIZE_32, "pdict32")
-_PROP_POOL_INIT(_prop_dictionary_keysym128_pool, PDK_SIZE_128, "pdict128")
+_PROP_POOL_INIT(_prop_dictionary_keysym16_pool, PDK_SIZE_16, "pdict16");
+_PROP_POOL_INIT(_prop_dictionary_keysym32_pool, PDK_SIZE_32, "pdict32");
+_PROP_POOL_INIT(_prop_dictionary_keysym128_pool, PDK_SIZE_128, "pdict128");
 
 struct _prop_dict_entry {
 	prop_dictionary_keysym_t	pde_key;
@@ -96,7 +96,7 @@ struct _prop_dictionary {
 #define	PD_F_IMMUTABLE		0x01	/* dictionary is immutable */
 
 _PROP_POOL_INIT(_prop_dictionary_pool, sizeof(struct _prop_dictionary),
-		"propdict")
+		"propdict");
 _PROP_MALLOC_DEFINE(M_PROP_DICT, "prop dictionary",
 		    "property dictionary container object")
 

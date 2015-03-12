@@ -977,7 +977,7 @@ ufsdirhash_init(void)
 	    DH_NBLKOFF * sizeof(daddr_t));
 	TAILQ_INIT(&ufsdirhash_list);
 }
-SYSINIT(ufsdirhash, SI_SUB_PSEUDO, SI_ORDER_ANY, ufsdirhash_init, NULL)
+SYSINIT(ufsdirhash, SI_SUB_PSEUDO, SI_ORDER_ANY, ufsdirhash_init, NULL);
 
 
 #endif /* UFS_DIRHASH */

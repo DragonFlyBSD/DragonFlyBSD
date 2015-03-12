@@ -164,7 +164,7 @@ shutdown_conf(void *unused)
 	EVENTHANDLER_REGISTER(shutdown_final, shutdown_reset, NULL, SHUTDOWN_PRI_LAST + 200);
 }
 
-SYSINIT(shutdown_conf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, shutdown_conf, NULL)
+SYSINIT(shutdown_conf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, shutdown_conf, NULL);
 
 /* ARGSUSED */
 
@@ -668,7 +668,7 @@ dump_conf(void *dummy)
 		dumpdev = NULL;
 }
 
-SYSINIT(dump_conf, SI_SUB_DUMP_CONF, SI_ORDER_FIRST, dump_conf, NULL)
+SYSINIT(dump_conf, SI_SUB_DUMP_CONF, SI_ORDER_FIRST, dump_conf, NULL);
 
 static int
 sysctl_kern_dumpdev(SYSCTL_HANDLER_ARGS)

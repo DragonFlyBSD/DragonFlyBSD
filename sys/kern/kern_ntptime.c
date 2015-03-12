@@ -579,7 +579,7 @@ ntp_init(void)
 #endif /* PPS_SYNC */	   
 }
 
-SYSINIT(ntpclocks, SI_BOOT2_CLOCKS, SI_ORDER_FIRST, ntp_init, NULL)
+SYSINIT(ntpclocks, SI_BOOT2_CLOCKS, SI_ORDER_FIRST, ntp_init, NULL);
 
 /*
  * hardupdate() - local clock update

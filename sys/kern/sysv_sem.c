@@ -180,7 +180,7 @@ seminit(void *dummy)
 		semaptr->ds.sem_perm.mode = 0;
 	}
 }
-SYSINIT(sysv_sem, SI_SUB_SYSV_SEM, SI_ORDER_FIRST, seminit, NULL)
+SYSINIT(sysv_sem, SI_SUB_SYSV_SEM, SI_ORDER_FIRST, seminit, NULL);
 
 /*
  * Allocate a new sem_undo structure for a process

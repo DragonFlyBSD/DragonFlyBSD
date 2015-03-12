@@ -690,4 +690,4 @@ init_cpu_topology(void)
 	build_sysctl_cpu_topology();
 }
 SYSINIT(cpu_topology, SI_BOOT2_CPU_TOPOLOGY, SI_ORDER_FIRST,
-    init_cpu_topology, NULL)
+    init_cpu_topology, NULL);

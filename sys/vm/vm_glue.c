@@ -98,7 +98,7 @@
  * Note: run scheduling should be divorced from the vm system.
  */
 static void scheduler (void *);
-SYSINIT(scheduler, SI_SUB_RUN_SCHEDULER, SI_ORDER_FIRST, scheduler, NULL)
+SYSINIT(scheduler, SI_SUB_RUN_SCHEDULER, SI_ORDER_FIRST, scheduler, NULL);
 
 #ifdef INVARIANTS
 

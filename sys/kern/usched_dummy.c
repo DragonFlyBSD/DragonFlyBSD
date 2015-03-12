@@ -123,7 +123,7 @@ dummyinit(void *dummy)
 	spin_init(&dummy_spin, "uscheddummy");
 	ATOMIC_CPUMASK_NANDBIT(dummy_curprocmask, 0);
 }
-SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, dummyinit, NULL)
+SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, dummyinit, NULL);
 
 /*
  * DUMMY_ACQUIRE_CURPROC
@@ -554,4 +554,4 @@ dummy_sched_thread_cpu_init(void)
 	kprintf("\n");
 }
 SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
-	dummy_sched_thread_cpu_init, NULL)
+	dummy_sched_thread_cpu_init, NULL);

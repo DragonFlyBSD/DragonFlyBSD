@@ -61,7 +61,7 @@ struct _prop_number {
 	} pn_value;
 };
 
-_PROP_POOL_INIT(_prop_number_pool, sizeof(struct _prop_number), "propnmbr")
+_PROP_POOL_INIT(_prop_number_pool, sizeof(struct _prop_number), "propnmbr");
 
 static _prop_object_free_rv_t
 		_prop_number_free(prop_stack_t, prop_object_t *);

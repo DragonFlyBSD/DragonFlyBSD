@@ -94,7 +94,7 @@ SYSCTL_INT(_vm, OID_AUTO, vkernel_enable, CTLFLAG_RW, &vkernel_enable, 0, "");
  */
 
 static void vmmapentry_rsrc_init (void *);
-SYSINIT(vmmersrc, SI_BOOT1_POST, SI_ORDER_ANY, vmmapentry_rsrc_init, NULL)
+SYSINIT(vmmersrc, SI_BOOT1_POST, SI_ORDER_ANY, vmmapentry_rsrc_init, NULL);
 
 static void
 vmmapentry_rsrc_init(void *dummy)

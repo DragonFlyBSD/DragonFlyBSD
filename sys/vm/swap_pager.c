@@ -331,7 +331,7 @@ swap_pager_init(void *arg __unused)
 	dmmax = SWB_NPAGES * 2;
 	dmmax_mask = ~(dmmax - 1);
 }
-SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_THIRD, swap_pager_init, NULL)
+SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_THIRD, swap_pager_init, NULL);
 
 /*
  * SWAP_PAGER_SWAP_INIT() - swap pager initialization from pageout process

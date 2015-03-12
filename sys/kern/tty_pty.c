@@ -1283,4 +1283,5 @@ ptc_drvinit(void *unused)
 	}
 }
 
-SYSINIT(ptcdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR_C,ptc_drvinit,NULL)
+SYSINIT(ptcdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR_C, ptc_drvinit,
+    NULL);

@@ -261,7 +261,7 @@ cpu_rootconf(void)
                 setroot();
 #endif
 }
-SYSINIT(cpu_rootconf, SI_SUB_ROOT_CONF, SI_ORDER_FIRST, cpu_rootconf, NULL)
+SYSINIT(cpu_rootconf, SI_SUB_ROOT_CONF, SI_ORDER_FIRST, cpu_rootconf, NULL);
 
 u_long	bootdev = 0;		/* not a cdev_t - encoding is different */
 

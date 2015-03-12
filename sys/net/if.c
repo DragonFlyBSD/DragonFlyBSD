@@ -145,9 +145,9 @@ static int if_stats_compat = 0;
 SYSCTL_INT(_net_link, OID_AUTO, stats_compat, CTLFLAG_RW,
     &if_stats_compat, 0, "Compat the old ifnet stats");
 
-SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL)
+SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL);
 /* Must be after netisr_init */
-SYSINIT(ifnet, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, ifnetinit, NULL)
+SYSINIT(ifnet, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, ifnetinit, NULL);
 
 static  if_com_alloc_t *if_com_alloc[256];
 static  if_com_free_t *if_com_free[256];

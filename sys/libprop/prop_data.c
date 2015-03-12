@@ -58,7 +58,7 @@ struct _prop_data {
 
 #define	PD_F_NOCOPY		0x01
 
-_PROP_POOL_INIT(_prop_data_pool, sizeof(struct _prop_data), "propdata")
+_PROP_POOL_INIT(_prop_data_pool, sizeof(struct _prop_data), "propdata");
 
 _PROP_MALLOC_DEFINE(M_PROP_DATA, "prop data",
 		    "property data container object")

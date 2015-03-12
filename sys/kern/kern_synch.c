@@ -64,7 +64,7 @@
 TAILQ_HEAD(tslpque, thread);
 
 static void sched_setup (void *dummy);
-SYSINIT(sched_setup, SI_SUB_KICK_SCHEDULER, SI_ORDER_FIRST, sched_setup, NULL)
+SYSINIT(sched_setup, SI_SUB_KICK_SCHEDULER, SI_ORDER_FIRST, sched_setup, NULL);
 
 int	lbolt;
 void	*lbolt_syncer;

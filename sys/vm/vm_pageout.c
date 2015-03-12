@@ -114,7 +114,7 @@ static struct kproc_desc vm_kp = {
 	vm_daemon,
 	&vmthread
 };
-SYSINIT(vmdaemon, SI_SUB_KTHREAD_VM, SI_ORDER_FIRST, kproc_start, &vm_kp)
+SYSINIT(vmdaemon, SI_SUB_KTHREAD_VM, SI_ORDER_FIRST, kproc_start, &vm_kp);
 #endif
 
 int vm_pages_needed=0;		/* Event on which pageout daemon sleeps */
@@ -2030,7 +2030,7 @@ static struct kproc_desc page_kp = {
 	vm_pageout_thread,
 	&pagethread
 };
-SYSINIT(pagedaemon, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST, kproc_start, &page_kp)
+SYSINIT(pagedaemon, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST, kproc_start, &page_kp);
 
 
 /*

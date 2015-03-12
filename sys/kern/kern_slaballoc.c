@@ -209,7 +209,7 @@ static void kmeminit(void *dummy);
 
 char *ZeroPage;
 
-SYSINIT(kmem, SI_BOOT1_ALLOCATOR, SI_ORDER_FIRST, kmeminit, NULL)
+SYSINIT(kmem, SI_BOOT1_ALLOCATOR, SI_ORDER_FIRST, kmeminit, NULL);
 
 #ifdef INVARIANTS
 /*

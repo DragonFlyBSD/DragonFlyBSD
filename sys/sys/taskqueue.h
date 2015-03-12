@@ -141,7 +141,7 @@ taskqueue_define_##name(void *arg)					\
 }									\
 									\
 SYSINIT(taskqueue_##name, SI_SUB_CONFIGURE, SI_ORDER_SECOND,		\
-	taskqueue_define_##name, NULL)					\
+	taskqueue_define_##name, NULL);					\
 									\
 struct __hack
 

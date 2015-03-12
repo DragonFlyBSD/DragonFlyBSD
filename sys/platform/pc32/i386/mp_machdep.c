@@ -310,7 +310,7 @@ mp_start_aps(void *dummy __unused)
 		mp_bsp_simple_setup();
 	}
 }
-SYSINIT(startaps, SI_BOOT2_START_APS, SI_ORDER_FIRST, mp_start_aps, NULL)
+SYSINIT(startaps, SI_BOOT2_START_APS, SI_ORDER_FIRST, mp_start_aps, NULL);
 
 /*
  * start each AP in our list
@@ -1098,7 +1098,7 @@ ap_finish(void)
 		kprintf("Active CPU Mask: %08x\n", smp_active_mask);
 }
 
-SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)
+SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL);
 
 void
 cpu_send_ipiq(int dcpu)

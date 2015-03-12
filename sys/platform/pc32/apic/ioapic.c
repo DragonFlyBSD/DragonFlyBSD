@@ -617,4 +617,4 @@ ioapic_sysinit(void *dummy __unused)
 		lapic_fixup_noioapic();
 	}
 }
-SYSINIT(ioapic, SI_BOOT2_IOAPIC, SI_ORDER_FIRST, ioapic_sysinit, NULL)
+SYSINIT(ioapic, SI_BOOT2_IOAPIC, SI_ORDER_FIRST, ioapic_sysinit, NULL);

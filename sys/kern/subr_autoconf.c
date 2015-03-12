@@ -38,7 +38,6 @@
  *	@(#)subr_autoconf.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/kern/subr_autoconf.c,v 1.14 1999/10/05 21:19:41 n_hibma Exp $
- * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.9 2007/07/28 23:24:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -122,7 +121,7 @@ run_interrupt_driven_config_hooks(void *dummy)
 
 }
 SYSINIT(intr_config_hooks, SI_SUB_INT_CONFIG_HOOKS, SI_ORDER_FIRST,
-	run_interrupt_driven_config_hooks, NULL)
+	run_interrupt_driven_config_hooks, NULL);
 
 /*
  * Register a hook that will be called after "cold"

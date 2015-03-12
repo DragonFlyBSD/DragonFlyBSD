@@ -2945,5 +2945,5 @@ nofo_shutdown(struct file *fp, int how)
 	return (EOPNOTSUPP);
 }
 
-SYSINIT(fildescdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,
-					fildesc_drvinit,NULL)
+SYSINIT(fildescdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR,
+    fildesc_drvinit,NULL);

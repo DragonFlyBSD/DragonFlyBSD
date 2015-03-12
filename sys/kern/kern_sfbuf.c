@@ -21,8 +21,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.15 2007/04/30 07:18:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,7 +41,7 @@
 #include <vm/pmap.h>
 
 static void sf_buf_init(void *arg);
-SYSINIT(sock_sf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, sf_buf_init, NULL)
+SYSINIT(sock_sf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, sf_buf_init, NULL);
 
 LIST_HEAD(sf_buf_list, sf_buf);
 

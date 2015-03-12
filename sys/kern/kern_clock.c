@@ -115,7 +115,7 @@ static void do_pctrack(struct intrframe *frame, int which);
 #endif
 
 static void initclocks (void *dummy);
-SYSINIT(clocks, SI_BOOT2_CLOCKS, SI_ORDER_FIRST, initclocks, NULL)
+SYSINIT(clocks, SI_BOOT2_CLOCKS, SI_ORDER_FIRST, initclocks, NULL);
 
 /*
  * Some of these don't belong here, but it's easiest to concentrate them.
@@ -331,7 +331,7 @@ initclocks_other(void *dummy)
 	}
 	lwkt_setcpu_self(ogd);
 }
-SYSINIT(clocks2, SI_BOOT2_POST_SMP, SI_ORDER_ANY, initclocks_other, NULL)
+SYSINIT(clocks2, SI_BOOT2_POST_SMP, SI_ORDER_ANY, initclocks_other, NULL);
 
 /*
  * This sets the current real time of day.  Timespecs are in seconds and

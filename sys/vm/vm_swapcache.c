@@ -334,7 +334,7 @@ static struct kproc_desc swpc_kp = {
 	vm_swapcached_thread,
 	&swapcached_thread
 };
-SYSINIT(swapcached, SI_SUB_KTHREAD_PAGE, SI_ORDER_SECOND, kproc_start, &swpc_kp)
+SYSINIT(swapcached, SI_SUB_KTHREAD_PAGE, SI_ORDER_SECOND, kproc_start, &swpc_kp);
 
 /*
  * Deal with an overflow of the heuristic counter or if the user

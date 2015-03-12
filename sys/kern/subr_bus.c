@@ -2326,7 +2326,7 @@ resource_cfgload(void *dummy __unused)
 		}
 	}
 }
-SYSINIT(cfgload, SI_BOOT1_POST, SI_ORDER_ANY + 50, resource_cfgload, 0)
+SYSINIT(cfgload, SI_BOOT1_POST, SI_ORDER_ANY + 50, resource_cfgload, 0);
 
 
 /*======================================*/

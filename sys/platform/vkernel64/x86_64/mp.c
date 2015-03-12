@@ -130,7 +130,7 @@ ap_finish(void)
 			(long)CPUMASK_LOWMASK(smp_active_mask));
 }
 
-SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)
+SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL);
 
 void *
 start_ap(void *arg __unused)

@@ -484,6 +484,6 @@ devfs_dev_uninit(void *unused)
 }
 
 
-SYSINIT(devfsdev,SI_SUB_DRIVERS,SI_ORDER_FIRST,devfs_dev_init,NULL)
+SYSINIT(devfsdev,SI_SUB_DRIVERS,SI_ORDER_FIRST,devfs_dev_init,NULL);
 SYSUNINIT(devfsdev, SI_SUB_DRIVERS,SI_ORDER_FIRST,devfs_dev_uninit, NULL);
 

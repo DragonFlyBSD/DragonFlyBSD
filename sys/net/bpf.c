@@ -1618,7 +1618,7 @@ bpf_drvuninit(void *unused)
 	devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(bpf));
 }
 
-SYSINIT(bpfdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,bpf_drvinit,NULL)
+SYSINIT(bpfdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE+CDEV_MAJOR, bpf_drvinit, NULL);
 SYSUNINIT(bpfdev, SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,bpf_drvuninit, NULL);
 
 #else /* !BPF */

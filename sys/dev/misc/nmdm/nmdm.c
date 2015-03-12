@@ -608,4 +608,5 @@ nmdm_drvinit(void *unused)
 	lwkt_reltoken(&tty_token);
 }
 
-SYSINIT(nmdmdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,nmdm_drvinit,NULL)
+SYSINIT(nmdmdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR, nmdm_drvinit,
+    NULL);

@@ -306,7 +306,7 @@ bsd4_rqinit(void *dummy)
 	}
 	ATOMIC_CPUMASK_NANDBIT(bsd4_curprocmask, 0);
 }
-SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, bsd4_rqinit, NULL)
+SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, bsd4_rqinit, NULL);
 
 /*
  * BSD4_ACQUIRE_CURPROC
@@ -2047,4 +2047,4 @@ sched_thread_cpu_init(void)
 	}
 }
 SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
-	sched_thread_cpu_init, NULL)
+	sched_thread_cpu_init, NULL);
