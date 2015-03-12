@@ -137,7 +137,7 @@ typedef struct malloc_type	*malloc_type_t;
 #define	MALLOC_DEFINE(type, shortdesc, longdesc)	\
 	struct malloc_type type[1] = { 			\
 	    { NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc, 0, 0 } \
-	};
+	}
 
 #endif
 
