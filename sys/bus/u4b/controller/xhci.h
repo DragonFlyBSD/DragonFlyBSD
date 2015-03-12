@@ -481,13 +481,13 @@ struct xhci_softc {
 	uint32_t		sc_exit_lat_max;
 
 	/* offset to operational registers */
-	uint32_t		sc_oper_off;
+	uint32_t                sc_oper_off;
 	/* offset to capability registers */
-	uint32_t		sc_capa_off;
+	uint32_t                sc_capa_off;
 	/* offset to runtime registers */
-	uint32_t		sc_runt_off;
+	uint32_t                sc_runt_off;
 	/* offset to doorbell registers */
-	uint32_t		sc_door_off;
+	uint32_t                sc_door_off;
 
 	/* chip specific */
 	uint16_t		sc_erst_max;
@@ -523,7 +523,7 @@ struct xhci_softc {
 
 uint8_t 	xhci_use_polling(void);
 usb_error_t xhci_halt_controller(struct xhci_softc *);
-usb_error_t xhci_init(struct xhci_softc *, device_t);
+usb_error_t xhci_init(struct xhci_softc *, device_t, uint8_t);
 usb_error_t xhci_start_controller(struct xhci_softc *);
 void	xhci_interrupt(struct xhci_softc *);
 void	xhci_uninit(struct xhci_softc *);

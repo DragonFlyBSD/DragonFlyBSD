@@ -85,7 +85,7 @@ static uint32_t urndis_ctrl_init(struct urndis_softc *);
 #ifdef USB_DEBUG
 static int urndis_debug = 0;
 static	SYSCTL_NODE(_hw_usb, OID_AUTO, urndis, CTLFLAG_RW, 0, "USB RNDIS-Ethernet");
-SYSCTL_INT(_hw_usb_urndis, OID_AUTO, debug, CTLFLAG_RW, &urndis_debug, 0,
+SYSCTL_INT(_hw_usb_urndis, OID_AUTO, debug, CTLFLAG_RWTUN, &urndis_debug, 0,
     "Debug level");
 #endif
 
@@ -167,10 +167,15 @@ static const struct usb_ether_methods urndis_ue_methods = {
 };
 
 static const STRUCT_USB_HOST_ID urndis_host_devs[] = {
+	/* Generic RNDIS class match */
 	{USB_IFACE_CLASS(UICLASS_WIRELESS), USB_IFACE_SUBCLASS(UISUBCLASS_RF),
 	USB_IFACE_PROTOCOL(UIPROTO_RNDIS)},
 	{USB_IFACE_CLASS(UICLASS_IAD), USB_IFACE_SUBCLASS(UISUBCLASS_SYNC),
 	USB_IFACE_PROTOCOL(UIPROTO_ACTIVESYNC)},
+	/* HP-WebOS */
+	{USB_VENDOR(USB_VENDOR_PALM), USB_IFACE_CLASS(UICLASS_CDC),
+		USB_IFACE_SUBCLASS(UISUBCLASS_ABSTRACT_CONTROL_MODEL),
+		USB_IFACE_PROTOCOL(0xff)},
 };
 
 static const STRUCT_USB_HOST_ID urndis_non_huawei_host_devs[] = {

@@ -73,6 +73,7 @@ static int uftdi_debug = 0;
 static SYSCTL_NODE(_hw_usb, OID_AUTO, uftdi, CTLFLAG_RW, 0, "USB uftdi");
 SYSCTL_INT(_hw_usb_uftdi, OID_AUTO, debug, CTLFLAG_RW,
     &uftdi_debug, 0, "Debug level");
+TUNABLE_INT("hw.usb.uftdi.debug", &uftdi_debug);
 #endif
 
 #define	UFTDI_CONFIG_INDEX	0

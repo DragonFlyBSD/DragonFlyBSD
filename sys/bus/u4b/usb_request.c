@@ -69,11 +69,13 @@ static int usb_no_cs_fail;
 
 SYSCTL_INT(_hw_usb, OID_AUTO, no_cs_fail, CTLFLAG_RW,
     &usb_no_cs_fail, 0, "USB clear stall failures are ignored, if set");
+TUNABLE_INT("hw.usb.no_cs_fail", &usb_no_cs_fail);
 
 static int usb_full_ddesc;
 
 SYSCTL_INT(_hw_usb, OID_AUTO, full_ddesc, CTLFLAG_RW,
     &usb_full_ddesc, 0, "USB always read complete device descriptor, if set");
+TUNABLE_INT("hw.usb.full_ddesc", &usb_full_ddesc);
 
 #ifdef USB_DEBUG
 #ifdef USB_REQ_DEBUG
@@ -106,21 +108,21 @@ static struct usb_ctrl_debug usb_ctrl_debug = {
 	.bRequest_value = -1,
 };
 
-SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_bus_fail, CTLFLAG_RW,
+SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_bus_fail, CTLFLAG_RWTUN,
     &usb_ctrl_debug.bus_index, 0, "USB controller index to fail");
-SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_dev_fail, CTLFLAG_RW,
+SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_dev_fail, CTLFLAG_RWTUN,
     &usb_ctrl_debug.dev_index, 0, "USB device address to fail");
-SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_ds_fail, CTLFLAG_RW,
+SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_ds_fail, CTLFLAG_RWTUN,
     &usb_ctrl_debug.ds_fail, 0, "USB fail data stage");
-SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_ss_fail, CTLFLAG_RW,
+SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_ss_fail, CTLFLAG_RWTUN,
     &usb_ctrl_debug.ss_fail, 0, "USB fail status stage");
-SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_ds_delay, CTLFLAG_RW,
+SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_ds_delay, CTLFLAG_RWTUN,
     &usb_ctrl_debug.ds_delay, 0, "USB data stage delay in ms");
-SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_ss_delay, CTLFLAG_RW,
+SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_ss_delay, CTLFLAG_RWTUN,
     &usb_ctrl_debug.ss_delay, 0, "USB status stage delay in ms");
-SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_rt_fail, CTLFLAG_RW,
+SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_rt_fail, CTLFLAG_RWTUN,
     &usb_ctrl_debug.bmRequestType_value, 0, "USB bmRequestType to fail");
-SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_rv_fail, CTLFLAG_RW,
+SYSCTL_INT(_hw_usb, OID_AUTO, ctrl_rv_fail, CTLFLAG_RWTUN,
     &usb_ctrl_debug.bRequest_value, 0, "USB bRequest to fail");
 
 /*------------------------------------------------------------------------*

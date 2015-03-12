@@ -91,7 +91,7 @@
 static int ubsa_debug = 0;
 
 static SYSCTL_NODE(_hw_usb, OID_AUTO, ubsa, CTLFLAG_RW, 0, "USB ubsa");
-SYSCTL_INT(_hw_usb_ubsa, OID_AUTO, debug, CTLFLAG_RW,
+SYSCTL_INT(_hw_usb_ubsa, OID_AUTO, debug, CTLFLAG_RWTUN,
     &ubsa_debug, 0, "ubsa debug level");
 #endif
 

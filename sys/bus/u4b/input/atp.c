@@ -126,27 +126,33 @@ enum atp_log_level {
 static int atp_debug = ATP_LLEVEL_ERROR; /* the default is to only log errors */
 SYSCTL_INT(_hw_usb_atp, OID_AUTO, debug, CTLFLAG_RW,
     &atp_debug, ATP_LLEVEL_ERROR, "ATP debug level");
+TUNABLE_INT("hw.usb.atp.debug", &atp_debug);
 #endif /* USB_DEBUG */
 
 static u_int atp_touch_timeout = ATP_TOUCH_TIMEOUT;
 SYSCTL_UINT(_hw_usb_atp, OID_AUTO, touch_timeout, CTLFLAG_RW,
     &atp_touch_timeout, 125000, "age threshold (in micros) for a touch");
+TUNABLE_INT("hw.usb.atp.touch_timeout", &atp_touch_timeout);
 
 static u_int atp_double_tap_threshold = ATP_DOUBLE_TAP_N_DRAG_THRESHOLD;
 SYSCTL_UINT(_hw_usb_atp, OID_AUTO, double_tap_threshold, CTLFLAG_RW,
     &atp_double_tap_threshold, ATP_DOUBLE_TAP_N_DRAG_THRESHOLD,
     "maximum time (in micros) between a double-tap");
+TUNABLE_INT("hw.usb.atp.double_tap_threshold", &atp_double_tap_threshold);
 
 static u_int atp_mickeys_scale_factor = ATP_SCALE_FACTOR;
 static int atp_sysctl_scale_factor_handler(SYSCTL_HANDLER_ARGS);
 SYSCTL_PROC(_hw_usb_atp, OID_AUTO, scale_factor, CTLTYPE_UINT | CTLFLAG_RW,
     &atp_mickeys_scale_factor, sizeof(atp_mickeys_scale_factor),
     atp_sysctl_scale_factor_handler, "IU", "movement scale factor");
+TUNABLE_INT("hw.usb.atp.scale_factor", &atp_mickeys_scale_factor);
 
 static u_int atp_small_movement_threshold = ATP_SCALE_FACTOR >> 3;
 SYSCTL_UINT(_hw_usb_atp, OID_AUTO, small_movement, CTLFLAG_RW,
     &atp_small_movement_threshold, ATP_SCALE_FACTOR >> 3,
     "the small movement black-hole for filtering noise");
+TUNABLE_INT("hw.usb.atp.small_movement", &atp_small_movement_threshold);
+
 /*
  * The movement threshold for a stroke; this is the maximum difference
  * in position which will be resolved as a continuation of a stroke
@@ -165,6 +171,7 @@ static u_int atp_slide_min_movement = (ATP_SCALE_FACTOR >> 3);
 SYSCTL_UINT(_hw_usb_atp, OID_AUTO, slide_min_movement, CTLFLAG_RW,
     &atp_slide_min_movement, (ATP_SCALE_FACTOR >> 3),
     "strokes with at least this amt. of movement are considered slides");
+TUNABLE_INT("hw.usb.atp.slide_min_movement", &atp_slide_min_movement);
 
 /*
  * The minimum age of a stroke for it to be considered mature; this
@@ -174,6 +181,8 @@ static u_int atp_stroke_maturity_threshold = 2;
 SYSCTL_UINT(_hw_usb_atp, OID_AUTO, stroke_maturity_threshold, CTLFLAG_RW,
     &atp_stroke_maturity_threshold, 2,
     "the minimum age of a stroke for it to be considered mature");
+TUNABLE_INT("hw.usb.atp.stroke_maturity_threshold",
+		&atp_stroke_maturity_threshold);
 
 /* Accept pressure readings from sensors only if above this value. */
 static u_int atp_sensor_noise_threshold = 2;
