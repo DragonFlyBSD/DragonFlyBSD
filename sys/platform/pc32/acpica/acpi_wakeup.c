@@ -327,7 +327,7 @@ acpi_alloc_wakeup_handler(void)
 	}
 }
 
-SYSINIT(acpiwakeup, SI_BOOT1_POST, SI_ORDER_ANY, acpi_alloc_wakeup_handler, 0)
+SYSINIT(acpiwakeup, SI_BOOT1_POST, SI_ORDER_ANY, acpi_alloc_wakeup_handler, 0);
 
 static void
 acpi_realmodeinst(void *arg, bus_dma_segment_t *segs, int nsegs, int error)

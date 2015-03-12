@@ -51,7 +51,7 @@
  * want to call a registration function rather than being handled here
  * in domaininit().  Probably this will look like:
  *
- * SYSINIT(unique, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, domain_add, xxx)
+ * SYSINIT(unique, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, domain_add, xxx);
  *
  * Where 'xxx' is replaced by the address of a parameter struct to be
  * passed to the doamin_add() function.

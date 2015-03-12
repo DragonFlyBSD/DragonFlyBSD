@@ -716,7 +716,7 @@ static void stl_drvinit(void *unused)
 {
 }
 
-SYSINIT(sidev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,stl_drvinit,NULL)
+SYSINIT(sidev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,stl_drvinit,NULL);
 
 /*****************************************************************************/
 

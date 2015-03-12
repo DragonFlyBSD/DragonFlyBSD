@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.13 2008/01/06 16:55:52 swildner Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -969,4 +968,4 @@ esp_attach(void)
 	xform_register(&esp_xformsw);
 #undef MAXIV
 }
-SYSINIT(esp_xform_init, SI_SUB_DRIVERS, SI_ORDER_FIRST, esp_attach, NULL)
+SYSINIT(esp_xform_init, SI_SUB_DRIVERS, SI_ORDER_FIRST, esp_attach, NULL);

@@ -71,7 +71,7 @@ perfmon_driver_init(void *unused __unused)
 	make_dev(&perfmon_ops, 32, UID_ROOT, GID_KMEM, 0640, "perfmon");
 }
 
-SYSINIT(perfmondrv, SI_SUB_DRIVERS, SI_ORDER_ANY, perfmon_driver_init, NULL)
+SYSINIT(perfmondrv, SI_SUB_DRIVERS, SI_ORDER_ANY, perfmon_driver_init, NULL);
 
 /*
  * This is called in early boot, after cpu_class has been set up.

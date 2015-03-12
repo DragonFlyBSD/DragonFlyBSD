@@ -910,7 +910,7 @@ iscsi_rootconf(void)
 	kprintf("** iscsi_rootconf **\n");
 }
 
-SYSINIT(cpu_rootconf1, SI_SUB_ROOT_CONF, SI_ORDER_FIRST, iscsi_rootconf, NULL)
+SYSINIT(cpu_rootconf1, SI_SUB_ROOT_CONF, SI_ORDER_FIRST, iscsi_rootconf, NULL);
 #endif
 
 DECLARE_MODULE(iscsi_initiator, iscsi_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
