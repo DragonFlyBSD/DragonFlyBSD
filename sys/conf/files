@@ -2477,6 +2477,7 @@ bus/u4b/template/usb_template_modem.c	optional usb_template
 bus/u4b/template/usb_template_mouse.c	optional usb_template
 bus/u4b/template/usb_template_msc.c	optional usb_template
 bus/u4b/template/usb_template_mtp.c	optional usb_template
+bus/u4b/template/usb_template_serialnet.c optional usb_template
 #
 # Other drivers
 #
