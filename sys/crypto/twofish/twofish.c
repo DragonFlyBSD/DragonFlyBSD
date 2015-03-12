@@ -305,7 +305,7 @@ static u_int32_t h_fun(twofish_ctx *ctx, const u_int32_t x, const u_int32_t key[
 
     return  mds(0, b0) ^ mds(1, b1) ^ mds(2, b2) ^ mds(3, b3);
 
-};
+}
 
 
 #define q20(x)  q(0,q(0,x) ^ extract_byte(key[1],0)) ^ extract_byte(key[0],0)
@@ -355,7 +355,7 @@ static void gen_mk_tab(twofish_ctx *ctx, u_int32_t key[])
                 mk_tab[2 + 4*i] = mds(2, q42(by)); mk_tab[3 + 4*i] = mds(3, q43(by));
             }
     }
-};
+}
 
 #define g0_fun(x) ( mk_tab[0 + 4*extract_byte(x,0)] ^ mk_tab[1 + 4*extract_byte(x,1)] \
                    ^ mk_tab[2 + 4*extract_byte(x,2)] ^ mk_tab[3 + 4*extract_byte(x,3)] )
@@ -416,7 +416,7 @@ static u_int32_t mds_rem(u_int32_t p0, u_int32_t p1)
     }
 
     return p1;
-};
+}
 
 /* initialise the key schedule from the user supplied key   */
 
@@ -447,7 +447,7 @@ void twofish_set_key(twofish_ctx *ctx, const u_int8_t in_key[], int key_len_bits
     }
 
     gen_mk_tab(ctx, s_key);
-};
+}
 
 /* encrypt a block of text  */
 
@@ -479,7 +479,7 @@ void twofish_encrypt(twofish_ctx *ctx, const u_int8_t in_blk[],
     ((u_int32_t *)out_blk)[1] = LE32(blk[3] ^ l_key[5]);
     ((u_int32_t *)out_blk)[2] = LE32(blk[0] ^ l_key[6]);
     ((u_int32_t *)out_blk)[3] = LE32(blk[1] ^ l_key[7]);
-};
+}
 
 
 /* decrypt a block of text  */
@@ -510,5 +510,5 @@ void twofish_decrypt(twofish_ctx *ctx, const u_int8_t in_blk[], u_int8_t out_blk
     ((u_int32_t *)out_blk)[1] = LE32(blk[3] ^ l_key[1]);
     ((u_int32_t *)out_blk)[2] = LE32(blk[0] ^ l_key[2]);
     ((u_int32_t *)out_blk)[3] = LE32(blk[1] ^ l_key[3]);
-};
+}
 
