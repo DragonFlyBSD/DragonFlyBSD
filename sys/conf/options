@@ -277,6 +277,7 @@ IPDIVERT
 DUMMYNET		opt_ipdn.h
 DUMMYNET_DEBUG		opt_ipdn.h
 IPFIREWALL		opt_ipfw.h
+IPFIREWALL3		opt_ipfw.h
 IPFIREWALL_DEBUG	opt_ipfw.h
 IPFIREWALL_VERBOSE	opt_ipfw.h
 IPFIREWALL_VERBOSE_LIMIT	opt_ipfw.h

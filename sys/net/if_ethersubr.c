@@ -75,7 +75,7 @@
 #include <netinet/if_ether.h>
 #include <netinet/ip_flow.h>
 #include <net/ipfw/ip_fw.h>
-#include <net/ipfw2/ip_fw.h>
+#include <net/ipfw3/ip_fw.h>
 #include <net/dummynet/ip_dummynet.h>
 #endif
 #ifdef INET6
@@ -422,7 +422,7 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	if (ifq_is_enabled(&ifp->if_snd))
 		altq_etherclassify(&ifp->if_snd, m, &pktattr);
 	crit_enter();
-	if ((IPFW_LOADED || IPFW2_LOADED) && ether_ipfw != 0) {
+	if ((IPFW_LOADED || IPFW3_LOADED) && ether_ipfw != 0) {
 		struct ether_header save_eh, *eh;
 
 		eh = mtod(m, struct ether_header *);
@@ -994,7 +994,7 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 	}
 
 post_stats:
-	if ((IPFW_LOADED || IPFW2_LOADED) && ether_ipfw != 0 && !discard) {
+	if ((IPFW_LOADED || IPFW3_LOADED) && ether_ipfw != 0 && !discard) {
 		struct ether_header save_eh = *eh;
 
 		/* XXX old crufty stuff, needs to be removed */

@@ -2821,7 +2821,7 @@ ClearFWHole(struct alias_link *lnk)
 		if (fwhole < 0)
 			return;
 
-		memset(&rule, 0, sizeof rule);	/* useless for ipfw2 */
+		memset(&rule, 0, sizeof rule);	/* useless for ipfw3 */
 		while (!setsockopt(la->fireWallFD, IPPROTO_IP, IP_FW_DEL,
 			&fwhole, sizeof fwhole));
 		fw_clrfield(la, la->fireWallField, fwhole);

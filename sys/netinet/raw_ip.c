@@ -69,9 +69,9 @@
 
 #include <net/ip_mroute/ip_mroute.h>
 #include <net/ipfw/ip_fw.h>
-#include <net/ipfw2/ip_fw.h>
+#include <net/ipfw3/ip_fw.h>
 #include <net/dummynet/ip_dummynet.h>
-#include <net/dummynet2/ip_dummynet2.h>
+#include <net/dummynet3/ip_dummynet3.h>
 
 #ifdef FAST_IPSEC
 #include <netproto/ipsec/ipsec.h>
@@ -380,8 +380,8 @@ rip_ctloutput(netmsg_t msg)
 			soopt_from_kbuf(sopt, &optval, sizeof optval);
 			break;
 		case IP_FW_X:
-			if (IPFW2_LOADED)
-				error = ip_fw2_sockopt(sopt);
+			if (IPFW3_LOADED)
+				error = ip_fw3_sockopt(sopt);
 			else
 				error = ENOPROTOOPT;
 			break;
@@ -433,7 +433,7 @@ rip_ctloutput(netmsg_t msg)
 				inp->inp_flags &= ~INP_HDRINCL;
 			break;
 		case IP_FW_X:
-			if (IPFW2_LOADED)
+			if (IPFW3_LOADED)
 				error = ip_fw_ctl_x_ptr(sopt);
 			else
 				 error = ENOPROTOOPT;

@@ -35,6 +35,7 @@ SUBDIR=	adjkerntz \
 	init \
 	ip6fw \
 	ipfw \
+	ipfw3 \
 	iscontrol \
 	jscan \
 	kldconfig \
