@@ -114,7 +114,7 @@
 static int uplcom_debug = 0;
 
 static SYSCTL_NODE(_hw_usb, OID_AUTO, uplcom, CTLFLAG_RW, 0, "USB uplcom");
-SYSCTL_INT(_hw_usb_uplcom, OID_AUTO, debug, CTLFLAG_RWTUN,
+SYSCTL_INT(_hw_usb_uplcom, OID_AUTO, debug, CTLFLAG_RW,
     &uplcom_debug, 0, "Debug level");
 #endif
 

@@ -119,7 +119,7 @@ TUNABLE_INT("hw.usb.ucom.pss_mode", &ucom_pps_mode);
 #ifdef USB_DEBUG
 static int ucom_debug = 0;
 
-SYSCTL_INT(_hw_usb_ucom, OID_AUTO, debug, CTLFLAG_RWTUN,
+SYSCTL_INT(_hw_usb_ucom, OID_AUTO, debug, CTLFLAG_RW,
     &ucom_debug, 0, "ucom debug level");
 #endif
 
