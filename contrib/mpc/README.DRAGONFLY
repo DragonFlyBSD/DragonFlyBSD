@@ -1,12 +1,12 @@
-GNU MPC 1.0.1
-=============
+GNU MPC
+=======
 
 Original source can be downloaded from:
 http://www.multiprecision.org/mpc/download/
 
-file = mpc-1.0.1.tar.gz
-date = 6 SEP 2012
-size = 624125
-sha1 = 8c7e19ad0dd9b3b5cc652273403423d6cf0c5edf
+file = mpc-1.0.3.tar.gz
+date = 20 FEB 2015
+size = 669925
+sha1 = b8be66396c726fdc36ebb0f692ed8a8cca3bcc66
 
 A list of files and directories removed is in README.DELETED
