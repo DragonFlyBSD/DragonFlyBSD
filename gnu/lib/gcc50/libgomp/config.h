@@ -80,9 +80,6 @@
 /* Define to 1 if the target supports thread-local storage. */
 #define HAVE_TLS 1
 
-/* Define to 1 if the target use emutls for thread-local storage. */
-/* #undef USE_EMUTLS */
-
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
 
@@ -94,7 +91,7 @@
 #define LT_OBJDIR ".libs/"
 
 /* Define to hold the list of target names suitable for offloading. */
-#define OFFLOAD_TARGETS ""
+#define OFFLOAD_TARGETS "host_nonshm"
 
 /* Name of package */
 #define PACKAGE "libgomp"
@@ -116,6 +113,9 @@
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION "1.0"
+
+/* Define to 1 if the NVIDIA plugin is built, 0 if not. */
+#define PLUGIN_NVPTX 0
 
 /* Define if all infrastructure, needed for plugins, is supported. */
 #define PLUGIN_SUPPORT 1
@@ -143,6 +143,9 @@
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #define TIME_WITH_SYS_TIME 1
+
+/* Define to 1 if the target use emutls for thread-local storage. */
+/* #undef USE_EMUTLS */
 
 /* Version number of package */
 #define VERSION "1.0"

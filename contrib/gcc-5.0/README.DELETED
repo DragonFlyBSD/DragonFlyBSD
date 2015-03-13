@@ -717,6 +717,7 @@ libitm/config.h.in
 libitm/configure
 libitm/configure.ac
 libjava/
+libmpx/
 libobjc/ChangeLog
 libobjc/Makefile.in
 libobjc/THREADS

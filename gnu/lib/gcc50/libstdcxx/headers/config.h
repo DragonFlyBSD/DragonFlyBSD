@@ -335,7 +335,7 @@
 #define HAVE_SINL 1
 
 /* Defined if sleep exists. */
-#define HAVE_SLEEP 1
+/* #undef HAVE_SLEEP */
 
 /* Define to 1 if you have the `sqrtf' function. */
 #define HAVE_SQRTF 1
@@ -450,7 +450,7 @@
 #define HAVE_UNISTD_H 1
 
 /* Defined if usleep exists. */
-#define HAVE_USLEEP 1
+/* #undef HAVE_USLEEP */
 
 /* Defined if vfwscanf exists. */
 #define HAVE_VFWSCANF 1
@@ -816,10 +816,10 @@
 /* #undef _GLIBCXX_USE_CLOCK_GETTIME_SYSCALL */
 
 /* Defined if clock_gettime has monotonic clock support. */
-/* #undef _GLIBCXX_USE_CLOCK_MONOTONIC */
+#define _GLIBCXX_USE_CLOCK_MONOTONIC 1
 
 /* Defined if clock_gettime has realtime clock support. */
-/* #undef _GLIBCXX_USE_CLOCK_REALTIME */
+#define _GLIBCXX_USE_CLOCK_REALTIME 1
 
 /* Define if ISO/IEC TR 24733 decimal floating point types are supported on
    this host. */
@@ -844,7 +844,7 @@
 #define _GLIBCXX_USE_LONG_LONG 1
 
 /* Defined if nanosleep is available. */
-/* #undef _GLIBCXX_USE_NANOSLEEP */
+#define _GLIBCXX_USE_NANOSLEEP 1
 
 /* Define if NLS translations are to be used. */
 /* #undef _GLIBCXX_USE_NLS */
@@ -857,7 +857,7 @@
 #define _GLIBCXX_USE_RANDOM_TR1 1
 
 /* Defined if sched_yield is available. */
-/* #undef _GLIBCXX_USE_SCHED_YIELD */
+#define _GLIBCXX_USE_SCHED_YIELD 1
 
 /* Define if _SC_NPROCESSORS_ONLN is available in <unistd.h>. */
 #define _GLIBCXX_USE_SC_NPROCESSORS_ONLN 1
