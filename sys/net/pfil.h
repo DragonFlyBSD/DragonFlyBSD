@@ -83,6 +83,8 @@ int	pfil_head_unregister(struct pfil_head *);
 
 struct pfil_head *pfil_head_get(int, u_long);
 
+extern int filters_default_to_accept;
+
 /*
  * Used for a quick shortcut around the pfil routines if no hooks have been
  * installed.

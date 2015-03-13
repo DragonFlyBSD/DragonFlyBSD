@@ -4378,7 +4378,10 @@ ipfw_ctx_init_dispatch(netmsg_t nmsg)
 #ifdef IPFIREWALL_DEFAULT_TO_ACCEPT
 	def_rule->cmd[0].opcode = O_ACCEPT;
 #else
-	def_rule->cmd[0].opcode = O_DENY;
+	if (filters_default_to_accept)
+		def_rule->cmd[0].opcode = O_ACCEPT;
+	else
+		def_rule->cmd[0].opcode = O_DENY;
 #endif
 
 	def_rule->refcnt = 1;

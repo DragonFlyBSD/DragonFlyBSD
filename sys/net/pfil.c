@@ -37,6 +37,7 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/queue.h>
+#include <sys/sysctl.h>
 
 #include <net/if.h>
 #include <net/pfil.h>
@@ -91,6 +92,12 @@ static struct packet_filter_hook *
 
 static void		pfil_remove_hook_dispatch(netmsg_t);
 static void		pfil_add_hook_dispatch(netmsg_t);
+
+int filters_default_to_accept = 0;
+SYSCTL_INT(_net, OID_AUTO, filters_default_to_accept, CTLFLAG_RW,
+    &filters_default_to_accept, 0,
+    "cause ipfw* modules to not block by default");
+TUNABLE_INT("net.filters_default_to_accept", &filters_default_to_accept);
 
 /*
  * pfil_run_hooks() runs the specified packet filter hooks.
