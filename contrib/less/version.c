@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2012  Mark Nudelman
+ * Copyright (C) 1984-2014  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -762,6 +762,23 @@ v455  11/5/12   Fix typo.
 v456  11/8/12   Fix option string incompatibility.
 v457  12/8/12   Use new option string syntax only after --use-backslash.
 v458  4/4/13    Fix display bug in using up/down in cmd buffer.
+-----------------------------------------------------------------
+v459  5/6/13    Fix ++ bug.
+v460  6/19/13   Automate construction of Unicode tables.
+v461  6/21/13   Collapse multiple CRs before LF.
+v462  11/26/13  Don't overwrite history file, just append to it.
+v463  7/13/14   Misc. fixes.
+v464  7/19/14   Fix bugs & improve performance in & filtering
+                (thanks to John Sullivan).
+v465  8/9/14    More fixes from John Sullivan.
+v466  8/23/14   Add colon to LESSANSIMIDCHARS.
+v467  9/18/14   Misc. fixes.
+v468  9/18/14   Fix typo
+v469  10/2/14   Allow extra string in command to append to a multichar
+                cmd without executing it; fix bug using GNU regex.
+v470  10/5/14   Fix some compiler warnings.
+v471  12/14/14  Fix unget issues with prompt. Allow disabling history
+                when compiled value of LESSHISTFILE = "-".
 */
 
-char version[] = "458";
+char version[] = "471";
