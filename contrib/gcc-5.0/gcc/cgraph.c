@@ -663,7 +663,19 @@ cgraph_node::get_for_asmname (tree asmname)
 hashval_t
 cgraph_edge_hasher::hash (cgraph_edge *e)
 {
-  return htab_hash_pointer (e->call_stmt);
+  /* This is a really poor hash function, but it is what htab_hash_pointer
+     uses.  */
+  return (hashval_t) ((intptr_t)e->call_stmt >> 3);
+}
+
+/* Returns a hash value for X (which really is a cgraph_edge).  */
+
+hashval_t
+cgraph_edge_hasher::hash (gimple call_stmt)
+{
+  /* This is a really poor hash function, but it is what htab_hash_pointer
+     uses.  */
+  return (hashval_t) ((intptr_t)call_stmt >> 3);
 }
 
 /* Return nonzero if the call_stmt of of cgraph_edge X is stmt *Y.  */
@@ -680,9 +692,8 @@ static inline void
 cgraph_update_edge_in_call_site_hash (cgraph_edge *e)
 {
   gimple call = e->call_stmt;
-  *e->caller->call_site_hash->find_slot_with_hash (call,
-						   htab_hash_pointer (call),
-						   INSERT) = e;
+  *e->caller->call_site_hash->find_slot_with_hash
+      (call, cgraph_edge_hasher::hash (call), INSERT) = e;
 }
 
 /* Add call graph edge E to call site hash of its caller.  */
@@ -695,8 +706,7 @@ cgraph_add_edge_to_call_site_hash (cgraph_edge *e)
   if (e->speculative && e->indirect_unknown_callee)
     return;
   cgraph_edge **slot = e->caller->call_site_hash->find_slot_with_hash
-				   (e->call_stmt,
-				    htab_hash_pointer (e->call_stmt), INSERT);
+      (e->call_stmt, cgraph_edge_hasher::hash (e->call_stmt), INSERT);
   if (*slot)
     {
       gcc_assert (((cgraph_edge *)*slot)->speculative);
@@ -718,8 +728,8 @@ cgraph_node::get_edge (gimple call_stmt)
   int n = 0;
 
   if (call_site_hash)
-    return call_site_hash->find_with_hash (call_stmt,
-					   htab_hash_pointer (call_stmt));
+    return call_site_hash->find_with_hash
+	(call_stmt, cgraph_edge_hasher::hash (call_stmt));
 
   /* This loop may turn out to be performance problem.  In such case adding
      hashtables into call nodes with very many edges is probably best
@@ -782,7 +792,7 @@ cgraph_edge::set_call_stmt (gcall *new_stmt, bool update_speculative)
       && (!speculative || !indirect_unknown_callee))
     {
       caller->call_site_hash->remove_elt_with_hash
-	(call_stmt, htab_hash_pointer (call_stmt));
+	(call_stmt, cgraph_edge_hasher::hash (call_stmt));
     }
 
   cgraph_edge *e = this;
@@ -987,8 +997,8 @@ cgraph_edge::remove_caller (void)
 	caller->callees = next_callee;
     }
   if (caller->call_site_hash)
-    caller->call_site_hash->remove_elt_with_hash (call_stmt,
-						  htab_hash_pointer (call_stmt));
+    caller->call_site_hash->remove_elt_with_hash
+	(call_stmt, cgraph_edge_hasher::hash (call_stmt));
 }
 
 /* Put the edge onto the free list.  */
@@ -1711,7 +1721,10 @@ cgraph_node::release_body (bool keep_arguments)
     DECL_INITIAL (decl) = error_mark_node;
   release_function_body (decl);
   if (lto_file_data)
-    lto_free_function_in_decl_state_for_node (this);
+    {
+      lto_free_function_in_decl_state_for_node (this);
+      lto_file_data = NULL;
+    }
 }
 
 /* Remove function from symbol table.  */
@@ -1789,12 +1802,17 @@ cgraph_node::remove (void)
       n = cgraph_node::get (decl);
       if (!n
 	  || (!n->clones && !n->clone_of && !n->global.inlined_to
-	      && (symtab->global_info_ready
+	      && ((symtab->global_info_ready || in_lto_p)
 		  && (TREE_ASM_WRITTEN (n->decl)
 		      || DECL_EXTERNAL (n->decl)
 		      || !n->analyzed
 		      || (!flag_wpa && n->in_other_partition)))))
 	release_body ();
+    }
+  else
+    {
+      lto_free_function_in_decl_state_for_node (this);
+      lto_file_data = NULL;
     }
 
   decl = NULL;
@@ -2415,7 +2433,7 @@ nonremovable_p (cgraph_node *node, void *)
    calls to THIS.  */
 
 bool
-cgraph_node::can_remove_if_no_direct_calls_p (void)
+cgraph_node::can_remove_if_no_direct_calls_p (bool will_inline)
 {
   struct ipa_ref *ref;
 
@@ -2429,6 +2447,9 @@ cgraph_node::can_remove_if_no_direct_calls_p (void)
 	return false;
       return !call_for_symbol_and_aliases (nonremovable_p, NULL, true);
     }
+
+  if (will_inline && address_taken)
+    return false;
 
   /* Otheriwse check if we can remove the symbol itself and then verify
      that only uses of the comdat groups are direct call to THIS
@@ -2454,12 +2475,16 @@ cgraph_node::can_remove_if_no_direct_calls_p (void)
       /* If we see different symbol than THIS, be sure to check calls.  */
       if (next->ultimate_alias_target () != target)
 	for (cgraph_edge *e = next->callers; e; e = e->next_caller)
-	  if (e->caller->get_comdat_group () != get_comdat_group ())
+	  if (e->caller->get_comdat_group () != get_comdat_group ()
+	      || will_inline)
 	    return false;
 
-      for (int i = 0; next->iterate_referring (i, ref); i++)
-	if (ref->referring->get_comdat_group () != get_comdat_group ())
-	  return false;
+      /* If function is not being inlined, we care only about
+	 references outside of the comdat group.  */
+      if (!will_inline)
+        for (int i = 0; next->iterate_referring (i, ref); i++)
+	  if (ref->referring->get_comdat_group () != get_comdat_group ())
+	    return false;
     }
   return true;
 }
@@ -2479,9 +2504,9 @@ cgraph_node::can_remove_if_no_direct_calls_p (void)
    linkonce section.  */
 
 bool
-cgraph_node::will_be_removed_from_program_if_no_direct_calls_p (void)
+cgraph_node::will_be_removed_from_program_if_no_direct_calls_p
+	 (bool will_inline)
 {
-  struct ipa_ref *ref;
   gcc_assert (!global.inlined_to);
   if (DECL_EXTERNAL (decl))
     return true;
@@ -2496,6 +2521,9 @@ cgraph_node::will_be_removed_from_program_if_no_direct_calls_p (void)
       if (same_comdat_group && externally_visible)
 	{
 	  struct cgraph_node *target = ultimate_alias_target ();
+
+	  if (will_inline && address_taken)
+	    return true;
 	  for (cgraph_node *next = dyn_cast<cgraph_node *> (same_comdat_group);
 	       next != this;
 	       next = dyn_cast<cgraph_node *> (next->same_comdat_group))
@@ -2510,18 +2538,15 @@ cgraph_node::will_be_removed_from_program_if_no_direct_calls_p (void)
 		 be sure to check calls.  */
 	      if (next->ultimate_alias_target () != target)
 		for (cgraph_edge *e = next->callers; e; e = e->next_caller)
-		  if (e->caller->get_comdat_group () != get_comdat_group ())
+		  if (e->caller->get_comdat_group () != get_comdat_group ()
+		      || will_inline)
 		    return false;
-
-	      for (int i = 0; next->iterate_referring (i, ref); i++)
-		if (ref->referring->get_comdat_group () != get_comdat_group ())
-		  return false;
 	    }
 	}
       return true;
     }
   else
-    return can_remove_if_no_direct_calls_p ();
+    return can_remove_if_no_direct_calls_p (will_inline);
 }
 
 
@@ -3201,6 +3226,8 @@ cgraph_node::get_untransformed_body (void)
   lto_free_section_data (file_data, LTO_section_function_body, name,
 			 data, len);
   lto_free_function_in_decl_state_for_node (this);
+  /* Keep lto file data so ipa-inline-analysis knows about cross module
+     inlining.  */
 
   timevar_pop (TV_IPA_LTO_GIMPLE_IN);
 
