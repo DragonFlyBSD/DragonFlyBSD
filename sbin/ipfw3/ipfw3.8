@@ -3,10 +3,10 @@
 .\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.20 2008/11/23 21:55:52 swildner Exp $
 .\"
 .Dd October 3, 2008
-.Dt IPFW 8
+.Dt IPFW3 8
 .Os
 .Sh NAME
-.Nm ipfw
+.Nm ipfw3
 .Nd IP firewall and traffic shaper control program
 .Sh SYNOPSIS
 .Nm
@@ -82,7 +82,7 @@ DragonflyBSD since Feb 2015. This version of
 .Nm ipfw3
 is rewrited for DragonflyBSD and it is not fully compatible with ipfw in
 FreeBSD. The differences between the two are listed in Section
-.Sx IPFW2 ENHANCEMENTS ,
+.Sx IPFW3 ENHANCEMENTS ,
 which you are encouraged to read to revise older rulesets and possibly
 write them more efficiently.
 .Ed
@@ -1459,7 +1459,7 @@ version of
 is probably not as straightforward as you would think.
 I recommend the following command line:
 .Bd -literal -offset indent
-kldload /boot/modules/ipfw.ko && \e
+kldload /boot/modules/ipfw3.ko && \e
 ipfw add 32000 allow ip
 .Ed
 .Pp
@@ -1497,6 +1497,11 @@ These are shown below together with their default value
 .Xr sysctl 8
 command what value is actually in use) and meaning:
 .Bl -tag -width indent
+.It Em net.filters_default_to_accept : No 0
+If set prior to loading the
+.Nm
+kernel module, the filter will default to allowing all packets through.
+If not set the filter will likely default to not allowing any packets through.
 .It Em net.inet.ip.dummynet.expire : No 1
 Lazily delete dynamic pipes/queue once they have no pending traffic.
 You can disable this by setting the variable to 0, in which case

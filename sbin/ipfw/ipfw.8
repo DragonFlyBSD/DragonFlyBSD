@@ -1525,6 +1525,11 @@ These are shown below together with their default value
 .Xr sysctl 8
 command what value is actually in use) and meaning:
 .Bl -tag -width indent
+.It Em net.filters_default_to_accept : No 0
+If set prior to loading the
+.Nm
+kernel module, the filter will default to allowing all packets through.
+If not set the filter will likely default to not allowing any packets through.
 .It Em net.inet.ip.dummynet.expire : No 1
 Lazily delete dynamic pipes/queue once they have no pending traffic.
 You can disable this by setting the variable to 0, in which case
