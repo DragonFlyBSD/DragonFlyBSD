@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2012  Mark Nudelman
+ * Copyright (C) 1984-2014  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -54,7 +54,7 @@ struct buf {
  * The file state is maintained in a filestate structure.
  * A pointer to the filestate is kept in the ifile structure.
  */
-#define	BUFHASH_SIZE	64
+#define	BUFHASH_SIZE	1024
 struct filestate {
 	struct bufnode buflist;
 	struct bufnode hashtbl[BUFHASH_SIZE];
@@ -533,6 +533,32 @@ ch_end_seek()
 		if (ABORT_SIGS())
 			return (1);
 	return (0);
+}
+
+/*
+ * Seek to the last position in the file that is currently buffered.
+ */
+	public int
+ch_end_buffer_seek()
+{
+	register struct buf *bp;
+	register struct bufnode *bn;
+	POSITION buf_pos;
+	POSITION end_pos;
+
+	if (thisfile == NULL || (ch_flags & CH_CANSEEK))
+		return (ch_end_seek());
+
+	end_pos = 0;
+	FOR_BUFS(bn)
+	{
+		bp = bufnode_buf(bn);
+		buf_pos = (bp->block * LBUFSIZE) + bp->datasize;
+		if (buf_pos > end_pos)
+			end_pos = buf_pos;
+	}
+
+	return (ch_seek(end_pos));
 }
 
 /*
