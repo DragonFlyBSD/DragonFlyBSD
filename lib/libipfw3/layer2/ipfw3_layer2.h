@@ -35,6 +35,6 @@
 #ifndef _IPFW_LAYER2_H
 #define _IPFW_LAYER2_H
 
-#include "../../../../sys/net/ipfw3_layer2/ip_fw3_layer2.h"
+#include "../../../sys/net/ipfw3_layer2/ip_fw3_layer2.h"
 
 #endif

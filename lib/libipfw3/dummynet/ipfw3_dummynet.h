@@ -35,6 +35,6 @@
 #ifndef _IPFW_DUMMYNET_H
 #define _IPFW_DUMMYNET_H
 
-#include "../../../../sys/net/dummynet3/ip_dummynet3.h"
+#include "../../../sys/net/dummynet3/ip_dummynet3.h"
 
 #endif

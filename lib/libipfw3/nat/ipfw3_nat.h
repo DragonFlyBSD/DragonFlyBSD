@@ -35,6 +35,6 @@
 #ifndef _IPFW_NAT_H
 #define _IPFW_NAT_H
 
-#include "../../../../sys/net/ipfw3_nat/ip_fw3_nat.h"
+#include "../../../sys/net/ipfw3_nat/ip_fw3_nat.h"
 
 #endif

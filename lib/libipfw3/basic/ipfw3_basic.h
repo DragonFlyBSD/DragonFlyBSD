@@ -35,6 +35,6 @@
 #ifndef _IPFW_BASIC_H
 #define _IPFW_BASIC_H
 
-#include <../../../sys/net/ipfw3_basic/ip_fw3_basic.h>
+#include "../../../sys/net/ipfw3_basic/ip_fw3_basic.h"
 
 #endif
