@@ -47,7 +47,7 @@ cleanup(int sig)
 {
 	(void) rpcb_unset(RUSERSPROG, RUSERSVERS_IDLE, NULL);
 	(void) rpcb_unset(RUSERSPROG, RUSERSVERS_ORIG, NULL);
-        exit(0);
+	exit(0);
 }
 
 int
@@ -58,26 +58,26 @@ main(int argc, char *argv[])
 	struct sockaddr_storage from;
 	int fromlen;
 
-        /*
-         * See if inetd started us
-         */
+	/*
+	 * See if inetd started us
+	 */
 	fromlen = sizeof(from);
-        if (getsockname(0, (struct sockaddr *)&from, &fromlen) < 0) {
-                from_inetd = 0;
-        }
+	if (getsockname(0, (struct sockaddr *)&from, &fromlen) < 0) {
+		from_inetd = 0;
+	}
 
-        if (!from_inetd) {
-                daemon(0, 0);
+	if (!from_inetd) {
+		daemon(0, 0);
 
-                (void) pmap_unset(RUSERSPROG, RUSERSVERS_IDLE);
-                (void) pmap_unset(RUSERSPROG, RUSERSVERS_ORIG);
+		(void) pmap_unset(RUSERSPROG, RUSERSVERS_IDLE);
+		(void) pmap_unset(RUSERSPROG, RUSERSVERS_ORIG);
 
 		(void) signal(SIGINT, cleanup);
 		(void) signal(SIGTERM, cleanup);
 		(void) signal(SIGHUP, cleanup);
-        }
+	}
 
-        openlog("rpc.rusersd", LOG_CONS|LOG_PID, LOG_DAEMON);
+	openlog("rpc.rusersd", LOG_CONS|LOG_PID, LOG_DAEMON);
 
 	if (from_inetd) {
 		transp = svc_tli_create(0, NULL, NULL, 0, 0);
@@ -105,7 +105,7 @@ main(int argc, char *argv[])
 		syslog(LOG_ERR, "unable to register (RUSERSPROG, RUSERSVERS_ORIG, %s)", (!from_inetd)?"udp":"(inetd)");
 		exit(1);
 	}
-        svc_run();
+	svc_run();
 	syslog(LOG_ERR, "svc_run returned");
 	exit(1);
 }
