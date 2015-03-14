@@ -36,8 +36,18 @@
 
 #define trace_i915_gem_object_bind(a, b)
 #define trace_i915_gem_object_change_domain(a,b,c)
+#define trace_i915_gem_object_clflush(obj)
 #define trace_i915_gem_object_create(obj)
+#define trace_i915_gem_object_destroy(obj)
+#define trace_i915_gem_object_fault(a,b,c,d)
+#define trace_i915_gem_object_pread(obj, offset, size)
 #define trace_i915_gem_object_pwrite(obj, offset, size)
+#define trace_i915_gem_object_unbind(obj)
+
+#define trace_i915_gem_request_add(ring, seqno)
+#define trace_i915_gem_request_retire(ring, seqno)
+#define trace_i915_gem_request_wait_begin(ring, seqno)
+#define trace_i915_gem_request_wait_end(ring, seqno)
 
 #define trace_i915_ring_wait_begin(a)
 #define trace_i915_ring_wait_end(a)
