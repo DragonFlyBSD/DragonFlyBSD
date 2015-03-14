@@ -84,6 +84,7 @@ void
 hammer_cache_flush(void)
 {
 	struct cache_info *cache;
+	struct cache_info *p = NULL;
 	int target;
 	int count = 0;
 	int ncache = NCache;
@@ -91,8 +92,12 @@ hammer_cache_flush(void)
 	if (CacheUse >= CacheMax) {
 		target = CacheMax / 2;
 		while ((cache = TAILQ_FIRST(&CacheList)) != NULL) {
+			if (cache == p)
+				break;  /* seen this before */
 			++count;
 			if (cache->refs) {
+				if (p == NULL)
+					p = cache;
 				TAILQ_REMOVE(&CacheList, cache, entry);
 				TAILQ_INSERT_TAIL(&CacheList, cache, entry);
 				continue;
