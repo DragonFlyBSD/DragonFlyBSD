@@ -1735,6 +1735,49 @@ i915_gem_object_put_pages(struct drm_i915_gem_object *obj)
 	return 0;
 }
 
+static long
+__i915_gem_shrink(struct drm_i915_private *dev_priv, long target,
+		  bool purgeable_only)
+{
+	struct drm_i915_gem_object *obj, *next;
+	long count = 0;
+
+	list_for_each_entry_safe(obj, next,
+				 &dev_priv->mm.unbound_list,
+				 global_list) {
+#if 0
+		if ((i915_gem_object_is_purgeable(obj) || !purgeable_only) &&
+		    i915_gem_object_put_pages(obj) == 0) {
+			count += obj->base.size >> PAGE_SHIFT;
+			if (count >= target)
+				return count;
+		}
+#endif
+	}
+
+	list_for_each_entry_safe(obj, next,
+				 &dev_priv->mm.inactive_list,
+				 mm_list) {
+#if 0
+		if ((i915_gem_object_is_purgeable(obj) || !purgeable_only) &&
+		    i915_gem_object_unbind(obj) == 0 &&
+		    i915_gem_object_put_pages(obj) == 0) {
+			count += obj->base.size >> PAGE_SHIFT;
+			if (count >= target)
+				return count;
+		}
+#endif
+	}
+
+	return count;
+}
+
+static long
+i915_gem_purge(struct drm_i915_private *dev_priv, long target)
+{
+	return __i915_gem_shrink(dev_priv, target, true);
+}
+
 static int
 i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 {
@@ -2307,49 +2350,6 @@ i915_gem_retire_requests(struct drm_device *dev)
 
 	for_each_ring(ring, dev_priv, i)
 		i915_gem_retire_requests_ring(ring);
-}
-
-static long
-__i915_gem_shrink(struct drm_i915_private *dev_priv, long target,
-		  bool purgeable_only)
-{
-	struct drm_i915_gem_object *obj, *next;
-	long count = 0;
-
-	list_for_each_entry_safe(obj, next,
-				 &dev_priv->mm.unbound_list,
-				 global_list) {
-#if 0
-		if ((i915_gem_object_is_purgeable(obj) || !purgeable_only) &&
-		    i915_gem_object_put_pages(obj) == 0) {
-			count += obj->base.size >> PAGE_SHIFT;
-			if (count >= target)
-				return count;
-		}
-#endif
-	}
-
-	list_for_each_entry_safe(obj, next,
-				 &dev_priv->mm.inactive_list,
-				 mm_list) {
-#if 0
-		if ((i915_gem_object_is_purgeable(obj) || !purgeable_only) &&
-		    i915_gem_object_unbind(obj) == 0 &&
-		    i915_gem_object_put_pages(obj) == 0) {
-			count += obj->base.size >> PAGE_SHIFT;
-			if (count >= target)
-				return count;
-		}
-#endif
-	}
-
-	return count;
-}
-
-static long
-i915_gem_purge(struct drm_i915_private *dev_priv, long target)
-{
-	return __i915_gem_shrink(dev_priv, target, true);
 }
 
 static void
