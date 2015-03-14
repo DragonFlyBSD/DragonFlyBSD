@@ -65,7 +65,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libm \
 	libmagic \
 	libmandoc \
-	${_libmilter} \
 	${_libnetgraph} \
 	libopie \
 	libpam \

@@ -2871,6 +2871,7 @@ TO_REMOVE+=/usr/share/man/man8/smrsh.8.gz
 TO_REMOVE+=/usr/share/sendmail
 TO_REMOVE+=/usr/share/libg++
 TO_REMOVE+=/etc/mail/helpfile
+TO_REMOVE+=/etc/mtree/BSD.sendmail.dist
 TO_REMOVE+=/boot/kernel/if_acx.ko
 TO_REMOVE+=/usr/share/man/cat4/acx.4.gz
 TO_REMOVE+=/usr/share/man/man4/acx.4.gz
