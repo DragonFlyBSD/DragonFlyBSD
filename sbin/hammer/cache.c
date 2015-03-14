@@ -86,6 +86,7 @@ hammer_cache_flush(void)
 	struct cache_info *cache;
 	int target;
 	int count = 0;
+	int ncache = NCache;
 
 	if (CacheUse >= CacheMax) {
 		target = CacheMax / 2;
@@ -122,6 +123,9 @@ hammer_cache_flush(void)
 			if (CacheUse < target)
 				break;
 		}
+		if (DebugOpt)
+			fprintf(stderr, "hammer_cache_flush: free %d/%d cache\n",
+				ncache - NCache, ncache);
 	}
 }
 
