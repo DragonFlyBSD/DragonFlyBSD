@@ -734,7 +734,7 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule)
 	ifnet_domsg(&nmsg->lmsg, 0);
 
 	DPRINTF("++ installed rule %d, static count now %d\n",
-			rule->rulenum, static_count);
+			ioc_rule->rulenum, static_count);
 }
 
 /**

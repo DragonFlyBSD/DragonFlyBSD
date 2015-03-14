@@ -475,16 +475,6 @@ struct ipfw_module{
 #define NEXT_ARG	ac--; if(ac > 0){av++;}
 #define NEXT_ARG1 	(*ac)--; if(*ac > 0){(*av)++;}
 
-#ifdef IPFIREWALL_DEBUG
-#define DPRINTF(fmt, ...)			\
-do {						\
-	if (fw_debug > 0)			\
-		kprintf(fmt, __VA_ARGS__);	\
-} while (0)
-#else
-#define DPRINTF(fmt, ...)   ((void)0)
-#endif
-
 #define MATCH_REVERSE	0
 #define MATCH_FORWARD	1
 #define MATCH_NONE	2
