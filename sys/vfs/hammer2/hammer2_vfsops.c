@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -58,8 +58,6 @@
 #include "hammer2.h"
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
-
-#include "hammer2.h"
 #include "hammer2_lz4.h"
 
 #include "zlib/hammer2_zlib.h"
@@ -238,11 +236,6 @@ static void zero_write(struct buf *bp, hammer2_trans_t *trans,
 static void hammer2_write_bp(hammer2_cluster_t *cluster, struct buf *bp,
 				int ioflag, int pblksize, int *errorp,
 				int check_algo);
-
-static int hammer2_rcvdmsg(kdmsg_msg_t *msg);
-static void hammer2_autodmsg(kdmsg_msg_t *msg);
-static int hammer2_lnk_span_reply(kdmsg_state_t *state, kdmsg_msg_t *msg);
-
 
 /*
  * HAMMER2 vfs operations.
@@ -651,17 +644,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		}
 		++hmp->pmp_count;
 
-		/*
-		 * XXX RDONLY stuff is totally broken FIXME XXX
-		 *
-		 * Automatic LNK_CONN
-		 * Automatic handling of received LNK_SPAN
-		 * No automatic LNK_SPAN generation - we do this ourselves
-		 */
-		kdmsg_iocom_init(&hmp->iocom, hmp,
-				 KDMSG_IOCOMF_AUTOCONN |
-				 KDMSG_IOCOMF_AUTORXSPAN,
-				 hmp->mchain, hammer2_rcvdmsg);
+		hammer2_iocom_init(hmp);
 
 		/*
 		 * Ref the cluster management messaging descriptor.  The mount
@@ -1692,8 +1675,6 @@ hammer2_vfs_unmount_hmp1(struct mount *mp, hammer2_mount_t *hmp)
 
 	kprintf("hammer2_unmount hmp=%p pmpcnt=%d\n", hmp, hmp->pmp_count);
 
-	kdmsg_iocom_uninit(&hmp->iocom);	/* XXX chain depend deadlck? */
-
 	/*
 	 * Cycle the volume data lock as a safety (probably not needed any
 	 * more).  To ensure everything is out we need to flush at least
@@ -1711,6 +1692,11 @@ hammer2_vfs_unmount_hmp1(struct mount *mp, hammer2_mount_t *hmp)
 		hammer2_vfs_sync(mp, MNT_WAIT);
 		hammer2_vfs_sync(mp, MNT_WAIT);
 	}
+
+	/*
+	 * XXX chain depend deadlock?
+	 */
+	hammer2_iocom_uninit(hmp);
 
 	if (hmp->pmp_count == 0) {
 		if ((hmp->vchain.flags | hmp->fchain.flags) &
@@ -2534,249 +2520,6 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 		kprintf("hammer2: no valid volume headers found!\n");
 	}
 	return (error);
-}
-
-/*
- * Reconnect using the passed file pointer.  The caller must ref the
- * fp for us.
- */
-void
-hammer2_cluster_reconnect(hammer2_mount_t *hmp, struct file *fp)
-{
-	size_t name_len;
-	const char *name = "disk-volume";
-
-	/*
-	 * Closes old comm descriptor, kills threads, cleans up
-	 * states, then installs the new descriptor and creates
-	 * new threads.
-	 */
-	kdmsg_iocom_reconnect(&hmp->iocom, fp, "hammer2");
-
-	/*
-	 * Setup LNK_CONN fields for autoinitiated state machine.  We
-	 * will use SPANs to advertise multiple PFSs so only pass the
-	 * fsid and HAMMER2_PFSTYPE_SUPROOT for the AUTOCONN.
-	 *
-	 * We are not initiating a LNK_SPAN so we do not have to set-up
-	 * iocom.auto_lnk_span.
-	 */
-	bzero(&hmp->iocom.auto_lnk_conn.pfs_clid,
-	      sizeof(hmp->iocom.auto_lnk_conn.pfs_clid));
-	hmp->iocom.auto_lnk_conn.pfs_fsid = hmp->voldata.fsid;
-	hmp->iocom.auto_lnk_conn.pfs_type = HAMMER2_PFSTYPE_SUPROOT;
-	hmp->iocom.auto_lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
-#if 0
-	hmp->iocom.auto_lnk_conn.peer_type = hmp->voldata.peer_type;
-#endif
-	hmp->iocom.auto_lnk_conn.peer_type = DMSG_PEER_HAMMER2;
-
-	/*
-	 * Filter adjustment.  Clients do not need visibility into other
-	 * clients (otherwise millions of clients would present a serious
-	 * problem).  The fs_label also serves to restrict the namespace.
-	 */
-	hmp->iocom.auto_lnk_conn.peer_mask = 1LLU << DMSG_PEER_HAMMER2;
-	hmp->iocom.auto_lnk_conn.pfs_mask = (uint64_t)-1;
-
-#if 0
-	switch (ipdata->pfs_type) {
-	case DMSG_PFSTYPE_CLIENT:
-		hmp->iocom.auto_lnk_conn.peer_mask &=
-				~(1LLU << DMSG_PFSTYPE_CLIENT);
-		break;
-	default:
-		break;
-	}
-#endif
-
-	name_len = strlen(name);
-	if (name_len >= sizeof(hmp->iocom.auto_lnk_conn.fs_label))
-		name_len = sizeof(hmp->iocom.auto_lnk_conn.fs_label) - 1;
-	bcopy(name, hmp->iocom.auto_lnk_conn.fs_label, name_len);
-	hmp->iocom.auto_lnk_conn.fs_label[name_len] = 0;
-
-	kdmsg_iocom_autoinitiate(&hmp->iocom, hammer2_autodmsg);
-}
-
-static int
-hammer2_rcvdmsg(kdmsg_msg_t *msg)
-{
-	kprintf("RCVMSG %08x\n", msg->tcmd);
-
-	switch(msg->tcmd) {
-	case DMSG_DBG_SHELL:
-		/*
-		 * (non-transaction)
-		 * Execute shell command (not supported atm)
-		 */
-		kdmsg_msg_result(msg, DMSG_ERR_NOSUPP);
-		break;
-	case DMSG_DBG_SHELL | DMSGF_REPLY:
-		/*
-		 * (non-transaction)
-		 */
-		if (msg->aux_data) {
-			msg->aux_data[msg->aux_size - 1] = 0;
-			kprintf("HAMMER2 DBG: %s\n", msg->aux_data);
-		}
-		break;
-	default:
-		/*
-		 * Unsupported message received.  We only need to
-		 * reply if it's a transaction in order to close our end.
-		 * Ignore any one-way messages or any further messages
-		 * associated with the transaction.
-		 *
-		 * NOTE: This case also includes DMSG_LNK_ERROR messages
-		 *	 which might be one-way, replying to those would
-		 *	 cause an infinite ping-pong.
-		 */
-		if (msg->any.head.cmd & DMSGF_CREATE)
-			kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
-		break;
-	}
-	return(0);
-}
-
-/*
- * This function is called after KDMSG has automatically handled processing
- * of a LNK layer message (typically CONN, SPAN, or CIRC).
- *
- * We tag off the LNK_CONN to trigger our LNK_VOLCONF messages which
- * advertises all available hammer2 super-root volumes.
- */
-static void hammer2_update_spans(hammer2_mount_t *hmp, kdmsg_state_t *state);
-
-static void
-hammer2_autodmsg(kdmsg_msg_t *msg)
-{
-	hammer2_mount_t *hmp = msg->state->iocom->handle;
-	int copyid;
-
-	kprintf("RCAMSG %08x\n", msg->tcmd);
-
-	switch(msg->tcmd) {
-	case DMSG_LNK_CONN | DMSGF_CREATE | DMSGF_REPLY:
-	case DMSG_LNK_CONN | DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY:
-		if (msg->any.head.cmd & DMSGF_CREATE) {
-			kprintf("HAMMER2: VOLDATA DUMP\n");
-
-			/*
-			 * Dump the configuration stored in the volume header.
-			 * This will typically be import/export access rights,
-			 * master encryption keys (encrypted), etc.
-			 */
-			hammer2_voldata_lock(hmp);
-			copyid = 0;
-			while (copyid < HAMMER2_COPYID_COUNT) {
-				if (hmp->voldata.copyinfo[copyid].copyid)
-					hammer2_volconf_update(hmp, copyid);
-				++copyid;
-			}
-			hammer2_voldata_unlock(hmp);
-
-			kprintf("HAMMER2: INITIATE SPANs\n");
-			hammer2_update_spans(hmp, msg->state);
-		}
-		if ((msg->any.head.cmd & DMSGF_DELETE) &&
-		    msg->state && (msg->state->txcmd & DMSGF_DELETE) == 0) {
-			kprintf("HAMMER2: CONN WAS TERMINATED\n");
-		}
-		break;
-	default:
-		break;
-	}
-}
-
-/*
- * Update LNK_SPAN state
- */
-static void
-hammer2_update_spans(hammer2_mount_t *hmp, kdmsg_state_t *state)
-{
-	const hammer2_inode_data_t *ripdata;
-	hammer2_cluster_t *cparent;
-	hammer2_cluster_t *cluster;
-	hammer2_pfsmount_t *spmp;
-	hammer2_key_t key_next;
-	kdmsg_msg_t *rmsg;
-	size_t name_len;
-	int ddflag;
-
-	/*
-	 * Lookup mount point under the media-localized super-root.
-	 *
-	 * cluster->pmp will incorrectly point to spmp and must be fixed
-	 * up later on.
-	 */
-	spmp = hmp->spmp;
-	cparent = hammer2_inode_lock_ex(spmp->iroot);
-	cluster = hammer2_cluster_lookup(cparent, &key_next,
-					 HAMMER2_KEY_MIN,
-					 HAMMER2_KEY_MAX,
-					 0, &ddflag);
-	while (cluster) {
-		if (hammer2_cluster_type(cluster) != HAMMER2_BREF_TYPE_INODE)
-			continue;
-		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-		kprintf("UPDATE SPANS: %s\n", ripdata->filename);
-
-		rmsg = kdmsg_msg_alloc(state, DMSG_LNK_SPAN | DMSGF_CREATE,
-				       hammer2_lnk_span_reply, NULL);
-		rmsg->any.lnk_span.pfs_clid = ripdata->pfs_clid;
-		rmsg->any.lnk_span.pfs_fsid = ripdata->pfs_fsid;
-		rmsg->any.lnk_span.pfs_type = ripdata->pfs_type;
-		rmsg->any.lnk_span.peer_type = DMSG_PEER_HAMMER2;
-		rmsg->any.lnk_span.proto_version = DMSG_SPAN_PROTO_1;
-		name_len = ripdata->name_len;
-		if (name_len >= sizeof(rmsg->any.lnk_span.fs_label))
-			name_len = sizeof(rmsg->any.lnk_span.fs_label) - 1;
-		bcopy(ripdata->filename, rmsg->any.lnk_span.fs_label, name_len);
-
-		kdmsg_msg_write(rmsg);
-
-		cluster = hammer2_cluster_next(cparent, cluster,
-					       &key_next,
-					       key_next,
-					       HAMMER2_KEY_MAX,
-					       0);
-	}
-	hammer2_inode_unlock_ex(spmp->iroot, cparent);
-}
-
-static
-int
-hammer2_lnk_span_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
-{
-	if ((state->txcmd & DMSGF_DELETE) == 0 &&
-	    (msg->any.head.cmd & DMSGF_DELETE)) {
-		kdmsg_msg_reply(msg, 0);
-	}
-	return 0;
-}
-
-/*
- * Volume configuration updates are passed onto the userland service
- * daemon via the open LNK_CONN transaction.
- */
-void
-hammer2_volconf_update(hammer2_mount_t *hmp, int index)
-{
-	kdmsg_msg_t *msg;
-
-	/* XXX interlock against connection state termination */
-	kprintf("volconf update %p\n", hmp->iocom.conn_state);
-	if (hmp->iocom.conn_state) {
-		kprintf("TRANSMIT VOLCONF VIA OPEN CONN TRANSACTION\n");
-		msg = kdmsg_msg_alloc(hmp->iocom.conn_state,
-				      DMSG_LNK_HAMMER2_VOLCONF,
-				      NULL, NULL);
-		H2_LNK_VOLCONF(msg)->copy = hmp->voldata.copyinfo[index];
-		H2_LNK_VOLCONF(msg)->mediaid = hmp->voldata.fsid;
-		H2_LNK_VOLCONF(msg)->index = index;
-		kdmsg_msg_write(msg);
-	}
 }
 
 /*

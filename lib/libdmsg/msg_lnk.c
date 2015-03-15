@@ -534,6 +534,8 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 	char *alloc = NULL;
 
 	/*
+	 * XXX
+	 *
 	 * Ignore reply to LNK_SPAN.  The reply is expected and will commands
 	 * to flow in both directions on the open transaction.  This will also
 	 * ignore DMSGF_REPLY|DMSGF_DELETE messages.  Since we take no action

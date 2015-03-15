@@ -627,9 +627,10 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 		++cbinfo->count_l0cleans;
 	} else if (bindex < 7) {
 		++bindex;
-		if (live->linear > bindex * HAMMER2_FREEMAP_BLOCK_SIZE)
+		if (live->linear > bindex * HAMMER2_FREEMAP_BLOCK_SIZE) {
 			live->linear = bindex * HAMMER2_FREEMAP_BLOCK_SIZE;
 			++cbinfo->count_linadjusts;
+		}
 	}
 
 #if 0

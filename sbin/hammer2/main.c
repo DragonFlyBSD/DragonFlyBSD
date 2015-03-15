@@ -69,7 +69,7 @@ main(int ac, char **av)
 			break;
 		case 'd':
 			if (DebugOpt)
-				DMsgDebugOpt = 1;
+				++DMsgDebugOpt;
 			DebugOpt = 1;
 			break;
 		case 'f':

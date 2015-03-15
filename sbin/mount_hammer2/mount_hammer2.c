@@ -142,7 +142,7 @@ cluster_connect(const char *volume __unused)
 	}
 	bzero(&lsin, sizeof(lsin));
 	lsin.sin_family = AF_INET;
-	lsin.sin_addr.s_addr = 0;
+	lsin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	lsin.sin_port = htons(DMSG_LISTEN_PORT);
 
 	if (connect(fd, (struct sockaddr *)&lsin, sizeof(lsin)) < 0) {

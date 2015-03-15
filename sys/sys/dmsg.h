@@ -202,6 +202,9 @@
  * may be negotiated away later.
  */
 
+#define DMSG_TERMINATE_STRING(ary)	\
+	do { (ary)[sizeof(ary) - 1] = 0; } while (0)
+
 /*
  * dmsg_hdr must be 64 bytes
  */
