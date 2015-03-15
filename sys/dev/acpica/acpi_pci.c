@@ -323,7 +323,7 @@ acpi_pci_attach(device_t dev)
 	return (bus_generic_attach(dev));
 }
 
-int
+static int
 acpi_pci_suspend(device_t dev)
 {
 	int dstate, error, i, numdevs;
@@ -373,7 +373,7 @@ acpi_pci_suspend(device_t dev)
 	return (0);
 }
 
-int
+static int
 acpi_pci_resume(device_t dev)
 {
 	int i, numdevs;

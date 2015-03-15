@@ -363,7 +363,7 @@ acpi_pcib_map_msi(device_t pcib, device_t dev, int irq, uint64_t *addr,
 static u_long acpi_host_mem_start = 0x80000000;
 TUNABLE_ULONG("hw.acpi.host_mem_start", &acpi_host_mem_start);
 
-struct resource *
+static struct resource *
 acpi_pcib_acpi_alloc_resource(device_t dev, device_t child, int type, int *rid,
     u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
