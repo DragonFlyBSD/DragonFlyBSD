@@ -16,7 +16,6 @@ MAN=	acct.5 \
 	ethers.5 \
 	eui64.5 \
 	fbtab.5 \
-	fdesc.5 \
 	ffs.5 \
 	forward.5 \
 	fs.5 \

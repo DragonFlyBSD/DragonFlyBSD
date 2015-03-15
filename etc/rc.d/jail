@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/jail,v 1.23.2.9 2007/01/11 18:16:58 simon Exp $
-# $DragonFly: src/etc/rc.d/jail,v 1.5 2007/08/10 21:01:05 swildner Exp $
 #
 
 # PROVIDE: jail
@@ -29,7 +28,6 @@ init_variables()
 
 	eval _rootdir=\"\$jail_${_j}_rootdir\"
 	_devdir="${_rootdir}/dev"
-	_fdescdir="${_rootdir}/dev/fd"
 	_procdir="${_rootdir}/proc"
 	eval _hostname=\"\$jail_${_j}_hostname\"
 	eval _ip=\"\$jail_${_j}_ip\"
@@ -53,8 +51,6 @@ init_variables()
 
 	eval _devfs=\"\${jail_${_j}_devfs_enable:-${jail_devfs_enable}}\"
 	[ -z "${_devfs}" ] && _devfs="NO"
-	eval _fdesc=\"\${jail_${_j}_fdesc_enable:-${jail_fdesc_enable}}\"
-	[ -z "${_fdesc}" ] && _fdesc="NO"
 	eval _procfs=\"\${jail_${_j}_procfs_enable:-${jail_procfs_enable}}\"
 	[ -z "${_procfs}" ] && _procfs="NO"
 
@@ -71,7 +67,6 @@ init_variables()
 	# Debugging aid
 	#
 	debug "$_j devfs enable: $_devfs"
-	debug "$_j fdesc enable: $_fdesc"
 	debug "$_j procfs enable: $_procfs"
 	debug "$_j mount enable: $_mount"
 	debug "$_j hostname: $_hostname"
@@ -79,7 +74,6 @@ init_variables()
 	debug "$_j interface: $_interface"
 	debug "$_j root: $_rootdir"
 	debug "$_j devdir: $_devdir"
-	debug "$_j fdescdir: $_fdescdir"
 	debug "$_j procdir: $_procdir"
 	debug "$_j fstab: $_fstab"
 	debug "$_j exec start: $_exec_start"
@@ -185,11 +179,6 @@ jail_umount_fs()
 {
 	local _device _mountpt _rest
 
-	if checkyesno _fdesc; then
-		if [ -d "${_fdescdir}" ] ; then
-			secure_umount ${_fdescdir}
-		fi
-	fi
 	if checkyesno _devfs; then
 	    if [ -d "${_devdir}" ] ; then
 		secure_umount ${_devdir}
@@ -284,14 +273,6 @@ jail_start()
 				fi
 				info "Mounting devfs on ${_devdir}"
 				devfs_mount_jail "${_devdir}"
-			fi
-		fi
-		if checkyesno _fdesc; then
-			if is_symlinked_mountpoint ${_fdescdir}; then
-				warn "${_fdescdir} has symlink as parent, not mounting"
-			else
-				info "Mounting fdesc on ${_fdescdir}"
-				mount -t fdesc fdesc "${_fdescdir}"
 			fi
 		fi
 		if checkyesno _procfs; then

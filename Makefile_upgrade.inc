@@ -2884,6 +2884,12 @@ TO_REMOVE+=/usr/share/man/man4/iwl.4.gz
 TO_REMOVE+=/boot/kernel/if_rtw.ko
 TO_REMOVE+=/usr/share/man/cat4/rtw.4.gz
 TO_REMOVE+=/usr/share/man/man4/rtw.4.gz
+TO_REMOVE+=/boot/kernel/fdesc.ko
+TO_REMOVE+=/sbin/mount_fdesc
+TO_REMOVE+=/usr/share/man/cat5/fdesc.5.gz
+TO_REMOVE+=/usr/share/man/man5/fdesc.5.gz
+TO_REMOVE+=/usr/share/man/cat8/mount_fdesc.8.gz
+TO_REMOVE+=/usr/share/man/man8/mount_fdesc.8.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

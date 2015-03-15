@@ -43,7 +43,6 @@
 # crossmp2.sh			N	panic: sx lock still held			20071101
 # devfs.sh			Y
 # devfs2.sh			Y							20070503
-# fdescfs.sh			Y
 # fpclone.sh			N	No problem seen
 # fpclone2.sh			N	No problem seen
 # fs.sh				Y

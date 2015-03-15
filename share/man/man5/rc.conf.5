@@ -2321,19 +2321,6 @@ to
 .Dq Li YES
 by default for every jail in
 .Va jail_list .
-.It Va jail_fdesc_enable
-.Pq Vt bool
-Set to
-.Dq Li NO
-by default.
-When set to
-.Dq Li YES ,
-sets
-.Va jail_ Ns Ao Ar jname Ac Ns Va _fdesc_enable
-to
-.Dq Li YES
-by default for every jail in
-.Va jail_list .
 .It Va jail_procfs_enable
 .Pq Vt bool
 Set to
@@ -2416,16 +2403,6 @@ When set to
 .Dq Li YES ,
 mount all file systems from
 .Va jail_ Ns Ao Ar jname Ac Ns Va _fstab
-at jail startup.
-.It Va jail_ Ns Ao Ar jname Ac Ns Va _fdesc_enable
-.Pq Vt bool
-Set to
-.Dq Li NO
-by default.
-When set to
-.Dq Li YES ,
-mount the file-descriptor file system inside jail
-.Ar jname
 at jail startup.
 .It Va jail_ Ns Ao Ar jname Ac Ns Va _procfs_enable
 .Pq Vt bool
