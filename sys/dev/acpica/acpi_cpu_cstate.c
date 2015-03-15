@@ -116,6 +116,9 @@ static uint8_t		 acpi_cst_ctrl;	/* Indicate we are _CST aware. */
 int		 	 acpi_cst_quirks; /* Indicate any hardware bugs. */
 static boolean_t	 acpi_cst_use_fadt;
 
+static int		 acpi_cst_check_duplicated;
+TUNABLE_INT("hw.acpi.cpu.cst.check_duplicated", &acpi_cst_check_duplicated);
+
 /* Runtime state. */
 static boolean_t	 acpi_cst_disable_idle;
 					/* Disable entry to idle function */
@@ -526,6 +529,20 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 
 	    device_printf(sc->cst_dev, "skipping invalid Cx state package\n");
 	    continue;
+	}
+
+	if (acpi_cst_check_duplicated) {
+	    int j;
+
+	    for (j = 0; j < sc->cst_cx_count; ++j) {
+		if (sc->cst_cx_states[j].type == cx_ptr->type) {
+		    /*
+		     * Duplicated C-state found; use the next
+		     * available C-state.
+		     */
+		    cx_ptr->type = sc->cst_cx_count + ACPI_STATE_C1;
+		}
+	    }
 	}
 
 	/* Validate the state to see if we should use it. */
