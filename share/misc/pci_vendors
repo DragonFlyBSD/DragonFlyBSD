@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2015.02.14
-#	Date:    2015-02-14 03:15:02
+#	Version: 2015.03.14
+#	Date:    2015-03-14 03:15:02
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -1488,6 +1488,7 @@
 		174b e253  Radeon HD 7790 Dual-X OC
 		1787 2329  Radeon HD 7790 TurboDuo
 	665d  Bonaire [Radeon R7 200 Series]
+	665f  Tobago [Radeon R7 300 Series]
 	6660  Sun XT [Radeon HD 8670A/8670M/8690M]
 	6663  Sun PRO [Radeon HD 8570A/8570M]
 		1025 0846  Radeon HD 8570A
@@ -2033,6 +2034,25 @@
 	67a9  Hawaii
 	67aa  Hawaii
 	67b0  Hawaii XT [Radeon R9 290X]
+		1043 046a  R9 290X DirectCU II
+		1043 046c  R9 290X DirectCU II OC
+		1043 0474  Matrix R9 290X Platinum
+		1043 0476  ARES III
+		1458 227c  R9 290X WindForce 3X OC
+		1458 2281  R9 290X WindForce 3X OC
+		1458 228c  R9 290X WindForce 3X
+		1458 228d  R9 290X WindForce 3X OC
+		1458 2290  R9 290X WindForce 3X
+		1462 3070  R9 290X Lightning
+		1462 3071  R9 290X Lightning
+		1462 3072  R9 290X Lightning LE
+		1462 3080  R9 290X Gaming
+		1462 3082  R9 290X Gaming OC
+		148c 2347  Devil 13 Dual Core R9 290X
+		1682 9290  Double Dissipation R9 290X
+		174b e282  Vapor-X R9 290X Tri-X OC
+		174b e285  R9 290X Tri-X OC
+		1787 2020  R9 290X IceQ X² Turbo
 	67b1  Hawaii PRO [Radeon R9 290]
 	67b9  Vesuvius [Radeon R9 295X2]
 	67be  Hawaii LE
@@ -3077,6 +3097,7 @@
 	985d  Mullins
 	985e  Mullins
 	985f  Mullins
+	9874  Carrizo
 	9900  Trinity [Radeon HD 7660G]
 # AMD A10-5800K CPU
 	9901  Trinity [Radeon HD 7660D]
@@ -3474,7 +3495,7 @@
 	009f  PCI 4758 Cryptographic Accelerator
 	00a5  ATM Controller (1410a500)
 	00a6  ATM 155MBPS MM Controller (1410a600)
-	00b7  256-bit Graphics Rasterizer [FireGL1]
+	00b7  GXT2000P Graphics Adapter
 		1092 00b8  FireGL1 AGP 32Mb
 	00b8  GXT2000P Graphics Adapter
 	00be  ATM 622MBPS Controller (1410be00)
@@ -3492,6 +3513,9 @@
 	016e  GXT4000P Graphics Adapter
 	0170  GXT6000P Graphics Adapter
 		1092 0172  Fire GL2
+		1092 0173  Fire GL3
+		1092 0174  Fire GL4
+		1092 0184  Fire GL4s
 	017d  GXT300P Graphics Adapter
 	0180  Snipe chipset SCSI controller
 		1014 0241  iSeries 2757 DASD IOA
@@ -9624,7 +9648,7 @@
 	10c3  GT218 [GeForce 8400 GS Rev. 3]
 	10c5  GT218 [GeForce 405]
 	10d8  GT218 [NVS 300]
-	1140  GF117M [GeForce 610M/710M/820M / GT 620M/625M/630M/720M]
+	1140  GF117M [GeForce 610M/710M/810M/820M / GT 620M/625M/630M/720M]
 		1019 999f  GeForce GT 720M
 		1025 0600  GeForce GT 620M
 		1025 0606  GeForce GT 620M
@@ -9852,9 +9876,13 @@
 		17aa 2220  GeForce GT 720M
 		17aa 309c  GeForce GT 720A
 		17aa 30b4  GeForce 820A
+		17aa 30b7  GeForce 720A
+		17aa 361b  GeForce 820A
+		17aa 361c  GeForce 820A
 		17aa 3656  GeForce GT 620M
 		17aa 365a  GeForce 705M
 		17aa 365e  GeForce 800M
+		17aa 3661  GeForce 820A
 		17aa 366c  GeForce 800M
 		17aa 3685  GeForce 800M
 		17aa 3686  GeForce 800M
@@ -9865,6 +9893,9 @@
 		17aa 369d  GeForce 820A
 		17aa 369e  GeForce 820A
 		17aa 36a9  GeForce 820A
+		17aa 36af  GeForce 820A
+		17aa 36b0  GeForce 820A
+		17aa 36b6  GeForce 820A
 		17aa 3800  GeForce GT 720M
 		17aa 3801  GeForce GT 720M
 		17aa 3802  GeForce GT 720M
@@ -9997,6 +10028,7 @@
 	11e2  GK106M [GeForce GTX 765M]
 	11e3  GK106M [GeForce GTX 760M]
 		17aa 3683  GeForce GTX 760A
+	11e7  GK106M
 	11fa  GK106GL [Quadro K4000]
 	11fc  GK106GLM [Quadro K2100M]
 	1200  GF114 [GeForce GTX 560 Ti]
@@ -10117,6 +10149,7 @@
 		17aa 1056  ThinkServer OCm14102-UX-L AnyFabric
 		17aa 1057  ThinkServer OCm14104-UX-L AnyFabric
 		17aa 1059  ThinkServer OCm14104-UT-L AnyFabric
+		17aa 4014  ThinkServer OCm14102-NX-L AnyFabric
 	0722  OneConnect iSCSI Initiator (Skyhawk)
 	0723  OneConnect iSCSI Initiator + Target (Skyhawk)
 	0724  OneConnect FCoE Initiator (Skyhawk)
@@ -10365,6 +10398,7 @@
 		1462 7522  X58 Pro-E
 		1775 11cc  CC11/CL11
 		1849 8168  Motherboard (one of many)
+		7470 3468  TG-3468 Gigabit PCI Express Network Adapter
 		8086 d615  Desktop Board D510MO/D525MW
 	8169  RTL8169 PCI Gigabit Ethernet Controller
 		1025 0079  Aspire 5024WLMi
@@ -10541,7 +10575,7 @@
 	7005  SB Audigy LS Game Port
 		1102 1001  SB0310 Audigy LS MIDI/Game port
 		1102 1002  SB0312 Audigy LS MIDI/Game port
-	7006  [SB X-Fi Xtreme Audio] CA0110-IBG PCI to PCIe Bridge
+	7006  [SB X-Fi Xtreme Audio] CA0110-IBG PCIe to PCI Bridge
 	8938  Ectiva EV1938
 		1033 80e5  SlimTower-Jim (NEC)
 		1071 7150  Mitac 7150
@@ -11431,6 +11465,8 @@
 		1093 75ff  PXIe-8383mc DMA
 		1093 7600  PXIe-8383mc DMA
 		1093 7602  PXIe-8384
+# 32 port / 8 lane PCIe Gen 2 packet switch
+	808f  PES32NT8AG2
 111e  Eldec
 111f  Precision Digital Images
 	4a47  Precision MX Video engine interface
@@ -11688,7 +11724,8 @@
 		0070 8993  WinTV HVR-2200
 		0070 89a0  WinTV HVR-2200
 		0070 89a1  WinTV HVR-2200
-		0070 f123  WinTV HVR-2205
+		0070 f120  WinTV HVR-2205
+		0070 f123  WinTV HVR-2215
 	7231  SAA7231
 		5ace 8000  Behold TV H8
 		5ace 8001  Behold TV H8
@@ -13456,6 +13493,12 @@
 		14fe 0429  ES56-PI Data Fax Modem
 125e  Specialvideo Engineering SRL
 125f  Concurrent Technologies, Inc.
+# 4 x serial ports, 2 x printer ports
+	2071  CC PMC/232
+# 4 x serial ports, 2 x printer ports
+	2084  CC PMC/23P
+# 4 x serial ports, RS422
+	2091  CC PMC/422
 1260  Intersil Corporation
 	3872  ISL3872 [Prism 3]
 		1468 0202  LAN-Express IEEE 802.11b Wireless LAN
@@ -14540,19 +14583,52 @@
 1396  Cipher Systems Inc
 1397  Cologne Chip Designs GmbH
 	08b4  ISDN network Controller [HFC-4S]
+		1397 08b4  HFC-4S [Cologne Chip HFC-4S Eval. Board]
+		1397 b51a  HFC-4S [Allo.com BRI card]
 		1397 b520  HFC-4S [IOB4ST]
-		1397 b540  HFC-4S [Swyx 4xS0 SX2 QuadBri]
-		1397 b550  HFC-4S [Junghanns quadBRI]
-		1397 b556  HFC-4S [Junghanns DuoDBRI]
+		1397 b540  HFC-4S [Swyx SX2 QuadBri]
+		1397 b550  HFC-4S [Junghanns.NET quadBRI]
+		1397 b556  HFC-4S [Junghanns.NET duoBRI]
+		1397 b559  HFC-4S [Junghanns.NET duoBRI miniPCI]
+		1397 b560  HFC-4S [BeroNet BN4S0]
+		1397 b566  HFC-4S [BeroNet BN2S0]
+		1397 b567  HFC-4S [BeroNet BN1S0 miniPCI]
+		1397 b568  HFC-4S [BeroNet BN4S0 miniPCI]
+		1397 b569  HFC-4S [BeroNet BN2S0 miniPCI]
+		1397 b620  HFC-4S
+		1397 b752  HFC-4S [Junghanns.NET quadBRI PCIe]
+		1397 b761  HFC-4S [BeroNet BN2S0 PCIe]
+		1397 b762  HFC-4S [BeroNet BN4S0 PCIe]
+		1397 e884  HFC-4S [OpenVox B200P]
 		1397 e888  HFC-4S [OpenVox B200P / B400P]
 	16b8  ISDN network Controller [HFC-8S]
-		1397 b562  HFC-8S [IOB8ST]
+		1397 16b8  HFC-8S [Cologne Chip HFC-8S Eval. Board]
+		1397 b521  HFC-8S [IOB4ST Recording]
+		1397 b522  HFC-8S [IOB8ST]
+		1397 b552  HFC-8S [Junghanns.NET octoBRI]
+		1397 b55b  HFC-8S [Junghanns.NET octoBRI]
+		1397 b562  HFC-8S [BeroNet BN8S0]
+		1397 b56b  HFC-8S [BeroNet BN8S0+]
+		1397 b622  HFC-8S
+		1397 e998  HFC-8S [OpenVox B800P]
 	2bd0  ISDN network controller [HFC-PCI]
 		0675 1704  ISDN Adapter (PCI Bus, D, C)
 		0675 1708  ISDN Adapter (PCI Bus, D, C, ACPI)
 		1397 2bd0  ISDN Board
 		e4bf 1000  CI1-1-Harp
 	30b1  ISDN network Controller [HFC-E1]
+		1397 30b1  HFC-E1 [Cologne Chip HFC-E1 Eval. Board]
+		1397 b523  HFC-E1 [IOB1E1]
+		1397 b543  HFC-E1 [Swyx SX2 SinglePRI V2]
+		1397 b544  HFC-E1 [Swyx SX2 DualPRI V2]
+		1397 b553  HFC-E1 [Junghanns.NET singleE1]
+		1397 b554  HFC-E1 [Junghanns.NET doubleE1]
+		1397 b555  HFC-E1 [Junghanns.NET doubleE1 2.0]
+		1397 b55a  HFC-E1 [Junghanns.NET singleE1 miniPCI]
+		1397 b563  HFC-E1 [beroNet BN1E1]
+		1397 b564  HFC-E1 [beroNet BN2E1]
+		1397 b565  HFC-E1 [beroNet BN2E1+]
+		1397 b56a  HFC-E1 [beroNet BN1E1 miniPCI]
 	b700  ISDN network controller PrimuX S0 [HFC-PCI]
 	f001  GSM Network Controller [HFC-4GSM]
 1398  Clarion co. Ltd
@@ -15235,6 +15311,7 @@
 	5087  T580-5087 Unified Wire Ethernet Controller
 	5088  T570-5088 Unified Wire Ethernet Controller
 	5089  T520-5089 Unified Wire Ethernet Controller
+	5090  T540-5090 Unified Wire Ethernet Controller
 	5401  T520-CR Unified Wire Ethernet Controller
 	5402  T522-CR Unified Wire Ethernet Controller
 	5403  T540-CR Unified Wire Ethernet Controller
@@ -15266,6 +15343,7 @@
 	5487  T580-5087 Unified Wire Ethernet Controller
 	5488  T570-5088 Unified Wire Ethernet Controller
 	5489  T520-5089 Unified Wire Ethernet Controller
+	5490  T540-5090 Unified Wire Ethernet Controller
 	5501  T520-CR Unified Wire Storage Controller
 	5502  T522-CR Unified Wire Storage Controller
 	5503  T540-CR Unified Wire Storage Controller
@@ -15297,6 +15375,7 @@
 	5587  T580-5087 Unified Wire Storage Controller
 	5588  T570-5088 Unified Wire Storage Controller
 	5589  T520-5089 Unified Wire Storage Controller
+	5590  T540-5090 Unified Wire Storage Controller
 	5601  T520-CR Unified Wire Storage Controller
 	5602  T522-CR Unified Wire Storage Controller
 	5603  T540-CR Unified Wire Storage Controller
@@ -15328,6 +15407,7 @@
 	5687  T580-5087 Unified Wire Storage Controller
 	5688  T570-5088 Unified Wire Storage Controller
 	5689  T520-5089 Unified Wire Storage Controller
+	5690  T540-5090 Unified Wire Storage Controller
 	5701  T520-CR Unified Wire Ethernet Controller
 	5702  T522-CR Unified Wire Ethernet Controller
 	5703  T540-CR Unified Wire Ethernet Controller
@@ -15359,6 +15439,7 @@
 	5787  T580-5087 Unified Wire Ethernet Controller
 	5788  T570-5088 Unified Wire Ethernet Controller
 	5789  T520-5089 Unified Wire Ethernet Controller
+	5790  T540-5090 Unified Wire Ethernet Controller
 	5801  T520-CR Unified Wire Ethernet Controller [VF]
 	5802  T522-CR Unified Wire Ethernet Controller [VF]
 	5803  T540-CR Unified Wire Ethernet Controller [VF]
@@ -15390,6 +15471,7 @@
 	5887  T580-5087 Unified Wire Ethernet Controller [VF]
 	5888  T570-5088 Unified Wire Ethernet Controller [VF]
 	5889  T520-5089 Unified Wire Ethernet Controller [VF]
+	5890  T540-5090 Unified Wire Ethernet Controller [VF]
 	a000  PE10K Unified Wire Ethernet Controller
 1426  Storage Technology Corp.
 1427  Better On-Line Solutions
@@ -16998,6 +17080,7 @@
 	01f6  MT27500 Family [ConnectX-3 Flash Recovery]
 	01ff  MT27600 Family [Connect-IB Flash Recovery]
 	0209  MT27700 Family [ConnectX-4 Flash Recovery]
+	020b  MT27710 Family [ConnectX-4 Lx Flash Recovery]
 	1002  MT25400 Family [ConnectX-2 Virtual Function]
 	1003  MT27500 Family [ConnectX-3]
 		103c 1777  InfiniBand FDR/EN 10/40Gb Dual Port 544FLR-QSFP Adapter (Rev Cx)
@@ -17019,8 +17102,8 @@
 	1012  MT27600 Family [Connect-IB Virtual Function]
 	1013  MT27700 Family [ConnectX-4]
 	1014  MT27700 Family [ConnectX-4 Virtual Function]
-	1015  MT27630 Family
-	1016  MT27631 Family
+	1015  MT27710 Family [ConnectX-4 Lx]
+	1016  MT27710 Family [ConnectX-4 Lx Virtual Function]
 	1017  MT27640 Family
 	1018  MT27641 Family
 	5274  MT21108 InfiniBridge
@@ -17503,8 +17586,8 @@
 # Also used as Gigabyte GC-WB150 on a PCIe-to-mini-PCIe converter
 		1a3b 2100  AW-NB100H 802.11n Wireless Mini PCIe Card
 	003c  QCA988x 802.11ac Wireless Network Adapter
-# all QCA6174 devices?
-	003e  Killer N1525 Wireless-AC
+	003e  QCA6174 802.11ac Wireless Network Adapter
+		1a56 1525  Killer N1525 Wireless-AC
 	0207  AR5210 Wireless Network Adapter [AR5000 802.11a]
 	1014  AR5212 802.11abg NIC
 		1014 058a  ThinkPad 11a/b/g Wireless LAN Mini Express Adapter (AR5BXB6)
@@ -18336,6 +18419,8 @@
 		1924 8007  SFN7322F-R2 Precision Time SFP+ Server Adapter
 		1924 8009  SFN7x22F-R2 Flareon Ultra 7000 Series 10G Adapter
 		1924 800a  SFN7x02F-R2 Flareon 7000 Series 10G Adapter
+		1924 800b  SFN7x22F-R3 Flareon Ultra 7000 Series 10G Adapter
+		1924 800c  SFN7x02F-R3 Flareon 7000 Series 10G Adapter
 	0923  SFC9140
 		1924 800b  SFN7x42Q-R1 Flareon Ultra 7000 Series 10/40G Adapter
 	1803  SFC9020 Virtual Function [Solarstorm]
@@ -18886,6 +18971,17 @@
 1bb0  SimpliVity Corporation
 	0002  OmniCube Accelerator OA-3000
 	0010  OmniCube Accelerator OA-3000-2
+1bb1  Seagate Technology PLC
+	005d  Nytro PCIe Flash Storage
+		1bb1 6501  Nytro XP6500-8A1536 1.5TB
+# 2TB Nytro PCIe controller
+		1bb1 6502  Nytro XP6500-8A2048
+# 4TB Nytro PCIe controller
+		1bb1 6503  Nytro XP6500-8A4096
+# 2GB DRAM variant of Nytro card
+		1bb1 6511  Nytro XH6550-2GB DRAM
+# 8GB variant of Nytro PCIe controller
+		1bb1 6512  Nytro XH6550-8GB DRAM
 1bb3  Bluecherry
 	4304  BC-04120A MPEG4 4 port video encoder / decoder
 	4309  BC-08240A MPEG4 4 port video encoder / decoder
@@ -19551,6 +19647,7 @@
 7284  HT OMEGA Inc.
 7401  EndRun Technologies
 	e100  PTP3100 PCIe PTP Slave Clock
+7470  TP-LINK Technologies Co., Ltd.
 7604  O.N. Electronic Co Ltd.
 7bde  MIDAC Corporation
 7fed  PowerTV
@@ -19728,9 +19825,9 @@
 	0336  80331 [Lindsay] I/O processor (ATU)
 	0340  41210 [Lanai] Serial to Parallel PCI Bridge (A-Segment Bridge)
 	0341  41210 [Lanai] Serial to Parallel PCI Bridge (B-Segment Bridge)
-	0370  80333 Segment-A PCI Express-to-PCI Express Bridge
+	0370  80333 Segment-A PCIe Express to PCI-X bridge
 	0371  80333 A-Bus IOAPIC
-	0372  80333 Segment-B PCI Express-to-PCI Express Bridge
+	0372  80333 Segment-B PCIe Express to PCI-X bridge
 	0373  80333 B-Bus IOAPIC
 	0374  80333 Address Translation Unit
 	0402  Xeon E3-1200 v3/4th Gen Core Processor Integrated Graphics Controller
@@ -21152,6 +21249,7 @@
 		103c 337f  Ethernet 1Gb 2-port 361i Adapter
 		103c 3380  Ethernet 1Gb 4-port 366i Adapter
 		103c 339e  Ethernet 1Gb 2-port 361T Adapter
+		103c 8157  Ethernet 1Gb 4-port 366T Adapter
 		108e 7b16  Quad Port GbE PCIe 2.0 ExpressModule, UTP
 		108e 7b18  Quad Port GbE PCIe 2.0 Low Profile Adapter, UTP
 		1093 7648  PCIe-8237R Ethernet Adapter
@@ -21253,6 +21351,8 @@
 	1571  XL710/X710 Virtual Function
 	1572  Ethernet Controller X710 for 10GbE SFP+
 		1028 1f99  Ethernet 10G 4P X710/I350 rNDC
+		1137 0000  Ethernet Converged NIC X710-4
+		1137 013b  Ethernet Converged NIC X710-4
 		17aa 0000  ThinkServer XL710 AnyFabric
 		17aa 4001  ThinkServer XL710-4 AnyFabric
 		8086 0000  Ethernet Converged Network Adapter X710
@@ -21269,6 +21369,10 @@
 	1581  Ethernet Controller X710 for 10GbE backplane
 		1028 1f98  Ethernet 10G 4P X710-k bNDC
 	1583  Ethernet Controller XL710 for 40GbE QSFP+
+		108e 0000  Oracle 10 Gb and 40 Gb Ethernet Adapter
+		108e 7b1b  Oracle 10 Gb and 40 Gb Ethernet Adapter
+		1137 0000  Ethernet Converged NIC XL710-Q2
+		1137 013c  Ethernet Converged NIC XL710-Q2
 		8086 0000  Ethernet Converged Network Adapter XL710-Q2
 		8086 0001  Ethernet Converged Network Adapter XL710-Q2
 		8086 0002  Ethernet Converged Network Adapter XL710-Q2
@@ -21278,7 +21382,10 @@
 		8086 0001  Ethernet Converged Network Adapter XL710-Q1
 		8086 0002  Ethernet Converged Network Adapter XL710-Q1
 		8086 0003  Ethernet I/O Module XL710-Q1
-	1585  Ethernet Controller XL710 for 10GbE QSFP+
+	1585  Ethernet Controller X710 for 10GbE QSFP+
+	1586  Ethernet Controller X710 for 10GBASE-T
+		108e 0000  Ethernet Controller X710 for 10GBASE-T
+		108e 4857  Ethernet Controller X710 for 10GBASE-T
 	15a0  Ethernet Connection (2) I218-LM
 	15a1  Ethernet Connection (2) I218-V
 	15a2  Ethernet Connection (3) I218-LM
@@ -26207,6 +26314,9 @@
 919a  Gigapixel Corp
 9412  Holtek
 	6565  6565
+9413  Softlogic Co., Ltd.
+	6010  SOLO6010 MPEG-4 Video encoder/decoder
+	6110  SOLO6110 H.264 Video encoder/decoder
 9618  JusonTech Corporation
 	0001  JusonTech Gigabit Ethernet Controller
 9699  Omni Media Technology Inc
@@ -26412,6 +26522,8 @@ dd01  Digital Devices GmbH
 	0011  Octopus CI DVB Adapter
 		dd01 0040  Octopus CI
 		dd01 0041  Octopus CI Single
+	0201  Resi DVB-C Modulator
+		dd01 0001  Resi DVB-C Modulator
 dead  Indigita Corporation
 deaf  Middle Digital Inc.
 	9050  PC Weasel Virtual VGA
