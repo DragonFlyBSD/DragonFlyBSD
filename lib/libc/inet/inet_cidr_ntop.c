@@ -13,11 +13,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: inet_cidr_ntop.c,v 1.7 2006/10/11 02:18:18 marka Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: inet_cidr_ntop.c,v 1.7 2006/10/11 02:18:18 marka Exp $";
-#endif
 
 #include "port_before.h"
 
@@ -33,12 +31,6 @@ static const char rcsid[] = "$Id: inet_cidr_ntop.c,v 1.7 2006/10/11 02:18:18 mar
 #include <stdlib.h>
 
 #include "port_after.h"
-
-#ifdef SPRINTF_CHAR
-# define SPRINTF(x) strlen(sprintf/**/x)
-#else
-# define SPRINTF(x) ((size_t)sprintf x)
-#endif
 
 static char *
 inet_cidr_ntop_ipv4(const u_char *src, int bits, char *dst, size_t size);
@@ -82,7 +74,7 @@ decoct(const u_char *src, int bytes, char *dst, size_t size) {
 		if (size < sizeof "255.")
 			return (0);
 		t = dst;
-		dst += SPRINTF((dst, "%u", *src++));
+		dst += sprintf(dst, "%u", *src++);
 		if (b != bytes) {
 			*dst++ = '.';
 			*dst = '\0';
@@ -139,7 +131,7 @@ inet_cidr_ntop_ipv4(const u_char *src, int bits, char *dst, size_t size) {
 		/* Format CIDR /width. */
 		if (size < sizeof "/32")
 			goto emsgsize;
-		dst += SPRINTF((dst, "/%u", bits));
+		dst += sprintf(dst, "/%u", bits);
 	}
 
 	return (odst);
@@ -237,7 +229,7 @@ inet_cidr_ntop_ipv6(const u_char *src, int bits, char *dst, size_t size) {
 			tp += strlen(tp);
 			break;
 		}
-		tp += SPRINTF((tp, "%x", words[i]));
+		tp += sprintf(tp, "%x", words[i]);
 	}
 
 	/* Was it a trailing run of 0x00's? */
@@ -247,7 +239,7 @@ inet_cidr_ntop_ipv6(const u_char *src, int bits, char *dst, size_t size) {
 	*tp = '\0';
 
 	if (bits != -1)
-		tp += SPRINTF((tp, "/%u", bits));
+		tp += sprintf(tp, "/%u", bits);
 
 	/*
 	 * Check for overflow, copy, and we're done.
@@ -259,5 +251,3 @@ inet_cidr_ntop_ipv6(const u_char *src, int bits, char *dst, size_t size) {
 	strcpy(dst, tmp);
 	return (dst);
 }
-
-/*! \file */

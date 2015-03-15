@@ -13,11 +13,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: inet_neta.c,v 1.3 2005/04/27 04:56:20 sra Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: inet_neta.c,v 1.3 2005/04/27 04:56:20 sra Exp $";
-#endif
 
 #include "port_before.h"
 
@@ -32,16 +30,10 @@ static const char rcsid[] = "$Id: inet_neta.c,v 1.3 2005/04/27 04:56:20 sra Exp 
 
 #include "port_after.h"
 
-#ifdef SPRINTF_CHAR
-# define SPRINTF(x) strlen(sprintf/**/x)
-#else
-# define SPRINTF(x) ((size_t)sprintf x)
-#endif
-
 /*%
  * char *
  * inet_neta(src, dst, size)
- *	format a u_long network number into presentation format.
+ *	format an in_addr_t network number into presentation format.
  * return:
  *	pointer to dst, or NULL if an error occurred (check errno).
  * note:
@@ -63,7 +55,7 @@ inet_neta(in_addr_t src, char *dst, size_t size)
 			if (size < sizeof "255.")
 				goto emsgsize;
 			tp = dst;
-			dst += SPRINTF((dst, "%u", b));
+			dst += sprintf(dst, "%u", b);
 			if (src != 0L) {
 				*dst++ = '.';
 				*dst = '\0';
@@ -83,12 +75,9 @@ inet_neta(in_addr_t src, char *dst, size_t size)
 	return (NULL);
 }
 
-#ifdef _LIBC
 /*
  * Weak aliases for applications that use certain private entry points,
  * and fail to include <arpa/inet.h>.
  */
 #undef inet_neta
 __weak_reference(__inet_neta, inet_neta);
-#endif
-/*! \file */

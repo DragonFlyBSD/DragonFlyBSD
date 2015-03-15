@@ -13,11 +13,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: nsap_addr.c,v 1.5 2005/07/28 06:51:48 marka Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: nsap_addr.c,v 1.5 2005/07/28 06:51:48 marka Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include "port_before.h"
 
@@ -108,7 +106,6 @@ inet_nsap_ntoa(int binlen, const u_char *binary, char *ascii) {
 	return (start);
 }
 
-#ifdef _LIBC
 /*
  * Weak aliases for applications that use certain private entry points,
  * and fail to include <arpa/inet.h>.
@@ -117,5 +114,3 @@ inet_nsap_ntoa(int binlen, const u_char *binary, char *ascii) {
 __weak_reference(__inet_nsap_addr, inet_nsap_addr);
 #undef inet_nsap_ntoa
 __weak_reference(__inet_nsap_ntoa, inet_nsap_ntoa);
-#endif
-/*! \file */

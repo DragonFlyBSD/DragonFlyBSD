@@ -13,11 +13,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: inet_cidr_pton.c,v 1.6 2005/04/27 04:56:19 sra Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: inet_cidr_pton.c,v 1.6 2005/04/27 04:56:19 sra Exp $";
-#endif
 
 #include "port_before.h"
 
@@ -27,12 +25,7 @@ static const char rcsid[] = "$Id: inet_cidr_pton.c,v 1.6 2005/04/27 04:56:19 sra
 #include <arpa/nameser.h>
 #include <arpa/inet.h>
 
-#ifdef _LIBC
 #include <assert.h>
-#define		INSIST(x)	assert(x)
-#else
-#include <isc/assertions.h>
-#endif
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -41,16 +34,10 @@ static const char rcsid[] = "$Id: inet_cidr_pton.c,v 1.6 2005/04/27 04:56:19 sra
 
 #include "port_after.h"
 
-#ifdef SPRINTF_CHAR
-# define SPRINTF(x) strlen(sprintf/**/x)
-#else
-# define SPRINTF(x) ((size_t)sprintf x)
-#endif
-
-static int	inet_cidr_pton_ipv4 __P((const char *src, u_char *dst,
-					 int *bits, int ipv6));
-static int	inet_cidr_pton_ipv6 __P((const char *src, u_char *dst,
-					 int *bits));
+static int	inet_cidr_pton_ipv4(const char *src, u_char *dst,
+					 int *bits, int ipv6);
+static int	inet_cidr_pton_ipv6(const char *src, u_char *dst,
+					 int *bits);
 
 static int	getbits(const char *, int ipv6);
 
@@ -97,7 +84,7 @@ inet_cidr_pton_ipv4(const char *src, u_char *dst, int *pbits, int ipv6) {
 		tmp = 0;
 		do {
 			n = strchr(digits, ch) - digits;
-			INSIST(n >= 0 && n <= 9);
+			assert(n >= 0 && n <= 9);
 			tmp *= 10;
 			tmp += n;
 			if (tmp > 255)
@@ -278,5 +265,3 @@ getbits(const char *src, int ipv6) {
 
 	return (bits);
 }
-
-/*! \file */

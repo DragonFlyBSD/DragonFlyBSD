@@ -13,11 +13,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: inet_net_pton.c,v 1.8.672.1 2008/08/26 04:42:38 marka Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: inet_net_pton.c,v 1.8.672.1 2008/08/26 04:42:38 marka Exp $";
-#endif
 
 #include "port_before.h"
 
@@ -27,12 +25,7 @@ static const char rcsid[] = "$Id: inet_net_pton.c,v 1.8.672.1 2008/08/26 04:42:3
 #include <arpa/nameser.h>
 #include <arpa/inet.h>
 
-#ifdef _LIBC
 #include <assert.h>
-#define INSIST(cond)   assert(cond)
-#else
-#include <isc/assertions.h>
-#endif
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -40,12 +33,6 @@ static const char rcsid[] = "$Id: inet_net_pton.c,v 1.8.672.1 2008/08/26 04:42:3
 #include <stdlib.h>
 
 #include "port_after.h"
-
-#ifdef SPRINTF_CHAR
-# define SPRINTF(x) strlen(sprintf/**/x)
-#else
-# define SPRINTF(x) ((size_t)sprintf x)
-#endif
 
 /*%
  * static int
@@ -83,7 +70,7 @@ inet_net_pton_ipv4(const char *src, u_char *dst, size_t size) {
 			if (isupper(ch))
 				ch = tolower(ch);
 			n = strchr(xdigits, ch) - xdigits;
-			INSIST(n >= 0 && n <= 15);
+			assert(n >= 0 && n <= 15);
 			if (dirty == 0)
 				tmp = n;
 			else
@@ -106,7 +93,7 @@ inet_net_pton_ipv4(const char *src, u_char *dst, size_t size) {
 			tmp = 0;
 			do {
 				n = strchr(digits, ch) - digits;
-				INSIST(n >= 0 && n <= 9);
+				assert(n >= 0 && n <= 9);
 				tmp *= 10;
 				tmp += n;
 				if (tmp > 255)
@@ -135,7 +122,7 @@ inet_net_pton_ipv4(const char *src, u_char *dst, size_t size) {
 		bits = 0;
 		do {
 			n = strchr(digits, ch) - digits;
-			INSIST(n >= 0 && n <= 9);
+			assert(n >= 0 && n <= 9);
 			bits *= 10;
 			bits += n;
 			if (bits > 32)
@@ -409,12 +396,9 @@ inet_net_pton(int af, const char *src, void *dst, size_t size) {
 	}
 }
 
-#ifdef _LIBC
 /*
  * Weak aliases for applications that use certain private entry points,
  * and fail to include <arpa/inet.h>.
  */
 #undef inet_net_pton
 __weak_reference(__inet_net_pton, inet_net_pton);
-#endif
-/*! \file */

@@ -13,11 +13,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: inet_ntop.c,v 1.5 2005/11/03 22:59:52 marka Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: inet_ntop.c,v 1.5 2005/11/03 22:59:52 marka Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include "port_before.h"
 
@@ -35,21 +33,15 @@ static const char rcsid[] = "$Id: inet_ntop.c,v 1.5 2005/11/03 22:59:52 marka Ex
 
 #include "port_after.h"
 
-#ifdef SPRINTF_CHAR
-# define SPRINTF(x) strlen(sprintf/**/x)
-#else
-# define SPRINTF(x) ((size_t)sprintf x)
-#endif
-
 /*%
  * WARNING: Don't even consider trying to compile this on a system where
  * sizeof(int) < 4.  sizeof(int) > 4 is fine; all the world's not a VAX.
  */
 
-static const char *inet_ntop4 __P((const u_char *src, char *dst, size_t size));
-static const char *inet_ntop6 __P((const u_char *src, char *dst, size_t size));
+static const char *inet_ntop4(const u_char *src, char *dst, size_t size);
+static const char *inet_ntop6(const u_char *src, char *dst, size_t size);
 
-/* char *
+/* const char *
  * inet_ntop(af, src, dst, size)
  *	convert a network format address to presentation format.
  * return:
@@ -58,7 +50,8 @@ static const char *inet_ntop6 __P((const u_char *src, char *dst, size_t size));
  *	Paul Vixie, 1996.
  */
 const char *
-inet_ntop(int af, const void *src, char *dst, socklen_t size)
+inet_ntop(int af, const void * __restrict src, char * __restrict dst,
+    socklen_t size)
 {
 	switch (af) {
 	case AF_INET:
@@ -88,12 +81,14 @@ inet_ntop4(const u_char *src, char *dst, size_t size)
 {
 	static const char fmt[] = "%u.%u.%u.%u";
 	char tmp[sizeof "255.255.255.255"];
+	int l;
 
-	if (SPRINTF((tmp, fmt, src[0], src[1], src[2], src[3])) >= size) {
+	l = snprintf(tmp, sizeof(tmp), fmt, src[0], src[1], src[2], src[3]);
+	if (l <= 0 || (socklen_t)l >= size) {
 		errno = ENOSPC;
 		return (NULL);
 	}
-	strcpy(dst, tmp);
+	strlcpy(dst, tmp, size);
 	return (dst);
 }
 
@@ -170,12 +165,14 @@ inet_ntop6(const u_char *src, char *dst, size_t size)
 		if (i == 6 && best.base == 0 && (best.len == 6 ||
 		    (best.len == 7 && words[7] != 0x0001) ||
 		    (best.len == 5 && words[5] == 0xffff))) {
-			if (!inet_ntop4(src+12, tp, sizeof tmp - (tp - tmp)))
+			if (!inet_ntop4(src+12, tp, sizeof tmp - (tp - tmp))) {
+				errno = ENOSPC;
 				return (NULL);
+			}
 			tp += strlen(tp);
 			break;
 		}
-		tp += SPRINTF((tp, "%x", words[i]));
+		tp += sprintf(tp, "%x", words[i]);
 	}
 	/* Was it a trailing run of 0x00's? */
 	if (best.base != -1 && (best.base + best.len) == 
@@ -186,7 +183,7 @@ inet_ntop6(const u_char *src, char *dst, size_t size)
 	/*
 	 * Check for overflow, copy, and we're done.
 	 */
-	if ((size_t)(tp - tmp) > size) {
+	if ((socklen_t)(tp - tmp) > size) {
 		errno = ENOSPC;
 		return (NULL);
 	}
@@ -194,12 +191,9 @@ inet_ntop6(const u_char *src, char *dst, size_t size)
 	return (dst);
 }
 
-#ifdef _LIBC
 /*
  * Weak aliases for applications that use certain private entry points,
  * and fail to include <arpa/inet.h>.
  */
 #undef inet_ntop
 __weak_reference(__inet_ntop, inet_ntop);
-#endif
-/*! \file */

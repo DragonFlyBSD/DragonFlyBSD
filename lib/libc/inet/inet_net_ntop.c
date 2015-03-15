@@ -13,11 +13,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: inet_net_ntop.c,v 1.5 2006/06/20 02:50:14 marka Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: inet_net_ntop.c,v 1.5 2006/06/20 02:50:14 marka Exp $";
-#endif
 
 #include "port_before.h"
 
@@ -33,16 +31,10 @@ static const char rcsid[] = "$Id: inet_net_ntop.c,v 1.5 2006/06/20 02:50:14 mark
 
 #include "port_after.h"
 
-#ifdef SPRINTF_CHAR
-# define SPRINTF(x) strlen(sprintf/**/x)
-#else
-# define SPRINTF(x) ((size_t)sprintf x)
-#endif
-
-static char *	inet_net_ntop_ipv4 __P((const u_char *src, int bits,
-					char *dst, size_t size));
-static char *	inet_net_ntop_ipv6 __P((const u_char *src, int bits,
-					char *dst, size_t size));
+static char *	inet_net_ntop_ipv4(const u_char *src, int bits,
+					char *dst, size_t size);
+static char *	inet_net_ntop_ipv6(const u_char *src, int bits,
+					char *dst, size_t size);
 
 /*%
  * char *
@@ -107,7 +99,7 @@ inet_net_ntop_ipv4(const u_char *src, int bits, char *dst, size_t size)
 		if (size <= sizeof "255.")
 			goto emsgsize;
 		t = dst;
-		dst += SPRINTF((dst, "%u", *src++));
+		dst += sprintf(dst, "%u", *src++);
 		if (b > 1) {
 			*dst++ = '.';
 			*dst = '\0';
@@ -124,14 +116,14 @@ inet_net_ntop_ipv4(const u_char *src, int bits, char *dst, size_t size)
 		if (dst != odst)
 			*dst++ = '.';
 		m = ((1 << b) - 1) << (8 - b);
-		dst += SPRINTF((dst, "%u", *src & m));
+		dst += sprintf(dst, "%u", *src & m);
 		size -= (size_t)(dst - t);
 	}
 
 	/* Format CIDR /width. */
 	if (size <= sizeof "/32")
 		goto emsgsize;
-	dst += SPRINTF((dst, "/%u", bits));
+	dst += sprintf(dst, "/%u", bits);
 	return (odst);
 
  emsgsize:
@@ -150,7 +142,7 @@ inet_net_ntop_ipv4(const u_char *src, int bits, char *dst, size_t size)
  *	pointer to dst, or NULL if an error occurred (check errno).
  * note:
  *	network byte order assumed.  this means 192.5.5.240/28 has
- *	0x11110000 in its fourth octet.
+ *	0b11110000 in its fourth octet.
  * author:
  *	Vadim Kogan (UCB), June 2001
  *  Original version (IPv4) by Paul Vixie (ISC), July 1996
@@ -182,7 +174,7 @@ inet_net_ntop_ipv6(const u_char *src, int bits, char *dst, size_t size) {
 		*cp++ = ':';
 		*cp = '\0';
 	} else {
-		/* Copy src to private buffer.  Zero host part. */	
+		/* Copy src to private buffer.  Zero host part. */
 		p = (bits + 7) / 8;
 		memcpy(inbuf, src, p);
 		memset(inbuf + p, 0, 16 - p);
@@ -198,7 +190,7 @@ inet_net_ntop_ipv6(const u_char *src, int bits, char *dst, size_t size) {
 		words = (bits + 15) / 16;
 		if (words == 1)
 			words = 2;
-		
+
 		/* Find the longest substring of zero's */
 		zero_s = zero_l = tmp_zero_s = tmp_zero_l = 0;
 		for (i = 0; i < (words * 2); i += 2) {
@@ -240,16 +232,16 @@ inet_net_ntop_ipv6(const u_char *src, int bits, char *dst, size_t size) {
 
 			if (is_ipv4 && p > 5 ) {
 				*cp++ = (p == 6) ? ':' : '.';
-				cp += SPRINTF((cp, "%u", *s++));
+				cp += sprintf(cp, "%u", *s++);
 				/* we can potentially drop the last octet */
 				if (p != 7 || bits > 120) {
 					*cp++ = '.';
-					cp += SPRINTF((cp, "%u", *s++));
+					cp += sprintf(cp, "%u", *s++);
 				}
 			} else {
 				if (cp != outbuf)
 					*cp++ = ':';
-				cp += SPRINTF((cp, "%x", *s * 256 + s[1]));
+				cp += sprintf(cp, "%x", *s * 256 + s[1]);
 				s += 2;
 			}
 		}
@@ -259,7 +251,7 @@ inet_net_ntop_ipv6(const u_char *src, int bits, char *dst, size_t size) {
 	if (strlen(outbuf) + 1 > size)
 		goto emsgsize;
 	strcpy(dst, outbuf);
-	
+
 	return (dst);
 
 emsgsize:
@@ -267,12 +259,9 @@ emsgsize:
 	return (NULL);
 }
 
-#ifdef _LIBC
 /*
  * Weak aliases for applications that use certain private entry points,
  * and fail to include <arpa/inet.h>.
  */
 #undef inet_net_ntop
 __weak_reference(__inet_net_ntop, inet_net_ntop);
-#endif
-/*! \file */
