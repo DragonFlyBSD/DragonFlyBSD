@@ -1528,23 +1528,23 @@ end_mask:
 			if ((end = strsep(&av[0], "/"))) {
 				double w_q = strtod(end, NULL);
 				if (w_q > 1 || w_q <= 0)
-				errx(EX_DATAERR, "0 < w_q <= 1");
+					errx(EX_DATAERR, "0 < w_q <= 1");
 				pipe.fs.w_q = (int) (w_q * (1 << SCALE_RED));
 			}
 			if ((end = strsep(&av[0], "/"))) {
 				pipe.fs.min_th = strtoul(end, &end, 0);
 				if (*end == 'K' || *end == 'k')
-				pipe.fs.min_th *= 1024;
+					pipe.fs.min_th *= 1024;
 			}
 			if ((end = strsep(&av[0], "/"))) {
 				pipe.fs.max_th = strtoul(end, &end, 0);
 				if (*end == 'K' || *end == 'k')
-				pipe.fs.max_th *= 1024;
+					pipe.fs.max_th *= 1024;
 			}
 			if ((end = strsep(&av[0], "/"))) {
 				double max_p = strtod(end, NULL);
 				if (max_p > 1 || max_p <= 0)
-				errx(EX_DATAERR, "0 < max_p <= 1");
+					errx(EX_DATAERR, "0 < max_p <= 1");
 				pipe.fs.max_p = (int)(max_p * (1 << SCALE_RED));
 			}
 			NEXT_ARG;
