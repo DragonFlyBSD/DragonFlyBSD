@@ -305,7 +305,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
 #define HAMMER2_CHAIN_DESTROY		0x00000004
-#define HAMMER2_CHAIN_UNUSED00000008	0x00000008
+#define HAMMER2_CHAIN_UNLINKED		0x00000008	/* unlinked file */
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_UPDATE		0x00000040	/* need parent update */
@@ -481,7 +481,6 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_ONRBTREE		0x0008
 #define HAMMER2_INODE_RESIZED		0x0010
 #define HAMMER2_INODE_MTIME		0x0020
-#define HAMMER2_INODE_UNLINKED		0x0040
 
 int hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2);
 RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
@@ -701,10 +700,14 @@ hammer2_devblkradix(int radix)
 	}
 }
 
+/*
+ * XXX almost time to remove this.  DIO uses PBUFSIZE exclusively now.
+ */
 static __inline
 size_t
 hammer2_devblksize(size_t bytes)
 {
+#if 0
 	if (bytes <= HAMMER2_LBUFSIZE) {
 		return(HAMMER2_LBUFSIZE);
 	} else {
@@ -712,6 +715,8 @@ hammer2_devblksize(size_t bytes)
 			 (bytes ^ (bytes - 1)) == ((bytes << 1) - 1));
 		return (HAMMER2_PBUFSIZE);
 	}
+#endif
+	return (HAMMER2_PBUFSIZE);
 }
 
 
@@ -775,6 +780,7 @@ extern mtx_t thread_protect;
 
 int hammer2_signal_check(time_t *timep);
 hammer2_cluster_t *hammer2_inode_lock_ex(hammer2_inode_t *ip);
+hammer2_cluster_t *hammer2_inode_lock_nex(hammer2_inode_t *ip, int how);
 hammer2_cluster_t *hammer2_inode_lock_sh(hammer2_inode_t *ip);
 void hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_cluster_t *chain);
 void hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_cluster_t *chain);
@@ -872,6 +878,10 @@ int hammer2_chain_lock(hammer2_chain_t *chain, int how);
 const hammer2_media_data_t *hammer2_chain_rdata(hammer2_chain_t *chain);
 hammer2_media_data_t *hammer2_chain_wdata(hammer2_chain_t *chain);
 
+/*
+ * hammer2_cluster.c
+ */
+int hammer2_cluster_isunlinked(hammer2_cluster_t *cluster);
 void hammer2_cluster_load_async(hammer2_cluster_t *cluster,
 				void (*callback)(hammer2_iocb_t *iocb),
 				void *ptr);
@@ -1015,6 +1025,7 @@ hammer2_cluster_t *hammer2_cluster_from_chain(hammer2_chain_t *chain);
 int hammer2_cluster_modified(hammer2_cluster_t *cluster);
 int hammer2_cluster_duplicated(hammer2_cluster_t *cluster);
 void hammer2_cluster_set_chainflags(hammer2_cluster_t *cluster, uint32_t flags);
+void hammer2_cluster_clr_chainflags(hammer2_cluster_t *cluster, uint32_t flags);
 void hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref);
 void hammer2_cluster_setflush(hammer2_trans_t *trans,
 			hammer2_cluster_t *cluster);

@@ -184,7 +184,6 @@ static
 int
 hammer2_vop_inactive(struct vop_inactive_args *ap)
 {
-	const hammer2_inode_data_t *ripdata;
 	hammer2_inode_t *ip;
 	hammer2_cluster_t *cluster;
 	struct vnode *vp;
@@ -207,9 +206,8 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	 * the strategy code.  Simply mark the inode modified so it gets
 	 * picked up by our normal flush.
 	 */
-	cluster = hammer2_inode_lock_ex(ip);
+	cluster = hammer2_inode_lock_nex(ip, HAMMER2_RESOLVE_NEVER);
 	KKASSERT(cluster);
-	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 
 	/*
 	 * Check for deleted inodes and recycle immediately.
@@ -217,7 +215,7 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	 * WARNING: nvtruncbuf() can only be safely called without the inode
 	 *	    lock held due to the way our write thread works.
 	 */
-	if (ripdata->nlinks == 0) {
+	if (hammer2_cluster_isunlinked(cluster)) {
 		hammer2_key_t lbase;
 		int nblksize;
 
@@ -240,7 +238,6 @@ static
 int
 hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 {
-	const hammer2_inode_data_t *ripdata;
 	hammer2_cluster_t *cluster;
 	hammer2_inode_t *ip;
 	hammer2_pfsmount_t *pmp;
@@ -258,8 +255,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * Inode must be locked for reclaim.
 	 */
 	pmp = ip->pmp;
-	cluster = hammer2_inode_lock_ex(ip);
-	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
+	cluster = hammer2_inode_lock_nex(ip, HAMMER2_RESOLVE_NEVER);
 
 	/*
 	 * The final close of a deleted file or directory marks it for
@@ -285,7 +281,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * the ip is left with a reference and placed on a linked list and
 	 * handled later on.
 	 */
-	if (ripdata->nlinks == 0) {
+	if (hammer2_cluster_isunlinked(cluster)) {
 		hammer2_inode_unlink_t *ipul;
 
 		ipul = kmalloc(sizeof(*ipul), pmp->minode, M_WAITOK | M_ZERO);

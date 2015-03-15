@@ -66,6 +66,10 @@ hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
  *
  * HAMMER2 offers shared locks and exclusive locks on inodes.
  *
+ * The standard exclusive inode lock always resolves the inode meta-data,
+ * but there is a bypass version used by the vnode reclamation code that
+ * avoids the I/O.
+ *
  * The inode locking function locks the inode itself, resolves any stale
  * chains in the inode's cluster, and allocates a fresh copy of the
  * cluster with 1 ref and all the underlying chains locked.  Duplication
@@ -82,7 +86,12 @@ hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
 hammer2_cluster_t *
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
 {
-	const hammer2_inode_data_t *ripdata;
+	return hammer2_inode_lock_nex(ip, HAMMER2_RESOLVE_ALWAYS);
+}
+
+hammer2_cluster_t *
+hammer2_inode_lock_nex(hammer2_inode_t *ip, int how)
+{
 	hammer2_cluster_t *cluster;
 	hammer2_chain_t *chain;
 	int i;
@@ -102,7 +111,7 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 			continue;
 		}
 
-		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_lock(chain, how);
 		cluster->array[i] = chain;
 		if (cluster->focus == NULL)
 			cluster->focus = chain;
@@ -113,16 +122,18 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 	/*
 	 * Returned cluster must resolve hardlink pointers
 	 */
-	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-	KKASSERT(ripdata->type != HAMMER2_OBJTYPE_HARDLINK);
-	/*
-	if (ripdata->type == HAMMER2_OBJTYPE_HARDLINK &&
-	    (cluster->focus->flags & HAMMER2_CHAIN_DELETED) == 0) {
-		error = hammer2_hardlink_find(ip->pip, NULL, cluster);
-		KKASSERT(error == 0);
+	if ((how & HAMMER2_RESOLVE_MASK) == HAMMER2_RESOLVE_ALWAYS) {
+		const hammer2_inode_data_t *ripdata;
+		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
+		KKASSERT(ripdata->type != HAMMER2_OBJTYPE_HARDLINK);
+		/*
+		if (ripdata->type == HAMMER2_OBJTYPE_HARDLINK &&
+		    (cluster->focus->flags & HAMMER2_CHAIN_DELETED) == 0) {
+			error = hammer2_hardlink_find(ip->pip, NULL, cluster);
+			KKASSERT(error == 0);
+		}
+		*/
 	}
-	*/
-
 	return (cluster);
 }
 
@@ -136,6 +147,8 @@ hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_cluster_t *cluster)
 }
 
 /*
+ * Standard shared inode lock always resolves the inode meta-data.
+ *
  * NOTE: We don't combine the inode/chain lock because putting away an
  *       inode would otherwise confuse multiple lock holders of the inode.
  *
@@ -1007,6 +1020,8 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 		 * We will return ocluster (the hardlink target).
 		 */
 		hammer2_cluster_modify(trans, ncluster, 0);
+		hammer2_cluster_clr_chainflags(ncluster,
+					       HAMMER2_CHAIN_UNLINKED);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		wipdata = &hammer2_cluster_wdata(ncluster)->ipdata;
 		bcopy(name, wipdata->filename, name_len);
@@ -1030,6 +1045,8 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 		 * The bref key has already been adjusted by inode_connect().
 		 */
 		hammer2_cluster_modify(trans, ncluster, 0);
+		hammer2_cluster_clr_chainflags(ncluster,
+					       HAMMER2_CHAIN_UNLINKED);
 		wipdata = &hammer2_cluster_wdata(ncluster)->ipdata;
 
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
@@ -1346,6 +1363,7 @@ again:
 			goto done;
 		}
 		*/
+		hammer2_cluster_set_chainflags(cluster, HAMMER2_CHAIN_UNLINKED);
 		if (nch && cache_isopen(nch)) {
 			hammer2_inode_move_to_hidden(trans, &cparent, &cluster,
 						     wipdata->inum);
