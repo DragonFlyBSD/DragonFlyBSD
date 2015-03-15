@@ -36,13 +36,16 @@
  * Use: pipe syslog auth output to this program.
  *
  * Detects failed ssh login attempts and maps out the originating IP and
- * issues adds to a PF table <lockout> using 'pfctl -tlockout -Tadd' commands.
+ * issues, in case of a PF firewall, adds to a PF table <lockout> using
+ * 'pfctl -tlockout -Tadd' commands.
  *
  * /etc/syslog.conf line example:
- *	auth.info;authpriv.info		|exec /usr/sbin/sshlockout lockout
+ *	auth.info;authpriv.info		|exec /usr/sbin/sshlockout -pf lockout
  *
  * Also suggest a cron entry to clean out the PF table at least once a day.
  *	3 3 * * *       pfctl -tlockout -Tflush
+ *
+ * Alternatively there is an ipfw(8) mode (-ipfw <rulenum>).
  */
 
 #include <sys/types.h>
@@ -54,6 +57,7 @@
 #include <stdarg.h>
 #include <syslog.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 typedef struct iphist {
 	struct iphist *next;
@@ -62,6 +66,15 @@ typedef struct iphist {
 	time_t	t;
 	int	hv;
 } iphist_t;
+
+struct args {
+	int   fw_type;
+	char *arg1;
+	char *arg2;
+};
+
+#define FW_IS_PF	1
+#define FW_IS_IPFW	2
 
 #define HSIZE		1024
 #define HMASK		(HSIZE - 1)
@@ -74,7 +87,7 @@ static iphist_t **hist_tail = &hist_base;
 static iphist_t *hist_hash[HSIZE];
 static int hist_count = 0;
 
-static char *pftable = NULL;
+static struct args args;
 
 static void init_iphist(void);
 static void checkline(char *buf);
@@ -85,13 +98,25 @@ static
 void
 block_ip(const char *ips) {
 	char buf[128];
-	int r = snprintf(buf, sizeof(buf),
-			 "pfctl -t%s -Tadd %s", pftable, ips);
-	if ((int)strlen(buf) == r) {
+	int r = 0;
+
+	switch (args.fw_type) {
+		case FW_IS_PF:
+			r = snprintf(buf, sizeof(buf),
+				"pfctl -t%s -Tadd %s", args.arg1, ips);
+			break;
+		case FW_IS_IPFW:
+			r = snprintf(buf, sizeof(buf),
+				"ipfw add %s deny tcp from %s to me 22",
+				args.arg1, ips);
+			break;
+	}
+
+	if (r > 0 && (int)strlen(buf) == r) {
 		system(buf);
 	}
 	else {
-		syslog(LOG_ERR, "sshlockout: command size overflow");
+		syslog(LOG_ERR, "sshlockout: invalid command");
 	}
 }
 
@@ -110,21 +135,64 @@ iphash(const char *str)
 	return hv;
 }
 
+
+static bool
+parse_args(int ac, char **av)
+{
+	if (ac >= 2 && av[1] != NULL) {
+		if (strcmp(av[1], "-pf") == 0) {
+			// -pf <tablename>
+			char *tablename = av[2];
+			if (ac == 3 && tablename != NULL) {
+				if (strlen(tablename) > 0 &&
+				    strlen(tablename) < MAX_TABLE_NAME) {
+					args.fw_type = FW_IS_PF;
+					args.arg1 = tablename;
+					args.arg2 = NULL;
+					return true;
+				}
+			}
+		}
+		if (strcmp(av[1], "-ipfw") == 0) {
+			// -ipfw <rule>
+			char *rule = av[2];
+			if (ac == 3 && rule != NULL) {
+				if (strlen(rule) > 0 && strlen(rule) <= 5) {
+					for (char *s = rule; *s; ++s) {
+						if (!isdigit(*s))
+							return false;
+					}
+					if (atoi(rule) < 1)
+						return false;
+					if (atoi(rule) > 65535)
+						return false;
+					args.fw_type = FW_IS_IPFW;
+					args.arg1 = rule;
+					args.arg2 = NULL;
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 int
 main(int ac, char **av)
 {
 	char buf[1024];
 
-	init_iphist();
+	args.fw_type = 0;
+	args.arg1 = NULL;
+	args.arg2 = NULL;
 
-	if (ac == 2 && av[1] != NULL &&
-            strlen(av[1]) > 0 && strlen(av[1]) < MAX_TABLE_NAME) {
-		pftable = av[1];
-	}
-	else {
+	if (!parse_args(ac, av)) {
 		syslog(LOG_ERR, "sshlockout: invalid argument");
 		return(1);
 	}
+
+	init_iphist();
 
 	openlog("sshlockout", LOG_PID|LOG_CONS, LOG_AUTH);
 	syslog(LOG_ERR, "sshlockout starting up");
