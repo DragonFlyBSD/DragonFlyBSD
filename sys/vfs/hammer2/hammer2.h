@@ -693,11 +693,14 @@ static __inline
 int
 hammer2_devblkradix(int radix)
 {
+#if 0
 	if (radix <= HAMMER2_LBUFRADIX) {
 		return (HAMMER2_LBUFRADIX);
 	} else {
 		return (HAMMER2_PBUFRADIX);
 	}
+#endif
+	return (HAMMER2_PBUFRADIX);
 }
 
 /*
