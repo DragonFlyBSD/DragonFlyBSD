@@ -30,7 +30,6 @@
  * @(#)xdr_float.c	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: xdr_float.c,v 1.23 2000/07/17 04:59:51 matt Exp $
  * $FreeBSD: src/lib/libc/xdr/xdr_float.c,v 1.14 2004/10/16 06:32:43 obrien Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_float.c,v 1.6 2006/07/27 00:43:17 corecode Exp $
  */
 
 /*
@@ -114,7 +113,7 @@ xdr_float(XDR *xdrs, float *fp)
 #else
 		vs = *((struct vax_single *)fp);
 		for (i = 0, lim = sgl_limits;
-			i < sizeof(sgl_limits)/sizeof(struct sgl_limits);
+			i < NELEM(sgl_limits);
 			i++, lim++) {
 			if ((vs.mantissa2 == lim->s.mantissa2) &&
 				(vs.exp == lim->s.exp) &&
@@ -138,7 +137,7 @@ xdr_float(XDR *xdrs, float *fp)
 		if (!XDR_GETINT32(xdrs, (int32_t *)&is))
 			return (FALSE);
 		for (i = 0, lim = sgl_limits;
-			i < sizeof(sgl_limits)/sizeof(struct sgl_limits);
+			i < NELEM(sgl_limits);
 			i++, lim++) {
 			if ((is.exp == lim->ieee.exp) &&
 				(is.mantissa == lim->ieee.mantissa)) {
@@ -231,7 +230,7 @@ xdr_double(XDR *xdrs, double *dp)
 #else
 		vd = *((struct vax_double *)dp);
 		for (i = 0, lim = dbl_limits;
-			i < sizeof(dbl_limits)/sizeof(struct dbl_limits);
+			i < NELEM(dbl_limits);
 			i++, lim++) {
 			if ((vd.mantissa4 == lim->d.mantissa4) &&
 				(vd.mantissa3 == lim->d.mantissa3) &&
@@ -273,7 +272,7 @@ xdr_double(XDR *xdrs, double *dp)
 		if (!XDR_GETINT32(xdrs, lp++) || !XDR_GETINT32(xdrs, lp))
 			return (FALSE);
 		for (i = 0, lim = dbl_limits;
-			i < sizeof(dbl_limits)/sizeof(struct dbl_limits);
+			i < NELEM(dbl_limits);
 			i++, lim++) {
 			if ((id.mantissa2 == lim->ieee.mantissa2) &&
 				(id.mantissa1 == lim->ieee.mantissa1) &&

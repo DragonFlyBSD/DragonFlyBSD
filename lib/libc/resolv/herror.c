@@ -85,7 +85,7 @@ const char *h_errlist[] = {
 	"Unknown server error",			/*%< 3 NO_RECOVERY */
 	"No address associated with name",	/*%< 4 NO_ADDRESS */
 };
-int	h_nerr = { sizeof h_errlist / sizeof h_errlist[0] };
+int	h_nerr = { NELEM(h_errlist) };
 
 #if !(__GLIBC__ > 2 || __GLIBC__ == 2 &&  __GLIBC_MINOR__ >= 3)
 #undef	h_errno

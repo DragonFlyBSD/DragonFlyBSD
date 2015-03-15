@@ -132,7 +132,7 @@ res_nmkquery(res_state statp,
 	dpp = dnptrs;
 	*dpp++ = buf;
 	*dpp++ = NULL;
-	lastdnptr = dnptrs + sizeof dnptrs / sizeof dnptrs[0];
+	lastdnptr = dnptrs + NELEM(dnptrs);
 	/*
 	 * perform opcode specific processing
 	 */

@@ -745,8 +745,7 @@ pwdbopen(int *version)
 		*version = *(unsigned char *)entry.data;
 	else
 		*version = 3;
-	if (*version < 3 ||
-	    *version >= sizeof(pwdb_versions)/sizeof(pwdb_versions[0])) {
+	if (*version < 3 || *version >= NELEM(pwdb_versions)) {
 		syslog(LOG_CRIT, "Unsupported password database version %d",
 		    *version);
 		res->close(res);
@@ -1605,7 +1604,7 @@ compat_redispatch(struct compat_state *st, enum nss_lookup_type how,
 	void		*discard;
 	int		 rv, e, i;
 
-	for (i = 0; i < sizeof(dtab)/sizeof(dtab[0]) - 1; i++)
+	for (i = 0; i < NELEM(dtab) - 1; i++)
 		dtab[i].mdata = (void *)lookup_how;
 more:
 	pwd_init(pwd);

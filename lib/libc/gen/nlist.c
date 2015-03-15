@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/nlist.c,v 1.12.2.1 2001/07/11 23:59:09 obrien Exp $
- *	$DragonFly: src/lib/libc/gen/nlist.c,v 1.6 2005/04/26 08:21:34 joerg Exp $
  *
  * @(#)nlist.c	8.1 (Berkeley) 6/4/93
  */
@@ -91,7 +90,7 @@ __fdnlist(int fd, struct nlist *list)
 	int n = -1;
 	size_t i;
 
-	for (i = 0; i < sizeof(nlist_fn) / sizeof(nlist_fn[0]); i++) {
+	for (i = 0; i < NELEM(nlist_fn); i++) {
 		n = (nlist_fn[i].fn)(fd, list);
 		if (n != -1)
 			break;
