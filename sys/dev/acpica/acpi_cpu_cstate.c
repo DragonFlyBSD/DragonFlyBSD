@@ -228,7 +228,7 @@ acpi_cst_probe(device_t dev)
     }
 
     /* Mark this processor as in-use and save our derived id for attach. */
-    acpi_cst_softc[cpu_id] = (void *)1;
+    acpi_cst_softc[cpu_id] = device_get_softc(dev);
     device_set_desc(dev, "ACPI CPU C-State");
 
     return (0);
@@ -259,6 +259,7 @@ acpi_cst_attach(device_t dev)
     if (ACPI_FAILURE(status)) {
 	device_printf(dev, "attach failed to get Processor obj - %s\n",
 		      AcpiFormatException(status));
+	acpi_cst_softc[sc->cst_cpuid] = NULL;
 	return (ENXIO);
     }
     obj = (ACPI_OBJECT *)buf.Pointer;
