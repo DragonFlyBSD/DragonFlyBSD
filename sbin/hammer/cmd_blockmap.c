@@ -41,6 +41,7 @@ typedef struct collect {
 	hammer_off_t	phys_offset;
 	struct hammer_blockmap_layer2 *track2;
 	struct hammer_blockmap_layer2 *layer2;
+	int error;
 } *collect_t;
 
 collect_t CollectHash[COLLECT_HSIZE];
@@ -318,6 +319,7 @@ dump_collect_table(void)
 {
 	collect_t collect, tmp;
 	int i;
+	int error = 0;
 	int total = 0;
 	int stats[HAMMER_MAX_ZONES];
 	bzero(stats, sizeof(stats));
@@ -325,6 +327,7 @@ dump_collect_table(void)
 	for (i = 0; i < COLLECT_HSIZE; ++i) {
 		for (collect = CollectHash[i]; collect; ) {
 			dump_collect(collect, stats);
+			error += collect->error;
 			tmp = collect;
 			collect = collect->hnext;
 			collect_rel(tmp);
@@ -342,6 +345,9 @@ dump_collect_table(void)
 		printf("\t---------------\n");
 		printf("\ttotal\t%d\n", total);
 	}
+
+	if (error || VerboseOpt)
+		printf("%d errors\n", error);
 }
 
 static
@@ -378,6 +384,7 @@ dump_collect(collect_t collect, int *stats)
 				layer2->zone,
 				track2->bytes_free,
 				layer2->bytes_free);
+			collect->error++;
 		} else if (VerboseOpt) {
 			printf("\tblock=%016jx zone=%2d %d free (correct)\n",
 				(intmax_t)(collect->phys_offset +
