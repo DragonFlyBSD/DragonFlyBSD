@@ -2,7 +2,7 @@
  * Copyright (c) 2000-2003,2005 by Solar Designer.  See LICENSE.
  */
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 /* For vsnprintf(3) */
 #define _XOPEN_SOURCE 600
 #else
@@ -169,7 +169,7 @@ static int converse(pam_handle_t *pamh, int style, l_const char *text,
 
 	pmsg = &msg;
 	msg.msg_style = style;
-	msg.msg = text;
+	msg.msg = (char *)text;
 
 	return conv->conv(1, (lo_const struct pam_message **)&pmsg, resp,
 	    conv->appdata_ptr);
