@@ -920,7 +920,7 @@ nfsrv_slpref(struct nfssvc_sock *slp)
 int
 nfs_slplock(struct nfssvc_sock *slp, int wait)
 {
-	mtx_t mtx = &slp->ns_solock;
+	mtx_t *mtx = &slp->ns_solock;
 
 	if (wait) {
 		mtx_lock_ex(mtx, "nfsslplck", 0, 0);
@@ -938,7 +938,7 @@ nfs_slplock(struct nfssvc_sock *slp, int wait)
 void
 nfs_slpunlock(struct nfssvc_sock *slp)
 {
-	mtx_t mtx = &slp->ns_solock;
+	mtx_t *mtx = &slp->ns_solock;
 
 	mtx_unlock(mtx);
 }

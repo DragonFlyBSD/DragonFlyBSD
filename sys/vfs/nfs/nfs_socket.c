@@ -422,9 +422,12 @@ nfs_disconnect(struct nfsmount *nmp)
 void
 nfs_safedisconnect(struct nfsmount *nmp)
 {
-	nfs_rcvlock(nmp, NULL);
+	int error;
+
+	error = nfs_rcvlock(nmp, NULL);
 	nfs_disconnect(nmp);
-	nfs_rcvunlock(nmp);
+	if (error == 0)
+		nfs_rcvunlock(nmp);
 }
 
 /*
@@ -2047,7 +2050,7 @@ nfs_hardterm(struct nfsreq *rep, int islocked)
 				nfssvc_iod_writer_wakeup(nmp);
 			}
 		}
-		mtx_abort_ex_link(&nmp->nm_rxlock, &rep->r_link);
+		mtx_abort_link(&nmp->nm_rxlock, &rep->r_link);
 	}
 }
 
@@ -2092,7 +2095,7 @@ nfs_sigintr(struct nfsmount *nmp, struct nfsreq *rep, struct thread *td)
 int
 nfs_sndlock(struct nfsmount *nmp, struct nfsreq *rep)
 {
-	mtx_t mtx = &nmp->nm_txlock;
+	mtx_t *mtx = &nmp->nm_txlock;
 	struct thread *td;
 	int slptimeo;
 	int slpflag;
@@ -2143,7 +2146,7 @@ nfs_sndunlock(struct nfsmount *nmp)
 static int
 nfs_rcvlock(struct nfsmount *nmp, struct nfsreq *rep)
 {
-	mtx_t mtx = &nmp->nm_rxlock;
+	mtx_t *mtx = &nmp->nm_rxlock;
 	int slpflag;
 	int slptimeo;
 	int error;

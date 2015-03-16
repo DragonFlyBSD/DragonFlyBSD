@@ -350,7 +350,7 @@ struct nfsm_info;
 struct nfsreq {
 	TAILQ_ENTRY(nfsreq) r_chain;
 	struct nfsm_info *r_info;
-	struct mtx_link r_link;
+	mtx_link_t	r_link;
 	struct mbuf	*r_mreq;
 	struct mbuf	*r_mrep;
 	struct mbuf	*r_md;

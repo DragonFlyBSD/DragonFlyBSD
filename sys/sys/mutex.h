@@ -57,37 +57,42 @@ struct mtx_link {
 	struct mtx_link	*prev;
 	struct thread	*owner;
 	int		state;
+	void		(*callback)(struct mtx_link *, void *arg, int error);
+	void		*arg;
 };
 
-typedef struct mtx_link	*mtx_link_t;
+typedef struct mtx_link	mtx_link_t;
 
 struct mtx {
 	volatile u_int	mtx_lock;
-	int		mtx_refs;
+	int		mtx_reserved01;	/* future use & struct alignmnent */
 	struct thread	*mtx_owner;
-	mtx_link_t	mtx_link;
+	mtx_link_t	*mtx_exlink;
+	mtx_link_t	*mtx_shlink;
 } __cachealign;
 
-typedef struct mtx *mtx_t;
+typedef struct mtx mtx_t;
 
-#define MTX_INITIALIZER	{ .mtx_lock = 0, .mtx_refs = 0, \
-			  .mtx_owner = NULL, .mtx_link = NULL }
+#define MTX_INITIALIZER	{ .mtx_lock = 0, .mtx_owner = NULL, \
+			  .mtx_exlink = NULL, .mtx_shlink = NULL }
 
 #define MTX_EXCLUSIVE	0x80000000
 #define MTX_SHWANTED	0x40000000
 #define MTX_EXWANTED	0x20000000
-#define MTX_EXLINK	0x10000000
+#define MTX_LINKSPIN	0x10000000
 #define MTX_MASK	0x0FFFFFFF
-
-#define MTX_PCATCH	0x00000001
 
 #define MTX_OWNER_NONE	NULL
 #define MTX_OWNER_ANON	((struct thread *)-2)
 
 #define MTX_LINK_IDLE		0
-#define MTX_LINK_ABORTED	-1
-#define MTX_LINK_LINKED		1
-#define MTX_LINK_ACQUIRED	2
+#define MTX_LINK_LINKED_SH	(MTX_LINK_LINKED | 1)
+#define MTX_LINK_LINKED_EX	(MTX_LINK_LINKED | 2)
+#define MTX_LINK_ACQUIRED	3
+#define MTX_LINK_CALLEDBACK	4
+#define MTX_LINK_ABORTED	5
+
+#define MTX_LINK_LINKED		0x1000
 
 #endif
 
@@ -96,19 +101,24 @@ typedef struct mtx *mtx_t;
  */
 #ifdef _KERNEL
 
-int	_mtx_lock_ex_link(mtx_t mtx, mtx_link_t link, const char *ident, int flags, int to);
-int	_mtx_lock_ex(mtx_t mtx, const char *ident, int flags, int to);
-int	_mtx_lock_sh(mtx_t mtx, const char *ident, int flags, int to);
-int	_mtx_lock_ex_quick(mtx_t mtx, const char *ident);
-int	_mtx_lock_sh_quick(mtx_t mtx, const char *ident);
-void	_mtx_spinlock(mtx_t mtx);
-int	_mtx_spinlock_try(mtx_t mtx);
-int	_mtx_lock_ex_try(mtx_t mtx);
-int	_mtx_lock_sh_try(mtx_t mtx);
-void	_mtx_downgrade(mtx_t mtx);
-int	_mtx_upgrade_try(mtx_t mtx);
-void	_mtx_unlock(mtx_t mtx);
-void	mtx_abort_ex_link(mtx_t mtx, mtx_link_t link);
+int	_mtx_lock_ex_link(mtx_t *mtx, mtx_link_t *link,
+				const char *ident, int flags, int to);
+int	_mtx_lock_ex(mtx_t *mtx, const char *ident, int flags, int to);
+int	_mtx_lock_sh_link(mtx_t *mtx, mtx_link_t *link,
+				const char *ident, int flags, int to);
+int	_mtx_lock_sh(mtx_t *mtx, const char *ident, int flags, int to);
+int	_mtx_lock_ex_quick(mtx_t *mtx, const char *ident);
+int	_mtx_lock_sh_quick(mtx_t *mtx, const char *ident);
+void	_mtx_spinlock(mtx_t *mtx);
+int	_mtx_spinlock_try(mtx_t *mtx);
+int	_mtx_lock_ex_try(mtx_t *mtx);
+int	_mtx_lock_sh_try(mtx_t *mtx);
+void	_mtx_downgrade(mtx_t *mtx);
+int	_mtx_upgrade_try(mtx_t *mtx);
+void	_mtx_unlock(mtx_t *mtx);
+void	mtx_abort_link(mtx_t *mtx, mtx_link_t *link);
+int	mtx_wait_link(mtx_t *mtx, mtx_link_t *link,
+				const char *ident, int flags, int to);
 
 #endif
 

@@ -40,6 +40,15 @@
  * while the thread is running.  Mutexes can be held across blocking
  * conditions.
  *
+ * - Exclusive priority over shared to prevent SMP starvation.
+ * - locks can be aborted (async callback, if any, will be made w/ENOLCK).
+ * - locks can be asynchronous.
+ * - synchronous fast path if no blocking occurs (async callback is not
+ *   made in this case).
+ *
+ * Generally speaking any caller-supplied link state must be properly
+ * initialized before use.
+ *
  * Most of the support is in sys/mutex[2].h.  We mostly provide backoff
  * functions here.
  */
@@ -66,162 +75,159 @@ SYSCTL_QUAD(_kern, OID_AUTO, mtx_collision_count, CTLFLAG_RW,
 SYSCTL_QUAD(_kern, OID_AUTO, mtx_wakeup_count, CTLFLAG_RW,
 	    &mtx_wakeup_count, 0, "");
 
-static void mtx_chain_link(mtx_t mtx);
-static void mtx_delete_link(mtx_t mtx, mtx_link_t link);
+static int mtx_chain_link_ex(mtx_t *mtx, u_int olock);
+static int mtx_chain_link_sh(mtx_t *mtx, u_int olock, int addcount);
+static void mtx_delete_link(mtx_t *mtx, mtx_link_t *link);
 
 /*
- * Exclusive-lock a mutex, block until acquired.  Recursion is allowed.
+ * Exclusive-lock a mutex, block until acquired unless link is async.
+ * Recursion is allowed.
  *
- * Returns 0 on success, or the tsleep() return code on failure.
- * An error can only be returned if PCATCH is specified in the flags.
+ * Returns 0 on success, the tsleep() return code on failure, EINPROGRESS
+ * if async.  If immediately successful an async exclusive lock will return 0
+ * and not issue the async callback or link the link structure.  The caller
+ * must handle this case (typically this is an optimal code path).
+ *
+ * A tsleep() error can only be returned if PCATCH is specified in the flags.
  */
 static __inline int
-__mtx_lock_ex(mtx_t mtx, mtx_link_t link, const char *ident, int flags, int to)
+__mtx_lock_ex(mtx_t *mtx, mtx_link_t *link,
+	      const char *ident, int flags, int to)
 {
+	thread_t td;
 	u_int	lock;
 	u_int	nlock;
 	int	error;
+	int	isasync;
 
 	for (;;) {
 		lock = mtx->mtx_lock;
+		cpu_ccfence();
+
 		if (lock == 0) {
 			nlock = MTX_EXCLUSIVE | 1;
 			if (atomic_cmpset_int(&mtx->mtx_lock, 0, nlock)) {
 				mtx->mtx_owner = curthread;
+				link->state = MTX_LINK_ACQUIRED;
 				error = 0;
 				break;
 			}
-		} else if ((lock & MTX_EXCLUSIVE) &&
-			   mtx->mtx_owner == curthread) {
+			continue;
+		}
+		if ((lock & MTX_EXCLUSIVE) && mtx->mtx_owner == curthread) {
 			KKASSERT((lock & MTX_MASK) != MTX_MASK);
 			nlock = lock + 1;
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
+				link->state = MTX_LINK_ACQUIRED;
 				error = 0;
 				break;
 			}
-		} else {
-			/*
-			 * Clearing MTX_EXLINK in lock causes us to loop until
-			 * MTX_EXLINK is available.  However, to avoid
-			 * unnecessary cpu cache traffic we poll instead.
-			 *
-			 * Setting MTX_EXLINK in nlock causes us to loop until
-			 * we can acquire MTX_EXLINK.
-			 *
-			 * Also set MTX_EXWANTED coincident with EXLINK, if
-			 * not already set.
-			 */
-			thread_t td;
-
-			if (lock & MTX_EXLINK) {
-				cpu_pause();
-				++mtx_collision_count;
-				continue;
-			}
-			td = curthread;
-			/*lock &= ~MTX_EXLINK;*/
-			nlock = lock | MTX_EXWANTED | MTX_EXLINK;
-			++td->td_critcount;
-			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
-				/*
-				 * Check for early abort
-				 */
-				if (link->state == MTX_LINK_ABORTED) {
-					atomic_clear_int(&mtx->mtx_lock,
-							 MTX_EXLINK);
-					--td->td_critcount;
-					error = ENOLCK;
-					if (mtx->mtx_link == NULL) {
-						atomic_clear_int(&mtx->mtx_lock,
-								 MTX_EXWANTED);
-					}
-					break;
-				}
-
-				/*
-				 * Success.  Link in our structure then
-				 * release EXLINK and sleep.
-				 */
-				link->owner = td;
-				link->state = MTX_LINK_LINKED;
-				if (mtx->mtx_link) {
-					link->next = mtx->mtx_link;
-					link->prev = link->next->prev;
-					link->next->prev = link;
-					link->prev->next = link;
-				} else {
-					link->next = link;
-					link->prev = link;
-					mtx->mtx_link = link;
-				}
-				tsleep_interlock(link, 0);
-				atomic_clear_int(&mtx->mtx_lock, MTX_EXLINK);
-				--td->td_critcount;
-
-				mycpu->gd_cnt.v_lock_name[0] = 'X';
-				strncpy(mycpu->gd_cnt.v_lock_name + 1,
-					ident,
-					sizeof(mycpu->gd_cnt.v_lock_name) - 2);
-				++mycpu->gd_cnt.v_lock_colls;
-
-				error = tsleep(link, flags | PINTERLOCKED,
-					       ident, to);
-				++mtx_contention_count;
-
-				/*
-				 * Normal unlink, we should own the exclusive
-				 * lock now.
-				 */
-				if (link->state == MTX_LINK_LINKED)
-					mtx_delete_link(mtx, link);
-				if (link->state == MTX_LINK_ACQUIRED) {
-					KKASSERT(mtx->mtx_owner == link->owner);
-					error = 0;
-					break;
-				}
-
-				/*
-				 * Aborted lock (mtx_abort_ex called).
-				 */
-				if (link->state == MTX_LINK_ABORTED) {
-					error = ENOLCK;
-					break;
-				}
-
-				/*
-				 * tsleep error, else retry.
-				 */
-				if (error)
-					break;
-			} else {
-				--td->td_critcount;
-			}
+			continue;
 		}
-		++mtx_collision_count;
+
+		/*
+		 * We need MTX_LINKSPIN to manipulate exlink or
+		 * shlink.
+		 *
+		 * We must set MTX_EXWANTED with MTX_LINKSPIN to indicate
+		 * pending shared requests.  It cannot be set as a separate
+		 * operation prior to acquiring MTX_LINKSPIN.
+		 *
+		 * To avoid unnecessary cpu cache traffic we poll
+		 * for collisions.  It is also possible that EXWANTED
+		 * state failing the above test was spurious, so all the
+		 * tests must be repeated if we cannot obtain LINKSPIN
+		 * with the prior state tests intact (i.e. don't reload
+		 * the (lock) variable here, for heaven's sake!).
+		 */
+		if (lock & MTX_LINKSPIN) {
+			cpu_pause();
+			++mtx_collision_count;
+			continue;
+		}
+		td = curthread;
+		nlock = lock | MTX_EXWANTED | MTX_LINKSPIN;
+		++td->td_critcount;
+		if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock) == 0) {
+			--td->td_critcount;
+			continue;
+		}
+
+		/*
+		 * Check for early abort.
+		 */
+		if (link->state == MTX_LINK_ABORTED) {
+			if (mtx->mtx_exlink == NULL) {
+				atomic_clear_int(&mtx->mtx_lock,
+						 MTX_LINKSPIN |
+						 MTX_EXWANTED);
+			} else {
+				atomic_clear_int(&mtx->mtx_lock,
+						 MTX_LINKSPIN);
+			}
+			--td->td_critcount;
+			link->state = MTX_LINK_IDLE;
+			error = ENOLCK;
+			break;
+		}
+
+		/*
+		 * Add our link to the exlink list and release LINKSPIN.
+		 */
+		link->owner = td;
+		link->state = MTX_LINK_LINKED_EX;
+		if (mtx->mtx_exlink) {
+			link->next = mtx->mtx_exlink;
+			link->prev = link->next->prev;
+			link->next->prev = link;
+			link->prev->next = link;
+		} else {
+			link->next = link;
+			link->prev = link;
+			mtx->mtx_exlink = link;
+		}
+		isasync = (link->callback != NULL);
+		atomic_clear_int(&mtx->mtx_lock, MTX_LINKSPIN);
+		--td->td_critcount;
+
+		/* 
+		 * If asynchronous lock request return without
+		 * blocking, leave link structure linked.
+		 */
+		if (isasync) {
+			error = EINPROGRESS;
+			break;
+		}
+
+		/*
+		 * Wait for lock
+		 */
+		error = mtx_wait_link(mtx, link, ident, flags, to);
+		break;
 	}
 	return (error);
 }
 
 int
-_mtx_lock_ex_link(mtx_t mtx, mtx_link_t link,
+_mtx_lock_ex_link(mtx_t *mtx, mtx_link_t *link,
 		  const char *ident, int flags, int to)
 {
 	return(__mtx_lock_ex(mtx, link, ident, flags, to));
 }
 
 int
-_mtx_lock_ex(mtx_t mtx, const char *ident, int flags, int to)
+_mtx_lock_ex(mtx_t *mtx, const char *ident, int flags, int to)
 {
-	struct mtx_link link;
+	mtx_link_t link;
 
 	mtx_link_init(&link);
 	return(__mtx_lock_ex(mtx, &link, ident, flags, to));
 }
 
 int
-_mtx_lock_ex_quick(mtx_t mtx, const char *ident)
+_mtx_lock_ex_quick(mtx_t *mtx, const char *ident)
 {
-	struct mtx_link link;
+	mtx_link_t link;
 
 	mtx_link_init(&link);
 	return(__mtx_lock_ex(mtx, &link, ident, 0, 0));
@@ -237,66 +243,152 @@ _mtx_lock_ex_quick(mtx_t mtx, const char *ident)
  *	 do not have to chain the wakeup().
  */
 static __inline int
-__mtx_lock_sh(mtx_t mtx, const char *ident, int flags, int to)
+__mtx_lock_sh(mtx_t *mtx, mtx_link_t *link,
+	      const char *ident, int flags, int to)
 {
+	thread_t td;
 	u_int	lock;
 	u_int	nlock;
 	int	error;
+	int	isasync;
 
 	for (;;) {
 		lock = mtx->mtx_lock;
-		if ((lock & MTX_EXCLUSIVE) == 0) {
+		cpu_ccfence();
+
+		if (lock == 0) {
+			nlock = 1;
+			if (atomic_cmpset_int(&mtx->mtx_lock, 0, nlock)) {
+				error = 0;
+				link->state = MTX_LINK_ACQUIRED;
+				break;
+			}
+			continue;
+		}
+		if ((lock & (MTX_EXCLUSIVE | MTX_EXWANTED)) == 0) {
 			KKASSERT((lock & MTX_MASK) != MTX_MASK);
 			nlock = lock + 1;
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
 				error = 0;
+				link->state = MTX_LINK_ACQUIRED;
 				break;
 			}
-		} else {
-			nlock = lock | MTX_SHWANTED;
-			tsleep_interlock(mtx, 0);
-			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
-
-				mycpu->gd_cnt.v_lock_name[0] = 'S';
-				strncpy(mycpu->gd_cnt.v_lock_name + 1,
-					ident,
-					sizeof(mycpu->gd_cnt.v_lock_name) - 2);
-				++mycpu->gd_cnt.v_lock_colls;
-
-				error = tsleep(mtx, flags | PINTERLOCKED,
-					       ident, to);
-				if (error)
-					break;
-				++mtx_contention_count;
-				/* retry */
-			} else {
-				crit_enter();
-				tsleep_remove(curthread);
-				crit_exit();
-			}
+			continue;
 		}
-		++mtx_collision_count;
+
+		/*
+		 * We need MTX_LINKSPIN to manipulate exlink or
+		 * shlink.
+		 *
+		 * We must set MTX_SHWANTED with MTX_LINKSPIN to indicate
+		 * pending shared requests.  It cannot be set as a separate
+		 * operation prior to acquiring MTX_LINKSPIN.
+		 *
+		 * To avoid unnecessary cpu cache traffic we poll
+		 * for collisions.  It is also possible that EXWANTED
+		 * state failing the above test was spurious, so all the
+		 * tests must be repeated if we cannot obtain LINKSPIN
+		 * with the prior state tests intact (i.e. don't reload
+		 * the (lock) variable here, for heaven's sake!).
+		 */
+		if (lock & MTX_LINKSPIN) {
+			cpu_pause();
+			++mtx_collision_count;
+			continue;
+		}
+		td = curthread;
+		nlock = lock | MTX_SHWANTED | MTX_LINKSPIN;
+		++td->td_critcount;
+		if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock) == 0) {
+			--td->td_critcount;
+			continue;
+		}
+
+		/*
+		 * Check for early abort.
+		 */
+		if (link->state == MTX_LINK_ABORTED) {
+			if (mtx->mtx_exlink == NULL) {
+				atomic_clear_int(&mtx->mtx_lock,
+						 MTX_LINKSPIN |
+						 MTX_SHWANTED);
+			} else {
+				atomic_clear_int(&mtx->mtx_lock,
+						 MTX_LINKSPIN);
+			}
+			--td->td_critcount;
+			link->state = MTX_LINK_IDLE;
+			error = ENOLCK;
+			break;
+		}
+
+		/*
+		 * Add our link to the exlink list and release LINKSPIN.
+		 */
+		link->owner = td;
+		link->state = MTX_LINK_LINKED_SH;
+		if (mtx->mtx_shlink) {
+			link->next = mtx->mtx_shlink;
+			link->prev = link->next->prev;
+			link->next->prev = link;
+			link->prev->next = link;
+		} else {
+			link->next = link;
+			link->prev = link;
+			mtx->mtx_shlink = link;
+		}
+		isasync = (link->callback != NULL);
+		atomic_clear_int(&mtx->mtx_lock, MTX_LINKSPIN);
+		--td->td_critcount;
+
+		/* 
+		 * If asynchronous lock request return without
+		 * blocking, leave link structure linked.
+		 */
+		if (isasync) {
+			error = EINPROGRESS;
+			break;
+		}
+
+		/*
+		 * Wait for lock
+		 */
+		error = mtx_wait_link(mtx, link, ident, flags, to);
+		break;
 	}
 	return (error);
 }
 
 int
-_mtx_lock_sh(mtx_t mtx, const char *ident, int flags, int to)
+_mtx_lock_sh_link(mtx_t *mtx, mtx_link_t *link,
+		  const char *ident, int flags, int to)
 {
-	return (__mtx_lock_sh(mtx, ident, flags, to));
+	return(__mtx_lock_sh(mtx, link, ident, flags, to));
 }
 
 int
-_mtx_lock_sh_quick(mtx_t mtx, const char *ident)
+_mtx_lock_sh(mtx_t *mtx, const char *ident, int flags, int to)
 {
-	return (__mtx_lock_sh(mtx, ident, 0, 0));
+	mtx_link_t link;
+
+	mtx_link_init(&link);
+	return(__mtx_lock_sh(mtx, &link, ident, flags, to));
+}
+
+int
+_mtx_lock_sh_quick(mtx_t *mtx, const char *ident)
+{
+	mtx_link_t link;
+
+	mtx_link_init(&link);
+	return(__mtx_lock_sh(mtx, &link, ident, 0, 0));
 }
 
 /*
  * Get an exclusive spinlock the hard way.
  */
 void
-_mtx_spinlock(mtx_t mtx)
+_mtx_spinlock(mtx_t *mtx)
 {
 	u_int	lock;
 	u_int	nlock;
@@ -338,7 +430,7 @@ _mtx_spinlock(mtx_t mtx)
  * Returns 0 on success, EAGAIN on failure.
  */
 int
-_mtx_spinlock_try(mtx_t mtx)
+_mtx_spinlock_try(mtx_t *mtx)
 {
 	globaldata_t gd = mycpu;
 	u_int	lock;
@@ -375,7 +467,7 @@ _mtx_spinlock_try(mtx_t mtx)
 #if 0
 
 void
-_mtx_spinlock_sh(mtx_t mtx)
+_mtx_spinlock_sh(mtx_t *mtx)
 {
 	u_int	lock;
 	u_int	nlock;
@@ -406,11 +498,11 @@ _mtx_spinlock_sh(mtx_t mtx)
 #endif
 
 int
-_mtx_lock_ex_try(mtx_t mtx)
+_mtx_lock_ex_try(mtx_t *mtx)
 {
 	u_int	lock;
 	u_int	nlock;
-	int	error = 0;
+	int	error;
 
 	for (;;) {
 		lock = mtx->mtx_lock;
@@ -418,14 +510,17 @@ _mtx_lock_ex_try(mtx_t mtx)
 			nlock = MTX_EXCLUSIVE | 1;
 			if (atomic_cmpset_int(&mtx->mtx_lock, 0, nlock)) {
 				mtx->mtx_owner = curthread;
+				error = 0;
 				break;
 			}
 		} else if ((lock & MTX_EXCLUSIVE) &&
 			   mtx->mtx_owner == curthread) {
 			KKASSERT((lock & MTX_MASK) != MTX_MASK);
 			nlock = lock + 1;
-			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
+			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
+				error = 0;
 				break;
+			}
 		} else {
 			error = EAGAIN;
 			break;
@@ -437,7 +532,7 @@ _mtx_lock_ex_try(mtx_t mtx)
 }
 
 int
-_mtx_lock_sh_try(mtx_t mtx)
+_mtx_lock_sh_try(mtx_t *mtx)
 {
 	u_int	lock;
 	u_int	nlock;
@@ -468,25 +563,36 @@ _mtx_lock_sh_try(mtx_t mtx)
  * The exclusive count is converted to a shared count.
  */
 void
-_mtx_downgrade(mtx_t mtx)
+_mtx_downgrade(mtx_t *mtx)
 {
 	u_int	lock;
 	u_int	nlock;
 
 	for (;;) {
 		lock = mtx->mtx_lock;
+		cpu_ccfence();
+
+		/*
+		 * NOP if already shared.
+		 */
 		if ((lock & MTX_EXCLUSIVE) == 0) {
 			KKASSERT((lock & MTX_MASK) > 0);
 			break;
 		}
-		KKASSERT(mtx->mtx_owner == curthread);
-		nlock = lock & ~(MTX_EXCLUSIVE | MTX_SHWANTED);
-		if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
-			if (lock & MTX_SHWANTED) {
-				wakeup(mtx);
-				++mtx_wakeup_count;
-			}
-			break;
+
+		/*
+		 * Transfer count to shared.  Any additional pending shared
+		 * waiters must be woken up.
+		 */
+		if (lock & MTX_SHWANTED) {
+			if (mtx_chain_link_sh(mtx, lock, 1))
+				break;
+			/* retry */
+		} else {
+			nlock = lock & ~MTX_EXCLUSIVE;
+			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
+				break;
+			/* retry */
 		}
 		cpu_pause();
 		++mtx_collision_count;
@@ -505,7 +611,7 @@ _mtx_downgrade(mtx_t mtx)
  * Returns 0 on success, EDEADLK on failure.
  */
 int
-_mtx_upgrade_try(mtx_t mtx)
+_mtx_upgrade_try(mtx_t *mtx)
 {
 	u_int	lock;
 	u_int	nlock;
@@ -536,179 +642,238 @@ _mtx_upgrade_try(mtx_t mtx)
 /*
  * Unlock a lock.  The caller must hold the lock either shared or exclusive.
  *
- * Any release which makes the lock available when others want an exclusive
- * lock causes us to chain the owner to the next exclusive lock instead of
- * releasing the lock.
+ * On the last release we handle any pending chains.
  */
 void
-_mtx_unlock(mtx_t mtx)
+_mtx_unlock(mtx_t *mtx)
 {
 	u_int	lock;
 	u_int	nlock;
 
 	for (;;) {
 		lock = mtx->mtx_lock;
-		nlock = lock & ~(MTX_SHWANTED | MTX_EXLINK);
+		cpu_ccfence();
 
-		if (nlock == 1) {
+		switch(lock) {
+		case MTX_EXCLUSIVE | 1:
 			/*
-			 * Last release, shared lock, no exclusive waiters.
-			 */
-			nlock = lock & MTX_EXLINK;
-			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
-				break;
-		} else if (nlock == (MTX_EXCLUSIVE | 1)) {
-			/*
-			 * Last release, exclusive lock, no exclusive waiters.
-			 * Wake up any shared waiters.
+			 * Last release, exclusive lock.
+			 * No exclusive or shared requests pending.
 			 */
 			mtx->mtx_owner = NULL;
-			nlock = lock & MTX_EXLINK;
-			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
-				if (lock & MTX_SHWANTED) {
-					wakeup(mtx);
-					++mtx_wakeup_count;
-				}
-				break;
-			}
-		} else if (nlock == (MTX_EXWANTED | 1)) {
+			nlock = 0;
+			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
+				goto done;
+			break;
+		case MTX_EXCLUSIVE | MTX_EXWANTED | 1:
+		case MTX_EXCLUSIVE | MTX_EXWANTED | MTX_SHWANTED | 1:
 			/*
-			 * Last release, shared lock, with exclusive
-			 * waiters.
-			 *
-			 * Wait for EXLINK to clear, then acquire it.
-			 * We could use the cmpset for this but polling
-			 * is better on the cpu caches.
-			 *
-			 * Acquire an exclusive lock leaving the lockcount
-			 * set to 1, and get EXLINK for access to mtx_link.
+			 * Last release, exclusive lock.
+			 * Exclusive requests pending.
+			 * Exclusive requests have priority over shared reqs.
 			 */
-			thread_t td;
-
-			if (lock & MTX_EXLINK) {
-				cpu_pause();
-				++mtx_collision_count;
-				continue;
-			}
-			td = curthread;
-			/*lock &= ~MTX_EXLINK;*/
-			nlock |= MTX_EXLINK | MTX_EXCLUSIVE;
-			nlock |= (lock & MTX_SHWANTED);
-			++td->td_critcount;
-			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
-				mtx_chain_link(mtx);
-				--td->td_critcount;
-				break;
-			}
-			--td->td_critcount;
-		} else if (nlock == (MTX_EXCLUSIVE | MTX_EXWANTED | 1)) {
+			if (mtx_chain_link_ex(mtx, lock))
+				goto done;
+			break;
+		case MTX_EXCLUSIVE | MTX_SHWANTED | 1:
 			/*
-			 * Last release, exclusive lock, with exclusive
-			 * waiters.
+			 * Last release, exclusive lock.
 			 *
-			 * leave the exclusive lock intact and the lockcount
-			 * set to 1, and get EXLINK for access to mtx_link.
+			 * Shared requests are pending.  Transfer our count (1)
+			 * to the first shared request, wakeup all shared reqs.
 			 */
-			thread_t td;
-
-			if (lock & MTX_EXLINK) {
-				cpu_pause();
-				++mtx_collision_count;
-				continue;
-			}
-			td = curthread;
-			/*lock &= ~MTX_EXLINK;*/
-			nlock |= MTX_EXLINK;
-			nlock |= (lock & MTX_SHWANTED);
-			++td->td_critcount;
-			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
-				mtx_chain_link(mtx);
-				--td->td_critcount;
+			if (mtx_chain_link_sh(mtx, lock, 0))
+				goto done;
+			break;
+		case 1:
+			/*
+			 * Last release, shared lock.
+			 * No exclusive or shared requests pending.
+			 */
+			nlock = 0;
+			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
+				goto done;
+			break;
+		case MTX_EXWANTED | 1:
+		case MTX_EXWANTED | MTX_SHWANTED | 1:
+			/*
+			 * Last release, shared lock.
+			 *
+			 * Exclusive requests are pending.  Transfer our
+			 * count (1) to the next exclusive request.
+			 *
+			 * Exclusive requests have priority over shared reqs.
+			 */
+			if (mtx_chain_link_ex(mtx, lock))
+				goto done;
+			break;
+		case MTX_SHWANTED | 1:
+			/*
+			 * Last release, shared lock.
+			 * Shared requests pending.
+			 */
+			if (mtx_chain_link_sh(mtx, lock, 0))
+				goto done;
+			break;
+		default:
+			/*
+			 * We have to loop if this is the last release but
+			 * someone is fiddling with LINKSPIN.
+			 */
+			if ((lock & MTX_MASK) == 1) {
+				KKASSERT(lock & MTX_LINKSPIN);
 				break;
 			}
-			--td->td_critcount;
-		} else {
+
 			/*
 			 * Not the last release (shared or exclusive)
 			 */
 			nlock = lock - 1;
 			KKASSERT((nlock & MTX_MASK) != MTX_MASK);
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
-				break;
+				goto done;
+			break;
 		}
+		/* loop try again */
 		cpu_pause();
 		++mtx_collision_count;
 	}
+done:
+	;
 }
 
 /*
- * Chain mtx_chain_link.  Called with the lock held exclusively with a
- * single ref count, and also with MTX_EXLINK held.
+ * Chain pending links.  Called on the last release of an exclusive or
+ * shared lock when the appropriate WANTED bit is set.  mtx_lock old state
+ * is passed in with the count left at 1, which we can inherit, and other
+ * bits which we must adjust in a single atomic operation.
+ *
+ * Return non-zero on success, 0 if caller needs to retry.
+ *
+ * NOTE: It's ok if MTX_EXWANTED is in an indeterminant state while we are
+ *	 acquiring LINKSPIN as all other cases will also need to acquire
+ *	 LINKSPIN when handling the EXWANTED case.
  */
-static void
-mtx_chain_link(mtx_t mtx)
+static int
+mtx_chain_link_ex(mtx_t *mtx, u_int olock)
 {
-	mtx_link_t link;
-	u_int	lock;
+	thread_t td = curthread;
+	mtx_link_t *link;
 	u_int	nlock;
-	u_int	clock;	/* bits we own and want to clear */
 
-	/*
-	 * Chain the exclusive lock to the next link.  The caller cleared
-	 * SHWANTED so if there is no link we have to wake up any shared
-	 * waiters.
-	 */
-	clock = MTX_EXLINK;
-	if ((link = mtx->mtx_link) != NULL) {
-		KKASSERT(link->state == MTX_LINK_LINKED);
+	olock &= ~MTX_LINKSPIN;
+	nlock = olock | MTX_LINKSPIN | MTX_EXCLUSIVE;
+	++td->td_critcount;
+	if (atomic_cmpset_int(&mtx->mtx_lock, olock, nlock)) {
+		link = mtx->mtx_exlink;
+		KKASSERT(link != NULL);
 		if (link->next == link) {
-			mtx->mtx_link = NULL;
-			clock |= MTX_EXWANTED;
+			mtx->mtx_exlink = NULL;
+			nlock = MTX_LINKSPIN | MTX_EXWANTED;	/* to clear */
 		} else {
-			mtx->mtx_link = link->next;
+			mtx->mtx_exlink = link->next;
 			link->next->prev = link->prev;
 			link->prev->next = link->next;
+			nlock = MTX_LINKSPIN;			/* to clear */
 		}
-		link->state = MTX_LINK_ACQUIRED;
+		KKASSERT(link->state == MTX_LINK_LINKED_EX);
 		mtx->mtx_owner = link->owner;
-	} else {
+		cpu_sfence();
+
 		/*
-		 * Chain was empty, release the exclusive lock's last count
-		 * as well the bits shown.
+		 * WARNING! The callback can only be safely
+		 *	    made with LINKSPIN still held
+		 *	    and in a critical section.
+		 *
+		 * WARNING! The link can go away after the
+		 *	    state is set, or after the
+		 *	    callback.
 		 */
-		clock |= MTX_EXCLUSIVE | MTX_EXWANTED | MTX_SHWANTED | 1;
-	}
-
-	/*
-	 * We have to uset cmpset here to deal with MTX_SHWANTED.  If
-	 * we just clear the bits we can miss a wakeup or, worse,
-	 * leave mtx_lock unlocked with MTX_SHWANTED still set.
-	 */
-	for (;;) {
-		lock = mtx->mtx_lock;
-		nlock = lock & ~clock;
-
-		if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
-			if (link) {
-				/*
-				 * Wakeup new exclusive holder.  Leave
-				 * SHWANTED intact.
-				 */
-				wakeup(link);
-			} else if (lock & MTX_SHWANTED) {
-				/*
-				 * Signal any shared waiters (and we also
-				 * clear SHWANTED).
-				 */
-				mtx->mtx_owner = NULL;
-				wakeup(mtx);
-				++mtx_wakeup_count;
-			}
-			break;
+		if (link->callback) {
+			link->state = MTX_LINK_CALLEDBACK;
+			link->callback(link, link->arg, 0);
+		} else {
+			link->state = MTX_LINK_ACQUIRED;
+			wakeup(link);
 		}
-		cpu_pause();
-		++mtx_collision_count;
+		atomic_clear_int(&mtx->mtx_lock, nlock);
+		--td->td_critcount;
+		++mtx_wakeup_count;
+		return 1;
 	}
+	/* retry */
+	--td->td_critcount;
+	return 0;
+}
+
+/*
+ * Flush waiting shared locks.  The lock's prior state is passed in and must
+ * be adjusted atomically only if it matches.
+ *
+ * If addcount is 0, the count for the first shared lock in the chain is
+ * assumed to have already been accounted for.
+ *
+ * If addcount is 1, the count for the first shared lock in the chain has
+ * not yet been accounted for.
+ */
+static int
+mtx_chain_link_sh(mtx_t *mtx, u_int olock, int addcount)
+{
+	thread_t td = curthread;
+	mtx_link_t *link;
+	u_int	nlock;
+
+	olock &= ~MTX_LINKSPIN;
+	nlock = olock | MTX_LINKSPIN;
+	nlock &= ~MTX_EXCLUSIVE;
+	++td->td_critcount;
+	if (atomic_cmpset_int(&mtx->mtx_lock, olock, nlock)) {
+		KKASSERT(mtx->mtx_shlink != NULL);
+		for (;;) {
+			link = mtx->mtx_shlink;
+			atomic_add_int(&mtx->mtx_lock, addcount);
+			KKASSERT(link->state == MTX_LINK_LINKED_SH);
+			if (link->next == link) {
+				mtx->mtx_shlink = NULL;
+				cpu_sfence();
+
+				/*
+				 * WARNING! The callback can only be safely
+				 *	    made with LINKSPIN still held
+				 *	    and in a critical section.
+				 *
+				 * WARNING! The link can go away after the
+				 *	    state is set, or after the
+				 *	    callback.
+				 */
+				if (link->callback) {
+					link->state = MTX_LINK_CALLEDBACK;
+					link->callback(link, link->arg, 0);
+				} else {
+					link->state = MTX_LINK_ACQUIRED;
+					wakeup(link);
+				}
+				++mtx_wakeup_count;
+				break;
+			}
+			mtx->mtx_shlink = link->next;
+			link->next->prev = link->prev;
+			link->prev->next = link->next;
+			cpu_sfence();
+			link->state = MTX_LINK_ACQUIRED;
+			/* link can go away */
+			wakeup(link);
+			++mtx_wakeup_count;
+			addcount = 1;
+		}
+		atomic_clear_int(&mtx->mtx_lock, MTX_LINKSPIN |
+						 MTX_SHWANTED);
+		--td->td_critcount;
+		return 1;
+	}
+	/* retry */
+	--td->td_critcount;
+	return 0;
 }
 
 /*
@@ -717,28 +882,27 @@ mtx_chain_link(mtx_t mtx)
  */
 static
 void
-mtx_delete_link(mtx_t mtx, mtx_link_t link)
+mtx_delete_link(mtx_t *mtx, mtx_link_t *link)
 {
 	thread_t td = curthread;
 	u_int	lock;
 	u_int	nlock;
 
 	/*
-	 * Acquire MTX_EXLINK.
+	 * Acquire MTX_LINKSPIN.
 	 *
-	 * Do not use cmpxchg to wait for EXLINK to clear as this might
+	 * Do not use cmpxchg to wait for LINKSPIN to clear as this might
 	 * result in too much cpu cache traffic.
 	 */
 	++td->td_critcount;
 	for (;;) {
 		lock = mtx->mtx_lock;
-		if (lock & MTX_EXLINK) {
+		if (lock & MTX_LINKSPIN) {
 			cpu_pause();
 			++mtx_collision_count;
 			continue;
 		}
-		/* lock &= ~MTX_EXLINK; */
-		nlock = lock | MTX_EXLINK;
+		nlock = lock | MTX_LINKSPIN;
 		if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
 			break;
 		cpu_pause();
@@ -746,48 +910,147 @@ mtx_delete_link(mtx_t mtx, mtx_link_t link)
 	}
 
 	/*
-	 * Delete the link and release EXLINK.
+	 * Delete the link and release LINKSPIN.
 	 */
-	if (link->state == MTX_LINK_LINKED) {
+	nlock = MTX_LINKSPIN;	/* to clear */
+
+	switch(link->state) {
+	case MTX_LINK_LINKED_EX:
 		if (link->next == link) {
-			mtx->mtx_link = NULL;
+			mtx->mtx_exlink = NULL;
+			nlock |= MTX_EXWANTED;	/* to clear */
 		} else {
-			mtx->mtx_link = link->next;
+			mtx->mtx_exlink = link->next;
 			link->next->prev = link->prev;
 			link->prev->next = link->next;
 		}
-		link->state = MTX_LINK_IDLE;
+		break;
+	case MTX_LINK_LINKED_SH:
+		if (link->next == link) {
+			mtx->mtx_shlink = NULL;
+			nlock |= MTX_SHWANTED;	/* to clear */
+		} else {
+			mtx->mtx_shlink = link->next;
+			link->next->prev = link->prev;
+			link->prev->next = link->next;
+		}
+		break;
+	default:
+		/* no change */
+		break;
 	}
-	atomic_clear_int(&mtx->mtx_lock, MTX_EXLINK);
+	atomic_clear_int(&mtx->mtx_lock, nlock);
 	--td->td_critcount;
 }
 
 /*
+ * Wait for async lock completion or abort.  Returns ENOLCK if an abort
+ * occurred.
+ */
+int
+mtx_wait_link(mtx_t *mtx, mtx_link_t *link,
+	      const char *ident, int flags, int to)
+{
+	int error;
+
+	/*
+	 * Sleep.  Handle false wakeups, interruptions, etc.
+	 * The link may also have been aborted.
+	 */
+	error = 0;
+	while (link->state & MTX_LINK_LINKED) {
+		tsleep_interlock(link, 0);
+		cpu_lfence();
+		if (link->state & MTX_LINK_LINKED) {
+			++mtx_contention_count;
+			if (link->state & MTX_LINK_LINKED_SH)
+				mycpu->gd_cnt.v_lock_name[0] = 'S';
+			else
+				mycpu->gd_cnt.v_lock_name[0] = 'X';
+			strncpy(mycpu->gd_cnt.v_lock_name + 1,
+				ident,
+				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
+			++mycpu->gd_cnt.v_lock_colls;
+
+			error = tsleep(link, flags | PINTERLOCKED,
+				       ident, to);
+			if (error)
+				break;
+		}
+	}
+
+	/*
+	 * We are done, make sure the link structure is unlinked.
+	 * It may still be on the list due to e.g. EINTR or
+	 * EWOULDBLOCK.
+	 *
+	 * It is possible for the tsleep to race an ABORT and cause
+	 * error to be 0.
+	 *
+	 * The tsleep() can be woken up for numerous reasons and error
+	 * might be zero in situations where we intend to return an error.
+	 *
+	 * (This is the synchronous case so state cannot be CALLEDBACK)
+	 */
+	switch(link->state) {
+	case MTX_LINK_ACQUIRED:
+	case MTX_LINK_CALLEDBACK:
+		error = 0;
+		break;
+	case MTX_LINK_ABORTED:
+		error = ENOLCK;
+		break;
+	case MTX_LINK_LINKED_EX:
+	case MTX_LINK_LINKED_SH:
+		mtx_delete_link(mtx, link);
+		/* fall through */
+	default:
+		if (error == 0)
+			error = EWOULDBLOCK;
+		break;
+	}
+
+	/*
+	 * Clear state on status returned.
+	 */
+	link->state = MTX_LINK_IDLE;
+
+	return error;
+}
+
+/*
  * Abort a mutex locking operation, causing mtx_lock_ex_link() to
- * return ENOLCK.  This may be called at any time after the
- * mtx_link is initialized, including both before and after the call
- * to mtx_lock_ex_link().
+ * return ENOLCK.  This may be called at any time after the mtx_link
+ * is initialized or the status from a previous lock has been
+ * returned.  If called prior to the next (non-try) lock attempt, the
+ * next lock attempt using this link structure will abort instantly.
+ *
+ * Caller must still wait for the operation to complete, either from a
+ * blocking call that is still in progress or by calling mtx_wait_link().
+ *
+ * If an asynchronous lock request is possibly in-progress, the caller
+ * should call mtx_wait_link() synchronously.  Note that the asynchronous
+ * lock callback will NOT be called if a successful abort occurred. XXX
  */
 void
-mtx_abort_ex_link(mtx_t mtx, mtx_link_t link)
+mtx_abort_link(mtx_t *mtx, mtx_link_t *link)
 {
 	thread_t td = curthread;
 	u_int	lock;
 	u_int	nlock;
 
 	/*
-	 * Acquire MTX_EXLINK
+	 * Acquire MTX_LINKSPIN
 	 */
 	++td->td_critcount;
 	for (;;) {
 		lock = mtx->mtx_lock;
-		if (lock & MTX_EXLINK) {
+		if (lock & MTX_LINKSPIN) {
 			cpu_pause();
 			++mtx_collision_count;
 			continue;
 		}
-		/* lock &= ~MTX_EXLINK; */
-		nlock = lock | MTX_EXLINK;
+		nlock = lock | MTX_LINKSPIN;
 		if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
 			break;
 		cpu_pause();
@@ -795,8 +1058,12 @@ mtx_abort_ex_link(mtx_t mtx, mtx_link_t link)
 	}
 
 	/*
-	 * Do the abort
+	 * Do the abort.
+	 *
+	 * WARNING! Link structure can disappear once link->state is set.
 	 */
+	nlock = MTX_LINKSPIN;	/* to clear */
+
 	switch(link->state) {
 	case MTX_LINK_IDLE:
 		/*
@@ -804,21 +1071,72 @@ mtx_abort_ex_link(mtx_t mtx, mtx_link_t link)
 		 */
 		link->state = MTX_LINK_ABORTED;
 		break;
-	case MTX_LINK_LINKED:
+	case MTX_LINK_LINKED_EX:
 		/*
-		 * de-link, mark aborted, and wakeup the thread.
+		 * de-link, mark aborted, and potentially wakeup the thread
+		 * or issue the callback.
 		 */
 		if (link->next == link) {
-			mtx->mtx_link = NULL;
+			if (mtx->mtx_exlink == link) {
+				mtx->mtx_exlink = NULL;
+				nlock |= MTX_EXWANTED;	/* to clear */
+			}
 		} else {
-			mtx->mtx_link = link->next;
+			if (mtx->mtx_exlink == link)
+				mtx->mtx_exlink = link->next;
 			link->next->prev = link->prev;
 			link->prev->next = link->next;
 		}
-		link->state = MTX_LINK_ABORTED;
-		wakeup(link);
+
+		/*
+		 * When aborting the async callback is still made.  We must
+		 * not set the link status to ABORTED in the callback case
+		 * since there is nothing else to clear its status if the
+		 * link is reused.
+		 */
+		if (link->callback) {
+			link->state = MTX_LINK_CALLEDBACK;
+			link->callback(link, link->arg, ENOLCK);
+		} else {
+			link->state = MTX_LINK_ABORTED;
+			wakeup(link);
+		}
+		++mtx_wakeup_count;
+		break;
+	case MTX_LINK_LINKED_SH:
+		/*
+		 * de-link, mark aborted, and potentially wakeup the thread
+		 * or issue the callback.
+		 */
+		if (link->next == link) {
+			if (mtx->mtx_shlink == link) {
+				mtx->mtx_shlink = NULL;
+				nlock |= MTX_SHWANTED;	/* to clear */
+			}
+		} else {
+			if (mtx->mtx_shlink == link)
+				mtx->mtx_shlink = link->next;
+			link->next->prev = link->prev;
+			link->prev->next = link->next;
+		}
+
+		/*
+		 * When aborting the async callback is still made.  We must
+		 * not set the link status to ABORTED in the callback case
+		 * since there is nothing else to clear its status if the
+		 * link is reused.
+		 */
+		if (link->callback) {
+			link->state = MTX_LINK_CALLEDBACK;
+			link->callback(link, link->arg, ENOLCK);
+		} else {
+			link->state = MTX_LINK_ABORTED;
+			wakeup(link);
+		}
+		++mtx_wakeup_count;
 		break;
 	case MTX_LINK_ACQUIRED:
+	case MTX_LINK_CALLEDBACK:
 		/*
 		 * Too late, the lock was acquired.  Let it complete.
 		 */
@@ -829,6 +1147,6 @@ mtx_abort_ex_link(mtx_t mtx, mtx_link_t link)
 		 */
 		break;
 	}
-	atomic_clear_int(&mtx->mtx_lock, MTX_EXLINK);
+	atomic_clear_int(&mtx->mtx_lock, nlock);
 	--td->td_critcount;
 }
