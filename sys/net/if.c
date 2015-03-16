@@ -517,8 +517,6 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		ifp->if_serializer = serializer;
 	}
 
-	mtx_init(&ifp->if_ioctl_mtx);
-
 	/*
 	 * XXX -
 	 * The old code would work if the interface passed a pre-existing

@@ -405,7 +405,6 @@ struct ifnet {
 	 */
 	struct lwkt_serialize if_default_serializer;
 
-	struct mtx	if_ioctl_mtx;	/* high-level ioctl mutex */
 	int	if_unused4;
 	struct ifdata_pcpu *if_data_pcpu; /* per-cpu stats */
 	void	*if_pf_kif;		/* pf interface */
