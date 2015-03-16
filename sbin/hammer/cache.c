@@ -104,7 +104,7 @@ hammer_cache_flush(void)
 			if (count >= NCache) {
 				CacheMax += 8 * 1024 * 1024;
 				target = CacheMax / 2;
-				count = 0;
+				count = 1;
 			}
 			cache->refs = 1;
 			cache->delete = 1;
