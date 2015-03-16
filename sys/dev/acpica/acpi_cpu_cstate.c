@@ -40,6 +40,7 @@
 #include <sys/serialize.h>
 #include <sys/msgport2.h>
 #include <sys/microtime_pcpu.h>
+#include <sys/cpu_topology.h>
 
 #include <bus/pci/pcivar.h>
 #include <machine/atomic.h>
@@ -94,6 +95,9 @@ struct acpi_cst_softc {
 };
 
 #define ACPI_CST_FLAG_PROBING	0x1
+#define ACPI_CST_FLAG_ATTACHED	0x2
+/* Match C-states of other hyperthreads on the same core */
+#define ACPI_CST_FLAG_MATCH_HT	0x4
 
 #define PCI_VENDOR_INTEL	0x8086
 #define PCI_DEVICE_82371AB_3	0x7113	/* PIIX4 chipset for quirks. */
@@ -142,6 +146,8 @@ static int	acpi_cst_shutdown(device_t);
 static void	acpi_cst_notify(device_t);
 static void	acpi_cst_postattach(void *);
 static void	acpi_cst_idle(void);
+static void	acpi_cst_copy(struct acpi_cst_softc *,
+		    const struct acpi_cst_softc *);
 
 static void	acpi_cst_cx_probe(struct acpi_cst_softc *);
 static void	acpi_cst_cx_probe_fadt(struct acpi_cst_softc *);
@@ -283,6 +289,8 @@ acpi_cst_attach(device_t dev)
 
     /* Probe for Cx state support. */
     acpi_cst_cx_probe(sc);
+
+    sc->cst_flags |= ACPI_CST_FLAG_ATTACHED;
 
     return (0);
 }
@@ -460,6 +468,16 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
     }
 }
 
+static void
+acpi_cst_copy(struct acpi_cst_softc *dst_sc,
+    const struct acpi_cst_softc *src_sc)
+{
+    dst_sc->cst_non_c3 = src_sc->cst_non_c3;
+    dst_sc->cst_cx_count = src_sc->cst_cx_count;
+    memcpy(dst_sc->cst_cx_states, src_sc->cst_cx_states,
+        sizeof(dst_sc->cst_cx_states));
+}
+
 /*
  * Parse a _CST package and set up its Cx states.  Since the _CST object
  * can change dynamically, our notify handler may call this function
@@ -506,7 +524,7 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	count = MAX_CX_STATES;
     }
 
-    sc->cst_flags |= ACPI_CST_FLAG_PROBING;
+    sc->cst_flags |= ACPI_CST_FLAG_PROBING | ACPI_CST_FLAG_MATCH_HT;
     cpu_sfence();
 
     /*
@@ -554,6 +572,13 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	    error = acpi_cst_cx_setup(cx_ptr);
 	    if (error)
 		panic("C1 CST HALT setup failed: %d", error);
+	    if (sc->cst_cx_count != 0) {
+		/*
+		 * C1 is not the first C-state; something really stupid
+		 * is going on ...
+		 */
+		sc->cst_flags &= ~ACPI_CST_FLAG_MATCH_HT;
+	    }
 	    cx_ptr++;
 	    sc->cst_cx_count++;
 	    continue;
@@ -576,6 +601,15 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	 */
 	KASSERT(cx_ptr->res == NULL, ("still has res"));
 	acpi_PkgRawGas(pkg, 0, &cx_ptr->gas);
+
+	/*
+	 * We match number of C2/C3 for hyperthreads, only if the
+	 * register is "Fixed Hardware", e.g. on most of the Intel
+	 * CPUs.  We don't have much to do for the rest of the
+	 * register types.
+	 */
+	if (cx_ptr->gas.SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE)
+	    sc->cst_flags &= ~ACPI_CST_FLAG_MATCH_HT;
 
 	cx_ptr->rid = sc->cst_parent->cpu_next_rid;
 	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->res_type, &cx_ptr->rid,
@@ -605,6 +639,46 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	}
     }
     AcpiOsFree(buf.Pointer);
+
+    if (sc->cst_flags & ACPI_CST_FLAG_MATCH_HT) {
+	cpumask_t mask;
+
+	mask = get_cpumask_from_level(sc->cst_cpuid, CORE_LEVEL);
+	if (CPUMASK_TESTNZERO(mask)) {
+	    int cpu;
+
+	    for (cpu = 0; cpu < ncpus; ++cpu) {
+		struct acpi_cst_softc *sc1 = acpi_cst_softc[cpu];
+
+		if (sc1 == NULL || sc1 == sc ||
+		    (sc1->cst_flags & ACPI_CST_FLAG_ATTACHED) == 0 ||
+		    (sc1->cst_flags & ACPI_CST_FLAG_MATCH_HT) == 0)
+		    continue;
+		if (!CPUMASK_TESTBIT(mask, sc1->cst_cpuid))
+		    continue;
+
+		if (sc1->cst_cx_count != sc->cst_cx_count) {
+		    struct acpi_cst_softc *src_sc, *dst_sc;
+
+		    if (bootverbose) {
+			device_printf(sc->cst_dev,
+			    "inconstent C-state count: %d, %s has %d\n",
+			    sc->cst_cx_count,
+			    device_get_nameunit(sc1->cst_dev),
+			    sc1->cst_cx_count);
+		    }
+		    if (sc1->cst_cx_count > sc->cst_cx_count) {
+			src_sc = sc1;
+			dst_sc = sc;
+		    } else {
+			src_sc = sc;
+			dst_sc = sc1;
+		    }
+		    acpi_cst_copy(dst_sc, src_sc);
+		}
+	    }
+	}
+    }
 
     if (reprobe) {
 	/* If there are C3(+) states, always enable bus master wakeup */
