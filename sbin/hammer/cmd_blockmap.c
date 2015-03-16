@@ -188,13 +188,13 @@ check_btree_node(hammer_off_t node_offset, int depth)
 		badc = 'B';
 
 	if (badc != ' ') {
-		printf("B    NODE %016jx cnt=%02d p=%016jx "
+		printf("%c    NODE %016jx cnt=%02d p=%016jx "
 		       "type=%c depth=%d",
+		       badc,
 		       (uintmax_t)node_offset, node->count,
 		       (uintmax_t)node->parent,
 		       (node->type ? node->type : '?'), depth);
-		printf(" mirror %016jx", (uintmax_t)node->mirror_tid);
-		printf(" {\n");
+		printf(" mirror %016jx\n", (uintmax_t)node->mirror_tid);
 	}
 
 	for (i = 0; i < node->count; ++i) {
