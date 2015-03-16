@@ -56,7 +56,7 @@ static struct hammer_blockmap_layer2 *collect_get_track(
 	struct hammer_blockmap_layer2 *layer2);
 static collect_t collect_get(hammer_off_t phys_offset);
 static void dump_collect_table(void);
-static void dump_collect(collect_t collect);
+static void dump_collect(collect_t collect, int *stats);
 
 void
 hammer_cmd_blockmap(void)
@@ -316,24 +316,40 @@ dump_collect_table(void)
 {
 	collect_t collect, tmp;
 	int i;
+	int total = 0;
+	int stats[HAMMER_MAX_ZONES];
+	bzero(stats, sizeof(stats));
 
 	for (i = 0; i < COLLECT_HSIZE; ++i) {
 		for (collect = CollectHash[i]; collect; ) {
-			dump_collect(collect);
+			dump_collect(collect, stats);
 			tmp = collect;
 			collect = collect->hnext;
 			collect_rel(tmp);
 		}
 	}
+
+	if (VerboseOpt) {
+		printf("zone-bigblock statistics\n");
+		printf("\tNOTE: not all zones are currently taken into account\n");
+		printf("\tzone #\tbigblocks\n");
+		for (i = 0; i < HAMMER_MAX_ZONES; i++) {
+			printf("\tzone %d\t%d\n", i, stats[i]);
+			total += stats[i];
+		}
+		printf("\t---------------\n");
+		printf("\ttotal\t%d\n", total);
+	}
 }
 
 static
 void
-dump_collect(collect_t collect)
+dump_collect(collect_t collect, int *stats)
 {
 	struct hammer_blockmap_layer2 *track2;
 	struct hammer_blockmap_layer2 *layer2;
 	size_t i;
+	int zone;
 
 	for (i = 0; i < HAMMER_BLOCKMAP_RADIX2; ++i) {
 		track2 = &collect->track2[i];
@@ -346,16 +362,25 @@ dump_collect(collect_t collect)
 		if (track2->entry_crc == 0)
 			continue;
 
+		zone = layer2->zone;
+		if (AssertOnFailure) {
+			assert(zone >= HAMMER_ZONE_BTREE_INDEX);
+			assert(zone < HAMMER_MAX_ZONES);
+		}
+		stats[zone]++;
+
 		if (track2->bytes_free != layer2->bytes_free) {
-			printf("BM\tblock=%016jx calc %d free, got %d\n",
+			printf("BM\tblock=%016jx zone=%2d calc %d free, got %d\n",
 				(intmax_t)(collect->phys_offset +
 					   i * HAMMER_BIGBLOCK_SIZE),
+				layer2->zone,
 				track2->bytes_free,
 				layer2->bytes_free);
 		} else if (VerboseOpt) {
-			printf("\tblock=%016jx %d free (correct)\n",
+			printf("\tblock=%016jx zone=%2d %d free (correct)\n",
 				(intmax_t)(collect->phys_offset +
 					   i * HAMMER_BIGBLOCK_SIZE),
+				layer2->zone,
 				track2->bytes_free);
 		}
 	}
