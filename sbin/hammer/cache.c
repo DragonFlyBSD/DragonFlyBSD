@@ -98,8 +98,7 @@ hammer_cache_flush(void)
 			if (cache->refs) {
 				if (p == NULL)
 					p = cache;
-				TAILQ_REMOVE(&CacheList, cache, entry);
-				TAILQ_INSERT_TAIL(&CacheList, cache, entry);
+				hammer_cache_used(cache);
 				continue;
 			}
 			if (count >= NCache) {
