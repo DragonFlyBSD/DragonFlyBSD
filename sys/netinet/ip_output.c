@@ -105,6 +105,10 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, mbuf_frag_size, CTLFLAG_RW,
 	&mbuf_frag_size, 0, "Fragment outgoing mbufs to this size");
 #endif
 
+static int ip_do_rfc6864 = 1;
+SYSCTL_INT(_net_inet_ip, OID_AUTO, rfc6864, CTLFLAG_RW, &ip_do_rfc6864, 0,
+    "Don't generate IP ID for DF IP datagrams");
+
 static struct mbuf *ip_insertoptions(struct mbuf *, struct mbuf *, int *);
 static struct ifnet *ip_multicast_if(struct in_addr *, int *);
 static void	ip_mloopback
@@ -284,7 +288,10 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	if (!(flags & (IP_FORWARDING|IP_RAWOUTPUT))) {
 		ip->ip_vhl = IP_MAKE_VHL(IPVERSION, hlen >> 2);
 		ip->ip_off &= IP_DF;
-		ip->ip_id = ip_newid();
+		if (ip_do_rfc6864 && (ip->ip_off & IP_DF))
+			ip->ip_id = 0;
+		else
+			ip->ip_id = ip_newid();
 		ipstat.ips_localout++;
 	} else {
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
