@@ -247,8 +247,9 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		buf = malloc(sizeof(*buf));
 		bzero(buf, sizeof(*buf));
 		if (DebugOpt) {
-			fprintf(stderr, "get_buffer %016llx %016llx\n",
-				(long long)orig_offset, (long long)buf_offset);
+			fprintf(stderr, "get_buffer: %016llx %016llx at %p\n",
+				(long long)orig_offset, (long long)buf_offset,
+				buf);
 		}
 		buf->buf_offset = buf_offset;
 		buf->raw_offset = volume->ondisk->vol_buf_beg +
@@ -262,6 +263,11 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		if (isnew < 0)
 			buf->flags |= HAMMER_BUFINFO_READAHEAD;
 	} else {
+		if (DebugOpt) {
+			fprintf(stderr, "get_buffer: %016llx %016llx at %p *\n",
+				(long long)orig_offset, (long long)buf_offset,
+				buf);
+		}
 		if (isnew >= 0) {
 			buf->flags &= ~HAMMER_BUFINFO_READAHEAD;
 			hammer_cache_used(&buf->cache);
