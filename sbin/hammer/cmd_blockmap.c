@@ -158,12 +158,16 @@ hammer_cmd_checkmap(void)
 	}
 	rel_volume(volume);
 
+	AssertOnFailure = 0;
+
 	printf("Collecting allocation info from B-Tree: ");
 	fflush(stdout);
 	collect_btree_root(node_offset);
 	check_btree_node(node_offset, 0);
 	printf("done\n");
 	dump_collect_table();
+
+	AssertOnFailure = 1;
 }
 
 static void
@@ -207,8 +211,6 @@ check_btree_node(hammer_off_t node_offset, int depth)
 			if (elm->leaf.data_offset)
 				collect_btree_leaf(elm);
 			break;
-		default:
-			assert(0);
 		}
 	}
 	rel_buffer(buffer);
