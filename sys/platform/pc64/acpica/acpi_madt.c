@@ -42,8 +42,7 @@
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/apicvar.h>
 
-#include <contrib/dev/acpica/source/include/acpi.h>
-
+#include "acpi_sdt.h"
 #include "acpi_sdt_var.h"
 #include "acpi_sci_var.h"
 
@@ -55,16 +54,80 @@ do { \
 		kprintf("ACPI MADT: " fmt , ##arg); \
 } while (0)
 
+/* Multiple APIC Description Table */
+struct acpi_madt {
+	struct acpi_sdth	madt_hdr;
+	uint32_t		madt_lapic_addr;
+	uint32_t		madt_flags;
+	uint8_t			madt_ents[1];
+} __packed;
+
+/* Common parts of MADT APIC structure */
+struct acpi_madt_ent {
+	uint8_t			me_type;	/* MADT_ENT_ */
+	uint8_t			me_len;
+} __packed;
+
+#define MADT_ENT_LAPIC		0
+#define MADT_ENT_IOAPIC		1
+#define MADT_ENT_INTSRC		2
+#define MADT_ENT_LAPIC_ADDR	5
+
+/* MADT Processor Local APIC */
+struct acpi_madt_lapic {
+	struct acpi_madt_ent	ml_hdr;
+	uint8_t			ml_cpu_id;
+	uint8_t			ml_apic_id;
+	uint32_t		ml_flags;	/* MADT_LAPIC_ */
+} __packed;
+
+#define MADT_LAPIC_ENABLED	0x1
+
+/* MADT I/O APIC */
+struct acpi_madt_ioapic {
+	struct acpi_madt_ent	mio_hdr;
+	uint8_t			mio_apic_id;
+	uint8_t			mio_reserved;
+	uint32_t		mio_addr;
+	uint32_t		mio_gsi_base;
+} __packed;
+
+/* MADT Interrupt Source Override */
+struct acpi_madt_intsrc {
+	struct acpi_madt_ent	mint_hdr;
+	uint8_t			mint_bus;	/* MADT_INT_BUS_ */
+	uint8_t			mint_src;
+	uint32_t		mint_gsi;
+	uint16_t		mint_flags;	/* MADT_INT_ */
+} __packed;
+
 #define MADT_INT_BUS_ISA	0
 
+#define MADT_INT_POLA_MASK	0x3
 #define MADT_INT_POLA_SHIFT	0
+#define MADT_INT_POLA_CONFORM	0
+#define MADT_INT_POLA_HIGH	1
+#define MADT_INT_POLA_RSVD	2
+#define MADT_INT_POLA_LOW	3
+#define MADT_INT_TRIG_MASK	0xc
 #define MADT_INT_TRIG_SHIFT	2
+#define MADT_INT_TRIG_CONFORM	0
+#define MADT_INT_TRIG_EDGE	1
+#define MADT_INT_TRIG_RSVD	2
+#define MADT_INT_TRIG_LEVEL	3
+
+/* MADT Local APIC Address Override */
+struct acpi_madt_lapic_addr {
+	struct acpi_madt_ent	mla_hdr;
+	uint16_t		mla_reserved;
+	uint64_t		mla_lapic_addr;
+} __packed;
 
 typedef int			(*madt_iter_t)(void *,
-				    const ACPI_SUBTABLE_HEADER *);
+				    const struct acpi_madt_ent *);
 
 static int			madt_check(vm_paddr_t);
-static int			madt_iterate_entries(ACPI_TABLE_MADT *,
+static int			madt_iterate_entries(struct acpi_madt *,
 				    madt_iter_t, void *);
 
 static vm_paddr_t		madt_lapic_pass1(void);
@@ -86,7 +149,7 @@ madt_probe(void)
 
 	KKASSERT(madt_phyaddr == 0);
 
-	madt_paddr = sdt_search(ACPI_SIG_MADT);
+	madt_paddr = sdt_search(ACPI_MADT_SIG);
 	if (madt_paddr == 0) {
 		kprintf("madt_probe: can't locate MADT\n");
 		return;
@@ -105,7 +168,7 @@ SYSINIT(madt_probe, SI_BOOT2_PRESMP, SI_ORDER_SECOND, madt_probe, 0);
 static int
 madt_check(vm_paddr_t madt_paddr)
 {
-	ACPI_TABLE_MADT *madt;
+	struct acpi_madt *madt;
 	int error = 0;
 
 	KKASSERT(madt_paddr != 0);
@@ -116,77 +179,78 @@ madt_check(vm_paddr_t madt_paddr)
 	/*
 	 * MADT in ACPI specification 1.0 - 5.0
 	 */
-	if (madt->Header.Revision < 1 || madt->Header.Revision > 3) {
+	if (madt->madt_hdr.sdth_rev < 1 || madt->madt_hdr.sdth_rev > 3) {
 		kprintf("madt_check: unknown MADT revision %d\n",
-			madt->Header.Revision);
+			madt->madt_hdr.sdth_rev);
 	}
 
-	if (madt->Header.Length < sizeof(*madt)) {
+	if (madt->madt_hdr.sdth_len <
+	    sizeof(*madt) - sizeof(madt->madt_ents)) {
 		kprintf("madt_check: invalid MADT length %u\n",
-			madt->Header.Length);
+			madt->madt_hdr.sdth_len);
 		error = EINVAL;
 		goto back;
 	}
 back:
-	sdt_sdth_unmap(&madt->Header);
+	sdt_sdth_unmap(&madt->madt_hdr);
 	return error;
 }
 
 static int
-madt_iterate_entries(ACPI_TABLE_MADT *madt, madt_iter_t func, void *arg)
+madt_iterate_entries(struct acpi_madt *madt, madt_iter_t func, void *arg)
 {
 	int size, cur, error;
 
-	size = madt->Header.Length - sizeof(*madt);
+	size = madt->madt_hdr.sdth_len -
+	       (sizeof(*madt) - sizeof(madt->madt_ents));
 	cur = 0;
 	error = 0;
 
-	while (size - cur > sizeof(ACPI_SUBTABLE_HEADER)) {
-		const ACPI_SUBTABLE_HEADER *ent;
-		
-		ent = (const ACPI_SUBTABLE_HEADER *)((char *)madt +
-		    sizeof(*madt) + cur);
-		if (ent->Length < sizeof(*ent)) {
+	while (size - cur > sizeof(struct acpi_madt_ent)) {
+		const struct acpi_madt_ent *ent;
+
+		ent = (const struct acpi_madt_ent *)&madt->madt_ents[cur];
+		if (ent->me_len < sizeof(*ent)) {
 			kprintf("madt_iterate_entries: invalid MADT "
-				"entry len %d\n", ent->Length);
+				"entry len %d\n", ent->me_len);
 			error = EINVAL;
 			break;
 		}
-		if (ent->Length > (size - cur)) {
+		if (ent->me_len > (size - cur)) {
 			kprintf("madt_iterate_entries: invalid MADT "
-				"entry len %d, > table length\n", ent->Length);
+				"entry len %d, > table length\n", ent->me_len);
 			error = EINVAL;
 			break;
 		}
 
-		cur += ent->Length;
+		cur += ent->me_len;
 
 		/*
 		 * Only Local APIC, I/O APIC and Interrupt Source Override
 		 * are defined in ACPI specification 1.0 - 5.0
 		 */
-		switch (ent->Type) {
-		case ACPI_MADT_TYPE_LOCAL_APIC:
-			if (ent->Length < sizeof(ACPI_MADT_LOCAL_APIC)) {
+		switch (ent->me_type) {
+		case MADT_ENT_LAPIC:
+			if (ent->me_len < sizeof(struct acpi_madt_lapic)) {
 				kprintf("madt_iterate_entries: invalid MADT "
-					"lapic entry len %d\n", ent->Length);
+					"lapic entry len %d\n", ent->me_len);
 				error = EINVAL;
 			}
 			break;
 
-		case ACPI_MADT_TYPE_IO_APIC:
-			if (ent->Length < sizeof(ACPI_MADT_IO_APIC)) {
+		case MADT_ENT_IOAPIC:
+			if (ent->me_len < sizeof(struct acpi_madt_ioapic)) {
 				kprintf("madt_iterate_entries: invalid MADT "
-					"ioapic entry len %d\n", ent->Length);
+					"ioapic entry len %d\n", ent->me_len);
 				error = EINVAL;
 			}
 			break;
 
-		case ACPI_MADT_TYPE_INTERRUPT_OVERRIDE:
-			if (ent->Length < sizeof(ACPI_MADT_INTERRUPT_OVERRIDE)) {
+		case MADT_ENT_INTSRC:
+			if (ent->me_len < sizeof(struct acpi_madt_intsrc)) {
 				kprintf("madt_iterate_entries: invalid MADT "
 					"intsrc entry len %d\n",
-					ent->Length);
+					ent->me_len);
 				error = EINVAL;
 			}
 			break;
@@ -197,35 +261,33 @@ madt_iterate_entries(ACPI_TABLE_MADT *madt, madt_iter_t func, void *arg)
 		error = func(arg, ent);
 		if (error)
 			break;
-
-		ent = ACPI_ADD_PTR(ACPI_SUBTABLE_HEADER, ent, ent->Length);
 	}
 	return error;
 }
 
 static int
-madt_lapic_pass1_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
+madt_lapic_pass1_callback(void *xarg, const struct acpi_madt_ent *ent)
 {
-	const ACPI_MADT_LOCAL_APIC_OVERRIDE *lapic_addr_ent;
+	const struct acpi_madt_lapic_addr *lapic_addr_ent;
 	uint64_t *addr64 = xarg;
 
-	if (ent->Type != ACPI_MADT_TYPE_LOCAL_APIC_OVERRIDE)
+	if (ent->me_type != MADT_ENT_LAPIC_ADDR)
 		return 0;
-	if (ent->Length < sizeof(*lapic_addr_ent)) {
+	if (ent->me_len < sizeof(*lapic_addr_ent)) {
 		kprintf("madt_lapic_pass1: "
 			"invalid LAPIC address override length\n");
 		return 0;
 	}
-	lapic_addr_ent = (const ACPI_MADT_LOCAL_APIC_OVERRIDE *)ent;
+	lapic_addr_ent = (const struct acpi_madt_lapic_addr *)ent;
 
-	*addr64 = lapic_addr_ent->Address;
+	*addr64 = lapic_addr_ent->mla_lapic_addr;
 	return 0;
 }
 
 static vm_paddr_t
 madt_lapic_pass1(void)
 {
-	ACPI_TABLE_MADT *madt;
+	struct acpi_madt *madt;
 	vm_paddr_t lapic_addr;
 	uint64_t lapic_addr64;
 	int error;
@@ -236,8 +298,8 @@ madt_lapic_pass1(void)
 	KKASSERT(madt != NULL);
 
 	MADT_VPRINTF("LAPIC address 0x%x, flags %#x\n",
-		     madt->Address, madt->Flags);
-	lapic_addr = madt->Address;
+		     madt->madt_lapic_addr, madt->madt_flags);
+	lapic_addr = madt->madt_lapic_addr;
 
 	lapic_addr64 = 0;
 	error = madt_iterate_entries(madt, madt_lapic_pass1_callback,
@@ -251,7 +313,7 @@ madt_lapic_pass1(void)
 		lapic_addr = lapic_addr64;
 	}
 
-	sdt_sdth_unmap(&madt->Header);
+	sdt_sdth_unmap(&madt->madt_hdr);
 
 	return lapic_addr;
 }
@@ -263,23 +325,23 @@ struct madt_lapic_pass2_cbarg {
 };
 
 static int
-madt_lapic_pass2_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
+madt_lapic_pass2_callback(void *xarg, const struct acpi_madt_ent *ent)
 {
-	const ACPI_MADT_LOCAL_APIC *lapic_ent;
+	const struct acpi_madt_lapic *lapic_ent;
 	struct madt_lapic_pass2_cbarg *arg = xarg;
 
-	if (ent->Type != ACPI_MADT_TYPE_LOCAL_APIC)
+	if (ent->me_type != MADT_ENT_LAPIC)
 		return 0;
 
-	lapic_ent = (const ACPI_MADT_LOCAL_APIC *)ent;
-	if (lapic_ent->LapicFlags & ACPI_MADT_ENABLED) {
+	lapic_ent = (const struct acpi_madt_lapic *)ent;
+	if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED) {
 		MADT_VPRINTF("cpu id %d, apic id %d\n",
-			     lapic_ent->ProcessorId, lapic_ent->Id);
-		if (lapic_ent->Id == arg->bsp_apic_id) {
-			lapic_set_cpuid(0, lapic_ent->Id);
+			     lapic_ent->ml_cpu_id, lapic_ent->ml_apic_id);
+		if (lapic_ent->ml_apic_id == arg->bsp_apic_id) {
+			lapic_set_cpuid(0, lapic_ent->ml_apic_id);
 			arg->bsp_found = 1;
 		} else {
-			lapic_set_cpuid(arg->cpu, lapic_ent->Id);
+			lapic_set_cpuid(arg->cpu, lapic_ent->ml_apic_id);
 			arg->cpu++;
 		}
 	}
@@ -289,7 +351,7 @@ madt_lapic_pass2_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
 static int
 madt_lapic_pass2(int bsp_apic_id)
 {
-	ACPI_TABLE_MADT *madt;
+	struct acpi_madt *madt;
 	struct madt_lapic_pass2_cbarg arg;
 	int error;
 
@@ -311,7 +373,7 @@ madt_lapic_pass2(int bsp_apic_id)
 	KKASSERT(arg.bsp_found);
 	naps = arg.cpu - 1; /* exclude BSP */
 
-	sdt_sdth_unmap(&madt->Header);
+	sdt_sdth_unmap(&madt->madt_hdr);
 
 	return 0;
 }
@@ -322,35 +384,35 @@ struct madt_lapic_probe_cbarg {
 };
 
 static int
-madt_lapic_probe_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
+madt_lapic_probe_callback(void *xarg, const struct acpi_madt_ent *ent)
 {
 	struct madt_lapic_probe_cbarg *arg = xarg;
 
-	if (ent->Type == ACPI_MADT_TYPE_LOCAL_APIC) {
-		const ACPI_MADT_LOCAL_APIC *lapic_ent;
+	if (ent->me_type == MADT_ENT_LAPIC) {
+		const struct acpi_madt_lapic *lapic_ent;
 
-		lapic_ent = (const ACPI_MADT_LOCAL_APIC *)ent;
-		if (lapic_ent->LapicFlags & ACPI_MADT_ENABLED) {
+		lapic_ent = (const struct acpi_madt_lapic *)ent;
+		if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED) {
 			arg->cpu_count++;
-			if (lapic_ent->Id == APICID_MAX) {
+			if (lapic_ent->ml_apic_id == APICID_MAX) {
 				kprintf("madt_lapic_probe: "
 				    "invalid LAPIC apic id %d\n",
-				    lapic_ent->Id);
+				    lapic_ent->ml_apic_id);
 				return EINVAL;
 			}
 		}
-	} else if (ent->Type == ACPI_MADT_TYPE_LOCAL_APIC_OVERRIDE) {
-		const ACPI_MADT_LOCAL_APIC_OVERRIDE *lapic_addr_ent;
+	} else if (ent->me_type == MADT_ENT_LAPIC_ADDR) {
+		const struct acpi_madt_lapic_addr *lapic_addr_ent;
 
-		if (ent->Length < sizeof(*lapic_addr_ent)) {
+		if (ent->me_len < sizeof(*lapic_addr_ent)) {
 			kprintf("madt_lapic_probe: "
 				"invalid LAPIC address override length\n");
 			return 0;
 		}
-		lapic_addr_ent = (const ACPI_MADT_LOCAL_APIC_OVERRIDE *)ent;
+		lapic_addr_ent = (const struct acpi_madt_lapic_addr *)ent;
 
-		if (lapic_addr_ent->Address != 0)
-			arg->lapic_addr = lapic_addr_ent->Address;
+		if (lapic_addr_ent->mla_lapic_addr != 0)
+			arg->lapic_addr = lapic_addr_ent->mla_lapic_addr;
 	}
 	return 0;
 }
@@ -359,7 +421,7 @@ static int
 madt_lapic_probe(struct lapic_enumerator *e)
 {
 	struct madt_lapic_probe_cbarg arg;
-	ACPI_TABLE_MADT *madt;
+	struct acpi_madt *madt;
 	int error;
 
 	if (madt_phyaddr == 0)
@@ -369,7 +431,7 @@ madt_lapic_probe(struct lapic_enumerator *e)
 	KKASSERT(madt != NULL);
 
 	bzero(&arg, sizeof(arg));
-	arg.lapic_addr = madt->Address;
+	arg.lapic_addr = madt->madt_lapic_addr;
 
 	error = madt_iterate_entries(madt, madt_lapic_probe_callback, &arg);
 	if (!error) {
@@ -383,7 +445,7 @@ madt_lapic_probe(struct lapic_enumerator *e)
 		}
 	}
 
-	sdt_sdth_unmap(&madt->Header);
+	sdt_sdth_unmap(&madt->madt_hdr);
 	return error;
 }
 
@@ -444,64 +506,64 @@ struct madt_ioapic_probe_cbarg {
 };
 
 static int
-madt_ioapic_probe_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
+madt_ioapic_probe_callback(void *xarg, const struct acpi_madt_ent *ent)
 {
 	struct madt_ioapic_probe_cbarg *arg = xarg;
 
-	if (ent->Type == ACPI_MADT_TYPE_INTERRUPT_OVERRIDE) {
-		const ACPI_MADT_INTERRUPT_OVERRIDE *intsrc_ent;
+	if (ent->me_type == MADT_ENT_INTSRC) {
+		const struct acpi_madt_intsrc *intsrc_ent;
 		int trig, pola;
 
-		intsrc_ent = (const ACPI_MADT_INTERRUPT_OVERRIDE *)ent;
+		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
 
-		if (intsrc_ent->SourceIrq >= ISA_IRQ_CNT) {
+		if (intsrc_ent->mint_src >= ISA_IRQ_CNT) {
 			kprintf("madt_ioapic_probe: invalid intsrc irq (%d)\n",
-				intsrc_ent->SourceIrq);
+				intsrc_ent->mint_src);
 			return EINVAL;
 		}
 
-		if (intsrc_ent->Bus != MADT_INT_BUS_ISA) {
+		if (intsrc_ent->mint_bus != MADT_INT_BUS_ISA) {
 			kprintf("ACPI MADT: warning intsrc irq %d "
 				"bus is not ISA (%d)\n",
-				intsrc_ent->SourceIrq, intsrc_ent->Bus);
+				intsrc_ent->mint_src, intsrc_ent->mint_bus);
 		}
 
-		trig = (intsrc_ent->IntiFlags & ACPI_MADT_TRIGGER_MASK) >>
+		trig = (intsrc_ent->mint_flags & MADT_INT_TRIG_MASK) >>
 		       MADT_INT_TRIG_SHIFT;
-		if (trig == ACPI_MADT_TRIGGER_RESERVED) {
+		if (trig == MADT_INT_TRIG_RSVD) {
 			kprintf("ACPI MADT: warning invalid intsrc irq %d "
-				"trig, reserved\n", intsrc_ent->SourceIrq);
-		} else if (trig == ACPI_MADT_TRIGGER_LEVEL) {
+				"trig, reserved\n", intsrc_ent->mint_src);
+		} else if (trig == MADT_INT_TRIG_LEVEL) {
 			MADT_VPRINTF("warning invalid intsrc irq %d "
-			    "trig, level\n", intsrc_ent->SourceIrq);
+			    "trig, level\n", intsrc_ent->mint_src);
 		}
 
-		pola = (intsrc_ent->IntiFlags & ACPI_MADT_POLARITY_MASK) >>
+		pola = (intsrc_ent->mint_flags & MADT_INT_POLA_MASK) >>
 		       MADT_INT_POLA_SHIFT;
-		if (pola == ACPI_MADT_POLARITY_RESERVED) {
+		if (pola == MADT_INT_POLA_RSVD) {
 			kprintf("ACPI MADT: warning invalid intsrc irq %d "
-				"pola, reserved\n", intsrc_ent->SourceIrq);
-		} else if (pola == ACPI_MADT_POLARITY_ACTIVE_LOW) {
+				"pola, reserved\n", intsrc_ent->mint_src);
+		} else if (pola == MADT_INT_POLA_LOW) {
 			MADT_VPRINTF("warning invalid intsrc irq %d "
-			    "pola, low\n", intsrc_ent->SourceIrq);
+			    "pola, low\n", intsrc_ent->mint_src);
 		}
-	} else if (ent->Type == ACPI_MADT_TYPE_IO_APIC) {
-		const ACPI_MADT_IO_APIC *ioapic_ent;
+	} else if (ent->me_type == MADT_ENT_IOAPIC) {
+		const struct acpi_madt_ioapic *ioapic_ent;
 
-		ioapic_ent = (const ACPI_MADT_IO_APIC *)ent;
-		if (ioapic_ent->Address == 0) {
+		ioapic_ent = (const struct acpi_madt_ioapic *)ent;
+		if (ioapic_ent->mio_addr == 0) {
 			kprintf("madt_ioapic_probe: zero IOAPIC address\n");
 			return EINVAL;
 		}
-		if (ioapic_ent->Id == APICID_MAX) {
+		if (ioapic_ent->mio_apic_id == APICID_MAX) {
 			kprintf("madt_ioapic_probe: "
 			    "invalid IOAPIC apic id %d\n",
-			    ioapic_ent->Id);
+			    ioapic_ent->mio_apic_id);
 			return EINVAL;
 		}
 
 		arg->ioapic_cnt++;
-		if (ioapic_ent->GlobalIrqBase == 0)
+		if (ioapic_ent->mio_gsi_base == 0)
 			arg->gsi_base0 = 1;
 	}
 	return 0;
@@ -511,7 +573,7 @@ static int
 madt_ioapic_probe(struct ioapic_enumerator *e)
 {
 	struct madt_ioapic_probe_cbarg arg;
-	ACPI_TABLE_MADT *madt;
+	struct acpi_madt *madt;
 	int error;
 
 	if (madt_phyaddr == 0)
@@ -534,47 +596,47 @@ madt_ioapic_probe(struct ioapic_enumerator *e)
 		}
 	}
 
-	sdt_sdth_unmap(&madt->Header);
+	sdt_sdth_unmap(&madt->madt_hdr);
 	return error;
 }
 
 static int
-madt_ioapic_enum_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
+madt_ioapic_enum_callback(void *xarg, const struct acpi_madt_ent *ent)
 {
-	if (ent->Type == ACPI_MADT_TYPE_INTERRUPT_OVERRIDE) {
-		const ACPI_MADT_INTERRUPT_OVERRIDE *intsrc_ent;
+	if (ent->me_type == MADT_ENT_INTSRC) {
+		const struct acpi_madt_intsrc *intsrc_ent;
 		enum intr_trigger trig;
 		enum intr_polarity pola;
 		int ent_trig, ent_pola;
 
-		intsrc_ent = (const ACPI_MADT_INTERRUPT_OVERRIDE *)ent;
+		intsrc_ent = (const struct acpi_madt_intsrc *)ent;
 
-		KKASSERT(intsrc_ent->SourceIrq < ISA_IRQ_CNT);
-		if (intsrc_ent->Bus != MADT_INT_BUS_ISA)
+		KKASSERT(intsrc_ent->mint_src < ISA_IRQ_CNT);
+		if (intsrc_ent->mint_bus != MADT_INT_BUS_ISA)
 			return 0;
 
-		ent_trig = (intsrc_ent->IntiFlags & ACPI_MADT_TRIGGER_MASK) >>
+		ent_trig = (intsrc_ent->mint_flags & MADT_INT_TRIG_MASK) >>
 		    MADT_INT_TRIG_SHIFT;
-		if (ent_trig == ACPI_MADT_TRIGGER_RESERVED)
+		if (ent_trig == MADT_INT_TRIG_RSVD)
 			return 0;
-		else if (ent_trig == ACPI_MADT_TRIGGER_LEVEL)
+		else if (ent_trig == MADT_INT_TRIG_LEVEL)
 			trig = INTR_TRIGGER_LEVEL;
 		else
 			trig = INTR_TRIGGER_EDGE;
 
-		ent_pola = (intsrc_ent->IntiFlags & ACPI_MADT_POLARITY_MASK) >>
+		ent_pola = (intsrc_ent->mint_flags & MADT_INT_POLA_MASK) >>
 		    MADT_INT_POLA_SHIFT;
-		if (ent_pola == ACPI_MADT_POLARITY_RESERVED)
+		if (ent_pola == MADT_INT_POLA_RSVD)
 			return 0;
-		else if (ent_pola == ACPI_MADT_POLARITY_ACTIVE_LOW)
+		else if (ent_pola == MADT_INT_POLA_LOW)
 			pola = INTR_POLARITY_LOW;
 		else
 			pola = INTR_POLARITY_HIGH;
 
-		if (intsrc_ent->SourceIrq == acpi_sci_irqno()) {
+		if (intsrc_ent->mint_src == acpi_sci_irqno()) {
 			acpi_sci_setmode1(trig, pola);
 			MADT_VPRINTF("SCI irq %d, first test %s/%s\n",
-			    intsrc_ent->SourceIrq,
+			    intsrc_ent->mint_src,
 			    intr_str_trigger(trig), intr_str_polarity(pola));
 		}
 
@@ -582,7 +644,7 @@ madt_ioapic_enum_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
 		 * We ignore the polarity and trigger changes, since
 		 * most of them are wrong or useless at best.
 		 */
-		if (intsrc_ent->SourceIrq == intsrc_ent->GlobalIrq) {
+		if (intsrc_ent->mint_src == intsrc_ent->mint_gsi) {
 			/* Nothing changed */
 			return 0;
 		}
@@ -590,27 +652,27 @@ madt_ioapic_enum_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
 		pola = INTR_POLARITY_HIGH;
 
 		MADT_VPRINTF("INTSRC irq %d -> gsi %u %s/%s\n",
-			     intsrc_ent->SourceIrq, intsrc_ent->GlobalIrq,
+			     intsrc_ent->mint_src, intsrc_ent->mint_gsi,
 			     intr_str_trigger(trig), intr_str_polarity(pola));
-		ioapic_intsrc(intsrc_ent->SourceIrq, intsrc_ent->GlobalIrq,
+		ioapic_intsrc(intsrc_ent->mint_src, intsrc_ent->mint_gsi,
 			      trig, pola);
-	} else if (ent->Type == ACPI_MADT_TYPE_IO_APIC) {
-		const ACPI_MADT_IO_APIC *ioapic_ent;
+	} else if (ent->me_type == MADT_ENT_IOAPIC) {
+		const struct acpi_madt_ioapic *ioapic_ent;
 		uint32_t ver;
 		void *addr;
 		int npin;
 
-		ioapic_ent = (const ACPI_MADT_IO_APIC *)ent;
+		ioapic_ent = (const struct acpi_madt_ioapic *)ent;
 		MADT_VPRINTF("IOAPIC addr 0x%08x, apic id %d, gsi base %u\n",
-			     ioapic_ent->Address, ioapic_ent->Id,
-			     ioapic_ent->GlobalIrqBase);
+			     ioapic_ent->mio_addr, ioapic_ent->mio_apic_id,
+			     ioapic_ent->mio_gsi_base);
 
-		addr = ioapic_map(ioapic_ent->Address);
+		addr = ioapic_map(ioapic_ent->mio_addr);
 
 		ver = ioapic_read(addr, IOAPIC_VER);
 		npin = ((ver & IOART_VER_MAXREDIR) >> MAXREDIRSHIFT) + 1;
 
-		ioapic_add(addr, ioapic_ent->GlobalIrqBase, npin);
+		ioapic_add(addr, ioapic_ent->mio_gsi_base, npin);
 	}
 	return 0;
 }
@@ -618,7 +680,7 @@ madt_ioapic_enum_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
 static void
 madt_ioapic_enumerate(struct ioapic_enumerator *e)
 {
-	ACPI_TABLE_MADT *madt;
+	struct acpi_madt *madt;
 	int error;
 
 	KKASSERT(madt_phyaddr != 0);
@@ -630,7 +692,7 @@ madt_ioapic_enumerate(struct ioapic_enumerator *e)
 	if (error)
 		panic("madt_ioapic_enumerate failed");
 
-	sdt_sdth_unmap(&madt->Header);
+	sdt_sdth_unmap(&madt->madt_hdr);
 }
 
 static struct ioapic_enumerator	madt_ioapic_enumerator = {
