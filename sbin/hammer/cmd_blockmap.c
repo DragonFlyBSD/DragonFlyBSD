@@ -47,7 +47,10 @@ collect_t CollectHash[COLLECT_HSIZE];
 
 static void dump_blockmap(const char *label, int zone);
 static void check_btree_node(hammer_off_t node_offset, int depth);
-static void collect_btree_elm(hammer_btree_elm_t elm);
+static void collect_btree_root(hammer_off_t node_offset);
+static void collect_btree_internal(hammer_btree_elm_t elm);
+static void collect_btree_leaf(hammer_btree_elm_t elm);
+static void collect_blockmap(hammer_off_t offset, int32_t length);
 static struct hammer_blockmap_layer2 *collect_get_track(
 	collect_t collect, hammer_off_t offset,
 	struct hammer_blockmap_layer2 *layer2);
@@ -157,6 +160,7 @@ hammer_cmd_checkmap(void)
 
 	printf("Collecting allocation info from B-Tree: ");
 	fflush(stdout);
+	collect_btree_root(node_offset);
 	check_btree_node(node_offset, 0);
 	printf("done\n");
 	dump_collect_table();
@@ -194,13 +198,14 @@ check_btree_node(hammer_off_t node_offset, int depth)
 		switch(node->type) {
 		case HAMMER_BTREE_TYPE_INTERNAL:
 			if (elm->internal.subtree_offset) {
+				collect_btree_internal(elm);
 				check_btree_node(elm->internal.subtree_offset,
 						 depth + 1);
 			}
 			break;
 		case HAMMER_BTREE_TYPE_LEAF:
 			if (elm->leaf.data_offset)
-				collect_btree_elm(elm);
+				collect_btree_leaf(elm);
 			break;
 		default:
 			assert(0);
@@ -211,19 +216,48 @@ check_btree_node(hammer_off_t node_offset, int depth)
 
 static
 void
-collect_btree_elm(hammer_btree_elm_t elm)
+collect_btree_root(hammer_off_t node_offset)
+{
+	collect_blockmap(node_offset,
+		sizeof(struct hammer_node_ondisk)); /* 4KB */
+}
+
+static
+void
+collect_btree_internal(hammer_btree_elm_t elm)
+{
+	collect_blockmap(elm->internal.subtree_offset,
+		sizeof(struct hammer_node_ondisk)); /* 4KB */
+}
+
+static
+void
+collect_btree_leaf(hammer_btree_elm_t elm)
+{
+	collect_blockmap(elm->leaf.data_offset,
+		(elm->leaf.data_len + 15) & ~15);
+}
+
+static
+void
+collect_blockmap(hammer_off_t offset, int32_t length)
 {
 	struct hammer_blockmap_layer1 layer1;
 	struct hammer_blockmap_layer2 layer2;
 	struct hammer_blockmap_layer2 *track2;
-	hammer_off_t offset = elm->leaf.data_offset;
+	hammer_off_t result_offset;
 	collect_t collect;
 	int error;
 
-	blockmap_lookup(offset, &layer1, &layer2, &error);
-	collect = collect_get(layer1.phys_offset);
+	result_offset = blockmap_lookup(offset, &layer1, &layer2, &error);
+	if (AssertOnFailure) {
+		assert(HAMMER_ZONE_DECODE(result_offset) ==
+			HAMMER_ZONE_RAW_BUFFER_INDEX);
+		assert(error == 0);
+	}
+	collect = collect_get(layer1.phys_offset); /* layer2 address */
 	track2 = collect_get_track(collect, offset, &layer2);
-	track2->bytes_free -= (elm->leaf.data_len + 15) & ~15;
+	track2->bytes_free -= length;
 }
 
 static
