@@ -109,6 +109,7 @@ struct acpi_tz_softc {
     eventhandler_tag		tz_event;
 
     struct acpi_tz_zone 	tz_zone;	/*Thermal zone parameters*/
+    time_t			tz_error_time;	/*Lookup error timestamp*/
     int				tz_validchecks;
     int				tz_insane_tmp_notified;
 
@@ -123,6 +124,10 @@ struct acpi_tz_softc {
     struct ksensordev		sensordev;
     struct ksensor		sensor;
 };
+
+/* silence errors after X seconds, try again after Y seconds */
+#define TZ_SILENCE_ERROR	(acpi_tz_polling_rate * 2 + 1)
+#define TZ_RETRY_ERROR		7200
 
 #define	TZ_ACTIVE_LEVEL(act)	((act) >= 0 ? (act) : TZ_NUMLEVELS)
 
@@ -475,22 +480,38 @@ acpi_tz_get_temperature(struct acpi_tz_softc *sc)
 
     ACPI_FUNCTION_NAME ("acpi_tz_get_temperature");
 
+    /*
+     * Silence lookup errors after 10 seconds, then retry every two hours.
+     */
+    if (sc->tz_error_time &&
+	time_uptime - sc->tz_error_time > TZ_SILENCE_ERROR) {
+	    if (time_uptime - sc->tz_error_time < TZ_RETRY_ERROR)
+		return (FALSE);
+	sc->tz_error_time = time_uptime - TZ_SILENCE_ERROR;
+    }
+
     /* Evaluate the thermal zone's _TMP method. */
     status = acpi_GetInteger(sc->tz_handle, acpi_tz_tmp_name, &temp);
     if (ACPI_FAILURE(status)) {
 	ACPI_VPRINT(sc->tz_dev, acpi_device_get_parent_softc(sc->tz_dev),
 	    "error fetching current temperature -- %s\n",
 	     AcpiFormatException(status));
+	if (sc->tz_error_time == 0)
+	    sc->tz_error_time = time_uptime;
 	return (FALSE);
     }
 
     /* Check it for validity. */
     acpi_tz_sanity(sc, &temp, acpi_tz_tmp_name);
-    if (temp == -1)
+    if (temp == -1) {
+	if (sc->tz_error_time == 0)
+	    sc->tz_error_time = time_uptime;
 	return (FALSE);
+    }
 
     ACPI_DEBUG_PRINT((ACPI_DB_VALUES, "got %d.%dC\n", TZ_KELVTOC(temp)));
     sc->tz_temperature = temp;
+    sc->tz_error_time = 0;
     /* Update sensor */
     if(sc->tz_temperature == -1)
         sc->sensor.flags &= ~SENSOR_FINVALID;
