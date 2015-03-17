@@ -50,9 +50,11 @@ TAILQ_HEAD(collect_head, collect) CollectHash[COLLECT_HSIZE];
 
 static void dump_blockmap(const char *label, int zone);
 static void check_btree_node(hammer_off_t node_offset, int depth);
+static void check_undo(hammer_blockmap_t rootmap);
 static void collect_btree_root(hammer_off_t node_offset);
 static void collect_btree_internal(hammer_btree_elm_t elm);
 static void collect_btree_leaf(hammer_btree_elm_t elm);
+static void collect_undo(hammer_off_t scan_offset, hammer_fifo_head_t head);
 static void collect_blockmap(hammer_off_t offset, int32_t length);
 static struct hammer_blockmap_layer2 *collect_get_track(
 	collect_t collect, hammer_off_t offset,
@@ -148,17 +150,23 @@ void
 hammer_cmd_checkmap(void)
 {
 	struct volume_info *volume;
+	hammer_blockmap_t rootmap;
 	hammer_off_t node_offset;
 	int i;
 
 	volume = get_volume(RootVolNo);
 	node_offset = volume->ondisk->vol0_btree_root;
+	rootmap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+
 	if (QuietOpt < 3) {
 		printf("Volume header\trecords=%jd next_tid=%016jx\n",
 		       (intmax_t)volume->ondisk->vol0_stat_records,
 		       (uintmax_t)volume->ondisk->vol0_next_tid);
 		printf("\t\tbufoffset=%016jx\n",
 		       (uintmax_t)volume->ondisk->vol_buf_beg);
+		printf("\t\tundosize=%jdMB\n",
+		       (intmax_t)((rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)
+			/ (1024 * 1024)));
 	}
 	rel_volume(volume);
 
@@ -172,8 +180,13 @@ hammer_cmd_checkmap(void)
 	collect_btree_root(node_offset);
 	check_btree_node(node_offset, 0);
 	printf("done\n");
-	dump_collect_table();
 
+	printf("Collecting allocation info from UNDO: ");
+	fflush(stdout);
+	check_undo(rootmap);
+	printf("done\n");
+
+	dump_collect_table();
 	AssertOnFailure = 1;
 }
 
@@ -223,6 +236,38 @@ check_btree_node(hammer_off_t node_offset, int depth)
 	rel_buffer(buffer);
 }
 
+static void
+check_undo(hammer_blockmap_t rootmap)
+{
+	struct buffer_info *buffer = NULL;
+	hammer_off_t scan_offset;
+	hammer_fifo_head_t head;
+
+	scan_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
+	while (scan_offset < rootmap->alloc_offset) {
+		head = get_buffer_data(scan_offset, &buffer, 0);
+		switch (head->hdr_type) {
+		case HAMMER_HEAD_TYPE_PAD:
+		case HAMMER_HEAD_TYPE_DUMMY:
+		case HAMMER_HEAD_TYPE_UNDO:
+		case HAMMER_HEAD_TYPE_REDO:
+			collect_undo(scan_offset, head);
+			break;
+		}
+		if ((head->hdr_size & HAMMER_HEAD_ALIGN_MASK) ||
+		     head->hdr_size == 0 ||
+		     head->hdr_size > HAMMER_UNDO_ALIGN -
+			((u_int)scan_offset & HAMMER_UNDO_MASK)) {
+			printf("Illegal size, skipping to next boundary\n");
+			scan_offset = (scan_offset + HAMMER_UNDO_MASK) &
+					~HAMMER_UNDO_MASK64;
+		} else {
+			scan_offset += head->hdr_size;
+		}
+	}
+	rel_buffer(buffer);
+}
+
 static
 void
 collect_btree_root(hammer_off_t node_offset)
@@ -245,6 +290,13 @@ collect_btree_leaf(hammer_btree_elm_t elm)
 {
 	collect_blockmap(elm->leaf.data_offset,
 		(elm->leaf.data_len + 15) & ~15);
+}
+
+static
+void
+collect_undo(hammer_off_t scan_offset, hammer_fifo_head_t head)
+{
+	collect_blockmap(scan_offset, head->hdr_size);
 }
 
 static
@@ -343,7 +395,6 @@ dump_collect_table(void)
 
 	if (VerboseOpt) {
 		printf("zone-bigblock statistics\n");
-		printf("\tNOTE: not all zones are currently taken into account\n");
 		printf("\tzone #\tbigblocks\n");
 		for (i = 0; i < HAMMER_MAX_ZONES; i++) {
 			printf("\tzone %d\t%d\n", i, stats[i]);
