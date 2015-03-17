@@ -44,6 +44,8 @@ typedef struct collect {
 	int error;
 } *collect_t;
 
+#define COLLECT_HSIZE	1024
+#define COLLECT_HMASK	(COLLECT_HSIZE - 1)
 TAILQ_HEAD(collect_head, collect) CollectHash[COLLECT_HSIZE];
 
 static void dump_blockmap(const char *label, int zone);
