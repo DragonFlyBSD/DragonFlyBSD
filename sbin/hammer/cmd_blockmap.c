@@ -51,10 +51,11 @@ TAILQ_HEAD(collect_head, collect) CollectHash[COLLECT_HSIZE];
 static void dump_blockmap(const char *label, int zone);
 static void check_btree_node(hammer_off_t node_offset, int depth);
 static void check_undo(hammer_blockmap_t rootmap);
-static void collect_btree_root(hammer_off_t node_offset);
-static void collect_btree_internal(hammer_btree_elm_t elm);
-static void collect_btree_leaf(hammer_btree_elm_t elm);
-static void collect_undo(hammer_off_t scan_offset, hammer_fifo_head_t head);
+static __inline void collect_btree_root(hammer_off_t node_offset);
+static __inline void collect_btree_internal(hammer_btree_elm_t elm);
+static __inline void collect_btree_leaf(hammer_btree_elm_t elm);
+static __inline void collect_undo(hammer_off_t scan_offset,
+	hammer_fifo_head_t head);
 static void collect_blockmap(hammer_off_t offset, int32_t length);
 static struct hammer_blockmap_layer2 *collect_get_track(
 	collect_t collect, hammer_off_t offset,
@@ -268,7 +269,7 @@ check_undo(hammer_blockmap_t rootmap)
 	rel_buffer(buffer);
 }
 
-static
+static __inline
 void
 collect_btree_root(hammer_off_t node_offset)
 {
@@ -276,7 +277,7 @@ collect_btree_root(hammer_off_t node_offset)
 		sizeof(struct hammer_node_ondisk)); /* 4KB */
 }
 
-static
+static __inline
 void
 collect_btree_internal(hammer_btree_elm_t elm)
 {
@@ -284,7 +285,7 @@ collect_btree_internal(hammer_btree_elm_t elm)
 		sizeof(struct hammer_node_ondisk)); /* 4KB */
 }
 
-static
+static __inline
 void
 collect_btree_leaf(hammer_btree_elm_t elm)
 {
@@ -292,7 +293,7 @@ collect_btree_leaf(hammer_btree_elm_t elm)
 		(elm->leaf.data_len + 15) & ~15);
 }
 
-static
+static __inline
 void
 collect_undo(hammer_off_t scan_offset, hammer_fifo_head_t head)
 {
