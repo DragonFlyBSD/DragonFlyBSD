@@ -38,7 +38,8 @@
 
 #include <machine/pmap.h>
 
-#include "acpi_sdt.h"
+#include <contrib/dev/acpica/source/include/acpi.h>
+
 #include "acpi_sdt_var.h"
 
 #define SDT_VPRINTF(fmt, arg...) \
@@ -47,43 +48,9 @@ do { \
 		kprintf("ACPI SDT: " fmt , ##arg); \
 } while (0)
 
-#define ACPI_RSDP_EBDA_MAPSZ	1024
-#define ACPI_RSDP_BIOS_MAPSZ	0x20000
-#define ACPI_RSDP_BIOS_MAPADDR	0xe0000
-
-#define ACPI_RSDP_ALIGN		16
-
-#define ACPI_RSDP_SIGLEN	8
-#define ACPI_RSDP_SIG		"RSD PTR "
-
-/* Root System Description Pointer */
-struct acpi_rsdp {
-	uint8_t			rsdp_sig[ACPI_RSDP_SIGLEN];
-	uint8_t			rsdp_cksum;
-	uint8_t			rsdp_oem_id[6];
-	uint8_t			rsdp_rev;
-	uint32_t		rsdp_rsdt;
-	uint32_t		rsdp_len;
-	uint64_t		rsdp_xsdt;
-	uint8_t			rsdp_ext_cksum;
-	uint8_t			rsdp_rsvd[3];
-} __packed;
-
-/* Extended System Description Table */
-struct acpi_xsdt {
-	struct acpi_sdth	xsdt_hdr;
-	uint64_t		xsdt_ents[1];
-} __packed;
-
-/* Root System Description Table */
-struct acpi_rsdt {
-	struct acpi_sdth	rsdt_hdr;
-	uint32_t		rsdt_ents[1];
-} __packed;
-
 typedef	vm_paddr_t		(*sdt_search_t)(vm_paddr_t, const uint8_t *);
 
-static const struct acpi_rsdp	*sdt_rsdp_search(const uint8_t *, int);
+static const ACPI_TABLE_RSDP	*sdt_rsdp_search(const uint8_t *, int);
 static vm_paddr_t		sdt_search_xsdt(vm_paddr_t, const uint8_t *);
 static vm_paddr_t		sdt_search_rsdt(vm_paddr_t, const uint8_t *);
 
@@ -95,12 +62,12 @@ static vm_paddr_t		sdt_search_paddr;
 static void
 sdt_probe(void)
 {
-	const struct acpi_rsdp *rsdp;
+	const ACPI_TABLE_RSDP *rsdp;
 	vm_size_t mapsz;
 	uint8_t *ptr;
 
 	if (ebda_addr != 0) {
-		mapsz = ACPI_RSDP_EBDA_MAPSZ;
+		mapsz = ACPI_EBDA_WINDOW_SIZE;
 		ptr = pmap_mapdev(ebda_addr, mapsz);
 
 		rsdp = sdt_rsdp_search(ptr, mapsz);
@@ -116,8 +83,8 @@ sdt_probe(void)
 		}
 	}
 
-	mapsz = ACPI_RSDP_BIOS_MAPSZ;
-	ptr = pmap_mapdev(ACPI_RSDP_BIOS_MAPADDR, mapsz);
+	mapsz = ACPI_HI_RSDP_WINDOW_SIZE;
+	ptr = pmap_mapdev(ACPI_HI_RSDP_WINDOW_BASE, mapsz);
 
 	rsdp = sdt_rsdp_search(ptr, mapsz);
 	if (rsdp == NULL) {
@@ -129,29 +96,29 @@ sdt_probe(void)
 	}
 
 found_rsdp:
-	if (rsdp->rsdp_rev != 2) {
+	if (rsdp->Revision != 2 /* || AcpiGbl_DoNotUseXsdt */) {
 		sdt_search_func = sdt_search_rsdt;
-		sdt_search_paddr = rsdp->rsdp_rsdt;
+		sdt_search_paddr = rsdp->RsdtPhysicalAddress;
 	} else {
 		sdt_search_func = sdt_search_xsdt;
-		sdt_search_paddr = rsdp->rsdp_xsdt;
+		sdt_search_paddr = rsdp->XsdtPhysicalAddress;
 	}
 	pmap_unmapdev((vm_offset_t)ptr, mapsz);
 }
 SYSINIT(sdt_probe, SI_BOOT2_PRESMP, SI_ORDER_FIRST, sdt_probe, 0);
 
-static const struct acpi_rsdp *
+static const ACPI_TABLE_RSDP *
 sdt_rsdp_search(const uint8_t *target, int size)
 {
-	const struct acpi_rsdp *rsdp;
+	const ACPI_TABLE_RSDP *rsdp;
 	int i;
 
 	KKASSERT(size > sizeof(*rsdp));
 
-	for (i = 0; i < size - sizeof(*rsdp); i += ACPI_RSDP_ALIGN) {
-		rsdp = (const struct acpi_rsdp *)&target[i];
-		if (memcmp(rsdp->rsdp_sig, ACPI_RSDP_SIG,
-			   ACPI_RSDP_SIGLEN) == 0)
+	for (i = 0; i < size - sizeof(*rsdp); i += ACPI_RSDP_SCAN_STEP) {
+		rsdp = (const ACPI_TABLE_RSDP *)&target[i];
+		if (memcmp(rsdp->Signature, ACPI_SIG_RSDP,
+			   sizeof(rsdp->Signature)) == 0)
 			return rsdp;
 	}
 	return NULL;
@@ -160,11 +127,11 @@ sdt_rsdp_search(const uint8_t *target, int size)
 void *
 sdt_sdth_map(vm_paddr_t paddr)
 {
-	struct acpi_sdth *sdth;
+	ACPI_TABLE_HEADER *sdth;
 	vm_size_t mapsz;
 
 	sdth = pmap_mapdev(paddr, sizeof(*sdth));
-	mapsz = sdth->sdth_len;
+	mapsz = sdth->Length;
 	pmap_unmapdev((vm_offset_t)sdth, sizeof(*sdth));
 
 	if (mapsz < sizeof(*sdth))
@@ -174,15 +141,15 @@ sdt_sdth_map(vm_paddr_t paddr)
 }
 
 void
-sdt_sdth_unmap(struct acpi_sdth *sdth)
+sdt_sdth_unmap(ACPI_TABLE_HEADER *sdth)
 {
-	pmap_unmapdev((vm_offset_t)sdth, sdth->sdth_len);
+	pmap_unmapdev((vm_offset_t)sdth, sdth->Length);
 }
 
 static vm_paddr_t
 sdt_search_xsdt(vm_paddr_t xsdt_paddr, const uint8_t *sig)
 {
-	struct acpi_xsdt *xsdt;
+	ACPI_TABLE_XSDT *xsdt;
 	vm_paddr_t sdt_paddr = 0;
 	int i, nent;
 
@@ -197,53 +164,53 @@ sdt_search_xsdt(vm_paddr_t xsdt_paddr, const uint8_t *sig)
 		return 0;
 	}
 
-	if (memcmp(xsdt->xsdt_hdr.sdth_sig, ACPI_XSDT_SIG,
-		   ACPI_SDTH_SIGLEN) != 0) {
+	if (memcmp(xsdt->Header.Signature, ACPI_SIG_XSDT,
+		   ACPI_NAME_SIZE) != 0) {
 		kprintf("sdt_search_xsdt: not XSDT\n");
 		goto back;
 	}
 
-	if (xsdt->xsdt_hdr.sdth_rev != 1) {
+	if (xsdt->Header.Revision != 1) {
 		kprintf("sdt_search_xsdt: unknown XSDT revision %d\n",
-			xsdt->xsdt_hdr.sdth_rev);
+			xsdt->Header.Revision);
 	}
 
-	if (xsdt->xsdt_hdr.sdth_len < sizeof(xsdt->xsdt_hdr)) {
+	if (xsdt->Header.Length < sizeof(xsdt->Header)) {
 		kprintf("sdt_search_xsdt: invalid XSDT length %u\n",
-			xsdt->xsdt_hdr.sdth_len);
+			xsdt->Header.Length);
 		goto back;
 	}
 
-	nent = (xsdt->xsdt_hdr.sdth_len - sizeof(xsdt->xsdt_hdr)) /
-	       sizeof(xsdt->xsdt_ents[0]);
+	nent = (xsdt->Header.Length - sizeof(xsdt->Header)) /
+	       sizeof(xsdt->TableOffsetEntry[0]);
 	for (i = 0; i < nent; ++i) {
-		struct acpi_sdth *sdth;
+		ACPI_TABLE_HEADER *sdth;
 
-		if (xsdt->xsdt_ents[i] == 0)
+		if (xsdt->TableOffsetEntry[i] == 0)
 			continue;
 
-		sdth = sdt_sdth_map(xsdt->xsdt_ents[i]);
+		sdth = sdt_sdth_map(xsdt->TableOffsetEntry[i]);
 		if (sdth != NULL) {
 			int ret;
 
-			ret = memcmp(sdth->sdth_sig, sig, ACPI_SDTH_SIGLEN);
+			ret = memcmp(sdth->Signature, sig, ACPI_NAME_SIZE);
 			sdt_sdth_unmap(sdth);
 
 			if (ret == 0) {
-				sdt_paddr = xsdt->xsdt_ents[i];
+				sdt_paddr = xsdt->TableOffsetEntry[i];
 				break;
 			}
 		}
 	}
 back:
-	sdt_sdth_unmap(&xsdt->xsdt_hdr);
+	sdt_sdth_unmap(&xsdt->Header);
 	return sdt_paddr;
 }
 
 static vm_paddr_t
 sdt_search_rsdt(vm_paddr_t rsdt_paddr, const uint8_t *sig)
 {
-	struct acpi_rsdt *rsdt;
+	ACPI_TABLE_RSDT *rsdt;
 	vm_paddr_t sdt_paddr = 0;
 	int i, nent;
 
@@ -258,46 +225,46 @@ sdt_search_rsdt(vm_paddr_t rsdt_paddr, const uint8_t *sig)
 		return 0;
 	}
 
-	if (memcmp(rsdt->rsdt_hdr.sdth_sig, ACPI_RSDT_SIG,
-		   ACPI_SDTH_SIGLEN) != 0) {
+	if (memcmp(rsdt->Header.Signature, ACPI_SIG_RSDT,
+		   ACPI_NAME_SIZE) != 0) {
 		kprintf("sdt_search_rsdt: not RSDT\n");
 		goto back;
 	}
 
-	if (rsdt->rsdt_hdr.sdth_rev != 1) {
+	if (rsdt->Header.Revision != 1) {
 		kprintf("sdt_search_rsdt: unknown RSDT revision %d\n",
-			rsdt->rsdt_hdr.sdth_rev);
+			rsdt->Header.Revision);
 	}
 
-	if (rsdt->rsdt_hdr.sdth_len < sizeof(rsdt->rsdt_hdr)) {
+	if (rsdt->Header.Length < sizeof(rsdt->Header)) {
 		kprintf("sdt_search_rsdt: invalid RSDT length %u\n",
-			rsdt->rsdt_hdr.sdth_len);
+			rsdt->Header.Length);
 		goto back;
 	}
 
-	nent = (rsdt->rsdt_hdr.sdth_len - sizeof(rsdt->rsdt_hdr)) /
-	       sizeof(rsdt->rsdt_ents[0]);
+	nent = (rsdt->Header.Length - sizeof(rsdt->Header)) /
+	       sizeof(rsdt->TableOffsetEntry[0]);
 	for (i = 0; i < nent; ++i) {
-		struct acpi_sdth *sdth;
+		ACPI_TABLE_HEADER *sdth;
 
-		if (rsdt->rsdt_ents[i] == 0)
+		if (rsdt->TableOffsetEntry[i] == 0)
 			continue;
 
-		sdth = sdt_sdth_map(rsdt->rsdt_ents[i]);
+		sdth = sdt_sdth_map(rsdt->TableOffsetEntry[i]);
 		if (sdth != NULL) {
 			int ret;
 
-			ret = memcmp(sdth->sdth_sig, sig, ACPI_SDTH_SIGLEN);
+			ret = memcmp(sdth->Signature, sig, ACPI_NAME_SIZE);
 			sdt_sdth_unmap(sdth);
 
 			if (ret == 0) {
-				sdt_paddr = rsdt->rsdt_ents[i];
+				sdt_paddr = rsdt->TableOffsetEntry[i];
 				break;
 			}
 		}
 	}
 back:
-	sdt_sdth_unmap(&rsdt->rsdt_hdr);
+	sdt_sdth_unmap(&rsdt->Header);
 	return sdt_paddr;
 }
 

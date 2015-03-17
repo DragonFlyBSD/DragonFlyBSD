@@ -40,7 +40,8 @@
 #include <sys/systm.h>
 #include <sys/thread2.h>
 
-#include "acpi_sdt.h"
+#include <contrib/dev/acpica/source/include/acpi.h>
+
 #include "acpi_sdt_var.h"
 #include "acpi_sci_var.h"
 
@@ -49,22 +50,6 @@ do { \
 	if (bootverbose) \
 		kprintf("ACPI FADT: " fmt , ##arg); \
 } while (0)
-
-/* Fixed ACPI Description Table */
-struct acpi_fadt {
-	struct acpi_sdth	fadt_hdr;
-	uint32_t		fadt_fw_ctrl;
-	uint32_t		fadt_dsdt;
-	uint8_t			fadt_rsvd1;
-	uint8_t			fadt_pm_prof;
-	uint16_t		fadt_sci_int;
-	uint32_t		fadt_smi_cmd;
-	uint8_t			fadt_acpi_en;
-	uint8_t			fadt_acpi_dis;
-	uint8_t			fadt_s4bios;
-	uint8_t			fadt_pstate;
-	/* More ... */
-} __packed;
 
 struct acpi_sci_mode {
 	enum intr_trigger	sci_trig;
@@ -92,14 +77,14 @@ static const struct acpi_sci_mode acpi_sci_modes[] = {
 static void
 fadt_probe(void)
 {
-	struct acpi_fadt *fadt;
+	ACPI_TABLE_FADT *fadt;
 	vm_paddr_t fadt_paddr;
 	enum intr_trigger trig;
 	enum intr_polarity pola;
 	int enabled = 1;
 	char *env;
 
-	fadt_paddr = sdt_search(ACPI_FADT_SIG);
+	fadt_paddr = sdt_search(ACPI_SIG_FADT);
 	if (fadt_paddr == 0) {
 		kprintf("fadt_probe: can't locate FADT\n");
 		return;
@@ -111,14 +96,20 @@ fadt_probe(void)
 	/*
 	 * FADT in ACPI specification 1.0 - 5.0
 	 */
-	if (fadt->fadt_hdr.sdth_rev < 1 || fadt->fadt_hdr.sdth_rev > 5) {
+	if (fadt->Header.Revision < 1 || fadt->Header.Revision > 5) {
 		kprintf("fadt_probe: unknown FADT revision %d\n",
-			fadt->fadt_hdr.sdth_rev);
+			fadt->Header.Revision);
 	}
 
-	if (fadt->fadt_hdr.sdth_len < sizeof(*fadt)) {
-		kprintf("fadt_probe: invalid FADT length %u\n",
-			fadt->fadt_hdr.sdth_len);
+	/*
+	 * We compare against the ACPI 2.0 (up to 4.0) length of the FADT
+	 * here. SleepControl is the first of the two fields that were
+	 * added in ACPI 5.0.
+	 */
+	if (fadt->Header.Length < offsetof(ACPI_TABLE_FADT, SleepControl)) {
+		kprintf("fadt_probe: invalid FADT length %u (< %ju)\n",
+		    fadt->Header.Length,
+		    (uintmax_t)offsetof(ACPI_TABLE_FADT, SleepControl));
 		goto back;
 	}
 
@@ -126,7 +117,7 @@ fadt_probe(void)
 	if (!enabled)
 		goto back;
 
-	acpi_sci_irq = fadt->fadt_sci_int;
+	acpi_sci_irq = fadt->SciInterrupt;
 
 	env = kgetenv("hw.acpi.sci.trigger");
 	if (env == NULL)
@@ -168,7 +159,7 @@ back:
 	} else {
 		FADT_VPRINTF("SCI is disabled\n");
 	}
-	sdt_sdth_unmap(&fadt->fadt_hdr);
+	sdt_sdth_unmap(&fadt->Header);
 }
 SYSINIT(fadt_probe, SI_BOOT2_PRESMP, SI_ORDER_SECOND, fadt_probe, 0);
 
