@@ -550,14 +550,15 @@ cpu_mwait_attach(void)
 	      CPUID_TO_MODEL(cpu_id) >= 0xf))) {
 		int bm_sts = 1;
 
-		atomic_clear_int(&cpu_mwait_c3_preamble,
-		    CPU_MWAIT_C3_PREAMBLE_BM_ARB);
+		/*
+		 * Pentium dual-core, Core 2 and beyond do not need any
+		 * additional activities to enter deep C-state, i.e. C3(+).
+		 */
+		cpu_mwait_cx_no_bmarb();
 
 		TUNABLE_INT_FETCH("machdep.cpu.mwait.bm_sts", &bm_sts);
-		if (!bm_sts) {
-			atomic_clear_int(&cpu_mwait_c3_preamble,
-			    CPU_MWAIT_C3_PREAMBLE_BM_STS);
-		}
+		if (!bm_sts)
+			cpu_mwait_cx_no_bmsts();
 	}
 
 	sbuf_new(&sb, cpu_mwait_cx_supported,
@@ -2643,6 +2644,12 @@ void
 cpu_mwait_cx_no_bmsts(void)
 {
 	atomic_clear_int(&cpu_mwait_c3_preamble, CPU_MWAIT_C3_PREAMBLE_BM_STS);
+}
+
+void
+cpu_mwait_cx_no_bmarb(void)
+{
+	atomic_clear_int(&cpu_mwait_c3_preamble, CPU_MWAIT_C3_PREAMBLE_BM_ARB);
 }
 
 static int

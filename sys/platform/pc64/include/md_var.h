@@ -110,5 +110,6 @@ void	dump_add_page(vm_paddr_t);
 void	dump_drop_page(vm_paddr_t);
 boolean_t cpu_mwait_hint_valid(uint32_t);
 void	cpu_mwait_cx_no_bmsts(void);
+void	cpu_mwait_cx_no_bmarb(void);
 
 #endif /* !_MACHINE_MD_VAR_H_ */

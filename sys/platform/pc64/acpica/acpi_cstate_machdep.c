@@ -170,6 +170,17 @@ acpi_cst_cx_mwait_setup(struct acpi_cst_cx *cx)
 			cx->flags &= ~ACPI_CST_CX_FLAG_BM_STS;
 	}
 
+	if (cx->type < ACPI_STATE_C3 && MWAIT_EAX_TO_CX(eax_hint) >= 3) {
+		/*
+		 * If BIOS maps shallow ACPI C-state (<C3) to deep CPU
+		 * specific C-state (>=C3), it implies no bus mastering
+		 * operations are needed before entering deep CPU specific
+		 * C-states.
+		 */
+		cpu_mwait_cx_no_bmsts();
+		cpu_mwait_cx_no_bmarb();
+	}
+
 	return 0;
 }
 
