@@ -37,14 +37,14 @@
 #include "hammer.h"
 
 typedef struct collect {
-	struct collect	*hnext;
+	TAILQ_ENTRY(collect) entry;
 	hammer_off_t	phys_offset;
 	struct hammer_blockmap_layer2 *track2;
 	struct hammer_blockmap_layer2 *layer2;
 	int error;
 } *collect_t;
 
-collect_t CollectHash[COLLECT_HSIZE];
+TAILQ_HEAD(collect_head, collect) CollectHash[COLLECT_HSIZE];
 
 static void dump_blockmap(const char *label, int zone);
 static void check_btree_node(hammer_off_t node_offset, int depth);
@@ -147,6 +147,7 @@ hammer_cmd_checkmap(void)
 {
 	struct volume_info *volume;
 	hammer_off_t node_offset;
+	int i;
 
 	volume = get_volume(RootVolNo);
 	node_offset = volume->ondisk->vol0_btree_root;
@@ -158,6 +159,9 @@ hammer_cmd_checkmap(void)
 		       (uintmax_t)volume->ondisk->vol_buf_beg);
 	}
 	rel_volume(volume);
+
+	for (i = 0; i < COLLECT_HSIZE; i++)
+		TAILQ_INIT(&CollectHash[i]);
 
 	AssertOnFailure = 0;
 
@@ -270,7 +274,7 @@ collect_get(hammer_off_t phys_offset)
 	int hv = crc32(&phys_offset, sizeof(phys_offset)) & COLLECT_HMASK;
 	collect_t collect;
 
-	for (collect = CollectHash[hv]; collect; collect = collect->hnext) {
+	TAILQ_FOREACH(collect, &CollectHash[hv], entry) {
 		if (collect->phys_offset == phys_offset)
 			return(collect);
 	}
@@ -278,8 +282,7 @@ collect_get(hammer_off_t phys_offset)
 	collect->track2 = malloc(HAMMER_BIGBLOCK_SIZE);
 	collect->layer2 = malloc(HAMMER_BIGBLOCK_SIZE);
 	collect->phys_offset = phys_offset;
-	collect->hnext = CollectHash[hv];
-	CollectHash[hv] = collect;
+	TAILQ_INSERT_HEAD(&CollectHash[hv], collect, entry);
 	bzero(collect->track2, HAMMER_BIGBLOCK_SIZE);
 	bzero(collect->layer2, HAMMER_BIGBLOCK_SIZE);
 
@@ -317,7 +320,8 @@ static
 void
 dump_collect_table(void)
 {
-	collect_t collect, tmp;
+	collect_t collect;
+	struct collect_head *p;
 	int i;
 	int error = 0;
 	int total = 0;
@@ -325,12 +329,13 @@ dump_collect_table(void)
 	bzero(stats, sizeof(stats));
 
 	for (i = 0; i < COLLECT_HSIZE; ++i) {
-		for (collect = CollectHash[i]; collect; ) {
+		p = &CollectHash[i];
+		while (!TAILQ_EMPTY(p)) {
+			collect = TAILQ_FIRST(p);
+			TAILQ_REMOVE(p, collect, entry);
 			dump_collect(collect, stats);
 			error += collect->error;
-			tmp = collect;
-			collect = collect->hnext;
-			collect_rel(tmp);
+			collect_rel(collect);
 		}
 	}
 
