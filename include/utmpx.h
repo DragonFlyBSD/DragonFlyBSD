@@ -51,7 +51,9 @@
 
 
 #define EMPTY		0
+#if __BSD_VISIBLE
 #define RUN_LVL		1
+#endif
 #define BOOT_TIME	2
 #define OLD_TIME	3
 #define NEW_TIME	4
