@@ -232,6 +232,10 @@ check_btree_node(hammer_off_t node_offset, int depth)
 			if (elm->leaf.data_offset)
 				collect_btree_leaf(elm);
 			break;
+		default:
+			if (AssertOnFailure)
+				assert(0);
+			break;
 		}
 	}
 	rel_buffer(buffer);
@@ -253,6 +257,10 @@ check_undo(hammer_blockmap_t rootmap)
 		case HAMMER_HEAD_TYPE_UNDO:
 		case HAMMER_HEAD_TYPE_REDO:
 			collect_undo(scan_offset, head);
+			break;
+		default:
+			if (AssertOnFailure)
+				assert(0);
 			break;
 		}
 		if ((head->hdr_size & HAMMER_HEAD_ALIGN_MASK) ||
