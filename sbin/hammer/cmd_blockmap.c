@@ -448,8 +448,9 @@ dump_collect(collect_t collect, int *stats)
 
 		zone = layer2->zone;
 		if (AssertOnFailure) {
-			assert(zone >= HAMMER_ZONE_BTREE_INDEX);
-			assert(zone < HAMMER_MAX_ZONES);
+			assert((zone == HAMMER_ZONE_UNDO_INDEX) ||
+				(zone >= HAMMER_ZONE_BTREE_INDEX &&
+				 zone < HAMMER_MAX_ZONES));
 		}
 		stats[zone]++;
 
