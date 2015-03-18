@@ -25,7 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/realpath.c SVN 227090 2011/11/04 ed $
+ * @(#)realpath.c	8.1 (Berkeley) 2/16/94
+ * $FreeBSD: head/lib/libc/stdlib/realpath.c 264417 2014-04-13 19:48:28Z jilles $
  */
 
 #include "namespace.h"
@@ -50,7 +51,7 @@ realpath(const char * __restrict path, char * __restrict resolved)
 	char *p, *q, *s;
 	size_t left_len, resolved_len;
 	unsigned symlinks;
-	int m, serrno, slen;
+	int m, slen;
 	char left[PATH_MAX], next_token[PATH_MAX], my_symlink[PATH_MAX];
 
 	if (path == NULL) {
@@ -61,7 +62,6 @@ realpath(const char * __restrict path, char * __restrict resolved)
 		errno = ENOENT;
 		return (NULL);
 	}
-	serrno = errno;
 	if (resolved == NULL) {
 		resolved = malloc(PATH_MAX);
 		if (resolved == NULL)
@@ -128,11 +128,12 @@ realpath(const char * __restrict path, char * __restrict resolved)
 			resolved[resolved_len++] = '/';
 			resolved[resolved_len] = '\0';
 		}
-		if (next_token[0] == '\0')
+		if (next_token[0] == '\0') {
+			/* Handle consequential slashes. */
 			continue;
-		else if (strcmp(next_token, ".") == 0)
+		} else if (strcmp(next_token, ".") == 0) {
 			continue;
-		else if (strcmp(next_token, "..") == 0) {
+		} else if (strcmp(next_token, "..") == 0) {
 			/*
 			 * Strip the last path component except when we have
 			 * single "/"
@@ -147,9 +148,7 @@ realpath(const char * __restrict path, char * __restrict resolved)
 		}
 
 		/*
-		 * Append the next path component and lstat() it. If
-		 * lstat() fails we still can return successfully if
-		 * there are no more path components left.
+		 * Append the next path component and lstat() it.
 		 */
 		resolved_len = strlcat(resolved, next_token, PATH_MAX);
 		if (resolved_len >= PATH_MAX) {
@@ -159,10 +158,6 @@ realpath(const char * __restrict path, char * __restrict resolved)
 			return (NULL);
 		}
 		if (lstat(resolved, &sb) != 0) {
-			if (errno == ENOENT && p == NULL) {
-				errno = serrno;
-				return (resolved);
-			}
 			if (m)
 				free(resolved);
 			return (NULL);
@@ -218,6 +213,11 @@ realpath(const char * __restrict path, char * __restrict resolved)
 				}
 			}
 			left_len = strlcpy(left, my_symlink, sizeof(left));
+		} else if (!S_ISDIR(sb.st_mode) && p != NULL) {
+			if (m)
+				free(resolved);
+			errno = ENOTDIR;
+			return (NULL);
 		}
 	}
 
