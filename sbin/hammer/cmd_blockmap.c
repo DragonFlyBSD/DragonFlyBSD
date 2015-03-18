@@ -36,12 +36,16 @@
 
 #include "hammer.h"
 
+/*
+ * Each collect covers 1<<(19+23) bytes address space of layer 1.
+ * (plus a copy of 1<<23 bytes that holds layer2 entries in layer 1).
+ */
 typedef struct collect {
 	TAILQ_ENTRY(collect) entry;
-	hammer_off_t	phys_offset;
-	struct hammer_blockmap_layer2 *track2;
-	struct hammer_blockmap_layer2 *layer2;
-	int error;
+	hammer_off_t	phys_offset;  /* layer2 address pointed by layer1 */
+	struct hammer_blockmap_layer2 *track2;  /* track of layer2 entries */
+	struct hammer_blockmap_layer2 *layer2;  /* 1<<19 x 16 bytes entries */
+	int error;  /* # of inconsistencies */
 } *collect_t;
 
 #define COLLECT_HSIZE	1024
@@ -341,9 +345,10 @@ collect_get(hammer_off_t phys_offset)
 		if (collect->phys_offset == phys_offset)
 			return(collect);
 	}
+
 	collect = calloc(sizeof(*collect), 1);
-	collect->track2 = malloc(HAMMER_BIGBLOCK_SIZE);
-	collect->layer2 = malloc(HAMMER_BIGBLOCK_SIZE);
+	collect->track2 = malloc(HAMMER_BIGBLOCK_SIZE);  /* 1<<23 bytes */
+	collect->layer2 = malloc(HAMMER_BIGBLOCK_SIZE);  /* 1<<23 bytes */
 	collect->phys_offset = phys_offset;
 	TAILQ_INSERT_HEAD(&CollectHash[hv], collect, entry);
 	bzero(collect->track2, HAMMER_BIGBLOCK_SIZE);
