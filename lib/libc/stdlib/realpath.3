@@ -29,9 +29,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)realpath.3	8.2 (Berkeley) 2/16/94
-.\" $FreeBSD: src/lib/libc/stdlib/realpath.3 SVN 227090 2011/11/04 ed $
+.\" $FreeBSD: head/lib/libc/stdlib/realpath.3 251672 2013-06-13 00:19:30Z emaste $
 .\"
-.Dd May 5, 2012
+.Dd March 18, 2015
 .Dt REALPATH 3
 .Os
 .Sh NAME
@@ -40,10 +40,9 @@
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
-.In sys/param.h
 .In stdlib.h
 .Ft "char *"
-.Fn realpath "const char *pathname" "char *resolved_path"
+.Fn realpath "const char * restrict pathname" "char * restrict resolved_path"
 .Sh DESCRIPTION
 The
 .Fn realpath
@@ -72,11 +71,12 @@ The
 function will resolve both absolute and relative paths
 and return the absolute pathname corresponding to
 .Fa pathname .
-All but the last component of
+All components of
 .Fa pathname
 must exist when
 .Fn realpath
-is called.
+is called, and all but the last component must name either directories or
+symlinks pointing to the directories.
 .Sh "RETURN VALUES"
 The
 .Fn realpath
