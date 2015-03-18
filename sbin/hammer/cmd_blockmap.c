@@ -41,16 +41,27 @@
  * (plus a copy of 1<<23 bytes that holds layer2 entries in layer 1).
  */
 typedef struct collect {
-	TAILQ_ENTRY(collect) entry;
+	RB_ENTRY(collect) entry;
 	hammer_off_t	phys_offset;  /* layer2 address pointed by layer1 */
 	struct hammer_blockmap_layer2 *track2;  /* track of layer2 entries */
 	struct hammer_blockmap_layer2 *layer2;  /* 1<<19 x 16 bytes entries */
 	int error;  /* # of inconsistencies */
 } *collect_t;
 
-#define COLLECT_HSIZE	1024
-#define COLLECT_HMASK	(COLLECT_HSIZE - 1)
-TAILQ_HEAD(collect_head, collect) CollectHash[COLLECT_HSIZE];
+static int
+collect_compare(struct collect *c1, struct collect *c2)
+{
+	if (c1->phys_offset < c2->phys_offset)
+		return(-1);
+	if (c1->phys_offset > c2->phys_offset)
+		return(1);
+	return(0);
+}
+
+RB_HEAD(collect_rb_tree, collect) CollectTree = RB_INITIALIZER(&CollectTree);
+RB_PROTOTYPE2(collect_rb_tree, collect, entry, collect_compare, hammer_off_t);
+RB_GENERATE2(collect_rb_tree, collect, entry, collect_compare, hammer_off_t,
+	phys_offset);
 
 static void dump_blockmap(const char *label, int zone);
 static void check_btree_node(hammer_off_t node_offset, int depth);
@@ -157,7 +168,6 @@ hammer_cmd_checkmap(void)
 	struct volume_info *volume;
 	hammer_blockmap_t rootmap;
 	hammer_off_t node_offset;
-	int i;
 
 	volume = get_volume(RootVolNo);
 	node_offset = volume->ondisk->vol0_btree_root;
@@ -174,9 +184,6 @@ hammer_cmd_checkmap(void)
 			/ (1024 * 1024)));
 	}
 	rel_volume(volume);
-
-	for (i = 0; i < COLLECT_HSIZE; i++)
-		TAILQ_INIT(&CollectHash[i]);
 
 	AssertOnFailure = 0;
 
@@ -338,19 +345,17 @@ static
 collect_t
 collect_get(hammer_off_t phys_offset)
 {
-	int hv = crc32(&phys_offset, sizeof(phys_offset)) & COLLECT_HMASK;
 	collect_t collect;
 
-	TAILQ_FOREACH(collect, &CollectHash[hv], entry) {
-		if (collect->phys_offset == phys_offset)
-			return(collect);
-	}
+	collect = RB_LOOKUP(collect_rb_tree, &CollectTree, phys_offset);
+	if (collect)
+		return(collect);
 
 	collect = calloc(sizeof(*collect), 1);
 	collect->track2 = malloc(HAMMER_BIGBLOCK_SIZE);  /* 1<<23 bytes */
 	collect->layer2 = malloc(HAMMER_BIGBLOCK_SIZE);  /* 1<<23 bytes */
 	collect->phys_offset = phys_offset;
-	TAILQ_INSERT_HEAD(&CollectHash[hv], collect, entry);
+	RB_INSERT(collect_rb_tree, &CollectTree, collect);
 	bzero(collect->track2, HAMMER_BIGBLOCK_SIZE);
 	bzero(collect->layer2, HAMMER_BIGBLOCK_SIZE);
 
@@ -389,23 +394,22 @@ void
 dump_collect_table(void)
 {
 	collect_t collect;
-	struct collect_head *p;
 	int i;
 	int error = 0;
 	int total = 0;
 	int stats[HAMMER_MAX_ZONES];
 	bzero(stats, sizeof(stats));
 
-	for (i = 0; i < COLLECT_HSIZE; ++i) {
-		p = &CollectHash[i];
-		while (!TAILQ_EMPTY(p)) {
-			collect = TAILQ_FIRST(p);
-			TAILQ_REMOVE(p, collect, entry);
-			dump_collect(collect, stats);
-			error += collect->error;
-			collect_rel(collect);
-		}
+	RB_FOREACH(collect, collect_rb_tree, &CollectTree) {
+		dump_collect(collect, stats);
+		error += collect->error;
 	}
+
+	while ((collect = RB_ROOT(&CollectTree)) != NULL) {
+		RB_REMOVE(collect_rb_tree, &CollectTree, collect);
+		collect_rel(collect);
+	}
+	assert(RB_EMPTY(&CollectTree));
 
 	if (VerboseOpt) {
 		printf("zone-bigblock statistics\n");
