@@ -49,7 +49,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <utmp.h>
 
 /* Let's be paranoid about block size */
 #if 10 > DEV_BSHIFT
@@ -212,9 +211,9 @@ repquota(struct fstab *fs, int type, char *qfpathname)
 	}
 	fclose(qf);
 	printf("%*s                Block  limits                    File  limits\n",
-		max(UT_NAMESIZE,10), " ");
+		max(MAXLOGNAME - 1, 10), " ");
 	printf("User%*s   used     soft     hard  grace     used    soft    hard  grace\n",
-		max(UT_NAMESIZE,10), " ");
+		max(MAXLOGNAME - 1, 10), " ");
 	for (id = 0; id <= highid[type]; id++) {
 		fup = lookup(id, type);
 		if (fup == NULL)
@@ -222,7 +221,7 @@ repquota(struct fstab *fs, int type, char *qfpathname)
 		if (fup->fu_dqblk.dqb_curinodes == 0 &&
 		    fup->fu_dqblk.dqb_curblocks == 0)
 			continue;
-		printf("%-*s", max(UT_NAMESIZE,10), fup->fu_name);
+		printf("%-*s", max(MAXLOGNAME - 1, 10), fup->fu_name);
 		printf("%c%c %8lu %8lu %8lu %6s",
 			fup->fu_dqblk.dqb_bsoftlimit &&
 			    fup->fu_dqblk.dqb_curblocks >=
