@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd August 24, 2012
+.Dd March 19, 2015
 .Dt MUTEX 9
 .Os
 .Sh NAME
@@ -36,8 +36,10 @@
 .Nm mtx_init ,
 .Nm mtx_uninit ,
 .Nm mtx_lock_sh ,
+.\".Nm mtx_lock_sh_link ,
 .Nm mtx_lock_sh_quick ,
 .Nm mtx_lock_ex ,
+.\".Nm mtx_lock_ex_link ,
 .Nm mtx_lock_ex_quick ,
 .Nm mtx_lock ,
 .Nm mtx_spinlock ,
@@ -56,65 +58,63 @@
 .Nm mtx_notlocked_ex ,
 .Nm mtx_owned ,
 .Nm mtx_notowned ,
-.Nm mtx_lockrefs ,
-.Nm mtx_hold ,
-.Nm mtx_drop
+.Nm mtx_lockrefs
 .Nd general blocking/spinnable mutex functions
 .Sh SYNOPSIS
 .In sys/globaldata.h
 .In sys/mutex2.h
 .Ft void
-.Fn mtx_init "struct mtx *mtx"
+.Fn mtx_init "mtx_t *mtx"
 .Ft void
-.Fn mtx_uninit "struct mtx *mtx"
-.Ft void
-.Fn mtx_lock_sh "struct mtx *mtx" "const char *ident" "int flags" "int to"
-.Ft void
-.Fn mtx_lock_sh_quick "struct mtx *mtx" "const char *ident"
-.Ft void
-.Fn mtx_lock_ex "struct mtx *mtx" "const char *ident" "int flags" "int to"
-.Ft void
-.Fn mtx_lock_ex_quick "struct mtx *mtx" "const char *ident"
-.Ft void
-.Fn mtx_lock "struct mtx *mtx"
-.Ft void
-.Fn mtx_spinlock "struct mtx *mtx"
+.Fn mtx_uninit "mtx_t *mtx"
 .Ft int
-.Fn mtx_lock_ex_try "struct mtx *mtx"
+.Fn mtx_lock_sh "mtx_t *mtx" "const char *ident" "int flags" "int to"
+.\".Ft int
+.\".Fn mtx_lock_sh_link "mtx_t *mtx" "mtx_link_t *link" "const char *ident" "int flags" "int to"
 .Ft int
-.Fn mtx_lock_sh_try "struct mtx *mtx"
+.Fn mtx_lock_sh_quick "mtx_t *mtx" "const char *ident"
 .Ft int
-.Fn mtx_spinlock_try "struct mtx *mtx"
+.Fn mtx_lock_ex "mtx_t *mtx" "const char *ident" "int flags" "int to"
+.\".Ft int
+.\".Fn mtx_lock_ex_link "mtx_t *mtx" "mtx_link_t *link" "const char *ident" "int flags" "int to"
+.Ft int
+.Fn mtx_lock_ex_quick "mtx_t *mtx" "const char *ident"
 .Ft void
-.Fn mtx_downgrade "struct mtx *mtx"
-.Ft int
-.Fn mtx_upgrade_try "struct mtx *mtx"
+.Fn mtx_lock "mtx_t *mtx"
 .Ft void
-.Fn mtx_unlock "struct mtx *mtx"
+.Fn mtx_spinlock "mtx_t *mtx"
+.Ft int
+.Fn mtx_lock_ex_try "mtx_t *mtx"
+.Ft int
+.Fn mtx_lock_sh_try "mtx_t *mtx"
+.Ft int
+.Fn mtx_spinlock_try "mtx_t *mtx"
 .Ft void
-.Fn mtx_unlock_ex "struct mtx *mtx"
+.Fn mtx_downgrade "mtx_t *mtx"
+.Ft int
+.Fn mtx_upgrade_try "mtx_t *mtx"
 .Ft void
-.Fn mtx_unlock_sh "struct mtx *mtx"
+.Fn mtx_unlock "mtx_t *mtx"
 .Ft void
-.Fn mtx_spinunlock "struct mtx *mtx"
-.Ft int
-.Fn mtx_islocked "struct mtx *mtx"
-.Ft int
-.Fn mtx_islocked_ex "struct mtx *mtx"
-.Ft int
-.Fn mtx_notlocked "struct mtx *mtx"
-.Ft int
-.Fn mtx_notlocked_ex "struct mtx *mtx"
-.Ft int
-.Fn mtx_owned "struct mtx *mtx"
-.Ft int
-.Fn mtx_notowned "struct mtx *mtx"
-.Ft int
-.Fn mtx_lockrefs "struct mtx *mtx"
+.Fn mtx_unlock_ex "mtx_t *mtx"
 .Ft void
-.Fn mtx_hold "struct mtx *mtx"
+.Fn mtx_unlock_sh "mtx_t *mtx"
+.Ft void
+.Fn mtx_spinunlock "mtx_t *mtx"
 .Ft int
-.Fn mtx_drop "struct mtx *mtx"
+.Fn mtx_islocked "mtx_t *mtx"
+.Ft int
+.Fn mtx_islocked_ex "mtx_t *mtx"
+.Ft int
+.Fn mtx_notlocked "mtx_t *mtx"
+.Ft int
+.Fn mtx_notlocked_ex "mtx_t *mtx"
+.Ft int
+.Fn mtx_owned "mtx_t *mtx"
+.Ft int
+.Fn mtx_notowned "mtx_t *mtx"
+.Ft int
+.Fn mtx_lockrefs "mtx_t *mtx"
 .Sh DESCRIPTION
 Mutexes are used to implement mutual exclusion between threads.
 Mutexes can be locked in shared or exclusive mode; they can also block
@@ -168,6 +168,15 @@ The
 function is a version of
 .Fn mtx_lock_sh
 without flags or a timeout.
+The
+.Fn mtx_lock_sh
+and
+.Fn mtx_lock_sh_quick
+functions return 0 on success, or the
+.Fn tsleep
+return code on failure.
+An error can only be returned if
+.Dv PCATCH is specified in the flags.
 .Pp
 The
 .Fn mtx_lock_ex
@@ -191,7 +200,17 @@ The
 .Fn mtx_lock
 function is a yet shorter form for exclusively locking a mutex, blocking the
 current thread until acquired.
-It is equivalent to mtx_lock_ex(mtx, "mtxex", 0, 0).
+It is equivalent to
+.Fn mtx_lock_ex "mtx" \&"mtxex\&" "0" "0" .
+The
+.Fn mtx_lock_ex
+and
+.Fn mtx_lock_ex_quick
+functions return 0 on success, or the
+.Fn tsleep
+return code on failure.
+An error can only be returned if
+.Dv PCATCH is specified in the flags.
 .Pp
 The
 .Fn mtx_spinlock
@@ -257,19 +276,6 @@ calling thread.
 The
 .Fn mtx_lockrefs
 function returns the number of shared or exclusive locks on the mutex.
-.Pp
-The
-.Fn mtx_hold
-function increments the reference count associated with each mutex.
-The reference count is independent of the lock field.
-The
-.Fn mtx_drop
-function decrements the reference count associated with each mutex
-and returns the old value of the count.
-A return value of
-.Sq 1
-means that the current count is
-.Sq 0 .
 .Sh FILES
 The uncontended path of the
 .Nm
