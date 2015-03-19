@@ -33,8 +33,8 @@ explicit_FLAGS_FILES=	${SRCS:Nhashtable_c++0x.cc}
 cxxabi_forced.h: ${SRCDIR}/libsupc++/cxxabi_forced.h
 	cp ${.ALLSRC} ${.TARGET}
 
-${INTHD:T}: ${INTHD}
-	cp ${.ALLSRC} bits/${.TARGET}
+${INTHD:T}: copybits ${INTHD}
+	cp ${INTHD} bits/${.TARGET}
 
 copybits:
 	mkdir -p bits
@@ -42,6 +42,6 @@ copybits:
 CLEANDIRS=	bits
 CLEANFILES=	${GENHD}
 
-beforedepend:	copybits ${GENHD}
+beforedepend:	${GENHD}
 
 .include <bsd.lib.mk>
