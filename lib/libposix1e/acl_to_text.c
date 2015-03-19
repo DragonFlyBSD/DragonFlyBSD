@@ -23,21 +23,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *$FreeBSD: src/lib/libposix1e/acl_to_text.c,v 1.2 2000/01/26 04:19:38 rwatson Exp $
- *$DragonFly: src/lib/libposix1e/acl_to_text.c,v 1.3 2005/08/04 17:27:09 drhodus Exp $
+ * $FreeBSD: src/lib/libposix1e/acl_to_text.c,v 1.2 2000/01/26 04:19:38 rwatson Exp $
  */
 /*
  * acl_to_text - return a text string with a text representation of the acl
  * in it.
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/acl.h>
 #include <sys/errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <utmp.h>
 
 #include "acl_support.h"
 
@@ -52,7 +50,7 @@ char *
 acl_to_text(acl_t acl, ssize_t *len_p)
 {
 	char	*buf, *tmpbuf;
-	char	name_buf[UT_NAMESIZE+1];
+	char	name_buf[MAXLOGNAME];
 	char	perm_buf[ACL_STRING_PERM_MAXSIZE+1],
 		effective_perm_buf[ACL_STRING_PERM_MAXSIZE+1];
 	int	i, error, len;
@@ -94,7 +92,7 @@ acl_to_text(acl_t acl, ssize_t *len_p)
 			if (error)
 				goto error_label;
 
-			error = acl_id_to_name(ae_tag, ae_id, UT_NAMESIZE+1,
+			error = acl_id_to_name(ae_tag, ae_id, MAXLOGNAME,
 			    name_buf);
 			if (error)
 				goto error_label;
@@ -156,7 +154,7 @@ acl_to_text(acl_t acl, ssize_t *len_p)
 			if (error)
 				goto error_label;
 
-			error = acl_id_to_name(ae_tag, ae_id, UT_NAMESIZE+1,
+			error = acl_id_to_name(ae_tag, ae_id, MAXLOGNAME,
 			    name_buf);
 			if (error)
 				goto error_label;
