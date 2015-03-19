@@ -23,7 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/atrun/atrun.c,v 1.26 2007/06/15 12:02:16 yar Exp $
- * $DragonFly: src/libexec/atrun/atrun.c,v 1.5 2004/09/20 19:32:19 joerg Exp $
  */
 
 /* System Headers */
@@ -47,7 +46,6 @@
 #include <syslog.h>
 #include <time.h>
 #include <unistd.h>
-#include <utmp.h>
 #include <paths.h>
 #ifdef LOGIN_CAP
 #include <login_cap.h>
@@ -55,12 +53,6 @@
 #ifdef PAM
 #include <security/pam_appl.h>
 #include <security/openpam.h>
-#endif
-
-#if (MAXLOGNAME-1) > UT_NAMESIZE
-#define LOGNAMESIZE UT_NAMESIZE
-#else
-#define LOGNAMESIZE (MAXLOGNAME-1)
 #endif
 
 /* Local headers */
@@ -126,7 +118,7 @@ run_file(const char *filename, uid_t uid, gid_t gid)
     pid_t pid;
     int fd_out, fd_in;
     int queue;
-    char mailbuf[LOGNAMESIZE + 1], fmt[49];
+    char mailbuf[MAXLOGNAME], fmt[49];
     char *mailname = NULL;
     FILE *stream;
     int send_mail = 0;
@@ -227,7 +219,7 @@ run_file(const char *filename, uid_t uid, gid_t gid)
 
     snprintf(fmt, sizeof(fmt),
 	"#!/bin/sh\n# atrun uid=%%ld gid=%%ld\n# mail %%%ds %%d",
-                          LOGNAMESIZE);
+                          MAXLOGNAME - 1);
 
     if (fscanf(stream, fmt, &nuid, &ngid, mailbuf, &send_mail) != 4)
 	perrx("File %s is in wrong format - aborting", filename);
