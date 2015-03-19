@@ -7,7 +7,7 @@ cp crypto/opensslconf.h ../../secure/lib/libcrypto/opensslconf-i386.h
 ./Configure shared no-idea --prefix=/usr --openssldir=/etc/ssl BSD-x86_64
 cp crypto/opensslconf.h ../../secure/lib/libcrypto/opensslconf-x86_64.h
 cd ../../secure/lib/libcrypto
-# Update the version in Makefile.inc
+# Update the version and date in Makefile.inc
 make man-makefile-update && make man-update
 cd ../libssl
 make man-makefile-update && make man-update
