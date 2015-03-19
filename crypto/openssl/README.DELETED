@@ -204,6 +204,7 @@ crypto/err/Makefile
 crypto/err/openssl.ec
 crypto/evp/Makefile
 crypto/evp/e_dsa.c
+crypto/evp/evp_extra_test.c
 crypto/evp/evp_test.c
 crypto/evp/evptests.txt
 crypto/fips_err.h
@@ -403,6 +404,7 @@ util/domd
 util/err-ins.pl
 util/files.pl
 util/fixNT.sh
+util/indent.pro
 util/install.sh
 util/libeay.num
 util/mk1mf.pl
@@ -415,6 +417,7 @@ util/mkfiles.pl
 util/mklink.pl
 util/mkrc.pl
 util/mkstack.pl
+util/openssl-format-source
 util/opensslwrap.sh
 util/perlpath.pl
 util/pl/
@@ -428,5 +431,6 @@ util/sp-diff.pl
 util/speed.sh
 util/src-dep.pl
 util/ssleay.num
+util/su-filter.pl
 util/tab_num.pl
 util/x86asm.sh
