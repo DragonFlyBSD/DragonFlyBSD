@@ -586,7 +586,9 @@ hammer_parsedevs(const char *blkdevs)
 			hammer_parsedevs(volname);
 		else
 			setup_volume(-1, volname, 0, O_RDONLY);
+		free(volname);
 	}
+	free(copy);
 }
 
 static
