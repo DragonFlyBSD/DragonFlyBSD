@@ -91,7 +91,8 @@ enum sensor_status {
 	SENSOR_S_UNKNOWN		/* status is unknown */
 };
 
-/* Sensor data:
+/*
+ * Sensor data:
  * New fields should be added at the end to encourage backwards compat
  */
 struct sensor {
@@ -106,7 +107,8 @@ struct sensor {
 #define SENSOR_FUNKNOWN		0x0002	/* sensor value is unknown */
 };
 
-/* Sensor device data:
+/*
+ * Sensor device data:
  * New fields should be added at the end to encourage backwards compat
  */
 struct sensordev {
@@ -121,7 +123,7 @@ struct sensordev {
 #ifdef _KERNEL
 #include <sys/queue.h>
 #ifndef NOSYSCTL8HACK
- #include <sys/sysctl.h>
+#include <sys/sysctl.h>
 #endif
 
 /* Sensor data */
@@ -154,12 +156,12 @@ struct ksensordev {
 };
 
 /* struct ksensordev */
-void			 sensordev_install(struct ksensordev *);
-void			 sensordev_deinstall(struct ksensordev *);
+void		sensordev_install(struct ksensordev *);
+void		sensordev_deinstall(struct ksensordev *);
 
 /* struct ksensor */
-void			 sensor_attach(struct ksensordev *, struct ksensor *);
-void			 sensor_detach(struct ksensordev *, struct ksensor *);
+void		sensor_attach(struct ksensordev *, struct ksensor *);
+void		sensor_detach(struct ksensordev *, struct ksensor *);
 
 /* task scheduling */
 int		sensor_task_register(void *, void (*)(void *), int);
