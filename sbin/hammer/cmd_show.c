@@ -44,6 +44,7 @@
 typedef struct btree_search {
 	u_int32_t	lo;
 	int64_t		obj_id;
+	int		normal;  /* normal iteration */
 } *btree_search_t;
 
 static void print_btree_node(hammer_off_t node_offset, btree_search_t search,
@@ -97,6 +98,7 @@ hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
 	} else {
 		search.lo = lo;
 		search.obj_id = obj_id;
+		search.normal = 0;
 		searchp = &search;
 		printf("show %016jx lo %08x obj_id %016jx depth %d\n",
 			(uintmax_t)node_offset, lo, (uintmax_t)obj_id, depth);
@@ -205,7 +207,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 
 		switch(node->type) {
 		case HAMMER_BTREE_TYPE_INTERNAL:
-			if (search) {
+			if (search->normal == 0) {
 				if (elm->base.localization > search->lo ||
 				    (elm->base.localization == search->lo &&
 				     elm->base.obj_id > search->obj_id)) {
@@ -223,10 +225,10 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 						 elm->internal.mirror_tid,
 						 &elm[0].base, &elm[1].base);
 				/*
-				 * Cause show to iterate after seeking to
-				 * the lo:objid
+				 * Cause show to do normal iteration after
+				 * seeking to the lo:objid
 				 */
-				search = NULL;
+				search->normal = 1;
 			}
 			break;
 		default:
