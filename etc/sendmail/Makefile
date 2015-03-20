@@ -1,19 +1,13 @@
 # This installs the sendmail mc templates and the makefile used to
 # generate sendmail.cf and sendmail.submit.cf.  A README is also installed
 
-FILESDIR=	/etc/mail/
+FILESDIR=	/etc/mail
 FILESMODE=	644
 
-FILES+=		Makefile \
+FILES+=		Makefile.4install \
 		README \
 		dragonfly.mc \
 		dragonfly.submit.mc
-
-CLEANFILES=	Makefile
-
-Makefile: Makefile.4install
-	cp ${.ALLSRC} ${.TARGET}
-
-beforedepend:	Makefile
+FILESNAME_Makefile.4install=Makefile
 
 .include <bsd.prog.mk>
