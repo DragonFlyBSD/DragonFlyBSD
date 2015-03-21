@@ -219,6 +219,15 @@ struct lock_args {
 	int		la_flags;
 };
 
+#define LOCK_INITIALIZER(wmesg, timo, flags)	\
+{						\
+	.lk_flags = ((flags) & LK_EXTFLG_MASK),	\
+	.lk_count = 0,				\
+	.lk_wmesg = wmesg,			\
+	.lk_timo = (timo),			\
+	.lk_lockholder = LK_NOTHREAD		\
+}
+
 void	lockinit (struct lock *, const char *wmesg, int timo, int flags);
 void	lockreinit (struct lock *, const char *wmesg, int timo, int flags);
 void	lockuninit(struct lock *);
