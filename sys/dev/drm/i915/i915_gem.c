@@ -63,6 +63,7 @@
 #include "intel_drv.h"
 #include <linux/shmem_fs.h>
 #include <linux/slab.h>
+#include <linux/swap.h>
 #include <linux/pci.h>
 
 static void i915_gem_object_flush_gtt_write_domain(struct drm_i915_gem_object *obj);
@@ -432,10 +433,9 @@ i915_gem_shmem_pread(struct drm_device *dev,
 {
 	char __user *user_data;
 	ssize_t remain;
-	off_t offset;
+	loff_t offset;
 	int shmem_page_offset, page_length, ret = 0;
 	int obj_do_bit17_swizzling, page_do_bit17_swizzling;
-	int hit_slowpath = 0;
 	int needs_clflush = 0;
 	int i;
 
@@ -467,7 +467,7 @@ i915_gem_shmem_pread(struct drm_device *dev,
 	offset = args->offset;
 
 	for (i = 0; i < (obj->base.size >> PAGE_SHIFT); i++) {
-		struct vm_page *page;
+		struct vm_page *page = obj->pages[i];
 
 		if (i < offset >> PAGE_SHIFT)
 			continue;
@@ -485,15 +485,8 @@ i915_gem_shmem_pread(struct drm_device *dev,
 		if ((shmem_page_offset + page_length) > PAGE_SIZE)
 			page_length = PAGE_SIZE - shmem_page_offset;
 
-#ifdef __linux__
-		page = sg_page(sg);
-		page_do_bit17_swizzling = obj_do_bit17_swizzling &&
-			(page_to_phys(page) & (1 << 17)) != 0;
-#else
-		page = obj->pages[i];
 		page_do_bit17_swizzling = obj_do_bit17_swizzling &&
 			(VM_PAGE_TO_PHYS(page) & (1 << 17)) != 0;
-#endif
 
 		ret = shmem_pread_fast(page, shmem_page_offset, page_length,
 				       user_data, page_do_bit17_swizzling,
@@ -501,7 +494,6 @@ i915_gem_shmem_pread(struct drm_device *dev,
 		if (ret == 0)
 			goto next_page;
 
-		hit_slowpath = 1;
 		mutex_unlock(&dev->struct_mutex);
 
 #ifdef __linux__
@@ -523,9 +515,7 @@ i915_gem_shmem_pread(struct drm_device *dev,
 		mutex_lock(&dev->struct_mutex);
 
 next_page:
-#ifdef __linux__
 		mark_page_accessed(page);
-#endif
 
 		if (ret)
 			goto out;
@@ -537,12 +527,6 @@ next_page:
 
 out:
 	i915_gem_object_unpin_pages(obj);
-
-	if (hit_slowpath) {
-		/* Fixup: Kill any reinstated backing storage pages */
-		if (obj->madv == __I915_MADV_PURGED)
-			i915_gem_object_truncate(obj);
-	}
 
 	return ret;
 }
@@ -583,6 +567,7 @@ i915_gem_pread_ioctl(struct drm_device *dev, void *data,
 	trace_i915_gem_object_pread(obj, args->offset, args->size);
 
 	ret = i915_gem_shmem_pread(dev, obj, args, file);
+
 out:
 	drm_gem_object_unreference(&obj->base);
 unlock:
