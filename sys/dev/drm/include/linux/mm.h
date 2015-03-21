@@ -3,6 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
+ * Copyright (c) 2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -75,5 +76,11 @@ io_remap_pfn_range(struct vm_area_struct *vma,
 }
 
 #define offset_in_page(off)	((off) & PAGE_MASK)
+
+static inline void
+set_page_dirty(struct vm_page *page)
+{
+	vm_page_dirty(page);
+}
 
 #endif	/* _LINUX_MM_H_ */
