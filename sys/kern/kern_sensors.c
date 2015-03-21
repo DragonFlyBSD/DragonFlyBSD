@@ -38,10 +38,12 @@
 
 static struct lock	sensor_task_lock =
     LOCK_INITIALIZER("ksensor_task", 0, LK_CANRECURSE);
-static struct spinlock	sensor_dev_lock = SPINLOCK_INITIALIZER(sensor_dev_lock, "sensor_dev_lock");
+static struct spinlock	sensor_dev_lock =
+    SPINLOCK_INITIALIZER(sensor_dev_lock, "sensor_dev_lock");
 
-int			sensordev_count = 0;
-SLIST_HEAD(, ksensordev) sensordev_list = SLIST_HEAD_INITIALIZER(sensordev_list);
+static int		sensordev_count;
+static SLIST_HEAD(, ksensordev) sensordev_list =
+    SLIST_HEAD_INITIALIZER(sensordev_list);
 
 static struct ksensordev *sensordev_get(int);
 static struct ksensor	*sensor_find(struct ksensordev *, enum sensor_type,
@@ -60,7 +62,8 @@ struct sensor_task {
 static void		sensor_task_thread(void *);
 static void		sensor_task_schedule(struct sensor_task *);
 
-TAILQ_HEAD(, sensor_task) tasklist = TAILQ_HEAD_INITIALIZER(tasklist);
+static TAILQ_HEAD(, sensor_task) sensor_tasklist =
+    TAILQ_HEAD_INITIALIZER(sensor_tasklist);
 
 #ifndef NOSYSCTL8HACK
 static void		sensor_sysctl8magic_install(struct ksensordev *);
@@ -216,18 +219,18 @@ sensor_task_register(void *arg, void (*func)(void *), int period)
 
 	st->running = 1;
 
-	if (TAILQ_EMPTY(&tasklist))
+	if (TAILQ_EMPTY(&sensor_tasklist))
 		create_thread = 1;
 
 	st->nextrun = 0;
-	TAILQ_INSERT_HEAD(&tasklist, st, entry);
+	TAILQ_INSERT_HEAD(&sensor_tasklist, st, entry);
 
 	if (create_thread)
 		if (kthread_create(sensor_task_thread, NULL, NULL,
 		    "sensors") != 0)
 			panic("sensors kthread");
 	
-	wakeup(&tasklist);
+	wakeup(&sensor_tasklist);
 
 	lockmgr(&sensor_task_lock, LK_RELEASE);
 	return (0);
@@ -239,7 +242,7 @@ sensor_task_unregister(void *arg)
 	struct sensor_task	*st;
 
 	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
-	TAILQ_FOREACH(st, &tasklist, entry)
+	TAILQ_FOREACH(st, &sensor_tasklist, entry)
 		if (st->arg == arg)
 			st->running = 0;
 	lockmgr(&sensor_task_lock, LK_RELEASE);
@@ -253,11 +256,12 @@ sensor_task_thread(void *arg)
 
 	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
 
-	while (!TAILQ_EMPTY(&tasklist)) {
-		while ((nst = TAILQ_FIRST(&tasklist))->nextrun >
-		    (now = time_uptime))
-			lksleep(&tasklist, &sensor_task_lock, 0, "timeout",
-			       (nst->nextrun - now) * hz);
+	while (!TAILQ_EMPTY(&sensor_tasklist)) {
+		while ((nst = TAILQ_FIRST(&sensor_tasklist))->nextrun >
+		    (now = time_uptime)) {
+			lksleep(&sensor_tasklist, &sensor_task_lock, 0,
+			    "timeout", (nst->nextrun - now) * hz);
+		}
 
 		while ((st = nst) != NULL) {
 			nst = TAILQ_NEXT(st, entry);
@@ -266,7 +270,7 @@ sensor_task_thread(void *arg)
 				break;
 
 			/* take it out while we work on it */
-			TAILQ_REMOVE(&tasklist, st, entry);
+			TAILQ_REMOVE(&sensor_tasklist, st, entry);
 
 			if (!st->running) {
 				kfree(st, M_DEVBUF);
@@ -291,7 +295,7 @@ sensor_task_schedule(struct sensor_task *st)
 	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
 	st->nextrun = time_uptime + st->period;
 
-	TAILQ_FOREACH(cst, &tasklist, entry) {
+	TAILQ_FOREACH(cst, &sensor_tasklist, entry) {
 		if (cst->nextrun > st->nextrun) {
 			TAILQ_INSERT_BEFORE(cst, st, entry);
 			lockmgr(&sensor_task_lock, LK_RELEASE);
@@ -300,7 +304,7 @@ sensor_task_schedule(struct sensor_task *st)
 	}
 
 	/* must be an empty list, or at the end of the list */
-	TAILQ_INSERT_TAIL(&tasklist, st, entry);
+	TAILQ_INSERT_TAIL(&sensor_tasklist, st, entry);
 	lockmgr(&sensor_task_lock, LK_RELEASE);
 }
 
