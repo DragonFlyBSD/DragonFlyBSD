@@ -439,7 +439,7 @@ i915_gem_shmem_pread(struct drm_device *dev,
 	int needs_clflush = 0;
 	int i;
 
-	user_data = (char __user *) (uintptr_t) args->data_ptr;
+	user_data = to_user_ptr(args->data_ptr);
 	remain = args->size;
 
 	obj_do_bit17_swizzling = i915_gem_object_needs_bit17_swizzle(obj);
@@ -1232,6 +1232,7 @@ i915_gem_sw_finish_ioctl(struct drm_device *dev, void *data,
 	ret = i915_mutex_lock_interruptible(dev);
 	if (ret)
 		return ret;
+
 	obj = to_intel_bo(drm_gem_object_lookup(dev, file, args->handle));
 	if (&obj->base == NULL) {
 		ret = -ENOENT;
@@ -1556,7 +1557,6 @@ uint32_t
 i915_gem_get_gtt_alignment(struct drm_device *dev, uint32_t size,
 			   int tiling_mode, bool fenced)
 {
-
 	/*
 	 * Minimum alignment is 4k (GTT page size), but might be greater
 	 * if a fence register is needed for the object.
@@ -1663,33 +1663,44 @@ i915_gem_object_is_purgeable(struct drm_i915_gem_object *obj)
 static void
 i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 {
-	vm_page_t m;
-	int page_count, i;
+	int page_count = obj->base.size / PAGE_SIZE;
+	int i, ret;
+
+	if (!obj->pages)
+		return;
 
 	BUG_ON(obj->madv == __I915_MADV_PURGED);
 
-	if (obj->tiling_mode != I915_TILING_NONE)
+	ret = i915_gem_object_set_to_cpu_domain(obj, true);
+	if (ret) {
+		/* In the event of a disaster, abandon all caches and
+		 * hope for the best.
+		 */
+		WARN_ON(ret != -EIO);
+		i915_gem_clflush_object(obj);
+		obj->base.read_domains = obj->base.write_domain = I915_GEM_DOMAIN_CPU;
+	}
+
+	if (i915_gem_object_needs_bit17_swizzle(obj))
 		i915_gem_object_save_bit_17_swizzle(obj);
+
 	if (obj->madv == I915_MADV_DONTNEED)
 		obj->dirty = 0;
-	page_count = obj->base.size / PAGE_SIZE;
-	VM_OBJECT_LOCK(obj->base.vm_obj);
-#if GEM_PARANOID_CHECK_GTT
-	i915_gem_assert_pages_not_mapped(obj->base.dev, obj->pages, page_count);
-#endif
+
 	for (i = 0; i < page_count; i++) {
-		m = obj->pages[i];
 		if (obj->dirty)
-			vm_page_dirty(m);
+			set_page_dirty(obj->pages[i]);
+
 		if (obj->madv == I915_MADV_WILLNEED)
-			vm_page_reference(m);
+			mark_page_accessed(obj->pages[i]);
+
 		vm_page_busy_wait(obj->pages[i], FALSE, "i915gem");
 		vm_page_unwire(obj->pages[i], 1);
 		vm_page_wakeup(obj->pages[i]);
 	}
-	VM_OBJECT_UNLOCK(obj->base.vm_obj);
 	obj->dirty = 0;
-	drm_free(obj->pages, M_DRM);
+
+	kfree(obj->pages);
 	obj->pages = NULL;
 }
 
