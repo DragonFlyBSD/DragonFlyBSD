@@ -36,8 +36,8 @@
 
 #include <sys/mplock2.h>
 
-static int		sensor_task_lock_inited = 0;
-static struct lock	sensor_task_lock;
+static struct lock	sensor_task_lock =
+    LOCK_INITIALIZER("ksensor_task", 0, LK_CANRECURSE);
 static struct spinlock	sensor_dev_lock = SPINLOCK_INITIALIZER(sensor_dev_lock, "sensor_dev_lock");
 
 int			sensordev_count = 0;
@@ -207,10 +207,6 @@ sensor_task_register(void *arg, void (*func)(void *), int period)
 	st = kmalloc(sizeof(struct sensor_task), M_DEVBUF, M_NOWAIT);
 	if (st == NULL)
 		return (1);
-
-	if (atomic_cmpset_int(&sensor_task_lock_inited, 0, 1)) {
-		lockinit(&sensor_task_lock, "ksensor_task", 0, LK_CANRECURSE);
-	}
 
 	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
 	st->arg = arg;
