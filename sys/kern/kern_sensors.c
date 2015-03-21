@@ -65,8 +65,8 @@ static void		sensor_task_schedule(struct sensor_task *);
 static TAILQ_HEAD(, sensor_task) sensor_tasklist =
     TAILQ_HEAD_INITIALIZER(sensor_tasklist);
 
-static void		sensor_sysctl8magic_install(struct ksensordev *);
-static void		sensor_sysctl8magic_deinstall(struct ksensordev *);
+static void		sensor_sysctl_install(struct ksensordev *);
+static void		sensor_sysctl_deinstall(struct ksensordev *);
 
 void
 sensordev_install(struct ksensordev *sensdev)
@@ -90,7 +90,7 @@ sensordev_install(struct ksensordev *sensdev)
 	/* mtx_unlock(&Giant); */
 	spin_unlock(&sensor_dev_lock);
 
-	sensor_sysctl8magic_install(sensdev);
+	sensor_sysctl_install(sensdev);
 }
 
 void
@@ -141,7 +141,7 @@ sensordev_deinstall(struct ksensordev *sensdev)
 	/* mtx_unlock(&Giant); */
 	spin_unlock(&sensor_dev_lock);
 
-	sensor_sysctl8magic_deinstall(sensdev);
+	sensor_sysctl_deinstall(sensdev);
 }
 
 void
@@ -314,19 +314,8 @@ SYSCTL_NODE(_hw, OID_AUTO, sensors, CTLFLAG_RD, NULL,
 SYSCTL_NODE(_hw, HW_SENSORS, _sensors, CTLFLAG_RD, sysctl_sensors_handler,
     "Hardware Sensors XP MIB interface");
 
-/*
- * XXX:
- * FreeBSD's sysctl(9) .oid_handler functionality is not accustomed
- * for the CTLTYPE_NODE handler to handle the undocumented sysctl
- * magic calls.  As soon as such functionality is developed, 
- * sysctl_sensors_handler() should be converted to handle all such
- * calls, and these sysctl_add_oid(9) calls should be removed 
- * "with a big axe".  This whole sysctl_add_oid(9) business is solely
- * to please sysctl(8).
- */
-
 static void
-sensor_sysctl8magic_install(struct ksensordev *sensdev)
+sensor_sysctl_install(struct ksensordev *sensdev)
 {
 	struct sysctl_oid_list *ol;	
 	struct sysctl_ctx_list *cl = &sensdev->clist;
@@ -346,7 +335,7 @@ sensor_sysctl8magic_install(struct ksensordev *sensdev)
 }
 
 static void
-sensor_sysctl8magic_deinstall(struct ksensordev *sensdev)
+sensor_sysctl_deinstall(struct ksensordev *sensdev)
 {
 	struct sysctl_ctx_list *cl = &sensdev->clist;
 
