@@ -53,7 +53,7 @@ struct sensor_task {
 
 	int				period;
 	time_t				nextrun;	/* time_uptime */
-	volatile int			running;
+	int				running;
 	TAILQ_ENTRY(sensor_task)	entry;
 };
 
