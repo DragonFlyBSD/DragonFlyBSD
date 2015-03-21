@@ -44,7 +44,7 @@
 typedef struct btree_search {
 	u_int32_t	lo;
 	int64_t		obj_id;
-	int		normal;  /* normal iteration */
+	int		filter;  /* filter type (default -1) */
 } *btree_search_t;
 
 static void print_btree_node(hammer_off_t node_offset, btree_search_t search,
@@ -63,7 +63,7 @@ static void print_bigblock_fill(hammer_off_t offset);
 
 void
 hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
-		int depth,
+		int filter, int depth,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct volume_info *volume;
@@ -98,7 +98,7 @@ hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
 	} else {
 		search.lo = lo;
 		search.obj_id = obj_id;
-		search.normal = 0;
+		search.filter = filter;
 		searchp = &search;
 		printf("show %016jx lo %08x obj_id %016jx depth %d\n",
 			(uintmax_t)node_offset, lo, (uintmax_t)obj_id, depth);
@@ -207,7 +207,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 
 		switch(node->type) {
 		case HAMMER_BTREE_TYPE_INTERNAL:
-			if (search->normal == 0) {
+			if (search && search->filter) {
 				if (elm->base.localization > search->lo ||
 				    (elm->base.localization == search->lo &&
 				     elm->base.obj_id > search->obj_id)) {
@@ -226,9 +226,10 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 						 &elm[0].base, &elm[1].base);
 				/*
 				 * Cause show to do normal iteration after
-				 * seeking to the lo:objid
+				 * seeking to the lo:objid by default
 				 */
-				search->normal = 1;
+				if (search && search->filter == -1)  /* default */
+					search->filter = 0;
 			}
 			break;
 		default:

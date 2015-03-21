@@ -523,11 +523,18 @@ main(int ac, char **av)
 	if (strcmp(av[0], "show") == 0) {
 		u_int32_t lo = 0;
 		intmax_t obj_id = (int64_t)HAMMER_MIN_OBJID;
+		int filter = -1;
 
 		hammer_parsedevs(blkdevs);
 		if (ac > 1)
 			sscanf(av[1], "%08x:%jx", &lo, &obj_id);
-		hammer_cmd_show(-1, lo, (int64_t)obj_id, 0, NULL, NULL);
+		if (ac > 2) {
+			if (strcmp(av[2], "filter") == 0)
+				filter = 1;
+			else if (strcmp(av[2], "nofilter") == 0)
+				filter = 0;
+		}
+		hammer_cmd_show(-1, lo, (int64_t)obj_id, filter, 0, NULL, NULL);
 		exit(0);
 	}
 	if (strcmp(av[0], "show-undo") == 0) {
