@@ -43,8 +43,9 @@ static struct spinlock	sensor_dev_lock = SPINLOCK_INITIALIZER(sensor_dev_lock, "
 int			sensordev_count = 0;
 SLIST_HEAD(, ksensordev) sensordev_list = SLIST_HEAD_INITIALIZER(sensordev_list);
 
-struct ksensordev	*sensordev_get(int);
-struct ksensor		*sensor_find(struct ksensordev *, enum sensor_type, int);
+static struct ksensordev *sensordev_get(int);
+static struct ksensor	*sensor_find(struct ksensordev *, enum sensor_type,
+			    int);
 
 struct sensor_task {
 	void				*arg;
@@ -56,14 +57,14 @@ struct sensor_task {
 	TAILQ_ENTRY(sensor_task)	entry;
 };
 
-void	sensor_task_thread(void *);
-void	sensor_task_schedule(struct sensor_task *);
+static void		sensor_task_thread(void *);
+static void		sensor_task_schedule(struct sensor_task *);
 
 TAILQ_HEAD(, sensor_task) tasklist = TAILQ_HEAD_INITIALIZER(tasklist);
 
 #ifndef NOSYSCTL8HACK
-void	sensor_sysctl8magic_install(struct ksensordev *);
-void	sensor_sysctl8magic_deinstall(struct ksensordev *);
+static void		sensor_sysctl8magic_install(struct ksensordev *);
+static void		sensor_sysctl8magic_deinstall(struct ksensordev *);
 #endif
 
 void
@@ -163,7 +164,7 @@ sensor_detach(struct ksensordev *sensdev, struct ksensor *sens)
 	/* mtx_unlock(&Giant); */
 }
 
-struct ksensordev *
+static struct ksensordev *
 sensordev_get(int num)
 {
 	struct ksensordev *sd;
@@ -179,7 +180,7 @@ sensordev_get(int num)
 	return (NULL);
 }
 
-struct ksensor *
+static struct ksensor *
 sensor_find(struct ksensordev *sensdev, enum sensor_type type, int numt)
 {
 	struct ksensor *s;
@@ -244,7 +245,7 @@ sensor_task_unregister(void *arg)
 	lockmgr(&sensor_task_lock, LK_RELEASE);
 }
 
-void
+static void
 sensor_task_thread(void *arg)
 {
 	struct sensor_task	*st, *nst;
@@ -282,7 +283,7 @@ sensor_task_thread(void *arg)
 	lockmgr(&sensor_task_lock, LK_RELEASE);
 }
 
-void
+static void
 sensor_task_schedule(struct sensor_task *st)
 {
 	struct sensor_task 	*cst;
@@ -306,9 +307,9 @@ sensor_task_schedule(struct sensor_task *st)
 /*
  * sysctl glue code
  */
-int sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS);
-int sysctl_handle_sensor(SYSCTL_HANDLER_ARGS);
-int sysctl_sensors_handler(SYSCTL_HANDLER_ARGS);
+static int	sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS);
+static int	sysctl_handle_sensor(SYSCTL_HANDLER_ARGS);
+static int	sysctl_sensors_handler(SYSCTL_HANDLER_ARGS);
 
 #ifndef NOSYSCTL8HACK
 
@@ -340,7 +341,7 @@ SYSCTL_INT(_hw_sensors, OID_AUTO, debug, CTLFLAG_RD, &sensors_debug, 0, "sensors
  * to please sysctl(8).
  */
 
-void
+static void
 sensor_sysctl8magic_install(struct ksensordev *sensdev)
 {
 	struct sysctl_oid_list *ol;	
@@ -360,7 +361,7 @@ sensor_sysctl8magic_install(struct ksensordev *sensdev)
 	}
 }
 
-void
+static void
 sensor_sysctl8magic_deinstall(struct ksensordev *sensdev)
 {
 	struct sysctl_ctx_list *cl = &sensdev->clist;
@@ -371,7 +372,7 @@ sensor_sysctl8magic_deinstall(struct ksensordev *sensdev)
 #endif /* !NOSYSCTL8HACK */
 
 
-int
+static int
 sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS)
 {
 	struct ksensordev *ksd = arg1;
@@ -395,7 +396,7 @@ sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS)
 
 }
 
-int
+static int
 sysctl_handle_sensor(SYSCTL_HANDLER_ARGS)
 {
 	struct ksensor *ks = arg1;
@@ -421,7 +422,7 @@ sysctl_handle_sensor(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-int
+static int
 sysctl_sensors_handler(SYSCTL_HANDLER_ARGS)
 {
 	int *name = arg1;
