@@ -65,10 +65,8 @@ static void		sensor_task_schedule(struct sensor_task *);
 static TAILQ_HEAD(, sensor_task) sensor_tasklist =
     TAILQ_HEAD_INITIALIZER(sensor_tasklist);
 
-#ifndef NOSYSCTL8HACK
 static void		sensor_sysctl8magic_install(struct ksensordev *);
 static void		sensor_sysctl8magic_deinstall(struct ksensordev *);
-#endif
 
 void
 sensordev_install(struct ksensordev *sensdev)
@@ -92,9 +90,7 @@ sensordev_install(struct ksensordev *sensdev)
 	/* mtx_unlock(&Giant); */
 	spin_unlock(&sensor_dev_lock);
 
-#ifndef NOSYSCTL8HACK
 	sensor_sysctl8magic_install(sensdev);
-#endif
 }
 
 void
@@ -145,9 +141,7 @@ sensordev_deinstall(struct ksensordev *sensdev)
 	/* mtx_unlock(&Giant); */
 	spin_unlock(&sensor_dev_lock);
 
-#ifndef NOSYSCTL8HACK
 	sensor_sysctl8magic_deinstall(sensdev);
-#endif
 }
 
 void
@@ -315,24 +309,10 @@ static int	sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS);
 static int	sysctl_handle_sensor(SYSCTL_HANDLER_ARGS);
 static int	sysctl_sensors_handler(SYSCTL_HANDLER_ARGS);
 
-#ifndef NOSYSCTL8HACK
-
 SYSCTL_NODE(_hw, OID_AUTO, sensors, CTLFLAG_RD, NULL,
     "Hardware Sensors sysctl internal magic");
 SYSCTL_NODE(_hw, HW_SENSORS, _sensors, CTLFLAG_RD, sysctl_sensors_handler,
     "Hardware Sensors XP MIB interface");
-
-#else /* NOSYSCTL8HACK */
-
-SYSCTL_NODE(_hw, HW_SENSORS, sensors, CTLFLAG_RD, sysctl_sensors_handler,
-    "Hardware Sensors");
-int sensors_debug = 1;
-SYSCTL_INT(_hw_sensors, OID_AUTO, debug, CTLFLAG_RD, &sensors_debug, 0, "sensors debug");
-
-#endif /* !NOSYSCTL8HACK */
-
-
-#ifndef NOSYSCTL8HACK
 
 /*
  * XXX:
@@ -372,9 +352,6 @@ sensor_sysctl8magic_deinstall(struct ksensordev *sensdev)
 
 	sysctl_ctx_free(cl);
 }
-
-#endif /* !NOSYSCTL8HACK */
-
 
 static int
 sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS)

@@ -122,9 +122,7 @@ struct sensordev {
 
 #ifdef _KERNEL
 #include <sys/queue.h>
-#ifndef NOSYSCTL8HACK
 #include <sys/sysctl.h>
-#endif
 
 /* Sensor data */
 struct ksensor {
@@ -147,12 +145,10 @@ struct ksensordev {
 	int maxnumt[SENSOR_MAX_TYPES];
 	int sensors_count;
 	struct ksensors_head sensors_list;
-#ifndef NOSYSCTL8HACK
 	struct sysctl_ctx_list clist;	/* XXX: sysctl(9) .oid_handler() for
 					 * CTLTYPE_NODE type doesn't support
 					 * the undocumented sysctl magic.
 					 */
-#endif /* !NOSYSCTL8HACK */
 };
 
 /* struct ksensordev */
