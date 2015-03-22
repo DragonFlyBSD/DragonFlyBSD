@@ -228,12 +228,7 @@ memtemp_core_dimm_attach(struct memtemp_core_softc *sc, int chan, int dimm_id,
 	    sizeof(dimm_sc->dimm_sensordev.xname), "dimm%d", dimm_extid);
 	dimm_sc->dimm_sensor.type = SENSOR_TEMP;
 	sensor_attach(&dimm_sc->dimm_sensordev, &dimm_sc->dimm_sensor);
-	if (sensor_task_register(dimm_sc, memtemp_core_sensor_task, 2)) {
-		device_printf(sc->temp_dev, "DIMM%d sensor task "
-		    "register failed\n", dimm_id);
-		kfree(dimm_sc, M_DEVBUF);
-		return;
-	}
+	sensor_task_register(dimm_sc, memtemp_core_sensor_task, 2);
 	sensordev_install(&dimm_sc->dimm_sensordev);
 
 	TAILQ_INSERT_TAIL(&sc->temp_dimm, dimm_sc, dimm_link);

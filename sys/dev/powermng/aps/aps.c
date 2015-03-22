@@ -396,11 +396,7 @@ aps_attach(struct device *dev)
 
 	/* Refresh sensor data every 1 second */
 	/* XXX: a more frequent refresh might be appropriate */
-	if (sensor_task_register(sc, aps_refresh, 1)) {
-		device_printf(dev, "unable to register update task\n");
-		bus_release_resource(dev, SYS_RES_IOPORT, sc->sc_iorid, sc->sc_iores);
-		return ENXIO;
-	}
+	sensor_task_register(sc, aps_refresh, 1);
 
 	sensordev_install(&sc->sensordev);
 	return 0;

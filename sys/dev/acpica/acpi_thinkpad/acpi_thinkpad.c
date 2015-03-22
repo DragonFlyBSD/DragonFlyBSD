@@ -454,10 +454,7 @@ acpi_thinkpad_attach(device_t dev)
 	    acpi_thinkpad_notify, dev);
 
 	/* Attach sensors(9). */
-	if (sensor_task_register(sc, acpi_thinkpad_refresh, 5)) {
-		device_printf(sc->dev, "unable to register update task\n");
-		return 1;
-	}
+	sensor_task_register(sc, acpi_thinkpad_refresh, 5);
 
 	strlcpy(sc->sensordev.xname, device_get_nameunit(sc->dev),
 	    sizeof(sc->sensordev.xname));

@@ -160,7 +160,7 @@ void		sensor_attach(struct ksensordev *, struct ksensor *);
 void		sensor_detach(struct ksensordev *, struct ksensor *);
 
 /* task scheduling */
-int		sensor_task_register(void *, void (*)(void *), int);
+void		sensor_task_register(void *, void (*)(void *), int);
 void		sensor_task_unregister(void *);
 
 #endif	/* _KERNEL */

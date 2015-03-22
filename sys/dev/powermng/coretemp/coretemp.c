@@ -249,10 +249,7 @@ coretemp_attach(device_t dev)
 	    sizeof(sc->sc_sensordev.xname));
 	sc->sc_sensor.type = SENSOR_TEMP;
 	sensor_attach(&sc->sc_sensordev, &sc->sc_sensor);
-	if (sensor_task_register(sc, coretemp_refresh, 2)) {
-		device_printf(dev, "unable to register update task\n");
-		return (ENXIO);
-	}
+	sensor_task_register(sc, coretemp_refresh, 2);
 	sensordev_install(&sc->sc_sensordev);
 
 	return (0);

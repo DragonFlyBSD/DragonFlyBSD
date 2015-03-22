@@ -197,14 +197,12 @@ sensor_find(struct ksensordev *sensdev, enum sensor_type type, int numt)
 	return (NULL);
 }
 
-int
+void
 sensor_task_register(void *arg, void (*func)(void *), int period)
 {
 	struct sensor_task	*st;
 
-	st = kmalloc(sizeof(struct sensor_task), M_DEVBUF, M_NOWAIT);
-	if (st == NULL)
-		return (1);
+	st = kmalloc(sizeof(struct sensor_task), M_DEVBUF, M_WAITOK);
 
 	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
 	st->arg = arg;
@@ -219,7 +217,6 @@ sensor_task_register(void *arg, void (*func)(void *), int period)
 	wakeup(&sensor_tasklist);
 
 	lockmgr(&sensor_task_lock, LK_RELEASE);
-	return (0);
 }
 
 void

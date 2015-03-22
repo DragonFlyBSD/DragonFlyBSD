@@ -128,10 +128,7 @@ aibs_attach(struct device *dev)
 		return ENXIO;
 	}
 
-	if (sensor_task_register(sc, aibs_refresh, 5)) {
-		device_printf(dev, "unable to register update task\n");
-		return ENXIO;
-	}
+	sensor_task_register(sc, aibs_refresh, 5);
 
 	sensordev_install(&sc->sc_sensordev);
 	return 0;

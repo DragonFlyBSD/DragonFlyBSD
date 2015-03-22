@@ -292,12 +292,7 @@ memtemp_e5_attach(device_t dev)
 		    "dimm%d", dimm_extid);
 		dimm_sc->dimm_sensor.type = SENSOR_TEMP;
 		sensor_attach(&dimm_sc->dimm_sensordev, &dimm_sc->dimm_sensor);
-		if (sensor_task_register(dimm_sc, memtemp_e5_sensor_task, 2)) {
-			device_printf(dev, "DIMM%d sensor task register "
-			    "failed\n", dimm);
-			kfree(dimm_sc, M_DEVBUF);
-			continue;
-		}
+		sensor_task_register(dimm_sc, memtemp_e5_sensor_task, 2);
 		sensordev_install(&dimm_sc->dimm_sensordev);
 
 		TAILQ_INSERT_TAIL(&sc->temp_dimm, dimm_sc, dimm_link);
