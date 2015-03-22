@@ -15,5 +15,4 @@ The following files have been patched:
 bmake.1
 main.c
 meta.c
-parse.c
 var.c
