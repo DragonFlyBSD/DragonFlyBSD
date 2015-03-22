@@ -250,6 +250,11 @@
 
 #define	IPPORT_MAX		65535
 
+#ifndef _SA_FAMILY_T_DECLARED
+typedef	__uint8_t	sa_family_t;
+#define	_SA_FAMILY_T_DECLARED
+#endif
+
 #ifndef _STRUCT_IN_ADDR_DECLARED
 #define _STRUCT_IN_ADDR_DECLARED
 /*
@@ -311,11 +316,11 @@ struct in_addr {
  * Socket address, internet style.
  */
 struct sockaddr_in {
-	u_char	sin_len;
-	u_char	sin_family;
-	u_short	sin_port;
-	struct	in_addr sin_addr;
-	char	sin_zero[8];
+	u_char		sin_len;
+	sa_family_t	sin_family;
+	u_short		sin_port;
+	struct in_addr	sin_addr;
+	char		sin_zero[8];
 };
 
 #define	INET_ADDRSTRLEN		16

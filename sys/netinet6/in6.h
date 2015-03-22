@@ -152,7 +152,7 @@ struct in6_addr {
 #endif
 struct sockaddr_in6 {
 	uint8_t		sin6_len;	/* length of this struct(sa_family_t)*/
-	uint8_t		sin6_family;	/* AF_INET6 (sa_family_t) */
+	sa_family_t	sin6_family;	/* AF_INET6 */
 	uint16_t	sin6_port;	/* Transport layer port # (in_port_t)*/
 	uint32_t	sin6_flowinfo;	/* IP6 flow information */
 	struct in6_addr	sin6_addr;	/* IP6 address */
