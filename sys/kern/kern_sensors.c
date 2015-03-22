@@ -36,8 +36,6 @@
 
 #include <sys/mplock2.h>
 
-static struct lock	sensor_task_lock =
-    LOCK_INITIALIZER("ksensor_task", 0, LK_CANRECURSE);
 static struct spinlock	sensor_dev_lock =
     SPINLOCK_INITIALIZER(sensor_dev_lock, "sensor_dev_lock");
 
@@ -64,6 +62,9 @@ static void		sensor_task_schedule(struct sensor_task *);
 
 static TAILQ_HEAD(, sensor_task) sensor_tasklist =
     TAILQ_HEAD_INITIALIZER(sensor_tasklist);
+
+static struct lock	sensor_task_lock =
+    LOCK_INITIALIZER("ksensor_task", 0, LK_CANRECURSE);
 
 static void		sensor_sysctl_install(struct ksensordev *);
 static void		sensor_sysctl_deinstall(struct ksensordev *);
@@ -200,7 +201,6 @@ int
 sensor_task_register(void *arg, void (*func)(void *), int period)
 {
 	struct sensor_task	*st;
-	int			 create_thread = 0;
 
 	st = kmalloc(sizeof(struct sensor_task), M_DEVBUF, M_NOWAIT);
 	if (st == NULL)
@@ -213,17 +213,9 @@ sensor_task_register(void *arg, void (*func)(void *), int period)
 
 	st->running = 1;
 
-	if (TAILQ_EMPTY(&sensor_tasklist))
-		create_thread = 1;
-
 	st->nextrun = 0;
 	TAILQ_INSERT_HEAD(&sensor_tasklist, st, entry);
 
-	if (create_thread)
-		if (kthread_create(sensor_task_thread, NULL, NULL,
-		    "sensors") != 0)
-			panic("sensors kthread");
-	
 	wakeup(&sensor_tasklist);
 
 	lockmgr(&sensor_task_lock, LK_RELEASE);
@@ -250,7 +242,12 @@ sensor_task_thread(void *arg)
 
 	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
 
-	while (!TAILQ_EMPTY(&sensor_tasklist)) {
+	for (;;) {
+		while (TAILQ_EMPTY(&sensor_tasklist)) {
+			lksleep(&sensor_tasklist, &sensor_task_lock, 0,
+			    "waittask", 0);
+		}
+
 		while ((nst = TAILQ_FIRST(&sensor_tasklist))->nextrun >
 		    (now = time_uptime)) {
 			lksleep(&sensor_tasklist, &sensor_task_lock, 0,
@@ -419,3 +416,14 @@ sysctl_sensors_handler(SYSCTL_HANDLER_ARGS)
 		return (ENOENT);
 	return (sysctl_handle_sensor(NULL, ks, 0, req));
 }
+
+static void
+sensor_sysinit(void *arg __unused)
+{
+	int error;
+
+	error = kthread_create(sensor_task_thread, NULL, NULL, "sensors");
+	if (error)
+		panic("sensors kthread failed: %d", error);
+}
+SYSINIT(sensor, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, sensor_sysinit, NULL);
