@@ -531,7 +531,7 @@ acpi_attach(device_t dev)
      * XXX We should arrange for the object init pass after we have attached
      *     all our child devices, but on many systems it works here.
      */
-    flags = 0;
+    flags = ACPI_FULL_INITIALIZATION;
     if (ktestenv("debug.acpi.avoid"))
 	flags = ACPI_NO_DEVICE_INIT | ACPI_NO_OBJECT_INIT;
 
