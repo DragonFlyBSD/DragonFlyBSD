@@ -1,4 +1,4 @@
-# $Id: meta.stage.mk,v 1.30 2013/04/19 16:32:57 sjg Exp $
+# $Id: meta.stage.mk,v 1.32 2014/10/18 05:48:02 sjg Exp $
 #
 #	@(#) Copyright (c) 2011, Simon J. Gerraty
 #
@@ -46,7 +46,7 @@ STAGE_DIR_FILTER = tA:@d@$${_STAGED_DIRS::+=$$d}$$d@
 # convert _STAGED_DIRS into suitable filters
 GENDIRDEPS_FILTER += Nnot-empty-is-important \
 	${_STAGED_DIRS:O:u:M${OBJTOP}*:S,${OBJTOP}/,N,} \
-	${_STAGED_DIRS:O:u:N${OBJTOP}*:S,${_objroot},,:C,^([^/]+)/(.*),N\2.\1,:S,${HOST_TARGET},.host,}
+	${_STAGED_DIRS:O:u:M${_objroot}*:N${OBJTOP}*:S,${_objroot},,:C,^([^/]+)/(.*),N\2.\1,:S,${HOST_TARGET},.host,}
 
 LN_CP_SCRIPT = LnCp() { \
   rm -f $$2 2> /dev/null; \
@@ -112,6 +112,9 @@ STAGE_AS_SCRIPT = ${STAGE_DIRDEP_SCRIPT}; StageAs() { \
 # this is simple, a list of the "staged" files depends on this,
 _STAGE_BASENAME_USE:	.USE ${.TARGET:T}
 	@${STAGE_FILE_SCRIPT}; StageFiles ${.TARGET:H:${STAGE_DIR_FILTER}} ${.TARGET:T}
+
+_STAGE_AS_BASENAME_USE:        .USE ${.TARGET:T}
+	@${STAGE_AS_SCRIPT}; StageAs ${.TARGET:H:${STAGE_DIR_FILTER}} ${.TARGET:T} ${STAGE_AS_${.TARGET:T}:U${.TARGET:T}}
 
 .if !empty(STAGE_INCSDIR)
 STAGE_TARGETS += stage_incs
@@ -240,5 +243,6 @@ INSTALL := ${STAGE_INSTALL}
 beforeinstall: .dirdep
 .endif
 .endif
+.NOPATH: ${STAGE_FILES}
 
 .endif

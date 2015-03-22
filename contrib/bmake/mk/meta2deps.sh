@@ -77,7 +77,7 @@
 
 
 # RCSid:
-#	$Id: meta2deps.sh,v 1.6 2013/05/11 05:16:26 sjg Exp $
+#	$Id: meta2deps.sh,v 1.8 2014/08/30 00:44:58 sjg Exp $
 
 # Copyright (c) 2010-2013, Juniper Networks, Inc.
 # All rights reserved.
@@ -139,10 +139,15 @@ add_list() {
     eval "$name=\"$list\""
 }
 
+_excludes_f() {
+    egrep -v "$EXCLUDES"
+}
+
 meta2deps() {
     DPDEPS=
     SRCTOPS=$SRCTOP
     OBJROOTS=
+    EXCLUDES=
     while :
     do
 	case "$1" in
@@ -153,6 +158,7 @@ meta2deps() {
 	-H) HOST_TARGET=$2; shift 2;;
 	-S) add_list SRCTOPS $2; shift 2;;
 	-O) add_list OBJROOTS $2; shift 2;;
+	-X) add_list EXCLUDES '|' $2; shift 2;;
 	-R) RELDIR=$2; shift 2;;
 	-T) TARGET_SPEC=$2; shift 2;;
 	*) break;;
@@ -212,8 +218,13 @@ meta2deps() {
     seenit=
     seensrc=
     lpid=
+    case "$EXCLUDES" in
+    "") _excludes=cat;;
+    *) _excludes=_excludes_f;;
+    esac
     cat /dev/null "$@" |
-    sed -e 's,^CWD,C C,;/^[CREFL] /!d' -e "s,',,g" |
+    sed -e 's,^CWD,C C,;/^[CREFLM] /!d' -e "s,',,g" |
+    $_excludes |
     while read op pid path junk
     do
 	: op=$op pid=$pid path=$path
@@ -348,7 +359,7 @@ meta2deps() {
 	[ -s $f ] || continue
 	case $f in
 	*qual) # a list of .dirdep files
-	    # we can prefix everthing with $OBJTOP to
+	    # we can prefix everything with $OBJTOP to
 	    # tell gendirdeps.mk that these are
 	    # DIRDEP entries, since they are already
 	    # qualified with .<machine> as needed.

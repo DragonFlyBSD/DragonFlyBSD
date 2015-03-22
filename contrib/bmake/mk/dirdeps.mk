@@ -1,4 +1,4 @@
-# $Id: dirdeps.mk,v 1.28 2013/03/25 21:11:43 sjg Exp $
+# $Id: dirdeps.mk,v 1.37 2014/10/15 06:31:43 sjg Exp $
 
 # Copyright (c) 2010-2013, Juniper Networks, Inc.
 # All rights reserved.
@@ -44,7 +44,7 @@
 #	All unqualified entries end up being qualified with .${TARGET_SPEC}
 #	and partially qualified (if TARGET_SPEC_VARS has multiple
 #	entries) are also expanded to a full .<target_spec>.
-#	The  _DIRDEPS_USE target uses the suffix to set TARGET_SPEC
+#	The  _DIRDEP_USE target uses the suffix to set TARGET_SPEC
 #	correctly when visiting each entry.
 #
 #	The fully qualified directory entries are used to construct a
@@ -71,7 +71,7 @@
 #
 # TARGET_SPEC_VARS
 #	The default value is just MACHINE, and for most environments
-#	this is sufficient.  The _DIRDEPS_USE target actually sets
+#	this is sufficient.  The _DIRDEP_USE target actually sets
 #	both MACHINE and TARGET_SPEC to the suffix of the current
 #	target so that in the general case TARGET_SPEC can be ignored.
 #
@@ -149,11 +149,11 @@ DEP_$v ?= ${$v}
 JOT ?= jot
 _tspec_x := ${${JOT} ${TARGET_SPEC_VARS:[#]}:L:sh}
 # this handles unqualified entries
-M_dep_qual_fixes = C;(/[^/.,]+)$$;\1.${DEP_TARGET_SPEC};
+M_dep_qual_fixes = C;(/[^/.,]+)$$;\1.$${DEP_TARGET_SPEC};
 # there needs to be at least one item missing for these to make sense
 .for i in ${_tspec_x:[2..-1]}
 _tspec_m$i := ${TARGET_SPEC_VARS:[2..$i]:@w@[^,]+@:ts,}
-_tspec_a$i := ,${TARGET_SPEC_VARS:[$i..-1]:@v@$${DEP_$v}@:ts,}
+_tspec_a$i := ,${TARGET_SPEC_VARS:[$i..-1]:@v@$$$${DEP_$v}@:ts,}
 M_dep_qual_fixes += C;(\.${_tspec_m$i})$$;\1${_tspec_a$i};
 .endfor
 .else
@@ -196,8 +196,12 @@ N_notmachine := ${.MAKE.DEPENDFILE_PREFERENCE:E:N*${MACHINE}*:${M_ListToSkip}}
 # if we were included recursively _DEP_TARGET_SPEC should be valid.
 .if empty(_DEP_TARGET_SPEC)
 # we may or may not have included a dependfile yet
+.if defined(.INCLUDEDFROMFILE)
+_last_dependfile := ${.INCLUDEDFROMFILE:M${.MAKE.DEPENDFILE_PREFIX}*}
+.else
 _last_dependfile := ${.MAKE.MAKEFILES:M*/${.MAKE.DEPENDFILE_PREFIX}*:[-1]}
-.if !empty(_debug_reldir)
+.endif
+.if ${_debug_reldir:U0}
 .info ${DEP_RELDIR}.${DEP_TARGET_SPEC}: _last_dependfile='${_last_dependfile}'
 .endif
 
@@ -239,7 +243,8 @@ DEP_MACHINE := ${_DEP_TARGET_SPEC}
 # we can use this as a clue to do initialization and other one time things.
 .if !target(_DIRDEP_USE)
 # make sure this target exists
-dirdeps:
+dirdeps: beforedirdeps .WAIT
+beforedirdeps:
 
 # We normally expect to be included by Makefile.depend.*
 # which sets the DEP_* macros below.
@@ -255,7 +260,7 @@ _DEP_RELDIR := ${DEP_RELDIR}
 # things we skip for host tools
 SKIP_HOSTDIR ?=
 
-NSkipHostDir = ${SKIP_HOSTDIR:N*.host:S,$,.host,:N.host:${M_ListToSkip}}
+NSkipHostDir = ${SKIP_HOSTDIR:N*.host*:S,$,.host*,:N.host*:S,^,${SRCTOP}/,:${M_ListToSkip}}
 
 # things we always skip
 # SKIP_DIRDEPS allows for adding entries on command line.
@@ -269,12 +274,15 @@ DEP_SKIP_DIR = ${SKIP_DIR} \
 
 NSkipDir = ${DEP_SKIP_DIR:${M_ListToSkip}}
 
-.if defined(NO_DIRDEPS) || defined(NODIRDEPS)
+.if defined(NO_DIRDEPS) || defined(NODIRDEPS) || defined(WITHOUT_DIRDEPS)
 # confine ourselves to the original dir
 DIRDEPS_FILTER += M${_DEP_RELDIR}*
 .endif
 
-# we supress SUBDIR when visiting the leaves
+# this is what we run below
+DIRDEP_MAKE?= ${.MAKE}
+
+# we suppress SUBDIR when visiting the leaves
 # we assume sys.mk will set MACHINE_ARCH
 # you can add extras to DIRDEP_USE_ENV
 # if there is no makefile in the target directory, we skip it.
@@ -285,7 +293,7 @@ _DIRDEP_USE:	.USE .MAKE
 		MACHINE_ARCH= NO_SUBDIR=1 ${DIRDEP_USE_ENV} \
 		TARGET_SPEC=${.TARGET:E} \
 		MACHINE=${.TARGET:E} \
-		${.MAKE} -C ${.TARGET:R} || exit 1; \
+		${DIRDEP_MAKE} -C ${.TARGET:R} || exit 1; \
 		break; \
 	done
 
@@ -324,8 +332,16 @@ _only_machines := ${_only_machines:${NOT_MACHINE_LIST:${M_ListToSkip}}}
 DIRDEPS ?= ${RELDIR}
 .endif				# target 
 
-_debug_reldir := ${DEBUG_DIRDEPS:@x@${DEP_RELDIR:M$x}${${DEP_RELDIR}.${DEP_MACHINE}:L:M$x}@}
-_debug_search := ${DEBUG_DIRDEPS:@x@${DEP_RELDIR:M$x}${${DEP_RELDIR}.depend:L:M$x}@}
+.if ${DEBUG_DIRDEPS:@x@${DEP_RELDIR:M$x}${${DEP_RELDIR}.${DEP_MACHINE}:L:M$x}@} != ""
+_debug_reldir = 1
+.else
+_debug_reldir = 0
+.endif
+.if ${DEBUG_DIRDEPS:@x@${DEP_RELDIR:M$x}${${DEP_RELDIR}.depend:L:M$x}@} != ""
+_debug_search = 1
+.else
+_debug_search = 0
+.endif
 
 # the rest is done repeatedly for every Makefile.depend we read.
 # if we are anything but the original dir we care only about the
@@ -359,7 +375,9 @@ _machines := ${_machines:O:u}
 .if ${TARGET_SPEC_VARS:[#]} > 1
 # we need to tweak _machines
 _dm := ${DEP_MACHINE}
-_machines := ${_machines:@DEP_MACHINE@${DEP_TARGET_SPEC}@}
+# apply the same filtering that we do when qualifying DIRDEPS.
+# M_dep_qual_fixes expects .${MACHINE}* so add (and remove) '.'
+_machines := ${_machines:@DEP_MACHINE@${DEP_TARGET_SPEC}@:S,^,.,:${M_dep_qual_fixes:ts:}:O:u:S,^.,,}
 DEP_MACHINE := ${_dm}
 .endif
 
@@ -379,7 +397,7 @@ _build_dirs += ${_machines:N${DEP_TARGET_SPEC}:@m@${_CURDIR}.$m@}
 .endif
 .endif
 
-.if !empty(_debug_reldir)
+.if ${_debug_reldir}
 .info ${DEP_RELDIR}.${DEP_TARGET_SPEC}: DIRDEPS='${DIRDEPS}'
 .info ${DEP_RELDIR}.${DEP_TARGET_SPEC}: _machines='${_machines}' 
 .endif
@@ -396,7 +414,7 @@ DEP_DIRDEPS_FILTER = U
 .endif
 
 # this is what we start with
-__depdirs := ${DIRDEPS:${NSkipDir}:${DEP_DIRDEPS_FILTER:ts:}:O:u:@d@${SRCTOP}/$d@}
+__depdirs := ${DIRDEPS:${NSkipDir}:${DEP_DIRDEPS_FILTER:ts:}:C,//+,/,g:O:u:@d@${SRCTOP}/$d@}
 
 # some entries may be qualified with .<machine> 
 # the :M*/*/*.* just tries to limit the dirs we check to likely ones.
@@ -410,7 +428,7 @@ __hostdpadd := ${DPADD:U.:M${HOST_OBJTOP}/*:S,${HOST_OBJTOP}/,,:H:${NSkipDir}:${
 __qual_depdirs += ${__hostdpadd}
 .endif
 
-.if !empty(_debug_reldir)
+.if ${_debug_reldir}
 .info depdirs=${__depdirs}
 .info qualified=${__qual_depdirs}
 .info unqualified=${__unqual_depdirs}
@@ -420,7 +438,8 @@ __qual_depdirs += ${__hostdpadd}
 _build_dirs += \
 	${__qual_depdirs:M*.host:${NSkipHostDir}:N.host} \
 	${__qual_depdirs:N*.host} \
-	${_machines:@m@${__unqual_depdirs:@d@$d.$m@}@}
+	${_machines:Mhost*:@m@${__unqual_depdirs:@d@$d.$m@}@:${NSkipHostDir}:N.host} \
+	${_machines:Nhost*:@m@${__unqual_depdirs:@d@$d.$m@}@}
 
 # qualify everything now
 _build_dirs := ${_build_dirs:${M_dep_qual_fixes:ts:}:O:u}
@@ -436,7 +455,7 @@ _build_dirs := ${_build_dirs:${M_dep_qual_fixes:ts:}:O:u}
 dirdeps: ${_build_dirs}
 ${_build_dirs}:	_DIRDEP_USE
 
-.if !empty(_debug_reldir)
+.if ${_debug_reldir}
 .info ${DEP_RELDIR}.${DEP_TARGET_SPEC}: needs: ${_build_dirs}
 .endif
 
@@ -445,13 +464,13 @@ ${_build_dirs}:	_DIRDEP_USE
 # it would be nice to do :N${.TARGET}
 .if !empty(__qual_depdirs)
 .for q in ${__qual_depdirs:${M_dep_qual_fixes:ts:}:E:O:u:N$m}
-.if !empty(_debug_reldir) || ${DEBUG_DIRDEPS:@x@${${DEP_RELDIR}.$m:L:M$x}${${DEP_RELDIR}.$q:L:M$x}@} != ""
+.if ${_debug_reldir} || ${DEBUG_DIRDEPS:@x@${${DEP_RELDIR}.$m:L:M$x}${${DEP_RELDIR}.$q:L:M$x}@} != ""
 .info ${DEP_RELDIR}.$m: graph: ${_build_dirs:M*.$q}
 .endif
 ${_this_dir}.$m: ${_build_dirs:M*.$q}
 .endfor
 .endif
-.if !empty(_debug_reldir)
+.if ${_debug_reldir}
 .info ${DEP_RELDIR}.$m: graph: ${_build_dirs:M*.$m:N${_this_dir}.$m}
 .endif
 ${_this_dir}.$m: ${_build_dirs:M*.$m:N${_this_dir}.$m}
@@ -464,6 +483,9 @@ ${_this_dir}.$m: ${_build_dirs:M*.$m:N${_this_dir}.$m}
 .if ${_DIRDEP_CHECKED:M$d} == ""
 # once only
 _DIRDEP_CHECKED += $d
+.if ${_debug_search}
+.info checking $d
+.endif
 # Note: _build_dirs is fully qualifed so d:R is always the directory
 .if exists(${d:R})
 # Warning: there is an assumption here that MACHINE is always 
@@ -471,15 +493,16 @@ _DIRDEP_CHECKED += $d
 # If TARGET_SPEC and MACHINE are insufficient, you have a problem.
 _m := ${.MAKE.DEPENDFILE_PREFERENCE:T:S;${TARGET_SPEC}$;${d:E};:S;${MACHINE};${d:E:C/,.*//};:@m@${exists(${d:R}/$m):?${d:R}/$m:}@:[1]}
 .if !empty(_m)
-_qm := ${_m:${M_dep_qual_fixes:ts:}}
-.if !empty(_debug_search)
+# M_dep_qual_fixes isn't geared to Makefile.depend
+_qm := ${_m:C;(\.depend)$;\1.${d:E};:${M_dep_qual_fixes:ts:}}
+.if ${_debug_search}
 .info Looking for ${_qm}
 .endif
 # we pass _DEP_TARGET_SPEC to tell the next step what we want
 _DEP_TARGET_SPEC := ${d:E}
 # some makefiles may still look at this
 _DEP_MACHINE := ${d:E:C/,.*//}
-.if !empty(_debug_reldir) && ${_qm} != ${_m}
+.if ${_debug_reldir} && ${_qm} != ${_m}
 .info loading ${_m} for ${d:E}
 .endif
 .include <${_m}>
@@ -498,3 +521,37 @@ _DEP_RELDIR := ${DEP_RELDIR}
 .-include <.depend>
 .endif
 
+# bootstrapping new dependencies made easy?
+.if make(bootstrap*) && !target(bootstrap)
+
+.if exists(${.CURDIR}/${.MAKE.DEPENDFILE:T})
+# stop here
+${.TARGETS:Mboot*}:
+.else
+# find a Makefile.depend to use as _src
+_src != cd ${.CURDIR} && for m in ${.MAKE.DEPENDFILE_PREFERENCE:T:S,${MACHINE},*,}; do test -s $$m || continue; echo $$m; break; done; echo
+.if empty(_src)
+.error cannot find any of ${.MAKE.DEPENDFILE_PREFERENCE:T}
+.endif
+
+_src?= ${.MAKE.DEPENDFILE:T}
+
+bootstrap-this:	.NOTMAIN
+	@echo Bootstrapping ${RELDIR}/${.MAKE.DEPENDFILE:T} from ${_src:T}
+	(cd ${.CURDIR} && sed 's,${_src:E},${MACHINE},g' ${_src} > ${.MAKE.DEPENDFILE:T})
+
+bootstrap: bootstrap-recurse
+bootstrap-recurse: bootstrap-this
+
+_mf := ${.PARSEFILE}
+bootstrap-recurse:	.NOTMAIN .MAKE
+	@cd ${SRCTOP} && \
+	for d in `cd ${RELDIR} && ${.MAKE} -B -f ${"${.MAKEFLAGS:M-n}":?${_src}:${.MAKE.DEPENDFILE:T}} -V DIRDEPS`; do \
+		test -d $$d || d=$${d%.*}; \
+		test -d $$d || continue; \
+		echo "Checking $$d for bootstrap ..."; \
+		(cd $$d && ${.MAKE} -f ${_mf} bootstrap-recurse); \
+	done
+
+.endif
+.endif
