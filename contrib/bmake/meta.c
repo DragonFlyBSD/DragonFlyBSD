@@ -1,4 +1,4 @@
-/*      $NetBSD: meta.c,v 1.33 2013/10/01 05:37:17 sjg Exp $ */
+/*      $NetBSD: meta.c,v 1.36 2014/11/06 01:36:57 sjg Exp $ */
 
 /*
  * Implement 'meta' mode.
@@ -155,8 +155,8 @@ filemon_open(BuildMon *pbm)
 static void
 filemon_read(FILE *mfp, int fd)
 {
-    FILE *fp;
     char buf[BUFSIZ];
+    int n;
 
     /* Check if we're not writing to a meta data file.*/
     if (mfp == NULL) {
@@ -166,17 +166,14 @@ filemon_read(FILE *mfp, int fd)
     }
     /* rewind */
     (void)lseek(fd, (off_t)0, SEEK_SET);
-    if ((fp = fdopen(fd, "r")) == NULL)
-	err(1, "Could not read build monitor file '%d'", fd);
 
-    fprintf(mfp, "-- filemon acquired metadata --\n");
+    fprintf(mfp, "\n-- filemon acquired metadata --\n");
 
-    while (fgets(buf, sizeof(buf), fp)) {
-	fprintf(mfp, "%s", buf);
+    while ((n = read(fd, buf, sizeof(buf))) > 0) {
+	fwrite(buf, 1, n, mfp);
     }
     fflush(mfp);
-    clearerr(fp);
-    fclose(fp);
+    close(fd);
 }
 #endif
 
@@ -844,7 +841,7 @@ string_match(const void *p, const void *q)
 
 /*
  * When running with 'meta' functionality, a target can be out-of-date
- * if any of the references in it's meta data file is more recent.
+ * if any of the references in its meta data file is more recent.
  * We have to track the latestdir on a per-process basis.
  */
 #define LDIR_VNAME_FMT ".meta.%d.ldir"

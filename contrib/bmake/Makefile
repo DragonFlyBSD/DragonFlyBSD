@@ -1,7 +1,7 @@
-#	$Id: Makefile,v 1.21 2013/10/01 15:44:05 sjg Exp $
+#	$Id: Makefile,v 1.30 2014/11/11 15:57:11 sjg Exp $
 
 # Base version on src date
-MAKE_VERSION= 20131001
+MAKE_VERSION= 20141111
 
 PROG=	bmake
 
@@ -68,7 +68,7 @@ SRCS+= ${LIBOBJS:T:.o=.c}
 prefix?= /usr
 srcdir?= ${.CURDIR}
 
-DEFAULT_SYS_PATH?= .../share/mk:${prefix}/share/mk
+DEFAULT_SYS_PATH?= ${prefix}/share/mk
 
 CPPFLAGS+= -DUSE_META
 CFLAGS+= ${CPPFLAGS}
@@ -117,7 +117,7 @@ MANTARGET?= man
 # turn this on by default - ignored if we are root
 WITH_INSTALL_AS_USER=
 
-# supress with -DWITHOUT_*
+# suppress with -DWITHOUT_*
 OPTIONS_DEFAULT_YES+= \
 	AUTOCONF_MK \
 	INSTALL_MK \
