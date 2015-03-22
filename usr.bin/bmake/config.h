@@ -145,6 +145,9 @@
    `HAVE_STRUCT_STAT_ST_RDEV' instead. */
 #define HAVE_ST_RDEV 1
 
+/* Define to 1 if you have the `sysctl' function. */
+#define HAVE_SYSCTL 1
+
 /* Define to 1 if you have the <sys/dir.h> header file, and it defines `DIR'.
    */
 /* #undef HAVE_SYS_DIR_H */
@@ -164,6 +167,9 @@
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1
+
+/* Define to 1 if you have the <sys/sysctl.h> header file. */
+#define HAVE_SYS_SYSCTL_H 1
 
 /* Define to 1 if you have the <sys/time.h> header file. */
 #define HAVE_SYS_TIME_H 1
@@ -229,7 +235,7 @@
 #define PACKAGE_NAME "bmake"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "bmake 20130706"
+#define PACKAGE_STRING "bmake 20140214"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "bmake"
@@ -238,7 +244,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "20130706"
+#define PACKAGE_VERSION "20140214"
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void
@@ -298,6 +304,9 @@
 
 /* Define to 1 if you need to in order for `stat' and other things to work. */
 /* #undef _POSIX_SOURCE */
+
+/* C99 function name */
+/* #undef __func__ */
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */

@@ -1360,7 +1360,16 @@ JobExec(Job *job, char **argv)
 	(void)fcntl(0, F_SETFD, 0);
 	(void)lseek(0, (off_t)0, SEEK_SET);
 
-	if (job->node->type & (OP_MAKE | OP_SUBMAKE)) {
+	/*
+	 * Always pass job token pipe to submakes.  In the previous version
+	 * only the OP_MAKE flag was checked, which simply doesn't catch all
+	 * situtions and can lead to a massive multiplication of jobs.  This
+	 * may have been corrected with OR OP_SUBMAKE, but until this is
+	 * known for sure, keep the original modication in place
+	 *
+	 * if (job->node->type & (OP_MAKE | OP_SUBMAKE))
+	 */
+	{
 		/*
 		 * Pass job token pipe to submakes.
 		 */
