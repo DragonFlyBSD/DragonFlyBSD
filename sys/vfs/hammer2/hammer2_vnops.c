@@ -287,9 +287,9 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		ipul = kmalloc(sizeof(*ipul), pmp->minode, M_WAITOK | M_ZERO);
 		ipul->ip = ip;
 
-		spin_lock(&pmp->list_spin);
+		hammer2_spin_ex(&pmp->list_spin);
 		TAILQ_INSERT_TAIL(&pmp->unlinkq, ipul, entry);
-		spin_unlock(&pmp->list_spin);
+		hammer2_spin_unex(&pmp->list_spin);
 		hammer2_inode_unlock_ex(ip, cluster);	/* unlock */
 		/* retain ref from vp for ipul */
 	} else {
@@ -937,10 +937,13 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 
 	/*
 	 * UIO read loop.
+	 *
+	 * WARNING! Assumes that the kernel interlocks size changes at the
+	 *	    vnode level.
 	 */
-	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
+	hammer2_mtx_sh(&ip->lock, "h2ino");
 	size = ip->size;
-	ccms_thread_unlock(&ip->topo_cst);
+	hammer2_mtx_unlock(&ip->lock);
 
 	while (uio->uio_resid > 0 && uio->uio_offset < size) {
 		hammer2_key_t lbase;
@@ -991,12 +994,15 @@ hammer2_write_file(hammer2_inode_t *ip,
 
 	/*
 	 * Setup if append
+	 *
+	 * WARNING! Assumes that the kernel interlocks size changes at the
+	 *	    vnode level.
 	 */
-	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
+	hammer2_mtx_ex(&ip->lock, "h2ino");
 	if (ioflag & IO_APPEND)
 		uio->uio_offset = ip->size;
 	old_eof = ip->size;
-	ccms_thread_unlock(&ip->topo_cst);
+	hammer2_mtx_unlock(&ip->lock);
 
 	/*
 	 * Extend the file if necessary.  If the write fails at some point
@@ -1143,10 +1149,10 @@ hammer2_write_file(hammer2_inode_t *ip,
 	if (error && new_eof != old_eof) {
 		hammer2_truncate_file(ip, old_eof);
 	} else if (modified) {
-		ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
+		hammer2_mtx_ex(&ip->lock, "h2ino");
 		hammer2_update_time(&ip->mtime);
 		atomic_set_int(&ip->flags, HAMMER2_INODE_MTIME);
-		ccms_thread_unlock(&ip->topo_cst);
+		hammer2_mtx_unlock(&ip->lock);
 	}
 	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	hammer2_knote(ip->vp, kflags);
@@ -1162,6 +1168,9 @@ hammer2_write_file(hammer2_inode_t *ip,
  *
  * WARNING: nvtruncbuf() can only be safely called without the inode lock
  *	    held due to the way our write thread works.
+ *
+ * WARNING! Assumes that the kernel interlocks size changes at the
+ *	    vnode level.
  */
 static
 void
@@ -1177,15 +1186,18 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			   nblksize, (int)nsize & (nblksize - 1),
 			   0);
 	}
-	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
+	hammer2_mtx_ex(&ip->lock, "h2ino");
 	ip->size = nsize;
 	atomic_set_int(&ip->flags, HAMMER2_INODE_RESIZED);
-	ccms_thread_unlock(&ip->topo_cst);
+	hammer2_mtx_unlock(&ip->lock);
 	LOCKSTOP;
 }
 
 /*
  * Extend the size of a file.  The inode must not be locked.
+ *
+ * WARNING! Assumes that the kernel interlocks size changes at the
+ *	    vnode level.
  *
  * NOTE: Caller handles setting HAMMER2_INODE_MODIFIED
  */
@@ -1199,10 +1211,10 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	int nblksize;
 
 	LOCKSTART;
-	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
+	hammer2_mtx_ex(&ip->lock, "h2ino");
 	osize = ip->size;
 	ip->size = nsize;
-	ccms_thread_unlock(&ip->topo_cst);
+	hammer2_mtx_unlock(&ip->lock);
 
 	if (ip->vp) {
 		oblksize = hammer2_calc_logical(ip, osize, &lbase, NULL);
@@ -2316,14 +2328,14 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	pmp = ip->pmp;
 	
 	hammer2_lwinprog_ref(pmp);
-	mtx_lock(&pmp->wthread_mtx);
+	hammer2_mtx_ex(&pmp->wthread_mtx, "h2wth");
 	if (TAILQ_EMPTY(&pmp->wthread_bioq.queue)) {
 		bioq_insert_tail(&pmp->wthread_bioq, ap->a_bio);
-		mtx_unlock(&pmp->wthread_mtx);
+		hammer2_mtx_unlock(&pmp->wthread_mtx);
 		wakeup(&pmp->wthread_bioq);
 	} else {
 		bioq_insert_tail(&pmp->wthread_bioq, ap->a_bio);
-		mtx_unlock(&pmp->wthread_mtx);
+		hammer2_mtx_unlock(&pmp->wthread_mtx);
 	}
 	hammer2_lwinprog_wait(pmp);
 
@@ -2396,10 +2408,10 @@ hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp)
 		return;
 
 	LOCKSTART;
-	spin_lock(&pmp->list_spin);
+	hammer2_spin_ex(&pmp->list_spin);
 	while ((ipul = TAILQ_FIRST(&pmp->unlinkq)) != NULL) {
 		TAILQ_REMOVE(&pmp->unlinkq, ipul, entry);
-		spin_unlock(&pmp->list_spin);
+		hammer2_spin_unex(&pmp->list_spin);
 		ip = ipul->ip;
 		kfree(ipul, pmp->minode);
 
@@ -2418,9 +2430,9 @@ hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp)
 		hammer2_inode_unlock_ex(ip, cluster);	/* inode lock */
 		hammer2_inode_drop(ip);			/* ipul ref */
 
-		spin_lock(&pmp->list_spin);
+		hammer2_spin_ex(&pmp->list_spin);
 	}
-	spin_unlock(&pmp->list_spin);
+	hammer2_spin_unex(&pmp->list_spin);
 	LOCKSTOP;
 }
 

@@ -51,31 +51,11 @@
 
 int ccms_debug = 0;
 
-/*
- * Initialize a new CCMS dataspace.  Create a new RB tree with a single
- * element covering the entire 64 bit offset range.  This simplifies
- * algorithms enormously by removing a number of special cases.
- */
 void
-ccms_domain_init(ccms_domain_t *dom)
-{
-	bzero(dom, sizeof(*dom));
-	/*kmalloc_create(&dom->mcst, "CCMS-cst");*/
-	/*dom->root.domain = dom;*/
-}
-
-void
-ccms_domain_uninit(ccms_domain_t *dom)
-{
-	/*kmalloc_destroy(&dom->mcst);*/
-}
-
-void
-ccms_cst_init(ccms_cst_t *cst, void *handle)
+ccms_cst_init(ccms_cst_t *cst)
 {
 	bzero(cst, sizeof(*cst));
 	spin_init(&cst->spin, "ccmscst");
-	cst->handle = handle;
 }
 
 void
@@ -85,94 +65,7 @@ ccms_cst_uninit(ccms_cst_t *cst)
 	if (cst->state != CCMS_STATE_INVALID) {
 		/* XXX */
 	}
-	cst->handle = NULL;
 }
-
-#if 0
-/*
- * Acquire an operational CCMS lock on multiple CSTs.
- *
- * This code is in the critical path and highly streamlined.
- */
-void
-ccms_lock_get(ccms_lock_t *lock)
-{
-	ccms_inode_t *cino = lock->cino;
-
-again:
-	lock->flags &= ~CCMS_LOCK_FAILED;
-
-	/*
-	 * Acquire all local locks first, then resolve them against the
-	 * remote cache state.  Order is important here.
-	 */
-	if (lock->req_t) {
-		KKASSERT(lock->req_d <= lock->req_t);
-		KKASSERT(lock->req_a <= lock->req_t);
-		ccms_thread_lock(&cino->topo_cst, lock->req_t);
-	}
-	if (lock->req_a)
-		ccms_thread_lock(&cino->attr_cst, lock->req_a);
-	if (lock->req_d)
-		ccms_thread_lock(&cino->data_cst[0], lock->req_d);
-
-	/*
-	 * Once the local locks are established the CST grant state cannot
-	 * be pulled out from under us.  However, it is entirely possible
-	 * to deadlock on it so when CST grant state cannot be obtained
-	 * trivially we have to unwind our local locks, then get the state,
-	 * and then loop.
-	 */
-	if (lock->req_t > cino->topo_cst.state) {
-		ccms_rstate_get(lock, &cino->topo_cst, lock->req_t);
-	} else if (cino->topo_cst.state == CCMS_STATE_INVALID) {
-		ccms_rstate_get(lock, &cino->topo_cst, CCMS_STATE_ALLOWED);
-	} else if (cino->topo_cst.state == CCMS_STATE_SHARED &&
-		    (lock->req_d > CCMS_STATE_SHARED ||
-		     lock->req_a > CCMS_STATE_SHARED)) {
-		ccms_rstate_get(lock, &cino->topo_cst, CCMS_STATE_ALLOWED);
-	}
-	/* else the rstate is compatible */
-
-	if (lock->req_a > cino->attr_cst.state)
-		ccms_rstate_get(lock, &cino->attr_cst, lock->req_a);
-
-	if (lock->req_d > cino->data_cst[0].state)
-		ccms_rstate_get(lock, &cino->data_cst[0], lock->req_d);
-
-	/*
-	 * If the ccms_rstate_get() code deadlocks (or even if it just
-	 * blocks), it will release all local locks and set the FAILED
-	 * bit.  The routine will still acquire the requested remote grants
-	 * before returning but since the local locks are lost at that
-	 * point the remote grants are no longer protected and we have to
-	 * retry.
-	 */
-	if (lock->flags & CCMS_LOCK_FAILED) {
-		goto again;
-	}
-}
-
-/*
- * Release a previously acquired CCMS lock.
- */
-void
-ccms_lock_put(ccms_lock_t *lock)
-{
-	ccms_inode_t *cino = lock->cino;
-
-	if (lock->req_d) {
-		ccms_thread_unlock(&cino->data_cst[0]);
-	}
-	if (lock->req_a) {
-		ccms_thread_unlock(&cino->attr_cst);
-	}
-	if (lock->req_t) {
-		ccms_thread_unlock(&cino->topo_cst);
-	}
-}
-
-#endif
 
 /************************************************************************
  *			    CST SUPPORT FUNCTIONS			*
@@ -201,7 +94,7 @@ ccms_thread_lock(ccms_cst_t *cst, ccms_state_t state)
 	 * Otherwise use the spinlock to interlock the operation and sleep
 	 * as necessary.
 	 */
-	spin_lock(&cst->spin);
+	hammer2_spin_ex(&cst->spin);
 	if (state == CCMS_STATE_SHARED) {
 		while (cst->count < 0 || cst->upgrade) {
 			cst->blocked = 1;
@@ -217,10 +110,10 @@ ccms_thread_lock(ccms_cst_t *cst, ccms_state_t state)
 		cst->count = -1;
 		cst->td = curthread;
 	} else {
-		spin_unlock(&cst->spin);
+		hammer2_spin_unex(&cst->spin);
 		panic("ccms_thread_lock: bad state %d\n", state);
 	}
-	spin_unlock(&cst->spin);
+	hammer2_spin_unex(&cst->spin);
 }
 
 /*
@@ -236,26 +129,26 @@ ccms_thread_lock_nonblock(ccms_cst_t *cst, ccms_state_t state)
 		return(0);
 	}
 
-	spin_lock(&cst->spin);
+	hammer2_spin_ex(&cst->spin);
 	if (state == CCMS_STATE_SHARED) {
 		if (cst->count < 0 || cst->upgrade) {
-			spin_unlock(&cst->spin);
+			hammer2_spin_unex(&cst->spin);
 			return (EBUSY);
 		}
 		++cst->count;
 		KKASSERT(cst->td == NULL);
 	} else if (state == CCMS_STATE_EXCLUSIVE) {
 		if (cst->count != 0 || cst->upgrade) {
-			spin_unlock(&cst->spin);
+			hammer2_spin_unex(&cst->spin);
 			return (EBUSY);
 		}
 		cst->count = -1;
 		cst->td = curthread;
 	} else {
-		spin_unlock(&cst->spin);
+		hammer2_spin_unex(&cst->spin);
 		panic("ccms_thread_lock_nonblock: bad state %d\n", state);
 	}
-	spin_unlock(&cst->spin);
+	hammer2_spin_unex(&cst->spin);
 	LOCKENTER;
 	return(0);
 }
@@ -300,7 +193,7 @@ ccms_thread_lock_upgrade(ccms_cst_t *cst)
 	 * Convert a shared lock to exclusive.
 	 */
 	if (cst->count > 0) {
-		spin_lock(&cst->spin);
+		hammer2_spin_ex(&cst->spin);
 		++cst->upgrade;
 		--cst->count;
 		while (cst->count) {
@@ -309,7 +202,7 @@ ccms_thread_lock_upgrade(ccms_cst_t *cst)
 		}
 		cst->count = -1;
 		cst->td = curthread;
-		spin_unlock(&cst->spin);
+		hammer2_spin_unex(&cst->spin);
 		return(CCMS_STATE_SHARED);
 	}
 	panic("ccms_thread_lock_upgrade: not locked");
@@ -323,16 +216,16 @@ ccms_thread_lock_downgrade(ccms_cst_t *cst, ccms_state_t ostate)
 	if (ostate == CCMS_STATE_SHARED) {
 		KKASSERT(cst->td == curthread);
 		KKASSERT(cst->count == -1);
-		spin_lock(&cst->spin);
+		hammer2_spin_ex(&cst->spin);
 		--cst->upgrade;
 		cst->count = 1;
 		cst->td = NULL;
 		if (cst->blocked) {
 			cst->blocked = 0;
-			spin_unlock(&cst->spin);
+			hammer2_spin_unex(&cst->spin);
 			wakeup(cst);
 		} else {
-			spin_unlock(&cst->spin);
+			hammer2_spin_unex(&cst->spin);
 		}
 	}
 	/* else nothing to do if excl->excl */
@@ -354,29 +247,29 @@ ccms_thread_unlock(ccms_cst_t *cst)
 			++cst->count;
 			return;
 		}
-		spin_lock(&cst->spin);
+		hammer2_spin_ex(&cst->spin);
 		KKASSERT(cst->count == -1);
 		cst->count = 0;
 		cst->td = NULL;
 		if (cst->blocked) {
 			cst->blocked = 0;
-			spin_unlock(&cst->spin);
+			hammer2_spin_unex(&cst->spin);
 			wakeup(cst);
 			return;
 		}
-		spin_unlock(&cst->spin);
+		hammer2_spin_unex(&cst->spin);
 	} else if (cst->count > 0) {
 		/*
 		 * Shared
 		 */
-		spin_lock(&cst->spin);
+		hammer2_spin_ex(&cst->spin);
 		if (--cst->count == 0 && cst->blocked) {
 			cst->blocked = 0;
-			spin_unlock(&cst->spin);
+			hammer2_spin_unex(&cst->spin);
 			wakeup(cst);
 			return;
 		}
-		spin_unlock(&cst->spin);
+		hammer2_spin_unex(&cst->spin);
 	} else {
 		panic("ccms_thread_unlock: bad zero count\n");
 	}
@@ -399,118 +292,24 @@ ccms_thread_unlock_upgraded(ccms_cst_t *cst, ccms_state_t ostate)
 		LOCKEXIT;
 		KKASSERT(cst->td == curthread);
 		KKASSERT(cst->count == -1);
-		spin_lock(&cst->spin);
+		hammer2_spin_ex(&cst->spin);
 		--cst->upgrade;
 		cst->count = 0;
 		cst->td = NULL;
 		if (cst->blocked) {
 			cst->blocked = 0;
-			spin_unlock(&cst->spin);
+			hammer2_spin_unex(&cst->spin);
 			wakeup(cst);
 		} else {
-			spin_unlock(&cst->spin);
+			hammer2_spin_unex(&cst->spin);
 		}
 	} else {
 		ccms_thread_unlock(cst);
 	}
 }
 
-#if 0
-/*
- * Release a local thread lock with special handling of the last lock
- * reference.
- *
- * If no upgrades are in progress then the last reference to the lock will
- * upgrade the lock to exclusive (if it was shared) and return 0 without
- * unlocking it.
- *
- * If more than one reference remains, or upgrades are in progress,
- * we drop the reference and return non-zero to indicate that more
- * locks are present or pending.
- */
-int
-ccms_thread_unlock_zero(ccms_cst_t *cst)
-{
-	if (cst->count < 0) {
-		/*
-		 * Exclusive owned by us, no races possible as long as it
-		 * remains negative.  Return 0 and leave us locked on the
-		 * last lock.
-		 */
-		KKASSERT(cst->td == curthread);
-		if (cst->count == -1) {
-			spin_lock(&cst->spin);
-			if (cst->upgrade) {
-				cst->count = 0;
-				if (cst->blocked) {
-					cst->blocked = 0;
-					spin_unlock(&cst->spin);
-					wakeup(cst);
-				} else {
-					spin_unlock(&cst->spin);
-				}
-				return(1);
-			}
-			spin_unlock(&cst->spin);
-			return(0);
-		}
-		++cst->count;
-	} else {
-		/*
-		 * Convert the last shared lock to an exclusive lock
-		 * and return 0.
-		 *
-		 * If there are upgrades pending the cst is unlocked and
-		 * the upgrade waiters are woken up.  The upgrade count
-		 * prevents new exclusive holders for the duration.
-		 */
-		spin_lock(&cst->spin);
-		KKASSERT(cst->count > 0);
-		if (cst->count == 1) {
-			if (cst->upgrade) {
-				cst->count = 0;
-				if (cst->blocked) {
-					cst->blocked = 0;
-					spin_unlock(&cst->spin);
-					wakeup(cst);
-				} else {
-					spin_unlock(&cst->spin);
-				}
-				return(1);
-			} else {
-				cst->count = -1;
-				cst->td = curthread;
-				spin_unlock(&cst->spin);
-				return(0);
-			}
-		}
-		--cst->count;
-		spin_unlock(&cst->spin);
-	}
-	return(1);
-}
-#endif
-
 int
 ccms_thread_lock_owned(ccms_cst_t *cst)
 {
 	return(cst->count < 0 && cst->td == curthread);
 }
-
-
-#if 0
-/*
- * Acquire remote grant state.  This routine can be used to upgrade or
- * downgrade the state.  If it blocks it will release any local locks
- * acquired via (lock) but then it will continue getting the requested
- * remote grant.
- */
-static
-void
-ccms_rstate_get(ccms_lock_t *lock, ccms_cst_t *cst, ccms_state_t state)
-{
-	/* XXX */
-	cst->state = state;
-}
-
-#endif

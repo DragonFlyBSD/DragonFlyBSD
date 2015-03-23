@@ -88,7 +88,6 @@ typedef uint8_t		ccms_state_t;
 typedef uint8_t		ccms_type_t;
 
 struct ccms_cst;
-struct ccms_lock;
 
 /*
  * CCMS_STATE_T - CCMS cache states.
@@ -97,18 +96,14 @@ struct ccms_lock;
  *
  * ALLOWED   -  Cache state allows any recursive state to be acquired.
  *
- * SHARED    -	Cache state allows shared access.  If this is a topo_cst
- *		only INVALID or SHARED recursive states are allowed.
+ * SHARED    -	Cache state allows shared access.
  *
- * EXCLUSIVE -  Cache state allows exclusive access.  If this is a
- *		topo_cst then INVALID, SHARED, or EXCLUSIVE recursive
- *		state is allowed.
+ * EXCLUSIVE -  Cache state allows exclusive access.
  *
  * CCMS Implements an extended MESI model.  The extensions are implemented
  * as CCMS_TYPE_T flags.
  */
 #define CCMS_STATE_INVALID	0	/* unknown cache state */
-#define CCMS_STATE_ALLOWED	1	/* allow subsystem (topo only) */
 #define CCMS_STATE_SHARED	2	/* clean, shared, read-only */
 #define CCMS_STATE_EXCLUSIVE	3	/* clean, exclusive, read-only */
 
@@ -143,38 +138,6 @@ struct ccms_lock;
 #define CCMS_TYPE_RECURSIVE	0x80
 
 /*
- * CCMS_LOCK - High level active lock
- *
- * This represents a high level locking request, such as used by
- * read, write, and attribute operations.  Initialize the ccms_lock
- * structure and call ccms_lock_get().
- *
- * When a CCMS lock is established the cache state of the underlying elements
- * is adjusted to meet the requirements of the lock.  The cache state
- * requirements are infered by the lock type.  CCMS locks can block on
- * third party interactions if the underlying remote cache state is not
- * compatible.
- *
- * CCMS data locks imply a shared CCMS inode lock.  A CCMS topology lock does
- * not imply a data or inode lock but topology locks can have far-reaching
- * effects such as block ccms_locks on multiple inodes.
- */
-struct ccms_lock {
-	TAILQ_ENTRY(ccms_lock) entry;
-	ccms_state_t	req_t;
-	ccms_state_t	req_a;
-	ccms_state_t	req_d;
-	uint8_t		flags;
-	struct ccms_cst	*topo_cst;
-	struct ccms_cst	*attr_cst;
-	struct ccms_cst	*data_cst;
-	ccms_key_t	key_beg;	/* applies to dstate */
-	ccms_key_t	key_end;	/* applies to dstate */
-};
-
-#define CCMS_LOCK_FAILED	0x01
-
-/*
  * CCMS_CST - Low level locking state, persistent cache state
  *
  * Offset ranges are byte-inclusive, allowing the entire 64 bit data space
@@ -194,16 +157,10 @@ struct ccms_lock {
  */
 struct ccms_cst {
 	struct spinlock spin;		/* thread spinlock */
-	void		*handle;	/* opaque VFS handle */
 	ccms_state_t	state;		/* granted or inherited state */
 	ccms_type_t	type;		/* CST type and flags */
 	uint8_t		unused02;
 	uint8_t		unused03;
-
-	ccms_tid_t	path_id;	/* rendezvous inode id */
-	ccms_tid_t	tid;		/* [meta]data versioning id */
-	ccms_key_t	key_beg;	/* key range (inclusive) */
-	ccms_key_t	key_end;	/* key range (inclusive) */
 
 	int32_t		upgrade;	/* upgrades pending */
 	int32_t		count;		/* active shared/exclusive count */
@@ -211,26 +168,14 @@ struct ccms_cst {
 	thread_t	td;		/* if excl lock (count < 0) */
 };
 
-/*
- * Domain management, contains a pseudo-root for the CCMS topology.
- */
-struct ccms_domain {
-	int			cst_count;	/* dynamic cst count */
-	int			cst_limit;	/* dynamic cst limit */
-};
-
-typedef struct ccms_lock	ccms_lock_t;
 typedef struct ccms_cst		ccms_cst_t;
-typedef struct ccms_domain	ccms_domain_t;
 
 /*
  * Kernel API
  */
 #ifdef _KERNEL
 
-void ccms_domain_init(ccms_domain_t *dom);
-void ccms_domain_uninit(ccms_domain_t *dom);
-void ccms_cst_init(ccms_cst_t *cst, void *handle);
+void ccms_cst_init(ccms_cst_t *cst);
 void ccms_cst_uninit(ccms_cst_t *cst);
 
 void ccms_thread_lock(ccms_cst_t *cst, ccms_state_t state);
@@ -241,12 +186,8 @@ ccms_state_t ccms_thread_lock_upgrade(ccms_cst_t *cst);
 void ccms_thread_lock_downgrade(ccms_cst_t *cst, ccms_state_t ostate);
 void ccms_thread_unlock(ccms_cst_t *cst);
 void ccms_thread_unlock_upgraded(ccms_cst_t *cst, ccms_state_t ostate);
-/*int ccms_thread_unlock_zero(ccms_cst_t *cst);*/
 int ccms_thread_lock_owned(ccms_cst_t *cst);
 void ccms_thread_lock_setown(ccms_cst_t *cst);
-
-void ccms_lock_get(ccms_lock_t *lock);
-void ccms_lock_put(ccms_lock_t *lock);
 
 #endif
 

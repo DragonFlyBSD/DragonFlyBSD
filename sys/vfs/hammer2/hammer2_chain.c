@@ -137,16 +137,16 @@ hammer2_chain_setflush(hammer2_trans_t *trans, hammer2_chain_t *chain)
 	hammer2_chain_t *parent;
 
 	if ((chain->flags & HAMMER2_CHAIN_ONFLUSH) == 0) {
-		spin_lock(&chain->core.cst.spin);
+		hammer2_spin_sh(&chain->core.spin);
 		while ((chain->flags & HAMMER2_CHAIN_ONFLUSH) == 0) {
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
 			if ((parent = chain->parent) == NULL)
 				break;
-			spin_lock(&parent->core.cst.spin);
-			spin_unlock(&chain->core.cst.spin);
+			hammer2_spin_sh(&parent->core.spin);
+			hammer2_spin_unsh(&chain->core.spin);
 			chain = parent;
 		}
-		spin_unlock(&chain->core.cst.spin);
+		hammer2_spin_unsh(&chain->core.spin);
 	}
 }
 
@@ -236,7 +236,7 @@ hammer2_chain_core_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain)
 	 * sub-tree).
 	 */
 	RB_INIT(&core->rbtree);	/* live chains */
-	ccms_cst_init(&core->cst, chain);
+	hammer2_mtx_init(&core->lock, "h2chn");
 }
 
 /*
@@ -270,7 +270,7 @@ hammer2_chain_insert(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	int error = 0;
 
 	if (flags & HAMMER2_CHAIN_INSERT_SPIN)
-		spin_lock(&parent->core.cst.spin);
+		hammer2_spin_ex(&parent->core.spin);
 
 	/*
 	 * Interlocked by spinlock, check for race
@@ -300,7 +300,7 @@ hammer2_chain_insert(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		atomic_add_int(&parent->core.live_count, 1);
 failed:
 	if (flags & HAMMER2_CHAIN_INSERT_SPIN)
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 	return error;
 }
 
@@ -355,7 +355,7 @@ hammer2_chain_drop(hammer2_chain_t *chain)
  * The chain cannot be freed if it has a non-empty core (children) or
  * it is not at the head of ownerq.
  *
- * The cst spinlock is allowed nest child-to-parent (not parent-to-child).
+ * The core spinlock is allowed nest child-to-parent (not parent-to-child).
  */
 static
 hammer2_chain_t *
@@ -372,7 +372,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 * in core->rbtree are associated with other chains contemporary
 	 * with ours but not with our chain directly.
 	 */
-	spin_lock(&chain->core.cst.spin);
+	hammer2_spin_ex(&chain->core.spin);
 
 	/*
 	 * We can't free non-stale chains with children until we are
@@ -388,10 +388,10 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 */
 	if (chain->core.chain_count) {
 		if (atomic_cmpset_int(&chain->refs, 1, 0)) {
-			spin_unlock(&chain->core.cst.spin);
+			hammer2_spin_unex(&chain->core.spin);
 			chain = NULL;	/* success */
 		} else {
-			spin_unlock(&chain->core.cst.spin);
+			hammer2_spin_unex(&chain->core.spin);
 		}
 		return(chain);
 	}
@@ -415,11 +415,11 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 *  spinlocks as bottom-up recursive, so this is safe).
 	 */
 	if ((parent = chain->parent) != NULL) {
-		spin_lock(&parent->core.cst.spin);
+		hammer2_spin_ex(&parent->core.spin);
 		if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
 			/* 1->0 transition failed */
-			spin_unlock(&parent->core.cst.spin);
-			spin_unlock(&chain->core.cst.spin);
+			hammer2_spin_unex(&parent->core.spin);
+			hammer2_spin_unex(&chain->core.spin);
 			return(chain);	/* retry */
 		}
 
@@ -446,7 +446,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 				rdrop = NULL;
 			}
 		}
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 		parent = NULL;	/* safety */
 	}
 
@@ -456,11 +456,9 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 * We still have the core spinlock, and core's chain_count is 0.
 	 * Any parent spinlock is gone.
 	 */
-	spin_unlock(&chain->core.cst.spin);
+	hammer2_spin_unex(&chain->core.spin);
 	KKASSERT(RB_EMPTY(&chain->core.rbtree) &&
 		 chain->core.chain_count == 0);
-	KKASSERT(chain->core.cst.count == 0);
-	KKASSERT(chain->core.cst.upgrade == 0);
 
 	/*
 	 * All spin locks are gone, finish freeing stuff.
@@ -558,7 +556,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 {
 	hammer2_mount_t *hmp;
 	hammer2_blockref_t *bref;
-	ccms_state_t ostate;
+	hammer2_mtx_state_t ostate;
 	char *bdata;
 	int error;
 
@@ -576,9 +574,9 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 * Get the appropriate lock.
 	 */
 	if (how & HAMMER2_RESOLVE_SHARED)
-		ccms_thread_lock(&chain->core.cst, CCMS_STATE_SHARED);
+		hammer2_mtx_sh(&chain->core.lock, "h2chnx");
 	else
-		ccms_thread_lock(&chain->core.cst, CCMS_STATE_EXCLUSIVE);
+		hammer2_mtx_ex(&chain->core.lock, "h2chns");
 
 	/*
 	 * If we already have a valid data pointer no further action is
@@ -614,9 +612,9 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 * buffer cache.  If another thread got to it before us we
 	 * can just return.
 	 */
-	ostate = ccms_thread_lock_upgrade(&chain->core.cst);
+	ostate = hammer2_mtx_upgrade(&chain->core.lock);
 	if (chain->data) {
-		ccms_thread_lock_downgrade(&chain->core.cst, ostate);
+		hammer2_mtx_downgrade(&chain->core.lock, ostate);
 		return (0);
 	}
 
@@ -652,7 +650,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		kprintf("hammer2_chain_lock: I/O error %016jx: %d\n",
 			(intmax_t)bref->data_off, error);
 		hammer2_io_bqrelse(&chain->dio);
-		ccms_thread_lock_downgrade(&chain->core.cst, ostate);
+		hammer2_mtx_downgrade(&chain->core.lock, ostate);
 		return (error);
 	}
 
@@ -724,7 +722,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		chain->data = (void *)bdata;
 		break;
 	}
-	ccms_thread_lock_downgrade(&chain->core.cst, ostate);
+	hammer2_mtx_downgrade(&chain->core.lock, ostate);
 	return (0);
 }
 
@@ -737,14 +735,11 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 void
 hammer2_chain_unlock(hammer2_chain_t *chain)
 {
-	ccms_state_t ostate;
+	hammer2_mtx_state_t ostate;
 	long *counterp;
 	u_int lockcnt;
 
 	/*
-	 * The core->cst lock can be shared across several chains so we
-	 * need to track the per-chain lockcnt separately.
-	 *
 	 * If multiple locks are present (or being attempted) on this
 	 * particular chain we can just unlock, drop refs, and return.
 	 *
@@ -757,7 +752,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 		if (lockcnt > 1) {
 			if (atomic_cmpset_int(&chain->lockcnt,
 					      lockcnt, lockcnt - 1)) {
-				ccms_thread_unlock(&chain->core.cst);
+				hammer2_mtx_unlock(&chain->core.lock);
 				hammer2_chain_drop(chain);
 				return;
 			}
@@ -776,13 +771,13 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	 * leaving the data/io intact
 	 *
 	 * Otherwise if lockcnt is still 0 it is possible for it to become
-	 * non-zero and race, but since we hold the core->cst lock
-	 * exclusively all that will happen is that the chain will be
-	 * reloaded after we unload it.
+	 * non-zero and race, but since we hold the core->lock exclusively
+	 * all that will happen is that the chain will be reloaded after we
+	 * unload it.
 	 */
-	ostate = ccms_thread_lock_upgrade(&chain->core.cst);
+	ostate = hammer2_mtx_upgrade(&chain->core.lock);
 	if (chain->lockcnt) {
-		ccms_thread_unlock_upgraded(&chain->core.cst, ostate);
+		hammer2_mtx_unlock(&chain->core.lock);
 		hammer2_chain_drop(chain);
 		return;
 	}
@@ -796,7 +791,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	if (chain->dio == NULL) {
 		if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0)
 			hammer2_chain_drop_data(chain, 0);
-		ccms_thread_unlock_upgraded(&chain->core.cst, ostate);
+		hammer2_mtx_unlock(&chain->core.lock);
 		hammer2_chain_drop(chain);
 		return;
 	}
@@ -871,7 +866,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	} else {
 		hammer2_io_bqrelse(&chain->dio);
 	}
-	ccms_thread_unlock_upgraded(&chain->core.cst, ostate);
+	hammer2_mtx_unlock(&chain->core.lock);
 	hammer2_chain_drop(chain);
 }
 
@@ -893,7 +888,7 @@ void
 hammer2_chain_countbrefs(hammer2_chain_t *chain,
 			 hammer2_blockref_t *base, int count)
 {
-	spin_lock(&chain->core.cst.spin);
+	hammer2_spin_ex(&chain->core.spin);
         if ((chain->core.flags & HAMMER2_CORE_COUNTEDBREFS) == 0) {
 		if (base) {
 			while (--count >= 0) {
@@ -913,7 +908,7 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
 		/* else do not modify live_count */
 		atomic_set_int(&chain->core.flags, HAMMER2_CORE_COUNTEDBREFS);
 	}
-	spin_unlock(&chain->core.cst.spin);
+	hammer2_spin_unex(&chain->core.spin);
 }
 
 /*
@@ -1508,10 +1503,10 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 	 * is locked below to avoid a deadlock.
 	 */
 	oparent = *parentp;
-	spin_lock(&oparent->core.cst.spin);
+	hammer2_spin_ex(&oparent->core.spin);
 	nparent = oparent->parent;
 	hammer2_chain_ref(nparent);
-	spin_unlock(&oparent->core.cst.spin);
+	hammer2_spin_unex(&oparent->core.spin);
 	if (oparent) {
 		hammer2_chain_unlock(oparent);
 		oparent = NULL;
@@ -1699,7 +1694,7 @@ again:
 	/*
 	 * Combined search
 	 */
-	spin_lock(&parent->core.cst.spin);
+	hammer2_spin_ex(&parent->core.spin);
 	chain = hammer2_combined_find(parent, base, count,
 				      cache_indexp, key_nextp,
 				      key_beg, key_end,
@@ -1710,7 +1705,7 @@ again:
 	 * Exhausted parent chain, iterate.
 	 */
 	if (bref == NULL) {
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 		if (key_beg == key_end)	/* short cut single-key case */
 			return (NULL);
 
@@ -1739,7 +1734,7 @@ again:
 	 */
 	if (chain == NULL) {
 		bcopy = *bref;
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 		chain = hammer2_chain_get(parent, generation,
 					  &bcopy);
 		if (chain == NULL) {
@@ -1753,7 +1748,7 @@ again:
 		}
 	} else {
 		hammer2_chain_ref(chain);
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 	}
 
 	/*
@@ -2016,7 +2011,7 @@ again:
 		hammer2_chain_countbrefs(parent, base, count);
 
 	next_key = 0;
-	spin_lock(&parent->core.cst.spin);
+	hammer2_spin_ex(&parent->core.spin);
 	chain = hammer2_combined_find(parent, base, count,
 				      cache_indexp, &next_key,
 				      key, HAMMER2_KEY_MAX,
@@ -2027,7 +2022,7 @@ again:
 	 * Exhausted parent chain, we're done.
 	 */
 	if (bref == NULL) {
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 		KKASSERT(chain == NULL);
 		goto done;
 	}
@@ -2037,7 +2032,7 @@ again:
 	 */
 	if (chain == NULL) {
 		bcopy = *bref;
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 		chain = hammer2_chain_get(parent, generation, &bcopy);
 		if (chain == NULL) {
 			kprintf("retry scan parent %p keys %016jx\n",
@@ -2051,7 +2046,7 @@ again:
 		}
 	} else {
 		hammer2_chain_ref(chain);
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 	}
 
 	/*
@@ -2140,7 +2135,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	 * Topology may be crossing a PFS boundary.
 	 */
 	parent = *parentp;
-	KKASSERT(ccms_thread_lock_owned(&parent->core.cst));
+	KKASSERT(hammer2_mtx_owned(&parent->core.lock));
 	hmp = parent->hmp;
 	chain = *chainp;
 
@@ -2166,7 +2161,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		 * to 1 by chain_alloc() for us, but lockcnt is not).
 		 */
 		chain->lockcnt = 1;
-		ccms_thread_lock(&chain->core.cst, CCMS_STATE_EXCLUSIVE);
+		hammer2_mtx_ex(&chain->core.lock, "h2chnx");
 		allocated = 1;
 
 		/*
@@ -2463,7 +2458,7 @@ hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 	 * Having both chains locked is extremely important for atomicy.
 	 */
 	if (parentp && (parent = *parentp) != NULL) {
-		KKASSERT(ccms_thread_lock_owned(&parent->core.cst));
+		KKASSERT(hammer2_mtx_owned(&parent->core.lock));
 		KKASSERT(parent->refs > 0);
 
 		hammer2_chain_create(trans, parentp, &chain, chain->pmp,
@@ -2508,7 +2503,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		 * Calculate blockmap pointer
 		 */
 		KKASSERT(chain->flags & HAMMER2_CHAIN_ONRBTREE);
-		spin_lock(&parent->core.cst.spin);
+		hammer2_spin_ex(&parent->core.spin);
 
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 		atomic_add_int(&parent->core.live_count, -1);
@@ -2588,7 +2583,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 			hammer2_base_delete(trans, parent, base, count,
 					    &cache_index, chain);
 		}
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 	} else if (chain->flags & HAMMER2_CHAIN_ONRBTREE) {
 		/*
 		 * Chain is not blockmapped but a parent is present.
@@ -2599,7 +2594,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		 * synchronized, the chain's *_count_up fields contain
 		 * inode adjustment statistics which must be undone.
 		 */
-		spin_lock(&parent->core.cst.spin);
+		hammer2_spin_ex(&parent->core.spin);
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		    (flags & HAMMER2_DELETE_NOSTATS) == 0) {
 			KKASSERT(chain->data != NULL);
@@ -2615,7 +2610,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 		--parent->core.chain_count;
 		chain->parent = NULL;
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 	} else {
 		/*
 		 * Chain is not blockmapped and has no parent.  This
@@ -2724,7 +2719,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 */
 	hmp = parent->hmp;
 	*errorp = 0;
-	KKASSERT(ccms_thread_lock_owned(&parent->core.cst));
+	KKASSERT(hammer2_mtx_owned(&parent->core.lock));
 
 	/*hammer2_chain_modify(trans, &parent, HAMMER2_MODIFY_OPTDATA);*/
 	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
@@ -2856,13 +2851,13 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	key_beg = 0;
 	key_end = HAMMER2_KEY_MAX;
 	cache_index = 0;
-	spin_lock(&parent->core.cst.spin);
+	hammer2_spin_ex(&parent->core.spin);
 	loops = 0;
 	reason = 0;
 
 	for (;;) {
 		if (++loops > 100000) {
-		    spin_unlock(&parent->core.cst.spin);
+		    hammer2_spin_unex(&parent->core.spin);
 		    panic("excessive loops r=%d p=%p base/count %p:%d %016jx\n",
 			  reason, parent, base, count, key_next);
 		}
@@ -2905,7 +2900,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			 * Use chain already present in the RBTREE
 			 */
 			hammer2_chain_ref(chain);
-			spin_unlock(&parent->core.cst.spin);
+			hammer2_spin_unex(&parent->core.spin);
 			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER |
 						  HAMMER2_RESOLVE_NOREF);
 		} else {
@@ -2914,18 +2909,18 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			 * on insertion race.
 			 */
 			bcopy = *bref;
-			spin_unlock(&parent->core.cst.spin);
+			hammer2_spin_unex(&parent->core.spin);
 			chain = hammer2_chain_get(parent, generation, &bcopy);
 			if (chain == NULL) {
 				reason = 1;
-				spin_lock(&parent->core.cst.spin);
+				hammer2_spin_ex(&parent->core.spin);
 				continue;
 			}
 			if (bcmp(&bcopy, bref, sizeof(bcopy))) {
 				kprintf("REASON 2\n");
 				reason = 2;
 				hammer2_chain_drop(chain);
-				spin_lock(&parent->core.cst.spin);
+				hammer2_spin_ex(&parent->core.spin);
 				continue;
 			}
 			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER |
@@ -2966,7 +2961,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		KKASSERT(parent->refs > 0);
 		chain = NULL;
 next_key:
-		spin_lock(&parent->core.cst.spin);
+		hammer2_spin_ex(&parent->core.spin);
 next_key_spinlocked:
 		if (--maxloops == 0)
 			panic("hammer2_chain_create_indirect: maxloops");
@@ -2976,7 +2971,7 @@ next_key_spinlocked:
 		key_beg = key_next;
 		/* loop */
 	}
-	spin_unlock(&parent->core.cst.spin);
+	hammer2_spin_unex(&parent->core.spin);
 
 	/*
 	 * Insert the new indirect block into the parent now that we've
@@ -3062,7 +3057,7 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	key_beg = 0;
 	key_end = HAMMER2_KEY_MAX;
 	cache_index = 0;
-	spin_lock(&parent->core.cst.spin);
+	hammer2_spin_ex(&parent->core.spin);
 
 	for (;;) {
 		if (--maxloops == 0) {
@@ -3108,7 +3103,7 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 			break;
 		key_beg = key_next;
 	}
-	spin_unlock(&parent->core.cst.spin);
+	hammer2_spin_unex(&parent->core.spin);
 
 	/*
 	 * Return the keybits for a higher-level FREEMAP_NODE covering
@@ -3172,7 +3167,7 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	key_beg = 0;
 	key_end = HAMMER2_KEY_MAX;
 	cache_index = 0;
-	spin_lock(&parent->core.cst.spin);
+	hammer2_spin_ex(&parent->core.spin);
 
 	for (;;) {
 		if (--maxloops == 0) {
@@ -3259,7 +3254,7 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 			break;
 		key_beg = key_next;
 	}
-	spin_unlock(&parent->core.cst.spin);
+	hammer2_spin_unex(&parent->core.spin);
 	bref = NULL;	/* now invalid (safety) */
 
 	/*
@@ -3318,7 +3313,7 @@ void
 hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		     hammer2_chain_t *chain, int flags)
 {
-	KKASSERT(ccms_thread_lock_owned(&chain->core.cst));
+	KKASSERT(hammer2_mtx_owned(&chain->core.lock));
 
 	/*
 	 * Nothing to do if already marked.
@@ -3566,7 +3561,7 @@ hammer2_base_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	    base[i].key != elm->key ||
 	    ((chain->flags & HAMMER2_CHAIN_BMAPUPD) == 0 &&
 	     base[i].keybits != elm->keybits)) {
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 		panic("delete base %p element not found at %d/%d elm %p\n",
 		      base, i, count, elm);
 		return;
@@ -3645,7 +3640,7 @@ hammer2_base_insert(hammer2_trans_t *trans __unused, hammer2_chain_t *parent,
 
 	xkey = elm->key + ((hammer2_key_t)1 << elm->keybits) - 1;
 	if (i != count && (base[i].key < elm->key || xkey >= base[i].key)) {
-		spin_unlock(&parent->core.cst.spin);
+		hammer2_spin_unex(&parent->core.spin);
 		panic("insert base %p overlapping elements at %d elm %p\n",
 		      base, i, elm);
 	}

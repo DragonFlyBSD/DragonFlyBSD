@@ -45,23 +45,22 @@
 /*
  * Mount-wide locks
  */
-
 void
 hammer2_mount_exlock(hammer2_mount_t *hmp)
 {
-	ccms_thread_lock(&hmp->vchain.core.cst, CCMS_STATE_EXCLUSIVE);
+	hammer2_mtx_ex(&hmp->vchain.core.lock, "h2mount");
 }
 
 void
 hammer2_mount_shlock(hammer2_mount_t *hmp)
 {
-	ccms_thread_lock(&hmp->vchain.core.cst, CCMS_STATE_SHARED);
+	hammer2_mtx_sh(&hmp->vchain.core.lock, "h2mount");
 }
 
 void
 hammer2_mount_unlock(hammer2_mount_t *hmp)
 {
-	ccms_thread_unlock(&hmp->vchain.core.cst);
+	hammer2_mtx_unlock(&hmp->vchain.core.lock);
 }
 
 /*

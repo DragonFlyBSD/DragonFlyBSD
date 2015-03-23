@@ -338,7 +338,7 @@ hammer2_pfsalloc(const hammer2_inode_data_t *ripdata, hammer2_tid_t alloc_tid)
 		pmp->inode_tid = ripdata->pfs_inum + 1;
 		pmp->pfs_clid = ripdata->pfs_clid;
 	}
-	mtx_init(&pmp->wthread_mtx);
+	hammer2_mtx_init(&pmp->wthread_mtx, "h2wthr");
 	bioq_init(&pmp->wthread_bioq);
 
 	return pmp;
@@ -736,14 +736,18 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		int i;
 		int j;
 
+		/*
+		 * Directly lock the inode->lock, do not run through
+		 * hammer2_inode_lock*().
+		 */
 		hammer2_inode_ref(pmp->iroot);
-		ccms_thread_lock(&pmp->iroot->topo_cst, CCMS_STATE_EXCLUSIVE);
+		hammer2_mtx_ex(&pmp->iroot->lock, "h2ino");
 
 		if (pmp->iroot->cluster.nchains + cluster->nchains >
 		    HAMMER2_MAXCLUSTER) {
 			kprintf("hammer2_mount: cluster full!\n");
 
-			ccms_thread_unlock(&pmp->iroot->topo_cst);
+			hammer2_mtx_unlock(&pmp->iroot->lock);
 			hammer2_inode_drop(pmp->iroot);
 
 			hammer2_cluster_unlock(cluster);
@@ -764,7 +768,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			++j;
 		}
 		pmp->iroot->cluster.nchains = j;
-		ccms_thread_unlock(&pmp->iroot->topo_cst);
+		hammer2_mtx_unlock(&pmp->iroot->lock);
 		hammer2_inode_drop(pmp->iroot);
 		hammer2_cluster_unlock(cluster);
 		lockmgr(&hammer2_mntlk, LK_RELEASE);
@@ -791,7 +795,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 	cluster->pmp = pmp;
 
-	ccms_domain_init(&pmp->ccms_dom);
 	TAILQ_INSERT_TAIL(&hammer2_pfslist, pmp, mntentry);
 	lockmgr(&hammer2_mntlk, LK_RELEASE);
 
@@ -887,7 +890,7 @@ hammer2_write_thread(void *arg)
 	
 	pmp = arg;
 	
-	mtx_lock(&pmp->wthread_mtx);
+	hammer2_mtx_ex(&pmp->wthread_mtx, "h2wth");
 	while (pmp->wthread_destroy == 0) {
 		if (bioq_first(&pmp->wthread_bioq) == NULL) {
 			mtxsleep(&pmp->wthread_bioq, &pmp->wthread_mtx,
@@ -914,7 +917,7 @@ hammer2_write_thread(void *arg)
 			/*
 			 * else normal bio processing
 			 */
-			mtx_unlock(&pmp->wthread_mtx);
+			hammer2_mtx_unlock(&pmp->wthread_mtx);
 
 			hammer2_lwinprog_drop(pmp);
 			
@@ -954,14 +957,14 @@ hammer2_write_thread(void *arg)
 				bp->b_error = EIO;
 			}
 			biodone(bio);
-			mtx_lock(&pmp->wthread_mtx);
+			hammer2_mtx_ex(&pmp->wthread_mtx, "h2wth");
 		}
 		hammer2_trans_done(&trans);
 	}
 	pmp->wthread_destroy = -1;
 	wakeup(&pmp->wthread_destroy);
 	
-	mtx_unlock(&pmp->wthread_mtx);
+	hammer2_mtx_unlock(&pmp->wthread_mtx);
 }
 
 void
@@ -970,14 +973,14 @@ hammer2_bioq_sync(hammer2_pfsmount_t *pmp)
 	struct bio sync_bio;
 
 	bzero(&sync_bio, sizeof(sync_bio));	/* dummy with no bio_buf */
-	mtx_lock(&pmp->wthread_mtx);
+	hammer2_mtx_ex(&pmp->wthread_mtx, "h2wth");
 	if (pmp->wthread_destroy == 0 &&
 	    TAILQ_FIRST(&pmp->wthread_bioq.queue)) {
 		bioq_insert_tail(&pmp->wthread_bioq, &sync_bio);
 		while ((sync_bio.bio_flags & BIO_DONE) == 0)
 			mtxsleep(&sync_bio, &pmp->wthread_mtx, 0, "h2bioq", 0);
 	}
-	mtx_unlock(&pmp->wthread_mtx);
+	hammer2_mtx_unlock(&pmp->wthread_mtx);
 }
 
 /* 
@@ -1589,10 +1592,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			goto failed;
 	}
 
-	ccms_domain_uninit(&pmp->ccms_dom);
-
 	if (pmp->wthread_td) {
-		mtx_lock(&pmp->wthread_mtx);
+		hammer2_mtx_ex(&pmp->wthread_mtx, "h2wth");
 		pmp->wthread_destroy = 1;
 		wakeup(&pmp->wthread_bioq);
 		while (pmp->wthread_destroy != -1) {
@@ -1600,7 +1601,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 				&pmp->wthread_mtx, 0,
 				"umount-sleep",	0);
 		}
-		mtx_unlock(&pmp->wthread_mtx);
+		hammer2_mtx_unlock(&pmp->wthread_mtx);
 		pmp->wthread_td = NULL;
 	}
 

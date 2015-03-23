@@ -97,34 +97,34 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
 	/*
 	 * Access/Allocate the DIO, bump dio->refs to prevent destruction.
 	 */
-	spin_lock_shared(&hmp->io_spin);
+	hammer2_spin_sh(&hmp->io_spin);
 	dio = RB_LOOKUP(hammer2_io_tree, &hmp->iotree, pbase);
 	if (dio) {
 		if ((atomic_fetchadd_int(&dio->refs, 1) &
 		     HAMMER2_DIO_MASK) == 0) {
 			atomic_add_int(&dio->hmp->iofree_count, -1);
 		}
-		spin_unlock_shared(&hmp->io_spin);
+		hammer2_spin_unsh(&hmp->io_spin);
 	} else {
-		spin_unlock_shared(&hmp->io_spin);
+		hammer2_spin_unsh(&hmp->io_spin);
 		dio = kmalloc(sizeof(*dio), M_HAMMER2, M_INTWAIT | M_ZERO);
 		dio->hmp = hmp;
 		dio->pbase = pbase;
 		dio->psize = psize;
 		dio->refs = 1;
-		spin_init(&dio->spin, "h2dio");
+		hammer2_spin_init(&dio->spin, "h2dio");
 		TAILQ_INIT(&dio->iocbq);
-		spin_lock(&hmp->io_spin);
+		hammer2_spin_ex(&hmp->io_spin);
 		xio = RB_INSERT(hammer2_io_tree, &hmp->iotree, dio);
 		if (xio == NULL) {
 			atomic_add_int(&hammer2_dio_count, 1);
-			spin_unlock(&hmp->io_spin);
+			hammer2_spin_unex(&hmp->io_spin);
 		} else {
 			if ((atomic_fetchadd_int(&xio->refs, 1) &
 			     HAMMER2_DIO_MASK) == 0) {
 				atomic_add_int(&xio->hmp->iofree_count, -1);
 			}
-			spin_unlock(&hmp->io_spin);
+			hammer2_spin_unex(&hmp->io_spin);
 			kfree(dio, M_HAMMER2);
 			dio = xio;
 		}
@@ -160,16 +160,16 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
 			 * If DIO_INPROG is already set then set WAITING and
 			 * queue the iocb.
 			 */
-			spin_lock(&dio->spin);
+			hammer2_spin_ex(&dio->spin);
 			if (atomic_cmpset_int(&dio->refs, refs,
 					      refs | HAMMER2_DIO_WAITING)) {
 				iocb->flags |= HAMMER2_IOCB_ONQ |
 					       HAMMER2_IOCB_INPROG;
 				TAILQ_INSERT_TAIL(&dio->iocbq, iocb, entry);
-				spin_unlock(&dio->spin);
+				hammer2_spin_unex(&dio->spin);
 				break;
 			}
-			spin_unlock(&dio->spin);
+			hammer2_spin_unex(&dio->spin);
 			/* retry */
 		} else {
 			/*
@@ -246,7 +246,7 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 		nrefs = orefs & ~(HAMMER2_DIO_WAITING | HAMMER2_DIO_INPROG);
 
 		if (orefs & HAMMER2_DIO_WAITING) {
-			spin_lock(&dio->spin);
+			hammer2_spin_ex(&dio->spin);
 			cbtmp = TAILQ_FIRST(&dio->iocbq);
 			if (cbtmp) {
 				/*
@@ -255,15 +255,15 @@ hammer2_io_complete(hammer2_iocb_t *iocb)
 				 *	 iocb.
 				 */
 				TAILQ_REMOVE(&dio->iocbq, cbtmp, entry);
-				spin_unlock(&dio->spin);
+				hammer2_spin_unex(&dio->spin);
 				cbtmp->callback(cbtmp);	/* chained */
 				break;
 			} else if (atomic_cmpset_int(&dio->refs,
 						     orefs, nrefs)) {
-				spin_unlock(&dio->spin);
+				hammer2_spin_unex(&dio->spin);
 				break;
 			}
-			spin_unlock(&dio->spin);
+			hammer2_spin_unex(&dio->spin);
 			/* retry */
 		} else if (atomic_cmpset_int(&dio->refs, orefs, nrefs)) {
 			break;
@@ -441,13 +441,13 @@ hammer2_io_putblk(hammer2_io_t **diop)
 		struct hammer2_cleanupcb_info info;
 
 		RB_INIT(&info.tmptree);
-		spin_lock(&hmp->io_spin);
+		hammer2_spin_ex(&hmp->io_spin);
 		if (hmp->iofree_count > 1000) {
 			info.count = hmp->iofree_count / 2;
 			RB_SCAN(hammer2_io_tree, &hmp->iotree, NULL,
 				hammer2_io_cleanup_callback, &info);
 		}
-		spin_unlock(&hmp->io_spin);
+		hammer2_spin_unex(&hmp->io_spin);
 		hammer2_io_cleanup(hmp, &info.tmptree);
 	}
 }

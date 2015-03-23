@@ -97,7 +97,7 @@ hammer2_inode_lock_nex(hammer2_inode_t *ip, int how)
 	int i;
 
 	hammer2_inode_ref(ip);
-	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
+	hammer2_mtx_ex(&ip->lock, "h2ino");
 	cluster = hammer2_cluster_copy(&ip->cluster,
 				       HAMMER2_CLUSTER_COPY_NOCHAINS);
 
@@ -142,7 +142,7 @@ hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_cluster_t *cluster)
 {
 	if (cluster)
 		hammer2_cluster_unlock(cluster);
-	ccms_thread_unlock(&ip->topo_cst);
+	hammer2_mtx_unlock(&ip->lock);
 	hammer2_inode_drop(ip);
 }
 
@@ -168,7 +168,7 @@ hammer2_inode_lock_sh(hammer2_inode_t *ip)
 	hammer2_inode_ref(ip);
 	cluster = hammer2_cluster_copy(&ip->cluster,
 				       HAMMER2_CLUSTER_COPY_NOCHAINS);
-	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_SHARED);
+	hammer2_mtx_sh(&ip->lock, "h2ino");
 
 	cluster->focus = NULL;
 
@@ -208,32 +208,63 @@ hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_cluster_t *cluster)
 {
 	if (cluster)
 		hammer2_cluster_unlock(cluster);
-	ccms_thread_unlock(&ip->topo_cst);
+	hammer2_mtx_unlock(&ip->lock);
 	hammer2_inode_drop(ip);
 }
 
-ccms_state_t
+/*
+ * Temporarily release a lock held shared or exclusive.  Caller must
+ * hold the lock shared or exclusive on call and lock will be released
+ * on return.
+ *
+ * Restore a lock that was temporarily released.
+ */
+hammer2_mtx_state_t
 hammer2_inode_lock_temp_release(hammer2_inode_t *ip)
 {
-	return(ccms_thread_lock_temp_release(&ip->topo_cst));
+	return hammer2_mtx_temp_release(&ip->lock);
 }
 
 void
-hammer2_inode_lock_temp_restore(hammer2_inode_t *ip, ccms_state_t ostate)
+hammer2_inode_lock_temp_restore(hammer2_inode_t *ip, hammer2_mtx_state_t ostate)
 {
-	ccms_thread_lock_temp_restore(&ip->topo_cst, ostate);
+	hammer2_mtx_temp_restore(&ip->lock, "h2ino", ostate);
 }
 
-ccms_state_t
+/*
+ * Upgrade a shared inode lock to exclusive and return.  If the inode lock
+ * is already held exclusively this is a NOP.
+ *
+ * The caller MUST hold the inode lock either shared or exclusive on call
+ * and will own the lock exclusively on return.
+ *
+ * Returns non-zero if the lock was already exclusive prior to the upgrade.
+ */
+int
 hammer2_inode_lock_upgrade(hammer2_inode_t *ip)
 {
-	return(ccms_thread_lock_upgrade(&ip->topo_cst));
+	int wasexclusive;
+
+	if (mtx_islocked_ex(&ip->lock)) {
+		wasexclusive = 1;
+	} else {
+		hammer2_mtx_unlock(&ip->lock);
+		hammer2_mtx_ex(&ip->lock, "h2upg");
+		wasexclusive = 0;
+	}
+	return wasexclusive;
 }
 
+/*
+ * Downgrade an inode lock from exclusive to shared only if the inode
+ * lock was previously shared.  If the inode lock was previously exclusive,
+ * this is a NOP.
+ */
 void
-hammer2_inode_lock_downgrade(hammer2_inode_t *ip, ccms_state_t ostate)
+hammer2_inode_lock_downgrade(hammer2_inode_t *ip, int wasexclusive)
 {
-	ccms_thread_lock_downgrade(&ip->topo_cst, ostate);
+	if (wasexclusive == 0)
+		mtx_downgrade(&ip->lock);
 }
 
 /*
@@ -248,11 +279,11 @@ hammer2_inode_lookup(hammer2_pfsmount_t *pmp, hammer2_tid_t inum)
 	if (pmp->spmp_hmp) {
 		ip = NULL;
 	} else {
-		spin_lock(&pmp->inum_spin);
+		hammer2_spin_ex(&pmp->inum_spin);
 		ip = RB_LOOKUP(hammer2_inode_tree, &pmp->inum_tree, inum);
 		if (ip)
 			hammer2_inode_ref(ip);
-		spin_unlock(&pmp->inum_spin);
+		hammer2_spin_unex(&pmp->inum_spin);
 	}
 	return(ip);
 }
@@ -287,20 +318,23 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 			/*
 			 * Transition to zero, must interlock with
 			 * the inode inumber lookup tree (if applicable).
+			 * It should not be possible for anyone to race
+			 * the transition to 0.
+			 *
 			 */
 			pmp = ip->pmp;
 			KKASSERT(pmp);
-			spin_lock(&pmp->inum_spin);
+			hammer2_spin_ex(&pmp->inum_spin);
 
 			if (atomic_cmpset_int(&ip->refs, 1, 0)) {
-				KKASSERT(ip->topo_cst.count == 0);
+				KKASSERT(hammer2_mtx_refs(&ip->lock) == 0);
 				if (ip->flags & HAMMER2_INODE_ONRBTREE) {
 					atomic_clear_int(&ip->flags,
 						     HAMMER2_INODE_ONRBTREE);
 					RB_REMOVE(hammer2_inode_tree,
 						  &pmp->inum_tree, ip);
 				}
-				spin_unlock(&pmp->inum_spin);
+				hammer2_spin_unex(&pmp->inum_spin);
 
 				pip = ip->pip;
 				ip->pip = NULL;
@@ -322,7 +356,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				ip = pip;
 				/* continue with pip (can be NULL) */
 			} else {
-				spin_unlock(&ip->pmp->inum_spin);
+				hammer2_spin_unex(&ip->pmp->inum_spin);
 			}
 		} else {
 			/*
@@ -349,7 +383,6 @@ hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
 	const hammer2_inode_data_t *ripdata;
 	hammer2_pfsmount_t *pmp;
 	struct vnode *vp;
-	ccms_state_t ostate;
 
 	pmp = ip->pmp;
 	KKASSERT(pmp != NULL);
@@ -364,6 +397,8 @@ hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
 		 * inode must be unlocked during the vget() to avoid a
 		 * deadlock against a reclaim.
 		 */
+		int wasexclusive;
+
 		vp = ip->vp;
 		if (vp) {
 			/*
@@ -374,6 +409,8 @@ hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
 			 * vget().  The vget() can still fail if we lost
 			 * a reclaim race on the vnode.
 			 */
+			hammer2_mtx_state_t ostate;
+
 			vhold(vp);
 			ostate = hammer2_inode_lock_temp_release(ip);
 			if (vget(vp, LK_EXCLUSIVE)) {
@@ -410,11 +447,11 @@ hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
 		/*
 		 * Lock the inode and check for an allocation race.
 		 */
-		ostate = hammer2_inode_lock_upgrade(ip);
+		wasexclusive = hammer2_inode_lock_upgrade(ip);
 		if (ip->vp != NULL) {
 			vp->v_type = VBAD;
 			vx_put(vp);
-			hammer2_inode_lock_downgrade(ip, ostate);
+			hammer2_inode_lock_downgrade(ip, wasexclusive);
 			continue;
 		}
 
@@ -463,7 +500,7 @@ hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
 		vp->v_data = ip;
 		ip->vp = vp;
 		hammer2_inode_ref(ip);		/* vp association */
-		hammer2_inode_lock_downgrade(ip, ostate);
+		hammer2_inode_lock_downgrade(ip, wasexclusive);
 		break;
 	}
 
@@ -512,7 +549,7 @@ again:
 		if (nip == NULL)
 			break;
 
-		ccms_thread_lock(&nip->topo_cst, CCMS_STATE_EXCLUSIVE);
+		hammer2_mtx_ex(&nip->lock, "h2ino");
 
 		/*
 		 * Handle SMP race (not applicable to the super-root spmp
@@ -520,7 +557,7 @@ again:
 		 */
 		if (pmp->spmp_hmp == NULL &&
 		    (nip->flags & HAMMER2_INODE_ONRBTREE) == 0) {
-			ccms_thread_unlock(&nip->topo_cst);
+			hammer2_mtx_unlock(&nip->lock);
 			hammer2_inode_drop(nip);
 			continue;
 		}
@@ -562,8 +599,8 @@ again:
 	 * hammer2_inode_lock_ex() call.
 	 */
 	nip->refs = 1;
-	ccms_cst_init(&nip->topo_cst, &nip->cluster);
-	ccms_thread_lock(&nip->topo_cst, CCMS_STATE_EXCLUSIVE);
+	hammer2_mtx_init(&nip->lock, "h2ino");
+	hammer2_mtx_ex(&nip->lock, "h2ino");
 	/* combination of thread lock and chain lock == inode lock */
 
 	/*
@@ -571,15 +608,15 @@ again:
 	 * get.  Undo all the work and try again.
 	 */
 	if (pmp->spmp_hmp == NULL) {
-		spin_lock(&pmp->inum_spin);
+		hammer2_spin_ex(&pmp->inum_spin);
 		if (RB_INSERT(hammer2_inode_tree, &pmp->inum_tree, nip)) {
-			spin_unlock(&pmp->inum_spin);
-			ccms_thread_unlock(&nip->topo_cst);
+			hammer2_spin_unex(&pmp->inum_spin);
+			hammer2_mtx_unlock(&nip->lock);
 			hammer2_inode_drop(nip);
 			goto again;
 		}
 		atomic_set_int(&nip->flags, HAMMER2_INODE_ONRBTREE);
-		spin_unlock(&pmp->inum_spin);
+		hammer2_spin_unex(&pmp->inum_spin);
 	}
 
 	return (nip);

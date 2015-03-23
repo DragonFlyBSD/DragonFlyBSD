@@ -537,10 +537,10 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 */
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
 		info->parent = chain;
-		spin_lock(&chain->core.cst.spin);
+		hammer2_spin_ex(&chain->core.spin);
 		RB_SCAN(hammer2_chain_tree, &chain->core.rbtree,
 			NULL, hammer2_flush_recurse, info);
-		spin_unlock(&chain->core.cst.spin);
+		hammer2_spin_unex(&chain->core.spin);
 		info->parent = parent;
 		if (info->diddeferral)
 			hammer2_chain_setflush(info->trans, chain);
@@ -968,7 +968,7 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 	 * unlock it in order to lock the child.
 	 */
 	hammer2_chain_ref(child);
-	spin_unlock(&parent->core.cst.spin);
+	hammer2_spin_unex(&parent->core.spin);
 
 	hammer2_chain_unlock(parent);
 	hammer2_chain_lock(child, HAMMER2_RESOLVE_MAYBE);
@@ -1002,7 +1002,7 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_MAYBE);
 	hammer2_chain_drop(child);
 	KKASSERT(info->parent == parent);
-	spin_lock(&parent->core.cst.spin);
+	hammer2_spin_ex(&parent->core.spin);
 
 	return (0);
 }

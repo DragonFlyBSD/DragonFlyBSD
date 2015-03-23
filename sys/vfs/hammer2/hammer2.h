@@ -81,18 +81,17 @@
 #include <sys/buf.h>
 #include <sys/queue.h>
 #include <sys/limits.h>
-#include <sys/signal2.h>
 #include <sys/dmsg.h>
 #include <sys/mutex.h>
 #include <sys/kern_syscall.h>
 
+#include <sys/signal2.h>
 #include <sys/buf2.h>
 #include <sys/mutex2.h>
 
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
 #include "hammer2_ioctl.h"
-#include "hammer2_ccms.h"
 
 struct hammer2_io;
 struct hammer2_iocb;
@@ -104,6 +103,64 @@ struct hammer2_pfsmount;
 struct hammer2_span;
 struct hammer2_state;
 struct hammer2_msg;
+
+/*
+ * Mutex and lock shims.  Hammer2 requires support for asynchronous and
+ * abortable locks, and both exclusive and shared spinlocks.  Normal
+ * synchronous non-abortable locks can be substituted for spinlocks.
+ */
+typedef mtx_t				hammer2_mtx_t;
+typedef mtx_link_t			hammer2_mtx_link_t;
+typedef mtx_state_t			hammer2_mtx_state_t;
+
+typedef struct spinlock			hammer2_spin_t;
+
+#define hammer2_mtx_ex			mtx_lock_ex_quick
+#define hammer2_mtx_sh			mtx_lock_sh_quick
+#define hammer2_mtx_unlock		mtx_unlock
+#define hammer2_mtx_owned		mtx_owned
+#define hammer2_mtx_init		mtx_init
+#define hammer2_mtx_temp_release	mtx_lock_temp_release
+#define hammer2_mtx_temp_restore	mtx_lock_temp_restore
+#define hammer2_mtx_refs		mtx_lockrefs
+
+#define hammer2_spin_init		spin_init
+#define hammer2_spin_sh			spin_lock_shared
+#define hammer2_spin_ex			spin_lock
+#define hammer2_spin_unsh		spin_unlock_shared
+#define hammer2_spin_unex		spin_unlock
+
+/*
+ * General lock support
+ */
+static __inline
+int
+hammer2_mtx_upgrade(hammer2_mtx_t *mtx)
+{
+	int wasexclusive;
+
+	if (mtx_islocked_ex(mtx)) {
+		wasexclusive = 1;
+	} else {
+		mtx_unlock(mtx);
+		mtx_lock_ex_quick(mtx);
+		wasexclusive = 0;
+	}
+	return wasexclusive;
+}
+
+/*
+ * Downgrade an inode lock from exclusive to shared only if the inode
+ * lock was previously shared.  If the inode lock was previously exclusive,
+ * this is a NOP.
+ */
+static __inline
+void
+hammer2_mtx_downgrade(hammer2_mtx_t *mtx, int wasexclusive)
+{
+	if (wasexclusive == 0)
+		mtx_downgrade(mtx);
+}
 
 /*
  * The xid tracks internal transactional updates.
@@ -185,7 +242,8 @@ TAILQ_HEAD(h2_iocb_list, hammer2_iocb);
 	(HAMMER2_PBUFSIZE / sizeof(hammer2_blockref_t) / sizeof(uint32_t))
 
 struct hammer2_chain_core {
-	struct ccms_cst	cst;
+	hammer2_mtx_t	lock;
+	hammer2_spin_t	spin;
 	struct hammer2_chain_tree rbtree; /* sub-chains */
 	int		live_zero;	/* blockref array opt */
 	u_int		flags;
@@ -409,20 +467,23 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 /*
  * HAMMER2 cluster - A set of chains representing the same entity.
  *
- * The hammer2_pfsmount structure embeds a hammer2_cluster.  All other
- * hammer2_cluster use cases use temporary allocations.
+ * hammer2_cluster typically represents a temporary set of representitive
+ * chains.  The one exception is that a hammer2_cluster is embedded in
+ * hammer2_inode.  This embedded cluster is ONLY used to track the
+ * representitive chains and cannot be directly locked.
  *
- * The cluster API mimics the chain API.  Except as used in the pfsmount,
- * the cluster structure is a temporary 'working copy' of a set of chains
- * representing targets compatible with the operation.  However, for
- * performance reasons the cluster API does not necessarily issue concurrent
- * requests to the underlying chain API for all compatible chains all the
- * time.  This may sometimes necessitate revisiting parent cluster nodes
- * to 'flesh out' (validate more chains).
+ * A cluster is temporary (and thus per-thread) for locking purposes,
+ * allowing us to embed the asynchronous storage required for
+ * cluster operations in the cluster itself.  That is, except for the
+ * embeddeding hammer2_inode, the cluster structure will always represent
+ * a 'working copy'.
  *
- * If an insufficient number of chains remain in a working copy, the operation
- * may have to be downgraded, retried, or stall until the requisit number
- * of chains are available.
+ * Because the cluster is a 'working copy' and is usually subject to cluster
+ * quorum rules, it is quite possible for us to end up with an insufficient
+ * number of live chains to execute an operation.  If an insufficient number
+ * of chains remain in a working copy, the operation may have to be
+ * downgraded, retried, or stall until the requisit number of chains are
+ * available.
  */
 #define HAMMER2_MAXCLUSTER	8
 
@@ -434,12 +495,12 @@ struct hammer2_cluster {
 	int			nchains;
 	hammer2_iocb_t		iocb;
 	hammer2_chain_t		*focus;		/* current focus (or mod) */
+	hammer2_mtx_link_t	asynclnk[HAMMER2_MAXCLUSTER];
 	hammer2_chain_t		*array[HAMMER2_MAXCLUSTER];
-	char			missed[HAMMER2_MAXCLUSTER];
 	int			cache_index[HAMMER2_MAXCLUSTER];
 };
 
-typedef struct hammer2_cluster hammer2_cluster_t;
+typedef struct hammer2_cluster	hammer2_cluster_t;
 
 #define HAMMER2_CLUSTER_INODE	0x00000001	/* embedded in inode */
 #define HAMMER2_CLUSTER_NOSYNC	0x00000002	/* not in sync (cumulative) */
@@ -450,16 +511,13 @@ RB_HEAD(hammer2_inode_tree, hammer2_inode);
 /*
  * A hammer2 inode.
  *
- * NOTE: The inode's attribute CST which is also used to lock the inode
- *	 is embedded in the chain (chain.cst) and aliased w/ attr_cst.
- *
  * NOTE: The inode-embedded cluster is never used directly for I/O (since
  *	 it may be shared).  Instead it will be replicated-in and synchronized
  *	 back out if changed.
  */
 struct hammer2_inode {
 	RB_ENTRY(hammer2_inode) rbnode;		/* inumber lookup (HL) */
-	ccms_cst_t		topo_cst;	/* directory topology cst */
+	hammer2_mtx_t		lock;		/* inode lock */
 	struct hammer2_pfsmount	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;
@@ -638,7 +696,6 @@ struct hammer2_pfsmount {
 	hammer2_inode_t		*ihidden;	/* PFS hidden directory */
 	struct lock		lock;		/* PFS lock for certain ops */
 	hammer2_off_t		inode_count;	/* copy of inode_count */
-	ccms_domain_t		ccms_dom;
 	struct netexport	export;		/* nfs export */
 	int			ronly;		/* read-only mount */
 	struct malloc_type	*minode;
@@ -655,7 +712,7 @@ struct hammer2_pfsmount {
 	struct h2_unlk_list	unlinkq;	/* last-close unlink */
 	thread_t		wthread_td;	/* write thread td */
 	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
-	struct mtx		wthread_mtx;	/* interlock */
+	hammer2_mtx_t 		wthread_mtx;	/* interlock */
 	int			wthread_destroy;/* termination sequencing */
 };
 
@@ -773,8 +830,6 @@ extern struct objcache *cache_buffer_write;
 extern int destroy;
 extern int write_thread_wakeup;
 
-extern mtx_t thread_protect;
-
 /*
  * hammer2_subr.c
  */
@@ -787,10 +842,11 @@ hammer2_cluster_t *hammer2_inode_lock_nex(hammer2_inode_t *ip, int how);
 hammer2_cluster_t *hammer2_inode_lock_sh(hammer2_inode_t *ip);
 void hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_cluster_t *chain);
 void hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_cluster_t *chain);
-ccms_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
-void hammer2_inode_lock_temp_restore(hammer2_inode_t *ip, ccms_state_t ostate);
-ccms_state_t hammer2_inode_lock_upgrade(hammer2_inode_t *ip);
-void hammer2_inode_lock_downgrade(hammer2_inode_t *ip, ccms_state_t ostate);
+hammer2_mtx_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
+void hammer2_inode_lock_temp_restore(hammer2_inode_t *ip,
+			hammer2_mtx_state_t ostate);
+int hammer2_inode_lock_upgrade(hammer2_inode_t *ip);
+void hammer2_inode_lock_downgrade(hammer2_inode_t *ip, int);
 
 void hammer2_mount_exlock(hammer2_mount_t *hmp);
 void hammer2_mount_shlock(hammer2_mount_t *hmp);
