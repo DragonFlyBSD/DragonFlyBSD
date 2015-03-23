@@ -108,7 +108,7 @@ static int nd6_inuse, nd6_allocated;
 struct llinfo_nd6 llinfo_nd6 = {&llinfo_nd6, &llinfo_nd6};
 struct nd_drhead nd_defrouter;
 struct nd_prhead nd_prefix = { 0 };
-struct mtx nd6_mtx = MTX_INITIALIZER;
+struct mtx nd6_mtx = MTX_INITIALIZER("nd6");
 
 int nd6_recalc_reachtm_interval = ND6_RECALC_REACHTM_INTERVAL;
 static struct sockaddr_in6 all1_sa;

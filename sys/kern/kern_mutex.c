@@ -91,8 +91,7 @@ static void mtx_delete_link(mtx_t *mtx, mtx_link_t *link);
  * A tsleep() error can only be returned if PCATCH is specified in the flags.
  */
 static __inline int
-__mtx_lock_ex(mtx_t *mtx, mtx_link_t *link,
-	      const char *ident, int flags, int to)
+__mtx_lock_ex(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 {
 	thread_t td;
 	u_int	lock;
@@ -202,35 +201,34 @@ __mtx_lock_ex(mtx_t *mtx, mtx_link_t *link,
 		/*
 		 * Wait for lock
 		 */
-		error = mtx_wait_link(mtx, link, ident, flags, to);
+		error = mtx_wait_link(mtx, link, flags, to);
 		break;
 	}
 	return (error);
 }
 
 int
-_mtx_lock_ex_link(mtx_t *mtx, mtx_link_t *link,
-		  const char *ident, int flags, int to)
+_mtx_lock_ex_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 {
-	return(__mtx_lock_ex(mtx, link, ident, flags, to));
+	return(__mtx_lock_ex(mtx, link, flags, to));
 }
 
 int
-_mtx_lock_ex(mtx_t *mtx, const char *ident, int flags, int to)
+_mtx_lock_ex(mtx_t *mtx, int flags, int to)
 {
 	mtx_link_t link;
 
 	mtx_link_init(&link);
-	return(__mtx_lock_ex(mtx, &link, ident, flags, to));
+	return(__mtx_lock_ex(mtx, &link, flags, to));
 }
 
 int
-_mtx_lock_ex_quick(mtx_t *mtx, const char *ident)
+_mtx_lock_ex_quick(mtx_t *mtx)
 {
 	mtx_link_t link;
 
 	mtx_link_init(&link);
-	return(__mtx_lock_ex(mtx, &link, ident, 0, 0));
+	return(__mtx_lock_ex(mtx, &link, 0, 0));
 }
 
 /*
@@ -243,8 +241,7 @@ _mtx_lock_ex_quick(mtx_t *mtx, const char *ident)
  *	 do not have to chain the wakeup().
  */
 static __inline int
-__mtx_lock_sh(mtx_t *mtx, mtx_link_t *link,
-	      const char *ident, int flags, int to)
+__mtx_lock_sh(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 {
 	thread_t td;
 	u_int	lock;
@@ -353,35 +350,34 @@ __mtx_lock_sh(mtx_t *mtx, mtx_link_t *link,
 		/*
 		 * Wait for lock
 		 */
-		error = mtx_wait_link(mtx, link, ident, flags, to);
+		error = mtx_wait_link(mtx, link, flags, to);
 		break;
 	}
 	return (error);
 }
 
 int
-_mtx_lock_sh_link(mtx_t *mtx, mtx_link_t *link,
-		  const char *ident, int flags, int to)
+_mtx_lock_sh_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 {
-	return(__mtx_lock_sh(mtx, link, ident, flags, to));
+	return(__mtx_lock_sh(mtx, link, flags, to));
 }
 
 int
-_mtx_lock_sh(mtx_t *mtx, const char *ident, int flags, int to)
+_mtx_lock_sh(mtx_t *mtx, int flags, int to)
 {
 	mtx_link_t link;
 
 	mtx_link_init(&link);
-	return(__mtx_lock_sh(mtx, &link, ident, flags, to));
+	return(__mtx_lock_sh(mtx, &link, flags, to));
 }
 
 int
-_mtx_lock_sh_quick(mtx_t *mtx, const char *ident)
+_mtx_lock_sh_quick(mtx_t *mtx)
 {
 	mtx_link_t link;
 
 	mtx_link_init(&link);
-	return(__mtx_lock_sh(mtx, &link, ident, 0, 0));
+	return(__mtx_lock_sh(mtx, &link, 0, 0));
 }
 
 /*
@@ -948,8 +944,7 @@ mtx_delete_link(mtx_t *mtx, mtx_link_t *link)
  * occurred.
  */
 int
-mtx_wait_link(mtx_t *mtx, mtx_link_t *link,
-	      const char *ident, int flags, int to)
+mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 {
 	int error;
 
@@ -968,12 +963,12 @@ mtx_wait_link(mtx_t *mtx, mtx_link_t *link,
 			else
 				mycpu->gd_cnt.v_lock_name[0] = 'X';
 			strncpy(mycpu->gd_cnt.v_lock_name + 1,
-				ident,
+				mtx->mtx_ident,
 				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
 			++mycpu->gd_cnt.v_lock_colls;
 
 			error = tsleep(link, flags | PINTERLOCKED,
-				       ident, to);
+				       mtx->mtx_ident, to);
 			if (error)
 				break;
 		}

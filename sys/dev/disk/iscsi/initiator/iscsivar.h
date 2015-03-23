@@ -284,7 +284,7 @@ XPT_DONE(struct isc_softc *isp, union ccb *ccb)
 
 #endif /* _CAM_CAM_XPT_SIM_H */
 
-#define iscsi_lock_ex(mtx)	mtx_lock_ex_quick(mtx, __func__)
+#define iscsi_lock_ex(mtx)	mtx_lock_ex_quick(mtx)
 #define iscsi_unlock_ex(mtx)	mtx_unlock(mtx)
 #define issleep(id, mtx, flags, wmesg, to)	\
 				mtxsleep(id, mtx, flags, wmesg, to)

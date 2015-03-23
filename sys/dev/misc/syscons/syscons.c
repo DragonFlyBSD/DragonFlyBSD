@@ -146,7 +146,7 @@ static	cdev_t	cctl_dev;
 static	timeout_t blink_screen_callout;
 #endif
 static  void	sc_blink_screen(scr_stat *scp);
-static	struct mtx	syscons_mtx = MTX_INITIALIZER;
+static	struct mtx	syscons_mtx = MTX_INITIALIZER("syscons");
 
 /* prototypes */
 static int scvidprobe(int unit, int flags, int cons);

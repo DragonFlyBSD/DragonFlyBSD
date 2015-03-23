@@ -168,7 +168,7 @@ static struct netmsg_base	if_slowtimo_netmsg;
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
 static struct thread	ifnet_threads[MAXCPU];
-static struct mtx	ifnet_mtx = MTX_INITIALIZER;
+static struct mtx	ifnet_mtx = MTX_INITIALIZER("ifnet");
 
 static struct ifsubq_stage_head	ifsubq_stage_heads[MAXCPU];
 

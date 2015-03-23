@@ -734,7 +734,7 @@ mtxsleep(const volatile void *ident, struct mtx *mtx, int flags,
 	_tsleep_interlock(gd, ident, flags);
 	mtx_unlock(mtx);
 	error = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
-	mtx_lock_ex_quick(mtx, wmesg);
+	mtx_lock_ex_quick(mtx);
 
 	return (error);
 }

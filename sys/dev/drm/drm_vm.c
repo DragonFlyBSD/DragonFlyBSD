@@ -149,7 +149,7 @@ static struct vm_phys_fictitious_seg {
         vm_paddr_t      end;
         vm_page_t       first_page;
 } vm_phys_fictitious_segs[VM_PHYS_FICTITIOUS_NSEGS];
-static struct mtx vm_phys_fictitious_reg_mtx = MTX_INITIALIZER;
+static struct mtx vm_phys_fictitious_reg_mtx = MTX_INITIALIZER("vmphy");
 
 vm_page_t
 vm_phys_fictitious_to_vm_page(vm_paddr_t pa)

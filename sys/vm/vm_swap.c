@@ -72,7 +72,7 @@
 static struct swdevt should_be_malloced[NSWAPDEV];
 struct swdevt *swdevt = should_be_malloced;	/* exported to pstat/systat */
 static swblk_t nswap;		/* first block after the interleaved devs */
-static struct mtx swap_mtx = MTX_INITIALIZER;
+static struct mtx swap_mtx = MTX_INITIALIZER("swpmtx");
 int nswdev = NSWAPDEV;				/* exported to pstat/systat */
 int vm_swap_size;
 int vm_swap_max;
