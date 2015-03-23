@@ -2917,7 +2917,9 @@ TO_REMOVE+=/boot/kernel/ng_sync_sr.ko
 TO_REMOVE+=/usr/sbin/dfuibe_installer
 TO_REMOVE+=/usr/sbin/dfuife_curses
 TO_REMOVE+=/usr/sbin/installer
-TO_REMOVE+=/usr/share/installer
+TO_REMOVE+=/usr/share/installer/cmdnames.conf
+TO_REMOVE+=/usr/share/installer/fred.txt
+TO_REMOVE+=/usr/share/installer/sources.conf
 TO_REMOVE+=/usr/share/man/cat8/installer.8.gz
 TO_REMOVE+=/usr/share/man/man8/installer.8.gz
 .endif
