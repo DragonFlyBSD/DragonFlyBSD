@@ -1,7 +1,8 @@
 PROG=	gdb
 SRCS=	gdb.c
 
-CFLAGS+= -I${.OBJDIR}/../libgdb -I${.CURDIR}/../libgdb -I${BASEDIR}/include
+CFLAGS+= -I${.OBJDIR}/../libgdb -I${.CURDIR}/../libgdb -I${.CURDIR}/..
+CFLAGS+= -I${BASEDIR}/include
 CFLAGS+= -I${BASEDIR}/bfd -I${BASEDIR}/gdb
 CFLAGS+= -I${BASEDIR}/gdb/common -I${.CURDIR}/../libbfd
 CFLAGS+= -I${.OBJDIR}/../libbfd

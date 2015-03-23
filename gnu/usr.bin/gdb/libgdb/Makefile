@@ -12,7 +12,8 @@ CONTRIBDIR=	${BASEDIR}/gdb
 
 VERSION!= cat ${CONTRIBDIR}/version.in
 
-CFLAGS+= -I${.OBJDIR} -I${.CURDIR} -I${BASEDIR}/include -I${BASEDIR}/bfd
+CFLAGS+= -I${.OBJDIR} -I${.CURDIR} -I${.CURDIR}/..
+CFLAGS+= -I${BASEDIR}/include -I${BASEDIR}/bfd
 CFLAGS+= -I${CONTRIBDIR} -I${CONTRIBDIR}/common
 CFLAGS+= -I${BASEDIR}/libdecnumber
 CFLAGS+= -I${.CURDIR}/../libbfd -I${.OBJDIR}/../libbfd
@@ -189,30 +190,23 @@ init.c: ${SRCS:Ninit.c} Makefile
 	sed -n -e 's/^_initialize_\([a-z_0-9A-Z]*\).*/  _initialize_\1 ();/p' ${.ALLSRC:M*.c} >> ${.TARGET}
 	echo '}' >> ${.TARGET}
 
-CLEANFILES+=	init.c
-
 xml-builtin.c: feature_to_c.sh ${XMLFILES}
-	rm -f ${.TARGET}
 	sh ${CONTRIBDIR}/features/feature_to_c.sh ${.TARGET} ${.ALLSRC:M*.dtd}
 
-beforedepend:
-	cp ${CONTRIBDIR}/common/agent.c ${.OBJDIR}/common-agent.c
-	mkdir -p ${.OBJDIR}/build-gnulib
-	cp ${.CURDIR}/../libgnu/config.h ${.OBJDIR}/build-gnulib
-
-CLEANFILES+=	xml-builtin.c common-agent.c
-CLEANDIRS+=	build-gnulib
+common-agent.c:	${CONTRIBDIR}/common/agent.c
+	cp ${.ALLSRC} ${.TARGET}
 
 # observer.inc can't be included in SRCS, it would duplicate the entry in OBJS
 observer.h: observer.sh observer.inc doc/observer.texi
 	sh ${CONTRIBDIR}/observer.sh h ${CONTRIBDIR}/doc/observer.texi ${.TARGET}
+
 observer.inc: observer.sh doc/observer.texi
 	sh ${CONTRIBDIR}/observer.sh inc ${CONTRIBDIR}/doc/observer.texi ${.TARGET}
 
 gdb_stdint.h:
 	touch ${.TARGET}
 
-CLEANFILES+=	observer.h observer.inc gdb_stdint.h
-
+CLEANFILES+=	observer.h observer.inc gdb_stdint.h \
+		init.c xml-builtin.c common-agent.c
 
 .include <bsd.lib.mk>
