@@ -101,15 +101,9 @@ fadt_probe(void)
 			fadt->Header.Revision);
 	}
 
-	/*
-	 * We compare against the ACPI 2.0 (up to 4.0) length of the FADT
-	 * here. SleepControl is the first of the two fields that were
-	 * added in ACPI 5.0.
-	 */
-	if (fadt->Header.Length < offsetof(ACPI_TABLE_FADT, SleepControl)) {
-		kprintf("fadt_probe: invalid FADT length %u (< %ju)\n",
-		    fadt->Header.Length,
-		    (uintmax_t)offsetof(ACPI_TABLE_FADT, SleepControl));
+	if (fadt->Header.Length < ACPI_FADT_V1_SIZE) {
+		kprintf("fadt_probe: invalid FADT length %u (< %u)\n",
+		    fadt->Header.Length, ACPI_FADT_V1_SIZE);
 		goto back;
 	}
 
