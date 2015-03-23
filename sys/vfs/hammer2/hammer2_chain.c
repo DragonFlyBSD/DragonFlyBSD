@@ -236,7 +236,7 @@ hammer2_chain_core_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain)
 	 * sub-tree).
 	 */
 	RB_INIT(&core->rbtree);	/* live chains */
-	hammer2_mtx_init(&core->lock, "h2chn");
+	hammer2_mtx_init(&core->lock, "h2chain");
 }
 
 /*
@@ -574,9 +574,9 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 * Get the appropriate lock.
 	 */
 	if (how & HAMMER2_RESOLVE_SHARED)
-		hammer2_mtx_sh(&chain->core.lock, "h2chnx");
+		hammer2_mtx_sh(&chain->core.lock);
 	else
-		hammer2_mtx_ex(&chain->core.lock, "h2chns");
+		hammer2_mtx_ex(&chain->core.lock);
 
 	/*
 	 * If we already have a valid data pointer no further action is
@@ -2161,7 +2161,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		 * to 1 by chain_alloc() for us, but lockcnt is not).
 		 */
 		chain->lockcnt = 1;
-		hammer2_mtx_ex(&chain->core.lock, "h2chnx");
+		hammer2_mtx_ex(&chain->core.lock);
 		allocated = 1;
 
 		/*

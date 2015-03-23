@@ -239,9 +239,8 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp, int flags)
 		    TAILQ_FIRST(&tman->transq) != head) {
 			trans->blocked = 1;
 			while (trans->blocked) {
-				lksleep(&trans->sync_xid,
-					&tman->translk, 0,
-					"h2multf", hz);
+				lksleep(&trans->sync_xid, &tman->translk,
+					0, "h2multf", hz);
 			}
 		}
 	}

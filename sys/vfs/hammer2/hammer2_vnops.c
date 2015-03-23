@@ -941,7 +941,7 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 	 * WARNING! Assumes that the kernel interlocks size changes at the
 	 *	    vnode level.
 	 */
-	hammer2_mtx_sh(&ip->lock, "h2ino");
+	hammer2_mtx_sh(&ip->lock);
 	size = ip->size;
 	hammer2_mtx_unlock(&ip->lock);
 
@@ -998,7 +998,7 @@ hammer2_write_file(hammer2_inode_t *ip,
 	 * WARNING! Assumes that the kernel interlocks size changes at the
 	 *	    vnode level.
 	 */
-	hammer2_mtx_ex(&ip->lock, "h2ino");
+	hammer2_mtx_ex(&ip->lock);
 	if (ioflag & IO_APPEND)
 		uio->uio_offset = ip->size;
 	old_eof = ip->size;
@@ -1149,7 +1149,7 @@ hammer2_write_file(hammer2_inode_t *ip,
 	if (error && new_eof != old_eof) {
 		hammer2_truncate_file(ip, old_eof);
 	} else if (modified) {
-		hammer2_mtx_ex(&ip->lock, "h2ino");
+		hammer2_mtx_ex(&ip->lock);
 		hammer2_update_time(&ip->mtime);
 		atomic_set_int(&ip->flags, HAMMER2_INODE_MTIME);
 		hammer2_mtx_unlock(&ip->lock);
@@ -1186,7 +1186,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			   nblksize, (int)nsize & (nblksize - 1),
 			   0);
 	}
-	hammer2_mtx_ex(&ip->lock, "h2ino");
+	hammer2_mtx_ex(&ip->lock);
 	ip->size = nsize;
 	atomic_set_int(&ip->flags, HAMMER2_INODE_RESIZED);
 	hammer2_mtx_unlock(&ip->lock);
@@ -1211,7 +1211,7 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	int nblksize;
 
 	LOCKSTART;
-	hammer2_mtx_ex(&ip->lock, "h2ino");
+	hammer2_mtx_ex(&ip->lock);
 	osize = ip->size;
 	ip->size = nsize;
 	hammer2_mtx_unlock(&ip->lock);
@@ -2328,7 +2328,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	pmp = ip->pmp;
 	
 	hammer2_lwinprog_ref(pmp);
-	hammer2_mtx_ex(&pmp->wthread_mtx, "h2wth");
+	hammer2_mtx_ex(&pmp->wthread_mtx);
 	if (TAILQ_EMPTY(&pmp->wthread_bioq.queue)) {
 		bioq_insert_tail(&pmp->wthread_bioq, ap->a_bio);
 		hammer2_mtx_unlock(&pmp->wthread_mtx);

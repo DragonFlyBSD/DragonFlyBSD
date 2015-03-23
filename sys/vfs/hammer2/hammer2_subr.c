@@ -48,13 +48,13 @@
 void
 hammer2_mount_exlock(hammer2_mount_t *hmp)
 {
-	hammer2_mtx_ex(&hmp->vchain.core.lock, "h2mount");
+	hammer2_mtx_ex(&hmp->vchain.core.lock);
 }
 
 void
 hammer2_mount_shlock(hammer2_mount_t *hmp)
 {
-	hammer2_mtx_sh(&hmp->vchain.core.lock, "h2mount");
+	hammer2_mtx_sh(&hmp->vchain.core.lock);
 }
 
 void

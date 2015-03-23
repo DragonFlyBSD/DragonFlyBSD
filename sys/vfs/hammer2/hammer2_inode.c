@@ -97,7 +97,7 @@ hammer2_inode_lock_nex(hammer2_inode_t *ip, int how)
 	int i;
 
 	hammer2_inode_ref(ip);
-	hammer2_mtx_ex(&ip->lock, "h2ino");
+	hammer2_mtx_ex(&ip->lock);
 	cluster = hammer2_cluster_copy(&ip->cluster,
 				       HAMMER2_CLUSTER_COPY_NOCHAINS);
 
@@ -168,7 +168,7 @@ hammer2_inode_lock_sh(hammer2_inode_t *ip)
 	hammer2_inode_ref(ip);
 	cluster = hammer2_cluster_copy(&ip->cluster,
 				       HAMMER2_CLUSTER_COPY_NOCHAINS);
-	hammer2_mtx_sh(&ip->lock, "h2ino");
+	hammer2_mtx_sh(&ip->lock);
 
 	cluster->focus = NULL;
 
@@ -228,7 +228,7 @@ hammer2_inode_lock_temp_release(hammer2_inode_t *ip)
 void
 hammer2_inode_lock_temp_restore(hammer2_inode_t *ip, hammer2_mtx_state_t ostate)
 {
-	hammer2_mtx_temp_restore(&ip->lock, "h2ino", ostate);
+	hammer2_mtx_temp_restore(&ip->lock, ostate);
 }
 
 /*
@@ -249,7 +249,7 @@ hammer2_inode_lock_upgrade(hammer2_inode_t *ip)
 		wasexclusive = 1;
 	} else {
 		hammer2_mtx_unlock(&ip->lock);
-		hammer2_mtx_ex(&ip->lock, "h2upg");
+		hammer2_mtx_ex(&ip->lock);
 		wasexclusive = 0;
 	}
 	return wasexclusive;
@@ -549,7 +549,7 @@ again:
 		if (nip == NULL)
 			break;
 
-		hammer2_mtx_ex(&nip->lock, "h2ino");
+		hammer2_mtx_ex(&nip->lock);
 
 		/*
 		 * Handle SMP race (not applicable to the super-root spmp
@@ -599,8 +599,8 @@ again:
 	 * hammer2_inode_lock_ex() call.
 	 */
 	nip->refs = 1;
-	hammer2_mtx_init(&nip->lock, "h2ino");
-	hammer2_mtx_ex(&nip->lock, "h2ino");
+	hammer2_mtx_init(&nip->lock, "h2inode");
+	hammer2_mtx_ex(&nip->lock);
 	/* combination of thread lock and chain lock == inode lock */
 
 	/*
