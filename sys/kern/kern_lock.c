@@ -47,8 +47,6 @@
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
 
-extern struct lock sysctllock;
-
 static void undo_upreq(struct lock *lkp);
 
 #ifdef DEBUG_CANCEL_LOCKS
@@ -879,7 +877,7 @@ sysctl_cancel_lock(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	if (req->newptr) {
-		lockmgr(&sysctllock, LK_RELEASE);
+		SYSCTL_XUNLOCK();
 		lockmgr(&cancel_lk, LK_EXCLUSIVE);
 		kprintf("x");
 		error = tsleep(&error, PCATCH, "canmas", hz * 5);
@@ -888,7 +886,7 @@ sysctl_cancel_lock(SYSCTL_HANDLER_ARGS)
 		error = tsleep(&error, PCATCH, "canmas", hz * 5);
 		kprintf("z");
 		lockmgr(&cancel_lk, LK_RELEASE);
-		lockmgr(&sysctllock, LK_EXCLUSIVE);
+		SYSCTL_XLOCK();
 		SYSCTL_OUT(req, &error, sizeof(error));
 	}
 	error = 0;

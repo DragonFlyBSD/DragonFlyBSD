@@ -159,6 +159,13 @@ int sysctl_handle_intptr(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_string(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_opaque(SYSCTL_HANDLER_ARGS);
 
+extern struct lock sysctllock;
+
+#define	SYSCTL_XLOCK()		lockmgr(&sysctllock, LK_EXCLUSIVE)
+#define	SYSCTL_XUNLOCK()	lockmgr(&sysctllock, LK_RELEASE)
+#define	SYSCTL_ASSERT_XLOCKED() \
+	KKASSERT(lockstatus(&sysctllock, curthread) != 0)
+
 /*
  * These functions are used to add/remove an oid from the mib.
  */

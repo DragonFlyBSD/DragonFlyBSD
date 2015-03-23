@@ -72,9 +72,6 @@ static MALLOC_DEFINE(M_SYSCTLOID, "sysctloid", "sysctl dynamic oids");
 struct lock sysctllock;
 static struct lock sysctlmemlock;
 
-#define	SYSCTL_XLOCK()		lockmgr(&sysctllock, LK_EXCLUSIVE)
-#define	SYSCTL_XUNLOCK()	lockmgr(&sysctllock, LK_RELEASE)
-#define	SYSCTL_ASSERT_XLOCKED()	KKASSERT(lockstatus(&sysctllock, curthread) != 0)
 #define	SYSCTL_INIT()		lockinit(&sysctllock,			\
 				    "sysctl lock", 0, LK_CANRECURSE)
 #define	SYSCTL_SLEEP(ch, wmesg, timo)					\
