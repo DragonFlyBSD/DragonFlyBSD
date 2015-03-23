@@ -508,8 +508,8 @@ ng_ppp_constructor(node_p node)
 		priv->links[i].seq = MP_NOSEQ;
 	ng_callout_init(&priv->fragTimer);
 
-	mtx_init(&priv->rmtx);
-	mtx_init(&priv->xmtx);
+	mtx_init(&priv->rmtx, "ng_ppp rmtx");
+	mtx_init(&priv->xmtx, "ng_ppp xmtx");
 
 	/* Done */
 	return (0);

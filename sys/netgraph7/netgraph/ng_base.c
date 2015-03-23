@@ -2762,8 +2762,8 @@ ngb_mod_event(module_t mod, int event, void *data)
 		lwkt_token_init(&ng_namehash_token, "ng namehash");
 		lwkt_token_init(&ng_topo_token, "ng topology");
 #ifdef	NETGRAPH_DEBUG
-		mtx_init(&ng_nodelist_mtx);
-		mtx_init(&ngq_mtx);
+		mtx_init(&ng_nodelist_mtx, "ng nodelist");
+		mtx_init(&ngq_mtx, "ng queue");
 #endif
 		ng_oc = objcache_create_mbacked(M_NETGRAPH,
 			    sizeof(struct ng_item), maxalloc, 0, bzero_ctor,

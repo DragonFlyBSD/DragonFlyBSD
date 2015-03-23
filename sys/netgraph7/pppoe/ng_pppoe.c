@@ -624,7 +624,7 @@ ng_pppoe_constructor(node_p node)
 
 	LIST_INIT(&privp->listeners);
 	for (i = 0; i < SESSHASHSIZE; i++) {
-	    mtx_init(&privp->sesshash[i].mtx);
+	    mtx_init(&privp->sesshash[i].mtx, "ng_pppoe");
 	    LIST_INIT(&privp->sesshash[i].head);
 	}
 
