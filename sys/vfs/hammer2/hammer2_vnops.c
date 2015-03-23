@@ -2229,7 +2229,7 @@ hammer2_strategy_read_callback(hammer2_iocb_t *iocb)
 				hammer2_cluster_unlock(cluster);
 			} else {
 				hammer2_io_complete(iocb); /* XXX */
-				chain = cluster->array[i];
+				chain = cluster->array[i].chain;
 				kprintf("hammer2: IO CHAIN-%d %p\n", i, chain);
 				hammer2_adjreadcounter(&chain->bref,
 						       chain->bytes);

@@ -690,7 +690,7 @@ hammer2_ioctl_debug_dump(hammer2_inode_t *ip)
 	int i;
 
 	for (i = 0; i < ip->cluster.nchains; ++i) {
-		chain = ip->cluster.array[i];
+		chain = ip->cluster.array[i].chain;
 		if (chain == NULL)
 			continue;
 		hammer2_dump_chain(chain, 0, &count, 'i');

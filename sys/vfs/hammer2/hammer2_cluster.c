@@ -64,7 +64,7 @@ hammer2_cluster_need_resize(hammer2_cluster_t *cluster, int bytes)
 	int i;
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain && chain->bytes != bytes)
 			return 1;
 	}
@@ -112,7 +112,8 @@ hammer2_cluster_isunlinked(hammer2_cluster_t *cluster)
 
 	flags = 0;
 	for (i = 0; i < cluster->nchains; ++i) {
-		if ((chain = cluster->array[i]) != NULL)
+		chain = cluster->array[i].chain;
+		if (chain)
 			flags |= chain->flags;
 	}
 	return (flags & HAMMER2_CHAIN_UNLINKED);
@@ -125,7 +126,7 @@ hammer2_cluster_set_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
 	int i;
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain)
 			atomic_set_int(&chain->flags, flags);
 	}
@@ -138,7 +139,7 @@ hammer2_cluster_clr_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
 	int i;
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain)
 			atomic_clear_int(&chain->flags, flags);
 	}
@@ -151,7 +152,7 @@ hammer2_cluster_setflush(hammer2_trans_t *trans, hammer2_cluster_t *cluster)
 	int i;
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain)
 			hammer2_chain_setflush(trans, chain);
 	}
@@ -166,7 +167,7 @@ hammer2_cluster_setmethod_check(hammer2_trans_t *trans,
 	int i;
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain) {
 			KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
 			chain->bref.methods &= ~HAMMER2_ENC_CHECK(-1);
@@ -186,7 +187,7 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
 	hammer2_cluster_t *cluster;
 
 	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
-	cluster->array[0] = chain;
+	cluster->array[0].chain = chain;
 	cluster->nchains = 1;
 	cluster->focus = chain;
 	cluster->pmp = chain->pmp;
@@ -207,6 +208,7 @@ hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
 	hammer2_cluster_t *cluster;
 	hammer2_cluster_t *rcluster;
 	hammer2_chain_t *chain;
+	hammer2_chain_t *rchain;
 #if 0
 	u_int bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 #endif
@@ -244,10 +246,10 @@ hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
 
 	rcluster = &pmp->iroot->cluster;
 	for (i = 0; i < rcluster->nchains; ++i) {
-		chain = hammer2_chain_alloc(rcluster->array[i]->hmp,
-					    pmp, trans, bref);
+		rchain = rcluster->array[i].chain;
+		chain = hammer2_chain_alloc(rchain->hmp, pmp, trans, bref);
 #if 0
-		chain->hmp = rcluster->array[i]->hmp;
+		chain->hmp = rchain->hmp;
 		chain->bref = *bref;
 		chain->bytes = bytes;
 		chain->refs = 1;
@@ -259,11 +261,11 @@ hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
 		 *	 snapshot, trans will be NULL and the caller is
 		 *	 responsible for setting these fields.
 		 */
-		cluster->array[i] = chain;
+		cluster->array[i].chain = chain;
 	}
 	cluster->nchains = i;
 	cluster->pmp = pmp;
-	cluster->focus = cluster->array[0];
+	cluster->focus = cluster->array[0].chain;
 
 	return (cluster);
 }
@@ -282,7 +284,7 @@ hammer2_cluster_ref(hammer2_cluster_t *cluster)
 
 	atomic_add_int(&cluster->refs, 1);
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain)
 			hammer2_chain_ref(chain);
 	}
@@ -304,11 +306,11 @@ hammer2_cluster_drop(hammer2_cluster_t *cluster)
 
 	KKASSERT(cluster->refs > 0);
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain) {
 			hammer2_chain_drop(chain);
 			if (cluster->refs == 1)
-				cluster->array[i] = NULL;
+				cluster->array[i].chain = NULL;
 		}
 	}
 	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
@@ -332,18 +334,21 @@ int
 hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 {
 	hammer2_chain_t *chain;
+	hammer2_chain_t *tmp;
 	int i;
 	int error;
 
 	error = 0;
 	atomic_add_int(&cluster->refs, 1);
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain) {
 			error = hammer2_chain_lock(chain, how);
 			if (error) {
-				while (--i >= 0)
-					hammer2_chain_unlock(cluster->array[i]);
+				while (--i >= 0) {
+					tmp = cluster->array[i].chain;
+					hammer2_chain_unlock(tmp);
+				}
 				atomic_add_int(&cluster->refs, -1);
 				break;
 			}
@@ -364,27 +369,30 @@ void
 hammer2_cluster_replace(hammer2_cluster_t *dst, hammer2_cluster_t *src)
 {
 	hammer2_chain_t *chain;
+	hammer2_chain_t *tmp;
 	int i;
 
 	KKASSERT(dst->refs == 1);
 	dst->focus = NULL;
 
 	for (i = 0; i < src->nchains; ++i) {
-		chain = src->array[i];
+		chain = src->array[i].chain;
 		if (chain) {
 			hammer2_chain_ref(chain);
-			if (i < dst->nchains && dst->array[i])
-				hammer2_chain_unlock(dst->array[i]);
-			dst->array[i] = chain;
+			if (i < dst->nchains &&
+			    (tmp = dst->array[i].chain) != NULL) {
+				hammer2_chain_unlock(tmp);
+			}
+			dst->array[i].chain = chain;
 			if (dst->focus == NULL)
 				dst->focus = chain;
 		}
 	}
 	while (i < dst->nchains) {
-		chain = dst->array[i];
+		chain = dst->array[i].chain;
 		if (chain) {
 			hammer2_chain_unlock(chain);
-			dst->array[i] = NULL;
+			dst->array[i].chain = NULL;
 		}
 		++i;
 	}
@@ -403,27 +411,30 @@ void
 hammer2_cluster_replace_locked(hammer2_cluster_t *dst, hammer2_cluster_t *src)
 {
 	hammer2_chain_t *chain;
+	hammer2_chain_t *tmp;
 	int i;
 
 	KKASSERT(dst->refs == 1);
 
 	dst->focus = NULL;
 	for (i = 0; i < src->nchains; ++i) {
-		chain = src->array[i];
+		chain = src->array[i].chain;
 		if (chain) {
 			hammer2_chain_lock(chain, 0);
-			if (i < dst->nchains && dst->array[i])
-				hammer2_chain_unlock(dst->array[i]);
-			dst->array[i] = src->array[i];
+			if (i < dst->nchains &&
+			    (tmp = dst->array[i].chain) != NULL) {
+				hammer2_chain_unlock(tmp);
+			}
+			dst->array[i].chain = chain;
 			if (dst->focus == NULL)
 				dst->focus = chain;
 		}
 	}
 	while (i < dst->nchains) {
-		chain = dst->array[i];
+		chain = dst->array[i].chain;
 		if (chain) {
 			hammer2_chain_unlock(chain);
-			dst->array[i] = NULL;
+			dst->array[i].chain = NULL;
 		}
 		++i;
 	}
@@ -462,8 +473,8 @@ hammer2_cluster_copy(hammer2_cluster_t *ocluster, int copy_flags)
 	if ((copy_flags & HAMMER2_CLUSTER_COPY_NOCHAINS) == 0) {
 		ncluster->focus = ocluster->focus;
 		for (i = 0; i < ocluster->nchains; ++i) {
-			chain = ocluster->array[i];
-			ncluster->array[i] = chain;
+			chain = ocluster->array[i].chain;
+			ncluster->array[i].chain = chain;
 			if ((copy_flags & HAMMER2_CLUSTER_COPY_NOREF) == 0 &&
 			    chain) {
 				hammer2_chain_ref(chain);
@@ -485,11 +496,11 @@ hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 
 	KKASSERT(cluster->refs > 0);
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain) {
 			hammer2_chain_unlock(chain);
 			if (cluster->refs == 1)
-				cluster->array[i] = NULL;	/* safety */
+				cluster->array[i].chain = NULL;	/* safety */
 		}
 	}
 	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
@@ -508,6 +519,7 @@ hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		       hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		       int nradix, int flags)
 {
+	hammer2_chain_t *chain;
 	int i;
 
 	KKASSERT(cparent->pmp == cluster->pmp);		/* can be NULL */
@@ -515,14 +527,14 @@ hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 
 	cluster->focus = NULL;
 	for (i = 0; i < cluster->nchains; ++i) {
-		if (cluster->array[i]) {
-			KKASSERT(cparent->array[i]);
+		chain = cluster->array[i].chain;
+		if (chain) {
+			KKASSERT(cparent->array[i].chain);
 			hammer2_chain_resize(trans, ip,
-					     cparent->array[i],
-					     cluster->array[i],
+					     cparent->array[i].chain, chain,
 					     nradix, flags);
 			if (cluster->focus == NULL)
-				cluster->focus = cluster->array[i];
+				cluster->focus = chain;
 		}
 	}
 }
@@ -557,14 +569,16 @@ void
 hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 		       int flags)
 {
+	hammer2_chain_t *chain;
 	int i;
 
 	cluster->focus = NULL;
 	for (i = 0; i < cluster->nchains; ++i) {
-		if (cluster->array[i]) {
-			hammer2_chain_modify(trans, cluster->array[i], flags);
+		chain = cluster->array[i].chain;
+		if (chain) {
+			hammer2_chain_modify(trans, chain, flags);
 			if (cluster->focus == NULL)
-				cluster->focus = cluster->array[i];
+				cluster->focus = chain;
 		}
 	}
 }
@@ -593,7 +607,7 @@ hammer2_cluster_modsync(hammer2_cluster_t *cluster)
 	KKASSERT(focus->flags & HAMMER2_CHAIN_MODIFIED);
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		scan = cluster->array[i];
+		scan = cluster->array[i].chain;
 		if (scan == NULL || scan == focus)
 			continue;
 		KKASSERT(scan->flags & HAMMER2_CHAIN_MODIFIED);
@@ -641,9 +655,9 @@ hammer2_cluster_lookup_init(hammer2_cluster_t *cparent, int flags)
 	/* cluster->focus = NULL; already null */
 
 	for (i = 0; i < cparent->nchains; ++i) {
-		cluster->array[i] = cparent->array[i];
+		cluster->array[i].chain = cparent->array[i].chain;
 		if (cluster->focus == NULL)
-			cluster->focus = cluster->array[i];
+			cluster->focus = cluster->array[i].chain;
 	}
 	cluster->nchains = cparent->nchains;
 
@@ -704,17 +718,18 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 
 	for (i = 0; i < cparent->nchains; ++i) {
 		key_next = *key_nextp;
-		if (cparent->array[i] == NULL) {
+		if (cparent->array[i].chain == NULL) {
 			++null_count;
 			continue;
 		}
-		chain = hammer2_chain_lookup(&cparent->array[i], &key_next,
+		chain = hammer2_chain_lookup(&cparent->array[i].chain,
+					     &key_next,
 					     key_beg, key_end,
-					     &cparent->cache_index[i],
+					     &cparent->array[i].cache_index,
 					     flags, &ddflag);
 		if (cparent->focus == NULL)
-			cparent->focus = cparent->array[i];
-		cluster->array[i] = chain;
+			cparent->focus = cparent->array[i].chain;
+		cluster->array[i].chain = chain;
 		if (chain == NULL) {
 			++null_count;
 		} else {
@@ -767,14 +782,14 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 
 	for (i = 0; i < cparent->nchains; ++i) {
 		key_next = *key_nextp;
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain == NULL) {
 			if (cparent->focus == NULL)
-				cparent->focus = cparent->array[i];
+				cparent->focus = cparent->array[i].chain;
 			++null_count;
 			continue;
 		}
-		if (cparent->array[i] == NULL) {
+		if (cparent->array[i].chain == NULL) {
 			if (flags & HAMMER2_LOOKUP_NOLOCK)
 				hammer2_chain_drop(chain);
 			else
@@ -782,12 +797,13 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			++null_count;
 			continue;
 		}
-		chain = hammer2_chain_next(&cparent->array[i], chain,
+		chain = hammer2_chain_next(&cparent->array[i].chain, chain,
 					   &key_next, key_beg, key_end,
-					   &cparent->cache_index[i], flags);
+					   &cparent->array[i].cache_index,
+					   flags);
 		if (cparent->focus == NULL)
-			cparent->focus = cparent->array[i];
-		cluster->array[i] = chain;
+			cparent->focus = cparent->array[i].chain;
+		cluster->array[i].chain = chain;
 		if (chain == NULL) {
 			++null_count;
 		} else if (cluster->focus == NULL) {
@@ -828,12 +844,12 @@ hammer2_cluster_scan(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 	null_count = 0;
 
 	for (i = 0; i < cparent->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain == NULL) {
 			++null_count;
 			continue;
 		}
-		if (cparent->array[i] == NULL) {
+		if (cparent->array[i].chain == NULL) {
 			if (flags & HAMMER2_LOOKUP_NOLOCK)
 				hammer2_chain_drop(chain);
 			else
@@ -842,9 +858,10 @@ hammer2_cluster_scan(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			continue;
 		}
 
-		chain = hammer2_chain_scan(cparent->array[i], chain,
-					   &cparent->cache_index[i], flags);
-		cluster->array[i] = chain;
+		chain = hammer2_chain_scan(cparent->array[i].chain, chain,
+					   &cparent->array[i].cache_index,
+					   flags);
+		cluster->array[i].chain = chain;
 		if (chain == NULL)
 			++null_count;
 	}
@@ -889,20 +906,20 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 	 *	 create new chains.
 	 */
 	for (i = 0; i < cparent->nchains; ++i) {
-		if (*clusterp && cluster->array[i] == NULL) {
+		if (*clusterp && cluster->array[i].chain == NULL) {
 			if (cparent->focus == NULL)
-				cparent->focus = cparent->array[i];
+				cparent->focus = cparent->array[i].chain;
 			continue;
 		}
-		error = hammer2_chain_create(trans, &cparent->array[i],
-					     &cluster->array[i], pmp,
+		error = hammer2_chain_create(trans, &cparent->array[i].chain,
+					     &cluster->array[i].chain, pmp,
 					     key, keybits,
 					     type, bytes, flags);
 		KKASSERT(error == 0);
 		if (cparent->focus == NULL)
-			cparent->focus = cparent->array[i];
+			cparent->focus = cparent->array[i].chain;
 		if (cluster->focus == NULL)
-			cluster->focus = cluster->array[i];
+			cluster->focus = cluster->array[i].chain;
 	}
 	cluster->nchains = i;
 	*clusterp = cluster;
@@ -931,28 +948,28 @@ hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 	cparent->focus = NULL;
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain) {
 			if (bref) {
 				xbref = chain->bref;
 				xbref.key = bref->key;
 				xbref.keybits = bref->keybits;
 				hammer2_chain_rename(trans, &xbref,
-						     &cparent->array[i],
+						     &cparent->array[i].chain,
 						     chain, flags);
 			} else {
 				hammer2_chain_rename(trans, NULL,
-						     &cparent->array[i],
+						     &cparent->array[i].chain,
 						     chain, flags);
 			}
-			cluster->array[i] = chain;
+			cluster->array[i].chain = chain;
 			if (cluster->focus == NULL)
 				cluster->focus = chain;
 			if (cparent->focus == NULL)
-				cparent->focus = cparent->array[i];
+				cparent->focus = cparent->array[i].chain;
 		} else {
 			if (cparent->focus == NULL)
-				cparent->focus = cparent->array[i];
+				cparent->focus = cparent->array[i].chain;
 		}
 	}
 }
@@ -974,8 +991,9 @@ hammer2_cluster_delete(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 	}
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		parent = (i < cparent->nchains) ? cparent->array[i] : NULL;
-		chain = cluster->array[i];
+		parent = (i < cparent->nchains) ?
+			 cparent->array[i].chain : NULL;
+		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
 		if (chain->parent != parent) {
@@ -1003,6 +1021,7 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 	hammer2_cluster_t *ncluster;
 	const hammer2_inode_data_t *ripdata;
 	hammer2_inode_data_t *wipdata;
+	hammer2_chain_t *nchain;
 	hammer2_inode_t *nip;
 	size_t name_len;
 	hammer2_key_t lhc;
@@ -1053,10 +1072,9 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 			kern_uuidgen(&wipdata->pfs_clid, 1);
 
 		for (i = 0; i < ncluster->nchains; ++i) {
-			if (ncluster->array[i]) {
-				ncluster->array[i]->bref.flags |=
-				    HAMMER2_BREF_FLAG_PFSROOT;
-			}
+			nchain = ncluster->array[i].chain;
+			if (nchain)
+				nchain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
 		}
 #if 0
 		/* XXX can't set this unless we do an explicit flush, which
@@ -1073,8 +1091,9 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 		wipdata->u.blockset = ripdata->u.blockset;
 		hammer2_cluster_modsync(ncluster);
 		for (i = 0; i < ncluster->nchains; ++i) {
-			if (ncluster->array[i])
-				hammer2_flush(trans, ncluster->array[i]);
+			nchain = ncluster->array[i].chain;
+			if (nchain)
+				hammer2_flush(trans, nchain);
 		}
 		hammer2_inode_unlock_ex(nip, ncluster);
 	}
@@ -1096,7 +1115,7 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 		hammer2_chain_t *chain;
 		hammer2_chain_t *rchain;
 
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
 		hammer2_chain_ref(chain);
@@ -1111,7 +1130,7 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 			hammer2_chain_unlock(rchain);
 		}
 		hammer2_chain_drop(chain);
-		cparent->array[i] = rchain;
+		cparent->array[i].chain = rchain;
 	}
 	return cparent;
 }
@@ -1169,12 +1188,12 @@ hammer2_cluster_load_async(hammer2_cluster_t *cluster,
 	 */
 	chain = NULL;
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
+		chain = cluster->array[i].chain;
 		if (chain && chain->data)
 			break;
 	}
 	if (i == cluster->nchains) {
-		chain = cluster->array[0];
+		chain = cluster->array[0].chain;
 		i = 0;
 	}
 

@@ -437,11 +437,18 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			return (EINVAL);
 
 		if (mp->mnt_flag & MNT_UPDATE) {
-			/* Update mount */
-			/* HAMMER2 implements NFS export via mountctl */
+			/*
+			 * Update mount.  Note that pmp->iroot->cluster is
+			 * an inode-embedded cluster and thus cannot be
+			 * directly locked.
+			 *
+			 * XXX HAMMER2 needs to implement NFS export via
+			 *     mountctl.
+			 */
 			pmp = MPTOPMP(mp);
-			for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
-				hmp = pmp->iroot->cluster.array[i]->hmp;
+			cluster = &pmp->iroot->cluster;
+			for (i = 0; i < cluster->nchains; ++i) {
+				hmp = cluster->array[i].chain->hmp;
 				devvp = hmp->devvp;
 				error = hammer2_remount(hmp, mp, path,
 							devvp, cred);
@@ -694,7 +701,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		rchain = cluster->array[i];
+		rchain = cluster->array[i].chain;
 		if (rchain->flags & HAMMER2_CHAIN_MOUNTED) {
 			kprintf("hammer2_mount: PFS label already mounted!\n");
 			hammer2_cluster_unlock(cluster);
@@ -760,11 +767,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		kprintf("hammer2_vfs_mount: Adding pfs to existing cluster\n");
 		j = pmp->iroot->cluster.nchains;
 		for (i = 0; i < cluster->nchains; ++i) {
-			rchain = cluster->array[i];
+			rchain = cluster->array[i].chain;
 			KKASSERT(rchain->pmp == NULL);
 			rchain->pmp = pmp;
-			hammer2_chain_ref(cluster->array[i]);
-			pmp->iroot->cluster.array[j] = cluster->array[i];
+			hammer2_chain_ref(rchain);
+			pmp->iroot->cluster.array[j].chain = rchain;
 			++j;
 		}
 		pmp->iroot->cluster.nchains = j;
@@ -788,7 +795,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	pmp = hammer2_pfsalloc(ripdata, bref.mirror_tid);
 	kprintf("PMP mirror_tid is %016jx\n", bref.mirror_tid);
 	for (i = 0; i < cluster->nchains; ++i) {
-		rchain = cluster->array[i];
+		rchain = cluster->array[i].chain;
 		KKASSERT(rchain->pmp == NULL);
 		rchain->pmp = pmp;
 		atomic_set_int(&rchain->flags, HAMMER2_CHAIN_MOUNTED);
@@ -1278,7 +1285,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 		hammer2_io_t *dio;
 		char *bdata;
 
-		chain = cluster->array[i];	/* XXX */
+		chain = cluster->array[i].chain;	/* XXX */
 		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
 
 		switch(chain->bref.type) {
@@ -1471,7 +1478,7 @@ hammer2_write_bp(hammer2_cluster_t *cluster, struct buf *bp, int ioflag,
 	error = 0;	/* XXX TODO below */
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];	/* XXX */
+		chain = cluster->array[i].chain;	/* XXX */
 		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
 
 		switch(chain->bref.type) {
@@ -1620,7 +1627,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	if (pmp->iroot) {
 		cluster = &pmp->iroot->cluster;
 		for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
-			rchain = pmp->iroot->cluster.array[i];
+			rchain = pmp->iroot->cluster.array[i].chain;
 			if (rchain == NULL)
 				continue;
 			hmp = rchain->hmp;
@@ -1635,7 +1642,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			KKASSERT(rchain->refs == 1);
 #endif
 			hammer2_chain_drop(rchain);
-			cluster->array[i] = NULL;
+			cluster->array[i].chain = NULL;
 			hammer2_vfs_unmount_hmp2(mp, hmp);
 		}
 		cluster->focus = NULL;
@@ -2184,7 +2191,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * XXX currently done serially instead of concurrently
 	 */
 	for (i = 0; iroot && i < iroot->cluster.nchains; ++i) {
-		chain = iroot->cluster.array[i];
+		chain = iroot->cluster.array[i].chain;
 		if (chain) {
 			hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 			hammer2_flush(&info.trans, chain);
@@ -2203,7 +2210,9 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * transitions using the last pfs-root flush.
 	 */
 	for (i = 0; iroot && i < iroot->cluster.nchains; ++i) {
-		chain = iroot->cluster.array[i];
+		hammer2_chain_t *tmp;
+
+		chain = iroot->cluster.array[i].chain;
 		if (chain == NULL)
 			continue;
 
@@ -2213,9 +2222,10 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		 * We only have to flush each hmp once
 		 */
 		for (j = i - 1; j >= 0; --j) {
-			if (iroot->cluster.array[j] &&
-			    iroot->cluster.array[j]->hmp == hmp)
-				break;
+			if ((tmp = iroot->cluster.array[j].chain) != NULL) {
+				if (tmp->hmp == hmp)
+					break;
+			}
 		}
 		if (j >= 0)
 			continue;

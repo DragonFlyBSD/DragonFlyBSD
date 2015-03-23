@@ -105,14 +105,14 @@ hammer2_inode_lock_nex(hammer2_inode_t *ip, int how)
 	cluster->focus = NULL;
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = ip->cluster.array[i];
+		chain = ip->cluster.array[i].chain;
 		if (chain == NULL) {
 			kprintf("inode_lock: %p: missing chain\n", ip);
 			continue;
 		}
 
 		hammer2_chain_lock(chain, how);
-		cluster->array[i] = chain;
+		cluster->array[i].chain = chain;
 		if (cluster->focus == NULL)
 			cluster->focus = chain;
 		if (ip->cluster.focus == NULL)
@@ -173,7 +173,7 @@ hammer2_inode_lock_sh(hammer2_inode_t *ip)
 	cluster->focus = NULL;
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		chain = ip->cluster.array[i];
+		chain = ip->cluster.array[i].chain;
 
 		if (chain == NULL) {
 			kprintf("inode_lock: %p: missing chain\n", ip);
@@ -182,7 +182,7 @@ hammer2_inode_lock_sh(hammer2_inode_t *ip)
 
 		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
 					  HAMMER2_RESOLVE_SHARED);
-		cluster->array[i] = chain;
+		cluster->array[i].chain = chain;
 		if (cluster->focus == NULL)
 			cluster->focus = chain;
 	}
@@ -1129,9 +1129,9 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 	 */
 	ip->cluster.focus = NULL;
 	for (i = 0; cluster && i < cluster->nchains; ++i) {
-		nchain = cluster->array[i];
+		nchain = cluster->array[i].chain;
 		if (i < ip->cluster.nchains) {
-			ochain = ip->cluster.array[i];
+			ochain = ip->cluster.array[i].chain;
 			if (ochain == nchain) {
 				if (ip->cluster.focus == NULL)
 					ip->cluster.focus = nchain;
@@ -1144,7 +1144,7 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		/*
 		 * Make adjustments
 		 */
-		ip->cluster.array[i] = nchain;
+		ip->cluster.array[i].chain = nchain;
 		if (ip->cluster.focus == NULL)
 			ip->cluster.focus = nchain;
 		if (nchain)
@@ -1157,9 +1157,9 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 	 * Release any left-over chains in ip->cluster.
 	 */
 	while (i < ip->cluster.nchains) {
-		nchain = ip->cluster.array[i];
+		nchain = ip->cluster.array[i].chain;
 		if (nchain) {
-			ip->cluster.array[i] = NULL;
+			ip->cluster.array[i].chain = NULL;
 			hammer2_chain_drop(nchain);
 		}
 		++i;

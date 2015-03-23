@@ -487,6 +487,16 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  */
 #define HAMMER2_MAXCLUSTER	8
 
+struct hammer2_cluster_item {
+	hammer2_mtx_link_t	async_link;
+	hammer2_chain_t		*chain;
+	struct hammer2_cluster	*cluster;	/* link back to cluster */
+	int			cache_index;
+	int			unused01;
+};
+
+typedef struct hammer2_cluster_item hammer2_cluster_item_t;
+
 struct hammer2_cluster {
 	int			status;		/* operational status */
 	int			refs;		/* track for deallocation */
@@ -495,9 +505,7 @@ struct hammer2_cluster {
 	int			nchains;
 	hammer2_iocb_t		iocb;
 	hammer2_chain_t		*focus;		/* current focus (or mod) */
-	hammer2_mtx_link_t	asynclnk[HAMMER2_MAXCLUSTER];
-	hammer2_chain_t		*array[HAMMER2_MAXCLUSTER];
-	int			cache_index[HAMMER2_MAXCLUSTER];
+	hammer2_cluster_item_t	array[HAMMER2_MAXCLUSTER];
 };
 
 typedef struct hammer2_cluster	hammer2_cluster_t;
