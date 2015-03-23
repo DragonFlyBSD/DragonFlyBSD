@@ -103,15 +103,21 @@ SRCS+=	hammer2.c
 .if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+= -I${.OBJDIR}
 
-beforedepend ${OBJS}: machine cpu
+.PATH: ${.OBJDIR}/machine
 
-machine::
+in_cksum.c: endian.h stdint.h
+stand.h:    stdarg.h
+_setjmp.S:  asm.h
+
+endian.h stdint.h asm.h stdarg.h:
 	mkdir -p machine
-	${LN} -fs ${.CURDIR}/../../sys/cpu/i386/include/* machine
-	${LN} -fs ${.CURDIR}/../../sys/platform/pc32/include/* machine
+	${LN} -fs ${.CURDIR}/../../sys/cpu/i386/include/${.TARGET:T} \
+		machine/${.TARGET:T}
 
-cpu::
-	${LN} -hfs ${.CURDIR}/../../sys/cpu/i386/include cpu
+cpu:
+	mkdir -p ${.TARGET}
+
+beforedepend: cpu
 
 CLEANDIRS+=	machine cpu
 .endif
