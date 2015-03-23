@@ -1,3 +1,4 @@
+.\"-
 .\" Copyright (c) 1980, 1990, 1993
 .\"	The Regents of the University of California.  All rights reserved.
 .\"
@@ -29,23 +30,26 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)ln.1	8.2 (Berkeley) 12/30/93
-.\" $FreeBSD: src/bin/ln/ln.1,v 1.11.2.8 2003/02/04 07:31:59 keramida Exp $
-.\" $DragonFly: src/bin/ln/ln.1,v 1.8 2008/09/07 07:54:48 swildner Exp $
+.\" $FreeBSD: head/bin/ln/ln.1 244791 2012-12-28 22:06:33Z gjb $
 .\"
-.Dd September 27, 2009
+.Dd March 23, 2015
 .Dt LN 1
 .Os
 .Sh NAME
 .Nm ln ,
 .Nm link
-.Nd make links
+.Nd link files
 .Sh SYNOPSIS
 .Nm
-.Op Fl fhinsv
+.Op Fl L | Fl P | Fl s Op Fl F
+.Op Fl f | iw
+.Op Fl hnv
 .Ar source_file
 .Op Ar target_file
 .Nm
-.Op Fl fhinsv
+.Op Fl L | Fl P | Fl s Op Fl F
+.Op Fl f | iw
+.Op Fl hnv
 .Ar source_file ...
 .Ar target_dir
 .Nm link
@@ -53,8 +57,13 @@
 .Sh DESCRIPTION
 The
 .Nm
-utility creates a new directory entry (linked file) which has the
-same modes as the original file.
+utility creates a new directory entry (linked file) for the file name
+specified by
+.Ar target_file .
+The
+.Ar target_file
+will be created with the same file modes as the
+.Ar source_file .
 It is useful for maintaining multiple copies of a file in many places
 at once without using up storage for the
 .Dq copies ;
@@ -68,6 +77,37 @@ to a file is one of the differences between a hard and symbolic link.
 .Pp
 The options are as follows:
 .Bl -tag -width flag
+.It Fl F
+If the target file already exists and is a directory, then remove it
+so that the link may occur.
+The
+.Fl F
+option should be used with either
+.Fl f
+or
+.Fl i
+options.
+If none is specified,
+.Fl f
+is implied.
+The
+.Fl F
+option is a no-op unless
+.Fl s
+option is specified.
+.It Fl L
+When creating a hard link to a symbolic link,
+create a hard link to the target of the symbolic link.
+This is the default.
+This option cancels the
+.Fl P
+option.
+.It Fl P
+When creating a hard link to a symbolic link,
+create a hard link to the symbolic link itself.
+This option cancels the
+.Fl L
+option.
 .It Fl f
 If the target file already exists,
 then unlink it so that the link may occur.
@@ -75,6 +115,8 @@ then unlink it so that the link may occur.
 .Fl f
 option overrides any previous
 .Fl i
+and
+.Fl w
 options.)
 .It Fl h
 If the
@@ -112,6 +154,8 @@ Create a symbolic link.
 Cause
 .Nm
 to be verbose, showing files as they are processed.
+.It Fl w
+Warn if the source of a symbolic link does not currently exist.
 .El
 .Pp
 By default,
@@ -122,26 +166,27 @@ links.
 A hard link to a file is indistinguishable from the original directory entry;
 any changes to a file are effectively independent of the name used to reference
 the file.
-Hard links may not normally refer to directories and may not span file systems.
+Directories may not be hardlinked, and hard links may not span file systems.
 .Pp
-A symbolic link contains the name of the file to which it is linked.
+A symbolic link contains the name of the file to
+which it is linked.
 The referenced file is used when an
-.Xr open  2
+.Xr open 2
 operation is performed on the link.
 A
-.Xr stat  2
+.Xr stat 2
 on a symbolic link will return the linked-to file; an
-.Xr lstat  2
+.Xr lstat 2
 must be done to obtain information about the link.
 The
-.Xr readlink  2
+.Xr readlink 2
 call may be used to read the contents of a symbolic link.
 Symbolic links may span file systems and may refer to directories.
 .Pp
 Given one or two arguments,
 .Nm
 creates a link to an existing file
-.Ar source_file  .
+.Ar source_file .
 If
 .Ar target_file
 is given, the link has that name;
@@ -150,7 +195,7 @@ may also be a directory in which to place the link;
 otherwise it is placed in the current directory.
 If only the directory is specified, the link will be made
 to the last component of
-.Ar source_file  .
+.Ar source_file .
 .Pp
 Given more than two arguments,
 .Nm
@@ -195,6 +240,71 @@ Regular
 .Xr environ 7
 environment variables are not used to resolve variant symlinks.
 .Sh EXAMPLES
+Create a symbolic link named
+.Pa /home/src
+and point it to
+.Pa /usr/src :
+.Pp
+.Dl # ln -s /usr/src /home/src
+.Pp
+Hard link
+.Pa /usr/local/bin/fooprog
+to file
+.Pa /usr/local/bin/fooprog-1.0 :
+.Pp
+.Dl # ln /usr/local/bin/fooprog-1.0 /usr/local/bin/fooprog
+.Pp
+As an exercise, try the following commands:
+.Bd -literal -offset indent
+# ls -i /bin/[
+11553 /bin/[
+# ls -i /bin/test
+11553 /bin/test
+.Ed
+.Pp
+Note that both files have the same inode; that is,
+.Pa /bin/[
+is essentially an alias for the
+.Xr test 1
+command.
+This hard link exists so
+.Xr test 1
+may be invoked from shell scripts, for example, using the
+.Li "if [ ]"
+construct.
+.Pp
+In the next example, the second call to
+.Nm
+removes the original
+.Pa foo
+and creates a replacement pointing to
+.Pa baz :
+.Bd -literal -offset indent
+# mkdir bar baz
+# ln -s bar foo
+# ln -shf baz foo
+.Ed
+.Pp
+Without the
+.Fl h
+option, this would instead leave
+.Pa foo
+pointing to
+.Pa bar
+and inside
+.Pa foo
+create a new symlink
+.Pa baz
+pointing to itself.
+This results from directory-walking.
+.Pp
+An easy rule to remember is that the argument order for
+.Nm
+is the same as for
+.Xr cp 1 :
+The first argument needs to exist, the second one is created.
+.Pp
+A simple variable symlink example:
 .Bd -literal -offset indent
 sysctl vfs.varsym_enable=1
 
@@ -210,9 +320,10 @@ varsym fubar=yy; cat test
 The
 .Fl h ,
 .Fl i ,
-.Fl n
-and
+.Fl n ,
 .Fl v
+and
+.Fl w
 options are non-standard and their use in scripts is not recommended.
 They are provided solely for compatibility with other
 .Nm
@@ -220,6 +331,12 @@ implementations.
 .Pp
 Variant symlinks are unique (among BSDs) to
 .Dx .
+.Pp
+The
+.Fl F
+option is a
+.Fx
+extension and should not be used in portable scripts.
 .Sh SEE ALSO
 .Xr varsym 1 ,
 .Xr link 2 ,
