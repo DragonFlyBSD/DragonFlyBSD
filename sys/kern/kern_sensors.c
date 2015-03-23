@@ -280,20 +280,20 @@ sensor_task_schedule(struct sensor_task *st)
 {
 	struct sensor_task 	*cst;
 
-	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
+	KASSERT(lockstatus(&sensor_task_lock, curthread) == LK_EXCLUSIVE,
+	    ("sensor task lock is not held"));
+
 	st->nextrun = time_uptime + st->period;
 
 	TAILQ_FOREACH(cst, &sensor_tasklist, entry) {
 		if (cst->nextrun > st->nextrun) {
 			TAILQ_INSERT_BEFORE(cst, st, entry);
-			lockmgr(&sensor_task_lock, LK_RELEASE);
 			return;
 		}
 	}
 
 	/* must be an empty list, or at the end of the list */
 	TAILQ_INSERT_TAIL(&sensor_tasklist, st, entry);
-	lockmgr(&sensor_task_lock, LK_RELEASE);
 }
 
 /*
