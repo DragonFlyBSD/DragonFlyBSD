@@ -44,6 +44,10 @@ FLAGS+=		-DIN_GCC -DHAVE_CONFIG_H
 FLAGS+=		-DPREFIX1=\"${TOOLS_PREFIX}/usr\"
 FLAGS+=		-DPREFIX2=\"${USRDATA_PREFIX}/usr\"
 
+.if defined(BOOTSTRAPPING)
+FLAGS+=		-DCTOOLS
+.endif
+
 CFLAGS+=	${FLAGS}
 
 .include "Makefile.tgt"
