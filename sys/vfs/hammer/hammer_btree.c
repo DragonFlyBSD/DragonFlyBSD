@@ -86,7 +86,8 @@ static int btree_search(hammer_cursor_t cursor, int flags);
 static int btree_split_internal(hammer_cursor_t cursor);
 static int btree_split_leaf(hammer_cursor_t cursor);
 static int btree_remove(hammer_cursor_t cursor);
-static int btree_node_is_full(hammer_node_ondisk_t node);
+static __inline int btree_node_is_full(hammer_node_ondisk_t node);
+static __inline int btree_max_elements(u_int8_t type);
 static int hammer_btree_mirror_propagate(hammer_cursor_t cursor,	
 			hammer_tid_t mirror_tid);
 static void hammer_make_separator(hammer_base_elm_t key1,
@@ -3020,26 +3021,15 @@ hammer_make_separator(hammer_base_elm_t key1, hammer_base_elm_t key2,
 /*
  * Return whether a generic internal or leaf node is full
  */
-static int
+static __inline
+int
 btree_node_is_full(hammer_node_ondisk_t node)
 {
-	switch(node->type) {
-	case HAMMER_BTREE_TYPE_INTERNAL:
-		if (node->count == HAMMER_BTREE_INT_ELMS)
-			return(1);
-		break;
-	case HAMMER_BTREE_TYPE_LEAF:
-		if (node->count == HAMMER_BTREE_LEAF_ELMS)
-			return(1);
-		break;
-	default:
-		panic("illegal btree type");
-	}
-	return(0);
+	return(btree_max_elements(node->type) == node->count);
 }
 
-#if 0
-static int
+static __inline
+int
 btree_max_elements(u_int8_t type)
 {
 	if (type == HAMMER_BTREE_TYPE_LEAF)
@@ -3048,7 +3038,6 @@ btree_max_elements(u_int8_t type)
 		return(HAMMER_BTREE_INT_ELMS);
 	panic("btree_max_elements: bad type %d", type);
 }
-#endif
 
 void
 hammer_print_btree_node(hammer_node_ondisk_t ondisk)
