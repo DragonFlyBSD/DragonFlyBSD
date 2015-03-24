@@ -1024,8 +1024,6 @@ hammer_btree_delete(hammer_cursor_t cursor)
  *   right boundary is non-inclusive.  The create_tid is a generic part
  *   of the key for internal nodes.
  *
- * - Leaf nodes contain terminal elements only now.
- *
  * - Filesystem lookups typically set HAMMER_CURSOR_ASOF, indicating a
  *   historical search.  ASOF and INSERT are mutually exclusive.  When
  *   doing an as-of lookup btree_search() checks for a right-edge boundary
