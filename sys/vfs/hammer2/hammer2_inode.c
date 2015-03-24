@@ -82,6 +82,9 @@ hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
  *
  * NOTE: In-memory inodes always point to hardlink targets (the actual file),
  *	 and never point to a hardlink pointer.
+ *
+ * NOTE: Caller must not passed HAMMER2_RESOLVE_NOREF because we use it
+ *	 internally and refs confusion will ensue.
  */
 hammer2_cluster_t *
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
@@ -93,31 +96,24 @@ hammer2_cluster_t *
 hammer2_inode_lock_nex(hammer2_inode_t *ip, int how)
 {
 	hammer2_cluster_t *cluster;
-	hammer2_chain_t *chain;
-	int i;
+
+	KKASSERT((how & HAMMER2_RESOLVE_NOREF) == 0);
 
 	hammer2_inode_ref(ip);
 	hammer2_mtx_ex(&ip->lock);
-	cluster = hammer2_cluster_copy(&ip->cluster,
-				       HAMMER2_CLUSTER_COPY_NOCHAINS);
 
-	ip->cluster.focus = NULL;
-	cluster->focus = NULL;
-
-	for (i = 0; i < cluster->nchains; ++i) {
-		chain = ip->cluster.array[i].chain;
-		if (chain == NULL) {
-			kprintf("inode_lock: %p: missing chain\n", ip);
-			continue;
-		}
-
-		hammer2_chain_lock(chain, how);
-		cluster->array[i].chain = chain;
-		if (cluster->focus == NULL)
-			cluster->focus = chain;
-		if (ip->cluster.focus == NULL)
-			ip->cluster.focus = chain;
-	}
+	/*
+	 * Create a copy of ip->cluster and lock it.  Note that the copy
+	 * will have a ref on the cluster AND its chains and we don't want
+	 * a second ref to either when we lock it.
+	 *
+	 * The copy will not have a focus until it is locked.
+	 *
+	 * We save the focused chain in our embedded ip->cluster for now XXX.
+	 */
+	cluster = hammer2_cluster_copy(&ip->cluster);
+	hammer2_cluster_lock(cluster, how | HAMMER2_RESOLVE_NOREF);
+	ip->cluster.focus = cluster->focus;
 
 	/*
 	 * Returned cluster must resolve hardlink pointers
@@ -162,30 +158,23 @@ hammer2_inode_lock_sh(hammer2_inode_t *ip)
 {
 	const hammer2_inode_data_t *ripdata;
 	hammer2_cluster_t *cluster;
-	hammer2_chain_t *chain;
-	int i;
 
 	hammer2_inode_ref(ip);
-	cluster = hammer2_cluster_copy(&ip->cluster,
-				       HAMMER2_CLUSTER_COPY_NOCHAINS);
 	hammer2_mtx_sh(&ip->lock);
 
-	cluster->focus = NULL;
-
-	for (i = 0; i < cluster->nchains; ++i) {
-		chain = ip->cluster.array[i].chain;
-
-		if (chain == NULL) {
-			kprintf("inode_lock: %p: missing chain\n", ip);
-			continue;
-		}
-
-		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
-					  HAMMER2_RESOLVE_SHARED);
-		cluster->array[i].chain = chain;
-		if (cluster->focus == NULL)
-			cluster->focus = chain;
-	}
+	/*
+	 * Create a copy of ip->cluster and lock it.  Note that the copy
+	 * will have a ref on the cluster AND its chains and we don't want
+	 * a second ref to either when we lock it.
+	 *
+	 * The copy will not have a focus until it is locked.
+	 */
+	cluster = hammer2_cluster_copy(&ip->cluster);
+	hammer2_cluster_lock(cluster, HAMMER2_RESOLVE_ALWAYS |
+				      HAMMER2_RESOLVE_SHARED |
+				      HAMMER2_RESOLVE_NOREF);
+	/* do not update ip->cluster.focus on a shared inode lock! */
+	/*ip->cluster.focus = cluster->focus;*/
 
 	/*
 	 * Returned cluster must resolve hardlink pointers
@@ -1107,9 +1096,13 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 }
 
 /*
- * Repoint ip->cluster's chains to cluster's chains.  Caller must hold
- * the inode exclusively locked.  cluster may be NULL to clean out any
- * chains in ip->cluster.
+ * Repoint ip->cluster's chains to cluster's chains and fixup the default
+ * focus.
+ *
+ * Caller must hold the inode exclusively locked and cluster, if not NULL,
+ * must also be locked.
+ *
+ * Cluster may be NULL to clean out any chains in ip->cluster.
  */
 void
 hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,

@@ -631,9 +631,6 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_FREEMAP_HEUR		(HAMMER2_FREEMAP_HEUR_NRADIX * \
 					 HAMMER2_FREEMAP_HEUR_TYPES)
 
-#define HAMMER2_CLUSTER_COPY_NOCHAINS	0x0001	/* do not copy or ref chains */
-#define HAMMER2_CLUSTER_COPY_NOREF	0x0002	/* do not ref chains or cl */
-
 /*
  * Transaction Rendezvous
  */
@@ -1108,8 +1105,7 @@ int hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
 void hammer2_cluster_replace(hammer2_cluster_t *dst, hammer2_cluster_t *src);
 void hammer2_cluster_replace_locked(hammer2_cluster_t *dst,
 			hammer2_cluster_t *src);
-hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster,
-			int with_chains);
+hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
 void hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,

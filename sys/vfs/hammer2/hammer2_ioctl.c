@@ -179,7 +179,7 @@ hammer2_ioctl_recluster(hammer2_inode_t *ip, void *data)
 
 	fp = holdfp(curproc->p_fd, recl->fd, -1);
 	if (fp) {
-		kprintf("reconnect to cluster: ");
+		kprintf("reconnect to cluster: XXX ");
 		cluster = &ip->pmp->iroot->cluster;
 		if (cluster->nchains != 1 || cluster->focus == NULL) {
 			kprintf("not a local device mount\n");

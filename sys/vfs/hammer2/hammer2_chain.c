@@ -991,43 +991,6 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	}
 }
 
-#if 0
-
-/*
- * REMOVED - see cluster code
- *
- * Set a chain modified, making it read-write and duplicating it if necessary.
- * This function will assign a new physical block to the chain if necessary
- *
- * Duplication of already-modified chains is possible when the modification
- * crosses a flush synchronization boundary.
- *
- * Non-data blocks - The chain should be locked to at least the RESOLVE_MAYBE
- *		     level or the COW operation will not work.
- *
- * Data blocks	   - The chain is usually locked RESOLVE_NEVER so as not to
- *		     run the data through the device buffers.
- *
- * This function may return a different chain than was passed, in which case
- * the old chain will be unlocked and the new chain will be locked.
- *
- * ip->chain may be adjusted by hammer2_chain_modify_ip().
- */
-hammer2_inode_data_t *
-hammer2_chain_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
-			hammer2_chain_t **chainp, int flags)
-{
-	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-	hammer2_chain_modify(trans, chainp, flags);
-	if (ip->chain != *chainp)
-		hammer2_inode_repoint(ip, NULL, *chainp);
-	if (ip->vp)
-		vsetisdirty(ip->vp);
-	return(&ip->chain->data->ipdata);
-}
-
-#endif
-
 void
 hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 {

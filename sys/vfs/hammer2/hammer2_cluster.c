@@ -33,9 +33,9 @@
  */
 /*
  * The cluster module collects multiple chains representing the same
- * information into a single entity.  It allows direct access to media
- * data as long as it is not blockref array data.  Meaning, basically,
- * just inode and file data.
+ * information from different nodes into a single entity.  It allows direct
+ * access to media data as long as it is not blockref array data (which
+ * will obviously have to be different at each node).
  *
  * This module also handles I/O dispatch, status rollup, and various
  * mastership arrangements including quorum operations.  It effectively
@@ -44,6 +44,11 @@
  * Many of the API calls mimic chain API calls but operate on clusters
  * instead of chains.  Please see hammer2_chain.c for more complete code
  * documentation of the API functions.
+ *
+ * WARNING! This module is *extremely* complex.  It must issue asynchronous
+ *	    locks and I/O, do quorum and/or master-slave processing, and
+ *	    it must operate properly even if some nodes are broken (which
+ *	    can also mean indefinite locks).
  */
 #include <sys/cdefs.h>
 #include <sys/param.h>
@@ -180,6 +185,10 @@ hammer2_cluster_setmethod_check(hammer2_trans_t *trans,
  * Create a cluster with one ref from the specified chain.  The chain
  * is not further referenced.  The caller typically supplies a locked
  * chain and transfers ownership to the cluster.
+ *
+ * The returned cluster will be focused on the chain (strictly speaking,
+ * the focus should be NULL if the chain is not locked but we do not check
+ * for this condition).
  */
 hammer2_cluster_t *
 hammer2_cluster_from_chain(hammer2_chain_t *chain)
@@ -199,7 +208,9 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
 /*
  * Allocates a cluster and its underlying chain structures.  The underlying
  * chains will be locked.  The cluster and underlying chains will have one
- * ref.
+ * ref and will be focused on the first chain.
+ *
+ * XXX focus on first chain.
  */
 hammer2_cluster_t *
 hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
@@ -314,9 +325,9 @@ hammer2_cluster_drop(hammer2_cluster_t *cluster)
 		}
 	}
 	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
-		cluster->focus = NULL;
+		cluster->focus = NULL;		/* safety */
 		kfree(cluster, M_HAMMER2);
-		/* cluster = NULL; safety */
+		/* cluster is invalid */
 	}
 }
 
@@ -329,6 +340,8 @@ hammer2_cluster_wait(hammer2_cluster_t *cluster)
 /*
  * Lock and ref a cluster.  This adds a ref to the cluster and its chains
  * and then locks them.
+ *
+ * The act of locking a cluster sets its focus if not already set.
  */
 int
 hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
@@ -338,8 +351,11 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 	int i;
 	int error;
 
+	if ((how & HAMMER2_RESOLVE_NOREF) == 0)
+		atomic_add_int(&cluster->refs, 1);
+
 	error = 0;
-	atomic_add_int(&cluster->refs, 1);
+
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
 		if (chain) {
@@ -352,6 +368,8 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 				atomic_add_int(&cluster->refs, -1);
 				break;
 			}
+			if (cluster->focus == NULL)
+				cluster->focus = chain;
 		}
 	}
 	return error;
@@ -443,23 +461,12 @@ hammer2_cluster_replace_locked(hammer2_cluster_t *dst, hammer2_cluster_t *src)
 
 /*
  * Copy a cluster, returned a ref'd cluster.  All underlying chains
- * are also ref'd, but not locked.
- *
- * If HAMMER2_CLUSTER_COPY_CHAINS is specified, the chains are copied
- * to the new cluster and a reference is nominally added to them and to
- * the cluster.  The cluster will have 1 ref.
- *
- * If HAMMER2_CLUSTER_COPY_NOREF is specified along with CHAINS, the chains
- * are copied but no additional references are made and the cluster will have
- * 0 refs.  Callers must ref the cluster and the chains before dropping it
- * (typically by locking it).
- *
- * If flags are passed as 0 the copy is setup as if it contained the chains
- * but the chains will not be copied over, and the cluster will have 0 refs.
- * Callers must ref the cluster before dropping it (typically by locking it).
+ * are also ref'd, but not locked.  The cluster focus is not set because
+ * the cluster is not yet locked (and the originating cluster does not
+ * have to be locked either).
  */
 hammer2_cluster_t *
-hammer2_cluster_copy(hammer2_cluster_t *ocluster, int copy_flags)
+hammer2_cluster_copy(hammer2_cluster_t *ocluster)
 {
 	hammer2_pfsmount_t *pmp = ocluster->pmp;
 	hammer2_cluster_t *ncluster;
@@ -469,17 +476,13 @@ hammer2_cluster_copy(hammer2_cluster_t *ocluster, int copy_flags)
 	ncluster = kmalloc(sizeof(*ncluster), M_HAMMER2, M_WAITOK | M_ZERO);
 	ncluster->pmp = pmp;
 	ncluster->nchains = ocluster->nchains;
-	ncluster->refs = (copy_flags & HAMMER2_CLUSTER_COPY_NOREF) ? 0 : 1;
-	if ((copy_flags & HAMMER2_CLUSTER_COPY_NOCHAINS) == 0) {
-		ncluster->focus = ocluster->focus;
-		for (i = 0; i < ocluster->nchains; ++i) {
-			chain = ocluster->array[i].chain;
-			ncluster->array[i].chain = chain;
-			if ((copy_flags & HAMMER2_CLUSTER_COPY_NOREF) == 0 &&
-			    chain) {
-				hammer2_chain_ref(chain);
-			}
-		}
+	ncluster->refs = 1;
+
+	for (i = 0; i < ocluster->nchains; ++i) {
+		chain = ocluster->array[i].chain;
+		ncluster->array[i].chain = chain;
+		if (chain)
+			hammer2_chain_ref(chain);
 	}
 	return (ncluster);
 }
@@ -1102,7 +1105,7 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 
 /*
  * Return locked parent cluster given a locked child.  The child remains
- * locked on return.
+ * locked on return.  The new parent's focus follows the child's focus.
  */
 hammer2_cluster_t *
 hammer2_cluster_parent(hammer2_cluster_t *cluster)
@@ -1110,15 +1113,18 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 	hammer2_cluster_t *cparent;
 	int i;
 
-	cparent = hammer2_cluster_copy(cluster, HAMMER2_CLUSTER_COPY_NOCHAINS);
-	for (i = 0; i < cluster->nchains; ++i) {
+	cparent = hammer2_cluster_copy(cluster);
+	for (i = 0; i < cparent->nchains; ++i) {
 		hammer2_chain_t *chain;
 		hammer2_chain_t *rchain;
 
-		chain = cluster->array[i].chain;
+		/*
+		 * Calculate parent for each element.  Old chain has an extra
+		 * ref for cparent but the lock remains with cluster.
+		 */
+		chain = cparent->array[i].chain;
 		if (chain == NULL)
 			continue;
-		hammer2_chain_ref(chain);
 		while ((rchain = chain->parent) != NULL) {
 			hammer2_chain_ref(rchain);
 			hammer2_chain_unlock(chain);
@@ -1129,8 +1135,10 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 				break;
 			hammer2_chain_unlock(rchain);
 		}
-		hammer2_chain_drop(chain);
+		if (cluster->focus == chain)
+			cparent->focus = rchain;
 		cparent->array[i].chain = rchain;
+		hammer2_chain_drop(chain);
 	}
 	return cparent;
 }
