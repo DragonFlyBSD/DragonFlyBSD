@@ -93,8 +93,8 @@ hammer_cmd_iostats(char **av, int ac)
 		if (count) {
 			if ((count & 15) == 1)
 				printf("  file-rd   file-wr  dev-read dev-write"
-				    " inode_ops ino_flsh cmmit     undo\n");
-			printf("%9jd %9jd %9jd %9jd %9jd %8jd %5jd %8jd\n",
+				    " inode_ops ino_flush    commit      undo\n");
+			printf("%9jd %9jd %9jd %9jd %9jd %9jd %9jd %9jd\n",
 			    (intmax_t)(ios.file_reads - iosc.file_reads),
 			    (intmax_t)(ios.file_writes - iosc.file_writes),
 			    (intmax_t)(ios.dev_reads - iosc.dev_reads),
