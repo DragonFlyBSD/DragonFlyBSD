@@ -315,8 +315,15 @@ sensor_sysctl_install(struct ksensordev *sensdev)
 	SYSCTL_ASSERT_XLOCKED();
 
 	sysctl_ctx_init(cl);
-	ol = SYSCTL_CHILDREN(SYSCTL_ADD_NODE(cl, (&SYSCTL_NODE_CHILDREN(_hw,
-	    sensors)), sensdev->num, sensdev->xname, CTLFLAG_RD, NULL, ""));
+	sensdev->oid = SYSCTL_ADD_NODE(cl, SYSCTL_STATIC_CHILDREN(_hw_sensors),
+	    sensdev->num, sensdev->xname, CTLFLAG_RD, NULL, "");
+	if (sensdev->oid == NULL) {
+		kprintf("sensor: add sysctl tree for %s failed\n",
+		    sensdev->xname);
+		return;
+	}
+
+	ol = SYSCTL_CHILDREN(sensdev->oid);
 	SLIST_FOREACH(s, sh, list) {
 		char n[32];
 
@@ -329,11 +336,10 @@ sensor_sysctl_install(struct ksensordev *sensdev)
 static void
 sensor_sysctl_deinstall(struct ksensordev *sensdev)
 {
-	struct sysctl_ctx_list *cl = &sensdev->clist;
-
 	SYSCTL_ASSERT_XLOCKED();
 
-	sysctl_ctx_free(cl);
+	if (sensdev->oid != NULL)
+		sysctl_ctx_free(&sensdev->clist);
 }
 
 static int

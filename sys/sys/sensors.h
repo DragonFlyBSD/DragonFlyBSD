@@ -145,10 +145,8 @@ struct ksensordev {
 	int maxnumt[SENSOR_MAX_TYPES];
 	int sensors_count;
 	struct ksensors_head sensors_list;
-	struct sysctl_ctx_list clist;	/* XXX: sysctl(9) .oid_handler() for
-					 * CTLTYPE_NODE type doesn't support
-					 * the undocumented sysctl magic.
-					 */
+	struct sysctl_oid *oid;
+	struct sysctl_ctx_list clist;
 };
 
 /* struct ksensordev */
