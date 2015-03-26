@@ -28,7 +28,7 @@ DEFAULT_SYS_PATH = ${.CURDIR}/../../share/mk
 DEFAULT_SYS_PATH = /usr/share/mk:.../share/mk
 .endif
 
-WARNS?= 	2
+WARNS?= 	4
 
 CPPFLAGS+=	-DUSE_EMALLOC
 CPPFLAGS+=	-DUSE_META

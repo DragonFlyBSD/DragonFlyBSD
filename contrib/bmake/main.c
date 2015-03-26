@@ -1528,7 +1528,6 @@ Cmd_Exec(const char *cmd, const char **errnum)
 
 
     *errnum = NULL;
-    savederr = 0;
 
     if (!shellName)
 	Shell_Init();
@@ -1582,6 +1581,7 @@ Cmd_Exec(const char *cmd, const char **errnum)
 	 */
 	(void)close(fds[1]);
 
+	savederr = 0;
 	Buf_Init(&buf, 0);
 
 	do {
