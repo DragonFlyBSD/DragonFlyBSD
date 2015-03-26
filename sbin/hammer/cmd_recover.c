@@ -92,8 +92,7 @@ hammer_cmd_recover(const char *target_dir)
 			}
 		}
 	}
-	if (data_buffer)
-		rel_buffer(data_buffer);
+	rel_buffer(data_buffer);
 
 	if (CachedPath) {
 		free(CachedPath);
@@ -414,8 +413,7 @@ recover_elm(hammer_btree_leaf_elm_t leaf)
 		break;
 	}
 done:
-	if (data_buffer)
-		rel_buffer(data_buffer);
+	rel_buffer(data_buffer);
 }
 
 #define RD_HSIZE	32768

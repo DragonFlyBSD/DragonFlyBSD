@@ -510,8 +510,7 @@ check_data_crc(hammer_btree_elm_t elm)
 		data_len -= len;
 		data_offset += len;
 	}
-	if (data_buffer)
-		rel_buffer(data_buffer);
+	rel_buffer(data_buffer);
 	if (error) {
 		switch (error) {	/* bad offset */
 		case -1:
@@ -664,8 +663,7 @@ print_record(hammer_btree_elm_t elm)
 	default:
 		break;
 	}
-	if (data_buffer)
-		rel_buffer(data_buffer);
+	rel_buffer(data_buffer);
 }
 
 static __inline
@@ -849,6 +847,5 @@ hammer_cmd_show_undo(void)
 			scan_offset += head->head.hdr_size;
 		}
 	}
-	if (data_buffer)
-		rel_buffer(data_buffer);
+	rel_buffer(data_buffer);
 }

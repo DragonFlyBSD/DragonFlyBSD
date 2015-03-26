@@ -197,6 +197,8 @@ get_volume(int32_t vol_no)
 void
 rel_volume(struct volume_info *volume)
 {
+	if (volume == NULL)
+		return;
 	/* not added to or removed from hammer cache */
 	--volume->cache.refs;
 }
@@ -346,6 +348,8 @@ rel_buffer(struct buffer_info *buffer)
 	struct volume_info *volume;
 	int hi;
 
+	if (buffer == NULL)
+		return;
 	assert(buffer->cache.refs > 0);
 	if (--buffer->cache.refs == 0) {
 		if (buffer->cache.delete) {
@@ -611,14 +615,10 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	hammer_off_t layer_offset;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
-	int didget;
 
-	if (volume == NULL) {
+	if (volume == NULL)
 		volume = get_volume(RootVolNo);
-		didget = 1;
-	} else {
-		didget = 0;
-	}
+
 	result_offset = volume->vol_free_off;
 	if (result_offset >= volume->vol_free_end)
 		panic("alloc_bigblock: Ran out of room, filesystem too small");
@@ -655,8 +655,7 @@ alloc_bigblock(struct volume_info *volume, int zone)
 		rel_volume(root_vol);
 	}
 
-	if (didget)
-		rel_volume(volume);
+	rel_volume(volume);
 	return(result_offset);
 }
 
@@ -760,8 +759,7 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 
 		scan += bytes;
 	}
-	if (buffer)
-		rel_buffer(buffer);
+	rel_buffer(buffer);
 }
 
 /*
@@ -881,11 +879,8 @@ again:
 	ptr = get_buffer_data(zone2_offset, bufferp, 0);
 	(*bufferp)->cache.modified = 1;
 
-	if (buffer1)
-		rel_buffer(buffer1);
-	if (buffer2)
-		rel_buffer(buffer2);
-
+	rel_buffer(buffer1);
+	rel_buffer(buffer2);
 	rel_volume(volume);
 	return(ptr);
 }

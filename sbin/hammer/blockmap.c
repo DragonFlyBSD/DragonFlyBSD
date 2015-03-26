@@ -172,12 +172,9 @@ blockmap_lookup(hammer_off_t zone_offset,
 		*save_layer2 = *layer2;
 
 done:
-	if (buffer1)
-		rel_buffer(buffer1);
-	if (buffer2)
-		rel_buffer(buffer2);
-	if (root_volume)
-		rel_volume(root_volume);
+	rel_buffer(buffer1);
+	rel_buffer(buffer2);
+	rel_volume(root_volume);
 
 	if (errorp)
 		*errorp = error;

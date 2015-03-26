@@ -155,10 +155,8 @@ dump_blockmap(const char *label, int zone)
 				layer2->bytes_free);
 		}
 	}
-	if (buffer1)
-		rel_buffer(buffer1);
-	if (buffer2)
-		rel_buffer(buffer2);
+	rel_buffer(buffer1);
+	rel_buffer(buffer2);
 	rel_volume(root_volume);
 }
 
