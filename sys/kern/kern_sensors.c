@@ -36,9 +36,6 @@
 
 #include <sys/mplock2.h>
 
-static struct spinlock	sensor_dev_lock =
-    SPINLOCK_INITIALIZER(sensor_dev_lock, "sensor_dev_lock");
-
 static int		sensordev_count;
 static SLIST_HEAD(, ksensordev) sensordev_list =
     SLIST_HEAD_INITIALIZER(sensordev_list);
@@ -74,8 +71,8 @@ sensordev_install(struct ksensordev *sensdev)
 {
 	struct ksensordev *v, *nv;
 
-	/* mtx_lock(&Giant); */
-	spin_lock(&sensor_dev_lock);
+	SYSCTL_XLOCK();
+
 	if (sensordev_count == 0) {
 		sensdev->num = 0;
 		SLIST_INSERT_HEAD(&sensordev_list, sensdev, list);
@@ -88,10 +85,10 @@ sensordev_install(struct ksensordev *sensdev)
 		SLIST_INSERT_AFTER(v, sensdev, list);
 	}
 	sensordev_count++;
-	/* mtx_unlock(&Giant); */
-	spin_unlock(&sensor_dev_lock);
 
 	sensor_sysctl_install(sensdev);
+
+	SYSCTL_XUNLOCK();
 }
 
 void
@@ -101,8 +98,8 @@ sensor_attach(struct ksensordev *sensdev, struct ksensor *sens)
 	struct ksensors_head *sh;
 	int i;
 
-	/* mtx_lock(&Giant); */
-	spin_lock(&sensor_dev_lock);
+	SYSCTL_XLOCK();
+
 	sh = &sensdev->sensors_list;
 	if (sensdev->sensors_count == 0) {
 		for (i = 0; i < SENSOR_MAX_TYPES; i++)
@@ -122,27 +119,28 @@ sensor_attach(struct ksensordev *sensdev, struct ksensor *sens)
 			sens->numt = 0;
 		SLIST_INSERT_AFTER(v, sens, list);
 	}
-	/* we only increment maxnumt[] if the sensor was added
+	/*
+	 * We only increment maxnumt[] if the sensor was added
 	 * to the last position of sensors of this type
 	 */
 	if (sensdev->maxnumt[sens->type] == sens->numt)
 		sensdev->maxnumt[sens->type]++;
 	sensdev->sensors_count++;
-	spin_unlock(&sensor_dev_lock);
-	/* mtx_unlock(&Giant); */
+
+	SYSCTL_XUNLOCK();
 }
 
 void
 sensordev_deinstall(struct ksensordev *sensdev)
 {
-	/* mtx_lock(&Giant); */
-	spin_lock(&sensor_dev_lock);
+	SYSCTL_XLOCK();
+
 	sensordev_count--;
 	SLIST_REMOVE(&sensordev_list, sensdev, ksensordev, list);
-	/* mtx_unlock(&Giant); */
-	spin_unlock(&sensor_dev_lock);
 
 	sensor_sysctl_deinstall(sensdev);
+
+	SYSCTL_XUNLOCK();
 }
 
 void
@@ -150,16 +148,19 @@ sensor_detach(struct ksensordev *sensdev, struct ksensor *sens)
 {
 	struct ksensors_head *sh;
 
-	/* mtx_lock(&Giant); */
+	SYSCTL_XLOCK();
+
 	sh = &sensdev->sensors_list;
 	sensdev->sensors_count--;
 	SLIST_REMOVE(sh, sens, ksensor, list);
-	/* we only decrement maxnumt[] if this is the tail 
+	/*
+	 * We only decrement maxnumt[] if this is the tail 
 	 * sensor of this type
 	 */
 	if (sens->numt == sensdev->maxnumt[sens->type] - 1)
 		sensdev->maxnumt[sens->type]--;
-	/* mtx_unlock(&Giant); */
+
+	SYSCTL_XUNLOCK();
 }
 
 static struct ksensordev *
@@ -167,14 +168,12 @@ sensordev_get(int num)
 {
 	struct ksensordev *sd;
 
-	spin_lock(&sensor_dev_lock);
-	SLIST_FOREACH(sd, &sensordev_list, list)
-		if (sd->num == num) {
-			spin_unlock(&sensor_dev_lock);
-			return (sd);
-		}
+	SYSCTL_ASSERT_XLOCKED();
 
-	spin_unlock(&sensor_dev_lock);
+	SLIST_FOREACH(sd, &sensordev_list, list) {
+		if (sd->num == num)
+			return (sd);
+	}
 	return (NULL);
 }
 
@@ -184,16 +183,13 @@ sensor_find(struct ksensordev *sensdev, enum sensor_type type, int numt)
 	struct ksensor *s;
 	struct ksensors_head *sh;
 
-	spin_lock(&sensor_dev_lock);
+	SYSCTL_ASSERT_XLOCKED();
+
 	sh = &sensdev->sensors_list;
 	SLIST_FOREACH(s, sh, list) {
-		if (s->type == type && s->numt == numt) {
-			spin_unlock(&sensor_dev_lock);
+		if (s->type == type && s->numt == numt)
 			return (s);
-		}
 	}
-
-	spin_unlock(&sensor_dev_lock);
 	return (NULL);
 }
 
@@ -316,6 +312,8 @@ sensor_sysctl_install(struct ksensordev *sensdev)
 	struct ksensor *s;
 	struct ksensors_head *sh = &sensdev->sensors_list;
 
+	SYSCTL_ASSERT_XLOCKED();
+
 	sysctl_ctx_init(cl);
 	ol = SYSCTL_CHILDREN(SYSCTL_ADD_NODE(cl, (&SYSCTL_NODE_CHILDREN(_hw,
 	    sensors)), sensdev->num, sensdev->xname, CTLFLAG_RD, NULL, ""));
@@ -332,6 +330,8 @@ static void
 sensor_sysctl_deinstall(struct ksensordev *sensdev)
 {
 	struct sysctl_ctx_list *cl = &sensdev->clist;
+
+	SYSCTL_ASSERT_XLOCKED();
 
 	sysctl_ctx_free(cl);
 }
@@ -357,7 +357,6 @@ sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS)
 
 	kfree(usd, M_TEMP);
 	return (error);
-
 }
 
 static int
