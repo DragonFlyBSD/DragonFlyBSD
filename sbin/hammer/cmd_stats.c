@@ -34,7 +34,6 @@
  * $DragonFly: src/sbin/hammer/cmd_stats.c,v 1.3 2008/07/14 20:28:07 dillon Exp $
  */
 
-#include <libhammer.h>
 #include <math.h>
 
 #include "hammer.h"

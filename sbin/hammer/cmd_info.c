@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  */
-#include <libhammer.h>
+
 #include <libutil.h>
 
 #include "hammer.h"
