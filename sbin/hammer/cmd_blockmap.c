@@ -438,8 +438,8 @@ dump_collect(collect_t collect, int *stats)
 		layer2 = &collect->layer2[i];
 
 		/*
-		 * Currently just check bigblocks referenced by data
-		 * or B-Tree nodes.
+		 * Check bigblocks referenced by data, B-Tree nodes
+		 * and UNDO fifo.
 		 */
 		if (track2->entry_crc == 0)
 			continue;
