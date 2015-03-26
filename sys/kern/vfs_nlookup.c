@@ -595,12 +595,31 @@ nlookup(struct nlookupdata *nd)
 		 * Expect the parent to always be good since the
 		 * mountpoint doesn't go away.  XXX hack.  cache_get()
 		 * requires the ncp to already have a ref as a safety.
+		 *
+		 * However, a process which has been broken out of a chroot
+		 * will wind up with a NULL parent if it tries to '..' above
+		 * the real root, deal with the case.  Note that this does
+		 * not protect us from a jail breakout, it just stops a panic
+		 * if the jail-broken process tries to '..' past the real
+		 * root.
 		 */
 		nctmp = nd->nl_nch;
-		while (nctmp.ncp == nctmp.mount->mnt_ncmountpt.ncp)
+		while (nctmp.ncp == nctmp.mount->mnt_ncmountpt.ncp) {
 			nctmp = nctmp.mount->mnt_ncmounton;
-		nctmp.ncp = nctmp.ncp->nc_parent;
-		KKASSERT(nctmp.ncp != NULL);
+			if (nctmp.ncp == NULL)
+				break;
+		}
+		if (nctmp.ncp == NULL) {
+			if (curthread->td_proc) {
+				kprintf("vfs_nlookup: '..' traverse broke "
+					"jail: pid %d (%s)\n",
+					curthread->td_proc->p_pid,
+					curthread->td_comm);
+			}
+			nctmp = nd->nl_rootnch;
+		} else {
+			nctmp.ncp = nctmp.ncp->nc_parent;
+		}
 		cache_hold(&nctmp);
 		cache_unlock(&nd->nl_nch);
 		nd->nl_flags &= ~NLC_NCPISLOCKED;
