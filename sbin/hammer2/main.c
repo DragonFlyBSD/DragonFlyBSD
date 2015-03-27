@@ -50,7 +50,7 @@ main(int ac, char **av)
 	const char *sel_path = NULL;
 	const char *uuid_str = NULL;
 	const char *arg;
-	int pfs_type = DMSG_PFSTYPE_NONE;
+	int pfs_type = HAMMER2_PFSTYPE_NONE;
 	int all_opt = 0;
 	int ecode = 0;
 	int ch;

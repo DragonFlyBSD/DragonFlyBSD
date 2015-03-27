@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2013-2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -49,6 +49,62 @@
  *	    locks and I/O, do quorum and/or master-slave processing, and
  *	    it must operate properly even if some nodes are broken (which
  *	    can also mean indefinite locks).
+ *
+ *				CLUSTER OPERATIONS
+ *
+ * Cluster operations can be broken down into three pieces:
+ *
+ * (1) Chain locking and data retrieval.
+ *		hammer2_cluster_lock()
+ *		hammer2_cluster_parent()
+ *
+ *	- Most complex functions, quorum management on transaction ids.
+ *
+ *	- Locking and data accesses must be internally asynchronous.
+ *
+ *	- Validate and manage cache coherency primitives (cache state
+ *	  is stored in chain topologies but must be validated by these
+ *	  functions).
+ *
+ * (2) Lookups and Scans
+ *		hammer2_cluster_lookup()
+ *		hammer2_cluster_next()
+ *
+ *	- Depend on locking & data retrieval functions, but still complex.
+ *
+ *	- Must do quorum management on transaction ids.
+ *
+ *	- Lookup and Iteration ops Must be internally asynchronous.
+ *
+ * (3) Modifying Operations
+ *		hammer2_cluster_create()
+ *		hammer2_cluster_rename()
+ *		hammer2_cluster_delete()
+ *		hammer2_cluster_modify()
+ *		hammer2_cluster_modsync()
+ *
+ *	- Can usually punt on failures, operation continues unless quorum
+ *	  is lost.  If quorum is lost, must wait for resynchronization
+ *	  (depending on the management mode).
+ *
+ *	- Must disconnect node on failures (also not flush), remount, and
+ *	  resynchronize.
+ *
+ *	- Network links (via kdmsg) are relatively easy to issue as the
+ *	  complex underworkings of hammer2_chain.c don't have to messed
+ *	  with (the protocol is at a higher level than block-level).
+ *
+ *	- Multiple local disk nodes (i.e. block devices) are another matter.
+ *	  Chain operations have to be dispatched to per-node threads (xN)
+ *	  because we can't asynchronize potentially very complex chain
+ *	  operations in hammer2_chain.c (it would be a huge mess).
+ *
+ *	  (these threads are also used to terminate incoming kdmsg ops from
+ *	  other machines).
+ *
+ *	- Single-node filesystems do not use threads and will simply call
+ *	  hammer2_chain.c functions directly.  This short-cut is handled
+ *	  at the base of each cluster function.
  */
 #include <sys/cdefs.h>
 #include <sys/param.h>
@@ -1105,7 +1161,8 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 
 /*
  * Return locked parent cluster given a locked child.  The child remains
- * locked on return.  The new parent's focus follows the child's focus.
+ * locked on return.  The new parent's focus follows the child's focus
+ * and the parent is always resolved.
  */
 hammer2_cluster_t *
 hammer2_cluster_parent(hammer2_cluster_t *cluster)

@@ -685,6 +685,34 @@ typedef struct hammer2_mount hammer2_mount_t;
  * PFS under a specific device mount (HMP).  The distinction is important
  * because the elements backing a cluster mount can change on the fly.
  *
+ * pfs_mode and pfs_nmasters critically describes how a HAMMER2 filesytem
+ * mount should operate.  pfs_nmasters indicates how many master PFSs
+ * exist for the filesystem (whether available or not).  pfs_mode is
+ * a bitmask:
+ *
+ *	XXX this should be automatic based on the 'primary' mount.. based on
+ *	which target you are mounting.
+ *
+ *	HAMMER2_PFSMODE_QUORUM	- Validate against quorum of masters,
+ *				  else operate unsynchronized.
+ *
+ *	HAMMER2_PFSMODE_RW	- Allow writing to the cluster,
+ *				  else do not allow.
+ *
+ *	When operating in quorum mode modifying operations flow into
+ *	a quorum+ of masters and all other local PFS types are synchronized
+ *	in the background.  Other PFS types will be used to improve or avoid
+ *	network I/O only if they agree with a quorum of masters.
+ *
+ *	When not operating in quorum mode modifying operations may only flow
+ *	into a SOFT_MASTER and will be synchronized with the quorum in the
+ *	background, and will not be cache-coherent with the quorum.  Think
+ *	laptop-on-the-road.  Other PFS types will be used to improve or avoid
+ *	network I/O only if they agree with the SOFT_MASTER.
+ *
+ *	When not operating in quorum mode a read-only mount can be used to
+ *	access a particular PFS unsynchronized.
+ *
  * Usually the first element under the cluster represents the original
  * user-requested mount that bootstraps the whole mess.  In significant
  * setups the original is usually just a read-only media image (or
@@ -710,6 +738,11 @@ struct hammer2_pfsmount {
 	hammer2_tid_t		alloc_tid;
 	hammer2_tid_t		flush_tid;
 	hammer2_tid_t		inode_tid;
+	uint8_t			pfs_nmasters;	/* total masters */
+	uint8_t			pfs_mode;	/* operating mode PFSMODE */
+	uint8_t			unused01;
+	uint8_t			unused02;
+	uint32_t		unused03;
 	long			inmem_inodes;
 	uint32_t		inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */

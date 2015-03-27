@@ -153,7 +153,7 @@ TAILQ_HEAD(dmsg_media_queue, dmsg_media);
 
 struct dmsg_media {
 	TAILQ_ENTRY(dmsg_media) entry;
-	uuid_t  mediaid;
+	uuid_t  media_id;
 	int     refs;
 	void	*usrhandle;
 };

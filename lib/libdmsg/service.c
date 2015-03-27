@@ -111,8 +111,8 @@ master_auth_signal(dmsg_iocom_t *iocom)
 			     DMSG_LNK_CONN | DMSGF_CREATE,
 			     master_auth_conn_rx, NULL);
 	msg->any.lnk_conn.peer_mask = (uint64_t)-1;
-	msg->any.lnk_conn.peer_type = DMSG_PEER_CLUSTER;
-	msg->any.lnk_conn.pfs_mask = (uint64_t)-1;
+	msg->any.lnk_conn.peer_type = DMSG_PEER_ROUTER;
+	msg->any.lnk_conn.peer_mask = (uint64_t)-1;
 
 	dmsg_msg_write(msg);
 

@@ -911,19 +911,35 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 
 /*
  * PFS types identify a PFS on media and in LNK_SPAN messages.
- *
  * PFS types >= 16 belong to HAMMER, 0-15 are defined in sys/dmsg.h
+ *
+ * For example, a mount operating in SOFT_MASTER mode might have nodes
+ * representing several MASTERs, CACHEs, and one SOFT_MASTER, and will
+ * operate by modifying the SOFT_MASTER and allowing another thread
+ * synchronize it to the MASTERs.  But if it were operating in MASTER
+ * mode it would ignore the SOFT_MASTER and use the quorum protocol
+ * on the MASTERs.
  */
 /* 0-15 reserved by sys/dmsg.h */
-#define HAMMER2_PFSTYPE_CACHE		16
-#define HAMMER2_PFSTYPE_COPY		17
-#define HAMMER2_PFSTYPE_SLAVE		18
-#define HAMMER2_PFSTYPE_SOFT_SLAVE	19
-#define HAMMER2_PFSTYPE_SOFT_MASTER	20
-#define HAMMER2_PFSTYPE_MASTER		21
-#define HAMMER2_PFSTYPE_SNAPSHOT	22
-#define HAMMER2_PFSTYPE_SUPROOT		23
-#define HAMMER2_PFSTYPE_MAX		32
+#define HAMMER2_PFSTYPE_NONE		0
+#define HAMMER2_PFSTYPE_CACHE		1
+#define HAMMER2_PFSTYPE_COPY		2
+#define HAMMER2_PFSTYPE_SLAVE		3
+#define HAMMER2_PFSTYPE_SOFT_SLAVE	4
+#define HAMMER2_PFSTYPE_SOFT_MASTER	5
+#define HAMMER2_PFSTYPE_MASTER		6
+#define HAMMER2_PFSTYPE_SNAPSHOT	7
+#define HAMMER2_PFSTYPE_SUPROOT		8
+#define HAMMER2_PFSTYPE_MAX		16
+
+#define HAMMER2_PFSTYPE_MASK		0x0F
+
+/*
+ * PFS mode of operation is a bitmask.  This is typically not stored
+ * on-media, but defined here because the field may be used in dmsgs.
+ */
+#define HAMMER2_PFSMODE_QUORUM		0x01
+#define HAMMER2_PFSMODE_RW		0x02
 
 /*
  *				Allocation Table

@@ -108,7 +108,7 @@ struct xa_softc {
 	struct devstat	stats;
 	struct disk_info info;
 	struct disk	disk;
-	uuid_t		pfs_fsid;
+	uuid_t		peer_id;
 	int		unit;
 	int		opencnt;
 	int		spancnt;
@@ -116,8 +116,8 @@ struct xa_softc {
 	int		serializing;
 	int		last_error;
 	int		terminating;
-	char		cl_label[64];   /* from LNK_SPAN cl_label (host/dev) */
-	char		fs_label[64];   /* from LNK_SPAN fs_label (serno str) */
+	char		peer_label[64];	/* from LNK_SPAN host/dev */
+	char		pfs_label[64];	/* from LNK_SPAN serno */
 	xa_tag_t	*open_tag;
 	TAILQ_HEAD(, bio) bioq;		/* pending BIOs */
 	TAILQ_HEAD(, xa_tag) tag_freeq;	/* available I/O tags */
@@ -239,7 +239,7 @@ DEV_MODULE(xdisk, xdisk_modevent, 0);
 static int
 xa_softc_cmp(xa_softc_t *sc1, xa_softc_t *sc2)
 {
-	return(strcmp(sc1->fs_label, sc2->fs_label));
+	return(strcmp(sc1->pfs_label, sc2->pfs_label));
 }
 
 /*
@@ -319,20 +319,19 @@ xdisk_attach(struct xdisk_attach_ioctl *xaioc)
 	/*
 	 * Setup our LNK_CONN advertisement for autoinitiate.
 	 *
-	 * Our filter is setup to only accept PEER_BLOCK/SERVER
-	 * advertisements.
+	 * Our filter is setup to only accept PEER_BLOCK advertisements.
+	 * XXX no peer_id filter.
 	 *
 	 * We need a unique pfs_fsid to avoid confusion.
 	 */
-	xaio->iocom.auto_lnk_conn.pfs_type = DMSG_PFSTYPE_CLIENT;
+	xaio->iocom.auto_lnk_conn.peer_type = DMSG_PEER_CLIENT;
 	xaio->iocom.auto_lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
-	xaio->iocom.auto_lnk_conn.peer_type = DMSG_PEER_BLOCK;
 	xaio->iocom.auto_lnk_conn.peer_mask = 1LLU << DMSG_PEER_BLOCK;
-	xaio->iocom.auto_lnk_conn.pfs_mask = 1LLU << DMSG_PFSTYPE_SERVER;
-	ksnprintf(xaio->iocom.auto_lnk_conn.fs_label,
-		  sizeof(xaio->iocom.auto_lnk_conn.fs_label),
-		  "xdisk");
-	kern_uuidgen(&xaio->iocom.auto_lnk_conn.pfs_fsid, 1);
+	ksnprintf(xaio->iocom.auto_lnk_conn.peer_label,
+		  sizeof(xaio->iocom.auto_lnk_conn.peer_label),
+		  "%s/xdisk",
+		  hostname);
+	/* kern_uuidgen(&xaio->iocom.auto_lnk_conn.pfs_fsid, 1); */
 
 	/*
 	 * Setup our LNK_SPAN advertisement for autoinitiate
@@ -407,16 +406,18 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 		 * Return a streaming result, leaving the transaction open
 		 * in both directions to allow sub-transactions.
 		 */
-		bcopy(msg->any.lnk_span.cl_label, xaio->dummysc.cl_label,
-		      sizeof(xaio->dummysc.cl_label));
-		xaio->dummysc.cl_label[sizeof(xaio->dummysc.cl_label) - 1] = 0;
+		bcopy(msg->any.lnk_span.peer_label, xaio->dummysc.peer_label,
+		      sizeof(xaio->dummysc.peer_label));
+		xaio->dummysc.peer_label[
+			sizeof(xaio->dummysc.peer_label) - 1] = 0;
 
-		bcopy(msg->any.lnk_span.fs_label, xaio->dummysc.fs_label,
-		      sizeof(xaio->dummysc.fs_label));
-		xaio->dummysc.fs_label[sizeof(xaio->dummysc.fs_label) - 1] = 0;
+		bcopy(msg->any.lnk_span.pfs_label, xaio->dummysc.pfs_label,
+		      sizeof(xaio->dummysc.pfs_label));
+		xaio->dummysc.pfs_label[
+			sizeof(xaio->dummysc.pfs_label) - 1] = 0;
 
 		xa_printf(3, "LINK_SPAN state %p create for %s\n",
-			  msg->state, msg->any.lnk_span.fs_label);
+			  msg->state, msg->any.lnk_span.pfs_label);
 
 		sc = RB_FIND(xa_softc_tree, &xa_device_tree, &xaio->dummysc);
 		if (sc == NULL) {
@@ -427,12 +428,12 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 			int n;
 
 			sc = kmalloc(sizeof(*sc), M_XDISK, M_WAITOK | M_ZERO);
-			bcopy(msg->any.lnk_span.cl_label, sc->cl_label,
-			      sizeof(sc->cl_label));
-			sc->cl_label[sizeof(sc->cl_label) - 1] = 0;
-			bcopy(msg->any.lnk_span.fs_label, sc->fs_label,
-			      sizeof(sc->fs_label));
-			sc->fs_label[sizeof(sc->fs_label) - 1] = 0;
+			bcopy(msg->any.lnk_span.peer_label, sc->peer_label,
+			      sizeof(sc->peer_label));
+			sc->peer_label[sizeof(sc->peer_label) - 1] = 0;
+			bcopy(msg->any.lnk_span.pfs_label, sc->pfs_label,
+			      sizeof(sc->pfs_label));
+			sc->pfs_label[sizeof(sc->pfs_label) - 1] = 0;
 
 			/* XXX FIXME O(N^2) */
 			unit = -1;
@@ -494,8 +495,8 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 			sc->info.d_secpercyl = sc->info.d_secpertrack *
 					       sc->info.d_nheads;
 			sc->info.d_ncylinders = 0;
-			if (sc->fs_label[0])
-				sc->info.d_serialno = sc->fs_label;
+			if (sc->pfs_label[0])
+				sc->info.d_serialno = sc->pfs_label;
 			/*
 			 * WARNING! disk_setdiskinfo() must be asynchronous
 			 *	    because we are in the rxmsg thread.  If
@@ -517,7 +518,7 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 			lockmgr(&sc->lk, LK_RELEASE);
 			if (sc->dev && sc->dev->si_disk) {
 				xa_printf(1, "reprobe disk: %s\n",
-					  sc->fs_label);
+					  sc->pfs_label);
 				disk_msg_send(DISK_DISK_REPROBE,
 					      sc->dev->si_disk,
 					      NULL);
@@ -534,7 +535,7 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 		 */
 		sc = msg->state->any.xa_sc;
 		xa_printf(3, "LINK_SPAN state %p delete for %s (sc=%p)\n",
-			  msg->state, (sc ? sc->fs_label : "(null)"), sc);
+			  msg->state, (sc ? sc->pfs_label : "(null)"), sc);
 		lockmgr(&sc->lk, LK_EXCLUSIVE);
 		msg->state->any.xa_sc = NULL;
 		TAILQ_REMOVE(&sc->spanq, msg->state, user_entry);

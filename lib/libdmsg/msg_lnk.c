@@ -73,7 +73,7 @@
  *			  each cluster.
  *
  * h2span_node		- Organizes the nodes in a cluster.  One structure
- *			  for each unique {cluster,node}, aka {fsid, pfs_fsid}.
+ *			  for each unique {cluster,node}, aka {peer_id, pfs_id}.
  *
  * h2span_link		- Organizes all incoming and outgoing LNK_SPAN message
  *			  transactions related to a node.
@@ -122,15 +122,16 @@ struct h2span_conn {
 };
 
 /*
- * All received LNK_SPANs are organized by cluster (pfs_clid),
- * node (pfs_fsid), and link (received LNK_SPAN transaction).
+ * All received LNK_SPANs are organized by peer id (peer_id),
+ * node (pfs_id), and link (received LNK_SPAN transaction).
  */
 struct h2span_cluster {
 	RB_ENTRY(h2span_cluster) rbnode;
 	struct h2span_node_tree tree;
-	uuid_t	pfs_clid;		/* shared fsid */
+	uuid_t	peer_id;		/* shared fsid */
 	uint8_t	peer_type;
-	char	cl_label[128];		/* cluster label (typ PEER_BLOCK) */
+	uint8_t reserved01[7];
+	char	peer_label[128];	/* string identification */
 	int	refs;			/* prevents destruction */
 };
 
@@ -139,8 +140,9 @@ struct h2span_node {
 	struct h2span_link_tree tree;
 	struct h2span_cluster *cls;
 	uint8_t	pfs_type;
-	uuid_t	pfs_fsid;		/* unique fsid */
-	char	fs_label[128];		/* fs label (typ PEER_HAMMER2) */
+	uint8_t reserved01[7];
+	uuid_t	pfs_id;			/* unique pfs id */
+	char	pfs_label[128];		/* string identification */
 	void	*opaque;
 };
 
@@ -208,16 +210,16 @@ h2span_cluster_cmp(h2span_cluster_t *cls1, h2span_cluster_t *cls2)
 		return(-1);
 	if (cls1->peer_type > cls2->peer_type)
 		return(1);
-	r = uuid_compare(&cls1->pfs_clid, &cls2->pfs_clid, NULL);
+	r = uuid_compare(&cls1->peer_id, &cls2->peer_id, NULL);
 	if (r == 0)
-		r = strcmp(cls1->cl_label, cls2->cl_label);
+		r = strcmp(cls1->peer_label, cls2->peer_label);
 
 	return r;
 }
 
 /*
- * Match against fs_label/pfs_fsid.  Together these two items represent a
- * unique node.  In most cases the primary differentiator is pfs_fsid but
+ * Match against pfs_label/pfs_id.  Together these two items represent a
+ * unique node.  In most cases the primary differentiator is pfs_id but
  * we also string-match fs_label.
  */
 static
@@ -226,9 +228,9 @@ h2span_node_cmp(h2span_node_t *node1, h2span_node_t *node2)
 {
 	int r;
 
-	r = strcmp(node1->fs_label, node2->fs_label);
+	r = strcmp(node1->pfs_label, node2->pfs_label);
 	if (r == 0)
-		r = uuid_compare(&node1->pfs_fsid, &node2->pfs_fsid, NULL);
+		r = uuid_compare(&node1->pfs_id, &node2->pfs_id, NULL);
 	return (r);
 }
 
@@ -408,12 +410,10 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		 * acknowledge the request, leaving the transaction open.
 		 * We then relay priority-selected SPANs.
 		 */
-		dmio_printf(iocom, 3, "LNK_CONN(%08x): %s/%s/%s\n",
+		dmio_printf(iocom, 3, "LNK_CONN(%08x): %s/%s\n",
 			(uint32_t)msg->any.head.msgid,
-			dmsg_uuid_to_str(&msg->any.lnk_conn.pfs_clid,
-					    &alloc),
-			msg->any.lnk_conn.cl_label,
-			msg->any.lnk_conn.fs_label);
+			dmsg_uuid_to_str(&msg->any.lnk_conn.peer_id, &alloc),
+			msg->any.lnk_conn.peer_label);
 		free(alloc);
 
 		conn = dmsg_alloc(sizeof(*conn));
@@ -433,14 +433,14 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		 * Set up media
 		 */
 		TAILQ_FOREACH(media, &mediaq, entry) {
-			if (uuid_compare(&msg->any.lnk_conn.mediaid,
-					 &media->mediaid, NULL) == 0) {
+			if (uuid_compare(&msg->any.lnk_conn.media_id,
+					 &media->media_id, NULL) == 0) {
 				break;
 			}
 		}
 		if (media == NULL) {
 			media = dmsg_alloc(sizeof(*media));
-			media->mediaid = msg->any.lnk_conn.mediaid;
+			media->media_id = msg->any.lnk_conn.media_id;
 			TAILQ_INSERT_TAIL(&mediaq, media, entry);
 		}
 		state->media = media;
@@ -557,25 +557,23 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		assert(state->func == NULL);
 		state->func = dmsg_lnk_span;
 
-		dmsg_termstr(msg->any.lnk_span.cl_label);
-		dmsg_termstr(msg->any.lnk_span.fs_label);
+		dmsg_termstr(msg->any.lnk_span.peer_label);
+		dmsg_termstr(msg->any.lnk_span.pfs_label);
 
 		/*
 		 * Find the cluster
 		 */
-		dummy_cls.pfs_clid = msg->any.lnk_span.pfs_clid;
+		dummy_cls.peer_id = msg->any.lnk_span.peer_id;
 		dummy_cls.peer_type = msg->any.lnk_span.peer_type;
-		bcopy(msg->any.lnk_span.cl_label,
-		      dummy_cls.cl_label,
-		      sizeof(dummy_cls.cl_label));
+		bcopy(msg->any.lnk_span.peer_label, dummy_cls.peer_label,
+		      sizeof(dummy_cls.peer_label));
 		cls = RB_FIND(h2span_cluster_tree, &cluster_tree, &dummy_cls);
 		if (cls == NULL) {
 			cls = dmsg_alloc(sizeof(*cls));
-			cls->pfs_clid = msg->any.lnk_span.pfs_clid;
+			cls->peer_id = msg->any.lnk_span.peer_id;
 			cls->peer_type = msg->any.lnk_span.peer_type;
-			bcopy(msg->any.lnk_span.cl_label,
-			      cls->cl_label,
-			      sizeof(cls->cl_label));
+			bcopy(msg->any.lnk_span.peer_label,
+			      cls->peer_label, sizeof(cls->peer_label));
 			RB_INIT(&cls->tree);
 			RB_INSERT(h2span_cluster_tree, &cluster_tree, cls);
 		}
@@ -583,17 +581,16 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		/*
 		 * Find the node
 		 */
-		dummy_node.pfs_fsid = msg->any.lnk_span.pfs_fsid;
-		bcopy(msg->any.lnk_span.fs_label, dummy_node.fs_label,
-		      sizeof(dummy_node.fs_label));
+		dummy_node.pfs_id = msg->any.lnk_span.pfs_id;
+		bcopy(msg->any.lnk_span.pfs_label, dummy_node.pfs_label,
+		      sizeof(dummy_node.pfs_label));
 		node = RB_FIND(h2span_node_tree, &cls->tree, &dummy_node);
 		if (node == NULL) {
 			node = dmsg_alloc(sizeof(*node));
-			node->pfs_fsid = msg->any.lnk_span.pfs_fsid;
+			node->pfs_id = msg->any.lnk_span.pfs_id;
 			node->pfs_type = msg->any.lnk_span.pfs_type;
-			bcopy(msg->any.lnk_span.fs_label,
-			      node->fs_label,
-			      sizeof(node->fs_label));
+			bcopy(msg->any.lnk_span.pfs_label, node->pfs_label,
+			      sizeof(node->pfs_label));
 			node->cls = cls;
 			RB_INIT(&node->tree);
 			RB_INSERT(h2span_node_tree, &cls->tree, node);
@@ -632,10 +629,10 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		dmio_printf(iocom, 3,
 			    "LNK_SPAN(thr %p): %p %s cl=%s fs=%s dist=%d\n",
 			    iocom, slink,
-			    dmsg_uuid_to_str(&msg->any.lnk_span.pfs_clid,
+			    dmsg_uuid_to_str(&msg->any.lnk_span.peer_id,
 					     &alloc),
-			    msg->any.lnk_span.cl_label,
-			    msg->any.lnk_span.fs_label,
+			    msg->any.lnk_span.peer_label,
+			    msg->any.lnk_span.pfs_label,
 			    msg->any.lnk_span.dist);
 		free(alloc);
 #if 0
@@ -663,9 +660,9 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		dmio_printf(iocom, 3,
 			    "LNK_DELE(thr %p): %p %s cl=%s fs=%s\n",
 			    iocom, slink,
-			    dmsg_uuid_to_str(&cls->pfs_clid, &alloc),
-			    cls->cl_label,
-			    node->fs_label);
+			    dmsg_uuid_to_str(&cls->peer_id, &alloc),
+			    cls->peer_label,
+			    node->pfs_label);
 		free(alloc);
 
 		/*
@@ -929,52 +926,39 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		 *
 		 * Don't bother transmitting if the remote connection
 		 * is not accepting this SPAN's peer_type.
-		 *
-		 * pfs_mask is typically used so pure clients can filter
-		 * out receiving SPANs for other pure clients.
 		 */
 		lspan = &slink->lnk_span;
 		lconn = &conn->lnk_conn;
 		if (((1LLU << lspan->peer_type) & lconn->peer_mask) == 0)
 			break;
-		if (((1LLU << lspan->pfs_type) & lconn->pfs_mask) == 0)
-			break;
 
 		/*
 		 * Do not give pure clients visibility to other pure clients
 		 */
-		if (lconn->pfs_type == DMSG_PFSTYPE_CLIENT &&
-		    lspan->pfs_type == DMSG_PFSTYPE_CLIENT) {
+		if (lconn->peer_type == DMSG_PEER_CLIENT &&
+		    lspan->peer_type == DMSG_PEER_CLIENT) {
 			break;
 		}
 
 		/*
-		 * Connection filter, if cluster uuid is not NULL it must
-		 * match the span cluster uuid.  Only applies when the
-		 * peer_type matches.
+		 * Clients can set peer_id to filter the peer_id of incoming
+		 * spans.  Other peer types set peer_id to advertising their
+		 * peer_id. XXX
+		 *
+		 * NOTE: peer_label is not a filter on clients, it identifies 
+		 *	 the client just as it identifies other peer types.
 		 */
-		if (lspan->peer_type == lconn->peer_type &&
-		    !uuid_is_nil(&lconn->pfs_clid, NULL) &&
-		    uuid_compare(&slink->node->cls->pfs_clid,
-				 &lconn->pfs_clid, NULL)) {
+		if (lconn->peer_type == DMSG_PEER_CLIENT &&
+		    !uuid_is_nil(&lconn->peer_id, NULL) &&
+		    uuid_compare(&slink->node->cls->peer_id,
+				 &lconn->peer_id, NULL)) {
 			break;
 		}
 
 		/*
-		 * Connection filter, if cluster label is not empty it must
-		 * match the span cluster label.  Only applies when the
-		 * peer_type matches.
-		 */
-		if (lspan->peer_type == lconn->peer_type &&
-		    lconn->cl_label[0] &&
-		    strcmp(lconn->cl_label, slink->node->cls->cl_label)) {
-			break;
-		}
-
-		/*
-		 * NOTE! pfs_fsid differentiates nodes within the same cluster
+		 * NOTE! pfs_id differentiates nodes within the same cluster
 		 *	 so we obviously don't want to match those.  Similarly
-		 *	 for fs_label.
+		 *	 for pfs_label.
 		 */
 
 		/*
@@ -1179,12 +1163,12 @@ dmsg_relay_delete(h2span_relay_t *relay)
  * pointer to it.
  */
 h2span_cluster_t *
-dmsg_cluster_get(uuid_t *pfs_clid)
+dmsg_cluster_get(uuid_t *peer_id)
 {
 	h2span_cluster_t dummy_cls;
 	h2span_cluster_t *cls;
 
-	dummy_cls.pfs_clid = *pfs_clid;
+	dummy_cls.peer_id = *peer_id;
 	pthread_mutex_lock(&cluster_mtx);
 	cls = RB_FIND(h2span_cluster_tree, &cluster_tree, &dummy_cls);
 	if (cls)
@@ -1214,7 +1198,7 @@ dmsg_cluster_put(h2span_cluster_t *cls)
  * stable nodes.
  */
 h2span_node_t *
-dmsg_node_get(h2span_cluster_t *cls, uuid_t *pfs_fsid)
+dmsg_node_get(h2span_cluster_t *cls, uuid_t *pfs_id)
 {
 }
 
@@ -1238,13 +1222,13 @@ dmsg_shell_tree(dmsg_iocom_t *iocom, char *cmdbuf __unused)
 	RB_FOREACH(cls, h2span_cluster_tree, &cluster_tree) {
 		dmsg_printf(iocom, "Cluster %s %s (%s)\n",
 				  dmsg_peer_type_to_str(cls->peer_type),
-				  dmsg_uuid_to_str(&cls->pfs_clid, &uustr),
-				  cls->cl_label);
+				  dmsg_uuid_to_str(&cls->peer_id, &uustr),
+				  cls->peer_label);
 		RB_FOREACH(node, h2span_node_tree, &cls->tree) {
 			dmsg_printf(iocom, "    Node %02x %s (%s)\n",
 				node->pfs_type,
-				dmsg_uuid_to_str(&node->pfs_fsid, &uustr),
-				node->fs_label);
+				dmsg_uuid_to_str(&node->pfs_id, &uustr),
+				node->pfs_label);
 			RB_FOREACH(slink, h2span_link_tree, &node->tree) {
 				dmsg_printf(iocom,
 					    "\tSLink msgid %016jx "

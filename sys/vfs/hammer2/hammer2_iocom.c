@@ -91,9 +91,6 @@ hammer2_iocom_uninit(hammer2_mount_t *hmp)
 void
 hammer2_cluster_reconnect(hammer2_mount_t *hmp, struct file *fp)
 {
-	size_t name_len;
-	const char *name = "disk-volume";
-
 	/*
 	 * Closes old comm descriptor, kills threads, cleans up
 	 * states, then installs the new descriptor and creates
@@ -102,18 +99,18 @@ hammer2_cluster_reconnect(hammer2_mount_t *hmp, struct file *fp)
 	kdmsg_iocom_reconnect(&hmp->iocom, fp, "hammer2");
 
 	/*
-	 * Setup LNK_CONN fields for autoinitiated state machine.  We
-	 * will use SPANs to advertise multiple PFSs so only pass the
-	 * fsid and HAMMER2_PFSTYPE_SUPROOT for the AUTOCONN.
+	 * Setup LNK_CONN fields for autoinitiated state machine.  LNK_CONN
+	 * does not have to be unique.  peer_id can be used to filter incoming
+	 * LNK_SPANs automatically if desired (though we still need to check).
+	 * peer_label typically identifies who we are and is not a filter.
 	 *
-	 * Since we will be initiating multiple LNK_SPANs we cannot
-	 * use AUTOTXSPAN, but we do use AUTORXSPAN so kdmsg tracks
-	 * received LNK_SPANs, and we simply monitor those messages.
+	 * Since we will be initiating multiple LNK_SPANs we cannot use
+	 * AUTOTXSPAN, but we do use AUTORXSPAN so kdmsg tracks received
+	 * LNK_SPANs, and we simply monitor those messages.
 	 */
-	bzero(&hmp->iocom.auto_lnk_conn.pfs_clid,
-	      sizeof(hmp->iocom.auto_lnk_conn.pfs_clid));
-	hmp->iocom.auto_lnk_conn.pfs_fsid = hmp->voldata.fsid;
-	hmp->iocom.auto_lnk_conn.pfs_type = HAMMER2_PFSTYPE_SUPROOT;
+	bzero(&hmp->iocom.auto_lnk_conn.peer_id,
+	      sizeof(hmp->iocom.auto_lnk_conn.peer_id));
+	/* hmp->iocom.auto_lnk_conn.peer_id = hmp->voldata.fsid; */
 	hmp->iocom.auto_lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
 #if 0
 	hmp->iocom.auto_lnk_conn.peer_type = hmp->voldata.peer_type;
@@ -121,12 +118,10 @@ hammer2_cluster_reconnect(hammer2_mount_t *hmp, struct file *fp)
 	hmp->iocom.auto_lnk_conn.peer_type = DMSG_PEER_HAMMER2;
 
 	/*
-	 * Filter adjustment.  Clients do not need visibility into other
-	 * clients (otherwise millions of clients would present a serious
-	 * problem).  The fs_label also serves to restrict the namespace.
+	 * We just want to receive LNK_SPANs related to HAMMER2 matching
+	 * peer_id.
 	 */
 	hmp->iocom.auto_lnk_conn.peer_mask = 1LLU << DMSG_PEER_HAMMER2;
-	hmp->iocom.auto_lnk_conn.pfs_mask = (uint64_t)-1;
 
 #if 0
 	switch (ipdata->pfs_type) {
@@ -139,12 +134,12 @@ hammer2_cluster_reconnect(hammer2_mount_t *hmp, struct file *fp)
 	}
 #endif
 
-	name_len = strlen(name);
-	if (name_len >= sizeof(hmp->iocom.auto_lnk_conn.fs_label))
-		name_len = sizeof(hmp->iocom.auto_lnk_conn.fs_label) - 1;
-	bcopy(name, hmp->iocom.auto_lnk_conn.fs_label, name_len);
-	hmp->iocom.auto_lnk_conn.fs_label[name_len] = 0;
-
+	bzero(&hmp->iocom.auto_lnk_conn.peer_label,
+	      sizeof(hmp->iocom.auto_lnk_conn.peer_label));
+	ksnprintf(hmp->iocom.auto_lnk_conn.peer_label,
+		  sizeof(hmp->iocom.auto_lnk_conn.peer_label),
+		  "%s/%s",
+		  hostname, "hammer2-mount");
 	kdmsg_iocom_autoinitiate(&hmp->iocom, hammer2_autodmsg);
 }
 
@@ -260,11 +255,12 @@ hammer2_autodmsg(kdmsg_msg_t *msg)
 			kdmsg_msg_reply(msg, 0);
 			break;
 		}
-		DMSG_TERMINATE_STRING(msg->any.lnk_span.fs_label);
-		kprintf("H2 +RXSPAN cmd=%08x (%-20s) cl=", msg->any.head.cmd, msg->any.lnk_span.fs_label);
-		printf_uuid(&msg->any.lnk_span.pfs_clid);
+		DMSG_TERMINATE_STRING(msg->any.lnk_span.peer_label);
+		kprintf("H2 +RXSPAN cmd=%08x (%-20s) cl=",
+			msg->any.head.cmd, msg->any.lnk_span.peer_label);
+		printf_uuid(&msg->any.lnk_span.peer_id);
 		kprintf(" fs=");
-		printf_uuid(&msg->any.lnk_span.pfs_fsid);
+		printf_uuid(&msg->any.lnk_span.pfs_id);
 		kprintf(" type=%d\n", msg->any.lnk_span.pfs_type);
 		kdmsg_msg_result(msg, 0);
 		break;
@@ -315,15 +311,17 @@ hammer2_update_spans(hammer2_mount_t *hmp, kdmsg_state_t *state)
 		rmsg = kdmsg_msg_alloc(&hmp->iocom.state0,
 				       DMSG_LNK_SPAN | DMSGF_CREATE,
 				       hammer2_lnk_span_reply, NULL);
-		rmsg->any.lnk_span.pfs_clid = ripdata->pfs_clid;
-		rmsg->any.lnk_span.pfs_fsid = ripdata->pfs_fsid;
+		rmsg->any.lnk_span.peer_id = ripdata->pfs_clid;
+		rmsg->any.lnk_span.pfs_id = ripdata->pfs_fsid;
 		rmsg->any.lnk_span.pfs_type = ripdata->pfs_type;
 		rmsg->any.lnk_span.peer_type = DMSG_PEER_HAMMER2;
 		rmsg->any.lnk_span.proto_version = DMSG_SPAN_PROTO_1;
 		name_len = ripdata->name_len;
-		if (name_len >= sizeof(rmsg->any.lnk_span.fs_label))
-			name_len = sizeof(rmsg->any.lnk_span.fs_label) - 1;
-		bcopy(ripdata->filename, rmsg->any.lnk_span.fs_label, name_len);
+		if (name_len >= sizeof(rmsg->any.lnk_span.peer_label))
+			name_len = sizeof(rmsg->any.lnk_span.peer_label) - 1;
+		bcopy(ripdata->filename,
+		      rmsg->any.lnk_span.peer_label,
+		      name_len);
 
 		kdmsg_msg_write(rmsg);
 
