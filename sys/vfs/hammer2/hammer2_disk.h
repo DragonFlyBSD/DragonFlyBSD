@@ -930,6 +930,7 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_PFSTYPE_MASTER		6
 #define HAMMER2_PFSTYPE_SNAPSHOT	7
 #define HAMMER2_PFSTYPE_SUPROOT		8
+#define HAMMER2_PFSTYPE_DUMMY		9
 #define HAMMER2_PFSTYPE_MAX		16
 
 #define HAMMER2_PFSTYPE_MASK		0x0F

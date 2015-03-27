@@ -1,0 +1,427 @@
+.\" Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd March 26, 2015
+.Dt HAMMER2 8
+.Os
+.Sh NAME
+.Nm hammer2
+.Nd hammer2 file system utility
+.Sh SYNOPSIS
+.Nm
+.Fl h
+.Nm
+.Op Fl s Ar path
+.Op Fl t Ar type
+.Op Fl u Ar uuid
+.Ar command
+.Op Ar argument ...
+.Sh DESCRIPTION
+The
+.Nm
+utility provides miscellaneous support functions for a
+HAMMER2 file system.
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Fl s Ar path
+Specify the path to a mounted HAMMER2 filesystem.
+At least one PFS on a HAMMER2 filesystem must be mounted for the system
+to act on all PFSs managed by it.
+Every HAMMER2 filesystem typically has a PFS called "LOCAL" for this purpose.
+.It Fl t Ar type
+Specify the type when creating, upgrading, or downgrading a PFS.
+Supported types are CACHE, COPY, SLAVE, SOFT_SLAVE, MASTER, and SOFT_MASTER.
+If not specified the pfs-create directive will default to MASTER if no
+uuid is specified, and SLAVE if a uuid is specified.
+.It Fl u Ar uuid
+Specify the cluster uuid when creating a PFS.  If not specified, a unique,
+random uuid will be generated.
+Note that every PFS also has a unique pfs_id which is always generated
+and cannot be overridden with an option.
+The { pfs_clid, pfs_fsid } tuple uniquely identifies a component of a cluster.
+.El
+.Pp
+.Nm
+directives are as shown below.
+Note that most directives require you to either be CD'd into a hammer2
+filesystem, specify a path to a mounted hammer2 filesystem via the
+.Fl s
+option, or specify a path after the directive.
+It depends on the directive.
+All hammer2 filesystem have a PFS called "LOCAL" which is typically mounted
+locally on the host in order to be able to issue commands for other PFSs
+on the filesystem.
+The mount also enables PFS configuration scanning for that filesystem.
+.Bl -tag -width indent
+.\" ==== connect ====
+.It Cm connect Ar target
+Add a cluster link entry to the volume header.
+The volume header can support up to 255 link entries.
+This feature is not currently used.
+.\" ==== disconnect ====
+.It Cm disconnect Ar target
+Delete a cluster link entry from the volume header.
+This feature is not currently used.
+.\" ==== status ====
+.It Cm status Ar path...
+Dump a list of all cluster link entries configured in the volume header.
+.\" ==== hash ====
+.It Cm hash Ar filename...
+Compute and print the directory hash for any number of filenames.
+.\" ==== pfs-list ====
+.It Cm pfs-list Op path...
+List all local PFSs available on a mounted HAMMER2 filesystem, their type,
+and their current status.
+You must mount at least one PFS in order to be able to access the whole list.
+.\" ==== pfs-clid ====
+.It Cm pfs-clid Ar label
+Print the cluster id for a PFS specified by name.
+.\" ==== pfs-fsid ====
+.It Cm pfs-fsid Ar label
+Print the unique filesystem id for a PFS specified by name.
+.\" ==== pfs-create ====
+.It Cm pfs-create Ar label
+Create a local PFS on a mounted HAMMER2 filesystem.
+If no uuid is specified the pfs-type defaults to MASTER.
+If a uuid is specified via the
+.Fl u
+option the pfs-type defaults to SLAVE.
+If you wish to add a MASTER to an existing cluster, you must first add it as
+a SLAVE and then upgrade it to MASTER to properly synchronize it.
+Other types can be specified with the
+.Fl t
+option.
+Generally speaking, you can mount any element of the cluster in order to
+access the cluster via the full cluster protocol.
+There are two exceptions.
+If you mount a SOFT_SLAVE or a SOFT_MASTER then soft quorum semantics are
+employed... the soft slave or soft master's current state will always be used
+and the quorum protocol will not be used.  The soft PFS will still be
+synchronized to masters in the background when available. 
+Also, you can use 'mount -o local' to mount ONLY a local HAMMER2 PFS and
+not run any network or quorum protocols for the mount.
+All such mounts except for a SOFT_MASTER mount will be read-only.
+Other than that, you will be mounting the whole cluster when you mount any
+PFS within the cluster.
+.Pp
+DUMMY - Create a PFS skeleton intended to be the mount point for a
+more complex cluster, probably one that is entirely network based.
+No data will be synchronized to this PFS so it is suitable for use
+in a network boot image or memory filesystem.
+This allows you to create placeholders for mount points on your local
+disk, SSD, or memory disk.
+.Pp
+CACHE - Create a PFS for caching portions of the cluster piecemeal.
+This is similar to a SLAVE but does not synchronize the entire contents of
+the cluster to the PFS.
+Elements found in the CACHE PFS which are validated against the cluster
+will be read, presumably a faster access than having to go to the cluster.
+Only local CACHEs will be updated.
+Network-accessable CACHE PFSs might be read but will not be written to.
+If you have a large hard-drive-based cluster you can set up localized
+SSD CACHE PFSs to improve performance.
+.Pp
+COPY - Create a PFS to store redundant copies of elements of the cluster.
+(This has not been fleshed out yet).
+.Pp
+SLAVE - Create a PFS which maintains synchronization with and provides a
+read-only copy of the cluster.
+HAMMER2 will prioritize local SLAVEs for data retrieval after validating
+their transaction id against the cluster.
+The difference between a CACHE and a SLAVE is that the SLAVE is synchronized
+to a full copy of the cluster and thus can serve as a backup or be staged
+for use as a MASTER later on.
+.Pp
+SOFT_SLAVE - Create a PFS which maintains synchronization with and provides
+a read-only copy of the cluster.
+This is one of the special mount cases.  A SOFT_SLAVE will synchronize with
+the cluster when the cluster is available, but can still be accessed when
+the cluster is not available.
+.Pp
+MASTER - Create a PFS which will hold a master copy of the cluster.
+If you create several MASTER PFSs with the same cluster id you are
+effectively creating a multi-master cluster and causing a quorum and
+cache coherency protocol to be used to validate operations.
+The total number of masters is stored in each PFSs making up the cluster.
+Filesystem operations will stall for normal mounts if a quorum cannot be
+obtained to validate the operation.
+MASTER nodes which go offline and return later will synchronize in the
+background.
+Note that when adding a MASTER to an existing cluster you must add the
+new PFS as a SLAVE and then upgrade it to a MASTER.
+.Pp
+SOFT_MASTER - Create a PFS which maintains synchronization with and provides
+a read-write copy of the cluster.
+This is one of the special mount cases.  A SOFT_MASTER will synchronize with
+the cluster when the cluster is available, but can still be read AND written
+to even when the cluster is not available.
+Modifications made to a SOFT_MASTER will be automatically flushed to the
+cluster when it becomes accessible again, and vise-versa.
+Manual intervention may be required if a conflict occurs during
+synchronization.
+.\" ==== pfs-delete ====
+.It Cm pfs-delete Ar label
+Delete a local PFS on a mounted HAMMER2 filesystem.
+Deleting a PFS of type MASTER requires first downgrading it to a SLAVE (XXX).
+.\" ==== snapshot ====
+.It Cm snapshot Ar path Op label
+Create a snapshot of a directory.
+This can only be used on a local PFS, and is only really useful if the PFS
+contains a complete copy of what you desire to snapshot so that typically
+means a local MASTER, SOFT_MASTER, SLAVE, or SOFT_SLAVE must be present.
+Snapshots are created simply by flushing a PFS mount to disk and then copying
+the directory inode to the PFS.
+The topology is snapshotted without having to be copied or scanned.
+Snapshots are effectively separate from the cluster they came from
+and can be used as a starting point for a new cluster.
+So unless you build a new cluster from the snapshot, it will stay local
+to the machine it was made on.
+.\" ==== service ====
+.It Cm service
+Start the
+.Nm
+service daemon.
+This daemon is also automatically started when you run
+.Xr mount_hammer2 8 .
+The hammer2 service daemon handles incoming TCP connections and maintains
+outgoing TCP connections.  It will interconnect available services on the
+machine (e.g. hammer2 mounts and xdisks) to the network.
+.\" ==== stat ====
+.It Cm stat Op path...
+Print the inode statistics, compression, and other meta-data associated
+with a list of paths.
+.\" ==== leaf ====
+.It Cm leaf
+XXX
+.\" ==== shell ====
+.It Cm shell
+Start a debug shell to the local hammer2 service daemon via the DMSG protocol.
+.\" ==== debugspan ====
+.It Cm debugspan
+(do not use)
+.\" ==== rsainit ====
+.It Cm rsainit
+Create the
+.Pa /etc/hammer2
+directory and initialize a public/private keypair in that directory for
+use by the network cluster protocols.
+.\" ==== show ====
+.It Cm show Ar devpath
+Dump the radix tree for the HAMMER2 filesystem by scanning a
+block device directly.  No mount is required.
+.\" ==== freemap ====
+Dump the freemap tree for the HAMMER2 filesystem by scanning a
+block device directly.  No mount is required.
+.It Cm freemap Ar devpath
+.\" ==== setcomp ====
+.It Cm setcomp Ar mode[:level] Op path...
+Set the compression mode as specified for any newly created elements at or
+under the path if not overridden by deeper elements.
+Available modes are none, autozero, lz4, or zlib.
+When zlib is used the compression level can be set.
+The default will be 6 which is the best trade-off between performance and
+time.
+.Pp
+newfs_hammer2 will set the default compression to lz4 which prioritizes
+speed over performance.
+Also note that HAMMER2 contains a heuristic and will not attempt to
+compress every block if it detects a sufficient amount of uncompressable
+data.
+.Pp
+Hammer2 compression is only effective when it can reduce the size of dataset
+(typically a 64KB block) by one or more powers of 2.  A 64K block which
+only compresses to 40K will not yield any storage improvement.
+.\" ==== setcheck ====
+.It Cm setcheck Ar check Op path...
+Set the check code as specified for any newly created elements at or under
+the path if not overridden by deeper elements.
+Available codes are default, disabled, crc32, crc64, or sha192.
+.\" ==== clrcheck ====
+.It Cm clrcheck Op path...
+Clear the check code override for the specified paths.
+Overrides may still be present in deeper elements.
+.\" ==== setcrc32 ====
+.It Cm setcrc32 Op path...
+Set the check code to the ISCSI 32-bit CRC for any newly created elements
+at or under the path if not overridden by deeper elements.
+.\" ==== setcrc64 ====
+.It Cm setcrc64 Op path...
+Set the check code to CRC64 (not yet specified).
+.\" ==== setsha192 ====
+.It Cm setsha192 Op path...
+Set the check code to SHA192 for any newly created elements at or under
+the path if not overridden by deeper elements.
+.\" ==== bulkfree ====
+.It Cm bulkfree Op path...
+Run a bulkfree pass on a HAMMER2 mount.
+You can specify any PFS for the mount, the bulkfree pass is run on the
+entire partition.
+.El
+.Sh SETTING UP /etc/hammer2
+The 'rsainit' directive will create the
+.Pa /etc/hammer2
+directory with appropriate permissions and also generate a public key
+pair in this directory for the machine.  These files will be
+.Pa rsa.pub
+and
+.Pa rsa.prv
+and needless to say, the private key shouldn't leave the host.
+.Pp
+The service daemon will also scan the
+.Pa /etc/hammer2/autoconn
+file which contains a list of hosts which it will automatically maintain
+connections to to form your cluster.
+The service daemon will automatically reconnect on any failure and will
+also monitor the file for changes.
+.Pp
+When the service daemon receives a connection it expects to find a
+public key for that connection in a file in
+.Pa /etc/hammer2/remote/
+called
+.Pa <IPADDR>.pub .
+You normally copy the
+.Pa rsa.pub
+key from the host in question to this file.
+The IP address must match exactly or the connection will not be allowed.
+.Pp
+If you want to use an unencrypted connection you can create empty,
+dummy files in the remote directory in the form
+.Pa <IPADDR>.none .
+We do not recommend using unencrypted connections.
+.Sh CLUSTER SERVICES
+Currently there are two services which use the cluster network infrastructure,
+HAMMER2 mounts and XDISK.
+Any HAMMER2 mount will make all PFSs for that filesystem available to the
+cluster.
+And if the XDISK kernel module is loaded, the hammer2 service daemon will make
+your machine's block devices available to the cluster (you must load the
+xdisk.ko kernel module before starting the hammer2 service).
+They will show up as
+.Pa /dev/xa*
+and
+.Pa /dev/serno/*
+devices on the remote machines making up the cluster.
+Remote block devices are just what they appear to be... direct access to a
+block device on a remote machine.  If the link goes down remote accesses
+will stall until it comes back up again, then automatically requeue any
+pending I/O and resume as if nothing happened.
+However, if the server hosting the physical disks crashes or is rebooted,
+any remote opens to its devices will see a permanent I/O failure requiring a
+close and open sequence to re-establish.
+The latter is necessary because the server's drives might not have committed
+the data before the crash, but had already acknowledged the transfer.
+.Pp
+Data commits work exactly the same as they do for real block devices.
+The originater must issue a BUF_CMD_FLUSH.
+.Sh ADDING A NEW MASTER TO A CLUSTER
+When you
+.Xr newfs_hammer2 8
+a HAMMER2 filesystem or use the 'pfs-create' directive on one already mounted
+to create a new PFS, with no special options, you wind up with a PFS
+typed as a MASTER and a unique cluster uuid, but because there is only one 
+PFS for that cluster (for each PFS you create via pfs-create), it will
+act just like a normal filesystem would act and does not require any special
+protocols to operate.
+.Pp
+If you use the 'pfs-create' directive along with the
+.Fl u
+option to specify a cluster uuid that already exists in the cluster,
+you are adding a PFS to an existing cluster and this can trigger a whole
+series of events in the background.
+When you specify the
+.Fl u
+option in a 'pfs-create',
+.Nm
+will by default create a SLAVE PFS.
+In fact, this is what must be created first even if you want to add a new
+MASTER to your cluster.
+.Pp
+The most common action a system admin will want to take is to upgrade or
+downgrade a PFS.
+A new MASTER can be added to the cluster by upgrading an existing SLAVE
+to MASTER.
+A MASTER can be removed from the cluster by downgrading it to a SLAVE.
+Upgrades and downgrades will put nodes in the cluster in a transition state
+until the operation is complete.
+For downgrades the transition state is fleeting unless one or more other
+masters has not acknowledged the change.
+For upgrades a background synchronization process must complete before the
+transition can be said to be complete, and the node remains (really) a SLAVE
+until that transition is complete.
+.Sh USE CASES FOR A SOFT_MASTER
+The SOFT_MASTER PFS type is a special type which must be specifically
+mounted by a machine.
+It is a R/W mount which does not use the quorum protocol and is not
+cache coherent with the cluster, but which synchronizes from the cluster
+and allows modifying operations which will synchronize to the cluster.
+The most common case is to use a SOFT_MASTER PFS in a laptop allowing you
+to work on your laptop when you are on the road and not connected to
+your main servers, and for the laptop to synchronize when a connection is
+available.
+.Sh USE CASES FOR A SOFT_SLAVE
+A SOFT_SLAVE PFS type is a special type which must be specifically mounted
+by a machine.
+It is a RO mount which does not use the quorum protocol and is not
+cache coherent with the cluster.  It will receive synchronization from
+the cluster when network connectivity is available but will not stall if
+network connectivity is lost.
+.Sh FSYNC FLUSH MODES
+TODO.
+.Sh RESTORING FROM A SNAPSHOT BACKUP
+TODO.
+.Sh ENVIRONMENT
+TODO.
+.Sh FILES
+.Bl -tag -width ".It Pa <fs>/abc/defghi/<name>" -compact
+.It Pa /etc/hammer2/
+.It Pa /etc/hammer2/rsa.pub
+.It Pa /etc/hammer2/rsa.prv
+.It Pa /etc/hammer2/autoconn
+.It Pa /etc/hammer2/remote/<IP>.pub
+.It Pa /etc/hammer2/remote/<IP>.none
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh SEE ALSO
+.Xr mount_hammer2 8 ,
+.Xr mount_null 8 ,
+.Xr newfs_hammer2 8 ,
+.Xr swapcache 8 ,
+.Xr sysctl 8
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Dx 4.1 .
+.Sh AUTHORS
+.An Matthew Dillon Aq Mt dillon@backplane.com

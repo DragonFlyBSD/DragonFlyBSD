@@ -81,7 +81,9 @@ hammer2_iocom_init(hammer2_mount_t *hmp)
 void
 hammer2_iocom_uninit(hammer2_mount_t *hmp)
 {
-	kdmsg_iocom_uninit(&hmp->iocom);	/* XXX chain depend deadlck? */
+	/* XXX chain depend deadlck? */
+	if (hmp->iocom.mmsg)
+		kdmsg_iocom_uninit(&hmp->iocom);
 }
 
 /*

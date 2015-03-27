@@ -539,6 +539,9 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		return(EINVAL);
 	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure 0-termination */
 
+	if (hammer2_ioctl_pfs_lookup(ip, pfs) == 0)
+		return(EEXIST);
+
 	hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_NEWINODE);
 	nip = hammer2_inode_create(&trans, hmp->spmp->iroot, NULL, NULL,
 				     pfs->name, strlen(pfs->name),

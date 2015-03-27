@@ -142,10 +142,17 @@ cmd_pfs_create(const char *sel_path, const char *name,
 	uint32_t status;
 
 	/*
-	 * Default to MASTER
+	 * Default to MASTER if no uuid was specified.
+	 * Default to SLAVE if a uuid was specified.
+	 *
+	 * When adding masters to a cluster, the new PFS must be added as
+	 * a slave and then upgraded to ensure proper synchronization.
 	 */
 	if (pfs_type == HAMMER2_PFSTYPE_NONE) {
-		pfs_type = HAMMER2_PFSTYPE_MASTER;
+		if (uuid_str)
+			pfs_type = HAMMER2_PFSTYPE_SLAVE;
+		else
+			pfs_type = HAMMER2_PFSTYPE_MASTER;
 	}
 
 	if ((fd = hammer2_ioctl_handle(sel_path)) < 0)
@@ -162,7 +169,18 @@ cmd_pfs_create(const char *sel_path, const char *name,
 		uuid_create(&pfs.pfs_fsid, &status);
 	if (status == uuid_s_ok) {
 		if (ioctl(fd, HAMMER2IOC_PFS_CREATE, &pfs) < 0) {
-			perror("ioctl");
+			if (errno == EEXIST) {
+				fprintf(stderr,
+					"NOTE: Typically the same name is "
+					"used for cluster elements on "
+					"different mounts,\n"
+					"      but cluster elements on the "
+					"same mount require unique names.\n"
+					"pfs-create %s: already present\n",
+					name);
+			} else {
+				perror("ioctl");
+			}
 			ecode = 1;
 		}
 	} else {
