@@ -629,8 +629,6 @@ trap(struct trapframe *frame)
 			break;
 
 		case T_STKFLT:		/* stack fault */
-			break;
-
 		case T_PROTFLT:		/* general protection fault */
 		case T_SEGNPFLT:	/* segment not present fault */
 			/*
