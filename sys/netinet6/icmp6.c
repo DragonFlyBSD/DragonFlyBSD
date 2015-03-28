@@ -2090,8 +2090,11 @@ icmp6_reflect(struct mbuf *m, size_t off)
 	if (m->m_pkthdr.rcvif) {
 		/* XXX: This may not be the outgoing interface */
 		ip6->ip6_hlim = ND_IFINFO(m->m_pkthdr.rcvif)->chlim;
-	} else
+		if (ip6->ip6_hlim < ip6_minhlim)
+			ip6->ip6_hlim = ip6_minhlim;
+	} else {
 		ip6->ip6_hlim = ip6_defhlim;
+	}
 
 	icmp6->icmp6_cksum = 0;
 	icmp6->icmp6_cksum = in6_cksum(m, IPPROTO_ICMPV6,

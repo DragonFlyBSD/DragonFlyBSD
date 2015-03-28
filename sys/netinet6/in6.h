@@ -626,6 +626,7 @@ struct ip6_mtuinfo {
 #define IPV6CTL_RIP6STATS	36	/* raw_ip6 stats */
 
 #define IPV6CTL_ADDRCTLPOLICY	38	/* get/set address selection policy */
+#define IPV6CTL_MINHLIM		39	/* minimum Hop-Limit */
 
 /* New entries should be added here from current IPV6CTL_MAXID value. */
 /* to define items, should talk with KAME guys first, for *BSD compatibility */
