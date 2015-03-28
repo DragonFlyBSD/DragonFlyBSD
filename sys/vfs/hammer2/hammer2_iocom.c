@@ -64,7 +64,7 @@ static void hammer2_autodmsg(kdmsg_msg_t *msg);
 static int hammer2_lnk_span_reply(kdmsg_state_t *state, kdmsg_msg_t *msg);
 
 void
-hammer2_iocom_init(hammer2_mount_t *hmp)
+hammer2_iocom_init(hammer2_dev_t *hmp)
 {
 	/*
 	 * Automatic LNK_CONN
@@ -79,7 +79,7 @@ hammer2_iocom_init(hammer2_mount_t *hmp)
 }
 
 void
-hammer2_iocom_uninit(hammer2_mount_t *hmp)
+hammer2_iocom_uninit(hammer2_dev_t *hmp)
 {
 	/* XXX chain depend deadlck? */
 	if (hmp->iocom.mmsg)
@@ -91,7 +91,7 @@ hammer2_iocom_uninit(hammer2_mount_t *hmp)
  * fp for us.
  */
 void
-hammer2_cluster_reconnect(hammer2_mount_t *hmp, struct file *fp)
+hammer2_cluster_reconnect(hammer2_dev_t *hmp, struct file *fp)
 {
 	/*
 	 * Closes old comm descriptor, kills threads, cleans up
@@ -194,12 +194,12 @@ hammer2_rcvdmsg(kdmsg_msg_t *msg)
  *
  * We collect span state
  */
-static void hammer2_update_spans(hammer2_mount_t *hmp, kdmsg_state_t *state);
+static void hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state);
 
 static void
 hammer2_autodmsg(kdmsg_msg_t *msg)
 {
-	hammer2_mount_t *hmp = msg->state->iocom->handle;
+	hammer2_dev_t *hmp = msg->state->iocom->handle;
 	int copyid;
 
 	switch(msg->tcmd) {
@@ -281,12 +281,12 @@ hammer2_autodmsg(kdmsg_msg_t *msg)
  * Update LNK_SPAN state
  */
 static void
-hammer2_update_spans(hammer2_mount_t *hmp, kdmsg_state_t *state)
+hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 {
 	const hammer2_inode_data_t *ripdata;
 	hammer2_cluster_t *cparent;
 	hammer2_cluster_t *cluster;
-	hammer2_pfsmount_t *spmp;
+	hammer2_pfs_t *spmp;
 	hammer2_key_t key_next;
 	kdmsg_msg_t *rmsg;
 	size_t name_len;
@@ -352,7 +352,7 @@ hammer2_lnk_span_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
  * daemon via the open LNK_CONN transaction.
  */
 void
-hammer2_volconf_update(hammer2_mount_t *hmp, int index)
+hammer2_volconf_update(hammer2_dev_t *hmp, int index)
 {
 	kdmsg_msg_t *msg;
 

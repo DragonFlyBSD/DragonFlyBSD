@@ -189,7 +189,7 @@ hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
  * Bulkfree callback info
  */
 typedef struct hammer2_bulkfree_info {
-	hammer2_mount_t		*hmp;
+	hammer2_dev_t		*hmp;
 	hammer2_trans_t		*trans;
 	kmem_anon_desc_t	kp;
 	hammer2_off_t		sbase;		/* sub-loop iteration */
@@ -210,7 +210,7 @@ static void h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_bmap_data_t *live, hammer2_bmap_data_t *bmap);
 
 int
-hammer2_bulkfree_pass(hammer2_mount_t *hmp, hammer2_ioc_bulkfree_t *bfi)
+hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 {
 	hammer2_trans_t trans;
 	hammer2_bulkfree_info_t cbinfo;

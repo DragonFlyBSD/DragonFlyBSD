@@ -910,30 +910,52 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_COPYID_COUNT		256
 
 /*
- * PFS types identify a PFS on media and in LNK_SPAN messages.
- * PFS types >= 16 belong to HAMMER, 0-15 are defined in sys/dmsg.h
+ * PFS types identify the role of a PFS within a cluster.  The PFS types
+ * is stored on media and in LNK_SPAN messages and used in other places.
  *
- * For example, a mount operating in SOFT_MASTER mode might have nodes
- * representing several MASTERs, CACHEs, and one SOFT_MASTER, and will
- * operate by modifying the SOFT_MASTER and allowing another thread
- * synchronize it to the MASTERs.  But if it were operating in MASTER
- * mode it would ignore the SOFT_MASTER and use the quorum protocol
- * on the MASTERs.
+ * The low 4 bits specify the current active type while the high 4 bits
+ * specify the transition target if the PFS is being upgraded or downgraded,
+ * If the upper 4 bits are not zero it may effect how a PFS is used during
+ * the transition.
+ *
+ * Generally speaking, downgrading a MASTER to a SLAVE cannot complete until
+ * at least all MASTERs have updated their pfs_nmasters field.  And upgrading
+ * a SLAVE to a MASTER cannot complete until the new prospective master has
+ * been fully synchronized (though theoretically full synchronization is
+ * not required if a (new) quorum of other masters are fully synchronized).
+ *
+ * It generally does not matter which PFS element you actually mount, you
+ * are mounting 'the cluster'.  So, for example, a network mount will mount
+ * a DUMMY PFS type on a memory filesystem.  However, there are two exceptions.
+ * In order to gain the benefits of a SOFT_MASTER or SOFT_SLAVE, those PFSs
+ * must be directly mounted.
  */
-/* 0-15 reserved by sys/dmsg.h */
-#define HAMMER2_PFSTYPE_NONE		0
-#define HAMMER2_PFSTYPE_CACHE		1
-#define HAMMER2_PFSTYPE_COPY		2
-#define HAMMER2_PFSTYPE_SLAVE		3
-#define HAMMER2_PFSTYPE_SOFT_SLAVE	4
-#define HAMMER2_PFSTYPE_SOFT_MASTER	5
-#define HAMMER2_PFSTYPE_MASTER		6
-#define HAMMER2_PFSTYPE_SNAPSHOT	7
-#define HAMMER2_PFSTYPE_SUPROOT		8
-#define HAMMER2_PFSTYPE_DUMMY		9
+#define HAMMER2_PFSTYPE_NONE		0x00
+#define HAMMER2_PFSTYPE_CACHE		0x01
+#define HAMMER2_PFSTYPE_COPY		0x02
+#define HAMMER2_PFSTYPE_SLAVE		0x03
+#define HAMMER2_PFSTYPE_SOFT_SLAVE	0x04
+#define HAMMER2_PFSTYPE_SOFT_MASTER	0x05
+#define HAMMER2_PFSTYPE_MASTER		0x06
+#define HAMMER2_PFSTYPE_SNAPSHOT	0x07
+#define HAMMER2_PFSTYPE_SUPROOT		0x08
+#define HAMMER2_PFSTYPE_DUMMY		0x09
 #define HAMMER2_PFSTYPE_MAX		16
 
-#define HAMMER2_PFSTYPE_MASK		0x0F
+#define HAMMER2_PFSTRAN_NONE		0x00	/* no transition in progress */
+#define HAMMER2_PFSTRAN_CACHE		0x10
+#define HAMMER2_PFSTRAN_COPY		0x20
+#define HAMMER2_PFSTRAN_SLAVE		0x30
+#define HAMMER2_PFSTRAN_SOFT_SLAVE	0x40
+#define HAMMER2_PFSTRAN_SOFT_MASTER	0x50
+#define HAMMER2_PFSTRAN_MASTER		0x60
+#define HAMMER2_PFSTRAN_SNAPSHOT	0x70
+#define HAMMER2_PFSTRAN_SUPROOT		0x80
+#define HAMMER2_PFSTRAN_DUMMY		0x90
+
+#define HAMMER2_PFS_DEC(n)		((n) & 0x0F)
+#define HAMMER2_PFS_DEC_TRANSITION(n)	(((n) >> 4) & 0x0F)
+#define HAMMER2_PFS_ENC_TRANSITION(n)	(((n) & 0x0F) << 4)
 
 /*
  * PFS mode of operation is a bitmask.  This is typically not stored

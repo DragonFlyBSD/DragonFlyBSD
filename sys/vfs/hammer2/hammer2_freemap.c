@@ -58,9 +58,9 @@ typedef struct hammer2_fiterate hammer2_fiterate_t;
 static int hammer2_freemap_try_alloc(hammer2_trans_t *trans,
 			hammer2_chain_t **parentp, hammer2_blockref_t *bref,
 			int radix, hammer2_fiterate_t *iter);
-static void hammer2_freemap_init(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+static void hammer2_freemap_init(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 			hammer2_key_t key, hammer2_chain_t *chain);
-static int hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+static int hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 			hammer2_bmap_data_t *bmap, uint16_t class,
 			int n, int radix, hammer2_key_t *basep);
 static int hammer2_freemap_iterate(hammer2_trans_t *trans,
@@ -191,7 +191,7 @@ int
 hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 		      size_t bytes)
 {
-	hammer2_mount_t *hmp = chain->hmp;
+	hammer2_dev_t *hmp = chain->hmp;
 	hammer2_blockref_t *bref = &chain->bref;
 	hammer2_chain_t *parent;
 	int radix;
@@ -294,7 +294,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			  hammer2_blockref_t *bref, int radix,
 			  hammer2_fiterate_t *iter)
 {
-	hammer2_mount_t *hmp = (*parentp)->hmp;
+	hammer2_dev_t *hmp = (*parentp)->hmp;
 	hammer2_off_t l0size;
 	hammer2_off_t l1size;
 	hammer2_off_t l1mask;
@@ -511,7 +511,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
  */
 static
 int
-hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 		   hammer2_bmap_data_t *bmap,
 		   uint16_t class, int n, int radix, hammer2_key_t *basep)
 {
@@ -695,7 +695,7 @@ success:
 
 static
 void
-hammer2_freemap_init(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+hammer2_freemap_init(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 		     hammer2_key_t key, hammer2_chain_t *chain)
 {
 	hammer2_off_t l1size;
@@ -769,7 +769,7 @@ static int
 hammer2_freemap_iterate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			hammer2_chain_t **chainp, hammer2_fiterate_t *iter)
 {
-	hammer2_mount_t *hmp = (*parentp)->hmp;
+	hammer2_dev_t *hmp = (*parentp)->hmp;
 
 	iter->bnext &= ~(H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX) - 1);
 	iter->bnext += H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
@@ -793,7 +793,7 @@ hammer2_freemap_iterate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
  * and to do the actual free.
  */
 void
-hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 		       hammer2_blockref_t *bref, int how)
 {
 	hammer2_off_t data_off = bref->data_off;

@@ -269,7 +269,7 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
  * XXX focus on first chain.
  */
 hammer2_cluster_t *
-hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
+hammer2_cluster_alloc(hammer2_pfs_t *pmp,
 		      hammer2_trans_t *trans, hammer2_blockref_t *bref)
 {
 	hammer2_cluster_t *cluster;
@@ -524,7 +524,7 @@ hammer2_cluster_replace_locked(hammer2_cluster_t *dst, hammer2_cluster_t *src)
 hammer2_cluster_t *
 hammer2_cluster_copy(hammer2_cluster_t *ocluster)
 {
-	hammer2_pfsmount_t *pmp = ocluster->pmp;
+	hammer2_pfs_t *pmp = ocluster->pmp;
 	hammer2_cluster_t *ncluster;
 	hammer2_chain_t *chain;
 	int i;
@@ -747,7 +747,7 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 		     hammer2_key_t key_beg, hammer2_key_t key_end,
 		     int flags, int *ddflagp)
 {
-	hammer2_pfsmount_t *pmp;
+	hammer2_pfs_t *pmp;
 	hammer2_cluster_t *cluster;
 	hammer2_chain_t *chain;
 	hammer2_key_t key_accum;
@@ -944,7 +944,7 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 		     int type, size_t bytes, int flags)
 {
 	hammer2_cluster_t *cluster;
-	hammer2_pfsmount_t *pmp;
+	hammer2_pfs_t *pmp;
 	int error;
 	int i;
 
@@ -1076,7 +1076,7 @@ int
 hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 		       hammer2_ioc_pfs_t *pfs)
 {
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 	hammer2_cluster_t *ncluster;
 	const hammer2_inode_data_t *ripdata;
 	hammer2_inode_data_t *wipdata;
@@ -1119,7 +1119,8 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 	ncluster = NULL;
 	nip = hammer2_inode_create(trans, hmp->spmp->iroot, &vat,
 				   proc0.p_ucred, pfs->name, name_len,
-				   &ncluster, &error);
+				   &ncluster,
+				   HAMMER2_INSERT_PFSROOT, &error);
 
 	if (nip) {
 		wipdata = hammer2_cluster_modify_ip(trans, nip, ncluster, 0);
@@ -1243,7 +1244,7 @@ hammer2_cluster_load_async(hammer2_cluster_t *cluster,
 {
 	hammer2_chain_t *chain;
 	hammer2_iocb_t *iocb;
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 	hammer2_blockref_t *bref;
 	int i;
 

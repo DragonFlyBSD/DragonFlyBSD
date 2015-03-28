@@ -46,19 +46,19 @@
  * Mount-wide locks
  */
 void
-hammer2_mount_exlock(hammer2_mount_t *hmp)
+hammer2_dev_exlock(hammer2_dev_t *hmp)
 {
 	hammer2_mtx_ex(&hmp->vchain.core.lock);
 }
 
 void
-hammer2_mount_shlock(hammer2_mount_t *hmp)
+hammer2_dev_shlock(hammer2_dev_t *hmp)
 {
 	hammer2_mtx_sh(&hmp->vchain.core.lock);
 }
 
 void
-hammer2_mount_unlock(hammer2_mount_t *hmp)
+hammer2_dev_unlock(hammer2_dev_t *hmp)
 {
 	hammer2_mtx_unlock(&hmp->vchain.core.lock);
 }

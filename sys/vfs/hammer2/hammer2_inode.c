@@ -260,7 +260,7 @@ hammer2_inode_lock_downgrade(hammer2_inode_t *ip, int wasexclusive)
  * Lookup an inode by inode number
  */
 hammer2_inode_t *
-hammer2_inode_lookup(hammer2_pfsmount_t *pmp, hammer2_tid_t inum)
+hammer2_inode_lookup(hammer2_pfs_t *pmp, hammer2_tid_t inum)
 {
 	hammer2_inode_t *ip;
 
@@ -296,7 +296,7 @@ hammer2_inode_ref(hammer2_inode_t *ip)
 void
 hammer2_inode_drop(hammer2_inode_t *ip)
 {
-	hammer2_pfsmount_t *pmp;
+	hammer2_pfs_t *pmp;
 	hammer2_inode_t *pip;
 	u_int refs;
 
@@ -370,7 +370,7 @@ struct vnode *
 hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
 {
 	const hammer2_inode_data_t *ripdata;
-	hammer2_pfsmount_t *pmp;
+	hammer2_pfs_t *pmp;
 	struct vnode *vp;
 
 	pmp = ip->pmp;
@@ -516,23 +516,26 @@ hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
  * kernel VNOPS API and the filesystem backend (the chains).
  */
 hammer2_inode_t *
-hammer2_inode_get(hammer2_pfsmount_t *pmp, hammer2_inode_t *dip,
+hammer2_inode_get(hammer2_pfs_t *pmp, hammer2_inode_t *dip,
 		  hammer2_cluster_t *cluster)
 {
 	hammer2_inode_t *nip;
 	const hammer2_inode_data_t *iptmp;
 	const hammer2_inode_data_t *nipdata;
 
-	KKASSERT(hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE);
+	KKASSERT(cluster == NULL ||
+		 hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE);
 	KKASSERT(pmp);
 
 	/*
 	 * Interlocked lookup/ref of the inode.  This code is only needed
 	 * when looking up inodes with nlinks != 0 (TODO: optimize out
 	 * otherwise and test for duplicates).
+	 *
+	 * Cluster can be NULL during the initial pfs allocation.
 	 */
 again:
-	for (;;) {
+	while (cluster) {
 		iptmp = &hammer2_cluster_rdata(cluster)->ipdata;
 		nip = hammer2_inode_lookup(pmp, iptmp->inum);
 		if (nip == NULL)
@@ -565,18 +568,24 @@ again:
 		nip->flags = HAMMER2_INODE_SROOT;
 
 	/*
-	 * Initialize nip's cluster
+	 * Initialize nip's cluster.  A cluster is provided for normal
+	 * inodes but typically not for the super-root or PFS inodes.
 	 */
 	nip->cluster.refs = 1;
 	nip->cluster.pmp = pmp;
 	nip->cluster.flags |= HAMMER2_CLUSTER_INODE;
-	hammer2_cluster_replace(&nip->cluster, cluster);
+	if (cluster) {
+		hammer2_cluster_replace(&nip->cluster, cluster);
+		nipdata = &hammer2_cluster_rdata(cluster)->ipdata;
+		nip->inum = nipdata->inum;
+		nip->size = nipdata->size;
+		nip->mtime = nipdata->mtime;
+		hammer2_inode_repoint(nip, NULL, cluster);
+	} else {
+		nip->inum = 1;			/* PFS inum is always 1 XXX */
+		/* mtime will be updated when a cluster is available */
+	}
 
-	nipdata = &hammer2_cluster_rdata(cluster)->ipdata;
-	nip->inum = nipdata->inum;
-	nip->size = nipdata->size;
-	nip->mtime = nipdata->mtime;
-	hammer2_inode_repoint(nip, NULL, cluster);
 	nip->pip = dip;				/* can be NULL */
 	if (dip)
 		hammer2_inode_ref(dip);	/* ref dip for nip->pip */
@@ -631,7 +640,8 @@ hammer2_inode_t *
 hammer2_inode_create(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		     struct vattr *vap, struct ucred *cred,
 		     const uint8_t *name, size_t name_len,
-		     hammer2_cluster_t **clusterp, int *errorp)
+		     hammer2_cluster_t **clusterp,
+		     int flags, int *errorp)
 {
 	const hammer2_inode_data_t *dipdata;
 	hammer2_inode_data_t *nipdata;
@@ -688,7 +698,7 @@ retry:
 					     lhc, 0,
 					     HAMMER2_BREF_TYPE_INODE,
 					     HAMMER2_INODE_BYTES,
-					     0);
+					     flags);
 	}
 #if INODE_DEBUG
 	kprintf("CREATE INODE %*.*s chain=%p\n",
@@ -1441,7 +1451,7 @@ done:
  * This is called from the mount code to initialize pmp->ihidden
  */
 void
-hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp)
+hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 {
 	hammer2_trans_t trans;
 	hammer2_cluster_t *cparent;
@@ -1562,7 +1572,7 @@ hammer2_inode_move_to_hidden(hammer2_trans_t *trans,
 			     hammer2_tid_t inum)
 {
 	hammer2_cluster_t *dcluster;
-	hammer2_pfsmount_t *pmp;
+	hammer2_pfs_t *pmp;
 	int error;
 
 	pmp = (*clusterp)->pmp;

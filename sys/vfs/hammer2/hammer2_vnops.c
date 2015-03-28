@@ -240,7 +240,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 {
 	hammer2_cluster_t *cluster;
 	hammer2_inode_t *ip;
-	hammer2_pfsmount_t *pmp;
+	hammer2_pfs_t *pmp;
 	struct vnode *vp;
 
 	LOCKSTART;
@@ -388,7 +388,7 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 {
 	const hammer2_inode_data_t *ripdata;
 	hammer2_cluster_t *cluster;
-	hammer2_pfsmount_t *pmp;
+	hammer2_pfs_t *pmp;
 	hammer2_inode_t *ip;
 	struct vnode *vp;
 	struct vattr *vap;
@@ -1430,7 +1430,8 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(&trans, dip->pmp, HAMMER2_TRANS_NEWINODE);
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
-				   name, name_len, &cluster, &error);
+				   name, name_len,
+				   &cluster, 0, &error);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1626,7 +1627,8 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	ncluster = NULL;
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
-				   name, name_len, &ncluster, &error);
+				   name, name_len,
+				   &ncluster, 0, &error);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1675,7 +1677,8 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	ncluster = NULL;
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
-				   name, name_len, &ncluster, &error);
+				   name, name_len,
+				   &ncluster, 0, &error);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1723,7 +1726,8 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	ap->a_vap->va_type = VLNK;	/* enforce type */
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
-				   name, name_len, &ncparent, &error);
+				   name, name_len,
+				   &ncparent, 0, &error);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -2317,7 +2321,7 @@ static
 int
 hammer2_strategy_write(struct vop_strategy_args *ap)
 {	
-	hammer2_pfsmount_t *pmp;
+	hammer2_pfs_t *pmp;
 	struct bio *bio;
 	struct buf *bp;
 	hammer2_inode_t *ip;
@@ -2366,7 +2370,7 @@ int
 hammer2_vop_mountctl(struct vop_mountctl_args *ap)
 {
 	struct mount *mp;
-	hammer2_pfsmount_t *pmp;
+	hammer2_pfs_t *pmp;
 	int rc;
 
 	LOCKSTART;
@@ -2396,7 +2400,7 @@ hammer2_vop_mountctl(struct vop_mountctl_args *ap)
  * flush, and (3) on umount.
  */
 void
-hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp)
+hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfs_t *pmp)
 {
 	const hammer2_inode_data_t *ripdata;
 	hammer2_inode_unlink_t *ipul;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -98,8 +98,8 @@ struct hammer2_iocb;
 struct hammer2_chain;
 struct hammer2_cluster;
 struct hammer2_inode;
-struct hammer2_mount;
-struct hammer2_pfsmount;
+struct hammer2_dev;
+struct hammer2_pfs;
 struct hammer2_span;
 struct hammer2_state;
 struct hammer2_msg;
@@ -297,7 +297,7 @@ struct hammer2_io {
 	RB_ENTRY(hammer2_io) rbnode;	/* indexed by device offset */
 	struct h2_iocb_list iocbq;
 	struct spinlock spin;
-	struct hammer2_mount *hmp;
+	struct hammer2_dev *hmp;
 	struct buf	*bp;
 	off_t		pbase;
 	int		psize;
@@ -323,8 +323,8 @@ struct hammer2_chain {
 	hammer2_blockref_t	bref;
 	struct hammer2_chain	*parent;
 	struct hammer2_state	*state;		/* if active cache msg */
-	struct hammer2_mount	*hmp;
-	struct hammer2_pfsmount	*pmp;		/* (pfs-cluster pmp or spmp) */
+	struct hammer2_dev	*hmp;
+	struct hammer2_pfs	*pmp;		/* A PFS or super-root (spmp) */
 
 	hammer2_xid_t	flush_xid;		/* flush sequencing */
 	hammer2_key_t   data_count;		/* delta's to apply */
@@ -373,7 +373,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_UNUSED00000400	0x00000400
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
 #define HAMMER2_CHAIN_UNUSED00001000	0x00001000
-#define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
+#define HAMMER2_CHAIN_UNUSED00002000	0x00002000
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
@@ -431,6 +431,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_DELETE_NOSTATS		0x0002
 
 #define HAMMER2_INSERT_NOSTATS		0x0002
+#define HAMMER2_INSERT_PFSROOT		0x0004
 
 /*
  * Flags passed to hammer2_chain_delete_duplicate()
@@ -500,7 +501,7 @@ typedef struct hammer2_cluster_item hammer2_cluster_item_t;
 struct hammer2_cluster {
 	int			status;		/* operational status */
 	int			refs;		/* track for deallocation */
-	struct hammer2_pfsmount	*pmp;
+	struct hammer2_pfs	*pmp;
 	uint32_t		flags;
 	int			nchains;
 	hammer2_iocb_t		iocb;
@@ -526,7 +527,7 @@ RB_HEAD(hammer2_inode_tree, hammer2_inode);
 struct hammer2_inode {
 	RB_ENTRY(hammer2_inode) rbnode;		/* inumber lookup (HL) */
 	hammer2_mtx_t		lock;		/* inode lock */
-	struct hammer2_pfsmount	*pmp;		/* PFS mount */
+	struct hammer2_pfs	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;
 	hammer2_cluster_t	cluster;
@@ -564,9 +565,37 @@ TAILQ_HEAD(h2_unlk_list, hammer2_inode_unlink);
 typedef struct hammer2_inode_unlink hammer2_inode_unlink_t;
 
 /*
+ * Cluster node synchronization thread element.
+ *
+ * Multiple syncthr's can hang off of a hammer2_pfs structure, typically one
+ * for each block device that is part of the PFS.  Synchronization threads
+ * for PFSs accessed over the network are handled by their respective hosts.
+ *
+ * Synchronization threads are responsible for keeping a local node
+ * synchronized to the greater cluster.
+ *
+ * A syncthr can also hang off each hammer2_dev's super-root PFS (spmp).
+ * This thread is responsible for automatic bulkfree and dedup scans.
+ */
+struct hammer2_syncthr {
+	TAILQ_ENTRY(hammer2_syncthr) entry;
+	hammer2_inode_t	*iroot;
+	struct hammer2_pfs *pfs;
+	kdmsg_state_t	*span;
+	thread_t	td;
+	uint32_t	flags;
+};
+TAILQ_HEAD(h2_syncthr_list, hammer2_syncthr);
+
+#define HAMMER2_SYNCTHR_UNMOUNTING	0x0001	/* unmount request */
+#define HAMMER2_SYNCTHR_DEV		0x0002	/* related to dev, not pfs */
+#define HAMMER2_SYNCTHR_SPANNED		0x0004	/* LNK_SPAN active */
+
+
+/*
  * A hammer2 transaction and flush sequencing structure.
  *
- * This global structure is tied into hammer2_mount and is used
+ * This global structure is tied into hammer2_dev and is used
  * to sequence modifying operations and flushes.
  *
  * (a) Any modifying operations with sync_tid >= flush_tid will stall until
@@ -607,7 +636,7 @@ typedef struct hammer2_inode_unlink hammer2_inode_unlink_t;
  */
 struct hammer2_trans {
 	TAILQ_ENTRY(hammer2_trans) entry;
-	struct hammer2_pfsmount *pmp;
+	struct hammer2_pfs	*pmp;
 	hammer2_xid_t		sync_xid;
 	hammer2_tid_t		inode_tid;	/* inode number assignment */
 	thread_t		td;		/* pointer */
@@ -647,13 +676,21 @@ struct hammer2_trans_manage {
 typedef struct hammer2_trans_manage hammer2_trans_manage_t;
 
 /*
- * Global (per device) mount structure for device (aka vp->v_mount->hmp)
+ * Global (per partition) management structure, represents a hard block
+ * device.  Typically referenced by hammer2_chain structures when applicable.
+ * Typically not used for network-managed elements.
+ *
+ * Note that a single hammer2_dev can be indirectly tied to multiple system
+ * mount points.  There is no direct relationship.  System mounts are
+ * per-cluster-id, not per-block-device, and a single hard mount might contain
+ * many PFSs and those PFSs might combine together in various ways to form
+ * the set of available clusters.
  */
-struct hammer2_mount {
+struct hammer2_dev {
 	struct vnode	*devvp;		/* device vnode */
 	int		ronly;		/* read-only mount */
-	int		pmp_count;	/* PFS mounts backed by us */
-	TAILQ_ENTRY(hammer2_mount) mntentry; /* hammer2_mntlist */
+	int		pmp_count;	/* number of actively mounted PFSs */
+	TAILQ_ENTRY(hammer2_dev) mntentry; /* hammer2_mntlist */
 
 	struct malloc_type *mchain;
 	int		nipstacks;
@@ -666,7 +703,7 @@ struct hammer2_mount {
 	hammer2_chain_t fchain;		/* anchor chain (freemap) */
 	struct spinlock	list_spin;
 	struct h2_flush_list	flushq;	/* flush seeds */
-	struct hammer2_pfsmount *spmp;	/* super-root pmp for transactions */
+	struct hammer2_pfs *spmp;	/* super-root pmp for transactions */
 	struct lock	vollk;		/* lockmgr lock */
 	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR];
 	int		volhdrno;	/* last volhdrno written */
@@ -674,57 +711,47 @@ struct hammer2_mount {
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
 };
 
-typedef struct hammer2_mount hammer2_mount_t;
+typedef struct hammer2_dev hammer2_dev_t;
 
 /*
- * HAMMER2 PFS mount point structure (aka vp->v_mount->mnt_data).
- * This has a 1:1 correspondence to struct mount (note that the
- * hammer2_mount structure has a N:1 correspondence).
+ * Per-cluster management structure.  This structure will be tied to a
+ * system mount point if the system is mounting the PFS, but is also used
+ * to manage clusters encountered during the super-root scan or received
+ * via LNK_SPANs that might not be mounted.
  *
- * This structure represents a cluster mount and not necessarily a
- * PFS under a specific device mount (HMP).  The distinction is important
- * because the elements backing a cluster mount can change on the fly.
+ * This structure is also used to represent the super-root that hangs off
+ * of a hard mount point.  The super-root is not really a cluster element.
+ * In this case the spmp_hmp field will be non-NULL.  It's just easier to do
+ * this than to special case super-root manipulation in the hammer2_chain*
+ * code as being only hammer2_dev-related.
  *
- * pfs_mode and pfs_nmasters critically describes how a HAMMER2 filesytem
- * mount should operate.  pfs_nmasters indicates how many master PFSs
- * exist for the filesystem (whether available or not).  pfs_mode is
- * a bitmask:
+ * pfs_mode and pfs_nmasters are rollup fields which critically describes
+ * how elements of the cluster act on the cluster.  pfs_mode is only applicable
+ * when a PFS is mounted by the system.  pfs_nmasters is our best guess as to
+ * how many masters have been configured for a cluster and is always
+ * applicable.
  *
- *	XXX this should be automatic based on the 'primary' mount.. based on
- *	which target you are mounting.
+ * WARNING! Portions of this structure have deferred initialization.  In
+ *	    particular, if not mounted there will be no ihidden or wthread.
+ *	    umounted network PFSs will also be missing iroot and numerous
+ *	    other fields will not be initialized prior to mount.
  *
- *	HAMMER2_PFSMODE_QUORUM	- Validate against quorum of masters,
- *				  else operate unsynchronized.
+ *	    Synchronization threads are chain-specific and only applicable
+ *	    to local hard PFS entries.  A hammer2_pfs structure may contain
+ *	    more than one when multiple hard PFSs are present on the local
+ *	    machine which require synchronization monitoring.  Most PFSs
+ *	    (such as snapshots) are 1xMASTER PFSs which do not need a
+ *	    synchronization thread.
  *
- *	HAMMER2_PFSMODE_RW	- Allow writing to the cluster,
- *				  else do not allow.
- *
- *	When operating in quorum mode modifying operations flow into
- *	a quorum+ of masters and all other local PFS types are synchronized
- *	in the background.  Other PFS types will be used to improve or avoid
- *	network I/O only if they agree with a quorum of masters.
- *
- *	When not operating in quorum mode modifying operations may only flow
- *	into a SOFT_MASTER and will be synchronized with the quorum in the
- *	background, and will not be cache-coherent with the quorum.  Think
- *	laptop-on-the-road.  Other PFS types will be used to improve or avoid
- *	network I/O only if they agree with the SOFT_MASTER.
- *
- *	When not operating in quorum mode a read-only mount can be used to
- *	access a particular PFS unsynchronized.
- *
- * Usually the first element under the cluster represents the original
- * user-requested mount that bootstraps the whole mess.  In significant
- * setups the original is usually just a read-only media image (or
- * representitive file) that simply contains a bootstrap volume header
- * listing the configuration.
+ * WARNING! The chains making up pfs->iroot's cluster are accounted for in
+ *	    hammer2_dev->pmp_count when the pfs is associated with a mount
+ *	    point.
  */
-struct hammer2_pfsmount {
+struct hammer2_pfs {
 	struct mount		*mp;
-	TAILQ_ENTRY(hammer2_pfsmount) mntentry; /* hammer2_pfslist */
+	TAILQ_ENTRY(hammer2_pfs) mntentry;	/* hammer2_pfslist */
 	uuid_t			pfs_clid;
-	uuid_t			pfs_fsid;
-	hammer2_mount_t		*spmp_hmp;	/* (spmp only) */
+	hammer2_dev_t		*spmp_hmp;	/* only if super-root pmp */
 	hammer2_inode_t		*iroot;		/* PFS root inode */
 	hammer2_inode_t		*ihidden;	/* PFS hidden directory */
 	struct lock		lock;		/* PFS lock for certain ops */
@@ -748,13 +775,14 @@ struct hammer2_pfsmount {
 	int			count_lwinprog;	/* logical write in prog */
 	struct spinlock		list_spin;
 	struct h2_unlk_list	unlinkq;	/* last-close unlink */
+	struct h2_syncthr_list	syncthrq;	/* synchronization threads */
 	thread_t		wthread_td;	/* write thread td */
 	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
 	hammer2_mtx_t 		wthread_mtx;	/* interlock */
 	int			wthread_destroy;/* termination sequencing */
 };
 
-typedef struct hammer2_pfsmount hammer2_pfsmount_t;
+typedef struct hammer2_pfs hammer2_pfs_t;
 
 #define HAMMER2_DIRTYCHAIN_WAITING	0x80000000
 #define HAMMER2_DIRTYCHAIN_MASK		0x7FFFFFFF
@@ -819,10 +847,10 @@ hammer2_devblksize(size_t bytes)
 
 
 static __inline
-hammer2_pfsmount_t *
+hammer2_pfs_t *
 MPTOPMP(struct mount *mp)
 {
-	return ((hammer2_pfsmount_t *)mp->mnt_data);
+	return ((hammer2_pfs_t *)mp->mnt_data);
 }
 
 #define LOCKSTART	int __nlocks = curthread->td_locks
@@ -886,9 +914,9 @@ void hammer2_inode_lock_temp_restore(hammer2_inode_t *ip,
 int hammer2_inode_lock_upgrade(hammer2_inode_t *ip);
 void hammer2_inode_lock_downgrade(hammer2_inode_t *ip, int);
 
-void hammer2_mount_exlock(hammer2_mount_t *hmp);
-void hammer2_mount_shlock(hammer2_mount_t *hmp);
-void hammer2_mount_unlock(hammer2_mount_t *hmp);
+void hammer2_dev_exlock(hammer2_dev_t *hmp);
+void hammer2_dev_shlock(hammer2_dev_t *hmp);
+void hammer2_dev_unlock(hammer2_dev_t *hmp);
 
 int hammer2_get_dtype(const hammer2_inode_data_t *ipdata);
 int hammer2_get_vtype(const hammer2_inode_data_t *ipdata);
@@ -897,7 +925,7 @@ void hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts);
 u_int64_t hammer2_timespec_to_time(const struct timespec *ts);
 u_int32_t hammer2_to_unix_xid(const uuid_t *uuid);
 void hammer2_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
-hammer2_xid_t hammer2_trans_newxid(hammer2_pfsmount_t *pmp);
+hammer2_xid_t hammer2_trans_newxid(hammer2_pfs_t *pmp);
 void hammer2_trans_manage_init(void);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
@@ -918,22 +946,23 @@ struct vnode *hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent,
 			int *errorp);
 void hammer2_inode_lock_nlinks(hammer2_inode_t *ip);
 void hammer2_inode_unlock_nlinks(hammer2_inode_t *ip);
-hammer2_inode_t *hammer2_inode_lookup(hammer2_pfsmount_t *pmp,
+hammer2_inode_t *hammer2_inode_lookup(hammer2_pfs_t *pmp,
 			hammer2_tid_t inum);
-hammer2_inode_t *hammer2_inode_get(hammer2_pfsmount_t *pmp,
+hammer2_inode_t *hammer2_inode_get(hammer2_pfs_t *pmp,
 			hammer2_inode_t *dip, hammer2_cluster_t *cluster);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
 void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 			hammer2_cluster_t *cluster);
-void hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp);
+void hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfs_t *pmp);
 
 hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
 			hammer2_inode_t *dip,
 			struct vattr *vap, struct ucred *cred,
 			const uint8_t *name, size_t name_len,
-			hammer2_cluster_t **clusterp, int *errorp);
+			hammer2_cluster_t **clusterp,
+			int flags, int *errorp);
 int hammer2_inode_connect(hammer2_trans_t *trans,
 			hammer2_cluster_t **clusterp, int hlink,
 			hammer2_inode_t *dip, hammer2_cluster_t *dcluster,
@@ -956,16 +985,16 @@ int hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_cluster_t **cparentp,
 			hammer2_cluster_t *cluster);
 int hammer2_parent_find(hammer2_cluster_t **cparentp,
 			hammer2_cluster_t *cluster);
-void hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp);
+void hammer2_inode_install_hidden(hammer2_pfs_t *pmp);
 
 /*
  * hammer2_chain.c
  */
-void hammer2_voldata_lock(hammer2_mount_t *hmp);
-void hammer2_voldata_unlock(hammer2_mount_t *hmp);
-void hammer2_voldata_modify(hammer2_mount_t *hmp);
-hammer2_chain_t *hammer2_chain_alloc(hammer2_mount_t *hmp,
-				hammer2_pfsmount_t *pmp,
+void hammer2_voldata_lock(hammer2_dev_t *hmp);
+void hammer2_voldata_unlock(hammer2_dev_t *hmp);
+void hammer2_voldata_modify(hammer2_dev_t *hmp);
+hammer2_chain_t *hammer2_chain_alloc(hammer2_dev_t *hmp,
+				hammer2_pfs_t *pmp,
 				hammer2_trans_t *trans,
 				hammer2_blockref_t *bref);
 void hammer2_chain_core_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain);
@@ -1010,7 +1039,7 @@ hammer2_chain_t *hammer2_chain_scan(hammer2_chain_t *parent,
 
 int hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
-				hammer2_pfsmount_t *pmp,
+				hammer2_pfs_t *pmp,
 				hammer2_key_t key, int keybits,
 				int type, size_t bytes, int flags);
 void hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
@@ -1032,9 +1061,9 @@ void hammer2_chain_setcheck(hammer2_chain_t *chain, void *bdata);
 int hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata);
 
 
-void hammer2_pfs_memory_wait(hammer2_pfsmount_t *pmp);
-void hammer2_pfs_memory_inc(hammer2_pfsmount_t *pmp);
-void hammer2_pfs_memory_wakeup(hammer2_pfsmount_t *pmp);
+void hammer2_pfs_memory_wait(hammer2_pfs_t *pmp);
+void hammer2_pfs_memory_inc(hammer2_pfs_t *pmp);
+void hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp);
 
 void hammer2_base_delete(hammer2_trans_t *trans, hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
@@ -1046,9 +1075,9 @@ void hammer2_base_insert(hammer2_trans_t *trans, hammer2_chain_t *chain,
 /*
  * hammer2_trans.c
  */
-void hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp,
+void hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfs_t *pmp,
 				int flags);
-void hammer2_trans_spmp(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp);
+void hammer2_trans_spmp(hammer2_trans_t *trans, hammer2_pfs_t *pmp);
 void hammer2_trans_done(hammer2_trans_t *trans);
 
 /*
@@ -1061,20 +1090,20 @@ int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
  * hammer2_io.c
  */
 void hammer2_io_putblk(hammer2_io_t **diop);
-void hammer2_io_cleanup(hammer2_mount_t *hmp, struct hammer2_io_tree *tree);
+void hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree);
 char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
-void hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
+void hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_iocb_t *iocb);
 void hammer2_io_complete(hammer2_iocb_t *iocb);
 void hammer2_io_callback(struct bio *bio);
 void hammer2_iocb_wait(hammer2_iocb_t *iocb);
-int hammer2_io_new(hammer2_mount_t *hmp, off_t lbase, int lsize,
+int hammer2_io_new(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-int hammer2_io_newnz(hammer2_mount_t *hmp, off_t lbase, int lsize,
+int hammer2_io_newnz(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-int hammer2_io_newq(hammer2_mount_t *hmp, off_t lbase, int lsize,
+int hammer2_io_newq(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-int hammer2_io_bread(hammer2_mount_t *hmp, off_t lbase, int lsize,
+int hammer2_io_bread(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_io_t **diop);
 void hammer2_io_bawrite(hammer2_io_t **diop);
 void hammer2_io_bdwrite(hammer2_io_t **diop);
@@ -1095,20 +1124,24 @@ int hammer2_msg_adhoc_input(kdmsg_msg_t *msg);
  * hammer2_vfsops.c
  */
 void hammer2_clusterctl_wakeup(kdmsg_iocom_t *iocom);
-void hammer2_volconf_update(hammer2_mount_t *hmp, int index);
+void hammer2_volconf_update(hammer2_dev_t *hmp, int index);
 void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx);
-void hammer2_bioq_sync(hammer2_pfsmount_t *pmp);
+void hammer2_bioq_sync(hammer2_pfs_t *pmp);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
-void hammer2_lwinprog_ref(hammer2_pfsmount_t *pmp);
-void hammer2_lwinprog_drop(hammer2_pfsmount_t *pmp);
-void hammer2_lwinprog_wait(hammer2_pfsmount_t *pmp);
+hammer2_pfs_t *hammer2_pfsalloc(hammer2_cluster_t *cluster,
+				const hammer2_inode_data_t *ripdata,
+				hammer2_tid_t alloc_tid);
+
+void hammer2_lwinprog_ref(hammer2_pfs_t *pmp);
+void hammer2_lwinprog_drop(hammer2_pfs_t *pmp);
+void hammer2_lwinprog_wait(hammer2_pfs_t *pmp);
 
 /*
  * hammer2_freemap.c
  */
 int hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 				size_t bytes);
-void hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+void hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 				hammer2_blockref_t *bref, int how);
 
 /*
@@ -1128,7 +1161,7 @@ void hammer2_cluster_setflush(hammer2_trans_t *trans,
 			hammer2_cluster_t *cluster);
 void hammer2_cluster_setmethod_check(hammer2_trans_t *trans,
 			hammer2_cluster_t *cluster, int check_algo);
-hammer2_cluster_t *hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
+hammer2_cluster_t *hammer2_cluster_alloc(hammer2_pfs_t *pmp,
 			hammer2_trans_t *trans,
 			hammer2_blockref_t *bref);
 void hammer2_cluster_ref(hammer2_cluster_t *cluster);
@@ -1179,15 +1212,15 @@ hammer2_cluster_t *hammer2_cluster_parent(hammer2_cluster_t *cluster);
 int hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			int (*func)(hammer2_chain_t *chain, void *info),
 			void *info);
-int hammer2_bulkfree_pass(hammer2_mount_t *hmp,
+int hammer2_bulkfree_pass(hammer2_dev_t *hmp,
 			struct hammer2_ioc_bulkfree *bfi);
 
 /*
  * hammer2_iocom.c
  */
-void hammer2_iocom_init(hammer2_mount_t *hmp);
-void hammer2_iocom_uninit(hammer2_mount_t *hmp);
-void hammer2_cluster_reconnect(hammer2_mount_t *hmp, struct file *fp);
+void hammer2_iocom_init(hammer2_dev_t *hmp);
+void hammer2_iocom_uninit(hammer2_dev_t *hmp);
+void hammer2_cluster_reconnect(hammer2_dev_t *hmp, struct file *fp);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

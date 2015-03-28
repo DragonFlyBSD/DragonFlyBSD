@@ -70,7 +70,7 @@ struct hammer2_cleanupcb_info {
  * Allocate/Locate the requested dio, reference it, issue or queue iocb.
  */
 void
-hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
+hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 		  hammer2_iocb_t *iocb)
 {
 	hammer2_io_t *dio;
@@ -329,7 +329,7 @@ hammer2_iocb_wait(hammer2_iocb_t *iocb)
 void
 hammer2_io_putblk(hammer2_io_t **diop)
 {
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 	hammer2_io_t *dio;
 	hammer2_iocb_t iocb;
 	struct buf *bp;
@@ -481,7 +481,7 @@ hammer2_io_cleanup_callback(hammer2_io_t *dio, void *arg)
 }
 
 void
-hammer2_io_cleanup(hammer2_mount_t *hmp, struct hammer2_io_tree *tree)
+hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree)
 {
 	hammer2_io_t *dio;
 
@@ -591,7 +591,7 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 
 static
 int
-_hammer2_io_new(hammer2_mount_t *hmp, off_t lbase, int lsize,
+_hammer2_io_new(hammer2_dev_t *hmp, off_t lbase, int lsize,
 	        hammer2_io_t **diop, int flags)
 {
 	hammer2_iocb_t iocb;
@@ -614,21 +614,21 @@ _hammer2_io_new(hammer2_mount_t *hmp, off_t lbase, int lsize,
 }
 
 int
-hammer2_io_new(hammer2_mount_t *hmp, off_t lbase, int lsize,
+hammer2_io_new(hammer2_dev_t *hmp, off_t lbase, int lsize,
 	       hammer2_io_t **diop)
 {
 	return(_hammer2_io_new(hmp, lbase, lsize, diop, HAMMER2_IOCB_ZERO));
 }
 
 int
-hammer2_io_newnz(hammer2_mount_t *hmp, off_t lbase, int lsize,
+hammer2_io_newnz(hammer2_dev_t *hmp, off_t lbase, int lsize,
 	       hammer2_io_t **diop)
 {
 	return(_hammer2_io_new(hmp, lbase, lsize, diop, 0));
 }
 
 int
-hammer2_io_newq(hammer2_mount_t *hmp, off_t lbase, int lsize,
+hammer2_io_newq(hammer2_dev_t *hmp, off_t lbase, int lsize,
 	       hammer2_io_t **diop)
 {
 	return(_hammer2_io_new(hmp, lbase, lsize, diop, HAMMER2_IOCB_QUICK));
@@ -690,7 +690,7 @@ hammer2_iocb_bread_callback(hammer2_iocb_t *iocb)
 }
 
 int
-hammer2_io_bread(hammer2_mount_t *hmp, off_t lbase, int lsize,
+hammer2_io_bread(hammer2_dev_t *hmp, off_t lbase, int lsize,
 		hammer2_io_t **diop)
 {
 	hammer2_iocb_t iocb;

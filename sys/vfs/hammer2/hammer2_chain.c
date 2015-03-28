@@ -165,7 +165,7 @@ hammer2_chain_setflush(hammer2_trans_t *trans, hammer2_chain_t *chain)
  * NOTE: Returns a referenced but unlocked (because there is no core) chain.
  */
 hammer2_chain_t *
-hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
+hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 		    hammer2_trans_t *trans, hammer2_blockref_t *bref)
 {
 	hammer2_chain_t *chain;
@@ -200,7 +200,10 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
 	/*
 	 * Initialize the new chain structure.
 	 */
-	chain->pmp = pmp;
+	if (pmp == hmp->spmp)
+		chain->pmp = NULL;
+	else
+		chain->pmp = pmp;
 	chain->hmp = hmp;
 	chain->bref = *bref;
 	chain->bytes = bytes;
@@ -361,8 +364,8 @@ static
 hammer2_chain_t *
 hammer2_chain_lastdrop(hammer2_chain_t *chain)
 {
-	hammer2_pfsmount_t *pmp;
-	hammer2_mount_t *hmp;
+	hammer2_pfs_t *pmp;
+	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *rdrop;
 
@@ -493,7 +496,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 static void
 hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
 {
-	/*hammer2_mount_t *hmp = chain->hmp;*/
+	/*hammer2_dev_t *hmp = chain->hmp;*/
 
 	switch(chain->bref.type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
@@ -554,7 +557,7 @@ hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
 int
 hammer2_chain_lock(hammer2_chain_t *chain, int how)
 {
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 	hammer2_blockref_t *bref;
 	hammer2_mtx_state_t ostate;
 	char *bdata;
@@ -935,7 +938,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		     hammer2_chain_t *parent, hammer2_chain_t *chain,
 		     int nradix, int flags)
 {
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 	size_t obytes;
 	size_t nbytes;
 
@@ -995,7 +998,7 @@ void
 hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 {
 	hammer2_blockref_t obref;
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 	hammer2_io_t *dio;
 	int error;
 	int wasinitial;
@@ -1033,7 +1036,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		hammer2_chain_ref(chain);
-		hammer2_pfs_memory_inc(chain->pmp);
+		hammer2_pfs_memory_inc(chain->pmp);	/* can be NULL */
 		newmod = 1;
 	} else {
 		newmod = 0;
@@ -1202,19 +1205,19 @@ skip2:
  * Volume header data locks
  */
 void
-hammer2_voldata_lock(hammer2_mount_t *hmp)
+hammer2_voldata_lock(hammer2_dev_t *hmp)
 {
 	lockmgr(&hmp->vollk, LK_EXCLUSIVE);
 }
 
 void
-hammer2_voldata_unlock(hammer2_mount_t *hmp)
+hammer2_voldata_unlock(hammer2_dev_t *hmp)
 {
 	lockmgr(&hmp->vollk, LK_RELEASE);
 }
 
 void
-hammer2_voldata_modify(hammer2_mount_t *hmp)
+hammer2_voldata_modify(hammer2_dev_t *hmp)
 {
 	if ((hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED);
@@ -1377,14 +1380,14 @@ hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
  * Caller must hold the parent locked shared or exclusive since we may
  * need the parent's bref array to find our block.
  *
- * WARNING! chain->pmp is left NULL if the bref represents a PFS mount
- *	    point.
+ * WARNING! chain->pmp is always set to NULL for any chain representing
+ *	    part of the super-root topology.
  */
 hammer2_chain_t *
 hammer2_chain_get(hammer2_chain_t *parent, int generation,
 		  hammer2_blockref_t *bref)
 {
-	hammer2_mount_t *hmp = parent->hmp;
+	hammer2_dev_t *hmp = parent->hmp;
 	hammer2_chain_t *chain;
 	int error;
 
@@ -1519,7 +1522,7 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		     hammer2_key_t key_beg, hammer2_key_t key_end,
 		     int *cache_indexp, int flags, int *ddflagp)
 {
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_blockref_t *base;
@@ -1867,7 +1870,7 @@ hammer2_chain_t *
 hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		   int *cache_indexp, int flags)
 {
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
 	hammer2_blockref_t bcopy;
@@ -2077,14 +2080,17 @@ done:
  * locked chain to insert (else we create a new chain).  The function will
  * adjust (*parentp) as necessary, create or connect the chain, and
  * return an exclusively locked chain in *chainp.
+ *
+ * When creating a PFSROOT inode under the super-root, pmp is typically NULL
+ * and will be reassigned.
  */
 int
 hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
-		     hammer2_chain_t **chainp, hammer2_pfsmount_t *pmp,
+		     hammer2_chain_t **chainp, hammer2_pfs_t *pmp,
 		     hammer2_key_t key, int keybits, int type, size_t bytes,
 		     int flags)
 {
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
 	hammer2_blockref_t *base;
@@ -2193,6 +2199,10 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 		KKASSERT(chain->parent == NULL);
 	}
+	if (flags & HAMMER2_INSERT_PFSROOT)
+		chain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
+	else
+		chain->bref.flags &= ~HAMMER2_BREF_FLAG_PFSROOT;
 
 	/*
 	 * Calculate how many entries we have in the blockref array and
@@ -2384,7 +2394,7 @@ hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 		     hammer2_chain_t **parentp, hammer2_chain_t *chain,
 		     int flags)
 {
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
 	size_t bytes;
 
@@ -2443,7 +2453,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 			     hammer2_chain_t *parent, hammer2_chain_t *chain,
 			     int flags)
 {
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 
 	KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0);
 	hmp = chain->hmp;
@@ -2655,7 +2665,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			      hammer2_key_t create_key, int create_bits,
 			      int for_type, int *errorp)
 {
-	hammer2_mount_t *hmp;
+	hammer2_dev_t *hmp;
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
 	hammer2_blockref_t bcopy;

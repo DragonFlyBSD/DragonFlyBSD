@@ -91,8 +91,8 @@ static int hammer2_flush_recurse(hammer2_chain_t *child, void *data);
  *
  * Transactions govern XID tracking on the physical media (the hmp), but they
  * also govern TID tracking which is per-PFS and thus might cross multiple
- * hmp's.  So we can't just stuff tmanage into hammer2_mount or
- * hammer2_pfsmount.
+ * hmp's.  So we can't just stuff tmanage into hammer2_dev or
+ * hammer2_pfs.
  */
 static hammer2_trans_manage_t	tmanage;
 
@@ -106,7 +106,7 @@ hammer2_trans_manage_init(void)
 }
 
 hammer2_xid_t
-hammer2_trans_newxid(hammer2_pfsmount_t *pmp __unused)
+hammer2_trans_newxid(hammer2_pfs_t *pmp __unused)
 {
 	hammer2_xid_t xid;
 
@@ -139,7 +139,7 @@ hammer2_trans_newxid(hammer2_pfsmount_t *pmp __unused)
  * flush depending on its state.
  */
 void
-hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp, int flags)
+hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfs_t *pmp, int flags)
 {
 	hammer2_trans_manage_t *tman;
 	hammer2_trans_t *head;
@@ -271,7 +271,7 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp, int flags)
  * of the same transaction.
  */
 void
-hammer2_trans_spmp(hammer2_trans_t *trans, hammer2_pfsmount_t *spmp)
+hammer2_trans_spmp(hammer2_trans_t *trans, hammer2_pfs_t *spmp)
 {
 	++spmp->alloc_tid;
 	spmp->flush_tid = spmp->alloc_tid;
@@ -485,8 +485,8 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		   int deleting)
 {
 	hammer2_chain_t *parent;
-	hammer2_mount_t *hmp;
-	hammer2_pfsmount_t *pmp;
+	hammer2_dev_t *hmp;
+	hammer2_pfs_t *pmp;
 	int diddeferral;
 
 	/*
