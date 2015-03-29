@@ -12,6 +12,31 @@
 +         UPGRADING DRAGONFLY FROM 4.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+LOADER OPTIONS CHANGED
+----------------------
+
+Right after the development branch started, the Fred art accompanying the
+loader menu was improved.  The line between Fred and the menu was removed
+by default (but can optionally be returned) and the placement shifted as
+a result.  The drawing was improved, and the colored version was improved,
+changing the eyes and wing color from white to red.  A new color version
+of Fred was added, one with a blue scheme.
+
+The loader menu defaults have changed since release 4.0:  The vertical
+line was removed, the loader is displayed in color by default*, and the
+blue scheme is used.
+
+The loader.conf changes are:
+loader_color:   option has been removed
+loader_plain:   option has been added, it changed menu to monochrome
+fred_is_red:    changes color scheme from blue to red
+fred_is_blue:   option existed only on 4.1, it has been removed
+fred_separated: Adds line between Fred and menu (as seen previously)
+
+* If loader.conf defines "console" as "comconsole" or "console" is defined
+  in the environment as "comconsole" then color will not be displayed,
+  even if loader_plain value is "NO".
+
 SENDMAIL REMOVED FROM BASE
 --------------------------
 
