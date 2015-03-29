@@ -4,6 +4,6 @@
 
 sendmail	/usr/libexec/dma
 mailq		/usr/libexec/dma
-newaliases	true
-hoststat	true
-purgestat	true
+newaliases	/usr/libexec/dma
+hoststat	/usr/libexec/dma
+purgestat	/usr/libexec/dma

@@ -30,8 +30,7 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" The following requests are required for all man pages.
-.Dd March 9, 2015
+.Dd March 29, 2015
 .Dt MAILER.CONF 5
 .Os
 .Sh NAME
@@ -77,8 +76,8 @@ installed from DPorts to replace
 sendmail	/usr/local/sbin/sendmail
 mailq		/usr/local/bin/mailq
 newaliases	/usr/local/bin/newaliases
-hoststat	true
-purgestat	true
+hoststat	/usr/bin/true
+purgestat	/usr/bin/true
 .Ed
 .Pp
 This example shows how to invoke a sendmail-workalike like OpenSMTPd
@@ -89,8 +88,8 @@ installed from DPorts to replace
 sendmail	/usr/local/sbin/smtpctl
 mailq		/usr/local/sbin/smtpctl
 newaliases	/usr/local/sbin/smtpctl
-hoststat	true
-purgestat	true
+hoststat	/usr/bin/true
+purgestat	/usr/bin/true
 .Ed
 .Pp
 These are the default contents of the file
@@ -98,9 +97,9 @@ These are the default contents of the file
 # Use dma as Mail Transfer Agent
 sendmail	/usr/libexec/dma
 mailq		/usr/libexec/dma
-newaliases	true
-hoststat	true
-purgestat	true
+newaliases	/usr/libexec/dma
+hoststat	/usr/libexec/dma
+purgestat	/usr/libexec/dma
 .Ed
 .Sh SEE ALSO
 .Xr mail 1 ,
