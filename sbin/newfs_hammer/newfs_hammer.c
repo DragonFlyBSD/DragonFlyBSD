@@ -609,6 +609,7 @@ format_root(const char *label)
 	hammer_node_ondisk_t bnode;
 	struct hammer_inode_data *idata;
 	hammer_pseudofs_data_t pfsd;
+	struct buffer_info *data_buffer0 = NULL;
 	struct buffer_info *data_buffer1 = NULL;
 	struct buffer_info *data_buffer2 = NULL;
 	hammer_btree_elm_t elm;
@@ -617,7 +618,7 @@ format_root(const char *label)
 	/*
 	 * Allocate zero-filled root btree node, inode and pfs
 	 */
-	bnode = alloc_btree_element(&btree_off);
+	bnode = alloc_btree_element(&btree_off, &data_buffer0);
 	idata = alloc_meta_element(&data_off, sizeof(*idata), &data_buffer1);
 	pfsd = alloc_meta_element(&pfsd_off, sizeof(*pfsd), &data_buffer2);
 	create_tid = createtid();

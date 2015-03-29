@@ -137,7 +137,8 @@ hammer_off_t blockmap_lookup(hammer_off_t bmap_off,
 void format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_base);
 void format_undomap(hammer_volume_ondisk_t ondisk);
 
-void *alloc_btree_element(hammer_off_t *offp);
+void *alloc_btree_element(hammer_off_t *offp,
+			 struct buffer_info **data_bufferp);
 void *alloc_meta_element(hammer_off_t *offp, int32_t data_len,
 			 struct buffer_info **data_bufferp);
 void *alloc_data_element(hammer_off_t *offp, int32_t data_len,

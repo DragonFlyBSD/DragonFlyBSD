@@ -425,16 +425,15 @@ get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp,
  * Allocate HAMMER elements - btree nodes, meta data, data storage
  */
 void *
-alloc_btree_element(hammer_off_t *offp)
+alloc_btree_element(hammer_off_t *offp,
+		    struct buffer_info **data_bufferp)
 {
-	struct buffer_info *buffer = NULL;
 	hammer_node_ondisk_t node;
 
 	node = alloc_blockmap(HAMMER_ZONE_BTREE_INDEX, sizeof(*node),
-			      offp, &buffer);
+			      offp, data_bufferp);
 	bzero(node, sizeof(*node));
-	/* XXX buffer not released, pointer remains valid */
-	return(node);
+	return (node);
 }
 
 void *
