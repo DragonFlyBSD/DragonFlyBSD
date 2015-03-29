@@ -1270,6 +1270,7 @@ options		SND_OLDSTEREO
 #
 # bktr: Brooktree bt848/848a/849a/878/879 video capture and TV Tuner board
 # coremctl: Intel Core/E3 memory controller (required by ecc(4))
+# dimm: Location inforamtion (required by memtemp(4))
 # ecc: ECC memory controller
 # ipmi: Intelligent Platform Management Interface
 # joy: joystick
@@ -1286,6 +1287,7 @@ options		SND_OLDSTEREO
 #  The cards can use an IRQ of 11, 12 or 15.
 
 device		coremctl
+device		dimm
 device		ecc
 device		joy0	at isa? port IO_GAME
 device		nrp

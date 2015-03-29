@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 12, 2015
+.Dd April 4, 2015
 .Dt MEMTEMP 4
 .Os
 .Sh NAME
@@ -38,6 +38,7 @@
 To compile this driver into the kernel,
 place the following lines in your kernel configuration file:
 .Bd -ragged -offset indent
+.Cd "device dimm"
 .Cd "device coremctl"
 .Cd "device memtemp"
 .Ed
@@ -58,15 +59,28 @@ The values are exposed through the
 tree.
 For example:
 .Bd -literal -offset indent
-%sysctl hw.sensors
-hw.sensors.dimm0.temp0: 39.00 degC
-hw.sensors.dimm3.temp0: 40.00 degC
-hw.sensors.dimm6.temp0: 35.00 degC
-hw.sensors.dimm9.temp0: 33.00 degC
-hw.sensors.dimm12.temp0: 29.00 degC
-hw.sensors.dimm15.temp0: 35.00 degC
-hw.sensors.dimm18.temp0: 33.00 degC
-hw.sensors.dimm21.temp0: 31.00 degC
+% sysctl hw.sensors
+hw.sensors.dimm0.temp0: 40.00 degC (node0 chan0 DIMM0), OK
+hw.sensors.dimm1.temp0: 39.00 degC (node0 chan1 DIMM0), OK
+.Ed
+.Pp
+The DIMM location and configurable critical temperature thresholds
+are exposed through hw.dimminfo
+.Xr sysctl 3
+tree.
+For example:
+.Bd -literal -offset indent
+% sysctl hw.dimminfo
+hw.dimminfo.dimm0.node: 0
+hw.dimminfo.dimm0.chan: 0
+hw.dimminfo.dimm0.slot: 0
+hw.dimminfo.dimm0.temp_hiwat: 93
+hw.dimminfo.dimm0.temp_lowat: 88
+hw.dimminfo.dimm1.node: 0
+hw.dimminfo.dimm1.chan: 1
+hw.dimminfo.dimm1.slot: 0
+hw.dimminfo.dimm1.temp_hiwat: 93
+hw.dimminfo.dimm1.temp_lowat: 88
 .Ed
 .Sh HARDWARE
 The

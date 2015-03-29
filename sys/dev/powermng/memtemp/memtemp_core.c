@@ -49,16 +49,18 @@
 #include "pcib_if.h"
 
 #include <dev/misc/coremctl/coremctl_reg.h>
+#include <dev/misc/dimm/dimm.h>
 
 struct memtemp_core_softc;
 
 struct memtemp_core_dimm {
 	TAILQ_ENTRY(memtemp_core_dimm)	dimm_link;
-	struct ksensordev		dimm_sensordev;
 	struct ksensor			dimm_sensor;
 	struct memtemp_core_softc	*dimm_parent;
 	int				dimm_reg;
 	uint32_t			dimm_mask;
+
+	struct dimm_softc		*dimm_softc;
 };
 
 struct memtemp_core_type {
@@ -112,6 +114,7 @@ DRIVER_MODULE(memtemp_core, coremctl, memtemp_core_driver, memtemp_devclass,
     NULL, NULL);
 MODULE_DEPEND(memtemp_core, pci, 1, 1, 1);
 MODULE_DEPEND(memtemp_core, coremctl, 1, 1, 1);
+MODULE_DEPEND(memtemp_core, dimm, 1, 1, 1);
 
 static __inline uint32_t
 CSR_READ_4(struct memtemp_core_softc *sc, int ofs)
@@ -211,7 +214,7 @@ memtemp_core_dimm_attach(struct memtemp_core_softc *sc, int chan, int dimm_id,
     int dimm_reg)
 {
 	struct memtemp_core_dimm *dimm_sc;
-	int dimm_extid;
+	struct ksensor *sens;
 
 	dimm_sc = kmalloc(sizeof(*dimm_sc), M_DEVBUF, M_WAITOK | M_ZERO);
 	dimm_sc->dimm_parent = sc;
@@ -223,13 +226,14 @@ memtemp_core_dimm_attach(struct memtemp_core_softc *sc, int chan, int dimm_id,
 		dimm_sc->dimm_mask = MCH_CORE_DIMM_TEMP_DIMM1;
 	}
 
-	dimm_extid = (chan * PCI_CORE_MEMCTL_CHN_DIMM_MAX) + dimm_id;
-	ksnprintf(dimm_sc->dimm_sensordev.xname,
-	    sizeof(dimm_sc->dimm_sensordev.xname), "dimm%d", dimm_extid);
-	dimm_sc->dimm_sensor.type = SENSOR_TEMP;
-	sensor_attach(&dimm_sc->dimm_sensordev, &dimm_sc->dimm_sensor);
-	sensor_task_register(dimm_sc, memtemp_core_sensor_task, 2);
-	sensordev_install(&dimm_sc->dimm_sensordev);
+	dimm_sc->dimm_softc = dimm_create(0, chan, dimm_id);
+
+	sens = &dimm_sc->dimm_sensor;
+	ksnprintf(sens->desc, sizeof(sens->desc), "chan%d DIMM%d",
+	    chan, dimm_id);
+	sens->type = SENSOR_TEMP;
+	dimm_sensor_attach(dimm_sc->dimm_softc, sens);
+	sensor_task_register(dimm_sc, memtemp_core_sensor_task, 5);
 
 	TAILQ_INSERT_TAIL(&sc->temp_dimm, dimm_sc, dimm_link);
 }
@@ -243,8 +247,9 @@ memtemp_core_detach(device_t dev)
 	while ((dimm_sc = TAILQ_FIRST(&sc->temp_dimm)) != NULL) {
 		TAILQ_REMOVE(&sc->temp_dimm, dimm_sc, dimm_link);
 
-		sensordev_deinstall(&dimm_sc->dimm_sensordev);
 		sensor_task_unregister(dimm_sc);
+		dimm_sensor_detach(dimm_sc->dimm_softc, &dimm_sc->dimm_sensor);
+		dimm_destroy(dimm_sc->dimm_softc);
 
 		kfree(dimm_sc, M_DEVBUF);
 	}
@@ -255,13 +260,11 @@ static void
 memtemp_core_sensor_task(void *xdimm_sc)
 {
 	struct memtemp_core_dimm *dimm_sc = xdimm_sc;
-	struct ksensor *sensor = &dimm_sc->dimm_sensor;
 	uint32_t val;
 	int temp;
 
 	val = CSR_READ_4(dimm_sc->dimm_parent, dimm_sc->dimm_reg);
 	temp = __SHIFTOUT(val, dimm_sc->dimm_mask);
 
-	sensor->flags &= ~SENSOR_FINVALID;
-	sensor->value = (temp * 1000000) + 273150000;
+	dimm_sensor_temp(dimm_sc->dimm_softc, &dimm_sc->dimm_sensor, temp);
 }
