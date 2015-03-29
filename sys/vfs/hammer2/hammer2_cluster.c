@@ -682,7 +682,7 @@ hammer2_cluster_modsync(hammer2_cluster_t *cluster)
 				      offsetof(hammer2_inode_data_t, u));
 				break;
 			}
-			/* fall through */
+			/* fall through to full copy */
 		case HAMMER2_BREF_TYPE_DATA:
 			bcopy(focus->data, scan->data, focus->bytes);
 			break;
@@ -1085,7 +1085,9 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 	size_t name_len;
 	hammer2_key_t lhc;
 	struct vattr vat;
+#if 0
 	uuid_t opfs_clid;
+#endif
 	int error;
 	int i;
 
@@ -1098,8 +1100,10 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 	 * Get the clid
 	 */
 	ripdata = &hammer2_cluster_rdata(ocluster)->ipdata;
+#if 0
 	opfs_clid = ripdata->pfs_clid;
-	hmp = ocluster->focus->hmp;
+#endif
+	hmp = ocluster->focus->hmp;	/* XXX find synchronized local disk */
 
 	/*
 	 * Create the snapshot directory under the super-root
@@ -1125,11 +1129,21 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 	if (nip) {
 		wipdata = hammer2_cluster_modify_ip(trans, nip, ncluster, 0);
 		wipdata->pfs_type = HAMMER2_PFSTYPE_SNAPSHOT;
+		wipdata->op_flags |= HAMMER2_OPFLAG_PFSROOT;
 		kern_uuidgen(&wipdata->pfs_fsid, 1);
+
+		/*
+		 * Give the snapshot its own private cluster.  As a snapshot
+		 * no further synchronization with the original cluster will
+		 * be done.
+		 */
+#if 0
 		if (ocluster->focus->flags & HAMMER2_CHAIN_PFSBOUNDARY)
 			wipdata->pfs_clid = opfs_clid;
 		else
 			kern_uuidgen(&wipdata->pfs_clid, 1);
+#endif
+		kern_uuidgen(&wipdata->pfs_clid, 1);
 
 		for (i = 0; i < ncluster->nchains; ++i) {
 			nchain = ncluster->array[i].chain;

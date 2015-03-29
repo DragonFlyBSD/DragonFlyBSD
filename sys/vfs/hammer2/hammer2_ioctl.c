@@ -553,6 +553,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		nipdata->pfs_type = pfs->pfs_type;
 		nipdata->pfs_clid = pfs->pfs_clid;
 		nipdata->pfs_fsid = pfs->pfs_fsid;
+		nipdata->op_flags |= HAMMER2_OPFLAG_PFSROOT;
 
 		/*
 		 * Do not allow compression on PFS's with the special name

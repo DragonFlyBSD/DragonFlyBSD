@@ -333,8 +333,8 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 	int j;
 
 	/*
-	 * Locate existing PFS if ripdata is present.  If ripdata is not
-	 * present this is a spmp which is always unique and not listed.
+	 * Locate or create the PFS based on the cluster id.  If ripdata
+	 * is NULL this is a spmp which is unique and is always allocated.
 	 */
 	if (ripdata) {
 		TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
@@ -355,7 +355,6 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		spin_init(&pmp->inum_spin, "hm2pfsalloc_inum");
 		RB_INIT(&pmp->inum_tree);
 		TAILQ_INIT(&pmp->unlinkq);
-		TAILQ_INIT(&pmp->syncthrq);
 		spin_init(&pmp->list_spin, "hm2pfsalloc_list");
 
 		/* our first media transaction id */
@@ -380,6 +379,33 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 	}
 
 	/*
+	 * Create a primary synchronizer thread for the PFS if necessary.
+	 * Single-node masters (including snapshots) have nothing to
+	 * synchronize and do not require this thread.
+	 *
+	 * Multi-node masters or any number of soft masters, slaves, copy,
+	 * or other PFS types need the thread.
+	 */
+	if (cluster && ripdata &&
+	    ((ripdata->pfs_type != HAMMER2_PFSTYPE_MASTER &&
+	      ripdata->pfs_type != HAMMER2_PFSTYPE_SNAPSHOT) ||
+	     ripdata->pfs_nmasters > 1) &&
+	    pmp->primary_thr.td == NULL) {
+		hammer2_syncthr_create(&pmp->primary_thr, pmp,
+				       hammer2_syncthr_primary);
+	}
+
+	/*
+	 * Update nmasters from any PFS which is part of the cluster.
+	 * It is possible that this will result in a value which is too
+	 * high.  MASTER PFSs are authoritative for pfs_nmasters and will
+	 * override this value later on.
+	 */
+	if (ripdata && pmp->pfs_nmasters < ripdata->pfs_nmasters) {
+		pmp->pfs_nmasters = ripdata->pfs_nmasters;
+	}
+
+	/*
 	 * When a cluster is passed in we must add the cluster's chains
 	 * to the PFS's root inode.
 	 *
@@ -400,6 +426,13 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 			rchain->pmp = pmp;
 			hammer2_chain_ref(rchain);
 			pmp->iroot->cluster.array[j].chain = rchain;
+
+			/*
+			 * May have to fixup dirty chain tracking.  Previous
+			 * pmp was NULL so nothing to undo.
+			 */
+			if (rchain->flags & HAMMER2_CHAIN_MODIFIED)
+				hammer2_pfs_memory_inc(pmp);
 			++j;
 		}
 		pmp->iroot->cluster.nchains = j;
@@ -428,6 +461,8 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 	 */
 	TAILQ_REMOVE(&hammer2_pfslist, pmp, mntentry);
 
+	hammer2_syncthr_delete(&pmp->primary_thr);
+
 	if (pmp->iroot) {
 #if REPORT_REFS_ERRORS
 		if (pmp->iroot->refs != 1)
@@ -448,8 +483,8 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 }
 
 /*
- * Remove all references to hmp from the pfs list.  Free any PFS which
- * becomes empty.
+ * Remove all references to hmp from the pfs list.  Any PFS which becomes
+ * empty is terminated and freed.
  *
  * XXX inefficient.
  */
@@ -460,6 +495,7 @@ hammer2_pfsfree_scan(hammer2_dev_t *hmp)
 	hammer2_cluster_t *cluster;
 	hammer2_cluster_t *cparent;
 	hammer2_chain_t *rchain;
+	int didfreeze;
 	int i;
 
 again:
@@ -473,28 +509,42 @@ again:
 			hmp->spmp = NULL;
 		}
 		cluster = &pmp->iroot->cluster;
+
+		/*
+		 * Determine if this PFS is affected.  If it is we must
+		 * freeze all management threads and lock its iroot.
+		 *
+		 * Freezing a management thread forces it idle, operations
+		 * in-progress will be aborted and it will have to start
+		 * over again when unfrozen, or exit if told to exit.
+		 */
 		for (i = 0; i < cluster->nchains; ++i) {
 			rchain = cluster->array[i].chain;
 			if (rchain == NULL || rchain->hmp != hmp)
 				continue;
+			break;
+		}
+		if (i != cluster->nchains) {
+			hammer2_syncthr_freeze(&pmp->primary_thr);
+			cparent = hammer2_inode_lock_ex(pmp->iroot);
 
 			/*
-			 * If the pmp is possibly using hmp we need to
-			 * lock its iroot, there might be other mounts
-			 * using it which are still active.  Restart the
-			 * loop.
+			 * Remove the chain from matching elements of the PFS.
 			 */
-			if (cparent == NULL) {
-				cparent = hammer2_inode_lock_ex(pmp->iroot);
-				i = -1;
-				continue;
+			for (i = 0; i < cluster->nchains; ++i) {
+				rchain = cluster->array[i].chain;
+				if (rchain == NULL || rchain->hmp != hmp)
+					continue;
+
+				cluster->array[i].chain = NULL;
+				hammer2_chain_drop(rchain);
+				cluster->focus = NULL;
 			}
-			cluster->array[i].chain = NULL;
-			hammer2_chain_drop(rchain);
-			cluster->focus = NULL;
-		}
-		if (cparent)
 			hammer2_inode_unlock_ex(pmp->iroot, cparent);
+			didfreeze = 1;
+		} else {
+			didfreeze = 0;
+		}
 
 		/*
 		 * Cleanup trailing chains.  Do not reorder chains (for now).
@@ -508,12 +558,22 @@ again:
 
 		/*
 		 * If the PMP has no elements remaining we can destroy it.
+		 * (this will transition management threads from frozen->exit).
 		 */
 		if (cluster->nchains == 0) {
 			kprintf("unmount hmp %p last ref to PMP=%p\n",
 				hmp, pmp);
 			hammer2_pfsfree(pmp);
 			goto again;
+		}
+
+		/*
+		 * If elements still remain we need to set the REMASTER
+		 * flag and unfreeze it.
+		 */
+		if (didfreeze) {
+			hammer2_syncthr_remaster(&pmp->primary_thr);
+			hammer2_syncthr_unfreeze(&pmp->primary_thr);
 		}
 	}
 }
@@ -2167,7 +2227,14 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 		    info->depth != 0) {
 			pfs_boundary = 1;
 			sync_tid = parent->bref.mirror_tid - 1;
+			kprintf("recovery scan PFS synctid %016jx \"%s\"\n",
+				sync_tid, ripdata->filename);
 		}
+#if 0
+		if ((ripdata->op_flags & HAMMER2_OPFLAG_PFSROOT) == 0) {
+			kprintf("%*.*s\"%s\"\n", info->depth, info->depth, "", ripdata->filename);
+		}
+#endif
 		hammer2_chain_unlock(parent);
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:

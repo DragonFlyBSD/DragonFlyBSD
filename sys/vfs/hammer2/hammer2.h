@@ -88,6 +88,7 @@
 #include <sys/signal2.h>
 #include <sys/buf2.h>
 #include <sys/mutex2.h>
+#include <sys/thread2.h>
 
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
@@ -473,18 +474,22 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * hammer2_inode.  This embedded cluster is ONLY used to track the
  * representitive chains and cannot be directly locked.
  *
- * A cluster is temporary (and thus per-thread) for locking purposes,
- * allowing us to embed the asynchronous storage required for
- * cluster operations in the cluster itself.  That is, except for the
- * embeddeding hammer2_inode, the cluster structure will always represent
- * a 'working copy'.
+ * A cluster is usually temporary (and thus per-thread) for locking purposes,
+ * allowing us to embed the asynchronous storage required for cluster
+ * operations in the cluster itself and adjust the state and status without
+ * having to worry too much about SMP issues.
+ *
+ * The exception is the cluster embedded in the hammer2_inode structure.
+ * This is used to cache the cluster state on an inode-by-inode basis.
+ * Individual hammer2_chain structures not incorporated into clusters might
+ * also stick around to cache miscellanious elements.
  *
  * Because the cluster is a 'working copy' and is usually subject to cluster
  * quorum rules, it is quite possible for us to end up with an insufficient
  * number of live chains to execute an operation.  If an insufficient number
  * of chains remain in a working copy, the operation may have to be
- * downgraded, retried, or stall until the requisit number of chains are
- * available.
+ * downgraded, retried, stall until the requisit number of chains are
+ * available, or possibly even error out depending on the mount type.
  */
 #define HAMMER2_MAXCLUSTER	8
 
@@ -499,7 +504,7 @@ struct hammer2_cluster_item {
 typedef struct hammer2_cluster_item hammer2_cluster_item_t;
 
 struct hammer2_cluster {
-	int			status;		/* operational status */
+	int			unused01;
 	int			refs;		/* track for deallocation */
 	struct hammer2_pfs	*pmp;
 	uint32_t		flags;
@@ -511,8 +516,55 @@ struct hammer2_cluster {
 
 typedef struct hammer2_cluster	hammer2_cluster_t;
 
+/*
+ * WRHARD	- Hard mounts can write fully synchronized
+ * RDHARD	- Hard mounts can read fully synchronized
+ * WRSOFT	- Soft mounts can write to at least the SOFT_MASTER
+ * RDSOFT	- Soft mounts can read from at least a SOFT_SLAVE
+ * RDSLAVE	- slaves are accessible (possibly unsynchronized or remote).
+ * MSYNCED	- All masters are fully synchronized
+ * SSYNCED	- All known local slaves are fully synchronized to masters
+ *
+ * All available masters are always incorporated.  All PFSs belonging to a
+ * cluster (master, slave, copy, whatever) always try to synchronize the
+ * total number of known masters in the PFSs root inode.
+ *
+ * A cluster might have access to many slaves, copies, or caches, but we
+ * have a limited number of cluster slots.  Any such elements which are
+ * directly mounted from block device(s) will always be incorporated.   Note
+ * that SSYNCED only applies to such elements which are directly mounted,
+ * not to any remote slaves, copies, or caches that could be available.  These
+ * bits are used to monitor and drive our synchronization threads.
+ *
+ * When asking the question 'is any data accessible at all', then a simple
+ * test against (RDHARD|RDSOFT|RDSLAVE) gives you the answer.  If any of
+ * these bits are set the object can be read with certain caveats:
+ * RDHARD - no caveats.  RDSOFT - authoritative but might not be synchronized.
+ * and RDSLAVE - not authoritative, has some data but it could be old or
+ * incomplete.
+ *
+ * When both soft and hard mounts are available, data will be read and written
+ * via the soft mount only.  But all might be in the cluster because
+ * background synchronization threads still need to do their work.
+ */
 #define HAMMER2_CLUSTER_INODE	0x00000001	/* embedded in inode */
 #define HAMMER2_CLUSTER_NOSYNC	0x00000002	/* not in sync (cumulative) */
+#define HAMMER2_CLUSTER_WRHARD	0x00000100	/* hard-mount can write */
+#define HAMMER2_CLUSTER_RDHARD	0x00000200	/* hard-mount can read */
+#define HAMMER2_CLUSTER_WRSOFT	0x00000400	/* soft-mount can write */
+#define HAMMER2_CLUSTER_RDSOFT	0x00000800	/* soft-mount can read */
+#define HAMMER2_CLUSTER_MSYNCED	0x00001000	/* all masters synchronized */
+#define HAMMER2_CLUSTER_SSYNCED	0x00002000	/* known slaves synchronized */
+
+#define HAMMER2_CLUSTER_ANYDATA	( HAMMER2_CLUSTER_RDHARD |	\
+				  HAMMER2_CLUSTER_RDSOFT |	\
+				  HAMMER2_CLUSTER_RDSLAVE)
+
+#define HAMMER2_CLUSTER_RDOK	( HAMMER2_CLUSTER_RDHARD |	\
+				  HAMMER2_CLUSTER_RDSOFT)
+
+#define HAMMER2_CLUSTER_WROK	( HAMMER2_CLUSTER_WRHARD |	\
+				  HAMMER2_CLUSTER_WRSOFT)
 
 
 RB_HEAD(hammer2_inode_tree, hammer2_inode);
@@ -578,19 +630,23 @@ typedef struct hammer2_inode_unlink hammer2_inode_unlink_t;
  * This thread is responsible for automatic bulkfree and dedup scans.
  */
 struct hammer2_syncthr {
-	TAILQ_ENTRY(hammer2_syncthr) entry;
-	hammer2_inode_t	*iroot;
-	struct hammer2_pfs *pfs;
+	struct hammer2_pfs *pmp;
 	kdmsg_state_t	*span;
 	thread_t	td;
 	uint32_t	flags;
+	uint32_t	unused01;
+	struct lock	lk;
 };
-TAILQ_HEAD(h2_syncthr_list, hammer2_syncthr);
+
+typedef struct hammer2_syncthr hammer2_syncthr_t;
 
 #define HAMMER2_SYNCTHR_UNMOUNTING	0x0001	/* unmount request */
 #define HAMMER2_SYNCTHR_DEV		0x0002	/* related to dev, not pfs */
 #define HAMMER2_SYNCTHR_SPANNED		0x0004	/* LNK_SPAN active */
-
+#define HAMMER2_SYNCTHR_REMASTER	0x0008	/* remaster request */
+#define HAMMER2_SYNCTHR_STOP		0x0010	/* exit request */
+#define HAMMER2_SYNCTHR_FREEZE		0x0020	/* force idle */
+#define HAMMER2_SYNCTHR_FROZEN		0x0040	/* restart */
 
 /*
  * A hammer2 transaction and flush sequencing structure.
@@ -775,7 +831,7 @@ struct hammer2_pfs {
 	int			count_lwinprog;	/* logical write in prog */
 	struct spinlock		list_spin;
 	struct h2_unlk_list	unlinkq;	/* last-close unlink */
-	struct h2_syncthr_list	syncthrq;	/* synchronization threads */
+	hammer2_syncthr_t	primary_thr;
 	thread_t		wthread_td;	/* write thread td */
 	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
 	hammer2_mtx_t 		wthread_mtx;	/* interlock */
@@ -1221,6 +1277,17 @@ int hammer2_bulkfree_pass(hammer2_dev_t *hmp,
 void hammer2_iocom_init(hammer2_dev_t *hmp);
 void hammer2_iocom_uninit(hammer2_dev_t *hmp);
 void hammer2_cluster_reconnect(hammer2_dev_t *hmp, struct file *fp);
+
+/*
+ * hammer2_syncthr.c
+ */
+void hammer2_syncthr_create(hammer2_syncthr_t *thr, hammer2_pfs_t *pmp,
+			void (*func)(void *arg));
+void hammer2_syncthr_delete(hammer2_syncthr_t *thr);
+void hammer2_syncthr_remaster(hammer2_syncthr_t *thr);
+void hammer2_syncthr_freeze(hammer2_syncthr_t *thr);
+void hammer2_syncthr_unfreeze(hammer2_syncthr_t *thr);
+void hammer2_syncthr_primary(void *arg);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */
