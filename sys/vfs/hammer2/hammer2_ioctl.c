@@ -376,7 +376,6 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	hammer2_cluster_t *cluster;
 	hammer2_key_t key_next;
 	int error;
-	int ddflag;
 
 	error = 0;
 	hmp = ip->pmp->iroot->cluster.focus->hmp; /* XXX */
@@ -391,18 +390,18 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	if (pfs->name_key == 0) {
 		cluster = hammer2_cluster_lookup(cparent, &key_next,
 						 0, (hammer2_key_t)-1,
-						 0, &ddflag);
+						 0);
 	} else if (pfs->name_key == (hammer2_key_t)-1) {
 		ripdata = &hammer2_cluster_rdata(rcluster)->ipdata;
 		cluster = hammer2_cluster_lookup(cparent, &key_next,
 						 ripdata->name_key,
 						 ripdata->name_key,
-						 0, &ddflag);
+						 0);
 		ripdata = NULL;	/* safety */
 	} else {
 		cluster = hammer2_cluster_lookup(cparent, &key_next,
 						 pfs->name_key, pfs->name_key,
-						 0, &ddflag);
+						 0);
 	}
 	hammer2_inode_unlock_ex(ip->pmp->iroot, rcluster);
 
@@ -467,7 +466,6 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	hammer2_key_t key_next;
 	hammer2_key_t lhc;
 	int error;
-	int ddflag;
 	size_t len;
 
 	error = 0;
@@ -481,7 +479,7 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 
 	cluster = hammer2_cluster_lookup(cparent, &key_next,
 					 lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-					 HAMMER2_LOOKUP_SHARED, &ddflag);
+					 HAMMER2_LOOKUP_SHARED);
 	while (cluster) {
 		if (hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE) {
 			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;

@@ -290,7 +290,6 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 	hammer2_key_t key_next;
 	kdmsg_msg_t *rmsg;
 	size_t name_len;
-	int ddflag;
 
 	/*
 	 * Lookup mount point under the media-localized super-root.
@@ -303,7 +302,7 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 	cluster = hammer2_cluster_lookup(cparent, &key_next,
 					 HAMMER2_KEY_MIN,
 					 HAMMER2_KEY_MAX,
-					 0, &ddflag);
+					 0);
 	while (cluster) {
 		if (hammer2_cluster_type(cluster) != HAMMER2_BREF_TYPE_INODE)
 			continue;

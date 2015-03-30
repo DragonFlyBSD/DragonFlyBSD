@@ -206,7 +206,8 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	 * the strategy code.  Simply mark the inode modified so it gets
 	 * picked up by our normal flush.
 	 */
-	cluster = hammer2_inode_lock_nex(ip, HAMMER2_RESOLVE_NEVER);
+	cluster = hammer2_inode_lock_nex(ip, HAMMER2_RESOLVE_NEVER |
+					     HAMMER2_RESOLVE_RDONLY);
 	KKASSERT(cluster);
 
 	/*
@@ -255,7 +256,8 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * Inode must be locked for reclaim.
 	 */
 	pmp = ip->pmp;
-	cluster = hammer2_inode_lock_nex(ip, HAMMER2_RESOLVE_NEVER);
+	cluster = hammer2_inode_lock_nex(ip, HAMMER2_RESOLVE_NEVER |
+					     HAMMER2_RESOLVE_RDONLY);
 
 	/*
 	 * The final close of a deleted file or directory marks it for
@@ -639,7 +641,6 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	int ncookies;
 	int error;
 	int dtype;
-	int ddflag;
 	int r;
 
 	LOCKSTART;
@@ -735,11 +736,11 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		goto done;
 	}
 	cluster = hammer2_cluster_lookup(cparent, &key_next, lkey, lkey,
-				     HAMMER2_LOOKUP_SHARED, &ddflag);
+				     HAMMER2_LOOKUP_SHARED);
 	if (cluster == NULL) {
 		cluster = hammer2_cluster_lookup(cparent, &key_next,
 					     lkey, (hammer2_key_t)-1,
-					     HAMMER2_LOOKUP_SHARED, &ddflag);
+					     HAMMER2_LOOKUP_SHARED);
 	}
 	if (cluster)
 		hammer2_cluster_bref(cluster, &bref);
@@ -1243,7 +1244,6 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	const uint8_t *name;
 	size_t name_len;
 	int error = 0;
-	int ddflag;
 	struct vnode *vp;
 
 	LOCKSTART;
@@ -1259,7 +1259,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	cparent = hammer2_inode_lock_sh(dip);
 	cluster = hammer2_cluster_lookup(cparent, &key_next,
 					 lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-					 HAMMER2_LOOKUP_SHARED, &ddflag);
+					 HAMMER2_LOOKUP_SHARED);
 	while (cluster) {
 		if (hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE) {
 			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
@@ -1282,12 +1282,12 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 		if (ripdata->type == HAMMER2_OBJTYPE_HARDLINK) {
 			hammer2_tid_t inum = ripdata->inum;
-			error = hammer2_hardlink_find(dip, NULL, cluster);
+			error = hammer2_hardlink_find(dip, NULL, &cluster);
 			if (error) {
 				kprintf("hammer2: unable to find hardlink "
 					"0x%016jx\n", inum);
-				hammer2_cluster_unlock(cluster);
 				LOCKSTOP;
+
 				return error;
 			}
 		}
@@ -2112,7 +2112,6 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	hammer2_cluster_t *cluster;
 	hammer2_key_t key_dummy;
 	hammer2_key_t lbase;
-	int ddflag;
 	uint8_t btype;
 
 	bio = ap->a_bio;
@@ -2130,8 +2129,7 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	cluster = hammer2_cluster_lookup(cparent, &key_dummy,
 				       lbase, lbase,
 				       HAMMER2_LOOKUP_NODATA |
-				       HAMMER2_LOOKUP_SHARED,
-				       &ddflag);
+				       HAMMER2_LOOKUP_SHARED);
 	hammer2_inode_unlock_sh(ip, cparent);
 
 	/*

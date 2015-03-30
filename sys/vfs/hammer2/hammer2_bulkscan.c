@@ -460,7 +460,6 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	hammer2_chain_t *live_chain;
 	int cache_index = -1;
 	int bmapindex;
-	int ddflag;
 
 	kprintf("hammer2_bulkfree - range %016jx-%016jx\n",
 		(intmax_t)cbinfo->sbase,
@@ -496,8 +495,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 					    key,
 					    key + HAMMER2_FREEMAP_LEVEL1_MASK,
 					    &cache_index,
-					    HAMMER2_LOOKUP_ALWAYS,
-					    &ddflag);
+					    HAMMER2_LOOKUP_ALWAYS);
 			if (live_chain)
 				kprintf("live_chain %016jx\n", (intmax_t)key);
 					

@@ -416,6 +416,11 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 /*
  * Flags passed to hammer2_chain_lock()
+ *
+ * NOTE: RDONLY is set to optimize cluster operations when *no* modifications
+ *	 will be made to either the cluster being locked or any underlying
+ *	 cluster.  It allows the cluster to lock and access data for a subset
+ *	 of available nodes instead of all available nodes.
  */
 #define HAMMER2_RESOLVE_NEVER		1
 #define HAMMER2_RESOLVE_MAYBE		2
@@ -424,6 +429,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 #define HAMMER2_RESOLVE_SHARED		0x10	/* request shared lock */
 #define HAMMER2_RESOLVE_NOREF		0x20	/* already ref'd on lock */
+#define HAMMER2_RESOLVE_RDONLY		0x40	/* higher level op flag */
 
 /*
  * Flags passed to hammer2_chain_delete()
@@ -498,14 +504,17 @@ struct hammer2_cluster_item {
 	hammer2_chain_t		*chain;
 	struct hammer2_cluster	*cluster;	/* link back to cluster */
 	int			cache_index;
-	int			unused01;
+	uint32_t		flags;
 };
 
 typedef struct hammer2_cluster_item hammer2_cluster_item_t;
 
+#define HAMMER2_CLUSTER_ITEM_LOCKED	0x0001	/* valid lock */
+#define HAMMER2_CLUSTER_ITEM_DATA
+
 struct hammer2_cluster {
-	int			unused01;
 	int			refs;		/* track for deallocation */
+	int			ddflag;
 	struct hammer2_pfs	*pmp;
 	uint32_t		flags;
 	int			nchains;
@@ -549,6 +558,7 @@ typedef struct hammer2_cluster	hammer2_cluster_t;
  */
 #define HAMMER2_CLUSTER_INODE	0x00000001	/* embedded in inode */
 #define HAMMER2_CLUSTER_NOSYNC	0x00000002	/* not in sync (cumulative) */
+#define HAMMER2_CLUSTER_LOCKED	0x00000004	/* cluster lks not recursive */
 #define HAMMER2_CLUSTER_WRHARD	0x00000100	/* hard-mount can write */
 #define HAMMER2_CLUSTER_RDHARD	0x00000200	/* hard-mount can read */
 #define HAMMER2_CLUSTER_WRSOFT	0x00000400	/* soft-mount can write */
@@ -566,6 +576,12 @@ typedef struct hammer2_cluster	hammer2_cluster_t;
 #define HAMMER2_CLUSTER_WROK	( HAMMER2_CLUSTER_WRHARD |	\
 				  HAMMER2_CLUSTER_WRSOFT)
 
+#define HAMMER2_CLUSTER_ZFLAGS	( HAMMER2_CLUSTER_WRHARD |	\
+				  HAMMER2_CLUSTER_RDHARD |	\
+				  HAMMER2_CLUSTER_WRSOFT |	\
+				  HAMMER2_CLUSTER_RDSOFT |	\
+				  HAMMER2_CLUSTER_MSYNCED |	\
+				  HAMMER2_CLUSTER_SSYNCED)
 
 RB_HEAD(hammer2_inode_tree, hammer2_inode);
 
@@ -1038,7 +1054,7 @@ int hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 int hammer2_hardlink_deconsolidate(hammer2_trans_t *trans, hammer2_inode_t *dip,
 			hammer2_chain_t **chainp, hammer2_chain_t **ochainp);
 int hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_cluster_t **cparentp,
-			hammer2_cluster_t *cluster);
+			hammer2_cluster_t **clusterp);
 int hammer2_parent_find(hammer2_cluster_t **cparentp,
 			hammer2_cluster_t *cluster);
 void hammer2_inode_install_hidden(hammer2_pfs_t *pmp);
@@ -1083,7 +1099,7 @@ void hammer2_chain_lookup_done(hammer2_chain_t *parent);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_chain_t **parentp,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
-				int *cache_indexp, int flags, int *ddflagp);
+				int *cache_indexp, int flags);
 hammer2_chain_t *hammer2_chain_next(hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
 				hammer2_key_t *key_nextp,
@@ -1224,9 +1240,6 @@ void hammer2_cluster_ref(hammer2_cluster_t *cluster);
 void hammer2_cluster_drop(hammer2_cluster_t *cluster);
 void hammer2_cluster_wait(hammer2_cluster_t *cluster);
 int hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
-void hammer2_cluster_replace(hammer2_cluster_t *dst, hammer2_cluster_t *src);
-void hammer2_cluster_replace_locked(hammer2_cluster_t *dst,
-			hammer2_cluster_t *src);
 hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
 void hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
@@ -1244,7 +1257,7 @@ void hammer2_cluster_lookup_done(hammer2_cluster_t *cparent);
 hammer2_cluster_t *hammer2_cluster_lookup(hammer2_cluster_t *cparent,
 			hammer2_key_t *key_nextp,
 			hammer2_key_t key_beg, hammer2_key_t key_end,
-			int flags, int *ddflagp);
+			int flags);
 hammer2_cluster_t *hammer2_cluster_next(hammer2_cluster_t *cparent,
 			hammer2_cluster_t *cluster,
 			hammer2_key_t *key_nextp,

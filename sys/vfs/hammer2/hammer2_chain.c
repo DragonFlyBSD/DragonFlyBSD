@@ -1182,23 +1182,6 @@ skip2:
 	 */
 	if (chain->parent)
 		hammer2_chain_setflush(trans, chain->parent);
-
-#if 0
-	/*
-	 * Adjust the freemap bitmap to indicate that the related blocks
-	 * MIGHT be freeable.  Bulkfree must still determine that the blocks
-	 * are actually freeable.
-	 *
-	 * We no longer do this in the normal filesystem operations path
-	 * as it interferes with the bulkfree algorithm.
-	 */
-	if (obref.type != HAMMER2_BREF_TYPE_FREEMAP_NODE &&
-	    obref.type != HAMMER2_BREF_TYPE_FREEMAP_LEAF &&
-	    (obref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
-		hammer2_freemap_adjust(trans, hmp,
-				       &obref, HAMMER2_FREEMAP_DOMAYFREE);
-	}
-#endif
 }
 
 /*
@@ -1520,7 +1503,7 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 hammer2_chain_t *
 hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		     hammer2_key_t key_beg, hammer2_key_t key_end,
-		     int *cache_indexp, int flags, int *ddflagp)
+		     int *cache_indexp, int flags)
 {
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
@@ -1537,7 +1520,6 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	int generation;
 	int maxloops = 300000;
 
-	*ddflagp = 0;
 	if (flags & HAMMER2_LOOKUP_ALWAYS) {
 		how_maybe = how_always;
 		how = HAMMER2_RESOLVE_ALWAYS;
@@ -1595,7 +1577,6 @@ again:
 			else
 				hammer2_chain_lock(parent, how_always);
 			*key_nextp = key_end + 1;
-			*ddflagp = 1;
 			return (parent);
 		}
 		base = &parent->data->ipdata.u.blockset.blockref[0];
@@ -1799,7 +1780,6 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 {
 	hammer2_chain_t *parent;
 	int how_maybe;
-	int ddflag;
 
 	/*
 	 * Calculate locking flags for upward recursion.
@@ -1853,7 +1833,7 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	 */
 	return (hammer2_chain_lookup(parentp, key_nextp,
 				     key_beg, key_end,
-				     cache_indexp, flags, &ddflag));
+				     cache_indexp, flags));
 }
 
 /*

@@ -72,6 +72,11 @@ hammer2_syncthr_delete(hammer2_syncthr_t *thr)
 	lockuninit(&thr->lk);
 }
 
+/*
+ * Asynchronous remaster request.  Ask the synchronization thread to
+ * start over soon (as if it were frozen and unfrozen, but without waiting).
+ * The thread always recalculates mastership relationships when restarting.
+ */
 void
 hammer2_syncthr_remaster(hammer2_syncthr_t *thr)
 {
@@ -109,7 +114,10 @@ hammer2_syncthr_unfreeze(hammer2_syncthr_t *thr)
 }
 
 /*
- * Primary management thread
+ * Primary management thread.
+ *
+ * On the SPMP - handles bulkfree and dedup operations
+ * On a PFS    - handles remastering and synchronization
  */
 void
 hammer2_syncthr_primary(void *arg)
@@ -132,6 +140,12 @@ hammer2_syncthr_primary(void *arg)
 		if (thr->flags & HAMMER2_SYNCTHR_FROZEN) {
 			lksleep(&thr->flags, &thr->lk, 0, "h2idle", 0);
 			continue;
+		}
+
+		/* reset state on REMASTER request */
+		if (thr->flags & HAMMER2_SYNCTHR_REMASTER) {
+			atomic_clear_int(&thr->flags, HAMMER2_SYNCTHR_REMASTER);
+			/* reset state */
 		}
 		lksleep(&thr->flags, &thr->lk, 0, "h2idle", 0);
 	}
