@@ -376,7 +376,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_UNUSED00001000	0x00001000
 #define HAMMER2_CHAIN_UNUSED00002000	0x00002000
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
-#define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
+#define HAMMER2_CHAIN_UNUSED00008000	0x00008000
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
 #define HAMMER2_CHAIN_RELEASE		0x00020000	/* don't keep around */
 #define HAMMER2_CHAIN_BMAPPED		0x00040000	/* present in blkmap */
@@ -801,7 +801,9 @@ typedef struct hammer2_dev hammer2_dev_t;
  * how elements of the cluster act on the cluster.  pfs_mode is only applicable
  * when a PFS is mounted by the system.  pfs_nmasters is our best guess as to
  * how many masters have been configured for a cluster and is always
- * applicable.
+ * applicable.  pfs_types[] is an array with 1:1 correspondance to the
+ * iroot cluster and describes the PFS types of the nodes making up the
+ * cluster.
  *
  * WARNING! Portions of this structure have deferred initialization.  In
  *	    particular, if not mounted there will be no ihidden or wthread.
@@ -826,6 +828,7 @@ struct hammer2_pfs {
 	hammer2_dev_t		*spmp_hmp;	/* only if super-root pmp */
 	hammer2_inode_t		*iroot;		/* PFS root inode */
 	hammer2_inode_t		*ihidden;	/* PFS hidden directory */
+	uint8_t			pfs_types[HAMMER2_MAXCLUSTER];
 	struct lock		lock;		/* PFS lock for certain ops */
 	hammer2_off_t		inode_count;	/* copy of inode_count */
 	struct netexport	export;		/* nfs export */

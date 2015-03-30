@@ -418,6 +418,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 		pfs->name_key = ripdata->name_key;
 		pfs->pfs_type = ripdata->pfs_type;
+		pfs->pfs_subtype = ripdata->pfs_subtype;
 		pfs->pfs_clid = ripdata->pfs_clid;
 		pfs->pfs_fsid = ripdata->pfs_fsid;
 		KKASSERT(ripdata->name_len < sizeof(pfs->name));
@@ -502,6 +503,7 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 		pfs->name_key = ripdata->name_key;
 		pfs->pfs_type = ripdata->pfs_type;
+		pfs->pfs_subtype = ripdata->pfs_subtype;
 		pfs->pfs_clid = ripdata->pfs_clid;
 		pfs->pfs_fsid = ripdata->pfs_fsid;
 		ripdata = NULL;
@@ -549,6 +551,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	if (error == 0) {
 		nipdata = hammer2_cluster_modify_ip(&trans, nip, ncluster, 0);
 		nipdata->pfs_type = pfs->pfs_type;
+		nipdata->pfs_subtype = pfs->pfs_subtype;
 		nipdata->pfs_clid = pfs->pfs_clid;
 		nipdata->pfs_fsid = pfs->pfs_fsid;
 		nipdata->op_flags |= HAMMER2_OPFLAG_PFSROOT;

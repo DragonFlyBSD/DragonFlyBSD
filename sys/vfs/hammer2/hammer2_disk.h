@@ -808,7 +808,8 @@ typedef struct hammer2_bmap_data hammer2_bmap_data_t;
 
 struct hammer2_inode_data {
 	uint16_t	version;	/* 0000 inode data version */
-	uint16_t	reserved02;	/* 0002 */
+	uint8_t		reserved02;	/* 0002 */
+	uint8_t		pfs_subtype;	/* 0003 pfs sub-type */
 
 	/*
 	 * core inode attributes, inode type, misc flags
@@ -937,7 +938,7 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_PFSTYPE_SOFT_SLAVE	0x04
 #define HAMMER2_PFSTYPE_SOFT_MASTER	0x05
 #define HAMMER2_PFSTYPE_MASTER		0x06
-#define HAMMER2_PFSTYPE_SNAPSHOT	0x07
+#define HAMMER2_PFSTYPE_UNUSED07	0x07
 #define HAMMER2_PFSTYPE_SUPROOT		0x08
 #define HAMMER2_PFSTYPE_DUMMY		0x09
 #define HAMMER2_PFSTYPE_MAX		16
@@ -949,13 +950,16 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_PFSTRAN_SOFT_SLAVE	0x40
 #define HAMMER2_PFSTRAN_SOFT_MASTER	0x50
 #define HAMMER2_PFSTRAN_MASTER		0x60
-#define HAMMER2_PFSTRAN_SNAPSHOT	0x70
+#define HAMMER2_PFSTRAN_UNUSED70	0x70
 #define HAMMER2_PFSTRAN_SUPROOT		0x80
 #define HAMMER2_PFSTRAN_DUMMY		0x90
 
 #define HAMMER2_PFS_DEC(n)		((n) & 0x0F)
 #define HAMMER2_PFS_DEC_TRANSITION(n)	(((n) >> 4) & 0x0F)
 #define HAMMER2_PFS_ENC_TRANSITION(n)	(((n) & 0x0F) << 4)
+
+#define HAMMER2_PFSSUBTYPE_NONE		0
+#define HAMMER2_PFSSUBTYPE_SNAPSHOT	1
 
 /*
  * PFS mode of operation is a bitmask.  This is typically not stored

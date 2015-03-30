@@ -387,8 +387,7 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 	 * or other PFS types need the thread.
 	 */
 	if (cluster && ripdata &&
-	    ((ripdata->pfs_type != HAMMER2_PFSTYPE_MASTER &&
-	      ripdata->pfs_type != HAMMER2_PFSTYPE_SNAPSHOT) ||
+	    (ripdata->pfs_type != HAMMER2_PFSTYPE_MASTER ||
 	     ripdata->pfs_nmasters > 1) &&
 	    pmp->primary_thr.td == NULL) {
 		hammer2_syncthr_create(&pmp->primary_thr, pmp,
@@ -407,9 +406,10 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 
 	/*
 	 * When a cluster is passed in we must add the cluster's chains
-	 * to the PFS's root inode.
+	 * to the PFS's root inode and update pmp->pfs_types[].
 	 *
-	 * XXX should fill empty array spots ?
+	 * At the moment empty spots can develop due to removals or failures.
+	 * Ultimately we want to re-fill these spots. XXX
 	 */
 	if (cluster) {
 		hammer2_inode_ref(pmp->iroot);
@@ -426,6 +426,7 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 			rchain->pmp = pmp;
 			hammer2_chain_ref(rchain);
 			pmp->iroot->cluster.array[j].chain = rchain;
+			pmp->pfs_types[j] = ripdata->pfs_type;
 
 			/*
 			 * May have to fixup dirty chain tracking.  Previous
@@ -525,7 +526,17 @@ again:
 		if (i != cluster->nchains) {
 			hammer2_syncthr_freeze(&pmp->primary_thr);
 
-			cluster = hammer2_inode_lock_ex(pmp->iroot);
+			/*
+			 * Lock the inode and clean out matching chains.
+			 * Note that we cannot use hammer2_inode_lock_*()
+			 * here because that would attempt to validate the
+			 * cluster that we are in the middle of ripping
+			 * apart.
+			 *
+			 * WARNING! We are working directly on the inodes
+			 *	    embedded cluster.
+			 */
+			hammer2_mtx_ex(&pmp->iroot->lock);
 
 			/*
 			 * Remove the chain from matching elements of the PFS.
@@ -536,12 +547,14 @@ again:
 					continue;
 
 				cluster->array[i].chain = NULL;
-				hammer2_chain_unlock(rchain);
+				pmp->pfs_types[i] = 0;
+				hammer2_chain_drop(rchain);
+
+				/* focus hint */
 				if (cluster->focus == rchain)
 					cluster->focus = NULL;
 			}
-			hammer2_inode_repoint(pmp->iroot, NULL, cluster);
-			hammer2_inode_unlock_ex(pmp->iroot, cluster);
+			hammer2_mtx_unlock(&pmp->iroot->lock);
 			didfreeze = 1;	/* remaster, unfreeze down below */
 		} else {
 			didfreeze = 0;
@@ -879,6 +892,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		spmp->iroot = NULL;
 		spmp->iroot = hammer2_inode_get(spmp, NULL, cluster);
 		spmp->spmp_hmp = hmp;
+		spmp->pfs_types[0] = ripdata->pfs_type;
 		hammer2_inode_ref(spmp->iroot);
 		hammer2_inode_unlock_ex(spmp->iroot, cluster);
 		schain = NULL;

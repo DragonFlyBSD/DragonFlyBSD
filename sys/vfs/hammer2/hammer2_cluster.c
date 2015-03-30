@@ -245,6 +245,8 @@ hammer2_cluster_setmethod_check(hammer2_trans_t *trans,
  * The returned cluster will be focused on the chain (strictly speaking,
  * the focus should be NULL if the chain is not locked but we do not check
  * for this condition).
+ *
+ * We fake the flags.
  */
 hammer2_cluster_t *
 hammer2_cluster_from_chain(hammer2_chain_t *chain)
@@ -257,7 +259,11 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
 	cluster->focus = chain;
 	cluster->pmp = chain->pmp;
 	cluster->refs = 1;
-	cluster->flags = HAMMER2_CLUSTER_LOCKED;
+	cluster->flags = HAMMER2_CLUSTER_LOCKED |
+			 HAMMER2_CLUSTER_WRHARD |
+			 HAMMER2_CLUSTER_RDHARD |
+			 HAMMER2_CLUSTER_MSYNCED |
+			 HAMMER2_CLUSTER_SSYNCED;
 
 	return cluster;
 }
@@ -385,7 +391,7 @@ hammer2_cluster_drop(hammer2_cluster_t *cluster)
 		}
 	}
 	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
-		cluster->focus = NULL;		/* safety */
+		cluster->focus = NULL;		/* safety XXX chg to assert */
 		kfree(cluster, M_HAMMER2);
 		/* cluster is invalid */
 	}
@@ -413,44 +419,218 @@ hammer2_cluster_wait(hammer2_cluster_t *cluster)
  * RESOLVE_RDONLY operations are effectively as-of so the quorum does not need
  * to be maintained once the topology is validated as-of the top level of
  * the operation.
+ *
+ * If a failure occurs the operation must be aborted by higher-level code and
+ * retried. XXX
  */
 int
 hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 {
 	hammer2_chain_t *chain;
-	hammer2_chain_t *tmp;
-	int i;
+	hammer2_pfs_t *pmp;
+	uint32_t nflags;
+	hammer2_tid_t quorum_tid;
+	int focus_pfs_type;
+	int nmasters;
+	int ttlslaves;
+	int ttlmasters;
+	int nslaves;
+	int nquorum;
 	int error;
+	int i;
+
+	pmp = cluster->pmp;
+	KKASSERT(pmp != NULL || cluster->nchains == 0);
 
 	/* cannot be on inode-embedded cluster template, must be on copy */
 	KKASSERT((cluster->flags & HAMMER2_CLUSTER_INODE) == 0);
 	if (cluster->flags & HAMMER2_CLUSTER_LOCKED) {
 		kprintf("hammer2_cluster_lock: cluster %p already locked!\n",
 			cluster);
+	} else {
+		KKASSERT(cluster->focus == NULL);
 	}
 	atomic_set_int(&cluster->flags, HAMMER2_CLUSTER_LOCKED);
+
+	focus_pfs_type = 0;
+	quorum_tid = 0;
+	nflags = 0;
+	ttlslaves = 0;
+	ttlmasters = 0;
+	nslaves = 0;
+	nmasters = 0;
+
+	/*
+	 * Calculate the quorum count.
+	 */
+	nquorum = pmp ? pmp->pfs_nmasters / 2 + 1 : 0;
 
 	if ((how & HAMMER2_RESOLVE_NOREF) == 0)
 		atomic_add_int(&cluster->refs, 1);
 
-	error = 0;
-
+	/*
+	 * Lock chains and accumulate statistics.
+	 */
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
-		if (chain) {
-			error = hammer2_chain_lock(chain, how);
-			if (error) {
-				while (--i >= 0) {
-					tmp = cluster->array[i].chain;
-					hammer2_chain_unlock(tmp);
-				}
-				atomic_add_int(&cluster->refs, -1);
-				break;
+		if (chain == NULL)
+			continue;
+		error = hammer2_chain_lock(chain, how);
+		if (error) {
+			kprintf("hammer2_cluster_lock: cluster %p index %d "
+				"lock failure\n", cluster, i);
+			cluster->array[i].chain = NULL;
+			hammer2_chain_drop(chain);
+			continue;
+		}
+
+		/*
+		 * We can resolve some things on this array pass but other
+		 * things will require a full-accounting of available
+		 * masters.
+		 */
+		switch (cluster->pmp->pfs_types[i]) {
+		case HAMMER2_PFSTYPE_MASTER:
+			++ttlmasters;
+			if (quorum_tid < chain->bref.mirror_tid ||
+			    nmasters == 0) {
+				nmasters = 1;
+				quorum_tid = chain->bref.mirror_tid;
+			} else if (quorum_tid == chain->bref.mirror_tid) {
+				++nmasters;
 			}
-			if (cluster->focus == NULL)
-				cluster->focus = chain;
+			break;
+		case HAMMER2_PFSTYPE_SLAVE:
+			++ttlslaves;
+			break;
+		case HAMMER2_PFSTYPE_SOFT_MASTER:
+			nflags |= HAMMER2_CLUSTER_WRSOFT;
+			nflags |= HAMMER2_CLUSTER_RDSOFT;
+			break;
+		case HAMMER2_PFSTYPE_SOFT_SLAVE:
+			nflags |= HAMMER2_CLUSTER_RDSOFT;
+			break;
+		case HAMMER2_PFSTYPE_SUPROOT:
+			/*
+			 * Degenerate cluster representing the super-root
+			 * topology on a single device.
+			 */
+			nflags |= HAMMER2_CLUSTER_WRHARD;
+			nflags |= HAMMER2_CLUSTER_RDHARD;
+			cluster->focus = chain;
+			break;
+		default:
+			break;
 		}
 	}
+
+	/*
+	 * Pass 2 - accumulate statistics.
+	 */
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i].chain;
+		if (chain == NULL)
+			continue;
+		switch (cluster->pmp->pfs_types[i]) {
+		case HAMMER2_PFSTYPE_MASTER:
+			/*
+			 * We must have enough up-to-date masters to reach
+			 * a quorum and the master mirror_tid must match
+			 * the quorum's mirror_tid.
+			 */
+			if (nmasters >= nquorum &&
+			    quorum_tid == chain->bref.mirror_tid) {
+				nflags |= HAMMER2_CLUSTER_WRHARD;
+				nflags |= HAMMER2_CLUSTER_RDHARD;
+				if (cluster->focus == NULL ||
+				    focus_pfs_type == HAMMER2_PFSTYPE_SLAVE) {
+					focus_pfs_type = HAMMER2_PFSTYPE_MASTER;
+					cluster->focus = chain;
+				}
+			}
+			break;
+		case HAMMER2_PFSTYPE_SLAVE:
+			/*
+			 * We must have enough up-to-date masters to reach
+			 * a quorum and the slave mirror_tid must match the
+			 * quorum's mirror_tid.
+			 */
+			if (nmasters >= nquorum &&
+			    quorum_tid == chain->bref.mirror_tid) {
+				++nslaves;
+				nflags |= HAMMER2_CLUSTER_RDHARD;
+				if (cluster->focus == NULL) {
+					focus_pfs_type = HAMMER2_PFSTYPE_SLAVE;
+					cluster->focus = chain;
+				}
+			}
+			break;
+		case HAMMER2_PFSTYPE_SOFT_MASTER:
+			/*
+			 * Directly mounted soft master always wins.  There
+			 * should be only one.
+			 */
+			KKASSERT(focus_pfs_type != HAMMER2_PFSTYPE_SOFT_MASTER);
+			cluster->focus = chain;
+			focus_pfs_type = HAMMER2_PFSTYPE_SOFT_MASTER;
+			break;
+		case HAMMER2_PFSTYPE_SOFT_SLAVE:
+			/*
+			 * Directly mounted soft slave always wins.  There
+			 * should be only one.
+			 */
+			KKASSERT(focus_pfs_type != HAMMER2_PFSTYPE_SOFT_SLAVE);
+			if (focus_pfs_type != HAMMER2_PFSTYPE_SOFT_MASTER) {
+				cluster->focus = chain;
+				focus_pfs_type = HAMMER2_PFSTYPE_SOFT_SLAVE;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	/*
+	 * Set SSYNCED or MSYNCED for slaves and masters respectively if
+	 * all available nodes (even if 0 are available) are fully
+	 * synchronized.  This is used by the synchronization thread to
+	 * determine if there is work it could potentially accomplish.
+	 */
+	if (nslaves == ttlslaves)
+		nflags |= HAMMER2_CLUSTER_SSYNCED;
+	if (nmasters == ttlmasters)
+		nflags |= HAMMER2_CLUSTER_MSYNCED;
+
+	/*
+	 * Determine if the cluster was successfully locked for the
+	 * requested operation and generate an error code.  The cluster
+	 * will not be locked (or ref'd) if an error is returned.
+	 */
+	atomic_set_int(&cluster->flags, nflags);
+	atomic_clear_int(&cluster->flags, HAMMER2_CLUSTER_ZFLAGS & ~nflags);
+	error = 0;
+
+	if (how & HAMMER2_RESOLVE_RDONLY) {
+		if ((nflags & HAMMER2_CLUSTER_RDOK) == 0)
+			error = EIO;
+	} else {
+		if ((nflags & HAMMER2_CLUSTER_WROK) == 0)
+			error = EIO;
+	}
+
+	if (error) {
+		kprintf("hammer2_cluster_lock: cluster %p lock failed %d\n",
+			cluster, error);
+		for (i = 0; i < cluster->nchains; ++i) {
+			chain = cluster->array[i].chain;
+			if (chain == NULL)
+				continue;
+			hammer2_chain_unlock(chain);
+		}
+		if ((how & HAMMER2_RESOLVE_NOREF) == 0)
+			atomic_add_int(&cluster->refs, -1);
+	}
+
 	return error;
 }
 
@@ -549,9 +729,10 @@ hammer2_cluster_replace_locked(hammer2_cluster_t *dst, hammer2_cluster_t *src)
 
 /*
  * Copy a cluster, returned a ref'd cluster.  All underlying chains
- * are also ref'd, but not locked.  The cluster focus is not set because
- * the cluster is not yet locked (and the originating cluster does not
- * have to be locked either).
+ * are also ref'd, but not locked.
+ *
+ * The cluster focus is not set because the cluster is not yet locked
+ * (and the originating cluster does not have to be locked either).
  */
 hammer2_cluster_t *
 hammer2_cluster_copy(hammer2_cluster_t *ocluster)
@@ -602,8 +783,9 @@ hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 				cluster->array[i].chain = NULL;	/* safety */
 		}
 	}
+	cluster->focus = NULL;
+
 	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
-		cluster->focus = NULL;
 		kfree(cluster, M_HAMMER2);
 		/* cluster = NULL; safety */
 	}
@@ -624,7 +806,6 @@ hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	KKASSERT(cparent->pmp == cluster->pmp);		/* can be NULL */
 	KKASSERT(cparent->nchains == cluster->nchains);
 
-	cluster->focus = NULL;
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
 		if (chain) {
@@ -632,8 +813,6 @@ hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			hammer2_chain_resize(trans, ip,
 					     cparent->array[i].chain, chain,
 					     nradix, flags);
-			if (cluster->focus == NULL)
-				cluster->focus = chain;
 		}
 	}
 }
@@ -671,14 +850,10 @@ hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 	hammer2_chain_t *chain;
 	int i;
 
-	cluster->focus = NULL;
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
-		if (chain) {
+		if (chain)
 			hammer2_chain_modify(trans, chain, flags);
-			if (cluster->focus == NULL)
-				cluster->focus = chain;
-		}
 	}
 }
 
@@ -754,11 +929,8 @@ hammer2_cluster_lookup_init(hammer2_cluster_t *cparent, int flags)
 	cluster->flags = 0;	/* cluster not locked (yet) */
 	/* cluster->focus = NULL; already null */
 
-	for (i = 0; i < cparent->nchains; ++i) {
+	for (i = 0; i < cparent->nchains; ++i)
 		cluster->array[i].chain = cparent->array[i].chain;
-		if (cluster->focus == NULL)
-			cluster->focus = cluster->array[i].chain;
-	}
 	cluster->nchains = cparent->nchains;
 
 	/*
@@ -810,7 +982,6 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
 	cluster->pmp = pmp;				/* can be NULL */
 	cluster->refs = 1;
-	/* cluster->focus = NULL; already null */
 	if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
 		cluster->flags |= HAMMER2_CLUSTER_LOCKED;
 
@@ -1097,14 +1268,7 @@ hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 						     &cparent->array[i].chain,
 						     chain, flags);
 			}
-			cluster->array[i].chain = chain;
-			if (cluster->focus == NULL)
-				cluster->focus = chain;
-			if (cparent->focus == NULL)
-				cparent->focus = cparent->array[i].chain;
-		} else {
-			if (cparent->focus == NULL)
-				cparent->focus = cparent->array[i].chain;
+			KKASSERT(cluster->array[i].chain == chain); /*remove*/
 		}
 	}
 }
@@ -1204,7 +1368,8 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 
 	if (nip) {
 		wipdata = hammer2_cluster_modify_ip(trans, nip, ncluster, 0);
-		wipdata->pfs_type = HAMMER2_PFSTYPE_SNAPSHOT;
+		wipdata->pfs_type = HAMMER2_PFSTYPE_MASTER;
+		wipdata->pfs_subtype = HAMMER2_PFSSUBTYPE_SNAPSHOT;
 		wipdata->op_flags |= HAMMER2_OPFLAG_PFSROOT;
 		kern_uuidgen(&wipdata->pfs_fsid, 1);
 
