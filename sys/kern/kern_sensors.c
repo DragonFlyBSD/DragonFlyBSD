@@ -36,9 +36,8 @@
 
 #include <sys/mplock2.h>
 
-static int		sensordev_count;
-static SLIST_HEAD(, ksensordev) sensordev_list =
-    SLIST_HEAD_INITIALIZER(sensordev_list);
+static TAILQ_HEAD(, ksensordev) sensordev_list =
+    TAILQ_HEAD_INITIALIZER(sensordev_list);
 
 static struct ksensordev *sensordev_get(int);
 static struct ksensor	*sensor_find(struct ksensordev *, enum sensor_type,
@@ -73,22 +72,27 @@ static void		sensor_sysctl_deinstall(struct ksensordev *,
 void
 sensordev_install(struct ksensordev *sensdev)
 {
-	struct ksensordev *v, *nv;
+	struct ksensordev *v, *after = NULL;
+	int num = 0;
 
 	SYSCTL_XLOCK();
 
-	if (sensordev_count == 0) {
-		sensdev->num = 0;
-		SLIST_INSERT_HEAD(&sensordev_list, sensdev, list);
-	} else {
-		for (v = SLIST_FIRST(&sensordev_list);
-		    (nv = SLIST_NEXT(v, list)) != NULL; v = nv)
-			if (nv->num - v->num > 1)
-				break;
-		sensdev->num = v->num + 1;
-		SLIST_INSERT_AFTER(v, sensdev, list);
+	TAILQ_FOREACH(v, &sensordev_list, list) {
+		if (v->num == num) {
+			++num;
+			after = v;
+		} else if (v->num > num) {
+			break;
+		}
 	}
-	sensordev_count++;
+
+	sensdev->num = num;
+	if (after == NULL) {
+		KKASSERT(sensdev->num == 0);
+		TAILQ_INSERT_HEAD(&sensordev_list, sensdev, list);
+	} else {
+		TAILQ_INSERT_AFTER(&sensordev_list, after, sensdev, list);
+	}
 
 	/* Install sysctl node for this sensor device */
 	sensordev_sysctl_install(sensdev);
@@ -143,8 +147,7 @@ sensordev_deinstall(struct ksensordev *sensdev)
 {
 	SYSCTL_XLOCK();
 
-	sensordev_count--;
-	SLIST_REMOVE(&sensordev_list, sensdev, ksensordev, list);
+	TAILQ_REMOVE(&sensordev_list, sensdev, list);
 
 	/*
 	 * Deinstall sensor device's sysctl node; this also
@@ -185,7 +188,7 @@ sensordev_get(int num)
 
 	SYSCTL_ASSERT_XLOCKED();
 
-	SLIST_FOREACH(sd, &sensordev_list, list) {
+	TAILQ_FOREACH(sd, &sensordev_list, list) {
 		if (sd->num == num)
 			return (sd);
 	}

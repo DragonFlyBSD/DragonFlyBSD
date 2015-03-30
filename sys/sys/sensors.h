@@ -140,7 +140,7 @@ SLIST_HEAD(ksensors_head, ksensor);
 
 /* Sensor device data */
 struct ksensordev {
-	SLIST_ENTRY(ksensordev)	list;
+	TAILQ_ENTRY(ksensordev)	list;
 	int num;			/* sensordev number */
 	char xname[16];			/* unix device name */
 	int maxnumt[SENSOR_MAX_TYPES];
