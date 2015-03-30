@@ -44,6 +44,31 @@ static int getyn(void);
 static int timetosecs(char *str);
 
 /*
+ * Return a directory that contains path.
+ * If '/' is not found in the path then '.' is returned.
+ * A caller need to free the returned pointer.
+ */
+static char*
+getdir(const char *path)
+{
+	char *dirpath;
+
+	dirpath = strdup(path);
+	if (strrchr(dirpath, '/')) {
+		*strrchr(dirpath, '/') = 0;
+		if (strlen(dirpath) == 0) {
+			free(dirpath);
+			dirpath = strdup("/");
+		}
+	} else {
+		free(dirpath);
+		dirpath = strdup(".");
+	}
+
+	return(dirpath);
+}
+
+/*
  * Calculate the pfs_id given a path to a directory or a @@PFS or @@%llx:%d
  * softlink.
  */
@@ -52,7 +77,7 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 {
 	uintmax_t dummy_tid;
 	struct stat st;
-	char *dirpath;
+	char *dirpath = NULL;
 	char buf[64];
 	size_t len;
 	int fd;
@@ -74,27 +99,13 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 			errx(1, "Unexpected NULL path");
 	}
 
-	/*
-	 * Calculate the directory containing the softlink
-	 */
-	dirpath = strdup(path);
-	if (strrchr(dirpath, '/')) {
-		*strrchr(dirpath, '/') = 0;
-		if (strlen(dirpath) == 0) {
-			free(dirpath);
-			dirpath = strdup("/");
-		}
-	} else {
-		free(dirpath);
-		dirpath = strdup(".");
-	}
-
 	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
 		/*
 		 * Avoid foot-shooting.  Don't let the user access a PFS
 		 * softlink via a PFS.  PFS softlinks may only be accessed
 		 * via the master filesystem.
 		 */
+		dirpath = getdir(path);
 		fd = open(dirpath, O_RDONLY);
 		if (fd < 0)
 			goto done;
@@ -224,17 +235,7 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	 * Figure out the directory prefix, taking care of degenerate
 	 * cases.
 	 */
-	dirpath = strdup(path);
-	if (strrchr(dirpath, '/') != NULL) {
-		*strrchr(dirpath, '/') = 0;
-		if (dirpath[0] == 0) {
-			free(dirpath);
-			dirpath = strdup("/");
-		}
-	} else {
-		free(dirpath);
-		dirpath = strdup(".");
-	}
+	dirpath = getdir(path);
 	fd = open(dirpath, O_RDONLY);
 	if (fd < 0) {
 		fprintf(stderr, "Cannot open directory %s\n", dirpath);
@@ -288,6 +289,7 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 			hammer_cmd_pseudofs_update(av, ac);
 		}
 	}
+	free(dirpath);
 	close(fd);
 }
 
