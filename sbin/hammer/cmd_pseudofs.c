@@ -197,7 +197,7 @@ hammer_cmd_pseudofs_status(char **av, int ac)
 		printf("%s\t", av[i]);
 		fd = getpfs(&pfs, av[i]);
 		if (fd < 0 || ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
-			printf("Not a HAMMER root\n");
+			printf("Invalid PFS path %s\n", av[i]);
 		} else {
 			printf("PFS #%d {\n", pfs.pfs_id);
 			dump_pfsd(pfs.ondisk, fd);
