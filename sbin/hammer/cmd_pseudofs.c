@@ -194,8 +194,8 @@ hammer_cmd_pseudofs_status(char **av, int ac)
 		pseudofs_usage(1);
 
 	for (i = 0; i < ac; ++i) {
-		printf("%s\t", av[i]);
 		fd = getpfs(&pfs, av[i]);
+		printf("%s\t", av[i]);
 		if (fd < 0 || ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
 			printf("Invalid PFS path %s\n", av[i]);
 		} else {
