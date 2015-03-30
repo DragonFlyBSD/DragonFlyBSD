@@ -36,7 +36,8 @@
 
 #include <sys/mplock2.h>
 
-static TAILQ_HEAD(, ksensordev) sensordev_list =
+static int		sensordev_idmax;
+static TAILQ_HEAD(sensordev_list, ksensordev) sensordev_list =
     TAILQ_HEAD_INITIALIZER(sensordev_list);
 
 static struct ksensordev *sensordev_get(int);
@@ -94,6 +95,9 @@ sensordev_install(struct ksensordev *sensdev)
 		TAILQ_INSERT_AFTER(&sensordev_list, after, sensdev, list);
 	}
 
+	/* Save max sensor device id */
+	sensordev_idmax = TAILQ_LAST(&sensordev_list, sensordev_list)->num + 1;
+
 	/* Install sysctl node for this sensor device */
 	sensordev_sysctl_install(sensdev);
 
@@ -145,9 +149,18 @@ sensor_attach(struct ksensordev *sensdev, struct ksensor *sens)
 void
 sensordev_deinstall(struct ksensordev *sensdev)
 {
+	struct ksensordev *last;
+
 	SYSCTL_XLOCK();
 
 	TAILQ_REMOVE(&sensordev_list, sensdev, list);
+
+	/* Adjust max sensor device id */
+	last = TAILQ_LAST(&sensordev_list, sensordev_list);
+	if (last != NULL)
+		sensordev_idmax = last->num + 1;
+	else
+		sensordev_idmax = 0;
 
 	/*
 	 * Deinstall sensor device's sysctl node; this also
@@ -321,6 +334,9 @@ SYSCTL_NODE(_hw, OID_AUTO, sensors, CTLFLAG_RD, NULL,
     "Hardware Sensors sysctl internal magic");
 SYSCTL_NODE(_hw, HW_SENSORS, _sensors, CTLFLAG_RD, sysctl_sensors_handler,
     "Hardware Sensors XP MIB interface");
+
+SYSCTL_INT(_hw_sensors, OID_AUTO, dev_idmax, CTLFLAG_RD,
+    &sensordev_idmax, 0, "Max sensor device id");
 
 static void
 sensordev_sysctl_install(struct ksensordev *sensdev)

@@ -67,8 +67,15 @@ void
 fetchsensors(void)
 {
 	enum sensor_type type;
-	size_t		 slen, sdlen;
-	int		 mib[5], dev, numt;
+	size_t		 slen, sdlen, idmax_len;
+	int		 mib[5], dev, numt, idmax;
+	int		 maxsensordevices;
+
+	maxsensordevices = MAXSENSORDEVICES;
+	idmax_len = sizeof(idmax);
+	if (sysctlbyname("hw.sensors.dev_idmax", &idmax, &idmax_len,
+	    NULL, 0) == 0)
+		maxsensordevices = idmax;
 
 	mib[0] = CTL_HW;
 	mib[1] = HW_SENSORS;
@@ -81,7 +88,7 @@ fetchsensors(void)
 	wmove(wnd, row, 0);
 	wclrtobot(wnd);
 
-	for (dev = 0; dev < MAXSENSORDEVICES; dev++) {
+	for (dev = 0; dev < maxsensordevices; dev++) {
 		mib[2] = dev;
 		if (sysctl(mib, 3, &sensordev, &sdlen, NULL, 0) == -1) {
 			if (errno != ENOENT)
