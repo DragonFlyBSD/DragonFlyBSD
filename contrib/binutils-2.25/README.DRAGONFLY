@@ -1,0 +1,16 @@
+GNU BINUTILS
+============
+Original source can be downloaded from:
+http://ftp.gnu.org/gnu/binutils
+
+file = binutils-2.25.tar.bz2
+date = 23 December 2014
+size = 24049133
+sha1 = b46cc90ebaba7ffcf6c6d996d60738881b14e50d
+
+A list of files and directories removed is in README.DELETED
+
+Local modifications applied to following files:
+	bfd/bfdver.h (new)
+	gold/options.cc
+	ld/ldlex.l
