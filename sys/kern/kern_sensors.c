@@ -63,8 +63,12 @@ static TAILQ_HEAD(, sensor_task) sensor_tasklist =
 static struct lock	sensor_task_lock =
     LOCK_INITIALIZER("ksensor_task", 0, LK_CANRECURSE);
 
-static void		sensor_sysctl_install(struct ksensordev *);
-static void		sensor_sysctl_deinstall(struct ksensordev *);
+static void		sensordev_sysctl_install(struct ksensordev *);
+static void		sensordev_sysctl_deinstall(struct ksensordev *);
+static void		sensor_sysctl_install(struct ksensordev *,
+			    struct ksensor *);
+static void		sensor_sysctl_deinstall(struct ksensordev *,
+			    struct ksensor *);
 
 void
 sensordev_install(struct ksensordev *sensdev)
@@ -86,7 +90,8 @@ sensordev_install(struct ksensordev *sensdev)
 	}
 	sensordev_count++;
 
-	sensor_sysctl_install(sensdev);
+	/* Install sysctl node for this sensor device */
+	sensordev_sysctl_install(sensdev);
 
 	SYSCTL_XUNLOCK();
 }
@@ -127,6 +132,9 @@ sensor_attach(struct ksensordev *sensdev, struct ksensor *sens)
 		sensdev->maxnumt[sens->type]++;
 	sensdev->sensors_count++;
 
+	/* Install sysctl node for this sensor */
+	sensor_sysctl_install(sensdev, sens);
+
 	SYSCTL_XUNLOCK();
 }
 
@@ -138,7 +146,11 @@ sensordev_deinstall(struct ksensordev *sensdev)
 	sensordev_count--;
 	SLIST_REMOVE(&sensordev_list, sensdev, ksensordev, list);
 
-	sensor_sysctl_deinstall(sensdev);
+	/*
+	 * Deinstall sensor device's sysctl node; this also
+	 * removes all attached sensors' sysctl nodes.
+	 */
+	sensordev_sysctl_deinstall(sensdev);
 
 	SYSCTL_XUNLOCK();
 }
@@ -159,6 +171,9 @@ sensor_detach(struct ksensordev *sensdev, struct ksensor *sens)
 	 */
 	if (sens->numt == sensdev->maxnumt[sens->type] - 1)
 		sensdev->maxnumt[sens->type]--;
+
+	/* Deinstall sensor's sysctl node */
+	sensor_sysctl_deinstall(sensdev, sens);
 
 	SYSCTL_XUNLOCK();
 }
@@ -305,14 +320,16 @@ SYSCTL_NODE(_hw, HW_SENSORS, _sensors, CTLFLAG_RD, sysctl_sensors_handler,
     "Hardware Sensors XP MIB interface");
 
 static void
-sensor_sysctl_install(struct ksensordev *sensdev)
+sensordev_sysctl_install(struct ksensordev *sensdev)
 {
-	struct sysctl_oid_list *ol;	
 	struct sysctl_ctx_list *cl = &sensdev->clist;
 	struct ksensor *s;
 	struct ksensors_head *sh = &sensdev->sensors_list;
 
 	SYSCTL_ASSERT_XLOCKED();
+
+	KASSERT(sensdev->oid == NULL,
+	    ("sensor device %s sysctl node already installed", sensdev->xname));
 
 	sysctl_ctx_init(cl);
 	sensdev->oid = SYSCTL_ADD_NODE(cl, SYSCTL_STATIC_CHILDREN(_hw_sensors),
@@ -323,23 +340,54 @@ sensor_sysctl_install(struct ksensordev *sensdev)
 		return;
 	}
 
-	ol = SYSCTL_CHILDREN(sensdev->oid);
-	SLIST_FOREACH(s, sh, list) {
-		char n[32];
+	/* Install sysctl nodes for sensors attached to this sensor device */
+	SLIST_FOREACH(s, sh, list)
+		sensor_sysctl_install(sensdev, s);
+}
 
-		ksnprintf(n, sizeof(n), "%s%d", sensor_type_s[s->type], s->numt);
-		SYSCTL_ADD_PROC(cl, ol, OID_AUTO, n, CTLTYPE_STRUCT |
-		    CTLFLAG_RD, s, 0, sysctl_handle_sensor, "S,sensor", "");
+static void
+sensor_sysctl_install(struct ksensordev *sensdev, struct ksensor *sens)
+{
+	char n[32];
+
+	SYSCTL_ASSERT_XLOCKED();
+
+	if (sensdev->oid == NULL) {
+		/* Sensor device sysctl node is not installed yet */
+		return;
+	}
+
+	ksnprintf(n, sizeof(n), "%s%d", sensor_type_s[sens->type], sens->numt);
+	KASSERT(sens->oid == NULL,
+	    ("sensor %s:%s sysctl node already installed", sensdev->xname, n));
+
+	sens->oid = SYSCTL_ADD_PROC(&sensdev->clist,
+	    SYSCTL_CHILDREN(sensdev->oid), OID_AUTO, n,
+	    CTLTYPE_STRUCT | CTLFLAG_RD, sens, 0, sysctl_handle_sensor,
+	    "S,sensor", "");
+}
+
+static void
+sensordev_sysctl_deinstall(struct ksensordev *sensdev)
+{
+	SYSCTL_ASSERT_XLOCKED();
+
+	if (sensdev->oid != NULL) {
+		sysctl_ctx_free(&sensdev->clist);
+		sensdev->oid = NULL;
 	}
 }
 
 static void
-sensor_sysctl_deinstall(struct ksensordev *sensdev)
+sensor_sysctl_deinstall(struct ksensordev *sensdev, struct ksensor *sens)
 {
 	SYSCTL_ASSERT_XLOCKED();
 
-	if (sensdev->oid != NULL)
-		sysctl_ctx_free(&sensdev->clist);
+	if (sensdev->oid != NULL && sens->oid != NULL) {
+		sysctl_ctx_entry_del(&sensdev->clist, sens->oid);
+		sysctl_remove_oid(sens->oid, 1, 0);
+	}
+	sens->oid = NULL;
 }
 
 static int

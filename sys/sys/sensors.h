@@ -134,6 +134,7 @@ struct ksensor {
 	enum sensor_status status;	/* sensor status */
 	int numt;			/* sensor number of .type type */
 	int flags;			/* sensor flags, ie. SENSOR_FINVALID */
+	struct sysctl_oid *oid;
 };
 SLIST_HEAD(ksensors_head, ksensor);
 
