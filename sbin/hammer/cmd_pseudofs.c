@@ -101,33 +101,12 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 
 	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
 		/*
-		 * Avoid foot-shooting.  Don't let the user access a PFS
-		 * softlink via a PFS.  PFS softlinks may only be accessed
-		 * via the master filesystem.
-		 */
-		dirpath = getdir(path);
-		fd = open(dirpath, O_RDONLY);
-		if (fd < 0)
-			goto done;
-		pfs->pfs_id = -1;
-		ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs);
-		if (pfs->pfs_id != 0) {
-			fprintf(stderr,
-				"You are attempting to access a PFS softlink "
-				"from a PFS.  It may not represent the PFS\n"
-				"on the main filesystem mount that you "
-				"expect!  You may only access PFS softlinks\n"
-				"via the main filesystem mount!\n");
-			exit(1);
-		}
-		close(fd);
-
-		/*
 		 * Extract the PFS from the link.  HAMMER will automatically
 		 * convert @@PFS%05d links so if actually see one in that
 		 * form the target PFS may not exist or may be corrupt.  But
 		 * we can extract the PFS id anyway.
 		 */
+		dirpath = getdir(path);
 		n = readlink(path, buf, sizeof(buf) - 1);
 		if (n < 0)
 			n = 0;
@@ -239,6 +218,29 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	fd = open(dirpath, O_RDONLY);
 	if (fd < 0) {
 		fprintf(stderr, "Cannot open directory %s\n", dirpath);
+		exit(1);
+	}
+
+	/*
+	 * Avoid foot-shooting.  Don't let the user create a PFS
+	 * softlink via a PFS.  PFS softlinks may only be accessed
+	 * via the master filesystem.  Checking it here ensures
+	 * other PFS commands access PFS under the master filesystem.
+	 */
+	bzero(&pfs, sizeof(pfs));
+	bzero(&pfsd, sizeof(pfsd));
+	pfs.pfs_id = -1;
+	pfs.ondisk = &pfsd;
+	pfs.bytes = sizeof(pfsd);
+
+	ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs);
+	if (pfs.pfs_id != 0) {
+		fprintf(stderr,
+			"You are attempting to access a PFS softlink "
+			"from a PFS.  It may not represent the PFS\n"
+			"on the main filesystem mount that you "
+			"expect!  You may only access PFS softlinks\n"
+			"via the main filesystem mount!\n");
 		exit(1);
 	}
 
