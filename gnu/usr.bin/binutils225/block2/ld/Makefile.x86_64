@@ -52,7 +52,7 @@ e${X86_EMULATION}.c ${LDSCRIPTS_${X86_EMULATION}}: \
 		${HOST} \
 		${TARGET_TUPLE:Q} \
 		${TARGET_TUPLE:Q} \
-		${NATIVE_EMULATION:Q} \
+		${X86_EMULATION:Q} \
 		"" \
 		no \
 		yes \
@@ -70,7 +70,7 @@ e${L1OM_EMULATION}.c ${LDSCRIPTS_${L1OM_EMULATION}}: \
 		${HOST} \
 		${TARGET_TUPLE:Q} \
 		${TARGET_TUPLE:Q} \
-		${NATIVE_EMULATION:Q} \
+		${L1OM_EMULATION:Q} \
 		"" \
 		no \
 		yes \
@@ -88,7 +88,7 @@ e${K1OM_EMULATION}.c ${LDSCRIPTS_${K1OM_EMULATION}}: \
 		${HOST} \
 		${TARGET_TUPLE:Q} \
 		${TARGET_TUPLE:Q} \
-		${NATIVE_EMULATION:Q} \
+		${K1OM_EMULATION:Q} \
 		"" \
 		no \
 		yes \
