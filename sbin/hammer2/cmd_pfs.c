@@ -80,11 +80,17 @@ cmd_pfs_list(const char *sel_path)
 			printf("SOFT_MASTER ");
 			break;
 		case HAMMER2_PFSTYPE_MASTER:
-			printf("MASTER      ");
-			break;
-		case HAMMER2_PFSTYPE_SNAPSHOT:
-			printf("SNAPSHOT    ");
-			break;
+			switch (pfs.pfs_subtype) {
+			case HAMMER2_PFSSUBTYPE_NONE:
+				printf("MASTER      ");
+				break;
+			case HAMMER2_PFSSUBTYPE_SNAPSHOT:
+				printf("SNAPSHOT    ");
+				break;
+			default:
+				printf("MASTER(sub?)");
+				break;
+			}
 		default:
 			printf("%02x          ", pfs.pfs_type);
 			break;

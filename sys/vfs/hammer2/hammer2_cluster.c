@@ -268,85 +268,6 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
 	return cluster;
 }
 
-#if 0
-/*
- * Allocates a cluster and its underlying chain structures.  The underlying
- * chains will be locked.  The cluster and underlying chains will have one
- * ref and will be focused on the first chain.
- *
- * XXX focus on first chain.
- */
-hammer2_cluster_t *
-hammer2_cluster_alloc(hammer2_pfs_t *pmp,
-		      hammer2_trans_t *trans, hammer2_blockref_t *bref)
-{
-	hammer2_cluster_t *cluster;
-	hammer2_cluster_t *rcluster;
-	hammer2_chain_t *chain;
-	hammer2_chain_t *rchain;
-#if 0
-	u_int bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
-#endif
-	int i;
-
-	KKASSERT(pmp != NULL);
-
-	/*
-	 * Construct the appropriate system structure.
-	 */
-	switch(bref->type) {
-	case HAMMER2_BREF_TYPE_INODE:
-	case HAMMER2_BREF_TYPE_INDIRECT:
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-	case HAMMER2_BREF_TYPE_DATA:
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		/*
-		 * Chain's are really only associated with the hmp but we
-		 * maintain a pmp association for per-mount memory tracking
-		 * purposes.  The pmp can be NULL.
-		 */
-		break;
-	case HAMMER2_BREF_TYPE_VOLUME:
-	case HAMMER2_BREF_TYPE_FREEMAP:
-		chain = NULL;
-		panic("hammer2_cluster_alloc volume type illegal for op");
-	default:
-		chain = NULL;
-		panic("hammer2_cluster_alloc: unrecognized blockref type: %d",
-		      bref->type);
-	}
-
-	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
-	cluster->refs = 1;
-	cluster->flags = HAMMER2_CLUSTER_LOCKED;
-
-	rcluster = &pmp->iroot->cluster;
-	for (i = 0; i < rcluster->nchains; ++i) {
-		rchain = rcluster->array[i].chain;
-		chain = hammer2_chain_alloc(rchain->hmp, pmp, trans, bref);
-#if 0
-		chain->hmp = rchain->hmp;
-		chain->bref = *bref;
-		chain->bytes = bytes;
-		chain->refs = 1;
-		chain->flags |= HAMMER2_CHAIN_ALLOCATED;
-#endif
-
-		/*
-		 * NOTE: When loading a chain from backing store or creating a
-		 *	 snapshot, trans will be NULL and the caller is
-		 *	 responsible for setting these fields.
-		 */
-		cluster->array[i].chain = chain;
-	}
-	cluster->nchains = i;
-	cluster->pmp = pmp;
-	cluster->focus = cluster->array[0].chain;
-
-	return (cluster);
-}
-#endif
-
 /*
  * Add a reference to a cluster.
  *
@@ -405,9 +326,9 @@ hammer2_cluster_wait(hammer2_cluster_t *cluster)
 
 /*
  * Lock and ref a cluster.  This adds a ref to the cluster and its chains
- * and then locks them.
+ * and then locks them, modified by various RESOLVE flags.
  *
- * The act of locking a cluster sets its focus if not already set.
+ * The act of locking a cluster sets its focus.
  *
  * The chains making up the cluster may be narrowed down based on quorum
  * acceptability, and if RESOLVE_RDONLY is specified the chains can be
@@ -423,24 +344,11 @@ hammer2_cluster_wait(hammer2_cluster_t *cluster)
  * If a failure occurs the operation must be aborted by higher-level code and
  * retried. XXX
  */
-int
+void
 hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 {
 	hammer2_chain_t *chain;
-	hammer2_pfs_t *pmp;
-	uint32_t nflags;
-	hammer2_tid_t quorum_tid;
-	int focus_pfs_type;
-	int nmasters;
-	int ttlslaves;
-	int ttlmasters;
-	int nslaves;
-	int nquorum;
-	int error;
 	int i;
-
-	pmp = cluster->pmp;
-	KKASSERT(pmp != NULL || cluster->nchains == 0);
 
 	/* cannot be on inode-embedded cluster template, must be on copy */
 	KKASSERT((cluster->flags & HAMMER2_CLUSTER_INODE) == 0);
@@ -452,43 +360,62 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 	}
 	atomic_set_int(&cluster->flags, HAMMER2_CLUSTER_LOCKED);
 
-	focus_pfs_type = 0;
-	quorum_tid = 0;
-	nflags = 0;
-	ttlslaves = 0;
-	ttlmasters = 0;
-	nslaves = 0;
-	nmasters = 0;
-
-	/*
-	 * Calculate the quorum count.
-	 */
-	nquorum = pmp ? pmp->pfs_nmasters / 2 + 1 : 0;
-
 	if ((how & HAMMER2_RESOLVE_NOREF) == 0)
 		atomic_add_int(&cluster->refs, 1);
 
 	/*
-	 * Lock chains and accumulate statistics.
+	 * Lock chains and resolve state.
 	 */
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
-		error = hammer2_chain_lock(chain, how);
-		if (error) {
-			kprintf("hammer2_cluster_lock: cluster %p index %d "
-				"lock failure\n", cluster, i);
-			cluster->array[i].chain = NULL;
-			hammer2_chain_drop(chain);
-			continue;
-		}
+		hammer2_chain_lock(chain, how);
+	}
 
-		/*
-		 * We can resolve some things on this array pass but other
-		 * things will require a full-accounting of available
-		 * masters.
-		 */
+	hammer2_cluster_resolve(cluster);
+}
+
+void
+hammer2_cluster_resolve(hammer2_cluster_t *cluster)
+{
+	hammer2_chain_t *chain;
+	hammer2_pfs_t *pmp;
+	hammer2_tid_t quorum_tid;
+	int focus_pfs_type;
+	uint32_t nflags;
+	int ttlmasters;
+	int ttlslaves;
+	int nmasters;
+	int nslaves;
+	int nquorum;
+	int i;
+
+	cluster->error = 0;
+
+	quorum_tid = 0;
+	focus_pfs_type = 0;
+	nflags = 0;
+	ttlmasters = 0;
+	ttlslaves = 0;
+	nmasters = 0;
+	nslaves = 0;
+
+	/*
+	 * Calculate quorum
+	 */
+	pmp = cluster->pmp;
+	KKASSERT(pmp != NULL || cluster->nchains == 0);
+	nquorum = pmp ? pmp->pfs_nmasters / 2 + 1 : 0;
+
+	/*
+	 * Pass 1
+	 */
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i].chain;
+		if (chain == NULL)
+			continue;
+
 		switch (cluster->pmp->pfs_types[i]) {
 		case HAMMER2_PFSTYPE_MASTER:
 			++ttlmasters;
@@ -518,6 +445,7 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 			nflags |= HAMMER2_CLUSTER_WRHARD;
 			nflags |= HAMMER2_CLUSTER_RDHARD;
 			cluster->focus = chain;
+			cluster->error = chain->error;
 			break;
 		default:
 			break;
@@ -525,20 +453,24 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 	}
 
 	/*
-	 * Pass 2 - accumulate statistics.
+	 * Pass 2
 	 */
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
+
 		switch (cluster->pmp->pfs_types[i]) {
 		case HAMMER2_PFSTYPE_MASTER:
 			/*
 			 * We must have enough up-to-date masters to reach
 			 * a quorum and the master mirror_tid must match
 			 * the quorum's mirror_tid.
+			 *
+			 * Do not select an errored master.
 			 */
 			if (nmasters >= nquorum &&
+			    chain->error == 0 &&
 			    quorum_tid == chain->bref.mirror_tid) {
 				nflags |= HAMMER2_CLUSTER_WRHARD;
 				nflags |= HAMMER2_CLUSTER_RDHARD;
@@ -546,6 +478,7 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 				    focus_pfs_type == HAMMER2_PFSTYPE_SLAVE) {
 					focus_pfs_type = HAMMER2_PFSTYPE_MASTER;
 					cluster->focus = chain;
+					cluster->error = chain->error;
 				}
 			}
 			break;
@@ -554,14 +487,18 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 			 * We must have enough up-to-date masters to reach
 			 * a quorum and the slave mirror_tid must match the
 			 * quorum's mirror_tid.
+			 *
+			 * Do not select an errored slave.
 			 */
 			if (nmasters >= nquorum &&
+			    chain->error == 0 &&
 			    quorum_tid == chain->bref.mirror_tid) {
 				++nslaves;
 				nflags |= HAMMER2_CLUSTER_RDHARD;
 				if (cluster->focus == NULL) {
 					focus_pfs_type = HAMMER2_PFSTYPE_SLAVE;
 					cluster->focus = chain;
+					cluster->error = chain->error;
 				}
 			}
 			break;
@@ -572,6 +509,7 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 			 */
 			KKASSERT(focus_pfs_type != HAMMER2_PFSTYPE_SOFT_MASTER);
 			cluster->focus = chain;
+			cluster->error = chain->error;
 			focus_pfs_type = HAMMER2_PFSTYPE_SOFT_MASTER;
 			break;
 		case HAMMER2_PFSTYPE_SOFT_SLAVE:
@@ -582,6 +520,7 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 			KKASSERT(focus_pfs_type != HAMMER2_PFSTYPE_SOFT_SLAVE);
 			if (focus_pfs_type != HAMMER2_PFSTYPE_SOFT_MASTER) {
 				cluster->focus = chain;
+				cluster->error = chain->error;
 				focus_pfs_type = HAMMER2_PFSTYPE_SOFT_SLAVE;
 			}
 			break;
@@ -605,127 +544,14 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 	 * Determine if the cluster was successfully locked for the
 	 * requested operation and generate an error code.  The cluster
 	 * will not be locked (or ref'd) if an error is returned.
+	 *
+	 * Caller can use hammer2_cluster_rdok() and hammer2_cluster_wrok()
+	 * to determine if reading or writing is possible.  If writing, the
+	 * cluster still requires a call to hammer2_cluster_modify() first.
 	 */
 	atomic_set_int(&cluster->flags, nflags);
 	atomic_clear_int(&cluster->flags, HAMMER2_CLUSTER_ZFLAGS & ~nflags);
-	error = 0;
-
-	if (how & HAMMER2_RESOLVE_RDONLY) {
-		if ((nflags & HAMMER2_CLUSTER_RDOK) == 0)
-			error = EIO;
-	} else {
-		if ((nflags & HAMMER2_CLUSTER_WROK) == 0)
-			error = EIO;
-	}
-
-	if (error) {
-		kprintf("hammer2_cluster_lock: cluster %p lock failed %d\n",
-			cluster, error);
-		for (i = 0; i < cluster->nchains; ++i) {
-			chain = cluster->array[i].chain;
-			if (chain == NULL)
-				continue;
-			hammer2_chain_unlock(chain);
-		}
-		if ((how & HAMMER2_RESOLVE_NOREF) == 0)
-			atomic_add_int(&cluster->refs, -1);
-	}
-
-	return error;
 }
-
-#if 0
-/*
- * Replace the contents of dst with src, adding a reference to src's chains
- * but not adding any additional locks.
- *
- * dst is assumed to already have a ref and any chains present in dst are
- * assumed to be locked and will be unlocked.
- *
- * If the chains in src are locked, only one of (src) or (dst) should be
- * considered locked by the caller after return, not both.
- */
-void
-hammer2_cluster_replace(hammer2_cluster_t *dst, hammer2_cluster_t *src)
-{
-	hammer2_chain_t *chain;
-	hammer2_chain_t *tmp;
-	int i;
-
-	KKASSERT(dst->refs == 1);
-	dst->focus = NULL;
-
-	for (i = 0; i < src->nchains; ++i) {
-		chain = src->array[i].chain;
-		if (chain) {
-			hammer2_chain_ref(chain);
-			if (i < dst->nchains &&
-			    (tmp = dst->array[i].chain) != NULL) {
-				hammer2_chain_unlock(tmp);
-			}
-			dst->array[i].chain = chain;
-			if (dst->focus == NULL)
-				dst->focus = chain;
-		}
-	}
-	while (i < dst->nchains) {
-		chain = dst->array[i].chain;
-		if (chain) {
-			hammer2_chain_unlock(chain);
-			dst->array[i].chain = NULL;
-		}
-		++i;
-	}
-	dst->nchains = src->nchains;
-}
-
-/*
- * Replace the contents of the locked destination with the contents of the
- * locked source.  The destination must have one ref.
- *
- * Returns with the destination still with one ref and the copied chains
- * with an additional lock (representing their state on the destination).
- * The original chains associated with the destination are unlocked.
- *
- * From the point of view of the caller, both src and dst are locked on
- * call and remain locked on return.
- *
- * XXX adjust flag state
- */
-void
-hammer2_cluster_replace_locked(hammer2_cluster_t *dst, hammer2_cluster_t *src)
-{
-	hammer2_chain_t *chain;
-	hammer2_chain_t *tmp;
-	int i;
-
-	KKASSERT(dst->refs == 1);
-
-	dst->focus = NULL;
-	for (i = 0; i < src->nchains; ++i) {
-		chain = src->array[i].chain;
-		if (chain) {
-			hammer2_chain_lock(chain, 0);
-			if (i < dst->nchains &&
-			    (tmp = dst->array[i].chain) != NULL) {
-				hammer2_chain_unlock(tmp);
-			}
-			dst->array[i].chain = chain;
-		}
-	}
-	while (i < dst->nchains) {
-		chain = dst->array[i].chain;
-		if (chain) {
-			hammer2_chain_unlock(chain);
-			dst->array[i].chain = NULL;
-		}
-		++i;
-	}
-	dst->nchains = src->nchains;
-	dst->flags = src->flags;
-	dst->focus = src->focus;
-}
-#endif
 
 /*
  * Copy a cluster, returned a ref'd cluster.  All underlying chains
@@ -842,19 +668,32 @@ hammer2_cluster_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
 /*
  * Adjust the cluster's chains to allow modification and adjust the
  * focus.  Data will be accessible on return.
+ *
+ * If our focused master errors on modify, re-resolve the cluster to
+ * try to select a different master.
  */
 void
 hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 		       int flags)
 {
 	hammer2_chain_t *chain;
+	int resolve_again;
 	int i;
 
+	resolve_again = 0;
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
-		if (chain)
+		if (chain) {
 			hammer2_chain_modify(trans, chain, flags);
+			if (cluster->focus == chain &&
+			    chain->error) {
+				cluster->error = chain->error;
+				resolve_again = 1;
+			}
+		}
 	}
+	if (resolve_again)
+		hammer2_cluster_resolve(cluster);
 }
 
 /*
@@ -1032,6 +871,7 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 	}
 	*key_nextp = key_accum;
 	cluster->nchains = i;
+	hammer2_cluster_resolve(cluster);
 
 	if (null_count == i) {
 		hammer2_cluster_drop(cluster);
@@ -1120,6 +960,7 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			key_accum = key_next;
 	}
 	cluster->nchains = i;
+	hammer2_cluster_resolve(cluster);
 
 	if (null_count == i) {
 		hammer2_cluster_drop(cluster);
@@ -1127,61 +968,6 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 	}
 	return(cluster);
 }
-
-#if 0
-/*
- * XXX initial NULL cluster needs reworking (pass **clusterp ?)
- *
- * The raw scan function is similar to lookup/next but does not seek to a key.
- * Blockrefs are iterated via first_chain = (parent, NULL) and
- * next_chain = (parent, chain).
- *
- * The passed-in parent must be locked and its data resolved.  The returned
- * chain will be locked.  Pass chain == NULL to acquire the first sub-chain
- * under parent and then iterate with the passed-in chain (which this
- * function will unlock).
- */
-hammer2_cluster_t *
-hammer2_cluster_scan(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
-		     int flags)
-{
-	hammer2_chain_t *chain;
-	int null_count;
-	int i;
-
-	null_count = 0;
-
-	for (i = 0; i < cparent->nchains; ++i) {
-		chain = cluster->array[i].chain;
-		if (chain == NULL) {
-			++null_count;
-			continue;
-		}
-		if (cparent->array[i].chain == NULL) {
-			if (flags & HAMMER2_LOOKUP_NOLOCK)
-				hammer2_chain_drop(chain);
-			else
-				hammer2_chain_unlock(chain);
-			++null_count;
-			continue;
-		}
-
-		chain = hammer2_chain_scan(cparent->array[i].chain, chain,
-					   &cparent->array[i].cache_index,
-					   flags);
-		cluster->array[i].chain = chain;
-		if (chain == NULL)
-			++null_count;
-	}
-
-	if (null_count == i) {
-		hammer2_cluster_drop(cluster);
-		cluster = NULL;
-	}
-	return(cluster);
-}
-
-#endif
 
 /*
  * Create a new cluster using the specified key
@@ -1229,6 +1015,7 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 	}
 	cluster->nchains = i;
 	*clusterp = cluster;
+	hammer2_cluster_resolve(cluster);
 
 	return error;
 }
@@ -1455,6 +1242,7 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 		hammer2_chain_drop(chain);
 	}
 	cparent->flags |= HAMMER2_CLUSTER_LOCKED;
+	hammer2_cluster_resolve(cparent);
 
 	return cparent;
 }

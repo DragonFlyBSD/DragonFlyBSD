@@ -337,6 +337,8 @@ struct hammer2_chain {
 	u_int		flags;
 	u_int		refs;
 	u_int		lockcnt;
+	int		error;			/* on-lock data error state */
+
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush list */
 };
@@ -388,6 +390,23 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_FLUSH_MASK	(HAMMER2_CHAIN_MODIFIED |	\
 					 HAMMER2_CHAIN_UPDATE |		\
 					 HAMMER2_CHAIN_ONFLUSH)
+
+/*
+ * Hammer2 error codes, used by chain->error and cluster->error.  The error
+ * code is typically set on-lock unless no I/O was requested, and set on
+ * I/O otherwise.  If set for a cluster it generally means that the cluster
+ * code could not find a valid copy to present.
+ *
+ * NOTE: API allows callers to check zero/non-zero to determine if an error
+ *	 condition exists.
+ *
+ * NOTE: Chain's data field is usually NULL on an IO error but not necessarily
+ *	 NULL on other errors.  Check chain->error, not chain->data.
+ */
+#define HAMMER2_ERROR_NONE		0
+#define HAMMER2_ERROR_IO		1	/* device I/O error */
+#define HAMMER2_ERROR_CHECK		2	/* check code mismatch */
+#define HAMMER2_ERROR_INCOMPLETE	3	/* incomplete cluster */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -509,15 +528,13 @@ struct hammer2_cluster_item {
 
 typedef struct hammer2_cluster_item hammer2_cluster_item_t;
 
-#define HAMMER2_CLUSTER_ITEM_LOCKED	0x0001	/* valid lock */
-#define HAMMER2_CLUSTER_ITEM_DATA
-
 struct hammer2_cluster {
 	int			refs;		/* track for deallocation */
 	int			ddflag;
 	struct hammer2_pfs	*pmp;
 	uint32_t		flags;
 	int			nchains;
+	int			error;		/* error code valid on lock */
 	hammer2_iocb_t		iocb;
 	hammer2_chain_t		*focus;		/* current focus (or mod) */
 	hammer2_cluster_item_t	array[HAMMER2_MAXCLUSTER];
@@ -582,6 +599,23 @@ typedef struct hammer2_cluster	hammer2_cluster_t;
 				  HAMMER2_CLUSTER_RDSOFT |	\
 				  HAMMER2_CLUSTER_MSYNCED |	\
 				  HAMMER2_CLUSTER_SSYNCED)
+
+/*
+ * Helper functions (cluster must be locked for flags to be valid).
+ */
+static __inline
+int
+hammer2_cluster_rdok(hammer2_cluster_t *cluster)
+{
+	return (cluster->flags & HAMMER2_CLUSTER_RDOK);
+}
+
+static __inline
+int
+hammer2_cluster_wrok(hammer2_cluster_t *cluster)
+{
+	return (cluster->flags & HAMMER2_CLUSTER_WROK);
+}
 
 RB_HEAD(hammer2_inode_tree, hammer2_inode);
 
@@ -784,6 +818,23 @@ struct hammer2_dev {
 };
 
 typedef struct hammer2_dev hammer2_dev_t;
+
+/*
+ * Helper functions (cluster must be locked for flags to be valid).
+ */
+static __inline
+int
+hammer2_chain_rdok(hammer2_chain_t *chain)
+{
+	return (chain->error == 0);
+}
+
+static __inline
+int
+hammer2_chain_wrok(hammer2_chain_t *chain)
+{
+	return (chain->error == 0 && chain->hmp->ronly == 0);
+}
 
 /*
  * Per-cluster management structure.  This structure will be tied to a
@@ -1072,10 +1123,10 @@ hammer2_chain_t *hammer2_chain_alloc(hammer2_dev_t *hmp,
 				hammer2_pfs_t *pmp,
 				hammer2_trans_t *trans,
 				hammer2_blockref_t *bref);
-void hammer2_chain_core_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain);
+void hammer2_chain_core_init(hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
-int hammer2_chain_lock(hammer2_chain_t *chain, int how);
+void hammer2_chain_lock(hammer2_chain_t *chain, int how);
 const hammer2_media_data_t *hammer2_chain_rdata(hammer2_chain_t *chain);
 hammer2_media_data_t *hammer2_chain_wdata(hammer2_chain_t *chain);
 
@@ -1242,7 +1293,8 @@ hammer2_cluster_t *hammer2_cluster_alloc(hammer2_pfs_t *pmp,
 void hammer2_cluster_ref(hammer2_cluster_t *cluster);
 void hammer2_cluster_drop(hammer2_cluster_t *cluster);
 void hammer2_cluster_wait(hammer2_cluster_t *cluster);
-int hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
+void hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
+void hammer2_cluster_resolve(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
 void hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,

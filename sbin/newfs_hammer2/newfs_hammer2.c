@@ -582,6 +582,11 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 						HAMMER2_CHECK_ISCSI32);
 		}
 
+		/*
+		 * NOTE: We leave nmasters set to 0, which means that we
+		 *	 don't know how many masters there are.  The quorum
+		 *	 calculation will effectively be 1 ( 0 / 2 + 1 ).
+		 */
 		rawip->pfs_clid = Hammer2_PfsCLID[i];
 		rawip->pfs_fsid = Hammer2_PfsFSID[i];
 		rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;

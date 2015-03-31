@@ -155,10 +155,6 @@ hammer2_chain_setflush(hammer2_trans_t *trans, hammer2_chain_t *chain)
  * bref.  chain->refs is set to 1 and the passed bref is copied to
  * chain->bref.  chain->bytes is derived from the bref.
  *
- * chain->core is NOT allocated and the media data and bp pointers are left
- * NULL.  The caller must call chain_core_alloc() to allocate or associate
- * a core with the chain.
- *
  * chain->pmp inherits pmp unless the chain is an inode (other than the
  * super-root inode).
  *
@@ -198,7 +194,8 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 	}
 
 	/*
-	 * Initialize the new chain structure.
+	 * Initialize the new chain structure.  pmp must be set to NULL for
+	 * chains belonging to the super-root topology of a device mount.
 	 */
 	if (pmp == hmp->spmp)
 		chain->pmp = NULL;
@@ -215,22 +212,20 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 	 */
 	if (bref->flags & HAMMER2_BREF_FLAG_PFSROOT)
 		chain->flags |= HAMMER2_CHAIN_PFSBOUNDARY;
+	hammer2_chain_core_init(chain);
 
 	return (chain);
 }
 
 /*
- * Associate an existing core with the chain or allocate a new core.
+ * Initialize a chain's core structure.  This structure used to be allocated
+ * but is now embedded.
  *
  * The core is not locked.  No additional refs on the chain are made.
  * (trans) must not be NULL if (core) is not NULL.
- *
- * When chains are delete-duplicated during flushes we insert nchain on
- * the ownerq after ochain instead of at the end in order to give the
- * drop code visibility in the correct order, otherwise drops can be missed.
  */
 void
-hammer2_chain_core_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain)
+hammer2_chain_core_init(hammer2_chain_t *chain)
 {
 	hammer2_chain_core_t *core = &chain->core;
 
@@ -355,8 +350,7 @@ hammer2_chain_drop(hammer2_chain_t *chain)
  * convoluted but we can't just recurse without potentially blowing out
  * the kernel stack.
  *
- * The chain cannot be freed if it has a non-empty core (children) or
- * it is not at the head of ownerq.
+ * The chain cannot be freed if it has any children.
  *
  * The core spinlock is allowed nest child-to-parent (not parent-to-child).
  */
@@ -554,7 +548,7 @@ hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
  *	    upgraded to exclusive.  However, a deadlock can occur if
  *	    the caller owns more than one shared lock.
  */
-int
+void
 hammer2_chain_lock(hammer2_chain_t *chain, int how)
 {
 	hammer2_dev_t *hmp;
@@ -586,24 +580,24 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 * necessary.
 	 */
 	if (chain->data)
-		return (0);
+		return;
 
 	/*
 	 * Do we have to resolve the data?
 	 */
 	switch(how & HAMMER2_RESOLVE_MASK) {
 	case HAMMER2_RESOLVE_NEVER:
-		return(0);
+		return;
 	case HAMMER2_RESOLVE_MAYBE:
 		if (chain->flags & HAMMER2_CHAIN_INITIAL)
-			return(0);
+			return;
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
-			return(0);
+			return;
 #if 0
 		if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE)
-			return(0);
+			return;
 		if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_LEAF)
-			return(0);
+			return;
 #endif
 		/* fall through */
 	case HAMMER2_RESOLVE_ALWAYS:
@@ -618,7 +612,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	ostate = hammer2_mtx_upgrade(&chain->core.lock);
 	if (chain->data) {
 		hammer2_mtx_downgrade(&chain->core.lock, ostate);
-		return (0);
+		return;
 	}
 
 	/*
@@ -648,26 +642,20 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 					 &chain->dio);
 		hammer2_adjreadcounter(&chain->bref, chain->bytes);
 	}
-
 	if (error) {
+		chain->error = HAMMER2_ERROR_IO;
 		kprintf("hammer2_chain_lock: I/O error %016jx: %d\n",
 			(intmax_t)bref->data_off, error);
 		hammer2_io_bqrelse(&chain->dio);
 		hammer2_mtx_downgrade(&chain->core.lock, ostate);
-		return (error);
+		return;
 	}
+	chain->error = 0;
 
-#if 0
 	/*
-	 * No need for this, always require that hammer2_chain_modify()
-	 * be called before any modifying operations, which ensures that
-	 * the underlying dio is dirty.
+	 * NOTE: A locked chain's data cannot be modified without first
+	 *	 calling hammer2_chain_modify().
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) &&
-	    !hammer2_io_isdirty(chain->dio)) {
-		hammer2_io_setdirty(chain->dio);
-	}
-#endif
 
 	/*
 	 * Clear INITIAL.  In this case we used io_new() and the buffer has
@@ -686,13 +674,14 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		 */
 	} else {
 		if (hammer2_chain_testcheck(chain, bdata) == 0) {
-			kprintf("chain %016jx.%02x meth=%02x CHECK FAIL %08x (flags=%08x)\n",
-
+			kprintf("chain %016jx.%02x meth=%02x "
+				"CHECK FAIL %08x (flags=%08x)\n",
 				chain->bref.data_off,
 				chain->bref.type,
 				chain->bref.methods,
 				hammer2_icrc32(bdata, chain->bytes),
 				chain->flags);
+			chain->error = HAMMER2_ERROR_CHECK;
 		}
 	}
 
@@ -726,7 +715,6 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		break;
 	}
 	hammer2_mtx_downgrade(&chain->core.lock, ostate);
-	return (0);
 }
 
 /*
@@ -1136,8 +1124,21 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 						 chain->bytes, &dio);
 		}
 		hammer2_adjreadcounter(&chain->bref, chain->bytes);
-		KKASSERT(error == 0);
 
+		/*
+		 * If an I/O error occurs make sure callers cannot accidently
+		 * modify the old buffer's contents and corrupt the filesystem.
+		 */
+		if (error) {
+			kprintf("hammer2_chain_modify: hmp=%p I/O error\n",
+				hmp);
+			chain->error = HAMMER2_ERROR_IO;
+			hammer2_io_brelse(&dio);
+			hammer2_io_brelse(&chain->dio);
+			chain->data = NULL;
+			break;
+		}
+		chain->error = 0;
 		bdata = hammer2_io_data(dio, chain->bref.data_off);
 
 		if (chain->data) {
@@ -1382,7 +1383,6 @@ hammer2_chain_get(hammer2_chain_t *parent, int generation,
 		chain = hammer2_chain_alloc(hmp, NULL, NULL, bref);
 	else
 		chain = hammer2_chain_alloc(hmp, parent->pmp, NULL, bref);
-	hammer2_chain_core_alloc(NULL, chain);
 	/* ref'd chain returned */
 
 	/*
@@ -2102,7 +2102,6 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		dummy.data_off = hammer2_getradix(bytes);
 		dummy.methods = parent->bref.methods;
 		chain = hammer2_chain_alloc(hmp, pmp, trans, &dummy);
-		hammer2_chain_core_alloc(trans, chain);
 
 		/*
 		 * Lock the chain manually, chain_lock will load the chain
@@ -2784,7 +2783,6 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 
 	ichain = hammer2_chain_alloc(hmp, parent->pmp, trans, &dummy.bref);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);
-	hammer2_chain_core_alloc(trans, ichain);
 	hammer2_chain_lock(ichain, HAMMER2_RESOLVE_MAYBE);
 	hammer2_chain_drop(ichain);	/* excess ref from alloc */
 

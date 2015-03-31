@@ -794,7 +794,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
 		hmp->vchain.bref.mirror_tid = hmp->voldata.mirror_tid;
 
-		hammer2_chain_core_alloc(NULL, &hmp->vchain);
+		hammer2_chain_core_init(&hmp->vchain);
 		/* hmp->vchain.u.xxx is left NULL */
 
 		/*
@@ -817,7 +817,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			HAMMER2_ENC_CHECK(HAMMER2_CHECK_FREEMAP) |
 			HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
 
-		hammer2_chain_core_alloc(NULL, &hmp->fchain);
+		hammer2_chain_core_init(&hmp->fchain);
 		/* hmp->fchain.u.xxx is left NULL */
 
 		/*
