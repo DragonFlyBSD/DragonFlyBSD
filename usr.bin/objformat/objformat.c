@@ -41,7 +41,7 @@
 #endif
 
 #ifndef BINUTILSVER_DEFAULT
-#define	BINUTILSVER_DEFAULT "binutils224"
+#define	BINUTILSVER_DEFAULT "binutils225"
 #endif
 
 #define LINKER_DEFAULT "ld.bfd"
