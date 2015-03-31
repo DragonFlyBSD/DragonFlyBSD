@@ -12,6 +12,19 @@
 +         UPGRADING DRAGONFLY FROM 4.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+BINUTILS 2.25 REPLACES 2.22, PRIMARY
+------------------------------------
+
+The oldest of the two versions of Binutils, version 2.22, was removed
+and replaced with Binutils 2.25.  It becomes the primary version version
+of binutils and version 2.24 becomes the alternate.  There are 8 current
+CVE written against 2.24, so for security reasons version 2.25 should
+always be used.
+
+The accepted values of BINUTILSVER are now "binutils225" (default) and
+"binutils224".  The building of Binutils 2.24 can be prevented by setting
+NO_ALTBINUTILS=yes in make.conf.
+
 LOADER OPTIONS CHANGED
 ----------------------
 
