@@ -155,7 +155,8 @@ done:
 void
 relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs)
 {
-	close(fd);
+	if (fd >= 0)
+		close(fd);
 	if (pfs->ondisk) {
 		free(pfs->ondisk);
 		pfs->ondisk = NULL;
@@ -186,6 +187,7 @@ hammer_cmd_pseudofs_status(char **av, int ac)
 			close(fd);
 		if (pfs.ondisk)
 			free(pfs.ondisk);
+		relpfs(fd, &pfs);
 	}
 }
 
@@ -374,6 +376,7 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 		printf("pfs-destroy of PFS#%d failed: %s\n",
 			pfs.pfs_id, strerror(errno));
 	}
+	relpfs(fd, &pfs);
 }
 
 void
@@ -399,6 +402,7 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 		fprintf(stderr, "pfs-upgrade of PFS#%d (%s) failed: %s\n",
 			pfs.pfs_id, pfs.ondisk->label, strerror(errno));
 	}
+	relpfs(fd, &pfs);
 }
 
 void
@@ -424,6 +428,7 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 		fprintf(stderr, "pfs-downgrade of PFS#%d (%s) failed: %s\n",
 			pfs.pfs_id, pfs.ondisk->label, strerror(errno));
 	}
+	relpfs(fd, &pfs);
 }
 
 void
@@ -465,6 +470,7 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 			exit(1);
 		}
 	}
+	relpfs(fd, &pfs);
 }
 
 static void
