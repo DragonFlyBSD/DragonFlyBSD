@@ -5,8 +5,6 @@ SUBDIR=	addr2line \
 	elfedit \
 	gas \
 	gprof \
-	libgold \
-	ld \
 	nm \
 	objcopy \
 	objdump \
@@ -15,6 +13,18 @@ SUBDIR=	addr2line \
 	size \
 	strings \
 	strip
+
+# Don't build gold linker during stage 3 cross-tools unless
+# WORLD_LDVER has been set to ld.gold (and then don't build ld.bfd)
+.if defined(SELECT_LINKER)
+. if ${SELECT_LINKER:Mld.gold}
+SUBDIR+=	libgold
+. else
+SUBDIR+=	ld
+. endif
+.else
+SUBDIR+=	ld libgold
+.endif
 
 SUBDIR_ORDERED=
 
