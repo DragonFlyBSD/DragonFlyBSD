@@ -1,0 +1,29 @@
+# This is included explicitly at the top of each sub-Makefile.  We can't
+# use the normal "Makefile.inc" mechanism, because we need some of these
+# definitions before the sub-Makefile is processed.
+
+RELTOP:= ../..
+
+# RELTOP is the relative path to this point in the source or object
+# tree, from any subdirectory of same.  It gets extra "../" prefixes
+# added to it as we descend into subdirectories.
+
+RELSRC=	${RELTOP}/../../../contrib/binutils-2.25
+SRCDIR=	${.CURDIR}/${RELSRC}
+BINTOP=	${.CURDIR}/${RELTOP}
+OBJTOP=	${.OBJDIR}/${RELTOP}
+
+CFLAGS+=	-I${OBJTOP}/block1/bulibs
+CFLAGS+=	-I${BINTOP}/block1/bulibs
+CFLAGS+=	-I${SRCDIR}/include
+CFLAGS+=	-I${SRCDIR}/bfd
+
+LDADD_BU=	${OBJTOP}/block1/bulibs/libbu.a
+LDADD_BFD=	${OBJTOP}/block1/libbfd/libbfd.a
+LDADD_IBERTY=	${OBJTOP}/block1/libiberty/libiberty.a
+LDADD_OPCODE=	${OBJTOP}/block1/libopcodes/libopcodes.a
+
+STD_LDADD=	${LDADD_BU} ${LDADD_BFD} ${LDADD_IBERTY}
+
+bfd_stdint.h:
+	touch ${.TARGET}

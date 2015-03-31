@@ -2890,6 +2890,22 @@ TO_REMOVE+=/usr/share/man/cat5/fdesc.5.gz
 TO_REMOVE+=/usr/share/man/man5/fdesc.5.gz
 TO_REMOVE+=/usr/share/man/cat8/mount_fdesc.8.gz
 TO_REMOVE+=/usr/share/man/man8/mount_fdesc.8.gz
+TO_REMOVE+=/usr/libexec/binutils222
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/addr2line222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/ar222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/as222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/c++filt222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/elfedit222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/gprof222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/ld222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/nm222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/objcopy222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/objdump222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/ranlib222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/readelf222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/size222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/strings222.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/strip222.1.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

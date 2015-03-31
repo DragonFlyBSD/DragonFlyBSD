@@ -10,7 +10,7 @@
 # copied over in most cases.
 
 BU_PRIMARY=	binutils224
-BU_BACKUP=	binutils222
+BU_BACKUP=	binutils225
 
 .if defined(BUVERSION)
 .if (${BUVERSION} == ${BU_PRIMARY})

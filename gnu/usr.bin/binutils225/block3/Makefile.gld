@@ -1,0 +1,39 @@
+# This is included explicitly at the top of each sub-Makefile.  We can't
+# use the normal "Makefile.inc" mechanism, because we need some of these
+# definitions before the sub-Makefile is processed.
+
+RELTOP:= ../..
+
+# RELTOP is the relative path to this point in the source or object
+# tree, from any subdirectory of same.  It gets extra "../" prefixes
+# added to it as we descend into subdirectories.
+
+RELSRC=	${RELTOP}/../../../contrib/binutils-2.25
+SRCDIR=	${.CURDIR}/${RELSRC}
+
+.PATH: ${SRCDIR}/gold
+
+GOLD_TARGET=		x86_64
+GOLD_DEFAULT_MACHINE=	EM_X86_64
+GOLD_DEFAULT_SIZE=	64
+
+GOLD_EXTRA_TARGET=	i386
+GOLD_EXTRA_MACHINE=	EM_386
+GOLD_EXTRA_SIZE=	32
+
+CFLAGS=  -DHAVE_CONFIG_H
+CFLAGS+= -DLARGEFILE_SOURCE
+CFLAGS+= -D_FILE_OFFSET_BITS=64
+CFLAGS+= -DGOLD_DEFAULT_MACHINE=${GOLD_DEFAULT_MACHINE}
+CFLAGS+= -DGOLD_DEFAULT_SIZE=${GOLD_DEFAULT_SIZE}
+CFLAGS+= -DBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
+CFLAGS+= -DTOOLBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
+CFLAGS+= -DTOOLLIBDIR="\"${TOOLS_PREFIX}${LIBDIR}\""
+CFLAGS+= -DUSRDATA_PREFIX="\"${USRDATA_PREFIX}\""
+CFLAGS+= -I. -I${.CURDIR}
+CFLAGS+= -I${SRCDIR}/gold
+CFLAGS+= -I${SRCDIR}/include -I${SRCDIR}/elfcpp
+
+LDADD_IBERTY=	${RELTOP}/block1/libiberty/libiberty.a
+LDADD_GOLD=	${RELTOP}/block2/libgold/libgold.a
+STD_LDADD=	${LDADD_GOLD} ${LDADD_IBERTY} -lz

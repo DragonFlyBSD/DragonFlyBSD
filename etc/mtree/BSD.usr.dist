@@ -86,13 +86,13 @@
         ..
     ..
     libexec
-        binutils222
+        binutils224
             ldscripts
             ..
             elf
             ..
         ..
-        binutils224
+        binutils225
             ldscripts
             ..
             elf
