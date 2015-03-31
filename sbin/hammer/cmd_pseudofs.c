@@ -35,6 +35,7 @@
  */
 
 #include "hammer.h"
+#include <libgen.h>
 
 static void parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd);
 static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
@@ -78,6 +79,7 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 	uintmax_t dummy_tid;
 	struct stat st;
 	char *dirpath = NULL;
+	char *p;
 	char buf[64];
 	size_t len;
 	int fd;
@@ -111,14 +113,32 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 		if (n < 0)
 			n = 0;
 		buf[n] = 0;
-		if (sscanf(buf, "@@PFS%d", &pfs->pfs_id) == 1) {
+
+		/*
+		 * The symlink created by pfs-master|slave is just a symlink.
+		 * One could happen to remove a symlink and relink PFS as
+		 * # ln -s ./@@-1:00001 ./link
+		 * which results PFS having something extra before @@
+		 */
+		if (strchr(buf, '/') == NULL) {
+			p = buf;  /* likely */
+		} else {
+			p = basename(buf);
+			if (p == NULL)
+				err(1, "basename");
+		}
+		if (sscanf(p, "@@PFS%d", &pfs->pfs_id) == 1) {
 			fd = open(dirpath, O_RDONLY);
 			goto done;
 		}
-		if (sscanf(buf, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
+		if (sscanf(p, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
 			fd = open(dirpath, O_RDONLY);
 			goto done;
 		}
+		/*
+		 * Once it comes here the hammer command may fail even if
+		 * this function returns valid file descriptor.
+		 */
 	}
 
 	/*
