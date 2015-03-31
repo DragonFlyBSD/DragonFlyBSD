@@ -411,7 +411,11 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 		fprintf(stderr, "You cannot upgrade PFS#0"
 				" (It should already be a master)\n");
 		exit(1);
+	} else if ((pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
+		printf("It is already a master\n");
+		exit(1);
 	}
+
 	if (ioctl(fd, HAMMERIOC_UPG_PSEUDOFS, &pfs) == 0) {
 		printf("pfs-upgrade of PFS#%d (%s) succeeded\n",
 			pfs.pfs_id, pfs.ondisk->label);
@@ -434,6 +438,9 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 
 	if (pfs.pfs_id == 0) {
 		fprintf(stderr, "You cannot downgrade PFS#0\n");
+		exit(1);
+	} else if (pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) {
+		printf("It is already a slave\n");
 		exit(1);
 	}
 
