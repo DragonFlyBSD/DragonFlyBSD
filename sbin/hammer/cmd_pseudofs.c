@@ -273,7 +273,6 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	 * Create the new PFS
 	 */
 	printf("Creating PFS #%d\t", pfs_id);
-	bzero(&pfsd, sizeof(pfsd));
 	init_pfsd(&pfsd, is_slave);
 	pfs.pfs_id = pfs_id;
 	pfs.ondisk = &pfsd;
@@ -307,7 +306,6 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 
 	if (ac == 0)
 		pseudofs_usage(1);
-	bzero(&pfs, sizeof(pfs));
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == 0) {
@@ -387,7 +385,6 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 
 	if (ac == 0)
 		pseudofs_usage(1);
-	bzero(&pfs, sizeof(pfs));
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == 0) {
@@ -413,7 +410,6 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 
 	if (ac == 0)
 		pseudofs_usage(1);
-	bzero(&pfs, sizeof(pfs));
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == 0) {
@@ -439,7 +435,6 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 
 	if (ac == 0)
 		pseudofs_usage(1);
-	bzero(&pfs, sizeof(pfs));
 	fd = getpfs(&pfs, av[0]);
 
 	printf("%s\n", av[0]);
@@ -478,6 +473,7 @@ init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave)
 {
 	uint32_t status;
 
+	bzero(pfsd, sizeof(*pfsd));
 	pfsd->sync_beg_tid = 1;
 	pfsd->sync_end_tid = 1;
 	pfsd->sync_beg_ts = 0;
