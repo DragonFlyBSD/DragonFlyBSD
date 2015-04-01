@@ -1522,6 +1522,9 @@ rttable_walk_entry(struct radix_node *rn, void *xw)
 		return EJUSTRETURN;
 	}
 
+	if (w->w_op == NET_RT_FLAGS && !(rt->rt_flags & w->w_arg))
+		return 0;
+
 	ptr = ((uint8_t *)w->w_buf) + w->w_buflen;
 	rt_msg_buffer(RTM_GET, &rtinfo, ptr, msglen);
 
