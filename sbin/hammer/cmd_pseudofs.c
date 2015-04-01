@@ -320,6 +320,7 @@ void
 hammer_cmd_pseudofs_destroy(char **av, int ac)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
+	struct hammer_pseudofs_data pfsd;
 	struct stat st;
 	int fd;
 	int i;
@@ -363,6 +364,12 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 	fflush(stdout);
 
 	/*
+	 * Save the original PFS data so we can restore if on failure.
+	 * It fails to destroy, for example, if the PFS is still mounted.
+	 */
+	bcopy(pfs.ondisk, &pfsd, sizeof(pfsd));
+
+	/*
 	 * Set the sync_beg_tid and sync_end_tid's to 1, once we start the
 	 * RMR the PFS is basically destroyed even if someone ^C's it.
 	 */
@@ -393,6 +400,17 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 	} else {
 		printf("pfs-destroy of PFS#%d failed: %s\n",
 			pfs.pfs_id, strerror(errno));
+		/*
+		 * Restore the pfsd as we don't want to keep it downgraded.
+		 * This simply restores ondisk PFS with the original data
+		 * without creating a new root inode as it already exists.
+		 */
+		bcopy(&pfsd, pfs.ondisk, sizeof(pfsd));
+		if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) < 0) {
+			printf("Failed to restore the original PFS#%d data\n",
+				pfs.pfs_id);
+			exit(1);
+		}
 	}
 	relpfs(fd, &pfs);
 }
