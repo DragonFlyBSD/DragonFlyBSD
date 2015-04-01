@@ -55,18 +55,4 @@ SRCS=	archive.cc \
 # extra sources
 SRCS+=	yyscript.c mremap.c
 
-# required for both ld.gold and incremental-dump
-# let's dump them in libgold.a so we don't have to build them twice
-
-SRCS+=	i386.cc			\
-	x86_64.cc		\
-	sparc.cc		\
-	powerpc.cc		\
-	arm.cc			\
-	arm-reloc-property.cc	\
-	tilegx.cc		\
-	mips.cc 		\
-	aarch64.cc 		\
-	aarch64-reloc-property.cc
-
 .include <bsd.lib.mk>

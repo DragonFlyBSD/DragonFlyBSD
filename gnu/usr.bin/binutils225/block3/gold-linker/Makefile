@@ -2,7 +2,7 @@
 .include "../Makefile.gld"
 
 PROG_CXX=	ld.gold
-SRCS=		main.cc
+SRCS=		main.cc ${GOLD_COMMON}
 CFLAGS+=	-I${.CURDIR}/../../block2/libgold
 LDADD=		${STD_LDADD}
 NOMAN=

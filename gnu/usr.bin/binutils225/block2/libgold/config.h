@@ -25,13 +25,13 @@
 #define GOLD_DEFAULT_BIG_ENDIAN false
 
 /* Default machine code */
-/* #define GOLD_DEFAULT_MACHINE EM_X86_64 */
+#define GOLD_DEFAULT_MACHINE EM_X86_64
 
 /* Default OSABI code */
 #define GOLD_DEFAULT_OSABI ELFOSABI_NONE
 
 /* Default size (32 or 64) */
-/* #define GOLD_DEFAULT_SIZE 64 */
+#define GOLD_DEFAULT_SIZE 64
 
 /* Define to 1 if you have the <byteswap.h> header file. */
 /* #undef HAVE_BYTESWAP_H */
