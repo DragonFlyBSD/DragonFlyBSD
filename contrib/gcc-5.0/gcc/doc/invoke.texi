@@ -550,6 +550,7 @@ Objective-C and Objective-C++ Dialects}.
 -mfp16-format=@var{name}
 -mthumb-interwork  -mno-thumb-interwork @gol
 -mcpu=@var{name}  -march=@var{name}  -mfpu=@var{name}  @gol
+-mtune=@var{name} -mprint-tune-info @gol
 -mstructure-size-boundary=@var{n} @gol
 -mabort-on-noreturn @gol
 -mlong-calls  -mno-long-calls @gol
@@ -5856,7 +5857,16 @@ MPX-based instrumentation requires
 a runtime library to enable MPX in hardware and handle bounds
 violation signals.  By default when @option{-fcheck-pointer-bounds}
 and @option{-mmpx} options are used to link a program, the GCC driver
-links against the @file{libmpx} runtime library.  MPX-based instrumentation
+links against the @file{libmpx} runtime library and @file{libmpxwrappers}
+library.  It also passes '-z bndplt' to a linker in case it supports this
+option (which is checked on libmpx configuration).  Note that old versions
+of linker may ignore option.  Gold linker doesn't support '-z bndplt'
+option.  With no '-z bndplt' support in linker all calls to dynamic libraries
+lose passed bounds reducing overall protection level.  It's highly
+recommended to use linker with '-z bndplt' support.  In case such linker
+is not available it is adviced to always use @option{-static-libmpxwrappers}
+for better protection level or use @option{-static} to completely avoid
+external calls to dynamic libraries.  MPX-based instrumentation
 may be used for debugging and also may be included in production code
 to increase program security.  Depending on usage, you may
 have different requirements for the runtime library.  The current version
@@ -10833,6 +10843,15 @@ IPA-CP calculates its own score of cloning profitability heuristics
 and performs those cloning opportunities with scores that exceed
 @option{ipa-cp-eval-threshold}.
 
+@item ipa-cp-recursion-penalty
+Percentage penalty the recursive functions will receive when they
+are evaluated for cloning.
+
+@item ipa-cp-single-call-penalty
+Percentage penalty functions containg a single call to another
+function will receive when they are evaluated for cloning.
+
+
 @item ipa-max-agg-items
 IPA-CP is also capable to propagate a number of scalar values passed
 in an aggregate. @option{ipa-max-agg-items} controls the maximum
@@ -13474,6 +13493,13 @@ should be considered deprecated.
 Restricts generation of IT blocks to conform to the rules of ARMv8.
 IT blocks can only contain a single 16-bit instruction from a select
 set of instructions. This option is on by default for ARMv8 Thumb mode.
+
+@item -mprint-tune-info
+@opindex mprint-tune-info
+Print CPU tuning information as comment in assembler file.  This is
+an option used only for regression testing of the compiler and not
+intended for ordinary use in compiling code.  This option is disabled
+by default.
 @end table
 
 @node AVR Options
@@ -13901,7 +13927,7 @@ The device has the @code{RAMPD}, @code{RAMPX}, @code{RAMPY},
 @code{RAMPZ} special function register, respectively.
 
 @item __NO_INTERRUPTS__
-This macro reflects the @option{-mno-interrupts} command line option.
+This macro reflects the @option{-mno-interrupts} command-line option.
 
 @item __AVR_ERRATA_SKIP__
 @itemx __AVR_ERRATA_SKIP_JMP_CALL__
@@ -21629,7 +21655,7 @@ then the C preprocessor symbol @code{__V850_CALLT__} is defined.
 @itemx -mno-relax
 @opindex mrelax
 @opindex mno-relax
-Pass on (or do not pass on) the @option{-mrelax} command line option
+Pass on (or do not pass on) the @option{-mrelax} command-line option
 to the assembler.
 
 @item -mlong-jumps
@@ -21675,11 +21701,11 @@ value.
 Functions are aligned to 16-bit boundaries.
 
 @item
-The @option{-m8byte-align} command line option is supported.
+The @option{-m8byte-align} command-line option is supported.
 
 @item
-The @option{-mdisable-callt} command line option is enabled by
-default.  The @option{-mno-disable-callt} command line option is not
+The @option{-mdisable-callt} command-line option is enabled by
+default.  The @option{-mno-disable-callt} command-line option is not
 supported.
 @end itemize
 
@@ -21704,10 +21730,10 @@ Functions are aligned to 32-bit boundaries, unless optimizing for
 size.
 
 @item
-The @option{-m8byte-align} command line option is not supported.
+The @option{-m8byte-align} command-line option is not supported.
 
 @item
-The @option{-mdisable-callt} command line option is supported but not
+The @option{-mdisable-callt} command-line option is supported but not
 enabled by default.
 @end itemize
 
