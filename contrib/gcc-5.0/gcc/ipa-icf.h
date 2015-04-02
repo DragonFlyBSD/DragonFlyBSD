@@ -96,12 +96,12 @@ struct symbol_compare_hashmap_traits: default_hashmap_traits
     hstate.add_int (v->m_references.length ());
 
     for (unsigned i = 0; i < v->m_references.length (); i++)
-      hstate.add_ptr (v->m_references[i]->ultimate_alias_target ());
+      hstate.add_int (v->m_references[i]->ultimate_alias_target ()->order);
 
     hstate.add_int (v->m_interposables.length ());
 
     for (unsigned i = 0; i < v->m_interposables.length (); i++)
-      hstate.add_ptr (v->m_interposables[i]->ultimate_alias_target ());
+      hstate.add_int (v->m_interposables[i]->ultimate_alias_target ()->order);
 
     return hstate.end ();
   }
@@ -189,6 +189,15 @@ public:
   /* Dump symbol to FILE.  */
   virtual void dump_to_file (FILE *file) = 0;
 
+  /* Update hash by address sensitive references.  */
+  void update_hash_by_addr_refs (hash_map <symtab_node *,
+				 sem_item *> &m_symtab_node_map);
+
+  /* Update hash by computed local hash values taken from different
+     semantic items.  */
+  void update_hash_by_local_refs (hash_map <symtab_node *,
+				  sem_item *> &m_symtab_node_map);
+
   /* Return base tree that can be used for compatible_types_p and
      contains_polymorphic_type_p comparison.  */
   static bool get_base_types (tree *t1, tree *t2);
@@ -226,12 +235,18 @@ public:
   /* A set with symbol table references.  */
   hash_set <symtab_node *> refs_set;
 
-protected:
-  /* Cached, once calculated hash for the item.  */
+  /* Hash of item.  */
   hashval_t hash;
 
-  /* Accumulate to HSTATE a hash of constructor expression EXP.  */
+  /* Temporary hash used where hash values of references are added.  */
+  hashval_t global_hash;
+protected:
+  /* Cached, once calculated hash for the item.  */
+
+  /* Accumulate to HSTATE a hash of expression EXP.  */
   static void add_expr (const_tree exp, inchash::hash &hstate);
+  /* Accumulate to HSTATE a hash of type T.  */
+  static void add_type (const_tree t, inchash::hash &hstate);
 
   /* For a given symbol table nodes N1 and N2, we check that FUNCTION_DECLs
      point to a same function. Comparison can be skipped if IGNORED_NODES
@@ -492,7 +507,12 @@ public:
   congruence_class_group *get_group_by_hash (hashval_t hash,
       sem_item_type type);
 
+  /* Because types can be arbitrarily large, avoid quadratic bottleneck.  */
+  hash_map<const_tree, hashval_t> m_type_hash_cache;
 private:
+
+  /* For each semantic item, append hash values of references.  */
+  void update_hash_by_addr_refs ();
 
   /* Congruence classes are built by hash value.  */
   void build_hash_based_classes (void);

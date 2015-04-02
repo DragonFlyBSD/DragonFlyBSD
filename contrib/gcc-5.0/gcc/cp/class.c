@@ -5434,7 +5434,8 @@ remove_zero_width_bit_fields (tree t)
 	     DECL_INITIAL (*fieldsp).
 	     check_bitfield_decl eventually sets DECL_SIZE (*fieldsp)
 	     to that width.  */
-	  && integer_zerop (DECL_SIZE (*fieldsp)))
+	  && (DECL_SIZE (*fieldsp) == NULL_TREE
+	      || integer_zerop (DECL_SIZE (*fieldsp))))
 	*fieldsp = DECL_CHAIN (*fieldsp);
       else
 	fieldsp = &DECL_CHAIN (*fieldsp);
@@ -6890,7 +6891,7 @@ finish_struct (tree t, tree attributes)
 	  if (f && TREE_CODE (TREE_TYPE (f)) == POINTER_TYPE)
 	    {
 	      f = next_initializable_field (DECL_CHAIN (f));
-	      if (f && TREE_CODE (TREE_TYPE (f)) == INTEGER_TYPE)
+	      if (f && same_type_p (TREE_TYPE (f), size_type_node))
 		ok = true;
 	    }
 	}

@@ -128,6 +128,11 @@ using namespace ipa_icf_gimple;
 
 namespace ipa_icf {
 
+/* Initialization and computation of symtab node hash, there data
+   are propagated later on.  */
+
+static sem_item_optimizer *optimizer = NULL;
+
 /* Constructor.  */
 
 symbol_compare_collection::symbol_compare_collection (symtab_node *node)
@@ -328,6 +333,21 @@ sem_function::get_hash (void)
       for (unsigned i = 0; i < bb_sizes.length (); i++)
 	hstate.add_int (bb_sizes[i]);
 
+
+      /* Add common features of declaration itself.  */
+      if (DECL_FUNCTION_SPECIFIC_TARGET (decl))
+        hstate.add_wide_int
+	 (cl_target_option_hash
+	   (TREE_TARGET_OPTION (DECL_FUNCTION_SPECIFIC_TARGET (decl))));
+      if (DECL_FUNCTION_SPECIFIC_OPTIMIZATION (decl))
+	 (cl_optimization_hash
+	   (TREE_OPTIMIZATION (DECL_FUNCTION_SPECIFIC_OPTIMIZATION (decl))));
+      hstate.add_flag (DECL_DISREGARD_INLINE_LIMITS (decl));
+      hstate.add_flag (DECL_DECLARED_INLINE_P (decl));
+      hstate.add_flag (DECL_IS_OPERATOR_NEW (decl));
+      hstate.add_flag (DECL_CXX_CONSTRUCTOR_P (decl));
+      hstate.add_flag (DECL_CXX_DESTRUCTOR_P (decl));
+
       hash = hstate.end ();
     }
 
@@ -430,10 +450,10 @@ sem_function::equals_wpa (sem_item *item,
     return return_false_with_msg ("no stack limit attributes are different");
 
   if (DECL_CXX_CONSTRUCTOR_P (decl) != DECL_CXX_CONSTRUCTOR_P (item->decl))
-    return return_false_with_msg ("DELC_CXX_CONSTRUCTOR mismatch");
+    return return_false_with_msg ("DECL_CXX_CONSTRUCTOR mismatch");
 
   if (DECL_CXX_DESTRUCTOR_P (decl) != DECL_CXX_DESTRUCTOR_P (item->decl))
-    return return_false_with_msg ("DELC_CXX_DESTRUCTOR mismatch");
+    return return_false_with_msg ("DECL_CXX_DESTRUCTOR mismatch");
 
   if (flags_from_decl_or_type (decl) != flags_from_decl_or_type (item->decl))
     return return_false_with_msg ("decl_or_type flags are different");
@@ -514,7 +534,7 @@ sem_function::equals_wpa (sem_item *item,
   if (opt_for_fn (decl, flag_devirtualize)
       && (TREE_CODE (TREE_TYPE (decl)) == METHOD_TYPE
           || TREE_CODE (TREE_TYPE (item->decl)) == METHOD_TYPE)
-      && (!flag_ipa_cp
+      && (ipa_node_params_sum == NULL
 	  || ipa_is_param_used (IPA_NODE_REF (dyn_cast <cgraph_node *>(node)),
 				0))
       && compare_polymorphic_p ())
@@ -555,6 +575,72 @@ sem_function::equals_wpa (sem_item *item,
     return return_false_with_msg ("different number of edges");
 
   return true;
+}
+
+/* Update hash by address sensitive references. We iterate over all
+   sensitive references (address_matters_p) and we hash ultime alias
+   target of these nodes, which can improve a semantic item hash.
+   TODO: stronger SCC based hashing would be desirable here.  */
+
+void
+sem_item::update_hash_by_addr_refs (hash_map <symtab_node *,
+				    sem_item *> &m_symtab_node_map)
+{
+  if (is_a <varpool_node *> (node) && DECL_VIRTUAL_P (node->decl))
+    return;
+
+  ipa_ref* ref;
+  inchash::hash hstate (hash);
+  for (unsigned i = 0; i < node->num_references (); i++)
+    {
+      ref = node->iterate_reference (i, ref);
+      if (ref->address_matters_p () || !m_symtab_node_map.get (ref->referred))
+	hstate.add_int (ref->referred->ultimate_alias_target ()->order);
+    }
+
+  if (is_a <cgraph_node *> (node))
+    {
+      for (cgraph_edge *e = dyn_cast <cgraph_node *> (node)->callers; e;
+	   e = e->next_caller)
+	{
+	  sem_item **result = m_symtab_node_map.get (e->callee);
+	  if (!result)
+	    hstate.add_int (e->callee->ultimate_alias_target ()->order);
+	}
+    }
+
+  hash = hstate.end ();
+}
+
+/* Update hash by computed local hash values taken from different
+   semantic items.  */
+
+void
+sem_item::update_hash_by_local_refs (hash_map <symtab_node *,
+				     sem_item *> &m_symtab_node_map)
+{
+  inchash::hash state (hash);
+  for (unsigned j = 0; j < node->num_references (); j++)
+    {
+      ipa_ref *ref;
+      ref = node->iterate_reference (j, ref);
+      sem_item **result = m_symtab_node_map.get (ref->referring);
+      if (result)
+	state.merge_hash ((*result)->hash);
+    }
+
+  if (type == FUNC)
+    {
+      for (cgraph_edge *e = dyn_cast <cgraph_node *> (node)->callees; e;
+	   e = e->next_callee)
+	{
+	  sem_item **result = m_symtab_node_map.get (e->caller);
+	  if (result)
+	    state.merge_hash ((*result)->hash);
+	}
+    }
+
+  global_hash = state.end ();
 }
 
 /* Returns true if the item equals to ITEM given as argument.  */
@@ -1217,6 +1303,80 @@ sem_item::add_expr (const_tree exp, inchash::hash &hstate)
     }
 }
 
+/* Accumulate to HSTATE a hash of type t.
+   TYpes that may end up being compatible after LTO type merging needs to have
+   the same hash.  */
+
+void
+sem_item::add_type (const_tree type, inchash::hash &hstate)
+{
+  if (type == NULL_TREE)
+    {
+      hstate.merge_hash (0);
+      return;
+    }
+
+  type = TYPE_MAIN_VARIANT (type);
+  if (TYPE_CANONICAL (type))
+    type = TYPE_CANONICAL (type);
+
+  if (!AGGREGATE_TYPE_P (type))
+    hstate.add_int (TYPE_MODE (type));
+
+  if (TREE_CODE (type) == COMPLEX_TYPE)
+    {
+      hstate.add_int (COMPLEX_TYPE);
+      sem_item::add_type (TREE_TYPE (type), hstate);
+    }
+  else if (INTEGRAL_TYPE_P (type))
+    {
+      hstate.add_int (INTEGER_TYPE);
+      hstate.add_flag (TYPE_UNSIGNED (type));
+      hstate.add_int (TYPE_PRECISION (type));
+    }
+  else if (VECTOR_TYPE_P (type))
+    {
+      hstate.add_int (VECTOR_TYPE);
+      hstate.add_int (TYPE_PRECISION (type));
+      sem_item::add_type (TREE_TYPE (type), hstate);
+    }
+  else if (TREE_CODE (type) == ARRAY_TYPE)
+    {
+      hstate.add_int (ARRAY_TYPE);
+      /* Do not hash size, so complete and incomplete types can match.  */
+      sem_item::add_type (TREE_TYPE (type), hstate);
+    }
+  else if (RECORD_OR_UNION_TYPE_P (type))
+    {
+      hashval_t *val = optimizer->m_type_hash_cache.get (type);
+
+      if (!val)
+	{
+	  inchash::hash hstate2;
+	  unsigned nf;
+	  tree f;
+	  hashval_t hash;
+
+	  hstate2.add_int (RECORD_TYPE);
+	  gcc_assert (COMPLETE_TYPE_P (type));
+
+	  for (f = TYPE_FIELDS (type), nf = 0; f; f = TREE_CHAIN (f))
+	    if (TREE_CODE (f) == FIELD_DECL)
+	      {
+		add_type (TREE_TYPE (f), hstate2);
+		nf++;
+	      }
+
+	  hstate2.add_int (nf);
+	  hash = hstate2.end ();
+	  hstate.add_wide_int (hash);
+	  optimizer->m_type_hash_cache.put (type, hash);
+	}
+      else
+        hstate.add_wide_int (*val);
+    }
+}
+
 /* Improve accumulated hash for HSTATE based on a gimple statement STMT.  */
 
 void
@@ -1228,16 +1388,27 @@ sem_function::hash_stmt (gimple stmt, inchash::hash &hstate)
 
   switch (code)
     {
+    case GIMPLE_SWITCH:
+      add_expr (gimple_switch_index (as_a <gswitch *> (stmt)), hstate);
+      break;
     case GIMPLE_ASSIGN:
+      hstate.add_int (gimple_assign_rhs_code (stmt));
       if (commutative_tree_code (gimple_assign_rhs_code (stmt))
 	  || commutative_ternary_tree_code (gimple_assign_rhs_code (stmt)))
 	{
 	  inchash::hash one, two;
 
 	  add_expr (gimple_assign_rhs1 (stmt), one);
+	  add_type (TREE_TYPE (gimple_assign_rhs1 (stmt)), one);
 	  add_expr (gimple_assign_rhs2 (stmt), two);
 	  hstate.add_commutative (one, two);
+	  if (commutative_ternary_tree_code (gimple_assign_rhs_code (stmt)))
+	    {
+	      add_expr (gimple_assign_rhs3 (stmt), hstate);
+	      add_type (TREE_TYPE (gimple_assign_rhs3 (stmt)), hstate);
+	    }
 	  add_expr (gimple_assign_lhs (stmt), hstate);
+	  add_type (TREE_TYPE (gimple_assign_lhs (stmt)), two);
 	  break;
 	}
       /* ... fall through ... */
@@ -1248,7 +1419,11 @@ sem_function::hash_stmt (gimple stmt, inchash::hash &hstate)
     case GIMPLE_RETURN:
       /* All these statements are equivalent if their operands are.  */
       for (unsigned i = 0; i < gimple_num_ops (stmt); ++i)
-	add_expr (gimple_op (stmt, i), hstate);
+	{
+	  add_expr (gimple_op (stmt, i), hstate);
+	  if (gimple_op (stmt, i))
+	    add_type (TREE_TYPE (gimple_op (stmt, i)), hstate);
+	}
     default:
       break;
     }
@@ -1262,14 +1437,13 @@ sem_function::compare_polymorphic_p (void)
 {
   struct cgraph_edge *e;
 
-  if (!opt_for_fn (decl, flag_devirtualize))
+  if (!opt_for_fn (get_node ()->decl, flag_devirtualize))
     return false;
-  if (get_node ()->indirect_calls != NULL
-      || m_compared_func->get_node ()->indirect_calls != NULL)
+  if (get_node ()->indirect_calls != NULL)
     return true;
   /* TODO: We can do simple propagation determining what calls may lead to
      a polymorphic call.  */
-  for (e = m_compared_func->get_node ()->callees; e; e = e->next_callee)
+  for (e = get_node ()->callees; e; e = e->next_callee)
     if (e->callee->definition
 	&& opt_for_fn (e->callee->decl, flag_devirtualize))
       return true;
@@ -1749,8 +1923,8 @@ hashval_t
 sem_variable::get_hash (void)
 {
   if (hash)
-
     return hash;
+
   /* All WPA streamed in symbols should have their hashes computed at compile
      time.  At this point, the constructor may not be in memory at all.
      DECL_INITIAL (decl) would be error_mark_node in that case.  */
@@ -2216,6 +2390,8 @@ sem_item_optimizer::execute (void)
   filter_removed_items ();
   unregister_hooks ();
 
+  build_graph ();
+  update_hash_by_addr_refs ();
   build_hash_based_classes ();
 
   if (dump_file)
@@ -2224,8 +2400,6 @@ sem_item_optimizer::execute (void)
 
   for (unsigned int i = 0; i < m_items.length(); i++)
     m_items[i]->init_wpa ();
-
-  build_graph ();
 
   subdivide_classes_by_equality (true);
 
@@ -2315,6 +2489,56 @@ sem_item_optimizer::add_item_to_class (congruence_class *cls, sem_item *item)
   item->cls = cls;
 }
 
+/* For each semantic item, append hash values of references.  */
+
+void
+sem_item_optimizer::update_hash_by_addr_refs ()
+{
+  /* First, append to hash sensitive references and class type if it need to
+     be matched for ODR.  */
+  for (unsigned i = 0; i < m_items.length (); i++)
+    {
+      m_items[i]->update_hash_by_addr_refs (m_symtab_node_map);
+      if (m_items[i]->type == FUNC)
+	{
+	  if (TREE_CODE (TREE_TYPE (m_items[i]->decl)) == METHOD_TYPE
+	      && contains_polymorphic_type_p
+		   (method_class_type (TREE_TYPE (m_items[i]->decl)))
+	      && (DECL_CXX_CONSTRUCTOR_P (m_items[i]->decl)
+		  || ((ipa_node_params_sum == NULL
+		       || ipa_is_param_used (
+			    IPA_NODE_REF
+			      (dyn_cast <cgraph_node *>(m_items[i]->node)), 0))
+		      && static_cast<sem_function *> (m_items[i])
+			   ->compare_polymorphic_p ())))
+	     {
+	        tree class_type
+		  = method_class_type (TREE_TYPE (m_items[i]->decl));
+		inchash::hash hstate (m_items[i]->hash);
+
+		if (TYPE_NAME (class_type)
+		     && DECL_ASSEMBLER_NAME_SET_P (TYPE_NAME (class_type)))
+		  hstate.add_wide_int
+		    (IDENTIFIER_HASH_VALUE
+		       (DECL_ASSEMBLER_NAME (TYPE_NAME (class_type))));
+
+		m_items[i]->hash = hstate.end ();
+	     }
+	}
+    }
+
+  /* Once all symbols have enhanced hash value, we can append
+     hash values of symbols that are seen by IPA ICF and are
+     references by a semantic item. Newly computed values
+     are saved to global_hash member variable.  */
+  for (unsigned i = 0; i < m_items.length (); i++)
+    m_items[i]->update_hash_by_local_refs (m_symtab_node_map);
+
+  /* Global hash value replace current hash values.  */
+  for (unsigned i = 0; i < m_items.length (); i++)
+    m_items[i]->hash = m_items[i]->global_hash;
+}
+
 /* Congruence classes are built by hash value.  */
 
 void
@@ -2324,7 +2548,7 @@ sem_item_optimizer::build_hash_based_classes (void)
     {
       sem_item *item = m_items[i];
 
-      congruence_class_group *group = get_group_by_hash (item->get_hash (),
+      congruence_class_group *group = get_group_by_hash (item->hash,
 				      item->type);
 
       if (!group->classes.length ())
@@ -3035,11 +3259,6 @@ congruence_class::is_class_used (void)
 
   return false;
 }
-
-/* Initialization and computation of symtab node hash, there data
-   are propagated later on.  */
-
-static sem_item_optimizer *optimizer = NULL;
 
 /* Generate pass summary for IPA ICF pass.  */
 
