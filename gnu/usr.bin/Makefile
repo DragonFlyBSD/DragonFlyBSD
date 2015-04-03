@@ -2,7 +2,7 @@
 
 .include "Makefile.buo"
 
-SUBDIR= dialog diff grep groff man rcs texinfo
+SUBDIR= dialog diff grep groff man rcs
 
 .if !defined(NO_CVS)
 SUBDIR+=cvs
