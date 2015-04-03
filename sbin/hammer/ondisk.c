@@ -328,9 +328,9 @@ get_buffer_readahead(struct buffer_info *base)
 		buf_offset = HAMMER_VOL_ENCODE(vol->vol_no) |
 			     HAMMER_ZONE_RAW_BUFFER |
 			     (raw_offset - vol->ondisk->vol_buf_beg);
-		hi = buffer_hash(raw_offset);
+		hi = buffer_hash(buf_offset);
 		TAILQ_FOREACH(buf, &vol->buffer_lists[hi], entry) {
-			if (buf->raw_offset == raw_offset)
+			if (buf->buf_offset == buf_offset)
 				break;
 		}
 		if (buf == NULL) {
