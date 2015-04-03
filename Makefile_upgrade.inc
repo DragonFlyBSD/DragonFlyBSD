@@ -3031,6 +3031,7 @@ TO_REMOVE+=/usr/share/info/annotate.info.gz
 TO_REMOVE+=/usr/share/info/gdb.info.gz
 TO_REMOVE+=/usr/share/info/gdbint.info.gz
 TO_REMOVE+=/usr/share/info/stabs.info.gz
+TO_REMOVE+=/usr/share/info/com_err.info.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
