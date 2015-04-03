@@ -3022,11 +3022,11 @@ TO_REMOVE+=/usr/bin/infokey
 TO_REMOVE+=/usr/bin/install-info
 TO_REMOVE+=/usr/bin/makeinfo
 TO_REMOVE+=/usr/bin/texindex
-TO_REMOVE+=/usr/share/man/man1/info.1.gz
-TO_REMOVE+=/usr/share/man/man1/infokey.1.gz
-TO_REMOVE+=/usr/share/man/man1/install-info.1.gz
-TO_REMOVE+=/usr/share/man/man1/makeinfo.1.gz
-TO_REMOVE+=/usr/share/man/man1/texindex.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/info.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/infokey.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/install-info.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/makeinfo.1.gz
+TO_REMOVE+=/usr/share/man/[cm]a[nt]1/texindex.1.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
