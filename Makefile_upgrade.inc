@@ -3018,6 +3018,9 @@ TO_REMOVE+=/usr/share/nls/zh_TW.Big5
 TO_REMOVE+=/usr/share/nls/zh_TW.UTF-8
 TO_REMOVE+=/usr/share/info/cvs.info.gz
 TO_REMOVE+=/usr/share/info/cvsclient.info.gz
+TO_REMOVE+=/usr/share/info/as.info.gz
+TO_REMOVE+=/usr/share/info/binutils.info.gz
+TO_REMOVE+=/usr/share/info/ld.info.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
