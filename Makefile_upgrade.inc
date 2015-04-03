@@ -3026,6 +3026,7 @@ TO_REMOVE+=/usr/share/info/cppinternals47.info.gz
 TO_REMOVE+=/usr/share/info/gcc47.info.gz
 TO_REMOVE+=/usr/share/info/gccint47.info.gz
 TO_REMOVE+=/usr/share/info/grep.info.gz
+TO_REMOVE+=/usr/share/info/diffutils.info.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
