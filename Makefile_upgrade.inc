@@ -3021,6 +3021,10 @@ TO_REMOVE+=/usr/share/info/cvsclient.info.gz
 TO_REMOVE+=/usr/share/info/as.info.gz
 TO_REMOVE+=/usr/share/info/binutils.info.gz
 TO_REMOVE+=/usr/share/info/ld.info.gz
+TO_REMOVE+=/usr/share/info/cpp47.info.gz
+TO_REMOVE+=/usr/share/info/cppinternals47.info.gz
+TO_REMOVE+=/usr/share/info/gcc47.info.gz
+TO_REMOVE+=/usr/share/info/gccint47.info.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
