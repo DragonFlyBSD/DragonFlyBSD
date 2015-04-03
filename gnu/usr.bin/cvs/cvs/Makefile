@@ -9,7 +9,7 @@
 .PATH:	${CVSDIR}
 
 PROG=	cvs
-MAN=	cvs.1 cvs.5
+MAN=	cvs.1 cvs.5 cvsclient.7
 
 SRCS=	add.c admin.c annotate.c buffer.c \
 	checkin.c checkout.c classify.c client.c \
