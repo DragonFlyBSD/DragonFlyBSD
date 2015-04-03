@@ -1,4 +1,0 @@
-@set GDBVN 7.6.1
-@set VERSION_PACKAGE (GDB)
-@set BUGURL @uref{http://www.gnu.org/software/gdb/bugs/}
-@set BUGURL_DEFAULT
