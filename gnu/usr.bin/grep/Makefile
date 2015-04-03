@@ -1,3 +1,3 @@
-SUBDIR=	libgreputils doc grep egrep fgrep
+SUBDIR=	libgreputils grep egrep fgrep
 
 .include <bsd.subdir.mk>
