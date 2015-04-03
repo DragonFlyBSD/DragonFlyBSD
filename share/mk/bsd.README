@@ -26,7 +26,6 @@ bsd.files.mk		- install of general purpose files
 bsd.hostlib.mk		- 
 bsd.hostprog.mk		- 
 bsd.incs.mk		- install of include files
-bsd.info.mk		- building GNU Info hypertext system
 bsd.init.mk		- initialization for the make include files
 bsd.kmod.mk		- building loadable kernel modules
 bsd.lib.mk		- support for building libraries
