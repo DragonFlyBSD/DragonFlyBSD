@@ -41,6 +41,7 @@
 #include <sys/sensors.h>
 #include <sys/proc.h>	/* for curthread */
 #include <sys/sched.h>
+#include <sys/thread2.h>
 
 #include <machine/specialreg.h>
 #include <machine/cpufunc.h>
@@ -52,7 +53,15 @@ struct coretemp_softc {
 	struct ksensor		sc_sensor;
 	device_t		sc_dev;
 	int			sc_tjmax;
+
+	struct globaldata	*sc_gd;
+	int			sc_cpu;
+	volatile uint32_t	sc_flags;	/* CORETEMP_FLAG_ */
+	volatile uint64_t	sc_msr;
 };
+
+#define CORETEMP_FLAG_INITED	0x1
+#define CORETEMP_FLAG_PENDING	0x2
 
 /*
  * Device methods.
@@ -242,6 +251,9 @@ coretemp_attach(device_t dev)
 	if (bootverbose)
 		device_printf(dev, "Setting TjMax=%d\n", sc->sc_tjmax);
 
+	sc->sc_cpu = device_get_unit(device_get_parent(dev));
+	sc->sc_gd = globaldata_find(sc->sc_cpu);
+
 	/*
 	 * Add hw.sensors.cpuN.temp0 MIB.
 	 */
@@ -263,36 +275,57 @@ coretemp_detach(device_t dev)
 	sensordev_deinstall(&sc->sc_sensordev);
 	sensor_task_unregister(sc);
 
+	lwkt_synchronize_ipiqs("coretemp");
+
 	return (0);
 }
 
+static void
+coretemp_ipifunc(void *xsc)
+{
+	struct coretemp_softc *sc = xsc; 
+
+	sc->sc_msr = rdmsr(MSR_THERM_STATUS);
+	cpu_sfence();
+	sc->sc_flags &= ~CORETEMP_FLAG_PENDING;
+}
 
 static int
 coretemp_get_temp(device_t dev)
 {
 	uint64_t msr;
-	int temp, cpu, origcpu;
+	int temp, cpu;
 	struct coretemp_softc *sc = device_get_softc(dev);
 	char stemp[16];
 
-	cpu = device_get_unit(device_get_parent(dev));
+	cpu = sc->sc_cpu;
 
 	/*
-	 * Bind to specific CPU to read the correct temperature.
-	 * If not all CPUs are initialised, then only read from
-	 * cpu0, returning -1 on all other CPUs.
+	 * Send IPI to the specific CPU to read the correct
+	 * temperature.  If the IPI does not complete yet,
+	 * i.e. CORETEMP_FLAG_PENDING is set, return -1.
 	 */
-	if (ncpus > 1) {
-		origcpu = mycpuid;
-		lwkt_migratecpu(cpu);
-
+	if (ncpus > 1 && cpu != mycpuid) {
+		if ((sc->sc_flags & CORETEMP_FLAG_INITED) == 0) {
+			/* The first time we are called */
+			KASSERT((sc->sc_flags & CORETEMP_FLAG_PENDING) == 0,
+			    ("has pending bit set"));
+			sc->sc_flags |= CORETEMP_FLAG_INITED |
+			    CORETEMP_FLAG_PENDING;
+			cpu_mfence();
+			lwkt_send_ipiq(sc->sc_gd, coretemp_ipifunc, sc);
+			return (-1);
+		} else {
+			if (sc->sc_flags & CORETEMP_FLAG_PENDING) {
+				/* IPI does not complete yet */
+				return (-1);
+			}
+			sc->sc_flags |= CORETEMP_FLAG_PENDING;
+			msr = sc->sc_msr;
+		}
+	} else {
 		msr = rdmsr(MSR_THERM_STATUS);
-
-		lwkt_migratecpu(origcpu);
-	} else if (cpu != 0)
-		return (-1);
-	else
-		msr = rdmsr(MSR_THERM_STATUS);
+	}
 
 	/*
 	 * Check for Thermal Status and Thermal Status Log.
@@ -327,6 +360,11 @@ coretemp_get_temp(device_t dev)
 		    "suggest system shutdown\n");
 		ksnprintf(stemp, sizeof(stemp), "%d", temp);
 		devctl_notify("coretemp", "Thermal", stemp, "notify=0xcc");
+	}
+
+	if (sc->sc_flags & CORETEMP_FLAG_PENDING) {
+		cpu_mfence();
+		lwkt_send_ipiq(sc->sc_gd, coretemp_ipifunc, sc);
 	}
 
 	return (temp);
