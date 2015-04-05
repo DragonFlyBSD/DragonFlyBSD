@@ -260,6 +260,8 @@ coretemp_attach(device_t dev)
 	strlcpy(sc->sc_sensordev.xname, device_get_nameunit(pdev),
 	    sizeof(sc->sc_sensordev.xname));
 	sc->sc_sensor.type = SENSOR_TEMP;
+	sc->sc_sensor.flags |= SENSOR_FINVALID;
+	sc->sc_sensor.value = 0;
 	sensor_attach(&sc->sc_sensordev, &sc->sc_sensor);
 	sensor_task_register(sc, coretemp_refresh, 2);
 	sensordev_install(&sc->sc_sensordev);
@@ -314,11 +316,11 @@ coretemp_get_temp(device_t dev)
 			    CORETEMP_FLAG_PENDING;
 			cpu_mfence();
 			lwkt_send_ipiq_passive(sc->sc_gd, coretemp_ipifunc, sc);
-			return (-1);
+			return (-2);
 		} else {
 			if (sc->sc_flags & CORETEMP_FLAG_PENDING) {
 				/* IPI does not complete yet */
-				return (-1);
+				return (-2);
 			}
 			sc->sc_flags |= CORETEMP_FLAG_PENDING;
 			msr = sc->sc_msr;
@@ -380,7 +382,9 @@ coretemp_refresh(void *arg)
 
 	temp = coretemp_get_temp(dev);
 
-	if (temp == -1) {
+	if (temp == -2) {
+		/* No updates; keep the previous value */
+	} else if (temp == -1) {
 		s->flags |= SENSOR_FINVALID;
 		s->value = 0;
 	} else {
