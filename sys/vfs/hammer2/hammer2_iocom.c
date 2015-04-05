@@ -298,7 +298,7 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 	 * up later on.
 	 */
 	spmp = hmp->spmp;
-	cparent = hammer2_inode_lock_ex(spmp->iroot);
+	cparent = hammer2_inode_lock(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
 	cluster = hammer2_cluster_lookup(cparent, &key_next,
 					 HAMMER2_KEY_MIN,
 					 HAMMER2_KEY_MAX,
@@ -332,7 +332,7 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 					       HAMMER2_KEY_MAX,
 					       0);
 	}
-	hammer2_inode_unlock_ex(spmp->iroot, cparent);
+	hammer2_inode_unlock(spmp->iroot, cparent);
 }
 
 static

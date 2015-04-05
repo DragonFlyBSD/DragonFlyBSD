@@ -435,3 +435,28 @@ hammer2_signal_check(time_t *timep)
 	}
 	return error;
 }
+
+const char *
+hammer2_error_str(int error)
+{
+	const char *str;
+
+	switch(error) {
+	case HAMMER2_ERROR_NONE:
+		str = "0";
+		break;
+	case HAMMER2_ERROR_IO:
+		str = "I/O";
+		break;
+	case HAMMER2_ERROR_CHECK:
+		str = "check/crc";
+		break;
+	case HAMMER2_ERROR_INCOMPLETE:
+		str = "incomplete-node";
+		break;
+	default:
+		str = "unknown";
+		break;
+	}
+	return (str);
+}

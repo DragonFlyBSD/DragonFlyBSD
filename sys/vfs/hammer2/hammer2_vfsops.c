@@ -375,7 +375,7 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 	if (pmp->iroot == NULL) {
 		pmp->iroot = hammer2_inode_get(pmp, NULL, NULL);
 		hammer2_inode_ref(pmp->iroot);
-		hammer2_inode_unlock_ex(pmp->iroot, NULL);
+		hammer2_inode_unlock(pmp->iroot, NULL);
 	}
 
 	/*
@@ -870,6 +870,16 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return EINVAL;
 		}
+		if (schain->error) {
+			kprintf("hammer2_mount: error %s reading super-root\n",
+				hammer2_error_str(schain->error));
+			hammer2_chain_unlock(schain);
+			schain = NULL;
+			hammer2_unmount_helper(mp, NULL, hmp);
+			lockmgr(&hammer2_mntlk, LK_RELEASE);
+			hammer2_vfs_unmount(mp, MNT_FORCE);
+			return EINVAL;
+		}
 
 		/*
 		 * Sanity-check schain's pmp and finish initialization.
@@ -894,7 +904,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		spmp->spmp_hmp = hmp;
 		spmp->pfs_types[0] = ripdata->pfs_type;
 		hammer2_inode_ref(spmp->iroot);
-		hammer2_inode_unlock_ex(spmp->iroot, cluster);
+		hammer2_inode_unlock(spmp->iroot, cluster);
 		schain = NULL;
 		/* leave spmp->iroot with one ref */
 
@@ -927,7 +937,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * cluster->pmp will incorrectly point to spmp and must be fixed
 	 * up later on.
 	 */
-	cparent = hammer2_inode_lock_ex(spmp->iroot);
+	cparent = hammer2_inode_lock(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
 	lhc = hammer2_dirhash(label, strlen(label));
 	cluster = hammer2_cluster_lookup(cparent, &key_next,
 				      lhc, lhc + HAMMER2_DIRHASH_LOMASK,
@@ -942,7 +952,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 					    key_next,
 					    lhc + HAMMER2_DIRHASH_LOMASK, 0);
 	}
-	hammer2_inode_unlock_ex(spmp->iroot, cparent);
+	hammer2_inode_unlock(spmp->iroot, cparent);
 
 	/*
 	 * PFS could not be found?
@@ -1071,7 +1081,7 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 	 * up later on.
 	 */
 	spmp = hmp->spmp;
-	cparent = hammer2_inode_lock_ex(spmp->iroot);
+	cparent = hammer2_inode_lock(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
 	cluster = hammer2_cluster_lookup(cparent, &key_next,
 					 HAMMER2_KEY_MIN,
 					 HAMMER2_KEY_MAX,
@@ -1090,7 +1100,7 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 					       HAMMER2_KEY_MAX,
 					       0);
 	}
-	hammer2_inode_unlock_ex(spmp->iroot, cparent);
+	hammer2_inode_unlock(spmp->iroot, cparent);
 }
 
 /*
@@ -1163,7 +1173,8 @@ hammer2_write_thread(void *arg)
 			 * NOTE: hammer2_write_file_core() may indirectly
 			 *	 modify and modsync the inode.
 			 */
-			cparent = hammer2_inode_lock_ex(ip);
+			cparent = hammer2_inode_lock(ip,
+						     HAMMER2_RESOLVE_ALWAYS);
 			if (ip->flags & (HAMMER2_INODE_RESIZED |
 					 HAMMER2_INODE_MTIME)) {
 				hammer2_inode_fsync(&trans, ip, cparent);
@@ -1177,7 +1188,7 @@ hammer2_write_thread(void *arg)
 						lbase, IO_ASYNC,
 						pblksize, &error);
 			/* ripdata can be invalid after call */
-			hammer2_inode_unlock_ex(ip, cparent);
+			hammer2_inode_unlock(ip, cparent);
 			if (error) {
 				kprintf("hammer2: error in buffer write\n");
 				bp->b_flags |= B_ERROR;
@@ -2077,9 +2088,11 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 		*vpp = NULL;
 		error = EINVAL;
 	} else {
-		cparent = hammer2_inode_lock_sh(pmp->iroot);
+		cparent = hammer2_inode_lock(pmp->iroot,
+						HAMMER2_RESOLVE_ALWAYS |
+					        HAMMER2_RESOLVE_SHARED);
 		vp = hammer2_igetv(pmp->iroot, cparent, &error);
-		hammer2_inode_unlock_sh(pmp->iroot, cparent);
+		hammer2_inode_unlock(pmp->iroot, cparent);
 		*vpp = vp;
 		if (vp == NULL)
 			kprintf("vnodefail\n");

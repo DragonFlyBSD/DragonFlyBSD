@@ -351,17 +351,22 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 /*
  * Special notes on flags:
  *
- * INITIAL - This flag allows a chain to be created and for storage to
- *	     be allocated without having to immediately instantiate the
- *	     related buffer.  The data is assumed to be all-zeros.  It
- *	     is primarily used for indirect blocks.
+ * INITIAL	- This flag allows a chain to be created and for storage to
+ *		  be allocated without having to immediately instantiate the
+ *		  related buffer.  The data is assumed to be all-zeros.  It
+ *		  is primarily used for indirect blocks.
  *
- * MODIFIED- The chain's media data has been modified.
- * UPDATE  - Chain might not be modified but parent blocktable needs update
+ * MODIFIED	- The chain's media data has been modified.
  *
- * BMAPPED - Indicates that the chain is present in the parent blockmap.
- * BMAPUPD - Indicates that the chain is present but needs to be updated
- *	     in the parent blockmap.
+ * UPDATE	- Chain might not be modified but parent blocktable needs update
+ *
+ * FICTITIOUS	- Faked chain as a placeholder for an error condition.  This
+ *		  chain is unsuitable for I/O.
+ *
+ * BMAPPED	- Indicates that the chain is present in the parent blockmap.
+ *
+ * BMAPUPD	- Indicates that the chain is present but needs to be updated
+ *		  in the parent blockmap.
  */
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
@@ -373,7 +378,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DEFERRED		0x00000080	/* flush depth defer */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
 #define HAMMER2_CHAIN_ONFLUSH		0x00000200	/* on a flush list */
-#define HAMMER2_CHAIN_UNUSED00000400	0x00000400
+#define HAMMER2_CHAIN_FICTITIOUS	0x00000400	/* unsuitable for I/O */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
 #define HAMMER2_CHAIN_UNUSED00001000	0x00001000
 #define HAMMER2_CHAIN_UNUSED00002000	0x00002000
@@ -396,6 +401,11 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * code is typically set on-lock unless no I/O was requested, and set on
  * I/O otherwise.  If set for a cluster it generally means that the cluster
  * code could not find a valid copy to present.
+ *
+ * IO		- An I/O error occurred
+ * CHECK	- I/O succeeded but did not match the check code
+ * INCOMPLETE	- A cluster is not complete enough to use, or
+ *		  a chain cannot be loaded because its parent has an error.
  *
  * NOTE: API allows callers to check zero/non-zero to determine if an error
  *	 condition exists.
@@ -545,8 +555,12 @@ typedef struct hammer2_cluster	hammer2_cluster_t;
 /*
  * WRHARD	- Hard mounts can write fully synchronized
  * RDHARD	- Hard mounts can read fully synchronized
+ * UNHARD	- Unsynchronized masters present
+ * NOHARD	- No masters visible
  * WRSOFT	- Soft mounts can write to at least the SOFT_MASTER
  * RDSOFT	- Soft mounts can read from at least a SOFT_SLAVE
+ * UNSOFT	- Unsynchronized slaves present
+ * NOSOFT	- No slaves visible
  * RDSLAVE	- slaves are accessible (possibly unsynchronized or remote).
  * MSYNCED	- All masters are fully synchronized
  * SSYNCED	- All known local slaves are fully synchronized to masters
@@ -578,10 +592,14 @@ typedef struct hammer2_cluster	hammer2_cluster_t;
 #define HAMMER2_CLUSTER_LOCKED	0x00000004	/* cluster lks not recursive */
 #define HAMMER2_CLUSTER_WRHARD	0x00000100	/* hard-mount can write */
 #define HAMMER2_CLUSTER_RDHARD	0x00000200	/* hard-mount can read */
-#define HAMMER2_CLUSTER_WRSOFT	0x00000400	/* soft-mount can write */
-#define HAMMER2_CLUSTER_RDSOFT	0x00000800	/* soft-mount can read */
-#define HAMMER2_CLUSTER_MSYNCED	0x00001000	/* all masters synchronized */
-#define HAMMER2_CLUSTER_SSYNCED	0x00002000	/* known slaves synchronized */
+#define HAMMER2_CLUSTER_UNHARD	0x00000400	/* unsynchronized masters */
+#define HAMMER2_CLUSTER_NOHARD	0x00000800	/* no masters visible */
+#define HAMMER2_CLUSTER_WRSOFT	0x00001000	/* soft-mount can write */
+#define HAMMER2_CLUSTER_RDSOFT	0x00002000	/* soft-mount can read */
+#define HAMMER2_CLUSTER_UNSOFT	0x00004000	/* unsynchronized slaves */
+#define HAMMER2_CLUSTER_NOSOFT	0x00008000	/* no slaves visible */
+#define HAMMER2_CLUSTER_MSYNCED	0x00010000	/* all masters synchronized */
+#define HAMMER2_CLUSTER_SSYNCED	0x00020000	/* known slaves synchronized */
 
 #define HAMMER2_CLUSTER_ANYDATA	( HAMMER2_CLUSTER_RDHARD |	\
 				  HAMMER2_CLUSTER_RDSOFT |	\
@@ -906,6 +924,7 @@ struct hammer2_pfs {
 	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
 	hammer2_mtx_t 		wthread_mtx;	/* interlock */
 	int			wthread_destroy;/* termination sequencing */
+	uint32_t		status_flags;	/* cached cluster flags */
 };
 
 typedef struct hammer2_pfs hammer2_pfs_t;
@@ -1029,11 +1048,10 @@ extern int write_thread_wakeup;
 #define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
 
 int hammer2_signal_check(time_t *timep);
-hammer2_cluster_t *hammer2_inode_lock_ex(hammer2_inode_t *ip);
-hammer2_cluster_t *hammer2_inode_lock_nex(hammer2_inode_t *ip, int how);
-hammer2_cluster_t *hammer2_inode_lock_sh(hammer2_inode_t *ip);
-void hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_cluster_t *chain);
-void hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_cluster_t *chain);
+const char *hammer2_error_str(int error);
+
+hammer2_cluster_t *hammer2_inode_lock(hammer2_inode_t *ip, int how);
+void hammer2_inode_unlock(hammer2_inode_t *ip, hammer2_cluster_t *cluster);
 hammer2_mtx_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
 void hammer2_inode_lock_temp_restore(hammer2_inode_t *ip,
 			hammer2_mtx_state_t ostate);
@@ -1070,8 +1088,6 @@ void hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
  */
 struct vnode *hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent,
 			int *errorp);
-void hammer2_inode_lock_nlinks(hammer2_inode_t *ip);
-void hammer2_inode_unlock_nlinks(hammer2_inode_t *ip);
 hammer2_inode_t *hammer2_inode_lookup(hammer2_pfs_t *pmp,
 			hammer2_tid_t inum);
 hammer2_inode_t *hammer2_inode_get(hammer2_pfs_t *pmp,

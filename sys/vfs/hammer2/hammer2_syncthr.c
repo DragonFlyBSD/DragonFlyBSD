@@ -36,6 +36,11 @@
  */
 #include "hammer2.h"
 
+static void hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_pfs_t *pmp,
+			hammer2_cluster_t **cparentp);
+static void hammer2_update_pfs_status(hammer2_pfs_t *pmp,
+			hammer2_cluster_t *cparent);
+
 /*
  * Initialize the suspplied syncthr structure, starting the specified
  * thread.
@@ -123,6 +128,11 @@ void
 hammer2_syncthr_primary(void *arg)
 {
 	hammer2_syncthr_t *thr = arg;
+	hammer2_cluster_t *cparent;
+	hammer2_pfs_t *pmp;
+	hammer2_trans_t trans;
+
+	pmp = thr->pmp;
 
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
 	while ((thr->flags & HAMMER2_SYNCTHR_STOP) == 0) {
@@ -142,15 +152,86 @@ hammer2_syncthr_primary(void *arg)
 			continue;
 		}
 
-		/* reset state on REMASTER request */
+		/*
+		 * Reset state on REMASTER request
+		 */
 		if (thr->flags & HAMMER2_SYNCTHR_REMASTER) {
 			atomic_clear_int(&thr->flags, HAMMER2_SYNCTHR_REMASTER);
 			/* reset state */
 		}
-		lksleep(&thr->flags, &thr->lk, 0, "h2idle", 0);
+
+		/*
+		 * Synchronization scan.
+		 */
+		hammer2_trans_init(&trans, pmp, 0);
+		cparent = hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_NEVER);
+		hammer2_update_pfs_status(pmp, cparent);
+		hammer2_sync_slaves(thr, pmp, &cparent);
+		hammer2_inode_unlock(pmp->iroot, cparent);
+		hammer2_trans_done(&trans);
+
+		/*
+		 * Wait for event, or 5-second poll.
+		 */
+		lksleep(&thr->flags, &thr->lk, 0, "h2idle", hz * 5);
 	}
 	thr->td = NULL;
 	wakeup(thr);
 	lockmgr(&thr->lk, LK_RELEASE);
 	/* thr structure can go invalid after this point */
+}
+
+/*
+ * Given a locked cluster created from pmp->iroot, update the PFS's
+ * reporting status.
+ */
+static
+void
+hammer2_update_pfs_status(hammer2_pfs_t *pmp, hammer2_cluster_t *cparent)
+{
+	uint32_t flags;
+
+	flags = cparent->flags & HAMMER2_CLUSTER_ZFLAGS;
+	if (pmp->status_flags == flags)
+		return;
+	pmp->status_flags = flags;
+
+	kprintf("pfs %p", pmp);
+	if (flags & HAMMER2_CLUSTER_MSYNCED)
+		kprintf(" masters-all-good");
+	if (flags & HAMMER2_CLUSTER_SSYNCED)
+		kprintf(" slaves-all-good");
+
+	if (flags & HAMMER2_CLUSTER_WRHARD)
+		kprintf(" quorum/rw");
+	else if (flags & HAMMER2_CLUSTER_RDHARD)
+		kprintf(" quorum/ro");
+
+	if (flags & HAMMER2_CLUSTER_UNHARD)
+		kprintf(" out-of-sync-masters");
+	else if (flags & HAMMER2_CLUSTER_NOHARD)
+		kprintf(" no-masters-visible");
+
+	if (flags & HAMMER2_CLUSTER_WRSOFT)
+		kprintf(" soft/rw");
+	else if (flags & HAMMER2_CLUSTER_RDSOFT)
+		kprintf(" soft/ro");
+
+	if (flags & HAMMER2_CLUSTER_UNSOFT)
+		kprintf(" out-of-sync-slaves");
+	else if (flags & HAMMER2_CLUSTER_NOSOFT)
+		kprintf(" no-slaves-visible");
+	kprintf("\n");
+}
+
+/*
+ *
+ */
+static
+void
+hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_pfs_t *pmp,
+		    hammer2_cluster_t **cparentp)
+{
+
+
 }

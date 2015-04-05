@@ -595,6 +595,8 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 
 /*
  * On-media and off-media blockref types.
+ *
+ * types >= 128 are pseudo values that should never be present on-media.
  */
 #define HAMMER2_BREF_TYPE_EMPTY		0
 #define HAMMER2_BREF_TYPE_INODE		1
@@ -878,7 +880,8 @@ struct hammer2_inode_data {
 	 *
 	 * (not yet implemented)
 	 */
-	hammer2_off_t	reservedE0[4];	/* 00E0/E8/F0/F8 */
+	uint64_t	decrypt_check;	/* 00E0 decryption validator */
+	hammer2_off_t	reservedE0[3];	/* 00E8/F0/F8 */
 
 	unsigned char	filename[HAMMER2_INODE_MAXNAME];
 					/* 0100-01FF (256 char, unterminated) */
@@ -933,7 +936,7 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
  */
 #define HAMMER2_PFSTYPE_NONE		0x00
 #define HAMMER2_PFSTYPE_CACHE		0x01
-#define HAMMER2_PFSTYPE_COPY		0x02
+#define HAMMER2_PFSTYPE_UNUSED02	0x02
 #define HAMMER2_PFSTYPE_SLAVE		0x03
 #define HAMMER2_PFSTYPE_SOFT_SLAVE	0x04
 #define HAMMER2_PFSTYPE_SOFT_MASTER	0x05
@@ -945,7 +948,7 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 
 #define HAMMER2_PFSTRAN_NONE		0x00	/* no transition in progress */
 #define HAMMER2_PFSTRAN_CACHE		0x10
-#define HAMMER2_PFSTRAN_COPY		0x20
+#define HAMMER2_PFSTRAN_UNMUSED20	0x20
 #define HAMMER2_PFSTRAN_SLAVE		0x30
 #define HAMMER2_PFSTRAN_SOFT_SLAVE	0x40
 #define HAMMER2_PFSTRAN_SOFT_MASTER	0x50
@@ -959,7 +962,8 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_PFS_ENC_TRANSITION(n)	(((n) & 0x0F) << 4)
 
 #define HAMMER2_PFSSUBTYPE_NONE		0
-#define HAMMER2_PFSSUBTYPE_SNAPSHOT	1
+#define HAMMER2_PFSSUBTYPE_SNAPSHOT	1	/* manual/managed snapshot */
+#define HAMMER2_PFSSUBTYPE_AUTOSNAP	2	/* automatic snapshot */
 
 /*
  * PFS mode of operation is a bitmask.  This is typically not stored

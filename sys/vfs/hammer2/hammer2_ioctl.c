@@ -380,8 +380,8 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	error = 0;
 	hmp = ip->pmp->iroot->cluster.focus->hmp; /* XXX */
 	pfs = data;
-	cparent = hammer2_inode_lock_ex(hmp->spmp->iroot);
-	rcluster = hammer2_inode_lock_ex(ip->pmp->iroot);
+	cparent = hammer2_inode_lock(hmp->spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
+	rcluster = hammer2_inode_lock(ip->pmp->iroot, HAMMER2_RESOLVE_ALWAYS);
 
 	/*
 	 * Search for the first key or specific key.  Remember that keys
@@ -403,7 +403,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 						 pfs->name_key, pfs->name_key,
 						 0);
 	}
-	hammer2_inode_unlock_ex(ip->pmp->iroot, rcluster);
+	hammer2_inode_unlock(ip->pmp->iroot, rcluster);
 
 	while (cluster &&
 	       hammer2_cluster_type(cluster) != HAMMER2_BREF_TYPE_INODE) {
@@ -448,7 +448,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		pfs->name_next = (hammer2_key_t)-1;
 		error = ENOENT;
 	}
-	hammer2_inode_unlock_ex(hmp->spmp->iroot, cparent);
+	hammer2_inode_unlock(hmp->spmp->iroot, cparent);
 
 	return (error);
 }
@@ -472,7 +472,8 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	error = 0;
 	hmp = ip->pmp->iroot->cluster.focus->hmp; /* XXX */
 	pfs = data;
-	cparent = hammer2_inode_lock_sh(hmp->spmp->iroot);
+	cparent = hammer2_inode_lock(hmp->spmp->iroot, HAMMER2_RESOLVE_ALWAYS |
+						       HAMMER2_RESOLVE_SHARED);
 
 	pfs->name[sizeof(pfs->name) - 1] = 0;
 	len = strlen(pfs->name);
@@ -512,7 +513,7 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	} else {
 		error = ENOENT;
 	}
-	hammer2_inode_unlock_sh(hmp->spmp->iroot, cparent);
+	hammer2_inode_unlock(hmp->spmp->iroot, cparent);
 
 	return (error);
 }
@@ -570,7 +571,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_pfsalloc(ncluster, nipdata, bref.mirror_tid);
 		/* XXX rescan */
 #endif
-		hammer2_inode_unlock_ex(nip, ncluster);
+		hammer2_inode_unlock(nip, ncluster);
 	}
 	hammer2_trans_done(&trans);
 
@@ -615,9 +616,9 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 
 	hammer2_trans_init(&trans, ip->pmp,
 			   HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_NEWINODE);
-	cparent = hammer2_inode_lock_ex(ip);
+	cparent = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_cluster_snapshot(&trans, cparent, pfs);
-	hammer2_inode_unlock_ex(ip, cparent);
+	hammer2_inode_unlock(ip, cparent);
 	hammer2_trans_done(&trans);
 
 	return (error);
@@ -632,16 +633,23 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 	const hammer2_inode_data_t *ripdata;
 	hammer2_ioc_inode_t *ino;
 	hammer2_cluster_t *cparent;
+	int error;
 
 	ino = data;
 
-	cparent = hammer2_inode_lock_sh(ip);
-	ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
-	ino->ip_data = *ripdata;
-	ino->kdata = ip;
-	hammer2_inode_unlock_sh(ip, cparent);
+	cparent = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
+					 HAMMER2_RESOLVE_SHARED);
+	if (cparent->error) {
+		error = EIO;
+	} else {
+		ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
+		ino->ip_data = *ripdata;
+		ino->kdata = ip;
+		error = 0;
+	}
+	hammer2_inode_unlock(ip, cparent);
 
-	return (0);
+	return error;
 }
 
 /*
@@ -660,7 +668,7 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 	int dosync = 0;
 
 	hammer2_trans_init(&trans, ip->pmp, 0);
-	cparent = hammer2_inode_lock_ex(ip);
+	cparent = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
 	ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
 
 	if (ino->ip_data.check_algo != ripdata->check_algo) {
@@ -689,7 +697,7 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 	if (dosync)
 		hammer2_cluster_modsync(cparent);
 	hammer2_trans_done(&trans);
-	hammer2_inode_unlock_ex(ip, cparent);
+	hammer2_inode_unlock(ip, cparent);
 
 	return (error);
 }

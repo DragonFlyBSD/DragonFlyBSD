@@ -510,6 +510,15 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 			}
 			goto next;
 		}
+		if (live_chain->error) {
+			kprintf("hammer2_bulkfree: error %s looking up "
+				"live leaf for allocated data near %016jx\n",
+				hammer2_error_str(live_chain->error),
+				(intmax_t)data_off);
+			hammer2_chain_unlock(live_chain);
+			live_chain = NULL;
+			goto next;
+		}
 
 		bmapindex = (data_off & HAMMER2_FREEMAP_LEVEL1_MASK) >>
 			    HAMMER2_FREEMAP_LEVEL0_RADIX;

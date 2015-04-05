@@ -67,9 +67,6 @@ cmd_pfs_list(const char *sel_path)
 		case HAMMER2_PFSTYPE_CACHE:
 			printf("CACHE       ");
 			break;
-		case HAMMER2_PFSTYPE_COPY:
-			printf("COPY        ");
-			break;
 		case HAMMER2_PFSTYPE_SLAVE:
 			printf("SLAVE       ");
 			break;
@@ -86,6 +83,9 @@ cmd_pfs_list(const char *sel_path)
 				break;
 			case HAMMER2_PFSSUBTYPE_SNAPSHOT:
 				printf("SNAPSHOT    ");
+				break;
+			case HAMMER2_PFSSUBTYPE_AUTOSNAP:
+				printf("AUTOSNAP    ");
 				break;
 			default:
 				printf("MASTER(sub?)");

@@ -358,6 +358,14 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 
 			hammer2_freemap_init(trans, hmp, key, chain);
 		}
+	} else if (chain->error) {
+		/*
+		 * Error during lookup.
+		 */
+		kprintf("hammer2_freemap_try_alloc: %016jx: error %s\n",
+			(intmax_t)bref->data_off,
+			hammer2_error_str(chain->error));
+		error = EIO;
 	} else if ((chain->bref.check.freemap.bigmask & (1 << radix)) == 0) {
 		/*
 		 * Already flagged as not having enough space
@@ -857,6 +865,14 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 	if (chain == NULL && how != HAMMER2_FREEMAP_DORECOVER) {
 		kprintf("hammer2_freemap_adjust: %016jx: no chain\n",
 			(intmax_t)bref->data_off);
+		goto done;
+	}
+	if (chain->error) {
+		kprintf("hammer2_freemap_adjust: %016jx: error %s\n",
+			(intmax_t)bref->data_off,
+			hammer2_error_str(chain->error));
+		hammer2_chain_unlock(chain);
+		chain = NULL;
 		goto done;
 	}
 

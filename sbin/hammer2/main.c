@@ -87,8 +87,8 @@ main(int ac, char **av)
 			 */
 			if (strcasecmp(optarg, "CACHE") == 0) {
 				pfs_type = HAMMER2_PFSTYPE_CACHE;
-			} else if (strcasecmp(optarg, "COPY") == 0) {
-				pfs_type = HAMMER2_PFSTYPE_COPY;
+			} else if (strcasecmp(optarg, "DUMMY") == 0) {
+				pfs_type = HAMMER2_PFSTYPE_DUMMY;
 			} else if (strcasecmp(optarg, "SLAVE") == 0) {
 				pfs_type = HAMMER2_PFSTYPE_SLAVE;
 			} else if (strcasecmp(optarg, "SOFT_SLAVE") == 0) {

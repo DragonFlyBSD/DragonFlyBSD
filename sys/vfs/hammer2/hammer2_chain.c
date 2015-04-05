@@ -508,9 +508,7 @@ hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
  * Ref and lock a chain element, acquiring its data with I/O if necessary,
  * and specify how you would like the data to be resolved.
  *
- * Returns 0 on success or an error code if the data could not be acquired.
- * The chain element is locked on return regardless of whether an error
- * occurred or not.
+ * If an I/O or other fatal error occurs, chain->error will be set to non-zero.
  *
  * The lock is allowed to recurse, multiple locking ops will aggregate
  * the requested resolve types.  Once data is assigned it will not be
@@ -995,6 +993,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 
 	hmp = chain->hmp;
 	obref = chain->bref;
+	KKASSERT((chain->flags & HAMMER2_CHAIN_FICTITIOUS) == 0);
 
 	/*
 	 * Data is not optional for freemap chains (we must always be sure
@@ -1487,6 +1486,12 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
  * NULL is returned if no match was found, but (*parentp) will still
  * potentially be adjusted.
  *
+ * If a fatal error occurs (typically an I/O error), a dummy chain is
+ * returned with chain->error and error-identifying information set.  This
+ * chain will assert if you try to do anything fancy with it.
+ *
+ * XXX Depending on where the error occurs we should allow continued iteration.
+ *
  * On return (*key_nextp) will point to an iterative value for key_beg.
  * (If NULL is returned (*key_nextp) is set to key_end).
  *
@@ -1767,6 +1772,12 @@ done:
  * If chain is NULL we assume the parent was exhausted and continue the
  * iteration at the next parent.
  *
+ * If a fatal error occurs (typically an I/O error), a dummy chain is
+ * returned with chain->error and error-identifying information set.  This
+ * chain will assert if you try to do anything fancy with it.
+ *
+ * XXX Depending on where the error occurs we should allow continued iteration.
+ *
  * parent must be locked on entry and remains locked throughout.  chain's
  * lock status must match flags.  Chain is always at least referenced.
  *
@@ -1802,6 +1813,9 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 			hammer2_chain_unlock(chain);
 
 		/*
+		 * chain invalid past this point, but we can still do a
+		 * pointer comparison w/parent.
+		 *
 		 * Any scan where the lookup returned degenerate data embedded
 		 * in the inode has an invalid index and must terminate.
 		 */
@@ -1898,6 +1912,7 @@ hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	}
 
 again:
+	KKASSERT(parent->error == 0);	/* XXX case not handled yet */
 	if (--maxloops == 0)
 		panic("hammer2_chain_scan: maxloops");
 	/*
@@ -2048,6 +2063,8 @@ done:
  * (*parentp) must be exclusive locked and may be replaced on return
  * depending on how much work the function had to do.
  *
+ * (*parentp) must not be errored or this function will assert.
+ *
  * (*chainp) usually starts out NULL and returns the newly created chain,
  * but if the caller desires the caller may allocate a disconnected chain
  * and pass it in instead.
@@ -2085,6 +2102,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	 */
 	parent = *parentp;
 	KKASSERT(hammer2_mtx_owned(&parent->core.lock));
+	KKASSERT(parent->error == 0);
 	hmp = parent->hmp;
 	chain = *chainp;
 
@@ -2356,6 +2374,8 @@ done:
  * Note that hammer2_cluster_duplicate() *ONLY* uses the key and keybits fields
  * from a passed-in bref and uses the old chain's bref for everything else.
  *
+ * Neither (parent) or (chain) can be errored.
+ *
  * If (parent) is non-NULL then the new duplicated chain is inserted under
  * the parent.
  *
@@ -2386,6 +2406,7 @@ hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 	 */
 	hmp = chain->hmp;
 	KKASSERT(chain->parent == NULL);
+	KKASSERT(chain->error == 0);
 
 	/*
 	 * Now create a duplicate of the chain structure, associating
@@ -2412,6 +2433,7 @@ hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 	if (parentp && (parent = *parentp) != NULL) {
 		KKASSERT(hammer2_mtx_owned(&parent->core.lock));
 		KKASSERT(parent->refs > 0);
+		KKASSERT(parent->error == 0);
 
 		hammer2_chain_create(trans, parentp, &chain, chain->pmp,
 				     bref->key, bref->keybits, bref->type,
@@ -2426,6 +2448,8 @@ hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
  *
  * The chain is removed from the live view (the RBTREE) as well as the parent's
  * blockmap.  Both chain and its parent must be locked.
+ *
+ * parent may not be errored.  chain can be errored.
  */
 static void
 _hammer2_chain_delete_helper(hammer2_trans_t *trans,
@@ -2434,7 +2458,8 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 {
 	hammer2_dev_t *hmp;
 
-	KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0);
+	KKASSERT((chain->flags & (HAMMER2_CHAIN_DELETED |
+				  HAMMER2_CHAIN_FICTITIOUS)) == 0);
 	hmp = chain->hmp;
 
 	if (chain->flags & HAMMER2_CHAIN_BMAPPED) {
@@ -2447,6 +2472,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		int count;
 
 		KKASSERT(parent != NULL);
+		KKASSERT(parent->error == 0);
 		KKASSERT((parent->flags & HAMMER2_CHAIN_INITIAL) == 0);
 		hammer2_chain_modify(trans, parent,
 				     HAMMER2_MODIFY_OPTDATA);

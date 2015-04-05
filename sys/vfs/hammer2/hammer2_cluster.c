@@ -116,7 +116,8 @@
 #include "hammer2.h"
 
 /*
- * Returns TRUE if any chain in the cluster needs to be resized.
+ * Returns non-zero if any chain in the cluster needs to be resized.
+ * Errored elements are not used in the calculation.
  */
 int
 hammer2_cluster_need_resize(hammer2_cluster_t *cluster, int bytes)
@@ -124,38 +125,67 @@ hammer2_cluster_need_resize(hammer2_cluster_t *cluster, int bytes)
 	hammer2_chain_t *chain;
 	int i;
 
+	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
-		if (chain && chain->bytes != bytes)
+		if (chain == NULL)
+			continue;
+		if (chain->error)
+			continue;
+		if (chain->bytes != bytes)
 			return 1;
 	}
 	return 0;
 }
 
+/*
+ * Returns the bref type of the cluster's foucs.
+ *
+ * If the cluster is errored, returns HAMMER2_BREF_TYPE_EMPTY (0).
+ * The cluster must be locked.
+ */
 uint8_t
 hammer2_cluster_type(hammer2_cluster_t *cluster)
 {
-	return(cluster->focus->bref.type);
-}
-
-int
-hammer2_cluster_modified(hammer2_cluster_t *cluster)
-{
-	return((cluster->focus->flags & HAMMER2_CHAIN_MODIFIED) != 0);
+	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
+	if (cluster->error == 0)
+		return(cluster->focus->bref.type);
+	return 0;
 }
 
 /*
- * Return a bref representative of the cluster.  Any data offset is removed
- * (since it would only be applicable to a particular chain in the cluster).
+ * Returns non-zero if the cluster's focus is flagged as being modified.
  *
- * However, the radix portion of data_off is used for many purposes and will
- * be retained.
+ * If the cluster is errored, returns 0.
+ */
+int
+hammer2_cluster_modified(hammer2_cluster_t *cluster)
+{
+	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
+	if (cluster->error == 0)
+		return((cluster->focus->flags & HAMMER2_CHAIN_MODIFIED) != 0);
+	return 0;
+}
+
+/*
+ * Returns the bref of the cluster's focus, sans any data-offset information
+ * (since offset information is per-node and wouldn't be useful).
+ *
+ * Callers use this function to access mirror_tid, key, and keybits.
+ *
+ * If the cluster is errored, returns an empty bref.
+ * The cluster must be locked.
  */
 void
 hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref)
 {
-	*bref = cluster->focus->bref;
-	bref->data_off &= HAMMER2_OFF_MASK_RADIX;
+	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
+	if (cluster->error == 0) {
+		*bref = cluster->focus->bref;
+		bref->data_off = 0;
+	} else {
+		bzero(bref, sizeof(*bref));
+	}
 }
 
 /*
@@ -163,6 +193,9 @@ hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref)
  * as having been unlinked.  Allows the vnode reclaim to avoid loading
  * the inode data from disk e.g. when unmount or recycling old, clean
  * vnodes.
+ *
+ * The cluster does not need to be locked.
+ * The focus cannot be used since the cluster might not be locked.
  */
 int
 hammer2_cluster_isunlinked(hammer2_cluster_t *cluster)
@@ -180,6 +213,10 @@ hammer2_cluster_isunlinked(hammer2_cluster_t *cluster)
 	return (flags & HAMMER2_CHAIN_UNLINKED);
 }
 
+/*
+ * Set a bitmask of flags in all chains related to a cluster.
+ * The cluster should probably be locked.
+ */
 void
 hammer2_cluster_set_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
 {
@@ -193,6 +230,10 @@ hammer2_cluster_set_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
 	}
 }
 
+/*
+ * Set a bitmask of flags in all chains related to a cluster.
+ * The cluster should probably be locked.
+ */
 void
 hammer2_cluster_clr_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
 {
@@ -206,6 +247,15 @@ hammer2_cluster_clr_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
 	}
 }
 
+/*
+ * Flag the cluster for flushing recursively up to the root.  Despite the
+ * work it does, this is relatively benign.  It just makes sure that the
+ * flusher has top-down visibility to this cluster.
+ *
+ * Errored chains are not flagged for flushing.
+ *
+ * The cluster should probably be locked.
+ */
 void
 hammer2_cluster_setflush(hammer2_trans_t *trans, hammer2_cluster_t *cluster)
 {
@@ -214,11 +264,20 @@ hammer2_cluster_setflush(hammer2_trans_t *trans, hammer2_cluster_t *cluster)
 
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
-		if (chain)
-			hammer2_chain_setflush(trans, chain);
+		if (chain == NULL)
+			continue;
+		if (chain->error)
+			continue;
+		hammer2_chain_setflush(trans, chain);
 	}
 }
 
+/*
+ * Set the check mode for the cluster.
+ * Errored elements of the cluster are ignored.
+ *
+ * The cluster must be locked.
+ */
 void
 hammer2_cluster_setmethod_check(hammer2_trans_t *trans,
 				hammer2_cluster_t *cluster,
@@ -227,24 +286,26 @@ hammer2_cluster_setmethod_check(hammer2_trans_t *trans,
 	hammer2_chain_t *chain;
 	int i;
 
+	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
-		if (chain) {
-			KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
-			chain->bref.methods &= ~HAMMER2_ENC_CHECK(-1);
-			chain->bref.methods |= HAMMER2_ENC_CHECK(check_algo);
-		}
+		if (chain == NULL)
+			continue;
+		if (chain->error)
+			continue;
+		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
+		chain->bref.methods &= ~HAMMER2_ENC_CHECK(-1);
+		chain->bref.methods |= HAMMER2_ENC_CHECK(check_algo);
 	}
 }
 
 /*
- * Create a cluster with one ref from the specified chain.  The chain
- * is not further referenced.  The caller typically supplies a locked
- * chain and transfers ownership to the cluster.
+ * Create a degenerate cluster with one ref from a single locked chain.
+ * The returned cluster will be focused on the chain and inherit its
+ * error state.
  *
- * The returned cluster will be focused on the chain (strictly speaking,
- * the focus should be NULL if the chain is not locked but we do not check
- * for this condition).
+ * The chain's lock and reference are transfered to the new cluster, so
+ * the caller should not try to unlock the chain separately.
  *
  * We fake the flags.
  */
@@ -259,6 +320,7 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
 	cluster->focus = chain;
 	cluster->pmp = chain->pmp;
 	cluster->refs = 1;
+	cluster->error = chain->error;
 	cluster->flags = HAMMER2_CLUSTER_LOCKED |
 			 HAMMER2_CLUSTER_WRHARD |
 			 HAMMER2_CLUSTER_RDHARD |
@@ -269,7 +331,7 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
 }
 
 /*
- * Add a reference to a cluster.
+ * Add a reference to a cluster and its underlying chains.
  *
  * We must also ref the underlying chains in order to allow ref/unlock
  * sequences to later re-lock.
@@ -415,6 +477,26 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
+		if (chain->error) {
+			if (cluster->focus == NULL || cluster->focus == chain) {
+				/* error will be overridden by valid focus */
+				cluster->error = chain->error;
+			}
+
+			/*
+			 * Must count total masters and slaves whether the
+			 * chain is errored or not.
+			 */
+			switch (cluster->pmp->pfs_types[i]) {
+			case HAMMER2_PFSTYPE_MASTER:
+				++ttlmasters;
+				break;
+			case HAMMER2_PFSTYPE_SLAVE:
+				++ttlslaves;
+				break;
+			}
+			continue;
+		}
 
 		switch (cluster->pmp->pfs_types[i]) {
 		case HAMMER2_PFSTYPE_MASTER:
@@ -459,6 +541,13 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
+		if (chain->error) {
+			if (cluster->focus == NULL || cluster->focus == chain) {
+				/* error will be overridden by valid focus */
+				cluster->error = chain->error;
+			}
+			continue;
+		}
 
 		switch (cluster->pmp->pfs_types[i]) {
 		case HAMMER2_PFSTYPE_MASTER:
@@ -480,6 +569,8 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 					cluster->focus = chain;
 					cluster->error = chain->error;
 				}
+			} else if (chain->error == 0) {
+				nflags |= HAMMER2_CLUSTER_UNHARD;
 			}
 			break;
 		case HAMMER2_PFSTYPE_SLAVE:
@@ -500,6 +591,8 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 					cluster->focus = chain;
 					cluster->error = chain->error;
 				}
+			} else if (chain->error == 0) {
+				nflags |= HAMMER2_CLUSTER_UNSOFT;
 			}
 			break;
 		case HAMMER2_PFSTYPE_SOFT_MASTER:
@@ -528,6 +621,11 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			break;
 		}
 	}
+
+	if (ttlslaves == 0)
+		nflags |= HAMMER2_CLUSTER_NOHARD;
+	if (ttlmasters == 0)
+		nflags |= HAMMER2_CLUSTER_NOSOFT;
 
 	/*
 	 * Set SSYNCED or MSYNCED for slaves and masters respectively if
@@ -683,13 +781,14 @@ hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 	resolve_again = 0;
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
-		if (chain) {
-			hammer2_chain_modify(trans, chain, flags);
-			if (cluster->focus == chain &&
-			    chain->error) {
-				cluster->error = chain->error;
-				resolve_again = 1;
-			}
+		if (chain == NULL)
+			continue;
+		if (chain->error)
+			continue;
+		hammer2_chain_modify(trans, chain, flags);
+		if (cluster->focus == chain && chain->error) {
+			cluster->error = chain->error;
+			resolve_again = 1;
 		}
 	}
 	if (resolve_again)
@@ -722,6 +821,8 @@ hammer2_cluster_modsync(hammer2_cluster_t *cluster)
 	for (i = 0; i < cluster->nchains; ++i) {
 		scan = cluster->array[i].chain;
 		if (scan == NULL || scan == focus)
+			continue;
+		if (scan->error)
 			continue;
 		KKASSERT(scan->flags & HAMMER2_CHAIN_MODIFIED);
 		KKASSERT(focus->bytes == scan->bytes &&
@@ -838,6 +939,12 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 		cluster->array[i].chain = chain;
 		if (chain == NULL) {
 			++null_count;
+		} else if (chain->error) {
+			/*
+			 * Leave errored chain in cluster, but it cannot be
+			 * the cluster's focus.
+			 */
+			;
 		} else {
 			int ddflag = (chain->bref.type ==
 				      HAMMER2_BREF_TYPE_INODE);
@@ -932,6 +1039,12 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		cluster->array[i].chain = chain;
 		if (chain == NULL) {
 			++null_count;
+		} else if (chain->error) {
+			/*
+			 * Leave errored chain in cluster, but it cannot be
+			 * the cluster's focus.
+			 */
+			;
 		} else {
 			int ddflag = (chain->bref.type ==
 				      HAMMER2_BREF_TYPE_INODE);
@@ -1023,10 +1136,9 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 /*
  * Rename a cluster to a new parent.
  *
- * WARNING! Unlike hammer2_chain_rename(), only the key and keybits fields
- *	    are used from a passed-in non-NULL bref pointer.  All other fields
- *	    are extracted from the original chain for each chain in the
- *	    iteration.
+ * WARNING! Any passed-in bref is probaly from hammer2_cluster_bref(),
+ *	    So the data_off field is not relevant.  Only the key and
+ *	    keybits are used.
  */
 void
 hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
@@ -1197,7 +1309,7 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 			if (nchain)
 				hammer2_flush(trans, nchain);
 		}
-		hammer2_inode_unlock_ex(nip, ncluster);
+		hammer2_inode_unlock(nip, ncluster);
 	}
 	return (error);
 }
