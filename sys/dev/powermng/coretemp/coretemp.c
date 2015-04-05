@@ -313,7 +313,7 @@ coretemp_get_temp(device_t dev)
 			sc->sc_flags |= CORETEMP_FLAG_INITED |
 			    CORETEMP_FLAG_PENDING;
 			cpu_mfence();
-			lwkt_send_ipiq(sc->sc_gd, coretemp_ipifunc, sc);
+			lwkt_send_ipiq_passive(sc->sc_gd, coretemp_ipifunc, sc);
 			return (-1);
 		} else {
 			if (sc->sc_flags & CORETEMP_FLAG_PENDING) {
@@ -364,7 +364,7 @@ coretemp_get_temp(device_t dev)
 
 	if (sc->sc_flags & CORETEMP_FLAG_PENDING) {
 		cpu_mfence();
-		lwkt_send_ipiq(sc->sc_gd, coretemp_ipifunc, sc);
+		lwkt_send_ipiq_passive(sc->sc_gd, coretemp_ipifunc, sc);
 	}
 
 	return (temp);
