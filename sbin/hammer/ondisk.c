@@ -320,7 +320,7 @@ get_buffer_readahead(struct buffer_info *base)
 	while (ri < re) {
 		if (raw_offset >= vol->ondisk->vol_buf_end)
 			break;
-		if (raw_offset < vol->ondisk->vol_buf_beg) {
+		if (raw_offset < vol->ondisk->vol_buf_beg || ri == 0) {
 			++ri;
 			raw_offset += HAMMER_BUFSIZE;
 			continue;
