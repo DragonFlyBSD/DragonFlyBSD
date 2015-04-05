@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.44 2008/11/13 02:04:27 dillon Exp $
  */
 
 #include "hammer.h"
@@ -400,6 +398,10 @@ main(int ac, char **av)
 		hammer_cmd_cleanup(av + 1, ac - 1);
 		exit(0);
 	}
+	if (strcmp(av[0], "abort-cleanup") == 0) {
+		hammer_cmd_abort_cleanup(av + 1, ac - 1);
+		exit(0);
+	}
 	if (strcmp(av[0], "info") == 0) {
 		hammer_cmd_info(av + 1, ac - 1);
 		exit(0);
@@ -635,6 +637,7 @@ usage(int exit_code)
 		"hammer namekey2 <path>\n"
 		"hammer namekey32 <path>\n"
 		"hammer cleanup [<filesystem> ...]\n"
+		"hammer abort-cleanup\n"
 		"hammer info [<dirpath> ...]\n"
 		"hammer snapshot [<filesystem>] <snapshot-dir>\n"
 		"hammer snapshot <filesystem> <snapshot-dir> [<note>]\n"

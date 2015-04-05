@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.6 2008/10/07 22:28:41 thomas Exp $
  */
 /*
  * Clean up specific HAMMER filesystems or all HAMMER filesystems.
@@ -60,6 +58,7 @@
  * (/var/hammer/root for root mount).
  */
 
+#include <libutil.h>
 #include "hammer.h"
 
 struct didpfs {
@@ -389,6 +388,17 @@ do_cleanup(const char *path)
 
 	printf(" handle PFS #%d using %s\n", pfs.pfs_id, snapshots_path);
 
+	struct pidfh	*pfh = NULL;
+	static char	pidfile[PIDFILE_BUFSIZE];
+
+	snprintf (pidfile, PIDFILE_BUFSIZE, "%s/hammer.cleanup.%d",
+		pidfile_loc, getpid());
+	pfh = pidfile_open(pidfile, 0644, NULL);
+	if (pfh == NULL) {
+		warn ("Unable to open or create %s", pidfile);
+	}
+	pidfile_write(pfh);
+
 	/*
 	 * Process the config file
 	 */
@@ -533,6 +543,8 @@ do_cleanup(const char *path)
 	 */
 	close(fd);
 	usleep(1000);
+	pidfile_close(pfh);
+	pidfile_remove(pfh);
 }
 
 /*

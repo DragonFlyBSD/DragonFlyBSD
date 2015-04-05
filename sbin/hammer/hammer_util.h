@@ -40,6 +40,13 @@
 #include <uuid.h>
 
 /*
+ * pidfile management - common definitions so code is more robust
+ */
+
+#define PIDFILE_BUFSIZE	64
+static const char pidfile_loc[] = "/var/run";
+
+/*
  * Cache management - so the user code can keep its memory use under control
  */
 struct volume_info;
