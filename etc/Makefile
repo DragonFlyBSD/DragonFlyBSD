@@ -355,16 +355,6 @@ distrib-dirs:
 	mtree -deU -f ${.CURDIR}/mtree/BSD.include.dist \
 		-p ${DESTDIR}/usr/include
 	cd ${DESTDIR}/; test -e sys || (rm -f sys;  ${LN} -s usr/src/sys sys)
-	cd ${DESTDIR}/usr/share/man/en.ISO8859-1; ${LN} -sf ../man* .
-	cd ${DESTDIR}/usr/share/man; \
-	set - `grep "^[a-zA-Z]" ${.CURDIR}/man.alias`; \
-	while [ $$# -gt 0 ] ; \
-	do \
-		rm -rf "$$1"; \
-		${LN} -s "$$2" "$$1"; \
-		shift; shift; \
-	done
-	cd ${DESTDIR}/usr/share/openssl/man/en.ISO8859-1; ${LN} -sf ../man* .
 	cd ${DESTDIR}/usr/share/nls; \
 	set - `grep "^[a-zA-Z]" ${.CURDIR}/nls.alias`; \
 	while [ $$# -gt 0 ] ; \
