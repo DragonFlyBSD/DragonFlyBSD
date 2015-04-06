@@ -380,7 +380,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_ONFLUSH		0x00000200	/* on a flush list */
 #define HAMMER2_CHAIN_FICTITIOUS	0x00000400	/* unsuitable for I/O */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
-#define HAMMER2_CHAIN_UNUSED00001000	0x00001000
+#define HAMMER2_CHAIN_KEEP_MIRROR_TID	0x00001000	/* retain mirror_tid */
 #define HAMMER2_CHAIN_UNUSED00002000	0x00002000
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_UNUSED00008000	0x00008000
@@ -525,6 +525,9 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * of chains remain in a working copy, the operation may have to be
  * downgraded, retried, stall until the requisit number of chains are
  * available, or possibly even error out depending on the mount type.
+ *
+ * A cluster's focus is set when it is locked.  The focus can only be set
+ * to a chain still part of the synchronized set.
  */
 #define HAMMER2_MAXCLUSTER	8
 
@@ -538,6 +541,12 @@ struct hammer2_cluster_item {
 
 typedef struct hammer2_cluster_item hammer2_cluster_item_t;
 
+/*
+ * INVALID	- Invalid for focus, i.e. not part of synchronized set.
+ *		  Once set, this bit is sticky across operations.
+ */
+#define HAMMER2_CITEM_INVALID	0x00000001
+
 struct hammer2_cluster {
 	int			refs;		/* track for deallocation */
 	int			ddflag;
@@ -545,6 +554,7 @@ struct hammer2_cluster {
 	uint32_t		flags;
 	int			nchains;
 	int			error;		/* error code valid on lock */
+	int			focus_index;
 	hammer2_iocb_t		iocb;
 	hammer2_chain_t		*focus;		/* current focus (or mod) */
 	hammer2_cluster_item_t	array[HAMMER2_MAXCLUSTER];
@@ -685,38 +695,6 @@ TAILQ_HEAD(h2_unlk_list, hammer2_inode_unlink);
 typedef struct hammer2_inode_unlink hammer2_inode_unlink_t;
 
 /*
- * Cluster node synchronization thread element.
- *
- * Multiple syncthr's can hang off of a hammer2_pfs structure, typically one
- * for each block device that is part of the PFS.  Synchronization threads
- * for PFSs accessed over the network are handled by their respective hosts.
- *
- * Synchronization threads are responsible for keeping a local node
- * synchronized to the greater cluster.
- *
- * A syncthr can also hang off each hammer2_dev's super-root PFS (spmp).
- * This thread is responsible for automatic bulkfree and dedup scans.
- */
-struct hammer2_syncthr {
-	struct hammer2_pfs *pmp;
-	kdmsg_state_t	*span;
-	thread_t	td;
-	uint32_t	flags;
-	uint32_t	unused01;
-	struct lock	lk;
-};
-
-typedef struct hammer2_syncthr hammer2_syncthr_t;
-
-#define HAMMER2_SYNCTHR_UNMOUNTING	0x0001	/* unmount request */
-#define HAMMER2_SYNCTHR_DEV		0x0002	/* related to dev, not pfs */
-#define HAMMER2_SYNCTHR_SPANNED		0x0004	/* LNK_SPAN active */
-#define HAMMER2_SYNCTHR_REMASTER	0x0008	/* remaster request */
-#define HAMMER2_SYNCTHR_STOP		0x0010	/* exit request */
-#define HAMMER2_SYNCTHR_FREEZE		0x0020	/* force idle */
-#define HAMMER2_SYNCTHR_FROZEN		0x0040	/* restart */
-
-/*
  * A hammer2 transaction and flush sequencing structure.
  *
  * This global structure is tied into hammer2_dev and is used
@@ -798,6 +776,40 @@ struct hammer2_trans_manage {
 };
 
 typedef struct hammer2_trans_manage hammer2_trans_manage_t;
+
+/*
+ * Cluster node synchronization thread element.
+ *
+ * Multiple syncthr's can hang off of a hammer2_pfs structure, typically one
+ * for each block device that is part of the PFS.  Synchronization threads
+ * for PFSs accessed over the network are handled by their respective hosts.
+ *
+ * Synchronization threads are responsible for keeping a local node
+ * synchronized to the greater cluster.
+ *
+ * A syncthr can also hang off each hammer2_dev's super-root PFS (spmp).
+ * This thread is responsible for automatic bulkfree and dedup scans.
+ */
+struct hammer2_syncthr {
+	struct hammer2_pfs *pmp;
+	kdmsg_state_t	*span;
+	thread_t	td;
+	uint32_t	flags;
+	uint32_t	unused01;
+	hammer2_trans_t	trans;
+	struct lock	lk;
+};
+
+typedef struct hammer2_syncthr hammer2_syncthr_t;
+
+#define HAMMER2_SYNCTHR_UNMOUNTING	0x0001	/* unmount request */
+#define HAMMER2_SYNCTHR_DEV		0x0002	/* related to dev, not pfs */
+#define HAMMER2_SYNCTHR_SPANNED		0x0004	/* LNK_SPAN active */
+#define HAMMER2_SYNCTHR_REMASTER	0x0008	/* remaster request */
+#define HAMMER2_SYNCTHR_STOP		0x0010	/* exit request */
+#define HAMMER2_SYNCTHR_FREEZE		0x0020	/* force idle */
+#define HAMMER2_SYNCTHR_FROZEN		0x0040	/* restart */
+
 
 /*
  * Global (per partition) management structure, represents a hard block
@@ -924,7 +936,7 @@ struct hammer2_pfs {
 	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
 	hammer2_mtx_t 		wthread_mtx;	/* interlock */
 	int			wthread_destroy;/* termination sequencing */
-	uint32_t		status_flags;	/* cached cluster flags */
+	uint32_t		flags;		/* cached cluster flags */
 };
 
 typedef struct hammer2_pfs hammer2_pfs_t;
@@ -1334,6 +1346,12 @@ hammer2_cluster_t *hammer2_cluster_next(hammer2_cluster_t *cparent,
 			hammer2_key_t *key_nextp,
 			hammer2_key_t key_beg, hammer2_key_t key_end,
 			int flags);
+void hammer2_cluster_next_single_chain(hammer2_cluster_t *cparent,
+			hammer2_cluster_t *cluster,
+			hammer2_key_t *key_nextp,
+			hammer2_key_t key_beg,
+			hammer2_key_t key_end,
+			int i, int flags);
 hammer2_cluster_t *hammer2_cluster_scan(hammer2_cluster_t *cparent,
 			hammer2_cluster_t *cluster, int flags);
 int hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,

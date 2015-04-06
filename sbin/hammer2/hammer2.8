@@ -60,7 +60,7 @@ to act on all PFSs managed by it.
 Every HAMMER2 filesystem typically has a PFS called "LOCAL" for this purpose.
 .It Fl t Ar type
 Specify the type when creating, upgrading, or downgrading a PFS.
-Supported types are CACHE, COPY, SLAVE, SOFT_SLAVE, MASTER, and SOFT_MASTER.
+Supported types are MASTER, SLAVE, SOFT_MASTER, SOFT_SLAVE, CACHE, and DUMMY.
 If not specified the pfs-create directive will default to MASTER if no
 uuid is specified, and SLAVE if a uuid is specified.
 .It Fl u Ar uuid
@@ -116,12 +116,25 @@ If no uuid is specified the pfs-type defaults to MASTER.
 If a uuid is specified via the
 .Fl u
 option the pfs-type defaults to SLAVE.
-If you wish to add a MASTER to an existing cluster, you must first add it as
-a SLAVE and then upgrade it to MASTER to properly synchronize it.
 Other types can be specified with the
 .Fl t
 option.
-Generally speaking, you can mount any element of the cluster in order to
+.Pp
+If you wish to add a MASTER to an existing cluster, you must first add it as
+a SLAVE and then upgrade it to MASTER to properly synchronize it.
+.Pp
+The DUMMY pfs-type is used to tie network-accessible clusters into the local
+machine when no local storage is desired.
+This type should be used on minimal H2 partitions or entirely in ram for
+netboot-centric systems to provide a tie-in point for the mount command,
+or on more complex systems where you need to also access network-centric
+clusters.
+.Pp
+The CACHE or SLAVE pfs-type is typically used when the main store is on
+the network but local storage is desired to improve performance.
+SLAVE is also used when a backup is desired.
+.Pp
+Generally speaking, you can mount any PFS element of a cluster in order to
 access the cluster via the full cluster protocol.
 There are two exceptions.
 If you mount a SOFT_SLAVE or a SOFT_MASTER then soft quorum semantics are
@@ -150,9 +163,6 @@ Only local CACHEs will be updated.
 Network-accessable CACHE PFSs might be read but will not be written to.
 If you have a large hard-drive-based cluster you can set up localized
 SSD CACHE PFSs to improve performance.
-.Pp
-COPY - Create a PFS to store redundant copies of elements of the cluster.
-(This has not been fleshed out yet).
 .Pp
 SLAVE - Create a PFS which maintains synchronization with and provides a
 read-only copy of the cluster.

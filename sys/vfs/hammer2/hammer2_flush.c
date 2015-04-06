@@ -359,6 +359,8 @@ hammer2_trans_done(hammer2_trans_t *trans)
  * UPDATE flag indicates that its parent's block table (which is not yet
  * part of the flush) should be updated.  The chain may be replaced by
  * the call if it was modified.
+ *
+ * NOTE: mirror_tid is not updated upward along the tree for SLAVE PFSs.
  */
 void
 hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
@@ -507,10 +509,13 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	diddeferral = info->diddeferral;
 	parent = info->parent;		/* can be NULL */
 
+#if 0
 	/*
+	 * XXX mirror_tid allowed to be forward-indexed during synchronization.
 	 * mirror_tid should not be forward-indexed
 	 */
 	KKASSERT(pmp == NULL || chain->bref.mirror_tid <= pmp->flush_tid);
+#endif
 
 	/*
 	 * Downward search recursion
@@ -589,9 +594,14 @@ again:
 		KKASSERT((chain->flags & HAMMER2_CHAIN_UPDATE) ||
 			 chain == &hmp->vchain);
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+
+		/*
+		 * Update mirror_tid unless told otherwise.
+		 */
 		if (pmp) {
 			hammer2_pfs_memory_wakeup(pmp);
-			chain->bref.mirror_tid = pmp->flush_tid;
+			if ((chain->flags & HAMMER2_CHAIN_KEEP_MIRROR_TID) == 0)
+				chain->bref.mirror_tid = pmp->flush_tid;
 		}
 
 		if ((chain->flags & HAMMER2_CHAIN_UPDATE) ||
@@ -623,7 +633,8 @@ again:
 		 *	 further modifications to the buffer.  Chains with
 		 *	 embedded data don't need this.
 		 *
-		 * Update bref.mirror_tid, clear MODIFIED, and set UPDATE.
+		 * Update bref.mirror_tid clear MODIFIED, and set UPDATE for
+		 * special blockref types.
 		 */
 		if (hammer2_debug & 0x1000) {
 			kprintf("Flush %p.%d %016jx/%d sync_xid=%08x "
@@ -922,8 +933,14 @@ again:
 	 */
 done:
 	KKASSERT(chain->refs > 1);
+#if 0
+	/*
+	 * XXX mirror_tid allowed to be forward-indexed during synchronization.
+	 * mirror_tid should not be forward-indexed
+	 */
 	KKASSERT(pmp == NULL ||
 		 chain->bref.mirror_tid <= chain->pmp->flush_tid);
+#endif
 	if (hammer2_debug & 0x200) {
 		if (info->debug == chain)
 			info->debug = NULL;

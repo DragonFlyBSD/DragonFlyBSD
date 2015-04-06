@@ -318,6 +318,7 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
 	cluster->array[0].chain = chain;
 	cluster->nchains = 1;
 	cluster->focus = chain;
+	cluster->focus_index = 0;
 	cluster->pmp = chain->pmp;
 	cluster->refs = 1;
 	cluster->error = chain->error;
@@ -375,6 +376,7 @@ hammer2_cluster_drop(hammer2_cluster_t *cluster)
 	}
 	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
 		cluster->focus = NULL;		/* safety XXX chg to assert */
+		cluster->focus_index = 0;
 		kfree(cluster, M_HAMMER2);
 		/* cluster is invalid */
 	}
@@ -390,7 +392,10 @@ hammer2_cluster_wait(hammer2_cluster_t *cluster)
  * Lock and ref a cluster.  This adds a ref to the cluster and its chains
  * and then locks them, modified by various RESOLVE flags.
  *
- * The act of locking a cluster sets its focus.
+ * The act of locking a cluster sets its focus.  Note that cluster elements
+ * flagged with HAMMER2_CITEM_INVALID cannot be set as a focus.  Locking a
+ * cluster does not adjust this flag since exact matches only matter for leafs
+ * (parents can depend on minor differences in topology).
  *
  * The chains making up the cluster may be narrowed down based on quorum
  * acceptability, and if RESOLVE_RDONLY is specified the chains can be
@@ -497,12 +502,16 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			}
 			continue;
 		}
-
 		switch (cluster->pmp->pfs_types[i]) {
 		case HAMMER2_PFSTYPE_MASTER:
 			++ttlmasters;
-			if (quorum_tid < chain->bref.mirror_tid ||
-			    nmasters == 0) {
+			if (cluster->array[i].flags & HAMMER2_CITEM_INVALID) {
+				/*
+				 * Invalid as in unsynchronized, cannot be
+				 * used to calculate the quorum.
+				 */
+			} else if (quorum_tid < chain->bref.mirror_tid ||
+				   nmasters == 0) {
 				nmasters = 1;
 				quorum_tid = chain->bref.mirror_tid;
 			} else if (quorum_tid == chain->bref.mirror_tid) {
@@ -526,6 +535,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			 */
 			nflags |= HAMMER2_CLUSTER_WRHARD;
 			nflags |= HAMMER2_CLUSTER_RDHARD;
+			cluster->focus_index = i;
 			cluster->focus = chain;
 			cluster->error = chain->error;
 			break;
@@ -556,16 +566,19 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			 * a quorum and the master mirror_tid must match
 			 * the quorum's mirror_tid.
 			 *
-			 * Do not select an errored master.
+			 * Do not select an errored or out-of-sync master.
 			 */
-			if (nmasters >= nquorum &&
-			    chain->error == 0 &&
-			    quorum_tid == chain->bref.mirror_tid) {
+			if (cluster->array[i].flags & HAMMER2_CITEM_INVALID) {
+				nflags |= HAMMER2_CLUSTER_UNHARD;
+			} else if (nmasters >= nquorum &&
+				   chain->error == 0 &&
+				   quorum_tid == chain->bref.mirror_tid) {
 				nflags |= HAMMER2_CLUSTER_WRHARD;
 				nflags |= HAMMER2_CLUSTER_RDHARD;
 				if (cluster->focus == NULL ||
 				    focus_pfs_type == HAMMER2_PFSTYPE_SLAVE) {
 					focus_pfs_type = HAMMER2_PFSTYPE_MASTER;
+					cluster->focus_index = i;
 					cluster->focus = chain;
 					cluster->error = chain->error;
 				}
@@ -581,13 +594,16 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			 *
 			 * Do not select an errored slave.
 			 */
-			if (nmasters >= nquorum &&
-			    chain->error == 0 &&
-			    quorum_tid == chain->bref.mirror_tid) {
+			if (cluster->array[i].flags & HAMMER2_CITEM_INVALID) {
+				nflags |= HAMMER2_CLUSTER_UNHARD;
+			} else if (nmasters >= nquorum &&
+				   chain->error == 0 &&
+				   quorum_tid == chain->bref.mirror_tid) {
 				++nslaves;
 				nflags |= HAMMER2_CLUSTER_RDHARD;
 				if (cluster->focus == NULL) {
 					focus_pfs_type = HAMMER2_PFSTYPE_SLAVE;
+					cluster->focus_index = i;
 					cluster->focus = chain;
 					cluster->error = chain->error;
 				}
@@ -601,6 +617,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			 * should be only one.
 			 */
 			KKASSERT(focus_pfs_type != HAMMER2_PFSTYPE_SOFT_MASTER);
+			cluster->focus_index = i;
 			cluster->focus = chain;
 			cluster->error = chain->error;
 			focus_pfs_type = HAMMER2_PFSTYPE_SOFT_MASTER;
@@ -612,6 +629,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			 */
 			KKASSERT(focus_pfs_type != HAMMER2_PFSTYPE_SOFT_SLAVE);
 			if (focus_pfs_type != HAMMER2_PFSTYPE_SOFT_MASTER) {
+				cluster->focus_index = i;
 				cluster->focus = chain;
 				cluster->error = chain->error;
 				focus_pfs_type = HAMMER2_PFSTYPE_SOFT_SLAVE;
@@ -707,6 +725,7 @@ hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 				cluster->array[i].chain = NULL;	/* safety */
 		}
 	}
+	cluster->focus_index = 0;
 	cluster->focus = NULL;
 
 	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
@@ -902,22 +921,15 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 	hammer2_pfs_t *pmp;
 	hammer2_cluster_t *cluster;
 	hammer2_chain_t *chain;
+	hammer2_chain_t *focus;
 	hammer2_key_t key_accum;
 	hammer2_key_t key_next;
-	hammer2_key_t bref_key;
 	int null_count;
-	int bref_keybits;
 	int i;
-	uint8_t bref_type;
-	u_int bytes;
 
 	pmp = cparent->pmp;				/* can be NULL */
 	key_accum = *key_nextp;
 	null_count = 0;
-	bref_type = 0;
-	bref_key = 0;
-	bref_keybits = 0;
-	bytes = 0;
 
 	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
 	cluster->pmp = pmp;				/* can be NULL */
@@ -925,12 +937,22 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 	if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
 		cluster->flags |= HAMMER2_CLUSTER_LOCKED;
 
+	/*
+	 * Pass-1, issue lookup and find focus.
+	 */
 	for (i = 0; i < cparent->nchains; ++i) {
+		cluster->array[i].flags = cparent->array[i].flags;
 		key_next = *key_nextp;
-		if (cparent->array[i].chain == NULL) {
+
+		/*
+		 * Nothing to base the lookup, or parent was not synchronized.
+		 */
+		if (cparent->array[i].chain == NULL ||
+		    (cparent->array[i].flags & HAMMER2_CITEM_INVALID)) {
 			++null_count;
 			continue;
 		}
+
 		chain = hammer2_chain_lookup(&cparent->array[i].chain,
 					     &key_next,
 					     key_beg, key_end,
@@ -942,40 +964,71 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 		} else if (chain->error) {
 			/*
 			 * Leave errored chain in cluster, but it cannot be
-			 * the cluster's focus.
+			 * the cluster's focus.  It is still possible for an
+			 * error'd chain to be synchronized (since we have
+			 * the bref), synchronization state will be handled
+			 * in pass-2.
+			 */
+			;
+		} else if (cluster->array[i].flags & HAMMER2_CITEM_INVALID) {
+			/*
+			 * Leave unsynchronized chain in cluster, but it cannot
+			 * be the cluster's focus.
 			 */
 			;
 		} else {
 			int ddflag = (chain->bref.type ==
 				      HAMMER2_BREF_TYPE_INODE);
 
-			/*
-			 * Set default focus.
-			 */
 			if (cluster->focus == NULL) {
-				bref_type = chain->bref.type;
-				bref_key = chain->bref.key;
-				bref_keybits = chain->bref.keybits;
-				bytes = chain->bytes;
+				cluster->focus_index = i;
+				cluster->focus = chain;
 				cluster->ddflag = ddflag;
-				cluster->focus = chain;
 			}
-
-			/*
-			 * Override default focus to follow the parent.
-			 */
-			if (cparent->focus == cparent->array[i].chain)
+			if (cparent->focus == cparent->array[i].chain) {
+				cluster->focus_index = i;
 				cluster->focus = chain;
-
-			KKASSERT(bref_type == chain->bref.type);
-			KKASSERT(bref_key == chain->bref.key);
-			KKASSERT(bref_keybits == chain->bref.keybits);
-			KKASSERT(bytes == chain->bytes);
-			KKASSERT(cluster->ddflag == ddflag);
+				cluster->ddflag = ddflag;
+			}
 		}
 		if (key_accum > key_next)
 			key_accum = key_next;
 	}
+
+	/*
+	 * Pass-2 invalidate mismatches
+	 */
+	focus = cluster->focus;
+	if (focus == NULL)
+		goto done;
+
+	for (i = 0; i < cparent->nchains; ++i) {
+		int ddflag;
+
+		chain = cluster->array[i].chain;
+
+		if (chain == NULL)
+			continue;
+		if (chain == focus)
+			continue;
+		if (cluster->array[i].flags & HAMMER2_CITEM_INVALID)
+			continue;
+
+		ddflag = (chain->bref.type == HAMMER2_BREF_TYPE_INODE);
+		if (chain->bref.type != focus->bref.type ||
+		    chain->bref.key != focus->bref.key ||
+		    chain->bref.keybits != focus->bref.keybits ||
+		    chain->bytes != focus->bytes ||
+		    ddflag != cluster->ddflag) {
+			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
+		}
+	}
+
+	/*
+	 * Resolve cluster flags.  A lookup or locking failure could wind
+	 * up changing the cluster.
+	 */
+done:
 	*key_nextp = key_accum;
 	cluster->nchains = i;
 	hammer2_cluster_resolve(cluster);
@@ -996,82 +1049,119 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		     hammer2_key_t *key_nextp,
 		     hammer2_key_t key_beg, hammer2_key_t key_end, int flags)
 {
-	hammer2_chain_t *chain;
+	hammer2_chain_t *ochain;
+	hammer2_chain_t *nchain;
+	hammer2_chain_t *focus;
 	hammer2_key_t key_accum;
 	hammer2_key_t key_next;
-	hammer2_key_t bref_key;
 	int null_count;
-	int bref_keybits;
 	int i;
-	uint8_t bref_type;
-	u_int bytes;
 
 	key_accum = *key_nextp;
 	null_count = 0;
 	cluster->focus = NULL;
 	cparent->focus = NULL;
+	cluster->focus_index = 0;
+	cparent->focus_index = 0;
 
-	bref_type = 0;
-	bref_key = 0;
-	bref_keybits = 0;
-	bytes = 0;
 	cluster->ddflag = 0;
 
 	for (i = 0; i < cparent->nchains; ++i) {
 		key_next = *key_nextp;
-		chain = cluster->array[i].chain;
-		if (chain == NULL) {
+		ochain = cluster->array[i].chain;
+
+		/*
+		 * Nothing to iterate from.  These cases can occur under
+		 * normal operations.  For example, during synchronization
+		 * a slave might reach the end of its scan while records
+		 * are still left on the master(s).
+		 */
+		if (ochain == NULL) {
 			++null_count;
 			continue;
 		}
-		if (cparent->array[i].chain == NULL) {
+		if (cparent->array[i].chain == NULL ||
+		    (cparent->array[i].flags & HAMMER2_CITEM_INVALID) ||
+		    (cluster->array[i].flags & HAMMER2_CITEM_INVALID)) {
 			if (flags & HAMMER2_LOOKUP_NOLOCK)
-				hammer2_chain_drop(chain);
+				hammer2_chain_drop(ochain);
 			else
-				hammer2_chain_unlock(chain);
+				hammer2_chain_unlock(ochain);
 			++null_count;
 			continue;
 		}
-		chain = hammer2_chain_next(&cparent->array[i].chain, chain,
-					   &key_next, key_beg, key_end,
-					   &cparent->array[i].cache_index,
-					   flags);
-		cluster->array[i].chain = chain;
-		if (chain == NULL) {
+
+		nchain = hammer2_chain_next(&cparent->array[i].chain, ochain,
+					    &key_next, key_beg, key_end,
+					    &cparent->array[i].cache_index,
+					    flags);
+		/* ochain now invalid but can still be used for focus check */
+
+		cluster->array[i].chain = nchain;
+		if (nchain == NULL) {
 			++null_count;
-		} else if (chain->error) {
+		} else if (nchain->error) {
 			/*
 			 * Leave errored chain in cluster, but it cannot be
 			 * the cluster's focus.
 			 */
 			;
 		} else {
-			int ddflag = (chain->bref.type ==
+			int ddflag = (nchain->bref.type ==
 				      HAMMER2_BREF_TYPE_INODE);
+
+			/*
+			 * Possible new focus.
+			 */
 			if (cluster->focus == NULL) {
-				bref_type = chain->bref.type;
-				bref_key = chain->bref.key;
-				bref_keybits = chain->bref.keybits;
-				bytes = chain->bytes;
 				cluster->ddflag = ddflag;
-				cluster->focus = chain;
+				cluster->focus_index = i;
+				cluster->focus = nchain;
 			}
 
 			/*
-			 * Override default focus to follow the parent.
+			 * Fixup pre-existing focus.
 			 */
-			if (cparent->focus == cparent->array[i].chain)
-				cluster->focus = chain;
-
-			KKASSERT(bref_type == chain->bref.type);
-			KKASSERT(bref_key == chain->bref.key);
-			KKASSERT(bref_keybits == chain->bref.keybits);
-			KKASSERT(bytes == chain->bytes);
-			KKASSERT(cluster->ddflag == ddflag);
+			if (cluster->focus == ochain) {
+				cluster->focus_index = i;
+				cluster->focus = nchain;
+			}
 		}
 		if (key_accum > key_next)
 			key_accum = key_next;
 	}
+
+	/*
+	 * Pass-2 invalidate mismatches
+	 */
+	focus = cluster->focus;
+	if (focus == NULL)
+		goto done;
+
+	for (i = 0; i < cparent->nchains; ++i) {
+		int ddflag;
+
+		nchain = cluster->array[i].chain;
+
+		if (nchain == NULL)
+			continue;
+		if (nchain == focus)
+			continue;
+		if (cluster->array[i].flags & HAMMER2_CITEM_INVALID)
+			continue;
+
+		ddflag = (nchain->bref.type == HAMMER2_BREF_TYPE_INODE);
+		if (nchain->bref.type != focus->bref.type ||
+		    nchain->bref.key != focus->bref.key ||
+		    nchain->bref.keybits != focus->bref.keybits ||
+		    nchain->bytes != focus->bytes ||
+		    ddflag != cluster->ddflag) {
+			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
+		}
+	}
+
+done:
+	*key_nextp = key_accum;
 	cluster->nchains = i;
 	hammer2_cluster_resolve(cluster);
 
@@ -1080,6 +1170,81 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		cluster = NULL;
 	}
 	return(cluster);
+}
+
+/*
+ * Advance just one chain in the cluster and recalculate the invalid bit.
+ * (used during synchronization to advance past a chain being deleted).
+ *
+ * The chain being advanced must not be the focus and the clusters in
+ * question must have already passed normal cluster_lookup/cluster_next
+ * checks.
+ *
+ * The cluster always remains intact on return, so void function.
+ */
+void
+hammer2_cluster_next_single_chain(hammer2_cluster_t *cparent,
+				  hammer2_cluster_t *cluster,
+				  hammer2_key_t *key_nextp,
+				  hammer2_key_t key_beg,
+				  hammer2_key_t key_end,
+				  int i, int flags)
+{
+	hammer2_chain_t *ochain;
+	hammer2_chain_t *nchain;
+	hammer2_chain_t *focus;
+	hammer2_key_t key_accum;
+	hammer2_key_t key_next;
+	int ddflag;
+
+	key_accum = *key_nextp;
+	key_next = *key_nextp;
+	ochain = cluster->array[i].chain;
+	if (ochain == NULL)
+		goto done;
+	KKASSERT(ochain != cluster->focus);
+
+	nchain = hammer2_chain_next(&cparent->array[i].chain, ochain,
+				    &key_next, key_beg, key_end,
+				    &cparent->array[i].cache_index,
+				    flags);
+	/* ochain now invalid */
+
+	/*
+	 * Install nchain.  Note that nchain can be NULL.
+	 */
+	cluster->array[i].chain = nchain;
+	cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
+
+	if (key_accum > key_next)
+		key_accum = key_next;
+
+	focus = cluster->focus;
+	if (focus == NULL)
+		goto done;
+	if (nchain == NULL)
+		goto done;
+#if 0
+	if (nchain == focus)	/* ASSERTED NOT TRUE */
+		...
+#endif
+	ddflag = (nchain->bref.type == HAMMER2_BREF_TYPE_INODE);
+	if (nchain->bref.type != focus->bref.type ||
+	    nchain->bref.key != focus->bref.key ||
+	    nchain->bref.keybits != focus->bref.keybits ||
+	    nchain->bytes != focus->bytes ||
+	    ddflag != cluster->ddflag) {
+		cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
+	}
+
+done:
+	*key_nextp = key_accum;
+#if 0
+	/*
+	 * For now don't re-resolve cluster->flags.
+	 */
+	hammer2_cluster_resolve(cluster);
+#endif
 }
 
 /*
@@ -1105,6 +1270,7 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 		cluster->refs = 1;
 		cluster->flags = HAMMER2_CLUSTER_LOCKED;
 	}
+	cluster->focus_index = 0;
 	cluster->focus = NULL;
 
 	/*
@@ -1121,10 +1287,14 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 					     key, keybits,
 					     type, bytes, flags);
 		KKASSERT(error == 0);
-		if (cluster->focus == NULL)
+		if (cluster->focus == NULL) {
+			cluster->focus_index = i;
 			cluster->focus = cluster->array[i].chain;
-		if (cparent->focus == cparent->array[i].chain)
+		}
+		if (cparent->focus == cparent->array[i].chain) {
+			cluster->focus_index = i;
 			cluster->focus = cluster->array[i].chain;
+		}
 	}
 	cluster->nchains = i;
 	*clusterp = cluster;
@@ -1151,6 +1321,8 @@ hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 
 	cluster->focus = NULL;
 	cparent->focus = NULL;
+	cluster->focus_index = 0;
+	cparent->focus_index = 0;
 
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
@@ -1348,8 +1520,10 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 				break;
 			hammer2_chain_unlock(rchain);
 		}
-		if (cluster->focus == chain)
+		if (cluster->focus == chain) {
+			cparent->focus_index = i;
 			cparent->focus = rchain;
+		}
 		cparent->array[i].chain = rchain;
 		hammer2_chain_drop(chain);
 	}
@@ -1482,78 +1656,3 @@ hammer2_cluster_load_async(hammer2_cluster_t *cluster,
 	hammer2_adjreadcounter(&chain->bref, chain->bytes);
 	hammer2_io_getblk(hmp, bref->data_off, chain->bytes, iocb);
 }
-
-/************************************************************************
- *			    NODE FAILURES 				*
- ************************************************************************
- *
- * A node failure can occur for numerous reasons.
- *
- *	- A read I/O may fail
- *	- A write I/O may fail
- *	- An unexpected chain might be found (or be missing)
- *	- A node might disconnect temporarily and reconnect later
- *	  (for example, a USB stick could get pulled, or a node might
- *	  be programmatically disconnected).
- *	- A node might run out of space during a modifying operation.
- *
- * When a read failure or an unexpected chain state is found, the chain and
- * parent chain at the failure point for the nodes involved (the nodes
- * which we determine to be in error) are flagged as failed and removed
- * from the cluster.  The node itself is allowed to remain active.  The
- * highest common point (usually a parent chain) is queued to the
- * resynchronization thread for action.
- *
- * When a write I/O fails or a node runs out of space, we first adjust
- * as if a read failure occurs but we further disable flushes on the
- * ENTIRE node.  Concurrent modifying transactions are allowed to complete
- * but any new modifying transactions will automatically remove the node
- * from consideration in all related cluster structures and not generate
- * any new modified chains.  The ROOT chain for the failed node(s) is queued
- * to the resynchronization thread for action.
- *
- * A temporary disconnect is handled as if a write failure occurred.
- *
- * Any of these failures might or might not stall related high level VNOPS,
- * depending on what has failed, what nodes remain, the type of cluster,
- * and the operating state of the cluster.
- *
- *			    FLUSH ON WRITE-DISABLED NODES
- *
- * A flush on a write-disabled node is not allowed to write anything because
- * we cannot safely update the mirror_tid anywhere on the failed node.  The
- * synchronization thread uses mirror_tid to calculate incremental resyncs.
- * Dirty meta-data related to the failed node is thrown away.
- *
- * Dirty buffer cache buffers and inodes are only thrown away if they can be
- * retired... that is, if the filesystem still has enough nodes to complete
- * the operation.
- */
-
-/************************************************************************
- *			SYNCHRONIZATION THREAD				*
- ************************************************************************
- *
- * This thread is responsible for [re]synchronizing the cluster representing
- * a PFS.  Any out-of-sync or failed node starts this thread on a
- * node-by-node basis when the failure is detected.
- *
- * Clusters needing resynchronization are queued at the highest point
- * where the parent on the failed node is still valid, or a special
- * incremental scan from the ROOT is queued if no parent exists.  This
- * thread is also responsible for waiting for reconnections of the failed
- * node if the cause was due to a disconnect, and waiting for space to be
- * freed up if the cause was due to running out of space.
- *
- * If the cause is due to a node running out of space, this thread will also
- * remove older (unlocked) snapshots to make new space, recover space, and
- * then start resynchronization.
- *
- * Each resynchronization pass virtually snapshots the PFS on the good nodes
- * and synchronizes using that snapshot against the target node.  This
- * ensures a consistent chain topology and also avoids interference between
- * the resynchronization thread and frontend operations.
- *
- * Since these are per-node threads it is possible to resynchronize several
- * nodes at once.
- */

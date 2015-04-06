@@ -1759,8 +1759,20 @@ again:
 	}
 done:
 	/*
-	 * All done, return the chain
+	 * All done, return the chain.
+	 *
+	 * If the caller does not want a locked chain, replace the lock with
+	 * a ref.  Perhaps this can eventually be optimized to not obtain the
+	 * lock in the first place for situations where the data does not
+	 * need to be resolved.
 	 */
+	if (chain) {
+		if (flags & HAMMER2_LOOKUP_NOLOCK) {
+			hammer2_chain_ref(chain);
+			hammer2_chain_unlock(chain);
+		}
+	}
+
 	return (chain);
 }
 
