@@ -259,6 +259,9 @@ coretemp_attach(device_t dev)
 	 */
 	strlcpy(sc->sc_sensordev.xname, device_get_nameunit(pdev),
 	    sizeof(sc->sc_sensordev.xname));
+	ksnprintf(sc->sc_sensor.desc, sizeof(sc->sc_sensor.desc),
+	    "node%d core%d", get_chip_ID(sc->sc_cpu),
+	    get_core_number_within_chip(sc->sc_cpu));
 	sc->sc_sensor.type = SENSOR_TEMP;
 	sc->sc_sensor.flags |= SENSOR_FINVALID;
 	sc->sc_sensor.value = 0;
