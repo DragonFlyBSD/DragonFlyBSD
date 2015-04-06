@@ -789,16 +789,25 @@ hammer_cmd_show_undo(void)
 	hammer_off_t scan_offset;
 	hammer_fifo_any_t head;
 	struct buffer_info *data_buffer = NULL;
+	int64_t bytes;
 
 	volume = get_volume(RootVolNo);
 	rootmap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	if (rootmap->first_offset <= rootmap->next_offset)
+		bytes = rootmap->next_offset - rootmap->first_offset;
+	else
+		bytes = rootmap->alloc_offset - rootmap->first_offset +
+			(rootmap->next_offset & HAMMER_OFF_LONG_MASK);
+
 	printf("Volume header UNDO %016jx-%016jx/%016jx\n",
 		(intmax_t)rootmap->first_offset,
 		(intmax_t)rootmap->next_offset,
 		(intmax_t)rootmap->alloc_offset);
-	printf("Undo map is %jdMB\n",
+	printf("UNDO map is %jdMB\n",
 		(intmax_t)((rootmap->alloc_offset & HAMMER_OFF_LONG_MASK) /
 			   (1024 * 1024)));
+	printf("UNDO being used is %jdB\n", (intmax_t)bytes);
+
 	scan_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
 	while (scan_offset < rootmap->alloc_offset) {
 		head = get_buffer_data(scan_offset, &data_buffer, 0);
@@ -806,22 +815,22 @@ hammer_cmd_show_undo(void)
 
 		switch(head->head.hdr_type) {
 		case HAMMER_HEAD_TYPE_PAD:
-			printf("PAD(%04x)\n", head->head.hdr_size);
+			printf("PAD(%04x)", head->head.hdr_size);
 			break;
 		case HAMMER_HEAD_TYPE_DUMMY:
-			printf("DUMMY(%04x) seq=%08x\n",
+			printf("DUMMY(%04x) seq=%08x",
 				head->head.hdr_size, head->head.hdr_seq);
 			break;
 		case HAMMER_HEAD_TYPE_UNDO:
 			printf("UNDO(%04x) seq=%08x "
-			       "dataoff=%016jx bytes=%d\n",
+			       "dataoff=%016jx bytes=%d",
 				head->head.hdr_size, head->head.hdr_seq,
 				(intmax_t)head->undo.undo_offset,
 				head->undo.undo_data_bytes);
 			break;
 		case HAMMER_HEAD_TYPE_REDO:
 			printf("REDO(%04x) seq=%08x flags=%08x "
-			       "objid=%016jx logoff=%016jx bytes=%d\n",
+			       "objid=%016jx logoff=%016jx bytes=%d",
 				head->head.hdr_size, head->head.hdr_seq,
 				head->redo.redo_flags,
 				(intmax_t)head->redo.redo_objid,
@@ -829,12 +838,19 @@ hammer_cmd_show_undo(void)
 				head->redo.redo_data_bytes);
 			break;
 		default:
-			printf("UNKNOWN(%04x,%04x) seq=%08x\n",
+			printf("UNKNOWN(%04x,%04x) seq=%08x",
 				head->head.hdr_type,
 				head->head.hdr_size,
 				head->head.hdr_seq);
 			break;
 		}
+
+		if (scan_offset == rootmap->first_offset)
+			printf(" >");
+		if (scan_offset == rootmap->next_offset)
+			printf(" <");
+		printf("\n");
+
 		if ((head->head.hdr_size & HAMMER_HEAD_ALIGN_MASK) ||
 		    head->head.hdr_size == 0 ||
 		    head->head.hdr_size > HAMMER_UNDO_ALIGN -
