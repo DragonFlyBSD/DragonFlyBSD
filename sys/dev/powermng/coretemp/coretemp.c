@@ -99,21 +99,24 @@ static void
 coretemp_identify(driver_t *driver, device_t parent)
 {
 	device_t child;
-	u_int regs[4];
 
 	/* Make sure we're not being doubly invoked. */
 	if (device_find_child(parent, "coretemp", -1) != NULL)
 		return;
 
-	/* Check that CPUID 0x06 is supported and the vendor is Intel.*/
-	if (cpu_high < 6 || cpu_vendor_id != CPU_VENDOR_INTEL)
+	/* Check that the vendor is Intel. */
+	if (cpu_vendor_id != CPU_VENDOR_INTEL)
 		return;
+
 	/*
-	 * CPUID 0x06 returns 1 if the processor has on-die thermal
-	 * sensors. EBX[0:3] contains the number of sensors.
+	 * Some Intel CPUs, namely the PIII, don't have thermal sensors,
+	 * but report them in cpu_thermal_feature.  This leads to a later
+	 * GPF when the sensor is queried via a MSR, so we stop here.
 	 */
-	do_cpuid(0x06, regs);
-	if ((regs[0] & 0x1) != 1)
+	if (CPUID_TO_MODEL(cpu_id) < 0xe)
+		return;
+
+	if ((cpu_thermal_feature & CPUID_THERMAL_SENSOR) == 0)
 		return;
 
 	/*
@@ -149,15 +152,6 @@ coretemp_attach(device_t dev)
 	pdev = device_get_parent(dev);
 	cpu_model = CPUID_TO_MODEL(cpu_id);
 	cpu_stepping = cpu_id & CPUID_STEPPING;
-
-	/*
-	 * Some CPUs, namely the PIII, don't have thermal sensors, but
-	 * report them when the CPUID check is performed in
-	 * coretemp_identify(). This leads to a later GPF when the sensor
-	 * is queried via a MSR, so we stop here.
-	 */
-	if (cpu_model < 0xe)
-		return (ENXIO);
 
 #if 0 /*
        * XXXrpaulo: I have this CPU model and when it returns from C3
