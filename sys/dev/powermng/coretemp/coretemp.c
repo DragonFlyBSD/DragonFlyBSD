@@ -62,6 +62,7 @@ struct coretemp_softc {
 
 #define CORETEMP_FLAG_INITED	0x1
 #define CORETEMP_FLAG_PENDING	0x2
+#define CORETEMP_FLAG_CRIT	0x4
 
 /*
  * Device methods.
@@ -263,6 +264,7 @@ coretemp_attach(device_t dev)
 	    "node%d core%d", get_chip_ID(sc->sc_cpu),
 	    get_core_number_within_chip(sc->sc_cpu));
 	sc->sc_sensor.type = SENSOR_TEMP;
+	sc->sc_sensor.status = SENSOR_S_UNSPEC;
 	sc->sc_sensor.flags |= SENSOR_FINVALID;
 	sc->sc_sensor.value = 0;
 	sensor_attach(&sc->sc_sensordev, &sc->sc_sensor);
@@ -292,7 +294,7 @@ coretemp_ipifunc(void *xsc)
 
 	sc->sc_msr = rdmsr(MSR_THERM_STATUS);
 	cpu_sfence();
-	sc->sc_flags &= ~CORETEMP_FLAG_PENDING;
+	atomic_clear_int(&sc->sc_flags, CORETEMP_FLAG_PENDING);
 }
 
 static int
@@ -301,7 +303,6 @@ coretemp_get_temp(device_t dev)
 	uint64_t msr;
 	int temp, cpu;
 	struct coretemp_softc *sc = device_get_softc(dev);
-	char stemp[16];
 
 	cpu = sc->sc_cpu;
 
@@ -315,8 +316,8 @@ coretemp_get_temp(device_t dev)
 			/* The first time we are called */
 			KASSERT((sc->sc_flags & CORETEMP_FLAG_PENDING) == 0,
 			    ("has pending bit set"));
-			sc->sc_flags |= CORETEMP_FLAG_INITED |
-			    CORETEMP_FLAG_PENDING;
+			atomic_set_int(&sc->sc_flags,
+			    CORETEMP_FLAG_INITED | CORETEMP_FLAG_PENDING);
 			cpu_mfence();
 			lwkt_send_ipiq_passive(sc->sc_gd, coretemp_ipifunc, sc);
 			return (-2);
@@ -325,7 +326,7 @@ coretemp_get_temp(device_t dev)
 				/* IPI does not complete yet */
 				return (-2);
 			}
-			sc->sc_flags |= CORETEMP_FLAG_PENDING;
+			atomic_set_int(&sc->sc_flags, CORETEMP_FLAG_PENDING);
 			msr = sc->sc_msr;
 		}
 	} else {
@@ -361,10 +362,18 @@ coretemp_get_temp(device_t dev)
 	 * and shutdown the system.
 	 */
 	if (((msr >> 4) & 0x3) == 0x3) {
-		device_printf(dev, "critical temperature detected, "
-		    "suggest system shutdown\n");
-		ksnprintf(stemp, sizeof(stemp), "%d", temp);
-		devctl_notify("coretemp", "Thermal", stemp, "notify=0xcc");
+		if ((sc->sc_flags & CORETEMP_FLAG_CRIT) == 0) {
+			char stemp[16];
+
+			device_printf(dev, "critical temperature detected, "
+			    "suggest system shutdown\n");
+			ksnprintf(stemp, sizeof(stemp), "%d", temp);
+			devctl_notify("coretemp", "Thermal", stemp,
+			    "notify=0xcc");
+			atomic_set_int(&sc->sc_flags, CORETEMP_FLAG_CRIT);
+		}
+	} else if (sc->sc_flags & CORETEMP_FLAG_CRIT) {
+		atomic_clear_int(&sc->sc_flags, CORETEMP_FLAG_CRIT);
 	}
 
 	if (sc->sc_flags & CORETEMP_FLAG_PENDING) {
@@ -388,9 +397,14 @@ coretemp_refresh(void *arg)
 	if (temp == -2) {
 		/* No updates; keep the previous value */
 	} else if (temp == -1) {
+		s->status = SENSOR_S_UNSPEC;
 		s->flags |= SENSOR_FINVALID;
 		s->value = 0;
 	} else {
+		if (sc->sc_flags & CORETEMP_FLAG_CRIT)
+			s->status = SENSOR_S_CRIT;
+		else
+			s->status = SENSOR_S_OK;
 		s->flags &= ~SENSOR_FINVALID;
 		s->value = temp * 1000000 + 273150000;
 	}
