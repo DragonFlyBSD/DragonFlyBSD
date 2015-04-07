@@ -489,10 +489,12 @@ sysctl_sensors_handler(SYSCTL_HANDLER_ARGS)
 static void
 sensor_sysinit(void *arg __unused)
 {
-	int error;
+	int error, cpu;
 
-	error = kthread_create(sensor_task_thread, NULL, NULL, "sensors");
+	cpu = ncpus - 1; /* stick to the last CPU */
+	error = kthread_create_cpu(sensor_task_thread, NULL, NULL, cpu,
+	    "sensors");
 	if (error)
-		panic("sensors kthread failed: %d", error);
+		panic("sensors kthread on cpu%d failed: %d", cpu, error);
 }
 SYSINIT(sensor, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, sensor_sysinit, NULL);
