@@ -127,6 +127,8 @@ hammer2_cluster_need_resize(hammer2_cluster_t *cluster, int bytes)
 
 	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
 	for (i = 0; i < cluster->nchains; ++i) {
+		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0)
+			continue;
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
@@ -171,7 +173,8 @@ hammer2_cluster_modified(hammer2_cluster_t *cluster)
  * Returns the bref of the cluster's focus, sans any data-offset information
  * (since offset information is per-node and wouldn't be useful).
  *
- * Callers use this function to access mirror_tid, key, and keybits.
+ * Callers use this function to access modify_tid, mirror_tid, type,
+ * key, and keybits.
  *
  * If the cluster is errored, returns an empty bref.
  * The cluster must be locked.
@@ -206,6 +209,8 @@ hammer2_cluster_isunlinked(hammer2_cluster_t *cluster)
 
 	flags = 0;
 	for (i = 0; i < cluster->nchains; ++i) {
+		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0)
+			continue;
 		chain = cluster->array[i].chain;
 		if (chain)
 			flags |= chain->flags;
@@ -216,6 +221,8 @@ hammer2_cluster_isunlinked(hammer2_cluster_t *cluster)
 /*
  * Set a bitmask of flags in all chains related to a cluster.
  * The cluster should probably be locked.
+ *
+ * XXX Only operate on FEMOD elements?
  */
 void
 hammer2_cluster_set_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
@@ -233,6 +240,8 @@ hammer2_cluster_set_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
 /*
  * Set a bitmask of flags in all chains related to a cluster.
  * The cluster should probably be locked.
+ *
+ * XXX Only operate on FEMOD elements?
  */
 void
 hammer2_cluster_clr_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
@@ -263,6 +272,8 @@ hammer2_cluster_setflush(hammer2_trans_t *trans, hammer2_cluster_t *cluster)
 	int i;
 
 	for (i = 0; i < cluster->nchains; ++i) {
+		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0)
+			continue;
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
@@ -276,7 +287,7 @@ hammer2_cluster_setflush(hammer2_trans_t *trans, hammer2_cluster_t *cluster)
  * Set the check mode for the cluster.
  * Errored elements of the cluster are ignored.
  *
- * The cluster must be locked.
+ * The cluster must be locked and modified.
  */
 void
 hammer2_cluster_setmethod_check(hammer2_trans_t *trans,
@@ -288,6 +299,10 @@ hammer2_cluster_setmethod_check(hammer2_trans_t *trans,
 
 	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
 	for (i = 0; i < cluster->nchains; ++i) {
+		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
+			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
+			continue;
+		}
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
@@ -316,6 +331,7 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
 
 	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
 	cluster->array[0].chain = chain;
+	cluster->array[0].flags = HAMMER2_CITEM_FEMOD;
 	cluster->nchains = 1;
 	cluster->focus = chain;
 	cluster->focus_index = 0;
@@ -397,6 +413,13 @@ hammer2_cluster_wait(hammer2_cluster_t *cluster)
  * cluster does not adjust this flag since exact matches only matter for leafs
  * (parents can depend on minor differences in topology).
  *
+ * HAMMER2_CITEM_FEMOD flags which elements can be modified by normal
+ * operations.  Typically this is only set on a quorum of MASTERs or
+ * on a SOFT_MASTER.  Also as a degenerate case on SUPROOT.  If a SOFT_MASTER
+ * is present, this bit is *not* set on a quorum of MASTERs.  The
+ * synchronization code ignores this bit, but all hammer2_cluster_*() calls
+ * that create/modify/delete elements use it.
+ *
  * The chains making up the cluster may be narrowed down based on quorum
  * acceptability, and if RESOLVE_RDONLY is specified the chains can be
  * narrowed down to a single chain as long as the entire subtopology is known
@@ -418,17 +441,15 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 	int i;
 
 	/* cannot be on inode-embedded cluster template, must be on copy */
+	KKASSERT(cluster->refs > 0);
 	KKASSERT((cluster->flags & HAMMER2_CLUSTER_INODE) == 0);
 	if (cluster->flags & HAMMER2_CLUSTER_LOCKED) {
-		kprintf("hammer2_cluster_lock: cluster %p already locked!\n",
+		panic("hammer2_cluster_lock: cluster %p already locked!\n",
 			cluster);
 	} else {
 		KKASSERT(cluster->focus == NULL);
 	}
 	atomic_set_int(&cluster->flags, HAMMER2_CLUSTER_LOCKED);
-
-	if ((how & HAMMER2_RESOLVE_NOREF) == 0)
-		atomic_add_int(&cluster->refs, 1);
 
 	/*
 	 * Lock chains and resolve state.
@@ -456,6 +477,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 	int nmasters;
 	int nslaves;
 	int nquorum;
+	int smpresent;
 	int i;
 
 	cluster->error = 0;
@@ -474,6 +496,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 	pmp = cluster->pmp;
 	KKASSERT(pmp != NULL || cluster->nchains == 0);
 	nquorum = pmp ? pmp->pfs_nmasters / 2 + 1 : 0;
+	smpresent = 0;
 
 	/*
 	 * Pass 1
@@ -510,11 +533,11 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 				 * Invalid as in unsynchronized, cannot be
 				 * used to calculate the quorum.
 				 */
-			} else if (quorum_tid < chain->bref.mirror_tid ||
+			} else if (quorum_tid < chain->bref.modify_tid ||
 				   nmasters == 0) {
 				nmasters = 1;
-				quorum_tid = chain->bref.mirror_tid;
-			} else if (quorum_tid == chain->bref.mirror_tid) {
+				quorum_tid = chain->bref.modify_tid;
+			} else if (quorum_tid == chain->bref.modify_tid) {
 				++nmasters;
 			}
 			break;
@@ -524,6 +547,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 		case HAMMER2_PFSTYPE_SOFT_MASTER:
 			nflags |= HAMMER2_CLUSTER_WRSOFT;
 			nflags |= HAMMER2_CLUSTER_RDSOFT;
+			smpresent = 1;
 			break;
 		case HAMMER2_PFSTYPE_SOFT_SLAVE:
 			nflags |= HAMMER2_CLUSTER_RDSOFT;
@@ -531,7 +555,8 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 		case HAMMER2_PFSTYPE_SUPROOT:
 			/*
 			 * Degenerate cluster representing the super-root
-			 * topology on a single device.
+			 * topology on a single device.  Fake stuff so
+			 * cluster ops work as expected.
 			 */
 			nflags |= HAMMER2_CLUSTER_WRHARD;
 			nflags |= HAMMER2_CLUSTER_RDHARD;
@@ -548,6 +573,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 	 * Pass 2
 	 */
 	for (i = 0; i < cluster->nchains; ++i) {
+		cluster->array[i].flags &= ~HAMMER2_CITEM_FEMOD;
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
@@ -563,8 +589,8 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 		case HAMMER2_PFSTYPE_MASTER:
 			/*
 			 * We must have enough up-to-date masters to reach
-			 * a quorum and the master mirror_tid must match
-			 * the quorum's mirror_tid.
+			 * a quorum and the master modify_tid must match
+			 * the quorum's modify_tid.
 			 *
 			 * Do not select an errored or out-of-sync master.
 			 */
@@ -572,9 +598,13 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 				nflags |= HAMMER2_CLUSTER_UNHARD;
 			} else if (nmasters >= nquorum &&
 				   chain->error == 0 &&
-				   quorum_tid == chain->bref.mirror_tid) {
+				   quorum_tid == chain->bref.modify_tid) {
 				nflags |= HAMMER2_CLUSTER_WRHARD;
 				nflags |= HAMMER2_CLUSTER_RDHARD;
+				if (!smpresent) {
+					cluster->array[i].flags |=
+							HAMMER2_CITEM_FEMOD;
+				}
 				if (cluster->focus == NULL ||
 				    focus_pfs_type == HAMMER2_PFSTYPE_SLAVE) {
 					focus_pfs_type = HAMMER2_PFSTYPE_MASTER;
@@ -589,8 +619,8 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 		case HAMMER2_PFSTYPE_SLAVE:
 			/*
 			 * We must have enough up-to-date masters to reach
-			 * a quorum and the slave mirror_tid must match the
-			 * quorum's mirror_tid.
+			 * a quorum and the slave modify_tid must match the
+			 * quorum's modify_tid.
 			 *
 			 * Do not select an errored slave.
 			 */
@@ -598,7 +628,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 				nflags |= HAMMER2_CLUSTER_UNHARD;
 			} else if (nmasters >= nquorum &&
 				   chain->error == 0 &&
-				   quorum_tid == chain->bref.mirror_tid) {
+				   quorum_tid == chain->bref.modify_tid) {
 				++nslaves;
 				nflags |= HAMMER2_CLUSTER_RDHARD;
 				if (cluster->focus == NULL) {
@@ -621,6 +651,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			cluster->focus = chain;
 			cluster->error = chain->error;
 			focus_pfs_type = HAMMER2_PFSTYPE_SOFT_MASTER;
+			cluster->array[i].flags |= HAMMER2_CITEM_FEMOD;
 			break;
 		case HAMMER2_PFSTYPE_SOFT_SLAVE:
 			/*
@@ -635,15 +666,26 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 				focus_pfs_type = HAMMER2_PFSTYPE_SOFT_SLAVE;
 			}
 			break;
+		case HAMMER2_PFSTYPE_SUPROOT:
+			/*
+			 * spmp (degenerate case)
+			 */
+			KKASSERT(i == 0);
+			cluster->focus_index = i;
+			cluster->focus = chain;
+			cluster->error = chain->error;
+			focus_pfs_type = HAMMER2_PFSTYPE_SUPROOT;
+			cluster->array[i].flags |= HAMMER2_CITEM_FEMOD;
+			break;
 		default:
 			break;
 		}
 	}
 
 	if (ttlslaves == 0)
-		nflags |= HAMMER2_CLUSTER_NOHARD;
-	if (ttlmasters == 0)
 		nflags |= HAMMER2_CLUSTER_NOSOFT;
+	if (ttlmasters == 0)
+		nflags |= HAMMER2_CLUSTER_NOHARD;
 
 	/*
 	 * Set SSYNCED or MSYNCED for slaves and masters respectively if
@@ -713,25 +755,17 @@ hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 		kprintf("hammer2_cluster_unlock: cluster %p not locked\n",
 			cluster);
 	}
-	/* KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED); */
+	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
 	KKASSERT(cluster->refs > 0);
 	atomic_clear_int(&cluster->flags, HAMMER2_CLUSTER_LOCKED);
 
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
-		if (chain) {
+		if (chain)
 			hammer2_chain_unlock(chain);
-			if (cluster->refs == 1)
-				cluster->array[i].chain = NULL;	/* safety */
-		}
 	}
 	cluster->focus_index = 0;
 	cluster->focus = NULL;
-
-	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
-		kfree(cluster, M_HAMMER2);
-		/* cluster = NULL; safety */
-	}
 }
 
 /*
@@ -750,6 +784,10 @@ hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	KKASSERT(cparent->nchains == cluster->nchains);
 
 	for (i = 0; i < cluster->nchains; ++i) {
+		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
+			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
+			continue;
+		}
 		chain = cluster->array[i].chain;
 		if (chain) {
 			KKASSERT(cparent->array[i].chain);
@@ -799,6 +837,10 @@ hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 
 	resolve_again = 0;
 	for (i = 0; i < cluster->nchains; ++i) {
+		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
+			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
+			continue;
+		}
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
@@ -838,6 +880,8 @@ hammer2_cluster_modsync(hammer2_cluster_t *cluster)
 	KKASSERT(focus->flags & HAMMER2_CHAIN_MODIFIED);
 
 	for (i = 0; i < cluster->nchains; ++i) {
+		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0)
+			continue;
 		scan = cluster->array[i].chain;
 		if (scan == NULL || scan == focus)
 			continue;
@@ -875,26 +919,14 @@ hammer2_cluster_modsync(hammer2_cluster_t *cluster)
 }
 
 /*
- * Lookup initialization/completion API
+ * Lookup initialization/completion API.  Returns a locked cluster with 1 ref.
  */
 hammer2_cluster_t *
 hammer2_cluster_lookup_init(hammer2_cluster_t *cparent, int flags)
 {
 	hammer2_cluster_t *cluster;
-	int i;
 
-	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
-	cluster->pmp = cparent->pmp;			/* can be NULL */
-	cluster->flags = 0;	/* cluster not locked (yet) */
-	/* cluster->focus = NULL; already null */
-
-	for (i = 0; i < cparent->nchains; ++i)
-		cluster->array[i].chain = cparent->array[i].chain;
-	cluster->nchains = cparent->nchains;
-
-	/*
-	 * Independently lock (this will also give cluster 1 ref)
-	 */
+	cluster = hammer2_cluster_copy(cparent);
 	if (flags & HAMMER2_LOOKUP_SHARED) {
 		hammer2_cluster_lock(cluster, HAMMER2_RESOLVE_ALWAYS |
 					      HAMMER2_RESOLVE_SHARED);
@@ -907,8 +939,10 @@ hammer2_cluster_lookup_init(hammer2_cluster_t *cparent, int flags)
 void
 hammer2_cluster_lookup_done(hammer2_cluster_t *cparent)
 {
-	if (cparent)
+	if (cparent) {
 		hammer2_cluster_unlock(cparent);
+		hammer2_cluster_drop(cparent);
+	}
 }
 
 /*
@@ -1018,6 +1052,7 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 		if (chain->bref.type != focus->bref.type ||
 		    chain->bref.key != focus->bref.key ||
 		    chain->bref.keybits != focus->bref.keybits ||
+		    chain->bref.modify_tid != focus->bref.modify_tid ||
 		    chain->bytes != focus->bytes ||
 		    ddflag != cluster->ddflag) {
 			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
@@ -1083,10 +1118,10 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		if (cparent->array[i].chain == NULL ||
 		    (cparent->array[i].flags & HAMMER2_CITEM_INVALID) ||
 		    (cluster->array[i].flags & HAMMER2_CITEM_INVALID)) {
-			if (flags & HAMMER2_LOOKUP_NOLOCK)
-				hammer2_chain_drop(ochain);
-			else
+			if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
 				hammer2_chain_unlock(ochain);
+			hammer2_chain_drop(ochain);
+			cluster->array[i].chain = NULL;
 			++null_count;
 			continue;
 		}
@@ -1154,6 +1189,7 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		if (nchain->bref.type != focus->bref.type ||
 		    nchain->bref.key != focus->bref.key ||
 		    nchain->bref.keybits != focus->bref.keybits ||
+		    nchain->bref.modify_tid != focus->bref.modify_tid ||
 		    nchain->bytes != focus->bytes ||
 		    ddflag != cluster->ddflag) {
 			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
@@ -1211,7 +1247,8 @@ hammer2_cluster_next_single_chain(hammer2_cluster_t *cparent,
 	/* ochain now invalid */
 
 	/*
-	 * Install nchain.  Note that nchain can be NULL.
+	 * Install nchain.  Note that nchain can be NULL, and can also
+	 * be in an unlocked state depending on flags.
 	 */
 	cluster->array[i].chain = nchain;
 	cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
@@ -1232,6 +1269,7 @@ hammer2_cluster_next_single_chain(hammer2_cluster_t *cparent,
 	if (nchain->bref.type != focus->bref.type ||
 	    nchain->bref.key != focus->bref.key ||
 	    nchain->bref.keybits != focus->bref.keybits ||
+	    nchain->bref.modify_tid != focus->bref.modify_tid ||
 	    nchain->bytes != focus->bytes ||
 	    ddflag != cluster->ddflag) {
 		cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
@@ -1279,8 +1317,19 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 	 *	 create new chains.
 	 */
 	for (i = 0; i < cparent->nchains; ++i) {
-		if (*clusterp && cluster->array[i].chain == NULL) {
+		if ((cparent->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
+			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
 			continue;
+		}
+		if (*clusterp) {
+			if ((cluster->array[i].flags &
+			     HAMMER2_CITEM_FEMOD) == 0) {
+				cluster->array[i].flags |=
+						HAMMER2_CITEM_INVALID;
+				continue;
+			}
+			if (cluster->array[i].chain == NULL)
+				continue;
 		}
 		error = hammer2_chain_create(trans, &cparent->array[i].chain,
 					     &cluster->array[i].chain, pmp,
@@ -1325,6 +1374,10 @@ hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 	cparent->focus_index = 0;
 
 	for (i = 0; i < cluster->nchains; ++i) {
+		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
+			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
+			continue;
+		}
 		chain = cluster->array[i].chain;
 		if (chain) {
 			if (bref) {
@@ -1361,8 +1414,11 @@ hammer2_cluster_delete(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 	}
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		parent = (i < cparent->nchains) ?
-			 cparent->array[i].chain : NULL;
+		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
+			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
+			continue;
+		}
+		parent = cparent->array[i].chain;
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
@@ -1458,6 +1514,12 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 		kern_uuidgen(&wipdata->pfs_clid, 1);
 
 		for (i = 0; i < ncluster->nchains; ++i) {
+			if ((ncluster->array[i].flags &
+			     HAMMER2_CITEM_FEMOD) == 0) {
+				ncluster->array[i].flags |=
+					HAMMER2_CITEM_INVALID;
+				continue;
+			}
 			nchain = ncluster->array[i].chain;
 			if (nchain)
 				nchain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
@@ -1515,10 +1577,10 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 			hammer2_chain_unlock(chain);
 			hammer2_chain_lock(rchain, HAMMER2_RESOLVE_ALWAYS);
 			hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-			hammer2_chain_drop(rchain);
 			if (chain->parent == rchain)
 				break;
 			hammer2_chain_unlock(rchain);
+			hammer2_chain_drop(rchain);
 		}
 		if (cluster->focus == chain) {
 			cparent->focus_index = i;

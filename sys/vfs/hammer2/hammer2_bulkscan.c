@@ -91,8 +91,7 @@ hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		 * lock the parent, the lock eats the ref.
 		 */
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
-					   HAMMER2_RESOLVE_SHARED |
-					   HAMMER2_RESOLVE_NOREF);
+					   HAMMER2_RESOLVE_SHARED);
 
 		/*
 		 * Generally loop on the contents if we have not been flagged
@@ -108,6 +107,7 @@ hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
 
 			if (doabort & HAMMER2_BULK_ABORT) {
 				hammer2_chain_unlock(chain);
+				hammer2_chain_drop(chain);
 				chain = NULL;
 				break;
 			}
@@ -144,6 +144,7 @@ hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		 * save structure if we didn't recycle it above.
 		 */
 		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
 		if (save)
 			kfree(save, M_HAMMER2);
 	}
@@ -469,6 +470,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	bmap = cbinfo->bmap;
 
 	live_parent = &cbinfo->hmp->fchain;
+	hammer2_chain_ref(live_parent);
 	hammer2_chain_lock(live_parent, HAMMER2_RESOLVE_ALWAYS);
 	live_chain = NULL;
 
@@ -487,8 +489,10 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		 */
 		key = (data_off & ~HAMMER2_FREEMAP_LEVEL1_MASK);
 		if (live_chain == NULL || live_chain->bref.key != key) {
-			if (live_chain)
+			if (live_chain) {
 				hammer2_chain_unlock(live_chain);
+				hammer2_chain_drop(live_chain);
+			}
 			live_chain = hammer2_chain_lookup(
 					    &live_parent,
 					    &key_dummy,
@@ -516,6 +520,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 				hammer2_error_str(live_chain->error),
 				(intmax_t)data_off);
 			hammer2_chain_unlock(live_chain);
+			hammer2_chain_drop(live_chain);
 			live_chain = NULL;
 			goto next;
 		}
@@ -543,10 +548,14 @@ next:
 		data_off += HAMMER2_FREEMAP_LEVEL0_SIZE;
 		++bmap;
 	}
-	if (live_chain)
+	if (live_chain) {
 		hammer2_chain_unlock(live_chain);
-	if (live_parent)
+		hammer2_chain_drop(live_chain);
+	}
+	if (live_parent) {
 		hammer2_chain_unlock(live_parent);
+		hammer2_chain_drop(live_parent);
+	}
 }
 
 static

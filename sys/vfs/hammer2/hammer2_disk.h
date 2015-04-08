@@ -553,8 +553,8 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 	uint8_t		reserved06;
 	uint8_t		reserved07;
 	hammer2_key_t	key;		/* key specification */
-	hammer2_tid_t	mirror_tid;	/* propagate for mirror scan */
-	hammer2_tid_t	modify_tid;	/* modifications sans propagation */
+	hammer2_tid_t	mirror_tid;	/* media flush topology & freemap */
+	hammer2_tid_t	modify_tid;	/* cluster level change / flush */
 	hammer2_off_t	data_off;	/* low 6 bits is phys size (radix)*/
 	union {				/* check info */
 		char	buf[24];
@@ -1085,11 +1085,12 @@ struct hammer2_volume_data {
 	hammer2_off_t	allocator_beg;		/* 0070 Initial allocations */
 
 	/*
-	 * mirror_tid reflects the highest committed super-root change
-	 * freemap_tid reflects the highest committed freemap change
+	 * mirror_tid reflects the highest committed change for this
+	 * block device regardless of whether it is to the super-root
+	 * or to a PFS or whatever.
 	 *
-	 * NOTE: mirror_tid does not track (and should not track) changes
-	 *	 made to or under PFS roots.
+	 * freemap_tid reflects the highest committed freemap change for
+	 * this block device.
 	 */
 	hammer2_tid_t	mirror_tid;		/* 0078 committed tid (vol) */
 	hammer2_tid_t	reserved0080;		/* 0080 */

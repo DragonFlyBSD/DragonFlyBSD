@@ -380,7 +380,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_ONFLUSH		0x00000200	/* on a flush list */
 #define HAMMER2_CHAIN_FICTITIOUS	0x00000400	/* unsuitable for I/O */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
-#define HAMMER2_CHAIN_KEEP_MIRROR_TID	0x00001000	/* retain mirror_tid */
+#define HAMMER2_CHAIN_UNUSED00001000	0x00001000
 #define HAMMER2_CHAIN_UNUSED00002000	0x00002000
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_UNUSED00008000	0x00008000
@@ -457,7 +457,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_RESOLVE_MASK		0x0F
 
 #define HAMMER2_RESOLVE_SHARED		0x10	/* request shared lock */
-#define HAMMER2_RESOLVE_NOREF		0x20	/* already ref'd on lock */
+#define HAMMER2_RESOLVE_UNUSED20	0x20
 #define HAMMER2_RESOLVE_RDONLY		0x40	/* higher level op flag */
 
 /*
@@ -544,8 +544,13 @@ typedef struct hammer2_cluster_item hammer2_cluster_item_t;
 /*
  * INVALID	- Invalid for focus, i.e. not part of synchronized set.
  *		  Once set, this bit is sticky across operations.
+ *
+ * FEMOD	- Indicates that front-end modifying operations can
+ *		  mess with this entry and MODSYNC will copy also
+ *		  effect it.
  */
 #define HAMMER2_CITEM_INVALID	0x00000001
+#define HAMMER2_CITEM_FEMOD	0x00000002
 
 struct hammer2_cluster {
 	int			refs;		/* track for deallocation */
@@ -698,49 +703,16 @@ typedef struct hammer2_inode_unlink hammer2_inode_unlink_t;
  * A hammer2 transaction and flush sequencing structure.
  *
  * This global structure is tied into hammer2_dev and is used
- * to sequence modifying operations and flushes.
- *
- * (a) Any modifying operations with sync_tid >= flush_tid will stall until
- *     all modifying operating with sync_tid < flush_tid complete.
- *
- *     The flush related to flush_tid stalls until all modifying operations
- *     with sync_tid < flush_tid complete.
- *
- * (b) Once unstalled, modifying operations with sync_tid > flush_tid are
- *     allowed to run.  All modifications cause modify/duplicate operations
- *     to occur on the related chains.  Note that most INDIRECT blocks will
- *     be unaffected because the modifications just overload the RBTREE
- *     structurally instead of actually modifying the indirect blocks.
- *
- * (c) The actual flush unstalls and RUNS CONCURRENTLY with (b), but only
- *     utilizes the chain structures with sync_tid <= flush_tid.  The
- *     flush will modify related indirect blocks and inodes in-place
- *     (rather than duplicate) since the adjustments are compatible with
- *     (b)'s RBTREE overloading
- *
- *     SPECIAL NOTE:  Inode modifications have to also propagate along any
- *		      modify/duplicate chains.  File writes detect the flush
- *		      and force out the conflicting buffer cache buffer(s)
- *		      before reusing them.
- *
- * (d) Snapshots can be made instantly but must be flushed and disconnected
- *     from their duplicative source before they can be mounted.  This is
- *     because while H2's on-media structure supports forks, its in-memory
- *     structure only supports very simple forking for background flushing
- *     purposes.
- *
- * TODO: Flush merging.  When fsync() is called on multiple discrete files
- *	 concurrently there is no reason to stall the second fsync.
- *	 The final flush that reaches to root can cover both fsync()s.
- *
- *     The chains typically terminate as they fly onto the disk.  The flush
- *     ultimately reaches the volume header.
+ * to sequence modifying operations and flushes.  These operations
+ * run on whole cluster PFSs, not individual nodes (at this level),
+ * so we do not record mirror_tid here.
  */
 struct hammer2_trans {
 	TAILQ_ENTRY(hammer2_trans) entry;
 	struct hammer2_pfs	*pmp;
-	hammer2_xid_t		sync_xid;
+	hammer2_xid_t		sync_xid;	/* transaction sequencer */
 	hammer2_tid_t		inode_tid;	/* inode number assignment */
+	hammer2_tid_t		modify_tid;	/* modify transaction id */
 	thread_t		td;		/* pointer */
 	int			flags;
 	int			blocked;
@@ -754,7 +726,7 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_TRANS_CONCURRENT	0x0002	/* concurrent w/flush */
 #define HAMMER2_TRANS_BUFCACHE		0x0004	/* from bioq strategy write */
 #define HAMMER2_TRANS_NEWINODE		0x0008	/* caller allocating inode */
-#define HAMMER2_TRANS_UNUSED0010	0x0010
+#define HAMMER2_TRANS_KEEPMODIFY	0x0010	/* do not change bref.modify */
 #define HAMMER2_TRANS_PREFLUSH		0x0020	/* preflush state */
 
 #define HAMMER2_FREEMAP_HEUR_NRADIX	4	/* pwr 2 PBUFRADIX-MINIORADIX */
@@ -843,6 +815,7 @@ struct hammer2_dev {
 	struct lock	vollk;		/* lockmgr lock */
 	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR];
 	int		volhdrno;	/* last volhdrno written */
+	char		devrepname[64];	/* for kprintf */
 	hammer2_volume_data_t voldata;
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
 };
@@ -918,9 +891,8 @@ struct hammer2_pfs {
 	struct malloc_type	*mmsg;
 	struct spinlock		inum_spin;	/* inumber lookup */
 	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
-	hammer2_tid_t		alloc_tid;
-	hammer2_tid_t		flush_tid;
-	hammer2_tid_t		inode_tid;
+	hammer2_tid_t		modify_tid;	/* modify transaction id */
+	hammer2_tid_t		inode_tid;	/* inode allocator */
 	uint8_t			pfs_nmasters;	/* total masters */
 	uint8_t			pfs_mode;	/* operating mode PFSMODE */
 	uint8_t			unused01;
@@ -1231,7 +1203,6 @@ void hammer2_base_insert(hammer2_trans_t *trans, hammer2_chain_t *chain,
  */
 void hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfs_t *pmp,
 				int flags);
-void hammer2_trans_spmp(hammer2_trans_t *trans, hammer2_pfs_t *pmp);
 void hammer2_trans_done(hammer2_trans_t *trans);
 
 /*
@@ -1284,7 +1255,7 @@ void hammer2_bioq_sync(hammer2_pfs_t *pmp);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
 hammer2_pfs_t *hammer2_pfsalloc(hammer2_cluster_t *cluster,
 				const hammer2_inode_data_t *ripdata,
-				hammer2_tid_t alloc_tid);
+				hammer2_tid_t modify_tid);
 
 void hammer2_lwinprog_ref(hammer2_pfs_t *pmp);
 void hammer2_lwinprog_drop(hammer2_pfs_t *pmp);

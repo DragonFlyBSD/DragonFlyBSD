@@ -797,8 +797,10 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		if (cookie_index == ncookies)
 			break;
 	}
-	if (cluster)
+	if (cluster) {
 		hammer2_cluster_unlock(cluster);
+		hammer2_cluster_drop(cluster);
+	}
 done:
 	hammer2_inode_unlock(ip, cparent);
 	if (ap->a_eofflag)
@@ -1317,6 +1319,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 			hammer2_inode_ref(ip);
 			hammer2_inode_unlock(ip, NULL);
 			hammer2_cluster_unlock(cluster);
+			hammer2_cluster_drop(cluster);
 			cluster = hammer2_inode_lock(ip,
 						     HAMMER2_RESOLVE_ALWAYS);
 			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
@@ -2244,6 +2247,7 @@ hammer2_strategy_read_callback(hammer2_iocb_t *iocb)
 				hammer2_io_complete(iocb);
 				biodone(bio);
 				hammer2_cluster_unlock(cluster);
+				hammer2_cluster_drop(cluster);
 			} else {
 				hammer2_io_complete(iocb); /* XXX */
 				chain = cluster->array[i].chain;
@@ -2327,6 +2331,7 @@ hammer2_strategy_read_callback(hammer2_iocb_t *iocb)
 	if (dio)				/* physical dio & buffer */
 		hammer2_io_bqrelse(&dio);
 	hammer2_cluster_unlock(cluster);	/* cluster management */
+	hammer2_cluster_drop(cluster);		/* cluster management */
 	biodone(bio);				/* logical buffer */
 }
 
@@ -2444,6 +2449,7 @@ hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfs_t *pmp)
 		hammer2_cluster_delete(trans, cparent, cluster,
 				       HAMMER2_DELETE_PERMANENT);
 		hammer2_cluster_unlock(cparent);
+		hammer2_cluster_drop(cparent);
 		hammer2_inode_unlock(ip, cluster);	/* inode lock */
 		hammer2_inode_drop(ip);			/* ipul ref */
 

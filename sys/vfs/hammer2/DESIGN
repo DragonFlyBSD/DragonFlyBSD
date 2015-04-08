@@ -31,6 +31,14 @@
 
 				    Feature List
 
+* Block topology (both the main topology and the freemap) use a copy-on-write
+  design.  Media-level block frees are delayed and flushes rotate between
+  4 volume headers (maxes out at 4 if the filesystem is > ~8GB).  Flushes
+  will allocate new blocks up to the root in order to propagate block table
+  changes and transaction ids.
+
+* Incremental update scans are trivial by design.
+
 * Multiple roots, with many features.  This is implemented via the super-root
   concept.  When mounting a HAMMER2 filesystem you specify a device path and
   a directory name in the super-root.  (HAMMER1 had only one root).
@@ -185,6 +193,14 @@ filesystem directory/file hierarchy snapshots and other similar operations
 can be trivially performed on an entire subdirectory tree at any level in
 the filesystem.
 
+The copy-on-write design implements a block table in a radix-tree format,
+with a small 8x fan-out in the volume header and inode and a large 256x or
+1024x fan-out for indirect blocks.  The table is built bottom-up.
+Intermediate radii are only created when necessary so small files will use
+much shallower radix block trees.  The inode itself can accomodate files
+up 512KB (65536x8).  Directories also use a radix block table and directory
+inodes can accomodate up to 8 entries before pushing an indirect radix block.
+
 The copy-on-write nature of the filesystem implies that any modification
 whatsoever will have to eventually synchronize new disk blocks all the way
 to the super-root of the filesystem and the volume header itself.  This forms
@@ -193,7 +209,7 @@ completed high-level transaction boundary.  All disk writes are to new blocks
 except for the volume header (which cycles through 4 copies), thus allowing
 all writes to run asynchronously and concurrently prior to and during a flush,
 and then just doing a final synchronization and volume header update at the
-end.
+end.  Many of HAMMER2s features are enabled by this core design feature.
 
 Clearly this method requires intermediate modifications to the chain to be
 cached so multiple modifications can be aggregated prior to being
@@ -215,6 +231,82 @@ space in the volume header to satisfy the fsync requirement.  The related
 blockref is then recorded when the filesystem is mounted after a crash and
 the update chain is reconstituted when a matching blockref is encountered
 again during normal operation of the filesystem.
+
+			    MIRROR_TID, MODIFY_TID
+
+In HAMMER2, the core block reference is 64-byte structure called a blockref.
+The blockref contains various bits of information including the 64-bit radix
+key (typically a directory hash if a directory entry, inode number if a
+hidden hardlink target, or file offset if a file block), 64-bit data offset
+with the physical block size radix encoded in it (physical block size can be
+different from logical block size due to compression), two 64-bit transaction
+ids, type information, and 192 bits worth of check data for the block being
+reference which can be a simple CRC or stronger HASH.
+
+Both mirror_tid and modify_tid propagate upward from the change point all the
+way to the root, but serve different purposes and work in slightly different
+ways.
+
+mirror_tid - This is a media-centric (as in physical disk partition)
+	     transaction id which tracks media-level updates.
+
+	     Whenever any block in the media topology is modified, its
+	     mirror_tid is updated with the flush id and will propagate
+	     upward during the flush all the way to the volume header.
+
+	     mirror_tid is monotonic.
+
+modify_tid - This is a cluster-centric (as in across all the nodes used
+	     to build a cluster) transaction id which tracks filesystem-level
+	     updates.
+
+	     modify_tid is updated when the front-end of the filesystem makes
+	     a change to an inode or data block.  It will also propagate
+	     upward, stopping at the root of the PFS (the mount point for
+	     the cluster).
+
+The major difference between mirror_tid and modify_tid is that for any given
+element in the topology residing on different nodes.  e.g. file "x" on node 1
+and file "x" on node 2, if the files are synchronized with each other they
+will have the same modify_tid on a block-by-block basis, and a single check
+of the inode's modify_tid is sufficient to determine that the files are fully
+synchronized and identical.  These same inodes and representitive blocks will
+have very different mirror_tids because the nodes will reside on different
+physical media.
+
+I noted above that modify_tids also propagate upward, but not in all cases.
+A node which is undergoing SYNCHRONIZATION only updates the modify_tid of
+a block when it has determined that the block and its entire sub-block
+hierarchy has been synchronized to that point.
+
+The synchronization code updates an out-of-sync node bottom-up and will
+definitely set modify_tid as it goes, but media flushes can occur at any
+time and these flushes will use mirror_tid for flush and freemap management.
+The mirror_tid for each flush propagates upward to the volume header on each
+flush.
+
+* The synchronization code is able to determine that a sub-tree is
+  synchronized simply by observing the modify_tid at the root of the sub-tree,
+  on a directory-by-directory basis.
+
+* The synchronization code is able to do an incremental update of an
+  out-of-sync node simply by skipping elements with matching modify_tids.
+
+* The synchronization code can be interrupted and restarted at any time,
+  and is able to pick up where it left off with very little overhead.
+
+* The synchronization code does not inhibit media flushes.  Media flushes
+  can occur (and must occur) while synchronization is ongoing.
+
+There are several other stored transaction ids in HAMMER2.  There is a
+separate freemap_tid in the volume header that is used to allow freemap
+flushes to be deferred, and inodes have an attr_tid and a dirent_tid which
+tracks attribute changes and (for directories) create/rename/delete changes.
+The inode TIDs are used as an aid for the cache coherency subsystem.
+
+Remember that since this is a copy-on-write filesystem, we can propagate
+a considerable amount of information up the tree to the volume header
+without adding to the I/O we already have to do.
 
 			    DIRECTORIES AND INODES
 
@@ -242,10 +334,12 @@ On mount, HAMMER2 will first locate the highest-sequenced check-code-validated
 volume header from the 4 copies available (if the filesystem is big enough,
 e.g. > ~10GB or so, there will be 4 copies of the volume header).
 
-HAMMER2 will then run an incremental scan of the topology for transaction ids
-between the last freemap flush and the current topology in order to update
-the freemap.  Because this scan is incremental the worst-case time to run
-the scan is about the time it takes to run one flush.
+HAMMER2 will then run an incremental scan of the topology for mirror_tid
+transaction ids between the last freemap flush and the current topology in
+order to update the freemap.  Because this scan is incremental the
+worst-case time to run the scan is the time it takes to scan the meta-data
+for all changes made between the last freemap flush and the last topology
+flush.
 
 The filesystem is then ready for use.
 
@@ -481,24 +575,6 @@ There are four major protocols:
     Media protocol
 
 	This is basically the physical media protocol.
-
-There are lots of ways to implement multi-master environments using the
-above core features but the implementation is going to be fairly complex
-even with HAMMER2's feature set.
-
-Keep in mind that modifications propagate all the way to the super-root
-and volume header, so in any clustered arrangement the use of (modify_tid)
-and (mirror_tid) is critical in determining the synchronization state of
-portion(s) of the filesystem.
-
-Specifically, since any modification propagates to the root the (mirror_tid)
-in higher level directories is going to be in a constant state of flux.  This
-state of flux DOES NOT invalidate the cache state for these higher levels
-of directories.  Instead, the (modify_tid) is used on a node-by-node basis
-to determine cache state at any given level, and (mirror_tid) is used to
-determine whether any recursively underlying state is desynchronized.
-The inode structure also has two additional transaction ids used to optimize
-path lookups, stat, and directory lookup/scan operations.
 
 		       MASTER & SLAVE SYNCHRONIZATION
 

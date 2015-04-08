@@ -271,6 +271,7 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 	 * Iterate the freemap looking for free space before and after.
 	 */
 	parent = &hmp->fchain;
+	hammer2_chain_ref(parent);
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
 	error = EAGAIN;
 	iter.bnext = iter.bpref;
@@ -282,6 +283,7 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 	}
 	hmp->heur_freemap[hindex] = iter.bnext;
 	hammer2_chain_unlock(parent);
+	hammer2_chain_drop(parent);
 
 	if (trans->flags & (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_PREFLUSH))
 		--trans->sync_xid;
@@ -499,8 +501,10 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	/*
 	 * Cleanup
 	 */
-	if (chain)
+	if (chain) {
 		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
 	return (error);
 }
 
@@ -852,6 +856,7 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 	l1mask = l1size - 1;
 
 	parent = &hmp->fchain;
+	hammer2_chain_ref(parent);
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
 
 	chain = hammer2_chain_lookup(&parent, &key_dummy, key, key + l1mask,
@@ -872,6 +877,7 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 			(intmax_t)bref->data_off,
 			hammer2_error_str(chain->error));
 		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
 		chain = NULL;
 		goto done;
 	}
@@ -1058,8 +1064,10 @@ again:
 		chain->bref.check.freemap.bigmask |= 1 << radix;
 
 	hammer2_chain_unlock(chain);
+	hammer2_chain_drop(chain);
 done:
 	hammer2_chain_unlock(parent);
+	hammer2_chain_drop(parent);
 }
 
 /*

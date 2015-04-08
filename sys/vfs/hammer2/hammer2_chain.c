@@ -505,7 +505,7 @@ hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
 }
 
 /*
- * Ref and lock a chain element, acquiring its data with I/O if necessary,
+ * Lock a referenced chain element, acquiring its data with I/O if necessary,
  * and specify how you would like the data to be resolved.
  *
  * If an I/O or other fatal error occurs, chain->error will be set to non-zero.
@@ -558,8 +558,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	/*
 	 * Ref and lock the element.  Recursive locks are allowed.
 	 */
-	if ((how & HAMMER2_RESOLVE_NOREF) == 0)
-		hammer2_chain_ref(chain);
+	KKASSERT(chain->refs > 0);
 	atomic_add_int(&chain->lockcnt, 1);
 
 	hmp = chain->hmp;
@@ -742,7 +741,6 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 			if (atomic_cmpset_int(&chain->lockcnt,
 					      lockcnt, lockcnt - 1)) {
 				hammer2_mtx_unlock(&chain->core.lock);
-				hammer2_chain_drop(chain);
 				return;
 			}
 		} else {
@@ -767,7 +765,6 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	ostate = hammer2_mtx_upgrade(&chain->core.lock);
 	if (chain->lockcnt) {
 		hammer2_mtx_unlock(&chain->core.lock);
-		hammer2_chain_drop(chain);
 		return;
 	}
 
@@ -781,7 +778,6 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 		if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0)
 			hammer2_chain_drop_data(chain, 0);
 		hammer2_mtx_unlock(&chain->core.lock);
-		hammer2_chain_drop(chain);
 		return;
 	}
 
@@ -856,7 +852,6 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 		hammer2_io_bqrelse(&chain->dio);
 	}
 	hammer2_mtx_unlock(&chain->core.lock);
-	hammer2_chain_drop(chain);
 }
 
 /*
@@ -1048,6 +1043,20 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 			/* XXX failed allocation */
 		}
 	}
+
+	/*
+	 * Update mirror_tid and modify_tid.
+	 *
+	 * NOTE: modify_tid updates can be suppressed with a flag.  This is
+	 *	 used by the slave synchronization code to delay updating
+	 *	 modify_tid in higher-level objects until lower-level objects
+	 *	 have been synchronized.
+	 *
+	 * NOTE: chain->pmp could be the device spmp.
+	 */
+	chain->bref.mirror_tid = hmp->voldata.mirror_tid + 1;
+	if (chain->pmp && (trans->flags & HAMMER2_TRANS_KEEPMODIFY) == 0)
+		chain->bref.modify_tid = chain->pmp->modify_tid + 1;
 
 	/*
 	 * Set BMAPUPD to tell the flush code that an existing blockmap entry
@@ -1423,6 +1432,7 @@ hammer2_chain_get(hammer2_chain_t *parent, int generation,
 hammer2_chain_t *
 hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags)
 {
+	hammer2_chain_ref(parent);
 	if (flags & HAMMER2_LOOKUP_SHARED) {
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
 					   HAMMER2_RESOLVE_SHARED);
@@ -1435,8 +1445,10 @@ hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags)
 void
 hammer2_chain_lookup_done(hammer2_chain_t *parent)
 {
-	if (parent)
+	if (parent) {
 		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
 }
 
 static
@@ -1457,10 +1469,11 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 	hammer2_spin_unex(&oparent->core.spin);
 	if (oparent) {
 		hammer2_chain_unlock(oparent);
+		hammer2_chain_drop(oparent);
 		oparent = NULL;
 	}
 
-	hammer2_chain_lock(nparent, how | HAMMER2_RESOLVE_NOREF);
+	hammer2_chain_lock(nparent, how);
 	*parentp = nparent;
 
 	return (nparent);
@@ -1481,7 +1494,14 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
  * will be unlocked and dereferenced (no change if they are both the same).
  *
  * The matching chain will be returned exclusively locked.  If NOLOCK is
- * requested the chain will be returned only referenced.
+ * requested the chain will be returned only referenced.  Note that the
+ * parent chain must always be locked shared or exclusive, matching the
+ * HAMMER2_LOOKUP_SHARED flag.  We can conceivably lock it SHARED temporarily
+ * when NOLOCK is specified but that complicates matters if *parentp must
+ * inherit the chain.
+ *
+ * NOLOCK also implies NODATA, since an unlocked chain usually has a NULL
+ * data pointer or can otherwise be in flux.
  *
  * NULL is returned if no match was found, but (*parentp) will still
  * potentially be adjusted.
@@ -1533,7 +1553,7 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	} else {
 		how = HAMMER2_RESOLVE_MAYBE;
 	}
-	if (flags & (HAMMER2_LOOKUP_SHARED | HAMMER2_LOOKUP_NOLOCK)) {
+	if (flags & HAMMER2_LOOKUP_SHARED) {
 		how_maybe |= HAMMER2_RESOLVE_SHARED;
 		how_always |= HAMMER2_RESOLVE_SHARED;
 		how |= HAMMER2_RESOLVE_SHARED;
@@ -1577,9 +1597,8 @@ again:
 		 * This is only applicable to regular files and softlinks.
 		 */
 		if (parent->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
-			if (flags & HAMMER2_LOOKUP_NOLOCK)
-				hammer2_chain_ref(parent);
-			else
+			hammer2_chain_ref(parent);
+			if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
 				hammer2_chain_lock(parent, how_always);
 			*key_nextp = key_end + 1;
 			return (parent);
@@ -1598,6 +1617,7 @@ again:
 			       ((hammer2_key_t)1 << parent->bref.keybits) - 1;
 			if (key_beg == scan_beg && key_end == scan_end) {
 				chain = parent;
+				hammer2_chain_ref(chain);
 				hammer2_chain_lock(chain, how_maybe);
 				*key_nextp = scan_end + 1;
 				goto done;
@@ -1709,9 +1729,9 @@ again:
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
 	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
-		hammer2_chain_lock(chain, how_maybe | HAMMER2_RESOLVE_NOREF);
+		hammer2_chain_lock(chain, how_maybe);
 	} else {
-		hammer2_chain_lock(chain, how | HAMMER2_RESOLVE_NOREF);
+		hammer2_chain_lock(chain, how);
 	}
 
 	/*
@@ -1729,6 +1749,7 @@ again:
 	 */
 	if (chain->flags & HAMMER2_CHAIN_DELETED) {
 		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
 		key_beg = *key_nextp;
 		if (key_beg == 0 || key_beg > key_end)
 			return(NULL);
@@ -1754,6 +1775,7 @@ again:
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
 	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
 		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
 		*parentp = parent = chain;
 		goto again;
 	}
@@ -1767,10 +1789,8 @@ done:
 	 * need to be resolved.
 	 */
 	if (chain) {
-		if (flags & HAMMER2_LOOKUP_NOLOCK) {
-			hammer2_chain_ref(chain);
+		if (flags & HAMMER2_LOOKUP_NOLOCK)
 			hammer2_chain_unlock(chain);
-		}
 	}
 
 	return (chain);
@@ -1808,7 +1828,7 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	 * Calculate locking flags for upward recursion.
 	 */
 	how_maybe = HAMMER2_RESOLVE_MAYBE;
-	if (flags & (HAMMER2_LOOKUP_SHARED | HAMMER2_LOOKUP_NOLOCK))
+	if (flags & HAMMER2_LOOKUP_SHARED)
 		how_maybe |= HAMMER2_RESOLVE_SHARED;
 
 	parent = *parentp;
@@ -1819,10 +1839,9 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	if (chain) {
 		key_beg = chain->bref.key +
 			  ((hammer2_key_t)1 << chain->bref.keybits);
-		if (flags & HAMMER2_LOOKUP_NOLOCK)
-			hammer2_chain_drop(chain);
-		else
+		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
 			hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
 
 		/*
 		 * chain invalid past this point, but we can still do a
@@ -1892,7 +1911,7 @@ hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	hmp = parent->hmp;
 
 	/*
-	 * Scan flags borrowed from lookup
+	 * Scan flags borrowed from lookup.
 	 */
 	if (flags & HAMMER2_LOOKUP_ALWAYS) {
 		how_maybe = how_always;
@@ -1902,7 +1921,7 @@ hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	} else {
 		how = HAMMER2_RESOLVE_MAYBE;
 	}
-	if (flags & (HAMMER2_LOOKUP_SHARED | HAMMER2_LOOKUP_NOLOCK)) {
+	if (flags & HAMMER2_LOOKUP_SHARED) {
 		how_maybe |= HAMMER2_RESOLVE_SHARED;
 		how_always |= HAMMER2_RESOLVE_SHARED;
 		how |= HAMMER2_RESOLVE_SHARED;
@@ -1916,6 +1935,7 @@ hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		key = chain->bref.key +
 		      ((hammer2_key_t)1 << chain->bref.keybits);
 		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
 		chain = NULL;
 		if (key == 0)
 			goto done;
@@ -2026,7 +2046,7 @@ again:
 	 * chain is referenced but not locked.  We must lock the chain
 	 * to obtain definitive DUPLICATED/DELETED state
 	 */
-	hammer2_chain_lock(chain, how | HAMMER2_RESOLVE_NOREF);
+	hammer2_chain_lock(chain, how);
 
 	/*
 	 * Skip deleted chains (XXX cache 'i' end-of-block-array? XXX)
@@ -2046,6 +2066,7 @@ again:
 	 */
 	if (chain->flags & HAMMER2_CHAIN_DELETED) {
 		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
 		chain = NULL;
 
 		key = next_key;
@@ -2287,6 +2308,7 @@ again:
 		}
 		if (parent != nparent) {
 			hammer2_chain_unlock(parent);
+			hammer2_chain_drop(parent);
 			parent = *parentp = nparent;
 		}
 		goto again;
@@ -2822,7 +2844,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	ichain = hammer2_chain_alloc(hmp, parent->pmp, trans, &dummy.bref);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);
 	hammer2_chain_lock(ichain, HAMMER2_RESOLVE_MAYBE);
-	hammer2_chain_drop(ichain);	/* excess ref from alloc */
+	/* ichain has one ref at this point */
 
 	/*
 	 * We have to mark it modified to allocate its block, but use
@@ -2890,8 +2912,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			 */
 			hammer2_chain_ref(chain);
 			hammer2_spin_unex(&parent->core.spin);
-			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER |
-						  HAMMER2_RESOLVE_NOREF);
+			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER);
 		} else {
 			/*
 			 * Get chain for blockref element.  _get returns NULL
@@ -2912,8 +2933,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				hammer2_spin_ex(&parent->core.spin);
 				continue;
 			}
-			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER |
-						  HAMMER2_RESOLVE_NOREF);
+			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER);
 		}
 
 		/*
@@ -2931,6 +2951,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		 */
 		if (chain->flags & HAMMER2_CHAIN_DELETED) {
 			hammer2_chain_unlock(chain);
+			hammer2_chain_drop(chain);
 			goto next_key;
 		}
 
@@ -2947,6 +2968,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		hammer2_chain_rename(trans, NULL, &ichain, chain,
 				     HAMMER2_INSERT_NOSTATS);
 		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
 		KKASSERT(parent->refs > 0);
 		chain = NULL;
 next_key:
@@ -2996,6 +3018,7 @@ next_key_spinlocked:
 		 * return the original parent.
 		 */
 		hammer2_chain_unlock(ichain);
+		hammer2_chain_drop(ichain);
 	} else {
 		/*
 		 * Otherwise its in the range, return the new parent.
@@ -3316,6 +3339,14 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		_hammer2_chain_delete_helper(trans, parent, chain, flags);
 	}
 
+	/*
+	 * NOTE: Special case call to hammer2_flush().  We are not in a FLUSH
+	 *	 transaction, so we can't pass a mirror_tid for the volume.
+	 *	 But since we are destroying the chain we can just pass 0
+	 *	 and use the flush call to clean out the subtopology.
+	 *
+	 *	 XXX not the best way to destroy the sub-topology.
+	 */
 	if (flags & HAMMER2_DELETE_PERMANENT) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROY);
 		hammer2_flush(trans, chain);

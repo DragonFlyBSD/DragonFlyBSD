@@ -42,7 +42,7 @@ static void hammer2_update_pfs_status(hammer2_syncthr_t *thr,
 			hammer2_cluster_t *cparent);
 static int hammer2_sync_insert(hammer2_syncthr_t *thr,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
-			int i, int *errors);
+			hammer2_tid_t modify_tid, int i, int *errors);
 static int hammer2_sync_destroy(hammer2_syncthr_t *thr,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			int i, int *errors);
@@ -173,15 +173,17 @@ hammer2_syncthr_primary(void *arg)
 		/*
 		 * Synchronization scan.
 		 */
-		hammer2_trans_init(&thr->trans, pmp, 0);
+		hammer2_trans_init(&thr->trans, pmp, HAMMER2_TRANS_KEEPMODIFY);
 		cparent = hammer2_inode_lock(pmp->iroot,
 					     HAMMER2_RESOLVE_ALWAYS);
 		hammer2_update_pfs_status(thr, cparent);
+		hammer2_inode_unlock(pmp->iroot, NULL);
 		bzero(errors, sizeof(errors));
 		error = hammer2_sync_slaves(thr, cparent, errors);
 		if (error)
 			kprintf("hammer2_sync_slaves: error %d\n", error);
-		hammer2_inode_unlock(pmp->iroot, cparent);
+		hammer2_cluster_unlock(cparent);
+		hammer2_cluster_drop(cparent);
 		hammer2_trans_done(&thr->trans);
 
 		/*
@@ -251,6 +253,7 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 	hammer2_pfs_t *pmp;
 	hammer2_cluster_t *cluster;
 	hammer2_cluster_t *scluster;
+	hammer2_chain_t *focus;
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
 	int error;
@@ -258,6 +261,7 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 	int i;
 	int n;
 	int noslaves;
+	int dorecursion;
 
 	pmp = thr->pmp;
 
@@ -265,16 +269,10 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 	 * Nothing to do if all slaves are synchronized.
 	 * Nothing to do if cluster not authoritatively readable.
 	 */
-	if (pmp->flags & HAMMER2_CLUSTER_SSYNCED) {
-		kprintf("pfs %p: all slaves are synchronized\n", pmp);
+	if (pmp->flags & HAMMER2_CLUSTER_SSYNCED)
 		return(0);
-	}
-	if ((pmp->flags & HAMMER2_CLUSTER_RDHARD) == 0) {
-		kprintf("pfs %p: slave sync waiting, cluster not available\n",
-			pmp);
+	if ((pmp->flags & HAMMER2_CLUSTER_RDHARD) == 0)
 		return(HAMMER2_ERROR_INCOMPLETE);
-	}
-	kprintf("pfs %p: run synchronization\n", pmp);
 
 	error = 0;
 
@@ -299,7 +297,6 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 	/*
 	 * Ignore degenerate DIRECTDATA case for file inode
 	 */
-	kprintf("X1 %p %p\n", cluster, cparent);
 	if (cluster == cparent) {
 		hammer2_cluster_drop(cluster);
 		cluster = NULL;
@@ -325,20 +322,22 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 			 * needs to be copied in.
 			 */
 			if (chain && chain->error) {
-				kprintf("chain error index %d: %d\n", i, chain->error);
+				kprintf("chain error index %d: %d\n",
+					i, chain->error);
 				errors[i] = chain->error;
 				error = chain->error;
 				cluster->array[i].flags |=
 						HAMMER2_CITEM_INVALID;
 				continue;
 			}
-			kprintf("chain index %d: %p\n", i, chain);
 
 			noslaves = 0;
 
 			/*
 			 * Skip if the slave already has the record (everything
-			 * matches including the mirror_tid).
+			 * matches including the modify_tid).  Note that the
+			 * mirror_tid does not have to match, mirror_tid is
+			 * a per-block-device entity.
 			 *
 			 * XXX also skip if parent is an indirect block and
 			 *     is up-to-date.
@@ -348,21 +347,45 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 				continue;
 			}
 
+			focus = cluster->focus;
+			if (focus->bref.type == HAMMER2_BREF_TYPE_INODE)
+				dorecursion = 1;
+			else
+				dorecursion = 0;
+
 			/*
 			 * Otherwise adjust the slave.
 			 */
 			if (chain)
-				n = hammer2_chain_cmp(cluster->focus, chain);
+				n = hammer2_chain_cmp(focus, chain);
 			else
 				n = -1;	/* end-of-scan on slave */
 
 			if (n < 0) {
 				/*
-				 * slave chain missing, create
+				 * slave chain missing, create missing chain.
+				 *
+				 * If we are going to recurse we have to set
+				 * the initial modify_tid to 0 until the
+				 * sub-tree is completely synchronized.
+				 * Setting (n = 0) in this situation forces
+				 * the replacement call to run on the way
+				 * back up after the sub-tree has
+				 * synchronized.
 				 */
-				nerror = hammer2_sync_insert(thr,
-							     cparent, cluster,
-							     i, errors);
+				if (dorecursion) {
+					nerror = hammer2_sync_insert(
+							thr, cparent, cluster,
+							0,
+							i, errors);
+					if (nerror == 0)
+						n = 0;
+				} else {
+					nerror = hammer2_sync_insert(
+							thr, cparent, cluster,
+							focus->bref.modify_tid,
+							i, errors);
+				}
 			} else if (n > 0) {
 				/*
 				 * excess slave chain, destroy
@@ -387,36 +410,48 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 				continue;
 			} else {
 				/*
-				 * key match but other things did not, replace.
+				 * Replacement is deferred until after any
+				 * recursion.
 				 */
+				nerror = 0;
+			}
+
+			/*
+			 * Recurse on inode.  Avoid unnecessarily blocking
+			 * operations by temporarily unlocking the parent.
+			 */
+			if (dorecursion) {
+				hammer2_cluster_unlock(cparent);
+				scluster = hammer2_cluster_copy(cluster);
+				hammer2_cluster_lock(scluster,
+						     HAMMER2_RESOLVE_ALWAYS);
+				nerror = hammer2_sync_slaves(thr, scluster,
+							     errors);
+				hammer2_cluster_unlock(scluster);
+				hammer2_cluster_drop(scluster);
+				/* XXX modify_tid on scluster */
+				/* flush needs to not update modify_tid */
+				hammer2_cluster_lock(cparent,
+						     HAMMER2_RESOLVE_ALWAYS);
+			}
+
+			/*
+			 * Key match but other things did not, replace.  Do
+			 * this after the recursion rather than before.
+			 *
+			 * Do not update parents if an error occured during
+			 * child processing.  In particular, updating the
+			 * modify_tid when something in the sub-tree is broken
+			 * would cause other parts of the cluster to believe
+			 * that we are up-to-date when we aren't.
+			 */
+			if (nerror == 0 && n == 0) {
 				nerror = hammer2_sync_replace(thr,
 							      cparent, cluster,
 							      i, errors);
 			}
 			if (nerror)
 				error = nerror;
-
-			/*
-			 * Recurse on inode.  Avoid unnecessarily blocking
-			 * operations by temporarily unlocking the parent.
-			 */
-			if (cluster->focus->bref.type ==
-			    HAMMER2_BREF_TYPE_INODE) {
-				hammer2_cluster_unlock(cparent);
-				scluster = hammer2_cluster_copy(cluster);
-				hammer2_cluster_lock(scluster,
-						     HAMMER2_RESOLVE_ALWAYS |
-						     HAMMER2_RESOLVE_NOREF);
-				nerror = hammer2_sync_slaves(thr, scluster,
-							     errors);
-				if (nerror)
-					error = nerror;
-				hammer2_cluster_unlock(scluster);
-				/* XXX mirror_tid on scluster */
-				/* flush needs to not update mirror_tid */
-				hammer2_cluster_lock(cparent,
-						     HAMMER2_RESOLVE_ALWAYS);
-			}
 		}
 		if (noslaves) {
 			kprintf("exhausted slaves\n");
@@ -443,16 +478,34 @@ static
 int
 hammer2_sync_insert(hammer2_syncthr_t *thr,
 		    hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
-		    int i, int *errors)
+		    hammer2_tid_t modify_tid, int i, int *errors)
 {
 	hammer2_chain_t *focus;
 	hammer2_chain_t *chain;
+	hammer2_key_t dummy;
 
 	focus = cluster->focus;
+#if HAMEMR2_SYNCTHR_DEBUG
 	kprintf("insert record slave %d %d.%016jx\n",
 		i, focus->bref.type, focus->bref.key);
+#endif
 
-	focus = cluster->focus;
+	/*
+	 * We have to do a lookup to position ourselves at the correct
+	 * parent when inserting a record into a new slave because the
+	 * cluster iteration for this slave might not be pointing to the
+	 * right place.  Our expectation is that the record will not be
+	 * found.
+	 */
+	chain = hammer2_chain_lookup(&cparent->array[i].chain, &dummy,
+				     focus->bref.key, focus->bref.key,
+				     &cparent->array[i].cache_index,
+				     0);
+	KKASSERT(chain == NULL);
+
+	/*
+	 * Create the missing chain.
+	 */
 	chain = NULL;
 	hammer2_chain_create(&thr->trans, &cparent->array[i].chain,
 			     &chain, thr->pmp,
@@ -467,8 +520,8 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
 	chain->bref.methods = focus->bref.methods;
 	/* keybits already set */
 	chain->bref.vradix = focus->bref.vradix;
-	chain->bref.mirror_tid = focus->bref.mirror_tid;
-	chain->bref.modify_tid = focus->bref.modify_tid;
+	/* mirror_tid set by flush */
+	chain->bref.modify_tid = modify_tid;
 	chain->bref.flags = focus->bref.flags;
 	/* key already present */
 	/* check code will be recalculated */
@@ -494,9 +547,7 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
 	}
 
 	hammer2_chain_unlock(focus);
-
-	hammer2_chain_ref(chain);		/* replace lock with ref */
-	hammer2_chain_unlock(chain);
+	hammer2_chain_unlock(chain);		/* unlock, leave ref */
 	cluster->array[i].chain = chain;	/* validate cluster */
 	cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
 
@@ -515,8 +566,10 @@ hammer2_sync_destroy(hammer2_syncthr_t *thr,
 	hammer2_chain_t *chain;
 
 	chain = cluster->array[i].chain;
+#if HAMEMR2_SYNCTHR_DEBUG
 	kprintf("destroy record slave %d %d.%016jx\n",
 		i, chain->bref.type, chain->bref.key);
+#endif
 
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER);
 	hammer2_chain_delete(&thr->trans, cparent->array[i].chain, chain, 0);
@@ -540,8 +593,10 @@ hammer2_sync_replace(hammer2_syncthr_t *thr,
 
 	focus = cluster->focus;
 	chain = cluster->array[i].chain;
+#if HAMEMR2_SYNCTHR_DEBUG
 	kprintf("replace record slave %d %d.%016jx\n",
 		i, focus->bref.type, focus->bref.key);
+#endif
 	if (cluster->focus_index < i)
 		hammer2_chain_lock(focus, HAMMER2_RESOLVE_ALWAYS);
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
@@ -559,7 +614,7 @@ hammer2_sync_replace(hammer2_syncthr_t *thr,
 	chain->bref.methods = focus->bref.methods;
 	chain->bref.keybits = focus->bref.keybits;
 	chain->bref.vradix = focus->bref.vradix;
-	chain->bref.mirror_tid = focus->bref.mirror_tid;
+	/* mirror_tid updated by flush */
 	chain->bref.modify_tid = focus->bref.modify_tid;
 	chain->bref.flags = focus->bref.flags;
 	/* key already present */

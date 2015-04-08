@@ -91,9 +91,6 @@ hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
  * NOTE: In-memory inodes always point to hardlink targets (the actual file),
  *	 and never point to a hardlink pointer.
  *
- * NOTE: Caller must not passed HAMMER2_RESOLVE_NOREF because we use it
- *	 internally and refs confusion will ensue.
- *
  * NOTE: If caller passes HAMMER2_RESOLVE_RDONLY the exclusive locking code
  *	 will feel free to reduce the chain set in the cluster as an
  *	 optimization.  It will still be validated against the quorum if
@@ -105,8 +102,6 @@ hammer2_cluster_t *
 hammer2_inode_lock(hammer2_inode_t *ip, int how)
 {
 	hammer2_cluster_t *cluster;
-
-	KKASSERT((how & HAMMER2_RESOLVE_NOREF) == 0);
 
 	hammer2_inode_ref(ip);
 
@@ -132,7 +127,7 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
 	 * working copy if the hint does not work out, so beware.
 	 */
 	cluster = hammer2_cluster_copy(&ip->cluster);
-	hammer2_cluster_lock(cluster, how | HAMMER2_RESOLVE_NOREF);
+	hammer2_cluster_lock(cluster, how);
 
 	/*
 	 * cluster->focus will be set if resolving RESOLVE_ALWAYS, but
@@ -144,9 +139,11 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
 
 	/*
 	 * Returned cluster must resolve hardlink pointers.
+	 * XXX remove me.
 	 */
 	if ((how & HAMMER2_RESOLVE_MASK) == HAMMER2_RESOLVE_ALWAYS &&
-	    cluster->error == 0) {
+	    cluster->error == 0 &&
+	    cluster->focus) {
 		const hammer2_inode_data_t *ripdata;
 
 		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
@@ -158,8 +155,10 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
 void
 hammer2_inode_unlock(hammer2_inode_t *ip, hammer2_cluster_t *cluster)
 {
-	if (cluster)
+	if (cluster) {
 		hammer2_cluster_unlock(cluster);
+		hammer2_cluster_drop(cluster);
+	}
 	hammer2_mtx_unlock(&ip->lock);
 	hammer2_inode_drop(ip);
 }
@@ -653,6 +652,7 @@ retry:
 		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
 			error = ENOSPC;
 		hammer2_cluster_unlock(cluster);
+		hammer2_cluster_drop(cluster);
 		cluster = NULL;
 		++lhc;
 	}
@@ -827,6 +827,7 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 			xcluster->focus, dip, dcluster->focus,
 			dip->cluster.focus);
 		hammer2_cluster_unlock(xcluster);
+		hammer2_cluster_drop(xcluster);
 		xcluster = NULL;
 		*errorp = ENOSPC;
 #if 0
@@ -933,6 +934,7 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 				error = ENOSPC;
 			}
 			hammer2_cluster_unlock(ncluster);
+			hammer2_cluster_drop(ncluster);
 			ncluster = NULL;
 			++lhc;
 		}
@@ -1032,6 +1034,7 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 		wipdata->op_flags = HAMMER2_OPFLAG_DIRECTDATA;
 		hammer2_cluster_modsync(ncluster);
 		hammer2_cluster_unlock(ncluster);
+		hammer2_cluster_drop(ncluster);
 		ncluster = ocluster;
 		ocluster = NULL;
 	} else {
@@ -1058,8 +1061,10 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 	 * case where ocluster is left unchanged the code above sets
 	 * ncluster to ocluster and ocluster to NULL, resulting in a NOP here.
 	 */
-	if (ocluster)
+	if (ocluster) {
 		hammer2_cluster_unlock(ocluster);
+		hammer2_cluster_drop(ocluster);
+	}
 	*clusterp = ncluster;
 
 	return (0);
@@ -1260,6 +1265,7 @@ again:
 			hcluster = cluster;
 			cluster = NULL;	/* safety */
 			hammer2_cluster_unlock(cparent);
+			hammer2_cluster_drop(cparent);
 			cparent = NULL; /* safety */
 			ripdata = NULL;	/* safety (associated w/cparent) */
 			error = hammer2_hardlink_find(dip, &hparent, &hcluster);
@@ -1300,6 +1306,7 @@ again:
 					          HAMMER2_LOOKUP_NODATA);
 		if (dcluster) {
 			hammer2_cluster_unlock(dcluster);
+			hammer2_cluster_drop(dcluster);
 			hammer2_cluster_lookup_done(dparent);
 			error = ENOTEMPTY;
 			goto done;
@@ -1318,7 +1325,9 @@ again:
 		hammer2_cluster_delete(trans, cparent, cluster,
 				       HAMMER2_DELETE_PERMANENT);
 		hammer2_cluster_unlock(cparent);
+		hammer2_cluster_drop(cparent);
 		hammer2_cluster_unlock(cluster);
+		hammer2_cluster_drop(cluster);
 		cparent = hparent;
 		cluster = hcluster;
 		hparent = NULL;
@@ -1397,14 +1406,22 @@ again:
 	}
 	error = 0;
 done:
-	if (cparent)
+	if (cparent) {
 		hammer2_cluster_unlock(cparent);
-	if (cluster)
+		hammer2_cluster_drop(cparent);
+	}
+	if (cluster) {
 		hammer2_cluster_unlock(cluster);
-	if (hparent)
+		hammer2_cluster_drop(cluster);
+	}
+	if (hparent) {
 		hammer2_cluster_unlock(hparent);
-	if (hcluster)
+		hammer2_cluster_drop(hparent);
+	}
+	if (hcluster) {
 		hammer2_cluster_unlock(hcluster);
+		hammer2_cluster_drop(hcluster);
+	}
 	if (hlinkp)
 		*hlinkp = hlink;
 
@@ -1585,6 +1602,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 
 	if (hammer2_hardlink_enable == 0) {	/* disallow hardlinks */
 		hammer2_cluster_unlock(cluster);
+		hammer2_cluster_drop(cluster);
 		*clusterp = NULL;
 		return (ENOTSUP);
 	}
@@ -1686,6 +1704,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 		/* XXX transaction ids */
 		hammer2_cluster_modsync(ncluster);
 		hammer2_cluster_unlock(ncluster);
+		hammer2_cluster_drop(ncluster);
 	}
 	ripdata = wipdata;
 
@@ -1710,8 +1729,10 @@ done:
 	 *
 	 * Return the shifted cluster in *clusterp.
 	 */
-	if (cparent)
+	if (cparent) {
 		hammer2_cluster_unlock(cparent);
+		hammer2_cluster_drop(cparent);
+	}
 	*clusterp = cluster;
 
 	return (error);
@@ -1778,6 +1799,7 @@ hammer2_hardlink_find(hammer2_inode_t *dip,
 	lhc = ipdata->inum;
 	ipdata = NULL;			/* safety */
 	hammer2_cluster_unlock(cluster);
+	hammer2_cluster_drop(cluster);
 	*clusterp = NULL;		/* safety */
 
 	rcluster = NULL;
@@ -1924,6 +1946,7 @@ hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			switch (hammer2_cluster_type(cluster)) {
 			case HAMMER2_BREF_TYPE_INODE:
 				hammer2_cluster_unlock(cluster);
+				hammer2_cluster_drop(cluster);
 				cluster = NULL;
 				break;
 			case HAMMER2_BREF_TYPE_DATA:

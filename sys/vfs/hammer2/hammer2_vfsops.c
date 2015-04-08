@@ -320,12 +320,17 @@ hammer2_vfs_uninit(struct vfsconf *vfsp __unused)
  * Core PFS allocator.  Used to allocate the pmp structure for PFS cluster
  * mounts and the spmp structure for media (hmp) structures.
  *
+ * pmp->modify_tid tracks new modify_tid transaction ids for front-end
+ * transactions.  Note that synchronization does not use this field.
+ * (typically frontend operations and synchronization cannot run on the
+ * same PFS node at the same time).
+ *
  * XXX check locking
  */
 hammer2_pfs_t *
 hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		 const hammer2_inode_data_t *ripdata,
-		 hammer2_tid_t alloc_tid)
+		 hammer2_tid_t modify_tid)
 {
 	hammer2_chain_t *rchain;
 	hammer2_pfs_t *pmp;
@@ -357,9 +362,10 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		TAILQ_INIT(&pmp->unlinkq);
 		spin_init(&pmp->list_spin, "hm2pfsalloc_list");
 
-		/* our first media transaction id */
-		pmp->alloc_tid = alloc_tid + 1;
-		pmp->flush_tid = pmp->alloc_tid;
+		/*
+		 * Save last media transaction id for flusher.
+		 */
+		pmp->modify_tid = modify_tid;
 		if (ripdata) {
 			pmp->inode_tid = ripdata->pfs_inum + 1;
 			pmp->pfs_clid = ripdata->pfs_clid;
@@ -367,6 +373,16 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		hammer2_mtx_init(&pmp->wthread_mtx, "h2wthr");
 		bioq_init(&pmp->wthread_bioq);
 		TAILQ_INSERT_TAIL(&hammer2_pfslist, pmp, mntentry);
+
+		/*
+		 * The synchronization thread may start too early, make
+		 * sure it stays frozen until we are ready to let it go.
+		 * XXX
+		 */
+		/*
+		pmp->primary_thr.flags = HAMMER2_SYNCTHR_FROZEN |
+					 HAMMER2_SYNCTHR_REMASTER;
+		*/
 	}
 
 	/*
@@ -770,6 +786,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			return error;
 		}
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
+		ksnprintf(hmp->devrepname, sizeof(hmp->devrepname), "%s", dev);
 		hmp->ronly = ronly;
 		hmp->devvp = devvp;
 		kmalloc_create(&hmp->mchain, "HAMMER2-chains");
@@ -836,13 +853,16 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 * Really important to get these right or flush will get
 		 * confused.
 		 */
-		hmp->spmp = hammer2_pfsalloc(NULL, NULL,
-					     hmp->voldata.mirror_tid);
+		hmp->spmp = hammer2_pfsalloc(NULL, NULL, 0);
 		kprintf("alloc spmp %p tid %016jx\n",
 			hmp->spmp, hmp->voldata.mirror_tid);
 		spmp = hmp->spmp;
 		spmp->inode_tid = 1;
 
+		/*
+		 * Dummy-up vchain and fchain's modify_tid.  mirror_tid
+		 * is inherited from the volume header.
+		 */
 		xid = 0;
 		hmp->vchain.bref.mirror_tid = hmp->voldata.mirror_tid;
 		hmp->vchain.bref.modify_tid = hmp->vchain.bref.mirror_tid;
@@ -874,12 +894,14 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			kprintf("hammer2_mount: error %s reading super-root\n",
 				hammer2_error_str(schain->error));
 			hammer2_chain_unlock(schain);
+			hammer2_chain_drop(schain);
 			schain = NULL;
 			hammer2_unmount_helper(mp, NULL, hmp);
 			lockmgr(&hammer2_mntlk, LK_RELEASE);
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return EINVAL;
 		}
+		spmp->modify_tid = schain->bref.modify_tid;
 
 		/*
 		 * Sanity-check schain's pmp and finish initialization.
@@ -976,8 +998,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 	hammer2_cluster_bref(cluster, &bref);
-	pmp = hammer2_pfsalloc(NULL, ripdata, bref.mirror_tid);
+	pmp = hammer2_pfsalloc(NULL, ripdata, bref.modify_tid);
 	hammer2_cluster_unlock(cluster);
+	hammer2_cluster_drop(cluster);
 
 	if (pmp->mp) {
 		kprintf("hammer2_mount: PFS already mounted!\n");
@@ -1093,7 +1116,7 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 		hammer2_cluster_bref(cluster, &bref);
 		kprintf("ADD LOCAL PFS: %s\n", ripdata->filename);
 
-		pmp = hammer2_pfsalloc(cluster, ripdata, bref.mirror_tid);
+		pmp = hammer2_pfsalloc(cluster, ripdata, bref.modify_tid);
 		cluster = hammer2_cluster_next(cparent, cluster,
 					       &key_next,
 					       key_next,
@@ -1350,8 +1373,10 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		hammer2_write_bp(cluster, bp, ioflag, pblksize, errorp,
 				 ripdata->check_algo);
 		/* ripdata can become invalid */
-		if (cluster)
+		if (cluster) {
 			hammer2_cluster_unlock(cluster);
+			hammer2_cluster_drop(cluster);
+		}
 		break;
 	case HAMMER2_COMP_AUTOZERO:
 		/*
@@ -1611,8 +1636,10 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 		}
 	}
 done:
-	if (cluster)
+	if (cluster) {
 		hammer2_cluster_unlock(cluster);
+		hammer2_cluster_drop(cluster);
+	}
 	if (comp_buffer)
 		objcache_put(cache_buffer_write, comp_buffer);
 }
@@ -1640,8 +1667,10 @@ hammer2_zero_check_and_write(struct buf *bp, hammer2_trans_t *trans,
 		hammer2_write_bp(cluster, bp, ioflag, pblksize, errorp,
 				 check_algo);
 		/* ripdata can become invalid */
-		if (cluster)
+		if (cluster) {
 			hammer2_cluster_unlock(cluster);
+			hammer2_cluster_drop(cluster);
+		}
 	}
 }
 
@@ -1693,6 +1722,7 @@ zero_write(struct buf *bp, hammer2_trans_t *trans,
 					       HAMMER2_DELETE_PERMANENT);
 		}
 		hammer2_cluster_unlock(cluster);
+		hammer2_cluster_drop(cluster);
 	}
 	hammer2_cluster_lookup_done(cparent);
 }
@@ -2189,12 +2219,23 @@ hammer2_recovery(hammer2_dev_t *hmp)
 	struct hammer2_recovery_elm *elm;
 	hammer2_chain_t *parent;
 	hammer2_tid_t sync_tid;
+	hammer2_tid_t mirror_tid;
 	int error;
 	int cumulative_error = 0;
 
 	hammer2_trans_init(&trans, hmp->spmp, 0);
 
-	sync_tid = 0;
+	sync_tid = hmp->voldata.freemap_tid;
+	mirror_tid = hmp->voldata.mirror_tid;
+
+	kprintf("hammer2 mount \"%s\": ", hmp->devrepname);
+	if (sync_tid >= mirror_tid) {
+		kprintf(" no recovery needed\n");
+	} else {
+		kprintf(" freemap recovery %016jx-%016jx\n",
+			sync_tid + 1, mirror_tid);
+	}
+
 	TAILQ_INIT(&info.list);
 	info.depth = 0;
 	parent = hammer2_chain_lookup_init(&hmp->vchain, 0);
@@ -2208,11 +2249,12 @@ hammer2_recovery(hammer2_dev_t *hmp)
 		sync_tid = elm->sync_tid;
 		kfree(elm, M_HAMMER2);
 
-		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
-					   HAMMER2_RESOLVE_NOREF);
+		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
 		error = hammer2_recovery_scan(&trans, hmp, parent,
-					      &info, sync_tid);
+					      &info,
+					      hmp->voldata.freemap_tid);
 		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);	/* drop elm->chain ref */
 		if (error)
 			cumulative_error = error;
 	}
@@ -2232,7 +2274,6 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 	hammer2_chain_t *chain;
 	int cache_index;
 	int cumulative_error = 0;
-	int pfs_boundary = 0;
 	int error;
 
 	/*
@@ -2262,18 +2303,6 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 			hammer2_chain_unlock(parent);
 			return 0;
 		}
-		if ((ripdata->op_flags & HAMMER2_OPFLAG_PFSROOT) &&
-		    info->depth != 0) {
-			pfs_boundary = 1;
-			sync_tid = parent->bref.mirror_tid - 1;
-			kprintf("recovery scan PFS synctid %016jx \"%s\"\n",
-				sync_tid, ripdata->filename);
-		}
-#if 0
-		if ((ripdata->op_flags & HAMMER2_OPFLAG_PFSROOT) == 0) {
-			kprintf("%*.*s\"%s\"\n", info->depth, info->depth, "", ripdata->filename);
-		}
-#endif
 		hammer2_chain_unlock(parent);
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
@@ -2298,7 +2327,7 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 	 * Defer operation if depth limit reached or if we are crossing a
 	 * PFS boundary.
 	 */
-	if (info->depth >= HAMMER2_RECOVERY_MAXDEPTH || pfs_boundary) {
+	if (info->depth >= HAMMER2_RECOVERY_MAXDEPTH) {
 		struct hammer2_recovery_elm *elm;
 
 		elm = kmalloc(sizeof(*elm), M_HAMMER2, M_ZERO | M_WAITOK);
@@ -2322,7 +2351,7 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 				   HAMMER2_LOOKUP_NODATA);
 	while (chain) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
-		if (chain->bref.mirror_tid >= sync_tid) {
+		if (chain->bref.mirror_tid > sync_tid) {
 			++info->depth;
 			error = hammer2_recovery_scan(trans, hmp, chain,
 						      info, sync_tid);
@@ -2429,8 +2458,9 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 
 	total_error = 0;
 
+#if 0
 	/*
-	 * Flush all storage elements making up the cluster
+	 * Flush all nodes making up the cluster
 	 *
 	 * We must also flush any deleted siblings because the super-root
 	 * flush won't do it for us.  They all must be staged or the
@@ -2442,11 +2472,15 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	for (i = 0; iroot && i < iroot->cluster.nchains; ++i) {
 		chain = iroot->cluster.array[i].chain;
 		if (chain) {
+			hmp = chain->hmp;
+			hammer2_chain_ref(chain);    /* prevent destruction */
 			hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 			hammer2_flush(&info.trans, chain);
 			hammer2_chain_unlock(chain);
+			hammer2_chain_drop(chain);
 		}
 	}
+#endif
 #if 0
 	hammer2_trans_done(&info.trans);
 #endif
@@ -2478,7 +2512,9 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		}
 		if (j >= 0)
 			continue;
+#if 0
 		hammer2_trans_spmp(&info.trans, hmp->spmp);
+#endif
 
 		/*
 		 * Force an update of the XID from the PFS root to the
@@ -2501,7 +2537,9 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		 * ahead of the topology.  We depend on the bulk free scan
 		 * code to deal with any loose ends.
 		 */
+		hammer2_chain_ref(&hmp->vchain);
 		hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_ref(&hmp->fchain);
 		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
 		if (hmp->fchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
 			/*
@@ -2515,6 +2553,8 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		}
 		hammer2_chain_unlock(&hmp->fchain);
 		hammer2_chain_unlock(&hmp->vchain);
+		hammer2_chain_drop(&hmp->fchain);
+		/* vchain dropped down below */
 
 		hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 		if (hmp->vchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
@@ -2526,6 +2566,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 			force_fchain = 0;
 		}
 		hammer2_chain_unlock(&hmp->vchain);
+		hammer2_chain_drop(&hmp->vchain);
 
 #if 0
 		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);

@@ -441,6 +441,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 			pfs->name_next = ripdata->name_key;
 			hammer2_cluster_unlock(cluster);
+			hammer2_cluster_drop(cluster);
 		} else {
 			pfs->name_next = (hammer2_key_t)-1;
 		}
@@ -510,6 +511,7 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 		ripdata = NULL;
 
 		hammer2_cluster_unlock(cluster);
+		hammer2_cluster_drop(cluster);
 	} else {
 		error = ENOENT;
 	}
@@ -568,7 +570,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_cluster_bref(ncluster, &bref);
 #if 1
 		kprintf("ADD LOCAL PFS (IOCTL): %s\n", nipdata->filename);
-		hammer2_pfsalloc(ncluster, nipdata, bref.mirror_tid);
+		hammer2_pfsalloc(ncluster, nipdata, bref.modify_tid);
 		/* XXX rescan */
 #endif
 		hammer2_inode_unlock(nip, ncluster);
