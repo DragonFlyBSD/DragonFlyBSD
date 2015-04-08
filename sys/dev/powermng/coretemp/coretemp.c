@@ -34,9 +34,9 @@
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/systm.h>
-#include <sys/types.h>
 #include <sys/module.h>
 #include <sys/conf.h>
+#include <sys/cpu_topology.h>
 #include <sys/kernel.h>
 #include <sys/sensors.h>
 #include <sys/proc.h>	/* for curthread */
@@ -48,11 +48,17 @@
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
 
+struct coretemp_sensor {
+	struct ksensordev	c_sensdev;
+	struct ksensor		c_sens;
+};
+
 struct coretemp_softc {
-	struct ksensordev	sc_sensordev;
-	struct ksensor		sc_sensor;
 	device_t		sc_dev;
 	int			sc_tjmax;
+
+	int			sc_nsens;
+	struct coretemp_sensor	*sc_sens;
 
 	struct globaldata	*sc_gd;
 	int			sc_cpu;
@@ -143,10 +149,12 @@ static int
 coretemp_attach(device_t dev)
 {
 	struct coretemp_softc *sc = device_get_softc(dev);
+	const struct cpu_node *node, *start_node;
+	cpumask_t cpu_mask;
 	device_t pdev;
 	uint64_t msr;
 	int cpu_model, cpu_stepping;
-	int ret, tjtarget;
+	int ret, tjtarget, cpu, sens_idx;
 
 	sc->sc_dev = dev;
 	pdev = device_get_parent(dev);
@@ -186,8 +194,8 @@ coretemp_attach(device_t dev)
 		 * On some Core 2 CPUs, there's an undocumented MSR that
 		 * can tell us if Tj(max) is 100 or 85.
 		 *
-		 * The if-clause for CPUs having the MSR_IA32_EXT_CONFIG was adapted
-		 * from the Linux coretemp driver.
+		 * The if-clause for CPUs having the MSR_IA32_EXT_CONFIG
+		 * was adapted from the Linux coretemp driver.
 		 */
 		msr = rdmsr(MSR_IA32_EXT_CONFIG);
 		if (msr & (1 << 30))
@@ -249,21 +257,60 @@ coretemp_attach(device_t dev)
 	sc->sc_cpu = device_get_unit(device_get_parent(dev));
 	sc->sc_gd = globaldata_find(sc->sc_cpu);
 
-	/*
-	 * Add hw.sensors.cpuN.temp0 MIB.
-	 */
-	strlcpy(sc->sc_sensordev.xname, device_get_nameunit(pdev),
-	    sizeof(sc->sc_sensordev.xname));
-	ksnprintf(sc->sc_sensor.desc, sizeof(sc->sc_sensor.desc),
-	    "node%d core%d", get_chip_ID(sc->sc_cpu),
-	    get_core_number_within_chip(sc->sc_cpu));
-	sc->sc_sensor.type = SENSOR_TEMP;
-	sc->sc_sensor.status = SENSOR_S_UNSPEC;
-	sc->sc_sensor.flags |= SENSOR_FINVALID;
-	sc->sc_sensor.value = 0;
-	sensor_attach(&sc->sc_sensordev, &sc->sc_sensor);
+	start_node = get_cpu_node_by_cpuid(sc->sc_cpu);
+
+	node = start_node;
+	while (node != NULL) {
+		if (node->type == CORE_LEVEL)
+			break;
+		node = node->parent_node;
+	}
+	if (node != NULL) {
+		int master_cpu = BSRCPUMASK(node->members);
+
+		if (bootverbose) {
+			device_printf(dev, "master cpu%d, count %u\n",
+			    master_cpu, node->child_no);
+		}
+
+		if (sc->sc_cpu != master_cpu)
+			return (0);
+
+		KKASSERT(node->child_no > 0);
+		sc->sc_nsens = node->child_no;
+		cpu_mask = node->members;
+	} else {
+		sc->sc_nsens = 1;
+		CPUMASK_ASSBIT(cpu_mask, sc->sc_cpu);
+	}
+	sc->sc_sens = kmalloc(sizeof(struct coretemp_sensor) * sc->sc_nsens,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+
+	sens_idx = 0;
+	CPUSET_FOREACH(cpu, cpu_mask) {
+		struct coretemp_sensor *csens;
+
+		KKASSERT(sens_idx < sc->sc_nsens);
+		csens = &sc->sc_sens[sens_idx];
+
+		/*
+		 * Add hw.sensors.cpuN.temp0 MIB.
+		 */
+		ksnprintf(csens->c_sensdev.xname,
+		    sizeof(csens->c_sensdev.xname), "cpu%d", cpu);
+		ksnprintf(csens->c_sens.desc, sizeof(csens->c_sens.desc),
+		    "node%d core%d", get_chip_ID(cpu),
+		    get_core_number_within_chip(cpu));
+		csens->c_sens.type = SENSOR_TEMP;
+		csens->c_sens.status = SENSOR_S_UNSPEC;
+		csens->c_sens.flags |= SENSOR_FINVALID;
+		csens->c_sens.value = 0;
+		sensor_attach(&csens->c_sensdev, &csens->c_sens);
+		sensordev_install(&csens->c_sensdev);
+
+		++sens_idx;
+	}
 	sensor_task_register(sc, coretemp_refresh, 2);
-	sensordev_install(&sc->sc_sensordev);
 
 	return (0);
 }
@@ -273,11 +320,16 @@ coretemp_detach(device_t dev)
 {
 	struct coretemp_softc *sc = device_get_softc(dev);
 
-	sensordev_deinstall(&sc->sc_sensordev);
-	sensor_task_unregister(sc);
+	if (sc->sc_nsens > 0) {
+		int i;
 
-	lwkt_synchronize_ipiqs("coretemp");
+		sensor_task_unregister(sc);
+		lwkt_synchronize_ipiqs("coretemp");
 
+		for (i = 0; i < sc->sc_nsens; ++i)
+			sensordev_deinstall(&sc->sc_sens[i].c_sensdev);
+		kfree(sc->sc_sens, M_DEVBUF);
+	}
 	return (0);
 }
 
@@ -305,7 +357,7 @@ coretemp_get_temp(device_t dev)
 	 * temperature.  If the IPI does not complete yet,
 	 * i.e. CORETEMP_FLAG_PENDING is set, return -1.
 	 */
-	if (ncpus > 1 && cpu != mycpuid) {
+	if (cpu != mycpuid) {
 		if ((sc->sc_flags & CORETEMP_FLAG_INITED) == 0) {
 			/* The first time we are called */
 			KASSERT((sc->sc_flags & CORETEMP_FLAG_PENDING) == 0,
@@ -383,23 +435,30 @@ coretemp_refresh(void *arg)
 {
 	struct coretemp_softc *sc = arg;
 	device_t dev = sc->sc_dev;
-	struct ksensor *s = &sc->sc_sensor;
-	int temp;
+	struct ksensor *sens;
+	int temp, i;
 
 	temp = coretemp_get_temp(dev);
 
 	if (temp == -2) {
 		/* No updates; keep the previous value */
 	} else if (temp == -1) {
-		s->status = SENSOR_S_UNSPEC;
-		s->flags |= SENSOR_FINVALID;
-		s->value = 0;
+		for (i = 0; i < sc->sc_nsens; ++i) {
+			sens = &sc->sc_sens[i].c_sens;
+
+			sens->status = SENSOR_S_UNSPEC;
+			sens->flags |= SENSOR_FINVALID;
+			sens->value = 0;
+		}
 	} else {
-		if (sc->sc_flags & CORETEMP_FLAG_CRIT)
-			s->status = SENSOR_S_CRIT;
-		else
-			s->status = SENSOR_S_OK;
-		s->flags &= ~SENSOR_FINVALID;
-		s->value = temp * 1000000 + 273150000;
+		for (i = 0; i < sc->sc_nsens; ++i) {
+			sens = &sc->sc_sens[i].c_sens;
+			if (sc->sc_flags & CORETEMP_FLAG_CRIT)
+				sens->status = SENSOR_S_CRIT;
+			else
+				sens->status = SENSOR_S_OK;
+			sens->flags &= ~SENSOR_FINVALID;
+			sens->value = temp * 1000000 + 273150000;
+		}
 	}
 }
