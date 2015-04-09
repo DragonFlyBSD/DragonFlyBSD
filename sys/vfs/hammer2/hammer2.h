@@ -424,9 +424,14 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * NOTE: MATCHIND allows an indirect block / freemap node to be returned
  *	 when the passed key range matches the radix.  Remember that key_end
  *	 is inclusive (e.g. {0x000,0xFFF}, not {0x000,0x1000}).
+ *
+ * NOTE: NODIRECT prevents a lookup of offset 0 in an inode from returning
+ *	 the inode itself if the inode is in DIRECTDATA mode (i.e. file is
+ *	 <= 512 bytes).
  */
 #define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
 #define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
+#define HAMMER2_LOOKUP_NODIRECT		0x00000004	/* no offset=0 DD */
 #define HAMMER2_LOOKUP_SHARED		0x00000100
 #define HAMMER2_LOOKUP_MATCHIND		0x00000200	/* return all chains */
 #define HAMMER2_LOOKUP_UNUSED0400	0x00000400
@@ -767,7 +772,7 @@ struct hammer2_syncthr {
 	kdmsg_state_t	*span;
 	thread_t	td;
 	uint32_t	flags;
-	uint32_t	unused01;
+	int		depth;
 	hammer2_trans_t	trans;
 	struct lock	lk;
 };
@@ -797,7 +802,7 @@ typedef struct hammer2_syncthr hammer2_syncthr_t;
 struct hammer2_dev {
 	struct vnode	*devvp;		/* device vnode */
 	int		ronly;		/* read-only mount */
-	int		pmp_count;	/* number of actively mounted PFSs */
+	int		mount_count;	/* number of actively mounted PFSs */
 	TAILQ_ENTRY(hammer2_dev) mntentry; /* hammer2_mntlist */
 
 	struct malloc_type *mchain;
@@ -872,7 +877,7 @@ hammer2_chain_wrok(hammer2_chain_t *chain)
  *	    synchronization thread.
  *
  * WARNING! The chains making up pfs->iroot's cluster are accounted for in
- *	    hammer2_dev->pmp_count when the pfs is associated with a mount
+ *	    hammer2_dev->mount_count when the pfs is associated with a mount
  *	    point.
  */
 struct hammer2_pfs {

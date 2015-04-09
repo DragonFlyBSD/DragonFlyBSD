@@ -292,15 +292,8 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 	cluster = hammer2_cluster_lookup(cparent, &key_next,
 					 HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
 					 HAMMER2_LOOKUP_NODATA |
-					 HAMMER2_LOOKUP_NOLOCK);
-
-	/*
-	 * Ignore degenerate DIRECTDATA case for file inode
-	 */
-	if (cluster == cparent) {
-		hammer2_cluster_drop(cluster);
-		cluster = NULL;
-	}
+					 HAMMER2_LOOKUP_NOLOCK |
+					 HAMMER2_LOOKUP_NODIRECT);
 
 	/*
 	 * Scan elements
@@ -420,13 +413,17 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 			 * Recurse on inode.  Avoid unnecessarily blocking
 			 * operations by temporarily unlocking the parent.
 			 */
-			if (dorecursion) {
+			if (dorecursion && thr->depth > 20) {
+				kprintf("depth limit reached\n");
+			} else if (dorecursion) {
 				hammer2_cluster_unlock(cparent);
 				scluster = hammer2_cluster_copy(cluster);
 				hammer2_cluster_lock(scluster,
 						     HAMMER2_RESOLVE_ALWAYS);
+				++thr->depth;
 				nerror = hammer2_sync_slaves(thr, scluster,
 							     errors);
+				--thr->depth;
 				hammer2_cluster_unlock(scluster);
 				hammer2_cluster_drop(scluster);
 				/* XXX modify_tid on scluster */

@@ -1513,7 +1513,7 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
  * XXX Depending on where the error occurs we should allow continued iteration.
  *
  * On return (*key_nextp) will point to an iterative value for key_beg.
- * (If NULL is returned (*key_nextp) is set to key_end).
+ * (If NULL is returned (*key_nextp) is set to (key_end + 1)).
  *
  * This function will also recurse up the chain if the key is not within the
  * current parent's range.  (*parentp) can never be set to NULL.  An iteration
@@ -1597,6 +1597,11 @@ again:
 		 * This is only applicable to regular files and softlinks.
 		 */
 		if (parent->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
+			if (flags & HAMMER2_LOOKUP_NODIRECT) {
+				chain = NULL;
+				*key_nextp = key_end + 1;
+				goto done;
+			}
 			hammer2_chain_ref(parent);
 			if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
 				hammer2_chain_lock(parent, how_always);

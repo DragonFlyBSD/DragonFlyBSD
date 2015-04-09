@@ -132,10 +132,10 @@
   layer then the actual number of physical disks that can be associated
   with a single H2 filesystem is unbounded.
 
-  H2 handles this by interleaving the 64-bit address space 256-ways on
-  level-1 (2GB) boundaries.  Thus, a single physical disk from H2's point
-  of view can be sized up to 2^56 which is 64 Petabytes, and the total
-  filesystem size can be up to 16 Exabytes.
+  H2 puts an 8-bit copyid in the blockref structure to represent potentially
+  multiple copies of a block.  The copyid corresponds to a configuration
+  specification in the volume header.  The full algorithm has not been
+  specced yet.
 
   Copies support is implemented by having multiple blockref entries for
   the same key, each with a different copyid.  The copyid represents which
@@ -215,7 +215,7 @@ Clearly this method requires intermediate modifications to the chain to be
 cached so multiple modifications can be aggregated prior to being
 synchronized.  One advantage, however, is that the normal buffer cache can
 be used and intermediate elements can be retired to disk by H2 or the OS
-at any time.  This means that HAMMER2 has very resource overhead from the
+at any time.  This means that HAMMER2 has very low resource overhead from the
 point of view of the operating system.  Unlike HAMMER1 which had to lock
 dirty buffers in memory for long periods of time, HAMMER2 has no such
 requirement.
@@ -311,8 +311,15 @@ without adding to the I/O we already have to do.
 			    DIRECTORIES AND INODES
 
 Directories are hashed, and another major design element is that directory
-entries ARE INODES.  They are one and the same, with a special placemarker
+entries ARE inodes.  They are one and the same, with a special placemarker
 for hardlinks.  Inodes are 1KB.
+
+Hardlinks are implemented with placemarkers as directory entries which simply
+represent the inode number.  The actual file resides in a parent directory
+that is common to all hardlinks to that file.  If the hardlinks are all within
+a single directory, the actual hardlink inode is in that directory.  The
+hardlink target, as we call it, is a hidden directory entry in a common parent
+whos key is basically just the inode number itself, so lookups are fast.
 
 Half of the inode structure (512 bytes) is used to hold top-level blockrefs
 to the radix block tree representing the file contents.  Files which are
@@ -323,23 +330,26 @@ in this area instead of a blockref array.  So files <= 512 bytes take only
 Inode numbers are not spatially referenced, which complicates NFS servers
 but doesn't complicate anything else.  The inode number is stored in the
 inode itself, an absolute necessity required to properly support HAMMER2s
-hugely flexible snapshots.
+hugely flexible snapshots.  I would like to support NFS services but it
+would require (probably) a lookaside index in the root for inode lookups
+and might not happen quickly.
 
 				    RECOVERY
 
 H2 allows freemap flushes to lag behind topology flushes.  The freemap flush
-tracks a separate transaction id in the volume header.
+tracks a separate transaction id (via mirror_tid) in the volume header.
 
 On mount, HAMMER2 will first locate the highest-sequenced check-code-validated
 volume header from the 4 copies available (if the filesystem is big enough,
 e.g. > ~10GB or so, there will be 4 copies of the volume header).
 
 HAMMER2 will then run an incremental scan of the topology for mirror_tid
-transaction ids between the last freemap flush and the current topology in
-order to update the freemap.  Because this scan is incremental the
-worst-case time to run the scan is the time it takes to scan the meta-data
-for all changes made between the last freemap flush and the last topology
-flush.
+transaction ids between the last freemap flush tid and the last topology
+flush tid in order to synchronize the freemap.  Because this scan is
+incremental the time it takes to run will be relatively short and well-bounded
+at mount-time.  This is NOT fsck.  Freemap flushes can be avoided for any
+number of normal topology flushes but should still occur frequently enough
+to avoid long recovery times in case of a crash.
 
 The filesystem is then ready for use.
 
@@ -352,33 +362,31 @@ to greatly improve I/O performance (particularly by laying inodes down next
 to each other which has a huge effect on directory scans).
 
 The current implementation of HAMMER2 implements a fixed block size of 64KB
-in order to allow aliasing of hammer2_dio's in its IO subsystem.  This way
-we don't have to worry about matching the buffer cache / DIO cache to the
-variable block size of underlying elements.
+in order to allow the mapping of hammer2_dio's in its IO subsystem to
+conumers that might desire different sizes.  This way we don't have to
+worry about matching the buffer cache / DIO cache to the variable block
+size of underlying elements.
+
+The biggest issue we are avoiding by having a fixed 64KB I/O size is not
+actually to help nominal front-end access issue but instead to reduce the
+complexity when blocks are freed and reused for another purpose.  HAMMER1
+had to have specialized code to check for and invalidate buffer cache buffers
+in the free/reuse case.  HAMMER2 does not need such code.
+
+That said, HAMMER2 places no major restrictions on mixing block sizes within
+a 64KB block.  The only restriction is that a HAMMER2 block cannot cross
+a 64KB boundary.  The soft restrictions the block allocator puts in place
+exist primarily for performance reasons (i.e. try to collect 1K inodes
+together).  The 2MB freemap zone granularity should work very well in this
+regard.
 
 HAMMER2 also allows OS support for ganging buffers together into even
-larger blocks for I/O, OS-supported read-ahead, and other performance
-features typically provided by the OS at the block-level.
+larger blocks for I/O (OS buffer cache 'clustering'), OS-supported read-ahead,
+OS-driven asynchronous retirement, and other performance features typically
+provided by the OS at the block-level to ensure smooth system operation.
 
-				  HARDLINKS
-
-Hardlinks are a particularly sticky problem for HAMMER2 due to the lack of
-a spatial reference to the inode number.  We do not want to have to have
-an index of inode numbers for any basic HAMMER2 feature if we can help it.
-
-Hardlinks are handled by placing the inode for a multiply-hardlinked file
-in the closest common parent directory.  If "a/x" and "a/y" are hardlinked
-the inode for the hardlinked file will be placed in directory "a", e.g.
-"a/<inode_number>".  The actual file inode will be an invisible out-of-band
-entry in the directory.  The directory entries "a/x" and "a/y" will be given
-the same inode number but in fact they are only placemarks that cause
-HAMMER2 to recurse upwards through the directory tree to find the invisible
-real inode.
-
-Because directories are hashed and a different namespace (hash key range)
-is used for hardlinked inodes, standard directory scans are able to trivially
-skip this invisible namespace and inode-specific lookups can restrict their
-lookup to within this space.  No linear scans are needed.
+By avoiding wiring buffers/memory and allowing these features to run normally,
+HAMMER2 winds up with very low OS overhead.
 
 				FREEMAP NOTES
 

@@ -356,15 +356,17 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
 void
 hammer2_cluster_ref(hammer2_cluster_t *cluster)
 {
+	atomic_add_int(&cluster->refs, 1);
+#if 0
 	hammer2_chain_t *chain;
 	int i;
 
-	atomic_add_int(&cluster->refs, 1);
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
 		if (chain)
 			hammer2_chain_ref(chain);
 	}
+#endif
 }
 
 /*
@@ -382,17 +384,19 @@ hammer2_cluster_drop(hammer2_cluster_t *cluster)
 	int i;
 
 	KKASSERT(cluster->refs > 0);
-	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i].chain;
-		if (chain) {
-			hammer2_chain_drop(chain);
-			if (cluster->refs == 1)
-				cluster->array[i].chain = NULL;
-		}
-	}
 	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
 		cluster->focus = NULL;		/* safety XXX chg to assert */
 		cluster->focus_index = 0;
+
+		for (i = 0; i < cluster->nchains; ++i) {
+			chain = cluster->array[i].chain;
+			if (chain) {
+				hammer2_chain_drop(chain);
+				cluster->array[i].chain = NULL; /* safety */
+			}
+		}
+		cluster->nchains = 0;				/* safety */
+
 		kfree(cluster, M_HAMMER2);
 		/* cluster is invalid */
 	}

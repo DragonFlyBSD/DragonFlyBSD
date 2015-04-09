@@ -445,6 +445,13 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 			pmp->pfs_types[j] = ripdata->pfs_type;
 
 			/*
+			 * If the PFS is already mounted we must account
+			 * for the mount_count here.
+			 */
+			if (pmp->mp)
+				++rchain->hmp->mount_count;
+
+			/*
 			 * May have to fixup dirty chain tracking.  Previous
 			 * pmp was NULL so nothing to undo.
 			 */
@@ -711,6 +718,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			pmp = MPTOPMP(mp);
 			cluster = &pmp->iroot->cluster;
 			for (i = 0; i < cluster->nchains; ++i) {
+				if (cluster->array[i].chain == NULL)
+					continue;
 				hmp = cluster->array[i].chain->hmp;
 				devvp = hmp->devvp;
 				error = hammer2_remount(hmp, mp, path,
@@ -1551,7 +1560,11 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 
 		/* XXX hackx */
 
+		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0)
+			continue;
 		chain = cluster->array[i].chain;	/* XXX */
+		if (chain == NULL)
+			continue;
 		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
 
 		switch(chain->bref.type) {
@@ -1747,7 +1760,11 @@ hammer2_write_bp(hammer2_cluster_t *cluster, struct buf *bp, int ioflag,
 	error = 0;	/* XXX TODO below */
 
 	for (i = 0; i < cluster->nchains; ++i) {
+		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0)
+			continue;
 		chain = cluster->array[i].chain;	/* XXX */
+		if (chain == NULL)
+			continue;
 		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
 
 		switch(chain->bref.type) {
@@ -1902,7 +1919,7 @@ failed:
  * Mount helper, hook the system mount into our PFS.
  * The mount lock is held.
  *
- * We must bump the pmp_count on related devices for any
+ * We must bump the mount_count on related devices for any
  * mounted PFSs.
  */
 static
@@ -1916,14 +1933,17 @@ hammer2_mount_helper(struct mount *mp, hammer2_pfs_t *pmp)
         mp->mnt_data = (qaddr_t)pmp;
 	pmp->mp = mp;
 
+	/*
+	 * After pmp->mp is set we have to adjust hmp->mount_count.
+	 */
 	cluster = &pmp->iroot->cluster;
 	for (i = 0; i < cluster->nchains; ++i) {
 		rchain = cluster->array[i].chain;
 		if (rchain == NULL)
 			continue;
-		++rchain->hmp->pmp_count;
-		kprintf("hammer2_mount hmp=%p ++pmp_count=%d\n",
-			rchain->hmp, rchain->hmp->pmp_count);
+		++rchain->hmp->mount_count;
+		kprintf("hammer2_mount hmp=%p ++mount_count=%d\n",
+			rchain->hmp, rchain->hmp->mount_count);
 	}
 }
 
@@ -1937,8 +1957,9 @@ hammer2_mount_helper(struct mount *mp, hammer2_pfs_t *pmp)
  *
  * If pmp is supplied multiple devices might be backing the PFS and each
  * must be disconnect.  This might not be the last PFS using some of the
- * underlying devices.  Also, we have to adjust our hmp->pmp_count accounting
- * for the devices backing the pmp which is now undergoing an unmount.
+ * underlying devices.  Also, we have to adjust our hmp->mount_count
+ * accounting for the devices backing the pmp which is now undergoing an
+ * unmount.
  */
 static
 void
@@ -1953,8 +1974,8 @@ hammer2_unmount_helper(struct mount *mp, hammer2_pfs_t *pmp, hammer2_dev_t *hmp)
 
 	/*
 	 * If no device supplied this is a high-level unmount and we have to
-	 * to disconnect the mount, adjust pmp_count, and locate devices that
-	 * might now have no mounts.
+	 * to disconnect the mount, adjust mount_count, and locate devices
+	 * that might now have no mounts.
 	 */
 	if (pmp) {
 		KKASSERT(hmp == NULL);
@@ -1962,19 +1983,23 @@ hammer2_unmount_helper(struct mount *mp, hammer2_pfs_t *pmp, hammer2_dev_t *hmp)
 		pmp->mp = NULL;
 		mp->mnt_data = NULL;
 
+		/*
+		 * After pmp->mp is cleared we have to account for
+		 * mount_count.
+		 */
 		cluster = &pmp->iroot->cluster;
 		for (i = 0; i < cluster->nchains; ++i) {
 			rchain = cluster->array[i].chain;
 			if (rchain == NULL)
 				continue;
-			--rchain->hmp->pmp_count;
-			kprintf("hammer2_unmount hmp=%p --pmp_count=%d\n",
-				rchain->hmp, rchain->hmp->pmp_count);
+			--rchain->hmp->mount_count;
+			kprintf("hammer2_unmount hmp=%p --mount_count=%d\n",
+				rchain->hmp, rchain->hmp->mount_count);
 			/* scrapping hmp now may invalidate the pmp */
 		}
 again:
 		TAILQ_FOREACH(hmp, &hammer2_mntlist, mntentry) {
-			if (hmp->pmp_count == 0) {
+			if (hmp->mount_count == 0) {
 				hammer2_unmount_helper(NULL, NULL, hmp);
 				goto again;
 			}
@@ -1986,8 +2011,9 @@ again:
 	 * Try to terminate the block device.  We can't terminate it if
 	 * there are still PFSs referencing it.
 	 */
-	kprintf("hammer2_unmount hmp=%p pmp_count=%d\n", hmp, hmp->pmp_count);
-	if (hmp->pmp_count)
+	kprintf("hammer2_unmount hmp=%p mount_count=%d\n",
+		hmp, hmp->mount_count);
+	if (hmp->mount_count)
 		return;
 
 	hammer2_pfsfree_scan(hmp);
