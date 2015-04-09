@@ -84,12 +84,6 @@ remove-obsolete-files:
 		/usr/bin/false; \
 	fi;
 	@echo "===> Remove now obsolete files"
-	@for item in ${TO_REMOVE:M*.info.gz}; do \
-		if [ -e ${DESTDIR}$${item} ]; then \
-			install-info --delete ${DESTDIR}$${item} \
-			    /usr/share/info/dir; \
-		fi; \
-	done;
 	@for item in ${TO_REMOVE}; do \
 		if [ -e ${DESTDIR}$${item} -o -L ${DESTDIR}$${item} ]; then \
 			echo "${DESTDIR}$${item}"; \

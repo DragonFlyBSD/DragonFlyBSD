@@ -34,13 +34,6 @@ SUBDIR=
 SUBDIR+= libexec
 .endif
 
-# We must do share/info early so that installation of info `dir'
-# entries works correctly.  Do it first since it is less likely to
-# grow dependencies on include and lib than vice versa.
-.if exists(${.CURDIR}/share/info)
-SUBDIR+= share/info
-.endif
-
 # We must do include and lib early so that the perl *.ph generation
 # works correctly as it uses the header files installed by this.
 .if exists(${.CURDIR}/include)
