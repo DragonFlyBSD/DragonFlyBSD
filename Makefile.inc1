@@ -262,7 +262,7 @@ BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
 BMAKE=		${BMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
-		-DNOINFO -DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
+		-DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
 		-DNO_WERROR -DNO_NLS -DSYSBUILD
 
 # build-tool stage
@@ -409,7 +409,7 @@ _libraries:
 	@echo "--------------------------------------------------------------"
 	@echo ">>> stage 4b: building libraries"
 	@echo "--------------------------------------------------------------"
-	cd ${.CURDIR}; ${WMAKE} -DNOHTML -DNOINFO -DNOMAN -DNOFSCHG libraries
+	cd ${.CURDIR}; ${WMAKE} -DNOHTML -DNOMAN -DNOFSCHG libraries
 _depend:
 	@echo
 	@echo "--------------------------------------------------------------"
