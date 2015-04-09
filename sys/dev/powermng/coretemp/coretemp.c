@@ -186,10 +186,11 @@ coretemp_attach(device_t dev)
 	cpu_model = CPUID_TO_MODEL(cpu_id);
 	cpu_stepping = cpu_id & CPUID_STEPPING;
 
-#if 0 /*
-       * XXXrpaulo: I have this CPU model and when it returns from C3
-       * coretemp continues to function properly.
-       */
+#if 0
+	/*
+	 * XXXrpaulo: I have this CPU model and when it returns from C3
+	 * coretemp continues to function properly.
+	 */
 
 	/*
 	 * Check for errata AE18.
