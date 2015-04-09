@@ -96,6 +96,13 @@ remove-obsolete-files:
 			chflags -Rf noschg "${DESTDIR}$${item}"; \
 			rm -rf "${DESTDIR}$${item}"; \
 		fi; \
+	done;
+	@for item in ${TO_REMOVE:M*/man/man[1-9]/*:C@/man/man([1-9])/@/man/cat\1/@g}; do \
+		if [ -e ${DESTDIR}$${item} ]; then \
+			echo "${DESTDIR}$${item}"; \
+			chflags -Rf noschg "${DESTDIR}$${item}"; \
+			rm -rf "${DESTDIR}$${item}"; \
+		fi; \
 	done
 
 preupgrade:
