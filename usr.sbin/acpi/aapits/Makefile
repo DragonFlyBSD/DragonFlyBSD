@@ -24,6 +24,7 @@ SRCS=	\
 SRCS+=	\
 	osunixxf.c \
 	ahids.c \
+	ahuuids.c \
 	cmfsize.c \
 	getopt.c \
 	hwtimer.c \
@@ -43,6 +44,7 @@ SRCS+=	\
 	dbutils.c \
 	dbxface.c \
 	dmbuffer.c \
+	dmcstyle.c \
 	dmdeferred.c \
 	dmnames.c \
 	dmobject.c \
@@ -181,6 +183,7 @@ SRCS+=	\
 	utexcep.c \
 	utfileio.c \
 	utglobal.c \
+	uthex.c \
 	utids.c \
 	utinit.c \
 	utlock.c \
@@ -196,6 +199,7 @@ SRCS+=	\
 	utstate.c \
 	utstring.c \
 	uttrack.c \
+	utuuid.c \
 	utxface.c \
 	utxferror.c \
 	utxfinit.c \

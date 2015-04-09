@@ -30,7 +30,7 @@ CFLAGS+=	-DACPI_DEBUG_CACHE
 KMOD	= acpi
 
 # ACPICA sources
-SRCS+=	ahids.c ahuuids.c
+SRCS+=	ahids.c
 #SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
 #SRCS+=	dbinput.c dbstats.c dbtest.c dbutils.c dbxface.c
 #SRCS+=	dbmethod.c dbnames.c
@@ -62,7 +62,7 @@ SRCS+=	utaddress.c utcopy.c
 SRCS+=	utdebug.c utdecode.c utdelete.c uterror.c uteval.c utexcep.c
 SRCS+=	utglobal.c uthex.c utids.c utinit.c utlock.c
 SRCS+=	utmath.c utmisc.c utmutex.c utobject.c utosi.c utownerid.c utpredef.c
-SRCS+=	utresrc.c utstate.c utstring.c utuuid.c utxface.c
+SRCS+=	utresrc.c utstate.c utstring.c utxface.c
 SRCS+=	utxferror.c utxfinit.c
 
 # OSD layer

@@ -2290,12 +2290,10 @@ ${ACPICA_COMP_DIR}/utilities/utpredef.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utresrc.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utstate.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utstring.c		optional acpi
-${ACPICA_COMP_DIR}/utilities/utuuid.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utxface.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utxferror.c	optional acpi
 ${ACPICA_COMP_DIR}/utilities/utxfinit.c		optional acpi
 ${ACPICA_DIR}/common/ahids.c			optional acpi
-${ACPICA_DIR}/common/ahuuids.c			optional acpi
 
 #
 # experimental new USB stack from recent FreeBSD
