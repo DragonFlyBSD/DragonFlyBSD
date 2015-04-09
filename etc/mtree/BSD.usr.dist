@@ -374,8 +374,6 @@
             iconv
             ..
         ..
-        info
-        ..
         initrd
             bin
             ..
