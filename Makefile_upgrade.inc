@@ -2094,12 +2094,22 @@ TO_REMOVE+=/usr/bin/info
 TO_REMOVE+=/usr/bin/infokey
 TO_REMOVE+=/usr/bin/install-info
 TO_REMOVE+=/usr/bin/makeinfo
+TO_REMOVE+=/usr/bin/pdftexi2dvi
+TO_REMOVE+=/usr/bin/texi2dvi
+TO_REMOVE+=/usr/bin/texi2pdf
 TO_REMOVE+=/usr/bin/texindex
 TO_REMOVE+=/usr/share/man/man1/info.1.gz
 TO_REMOVE+=/usr/share/man/man1/infokey.1.gz
 TO_REMOVE+=/usr/share/man/man1/install-info.1.gz
 TO_REMOVE+=/usr/share/man/man1/makeinfo.1.gz
+TO_REMOVE+=/usr/share/man/man1/pdftexi2dvi.1.gz
+TO_REMOVE+=/usr/share/man/man1/texi2dvi.1.gz
+TO_REMOVE+=/usr/share/man/man1/texi2pdf.1.gz
 TO_REMOVE+=/usr/share/man/man1/texindex.1.gz
+TO_REMOVE+=/usr/share/man/man5/info.5.gz
+TO_REMOVE+=/usr/share/man/man5/texinfo.5.gz
+TO_REMOVE+=/usr/share/mk/bsd.info.mk
+TO_REMOVE+=/usr/share/man/en.ISO8859-15
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
