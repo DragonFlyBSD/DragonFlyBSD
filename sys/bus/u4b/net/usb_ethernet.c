@@ -375,8 +375,10 @@ ue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0)
+	if ((ifp->if_flags & IFF_RUNNING) == 0 ||
+            ifq_is_oactive(&ifp->if_snd))
 		return;
+
 	UE_LOCK(ue);
 	ue->ue_methods->ue_start(ue);
 	UE_UNLOCK(ue);
