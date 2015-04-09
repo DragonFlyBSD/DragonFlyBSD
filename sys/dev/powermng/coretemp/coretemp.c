@@ -42,11 +42,36 @@
 #include <sys/proc.h>	/* for curthread */
 #include <sys/sched.h>
 #include <sys/thread2.h>
+#include <sys/bitops.h>
 
 #include <machine/specialreg.h>
 #include <machine/cpufunc.h>
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
+
+#define MSR_THERM_STATUS_TM_STATUS	__BIT64(0)
+#define MSR_THERM_STATUS_TM_STATUS_LOG	__BIT64(1)
+#define MSR_THERM_STATUS_PROCHOT	__BIT64(2)
+#define MSR_THERM_STATUS_PROCHOT_LOG	__BIT64(3)
+#define MSR_THERM_STATUS_CRIT		__BIT64(4)
+#define MSR_THERM_STATUS_CRIT_LOG	__BIT64(5)
+#define MSR_THERM_STATUS_THRESH1	__BIT64(6)
+#define MSR_THERM_STATUS_THRESH1_LOG	__BIT64(7)
+#define MSR_THERM_STATUS_THRESH2	__BIT64(8)
+#define MSR_THERM_STATUS_THRESH2_LOG	__BIT64(9)
+#define MSR_THERM_STATUS_PWRLIM		__BIT64(10)
+#define MSR_THERM_STATUS_PWRLIM_LOG	__BIT64(11)
+#define MSR_THERM_STATUS_READ		__BITS64(16, 22)
+#define MSR_THERM_STATUS_RES		__BITS64(27, 30)
+#define MSR_THERM_STATUS_READ_VALID	__BIT64(31)
+
+#define MSR_THERM_STATUS_HAS_STATUS(msr) \
+    (((msr) & (MSR_THERM_STATUS_TM_STATUS | MSR_THERM_STATUS_TM_STATUS_LOG)) ==\
+     (MSR_THERM_STATUS_TM_STATUS | MSR_THERM_STATUS_TM_STATUS_LOG))
+
+#define MSR_THERM_STATUS_IS_CRITICAL(msr) \
+    (((msr) & (MSR_THERM_STATUS_CRIT | MSR_THERM_STATUS_CRIT_LOG)) == \
+     (MSR_THERM_STATUS_CRIT | MSR_THERM_STATUS_CRIT_LOG))
 
 struct coretemp_sensor {
 	struct ksensordev	c_sensdev;
@@ -382,18 +407,12 @@ coretemp_get_temp(device_t dev)
 	/*
 	 * Check for Thermal Status and Thermal Status Log.
 	 */
-	if ((msr & 0x3) == 0x3)
+	if (MSR_THERM_STATUS_HAS_STATUS(msr))
 		device_printf(dev, "PROCHOT asserted\n");
 
-	/*
-	 * Bit 31 contains "Reading valid"
-	 */
-	if (((msr >> 31) & 0x1) == 1) {
-		/*
-		 * Starting on bit 16 and ending on bit 22.
-		 */
-		temp = sc->sc_tjmax - ((msr >> 16) & 0x7f);
-	} else
+	if (msr & MSR_THERM_STATUS_READ_VALID)
+		temp = sc->sc_tjmax - __SHIFTOUT(msr, MSR_THERM_STATUS_READ);
+	else
 		temp = -1;
 
 	/*
@@ -407,7 +426,7 @@ coretemp_get_temp(device_t dev)
 	 * If we reach a critical level, allow devctl(4) to catch this
 	 * and shutdown the system.
 	 */
-	if (((msr >> 4) & 0x3) == 0x3) {
+	if (MSR_THERM_STATUS_IS_CRITICAL(msr)) {
 		if ((sc->sc_flags & CORETEMP_FLAG_CRIT) == 0) {
 			char stemp[16];
 
