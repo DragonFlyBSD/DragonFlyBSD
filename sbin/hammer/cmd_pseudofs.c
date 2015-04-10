@@ -784,17 +784,11 @@ void
 strtrl(char *s)
 {
 	char *p;
-	int len;
 
 	if (s == NULL)
 		return;
 
-	len = strlen(s);
-	if (*s == '/' && len == 1)
-		return;
-
-	p = s + len;
-	/* Attempt to remove all trailing slashes */
-	while (p-- > s && *p == '/')
-		*p = '\0';
+	p = s + (int)strlen(s) - 1;  /* at the last char */
+	while (p != s && *p == '/')
+		*p-- = 0;  /* zero out trailing / */
 }
