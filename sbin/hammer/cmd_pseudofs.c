@@ -37,6 +37,7 @@
 #include "hammer.h"
 #include <libgen.h>
 
+static int scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path);
 static void parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd);
 static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
 static void pseudofs_usage(int code);
@@ -75,13 +76,8 @@ getdir(const char *path)
 int
 getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 {
-	uintmax_t dummy_tid;
-	struct stat st;
-	char *dirpath = NULL;
-	char *p;
-	char buf[64];
 	int fd;
-	int n;
+	char *p;
 
 	bzero(pfs, sizeof(*pfs));
 	pfs->ondisk = malloc(sizeof(*pfs->ondisk));
@@ -98,72 +94,106 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 	while (p != path && *p == '/')
 		*p-- = 0;
 
-	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
-		/*
-		 * Extract the PFS from the link.  HAMMER will automatically
-		 * convert @@PFS%05d links so if actually see one in that
-		 * form the target PFS may not exist or may be corrupt.  But
-		 * we can extract the PFS id anyway.
-		 */
-		dirpath = getdir(path);
-		n = readlink(path, buf, sizeof(buf) - 1);
-		if (n < 0)
-			n = 0;
-		buf[n] = 0;
-
-		/*
-		 * The symlink created by pfs-master|slave is just a symlink.
-		 * One could happen to remove a symlink and relink PFS as
-		 * # ln -s ./@@-1:00001 ./link
-		 * which results PFS having something extra before @@
-		 */
-		if (strchr(buf, '/') == NULL) {
-			p = buf;  /* likely */
-		} else {
-			p = basename(buf);
-			if (p == NULL)
-				err(1, "basename");
-		}
-		if (sscanf(p, "@@PFS%d", &pfs->pfs_id) == 1) {
-			fd = open(dirpath, O_RDONLY);
-			goto done;
-		}
-		if (sscanf(p, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
-			fd = open(dirpath, O_RDONLY);
-			goto done;
-		}
+	fd = scanpfsid(pfs, path);
+	if (fd < 0) {
 		/*
 		 * Once it comes here the hammer command may fail even if
 		 * this function returns valid file descriptor.
 		 */
-	}
-
-	/*
-	 * Try to open the path and request the pfs_id that way.
-	 */
-	fd = open(path, O_RDONLY);
-	if (fd >= 0) {
-		pfs->pfs_id = -1;
-		ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs);
-		if (pfs->pfs_id == -1) {
-			close(fd);
-			fd = -1;
+		fd = open(path, O_RDONLY);
+		if (fd >= 0) {
+			pfs->pfs_id = -1;
+			ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs);
+			if (pfs->pfs_id == -1) {
+				close(fd);
+				fd = -1;
+			}
 		}
 	}
 
-	/*
-	 * Cleanup
-	 */
-done:
 	if (fd < 0) {
 		fprintf(stderr, "Cannot access PFS %s: %s\n",
 			path, strerror(errno));
 		exit(1);
 	}
+
+	/*
+	 * pfs.pfs_id should have been set to non -1.  In this case fd
+	 * could be any fd of HAMMER inodes since HAMMERIOC_GET_PSEUDOFS
+	 * doesn't depend on inode attributes if it's set to a valid id.
+	 */
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs) < 0) {
 		fprintf(stderr, "Cannot access PFS %s: %s\n",
 			path, strerror(errno));
 		exit(1);
+	}
+	return(fd);
+}
+
+/*
+ * Extract the PFS id from path.  Return a file descriptor of
+ * the parent directory which is expected to be located under
+ * the root filesystem (not another PFS).
+ */
+static int
+scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
+{
+	int fd;
+	int n;
+	const char *p;
+	char *dirpath;
+	char buf[64];
+	uintmax_t dummy_tid;
+	struct stat st;
+
+	if (stat(path, &st)) {
+		/* possibly slave PFS */
+	} else if (S_ISDIR(st.st_mode)) {
+		/* possibly master or slave PFS */
+	} else {
+		return -1;  /* neither */
+	}
+
+	/*
+	 * If the path is a link read the link.
+	 */
+	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
+		n = readlink(path, buf, sizeof(buf) - 1);
+		if (n < 0)
+			n = 0;
+		buf[n] = 0;
+		p = buf;
+	} else {
+		p = path;
+	}
+
+	/*
+	 * The symlink created by pfs-master|slave is just a symlink.
+	 * One could happen to remove a symlink and relink PFS as
+	 * # ln -s ./@@-1:00001 ./link
+	 * which results PFS having something extra before @@.
+	 * One could also directly use the PFS and results the same.
+	 * Get rid of it before we extract the PFS id.
+	 */
+	if (strchr(p, '/')) {
+		p = basename(p);
+		if (p == NULL)
+			err(1, "basename");
+	}
+
+	/*
+	 * Extract the PFS from the link.  HAMMER will automatically
+	 * convert @@PFS%05d links so if actually see one in that
+	 * form the target PFS may not exist or may be corrupt.  But
+	 * we can extract the PFS id anyway.
+	 */
+	dirpath = getdir(path);
+	if (sscanf(p, "@@PFS%d", &pfs->pfs_id) == 1) {
+		fd = open(dirpath, O_RDONLY);
+	} else if (sscanf(p, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
+		fd = open(dirpath, O_RDONLY);
+	} else {
+		fd = -1;  /* Failed to scan PFS id */
 	}
 	free(dirpath);
 	return(fd);
