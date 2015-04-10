@@ -40,7 +40,6 @@
 static void parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd);
 static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
 static void pseudofs_usage(int code);
-static void strtrl(char *path);
 static int getyn(void);
 static int timetosecs(char *str);
 
@@ -94,8 +93,10 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 	 * the symlink can be deleted without problems.
 	 * Root directory (/) must be excluded from this.
 	 */
-	assert(path);
-	strtrl(path);
+	p = path + (int)strlen(path) - 1;
+	assert(p >= path);
+	while (p != path && *p == '/')
+		*p-- = 0;
 
 	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
 		/*
@@ -777,18 +778,4 @@ timetosecs(char *str)
 	if (v > 0x7FFFFFFF)
 		v = 0x7FFFFFFF;
 	return((int)v);
-}
-
-static
-void
-strtrl(char *s)
-{
-	char *p;
-
-	if (s == NULL)
-		return;
-
-	p = s + (int)strlen(s) - 1;  /* at the last char */
-	while (p != s && *p == '/')
-		*p-- = 0;  /* zero out trailing / */
 }
