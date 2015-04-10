@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/coretemp.4,v 1.5 2011/05/22 14:03:30 uqs Exp $
 .\"
-.Dd June 3, 2011
+.Dd April 12, 2015
 .Dt CORETEMP 4
 .Os
 .Sh NAME
@@ -48,8 +48,9 @@ coretemp_load="YES"
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for the on-die digital thermal sensor present
-in Intel Core and newer CPUs.
+driver provides support for the on-die digital thermal sensors,
+both core level and package level,
+for Intel Core and newer CPUs.
 The values are exposed through the
 .Dv HW_SENSORS
 .Xr sysctl 3
@@ -57,8 +58,11 @@ tree.
 For example:
 .Bd -literal -offset indent
 %sysctl hw.sensors
-hw.sensors.cpu0.temp0: 28.00 degC
-hw.sensors.cpu1.temp0: 29.00 degC
+hw.sensors.cpu0.temp0: 50.00 degC (node0 core0), OK
+hw.sensors.cpu1.temp0: 50.00 degC (node0 core0), OK
+hw.sensors.cpu2.temp0: 47.00 degC (node0 core1), OK
+hw.sensors.cpu3.temp0: 47.00 degC (node0 core1), OK
+hw.sensors.cpu_node0.temp0: 50.00 degC (node0), OK
 .Ed
 .Sh SEE ALSO
 .Xr systat 1 ,
