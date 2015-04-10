@@ -37,6 +37,7 @@ SRCS+=	\
 
 CFLAGS+= \
 	-DACPI_DUMP_APP \
-	-I${UTILDIR}
+	-I${UTILDIR} \
+	-D_DragonFly
 
 .include <bsd.prog.mk>
