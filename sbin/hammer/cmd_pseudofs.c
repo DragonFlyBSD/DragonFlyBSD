@@ -544,9 +544,6 @@ dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 	uuid_to_string(&pfsd->unique_uuid, &str, &status);
 	printf("    unique-uuid=%s\n", str);
 	free(str);
-	if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
-		printf("    slave\n");
-	}
 	printf("    label=\"%s\"\n", pfsd->label);
 	if (pfsd->snapshots[0])
 		printf("    snapshots=\"%s\"\n", pfsd->snapshots);
