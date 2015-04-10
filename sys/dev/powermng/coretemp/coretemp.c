@@ -287,8 +287,11 @@ coretemp_attach(device_t dev)
 
 	node = start_node;
 	while (node != NULL) {
-		if (node->type == CORE_LEVEL)
+		if (node->type == CORE_LEVEL) {
+			if (node->child_no == 0)
+				node = NULL;
 			break;
+		}
 		node = node->parent_node;
 	}
 	if (node != NULL) {
