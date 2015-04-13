@@ -28,9 +28,12 @@
 #define _LINUX_SPINLOCK_H_
 
 #include <sys/spinlock2.h>
+#include <sys/lock.h>
 
 #include <asm/barrier.h>
 
 #define spin_is_locked(x)	spin_held(x)
+
+#define assert_spin_locked(x)	KKASSERT(lockcountnb(x))
 
 #endif	/* _LINUX_SPINLOCK_H_ */
