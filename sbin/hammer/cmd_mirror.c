@@ -1104,8 +1104,6 @@ again:
 			if (CompressOpt)
 				xav[xac++] = "-C";
 
-			user = strndup(av[0], (rfs - av[0]));
-
 			if ((host = strchr(av[0], '@')) != NULL) {
 				user = strndup( av[0], (host++ - av[0]));
 				host = strndup( host, (rfs++ - host));
@@ -1187,8 +1185,6 @@ again:
 
 			if (CompressOpt)
 				xav[xac++] = "-C";
-
-			user = strndup(av[1], (rfs - av[1]));
 
 			if ((host = strchr(av[1], '@')) != NULL) {
 				user = strndup( av[1], (host++ - av[1]));
