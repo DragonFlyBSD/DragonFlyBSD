@@ -157,6 +157,8 @@ again:
 					 NULL, &mirror.tid_beg);
 		if (n < 0) {	/* got TERM record */
 			relpfs(fd, &pfs);
+			free(buf);
+			free(histogram_ary);
 			return;
 		}
 		++mirror.tid_beg;
@@ -473,6 +475,8 @@ done:
 	write_mrecord(1, HAMMER_MREC_TYPE_TERM,
 		      &mrec_tmp, sizeof(mrec_tmp.sync));
 	relpfs(fd, &pfs);
+	free(buf);
+	free(histogram_ary);
 	fprintf(stderr, "Mirror-read %s succeeded\n", filesystem);
 }
 
@@ -797,6 +801,7 @@ again:
 	 * Validate packet
 	 */
 	if (mrec->head.type == HAMMER_MREC_TYPE_TERM) {
+		free(buf);
 		return;
 	}
 	if (mrec->head.type != HAMMER_MREC_TYPE_PFSD) {
@@ -844,6 +849,7 @@ again:
 				 &mirror.tid_beg, &mirror.tid_end);
 	if (n < 0) {	/* got TERM record */
 		relpfs(fd, &pfs);
+		free(buf);
 		return;
 	}
 
@@ -893,7 +899,9 @@ again:
 
 	if (mrec && mrec->head.type == HAMMER_MREC_TYPE_TERM) {
 		fprintf(stderr, "Mirror-write: received termination request\n");
+		relpfs(fd, &pfs);
 		free(mrec);
+		free(buf);
 		return;
 	}
 
@@ -976,6 +984,7 @@ hammer_cmd_mirror_dump(char **av, int ac)
 	if (header_only && mrec != NULL) {
 		dump_pfsd(&mrec->pfs.pfsd, -1);
 		free(mrec);
+		free(buf);
 		return;
 	}
 	free(mrec);
@@ -1065,6 +1074,7 @@ again:
 		free(mrec);
 		goto again;
 	}
+	free(buf);
 }
 
 void
