@@ -405,6 +405,7 @@ done:
 					CyclePath, (uintmax_t)sync_tid);
 			}
 		}
+		free(mrec);
 	} else if (CyclePath) {
 		/* NOTE! mirror.tid_beg cannot be updated */
 		fprintf(stderr, "Warning: cycle file (-c option) cannot be "
@@ -974,8 +975,10 @@ hammer_cmd_mirror_dump(char **av, int ac)
 	 */
 	if (header_only && mrec != NULL) {
 		dump_pfsd(&mrec->pfs.pfsd, -1);
+		free(mrec);
 		return;
 	}
+	free(mrec);
 
 again:
 	/*
@@ -1052,13 +1055,16 @@ again:
 		fprintf(stderr, "Mirror-dump: Did not get termination "
 				"sync record\n");
 	}
+	free(mrec);
 
 	/*
 	 * Continue with more batches until EOF.
 	 */
 	mrec = read_mrecord(0, &error, &pickup);
-	if (mrec)
+	if (mrec) {
+		free(mrec);
 		goto again;
+	}
 }
 
 void
