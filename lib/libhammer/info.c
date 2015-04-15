@@ -82,8 +82,7 @@ libhammer_get_fsinfo(const char *path)
 	while(error == 0) {
 		error = ioctl(fd, HAMMERIOC_PFS_ITERATE, &pi);
 		if (error == 0 &&
-		    ((pi.head.flags & HAMMER_PFSD_DELETED) == 0)) {
-
+		    (pi.ondisk->mirror_flags & HAMMER_PFSD_DELETED) == 0) {
 			pip = _libhammer_malloc(sizeof(*pip));
 			pfs_od = pi.ondisk;
 			pip->ismaster =

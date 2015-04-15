@@ -246,7 +246,7 @@ struct hammer_ioc_info {
  */
 struct hammer_ioc_pfs_iterate {
 	struct hammer_ioc_head  head;
-	uint32_t pos;
+	uint32_t pos;  /* set PFS id here */
 	struct hammer_pseudofs_data *ondisk;
 };
 
