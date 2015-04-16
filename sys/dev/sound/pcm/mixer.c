@@ -100,7 +100,7 @@ static d_open_t mixer_open;
 static d_close_t mixer_close;
 static d_ioctl_t mixer_ioctl;
 
-static struct dev_ops mixer_cdevsw = {
+struct dev_ops mixer_ops = {
 	{ "mixer", 0, D_TRACKCLOSE },
 	.d_open =	mixer_open,
 	.d_close =	mixer_close,
@@ -727,7 +727,7 @@ mixer_init(device_t dev, kobj_class_t cls, void *devinfo)
 
 	unit = device_get_unit(dev);
 	devunit = snd_mkunit(unit, SND_DEV_CTL, 0);
-	pdev = make_dev(&mixer_cdevsw, PCMMKMINOR(unit, 0, 0),
+	pdev = make_dev(&mixer_ops, PCMMKMINOR(unit, 0, 0),
 		 UID_ROOT, GID_WHEEL, 0666, "mixer%d", unit);
 	pdev->si_drv1 = m;
 	snddev->mixer_dev = pdev;
@@ -1333,23 +1333,41 @@ done:
 	return (ret);
 }
 
-static void
-mixer_clone(void *arg,
-    char *name, int namelen, struct cdev **dev)
+/*
+ * mixer_clone is just used to convert /dev/mixer to the correct mixer unit.
+ */
+int
+mixer_clone(struct dev_clone_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
 	struct snddev_info *d;
+	int unit;
 
-	if (*dev != NULL)
-		return;
-	if (strcmp(name, "mixer") == 0) {
-		d = devclass_get_softc(pcm_devclass, snd_unit);
-		if (PCM_REGISTERED(d) && d->mixer_dev != NULL) {
-			*dev = d->mixer_dev;
-#if 0
-			dev_ref(*dev);
-#endif
-		}
+	/*
+	 * The default dsp device has a special unit which must be adjusted,
+	 * otherwise the unit number is already correct.
+	 */
+	unit = PCMUNIT(i_dev);
+	if (unit == PCMUNIT_DEFAULT)
+		unit = snd_unit;
+	d = devclass_get_softc(pcm_devclass, unit);
+	if (d == NULL)
+		return ENODEV;
+	if (!PCM_REGISTERED(d))
+		return (ENODEV);
+
+	PCM_GIANT_ENTER(d);
+	PCM_ACQUIRE_QUICK(d);
+
+	if (ap->a_dev != d->mixer_dev) {
+		reference_dev(d->mixer_dev);
+		ap->a_dev = d->mixer_dev;
 	}
+
+	PCM_RELEASE_QUICK(d);
+	PCM_GIANT_LEAVE(d);
+
+	return (0);
 }
 
 static void
@@ -1402,7 +1420,7 @@ mixer_oss_mixerinfo(struct cdev *i_dev, oss_mixerinfo *mi)
 	 * If probing the device handling the ioctl, make sure it's a mixer
 	 * device.  (This ioctl is valid on audio, mixer, and midi devices.)
 	 */
-	if (mi->dev == -1 && i_dev->si_ops != &mixer_cdevsw)
+	if (mi->dev == -1 && i_dev->si_ops != &mixer_ops)
 		return (EINVAL);
 
 	d = NULL;

@@ -48,6 +48,8 @@ SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pcm/sound.c 274035 2014-11-03 11:
 devclass_t pcm_devclass;
 
 int pcm_veto_load = 1;
+struct cdev *default_dsp;
+struct cdev *default_mixer;
 
 int snd_unit = -1;
 TUNABLE_INT("hw.snd.default_unit", &snd_unit);
@@ -426,48 +428,21 @@ pcm_setmaxautovchans(struct snddev_info *d, int num)
 	pcm_clonereset(d);
 }
 
-static void
-pcm_set_dev_alias(int unit)
-{
-	struct snddev_info *d;
-	cdev_t old_d;
-
-	if ((old_d = devfs_find_device_by_name("dsp%d", snd_unit)))
-		destroy_dev_alias(old_d, "dsp");
-	if ((old_d = devfs_find_device_by_name("mixer%d", snd_unit)))
-		destroy_dev_alias(old_d, "mixer");
-	if (unit >= 0) {
-		d = devclass_get_softc(pcm_devclass, unit);
-		make_dev_alias(d->dsp_clonedev, "dsp");
-		make_dev_alias(d->mixer_dev, "mixer");
-	}
-}
-
 static int
 sysctl_hw_snd_default_unit(SYSCTL_HANDLER_ARGS)
 {
 	struct snddev_info *d;
 	int error, unit;
-	cdev_t old_d;
 
 	unit = snd_unit;
 	error = sysctl_handle_int(oidp, &unit, 0, req);
 	if (error == 0 && req->newptr != NULL) {
-		if ((old_d = devfs_find_device_by_name("dsp%d", snd_unit)))
-			destroy_dev_alias(old_d, "dsp");
-		if ((old_d = devfs_find_device_by_name("mixer%d", snd_unit)))
-			destroy_dev_alias(old_d, "mixer");
 		d = devclass_get_softc(pcm_devclass, unit);
 		if (!PCM_REGISTERED(d) || CHN_EMPTY(d, channels.pcm))
 			return EINVAL;
-		error = make_dev_alias(d->dsp_clonedev, "dsp");
-		if (error)
-			goto done;
-		error = make_dev_alias(d->mixer_dev, "mixer");
 		snd_unit = unit;
 		snd_unit_auto = 0;
 	}
-done:
 	return (error);
 }
 
@@ -787,11 +762,6 @@ pcm_best_unit(int old)
 			bestprio = prio;
 		}
 	}
-
-	/* Change default devfs entries to new best device if needed */
-	if (snd_unit != best)
-		pcm_set_dev_alias(best);
-
 	return (best);
 }
 
@@ -831,10 +801,8 @@ pcm_setstatus(device_t dev, char *str)
 	if (snd_unit_auto < 0)
 		snd_unit_auto = (snd_unit < 0) ? 1 : 0;
 	if (snd_unit < 0 || snd_unit_auto > 1) {
-		if (device_get_unit(dev) != snd_unit) {
-			pcm_set_dev_alias(device_get_unit(dev));
+		if (device_get_unit(dev) != snd_unit)
 			snd_unit = device_get_unit(dev);
-		}
 	} else if (snd_unit_auto == 1) {
 		snd_unit = pcm_best_unit(snd_unit);
 	}
@@ -1165,18 +1133,11 @@ pcm_register(device_t dev, void *devinfo, int numplay, int numrec)
 
 	/* XXX use make_autoclone_dev? */
 	/* XXX PCMMAXCHAN can be created for regular channels */
-#if 1
 	d->dsp_clonedev = make_dev(&dsp_ops,
 			    PCMMKMINOR(device_get_unit(dev), SND_DEV_DSP, 0),
 			    UID_ROOT, GID_WHEEL, 0666, "dsp%d",
 			    device_get_unit(dev));
 	devfs_clone_handler_add(devtoname(d->dsp_clonedev), dsp_clone);
-#else
-	d->dsp_clonedev = make_autoclone_dev(&dsp_ops,
-			    &DEVFS_CLONE_BITMAP(dsp), dsp_clone,
-			    UID_ROOT, GID_WHEEL, 0666, "dsp%d",
-			    device_get_unit(dev));
-#endif
 
 	sndstat_register(dev, d->status, sndstat_prepare_pcm);
 
@@ -1452,32 +1413,42 @@ static int
 sound_modevent(module_t mod, int type, void *data)
 {
 	int ret;
-#if 0
-	return (midi_modevent(mod, type, data));
-#else
+
 	ret = 0;
 
 	switch(type) {
-		case MOD_LOAD:
-			pcmsg_unrhdr = new_unrhdr(1, INT_MAX, NULL);
+	case MOD_LOAD:
+		pcmsg_unrhdr = new_unrhdr(1, INT_MAX, NULL);
+		default_dsp = make_dev(&dsp_ops,
+				       PCMMKMINOR(PCMUNIT_DEFAULT,
+						  SND_DEV_DSP, 0),
+				       UID_ROOT, GID_WHEEL, 0666, "dsp");
+		devfs_clone_handler_add("dsp", dsp_clone);
+		default_mixer = make_dev(&mixer_ops,
+				       PCMMKMINOR(PCMUNIT_DEFAULT, 0, 0),
+				       UID_ROOT, GID_WHEEL, 0666, "mixer");
+		devfs_clone_handler_add("mixer", mixer_clone);
+		break;
+	case MOD_UNLOAD:
+		ret = sndstat_acquire(curthread);
+		if (ret != 0)
 			break;
-		case MOD_UNLOAD:
-			ret = sndstat_acquire(curthread);
-			if (ret != 0)
-				break;
-			if (pcmsg_unrhdr != NULL) {
-				delete_unrhdr(pcmsg_unrhdr);
-				pcmsg_unrhdr = NULL;
-			}
-			break;
-		case MOD_SHUTDOWN:
-			break;
-		default:
-			ret = ENOTSUP;
+		if (default_dsp)
+			destroy_dev(default_dsp);
+		if (default_mixer)
+			destroy_dev(default_mixer);
+		if (pcmsg_unrhdr != NULL) {
+			delete_unrhdr(pcmsg_unrhdr);
+			pcmsg_unrhdr = NULL;
+		}
+		break;
+	case MOD_SHUTDOWN:
+		break;
+	default:
+		ret = ENOTSUP;
+		break;
 	}
-
 	return ret;
-#endif
 }
 
 DEV_MODULE(sound, sound_modevent, NULL);

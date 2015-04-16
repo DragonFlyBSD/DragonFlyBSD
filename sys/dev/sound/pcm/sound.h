@@ -121,6 +121,8 @@ struct snd_mixer;
 #define PCMSUBUNIT(x)		((minor(x) >> 16) & 0x07FF)
 #define PCMDEV(x)		((minor(x) >> 27) & 0x001F)
 
+#define PCMUNIT_DEFAULT		0x00FF
+
 #define PCMMKMINOR(u, d, sub)	(snd_u2unit(u) | snd_c2unit(sub) | snd_d2unit(d))
 
 #define snd_unit2u(m)		((m) & 0x00FF)

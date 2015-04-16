@@ -34,7 +34,9 @@
 #include <sys/device.h>
 
 extern struct dev_ops dsp_ops;
+extern struct dev_ops mixer_ops;
 extern d_clone_t dsp_clone;
+extern d_clone_t mixer_clone;
 
 struct dsp_cdevinfo;
 
