@@ -1234,22 +1234,25 @@ do_remat (void)
 		for (i = 0; i < nregs; i++)
 		  CLEAR_HARD_REG_BIT (live_hard_regs, hard_regno + i);
 	      }
-	    else if (reg->type != OP_IN
-		     && find_regno_note (insn, REG_UNUSED, reg->regno) == NULL)
-	      {
-		if ((hard_regno = get_hard_regs (reg, nregs)) < 0)
-		  continue;
-		for (i = 0; i < nregs; i++)
-		  SET_HARD_REG_BIT (live_hard_regs, hard_regno + i);
-	      }
 	  /* Process also hard regs (e.g. CC register) which are part
 	     of insn definition.  */
 	  for (reg = static_id->hard_regs; reg != NULL; reg = reg->next)
 	    if (reg->type == OP_IN
 		&& find_regno_note (insn, REG_DEAD, reg->regno) != NULL)
 	      CLEAR_HARD_REG_BIT (live_hard_regs, reg->regno);
-	    else if (reg->type != OP_IN
-		     && find_regno_note (insn, REG_UNUSED, reg->regno) == NULL)
+	  /* Inputs have been processed, now process outputs.  */
+	  for (reg = id->regs; reg != NULL; reg = reg->next)
+	    if (reg->type != OP_IN
+		&& find_regno_note (insn, REG_UNUSED, reg->regno) == NULL)
+	      {
+		if ((hard_regno = get_hard_regs (reg, nregs)) < 0)
+		  continue;
+		for (i = 0; i < nregs; i++)
+		  SET_HARD_REG_BIT (live_hard_regs, hard_regno + i);
+	      }
+	  for (reg = static_id->hard_regs; reg != NULL; reg = reg->next)
+	    if (reg->type != OP_IN
+		&& find_regno_note (insn, REG_UNUSED, reg->regno) == NULL)
 	      SET_HARD_REG_BIT (live_hard_regs, reg->regno);
 	}
     }
@@ -1258,6 +1261,9 @@ do_remat (void)
 }
 
 
+
+/* Current number of rematerialization iteration.  */
+int lra_rematerialization_iter;
 
 /* Entry point of the rematerialization sub-pass.  Return true if we
    did any rematerialization.  */
@@ -1270,6 +1276,13 @@ lra_remat (void)
 
   if (! flag_lra_remat)
     return false;
+  lra_rematerialization_iter++;
+  if (lra_rematerialization_iter > LRA_MAX_REMATERIALIZATION_PASSES)
+    return false;
+  if (lra_dump_file != NULL)
+    fprintf (lra_dump_file,
+	     "\n******** Rematerialization #%d: ********\n\n",
+	     lra_rematerialization_iter);
   timevar_push (TV_LRA_REMAT);
   insn_to_cand = XCNEWVEC (cand_t, get_max_uid ());
   regno_cands = XCNEWVEC (cand_t, max_regno);
