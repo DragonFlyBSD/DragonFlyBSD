@@ -1508,6 +1508,10 @@ cgraph_node::expand_thunk (bool output_asm_thunks, bool force_gimple_thunk)
   tree thunk_fndecl = decl;
   tree a;
 
+  /* Instrumentation thunk is the same function with
+     a different signature.  Never need to expand it.  */
+  if (thunk.add_pointer_bounds_args)
+    return false;
 
   if (!force_gimple_thunk && this_adjusting
       && targetm.asm_out.can_output_mi_thunk (thunk_fndecl, fixed_offset,
@@ -1581,6 +1585,7 @@ cgraph_node::expand_thunk (bool output_asm_thunks, bool force_gimple_thunk)
       int i;
       tree resdecl;
       tree restmp = NULL;
+      tree resbnd = NULL;
 
       gcall *call;
       greturn *ret;
@@ -1697,6 +1702,17 @@ cgraph_node::expand_thunk (bool output_asm_thunks, bool force_gimple_thunk)
       gsi_insert_after (&bsi, call, GSI_NEW_STMT);
       if (!alias_is_noreturn)
 	{
+	  if (instrumentation_clone
+	      && !DECL_BY_REFERENCE (resdecl)
+	      && restmp
+	      && BOUNDED_P (restmp))
+	    {
+	      resbnd = chkp_insert_retbnd_call (NULL, restmp, &bsi);
+	      create_edge (get_create (gimple_call_fndecl (gsi_stmt (bsi))),
+			   as_a <gcall *> (gsi_stmt (bsi)),
+			   callees->count, callees->frequency);
+	    }
+
 	  if (restmp && !this_adjusting
 	      && (fixed_offset || virtual_offset))
 	    {
@@ -1766,6 +1782,7 @@ cgraph_node::expand_thunk (bool output_asm_thunks, bool force_gimple_thunk)
 	    ret = gimple_build_return (restmp);
 	  else
 	    ret = gimple_build_return (resdecl);
+	  gimple_return_set_retbnd (ret, resbnd);
 
 	  gsi_insert_after (&bsi, ret, GSI_NEW_STMT);
 	}

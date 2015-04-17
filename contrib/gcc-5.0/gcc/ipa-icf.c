@@ -368,6 +368,10 @@ sem_item::compare_cgraph_references (
   if (n1 == n2)
     return true;
 
+  /* Never match variable and function.  */
+  if (is_a <varpool_node *> (n1) != is_a <varpool_node *> (n2))
+    return false;
+
   /* Merging two definitions with a reference to equivalent vtables, but
      belonging to a different type may result in ipa-polymorphic-call analysis
      giving a wrong answer about the dynamic type of instance.  */
@@ -535,7 +539,8 @@ sem_function::equals_wpa (sem_item *item,
       && (TREE_CODE (TREE_TYPE (decl)) == METHOD_TYPE
           || TREE_CODE (TREE_TYPE (item->decl)) == METHOD_TYPE)
       && (ipa_node_params_sum == NULL
-	  || ipa_is_param_used (IPA_NODE_REF (dyn_cast <cgraph_node *>(node)),
+	  || IPA_NODE_REF (get_node ())->descriptors.is_empty ()
+	  || ipa_is_param_used (IPA_NODE_REF (get_node ()),
 				0))
       && compare_polymorphic_p ())
     {
@@ -586,9 +591,6 @@ void
 sem_item::update_hash_by_addr_refs (hash_map <symtab_node *,
 				    sem_item *> &m_symtab_node_map)
 {
-  if (is_a <varpool_node *> (node) && DECL_VIRTUAL_P (node->decl))
-    return;
-
   ipa_ref* ref;
   inchash::hash hstate (hash);
   for (unsigned i = 0; i < node->num_references (); i++)
@@ -1666,17 +1668,19 @@ sem_variable::equals_wpa (sem_item *item,
 				      ref->address_matters_p ()))
 	return false;
 
-      /* DECL_FINAL_P flag on methods referred by virtual tables is used
-	 to decide on completeness possible_polymorphic_call_targets lists
-	 and therefore it must match.  */
-      if ((DECL_VIRTUAL_P (decl) || DECL_VIRTUAL_P (item->decl))
-	  && (DECL_VIRTUAL_P (ref->referred->decl)
-	      || DECL_VIRTUAL_P (ref2->referred->decl))
-	  && ((DECL_VIRTUAL_P (ref->referred->decl)
-	       != DECL_VIRTUAL_P (ref2->referred->decl))
-	      || (DECL_FINAL_P (ref->referred->decl)
-		  != DECL_FINAL_P (ref2->referred->decl))))
-        return return_false_with_msg ("virtual or final flag mismatch");
+      /* When matching virtual tables, be sure to also match information
+ 	 relevant for polymorphic call analysis.  */
+      if (DECL_VIRTUAL_P (decl) || DECL_VIRTUAL_P (item->decl))
+	{
+	  if (DECL_VIRTUAL_P (ref->referred->decl)
+	      != DECL_VIRTUAL_P (ref2->referred->decl))
+            return return_false_with_msg ("virtual flag mismatch");
+	  if (DECL_VIRTUAL_P (ref->referred->decl)
+	      && is_a <cgraph_node *> (ref->referred)
+	      && (DECL_FINAL_P (ref->referred->decl)
+		  != DECL_FINAL_P (ref2->referred->decl)))
+            return return_false_with_msg ("final flag mismatch");
+	}
     }
 
   return true;
@@ -2501,14 +2505,15 @@ sem_item_optimizer::update_hash_by_addr_refs ()
       m_items[i]->update_hash_by_addr_refs (m_symtab_node_map);
       if (m_items[i]->type == FUNC)
 	{
+	  cgraph_node *cnode = dyn_cast <cgraph_node *> (m_items[i]->node);
+
 	  if (TREE_CODE (TREE_TYPE (m_items[i]->decl)) == METHOD_TYPE
 	      && contains_polymorphic_type_p
 		   (method_class_type (TREE_TYPE (m_items[i]->decl)))
 	      && (DECL_CXX_CONSTRUCTOR_P (m_items[i]->decl)
 		  || ((ipa_node_params_sum == NULL
-		       || ipa_is_param_used (
-			    IPA_NODE_REF
-			      (dyn_cast <cgraph_node *>(m_items[i]->node)), 0))
+		       || IPA_NODE_REF (cnode)->descriptors.is_empty ()
+		       || ipa_is_param_used (IPA_NODE_REF (cnode), 0))
 		      && static_cast<sem_function *> (m_items[i])
 			   ->compare_polymorphic_p ())))
 	     {
