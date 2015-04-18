@@ -73,7 +73,6 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	if (ac == 0 || ac > 2) {
 		snapshot_usage(1);
 		/* not reached */
-		exit(1);
 	}
 
 	if (ac == 2)
