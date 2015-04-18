@@ -139,7 +139,7 @@ iphash(const char *str)
 static bool
 parse_args(int ac, char **av)
 {
-	if (ac >= 2 && av[1] != NULL) {
+	if (ac >= 2) {
 		if (strcmp(av[1], "-pf") == 0) {
 			// -pf <tablename>
 			char *tablename = av[2];
