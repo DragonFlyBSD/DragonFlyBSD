@@ -1009,8 +1009,9 @@ again:
 			switch(mrec->head.type & HAMMER_MRECF_TYPE_MASK) {
 			case HAMMER_MREC_TYPE_REC_BADCRC:
 			case HAMMER_MREC_TYPE_REC:
-				printf("Record obj=%016jx key=%016jx "
+				printf("Record lo=%08x obj=%016jx key=%016jx "
 				       "rt=%02x ot=%02x",
+				        mrec->rec.leaf.base.localization,
 					(uintmax_t)mrec->rec.leaf.base.obj_id,
 					(uintmax_t)mrec->rec.leaf.base.key,
 					mrec->rec.leaf.base.rec_type,
@@ -1026,8 +1027,9 @@ again:
 				    mrec->rec.leaf.data_len);
 				break;
 			case HAMMER_MREC_TYPE_PASS:
-				printf("Pass   obj=%016jx key=%016jx "
+				printf("Pass   lo=%08x obj=%016jx key=%016jx "
 				       "rt=%02x ot=%02x\n",
+				        mrec->rec.leaf.base.localization,
 					(uintmax_t)mrec->rec.leaf.base.obj_id,
 					(uintmax_t)mrec->rec.leaf.base.key,
 					mrec->rec.leaf.base.rec_type,
@@ -1038,11 +1040,13 @@ again:
 					mrec->rec.leaf.data_len);
 				break;
 			case HAMMER_MREC_TYPE_SKIP:
-				printf("Skip   obj=%016jx key=%016jx rt=%02x to\n"
-				       "       obj=%016jx key=%016jx rt=%02x\n",
+				printf("Skip   lo=%08x obj=%016jx key=%016jx rt=%02x to\n"
+				       "       lo=%08x obj=%016jx key=%016jx rt=%02x\n",
+				       mrec->skip.skip_beg.localization,
 				       (uintmax_t)mrec->skip.skip_beg.obj_id,
 				       (uintmax_t)mrec->skip.skip_beg.key,
 				       mrec->skip.skip_beg.rec_type,
+				       mrec->skip.skip_end.localization,
 				       (uintmax_t)mrec->skip.skip_end.obj_id,
 				       (uintmax_t)mrec->skip.skip_end.key,
 				       mrec->skip.skip_end.rec_type);
