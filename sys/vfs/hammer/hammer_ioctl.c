@@ -684,7 +684,7 @@ hammer_ioc_add_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	if (snap->count > HAMMER_SNAPS_PER_IOCTL)
 		return (EINVAL);
-	if (snap->index > snap->count)
+	if (snap->index >= snap->count)
 		return (EINVAL);
 
 	hammer_lock_ex(&hmp->snapshot_lock);
@@ -761,7 +761,7 @@ hammer_ioc_del_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	if (snap->count > HAMMER_SNAPS_PER_IOCTL)
 		return (EINVAL);
-	if (snap->index > snap->count)
+	if (snap->index >= snap->count)
 		return (EINVAL);
 
 	hammer_lock_ex(&hmp->snapshot_lock);
