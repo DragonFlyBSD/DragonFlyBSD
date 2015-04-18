@@ -313,6 +313,77 @@ hammer_ioc_wait_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	return(error);
 }
 
+/*
+ * Iterate PFS ondisk data.
+ * This function basically does the same as hammer_load_pseudofs()
+ * except that the purpose of this function is to retrieve data.
+ *
+ * NOTE: The ip used for ioctl is not necessarily related to the PFS
+ * since this ioctl only requires PFS id (or upper 16 bits of ip localization).
+ */
+int
+hammer_ioc_iterate_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_pfs_iterate *pi)
+{
+	struct hammer_cursor cursor;
+	struct hammer_ioc_pseudofs_rw pfs;
+	hammer_inode_t dip;
+	u_int32_t localization;
+	int error;
+
+	/*
+	 * struct hammer_ioc_pfs_iterate was never necessary.
+	 * This ioctl needs extra code only to do conversion.
+	 * The name pi->pos is misleading, but it's been exposed
+	 * to userspace header..
+	 */
+	bzero(&pfs, sizeof(pfs));
+	pfs.pfs_id = pi->pos;
+	pfs.bytes = sizeof(struct hammer_pseudofs_data);  /* dummy */
+	if ((error = hammer_pfs_autodetect(&pfs, ip)) != 0)
+		return(error);
+	pi->pos = pfs.pfs_id;
+	localization = (u_int32_t)pi->pos << 16;
+
+	dip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT, HAMMER_MAX_TID,
+		HAMMER_DEF_LOCALIZATION, 0, &error);
+
+	error = hammer_init_cursor(trans, &cursor,
+		(dip ? &dip->cache[1] : NULL), dip);
+	if (error)
+		goto out;
+
+	cursor.key_beg.localization = HAMMER_DEF_LOCALIZATION +
+				      HAMMER_LOCALIZE_MISC;
+	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
+	cursor.key_beg.create_tid = 0;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_PFS;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.key = localization;
+	cursor.asof = HAMMER_MAX_TID;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
+
+	error = hammer_ip_lookup(&cursor);
+	if (error == 0) {
+		error = hammer_ip_resolve_data(&cursor);
+		if (error == 0) {
+			if (pi->ondisk)
+				copyout(cursor.data, pi->ondisk, cursor.leaf->data_len);
+			localization = cursor.leaf->base.key;
+			pi->pos = localization >> 16;
+			/*
+			 * Caller needs to increment pi->pos each time calling
+			 * this ioctl. This ioctl only restores current PFS id.
+			 */
+		}
+	}
+out:
+	hammer_done_cursor(&cursor);
+	if (dip)
+		hammer_rel_inode(dip, 0);
+	return(error);
+}
 
 /*
  * Auto-detect the pseudofs and do basic bounds checking.

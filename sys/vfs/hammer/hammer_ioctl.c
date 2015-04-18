@@ -48,8 +48,6 @@ static int hammer_ioc_set_version(hammer_transaction_t trans,
 				struct hammer_ioc_version *ver);
 static int hammer_ioc_get_info(hammer_transaction_t trans,
 				struct hammer_ioc_info *info);
-static int hammer_ioc_pfs_iterate(hammer_transaction_t trans,
-				struct hammer_ioc_pfs_iterate *pi);
 static int hammer_ioc_add_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_snapshot *snap);
 static int hammer_ioc_del_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
@@ -231,8 +229,8 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		}
 		break;
 	case HAMMERIOC_PFS_ITERATE:
-		error = hammer_ioc_pfs_iterate(
-			&trans, (struct hammer_ioc_pfs_iterate *)data);
+		error = hammer_ioc_iterate_pseudofs(
+				&trans, ip, (struct hammer_ioc_pfs_iterate *)data);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -1022,69 +1020,6 @@ again:
 	config->head.error = error;
 	hammer_done_cursor(&cursor);
 	return(0);
-}
-
-static
-int
-hammer_ioc_pfs_iterate(hammer_transaction_t trans,
-    struct hammer_ioc_pfs_iterate *pi)
-{
-	struct hammer_cursor cursor;
-	hammer_inode_t ip;
-	uint32_t localization;
-	int error;
-
-	ip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT, HAMMER_MAX_TID,
-	    HAMMER_DEF_LOCALIZATION, 0, &error);
-
-	error = hammer_init_cursor(trans, &cursor,
-	    (ip ? &ip->cache[1] : NULL), ip);
-	if (error)
-		goto out;
-
-	cursor.key_beg.localization = HAMMER_DEF_LOCALIZATION +
-	    HAMMER_LOCALIZE_MISC;
-	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
-	cursor.key_beg.create_tid = 0;
-	cursor.key_beg.delete_tid = 0;
-	cursor.key_beg.rec_type = HAMMER_RECTYPE_PFS;
-	cursor.key_beg.obj_type = 0;
-	cursor.asof = HAMMER_MAX_TID;
-	cursor.flags |= HAMMER_CURSOR_ASOF;
-
-	/*
-	 * This pi->pos is about PFS id and ip localization.
-	 * The name is misleading, but it's been exposed to userspace header..
-	 */
-	localization = pi->pos;
-	if (localization >= HAMMER_MAX_PFS) {
-		error = EINVAL;
-		goto out;
-	}
-	localization <<= 16;
-	cursor.key_beg.key = localization;
-	error = hammer_ip_lookup(&cursor);
-
-	if (error == 0) {
-		error = hammer_ip_resolve_data(&cursor);
-		if (error == 0) {
-			if (pi->ondisk)
-				copyout(cursor.data, pi->ondisk, cursor.leaf->data_len);
-			localization = cursor.leaf->base.key;
-			pi->pos = localization >> 16;
-			/*
-			 * Caller needs to increment pi->pos each time calling
-			 * this ioctl. This ioctl only restores current PFS id.
-			 */
-		}
-	}
-
-out:
-	hammer_done_cursor(&cursor);
-	if (ip)
-		hammer_rel_inode(ip, 0);
-
-	return (error);
 }
 
 static
