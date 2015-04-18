@@ -1356,16 +1356,7 @@ mixer_clone(struct dev_clone_args *ap)
 	if (!PCM_REGISTERED(d))
 		return (ENODEV);
 
-	PCM_GIANT_ENTER(d);
-	PCM_ACQUIRE_QUICK(d);
-
-	if (ap->a_dev != d->mixer_dev) {
-		reference_dev(d->mixer_dev);
-		ap->a_dev = d->mixer_dev;
-	}
-
-	PCM_RELEASE_QUICK(d);
-	PCM_GIANT_LEAVE(d);
+	ap->a_dev = d->mixer_dev;
 
 	return (0);
 }

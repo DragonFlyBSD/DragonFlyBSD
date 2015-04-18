@@ -2395,7 +2395,6 @@ dsp_clone(struct dev_clone_args *ap)
 	 * otherwise the unit number is already correct.
 	 */
 	unit = PCMUNIT(i_dev);
-	kprintf("dsp_clone unit %d\n", unit);
 	if (unit == PCMUNIT_DEFAULT)
 		unit = snd_unit;
 
@@ -2506,7 +2505,8 @@ dsp_clone_alloc:
 		snd_clone_setmaxunit(d->clones, tumax);
 	if (ce != NULL) {
 		/*
-		 * NOTE: subunit is a unique number unrelated to the channel id.
+		 * NOTE: Subunit is a unique number unrelated to the
+		 *	 channel id.
 		 */
 		udcmask |= snd_c2unit(cunit);
 		int subunit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(dsp), 0);
@@ -2519,7 +2519,8 @@ dsp_clone_alloc:
 		err = 0;
 	} else {
 		/*
-		 * Use device already registered, we must add a ref to the device.
+		 * Use device already registered, we must add a ref to the
+		 * device.
 		 */
 		err = 0;
 	}
