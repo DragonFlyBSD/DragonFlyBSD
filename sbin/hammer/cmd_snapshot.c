@@ -64,8 +64,8 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	struct hammer_ioc_synctid synctid;
 	struct hammer_ioc_version version;
 	char *dirpath;
-	char *fsym;
-	char *tsym;
+	char *fsym = NULL;
+	char *tsym = NULL;
 	struct stat st;
 	char note[64];
 	int fsfd;
@@ -85,10 +85,10 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	 */
 	if (stat(av[0], &st) < 0) {
 		dirpath = dirpart(av[0]);
-		tsym = av[0];
+		tsym = strdup(av[0]);
 	} else if (S_ISLNK(st.st_mode)) {
 		dirpath = dirpart(av[0]);
-		tsym = av[0];
+		tsym = strdup(av[0]);
 	} else if (S_ISDIR(st.st_mode)) {
 		time_t t = time(NULL);
 		struct tm *tp;
@@ -177,6 +177,8 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	 */
 	snapshot_add(fsfd, fsym, tsym, note, synctid.tid);
 	free(dirpath);
+	free(fsym);
+	free(tsym);
 }
 
 /*
@@ -264,6 +266,7 @@ hammer_cmd_snaprm(char **av, int ac)
 				asprintf(&ptr, "%s/%s", dirpath, linkbuf);
 				free(dirpath);
 				dirpath = dirpart(ptr);
+				free(ptr);
 			}
 
 			if (fsfd >= 0)
