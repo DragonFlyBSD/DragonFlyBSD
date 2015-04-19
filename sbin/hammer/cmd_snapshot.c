@@ -86,9 +86,6 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	if (stat(av[0], &st) < 0) {
 		dirpath = dirpart(av[0]);
 		tsym = strdup(av[0]);
-	} else if (S_ISLNK(st.st_mode)) {
-		dirpath = dirpart(av[0]);
-		tsym = strdup(av[0]);
 	} else if (S_ISDIR(st.st_mode)) {
 		time_t t = time(NULL);
 		struct tm *tp;
@@ -100,7 +97,7 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 		dirpath = strdup(av[0]);
 		asprintf(&tsym, "%s/%s", dirpath, extbuf);
 	} else {
-		err(2, "hammer snap: File %s exists and is not a softlink\n",
+		err(2, "hammer snap: File %s exists and is not a directory\n",
 		    av[0]);
 		/* not reached */
 	}
