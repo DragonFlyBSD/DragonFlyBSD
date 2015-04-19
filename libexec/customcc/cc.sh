@@ -48,7 +48,7 @@ case ${CNAME} in
 			COMPILER=${CUSTOM_GCC}
 			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
 		else
-			COMPILER=/usr/libexec/gcc47/gcc
+			COMPILER=/usr/libexec/gcc50/gcc
 			INCOPT=${STD_INCOPT}
 		fi
 		;;
@@ -59,7 +59,7 @@ case ${CNAME} in
 			INCOPT=`eval echo \$\{${CCVER}_INCOPT\}`
 			INCOPTCXX=`eval echo \$\{${CCVER}_INCOPTCXX\}`
 		else
-			COMPILER=/usr/libexec/gcc47/g++
+			COMPILER=/usr/libexec/gcc50/g++
 			INCOPT=${GCC_INCOPT}
 			INCOPTCXX="-isystem /usr/include/c++/4.7"
 		fi
@@ -132,7 +132,7 @@ case ${CNAME} in
 		if [ -n  "${CUSTOM_GCOV}" ]; then
 			exec ${CUSTOM_GCOV} "$@"
 		else
-			exec /usr/libexec/gcc47/gcov "$@"
+			exec /usr/libexec/gcc50/gcov "$@"
 		fi
 		;;
 	*)

@@ -118,9 +118,10 @@
  * 400102 - Sound system update from FreeBSD
  * 400103 - Milestone - availability of gcc50 in base
  * 400104 - struct lwp_params (a public struct) members renaming
+ * 400105 - Switch to gcc50 as the primary compiler
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400104	/* propagated to newvers */
+#define __DragonFly_version 400105	/* propagated to newvers */
 
 #include <sys/_null.h>
 

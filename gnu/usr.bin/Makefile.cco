@@ -4,14 +4,14 @@
 # to name the man pages and if it should hardlink a generic man page to it.
 # The same approach is used for the two sets of binutils
 
-CC_PRIMARY=	gcc47
-CC_BACKUP=	gcc50
+CC_PRIMARY=	gcc50
+CC_BACKUP=	gcc47
 
 .if defined(COMPVERSION)
 .if (${COMPVERSION} == ${CC_PRIMARY})
 IS_PRIMARY=	1
-MANPAGEVER=	47
-.elif (${COMPVERSION} == ${CC_BACKUP})
 MANPAGEVER=	50
+.elif (${COMPVERSION} == ${CC_BACKUP})
+MANPAGEVER=	47
 .endif
 .endif

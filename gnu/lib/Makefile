@@ -1,11 +1,11 @@
 # The libobjc header conflict between base compilers has been resolved
 # Maximum parallelism can be restored by setting SUBDIR_ORDERED to null
 
-.if !defined(NO_GCC50)
 SUBDIR= gcc50
-.endif
 
+.if !defined(NO_ALTCOMPILER)
 SUBDIR+= gcc47
+.endif
 
 SUBDIR+= libcryptsetup
 SUBDIR+= libdevmapper

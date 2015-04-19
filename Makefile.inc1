@@ -123,7 +123,7 @@ DESTDIRBASE:=		${OBJTREE}${.CURDIR}
 .MAKEFLAGS:=	${.MAKEFLAGS:NDESTDIR=*}
 
 # This section sets the tools used to build the world/kernel
-WORLD_CCVER?=		gcc47
+WORLD_CCVER?=		gcc50
 WORLD_LDVER?=		ld.bfd
 WORLD_BINUTILSVER?=	binutils225
 
@@ -915,12 +915,12 @@ _share=	share/syscons/scrnmaps
 .endif
 
 _gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
-.if !defined(NO_GCC50)
 _gcc50_cross= gnu/usr.bin/cc50
 _gcc50_tools= gnu/usr.bin/cc50/cc_prep gnu/usr.bin/cc50/cc_tools
-.endif
+.if !defined(NO_ALTCOMPILER)
 _gcc47_cross= gnu/usr.bin/cc47
 _gcc47_tools= gnu/usr.bin/cc47/cc_prep gnu/usr.bin/cc47/cc_tools
+.endif
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
 
@@ -989,12 +989,12 @@ hierarchy:
 #
 libraries:
 	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
-		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD;
-.if !defined(NO_GCC50)
-	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc50 \
 		make -f Makefile.inc1 _startup_libs50 -DSYSBUILD;
+.if !defined(NO_ALTCOMPILER)
+	cd ${.CURDIR}; \
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
+		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD;
 .endif
 	cd ${.CURDIR}; \
 	    make -f Makefile.inc1 _startup_libs -DSYSBUILD; \

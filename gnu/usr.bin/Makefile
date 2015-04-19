@@ -20,13 +20,13 @@ SUBDIR+= ${BU_BACKUP}
 SUBDIR+= gmp
 SUBDIR+= mpfr
 SUBDIR+= mpc
-SUBDIR+= cc47
-
-.if defined(NO_GCC50)
-.ORDER: ${BU_PRIMARY} gmp mpfr mpc cc47
-.else
 SUBDIR+= cc50
-.ORDER: ${BU_PRIMARY} gmp mpfr mpc cc47 cc50
+
+.if defined(NO_ALTCOMPILER)
+.ORDER: ${BU_PRIMARY} gmp mpfr mpc cc50
+.else
+SUBDIR+= cc47
+.ORDER: ${BU_PRIMARY} gmp mpfr mpc cc50 cc47
 .endif
 
 # maximum parallelism

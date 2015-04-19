@@ -118,9 +118,9 @@ We currently recommend that an override NOT be set in
 Currently accepted values for compilers which are part of
 .Dx
 are
-.Dq gcc50
-and
 .Dq gcc47
+and
+.Dq gcc50
 (default).
 All other values will handled according to the settings in
 .Xr compilers.conf 5 .
@@ -383,6 +383,9 @@ Set to build modules with the system instead of the kernel.
 .It Va NO_ALTBINUTILS
 .Pq Vt bool
 Set to not build the alternative (non-default) set of binutils.
+.It Va NO_ALTCOMPILER
+.Pq Vt bool
+Set to not build the designated secondary compiler (GCC 4.7).
 .It Va NO_CRYPT
 .Pq Vt bool
 Set to not build crypto code.
@@ -392,9 +395,6 @@ Set to not build CVS.
 .It Va NO_GAMES
 .Pq Vt bool
 Set to not build games.
-.It Va NO_GCC50
-.Pq Vt bool
-Set to not build the alternative version of GCC (5.0).
 .It Va NO_GDB
 .Pq Vt bool
 Set to not build
