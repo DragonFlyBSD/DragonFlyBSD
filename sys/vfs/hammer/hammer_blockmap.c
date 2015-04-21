@@ -1346,6 +1346,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(zone_offset);
 	layer1 = hammer_bread(hmp, layer1_offset, errorp, &buffer);
 	if (*errorp) {
+		*curp = 0;
 		bytes = 0;
 		goto failed;
 	}
@@ -1366,6 +1367,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(zone_offset);
 	layer2 = hammer_bread(hmp, layer2_offset, errorp, &buffer);
 	if (*errorp) {
+		*curp = 0;
 		bytes = 0;
 		goto failed;
 	}
