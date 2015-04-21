@@ -94,10 +94,11 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	reblock.free_level = HAMMER_BIGBLOCK_SIZE - reblock.free_level;
 	if (reblock.free_level < 0)
 		reblock.free_level = 0;
-	printf("reblock start %016jx:%04x free level %d\n",
+	printf("reblock start %016jx:%04x\nfree level %d/%d\n",
 		(uintmax_t)reblock.key_beg.obj_id,
 		reblock.key_beg.localization,
-		reblock.free_level);
+		reblock.free_level,
+		HAMMER_BIGBLOCK_SIZE);
 
 	fd = open(filesystem, O_RDONLY);
 	if (fd < 0)
