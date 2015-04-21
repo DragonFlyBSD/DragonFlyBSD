@@ -63,6 +63,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	int error;
 	int seq;
 	int slop;
+	u_int32_t key_end_localization;
 
 	if ((reblock->key_beg.localization | reblock->key_end.localization) &
 	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
@@ -83,9 +84,17 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	else
 		slop = HAMMER_CHKSPC_REBLOCK;
 
+	/*
+	 * Ioctl caller has only set localization type to reblock.
+	 * Initialize cursor key localization with ip localization.
+	 */
 	reblock->key_cur = reblock->key_beg;
 	reblock->key_cur.localization &= HAMMER_LOCALIZE_MASK;
 	reblock->key_cur.localization += ip->obj_localization;
+
+	key_end_localization = reblock->key_end.localization;
+	key_end_localization &= HAMMER_LOCALIZE_MASK;
+	key_end_localization += ip->obj_localization;
 
 	checkspace_count = 0;
 	seq = trans->hmp->flusher.done;
@@ -103,9 +112,7 @@ retry:
 	cursor.key_beg.rec_type = HAMMER_MIN_RECTYPE;
 	cursor.key_beg.obj_type = 0;
 
-	cursor.key_end.localization = (reblock->key_end.localization &
-					HAMMER_LOCALIZE_MASK) +
-				      ip->obj_localization;
+	cursor.key_end.localization = key_end_localization;
 	cursor.key_end.obj_id = reblock->key_end.obj_id;
 	cursor.key_end.key = HAMMER_MAX_KEY;
 	cursor.key_end.create_tid = HAMMER_MAX_TID - 1;
