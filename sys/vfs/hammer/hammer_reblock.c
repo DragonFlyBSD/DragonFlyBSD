@@ -64,6 +64,16 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	int seq;
 	int slop;
 
+	if ((reblock->key_beg.localization | reblock->key_end.localization) &
+	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
+		return(EINVAL);
+	}
+	if (reblock->key_beg.obj_id >= reblock->key_end.obj_id)
+		return(EINVAL);
+	if (reblock->free_level < 0 ||
+	    reblock->free_level > HAMMER_BIGBLOCK_SIZE)
+		return(EINVAL);
+
 	/*
 	 * A fill level <= 20% is considered an emergency.  free_level is
 	 * inverted from fill_level.
@@ -72,15 +82,6 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 		slop = HAMMER_CHKSPC_EMERGENCY;
 	else
 		slop = HAMMER_CHKSPC_REBLOCK;
-
-	if ((reblock->key_beg.localization | reblock->key_end.localization) &
-	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
-		return(EINVAL);
-	}
-	if (reblock->key_beg.obj_id >= reblock->key_end.obj_id)
-		return(EINVAL);
-	if (reblock->free_level < 0)
-		return(EINVAL);
 
 	reblock->key_cur = reblock->key_beg;
 	reblock->key_cur.localization &= HAMMER_LOCALIZE_MASK;
