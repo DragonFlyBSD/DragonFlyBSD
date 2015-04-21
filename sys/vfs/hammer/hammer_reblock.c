@@ -75,8 +75,8 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 		return(EINVAL);
 
 	/*
-	 * A fill level <= 20% is considered an emergency.  free_level is
-	 * inverted from fill_level.
+	 * A fill_percentage <= 20% is considered an emergency.  free_level is
+	 * inverted from fill_percentage.
 	 */
 	if (reblock->free_level >= HAMMER_BIGBLOCK_SIZE * 8 / 10)
 		slop = HAMMER_CHKSPC_EMERGENCY;
