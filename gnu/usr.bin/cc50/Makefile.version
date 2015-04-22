@@ -1,5 +1,11 @@
-GCCCOMPLETEVER=	5.0.1
-GCCRELEASE=	Snapshot # choices are "Snapshot" or "Release"
-GCCDATESTAMP=	2015-04-17
-GCCPOINTVER=	${GCCCOMPLETEVER:R}
-GCCSHORTVER=	${GCCPOINTVER:S/.//}
+# GCC version scheme change burned us a bit.
+# We are at 5.1 (later 5.2, 5.3) but directory names stuck at 5.0
+# Similarly CCVER is gcc50, not gcc51.  Its better to live with it.
+# Next time, we can use "6" instead of "60" and "6.0"
+
+GCCCOMPLETEVER=	5.1.1
+GCCRELEASE=	Release # choices are "Snapshot" or "Release"
+GCCDATESTAMP=	2015-04-22
+GCCSHORTDATE=	${GCCDATESTAMP:S/-//g}
+GCCPOINTVER=	5.0
+GCCSHORTVER=	50

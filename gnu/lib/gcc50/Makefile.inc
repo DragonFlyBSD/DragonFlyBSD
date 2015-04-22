@@ -3,11 +3,7 @@ __<gcc50.Makefile.inc>__:
 
 .include "../../usr.bin/cc50/Makefile.version"
 
-GCCPOINTVER=	${GCCCOMPLETEVER:R}
-GCCSHORTVER=	${GCCPOINTVER:S/.//}
-GCCSHORTDATE=	${GCCDATESTAMP:S/-//g}
-
-GCCDIR=		${.CURDIR}${RELUP}/../../../../contrib/gcc-${GCCPOINTVER}
+GCCDIR=		${.CURDIR}${RELUP}/../../../../contrib/gcc-5.0
 OCCDIR= 	${.OBJDIR}${RELUP}/../../../usr.bin/cc${GCCSHORTVER}
 CCDIR=		${.CURDIR}${RELUP}/../../../usr.bin/cc${GCCSHORTVER}
 

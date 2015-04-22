@@ -12,7 +12,7 @@ FLAGS+=		-DDEFAULT_TARGET_MACHINE=\"${target_machine}\"
 
 BINDIR?=	/usr/libexec/gcc${GCCSHORTVER}
 
-GCCDIR=		${.CURDIR}/${TOP_PREFIX}../../../../contrib/gcc-${GCCPOINTVER}
+GCCDIR=		${.CURDIR}/${TOP_PREFIX}../../../../contrib/gcc-5.0
 OTOPDIR=	${.OBJDIR}/${TOP_PREFIX}..
 STOPDIR=	${.CURDIR}/${TOP_PREFIX}..
 OSLDIR=		${OTOPDIR}/support-libs
