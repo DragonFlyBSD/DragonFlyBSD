@@ -854,7 +854,8 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 
 	/*
 	 * Setup the ".." pointer.  This only needs to be done for directories
-	 * but we do it for all objects as a recovery aid.
+	 * but we do it for all objects as a recovery aid if dip exists.
+	 * The inode is probably a PFS root if dip is NULL.
 	 */
 	if (dip)
 		ip->ino_data.parent_obj_id = dip->ino_leaf.base.obj_id;

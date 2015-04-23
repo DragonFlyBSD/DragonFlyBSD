@@ -1355,6 +1355,9 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	else
 		parent_obj_localization = dip->obj_localization;
 
+	/*
+	 * It's probably a PFS root when dip->ino_data.parent_obj_id is 0.
+	 */
 	if (parent_obj_id == 0) {
 		if (dip->obj_id == HAMMER_OBJID_ROOT &&
 		   asof != hmp->asof) {
