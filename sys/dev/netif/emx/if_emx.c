@@ -661,7 +661,8 @@ emx_attach(device_t dev)
 	if (sc->hw.mac.type == e1000_82571 ||
 	    sc->hw.mac.type == e1000_82572 ||
 	    sc->hw.mac.type == e1000_80003es2lan ||
-	    sc->hw.mac.type == e1000_pch_lpt)
+	    sc->hw.mac.type == e1000_pch_lpt ||
+	    sc->hw.mac.type == e1000_82574)
 		tx_ring_max = EMX_NTX_RING;
 	sc->tx_ring_cnt = device_getenv_int(dev, "txr", emx_txr);
 	sc->tx_ring_cnt = if_ring_count2(sc->tx_ring_cnt, tx_ring_max);
@@ -2283,7 +2284,7 @@ emx_init_tx_ring(struct emx_txdata *tdata)
 static void
 emx_init_tx_unit(struct emx_softc *sc)
 {
-	uint32_t tctl, tarc, tipg = 0;
+	uint32_t tctl, tarc, tipg = 0, txdctl;
 	int i;
 
 	for (i = 0; i < sc->tx_ring_inuse; ++i) {
@@ -2327,6 +2328,14 @@ emx_init_tx_unit(struct emx_softc *sc)
 	/* NOTE: 0 is not allowed for TIDV */
 	E1000_WRITE_REG(&sc->hw, E1000_TIDV, 1);
 	E1000_WRITE_REG(&sc->hw, E1000_TADV, 0);
+
+	/*
+	 * Errata workaround (obtained from Linux).  This is necessary
+	 * to make multiple TX queues work on 82574.
+	 * XXX can't find it in any published errata though.
+	 */
+	txdctl = E1000_READ_REG(&sc->hw, E1000_TXDCTL(0));
+	E1000_WRITE_REG(&sc->hw, E1000_TXDCTL(1), txdctl);
 
 	if (sc->hw.mac.type == e1000_82571 ||
 	    sc->hw.mac.type == e1000_82572) {
