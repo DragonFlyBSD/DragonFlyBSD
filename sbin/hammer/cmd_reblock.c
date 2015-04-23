@@ -96,7 +96,7 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 		reblock.free_level = 0;
 	printf("reblock start %016jx:%04x\nfree level %d/%d\n",
 		(uintmax_t)reblock.key_beg.obj_id,
-		reblock.key_end.localization,
+		reblock.key_beg.localization,
 		reblock.free_level,
 		HAMMER_BIGBLOCK_SIZE);
 
