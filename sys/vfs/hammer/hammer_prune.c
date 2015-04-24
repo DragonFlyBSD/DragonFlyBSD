@@ -62,6 +62,7 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	int elm_array_size;
 	int seq;
 	int64_t bytes;
+	u_int32_t key_beg_localization;
 
 	if (prune->nelms < 0 || prune->nelms > HAMMER_MAX_PRUNE_ELMS)
 		return(EINVAL);
@@ -79,9 +80,18 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	if ((prune->head.flags & HAMMER_IOC_PRUNE_ALL) && prune->nelms)
 		return(EINVAL);
 
-	prune->key_cur.localization = (prune->key_end.localization &
-					HAMMER_LOCALIZE_MASK) +
-				      ip->obj_localization;
+	/*
+	 * Ioctl caller has only set localization type to prune.
+	 * Initialize cursor key localization with ip localization.
+	 */
+	key_beg_localization = prune->key_beg.localization;
+	key_beg_localization &= HAMMER_LOCALIZE_MASK;
+	key_beg_localization += ip->obj_localization;
+
+	prune->key_cur.localization = prune->key_end.localization;
+	prune->key_cur.localization &= HAMMER_LOCALIZE_MASK;
+	prune->key_cur.localization += ip->obj_localization;
+
 	prune->key_cur.obj_id = prune->key_end.obj_id;
 	prune->key_cur.key = HAMMER_MAX_KEY;
 
@@ -106,9 +116,7 @@ retry:
 		hammer_done_cursor(&cursor);
 		goto failed;
 	}
-	cursor.key_beg.localization = (prune->key_beg.localization &
-					HAMMER_LOCALIZE_MASK) +
-				      ip->obj_localization;
+	cursor.key_beg.localization = key_beg_localization;
 	cursor.key_beg.obj_id = prune->key_beg.obj_id;
 	cursor.key_beg.key = HAMMER_MIN_KEY;
 	cursor.key_beg.create_tid = 1;
