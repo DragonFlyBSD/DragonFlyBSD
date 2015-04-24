@@ -285,7 +285,8 @@ hdac_pin_patch(struct hdaa_widget *w)
 	}
 
 	/* New patches */
-	if (id == HDA_CODEC_ALC283 && subid == ACER_C720_SUBVENDOR) {
+	if (id == HDA_CODEC_ALC283 && (subid == ACER_C720_SUBVENDOR ||
+				       subid == ACER_C720_SUBVENDOR2)) {
 		switch (nid) {
 		case 20:
 			patch = "as=2 seq=0";
@@ -497,7 +498,8 @@ hdaa_widget_patch(struct hdaa_widget *w)
 	 * this makes sense since the mixer's unconnected inputs might have
 	 * noise on them that leaks through.
 	 */
-	if (id == HDA_CODEC_ALC283 && subid == ACER_C720_SUBVENDOR) {
+	if (id == HDA_CODEC_ALC283 && (subid == ACER_C720_SUBVENDOR ||
+				       subid == ACER_C720_SUBVENDOR2)) {
 		if (w->nid == 33)
 			w->senseredir = 12;
 		if (w->nid == 11)
@@ -777,7 +779,8 @@ hdaa_patch_direct(struct hdaa_devinfo *devinfo)
 		}
 	}
 	if (id == HDA_CODEC_ALC283) {
-		if (subid == ACER_C720_SUBVENDOR)
+		if (subid == ACER_C720_SUBVENDOR ||
+		    subid == ACER_C720_SUBVENDOR2)
 			hdaa_patch_direct_acer_c720(devinfo);
 	}
 }
