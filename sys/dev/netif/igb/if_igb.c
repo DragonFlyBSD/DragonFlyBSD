@@ -2112,7 +2112,6 @@ igb_txcsum_ctx(struct igb_tx_ring *txr, struct mbuf *mp)
 static void
 igb_txeof(struct igb_tx_ring *txr)
 {
-	struct ifnet *ifp = &txr->sc->arpcom.ac_if;
 	int first, hdr, avail;
 
 	if (txr->tx_avail == txr->num_tx_desc)
@@ -2133,7 +2132,6 @@ igb_txeof(struct igb_tx_ring *txr)
 			bus_dmamap_unload(txr->tx_tag, txbuf->map);
 			m_freem(txbuf->m_head);
 			txbuf->m_head = NULL;
-			IFNET_STAT_INC(ifp, opackets, 1);
 		}
 		if (++first == txr->num_tx_desc)
 			first = 0;
@@ -3521,6 +3519,14 @@ igb_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			IFNET_STAT_INC(ifp, oerrors, 1);
 			continue;
 		}
+
+		/*
+		 * TX interrupt are aggressively aggregated, so increasing
+		 * opackets at TX interrupt time will make the opackets
+		 * statistics vastly inaccurate; we do the opackets increment
+		 * now.
+		 */
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 		if (nsegs >= txr->wreg_nsegs) {
 			E1000_WRITE_REG(&txr->sc->hw, E1000_TDT(txr->me), idx);

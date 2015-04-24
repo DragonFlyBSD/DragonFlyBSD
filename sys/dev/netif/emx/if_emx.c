@@ -1035,6 +1035,14 @@ emx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			continue;
 		}
 
+		/*
+		 * TX interrupt are aggressively aggregated, so increasing
+		 * opackets at TX interrupt time will make the opackets
+		 * statistics vastly inaccurate; we do the opackets increment
+		 * now.
+		 */
+		IFNET_STAT_INC(ifp, opackets, 1);
+
 		if (nsegs >= tdata->tx_wreg_nsegs) {
 			E1000_WRITE_REG(&sc->hw, E1000_TDT(tdata->idx), idx);
 			nsegs = 0;
@@ -2529,7 +2537,6 @@ emx_txcsum(struct emx_txdata *tdata, struct mbuf *mp,
 static void
 emx_txeof(struct emx_txdata *tdata)
 {
-	struct ifnet *ifp = &tdata->sc->arpcom.ac_if;
 	struct emx_txbuf *tx_buffer;
 	int first, num_avail;
 
@@ -2560,7 +2567,6 @@ emx_txeof(struct emx_txdata *tdata)
 
 				tx_buffer = &tdata->tx_buf[first];
 				if (tx_buffer->m_head) {
-					IFNET_STAT_INC(ifp, opackets, 1);
 					bus_dmamap_unload(tdata->txtag,
 							  tx_buffer->map);
 					m_freem(tx_buffer->m_head);
@@ -2594,7 +2600,6 @@ emx_txeof(struct emx_txdata *tdata)
 static void
 emx_tx_collect(struct emx_txdata *tdata)
 {
-	struct ifnet *ifp = &tdata->sc->arpcom.ac_if;
 	struct emx_txbuf *tx_buffer;
 	int tdh, first, num_avail, dd_idx = -1;
 
@@ -2618,7 +2623,6 @@ emx_tx_collect(struct emx_txdata *tdata)
 
 		tx_buffer = &tdata->tx_buf[first];
 		if (tx_buffer->m_head) {
-			IFNET_STAT_INC(ifp, opackets, 1);
 			bus_dmamap_unload(tdata->txtag,
 					  tx_buffer->map);
 			m_freem(tx_buffer->m_head);

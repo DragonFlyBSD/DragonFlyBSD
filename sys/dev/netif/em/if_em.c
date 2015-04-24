@@ -1043,6 +1043,14 @@ em_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			continue;
 		}
 
+		/*
+		 * TX interrupt are aggressively aggregated, so increasing
+		 * opackets at TX interrupt time will make the opackets
+		 * statistics vastly inaccurate; we do the opackets increment
+		 * now.
+		 */
+		IFNET_STAT_INC(ifp, opackets, 1);
+
 		if (nsegs >= adapter->tx_wreg_nsegs && idx >= 0) {
 			E1000_WRITE_REG(&adapter->hw, E1000_TDT(0), idx);
 			nsegs = 0;
@@ -2970,7 +2978,6 @@ em_txeof(struct adapter *adapter)
 
 				tx_buffer = &adapter->tx_buffer_area[first];
 				if (tx_buffer->m_head) {
-					IFNET_STAT_INC(ifp, opackets, 1);
 					bus_dmamap_unload(adapter->txtag,
 							  tx_buffer->map);
 					m_freem(tx_buffer->m_head);
@@ -3028,7 +3035,6 @@ em_tx_collect(struct adapter *adapter)
 
 		tx_buffer = &adapter->tx_buffer_area[first];
 		if (tx_buffer->m_head) {
-			IFNET_STAT_INC(ifp, opackets, 1);
 			bus_dmamap_unload(adapter->txtag,
 					  tx_buffer->map);
 			m_freem(tx_buffer->m_head);

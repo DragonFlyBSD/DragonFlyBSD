@@ -629,6 +629,14 @@ ix_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			continue;
 		}
 
+		/*
+		 * TX interrupt are aggressively aggregated, so increasing
+		 * opackets at TX interrupt time will make the opackets
+		 * statistics vastly inaccurate; we do the opackets increment
+		 * now.
+		 */
+		IFNET_STAT_INC(ifp, opackets, 1);
+
 		if (nsegs >= txr->tx_wreg_nsegs) {
 			IXGBE_WRITE_REG(&sc->hw, IXGBE_TDT(txr->tx_idx), idx);
 			nsegs = 0;
@@ -2065,7 +2073,6 @@ ix_tso_ctx_setup(struct ix_tx_ring *txr, const struct mbuf *mp,
 static void
 ix_txeof(struct ix_tx_ring *txr, int hdr)
 {
-	struct ifnet *ifp = &txr->tx_sc->arpcom.ac_if;
 	int first, avail;
 
 	if (txr->tx_avail == txr->tx_ndesc)
@@ -2084,7 +2091,6 @@ ix_txeof(struct ix_tx_ring *txr, int hdr)
 			bus_dmamap_unload(txr->tx_tag, txbuf->map);
 			m_freem(txbuf->m_head);
 			txbuf->m_head = NULL;
-			IFNET_STAT_INC(ifp, opackets, 1);
 		}
 		if (++first == txr->tx_ndesc)
 			first = 0;
