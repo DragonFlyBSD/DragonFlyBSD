@@ -40,7 +40,7 @@
 .Nm
 .Fl h
 .Nm
-.Op Fl 2BFqrvXy
+.Op Fl 2ABFqrvXy
 .Op Fl b Ar bandwidth
 .Op Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
 .Op Fl R Ar restrictcmd
@@ -76,6 +76,23 @@ automatic negotiation of transaction id ranges.
 This option is automatically enabled by the
 .Cm mirror-copy
 command.
+.It Fl A
+Make per PFS commands perform on all PFSs if possible.
+If the command supports this option, it targets all PFSs of the
+.Nm HAMMER
+filesystem that the
+.Ar filesystem
+argument (of that command) belongs to.
+Currently
+.Cm rebalance ,
+.Cm reblock ,
+.Cm reblock-btree ,
+.Cm reblock-inodes ,
+.Cm reblock-dirs
+and
+.Cm reblock-data
+commands support this option.
+If the command does not support this option, it does nothing.
 .It Fl B
 Bulk transfer.
 .Cm Mirror-stream

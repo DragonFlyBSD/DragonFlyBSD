@@ -62,6 +62,7 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	reblock.key_end.obj_id = HAMMER_MAX_OBJID;
 
 	reblock.head.flags = flags & HAMMER_IOC_DO_FLAGS;
+	reblock.allpfs = AllPFS;
 
 	/*
 	 * Restrict the localization domain if asked to do inodes or data,

@@ -84,6 +84,7 @@ extern int RunningIoctl;
 extern int DidInterrupt;
 extern int ForceOpt;
 extern int BulkOpt;
+extern int AllPFS;
 extern u_int64_t BandwidthOpt;
 extern u_int64_t SplitupOpt;
 extern u_int64_t MemoryLimit;

@@ -90,11 +90,15 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	reblock->key_cur = reblock->key_beg;
 	reblock->key_cur.localization &= HAMMER_LOCALIZE_MASK;
-	reblock->key_cur.localization += ip->obj_localization;
+	if (reblock->allpfs == 0)
+		reblock->key_cur.localization += ip->obj_localization;
 
 	key_end_localization = reblock->key_end.localization;
 	key_end_localization &= HAMMER_LOCALIZE_MASK;
-	key_end_localization += ip->obj_localization;
+	if (reblock->allpfs == 0)
+		key_end_localization += ip->obj_localization;
+	else
+		key_end_localization += ((HAMMER_MAX_PFS - 1) << 16);
 
 	checkspace_count = 0;
 	seq = trans->hmp->flusher.done;

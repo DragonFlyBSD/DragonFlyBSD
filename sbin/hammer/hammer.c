@@ -58,6 +58,7 @@ int ForceOpt;
 int RunningIoctl;
 int DidInterrupt;
 int BulkOpt;
+int AllPFS;
 u_int64_t BandwidthOpt;
 u_int64_t SplitupOpt = 4ULL * 1024ULL * 1024ULL * 1024ULL;
 u_int64_t MemoryLimit = 1024LLU * 1024 * 1024;
@@ -77,7 +78,7 @@ main(int ac, char **av)
 	int cacheSize = 0;
 
 	while ((ch = getopt(ac, av,
-			    "b:c:de:hf:i:m:p:qrs:t:v2yBC:FR:S:T:X")) != -1) {
+			    "b:c:de:hf:i:m:p:qrs:t:v2yABC:FR:S:T:X")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -198,6 +199,9 @@ main(int ac, char **av)
 				--VerboseOpt;
 			else
 				++QuietOpt;
+			break;
+		case 'A':
+			AllPFS = 1;
 			break;
 		case 'B':
 			BulkOpt = 1;
@@ -620,7 +624,7 @@ usage(int exit_code)
 {
 	fprintf(stderr,
 		"hammer -h\n"
-		"hammer [-2BqrvXy] [-b bandwidth] [-C cachesize[:readahead]] [-c cyclefile]\n"
+		"hammer [-2ABqrvXy] [-b bandwidth] [-C cachesize[:readahead]] [-c cyclefile]\n"
 		"       [-f blkdevs] [-i delay] [-t seconds] [-S splitup]\n"
 		"	command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
