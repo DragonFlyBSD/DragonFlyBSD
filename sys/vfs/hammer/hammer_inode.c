@@ -335,12 +335,15 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			 * non-root filesystem paths and setting VROOT may
 			 * confuse the namecache.  Set VPFSROOT instead.
 			 */
-			if (ip->obj_id == HAMMER_OBJID_ROOT &&
-			    ip->obj_asof == hmp->asof) {
-				if (ip->obj_localization == 0)
-					vsetflags(vp, VROOT);
-				else
+			if (ip->obj_id == HAMMER_OBJID_ROOT) {
+				if (ip->obj_asof == hmp->asof) {
+					if (ip->obj_localization == 0)
+						vsetflags(vp, VROOT);
+					else
+						vsetflags(vp, VPFSROOT);
+				} else {
 					vsetflags(vp, VPFSROOT);
+				}
 			}
 
 			vp->v_data = (void *)ip;
