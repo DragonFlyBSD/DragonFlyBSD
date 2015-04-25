@@ -85,7 +85,7 @@
 static int btree_search(hammer_cursor_t cursor, int flags);
 static int btree_split_internal(hammer_cursor_t cursor);
 static int btree_split_leaf(hammer_cursor_t cursor);
-static int btree_remove(hammer_cursor_t cursor);
+static int btree_remove(hammer_cursor_t cursor, int *ndelete);
 static __inline int btree_node_is_full(hammer_node_ondisk_t node);
 static __inline int btree_max_elements(u_int8_t type);
 static int hammer_btree_mirror_propagate(hammer_cursor_t cursor,	
@@ -931,9 +931,12 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm,
  *
  * This function can return EDEADLK, requiring the caller to retry the
  * operation after clearing the deadlock.
+ *
+ * This function will store the number of deleted btree nodes in *ndelete
+ * if ndelete is not NULL.
  */
 int
-hammer_btree_delete(hammer_cursor_t cursor)
+hammer_btree_delete(hammer_cursor_t cursor, int *ndelete)
 {
 	hammer_node_ondisk_t ondisk;
 	hammer_node_t node;
@@ -942,6 +945,8 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	int i;
 
 	KKASSERT (cursor->trans->sync_lock_refs > 0);
+	if (ndelete)
+		*ndelete = 0;
 	if ((error = hammer_cursor_upgrade(cursor)) != 0)
 		return(error);
 	++hammer_stats_btree_deletes;
@@ -988,7 +993,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	 */
 	KKASSERT(cursor->index <= ondisk->count);
 	if (ondisk->count == 0) {
-		error = btree_remove(cursor);
+		error = btree_remove(cursor, ndelete);
 		if (error == EDEADLK)
 			error = 0;
 	} else {
@@ -2233,7 +2238,7 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
  * for further iteration but not for an immediate insertion or deletion.
  */
 static int
-btree_remove(hammer_cursor_t cursor)
+btree_remove(hammer_cursor_t cursor, int *ndelete)
 {
 	hammer_node_ondisk_t ondisk;
 	hammer_btree_elm_t elm;
@@ -2302,7 +2307,7 @@ btree_remove(hammer_cursor_t cursor)
 
 		if (error == 0) {
 			hammer_cursor_deleted_element(cursor->node, 0);
-			error = btree_remove(cursor);
+			error = btree_remove(cursor, ndelete);
 			if (error == 0) {
 				KKASSERT(node != cursor->node);
 				hammer_cursor_removed_node(
@@ -2315,6 +2320,8 @@ btree_remove(hammer_cursor_t cursor)
 				hammer_modify_node_done(node);
 				hammer_flush_node(node, 0);
 				hammer_delete_node(cursor->trans, node);
+				if (ndelete)
+					(*ndelete)++;
 			} else {
 				/*
 				 * Defer parent removal because we could not
@@ -2391,6 +2398,8 @@ btree_remove(hammer_cursor_t cursor)
 		 */
 		cursor->flags |= HAMMER_CURSOR_ITERATE_CHECK;
 		error = hammer_cursor_up(cursor);
+		if (ndelete)
+			(*ndelete)++;
 	}
 	return (error);
 }

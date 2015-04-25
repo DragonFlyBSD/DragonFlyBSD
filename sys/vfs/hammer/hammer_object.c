@@ -2446,6 +2446,9 @@ failed:
  *
  * An element can be un-deleted by passing a delete_tid of 0 with
  * HAMMER_DELETE_ADJUST.
+ *
+ * This function will store the number of bytes deleted in *stat_bytes
+ * if stat_bytes is not NULL.
  */
 int
 hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
@@ -2459,6 +2462,8 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	hammer_btree_elm_t elm;
 	hammer_off_t data_offset;
 	int32_t data_len;
+	int64_t bytes;
+	int ndelete;
 	int error;
 	int icount;
 	int doprop;
@@ -2474,6 +2479,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	KKASSERT(elm->base.btype == HAMMER_BTREE_TYPE_RECORD);
 
 	hammer_sync_lock_sh(trans);
+	bytes = 0;
 	doprop = 0;
 	icount = 0;
 
@@ -2546,7 +2552,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			icount = -1;
 		}
 
-		error = hammer_btree_delete(cursor);
+		error = hammer_btree_delete(cursor, &ndelete);
 		if (error == 0) {
 			/*
 			 * The deletion moves the next element (if any) to
@@ -2559,6 +2565,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 				cursor->flags |= HAMMER_CURSOR_RETEST;
 				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 			}
+			bytes += (ndelete * sizeof(struct hammer_node_ondisk));
 		}
 		if (error == 0) {
 			switch(data_offset & HAMMER_OFF_ZONE_MASK) {
@@ -2567,6 +2574,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			case HAMMER_ZONE_META:
 				hammer_blockmap_free(trans,
 						     data_offset, data_len);
+				bytes += data_len;
 				break;
 			default:
 				break;
@@ -2612,6 +2620,8 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 		else
 			hammer_btree_do_propagation(cursor, NULL, leaf);
 	}
+	if (stat_bytes)
+		*stat_bytes = bytes;
 	hammer_sync_unlock(trans);
 	return (error);
 }

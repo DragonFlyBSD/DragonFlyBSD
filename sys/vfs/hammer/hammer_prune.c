@@ -61,6 +61,7 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	int isdir;
 	int elm_array_size;
 	int seq;
+	int64_t bytes;
 
 	if (prune->nelms < 0 || prune->nelms > HAMMER_MAX_PRUNE_ELMS)
 		return(EINVAL);
@@ -185,7 +186,7 @@ retry:
 							HAMMER_DELETE_DESTROY,
 							cursor.trans->tid,
 							cursor.trans->time32,
-							0, &prune->stat_bytes);
+							0, &bytes);
 			hammer_sync_unlock(trans);
 			if (error)
 				break;
@@ -194,6 +195,7 @@ retry:
 				++prune->stat_dirrecords;
 			else
 				++prune->stat_rawrecords;
+			prune->stat_bytes += bytes;
 
 			/*
 			 * The current record might now be the one after
