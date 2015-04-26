@@ -3,7 +3,7 @@
 #########################################################################
 
 # New method e.g. 'make gui release'.  A series of enhancement
-# targes may be specified which set make variables which enhance
+# targets may be specified which set make variables which enhance
 # the build in various ways.
 #
 # img is now the default (produces both the .iso and .img)
