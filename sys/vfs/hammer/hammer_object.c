@@ -2566,8 +2566,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 			}
 			bytes += (ndelete * sizeof(struct hammer_node_ondisk));
-		}
-		if (error == 0) {
+
 			switch(data_offset & HAMMER_OFF_ZONE_MASK) {
 			case HAMMER_ZONE_LARGE_DATA:
 			case HAMMER_ZONE_SMALL_DATA:
