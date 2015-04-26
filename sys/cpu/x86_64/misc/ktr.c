@@ -64,18 +64,28 @@ FRAMEUP(void **frameptr)
     void **newframeptr;
 
     newframeptr = (void **)frameptr[0];
-    if (((uintptr_t)newframeptr ^ (uintptr_t)frameptr) & ~16383)
+    if (((uintptr_t)newframeptr ^ (uintptr_t)frameptr) & ~16383ULL)
 	newframeptr = frameptr;
     return(newframeptr);
 }
 
+struct x86_64_frame {
+	struct x86_64_frame	*f_frame;
+	long			f_retaddr;
+	long			f_arg0;
+};
+
 void
 cpu_ktr_caller(struct ktr_entry *_ktr)
 {
+    struct x86_64_frame *frame;
     struct ktr_entry *ktr;
     void **frameptr;
+    register_t  rbp;
 
-    frameptr = (void **)&_ktr - 2;	/* frame, retpc to ktr_log */
+    __asm __volatile("movq %%rbp, %0" : "=r" (rbp));
+    frame = (struct x86_64_frame *)rbp;
+    frameptr = (void **)frame->f_frame;
     ktr = _ktr;
     frameptr = FRAMEUP(frameptr);	/* frame, retpc to traced function */
     frameptr = FRAMEUP(frameptr);	/* frame, caller1 of traced function */
