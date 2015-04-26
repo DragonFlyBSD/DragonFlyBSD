@@ -4448,6 +4448,7 @@ free_tls(struct tls_tcb *tcb)
 	    free((void *)dtv[i+2]);
 	}
     }
+    free(dtv);
 
     free((void*) tls_start);
 }
