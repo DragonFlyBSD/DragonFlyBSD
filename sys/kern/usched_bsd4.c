@@ -265,7 +265,7 @@ KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_setrunqueue_found_best_cpuid, 0,
     "mask %lu, found_cpuid %d, curr_cpuid %d)",
     pid_t pid, int cpuid, unsigned long mask, int found_cpuid, int curr);
 
-KTR_INFO(KTR_USCHED_BSD4, usched, chooseproc, 0,
+KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_chooseproc, 0,
     "USCHED_BSD4(chooseproc: pid %d, old_cpuid %d, curr_cpuid %d)",
     pid_t pid, int old_cpuid, int curr);
 KTR_INFO(KTR_USCHED_BSD4, usched, chooseproc_cc, 0,
@@ -1377,7 +1377,7 @@ again:
 		}
 	}
 
-	KTR_COND_LOG(usched_chooseproc,
+	KTR_COND_LOG(usched_bsd4_chooseproc,
 	    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 	    lp->lwp_proc->p_pid,
 	    lp->lwp_thread->td_gd->gd_cpuid,
