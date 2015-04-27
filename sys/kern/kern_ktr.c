@@ -99,6 +99,20 @@
 #define KTR_ENTRIES_MASK	(KTR_ENTRIES - 1)
 
 /*
+ * Used by earlier boot; default value consumes ~64K BSS.
+ *
+ * NOTE:
+ * We use a small value here; this prevents kernel or module loading
+ * failure due to excessive BSS usage if KTR_ENTRIES is large.
+ */
+#if (KTR_ENTRIES < 256)
+#define KTR_ENTRIES_BOOT0	KTR_ENTRIES
+#else
+#define KTR_ENTRIES_BOOT0	256
+#endif
+#define KTR_ENTRIES_BOOT0_MASK	(KTR_ENTRIES_BOOT0 - 1)
+
+/*
  * test logging support.  When ktr_testlogcnt is non-zero each synchronization
  * interrupt will issue six back-to-back ktr logging messages on cpu 0
  * so the user can determine KTR logging overheads.
@@ -128,11 +142,12 @@ MALLOC_DEFINE(M_KTR, "ktr", "ktr buffers");
 
 SYSCTL_NODE(_debug, OID_AUTO, ktr, CTLFLAG_RW, 0, "ktr");
 
-int		ktr_entries = KTR_ENTRIES;
+static int	ktr_entries = KTR_ENTRIES_BOOT0;
 SYSCTL_INT(_debug_ktr, OID_AUTO, entries, CTLFLAG_RD, &ktr_entries, 0,
     "Size of the event buffer");
+static int	ktr_entries_mask = KTR_ENTRIES_BOOT0_MASK;
 
-int		ktr_version = KTR_VERSION;
+static int	ktr_version = KTR_VERSION;
 SYSCTL_INT(_debug_ktr, OID_AUTO, version, CTLFLAG_RD, &ktr_version, 0, "");
 
 static int	ktr_stacktrace = 1;
@@ -158,7 +173,7 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, testspincnt, CTLFLAG_RW, &ktr_testspincnt, 0, "
  * Give cpu0 a static buffer so the tracepoint facility can be used during
  * early boot (note however that we still use a critical section, XXX).
  */
-static struct	ktr_entry ktr_buf0[KTR_ENTRIES];
+static struct	ktr_entry ktr_buf0[KTR_ENTRIES_BOOT0];
 
 struct ktr_cpu ktr_cpu[MAXCPU] = {
 	{ .core.ktr_buf = &ktr_buf0[0] }
@@ -184,11 +199,19 @@ ktr_sysinit(void *dummy)
 	struct ktr_cpu_core *kcpu;
 	int i;
 
-	for(i = 1; i < ncpus; ++i) {
+	for (i = 0; i < ncpus; ++i) {
 		kcpu = &ktr_cpu[i].core;
 		kcpu->ktr_buf = kmalloc(KTR_ENTRIES * sizeof(struct ktr_entry),
 					M_KTR, M_WAITOK | M_ZERO);
+		if (i == 0) {
+			/* Migrate ktrs on CPU0 to the new location */
+			memcpy(kcpu->ktr_buf, ktr_buf0, sizeof(ktr_buf0));
+		}
 	}
+	cpu_sfence();
+	ktr_entries = KTR_ENTRIES;
+	ktr_entries_mask = KTR_ENTRIES_MASK;
+
 	callout_init_mp(&ktr_resync_callout);
 	callout_reset(&ktr_resync_callout, hz / 10, ktr_resync_callback, NULL);
 }
@@ -416,7 +439,7 @@ ktr_begin_write_entry(struct ktr_info *info, const char *file, int line)
 		return NULL;
 
 	crit_enter();
-	entry = kcpu->ktr_buf + (kcpu->ktr_idx & KTR_ENTRIES_MASK);
+	entry = kcpu->ktr_buf + (kcpu->ktr_idx & ktr_entries_mask);
 	++kcpu->ktr_idx;
 #ifdef _RDTSC_SUPPORTED_
 	if (cpu_feature & CPUID_TSC) {
@@ -475,7 +498,7 @@ DB_SHOW_COMMAND(ktr, db_ktr_all)
 	for(i = 0; i < ncpus; i++) {
 		kcpu = &ktr_cpu[i].core;
 		tstate[i].first = -1;
-		tstate[i].cur = (kcpu->ktr_idx - 1) & KTR_ENTRIES_MASK;
+		tstate[i].cur = (kcpu->ktr_idx - 1) & ktr_entries_mask;
 	}
 	db_ktr_verbose = 0;
 	while ((c = *(modif++)) != '\0') {
@@ -550,7 +573,7 @@ DB_SHOW_COMMAND(ktr, db_ktr_all)
 		if (tstate[i].first == -1)
 			tstate[i].first = tstate[i].cur;
 		if (--tstate[i].cur < 0)
-			tstate[i].cur = KTR_ENTRIES - 1;
+			tstate[i].cur = ktr_entries - 1;
 		if (tstate[i].first == tstate[i].cur) {
 			db_mach_vtrace(i, kp, tstate[i].cur + 1);
 			tstate[i].cur = -1;
