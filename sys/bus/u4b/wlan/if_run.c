@@ -403,7 +403,6 @@ static int	run_tx_param(struct run_softc *, struct mbuf *,
 		    const struct ieee80211_bpf_params *);
 static int	run_raw_xmit(struct ieee80211_node *, struct mbuf *,
 		    const struct ieee80211_bpf_params *);
-static void	run_start_locked(struct ifnet *);
 static void	run_start(struct ifnet *, struct ifaltq_subque *);
 static int	run_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	run_iq_calib(struct run_softc *, u_int);
@@ -3138,7 +3137,7 @@ tr_setup:
 
 		usbd_transfer_submit(xfer);
 
-		run_start_locked(ifp);
+		run_start(ifp, NULL);
 
 		break;
 
@@ -3739,15 +3738,19 @@ done:
 }
 
 static void
-run_start_locked(struct ifnet *ifp)
+run_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct run_softc *sc = ifp->if_softc;
 	struct ieee80211_node *ni;
 	struct mbuf *m = NULL;
 
+#if 0
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+#endif
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
 
+	RUN_LOCK(sc);
 	for (;;) {
 		/* send data frames */
 		m = ifq_dequeue(&ifp->if_snd);
@@ -3761,13 +3764,7 @@ run_start_locked(struct ifnet *ifp)
 			break;
 		}
 	}
-}
-
-static void
-run_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
-{
-	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
-	run_start_locked(ifp);
+	RUN_UNLOCK(sc);
 }
 
 static int
@@ -6282,8 +6279,7 @@ run_stop(void *arg)
 static void
 run_delay(struct run_softc *sc, u_int ms)
 {
-	usb_pause_ls(lockowned(&sc->sc_lock) ? &sc->sc_lock : NULL,
-            &wlan_global_serializer,
+	usb_pause_mtx(lockowned(&sc->sc_lock) ? &sc->sc_lock : NULL,
 	    USB_MS_TO_TICKS(ms));
 }
 
