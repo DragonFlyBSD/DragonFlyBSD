@@ -108,7 +108,8 @@ xhci_pci_match(device_t self)
 		return ("Intel Lynx Point USB 3.0 controller");
 	case 0x8cb18086:
 		return ("Intel Wildcat Point USB 3.0 controller");
-
+	case 0x9cb18086:
+		return ("Intel Wildcat Point-LB USB 3.0 controller");
 	default:
 		break;
 	}
@@ -268,6 +269,7 @@ xhci_pci_attach(device_t self)
 	case 0x1e318086:	/* Panther Point */
 	case 0x8c318086:	/* Lynx Point */
 	case 0x8cb18086:	/* Wildcat Point */
+	case 0x9cb18086:	/* Wildcat Point-LP */
 		sc->sc_port_route = &xhci_pci_port_route;
 		sc->sc_imod_default = XHCI_IMOD_DEFAULT_LP;
 		break;
