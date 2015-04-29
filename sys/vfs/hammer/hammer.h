@@ -983,8 +983,7 @@ struct hammer_sync_info {
 #define HAMMER_REBALANCE_MIN_BUFS	\
 	(HAMMER_BTREE_LEAF_ELMS * HAMMER_BTREE_LEAF_ELMS)
 
-
-#endif
+#endif  /* _KERNEL || _KERNEL_STRUCTURES */
 
 /*
  * checkspace slop (8MB chunks), higher numbers are more conservative.
@@ -1543,9 +1542,6 @@ hammer_checkspace(hammer_mount_t hmp, int slop)
 	return(_hammer_checkspace(hmp, slop, NULL));
 }
 
-#endif
-
-#ifdef _KERNEL
 static __inline void
 hammer_wait_mem_record(hammer_record_t record)
 {
@@ -1647,7 +1643,7 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 
 	return hammer_blockmap_lookup_verify(hmp, zone_offset, errorp);
 }
-#endif
+#endif  /* _KERNEL */
 
 #define hammer_modify_volume_field(trans, vol, field)		\
 	hammer_modify_volume(trans, vol, &(vol)->ondisk->field,	\
@@ -1675,4 +1671,4 @@ hammer_dir_localization(hammer_inode_t dip)
 	else
 		return(HAMMER_LOCALIZE_MISC);
 }
-#endif
+#endif  /* _KERNEL */
