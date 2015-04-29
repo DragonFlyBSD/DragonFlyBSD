@@ -1610,12 +1610,6 @@ hammer_modify_node_done(hammer_node_t node)
 }
 
 /*
- * Translate a zone address to zone-2 address.
- */
-#define hammer_xlate_to_zone2(offset) \
-	(((offset) & ~HAMMER_OFF_ZONE_MASK) | HAMMER_ZONE_RAW_BUFFER)
-
-/*
  * Lookup a blockmap offset.
  */
 static __inline hammer_off_t
