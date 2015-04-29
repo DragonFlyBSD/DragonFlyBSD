@@ -37,14 +37,11 @@
  */
 
 #include <sys/param.h>
-#include <sys/types.h>
 #ifdef _KERNEL
 #include <sys/kernel.h>
-#endif
-#include <sys/conf.h>
-#ifdef _KERNEL
 #include <sys/systm.h>
 #endif
+#include <sys/conf.h>
 #include <sys/tree.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
@@ -61,8 +58,8 @@
 #include <sys/limits.h>
 #include <vm/vm_extern.h>
 
-#include <sys/buf2.h>
 #ifdef _KERNEL
+#include <sys/buf2.h>
 #include <sys/signal2.h>
 #include <vm/vm_page2.h>
 #endif
@@ -985,6 +982,7 @@ struct hammer_sync_info {
 
 #endif  /* _KERNEL || _KERNEL_STRUCTURES */
 
+#if defined(_KERNEL)
 /*
  * checkspace slop (8MB chunks), higher numbers are more conservative.
  */
@@ -994,8 +992,6 @@ struct hammer_sync_info {
 #define HAMMER_CHKSPC_CREATE	20
 #define HAMMER_CHKSPC_REMOVE	10
 #define HAMMER_CHKSPC_EMERGENCY	0
-
-#if defined(_KERNEL)
 
 extern struct vop_ops hammer_vnode_vops;
 extern struct vop_ops hammer_spec_vops;
@@ -1643,7 +1639,6 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 
 	return hammer_blockmap_lookup_verify(hmp, zone_offset, errorp);
 }
-#endif  /* _KERNEL */
 
 #define hammer_modify_volume_field(trans, vol, field)		\
 	hammer_modify_volume(trans, vol, &(vol)->ondisk->field,	\
@@ -1653,7 +1648,6 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 	hammer_modify_node(trans, node, &(node)->ondisk->field,	\
 			     sizeof((node)->ondisk->field))
 
-#ifdef _KERNEL
 /*
  * The HAMMER_INODE_CAP_DIR_LOCAL_INO capability is set on newly
  * created directories for HAMMER version 2 or greater and causes
