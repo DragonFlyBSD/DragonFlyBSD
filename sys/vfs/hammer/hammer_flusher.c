@@ -737,7 +737,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 
 	if (dundomap->first_offset != cundomap->first_offset ||
 		   dundomap->next_offset != save_undo_next_offset) {
-		hammer_modify_volume(NULL, root_volume, NULL, 0);
+		hammer_modify_volume_noundo(NULL, root_volume);
 		dundomap->first_offset = cundomap->first_offset;
 		dundomap->next_offset = save_undo_next_offset;
 		hammer_crc_set_blockmap(dundomap);
@@ -757,7 +757,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 * mandatory.
 	 */
 	if (root_volume->io.modified) {
-		hammer_modify_volume(NULL, root_volume, NULL, 0);
+		hammer_modify_volume_noundo(NULL, root_volume);
 		if (root_volume->ondisk->vol0_next_tid < trans->tid)
 			root_volume->ondisk->vol0_next_tid = trans->tid;
 		hammer_crc_set_volume(root_volume->ondisk);

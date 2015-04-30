@@ -370,7 +370,7 @@ again:
 	 * need to save it.
 	 */
 	if (use_hint == 0) {
-		hammer_modify_volume(NULL, root_volume, NULL, 0);
+		hammer_modify_volume_noundo(NULL, root_volume);
 		blockmap->next_offset = next_offset + bytes;
 		hammer_modify_volume_done(root_volume);
 	}

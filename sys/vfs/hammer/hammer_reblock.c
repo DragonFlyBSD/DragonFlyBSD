@@ -437,7 +437,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	 * will not be able to invalidate it if the cursor is holding
 	 * a data buffer cached in that big block.
 	 */
-	hammer_modify_buffer(cursor->trans, data_buffer, NULL, 0);
+	hammer_modify_buffer_noundo(cursor->trans, data_buffer);
 	bcopy(cursor->data, ndata, elm->leaf.data_len);
 	hammer_modify_buffer_done(data_buffer);
 	hammer_cursor_invalidate_cache(cursor);

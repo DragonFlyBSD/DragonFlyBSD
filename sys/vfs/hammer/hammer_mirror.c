@@ -883,7 +883,7 @@ hammer_mirror_write(hammer_cursor_t cursor,
 		if (ndata == NULL)
 			return(error);
 		mrec->leaf.data_offset = ndata_offset;
-		hammer_modify_buffer(trans, data_buffer, NULL, 0);
+		hammer_modify_buffer_noundo(trans, data_buffer);
 		error = copyin(udata, ndata, mrec->leaf.data_len);
 		if (error == 0) {
 			if (hammer_crc_test_leaf(ndata, &mrec->leaf) == 0) {
@@ -943,7 +943,7 @@ hammer_mirror_write(hammer_cursor_t cursor,
 	if (high_tid < mrec->leaf.base.delete_tid)
 		high_tid = mrec->leaf.base.delete_tid;
 	if (trans->rootvol->ondisk->vol0_next_tid < high_tid) {
-		hammer_modify_volume(trans, trans->rootvol, NULL, 0);
+		hammer_modify_volume_noundo(trans, trans->rootvol);
 		trans->rootvol->ondisk->vol0_next_tid = high_tid;
 		hammer_modify_volume_done(trans->rootvol);
 	}

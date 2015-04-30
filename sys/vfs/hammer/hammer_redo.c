@@ -83,7 +83,7 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * No undo recursion when modifying the root volume
 	 */
-	hammer_modify_volume(NULL, root_volume, NULL, 0);
+	hammer_modify_volume_noundo(NULL, root_volume);
 	hammer_lock_ex(&hmp->undo_lock);
 
 	/* undo had better not roll over (loose test) */
@@ -117,7 +117,7 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 		}
 		if (error)
 			break;
-		hammer_modify_buffer(NULL, buffer, NULL, 0);
+		hammer_modify_buffer_noundo(NULL, buffer);
 
 		/*
 		 * Calculate how big a media structure fits up to the next

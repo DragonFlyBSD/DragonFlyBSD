@@ -483,7 +483,7 @@ done:
 	 * range but will not be collapsed until stage 2.
 	 */
 	if (error == 0) {
-		hammer_modify_volume(NULL, root_volume, NULL, 0);
+		hammer_modify_volume_noundo(NULL, root_volume);
 		rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 		rootmap->first_offset = first_offset;
 		rootmap->next_offset = last_offset;
@@ -1102,7 +1102,7 @@ hammer_recover_undo(hammer_mount_t hmp, hammer_volume_t root_volume,
 				"cannot access volume %d\n", vol_no);
 			break;
 		}
-		hammer_modify_volume(NULL, volume, NULL, 0);
+		hammer_modify_volume_noundo(NULL, volume);
 		hammer_recover_copy_undo(undo->undo_offset,
 					 (char *)(undo + 1),
 					 (char *)volume->ondisk + offset,
@@ -1131,7 +1131,7 @@ hammer_recover_undo(hammer_mount_t hmp, hammer_volume_t root_volume,
 				(intmax_t)undo->undo_offset);
 			break;
 		}
-		hammer_modify_buffer(NULL, buffer, NULL, 0);
+		hammer_modify_buffer_noundo(NULL, buffer);
 		hammer_recover_copy_undo(undo->undo_offset,
 					 (char *)(undo + 1),
 					 (char *)buffer->ondisk + offset,

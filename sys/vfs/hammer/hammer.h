@@ -1550,6 +1550,18 @@ hammer_lock_ex(struct hammer_lock *lock)
 	hammer_lock_ex_ident(lock, "hmrlck");
 }
 
+static __inline void
+hammer_modify_volume_noundo(hammer_transaction_t trans, hammer_volume_t volume)
+{
+	hammer_modify_volume(trans, volume, NULL, 0);
+}
+
+static __inline void
+hammer_modify_buffer_noundo(hammer_transaction_t trans, hammer_buffer_t buffer)
+{
+	hammer_modify_buffer(trans, buffer, NULL, 0);
+}
+
 /*
  * Indicate that a B-Tree node is being modified.
  */

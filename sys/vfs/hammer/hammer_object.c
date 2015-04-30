@@ -1311,7 +1311,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		if (bdata == NULL)
 			goto done_unlock;
 		hammer_crc_set_leaf(record->data, &record->leaf);
-		hammer_modify_buffer(trans, cursor->data_buffer, NULL, 0);
+		hammer_modify_buffer_noundo(trans, cursor->data_buffer);
 		bcopy(record->data, bdata, record->leaf.data_len);
 		hammer_modify_buffer_done(cursor->data_buffer);
 	} else {
@@ -2337,7 +2337,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 			return (error);
 		}
 		leaf->data_offset = ndata_offset;
-		hammer_modify_buffer(trans, data_buffer, NULL, 0);
+		hammer_modify_buffer_noundo(trans, data_buffer);
 
 		switch(mode) {
 		case HAMMER_CREATE_MODE_UMIRROR:
@@ -2411,7 +2411,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 	if (high_tid < leaf->base.delete_tid)
 		high_tid = leaf->base.delete_tid;
 	if (trans->rootvol->ondisk->vol0_next_tid < high_tid) {
-		hammer_modify_volume(trans, trans->rootvol, NULL, 0);
+		hammer_modify_volume_noundo(trans, trans->rootvol);
 		trans->rootvol->ondisk->vol0_next_tid = high_tid;
 		hammer_modify_volume_done(trans->rootvol);
 	}
@@ -2593,7 +2593,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			hammer_modify_volume_done(trans->rootvol);
 		}
 		if (trans->rootvol->ondisk->vol0_next_tid < delete_tid) {
-			hammer_modify_volume(trans, trans->rootvol, NULL, 0);
+			hammer_modify_volume_noundo(trans, trans->rootvol);
 			trans->rootvol->ondisk->vol0_next_tid = delete_tid;
 			hammer_modify_volume_done(trans->rootvol);
 		}
