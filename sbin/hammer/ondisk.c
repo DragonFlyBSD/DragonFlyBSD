@@ -883,8 +883,8 @@ again:
 	layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 	layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 
-	zone2_offset = (*result_offp & ~HAMMER_OFF_ZONE_MASK) |
-			HAMMER_ZONE_ENCODE(zone, 0);
+	zone2_offset = HAMMER_ZONE_ENCODE(zone,
+			*result_offp & ~HAMMER_OFF_ZONE_MASK);
 
 	ptr = get_buffer_data(zone2_offset, bufferp, 0);
 	(*bufferp)->cache.modified = 1;
@@ -894,10 +894,6 @@ again:
 	rel_volume(volume);
 	return(ptr);
 }
-
-/*
- * Flush various tracking structures to disk
- */
 
 /*
  * Flush various tracking structures to disk
