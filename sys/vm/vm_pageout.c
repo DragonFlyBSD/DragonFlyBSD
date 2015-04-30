@@ -1394,7 +1394,8 @@ next:
  * pages_freed counter.
  */
 static void
-vm_pageout_scan_cache(int avail_shortage, int vnodes_skipped, int recycle_count)
+vm_pageout_scan_cache(int avail_shortage, int pass,
+		      int vnodes_skipped, int recycle_count)
 {
 	struct vm_pageout_scan_info info;
 	vm_page_t m;
@@ -1470,32 +1471,24 @@ vm_pageout_scan_cache(int avail_shortage, int vnodes_skipped, int recycle_count)
 	/*
 	 * Handle catastrophic conditions.  Under good conditions we should
 	 * be at the target, well beyond our minimum.  If we could not even
-	 * reach our minimum the system is under heavy stress.
+	 * reach our minimum the system is under heavy stress.  But just being
+	 * under heavy stress does not trigger process killing.
 	 *
-	 * Determine whether we have run out of memory.  This occurs when
-	 * swap_pager_full is TRUE and the only pages left in the page
-	 * queues are dirty.  We will still likely have page shortages.
-	 *
-	 * - swap_pager_full is set if insufficient swap was
-	 *   available to satisfy a requested pageout.
-	 *
-	 * - the inactive queue is bloated (4 x size of active queue),
-	 *   meaning it is unable to get rid of dirty pages and.
-	 *
-	 * - vm_page_count_min() without counting pages recycled from the
-	 *   active queue (recycle_count) means we could not recover
-	 *   enough pages to meet bare minimum needs.  This test only
-	 *   works if the inactive queue is bloated.
-	 *
-	 * - due to a positive avail_shortage we shifted the remaining
-	 *   dirty pages from the active queue to the inactive queue
-	 *   trying to find clean ones to free.
+	 * We consider ourselves to have run out of memory if the swap pager
+	 * is full and avail_shortage is still positive.  The secondary check
+	 * ensures that we do not kill processes if the instantanious
+	 * availability is good, even if the pageout demon pass says it
+	 * couldn't get to the target.
 	 */
-	if (swap_pager_full && vm_page_count_min(recycle_count))
-		kprintf("Warning: system low on memory+swap!\n");
-	if (swap_pager_full && vm_page_count_min(recycle_count) &&
-	    vmstats.v_inactive_count > vmstats.v_active_count * 4 &&
-	    avail_shortage > 0) {
+	if (swap_pager_almost_full &&
+	    (vm_page_count_min(recycle_count) || avail_shortage > 0)) {
+		kprintf("Warning: system low on memory+swap "
+			"shortage %d for %d ticks!\n",
+			avail_shortage, ticks - swap_fail_ticks);
+	}
+	if (swap_pager_full &&
+	    avail_shortage > 0 &&
+	    vm_paging_target() > 0) {
 		/*
 		 * Kill something.
 		 */
@@ -1973,8 +1966,8 @@ vm_pageout_thread(void)
 		 * requirement and take more drastic measures if we are
 		 * still in trouble.
 		 */
-		vm_pageout_scan_cache(avail_shortage, vnodes_skipped,
-				      recycle_count);
+		vm_pageout_scan_cache(avail_shortage, pass,
+				      vnodes_skipped, recycle_count);
 
 		/*
 		 * Wait for more work.

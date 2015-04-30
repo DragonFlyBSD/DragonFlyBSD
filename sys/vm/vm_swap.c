@@ -425,6 +425,7 @@ sys_swapoff(struct swapoff_args *uap)
 	goto done;
 found:
 	error = swapoff_one(index);
+	swap_pager_newswap();
 
 done:
 	rel_mplock();

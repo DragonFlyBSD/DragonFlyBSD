@@ -84,6 +84,8 @@ struct swblock {
 
 #ifdef _KERNEL
 extern int swap_pager_full;
+extern int swap_pager_almost_full;
+extern int swap_fail_ticks;
 extern int vm_swap_size;
 extern int vm_swap_max;
 extern int vm_swap_cache_use;
