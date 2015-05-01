@@ -217,7 +217,8 @@ rel_volume(struct volume_info *volume)
 }
 
 /*
- * Acquire the specified buffer.
+ * Acquire the specified buffer.  isnew is -1 only when called
+ * via get_buffer_readahead() to prevent another readahead.
  */
 struct buffer_info *
 get_buffer(hammer_off_t buf_offset, int isnew)
@@ -271,18 +272,13 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		buf->cache.u.buffer = buf;
 		hammer_cache_add(&buf->cache, ISBUFFER);
 		dora = (isnew == 0);
-		if (isnew < 0)
-			buf->flags |= HAMMER_BUFINFO_READAHEAD;
 	} else {
 		if (DebugOpt) {
 			fprintf(stderr, "get_buffer: %016llx %016llx at %p *\n",
 				(long long)orig_offset, (long long)buf_offset,
 				buf);
 		}
-		if (isnew >= 0) {
-			buf->flags &= ~HAMMER_BUFINFO_READAHEAD;
-			hammer_cache_used(&buf->cache);
-		}
+		hammer_cache_used(&buf->cache);
 		++buf->use_count;
 	}
 	++buf->cache.refs;

@@ -97,8 +97,6 @@ struct buffer_info {
 	void			*ondisk;
 };
 
-#define HAMMER_BUFINFO_READAHEAD	0x0001
-
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
 extern int64_t BootAreaSize;
