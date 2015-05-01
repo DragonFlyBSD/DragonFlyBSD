@@ -249,7 +249,9 @@ AcpiDmGpioCommon (
     AcpiDmIndent (Level + 1);
     AcpiOsPrintf ("}\n");
 
+#ifndef _KERNEL
     MpSaveGpioInfo (Info->MappingOp, Resource, PinCount, PinList, DeviceName);
+#endif
 }
 
 
@@ -535,7 +537,9 @@ AcpiDmI2cSerialBusDescriptor (
     AcpiDmDumpSerialBusVendorData (Resource, Level);
     AcpiOsPrintf (")\n");
 
+#ifndef _KERNEL
     MpSaveSerialInfo (Info->MappingOp, Resource, DeviceName);
+#endif
 }
 
 
@@ -614,7 +618,9 @@ AcpiDmSpiSerialBusDescriptor (
     AcpiDmDumpSerialBusVendorData (Resource, Level);
     AcpiOsPrintf (")\n");
 
+#ifndef _KERNEL
     MpSaveSerialInfo (Info->MappingOp, Resource, DeviceName);
+#endif
 }
 
 
@@ -696,7 +702,9 @@ AcpiDmUartSerialBusDescriptor (
     AcpiDmDumpSerialBusVendorData (Resource, Level);
     AcpiOsPrintf (")\n");
 
+#ifndef _KERNEL
     MpSaveSerialInfo (Info->MappingOp, Resource, DeviceName);
+#endif
 }
 
 

@@ -30,12 +30,11 @@ CFLAGS+=	-DACPI_DEBUG_CACHE
 KMOD	= acpi
 
 # ACPICA sources
-SRCS+=	ahids.c
-#SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
-#SRCS+=	dbinput.c dbstats.c dbtest.c dbutils.c dbxface.c
-#SRCS+=	dbmethod.c dbnames.c
-#SRCS+=	dmbuffer.c dmdeferred.c dmnames.c dmobject.c dmopcode.c
-#SRCS+=	dmresrc.c dmresrcl.c dmresrcl2.c dmresrcs.c dmutils.c dmwalk.c
+SRCS+=	ahids.c ahuuids.c
+SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
+SRCS+=	dbinput.c dbmethod.c dbnames.c dbstats.c dbtest.c dbutils.c dbxface.c
+SRCS+=	dmbuffer.c dmcstyle.c dmdeferred.c dmnames.c dmobject.c dmopcode.c
+SRCS+=	dmresrc.c dmresrcl.c dmresrcl2.c dmresrcs.c dmutils.c dmwalk.c
 SRCS+=	dsfield.c dsinit.c dsmethod.c dsmthdat.c
 SRCS+=	dsobject.c dsopcode.c dsutils.c dswexec.c dswload.c
 SRCS+=	dswscope.c dswstate.c dsargs.c dscontrol.c dswload2.c
@@ -62,7 +61,7 @@ SRCS+=	utaddress.c utcopy.c
 SRCS+=	utdebug.c utdecode.c utdelete.c uterror.c uteval.c utexcep.c
 SRCS+=	utglobal.c uthex.c utids.c utinit.c utlock.c
 SRCS+=	utmath.c utmisc.c utmutex.c utobject.c utosi.c utownerid.c utpredef.c
-SRCS+=	utresrc.c utstate.c utstring.c utxface.c
+SRCS+=	utresrc.c utstate.c utstring.c utuuid.c utxface.c
 SRCS+=	utxferror.c utxfinit.c
 
 # OSD layer
@@ -83,6 +82,7 @@ SRCS+=  opt_acpi.h opt_ddb.h opt_ktr.h
 SRCS+=  device_if.h bus_if.h pci_if.h pcib_if.h isa_if.h acpi_if.h
 SRCS+=  acpi_quirks.h acpi_wmi_if.h
 
+.if !defined(BUILDING_WITH_KERNEL)
 .if ACPI_NO_SEMAPHORES
 CFLAGS+=-DACPI_NO_SEMAPHORES
 .endif
@@ -93,6 +93,7 @@ opt_ddb.h: Makefile
 .else
 opt_ddb.h: Makefile
 	echo -n > ${.TARGET}
+.endif
 .endif
 
 # Machine-specific code for P-State

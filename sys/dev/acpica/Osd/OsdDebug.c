@@ -92,7 +92,6 @@ AcpiOsSignal(UINT32 Function, void *Info)
     return (AE_OK);
 }
 
-#if 0				/* XXX */
 #ifdef ACPI_DEBUGGER
 void
 acpi_EnterDebugger(void)
@@ -110,4 +109,3 @@ acpi_EnterDebugger(void)
     AcpiDbUserCommands('A', &obj);
 }
 #endif /* ACPI_DEBUGGER */
-#endif
