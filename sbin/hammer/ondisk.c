@@ -83,6 +83,19 @@ buffer_hash(hammer_off_t buf_offset)
 	return(hi);
 }
 
+static struct buffer_info*
+find_buffer(struct volume_info *volume, hammer_off_t buf_offset)
+{
+	int hi;
+	struct buffer_info *buf;
+
+	hi = buffer_hash(buf_offset);
+	TAILQ_FOREACH(buf, &volume->buffer_lists[hi], entry)
+		if (buf->buf_offset == buf_offset)
+			return(buf);
+	return(NULL);
+}
+
 /*
  * Lookup the requested information structure and related on-disk buffer.
  * Missing structures are created.
@@ -238,13 +251,8 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	}
 
 	buf_offset &= ~HAMMER_BUFMASK64;
+	buf = find_buffer(volume, buf_offset);
 
-	hi = buffer_hash(buf_offset);
-
-	TAILQ_FOREACH(buf, &volume->buffer_lists[hi], entry) {
-		if (buf->buf_offset == buf_offset)
-			break;
-	}
 	if (buf == NULL) {
 		buf = malloc(sizeof(*buf));
 		bzero(buf, sizeof(*buf));
@@ -257,6 +265,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		buf->raw_offset = volume->ondisk->vol_buf_beg +
 				  (buf_offset & HAMMER_OFF_SHORT_MASK);
 		buf->volume = volume;
+		hi = buffer_hash(buf_offset);
 		TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buf, entry);
 		++volume->cache.refs;
 		buf->cache.u.buffer = buf;
@@ -312,7 +321,6 @@ get_buffer_readahead(struct buffer_info *base)
 	int64_t raw_offset;
 	int ri = UseReadBehind;
 	int re = UseReadAhead;
-	int hi;
 
 	raw_offset = base->raw_offset + ri * HAMMER_BUFSIZE;
 	vol = base->volume;
@@ -327,11 +335,7 @@ get_buffer_readahead(struct buffer_info *base)
 		}
 		buf_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no,
 			raw_offset - vol->ondisk->vol_buf_beg);
-		hi = buffer_hash(buf_offset);
-		TAILQ_FOREACH(buf, &vol->buffer_lists[hi], entry) {
-			if (buf->buf_offset == buf_offset)
-				break;
-		}
+		buf = find_buffer(vol, buf_offset);
 		if (buf == NULL) {
 			buf = get_buffer(buf_offset, -1);
 			rel_buffer(buf);
