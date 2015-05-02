@@ -563,7 +563,7 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 	const char *p, *percent, *q;
 	int ch, n;
 	uintmax_t num;
-	int base, tmp, width, ladjust, sharpflag, neg, sign, dot;
+	int base, tmp, width, ladjust, sharpflag, spaceflag, neg, sign, dot;
 	int cflag, hflag, jflag, lflag, qflag, tflag, zflag;
 	int dwidth, upper;
 	char padc;
@@ -614,10 +614,14 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 		}
 		percent = fmt - 1;
 		dot = dwidth = ladjust = neg = sharpflag = sign = upper = 0;
+		spaceflag = 0;
 		cflag = hflag = jflag = lflag = qflag = tflag = zflag = 0;
 
 reswitch:
 		switch (ch = (u_char)*fmt++) {
+		case ' ':
+			spaceflag = 1;
+			goto reswitch;
 		case '.':
 			dot = 1;
 			goto reswitch;
@@ -826,7 +830,7 @@ number:
 				else if (base == 16)
 					tmp += 2;
 			}
-			if (neg)
+			if (neg || (sign && spaceflag))
 				tmp++;
 
 			if (!ladjust && padc == '0')
@@ -836,8 +840,11 @@ number:
 			if (!ladjust)
 				while (width-- > 0)
 					PCHAR(' ');
-			if (neg)
+			if (neg) {
 				PCHAR('-');
+			} else if (sign && spaceflag) {
+				PCHAR(' ');
+			}
 			if (sharpflag && num != 0) {
 				if (base == 8) {
 					PCHAR('0');
