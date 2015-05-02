@@ -1473,8 +1473,6 @@ retry:
 void
 hammer_rel_inode(struct hammer_inode *ip, int flush)
 {
-	/*hammer_mount_t hmp = ip->hmp;*/
-
 	/*
 	 * Handle disposition when dropping the last ref.
 	 */
@@ -1909,9 +1907,21 @@ hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
  * This helper function takes a record representing the dependancy between
  * the parent inode and child inode.
  *
- * record->ip		= parent inode
- * record->target_ip	= child inode
+ * record		= record in question (*rec in below)
+ * record->ip		= parent inode (*pip in below)
+ * record->target_ip	= child inode (*ip in below)
  * 
+ * *pip--------------\
+ *    ^               \rec_tree
+ *     \               \
+ *      \ip            /\\\\\ rbtree of recs from parent inode's view
+ *       \            //\\\\\\
+ *        \          / ........
+ *         \        /
+ *          \------*rec------target_ip------>*ip
+ *               ...target_entry<----...----->target_list<---...
+ *                                            list of recs from inode's view
+ *
  * We are asked to recurse upwards and convert the record from SETUP
  * to FLUSH if possible.
  *
