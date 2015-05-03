@@ -199,4 +199,13 @@ typedef struct pm_message {
 
 #define DIV_ROUND_CLOSEST(x, divisor)	(((x) + ((divisor) /2)) / (divisor))
 
+static inline uintmax_t
+mult_frac(uintmax_t x, uintmax_t multiplier, uintmax_t divisor)
+{
+	uintmax_t q = (x / divisor);
+	uintmax_t r = (x % divisor);
+
+	return ((q * multiplier) + ((r * multiplier) / divisor));
+}
+
 #endif	/* _LINUX_KERNEL_H_ */
