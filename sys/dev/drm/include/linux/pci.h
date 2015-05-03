@@ -54,6 +54,8 @@ struct pci_dev {
 
 #define PCI_DEVFN(slot, func)   ((((slot) & 0x1f) << 3) | ((func) & 0x07))
 
+#define PCI_DMA_BIDIRECTIONAL	0
+
 static inline int
 pci_read_config_byte(struct pci_dev *pdev, int where, u8 *val)
 {
@@ -123,5 +125,7 @@ pci_set_consistent_dma_mask(struct pci_dev *dev, u64 mask)
 {
 	return -EIO;
 }
+
+#include <asm/pci.h>
 
 #endif /* LINUX_PCI_H */
