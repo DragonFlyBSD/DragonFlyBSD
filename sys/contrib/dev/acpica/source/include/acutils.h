@@ -1188,7 +1188,7 @@ AcpiUtFilePrintf (
 /*
  * utuuid -- UUID support functions
  */
-#if (defined ACPI_ASL_COMPILER || defined ACPI_DISASSEMBLER || defined ACPI_EXEC_APP || defined ACPI_HELP_APP)
+#if (defined ACPI_ASL_COMPILER || defined ACPI_DISASSEMBLER || defined ACPI_EXEC_APP || defined ACPI_HELP_APP || defined KLD_MODULE)
 void
 AcpiUtConvertStringToUuid (
     char                    *InString,
