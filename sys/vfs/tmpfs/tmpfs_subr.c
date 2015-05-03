@@ -583,7 +583,7 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
 /* --------------------------------------------------------------------- */
 
 /*
- * Attaches the directory entry de to the directory represented by vp.
+ * Attaches the directory entry de to the directory represented by dnode.
  * Note that this does not change the link count of the node pointed by
  * the directory entry, as this is done by tmpfs_alloc_dirent.
  */
@@ -612,7 +612,7 @@ tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 /* --------------------------------------------------------------------- */
 
 /*
- * Detaches the directory entry de from the directory represented by vp.
+ * Detaches the directory entry de from the directory represented by dnode.
  * Note that this does not change the link count of the node pointed by
  * the directory entry, as this is done by tmpfs_free_dirent.
  */
