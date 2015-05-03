@@ -75,6 +75,16 @@ io_remap_pfn_range(struct vm_area_struct *vma,
 	return (0);
 }
 
+static inline unsigned long
+vma_pages(struct vm_area_struct *vma)
+{
+	unsigned long size;
+
+	size = vma->vm_end - vma->vm_start;
+
+	return size >> PAGE_SHIFT;
+}
+
 #define offset_in_page(off)	((off) & PAGE_MASK)
 
 static inline void
