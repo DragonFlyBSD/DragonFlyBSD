@@ -38,8 +38,29 @@
 static inline int
 fault_in_multipages_writeable(char __user *uaddr, int size)
 {
-	/* XXX: not really implemented */
-	return 0;
+	int ret = 0;
+	char __user *end = uaddr + size - 1;
+
+	if (unlikely(size == 0))
+		return ret;
+
+	/*
+	 * Writing zeroes into userspace here is OK, because we know that if
+	 * the zero gets there, we'll be overwriting it.
+	 */
+	while (uaddr <= end) {
+		ret = subyte(uaddr, 0);
+		if (ret != 0)
+			return -EFAULT;
+		uaddr += PAGE_SIZE;
+	}
+
+	/* Check whether the range spilled into the next page. */
+	if (((unsigned long)uaddr & ~PAGE_MASK) ==
+			((unsigned long)end & ~PAGE_MASK))
+		ret = subyte(end, 0);
+
+	return ret;
 }
 
 static inline int
