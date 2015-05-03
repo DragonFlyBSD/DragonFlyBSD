@@ -32,6 +32,7 @@
 #include <linux/list.h>
 #include <linux/compiler.h>
 #include <linux/moduleparam.h>
+#include <linux/export.h>
 
 #define MODULE_AUTHOR(name)
 #define MODULE_DESCRIPTION(name)
@@ -42,8 +43,5 @@
 #endif
 
 #define	THIS_MODULE	((struct module *)0)
-
-#define	EXPORT_SYMBOL(name)
-#define	EXPORT_SYMBOL_GPL(name)
 
 #endif	/* _LINUX_MODULE_H_ */
