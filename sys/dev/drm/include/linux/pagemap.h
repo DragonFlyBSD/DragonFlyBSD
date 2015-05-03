@@ -45,8 +45,27 @@ fault_in_multipages_writeable(char __user *uaddr, int size)
 static inline int
 fault_in_multipages_readable(const char __user *uaddr, int size)
 {
-	/* XXX: not really implemented */
-	return 0;
+	char c;
+	int ret = 0;
+	const char __user *end = uaddr + size - 1;
+
+	if (unlikely(size == 0))
+		return ret;
+
+	while (uaddr <= end) {
+		ret = -copyin(uaddr, &c, 1);
+		if (ret != 0)
+			return -EFAULT;
+		uaddr += PAGE_SIZE;
+	}
+
+	/* Check whether the range spilled into the next page. */
+	if (((unsigned long)uaddr & ~PAGE_MASK) ==
+			((unsigned long)end & ~PAGE_MASK)) {
+		ret = -copyin(end, &c, 1);
+	}
+
+	return ret;
 }
 
 #endif	/* _LINUX_PAGEMAP_H_ */
