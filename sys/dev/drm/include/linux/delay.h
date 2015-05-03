@@ -46,4 +46,15 @@ mdelay(unsigned long msecs)
 		DELAY(1000);
 }
 
+static inline void ndelay(unsigned long x)
+{
+	DELAY(howmany(x, 1000));
+}
+
+static __inline void
+usleep_range(unsigned long min, unsigned long max)
+{
+	DELAY(min);
+}
+
 #endif	/* _LINUX_DELAY_H_ */
