@@ -360,7 +360,7 @@ struct tmpfs_mount {
 	struct objcache		*tm_dirent_pool;
 	struct objcache		*tm_node_pool;
 
-	int			tm_ino;
+	ino_t			tm_ino;
 	int			tm_flags;
 
 	struct netexport	tm_export;
