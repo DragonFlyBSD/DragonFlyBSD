@@ -28,14 +28,30 @@
 #define _LINUX_GFP_H_
 
 #include <vm/vm_page.h>
+#include <machine/bus_dma.h>
 
 #define GFP_ATOMIC	M_NOWAIT
 #define GFP_KERNEL	M_WAITOK
 #define GFP_TEMPORARY	M_WAITOK
+#define __GFP_ZERO	M_ZERO
+
+#define GFP_DMA32	0x10000	/* XXX: MUST NOT collide with the M_XXX definitions */
 
 static inline void __free_page(struct vm_page *page)
 {
 	vm_page_free_contig(page, PAGE_SIZE);
+}
+
+static inline struct vm_page * alloc_page(int flags)
+{
+	vm_paddr_t high = ~0LLU;
+
+	if (flags & GFP_DMA32)
+		high = BUS_SPACE_MAXADDR_32BIT;
+
+	return vm_page_alloc_contig(0LLU, ~0LLU,
+			PAGE_SIZE, PAGE_SIZE, PAGE_SIZE,
+			VM_MEMATTR_DEFAULT);
 }
 
 #endif	/* _LINUX_GFP_H_ */
