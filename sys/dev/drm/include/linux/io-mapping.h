@@ -27,17 +27,15 @@
 #ifndef _LINUX_IOMAPPING_H_
 #define _LINUX_IOMAPPING_H_
 
+#include <linux/types.h>
+#include <linux/io.h>
+
 struct io_mapping;
 
-static inline void __iomem *
-io_mapping_map_atomic_wc(struct io_mapping *mapping, unsigned long offset)
+static inline struct io_mapping *
+io_mapping_create_wc(resource_size_t base, unsigned long size)
 {
-	return ((char *)mapping + offset);
-}
-
-static inline void
-io_mapping_unmap_atomic(void __iomem *vaddr)
-{
+	return pmap_mapdev_attr(base, size, VM_MEMATTR_WRITE_COMBINING);
 }
 
 #endif	/* _LINUX_IOMAPPING_H_ */
