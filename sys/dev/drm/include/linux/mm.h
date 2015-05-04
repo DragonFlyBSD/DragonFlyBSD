@@ -32,6 +32,7 @@
 #define	_LINUX_MM_H_
 
 #include <linux/errno.h>
+#include <linux/gfp.h>
 #include <linux/kernel.h>
 
 #include <asm/page.h>

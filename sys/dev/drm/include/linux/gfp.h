@@ -27,8 +27,15 @@
 #ifndef _LINUX_GFP_H_
 #define _LINUX_GFP_H_
 
+#include <vm/vm_page.h>
+
 #define GFP_ATOMIC	M_NOWAIT
 #define GFP_KERNEL	M_WAITOK
 #define GFP_TEMPORARY	M_WAITOK
+
+static inline void __free_page(struct vm_page *page)
+{
+	vm_page_free_contig(page, PAGE_SIZE);
+}
 
 #endif	/* _LINUX_GFP_H_ */
