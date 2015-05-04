@@ -29,6 +29,8 @@
 
 #include <vm/vm_page2.h>
 
+#include <asm/page.h>
+
 static inline void mark_page_accessed(struct vm_page *m)
 {
 	vm_page_flag_set(m, PG_REFERENCED);

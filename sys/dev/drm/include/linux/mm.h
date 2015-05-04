@@ -33,6 +33,8 @@
 #include <linux/errno.h>
 #include <linux/kernel.h>
 
+#include <asm/page.h>
+
 #define PAGE_ALIGN(addr) round_page(addr)
 
 struct vm_area_struct {

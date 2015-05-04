@@ -27,8 +27,9 @@
 #ifndef _LINUX_IO_H_
 #define _LINUX_IO_H_
 
-#include <asm/io.h>
 #include <linux/kernel.h>
+#include <asm/io.h>
+#include <asm/page.h>
 
 #if defined(writel)
 #undef writel

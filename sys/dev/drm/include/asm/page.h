@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,31 +24,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _ASM_IO_H_
-#define _ASM_IO_H_
+#ifndef _ASM_PAGE_H_
+#define _ASM_PAGE_H_
 
-#include <machine/pmap.h>
-#include <vm/vm.h>
+#define page_to_phys(page)	VM_PAGE_TO_PHYS(page)
 
-#include <asm/page.h>
-
-#define ioread8(addr)		*(volatile uint8_t *)((char *)addr)
-#define ioread16(addr)		*(volatile uint16_t *)((char *)addr)
-#define ioread32(addr)		*(volatile uint32_t *)((char *)addr)
-
-#define iowrite8(data, addr)	*(volatile uint8_t *)((char *)addr) = data;
-#define iowrite16(data, addr)	*(volatile uint16_t *)((char *)addr) = data;
-#define iowrite32(data, addr)	*(volatile uint32_t *)((char *)addr) = data;
-
-/* ioremap: map bus memory into CPU space */
-static inline void __iomem *ioremap(resource_size_t offset, unsigned long size)
-{
-	return pmap_mapdev_uncacheable(offset, size);
-}
-
-static inline void __iomem *ioremap_wc(resource_size_t phys_addr, unsigned long size)
-{
-	return pmap_mapdev_attr(phys_addr, size, VM_MEMATTR_WRITE_COMBINING);
-}
-
-#endif	/* _ASM_IO_H_ */
+#endif	/* _ASM_PAGE_H_ */
