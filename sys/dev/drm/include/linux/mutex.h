@@ -34,4 +34,8 @@
 #define mutex_lock(lock)	lockmgr(lock, LK_EXCLUSIVE)
 #define mutex_unlock(lock)	lockmgr(lock, LK_RELEASE)
 
+#define mutex_trylock(lock)	lockmgr(lock, LK_EXCLUSIVE|LK_NOWAIT)
+
+#define mutex_lock_interruptible(lock)	lockmgr((lock), LK_EXCLUSIVE|LK_SLEEPFAIL)
+
 #endif	/* _LINUX_MUTEX_H_ */
