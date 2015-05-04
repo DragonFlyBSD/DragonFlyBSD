@@ -27,6 +27,8 @@
 #ifndef _LINUX_SEQ_FILE_H_
 #define _LINUX_SEQ_FILE_H_
 
+#include <linux/types.h>
+
 struct seq_file {
 	char	*buf;
 	size_t	size;
