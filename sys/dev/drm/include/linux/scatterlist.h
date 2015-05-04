@@ -384,6 +384,12 @@ _sg_iter_init(struct scatterlist *sgl, struct sg_page_iter *iter,
 	}
 }
 
+static inline dma_addr_t
+sg_page_iter_dma_address(struct sg_page_iter *spi)
+{
+	return spi->sg->address + (spi->sg_pgoffset << PAGE_SHIFT);
+}
+
 #define for_each_sg_page(sgl, iter, nents, pgoffset)			\
 	for (_sg_iter_init(sgl, iter, nents, pgoffset);			\
 	     (iter)->sg; _sg_iter_next(iter))
