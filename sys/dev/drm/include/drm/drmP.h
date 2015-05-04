@@ -85,8 +85,6 @@
 #include <dev/agp/agpvar.h>
 #include <sys/agpio.h>
 #include <sys/mutex.h>
-#include <bus/pci/pcivar.h>
-#include <bus/pci/pcireg.h>
 
 MALLOC_DECLARE(M_DRM);
 
