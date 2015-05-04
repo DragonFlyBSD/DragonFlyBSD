@@ -1648,36 +1648,36 @@ tmpfs_reclaim(struct vop_reclaim_args *v)
 	return 0;
 }
 
-/* --------------------------------------------------------------------- */ 
+/* --------------------------------------------------------------------- */
 
-static int 
-tmpfs_mountctl(struct vop_mountctl_args *ap) 
-{ 
-	struct tmpfs_mount *tmp; 
-	struct mount *mp; 
-	int rc; 
+static int
+tmpfs_mountctl(struct vop_mountctl_args *ap)
+{
+	struct tmpfs_mount *tmp;
+	struct mount *mp;
+	int rc;
 
 	mp = ap->a_head.a_ops->head.vv_mount;
 	lwkt_gettoken(&mp->mnt_token);
 
-	switch (ap->a_op) { 
-	case (MOUNTCTL_SET_EXPORT): 
-		tmp = (struct tmpfs_mount *) mp->mnt_data; 
- 
-		if (ap->a_ctllen != sizeof(struct export_args)) 
-			rc = (EINVAL); 
-		else 
-			rc = vfs_export(mp, &tmp->tm_export, 
-					(const struct export_args *) ap->a_ctl); 
-		break; 
-	default: 
-		rc = vop_stdmountctl(ap); 
-		break; 
-	} 
+	switch (ap->a_op) {
+	case (MOUNTCTL_SET_EXPORT):
+		tmp = (struct tmpfs_mount *) mp->mnt_data;
+
+		if (ap->a_ctllen != sizeof(struct export_args))
+			rc = (EINVAL);
+		else
+			rc = vfs_export(mp, &tmp->tm_export,
+					(const struct export_args *) ap->a_ctl);
+		break;
+	default:
+		rc = vop_stdmountctl(ap);
+		break;
+	}
 
 	lwkt_reltoken(&mp->mnt_token);
-	return (rc); 
-} 
+	return (rc);
+}
 
 /* --------------------------------------------------------------------- */
 

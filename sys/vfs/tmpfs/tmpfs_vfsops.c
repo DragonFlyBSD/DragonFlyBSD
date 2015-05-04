@@ -544,7 +544,7 @@ tmpfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	return 0;
 }
 
-/* --------------------------------------------------------------------- */ 
+/* --------------------------------------------------------------------- */
 
 static int
 tmpfs_vptofh(struct vnode *vp, struct fid *fhp)
@@ -562,25 +562,25 @@ tmpfs_vptofh(struct vnode *vp, struct fid *fhp)
 
 /* --------------------------------------------------------------------- */
 
-static int 
-tmpfs_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp, 
-	       struct ucred **credanonp) 
-{ 
-	struct tmpfs_mount *tmp; 
-	struct netcred *nc; 
- 
+static int
+tmpfs_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp,
+	       struct ucred **credanonp)
+{
+	struct tmpfs_mount *tmp;
+	struct netcred *nc;
+
 	tmp = (struct tmpfs_mount *) mp->mnt_data;
-	nc = vfs_export_lookup(mp, &tmp->tm_export, nam); 
-	if (nc == NULL) 
-		return (EACCES); 
+	nc = vfs_export_lookup(mp, &tmp->tm_export, nam);
+	if (nc == NULL)
+		return (EACCES);
 
-	*exflagsp = nc->netc_exflags; 
-	*credanonp = &nc->netc_anon; 
- 
-	return (0); 
-} 
+	*exflagsp = nc->netc_exflags;
+	*credanonp = &nc->netc_anon;
 
-/* --------------------------------------------------------------------- */ 
+	return (0);
+}
+
+/* --------------------------------------------------------------------- */
 
 /*
  * tmpfs vfs operations.
