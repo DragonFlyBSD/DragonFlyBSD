@@ -534,14 +534,17 @@ coretemp_msr_temp(struct coretemp_softc *sc, uint64_t msr)
 	 */
 	if (MSR_THERM_STATUS_IS_CRITICAL(msr)) {
 		if ((sc->sc_flags & CORETEMP_FLAG_CRIT) == 0) {
-			char stemp[16];
+			char stemp[16], data[64];
 
 			device_printf(sc->sc_dev,
 			    "critical temperature detected, "
 			    "suggest system shutdown\n");
 			ksnprintf(stemp, sizeof(stemp), "%d", temp);
-			devctl_notify("coretemp", "Thermal", stemp,
-			    "notify=0xcc"); /* TODO: add node and core */
+			ksnprintf(data, sizeof(data),
+			    "notify=0xcc node=%d core=%d",
+			    get_chip_ID(sc->sc_cpu),
+			    get_core_number_within_chip(sc->sc_cpu));
+			devctl_notify("coretemp", "Thermal", stemp, data);
 			atomic_set_int(&sc->sc_flags, CORETEMP_FLAG_CRIT);
 		}
 	} else if (sc->sc_flags & CORETEMP_FLAG_CRIT) {
@@ -577,14 +580,15 @@ coretemp_pkg_msr_temp(struct coretemp_softc *sc, uint64_t msr)
 	 */
 	if (MSR_PKGTM_STATUS_IS_CRITICAL(msr)) {
 		if ((sc->sc_flags & CORETEMP_FLAG_PKGCRIT) == 0) {
-			char stemp[16];
+			char stemp[16], data[64];
 
 			device_printf(sc->sc_dev,
 			    "critical temperature detected, "
 			    "suggest system shutdown\n");
 			ksnprintf(stemp, sizeof(stemp), "%d", temp);
-			devctl_notify("coretemp", "Thermal", stemp,
-			    "notify=0xcc"); /* TODO: add node */
+			ksnprintf(data, sizeof(data), "notify=0xcc node=%d",
+			    get_chip_ID(sc->sc_cpu));
+			devctl_notify("coretemp", "Thermal", stemp, data);
 			atomic_set_int(&sc->sc_flags, CORETEMP_FLAG_PKGCRIT);
 		}
 	} else if (sc->sc_flags & CORETEMP_FLAG_PKGCRIT) {

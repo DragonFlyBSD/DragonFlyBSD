@@ -41,7 +41,7 @@
 .\" ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 .\" SOFTWARE.
 .\"
-.Dd February 14, 2015
+.Dd May 4, 2015
 .Dt DEVD.CONF 5
 .Os
 .Sh NAME
@@ -252,6 +252,8 @@ CIS-product.
 CIS-vendor.
 .It Li class
 Device class.
+.It Li core
+CPU core (coretemp).
 .It Li device
 Device ID.
 .It Li devclass
@@ -282,14 +284,14 @@ Peripheral mode (USB)
 Match the value of the
 .Dq Li notify
 variable.
+.It Li node
+CPU node (coretemp/memtemp).
 .It Li parent
 Parent device
 .It Li port
 Hub port number (USB)
 .It Li product
 Product ID (pccard/USB).
-.It Li node
-Node of the DIMM (memtemp).
 .It Li release
 Hardware revision (USB)
 .It Li sernum

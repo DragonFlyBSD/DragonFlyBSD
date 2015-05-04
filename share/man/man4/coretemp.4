@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/coretemp.4,v 1.5 2011/05/22 14:03:30 uqs Exp $
 .\"
-.Dd April 12, 2015
+.Dd May 4, 2015
 .Dt CORETEMP 4
 .Os
 .Sh NAME
@@ -64,9 +64,15 @@ hw.sensors.cpu2.temp0: 47.00 degC (node0 core1), OK
 hw.sensors.cpu3.temp0: 47.00 degC (node0 core1), OK
 hw.sensors.cpu_node0.temp0: 50.00 degC (node0), OK
 .Ed
+.Pp
+If the core or package temperature reaches critical level,
+a notify event will be sent using
+.Xr devctl 4 .
 .Sh SEE ALSO
 .Xr systat 1 ,
 .Xr sysctl 3 ,
+.Xr devctl 4 ,
+.Xr devd 8 ,
 .Xr sensorsd 8 ,
 .Xr sysctl 8
 .Sh HISTORY
