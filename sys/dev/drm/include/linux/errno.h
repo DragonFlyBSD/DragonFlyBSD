@@ -31,4 +31,7 @@
 #define ERESTARTSYS	512	/* Restart syscall. MUST be positive. */
 #endif
 
+#define ECHRNG		EDOM
+#define ENOTSUPP	EOPNOTSUPP
+
 #endif	/* _LINUX_ERRNO_H_ */
