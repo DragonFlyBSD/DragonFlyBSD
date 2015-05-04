@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,5 +50,7 @@ static inline void __iomem *ioremap_wc(resource_size_t phys_addr, unsigned long 
 {
 	return pmap_mapdev_attr(phys_addr, size, VM_MEMATTR_WRITE_COMBINING);
 }
+
+#define mmiowb cpu_sfence
 
 #endif	/* _ASM_IO_H_ */
