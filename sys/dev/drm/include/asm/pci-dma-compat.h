@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +41,12 @@ static inline void
 pci_unmap_page(struct pci_dev *hwdev, dma_addr_t dma_address,
 	       size_t size, int direction)
 {
+}
+
+static inline int
+pci_dma_mapping_error(struct pci_dev *hwdev, dma_addr_t dma_address)
+{
+	return (dma_address == 0);
 }
 
 #endif	/* _ASM_PCI_DMA_COMPAT_H_ */
