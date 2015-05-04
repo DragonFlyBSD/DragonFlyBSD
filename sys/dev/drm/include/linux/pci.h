@@ -126,6 +126,14 @@ pci_set_consistent_dma_mask(struct pci_dev *dev, u64 mask)
 	return -EIO;
 }
 
+typedef int pci_power_t;
+
+#define PCI_D0		0
+#define PCI_D1		1
+#define PCI_D2		2
+#define PCI_D3hot	3
+#define PCI_D3cold	4
+
 #include <asm/pci.h>
 
 #endif /* LINUX_PCI_H */
