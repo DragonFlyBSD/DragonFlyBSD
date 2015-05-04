@@ -1572,7 +1572,6 @@ bus/pccard/pccard_cis.c		optional pccard
 bus/pccard/pccard_cis_quirks.c	optional pccard
 bus/pccard/power_if.m		standard
 dev/agp/agp.c			optional agp
-dev/agp/agp_intel.c		optional agp
 dev/agp/agp_nvidia.c		optional agp
 dev/agp/agp_via.c		optional agp
 dev/agp/agp_sis.c		optional agp
