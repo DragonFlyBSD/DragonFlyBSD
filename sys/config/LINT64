@@ -1269,8 +1269,8 @@ options		SND_OLDSTEREO
 # Miscellaneous hardware:
 #
 # bktr: Brooktree bt848/848a/849a/878/879 video capture and TV Tuner board
-# coremctl: Intel Core/E3 memory controller (required by ecc(4))
-# dimm: Location inforamtion (required by memtemp(4))
+# coremctl: Intel Core/E3 memory controller (required by ecc(4) and memtemp(4))
+# dimm: Location inforamtion (required by ecc(4) and memtemp(4))
 # ecc: ECC memory controller
 # ipmi: Intelligent Platform Management Interface
 # joy: joystick

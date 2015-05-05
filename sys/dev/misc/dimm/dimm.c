@@ -56,6 +56,7 @@ struct dimm_softc {
 	int			dimm_temp_lowat;
 	int			dimm_id;
 	int			dimm_ref;
+	int			dimm_ecc_cnt;
 
 	struct ksensordev	dimm_sensdev;
 	uint32_t		dimm_sens_taskflags;	/* DIMM_SENS_TF_ */
@@ -66,6 +67,7 @@ struct dimm_softc {
 TAILQ_HEAD(dimm_softc_list, dimm_softc);
 
 #define DIMM_SENS_TF_TEMP_CRIT		0x1
+#define DIMM_SENS_TF_ECC_CRIT		0x2
 
 static void	dimm_mod_unload(void);
 
@@ -234,6 +236,26 @@ dimm_sensor_temp(struct dimm_softc *sc, struct ksensor *sens, int temp)
 		sens->status = SENSOR_S_OK;
 	sens->flags &= ~SENSOR_FINVALID;
 	sens->value = (temp * 1000000) + 273150000;
+}
+
+void
+dimm_sensor_ecc_set(struct dimm_softc *sc, struct ksensor *sens,
+    int ecc_cnt, boolean_t crit)
+{
+	if (crit && (sc->dimm_sens_taskflags & DIMM_SENS_TF_ECC_CRIT) == 0) {
+		/* TODO devctl(4) */
+		sc->dimm_sens_taskflags |= DIMM_SENS_TF_ECC_CRIT;
+	} else if (!crit && (sc->dimm_sens_taskflags & DIMM_SENS_TF_ECC_CRIT)) {
+		sc->dimm_sens_taskflags &= ~DIMM_SENS_TF_ECC_CRIT;
+	}
+	sc->dimm_ecc_cnt = ecc_cnt;
+
+	if (sc->dimm_sens_taskflags & DIMM_SENS_TF_ECC_CRIT)
+		sens->status = SENSOR_S_CRIT;
+	else
+		sens->status = SENSOR_S_OK;
+	sens->flags &= ~SENSOR_FINVALID;
+	sens->value = ecc_cnt;
 }
 
 static void

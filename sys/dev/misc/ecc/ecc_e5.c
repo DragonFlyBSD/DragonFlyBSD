@@ -34,10 +34,12 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/bitops.h>
 #include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
-#include <sys/bitops.h>
+#include <sys/queue.h>
+#include <sys/sensors.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -47,10 +49,18 @@
 
 #include "pcib_if.h"
 
+#include <dev/misc/dimm/dimm.h>
 #include <dev/misc/ecc/e5_imc_reg.h>
 #include <dev/misc/ecc/e5_imc_var.h>
 
+struct ecc_e5_dimm {
+	TAILQ_ENTRY(ecc_e5_dimm) dimm_link;
+	struct dimm_softc	*dimm_softc;
+	struct ksensor		dimm_sensor;
+};
+
 struct ecc_e5_rank {
+	struct ecc_e5_dimm *rank_dimm_sc;
 	int		rank_dimm;	/* owner dimm */
 	int		rank_dimm_rank;	/* rank within the owner dimm */
 };
@@ -61,7 +71,7 @@ struct ecc_e5_softc {
 	int			ecc_node;
 	int			ecc_rank_cnt;
 	struct ecc_e5_rank	ecc_rank[PCI_E5_IMC_ERROR_RANK_MAX];
-	struct callout		ecc_callout;
+	TAILQ_HEAD(, ecc_e5_dimm) ecc_dimm;
 };
 
 #define ecc_printf(sc, fmt, arg...) \
@@ -72,7 +82,7 @@ static int	ecc_e5_attach(device_t);
 static int	ecc_e5_detach(device_t);
 static void	ecc_e5_shutdown(device_t);
 
-static void	ecc_e5_callout(void *);
+static void	ecc_e5_sensor_task(void *);
 
 #define ECC_E5_CHAN(v, imc, c, c_ext)				\
 {								\
@@ -128,6 +138,7 @@ static driver_t ecc_e5_driver = {
 static devclass_t ecc_devclass;
 DRIVER_MODULE(ecc_e5, pci, ecc_e5_driver, ecc_devclass, NULL, NULL);
 MODULE_DEPEND(ecc_e5, pci, 1, 1, 1);
+MODULE_DEPEND(ecc_e5, dimm, 1, 1, 1);
 
 static int
 ecc_e5_probe(device_t dev)
@@ -147,16 +158,13 @@ ecc_e5_probe(device_t dev)
 	for (c = ecc_e5_chans; c->desc != NULL; ++c) {
 		if (c->did == did && c->slot == slot && c->func == func) {
 			struct ecc_e5_softc *sc = device_get_softc(dev);
-			char desc[32];
 			int node;
 
 			node = e5_imc_node_probe(dev, c);
 			if (node < 0)
 				break;
 
-			ksnprintf(desc, sizeof(desc), "%s node%d channel%d",
-			    c->desc, node, c->chan_ext);
-			device_set_desc_copy(dev, desc);
+			device_set_desc(dev, c->desc);
 
 			sc->ecc_chan = c;
 			sc->ecc_node = node;
@@ -173,7 +181,7 @@ ecc_e5_attach(device_t dev)
 	uint32_t mcmtr;
 	int dimm, rank;
 
-	callout_init_mp(&sc->ecc_callout);
+	TAILQ_INIT(&sc->ecc_dimm);
 	sc->ecc_dev = dev;
 
 	mcmtr = IMC_CPGC_READ_4(sc->ecc_dev, sc->ecc_chan,
@@ -192,6 +200,8 @@ ecc_e5_attach(device_t dev)
 
 	rank = 0;
 	for (dimm = 0; dimm < PCI_E5_IMC_CHN_DIMM_MAX; ++dimm) {
+		struct ecc_e5_dimm *dimm_sc;
+		struct ksensor *sens;
 		const char *width;
 		uint32_t dimmmtr;
 		int rank_cnt, r;
@@ -270,6 +280,21 @@ ecc_e5_attach(device_t dev)
 			    rank_cnt, width, density);
 		}
 
+		dimm_sc = kmalloc(sizeof(*dimm_sc), M_DEVBUF,
+		    M_WAITOK | M_ZERO);
+		dimm_sc->dimm_softc =
+		    dimm_create(sc->ecc_node, sc->ecc_chan->chan_ext, dimm);
+
+		sens = &dimm_sc->dimm_sensor;
+		ksnprintf(sens->desc, sizeof(sens->desc),
+		    "node%d chan%d DIMM%d ecc",
+		    sc->ecc_node, sc->ecc_chan->chan_ext, dimm);
+		sens->type = SENSOR_INTEGER;
+		dimm_sensor_attach(dimm_sc->dimm_softc, sens);
+		dimm_sensor_ecc_set(dimm_sc->dimm_softc, sens, 0, FALSE);
+
+		TAILQ_INSERT_TAIL(&sc->ecc_dimm, dimm_sc, dimm_link);
+
 		for (r = 0; r < rank_cnt; ++r) {
 			struct ecc_e5_rank *rk;
 
@@ -279,6 +304,7 @@ ecc_e5_attach(device_t dev)
 			}
 			rk = &sc->ecc_rank[rank];
 
+			rk->rank_dimm_sc = dimm_sc;
 			rk->rank_dimm = dimm;
 			rk->rank_dimm_rank = r;
 
@@ -312,12 +338,12 @@ ecc_e5_attach(device_t dev)
 		}
 	}
 
-	callout_reset(&sc->ecc_callout, hz, ecc_e5_callout, sc);
+	sensor_task_register(sc, ecc_e5_sensor_task, 1);
 	return 0;
 }
 
 static void
-ecc_e5_callout(void *xsc)
+ecc_e5_sensor_task(void *xsc)
 {
 	struct ecc_e5_softc *sc = xsc;
 	uint32_t err_ranks, val;
@@ -333,8 +359,9 @@ ecc_e5_callout(void *xsc)
 
 		if (rank < sc->ecc_rank_cnt) {
 			const struct ecc_e5_rank *rk = &sc->ecc_rank[rank];
+			struct ecc_e5_dimm *dimm_sc = rk->rank_dimm_sc;
 			uint32_t err, mask;
-			int ofs;
+			int ofs, ecc_cnt;
 
 			ofs = PCI_E5_IMC_ERROR_COR_ERR_CNT(rank / 2);
 			if (rank & 1)
@@ -343,11 +370,14 @@ ecc_e5_callout(void *xsc)
 				mask = PCI_E5_IMC_ERROR_COR_ERR_CNT_LO;
 
 			err = pci_read_config(sc->ecc_dev, ofs, 4);
+			ecc_cnt = __SHIFTOUT(err, mask);
+
 			ecc_printf(sc, "node%d channel%d DIMM%d rank%d, "
 			    "too many errors %d",
 			    sc->ecc_node, sc->ecc_chan->chan_ext,
-			    rk->rank_dimm, rk->rank_dimm_rank,
-			    __SHIFTOUT(err, mask));
+			    rk->rank_dimm, rk->rank_dimm_rank, ecc_cnt);
+			dimm_sensor_ecc_set(dimm_sc->dimm_softc,
+			    &dimm_sc->dimm_sensor, ecc_cnt, TRUE);
 		}
 	}
 
@@ -355,7 +385,6 @@ ecc_e5_callout(void *xsc)
 		pci_write_config(sc->ecc_dev, PCI_E5_IMC_ERROR_COR_ERR_STAT,
 		    val, 4);
 	}
-	callout_reset(&sc->ecc_callout, hz, ecc_e5_callout, sc);
 }
 
 static void
@@ -363,13 +392,24 @@ ecc_e5_stop(device_t dev)
 {
 	struct ecc_e5_softc *sc = device_get_softc(dev);
 
-	callout_stop_sync(&sc->ecc_callout);
+	sensor_task_unregister(sc);
 }
 
 static int
 ecc_e5_detach(device_t dev)
 {
+	struct ecc_e5_softc *sc = device_get_softc(dev);
+	struct ecc_e5_dimm *dimm_sc;
+
 	ecc_e5_stop(dev);
+
+	while ((dimm_sc = TAILQ_FIRST(&sc->ecc_dimm)) != NULL) {
+		TAILQ_REMOVE(&sc->ecc_dimm, dimm_sc, dimm_link);
+		dimm_sensor_detach(dimm_sc->dimm_softc, &dimm_sc->dimm_sensor);
+		dimm_destroy(dimm_sc->dimm_softc);
+
+		kfree(dimm_sc, M_DEVBUF);
+	}
 	return 0;
 }
 
