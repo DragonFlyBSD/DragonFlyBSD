@@ -378,7 +378,7 @@ coretemp_attach(device_t dev)
 		ksnprintf(csens->c_sensdev.xname,
 		    sizeof(csens->c_sensdev.xname), "cpu%d", cpu);
 		ksnprintf(csens->c_sens.desc, sizeof(csens->c_sens.desc),
-		    "node%d core%d", get_chip_ID(cpu),
+		    "node%d core%d temp", get_chip_ID(cpu),
 		    get_core_number_within_chip(cpu));
 		csens->c_sens.type = SENSOR_TEMP;
 		sensor_set_unknown(&csens->c_sens);
@@ -426,7 +426,7 @@ coretemp_attach(device_t dev)
 			    sizeof(csens->c_sensdev.xname), "cpu_node%d",
 			    get_chip_ID(sc->sc_cpu));
 			ksnprintf(csens->c_sens.desc,
-			    sizeof(csens->c_sens.desc), "node%d",
+			    sizeof(csens->c_sens.desc), "node%d temp",
 			    get_chip_ID(sc->sc_cpu));
 			csens->c_sens.type = SENSOR_TEMP;
 			sensor_set_unknown(&csens->c_sens);
