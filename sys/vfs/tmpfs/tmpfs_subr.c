@@ -198,6 +198,8 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
  * allocated, it cannot be deleted during the whole life of the file
  * system.  Instead, they are moved to the available list and remain there
  * until reused.
+ *
+ * A caller must have TMPFS_NODE_LOCK(node) and this function unlocks it.
  */
 void
 tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
@@ -214,7 +216,7 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 	LIST_REMOVE(node, tn_entries);
 	tmp->tm_nodes_inuse--;
 	TMPFS_UNLOCK(tmp);
-	TMPFS_NODE_UNLOCK(node);
+	TMPFS_NODE_UNLOCK(node);  /* Caller has this lock */
 
 	switch (node->tn_type) {
 	case VNON:
