@@ -305,6 +305,7 @@ memtemp_e5_attach(device_t dev)
 		    "node%d chan%d DIMM%d temp",
 		    sc->temp_node, sc->temp_chan->chan_ext, dimm);
 		sens->type = SENSOR_TEMP;
+		sensor_set_unknown(sens);
 		dimm_sensor_attach(dimm_sc->dimm_softc, sens);
 		sensor_task_register(dimm_sc, memtemp_e5_sensor_task, 5);
 

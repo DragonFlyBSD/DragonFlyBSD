@@ -121,6 +121,7 @@ struct sensordev {
 #define MAXSENSORDEVICES 32
 
 #ifdef _KERNEL
+
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 
@@ -161,6 +162,38 @@ void		sensor_detach(struct ksensordev *, struct ksensor *);
 /* task scheduling */
 void		sensor_task_register(void *, void (*)(void *), int);
 void		sensor_task_unregister(void *);
+
+static __inline void
+sensor_set_invalid(struct ksensor *sens)
+{
+	sens->status = SENSOR_S_UNSPEC;
+	sens->flags &= ~(SENSOR_FUNKNOWN | SENSOR_FINVALID);
+	sens->flags |= SENSOR_FINVALID;
+	sens->value = 0;
+}
+
+static __inline void
+sensor_set_unknown(struct ksensor *sens)
+{
+	sens->status = SENSOR_S_UNKNOWN;
+	sens->flags &= ~(SENSOR_FUNKNOWN | SENSOR_FINVALID);
+	sens->flags |= SENSOR_FUNKNOWN;
+	sens->value = 0;
+}
+
+static __inline void
+sensor_set(struct ksensor *sens, int val, enum sensor_status status)
+{
+	sens->status = status;
+	sens->flags &= ~(SENSOR_FUNKNOWN | SENSOR_FINVALID);
+	sens->value = val;
+}
+
+static __inline void
+sensor_set_temp_degc(struct ksensor *sens, int degc, enum sensor_status status)
+{
+	sensor_set(sens, (degc * 1000000) + 273150000, status);
+}
 
 #endif	/* _KERNEL */
 

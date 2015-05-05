@@ -210,6 +210,8 @@ dimm_set_temp_thresh(struct dimm_softc *sc, int hiwat, int lowat)
 void
 dimm_sensor_temp(struct dimm_softc *sc, struct ksensor *sens, int temp)
 {
+	enum sensor_status status;
+
 	if (temp >= sc->dimm_temp_hiwat &&
 	    (sc->dimm_sens_taskflags & DIMM_SENS_TF_TEMP_CRIT) == 0) {
 		char temp_str[16], data[64];
@@ -231,31 +233,31 @@ dimm_sensor_temp(struct dimm_softc *sc, struct ksensor *sens, int temp)
 	}
 
 	if (sc->dimm_sens_taskflags & DIMM_SENS_TF_TEMP_CRIT)
-		sens->status = SENSOR_S_CRIT;
+		status = SENSOR_S_CRIT;
 	else
-		sens->status = SENSOR_S_OK;
-	sens->flags &= ~SENSOR_FINVALID;
-	sens->value = (temp * 1000000) + 273150000;
+		status = SENSOR_S_OK;
+	sensor_set_temp_degc(sens, temp, status);
 }
 
 void
 dimm_sensor_ecc_set(struct dimm_softc *sc, struct ksensor *sens,
     int ecc_cnt, boolean_t crit)
 {
+	enum sensor_status status;
+
+	sc->dimm_ecc_cnt = ecc_cnt;
 	if (crit && (sc->dimm_sens_taskflags & DIMM_SENS_TF_ECC_CRIT) == 0) {
 		/* TODO devctl(4) */
 		sc->dimm_sens_taskflags |= DIMM_SENS_TF_ECC_CRIT;
 	} else if (!crit && (sc->dimm_sens_taskflags & DIMM_SENS_TF_ECC_CRIT)) {
 		sc->dimm_sens_taskflags &= ~DIMM_SENS_TF_ECC_CRIT;
 	}
-	sc->dimm_ecc_cnt = ecc_cnt;
 
 	if (sc->dimm_sens_taskflags & DIMM_SENS_TF_ECC_CRIT)
-		sens->status = SENSOR_S_CRIT;
+		status = SENSOR_S_CRIT;
 	else
-		sens->status = SENSOR_S_OK;
-	sens->flags &= ~SENSOR_FINVALID;
-	sens->value = ecc_cnt;
+		status = SENSOR_S_OK;
+	sensor_set(sens, sc->dimm_ecc_cnt, status);
 }
 
 static void

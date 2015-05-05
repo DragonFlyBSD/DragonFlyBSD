@@ -166,33 +166,16 @@ DRIVER_MODULE(coretemp, cpu, coretemp_driver, coretemp_devclass, NULL, NULL);
 MODULE_VERSION(coretemp, 1);
 
 static __inline void
-coretemp_sensor_set_invalid(struct ksensor *sens)
-{
-	sens->status = SENSOR_S_UNSPEC;
-	sens->flags &= ~SENSOR_FUNKNOWN;
-	sens->flags |= SENSOR_FINVALID;
-	sens->value = 0;
-}
-
-static __inline void
-coretemp_sensor_set_unknown(struct ksensor *sens)
-{
-	sens->status = SENSOR_S_UNSPEC;
-	sens->flags &= ~SENSOR_FINVALID;
-	sens->flags |= SENSOR_FUNKNOWN;
-	sens->value = 0;
-}
-
-static __inline void
 coretemp_sensor_set(struct ksensor *sens, const struct coretemp_softc *sc,
     uint32_t crit_flag, int temp)
 {
+	enum sensor_status status;
+
 	if (sc->sc_flags & crit_flag)
-		sens->status = SENSOR_S_CRIT;
+		status = SENSOR_S_CRIT;
 	else
-		sens->status = SENSOR_S_OK;
-	sens->flags &= ~(SENSOR_FINVALID | SENSOR_FUNKNOWN);
-	sens->value = temp * 1000000 + 273150000;
+		status = SENSOR_S_OK;
+	sensor_set_temp_degc(sens, temp, status);
 }
 
 static void
@@ -398,7 +381,7 @@ coretemp_attach(device_t dev)
 		    "node%d core%d", get_chip_ID(cpu),
 		    get_core_number_within_chip(cpu));
 		csens->c_sens.type = SENSOR_TEMP;
-		coretemp_sensor_set_unknown(&csens->c_sens);
+		sensor_set_unknown(&csens->c_sens);
 		sensor_attach(&csens->c_sensdev, &csens->c_sens);
 		sensordev_install(&csens->c_sensdev);
 
@@ -446,7 +429,7 @@ coretemp_attach(device_t dev)
 			    sizeof(csens->c_sens.desc), "node%d",
 			    get_chip_ID(sc->sc_cpu));
 			csens->c_sens.type = SENSOR_TEMP;
-			coretemp_sensor_set_unknown(&csens->c_sens);
+			sensor_set_unknown(&csens->c_sens);
 			sensor_attach(&csens->c_sensdev, &csens->c_sens);
 			sensordev_install(&csens->c_sensdev);
 		}
@@ -637,7 +620,7 @@ coretemp_sensor_update(struct coretemp_softc *sc, int temp)
 		/* No updates; keep the previous value */
 	} else if (temp == CORETEMP_TEMP_INVALID) {
 		for (i = 0; i < sc->sc_nsens; ++i)
-			coretemp_sensor_set_invalid(&sc->sc_sens[i].c_sens);
+			sensor_set_invalid(&sc->sc_sens[i].c_sens);
 	} else {
 		for (i = 0; i < sc->sc_nsens; ++i) {
 			coretemp_sensor_set(&sc->sc_sens[i].c_sens, sc,
@@ -653,7 +636,7 @@ coretemp_pkg_sensor_update(struct coretemp_softc *sc, int temp)
 	if (temp == CORETEMP_TEMP_NOUPDATE) {
 		/* No updates; keep the previous value */
 	} else if (temp == CORETEMP_TEMP_INVALID) {
-		coretemp_sensor_set_invalid(&sc->sc_pkg_sens->c_sens);
+		sensor_set_invalid(&sc->sc_pkg_sens->c_sens);
 	} else {
 		coretemp_sensor_set(&sc->sc_pkg_sens->c_sens, sc,
 		    CORETEMP_FLAG_PKGCRIT, temp);

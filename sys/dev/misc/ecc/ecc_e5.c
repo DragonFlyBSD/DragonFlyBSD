@@ -290,8 +290,8 @@ ecc_e5_attach(device_t dev)
 		    "node%d chan%d DIMM%d ecc",
 		    sc->ecc_node, sc->ecc_chan->chan_ext, dimm);
 		sens->type = SENSOR_INTEGER;
+		sensor_set(sens, 0, SENSOR_S_OK);
 		dimm_sensor_attach(dimm_sc->dimm_softc, sens);
-		dimm_sensor_ecc_set(dimm_sc->dimm_softc, sens, 0, FALSE);
 
 		TAILQ_INSERT_TAIL(&sc->ecc_dimm, dimm_sc, dimm_link);
 
