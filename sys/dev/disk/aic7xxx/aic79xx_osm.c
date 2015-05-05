@@ -32,7 +32,6 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#35 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.23 2005/12/04 02:12:40 ru Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.27 2008/05/18 20:30:21 pavalos Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -1415,7 +1414,7 @@ DB_COMMAND(ahd_in, ahd_ddb_in)
 	}
 }
 
-DB_SET(ahd_out, ahd_ddb_out, db_cmd_set, CS_MORE, NULL)
+DB_COMMAND_FLAG(ahd_out, ahd_ddb_out, CS_MORE)
 {
 	db_expr_t old_value;
 	db_expr_t new_value;
