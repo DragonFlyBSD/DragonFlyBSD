@@ -302,7 +302,7 @@ memtemp_e5_attach(device_t dev)
 
 		sens = &dimm_sc->dimm_sensor;
 		ksnprintf(sens->desc, sizeof(sens->desc),
-		    "node%d chan%d DIMM%d",
+		    "node%d chan%d DIMM%d temp",
 		    sc->temp_node, sc->temp_chan->chan_ext, dimm);
 		sens->type = SENSOR_TEMP;
 		dimm_sensor_attach(dimm_sc->dimm_softc, sens);

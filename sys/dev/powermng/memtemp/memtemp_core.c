@@ -229,7 +229,7 @@ memtemp_core_dimm_attach(struct memtemp_core_softc *sc, int chan, int dimm_id,
 	dimm_sc->dimm_softc = dimm_create(0, chan, dimm_id);
 
 	sens = &dimm_sc->dimm_sensor;
-	ksnprintf(sens->desc, sizeof(sens->desc), "chan%d DIMM%d",
+	ksnprintf(sens->desc, sizeof(sens->desc), "chan%d DIMM%d temp",
 	    chan, dimm_id);
 	sens->type = SENSOR_TEMP;
 	dimm_sensor_attach(dimm_sc->dimm_softc, sens);
