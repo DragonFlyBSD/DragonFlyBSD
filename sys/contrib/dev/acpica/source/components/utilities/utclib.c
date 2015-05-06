@@ -111,7 +111,7 @@ AcpiUtMemcpy (
     ACPI_SIZE               Count)
 {
     char                    *New = (char *) Dest;
-    char                    *Old = __DECONST(char *, Src);
+    char                    *Old = (char *) Src;
 
 
     while (Count)
@@ -329,7 +329,7 @@ AcpiUtStrchr (
     {
         if ((*String) == (char) ch)
         {
-            return (__DECONST(char *, String));
+            return ((char *) String);
         }
     }
 
@@ -661,11 +661,11 @@ done:
     {
         if (converted == 0 && ReturnValue == 0 && String != NULL)
         {
-            *Terminator = __DECONST(char *, StringStart);
+            *Terminator = (char *) StringStart;
         }
         else
         {
-            *Terminator = __DECONST(char *, String);
+            *Terminator = (char *) String;
         }
     }
 
