@@ -366,7 +366,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	}
 
 	/*
-	 * Flush all vnodes on the mount.
+	 * Flush all vnodes on the unmount.
 	 *
 	 * If we fail to flush, we cannot unmount, but all the nodes have
 	 * already been truncated. Erroring out is the best we can do.
