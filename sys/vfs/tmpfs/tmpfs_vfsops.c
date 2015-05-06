@@ -272,8 +272,8 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	    kfree(tmp, M_TMPFSMNT);
 	    return error;
 	}
-	KASSERT(root->tn_id >= 0,
-		("tmpfs root with invalid ino: %d", (int)root->tn_id));
+	KASSERT(root->tn_id == 2,
+		("tmpfs root with invalid ino: %ju", (uintmax_t)root->tn_id));
 
 	++root->tn_links;	/* prevent destruction */
 	tmp->tm_root = root;
