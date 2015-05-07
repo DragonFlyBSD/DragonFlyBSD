@@ -1368,10 +1368,10 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	TMPFS_NODE_UNLOCK(dnode);
 
 	/* No vnode should be allocated for this entry from this point */
-	TMPFS_NODE_LOCK(node);
-	TMPFS_ASSERT_ELOCKED(node);
 	TMPFS_NODE_LOCK(dnode);
 	TMPFS_ASSERT_ELOCKED(dnode);
+	TMPFS_NODE_LOCK(node);
+	TMPFS_ASSERT_ELOCKED(node);
 
 	/*
 	 * Must set parent linkage to NULL (tested by ncreate to disallow
@@ -1383,8 +1383,8 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
 			    TMPFS_NODE_MODIFIED;
 
-	TMPFS_NODE_UNLOCK(dnode);
 	TMPFS_NODE_UNLOCK(node);
+	TMPFS_NODE_UNLOCK(dnode);
 
 	/* Free the directory entry we just deleted.  Note that the node
 	 * referred by it will not be removed until the vnode is really
