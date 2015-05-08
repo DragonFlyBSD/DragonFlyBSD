@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

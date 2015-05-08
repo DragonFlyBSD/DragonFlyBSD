@@ -29,4 +29,6 @@
 
 #include <linux/backlight.h>
 
+#define	KHZ2PICOS(a)	(1000000000UL/(a))
+
 #endif	/* _LINUX_FB_H_ */

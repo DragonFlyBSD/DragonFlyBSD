@@ -29,6 +29,7 @@
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
+#include "i915_trace.h"
 #include "intel_drv.h"
 
 static const u32 hpd_ibx[] = {
@@ -56,7 +57,7 @@ static const u32 hpd_mask_i915[] = {
 	[HPD_PORT_D] = PORTD_HOTPLUG_INT_EN
 };
 
-static const u32 hpd_status_gen4[] = {
+static const u32 hpd_status_g4x[] = {
 	[HPD_CRT] = CRT_HOTPLUG_INT_STATUS,
 	[HPD_SDVO_B] = SDVOB_HOTPLUG_INT_STATUS_G4X,
 	[HPD_SDVO_C] = SDVOC_HOTPLUG_INT_STATUS_G4X,
@@ -78,6 +79,14 @@ static const u32 hpd_status_i915[] = { /* i915 and valleyview are the same */
 static void
 ironlake_enable_display_irq(drm_i915_private_t *dev_priv, u32 mask)
 {
+	assert_spin_locked(&dev_priv->irq_lock);
+
+	if (dev_priv->pc8.irqs_disabled) {
+		WARN(1, "IRQs disabled\n");
+		dev_priv->pc8.regsave.deimr &= ~mask;
+		return;
+	}
+
 	if ((dev_priv->irq_mask & mask) != 0) {
 		dev_priv->irq_mask &= ~mask;
 		I915_WRITE(DEIMR, dev_priv->irq_mask);
@@ -88,6 +97,14 @@ ironlake_enable_display_irq(drm_i915_private_t *dev_priv, u32 mask)
 static void
 ironlake_disable_display_irq(drm_i915_private_t *dev_priv, u32 mask)
 {
+	assert_spin_locked(&dev_priv->irq_lock);
+
+	if (dev_priv->pc8.irqs_disabled) {
+		WARN(1, "IRQs disabled\n");
+		dev_priv->pc8.regsave.deimr |= mask;
+		return;
+	}
+
 	if ((dev_priv->irq_mask & mask) != mask) {
 		dev_priv->irq_mask |= mask;
 		I915_WRITE(DEIMR, dev_priv->irq_mask);
@@ -95,11 +112,92 @@ ironlake_disable_display_irq(drm_i915_private_t *dev_priv, u32 mask)
 	}
 }
 
+/**
+ * ilk_update_gt_irq - update GTIMR
+ * @dev_priv: driver private
+ * @interrupt_mask: mask of interrupt bits to update
+ * @enabled_irq_mask: mask of interrupt bits to enable
+ */
+static void ilk_update_gt_irq(struct drm_i915_private *dev_priv,
+			      uint32_t interrupt_mask,
+			      uint32_t enabled_irq_mask)
+{
+	assert_spin_locked(&dev_priv->irq_lock);
+
+	if (dev_priv->pc8.irqs_disabled) {
+		WARN(1, "IRQs disabled\n");
+		dev_priv->pc8.regsave.gtimr &= ~interrupt_mask;
+		dev_priv->pc8.regsave.gtimr |= (~enabled_irq_mask &
+						interrupt_mask);
+		return;
+	}
+
+	dev_priv->gt_irq_mask &= ~interrupt_mask;
+	dev_priv->gt_irq_mask |= (~enabled_irq_mask & interrupt_mask);
+	I915_WRITE(GTIMR, dev_priv->gt_irq_mask);
+	POSTING_READ(GTIMR);
+}
+
+void ilk_enable_gt_irq(struct drm_i915_private *dev_priv, uint32_t mask)
+{
+	ilk_update_gt_irq(dev_priv, mask, mask);
+}
+
+void ilk_disable_gt_irq(struct drm_i915_private *dev_priv, uint32_t mask)
+{
+	ilk_update_gt_irq(dev_priv, mask, 0);
+}
+
+/**
+  * snb_update_pm_irq - update GEN6_PMIMR
+  * @dev_priv: driver private
+  * @interrupt_mask: mask of interrupt bits to update
+  * @enabled_irq_mask: mask of interrupt bits to enable
+  */
+static void snb_update_pm_irq(struct drm_i915_private *dev_priv,
+			      uint32_t interrupt_mask,
+			      uint32_t enabled_irq_mask)
+{
+	uint32_t new_val;
+
+	assert_spin_locked(&dev_priv->irq_lock);
+
+	if (dev_priv->pc8.irqs_disabled) {
+		WARN(1, "IRQs disabled\n");
+		dev_priv->pc8.regsave.gen6_pmimr &= ~interrupt_mask;
+		dev_priv->pc8.regsave.gen6_pmimr |= (~enabled_irq_mask &
+						     interrupt_mask);
+		return;
+	}
+
+	new_val = dev_priv->pm_irq_mask;
+	new_val &= ~interrupt_mask;
+	new_val |= (~enabled_irq_mask & interrupt_mask);
+
+	if (new_val != dev_priv->pm_irq_mask) {
+		dev_priv->pm_irq_mask = new_val;
+		I915_WRITE(GEN6_PMIMR, dev_priv->pm_irq_mask);
+		POSTING_READ(GEN6_PMIMR);
+	}
+}
+
+void snb_enable_pm_irq(struct drm_i915_private *dev_priv, uint32_t mask)
+{
+	snb_update_pm_irq(dev_priv, mask, mask);
+}
+
+void snb_disable_pm_irq(struct drm_i915_private *dev_priv, uint32_t mask)
+{
+	snb_update_pm_irq(dev_priv, mask, 0);
+}
+
 static bool ivb_can_enable_err_int(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_crtc *crtc;
 	enum i915_pipe pipe;
+
+	assert_spin_locked(&dev_priv->irq_lock);
 
 	for_each_pipe(pipe) {
 		crtc = to_intel_crtc(dev_priv->pipe_to_crtc_mapping[pipe]);
@@ -116,6 +214,8 @@ static bool cpt_can_enable_serr_int(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	enum i915_pipe pipe;
 	struct intel_crtc *crtc;
+
+	assert_spin_locked(&dev_priv->irq_lock);
 
 	for_each_pipe(pipe) {
 		crtc = to_intel_crtc(dev_priv->pipe_to_crtc_mapping[pipe]);
@@ -141,38 +241,90 @@ static void ironlake_set_fifo_underrun_reporting(struct drm_device *dev,
 }
 
 static void ivybridge_set_fifo_underrun_reporting(struct drm_device *dev,
-						  bool enable)
+						  enum i915_pipe pipe, bool enable)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-
 	if (enable) {
+		I915_WRITE(GEN7_ERR_INT, ERR_INT_FIFO_UNDERRUN(pipe));
+
 		if (!ivb_can_enable_err_int(dev))
 			return;
 
-		I915_WRITE(GEN7_ERR_INT, ERR_INT_FIFO_UNDERRUN_A |
-					 ERR_INT_FIFO_UNDERRUN_B |
-					 ERR_INT_FIFO_UNDERRUN_C);
-
 		ironlake_enable_display_irq(dev_priv, DE_ERR_INT_IVB);
 	} else {
+		bool was_enabled = !(I915_READ(DEIMR) & DE_ERR_INT_IVB);
+
+		/* Change the state _after_ we've read out the current one. */
 		ironlake_disable_display_irq(dev_priv, DE_ERR_INT_IVB);
+
+		if (!was_enabled &&
+		    (I915_READ(GEN7_ERR_INT) & ERR_INT_FIFO_UNDERRUN(pipe))) {
+			DRM_DEBUG_KMS("uncleared fifo underrun on pipe %c\n",
+				      pipe_name(pipe));
+		}
 	}
 }
 
-static void ibx_set_fifo_underrun_reporting(struct intel_crtc *crtc,
-					    bool enable)
+static void broadwell_set_fifo_underrun_reporting(struct drm_device *dev,
+						  enum i915_pipe pipe, bool enable)
 {
-	struct drm_device *dev = crtc->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	uint32_t bit = (crtc->pipe == PIPE_A) ? SDE_TRANSA_FIFO_UNDER :
-						SDE_TRANSB_FIFO_UNDER;
+
+	assert_spin_locked(&dev_priv->irq_lock);
 
 	if (enable)
-		I915_WRITE(SDEIMR, I915_READ(SDEIMR) & ~bit);
+		dev_priv->de_irq_mask[pipe] &= ~GEN8_PIPE_FIFO_UNDERRUN;
 	else
-		I915_WRITE(SDEIMR, I915_READ(SDEIMR) | bit);
+		dev_priv->de_irq_mask[pipe] |= GEN8_PIPE_FIFO_UNDERRUN;
+	I915_WRITE(GEN8_DE_PIPE_IMR(pipe), dev_priv->de_irq_mask[pipe]);
+	POSTING_READ(GEN8_DE_PIPE_IMR(pipe));
+}
 
+/**
+ * ibx_display_interrupt_update - update SDEIMR
+ * @dev_priv: driver private
+ * @interrupt_mask: mask of interrupt bits to update
+ * @enabled_irq_mask: mask of interrupt bits to enable
+ */
+static void ibx_display_interrupt_update(struct drm_i915_private *dev_priv,
+					 uint32_t interrupt_mask,
+					 uint32_t enabled_irq_mask)
+{
+	uint32_t sdeimr = I915_READ(SDEIMR);
+	sdeimr &= ~interrupt_mask;
+	sdeimr |= (~enabled_irq_mask & interrupt_mask);
+
+	assert_spin_locked(&dev_priv->irq_lock);
+
+	if (dev_priv->pc8.irqs_disabled &&
+	    (interrupt_mask & SDE_HOTPLUG_MASK_CPT)) {
+		WARN(1, "IRQs disabled\n");
+		dev_priv->pc8.regsave.sdeimr &= ~interrupt_mask;
+		dev_priv->pc8.regsave.sdeimr |= (~enabled_irq_mask &
+						 interrupt_mask);
+		return;
+	}
+
+	I915_WRITE(SDEIMR, sdeimr);
 	POSTING_READ(SDEIMR);
+}
+#define ibx_enable_display_interrupt(dev_priv, bits) \
+	ibx_display_interrupt_update((dev_priv), (bits), (bits))
+#define ibx_disable_display_interrupt(dev_priv, bits) \
+	ibx_display_interrupt_update((dev_priv), (bits), 0)
+
+static void ibx_set_fifo_underrun_reporting(struct drm_device *dev,
+					    enum transcoder pch_transcoder,
+					    bool enable)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	uint32_t bit = (pch_transcoder == TRANSCODER_A) ?
+		       SDE_TRANSA_FIFO_UNDER : SDE_TRANSB_FIFO_UNDER;
+
+	if (enable)
+		ibx_enable_display_interrupt(dev_priv, bit);
+	else
+		ibx_disable_display_interrupt(dev_priv, bit);
 }
 
 static void cpt_set_fifo_underrun_reporting(struct drm_device *dev,
@@ -182,19 +334,26 @@ static void cpt_set_fifo_underrun_reporting(struct drm_device *dev,
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	if (enable) {
+		I915_WRITE(SERR_INT,
+			   SERR_INT_TRANS_FIFO_UNDERRUN(pch_transcoder));
+
 		if (!cpt_can_enable_serr_int(dev))
 			return;
 
-		I915_WRITE(SERR_INT, SERR_INT_TRANS_A_FIFO_UNDERRUN |
-				     SERR_INT_TRANS_B_FIFO_UNDERRUN |
-				     SERR_INT_TRANS_C_FIFO_UNDERRUN);
-
-		I915_WRITE(SDEIMR, I915_READ(SDEIMR) & ~SDE_ERROR_CPT);
+		ibx_enable_display_interrupt(dev_priv, SDE_ERROR_CPT);
 	} else {
-		I915_WRITE(SDEIMR, I915_READ(SDEIMR) | SDE_ERROR_CPT);
-	}
+		uint32_t tmp = I915_READ(SERR_INT);
+		bool was_enabled = !(I915_READ(SDEIMR) & SDE_ERROR_CPT);
 
-	POSTING_READ(SDEIMR);
+		/* Change the state _after_ we've read out the current one. */
+		ibx_disable_display_interrupt(dev_priv, SDE_ERROR_CPT);
+
+		if (!was_enabled &&
+		    (tmp & SERR_INT_TRANS_FIFO_UNDERRUN(pch_transcoder))) {
+			DRM_DEBUG_KMS("uncleared pch fifo underrun on pch transcoder %c\n",
+				      transcoder_name(pch_transcoder));
+		}
+	}
 }
 
 /**
@@ -231,7 +390,9 @@ bool intel_set_cpu_fifo_underrun_reporting(struct drm_device *dev,
 	if (IS_GEN5(dev) || IS_GEN6(dev))
 		ironlake_set_fifo_underrun_reporting(dev, pipe, enable);
 	else if (IS_GEN7(dev))
-		ivybridge_set_fifo_underrun_reporting(dev, enable);
+		ivybridge_set_fifo_underrun_reporting(dev, pipe, enable);
+	else if (IS_GEN8(dev))
+		broadwell_set_fifo_underrun_reporting(dev, pipe, enable);
 
 done:
 	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
@@ -257,28 +418,18 @@ bool intel_set_pch_fifo_underrun_reporting(struct drm_device *dev,
 					   bool enable)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	enum i915_pipe p;
-	struct drm_crtc *crtc;
-	struct intel_crtc *intel_crtc;
+	struct drm_crtc *crtc = dev_priv->pipe_to_crtc_mapping[pch_transcoder];
+	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 	bool ret;
 
-	if (HAS_PCH_LPT(dev)) {
-		crtc = NULL;
-		for_each_pipe(p) {
-			struct drm_crtc *c = dev_priv->pipe_to_crtc_mapping[p];
-			if (intel_pipe_has_type(c, INTEL_OUTPUT_ANALOG)) {
-				crtc = c;
-				break;
-			}
-		}
-		if (!crtc) {
-			DRM_ERROR("PCH FIFO underrun, but no CRTC using the PCH found\n");
-			return false;
-		}
-	} else {
-		crtc = dev_priv->pipe_to_crtc_mapping[pch_transcoder];
-	}
-	intel_crtc = to_intel_crtc(crtc);
+	/*
+	 * NOTE: Pre-LPT has a fixed cpu pipe -> pch transcoder mapping, but LPT
+	 * has only one pch transcoder A that all pipes can use. To avoid racy
+	 * pch transcoder -> pipe lookups from interrupt code simply store the
+	 * underrun statistics in crtc A. Since we never expose this anywhere
+	 * nor use it outside of the fifo underrun code here using the "wrong"
+	 * crtc on LPT won't cause issues.
+	 */
 
 	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 
@@ -290,7 +441,7 @@ bool intel_set_pch_fifo_underrun_reporting(struct drm_device *dev,
 	intel_crtc->pch_fifo_underrun_disabled = !enable;
 
 	if (HAS_PCH_IBX(dev))
-		ibx_set_fifo_underrun_reporting(intel_crtc, enable);
+		ibx_set_fifo_underrun_reporting(dev, pch_transcoder, enable);
 	else
 		cpt_set_fifo_underrun_reporting(dev, pch_transcoder, enable);
 
@@ -301,10 +452,12 @@ done:
 
 
 void
-i915_enable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask)
+i915_enable_pipestat(drm_i915_private_t *dev_priv, enum i915_pipe pipe, u32 mask)
 {
 	u32 reg = PIPESTAT(pipe);
 	u32 pipestat = I915_READ(reg) & 0x7fff0000;
+
+	assert_spin_locked(&dev_priv->irq_lock);
 
 	if ((pipestat & mask) == mask)
 		return;
@@ -316,10 +469,12 @@ i915_enable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask)
 }
 
 void
-i915_disable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask)
+i915_disable_pipestat(drm_i915_private_t *dev_priv, enum i915_pipe pipe, u32 mask)
 {
 	u32 reg = PIPESTAT(pipe);
 	u32 pipestat = I915_READ(reg) & 0x7fff0000;
+
+	assert_spin_locked(&dev_priv->irq_lock);
 
 	if ((pipestat & mask) == 0)
 		return;
@@ -341,9 +496,10 @@ static void i915_enable_asle_pipestat(struct drm_device *dev)
 
 	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 
-	i915_enable_pipestat(dev_priv, 1, PIPE_LEGACY_BLC_EVENT_ENABLE);
+	i915_enable_pipestat(dev_priv, PIPE_B, PIPE_LEGACY_BLC_EVENT_ENABLE);
 	if (INTEL_INFO(dev)->gen >= 4)
-		i915_enable_pipestat(dev_priv, 0, PIPE_LEGACY_BLC_EVENT_ENABLE);
+		i915_enable_pipestat(dev_priv, PIPE_A,
+				     PIPE_LEGACY_BLC_EVENT_ENABLE);
 
 	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 }
@@ -373,6 +529,12 @@ i915_pipe_enabled(struct drm_device *dev, int pipe)
 	}
 }
 
+static u32 i8xx_get_vblank_counter(struct drm_device *dev, int pipe)
+{
+	/* Gen2 doesn't have a hardware frame counter */
+	return 0;
+}
+
 /* Called from drm generic code, passed a 'crtc', which
  * we use as a pipe index
  */
@@ -381,12 +543,29 @@ static u32 i915_get_vblank_counter(struct drm_device *dev, int pipe)
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
 	unsigned long high_frame;
 	unsigned long low_frame;
-	u32 high1, high2, low;
+	u32 high1, high2, low, pixel, vbl_start;
 
 	if (!i915_pipe_enabled(dev, pipe)) {
 		DRM_DEBUG_DRIVER("trying to get vblank count for disabled "
 				"pipe %c\n", pipe_name(pipe));
 		return 0;
+	}
+
+	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
+		struct intel_crtc *intel_crtc =
+			to_intel_crtc(dev_priv->pipe_to_crtc_mapping[pipe]);
+		const struct drm_display_mode *mode =
+			&intel_crtc->config.adjusted_mode;
+
+		vbl_start = mode->crtc_vblank_start * mode->crtc_htotal;
+	} else {
+		enum transcoder cpu_transcoder = (enum transcoder) pipe;
+		u32 htotal;
+
+		htotal = ((I915_READ(HTOTAL(cpu_transcoder)) >> 16) & 0x1fff) + 1;
+		vbl_start = (I915_READ(VBLANK(cpu_transcoder)) & 0x1fff) + 1;
+
+		vbl_start *= htotal;
 	}
 
 	high_frame = PIPEFRAME(pipe);
@@ -399,13 +578,20 @@ static u32 i915_get_vblank_counter(struct drm_device *dev, int pipe)
 	 */
 	do {
 		high1 = I915_READ(high_frame) & PIPE_FRAME_HIGH_MASK;
-		low   = I915_READ(low_frame)  & PIPE_FRAME_LOW_MASK;
+		low   = I915_READ(low_frame);
 		high2 = I915_READ(high_frame) & PIPE_FRAME_HIGH_MASK;
 	} while (high1 != high2);
 
 	high1 >>= PIPE_FRAME_HIGH_SHIFT;
+	pixel = low & PIPE_PIXEL_MASK;
 	low >>= PIPE_FRAME_LOW_SHIFT;
-	return (high1 << 8) | low;
+
+	/*
+	 * The frame counter increments at beginning of active.
+	 * Cook up a vblank counter by also checking the pixel
+	 * counter against vblank start.
+	 */
+	return (((high1 << 8) | low) + (pixel >= vbl_start)) & 0xffffff;
 }
 
 static u32 gm45_get_vblank_counter(struct drm_device *dev, int pipe)
@@ -422,66 +608,186 @@ static u32 gm45_get_vblank_counter(struct drm_device *dev, int pipe)
 	return I915_READ(reg);
 }
 
+/* raw reads, only for fast reads of display block, no need for forcewake etc. */
+#define __raw_i915_read32(dev_priv__, reg__) readl((dev_priv__)->regs + (reg__))
+
+static bool ilk_pipe_in_vblank_locked(struct drm_device *dev, enum i915_pipe pipe)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	uint32_t status;
+	int reg;
+
+	if (INTEL_INFO(dev)->gen >= 8) {
+		status = GEN8_PIPE_VBLANK;
+		reg = GEN8_DE_PIPE_ISR(pipe);
+	} else if (INTEL_INFO(dev)->gen >= 7) {
+		status = DE_PIPE_VBLANK_IVB(pipe);
+		reg = DEISR;
+	} else {
+		status = DE_PIPE_VBLANK(pipe);
+		reg = DEISR;
+	}
+
+	return __raw_i915_read32(dev_priv, reg) & status;
+}
+
 static int i915_get_crtc_scanoutpos(struct drm_device *dev, int pipe,
 			     int *vpos, int *hpos)
 {
-	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-	u32 vbl = 0, position = 0;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_crtc *crtc = dev_priv->pipe_to_crtc_mapping[pipe];
+	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
+	const struct drm_display_mode *mode = &intel_crtc->config.adjusted_mode;
+	int position;
 	int vbl_start, vbl_end, htotal, vtotal;
 	bool in_vbl = true;
 	int ret = 0;
-	enum transcoder cpu_transcoder = intel_pipe_to_cpu_transcoder(dev_priv,
-								      pipe);
 
-	if (!i915_pipe_enabled(dev, pipe)) {
+	if (!intel_crtc->active) {
 		DRM_DEBUG_DRIVER("trying to get scanoutpos for disabled "
 				 "pipe %c\n", pipe_name(pipe));
 		return 0;
 	}
 
-	/* Get vtotal. */
-	vtotal = 1 + ((I915_READ(VTOTAL(cpu_transcoder)) >> 16) & 0x1fff);
+	htotal = mode->crtc_htotal;
+	vtotal = mode->crtc_vtotal;
+	vbl_start = mode->crtc_vblank_start;
+	vbl_end = mode->crtc_vblank_end;
 
-	if (INTEL_INFO(dev)->gen >= 4) {
+	if (mode->flags & DRM_MODE_FLAG_INTERLACE) {
+		vbl_start = DIV_ROUND_UP(vbl_start, 2);
+		vbl_end /= 2;
+		vtotal /= 2;
+	}
+
+	ret |= DRM_SCANOUTPOS_VALID | DRM_SCANOUTPOS_ACCURATE;
+
+	/*
+	 * Lock uncore.lock, as we will do multiple timing critical raw
+	 * register reads, potentially with preemption disabled, so the
+	 * following code must not block on uncore.lock.
+	 */
+	lockmgr(&dev_priv->uncore.lock, LK_EXCLUSIVE);
+	
+	/* preempt_disable_rt() should go right here in PREEMPT_RT patchset. */
+
+	/* Get optional system timestamp before query. */
+#if 0
+	if (stime)
+		*stime = ktime_get();
+#endif
+
+	if (IS_GEN2(dev) || IS_G4X(dev) || INTEL_INFO(dev)->gen >= 5) {
 		/* No obvious pixelcount register. Only query vertical
 		 * scanout position from Display scan line register.
 		 */
-		position = I915_READ(PIPEDSL(pipe));
+		if (IS_GEN2(dev))
+			position = __raw_i915_read32(dev_priv, PIPEDSL(pipe)) & DSL_LINEMASK_GEN2;
+		else
+			position = __raw_i915_read32(dev_priv, PIPEDSL(pipe)) & DSL_LINEMASK_GEN3;
 
-		/* Decode into vertical scanout position. Don't have
-		 * horizontal scanout position.
-		 */
-		*vpos = position & 0x1fff;
-		*hpos = 0;
+		if (HAS_DDI(dev)) {
+			/*
+			 * On HSW HDMI outputs there seems to be a 2 line
+			 * difference, whereas eDP has the normal 1 line
+			 * difference that earlier platforms have. External
+			 * DP is unknown. For now just check for the 2 line
+			 * difference case on all output types on HSW+.
+			 *
+			 * This might misinterpret the scanline counter being
+			 * one line too far along on eDP, but that's less
+			 * dangerous than the alternative since that would lead
+			 * the vblank timestamp code astray when it sees a
+			 * scanline count before vblank_start during a vblank
+			 * interrupt.
+			 */
+			in_vbl = ilk_pipe_in_vblank_locked(dev, pipe);
+			if ((in_vbl && (position == vbl_start - 2 ||
+					position == vbl_start - 1)) ||
+			    (!in_vbl && (position == vbl_end - 2 ||
+					 position == vbl_end - 1)))
+				position = (position + 2) % vtotal;
+		} else if (HAS_PCH_SPLIT(dev)) {
+			/*
+			 * The scanline counter increments at the leading edge
+			 * of hsync, ie. it completely misses the active portion
+			 * of the line. Fix up the counter at both edges of vblank
+			 * to get a more accurate picture whether we're in vblank
+			 * or not.
+			 */
+			in_vbl = ilk_pipe_in_vblank_locked(dev, pipe);
+			if ((in_vbl && position == vbl_start - 1) ||
+			    (!in_vbl && position == vbl_end - 1))
+				position = (position + 1) % vtotal;
+		} else {
+			/*
+			 * ISR vblank status bits don't work the way we'd want
+			 * them to work on non-PCH platforms (for
+			 * ilk_pipe_in_vblank_locked()), and there doesn't
+			 * appear any other way to determine if we're currently
+			 * in vblank.
+			 *
+			 * Instead let's assume that we're already in vblank if
+			 * we got called from the vblank interrupt and the
+			 * scanline counter value indicates that we're on the
+			 * line just prior to vblank start. This should result
+			 * in the correct answer, unless the vblank interrupt
+			 * delivery really got delayed for almost exactly one
+			 * full frame/field.
+			 */
+#if 0
+			if (flags & DRM_CALLED_FROM_VBLIRQ &&
+			    position == vbl_start - 1) {
+				position = (position + 1) % vtotal;
+
+				/* Signal this correction as "applied". */
+				ret |= 0x8;
+			}
+#endif
+		}
 	} else {
 		/* Have access to pixelcount since start of frame.
 		 * We can split this into vertical and horizontal
 		 * scanout position.
 		 */
-		position = (I915_READ(PIPEFRAMEPIXEL(pipe)) & PIPE_PIXEL_MASK) >> PIPE_PIXEL_SHIFT;
+		position = (__raw_i915_read32(dev_priv, PIPEFRAMEPIXEL(pipe)) & PIPE_PIXEL_MASK) >> PIPE_PIXEL_SHIFT;
 
-		htotal = 1 + ((I915_READ(HTOTAL(cpu_transcoder)) >> 16) & 0x1fff);
+		/* convert to pixel counts */
+		vbl_start *= htotal;
+		vbl_end *= htotal;
+		vtotal *= htotal;
+	}
+
+	/* Get optional system timestamp after query. */
+#if 0
+	if (etime)
+		*etime = ktime_get();
+#endif
+
+	/* preempt_enable_rt() should go right here in PREEMPT_RT patchset. */
+
+	lockmgr(&dev_priv->uncore.lock, LK_RELEASE);
+
+	in_vbl = position >= vbl_start && position < vbl_end;
+
+	/*
+	 * While in vblank, position will be negative
+	 * counting up towards 0 at vbl_end. And outside
+	 * vblank, position will be positive counting
+	 * up since vbl_end.
+	 */
+	if (position >= vbl_start)
+		position -= vbl_end;
+	else
+		position += vtotal - vbl_end;
+
+	if (IS_GEN2(dev) || IS_G4X(dev) || INTEL_INFO(dev)->gen >= 5) {
+		*vpos = position;
+		*hpos = 0;
+	} else {
 		*vpos = position / htotal;
 		*hpos = position - (*vpos * htotal);
 	}
-
-	/* Query vblank area. */
-	vbl = I915_READ(VBLANK(cpu_transcoder));
-
-	/* Test position against vblank region. */
-	vbl_start = vbl & 0x1fff;
-	vbl_end = (vbl >> 16) & 0x1fff;
-
-	if ((*vpos < vbl_start) || (*vpos > vbl_end))
-		in_vbl = false;
-
-	/* Inside "upper part" of vblank area? Apply corrective offset: */
-	if (in_vbl && (*vpos >= vbl_start))
-		*vpos = *vpos - vtotal;
-
-	/* Readouts valid? */
-	if (vbl > 0)
-		ret |= DRM_SCANOUTPOS_VALID | DRM_SCANOUTPOS_ACCURATE;
 
 	/* In vblank? */
 	if (in_vbl)
@@ -520,7 +826,8 @@ static int i915_get_vblank_timestamp(struct drm_device *dev, int pipe,
 						     crtc);
 }
 
-static int intel_hpd_irq_event(struct drm_device *dev, struct drm_connector *connector)
+static bool intel_hpd_irq_event(struct drm_device *dev,
+				struct drm_connector *connector)
 {
 	enum drm_connector_status old_status;
 
@@ -528,11 +835,16 @@ static int intel_hpd_irq_event(struct drm_device *dev, struct drm_connector *con
 	old_status = connector->status;
 
 	connector->status = connector->funcs->detect(connector, false);
-	DRM_DEBUG_KMS("[CONNECTOR:%d:%s] status updated from %d to %d\n",
+	if (old_status == connector->status)
+		return false;
+
+	DRM_DEBUG_KMS("[CONNECTOR:%d:%s] status updated from %s to %s\n",
 		      connector->base.id,
 		      drm_get_connector_name(connector),
-		      old_status, connector->status);
-	return (old_status != connector->status);
+		      drm_get_connector_status_name(old_status),
+		      drm_get_connector_status_name(connector->status));
+
+	return true;
 }
 
 /*
@@ -610,7 +922,7 @@ static void i915_hotplug_work_func(struct work_struct *work)
 		drm_kms_helper_hotplug_event(dev);
 }
 
-static void ironlake_handle_rps_change(struct drm_device *dev)
+static void ironlake_rps_change_irq_handler(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	u32 busy_up, busy_down, max_avg, min_avg;
@@ -652,72 +964,78 @@ static void ironlake_handle_rps_change(struct drm_device *dev)
 static void notify_ring(struct drm_device *dev,
 			struct intel_ring_buffer *ring)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
-
 	if (ring->obj == NULL)
 		return;
 
+	trace_i915_gem_request_complete(ring);
+
 	wake_up_all(&ring->irq_queue);
-	if (i915_enable_hangcheck) {
-		mod_timer(&dev_priv->gpu_error.hangcheck_timer,
-			  round_jiffies_up(jiffies + DRM_I915_HANGCHECK_JIFFIES));
-	}
+	i915_queue_hangcheck(dev);
 }
 
 static void gen6_pm_rps_work(struct work_struct *work)
 {
 	drm_i915_private_t *dev_priv = container_of(work, drm_i915_private_t,
 						    rps.work);
-	u32 pm_iir, pm_imr;
-	u8 new_delay;
+	u32 pm_iir;
+	int new_delay, adj;
 
-	lockmgr(&dev_priv->rps.lock, LK_EXCLUSIVE);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	pm_iir = dev_priv->rps.pm_iir;
 	dev_priv->rps.pm_iir = 0;
-	pm_imr = I915_READ(GEN6_PMIMR);
 	/* Make sure not to corrupt PMIMR state used by ringbuffer code */
-	I915_WRITE(GEN6_PMIMR, pm_imr & ~GEN6_PM_RPS_EVENTS);
-	lockmgr(&dev_priv->rps.lock, LK_RELEASE);
+	snb_enable_pm_irq(dev_priv, GEN6_PM_RPS_EVENTS);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+
+	/* Make sure we didn't queue anything we're not going to process. */
+	WARN_ON(pm_iir & ~GEN6_PM_RPS_EVENTS);
 
 	if ((pm_iir & GEN6_PM_RPS_EVENTS) == 0)
 		return;
 
 	mutex_lock(&dev_priv->rps.hw_lock);
 
+	adj = dev_priv->rps.last_adj;
 	if (pm_iir & GEN6_PM_RP_UP_THRESHOLD) {
-		new_delay = dev_priv->rps.cur_delay + 1;
+		if (adj > 0)
+			adj *= 2;
+		else
+			adj = 1;
+		new_delay = dev_priv->rps.cur_delay + adj;
 
 		/*
 		 * For better performance, jump directly
 		 * to RPe if we're below it.
 		 */
-		if (IS_VALLEYVIEW(dev_priv->dev) &&
-		    dev_priv->rps.cur_delay < dev_priv->rps.rpe_delay)
+		if (new_delay < dev_priv->rps.rpe_delay)
 			new_delay = dev_priv->rps.rpe_delay;
-	} else
-		new_delay = dev_priv->rps.cur_delay - 1;
+	} else if (pm_iir & GEN6_PM_RP_DOWN_TIMEOUT) {
+		if (dev_priv->rps.cur_delay > dev_priv->rps.rpe_delay)
+			new_delay = dev_priv->rps.rpe_delay;
+		else
+			new_delay = dev_priv->rps.min_delay;
+		adj = 0;
+	} else if (pm_iir & GEN6_PM_RP_DOWN_THRESHOLD) {
+		if (adj < 0)
+			adj *= 2;
+		else
+			adj = -1;
+		new_delay = dev_priv->rps.cur_delay + adj;
+	} else { /* unknown event */
+		new_delay = dev_priv->rps.cur_delay;
+	}
 
 	/* sysfs frequency interfaces may have snuck in while servicing the
 	 * interrupt
 	 */
-	if (new_delay >= dev_priv->rps.min_delay &&
-	    new_delay <= dev_priv->rps.max_delay) {
-		if (IS_VALLEYVIEW(dev_priv->dev))
-			valleyview_set_rps(dev_priv->dev, new_delay);
-		else
-			gen6_set_rps(dev_priv->dev, new_delay);
-	}
+	new_delay = clamp_t(int, new_delay,
+			    dev_priv->rps.min_delay, dev_priv->rps.max_delay);
+	dev_priv->rps.last_adj = new_delay - dev_priv->rps.cur_delay;
 
-	if (IS_VALLEYVIEW(dev_priv->dev)) {
-		/*
-		 * On VLV, when we enter RC6 we may not be at the minimum
-		 * voltage level, so arm a timer to check.  It should only
-		 * fire when there's activity or once after we've entered
-		 * RC6, and then won't be re-armed until the next RPS interrupt.
-		 */
-		mod_delayed_work(dev_priv->wq, &dev_priv->rps.vlv_work,
-				 msecs_to_jiffies(100));
-	}
+	if (IS_VALLEYVIEW(dev_priv->dev))
+		valleyview_set_rps(dev_priv->dev, new_delay);
+	else
+		gen6_set_rps(dev_priv->dev, new_delay);
 
 	mutex_unlock(&dev_priv->rps.hw_lock);
 }
@@ -737,8 +1055,9 @@ static void ivybridge_parity_work(struct work_struct *work)
 	drm_i915_private_t *dev_priv = container_of(work, drm_i915_private_t,
 						    l3_parity.error_work);
 	u32 error_status, row, bank, subbank;
-	char *parity_event[5];
+	char *parity_event[6];
 	uint32_t misccpctl;
+	uint8_t slice = 0;
 
 	/* We must turn off DOP level clock gating to access the L3 registers.
 	 * In order to prevent a get/put style interface, acquire struct mutex
@@ -746,48 +1065,93 @@ static void ivybridge_parity_work(struct work_struct *work)
 	 */
 	mutex_lock(&dev_priv->dev->struct_mutex);
 
+	/* If we've screwed up tracking, just let the interrupt fire again */
+	if (WARN_ON(!dev_priv->l3_parity.which_slice))
+		goto out;
+
 	misccpctl = I915_READ(GEN7_MISCCPCTL);
 	I915_WRITE(GEN7_MISCCPCTL, misccpctl & ~GEN7_DOP_CLOCK_GATE_ENABLE);
 	POSTING_READ(GEN7_MISCCPCTL);
 
-	error_status = I915_READ(GEN7_L3CDERRST1);
-	row = GEN7_PARITY_ERROR_ROW(error_status);
-	bank = GEN7_PARITY_ERROR_BANK(error_status);
-	subbank = GEN7_PARITY_ERROR_SUBBANK(error_status);
+	while ((slice = ffs(dev_priv->l3_parity.which_slice)) != 0) {
+		u32 reg;
 
-	I915_WRITE(GEN7_L3CDERRST1, GEN7_PARITY_ERROR_VALID |
-				    GEN7_L3CDERRST1_ENABLE);
-	POSTING_READ(GEN7_L3CDERRST1);
+		slice--;
+		if (WARN_ON_ONCE(slice >= NUM_L3_SLICES(dev_priv->dev)))
+			break;
+
+		dev_priv->l3_parity.which_slice &= ~(1<<slice);
+
+		reg = GEN7_L3CDERRST1 + (slice * 0x200);
+
+		error_status = I915_READ(reg);
+		row = GEN7_PARITY_ERROR_ROW(error_status);
+		bank = GEN7_PARITY_ERROR_BANK(error_status);
+		subbank = GEN7_PARITY_ERROR_SUBBANK(error_status);
+
+		I915_WRITE(reg, GEN7_PARITY_ERROR_VALID | GEN7_L3CDERRST1_ENABLE);
+		POSTING_READ(reg);
+
+		parity_event[0] = I915_L3_PARITY_UEVENT "=1";
+		parity_event[5] = NULL;
+
+#if 0
+		kobject_uevent_env(&dev_priv->dev->primary->kdev->kobj,
+				   KOBJ_CHANGE, parity_event);
+#endif
+
+		DRM_DEBUG("Parity error: Slice = %d, Row = %d, Bank = %d, Sub bank = %d.\n",
+			  slice, row, bank, subbank);
+
+#if 0
+		kfree(parity_event[4]);
+		kfree(parity_event[3]);
+		kfree(parity_event[2]);
+		kfree(parity_event[1]);
+#endif
+	}
 
 	I915_WRITE(GEN7_MISCCPCTL, misccpctl);
 
+out:
+	WARN_ON(dev_priv->l3_parity.which_slice);
 	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
-	dev_priv->gt_irq_mask &= ~GT_RENDER_L3_PARITY_ERROR_INTERRUPT;
-	I915_WRITE(GTIMR, dev_priv->gt_irq_mask);
+	ilk_enable_gt_irq(dev_priv, GT_PARITY_ERROR(dev_priv->dev));
 	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	mutex_unlock(&dev_priv->dev->struct_mutex);
-
-	parity_event[0] = "L3_PARITY_ERROR=1";
-	parity_event[4] = NULL;
-
-	DRM_DEBUG("Parity error: Row = %d, Bank = %d, Sub bank = %d.\n",
-		  row, bank, subbank);
 }
 
-static void ivybridge_handle_parity_error(struct drm_device *dev)
+static void ivybridge_parity_error_irq_handler(struct drm_device *dev, u32 iir)
 {
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
 
-	if (!HAS_L3_GPU_CACHE(dev))
+	if (!HAS_L3_DPF(dev))
 		return;
 
 	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
-	dev_priv->gt_irq_mask |= GT_RENDER_L3_PARITY_ERROR_INTERRUPT;
-	I915_WRITE(GTIMR, dev_priv->gt_irq_mask);
+	ilk_disable_gt_irq(dev_priv, GT_PARITY_ERROR(dev));
 	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
+	iir &= GT_PARITY_ERROR(dev);
+	if (iir & GT_RENDER_L3_PARITY_ERROR_INTERRUPT_S1)
+		dev_priv->l3_parity.which_slice |= 1 << 1;
+
+	if (iir & GT_RENDER_L3_PARITY_ERROR_INTERRUPT)
+		dev_priv->l3_parity.which_slice |= 1 << 0;
+
 	queue_work(dev_priv->wq, &dev_priv->l3_parity.error_work);
+}
+
+static void ilk_gt_irq_handler(struct drm_device *dev,
+			       struct drm_i915_private *dev_priv,
+			       u32 gt_iir)
+{
+	if (gt_iir &
+	    (GT_RENDER_USER_INTERRUPT | GT_RENDER_PIPECTL_NOTIFY_INTERRUPT))
+		notify_ring(dev, &dev_priv->ring[RCS]);
+	if (gt_iir & ILK_BSD_USER_INTERRUPT)
+		notify_ring(dev, &dev_priv->ring[VCS]);
 }
 
 static void snb_gt_irq_handler(struct drm_device *dev,
@@ -810,32 +1174,53 @@ static void snb_gt_irq_handler(struct drm_device *dev,
 		i915_handle_error(dev, false);
 	}
 
-	if (gt_iir & GT_RENDER_L3_PARITY_ERROR_INTERRUPT)
-		ivybridge_handle_parity_error(dev);
+	if (gt_iir & GT_PARITY_ERROR(dev))
+		ivybridge_parity_error_irq_handler(dev, gt_iir);
 }
 
-/* Legacy way of handling PM interrupts */
-static void gen6_queue_rps_work(struct drm_i915_private *dev_priv,
-				u32 pm_iir)
+static irqreturn_t gen8_gt_irq_handler(struct drm_device *dev,
+				       struct drm_i915_private *dev_priv,
+				       u32 master_ctl)
 {
+	u32 rcs, bcs, vcs;
+	uint32_t tmp = 0;
 
-	/*
-	 * IIR bits should never already be set because IMR should
-	 * prevent an interrupt from being shown in IIR. The warning
-	 * displays a case where we've unsafely cleared
-	 * dev_priv->rps.pm_iir. Although missing an interrupt of the same
-	 * type is not a problem, it displays a problem in the logic.
-	 *
-	 * The mask bit in IMR is cleared by dev_priv->rps.work.
-	 */
+	if (master_ctl & (GEN8_GT_RCS_IRQ | GEN8_GT_BCS_IRQ)) {
+		tmp = I915_READ(GEN8_GT_IIR(0));
+		if (tmp) {
+			rcs = tmp >> GEN8_RCS_IRQ_SHIFT;
+			bcs = tmp >> GEN8_BCS_IRQ_SHIFT;
+			if (rcs & GT_RENDER_USER_INTERRUPT)
+				notify_ring(dev, &dev_priv->ring[RCS]);
+			if (bcs & GT_RENDER_USER_INTERRUPT)
+				notify_ring(dev, &dev_priv->ring[BCS]);
+			I915_WRITE(GEN8_GT_IIR(0), tmp);
+		} else
+			DRM_ERROR("The master control interrupt lied (GT0)!\n");
+	}
 
-	lockmgr(&dev_priv->rps.lock, LK_EXCLUSIVE);
-	dev_priv->rps.pm_iir |= pm_iir;
-	I915_WRITE(GEN6_PMIMR, dev_priv->rps.pm_iir);
-	POSTING_READ(GEN6_PMIMR);
-	lockmgr(&dev_priv->rps.lock, LK_RELEASE);
+	if (master_ctl & GEN8_GT_VCS1_IRQ) {
+		tmp = I915_READ(GEN8_GT_IIR(1));
+		if (tmp) {
+			vcs = tmp >> GEN8_VCS1_IRQ_SHIFT;
+			if (vcs & GT_RENDER_USER_INTERRUPT)
+				notify_ring(dev, &dev_priv->ring[VCS]);
+			I915_WRITE(GEN8_GT_IIR(1), tmp);
+		} else
+			DRM_ERROR("The master control interrupt lied (GT1)!\n");
+	}
 
-	queue_work(dev_priv->wq, &dev_priv->rps.work);
+	if (master_ctl & GEN8_GT_VECS_IRQ) {
+		tmp = I915_READ(GEN8_GT_IIR(3));
+		if (tmp) {
+			vcs = tmp >> GEN8_VECS_IRQ_SHIFT;
+			if (vcs & GT_RENDER_USER_INTERRUPT)
+				notify_ring(dev, &dev_priv->ring[VECS]);
+			I915_WRITE(GEN8_GT_IIR(3), tmp);
+		} else
+			DRM_ERROR("The master control interrupt lied (GT3)!\n");
+	}
+
 }
 
 #define HPD_STORM_DETECT_PERIOD 1000
@@ -853,8 +1238,12 @@ static inline void intel_hpd_irq_handler(struct drm_device *dev,
 		return;
 
 	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
-
 	for (i = 1; i < HPD_NUM_PINS; i++) {
+
+		WARN_ONCE(hpd[i] & hotplug_trigger &&
+			  dev_priv->hpd_stats[i].hpd_mark == HPD_DISABLED,
+			  "Received HPD interrupt (0x%08x) on pin %d (0x%08x) although disabled\n",
+			  hotplug_trigger, i, hpd[i]);
 
 		if (!(hpd[i] & hotplug_trigger) ||
 		    dev_priv->hpd_stats[i].hpd_mark != HPD_ENABLED)
@@ -866,6 +1255,7 @@ static inline void intel_hpd_irq_handler(struct drm_device *dev,
 				   + msecs_to_jiffies(HPD_STORM_DETECT_PERIOD))) {
 			dev_priv->hpd_stats[i].hpd_last_jiffies = jiffies;
 			dev_priv->hpd_stats[i].hpd_cnt = 0;
+			DRM_DEBUG_KMS("Received HPD interrupt on PIN %d - cnt: 0\n", i);
 		} else if (dev_priv->hpd_stats[i].hpd_cnt > HPD_STORM_THRESHOLD) {
 			dev_priv->hpd_stats[i].hpd_mark = HPD_MARK_DISABLED;
 			dev_priv->hpd_event_bits &= ~(1 << i);
@@ -873,16 +1263,22 @@ static inline void intel_hpd_irq_handler(struct drm_device *dev,
 			storm_detected = true;
 		} else {
 			dev_priv->hpd_stats[i].hpd_cnt++;
+			DRM_DEBUG_KMS("Received HPD interrupt on PIN %d - cnt: %d\n", i,
+				      dev_priv->hpd_stats[i].hpd_cnt);
 		}
 	}
 
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
-
 	if (storm_detected)
 		dev_priv->display.hpd_irq_setup(dev);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
-	queue_work(dev_priv->wq,
-		   &dev_priv->hotplug_work);
+	/*
+	 * Our hotplug handler can grab modeset locks (by calling down into the
+	 * fb helpers). Hence it must not be run on our own dev-priv->wq work
+	 * queue for otherwise the flush_work in the pageflip code will
+	 * deadlock.
+	 */
+	schedule_work(&dev_priv->hotplug_work);
 }
 
 static void gmbus_irq_handler(struct drm_device *dev)
@@ -899,26 +1295,117 @@ static void dp_aux_irq_handler(struct drm_device *dev)
 	wake_up_all(&dev_priv->gmbus_wait_queue);
 }
 
-/* Unlike gen6_queue_rps_work() from which this function is originally derived,
- * we must be able to deal with other PM interrupts. This is complicated because
- * of the way in which we use the masks to defer the RPS work (which for
- * posterity is necessary because of forcewake).
- */
-static void hsw_pm_irq_handler(struct drm_i915_private *dev_priv,
-			       u32 pm_iir)
+#if defined(CONFIG_DEBUG_FS)
+static void display_pipe_crc_irq_handler(struct drm_device *dev, enum i915_pipe pipe,
+					 uint32_t crc0, uint32_t crc1,
+					 uint32_t crc2, uint32_t crc3,
+					 uint32_t crc4)
 {
-	lockmgr(&dev_priv->rps.lock, LK_EXCLUSIVE);
-	dev_priv->rps.pm_iir |= pm_iir & GEN6_PM_RPS_EVENTS;
-	if (dev_priv->rps.pm_iir) {
-		I915_WRITE(GEN6_PMIMR, dev_priv->rps.pm_iir);
-		/* never want to mask useful interrupts. (also posting read) */
-		WARN_ON(I915_READ_NOTRACE(GEN6_PMIMR) & ~GEN6_PM_RPS_EVENTS);
-		/* TODO: if queue_work is slow, move it out of the spinlock */
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_pipe_crc *pipe_crc = &dev_priv->pipe_crc[pipe];
+	struct intel_pipe_crc_entry *entry;
+	int head, tail;
+
+	spin_lock(&pipe_crc->lock);
+
+	if (!pipe_crc->entries) {
+		spin_unlock(&pipe_crc->lock);
+		DRM_ERROR("spurious interrupt\n");
+		return;
+	}
+
+	head = pipe_crc->head;
+	tail = pipe_crc->tail;
+
+	if (CIRC_SPACE(head, tail, INTEL_PIPE_CRC_ENTRIES_NR) < 1) {
+		spin_unlock(&pipe_crc->lock);
+		DRM_ERROR("CRC buffer overflowing\n");
+		return;
+	}
+
+	entry = &pipe_crc->entries[head];
+
+	entry->frame = dev->driver->get_vblank_counter(dev, pipe);
+	entry->crc[0] = crc0;
+	entry->crc[1] = crc1;
+	entry->crc[2] = crc2;
+	entry->crc[3] = crc3;
+	entry->crc[4] = crc4;
+
+	head = (head + 1) & (INTEL_PIPE_CRC_ENTRIES_NR - 1);
+	pipe_crc->head = head;
+
+	spin_unlock(&pipe_crc->lock);
+
+	wake_up_interruptible(&pipe_crc->wq);
+}
+#else
+static inline void
+display_pipe_crc_irq_handler(struct drm_device *dev, enum i915_pipe pipe,
+			     uint32_t crc0, uint32_t crc1,
+			     uint32_t crc2, uint32_t crc3,
+			     uint32_t crc4) {}
+#endif
+
+
+static void hsw_pipe_crc_irq_handler(struct drm_device *dev, enum i915_pipe pipe)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	display_pipe_crc_irq_handler(dev, pipe,
+				     I915_READ(PIPE_CRC_RES_1_IVB(pipe)),
+				     0, 0, 0, 0);
+}
+
+static void ivb_pipe_crc_irq_handler(struct drm_device *dev, enum i915_pipe pipe)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	display_pipe_crc_irq_handler(dev, pipe,
+				     I915_READ(PIPE_CRC_RES_1_IVB(pipe)),
+				     I915_READ(PIPE_CRC_RES_2_IVB(pipe)),
+				     I915_READ(PIPE_CRC_RES_3_IVB(pipe)),
+				     I915_READ(PIPE_CRC_RES_4_IVB(pipe)),
+				     I915_READ(PIPE_CRC_RES_5_IVB(pipe)));
+}
+
+static void i9xx_pipe_crc_irq_handler(struct drm_device *dev, enum i915_pipe pipe)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	uint32_t res1, res2;
+
+	if (INTEL_INFO(dev)->gen >= 3)
+		res1 = I915_READ(PIPE_CRC_RES_RES1_I915(pipe));
+	else
+		res1 = 0;
+
+	if (INTEL_INFO(dev)->gen >= 5 || IS_G4X(dev))
+		res2 = I915_READ(PIPE_CRC_RES_RES2_G4X(pipe));
+	else
+		res2 = 0;
+
+	display_pipe_crc_irq_handler(dev, pipe,
+				     I915_READ(PIPE_CRC_RES_RED(pipe)),
+				     I915_READ(PIPE_CRC_RES_GREEN(pipe)),
+				     I915_READ(PIPE_CRC_RES_BLUE(pipe)),
+				     res1, res2);
+}
+
+/* The RPS events need forcewake, so we add them to a work queue and mask their
+ * IMR bits until the work is done. Other interrupts can be processed without
+ * the work queue. */
+static void gen6_rps_irq_handler(struct drm_i915_private *dev_priv, u32 pm_iir)
+{
+	if (pm_iir & GEN6_PM_RPS_EVENTS) {
+		lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+		dev_priv->rps.pm_iir |= pm_iir & GEN6_PM_RPS_EVENTS;
+		snb_disable_pm_irq(dev_priv, pm_iir & GEN6_PM_RPS_EVENTS);
+		lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+
 		queue_work(dev_priv->wq, &dev_priv->rps.work);
 	}
-	lockmgr(&dev_priv->rps.lock, LK_RELEASE);
 
-	if (pm_iir & ~GEN6_PM_RPS_EVENTS) {
+	if (HAS_VEBOX(dev_priv->dev)) {
 		if (pm_iir & PM_VEBOX_USER_INTERRUPT)
 			notify_ring(dev_priv->dev, &dev_priv->ring[VECS]);
 
@@ -947,6 +1434,7 @@ static irqreturn_t valleyview_irq_handler(void *arg)
 		if (gt_iir == 0 && pm_iir == 0 && iir == 0)
 			goto out;
 
+
 		snb_gt_irq_handler(dev, dev_priv, gt_iir);
 
 		lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
@@ -967,13 +1455,16 @@ static irqreturn_t valleyview_irq_handler(void *arg)
 		lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 		for_each_pipe(pipe) {
-			if (pipe_stats[pipe] & PIPE_VBLANK_INTERRUPT_STATUS)
+			if (pipe_stats[pipe] & PIPE_START_VBLANK_INTERRUPT_STATUS)
 				drm_handle_vblank(dev, pipe);
 
 			if (pipe_stats[pipe] & PLANE_FLIPDONE_INT_STATUS_VLV) {
 				intel_prepare_page_flip(dev, pipe);
 				intel_finish_page_flip(dev, pipe);
 			}
+
+			if (pipe_stats[pipe] & PIPE_CRC_DONE_INTERRUPT_STATUS)
+				i9xx_pipe_crc_irq_handler(dev, pipe);
 		}
 
 		/* Consume port.  Then clear IIR or we'll miss events */
@@ -986,6 +1477,9 @@ static irqreturn_t valleyview_irq_handler(void *arg)
 
 			intel_hpd_irq_handler(dev, hotplug_trigger, hpd_status_i915);
 
+			if (hotplug_status & DP_AUX_CHANNEL_MASK_INT_STATUS_G4X)
+				dp_aux_irq_handler(dev);
+
 			I915_WRITE(PORT_HOTPLUG_STAT, hotplug_status);
 			I915_READ(PORT_HOTPLUG_STAT);
 		}
@@ -993,8 +1487,8 @@ static irqreturn_t valleyview_irq_handler(void *arg)
 		if (pipe_stats[0] & PIPE_GMBUS_INTERRUPT_STATUS)
 			gmbus_irq_handler(dev);
 
-		if (pm_iir & GEN6_PM_RPS_EVENTS)
-			gen6_queue_rps_work(dev_priv, pm_iir);
+		if (pm_iir)
+			gen6_rps_irq_handler(dev_priv, pm_iir);
 
 		I915_WRITE(GTIIR, gt_iir);
 		I915_WRITE(GEN6_PMIIR, pm_iir);
@@ -1062,21 +1556,26 @@ static void ivb_err_int_handler(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 err_int = I915_READ(GEN7_ERR_INT);
+	enum i915_pipe pipe;
 
 	if (err_int & ERR_INT_POISON)
 		DRM_ERROR("Poison interrupt\n");
 
-	if (err_int & ERR_INT_FIFO_UNDERRUN_A)
-		if (intel_set_cpu_fifo_underrun_reporting(dev, PIPE_A, false))
-			DRM_DEBUG_DRIVER("Pipe A FIFO underrun\n");
+	for_each_pipe(pipe) {
+		if (err_int & ERR_INT_FIFO_UNDERRUN(pipe)) {
+			if (intel_set_cpu_fifo_underrun_reporting(dev, pipe,
+								  false))
+				DRM_DEBUG_DRIVER("Pipe %c FIFO underrun\n",
+						 pipe_name(pipe));
+		}
 
-	if (err_int & ERR_INT_FIFO_UNDERRUN_B)
-		if (intel_set_cpu_fifo_underrun_reporting(dev, PIPE_B, false))
-			DRM_DEBUG_DRIVER("Pipe B FIFO underrun\n");
-
-	if (err_int & ERR_INT_FIFO_UNDERRUN_C)
-		if (intel_set_cpu_fifo_underrun_reporting(dev, PIPE_C, false))
-			DRM_DEBUG_DRIVER("Pipe C FIFO underrun\n");
+		if (err_int & ERR_INT_PIPE_CRC_DONE(pipe)) {
+			if (IS_IVYBRIDGE(dev))
+				ivb_pipe_crc_irq_handler(dev, pipe);
+			else
+				hsw_pipe_crc_irq_handler(dev, pipe);
+		}
+	}
 
 	I915_WRITE(GEN7_ERR_INT, err_int);
 }
@@ -1144,154 +1643,10 @@ static void cpt_irq_handler(struct drm_device *dev, u32 pch_iir)
 		cpt_serr_int_handler(dev);
 }
 
-static irqreturn_t ivybridge_irq_handler(void *arg)
+static void ilk_display_irq_handler(struct drm_device *dev, u32 de_iir)
 {
-	struct drm_device *dev = (struct drm_device *) arg;
-	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-	u32 de_iir, gt_iir, de_ier, pm_iir, sde_ier = 0;
-	int i;
-
-	atomic_inc(&dev_priv->irq_received);
-
-	/* We get interrupts on unclaimed registers, so check for this before we
-	 * do any I915_{READ,WRITE}. */
-	if (IS_HASWELL(dev) &&
-	    (I915_READ_NOTRACE(FPGA_DBG) & FPGA_DBG_RM_NOCLAIM)) {
-		DRM_ERROR("Unclaimed register before interrupt\n");
-		I915_WRITE_NOTRACE(FPGA_DBG, FPGA_DBG_RM_NOCLAIM);
-	}
-
-	/* disable master interrupt before clearing iir  */
-	de_ier = I915_READ(DEIER);
-	I915_WRITE(DEIER, de_ier & ~DE_MASTER_IRQ_CONTROL);
-
-	/* Disable south interrupts. We'll only write to SDEIIR once, so further
-	 * interrupts will will be stored on its back queue, and then we'll be
-	 * able to process them after we restore SDEIER (as soon as we restore
-	 * it, we'll get an interrupt if SDEIIR still has something to process
-	 * due to its back queue). */
-	if (!HAS_PCH_NOP(dev)) {
-		sde_ier = I915_READ(SDEIER);
-		I915_WRITE(SDEIER, 0);
-		POSTING_READ(SDEIER);
-	}
-
-	/* On Haswell, also mask ERR_INT because we don't want to risk
-	 * generating "unclaimed register" interrupts from inside the interrupt
-	 * handler. */
-	if (IS_HASWELL(dev)) {
-		lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
-		ironlake_disable_display_irq(dev_priv, DE_ERR_INT_IVB);
-		lockmgr(&dev_priv->irq_lock, LK_RELEASE);
-	}
-
-	gt_iir = I915_READ(GTIIR);
-	if (gt_iir) {
-		snb_gt_irq_handler(dev, dev_priv, gt_iir);
-		I915_WRITE(GTIIR, gt_iir);
-	}
-
-	de_iir = I915_READ(DEIIR);
-	if (de_iir) {
-		if (de_iir & DE_ERR_INT_IVB)
-			ivb_err_int_handler(dev);
-
-		if (de_iir & DE_AUX_CHANNEL_A_IVB)
-			dp_aux_irq_handler(dev);
-
-		if (de_iir & DE_GSE_IVB)
-			intel_opregion_asle_intr(dev);
-
-		for (i = 0; i < 3; i++) {
-			if (de_iir & (DE_PIPEA_VBLANK_IVB << (5 * i)))
-				drm_handle_vblank(dev, i);
-			if (de_iir & (DE_PLANEA_FLIP_DONE_IVB << (5 * i))) {
-				intel_prepare_page_flip(dev, i);
-				intel_finish_page_flip_plane(dev, i);
-			}
-		}
-
-		/* check event from PCH */
-		if (!HAS_PCH_NOP(dev) && (de_iir & DE_PCH_EVENT_IVB)) {
-			u32 pch_iir = I915_READ(SDEIIR);
-
-			cpt_irq_handler(dev, pch_iir);
-
-			/* clear PCH hotplug event before clear CPU irq */
-			I915_WRITE(SDEIIR, pch_iir);
-		}
-
-		I915_WRITE(DEIIR, de_iir);
-	}
-
-	pm_iir = I915_READ(GEN6_PMIIR);
-	if (pm_iir) {
-		if (IS_HASWELL(dev))
-			hsw_pm_irq_handler(dev_priv, pm_iir);
-		else if (pm_iir & GEN6_PM_RPS_EVENTS)
-			gen6_queue_rps_work(dev_priv, pm_iir);
-		I915_WRITE(GEN6_PMIIR, pm_iir);
-	}
-
-	if (IS_HASWELL(dev)) {
-		lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
-		if (ivb_can_enable_err_int(dev))
-			ironlake_enable_display_irq(dev_priv, DE_ERR_INT_IVB);
-		lockmgr(&dev_priv->irq_lock, LK_RELEASE);
-	}
-
-	I915_WRITE(DEIER, de_ier);
-	POSTING_READ(DEIER);
-	if (!HAS_PCH_NOP(dev)) {
-		I915_WRITE(SDEIER, sde_ier);
-		POSTING_READ(SDEIER);
-	}
-}
-
-static void ilk_gt_irq_handler(struct drm_device *dev,
-			       struct drm_i915_private *dev_priv,
-			       u32 gt_iir)
-{
-	if (gt_iir &
-	    (GT_RENDER_USER_INTERRUPT | GT_RENDER_PIPECTL_NOTIFY_INTERRUPT))
-		notify_ring(dev, &dev_priv->ring[RCS]);
-	if (gt_iir & ILK_BSD_USER_INTERRUPT)
-		notify_ring(dev, &dev_priv->ring[VCS]);
-}
-
-static irqreturn_t ironlake_irq_handler(void *arg)
-{
-	struct drm_device *dev = (struct drm_device *) arg;
-	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-	u32 de_iir, gt_iir, de_ier, pm_iir, sde_ier;
-
-	atomic_inc(&dev_priv->irq_received);
-
-	/* disable master interrupt before clearing iir  */
-	de_ier = I915_READ(DEIER);
-	I915_WRITE(DEIER, de_ier & ~DE_MASTER_IRQ_CONTROL);
-	POSTING_READ(DEIER);
-
-	/* Disable south interrupts. We'll only write to SDEIIR once, so further
-	 * interrupts will will be stored on its back queue, and then we'll be
-	 * able to process them after we restore SDEIER (as soon as we restore
-	 * it, we'll get an interrupt if SDEIIR still has something to process
-	 * due to its back queue). */
-	sde_ier = I915_READ(SDEIER);
-	I915_WRITE(SDEIER, 0);
-	POSTING_READ(SDEIER);
-
-	de_iir = I915_READ(DEIIR);
-	gt_iir = I915_READ(GTIIR);
-	pm_iir = I915_READ(GEN6_PMIIR);
-
-	if (de_iir == 0 && gt_iir == 0 && (!IS_GEN6(dev) || pm_iir == 0))
-		goto done;
-
-	if (IS_GEN5(dev))
-		ilk_gt_irq_handler(dev, dev_priv, gt_iir);
-	else
-		snb_gt_irq_handler(dev, dev_priv, gt_iir);
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	enum i915_pipe pipe;
 
 	if (de_iir & DE_AUX_CHANNEL_A)
 		dp_aux_irq_handler(dev);
@@ -1299,31 +1654,26 @@ static irqreturn_t ironlake_irq_handler(void *arg)
 	if (de_iir & DE_GSE)
 		intel_opregion_asle_intr(dev);
 
-	if (de_iir & DE_PIPEA_VBLANK)
-		drm_handle_vblank(dev, 0);
-
-	if (de_iir & DE_PIPEB_VBLANK)
-		drm_handle_vblank(dev, 1);
-
 	if (de_iir & DE_POISON)
 		DRM_ERROR("Poison interrupt\n");
 
-	if (de_iir & DE_PIPEA_FIFO_UNDERRUN)
-		if (intel_set_cpu_fifo_underrun_reporting(dev, PIPE_A, false))
-			DRM_DEBUG_DRIVER("Pipe A FIFO underrun\n");
+	for_each_pipe(pipe) {
+		if (de_iir & DE_PIPE_VBLANK(pipe))
+			drm_handle_vblank(dev, pipe);
 
-	if (de_iir & DE_PIPEB_FIFO_UNDERRUN)
-		if (intel_set_cpu_fifo_underrun_reporting(dev, PIPE_B, false))
-			DRM_DEBUG_DRIVER("Pipe B FIFO underrun\n");
+		if (de_iir & DE_PIPE_FIFO_UNDERRUN(pipe))
+			if (intel_set_cpu_fifo_underrun_reporting(dev, pipe, false))
+				DRM_DEBUG_DRIVER("Pipe %c FIFO underrun\n",
+						 pipe_name(pipe));
 
-	if (de_iir & DE_PLANEA_FLIP_DONE) {
-		intel_prepare_page_flip(dev, 0);
-		intel_finish_page_flip_plane(dev, 0);
-	}
+		if (de_iir & DE_PIPE_CRC_DONE(pipe))
+			i9xx_pipe_crc_irq_handler(dev, pipe);
 
-	if (de_iir & DE_PLANEB_FLIP_DONE) {
-		intel_prepare_page_flip(dev, 1);
-		intel_finish_page_flip_plane(dev, 1);
+		/* plane/pipes map 1:1 on ilk+ */
+		if (de_iir & DE_PLANE_FLIP_DONE(pipe)) {
+			intel_prepare_page_flip(dev, pipe);
+			intel_finish_page_flip_plane(dev, pipe);
+		}
 	}
 
 	/* check event from PCH */
@@ -1339,21 +1689,240 @@ static irqreturn_t ironlake_irq_handler(void *arg)
 		I915_WRITE(SDEIIR, pch_iir);
 	}
 
-	if (IS_GEN5(dev) &&  de_iir & DE_PCU_EVENT)
-		ironlake_handle_rps_change(dev);
+	if (IS_GEN5(dev) && de_iir & DE_PCU_EVENT)
+		ironlake_rps_change_irq_handler(dev);
+}
 
-	if (IS_GEN6(dev) && pm_iir & GEN6_PM_RPS_EVENTS)
-		gen6_queue_rps_work(dev_priv, pm_iir);
+static void ivb_display_irq_handler(struct drm_device *dev, u32 de_iir)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	enum i915_pipe i;
 
-	I915_WRITE(GTIIR, gt_iir);
-	I915_WRITE(DEIIR, de_iir);
-	I915_WRITE(GEN6_PMIIR, pm_iir);
+	if (de_iir & DE_ERR_INT_IVB)
+		ivb_err_int_handler(dev);
 
-done:
+	if (de_iir & DE_AUX_CHANNEL_A_IVB)
+		dp_aux_irq_handler(dev);
+
+	if (de_iir & DE_GSE_IVB)
+		intel_opregion_asle_intr(dev);
+
+	for_each_pipe(i) {
+		if (de_iir & (DE_PIPE_VBLANK_IVB(i)))
+			drm_handle_vblank(dev, i);
+
+		/* plane/pipes map 1:1 on ilk+ */
+		if (de_iir & DE_PLANE_FLIP_DONE_IVB(i)) {
+			intel_prepare_page_flip(dev, i);
+			intel_finish_page_flip_plane(dev, i);
+		}
+	}
+
+	/* check event from PCH */
+	if (!HAS_PCH_NOP(dev) && (de_iir & DE_PCH_EVENT_IVB)) {
+		u32 pch_iir = I915_READ(SDEIIR);
+
+		cpt_irq_handler(dev, pch_iir);
+
+		/* clear PCH hotplug event before clear CPU irq */
+		I915_WRITE(SDEIIR, pch_iir);
+	}
+}
+
+static irqreturn_t ironlake_irq_handler(void *arg)
+{
+	struct drm_device *dev = (struct drm_device *) arg;
+	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
+	u32 de_iir, gt_iir, de_ier, sde_ier = 0;
+
+	atomic_inc(&dev_priv->irq_received);
+
+	/* We get interrupts on unclaimed registers, so check for this before we
+	 * do any I915_{READ,WRITE}. */
+	intel_uncore_check_errors(dev);
+
+	/* disable master interrupt before clearing iir  */
+	de_ier = I915_READ(DEIER);
+	I915_WRITE(DEIER, de_ier & ~DE_MASTER_IRQ_CONTROL);
+	POSTING_READ(DEIER);
+
+	/* Disable south interrupts. We'll only write to SDEIIR once, so further
+	 * interrupts will will be stored on its back queue, and then we'll be
+	 * able to process them after we restore SDEIER (as soon as we restore
+	 * it, we'll get an interrupt if SDEIIR still has something to process
+	 * due to its back queue). */
+	if (!HAS_PCH_NOP(dev)) {
+		sde_ier = I915_READ(SDEIER);
+		I915_WRITE(SDEIER, 0);
+		POSTING_READ(SDEIER);
+	}
+
+	gt_iir = I915_READ(GTIIR);
+	if (gt_iir) {
+		if (INTEL_INFO(dev)->gen >= 6)
+			snb_gt_irq_handler(dev, dev_priv, gt_iir);
+		else
+			ilk_gt_irq_handler(dev, dev_priv, gt_iir);
+		I915_WRITE(GTIIR, gt_iir);
+	}
+
+	de_iir = I915_READ(DEIIR);
+	if (de_iir) {
+		if (INTEL_INFO(dev)->gen >= 7)
+			ivb_display_irq_handler(dev, de_iir);
+		else
+			ilk_display_irq_handler(dev, de_iir);
+		I915_WRITE(DEIIR, de_iir);
+	}
+
+	if (INTEL_INFO(dev)->gen >= 6) {
+		u32 pm_iir = I915_READ(GEN6_PMIIR);
+		if (pm_iir) {
+			gen6_rps_irq_handler(dev_priv, pm_iir);
+			I915_WRITE(GEN6_PMIIR, pm_iir);
+		}
+	}
+
 	I915_WRITE(DEIER, de_ier);
 	POSTING_READ(DEIER);
-	I915_WRITE(SDEIER, sde_ier);
-	POSTING_READ(SDEIER);
+	if (!HAS_PCH_NOP(dev)) {
+		I915_WRITE(SDEIER, sde_ier);
+		POSTING_READ(SDEIER);
+	}
+
+}
+
+static irqreturn_t gen8_irq_handler(void *arg)
+{
+	struct drm_device *dev = arg;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	u32 master_ctl;
+	uint32_t tmp = 0;
+	enum i915_pipe pipe;
+
+	atomic_inc(&dev_priv->irq_received);
+
+	master_ctl = I915_READ(GEN8_MASTER_IRQ);
+	master_ctl &= ~GEN8_MASTER_IRQ_CONTROL;
+	if (!master_ctl)
+		return;
+
+	I915_WRITE(GEN8_MASTER_IRQ, 0);
+	POSTING_READ(GEN8_MASTER_IRQ);
+
+	gen8_gt_irq_handler(dev, dev_priv, master_ctl);
+
+	if (master_ctl & GEN8_DE_MISC_IRQ) {
+		tmp = I915_READ(GEN8_DE_MISC_IIR);
+		if (tmp & GEN8_DE_MISC_GSE)
+			intel_opregion_asle_intr(dev);
+		else if (tmp)
+			DRM_ERROR("Unexpected DE Misc interrupt\n");
+		else
+			DRM_ERROR("The master control interrupt lied (DE MISC)!\n");
+
+		if (tmp) {
+			I915_WRITE(GEN8_DE_MISC_IIR, tmp);
+		}
+	}
+
+	if (master_ctl & GEN8_DE_PORT_IRQ) {
+		tmp = I915_READ(GEN8_DE_PORT_IIR);
+		if (tmp & GEN8_AUX_CHANNEL_A)
+			dp_aux_irq_handler(dev);
+		else if (tmp)
+			DRM_ERROR("Unexpected DE Port interrupt\n");
+		else
+			DRM_ERROR("The master control interrupt lied (DE PORT)!\n");
+
+		if (tmp) {
+			I915_WRITE(GEN8_DE_PORT_IIR, tmp);
+		}
+	}
+
+	for_each_pipe(pipe) {
+		uint32_t pipe_iir;
+
+		if (!(master_ctl & GEN8_DE_PIPE_IRQ(pipe)))
+			continue;
+
+		pipe_iir = I915_READ(GEN8_DE_PIPE_IIR(pipe));
+		if (pipe_iir & GEN8_PIPE_VBLANK)
+			drm_handle_vblank(dev, pipe);
+
+		if (pipe_iir & GEN8_PIPE_FLIP_DONE) {
+			intel_prepare_page_flip(dev, pipe);
+			intel_finish_page_flip_plane(dev, pipe);
+		}
+
+		if (pipe_iir & GEN8_PIPE_CDCLK_CRC_DONE)
+			hsw_pipe_crc_irq_handler(dev, pipe);
+
+		if (pipe_iir & GEN8_PIPE_FIFO_UNDERRUN) {
+			if (intel_set_cpu_fifo_underrun_reporting(dev, pipe,
+								  false))
+				DRM_DEBUG_DRIVER("Pipe %c FIFO underrun\n",
+						 pipe_name(pipe));
+		}
+
+		if (pipe_iir & GEN8_DE_PIPE_IRQ_FAULT_ERRORS) {
+			DRM_ERROR("Fault errors on pipe %c\n: 0x%08x",
+				  pipe_name(pipe),
+				  pipe_iir & GEN8_DE_PIPE_IRQ_FAULT_ERRORS);
+		}
+
+		if (pipe_iir) {
+			I915_WRITE(GEN8_DE_PIPE_IIR(pipe), pipe_iir);
+		} else
+			DRM_ERROR("The master control interrupt lied (DE PIPE)!\n");
+	}
+
+	if (!HAS_PCH_NOP(dev) && master_ctl & GEN8_DE_PCH_IRQ) {
+		/*
+		 * FIXME(BDW): Assume for now that the new interrupt handling
+		 * scheme also closed the SDE interrupt handling race we've seen
+		 * on older pch-split platforms. But this needs testing.
+		 */
+		u32 pch_iir = I915_READ(SDEIIR);
+
+		cpt_irq_handler(dev, pch_iir);
+
+		if (pch_iir) {
+			I915_WRITE(SDEIIR, pch_iir);
+		}
+	}
+
+	I915_WRITE(GEN8_MASTER_IRQ, GEN8_MASTER_IRQ_CONTROL);
+	POSTING_READ(GEN8_MASTER_IRQ);
+
+}
+
+static void i915_error_wake_up(struct drm_i915_private *dev_priv,
+			       bool reset_completed)
+{
+	struct intel_ring_buffer *ring;
+	int i;
+
+	/*
+	 * Notify all waiters for GPU completion events that reset state has
+	 * been changed, and that they need to restart their wait after
+	 * checking for potential errors (and bail out to drop locks if there is
+	 * a gpu reset pending so that i915_error_work_func can acquire them).
+	 */
+
+	/* Wake up __wait_seqno, potentially holding dev->struct_mutex. */
+	for_each_ring(ring, dev_priv, i)
+		wake_up_all(&ring->irq_queue);
+
+	/* Wake up intel_crtc_wait_for_pending_flips, holding crtc->mutex. */
+	wake_up_all(&dev_priv->pending_flip_queue);
+
+	/*
+	 * Signal tasks blocked in i915_gem_wait_for_error that the pending
+	 * reset state is cleared.
+	 */
+	if (reset_completed)
+		wake_up_all(&dev_priv->gpu_error.reset_queue);
 }
 
 /**
@@ -1370,15 +1939,14 @@ static void i915_error_work_func(struct work_struct *work)
 	drm_i915_private_t *dev_priv = container_of(error, drm_i915_private_t,
 						    gpu_error);
 	struct drm_device *dev = dev_priv->dev;
-	struct intel_ring_buffer *ring;
 #if 0
-	char *error_event[] = { "ERROR=1", NULL };
-	char *reset_event[] = { "RESET=1", NULL };
-	char *reset_done_event[] = { "ERROR=0", NULL };
+	char *error_event[] = { I915_ERROR_UEVENT "=1", NULL };
+	char *reset_event[] = { I915_RESET_UEVENT "=1", NULL };
+	char *reset_done_event[] = { I915_ERROR_UEVENT "=0", NULL };
 #endif
-	int i, ret;
+	int ret;
 
-	/* kobject_uevent_env(&dev->primary->kdev.kobj, KOBJ_CHANGE, error_event); */
+	/* kobject_uevent_env(&dev->primary->kdev->kobj, KOBJ_CHANGE, error_event); */
 
 	/*
 	 * Note that there's only one work item which does gpu resets, so we
@@ -1393,11 +1961,19 @@ static void i915_error_work_func(struct work_struct *work)
 	if (i915_reset_in_progress(error) && !i915_terminally_wedged(error)) {
 		DRM_DEBUG_DRIVER("resetting chip\n");
 #if 0
-		kobject_uevent_env(&dev->primary->kdev.kobj, KOBJ_CHANGE,
+		kobject_uevent_env(&dev->primary->kdev->kobj, KOBJ_CHANGE,
 				   reset_event);
 #endif
 
+		/*
+		 * All state reset _must_ be completed before we update the
+		 * reset counter, for otherwise waiters might miss the reset
+		 * pending state and not properly drop locks, resulting in
+		 * deadlocks with the reset work.
+		 */
 		ret = i915_reset(dev);
+
+		intel_display_handle_reset(dev);
 
 		if (ret == 0) {
 			/*
@@ -1414,552 +1990,20 @@ static void i915_error_work_func(struct work_struct *work)
 			atomic_inc(&dev_priv->gpu_error.reset_counter);
 
 #if 0
-			kobject_uevent_env(&dev->primary->kdev.kobj,
+			kobject_uevent_env(&dev->primary->kdev->kobj,
 					   KOBJ_CHANGE, reset_done_event);
 #endif
 		} else {
-			atomic_set(&error->reset_counter, I915_WEDGED);
+			atomic_set_mask(I915_WEDGED, &error->reset_counter);
 		}
 
-		for_each_ring(ring, dev_priv, i)
-			wake_up_all(&ring->irq_queue);
-
-		intel_display_handle_reset(dev);
-
-		wake_up_all(&dev_priv->gpu_error.reset_queue);
-	}
-}
-
-/* NB: please notice the memset */
-static void i915_get_extra_instdone(struct drm_device *dev,
-				    uint32_t *instdone)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	memset(instdone, 0, sizeof(*instdone) * I915_NUM_INSTDONE_REG);
-
-	switch(INTEL_INFO(dev)->gen) {
-	case 2:
-	case 3:
-		instdone[0] = I915_READ(INSTDONE);
-		break;
-	case 4:
-	case 5:
-	case 6:
-		instdone[0] = I915_READ(INSTDONE_I965);
-		instdone[1] = I915_READ(INSTDONE1);
-		break;
-	default:
-#if 0
-		WARN_ONCE(1, "Unsupported platform\n");
-#endif
-	case 7:
-		instdone[0] = I915_READ(GEN7_INSTDONE_1);
-		instdone[1] = I915_READ(GEN7_SC_INSTDONE);
-		instdone[2] = I915_READ(GEN7_SAMPLER_INSTDONE);
-		instdone[3] = I915_READ(GEN7_ROW_INSTDONE);
-		break;
-	}
-}
-
-#if 0 /* CONFIG_DEBUG_FS */
-static struct drm_i915_error_object *
-i915_error_object_create_sized(struct drm_i915_private *dev_priv,
-			       struct drm_i915_gem_object *src,
-			       const int num_pages)
-{
-	struct drm_i915_error_object *dst;
-	int i;
-	u32 reloc_offset;
-
-	if (src == NULL || src->pages == NULL)
-		return NULL;
-
-	dst = kmalloc(sizeof(*dst) + num_pages * sizeof(u32 *), GFP_ATOMIC);
-	if (dst == NULL)
-		return NULL;
-
-	reloc_offset = src->gtt_offset;
-	for (i = 0; i < num_pages; i++) {
-		unsigned long flags;
-		void *d;
-
-		d = kmalloc(PAGE_SIZE, GFP_ATOMIC);
-		if (d == NULL)
-			goto unwind;
-
-		local_irq_save(flags);
-		if (reloc_offset < dev_priv->gtt.mappable_end &&
-		    src->has_global_gtt_mapping) {
-			void __iomem *s;
-
-			/* Simply ignore tiling or any overlapping fence.
-			 * It's part of the error state, and this hopefully
-			 * captures what the GPU read.
-			 */
-
-			s = io_mapping_map_atomic_wc(dev_priv->gtt.mappable,
-						     reloc_offset);
-			memcpy_fromio(d, s, PAGE_SIZE);
-			io_mapping_unmap_atomic(s);
-		} else if (src->stolen) {
-			unsigned long offset;
-
-			offset = dev_priv->mm.stolen_base;
-			offset += src->stolen->start;
-			offset += i << PAGE_SHIFT;
-
-			memcpy_fromio(d, (void *)offset, PAGE_SIZE);
-		} else {
-			struct page *page;
-			void *s;
-
-			page = i915_gem_object_get_page(src, i);
-
-			drm_clflush_pages(&page, 1);
-
-			s = kmap_atomic(page);
-			memcpy(d, s, PAGE_SIZE);
-			kunmap_atomic(s);
-
-			drm_clflush_pages(&page, 1);
-		}
-		local_irq_restore(flags);
-
-		dst->pages[i] = d;
-
-		reloc_offset += PAGE_SIZE;
-	}
-	dst->page_count = num_pages;
-	dst->gtt_offset = src->gtt_offset;
-
-	return dst;
-
-unwind:
-	while (i--)
-		kfree(dst->pages[i]);
-	kfree(dst);
-	return NULL;
-}
-#define i915_error_object_create(dev_priv, src) \
-	i915_error_object_create_sized((dev_priv), (src), \
-				       (src)->base.size>>PAGE_SHIFT)
-
-static void
-i915_error_object_free(struct drm_i915_error_object *obj)
-{
-	int page;
-
-	if (obj == NULL)
-		return;
-
-	for (page = 0; page < obj->page_count; page++)
-		kfree(obj->pages[page]);
-
-	kfree(obj);
-}
-
-void
-i915_error_state_free(struct drm_device *dev,
-		      struct drm_i915_error_state *error)
-{
-	struct drm_i915_error_state *error = container_of(error_ref,
-							  typeof(*error), ref);
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(error->ring); i++) {
-		i915_error_object_free(error->ring[i].batchbuffer);
-		i915_error_object_free(error->ring[i].ringbuffer);
-		i915_error_object_free(error->ring[i].ctx);
-		kfree(error->ring[i].requests);
-	}
-
-	kfree(error->active_bo);
-	kfree(error->overlay);
-	kfree(error->display);
-	kfree(error);
-}
-static void capture_bo(struct drm_i915_error_buffer *err,
-		       struct drm_i915_gem_object *obj)
-{
-	err->size = obj->base.size;
-	err->name = obj->base.name;
-	err->rseqno = obj->last_read_seqno;
-	err->wseqno = obj->last_write_seqno;
-	err->gtt_offset = obj->gtt_offset;
-	err->read_domains = obj->base.read_domains;
-	err->write_domain = obj->base.write_domain;
-	err->fence_reg = obj->fence_reg;
-	err->pinned = 0;
-	if (obj->pin_count > 0)
-		err->pinned = 1;
-	if (obj->user_pin_count > 0)
-		err->pinned = -1;
-	err->tiling = obj->tiling_mode;
-	err->dirty = obj->dirty;
-	err->purgeable = obj->madv != I915_MADV_WILLNEED;
-	err->ring = obj->ring ? obj->ring->id : -1;
-	err->cache_level = obj->cache_level;
-}
-
-static u32 capture_active_bo(struct drm_i915_error_buffer *err,
-			     int count, struct list_head *head)
-{
-	struct drm_i915_gem_object *obj;
-	int i = 0;
-
-	list_for_each_entry(obj, head, mm_list) {
-		capture_bo(err++, obj);
-		if (++i == count)
-			break;
-	}
-
-	return i;
-}
-
-static u32 capture_pinned_bo(struct drm_i915_error_buffer *err,
-			     int count, struct list_head *head)
-{
-	struct drm_i915_gem_object *obj;
-	int i = 0;
-
-	list_for_each_entry(obj, head, global_list) {
-		if (obj->pin_count == 0)
-			continue;
-
-		capture_bo(err++, obj);
-		if (++i == count)
-			break;
-	}
-
-	return i;
-}
-
-static void i915_gem_record_fences(struct drm_device *dev,
-				   struct drm_i915_error_state *error)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	int i;
-
-	/* Fences */
-	switch (INTEL_INFO(dev)->gen) {
-	case 7:
-	case 6:
-		for (i = 0; i < dev_priv->num_fence_regs; i++)
-			error->fence[i] = I915_READ64(FENCE_REG_SANDYBRIDGE_0 + (i * 8));
-		break;
-	case 5:
-	case 4:
-		for (i = 0; i < 16; i++)
-			error->fence[i] = I915_READ64(FENCE_REG_965_0 + (i * 8));
-		break;
-	case 3:
-		if (IS_I945G(dev) || IS_I945GM(dev) || IS_G33(dev))
-			for (i = 0; i < 8; i++)
-				error->fence[i+8] = I915_READ(FENCE_REG_945_8 + (i * 4));
-	case 2:
-		for (i = 0; i < 8; i++)
-			error->fence[i] = I915_READ(FENCE_REG_830_0 + (i * 4));
-		break;
-
-	default:
-		BUG();
-	}
-}
-
-static struct drm_i915_error_object *
-i915_error_first_batchbuffer(struct drm_i915_private *dev_priv,
-			     struct intel_ring_buffer *ring)
-{
-	struct drm_i915_gem_object *obj;
-	u32 seqno;
-
-	if (!ring->get_seqno)
-		return NULL;
-
-	if (HAS_BROKEN_CS_TLB(dev_priv->dev)) {
-		u32 acthd = I915_READ(ACTHD);
-
-		if (WARN_ON(ring->id != RCS))
-			return NULL;
-
-		obj = ring->private;
-		if (acthd >= obj->gtt_offset &&
-		    acthd < obj->gtt_offset + obj->base.size)
-			return i915_error_object_create(dev_priv, obj);
-	}
-
-	seqno = ring->get_seqno(ring, false);
-	list_for_each_entry(obj, &dev_priv->mm.active_list, mm_list) {
-		if (obj->ring != ring)
-			continue;
-
-		if (i915_seqno_passed(seqno, obj->last_read_seqno))
-			continue;
-
-		if ((obj->base.read_domains & I915_GEM_DOMAIN_COMMAND) == 0)
-			continue;
-
-		/* We need to copy these to an anonymous buffer as the simplest
-		 * method to avoid being overwritten by userspace.
+		/*
+		 * Note: The wake_up also serves as a memory barrier so that
+		 * waiters see the update value of the reset counter atomic_t.
 		 */
-		return i915_error_object_create(dev_priv, obj);
-	}
-
-	return NULL;
-}
-
-static void i915_record_ring_state(struct drm_device *dev,
-				   struct drm_i915_error_state *error,
-				   struct intel_ring_buffer *ring)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-
-	if (INTEL_INFO(dev)->gen >= 6) {
-		error->rc_psmi[ring->id] = I915_READ(ring->mmio_base + 0x50);
-		error->fault_reg[ring->id] = I915_READ(RING_FAULT_REG(ring));
-		error->semaphore_mboxes[ring->id][0]
-			= I915_READ(RING_SYNC_0(ring->mmio_base));
-		error->semaphore_mboxes[ring->id][1]
-			= I915_READ(RING_SYNC_1(ring->mmio_base));
-		error->semaphore_seqno[ring->id][0] = ring->sync_seqno[0];
-		error->semaphore_seqno[ring->id][1] = ring->sync_seqno[1];
-	}
-
-	if (INTEL_INFO(dev)->gen >= 4) {
-		error->faddr[ring->id] = I915_READ(RING_DMA_FADD(ring->mmio_base));
-		error->ipeir[ring->id] = I915_READ(RING_IPEIR(ring->mmio_base));
-		error->ipehr[ring->id] = I915_READ(RING_IPEHR(ring->mmio_base));
-		error->instdone[ring->id] = I915_READ(RING_INSTDONE(ring->mmio_base));
-		error->instps[ring->id] = I915_READ(RING_INSTPS(ring->mmio_base));
-		if (ring->id == RCS)
-			error->bbaddr = I915_READ64(BB_ADDR);
-	} else {
-		error->faddr[ring->id] = I915_READ(DMA_FADD_I8XX);
-		error->ipeir[ring->id] = I915_READ(IPEIR);
-		error->ipehr[ring->id] = I915_READ(IPEHR);
-		error->instdone[ring->id] = I915_READ(INSTDONE);
-	}
-
-	error->waiting[ring->id] = waitqueue_active(&ring->irq_queue);
-	error->instpm[ring->id] = I915_READ(RING_INSTPM(ring->mmio_base));
-	error->seqno[ring->id] = ring->get_seqno(ring, false);
-	error->acthd[ring->id] = intel_ring_get_active_head(ring);
-	error->head[ring->id] = I915_READ_HEAD(ring);
-	error->tail[ring->id] = I915_READ_TAIL(ring);
-	error->ctl[ring->id] = I915_READ_CTL(ring);
-
-	error->cpu_ring_head[ring->id] = ring->head;
-	error->cpu_ring_tail[ring->id] = ring->tail;
-}
-
-
-static void i915_gem_record_active_context(struct intel_ring_buffer *ring,
-					   struct drm_i915_error_state *error,
-					   struct drm_i915_error_ring *ering)
-{
-	struct drm_i915_private *dev_priv = ring->dev->dev_private;
-	struct drm_i915_gem_object *obj;
-
-	/* Currently render ring is the only HW context user */
-	if (ring->id != RCS || !error->ccid)
-		return;
-
-	list_for_each_entry(obj, &dev_priv->mm.bound_list, global_list) {
-		if ((error->ccid & PAGE_MASK) == obj->gtt_offset) {
-			ering->ctx = i915_error_object_create_sized(dev_priv,
-								    obj, 1);
-		}
+		i915_error_wake_up(dev_priv, true);
 	}
 }
-
-static void i915_gem_record_rings(struct drm_device *dev,
-				  struct drm_i915_error_state *error)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct intel_ring_buffer *ring;
-	struct drm_i915_gem_request *request;
-	int i, count;
-
-	for_each_ring(ring, dev_priv, i) {
-		i915_record_ring_state(dev, error, ring);
-
-		error->ring[i].batchbuffer =
-			i915_error_first_batchbuffer(dev_priv, ring);
-
-		error->ring[i].ringbuffer =
-			i915_error_object_create(dev_priv, ring->obj);
-
-
-		i915_gem_record_active_context(ring, error, &error->ring[i]);
-
-		count = 0;
-		list_for_each_entry(request, &ring->request_list, list)
-			count++;
-
-		error->ring[i].num_requests = count;
-		error->ring[i].requests =
-			kmalloc(count*sizeof(struct drm_i915_error_request),
-				GFP_ATOMIC);
-		if (error->ring[i].requests == NULL) {
-			error->ring[i].num_requests = 0;
-			continue;
-		}
-
-		count = 0;
-		list_for_each_entry(request, &ring->request_list, list) {
-			struct drm_i915_error_request *erq;
-
-			erq = &error->ring[i].requests[count++];
-			erq->seqno = request->seqno;
-			erq->jiffies = request->emitted_jiffies;
-			erq->tail = request->tail;
-		}
-	}
-}
-
-/**
- * i915_capture_error_state - capture an error record for later analysis
- * @dev: drm device
- *
- * Should be called when an error is detected (either a hang or an error
- * interrupt) to capture error state from the time of the error.  Fills
- * out a structure which becomes available in debugfs for user level tools
- * to pick up.
- */
-static void i915_capture_error_state(struct drm_device *dev)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct drm_i915_gem_object *obj;
-	struct drm_i915_error_state *error;
-	unsigned long flags;
-	int i, pipe;
-
-	spin_lock_irqsave(&dev_priv->gpu_error.lock, flags);
-	error = dev_priv->gpu_error.first_error;
-	spin_unlock_irqrestore(&dev_priv->gpu_error.lock, flags);
-	if (error)
-		return;
-
-	/* Account for pipe specific data like PIPE*STAT */
-	error = kzalloc(sizeof(*error), GFP_ATOMIC);
-	if (!error) {
-		DRM_DEBUG_DRIVER("out of memory, not capturing error state\n");
-		return;
-	}
-
-	DRM_INFO("capturing error event; look for more information in "
-		 "/sys/kernel/debug/dri/%d/i915_error_state\n",
-		 dev->primary->index);
-
-	kref_init(&error->ref);
-	error->eir = I915_READ(EIR);
-	error->pgtbl_er = I915_READ(PGTBL_ER);
-	if (HAS_HW_CONTEXTS(dev))
-		error->ccid = I915_READ(CCID);
-
-	if (HAS_PCH_SPLIT(dev))
-		error->ier = I915_READ(DEIER) | I915_READ(GTIER);
-	else if (IS_VALLEYVIEW(dev))
-		error->ier = I915_READ(GTIER) | I915_READ(VLV_IER);
-	else if (IS_GEN2(dev))
-		error->ier = I915_READ16(IER);
-	else
-		error->ier = I915_READ(IER);
-
-	if (INTEL_INFO(dev)->gen >= 6)
-		error->derrmr = I915_READ(DERRMR);
-
-	if (IS_VALLEYVIEW(dev))
-		error->forcewake = I915_READ(FORCEWAKE_VLV);
-	else if (INTEL_INFO(dev)->gen >= 7)
-		error->forcewake = I915_READ(FORCEWAKE_MT);
-	else if (INTEL_INFO(dev)->gen == 6)
-		error->forcewake = I915_READ(FORCEWAKE);
-
-	if (!HAS_PCH_SPLIT(dev))
-		for_each_pipe(pipe)
-			error->pipestat[pipe] = I915_READ(PIPESTAT(pipe));
-
-	if (INTEL_INFO(dev)->gen >= 6) {
-		error->error = I915_READ(ERROR_GEN6);
-		error->done_reg = I915_READ(DONE_REG);
-	}
-
-	if (INTEL_INFO(dev)->gen == 7)
-		error->err_int = I915_READ(GEN7_ERR_INT);
-
-	i915_get_extra_instdone(dev, error->extra_instdone);
-
-	i915_gem_record_fences(dev, error);
-	i915_gem_record_rings(dev, error);
-
-	/* Record buffers on the active and pinned lists. */
-	error->active_bo = NULL;
-	error->pinned_bo = NULL;
-
-	i = 0;
-	list_for_each_entry(obj, &dev_priv->mm.active_list, mm_list)
-		i++;
-	error->active_bo_count = i;
-	list_for_each_entry(obj, &dev_priv->mm.bound_list, global_list)
-		if (obj->pin_count)
-			i++;
-	error->pinned_bo_count = i - error->active_bo_count;
-
-	error->active_bo = NULL;
-	error->pinned_bo = NULL;
-	if (i) {
-		error->active_bo = kmalloc(sizeof(*error->active_bo)*i,
-					   GFP_ATOMIC);
-		if (error->active_bo)
-			error->pinned_bo =
-				error->active_bo + error->active_bo_count;
-	}
-
-	if (error->active_bo)
-		error->active_bo_count =
-			capture_active_bo(error->active_bo,
-					  error->active_bo_count,
-					  &dev_priv->mm.active_list);
-
-	if (error->pinned_bo)
-		error->pinned_bo_count =
-			capture_pinned_bo(error->pinned_bo,
-					  error->pinned_bo_count,
-					  &dev_priv->mm.bound_list);
-
-	do_gettimeofday(&error->time);
-
-	error->overlay = intel_overlay_capture_error_state(dev);
-	error->display = intel_display_capture_error_state(dev);
-
-	spin_lock_irqsave(&dev_priv->gpu_error.lock, flags);
-	if (dev_priv->gpu_error.first_error == NULL) {
-		dev_priv->gpu_error.first_error = error;
-		error = NULL;
-	}
-	spin_unlock_irqrestore(&dev_priv->gpu_error.lock, flags);
-
-	if (error)
-		i915_error_state_free(&error->ref);
-}
-
-void i915_destroy_error_state(struct drm_device *dev)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct drm_i915_error_state *error;
-
-	lockmgr(&dev_priv->gpu_error.lock, LK_EXCLUSIVE);
-	error = dev_priv->gpu_error.first_error;
-	dev_priv->gpu_error.first_error = NULL;
-	lockmgr(&dev_priv->gpu_error.lock, LK_RELEASE);
-
-	if (error)
-		i915_error_state_free(dev, error);
-}
-#else
-#define i915_capture_error_state(x)
-#endif
 
 static void i915_report_and_clear_eir(struct drm_device *dev)
 {
@@ -1973,7 +2017,9 @@ static void i915_report_and_clear_eir(struct drm_device *dev)
 
 	pr_err("render error detected, EIR: 0x%08x\n", eir);
 
+#if 0
 	i915_get_extra_instdone(dev, instdone);
+#endif
 
 	if (IS_G4X(dev)) {
 		if (eir & (GM45_ERROR_MEM_PRIV | GM45_ERROR_CP_PRIV)) {
@@ -2066,10 +2112,10 @@ static void i915_report_and_clear_eir(struct drm_device *dev)
 void i915_handle_error(struct drm_device *dev, bool wedged)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct intel_ring_buffer *ring;
-	int i;
 
+#if 0
 	i915_capture_error_state(dev);
+#endif
 	i915_report_and_clear_eir(dev);
 
 	if (wedged) {
@@ -2077,14 +2123,28 @@ void i915_handle_error(struct drm_device *dev, bool wedged)
 				&dev_priv->gpu_error.reset_counter);
 
 		/*
-		 * Wakeup waiting processes so that the reset work item
-		 * doesn't deadlock trying to grab various locks.
+		 * Wakeup waiting processes so that the reset work function
+		 * i915_error_work_func doesn't deadlock trying to grab various
+		 * locks. By bumping the reset counter first, the woken
+		 * processes will see a reset in progress and back off,
+		 * releasing their locks and then wait for the reset completion.
+		 * We must do this for _all_ gpu waiters that might hold locks
+		 * that the reset work needs to acquire.
+		 *
+		 * Note: The wake_up serves as the required memory barrier to
+		 * ensure that the waiters see the updated value of the reset
+		 * counter atomic_t.
 		 */
-		for_each_ring(ring, dev_priv, i)
-			wake_up_all(&ring->irq_queue);
+		i915_error_wake_up(dev_priv, false);
 	}
 
-	queue_work(dev_priv->wq, &dev_priv->gpu_error.work);
+	/*
+	 * Our reset work can grab modeset locks (since it needs to reset the
+	 * state of outstanding pagelips). Hence it must not be run on our own
+	 * dev-priv->wq work queue for otherwise the flush_work in the pageflip
+	 * code will deadlock.
+	 */
+	schedule_work(&dev_priv->gpu_error.work);
 }
 
 static void __always_unused i915_pageflip_stall_check(struct drm_device *dev, int pipe)
@@ -2116,10 +2176,10 @@ static void __always_unused i915_pageflip_stall_check(struct drm_device *dev, in
 	if (INTEL_INFO(dev)->gen >= 4) {
 		int dspsurf = DSPSURF(intel_crtc->plane);
 		stall_detected = I915_HI_DISPBASE(I915_READ(dspsurf)) ==
-					obj->gtt_offset;
+					i915_gem_obj_ggtt_offset(obj);
 	} else {
 		int dspaddr = DSPADDR(intel_crtc->plane);
-		stall_detected = I915_READ(dspaddr) == (obj->gtt_offset +
+		stall_detected = I915_READ(dspaddr) == (i915_gem_obj_ggtt_offset(obj) +
 							crtc->y * crtc->fb->pitches[0] +
 							crtc->x * crtc->fb->bits_per_pixel/8);
 	}
@@ -2161,28 +2221,14 @@ static int i915_enable_vblank(struct drm_device *dev, int pipe)
 static int ironlake_enable_vblank(struct drm_device *dev, int pipe)
 {
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
+	uint32_t bit = (INTEL_INFO(dev)->gen >= 7) ? DE_PIPE_VBLANK_IVB(pipe) :
+						     DE_PIPE_VBLANK(pipe);
 
 	if (!i915_pipe_enabled(dev, pipe))
 		return -EINVAL;
 
 	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
-	ironlake_enable_display_irq(dev_priv, (pipe == 0) ?
-				    DE_PIPEA_VBLANK : DE_PIPEB_VBLANK);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
-
-	return 0;
-}
-
-static int ivybridge_enable_vblank(struct drm_device *dev, int pipe)
-{
-	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-
-	if (!i915_pipe_enabled(dev, pipe))
-		return -EINVAL;
-
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
-	ironlake_enable_display_irq(dev_priv,
-				    DE_PIPEA_VBLANK_IVB << (5 * pipe));
+	ironlake_enable_display_irq(dev_priv, bit);
 	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	return 0;
@@ -2198,7 +2244,7 @@ static int valleyview_enable_vblank(struct drm_device *dev, int pipe)
 
 	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	imr = I915_READ(VLV_IMR);
-	if (pipe == 0)
+	if (pipe == PIPE_A)
 		imr &= ~I915_DISPLAY_PIPE_A_VBLANK_INTERRUPT;
 	else
 		imr &= ~I915_DISPLAY_PIPE_B_VBLANK_INTERRUPT;
@@ -2207,6 +2253,21 @@ static int valleyview_enable_vblank(struct drm_device *dev, int pipe)
 			     PIPE_START_VBLANK_INTERRUPT_ENABLE);
 	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
+	return 0;
+}
+
+static int gen8_enable_vblank(struct drm_device *dev, int pipe)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	if (!i915_pipe_enabled(dev, pipe))
+		return -EINVAL;
+
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	dev_priv->de_irq_mask[pipe] &= ~GEN8_PIPE_VBLANK;
+	I915_WRITE(GEN8_DE_PIPE_IMR(pipe), dev_priv->de_irq_mask[pipe]);
+	POSTING_READ(GEN8_DE_PIPE_IMR(pipe));
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 	return 0;
 }
 
@@ -2230,20 +2291,11 @@ static void i915_disable_vblank(struct drm_device *dev, int pipe)
 static void ironlake_disable_vblank(struct drm_device *dev, int pipe)
 {
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
+	uint32_t bit = (INTEL_INFO(dev)->gen >= 7) ? DE_PIPE_VBLANK_IVB(pipe) :
+						     DE_PIPE_VBLANK(pipe);
 
 	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
-	ironlake_disable_display_irq(dev_priv, (pipe == 0) ?
-				     DE_PIPEA_VBLANK : DE_PIPEB_VBLANK);
-	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
-}
-
-static void ivybridge_disable_vblank(struct drm_device *dev, int pipe)
-{
-	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-
-	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
-	ironlake_disable_display_irq(dev_priv,
-				     DE_PIPEA_VBLANK_IVB << (pipe * 5));
+	ironlake_disable_display_irq(dev_priv, bit);
 	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 }
 
@@ -2256,11 +2308,25 @@ static void valleyview_disable_vblank(struct drm_device *dev, int pipe)
 	i915_disable_pipestat(dev_priv, pipe,
 			      PIPE_START_VBLANK_INTERRUPT_ENABLE);
 	imr = I915_READ(VLV_IMR);
-	if (pipe == 0)
+	if (pipe == PIPE_A)
 		imr |= I915_DISPLAY_PIPE_A_VBLANK_INTERRUPT;
 	else
 		imr |= I915_DISPLAY_PIPE_B_VBLANK_INTERRUPT;
 	I915_WRITE(VLV_IMR, imr);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+}
+
+static void gen8_disable_vblank(struct drm_device *dev, int pipe)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	if (!i915_pipe_enabled(dev, pipe))
+		return;
+
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	dev_priv->de_irq_mask[pipe] |= GEN8_PIPE_VBLANK;
+	I915_WRITE(GEN8_DE_PIPE_IMR(pipe), dev_priv->de_irq_mask[pipe]);
+	POSTING_READ(GEN8_DE_PIPE_IMR(pipe));
 	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 }
 
@@ -2345,10 +2411,10 @@ ring_stuck(struct intel_ring_buffer *ring, u32 acthd)
 	u32 tmp;
 
 	if (ring->hangcheck.acthd != acthd)
-		return active;
+		return HANGCHECK_ACTIVE;
 
 	if (IS_GEN2(dev))
-		return hung;
+		return HANGCHECK_HUNG;
 
 	/* Is the chip hanging on a WAIT_FOR_EVENT?
 	 * If so we can simply poke the RB_WAIT bit
@@ -2359,25 +2425,27 @@ ring_stuck(struct intel_ring_buffer *ring, u32 acthd)
 	if (tmp & RING_WAIT) {
 		DRM_ERROR("Kicking stuck wait on %s\n",
 			  ring->name);
+		i915_handle_error(dev, false);
 		I915_WRITE_CTL(ring, tmp);
-		return kick;
+		return HANGCHECK_KICK;
 	}
 
 	if (INTEL_INFO(dev)->gen >= 6 && tmp & RING_WAIT_SEMAPHORE) {
 		switch (semaphore_passed(ring)) {
 		default:
-			return hung;
+			return HANGCHECK_HUNG;
 		case 1:
 			DRM_ERROR("Kicking stuck semaphore on %s\n",
 				  ring->name);
+			i915_handle_error(dev, false);
 			I915_WRITE_CTL(ring, tmp);
-			return kick;
+			return HANGCHECK_KICK;
 		case 0:
-			return wait;
+			return HANGCHECK_WAIT;
 		}
 	}
 
-	return hung;
+	return HANGCHECK_HUNG;
 }
 
 /**
@@ -2388,7 +2456,7 @@ ring_stuck(struct intel_ring_buffer *ring, u32 acthd)
  * we kick the ring. If we see no progress on three subsequent calls
  * we assume chip is wedged and try to fix it by resetting the chip.
  */
-void i915_hangcheck_elapsed(unsigned long data)
+static void i915_hangcheck_elapsed(unsigned long data)
 {
 	struct drm_device *dev = (struct drm_device *)data;
 	drm_i915_private_t *dev_priv = dev->dev_private;
@@ -2415,17 +2483,24 @@ void i915_hangcheck_elapsed(unsigned long data)
 
 		if (ring->hangcheck.seqno == seqno) {
 			if (ring_idle(ring, seqno)) {
+				ring->hangcheck.action = HANGCHECK_IDLE;
+
 				if (waitqueue_active(&ring->irq_queue)) {
 					/* Issue a wake-up to catch stuck h/w. */
-					DRM_ERROR("Hangcheck timer elapsed... %s idle\n",
-						  ring->name);
-					wake_up_all(&ring->irq_queue);
-					ring->hangcheck.score += HUNG;
+					if (!test_and_set_bit(ring->id, &dev_priv->gpu_error.missed_irq_rings)) {
+						if (!(dev_priv->gpu_error.test_irq_rings & intel_ring_flag(ring)))
+							DRM_ERROR("Hangcheck timer elapsed... %s idle\n",
+								  ring->name);
+						else
+							DRM_INFO("Fake missed irq on %s\n",
+								 ring->name);
+						wake_up_all(&ring->irq_queue);
+					}
+					/* Safeguard against driver failure */
+					ring->hangcheck.score += BUSY;
 				} else
 					busy = false;
 			} else {
-				int score;
-
 				/* We always increment the hangcheck score
 				 * if the ring is busy and still processing
 				 * the same request, so that no single request
@@ -2445,23 +2520,24 @@ void i915_hangcheck_elapsed(unsigned long data)
 								    acthd);
 
 				switch (ring->hangcheck.action) {
-				case wait:
-					score = 0;
+				case HANGCHECK_IDLE:
+				case HANGCHECK_WAIT:
 					break;
-				case active:
-					score = BUSY;
+				case HANGCHECK_ACTIVE:
+					ring->hangcheck.score += BUSY;
 					break;
-				case kick:
-					score = KICK;
+				case HANGCHECK_KICK:
+					ring->hangcheck.score += KICK;
 					break;
-				case hung:
-					score = HUNG;
+				case HANGCHECK_HUNG:
+					ring->hangcheck.score += HUNG;
 					stuck[i] = true;
 					break;
 				}
-				ring->hangcheck.score += score;
 			}
 		} else {
+			ring->hangcheck.action = HANGCHECK_ACTIVE;
+
 			/* Gradually reduce the count so that we catch DoS
 			 * attempts across multiple batches.
 			 */
@@ -2476,9 +2552,9 @@ void i915_hangcheck_elapsed(unsigned long data)
 
 	for_each_ring(ring, dev_priv, i) {
 		if (ring->hangcheck.score > FIRE) {
-			DRM_ERROR("%s on %s\n",
-				  stuck[i] ? "stuck" : "no progress",
-				  ring->name);
+			DRM_INFO("%s on %s\n",
+				 stuck[i] ? "stuck" : "no progress",
+				 ring->name);
 			rings_hung++;
 		}
 	}
@@ -2489,9 +2565,17 @@ void i915_hangcheck_elapsed(unsigned long data)
 	if (busy_count)
 		/* Reset timer case chip hangs without another request
 		 * being added */
-		mod_timer(&dev_priv->gpu_error.hangcheck_timer,
-			  round_jiffies_up(jiffies +
-					   DRM_I915_HANGCHECK_JIFFIES));
+		i915_queue_hangcheck(dev);
+}
+
+void i915_queue_hangcheck(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	if (!i915_enable_hangcheck)
+		return;
+
+	mod_timer(&dev_priv->gpu_error.hangcheck_timer,
+		  round_jiffies_up(jiffies + DRM_I915_HANGCHECK_JIFFIES));
 }
 
 static void ibx_irq_preinstall(struct drm_device *dev)
@@ -2513,6 +2597,23 @@ static void ibx_irq_preinstall(struct drm_device *dev)
 	POSTING_READ(SDEIER);
 }
 
+static void gen5_gt_irq_preinstall(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	/* and GT */
+	I915_WRITE(GTIMR, 0xffffffff);
+	I915_WRITE(GTIER, 0x0);
+	POSTING_READ(GTIER);
+
+	if (INTEL_INFO(dev)->gen >= 6) {
+		/* and PM */
+		I915_WRITE(GEN6_PMIMR, 0xffffffff);
+		I915_WRITE(GEN6_PMIER, 0x0);
+		POSTING_READ(GEN6_PMIER);
+	}
+}
+
 /* drm_dma.h hooks
 */
 static void ironlake_irq_preinstall(struct drm_device *dev)
@@ -2523,43 +2624,11 @@ static void ironlake_irq_preinstall(struct drm_device *dev)
 
 	I915_WRITE(HWSTAM, 0xeffe);
 
-	/* XXX hotplug from PCH */
-
 	I915_WRITE(DEIMR, 0xffffffff);
 	I915_WRITE(DEIER, 0x0);
 	POSTING_READ(DEIER);
 
-	/* and GT */
-	I915_WRITE(GTIMR, 0xffffffff);
-	I915_WRITE(GTIER, 0x0);
-	POSTING_READ(GTIER);
-
-	ibx_irq_preinstall(dev);
-}
-
-static void ivybridge_irq_preinstall(struct drm_device *dev)
-{
-	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-
-	atomic_set(&dev_priv->irq_received, 0);
-
-	I915_WRITE(HWSTAM, 0xeffe);
-
-	/* XXX hotplug from PCH */
-
-	I915_WRITE(DEIMR, 0xffffffff);
-	I915_WRITE(DEIER, 0x0);
-	POSTING_READ(DEIER);
-
-	/* and GT */
-	I915_WRITE(GTIMR, 0xffffffff);
-	I915_WRITE(GTIER, 0x0);
-	POSTING_READ(GTIER);
-
-	/* Power management */
-	I915_WRITE(GEN6_PMIMR, 0xffffffff);
-	I915_WRITE(GEN6_PMIER, 0x0);
-	POSTING_READ(GEN6_PMIER);
+	gen5_gt_irq_preinstall(dev);
 
 	ibx_irq_preinstall(dev);
 }
@@ -2580,9 +2649,8 @@ static void valleyview_irq_preinstall(struct drm_device *dev)
 	/* and GT */
 	I915_WRITE(GTIIR, I915_READ(GTIIR));
 	I915_WRITE(GTIIR, I915_READ(GTIIR));
-	I915_WRITE(GTIMR, 0xffffffff);
-	I915_WRITE(GTIER, 0x0);
-	POSTING_READ(GTIER);
+
+	gen5_gt_irq_preinstall(dev);
 
 	I915_WRITE(DPINVGTT, 0xff);
 
@@ -2596,27 +2664,75 @@ static void valleyview_irq_preinstall(struct drm_device *dev)
 	POSTING_READ(VLV_IER);
 }
 
+static void gen8_irq_preinstall(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	int pipe;
+
+	atomic_set(&dev_priv->irq_received, 0);
+
+	I915_WRITE(GEN8_MASTER_IRQ, 0);
+	POSTING_READ(GEN8_MASTER_IRQ);
+
+	/* IIR can theoretically queue up two events. Be paranoid */
+#define GEN8_IRQ_INIT_NDX(type, which) do { \
+		I915_WRITE(GEN8_##type##_IMR(which), 0xffffffff); \
+		POSTING_READ(GEN8_##type##_IMR(which)); \
+		I915_WRITE(GEN8_##type##_IER(which), 0); \
+		I915_WRITE(GEN8_##type##_IIR(which), 0xffffffff); \
+		POSTING_READ(GEN8_##type##_IIR(which)); \
+		I915_WRITE(GEN8_##type##_IIR(which), 0xffffffff); \
+	} while (0)
+
+#define GEN8_IRQ_INIT(type) do { \
+		I915_WRITE(GEN8_##type##_IMR, 0xffffffff); \
+		POSTING_READ(GEN8_##type##_IMR); \
+		I915_WRITE(GEN8_##type##_IER, 0); \
+		I915_WRITE(GEN8_##type##_IIR, 0xffffffff); \
+		POSTING_READ(GEN8_##type##_IIR); \
+		I915_WRITE(GEN8_##type##_IIR, 0xffffffff); \
+	} while (0)
+
+	GEN8_IRQ_INIT_NDX(GT, 0);
+	GEN8_IRQ_INIT_NDX(GT, 1);
+	GEN8_IRQ_INIT_NDX(GT, 2);
+	GEN8_IRQ_INIT_NDX(GT, 3);
+
+	for_each_pipe(pipe) {
+		GEN8_IRQ_INIT_NDX(DE_PIPE, pipe);
+	}
+
+	GEN8_IRQ_INIT(DE_PORT);
+	GEN8_IRQ_INIT(DE_MISC);
+	GEN8_IRQ_INIT(PCU);
+#undef GEN8_IRQ_INIT
+#undef GEN8_IRQ_INIT_NDX
+
+	POSTING_READ(GEN8_PCU_IIR);
+
+	ibx_irq_preinstall(dev);
+}
+
 static void ibx_hpd_irq_setup(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
 	struct drm_mode_config *mode_config = &dev->mode_config;
 	struct intel_encoder *intel_encoder;
-	u32 mask = ~I915_READ(SDEIMR);
-	u32 hotplug;
+	u32 hotplug_irqs, hotplug, enabled_irqs = 0;
 
 	if (HAS_PCH_IBX(dev)) {
-		mask &= ~SDE_HOTPLUG_MASK;
+		hotplug_irqs = SDE_HOTPLUG_MASK;
 		list_for_each_entry(intel_encoder, &mode_config->encoder_list, base.head)
 			if (dev_priv->hpd_stats[intel_encoder->hpd_pin].hpd_mark == HPD_ENABLED)
-				mask |= hpd_ibx[intel_encoder->hpd_pin];
+				enabled_irqs |= hpd_ibx[intel_encoder->hpd_pin];
 	} else {
-		mask &= ~SDE_HOTPLUG_MASK_CPT;
+		hotplug_irqs = SDE_HOTPLUG_MASK_CPT;
 		list_for_each_entry(intel_encoder, &mode_config->encoder_list, base.head)
 			if (dev_priv->hpd_stats[intel_encoder->hpd_pin].hpd_mark == HPD_ENABLED)
-				mask |= hpd_cpt[intel_encoder->hpd_pin];
+				enabled_irqs |= hpd_cpt[intel_encoder->hpd_pin];
 	}
 
-	I915_WRITE(SDEIMR, ~mask);
+	ibx_display_interrupt_update(dev_priv, hotplug_irqs, enabled_irqs);
 
 	/*
 	 * Enable digital hotplug on the PCH, and configure the DP short pulse
@@ -2641,10 +2757,9 @@ static void ibx_irq_postinstall(struct drm_device *dev)
 		return;
 
 	if (HAS_PCH_IBX(dev)) {
-		mask = SDE_GMBUS | SDE_AUX_MASK | SDE_TRANSB_FIFO_UNDER |
-		       SDE_TRANSA_FIFO_UNDER | SDE_POISON;
+		mask = SDE_GMBUS | SDE_AUX_MASK | SDE_POISON;
 	} else {
-		mask = SDE_GMBUS_CPT | SDE_AUX_MASK_CPT | SDE_ERROR_CPT;
+		mask = SDE_GMBUS_CPT | SDE_AUX_MASK_CPT;
 
 		I915_WRITE(SERR_INT, I915_READ(SERR_INT));
 	}
@@ -2653,40 +2768,80 @@ static void ibx_irq_postinstall(struct drm_device *dev)
 	I915_WRITE(SDEIMR, ~mask);
 }
 
+static void gen5_gt_irq_postinstall(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	u32 pm_irqs, gt_irqs;
+
+	pm_irqs = gt_irqs = 0;
+
+	dev_priv->gt_irq_mask = ~0;
+	if (HAS_L3_DPF(dev)) {
+		/* L3 parity interrupt is always unmasked. */
+		dev_priv->gt_irq_mask = ~GT_PARITY_ERROR(dev);
+		gt_irqs |= GT_PARITY_ERROR(dev);
+	}
+
+	gt_irqs |= GT_RENDER_USER_INTERRUPT;
+	if (IS_GEN5(dev)) {
+		gt_irqs |= GT_RENDER_PIPECTL_NOTIFY_INTERRUPT |
+			   ILK_BSD_USER_INTERRUPT;
+	} else {
+		gt_irqs |= GT_BLT_USER_INTERRUPT | GT_BSD_USER_INTERRUPT;
+	}
+
+	I915_WRITE(GTIIR, I915_READ(GTIIR));
+	I915_WRITE(GTIMR, dev_priv->gt_irq_mask);
+	I915_WRITE(GTIER, gt_irqs);
+	POSTING_READ(GTIER);
+
+	if (INTEL_INFO(dev)->gen >= 6) {
+		pm_irqs |= GEN6_PM_RPS_EVENTS;
+
+		if (HAS_VEBOX(dev))
+			pm_irqs |= PM_VEBOX_USER_INTERRUPT;
+
+		dev_priv->pm_irq_mask = 0xffffffff;
+		I915_WRITE(GEN6_PMIIR, I915_READ(GEN6_PMIIR));
+		I915_WRITE(GEN6_PMIMR, dev_priv->pm_irq_mask);
+		I915_WRITE(GEN6_PMIER, pm_irqs);
+		POSTING_READ(GEN6_PMIER);
+	}
+}
+
 static int ironlake_irq_postinstall(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-	/* enable kind of interrupts always enabled */
-	u32 display_mask = DE_MASTER_IRQ_CONTROL | DE_GSE | DE_PCH_EVENT |
-			   DE_PLANEA_FLIP_DONE | DE_PLANEB_FLIP_DONE |
-			   DE_AUX_CHANNEL_A | DE_PIPEB_FIFO_UNDERRUN |
-			   DE_PIPEA_FIFO_UNDERRUN | DE_POISON;
-	u32 gt_irqs;
+	u32 display_mask, extra_mask;
+
+	if (INTEL_INFO(dev)->gen >= 7) {
+		display_mask = (DE_MASTER_IRQ_CONTROL | DE_GSE_IVB |
+				DE_PCH_EVENT_IVB | DE_PLANEC_FLIP_DONE_IVB |
+				DE_PLANEB_FLIP_DONE_IVB |
+				DE_PLANEA_FLIP_DONE_IVB | DE_AUX_CHANNEL_A_IVB);
+		extra_mask = (DE_PIPEC_VBLANK_IVB | DE_PIPEB_VBLANK_IVB |
+			      DE_PIPEA_VBLANK_IVB | DE_ERR_INT_IVB);
+
+		I915_WRITE(GEN7_ERR_INT, I915_READ(GEN7_ERR_INT));
+	} else {
+		display_mask = (DE_MASTER_IRQ_CONTROL | DE_GSE | DE_PCH_EVENT |
+				DE_PLANEA_FLIP_DONE | DE_PLANEB_FLIP_DONE |
+				DE_AUX_CHANNEL_A |
+				DE_PIPEB_CRC_DONE | DE_PIPEA_CRC_DONE |
+				DE_POISON);
+		extra_mask = DE_PIPEA_VBLANK | DE_PIPEB_VBLANK | DE_PCU_EVENT |
+				DE_PIPEB_FIFO_UNDERRUN | DE_PIPEA_FIFO_UNDERRUN;
+	}
 
 	dev_priv->irq_mask = ~display_mask;
 
 	/* should always can generate irq */
 	I915_WRITE(DEIIR, I915_READ(DEIIR));
 	I915_WRITE(DEIMR, dev_priv->irq_mask);
-	I915_WRITE(DEIER, display_mask |
-			  DE_PIPEA_VBLANK | DE_PIPEB_VBLANK | DE_PCU_EVENT);
+	I915_WRITE(DEIER, display_mask | extra_mask);
 	POSTING_READ(DEIER);
 
-	dev_priv->gt_irq_mask = ~0;
-
-	I915_WRITE(GTIIR, I915_READ(GTIIR));
-	I915_WRITE(GTIMR, dev_priv->gt_irq_mask);
-
-	gt_irqs = GT_RENDER_USER_INTERRUPT;
-
-	if (IS_GEN6(dev))
-		gt_irqs |= GT_BLT_USER_INTERRUPT | GT_BSD_USER_INTERRUPT;
-	else
-		gt_irqs |= GT_RENDER_PIPECTL_NOTIFY_INTERRUPT |
-			   ILK_BSD_USER_INTERRUPT;
-
-	I915_WRITE(GTIER, gt_irqs);
-	POSTING_READ(GTIER);
+	gen5_gt_irq_postinstall(dev);
 
 	ibx_irq_postinstall(dev);
 
@@ -2704,70 +2859,12 @@ static int ironlake_irq_postinstall(struct drm_device *dev)
 	return 0;
 }
 
-static int ivybridge_irq_postinstall(struct drm_device *dev)
-{
-	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-	/* enable kind of interrupts always enabled */
-	u32 display_mask =
-		DE_MASTER_IRQ_CONTROL | DE_GSE_IVB | DE_PCH_EVENT_IVB |
-		DE_PLANEC_FLIP_DONE_IVB |
-		DE_PLANEB_FLIP_DONE_IVB |
-		DE_PLANEA_FLIP_DONE_IVB |
-		DE_AUX_CHANNEL_A_IVB |
-		DE_ERR_INT_IVB;
-	u32 pm_irqs = GEN6_PM_RPS_EVENTS;
-	u32 gt_irqs;
-
-	dev_priv->irq_mask = ~display_mask;
-
-	/* should always can generate irq */
-	I915_WRITE(GEN7_ERR_INT, I915_READ(GEN7_ERR_INT));
-	I915_WRITE(DEIIR, I915_READ(DEIIR));
-	I915_WRITE(DEIMR, dev_priv->irq_mask);
-	I915_WRITE(DEIER,
-		   display_mask |
-		   DE_PIPEC_VBLANK_IVB |
-		   DE_PIPEB_VBLANK_IVB |
-		   DE_PIPEA_VBLANK_IVB);
-	POSTING_READ(DEIER);
-
-	dev_priv->gt_irq_mask = ~GT_RENDER_L3_PARITY_ERROR_INTERRUPT;
-
-	I915_WRITE(GTIIR, I915_READ(GTIIR));
-	I915_WRITE(GTIMR, dev_priv->gt_irq_mask);
-
-	gt_irqs = GT_RENDER_USER_INTERRUPT | GT_BSD_USER_INTERRUPT |
-		  GT_BLT_USER_INTERRUPT | GT_RENDER_L3_PARITY_ERROR_INTERRUPT;
-	I915_WRITE(GTIER, gt_irqs);
-	POSTING_READ(GTIER);
-
-	I915_WRITE(GEN6_PMIIR, I915_READ(GEN6_PMIIR));
-	if (HAS_VEBOX(dev))
-		pm_irqs |= PM_VEBOX_USER_INTERRUPT |
-			PM_VEBOX_CS_ERROR_INTERRUPT;
-
-	/* Our enable/disable rps functions may touch these registers so
-	 * make sure to set a known state for only the non-RPS bits.
-	 * The RMW is extra paranoia since this should be called after being set
-	 * to a known state in preinstall.
-	 * */
-	I915_WRITE(GEN6_PMIMR,
-		   (I915_READ(GEN6_PMIMR) | ~GEN6_PM_RPS_EVENTS) & ~pm_irqs);
-	I915_WRITE(GEN6_PMIER,
-		   (I915_READ(GEN6_PMIER) & GEN6_PM_RPS_EVENTS) | pm_irqs);
-	POSTING_READ(GEN6_PMIER);
-
-	ibx_irq_postinstall(dev);
-
-	return 0;
-}
-
 static int valleyview_irq_postinstall(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-	u32 gt_irqs;
 	u32 enable_mask;
-	u32 pipestat_enable = PLANE_FLIP_DONE_INT_EN_VLV;
+	u32 pipestat_enable = PLANE_FLIP_DONE_INT_EN_VLV |
+		PIPE_CRC_DONE_ENABLE;
 
 	enable_mask = I915_DISPLAY_PORT_INTERRUPT;
 	enable_mask |= I915_DISPLAY_PIPE_A_EVENT_INTERRUPT |
@@ -2793,20 +2890,18 @@ static int valleyview_irq_postinstall(struct drm_device *dev)
 	I915_WRITE(PIPESTAT(1), 0xffff);
 	POSTING_READ(VLV_IER);
 
-	i915_enable_pipestat(dev_priv, 0, pipestat_enable);
-	i915_enable_pipestat(dev_priv, 0, PIPE_GMBUS_EVENT_ENABLE);
-	i915_enable_pipestat(dev_priv, 1, pipestat_enable);
+	/* Interrupt setup is already guaranteed to be single-threaded, this is
+	 * just to make the assert_spin_locked check happy. */
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	i915_enable_pipestat(dev_priv, PIPE_A, pipestat_enable);
+	i915_enable_pipestat(dev_priv, PIPE_A, PIPE_GMBUS_EVENT_ENABLE);
+	i915_enable_pipestat(dev_priv, PIPE_B, pipestat_enable);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	I915_WRITE(VLV_IIR, 0xffffffff);
 	I915_WRITE(VLV_IIR, 0xffffffff);
 
-	I915_WRITE(GTIIR, I915_READ(GTIIR));
-	I915_WRITE(GTIMR, dev_priv->gt_irq_mask);
-
-	gt_irqs = GT_RENDER_USER_INTERRUPT | GT_BSD_USER_INTERRUPT |
-		GT_BLT_USER_INTERRUPT;
-	I915_WRITE(GTIER, gt_irqs);
-	POSTING_READ(GTIER);
+	gen5_gt_irq_postinstall(dev);
 
 	/* ack & enable invalid PTE error interrupts */
 #if 0 /* FIXME: add support to irq handler for checking these bits */
@@ -2817,6 +2912,117 @@ static int valleyview_irq_postinstall(struct drm_device *dev)
 	I915_WRITE(VLV_MASTER_IER, MASTER_INTERRUPT_ENABLE);
 
 	return 0;
+}
+
+static void gen8_gt_irq_postinstall(struct drm_i915_private *dev_priv)
+{
+	int i;
+
+	/* These are interrupts we'll toggle with the ring mask register */
+	uint32_t gt_interrupts[] = {
+		GT_RENDER_USER_INTERRUPT << GEN8_RCS_IRQ_SHIFT |
+			GT_RENDER_L3_PARITY_ERROR_INTERRUPT |
+			GT_RENDER_USER_INTERRUPT << GEN8_BCS_IRQ_SHIFT,
+		GT_RENDER_USER_INTERRUPT << GEN8_VCS1_IRQ_SHIFT |
+			GT_RENDER_USER_INTERRUPT << GEN8_VCS2_IRQ_SHIFT,
+		0,
+		GT_RENDER_USER_INTERRUPT << GEN8_VECS_IRQ_SHIFT
+		};
+
+	for (i = 0; i < ARRAY_SIZE(gt_interrupts); i++) {
+		u32 tmp = I915_READ(GEN8_GT_IIR(i));
+		if (tmp)
+			DRM_ERROR("Interrupt (%d) should have been masked in pre-install 0x%08x\n",
+				  i, tmp);
+		I915_WRITE(GEN8_GT_IMR(i), ~gt_interrupts[i]);
+		I915_WRITE(GEN8_GT_IER(i), gt_interrupts[i]);
+	}
+	POSTING_READ(GEN8_GT_IER(0));
+}
+
+static void gen8_de_irq_postinstall(struct drm_i915_private *dev_priv)
+{
+	struct drm_device *dev = dev_priv->dev;
+	uint32_t de_pipe_masked = GEN8_PIPE_FLIP_DONE |
+		GEN8_PIPE_CDCLK_CRC_DONE |
+		GEN8_DE_PIPE_IRQ_FAULT_ERRORS;
+	uint32_t de_pipe_enables = de_pipe_masked | GEN8_PIPE_VBLANK |
+		GEN8_PIPE_FIFO_UNDERRUN;
+	int pipe;
+	dev_priv->de_irq_mask[PIPE_A] = ~de_pipe_masked;
+	dev_priv->de_irq_mask[PIPE_B] = ~de_pipe_masked;
+	dev_priv->de_irq_mask[PIPE_C] = ~de_pipe_masked;
+
+	for_each_pipe(pipe) {
+		u32 tmp = I915_READ(GEN8_DE_PIPE_IIR(pipe));
+		if (tmp)
+			DRM_ERROR("Interrupt (%d) should have been masked in pre-install 0x%08x\n",
+				  pipe, tmp);
+		I915_WRITE(GEN8_DE_PIPE_IMR(pipe), dev_priv->de_irq_mask[pipe]);
+		I915_WRITE(GEN8_DE_PIPE_IER(pipe), de_pipe_enables);
+	}
+	POSTING_READ(GEN8_DE_PIPE_ISR(0));
+
+	I915_WRITE(GEN8_DE_PORT_IMR, ~GEN8_AUX_CHANNEL_A);
+	I915_WRITE(GEN8_DE_PORT_IER, GEN8_AUX_CHANNEL_A);
+	POSTING_READ(GEN8_DE_PORT_IER);
+}
+
+static int gen8_irq_postinstall(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	gen8_gt_irq_postinstall(dev_priv);
+	gen8_de_irq_postinstall(dev_priv);
+
+	ibx_irq_postinstall(dev);
+
+	I915_WRITE(GEN8_MASTER_IRQ, DE_MASTER_IRQ_CONTROL);
+	POSTING_READ(GEN8_MASTER_IRQ);
+
+	return 0;
+}
+
+static void gen8_irq_uninstall(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	int pipe;
+
+	if (!dev_priv)
+		return;
+
+	atomic_set(&dev_priv->irq_received, 0);
+
+	I915_WRITE(GEN8_MASTER_IRQ, 0);
+
+#define GEN8_IRQ_FINI_NDX(type, which) do { \
+		I915_WRITE(GEN8_##type##_IMR(which), 0xffffffff); \
+		I915_WRITE(GEN8_##type##_IER(which), 0); \
+		I915_WRITE(GEN8_##type##_IIR(which), 0xffffffff); \
+	} while (0)
+
+#define GEN8_IRQ_FINI(type) do { \
+		I915_WRITE(GEN8_##type##_IMR, 0xffffffff); \
+		I915_WRITE(GEN8_##type##_IER, 0); \
+		I915_WRITE(GEN8_##type##_IIR, 0xffffffff); \
+	} while (0)
+
+	GEN8_IRQ_FINI_NDX(GT, 0);
+	GEN8_IRQ_FINI_NDX(GT, 1);
+	GEN8_IRQ_FINI_NDX(GT, 2);
+	GEN8_IRQ_FINI_NDX(GT, 3);
+
+	for_each_pipe(pipe) {
+		GEN8_IRQ_FINI_NDX(DE_PIPE, pipe);
+	}
+
+	GEN8_IRQ_FINI(DE_PORT);
+	GEN8_IRQ_FINI(DE_MISC);
+	GEN8_IRQ_FINI(PCU);
+#undef GEN8_IRQ_FINI
+#undef GEN8_IRQ_FINI_NDX
+
+	POSTING_READ(GEN8_PCU_IIR);
 }
 
 static void valleyview_irq_uninstall(struct drm_device *dev)
@@ -2911,6 +3117,13 @@ static int i8xx_irq_postinstall(struct drm_device *dev)
 		     I915_USER_INTERRUPT);
 	POSTING_READ16(IER);
 
+	/* Interrupt setup is already guaranteed to be single-threaded, this is
+	 * just to make the assert_spin_locked check happy. */
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	i915_enable_pipestat(dev_priv, PIPE_A, PIPE_CRC_DONE_ENABLE);
+	i915_enable_pipestat(dev_priv, PIPE_B, PIPE_CRC_DONE_ENABLE);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+
 	return 0;
 }
 
@@ -2918,10 +3131,10 @@ static int i8xx_irq_postinstall(struct drm_device *dev)
  * Returns true when a page flip has completed.
  */
 static bool i8xx_handle_vblank(struct drm_device *dev,
-			       int pipe, u16 iir)
+			       int plane, int pipe, u32 iir)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
-	u16 flip_pending = DISPLAY_PLANE_FLIP_PENDING(pipe);
+	u16 flip_pending = DISPLAY_PLANE_FLIP_PENDING(plane);
 
 	if (!drm_handle_vblank(dev, pipe))
 		return false;
@@ -2929,7 +3142,7 @@ static bool i8xx_handle_vblank(struct drm_device *dev,
 	if ((iir & flip_pending) == 0)
 		return false;
 
-	intel_prepare_page_flip(dev, pipe);
+	intel_prepare_page_flip(dev, plane);
 
 	/* We detect FlipDone by looking for the change in PendingFlip from '1'
 	 * to '0' on the following vblank, i.e. IIR has the Pendingflip
@@ -2951,7 +3164,6 @@ static irqreturn_t i8xx_irq_handler(void *arg)
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
 	u16 iir, new_iir;
 	u32 pipe_stats[2];
-	int irq_received;
 	int pipe;
 	u16 flip_mask =
 		I915_DISPLAY_PLANE_A_FLIP_PENDING_INTERRUPT |
@@ -2985,7 +3197,6 @@ static irqreturn_t i8xx_irq_handler(void *arg)
 					DRM_DEBUG_DRIVER("pipe %c underrun\n",
 							 pipe_name(pipe));
 				I915_WRITE(reg, pipe_stats[pipe]);
-				irq_received = 1;
 			}
 		}
 		lockmgr(&dev_priv->irq_lock, LK_RELEASE);
@@ -2998,18 +3209,22 @@ static irqreturn_t i8xx_irq_handler(void *arg)
 		if (iir & I915_USER_INTERRUPT)
 			notify_ring(dev, &dev_priv->ring[RCS]);
 
-		if (pipe_stats[0] & PIPE_VBLANK_INTERRUPT_STATUS &&
-		    i8xx_handle_vblank(dev, 0, iir))
-			flip_mask &= ~DISPLAY_PLANE_FLIP_PENDING(0);
+		for_each_pipe(pipe) {
+			int plane = pipe;
+			if (HAS_FBC(dev))
+				plane = !plane;
 
-		if (pipe_stats[1] & PIPE_VBLANK_INTERRUPT_STATUS &&
-		    i8xx_handle_vblank(dev, 1, iir))
-			flip_mask &= ~DISPLAY_PLANE_FLIP_PENDING(1);
+			if (pipe_stats[pipe] & PIPE_VBLANK_INTERRUPT_STATUS &&
+			    i8xx_handle_vblank(dev, plane, pipe, iir))
+				flip_mask &= ~DISPLAY_PLANE_FLIP_PENDING(plane);
+
+			if (pipe_stats[pipe] & PIPE_CRC_DONE_INTERRUPT_STATUS)
+				i9xx_pipe_crc_irq_handler(dev, pipe);
+		}
 
 		iir = new_iir;
 	}
 
-	return;
 }
 
 static void i8xx_irq_uninstall(struct drm_device * dev)
@@ -3085,6 +3300,13 @@ static int i915_irq_postinstall(struct drm_device *dev)
 	POSTING_READ(IER);
 
 	i915_enable_asle_pipestat(dev);
+
+	/* Interrupt setup is already guaranteed to be single-threaded, this is
+	 * just to make the assert_spin_locked check happy. */
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	i915_enable_pipestat(dev_priv, PIPE_A, PIPE_CRC_DONE_ENABLE);
+	i915_enable_pipestat(dev_priv, PIPE_B, PIPE_CRC_DONE_ENABLE);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -3187,7 +3409,7 @@ static irqreturn_t i915_irq_handler(void *arg)
 
 		for_each_pipe(pipe) {
 			int plane = pipe;
-			if (IS_MOBILE(dev))
+			if (HAS_FBC(dev))
 				plane = !plane;
 
 			if (pipe_stats[pipe] & PIPE_VBLANK_INTERRUPT_STATUS &&
@@ -3196,6 +3418,9 @@ static irqreturn_t i915_irq_handler(void *arg)
 
 			if (pipe_stats[pipe] & PIPE_LEGACY_BLC_EVENT_STATUS)
 				blc_event = true;
+
+			if (pipe_stats[pipe] & PIPE_CRC_DONE_INTERRUPT_STATUS)
+				i9xx_pipe_crc_irq_handler(dev, pipe);
 		}
 
 		if (blc_event || (iir & I915_ASLE_INTERRUPT))
@@ -3220,6 +3445,7 @@ static irqreturn_t i915_irq_handler(void *arg)
 	} while (iir & ~flip_mask);
 
 	i915_update_dri1_breadcrumb(dev);
+
 }
 
 static void i915_irq_uninstall(struct drm_device * dev)
@@ -3287,7 +3513,13 @@ static int i965_irq_postinstall(struct drm_device *dev)
 	if (IS_G4X(dev))
 		enable_mask |= I915_BSD_USER_INTERRUPT;
 
-	i915_enable_pipestat(dev_priv, 0, PIPE_GMBUS_EVENT_ENABLE);
+	/* Interrupt setup is already guaranteed to be single-threaded, this is
+	 * just to make the assert_spin_locked check happy. */
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+	i915_enable_pipestat(dev_priv, PIPE_A, PIPE_GMBUS_EVENT_ENABLE);
+	i915_enable_pipestat(dev_priv, PIPE_A, PIPE_CRC_DONE_ENABLE);
+	i915_enable_pipestat(dev_priv, PIPE_B, PIPE_CRC_DONE_ENABLE);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	/*
 	 * Enable some error detection, note the instruction error mask
@@ -3322,6 +3554,8 @@ static void i915_hpd_irq_setup(struct drm_device *dev)
 	struct drm_mode_config *mode_config = &dev->mode_config;
 	struct intel_encoder *intel_encoder;
 	u32 hotplug_en;
+
+	assert_spin_locked(&dev_priv->irq_lock);
 
 	if (I915_HAS_HOTPLUG(dev)) {
 		hotplug_en = I915_READ(PORT_HOTPLUG_EN);
@@ -3395,6 +3629,7 @@ static irqreturn_t i965_irq_handler(void *arg)
 		if (!irq_received)
 			break;
 
+
 		/* Consume port.  Then clear IIR or we'll miss events */
 		if (iir & I915_DISPLAY_PORT_INTERRUPT) {
 			u32 hotplug_status = I915_READ(PORT_HOTPLUG_STAT);
@@ -3406,7 +3641,11 @@ static irqreturn_t i965_irq_handler(void *arg)
 				  hotplug_status);
 
 			intel_hpd_irq_handler(dev, hotplug_trigger,
-					      IS_G4X(dev) ? hpd_status_gen4 : hpd_status_i915);
+					      IS_G4X(dev) ? hpd_status_g4x : hpd_status_i915);
+
+			if (IS_G4X(dev) &&
+			    (hotplug_status & DP_AUX_CHANNEL_MASK_INT_STATUS_G4X))
+				dp_aux_irq_handler(dev);
 
 			I915_WRITE(PORT_HOTPLUG_STAT, hotplug_status);
 			I915_READ(PORT_HOTPLUG_STAT);
@@ -3427,7 +3666,11 @@ static irqreturn_t i965_irq_handler(void *arg)
 
 			if (pipe_stats[pipe] & PIPE_LEGACY_BLC_EVENT_STATUS)
 				blc_event = true;
+
+			if (pipe_stats[pipe] & PIPE_CRC_DONE_INTERRUPT_STATUS)
+				i9xx_pipe_crc_irq_handler(dev, pipe);
 		}
+
 
 		if (blc_event || (iir & I915_ASLE_INTERRUPT))
 			intel_opregion_asle_intr(dev);
@@ -3454,6 +3697,7 @@ static irqreturn_t i965_irq_handler(void *arg)
 	}
 
 	i915_update_dri1_breadcrumb(dev);
+
 }
 
 static void i965_irq_uninstall(struct drm_device * dev)
@@ -3532,18 +3776,21 @@ void intel_irq_init(struct drm_device *dev)
 
 	pm_qos_add_request(&dev_priv->pm_qos, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
 
-	dev->driver->get_vblank_counter = i915_get_vblank_counter;
-	dev->max_vblank_count = 0xffffff; /* only 24 bits of frame count */
-	if (IS_G4X(dev) || INTEL_INFO(dev)->gen >= 5) {
+	if (IS_GEN2(dev)) {
+		dev->max_vblank_count = 0;
+		dev->driver->get_vblank_counter = i8xx_get_vblank_counter;
+	} else if (IS_G4X(dev) || INTEL_INFO(dev)->gen >= 5) {
 		dev->max_vblank_count = 0xffffffff; /* full 32 bit counter */
 		dev->driver->get_vblank_counter = gm45_get_vblank_counter;
+	} else {
+		dev->driver->get_vblank_counter = i915_get_vblank_counter;
+		dev->max_vblank_count = 0xffffff; /* only 24 bits of frame count */
 	}
 
-	if (drm_core_check_feature(dev, DRIVER_MODESET))
+	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
 		dev->driver->get_vblank_timestamp = i915_get_vblank_timestamp;
-	else
-		dev->driver->get_vblank_timestamp = NULL;
-	dev->driver->get_scanout_position = i915_get_crtc_scanoutpos;
+		dev->driver->get_scanout_position = i915_get_crtc_scanoutpos;
+	}
 
 	if (IS_VALLEYVIEW(dev)) {
 		dev->driver->irq_handler = valleyview_irq_handler;
@@ -3553,14 +3800,13 @@ void intel_irq_init(struct drm_device *dev)
 		dev->driver->enable_vblank = valleyview_enable_vblank;
 		dev->driver->disable_vblank = valleyview_disable_vblank;
 		dev_priv->display.hpd_irq_setup = i915_hpd_irq_setup;
-	} else if (IS_IVYBRIDGE(dev) || IS_HASWELL(dev)) {
-		/* Share uninstall handlers with ILK/SNB */
-		dev->driver->irq_handler = ivybridge_irq_handler;
-		dev->driver->irq_preinstall = ivybridge_irq_preinstall;
-		dev->driver->irq_postinstall = ivybridge_irq_postinstall;
-		dev->driver->irq_uninstall = ironlake_irq_uninstall;
-		dev->driver->enable_vblank = ivybridge_enable_vblank;
-		dev->driver->disable_vblank = ivybridge_disable_vblank;
+	} else if (IS_GEN8(dev)) {
+		dev->driver->irq_handler = gen8_irq_handler;
+		dev->driver->irq_preinstall = gen8_irq_preinstall;
+		dev->driver->irq_postinstall = gen8_irq_postinstall;
+		dev->driver->irq_uninstall = gen8_irq_uninstall;
+		dev->driver->enable_vblank = gen8_enable_vblank;
+		dev->driver->disable_vblank = gen8_disable_vblank;
 		dev_priv->display.hpd_irq_setup = ibx_hpd_irq_setup;
 	} else if (HAS_PCH_SPLIT(dev)) {
 		dev->driver->irq_handler = ironlake_irq_handler;
@@ -3617,5 +3863,59 @@ void intel_hpd_init(struct drm_device *dev)
 	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	if (dev_priv->display.hpd_irq_setup)
 		dev_priv->display.hpd_irq_setup(dev);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+}
+
+/* Disable interrupts so we can allow Package C8+. */
+void hsw_pc8_disable_interrupts(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+
+	dev_priv->pc8.regsave.deimr = I915_READ(DEIMR);
+	dev_priv->pc8.regsave.sdeimr = I915_READ(SDEIMR);
+	dev_priv->pc8.regsave.gtimr = I915_READ(GTIMR);
+	dev_priv->pc8.regsave.gtier = I915_READ(GTIER);
+	dev_priv->pc8.regsave.gen6_pmimr = I915_READ(GEN6_PMIMR);
+
+	ironlake_disable_display_irq(dev_priv, 0xffffffff);
+	ibx_disable_display_interrupt(dev_priv, 0xffffffff);
+	ilk_disable_gt_irq(dev_priv, 0xffffffff);
+	snb_disable_pm_irq(dev_priv, 0xffffffff);
+
+	dev_priv->pc8.irqs_disabled = true;
+
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
+}
+
+/* Restore interrupts so we can recover from Package C8+. */
+void hsw_pc8_restore_interrupts(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	uint32_t val;
+
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
+
+	val = I915_READ(DEIMR);
+	WARN(val != 0xffffffff, "DEIMR is 0x%08x\n", val);
+
+	val = I915_READ(SDEIMR);
+	WARN(val != 0xffffffff, "SDEIMR is 0x%08x\n", val);
+
+	val = I915_READ(GTIMR);
+	WARN(val != 0xffffffff, "GTIMR is 0x%08x\n", val);
+
+	val = I915_READ(GEN6_PMIMR);
+	WARN(val != 0xffffffff, "GEN6_PMIMR is 0x%08x\n", val);
+
+	dev_priv->pc8.irqs_disabled = false;
+
+	ironlake_enable_display_irq(dev_priv, ~dev_priv->pc8.regsave.deimr);
+	ibx_enable_display_interrupt(dev_priv, ~dev_priv->pc8.regsave.sdeimr);
+	ilk_enable_gt_irq(dev_priv, ~dev_priv->pc8.regsave.gtimr);
+	snb_enable_pm_irq(dev_priv, ~dev_priv->pc8.regsave.gen6_pmimr);
+	I915_WRITE(GTIER, dev_priv->pc8.regsave.gtier);
+
 	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 }

@@ -1,6 +1,5 @@
 KMOD	= i915kms
 SRCS	= \
-	i915_debugfs.c \
 	i915_dma.c \
 	i915_drv.c \
 	i915_gem.c \
@@ -19,13 +18,16 @@ SRCS	= \
 	intel_ddi.c \
 	intel_display.c \
 	intel_dp.c \
-	intel_fb.c \
 	intel_hdmi.c \
 	intel_i2c.c \
 	intel_lvds.c \
+	intel_dsi.c \
+	intel_dsi_cmd.c \
+	intel_dsi_pll.c \
 	intel_modes.c \
 	intel_opregion.c \
 	intel_sideband.c \
+	intel_uncore.c \
 	intel_overlay.c \
 	intel_panel.c \
 	intel_pm.c \

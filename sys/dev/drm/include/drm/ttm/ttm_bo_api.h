@@ -36,6 +36,7 @@
 #include <drm/drm_hashtab.h>
 #include <linux/kref.h>
 #include <linux/list.h>
+#include <linux/rbtree.h>
 #include <linux/wait.h>
 
 struct ttm_bo_device;
@@ -257,7 +258,7 @@ struct ttm_buffer_object {
 	 * Members protected by the bdev::vm_lock
 	 */
 
-	RB_ENTRY(ttm_buffer_object) vm_rb;
+	struct rb_node vm_rb;
 	struct drm_mm_node *vm_node;
 
 

@@ -65,8 +65,11 @@
 #include <vm/vm.h>
 #include <vm/vm_page.h>
 
+#include <linux/types.h>
+#include <linux/mm.h>
 #include <linux/module.h>
 #include <drm/drmP.h>
+#include <drm/drm_vma_manager.h>
 
 /** @file drm_gem.c
  *
@@ -141,6 +144,9 @@ drm_gem_init(struct drm_device *dev)
 	mm->idxunr = new_unrhdr(0, DRM_GEM_MAX_IDX, NULL);
 	drm_mm_init(&mm->offset_manager, DRM_FILE_PAGE_OFFSET_START,
 		    DRM_FILE_PAGE_OFFSET_SIZE);
+	drm_vma_offset_manager_init(&mm->vma_manager,
+				    DRM_FILE_PAGE_OFFSET_START,
+				    DRM_FILE_PAGE_OFFSET_SIZE);
 	return 0;
 }
 
@@ -151,6 +157,8 @@ drm_gem_destroy(struct drm_device *dev)
 
 	drm_mm_takedown(&mm->offset_manager);
 	drm_ht_remove(&mm->offset_hash);
+
+	drm_vma_offset_manager_destroy(&mm->vma_manager);
 	delete_unrhdr(mm->idxunr);
 	kfree(mm);
 	dev->mm_private = NULL;
@@ -182,8 +190,8 @@ EXPORT_SYMBOL(drm_gem_object_init);
  * no GEM provided backing store. Instead the caller is responsible for
  * backing the object and handling it.
  */
-int drm_gem_private_object_init(struct drm_device *dev,
-			struct drm_gem_object *obj, size_t size)
+void drm_gem_private_object_init(struct drm_device *dev,
+				 struct drm_gem_object *obj, size_t size)
 {
 	BUG_ON((size & (PAGE_SIZE - 1)) != 0);
 
@@ -193,37 +201,9 @@ int drm_gem_private_object_init(struct drm_device *dev,
 	kref_init(&obj->refcount);
 	atomic_set(&obj->handle_count, 0);
 	obj->size = size;
-
-	return 0;
+	drm_vma_node_reset(&obj->vma_node);
 }
 EXPORT_SYMBOL(drm_gem_private_object_init);
-
-/**
- * Allocate a GEM object of the specified size with shmfs backing store
- */
-struct drm_gem_object *
-drm_gem_object_alloc(struct drm_device *dev, size_t size)
-{
-	struct drm_gem_object *obj;
-
-	obj = kzalloc(sizeof(*obj), GFP_KERNEL);
-	if (!obj)
-		goto free;
-
-	if (drm_gem_object_init(dev, obj, size) != 0)
-		goto free;
-
-	if (dev->driver->gem_init_object != NULL &&
-	    dev->driver->gem_init_object(obj) != 0)
-		goto dealloc;
-	return (obj);
-dealloc:
-	vm_object_deallocate(obj->vm_obj);
-free:
-	kfree(obj);
-	return NULL;
-}
-EXPORT_SYMBOL(drm_gem_object_alloc);
 
 static void
 drm_gem_remove_prime_handles(struct drm_gem_object *obj, struct drm_file *filp)
@@ -233,11 +213,62 @@ drm_gem_remove_prime_handles(struct drm_gem_object *obj, struct drm_file *filp)
 		drm_prime_remove_buf_handle(&filp->prime,
 				obj->import_attach->dmabuf);
 	}
-	if (obj->export_dma_buf) {
+
+	/*
+	 * Note: obj->dma_buf can't disappear as long as we still hold a
+	 * handle reference in obj->handle_count.
+	 */
+	if (obj->dma_buf) {
 		drm_prime_remove_buf_handle(&filp->prime,
-				obj->export_dma_buf);
+				obj->dma_buf);
 	}
 #endif
+}
+
+/**
+ * Called after the last handle to the object has been closed
+ *
+ * Removes any name for the object. Note that this must be
+ * called before drm_gem_object_free or we'll be touching
+ * freed memory
+ */
+static void drm_gem_object_handle_free(struct drm_gem_object *obj)
+{
+	struct drm_device *dev = obj->dev;
+
+	/* Remove any name for this object */
+	if (obj->name) {
+		idr_remove(&dev->object_name_idr, obj->name);
+		obj->name = 0;
+	}
+}
+
+#if 0
+static void drm_gem_object_exported_dma_buf_free(struct drm_gem_object *obj)
+{
+	/* Unbreak the reference cycle if we have an exported dma_buf. */
+	if (obj->dma_buf) {
+		dma_buf_put(obj->dma_buf);
+		obj->dma_buf = NULL;
+	}
+}
+#endif
+
+static void
+drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj)
+{
+	if (WARN_ON(atomic_read(&obj->handle_count) == 0))
+		return;
+
+	/*
+	* Must bump handle count first as this may be the last
+	* ref, in which case the object would disappear before we
+	* checked for a name
+	*/
+
+	if (atomic_dec_and_test(&obj->handle_count))
+		drm_gem_object_handle_free(obj);
+	drm_gem_object_unreference_unlocked(obj);
 }
 
 /**
@@ -281,6 +312,20 @@ drm_gem_handle_delete(struct drm_file *filp, u32 handle)
 	return 0;
 }
 EXPORT_SYMBOL(drm_gem_handle_delete);
+
+/**
+ * drm_gem_dumb_destroy - dumb fb callback helper for gem based drivers
+ * 
+ * This implements the ->dumb_destroy kms driver callback for drivers which use
+ * gem to manage their backing storage.
+ */
+int drm_gem_dumb_destroy(struct drm_file *file,
+			 struct drm_device *dev,
+			 uint32_t handle)
+{
+	return drm_gem_handle_delete(file, handle);
+}
+EXPORT_SYMBOL(drm_gem_dumb_destroy);
 
 /**
  * Create a handle for this object. This adds a handle reference
@@ -347,8 +392,49 @@ drm_gem_free_mmap_offset(struct drm_gem_object *obj)
 	drm_ht_remove_item(&mm->offset_hash, list);
 	free_unr(mm->idxunr, list->key);
 	obj->on_map = false;
+
+	drm_vma_offset_remove(&mm->vma_manager, &obj->vma_node);
 }
 EXPORT_SYMBOL(drm_gem_free_mmap_offset);
+
+/**
+ * drm_gem_create_mmap_offset_size - create a fake mmap offset for an object
+ * @obj: obj in question
+ * @size: the virtual size
+ *
+ * GEM memory mapping works by handing back to userspace a fake mmap offset
+ * it can use in a subsequent mmap(2) call.  The DRM core code then looks
+ * up the object based on the offset and sets up the various memory mapping
+ * structures.
+ *
+ * This routine allocates and attaches a fake offset for @obj, in cases where
+ * the virtual size differs from the physical size (ie. obj->size).  Otherwise
+ * just use drm_gem_create_mmap_offset().
+ */
+int
+drm_gem_create_mmap_offset_size(struct drm_gem_object *obj, size_t size)
+{
+	struct drm_device *dev = obj->dev;
+	struct drm_gem_mm *mm = dev->mm_private;
+	int ret = 0;
+
+	if (obj->on_map)
+		return (0);
+
+	obj->map_list.key = alloc_unr(mm->idxunr);
+	ret = drm_ht_insert_item(&mm->offset_hash, &obj->map_list);
+	if (ret != 0) {
+		DRM_ERROR("failed to add to map hash\n");
+		free_unr(mm->idxunr, obj->map_list.key);
+		return (ret);
+	}
+	obj->on_map = true;
+	return 0;
+
+	return drm_vma_offset_add(&mm->vma_manager, &obj->vma_node,
+				  size / PAGE_SIZE);
+}
+EXPORT_SYMBOL(drm_gem_create_mmap_offset_size);
 
 /**
  * drm_gem_create_mmap_offset - create a fake mmap offset for an object
@@ -361,26 +447,9 @@ EXPORT_SYMBOL(drm_gem_free_mmap_offset);
  *
  * This routine allocates and attaches a fake offset for @obj.
  */
-int
-drm_gem_create_mmap_offset(struct drm_gem_object *obj)
+int drm_gem_create_mmap_offset(struct drm_gem_object *obj)
 {
-	struct drm_device *dev = obj->dev;
-	struct drm_gem_mm *mm = dev->mm_private;
-	int ret;
-
-	if (obj->on_map)
-		return (0);
-	ret = 0;
-
-	obj->map_list.key = alloc_unr(mm->idxunr);
-	ret = drm_ht_insert_item(&mm->offset_hash, &obj->map_list);
-	if (ret != 0) {
-		DRM_ERROR("failed to add to map hash\n");
-		free_unr(mm->idxunr, obj->map_list.key);
-		return (ret);
-	}
-	obj->on_map = true;
-	return 0;
+	return drm_gem_create_mmap_offset_size(obj, obj->size);
 }
 EXPORT_SYMBOL(drm_gem_create_mmap_offset);
 
@@ -462,8 +531,6 @@ again:
 		else if (ret)
 			goto err;
 
-		/* Allocate a reference for the name table.  */
-		drm_gem_object_reference(obj);
 	} else {
 		args->name = (uint64_t) obj->name;
 		lockmgr(&dev->object_name_lock, LK_RELEASE);
@@ -587,59 +654,22 @@ drm_gem_object_free(struct kref *kref)
 }
 EXPORT_SYMBOL(drm_gem_object_free);
 
-static void drm_gem_object_ref_bug(struct kref *list_kref)
-{
-	BUG();
-}
-
-/**
- * Called after the last handle to the object has been closed
- *
- * Removes any name for the object. Note that this must be
- * called before drm_gem_object_free or we'll be touching
- * freed memory
- */
-void drm_gem_object_handle_free(struct drm_gem_object *obj)
-{
-	struct drm_device *dev = obj->dev;
-
-	/* Remove any name for this object */
-	lockmgr(&dev->object_name_lock, LK_EXCLUSIVE);
-	if (obj->name) {
-		idr_remove(&dev->object_name_idr, obj->name);
-		obj->name = 0;
-		lockmgr(&dev->object_name_lock, LK_RELEASE);
-		/*
-		 * The object name held a reference to this object, drop
-		 * that now.
-		*
-		* This cannot be the last reference, since the handle holds one too.
-		 */
-		kref_put(&obj->refcount, drm_gem_object_ref_bug);
-	} else
-		lockmgr(&dev->object_name_lock, LK_RELEASE);
-
-}
-EXPORT_SYMBOL(drm_gem_object_handle_free);
-
 static struct drm_gem_object *
 drm_gem_object_from_offset(struct drm_device *dev, vm_ooffset_t offset)
 {
 	struct drm_gem_object *obj;
-	struct drm_gem_mm *mm;
-	struct drm_hash_item *map_list;
+	struct drm_gem_mm *mm = dev->mm_private;
+	struct drm_hash_item *hash;
 
 	if ((offset & DRM_GEM_MAPPING_MASK) != DRM_GEM_MAPPING_KEY)
 		return (NULL);
 	offset &= ~DRM_GEM_MAPPING_KEY;
-	mm = dev->mm_private;
+
 	if (drm_ht_find_item(&mm->offset_hash, DRM_GEM_MAPPING_IDX(offset),
-	    &map_list) != 0) {
-	DRM_DEBUG("drm_gem_object_from_offset: offset 0x%jx obj not found\n",
-		    (uintmax_t)offset);
+	    &hash) != 0) {
 		return (NULL);
 	}
-	obj = container_of(map_list, struct drm_gem_object, map_list);
+	obj = container_of(hash, struct drm_gem_object, map_list);
 	return (obj);
 }
 
@@ -656,6 +686,7 @@ drm_gem_mmap_single(struct drm_device *dev, vm_ooffset_t *offset, vm_size_t size
 		DRM_UNLOCK(dev);
 		return (ENODEV);
 	}
+
 	drm_gem_object_reference(gem_obj);
 	DRM_UNLOCK(dev);
 	vm_obj = cdev_pager_allocate(gem_obj, OBJT_MGTDEVICE,

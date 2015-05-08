@@ -240,7 +240,7 @@ static const struct file_operations radeon_driver_old_fops = {
 
 static struct drm_driver driver_old = {
 	.driver_features =
-	    DRIVER_USE_AGP | DRIVER_USE_MTRR | DRIVER_PCI_DMA | DRIVER_SG |
+	    DRIVER_USE_AGP | DRIVER_PCI_DMA | DRIVER_SG |
 	    DRIVER_HAVE_IRQ | DRIVER_HAVE_DMA | DRIVER_IRQ_SHARED,
 	.dev_priv_size = sizeof(drm_radeon_buf_priv_t),
 	.load = radeon_driver_load,
@@ -353,7 +353,7 @@ static const struct file_operations radeon_driver_kms_fops = {
 
 static struct drm_driver kms_driver = {
 	.driver_features =
-	    DRIVER_USE_AGP | DRIVER_USE_MTRR | DRIVER_PCI_DMA | DRIVER_SG |
+	    DRIVER_USE_AGP | DRIVER_PCI_DMA | DRIVER_SG |
 	    DRIVER_HAVE_IRQ | DRIVER_HAVE_DMA | DRIVER_IRQ_SHARED | DRIVER_GEM |
 	    DRIVER_PRIME /* | DRIVE_MODESET */,
 #ifdef DUMBBELL_WIP
@@ -381,7 +381,6 @@ static struct drm_driver kms_driver = {
 	.irq_uninstall = radeon_driver_irq_uninstall_kms,
 	.irq_handler = radeon_driver_irq_handler_kms,
 	.ioctls = radeon_ioctls_kms,
-	.gem_init_object = radeon_gem_object_init,
 	.gem_free_object = radeon_gem_object_free,
 	.gem_open_object = radeon_gem_object_open,
 	.gem_close_object = radeon_gem_object_close,

@@ -35,6 +35,7 @@
 #include <drm/drmP.h>
 #include <drm/drm_hashtab.h>
 #include <linux/hash.h>
+#include <linux/slab.h>
 #include <linux/export.h>
 
 int drm_ht_create(struct drm_open_hash *ht, unsigned int order)
@@ -43,8 +44,10 @@ int drm_ht_create(struct drm_open_hash *ht, unsigned int order)
 
 	ht->order = order;
 	ht->table = NULL;
-	ht->table = kmalloc(size * sizeof(*ht->table),
-			M_DRM, M_WAITOK | M_ZERO);
+	if (size <= PAGE_SIZE / sizeof(*ht->table))
+		ht->table = kzalloc(size*sizeof(*ht->table), GFP_KERNEL);
+	else
+		ht->table = kzalloc(size*sizeof(*ht->table), GFP_KERNEL);
 	if (!ht->table) {
 		DRM_ERROR("Out of memory for hash table\n");
 		return -ENOMEM;
@@ -143,7 +146,7 @@ int drm_ht_just_insert_please(struct drm_open_hash *ht, struct drm_hash_item *it
 {
 	int ret;
 	unsigned long mask = (1 << bits) - 1;
-	unsigned long first, unshifted_key = 0;
+	unsigned long first, unshifted_key;
 
 	unshifted_key = hash_long(seed, bits);
 	first = unshifted_key;
@@ -198,7 +201,10 @@ EXPORT_SYMBOL(drm_ht_remove_item);
 void drm_ht_remove(struct drm_open_hash *ht)
 {
 	if (ht->table) {
-		kfree(ht->table);
+		if ((PAGE_SIZE / sizeof(*ht->table)) >> ht->order)
+			kfree(ht->table);
+		else
+			kfree(ht->table);
 		ht->table = NULL;
 	}
 }

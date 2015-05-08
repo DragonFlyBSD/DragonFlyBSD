@@ -1,4 +1,27 @@
-/*-
+/**
+ * \file drm_drv.c
+ * Generic driver template
+ *
+ * \author Rickard E. (Rik) Faith <faith@valinux.com>
+ * \author Gareth Hughes <gareth@valinux.com>
+ *
+ * To use this template, you must at least define the following (samples
+ * given for the MGA driver):
+ *
+ * \code
+ * #define DRIVER_AUTHOR	"VA Linux Systems, Inc."
+ *
+ * #define DRIVER_NAME		"mga"
+ * #define DRIVER_DESC		"Matrox G200/G400"
+ * #define DRIVER_DATE		"20001127"
+ *
+ * #define drm_x		mga_##x
+ * \endcode
+ */
+
+/*
+ * Created: Thu Nov 23 03:10:50 2000 by gareth@valinux.com
+ *
  * Copyright 1999, 2000 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
@@ -21,22 +44,11 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Authors:
- *    Rickard E. (Rik) Faith <faith@valinux.com>
- *    Gareth Hughes <gareth@valinux.com>
- *
- * $FreeBSD: head/sys/dev/drm2/drm_drv.c 247835 2013-03-05 09:49:34Z kib $
- */
-
-/** @file drm_drv.c
- * The catch-all file for DRM device support, including module setup/teardown,
- * open/close, and ioctl dispatch.
  */
 
 #include <sys/devfs.h>
-#include <machine/limits.h>
 
+#include <linux/export.h>
 #include <drm/drmP.h>
 #include <drm/drm_core.h>
 
@@ -82,7 +94,11 @@ MODULE_DEPEND(drm, agp, 1, 1, 1);
 MODULE_DEPEND(drm, pci, 1, 1, 1);
 MODULE_DEPEND(drm, iicbus, 1, 1, 1);
 
-static drm_ioctl_desc_t		  drm_ioctls[256] = {
+#define DRM_IOCTL_DEF(ioctl, func, flags) \
+	[DRM_IOCTL_NR(ioctl)] = {ioctl, func, flags}
+
+/** Ioctl table */
+static struct drm_ioctl_desc drm_ioctls[256] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_VERSION, drm_version, 0),
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_UNIQUE, drm_getunique, 0),
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_MAGIC, drm_getmagic, 0),
@@ -91,6 +107,7 @@ static drm_ioctl_desc_t		  drm_ioctls[256] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_CLIENT, drm_getclient, 0),
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_STATS, drm_getstats, 0),
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_CAP, drm_getcap, DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_SET_CLIENT_CAP, drm_setclientcap, 0),
 	DRM_IOCTL_DEF(DRM_IOCTL_SET_VERSION, drm_setversion, DRM_MASTER|DRM_ROOT_ONLY),
 
 	DRM_IOCTL_DEF(DRM_IOCTL_SET_UNIQUE, drm_setunique, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
@@ -178,6 +195,8 @@ static drm_ioctl_desc_t		  drm_ioctls[256] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_MAP_DUMB, drm_mode_mmap_dumb_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_DESTROY_DUMB, drm_mode_destroy_dumb_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 };
+
+#define DRM_CORE_IOCTL_COUNT	ARRAY_SIZE( drm_ioctls )
 
 static struct dev_ops drm_cdevsw = {
 	{ "drm", 0, D_TRACKCLOSE | D_MPSAFE },
@@ -378,7 +397,6 @@ drm_pci_id_list_t *drm_find_description(int vendor, int device,
 int drm_lastclose(struct drm_device * dev)
 {
 	drm_magic_entry_t *pt, *next;
-	int i;
 
 	DRM_DEBUG("\n");
 
@@ -394,15 +412,17 @@ int drm_lastclose(struct drm_device * dev)
 		dev->unique = NULL;
 		dev->unique_len = 0;
 	}
-	/* Clear pid list */
-	for (i = 0; i < DRM_HASH_SIZE; i++) {
-		for (pt = dev->magiclist[i].head; pt; pt = next) {
-			next = pt->next;
-			drm_free(pt, M_DRM);
-		}
-		dev->magiclist[i].head = dev->magiclist[i].tail = NULL;
-	}
 
+	/* Clear pid list */
+	if (dev->magicfree.next) {
+		list_for_each_entry_safe(pt, next, &dev->magicfree, head) {
+			list_del(&pt->head);
+			drm_ht_remove_item(&dev->magiclist, &pt->hash_item);
+			kfree(pt);
+		}
+		drm_ht_remove(&dev->magiclist);
+	}
+	
 	/* Clear AGP information */
 	if (dev->agp) {
 		drm_agp_mem_t *entry;
@@ -539,6 +559,17 @@ error:
 	return retcode;
 }
 
+/**
+ * Get version information
+ *
+ * \param inode device inode.
+ * \param filp file pointer.
+ * \param cmd command.
+ * \param arg user argument, pointing to a drm_version structure.
+ * \return zero on success or negative number on failure.
+ *
+ * Fills in the version information in \p arg.
+ */
 int drm_version(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	struct drm_version *version = data;
@@ -661,7 +692,17 @@ void drm_cdevpriv_dtor(void *cd)
 	DRM_UNLOCK(dev);
 }
 
-/* drm_ioctl is called whenever a process performs an ioctl on /dev/drm.
+/**
+ * Called whenever a process performs an ioctl on /dev/drm.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument.
+ * \return zero on success or negative number on failure.
+ *
+ * Looks up the ioctl function in the ::ioctls table, checking for root
+ * previleges if so required, and dispatches to the respective function.
  */
 int drm_ioctl(struct dev_ioctl_args *ap)
 {
@@ -671,7 +712,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	struct thread *p = curthread;
 	struct drm_device *dev = drm_get_device_from_kdev(kdev);
 	int retcode = 0;
-	drm_ioctl_desc_t *ioctl;
+	struct drm_ioctl_desc *ioctl;
 	int (*func)(struct drm_device *dev, void *data, struct drm_file *file_priv);
 	int nr = DRM_IOCTL_NR(cmd);
 	int is_driver_ioctl = 0;
@@ -684,7 +725,6 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	}
 
 	atomic_inc(&dev->counts[_DRM_STAT_IOCTLS]);
-	++file_priv->ioctl_count;
 
 	DRM_DEBUG("pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
 	    DRM_CURRENTPID, cmd, nr, (long)dev->dev,

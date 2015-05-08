@@ -33,13 +33,6 @@
 #include "radeon.h"
 #include "radeon_gem.h"
 
-int radeon_gem_object_init(struct drm_gem_object *obj)
-{
-	panic("radeon_gem_object_init() must not be called");
-
-	return 0;
-}
-
 void radeon_gem_object_free(struct drm_gem_object *gobj)
 {
 	struct radeon_bo *robj = gem_to_radeon_bo(gobj);

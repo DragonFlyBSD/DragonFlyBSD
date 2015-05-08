@@ -32,8 +32,6 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * $FreeBSD: src/sys/dev/drm2/drm_fops.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 #include <sys/types.h>
@@ -70,10 +68,8 @@ static int drm_setup(struct drm_device *dev)
 			return i;
 	}
 
-	for (i = 0; i < DRM_HASH_SIZE; i++) {
-		dev->magiclist[i].head = NULL;
-		dev->magiclist[i].tail = NULL;
-	}
+	drm_ht_create(&dev->magiclist, DRM_MAGIC_HASH_ORDER);
+	INIT_LIST_HEAD(&dev->magicfree);
 
 	init_waitqueue_head(&dev->lock.lock_queue);
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
@@ -146,7 +142,6 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 	priv->dev		= dev;
 	priv->uid               = p->td_proc->p_ucred->cr_svuid;
 	priv->pid		= p->td_proc->p_pid;
-	priv->ioctl_count 	= 0;
 
 	/* for compatibility root is always authenticated */
 	priv->authenticated	= DRM_SUSER(p);

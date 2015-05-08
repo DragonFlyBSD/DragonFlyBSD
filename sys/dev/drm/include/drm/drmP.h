@@ -113,6 +113,8 @@ MALLOC_DECLARE(M_DRM);
 
 #include <asm/uaccess.h>
 
+#include <drm/drm_vma_manager.h>
+
 struct drm_file;
 struct drm_device;
 
@@ -145,7 +147,6 @@ struct drm_device;
 /* driver capabilities and requirements mask */
 #define DRIVER_USE_AGP     0x1
 #define DRIVER_REQUIRE_AGP 0x2
-#define DRIVER_USE_MTRR    0x4
 #define DRIVER_PCI_DMA     0x8
 #define DRIVER_SG          0x10
 #define DRIVER_HAVE_DMA    0x20
@@ -158,13 +159,12 @@ struct drm_device;
 #define DRIVER_GEM         0x1000
 #define DRIVER_MODESET     0x2000
 #define DRIVER_PRIME       0x4000
-#define DRIVER_LOCKLESS_IRQ 0x8000
 
 /***********************************************************************/
 /** \name Begin the DRM... */
 /*@{*/
 
-#define DRM_HASH_SIZE	      16 /* Size of key hash table		  */
+#define DRM_MAGIC_HASH_ORDER  4  /**< Size of key hash table. Must be power of 2. */
 #define DRM_KERNEL_CONTEXT    0	 /* Change drm_resctx if changed	  */
 #define DRM_RESERVED_CONTEXTS 1	 /* Change drm_resctx if changed	  */
 
@@ -304,11 +304,24 @@ int vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end,
 void vm_phys_fictitious_unreg_range(vm_paddr_t start, vm_paddr_t end);
 vm_page_t vm_phys_fictitious_to_vm_page(vm_paddr_t pa);
 
+/***********************************************************************/
+/** \name Macros to make printk easier */
+/*@{*/
+
+/**
+ * Error output.
+ *
+ * \param fmt printf() like format string.
+ * \param arg arguments
+ */
 #define DRM_ERROR(fmt, ...) \
 	kprintf("error: [" DRM_NAME ":pid%d:%s] *ERROR* " fmt,		\
 	    DRM_CURRENTPID, __func__ , ##__VA_ARGS__)
 
 #define DRM_INFO(fmt, ...)  kprintf("info: [" DRM_NAME "] " fmt , ##__VA_ARGS__)
+
+#define DRM_INFO_ONCE(fmt, ...)				\
+	printk_once(KERN_INFO "[" DRM_NAME "] " fmt, ##__VA_ARGS__)
 
 #define DRM_DEBUG(fmt, ...) do {					\
 	if ((drm_debug & DRM_DEBUGBITS_DEBUG) != 0)		\
@@ -353,6 +366,20 @@ struct drm_msi_blacklist_entry
 	int device;
 };
 
+/**
+ * Ioctl function type.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private pointer.
+ * \param cmd command.
+ * \param arg argument.
+ */
+typedef int drm_ioctl_t(struct drm_device *dev, void *data,
+			struct drm_file *file_priv);
+
+typedef int drm_ioctl_compat_t(struct file *filp, unsigned int cmd,
+			       unsigned long arg);
+
 #define DRM_IOCTL_NR(n)                ((n) & 0xff)
 
 #define DRM_AUTH	0x1
@@ -361,26 +388,24 @@ struct drm_msi_blacklist_entry
 #define DRM_CONTROL_ALLOW 0x8
 #define DRM_UNLOCKED	0x10
 
-typedef struct drm_ioctl_desc {
+struct drm_ioctl_desc {
 	unsigned long cmd;
 	int (*func)(struct drm_device *dev, void *data,
 		    struct drm_file *file_priv);
 	int flags;
 	unsigned int cmd_drv;
-} drm_ioctl_desc_t;
+};
 
 /**
  * Creates a driver or general drm_ioctl_desc array entry for the given
  * ioctl, for use by drm_ioctl().
  */
-#define DRM_IOCTL_DEF(ioctl, func, flags) \
-	[DRM_IOCTL_NR(ioctl)] = {ioctl, func, flags}
-
 #define DRM_IOCTL_DEF_DRV(ioctl, _func, _flags)			\
 	[DRM_IOCTL_NR(DRM_##ioctl)] = {.cmd = DRM_##ioctl, .func = _func, .flags = _flags, .cmd_drv = DRM_IOCTL_##ioctl}
 
 typedef struct drm_magic_entry {
-	drm_magic_t	       magic;
+	struct list_head head;
+	struct drm_hash_item hash_item;
 	struct drm_file	       *priv;
 	struct drm_magic_entry *next;
 } drm_magic_entry_t;
@@ -429,6 +454,7 @@ struct drm_freelist {
 
 typedef struct drm_dma_handle {
 	void *vaddr;
+	size_t size;
 	bus_addr_t busaddr;
 	bus_dma_tag_t tag;
 	bus_dmamap_t map;
@@ -484,6 +510,9 @@ struct drm_file {
 
 	int		  is_master;
 	struct drm_master *masterp;
+
+	/* true when the client has asked us to expose stereo 3D mode flags */
+	bool stereo_allowed;
 
 	/**
 	 * fbs - List of framebuffers associated with this file.
@@ -639,6 +668,7 @@ struct drm_ati_pcigart_info {
  * GEM specific mm private for tracking GEM objects
  */
 struct drm_gem_mm {
+	struct drm_vma_offset_manager vma_manager;
 	struct drm_mm offset_manager;	/**< Offset mgmt for buffer objects */
 	struct drm_open_hash offset_hash; /**< User token hash table for maps */
 	struct unrhdr *idxunr;
@@ -657,6 +687,8 @@ struct drm_gem_object {
 	/** File representing the shmem storage: filp in Linux parlance */
 	vm_object_t vm_obj;
 
+	/* Mapping info for this object */
+	struct drm_vma_offset_node vma_node;
 	bool on_map;
 	struct drm_hash_item map_list;
 
@@ -689,8 +721,6 @@ struct drm_gem_object {
 	 */
 	uint32_t pending_read_domains;
 	uint32_t pending_write_domain;
-
-	void *driver_private;
 
 #ifdef DUMBBELL_WIP
 	/* dma buf exported from this GEM object */
@@ -788,7 +818,6 @@ struct drm_driver {
 		    int *max_error, struct timeval *vblank_time,
 		    unsigned flags);
 
-	int	(*gem_init_object)(struct drm_gem_object *obj);
 	void	(*gem_free_object)(struct drm_gem_object *obj);
 	int	(*gem_open_object)(struct drm_gem_object *, struct drm_file *);
 	void	(*gem_close_object)(struct drm_gem_object *, struct drm_file *);
@@ -821,12 +850,6 @@ struct drm_driver {
 	 */
 	int	(*device_is_agp) (struct drm_device * dev);
 
-	drm_ioctl_desc_t *ioctls;
-#ifdef COMPAT_FREEBSD32
-	drm_ioctl_desc_t *compat_ioctls;
-	int	*compat_ioctls_nr;
-#endif
-
 	int	buf_priv_size;
 
 	int	major;
@@ -837,6 +860,8 @@ struct drm_driver {
 	const char *date;		/* Date of last major changes.	   */
 
 	u32 driver_features;
+	int dev_priv_size;
+	struct drm_ioctl_desc *ioctls;
 	int num_ioctls;
 };
 
@@ -926,7 +951,8 @@ struct drm_device {
 	/*@} */
 
 				/* Authentication */
-	drm_magic_head_t  magiclist[DRM_HASH_SIZE];
+	struct drm_open_hash magiclist;	/**< magic hash table */
+	struct list_head magicfree;
 
 	struct list_head filelist;
 
@@ -1162,18 +1188,17 @@ extern int drm_prime_handle_to_fd_ioctl(struct drm_device *dev, void *data,
 extern int drm_prime_fd_to_handle_ioctl(struct drm_device *dev, void *data,
 					struct drm_file *file_priv);
 
-#ifdef DUMBBELL_WIP
-/*
- * See drm_prime.c
- *   -- dumbbell@
- */
 extern int drm_prime_sg_to_page_addr_arrays(struct sg_table *sgt, vm_page_t *pages,
 					    dma_addr_t *addrs, int max_pages);
 #endif /* DUMBBELL_WIP */
 extern struct sg_table *drm_prime_pages_to_sg(vm_page_t *pages, int nr_pages);
 extern void drm_prime_gem_destroy(struct drm_gem_object *obj, struct sg_table *sg);
 
+int drm_gem_dumb_destroy(struct drm_file *file,
+			 struct drm_device *dev,
+			 uint32_t handle);
 
+#ifdef DUMBBELL_WIP
 void drm_prime_init_file_private(struct drm_prime_file_private *prime_fpriv);
 void drm_prime_destroy_file_private(struct drm_prime_file_private *prime_fpriv);
 int drm_prime_add_imported_buf_handle(struct drm_prime_file_private *prime_fpriv, struct dma_buf *dma_buf, uint32_t handle);
@@ -1265,7 +1290,8 @@ extern int drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev,
 						 struct timeval *vblank_time,
 						 unsigned flags,
 						 struct drm_crtc *refcrtc);
-extern void drm_calc_timestamping_constants(struct drm_crtc *crtc);
+extern void drm_calc_timestamping_constants(struct drm_crtc *crtc,
+					    const struct drm_display_mode *mode);
 
 /* AGP/PCI Express/GART support (drm_agpsupport.c) */
 int	drm_device_is_agp(struct drm_device *dev);
@@ -1326,6 +1352,8 @@ int	drm_getstats(struct drm_device *dev, void *data,
 		     struct drm_file *file_priv);
 int	drm_getcap(struct drm_device *dev, void *data,
 		     struct drm_file *file_priv);
+extern int drm_setclientcap(struct drm_device *dev, void *data,
+			    struct drm_file *file_priv);
 int	drm_noop(struct drm_device *dev, void *data,
 		 struct drm_file *file_priv);
 
@@ -1431,14 +1459,10 @@ int drm_gem_init(struct drm_device *dev);
 void drm_gem_destroy(struct drm_device *dev);
 void drm_gem_object_release(struct drm_gem_object *obj);
 void drm_gem_object_free(struct kref *kref);
-
-int drm_gem_close_ioctl(struct drm_device *dev, void *data,
-			struct drm_file *file_priv);
-int drm_gem_flink_ioctl(struct drm_device *dev, void *data,
-			struct drm_file *file_priv);
-int drm_gem_open_ioctl(struct drm_device *dev, void *data,
-		       struct drm_file *file_priv);
-void drm_gem_object_handle_free(struct drm_gem_object *obj);
+int drm_gem_object_init(struct drm_device *dev,
+			struct drm_gem_object *obj, size_t size);
+void drm_gem_private_object_init(struct drm_device *dev,
+				 struct drm_gem_object *obj, size_t size);
 
 int i915_gem_pager_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
     vm_ooffset_t foff, struct ucred *cred, u_short *color);
@@ -1482,58 +1506,22 @@ drm_gem_object_handle_reference(struct drm_gem_object *obj)
 	atomic_inc(&obj->handle_count);
 }
 
-static inline void
-drm_gem_object_handle_unreference(struct drm_gem_object *obj)
-{
-	if (obj == NULL)
-		return;
-
-	if (atomic_read(&obj->handle_count) == 0)
-		return;
-	/*
-	 * Must bump handle count first as this may be the last
-	 * ref, in which case the object would disappear before we
-	 * checked for a name
-	 */
-	if (atomic_dec_and_test(&obj->handle_count))
-		drm_gem_object_handle_free(obj);
-	drm_gem_object_unreference(obj);
-}
-
-static inline void
-drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj)
-{
-	if (obj == NULL)
-		return;
-
-	if (atomic_read(&obj->handle_count) == 0)
-		return;
-
-	/*
-	* Must bump handle count first as this may be the last
-	* ref, in which case the object would disappear before we
-	* checked for a name
-	*/
-
-	if (atomic_dec_and_test(&obj->handle_count))
-		drm_gem_object_handle_free(obj);
-	drm_gem_object_unreference_unlocked(obj);
-}
-
-int drm_gem_object_init(struct drm_device *dev, struct drm_gem_object *obj,
-    size_t size);
-int drm_gem_private_object_init(struct drm_device *dev,
-    struct drm_gem_object *obj, size_t size);
-struct drm_gem_object *drm_gem_object_alloc(struct drm_device *dev,
-    size_t size);
 struct drm_gem_object *drm_gem_object_lookup(struct drm_device *dev,
-    struct drm_file *file_priv, uint32_t handle);
-
+					     struct drm_file *filp,
+					     u32 handle);
+int drm_gem_close_ioctl(struct drm_device *dev, void *data,
+			struct drm_file *file_priv);
+int drm_gem_flink_ioctl(struct drm_device *dev, void *data,
+			struct drm_file *file_priv);
+int drm_gem_open_ioctl(struct drm_device *dev, void *data,
+		       struct drm_file *file_priv);
 void drm_gem_open(struct drm_device *dev, struct drm_file *file_priv);
 void drm_gem_release(struct drm_device *dev, struct drm_file *file_priv);
 
-int drm_gem_create_mmap_offset(struct drm_gem_object *obj);
 void drm_gem_free_mmap_offset(struct drm_gem_object *obj);
+int drm_gem_create_mmap_offset(struct drm_gem_object *obj);
+int drm_gem_create_mmap_offset_size(struct drm_gem_object *obj, size_t size);
+
 int drm_gem_mmap_single(struct drm_device *dev, vm_ooffset_t *offset,
     vm_size_t size, struct vm_object **obj_res, int nprot);
 void drm_gem_pager_dtr(void *obj);
@@ -1586,7 +1574,6 @@ drm_free(void *pt, struct malloc_type *area)
 	kfree(pt);
 }
 
-/* Inline replacements for DRM_IOREMAP macros */
 static __inline__ void
 drm_core_ioremap_wc(struct drm_local_map *map, struct drm_device *dev)
 {

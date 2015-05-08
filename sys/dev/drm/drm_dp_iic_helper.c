@@ -35,7 +35,7 @@ static int
 iic_dp_aux_transaction(device_t idev, int mode, uint8_t write_byte,
     uint8_t *read_byte)
 {
-	struct iic_dp_aux_data *aux_data;
+	struct i2c_algo_dp_aux_data *aux_data;
 	int ret;
 
 	aux_data = device_get_softc(idev);
@@ -55,7 +55,7 @@ iic_dp_aux_transaction(device_t idev, int mode, uint8_t write_byte,
 static int
 iic_dp_aux_address(device_t idev, u16 address, bool reading)
 {
-	struct iic_dp_aux_data *aux_data;
+	struct i2c_algo_dp_aux_data *aux_data;
 	int mode, ret;
 
 	aux_data = device_get_softc(idev);
@@ -77,7 +77,7 @@ iic_dp_aux_address(device_t idev, u16 address, bool reading)
 static void
 iic_dp_aux_stop(device_t idev, bool reading)
 {
-	struct iic_dp_aux_data *aux_data;
+	struct i2c_algo_dp_aux_data *aux_data;
 	int mode;
 
 	aux_data = device_get_softc(idev);
@@ -99,7 +99,7 @@ iic_dp_aux_stop(device_t idev, bool reading)
 static int
 iic_dp_aux_put_byte(device_t idev, u8 byte)
 {
-	struct iic_dp_aux_data *aux_data;
+	struct i2c_algo_dp_aux_data *aux_data;
 	int ret;
 
 	aux_data = device_get_softc(idev);
@@ -118,7 +118,7 @@ iic_dp_aux_put_byte(device_t idev, u8 byte)
 static int
 iic_dp_aux_get_byte(device_t idev, u8 *byte_ret)
 {
-	struct iic_dp_aux_data *aux_data;
+	struct i2c_algo_dp_aux_data *aux_data;
 	int ret;
 
 	aux_data = device_get_softc(idev);
@@ -204,7 +204,7 @@ iic_dp_aux_probe(device_t idev)
 static int
 iic_dp_aux_attach(device_t idev)
 {
-	struct iic_dp_aux_data *aux_data;
+	struct i2c_algo_dp_aux_data *aux_data;
 
 	aux_data = device_get_softc(idev);
 	aux_data->port = device_add_child(idev, "iicbus", -1);
@@ -221,7 +221,7 @@ iic_dp_aux_add_bus(device_t dev, const char *name,
     void *priv, device_t *bus, device_t *adapter)
 {
 	device_t ibus;
-	struct iic_dp_aux_data *data;
+	struct i2c_algo_dp_aux_data *data;
 	int idx, error;
 	static int dp_bus_counter;
 
@@ -263,7 +263,7 @@ static device_method_t drm_iic_dp_aux_methods[] = {
 static driver_t drm_iic_dp_aux_driver = {
 	"drm_iic_dp_aux",
 	drm_iic_dp_aux_methods,
-	sizeof(struct iic_dp_aux_data)
+	sizeof(struct i2c_algo_dp_aux_data)
 };
 static devclass_t drm_iic_dp_aux_devclass;
 DRIVER_MODULE_ORDERED(drm_iic_dp_aux, drm, drm_iic_dp_aux_driver,
