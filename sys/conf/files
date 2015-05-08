@@ -1572,14 +1572,10 @@ bus/pccard/pccard_cis.c		optional pccard
 bus/pccard/pccard_cis_quirks.c	optional pccard
 bus/pccard/power_if.m		standard
 dev/agp/agp.c			optional agp
-dev/agp/agp_nvidia.c		optional agp
 dev/agp/agp_via.c		optional agp
 dev/agp/agp_sis.c		optional agp
-dev/agp/agp_ali.c		optional agp
-dev/agp/agp_amd.c		optional agp
 dev/agp/agp_amd64.c		optional agp
 dev/agp/agp_i810.c		optional agp
-dev/agp/agp_ati.c		optional agp
 dev/agp/agp_if.m		optional agp
 dev/disk/amd/amd.c		optional amd
 dev/video/bktr/bktr_audio.c	optional bktr pci
