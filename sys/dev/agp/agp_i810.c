@@ -90,6 +90,7 @@ static void agp_sb_dump_regs(device_t dev);
 
 static int agp_i915_get_stolen_size(device_t dev);
 static int agp_sb_get_stolen_size(device_t dev);
+static int agp_gen8_get_stolen_size(device_t dev);
 
 static int agp_i915_get_gtt_mappable_entries(device_t dev);
 
@@ -97,6 +98,7 @@ static int agp_i810_get_gtt_total_entries(device_t dev);
 static int agp_i965_get_gtt_total_entries(device_t dev);
 static int agp_gen5_get_gtt_total_entries(device_t dev);
 static int agp_sb_get_gtt_total_entries(device_t dev);
+static int agp_gen8_get_gtt_total_entries(device_t dev);
 
 static int agp_i830_install_gatt(device_t dev);
 
@@ -110,18 +112,17 @@ static void agp_g4x_install_gtt_pte(device_t dev, u_int index,
     vm_offset_t physical, int flags);
 static void agp_sb_install_gtt_pte(device_t dev, u_int index,
     vm_offset_t physical, int flags);
+static void agp_gen8_install_gtt_pte(device_t dev, u_int index,
+    vm_offset_t physical, int flags);
 
 static void agp_i915_write_gtt(device_t dev, u_int index, uint32_t pte);
 static void agp_i965_write_gtt(device_t dev, u_int index, uint32_t pte);
 static void agp_g4x_write_gtt(device_t dev, u_int index, uint32_t pte);
 static void agp_sb_write_gtt(device_t dev, u_int index, uint32_t pte);
 
-static u_int32_t agp_i915_read_gtt_pte(device_t dev, u_int index);
-static u_int32_t agp_i965_read_gtt_pte(device_t dev, u_int index);
-static u_int32_t agp_g4x_read_gtt_pte(device_t dev, u_int index);
-
-static vm_paddr_t agp_i915_read_gtt_pte_paddr(device_t dev, u_int index);
-static vm_paddr_t agp_sb_read_gtt_pte_paddr(device_t dev, u_int index);
+static void agp_i915_sync_gtt_pte(device_t dev, u_int index);
+static void agp_i965_sync_gtt_pte(device_t dev, u_int index);
+static void agp_g4x_sync_gtt_pte(device_t dev, u_int index);
 
 static int agp_i915_set_aperture(device_t dev, u_int32_t aperture);
 
@@ -208,8 +209,7 @@ struct agp_i810_driver {
 	void (*deinstall_gatt)(device_t);
 	void (*write_gtt)(device_t, u_int, uint32_t);
 	void (*install_gtt_pte)(device_t, u_int, vm_offset_t, int);
-	u_int32_t (*read_gtt_pte)(device_t, u_int);
-	vm_paddr_t (*read_gtt_pte_paddr)(device_t , u_int);
+	void (*sync_gtt_pte)(device_t, u_int);
 	int (*set_aperture)(device_t, u_int32_t);
 	int (*chipset_flush_setup)(device_t);
 	void (*chipset_flush_teardown)(device_t);
@@ -235,8 +235,7 @@ static const struct agp_i810_driver agp_i810_i915_driver = {
 	.deinstall_gatt = agp_i830_deinstall_gatt,
 	.write_gtt = agp_i915_write_gtt,
 	.install_gtt_pte = agp_i915_install_gtt_pte,
-	.read_gtt_pte = agp_i915_read_gtt_pte,
-	.read_gtt_pte_paddr = agp_i915_read_gtt_pte_paddr,
+	.sync_gtt_pte = agp_i915_sync_gtt_pte,
 	.set_aperture = agp_i915_set_aperture,
 	.chipset_flush_setup = agp_i915_chipset_flush_setup,
 	.chipset_flush_teardown = agp_i915_chipset_flush_teardown,
@@ -258,8 +257,7 @@ static const struct agp_i810_driver agp_i810_g965_driver = {
 	.deinstall_gatt = agp_i830_deinstall_gatt,
 	.write_gtt = agp_i965_write_gtt,
 	.install_gtt_pte = agp_i965_install_gtt_pte,
-	.read_gtt_pte = agp_i965_read_gtt_pte,
-	.read_gtt_pte_paddr = agp_i915_read_gtt_pte_paddr,
+	.sync_gtt_pte = agp_i965_sync_gtt_pte,
 	.set_aperture = agp_i915_set_aperture,
 	.chipset_flush_setup = agp_i965_chipset_flush_setup,
 	.chipset_flush_teardown = agp_i965_chipset_flush_teardown,
@@ -281,8 +279,7 @@ static const struct agp_i810_driver agp_i810_g33_driver = {
 	.deinstall_gatt = agp_i830_deinstall_gatt,
 	.write_gtt = agp_i915_write_gtt,
 	.install_gtt_pte = agp_i915_install_gtt_pte,
-	.read_gtt_pte = agp_i915_read_gtt_pte,
-	.read_gtt_pte_paddr = agp_i915_read_gtt_pte_paddr,
+	.sync_gtt_pte = agp_i915_sync_gtt_pte,
 	.set_aperture = agp_i915_set_aperture,
 	.chipset_flush_setup = agp_i965_chipset_flush_setup,
 	.chipset_flush_teardown = agp_i965_chipset_flush_teardown,
@@ -304,8 +301,7 @@ static const struct agp_i810_driver agp_i810_igd_driver = {
 	.deinstall_gatt = agp_i830_deinstall_gatt,
 	.write_gtt = agp_i915_write_gtt,
 	.install_gtt_pte = agp_i915_install_gtt_pte,
-	.read_gtt_pte = agp_i915_read_gtt_pte,
-	.read_gtt_pte_paddr = agp_i915_read_gtt_pte_paddr,
+	.sync_gtt_pte = agp_i915_sync_gtt_pte,
 	.set_aperture = agp_i915_set_aperture,
 	.chipset_flush_setup = agp_i965_chipset_flush_setup,
 	.chipset_flush_teardown = agp_i965_chipset_flush_teardown,
@@ -327,8 +323,7 @@ static const struct agp_i810_driver agp_i810_g4x_driver = {
 	.deinstall_gatt = agp_i830_deinstall_gatt,
 	.write_gtt = agp_g4x_write_gtt,
 	.install_gtt_pte = agp_g4x_install_gtt_pte,
-	.read_gtt_pte = agp_g4x_read_gtt_pte,
-	.read_gtt_pte_paddr = agp_i915_read_gtt_pte_paddr,
+	.sync_gtt_pte = agp_g4x_sync_gtt_pte,
 	.set_aperture = agp_i915_set_aperture,
 	.chipset_flush_setup = agp_i965_chipset_flush_setup,
 	.chipset_flush_teardown = agp_i965_chipset_flush_teardown,
@@ -350,8 +345,7 @@ static const struct agp_i810_driver agp_i810_sb_driver = {
 	.deinstall_gatt = agp_i830_deinstall_gatt,
 	.write_gtt = agp_sb_write_gtt,
 	.install_gtt_pte = agp_sb_install_gtt_pte,
-	.read_gtt_pte = agp_g4x_read_gtt_pte,
-	.read_gtt_pte_paddr = agp_sb_read_gtt_pte_paddr,
+	.sync_gtt_pte = agp_g4x_sync_gtt_pte,
 	.set_aperture = agp_i915_set_aperture,
 	.chipset_flush_setup = agp_i810_chipset_flush_setup,
 	.chipset_flush_teardown = agp_i810_chipset_flush_teardown,
@@ -373,8 +367,29 @@ static const struct agp_i810_driver valleyview_gtt_driver = {
 	.deinstall_gatt = agp_i830_deinstall_gatt,
 	.write_gtt = agp_sb_write_gtt,
 	.install_gtt_pte = agp_sb_install_gtt_pte,
-	.read_gtt_pte = agp_g4x_read_gtt_pte,
-	.read_gtt_pte_paddr = agp_sb_read_gtt_pte_paddr,
+	.sync_gtt_pte = agp_g4x_sync_gtt_pte,
+	.set_aperture = agp_i915_set_aperture,
+	.chipset_flush_setup = agp_i810_chipset_flush_setup,
+	.chipset_flush_teardown = agp_i810_chipset_flush_teardown,
+	.chipset_flush = agp_i810_chipset_flush,
+};
+
+static const struct agp_i810_driver broadwell_gtt_driver = {
+	.chiptype = CHIP_SB,
+	.gen = 8,
+	.busdma_addr_mask_sz = 40,
+	.res_spec = agp_g4x_res_spec,
+	.check_active = agp_sb_check_active,
+	.set_desc = agp_i810_set_desc,
+	.dump_regs = agp_sb_dump_regs,
+	.get_stolen_size = agp_gen8_get_stolen_size,
+	.get_gtt_mappable_entries = agp_i915_get_gtt_mappable_entries,
+	.get_gtt_total_entries = agp_gen8_get_gtt_total_entries,
+	.install_gatt = agp_i830_install_gatt,
+	.deinstall_gatt = agp_i830_deinstall_gatt,
+	.write_gtt = NULL,
+	.install_gtt_pte = agp_gen8_install_gtt_pte,
+	.sync_gtt_pte = agp_g4x_sync_gtt_pte,
 	.set_aperture = agp_i915_set_aperture,
 	.chipset_flush_setup = agp_i810_chipset_flush_setup,
 	.chipset_flush_teardown = agp_i810_chipset_flush_teardown,
@@ -646,6 +661,15 @@ static const struct agp_i810_match {
 	{	0x0d1a, "Haswell", &agp_i810_sb_driver },
 	{	0x0d2a, "Haswell", &agp_i810_sb_driver },
 	{	0x0d3a, "Haswell", &agp_i810_sb_driver },
+
+	{	0x1602, "Broadwell", &broadwell_gtt_driver }, /* m */
+	{	0x1606, "Broadwell", &broadwell_gtt_driver },
+	{	0x160B, "Broadwell", &broadwell_gtt_driver },
+	{	0x160E, "Broadwell", &broadwell_gtt_driver },
+	{	0x1616, "Broadwell", &broadwell_gtt_driver },
+
+	{	0x160A, "Broadwell", &broadwell_gtt_driver }, /* d */
+	{	0x160D, "Broadwell", &broadwell_gtt_driver },
 	{
 		.devid = 0,
 	}
@@ -993,6 +1017,22 @@ agp_sb_get_stolen_size(device_t dev)
 }
 
 static int
+agp_gen8_get_stolen_size(device_t dev)
+{
+	struct agp_i810_softc *sc;
+	uint16_t gcc1;
+	int v;
+
+	sc = device_get_softc(dev);
+	gcc1 = pci_read_config(sc->bdev, AGP_SNB_GCC1, 2);
+	v = (gcc1 >> 8) & 0xFF;
+	sc->stolen_size = v * (32L * 1024 * 1024);	/* 32MB increments */
+	kprintf("GTT STOLEN %ld\n", (long)sc->stolen_size);
+
+	return 0;
+}
+
+static int
 agp_i915_get_gtt_mappable_entries(device_t dev)
 {
 	struct agp_i810_softc *sc;
@@ -1122,6 +1162,35 @@ agp_sb_get_gtt_total_entries(device_t dev)
 		break;
 	}
 	return (0);
+}
+
+static int
+agp_gen8_get_gtt_total_entries(device_t dev)
+{
+	struct agp_i810_softc *sc;
+	uint16_t gcc1;
+	int v;
+
+	sc = device_get_softc(dev);
+
+	gcc1 = pci_read_config(sc->bdev, AGP_SNB_GCC1, 2);
+	v = (gcc1 >> 6) & 3;
+	if (v)
+		v = 1 << v;
+	sc->gtt_total_entries = (v << 20) / 8;
+
+	/*
+	 * XXX limit to 2GB due to misc integer overflows calculated on
+	 * this field.
+	 */
+	while ((long)sc->gtt_total_entries * PAGE_SIZE >= 4LL*1024*1024*1024)
+		sc->gtt_total_entries >>= 1;
+
+	kprintf("GTT SIZE %ld representing %ldM vmap\n",
+		(long)sc->gtt_total_entries * 8,
+		(long)sc->gtt_total_entries * PAGE_SIZE);
+
+	return 0;
 }
 
 static int
@@ -1364,8 +1433,8 @@ agp_g4x_write_gtt(device_t dev, u_int index, uint32_t pte)
 }
 
 static void
-agp_sb_install_gtt_pte(device_t dev, u_int index, vm_offset_t physical,
-    int flags)
+agp_sb_install_gtt_pte(device_t dev, u_int index,
+		       vm_offset_t physical, int flags)
 {
 	int type_mask, gfdt;
 	uint32_t pte;
@@ -1383,6 +1452,31 @@ agp_sb_install_gtt_pte(device_t dev, u_int index, vm_offset_t physical,
 
 	pte |= (physical & 0x000000ff00000000ull) >> 28;
 	agp_sb_write_gtt(dev, index, pte);
+}
+
+static void
+agp_gen8_install_gtt_pte(device_t dev, u_int index,
+		       vm_offset_t physical, int flags)
+{
+	struct agp_i810_softc *sc;
+	int type_mask;
+	uint64_t pte;
+
+	pte = (u_int64_t)physical | GEN8_PTE_PRESENT | GEN8_PTE_RW;
+	type_mask = flags & ~AGP_USER_CACHED_MEMORY_GFDT;
+
+	if (type_mask == AGP_USER_MEMORY)
+		pte |= GEN8_PTE_PWT;	/* XXX */
+	else if (type_mask == AGP_USER_CACHED_MEMORY_LLC_MLC)
+		pte |= GEN8_PTE_PWT;	/* XXX */
+	else
+		pte |= GEN8_PTE_PWT;	/* XXX */
+
+	sc = device_get_softc(dev);
+	bus_write_4(sc->sc_res[0], index * 8 + (2 * 1024 * 1024),
+		    (uint32_t)pte);
+	bus_write_4(sc->sc_res[0], index * 8 + (2 * 1024 * 1024) + 4,
+		    (uint32_t)(pte >> 32));
 }
 
 static void
@@ -1433,63 +1527,31 @@ agp_i810_unbind_page(device_t dev, vm_offset_t offset)
 	return (0);
 }
 
-static u_int32_t
-agp_i915_read_gtt_pte(device_t dev, u_int index)
+static void
+agp_i915_sync_gtt_pte(device_t dev, u_int index)
 {
 	struct agp_i810_softc *sc;
-	u_int32_t pte;
 
 	sc = device_get_softc(dev);
-	pte = bus_read_4(sc->sc_res[1], index * 4);
-	return (pte);
+	bus_read_4(sc->sc_res[1], index * 4);
 }
 
-static u_int32_t
-agp_i965_read_gtt_pte(device_t dev, u_int index)
+static void
+agp_i965_sync_gtt_pte(device_t dev, u_int index)
 {
 	struct agp_i810_softc *sc;
-	u_int32_t pte;
 
 	sc = device_get_softc(dev);
-	pte = bus_read_4(sc->sc_res[0], index * 4 + (512 * 1024));
-	return (pte);
+	bus_read_4(sc->sc_res[0], index * 4 + (512 * 1024));
 }
 
-static u_int32_t
-agp_g4x_read_gtt_pte(device_t dev, u_int index)
+static void
+agp_g4x_sync_gtt_pte(device_t dev, u_int index)
 {
 	struct agp_i810_softc *sc;
-	u_int32_t pte;
 
 	sc = device_get_softc(dev);
-	pte = bus_read_4(sc->sc_res[0], index * 4 + (2 * 1024 * 1024));
-	return (pte);
-}
-
-static vm_paddr_t
-agp_i915_read_gtt_pte_paddr(device_t dev, u_int index)
-{
-	struct agp_i810_softc *sc;
-	u_int32_t pte;
-	vm_paddr_t res;
-
-	sc = device_get_softc(dev);
-	pte = sc->match->driver->read_gtt_pte(dev, index);
-	res = (pte & ~PAGE_MASK) | ((pte & 0xf0) << 28);
-	return (res);
-}
-
-static vm_paddr_t
-agp_sb_read_gtt_pte_paddr(device_t dev, u_int index)
-{
-	struct agp_i810_softc *sc;
-	u_int32_t pte;
-	vm_paddr_t res;
-
-	sc = device_get_softc(dev);
-	pte = sc->match->driver->read_gtt_pte(dev, index);
-	res = (pte & ~PAGE_MASK) | ((pte & 0xff0) << 28);
-	return (res);
+	bus_read_4(sc->sc_res[0], index * 4 + (2 * 1024 * 1024));
 }
 
 /*
@@ -1760,7 +1822,7 @@ agp_intel_gtt_clear_range(device_t dev, u_int first_entry, u_int num_entries)
 	for (i = 0; i < num_entries; i++)
 		sc->match->driver->install_gtt_pte(dev, first_entry + i,
 		    VM_PAGE_TO_PHYS(bogus_page), 0);
-	sc->match->driver->read_gtt_pte(dev, first_entry + num_entries - 1);
+	sc->match->driver->sync_gtt_pte(dev, first_entry + num_entries - 1);
 }
 
 void
@@ -1777,7 +1839,7 @@ agp_intel_gtt_insert_pages(device_t dev, u_int first_entry, u_int num_entries,
 		sc->match->driver->install_gtt_pte(dev, first_entry + i,
 		    VM_PAGE_TO_PHYS(pages[i]), flags);
 	}
-	sc->match->driver->read_gtt_pte(dev, first_entry + num_entries - 1);
+	sc->match->driver->sync_gtt_pte(dev, first_entry + num_entries - 1);
 }
 
 struct intel_gtt
@@ -2061,7 +2123,7 @@ agp_intel_gtt_insert_sg_entries(device_t dev, struct sglist *sg_list,
 			slen -= AGP_PAGE_SIZE;
 		}
 	}
-	sc->match->driver->read_gtt_pte(dev, first_entry + i - 1);
+	sc->match->driver->sync_gtt_pte(dev, first_entry + i - 1);
 }
 
 void
@@ -2117,24 +2179,21 @@ intel_gtt_insert_sg_entries(struct sglist *sg_list, u_int first_entry,
 	agp_intel_gtt_insert_sg_entries(intel_agp, sg_list, first_entry, flags);
 }
 
-vm_paddr_t
-intel_gtt_read_pte_paddr(u_int entry)
+/*
+ * Only used by gen6
+ */
+void
+intel_gtt_sync_pte(u_int entry)
 {
 	struct agp_i810_softc *sc;
 
 	sc = device_get_softc(intel_agp);
-	return (sc->match->driver->read_gtt_pte_paddr(intel_agp, entry));
+	sc->match->driver->sync_gtt_pte(intel_agp, entry);
 }
 
-u_int32_t
-intel_gtt_read_pte(u_int entry)
-{
-	struct agp_i810_softc *sc;
-
-	sc = device_get_softc(intel_agp);
-	return (sc->match->driver->read_gtt_pte(intel_agp, entry));
-}
-
+/*
+ * Only used by gen6
+ */
 void
 intel_gtt_write(u_int entry, uint32_t val)
 {
