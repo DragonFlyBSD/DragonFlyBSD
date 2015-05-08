@@ -27,8 +27,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/agp/agp_i810.c,v 1.56 2010/03/12 21:34:23 rnoland Exp $
  */
 
 /*
@@ -278,7 +276,7 @@ static const struct agp_i810_driver agp_i810_g33_driver = {
 	.install_gatt = agp_i830_install_gatt,
 	.deinstall_gatt = agp_i830_deinstall_gatt,
 	.write_gtt = agp_i915_write_gtt,
-	.install_gtt_pte = agp_i915_install_gtt_pte,
+	.install_gtt_pte = agp_i965_install_gtt_pte,
 	.sync_gtt_pte = agp_i915_sync_gtt_pte,
 	.set_aperture = agp_i915_set_aperture,
 	.chipset_flush_setup = agp_i965_chipset_flush_setup,
@@ -286,7 +284,7 @@ static const struct agp_i810_driver agp_i810_g33_driver = {
 	.chipset_flush = agp_i915_chipset_flush,
 };
 
-static const struct agp_i810_driver agp_i810_igd_driver = {
+static const struct agp_i810_driver pineview_gtt_driver = {
 	.chiptype = CHIP_IGD,
 	.gen = 3,
 	.busdma_addr_mask_sz = 36,
@@ -300,7 +298,7 @@ static const struct agp_i810_driver agp_i810_igd_driver = {
 	.install_gatt = agp_i830_install_gatt,
 	.deinstall_gatt = agp_i830_deinstall_gatt,
 	.write_gtt = agp_i915_write_gtt,
-	.install_gtt_pte = agp_i915_install_gtt_pte,
+	.install_gtt_pte = agp_i965_install_gtt_pte,
 	.sync_gtt_pte = agp_i915_sync_gtt_pte,
 	.set_aperture = agp_i915_set_aperture,
 	.chipset_flush_setup = agp_i965_chipset_flush_setup,
@@ -474,12 +472,12 @@ static const struct agp_i810_match {
 	{
 		.devid = 0xA001,
 		.name = "Intel Pineview SVGA controller",
-		.driver = &agp_i810_igd_driver
+		.driver = &pineview_gtt_driver
 	},
 	{
 		.devid = 0xA011,
 		.name = "Intel Pineview (M) SVGA controller",
-		.driver = &agp_i810_igd_driver
+		.driver = &pineview_gtt_driver
 	},
 	{
 		.devid = 0x2A02,
@@ -1375,7 +1373,7 @@ agp_i915_install_gtt_pte(device_t dev, u_int index, vm_offset_t physical,
 	pte = (u_int32_t)physical | I810_PTE_VALID;
 	if (flags == AGP_USER_CACHED_MEMORY)
 		pte |= I830_PTE_SYSTEM_CACHED;
-	pte |= (physical & 0x0000000f00000000ull) >> 28;
+
 	agp_i915_write_gtt(dev, index, pte);
 }
 
@@ -1397,7 +1395,8 @@ agp_i965_install_gtt_pte(device_t dev, u_int index, vm_offset_t physical,
 	pte = (u_int32_t)physical | I810_PTE_VALID;
 	if (flags == AGP_USER_CACHED_MEMORY)
 		pte |= I830_PTE_SYSTEM_CACHED;
-	pte |= (physical & 0x0000000f00000000ull) >> 28;
+
+	pte |= (physical >> 28) & 0xf0;
 	agp_i965_write_gtt(dev, index, pte);
 }
 
@@ -1419,7 +1418,8 @@ agp_g4x_install_gtt_pte(device_t dev, u_int index, vm_offset_t physical,
 	pte = (u_int32_t)physical | I810_PTE_VALID;
 	if (flags == AGP_USER_CACHED_MEMORY)
 		pte |= I830_PTE_SYSTEM_CACHED;
-	pte |= (physical & 0x0000000f00000000ull) >> 28;
+
+	pte |= (physical >> 28) & 0xf0;
 	agp_g4x_write_gtt(dev, index, pte);
 }
 
