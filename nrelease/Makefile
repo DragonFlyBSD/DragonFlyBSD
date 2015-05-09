@@ -33,6 +33,7 @@ KERNCONF ?= X86_64_GENERIC
 
 CHROOT_CMD?=		/usr/sbin/chroot ${ISOROOT} sh -c
 
+.if !make(nopkgs)
 # User may specify extra packages in addition to the defaults
 #
 DPORTS_EXTRA_PACKAGES?=
@@ -54,6 +55,7 @@ DPORTS_OPTIONS+=		-DBATCH
 DPORTS_OPTIONS.devel_git+=	-DWITH_GUI
 .else
 DPORTS_OPTIONS.devel_git+=	-DWITHOUT_CONTRIB -DWITHOUT_PERL
+.endif
 .endif
 
 # Specify which root skeletons are required, and let the user include
@@ -226,11 +228,13 @@ srcs:
 .if make(gui)
 	rm -f ${ISOROOT}/usr/src-sys.tgz
 	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
+.if !empty(DPORTS_PACKAGES)
 	cd ${ISOROOT}/usr && make dports-create GITHOST_DPORTS=${GITHOST_DPORTS}
 	# NOTE: Adding the git gc --aggressive helps by significantly
 	#	reducing the disk space required.
 	#
 	cd ${ISOROOT}/usr/dports && git gc --aggressive
+.endif
 	cd ${ISOROOT}/usr && make src-create-repo GITHOST=${GITHOST}
 	# XXX: git gc --aggressive
 .else
@@ -269,11 +273,13 @@ customizeiso:
 	# Setup some things & mount dports tree.  Use defensive umounts and
 	# rm -rf's to allow restarts.  Allow /usr/dports to be read-only.
 	#
+	-@umount ${ISOROOT}/dev
+	mount_null /dev ${ISOROOT}/dev
+.if !empty(DPORTS_PACKAGES)
 	cp /etc/resolv.conf ${ISOROOT}/etc
 	${CHROOT_CMD} "ldconfig -elf /lib /usr/lib /usr/lib/gcc* /usr/lib/compat"
 	-@umount ${ISOROOT}/usr/distfiles
 	-@umount ${ISOROOT}/usr/dports
-	-@umount ${ISOROOT}/dev
 	rm -rf ${ISOROOT}/usr/obj/dports
 	#
 	# Mount /usr/dports, make sure /usr/distfiles is writable.
@@ -283,7 +289,6 @@ customizeiso:
 	mkdir -p ${ISOROOT}/usr/dports
 	mkdir -p ${ISOROOT}/usr/distfiles
 	mount_null -o ro ${DPORTS_PATH} ${ISOROOT}/usr/dports
-	mount_null /dev ${ISOROOT}/dev
 	cp /etc/shells ${ISOROOT}/usr/distfiles/.test > /dev/null 2>&1 \
 	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/distfiles
 	#
@@ -308,6 +313,7 @@ customizeiso:
 	rm -rf ${ISOROOT}/usr/obj/dports
 	rm -rf ${ISOROOT}/usr/distfiles
 	rm -f ${ISOROOT}/etc/resolv.conf
+.endif
 	#
 	# Finally, update the locate(8) database
 	#
