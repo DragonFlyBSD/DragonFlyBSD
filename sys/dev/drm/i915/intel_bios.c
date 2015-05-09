@@ -774,8 +774,7 @@ parse_device_mapping(struct drm_i915_private *dev_priv,
 		DRM_DEBUG_KMS("no child dev is parsed from VBT\n");
 		return;
 	}
-	dev_priv->vbt.child_dev = kmalloc(sizeof(*p_child) * count, M_DRM,
-	    M_WAITOK | M_ZERO);
+	dev_priv->vbt.child_dev = kcalloc(count, sizeof(*p_child), GFP_KERNEL);
 	if (!dev_priv->vbt.child_dev) {
 		DRM_DEBUG_KMS("No memory space for child device\n");
 		return;

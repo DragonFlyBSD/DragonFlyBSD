@@ -623,9 +623,9 @@ static int i915_batchbuffer(struct drm_device *dev, void *data,
 		return -EINVAL;
 
 	if (batch->num_cliprects) {
-		cliprects = kmalloc(batch->num_cliprects *
+		cliprects = kcalloc(batch->num_cliprects,
 				    sizeof(*cliprects),
-				    M_DRM, M_WAITOK | M_ZERO);
+				    GFP_KERNEL);
 		if (cliprects == NULL)
 			return -ENOMEM;
 
@@ -683,9 +683,8 @@ static int i915_cmdbuffer(struct drm_device *dev, void *data,
 	}
 
 	if (cmdbuf->num_cliprects) {
-		cliprects = kmalloc(cmdbuf->num_cliprects *
-				    sizeof(*cliprects),
-				    M_DRM, M_WAITOK | M_ZERO);
+		cliprects = kcalloc(cmdbuf->num_cliprects,
+				    sizeof(*cliprects), GFP_KERNEL);
 		if (cliprects == NULL) {
 			ret = -ENOMEM;
 			goto fail_batch_free;

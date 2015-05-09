@@ -460,13 +460,19 @@ static bool intel_sdvo_write_cmd(struct intel_sdvo *intel_sdvo, u8 cmd,
 				 const void *args, int args_len)
 {
 	u8 *buf, status;
-	struct iic_msg msgs[args_len + 3];
+	struct i2c_msg *msgs;
 	int i, ret = true;
 
 	/* Would be simpler to allocate both in one go ? */
 	buf = kzalloc(args_len * 2 + 2, GFP_KERNEL);
 	if (!buf)
 		return false;
+
+	msgs = kcalloc(args_len + 3, sizeof(*msgs), GFP_KERNEL);
+	if (!msgs) {
+	        kfree(buf);
+		return false;
+        }
 
 	intel_sdvo_debug_write(intel_sdvo, cmd, args, args_len);
 
@@ -512,6 +518,7 @@ static bool intel_sdvo_write_cmd(struct intel_sdvo *intel_sdvo, u8 cmd,
 #endif
 
 out:
+	kfree(msgs);
 	kfree(buf);
 	return ret;
 }

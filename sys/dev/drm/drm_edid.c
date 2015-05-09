@@ -3147,7 +3147,7 @@ int drm_edid_to_sad(struct edid *edid, struct cea_sad **sads)
 			dbl = cea_db_payload_len(db);
 
 			count = dbl / 3; /* SAD is 3B */
-			*sads = kmalloc(count * sizeof(**sads), M_DRM, M_WAITOK);
+			*sads = kcalloc(count, sizeof(**sads), GFP_KERNEL);
 			if (!*sads)
 				return -ENOMEM;
 			for (j = 0; j < count; j++) {

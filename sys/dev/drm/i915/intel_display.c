@@ -9757,14 +9757,14 @@ static int intel_set_config_save_state(struct drm_device *dev,
 	int count;
 
 	config->save_encoder_crtcs =
-		kmalloc(dev->mode_config.num_encoder *
-			sizeof(struct drm_crtc *), M_DRM, M_WAITOK | M_ZERO );
+		kcalloc(dev->mode_config.num_encoder,
+			sizeof(struct drm_crtc *), GFP_KERNEL);
 	if (!config->save_encoder_crtcs)
 		return -ENOMEM;
 
 	config->save_connector_encoders =
-		kmalloc(dev->mode_config.num_connector *
-			sizeof(struct drm_encoder *), M_DRM, M_WAITOK | M_ZERO );
+		kcalloc(dev->mode_config.num_connector,
+			sizeof(struct drm_encoder *), GFP_KERNEL);
 	if (!config->save_connector_encoders)
 		return -ENOMEM;
 

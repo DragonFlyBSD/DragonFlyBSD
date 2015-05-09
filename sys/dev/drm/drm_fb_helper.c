@@ -521,15 +521,12 @@ int drm_fb_helper_init(struct drm_device *dev,
 
 	INIT_LIST_HEAD(&fb_helper->kernel_fb_list);
 
-	fb_helper->crtc_info = kmalloc(crtc_count *
-	    sizeof(struct drm_fb_helper_crtc), M_DRM, M_WAITOK | M_ZERO);
+	fb_helper->crtc_info = kcalloc(crtc_count, sizeof(struct drm_fb_helper_crtc), GFP_KERNEL);
 	if (!fb_helper->crtc_info)
 		return -ENOMEM;
 
 	fb_helper->crtc_count = crtc_count;
-	fb_helper->connector_info = kmalloc(dev->mode_config.num_connector *
-	    sizeof(struct drm_fb_helper_connector *), M_DRM,
-	    M_WAITOK | M_ZERO);
+	fb_helper->connector_info = kcalloc(dev->mode_config.num_connector, sizeof(struct drm_fb_helper_connector *), GFP_KERNEL);
 	if (!fb_helper->connector_info) {
 		kfree(fb_helper->crtc_info);
 		return -ENOMEM;
@@ -538,8 +535,9 @@ int drm_fb_helper_init(struct drm_device *dev,
 
 	for (i = 0; i < crtc_count; i++) {
 		fb_helper->crtc_info[i].mode_set.connectors =
-			kmalloc(max_conn_count * sizeof(struct drm_connector *),
-			    M_DRM, M_WAITOK | M_ZERO);
+			kcalloc(max_conn_count,
+				sizeof(struct drm_connector *),
+				GFP_KERNEL);
 
 		if (!fb_helper->crtc_info[i].mode_set.connectors)
 			goto out_free;
@@ -1447,14 +1445,12 @@ static void drm_setup_crtcs(struct drm_fb_helper *fb_helper)
 	width = dev->mode_config.max_width;
 	height = dev->mode_config.max_height;
 
-	crtcs = kmalloc(dev->mode_config.num_connector *
-	    sizeof(struct drm_fb_helper_crtc *), M_DRM,
-	    M_WAITOK | M_ZERO);
-	modes = kmalloc(dev->mode_config.num_connector *
-	    sizeof(struct drm_display_mode *), M_DRM,
-	    M_WAITOK | M_ZERO);
-	enabled = kmalloc(dev->mode_config.num_connector *
-	    sizeof(bool), M_DRM, M_WAITOK | M_ZERO);
+	crtcs = kcalloc(dev->mode_config.num_connector,
+			sizeof(struct drm_fb_helper_crtc *), GFP_KERNEL);
+	modes = kcalloc(dev->mode_config.num_connector,
+			sizeof(struct drm_display_mode *), GFP_KERNEL);
+	enabled = kcalloc(dev->mode_config.num_connector,
+			  sizeof(bool), GFP_KERNEL);
 	if (!crtcs || !modes || !enabled) {
 		DRM_ERROR("Memory allocation failed\n");
 		goto out;

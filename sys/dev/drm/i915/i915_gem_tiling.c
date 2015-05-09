@@ -392,8 +392,8 @@ i915_gem_set_tiling(struct drm_device *dev, void *data,
 	/* Try to preallocate memory required to save swizzling on put-pages */
 	if (i915_gem_object_needs_bit17_swizzle(obj)) {
 		if (obj->bit_17 == NULL) {
-			obj->bit_17 = kmalloc(BITS_TO_LONGS(obj->base.size >> PAGE_SHIFT) *
-					      sizeof(long), M_DRM, M_WAITOK);
+			obj->bit_17 = kcalloc(BITS_TO_LONGS(obj->base.size >> PAGE_SHIFT),
+					      sizeof(long), GFP_KERNEL);
 		}
 	} else {
 		kfree(obj->bit_17);
@@ -500,8 +500,8 @@ i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj)
 	int i;
 
 	if (obj->bit_17 == NULL) {
-		obj->bit_17 = kmalloc(BITS_TO_LONGS(page_count) *
-					   sizeof(long), M_DRM, M_WAITOK);
+		obj->bit_17 = kcalloc(BITS_TO_LONGS(page_count),
+				      sizeof(long), GFP_KERNEL);
 		if (obj->bit_17 == NULL) {
 			DRM_ERROR("Failed to allocate memory for bit 17 "
 				  "record\n");
