@@ -28,6 +28,7 @@
 #define _LINUX_SLAB_H_
 
 #include <linux/gfp.h>
+#include <linux/types.h>
 
 #define kzalloc(size, flags)	kmalloc(size, M_DRM, flags | M_ZERO)
 
@@ -35,5 +36,7 @@
 	if (ptr != NULL)		\
 		kfree(ptr, M_DRM);	\
 } while (0)
+
+#define kcalloc(n, size, flags)	kzalloc(n * size, flags)
 
 #endif	/* _LINUX_SLAB_H_ */
