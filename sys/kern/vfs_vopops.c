@@ -162,8 +162,7 @@ VNODEOP_DESC_INIT(nrename);
  *	 vop_old_*().  Only the code in vfs_default.c is allowed to call
  *	 those ops.
  *
- * NOTE: The VFS_MPLOCK*() macros handle mounts which do not set
- *	 MNTK_MPSAFE or MNTK_xx_MPSAFE.
+ * NOTE: The VFS_MPLOCK1() macro handle mounts which do not set MNTK_MPSAFE.
  *
  * MPSAFE
  */
