@@ -52,12 +52,17 @@
 #include <drm/drmP.h>
 #include <drm/drm_core.h>
 
-#ifdef DRM_DEBUG_DEFAULT_ON
-int drm_debug = (DRM_DEBUGBITS_DEBUG | DRM_DEBUGBITS_KMS |
-    DRM_DEBUGBITS_FAILED_IOCTL);
+#if DRM_DEBUG_DEFAULT_ON == 1
+#define DRM_DEBUGBITS_ON (DRM_DEBUGBITS_DEBUG | DRM_DEBUGBITS_KMS | \
+    DRM_DEBUGBITS_FAILED_IOCTL)
+#elif DRM_DEBUG_DEFAULT_ON == 2
+#define DRM_DEBUGBITS_ON (DRM_DEBUGBITS_DEBUG | DRM_DEBUGBITS_KMS | \
+    DRM_DEBUGBITS_FAILED_IOCTL | DRM_DEBUGBITS_VERBOSE)
 #else
-int drm_debug = 0;
+#define DRM_DEBUGBITS_ON (0x0)
 #endif
+
+int drm_debug = DRM_DEBUGBITS_ON;
 int drm_notyet_flag = 0;
 
 unsigned int drm_vblank_offdelay = 5000;    /* Default to 5000 msecs. */
@@ -726,7 +731,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 
 	atomic_inc(&dev->counts[_DRM_STAT_IOCTLS]);
 
-	DRM_DEBUG("pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
+	DRM_DEBUG_VERBOSE("pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
 	    DRM_CURRENTPID, cmd, nr, (long)dev->dev,
 	    file_priv->authenticated);
 

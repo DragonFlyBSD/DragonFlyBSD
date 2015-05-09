@@ -129,13 +129,18 @@ struct drm_device;
 
 #include "opt_drm.h"
 #ifdef DRM_DEBUG
+#  if DRM_DEBUG>1
+#    define DRM_DEBUG_DEFAULT_ON 2
+#  else
+#    define DRM_DEBUG_DEFAULT_ON 1
+#  endif
 #undef DRM_DEBUG
-#define DRM_DEBUG_DEFAULT_ON 1
 #endif /* DRM_DEBUG */
 
 #define	DRM_DEBUGBITS_DEBUG		0x1
 #define	DRM_DEBUGBITS_KMS		0x2
 #define	DRM_DEBUGBITS_FAILED_IOCTL	0x4
+#define	DRM_DEBUGBITS_VERBOSE		0x8
 
 #undef DRM_LINUX
 #define DRM_LINUX 0
@@ -325,6 +330,12 @@ vm_page_t vm_phys_fictitious_to_vm_page(vm_paddr_t pa);
 
 #define DRM_DEBUG(fmt, ...) do {					\
 	if ((drm_debug & DRM_DEBUGBITS_DEBUG) != 0)		\
+		kprintf("[" DRM_NAME ":pid%d:%s] " fmt, DRM_CURRENTPID,	\
+			__func__ , ##__VA_ARGS__);			\
+} while (0)
+
+#define DRM_DEBUG_VERBOSE(fmt, ...) do {				\
+	if ((drm_debug & DRM_DEBUGBITS_VERBOSE) != 0)		\
 		kprintf("[" DRM_NAME ":pid%d:%s] " fmt, DRM_CURRENTPID,	\
 			__func__ , ##__VA_ARGS__);			\
 } while (0)
