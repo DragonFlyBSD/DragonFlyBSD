@@ -389,7 +389,7 @@ struct mount {
  */
 #define VFS_MPLOCK_DECLARE	int xlock_mpsafe
 
-#define VFS_MPLOCK1(mp)		VFS_MPLOCK_FLAG(mp, MNTK_MPSAFE)
+#define VFS_MPLOCK(mp)		VFS_MPLOCK_FLAG(mp, MNTK_MPSAFE)
 
 #define VFS_MPLOCK_FLAG(mp, flag)					\
 		do {							\
