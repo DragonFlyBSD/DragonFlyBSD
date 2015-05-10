@@ -1936,6 +1936,8 @@ dev/drm/drm_scatter.c			optional drm
 dev/drm/drm_stub.c			optional drm
 dev/drm/drm_sysctl.c			optional drm
 dev/drm/drm_vm.c			optional drm
+dev/drm/drm_vma_manager.c		optional drm
+dev/drm/linux_compat.c			optional drm
 dev/drm/linux_hdmi.c			optional drm
 dev/drm/linux_shmem.c			optional drm
 dev/drm/ttm/ttm_lock.c			optional drm
