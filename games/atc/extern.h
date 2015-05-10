@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 5/31/93
- * $DragonFly: src/games/atc/extern.h,v 1.2 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -72,7 +71,7 @@ extern void	loser(const PLANE *, const char *);
 extern void	planewin(void);
 extern void	redraw(void);
 extern void	setup_screen(const C_SCREEN *);
-extern void	quit(void);
+extern void	quit(int);
 /* input.c */
 extern int	dir_no(char);
 extern int	getcommand(void);
@@ -82,6 +81,7 @@ extern void	delete(LIST *, PLANE *);
 extern PLANE	*newplane(void);
 /* log.c */
 extern int	log_score(int);
+extern void	log_score_quit(int);
 extern void	open_score_file(void);
 /* update.c */
 extern int	addplane(void);
@@ -89,5 +89,5 @@ extern const char	*command(const PLANE *);
 extern PLANE	*findplane(int);
 extern char	name(const PLANE *);
 extern char	number(char);
-extern void	update(void);
+extern void	update(int);
 

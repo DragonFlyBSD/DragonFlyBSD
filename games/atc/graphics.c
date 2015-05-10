@@ -31,7 +31,6 @@
  *
  * @(#)graphics.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/graphics.c,v 1.7 1999/11/30 03:48:19 billf Exp $
- * $DragonFly: src/games/atc/graphics.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -278,7 +277,7 @@ ioerror(int pos, int len, const char *str)
 }
 
 void
-quit(void)
+quit(__unused int sig)
 {
 	int			c, y, x;
 	struct itimerval	itv;

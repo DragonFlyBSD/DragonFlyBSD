@@ -31,7 +31,6 @@
  *
  * @(#)init.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/init.c,v 1.4 1999/11/30 03:49:22 billf Exp $
- * $DragonFly: src/games/rogue/init.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -206,7 +205,7 @@ stop_window(void)
 }
 
 void
-byebye(void)
+byebye(__unused int sig)
 {
 	md_ignore_signals();
 	if (ask_quit) {
@@ -218,7 +217,7 @@ byebye(void)
 }
 
 void
-onintr(void)
+onintr(__unused int sig)
 {
 	md_ignore_signals();
 	if (cant_int) {
@@ -231,7 +230,7 @@ onintr(void)
 }
 
 void
-error_save(void)
+error_save(__unused int sig)
 {
 	save_is_interactive = 0;
 	save_into_file(error_file);

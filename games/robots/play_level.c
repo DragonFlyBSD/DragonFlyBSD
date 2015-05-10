@@ -72,7 +72,7 @@ play_level(void)
 		if (Field[My_pos.y][My_pos.x] != 0)
 			Dead = true;
 		if (!Dead)
-			move_robots(false);
+			move_robots(0);
 		if (Was_bonus) {
 			move(Y_PROMPT, X_PROMPT);
 			clrtoeol();

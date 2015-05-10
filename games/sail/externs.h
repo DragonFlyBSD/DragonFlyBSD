@@ -383,7 +383,7 @@ void loadplayer(void);
 /* pl_7.c */
 void initscreen(void);
 void cleanupscreen(void);
-void newturn(void);
+void newturn(int);
 void Signal(const char *, struct ship *, ...);
 int sgetch(const char *, struct ship *, char);
 void sgetstr(const char *, char *, int);

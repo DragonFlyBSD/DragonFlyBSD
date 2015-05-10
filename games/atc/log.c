@@ -31,7 +31,6 @@
  *
  * @(#)log.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/log.c,v 1.7 1999/11/30 03:48:20 billf Exp $
- * $DragonFly: src/games/atc/log.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -268,4 +267,11 @@ log_score(int list_em)
 	}
 	putchar('\n');
 	return (0);
+}
+
+void
+log_score_quit(__unused int sig)
+{
+	log_score(0);
+	exit(0);
 }

@@ -239,5 +239,5 @@ reprint:
 	snprintf(message, sizeof message, "Captain %s assuming command",
 		 captain);
 	Writestr(W_SIGNAL, ms, message);
-	newturn();
+	newturn(0);
 }

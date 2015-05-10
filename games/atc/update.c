@@ -50,7 +50,7 @@ static int	dir_deg(int);
 
 
 void
-update(void)
+update(__unused int sig)
 {
 	int	i, dir_diff, mask, unclean;
 	PLANE	*pp, *p1, *p2;

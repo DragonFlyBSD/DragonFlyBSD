@@ -32,7 +32,6 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/main.c,v 1.9 1999/11/30 03:48:21 billf Exp $
- * $DragonFly: src/games/atc/main.c,v 1.4 2006/10/08 17:11:30 pavalos Exp $
  */
 
 /*
@@ -149,12 +148,12 @@ main(int argc __unused, char *argv[])
 
 	addplane();
 
-	signal(SIGINT, (sig_t)quit);
-	signal(SIGQUIT, (sig_t)quit);
+	signal(SIGINT, quit);
+	signal(SIGQUIT, quit);
 	signal(SIGTSTP, SIG_IGN);
 	signal(SIGSTOP, SIG_IGN);
-	signal(SIGHUP, (sig_t)log_score);
-	signal(SIGTERM, (sig_t)log_score);
+	signal(SIGHUP, log_score_quit);
+	signal(SIGTERM, log_score_quit);
 
 	tcgetattr(fileno(stdin), &tty_start);
 	bcopy(&tty_start, &tty_new, sizeof(tty_new));
@@ -162,7 +161,7 @@ main(int argc __unused, char *argv[])
 	tty_new.c_cc[VMIN] = 1;
 	tty_new.c_cc[VTIME] = 0;
 	tcsetattr(fileno(stdin), TCSANOW, &tty_new);
-	signal(SIGALRM, (sig_t)update);
+	signal(SIGALRM, update);
 
 	itv.it_value.tv_sec = 0;
 	itv.it_value.tv_usec = 1;
@@ -178,7 +177,7 @@ main(int argc __unused, char *argv[])
 			itv.it_value.tv_usec = 0;
 			setitimer(ITIMER_REAL, &itv, NULL);
 
-			update();
+			update(0);
 
 			itv.it_value.tv_sec = sp->update_secs;
 			itv.it_value.tv_usec = 0;

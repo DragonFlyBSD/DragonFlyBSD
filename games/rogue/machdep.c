@@ -217,9 +217,9 @@ md_control_keybord(boolean mode)
 void
 md_heed_signals(void)
 {
-	signal(SIGINT, (sig_t)onintr);
-	signal(SIGQUIT, (sig_t)byebye);
-	signal(SIGHUP, (sig_t)error_save);
+	signal(SIGINT, onintr);
+	signal(SIGQUIT, byebye);
+	signal(SIGHUP, error_save);
 }
 
 /* md_ignore_signals():

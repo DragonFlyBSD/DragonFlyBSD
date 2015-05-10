@@ -349,7 +349,7 @@ nextfree(void)
 		new = calloc(1, sizeof(struct BOARD));
 		if (new == NULL) {
 			writel("\nOut of memory\n");
-			getout();
+			getout(0);
 		}
 		new->b_next = NULL;
 	} else {
