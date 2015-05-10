@@ -148,7 +148,7 @@ VNODEOP_DESC_INIT(nrmdir);
 VNODEOP_DESC_INIT(nrename);
 
 #define DO_OPS(ops, error, ap, vop_field)	\
-	error = ops->vop_field(ap);
+	error = ops->vop_field(ap)
 
 /************************************************************************
  *		PRIMARY HIGH LEVEL VNODE OPERATIONS CALLS		*
