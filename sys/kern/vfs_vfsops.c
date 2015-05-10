@@ -184,6 +184,9 @@ vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 {
