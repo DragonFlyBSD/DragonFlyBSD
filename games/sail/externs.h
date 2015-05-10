@@ -354,8 +354,8 @@ void unboard(struct ship *, struct ship *, char);
 
 /* pl_1.c */
 void leave(int);
-void choke(void);
-void child(void);
+void choke(int);
+void child(int);
 
 /* pl_2.c */
 void play(void);

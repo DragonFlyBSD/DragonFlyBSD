@@ -109,13 +109,13 @@ leave(int conditions)
 }
 
 void
-choke(void)
+choke(__unused int sig)
 {
 	leave(LEAVE_QUIT);
 }
 
 void
-child(void)
+child(__unused int sig)
 {
 	pid_t pid;
 	int status;
@@ -126,5 +126,5 @@ child(void)
 		if (pid < 0 || (pid > 0 && !WIFSTOPPED(status)))
 			hasdriver = 0;
 	} while (pid > 0);
-	signal(SIGCHLD, (sig_t)child);
+	signal(SIGCHLD, child);
 }
