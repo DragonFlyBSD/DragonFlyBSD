@@ -28,7 +28,6 @@
  *
  * @(#)pl_1.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_1.c,v 1.2 1999/11/30 03:49:36 billf Exp $
- * $DragonFly: src/games/sail/pl_1.c,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -118,12 +117,12 @@ choke(void)
 void
 child(void)
 {
-	union wait status;
-	int pid;
+	pid_t pid;
+	int status;
 
 	signal(SIGCHLD, SIG_IGN);
 	do {
-		pid = wait3((int *)&status, WNOHANG, NULL);
+		pid = wait3(&status, WNOHANG, NULL);
 		if (pid < 0 || (pid > 0 && !WIFSTOPPED(status)))
 			hasdriver = 0;
 	} while (pid > 0);
