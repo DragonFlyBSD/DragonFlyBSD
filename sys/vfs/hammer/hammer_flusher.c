@@ -351,7 +351,12 @@ hammer_flusher_flush(hammer_mount_t hmp, int *nomorep)
 			return (hmp->flusher.done);
 		}
 	} else {
-		KKASSERT((int)(flg->seq - seq) > 0);
+		/*
+		 * Sequence number problems can only happen if a critical
+		 * filesystem error occurred which forced the filesystem into
+		 * read-only mode.
+		 */
+		KKASSERT((int)(flg->seq - seq) > 0 || hmp->ronly >= 2);
 		flg = NULL;
 	}
 
