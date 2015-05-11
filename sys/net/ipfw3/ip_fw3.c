@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 1993 Daniel Boulet
+ * Copyright (c) 1994 Ugen J.S.Antsilevich
+ * Copyright (c) 2002 Luigi Rizzo, Universita` di Pisa
  * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
