@@ -246,8 +246,6 @@ struct ipfw_mapping {
 	shower_func shower;
 };
 
-static uint32_t new_rule_buf[IPFW_RULE_SIZE_MAX];	/* buf use in do_get/set_x */
-
 struct ipfw_keyword keywords[KEYWORD_SIZE];
 struct ipfw_mapping mappings[MAPPING_SIZE];
 
@@ -2715,19 +2713,21 @@ show_nat(int ac, char **av) {
 int
 do_set_x(int optname, void *rule, int optlen)
 {
-	int len;
+	int len, *newbuf;
 
 	ip_fw_x_header *x_header;
-	if (ipfw_socket < 0) {
-		err(EX_UNAVAILABLE, "socket");
-	}
-	bzero(new_rule_buf, IPFW_RULE_SIZE_MAX);
-	x_header = (ip_fw_x_header *)new_rule_buf;
+	if (ipfw_socket < 0)
+		err(EX_UNAVAILABLE, "socket not avaialble");
+	len = optlen + sizeof(ip_fw_x_header);
+        newbuf = malloc(len);
+        if (newbuf == NULL)
+                err(EX_OSERR, "malloc newbuf in do_set_x");
+        bzero(newbuf, len);
+	x_header = (ip_fw_x_header *)newbuf;
 	x_header->opcode = optname;
 	/* copy the rule into the newbuf, just after the x_header*/
 	bcopy(rule, ++x_header, optlen);
-	len = optlen + sizeof(ip_fw_x_header);
-	return setsockopt(ipfw_socket, IPPROTO_IP, IP_FW_X, new_rule_buf, len);
+	return setsockopt(ipfw_socket, IPPROTO_IP, IP_FW_X, newbuf, len);
 }
 
 /*
@@ -2736,20 +2736,22 @@ do_set_x(int optname, void *rule, int optlen)
 int
 do_get_x(int optname, void *rule, int *optlen)
 {
-	int len, retval;
+	int len, *newbuf, retval;
 
 	ip_fw_x_header *x_header;
-	if (ipfw_socket < 0) {
-		err(EX_UNAVAILABLE, "socket");
-	}
-	bzero(new_rule_buf, IPFW_RULE_SIZE_MAX);
-	x_header = (ip_fw_x_header *)new_rule_buf;
+	if (ipfw_socket < 0)
+		err(EX_UNAVAILABLE, "socket not avaialble");
+	len = *optlen + sizeof(ip_fw_x_header);
+        newbuf = malloc(len);
+        if (newbuf == NULL)
+                err(EX_OSERR, "malloc newbuf in do_get_x");
+	bzero(newbuf, len);
+	x_header = (ip_fw_x_header *)newbuf;
 	x_header->opcode = optname;
 	/* copy the rule into the newbuf, just after the x_header*/
 	bcopy(rule, ++x_header, *optlen);
-	len = *optlen + sizeof(ip_fw_x_header);
-	retval = getsockopt(ipfw_socket, IPPROTO_IP, IP_FW_X, new_rule_buf, &len);
-	bcopy(new_rule_buf, rule, len);
+	retval = getsockopt(ipfw_socket, IPPROTO_IP, IP_FW_X, newbuf, &len);
+	bcopy(newbuf, rule, len);
 	*optlen=len;
 	return retval;
 }
