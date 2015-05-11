@@ -2719,10 +2719,10 @@ do_set_x(int optname, void *rule, int optlen)
 	if (ipfw_socket < 0)
 		err(EX_UNAVAILABLE, "socket not avaialble");
 	len = optlen + sizeof(ip_fw_x_header);
-        newbuf = malloc(len);
-        if (newbuf == NULL)
-                err(EX_OSERR, "malloc newbuf in do_set_x");
-        bzero(newbuf, len);
+	newbuf = malloc(len);
+	if (newbuf == NULL)
+		err(EX_OSERR, "malloc newbuf in do_set_x");
+	bzero(newbuf, len);
 	x_header = (ip_fw_x_header *)newbuf;
 	x_header->opcode = optname;
 	/* copy the rule into the newbuf, just after the x_header*/
@@ -2742,9 +2742,9 @@ do_get_x(int optname, void *rule, int *optlen)
 	if (ipfw_socket < 0)
 		err(EX_UNAVAILABLE, "socket not avaialble");
 	len = *optlen + sizeof(ip_fw_x_header);
-        newbuf = malloc(len);
-        if (newbuf == NULL)
-                err(EX_OSERR, "malloc newbuf in do_get_x");
+	newbuf = malloc(len);
+	if (newbuf == NULL)
+		err(EX_OSERR, "malloc newbuf in do_get_x");
 	bzero(newbuf, len);
 	x_header = (ip_fw_x_header *)newbuf;
 	x_header->opcode = optname;
