@@ -253,7 +253,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	    tmpfs_node_init, tmpfs_node_fini,
 	    &tmp->tm_node_zone_malloc_args);
 
-	tmp->tm_ino = 2;
+	tmp->tm_ino = ROOTINO;
 
 	/* Allocate the root node. */
 	error = tmpfs_alloc_node(tmp, VDIR, root_uid, root_gid,
@@ -272,7 +272,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	    kfree(tmp, M_TMPFSMNT);
 	    return error;
 	}
-	KASSERT(root->tn_id == 2,
+	KASSERT(root->tn_id == ROOTINO,
 		("tmpfs root with invalid ino: %ju", (uintmax_t)root->tn_id));
 
 	++root->tn_links;	/* prevent destruction */
