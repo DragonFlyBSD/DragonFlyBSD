@@ -102,12 +102,8 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 	KKASSERT(IFF(type == VLNK, target != NULL));
 	KKASSERT(IFF(type == VBLK || type == VCHR, rmajor != VNOVAL));
 
-	TMPFS_LOCK(tmp);
-	if (tmp->tm_nodes_inuse >= tmp->tm_nodes_max) {
-		TMPFS_UNLOCK(tmp);
+	if (tmp->tm_nodes_inuse >= tmp->tm_nodes_max)
 		return (ENOSPC);
-	}
-	TMPFS_UNLOCK(tmp);
 
 	nnode = objcache_get(tmp->tm_node_pool, M_WAITOK | M_NULLOK);
 	if (nnode == NULL)
