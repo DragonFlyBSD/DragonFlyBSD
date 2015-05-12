@@ -108,7 +108,9 @@ tmpfs_nresolve(struct vop_nresolve_args *v)
 		if (error == 0)
 			KKASSERT(vp);
 	}
+	TMPFS_NODE_UNLOCK(dnode);
 
+	TMPFS_NODE_LOCK(dnode);
 	dnode->tn_status |= TMPFS_NODE_ACCESSED;
 	TMPFS_NODE_UNLOCK(dnode);
 
@@ -1513,7 +1515,9 @@ outok:
 		}
 		KKASSERT(uio->uio_offset == off);
 	}
+	TMPFS_NODE_UNLOCK(node);
 
+	TMPFS_NODE_LOCK(node);
 	node->tn_status |= TMPFS_NODE_ACCESSED;
 	TMPFS_NODE_UNLOCK(node);
 	return error;
@@ -1536,6 +1540,8 @@ tmpfs_readlink(struct vop_readlink_args *v)
 	TMPFS_NODE_LOCK_SH(node);
 	error = uiomove(node->tn_link,
 			MIN(node->tn_size, uio->uio_resid), uio);
+	TMPFS_NODE_UNLOCK(node);
+	TMPFS_NODE_LOCK(node);
 	node->tn_status |= TMPFS_NODE_ACCESSED;
 	TMPFS_NODE_UNLOCK(node);
 	return error;
