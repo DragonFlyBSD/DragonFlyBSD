@@ -1300,7 +1300,6 @@ tmpfs_itimes(struct vnode *vp, const struct timespec *acc,
 		node->tn_ctime = now.tv_sec;
 		node->tn_ctimensec = now.tv_nsec;
 	}
-	/* This is the only place that clears the tn_status */
 	node->tn_status &=
 	    ~(TMPFS_NODE_ACCESSED | TMPFS_NODE_MODIFIED | TMPFS_NODE_CHANGED);
 	TMPFS_NODE_UNLOCK(node);

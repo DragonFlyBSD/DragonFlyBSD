@@ -110,9 +110,11 @@ tmpfs_nresolve(struct vop_nresolve_args *v)
 	}
 	TMPFS_NODE_UNLOCK(dnode);
 
-	TMPFS_NODE_LOCK(dnode);
-	dnode->tn_status |= TMPFS_NODE_ACCESSED;
-	TMPFS_NODE_UNLOCK(dnode);
+	if ((dnode->tn_status & TMPFS_NODE_ACCESSED) == 0) {
+		TMPFS_NODE_LOCK(dnode);
+		dnode->tn_status |= TMPFS_NODE_ACCESSED;
+		TMPFS_NODE_UNLOCK(dnode);
+	}
 
 	/*
 	 * Store the result of this lookup in the cache.  Avoid this if the
@@ -529,9 +531,11 @@ tmpfs_read (struct vop_read_args *ap)
 	}
 
 finished:
-	TMPFS_NODE_LOCK(node);
-	node->tn_status |= TMPFS_NODE_ACCESSED;
-	TMPFS_NODE_UNLOCK(node);
+	if ((node->tn_status & TMPFS_NODE_ACCESSED) == 0) {
+		TMPFS_NODE_LOCK(node);
+		node->tn_status |= TMPFS_NODE_ACCESSED;
+		TMPFS_NODE_UNLOCK(node);
+	}
 	return (error);
 }
 
@@ -1517,9 +1521,11 @@ outok:
 	}
 	TMPFS_NODE_UNLOCK(node);
 
-	TMPFS_NODE_LOCK(node);
-	node->tn_status |= TMPFS_NODE_ACCESSED;
-	TMPFS_NODE_UNLOCK(node);
+	if ((node->tn_status & TMPFS_NODE_ACCESSED) == 0) {
+		TMPFS_NODE_LOCK(node);
+		node->tn_status |= TMPFS_NODE_ACCESSED;
+		TMPFS_NODE_UNLOCK(node);
+	}
 	return error;
 }
 
@@ -1541,9 +1547,11 @@ tmpfs_readlink(struct vop_readlink_args *v)
 	error = uiomove(node->tn_link,
 			MIN(node->tn_size, uio->uio_resid), uio);
 	TMPFS_NODE_UNLOCK(node);
-	TMPFS_NODE_LOCK(node);
-	node->tn_status |= TMPFS_NODE_ACCESSED;
-	TMPFS_NODE_UNLOCK(node);
+	if ((node->tn_status & TMPFS_NODE_ACCESSED) == 0) {
+		TMPFS_NODE_LOCK(node);
+		node->tn_status |= TMPFS_NODE_ACCESSED;
+		TMPFS_NODE_UNLOCK(node);
+	}
 	return error;
 }
 
