@@ -671,7 +671,7 @@ sbuf_print_cpuset(struct sbuf *sb, cpumask_t *mask)
 	if (more)
 		sbuf_printf(sb, ", ");
 	if (b >= 0) {
-		if (b == e + 1) {
+		if (b == e - 1) {
 			sbuf_printf(sb, "%d", b);
 		} else {
 			sbuf_printf(sb, "%d-%d", b, e - 1);
