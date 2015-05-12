@@ -105,9 +105,12 @@ tmpfs_nresolve(struct vop_nresolve_args *v)
 		tnode = de->td_node;
 		error = tmpfs_alloc_vp(dvp->v_mount, tnode,
 				       LK_EXCLUSIVE | LK_RETRY, &vp);
-		if (error == 0)
-			KKASSERT(vp);
+		if (error)
+			goto out;
+		KKASSERT(vp);
 	}
+
+out:
 	TMPFS_NODE_UNLOCK(dnode);
 
 	if ((dnode->tn_status & TMPFS_NODE_ACCESSED) == 0) {
