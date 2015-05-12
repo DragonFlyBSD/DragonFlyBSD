@@ -119,7 +119,7 @@ RB_PROTOTYPE(tmpfs_dirtree_cookie, tmpfs_dirent, rb_cookienode,
  */
 #ifdef _KERNEL
 
-#define	ROOTINO	((ino_t)2)
+#define	TMPFS_ROOTINO	((ino_t)2)
 
 #define	TMPFS_DIRCOOKIE_DOT	0
 #define	TMPFS_DIRCOOKIE_DOTDOT	1
