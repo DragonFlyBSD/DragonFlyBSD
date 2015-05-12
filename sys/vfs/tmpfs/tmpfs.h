@@ -132,7 +132,7 @@ tmpfs_dircookie(struct tmpfs_dirent *de)
 	return (((off_t)(uintptr_t)de >> 1) & 0x7FFFFFFFFFFFFFFFLLU);
 }
 
-#endif
+#endif  /* _KERNEL */
 
 /* --------------------------------------------------------------------- */
 
@@ -293,7 +293,7 @@ LIST_HEAD(tmpfs_node_list, tmpfs_node);
 #else
 #define TMPFS_ASSERT_LOCKED(node) (void)0
 #define TMPFS_ASSERT_ELOCKED(node) (void)0
-#endif
+#endif  /* INVARIANTS */
 
 #define TMPFS_VNODE_ALLOCATING	1
 #define TMPFS_VNODE_WANT	2
@@ -388,7 +388,6 @@ struct tmpfs_fid {
 
 /* --------------------------------------------------------------------- */
 
-#ifdef _KERNEL
 /*
  * Prototypes for tmpfs_subr.c.
  */
@@ -457,8 +456,6 @@ boolean_t tmpfs_node_ctor(void *obj, void *privdata, int flags);
     KKASSERT((node)->tn_type == VDIR);	\
     KKASSERT((node)->tn_size % sizeof(struct tmpfs_dirent) == 0); \
 } while(0)
-
-#endif
 
 /* --------------------------------------------------------------------- */
 
