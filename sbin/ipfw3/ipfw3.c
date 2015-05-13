@@ -3045,43 +3045,42 @@ ipfw_readfile(int ac, char *av[])
 	pid_t	preproc = 0;
 	int	c;
 
-	while ((c = getopt(ac, av, "D:U:p:q")) != -1)
+	while ((c = getopt(ac, av, "D:U:p:q")) != -1) {
 		switch (c) {
-			case 'D':
-				if (!pflag)
-					errx(EX_USAGE, "-D requires -p");
-				if (i > MAX_ARGS - 2)
-					errx(EX_USAGE,
-							"too many -D or -U options");
-				args[i++] = "-D";
-				args[i++] = optarg;
-				break;
+		case 'D':
+			if (!pflag)
+				errx(EX_USAGE, "-D requires -p");
+			if (i > MAX_ARGS - 2)
+				errx(EX_USAGE, "too many -D or -U options");
+			args[i++] = "-D";
+			args[i++] = optarg;
+			break;
 
-			case 'U':
-				if (!pflag)
-					errx(EX_USAGE, "-U requires -p");
-				if (i > MAX_ARGS - 2)
-					errx(EX_USAGE,
-							"too many -D or -U options");
-				args[i++] = "-U";
-				args[i++] = optarg;
-				break;
+		case 'U':
+			if (!pflag)
+				errx(EX_USAGE, "-U requires -p");
+			if (i > MAX_ARGS - 2)
+				errx(EX_USAGE, "too many -D or -U options");
+			args[i++] = "-U";
+			args[i++] = optarg;
+			break;
 
-			case 'p':
-				pflag = 1;
-				cmd = optarg;
-				args[0] = cmd;
-				i = 1;
-				break;
+		case 'p':
+			pflag = 1;
+			cmd = optarg;
+			args[0] = cmd;
+			i = 1;
+			break;
 
-			case 'q':
-				qflag = 1;
-				break;
+		case 'q':
+			qflag = 1;
+			break;
 
-			default:
-				errx(EX_USAGE, "bad arguments, for usage"
-						" summary ``ipfw''");
+		default:
+			errx(EX_USAGE, "bad arguments, for usage"
+			    " summary ``ipfw''");
 		}
+	}
 
 	av += optind;
 	ac -= optind;
@@ -3101,32 +3100,32 @@ ipfw_readfile(int ac, char *av[])
 			err(EX_OSERR, "cannot create pipe");
 
 		switch ((preproc = fork())) {
-			case -1:
-				err(EX_OSERR, "cannot fork");
+		case -1:
+			err(EX_OSERR, "cannot fork");
 
-			case 0:
-				/* child */
-				if (dup2(fileno(f), 0) == -1 ||
-					dup2(pipedes[1], 1) == -1) {
-					err(EX_OSERR, "dup2()");
-				}
-				fclose(f);
-				close(pipedes[1]);
-				close(pipedes[0]);
-				execvp(cmd, args);
-				err(EX_OSERR, "execvp(%s) failed", cmd);
+		case 0:
+			/* child */
+			if (dup2(fileno(f), 0) == -1 ||
+			    dup2(pipedes[1], 1) == -1) {
+				err(EX_OSERR, "dup2()");
+			}
+			fclose(f);
+			close(pipedes[1]);
+			close(pipedes[0]);
+			execvp(cmd, args);
+			err(EX_OSERR, "execvp(%s) failed", cmd);
 
-			default:
-				/* parent */
-				fclose(f);
-				close(pipedes[1]);
-				if ((f = fdopen(pipedes[0], "r")) == NULL) {
-					int savederrno = errno;
+		default:
+			/* parent */
+			fclose(f);
+			close(pipedes[1]);
+			if ((f = fdopen(pipedes[0], "r")) == NULL) {
+				int savederrno = errno;
 
-					kill(preproc, SIGTERM);
-					errno = savederrno;
-					err(EX_OSERR, "fdopen()");
-				}
+				kill(preproc, SIGTERM);
+				errno = savederrno;
+				err(EX_OSERR, "fdopen()");
+			}
 		}
 	}
 
