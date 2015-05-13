@@ -49,6 +49,13 @@ enum sensor_type {
 	SENSOR_LUX,			/* illuminance (mulx) */
 	SENSOR_DRIVE,			/* disk */
 	SENSOR_TIMEDELTA,		/* system time error (nSec) */
+	SENSOR_ECC,			/* memory ecc */
+	SENSOR_RESERVED_A,		/* reserved */
+	SENSOR_RESERVED_B,		/* reserved */
+	SENSOR_RESERVED_C,		/* reserved */
+	SENSOR_RESERVED_D,		/* reserved */
+	SENSOR_RESERVED_E,		/* reserved */
+	SENSOR_RESERVED_F,		/* reserved */
 	SENSOR_MAX_TYPES
 };
 
@@ -68,6 +75,13 @@ static const char * const sensor_type_s[SENSOR_MAX_TYPES + 1] = {
 	"illuminance",
 	"drive",
 	"timedelta",
+	"ecc",
+	"reserved_a"
+	"reserved_b"
+	"reserved_c"
+	"reserved_d"
+	"reserved_e"
+	"reserved_f"
 	"undefined"
 };
 

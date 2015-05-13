@@ -400,6 +400,7 @@ S_sensor(int l2, void *p)
 		case SENSOR_INDICATOR:
 			printf("%s", s->value ? "On" : "Off");
 			break;
+		case SENSOR_ECC:
 		case SENSOR_INTEGER:
 			printf("%jd", (intmax_t)s->value);
 			break;

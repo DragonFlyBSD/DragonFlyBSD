@@ -289,7 +289,7 @@ ecc_e5_attach(device_t dev)
 		ksnprintf(sens->desc, sizeof(sens->desc),
 		    "node%d chan%d DIMM%d ecc",
 		    sc->ecc_node, sc->ecc_chan->chan_ext, dimm);
-		sens->type = SENSOR_INTEGER;
+		sens->type = SENSOR_ECC;
 		sensor_set(sens, 0, SENSOR_S_OK);
 		dimm_sensor_attach(dimm_sc->dimm_softc, sens);
 
