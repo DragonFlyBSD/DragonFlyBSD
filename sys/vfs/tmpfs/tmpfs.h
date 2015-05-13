@@ -262,6 +262,7 @@ struct tmpfs_node {
 	} tn_spec;
 };
 
+/* Only userspace needs this */
 #define VTOI(vp)	((struct tmpfs_node *)(vp)->v_data)
 
 #ifdef _KERNEL
@@ -461,7 +462,7 @@ boolean_t tmpfs_node_ctor(void *obj, void *privdata, int flags);
 
 /*
  * Macros/functions to convert from generic data structures to tmpfs
- * specific ones.
+ * specific ones.  Kernel code use VP_TO_TMPFS_NODE() instead of VTOI().
  */
 
 static inline
