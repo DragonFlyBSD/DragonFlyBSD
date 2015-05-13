@@ -310,7 +310,7 @@ show_deny(ipfw_insn *cmd)
 }
 
 static void
-load_modules()
+load_modules(void)
 {
 	const char *error;
 	init_module mod_init_func;
@@ -348,7 +348,7 @@ load_modules()
 }
 
 void
-prepare_default_funcs()
+prepare_default_funcs(void)
 {
 	/* register allow*/
 	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_ACCEPT,

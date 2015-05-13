@@ -1062,18 +1062,14 @@ put_exlist(struct dirlist *dp, XDR *xdrsp, struct dirlist *adp, int *putdefp, in
 }
 
 int
-xdr_explist(xdrsp, cp)
-	XDR *xdrsp;
-	caddr_t cp;
+xdr_explist(XDR *xdrsp, caddr_t cp)
 {
 
 	return xdr_explist_common(xdrsp, cp, 0);
 }
 
 int
-xdr_explist_brief(xdrsp, cp)
-	XDR *xdrsp;
-	caddr_t cp;
+xdr_explist_brief(XDR *xdrsp, caddr_t cp)
 {
 
 	return xdr_explist_common(xdrsp, cp, 1);
