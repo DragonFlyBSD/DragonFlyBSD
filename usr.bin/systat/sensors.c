@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "systat.h"
 #include "extern.h"
@@ -35,6 +36,8 @@ struct sensordev sensordev;
 int row, sensor_cnt;
 void printline(void);
 static char * fmttime(double);
+
+static int	sensors_enabled[SENSOR_MAX_TYPES];
 
 WINDOW *
 opensensors(void)
@@ -96,6 +99,9 @@ fetchsensors(void)
 			continue;
 		}
 		for (type = 0; type < SENSOR_MAX_TYPES; type++) {
+			if (!sensors_enabled[type])
+				continue;
+
 			mib[3] = type;
 			for (numt = 0; numt < sensordev.maxnumt[type]; numt++) {
 				mib[4] = numt;
@@ -130,6 +136,10 @@ showsensors(void)
 int
 initsensors(void)
 {
+	int i;
+
+	for (i = 0; i < SENSOR_MAX_TYPES; ++i)
+		sensors_enabled[i] = 1;
 	return (1);
 }
 
@@ -260,4 +270,39 @@ fmttime(double in)
 	    signbit == -1 ? "-" : "", in, unit);
 
 	return outbuf;
+}
+
+int
+cmdsensors(const char *cmd, char *args)
+{
+	if (prefix(cmd, "type")) {
+		const char *t;
+		int i, has_type = 0;
+
+		for (i = 0; i < SENSOR_MAX_TYPES; ++i)
+			sensors_enabled[i] = 0;
+
+		while ((t = strsep(&args, " ")) != NULL) {
+			if (*t == '\0')
+				continue;
+
+			has_type = 1;
+			for (i = 0; i < SENSOR_MAX_TYPES; ++i) {
+				if (strcmp(t, sensor_type_s[i]) == 0) {
+					sensors_enabled[i] = 1;
+					break;
+				}
+			}
+		}
+
+		if (!has_type) {
+			for (i = 0; i < SENSOR_MAX_TYPES; ++i)
+				sensors_enabled[i] = 1;
+		}
+	}
+
+	wclear(wnd);
+	labelsensors();
+	refresh();
+	return (1);
 }
