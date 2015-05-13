@@ -969,8 +969,6 @@ tmpfs_nlink(struct vop_nlink_args *v)
 	struct mount *mp;
 	int error;
 
-	if (dvp->v_mount != vp->v_mount)
-		return(EXDEV);
 	mp = dvp->v_mount;
 
 	KKASSERT(dvp != vp); /* XXX When can this be false? */
