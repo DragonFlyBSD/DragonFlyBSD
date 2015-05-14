@@ -73,6 +73,8 @@ TAILQ_HEAD(dimm_softc_list, dimm_softc);
 #define DIMM_SENS_TF_ECC_CRIT		0x2
 
 static void	dimm_mod_unload(void);
+static void	dimm_sensor_ecc(struct dimm_softc *, struct ksensor *,
+		    boolean_t);
 
 /* In the ascending order of dimm_softc.dimm_id */
 static struct dimm_softc_list	dimm_softc_list;
@@ -257,9 +259,22 @@ void
 dimm_sensor_ecc_set(struct dimm_softc *sc, struct ksensor *sens,
     int ecc_cnt, boolean_t crit)
 {
-	enum sensor_status status;
-
 	sc->dimm_ecc_cnt = ecc_cnt;
+	dimm_sensor_ecc(sc, sens, crit);
+}
+
+void
+dimm_sensor_ecc_add(struct dimm_softc *sc, struct ksensor *sens,
+    int ecc_cnt, boolean_t crit)
+{
+	sc->dimm_ecc_cnt += ecc_cnt;
+	dimm_sensor_ecc(sc, sens, crit);
+}
+
+static void
+dimm_sensor_ecc(struct dimm_softc *sc, struct ksensor *sens, boolean_t crit)
+{
+	enum sensor_status status;
 
 	if (!crit && sc->dimm_ecc_cnt >= sc->dimm_ecc_thresh)
 		crit = TRUE;

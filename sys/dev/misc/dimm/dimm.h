@@ -55,5 +55,8 @@ void			dimm_sensor_temp(struct dimm_softc *_sc,
 void			dimm_sensor_ecc_set(struct dimm_softc *_sc,
 			    struct ksensor *_sens, int _ecc_cnt,
 			    boolean_t _crit);
+void			dimm_sensor_ecc_add(struct dimm_softc *_sc,
+			    struct ksensor *_sens, int _ecc_cnt,
+			    boolean_t _crit);
 
 #endif	/* !_DEV_DIMM_H_ */
