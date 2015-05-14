@@ -247,10 +247,19 @@ dimm_sensor_ecc_set(struct dimm_softc *sc, struct ksensor *sens,
 
 	sc->dimm_ecc_cnt = ecc_cnt;
 	if (crit && (sc->dimm_sens_taskflags & DIMM_SENS_TF_ECC_CRIT) == 0) {
-		/* TODO devctl(4) */
+		char ecc_str[16], data[64];
+
+		ksnprintf(ecc_str, sizeof(ecc_str), "%d", sc->dimm_ecc_cnt);
+		ksnprintf(data, sizeof(data), "node=%d channel=%d dimm=%d",
+		    sc->dimm_node, sc->dimm_chan, sc->dimm_slot);
+		devctl_notify("ecc", "ECC", ecc_str, data);
+
+		kprintf("dimm%d: node%d channel%d DIMM%d "
+		    "too many ECC errors %d\n",
+		    sc->dimm_id, sc->dimm_node, sc->dimm_chan, sc->dimm_slot,
+		    sc->dimm_ecc_cnt);
+
 		sc->dimm_sens_taskflags |= DIMM_SENS_TF_ECC_CRIT;
-	} else if (!crit && (sc->dimm_sens_taskflags & DIMM_SENS_TF_ECC_CRIT)) {
-		sc->dimm_sens_taskflags &= ~DIMM_SENS_TF_ECC_CRIT;
 	}
 
 	if (sc->dimm_sens_taskflags & DIMM_SENS_TF_ECC_CRIT)

@@ -372,10 +372,6 @@ ecc_e5_sensor_task(void *xsc)
 			err = pci_read_config(sc->ecc_dev, ofs, 4);
 			ecc_cnt = __SHIFTOUT(err, mask);
 
-			ecc_printf(sc, "node%d channel%d DIMM%d rank%d, "
-			    "too many errors %d",
-			    sc->ecc_node, sc->ecc_chan->chan_ext,
-			    rk->rank_dimm, rk->rank_dimm_rank, ecc_cnt);
 			dimm_sensor_ecc_set(dimm_sc->dimm_softc,
 			    &dimm_sc->dimm_sensor, ecc_cnt, TRUE);
 		}
