@@ -47,6 +47,8 @@
 #define DIMM_TEMP_HIWAT_DEFAULT	85
 #define DIMM_TEMP_LOWAT_DEFAULT	75
 
+#define DIMM_ECC_THRESH_DEFAULT	5
+
 struct dimm_softc {
 	TAILQ_ENTRY(dimm_softc) dimm_link;
 	int			dimm_node;
@@ -57,6 +59,7 @@ struct dimm_softc {
 	int			dimm_id;
 	int			dimm_ref;
 	int			dimm_ecc_cnt;
+	int			dimm_ecc_thresh;
 
 	struct ksensordev	dimm_sensdev;
 	uint32_t		dimm_sens_taskflags;	/* DIMM_SENS_TF_ */
@@ -115,6 +118,7 @@ dimm_create(int node, int chan, int slot)
 	sc->dimm_ref = 1;
 	sc->dimm_temp_hiwat = DIMM_TEMP_HIWAT_DEFAULT;
 	sc->dimm_temp_lowat = DIMM_TEMP_LOWAT_DEFAULT;
+	sc->dimm_ecc_thresh = DIMM_ECC_THRESH_DEFAULT;
 
 	ksnprintf(sc->dimm_sensdev.xname, sizeof(sc->dimm_sensdev.xname),
 	    "dimm%d", sc->dimm_id);
@@ -150,6 +154,10 @@ dimm_create(int node, int chan, int slot)
 		    "temp_lowat", CTLFLAG_RW, &sc->dimm_temp_lowat, 0,
 		    "Cancel alarm once DIMM temperature is below this value "
 		    "(unit: C)");
+		SYSCTL_ADD_INT(&sc->dimm_sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->dimm_sysctl_tree), OID_AUTO,
+		    "ecc_thresh", CTLFLAG_RW, &sc->dimm_ecc_thresh, 0,
+		    "Raise alarm once number ECC errors go above this value");
 	}
 
 	if (after == NULL) {
@@ -208,6 +216,12 @@ dimm_set_temp_thresh(struct dimm_softc *sc, int hiwat, int lowat)
 }
 
 void
+dimm_set_ecc_thresh(struct dimm_softc *sc, int thresh)
+{
+	sc->dimm_ecc_thresh = thresh;
+}
+
+void
 dimm_sensor_temp(struct dimm_softc *sc, struct ksensor *sens, int temp)
 {
 	enum sensor_status status;
@@ -246,6 +260,10 @@ dimm_sensor_ecc_set(struct dimm_softc *sc, struct ksensor *sens,
 	enum sensor_status status;
 
 	sc->dimm_ecc_cnt = ecc_cnt;
+
+	if (!crit && sc->dimm_ecc_cnt >= sc->dimm_ecc_thresh)
+		crit = TRUE;
+
 	if (crit && (sc->dimm_sens_taskflags & DIMM_SENS_TF_ECC_CRIT) == 0) {
 		char ecc_str[16], data[64];
 

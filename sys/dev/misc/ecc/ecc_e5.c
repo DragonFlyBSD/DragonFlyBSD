@@ -318,24 +318,20 @@ ecc_e5_attach(device_t dev)
 		return 0;
 	}
 
-	if (bootverbose) {
-		for (rank = 0; rank < sc->ecc_rank_cnt; ++rank) {
-			const struct ecc_e5_rank *rk = &sc->ecc_rank[rank];
-			uint32_t thr, mask;
-			int ofs;
+	for (rank = 0; rank < sc->ecc_rank_cnt; ++rank) {
+		const struct ecc_e5_rank *rk = &sc->ecc_rank[rank];
+		uint32_t thr, mask;
+		int ofs;
 
-			ofs = PCI_E5_IMC_ERROR_COR_ERR_TH(rank / 2);
-			if (rank & 1)
-				mask = PCI_E5_IMC_ERROR_COR_ERR_TH_HI;
-			else
-				mask = PCI_E5_IMC_ERROR_COR_ERR_TH_LO;
+		ofs = PCI_E5_IMC_ERROR_COR_ERR_TH(rank / 2);
+		if (rank & 1)
+			mask = PCI_E5_IMC_ERROR_COR_ERR_TH_HI;
+		else
+			mask = PCI_E5_IMC_ERROR_COR_ERR_TH_LO;
 
-			thr = pci_read_config(sc->ecc_dev, ofs, 4);
-			ecc_printf(sc, "DIMM%d rank%d, "
-			    "corrected error threshold %d\n",
-			    rk->rank_dimm, rk->rank_dimm_rank,
-			    __SHIFTOUT(thr, mask));
-		}
+		thr = pci_read_config(sc->ecc_dev, ofs, 4);
+		dimm_set_ecc_thresh(rk->rank_dimm_sc->dimm_softc,
+		    __SHIFTOUT(thr, mask));
 	}
 
 	sensor_task_register(sc, ecc_e5_sensor_task, 1);
