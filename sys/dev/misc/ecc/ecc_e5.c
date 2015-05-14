@@ -69,10 +69,13 @@ struct ecc_e5_softc {
 	device_t		ecc_dev;
 	const struct e5_imc_chan *ecc_chan;
 	int			ecc_node;
+	uint32_t		ecc_flags;
 	int			ecc_rank_cnt;
 	struct ecc_e5_rank	ecc_rank[PCI_E5_IMC_ERROR_RANK_MAX];
 	TAILQ_HEAD(, ecc_e5_dimm) ecc_dimm;
 };
+
+#define ECC_E5_FLAG_SENSTASK	0x1
 
 #define ecc_printf(sc, fmt, arg...) \
 	device_printf((sc)->ecc_dev, fmt , ##arg)
@@ -179,7 +182,7 @@ ecc_e5_attach(device_t dev)
 {
 	struct ecc_e5_softc *sc = device_get_softc(dev);
 	uint32_t mcmtr;
-	int dimm, rank;
+	int dimm, rank, error;
 
 	TAILQ_INIT(&sc->ecc_dimm);
 	sc->ecc_dev = dev;
@@ -233,7 +236,8 @@ ecc_e5_attach(device_t dev)
 			/* FALL THROUGH */
 		default:
 			ecc_printf(sc, "unknown rank count 0x%x\n", val);
-			return ENXIO;
+			error = ENXIO;
+			goto failed;
 		}
 
 		val = __SHIFTOUT(dimmmtr, PCI_E5_IMC_CTAD_DIMMMTR_DDR3_WIDTH);
@@ -249,7 +253,8 @@ ecc_e5_attach(device_t dev)
 			break;
 		default:
 			ecc_printf(sc, "unknown ddr3 width 0x%x\n", val);
-			return ENXIO;
+			error = ENXIO;
+			goto failed;
 		}
 
 		val = __SHIFTOUT(dimmmtr, PCI_E5_IMC_CTAD_DIMMMTR_DDR3_DNSTY);
@@ -271,7 +276,8 @@ ecc_e5_attach(device_t dev)
 			/* FALL THROUGH */
 		default:
 			ecc_printf(sc, "unknown ddr3 density 0x%x\n", val);
-			return ENXIO;
+			error = ENXIO;
+			goto failed;
 		}
 
 		if (bootverbose) {
@@ -300,7 +306,8 @@ ecc_e5_attach(device_t dev)
 
 			if (rank >= PCI_E5_IMC_ERROR_RANK_MAX) {
 				ecc_printf(sc, "too many ranks\n");
-				return ENXIO;
+				error = ENXIO;
+				goto failed;
 			}
 			rk = &sc->ecc_rank[rank];
 
@@ -334,8 +341,12 @@ ecc_e5_attach(device_t dev)
 		    __SHIFTOUT(thr, mask));
 	}
 
+	sc->ecc_flags |= ECC_E5_FLAG_SENSTASK;
 	sensor_task_register(sc, ecc_e5_sensor_task, 1);
 	return 0;
+failed:
+	ecc_e5_detach(dev);
+	return error;
 }
 
 static void
@@ -384,7 +395,8 @@ ecc_e5_stop(device_t dev)
 {
 	struct ecc_e5_softc *sc = device_get_softc(dev);
 
-	sensor_task_unregister(sc);
+	if (sc->ecc_flags & ECC_E5_FLAG_SENSTASK)
+		sensor_task_unregister(sc);
 }
 
 static int
