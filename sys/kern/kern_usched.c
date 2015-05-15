@@ -174,7 +174,9 @@ usched_schedulerclock(struct lwp *lp, sysclock_t periodic, sysclock_t time)
  *	bytes	-
  * RETURN VALUES:
  * 	0 - success
- * 	EINVAL - error
+ * 	EFBIG  - error (invalid cpu#)
+ * 	EPERM  - error (failed to delete cpu#)
+ * 	EINVAL - error (other reasons)
  *
  * MPALMOSTSAFE
  */
