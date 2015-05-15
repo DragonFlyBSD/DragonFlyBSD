@@ -1,6 +1,6 @@
 
 /* @(#)e_log.c 1.3 95/01/18 */
-/* $FreeBSD: head/lib/msun/src/e_log.c 251292 2013-06-03 09:14:31Z das $
+/* $FreeBSD: head/lib/msun/src/e_log.c 251292 2013-06-03 09:14:31Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
