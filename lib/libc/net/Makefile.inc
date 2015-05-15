@@ -28,11 +28,13 @@ CFLAGS+=-DINET6 -I${.OBJDIR} -I${.CURDIR}/../libc/resolv
 YFLAGS+=-p_nsyy
 LFLAGS+=-P_nsyy
 
-CLEANFILES+=nslexer.c
+CLEANFILES+=nslexer.c nslexer.c.*
 
 nslexer.c: nslexer.l
-	${LEX} ${LFLAGS} -o/dev/stdout ${.IMPSRC} | \
-		sed -e '/YY_BUF_SIZE/s/16384/1024/' >${.TARGET}
+	${LEX} ${LFLAGS} -o${.TARGET}.tmp1 ${.IMPSRC}
+	sed -e '/YY_BUF_SIZE/s/16384/1024/' ${.TARGET}.tmp1 >${.TARGET}.tmp2
+	rm -f ${.TARGET}.tmp1
+	mv -f ${.TARGET}.tmp2 ${.TARGET}
 
 .if ${LIB} == "c"
 MAN+=	byteorder.3 ethers.3 eui64.3 \
