@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/acpi_thermal.4 167670 2007-03-18 00:57:07Z njl $
 .\"
-.Dd February 10, 2010
+.Dd May 16, 2015
 .Dt ACPI_THERMAL 4
 .Os
 .Sh NAME
@@ -60,6 +60,13 @@ Number of seconds to continue active cooling once started.
 A new active cooling level will not be selected until this interval expires.
 .It Va hw.acpi.thermal.polling_rate
 Number of seconds between polling the current temperature.
+If set to 0, temperature polling is deactivated.
+Use with care, strange hardware-specific issues can occur when a wrong
+value is set.
+Some systems will always report the same temperature when the polling
+period is too low.
+Also ACPI based fan control can stop working when the wrong value is
+set here.
 .It Va hw.acpi.thermal.user_override
 If set to 1, allow user override of various setpoints (below).
 The original values for these settings are obtained from the BIOS and

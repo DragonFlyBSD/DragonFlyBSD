@@ -126,7 +126,8 @@ struct acpi_tz_softc {
 };
 
 /* silence errors after X seconds, try again after Y seconds */
-#define TZ_SILENCE_ERROR	(acpi_tz_polling_rate * 2 + 1)
+#define TZ_SILENCE_ERROR						\
+    ((acpi_tz_polling_rate <= 0 ? TZ_POLLRATE : acpi_tz_polling_rate) * 2 + 1)
 #define TZ_RETRY_ERROR		7200
 
 #define	TZ_ACTIVE_LEVEL(act)	((act) >= 0 ? (act) : TZ_NUMLEVELS)
@@ -142,6 +143,7 @@ static void	acpi_tz_switch_cooler_on(ACPI_OBJECT *obj, void *arg);
 static void	acpi_tz_getparam(struct acpi_tz_softc *sc, char *node,
 				 int *data);
 static void	acpi_tz_sanity(struct acpi_tz_softc *sc, int *val, char *what);
+static int	acpi_tz_polling_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_tz_active_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_tz_cooling_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_tz_temp_sysctl(SYSCTL_HANDLER_ARGS);
@@ -256,10 +258,11 @@ acpi_tz_attach(device_t dev)
 		       OID_AUTO, "min_runtime", CTLFLAG_RW,
 		       &acpi_tz_min_runtime, 0,
 		       "minimum cooling run time in sec");
-	SYSCTL_ADD_INT(&acpi_tz_sysctl_ctx,
+	SYSCTL_ADD_PROC(&acpi_tz_sysctl_ctx,
 		       SYSCTL_CHILDREN(acpi_tz_sysctl_tree),
-		       OID_AUTO, "polling_rate", CTLFLAG_RW,
-		       &acpi_tz_polling_rate, 0, "monitor polling interval in seconds");
+		       OID_AUTO, "polling_rate", CTLTYPE_INT | CTLFLAG_RW,
+		       &acpi_tz_polling_rate, 0, acpi_tz_polling_sysctl,
+		       "I", "monitor polling interval in seconds");
 	SYSCTL_ADD_INT(&acpi_tz_sysctl_ctx,
 		       SYSCTL_CHILDREN(acpi_tz_sysctl_tree), OID_AUTO,
 		       "user_override", CTLFLAG_RW, &acpi_tz_override, 0,
@@ -729,6 +732,28 @@ acpi_tz_getparam(struct acpi_tz_softc *sc, char *node, int *data)
 }
 
 /*
+ * Handle sysctl for reading and changing the termal-zone polling rate.
+ */
+static int
+acpi_tz_polling_sysctl(SYSCTL_HANDLER_ARGS)
+{
+    int val, error;
+
+    val = acpi_tz_polling_rate;
+    error = sysctl_handle_int(oidp, &val, 0, req);
+
+    /* Error or no new value */
+    if (error != 0 || req->newptr == NULL)
+	return (error);
+    if (val < 0 || val > 3600)
+	return (EINVAL);
+
+    acpi_tz_polling_rate = val;
+    wakeup(&acpi_tz_td);
+    return (error);
+}
+
+/*
  * Sanity-check a temperature value.  Assume that setpoints
  * should be between 0C and 200C.
  */
@@ -1029,7 +1054,8 @@ acpi_tz_thread(void *arg)
 	if (i == devcount) {
 	    tsleep_interlock(&acpi_tz_td, 0);
 	    ACPI_UNLOCK(thermal);
-	    tsleep(&acpi_tz_td, 0, "tzpoll", hz * acpi_tz_polling_rate);
+	    tsleep(&acpi_tz_td, 0, "tzpoll",
+		(acpi_tz_polling_rate <= 0 ? 0 : hz * acpi_tz_polling_rate));
 	} else {
 	    ACPI_UNLOCK(thermal);
 	}
