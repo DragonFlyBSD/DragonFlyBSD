@@ -112,12 +112,18 @@ function call was added in
 .Dx 1.9 .
 .Sh AUTHORS
 .An -nosplit
-.Fn Usched_set
-was written by
+The
+.Fn usched_set
+system call was written by
 .An Matt Dillon .
 This manual page was written by
 .An Joe Talbott .
 .Sh BUGS
 Only
 .Fa pid
-equals current LWP PID is implemented.
+equals current LWP PID or 0 is implemented.
+The current LWP PID is used for
+.Fa pid
+when
+.Fa pid
+is 0.
