@@ -35,7 +35,7 @@
 .Nm swapon , swapoff , swapctl
 .Nd "specify devices for paging and swapping"
 .Sh SYNOPSIS
-.Nm swapon Fl aeiq | Ar
+.Nm swapon Fl aceiq | Ar
 .Nm swapoff Fl aq | Ar
 .Nm swapctl
 .Op Fl AeghklmsU
@@ -66,13 +66,29 @@ If the
 .Fl a
 option is used, all swap devices in
 .Pa /etc/fstab
-will be added, unless their
-.Dq noauto
-option is also set.
+will be added.
+The following options are supported:
+.Bl -tag -width indent
+.It Dq noauto
+The device is ignored and will not be added or removed with this option.
+.It Dq crypt
+Swap will be encrpted with a random key using a /dev/mapper name of
+swap-<device> ,
+for example 'swap-da0s1b'.
+This will also load the dm_target_crypt module if necessary.
+.It Dq trim
+Swap will be TRIMed if the device supports it, otherwise this option
+will be ignored.
+.El
+.Pp
 If the
 .Fl q
 option is used informational messages will not be
 written to standard output when a swap device is added.
+If the
+.Fl c
+option is used, the device will be encrypted with a random
+key.
 If the
 .Fl e
 option is used, the device will be trimmed if
@@ -91,6 +107,14 @@ option is used, all swap devices in
 will be removed, unless their
 .Dq noauto
 option is also set.
+If the
+.Fl c
+option is used the device is mapped to the appropriate crypto device
+and the crypto device is removed as well.
+If this option is specified in
+.Nm swapon
+then it should also be specified in
+.Nm swapoff .
 If the
 .Fl q
 option is used informational messages will not be
@@ -156,10 +180,14 @@ Output values in megabytes.
 List the devices making up system swap.
 .It Fl s
 Print a summary line for system swap.
+.If Fl c
+The swap is or should be crypted.
 .It Fl e
 Attempts to Trim the device if -[Aa] is used.
 .It Fl i
 Asks user confirmation when -a is used.
+.It Fl q
+Less noisy output.
 .Pp
 The
 .Ev BLOCKSIZE
