@@ -18,6 +18,7 @@ SRCS=	\
 	ahids.c \
 	ahpredef.c \
 	ahmain.c \
+	ahtable.c \
 	ahuuids.c
 
 SRCS+=	\

@@ -25,6 +25,7 @@ SRCS=	\
 	adwalk.c \
 	ahids.c \
 	ahpredef.c \
+	ahtable.c \
 	ahuuids.c \
 	aslanalyze.c \
 	aslascii.c \
