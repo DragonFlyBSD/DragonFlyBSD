@@ -94,9 +94,9 @@ fadt_probe(void)
 	KKASSERT(fadt != NULL);
 
 	/*
-	 * FADT in ACPI specification 1.0 - 5.0
+	 * FADT in ACPI specification 1.0 - 6.0
 	 */
-	if (fadt->Header.Revision < 1 || fadt->Header.Revision > 5) {
+	if (fadt->Header.Revision < 1 || fadt->Header.Revision > 6) {
 		kprintf("fadt_probe: unknown FADT revision %d\n",
 			fadt->Header.Revision);
 	}
