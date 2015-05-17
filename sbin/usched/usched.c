@@ -89,9 +89,9 @@ main(int ac, char **av)
 	 * XXX needs expanded support for > 64 cpus
 	 */
 	if (cpustr != NULL) {
-		unsigned long v;
+		uint64_t v;
 
-		v = strtoul(cpustr, NULL, 0);
+		v = (uint64_t)strtoull(cpustr, NULL, 0);
 		for (cpuid = 0; cpuid < (int)sizeof(v) * 8; ++cpuid) {
 			if (v & (1LU << cpuid))
 				CPUMASK_ORBIT(cpumask, cpuid);
