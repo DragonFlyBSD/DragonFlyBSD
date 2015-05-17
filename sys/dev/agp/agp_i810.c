@@ -665,6 +665,7 @@ static const struct agp_i810_match {
 	{	0x160B, "Broadwell", &broadwell_gtt_driver },
 	{	0x160E, "Broadwell", &broadwell_gtt_driver },
 	{	0x1616, "Broadwell", &broadwell_gtt_driver },
+	{	0x161E, "Broadwell", &broadwell_gtt_driver },
 
 	{	0x160A, "Broadwell", &broadwell_gtt_driver }, /* d */
 	{	0x160D, "Broadwell", &broadwell_gtt_driver },
