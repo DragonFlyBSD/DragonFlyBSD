@@ -126,6 +126,9 @@ list_del_init(struct list_head *entry)
 #define list_first_entry(ptr, type, member) \
         list_entry((ptr)->next, type, member)
 
+#define list_next_entry(ptr, member)					\
+	list_entry(((ptr)->member.next), typeof(*(ptr)), member)
+
 #define	list_for_each(p, head)						\
 	for (p = (head)->next; p != (head); p = p->next)
 
@@ -140,6 +143,10 @@ list_del_init(struct list_head *entry)
 	for (p = list_entry((h)->next, typeof(*p), field), 		\
 	    n = list_entry(p->field.next, typeof(*p), field); &p->field != (h);\
 	    p = n, n = list_entry(n->field.next, typeof(*n), field))
+
+#define list_for_each_entry_continue(p, h, field)			\
+	for (p = list_next_entry((p), field); &p->field != (h);		\
+	    p = list_next_entry((p), field))
 
 #define list_for_each_entry_safe_from(pos, n, head, member) 			\
 	for (n = list_entry(pos->member.next, typeof(*pos), member);		\

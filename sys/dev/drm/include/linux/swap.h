@@ -29,6 +29,7 @@
 
 #include <vm/vm_page2.h>
 
+#include <linux/list.h>
 #include <asm/page.h>
 
 static inline void mark_page_accessed(struct vm_page *m)
