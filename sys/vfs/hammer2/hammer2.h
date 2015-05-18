@@ -417,6 +417,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_ERROR_IO		1	/* device I/O error */
 #define HAMMER2_ERROR_CHECK		2	/* check code mismatch */
 #define HAMMER2_ERROR_INCOMPLETE	3	/* incomplete cluster */
+#define HAMMER2_ERROR_DEPTH		4	/* temporary depth limit */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()

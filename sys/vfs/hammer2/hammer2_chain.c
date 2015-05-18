@@ -2169,8 +2169,8 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		allocated = 1;
 
 		/*
-		 * We do NOT set INITIAL here (yet).  INITIAL is only
-		 * used for indirect blocks.
+		 * Set INITIAL to optimize I/O.  The flag will generally be
+		 * processed when we call hammer2_chain_modify().
 		 *
 		 * Recalculate bytes to reflect the actual media block
 		 * allocation.
@@ -2333,7 +2333,7 @@ again:
 	if (allocated) {
 		/*
 		 * Mark the newly created chain modified.  This will cause
-		 * UPDATE to be set.
+		 * UPDATE to be set and process the INITIAL flag.
 		 *
 		 * Device buffers are not instantiated for DATA elements
 		 * as these are handled by logical buffers.

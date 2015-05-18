@@ -1255,9 +1255,12 @@ hammer2_bioq_sync(hammer2_pfs_t *pmp)
 
 /* 
  * Return a chain suitable for I/O, creating the chain if necessary
- * and assigning its physical block.
+ * and assigning its physical block.  The cluster will be in a modified
+ * state.
  *
  * cparent can wind up being anything.
+ *
+ * NOTE: Special case for data embedded in inode.
  */
 static
 hammer2_cluster_t *
@@ -1306,11 +1309,10 @@ retry:
 		switch (hammer2_cluster_type(cluster)) {
 		case HAMMER2_BREF_TYPE_INODE:
 			/*
-			 * The data is embedded in the inode.  The
-			 * caller is responsible for marking the inode
-			 * modified and copying the data to the embedded
-			 * area.
+			 * The data is embedded in the inode, which requires
+			 * a bit more finess.
 			 */
+			hammer2_cluster_modify_ip(trans, ip, cluster, 0);
 			break;
 		case HAMMER2_BREF_TYPE_DATA:
 			if (hammer2_cluster_need_resize(cluster, pblksize)) {
@@ -1379,8 +1381,20 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		cluster = hammer2_assign_physical(trans, ip, cparent,
 						lbase, pblksize,
 						errorp);
-		hammer2_write_bp(cluster, bp, ioflag, pblksize, errorp,
-				 ripdata->check_algo);
+		if (cluster->ddflag) {
+			hammer2_inode_data_t *wipdata;
+
+			wipdata = hammer2_cluster_modify_ip(trans, ip,
+							    cluster, 0);
+			KKASSERT(wipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA);
+			KKASSERT(bp->b_loffset == 0);
+			bcopy(bp->b_data, wipdata->u.data,
+			      HAMMER2_EMBEDDED_BYTES);
+			hammer2_cluster_modsync(cluster);
+		} else {
+			hammer2_write_bp(cluster, bp, ioflag, pblksize,
+					 errorp, ripdata->check_algo);
+		}
 		/* ripdata can become invalid */
 		if (cluster) {
 			hammer2_cluster_unlock(cluster);
@@ -1548,7 +1562,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 	if (cluster->ddflag) {
 		hammer2_inode_data_t *wipdata;
 
-		wipdata = hammer2_cluster_modify_ip(trans, ip, cluster, 0);
+		wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
 		KKASSERT(wipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA);
 		KKASSERT(bp->b_loffset == 0);
 		bcopy(bp->b_data, wipdata->u.data, HAMMER2_EMBEDDED_BYTES);

@@ -946,6 +946,7 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 		ncluster = hammer2_cluster_lookup(dcluster, &key_dummy,
 						  lhc, lhc, 0);
 		KKASSERT(ncluster == NULL);
+		error = 0;
 	}
 
 	if (error == 0) {

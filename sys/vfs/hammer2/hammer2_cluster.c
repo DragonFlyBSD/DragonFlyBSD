@@ -474,6 +474,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 	hammer2_chain_t *chain;
 	hammer2_pfs_t *pmp;
 	hammer2_tid_t quorum_tid;
+	hammer2_tid_t last_best_quorum_tid;
 	int focus_pfs_type;
 	uint32_t nflags;
 	int ttlmasters;
@@ -485,8 +486,8 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 	int i;
 
 	cluster->error = 0;
+	cluster->focus = NULL;
 
-	quorum_tid = 0;
 	focus_pfs_type = 0;
 	nflags = 0;
 	ttlmasters = 0;
@@ -504,12 +505,14 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 
 	/*
 	 * Pass 1
+	 *
+	 * NOTE: A NULL chain is not necessarily an error, it could be
+	 *	 e.g. a lookup failure or the end of an iteration.
+	 *	 Process normally.
 	 */
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
-		if (chain == NULL)
-			continue;
-		if (chain->error) {
+		if (chain && chain->error) {
 			if (cluster->focus == NULL || cluster->focus == chain) {
 				/* error will be overridden by valid focus */
 				cluster->error = chain->error;
@@ -532,18 +535,6 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 		switch (cluster->pmp->pfs_types[i]) {
 		case HAMMER2_PFSTYPE_MASTER:
 			++ttlmasters;
-			if (cluster->array[i].flags & HAMMER2_CITEM_INVALID) {
-				/*
-				 * Invalid as in unsynchronized, cannot be
-				 * used to calculate the quorum.
-				 */
-			} else if (quorum_tid < chain->bref.modify_tid ||
-				   nmasters == 0) {
-				nmasters = 1;
-				quorum_tid = chain->bref.modify_tid;
-			} else if (quorum_tid == chain->bref.modify_tid) {
-				++nmasters;
-			}
 			break;
 		case HAMMER2_PFSTYPE_SLAVE:
 			++ttlslaves;
@@ -566,7 +557,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			nflags |= HAMMER2_CLUSTER_RDHARD;
 			cluster->focus_index = i;
 			cluster->focus = chain;
-			cluster->error = chain->error;
+			cluster->error = chain ? chain->error : 0;
 			break;
 		default:
 			break;
@@ -575,13 +566,73 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 
 	/*
 	 * Pass 2
+	 *
+	 * Resolve masters.  Calculate nmasters for the highest matching
+	 * TID, if a quorum cannot be attained try the next lower matching
+	 * TID until we exhaust TIDs.
+	 *
+	 * NOTE: A NULL chain is not necessarily an error, it could be
+	 *	 e.g. a lookup failure or the end of an iteration.
+	 *	 Process normally.
+	 */
+	last_best_quorum_tid = HAMMER2_TID_MAX;
+	quorum_tid = 0;		/* fix gcc warning */
+
+	while (nmasters < nquorum && last_best_quorum_tid != 0) {
+		nmasters = 0;
+		quorum_tid = 0;
+
+		for (i = 0; i < cluster->nchains; ++i) {
+			if (cluster->pmp->pfs_types[i] !=
+			    HAMMER2_PFSTYPE_MASTER) {
+				continue;
+			}
+			chain = cluster->array[i].chain;
+
+			if (cluster->array[i].flags & HAMMER2_CITEM_INVALID) {
+				/*
+				 * Invalid as in unsynchronized, cannot be
+				 * used to calculate the quorum.
+				 */
+			} else if (chain == NULL && quorum_tid == 0) {
+				/*
+				 * NULL chain on master matches NULL chains
+				 * on other masters.
+				 */
+				++nmasters;
+			} else if (quorum_tid < last_best_quorum_tid &&
+				   chain != NULL &&
+				   (quorum_tid < chain->bref.modify_tid ||
+				    nmasters == 0)) {
+				/*
+				 * Better TID located, reset nmasters count.
+				 */
+				nmasters = 1;
+				quorum_tid = chain->bref.modify_tid;
+			} else if (chain &&
+				   quorum_tid == chain->bref.modify_tid) {
+				/*
+				 * TID matches current collection.
+				 */
+				++nmasters;
+			}
+		}
+		if (nmasters >= nquorum)
+			break;
+		last_best_quorum_tid = quorum_tid;
+	}
+
+	/*
+	 * Pass 3
+	 *
+	 * NOTE: A NULL chain is not necessarily an error, it could be
+	 *	 e.g. a lookup failure or the end of an iteration.
+	 *	 Process normally.
 	 */
 	for (i = 0; i < cluster->nchains; ++i) {
 		cluster->array[i].flags &= ~HAMMER2_CITEM_FEMOD;
 		chain = cluster->array[i].chain;
-		if (chain == NULL)
-			continue;
-		if (chain->error) {
+		if (chain && chain->error) {
 			if (cluster->focus == NULL || cluster->focus == chain) {
 				/* error will be overridden by valid focus */
 				cluster->error = chain->error;
@@ -601,8 +652,10 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			if (cluster->array[i].flags & HAMMER2_CITEM_INVALID) {
 				nflags |= HAMMER2_CLUSTER_UNHARD;
 			} else if (nmasters >= nquorum &&
-				   chain->error == 0 &&
-				   quorum_tid == chain->bref.modify_tid) {
+				   (chain == NULL || chain->error == 0) &&
+				   ((chain == NULL && quorum_tid == 0) ||
+				    (chain != NULL && quorum_tid ==
+						  chain->bref.modify_tid))) {
 				nflags |= HAMMER2_CLUSTER_WRHARD;
 				nflags |= HAMMER2_CLUSTER_RDHARD;
 				if (!smpresent) {
@@ -613,10 +666,11 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 				    focus_pfs_type == HAMMER2_PFSTYPE_SLAVE) {
 					focus_pfs_type = HAMMER2_PFSTYPE_MASTER;
 					cluster->focus_index = i;
-					cluster->focus = chain;
-					cluster->error = chain->error;
+					cluster->focus = chain; /* NULL ok */
+					cluster->error = chain ? chain->error :
+								 0;
 				}
-			} else if (chain->error == 0) {
+			} else if (chain == NULL || chain->error == 0) {
 				nflags |= HAMMER2_CLUSTER_UNHARD;
 			}
 			break;
@@ -631,17 +685,23 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			if (cluster->array[i].flags & HAMMER2_CITEM_INVALID) {
 				nflags |= HAMMER2_CLUSTER_UNHARD;
 			} else if (nmasters >= nquorum &&
-				   chain->error == 0 &&
-				   quorum_tid == chain->bref.modify_tid) {
+				   (chain == NULL || chain->error == 0) &&
+				   ((chain == NULL && quorum_tid == 0) ||
+				    (chain && quorum_tid ==
+					      chain->bref.modify_tid))) {
 				++nslaves;
 				nflags |= HAMMER2_CLUSTER_RDHARD;
+#if 0
+				/* XXX optimize for RESOLVE_RDONLY */
 				if (cluster->focus == NULL) {
 					focus_pfs_type = HAMMER2_PFSTYPE_SLAVE;
 					cluster->focus_index = i;
-					cluster->focus = chain;
-					cluster->error = chain->error;
+					cluster->focus = chain; /* NULL ok */
+					cluster->error = chain ? chain->error :
+								 0;
 				}
-			} else if (chain->error == 0) {
+#endif
+			} else if (chain == NULL || chain->error == 0) {
 				nflags |= HAMMER2_CLUSTER_UNSOFT;
 			}
 			break;
@@ -653,7 +713,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			KKASSERT(focus_pfs_type != HAMMER2_PFSTYPE_SOFT_MASTER);
 			cluster->focus_index = i;
 			cluster->focus = chain;
-			cluster->error = chain->error;
+			cluster->error = chain ? chain->error : 0;
 			focus_pfs_type = HAMMER2_PFSTYPE_SOFT_MASTER;
 			cluster->array[i].flags |= HAMMER2_CITEM_FEMOD;
 			break;
@@ -666,7 +726,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			if (focus_pfs_type != HAMMER2_PFSTYPE_SOFT_MASTER) {
 				cluster->focus_index = i;
 				cluster->focus = chain;
-				cluster->error = chain->error;
+				cluster->error = chain ? chain->error : 0;
 				focus_pfs_type = HAMMER2_PFSTYPE_SOFT_SLAVE;
 			}
 			break;
@@ -677,7 +737,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			KKASSERT(i == 0);
 			cluster->focus_index = i;
 			cluster->focus = chain;
-			cluster->error = chain->error;
+			cluster->error = chain ? chain->error : 0;
 			focus_pfs_type = HAMMER2_PFSTYPE_SUPROOT;
 			cluster->array[i].flags |= HAMMER2_CITEM_FEMOD;
 			break;
@@ -996,6 +1056,8 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 					     key_beg, key_end,
 					     &cparent->array[i].cache_index,
 					     flags);
+		if (cparent->focus_index == i)
+			cparent->focus = cparent->array[i].chain;
 		cluster->array[i].chain = chain;
 		if (chain == NULL) {
 			++null_count;
@@ -1134,6 +1196,8 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 					    &key_next, key_beg, key_end,
 					    &cparent->array[i].cache_index,
 					    flags);
+		if (cparent->focus_index == i)
+			cparent->focus = cparent->array[i].chain;
 		/* ochain now invalid but can still be used for focus check */
 
 		cluster->array[i].chain = nchain;
@@ -1214,6 +1278,9 @@ done:
 
 /*
  * Advance just one chain in the cluster and recalculate the invalid bit.
+ * The cluster index is allowed to be flagged invalid on input and is
+ * recalculated on return.
+ *
  * (used during synchronization to advance past a chain being deleted).
  *
  * The chain being advanced must not be the focus and the clusters in
@@ -1248,6 +1315,8 @@ hammer2_cluster_next_single_chain(hammer2_cluster_t *cparent,
 				    &key_next, key_beg, key_end,
 				    &cparent->array[i].cache_index,
 				    flags);
+	if (cparent->focus_index == i)
+		cparent->focus = cparent->array[i].chain;
 	/* ochain now invalid */
 
 	/*
@@ -1339,6 +1408,8 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 					     &cluster->array[i].chain, pmp,
 					     key, keybits,
 					     type, bytes, flags);
+		if (cparent->focus_index == i)
+			cparent->focus = cparent->array[i].chain;
 		KKASSERT(error == 0);
 		if (cluster->focus == NULL) {
 			cluster->focus_index = i;
@@ -1372,10 +1443,12 @@ hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 	hammer2_blockref_t xbref;
 	int i;
 
+#if 0
 	cluster->focus = NULL;
 	cparent->focus = NULL;
 	cluster->focus_index = 0;
 	cparent->focus_index = 0;
+#endif
 
 	for (i = 0; i < cluster->nchains; ++i) {
 		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
@@ -1396,6 +1469,8 @@ hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 						     &cparent->array[i].chain,
 						     chain, flags);
 			}
+			if (cparent->focus_index == i)
+				cparent->focus = cparent->array[i].chain;
 			KKASSERT(cluster->array[i].chain == chain); /*remove*/
 		}
 	}

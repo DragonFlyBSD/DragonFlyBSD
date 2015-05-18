@@ -758,6 +758,10 @@ again:
 			 * are cleared out on UPDATE so expect that bit to
 			 * be set here too or the statistics will not be
 			 * rolled-up properly.
+			 *
+			 * (note: rollup data does not effect modify_tid
+			 *	  based synchronization checks and can be
+			 *	  different).
 			 */
 			if (chain->data_count || chain->inode_count) {
 				hammer2_inode_data_t *ipdata;
@@ -901,9 +905,11 @@ again:
 		 */
 		if (base && (chain->flags & HAMMER2_CHAIN_BMAPUPD)) {
 			if (chain->flags & HAMMER2_CHAIN_BMAPPED) {
+				hammer2_spin_ex(&parent->core.spin);
 				hammer2_base_delete(info->trans, parent,
 						    base, count,
 						    &info->cache_index, chain);
+				hammer2_spin_unex(&parent->core.spin);
 				/* base_delete clears both bits */
 			} else {
 				atomic_clear_int(&chain->flags,
@@ -919,9 +925,11 @@ again:
 			chain->inode_count = 0;
 			chain->data_count_up = 0;
 			chain->inode_count_up = 0;
+			hammer2_spin_ex(&parent->core.spin);
 			hammer2_base_insert(info->trans, parent,
 					    base, count,
 					    &info->cache_index, chain);
+			hammer2_spin_unex(&parent->core.spin);
 			/* base_insert sets BMAPPED */
 		}
 		hammer2_chain_unlock(parent);
