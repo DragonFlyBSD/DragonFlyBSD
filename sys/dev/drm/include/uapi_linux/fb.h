@@ -24,13 +24,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_FB_H_
-#define _LINUX_FB_H_
+#ifndef _UAPI_LINUX_FB_H_
+#define _UAPI_LINUX_FB_H_
 
-#include <uapi_linux/fb.h>
+struct fb_var_screeninfo {
+};
 
-#include <linux/backlight.h>
+struct fb_cmap {
+};
 
-#define	KHZ2PICOS(a)	(1000000000UL/(a))
-
-#endif	/* _LINUX_FB_H_ */
+#endif /* _UAPI_LINUX_FB_H_ */
