@@ -376,6 +376,9 @@ ecc_e5_sensor_task(void *xsc)
 
 			dimm_sensor_ecc_set(dimm_sc->dimm_softc,
 			    &dimm_sc->dimm_sensor, ecc_cnt, TRUE);
+		} else {
+			ecc_printf(sc, "channel%d rank%d critical error\n",
+			    sc->ecc_chan->chan_ext, rank);
 		}
 	}
 
