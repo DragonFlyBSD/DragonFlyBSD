@@ -1776,8 +1776,7 @@ crit_panic(void)
 
 /*
  * Called from debugger/panic on cpus which have been stopped.  We must still
- * process the IPIQ while stopped, even if we were stopped while in a critical
- * section (XXX).
+ * process the IPIQ while stopped.
  *
  * If we are dumping also try to process any pending interrupts.  This may
  * or may not work depending on the state of the cpu at the point it was
@@ -1788,12 +1787,12 @@ lwkt_smp_stopped(void)
 {
     globaldata_t gd = mycpu;
 
-    crit_enter_gd(gd);
     if (dumping) {
 	lwkt_process_ipiq();
+	--gd->gd_intr_nesting_level;
 	splz();
+	++gd->gd_intr_nesting_level;
     } else {
 	lwkt_process_ipiq();
     }
-    crit_exit_gd(gd);
 }

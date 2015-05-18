@@ -242,6 +242,10 @@ Xcpustop:
 	MPLOCKED orq %rax, stopped_cpus+16
 	movq	PCPU(cpumask)+24,%rax
 	MPLOCKED orq %rax, stopped_cpus+24
+
+	movq	PCPU(curthread),%rbx
+	incl    PCPU(intr_nesting_level)
+	incl    TD_CRITCOUNT(%rbx)
 	sti
 1:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
@@ -292,9 +296,11 @@ Xcpustop:
 
 	call	*%rax
 2:
+	decl	TD_CRITCOUNT(%rbx)
+	decl	PCPU(intr_nesting_level)
 	MEXITCOUNT
-	APIC_POP_FRAME
-	jmp	doreti_iret
+	/*APIC_POP_FRAME*/
+	jmp	doreti
 
 	/*
 	 * For now just have one ipiq IPI, but what we really want is
