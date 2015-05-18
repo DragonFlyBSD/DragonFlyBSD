@@ -61,8 +61,6 @@ struct ecc_e5_dimm {
 
 struct ecc_e5_rank {
 	struct ecc_e5_dimm *rank_dimm_sc;
-	int		rank_dimm;	/* owner dimm */
-	int		rank_dimm_rank;	/* rank within the owner dimm */
 };
 
 struct ecc_e5_softc {
@@ -309,12 +307,9 @@ ecc_e5_attach(device_t dev)
 				error = ENXIO;
 				goto failed;
 			}
+
 			rk = &sc->ecc_rank[rank];
-
 			rk->rank_dimm_sc = dimm_sc;
-			rk->rank_dimm = dimm;
-			rk->rank_dimm_rank = r;
-
 			++rank;
 		}
 	}
