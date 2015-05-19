@@ -1981,11 +1981,11 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * release our private reference, leaving the one associated with the
 	 * descriptor table intact.
 	 */
+	if (oflags & O_CLOEXEC)
+		fdp->fd_files[indx].fileflags |= UF_EXCLOSE;
 	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	*res = indx;
-	if (oflags & O_CLOEXEC)
-		error = fsetfdflags(fdp, *res, UF_EXCLOSE);
 	return (error);
 }
 
@@ -4469,11 +4469,11 @@ sys_fhopen(struct fhopen_args *uap)
 	 * reserved descriptor and return it.
 	 */
 	vput(vp);
+	if (uap->flags & O_CLOEXEC)
+		fdp->fd_files[indx].fileflags |= UF_EXCLOSE;
 	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	uap->sysmsg_result = indx;
-	if (uap->flags & O_CLOEXEC)
-		error = fsetfdflags(fdp, indx, UF_EXCLOSE);
 	return (error);
 
 bad_drop:
