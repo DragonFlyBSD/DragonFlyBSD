@@ -129,6 +129,11 @@ int kern_socket(int domain, int type, int protocol, int *res);
 int kern_socketpair(int domain, int type, int protocol, int *sockv);
 
 /*
+ * Prototypes for syscalls in kern/sys_pipe.c
+ */
+int kern_pipe(long *fds, int flags);
+
+/*
  * Prototypes for syscalls in kern/vfs_syscalls.c
  */
 int kern_access(struct nlookupdata *nd, int amode, int flags);

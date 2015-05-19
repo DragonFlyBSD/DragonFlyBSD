@@ -46,6 +46,7 @@
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
 #include <sys/socket.h>
+#include <sys/kern_syscall.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -231,6 +232,18 @@ pipe_end_uio(struct pipe *cpipe, int *ipp)
 int
 sys_pipe(struct pipe_args *uap)
 {
+	return kern_pipe(uap->sysmsg_fds, 0);
+}
+
+int
+sys_pipe2(struct pipe2_args *uap)
+{
+	return kern_pipe(uap->sysmsg_fds, uap->flags);
+}
+
+int
+kern_pipe(long *fds, int flags)
+{
 	struct thread *td = curthread;
 	struct filedesc *fdp = td->td_proc->p_fd;
 	struct file *rf, *wf;
@@ -250,7 +263,7 @@ sys_pipe(struct pipe_args *uap)
 		pipeclose(wpipe);
 		return (error);
 	}
-	uap->sysmsg_fds[0] = fd1;
+	fds[0] = fd1;
 
 	/*
 	 * Warning: once we've gotten past allocation of the fd for the
@@ -262,6 +275,11 @@ sys_pipe(struct pipe_args *uap)
 	rf->f_flag = FREAD | FWRITE;
 	rf->f_ops = &pipeops;
 	rf->f_data = rpipe;
+	if (flags & O_NONBLOCK)
+		rf->f_flag |= O_NONBLOCK;
+	if (flags & O_CLOEXEC)
+		fdp->fd_files[fd1].fileflags |= UF_EXCLOSE;
+
 	error = falloc(td->td_lwp, &wf, &fd2);
 	if (error) {
 		fsetfd(fdp, NULL, fd1);
@@ -274,7 +292,12 @@ sys_pipe(struct pipe_args *uap)
 	wf->f_flag = FREAD | FWRITE;
 	wf->f_ops = &pipeops;
 	wf->f_data = wpipe;
-	uap->sysmsg_fds[1] = fd2;
+	if (flags & O_NONBLOCK)
+		wf->f_flag |= O_NONBLOCK;
+	if (flags & O_CLOEXEC)
+		fdp->fd_files[fd2].fileflags |= UF_EXCLOSE;
+
+	fds[1] = fd2;
 
 	rpipe->pipe_slock = kmalloc(sizeof(struct lock),
 				    M_PIPE, M_WAITOK|M_ZERO);

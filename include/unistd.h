@@ -350,6 +350,7 @@ off_t	 lseek(int, off_t, int);
 long	 pathconf(const char *, int);
 int	 pause(void);
 int	 pipe(int *);
+int	 pipe2(int *, int);
 ssize_t	 read(int, void *, size_t);
 int	 rmdir(const char *);
 int	 setgid(gid_t);

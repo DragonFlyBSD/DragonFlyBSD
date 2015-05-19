@@ -546,4 +546,5 @@ const char *syscallnames[] = {
 	"vmm_guest_sync_addr",			/* 535 = vmm_guest_sync_addr */
 	"procctl",			/* 536 = procctl */
 	"chflagsat",			/* 537 = chflagsat */
+	"pipe2",			/* 538 = pipe2 */
 };

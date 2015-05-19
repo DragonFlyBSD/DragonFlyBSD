@@ -2278,6 +2278,13 @@ struct	chflagsat_args {
 	int	flags;	char flags_[PAD_(int)];
 	int	atflags;	char atflags_[PAD_(int)];
 };
+struct	pipe2_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int *	fildes;	char fildes_[PAD_(int *)];
+	int	flags;	char flags_[PAD_(int)];
+};
 
 #ifdef COMPAT_43
 
@@ -2885,6 +2892,7 @@ int	sys_vmm_guest_ctl (struct vmm_guest_ctl_args *);
 int	sys_vmm_guest_sync_addr (struct vmm_guest_sync_addr_args *);
 int	sys_procctl (struct procctl_args *);
 int	sys_chflagsat (struct chflagsat_args *);
+int	sys_pipe2 (struct pipe2_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

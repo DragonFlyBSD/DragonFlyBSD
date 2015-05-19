@@ -133,7 +133,7 @@ extern int cmask;
 /*
  * Fixup fd_freefile and fd_lastfile after a descriptor has been cleared.
  *
- * MPSAFE - must be called with fdp->fd_spin exclusively held
+ * must be called with fdp->fd_spin exclusively held
  */
 static __inline
 void
@@ -152,8 +152,6 @@ fdfixup_locked(struct filedesc *fdp, int fd)
 
 /*
  * System calls on descriptors.
- *
- * MPSAFE
  */
 int
 sys_getdtablesize(struct getdtablesize_args *uap) 
@@ -184,8 +182,6 @@ sys_getdtablesize(struct getdtablesize_args *uap)
  *
  * note: keep in mind that a potential race condition exists when closing
  * descriptors from a shared descriptor table (via rfork).
- *
- * MPSAFE
  */
 int
 sys_dup2(struct dup2_args *uap)
@@ -201,8 +197,6 @@ sys_dup2(struct dup2_args *uap)
 
 /*
  * Duplicate a file descriptor.
- *
- * MPSAFE
  */
 int
 sys_dup(struct dup_args *uap)
@@ -410,8 +404,6 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 
 /*
  * The file control system call.
- *
- * MPSAFE
  */
 int
 sys_fcntl(struct fcntl_args *uap)
@@ -488,8 +480,6 @@ sys_fcntl(struct fcntl_args *uap)
  * to find the lowest unused file descriptor that is greater than or
  * equal to "new".  DUP_CLOEXEC, which works with either of the first
  * two flags, sets the close-on-exec flag on the "new" file descriptor.
- *
- * MPSAFE
  */
 int
 kern_dup(int flags, int old, int new, int *res)
@@ -540,7 +530,7 @@ retry:
 	}
 	fp = fdp->fd_files[old].fp;
 	oldflags = fdp->fd_files[old].fileflags;
-	fhold(fp);	/* MPSAFE - can be called with a spinlock held */
+	fhold(fp);
 
 	/*
 	 * Allocate a new descriptor if DUP_VARIABLE, or expand the table
@@ -681,8 +671,6 @@ retry:
  * If sigio is on the list associated with a process or process group,
  * disable signalling from the device, remove sigio from the list and
  * free sigio.
- *
- * MPSAFE
  */
 void
 funsetown(struct sigio **sigiop)
@@ -725,8 +713,6 @@ funsetown(struct sigio **sigiop)
 /*
  * Free a list of sigio structures.  Caller is responsible for ensuring
  * that the list is MPSAFE.
- *
- * MPSAFE
  */
 void
 funsetownlst(struct sigiolst *sigiolst)
@@ -742,8 +728,6 @@ funsetownlst(struct sigiolst *sigiolst)
  *
  * After permission checking, add a sigio structure to the sigio list for
  * the process or process group.
- *
- * MPSAFE
  */
 int
 fsetown(pid_t pgid, struct sigio **sigiop)
@@ -834,8 +818,6 @@ done:
 
 /*
  * This is common code for FIOGETOWN ioctl called by fcntl(fd, F_GETOWN, arg).
- *
- * MPSAFE
  */
 pid_t
 fgetown(struct sigio **sigiop)
@@ -853,8 +835,6 @@ fgetown(struct sigio **sigiop)
 
 /*
  * Close many file descriptors.
- *
- * MPSAFE
  */
 int
 sys_closefrom(struct closefrom_args *uap)
@@ -864,8 +844,6 @@ sys_closefrom(struct closefrom_args *uap)
 
 /*
  * Close all file descriptors greater then or equal to fd
- *
- * MPSAFE
  */
 int
 kern_closefrom(int fd)
@@ -902,8 +880,6 @@ kern_closefrom(int fd)
 
 /*
  * Close a file descriptor.
- *
- * MPSAFE
  */
 int
 sys_close(struct close_args *uap)
@@ -912,7 +888,7 @@ sys_close(struct close_args *uap)
 }
 
 /*
- * MPSAFE
+ * close() helper
  */
 int
 kern_close(int fd)
@@ -1000,7 +976,7 @@ sys_shutdown(struct shutdown_args *uap)
 }
 
 /*
- * MPSAFE
+ * fstat() helper
  */
 int
 kern_fstat(int fd, struct stat *ub)
@@ -1022,8 +998,6 @@ kern_fstat(int fd, struct stat *ub)
 
 /*
  * Return status information about a file descriptor.
- *
- * MPSAFE
  */
 int
 sys_fstat(struct fstat_args *uap)
@@ -1087,8 +1061,6 @@ SYSCTL_INT(_debug, OID_AUTO, fdexpand, CTLFLAG_RD, &fdexpand, 0,
  *
  * The fdp's spinlock must be held exclusively on entry and may be held
  * exclusively on return.  The spinlock may be cycled by the routine.
- *
- * MPSAFE
  */
 static void
 fdgrow_locked(struct filedesc *fdp, int want)
@@ -1168,7 +1140,7 @@ left_ancestor(int n)
  * Traverse the in-place binary tree buttom-up adjusting the allocation
  * count so scans can determine where free descriptors are located.
  *
- * MPSAFE - caller must be holding an exclusive spinlock on fdp
+ * caller must be holding an exclusive spinlock on fdp
  */
 static
 void
@@ -1185,8 +1157,6 @@ fdreserve_locked(struct filedesc *fdp, int fd, int incr)
  * Reserve a file descriptor for the process.  If no error occurs, the
  * caller MUST at some point call fsetfd() or assign a file pointer
  * or dispose of the reservation.
- *
- * MPSAFE
  */
 int
 fdalloc(struct proc *p, int want, int *result)
@@ -1309,8 +1279,6 @@ found:
 /*
  * Check to see whether n user file descriptors
  * are available to the process p.
- *
- * MPSAFE
  */
 int
 fdavail(struct proc *p, int n)
@@ -1527,8 +1495,6 @@ fdrevoke_proc_callback(struct proc *p, void *vinfo)
  *	file pointer is NOT associated with the descriptor.  If falloc
  *	returns success, fsetfd() MUST be called to either associate the
  *	file pointer or clear the reservation.
- *
- * MPSAFE
  */
 int
 falloc(struct lwp *lp, struct file **resultfp, int *resultfd)
@@ -1586,8 +1552,6 @@ done:
  * Check for races against a file descriptor by determining that the
  * file pointer is still associated with the specified file descriptor,
  * and a close is not currently in progress.
- *
- * MPSAFE
  */
 int
 checkfdclosed(struct filedesc *fdp, int fd, struct file *fp)
@@ -1611,7 +1575,7 @@ checkfdclosed(struct filedesc *fdp, int fd, struct file *fp)
  */
 
 /*
- * MPSAFE (exclusive spinlock must be held on call)
+ * (exclusive spinlock must be held on call)
  */
 static void
 fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd)
@@ -1629,9 +1593,6 @@ fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd)
 	}
 }
 
-/*
- * MPSAFE
- */
 void
 fsetfd(struct filedesc *fdp, struct file *fp, int fd)
 {
@@ -1641,7 +1602,7 @@ fsetfd(struct filedesc *fdp, struct file *fp, int fd)
 }
 
 /*
- * MPSAFE (exclusive spinlock must be held on call)
+ * (exclusive spinlock must be held on call)
  */
 static 
 struct file *
@@ -1662,7 +1623,7 @@ funsetfd_locked(struct filedesc *fdp, int fd)
 }
 
 /*
- * MPSAFE
+ * WARNING: May not be called before initial fsetfd().
  */
 int
 fgetfdflags(struct filedesc *fdp, int fd, int *flagsp)
@@ -1683,7 +1644,7 @@ fgetfdflags(struct filedesc *fdp, int fd, int *flagsp)
 }
 
 /*
- * MPSAFE
+ * WARNING: May not be called before initial fsetfd().
  */
 int
 fsetfdflags(struct filedesc *fdp, int fd, int add_flags)
@@ -1704,7 +1665,7 @@ fsetfdflags(struct filedesc *fdp, int fd, int add_flags)
 }
 
 /*
- * MPSAFE
+ * WARNING: May not be called before initial fsetfd().
  */
 int
 fclrfdflags(struct filedesc *fdp, int fd, int rem_flags)
@@ -1787,8 +1748,6 @@ fdinit_bootstrap(struct proc *p0, struct filedesc *fdp0, int cmask)
 
 /*
  * Build a new filedesc structure.
- *
- * NOT MPSAFE (vref)
  */
 struct filedesc *
 fdinit(struct proc *p)
@@ -1833,8 +1792,6 @@ fdinit(struct proc *p)
 
 /*
  * Share a filedesc structure.
- *
- * MPSAFE
  */
 struct filedesc *
 fdshare(struct proc *p)
@@ -1850,8 +1807,6 @@ fdshare(struct proc *p)
 
 /*
  * Copy a filedesc structure.
- *
- * MPSAFE
  */
 int
 fdcopy(struct proc *p, struct filedesc **fpp)
@@ -2145,8 +2100,6 @@ fdfree(struct proc *p, struct filedesc *repl)
 
 /*
  * Retrieve and reference the file pointer associated with a descriptor.
- *
- * MPSAFE
  */
 struct file *
 holdfp(struct filedesc *fdp, int fd, int flag)
@@ -2174,8 +2127,6 @@ done:
  * holdsock() - load the struct file pointer associated
  * with a socket into *fpp.  If an error occurs, non-zero
  * will be returned and *fpp will be set to NULL.
- *
- * MPSAFE
  */
 int
 holdsock(struct filedesc *fdp, int fd, struct file **fpp)
@@ -2207,8 +2158,6 @@ done:
 
 /*
  * Convert a user file descriptor to a held file pointer.
- *
- * MPSAFE
  */
 int
 holdvnode(struct filedesc *fdp, int fd, struct file **fpp)
@@ -2460,8 +2409,6 @@ closef(struct file *fp, struct proc *p)
 }
 
 /*
- * MPSAFE
- *
  * fhold() can only be called if f_count is already at least 1 (i.e. the
  * caller of fhold() already has a reference to the file pointer in some
  * manner or other). 
@@ -2602,8 +2549,6 @@ fdopen(struct dev_open_args *ap)
 /*
  * The caller has reserved the file descriptor dfd for us.  On success we
  * must fsetfd() it.  On failure the caller will clean it up.
- *
- * MPSAFE
  */
 int
 dupfdopen(struct filedesc *fdp, int dfd, int sfd, int mode, int error)
@@ -2707,8 +2652,6 @@ filedesc_to_leader_alloc(struct filedesc_to_leader *old,
 /*
  * Scan all file pointers in the system.  The callback is made with
  * the master list spinlock held exclusively.
- *
- * MPSAFE
  */
 void
 allfiles_scan_exclusive(int (*callback)(struct file *, void *), void *data)
@@ -2869,9 +2812,6 @@ fildesc_drvinit(void *unused)
 	make_dev(&fildesc_ops, 2, UID_ROOT, GID_WHEEL, 0666, "stderr");
 }
 
-/*
- * MPSAFE
- */
 struct fileops badfileops = {
 	.fo_read = badfo_readwrite,
 	.fo_write = badfo_readwrite,
@@ -2909,36 +2849,24 @@ badfo_kqfilter(struct file *fp, struct knote *kn)
 	return (EOPNOTSUPP);
 }
 
-/*
- * MPSAFE
- */
 int
 badfo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
 	return (EBADF);
 }
 
-/*
- * MPSAFE
- */
 int
 badfo_close(struct file *fp)
 {
 	return (EBADF);
 }
 
-/*
- * MPSAFE
- */
 int
 badfo_shutdown(struct file *fp, int how)
 {
 	return (EBADF);
 }
 
-/*
- * MPSAFE
- */
 int
 nofo_shutdown(struct file *fp, int how)
 {

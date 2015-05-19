@@ -167,6 +167,7 @@ DF402.0 {
     openat;
     pathconf;
     pipe;
+    pipe2;
     poll;
     pread;
     preadv;
@@ -466,6 +467,7 @@ DFprivate_1.0 {
     __sys_openat;
     __sys_pathconf;
     __sys_pipe;
+    __sys_pipe2;
     __sys_poll;
     __sys_profil;
     __sys_pselect;
@@ -754,6 +756,7 @@ DFprivate_1.0 {
     _openat;
     _pathconf;
     _pipe;
+    _pipe2;
     _poll;
     _profil;
     _pselect;

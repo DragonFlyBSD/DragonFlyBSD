@@ -119,9 +119,10 @@
  * 400103 - Milestone - availability of gcc50 in base
  * 400104 - struct lwp_params (a public struct) members renaming
  * 400105 - Switch to gcc50 as the primary compiler
+ * 400106 - Added pipe2() system call
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400105	/* propagated to newvers */
+#define __DragonFly_version 400106	/* propagated to newvers */
 
 #include <sys/_null.h>
 
