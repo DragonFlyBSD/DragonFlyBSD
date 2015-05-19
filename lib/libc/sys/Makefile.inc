@@ -151,6 +151,7 @@ MLINKS+=msgrcv.2 msgrcv.3
 MLINKS+=msgsnd.2 msgsnd.3
 MLINKS+=open.2 openat.2
 MLINKS+=pathconf.2 fpathconf.2 pathconf.2 lpathconf.2
+MLINKS+=pipe.2 pipe2.2
 MLINKS+=read.2 pread.2 read.2 preadv.2 read.2 readv.2
 MLINKS+=readlink.2 readlinkat.2
 MLINKS+=recv.2 recvfrom.2 recv.2 recvmsg.2
