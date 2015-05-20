@@ -922,6 +922,7 @@ struct hammer_mount {
 	int	dedup_cache_count;
 	int	error;				/* critical I/O error */
 	struct krate	krate;			/* rate limited kprintf */
+	struct krate	kdiag;			/* rate limited kprintf */
 	hammer_tid_t	asof;			/* snapshot mount */
 	hammer_tid_t	next_tid;
 	hammer_tid_t	flush_tid1;		/* flusher tid sequencing */

@@ -626,8 +626,12 @@ found_aliased:
 		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
 				   hammer_xlate_to_zone2(buf_offset));
 		if (buffer) {
-			kprintf("HAMMER: recovered aliased %016jx\n",
-				(intmax_t)buf_offset);
+			if (hammer_debug_general & 0x0001) {
+				krateprintf(&hmp->kdiag,
+					    "HAMMER: recovered "
+					    "aliased %016jx\n",
+					    (intmax_t)buf_offset);
+			}
 			goto found_aliased;
 		}
 	}
@@ -833,10 +837,13 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 			ret_error = error;
 			if (report_conflicts ||
 			    (hammer_debug_general & 0x8000)) {
-				kprintf("hammer_del_buffers: unable to "
-					"invalidate %016llx buffer=%p rep=%d\n",
+				krateprintf(&hmp->kdiag,
+					"hammer_del_buffers: unable to "
+					"invalidate %016llx buffer=%p "
+					"rep=%d lkrefs=%08x\n",
 					(long long)base_offset,
-					buffer, report_conflicts);
+					buffer, report_conflicts,
+					(buffer ? buffer->io.lock.refs : -1));
 			}
 		}
 		base_offset += HAMMER_BUFSIZE;

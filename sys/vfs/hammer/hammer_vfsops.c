@@ -488,6 +488,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 		hmp->krate.freq = 1;	/* maximum reporting rate (hz) */
 		hmp->krate.count = -16;	/* initial burst */
+		hmp->kdiag.freq = 1;	/* maximum reporting rate (hz) */
+		hmp->kdiag.count = -16;	/* initial burst */
 
 		hmp->sync_lock.refs = 1;
 		hmp->free_lock.refs = 1;
