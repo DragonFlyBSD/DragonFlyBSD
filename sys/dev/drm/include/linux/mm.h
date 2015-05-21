@@ -126,4 +126,10 @@ __free_pages(struct vm_page *pgs, u_int order)
 	vm_page_free_contig(pgs, bytes);
 }
 
+static inline void
+get_page(struct vm_page *page)
+{
+	vm_page_hold(page);
+}
+
 #endif	/* _LINUX_MM_H_ */
