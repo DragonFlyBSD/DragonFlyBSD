@@ -346,14 +346,6 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	if (ip->flags & (HAMMER2_INODE_RESIZED|HAMMER2_INODE_MTIME))
 		hammer2_inode_fsync(&trans, ip, cluster);
 
-#if 0
-	/*
-	 * XXX creates discontinuity w/modify_tid
-	 */
-	if (ap->a_flags & VOP_FSYNC_SYSCALL) {
-		hammer2_flush(&trans, cluster);
-	}
-#endif
 	hammer2_inode_unlock(ip, cluster);
 	hammer2_trans_done(&trans);
 
@@ -1170,7 +1162,7 @@ hammer2_write_file(hammer2_inode_t *ip,
 	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	hammer2_knote(ip->vp, kflags);
 	vsetisdirty(ip->vp);
-	hammer2_trans_assert_strategy(NULL);
+	hammer2_trans_assert_strategy(ip->pmp);
 
 	return error;
 }

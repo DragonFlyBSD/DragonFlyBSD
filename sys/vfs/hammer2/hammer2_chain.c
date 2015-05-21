@@ -127,9 +127,13 @@ hammer2_isclusterable(hammer2_chain_t *chain)
 
 /*
  * Make a chain visible to the flusher.  The flusher needs to be able to
- * do flushes of a subdirectory chains or single files so it does a top-down
+ * do flushes of subdirectory chains or single files so it does a top-down
  * recursion using the ONFLUSH flag for the recursion.  It locates MODIFIED
- * or UPDATE chains and flushes back up the chain to the root.
+ * or UPDATE chains and flushes back up the chain to the volume root.
+ *
+ * This routine sets ONFLUSH upward until it hits the volume root.  For
+ * simplicity we ignore PFSROOT boundaries whos rules can be complex.
+ * Extra ONFLUSH flagging doesn't hurt the filesystem.
  */
 void
 hammer2_chain_setflush(hammer2_trans_t *trans, hammer2_chain_t *chain)
@@ -246,6 +250,10 @@ void
 hammer2_chain_ref(hammer2_chain_t *chain)
 {
 	atomic_add_int(&chain->refs, 1);
+#if 0
+	kprintf("REFC %p %d %08x\n", chain, chain->refs - 1, chain->flags);
+	print_backtrace(8);
+#endif
 }
 
 /*
@@ -318,6 +326,10 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 
 	if (hammer2_debug & 0x200000)
 		Debugger("drop");
+#if 0
+	kprintf("DROP %p %d %08x\n", chain, chain->refs - 1, chain->flags);
+	print_backtrace(8);
+#endif
 
 	if (chain->flags & HAMMER2_CHAIN_UPDATE)
 		++need;
@@ -3345,16 +3357,14 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	}
 
 	/*
-	 * NOTE: Special case call to hammer2_flush().  We are not in a FLUSH
-	 *	 transaction, so we can't pass a mirror_tid for the volume.
-	 *	 But since we are destroying the chain we can just pass 0
-	 *	 and use the flush call to clean out the subtopology.
+	 * NOTE: Special case call to hammer2_flush() for permanent deletions
+	 *	 to get rid of the in-memory topology.
 	 *
 	 *	 XXX not the best way to destroy the sub-topology.
 	 */
 	if (flags & HAMMER2_DELETE_PERMANENT) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROY);
-		hammer2_flush(trans, chain);
+		hammer2_flush(trans, chain, 1);
 	} else {
 		/* XXX might not be needed */
 		hammer2_chain_setflush(trans, chain);

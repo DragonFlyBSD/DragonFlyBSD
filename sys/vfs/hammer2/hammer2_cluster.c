@@ -1660,7 +1660,7 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 		for (i = 0; i < ncluster->nchains; ++i) {
 			nchain = ncluster->array[i].chain;
 			if (nchain)
-				hammer2_flush(trans, nchain);
+				hammer2_flush(trans, nchain, 1);
 		}
 		hammer2_inode_unlock(nip, ncluster);
 	}

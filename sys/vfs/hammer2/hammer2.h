@@ -891,6 +891,7 @@ struct hammer2_pfs {
 	hammer2_inode_t		*ihidden;	/* PFS hidden directory */
 	uint8_t			pfs_types[HAMMER2_MAXCLUSTER];
 	char			*pfs_names[HAMMER2_MAXCLUSTER];
+	hammer2_trans_manage_t	tmanage;	/* transaction management */
 	struct lock		lock;		/* PFS lock for certain ops */
 	hammer2_off_t		inode_count;	/* copy of inode_count */
 	struct netexport	export;		/* nfs export */
@@ -1062,7 +1063,7 @@ u_int64_t hammer2_timespec_to_time(const struct timespec *ts);
 u_int32_t hammer2_to_unix_xid(const uuid_t *uuid);
 void hammer2_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 hammer2_xid_t hammer2_trans_newxid(hammer2_pfs_t *pmp);
-void hammer2_trans_manage_init(void);
+void hammer2_trans_manage_init(hammer2_trans_manage_t *tman);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
 int hammer2_getradix(size_t bytes);
@@ -1185,7 +1186,7 @@ void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				hammer2_chain_t *chain, int flags);
 void hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
 				hammer2_chain_t **chainp, int flags);
-void hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);
+void hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain, int istop);
 void hammer2_chain_commit(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_setflush(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,

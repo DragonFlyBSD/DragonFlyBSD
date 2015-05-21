@@ -92,24 +92,22 @@ static int hammer2_flush_recurse(hammer2_chain_t *child, void *data);
  * hmp's.  So we can't just stuff tmanage into hammer2_dev or
  * hammer2_pfs.
  */
-static hammer2_trans_manage_t	tmanage;
-
 void
-hammer2_trans_manage_init(void)
+hammer2_trans_manage_init(hammer2_trans_manage_t *tman)
 {
-	lockinit(&tmanage.translk, "h2trans", 0, 0);
-	TAILQ_INIT(&tmanage.transq);
-	tmanage.flush_xid = 1;
-	tmanage.alloc_xid = tmanage.flush_xid + 1;
+	lockinit(&tman->translk, "h2trans", 0, 0);
+	TAILQ_INIT(&tman->transq);
+	tman->flush_xid = 1;
+	tman->alloc_xid = tman->flush_xid + 1;
 }
 
 hammer2_xid_t
-hammer2_trans_newxid(hammer2_pfs_t *pmp __unused)
+hammer2_trans_newxid(hammer2_pfs_t *pmp)
 {
 	hammer2_xid_t xid;
 
 	for (;;) {
-		xid = atomic_fetchadd_int(&tmanage.alloc_xid, 1);
+		xid = atomic_fetchadd_int(&pmp->tmanage.alloc_xid, 1);
 		if (xid)
 			break;
 	}
@@ -142,7 +140,7 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfs_t *pmp, int flags)
 	hammer2_trans_manage_t *tman;
 	hammer2_trans_t *head;
 
-	tman = &tmanage;
+	tman = &pmp->tmanage;
 
 	bzero(trans, sizeof(*trans));
 	trans->pmp = pmp;
@@ -264,12 +262,12 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfs_t *pmp, int flags)
 }
 
 void
-hammer2_trans_assert_strategy(hammer2_pfs_t *pmp __unused)
+hammer2_trans_assert_strategy(hammer2_pfs_t *pmp)
 {
 	hammer2_trans_manage_t *tman;
 	hammer2_trans_t *head;
 
-	tman = &tmanage;
+	tman = &pmp->tmanage;
 	lockmgr(&tman->translk, LK_EXCLUSIVE);
 	if (tman->flushcnt) {
 		TAILQ_FOREACH(head, &tman->transq, entry) {
@@ -289,7 +287,7 @@ hammer2_trans_done(hammer2_trans_t *trans)
 	hammer2_trans_t *head;
 	hammer2_trans_t *scan;
 
-	tman = &tmanage;
+	tman = &trans->pmp->tmanage;
 
 	/*
 	 * Remove.
@@ -363,7 +361,7 @@ hammer2_trans_done(hammer2_trans_t *trans)
  * the call if it was modified.
  */
 void
-hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
+hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain, int istop)
 {
 	hammer2_chain_t *scan;
 	hammer2_flush_info_t info;
@@ -418,7 +416,7 @@ hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
 			if (hammer2_debug & 0x0040)
 				kprintf("deferred flush %p\n", scan);
 			hammer2_chain_lock(scan, HAMMER2_RESOLVE_MAYBE);
-			hammer2_flush(trans, scan);
+			hammer2_flush(trans, scan, 0);
 			hammer2_chain_unlock(scan);
 			hammer2_chain_drop(scan);	/* ref from deferral */
 		}
@@ -427,7 +425,7 @@ hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
 		 * [re]flush chain.
 		 */
 		info.diddeferral = 0;
-		hammer2_flush_core(&info, chain, 0);
+		hammer2_flush_core(&info, chain, istop);
 
 		/*
 		 * Only loop if deep recursions have been deferred.
@@ -484,7 +482,7 @@ hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
  */
 static void
 hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
-		   int deleting)
+		   int istop)
 {
 	hammer2_chain_t *parent;
 	hammer2_dev_t *hmp;
@@ -523,11 +521,28 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		TAILQ_INSERT_TAIL(&info->flushq, chain, flush_node);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DEFERRED);
 		++info->diddeferral;
+	} else if ((chain->flags & HAMMER2_CHAIN_PFSBOUNDARY) && istop == 0) {
+		/*
+		 * We do not recurse through PFSROOTs.  PFSROOT flushes are
+		 * handled by the related pmp's (whether mounted or not,
+		 * including during recovery).
+		 *
+		 * But we must still process the PFSROOT chains for block
+		 * table updates in their parent (which IS part of our flush).
+		 *
+		 * Note that the volume root, vchain, does not set this flag.
+		 */
+		;
 	} else if (chain->flags & HAMMER2_CHAIN_ONFLUSH) {
 		/*
 		 * Downward recursion search (actual flush occurs bottom-up).
 		 * pre-clear ONFLUSH.  It can get set again due to races,
 		 * which we want so the scan finds us again in the next flush.
+		 * These races can also include 
+		 *
+		 * Flush recursions stop at PFSROOT boundaries.  Each PFS
+		 * must be individually flushed and then the root must
+		 * be flushed.
 		 */
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
 		info->parent = chain;
@@ -981,9 +996,6 @@ done:
  *	    processed the child.
  *
  * WARNING! parent->core spinlock is held on entry and return.
- *
- * WARNING! Flushes do not cross PFS boundaries.  Specifically, a flush must
- *	    not cross a pfs-root boundary.
  */
 static int
 hammer2_flush_recurse(hammer2_chain_t *child, void *data)
@@ -1013,13 +1025,13 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 	 */
 	if (child->flags & HAMMER2_CHAIN_FLUSH_MASK) {
 		++info->depth;
-		hammer2_flush_core(info, child, 0); /* XXX deleting */
+		hammer2_flush_core(info, child, 0);
 		--info->depth;
 	} else if (hammer2_debug & 0x200) {
 		if (info->debug == NULL)
 			info->debug = child;
 		++info->depth;
-		hammer2_flush_core(info, child, 0); /* XXX deleting */
+		hammer2_flush_core(info, child, 0);
 		--info->depth;
 		if (info->debug == child)
 			info->debug = NULL;

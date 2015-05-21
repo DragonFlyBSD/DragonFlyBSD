@@ -302,8 +302,6 @@ hammer2_vfs_init(struct vfsconf *conf)
 
 	hammer2_limit_dirty_chains = desiredvnodes / 10;
 
-	hammer2_trans_manage_init();
-
 	return (error);
 }
 
@@ -356,6 +354,7 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 
 	if (pmp == NULL) {
 		pmp = kmalloc(sizeof(*pmp), M_HAMMER2, M_WAITOK | M_ZERO);
+		hammer2_trans_manage_init(&pmp->tmanage);
 		kmalloc_create(&pmp->minode, "HAMMER2-inodes");
 		kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
 		lockinit(&pmp->lock, "pfslk", 0, 0);
@@ -2458,6 +2457,15 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 			if (error)
 				cumulative_error = error;
 		}
+
+		/*
+		 * Flush the recovery at the PFS boundary to stage it for
+		 * the final flush of the super-root topology.
+		 */
+		if ((chain->bref.flags & HAMMER2_BREF_FLAG_PFSROOT) &&
+		    (chain->flags & HAMMER2_CHAIN_ONFLUSH)) {
+			hammer2_flush(trans, chain, 1);
+		}
 		chain = hammer2_chain_scan(parent, chain, &cache_index,
 					   HAMMER2_LOOKUP_NODATA);
 	}
@@ -2482,7 +2490,6 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	int flags;
 	int error;
 	int total_error;
-	int force_fchain;
 	int i;
 	int j;
 
@@ -2545,52 +2552,46 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * buffer cache flushes which occur during the flush.  Device buffers
 	 * are not affected.
 	 */
-
-#if 0
-	if (info.error == 0 && (waitfor & MNT_WAIT)) {
-		info.waitfor = waitfor;
-		    vsyncscan(mp, flags, hammer2_sync_scan2, &info);
-
-	}
-#endif
 	hammer2_bioq_sync(info.trans.pmp);
 	atomic_clear_int(&info.trans.flags, HAMMER2_TRANS_PREFLUSH);
 
 	total_error = 0;
 
-#if 0
 	/*
-	 * Flush all nodes making up the cluster
+	 * Flush all nodes to synchronize the PFSROOT subtopology to the media.
 	 *
-	 * We must also flush any deleted siblings because the super-root
-	 * flush won't do it for us.  They all must be staged or the
-	 * super-root flush will not be able to update its block table
-	 * properly.
-	 *
-	 * XXX currently done serially instead of concurrently
+	 * Note that this flush will not be visible on crash recovery until
+	 * we flush the super-root topology in the next loop.
 	 */
 	for (i = 0; iroot && i < iroot->cluster.nchains; ++i) {
 		chain = iroot->cluster.array[i].chain;
-		if (chain) {
-			hmp = chain->hmp;
-			hammer2_chain_ref(chain);    /* prevent destruction */
-			hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-			hammer2_flush(&info.trans, chain);
-			hammer2_chain_unlock(chain);
-			hammer2_chain_drop(chain);
+		if (chain == NULL)
+			continue;
+
+		hammer2_chain_ref(chain);
+		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
+		if (chain->flags & HAMMER2_CHAIN_FLUSH_MASK) {
+			hammer2_flush(&info.trans, chain, 1);
+			parent = chain->parent;
+			KKASSERT(chain->pmp != parent->pmp);
+			hammer2_chain_setflush(&info.trans, parent);
 		}
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
 	}
-#endif
-#if 0
 	hammer2_trans_done(&info.trans);
-#endif
 
 	/*
 	 * Flush all volume roots to synchronize PFS flushes with the
-	 * storage media.  Use a super-root transaction for each one.
+	 * storage media volume header.  This will flush the freemap and
+	 * the superroot topology but stops when it reaches a PFSROOT
+	 * (which we already flushed above).
 	 *
-	 * The flush code will detect super-root -> pfs-root chain
-	 * transitions using the last pfs-root flush.
+	 * This is the last step which connects the volume root to the
+	 * PFSROOT dirs flushed above.
+	 *
+	 * Each spmp (representing the hmp's super-root) requires its own
+	 * transaction.
 	 */
 	for (i = 0; iroot && i < iroot->cluster.nchains; ++i) {
 		hammer2_chain_t *tmp;
@@ -2612,21 +2613,14 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		}
 		if (j >= 0)
 			continue;
-#if 0
-		hammer2_trans_spmp(&info.trans, hmp->spmp);
-#endif
 
 		/*
-		 * Force an update of the XID from the PFS root to the
-		 * topology root.  We couldn't do this from the PFS
-		 * transaction because a SPMP transaction is needed.
-		 * This does not modify blocks, instead what it does is
-		 * allow the flush code to find the transition point and
-		 * then update on the way back up.
+		 * spmp transaction.  The super-root is never directly
+		 * mounted so there shouldn't be any vnodes, let alone any
+		 * dirty vnodes associated with it.
 		 */
-		parent = chain->parent;
-		KKASSERT(chain->pmp != parent->pmp);
-		hammer2_chain_setflush(&info.trans, parent);
+		hammer2_trans_init(&info.trans, hmp->spmp,
+				   HAMMER2_TRANS_ISFLUSH);
 
 		/*
 		 * Media mounts have two 'roots', vchain for the topology
@@ -2648,7 +2642,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 			 */
 			hammer2_voldata_modify(hmp);
 			chain = &hmp->fchain;
-			hammer2_flush(&info.trans, chain);
+			hammer2_flush(&info.trans, chain, 1);
 			KKASSERT(chain == &hmp->fchain);
 		}
 		hammer2_chain_unlock(&hmp->fchain);
@@ -2659,26 +2653,11 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 		if (hmp->vchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
 			chain = &hmp->vchain;
-			hammer2_flush(&info.trans, chain);
+			hammer2_flush(&info.trans, chain, 1);
 			KKASSERT(chain == &hmp->vchain);
-			force_fchain = 1;
-		} else {
-			force_fchain = 0;
 		}
 		hammer2_chain_unlock(&hmp->vchain);
 		hammer2_chain_drop(&hmp->vchain);
-
-#if 0
-		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
-		if ((hmp->fchain.flags & HAMMER2_CHAIN_FLUSH_MASK) ||
-		    force_fchain) {
-			/* this will also modify vchain as a side effect */
-			chain = &hmp->fchain;
-			hammer2_flush(&info.trans, chain);
-			KKASSERT(chain == &hmp->fchain);
-		}
-		hammer2_chain_unlock(&hmp->fchain);
-#endif
 
 		error = 0;
 
@@ -2741,12 +2720,8 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		if (error)
 			total_error = error;
 
-#if 0
-		hammer2_trans_done(&info.trans);
-#endif
+		hammer2_trans_done(&info.trans);	/* spmp trans */
 	}
-	hammer2_trans_done(&info.trans);
-
 	return (total_error);
 }
 
@@ -2785,11 +2760,13 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	 */
 	hammer2_inode_ref(ip);
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-	vfsync(vp, info->waitfor, 1, NULL, NULL);
+	if ((ip->flags & HAMMER2_INODE_MODIFIED) ||
+	    !RB_EMPTY(&vp->v_rbdirty_tree)) {
+		vfsync(vp, info->waitfor, 1, NULL, NULL);
+	}
 	if ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
 	    RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vclrisdirty(vp);
-		return(0);
 	}
 
 	hammer2_inode_drop(ip);
