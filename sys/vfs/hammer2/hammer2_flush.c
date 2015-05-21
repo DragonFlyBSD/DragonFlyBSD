@@ -264,6 +264,25 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfs_t *pmp, int flags)
 }
 
 void
+hammer2_trans_assert_strategy(hammer2_pfs_t *pmp __unused)
+{
+	hammer2_trans_manage_t *tman;
+	hammer2_trans_t *head;
+
+	tman = &tmanage;
+	lockmgr(&tman->translk, LK_EXCLUSIVE);
+	if (tman->flushcnt) {
+		TAILQ_FOREACH(head, &tman->transq, entry) {
+			if (head->flags & HAMMER2_TRANS_ISFLUSH)
+				break;
+		}
+		KKASSERT(head);
+		KKASSERT(head->flags & HAMMER2_TRANS_PREFLUSH);
+	}
+	lockmgr(&tman->translk, LK_RELEASE);
+}
+
+void
 hammer2_trans_done(hammer2_trans_t *trans)
 {
 	hammer2_trans_manage_t *tman;

@@ -1155,21 +1155,54 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 	hammer2_chain_t *focus;
 	hammer2_key_t key_accum;
 	hammer2_key_t key_next;
+	int parent_index;
+	int cluster_index;
 	int null_count;
 	int i;
 
 	key_accum = *key_nextp;
 	null_count = 0;
-	cluster->focus = NULL;
-	cparent->focus = NULL;
-	cluster->focus_index = 0;
-	cparent->focus_index = 0;
+	parent_index = cparent->focus_index;	/* save prior focus */
+	cluster_index = cluster->focus_index;
+
+	cluster->focus = NULL;		/* XXX needed any more? */
+	/*cparent->focus = NULL;*/
+	cluster->focus_index = 0;	/* XXX needed any more? */
+	/*cparent->focus_index = 0;*/
 
 	cluster->ddflag = 0;
+
+	/*
+	 * The parent is always locked on entry, the iterator may be locked
+	 * depending on flags.
+	 *
+	 * We must temporarily unlock the passed-in clusters to avoid a
+	 * deadlock between elements of the cluster with other threads.
+	 * We will fixup the lock in the loop.
+	 *
+	 * Note that this will clear the focus.
+	 *
+	 * Reflag the clusters as locked, because we will relock them
+	 * as we go.
+	 */
+	if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0) {
+		hammer2_cluster_unlock(cluster);
+		cluster->flags |= HAMMER2_CLUSTER_LOCKED;
+	}
+	hammer2_cluster_unlock(cparent);
+	cparent->flags |= HAMMER2_CLUSTER_LOCKED;
 
 	for (i = 0; i < cparent->nchains; ++i) {
 		key_next = *key_nextp;
 		ochain = cluster->array[i].chain;
+
+		/*
+		 * Always relock the parent as we go.
+		 */
+		if (cparent->array[i].chain) {
+			hammer2_chain_lock(cparent->array[i].chain,
+					   flags & ~HAMMER2_LOOKUP_NOLOCK);
+		}
 
 		/*
 		 * Nothing to iterate from.  These cases can occur under
@@ -1184,20 +1217,27 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		if (cparent->array[i].chain == NULL ||
 		    (cparent->array[i].flags & HAMMER2_CITEM_INVALID) ||
 		    (cluster->array[i].flags & HAMMER2_CITEM_INVALID)) {
-			if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-				hammer2_chain_unlock(ochain);
+			/* ochain has not yet been relocked */
 			hammer2_chain_drop(ochain);
 			cluster->array[i].chain = NULL;
 			++null_count;
 			continue;
 		}
 
+		/*
+		 * Relock the child if necessary.  Parent and child will then
+		 * be locked as expected by hammer2_chain_next() and flags.
+		 */
+		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
+			hammer2_chain_lock(ochain, flags);
 		nchain = hammer2_chain_next(&cparent->array[i].chain, ochain,
 					    &key_next, key_beg, key_end,
 					    &cparent->array[i].cache_index,
 					    flags);
-		if (cparent->focus_index == i)
+		if (parent_index == i) {
+			cparent->focus_index = i;
 			cparent->focus = cparent->array[i].chain;
+		}
 		/* ochain now invalid but can still be used for focus check */
 
 		cluster->array[i].chain = nchain;
@@ -1225,7 +1265,7 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			/*
 			 * Fixup pre-existing focus.
 			 */
-			if (cluster->focus == ochain) {
+			if (cluster_index == i) {
 				cluster->focus_index = i;
 				cluster->focus = nchain;
 			}
@@ -1631,6 +1671,9 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
  * Return locked parent cluster given a locked child.  The child remains
  * locked on return.  The new parent's focus follows the child's focus
  * and the parent is always resolved.
+ *
+ * We must temporarily unlock the passed-in cluster to avoid a deadlock
+ * between elements of the cluster.
  */
 hammer2_cluster_t *
 hammer2_cluster_parent(hammer2_cluster_t *cluster)
@@ -1639,6 +1682,7 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 	int i;
 
 	cparent = hammer2_cluster_copy(cluster);
+	hammer2_cluster_unlock(cluster);
 
 	for (i = 0; i < cparent->nchains; ++i) {
 		hammer2_chain_t *chain;
@@ -1653,9 +1697,7 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 			continue;
 		while ((rchain = chain->parent) != NULL) {
 			hammer2_chain_ref(rchain);
-			hammer2_chain_unlock(chain);
 			hammer2_chain_lock(rchain, HAMMER2_RESOLVE_ALWAYS);
-			hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 			if (chain->parent == rchain)
 				break;
 			hammer2_chain_unlock(rchain);
@@ -1670,6 +1712,7 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 	}
 	cparent->flags |= HAMMER2_CLUSTER_LOCKED;
 	hammer2_cluster_resolve(cparent);
+	hammer2_cluster_lock(cluster, HAMMER2_RESOLVE_ALWAYS);
 
 	return cparent;
 }

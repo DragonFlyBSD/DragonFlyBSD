@@ -774,6 +774,7 @@ struct hammer2_syncthr {
 	thread_t	td;
 	uint32_t	flags;
 	int		depth;
+	int		clindex;	/* sync_thrs[] array index */
 	hammer2_trans_t	trans;
 	struct lock	lk;
 };
@@ -889,6 +890,7 @@ struct hammer2_pfs {
 	hammer2_inode_t		*iroot;		/* PFS root inode */
 	hammer2_inode_t		*ihidden;	/* PFS hidden directory */
 	uint8_t			pfs_types[HAMMER2_MAXCLUSTER];
+	char			*pfs_names[HAMMER2_MAXCLUSTER];
 	struct lock		lock;		/* PFS lock for certain ops */
 	hammer2_off_t		inode_count;	/* copy of inode_count */
 	struct netexport	export;		/* nfs export */
@@ -909,7 +911,7 @@ struct hammer2_pfs {
 	int			count_lwinprog;	/* logical write in prog */
 	struct spinlock		list_spin;
 	struct h2_unlk_list	unlinkq;	/* last-close unlink */
-	hammer2_syncthr_t	primary_thr;
+	hammer2_syncthr_t	sync_thrs[HAMMER2_MAXCLUSTER];
 	thread_t		wthread_td;	/* write thread td */
 	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
 	hammer2_mtx_t 		wthread_mtx;	/* interlock */
@@ -1210,6 +1212,7 @@ void hammer2_base_insert(hammer2_trans_t *trans, hammer2_chain_t *chain,
 void hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfs_t *pmp,
 				int flags);
 void hammer2_trans_done(hammer2_trans_t *trans);
+void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
 
 /*
  * hammer2_ioctl.c
@@ -1361,7 +1364,7 @@ void hammer2_cluster_reconnect(hammer2_dev_t *hmp, struct file *fp);
  * hammer2_syncthr.c
  */
 void hammer2_syncthr_create(hammer2_syncthr_t *thr, hammer2_pfs_t *pmp,
-			void (*func)(void *arg));
+			int clindex, void (*func)(void *arg));
 void hammer2_syncthr_delete(hammer2_syncthr_t *thr);
 void hammer2_syncthr_remaster(hammer2_syncthr_t *thr);
 void hammer2_syncthr_freeze(hammer2_syncthr_t *thr);

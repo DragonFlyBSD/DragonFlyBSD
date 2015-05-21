@@ -342,7 +342,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 */
 	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-	vclrisdirty(vp);
+	/*vclrisdirty(vp);*/
 	if (ip->flags & (HAMMER2_INODE_RESIZED|HAMMER2_INODE_MTIME))
 		hammer2_inode_fsync(&trans, ip, cluster);
 
@@ -1170,6 +1170,7 @@ hammer2_write_file(hammer2_inode_t *ip,
 	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	hammer2_knote(ip->vp, kflags);
 	vsetisdirty(ip->vp);
+	hammer2_trans_assert_strategy(NULL);
 
 	return error;
 }
@@ -2350,6 +2351,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	pmp = ip->pmp;
 	
 	hammer2_lwinprog_ref(pmp);
+	hammer2_trans_assert_strategy(pmp);
 	hammer2_mtx_ex(&pmp->wthread_mtx);
 	if (TAILQ_EMPTY(&pmp->wthread_bioq.queue)) {
 		bioq_insert_tail(&pmp->wthread_bioq, ap->a_bio);

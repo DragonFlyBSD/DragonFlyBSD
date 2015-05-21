@@ -333,7 +333,9 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		 hammer2_tid_t modify_tid)
 {
 	hammer2_chain_t *rchain;
+	hammer2_inode_t *iroot;
 	hammer2_pfs_t *pmp;
+	int count;
 	int i;
 	int j;
 
@@ -388,87 +390,120 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 	/*
 	 * Create the PFS's root inode.
 	 */
-	if (pmp->iroot == NULL) {
-		pmp->iroot = hammer2_inode_get(pmp, NULL, NULL);
-		hammer2_inode_ref(pmp->iroot);
-		hammer2_inode_unlock(pmp->iroot, NULL);
+	if ((iroot = pmp->iroot) == NULL) {
+		iroot = hammer2_inode_get(pmp, NULL, NULL);
+		pmp->iroot = iroot;
+		hammer2_inode_ref(iroot);
+		hammer2_inode_unlock(iroot, NULL);
 	}
 
 	/*
-	 * Create a primary synchronizer thread for the PFS if necessary.
-	 * Single-node masters (including snapshots) have nothing to
-	 * synchronize and do not require this thread.
-	 *
-	 * Multi-node masters or any number of soft masters, slaves, copy,
-	 * or other PFS types need the thread.
+	 * Stop here if no cluster is passed in.
 	 */
-	if (cluster && ripdata &&
-	    (ripdata->pfs_type != HAMMER2_PFSTYPE_MASTER ||
-	     ripdata->pfs_nmasters > 1) &&
-	    pmp->primary_thr.td == NULL) {
-		hammer2_syncthr_create(&pmp->primary_thr, pmp,
-				       hammer2_syncthr_primary);
+	if (cluster == NULL)
+		goto done;
+
+	/*
+	 * When a cluster is passed in we must add the cluster's chains
+	 * to the PFS's root inode, update pmp->pfs_types[], and update
+	 * the syncronization threads.
+	 *
+	 * At the moment empty spots can develop due to removals or failures.
+	 * Ultimately we want to re-fill these spots but doing so might
+	 * confused running code. XXX
+	 */
+	hammer2_inode_ref(iroot);
+	hammer2_mtx_ex(&iroot->lock);
+	j = iroot->cluster.nchains;
+
+	kprintf("add PFS to pmp %p[%d]\n", pmp, j);
+
+	for (i = 0; i < cluster->nchains; ++i) {
+		if (j == HAMMER2_MAXCLUSTER)
+			break;
+		rchain = cluster->array[i].chain;
+		KKASSERT(rchain->pmp == NULL);
+		rchain->pmp = pmp;
+		hammer2_chain_ref(rchain);
+		iroot->cluster.array[j].chain = rchain;
+		pmp->pfs_types[j] = ripdata->pfs_type;
+		pmp->pfs_names[j] = kstrdup(ripdata->filename, M_HAMMER2);
+
+		/*
+		 * If the PFS is already mounted we must account
+		 * for the mount_count here.
+		 */
+		if (pmp->mp)
+			++rchain->hmp->mount_count;
+
+		/*
+		 * May have to fixup dirty chain tracking.  Previous
+		 * pmp was NULL so nothing to undo.
+		 */
+		if (rchain->flags & HAMMER2_CHAIN_MODIFIED)
+			hammer2_pfs_memory_inc(pmp);
+		++j;
+	}
+	iroot->cluster.nchains = j;
+
+	if (i != cluster->nchains) {
+		kprintf("hammer2_mount: cluster full!\n");
+		/* XXX fatal error? */
 	}
 
 	/*
-	 * Update nmasters from any PFS which is part of the cluster.
+	 * Update nmasters from any PFS inode which is part of the cluster.
 	 * It is possible that this will result in a value which is too
 	 * high.  MASTER PFSs are authoritative for pfs_nmasters and will
 	 * override this value later on.
+	 *
+	 * (This informs us of masters that might not currently be
+	 *  discoverable by this mount).
 	 */
 	if (ripdata && pmp->pfs_nmasters < ripdata->pfs_nmasters) {
 		pmp->pfs_nmasters = ripdata->pfs_nmasters;
 	}
 
 	/*
-	 * When a cluster is passed in we must add the cluster's chains
-	 * to the PFS's root inode and update pmp->pfs_types[].
-	 *
-	 * At the moment empty spots can develop due to removals or failures.
-	 * Ultimately we want to re-fill these spots. XXX
+	 * Count visible masters.  Masters are usually added with
+	 * ripdata->pfs_nmasters set to 1.  This detects when there
+	 * are more (XXX and must update the master inodes).
 	 */
-	if (cluster) {
-		hammer2_inode_ref(pmp->iroot);
-		hammer2_mtx_ex(&pmp->iroot->lock);
-		j = pmp->iroot->cluster.nchains;
+	count = 0;
+	for (i = 0; i < iroot->cluster.nchains; ++i) {
+		if (pmp->pfs_types[i] == HAMMER2_PFSTYPE_MASTER)
+			++count;
+	}
+	if (pmp->pfs_nmasters < count)
+		pmp->pfs_nmasters = count;
 
-		kprintf("add PFS to pmp %p[%d]\n", pmp, j);
-
-		for (i = 0; i < cluster->nchains; ++i) {
-			if (j == HAMMER2_MAXCLUSTER)
-				break;
-			rchain = cluster->array[i].chain;
-			KKASSERT(rchain->pmp == NULL);
-			rchain->pmp = pmp;
-			hammer2_chain_ref(rchain);
-			pmp->iroot->cluster.array[j].chain = rchain;
-			pmp->pfs_types[j] = ripdata->pfs_type;
-
-			/*
-			 * If the PFS is already mounted we must account
-			 * for the mount_count here.
-			 */
-			if (pmp->mp)
-				++rchain->hmp->mount_count;
-
-			/*
-			 * May have to fixup dirty chain tracking.  Previous
-			 * pmp was NULL so nothing to undo.
-			 */
-			if (rchain->flags & HAMMER2_CHAIN_MODIFIED)
-				hammer2_pfs_memory_inc(pmp);
-			++j;
-		}
-		pmp->iroot->cluster.nchains = j;
-		hammer2_mtx_unlock(&pmp->iroot->lock);
-		hammer2_inode_drop(pmp->iroot);
-
-		if (i != cluster->nchains) {
-			kprintf("hammer2_mount: cluster full!\n");
-			/* XXX fatal error? */
+	/*
+	 * Create missing synchronization threads.
+	 *
+	 * Single-node masters (including snapshots) have nothing to
+	 * synchronize and do not require this thread.
+	 *
+	 * Multi-node masters or any number of soft masters, slaves, copy,
+	 * or other PFS types need the thread.
+	 *
+	 * Each thread is responsible for its particular cluster index.
+	 * We use independent threads so stalls or mismatches related to
+	 * any given target do not affect other targets.
+	 */
+	for (i = 0; i < iroot->cluster.nchains; ++i) {
+		if (pmp->sync_thrs[i].td)
+			continue;
+		if ((pmp->pfs_nmasters > 1 &&
+		     (pmp->pfs_types[i] == HAMMER2_PFSTYPE_MASTER)) ||
+		    pmp->pfs_types[i] != HAMMER2_PFSTYPE_MASTER) {
+			hammer2_syncthr_create(&pmp->sync_thrs[i], pmp, i,
+					       hammer2_syncthr_primary);
 		}
 	}
 
+	hammer2_mtx_unlock(&iroot->lock);
+	hammer2_inode_drop(iroot);
+done:
 	return pmp;
 }
 
@@ -479,15 +514,19 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 static void
 hammer2_pfsfree(hammer2_pfs_t *pmp)
 {
+	hammer2_inode_t *iroot;
+	int i;
+
 	/*
 	 * Cleanup our reference on iroot.  iroot is (should) not be needed
 	 * by the flush code.
 	 */
 	TAILQ_REMOVE(&hammer2_pfslist, pmp, mntentry);
 
-	hammer2_syncthr_delete(&pmp->primary_thr);
-
-	if (pmp->iroot) {
+	iroot = pmp->iroot;
+	if (iroot) {
+		for (i = 0; i < iroot->cluster.nchains; ++i)
+			hammer2_syncthr_delete(&pmp->sync_thrs[i]);
 #if REPORT_REFS_ERRORS
 		if (pmp->iroot->refs != 1)
 			kprintf("PMP->IROOT %p REFS WRONG %d\n",
@@ -516,6 +555,7 @@ static void
 hammer2_pfsfree_scan(hammer2_dev_t *hmp)
 {
 	hammer2_pfs_t *pmp;
+	hammer2_inode_t *iroot;
 	hammer2_cluster_t *cluster;
 	hammer2_chain_t *rchain;
 	int didfreeze;
@@ -523,7 +563,7 @@ hammer2_pfsfree_scan(hammer2_dev_t *hmp)
 
 again:
 	TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
-		if (pmp->iroot == NULL)
+		if ((iroot = pmp->iroot) == NULL)
 			continue;
 		if (hmp->spmp == pmp) {
 			kprintf("unmount hmp %p remove spmp %p\n",
@@ -539,7 +579,7 @@ again:
 		 * in-progress will be aborted and it will have to start
 		 * over again when unfrozen, or exit if told to exit.
 		 */
-		cluster = &pmp->iroot->cluster;
+		cluster = &iroot->cluster;
 		for (i = 0; i < cluster->nchains; ++i) {
 			rchain = cluster->array[i].chain;
 			if (rchain == NULL || rchain->hmp != hmp)
@@ -547,7 +587,12 @@ again:
 			break;
 		}
 		if (i != cluster->nchains) {
-			hammer2_syncthr_freeze(&pmp->primary_thr);
+			/*
+			 * Make sure all synchronization threads are locked
+			 * down.
+			 */
+			for (i = 0; i < iroot->cluster.nchains; ++i)
+				hammer2_syncthr_freeze(&pmp->sync_thrs[i]);
 
 			/*
 			 * Lock the inode and clean out matching chains.
@@ -559,7 +604,7 @@ again:
 			 * WARNING! We are working directly on the inodes
 			 *	    embedded cluster.
 			 */
-			hammer2_mtx_ex(&pmp->iroot->lock);
+			hammer2_mtx_ex(&iroot->lock);
 
 			/*
 			 * Remove the chain from matching elements of the PFS.
@@ -568,16 +613,21 @@ again:
 				rchain = cluster->array[i].chain;
 				if (rchain == NULL || rchain->hmp != hmp)
 					continue;
-
+				hammer2_syncthr_delete(&pmp->sync_thrs[i]);
+				rchain = cluster->array[i].chain;
 				cluster->array[i].chain = NULL;
 				pmp->pfs_types[i] = 0;
+				if (pmp->pfs_names[i]) {
+					kfree(pmp->pfs_names[i], M_HAMMER2);
+					pmp->pfs_names[i] = NULL;
+				}
 				hammer2_chain_drop(rchain);
 
 				/* focus hint */
 				if (cluster->focus == rchain)
 					cluster->focus = NULL;
 			}
-			hammer2_mtx_unlock(&pmp->iroot->lock);
+			hammer2_mtx_unlock(&iroot->lock);
 			didfreeze = 1;	/* remaster, unfreeze down below */
 		} else {
 			didfreeze = 0;
@@ -610,8 +660,10 @@ again:
 		 * flag and unfreeze it.
 		 */
 		if (didfreeze) {
-			hammer2_syncthr_remaster(&pmp->primary_thr);
-			hammer2_syncthr_unfreeze(&pmp->primary_thr);
+			for (i = 0; i < iroot->cluster.nchains; ++i) {
+				hammer2_syncthr_remaster(&pmp->sync_thrs[i]);
+				hammer2_syncthr_unfreeze(&pmp->sync_thrs[i]);
+			}
 		}
 	}
 }
@@ -1060,7 +1112,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	pmp->wthread_destroy = 0;
 	lwkt_create(hammer2_write_thread, pmp,
-		    &pmp->wthread_td, NULL, 0, -1, "hwrite-%s", label);
+		    &pmp->wthread_td, NULL, 0, -1, "h2pfs-%s", label);
 
 	/*
 	 * With the cluster operational install ihidden.
@@ -1158,27 +1210,34 @@ hammer2_write_thread(void *arg)
 	pmp = arg;
 	
 	hammer2_mtx_ex(&pmp->wthread_mtx);
-	while (pmp->wthread_destroy == 0) {
+	for (;;) {
+		/*
+		 * Wait for work.  Break out and destroy the thread only if
+		 * requested and no work remains.
+		 */
 		if (bioq_first(&pmp->wthread_bioq) == NULL) {
+			if (pmp->wthread_destroy)
+				break;
 			mtxsleep(&pmp->wthread_bioq, &pmp->wthread_mtx,
 				 0, "h2bioqw", 0);
+			continue;
 		}
-		cparent = NULL;
 
+		/*
+		 * Special transaction for logical buffer cache writes.
+		 */
 		hammer2_trans_init(&trans, pmp, HAMMER2_TRANS_BUFCACHE);
 
 		while ((bio = bioq_takefirst(&pmp->wthread_bioq)) != NULL) {
 			/*
 			 * dummy bio for synchronization.  The transaction
-			 * must be reinitialized.
+			 * must be terminated.
 			 */
 			if (bio->bio_buf == NULL) {
 				bio->bio_flags |= BIO_DONE;
+				/* bio will become invalid after DONE set */
 				wakeup(bio);
-				hammer2_trans_done(&trans);
-				hammer2_trans_init(&trans, pmp,
-						   HAMMER2_TRANS_BUFCACHE);
-				continue;
+				break;
 			}
 
 			/*
@@ -2407,20 +2466,9 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 }
 
 /*
- * Sync the entire filesystem; this is called from the filesystem syncer
- * process periodically and whenever a user calls sync(1) on the hammer
- * mountpoint.
- *
- * Currently is actually called from the syncer! \o/
- *
- * This task will have to snapshot the state of the dirty inode chain.
- * From that, it will have to make sure all of the inodes on the dirty
- * chain have IO initiated. We make sure that io is initiated for the root
- * block.
- *
- * If waitfor is set, we wait for media to acknowledge the new rootblock.
- *
- * THINKS: side A vs side B, to have sync not stall all I/O?
+ * Sync a mount point; this is called on a per-mount basis from the
+ * filesystem syncer process periodically and whenever a user issues
+ * a sync.
  */
 int
 hammer2_vfs_sync(struct mount *mp, int waitfor)
@@ -2458,6 +2506,18 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	flags = 0;
 	if (waitfor & MNT_LAZY)
 		flags |= VMSC_ONEPASS;
+
+#if 0
+	/*
+	 * Preflush the vnodes using a normal transaction before interlocking
+	 * with a flush transaction.
+	 */
+	hammer2_trans_init(&info.trans, pmp, 0);
+	info.error = 0;
+	info.waitfor = MNT_NOWAIT;
+	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
+	hammer2_trans_done(&info.trans);
+#endif
 
 	/*
 	 * Start our flush transaction.  This does not return until all
@@ -2704,14 +2764,11 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	 *
 	 */
 	ip = VTOI(vp);
-	if (ip == NULL)
-		return(0);
-	if (vp->v_type == VNON || vp->v_type == VBAD) {
+	if (ip == NULL) {
 		vclrisdirty(vp);
 		return(0);
 	}
-	if ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
-	    RB_EMPTY(&vp->v_rbdirty_tree)) {
+	if (vp->v_type == VNON || vp->v_type == VBAD) {
 		vclrisdirty(vp);
 		return(0);
 	}
@@ -2728,8 +2785,12 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	 */
 	hammer2_inode_ref(ip);
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-	if (vp)
-		vfsync(vp, MNT_NOWAIT, 1, NULL, NULL);
+	vfsync(vp, info->waitfor, 1, NULL, NULL);
+	if ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
+	    RB_EMPTY(&vp->v_rbdirty_tree)) {
+		vclrisdirty(vp);
+		return(0);
+	}
 
 	hammer2_inode_drop(ip);
 #if 1

@@ -60,11 +60,13 @@ static int hammer2_sync_replace(hammer2_syncthr_t *thr,
  */
 void
 hammer2_syncthr_create(hammer2_syncthr_t *thr, hammer2_pfs_t *pmp,
-		       void (*func)(void *arg))
+		       int clindex, void (*func)(void *arg))
 {
 	lockinit(&thr->lk, "h2syncthr", 0, 0);
 	thr->pmp = pmp;
-	lwkt_create(func, thr, &thr->td, NULL, 0, -1, "h2pfs");
+	thr->clindex = clindex;
+	lwkt_create(func, thr, &thr->td, NULL, 0, -1,
+		    "h2nod-%s", pmp->pfs_names[clindex]);
 }
 
 /*
@@ -132,7 +134,11 @@ hammer2_syncthr_unfreeze(hammer2_syncthr_t *thr)
 }
 
 /*
- * Primary management thread.
+ * Primary management thread for an element of a node.  A thread will exist
+ * for each element requiring management.
+ *
+ * No management threads are needed for the SPMP or for any PMP with only
+ * a single MASTER.
  *
  * On the SPMP - handles bulkfree and dedup operations
  * On a PFS    - handles remastering and synchronization
@@ -162,7 +168,7 @@ hammer2_syncthr_primary(void *arg)
 		 * Force idle if frozen until unfrozen or stopped.
 		 */
 		if (thr->flags & HAMMER2_SYNCTHR_FROZEN) {
-			lksleep(&thr->flags, &thr->lk, 0, "h2idle", 0);
+			lksleep(&thr->flags, &thr->lk, 0, "frozen", 0);
 			continue;
 		}
 
@@ -262,12 +268,13 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 	hammer2_key_t key_next;
 	int error;
 	int nerror;
-	int i;
+	int idx;
 	int n;
 	int nowork;
 	int dorecursion;
 
 	pmp = thr->pmp;
+	idx = thr->clindex;	/* cluster node we are responsible for */
 
 	/*
 	 * Nothing to do if all slaves are synchronized.
@@ -314,152 +321,150 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 		else
 			dorecursion = 0;
 
+repeat1:
 		/*
 		 * Synchronize chains to focus
 		 */
-		for (i = 0; i < cluster->nchains; ++i) {
-			if (pmp->pfs_types[i] != HAMMER2_PFSTYPE_SLAVE)/*XXX*/
-				continue;
-			chain = cluster->array[i].chain;
+		if (idx >= cluster->nchains)
+			goto skip1;
+		chain = cluster->array[idx].chain;
 
-			/*
-			 * Disable recursion for this index and loop up
-			 * if a chain error is detected.
-			 *
-			 * A NULL chain is ok, it simply indicates that
-			 * the slave reached the end of its scan, but we
-			 * might have stuff from the master that still
-			 * needs to be copied in.
-			 */
-			if (chain && chain->error) {
-				kprintf("chain error index %d: %d\n",
-					i, chain->error);
-				errors[i] = chain->error;
-				error = chain->error;
-				cluster->array[i].flags |=
-						HAMMER2_CITEM_INVALID;
-				continue;
-			}
-
-			/*
-			 * Skip if the slave already has the record (everything
-			 * matches including the modify_tid).  Note that the
-			 * mirror_tid does not have to match, mirror_tid is
-			 * a per-block-device entity.
-			 */
-			if (chain && (cluster->array[i].flags &
-				      HAMMER2_CITEM_INVALID) == 0) {
-				continue;
-			}
-
-			/*
-			 * Invalid element needs to be updated.
-			 */
-			nowork = 0;
-
-			/*
-			 * Otherwise adjust the slave.  Compare the focus to
-			 * the chain.  Note that focus and chain can
-			 * independently be NULL.
-			 */
-			KKASSERT(cluster->focus == focus);
-			if (focus) {
-				if (chain)
-					n = hammer2_chain_cmp(focus, chain);
-				else
-					n = -1;	/* end-of-scan on slave */
-			} else {
-				if (chain)
-					n = 1;	/* end-of-scan on focus */
-				else
-					n = 0;	/* end-of-scan on both */
-			}
-
-			if (n < 0) {
-				/*
-				 * slave chain missing, create missing chain.
-				 *
-				 * If we are going to recurse we have to set
-				 * the initial modify_tid to 0 until the
-				 * sub-tree is completely synchronized.
-				 * Setting (n = 0) in this situation forces
-				 * the replacement call to run on the way
-				 * back up after the sub-tree has
-				 * synchronized.
-				 */
-				if (dorecursion) {
-					nerror = hammer2_sync_insert(
-							thr, cparent, cluster,
-							0,
-							i, errors, 0);
-					if (nerror == 0)
-						n = 0;
-				} else {
-					nerror = hammer2_sync_insert(
-							thr, cparent, cluster,
-							focus->bref.modify_tid,
-							i, errors, 1);
-				}
-			} else if (n > 0) {
-				/*
-				 * excess slave chain, destroy
-				 */
-				nerror = hammer2_sync_destroy(thr,
-							      cparent, cluster,
-							      i, errors);
-				hammer2_cluster_next_single_chain(
-					cparent, cluster,
-					&key_next,
-					HAMMER2_KEY_MIN,
-					HAMMER2_KEY_MAX,
-					i,
-					HAMMER2_LOOKUP_NODATA |
-					HAMMER2_LOOKUP_NOLOCK |
-					HAMMER2_LOOKUP_NODIRECT);
-				/*
-				 * Re-execute same index, there might be more
-				 * items to delete before this slave catches
-				 * up to the focus.
-				 */
-				--i;
-				continue;
-			} else {
-				/*
-				 * Key matched but INVALID was set which likely
-				 * means that modify_tid is out of sync.
-				 *
-				 * If we are going to recurse we have to do
-				 * a partial replacement of the parent to
-				 * ensure that the block array is compatible.
-				 * For example, the current slave inode might
-				 * be flagged DIRECTDATA when the focus is not.
-				 * We must set modify_tid to 0 for now and
-				 * will fix it when recursion is complete.
-				 *
-				 * If we are not going to recurse we can do
-				 * a normal replacement.
-				 *
-				 * focus && chain can both be NULL on a match.
-				 */
-				if (dorecursion) {
-					nerror = hammer2_sync_replace(
-							thr, cparent, cluster,
-							0,
-							i, errors, 0);
-				} else if (focus) {
-					nerror = hammer2_sync_replace(
-							thr, cparent, cluster,
-							focus->bref.modify_tid,
-							i, errors, 1);
-				} else {
-					nerror = 0;
-				}
-			}
-			if (nerror)
-				error = nerror;
+		/*
+		 * Disable recursion for this index and loop up
+		 * if a chain error is detected.
+		 *
+		 * A NULL chain is ok, it simply indicates that
+		 * the slave reached the end of its scan, but we
+		 * might have stuff from the master that still
+		 * needs to be copied in.
+		 */
+		if (chain && chain->error) {
+			kprintf("chain error index %d: %d\n",
+				idx, chain->error);
+			errors[idx] = chain->error;
+			error = chain->error;
+			cluster->array[idx].flags |= HAMMER2_CITEM_INVALID;
+			goto skip1;
 		}
+
+		/*
+		 * Skip if the slave already has the record (everything
+		 * matches including the modify_tid).  Note that the
+		 * mirror_tid does not have to match, mirror_tid is
+		 * a per-block-device entity.
+		 */
+		if (chain &&
+		    (cluster->array[idx].flags & HAMMER2_CITEM_INVALID) == 0) {
+			goto skip1;
+		}
+
+		/*
+		 * Invalid element needs to be updated.
+		 */
+		nowork = 0;
+
+		/*
+		 * Otherwise adjust the slave.  Compare the focus to
+		 * the chain.  Note that focus and chain can
+		 * independently be NULL.
+		 */
+		KKASSERT(cluster->focus == focus);
+		if (focus) {
+			if (chain)
+				n = hammer2_chain_cmp(focus, chain);
+			else
+				n = -1;	/* end-of-scan on slave */
+		} else {
+			if (chain)
+				n = 1;	/* end-of-scan on focus */
+			else
+				n = 0;	/* end-of-scan on both */
+		}
+
+		if (n < 0) {
+			/*
+			 * slave chain missing, create missing chain.
+			 *
+			 * If we are going to recurse we have to set
+			 * the initial modify_tid to 0 until the
+			 * sub-tree is completely synchronized.
+			 * Setting (n = 0) in this situation forces
+			 * the replacement call to run on the way
+			 * back up after the sub-tree has
+			 * synchronized.
+			 */
+			if (dorecursion) {
+				nerror = hammer2_sync_insert(
+						thr, cparent, cluster,
+						0,
+						idx, errors, 0);
+				if (nerror == 0)
+					n = 0;
+			} else {
+				nerror = hammer2_sync_insert(
+						thr, cparent, cluster,
+						focus->bref.modify_tid,
+						idx, errors, 1);
+			}
+		} else if (n > 0) {
+			/*
+			 * excess slave chain, destroy
+			 */
+			nerror = hammer2_sync_destroy(thr,
+						      cparent, cluster,
+						      idx, errors);
+			hammer2_cluster_next_single_chain(
+				cparent, cluster,
+				&key_next,
+				HAMMER2_KEY_MIN,
+				HAMMER2_KEY_MAX,
+				idx,
+				HAMMER2_LOOKUP_NODATA |
+				HAMMER2_LOOKUP_NOLOCK |
+				HAMMER2_LOOKUP_NODIRECT);
+			/*
+			 * Re-execute same index, there might be more
+			 * items to delete before this slave catches
+			 * up to the focus.
+			 */
+			goto repeat1;
+		} else {
+			/*
+			 * Key matched but INVALID was set which likely
+			 * means that modify_tid is out of sync.
+			 *
+			 * If we are going to recurse we have to do
+			 * a partial replacement of the parent to
+			 * ensure that the block array is compatible.
+			 * For example, the current slave inode might
+			 * be flagged DIRECTDATA when the focus is not.
+			 * We must set modify_tid to 0 for now and
+			 * will fix it when recursion is complete.
+			 *
+			 * If we are not going to recurse we can do
+			 * a normal replacement.
+			 *
+			 * focus && chain can both be NULL on a match.
+			 */
+			if (dorecursion) {
+				nerror = hammer2_sync_replace(
+						thr, cparent, cluster,
+						0,
+						idx, errors, 0);
+			} else if (focus) {
+				nerror = hammer2_sync_replace(
+						thr, cparent, cluster,
+						focus->bref.modify_tid,
+						idx, errors, 1);
+			} else {
+				nerror = 0;
+			}
+		}
+		if (nerror)
+			error = nerror;
 		/* finished primary synchronization of chains */
 
+skip1:
 		/*
 		 * Operation may have modified cparent, we must replace
 		 * iroot->cluster if we are at the top level.
@@ -472,7 +477,7 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 		 * If no work to do this iteration, skip any recursion.
 		 */
 		if (nowork)
-			goto skip;
+			goto skip2;
 
 		/*
 		 * EXECUTE RECURSION (skip if no recursion)
@@ -481,7 +486,7 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 		 * have to recurse on inodes.
 		 */
 		if (dorecursion == 0)
-			goto skip;
+			goto skip2;
 		if (thr->depth > 20) {
 			kprintf("depth limit reached\n");
 			nerror = HAMMER2_ERROR_DEPTH;
@@ -499,7 +504,7 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 			hammer2_cluster_lock(cparent, HAMMER2_RESOLVE_ALWAYS);
 		}
 		if (nerror)
-			goto skip;
+			goto skip2;
 
 		/*
 		 * Fixup parent nodes on the way back up from the recursion
@@ -507,36 +512,32 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 		 * would have been set to 0 and must be set to their final
 		 * value.
 		 */
-		for (i = 0; i < cluster->nchains; ++i) {
-			if (pmp->pfs_types[i] != HAMMER2_PFSTYPE_SLAVE)/*XXX*/
-				continue;
-			chain = cluster->array[i].chain;
-			if (chain == NULL || chain->error)
-				continue;
-			if (!(cluster->array[i].flags & HAMMER2_CITEM_INVALID))
-				continue;
+		chain = cluster->array[idx].chain;
+		if (chain == NULL || chain->error)
+			goto skip2;
+		if ((cluster->array[idx].flags & HAMMER2_CITEM_INVALID) == 0)
+			goto skip2;
 
-			/*
-			 * At this point we have to have key-matched non-NULL
-			 * elements.
-			 */
-			n = hammer2_chain_cmp(focus, chain);
-			if (n != 0) {
-				kprintf("hammer2_sync_slaves: illegal "
-					"post-recursion state %d\n", n);
-				continue;
-			}
-
-			/*
-			 * Update modify_tid on the way back up.
-			 */
-			nerror = hammer2_sync_replace(
-					thr, cparent, cluster,
-					focus->bref.modify_tid,
-					i, errors, 1);
-			if (nerror)
-				error = nerror;
+		/*
+		 * At this point we have to have key-matched non-NULL
+		 * elements.
+		 */
+		n = hammer2_chain_cmp(focus, chain);
+		if (n != 0) {
+			kprintf("hammer2_sync_slaves: illegal "
+				"post-recursion state %d\n", n);
+			goto skip2;
 		}
+
+		/*
+		 * Update modify_tid on the way back up.
+		 */
+		nerror = hammer2_sync_replace(
+				thr, cparent, cluster,
+				focus->bref.modify_tid,
+				idx, errors, 1);
+		if (nerror)
+			error = nerror;
 
 		/*
 		 * Operation may modify cparent, must replace
@@ -545,7 +546,7 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 		if (thr->depth == 0)
 			hammer2_inode_repoint(pmp->iroot, NULL, cparent);
 
-skip:
+skip2:
 		/*
 		 * Iterate.
 		 */
