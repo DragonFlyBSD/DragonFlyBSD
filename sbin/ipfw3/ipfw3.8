@@ -1,6 +1,5 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.20 2008/11/23 21:55:52 swildner Exp $
 .\"
 .Dd October 3, 2008
 .Dt IPFW3 8
@@ -76,12 +75,21 @@ traffic shaper in
 .Dx .
 .Bd -ragged -offset XXXX
 .Em NOTE:
-ipfw is a controlling utility for ipfw/ipacct facilities for FreeBSD 2.0 which
-released in November, 1994. This manual page documentation is for the ipfw3 of
-DragonflyBSD since Feb 2015. This version of
-.Nm ipfw3
-is rewrited for DragonflyBSD and it is not fully compatible with ipfw in
-FreeBSD. The differences between the two are listed in Section
+ipfw is a controlling utility for ipfw/ipacct facilities for
+.Fx 2.0
+which was released in November, 1994.
+This manual page documentation is for the
+.Nm
+of
+.Dx
+since Feb 2015.
+This version of
+.Nm
+was rewritten for
+.Dx
+and it is not fully compatible with ipfw in
+.Fx .
+The differences between the two are listed in Section
 .Sx IPFW3 ENHANCEMENTS ,
 which you are encouraged to read to revise older rulesets and possibly
 write them more efficiently.
@@ -133,7 +141,7 @@ option, then
 .Nm
 assumes a
 .Em stateful
-behaviour, i.e. upon a match it will create dynamic rules matching
+behaviour, i.e.\& upon a match it will create dynamic rules matching
 the exact parameters (addresses and ports) of the matching packet.
 .Pp
 These dynamic rules, which have a limited lifetime, are checked
@@ -182,8 +190,8 @@ Also, each rule belongs to one of 32 different
 .Nm
 commands to atomically manipulate sets, such as enable,
 disable, swap sets, move all rules in a set to another
-one, delete all rules in a set. These can be useful to
-install temporary configurations, or to test them.
+one, delete all rules in a set.
+These can be useful to install temporary configurations, or to test them.
 See Section
 .Sx SETS OF RULES
 for more information on
@@ -198,7 +206,7 @@ The
 command just implies this option.
 .It Fl c
 When entering or showing rules, print them in compact form,
-i.e. without the optional "ip " string
+i.e.\& without the optional "ip " string
 when this does not carry any additional information.
 .It Fl d
 While listing, show states in addition to static ones.
@@ -211,7 +219,7 @@ option was specified, also show expired dynamic rules.
 .It Fl f
 Don't ask for confirmation for commands that can cause problems
 if misused,
-.No i.e. Cm flush .
+.No i.e.\& Cm flush .
 If there is no tty associated with the process, this is implied.
 .It Fl N
 Try to resolve addresses and service names in output.
@@ -229,7 +237,8 @@ While listing, show last match timestamp.
 .It Fl T
 While listing, show last match timestamp in unix format.
 .It Fl v
-With verbose information, it will like the ipfw in FreeBSD.
+With verbose information, it will like the ipfw in
+.Fx .
 .El
 .Pp
 To ease configuration, rules can be put into a file which is
@@ -262,7 +271,7 @@ name search is performed.
 Care should be taken with this in environments where not all
 file systems are mounted (yet) by the time
 .Nm
-is being run (e.g. when they are mounted over NFS).
+is being run (e.g.\& when they are mounted over NFS).
 Once
 .Fl p
 has been specified, optional
@@ -285,8 +294,9 @@ Section below.
 .Pp
 If the world and the kernel get out of sync the
 .Nm
-ABI may break, preventing you from being able to add any rules.  This can
-adversely affect the booting process.  You can use
+ABI may break, preventing you from being able to add any rules.
+This can adversely affect the booting process.
+You can use
 .Nm
 .Cm disable
 .Cm firewall
@@ -330,7 +340,7 @@ is invoked from
 Also note that each packet is always checked against the complete ruleset,
 irrespective of the place where the check occurs, or the source of the packet.
 If a rule contains some match patterns or actions which are not valid
-for the place of invocation (e.g. trying to match a MAC header within
+for the place of invocation (e.g.\& trying to match a MAC header within
 .Fn ip_input ) ,
 the match pattern will not match, but a
 .Cm not
@@ -371,23 +381,23 @@ rules is the following:
 where the body of the rule specifies which information is used
 for filtering packets, among the following:
 .Pp
-.Bl -tag -width "Source and dest. addresses and ports" -offset XXX -compact
+.Bl -tag -width "Source and destination addresses and ports" -offset XXX -compact
 .It Layer-2 header fields
 When available
 .It IPv4 Protocol
 TCP, UDP, ICMP, etc.
-.It Source and dest. addresses and ports
+.It Source and destination addresses and ports
 .It Direction
 See Section
 .Sx PACKET FLOW
 .It Transmit and receive interface
 By name or address
-.It Misc. IP header fields
+.It Miscellaneous IP header fields
 Version, type of service, datagram length, identification,
 fragment flag (non-zero IP offset),
 Time To Live
 .It IP options
-.It Misc. TCP header fields
+.It Miscellaneous TCP header fields
 TCP flags (SYN, FIN, ACK, RST, etc.),
 sequence number, acknowledgment number,
 window
@@ -398,7 +408,7 @@ for ICMP packets
 When the packet can be associated with a local socket.
 .El
 .Pp
-Note that some of the above information, e.g. source MAC or IP addresses and
+Note that some of the above information, e.g.\& source MAC or IP addresses and
 TCP/UDP ports, could easily be spoofed, so filtering on those fields
 alone might not guarantee the desired results.
 .Bl -tag -width indent
@@ -421,7 +431,7 @@ Automatic rule numbers are assigned by incrementing the last
 non-default rule number by the value of the sysctl variable
 .Ar net.inet.ip.fw.autoinc_step
 which defaults to 100.
-If this is not possible (e.g. because we would go beyond the
+If this is not possible (e.g.\& because we would go beyond the
 maximum allowed rule number), the number of the last
 non-default value is used instead.
 .It Cm set Ar set_number
@@ -519,11 +529,17 @@ If
 is not a local address, then the port number
 (if specified) is ignored, and the packet will be
 forwarded to the remote address, using the route as found in
-the local routing table for that IP. and use comma to separate
-multiple ip addresses.
+the local routing table for that IP.
+Use commas to separate multiple ip addresses.
 .Pp
-forward-option can be 'round-robin' or 'sticky'. 'sticky' is calculated based on
-the src ip addresses, and if no forward-option, by default it will be 'random'.
+forward-option can be
+.Sq round-robin
+or
+.Sq sticky .
+.Sq sticky
+is calculated based on
+the src ip addresses, and if no forward-option, by default it will be
+.Sq random .
 .Pp
 A
 .Ar forward
@@ -607,7 +623,7 @@ protocol options, incoming or outgoing interfaces, etc.)
 that the packet must match in order to be recognised.
 In general, the patterns are connected by (implicit)
 .Cm and
-operators -- i.e. all must match in order for the
+operators -- i.e.\& all must match in order for the
 rule to match.
 Individual patterns can be prefixed by the
 .Cm not
@@ -647,7 +663,7 @@ The first part (protocol from src to dst) is for backward
 compatibility with
 .Nm ipfw2 .
 In
-.Nm ipfw3
+.Nm
 any match pattern (including MAC headers, IPv4 protocols,
 addresses and ports) can be specified in the
 .Ar options
@@ -717,7 +733,8 @@ will match the following IP addresses:
 1.2.3.128 1.2.3.35 1.2.3.55 1.2.3.89 .
 .br
 This format is particularly useful to handle sparse address sets
-within a single rule. Because the matching occurs using a
+within a single rule.
+Because the matching occurs using a
 bitmask, it takes constant time and dramatically reduces
 the complexity of rulesets.
 .It Ar addr Ns : Ns Ar mask
@@ -766,7 +783,7 @@ character).
 .Pp
 .Dl "ipfw add count tcp ftp\e\e-data-ftp to any"
 .Pp
-Fragmented packets which have a non-zero offset (i.e. not the first
+Fragmented packets which have a non-zero offset (i.e.\& not the first
 fragment) will never match a rule which has one or more port
 specifications.
 See the
@@ -774,8 +791,8 @@ See the
 option for details on matching fragmented packets.
 .El
 .Ss RULE OPTIONS (MATCH PATTERNS)
-Additional match patterns can be used within
-rules. Zero or more of these so-called
+Additional match patterns can be used within rules.
+Zero or more of these so-called
 .Em options
 can be present in a rule, optionally prefixed by the
 .Cm not
@@ -794,8 +811,9 @@ specified as argument.
 Matches TCP packets that have the RST or ACK bits set.
 .It Cm frag
 Matches packets that are fragments and not the first
-fragment of an IP datagram. Note that these packets will not have
-the next protocol header (e.g. TCP, UDP) so options that look into
+fragment of an IP datagram.
+Note that these packets will not have
+the next protocol header (e.g.\& TCP, UDP) so options that look into
 these headers cannot match.
 .It Cm gid Ar group
 Matches all TCP or UDP packets sent by or received for a
@@ -915,7 +933,7 @@ variables), and the lifetime is refreshed every time a matching
 packet is found.
 the state can be manually created/deleted using the ipfw3 utility.
 .It Cm layer2
-Matches only layer2 packets, i.e. those passed to
+Matches only layer2 packets, i.e.\& those passed to
 .Nm
 from
 .Fn ether_demux_oncpu
@@ -953,7 +971,7 @@ corresponds to one of those specified as argument.
 .Ar mac-type
 is specified in the same way as
 .Cm port numbers
-(i.e. one or more comma-separated single values or ranges).
+(i.e.\& one or more comma-separated single values or ranges).
 You can use symbolic names for known values such as
 .Em vlan , ipv4, ipv6 .
 Values can be entered as decimal or hexadecimal (if prefixed by 0x),
@@ -1107,7 +1125,8 @@ When you disable a set, its rules behave as if they do not exist
 in the firewall configuration, with only one exception:
 .Bd -ragged -offset indent
 dynamic rules created from a rule before it had been disabled
-will still be active until they expire. In order to delete
+will still be active until they expire.
+In order to delete
 dynamic rules you have to explicitly delete the parent rule
 which generated them.
 .Ed
@@ -1132,8 +1151,8 @@ Section on some possible uses of sets of rules.
 .Sh STATEFUL FIREWALL
 Stateful operation is a way for the firewall to dynamically
 create rules for specific flows when packets that
-match a given pattern are detected. Support for stateful
-operation comes through the
+match a given pattern are detected.
+Support for stateful operation comes through the
 .Cm check-state , keep-state
 and
 .Cm limit
@@ -1205,7 +1224,7 @@ is also the user interface for the
 .Xr dummynet 4
 traffic shaper.
 .Pp
-.Nm dummynet
+.Xr dummynet 4
 operates by first using the firewall to classify packets and divide them into
 .Em flows ,
 using any match pattern that can be used in
@@ -1346,7 +1365,8 @@ where the latter means all bits in all fields are significant.
 .It Cm noerror
 When a packet is dropped by a dummynet queue or pipe, the error
 is normally reported to the caller routine in the kernel, in the
-same way as it happens when a device queue fills up. Setting this
+same way as it happens when a device queue fills up.
+Setting this
 option reports the packet as successfully delivered, which can be
 needed for some experimental setups where you want to simulate
 loss or congestion at a remote router.
@@ -1377,7 +1397,7 @@ queueing delay.
 E.g., 50 max-sized ethernet packets (1500 bytes) mean 600Kbit
 or 20s of queue on a 30Kbit/s pipe.
 Even worse effect can result if you get packets from an
-interface with a much larger MTU, e.g. the loopback interface
+interface with a much larger MTU, e.g.\& the loopback interface
 with its 16KB packets.
 .Pp
 .It Cm red | gred Ar w_q Ns / Ns Ar min_th Ns / Ns Ar max_th Ns / Ns Ar max_p
@@ -1491,7 +1511,7 @@ A set of
 .Xr sysctl 8
 variables controls the behaviour of the firewall and
 associated modules
-.Nm ( dummynet ) .
+.Xr ( dummynet 4 ) .
 These are shown below together with their default value
 (but always check with the
 .Xr sysctl 8
@@ -1545,7 +1565,8 @@ Current number of dynamic rules
 .It Em net.inet.ip.fw.dyn_keepalive : No 1
 Enables generation of keepalive packets for
 .Cm keep-state
-rules on TCP sessions. A keepalive is generated to both
+rules on TCP sessions.
+A keepalive is generated to both
 sides of the connection every 5 seconds for the last 20
 seconds of the lifetime of the rule.
 .It Em net.inet.ip.fw.dyn_max : No 8192
@@ -1568,7 +1589,8 @@ Both
 and
 .Em dyn_rst_lifetime
 must be strictly lower than 5 seconds, the period of
-repetition of keepalives. The firewall enforces that.
+repetition of keepalives.
+The firewall enforces that.
 .It Em net.inet.ip.fw.enable : No 1
 Enables the firewall.
 Setting this variable to 0 lets you run your machine without
@@ -1594,25 +1616,29 @@ Default is no.
 .El
 .Sh IPFW3 ENHANCEMENTS
 This Section lists the features that have been introduced in
-.Nm ipfw3 of DragonflyBSD
+.Nm
+of
+.Dx
 which were not present in
-.Nm ipfw of FreeBSD.
+.Nm ipfw
+of
+.Fx .
 We list them in order of the potential impact that they can
 have in writing your rulesets.
 You might want to consider using these features in order to
 write your rulesets in a more efficient way.
 .Bl -tag -width indent
 .It Modular Design
-.Pp
 .It Lockless
-.Pp
 .It Stateful
-In ipfw of DragonflyBSD, the state links to the rule which created it.
-all packets will be filtered during the action 'check-state'.
+In ipfw of
+.Dx ,
+the state links to the rule which created it.
+all packets will be filtered during the action
+.Sq check-state .
 And states can be manipulated by using the ipfw utility.
 .Pp
 .Dl "ipfw state add rule 1000 udp 192.168.1.100:0 8.8.8.8:53 expiry 600"
-.Pp
 .El
 .Sh EXAMPLES
 There are far too many possible uses of
@@ -1651,7 +1677,7 @@ All other SYN packets will be rejected by the final
 rule.
 .Pp
 If you administer one or more subnets, you can take advantage of the
-.Nm ipfw3
+.Nm
 syntax to specify address sets and or-blocks and write extremely
 compact rulesets which selectively enable services to blocks
 of clients, as below:
@@ -1743,7 +1769,7 @@ A similar effect can be achieved making use of dummynet pipes:
 .Dl "ipfw add pipe 10 ip "
 .Dl "ipfw pipe 10 config plr 0.05"
 .Pp
-We can use pipes to artificially limit bandwidth, e.g. on a
+We can use pipes to artificially limit bandwidth, e.g.\& on a
 machine acting as a router, if we want to limit traffic from
 local clients on 192.168.2.0/24 we do:
 .Pp
@@ -1765,11 +1791,11 @@ limitations, the correct way is the following:
 .Dl "ipfw pipe 1 config bw 64Kbit/s queue 10Kbytes"
 .Dl "ipfw pipe 2 config bw 64Kbit/s queue 10Kbytes"
 .Pp
-The above can be very useful, e.g. if you want to see how
+The above can be very useful, e.g.\& if you want to see how
 your fancy Web page will look for a residential user who
 is connected only through a slow link.
 You should not use only one pipe for both directions, unless
-you want to simulate a half-duplex medium (e.g. AppleTalk,
+you want to simulate a half-duplex medium (e.g.\& AppleTalk,
 Ethernet, IRDA).
 It is not necessary that both pipes have the same configuration,
 so we can also simulate asymmetric links.
@@ -1819,7 +1845,7 @@ on a net with per-host limits, rather than per-network limits:
 .Dl "ipfw pipe 1 config mask src-ip 0x000000ff bw 200Kbit/s queue 20Kbytes"
 .Dl "ipfw pipe 2 config mask dst-ip 0x000000ff bw 200Kbit/s queue 20Kbytes"
 .Ss SETS OF RULES
-To add a set of rules atomically, e.g. set 18:
+To add a set of rules atomically, e.g.\& set 18:
 .Pp
 .Dl "ipfw disable set 18"
 .Dl "ipfw add NN set 18 ...         # repeat as needed"
@@ -1836,7 +1862,8 @@ To test a ruleset and disable it and regain control if something goes wrong:
 .Dl "ipfw enable set 18 ; echo done; sleep 30 && ipfw disable set 18"
 .Pp
 Here if everything goes well, you press control-C before the "sleep"
-terminates, and your ruleset will be left active. Otherwise, e.g. if
+terminates, and your ruleset will be left active.
+Otherwise, e.g.\& if
 you cannot access your box, the ruleset will be disabled after
 the sleep terminates thus restoring the previous situation.
 .Sh SEE ALSO
@@ -1863,7 +1890,7 @@ was introduced in
 .Fx 2.2.8 .
 Stateful extensions were introduced in
 .Fx 4.0 .
-.Nm ipfw3
+.Nm
 was introduced in Summer 2002.
 .Sh AUTHORS
 .An Ugen J. S. Antsilevich ,
