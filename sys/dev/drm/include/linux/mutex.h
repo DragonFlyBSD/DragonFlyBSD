@@ -36,6 +36,13 @@
 
 #define mutex_trylock(lock)	lockmgr(lock, LK_EXCLUSIVE|LK_NOWAIT)
 
-#define mutex_lock_interruptible(lock)	lockmgr((lock), LK_EXCLUSIVE|LK_SLEEPFAIL)
+static inline int
+mutex_lock_interruptible(struct lock *lock)
+{
+	if (lockmgr(lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
+		return -EINTR;
+
+	return 0;
+}
 
 #endif	/* _LINUX_MUTEX_H_ */
