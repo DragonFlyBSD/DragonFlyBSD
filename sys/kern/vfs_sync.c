@@ -198,7 +198,8 @@ vn_syncer_add(struct vnode *vp, int delay)
 
 /*
  * Removes the vnode from the syncer list.  Since we might block while
- * acquiring the syncer_token we have to recheck conditions.
+ * acquiring the syncer_token we have to [re]check conditions to determine
+ * that it is ok to remove the vnode.
  *
  * vp->v_token held on call
  */
@@ -662,8 +663,8 @@ vsyncscan(
 	struct syncer_ctx *ctx;
 	struct synclist *slp;
 	struct vnode *vp;
-	int b;
 	int i;
+	int count;
 	int lkflags;
 
 	if (vmsc_flags & VMSC_NOWAIT)
@@ -684,12 +685,10 @@ vsyncscan(
 	 * require that the syncer thread no be lazy if we were told
 	 * not to be lazy.
 	 */
-	b = ctx->syncer_delayno & ctx->syncer_mask;
-	i = b;
+	i = ctx->syncer_delayno & ctx->syncer_mask;
 	if ((vmsc_flags & VMSC_NOWAIT) == 0)
 		++ctx->syncer_forced;
-
-	do {
+	for (count = 0; count <= ctx->syncer_mask; ++count) {
 		slp = &ctx->syncer_workitem_pending[i];
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
@@ -708,11 +707,17 @@ vsyncscan(
 				slowfunc(mp, vp, data);
 				vdrop(vp);
 			}
+
+			/*
+			 * vp could be invalid.  However, if vp is still at
+			 * the head of the list it is clearly valid and we
+			 * can safely move it.
+			 */
 			if (LIST_FIRST(slp) == vp)
 				vn_syncer_add(vp, -(i + syncdelay));
 		}
 		i = (i + 1) & ctx->syncer_mask;
-	} while (i != b);
+	}
 
 	if ((vmsc_flags & VMSC_NOWAIT) == 0)
 		--ctx->syncer_forced;

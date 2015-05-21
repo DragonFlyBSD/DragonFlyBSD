@@ -1015,8 +1015,15 @@ bwrite(struct buf *bp)
 	if (BUF_REFCNTNB(bp) == 0)
 		panic("bwrite: buffer is not busy???");
 
-	/* Mark the buffer clean */
-	bundirty(bp);
+	/*
+	 * NOTE: We no longer mark the buffer clear prior to the vn_strategy()
+	 *	 call because it will remove the buffer from the vnode's
+	 *	 dirty buffer list prematurely and possibly cause filesystem
+	 *	 checks to race buffer flushes.  This is now handled in
+	 *	 bpdone().
+	 *
+	 *	 bundirty(bp); REMOVED
+	 */
 
 	bp->b_flags &= ~(B_ERROR | B_EINTR);
 	bp->b_flags |= B_CACHE;
@@ -1056,9 +1063,15 @@ bawrite(struct buf *bp)
 	if (BUF_REFCNTNB(bp) == 0)
 		panic("bwrite: buffer is not busy???");
 
-	/* Mark the buffer clean */
-	bundirty(bp);
-
+	/*
+	 * NOTE: We no longer mark the buffer clear prior to the vn_strategy()
+	 *	 call because it will remove the buffer from the vnode's
+	 *	 dirty buffer list prematurely and possibly cause filesystem
+	 *	 checks to race buffer flushes.  This is now handled in
+	 *	 bpdone().
+	 *
+	 *	 bundirty(bp); REMOVED
+	 */
 	bp->b_flags &= ~(B_ERROR | B_EINTR);
 	bp->b_flags |= B_CACHE;
 	bp->b_cmd = BUF_CMD_WRITE;
@@ -3691,6 +3704,16 @@ vn_cache_strategy_callback(struct bio *bio)
  *	bpdone does not mess with B_INVAL, allowing the I/O routine or the
  *	initiator to leave B_INVAL set to brelse the buffer out of existance
  *	in the biodone routine.
+ *
+ *	bpdone is responsible for calling bundirty() on the buffer after a
+ *	successful write.  We previously did this prior to initiating the
+ *	write under the assumption that the buffer might be dirtied again
+ *	while the write was in progress, however doing it before-hand creates
+ *	a race condition prior to the call to vn_strategy() where the
+ *	filesystem may not be aware that a dirty buffer is present.
+ *	It should not be possible for the buffer or its underlying pages to
+ *	be redirtied prior to bpdone()'s unbusying of the underlying VM
+ *	pages.
  */
 void
 bpdone(struct buf *bp, int elseit)
@@ -3729,14 +3752,25 @@ bpdone(struct buf *bp, int elseit)
 
 	/*
 	 * A failed write must re-dirty the buffer unless B_INVAL
-	 * was set.  Only applicable to normal buffers (with VPs).
-	 * vinum buffers may not have a vp.
+	 * was set.
+	 *
+	 * A successful write must clear the dirty flag.  This is done after
+	 * the write to ensure that the buffer remains on the vnode's dirty
+	 * list for filesystem interlocks / checks until the write is actually
+	 * complete.  HAMMER2 is sensitive to this issue.
+	 *
+	 * Only applicable to normal buffers (with VPs).  vinum buffers may
+	 * not have a vp.
 	 */
-	if (cmd == BUF_CMD_WRITE &&
-	    (bp->b_flags & (B_ERROR | B_INVAL)) == B_ERROR) {
-		bp->b_flags &= ~B_NOCACHE;
-		if (bp->b_vp)
-			bdirty(bp);
+	if (cmd == BUF_CMD_WRITE) {
+		if ((bp->b_flags & (B_ERROR | B_INVAL)) == B_ERROR) {
+			bp->b_flags &= ~B_NOCACHE;
+			if (bp->b_vp)
+				bdirty(bp);
+		} else {
+			if (bp->b_vp)
+				bundirty(bp);
+		}
 	}
 
 	if (bp->b_flags & B_VMIO) {

@@ -605,6 +605,8 @@ vtruncbuf_bp_metasync(struct buf *bp, void *data)
  *
  * When fsyncing data synchronously do a data pass, then a metadata pass,
  * then do additional data+metadata passes to try to get all the data out.
+ *
+ * Caller must ref the vnode but does not have to lock it.
  */
 static int vfsync_wait_output(struct vnode *vp, 
 			    int (*waitoutput)(struct vnode *, struct thread *));
