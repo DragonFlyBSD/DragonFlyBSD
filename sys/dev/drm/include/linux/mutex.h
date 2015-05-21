@@ -39,7 +39,7 @@
 static inline int
 mutex_lock_interruptible(struct lock *lock)
 {
-	if (lockmgr(lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
+	if (lockmgr(lock, LK_EXCLUSIVE|LK_SLEEPFAIL|LK_PCATCH))
 		return -EINTR;
 
 	return 0;
