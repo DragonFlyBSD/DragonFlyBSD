@@ -45,4 +45,8 @@ mutex_lock_interruptible(struct lock *lock)
 	return 0;
 }
 
+#define DEFINE_MUTEX(mutex)	\
+	struct lock mutex;	\
+	LOCK_SYSINIT(mutex, &mutex, "lmutex", LK_CANRECURSE)
+
 #endif	/* _LINUX_MUTEX_H_ */
