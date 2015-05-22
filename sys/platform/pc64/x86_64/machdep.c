@@ -1047,6 +1047,8 @@ cpu_halt(void)
  *
  * NOTE: cpu_idle_repeat determines how many entries into the idle thread
  *	 must occur before it starts using ACPI halt.
+ *
+ * NOTE: Value overridden in hammer_time().
  */
 static int	cpu_idle_hlt = 2;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
@@ -1134,12 +1136,16 @@ cpu_idle(void)
 		 *	0	Never halt, just spin
 		 *
 		 *	1	Always use HLT (or MONITOR/MWAIT if avail).
-		 *		This typically eats more power than the
-		 *		ACPI halt.
+		 *
+		 *		Better default for modern (Haswell+) Intel
+		 *		cpus.
 		 *
 		 *	2	Use HLT/MONITOR/MWAIT up to a point and then
 		 *		use the ACPI halt (default).  This is a hybrid
 		 *		approach.  See machdep.cpu_idle_repeat.
+		 *
+		 *		Better default for modern AMD cpus and older
+		 *		Intel cpus.
 		 *
 		 *	3	Always use the ACPI halt.  This typically
 		 *		eats the least amount of power but the cpu
@@ -2075,6 +2081,20 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 #endif
 	identify_cpu();		/* Final stage of CPU initialization */
 	initializecpu(0);	/* Initialize CPU registers */
+
+	/*
+	 * On modern intel cpus, haswell or later, cpu_idle_hlt=1 is better
+	 * becaue the cpu does significant power management in HLT
+	 * (also suggested is to set sysctl machdep.mwait.CX.idle=AUTODEEP).
+	 *
+	 * On modern amd cpus or on any older amd or intel cpu,
+	 * cpu_idle_hlt=2 is better because ACPI is needed to reduce power
+	 * consumption.
+	 */
+	if (cpu_vendor_id == CPU_VENDOR_INTEL &&
+	    CPUID_TO_MODEL(cpu_id) >= 0x3C) {	/* Haswell or later */
+		cpu_idle_hlt = 1;
+	}
 
 	TUNABLE_INT_FETCH("hw.apic_io_enable", &ioapic_enable); /* for compat */
 	TUNABLE_INT_FETCH("hw.ioapic_enable", &ioapic_enable);
