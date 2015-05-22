@@ -1765,20 +1765,8 @@ hammer2_cluster_load_async(hammer2_cluster_t *cluster,
 	hammer2_blockref_t *bref;
 	int i;
 
-	/*
-	 * Try to find a chain whos data is already resolved.  If none can
-	 * be found, start with the first chain.
-	 */
-	chain = NULL;
-	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i].chain;
-		if (chain && chain->data)
-			break;
-	}
-	if (i == cluster->nchains) {
-		chain = cluster->array[0].chain;
-		i = 0;
-	}
+	i = cluster->focus_index;
+	chain = cluster->focus;
 
 	iocb = &cluster->iocb;
 	iocb->callback = callback;
