@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,33 +24,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_HIGHMEM_H_
-#define _LINUX_HIGHMEM_H_
+#ifndef _ASM_CACHEFLUSH_H_
+#define _ASM_CACHEFLUSH_H_
 
-#include <machine/vmparam.h>
-
-#include <linux/uaccess.h>
-
-#include <asm/cacheflush.h>
-
-static inline void *kmap(struct vm_page *pg)
+static inline int set_pages_uc(struct vm_page *page, int num_pages)
 {
-	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pg));
+	pmap_change_attr(PHYS_TO_DMAP(VM_PAGE_TO_PHYS(page)),
+			 num_pages << PAGE_SHIFT, PAT_UNCACHED);
+
+	return 0;
 }
 
-static inline void kunmap(struct vm_page *pg)
-{
-	/* Nothing to do on systems with a direct memory map */
-}
-
-static inline void *kmap_atomic(struct vm_page *pg)
-{
-	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pg));
-}
-
-static inline void kunmap_atomic(void *vaddr)
-{
-	/* Nothing to do on systems with a direct memory map */
-}
-
-#endif	/* _LINUX_HIGHMEM_H_ */
+#endif	/* _ASM_CACHEFLUSH_H_ */
