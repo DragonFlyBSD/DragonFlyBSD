@@ -23,7 +23,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/dev/acpi_support/acpi_wmi_if.m,v 1.2 2009/06/30 09:51:41 rpaulo Exp $
+# $FreeBSD: head/sys/dev/acpi_support/acpi_wmi_if.m 195185 2009-06-30 09:51:41Z rpaulo $
 #
 
 #include <sys/bus.h>
