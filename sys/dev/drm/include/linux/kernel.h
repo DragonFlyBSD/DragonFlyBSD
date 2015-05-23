@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -206,6 +206,11 @@ mult_frac(uintmax_t x, uintmax_t multiplier, uintmax_t divisor)
 	uintmax_t r = (x % divisor);
 
 	return ((q * multiplier) + ((r * multiplier) / divisor));
+}
+
+static inline int64_t abs64(int64_t x)
+{
+	return (x < 0 ? -x : x);
 }
 
 #endif	/* _LINUX_KERNEL_H_ */

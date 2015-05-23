@@ -80,13 +80,6 @@ static void clear_vblank_timestamps(struct drm_device *dev, int crtc)
 		DRM_VBLANKTIME_RBSIZE * sizeof(struct timeval));
 }
 
-static int64_t
-abs64(int64_t x)
-{
-
-	return (x < 0 ? -x : x);
-}
-
 /*
  * Disable vblank irq's on crtc, make sure that last vblank count
  * of hardware and corresponding consistent software vblank counter
