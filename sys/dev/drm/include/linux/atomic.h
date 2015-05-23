@@ -136,4 +136,8 @@ static inline int atomic_add_unless(atomic_t *v, int a, int u)
 		: "r" (mask), "m" (*addr)	\
 		: "memory");
 
+
+#define smp_mb__before_atomic_inc()	cpu_ccfence()
+#define smp_mb__after_atomic_inc()	cpu_ccfence()
+
 #endif	/* _ASM_ATOMIC_H_ */
