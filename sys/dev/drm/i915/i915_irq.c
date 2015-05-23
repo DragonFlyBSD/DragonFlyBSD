@@ -609,7 +609,7 @@ static u32 gm45_get_vblank_counter(struct drm_device *dev, int pipe)
 }
 
 /* raw reads, only for fast reads of display block, no need for forcewake etc. */
-#define __raw_i915_read32(dev_priv__, reg__) readl((dev_priv__)->regs + (reg__))
+#define __raw_i915_read32(dev_priv__, reg__) DRM_READ32(dev_priv__->mmio_map, reg__)
 
 static bool ilk_pipe_in_vblank_locked(struct drm_device *dev, enum i915_pipe pipe)
 {
