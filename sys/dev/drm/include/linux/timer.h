@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014,2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -77,6 +77,8 @@ do {									\
 	    _timer_fn, (timer));					\
 	lwkt_reltoken(&(timer)->timer_token);				\
 } while (0)
+
+#define mod_timer_pinned(timer, exp)	mod_timer(timer, exp)
 
 #define	add_timer(timer)						\
 	lwkt_gettoken(&(timer)->timer_token);				\
