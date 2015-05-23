@@ -55,4 +55,6 @@ schedule_timeout(signed long timeout)
 	return 0;
 }
 
+#define TASK_COMM_LEN	MAXCOMLEN
+
 #endif	/* _LINUX_SCHED_H_ */
