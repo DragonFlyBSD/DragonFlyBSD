@@ -27,6 +27,9 @@
 #ifndef _LINUX_I2C_H_
 #define _LINUX_I2C_H_
 
+#include <sys/bus.h>
+#include <sys/bus_private.h>
+
 #include <linux/sched.h>
 
 #define i2c_msg iic_msg
