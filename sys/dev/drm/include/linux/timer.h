@@ -116,4 +116,6 @@ round_jiffies_up_relative(unsigned long j)
 	return roundup(j, hz);
 }
 
+#define destroy_timer_on_stack(timer)
+
 #endif /* _LINUX_TIMER_H_ */
