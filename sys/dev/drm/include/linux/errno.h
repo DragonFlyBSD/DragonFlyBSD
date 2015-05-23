@@ -33,5 +33,6 @@
 
 #define ECHRNG		EDOM
 #define ENOTSUPP	EOPNOTSUPP
+#define ETIME		ETIMEDOUT
 
 #endif	/* _LINUX_ERRNO_H_ */
