@@ -207,6 +207,11 @@ struct stat {
 
 #endif /* !_POSIX_SOURCE */
 
+#if __POSIX_VISIBLE >= 200809
+#define UTIME_NOW	-1
+#define UTIME_OMIT	-2
+#endif
+
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 #include <sys/cdefs.h>
 
@@ -214,6 +219,7 @@ __BEGIN_DECLS
 int	chmod (const char *, mode_t);
 #if __POSIX_VISIBLE >= 200809
 int	fchmodat (int, const char *, mode_t, int);
+int	utimensat(int, const char *, const struct timespec *, int);
 #endif
 int	fstat (int, struct stat *);
 int	mkdir (const char *, mode_t);

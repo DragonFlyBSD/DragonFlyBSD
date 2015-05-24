@@ -547,4 +547,5 @@ const char *syscallnames[] = {
 	"procctl",			/* 536 = procctl */
 	"chflagsat",			/* 537 = chflagsat */
 	"pipe2",			/* 538 = pipe2 */
+	"utimensat",			/* 539 = utimensat */
 };

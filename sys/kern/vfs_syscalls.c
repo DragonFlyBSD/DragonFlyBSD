@@ -3562,6 +3562,90 @@ sys_futimes(struct futimes_args *uap)
 }
 
 int
+kern_utimensat(struct nlookupdata *nd, int fd, const char *path,
+               const struct timespec *usrts, int flags)
+{
+	struct timespec ts[2], tsnow;
+	struct vnode *vp;
+	struct vattr vattr;
+	int nullflag = 0;
+	int error;
+
+	if (flags & ~AT_SYMLINK_NOFOLLOW)
+		return (EINVAL);
+
+	nanotime(&tsnow);
+	if (!usrts) {
+		ts[0] = tsnow;
+		ts[1] = tsnow;
+		nullflag = 1;
+	} else {
+		error = copyin(usrts, ts, sizeof(ts));
+		if (error)
+			return (error);
+
+		if (ts[0].tv_nsec == UTIME_OMIT && ts[1].tv_nsec == UTIME_OMIT)
+			return 0;
+		if (ts[0].tv_nsec == UTIME_NOW && ts[1].tv_nsec == UTIME_NOW)
+			nullflag = 1;
+
+		if (ts[0].tv_nsec == UTIME_OMIT)
+			ts[0].tv_sec = VNOVAL;
+		else if (ts[0].tv_nsec == UTIME_NOW)
+			ts[0] = tsnow;
+		else if (ts[0].tv_nsec < 0 || ts[0].tv_nsec >= 1000000000ULL)
+			return (EINVAL);
+
+		if (ts[1].tv_nsec == UTIME_OMIT)
+			ts[1].tv_sec = VNOVAL;
+		else if (ts[1].tv_nsec == UTIME_NOW)
+			ts[1] = tsnow;
+		else if (ts[1].tv_nsec < 0 || ts[1].tv_nsec >= 1000000000ULL)
+			return (EINVAL);
+	}
+
+	nd->nl_flags |= NLC_OWN | NLC_WRITE;
+	if ((error = nlookup(nd)) != 0)
+		return (error);
+	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
+		return (error);
+	if ((error = cache_vref(&nd->nl_nch, nd->nl_cred, &vp)) != 0)
+		return (error);
+	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
+		error = vget(vp, LK_EXCLUSIVE);
+		if (error == 0) {
+			error = setutimes(vp, &vattr, ts, nullflag);
+			vput(vp);
+		}
+	}
+	vrele(vp);
+	return (error);
+}
+
+/*
+ * utimensat_args(int fd, const char *path, const struct timespec *ts, int flags);
+ *
+ * Set file access and modification times of a file.
+ */
+int
+sys_utimensat(struct utimensat_args *uap)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	int error;
+	int flags;
+
+	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path,
+	                        UIO_USERSPACE, flags);
+	if (error == 0)
+		error = kern_utimensat(&nd, uap->fd, uap->path,
+		                       uap->ts, uap->flags);
+	nlookup_done_at(&nd, fp);
+	return (error);
+}
+
+int
 kern_truncate(struct nlookupdata *nd, off_t length)
 {
 	struct vnode *vp;

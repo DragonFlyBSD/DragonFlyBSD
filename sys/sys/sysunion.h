@@ -409,4 +409,5 @@ union sysunion {
 	struct	procctl_args procctl;
 	struct	chflagsat_args chflagsat;
 	struct	pipe2_args pipe2;
+	struct	utimensat_args utimensat;
 };

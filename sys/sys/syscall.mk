@@ -301,4 +301,5 @@ MIASM =  \
 	vmm_guest_sync_addr.o \
 	procctl.o \
 	chflagsat.o \
-	pipe2.o
+	pipe2.o \
+	utimensat.o

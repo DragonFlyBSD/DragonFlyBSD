@@ -575,4 +575,5 @@ struct sysent sysent[] = {
 	{ AS(procctl_args), (sy_call_t *)sys_procctl },	/* 536 = procctl */
 	{ AS(chflagsat_args), (sy_call_t *)sys_chflagsat },	/* 537 = chflagsat */
 	{ AS(pipe2_args), (sy_call_t *)sys_pipe2 },	/* 538 = pipe2 */
+	{ AS(utimensat_args), (sy_call_t *)sys_utimensat },	/* 539 = utimensat */
 };
