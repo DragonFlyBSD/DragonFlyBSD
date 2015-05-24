@@ -131,7 +131,7 @@ static void do_destroy(struct i915_hw_context *ctx)
 		idr_remove(&ctx->file_priv->context_idr, ctx->id);
 
 	drm_gem_object_unreference(&ctx->obj->base);
-	kfree(ctx, M_DRM);
+	kfree(ctx);
 }
 
 static struct i915_hw_context *
@@ -148,7 +148,7 @@ create_hw_context(struct drm_device *dev,
 
 	ctx->obj = i915_gem_alloc_object(dev, dev_priv->hw_context_size);
 	if (ctx->obj == NULL) {
-		kfree(ctx, M_DRM);
+		kfree(ctx);
 		DRM_DEBUG_DRIVER("Context object allocated failed\n");
 		return ERR_PTR(-ENOMEM);
 	}

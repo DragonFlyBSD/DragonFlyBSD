@@ -466,7 +466,7 @@ int drm_fb_helper_init(struct drm_device *dev,
 	    sizeof(struct drm_fb_helper_connector *), M_DRM,
 	    M_WAITOK | M_ZERO);
 	if (!fb_helper->connector_info) {
-		kfree(fb_helper->crtc_info, M_DRM);
+		kfree(fb_helper->crtc_info);
 		return -ENOMEM;
 	}
 	fb_helper->connector_count = 0;

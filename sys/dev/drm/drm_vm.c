@@ -201,7 +201,7 @@ vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end,
                 }
         }
         mtx_unlock(&vm_phys_fictitious_reg_mtx);
-        kfree(fp, M_DRM);
+        kfree(fp);
         return (EBUSY);
 }
 
@@ -220,7 +220,7 @@ vm_phys_fictitious_unreg_range(vm_paddr_t start, vm_paddr_t end)
 			fp = seg->first_page;
 			seg->first_page = NULL;
 			mtx_unlock(&vm_phys_fictitious_reg_mtx);
-			kfree(fp, M_DRM);
+			kfree(fp);
 			return;
 		}
 	}

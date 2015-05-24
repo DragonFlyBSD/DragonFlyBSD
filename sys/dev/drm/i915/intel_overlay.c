@@ -1160,7 +1160,7 @@ int intel_overlay_put_image(struct drm_device *dev, void *data,
 	mutex_unlock(&dev->struct_mutex);
 	drm_modeset_unlock_all(dev);
 
-	kfree(params, M_DRM);
+	kfree(params);
 
 	return 0;
 
@@ -1169,7 +1169,7 @@ out_unlock:
 	drm_modeset_unlock_all(dev);
 	drm_gem_object_unreference_unlocked(&new_bo->base);
 out_free:
-	kfree(params, M_DRM);
+	kfree(params);
 
 	return ret;
 }
@@ -1392,7 +1392,7 @@ out_free_bo:
 	drm_gem_object_unreference(&reg_bo->base);
 out_free:
 	mutex_unlock(&dev->struct_mutex);
-	kfree(overlay, M_DRM);
+	kfree(overlay);
 	return;
 }
 
@@ -1409,7 +1409,7 @@ void intel_cleanup_overlay(struct drm_device *dev)
 	BUG_ON(dev_priv->overlay->active);
 
 	drm_gem_object_unreference_unlocked(&dev_priv->overlay->reg_bo->base);
-	kfree(dev_priv->overlay, M_DRM);
+	kfree(dev_priv->overlay);
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -1480,7 +1480,7 @@ intel_overlay_capture_error_state(struct drm_device *dev)
 	return error;
 
 err:
-	kfree(error, M_DRM);
+	kfree(error);
 	return NULL;
 }
 

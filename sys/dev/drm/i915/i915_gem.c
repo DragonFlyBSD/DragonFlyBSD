@@ -1646,7 +1646,7 @@ i915_add_request(struct intel_ring_buffer *ring,
 
 	ret = ring->add_request(ring);
 	if (ret) {
-		kfree(request, M_DRM);
+		kfree(request);
 		return ret;
 	}
 
@@ -1809,7 +1809,7 @@ i915_gem_retire_requests_ring(struct intel_ring_buffer *ring)
 
 		list_del(&request->list);
 		i915_gem_request_remove_from_client(request);
-		kfree(request, M_DRM);
+		kfree(request);
 	}
 
 	/* Move any buffers on the active list that are no longer referenced
@@ -3405,7 +3405,7 @@ struct drm_i915_gem_object *i915_gem_alloc_object(struct drm_device *dev,
 		return NULL;
 
 	if (drm_gem_object_init(dev, &obj->base, size) != 0) {
-		kfree(obj, M_DRM);
+		kfree(obj);
 		return NULL;
 	}
 

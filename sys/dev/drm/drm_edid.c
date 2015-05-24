@@ -1135,7 +1135,7 @@ carp:
 	connector->bad_edid_counter++;
 
 out:
-	kfree(block, M_DRM);
+	kfree(block);
 	return NULL;
 }
 

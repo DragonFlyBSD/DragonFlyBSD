@@ -379,7 +379,7 @@ EXPORT_SYMBOL(ttm_bo_move_memcpy);
 
 static void ttm_transfered_destroy(struct ttm_buffer_object *bo)
 {
-	kfree(bo, M_DRM);
+	kfree(bo);
 }
 
 /**

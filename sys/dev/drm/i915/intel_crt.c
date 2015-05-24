@@ -410,7 +410,7 @@ static int intel_crt_ddc_get_modes(struct drm_connector *connector,
 		return 0;
 
 	ret = intel_connector_update_modes(connector, edid);
-	kfree(edid, M_DRM);
+	kfree(edid);
 
 	return ret;
 }
@@ -735,7 +735,7 @@ void intel_crt_init(struct drm_device *dev)
 	intel_connector = kmalloc(sizeof(struct intel_connector), M_DRM,
 	    M_WAITOK | M_ZERO);
 	if (!intel_connector) {
-		kfree(crt, M_DRM);
+		kfree(crt);
 		return;
 	}
 

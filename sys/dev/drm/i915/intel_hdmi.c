@@ -1067,7 +1067,7 @@ void intel_hdmi_init(struct drm_device *dev, int sdvox_reg, enum port port)
 	intel_connector = kmalloc(sizeof(struct intel_connector), M_DRM,
 	    M_WAITOK | M_ZERO);
 	if (!intel_connector) {
-		kfree(intel_dig_port, M_DRM);
+		kfree(intel_dig_port);
 		return;
 	}
 

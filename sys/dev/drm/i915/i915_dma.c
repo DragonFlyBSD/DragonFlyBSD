@@ -657,7 +657,7 @@ static int i915_batchbuffer(struct drm_device *dev, void *data,
 		sarea_priv->last_dispatch = READ_BREADCRUMB(dev_priv);
 
 fail_free:
-	kfree(cliprects, M_DRM);
+	kfree(cliprects);
 	return ret;
 }
 
@@ -1573,7 +1573,7 @@ out_gem_unload:
 out_mtrrfree:
 put_bridge:
 free_priv:
-	kfree(dev_priv, M_DRM);
+	kfree(dev_priv);
 	return ret;
 }
 
@@ -1625,7 +1625,7 @@ int i915_driver_unload(struct drm_device *dev)
 		 * config parsed from VBT
 		 */
 		if (dev_priv->child_dev && dev_priv->child_dev_num) {
-			kfree(dev_priv->child_dev, M_DRM);
+			kfree(dev_priv->child_dev);
 			dev_priv->child_dev = NULL;
 			dev_priv->child_dev_num = 0;
 		}
@@ -1736,7 +1736,7 @@ void i915_driver_postclose(struct drm_device *dev, struct drm_file *file)
 {
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 
-	kfree(file_priv, M_DRM);
+	kfree(file_priv);
 }
 
 struct drm_ioctl_desc i915_ioctls[] = {

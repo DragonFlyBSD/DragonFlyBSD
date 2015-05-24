@@ -234,7 +234,7 @@ static int i915_gem_init_aliasing_ppgtt(struct drm_device *dev)
 
 	ret = gen6_ppgtt_init(ppgtt);
 	if (ret)
-		kfree(ppgtt, M_DRM);
+		kfree(ppgtt);
 	else
 		dev_priv->mm.aliasing_ppgtt = ppgtt;
 

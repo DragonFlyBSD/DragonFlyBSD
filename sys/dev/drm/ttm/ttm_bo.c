@@ -128,7 +128,7 @@ static void ttm_bo_release_list(struct kref *list_kref)
 	if (bo->destroy)
 		bo->destroy(bo);
 	else {
-		kfree(bo, M_DRM);
+		kfree(bo);
 	}
 	ttm_mem_global_free(bdev->glob->mem_glob, acc_size);
 }
@@ -1256,7 +1256,7 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 		if (destroy)
 			(*destroy)(bo);
 		else
-			kfree(bo, M_DRM);
+			kfree(bo);
 		return -ENOMEM;
 	}
 
@@ -1266,7 +1266,7 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 		if (destroy)
 			(*destroy)(bo);
 		else
-			kfree(bo, M_DRM);
+			kfree(bo);
 		ttm_mem_global_free(mem_glob, acc_size);
 		return -EINVAL;
 	}
@@ -1565,7 +1565,7 @@ out_no_shrink:
 	vm_page_free(glob->dummy_read_page);
 	*/
 out_no_drp:
-	kfree(glob, M_DRM);
+	kfree(glob);
 	return ret;
 }
 EXPORT_SYMBOL(ttm_bo_global_init);

@@ -288,7 +288,7 @@ static void intel_fbc_work_fn(struct work_struct *__work)
 	}
 	mutex_unlock(&dev->struct_mutex);
 
-	kfree(work, M_DRM);
+	kfree(work);
 }
 
 static void intel_cancel_fbc_work(struct drm_i915_private *dev_priv)
@@ -304,7 +304,7 @@ static void intel_cancel_fbc_work(struct drm_i915_private *dev_priv)
 	 */
 	if (cancel_delayed_work(&dev_priv->fbc_work->work))
 		/* tasklet was killed before being run, clean up */
-		kfree(dev_priv->fbc_work, M_DRM);
+		kfree(dev_priv->fbc_work);
 
 	/* Mark the work as no longer wanted so that if it does
 	 * wake-up (because the work was already running and waiting

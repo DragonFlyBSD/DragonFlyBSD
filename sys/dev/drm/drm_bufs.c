@@ -233,7 +233,7 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 		 * need to point to a 64bit variable first. */
 		dmah = drm_pci_alloc(dev, map->size, map->size);
 		if (!dmah) {
-			kfree(map, M_DRM);
+			kfree(map);
 			return -ENOMEM;
 		}
 		map->handle = dmah->vaddr;

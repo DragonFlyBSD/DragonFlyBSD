@@ -787,9 +787,9 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set)
 		}
 	}
 
-	kfree(save_connectors, M_DRM);
-	kfree(save_encoders, M_DRM);
-	kfree(save_crtcs, M_DRM);
+	kfree(save_connectors);
+	kfree(save_encoders);
+	kfree(save_crtcs);
 	return 0;
 
 fail:

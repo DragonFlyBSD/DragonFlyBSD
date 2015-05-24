@@ -1876,7 +1876,7 @@ radeon_add_atom_connector(struct drm_device *dev,
 
 failed:
 	drm_connector_cleanup(connector);
-	kfree(connector, M_DRM);
+	kfree(connector);
 }
 
 void

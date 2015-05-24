@@ -1595,7 +1595,7 @@ intel_sdvo_detect(struct drm_connector *connector, bool force)
 			else
 				ret = connector_status_disconnected;
 
-			kfree(edid, M_DRM);
+			kfree(edid);
 		} else
 			ret = connector_status_connected;
 	}
@@ -2824,7 +2824,7 @@ bool intel_sdvo_init(struct drm_device *dev, uint32_t sdvo_reg, bool is_sdvob)
 	intel_sdvo->slave_addr = intel_sdvo_get_slave_addr(dev, intel_sdvo) >> 1;
 	intel_sdvo_select_i2c_bus(dev_priv, intel_sdvo, sdvo_reg);
 	if (!intel_sdvo_init_ddc_proxy(intel_sdvo, dev, sdvo_reg)) {
-		kfree(intel_sdvo, M_DRM);
+		kfree(intel_sdvo);
 		return false;
 	}
 
@@ -2925,7 +2925,7 @@ err_output:
 err:
 	drm_encoder_cleanup(&intel_encoder->base);
 	intel_sdvo_unselect_i2c_bus(intel_sdvo);
-	kfree(intel_sdvo, M_DRM);
+	kfree(intel_sdvo);
 
 	return false;
 }

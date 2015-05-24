@@ -1510,7 +1510,7 @@ void intel_ddi_init(struct drm_device *dev, enum port port)
 	dp_connector = kmalloc(sizeof(struct intel_connector),
 		M_DRM, M_WAITOK | M_ZERO);
 	if (!dp_connector) {
-		kfree(intel_dig_port, M_DRM);
+		kfree(intel_dig_port);
 		return;
 	}
 
@@ -1518,8 +1518,8 @@ void intel_ddi_init(struct drm_device *dev, enum port port)
 		hdmi_connector = kmalloc(sizeof(struct intel_connector),
 			M_DRM, M_WAITOK | M_ZERO);
 		if (!hdmi_connector) {
-			kfree(dp_connector, M_DRM);
-			kfree(intel_dig_port, M_DRM);
+			kfree(dp_connector);
+			kfree(intel_dig_port);
 			return;
 		}
 	}

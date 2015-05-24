@@ -107,6 +107,7 @@ MALLOC_DECLARE(M_DRM);
 #include <linux/mm.h>
 #include <linux/moduleparam.h>
 #include <linux/mutex.h>
+#include <linux/slab.h>
 #include <linux/scatterlist.h>
 #include <linux/timer.h>
 #include <asm/io.h>
@@ -1541,22 +1542,10 @@ drm_calloc(size_t nmemb, size_t size, struct malloc_type *area)
 	return kmalloc(size * nmemb, area, M_WAITOK | M_NULLOK | M_ZERO);
 }
 
-static __inline__ void *
-drm_realloc(void *oldpt, size_t oldsize, size_t size,
-    struct malloc_type *area)
-{
-	void *res;
-	res = krealloc(oldpt, size, area, M_WAITOK | M_NULLOK);
-	if (res == NULL && oldpt != NULL)
-		kfree(oldpt,area);
-	return res;
-}
-
 static __inline__ void
 drm_free(void *pt, struct malloc_type *area)
 {
-	if (pt != NULL)
-		kfree(pt, area);
+	kfree(pt);
 }
 
 /* Inline replacements for DRM_IOREMAP macros */

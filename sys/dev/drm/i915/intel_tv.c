@@ -1430,7 +1430,7 @@ intel_tv_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	kfree(connector, M_DRM);
+	kfree(connector);
 }
 
 
@@ -1598,7 +1598,7 @@ intel_tv_init(struct drm_device *dev)
 	intel_connector = kmalloc(sizeof(struct intel_connector), M_DRM,
 	    M_WAITOK | M_ZERO);
 	if (!intel_connector) {
-		kfree(intel_tv, M_DRM);
+		kfree(intel_tv);
 		return;
 	}
 

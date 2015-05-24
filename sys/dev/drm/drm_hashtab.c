@@ -198,7 +198,7 @@ EXPORT_SYMBOL(drm_ht_remove_item);
 void drm_ht_remove(struct drm_open_hash *ht)
 {
 	if (ht->table) {
-		kfree(ht->table, M_DRM);
+		kfree(ht->table);
 		ht->table = NULL;
 	}
 }

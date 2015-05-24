@@ -163,7 +163,7 @@ static inline void
 destroy_workqueue(struct workqueue_struct *wq)
 {
 	taskqueue_free(wq->taskqueue);
-	kfree(wq, M_DRM);
+	kfree(wq);
 }
 
 #define	flush_workqueue(wq)	flush_taskqueue((wq)->taskqueue)

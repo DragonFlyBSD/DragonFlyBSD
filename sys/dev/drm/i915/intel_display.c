@@ -6514,7 +6514,7 @@ intel_framebuffer_create(struct drm_device *dev,
 	ret = intel_framebuffer_init(dev, intel_fb, mode_cmd, obj);
 	if (ret) {
 		drm_gem_object_unreference_unlocked(&obj->base);
-		kfree(intel_fb, M_DRM);
+		kfree(intel_fb);
 		return ERR_PTR(ret);
 	}
 
@@ -6959,7 +6959,7 @@ static void intel_crtc_destroy(struct drm_crtc *crtc)
 
 	if (work) {
 		cancel_work_sync(&work->work);
-		kfree(work, M_DRM);
+		kfree(work);
 	}
 
 	drm_crtc_cleanup(crtc);
@@ -7906,7 +7906,7 @@ done:
 	}
 
 out:
-	kfree(saved_mode, M_DRM);
+	kfree(saved_mode);
 	return ret;
 }
 
