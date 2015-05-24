@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/coretemp.4,v 1.5 2011/05/22 14:03:30 uqs Exp $
 .\"
-.Dd May 4, 2015
+.Dd May 24, 2015
 .Dt CORETEMP 4
 .Os
 .Sh NAME
@@ -57,12 +57,12 @@ The values are exposed through the
 tree.
 For example:
 .Bd -literal -offset indent
-%sysctl hw.sensors
-hw.sensors.cpu0.temp0: 50.00 degC (node0 core0), OK
-hw.sensors.cpu1.temp0: 50.00 degC (node0 core0), OK
-hw.sensors.cpu2.temp0: 47.00 degC (node0 core1), OK
-hw.sensors.cpu3.temp0: 47.00 degC (node0 core1), OK
-hw.sensors.cpu_node0.temp0: 50.00 degC (node0), OK
+% sysctl hw.sensors
+hw.sensors.cpu0.temp0: 50.00 degC (node0 core0 temp), OK
+hw.sensors.cpu1.temp0: 50.00 degC (node0 core0 temp), OK
+hw.sensors.cpu2.temp0: 47.00 degC (node0 core1 temp), OK
+hw.sensors.cpu3.temp0: 47.00 degC (node0 core1 temp), OK
+hw.sensors.cpu_node0.temp0: 50.00 degC (node0 temp), OK
 .Ed
 .Pp
 If the core or package temperature reaches critical level,
