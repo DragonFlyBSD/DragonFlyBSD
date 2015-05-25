@@ -3744,13 +3744,6 @@ bpdone(struct buf *bp, int elseit)
 	}
 
 	/*
-	 * Warning: softupdates may re-dirty the buffer, and HAMMER can do
-	 * a lot worse.  XXX - move this above the clearing of b_cmd
-	 */
-	if (LIST_FIRST(&bp->b_dep) != NULL)
-		buf_complete(bp);
-
-	/*
 	 * A failed write must re-dirty the buffer unless B_INVAL
 	 * was set.
 	 *
@@ -3761,6 +3754,9 @@ bpdone(struct buf *bp, int elseit)
 	 *
 	 * Only applicable to normal buffers (with VPs).  vinum buffers may
 	 * not have a vp.
+	 *
+	 * Must be done prior to calling buf_complete() as the callback might
+	 * re-dirty the buffer.
 	 */
 	if (cmd == BUF_CMD_WRITE) {
 		if ((bp->b_flags & (B_ERROR | B_INVAL)) == B_ERROR) {
@@ -3772,6 +3768,13 @@ bpdone(struct buf *bp, int elseit)
 				bundirty(bp);
 		}
 	}
+
+	/*
+	 * Warning: softupdates may re-dirty the buffer, and HAMMER can do
+	 * a lot worse.  XXX - move this above the clearing of b_cmd
+	 */
+	if (LIST_FIRST(&bp->b_dep) != NULL)
+		buf_complete(bp);
 
 	if (bp->b_flags & B_VMIO) {
 		int i;
