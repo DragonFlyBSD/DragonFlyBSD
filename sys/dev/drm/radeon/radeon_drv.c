@@ -73,9 +73,12 @@
  *   2.28.0 - r600-eg: Add MEM_WRITE packet support
  *   2.29.0 - R500 FP16 color clear registers
  *   2.30.0 - fix for FMASK texturing
+ *   2.31.0 - Add fastfb support for rs690
+ *   2.32.0 - new info request for rings working
+ *   2.33.0 - Add SI tiling mode array query
  */
 #define KMS_DRIVER_MAJOR	2
-#define KMS_DRIVER_MINOR	30
+#define KMS_DRIVER_MINOR	33
 #define KMS_DRIVER_PATCHLEVEL	0
 int radeon_suspend_kms(struct drm_device *dev);
 int radeon_resume_kms(struct drm_device *dev);
@@ -134,6 +137,7 @@ int radeon_hw_i2c = 0;
 int radeon_pcie_gen2 = -1;
 int radeon_msi = -1;
 int radeon_lockup_timeout = 10000;
+int radeon_fastfb = 0;
 
 static drm_pci_id_list_t pciidlist[] = {
 	radeon_PCI_IDS
@@ -192,6 +196,9 @@ module_param_named(msi, radeon_msi, int, 0444);
 
 MODULE_PARM_DESC(lockup_timeout, "GPU lockup timeout in ms (defaul 10000 = 10 seconds, 0 = disable)");
 module_param_named(lockup_timeout, radeon_lockup_timeout, int, 0444);
+
+MODULE_PARM_DESC(fastfb, "Direct FB access for IGP chips (0 = disable, 1 = enable)");
+module_param_named(fastfb, radeon_fastfb, int, 0444);
 
 static int radeon_suspend(struct drm_device *dev, pm_message_t state)
 {

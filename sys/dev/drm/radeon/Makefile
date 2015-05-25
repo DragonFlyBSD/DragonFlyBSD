@@ -74,7 +74,8 @@ SRCS	+=								\
 	cayman_blit_shaders.c						\
 	ni.c								\
 	si.c								\
-	si_blit_shaders.c
+	si_blit_shaders.c						\
+	radeon_uvd.c
 
 
 # UMS driver

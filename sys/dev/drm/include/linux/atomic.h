@@ -54,6 +54,8 @@ typedef struct {
 #define atomic_xchg(p, v)		atomic_swap_int(&((p)->counter), v)
 #define atomic64_xchg(p, v)		atomic_swap_long(&((p)->counter), v)
 
+#define atomic_cmpset(p, o, n)		atomic_cmpset_32(&((p)->counter), o, n)
+
 static inline int
 atomic_add_return(int i, atomic_t *v)
 {

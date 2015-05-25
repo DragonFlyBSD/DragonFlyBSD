@@ -1203,11 +1203,13 @@ int radeon_vm_bo_update_pte(struct radeon_device *rdev,
 int radeon_vm_bo_rmv(struct radeon_device *rdev,
 		     struct radeon_bo_va *bo_va)
 {
-	int r;
+	int r = 0;
 
 	lockmgr(&rdev->vm_manager.lock, LK_EXCLUSIVE);
 	lockmgr(&bo_va->vm->mutex, LK_EXCLUSIVE);
-	r = radeon_vm_bo_update_pte(rdev, bo_va->vm, bo_va->bo, NULL);
+	if (bo_va->soffset) {
+		r = radeon_vm_bo_update_pte(rdev, bo_va->vm, bo_va->bo, NULL);
+	}
 	lockmgr(&rdev->vm_manager.lock, LK_RELEASE);
 	list_del(&bo_va->vm_list);
 	lockmgr(&bo_va->vm->mutex, LK_RELEASE);
