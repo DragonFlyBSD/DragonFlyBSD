@@ -1057,18 +1057,17 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 	}
 
 	/*
-	 * Update mirror_tid and modify_tid.
-	 *
-	 * NOTE: modify_tid updates can be suppressed with a flag.  This is
-	 *	 used by the slave synchronization code to delay updating
-	 *	 modify_tid in higher-level objects until lower-level objects
-	 *	 have been synchronized.
+	 * Update mirror_tid and modify_tid.  modify_tid is only updated
+	 * automatically by this function when used from the frontend.
+	 * Flushes and synchronization adjust the flag manually.
 	 *
 	 * NOTE: chain->pmp could be the device spmp.
 	 */
 	chain->bref.mirror_tid = hmp->voldata.mirror_tid + 1;
-	if (chain->pmp && (trans->flags & HAMMER2_TRANS_KEEPMODIFY) == 0)
+	if (chain->pmp && (trans->flags & (HAMMER2_TRANS_KEEPMODIFY |
+					   HAMMER2_TRANS_ISFLUSH)) == 0) {
 		chain->bref.modify_tid = chain->pmp->modify_tid + 1;
+	}
 
 	/*
 	 * Set BMAPUPD to tell the flush code that an existing blockmap entry
@@ -1662,7 +1661,13 @@ again:
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
-		panic("hammer2_chain_lookup: unrecognized blockref type: %d",
+		kprintf("hammer2_chain_lookup: unrecognized "
+			"blockref(B) type: %d",
+			parent->bref.type);
+		while (1)
+			tsleep(&base, 0, "dead", 0);
+		panic("hammer2_chain_lookup: unrecognized "
+		      "blockref(B) type: %d",
 		      parent->bref.type);
 		base = NULL;	/* safety */
 		count = 0;	/* safety */
@@ -3816,7 +3821,13 @@ hammer2_base_sort(hammer2_chain_t *chain)
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
-		panic("hammer2_chain_lookup: unrecognized blockref type: %d",
+		kprintf("hammer2_chain_lookup: unrecognized "
+			"blockref(A) type: %d",
+		        chain->bref.type);
+		while (1)
+			tsleep(&base, 0, "dead", 0);
+		panic("hammer2_chain_lookup: unrecognized "
+		      "blockref(A) type: %d",
 		      chain->bref.type);
 		base = NULL;	/* safety */
 		count = 0;	/* safety */

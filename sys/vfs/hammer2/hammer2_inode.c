@@ -128,6 +128,7 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
 	 */
 	cluster = hammer2_cluster_copy(&ip->cluster);
 	hammer2_cluster_lock(cluster, how);
+	hammer2_cluster_resolve(cluster);
 
 	/*
 	 * cluster->focus will be set if resolving RESOLVE_ALWAYS, but
@@ -1073,7 +1074,8 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 
 /*
  * Repoint ip->cluster's chains to cluster's chains and fixup the default
- * focus.
+ * focus.  Only valid elements are repointed.  Invalid elements have to be
+ * adjusted by the appropriate slave sync threads.
  *
  * Caller must hold the inode and cluster exclusive locked, if not NULL,
  * must also be locked.
@@ -1097,6 +1099,17 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 	 *	 in the cluster arrays.
 	 */
 	for (i = 0; cluster && i < cluster->nchains; ++i) {
+		/*
+		 * Do not replace invalid elements as this might race
+		 * syncthr replacements.
+		 */
+		if (cluster->array[i].flags & HAMMER2_CITEM_INVALID)
+			continue;
+
+		/*
+		 * Do not replace elements which are the same.  Also handle
+		 * element count discrepancies.
+		 */
 		nchain = cluster->array[i].chain;
 		if (i < ip->cluster.nchains) {
 			ochain = ip->cluster.array[i].chain;
@@ -1110,6 +1123,9 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		 * Make adjustments
 		 */
 		ip->cluster.array[i].chain = nchain;
+		ip->cluster.array[i].flags &= ~HAMMER2_CITEM_INVALID;
+		ip->cluster.array[i].flags |= cluster->array[i].flags &
+					      HAMMER2_CITEM_INVALID;
 		if (nchain)
 			hammer2_chain_ref(nchain);
 		if (ochain)
@@ -1123,6 +1139,7 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		nchain = ip->cluster.array[i].chain;
 		if (nchain) {
 			ip->cluster.array[i].chain = NULL;
+			ip->cluster.array[i].flags |= HAMMER2_CITEM_INVALID;
 			hammer2_chain_drop(nchain);
 		}
 		++i;
@@ -1151,6 +1168,48 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		ip->pip = pip;
 		if (opip)
 			hammer2_inode_drop(opip);
+	}
+}
+
+/*
+ * Repoint a single element from the cluster to the ip.  Used by the
+ * synchronization threads to piecemeal update inodes.  Does not change
+ * focus and requires inode to be re-locked to clean-up flags (XXX).
+ */
+void
+hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
+			  int idx)
+{
+	hammer2_chain_t *ochain;
+	hammer2_chain_t *nchain;
+	int i;
+
+	KKASSERT(idx < cluster->nchains);
+	if (idx < ip->cluster.nchains) {
+		ochain = ip->cluster.array[idx].chain;
+		nchain = cluster->array[idx].chain;
+	} else {
+		ochain = NULL;
+		nchain = cluster->array[idx].chain;
+		ip->cluster.nchains = idx + 1;
+		for (i = 0; i <= idx; ++i) {
+			bzero(&ip->cluster.array[i],
+			      sizeof(ip->cluster.array[i]));
+			ip->cluster.array[i].flags |= HAMMER2_CITEM_INVALID;
+		}
+	}
+	if (ochain != nchain) {
+		/*
+		 * Make adjustments.
+		 */
+		ip->cluster.array[idx].chain = nchain;
+		ip->cluster.array[idx].flags &= ~HAMMER2_CITEM_INVALID;
+		ip->cluster.array[idx].flags |= cluster->array[idx].flags &
+						HAMMER2_CITEM_INVALID;
+		if (nchain)
+			hammer2_chain_ref(nchain);
+		if (ochain)
+			hammer2_chain_drop(ochain);
 	}
 }
 

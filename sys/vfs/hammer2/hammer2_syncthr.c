@@ -45,14 +45,14 @@ static void hammer2_update_pfs_status(hammer2_syncthr_t *thr,
 static int hammer2_sync_insert(hammer2_syncthr_t *thr,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			hammer2_tid_t modify_tid,
-			int i, int *errors, int validate);
+			int i, int *errors);
 static int hammer2_sync_destroy(hammer2_syncthr_t *thr,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			int i, int *errors);
 static int hammer2_sync_replace(hammer2_syncthr_t *thr,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			hammer2_tid_t modify_tid,
-			int i, int *errors, int validate);
+			int i, int *errors);
 
 /*
  * Initialize the suspplied syncthr structure, starting the specified
@@ -148,6 +148,7 @@ hammer2_syncthr_primary(void *arg)
 {
 	hammer2_syncthr_t *thr = arg;
 	hammer2_cluster_t *cparent;
+	hammer2_chain_t *chain;
 	hammer2_pfs_t *pmp;
 	int errors[HAMMER2_MAXCLUSTER];
 	int error;
@@ -189,11 +190,28 @@ hammer2_syncthr_primary(void *arg)
 		hammer2_update_pfs_status(thr, cparent);
 		hammer2_inode_unlock(pmp->iroot, NULL);
 		bzero(errors, sizeof(errors));
+		kprintf("sync_slaves clindex %d\n", thr->clindex);
+
 		error = hammer2_sync_slaves(thr, cparent, errors);
 		if (error)
 			kprintf("hammer2_sync_slaves: error %d\n", error);
+		chain = cparent->array[thr->clindex].chain;
+
+		/*
+		 * Retain chain for our node and release the cluster.
+		 */
+		hammer2_chain_ref(chain);
+		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 		hammer2_cluster_unlock(cparent);
 		hammer2_cluster_drop(cparent);
+
+		/*
+		 * Flush the chain.
+		 */
+		hammer2_flush(&thr->trans, chain, 1);
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+
 		hammer2_trans_done(&thr->trans);
 
 		/*
@@ -298,13 +316,17 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 	 * Do a full topology scan, insert/delete elements on slaves as
 	 * needed.  cparent must be ref'd so we can unlock and relock it
 	 * on the recursion.
+	 *
+	 * ALLNODES - Allows clusters with a NULL focus to be returned if
+	 *	      elements remain on other nodes.
 	 */
 	hammer2_cluster_ref(cparent);
 	cluster = hammer2_cluster_lookup(cparent, &key_next,
 					 HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
 					 HAMMER2_LOOKUP_NODATA |
 					 HAMMER2_LOOKUP_NOLOCK |
-					 HAMMER2_LOOKUP_NODIRECT);
+					 HAMMER2_LOOKUP_NODIRECT |
+					 HAMMER2_LOOKUP_ALLNODES);
 
 	/*
 	 * Scan elements
@@ -321,6 +343,11 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 		else
 			dorecursion = 0;
 
+		if (idx == 3 && (hammer2_debug & 1) && focus)
+			kprintf("scan3 focus %d.%016jx %d.%016jx\n",
+			    (cparent ? cparent->focus->bref.type : 0xFF),
+			    (cparent ? cparent->focus->bref.key : (uintmax_t)-1LLU),
+			    focus->bref.type, focus->bref.key);
 repeat1:
 		/*
 		 * Synchronize chains to focus
@@ -328,6 +355,17 @@ repeat1:
 		if (idx >= cluster->nchains)
 			goto skip1;
 		chain = cluster->array[idx].chain;
+		if (idx == 3 && (hammer2_debug & 1) && chain)
+			kprintf("scan3 slave %d.%016jx %d.%016jx\n",
+			    ((cparent && cparent->array[idx].chain) ? cparent->array[idx].chain->bref.type : 0xFF),
+			    ((cparent && cparent->array[idx].chain) ? cparent->array[idx].chain->bref.key : (uintmax_t)-1LLU),
+			    cluster->array[idx].chain->bref.type,
+			    cluster->array[idx].chain->bref.key);
+		if (idx == 3 && (hammer2_debug & 1) && chain == NULL)
+			kprintf("scan3 slave %d.%16jx NULL\n",
+			    ((cparent && cparent->array[idx].chain) ? cparent->array[idx].chain->bref.type : 0xFF),
+			    ((cparent && cparent->array[idx].chain) ? cparent->array[idx].chain->bref.key : (uintmax_t)-1LLU)
+			);
 
 		/*
 		 * Disable recursion for this index and loop up
@@ -397,14 +435,14 @@ repeat1:
 				nerror = hammer2_sync_insert(
 						thr, cparent, cluster,
 						0,
-						idx, errors, 0);
+						idx, errors);
 				if (nerror == 0)
 					n = 0;
 			} else {
 				nerror = hammer2_sync_insert(
 						thr, cparent, cluster,
 						focus->bref.modify_tid,
-						idx, errors, 1);
+						idx, errors);
 			}
 		} else if (n > 0) {
 			/*
@@ -421,7 +459,8 @@ repeat1:
 				idx,
 				HAMMER2_LOOKUP_NODATA |
 				HAMMER2_LOOKUP_NOLOCK |
-				HAMMER2_LOOKUP_NODIRECT);
+				HAMMER2_LOOKUP_NODIRECT |
+				HAMMER2_LOOKUP_ALLNODES);
 			/*
 			 * Re-execute same index, there might be more
 			 * items to delete before this slave catches
@@ -450,12 +489,12 @@ repeat1:
 				nerror = hammer2_sync_replace(
 						thr, cparent, cluster,
 						0,
-						idx, errors, 0);
+						idx, errors);
 			} else if (focus) {
 				nerror = hammer2_sync_replace(
 						thr, cparent, cluster,
 						focus->bref.modify_tid,
-						idx, errors, 1);
+						idx, errors);
 			} else {
 				nerror = 0;
 			}
@@ -470,7 +509,7 @@ skip1:
 		 * iroot->cluster if we are at the top level.
 		 */
 		if (thr->depth == 0)
-			hammer2_inode_repoint(pmp->iroot, NULL, cparent);
+			hammer2_inode_repoint_one(pmp->iroot, cparent, idx);
 		KKASSERT(cluster->focus == focus);
 
 		/*
@@ -484,6 +523,11 @@ skip1:
 		 *
 		 * Indirect blocks are absorbed by the iteration so we only
 		 * have to recurse on inodes.
+		 *
+		 * Do not resolve scluster, it represents the iteration
+		 * parent and while it is logically in-sync the physical
+		 * elements might not match due to the presence of indirect
+		 * blocks and such.
 		 */
 		if (dorecursion == 0)
 			goto skip2;
@@ -515,8 +559,11 @@ skip1:
 		chain = cluster->array[idx].chain;
 		if (chain == NULL || chain->error)
 			goto skip2;
+		/*
+		 * should not be set but must fixup parents.
 		if ((cluster->array[idx].flags & HAMMER2_CITEM_INVALID) == 0)
 			goto skip2;
+		*/
 
 		/*
 		 * At this point we have to have key-matched non-NULL
@@ -535,7 +582,7 @@ skip1:
 		nerror = hammer2_sync_replace(
 				thr, cparent, cluster,
 				focus->bref.modify_tid,
-				idx, errors, 1);
+				idx, errors);
 		if (nerror)
 			error = nerror;
 
@@ -544,7 +591,7 @@ skip1:
 		 * iroot->cluster if we are at the top level.
 		 */
 		if (thr->depth == 0)
-			hammer2_inode_repoint(pmp->iroot, NULL, cparent);
+			hammer2_inode_repoint_one(pmp->iroot, cparent, idx);
 
 skip2:
 		/*
@@ -556,7 +603,8 @@ skip2:
 					       HAMMER2_KEY_MAX,
 					       HAMMER2_LOOKUP_NODATA |
 					       HAMMER2_LOOKUP_NOLOCK |
-					       HAMMER2_LOOKUP_NODIRECT);
+					       HAMMER2_LOOKUP_NODIRECT |
+					       HAMMER2_LOOKUP_ALLNODES);
 	}
 	hammer2_cluster_drop(cparent);
 	if (cluster)
@@ -572,7 +620,7 @@ static
 int
 hammer2_sync_insert(hammer2_syncthr_t *thr,
 		    hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
-		    hammer2_tid_t modify_tid, int i, int *errors, int validate)
+		    hammer2_tid_t modify_tid, int i, int *errors)
 {
 	hammer2_chain_t *focus;
 	hammer2_chain_t *chain;
@@ -581,8 +629,10 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
 	focus = cluster->focus;
 #if HAMMER2_SYNCTHR_DEBUG
 	if (hammer2_debug & 1)
-	kprintf("insert rec %p/%p slave %d %d.%016jx mod=%016jx\n",
-		cparent, cluster,
+	kprintf("insert rec par=%p/%d.%016jx slave %d %d.%016jx mod=%016jx\n",
+		cparent->array[i].chain, 
+		cparent->array[i].chain->bref.type,
+		cparent->array[i].chain->bref.key,
 		i, focus->bref.type, focus->bref.key, modify_tid);
 #endif
 
@@ -649,13 +699,14 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
 
 	hammer2_chain_unlock(focus);
 	hammer2_chain_unlock(chain);		/* unlock, leave ref */
-	cluster->array[i].chain = chain;	/* validate cluster */
 
 	/*
-	 * Validate cluster
+	 * Enter item into cluster.
+	 *
+	 * Must clear invalid for iteration to work properly.
 	 */
-	if (validate)
-		cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
+	cluster->array[i].chain = chain;
+	cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
 
 	return 0;
 }
@@ -678,23 +729,37 @@ hammer2_sync_destroy(hammer2_syncthr_t *thr,
 		cparent, cluster,
 		i, chain->bref.type, chain->bref.key);
 #endif
-
+	/*
+	 * Try to avoid unnecessary I/O.
+	 *
+	 * XXX accounting not propagated up properly.  We might have to do
+	 *     a RESOLVE_MAYBE here and pass 0 for the flags.
+	 */
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER);
-	hammer2_chain_delete(&thr->trans, cparent->array[i].chain, chain, 0);
+	hammer2_chain_delete(&thr->trans, cparent->array[i].chain, chain,
+			     HAMMER2_DELETE_NOSTATS |
+			     HAMMER2_DELETE_PERMANENT);
 	hammer2_chain_unlock(chain);
-	/* leave invalid, caller will advance chain @ index */
+
+	/*
+	 * The element is not valid in that it doesn't match the other
+	 * elements, but we have to mark it valid here to allow the
+	 * cluster_next() call to advance this index to the next element.
+	 */
+	cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
 
 	return 0;
 }
 
 /*
  * cparent is locked exclusively, with an extra ref, cluster is not locked.
+ * Replace element [i] in the cluster.
  */
 static
 int
 hammer2_sync_replace(hammer2_syncthr_t *thr,
 		     hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
-		     hammer2_tid_t modify_tid, int i, int *errors, int validate)
+		     hammer2_tid_t modify_tid, int i, int *errors)
 {
 	hammer2_chain_t *focus;
 	hammer2_chain_t *chain;
@@ -773,10 +838,9 @@ hammer2_sync_replace(hammer2_syncthr_t *thr,
 	hammer2_chain_unlock(chain);
 
 	/*
-	 * Validate cluster
+	 * Must clear invalid for iteration to work properly.
 	 */
-	if (validate)
-		cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
+	cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
 
 	return 0;
 }

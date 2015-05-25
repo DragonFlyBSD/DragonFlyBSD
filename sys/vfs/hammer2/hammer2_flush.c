@@ -692,9 +692,9 @@ again:
 			 *
 			 * (note: embedded data, do not call setdirty)
 			 */
-			hammer2_voldata_lock(hmp);
 			hammer2_chain_lock(&hmp->fchain,
 					   HAMMER2_RESOLVE_ALWAYS);
+			hammer2_voldata_lock(hmp);
 			kprintf("sync volume  mirror_tid %08jx\n",
 				(intmax_t)chain->bref.mirror_tid);
 
@@ -739,8 +739,8 @@ again:
 				hmp->vchain.bref.mirror_tid);
 			hmp->volsync = hmp->voldata;
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_VOLUMESYNC);
-			hammer2_chain_unlock(&hmp->fchain);
 			hammer2_voldata_unlock(hmp);
+			hammer2_chain_unlock(&hmp->fchain);
 			break;
 		case HAMMER2_BREF_TYPE_DATA:
 			/*
@@ -879,13 +879,17 @@ again:
 		}
 
 		/*
-		 * Clear UPDATE flag
+		 * Clear UPDATE flag, mark parent modified, update its
+		 * modify_tid if necessary, and adjust the parent blockmap.
 		 */
 		if (chain->flags & HAMMER2_CHAIN_UPDATE) {
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
 			hammer2_chain_drop(chain);
 		}
+
 		hammer2_chain_modify(info->trans, parent, 0);
+		if (parent->bref.modify_tid < chain->bref.modify_tid)
+			parent->bref.modify_tid = chain->bref.modify_tid;
 
 		/*
 		 * Calculate blockmap pointer

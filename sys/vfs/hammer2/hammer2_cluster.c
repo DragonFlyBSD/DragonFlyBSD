@@ -409,13 +409,46 @@ hammer2_cluster_wait(hammer2_cluster_t *cluster)
 }
 
 /*
- * Lock and ref a cluster.  This adds a ref to the cluster and its chains
- * and then locks them, modified by various RESOLVE flags.
+ * Lock a cluster.  Cluster must already be referenced.  Focus is maintained. 
  *
- * The act of locking a cluster sets its focus.  Note that cluster elements
- * flagged with HAMMER2_CITEM_INVALID cannot be set as a focus.  Locking a
- * cluster does not adjust this flag since exact matches only matter for leafs
- * (parents can depend on minor differences in topology).
+ * WARNING! This function expects the caller to handle resolution of the
+ *	    cluster.  We never re-resolve the cluster in this function,
+ *	    because it might be used to temporarily unlock/relock a cparent
+ *	    in an iteration or recursrion, and the cparents elements do not
+ *	    necessarily match.
+ */
+void
+hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
+{
+	hammer2_chain_t *chain;
+	int i;
+
+	/* cannot be on inode-embedded cluster template, must be on copy */
+	KKASSERT(cluster->refs > 0);
+	KKASSERT((cluster->flags & HAMMER2_CLUSTER_INODE) == 0);
+	if (cluster->flags & HAMMER2_CLUSTER_LOCKED) {
+		panic("hammer2_cluster_lock: cluster %p already locked!\n",
+			cluster);
+	}
+	atomic_set_int(&cluster->flags, HAMMER2_CLUSTER_LOCKED);
+
+	/*
+	 * Lock chains and resolve state.
+	 */
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i].chain;
+		if (chain == NULL)
+			continue;
+		hammer2_chain_lock(chain, how);
+	}
+}
+
+/*
+ * Calculate the clustering state for the cluster and set its focus.
+ * This routine must be called with care.  For example, it should not
+ * normally be called after relocking a non-leaf cluster because parent
+ * clusters help iterations and each element might be at a slightly different
+ * indirect node (each node's topology is independently indexed).
  *
  * HAMMER2_CITEM_FEMOD flags which elements can be modified by normal
  * operations.  Typically this is only set on a quorum of MASTERs or
@@ -439,39 +472,10 @@ hammer2_cluster_wait(hammer2_cluster_t *cluster)
  * retried. XXX
  */
 void
-hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
-{
-	hammer2_chain_t *chain;
-	int i;
-
-	/* cannot be on inode-embedded cluster template, must be on copy */
-	KKASSERT(cluster->refs > 0);
-	KKASSERT((cluster->flags & HAMMER2_CLUSTER_INODE) == 0);
-	if (cluster->flags & HAMMER2_CLUSTER_LOCKED) {
-		panic("hammer2_cluster_lock: cluster %p already locked!\n",
-			cluster);
-	} else {
-		KKASSERT(cluster->focus == NULL);
-	}
-	atomic_set_int(&cluster->flags, HAMMER2_CLUSTER_LOCKED);
-
-	/*
-	 * Lock chains and resolve state.
-	 */
-	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i].chain;
-		if (chain == NULL)
-			continue;
-		hammer2_chain_lock(chain, how);
-	}
-
-	hammer2_cluster_resolve(cluster);
-}
-
-void
 hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 {
 	hammer2_chain_t *chain;
+	hammer2_chain_t *focus;
 	hammer2_pfs_t *pmp;
 	hammer2_tid_t quorum_tid;
 	hammer2_tid_t last_best_quorum_tid;
@@ -746,6 +750,66 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 		}
 	}
 
+	/*
+	 * Focus now set, adjust ddflag.  Skip this pass if the focus
+	 * is bad or if we are at the PFS root (the bref won't match at
+	 * the PFS root, obviously).
+	 */
+	focus = cluster->focus;
+	if (focus) {
+		cluster->ddflag =
+			(cluster->focus->bref.type == HAMMER2_BREF_TYPE_INODE);
+	} else {
+		cluster->ddflag = 0;
+		goto skip4;
+	}
+	if (cluster->focus->flags & HAMMER2_CHAIN_PFSBOUNDARY)
+		goto skip4;
+
+	/*
+	 * Pass 4
+	 *
+	 * Validate the elements that were not marked invalid.  They should
+	 * match.
+	 */
+	for (i = 0; i < cluster->nchains; ++i) {
+		int ddflag;
+
+		chain = cluster->array[i].chain;
+
+		if (chain == NULL)
+			continue;
+		if (chain == focus)
+			continue;
+		if (cluster->array[i].flags & HAMMER2_CITEM_INVALID)
+			continue;
+
+		ddflag = (chain->bref.type == HAMMER2_BREF_TYPE_INODE);
+		if (chain->bref.type != focus->bref.type ||
+		    chain->bref.key != focus->bref.key ||
+		    chain->bref.keybits != focus->bref.keybits ||
+		    chain->bref.modify_tid != focus->bref.modify_tid ||
+		    chain->bytes != focus->bytes ||
+		    ddflag != cluster->ddflag) {
+			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
+			if (hammer2_debug & 1)
+			kprintf("cluster_resolve: matching modify_tid failed "
+				"bref test: idx=%d type=%02x/%02x "
+				"key=%016jx/%d-%016jx/%d "
+				"mod=%016jx/%016jx bytes=%u/%u\n",
+				i,
+				chain->bref.type, focus->bref.type,
+				chain->bref.key, chain->bref.keybits,
+				focus->bref.key, focus->bref.keybits,
+				chain->bref.modify_tid, focus->bref.modify_tid,
+				chain->bytes, focus->bytes);
+			if (hammer2_debug & 0x4000)
+				panic("cluster_resolve");
+			/* flag issue and force resync? */
+		}
+	}
+skip4:
+
 	if (ttlslaves == 0)
 		nflags |= HAMMER2_CLUSTER_NOSOFT;
 	if (ttlmasters == 0)
@@ -777,10 +841,19 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 
 /*
  * Copy a cluster, returned a ref'd cluster.  All underlying chains
- * are also ref'd, but not locked.
+ * are also ref'd, but not locked.  Focus state is also copied.
  *
- * The cluster focus is not set because the cluster is not yet locked
- * (and the originating cluster does not have to be locked either).
+ * Original cluster does not have to be locked but usually is.
+ * New cluster will not be flagged as locked.
+ *
+ * Callers using this function to initialize a new cluster from an inode
+ * generally lock and resolve the resulting cluster.
+ *
+ * Callers which use this function to save/restore a cluster structure
+ * generally retain the focus state and do not re-resolve it.  Caller should
+ * not try to re-resolve internal (cparent) node state during an iteration
+ * as the individual tracking elements of cparent in an iteration may not
+ * match even though they are correct.
  */
 hammer2_cluster_t *
 hammer2_cluster_copy(hammer2_cluster_t *ocluster)
@@ -794,20 +867,24 @@ hammer2_cluster_copy(hammer2_cluster_t *ocluster)
 	ncluster->pmp = pmp;
 	ncluster->nchains = ocluster->nchains;
 	ncluster->refs = 1;
-	ncluster->flags = 0;	/* cluster not locked */
 
 	for (i = 0; i < ocluster->nchains; ++i) {
 		chain = ocluster->array[i].chain;
 		ncluster->array[i].chain = chain;
+		ncluster->array[i].flags = ocluster->array[i].flags;
 		if (chain)
 			hammer2_chain_ref(chain);
 	}
+	ncluster->focus_index = ocluster->focus_index;
+	ncluster->focus = ocluster->focus;
+	ncluster->flags = ocluster->flags & ~(HAMMER2_CLUSTER_LOCKED |
+					      HAMMER2_CLUSTER_INODE);
+
 	return (ncluster);
 }
 
 /*
- * Unlock and deref a cluster.  The cluster is destroyed if this is the
- * last ref.
+ * Unlock a cluster.  Refcount and focus is maintained.
  */
 void
 hammer2_cluster_unlock(hammer2_cluster_t *cluster)
@@ -828,8 +905,6 @@ hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 		if (chain)
 			hammer2_chain_unlock(chain);
 	}
-	cluster->focus_index = 0;
-	cluster->focus = NULL;
 }
 
 /*
@@ -983,7 +1058,8 @@ hammer2_cluster_modsync(hammer2_cluster_t *cluster)
 }
 
 /*
- * Lookup initialization/completion API.  Returns a locked cluster with 1 ref.
+ * Lookup initialization/completion API.  Returns a locked, fully resolved
+ * cluster with one ref.
  */
 hammer2_cluster_t *
 hammer2_cluster_lookup_init(hammer2_cluster_t *cparent, int flags)
@@ -997,6 +1073,8 @@ hammer2_cluster_lookup_init(hammer2_cluster_t *cparent, int flags)
 	} else {
 		hammer2_cluster_lock(cluster, HAMMER2_RESOLVE_ALWAYS);
 	}
+	hammer2_cluster_resolve(cluster);
+
 	return (cluster);
 }
 
@@ -1010,7 +1088,10 @@ hammer2_cluster_lookup_done(hammer2_cluster_t *cparent)
 }
 
 /*
- * Locate first match or overlap under parent, return a new cluster
+ * Locate first match or overlap under parent, return a new, locked, resolved
+ * cluster with one ref.
+ *
+ * Must never be called with HAMMER2_LOOKUP_MATCHIND.
  */
 hammer2_cluster_t *
 hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
@@ -1019,15 +1100,21 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 	hammer2_pfs_t *pmp;
 	hammer2_cluster_t *cluster;
 	hammer2_chain_t *chain;
-	hammer2_chain_t *focus;
 	hammer2_key_t key_accum;
 	hammer2_key_t key_next;
 	int null_count;
+	int rflags;
 	int i;
+
+	KKASSERT((flags & HAMMER2_LOOKUP_MATCHIND) == 0);
 
 	pmp = cparent->pmp;				/* can be NULL */
 	key_accum = *key_nextp;
 	null_count = 0;
+	if (flags & HAMMER2_LOOKUP_SHARED)
+		rflags = HAMMER2_RESOLVE_SHARED;
+	else
+		rflags = 0;
 
 	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
 	cluster->pmp = pmp;				/* can be NULL */
@@ -1036,11 +1123,26 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 		cluster->flags |= HAMMER2_CLUSTER_LOCKED;
 
 	/*
-	 * Pass-1, issue lookup and find focus.
+	 * Iterating earlier cluster elements with later elements still
+	 * locked is a problem, so we have to unlock the parent and then
+	 * re-lock as we go.
+	 */
+	hammer2_cluster_unlock(cparent);
+	cparent->flags |= HAMMER2_CLUSTER_LOCKED;
+
+	/*
+	 * Pass-1, issue lookups.
 	 */
 	for (i = 0; i < cparent->nchains; ++i) {
 		cluster->array[i].flags = cparent->array[i].flags;
 		key_next = *key_nextp;
+
+		/*
+		 * Always relock the parent as we go.
+		 */
+		if (cparent->array[i].chain) {
+			hammer2_chain_lock(cparent->array[i].chain, rflags);
+		}
 
 		/*
 		 * Nothing to base the lookup, or parent was not synchronized.
@@ -1056,85 +1158,32 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 					     key_beg, key_end,
 					     &cparent->array[i].cache_index,
 					     flags);
-		if (cparent->focus_index == i)
-			cparent->focus = cparent->array[i].chain;
 		cluster->array[i].chain = chain;
 		if (chain == NULL) {
 			++null_count;
-		} else if (chain->error) {
-			/*
-			 * Leave errored chain in cluster, but it cannot be
-			 * the cluster's focus.  It is still possible for an
-			 * error'd chain to be synchronized (since we have
-			 * the bref), synchronization state will be handled
-			 * in pass-2.
-			 */
-			;
-		} else if (cluster->array[i].flags & HAMMER2_CITEM_INVALID) {
-			/*
-			 * Leave unsynchronized chain in cluster, but it cannot
-			 * be the cluster's focus.
-			 */
-			;
-		} else {
-			int ddflag = (chain->bref.type ==
-				      HAMMER2_BREF_TYPE_INODE);
-
-			if (cluster->focus == NULL) {
-				cluster->focus_index = i;
-				cluster->focus = chain;
-				cluster->ddflag = ddflag;
-			}
-			if (cparent->focus == cparent->array[i].chain) {
-				cluster->focus_index = i;
-				cluster->focus = chain;
-				cluster->ddflag = ddflag;
-			}
 		}
 		if (key_accum > key_next)
 			key_accum = key_next;
 	}
 
 	/*
-	 * Pass-2 invalidate mismatches
+	 * Cleanup
 	 */
-	focus = cluster->focus;
-	if (focus == NULL)
-		goto done;
-
-	for (i = 0; i < cparent->nchains; ++i) {
-		int ddflag;
-
-		chain = cluster->array[i].chain;
-
-		if (chain == NULL)
-			continue;
-		if (chain == focus)
-			continue;
-		if (cluster->array[i].flags & HAMMER2_CITEM_INVALID)
-			continue;
-
-		ddflag = (chain->bref.type == HAMMER2_BREF_TYPE_INODE);
-		if (chain->bref.type != focus->bref.type ||
-		    chain->bref.key != focus->bref.key ||
-		    chain->bref.keybits != focus->bref.keybits ||
-		    chain->bref.modify_tid != focus->bref.modify_tid ||
-		    chain->bytes != focus->bytes ||
-		    ddflag != cluster->ddflag) {
-			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
-		}
-	}
+	cluster->nchains = i;
+	*key_nextp = key_accum;
 
 	/*
-	 * Resolve cluster flags.  A lookup or locking failure could wind
-	 * up changing the cluster.
+	 * The cluster must be resolved, out of sync elements may be present.
+	 *
+	 * If HAMMER2_LOOKUP_ALLNODES is not set focus must be non-NULL.
 	 */
-done:
-	*key_nextp = key_accum;
-	cluster->nchains = i;
-	hammer2_cluster_resolve(cluster);
-
-	if (null_count == i) {
+	if (null_count != i)
+		hammer2_cluster_resolve(cluster);
+	if (null_count == i ||
+	    (cluster->focus == NULL &&
+	     (flags & HAMMER2_LOOKUP_ALLNODES) == 0)) {
+		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
+			hammer2_cluster_unlock(cluster);
 		hammer2_cluster_drop(cluster);
 		cluster = NULL;
 	}
@@ -1143,7 +1192,10 @@ done:
 }
 
 /*
- * Locate next match or overlap under parent, replace cluster
+ * Locate next match or overlap under parent, replace the passed-in cluster.
+ * The returned cluster is a new, locked, resolved cluster with one ref.
+ *
+ * Must never be called with HAMMER2_LOOKUP_MATCHIND.
  */
 hammer2_cluster_t *
 hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
@@ -1152,18 +1204,24 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 {
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *nchain;
-	hammer2_chain_t *focus;
 	hammer2_key_t key_accum;
 	hammer2_key_t key_next;
 	int parent_index;
 	int cluster_index;
 	int null_count;
+	int rflags;
 	int i;
+
+	KKASSERT((flags & HAMMER2_LOOKUP_MATCHIND) == 0);
 
 	key_accum = *key_nextp;
 	null_count = 0;
 	parent_index = cparent->focus_index;	/* save prior focus */
 	cluster_index = cluster->focus_index;
+	if (flags & HAMMER2_LOOKUP_SHARED)
+		rflags = HAMMER2_RESOLVE_SHARED;
+	else
+		rflags = 0;
 
 	cluster->focus = NULL;		/* XXX needed any more? */
 	/*cparent->focus = NULL;*/
@@ -1199,10 +1257,8 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		/*
 		 * Always relock the parent as we go.
 		 */
-		if (cparent->array[i].chain) {
-			hammer2_chain_lock(cparent->array[i].chain,
-					   flags & ~HAMMER2_LOOKUP_NOLOCK);
-		}
+		if (cparent->array[i].chain)
+			hammer2_chain_lock(cparent->array[i].chain, rflags);
 
 		/*
 		 * Nothing to iterate from.  These cases can occur under
@@ -1229,87 +1285,43 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		 * be locked as expected by hammer2_chain_next() and flags.
 		 */
 		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-			hammer2_chain_lock(ochain, flags);
+			hammer2_chain_lock(ochain, rflags);
 		nchain = hammer2_chain_next(&cparent->array[i].chain, ochain,
 					    &key_next, key_beg, key_end,
 					    &cparent->array[i].cache_index,
 					    flags);
+		/* ochain now invalid but can still be used for focus check */
 		if (parent_index == i) {
 			cparent->focus_index = i;
 			cparent->focus = cparent->array[i].chain;
 		}
-		/* ochain now invalid but can still be used for focus check */
 
 		cluster->array[i].chain = nchain;
 		if (nchain == NULL) {
 			++null_count;
-		} else if (nchain->error) {
-			/*
-			 * Leave errored chain in cluster, but it cannot be
-			 * the cluster's focus.
-			 */
-			;
-		} else {
-			int ddflag = (nchain->bref.type ==
-				      HAMMER2_BREF_TYPE_INODE);
-
-			/*
-			 * Possible new focus.
-			 */
-			if (cluster->focus == NULL) {
-				cluster->ddflag = ddflag;
-				cluster->focus_index = i;
-				cluster->focus = nchain;
-			}
-
-			/*
-			 * Fixup pre-existing focus.
-			 */
-			if (cluster_index == i) {
-				cluster->focus_index = i;
-				cluster->focus = nchain;
-			}
 		}
 		if (key_accum > key_next)
 			key_accum = key_next;
 	}
 
 	/*
-	 * Pass-2 invalidate mismatches
+	 * Cleanup
 	 */
-	focus = cluster->focus;
-	if (focus == NULL)
-		goto done;
-
-	for (i = 0; i < cparent->nchains; ++i) {
-		int ddflag;
-
-		nchain = cluster->array[i].chain;
-
-		if (nchain == NULL)
-			continue;
-		if (nchain == focus)
-			continue;
-		if (cluster->array[i].flags & HAMMER2_CITEM_INVALID)
-			continue;
-
-		ddflag = (nchain->bref.type == HAMMER2_BREF_TYPE_INODE);
-		if (nchain->bref.type != focus->bref.type ||
-		    nchain->bref.key != focus->bref.key ||
-		    nchain->bref.keybits != focus->bref.keybits ||
-		    nchain->bref.modify_tid != focus->bref.modify_tid ||
-		    nchain->bytes != focus->bytes ||
-		    ddflag != cluster->ddflag) {
-			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
-		}
-	}
-
-done:
-	*key_nextp = key_accum;
 	cluster->nchains = i;
-	hammer2_cluster_resolve(cluster);
+	*key_nextp = key_accum;
 
-	if (null_count == i) {
+	/*
+	 * The cluster must be resolved, out of sync elements may be present.
+	 *
+	 * If HAMMER2_LOOKUP_ALLNODES is not set focus must be non-NULL.
+	 */
+	if (null_count != i)
+		hammer2_cluster_resolve(cluster);
+	if (null_count == i ||
+	    (cluster->focus == NULL &&
+	     (flags & HAMMER2_LOOKUP_ALLNODES) == 0)) {
+		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
+			hammer2_cluster_unlock(cluster);
 		hammer2_cluster_drop(cluster);
 		cluster = NULL;
 	}
@@ -1355,9 +1367,9 @@ hammer2_cluster_next_single_chain(hammer2_cluster_t *cparent,
 				    &key_next, key_beg, key_end,
 				    &cparent->array[i].cache_index,
 				    flags);
+	/* ochain now invalid */
 	if (cparent->focus_index == i)
 		cparent->focus = cparent->array[i].chain;
-	/* ochain now invalid */
 
 	/*
 	 * Install nchain.  Note that nchain can be NULL, and can also
@@ -1674,6 +1686,10 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
  *
  * We must temporarily unlock the passed-in cluster to avoid a deadlock
  * between elements of the cluster.
+ *
+ * We must not try to hammer2_cluster_resolve() cparent.  The individual
+ * parent chains for the nodes are the correct parents for the cluster but
+ * do not necessarily match, so resolve would likely implode.
  */
 hammer2_cluster_t *
 hammer2_cluster_parent(hammer2_cluster_t *cluster)
@@ -1703,15 +1719,11 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 			hammer2_chain_unlock(rchain);
 			hammer2_chain_drop(rchain);
 		}
-		if (cluster->focus == chain) {
-			cparent->focus_index = i;
-			cparent->focus = rchain;
-		}
 		cparent->array[i].chain = rchain;
 		hammer2_chain_drop(chain);
 	}
 	cparent->flags |= HAMMER2_CLUSTER_LOCKED;
-	hammer2_cluster_resolve(cparent);
+	/* hammer2_cluster_resolve(cparent); */
 	hammer2_cluster_lock(cluster, HAMMER2_RESOLVE_ALWAYS);
 
 	return cparent;

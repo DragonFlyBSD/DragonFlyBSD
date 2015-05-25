@@ -253,6 +253,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 			cbinfo.sstop = hmp->voldata.volu_size;
 		else
 			cbinfo.sstop = cbinfo.sbase + incr;
+		if (hammer2_debug & 1)
 		kprintf("bulkfree pass %016jx/%jdGB\n",
 			(intmax_t)cbinfo.sbase,
 			(intmax_t)incr / HAMMER2_FREEMAP_LEVEL1_SIZE);
@@ -539,6 +540,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		}
 		if (bcmp(live->bitmap, bmap->bitmap, sizeof(bmap->bitmap)) == 0)
 			goto next;
+		if (hammer2_debug & 1)
 		kprintf("live %016jx %04d.%04x (avail=%d)\n",
 			data_off, bmapindex, live->class, live->avail);
 

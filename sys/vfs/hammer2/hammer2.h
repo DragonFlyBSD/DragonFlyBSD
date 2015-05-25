@@ -435,7 +435,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_LOOKUP_NODIRECT		0x00000004	/* no offset=0 DD */
 #define HAMMER2_LOOKUP_SHARED		0x00000100
 #define HAMMER2_LOOKUP_MATCHIND		0x00000200	/* return all chains */
-#define HAMMER2_LOOKUP_UNUSED0400	0x00000400
+#define HAMMER2_LOOKUP_ALLNODES		0x00000400	/* allow NULL focus */
 #define HAMMER2_LOOKUP_ALWAYS		0x00000800	/* resolve data */
 
 /*
@@ -538,9 +538,13 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_MAXCLUSTER	8
 
 struct hammer2_cluster_item {
+#if 0
 	hammer2_mtx_link_t	async_link;
+#endif
 	hammer2_chain_t		*chain;
+#if 0
 	struct hammer2_cluster	*cluster;	/* link back to cluster */
+#endif
 	int			cache_index;
 	uint32_t		flags;
 };
@@ -608,8 +612,8 @@ typedef struct hammer2_cluster	hammer2_cluster_t;
  * via the soft mount only.  But all might be in the cluster because
  * background synchronization threads still need to do their work.
  */
-#define HAMMER2_CLUSTER_INODE	0x00000001	/* embedded in inode */
-#define HAMMER2_CLUSTER_NOSYNC	0x00000002	/* not in sync (cumulative) */
+#define HAMMER2_CLUSTER_INODE	0x00000001	/* embedded in inode struct */
+#define HAMMER2_CLUSTER_UNUSED2	0x00000002
 #define HAMMER2_CLUSTER_LOCKED	0x00000004	/* cluster lks not recursive */
 #define HAMMER2_CLUSTER_WRHARD	0x00000100	/* hard-mount can write */
 #define HAMMER2_CLUSTER_RDHARD	0x00000200	/* hard-mount can read */
@@ -1090,6 +1094,9 @@ void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
 void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 			hammer2_cluster_t *cluster);
+void hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
+			int idx);
+
 void hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfs_t *pmp);
 
 hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,

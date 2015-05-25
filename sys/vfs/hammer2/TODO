@@ -1,4 +1,3 @@
-
 * syncthr leaves inode locks for entire sync, which is wrong.
 
 * recovery scan vs unmount.  At the moment an unmount does its flushes,
