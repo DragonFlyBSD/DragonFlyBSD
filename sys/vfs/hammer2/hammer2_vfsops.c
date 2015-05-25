@@ -2736,11 +2736,12 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	int error;
 
 	/*
-	 *
+	 * Degenerate cases.  Note that ip == NULL typically means the
+	 * syncer vnode itself and we don't want to vclrisdirty() in that
+	 * situation.
 	 */
 	ip = VTOI(vp);
 	if (ip == NULL) {
-		vclrisdirty(vp);
 		return(0);
 	}
 	if (vp->v_type == VNON || vp->v_type == VBAD) {

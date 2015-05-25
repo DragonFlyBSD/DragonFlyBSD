@@ -380,7 +380,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_ONFLUSH		0x00000200	/* on a flush list */
 #define HAMMER2_CHAIN_FICTITIOUS	0x00000400	/* unsuitable for I/O */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
-#define HAMMER2_CHAIN_UNUSED00001000	0x00001000
+#define HAMMER2_CHAIN_DELAYED		0x00001000	/* delayed flush */
 #define HAMMER2_CHAIN_UNUSED00002000	0x00002000
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_UNUSED00008000	0x00008000
@@ -675,6 +675,7 @@ struct hammer2_inode {
 	struct hammer2_pfs	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;
+	struct spinlock		cluster_spin;	/* update cluster */
 	hammer2_cluster_t	cluster;
 	struct lockf		advlock;
 	hammer2_tid_t		inum;
@@ -1194,6 +1195,7 @@ void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 void hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
 				hammer2_chain_t **chainp, int flags);
 void hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain, int istop);
+void hammer2_delayed_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_commit(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_setflush(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,
@@ -1310,9 +1312,11 @@ void hammer2_cluster_ref(hammer2_cluster_t *cluster);
 void hammer2_cluster_drop(hammer2_cluster_t *cluster);
 void hammer2_cluster_wait(hammer2_cluster_t *cluster);
 void hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
+void hammer2_cluster_lock_except(hammer2_cluster_t *cluster, int idx, int how);
 void hammer2_cluster_resolve(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
+void hammer2_cluster_unlock_except(hammer2_cluster_t *cluster, int idx);
 void hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			int nradix, int flags);

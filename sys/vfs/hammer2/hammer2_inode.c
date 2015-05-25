@@ -527,6 +527,7 @@ again:
 	 * We couldn't find the inode number, create a new inode.
 	 */
 	nip = kmalloc(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
+	spin_init(&nip->cluster_spin, "h2clspin");
 	atomic_add_long(&pmp->inmem_inodes, 1);
 	hammer2_pfs_memory_inc(pmp);
 	hammer2_pfs_memory_wakeup(pmp);
@@ -1086,10 +1087,13 @@ void
 hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		      hammer2_cluster_t *cluster)
 {
+	hammer2_chain_t *dropch[HAMMER2_MAXCLUSTER];
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *nchain;
 	hammer2_inode_t *opip;
 	int i;
+
+	bzero(dropch, sizeof(dropch));
 
 	/*
 	 * Replace chains in ip->cluster with chains from cluster and
@@ -1098,6 +1102,7 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 	 * NOTE: nchain and/or ochain can be NULL due to gaps
 	 *	 in the cluster arrays.
 	 */
+	hammer2_spin_ex(&ip->cluster_spin);
 	for (i = 0; cluster && i < cluster->nchains; ++i) {
 		/*
 		 * Do not replace invalid elements as this might race
@@ -1128,8 +1133,7 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 					      HAMMER2_CITEM_INVALID;
 		if (nchain)
 			hammer2_chain_ref(nchain);
-		if (ochain)
-			hammer2_chain_drop(ochain);
+		dropch[i] = ochain;
 	}
 
 	/*
@@ -1140,8 +1144,8 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		if (nchain) {
 			ip->cluster.array[i].chain = NULL;
 			ip->cluster.array[i].flags |= HAMMER2_CITEM_INVALID;
-			hammer2_chain_drop(nchain);
 		}
+		dropch[i] = nchain;
 		++i;
 	}
 
@@ -1166,9 +1170,20 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		opip = ip->pip;
 		hammer2_inode_ref(pip);
 		ip->pip = pip;
-		if (opip)
-			hammer2_inode_drop(opip);
+	} else {
+		opip = NULL;
 	}
+	hammer2_spin_unex(&ip->cluster_spin);
+
+	/*
+	 * Cleanup outside of spinlock
+	 */
+	while (--i >= 0) {
+		if (dropch[i])
+			hammer2_chain_drop(dropch[i]);
+	}
+	if (opip)
+		hammer2_inode_drop(opip);
 }
 
 /*
@@ -1184,6 +1199,7 @@ hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 	hammer2_chain_t *nchain;
 	int i;
 
+	hammer2_spin_ex(&ip->cluster_spin);
 	KKASSERT(idx < cluster->nchains);
 	if (idx < ip->cluster.nchains) {
 		ochain = ip->cluster.array[idx].chain;
@@ -1192,7 +1208,7 @@ hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 		ochain = NULL;
 		nchain = cluster->array[idx].chain;
 		ip->cluster.nchains = idx + 1;
-		for (i = 0; i <= idx; ++i) {
+		for (i = ip->cluster.nchains; i <= idx; ++i) {
 			bzero(&ip->cluster.array[i],
 			      sizeof(ip->cluster.array[i]));
 			ip->cluster.array[i].flags |= HAMMER2_CITEM_INVALID;
@@ -1206,6 +1222,9 @@ hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 		ip->cluster.array[idx].flags &= ~HAMMER2_CITEM_INVALID;
 		ip->cluster.array[idx].flags |= cluster->array[idx].flags &
 						HAMMER2_CITEM_INVALID;
+	}
+	hammer2_spin_unex(&ip->cluster_spin);
+	if (ochain != nchain) {
 		if (nchain)
 			hammer2_chain_ref(nchain);
 		if (ochain)

@@ -357,16 +357,6 @@ void
 hammer2_cluster_ref(hammer2_cluster_t *cluster)
 {
 	atomic_add_int(&cluster->refs, 1);
-#if 0
-	hammer2_chain_t *chain;
-	int i;
-
-	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i].chain;
-		if (chain)
-			hammer2_chain_ref(chain);
-	}
-#endif
 }
 
 /*
@@ -418,7 +408,7 @@ hammer2_cluster_wait(hammer2_cluster_t *cluster)
  *	    necessarily match.
  */
 void
-hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
+hammer2_cluster_lock_except(hammer2_cluster_t *cluster, int idx, int how)
 {
 	hammer2_chain_t *chain;
 	int i;
@@ -436,11 +426,19 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 	 * Lock chains and resolve state.
 	 */
 	for (i = 0; i < cluster->nchains; ++i) {
+		if (i == idx)
+			continue;
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
 		hammer2_chain_lock(chain, how);
 	}
+}
+
+void
+hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
+{
+	hammer2_cluster_lock_except(cluster, -1, how);
 }
 
 /*
@@ -887,7 +885,7 @@ hammer2_cluster_copy(hammer2_cluster_t *ocluster)
  * Unlock a cluster.  Refcount and focus is maintained.
  */
 void
-hammer2_cluster_unlock(hammer2_cluster_t *cluster)
+hammer2_cluster_unlock_except(hammer2_cluster_t *cluster, int idx)
 {
 	hammer2_chain_t *chain;
 	int i;
@@ -901,10 +899,18 @@ hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 	atomic_clear_int(&cluster->flags, HAMMER2_CLUSTER_LOCKED);
 
 	for (i = 0; i < cluster->nchains; ++i) {
+		if (i == idx)
+			continue;
 		chain = cluster->array[i].chain;
 		if (chain)
 			hammer2_chain_unlock(chain);
 	}
+}
+
+void
+hammer2_cluster_unlock(hammer2_cluster_t *cluster)
+{
+	hammer2_cluster_unlock_except(cluster, -1);
 }
 
 /*

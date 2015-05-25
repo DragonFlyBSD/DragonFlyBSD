@@ -643,6 +643,7 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
 	 * right place.  Our expectation is that the record will not be
 	 * found.
 	 */
+	hammer2_cluster_unlock_except(cparent, i);
 	chain = hammer2_chain_lookup(&cparent->array[i].chain, &dummy,
 				     focus->bref.key, focus->bref.key,
 				     &cparent->array[i].cache_index,
@@ -663,7 +664,11 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
 	if (cparent->focus_index == i)
 		cparent->focus = cparent->array[i].chain;
 	hammer2_chain_modify(&thr->trans, chain, 0);
+	hammer2_cluster_lock_except(cparent, i, HAMMER2_RESOLVE_ALWAYS);
 
+	/*
+	 * Copy focus to new chain
+	 */
 	hammer2_chain_lock(focus, HAMMER2_RESOLVE_ALWAYS);
 
 	/* type already set */
@@ -701,7 +706,7 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
 	hammer2_chain_unlock(chain);		/* unlock, leave ref */
 
 	/*
-	 * Enter item into cluster.
+	 * Enter item into (unlocked) cluster.
 	 *
 	 * Must clear invalid for iteration to work properly.
 	 */

@@ -2652,25 +2652,6 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		 */
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 	}
-
-#if 0
-	/*
-	 * If the deletion is permanent (i.e. the chain is not simply being
-	 * moved within the topology), adjust the freemap to indicate that
-	 * the block *might* be freeable.  bulkfree must still determine
-	 * that it is actually freeable.
-	 *
-	 * We no longer do this in the normal filesystem operations path
-	 * as it interferes with the bulkfree algorithm.
-	 */
-	if ((flags & HAMMER2_DELETE_PERMANENT) &&
-	    chain->bref.type != HAMMER2_BREF_TYPE_FREEMAP_NODE &&
-	    chain->bref.type != HAMMER2_BREF_TYPE_FREEMAP_LEAF &&
-	    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
-		hammer2_freemap_adjust(trans, hmp, &chain->bref,
-				       HAMMER2_FREEMAP_DOMAYFREE);
-	}
-#endif
 }
 
 /*
@@ -3362,14 +3343,15 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	}
 
 	/*
-	 * NOTE: Special case call to hammer2_flush() for permanent deletions
-	 *	 to get rid of the in-memory topology.
-	 *
-	 *	 XXX not the best way to destroy the sub-topology.
+	 * To avoid losing track of a permanent deletion we add the chain
+	 * to the delayed flush queue.  If were to flush it right now the
+	 * parent would end up in a modified state and generate I/O.
+	 * The delayed queue gives the parent a chance to be deleted to
+	 * (e.g. rm -rf).
 	 */
 	if (flags & HAMMER2_DELETE_PERMANENT) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROY);
-		hammer2_flush(trans, chain, 1);
+		hammer2_delayed_flush(trans, chain);
 	} else {
 		/* XXX might not be needed */
 		hammer2_chain_setflush(trans, chain);

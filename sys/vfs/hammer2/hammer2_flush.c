@@ -340,6 +340,33 @@ hammer2_trans_done(hammer2_trans_t *trans)
 }
 
 /*
+ * Chains undergoing destruction are removed from the in-memory topology.
+ * To avoid getting lost these chains are placed on the delayed flush
+ * queue which will properly dispose of them.
+ *
+ * We do this instead of issuing an immediate flush in order to give
+ * recursive deletions (rm -rf, etc) a chance to remove more of the
+ * hierarchy, potentially allowing an enormous amount of write I/O to
+ * be avoided.
+ */
+void
+hammer2_delayed_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
+{
+	if ((chain->flags & HAMMER2_CHAIN_DELAYED) == 0) {
+		hammer2_spin_ex(&chain->hmp->list_spin);
+		if ((chain->flags & (HAMMER2_CHAIN_DELAYED |
+				     HAMMER2_CHAIN_DEFERRED)) == 0) {
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELAYED |
+						      HAMMER2_CHAIN_DEFERRED);
+			TAILQ_INSERT_TAIL(&chain->hmp->flushq,
+					  chain, flush_node);
+			hammer2_chain_ref(chain);
+		}
+		hammer2_spin_unex(&chain->hmp->list_spin);
+	}
+}
+
+/*
  * Flush the chain and all modified sub-chains through the specified
  * synchronization point, propagating parent chain modifications, modify_tid,
  * and mirror_tid updates back up as needed.
@@ -365,6 +392,7 @@ hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain, int istop)
 {
 	hammer2_chain_t *scan;
 	hammer2_flush_info_t info;
+	hammer2_dev_t *hmp;
 	int loops;
 
 	/*
@@ -394,9 +422,20 @@ hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain, int istop)
 	 * chain.
 	 */
 	hammer2_chain_ref(chain);
+	hmp = chain->hmp;
 	loops = 0;
 
 	for (;;) {
+		/*
+		 * Move hmp->flushq to info.flushq if non-empty so it can
+		 * be processed.
+		 */
+		if (TAILQ_FIRST(&hmp->flushq) != NULL) {
+			hammer2_spin_ex(&chain->hmp->list_spin);
+			TAILQ_CONCAT(&info.flushq, &hmp->flushq, flush_node);
+			hammer2_spin_unex(&chain->hmp->list_spin);
+		}
+
 		/*
 		 * Unwind deep recursions which had been deferred.  This
 		 * can leave the FLUSH_* bits set for these chains, which
@@ -405,7 +444,8 @@ hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain, int istop)
 		while ((scan = TAILQ_FIRST(&info.flushq)) != NULL) {
 			KKASSERT(scan->flags & HAMMER2_CHAIN_DEFERRED);
 			TAILQ_REMOVE(&info.flushq, scan, flush_node);
-			atomic_clear_int(&scan->flags, HAMMER2_CHAIN_DEFERRED);
+			atomic_clear_int(&scan->flags, HAMMER2_CHAIN_DEFERRED |
+						       HAMMER2_CHAIN_DELAYED);
 
 			/*
 			 * Now that we've popped back up we can do a secondary
@@ -508,7 +548,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	/*
 	 * Downward search recursion
 	 */
-	if (chain->flags & HAMMER2_CHAIN_DEFERRED) {
+	if (chain->flags & (HAMMER2_CHAIN_DEFERRED | HAMMER2_CHAIN_DELAYED)) {
 		/*
 		 * Already deferred.
 		 */
@@ -517,6 +557,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		/*
 		 * Recursion depth reached.
 		 */
+		KKASSERT((chain->flags & HAMMER2_CHAIN_DELAYED) == 0);
 		hammer2_chain_ref(chain);
 		TAILQ_INSERT_TAIL(&info->flushq, chain, flush_node);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DEFERRED);
@@ -862,7 +903,8 @@ again:
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
 		hammer2_chain_lock(chain, HAMMER2_RESOLVE_MAYBE);
 		if (chain->parent != parent) {
-			kprintf("PARENT MISMATCH ch=%p p=%p/%p\n", chain, chain->parent, parent);
+			kprintf("PARENT MISMATCH ch=%p p=%p/%p\n",
+				chain, chain->parent, parent);
 			hammer2_chain_unlock(parent);
 			goto done;
 		}
@@ -887,6 +929,30 @@ again:
 			hammer2_chain_drop(chain);
 		}
 
+		/*
+		 * (optional code)
+		 *
+		 * Avoid actually modifying and updating the parent if it
+		 * was flagged for destruction.  This can greatly reduce
+		 * disk I/O in large tree removals because the
+		 * hammer2_io_setinval() call in the upward recursion
+		 * (see MODIFIED code above) can only handle a few cases.
+		 */
+		if (parent->flags & HAMMER2_CHAIN_DESTROY) {
+			if (parent->bref.modify_tid < chain->bref.modify_tid) {
+				parent->bref.modify_tid =
+					chain->bref.modify_tid;
+			}
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_BMAPPED |
+							HAMMER2_CHAIN_BMAPUPD);
+			hammer2_chain_unlock(parent);
+			goto skipupdate;
+		}
+
+		/*
+		 * We are updating the parent's blockmap, the parent must
+		 * be set modified.
+		 */
 		hammer2_chain_modify(info->trans, parent, 0);
 		if (parent->bref.modify_tid < chain->bref.modify_tid)
 			parent->bref.modify_tid = chain->bref.modify_tid;
@@ -972,6 +1038,8 @@ again:
 		}
 		hammer2_chain_unlock(parent);
 	}
+skipupdate:
+	;
 
 	/*
 	 * Final cleanup after flush
