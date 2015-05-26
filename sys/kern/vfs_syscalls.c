@@ -86,6 +86,7 @@ static void checkdirs (struct nchandle *old_nch, struct nchandle *new_nch);
 static int chroot_refuse_vdir_fds (struct filedesc *fdp);
 static int chroot_visible_mnt(struct mount *mp, struct proc *p);
 static int getutimes (const struct timeval *, struct timespec *);
+static int getutimens (const struct timespec *, struct timespec *, int *);
 static int setfown (struct mount *, struct vnode *, uid_t, gid_t);
 static int setfmode (struct vnode *, int);
 static int setfflags (struct vnode *, int);
@@ -3394,6 +3395,44 @@ getutimes(const struct timeval *tvp, struct timespec *tsp)
 }
 
 static int
+getutimens(const struct timespec *ts, struct timespec *newts, int *nullflag)
+{
+	struct timespec tsnow;
+
+	*nullflag = 0;
+	nanotime(&tsnow);
+	if (!ts) {
+		newts[0] = tsnow;
+		newts[1] = tsnow;
+		*nullflag = 1;
+		return (0);
+	}
+
+	newts[0] = ts[0];
+	newts[1] = ts[1];
+	if (newts[0].tv_nsec == UTIME_OMIT && newts[1].tv_nsec == UTIME_OMIT)
+		return (0);
+	if (newts[0].tv_nsec == UTIME_NOW && newts[1].tv_nsec == UTIME_NOW)
+		*nullflag = 1;
+
+	if (newts[0].tv_nsec == UTIME_OMIT)
+		newts[0].tv_sec = VNOVAL;
+	else if (newts[0].tv_nsec == UTIME_NOW)
+		newts[0] = tsnow;
+	else if (newts[0].tv_nsec < 0 || newts[0].tv_nsec >= 1000000000ULL)
+		return (EINVAL);
+
+	if (newts[1].tv_nsec == UTIME_OMIT)
+		newts[1].tv_sec = VNOVAL;
+	else if (newts[1].tv_nsec == UTIME_NOW)
+		newts[1] = tsnow;
+	else if (newts[1].tv_nsec < 0 || newts[1].tv_nsec >= 1000000000ULL)
+		return (EINVAL);
+
+	return (0);
+}
+
+static int
 setutimes(struct vnode *vp, struct vattr *vattr,
 	  const struct timespec *ts, int nullflag)
 {
@@ -3414,38 +3453,12 @@ int
 kern_utimes(struct nlookupdata *nd, struct timeval *tptr)
 {
 	struct timespec ts[2];
-	struct vnode *vp;
-	struct vattr vattr;
 	int error;
 
-	if ((error = getutimes(tptr, ts)) != 0)
-		return (error);
-
-	/*
-	 * NOTE: utimes() succeeds for the owner even if the file
-	 * is not user-writable.
-	 */
-	nd->nl_flags |= NLC_OWN | NLC_WRITE;
-
-	if ((error = nlookup(nd)) != 0)
-		return (error);
-	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
-		return (error);
-	if ((error = cache_vref(&nd->nl_nch, nd->nl_cred, &vp)) != 0)
-		return (error);
-
-	/*
-	 * note: vget is required for any operation that might mod the vnode
-	 * so VINACTIVE is properly cleared.
-	 */
-	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
-		error = vget(vp, LK_EXCLUSIVE);
-		if (error == 0) {
-			error = setutimes(vp, &vattr, ts, (tptr == NULL));
-			vput(vp);
-		}
-	}
-	vrele(vp);
+	if (tptr)
+		if ((error = getutimes(tptr, ts)) != 0)
+			return (error);
+	error = kern_utimensat(nd, tptr ? ts : NULL, 0);
 	return (error);
 }
 
@@ -3562,47 +3575,20 @@ sys_futimes(struct futimes_args *uap)
 }
 
 int
-kern_utimensat(struct nlookupdata *nd, int fd, const char *path,
-               const struct timespec *usrts, int flags)
+kern_utimensat(struct nlookupdata *nd, const struct timespec *ts, int flags)
 {
-	struct timespec ts[2], tsnow;
+	struct timespec newts[2];
 	struct vnode *vp;
 	struct vattr vattr;
-	int nullflag = 0;
+	int nullflag;
 	int error;
 
 	if (flags & ~AT_SYMLINK_NOFOLLOW)
 		return (EINVAL);
 
-	nanotime(&tsnow);
-	if (!usrts) {
-		ts[0] = tsnow;
-		ts[1] = tsnow;
-		nullflag = 1;
-	} else {
-		error = copyin(usrts, ts, sizeof(ts));
-		if (error)
-			return (error);
-
-		if (ts[0].tv_nsec == UTIME_OMIT && ts[1].tv_nsec == UTIME_OMIT)
-			return 0;
-		if (ts[0].tv_nsec == UTIME_NOW && ts[1].tv_nsec == UTIME_NOW)
-			nullflag = 1;
-
-		if (ts[0].tv_nsec == UTIME_OMIT)
-			ts[0].tv_sec = VNOVAL;
-		else if (ts[0].tv_nsec == UTIME_NOW)
-			ts[0] = tsnow;
-		else if (ts[0].tv_nsec < 0 || ts[0].tv_nsec >= 1000000000ULL)
-			return (EINVAL);
-
-		if (ts[1].tv_nsec == UTIME_OMIT)
-			ts[1].tv_sec = VNOVAL;
-		else if (ts[1].tv_nsec == UTIME_NOW)
-			ts[1] = tsnow;
-		else if (ts[1].tv_nsec < 0 || ts[1].tv_nsec >= 1000000000ULL)
-			return (EINVAL);
-	}
+	error = getutimens(ts, newts, &nullflag);
+	if (error)
+		return (error);
 
 	nd->nl_flags |= NLC_OWN | NLC_WRITE;
 	if ((error = nlookup(nd)) != 0)
@@ -3614,7 +3600,7 @@ kern_utimensat(struct nlookupdata *nd, int fd, const char *path,
 	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
 		error = vget(vp, LK_EXCLUSIVE);
 		if (error == 0) {
-			error = setutimes(vp, &vattr, ts, nullflag);
+			error = setutimes(vp, &vattr, newts, nullflag);
 			vput(vp);
 		}
 	}
@@ -3630,17 +3616,23 @@ kern_utimensat(struct nlookupdata *nd, int fd, const char *path,
 int
 sys_utimensat(struct utimensat_args *uap)
 {
+	struct timespec ts[2];
 	struct nlookupdata nd;
 	struct file *fp;
 	int error;
 	int flags;
 
+	if (uap->ts) {
+		error = copyin(uap->ts, ts, sizeof(ts));
+		if (error)
+			return (error);
+	}
+
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path,
 	                        UIO_USERSPACE, flags);
 	if (error == 0)
-		error = kern_utimensat(&nd, uap->fd, uap->path,
-		                       uap->ts, uap->flags);
+		error = kern_utimensat(&nd, uap->ts ? ts : NULL, uap->flags);
 	nlookup_done_at(&nd, fp);
 	return (error);
 }

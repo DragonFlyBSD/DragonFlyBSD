@@ -167,8 +167,7 @@ int kern_statvfs(struct nlookupdata *nd, struct statvfs *buf);
 int kern_symlink(struct nlookupdata *nd, char *path, int mode);
 int kern_truncate(struct nlookupdata *nd, off_t length);
 int kern_unlink(struct nlookupdata *nd);
-int kern_utimensat(struct nlookupdata *nd, int fd, const char *path,
-                   const struct timespec *ts, int flag);
+int kern_utimensat(struct nlookupdata *nd, const struct timespec *ts, int flag);
 int kern_utimes(struct nlookupdata *nd, struct timeval *tptr);
 struct uuid *kern_uuidgen(struct uuid *store, size_t count);
 
