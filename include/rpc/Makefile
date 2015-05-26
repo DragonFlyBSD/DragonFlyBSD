@@ -1,9 +1,8 @@
 # $FreeBSD: src/include/rpc/Makefile,v 1.2 2002/05/12 16:00:48 ru Exp $
-# $DragonFly: src/include/rpc/Makefile,v 1.2 2003/06/17 04:25:58 dillon Exp $
 
 .SUFFIXES: .x
 
-RPCCOM = rpcgen -C
+RPCCOM = rpcgen -C -Y "${OBJFORMAT_PATH}/usr/bin"
 
 HDRS=	rpcb_prot.h
 

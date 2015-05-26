@@ -1,6 +1,5 @@
 #	from: @(#)Makefile    5.10 (Berkeley) 6/24/90
 # $FreeBSD: src/lib/librpcsvc/Makefile,v 1.13 1999/08/28 00:05:23 peter Exp $
-# $DragonFly: src/lib/librpcsvc/Makefile,v 1.3 2007/11/25 14:33:02 swildner Exp $
 
 .PATH: ${DESTDIR}/usr/include/rpcsvc
 
@@ -14,7 +13,7 @@ RPCSRCS= klm_prot.x mount.x nfs_prot.x nlm_prot.x rex.x rnusers.x \
 OTHERSRCS=  rnusers.c rstat.c rwall.c yp_passwd.c yp_update.c
 SECRPCSRCS= secretkey.c xcrypt.c
 
-RPCCOM = rpcgen -C
+RPCCOM = rpcgen -C -Y "${OBJFORMAT_PATH}/usr/bin"
 
 INCDIRS= -I${DESTDIR}/usr/include/rpcsvc -I${DESTDIR}/usr/include
 

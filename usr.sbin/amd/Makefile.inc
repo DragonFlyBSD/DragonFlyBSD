@@ -1,7 +1,6 @@
 # ex:ts=8
 #
 # $FreeBSD: src/usr.sbin/amd/Makefile.inc,v 1.5.2.1 2001/04/25 12:09:12 ru Exp $
-# $DragonFly: src/usr.sbin/amd/Makefile.inc,v 1.2 2003/06/17 04:29:52 dillon Exp $
 #
 # Makefile for amd
 # 	This file is under a "BSD" copyright (c) by David O'Brien 1998.
@@ -27,7 +26,7 @@ LIBAMUDIR=	${.CURDIR}/../libamu
 .endif
 LIBAMU=		${LIBAMUDIR}/libamu.a
 
-RPCCOM=		rpcgen
+RPCCOM=		rpcgen -Y "${OBJFORMAT_PATH}/usr/bin"
 MOUNT_X=	${DESTDIR}/usr/include/rpcsvc/mount.x
 NFS_PROT_X=	${DESTDIR}/usr/include/rpcsvc/nfs_prot.x
 

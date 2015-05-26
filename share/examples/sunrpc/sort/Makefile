@@ -5,7 +5,7 @@
 BIN =  rsort sort_svc
 GEN = sort_clnt.c sort_svc.c sort_xdr.c sort.h
 LIB = -lrpclib
-RPCCOM = rpcgen
+RPCCOM = rpcgen -Y "${OBJFORMAT_PATH}/usr/bin"
 
 all: $(BIN)
 
