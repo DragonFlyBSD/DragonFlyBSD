@@ -154,6 +154,8 @@ getttyent(void)
 			tty.ty_status |= TTY_DIALUP;
 		else if (scmp(_TTYS_NETWORK))
 			tty.ty_status |= TTY_NETWORK;
+		else if (scmp(_TTYS_IFCONSOLE))
+			tty.ty_status |= TTY_IFCONSOLE;
 		else if (vcmp(_TTYS_WINDOW))
 			tty.ty_window = value(p);
 		else if (vcmp(_TTYS_GROUP))

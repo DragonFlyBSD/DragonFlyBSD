@@ -39,13 +39,12 @@ ttyv5	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv6	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv7	"/usr/libexec/getty Pc"		cons25	on  secure
 #ttyv8	"/usr/local/bin/xdm -nodaemon"	xterm	off secure
-# Serial terminals
-# vt100-color seems to work best when talking to the serial port
-# from a cu/tip running on an xterm.
-ttyd0	"/usr/libexec/getty std.9600"	vt100-color off secure
-ttyd1	"/usr/libexec/getty std.9600"	dialup	off secure
-ttyd2	"/usr/libexec/getty std.9600"	dialup	off secure
-ttyd3	"/usr/libexec/getty std.9600"	dialup	off secure
+# Serial terminals - keep it simple
+#
+ttyd0	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
+ttyd1	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
+ttyd2	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
+ttyd3	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
 # Pseudo terminals
 ttyp0	none			network
 ttyp1	none			network

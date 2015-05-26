@@ -48,6 +48,7 @@
 #define	_TTYS_NOGROUP	"none"
 #define	_TTYS_DIALUP	"dialup"
 #define	_TTYS_NETWORK	"network"
+#define	_TTYS_IFCONSOLE	"ifconsole"
 
 struct ttyent {
 	char	*ty_name;	/* terminal device name */
@@ -57,6 +58,7 @@ struct ttyent {
 #define	TTY_SECURE	0x02	/* allow uid of 0 to login */
 #define	TTY_DIALUP	0x04	/* is a dialup tty */
 #define	TTY_NETWORK	0x08	/* is a network tty */
+#define	TTY_IFCONSOLE	0x10	/* only enable if console */
 	int	ty_status;	/* status flags */
 	char 	*ty_window;	/* command to start up window manager */
 	char	*ty_comment;	/* comment field */

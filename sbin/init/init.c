@@ -149,6 +149,7 @@ static void transition(state_t);
 
 static void	free_session(session_t *);
 static session_t *new_session(session_t *, int, struct ttyent *);
+static void	adjttyent(struct ttyent *typ);
 
 static char	**construct_argv(char *);
 static void	start_window_system(session_t *);
@@ -983,6 +984,36 @@ free_session(session_t *sp)
 	free(sp);
 }
 
+static
+void
+adjttyent(struct ttyent *typ)
+{
+	struct stat st;
+	uint32_t rdev;
+	char *devpath;
+	size_t rdev_size = sizeof(rdev);
+
+	if (typ->ty_name == NULL)
+		return;
+
+	/*
+	 * IFCONSOLE option forces tty off if not the console.
+	 */
+	if (typ->ty_status & TTY_IFCONSOLE) {
+		asprintf(&devpath, "%s%s", _PATH_DEV, typ->ty_name);
+		if (stat(devpath, &st) < 0 ||
+		    sysctlbyname("kern.console_rdev",
+				 &rdev, &rdev_size,
+				 NULL, 0) < 0) {
+			/* device does not exist or no sysctl, disable */
+			typ->ty_status &= ~TTY_ON;
+		} else if (rdev != st.st_rdev) {
+			typ->ty_status &= ~TTY_ON;
+		}
+		free(devpath);
+	}
+}
+
 /*
  * Allocate a new session descriptor.
  * Mark it SE_PRESENT.
@@ -993,18 +1024,17 @@ new_session(session_t *sprev, int session_index, struct ttyent *typ)
 	session_t *sp;
 	int fd;
 
-	if ((typ->ty_status & TTY_ON) == 0 ||
-	    typ->ty_name == 0 ||
-	    typ->ty_getty == 0)
+	if (typ->ty_name == NULL || typ->ty_getty == NULL)
+		return 0;
+
+	if ((typ->ty_status & TTY_ON) == 0)
 		return 0;
 
 	sp = (session_t *) calloc(1, sizeof (session_t));
 
+	asprintf(&sp->se_device, "%s%s", _PATH_DEV, typ->ty_name);
 	sp->se_index = session_index;
 	sp->se_flags |= SE_PRESENT;
-
-	sp->se_device = malloc(sizeof(_PATH_DEV) + strlen(typ->ty_name));
-	sprintf(sp->se_device, "%s%s", _PATH_DEV, typ->ty_name);
 
 	/*
 	 * Attempt to open the device, if we get "device not configured"
@@ -1131,9 +1161,11 @@ read_ttys(void)
 	 * Allocate a session entry for each active port.
 	 * Note that sp starts at 0.
 	 */
-	while ((typ = getttyent()) != NULL)
+	while ((typ = getttyent()) != NULL) {
+		adjttyent(typ);
 		if ((snext = new_session(sp, ++session_index, typ)) != NULL)
 			sp = snext;
+	}
 
 	endttyent();
 
@@ -1385,6 +1417,7 @@ clean_ttys(void)
 	while ((typ = getttyent()) != NULL) {
 		++session_index;
 
+		adjttyent(typ);
 		for (sprev = NULL, sp = sessions; sp; sprev = sp, sp = sp->se_next)
 			if (strcmp(typ->ty_name, sp->se_device + devlen) == 0)
 				break;

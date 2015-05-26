@@ -103,7 +103,10 @@ should (should not) execute the command given in the second field,
 while ``secure'' (if ``on'' is also specified) allows users with a
 uid of 0 to login on
 this line.
-The flag ``dialin'' indicates that a tty entry describes a dialin
+The flag ``ifconsole'' disables the tty entry if it is not the console.
+That is, you can construct a tty entry, set to 'on', that you intend to
+only be active if that tty is the console.
+The flag ``dialup'' indicates that a tty entry describes a dialup
 line, and ``network'' indicates that a tty entry provides a
 network connection.
 Either of these strings may also be specified in the terminal type
