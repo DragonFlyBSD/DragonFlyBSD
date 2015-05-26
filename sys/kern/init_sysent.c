@@ -576,4 +576,5 @@ struct sysent sysent[] = {
 	{ AS(chflagsat_args), (sy_call_t *)sys_chflagsat },	/* 537 = chflagsat */
 	{ AS(pipe2_args), (sy_call_t *)sys_pipe2 },	/* 538 = pipe2 */
 	{ AS(utimensat_args), (sy_call_t *)sys_utimensat },	/* 539 = utimensat */
+	{ AS(futimens_args), (sy_call_t *)sys_futimens },	/* 540 = futimens */
 };

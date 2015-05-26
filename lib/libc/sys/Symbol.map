@@ -61,6 +61,7 @@ DF402.0 {
     fstatfs;
     fsync;
     ftruncate;
+    futimens;
     futimes;
     get_tls_area;
     getdents;
@@ -360,6 +361,7 @@ DFprivate_1.0 {
     __sys_fstatfs;
     __sys_fstatvfs;
     __sys_fsync;
+    __sys_futimens;
     __sys_futimes;
     __sys_get_tls_area;
     __sys_getdents;
@@ -654,6 +656,7 @@ DFprivate_1.0 {
     _fstatfs;
     _fstatvfs;
     _fsync;
+    _futimens;
     _futimes;
     _get_tls_area;
     _getdents;

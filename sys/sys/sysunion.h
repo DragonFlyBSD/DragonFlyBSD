@@ -410,4 +410,5 @@ union sysunion {
 	struct	chflagsat_args chflagsat;
 	struct	pipe2_args pipe2;
 	struct	utimensat_args utimensat;
+	struct	futimens_args futimens;
 };

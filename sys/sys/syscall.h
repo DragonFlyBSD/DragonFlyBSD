@@ -379,4 +379,5 @@
 #define	SYS_chflagsat	537
 #define	SYS_pipe2	538
 #define	SYS_utimensat	539
-#define	SYS_MAXSYSCALL	540
+#define	SYS_futimens	540
+#define	SYS_MAXSYSCALL	541

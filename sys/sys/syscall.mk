@@ -302,4 +302,5 @@ MIASM =  \
 	procctl.o \
 	chflagsat.o \
 	pipe2.o \
-	utimensat.o
+	utimensat.o \
+	futimens.o

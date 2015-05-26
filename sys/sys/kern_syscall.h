@@ -144,6 +144,7 @@ int kern_chroot(struct nchandle *nch);
 int kern_fstatfs(int fd, struct statfs *buf);
 int kern_fstatvfs(int fd, struct statvfs *buf);
 int kern_ftruncate(int fd, off_t length);
+int kern_futimens(int fd, struct timespec *ts);
 int kern_futimes(int fd, struct timeval *tptr);
 int kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res,
 		       enum uio_seg);

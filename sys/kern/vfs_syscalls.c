@@ -3516,17 +3516,18 @@ sys_lutimes(struct lutimes_args *uap)
  * or not.
  */
 int
-kern_futimes(int fd, struct timeval *tptr)
+kern_futimens(int fd, struct timespec *ts)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct timespec ts[2];
+	struct timespec newts[2];
 	struct file *fp;
 	struct vnode *vp;
 	struct vattr vattr;
+	int nullflag;
 	int error;
 
-	error = getutimes(tptr, ts);
+	error = getutimens(ts, newts, &nullflag);
 	if (error)
 		return (error);
 	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
@@ -3543,13 +3544,46 @@ kern_futimes(int fd, struct timeval *tptr)
 						   fp->f_cred);
 			}
 			if (error == 0) {
-				error = setutimes(vp, &vattr, ts,
-						  (tptr == NULL));
+				error = setutimes(vp, &vattr, newts, nullflag);
 			}
 			vput(vp);
 		}
 	}
 	fdrop(fp);
+	return (error);
+}
+
+/*
+ * futimens_args(int fd, struct timespec *ts)
+ *
+ * Set the access and modification times of a file.
+ */
+int
+sys_futimens(struct futimens_args *uap)
+{
+	struct timespec ts[2];
+	int error;
+
+	if (uap->ts) {
+		error = copyin(uap->ts, ts, sizeof(ts));
+		if (error)
+			return (error);
+	}
+	error = kern_futimens(uap->fd, uap->ts ? ts : NULL);
+	return (error);
+}
+
+int
+kern_futimes(int fd, struct timeval *tptr)
+{
+	struct timespec ts[2];
+	int error;
+
+	if (tptr) {
+		if ((error = getutimes(tptr, ts)) != 0)
+			return (error);
+	}
+	error = kern_futimens(fd, tptr ? ts : NULL);
 	return (error);
 }
 
@@ -3570,7 +3604,6 @@ sys_futimes(struct futimes_args *uap)
 			return (error);
 	}
 	error = kern_futimes(uap->fd, uap->tptr ? tv : NULL);
-
 	return (error);
 }
 

@@ -2294,6 +2294,13 @@ struct	utimensat_args {
 	const struct timespec *	ts;	char ts_[PAD_(const struct timespec *)];
 	int	flags;	char flags_[PAD_(int)];
 };
+struct	futimens_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	fd;	char fd_[PAD_(int)];
+	const struct timespec *	ts;	char ts_[PAD_(const struct timespec *)];
+};
 
 #ifdef COMPAT_43
 
@@ -2903,6 +2910,7 @@ int	sys_procctl (struct procctl_args *);
 int	sys_chflagsat (struct chflagsat_args *);
 int	sys_pipe2 (struct pipe2_args *);
 int	sys_utimensat (struct utimensat_args *);
+int	sys_futimens (struct futimens_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

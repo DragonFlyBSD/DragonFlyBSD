@@ -31,16 +31,19 @@
 .\"     @(#)utimes.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD$
 .\"
-.Dd May 20, 2015
+.Dd May 26, 2015
 .Dt UTIMENSAT 2
 .Os
 .Sh NAME
+.Nm futimens ,
 .Nm utimensat
 .Nd set file access and modification times
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In sys/stat.h
+.Ft int
+.Fn futimens "int fd" "const struct timespec times[2]"
 .Ft int
 .Fo utimensat
 .Fa "int fd"
@@ -138,7 +141,7 @@ changes the times of the file referenced by the symbolic link.
 .Sh RETURN VALUES
 .Rv -std
 .Sh ERRORS
-This system call will fail if:
+These system calls will fail if:
 .Bl -tag -width Er
 .It Bq Er EACCES
 The
@@ -186,6 +189,18 @@ The named file has its immutable or append-only flag set, see the
 manual page for more information.
 .It Bq Er EROFS
 The file system containing the file is mounted read-only.
+.El
+.Pp
+The
+.Fn futimens
+system call
+will fail if:
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Fa fd
+argument
+does not refer to a valid descriptor.
 .El
 .Pp
 The
@@ -242,11 +257,15 @@ is used with a path relative to a file descriptor.
 .Xr symlink 7
 .Sh STANDARDS
 The
+.Fn futimens
+and
 .Fn utimensat
-system call is expected to conform to
+system calls are expected to conform to
 .St -p1003.1-2008 .
 .Sh HISTORY
 The
+.Fn futimens
+and
 .Fn utimensat
-system call appeared in
+system calls appeared in
 .Dx 4.1 .
