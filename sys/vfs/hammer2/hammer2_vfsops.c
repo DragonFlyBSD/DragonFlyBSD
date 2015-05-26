@@ -3064,16 +3064,12 @@ hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx)
 		chain->bref.key, chain->bref.keybits,
 		chain->bref.mirror_tid);
 
-	kprintf("%*.*s      [%08x] (%s) refs=%d\n",
+	kprintf("%*.*s      [%08x] (%s) refs=%d",
 		tab, tab, "",
 		chain->flags,
 		((chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		chain->data) ?  (char *)chain->data->ipdata.filename : "?"),
 		chain->refs);
-
-	kprintf("%*.*s      core [%08x]",
-		tab, tab, "",
-		chain->core.flags);
 
 	parent = chain->parent;
 	if (parent)

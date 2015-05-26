@@ -1273,6 +1273,7 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	hammer2_key_t key_dummy;
 	hammer2_key_t key_next;
 	hammer2_key_t lhc;
+	int last_link;
 	int error;
 	int hlink;
 	uint8_t type;
@@ -1418,7 +1419,9 @@ again:
 	 * or directory in (cparent, cluster).
 	 *
 	 * Delete the target when nlinks reaches 0 with special handling
-	 * if (isopen) is set.
+	 * to avoid I/O (to avoid actually updating the inode) for the 1->0
+	 * transition, if possible.  This optimization makes rm -rf very
+	 * fast.
 	 *
 	 * NOTE! In DragonFly the vnops function calls cache_unlink() after
 	 *	 calling us here to clean out the namecache association,
@@ -1431,16 +1434,15 @@ again:
 	 *	 will bump nlinks.
 	 */
 	KKASSERT(cluster != NULL);
-	hammer2_cluster_modify(trans, cluster, 0);
-	wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
-	ripdata = wipdata;
-	wipdata->nlinks += nlinks;
-	if ((int64_t)wipdata->nlinks < 0) {	/* XXX debugging */
-		wipdata->nlinks = 0;
-	}
-	hammer2_cluster_modsync(cluster);
 
-	if (wipdata->nlinks == 0) {
+	/*
+	 * Note: nlinks is negative when decrementing, positive when
+	 *	 incrementing.
+	 */
+	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
+	last_link = (ripdata->nlinks + nlinks == 0);
+
+	if (last_link) {
 		/*
 		 * Target nlinks has reached 0, file now unlinked (but may
 		 * still be open).
@@ -1457,6 +1459,19 @@ again:
 		*/
 		hammer2_cluster_set_chainflags(cluster, HAMMER2_CHAIN_UNLINKED);
 		if (nch && cache_isopen(nch)) {
+			/*
+			 * If an unlinked file is still open we must update
+			 * the inodes link count.
+			 */
+			hammer2_cluster_modify(trans, cluster, 0);
+			wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
+			ripdata = wipdata;
+			wipdata->nlinks += nlinks;
+			/* XXX debugging */
+			if ((int64_t)wipdata->nlinks < 0) {
+				wipdata->nlinks = 0;
+			}
+			hammer2_cluster_modsync(cluster);
 			hammer2_inode_move_to_hidden(trans, &cparent, &cluster,
 						     wipdata->inum);
 		} else {
@@ -1476,13 +1491,26 @@ again:
 		 * a nlinks adjustment of 0, and only wishes to remove file
 		 * in order to be able to reconnect it under a different name.
 		 *
-		 * In this situation we do a non-permanent deletion of the
+		 * In this situation we do a temporary deletion of the
 		 * chain in order to allow the file to be reconnected in
 		 * a different location.
 		 */
 		KKASSERT(nlinks == 0);
 		hammer2_cluster_delete(trans, cparent, cluster, 0);
+	} else {
+		/*
+		 * Links remain, must update the inode link count.
+		 */
+		hammer2_cluster_modify(trans, cluster, 0);
+		wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
+		ripdata = wipdata;
+		wipdata->nlinks += nlinks;
+		if ((int64_t)wipdata->nlinks < 0) {	/* XXX debugging */
+			wipdata->nlinks = 0;
+		}
+		hammer2_cluster_modsync(cluster);
 	}
+
 	error = 0;
 done:
 	if (cparent) {

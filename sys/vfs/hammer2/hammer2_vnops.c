@@ -2437,8 +2437,13 @@ hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfs_t *pmp)
 			kprintf("hammer2: unlink on reclaim: %s refs=%d\n",
 				ripdata->filename, ip->refs);
 		}
-		KKASSERT(ripdata->nlinks == 0);
 
+		/*
+		 * NOTE: Due to optimizations to avoid I/O on the inode for
+		 *	 the last unlink, ripdata->nlinks is not necessarily
+		 *	 0 here.
+		 */
+		/* KKASSERT(ripdata->nlinks == 0); (see NOTE) */
 		cparent = hammer2_cluster_parent(cluster);
 		hammer2_cluster_delete(trans, cparent, cluster,
 				       HAMMER2_DELETE_PERMANENT);

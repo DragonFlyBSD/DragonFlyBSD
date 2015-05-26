@@ -48,19 +48,19 @@
 void
 hammer2_dev_exlock(hammer2_dev_t *hmp)
 {
-	hammer2_mtx_ex(&hmp->vchain.core.lock);
+	hammer2_mtx_ex(&hmp->vchain.lock);
 }
 
 void
 hammer2_dev_shlock(hammer2_dev_t *hmp)
 {
-	hammer2_mtx_sh(&hmp->vchain.core.lock);
+	hammer2_mtx_sh(&hmp->vchain.lock);
 }
 
 void
 hammer2_dev_unlock(hammer2_dev_t *hmp)
 {
-	hammer2_mtx_unlock(&hmp->vchain.core.lock);
+	hammer2_mtx_unlock(&hmp->vchain.lock);
 }
 
 /*

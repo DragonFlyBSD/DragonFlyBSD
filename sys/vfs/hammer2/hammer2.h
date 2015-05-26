@@ -242,21 +242,19 @@ TAILQ_HEAD(h2_iocb_list, hammer2_iocb);
 #define CHAIN_CORE_DELETE_BMAP_ENTRIES	\
 	(HAMMER2_PBUFSIZE / sizeof(hammer2_blockref_t) / sizeof(uint32_t))
 
+/*
+ * Core topology for chain (embedded in chain).  Protected by a spinlock.
+ */
 struct hammer2_chain_core {
-	hammer2_mtx_t	lock;
 	hammer2_spin_t	spin;
 	struct hammer2_chain_tree rbtree; /* sub-chains */
 	int		live_zero;	/* blockref array opt */
-	u_int		flags;
 	u_int		live_count;	/* live (not deleted) chains in tree */
 	u_int		chain_count;	/* live + deleted chains under core */
 	int		generation;	/* generation number (inserts only) */
 };
 
 typedef struct hammer2_chain_core hammer2_chain_core_t;
-
-#define HAMMER2_CORE_UNUSED0001		0x0001
-#define HAMMER2_CORE_COUNTEDBREFS	0x0002
 
 RB_HEAD(hammer2_io_tree, hammer2_io);
 
@@ -319,6 +317,7 @@ typedef struct hammer2_io hammer2_io_t;
  * Primary chain structure keeps track of the topology in-memory.
  */
 struct hammer2_chain {
+	hammer2_mtx_t		lock;
 	hammer2_chain_core_t	core;
 	RB_ENTRY(hammer2_chain) rbnode;		/* live chain(s) */
 	hammer2_blockref_t	bref;
@@ -381,15 +380,15 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_FICTITIOUS	0x00000400	/* unsuitable for I/O */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
 #define HAMMER2_CHAIN_DELAYED		0x00001000	/* delayed flush */
-#define HAMMER2_CHAIN_UNUSED00002000	0x00002000
+#define HAMMER2_CHAIN_COUNTEDBREFS	0x00002000	/* block table stats */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_UNUSED00008000	0x00008000
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
 #define HAMMER2_CHAIN_RELEASE		0x00020000	/* don't keep around */
 #define HAMMER2_CHAIN_BMAPPED		0x00040000	/* present in blkmap */
 #define HAMMER2_CHAIN_BMAPUPD		0x00080000	/* +needs updating */
-#define HAMMER2_CHAIN_UNUSED00100000	0x00100000
-#define HAMMER2_CHAIN_UNUSED00200000	0x00200000
+#define HAMMER2_CHAIN_IOINPROG		0x00100000	/* I/O interlock */
+#define HAMMER2_CHAIN_IOSIGNAL		0x00200000	/* I/O interlock */
 #define HAMMER2_CHAIN_PFSBOUNDARY	0x00400000	/* super->pfs inode */
 
 #define HAMMER2_CHAIN_FLUSH_MASK	(HAMMER2_CHAIN_MODIFIED |	\
@@ -682,8 +681,8 @@ struct hammer2_inode {
 	u_int			flags;
 	u_int			refs;		/* +vpref, +flushref */
 	uint8_t			comp_heuristic;
-	hammer2_off_t		size;
-	uint64_t		mtime;
+	hammer2_off_t		size;		/* cache file size */
+	uint64_t		mtime;		/* cache mtime */
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
@@ -1144,6 +1143,7 @@ void hammer2_chain_core_init(hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
 void hammer2_chain_lock(hammer2_chain_t *chain, int how);
+void hammer2_chain_load_data(hammer2_chain_t *chain);
 const hammer2_media_data_t *hammer2_chain_rdata(hammer2_chain_t *chain);
 hammer2_media_data_t *hammer2_chain_wdata(hammer2_chain_t *chain);
 

@@ -231,14 +231,12 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 void
 hammer2_chain_core_init(hammer2_chain_t *chain)
 {
-	hammer2_chain_core_t *core = &chain->core;
-
 	/*
 	 * Fresh core under nchain (no multi-homing of ochain's
 	 * sub-tree).
 	 */
-	RB_INIT(&core->rbtree);	/* live chains */
-	hammer2_mtx_init(&core->lock, "h2chain");
+	RB_INIT(&chain->core.rbtree);	/* live chains */
+	hammer2_mtx_init(&chain->lock, "h2chain");
 }
 
 /*
@@ -554,35 +552,30 @@ hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
  *	 a logical file buffer.  However, if ALWAYS is specified the
  *	 device buffer will be instantiated anyway.
  *
- * WARNING! If data must be fetched a shared lock will temporarily be
- *	    upgraded to exclusive.  However, a deadlock can occur if
- *	    the caller owns more than one shared lock.
+ * WARNING! This function blocks on I/O if data needs to be fetched.  This
+ *	    blocking can run concurrent with other compatible lock holders
+ *	    who do not need data returning.  The lock is not upgraded to
+ *	    exclusive during a data fetch, a separate bit is used to
+ *	    interlock I/O.  However, an exclusive lock holder can still count
+ *	    on being interlocked against an I/O fetch managed by a shared
+ *	    lock holder.
  */
 void
 hammer2_chain_lock(hammer2_chain_t *chain, int how)
 {
-	hammer2_dev_t *hmp;
-	hammer2_blockref_t *bref;
-	hammer2_mtx_state_t ostate;
-	char *bdata;
-	int error;
-
 	/*
 	 * Ref and lock the element.  Recursive locks are allowed.
 	 */
 	KKASSERT(chain->refs > 0);
 	atomic_add_int(&chain->lockcnt, 1);
 
-	hmp = chain->hmp;
-	KKASSERT(hmp != NULL);
-
 	/*
 	 * Get the appropriate lock.
 	 */
 	if (how & HAMMER2_RESOLVE_SHARED)
-		hammer2_mtx_sh(&chain->core.lock);
+		hammer2_mtx_sh(&chain->lock);
 	else
-		hammer2_mtx_ex(&chain->core.lock);
+		hammer2_mtx_ex(&chain->lock);
 
 	/*
 	 * If we already have a valid data pointer no further action is
@@ -614,15 +607,68 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	}
 
 	/*
-	 * Upgrade to an exclusive lock so we can safely manipulate the
-	 * buffer cache.  If another thread got to it before us we
-	 * can just return.
+	 * Caller requires data
 	 */
-	ostate = hammer2_mtx_upgrade(&chain->core.lock);
-	if (chain->data) {
-		hammer2_mtx_downgrade(&chain->core.lock, ostate);
+	hammer2_chain_load_data(chain);
+}
+
+/*
+ * Issue I/O and install chain->data.  Caller must hold a chain lock, lock
+ * may be of any type.
+ *
+ * Once chain->data is set it cannot be disposed of until all locks are
+ * released.
+ */
+void
+hammer2_chain_load_data(hammer2_chain_t *chain)
+{
+	hammer2_blockref_t *bref;
+	hammer2_dev_t *hmp;
+	char *bdata;
+	int error;
+
+	/*
+	 * Degenerate case, data already present.
+	 */
+	if (chain->data)
 		return;
+
+	hmp = chain->hmp;
+	KKASSERT(hmp != NULL);
+
+	/*
+	 * Gain the IOINPROG bit, interlocked block.
+	 */
+	for (;;) {
+		u_int oflags;
+		u_int nflags;
+
+		oflags = chain->flags;
+		cpu_ccfence();
+		if (oflags & HAMMER2_CHAIN_IOINPROG) {
+			nflags = oflags | HAMMER2_CHAIN_IOSIGNAL;
+			tsleep_interlock(&chain->flags, 0);
+			if (atomic_cmpset_int(&chain->flags, oflags, nflags)) {
+				tsleep(&chain->flags, PINTERLOCKED,
+					"h2iocw", 0);
+			}
+			/* retry */
+		} else {
+			nflags = oflags | HAMMER2_CHAIN_IOINPROG;
+			if (atomic_cmpset_int(&chain->flags, oflags, nflags)) {
+				break;
+			}
+			/* retry */
+		}
 	}
+
+	/*
+	 * We own CHAIN_IOINPROG
+	 *
+	 * Degenerate case if we raced another load.
+	 */
+	if (chain->data)
+		goto done;
 
 	/*
 	 * We must resolve to a device buffer, either by issuing I/O or
@@ -656,8 +702,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		kprintf("hammer2_chain_lock: I/O error %016jx: %d\n",
 			(intmax_t)bref->data_off, error);
 		hammer2_io_bqrelse(&chain->dio);
-		hammer2_mtx_downgrade(&chain->core.lock, ostate);
-		return;
+		goto done;
 	}
 	chain->error = 0;
 
@@ -702,6 +747,9 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 * The buffer is not retained when copying to an embedded data
 	 * structure in order to avoid potential deadlocks or recursions
 	 * on the same physical buffer.
+	 *
+	 * WARNING! Other threads can start using the data the instant we
+	 *	    set chain->data non-NULL.
 	 */
 	switch (bref->type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
@@ -723,7 +771,25 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		chain->data = (void *)bdata;
 		break;
 	}
-	hammer2_mtx_downgrade(&chain->core.lock, ostate);
+
+	/*
+	 * Release HAMMER2_CHAIN_IOINPROG and signal waiters if requested.
+	 */
+done:
+	for (;;) {
+		u_int oflags;
+		u_int nflags;
+
+		oflags = chain->flags;
+		nflags = oflags & ~(HAMMER2_CHAIN_IOINPROG |
+				    HAMMER2_CHAIN_IOSIGNAL);
+		KKASSERT(oflags & HAMMER2_CHAIN_IOINPROG);
+		if (atomic_cmpset_int(&chain->flags, oflags, nflags)) {
+			if (oflags & HAMMER2_CHAIN_IOSIGNAL)
+				wakeup(&chain->flags);
+			break;
+		}
+	}
 }
 
 /*
@@ -752,7 +818,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 		if (lockcnt > 1) {
 			if (atomic_cmpset_int(&chain->lockcnt,
 					      lockcnt, lockcnt - 1)) {
-				hammer2_mtx_unlock(&chain->core.lock);
+				hammer2_mtx_unlock(&chain->lock);
 				return;
 			}
 		} else {
@@ -774,9 +840,9 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	 * all that will happen is that the chain will be reloaded after we
 	 * unload it.
 	 */
-	ostate = hammer2_mtx_upgrade(&chain->core.lock);
+	ostate = hammer2_mtx_upgrade(&chain->lock);
 	if (chain->lockcnt) {
-		hammer2_mtx_unlock(&chain->core.lock);
+		hammer2_mtx_unlock(&chain->lock);
 		return;
 	}
 
@@ -789,7 +855,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	if (chain->dio == NULL) {
 		if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0)
 			hammer2_chain_drop_data(chain, 0);
-		hammer2_mtx_unlock(&chain->core.lock);
+		hammer2_mtx_unlock(&chain->lock);
 		return;
 	}
 
@@ -863,7 +929,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	} else {
 		hammer2_io_bqrelse(&chain->dio);
 	}
-	hammer2_mtx_unlock(&chain->core.lock);
+	hammer2_mtx_unlock(&chain->lock);
 }
 
 /*
@@ -885,7 +951,7 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
 			 hammer2_blockref_t *base, int count)
 {
 	hammer2_spin_ex(&chain->core.spin);
-        if ((chain->core.flags & HAMMER2_CORE_COUNTEDBREFS) == 0) {
+        if ((chain->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0) {
 		if (base) {
 			while (--count >= 0) {
 				if (base[count].type)
@@ -902,7 +968,7 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
 			chain->core.live_zero = 0;
 		}
 		/* else do not modify live_count */
-		atomic_set_int(&chain->core.flags, HAMMER2_CORE_COUNTEDBREFS);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_COUNTEDBREFS);
 	}
 	hammer2_spin_unex(&chain->core.spin);
 }
@@ -1682,7 +1748,7 @@ again:
 	 * We need to hold the spinlock to access the block array and RB tree
 	 * and to interlock chain creation.
 	 */
-	if ((parent->core.flags & HAMMER2_CORE_COUNTEDBREFS) == 0)
+	if ((parent->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0)
 		hammer2_chain_countbrefs(parent, base, count);
 
 	/*
@@ -2022,7 +2088,7 @@ again:
 	 * We need to hold the spinlock to access the block array and RB tree
 	 * and to interlock chain creation.
 	 */
-	if ((parent->core.flags & HAMMER2_CORE_COUNTEDBREFS) == 0)
+	if ((parent->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0)
 		hammer2_chain_countbrefs(parent, base, count);
 
 	next_key = 0;
@@ -2156,7 +2222,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	 * Topology may be crossing a PFS boundary.
 	 */
 	parent = *parentp;
-	KKASSERT(hammer2_mtx_owned(&parent->core.lock));
+	KKASSERT(hammer2_mtx_owned(&parent->lock));
 	KKASSERT(parent->error == 0);
 	hmp = parent->hmp;
 	chain = *chainp;
@@ -2182,7 +2248,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		 * to 1 by chain_alloc() for us, but lockcnt is not).
 		 */
 		chain->lockcnt = 1;
-		hammer2_mtx_ex(&chain->core.lock);
+		hammer2_mtx_ex(&chain->lock);
 		allocated = 1;
 
 		/*
@@ -2301,7 +2367,7 @@ again:
 	/*
 	 * Make sure we've counted the brefs
 	 */
-	if ((parent->core.flags & HAMMER2_CORE_COUNTEDBREFS) == 0)
+	if ((parent->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0)
 		hammer2_chain_countbrefs(parent, base, count);
 
 	KKASSERT(parent->core.live_count >= 0 &&
@@ -2487,7 +2553,7 @@ hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 	 * Having both chains locked is extremely important for atomicy.
 	 */
 	if (parentp && (parent = *parentp) != NULL) {
-		KKASSERT(hammer2_mtx_owned(&parent->core.lock));
+		KKASSERT(hammer2_mtx_owned(&parent->lock));
 		KKASSERT(parent->refs > 0);
 		KKASSERT(parent->error == 0);
 
@@ -2734,7 +2800,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 */
 	hmp = parent->hmp;
 	*errorp = 0;
-	KKASSERT(hammer2_mtx_owned(&parent->core.lock));
+	KKASSERT(hammer2_mtx_owned(&parent->lock));
 
 	/*hammer2_chain_modify(trans, &parent, HAMMER2_MODIFY_OPTDATA);*/
 	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
@@ -3328,7 +3394,7 @@ void
 hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		     hammer2_chain_t *chain, int flags)
 {
-	KKASSERT(hammer2_mtx_owned(&chain->core.lock));
+	KKASSERT(hammer2_mtx_owned(&chain->lock));
 
 	/*
 	 * Nothing to do if already marked.
@@ -3388,7 +3454,7 @@ hammer2_base_find(hammer2_chain_t *parent,
 	 * Require the live chain's already have their core's counted
 	 * so we can optimize operations.
 	 */
-        KKASSERT(parent->core.flags & HAMMER2_CORE_COUNTEDBREFS);
+        KKASSERT(parent->flags & HAMMER2_CHAIN_COUNTEDBREFS);
 
 	/*
 	 * Degenerate case
