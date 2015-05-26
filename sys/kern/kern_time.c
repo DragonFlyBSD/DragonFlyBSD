@@ -930,6 +930,17 @@ itimerfix(struct timeval *tv)
 	return (0);
 }
 
+int
+itimespecfix(struct timespec *ts)
+{
+	if (ts->tv_sec < 0 || ts->tv_sec > 100000000 ||
+	    ts->tv_nsec < 0 || ts->tv_nsec >= 1000000000ULL)
+		return (EINVAL);
+	if (ts->tv_sec == 0 && ts->tv_nsec != 0 && ts->tv_nsec < nstick)
+		ts->tv_nsec = nstick;
+	return (0);
+}
+
 /*
  * Decrement an interval timer by a specified number
  * of microseconds, which must be less than a second,

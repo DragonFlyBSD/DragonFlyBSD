@@ -85,7 +85,7 @@ static int checkvp_chdir (struct vnode *vn, struct thread *td);
 static void checkdirs (struct nchandle *old_nch, struct nchandle *new_nch);
 static int chroot_refuse_vdir_fds (struct filedesc *fdp);
 static int chroot_visible_mnt(struct mount *mp, struct proc *p);
-static int getutimes (const struct timeval *, struct timespec *);
+static int getutimes (struct timeval *, struct timespec *);
 static int getutimens (const struct timespec *, struct timespec *, int *);
 static int setfown (struct mount *, struct vnode *, uid_t, gid_t);
 static int setfmode (struct vnode *, int);
@@ -3379,15 +3379,18 @@ sys_fchownat(struct fchownat_args *uap)
 
 
 static int
-getutimes(const struct timeval *tvp, struct timespec *tsp)
+getutimes(struct timeval *tvp, struct timespec *tsp)
 {
 	struct timeval tv[2];
+	int error;
 
 	if (tvp == NULL) {
 		microtime(&tv[0]);
 		TIMEVAL_TO_TIMESPEC(&tv[0], &tsp[0]);
 		tsp[1] = tsp[0];
 	} else {
+		if ((error = itimerfix(tvp)) != 0)
+			return (error);
 		TIMEVAL_TO_TIMESPEC(&tvp[0], &tsp[0]);
 		TIMEVAL_TO_TIMESPEC(&tvp[1], &tsp[1]);
 	}
@@ -3398,6 +3401,7 @@ static int
 getutimens(const struct timespec *ts, struct timespec *newts, int *nullflag)
 {
 	struct timespec tsnow;
+	int error;
 
 	*nullflag = 0;
 	nanotime(&tsnow);
@@ -3419,15 +3423,15 @@ getutimens(const struct timespec *ts, struct timespec *newts, int *nullflag)
 		newts[0].tv_sec = VNOVAL;
 	else if (newts[0].tv_nsec == UTIME_NOW)
 		newts[0] = tsnow;
-	else if (newts[0].tv_nsec < 0 || newts[0].tv_nsec >= 1000000000ULL)
-		return (EINVAL);
+	else if ((error = itimespecfix(&newts[0])) != 0)
+		return (error);
 
 	if (newts[1].tv_nsec == UTIME_OMIT)
 		newts[1].tv_sec = VNOVAL;
 	else if (newts[1].tv_nsec == UTIME_NOW)
 		newts[1] = tsnow;
-	else if (newts[1].tv_nsec < 0 || newts[1].tv_nsec >= 1000000000ULL)
-		return (EINVAL);
+	else if ((error = itimespecfix(&newts[1])) != 0)
+		return (error);
 
 	return (0);
 }
