@@ -224,7 +224,7 @@
 #define HAVE_DIRENT_H 1
 
 /* Define to 1 if you have the `dirfd' function. */
-/* #undef HAVE_DIRFD */
+#define HAVE_DIRFD 1
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
@@ -323,7 +323,7 @@
 #define HAVE_FTRUNCATE 1
 
 /* Define to 1 if you have the `futimens' function. */
-/* #undef HAVE_FUTIMENS */
+#define HAVE_FUTIMENS 1
 
 /* Define to 1 if you have the `futimes' function. */
 #define HAVE_FUTIMES 1
@@ -831,7 +831,7 @@
 #define HAVE_UTIME 1
 
 /* Define to 1 if you have the `utimensat' function. */
-/* #undef HAVE_UTIMENSAT */
+#define HAVE_UTIMENSAT 1
 
 /* Define to 1 if you have the `utimes' function. */
 #define HAVE_UTIMES 1
