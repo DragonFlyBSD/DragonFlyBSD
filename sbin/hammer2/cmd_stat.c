@@ -75,9 +75,9 @@ cmd_stat(int ac, const char **av)
 		}
 		printf("%-*.*s ", w, w, av[i]);
 		printf("%3d ", ino.ip_data.ncopies);
-/*		printf("%9s ", sizetostr(ino.ip_data.data_count));*/
-/*		printf("%9s ", counttostr(ino.ip_data.inode_count));*/
-		printf("%p ", ino.kdata);
+		printf("%9s ", sizetostr(ino.data_count));
+		printf("%9s ", counttostr(ino.inode_count));
+		/*printf("%p ", ino.kdata); debugging */
 		printf("comp=%s ", compmodestr(ino.ip_data.comp_algo));
 		printf("check=%s ", checkmodestr(ino.ip_data.check_algo));
 		if (ino.ip_data.data_quota || ino.ip_data.inode_quota) {

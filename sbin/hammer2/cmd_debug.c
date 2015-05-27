@@ -662,9 +662,12 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 		printf("{\n");
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
+#if 0
 		if (VerboseOpt >= 2) {
 			printf("{\n");
-		} else {
+		} else
+#endif
+		{
 			printf("\n");
 			obrace = 0;
 		}

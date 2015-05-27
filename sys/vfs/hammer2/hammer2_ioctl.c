@@ -634,22 +634,24 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 {
 	const hammer2_inode_data_t *ripdata;
 	hammer2_ioc_inode_t *ino;
-	hammer2_cluster_t *cparent;
+	hammer2_cluster_t *cluster;
 	int error;
 
 	ino = data;
 
-	cparent = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
+	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
 					 HAMMER2_RESOLVE_SHARED);
-	if (cparent->error) {
+	if (cluster->error) {
 		error = EIO;
 	} else {
-		ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
+		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 		ino->ip_data = *ripdata;
 		ino->kdata = ip;
+		ino->data_count = cluster->focus->bref.data_count;
+		ino->inode_count = cluster->focus->bref.inode_count;
 		error = 0;
 	}
-	hammer2_inode_unlock(ip, cparent);
+	hammer2_inode_unlock(ip, cluster);
 
 	return error;
 }

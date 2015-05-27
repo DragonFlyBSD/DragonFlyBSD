@@ -3615,6 +3615,17 @@ hammer2_base_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		      base, i, count, elm);
 		return;
 	}
+
+	/*
+	 * Update stats and zero the entry
+	 */
+	parent->bref.data_count -= base[i].data_count;
+	parent->bref.data_count -= (hammer2_off_t)1 <<
+			(int)(base[i].data_off & HAMMER2_OFF_MASK_RADIX);
+	parent->bref.inode_count -= base[i].inode_count;
+	if (base[i].type == HAMMER2_BREF_TYPE_INODE)
+		parent->bref.inode_count -= 1;
+
 	bzero(&base[i], sizeof(*base));
 
 	/*
@@ -3677,6 +3688,17 @@ hammer2_base_insert(hammer2_trans_t *trans __unused, hammer2_chain_t *parent,
 	 * Set appropriate blockmap flags in chain.
 	 */
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPPED);
+
+	/*
+	 * Update stats and zero the entry
+	 */
+	parent->bref.data_count += elm->data_count;
+	parent->bref.data_count += (hammer2_off_t)1 <<
+			(int)(elm->data_off & HAMMER2_OFF_MASK_RADIX);
+	parent->bref.inode_count += elm->inode_count;
+	if (elm->type == HAMMER2_BREF_TYPE_INODE)
+		parent->bref.inode_count += 1;
+
 
 	/*
 	 * We can only optimize parent->core.live_zero for live chains.

@@ -108,6 +108,8 @@ typedef struct hammer2_ioc_pfs hammer2_ioc_pfs_t;
 struct hammer2_ioc_inode {
 	uint32_t		flags;
 	void			*kdata;
+	hammer2_key_t		data_count;
+	hammer2_key_t		inode_count;
 	hammer2_inode_data_t	ip_data;
 };
 
