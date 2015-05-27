@@ -643,11 +643,11 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 		tabprintf(tab, "data_quota  %ju\n",
 			  (uintmax_t)media.ipdata.data_quota);
 		tabprintf(tab, "data_count  %ju\n",
-			  (uintmax_t)media.ipdata.data_count);
+			  (uintmax_t)bref->data_count);
 		tabprintf(tab, "inode_quota %ju\n",
 			  (uintmax_t)media.ipdata.inode_quota);
 		tabprintf(tab, "inode_count %ju\n",
-			  (uintmax_t)media.ipdata.inode_count);
+			  (uintmax_t)bref->inode_count);
 		tabprintf(tab, "attr_tid    0x%016jx\n",
 			  (uintmax_t)media.ipdata.attr_tid);
 		if (media.ipdata.type == HAMMER2_OBJTYPE_DIRECTORY) {
@@ -689,18 +689,23 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 			    media.bmdata[i].avail == 0) {
 				continue;
 			}
+#if HAMMER2_BMAP_ELEMENTS != 8
+#error "cmd_debug.c: HAMMER2_BMAP_ELEMENTS expected to be 8"
+#endif
+
 			tabprintf(tab + 4, "%04d.%04x (avail=%7d) "
-				  "%08x %08x %08x %08x %08x %08x %08x %08x\n",
+				  "%016jx %016jx %016jx %016jx "
+				  "%016jx %016jx %016jx %016jx\n",
 				  i, media.bmdata[i].class,
 				  media.bmdata[i].avail,
-				  media.bmdata[i].bitmap[0],
-				  media.bmdata[i].bitmap[1],
-				  media.bmdata[i].bitmap[2],
-				  media.bmdata[i].bitmap[3],
-				  media.bmdata[i].bitmap[4],
-				  media.bmdata[i].bitmap[5],
-				  media.bmdata[i].bitmap[6],
-				  media.bmdata[i].bitmap[7]);
+				  media.bmdata[i].bitmapq[0],
+				  media.bmdata[i].bitmapq[1],
+				  media.bmdata[i].bitmapq[2],
+				  media.bmdata[i].bitmapq[3],
+				  media.bmdata[i].bitmapq[4],
+				  media.bmdata[i].bitmapq[5],
+				  media.bmdata[i].bitmapq[6],
+				  media.bmdata[i].bitmapq[7]);
 		}
 		tabprintf(tab, "}\n");
 		break;

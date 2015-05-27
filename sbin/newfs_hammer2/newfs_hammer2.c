@@ -52,7 +52,7 @@
 #include <err.h>
 #include <uuid.h>
 
-#define MAXLABELS	4
+#define MAXLABELS	HAMMER2_SET_COUNT
 
 #define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
 #define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
@@ -142,7 +142,9 @@ main(int ac, char **av)
 				break;
 			}
 			if (NLabels >= MAXLABELS) {
-				errx(1, "Limit of 3 local labels");
+				errx(1,
+				     "Limit of %d local labels",
+				     MAXLABELS - 1);
 			}
 			Label[NLabels++] = optarg;
 			if (strlen(Label[NLabels-1]) > HAMMER2_INODE_MAXNAME) {
@@ -489,7 +491,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	hammer2_volume_data_t *vol;
 	hammer2_inode_data_t *rawip;
 	hammer2_blockref_t sroot_blockref;
-	hammer2_blockref_t root_blockref[MAXLABELS];	/* Max 4 labels */
+	hammer2_blockref_t root_blockref[MAXLABELS];
 	uint64_t now;
 	hammer2_off_t volu_base = 0;
 	hammer2_off_t boot_base = HAMMER2_ZONE_SEG;
@@ -659,10 +661,10 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	rawip->pfs_inum = 16;	/* first allocatable inode number */
 
 	/*
-	 * The super-root has a directory entry pointing to each local
-	 * PFS.  To avoid having to deal with indirect blocks we can't load
-	 * up more than 8 entries, but NLabels is restricted to 4 entries
-	 * to leave room for possible future mandatory PFSs.
+	 * Currently newfs_hammer2 just throws the PFS inodes into the
+	 * top-level block table at the volume root and doesn't try to
+	 * create an indirect block, so we are limited to ~4 at filesystem
+	 * creation time.  More can be added after mounting.
 	 */
 	qsort(root_blockref, NLabels, sizeof(root_blockref[0]), blkrefary_cmp);
 	for (i = 0; i < NLabels; ++i)

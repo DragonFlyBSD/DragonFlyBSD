@@ -391,7 +391,7 @@ HAMMER2 winds up with very low OS overhead.
 				FREEMAP NOTES
 
 The freemap is stored in the reserved blocks situated in the ~4MB reserved
-area at the baes of every ~2GB level-1 zone.  The current implementation
+area at the baes of every ~1GB level-1 zone.  The current implementation
 reserves 8 copies of every freemap block and cycles through them in order
 to make the freemap operate in a copy-on-write fashion.
 
@@ -407,9 +407,16 @@ goes it is really just a 4-level blockmap.
 
 The freemap radix allocation mechanism is also the same, meaning that it is
 bottom-up and will not allocate unnecessary intermediate levels for smaller
-filesystems.  A 16GB filesystem uses a 2-level blockmap (volume header + one
-level), a 16TB filesystem uses a 3-level blockmap (volume header + two levels),
-and so forth.
+filesystems.  The number of blockmap levels not including the volume header
+for various filesystem sizes is as follows:
+	
+	up-to		#of freemap levels
+	1GB		1-level
+	256GB		2-level
+	64TB		3-level
+	16PB		4-level
+	4EB		5-level
+	16EB		6-level
 
 The Freemap has bitmap granularity down to 16KB and a linear iterator that
 can linearly allocate space down to 1KB.  Due to fragmentation it is possible

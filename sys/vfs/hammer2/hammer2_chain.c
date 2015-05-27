@@ -1018,7 +1018,6 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	nbytes = 1U << nradix;
 	if (obytes == nbytes)
 		return;
-	chain->data_count += (ssize_t)(nbytes - obytes);
 
 	/*
 	 * Make sure the old data is instantiated so we can copy it.  If this
@@ -2286,20 +2285,6 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 			break;
 		}
-
-		/*
-		 * Set statistics for pending updates.  These will be
-		 * synchronized by the flush code.
-		 */
-		switch(type) {
-		case HAMMER2_BREF_TYPE_INODE:
-			chain->inode_count = 1;
-			break;
-		case HAMMER2_BREF_TYPE_DATA:
-		case HAMMER2_BREF_TYPE_INDIRECT:
-			chain->data_count = chain->bytes;
-			break;
-		}
 	} else {
 		/*
 		 * We are reattaching a previously deleted chain, possibly
@@ -2453,14 +2438,6 @@ again:
 		if ((chain->flags & HAMMER2_CHAIN_UPDATE) == 0) {
 			hammer2_chain_ref(chain);
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
-		}
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-		    (flags & HAMMER2_INSERT_NOSTATS) == 0) {
-			KKASSERT(chain->data);
-			chain->inode_count_up +=
-				chain->data->ipdata.inode_count;
-			chain->data_count_up +=
-				chain->data->ipdata.data_count;
 		}
 	}
 
@@ -2668,15 +2645,6 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		 * undone.  XXX split update possible w/delete in middle?
 		 */
 		if (base) {
-			if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-			    (flags & HAMMER2_DELETE_NOSTATS) == 0) {
-				KKASSERT(chain->data != NULL);
-				parent->data_count -=
-					chain->data->ipdata.data_count;
-				parent->inode_count -=
-					chain->data->ipdata.inode_count;
-			}
-
 			int cache_index = -1;
 			hammer2_base_delete(trans, parent, base, count,
 					    &cache_index, chain);
@@ -2693,14 +2661,6 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		 * inode adjustment statistics which must be undone.
 		 */
 		hammer2_spin_ex(&parent->core.spin);
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-		    (flags & HAMMER2_DELETE_NOSTATS) == 0) {
-			KKASSERT(chain->data != NULL);
-			chain->data_count_up -=
-				chain->data->ipdata.data_count;
-			chain->inode_count_up -=
-				chain->data->ipdata.inode_count;
-		}
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 		atomic_add_int(&parent->core.live_count, -1);
 		++parent->core.generation;
@@ -3202,6 +3162,9 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 		keybits = HAMMER2_FREEMAP_LEVEL4_RADIX;
 		break;
 	case HAMMER2_FREEMAP_LEVEL4_RADIX:
+		keybits = HAMMER2_FREEMAP_LEVEL5_RADIX;
+		break;
+	case HAMMER2_FREEMAP_LEVEL5_RADIX:
 		panic("hammer2_chain_indkey_freemap: level too high");
 		break;
 	default:

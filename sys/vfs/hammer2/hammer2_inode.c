@@ -1799,9 +1799,9 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 		bzero(&wipdata->pfs_clid, sizeof(wipdata->pfs_clid));
 		bzero(&wipdata->pfs_fsid, sizeof(wipdata->pfs_fsid));
 		wipdata->data_quota = 0;
-		wipdata->data_count = 0;
+		/* wipdata->data_count = 0; */
 		wipdata->inode_quota = 0;
-		wipdata->inode_count = 0;
+		/* wipdata->inode_count = 0; */
 		wipdata->attr_tid = 0;
 		wipdata->dirent_tid = 0;
 		bzero(&wipdata->u, sizeof(wipdata->u));

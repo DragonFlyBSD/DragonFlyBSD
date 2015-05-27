@@ -327,10 +327,6 @@ struct hammer2_chain {
 	struct hammer2_pfs	*pmp;		/* A PFS or super-root (spmp) */
 
 	hammer2_xid_t	flush_xid;		/* flush sequencing */
-	hammer2_key_t   data_count;		/* delta's to apply */
-	hammer2_key_t   inode_count;		/* delta's to apply */
-	hammer2_key_t   data_count_up;		/* delta's to apply */
-	hammer2_key_t   inode_count_up;		/* delta's to apply */
 	hammer2_io_t	*dio;			/* physical data buffer */
 	u_int		bytes;			/* physical data size */
 	u_int		flags;
