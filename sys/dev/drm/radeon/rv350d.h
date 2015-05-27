@@ -24,8 +24,6 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/rv350d.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 #ifndef __RV350D_H__
 #define __RV350D_H__

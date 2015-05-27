@@ -237,7 +237,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 
 	ret = radeon_framebuffer_init(rdev->ddev, &rfbdev->rfb, &mode_cmd, gobj);
 	if (ret) {
-		DRM_ERROR("failed to initalise framebuffer %d\n", ret);
+		DRM_ERROR("failed to initialize framebuffer %d\n", ret);
 		goto out_unref;
 	}
 

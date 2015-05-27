@@ -26,8 +26,6 @@
  * Authors:
  *    Kevin E. Martin <martin@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_drv.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #ifndef __RADEON_DRV_H__

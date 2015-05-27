@@ -36,7 +36,7 @@
 #endif
 
 static inline void
-writel(uint32_t value, void *addr)
+writel(uint32_t value, volatile void *addr)
 {
 	*(volatile uint32_t *)addr = value;
 }

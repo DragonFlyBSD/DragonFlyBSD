@@ -23,8 +23,6 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/avivod.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 #ifndef AVIVOD_H
 #define AVIVOD_H

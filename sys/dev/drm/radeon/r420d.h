@@ -24,10 +24,7 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/r420d.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #ifndef R420D_H
 #define R420D_H
 

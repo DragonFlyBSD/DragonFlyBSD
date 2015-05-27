@@ -24,6 +24,7 @@
  */
 
 #include <drm/drmP.h>
+#include <linux/firmware.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include <uapi_drm/radeon_drm.h>
@@ -31,23 +32,162 @@
 #include "atom.h"
 #include "ni_reg.h"
 #include "cayman_blit_shaders.h"
+#include "radeon_ucode.h"
+#include "clearstate_cayman.h"
 
-extern bool evergreen_is_display_hung(struct radeon_device *rdev);
+static u32 tn_rlc_save_restore_register_list[] =
+{
+	0x98fc,
+	0x98f0,
+	0x9834,
+	0x9838,
+	0x9870,
+	0x9874,
+	0x8a14,
+	0x8b24,
+	0x8bcc,
+	0x8b10,
+	0x8c30,
+	0x8d00,
+	0x8d04,
+	0x8c00,
+	0x8c04,
+	0x8c10,
+	0x8c14,
+	0x8d8c,
+	0x8cf0,
+	0x8e38,
+	0x9508,
+	0x9688,
+	0x9608,
+	0x960c,
+	0x9610,
+	0x9614,
+	0x88c4,
+	0x8978,
+	0x88d4,
+	0x900c,
+	0x9100,
+	0x913c,
+	0x90e8,
+	0x9354,
+	0xa008,
+	0x98f8,
+	0x9148,
+	0x914c,
+	0x3f94,
+	0x98f4,
+	0x9b7c,
+	0x3f8c,
+	0x8950,
+	0x8954,
+	0x8a18,
+	0x8b28,
+	0x9144,
+	0x3f90,
+	0x915c,
+	0x9160,
+	0x9178,
+	0x917c,
+	0x9180,
+	0x918c,
+	0x9190,
+	0x9194,
+	0x9198,
+	0x919c,
+	0x91a8,
+	0x91ac,
+	0x91b0,
+	0x91b4,
+	0x91b8,
+	0x91c4,
+	0x91c8,
+	0x91cc,
+	0x91d0,
+	0x91d4,
+	0x91e0,
+	0x91e4,
+	0x91ec,
+	0x91f0,
+	0x91f4,
+	0x9200,
+	0x9204,
+	0x929c,
+	0x8030,
+	0x9150,
+	0x9a60,
+	0x920c,
+	0x9210,
+	0x9228,
+	0x922c,
+	0x9244,
+	0x9248,
+	0x91e8,
+	0x9294,
+	0x9208,
+	0x9224,
+	0x9240,
+	0x9220,
+	0x923c,
+	0x9258,
+	0x9744,
+	0xa200,
+	0xa204,
+	0xa208,
+	0xa20c,
+	0x8d58,
+	0x9030,
+	0x9034,
+	0x9038,
+	0x903c,
+	0x9040,
+	0x9654,
+	0x897c,
+	0xa210,
+	0xa214,
+	0x9868,
+	0xa02c,
+	0x9664,
+	0x9698,
+	0x949c,
+	0x8e10,
+	0x8e18,
+	0x8c50,
+	0x8c58,
+	0x8c60,
+	0x8c68,
+	0x89b4,
+	0x9830,
+	0x802c,
+};
+static u32 tn_rlc_save_restore_register_list_size = ARRAY_SIZE(tn_rlc_save_restore_register_list);
+
 extern void evergreen_print_gpu_status_regs(struct radeon_device *rdev);
 extern void evergreen_pcie_gen2_enable(struct radeon_device *rdev);
+extern void evergreen_program_aspm(struct radeon_device *rdev);
 
-#define EVERGREEN_PFP_UCODE_SIZE 1120
-#define EVERGREEN_PM4_UCODE_SIZE 1376
-#define EVERGREEN_RLC_UCODE_SIZE 768
-#define BTC_MC_UCODE_SIZE 6024
-
-#define CAYMAN_PFP_UCODE_SIZE 2176
-#define CAYMAN_PM4_UCODE_SIZE 2176
-#define CAYMAN_RLC_UCODE_SIZE 1024
-#define CAYMAN_MC_UCODE_SIZE 6037
-
-#define ARUBA_RLC_UCODE_SIZE 1536
-
+/* Firmware Names */
+MODULE_FIRMWARE("radeon/BARTS_pfp.bin");
+MODULE_FIRMWARE("radeon/BARTS_me.bin");
+MODULE_FIRMWARE("radeon/BARTS_mc.bin");
+MODULE_FIRMWARE("radeon/BARTS_smc.bin");
+MODULE_FIRMWARE("radeon/BTC_rlc.bin");
+MODULE_FIRMWARE("radeon/TURKS_pfp.bin");
+MODULE_FIRMWARE("radeon/TURKS_me.bin");
+MODULE_FIRMWARE("radeon/TURKS_mc.bin");
+MODULE_FIRMWARE("radeon/TURKS_smc.bin");
+MODULE_FIRMWARE("radeon/CAICOS_pfp.bin");
+MODULE_FIRMWARE("radeon/CAICOS_me.bin");
+MODULE_FIRMWARE("radeon/CAICOS_mc.bin");
+MODULE_FIRMWARE("radeon/CAICOS_smc.bin");
+MODULE_FIRMWARE("radeon/CAYMAN_pfp.bin");
+MODULE_FIRMWARE("radeon/CAYMAN_me.bin");
+MODULE_FIRMWARE("radeon/CAYMAN_mc.bin");
+MODULE_FIRMWARE("radeon/CAYMAN_rlc.bin");
+MODULE_FIRMWARE("radeon/CAYMAN_smc.bin");
+MODULE_FIRMWARE("radeon/ARUBA_pfp.bin");
+MODULE_FIRMWARE("radeon/ARUBA_me.bin");
+MODULE_FIRMWARE("radeon/ARUBA_rlc.bin");
 
 static const u32 cayman_golden_registers2[] =
 {
@@ -535,6 +675,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 	const char *chip_name;
 	const char *rlc_chip_name;
 	size_t pfp_req_size, me_req_size, rlc_req_size, mc_req_size;
+	size_t smc_req_size = 0;
 	char fw_name[30];
 	int err;
 
@@ -548,6 +689,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 		me_req_size = EVERGREEN_PM4_UCODE_SIZE * 4;
 		rlc_req_size = EVERGREEN_RLC_UCODE_SIZE * 4;
 		mc_req_size = BTC_MC_UCODE_SIZE * 4;
+		smc_req_size = ALIGN(BARTS_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_TURKS:
 		chip_name = "TURKS";
@@ -556,6 +698,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 		me_req_size = EVERGREEN_PM4_UCODE_SIZE * 4;
 		rlc_req_size = EVERGREEN_RLC_UCODE_SIZE * 4;
 		mc_req_size = BTC_MC_UCODE_SIZE * 4;
+		smc_req_size = ALIGN(TURKS_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_CAICOS:
 		chip_name = "CAICOS";
@@ -564,6 +707,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 		me_req_size = EVERGREEN_PM4_UCODE_SIZE * 4;
 		rlc_req_size = EVERGREEN_RLC_UCODE_SIZE * 4;
 		mc_req_size = BTC_MC_UCODE_SIZE * 4;
+		smc_req_size = ALIGN(CAICOS_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_CAYMAN:
 		chip_name = "CAYMAN";
@@ -572,6 +716,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 		me_req_size = CAYMAN_PM4_UCODE_SIZE * 4;
 		rlc_req_size = CAYMAN_RLC_UCODE_SIZE * 4;
 		mc_req_size = CAYMAN_MC_UCODE_SIZE * 4;
+		smc_req_size = ALIGN(CAYMAN_SMC_UCODE_SIZE, 4);
 		break;
 	case CHIP_ARUBA:
 		chip_name = "ARUBA";
@@ -596,7 +741,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 	}
 	if (rdev->pfp_fw->datasize != pfp_req_size) {
 		DRM_ERROR(
-		       "ni_cp: Bogus length %zu in firmware \"%s\"\n",
+		       "ni_pfp: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->pfp_fw->datasize, fw_name);
 		err = -EINVAL;
 		goto out;
@@ -610,7 +755,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 	}
 	if (rdev->me_fw->datasize != me_req_size) {
 		DRM_ERROR(
-		       "ni_cp: Bogus length %zu in firmware \"%s\"\n",
+		       "ni_me: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->me_fw->datasize, fw_name);
 		err = -EINVAL;
 	}
@@ -645,6 +790,24 @@ int ni_init_microcode(struct radeon_device *rdev)
 			err = -EINVAL;
 		}
 	}
+
+	if ((rdev->family >= CHIP_BARTS) && (rdev->family <= CHIP_CAYMAN)) {
+		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_smc", chip_name);
+		err = request_firmware(&rdev->smc_fw, fw_name, rdev->dev);
+		if (err) {
+			printk(KERN_ERR
+			       "smc: error loading firmware \"%s\"\n",
+			       fw_name);
+			release_firmware(rdev->smc_fw);
+			rdev->smc_fw = NULL;
+		} else if (rdev->smc_fw->datasize != smc_req_size) {
+			printk(KERN_ERR
+			       "ni_smc: Bogus length %zu in firmware \"%s\"\n",
+			       rdev->smc_fw->datasize, fw_name);
+			err = -EINVAL;
+		}
+	}
+
 out:
 	if (err) {
 		if (err != -EINVAL)
@@ -666,6 +829,10 @@ out:
 		if (rdev->mc_fw != NULL) {
 			firmware_put(rdev->mc_fw, FIRMWARE_UNLOAD);
 			rdev->mc_fw = NULL;
+		}
+		if (rdev->smc_fw != NULL) {
+			firmware_put(rdev->smc_fw, FIRMWARE_UNLOAD);
+			rdev->smc_fw = NULL;
 		}
 	}
 	return err;
@@ -703,6 +870,14 @@ void ni_fini_microcode(struct radeon_device *rdev)
 	}
 }
 
+
+int tn_get_temp(struct radeon_device *rdev)
+{
+	u32 temp = RREG32_SMC(TN_CURRENT_GNB_TEMP) & 0x7ff;
+	int actual_temp = (temp / 8) - 49;
+
+	return actual_temp * 1000;
+}
 
 /*
  * Core functions
@@ -1039,6 +1214,16 @@ static void cayman_gpu_init(struct radeon_device *rdev)
 	WREG32(PA_CL_ENHANCE, CLIP_VTX_REORDER_ENA | NUM_CLIP_SEQ(3));
 
 	DRM_UDELAY(50);
+
+	/* set clockgating golden values on TN */
+	if (rdev->family == CHIP_ARUBA) {
+		tmp = RREG32_CG(CG_CGTT_LOCAL_0);
+		tmp &= ~0x00380000;
+		WREG32_CG(CG_CGTT_LOCAL_0, tmp);
+                tmp = RREG32_CG(CG_CGTT_LOCAL_1);
+		tmp &= ~0x0e000000;
+		WREG32_CG(CG_CGTT_LOCAL_1, tmp);
+	}
 }
 
 /*
@@ -1940,6 +2125,10 @@ static int cayman_startup(struct radeon_device *rdev)
 
 	/* enable pcie gen2 link */
 	evergreen_pcie_gen2_enable(rdev);
+	/* enable aspm */
+	evergreen_program_aspm(rdev);
+
+	evergreen_mc_program(rdev);
 
 	if (rdev->flags & RADEON_IS_IGP) {
 		if (!rdev->me_fw || !rdev->pfp_fw || !rdev->rlc_fw) {
@@ -1969,7 +2158,6 @@ static int cayman_startup(struct radeon_device *rdev)
 	if (r)
 		return r;
 
-	evergreen_mc_program(rdev);
 	r = cayman_pcie_gart_enable(rdev);
 	if (r)
 		return r;
@@ -1984,7 +2172,10 @@ static int cayman_startup(struct radeon_device *rdev)
 
 	/* allocate rlc buffers */
 	if (rdev->flags & RADEON_IS_IGP) {
-		r = si_rlc_init(rdev);
+		rdev->rlc.reg_list = tn_rlc_save_restore_register_list;
+		rdev->rlc.reg_list_size = tn_rlc_save_restore_register_list_size;
+		rdev->rlc.cs_data = cayman_cs_data;
+		r = sumo_rlc_init(rdev);
 		if (r) {
 			DRM_ERROR("Failed to init rlc BOs!\n");
 			return r;
@@ -2145,7 +2336,7 @@ int cayman_suspend(struct radeon_device *rdev)
 	radeon_vm_manager_fini(rdev);
 	cayman_cp_enable(rdev, false);
 	cayman_dma_stop(rdev);
-	r600_uvd_rbc_stop(rdev);
+	r600_uvd_stop(rdev);
 	radeon_uvd_suspend(rdev);
 	evergreen_irq_suspend(rdev);
 	radeon_wb_disable(rdev);
@@ -2241,7 +2432,7 @@ int cayman_init(struct radeon_device *rdev)
 		cayman_dma_fini(rdev);
 		r600_irq_fini(rdev);
 		if (rdev->flags & RADEON_IS_IGP)
-			si_rlc_fini(rdev);
+			sumo_rlc_fini(rdev);
 		radeon_wb_fini(rdev);
 		radeon_ib_pool_fini(rdev);
 		radeon_vm_manager_fini(rdev);
@@ -2272,11 +2463,12 @@ void cayman_fini(struct radeon_device *rdev)
 	cayman_dma_fini(rdev);
 	r600_irq_fini(rdev);
 	if (rdev->flags & RADEON_IS_IGP)
-		si_rlc_fini(rdev);
+		sumo_rlc_fini(rdev);
 	radeon_wb_fini(rdev);
 	radeon_vm_manager_fini(rdev);
 	radeon_ib_pool_fini(rdev);
 	radeon_irq_kms_fini(rdev);
+	r600_uvd_stop(rdev);
 	radeon_uvd_fini(rdev);
 	cayman_pcie_gart_fini(rdev);
 	r600_vram_scratch_fini(rdev);
@@ -2308,6 +2500,167 @@ int cayman_vm_init(struct radeon_device *rdev)
 
 void cayman_vm_fini(struct radeon_device *rdev)
 {
+}
+
+/**
+ * cayman_vm_decode_fault - print human readable fault info
+ *
+ * @rdev: radeon_device pointer
+ * @status: VM_CONTEXT1_PROTECTION_FAULT_STATUS register value
+ * @addr: VM_CONTEXT1_PROTECTION_FAULT_ADDR register value
+ *
+ * Print human readable fault information (cayman/TN).
+ */
+void cayman_vm_decode_fault(struct radeon_device *rdev,
+			    u32 status, u32 addr)
+{
+	u32 mc_id = (status & MEMORY_CLIENT_ID_MASK) >> MEMORY_CLIENT_ID_SHIFT;
+	u32 vmid = (status & FAULT_VMID_MASK) >> FAULT_VMID_SHIFT;
+	u32 protections = (status & PROTECTIONS_MASK) >> PROTECTIONS_SHIFT;
+	char *block;
+
+	switch (mc_id) {
+	case 32:
+	case 16:
+	case 96:
+	case 80:
+	case 160:
+	case 144:
+	case 224:
+	case 208:
+		block = "CB";
+		break;
+	case 33:
+	case 17:
+	case 97:
+	case 81:
+	case 161:
+	case 145:
+	case 225:
+	case 209:
+		block = "CB_FMASK";
+		break;
+	case 34:
+	case 18:
+	case 98:
+	case 82:
+	case 162:
+	case 146:
+	case 226:
+	case 210:
+		block = "CB_CMASK";
+		break;
+	case 35:
+	case 19:
+	case 99:
+	case 83:
+	case 163:
+	case 147:
+	case 227:
+	case 211:
+		block = "CB_IMMED";
+		break;
+	case 36:
+	case 20:
+	case 100:
+	case 84:
+	case 164:
+	case 148:
+	case 228:
+	case 212:
+		block = "DB";
+		break;
+	case 37:
+	case 21:
+	case 101:
+	case 85:
+	case 165:
+	case 149:
+	case 229:
+	case 213:
+		block = "DB_HTILE";
+		break;
+	case 38:
+	case 22:
+	case 102:
+	case 86:
+	case 166:
+	case 150:
+	case 230:
+	case 214:
+		block = "SX";
+		break;
+	case 39:
+	case 23:
+	case 103:
+	case 87:
+	case 167:
+	case 151:
+	case 231:
+	case 215:
+		block = "DB_STEN";
+		break;
+	case 40:
+	case 24:
+	case 104:
+	case 88:
+	case 232:
+	case 216:
+	case 168:
+	case 152:
+		block = "TC_TFETCH";
+		break;
+	case 41:
+	case 25:
+	case 105:
+	case 89:
+	case 233:
+	case 217:
+	case 169:
+	case 153:
+		block = "TC_VFETCH";
+		break;
+	case 42:
+	case 26:
+	case 106:
+	case 90:
+	case 234:
+	case 218:
+	case 170:
+	case 154:
+		block = "VC";
+		break;
+	case 112:
+		block = "CP";
+		break;
+	case 113:
+	case 114:
+		block = "SH";
+		break;
+	case 115:
+		block = "VGT";
+		break;
+	case 178:
+		block = "IH";
+		break;
+	case 51:
+		block = "RLC";
+		break;
+	case 55:
+		block = "DMA";
+		break;
+	case 56:
+		block = "HDP";
+		break;
+	default:
+		block = "unknown";
+		break;
+	}
+
+	printk("VM fault (0x%02x, vmid %d) at page %u, %s from %s (%d)\n",
+	       protections, vmid, addr,
+	       (status & MEMORY_CLIENT_RW_MASK) ? "write" : "read",
+	       block, mc_id);
 }
 
 #define R600_ENTRY_VALID   (1 << 0)

@@ -22,10 +22,7 @@
  * based on nouveau_prime.c
  *
  * Authors: Alex Deucher
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_prime.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 
 #include "radeon.h"
@@ -91,11 +88,19 @@ int radeon_gem_prime_pin(struct drm_gem_object *obj)
 
 	/* pin buffer into GTT */
 	ret = radeon_bo_pin(bo, RADEON_GEM_DOMAIN_GTT, NULL);
-	if (ret) {
-		radeon_bo_unreserve(bo);
-		return ret;
-	}
 	radeon_bo_unreserve(bo);
+	return ret;
+}
 
-	return 0;
+void radeon_gem_prime_unpin(struct drm_gem_object *obj)
+{
+	struct radeon_bo *bo = gem_to_radeon_bo(obj);
+	int ret = 0;
+
+	ret = radeon_bo_reserve(bo, false);
+	if (unlikely(ret != 0))
+		return;
+
+	radeon_bo_unpin(bo);
+	radeon_bo_unreserve(bo);
 }

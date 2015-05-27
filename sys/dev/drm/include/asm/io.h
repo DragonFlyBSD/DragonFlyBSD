@@ -51,6 +51,11 @@ static inline void __iomem *ioremap_wc(resource_size_t phys_addr, unsigned long 
 	return pmap_mapdev_attr(phys_addr, size, VM_MEMATTR_WRITE_COMBINING);
 }
 
+static inline void iounmap(void __iomem *ptr, unsigned long size)
+{
+	pmap_unmapdev((vm_offset_t) ptr, size);
+}
+
 #define mmiowb cpu_sfence
 
 #endif	/* _ASM_IO_H_ */

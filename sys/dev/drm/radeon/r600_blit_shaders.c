@@ -22,8 +22,6 @@
  *
  * Authors:
  *     Alex Deucher <alexander.deucher@amd.com>
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/r600_blit_shaders.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #include <drm/drmP.h>

@@ -38,6 +38,7 @@
 #ifdef DUMBBELL_WIP
 #include "radeon_trace.h"
 #endif /* DUMBBELL_WIP */
+#include <linux/io.h>
 
 
 static void radeon_bo_clear_surface_reg(struct radeon_bo *bo);
@@ -328,8 +329,7 @@ int radeon_bo_init(struct radeon_device *rdev)
 {
 	/* Add an MTRR for the VRAM */
 	if (!rdev->fastfb_working) {
-		rdev->mc.vram_mtrr = drm_mtrr_add(rdev->mc.aper_base, rdev->mc.aper_size,
-			DRM_MTRR_WC);
+		rdev->mc.vram_mtrr = arch_phys_wc_add(rdev->mc.aper_base, rdev->mc.aper_size);
 	}
 	DRM_INFO("Detected VRAM RAM=%juM, BAR=%juM\n",
 		(uintmax_t)rdev->mc.mc_vram_size >> 20,
@@ -342,6 +342,7 @@ int radeon_bo_init(struct radeon_device *rdev)
 void radeon_bo_fini(struct radeon_device *rdev)
 {
 	radeon_ttm_fini(rdev);
+	arch_phys_wc_del(rdev->mc.vram_mtrr);
 }
 
 void radeon_bo_list_add_object(struct radeon_bo_list *lobj,

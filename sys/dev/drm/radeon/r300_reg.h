@@ -23,8 +23,6 @@
  *
  * Authors: Nicolai Haehnle
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/r300_reg.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 #ifndef _R300_REG_H_
 #define _R300_REG_H_

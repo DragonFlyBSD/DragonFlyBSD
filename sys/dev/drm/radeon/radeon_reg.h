@@ -24,8 +24,6 @@
  * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_reg.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 /*
@@ -50,7 +48,6 @@
 /* !!!! FIXME !!!!  NOTE: THIS FILE HAS BEEN CONVERTED FROM r128_reg.h
  * AND CONTAINS REGISTERS AND REGISTER DEFINITIONS THAT ARE NOT CORRECT
  * ON THE RADEON.  A FULL AUDIT OF THIS CODE IS NEEDED!  */
-
 #ifndef _RADEON_REG_H_
 #define _RADEON_REG_H_
 
@@ -60,6 +57,7 @@
 #include "evergreen_reg.h"
 #include "ni_reg.h"
 #include "si_reg.h"
+#include "cik_reg.h"
 
 #define RADEON_MC_AGP_LOCATION		0x014c
 #define		RADEON_MC_AGP_START_MASK	0x0000FFFF

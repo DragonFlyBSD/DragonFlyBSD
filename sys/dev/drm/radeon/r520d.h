@@ -24,8 +24,6 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/r520d.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 #ifndef __R520D_H__
 #define __R520D_H__

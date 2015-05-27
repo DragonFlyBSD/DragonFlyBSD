@@ -1,4 +1,3 @@
-/* $FreeBSD: head/sys/dev/drm2/radeon/r100_track.h 254885 2013-08-25 19:37:15Z dumbbell $ */
 
 #define R100_TRACK_MAX_TEXTURE 3
 #define R200_TRACK_MAX_TEXTURE 6

@@ -20,8 +20,6 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  * Authors: Alex Deucher
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/ni_reg.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 #ifndef __NI_REG_H__
 #define __NI_REG_H__

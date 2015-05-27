@@ -1,5 +1,3 @@
-/* $FreeBSD: head/sys/dev/drm2/radeon/radeon_legacy_tv.c 254885 2013-08-25 19:37:15Z dumbbell $ */
-
 #include <drm/drmP.h>
 #include <drm/drm_crtc_helper.h>
 #include "radeon.h"
