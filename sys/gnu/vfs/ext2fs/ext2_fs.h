@@ -301,7 +301,9 @@ struct ext2_inode {
 			__u8	l_i_frag;	/* Fragment number */
 			__u8	l_i_fsize;	/* Fragment size */
 			__u16	i_pad1;
-			__u32	l_i_reserved2[2];
+			__u16	l_i_uid_high;	/* these 2 fields    */
+			__u16	l_i_gid_high;	/* were reserved2[0] */
+			__u32	l_i_reserved2;
 		} linux2;
 		struct {
 			__u8	h_i_frag;	/* Fragment number */
@@ -326,6 +328,10 @@ struct ext2_inode {
 #define i_reserved1	osd1.linux1.l_i_reserved1
 #define i_frag		osd2.linux2.l_i_frag
 #define i_fsize		osd2.linux2.l_i_fsize
+#define i_uid_low	i_uid
+#define i_gid_low	i_gid
+#define i_uid_high	osd2.linux2.l_i_uid_high
+#define i_gid_high	osd2.linux2.l_i_gid_high
 #define i_reserved2	osd2.linux2.l_i_reserved2
 #endif
 
@@ -366,6 +372,14 @@ struct ext2_inode {
 #define EXT2_MOUNT_ERRORS_RO		0x0020	/* Remount fs ro on errors */
 #define EXT2_MOUNT_ERRORS_PANIC		0x0040	/* Panic on errors */
 #define EXT2_MOUNT_MINIX_DF		0x0080	/* Mimics the Minix statfs */
+#define EXT2_MOUNT_NOBH			0x000100  /* No buffer_heads */
+#define EXT2_MOUNT_NO_UID32		0x000200  /* Disable 32-bit UIDs */
+#define EXT2_MOUNT_XATTR_USER		0x004000  /* Extended user attributes */
+#define EXT2_MOUNT_POSIX_ACL		0x008000  /* POSIX Access Control Lists */
+#define EXT2_MOUNT_XIP			0x010000  /* Obsolete, use DAX */
+#define EXT2_MOUNT_USRQUOTA		0x020000  /* user quota */
+#define EXT2_MOUNT_GRPQUOTA		0x040000  /* group quota */
+#define EXT2_MOUNT_RESERVATION		0x080000  /* Preallocation */
 
 #define clear_opt(o, opt)		o &= ~EXT2_MOUNT_##opt
 #define set_opt(o, opt)			o |= EXT2_MOUNT_##opt
@@ -444,7 +458,20 @@ struct ext2_super_block {
 	__u8	s_prealloc_blocks;	/* Nr of blocks to try to preallocate*/
 	__u8	s_prealloc_dir_blocks;	/* Nr to preallocate for dirs */
 	__u16	s_padding1;
-	__u32	s_reserved[204];	/* Padding to the end of the block */
+	/*
+	 * Journaling support for ext3.
+	 */
+	__u8	s_journal_uuid[16];	/* uuid of journal superblock */
+	__u32	s_journal_inum;		/* inode number of journal file */
+	__u32	s_journal_dev;		/* device number of journal file */
+	__u32	s_last_orphan;		/* start of list of inodes to delete */
+	__u32	s_hash_seed[4];		/* HTREE hash seed */
+	__u8	s_def_hash_version;	/* Default hash version to use */
+	__u8	s_reserved_char_pad;
+	__u16	s_reserved_word_pad;
+	__u32	s_default_mount_opts;
+	__u32	s_first_meta_bg; 	/* First metablock block group */
+	__u32	s_reserved[190];	/* Padding to the end of the block */
 };
 
 #ifdef __KERNEL__
@@ -562,5 +589,6 @@ struct ext2_dir_entry_2 {
 #define EXT2_DIR_ROUND 			(EXT2_DIR_PAD - 1)
 #define EXT2_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT2_DIR_ROUND) & \
 					 ~EXT2_DIR_ROUND)
+#define EXT2_MAX_REC_LEN		((1<<16)-1)
 
 #endif	/* _LINUX_EXT2_FS_H */
