@@ -120,9 +120,10 @@
  * 400104 - struct lwp_params (a public struct) members renaming
  * 400105 - Switch to gcc50 as the primary compiler
  * 400106 - Added pipe2() system call
+ * 400107 - Add futimens() and utimensat() syscalls
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400106	/* propagated to newvers */
+#define __DragonFly_version 400107	/* propagated to newvers */
 
 #include <sys/_null.h>
 
