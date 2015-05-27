@@ -1079,19 +1079,17 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 	}
 
 	/*
-	 * Data must be resolved if already assigned unless explicitly
+	 * Data must be resolved if already assigned, unless explicitly
 	 * flagged otherwise.
 	 */
 	if (chain->data == NULL && (flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
 	    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
-		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_unlock(chain);
+		hammer2_chain_load_data(chain);
 	}
 
 	/*
-	 * Otherwise do initial-chain handling.  Set MODIFIED to indicate
-	 * that the chain has been modified.  Set UPDATE to ensure that
-	 * the blockref is updated in the parent.
+	 * Set MODIFIED to indicate that the chain has been modified.
+	 * Set UPDATE to ensure that the blockref is updated in the parent.
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
