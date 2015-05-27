@@ -3405,7 +3405,7 @@ getutimens(const struct timespec *ts, struct timespec *newts, int *nullflag)
 
 	*nullflag = 0;
 	nanotime(&tsnow);
-	if (!ts) {
+	if (ts == NULL) {
 		newts[0] = tsnow;
 		newts[1] = tsnow;
 		*nullflag = 1;
@@ -3459,9 +3459,10 @@ kern_utimes(struct nlookupdata *nd, struct timeval *tptr)
 	struct timespec ts[2];
 	int error;
 
-	if (tptr)
+	if (tptr) {
 		if ((error = getutimes(tptr, ts)) != 0)
 			return (error);
+	}
 	error = kern_utimensat(nd, tptr ? ts : NULL, 0);
 	return (error);
 }
