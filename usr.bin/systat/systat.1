@@ -267,15 +267,15 @@ The following commands are specific to the
 display; the minimum unambiguous prefix may be supplied.
 .Pp
 .Bl -tag -width Fl -compact
-.It Ic type Op Ar types
-Display only the sensors match the specified
-.Ar types .
+.It Ic type Op Ar type ...
+Display only the sensors which match the specified
+.Ar type .
 Multiple types may be specified,
 separated by spaces.
 If no types are specified,
 all available sensors will be displayed.
-Supported
-.Ar types
+Supported values of
+.Ar type
 are
 .Cm temp ,
 .Cm fan ,
@@ -294,9 +294,9 @@ are
 .Cm timedelta ,
 and
 .Cm ecc .
-.It Ic match Op Ar devices
+.It Ic match Op Ar device ...
 Display only the sensors match the specified
-.Ar devices .
+.Ar device .
 Multiple devices may be specified,
 separated by spaces.
 If no devices are specified,
@@ -308,7 +308,6 @@ in the place of the device unit.
 For example:
 .Pp
 .Dl match cpu*
-.Pp
 .El
 .It Ic swap
 Show information about swap space usage on all the
