@@ -2,10 +2,8 @@
 
 LIB=	hammer
 SHLIBDIR?= /lib
-SRCS=	crc32.c info.c misc.c stats.c snapshot.c compat.c
+SRCS=	crc32.c icrc32.c info.c misc.c stats.c snapshot.c compat.c
 INCS=	libhammer.h
-
-SRCS+= crc32.c
 
 MAN+=	 libhammer.3
 MAN+=	 libhammer_fsinfo.3

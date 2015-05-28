@@ -13,6 +13,6 @@ LDADD=	-lm -lutil -lmd -lhammer
 DPADD=	${LIBM} ${LIBUTIL} ${LIBMD} ${LIBHAMMER}
 
 .PATH: ${.CURDIR}/../../sys/libkern
-SRCS+= crc32.c
+SRCS+= crc32.c icrc32.c
 
 .include <bsd.prog.mk>
