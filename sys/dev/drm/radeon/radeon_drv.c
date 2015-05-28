@@ -84,7 +84,9 @@
 int radeon_suspend_kms(struct drm_device *dev);
 int radeon_resume_kms(struct drm_device *dev);
 extern int radeon_get_crtc_scanoutpos(struct drm_device *dev, int crtc,
-				      int *vpos, int *hpos);
+				      unsigned int flags,
+				      int *vpos, int *hpos, ktime_t *stime,
+				      ktime_t *etime);
 extern struct drm_ioctl_desc radeon_ioctls_kms[];
 extern int radeon_max_kms_ioctl;
 #ifdef DUMBBELL_WIP

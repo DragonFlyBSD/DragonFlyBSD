@@ -5214,7 +5214,7 @@ static void hsw_power_well_post_disable(struct drm_i915_private *dev_priv)
 	lockmgr(&dev->vbl_lock, LK_EXCLUSIVE);
 	for_each_pipe(p)
 		if (p != PIPE_A)
-			dev->last_vblank[p] = 0;
+			dev->vblank[p].last = 0;
 	lockmgr(&dev->vbl_lock, LK_RELEASE);
 }
 

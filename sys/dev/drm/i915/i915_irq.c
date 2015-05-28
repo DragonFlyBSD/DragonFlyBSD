@@ -632,7 +632,8 @@ static bool ilk_pipe_in_vblank_locked(struct drm_device *dev, enum i915_pipe pip
 }
 
 static int i915_get_crtc_scanoutpos(struct drm_device *dev, int pipe,
-			     int *vpos, int *hpos)
+				    unsigned int flags, int *vpos, int *hpos,
+				    ktime_t *stime, ktime_t *etime)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_crtc *crtc = dev_priv->pipe_to_crtc_mapping[pipe];
@@ -672,10 +673,8 @@ static int i915_get_crtc_scanoutpos(struct drm_device *dev, int pipe,
 	/* preempt_disable_rt() should go right here in PREEMPT_RT patchset. */
 
 	/* Get optional system timestamp before query. */
-#if 0
 	if (stime)
 		*stime = ktime_get();
-#endif
 
 	if (IS_GEN2(dev) || IS_G4X(dev) || INTEL_INFO(dev)->gen >= 5) {
 		/* No obvious pixelcount register. Only query vertical
@@ -735,7 +734,6 @@ static int i915_get_crtc_scanoutpos(struct drm_device *dev, int pipe,
 			 * delivery really got delayed for almost exactly one
 			 * full frame/field.
 			 */
-#if 0
 			if (flags & DRM_CALLED_FROM_VBLIRQ &&
 			    position == vbl_start - 1) {
 				position = (position + 1) % vtotal;
@@ -743,7 +741,6 @@ static int i915_get_crtc_scanoutpos(struct drm_device *dev, int pipe,
 				/* Signal this correction as "applied". */
 				ret |= 0x8;
 			}
-#endif
 		}
 	} else {
 		/* Have access to pixelcount since start of frame.
@@ -759,10 +756,8 @@ static int i915_get_crtc_scanoutpos(struct drm_device *dev, int pipe,
 	}
 
 	/* Get optional system timestamp after query. */
-#if 0
 	if (etime)
 		*etime = ktime_get();
-#endif
 
 	/* preempt_enable_rt() should go right here in PREEMPT_RT patchset. */
 
@@ -823,7 +818,8 @@ static int i915_get_vblank_timestamp(struct drm_device *dev, int pipe,
 	/* Helper routine in DRM core does all the work: */
 	return drm_calc_vbltimestamp_from_scanoutpos(dev, pipe, max_error,
 						     vblank_time, flags,
-						     crtc);
+						     crtc,
+						     &to_intel_crtc(crtc)->config.adjusted_mode);
 }
 
 static bool intel_hpd_irq_event(struct drm_device *dev,

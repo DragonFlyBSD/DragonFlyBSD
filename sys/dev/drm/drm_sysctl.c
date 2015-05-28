@@ -38,7 +38,6 @@ static int	   drm_name_info DRM_SYSCTL_HANDLER_ARGS;
 static int	   drm_vm_info DRM_SYSCTL_HANDLER_ARGS;
 static int	   drm_clients_info DRM_SYSCTL_HANDLER_ARGS;
 static int	   drm_bufs_info DRM_SYSCTL_HANDLER_ARGS;
-static int	   drm_vblank_info DRM_SYSCTL_HANDLER_ARGS;
 
 struct drm_sysctl_list {
 	const char *name;
@@ -48,7 +47,6 @@ struct drm_sysctl_list {
 	{"vm",	    drm_vm_info},
 	{"clients", drm_clients_info},
 	{"bufs",    drm_bufs_info},
-	{"vblank",    drm_vblank_info},
 };
 #define DRM_SYSCTL_ENTRIES NELEM(drm_sysctl_list)
 
@@ -321,31 +319,5 @@ static int drm_clients_info DRM_SYSCTL_HANDLER_ARGS
 	SYSCTL_OUT(req, "", 1);
 done:
 	drm_free(tempprivs, M_DRM);
-	return retcode;
-}
-
-static int drm_vblank_info DRM_SYSCTL_HANDLER_ARGS
-{
-	struct drm_device *dev = arg1;
-	char buf[128];
-	int retcode;
-	int i;
-
-	DRM_SYSCTL_PRINT("\ncrtc ref count    last     enabled inmodeset\n");
-	DRM_LOCK(dev);
-	if (dev->_vblank_count == NULL)
-		goto done;
-	for (i = 0 ; i < dev->num_crtcs ; i++) {
-		DRM_SYSCTL_PRINT("  %02d  %02d %08d %08d %02d      %02d\n",
-		    i, dev->vblank_refcount[i].counter,
-		    dev->_vblank_count[i].counter,
-		    dev->last_vblank[i],
-		    dev->vblank_enabled[i],
-		    dev->vblank_inmodeset[i]);
-	}
-done:
-	DRM_UNLOCK(dev);
-
-	SYSCTL_OUT(req, "", -1);
 	return retcode;
 }

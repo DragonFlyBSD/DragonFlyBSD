@@ -822,8 +822,41 @@ struct drm_driver {
 	u32	(*get_vblank_counter)(struct drm_device *dev, int crtc);
 	int	(*enable_vblank)(struct drm_device *dev, int crtc);
 	void	(*disable_vblank)(struct drm_device *dev, int crtc);
-	int	(*get_scanout_position)(struct drm_device *dev, int crtc,
-		    int *vpos, int *hpos);
+
+	/**
+	 * Called by vblank timestamping code.
+	 *
+	 * Return the current display scanout position from a crtc, and an
+	 * optional accurate ktime_get timestamp of when position was measured.
+	 *
+	 * \param dev  DRM device.
+	 * \param crtc Id of the crtc to query.
+	 * \param flags Flags from the caller (DRM_CALLED_FROM_VBLIRQ or 0).
+	 * \param *vpos Target location for current vertical scanout position.
+	 * \param *hpos Target location for current horizontal scanout position.
+	 * \param *stime Target location for timestamp taken immediately before
+	 *               scanout position query. Can be NULL to skip timestamp.
+	 * \param *etime Target location for timestamp taken immediately after
+	 *               scanout position query. Can be NULL to skip timestamp.
+	 *
+	 * Returns vpos as a positive number while in active scanout area.
+	 * Returns vpos as a negative number inside vblank, counting the number
+	 * of scanlines to go until end of vblank, e.g., -1 means "one scanline
+	 * until start of active scanout / end of vblank."
+	 *
+	 * \return Flags, or'ed together as follows:
+	 *
+	 * DRM_SCANOUTPOS_VALID = Query successful.
+	 * DRM_SCANOUTPOS_INVBL = Inside vblank.
+	 * DRM_SCANOUTPOS_ACCURATE = Returned position is accurate. A lack of
+	 * this flag means that returned position may be offset by a constant
+	 * but unknown small number of scanlines wrt. real scanout position.
+	 *
+	 */
+	int (*get_scanout_position) (struct drm_device *dev, int crtc,
+				     unsigned int flags,
+				     int *vpos, int *hpos, ktime_t *stime,
+				     ktime_t *etime);
 
 	int	(*get_vblank_timestamp)(struct drm_device *dev, int crtc,
 		    int *max_error, struct timeval *vblank_time,
@@ -920,6 +953,19 @@ struct drm_sysctl_info {
 /* Length for the array of resource pointers for drm_get_resource_*. */
 #define DRM_MAX_PCI_RESOURCE	6
 
+struct drm_vblank_crtc {
+	wait_queue_head_t queue;	/**< VBLANK wait queue */
+	struct timeval time[DRM_VBLANKTIME_RBSIZE];	/**< timestamp of current count */
+	atomic_t count;			/**< number of VBLANK interrupts */
+	atomic_t refcount;		/* number of users of vblank interruptsper crtc */
+	u32 last;			/* protected by dev->vbl_lock, used */
+					/* for wraparound handling */
+	u32 last_wait;			/* Last vblank seqno waited per CRTC */
+	unsigned int inmodeset;		/* Display driver is setting mode */
+	bool enabled;			/* so we don't call enable more than
+					   once per disable */
+};
+
 /**
  * DRM device structure. This structure represent a complete card that
  * may contain multiple heads.
@@ -1015,7 +1061,33 @@ struct drm_device {
 	unsigned long last_switch;	/**< jiffies at last context switch */
 	/*@} */
 
-	int		  num_crtcs;
+	/** \name VBLANK IRQ support */
+	/*@{ */
+
+	/*
+	 * At load time, disabling the vblank interrupt won't be allowed since
+	 * old clients may not call the modeset ioctl and therefore misbehave.
+	 * Once the modeset ioctl *has* been called though, we can safely
+	 * disable them when unused.
+	 */
+	bool vblank_disable_allowed;
+
+	/* array of size num_crtcs */
+	struct drm_vblank_crtc *vblank;
+
+	struct lock vblank_time_lock;    /**< Protects vblank count and time updates during vblank enable/disable */
+	struct lock vbl_lock;
+	struct timer_list vblank_disable_timer;
+
+	u32 max_vblank_count;           /**< size of vblank counter register */
+
+	/**
+	 * List of events
+	 */
+	struct list_head vblank_event_list;
+	struct lock event_lock;
+
+	/*@} */
 
 	struct sigio      *buf_sigio;	/* Processes waiting for SIGIO     */
 
@@ -1025,40 +1097,12 @@ struct drm_device {
 
 
 	drm_sg_mem_t      *sg;  /* Scatter gather memory */
+	unsigned int num_crtcs;                  /**< Number of CRTCs on this device */
+
 	unsigned long     *ctx_bitmap;
 	void		  *dev_private;
 
 	void		  *drm_ttm_bdev;
-
-	/*
-	 * At load time, disabling the vblank interrupt won't be allowed since
-	 * old clients may not call the modeset ioctl and therefore misbehave.
-	 * Once the modeset ioctl *has* been called though, we can safely
-	 * disable them when unused.
-	 */
-	int vblank_disable_allowed;
-
-	wait_queue_head_t *vbl_queue;   /**< VBLANK wait queue */
-	atomic_t *_vblank_count;        /**< number of VBLANK interrupts (driver must alloc the right number of counters) */
-	struct timeval *_vblank_time;   /**< timestamp of current vblank_count (drivers must alloc right number of fields) */
-	struct lock vblank_time_lock;   /**< Protects vblank count and time updates during vblank enable/disable */
-	struct lock vbl_lock;
-	atomic_t *vblank_refcount;      /* number of users of vblank interruptsper crtc */
-	u32 *last_vblank;               /* protected by dev->vbl_lock, used */
-					/* for wraparound handling */
-	int *vblank_enabled;            /* so we don't call enable more than
-					   once per disable */
-	int *vblank_inmodeset;          /* Display driver is setting mode */
-	u32 *last_vblank_wait;		/* Last vblank seqno waited per CRTC */
-	struct timer_list vblank_disable_timer;
-
-	u32 max_vblank_count;           /**< size of vblank counter register */
-
-	/**
-	 * List of events
-	 */
-	struct list_head vblank_event_list;
-	struct lock	event_lock;
 
 	/*@} */
 
@@ -1274,22 +1318,15 @@ void	drm_driver_irq_preinstall(struct drm_device *dev);
 void	drm_driver_irq_postinstall(struct drm_device *dev);
 void	drm_driver_irq_uninstall(struct drm_device *dev);
 
-void	drm_vblank_pre_modeset(struct drm_device *dev, int crtc);
-void	drm_vblank_post_modeset(struct drm_device *dev, int crtc);
-int 	drm_modeset_ctl(struct drm_device *dev, void *data,
-			struct drm_file *file_priv);
-
 extern int drm_vblank_init(struct drm_device *dev, int num_crtcs);
 extern int drm_wait_vblank(struct drm_device *dev, void *data,
 			   struct drm_file *filp);
-extern int drm_vblank_wait(struct drm_device *dev, unsigned int *vbl_seq);
 extern u32 drm_vblank_count(struct drm_device *dev, int crtc);
 extern u32 drm_vblank_count_and_time(struct drm_device *dev, int crtc,
 				     struct timeval *vblanktime);
 extern void drm_send_vblank_event(struct drm_device *dev, int crtc,
 				     struct drm_pending_vblank_event *e);
 extern bool drm_handle_vblank(struct drm_device *dev, int crtc);
-void drm_handle_vblank_events(struct drm_device *dev, int crtc);
 extern int drm_vblank_get(struct drm_device *dev, int crtc);
 extern void drm_vblank_put(struct drm_device *dev, int crtc);
 extern void drm_vblank_off(struct drm_device *dev, int crtc);
@@ -1300,9 +1337,16 @@ extern int drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev,
 						 int crtc, int *max_error,
 						 struct timeval *vblank_time,
 						 unsigned flags,
-						 struct drm_crtc *refcrtc);
+						 const struct drm_crtc *refcrtc,
+						 const struct drm_display_mode *mode);
 extern void drm_calc_timestamping_constants(struct drm_crtc *crtc,
 					    const struct drm_display_mode *mode);
+
+/* Modesetting support */
+extern void drm_vblank_pre_modeset(struct drm_device *dev, int crtc);
+extern void drm_vblank_post_modeset(struct drm_device *dev, int crtc);
+extern int drm_modeset_ctl(struct drm_device *dev, void *data,
+			   struct drm_file *file_priv);
 
 /* AGP/PCI Express/GART support (drm_agpsupport.c) */
 int	drm_device_is_agp(struct drm_device *dev);
