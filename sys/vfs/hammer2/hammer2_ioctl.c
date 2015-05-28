@@ -560,12 +560,21 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		nipdata->op_flags |= HAMMER2_OPFLAG_PFSROOT;
 
 		/*
+		 * Set default compression and check algorithm.  This
+		 * can be changed later.
+		 *
 		 * Do not allow compression on PFS's with the special name
 		 * "boot", the boot loader can't decompress (yet).
 		 */
-		if (strcmp(pfs->name, "boot") == 0)
-			nipdata->comp_algo = HAMMER2_ENC_ALGO(
-							HAMMER2_COMP_AUTOZERO);
+		nipdata->comp_algo =
+			HAMMER2_ENC_ALGO(HAMMER2_COMP_NEWFS_DEFAULT);
+		nipdata->check_algo =
+			HAMMER2_ENC_ALGO( HAMMER2_CHECK_ISCSI32);
+
+		if (strcasecmp(pfs->name, "boot") == 0) {
+			nipdata->comp_algo =
+				HAMMER2_ENC_ALGO(HAMMER2_COMP_AUTOZERO);
+		}
 		hammer2_cluster_modsync(ncluster);
 		hammer2_cluster_bref(ncluster, &bref);
 #if 1
