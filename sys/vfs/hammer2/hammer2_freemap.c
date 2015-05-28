@@ -118,7 +118,8 @@ hammer2_freemap_reserve(hammer2_trans_t *trans, hammer2_chain_t *chain,
 		off = off / HAMMER2_PBUFSIZE;
 		KKASSERT(off >= HAMMER2_ZONE_FREEMAP_00 &&
 			 off < HAMMER2_ZONE_FREEMAP_END);
-		index = (int)(off - HAMMER2_ZONE_FREEMAP_00) / 4;
+		index = (int)(off - HAMMER2_ZONE_FREEMAP_00) /
+			HAMMER2_ZONE_FREEMAP_INC;
 		KKASSERT(index >= 0 && index < HAMMER2_NFREEMAPS);
 		if (++index == HAMMER2_NFREEMAPS)
 			index = 0;
