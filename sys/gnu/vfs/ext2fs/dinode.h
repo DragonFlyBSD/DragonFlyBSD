@@ -42,8 +42,6 @@
 #ifndef _VFS_GNU_EXT2FS_DINODE_H_
 #define _VFS_GNU_EXT2FS_DINODE_H_
 
-typedef __uint32_t	ext2_ino_t;
-
 /*
  * The root inode is the root of the filesystem.  Inode 0 can't be used for
  * normal purposes and historically bad blocks were linked to inode 1, thus
