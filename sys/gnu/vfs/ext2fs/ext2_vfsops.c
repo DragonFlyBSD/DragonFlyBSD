@@ -128,7 +128,7 @@ ext2_root(struct mount *mp, struct vnode **vpp)
 	struct vnode *nvp;
 	int error;
 
-	error = VFS_VGET(mp, NULL, (ino_t)ROOTINO, &nvp);
+	error = VFS_VGET(mp, NULL, (ino_t)EXT2_ROOTINO, &nvp);
 	if (error)
 		return (error);
 	*vpp = nvp;
@@ -1257,7 +1257,7 @@ ext2_fhtovp(struct mount *mp, struct vnode *rootvp,
 
 	ufhp = (struct ufid *)fhp;
 	fs = VFSTOEXT2(mp)->um_e2fs;
-	if (ufhp->ufid_ino < ROOTINO ||
+	if (ufhp->ufid_ino < EXT2_ROOTINO ||
 	    ufhp->ufid_ino > fs->s_groups_count * fs->s_es->s_inodes_per_group)
 		return (ESTALE);
 

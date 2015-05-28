@@ -1004,7 +1004,7 @@ ext2_checkpath(struct inode *source, struct inode *target, struct ucred *cred)
 		error = EEXIST;
 		goto out;
 	}
-	rootino = ROOTINO;
+	rootino = EXT2_ROOTINO;
 	error = 0;
 	if (target->i_number == rootino)
 		goto out;

@@ -50,13 +50,13 @@ typedef __uint32_t	ext2_ino_t;
  * the root inode is 2.  (Inode 1 is no longer used for this purpose, however
  * numerous dump tapes make this assumption, so we are stuck with it).
  */
-#define	ROOTINO	((ino_t)2)
+#define	EXT2_ROOTINO	((ino_t)2)
 
 /*
  * The Whiteout inode# is a dummy non-zero inode number which will
  * never be allocated to a real file.  It is used as a place holder
  * in the directory entry which has been tagged as a DT_W entry.
- * See the comments about ROOTINO above.
+ * See the comments about EXT2_ROOTINO above.
  */
 #define	WINO	((ino_t)1)
 

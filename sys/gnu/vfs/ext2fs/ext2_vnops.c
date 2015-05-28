@@ -1917,7 +1917,7 @@ ext2_vinit(struct mount *mntp, struct vnode **vpp)
 
 	}
 
-	if (ip->i_number == ROOTINO)
+	if (ip->i_number == EXT2_ROOTINO)
 		vp->v_flag |= VROOT;
 	/*
 	 * Initialize modrev times
