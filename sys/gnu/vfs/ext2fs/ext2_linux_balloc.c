@@ -65,7 +65,7 @@ read_block_bitmap(struct mount *mp, unsigned int block_group,
 {
 	struct ext2_sb_info *sb = VFSTOEXT2(mp)->um_e2fs;
 	struct ext2_group_desc * gdp;
-	struct buffer_head * bh;
+	struct buf * bh;
 	int    error;
 
 	gdp = get_group_desc (mp, block_group, NULL);
@@ -100,7 +100,7 @@ load__block_bitmap(struct mount *mp, unsigned int block_group)
 	int i, j;
 	struct ext2_sb_info *sb = VFSTOEXT2(mp)->um_e2fs;
 	unsigned long block_bitmap_number;
-	struct buffer_head * block_bitmap;
+	struct buf * block_bitmap;
 
 	if (block_group >= sb->s_groups_count)
 		panic ( "load_block_bitmap: "
@@ -175,8 +175,8 @@ ext2_free_blocks(struct mount * mp, unsigned long block,
 		 unsigned long count)
 {
 	struct ext2_sb_info *sb = VFSTOEXT2(mp)->um_e2fs;
-	struct buffer_head * bh;
-	struct buffer_head * bh2;
+	struct buf * bh;
+	struct buf * bh2;
 	unsigned long block_group;
 	unsigned long bit;
 	unsigned long i;
@@ -262,8 +262,8 @@ ext2_new_block(struct mount * mp, unsigned long goal,
 	       u_int32_t * prealloc_block)
 {
 	struct ext2_sb_info *sb = VFSTOEXT2(mp)->um_e2fs;
-	struct buffer_head * bh;
-	struct buffer_head * bh2;
+	struct buf * bh;
+	struct buf * bh2;
 	char * p, * r;
 	int i, j, k, tmp;
 	int bitmap_nr;
@@ -534,7 +534,7 @@ static void
 ext2_check_blocks_bitmap(struct mount * mp)
 {
 	struct ext2_sb_info *sb = VFSTOEXT2(mp)->um_e2fs;
-	struct buffer_head * bh;
+	struct buf * bh;
 	struct ext2_super_block * es;
 	unsigned long desc_count, bitmap_count, x;
 	unsigned long desc_blocks;
@@ -610,7 +610,7 @@ ext2_check_blocks_bitmap(struct mount * mp)
 
 static int nibblemap[] = {4, 3, 3, 2, 3, 2, 2, 1, 3, 2, 2, 1, 2, 1, 1, 0};
 
-unsigned long ext2_count_free (struct buffer_head * map, unsigned int numchars)
+unsigned long ext2_count_free (struct buf * map, unsigned int numchars)
 {
         unsigned int i;
         unsigned long sum = 0;

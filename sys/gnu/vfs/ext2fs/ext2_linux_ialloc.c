@@ -66,7 +66,7 @@ mark_buffer_dirty(struct buf *bh)
 
 struct ext2_group_desc *
 get_group_desc(struct mount * mp, unsigned int block_group,
-	       struct buffer_head **bh)
+	       struct buf **bh)
 {
 	struct ext2_sb_info *sb = VFSTOEXT2(mp)->um_e2fs;
 	unsigned long group_desc;
@@ -99,7 +99,7 @@ read_inode_bitmap(struct mount *mp, unsigned long block_group,
 {
 	struct ext2_sb_info *sb = VFSTOEXT2(mp)->um_e2fs;
 	struct ext2_group_desc * gdp;
-	struct buffer_head * bh;
+	struct buf * bh;
 	int	error;
 
 	gdp = get_group_desc (mp, block_group, NULL);
@@ -132,7 +132,7 @@ load_inode_bitmap(struct mount *mp, unsigned int block_group)
 	struct ext2_sb_info *sb = VFSTOEXT2(mp)->um_e2fs;
 	int i, j;
 	unsigned long inode_bitmap_number;
-	struct buffer_head * inode_bitmap;
+	struct buf * inode_bitmap;
 
 	if (block_group >= sb->s_groups_count)
 		panic ("load_inode_bitmap:"
@@ -193,8 +193,8 @@ void
 ext2_free_inode(struct inode *inode)
 {
 	struct ext2_sb_info * sb;
-	struct buffer_head * bh;
-	struct buffer_head * bh2;
+	struct buf * bh;
+	struct buf * bh2;
 	unsigned long block_group;
 	unsigned long bit;
 	int bitmap_nr;
@@ -258,7 +258,7 @@ static void
 inc_inode_version(struct inode *inode, struct ext2_group_desc *gdp, int mode)
 {
 	unsigned long inode_block;
-	struct buffer_head * bh;
+	struct buf * bh;
 	struct ext2_inode * raw_inode;
 
 	inode_block = gdp->bg_inode_table + (((inode->i_number - 1) %
@@ -300,8 +300,8 @@ ino_t
 ext2_new_inode(const struct inode *dir, int mode)
 {
 	struct ext2_sb_info * sb;
-	struct buffer_head * bh;
-	struct buffer_head * bh2;
+	struct buf * bh;
+	struct buf * bh2;
 	int i, j, avefreei;
 	int bitmap_nr;
 	struct ext2_group_desc * gdp;
