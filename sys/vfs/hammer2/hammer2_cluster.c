@@ -838,6 +838,22 @@ skip4:
 }
 
 /*
+ * This is used by the sync thread to force non-NULL elements of a copy
+ * of the pmp->iroot cluster to be good which is required to prime the
+ * sync.
+ */
+void
+hammer2_cluster_forcegood(hammer2_cluster_t *cluster)
+{
+	int i;
+
+	for (i = 0; i < cluster->nchains; ++i) {
+		if (cluster->array[i].chain)
+			cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
+	}
+}
+
+/*
  * Copy a cluster, returned a ref'd cluster.  All underlying chains
  * are also ref'd, but not locked.  Focus state is also copied.
  *

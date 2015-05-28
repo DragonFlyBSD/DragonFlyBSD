@@ -385,6 +385,7 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	hammer2_cluster_t *cluster;
 	hammer2_pfs_t *pmp;
 	hammer2_inode_t *ip;
+	hammer2_blockref_t bref;
 	struct vnode *vp;
 	struct vattr *vap;
 
@@ -399,6 +400,7 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 					 HAMMER2_RESOLVE_SHARED);
 	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 	KKASSERT(hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE);
+	hammer2_cluster_bref(cluster, &bref);
 
 	vap->va_fsid = pmp->mp->mnt_stat.f_fsid.val[0];
 	vap->va_fileid = ripdata->inum;
@@ -415,7 +417,7 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	hammer2_time_to_timespec(ripdata->mtime, &vap->va_mtime);
 	hammer2_time_to_timespec(ripdata->mtime, &vap->va_atime);
 	vap->va_gen = 1;
-	vap->va_bytes = vap->va_size;	/* XXX */
+	vap->va_bytes = bref.data_count;
 	vap->va_type = hammer2_get_vtype(ripdata);
 	vap->va_filerev = 0;
 	vap->va_uid_uuid = ripdata->uid;

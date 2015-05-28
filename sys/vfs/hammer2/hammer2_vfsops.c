@@ -364,13 +364,11 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		spin_init(&pmp->list_spin, "hm2pfsalloc_list");
 
 		/*
-		 * Save last media transaction id for flusher.
+		 * Save the last media transaction id for the flusher.  Set
+		 * initial 
 		 */
-		pmp->modify_tid = modify_tid;
-		if (ripdata) {
-			pmp->inode_tid = ripdata->pfs_inum + 1;
+		if (ripdata)
 			pmp->pfs_clid = ripdata->pfs_clid;
-		}
 		hammer2_mtx_init(&pmp->wthread_mtx, "h2wthr");
 		bioq_init(&pmp->wthread_bioq);
 		TAILQ_INSERT_TAIL(&hammer2_pfslist, pmp, mntentry);
@@ -917,7 +915,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		kprintf("alloc spmp %p tid %016jx\n",
 			hmp->spmp, hmp->voldata.mirror_tid);
 		spmp = hmp->spmp;
-		spmp->inode_tid = 1;
 
 		/*
 		 * Dummy-up vchain and fchain's modify_tid.  mirror_tid
@@ -961,6 +958,12 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return EINVAL;
 		}
+
+		/*
+		 * The super-root always uses an inode_tid of 1 when
+		 * creating PFSs.
+		 */
+		spmp->inode_tid = 1;
 		spmp->modify_tid = schain->bref.modify_tid;
 
 		/*
@@ -2240,15 +2243,20 @@ hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	hammer2_pfs_t *pmp;
 	hammer2_dev_t *hmp;
+	hammer2_blockref_t bref;
 
 	pmp = MPTOPMP(mp);
 	KKASSERT(pmp->iroot->cluster.nchains >= 1);
-	hmp = pmp->iroot->cluster.focus->hmp;	/* XXX */
+	hmp = pmp->iroot->cluster.focus->hmp;	/* iroot retains focus */
+	bref = pmp->iroot->cluster.focus->bref;	/* no lock */
 
-	mp->mnt_stat.f_files = pmp->inode_count;
+	mp->mnt_stat.f_files = bref.inode_count;
 	mp->mnt_stat.f_ffree = 0;
-	mp->mnt_stat.f_blocks = hmp->voldata.allocator_size / HAMMER2_PBUFSIZE;
-	mp->mnt_stat.f_bfree =  hmp->voldata.allocator_free / HAMMER2_PBUFSIZE;
+	mp->mnt_stat.f_blocks = (bref.data_count +
+				 hmp->voldata.allocator_free) /
+				mp->mnt_vstat.f_bsize;
+	mp->mnt_stat.f_bfree =  hmp->voldata.allocator_free /
+				mp->mnt_vstat.f_bsize;
 	mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
 
 	*sbp = mp->mnt_stat;
@@ -2261,16 +2269,21 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 {
 	hammer2_pfs_t *pmp;
 	hammer2_dev_t *hmp;
+	hammer2_blockref_t bref;
 
 	pmp = MPTOPMP(mp);
 	KKASSERT(pmp->iroot->cluster.nchains >= 1);
-	hmp = pmp->iroot->cluster.focus->hmp;	/* XXX */
+	hmp = pmp->iroot->cluster.focus->hmp;	/* iroot retains focus */
+	bref = pmp->iroot->cluster.focus->bref;	/* no lock */
 
 	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
-	mp->mnt_vstat.f_files = pmp->inode_count;
+	mp->mnt_vstat.f_files = bref.inode_count;
 	mp->mnt_vstat.f_ffree = 0;
-	mp->mnt_vstat.f_blocks = hmp->voldata.allocator_size / HAMMER2_PBUFSIZE;
-	mp->mnt_vstat.f_bfree =  hmp->voldata.allocator_free / HAMMER2_PBUFSIZE;
+	mp->mnt_vstat.f_blocks = (bref.data_count +
+				 hmp->voldata.allocator_free) /
+				mp->mnt_vstat.f_bsize;
+	mp->mnt_vstat.f_bfree = hmp->voldata.allocator_free /
+				mp->mnt_vstat.f_bsize;
 	mp->mnt_vstat.f_bavail = mp->mnt_vstat.f_bfree;
 
 	*sbp = mp->mnt_vstat;

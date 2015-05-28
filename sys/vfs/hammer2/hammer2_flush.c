@@ -72,8 +72,6 @@ struct hammer2_flush_info {
 	int		cache_index;
 	struct h2_flush_list flushq;
 	hammer2_xid_t	sync_xid;	/* memory synchronization point */
-	hammer2_tid_t	mirror_tid;	/* avoid digging through hmp */
-	hammer2_tid_t	modify_tid;
 	hammer2_chain_t	*debug;
 };
 

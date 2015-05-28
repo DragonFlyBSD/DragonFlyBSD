@@ -139,16 +139,23 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
 		ip->cluster.focus = cluster->focus;
 
 	/*
-	 * Returned cluster must resolve hardlink pointers.
-	 * XXX remove me.
+	 * Initialize pmp->inode_tid and pmp->modify_tid on first access
+	 * to the root of mount that resolves good.
+	 * XXX probably not the best place for this.
 	 */
-	if ((how & HAMMER2_RESOLVE_MASK) == HAMMER2_RESOLVE_ALWAYS &&
-	    cluster->error == 0 &&
-	    cluster->focus) {
+	if (ip->pmp->inode_tid == 0 &&
+	    cluster->error == 0 && cluster->focus) {
 		const hammer2_inode_data_t *ripdata;
+		hammer2_pfs_t *pmp = ip->pmp;
+		hammer2_blockref_t bref;
 
 		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-		KKASSERT(ripdata->type != HAMMER2_OBJTYPE_HARDLINK);
+		hammer2_cluster_bref(cluster, &bref);
+		pmp->inode_tid = ripdata->pfs_inum + 1;
+		pmp->modify_tid = bref.modify_tid;
+		kprintf("PMP focus good set nextino=%ld mod=%016jx\n",
+			pmp->inode_tid, pmp->modify_tid);
+
 	}
 	return (cluster);
 }

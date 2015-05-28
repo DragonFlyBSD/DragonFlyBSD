@@ -192,6 +192,11 @@ hammer2_syncthr_primary(void *arg)
 		bzero(errors, sizeof(errors));
 		kprintf("sync_slaves clindex %d\n", thr->clindex);
 
+		/*
+		 * We are the syncer, not a normal frontend operator,
+		 * so force cparent good to prime the scan.
+		 */
+		hammer2_cluster_forcegood(cparent);
 		error = hammer2_sync_slaves(thr, cparent, errors);
 		if (error)
 			kprintf("hammer2_sync_slaves: error %d\n", error);
@@ -269,6 +274,45 @@ hammer2_update_pfs_status(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent)
 	kprintf("\n");
 }
 
+static
+void
+dumpcluster(const char *label,
+	    hammer2_cluster_t *cparent, hammer2_cluster_t *cluster)
+{
+	hammer2_chain_t *chain;
+	int i;
+
+	if ((hammer2_debug & 1) == 0)
+		return;
+
+	kprintf("%s\t", label);
+	KKASSERT(cparent->nchains == cluster->nchains);
+	for (i = 0; i < cparent->nchains; ++i) {
+		if (i)
+			kprintf("\t");
+		kprintf("%d ", i);
+		if ((chain = cparent->array[i].chain) != NULL) {
+			kprintf("%016jx%s ",
+				chain->bref.key,
+				((cparent->array[i].flags &
+				  HAMMER2_CITEM_INVALID) ? "(I)" : "   ")
+			);
+		} else {
+			kprintf("      NULL      %s ", "   ");
+		}
+		if ((chain = cluster->array[i].chain) != NULL) {
+			kprintf("%016jx%s ",
+				chain->bref.key,
+				((cluster->array[i].flags &
+				  HAMMER2_CITEM_INVALID) ? "(I)" : "   ")
+			);
+		} else {
+			kprintf("      NULL      %s ", "   ");
+		}
+		kprintf("\n");
+	}
+}
+
 /*
  * TODO - have cparent use a shared lock normally instead of exclusive,
  *	  (needs to be upgraded for slave adjustments).
@@ -327,6 +371,7 @@ hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
 					 HAMMER2_LOOKUP_NOLOCK |
 					 HAMMER2_LOOKUP_NODIRECT |
 					 HAMMER2_LOOKUP_ALLNODES);
+	dumpcluster("lookup", cparent, cluster);
 
 	/*
 	 * Scan elements
@@ -504,12 +549,14 @@ repeat1:
 		/* finished primary synchronization of chains */
 
 skip1:
+#if 0
 		/*
 		 * Operation may have modified cparent, we must replace
 		 * iroot->cluster if we are at the top level.
 		 */
 		if (thr->depth == 0)
 			hammer2_inode_repoint_one(pmp->iroot, cparent, idx);
+#endif
 		KKASSERT(cluster->focus == focus);
 
 		/*
@@ -586,17 +633,20 @@ skip1:
 		if (nerror)
 			error = nerror;
 
+#if 0
 		/*
 		 * Operation may modify cparent, must replace
 		 * iroot->cluster if we are at the top level.
 		 */
 		if (thr->depth == 0)
 			hammer2_inode_repoint_one(pmp->iroot, cparent, idx);
+#endif
 
 skip2:
 		/*
 		 * Iterate.
 		 */
+		dumpcluster("adjust", cparent, cluster);
 		cluster = hammer2_cluster_next(cparent, cluster,
 					       &key_next,
 					       HAMMER2_KEY_MIN,
@@ -605,6 +655,7 @@ skip2:
 					       HAMMER2_LOOKUP_NOLOCK |
 					       HAMMER2_LOOKUP_NODIRECT |
 					       HAMMER2_LOOKUP_ALLNODES);
+		dumpcluster("nextcl", cparent, cluster);
 	}
 	hammer2_cluster_drop(cparent);
 	if (cluster)
@@ -654,22 +705,26 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
 
 	/*
 	 * Create the missing chain.
+	 *
+	 * Have to be careful to avoid deadlocks.
 	 */
 	chain = NULL;
+	if (cluster->focus_index < i)
+		hammer2_chain_lock(focus, HAMMER2_RESOLVE_ALWAYS);
 	hammer2_chain_create(&thr->trans, &cparent->array[i].chain,
 			     &chain, thr->pmp,
 			     focus->bref.key, focus->bref.keybits,
 			     focus->bref.type, focus->bytes,
 			     0);
+	if (cluster->focus_index > i)
+		hammer2_chain_lock(focus, HAMMER2_RESOLVE_ALWAYS);
 	if (cparent->focus_index == i)
 		cparent->focus = cparent->array[i].chain;
 	hammer2_chain_modify(&thr->trans, chain, 0);
-	hammer2_cluster_lock_except(cparent, i, HAMMER2_RESOLVE_ALWAYS);
 
 	/*
 	 * Copy focus to new chain
 	 */
-	hammer2_chain_lock(focus, HAMMER2_RESOLVE_ALWAYS);
 
 	/* type already set */
 	chain->bref.methods = focus->bref.methods;
@@ -706,10 +761,22 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
 	hammer2_chain_unlock(chain);		/* unlock, leave ref */
 
 	/*
+	 * Avoid ordering deadlock when relocking cparent.
+	 */
+	if (i == 0) {
+		hammer2_cluster_lock_except(cparent, i, HAMMER2_RESOLVE_ALWAYS);
+	} else {
+		hammer2_chain_unlock(cparent->array[i].chain);
+		hammer2_cluster_lock(cparent, HAMMER2_RESOLVE_ALWAYS);
+	}
+
+	/*
 	 * Enter item into (unlocked) cluster.
 	 *
 	 * Must clear invalid for iteration to work properly.
 	 */
+	if (cluster->array[i].chain)
+		hammer2_chain_drop(cluster->array[i].chain);
 	cluster->array[i].chain = chain;
 	cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
 

@@ -2846,13 +2846,25 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	/*
 	 * How big should our new indirect block be?  It has to be at least
 	 * as large as its parent.
+	 *
+	 * The freemap uses a specific indirect block size.
+	 *
+	 * The first indirect block level down from an inode typically
+	 * uses LBUFSIZE (16384), else it uses PBUFSIZE (65536).
 	 */
-	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE)
+	if (for_type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
+	    for_type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
+		nbytes = HAMMER2_FREEMAP_LEVELN_PSIZE;
+	} else if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		nbytes = HAMMER2_IND_BYTES_MIN;
-	else
+	} else {
 		nbytes = HAMMER2_IND_BYTES_MAX;
-	if (nbytes < count * sizeof(hammer2_blockref_t))
+	}
+	if (nbytes < count * sizeof(hammer2_blockref_t)) {
+		KKASSERT(for_type != HAMMER2_BREF_TYPE_FREEMAP_NODE &&
+			 for_type != HAMMER2_BREF_TYPE_FREEMAP_LEAF);
 		nbytes = count * sizeof(hammer2_blockref_t);
+	}
 
 	/*
 	 * Ok, create our new indirect block

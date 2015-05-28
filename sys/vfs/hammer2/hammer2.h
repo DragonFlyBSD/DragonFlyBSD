@@ -893,7 +893,6 @@ struct hammer2_pfs {
 	char			*pfs_names[HAMMER2_MAXCLUSTER];
 	hammer2_trans_manage_t	tmanage;	/* transaction management */
 	struct lock		lock;		/* PFS lock for certain ops */
-	hammer2_off_t		inode_count;	/* copy of inode_count */
 	struct netexport	export;		/* nfs export */
 	int			ronly;		/* read-only mount */
 	struct malloc_type	*minode;
@@ -1310,6 +1309,7 @@ void hammer2_cluster_wait(hammer2_cluster_t *cluster);
 void hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
 void hammer2_cluster_lock_except(hammer2_cluster_t *cluster, int idx, int how);
 void hammer2_cluster_resolve(hammer2_cluster_t *cluster);
+void hammer2_cluster_forcegood(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
 void hammer2_cluster_unlock_except(hammer2_cluster_t *cluster, int idx);
