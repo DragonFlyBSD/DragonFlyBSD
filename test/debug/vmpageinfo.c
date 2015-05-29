@@ -228,6 +228,8 @@ main(int ac, char **av)
 		printf(" WRITEABLE");
 	    if (m.flags & PG_MAPPED)
 		printf(" MAPPED");
+	    if (m.flags & PG_NEED_COMMIT)
+		printf(" NEED_COMMIT");
 	    if (m.flags & PG_ZERO)
 		printf(" ZERO");
 	    if (m.flags & PG_REFERENCED)
