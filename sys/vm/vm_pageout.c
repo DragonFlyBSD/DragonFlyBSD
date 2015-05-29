@@ -1406,7 +1406,8 @@ vm_pageout_scan_cache(int avail_shortage, int vnodes_skipped, int recycle_count)
 		 */
 		static int cache_rover = 0;
 
-		m = vm_page_list_find(PQ_CACHE, cache_rover & PQ_L2_MASK, FALSE);
+		m = vm_page_list_find(PQ_CACHE,
+				      cache_rover & PQ_L2_MASK, FALSE);
 		if (m == NULL)
 			break;
 		/* page is returned removed from its queue and spinlocked */
@@ -1895,23 +1896,28 @@ vm_pageout_thread(void)
 		 * want to get to.  This is higher then the number that causes
 		 * allocations to stall (severe) in order to provide hysteresis,
 		 * and if we don't make it all the way but get to the minimum
-		 * we're happy.  Goose it a bit if there are multipler
-		 * requests for memory.
+		 * we're happy.  Goose it a bit if there are multiple requests
+		 * for memory.
+		 *
+		 * Don't reduce avail_shortage inside the loop or the
+		 * PQAVERAGE() calculation will break.
 		 */
 		avail_shortage = vm_paging_target() + vm_pageout_deficit;
 		vm_pageout_deficit = 0;
 
 		if (avail_shortage > 0) {
+			int delta = 0;
+
 			for (q = 0; q < PQ_L2_SIZE; ++q) {
-				avail_shortage -=
-					vm_pageout_scan_inactive(
+				delta += vm_pageout_scan_inactive(
 					    pass,
 					    (q + q1iterator) & PQ_L2_MASK,
 					    PQAVERAGE(avail_shortage),
 					    &vnodes_skipped);
-				if (avail_shortage <= 0)
+				if (avail_shortage - delta <= 0)
 					break;
 			}
+			avail_shortage -= delta;
 			q1iterator = q + 1;
 		}
 
@@ -1949,22 +1955,22 @@ vm_pageout_thread(void)
 		 * performance.
 		 */
 		if (/*avail_shortage > 0 ||*/ inactive_shortage > 0) {
-			int delta;
+			int delta = 0;
 
 			for (q = 0; q < PQ_L2_SIZE; ++q) {
-				delta = vm_pageout_scan_active(
+				delta += vm_pageout_scan_active(
 						pass,
 						(q + q2iterator) & PQ_L2_MASK,
 						PQAVERAGE(avail_shortage),
 						PQAVERAGE(inactive_shortage),
 						&recycle_count);
-				inactive_shortage -= delta;
-				avail_shortage -= delta;
-				if (inactive_shortage <= 0 &&
-				    avail_shortage <= 0) {
+				if (inactive_shortage - delta <= 0 &&
+				    avail_shortage - delta <= 0) {
 					break;
 				}
 			}
+			inactive_shortage -= delta;
+			avail_shortage -= delta;
 			q2iterator = q + 1;
 		}
 
