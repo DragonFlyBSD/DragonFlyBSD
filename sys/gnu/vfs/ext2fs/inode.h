@@ -59,11 +59,6 @@
 #include "dinode.h"
 
 /*
- * The size of a logical block number.
- */
-typedef long ext2_lbn_t;
-
-/*
  * This must agree with the definition in "dir.h"
  */
 #define	doff_t		int32_t
