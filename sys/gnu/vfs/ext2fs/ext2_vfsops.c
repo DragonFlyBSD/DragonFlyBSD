@@ -111,9 +111,6 @@ static struct vfsops ext2fs_vfsops = {
 VFS_SET(ext2fs_vfsops, ext2fs, 0);
 MODULE_VERSION(ext2fs, 1);
 
-#define bsd_malloc kmalloc
-#define bsd_free kfree
-
 static int ext2fs_inode_hash_lock;
 
 static int	ext2_check_sb_compat (struct ext2_super_block *es,
@@ -574,7 +571,7 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
     fs->s_db_per_group = db_count;
     V(s_db_per_group)
 
-    fs->s_group_desc = bsd_malloc(db_count * sizeof (struct buf *),
+    fs->s_group_desc = kmalloc(db_count * sizeof (struct buf *),
 		M_EXT2MNT, M_WAITOK);
 
     /* adjust logic_sb_block */
@@ -590,7 +587,7 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
 	if(error) {
 	    for (j = 0; j < i; j++)
 		brelse(fs->s_group_desc[j]);
-	    bsd_free(fs->s_group_desc, M_EXT2MNT);
+	    kfree(fs->s_group_desc, M_EXT2MNT);
 	    kprintf("EXT2-fs: unable to read group descriptors (%d)\n", error);
 	    return EIO;
 	}
@@ -600,7 +597,7 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
     if(!ext2_check_descriptors(fs)) {
 	    for (j = 0; j < db_count; j++)
 		    ULCK_BUF(fs->s_group_desc[j])
-	    bsd_free(fs->s_group_desc, M_EXT2MNT);
+	    kfree(fs->s_group_desc, M_EXT2MNT);
 	    kprintf("EXT2-fs: (ext2_check_descriptors failure) "
 		   "unable to read group descriptors\n");
 	    return EIO;
@@ -794,7 +791,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 			goto out;
 		}
 	}
-	ump = bsd_malloc(sizeof *ump, M_EXT2MNT, M_WAITOK | M_ZERO);
+	ump = kmalloc(sizeof *ump, M_EXT2MNT, M_WAITOK | M_ZERO);
 	ump->um_malloctype = M_EXT2NODE;
 	ump->um_blkatoff = ext2_blkatoff;
 	ump->um_truncate = ext2_truncate;
@@ -805,9 +802,9 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 	   we dynamically allocate both a ext2_sb_info and a ext2_super_block
 	   while Linux keeps the super block in a locked buffer
 	 */
-	ump->um_e2fs = bsd_malloc(sizeof(struct ext2_sb_info),
+	ump->um_e2fs = kmalloc(sizeof(struct ext2_sb_info),
 		M_EXT2MNT, M_WAITOK);
-	ump->um_e2fs->s_es = bsd_malloc(sizeof(struct ext2_super_block),
+	ump->um_e2fs->s_es = kmalloc(sizeof(struct ext2_super_block),
 		M_EXT2MNT, M_WAITOK);
 	bcopy(es, ump->um_e2fs->s_es, (u_int)sizeof(struct ext2_super_block));
 	if ((error = compute_sb_data(devvp, ump->um_e2fs->s_es, ump->um_e2fs)))
@@ -860,9 +857,9 @@ out:
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, NULL);
 	vn_unlock(devvp);
 	if (ump) {
-		bsd_free(ump->um_e2fs->s_es, M_EXT2MNT);
-		bsd_free(ump->um_e2fs, M_EXT2MNT);
-		bsd_free(ump, M_EXT2MNT);
+		kfree(ump->um_e2fs->s_es, M_EXT2MNT);
+		kfree(ump->um_e2fs, M_EXT2MNT);
+		kfree(ump, M_EXT2MNT);
 		mp->mnt_data = (qaddr_t)0;
 	}
 	return (error);
@@ -898,7 +895,7 @@ ext2_unmount(struct mount *mp, int mntflags)
 	/* release buffers containing group descriptors */
 	for(i = 0; i < fs->s_db_per_group; i++)
 		ULCK_BUF(fs->s_group_desc[i])
-	bsd_free(fs->s_group_desc, M_EXT2MNT);
+	kfree(fs->s_group_desc, M_EXT2MNT);
 
 	/* release cached inode/block bitmaps */
         for (i = 0; i < EXT2_MAX_GROUP_LOADED; i++)
@@ -916,9 +913,9 @@ ext2_unmount(struct mount *mp, int mntflags)
 	vn_unlock(ump->um_devvp);
 
 	vrele(ump->um_devvp);
-	bsd_free(fs->s_es, M_EXT2MNT);
-	bsd_free(fs, M_EXT2MNT);
-	bsd_free(ump, M_EXT2MNT);
+	kfree(fs->s_es, M_EXT2MNT);
+	kfree(fs, M_EXT2MNT);
+	kfree(ump, M_EXT2MNT);
 	mp->mnt_data = (qaddr_t)0;
 	mp->mnt_flag &= ~MNT_LOCAL;
 	return (error);
