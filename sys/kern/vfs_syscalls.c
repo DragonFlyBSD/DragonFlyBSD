@@ -1966,7 +1966,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 			fdrop(fp);
 			return (error);
 		}
-		fp->f_flag |= FHASLOCK;
+		atomic_set_int(&fp->f_flag, FHASLOCK); /* race ok */
 	}
 #if 0
 	/*
@@ -4575,7 +4575,7 @@ sys_fhopen(struct fhopen_args *uap)
 			goto done;
 		}
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-		fp->f_flag |= FHASLOCK;
+		atomic_set_int(&fp->f_flag, FHASLOCK);	/* race ok */
 	}
 
 	/*

@@ -291,8 +291,18 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 			error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp,
 					 cred, NULL);
 		}
-		if (error == 0)
-			fp->f_flag = nflags;
+
+		/*
+		 * If no error, must be atomically set.
+		 */
+		while (error == 0) {
+			oflags = fp->f_flag;
+			cpu_ccfence();
+			nflags = (oflags & ~FCNTLFLAGS) | (nflags & FCNTLFLAGS);
+			if (atomic_cmpset_int(&fp->f_flag, oflags, nflags))
+				break;
+			cpu_pause();
+		}
 		break;
 
 	case F_GETOWN:
@@ -2497,7 +2507,7 @@ sys_flock(struct flock_args *uap)
 	lf.l_len = 0;
 	if (uap->how & LOCK_UN) {
 		lf.l_type = F_UNLCK;
-		fp->f_flag &= ~FHASLOCK;
+		atomic_clear_int(&fp->f_flag, FHASLOCK); /* race ok */
 		error = VOP_ADVLOCK(vp, (caddr_t)fp, F_UNLCK, &lf, 0);
 		goto done;
 	}
@@ -2509,11 +2519,11 @@ sys_flock(struct flock_args *uap)
 		error = EBADF;
 		goto done;
 	}
-	fp->f_flag |= FHASLOCK;
 	if (uap->how & LOCK_NB)
 		error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, 0);
 	else
 		error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, F_WAIT);
+	atomic_set_int(&fp->f_flag, FHASLOCK);	/* race ok */
 done:
 	fdrop(fp);
 	return (error);
