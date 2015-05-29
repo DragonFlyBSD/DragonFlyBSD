@@ -1417,8 +1417,6 @@ int	drm_resctx(struct drm_device *dev, void *data,
 		   struct drm_file *file_priv);
 int	drm_addctx(struct drm_device *dev, void *data,
 		   struct drm_file *file_priv);
-int	drm_modctx(struct drm_device *dev, void *data,
-		   struct drm_file *file_priv);
 int	drm_getctx(struct drm_device *dev, void *data,
 		   struct drm_file *file_priv);
 int	drm_switchctx(struct drm_device *dev, void *data,
