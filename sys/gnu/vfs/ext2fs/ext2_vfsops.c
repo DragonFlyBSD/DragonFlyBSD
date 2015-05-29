@@ -115,9 +115,9 @@ static int ext2fs_inode_hash_lock;
 
 static int	ext2_check_sb_compat (struct ext2_super_block *es,
 					  cdev_t dev, int ronly);
-static int	compute_sb_data (struct vnode * devvp,
-				     struct ext2_super_block * es,
-				     struct ext2_sb_info * fs);
+static int	compute_sb_data (struct vnode *devvp,
+				     struct ext2_super_block *es,
+				     struct ext2_sb_info *fs);
 
 static int
 ext2_root(struct mount *mp, struct vnode **vpp)
@@ -426,7 +426,7 @@ ext2_check_descriptors(struct ext2_sb_info *sb)
         int i;
         int desc_block = 0;
         unsigned long block = sb->s_es->s_first_data_block;
-        struct ext2_group_desc * gdp = NULL;
+        struct ext2_group_desc *gdp = NULL;
 
         /* ext2_debug ("Checking group descriptors"); */
 
@@ -642,7 +642,7 @@ ext2_reload(struct mount *mountp, struct ucred *cred)
 {
 	struct vnode *devvp;
 	struct buf *bp;
-	struct ext2_super_block * es;
+	struct ext2_super_block *es;
 	struct ext2_sb_info *fs;
 	int error;
 	struct scaninfo scaninfo;
@@ -734,7 +734,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 	struct ext2mount *ump;
 	struct buf *bp;
 	struct ext2_sb_info *fs;
-	struct ext2_super_block * es;
+	struct ext2_super_block *es;
 	cdev_t dev;
 	struct partinfo dpart;
 	int error, i;

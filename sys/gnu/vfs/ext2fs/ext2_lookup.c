@@ -702,7 +702,7 @@ ext2_dirbadentry(struct vnode *dp, struct ext2_dir_entry_2 *de,
 {
 	int	DIRBLKSIZ = VTOI(dp)->i_e2fs->s_blocksize;
 
-        char * error_msg = NULL;
+        char *error_msg = NULL;
 
         if (de->rec_len < EXT2_DIR_REC_LEN(1))
                 error_msg = "rec_len is smaller than minimal";
