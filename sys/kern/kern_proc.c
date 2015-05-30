@@ -190,7 +190,6 @@ procinit(void)
 		LIST_INIT(&allpgrps[i]);
 		lwkt_token_init(&proc_tokens[i], "allproc");
 	}
-	lwkt_init();
 	uihashinit();
 }
 

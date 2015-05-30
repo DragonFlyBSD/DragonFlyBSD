@@ -276,7 +276,7 @@ _lwkt_thread_dtor(void *obj, void *privdata)
  * Nominally cache up to 32 thread + kstack structures.  Cache more on
  * systems with a lot of cpu cores.
  */
-void
+static void
 lwkt_init(void)
 {
     TUNABLE_INT("lwkt.cache_threads", &lwkt_cache_threads);
@@ -290,6 +290,7 @@ lwkt_init(void)
 				0, lwkt_cache_threads,
 				_lwkt_thread_ctor, _lwkt_thread_dtor, NULL);
 }
+SYSINIT(lwkt_init, SI_BOOT2_LWKT_INIT, SI_ORDER_FIRST, lwkt_init, NULL);
 
 /*
  * Schedule a thread to run.  As the current thread we can always safely

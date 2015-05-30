@@ -431,7 +431,6 @@ extern struct lwkt_token vnode_token;
 /*
  * Procedures
  */
-extern void lwkt_init(void);
 extern struct thread *lwkt_alloc_thread(struct thread *, int, int, int);
 extern void lwkt_init_thread(struct thread *, void *, int, int,
 			     struct globaldata *);
