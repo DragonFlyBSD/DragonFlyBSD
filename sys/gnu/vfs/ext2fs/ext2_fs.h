@@ -115,6 +115,18 @@
  * not accessible.  This depends on __KERNEL__ not being defined for
  * kernel builds under FreeBSD.
  */
+/*
+ * Arguments s of the following EXT2_XXX(s) macros in Linux kernel take
+ * generic (non-ext2 specific) inmemory superblock structure.  On DragonFly,
+ * the type of s is either generic inmemory, ext2 inmemory, or ext2 ondisk
+ * superblock structure.  These macro definitions are actually taken from
+ * e2fsprogs and made to work.
+ *
+ * Also note that on DragonFly, the macro EXT2_SB(s) takes ext2 ondisk
+ * superblock structure and does nothing (see the comment on EXT2_SB(s),
+ * it's for userspace to access ondisk superblock structure for testings,
+ * etc, originally introduced by e2fsprogs).
+ */
 
 /*
  * Macro-instructions used to manage several block sizes
@@ -122,20 +134,25 @@
 #define EXT2_MIN_BLOCK_SIZE		1024
 #define	EXT2_MAX_BLOCK_SIZE		4096
 #define EXT2_MIN_BLOCK_LOG_SIZE		  10
-#if defined(__KERNEL__) || (defined(__DragonFly__) && defined(_KERNEL))
+#if (defined(__DragonFly__) && defined(_KERNEL))
 #define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
 #else
 #define EXT2_BLOCK_SIZE(s)		(EXT2_MIN_BLOCK_SIZE << (s)->s_log_block_size)
 #endif
 #define EXT2_ACLE_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (struct ext2_acl_entry))
 #define	EXT2_ADDR_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (__u32))
-#ifdef __KERNEL__
-#define EXT2_BLOCK_SIZE_BITS(s)	((s)->s_blocksize_bits)
-#else
-#define EXT2_BLOCK_SIZE_BITS(s)	((s)->s_log_block_size + 10)
-#endif
-#if defined(__KERNEL__) || defined _KERNEL
-#define	EXT2_ADDR_PER_BLOCK_BITS(s)	((s)->s_addr_per_block_bits)
+/*
+ * XXX DragonFly's inmemory superblock has no s_addr_per_block_bits.
+ */
+/* #define EXT2_ADDR_PER_BLOCK_BITS(s)	((s)->s_addr_per_block_bits) */
+/*
+ * XXX The first one takes ext2 inmemory superblock structure and the
+ * second one takes ext2 ondisk superblock structure.  The second one
+ * has been used on DragonFly to compute ((s)->s_blocksize_bits).
+ */
+/* #define EXT2_BLOCK_SIZE_BITS(s)	((s)->s_blocksize_bits) */
+#define EXT2_BLOCK_SIZE_BITS(s)	((s)->s_log_block_size + 10)  /* log2(siz)-10 + log2(1024) */
+#if defined _KERNEL
 #define EXT2_INODE_SIZE(s)		((s)->s_inode_size)
 #define EXT2_FIRST_INO(s)		((s)->s_first_ino)
 #else
@@ -153,15 +170,17 @@
 #define EXT2_MIN_FRAG_SIZE		1024
 #define	EXT2_MAX_FRAG_SIZE		4096
 #define EXT2_MIN_FRAG_LOG_SIZE		  10
-#ifdef __KERNEL__
-#define EXT2_FRAG_SIZE(s)		((s)->u.ext2_sb.s_frag_size)
-#define EXT2_FRAGS_PER_BLOCK(s)	((s)->u.ext2_sb.s_frags_per_block)
-#else
 #if defined(_KERNEL) && defined(__DragonFly__)
 #define EXT2_FRAG_SIZE(s)		((s)->s_frag_size)
+/*
+ * XXX The second one has been used on DragonFly, but the first one
+ * with properly initialized s_frags_per_block is probably a better way.
+ * Also note that ext2 does not support block fragmentation.
+ */
+/* #define EXT2_FRAGS_PER_BLOCK(s)         ((s)->s_frags_per_block) */
+#define EXT2_FRAGS_PER_BLOCK(s)	(EXT2_BLOCK_SIZE(s) / EXT2_FRAG_SIZE(s))
 #else
 #define EXT2_FRAG_SIZE(s)		(EXT2_MIN_FRAG_SIZE << (s)->s_log_frag_size)
-#endif
 #define EXT2_FRAGS_PER_BLOCK(s)	(EXT2_BLOCK_SIZE(s) / EXT2_FRAG_SIZE(s))
 #endif
 
@@ -205,16 +224,9 @@ struct ext2_group_desc
 /*
  * Macro-instructions used to manage group descriptors
  */
-#ifdef __KERNEL__
-#define EXT2_BLOCKS_PER_GROUP(s)	((s)->u.ext2_sb.s_blocks_per_group)
-#define EXT2_DESC_PER_BLOCK(s)		((s)->u.ext2_sb.s_desc_per_block)
-#define EXT2_INODES_PER_GROUP(s)	((s)->u.ext2_sb.s_inodes_per_group)
-#define EXT2_DESC_PER_BLOCK_BITS(s)	((s)->u.ext2_sb.s_desc_per_block_bits)
-#else
 #define EXT2_BLOCKS_PER_GROUP(s)	((s)->s_blocks_per_group)
 #define EXT2_DESC_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (struct ext2_group_desc))
 #define EXT2_INODES_PER_GROUP(s)	((s)->s_inodes_per_group)
-#endif
 
 /*
  * Constants relative to the data blocks
@@ -474,14 +486,10 @@ struct ext2_super_block {
 	__u32	s_reserved[190];	/* Padding to the end of the block */
 };
 
-#ifdef __KERNEL__
-#define EXT2_SB(sb)	(&((sb)->u.ext2_sb))
-#else
 /* Assume that user mode programs are passing in an ext2fs superblock, not
  * a kernel struct super_block.  This will allow us to call the feature-test
  * macros from user land. */
 #define EXT2_SB(sb)	(sb)
-#endif
 
 /*
  * Codes for operating systems
