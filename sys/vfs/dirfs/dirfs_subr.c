@@ -218,6 +218,9 @@ dirfs_alloc_file(dirfs_mount_t dmp, dirfs_node_t *dnpp, dirfs_node_t pdnp,
 	dbg(5, "tmp=%s dnp=%p allocated\n", tmp, dnp);
 	dirfs_dropfd(dmp, pathnp, pathfree);
 
+	/* We want VOP_INACTIVE() to be called on last ref */
+	atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
+
 	return error;
 }
 

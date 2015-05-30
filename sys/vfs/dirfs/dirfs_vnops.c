@@ -217,6 +217,9 @@ dirfs_nresolve(struct vop_nresolve_args *ap)
 	}
 
 	if (vp) {
+		if ((vp->v_refcnt & VREF_FINALIZE) == 0)
+			atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
+
 		if (error && error == ENOENT) {
 			cache_setvp(nch, NULL);
 		} else {
@@ -343,14 +346,6 @@ dirfs_close(struct vop_close_args *ap)
 			dbg(5, "vfsync error=%d\n", error);
 	}
 	vop_stdclose(ap);
-
-	/*
-	 * XXX - Currently VOP_INACTIVE() is not being called unless there is
-	 * vnode pressure so, by now, call inactive directly on last close.
-	 */
-	vn_lock(vp, LK_UPGRADE | LK_RETRY);
-	if (vp->v_opencount == 0 && vp->v_writecount == 0)
-		VOP_INACTIVE(vp);
 
 	KTR_LOG(dirfs_close, dnp, dnp->dn_fd, vp->v_opencount,
 	    vp->v_writecount, error);
