@@ -25,6 +25,7 @@
 
 #include <sys/power.h>
 #include <drm/drmP.h>
+#include <sys/sensors.h>
 #include "radeon.h"
 #include "avivod.h"
 #include "atom.h"
@@ -565,13 +566,27 @@ static const struct attribute_group hwmon_attrgroup = {
 };
 #endif /* DUMBBELL_WIP */
 
+static void
+radeon_hwmon_refresh(void *arg)
+{
+	struct radeon_device *rdev = (struct radeon_device *)arg;
+	struct ksensor *s = rdev->pm.int_sensor;
+	int temp;
+
+	if (rdev->asic->pm.get_temperature)
+		temp = radeon_get_temperature(rdev);
+	else
+		temp = 0;
+
+	s->value = temp * 1000 + 273150000;
+}
+
 static int radeon_hwmon_init(struct radeon_device *rdev)
 {
 	int err = 0;
 
-#ifdef DUMBBELL_WIP
-	rdev->pm.int_hwmon_dev = NULL;
-#endif /* DUMBBELL_WIP */
+	rdev->pm.int_sensor = NULL;
+	rdev->pm.int_sensordev = NULL;
 
 	switch (rdev->pm.int_thermal_type) {
 	case THERMAL_TYPE_RV6XX:
@@ -582,23 +597,19 @@ static int radeon_hwmon_init(struct radeon_device *rdev)
 	case THERMAL_TYPE_SI:
 		if (rdev->asic->pm.get_temperature == NULL)
 			return err;
-#ifdef DUMBBELL_WIP
-		rdev->pm.int_hwmon_dev = hwmon_device_register(rdev->dev);
-		if (IS_ERR(rdev->pm.int_hwmon_dev)) {
-			err = PTR_ERR(rdev->pm.int_hwmon_dev);
-			dev_err(rdev->dev,
-				"Unable to register hwmon device: %d\n", err);
-			break;
-		}
-		dev_set_drvdata(rdev->pm.int_hwmon_dev, rdev->ddev);
-		err = sysfs_create_group(&rdev->pm.int_hwmon_dev->kobj,
-					 &hwmon_attrgroup);
-		if (err) {
-			dev_err(rdev->dev,
-				"Unable to create hwmon sysfs file: %d\n", err);
-			hwmon_device_unregister(rdev->dev);
-		}
-#endif /* DUMBBELL_WIP */
+
+		rdev->pm.int_sensor = kmalloc(sizeof(*rdev->pm.int_sensor),
+		    M_DRM, M_ZERO | M_WAITOK);
+		rdev->pm.int_sensordev = kmalloc(
+		    sizeof(*rdev->pm.int_sensordev), M_DRM,
+		    M_ZERO | M_WAITOK);
+		strlcpy(rdev->pm.int_sensordev->xname,
+		    device_get_nameunit(rdev->dev),
+		    sizeof(rdev->pm.int_sensordev->xname));
+		rdev->pm.int_sensor->type = SENSOR_TEMP;
+		sensor_attach(rdev->pm.int_sensordev, rdev->pm.int_sensor);
+		sensor_task_register(rdev, radeon_hwmon_refresh, 5);
+		sensordev_install(rdev->pm.int_sensordev);
 		break;
 	default:
 		break;
@@ -609,12 +620,14 @@ static int radeon_hwmon_init(struct radeon_device *rdev)
 
 static void radeon_hwmon_fini(struct radeon_device *rdev)
 {
-#ifdef DUMBBELL_WIP
-	if (rdev->pm.int_hwmon_dev) {
-		sysfs_remove_group(&rdev->pm.int_hwmon_dev->kobj, &hwmon_attrgroup);
-		hwmon_device_unregister(rdev->pm.int_hwmon_dev);
+	if (rdev->pm.int_sensor != NULL && rdev->pm.int_sensordev != NULL) {
+		sensordev_deinstall(rdev->pm.int_sensordev);
+		sensor_task_unregister(rdev);
+		kfree(rdev->pm.int_sensor);
+		kfree(rdev->pm.int_sensordev);
+		rdev->pm.int_sensor = NULL;
+		rdev->pm.int_sensordev = NULL;
 	}
-#endif /* DUMBBELL_WIP */
 }
 
 static void radeon_dpm_thermal_work_handler(void *arg, int pending)

@@ -1466,9 +1466,8 @@ struct radeon_pm {
 	struct radeon_pm_profile profiles[PM_PROFILE_MAX];
 	/* internal thermal controller on rv6xx+ */
 	enum radeon_int_thermal_type int_thermal_type;
-#ifdef DUMBBELL_WIP
-	struct device	        *int_hwmon_dev;
-#endif /* DUMBBELL_WIP */
+	struct ksensor		*int_sensor;
+	struct ksensordev	*int_sensordev;
 	/* dpm */
 	bool                    dpm_enabled;
 	struct radeon_dpm       dpm;
