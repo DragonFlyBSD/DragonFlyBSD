@@ -327,15 +327,6 @@ ieee80211_start_pkt(struct ieee80211vap *vap, struct mbuf *m)
 			 * Spam DWDS vap's w/ multicast traffic.
 			 */
 			/* XXX only if dwds in use? */
-			/* XXX better status? */
-			return (ENOBUFS);
-		}
-		if (vap->iv_opmode == IEEE80211_M_HOSTAP) {
-			/*
-			 * Spam DWDS vap's w/ multicast traffic.
-			 */
-			/* XXX only if dwds in use? */
-			ieee80211_dwds_mcast(vap, m);
 			ieee80211_dwds_mcast(vap, m);
 		}
 	}
