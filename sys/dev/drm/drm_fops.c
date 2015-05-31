@@ -39,6 +39,11 @@
 #include <sys/devfs.h>
 
 #include <drm/drmP.h>
+#include <linux/module.h>
+
+/* from BKL pushdown: note that nothing else serializes idr_find() */
+DEFINE_MUTEX(drm_global_mutex);
+EXPORT_SYMBOL(drm_global_mutex);
 
 extern drm_pci_id_list_t *drm_find_description(int vendor, int device,
     drm_pci_id_list_t *idlist);

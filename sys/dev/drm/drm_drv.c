@@ -722,16 +722,18 @@ void drm_cdevpriv_dtor(void *cd)
 int drm_ioctl(struct dev_ioctl_args *ap)
 {
 	struct cdev *kdev = ap->a_head.a_dev;
+	struct drm_device *dev;
+	struct drm_ioctl_desc *ioctl = NULL;
 	u_long cmd = ap->a_cmd;
+	unsigned int nr = DRM_IOCTL_NR(cmd);
+	int retcode = 0;
 	caddr_t data = ap->a_data;
 	struct thread *p = curthread;
-	struct drm_device *dev = drm_get_device_from_kdev(kdev);
-	int retcode = 0;
-	struct drm_ioctl_desc *ioctl;
 	int (*func)(struct drm_device *dev, void *data, struct drm_file *file_priv);
-	int nr = DRM_IOCTL_NR(cmd);
 	int is_driver_ioctl = 0;
 	struct drm_file *file_priv;
+
+	dev = drm_get_device_from_kdev(kdev);
 
 	retcode = devfs_get_cdevpriv(ap->a_fp, (void **)&file_priv);
 	if (retcode !=0) {
@@ -741,22 +743,8 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 
 	atomic_inc(&dev->counts[_DRM_STAT_IOCTLS]);
 
-	DRM_DEBUG_VERBOSE("pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
-	    DRM_CURRENTPID, cmd, nr, (long)dev->dev,
-	    file_priv->authenticated);
-
-	switch (cmd) {
-	case FIONBIO:
-	case FIOASYNC:
-		return 0;
-
-	case FIOSETOWN:
-		return fsetown(*(int *)data, &dev->buf_sigio);
-
-	case FIOGETOWN:
-		*(int *) data = fgetown(&dev->buf_sigio);
-		return 0;
-	}
+	if (drm_device_is_unplugged(dev))
+		return -ENODEV;
 
 	if (IOCGROUP(cmd) != DRM_IOCTL_BASE) {
 		DRM_DEBUG("Bad ioctl group 0x%x\n", (int)IOCGROUP(cmd));
@@ -774,6 +762,12 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 		ioctl = &dev->driver->ioctls[nr];
 		is_driver_ioctl = 1;
 	}
+
+	DRM_DEBUG_VERBOSE("pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
+	    DRM_CURRENTPID, cmd, nr, (long)dev->dev,
+	    file_priv->authenticated);
+
+	/* Do not trust userspace, use our own definition */
 	func = ioctl->func;
 
 	if (func == NULL) {
@@ -788,25 +782,23 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 
 	if (is_driver_ioctl) {
 		if ((ioctl->flags & DRM_UNLOCKED) == 0)
-			DRM_LOCK(dev);
+			mutex_lock(&drm_global_mutex);
 		/* shared code returns -errno */
 		retcode = -func(dev, data, file_priv);
 		if ((ioctl->flags & DRM_UNLOCKED) == 0)
-			DRM_UNLOCK(dev);
+			mutex_unlock(&drm_global_mutex);
 	} else {
 		retcode = func(dev, data, file_priv);
 	}
 
-	if (retcode != 0)
-		DRM_DEBUG("    returning %d\n", retcode);
-	if (retcode != 0 &&
-	    (drm_debug & DRM_DEBUGBITS_FAILED_IOCTL) != 0) {
-		kprintf(
-"pid %d, cmd 0x%02lx, nr 0x%02x/%1d, dev 0x%lx, auth %d, res %d\n",
-		    DRM_CURRENTPID, cmd, nr, is_driver_ioctl, (long)dev->dev,
-		    file_priv->authenticated, retcode);
-	}
+	if (!ioctl)
+		DRM_DEBUG("invalid ioctl: pid=%d, dev=0x%lx, auth=%d, cmd=0x%02lx, nr=0x%02x\n",
+			  DRM_CURRENTPID,
+			  (long)dev->dev,
+			  file_priv->authenticated, cmd, nr);
 
+	if (retcode)
+		DRM_DEBUG("ret = %d\n", retcode);
 	return retcode;
 }
 

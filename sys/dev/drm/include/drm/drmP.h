@@ -1133,6 +1133,8 @@ struct drm_device {
 	int modesetting;
 
 	int switch_power_state;
+
+	atomic_t unplugged; /* device has been unplugged or gone away */
 };
 
 #define DRM_SWITCH_POWER_ON 0
@@ -1143,6 +1145,13 @@ static __inline__ int drm_core_check_feature(struct drm_device *dev,
 					     int feature)
 {
 	return ((dev->driver->driver_features & feature) ? 1 : 0);
+}
+
+static inline int drm_device_is_unplugged(struct drm_device *dev)
+{
+	int ret = atomic_read(&dev->unplugged);
+	smp_rmb();
+	return ret;
 }
 
 #if __OS_HAS_AGP
@@ -1206,6 +1215,7 @@ d_ioctl_t drm_ioctl;
 extern int drm_lastclose(struct drm_device *dev);
 
 				/* Device support (drm_fops.h) */
+extern struct lock drm_global_mutex;
 d_open_t drm_open;
 d_close_t drm_close;
 d_read_t drm_read;
