@@ -1213,8 +1213,7 @@ tsc_mpsync_test_remote(void *xarg)
 	struct tsc_mpsync_arg *arg = xarg;
 	uint64_t tsc;
 
-	cpu_lfence();
-	tsc = rdtsc();
+	tsc = rdtsc_ordered();
 	if (tsc < arg->tsc_target)
 		arg->tsc_mpsync = 0;
 }
@@ -1231,8 +1230,7 @@ tsc_mpsync_test_loop(struct tsc_mpsync_arg *arg)
 		    gd->gd_cpuid);
 	}
 
-	cpu_lfence();
-	test_begin = rdtsc();
+	test_begin = rdtsc_ordered();
 	/* Run test for 100ms */
 	test_end = test_begin + (tsc_frequency / 10);
 
@@ -1249,8 +1247,7 @@ tsc_mpsync_test_loop(struct tsc_mpsync_arg *arg)
 		lwkt_cpusync_init(&cs, gd->gd_other_cpus,
 		    tsc_mpsync_test_remote, arg);
 		lwkt_cpusync_interlock(&cs);
-		cpu_lfence();
-		arg->tsc_target = rdtsc();
+		arg->tsc_target = rdtsc_ordered();
 		cpu_mfence();
 		lwkt_cpusync_deinterlock(&cs);
 		crit_exit();

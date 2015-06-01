@@ -79,6 +79,8 @@ char machine[] = MACHINE;
 SYSCTL_STRING(_hw, HW_MACHINE, machine, CTLFLAG_RD,
 	      machine, 0, "Machine class");
 
+u_int cpu_vendor_id = 0;		/* XXX */
+
 /*
  * Finish a fork operation, with lwp lp2 nearly set up.
  * Copy and update the pcb, set up the stack so that the child

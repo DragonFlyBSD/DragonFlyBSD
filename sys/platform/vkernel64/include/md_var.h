@@ -75,6 +75,7 @@ extern	vm_offset_t crashdumpmap;
 extern  int	cpu_fxsr;
 
 extern  char    cpu_vendor[];	/* XXX belongs in i386 */
+extern  u_int   cpu_vendor_id;	/* XXX belongs in i386 */
 extern  u_int   cpu_id;		/* XXX belongs in i386 */
 
 extern struct vkdisk_info DiskInfo[VKDISK_MAX];

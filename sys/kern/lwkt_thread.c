@@ -100,11 +100,6 @@ int cpu_mwait_spin = 0;
 static void lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame);
 static void lwkt_setcpu_remote(void *arg);
 
-extern void cpu_heavy_restore(void);
-extern void cpu_lwkt_restore(void);
-extern void cpu_kthread_restore(void);
-extern void cpu_idle_restore(void);
-
 /*
  * We can make all thread ports use the spin backend instead of the thread
  * backend.  This should only be set to debug the spin backend.
