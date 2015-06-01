@@ -149,7 +149,8 @@ static struct cputimer	i8254_cputimer = {
     0, 0, 0
 };
 
-static sysclock_t tsc_cputimer_count(void);
+static sysclock_t tsc_cputimer_count_mfence(void);
+static sysclock_t tsc_cputimer_count_lfence(void);
 static void tsc_cputimer_construct(struct cputimer *, sysclock_t);
 
 static struct cputimer	tsc_cputimer = {
@@ -157,7 +158,7 @@ static struct cputimer	tsc_cputimer = {
     "TSC",
     CPUTIMER_PRI_TSC,
     CPUTIMER_TSC,
-    tsc_cputimer_count,
+    tsc_cputimer_count_mfence, /* safe bet */
     cputimer_default_fromhz,
     cputimer_default_fromus,
     tsc_cputimer_construct,
@@ -1369,10 +1370,10 @@ static void
 tsc_cputimer_construct(struct cputimer *timer, sysclock_t oldclock)
 {
 	timer->base = 0;
-	timer->base = oldclock - tsc_cputimer_count();
+	timer->base = oldclock - timer->count();
 }
 
-static sysclock_t
+static __inline sysclock_t
 tsc_cputimer_count(void)
 {
 	uint64_t tsc;
@@ -1381,6 +1382,20 @@ tsc_cputimer_count(void)
 	tsc >>= tsc_cputimer_shift;
 
 	return (tsc + tsc_cputimer.base);
+}
+
+static sysclock_t
+tsc_cputimer_count_lfence(void)
+{
+	cpu_lfence();
+	return tsc_cputimer_count();
+}
+
+static sysclock_t
+tsc_cputimer_count_mfence(void)
+{
+	cpu_mfence();
+	return tsc_cputimer_count();
 }
 
 static void
@@ -1405,6 +1420,11 @@ tsc_cputimer_register(void)
 	    (uintmax_t)freq, tsc_cputimer_shift);
 
 	tsc_cputimer.freq = freq;
+
+	if (cpu_vendor_id == CPU_VENDOR_INTEL)
+		tsc_cputimer.count = tsc_cputimer_count_lfence;
+	else
+		tsc_cputimer.count = tsc_cputimer_count_mfence; /* safe bet */
 
 	cputimer_register(&tsc_cputimer);
 	cputimer_select(&tsc_cputimer, 0);
