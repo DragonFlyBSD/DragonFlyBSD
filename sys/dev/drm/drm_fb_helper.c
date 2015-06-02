@@ -33,6 +33,8 @@
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_crtc_helper.h>
 
+#include <sys/ctype.h>
+
 static LINUX_LIST_HEAD(kernel_fb_helper_list);
 
 /**
@@ -102,8 +104,39 @@ EXPORT_SYMBOL(drm_fb_helper_single_add_all_connectors);
 static int
 fb_get_options(const char *connector_name, char **option)
 {
+	char buf[128], str[1024];
+	int i;
 
-	return (1);
+	/*
+	 * This hack allows us to use drm.video.lvds1="<video-mode>"
+	 * in loader.conf, where linux would use video=LVDS-1:<video-mode>.
+	 * e.g. drm.video.lvds1=1024x768 sets the LVDS-1 connector to
+	 * a 1024x768 video mode in the syscons framebuffer console.
+	 * See https://wiki.archlinux.org/index.php/Kernel_mode_setting
+	 * for an explanation of the video mode command line option.
+	 * (This corresponds to the video= Linux kernel command-line
+	 * option)
+	 */
+	memset(str, 0, sizeof(str));
+	ksnprintf(buf, sizeof(buf), "drm.video.%s", connector_name);
+	i = 0;
+	while (i < strlen(buf)) {
+		buf[i] = tolower(buf[i]);
+		if (buf[i] == '-') {
+			memmove(&buf[i], &buf[i+1], strlen(buf)-i);
+		} else {
+			i++;
+		}
+	}
+	kprintf("looking up kenv for \"%s\"\n", buf);
+	if (kgetenv_string(buf, str, sizeof(str)-1)) {
+		kprintf("found kenv %s=%s\n", buf, str);
+		*option = kstrdup(str, M_DRM);
+		return (0);
+	} else {
+		kprintf("didn't find value for kenv %s\n", buf);
+		return (1);
+	}
 }
 
 static int drm_fb_helper_parse_command_line(struct drm_fb_helper *fb_helper)
@@ -121,6 +154,7 @@ static int drm_fb_helper_parse_command_line(struct drm_fb_helper *fb_helper)
 		mode = &fb_helper_conn->cmdline_mode;
 
 		/* do something on return - turn off connector maybe */
+		/* XXX use driver name and device index for lookup */
 		if (fb_get_options(drm_get_connector_name(connector), &option))
 			continue;
 
@@ -147,13 +181,17 @@ static int drm_fb_helper_parse_command_line(struct drm_fb_helper *fb_helper)
 				connector->force = mode->force;
 			}
 
-			DRM_DEBUG_KMS("cmdline mode for connector %s %dx%d@%dHz%s%s%s\n",
+			DRM_LOG_KMS("cmdline mode for connector %s %dx%d@%dHz%s%s%s\n",
 				      drm_get_connector_name(connector),
 				      mode->xres, mode->yres,
 				      mode->refresh_specified ? mode->refresh : 60,
 				      mode->rb ? " reduced blanking" : "",
 				      mode->margins ? " with margins" : "",
 				      mode->interlace ?  " interlaced" : "");
+		}
+		if (option != NULL) {
+			kfree(option);
+			option = NULL;
 		}
 
 	}
