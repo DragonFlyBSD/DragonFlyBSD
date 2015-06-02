@@ -1911,6 +1911,7 @@ dev/drm/ati_pcigart.c			optional drm
 dev/drm/drm_agpsupport.c		optional drm
 dev/drm/drm_auth.c			optional drm
 dev/drm/drm_bufs.c			optional drm
+dev/drm/drm_cache.c			optional drm
 dev/drm/drm_context.c			optional drm
 dev/drm/drm_crtc.c			optional drm
 dev/drm/drm_crtc_helper.c		optional drm
@@ -1932,9 +1933,11 @@ dev/drm/drm_memory.c			optional drm
 dev/drm/drm_mm.c			optional drm
 dev/drm/drm_modes.c			optional drm
 dev/drm/drm_pci.c			optional drm
+dev/drm/drm_rect.c			optional drm
 dev/drm/drm_scatter.c			optional drm
 dev/drm/drm_stub.c			optional drm
 dev/drm/drm_sysctl.c			optional drm
+dev/drm/drm_sysfs.c			optional drm
 dev/drm/drm_vm.c			optional drm
 dev/drm/drm_vma_manager.c		optional drm
 dev/drm/linux_compat.c			optional drm
@@ -1951,57 +1954,72 @@ dev/drm/ttm/ttm_memory.c		optional drm
 dev/drm/ttm/ttm_page_alloc.c		optional drm
 dev/drm/ttm/ttm_bo_vm.c			optional drm
 # i915kmsdrm breaks VGA console, disabled by default
-#dev/drm/i915/i915_debug.c		optional i915kmsdrm drm
 #dev/drm/i915/i915_dma.c			optional i915kmsdrm drm
 #dev/drm/i915/i915_drv.c			optional i915kmsdrm drm
 #dev/drm/i915/i915_gem.c			optional i915kmsdrm drm
+#dev/drm/i915/i915_gem_context.c		optional i915kmsdrm drm
 #dev/drm/i915/i915_gem_execbuffer.c	optional i915kmsdrm drm
 #dev/drm/i915/i915_gem_evict.c		optional i915kmsdrm drm
 #dev/drm/i915/i915_gem_gtt.c		optional i915kmsdrm drm
+#dev/drm/i915/i915_gem_stolen.c		optional i915kmsdrm drm
 #dev/drm/i915/i915_gem_tiling.c		optional i915kmsdrm drm
 #dev/drm/i915/i915_irq.c			optional i915kmsdrm drm
 #dev/drm/i915/i915_suspend.c		optional i915kmsdrm drm
+#dev/drm/i915/i915_ums.c			optional i915kmsdrm drm
+#dev/drm/i915/intel_acpi.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_bios.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_crt.c		optional i915kmsdrm drm
+#dev/drm/i915/intel_ddi.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_display.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_dp.c			optional i915kmsdrm drm
-#dev/drm/i915/intel_fb.c			optional i915kmsdrm drm
+#dev/drm/i915/intel_dsi.c		optional i915kmsdrm drm
+#dev/drm/i915/intel_dsi_cmd.c		optional i915kmsdrm drm
+#dev/drm/i915/intel_dsi_pll.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_hdmi.c		optional i915kmsdrm drm
-#dev/drm/i915/intel_iic.c		optional i915kmsdrm drm
+#dev/drm/i915/intel_i2c.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_lvds.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_modes.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_opregion.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_overlay.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_panel.c		optional i915kmsdrm drm
+#dev/drm/i915/intel_pm.c			optional i915kmsdrm drm
 #dev/drm/i915/intel_ringbuffer.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_sdvo.c		optional i915kmsdrm drm
+#dev/drm/i915/intel_sideband.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_sprite.c		optional i915kmsdrm drm
 #dev/drm/i915/intel_tv.c			optional i915kmsdrm drm
+#dev/drm/i915/intel_uncore.c		optional i915kmsdrm drm
 #dev/drm/radeon/atom.c			optional radeonkmsdrm drm
 #dev/drm/radeon/atombios_crtc.c		optional radeonkmsdrm drm
 #dev/drm/radeon/atombios_dp.c		optional radeonkmsdrm drm
 #dev/drm/radeon/atombios_encoders.c	optional radeonkmsdrm drm
 #dev/drm/radeon/atombios_i2c.c		optional radeonkmsdrm drm
+#dev/drm/radeon/btc_dpm.c		optional radeonkmsdrm drm
 #dev/drm/radeon/cayman_blit_shaders.c	optional radeonkmsdrm drm
+#dev/drm/radeon/cik.c			optional radeonkmsdrm drm
+#dev/drm/radeon/cik_blit_shaders.c	optional radeonkmsdrm drm
+#dev/drm/radeon/cypress_dpm.c		optional radeonkmsdrm drm
 #dev/drm/radeon/evergreen.c		optional radeonkmsdrm drm
 #dev/drm/radeon/evergreen_blit_kms.c	optional radeonkmsdrm drm
 #dev/drm/radeon/evergreen_blit_shaders.c	optional radeonkmsdrm drm
 #dev/drm/radeon/evergreen_cs.c		optional radeonkmsdrm drm
 #dev/drm/radeon/evergreen_hdmi.c	optional radeonkmsdrm drm
 #dev/drm/radeon/ni.c			optional radeonkmsdrm drm
+#dev/drm/radeon/ni_dpm.c			optional radeonkmsdrm drm
 #dev/drm/radeon/r100.c			optional radeonkmsdrm drm
 #dev/drm/radeon/r200.c			optional radeonkmsdrm drm
 #dev/drm/radeon/r300.c			optional radeonkmsdrm drm
-#dev/drm/radeon/r300_cmdbuf.c		optional radeonkmsdrm drm
+##dev/drm/radeon/r300_cmdbuf.c		optional radeonkmsdrm drm
 #dev/drm/radeon/r420.c			optional radeonkmsdrm drm
 #dev/drm/radeon/r520.c			optional radeonkmsdrm drm
 #dev/drm/radeon/r600.c			optional radeonkmsdrm drm
 #dev/drm/radeon/r600_audio.c		optional radeonkmsdrm drm
-#dev/drm/radeon/r600_blit.c		optional radeonkmsdrm drm
+##dev/drm/radeon/r600_blit.c		optional radeonkmsdrm drm
 #dev/drm/radeon/r600_blit_kms.c		optional radeonkmsdrm drm
 #dev/drm/radeon/r600_blit_shaders.c	optional radeonkmsdrm drm
-#dev/drm/radeon/r600_cp.c		optional radeonkmsdrm drm
+##dev/drm/radeon/r600_cp.c		optional radeonkmsdrm drm
 #dev/drm/radeon/r600_cs.c		optional radeonkmsdrm drm
+#dev/drm/radeon/r600_dpm.c		optional radeonkmsdrm drm
 #dev/drm/radeon/r600_hdmi.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_acpi.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_agp.c		optional radeonkmsdrm drm
@@ -2012,7 +2030,7 @@ dev/drm/ttm/ttm_bo_vm.c			optional drm
 #dev/drm/radeon/radeon_clocks.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_combios.c	optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_connectors.c	optional radeonkmsdrm drm
-#dev/drm/radeon/radeon_cp.c		optional radeonkmsdrm drm
+##dev/drm/radeon/radeon_cp.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_cs.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_cursor.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_device.c		optional radeonkmsdrm drm
@@ -2024,28 +2042,41 @@ dev/drm/ttm/ttm_bo_vm.c			optional drm
 #dev/drm/radeon/radeon_gart.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_gem.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_i2c.c		optional radeonkmsdrm drm
-#dev/drm/radeon/radeon_irq.c		optional radeonkmsdrm drm
+##dev/drm/radeon/radeon_irq.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_irq_kms.c	optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_kms.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_legacy_crtc.c	optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_legacy_encoders.c	optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_legacy_tv.c	optional radeonkmsdrm drm
-#dev/drm/radeon/radeon_mem.c		optional radeonkmsdrm drm
+##dev/drm/radeon/radeon_mem.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_object.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_pm.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_ring.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_sa.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_semaphore.c	optional radeonkmsdrm drm
-#dev/drm/radeon/radeon_state.c		optional radeonkmsdrm drm
+##dev/drm/radeon/radeon_state.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_test.c		optional radeonkmsdrm drm
 #dev/drm/radeon/radeon_ttm.c		optional radeonkmsdrm drm
+#dev/drm/radeon/radeon_uvd.c		optional radeonkmsdrm drm
 #dev/drm/radeon/rs400.c			optional radeonkmsdrm drm
 #dev/drm/radeon/rs600.c			optional radeonkmsdrm drm
 #dev/drm/radeon/rs690.c			optional radeonkmsdrm drm
+#dev/drm/radeon/rs780_dpm.c		optional radeonkmsdrm drm
 #dev/drm/radeon/rv515.c			optional radeonkmsdrm drm
+#dev/drm/radeon/rv6xx_dpm.c		optional radeonkmsdrm drm
+#dev/drm/radeon/rv730_dpm.c		optional radeonkmsdrm drm
+#dev/drm/radeon/rv740_dpm.c		optional radeonkmsdrm drm
 #dev/drm/radeon/rv770.c			optional radeonkmsdrm drm
+#dev/drm/radeon/rv770_dpm.c		optional radeonkmsdrm drm
+#dev/drm/radeon/rv770_smc.c		optional radeonkmsdrm drm
 #dev/drm/radeon/si.c			optional radeonkmsdrm drm
 #dev/drm/radeon/si_blit_shaders.c	optional radeonkmsdrm drm
+#dev/drm/radeon/si_dpm.c			optional radeonkmsdrm drm
+#dev/drm/radeon/si_smc.c			optional radeonkmsdrm drm
+#dev/drm/radeon/sumo_dpm.c		optional radeonkmsdrm drm
+#dev/drm/radeon/sumo_smc.c		optional radeonkmsdrm drm
+#dev/drm/radeon/trinity_dpm.c		optional radeonkmsdrm drm
+#dev/drm/radeon/trinity_smc.c		optional radeonkmsdrm drm
 dev/misc/nsclpcsio/nsclpcsio_isa.c	optional nsclpcsio isa
 dev/powermng/aps/aps.c			optional aps isa
 dev/powermng/it/it.c			optional it isa
