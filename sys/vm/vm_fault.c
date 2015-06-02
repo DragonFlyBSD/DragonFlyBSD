@@ -348,10 +348,19 @@ RetryFault:
 
 	/*
 	 * If the lookup failed or the map protections are incompatible,
-	 * the fault generally fails.  However, if the caller is trying
-	 * to do a user wiring we have more work to do.
+	 * the fault generally fails.
+	 *
+	 * The failure could be due to TDF_NOFAULT if vm_map_lookup()
+	 * tried to do a COW fault.
+	 *
+	 * If the caller is trying to do a user wiring we have more work
+	 * to do.
 	 */
 	if (result != KERN_SUCCESS) {
+		if (result == KERN_FAILURE_NOFAULT) {
+			result = KERN_FAILURE;
+			goto done;
+		}
 		if (result != KERN_PROTECTION_FAILURE ||
 		    (fs.fault_flags & VM_FAULT_WIRE_MASK) != VM_FAULT_USER_WIRE)
 		{
@@ -382,6 +391,7 @@ RetryFault:
 				       &first_pindex, &fs.first_prot,
 				       &fs.wired);
 		if (result != KERN_SUCCESS) {
+			/* could also be KERN_FAILURE_NOFAULT */
 			result = KERN_FAILURE;
 			goto done;
 		}

@@ -4117,6 +4117,16 @@ RetryLookup:
 
 		if (fault_type & VM_PROT_WRITE) {
 			/*
+			 * Not allowed if TDF_NOFAULT is set as the shadowing
+			 * operation can deadlock against the faulting
+			 * function due to the copy-on-write.
+			 */
+			if (curthread->td_flags & TDF_NOFAULT) {
+				rv = KERN_FAILURE_NOFAULT;
+				goto done;
+			}
+
+			/*
 			 * Make a new object, and place it in the object
 			 * chain.  Note that no new references have appeared
 			 * -- one just moved from the map to the new
