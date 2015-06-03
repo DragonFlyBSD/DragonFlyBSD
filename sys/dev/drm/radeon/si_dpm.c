@@ -3453,7 +3453,7 @@ static int si_enter_ulp_state(struct radeon_device *rdev)
 {
 	WREG32(SMC_MESSAGE_0, PPSMC_MSG_SwitchToMinimumPower);
 
-	DRM_UDELAY(25000);
+	udelay(25000);
 
 	return 0;
 }
@@ -3464,12 +3464,12 @@ static int si_exit_ulp_state(struct radeon_device *rdev)
 
 	WREG32(SMC_MESSAGE_0, PPSMC_MSG_ResumeFromMinimumPower);
 
-	DRM_UDELAY(7000);
+	udelay(7000);
 
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(SMC_RESP_0) == 1)
 			break;
-		DRM_UDELAY(1000);
+		udelay(1000);
 	}
 
 	return 0;

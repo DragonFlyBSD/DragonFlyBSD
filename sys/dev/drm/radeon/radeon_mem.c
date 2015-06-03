@@ -29,8 +29,6 @@
  *    Keith Whitwell <keith@tungstengraphics.com>
  *
  * ------------------------ This file is DEPRECATED! -------------------------
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_mem.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #include <drm/drmP.h>
@@ -121,7 +119,7 @@ static void free_block(struct mem_block *p)
 		p->size += q->size;
 		p->next = q->next;
 		p->next->prev = p;
-		drm_free(q, M_DRM);
+		kfree(q);
 	}
 
 	if (p->prev->file_priv == NULL) {
@@ -129,7 +127,7 @@ static void free_block(struct mem_block *p)
 		q->size += p->size;
 		q->next = p->next;
 		q->next->prev = q;
-		drm_free(p, M_DRM);
+		kfree(p);
 	}
 }
 
@@ -143,9 +141,9 @@ static int init_heap(struct mem_block **heap, int start, int size)
 	if (!blocks)
 		return -ENOMEM;
 
-	*heap = kmalloc(sizeof(**heap), M_DRM, M_ZERO | M_WAITOK);
+	*heap = kzalloc(sizeof(**heap), GFP_KERNEL);
 	if (!*heap) {
-		drm_free(blocks, M_DRM);
+		kfree(blocks);
 		return -ENOMEM;
 	}
 
@@ -182,7 +180,7 @@ void radeon_mem_release(struct drm_file *file_priv, struct mem_block *heap)
 			p->size += q->size;
 			p->next = q->next;
 			p->next->prev = p;
-			drm_free(q, M_DRM);
+			kfree(q);
 		}
 	}
 }
@@ -199,10 +197,10 @@ void radeon_mem_takedown(struct mem_block **heap)
 	for (p = (*heap)->next; p != *heap;) {
 		struct mem_block *q = p;
 		p = p->next;
-		drm_free(q, M_DRM);
+		kfree(q);
 	}
 
-	drm_free(*heap, M_DRM);
+	kfree(*heap);
 	*heap = NULL;
 }
 

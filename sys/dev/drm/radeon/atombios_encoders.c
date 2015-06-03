@@ -238,7 +238,7 @@ void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
 	return;
 
 error:
-	drm_free(pdata, M_DRM);
+	kfree(pdata);
 	return;
 }
 
@@ -267,7 +267,7 @@ static void radeon_atom_backlight_exit(struct radeon_encoder *radeon_encoder)
 
 		pdata = bl_get_data(bd);
 		backlight_device_unregister(bd);
-		drm_free(pdata, M_DRM);
+		kfree(pdata);
 
 		DRM_INFO("radeon atom LVDS backlight unloaded\n");
 	}
@@ -1370,7 +1370,7 @@ atombios_set_edp_panel_power(struct drm_connector *connector, int action)
 		for (i = 0; i < 300; i++) {
 			if (radeon_hpd_sense(rdev, radeon_connector->hpd.hpd))
 				return true;
-			DRM_MDELAY(1);
+			mdelay(1);
 		}
 		return false;
 	}
@@ -2535,9 +2535,9 @@ void radeon_enc_destroy(struct drm_encoder *encoder)
 	struct radeon_encoder *radeon_encoder = to_radeon_encoder(encoder);
 	if (radeon_encoder->devices & (ATOM_DEVICE_LCD_SUPPORT))
 		radeon_atom_backlight_exit(radeon_encoder);
-	drm_free(radeon_encoder->enc_priv, M_DRM);
+	kfree(radeon_encoder->enc_priv);
 	drm_encoder_cleanup(encoder);
-	drm_free(radeon_encoder, M_DRM);
+	kfree(radeon_encoder);
 }
 
 static const struct drm_encoder_funcs radeon_atom_enc_funcs = {
@@ -2549,9 +2549,7 @@ radeon_atombios_set_dac_info(struct radeon_encoder *radeon_encoder)
 {
 	struct drm_device *dev = radeon_encoder->base.dev;
 	struct radeon_device *rdev = dev->dev_private;
-	struct radeon_encoder_atom_dac *dac = kmalloc(sizeof(struct radeon_encoder_atom_dac),
-						      M_DRM,
-						      M_ZERO | M_WAITOK);
+	struct radeon_encoder_atom_dac *dac = kzalloc(sizeof(struct radeon_encoder_atom_dac), GFP_KERNEL);
 
 	if (!dac)
 		return NULL;
@@ -2564,9 +2562,7 @@ static struct radeon_encoder_atom_dig *
 radeon_atombios_set_dig_info(struct radeon_encoder *radeon_encoder)
 {
 	int encoder_enum = (radeon_encoder->encoder_enum & ENUM_ID_MASK) >> ENUM_ID_SHIFT;
-	struct radeon_encoder_atom_dig *dig = kmalloc(sizeof(struct radeon_encoder_atom_dig),
-						      M_DRM,
-						      M_ZERO | M_WAITOK);
+	struct radeon_encoder_atom_dig *dig = kzalloc(sizeof(struct radeon_encoder_atom_dig), GFP_KERNEL);
 
 	if (!dig)
 		return NULL;
@@ -2604,8 +2600,7 @@ radeon_add_atom_encoder(struct drm_device *dev,
 	}
 
 	/* add a new one */
-	radeon_encoder = kmalloc(sizeof(struct radeon_encoder),
-				 M_DRM, M_ZERO | M_WAITOK);
+	radeon_encoder = kzalloc(sizeof(struct radeon_encoder), GFP_KERNEL);
 	if (!radeon_encoder)
 		return;
 

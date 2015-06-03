@@ -27,7 +27,6 @@
  *
  * $FreeBSD: head/sys/dev/drm2/radeon/r300.c 255573 2013-09-14 17:24:41Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <uapi_drm/drm.h>
 #include <drm/drm_crtc_helper.h>
@@ -67,7 +66,7 @@ void rv370_pcie_gart_tlb_flush(struct radeon_device *rdev)
 		(void)RREG32_PCIE(RADEON_PCIE_TX_GART_CNTL);
 		WREG32_PCIE(RADEON_PCIE_TX_GART_CNTL, tmp);
 	}
-	cpu_mfence();
+	mb();
 }
 
 #define R300_PTE_WRITEABLE (1 << 2)
@@ -96,7 +95,7 @@ int rv370_pcie_gart_init(struct radeon_device *rdev)
 	int r;
 
 	if (rdev->gart.robj) {
-		DRM_ERROR("RV370 PCIE GART already initialized\n");
+		WARN(1, "RV370 PCIE GART already initialized\n");
 		return 0;
 	}
 	/* Initialize common gart structure */
@@ -356,7 +355,7 @@ static void r300_gpu_init(struct radeon_device *rdev)
 	WREG32(R300_GB_TILE_CONFIG, gb_tile_config);
 
 	if (r100_gui_wait_for_idle(rdev)) {
-		DRM_ERROR("Failed to wait GUI idle while "
+		printk(KERN_WARNING "Failed to wait GUI idle while "
 		       "programming pipes. Bad things might happen.\n");
 	}
 
@@ -368,11 +367,11 @@ static void r300_gpu_init(struct radeon_device *rdev)
 	       R300_DC_DC_DISABLE_IGNORE_PE);
 
 	if (r100_gui_wait_for_idle(rdev)) {
-		DRM_ERROR("Failed to wait GUI idle while "
+		printk(KERN_WARNING "Failed to wait GUI idle while "
 		       "programming pipes. Bad things might happen.\n");
 	}
 	if (r300_mc_wait_for_idle(rdev)) {
-		DRM_ERROR("Failed to wait MC idle while "
+		printk(KERN_WARNING "Failed to wait MC idle while "
 		       "programming pipes. Bad things might happen.\n");
 	}
 	DRM_INFO("radeon: %d quad pipes, %d Z pipes initialized.\n",
@@ -406,9 +405,9 @@ int r300_asic_reset(struct radeon_device *rdev)
 	WREG32(R_0000F0_RBBM_SOFT_RESET, S_0000F0_SOFT_RESET_VAP(1) |
 					S_0000F0_SOFT_RESET_GA(1));
 	RREG32(R_0000F0_RBBM_SOFT_RESET);
-	DRM_MDELAY(500);
+	mdelay(500);
 	WREG32(R_0000F0_RBBM_SOFT_RESET, 0);
-	DRM_MDELAY(1);
+	mdelay(1);
 	status = RREG32(R_000E40_RBBM_STATUS);
 	dev_info(rdev->dev, "(%s:%d) RBBM_STATUS=0x%08X\n", __func__, __LINE__, status);
 	/* resetting the CP seems to be problematic sometimes it end up
@@ -418,9 +417,9 @@ int r300_asic_reset(struct radeon_device *rdev)
 	 */
 	WREG32(R_0000F0_RBBM_SOFT_RESET, S_0000F0_SOFT_RESET_CP(1));
 	RREG32(R_0000F0_RBBM_SOFT_RESET);
-	DRM_MDELAY(500);
+	mdelay(500);
 	WREG32(R_0000F0_RBBM_SOFT_RESET, 0);
-	DRM_MDELAY(1);
+	mdelay(1);
 	status = RREG32(R_000E40_RBBM_STATUS);
 	dev_info(rdev->dev, "(%s:%d) RBBM_STATUS=0x%08X\n", __func__, __LINE__, status);
 	/* restore PCI & busmastering */
@@ -1134,7 +1133,7 @@ static int r300_packet0_check(struct radeon_cs_parser *p,
 	}
 	return 0;
 fail:
-	DRM_ERROR("Forbidden register 0x%04X in cs at %d (val=%08x)\n",
+	printk(KERN_ERR "Forbidden register 0x%04X in cs at %d (val=%08x)\n",
 	       reg, idx, idx_value);
 	return -EINVAL;
 }
@@ -1253,7 +1252,7 @@ int r300_cs_parse(struct radeon_cs_parser *p)
 	struct r100_cs_track *track;
 	int r;
 
-	track = kmalloc(sizeof(*track), M_DRM, M_ZERO | M_WAITOK);
+	track = kzalloc(sizeof(*track), GFP_KERNEL);
 	if (track == NULL)
 		return -ENOMEM;
 	r100_cs_track_clear(p->rdev, track);
@@ -1261,7 +1260,7 @@ int r300_cs_parse(struct radeon_cs_parser *p)
 	do {
 		r = radeon_cs_packet_parse(p, &pkt, p->idx);
 		if (r) {
-			drm_free(p->track, M_DRM);
+			kfree(p->track);
 			p->track = NULL;
 			return r;
 		}
@@ -1280,17 +1279,17 @@ int r300_cs_parse(struct radeon_cs_parser *p)
 			break;
 		default:
 			DRM_ERROR("Unknown packet type %d !\n", pkt.type);
-			drm_free(p->track, M_DRM);
+			kfree(p->track);
 			p->track = NULL;
 			return -EINVAL;
 		}
 		if (r) {
-			drm_free(p->track, M_DRM);
+			kfree(p->track);
 			p->track = NULL;
 			return r;
 		}
 	} while (p->idx < p->chunks[p->chunk_ib_idx].length_dw);
-	drm_free(p->track, M_DRM);
+	kfree(p->track);
 	p->track = NULL;
 	return 0;
 }
@@ -1298,7 +1297,7 @@ int r300_cs_parse(struct radeon_cs_parser *p)
 void r300_set_reg_safe(struct radeon_device *rdev)
 {
 	rdev->config.r300.reg_safe_bm = r300_reg_safe_bm;
-	rdev->config.r300.reg_safe_bm_size = DRM_ARRAY_SIZE(r300_reg_safe_bm);
+	rdev->config.r300.reg_safe_bm_size = ARRAY_SIZE(r300_reg_safe_bm);
 }
 
 void r300_mc_program(struct radeon_device *rdev)
@@ -1475,7 +1474,7 @@ void r300_fini(struct radeon_device *rdev)
 	radeon_fence_driver_fini(rdev);
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 }
 

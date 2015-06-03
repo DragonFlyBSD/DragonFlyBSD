@@ -195,7 +195,7 @@ PPSMC_Result si_send_msg_to_smc(struct radeon_device *rdev, PPSMC_Msg msg)
 		tmp = RREG32(SMC_RESP_0);
 		if (tmp != 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 	tmp = RREG32(SMC_RESP_0);
 
@@ -214,7 +214,7 @@ PPSMC_Result si_wait_for_smc_inactive(struct radeon_device *rdev)
 		tmp = RREG32_SMC(SMC_SYSCON_CLOCK_CNTL_0);
 		if ((tmp & CKEN) == 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	return PPSMC_Result_OK;

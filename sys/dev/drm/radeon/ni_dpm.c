@@ -1092,10 +1092,10 @@ static void ni_stop_smc(struct radeon_device *rdev)
 		tmp = RREG32(LB_SYNC_RESET_SEL) & LB_SYNC_RESET_SEL_MASK;
 		if (tmp != 1)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
-	DRM_UDELAY(100);
+	udelay(100);
 
 	r7xx_stop_smc(rdev);
 }
@@ -1217,7 +1217,7 @@ static int ni_enter_ulp_state(struct radeon_device *rdev)
 	WREG32_P(SMC_MSG, HOST_SMC_MSG(PPSMC_MSG_SwitchToMinimumPower),
                  ~HOST_SMC_MSG_MASK);
 
-	DRM_UDELAY(25000);
+	udelay(25000);
 
 	return 0;
 }
@@ -3483,7 +3483,7 @@ static void ni_enable_bif_dynamic_pcie_gen2(struct radeon_device *rdev,
 
 			tmp |= LC_CLR_FAILED_SPD_CHANGE_CNT;
 			WREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL, tmp);
-			DRM_UDELAY(10);
+			udelay(10);
 			tmp &= ~LC_CLR_FAILED_SPD_CHANGE_CNT;
 			WREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL, tmp);
 		} else {

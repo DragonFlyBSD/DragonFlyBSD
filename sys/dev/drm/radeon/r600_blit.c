@@ -24,10 +24,7 @@
  *     Alex Deucher <alexander.deucher@amd.com>
  *
  * ------------------------ This file is DEPRECATED! -------------------------
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/r600_blit.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon_drv.h"
@@ -53,7 +50,7 @@ set_render_target(drm_radeon_private_t *dev_priv, int format, int w, int h, u64 
 	RING_LOCALS;
 	DRM_DEBUG("\n");
 
-	h = roundup2(h, 8);
+	h = ALIGN(h, 8);
 	if (h < 8)
 		h = 8;
 

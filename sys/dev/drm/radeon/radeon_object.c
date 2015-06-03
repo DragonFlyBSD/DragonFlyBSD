@@ -31,7 +31,6 @@
  *
  * $FreeBSD: head/sys/dev/drm2/radeon/radeon_object.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon.h"
@@ -69,7 +68,7 @@ static void radeon_ttm_bo_destroy(struct ttm_buffer_object *tbo)
 	radeon_bo_clear_surface_reg(bo);
 	radeon_bo_clear_va(bo);
 	drm_gem_object_release(&bo->gem_base);
-	drm_free(bo, M_DRM);
+	kfree(bo);
 }
 
 bool radeon_ttm_bo_is_radeon_bo(struct ttm_buffer_object *bo)
@@ -120,7 +119,7 @@ int radeon_bo_create(struct radeon_device *rdev,
 	size_t acc_size;
 	int r;
 
-	size = roundup2(size, PAGE_SIZE);
+	size = ALIGN(size, PAGE_SIZE);
 
 	if (kernel) {
 		type = ttm_bo_type_kernel;
@@ -134,13 +133,12 @@ int radeon_bo_create(struct radeon_device *rdev,
 	acc_size = ttm_bo_dma_acc_size(&rdev->mman.bdev, size,
 				       sizeof(struct radeon_bo));
 
-	bo = kmalloc(sizeof(struct radeon_bo), M_DRM,
-		     M_ZERO | M_WAITOK);
+	bo = kzalloc(sizeof(struct radeon_bo), GFP_KERNEL);
 	if (bo == NULL)
 		return -ENOMEM;
 	r = drm_gem_object_init(rdev->ddev, &bo->gem_base, size);
 	if (unlikely(r)) {
-		drm_free(bo, M_DRM);
+		kfree(bo);
 		return r;
 	}
 	bo->rdev = rdev;

@@ -28,8 +28,8 @@
  *    Christian König <deathsimple@vodafone.de>
  */
 
-#include <linux/module.h>
 #include <linux/firmware.h>
+#include <linux/module.h>
 #include <drm/drmP.h>
 
 #include "radeon.h"
@@ -884,7 +884,7 @@ int radeon_uvd_send_upll_ctlreq(struct radeon_device *rdev,
 	/* make sure UPLL_CTLREQ is deasserted */
 	WREG32_P(cg_upll_func_cntl, 0, ~UPLL_CTLREQ_MASK);
 
-	DRM_MDELAY(10);
+	mdelay(10);
 
 	/* assert UPLL_CTLREQ */
 	WREG32_P(cg_upll_func_cntl, UPLL_CTLREQ_MASK, ~UPLL_CTLREQ_MASK);
@@ -894,7 +894,7 @@ int radeon_uvd_send_upll_ctlreq(struct radeon_device *rdev,
 		uint32_t mask = UPLL_CTLACK_MASK | UPLL_CTLACK2_MASK;
 		if ((RREG32(cg_upll_func_cntl) & mask) == mask)
 			break;
-		DRM_MDELAY(10);
+		mdelay(10);
 	}
 
 	/* deassert UPLL_CTLREQ */

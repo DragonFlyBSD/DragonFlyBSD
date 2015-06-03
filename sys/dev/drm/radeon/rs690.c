@@ -44,7 +44,7 @@ int rs690_mc_wait_for_idle(struct radeon_device *rdev)
 		tmp = RREG32_MC(R_000090_MC_SYSTEM_STATUS);
 		if (G_000090_MC_SYSTEM_IDLE(tmp))
 			return 0;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 	return -1;
 }
@@ -54,7 +54,7 @@ static void rs690_gpu_init(struct radeon_device *rdev)
 	/* FIXME: is this correct ? */
 	r420_pipes_init(rdev);
 	if (rs690_mc_wait_for_idle(rdev)) {
-		DRM_ERROR("Failed to wait MC idle while "
+		printk(KERN_WARNING "Failed to wait MC idle while "
 		       "programming pipes. Bad things might happen.\n");
 	}
 }
@@ -781,7 +781,7 @@ void rs690_fini(struct radeon_device *rdev)
 	radeon_fence_driver_fini(rdev);
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 }
 

@@ -635,7 +635,7 @@ static void sumo_set_forced_mode_enabled(struct radeon_device *rdev)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(CG_SCLK_STATUS) & SCLK_OVERCLK_DETECT)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 }
 
@@ -646,12 +646,12 @@ static void sumo_wait_for_level_0(struct radeon_device *rdev)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if ((RREG32(TARGET_AND_CURRENT_PROFILE_INDEX) & CURR_SCLK_INDEX_MASK) == 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if ((RREG32(TARGET_AND_CURRENT_PROFILE_INDEX) & CURR_INDEX_MASK) == 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 }
 

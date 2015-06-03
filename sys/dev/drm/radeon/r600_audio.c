@@ -22,10 +22,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  * Authors: Christian König
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/r600_audio.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_reg.h"

@@ -31,6 +31,8 @@
 #ifndef __RADEON_DRV_H__
 #define __RADEON_DRV_H__
 
+#include <linux/firmware.h>
+
 #include "radeon_family.h"
 
 /* General customization:
@@ -1998,7 +2000,7 @@ do {									\
 
 #define VB_AGE_TEST_WITH_RETURN( dev_priv )				\
 do {								\
-	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;\
+	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;	\
 	drm_radeon_sarea_t *sarea_priv = master_priv->sarea_priv;	\
 	if ( sarea_priv->last_dispatch >= RADEON_MAX_VB_AGE ) {		\
 		int __ret;						\

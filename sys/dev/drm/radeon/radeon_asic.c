@@ -24,8 +24,6 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_asic.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #include <drm/drmP.h>
@@ -53,7 +51,8 @@
  */
 static uint32_t radeon_invalid_rreg(struct radeon_device *rdev, uint32_t reg)
 {
-	panic("Invalid callback to read register 0x%04X\n", reg);
+	DRM_ERROR("Invalid callback to read register 0x%04X\n", reg);
+	BUG_ON(1);
 	return 0;
 }
 
@@ -69,8 +68,9 @@ static uint32_t radeon_invalid_rreg(struct radeon_device *rdev, uint32_t reg)
  */
 static void radeon_invalid_wreg(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	panic("Invalid callback to write register 0x%04X with 0x%08X\n",
+	DRM_ERROR("Invalid callback to write register 0x%04X with 0x%08X\n",
 		  reg, v);
+	BUG_ON(1);
 }
 
 /**

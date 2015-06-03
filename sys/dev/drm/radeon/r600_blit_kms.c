@@ -21,7 +21,6 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * $FreeBSD: head/sys/dev/drm2/radeon/r600_blit_kms.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #include <drm/drmP.h>
@@ -73,7 +72,7 @@ set_render_target(struct radeon_device *rdev, int format,
 	u32 cb_color_info;
 	int pitch, slice;
 
-	h = roundup2(h, 8);
+	h = ALIGN(h, 8);
 	if (h < 8)
 		h = 8;
 
@@ -465,7 +464,7 @@ set_default_state(struct radeon_device *rdev)
 				    NUM_ES_STACK_ENTRIES(num_es_stack_entries));
 
 	/* emit an IB pointing at default state */
-	dwords = roundup2(rdev->r600_blit.state_len, 0x10);
+	dwords = ALIGN(rdev->r600_blit.state_len, 0x10);
 	gpu_addr = rdev->r600_blit.shader_gpu_addr + rdev->r600_blit.state_offset;
 	radeon_ring_write(ring, PACKET3(PACKET3_INDIRECT_BUFFER, 2));
 	radeon_ring_write(ring,
@@ -530,15 +529,15 @@ int r600_blit_init(struct radeon_device *rdev)
 	}
 
 	obj_size = dwords * 4;
-	obj_size = roundup2(obj_size, 256);
+	obj_size = ALIGN(obj_size, 256);
 
 	rdev->r600_blit.vs_offset = obj_size;
 	obj_size += r6xx_vs_size * 4;
-	obj_size = roundup2(obj_size, 256);
+	obj_size = ALIGN(obj_size, 256);
 
 	rdev->r600_blit.ps_offset = obj_size;
 	obj_size += r6xx_ps_size * 4;
-	obj_size = roundup2(obj_size, 256);
+	obj_size = ALIGN(obj_size, 256);
 
 	/* pin copy shader into vram if not already initialized */
 	if (rdev->r600_blit.shader_obj == NULL) {
@@ -624,7 +623,7 @@ static unsigned r600_blit_create_rect(unsigned num_gpu_pages,
 		h = 0;
 		w = 0;
 		pages = 0;
-		DRM_ERROR("%s: called with no pages", __func__);
+		WARN_ON(1);
 	} else {
 		int rect_order = 2;
 		h = RECT_UNIT_H;
@@ -642,7 +641,7 @@ static unsigned r600_blit_create_rect(unsigned num_gpu_pages,
 		w = (pages * RECT_UNIT_W * RECT_UNIT_H) / h;
 		w = (w / RECT_UNIT_W) * RECT_UNIT_W;
 		pages = (w * h) / (RECT_UNIT_W * RECT_UNIT_H);
-		KASSERT(pages != 0, ("r600_blit_create_rect: pages == 0"));
+		BUG_ON(pages == 0);
 	}
 
 

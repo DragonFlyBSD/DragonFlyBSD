@@ -39,6 +39,8 @@
 #include <drm/ttm/ttm_page_alloc.h>
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
+#include <linux/seq_file.h>
+#include <linux/slab.h>
 #include "radeon_reg.h"
 #include "radeon.h"
 
@@ -211,7 +213,7 @@ static void radeon_move_null(struct ttm_buffer_object *bo,
 {
 	struct ttm_mem_reg *old_mem = &bo->mem;
 
-	KASSERT(old_mem->mm_node == NULL, ("old_mem->mm_node != NULL"));
+	BUG_ON(old_mem->mm_node != NULL);
 	*old_mem = *new_mem;
 	new_mem->mm_node = NULL;
 }
@@ -258,7 +260,7 @@ static int radeon_move_blit(struct ttm_buffer_object *bo,
 		return -EINVAL;
 	}
 
-	CTASSERT((PAGE_SIZE % RADEON_GPU_PAGE_SIZE) == 0);
+	BUILD_BUG_ON((PAGE_SIZE % RADEON_GPU_PAGE_SIZE) != 0);
 
 	/* sync other rings */
 	fence = bo->sync_obj;
@@ -515,7 +517,7 @@ static int radeon_ttm_backend_bind(struct ttm_tt *ttm,
 
 	gtt->offset = (unsigned long)(bo_mem->start << PAGE_SHIFT);
 	if (!ttm->num_pages) {
-		DRM_ERROR("nothing to bind %lu pages for mreg %p back %p!\n",
+		WARN(1, "nothing to bind %lu pages for mreg %p back %p!\n",
 		     ttm->num_pages, bo_mem, ttm);
 	}
 	r = radeon_gart_bind(gtt->rdev, gtt->offset,
@@ -541,7 +543,7 @@ static void radeon_ttm_backend_destroy(struct ttm_tt *ttm)
 	struct radeon_ttm_tt *gtt = (void *)ttm;
 
 	ttm_dma_tt_fini(&gtt->ttm);
-	drm_free(gtt, M_DRM);
+	kfree(gtt);
 }
 
 static struct ttm_backend_func radeon_backend_func = {
@@ -567,15 +569,14 @@ static struct ttm_tt *radeon_ttm_tt_create(struct ttm_bo_device *bdev,
 #endif /* DUMBBELL_WIP */
 #endif
 
-	gtt = kmalloc(sizeof(struct radeon_ttm_tt), M_DRM,
-		      M_WAITOK | M_ZERO);
+	gtt = kzalloc(sizeof(struct radeon_ttm_tt), GFP_KERNEL);
 	if (gtt == NULL) {
 		return NULL;
 	}
 	gtt->ttm.ttm.func = &radeon_backend_func;
 	gtt->rdev = rdev;
 	if (ttm_dma_tt_init(&gtt->ttm, bdev, size, page_flags, dummy_read_page)) {
-		drm_free(gtt, M_DRM);
+		kfree(gtt);
 		return NULL;
 	}
 	return &gtt->ttm.ttm;

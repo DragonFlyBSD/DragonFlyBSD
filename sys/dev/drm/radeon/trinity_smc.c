@@ -39,7 +39,7 @@ static int trinity_notify_message_to_smu(struct radeon_device *rdev, u32 id)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(SMC_RESP_0) != 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 	v = RREG32(SMC_RESP_0);
 
@@ -112,7 +112,7 @@ void trinity_acquire_mutex(struct radeon_device *rdev)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if ((RREG32(SMC_INT_REQ) & 0xffff) == 1)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 }
 

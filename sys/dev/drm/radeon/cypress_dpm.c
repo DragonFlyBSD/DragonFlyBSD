@@ -68,7 +68,7 @@ static void cypress_enable_bif_dynamic_pcie_gen2(struct radeon_device *rdev,
 
 				tmp |= LC_CLR_FAILED_SPD_CHANGE_CNT;
 				WREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL, tmp);
-				DRM_UDELAY(10);
+				udelay(10);
 				tmp &= ~LC_CLR_FAILED_SPD_CHANGE_CNT;
 				WREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL, tmp);
 			}
@@ -111,7 +111,7 @@ static int cypress_enter_ulp_state(struct radeon_device *rdev)
 	WREG32_P(SMC_MSG, HOST_SMC_MSG(PPSMC_MSG_SwitchToMinimumPower),
 		 ~HOST_SMC_MSG_MASK);
 
-	DRM_UDELAY(7000);
+	udelay(7000);
 
 	return 0;
 }
@@ -304,7 +304,7 @@ static int cypress_pcie_performance_request(struct radeon_device *rdev,
 	struct evergreen_power_info *eg_pi = evergreen_get_pi(rdev);
 	u32 tmp;
 
-	DRM_UDELAY(10);
+	udelay(10);
 	tmp = RREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL);
 	if ((perf_req == PCIE_PERF_REQ_PECI_GEN1) && (tmp & LC_CURRENT_DATA_RATE))
 		return 0;
@@ -1107,7 +1107,7 @@ static void cypress_wait_for_mc_sequencer(struct radeon_device *rdev, u8 value)
 		for (j = 0; j < rdev->usec_timeout; j++) {
 			if (((RREG32(MC_SEQ_CG) & CG_SEQ_RESP_MASK) >> CG_SEQ_RESP_SHIFT) == value)
 				break;
-			DRM_UDELAY(1);
+			udelay(1);
 		}
 	}
 }
@@ -1151,7 +1151,7 @@ static void cypress_force_mc_use_s1(struct radeon_device *rdev,
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(MC_SEQ_STATUS_M) & PMG_PWRSTATE)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	mc_seq_cg &= ~CG_SEQ_REQ_MASK;
@@ -1209,7 +1209,7 @@ static void cypress_force_mc_use_s0(struct radeon_device *rdev,
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (!(RREG32(MC_SEQ_STATUS_M) & PMG_PWRSTATE))
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	mc_seq_cg &= ~CG_SEQ_REQ_MASK;

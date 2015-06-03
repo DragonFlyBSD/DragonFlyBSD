@@ -20,7 +20,6 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  * Authors: Alex Deucher
- * $FreeBSD: head/sys/dev/drm2/radeon/ni.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 #include <linux/firmware.h>
 #include <linux/module.h>
@@ -184,6 +183,7 @@ MODULE_FIRMWARE("radeon/CAYMAN_smc.bin");
 MODULE_FIRMWARE("radeon/ARUBA_pfp.bin");
 MODULE_FIRMWARE("radeon/ARUBA_me.bin");
 MODULE_FIRMWARE("radeon/ARUBA_rlc.bin");
+
 
 static const u32 cayman_golden_registers2[] =
 {
@@ -656,7 +656,7 @@ int ni_mc_load_microcode(struct radeon_device *rdev)
 		for (i = 0; i < rdev->usec_timeout; i++) {
 			if (RREG32(MC_IO_PAD_CNTL_D0) & MEM_FALL_OUT_CMD)
 				break;
-			DRM_UDELAY(1);
+			udelay(1);
 		}
 
 		if (running)
@@ -723,7 +723,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 		rlc_req_size = ARUBA_RLC_UCODE_SIZE * 4;
 		mc_req_size = 0;
 		break;
-	default: panic("%s: Unsupported family %d", __func__, rdev->family);
+	default: BUG();
 	}
 
 	DRM_INFO("Loading %s Microcode\n", chip_name);
@@ -733,7 +733,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->pfp_fw->datasize != pfp_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "ni_pfp: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->pfp_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -745,7 +745,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->me_fw->datasize != me_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "ni_me: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->me_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -757,7 +757,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->rlc_fw->datasize != rlc_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "ni_rlc: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->rlc_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -770,7 +770,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 		if (err)
 			goto out;
 		if (rdev->mc_fw->datasize != mc_req_size) {
-			DRM_ERROR(
+			printk(KERN_ERR
 			       "ni_mc: Bogus length %zu in firmware \"%s\"\n",
 			       rdev->mc_fw->datasize, fw_name);
 			err = -EINVAL;
@@ -797,7 +797,7 @@ int ni_init_microcode(struct radeon_device *rdev)
 out:
 	if (err) {
 		if (err != -EINVAL)
-			DRM_ERROR(
+			printk(KERN_ERR
 			       "ni_cp: Failed to load firmware \"%s\"\n",
 			       fw_name);
 		release_firmware(rdev->pfp_fw);
@@ -1176,7 +1176,7 @@ static void cayman_gpu_init(struct radeon_device *rdev)
 
 	WREG32(PA_CL_ENHANCE, CLIP_VTX_REORDER_ENA | NUM_CLIP_SEQ(3));
 
-	DRM_UDELAY(50);
+	udelay(50);
 
 	/* set clockgating golden values on TN */
 	if (rdev->family == CHIP_ARUBA) {
@@ -1550,7 +1550,7 @@ static int cayman_cp_resume(struct radeon_device *rdev)
 				 SOFT_RESET_SPI |
 				 SOFT_RESET_SX));
 	RREG32(GRBM_SOFT_RESET);
-	DRM_MDELAY(15);
+	mdelay(15);
 	WREG32(GRBM_SOFT_RESET, 0);
 	RREG32(GRBM_SOFT_RESET);
 
@@ -1600,7 +1600,7 @@ static int cayman_cp_resume(struct radeon_device *rdev)
 		WREG32(ring->rptr_reg, ring->rptr);
 		WREG32(ring->wptr_reg, ring->wptr);
 
-		DRM_MDELAY(1);
+		mdelay(1);
 		WREG32_P(cp_rb_cntl[i], 0, ~RB_RPTR_WR_ENA);
 	}
 
@@ -1714,7 +1714,7 @@ int cayman_dma_resume(struct radeon_device *rdev)
 	/* Reset dma */
 	WREG32(SRBM_SOFT_RESET, SOFT_RESET_DMA | SOFT_RESET_DMA1);
 	RREG32(SRBM_SOFT_RESET);
-	DRM_UDELAY(50);
+	udelay(50);
 	WREG32(SRBM_SOFT_RESET, 0);
 
 	for (i = 0; i < 2; i++) {
@@ -1916,7 +1916,7 @@ static void cayman_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 		WREG32(DMA_RB_CNTL + DMA1_REGISTER_OFFSET, tmp);
 	}
 
-	DRM_UDELAY(50);
+	udelay(50);
 
 	evergreen_mc_stop(rdev, &save);
 	if (evergreen_mc_wait_for_idle(rdev)) {
@@ -1980,7 +1980,7 @@ static void cayman_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 		WREG32(GRBM_SOFT_RESET, tmp);
 		tmp = RREG32(GRBM_SOFT_RESET);
 
-		DRM_UDELAY(50);
+		udelay(50);
 
 		tmp &= ~grbm_soft_reset;
 		WREG32(GRBM_SOFT_RESET, tmp);
@@ -1994,7 +1994,7 @@ static void cayman_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 		WREG32(SRBM_SOFT_RESET, tmp);
 		tmp = RREG32(SRBM_SOFT_RESET);
 
-		DRM_UDELAY(50);
+		udelay(50);
 
 		tmp &= ~srbm_soft_reset;
 		WREG32(SRBM_SOFT_RESET, tmp);
@@ -2002,10 +2002,10 @@ static void cayman_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 	}
 
 	/* Wait a little for things to settle down */
-	DRM_UDELAY(50);
+	udelay(50);
 
 	evergreen_mc_resume(rdev, &save);
-	DRM_UDELAY(50);
+	udelay(50);
 
 	evergreen_print_gpu_status_regs(rdev);
 }
@@ -2440,7 +2440,7 @@ void cayman_fini(struct radeon_device *rdev)
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
 	ni_fini_microcode(rdev);
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 }
 

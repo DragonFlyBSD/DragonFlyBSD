@@ -345,7 +345,7 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 	case CHIP_RV730:
 	case CHIP_RV740: chip_name = "RV730"; break;
 	case CHIP_RV710: chip_name = "RV710"; break;
-	default:         panic("%s: Unsupported family %d", __func__, dev_priv->flags & RADEON_FAMILY_MASK);
+	default:         BUG();
 	}
 
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_RV770) {
@@ -363,7 +363,7 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 	if (err)
 		goto out;
 	if (dev_priv->pfp_fw->datasize != pfp_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "r600_cp: Bogus length %zu in firmware \"%s\"\n",
 		       dev_priv->pfp_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -375,7 +375,7 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 	if (err)
 		goto out;
 	if (dev_priv->me_fw->datasize != me_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "r600_cp: Bogus length %zu in firmware \"%s\"\n",
 		       dev_priv->me_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -383,7 +383,7 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 out:
 	if (err) {
 		if (err != -EINVAL)
-			DRM_ERROR(
+			printk(KERN_ERR
 			       "r600_cp: Failed to load firmware \"%s\"\n",
 			       fw_name);
 		release_firmware(dev_priv->pfp_fw);
@@ -414,7 +414,7 @@ static void r600_cp_load_microcode(drm_radeon_private_t *dev_priv)
 
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, R600_SOFT_RESET_CP);
 	RADEON_READ(R600_GRBM_SOFT_RESET);
-	DRM_MDELAY(15);
+	mdelay(15);
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, 0);
 
 	fw_data = (const __be32 *)dev_priv->me_fw->data;
@@ -507,7 +507,7 @@ static void r700_cp_load_microcode(drm_radeon_private_t *dev_priv)
 
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, R600_SOFT_RESET_CP);
 	RADEON_READ(R600_GRBM_SOFT_RESET);
-	DRM_MDELAY(15);
+	mdelay(15);
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, 0);
 
 	fw_data = (const __be32 *)dev_priv->pfp_fw->data;
@@ -1799,7 +1799,7 @@ static void r600_cp_init_ring_buffer(struct drm_device *dev,
 
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, R600_SOFT_RESET_CP);
 	RADEON_READ(R600_GRBM_SOFT_RESET);
-	DRM_MDELAY(15);
+	mdelay(15);
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, 0);
 
 

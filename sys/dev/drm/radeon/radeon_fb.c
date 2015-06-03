@@ -121,15 +121,15 @@ static int radeonfb_create_pinned_object(struct radeon_fbdev *rfbdev,
 						  fb_tiled) * ((bpp + 1) / 8);
 
 	if (rdev->family >= CHIP_R600)
-		height = roundup2(mode_cmd->height, 8);
+		height = ALIGN(mode_cmd->height, 8);
 	size = mode_cmd->pitches[0] * height;
-	aligned_size = roundup2(size, PAGE_SIZE);
+	aligned_size = ALIGN(size, PAGE_SIZE);
 	ret = radeon_gem_object_create(rdev, aligned_size, 0,
 				       RADEON_GEM_DOMAIN_VRAM,
 				       false, true,
 				       &gobj);
 	if (ret) {
-		DRM_ERROR("failed to allocate framebuffer (%d)\n",
+		printk(KERN_ERR "failed to allocate framebuffer (%d)\n",
 		       aligned_size);
 		return -ENOMEM;
 	}
@@ -260,7 +260,7 @@ out_unref:
 		drm_gem_object_unreference(gobj);
 		drm_framebuffer_unregister_private(fb);
 		drm_framebuffer_cleanup(fb);
-		drm_free(fb, M_DRM); /* XXX malloc'd in radeon_user_framebuffer_create? */
+		kfree(fb); /* XXX malloc'd in radeon_user_framebuffer_create? */
 	}
 	return ret;
 }
@@ -318,8 +318,7 @@ int radeon_fbdev_init(struct radeon_device *rdev)
 	if (ASIC_IS_RN50(rdev) || rdev->mc.real_vram_size <= (32*1024*1024))
 		bpp_sel = 8;
 
-	rfbdev = kmalloc(sizeof(struct radeon_fbdev), M_DRM,
-			 M_WAITOK | M_ZERO);
+	rfbdev = kzalloc(sizeof(struct radeon_fbdev), GFP_KERNEL);
 	if (!rfbdev)
 		return -ENOMEM;
 
@@ -331,7 +330,7 @@ int radeon_fbdev_init(struct radeon_device *rdev)
 				 rdev->num_crtc,
 				 RADEONFB_CONN_LIMIT);
 	if (ret) {
-		drm_free(rfbdev, M_DRM);
+		kfree(rfbdev);
 		return ret;
 	}
 
@@ -350,7 +349,7 @@ void radeon_fbdev_fini(struct radeon_device *rdev)
 		return;
 
 	radeon_fbdev_destroy(rdev->ddev, rdev->mode_info.rfbdev);
-	drm_free(rdev->mode_info.rfbdev, M_DRM);
+	kfree(rdev->mode_info.rfbdev);
 	rdev->mode_info.rfbdev = NULL;
 }
 

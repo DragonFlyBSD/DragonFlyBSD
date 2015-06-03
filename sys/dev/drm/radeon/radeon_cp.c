@@ -529,10 +529,10 @@ static int radeon_cp_init_microcode(drm_radeon_private_t *dev_priv)
 
 	err = request_firmware(&dev_priv->me_fw, fw_name, &pdev->dev);
 	if (err) {
-		DRM_ERROR("radeon_cp: Failed to load firmware \"%s\"\n",
+		printk(KERN_ERR "radeon_cp: Failed to load firmware \"%s\"\n",
 		       fw_name);
 	} else if (dev_priv->me_fw->datasize % 8) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "radeon_cp: Bogus length %zu in firmware \"%s\"\n",
 		       dev_priv->me_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -2069,8 +2069,7 @@ int radeon_driver_load(struct drm_device *dev, unsigned long flags)
 	drm_radeon_private_t *dev_priv;
 	int ret = 0;
 
-	dev_priv = kmalloc(sizeof(drm_radeon_private_t), M_DRM,
-			   M_ZERO | M_WAITOK);
+	dev_priv = kzalloc(sizeof(drm_radeon_private_t), GFP_KERNEL);
 	if (dev_priv == NULL)
 		return -ENOMEM;
 
@@ -2129,8 +2128,7 @@ int radeon_master_create(struct drm_device *dev, struct drm_master *master)
 	unsigned long sareapage;
 	int ret;
 
-	master_priv = kmalloc(sizeof(*master_priv), M_DRM,
-			      M_ZERO | M_WAITOK);
+	master_priv = kzalloc(sizeof(*master_priv), GFP_KERNEL);
 	if (!master_priv)
 		return -ENOMEM;
 
@@ -2140,7 +2138,7 @@ int radeon_master_create(struct drm_device *dev, struct drm_master *master)
 			 &master_priv->sarea);
 	if (ret) {
 		DRM_ERROR("SAREA setup failed\n");
-		drm_free(master_priv, M_DRM);
+		kfree(master_priv);
 		return ret;
 	}
 	master_priv->sarea_priv = (drm_radeon_sarea_t *)((char *)master_priv->sarea->handle) +
@@ -2170,7 +2168,7 @@ void radeon_master_destroy(struct drm_device *dev, struct drm_master *master)
 		drm_rmmap(dev, master_priv->sarea);
 #endif
 
-	drm_free(master_priv, M_DRM);
+	kfree(master_priv);
 
 	master->driver_priv = NULL;
 }
@@ -2204,7 +2202,7 @@ int radeon_driver_unload(struct drm_device *dev)
 
 	drm_rmmap(dev, dev_priv->mmio);
 
-	drm_free(dev_priv, M_DRM);
+	kfree(dev_priv);
 
 	dev->dev_private = NULL;
 	return 0;

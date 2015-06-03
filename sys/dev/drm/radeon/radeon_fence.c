@@ -30,7 +30,6 @@
  *
  * $FreeBSD: head/sys/dev/drm2/radeon/radeon_fence.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include "radeon_reg.h"
 #include "radeon.h"
@@ -205,7 +204,7 @@ void radeon_fence_process(struct radeon_device *rdev, int ring)
 static void radeon_fence_destroy(struct radeon_fence *fence)
 {
 
-	drm_free(fence, M_DRM);
+	kfree(fence);
 }
 
 /**
@@ -386,7 +385,7 @@ int radeon_fence_wait(struct radeon_fence *fence, bool intr)
 	int r;
 
 	if (fence == NULL) {
-		DRM_ERROR("Querying an invalid fence : %p !\n", fence);
+		WARN(1, "Querying an invalid fence : %p !\n", fence);
 		return -EINVAL;
 	}
 

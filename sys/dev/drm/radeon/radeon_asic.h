@@ -24,10 +24,7 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_asic.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #ifndef __RADEON_ASIC_H__
 #define __RADEON_ASIC_H__
 

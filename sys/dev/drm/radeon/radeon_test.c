@@ -69,8 +69,7 @@ static void radeon_do_test_moves(struct radeon_device *rdev, int flag)
 		n -= rdev->ih.ring_size;
 	n /= size;
 
-	gtt_obj = kmalloc(n * sizeof(*gtt_obj), M_DRM,
-			  M_ZERO | M_WAITOK);
+	gtt_obj = kzalloc(n * sizeof(*gtt_obj), GFP_KERNEL);
 	if (!gtt_obj) {
 		DRM_ERROR("Failed to allocate %d pointers\n", n);
 		r = 1;
@@ -238,13 +237,13 @@ out_cleanup:
 				radeon_bo_unref(&gtt_obj[i]);
 			}
 		}
-		drm_free(gtt_obj, M_DRM);
+		kfree(gtt_obj);
 	}
 	if (fence) {
 		radeon_fence_unref(&fence);
 	}
 	if (r) {
-		DRM_ERROR("Error while testing BO move.\n");
+		printk(KERN_WARNING "Error while testing BO move.\n");
 	}
 }
 
@@ -324,7 +323,7 @@ void radeon_test_ring_sync(struct radeon_device *rdev,
 	if (r)
 		goto out_cleanup;
 
-	DRM_MDELAY(1000);
+	mdelay(1000);
 
 	if (radeon_fence_signaled(fence1)) {
 		DRM_ERROR("Fence 1 signaled without waiting for semaphore.\n");
@@ -345,7 +344,7 @@ void radeon_test_ring_sync(struct radeon_device *rdev,
 		goto out_cleanup;
 	}
 
-	DRM_MDELAY(1000);
+	mdelay(1000);
 
 	if (radeon_fence_signaled(fence2)) {
 		DRM_ERROR("Fence 2 signaled without waiting for semaphore.\n");
@@ -376,7 +375,7 @@ out_cleanup:
 		radeon_fence_unref(&fence2);
 
 	if (r)
-		DRM_ERROR("Error while testing ring sync (%d).\n", r);
+		printk(KERN_WARNING "Error while testing ring sync (%d).\n", r);
 }
 
 static void radeon_test_ring_sync2(struct radeon_device *rdev,
@@ -418,7 +417,7 @@ static void radeon_test_ring_sync2(struct radeon_device *rdev,
 	if (r)
 		goto out_cleanup;
 
-	DRM_MDELAY(1000);
+	mdelay(1000);
 
 	if (radeon_fence_signaled(fenceA)) {
 		DRM_ERROR("Fence A signaled without waiting for semaphore.\n");
@@ -438,7 +437,7 @@ static void radeon_test_ring_sync2(struct radeon_device *rdev,
 	radeon_ring_unlock_commit(rdev, ringC);
 
 	for (i = 0; i < 30; ++i) {
-		DRM_MDELAY(100);
+		mdelay(100);
 		sigA = radeon_fence_signaled(fenceA);
 		sigB = radeon_fence_signaled(fenceB);
 		if (sigA || sigB)
@@ -463,7 +462,7 @@ static void radeon_test_ring_sync2(struct radeon_device *rdev,
 	radeon_semaphore_emit_signal(rdev, ringC->idx, semaphore);
 	radeon_ring_unlock_commit(rdev, ringC);
 
-	DRM_MDELAY(1000);
+	mdelay(1000);
 
 	r = radeon_fence_wait(fenceA, false);
 	if (r) {
@@ -486,7 +485,7 @@ out_cleanup:
 		radeon_fence_unref(&fenceB);
 
 	if (r)
-		DRM_ERROR("Error while testing ring sync (%d).\n", r);
+		printk(KERN_WARNING "Error while testing ring sync (%d).\n", r);
 }
 
 void radeon_test_syncing(struct radeon_device *rdev)

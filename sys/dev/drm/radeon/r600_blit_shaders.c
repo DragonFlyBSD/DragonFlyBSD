@@ -24,7 +24,9 @@
  *     Alex Deucher <alexander.deucher@amd.com>
  */
 
-#include <drm/drmP.h>
+#include <linux/bug.h>
+#include <linux/types.h>
+#include <linux/kernel.h>
 
 /*
  * R6xx+ cards need to use the 3D engine to blit data which requires
@@ -711,7 +713,7 @@ const u32 r6xx_ps[] =
 	0x00000000,
 };
 
-const u32 r6xx_ps_size = DRM_ARRAY_SIZE(r6xx_ps);
-const u32 r6xx_vs_size = DRM_ARRAY_SIZE(r6xx_vs);
-const u32 r6xx_default_size = DRM_ARRAY_SIZE(r6xx_default_state);
-const u32 r7xx_default_size = DRM_ARRAY_SIZE(r7xx_default_state);
+const u32 r6xx_ps_size = ARRAY_SIZE(r6xx_ps);
+const u32 r6xx_vs_size = ARRAY_SIZE(r6xx_vs);
+const u32 r6xx_default_size = ARRAY_SIZE(r6xx_default_state);
+const u32 r7xx_default_size = ARRAY_SIZE(r7xx_default_state);

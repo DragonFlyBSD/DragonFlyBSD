@@ -432,7 +432,7 @@ PPSMC_Result rv770_send_msg_to_smc(struct radeon_device *rdev, PPSMC_Msg msg)
 		tmp >>= HOST_SMC_RESP_SHIFT;
 		if (tmp != 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	tmp = RREG32(SMC_MSG) & HOST_SMC_RESP_MASK;
@@ -453,7 +453,7 @@ PPSMC_Result rv770_wait_for_smc_inactive(struct radeon_device *rdev)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(SMC_IO) & SMC_STOP_MODE)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	return result;

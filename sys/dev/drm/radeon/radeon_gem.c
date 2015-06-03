@@ -64,7 +64,7 @@ int radeon_gem_object_create(struct radeon_device *rdev, int size,
 	/* maximun bo size is the minimun btw visible vram and gtt size */
 	max_size = min(rdev->mc.visible_vram_size, rdev->mc.gtt_size);
 	if (size > max_size) {
-		DRM_ERROR("%s:%d alloc size %dMb bigger than %ldMb limit\n",
+		printk(KERN_WARNING "%s:%d alloc size %dMb bigger than %ldMb limit\n",
 		       __func__, __LINE__, size >> 20, max_size >> 20);
 		return -ENOMEM;
 	}
@@ -108,14 +108,14 @@ static int radeon_gem_set_domain(struct drm_gem_object *gobj,
 	}
 	if (!domain) {
 		/* Do nothings */
-		DRM_ERROR("Set domain without domain !\n");
+		printk(KERN_WARNING "Set domain without domain !\n");
 		return 0;
 	}
 	if (domain == RADEON_GEM_DOMAIN_CPU) {
 		/* Asking for cpu access wait for object idle */
 		r = radeon_bo_wait(robj, NULL, false);
 		if (r) {
-			DRM_ERROR("Failed to wait for object !\n");
+			printk(KERN_ERR "Failed to wait for object !\n");
 			return r;
 		}
 	}
@@ -555,7 +555,7 @@ int radeon_mode_dumb_create(struct drm_file *file_priv,
 
 	args->pitch = radeon_align_pitch(rdev, args->width, args->bpp, 0) * ((args->bpp + 1) / 8);
 	args->size = args->pitch * args->height;
-	args->size = roundup2(args->size, PAGE_SIZE);
+	args->size = ALIGN(args->size, PAGE_SIZE);
 
 	r = radeon_gem_object_create(rdev, args->size, 0,
 				     RADEON_GEM_DOMAIN_VRAM,

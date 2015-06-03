@@ -64,7 +64,7 @@ static void rv6xx_force_pcie_gen1(struct radeon_device *rdev)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (!(RREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL) & LC_CURRENT_DATA_RATE))
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	tmp = RREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL);

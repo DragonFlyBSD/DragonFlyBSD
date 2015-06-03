@@ -1333,7 +1333,7 @@ static void btc_enable_bif_dynamic_pcie_gen2(struct radeon_device *rdev,
 
 				tmp |= LC_CLR_FAILED_SPD_CHANGE_CNT;
 				WREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL, tmp);
-				DRM_UDELAY(10);
+				udelay(10);
 				tmp &= ~LC_CLR_FAILED_SPD_CHANGE_CNT;
 				WREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL, tmp);
 			}
@@ -1725,9 +1725,9 @@ static void btc_stop_smc(struct radeon_device *rdev)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (((RREG32(LB_SYNC_RESET_SEL) & LB_SYNC_RESET_SEL_MASK) >> LB_SYNC_RESET_SEL_SHIFT) != 1)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
-	DRM_UDELAY(100);
+	udelay(100);
 
 	r7xx_stop_smc(rdev);
 }

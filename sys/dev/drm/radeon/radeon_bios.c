@@ -33,6 +33,7 @@
 #include "radeon.h"
 #include "atom.h"
 
+#include <linux/slab.h>
 /*
  * BIOS.
  */
@@ -195,7 +196,7 @@ static int radeon_atrm_call(ACPI_HANDLE atrm_handle, uint8_t *bios,
 
 	status = AcpiEvaluateObject(atrm_handle, NULL, &atrm_arg, &buffer);
 	if (ACPI_FAILURE(status)) {
-		DRM_ERROR("failed to evaluate ATRM got %s\n", AcpiFormatException(status));
+		printk("failed to evaluate ATRM got %s\n", AcpiFormatException(status));
 		return -ENODEV;
 	}
 
@@ -285,7 +286,7 @@ static bool radeon_atrm_get_bios(struct radeon_device *rdev)
 			DRM_INFO("%s: Incorrect BIOS signature: 0x%02X%02X\n",
 			    __func__, rdev->bios[0], rdev->bios[1]);
 		}
-		drm_free(rdev->bios, M_DRM);
+		kfree(rdev->bios);
 		return false;
 	}
 	return true;
@@ -735,7 +736,7 @@ bool radeon_get_bios(struct radeon_device *rdev)
 		return false;
 	}
 	if (rdev->bios[0] != 0x55 || rdev->bios[1] != 0xaa) {
-		DRM_ERROR("BIOS signature incorrect %x %x\n", rdev->bios[0], rdev->bios[1]);
+		printk("BIOS signature incorrect %x %x\n", rdev->bios[0], rdev->bios[1]);
 		goto free_bios;
 	}
 
@@ -760,7 +761,7 @@ bool radeon_get_bios(struct radeon_device *rdev)
 	DRM_DEBUG("%sBIOS detected\n", rdev->is_atom_bios ? "ATOM" : "COM");
 	return true;
 free_bios:
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 	return false;
 }

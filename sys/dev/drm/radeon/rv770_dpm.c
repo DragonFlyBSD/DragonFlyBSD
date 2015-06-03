@@ -1642,7 +1642,7 @@ static int rv770_enter_ulp_state(struct radeon_device *rdev)
 	WREG32_P(SMC_MSG, HOST_SMC_MSG(PPSMC_MSG_SwitchToMinimumPower),
 		 ~HOST_SMC_MSG_MASK);
 
-	DRM_UDELAY(7000);
+	udelay(7000);
 
 	return 0;
 }
@@ -1655,12 +1655,12 @@ static int rv770_exit_ulp_state(struct radeon_device *rdev)
 	WREG32_P(SMC_MSG, HOST_SMC_MSG(PPSMC_MSG_ResumeFromMinimumPower),
 		 ~HOST_SMC_MSG_MASK);
 
-	DRM_UDELAY(7000);
+	udelay(7000);
 
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (((RREG32(SMC_MSG) & HOST_SMC_RESP_MASK) >> HOST_SMC_RESP_SHIFT) == 1)
 			break;
-		DRM_UDELAY(1000);
+		udelay(1000);
 	}
 
 	if (pi->gfx_clock_gating)

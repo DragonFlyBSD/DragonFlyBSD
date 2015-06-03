@@ -27,7 +27,6 @@
  *
  * $FreeBSD: head/sys/dev/drm2/radeon/r420.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include "radeon_reg.h"
 #include "radeon.h"
@@ -79,7 +78,7 @@ void r420_pm_init_profile(struct radeon_device *rdev)
 static void r420_set_reg_safe(struct radeon_device *rdev)
 {
 	rdev->config.r300.reg_safe_bm = r420_reg_safe_bm;
-	rdev->config.r300.reg_safe_bm_size = DRM_ARRAY_SIZE(r420_reg_safe_bm);
+	rdev->config.r300.reg_safe_bm_size = ARRAY_SIZE(r420_reg_safe_bm);
 }
 
 void r420_pipes_init(struct radeon_device *rdev)
@@ -93,7 +92,7 @@ void r420_pipes_init(struct radeon_device *rdev)
 	       (1 << 2) | (1 << 3));
 	/* add idle wait as per freedesktop.org bug 24041 */
 	if (r100_gui_wait_for_idle(rdev)) {
-		DRM_ERROR("Failed to wait GUI idle while "
+		printk(KERN_WARNING "Failed to wait GUI idle while "
 		       "programming pipes. Bad things might happen.\n");
 	}
 	/* get max number of pipes */
@@ -129,7 +128,7 @@ void r420_pipes_init(struct radeon_device *rdev)
 	tmp |= R300_TILE_SIZE_16 | R300_ENABLE_TILING;
 	WREG32(R300_GB_TILE_CONFIG, tmp);
 	if (r100_gui_wait_for_idle(rdev)) {
-		DRM_ERROR("Failed to wait GUI idle while "
+		printk(KERN_WARNING "Failed to wait GUI idle while "
 		       "programming pipes. Bad things might happen.\n");
 	}
 
@@ -142,7 +141,7 @@ void r420_pipes_init(struct radeon_device *rdev)
 	       R300_DC_DC_DISABLE_IGNORE_PE);
 
 	if (r100_gui_wait_for_idle(rdev)) {
-		DRM_ERROR("Failed to wait GUI idle while "
+		printk(KERN_WARNING "Failed to wait GUI idle while "
 		       "programming pipes. Bad things might happen.\n");
 	}
 
@@ -359,7 +358,7 @@ void r420_fini(struct radeon_device *rdev)
 	} else {
 		radeon_combios_fini(rdev);
 	}
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 }
 

@@ -229,7 +229,7 @@ void r600_gfx_clockgating_enable(struct radeon_device *rdev, bool enable)
 		for (i = 0; i < rdev->usec_timeout; i++) {
 			if (((RREG32(CG_RLC_REQ_AND_RSP) & CG_RLC_RSP_TYPE_MASK) >> CG_RLC_RSP_TYPE_SHIFT) == 1)
 				break;
-			DRM_UDELAY(1);
+			udelay(1);
 		}
 
 		WREG32(CG_RLC_REQ_AND_RSP, 0x0);
@@ -307,7 +307,7 @@ void r600_wait_for_spll_change(struct radeon_device *rdev)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(CG_SPLL_FUNC_CNTL) & SPLL_CHG_STATUS)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 }
 
@@ -630,13 +630,13 @@ void r600_wait_for_power_level_unequal(struct radeon_device *rdev,
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (r600_power_level_get_target_index(rdev) != index)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (r600_power_level_get_current_index(rdev) != index)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 }
 
@@ -648,13 +648,13 @@ void r600_wait_for_power_level(struct radeon_device *rdev,
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (r600_power_level_get_target_index(rdev) == index)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (r600_power_level_get_current_index(rdev) == index)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 }
 

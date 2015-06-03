@@ -143,7 +143,7 @@ u32 rs600_page_flip(struct radeon_device *rdev, int crtc_id, u64 crtc_base)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(AVIVO_D1GRPH_UPDATE + radeon_crtc->crtc_offset) & AVIVO_D1GRPH_SURFACE_UPDATE_PENDING)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 	DRM_DEBUG("Update pending now high. Unlocking vupdate_lock.\n");
 
@@ -172,7 +172,7 @@ void rs600_pm_misc(struct radeon_device *rdev)
 				tmp &= ~(voltage->gpio.mask);
 			WREG32(voltage->gpio.reg, tmp);
 			if (voltage->delay)
-				DRM_UDELAY(voltage->delay);
+				udelay(voltage->delay);
 		} else {
 			tmp = RREG32(voltage->gpio.reg);
 			if (voltage->active_high)
@@ -181,7 +181,7 @@ void rs600_pm_misc(struct radeon_device *rdev)
 				tmp |= voltage->gpio.mask;
 			WREG32(voltage->gpio.reg, tmp);
 			if (voltage->delay)
-				DRM_UDELAY(voltage->delay);
+				udelay(voltage->delay);
 		}
 	} else if (voltage->type == VOLTAGE_VDDC)
 		radeon_atom_set_voltage(rdev, voltage->vddc_id, SET_VOLTAGE_TYPE_ASIC_VDDC);
@@ -411,30 +411,30 @@ int rs600_asic_reset(struct radeon_device *rdev)
 	pci_save_state(device_get_parent(rdev->dev));
 	/* disable bus mastering */
 	pci_disable_busmaster(rdev->dev);
-	DRM_MDELAY(1);
+	mdelay(1);
 	/* reset GA+VAP */
 	WREG32(R_0000F0_RBBM_SOFT_RESET, S_0000F0_SOFT_RESET_VAP(1) |
 					S_0000F0_SOFT_RESET_GA(1));
 	RREG32(R_0000F0_RBBM_SOFT_RESET);
-	DRM_MDELAY(500);
+	mdelay(500);
 	WREG32(R_0000F0_RBBM_SOFT_RESET, 0);
-	DRM_MDELAY(1);
+	mdelay(1);
 	status = RREG32(R_000E40_RBBM_STATUS);
 	dev_info(rdev->dev, "(%s:%d) RBBM_STATUS=0x%08X\n", __func__, __LINE__, status);
 	/* reset CP */
 	WREG32(R_0000F0_RBBM_SOFT_RESET, S_0000F0_SOFT_RESET_CP(1));
 	RREG32(R_0000F0_RBBM_SOFT_RESET);
-	DRM_MDELAY(500);
+	mdelay(500);
 	WREG32(R_0000F0_RBBM_SOFT_RESET, 0);
-	DRM_MDELAY(1);
+	mdelay(1);
 	status = RREG32(R_000E40_RBBM_STATUS);
 	dev_info(rdev->dev, "(%s:%d) RBBM_STATUS=0x%08X\n", __func__, __LINE__, status);
 	/* reset MC */
 	WREG32(R_0000F0_RBBM_SOFT_RESET, S_0000F0_SOFT_RESET_MC(1));
 	RREG32(R_0000F0_RBBM_SOFT_RESET);
-	DRM_MDELAY(500);
+	mdelay(500);
 	WREG32(R_0000F0_RBBM_SOFT_RESET, 0);
-	DRM_MDELAY(1);
+	mdelay(1);
 	status = RREG32(R_000E40_RBBM_STATUS);
 	dev_info(rdev->dev, "(%s:%d) RBBM_STATUS=0x%08X\n", __func__, __LINE__, status);
 	/* restore PCI & busmastering */
@@ -475,7 +475,7 @@ static int rs600_gart_init(struct radeon_device *rdev)
 	int r;
 
 	if (rdev->gart.robj) {
-		DRM_ERROR("RS600 GART already initialized\n");
+		WARN(1, "RS600 GART already initialized\n");
 		return 0;
 	}
 	/* Initialize common gart structure */
@@ -606,7 +606,7 @@ int rs600_irq_set(struct radeon_device *rdev)
 		hdmi0 = 0;
 
 	if (!rdev->irq.installed) {
-		DRM_ERROR("Can't enable IRQ/MSI because no handler is installed\n");
+		WARN(1, "Can't enable IRQ/MSI because no handler is installed\n");
 		WREG32(R_000040_GEN_INT_CNTL, 0);
 		return -EINVAL;
 	}
@@ -694,7 +694,7 @@ void rs600_irq_disable(struct radeon_device *rdev)
 	WREG32(R_000040_GEN_INT_CNTL, 0);
 	WREG32(R_006540_DxMODE_INT_MASK, 0);
 	/* Wait and acknowledge irq */
-	DRM_MDELAY(1);
+	mdelay(1);
 	rs600_irq_ack(rdev);
 }
 
@@ -722,7 +722,7 @@ irqreturn_t rs600_irq_process(struct radeon_device *rdev)
 			if (rdev->irq.crtc_vblank_int[0]) {
 				drm_handle_vblank(rdev->ddev, 0);
 				rdev->pm.vblank_sync = true;
-				DRM_WAKEUP(&rdev->irq.vblank_queue);
+				wake_up(&rdev->irq.vblank_queue);
 			}
 			if (atomic_read(&rdev->irq.pflip[0]))
 				radeon_crtc_handle_flip(rdev, 0);
@@ -731,7 +731,7 @@ irqreturn_t rs600_irq_process(struct radeon_device *rdev)
 			if (rdev->irq.crtc_vblank_int[1]) {
 				drm_handle_vblank(rdev->ddev, 1);
 				rdev->pm.vblank_sync = true;
-				DRM_WAKEUP(&rdev->irq.vblank_queue);
+				wake_up(&rdev->irq.vblank_queue);
 			}
 			if (atomic_read(&rdev->irq.pflip[1]))
 				radeon_crtc_handle_flip(rdev, 1);
@@ -786,7 +786,7 @@ int rs600_mc_wait_for_idle(struct radeon_device *rdev)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (G_000000_MC_IDLE(RREG32_MC(R_000000_MC_STATUS)))
 			return 0;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 	return -1;
 }
@@ -870,7 +870,7 @@ static void rs600_debugfs(struct radeon_device *rdev)
 void rs600_set_safe_registers(struct radeon_device *rdev)
 {
 	rdev->config.r300.reg_safe_bm = rs600_reg_safe_bm;
-	rdev->config.r300.reg_safe_bm_size = DRM_ARRAY_SIZE(rs600_reg_safe_bm);
+	rdev->config.r300.reg_safe_bm_size = ARRAY_SIZE(rs600_reg_safe_bm);
 }
 
 static void rs600_mc_program(struct radeon_device *rdev)
@@ -1006,7 +1006,7 @@ void rs600_fini(struct radeon_device *rdev)
 	radeon_fence_driver_fini(rdev);
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 }
 

@@ -22,10 +22,7 @@
  *
  * Authors: Dave Airlie
  *          Alex Deucher
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_cursor.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon.h"
@@ -278,9 +275,7 @@ int radeon_crtc_cursor_move(struct drm_crtc *crtc,
 				cursor_end = x - xorigin + w;
 				if (!(cursor_end & 0x7f)) {
 					x--;
-					if (x < 0) {
-						DRM_ERROR("%s: x(%d) < 0", __func__, x);
-					}
+					WARN_ON_ONCE(x < 0);
 				}
 			}
 		}

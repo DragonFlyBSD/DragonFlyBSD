@@ -128,7 +128,6 @@ static void evergreen_hdmi_update_avi_infoframe(struct drm_encoder *encoder,
 	struct radeon_encoder_atom_dig *dig = radeon_encoder->enc_priv;
 	uint32_t offset = dig->afmt->offset;
 	uint8_t *frame = (uint8_t*)buffer + 3;
-
 	uint8_t *header = buffer;
 
 	WREG32(AFMT_AVI_INFO0 + offset,

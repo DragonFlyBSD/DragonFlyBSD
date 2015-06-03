@@ -1523,12 +1523,12 @@ static int si_mc_load_microcode(struct radeon_device *rdev)
 		for (i = 0; i < rdev->usec_timeout; i++) {
 			if (RREG32(MC_SEQ_TRAIN_WAKEUP_CNTL) & TRAIN_DONE_D0)
 				break;
-			DRM_UDELAY(1);
+			udelay(1);
 		}
 		for (i = 0; i < rdev->usec_timeout; i++) {
 			if (RREG32(MC_SEQ_TRAIN_WAKEUP_CNTL) & TRAIN_DONE_D1)
 				break;
-			DRM_UDELAY(1);
+			udelay(1);
 		}
 
 		if (running)
@@ -1600,7 +1600,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 		mc_req_size = OLAND_MC_UCODE_SIZE * 4;
 		smc_req_size = ALIGN(HAINAN_SMC_UCODE_SIZE, 4);
 		break;
-	default: panic("%s: Unsupported family %d", __func__, rdev->family);
+	default: BUG();
 	}
 
 	DRM_INFO("Loading %s Microcode\n", chip_name);
@@ -1610,7 +1610,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->pfp_fw->datasize != pfp_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "si_cp: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->pfp_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -1622,7 +1622,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->me_fw->datasize != me_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "si_cp: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->me_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -1633,7 +1633,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->ce_fw->datasize != ce_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "si_cp: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->ce_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -1644,7 +1644,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->rlc_fw->datasize != rlc_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "si_rlc: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->rlc_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -1655,7 +1655,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->mc_fw->datasize != mc_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "si_mc: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->mc_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -1670,7 +1670,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 		release_firmware(rdev->smc_fw);
 		rdev->smc_fw = NULL;
 	} else if (rdev->smc_fw->datasize != smc_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "si_smc: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->smc_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -1679,7 +1679,7 @@ static int si_init_microcode(struct radeon_device *rdev)
 out:
 	if (err) {
 		if (err != -EINVAL)
-			DRM_ERROR(
+			printk(KERN_ERR
 			       "si_cp: Failed to load firmware \"%s\"\n",
 			       fw_name);
 		release_firmware(rdev->pfp_fw);
@@ -3133,7 +3133,7 @@ static void si_gpu_init(struct radeon_device *rdev)
 
 	WREG32(PA_CL_ENHANCE, CLIP_VTX_REORDER_ENA | NUM_CLIP_SEQ(3));
 
-	DRM_UDELAY(50);
+	udelay(50);
 }
 
 /*
@@ -3253,7 +3253,7 @@ static void si_cp_enable(struct radeon_device *rdev, bool enable)
 		rdev->ring[CAYMAN_RING_TYPE_CP1_INDEX].ready = false;
 		rdev->ring[CAYMAN_RING_TYPE_CP2_INDEX].ready = false;
 	}
-	DRM_UDELAY(50);
+	udelay(50);
 }
 
 static int si_cp_load_microcode(struct radeon_device *rdev)
@@ -3395,7 +3395,7 @@ static int si_cp_resume(struct radeon_device *rdev)
 				 SOFT_RESET_SPI |
 				 SOFT_RESET_SX));
 	RREG32(GRBM_SOFT_RESET);
-	DRM_MDELAY(15);
+	mdelay(15);
 	WREG32(GRBM_SOFT_RESET, 0);
 	RREG32(GRBM_SOFT_RESET);
 
@@ -3434,7 +3434,7 @@ static int si_cp_resume(struct radeon_device *rdev)
 		WREG32(SCRATCH_UMSK, 0);
 	}
 
-	DRM_MDELAY(1);
+	mdelay(1);
 	WREG32(CP_RB0_CNTL, tmp);
 
 	WREG32(CP_RB0_BASE, ring->gpu_addr >> 8);
@@ -3460,7 +3460,7 @@ static int si_cp_resume(struct radeon_device *rdev)
 	WREG32(CP_RB1_RPTR_ADDR, (rdev->wb.gpu_addr + RADEON_WB_CP1_RPTR_OFFSET) & 0xFFFFFFFC);
 	WREG32(CP_RB1_RPTR_ADDR_HI, upper_32_bits(rdev->wb.gpu_addr + RADEON_WB_CP1_RPTR_OFFSET) & 0xFF);
 
-	DRM_MDELAY(1);
+	mdelay(1);
 	WREG32(CP_RB1_CNTL, tmp);
 
 	WREG32(CP_RB1_BASE, ring->gpu_addr >> 8);
@@ -3486,7 +3486,7 @@ static int si_cp_resume(struct radeon_device *rdev)
 	WREG32(CP_RB2_RPTR_ADDR, (rdev->wb.gpu_addr + RADEON_WB_CP2_RPTR_OFFSET) & 0xFFFFFFFC);
 	WREG32(CP_RB2_RPTR_ADDR_HI, upper_32_bits(rdev->wb.gpu_addr + RADEON_WB_CP2_RPTR_OFFSET) & 0xFF);
 
-	DRM_MDELAY(1);
+	mdelay(1);
 	WREG32(CP_RB2_CNTL, tmp);
 
 	WREG32(CP_RB2_BASE, ring->gpu_addr >> 8);
@@ -3631,7 +3631,7 @@ static void si_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 		WREG32(DMA_RB_CNTL + DMA1_REGISTER_OFFSET, tmp);
 	}
 
-	DRM_UDELAY(50);
+	udelay(50);
 
 	evergreen_mc_stop(rdev, &save);
 	if (evergreen_mc_wait_for_idle(rdev)) {
@@ -3693,7 +3693,7 @@ static void si_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 		WREG32(GRBM_SOFT_RESET, tmp);
 		tmp = RREG32(GRBM_SOFT_RESET);
 
-		DRM_UDELAY(50);
+		udelay(50);
 
 		tmp &= ~grbm_soft_reset;
 		WREG32(GRBM_SOFT_RESET, tmp);
@@ -3707,7 +3707,7 @@ static void si_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 		WREG32(SRBM_SOFT_RESET, tmp);
 		tmp = RREG32(SRBM_SOFT_RESET);
 
-		DRM_UDELAY(50);
+		udelay(50);
 
 		tmp &= ~srbm_soft_reset;
 		WREG32(SRBM_SOFT_RESET, tmp);
@@ -3715,10 +3715,10 @@ static void si_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 	}
 
 	/* Wait a little for things to settle down */
-	DRM_UDELAY(50);
+	udelay(50);
 
 	evergreen_mc_resume(rdev, &save);
-	DRM_UDELAY(50);
+	udelay(50);
 
 	evergreen_print_gpu_status_regs(rdev);
 }
@@ -4866,13 +4866,13 @@ static void si_wait_for_rlc_serdes(struct radeon_device *rdev)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(RLC_SERDES_MASTER_BUSY_0) == 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(RLC_SERDES_MASTER_BUSY_1) == 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 }
 
@@ -4897,7 +4897,7 @@ static void si_enable_gui_idle_interrupt(struct radeon_device *rdev,
 		for (i = 0; i < rdev->usec_timeout; i++) {
 			if ((RREG32(RLC_STAT) & mask) == (GFX_CLOCK_STATUS | GFX_POWER_STATUS))
 				break;
-			DRM_UDELAY(1);
+			udelay(1);
 		}
 	}
 }
@@ -5468,10 +5468,10 @@ static void si_rlc_reset(struct radeon_device *rdev)
 
 	tmp |= SOFT_RESET_RLC;
 	WREG32(GRBM_SOFT_RESET, tmp);
-	DRM_UDELAY(50);
+	udelay(50);
 	tmp &= ~SOFT_RESET_RLC;
 	WREG32(GRBM_SOFT_RESET, tmp);
-	DRM_UDELAY(50);
+	udelay(50);
 }
 
 static void si_rlc_stop(struct radeon_device *rdev)
@@ -5489,7 +5489,7 @@ static void si_rlc_start(struct radeon_device *rdev)
 
 	si_enable_gui_idle_interrupt(rdev, true);
 
-	DRM_UDELAY(50);
+	udelay(50);
 }
 
 static bool si_lbpw_supported(struct radeon_device *rdev)
@@ -5727,7 +5727,7 @@ int si_irq_set(struct radeon_device *rdev)
 	u32 thermal_int = 0;
 
 	if (!rdev->irq.installed) {
-		DRM_ERROR("Can't enable IRQ/MSI because no handler is installed\n");
+		WARN(1, "Can't enable IRQ/MSI because no handler is installed\n");
 		return -EINVAL;
 	}
 	/* don't enable anything if the ih is disabled */
@@ -5987,7 +5987,7 @@ static void si_irq_disable(struct radeon_device *rdev)
 {
 	si_disable_interrupts(rdev);
 	/* Wait and acknowledge irq */
-	DRM_MDELAY(1);
+	mdelay(1);
 	si_irq_ack(rdev);
 	si_disable_interrupt_state(rdev);
 }
@@ -6062,7 +6062,7 @@ restart_ih:
 	DRM_DEBUG("si_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
 
 	/* Order reading of wptr vs. reading of IH ring data */
-	cpu_lfence();
+	rmb();
 
 	/* display interrupts */
 	si_irq_ack(rdev);
@@ -6082,7 +6082,7 @@ restart_ih:
 					if (rdev->irq.crtc_vblank_int[0]) {
 						drm_handle_vblank(rdev->ddev, 0);
 						rdev->pm.vblank_sync = true;
-						DRM_WAKEUP(&rdev->irq.vblank_queue);
+						wake_up(&rdev->irq.vblank_queue);
 					}
 					if (atomic_read(&rdev->irq.pflip[0]))
 						radeon_crtc_handle_flip(rdev, 0);
@@ -6108,7 +6108,7 @@ restart_ih:
 					if (rdev->irq.crtc_vblank_int[1]) {
 						drm_handle_vblank(rdev->ddev, 1);
 						rdev->pm.vblank_sync = true;
-						DRM_WAKEUP(&rdev->irq.vblank_queue);
+						wake_up(&rdev->irq.vblank_queue);
 					}
 					if (atomic_read(&rdev->irq.pflip[1]))
 						radeon_crtc_handle_flip(rdev, 1);
@@ -6134,7 +6134,7 @@ restart_ih:
 					if (rdev->irq.crtc_vblank_int[2]) {
 						drm_handle_vblank(rdev->ddev, 2);
 						rdev->pm.vblank_sync = true;
-						DRM_WAKEUP(&rdev->irq.vblank_queue);
+						wake_up(&rdev->irq.vblank_queue);
 					}
 					if (atomic_read(&rdev->irq.pflip[2]))
 						radeon_crtc_handle_flip(rdev, 2);
@@ -6160,7 +6160,7 @@ restart_ih:
 					if (rdev->irq.crtc_vblank_int[3]) {
 						drm_handle_vblank(rdev->ddev, 3);
 						rdev->pm.vblank_sync = true;
-						DRM_WAKEUP(&rdev->irq.vblank_queue);
+						wake_up(&rdev->irq.vblank_queue);
 					}
 					if (atomic_read(&rdev->irq.pflip[3]))
 						radeon_crtc_handle_flip(rdev, 3);
@@ -6186,7 +6186,7 @@ restart_ih:
 					if (rdev->irq.crtc_vblank_int[4]) {
 						drm_handle_vblank(rdev->ddev, 4);
 						rdev->pm.vblank_sync = true;
-						DRM_WAKEUP(&rdev->irq.vblank_queue);
+						wake_up(&rdev->irq.vblank_queue);
 					}
 					if (atomic_read(&rdev->irq.pflip[4]))
 						radeon_crtc_handle_flip(rdev, 4);
@@ -6212,7 +6212,7 @@ restart_ih:
 					if (rdev->irq.crtc_vblank_int[5]) {
 						drm_handle_vblank(rdev->ddev, 5);
 						rdev->pm.vblank_sync = true;
-						DRM_WAKEUP(&rdev->irq.vblank_queue);
+						wake_up(&rdev->irq.vblank_queue);
 					}
 					if (atomic_read(&rdev->irq.pflip[5]))
 						radeon_crtc_handle_flip(rdev, 5);
@@ -6350,7 +6350,6 @@ restart_ih:
 		taskqueue_enqueue(rdev->tq, &rdev->hotplug_work);
 	if (queue_thermal && rdev->pm.dpm_enabled)
 		taskqueue_enqueue(rdev->tq, &rdev->pm.dpm.thermal.work);
-
 	rdev->ih.rptr = rptr;
 	WREG32(IH_RB_RPTR, rdev->ih.rptr);
 	atomic_set(&rdev->ih.lock, 0);
@@ -6807,7 +6806,7 @@ void si_fini(struct radeon_device *rdev)
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
 	si_fini_microcode(rdev);
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 }
 
@@ -6869,7 +6868,7 @@ int si_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk)
 	/* deassert UPLL_RESET */
 	WREG32_P(CG_UPLL_FUNC_CNTL, 0, ~UPLL_RESET_MASK);
 
-	DRM_MDELAY(1);
+	mdelay(1);
 
 	r = radeon_uvd_send_upll_ctlreq(rdev, CG_UPLL_FUNC_CNTL);
 	if (r)
@@ -6898,12 +6897,12 @@ int si_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk)
 		~(UPLL_PDIV_A_MASK | UPLL_PDIV_B_MASK));
 
 	/* give the PLL some time to settle */
-	DRM_MDELAY(15);
+	mdelay(15);
 
 	/* deassert PLL_RESET */
 	WREG32_P(CG_UPLL_FUNC_CNTL, 0, ~UPLL_RESET_MASK);
 
-	DRM_MDELAY(15);
+	mdelay(15);
 
 	/* switch from bypass mode to normal mode */
 	WREG32_P(CG_UPLL_FUNC_CNTL, 0, ~UPLL_BYPASS_EN_MASK);
@@ -6917,7 +6916,7 @@ int si_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk)
 		VCLK_SRC_SEL(2) | DCLK_SRC_SEL(2),
 		~(VCLK_SRC_SEL_MASK | DCLK_SRC_SEL_MASK));
 
-	DRM_MDELAY(100);
+	mdelay(100);
 
 	return 0;
 }
@@ -7034,7 +7033,7 @@ static void si_pcie_gen3_enable(struct radeon_device *rdev)
 				tmp |= LC_REDO_EQ;
 				WREG32_PCIE_PORT(PCIE_LC_CNTL4, tmp);
 
-				DRM_MDELAY(100);
+				mdelay(100);
 
 				/* linkctl */
 				pci_read_config_word(&root_pdev, bridge_pos + PCI_EXP_LNKCTL, &tmp16);
@@ -7088,7 +7087,7 @@ static void si_pcie_gen3_enable(struct radeon_device *rdev)
 		speed_cntl = RREG32_PCIE_PORT(PCIE_LC_SPEED_CNTL);
 		if ((speed_cntl & LC_INITIATE_LINK_SPEED_CHANGE) == 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 }
 

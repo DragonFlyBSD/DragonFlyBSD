@@ -554,6 +554,7 @@ int radeon_acpi_pcie_notify_device_ready(struct radeon_device *rdev)
 		return -EIO;
 
 	kfree(info);
+
 	return 0;
 #else
 	return -EINVAL;
@@ -631,7 +632,7 @@ int radeon_acpi_pcie_performance_request(struct radeon_device *rdev,
 		case ATCS_REQUEST_COMPLETE:
 			return 0;
 		case ATCS_REQUEST_IN_PROGRESS:
-			DRM_UDELAY(10);
+			udelay(10);
 			break;
 		}
 	}

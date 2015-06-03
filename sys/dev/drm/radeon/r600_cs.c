@@ -179,7 +179,7 @@ static const struct gpu_formats color_formats_table[] = {
 
 bool r600_fmt_is_valid_color(u32 format)
 {
-	if (format >= DRM_ARRAY_SIZE(color_formats_table))
+	if (format >= ARRAY_SIZE(color_formats_table))
 		return false;
 
 	if (color_formats_table[format].valid_color)
@@ -190,7 +190,7 @@ bool r600_fmt_is_valid_color(u32 format)
 
 bool r600_fmt_is_valid_texture(u32 format, enum radeon_family family)
 {
-	if (format >= DRM_ARRAY_SIZE(color_formats_table))
+	if (format >= ARRAY_SIZE(color_formats_table))
 		return false;
 
 	if (family < color_formats_table[format].min_family)
@@ -204,7 +204,7 @@ bool r600_fmt_is_valid_texture(u32 format, enum radeon_family family)
 
 int r600_fmt_get_blocksize(u32 format)
 {
-	if (format >= DRM_ARRAY_SIZE(color_formats_table))
+	if (format >= ARRAY_SIZE(color_formats_table))
 		return 0;
 
 	return color_formats_table[format].blocksize;
@@ -214,7 +214,7 @@ int r600_fmt_get_nblocksx(u32 format, u32 w)
 {
 	unsigned bw;
 
-	if (format >= DRM_ARRAY_SIZE(color_formats_table))
+	if (format >= ARRAY_SIZE(color_formats_table))
 		return 0;
 
 	bw = color_formats_table[format].blockwidth;
@@ -228,7 +228,7 @@ int r600_fmt_get_nblocksy(u32 format, u32 h)
 {
 	unsigned bh;
 
-	if (format >= DRM_ARRAY_SIZE(color_formats_table))
+	if (format >= ARRAY_SIZE(color_formats_table))
 		return 0;
 
 	bh = color_formats_table[format].blockheight;
@@ -651,9 +651,9 @@ static int r600_cs_track_validate_db(struct radeon_cs_parser *p)
 		nby = height;
 		if (G_028D24_LINEAR(track->htile_surface)) {
 			/* nbx must be 16 htiles aligned == 16 * 8 pixel aligned */
-			nbx = roundup2(nbx, 16 * 8);
+			nbx = round_up(nbx, 16 * 8);
 			/* nby is npipes htiles aligned == npipes * 8 pixel aligned */
-			nby = roundup(nby, track->npipes * 8);
+			nby = round_up(nby, track->npipes * 8);
 		} else {
 			/* always assume 8x8 htile */
 			/* align is htile align * 8, htile align vary according to
@@ -662,23 +662,23 @@ static int r600_cs_track_validate_db(struct radeon_cs_parser *p)
 			switch (track->npipes) {
 			case 8:
 				/* HTILE_WIDTH = 8 & HTILE_HEIGHT = 8*/
-				nbx = roundup2(nbx, 64 * 8);
-				nby = roundup2(nby, 64 * 8);
+				nbx = round_up(nbx, 64 * 8);
+				nby = round_up(nby, 64 * 8);
 				break;
 			case 4:
 				/* HTILE_WIDTH = 8 & HTILE_HEIGHT = 8*/
-				nbx = roundup2(nbx, 64 * 8);
-				nby = roundup2(nby, 32 * 8);
+				nbx = round_up(nbx, 64 * 8);
+				nby = round_up(nby, 32 * 8);
 				break;
 			case 2:
 				/* HTILE_WIDTH = 8 & HTILE_HEIGHT = 8*/
-				nbx = roundup2(nbx, 32 * 8);
-				nby = roundup2(nby, 32 * 8);
+				nbx = round_up(nbx, 32 * 8);
+				nby = round_up(nby, 32 * 8);
 				break;
 			case 1:
 				/* HTILE_WIDTH = 8 & HTILE_HEIGHT = 8*/
-				nbx = roundup2(nbx, 32 * 8);
-				nby = roundup2(nby, 16 * 8);
+				nbx = round_up(nbx, 32 * 8);
+				nby = round_up(nby, 16 * 8);
 				break;
 			default:
 				dev_warn(p->dev, "%s:%d invalid num pipes %d\n",
@@ -933,7 +933,7 @@ static int r600_packet0_check(struct radeon_cs_parser *p,
 		}
 		break;
 	default:
-		DRM_ERROR("Forbidden register 0x%04X in cs at %d\n",
+		printk(KERN_ERR "Forbidden register 0x%04X in cs at %d\n",
 		       reg, idx);
 		return -EINVAL;
 	}
@@ -976,7 +976,7 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 	int r;
 
 	i = (reg >> 7);
-	if (i >= DRM_ARRAY_SIZE(r600_reg_safe_bm)) {
+	if (i >= ARRAY_SIZE(r600_reg_safe_bm)) {
 		dev_warn(p->dev, "forbidden register 0x%08x at %d\n", reg, idx);
 		return -EINVAL;
 	}
@@ -1415,11 +1415,11 @@ static void r600_texture_size(unsigned nfaces, unsigned blevel, unsigned llevel,
 		width = r600_mip_minify(w0, i);
 		nbx = r600_fmt_get_nblocksx(format, width);
 
-		nbx = roundup(nbx, block_align);
+		nbx = round_up(nbx, block_align);
 
 		height = r600_mip_minify(h0, i);
 		nby = r600_fmt_get_nblocksy(format, height);
-		nby = roundup(nby, height_align);
+		nby = round_up(nby, height_align);
 
 		depth = r600_mip_minify(d0, i);
 
@@ -1433,7 +1433,7 @@ static void r600_texture_size(unsigned nfaces, unsigned blevel, unsigned llevel,
 			*l0_size = size;
 
 		if (i == 0 || i == 1)
-			offset = roundup(offset, base_align);
+			offset = round_up(offset, base_align);
 
 		offset += size;
 	}
@@ -1600,7 +1600,7 @@ static bool r600_is_safe_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 	u32 m, i;
 
 	i = (reg >> 7);
-	if (i >= DRM_ARRAY_SIZE(r600_reg_safe_bm)) {
+	if (i >= ARRAY_SIZE(r600_reg_safe_bm)) {
 		dev_warn(p->dev, "forbidden register 0x%08x at %d\n", reg, idx);
 		return false;
 	}
@@ -2261,8 +2261,7 @@ int r600_cs_parse(struct radeon_cs_parser *p)
 
 	if (p->track == NULL) {
 		/* initialize tracker, we are in kms */
-		track = kmalloc(sizeof(*track), M_DRM,
-				M_ZERO | M_WAITOK);
+		track = kzalloc(sizeof(*track), GFP_KERNEL);
 		if (track == NULL)
 			return -ENOMEM;
 		r600_cs_track_init(track);
@@ -2280,7 +2279,7 @@ int r600_cs_parse(struct radeon_cs_parser *p)
 	do {
 		r = radeon_cs_packet_parse(p, &pkt, p->idx);
 		if (r) {
-			drm_free(p->track, M_DRM);
+			kfree(p->track);
 			p->track = NULL;
 			return r;
 		}
@@ -2296,12 +2295,12 @@ int r600_cs_parse(struct radeon_cs_parser *p)
 			break;
 		default:
 			DRM_ERROR("Unknown packet type %d !\n", pkt.type);
-			drm_free(p->track, M_DRM);
+			kfree(p->track);
 			p->track = NULL;
 			return -EINVAL;
 		}
 		if (r) {
-			drm_free(p->track, M_DRM);
+			kfree(p->track);
 			p->track = NULL;
 			return r;
 		}
@@ -2309,10 +2308,10 @@ int r600_cs_parse(struct radeon_cs_parser *p)
 #if 0
 	for (r = 0; r < p->ib.length_dw; r++) {
 		DRM_INFO("%05d  0x%08X\n", r, p->ib.ptr[r]);
-		DRM_MDELAY(1);
+		mdelay(1);
 	}
 #endif
-	drm_free(p->track, M_DRM);
+	kfree(p->track);
 	p->track = NULL;
 	return 0;
 }
@@ -2331,17 +2330,17 @@ static void r600_cs_parser_fini(struct radeon_cs_parser *parser, int error)
 {
 	unsigned i;
 
-	drm_free(parser->relocs, M_DRM);
+	kfree(parser->relocs);
 	for (i = 0; i < parser->nchunks; i++) {
-		drm_free(parser->chunks[i].kdata, M_DRM);
+		kfree(parser->chunks[i].kdata);
 		if (parser->rdev && (parser->rdev->flags & RADEON_IS_AGP)) {
-			drm_free(parser->chunks[i].kpage[0], M_DRM);
-			drm_free(parser->chunks[i].kpage[1], M_DRM);
+			kfree(parser->chunks[i].kpage[0]);
+			kfree(parser->chunks[i].kpage[1]);
 		}
 	}
-	drm_free(parser->chunks, M_DRM);
-	drm_free(parser->chunks_array, M_DRM);
-	drm_free(parser->track, M_DRM);
+	kfree(parser->chunks);
+	kfree(parser->chunks_array);
+	kfree(parser->track);
 }
 
 static int r600_cs_parser_relocs_legacy(struct radeon_cs_parser *p)
@@ -2365,7 +2364,7 @@ int r600_cs_legacy(struct drm_device *dev, void *data, struct drm_file *filp,
 	int r;
 
 	/* initialize tracker */
-	track = kmalloc(sizeof(*track), M_DRM, M_ZERO | M_WAITOK);
+	track = kzalloc(sizeof(*track), GFP_KERNEL);
 	if (track == NULL)
 		return -ENOMEM;
 	r600_cs_track_init(track);
@@ -2619,7 +2618,7 @@ int r600_dma_cs_parse(struct radeon_cs_parser *p)
 #if 0
 	for (r = 0; r < p->ib->length_dw; r++) {
 		DRM_INFO("%05d  0x%08X\n", r, p->ib.ptr[r]);
-		DRM_MDELAY(1);
+		mdelay(1);
 	}
 #endif
 	return 0;

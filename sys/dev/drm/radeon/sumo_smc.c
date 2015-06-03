@@ -42,7 +42,7 @@ static void sumo_send_msg_to_smu(struct radeon_device *rdev, u32 id)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(GFX_INT_STATUS) & INT_DONE)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	gfx_int_req = SERV_INDEX(id) | INT_REQ;
@@ -51,19 +51,19 @@ static void sumo_send_msg_to_smu(struct radeon_device *rdev, u32 id)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(GFX_INT_REQ) & INT_REQ)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(GFX_INT_STATUS) & INT_ACK)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(GFX_INT_STATUS) & INT_DONE)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 
 	gfx_int_req &= ~INT_REQ;

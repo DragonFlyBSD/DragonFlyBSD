@@ -23,10 +23,7 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/atombios_dp.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon.h"
@@ -175,7 +172,7 @@ static int radeon_dp_aux_native_write(struct radeon_connector *radeon_connector,
 		if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_ACK)
 			return send_bytes;
 		else if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_DEFER)
-			DRM_UDELAY(400);
+			udelay(400);
 		else
 			return -EIO;
 	}
@@ -209,7 +206,7 @@ static int radeon_dp_aux_native_read(struct radeon_connector *radeon_connector,
 		if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_ACK)
 			return ret;
 		else if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_DEFER)
-			DRM_UDELAY(400);
+			udelay(400);
 		else if (ret == 0)
 			return -EPROTO;
 		else
@@ -297,7 +294,7 @@ int radeon_dp_i2c_aux_ch(device_t dev, int mode, u8 write_byte, u8 *read_byte)
 			return -EREMOTEIO;
 		case DP_AUX_NATIVE_REPLY_DEFER:
 			DRM_DEBUG_KMS("aux_ch native defer\n");
-			DRM_UDELAY(400);
+			udelay(400);
 			continue;
 		default:
 			DRM_ERROR("aux_ch invalid native reply 0x%02x\n", ack);
@@ -314,7 +311,7 @@ int radeon_dp_i2c_aux_ch(device_t dev, int mode, u8 write_byte, u8 *read_byte)
 			return -EREMOTEIO;
 		case DP_AUX_I2C_REPLY_DEFER:
 			DRM_DEBUG_KMS("aux_i2c defer\n");
-			DRM_UDELAY(400);
+			udelay(400);
 			break;
 		default:
 			DRM_ERROR("aux_i2c invalid reply 0x%02x\n", ack);
@@ -721,7 +718,7 @@ static int radeon_dp_link_train_init(struct radeon_dp_link_train_info *dp_info)
 
 static int radeon_dp_link_train_finish(struct radeon_dp_link_train_info *dp_info)
 {
-	DRM_UDELAY(400);
+	udelay(400);
 
 	/* disable the training pattern on the sink */
 	radeon_write_dpcd_reg(dp_info->radeon_connector,
@@ -749,7 +746,7 @@ static int radeon_dp_link_train_cr(struct radeon_dp_link_train_info *dp_info)
 	memset(dp_info->train_set, 0, 4);
 	radeon_dp_update_vs_emph(dp_info);
 
-	DRM_UDELAY(400);
+	udelay(400);
 
 	/* clock recovery loop */
 	clock_recovery = false;

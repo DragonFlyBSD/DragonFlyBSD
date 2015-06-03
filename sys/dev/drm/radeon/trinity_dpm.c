@@ -773,17 +773,17 @@ static void trinity_wait_for_dpm_enabled(struct radeon_device *rdev)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(SCLK_PWRMGT_CNTL) & DYNAMIC_PM_EN)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if ((RREG32(TARGET_AND_CURRENT_PROFILE_INDEX) & TARGET_STATE_MASK) == 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if ((RREG32(TARGET_AND_CURRENT_PROFILE_INDEX) & CURRENT_STATE_MASK) == 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 }
 
@@ -818,7 +818,7 @@ static void trinity_wait_for_level_0(struct radeon_device *rdev)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if ((RREG32(TARGET_AND_CURRENT_PROFILE_INDEX) & CURRENT_STATE_MASK) == 0)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 }
 

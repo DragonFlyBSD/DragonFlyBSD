@@ -27,7 +27,6 @@
  *          Christian König
  * $FreeBSD: head/sys/dev/drm2/radeon/radeon_ring.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon_reg.h"
@@ -714,7 +713,7 @@ int radeon_ring_restore(struct radeon_device *rdev, struct radeon_ring *ring,
 	}
 
 	radeon_ring_unlock_commit(rdev, ring);
-	drm_free(data, M_DRM);
+	kfree(data);
 	return 0;
 }
 

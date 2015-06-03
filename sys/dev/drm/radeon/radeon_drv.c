@@ -39,6 +39,7 @@
 #include "radeon_irq_kms.h"
 
 #include <drm/drm_pciids.h>
+#include <linux/module.h>
 
 /*
  * KMS wrapper.

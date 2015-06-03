@@ -383,7 +383,7 @@ bool radeon_combios_check_hardcoded_edid(struct radeon_device *rdev)
 	memcpy((unsigned char *)edid, raw, size);
 
 	if (!drm_edid_is_valid(edid)) {
-		drm_free(edid, M_DRM);
+		kfree(edid);
 		return false;
 	}
 
@@ -866,8 +866,8 @@ struct radeon_encoder_primary_dac *radeon_combios_get_primary_dac_info(struct
 	struct radeon_encoder_primary_dac *p_dac = NULL;
 	int found = 0;
 
-	p_dac = kmalloc(sizeof(struct radeon_encoder_primary_dac),
-			M_DRM, M_WAITOK | M_ZERO);
+	p_dac = kzalloc(sizeof(struct radeon_encoder_primary_dac),
+			GFP_KERNEL);
 
 	if (!p_dac)
 		return NULL;
@@ -1017,8 +1017,7 @@ struct radeon_encoder_tv_dac *radeon_combios_get_tv_dac_info(struct
 	struct radeon_encoder_tv_dac *tv_dac = NULL;
 	int found = 0;
 
-	tv_dac = kmalloc(sizeof(struct radeon_encoder_tv_dac),
-			 M_DRM, M_WAITOK | M_ZERO);
+	tv_dac = kzalloc(sizeof(struct radeon_encoder_tv_dac), GFP_KERNEL);
 	if (!tv_dac)
 		return NULL;
 
@@ -1106,8 +1105,7 @@ static struct radeon_encoder_lvds *radeon_legacy_get_lvds_info_from_regs(struct
 	uint32_t ppll_div_sel, ppll_val;
 	uint32_t lvds_ss_gen_cntl = RREG32(RADEON_LVDS_SS_GEN_CNTL);
 
-	lvds = kmalloc(sizeof(struct radeon_encoder_lvds), M_DRM,
-		       M_WAITOK | M_ZERO);
+	lvds = kzalloc(sizeof(struct radeon_encoder_lvds), GFP_KERNEL);
 
 	if (!lvds)
 		return NULL;
@@ -1182,8 +1180,7 @@ struct radeon_encoder_lvds *radeon_combios_get_lvds_info(struct radeon_encoder
 	lcd_info = combios_get_table_offset(dev, COMBIOS_LCD_INFO_TABLE);
 
 	if (lcd_info) {
-		lvds = kmalloc(sizeof(struct radeon_encoder_lvds),
-			       M_DRM, M_WAITOK | M_ZERO);
+		lvds = kzalloc(sizeof(struct radeon_encoder_lvds), GFP_KERNEL);
 
 		if (!lvds)
 			return NULL;
@@ -2640,16 +2637,13 @@ void radeon_combios_get_power_modes(struct radeon_device *rdev)
 	rdev->pm.default_power_state_index = -1;
 
 	/* allocate 2 power states */
-	rdev->pm.power_state = kmalloc(sizeof(struct radeon_power_state) * 2,
-				       M_DRM, M_WAITOK | M_ZERO);
+	rdev->pm.power_state = kzalloc(sizeof(struct radeon_power_state) * 2, GFP_KERNEL);
 	if (rdev->pm.power_state) {
 		/* allocate 1 clock mode per state */
 		rdev->pm.power_state[0].clock_info =
-			kmalloc(sizeof(struct radeon_pm_clock_info) * 1,
-				M_DRM, M_WAITOK | M_ZERO);
+			kzalloc(sizeof(struct radeon_pm_clock_info) * 1, GFP_KERNEL);
 		rdev->pm.power_state[1].clock_info =
-			kmalloc(sizeof(struct radeon_pm_clock_info) * 1,
-				M_DRM, M_WAITOK | M_ZERO);
+			kzalloc(sizeof(struct radeon_pm_clock_info) * 1, GFP_KERNEL);
 		if (!rdev->pm.power_state[0].clock_info ||
 		    !rdev->pm.power_state[1].clock_info)
 			goto pm_failed;
@@ -2925,12 +2919,12 @@ bool radeon_combios_external_tmds_setup(struct drm_encoder *encoder)
 					case 3:
 						val = RBIOS16(index);
 						index += 2;
-						DRM_UDELAY(val);
+						udelay(val);
 						break;
 					case 4:
 						val = RBIOS16(index);
 						index += 2;
-						DRM_MDELAY(val);
+						mdelay(val);
 						break;
 					case 6:
 						slave_addr = id & 0xff;
@@ -2979,7 +2973,7 @@ bool radeon_combios_external_tmds_setup(struct drm_encoder *encoder)
 				case 4:
 					val = RBIOS16(index);
 					index += 2;
-					DRM_UDELAY(val);
+					udelay(val);
 					break;
 				case 5:
 					reg = id & 0x1fff;
@@ -3057,7 +3051,7 @@ static void combios_parse_mmio_table(struct drm_device *dev, uint16_t offset)
 			case 4:
 				val = RBIOS16(offset);
 				offset += 2;
-				DRM_UDELAY(val);
+				udelay(val);
 				break;
 			case 5:
 				val = RBIOS16(offset);
@@ -3126,10 +3120,10 @@ static void combios_parse_pll_table(struct drm_device *dev, uint16_t offset)
 				tmp = 1000;
 				switch (addr) {
 				case 1:
-					DRM_UDELAY(150);
+					udelay(150);
 					break;
 				case 2:
-					DRM_MDELAY(1);
+					mdelay(1);
 					break;
 				case 3:
 					while (tmp--) {
@@ -3160,13 +3154,13 @@ static void combios_parse_pll_table(struct drm_device *dev, uint16_t offset)
 						/*mclk_cntl |= 0x00001111;*//* ??? */
 						WREG32_PLL(RADEON_MCLK_CNTL,
 							   mclk_cntl);
-						DRM_MDELAY(10);
+						mdelay(10);
 #endif
 						WREG32_PLL
 						    (RADEON_CLK_PWRMGT_CNTL,
 						     tmp &
 						     ~RADEON_CG_NO1_DEBUG_0);
-						DRM_MDELAY(10);
+						mdelay(10);
 					}
 					break;
 				default:

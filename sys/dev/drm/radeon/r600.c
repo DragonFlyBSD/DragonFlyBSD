@@ -27,6 +27,7 @@
  *
  * $FreeBSD: head/sys/dev/drm2/radeon/r600.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
+#include <linux/seq_file.h>
 #include <linux/firmware.h>
 #include <linux/module.h>
 #include <drm/drmP.h>
@@ -873,13 +874,13 @@ void r600_pcie_gart_tlb_flush(struct radeon_device *rdev)
 		tmp = RREG32(VM_CONTEXT0_REQUEST_RESPONSE);
 		tmp = (tmp & RESPONSE_TYPE_MASK) >> RESPONSE_TYPE_SHIFT;
 		if (tmp == 2) {
-			DRM_ERROR("[drm] r600 flush TLB failed\n");
+			printk(KERN_WARNING "[drm] r600 flush TLB failed\n");
 			return;
 		}
 		if (tmp) {
 			return;
 		}
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 }
 
@@ -888,7 +889,7 @@ int r600_pcie_gart_init(struct radeon_device *rdev)
 	int r;
 
 	if (rdev->gart.robj) {
-		DRM_ERROR("R600 PCIE GART already initialized\n");
+		WARN(1, "R600 PCIE GART already initialized\n");
 		return 0;
 	}
 	/* Initialize common gart structure */
@@ -1040,7 +1041,7 @@ int r600_mc_wait_for_idle(struct radeon_device *rdev)
 		tmp = RREG32(R_000E50_SRBM_STATUS) & 0x3F00;
 		if (!tmp)
 			return 0;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 	return -1;
 }
@@ -1377,7 +1378,7 @@ static bool r600_is_display_hung(struct radeon_device *rdev)
 		}
 		if (crtc_hung == 0)
 			return false;
-		DRM_UDELAY(100);
+		udelay(100);
 	}
 
 	return true;
@@ -1481,7 +1482,7 @@ static void r600_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 		WREG32(DMA_RB_CNTL, tmp);
 	}
 
-	DRM_MDELAY(50);
+	mdelay(50);
 
 	rv515_mc_stop(rdev, &save);
 	if (r600_mc_wait_for_idle(rdev)) {
@@ -1558,7 +1559,7 @@ static void r600_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 		WREG32(R_008020_GRBM_SOFT_RESET, tmp);
 		tmp = RREG32(R_008020_GRBM_SOFT_RESET);
 
-		DRM_UDELAY(50);
+		udelay(50);
 
 		tmp &= ~grbm_soft_reset;
 		WREG32(R_008020_GRBM_SOFT_RESET, tmp);
@@ -1572,7 +1573,7 @@ static void r600_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 		WREG32(SRBM_SOFT_RESET, tmp);
 		tmp = RREG32(SRBM_SOFT_RESET);
 
-		DRM_UDELAY(50);
+		udelay(50);
 
 		tmp &= ~srbm_soft_reset;
 		WREG32(SRBM_SOFT_RESET, tmp);
@@ -1580,10 +1581,10 @@ static void r600_gpu_soft_reset(struct radeon_device *rdev, u32 reset_mask)
 	}
 
 	/* Wait a little for things to settle down */
-	DRM_MDELAY(1);
+	mdelay(1);
 
 	rv515_mc_resume(rdev, &save);
-	DRM_UDELAY(50);
+	udelay(50);
 
 	r600_print_gpu_status_regs(rdev);
 }
@@ -1672,7 +1673,7 @@ u32 r6xx_remap_render_backend(struct radeon_device *rdev,
 
 	rendering_pipe_num = 1 << tiling_pipe_num;
 	req_rb_num = total_max_rb_num - r600_count_pipe_bits(disabled_rb_mask);
-	KASSERT(rendering_pipe_num >= req_rb_num, ("rendering_pipe_num < req_rb_num"));
+	BUG_ON(rendering_pipe_num < req_rb_num);
 
 	pipe_rb_ratio = rendering_pipe_num / req_rb_num;
 	pipe_rb_remain = rendering_pipe_num - pipe_rb_ratio * req_rb_num;
@@ -2252,7 +2253,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 		chip_name = "SUMO2";
 		rlc_chip_name = "SUMO";
 		break;
-	default: panic("%s: Unsupported family %d", __func__, rdev->family);
+	default: BUG();
 	}
 
 	if (rdev->family >= CHIP_CEDAR) {
@@ -2276,7 +2277,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->pfp_fw->datasize != pfp_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "r600_cp: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->pfp_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -2288,7 +2289,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->me_fw->datasize != me_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "r600_cp: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->me_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -2299,7 +2300,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 	if (err)
 		goto out;
 	if (rdev->rlc_fw->datasize != rlc_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "r600_rlc: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->rlc_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -2325,7 +2326,7 @@ int r600_init_microcode(struct radeon_device *rdev)
 out:
 	if (err) {
 		if (err != -EINVAL)
-			DRM_ERROR(
+			printk(KERN_ERR
 			       "r600_cp: Failed to load firmware \"%s\"\n",
 			       fw_name);
 		release_firmware(rdev->pfp_fw);
@@ -2379,7 +2380,7 @@ static int r600_cp_load_microcode(struct radeon_device *rdev)
 	/* Reset cp */
 	WREG32(GRBM_SOFT_RESET, SOFT_RESET_CP);
 	RREG32(GRBM_SOFT_RESET);
-	DRM_MDELAY(15);
+	mdelay(15);
 	WREG32(GRBM_SOFT_RESET, 0);
 
 	WREG32(CP_ME_RAM_WADDR, 0);
@@ -2442,7 +2443,7 @@ int r600_cp_resume(struct radeon_device *rdev)
 	/* Reset cp */
 	WREG32(GRBM_SOFT_RESET, SOFT_RESET_CP);
 	RREG32(GRBM_SOFT_RESET);
-	DRM_MDELAY(15);
+	mdelay(15);
 	WREG32(GRBM_SOFT_RESET, 0);
 
 	/* Set ring buffer size */
@@ -2476,7 +2477,7 @@ int r600_cp_resume(struct radeon_device *rdev)
 		WREG32(SCRATCH_UMSK, 0);
 	}
 
-	DRM_MDELAY(1);
+	mdelay(1);
 	WREG32(CP_RB_CNTL, tmp);
 
 	WREG32(CP_RB_BASE, ring->gpu_addr >> 8);
@@ -2573,7 +2574,7 @@ int r600_dma_resume(struct radeon_device *rdev)
 	else
 		WREG32(SRBM_SOFT_RESET, SOFT_RESET_DMA);
 	RREG32(SRBM_SOFT_RESET);
-	DRM_UDELAY(50);
+	udelay(50);
 	WREG32(SRBM_SOFT_RESET, 0);
 
 	WREG32(DMA_SEM_INCOMPLETE_TIMER_CNTL, 0);
@@ -2740,11 +2741,11 @@ void r600_uvd_stop(struct radeon_device *rdev)
 	/* Stall UMC and register bus before resetting VCPU */
 	WREG32_P(UVD_LMI_CTRL2, 1 << 8, ~(1 << 8));
 	WREG32_P(UVD_RB_ARB_CTRL, 1 << 3, ~(1 << 3));
-	DRM_MDELAY(1);
+	mdelay(1);
 
 	/* put VCPU into reset */
 	WREG32(UVD_SOFT_RESET, VCPU_SOFT_RESET);
-	DRM_MDELAY(5);
+	mdelay(5);
 
 	/* disable VCPU clock */
 	WREG32(UVD_VCPU_CNTL, 0x0);
@@ -2775,17 +2776,17 @@ int r600_uvd_init(struct radeon_device *rdev)
 	/* Stall UMC and register bus before resetting VCPU */
 	WREG32_P(UVD_LMI_CTRL2, 1 << 8, ~(1 << 8));
 	WREG32_P(UVD_RB_ARB_CTRL, 1 << 3, ~(1 << 3));
-	DRM_MDELAY(1);
+	mdelay(1);
 
 	/* put LMI, VCPU, RBC etc... into reset */
 	WREG32(UVD_SOFT_RESET, LMI_SOFT_RESET | VCPU_SOFT_RESET |
 	       LBSI_SOFT_RESET | RBC_SOFT_RESET | CSM_SOFT_RESET |
 	       CXW_SOFT_RESET | TAP_SOFT_RESET | LMI_UMC_SOFT_RESET);
-	DRM_MDELAY(5);
+	mdelay(5);
 
 	/* take UVD block out of reset */
 	WREG32_P(SRBM_SOFT_RESET, 0, ~SOFT_RESET_UVD);
-	DRM_MDELAY(5);
+	mdelay(5);
 
 	/* initialize UVD memory controller */
 	WREG32(UVD_LMI_CTRL, 0x40 | (1 << 8) | (1 << 13) |
@@ -2808,7 +2809,7 @@ int r600_uvd_init(struct radeon_device *rdev)
 
 	/* take all subblocks out of reset, except VCPU */
 	WREG32(UVD_SOFT_RESET, VCPU_SOFT_RESET);
-	DRM_MDELAY(5);
+	mdelay(5);
 
 	/* enable VCPU clock */
 	WREG32(UVD_VCPU_CNTL,  1 << 9);
@@ -2818,7 +2819,7 @@ int r600_uvd_init(struct radeon_device *rdev)
 
 	/* boot up the VCPU */
 	WREG32(UVD_SOFT_RESET, 0);
-	DRM_MDELAY(10);
+	mdelay(10);
 
 	WREG32_P(UVD_RB_ARB_CTRL, 0, ~(1 << 3));
 
@@ -2828,7 +2829,7 @@ int r600_uvd_init(struct radeon_device *rdev)
 			status = RREG32(UVD_STATUS);
 			if (status & 2)
 				break;
-			DRM_MDELAY(10);
+			mdelay(10);
 		}
 		r = 0;
 		if (status & 2)
@@ -2836,9 +2837,9 @@ int r600_uvd_init(struct radeon_device *rdev)
 
 		DRM_ERROR("UVD not responding, trying to reset the VCPU!!!\n");
 		WREG32_P(UVD_SOFT_RESET, VCPU_SOFT_RESET, ~VCPU_SOFT_RESET);
-		DRM_MDELAY(10);
+		mdelay(10);
 		WREG32_P(UVD_SOFT_RESET, 0, ~VCPU_SOFT_RESET);
-		DRM_MDELAY(10);
+		mdelay(10);
 		r = -1;
 	}
 
@@ -3618,7 +3619,7 @@ void r600_fini(struct radeon_device *rdev)
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
 	r600_fini_microcode(rdev);
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 }
 
@@ -3944,7 +3945,7 @@ void r600_rlc_stop(struct radeon_device *rdev)
 		/* r7xx asics need to soft reset RLC before halting */
 		WREG32(SRBM_SOFT_RESET, SOFT_RESET_RLC);
 		RREG32(SRBM_SOFT_RESET);
-		DRM_MDELAY(15);
+		mdelay(15);
 		WREG32(SRBM_SOFT_RESET, 0);
 		RREG32(SRBM_SOFT_RESET);
 	}
@@ -4179,7 +4180,7 @@ int r600_irq_set(struct radeon_device *rdev)
 	u32 thermal_int = 0;
 
 	if (!rdev->irq.installed) {
-		DRM_ERROR("Can't enable IRQ/MSI because no handler is installed\n");
+		WARN(1, "Can't enable IRQ/MSI because no handler is installed\n");
 		return -EINVAL;
 	}
 	/* don't enable anything if the ih is disabled */
@@ -4436,7 +4437,7 @@ void r600_irq_disable(struct radeon_device *rdev)
 {
 	r600_disable_interrupts(rdev);
 	/* Wait and acknowledge irq */
-	DRM_MDELAY(1);
+	mdelay(1);
 	r600_irq_ack(rdev);
 	r600_disable_interrupt_state(rdev);
 }
@@ -4523,7 +4524,7 @@ restart_ih:
 	DRM_DEBUG("r600_irq_process start: rptr %d, wptr %d\n", rptr, wptr);
 
 	/* Order reading of wptr vs. reading of IH ring data */
-	cpu_lfence();
+	rmb();
 
 	/* display interrupts */
 	r600_irq_ack(rdev);
@@ -4542,7 +4543,7 @@ restart_ih:
 					if (rdev->irq.crtc_vblank_int[0]) {
 						drm_handle_vblank(rdev->ddev, 0);
 						rdev->pm.vblank_sync = true;
-						DRM_WAKEUP(&rdev->irq.vblank_queue);
+						wake_up(&rdev->irq.vblank_queue);
 					}
 					if (atomic_read(&rdev->irq.pflip[0]))
 						radeon_crtc_handle_flip(rdev, 0);
@@ -4568,7 +4569,7 @@ restart_ih:
 					if (rdev->irq.crtc_vblank_int[1]) {
 						drm_handle_vblank(rdev->ddev, 1);
 						rdev->pm.vblank_sync = true;
-						DRM_WAKEUP(&rdev->irq.vblank_queue);
+						wake_up(&rdev->irq.vblank_queue);
 					}
 					if (atomic_read(&rdev->irq.pflip[1]))
 						radeon_crtc_handle_flip(rdev, 1);
@@ -4699,7 +4700,6 @@ restart_ih:
 		taskqueue_enqueue(rdev->tq, &rdev->audio_work);
 	if (queue_thermal && rdev->pm.dpm_enabled)
 		taskqueue_enqueue(rdev->tq, &rdev->pm.dpm.thermal.work);
-
 	rdev->ih.rptr = rptr;
 	WREG32(IH_RB_RPTR, rdev->ih.rptr);
 	atomic_set(&rdev->ih.lock, 0);

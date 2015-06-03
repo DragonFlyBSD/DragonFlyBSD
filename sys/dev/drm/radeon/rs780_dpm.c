@@ -388,7 +388,7 @@ static void rs780_force_voltage_to_high(struct radeon_device *rdev)
 
 	WREG32_P(GFX_MACRO_BYPASS_CNTL, SPLL_BYPASS_CNTL, ~SPLL_BYPASS_CNTL);
 
-	DRM_UDELAY(1);
+	udelay(1);
 
 	WREG32_P(FVTHROT_PWM_CTRL_REG0,
 		 STARTING_PWM_HIGHTIME(pi->max_voltage),
@@ -400,7 +400,7 @@ static void rs780_force_voltage_to_high(struct radeon_device *rdev)
 	WREG32_P(FVTHROT_PWM_FEEDBACK_DIV_REG1, 0,
 		~RANGE_PWM_FEEDBACK_DIV_EN);
 
-	DRM_UDELAY(1);
+	udelay(1);
 
 	WREG32_P(GFX_MACRO_BYPASS_CNTL, 0, ~SPLL_BYPASS_CNTL);
 }
@@ -441,7 +441,7 @@ static int rs780_set_engine_clock_scaling(struct radeon_device *rdev,
 		 ~STARTING_FEEDBACK_DIV_MASK);
 	WREG32_P(FVTHROT_FBDIV_REG1, FORCE_FEEDBACK_DIV, ~FORCE_FEEDBACK_DIV);
 
-	DRM_UDELAY(100);
+	udelay(100);
 
 	WREG32_P(GFX_MACRO_BYPASS_CNTL, 0, ~SPLL_BYPASS_CNTL);
 
@@ -510,7 +510,7 @@ static void rs780_enable_voltage_scaling(struct radeon_device *rdev,
 	struct igp_power_info *pi = rs780_get_pi(rdev);
 	enum rs780_vddc_level vddc_high, vddc_low;
 
-	DRM_UDELAY(100);
+	udelay(100);
 
 	if ((new_state->max_voltage == RS780_VDDC_LEVEL_HIGH) &&
 	    (new_state->min_voltage == RS780_VDDC_LEVEL_HIGH))
@@ -523,7 +523,7 @@ static void rs780_enable_voltage_scaling(struct radeon_device *rdev,
 
 	WREG32_P(GFX_MACRO_BYPASS_CNTL, SPLL_BYPASS_CNTL, ~SPLL_BYPASS_CNTL);
 
-	DRM_UDELAY(1);
+	udelay(1);
 	if (vddc_high > vddc_low) {
 		WREG32_P(FVTHROT_PWM_FEEDBACK_DIV_REG1,
 			 RANGE_PWM_FEEDBACK_DIV_EN, ~RANGE_PWM_FEEDBACK_DIV_EN);
@@ -651,7 +651,7 @@ int rs780_dpm_set_power_state(struct radeon_device *rdev)
 
 	if (pi->voltage_control) {
 		rs780_force_voltage_to_high(rdev);
-		DRM_MDELAY(5);
+		mdelay(5);
 	}
 
 	ret = rs780_set_engine_clock_scaling(rdev, new_ps, old_ps);

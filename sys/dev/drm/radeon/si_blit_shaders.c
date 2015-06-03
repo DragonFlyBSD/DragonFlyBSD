@@ -24,7 +24,9 @@
  *     Alex Deucher <alexander.deucher@amd.com>
  */
 
-#include <drm/drmP.h>
+#include <linux/types.h>
+#include <linux/bug.h>
+#include <linux/kernel.h>
 
 const u32 si_default_state[] =
 {
@@ -248,4 +250,4 @@ const u32 si_default_state[] =
 	0x00000010, /*  */
 };
 
-const u32 si_default_size = DRM_ARRAY_SIZE(si_default_state);
+const u32 si_default_size = ARRAY_SIZE(si_default_state);

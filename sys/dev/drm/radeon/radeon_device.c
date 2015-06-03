@@ -27,7 +27,6 @@
  *
  * $FreeBSD: head/sys/dev/drm2/radeon/radeon_device.c 255573 2013-09-14 17:24:41Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <drm/drm_crtc_helper.h>
 #include <uapi_drm/radeon_drm.h>
@@ -860,8 +859,7 @@ static uint32_t cail_ioreg_read(struct card_info *info, uint32_t reg)
 int radeon_atombios_init(struct radeon_device *rdev)
 {
 	struct card_info *atom_card_info =
-	    kmalloc(sizeof(struct card_info), M_DRM,
-		    M_ZERO | M_WAITOK);
+	    kzalloc(sizeof(struct card_info), GFP_KERNEL);
 
 	if (!atom_card_info)
 		return -ENOMEM;
@@ -909,11 +907,11 @@ int radeon_atombios_init(struct radeon_device *rdev)
 void radeon_atombios_fini(struct radeon_device *rdev)
 {
 	if (rdev->mode_info.atom_context) {
-		drm_free(rdev->mode_info.atom_context->scratch, M_DRM);
+		kfree(rdev->mode_info.atom_context->scratch);
 	}
-	drm_free(rdev->mode_info.atom_context, M_DRM);
+	kfree(rdev->mode_info.atom_context);
 	rdev->mode_info.atom_context = NULL;
-	drm_free(rdev->mode_info.atom_card_info, M_DRM);
+	kfree(rdev->mode_info.atom_card_info);
 	rdev->mode_info.atom_card_info = NULL;
 }
 
@@ -1638,7 +1636,7 @@ retry:
 	} else {
 		radeon_fence_driver_force_completion(rdev);
 		for (i = 0; i < RADEON_NUM_RINGS; ++i) {
-			drm_free(ring_data[i], M_DRM);
+			kfree(ring_data[i]);
 		}
 	}
 

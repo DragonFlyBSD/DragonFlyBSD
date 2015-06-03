@@ -330,7 +330,7 @@ static inline struct radeon_fence *radeon_fence_later(struct radeon_fence *a,
 		return a;
 	}
 
-	KASSERT(a->ring == b->ring, ("\"a\" and \"b\" belongs to different rings"));
+	BUG_ON(a->ring != b->ring);
 
 	if (a->seq > b->seq) {
 		return a;
@@ -350,7 +350,7 @@ static inline bool radeon_fence_is_earlier(struct radeon_fence *a,
 		return true;
 	}
 
-	KASSERT(a->ring == b->ring, ("\"a\" and \"b\" belongs to different rings"));
+	BUG_ON(a->ring != b->ring);
 
 	return a->seq < b->seq;
 }

@@ -27,7 +27,7 @@
  *
  * $FreeBSD: head/sys/dev/drm2/radeon/rv770.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
+#include <linux/firmware.h>
 #include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
@@ -102,12 +102,12 @@ int rv770_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk)
 		 ~UPLL_FB_DIV_MASK);
 
 	/* give the PLL some time to settle */
-	DRM_MDELAY(15);
+	mdelay(15);
 
 	/* deassert PLL_RESET */
 	WREG32_P(CG_UPLL_FUNC_CNTL, 0, ~UPLL_RESET_MASK);
 
-	DRM_MDELAY(15);
+	mdelay(15);
 
 	/* deassert BYPASS EN and FB_DIV[0] <- ??? why? */
 	WREG32_P(CG_UPLL_FUNC_CNTL, 0, ~UPLL_BYPASS_EN_MASK);
@@ -122,7 +122,7 @@ int rv770_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk)
 		 VCLK_SRC_SEL(2) | DCLK_SRC_SEL(2),
 		 ~(VCLK_SRC_SEL_MASK | DCLK_SRC_SEL_MASK));
 
-	DRM_MDELAY(100);
+	mdelay(100);
 
 	return 0;
 }
@@ -923,7 +923,7 @@ u32 rv770_page_flip(struct radeon_device *rdev, int crtc_id, u64 crtc_base)
 	for (i = 0; i < rdev->usec_timeout; i++) {
 		if (RREG32(AVIVO_D1GRPH_UPDATE + radeon_crtc->crtc_offset) & AVIVO_D1GRPH_SURFACE_UPDATE_PENDING)
 			break;
-		DRM_UDELAY(1);
+		udelay(1);
 	}
 	DRM_DEBUG("Update pending now high. Unlocking vupdate_lock.\n");
 
@@ -1190,7 +1190,7 @@ static int rv770_cp_load_microcode(struct radeon_device *rdev)
 	/* Reset cp */
 	WREG32(GRBM_SOFT_RESET, SOFT_RESET_CP);
 	RREG32(GRBM_SOFT_RESET);
-	DRM_MDELAY(15);
+	mdelay(15);
 	WREG32(GRBM_SOFT_RESET, 0);
 
 	fw_data = (const __be32 *)rdev->pfp_fw->data;
@@ -2107,7 +2107,7 @@ void rv770_fini(struct radeon_device *rdev)
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
 	r600_fini_microcode(rdev);
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 }
 

@@ -1267,10 +1267,9 @@ static void radeon_pm_fini_old(struct radeon_device *rdev)
 	if (rdev->pm.power_state) {
 		int i;
 		for (i = 0; i < rdev->pm.num_power_states; ++i) {
-			drm_free(rdev->pm.power_state[i].clock_info,
-				 M_DRM);
+			kfree(rdev->pm.power_state[i].clock_info);
 		}
-		drm_free(rdev->pm.power_state, M_DRM);
+		kfree(rdev->pm.power_state);
 		rdev->pm.power_state = NULL;
 		rdev->pm.num_power_states = 0;
 	}

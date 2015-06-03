@@ -24,10 +24,7 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/rv515.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include "rv515d.h"
 #include "radeon.h"
@@ -154,7 +151,7 @@ static void rv515_gpu_init(struct radeon_device *rdev)
 	unsigned pipe_select_current, gb_pipe_select, tmp;
 
 	if (r100_gui_wait_for_idle(rdev)) {
-		DRM_ERROR("Failed to wait GUI idle while "
+		printk(KERN_WARNING "Failed to wait GUI idle while "
 		       "resetting GPU. Bad things might happen.\n");
 	}
 	rv515_vga_render_disable(rdev);
@@ -166,11 +163,11 @@ static void rv515_gpu_init(struct radeon_device *rdev)
 	      (((gb_pipe_select >> 8) & 0xF) << 4);
 	WREG32_PLL(0x000D, tmp);
 	if (r100_gui_wait_for_idle(rdev)) {
-		DRM_ERROR("Failed to wait GUI idle while "
+		printk(KERN_WARNING "Failed to wait GUI idle while "
 		       "resetting GPU. Bad things might happen.\n");
 	}
 	if (rv515_mc_wait_for_idle(rdev)) {
-		DRM_ERROR("Failed to wait MC idle while "
+		printk(KERN_WARNING "Failed to wait MC idle while "
 		       "programming pipes. Bad things might happen.\n");
 	}
 }
@@ -313,7 +310,7 @@ void rv515_mc_stop(struct radeon_device *rdev, struct rv515_mc_save *save)
 			for (j = 0; j < rdev->usec_timeout; j++) {
 				if (radeon_get_vblank_counter(rdev, i) != frame_count)
 					break;
-				DRM_UDELAY(1);
+				udelay(1);
 			}
 
 			/* XXX this is a hack to avoid strange behavior with EFI on certain systems */
@@ -348,7 +345,7 @@ void rv515_mc_stop(struct radeon_device *rdev, struct rv515_mc_save *save)
 		}
 	}
 	/* wait for the MC to settle */
-	DRM_UDELAY(100);
+	udelay(100);
 
 	/* lock double buffered regs */
 	for (i = 0; i < rdev->num_crtc; i++) {
@@ -416,7 +413,7 @@ void rv515_mc_resume(struct radeon_device *rdev, struct rv515_mc_save *save)
 				tmp = RREG32(AVIVO_D1GRPH_UPDATE + crtc_offsets[i]);
 				if ((tmp & AVIVO_D1GRPH_SURFACE_UPDATE_PENDING) == 0)
 					break;
-				DRM_UDELAY(1);
+				udelay(1);
 			}
 		}
 	}
@@ -446,13 +443,13 @@ void rv515_mc_resume(struct radeon_device *rdev, struct rv515_mc_save *save)
 			for (j = 0; j < rdev->usec_timeout; j++) {
 				if (radeon_get_vblank_counter(rdev, i) != frame_count)
 					break;
-				DRM_UDELAY(1);
+				udelay(1);
 			}
 		}
 	}
 	/* Unlock vga access */
 	WREG32(R_000328_VGA_HDP_CONTROL, save->vga_hdp_control);
-	DRM_MDELAY(1);
+	mdelay(1);
 	WREG32(R_000300_VGA_RENDER_CONTROL, save->vga_render_control);
 }
 
@@ -599,7 +596,7 @@ int rv515_suspend(struct radeon_device *rdev)
 void rv515_set_safe_registers(struct radeon_device *rdev)
 {
 	rdev->config.r300.reg_safe_bm = rv515_reg_safe_bm;
-	rdev->config.r300.reg_safe_bm_size = DRM_ARRAY_SIZE(rv515_reg_safe_bm);
+	rdev->config.r300.reg_safe_bm_size = ARRAY_SIZE(rv515_reg_safe_bm);
 }
 
 void rv515_fini(struct radeon_device *rdev)
@@ -614,7 +611,7 @@ void rv515_fini(struct radeon_device *rdev)
 	radeon_fence_driver_fini(rdev);
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 }
 
