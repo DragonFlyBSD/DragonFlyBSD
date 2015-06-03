@@ -37,6 +37,7 @@
 #include <sys/systm.h>
 #include <sys/linker.h>
 #include <sys/firmware.h>
+#include <linux/module.h>
 
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
@@ -53,6 +54,14 @@
 #define FIRMWARE_RS690		"radeonkmsfw_RS690_cp"
 #define FIRMWARE_RS600		"radeonkmsfw_RS600_cp"
 #define FIRMWARE_R520		"radeonkmsfw_R520_cp"
+
+MODULE_FIRMWARE(FIRMWARE_R100);
+MODULE_FIRMWARE(FIRMWARE_R200);
+MODULE_FIRMWARE(FIRMWARE_R300);
+MODULE_FIRMWARE(FIRMWARE_R420);
+MODULE_FIRMWARE(FIRMWARE_RS690);
+MODULE_FIRMWARE(FIRMWARE_RS600);
+MODULE_FIRMWARE(FIRMWARE_R520);
 
 static int radeon_do_cleanup_cp(struct drm_device * dev);
 static void radeon_do_cp_start(drm_radeon_private_t * dev_priv);
@@ -469,6 +478,7 @@ static void radeon_init_pipes(struct drm_device *dev)
 /* Load the microcode for the CP */
 static int radeon_cp_init_microcode(drm_radeon_private_t *dev_priv)
 {
+	struct platform_device *pdev;
 	const char *fw_name = NULL;
 	int err;
 
@@ -517,11 +527,8 @@ static int radeon_cp_init_microcode(drm_radeon_private_t *dev_priv)
 		fw_name = FIRMWARE_R520;
 	}
 
-	err = 0;
-
-	dev_priv->me_fw = firmware_get(fw_name);
-	if (dev_priv->me_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&dev_priv->me_fw, fw_name, &pdev->dev);
+	if (err) {
 		DRM_ERROR("radeon_cp: Failed to load firmware \"%s\"\n",
 		       fw_name);
 	} else if (dev_priv->me_fw->datasize % 8) {
@@ -529,7 +536,7 @@ static int radeon_cp_init_microcode(drm_radeon_private_t *dev_priv)
 		       "radeon_cp: Bogus length %zu in firmware \"%s\"\n",
 		       dev_priv->me_fw->datasize, fw_name);
 		err = -EINVAL;
-		firmware_put(dev_priv->me_fw, FIRMWARE_UNLOAD);
+		release_firmware(dev_priv->me_fw);
 		dev_priv->me_fw = NULL;
 	}
 	return err;
@@ -1805,14 +1812,10 @@ void radeon_do_release(struct drm_device * dev)
 			r600_do_cleanup_cp(dev);
 		else
 			radeon_do_cleanup_cp(dev);
-		if (dev_priv->me_fw != NULL) {
-			firmware_put(dev_priv->me_fw, FIRMWARE_UNLOAD);
-			dev_priv->me_fw = NULL;
-		}
-		if (dev_priv->pfp_fw != NULL) {
-			firmware_put(dev_priv->pfp_fw, FIRMWARE_UNLOAD);
-			dev_priv->pfp_fw = NULL;
-		}
+		release_firmware(dev_priv->me_fw);
+		dev_priv->me_fw = NULL;
+		release_firmware(dev_priv->pfp_fw);
+		dev_priv->pfp_fw = NULL;
 	}
 }
 

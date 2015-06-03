@@ -23,9 +23,9 @@
  *
  * $FreeBSD: head/sys/dev/drm2/radeon/si.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
-#include <drm/drmP.h>
 #include <linux/firmware.h>
+#include <linux/module.h>
+#include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include <uapi_drm/radeon_drm.h>
@@ -43,6 +43,8 @@
 #define PCI_EXP_DEVSTA_TRPND 0x0020
 #define PCI_EXP_LNKCAP_CLKPM 0x00040000
 
+MODULE_FIRMWARE("radeon/TAHITI_pfp.bin");
+MODULE_FIRMWARE("radeon/TAHITI_me.bin");
 MODULE_FIRMWARE("radeon/TAHITI_ce.bin");
 MODULE_FIRMWARE("radeon/TAHITI_mc.bin");
 MODULE_FIRMWARE("radeon/TAHITI_rlc.bin");
@@ -1603,14 +1605,11 @@ static int si_init_microcode(struct radeon_device *rdev)
 	}
 
 	DRM_INFO("Loading %s Microcode\n", chip_name);
-	err = 0;
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_pfp", chip_name);
-	rdev->pfp_fw = firmware_get(fw_name);
-	if (rdev->pfp_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev);
+	if (err)
 		goto out;
-	}
 	if (rdev->pfp_fw->datasize != pfp_req_size) {
 		DRM_ERROR(
 		       "si_cp: Bogus length %zu in firmware \"%s\"\n",
@@ -1620,11 +1619,9 @@ static int si_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_me", chip_name);
-	rdev->me_fw = firmware_get(fw_name);
-	if (rdev->me_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
+	if (err)
 		goto out;
-	}
 	if (rdev->me_fw->datasize != me_req_size) {
 		DRM_ERROR(
 		       "si_cp: Bogus length %zu in firmware \"%s\"\n",
@@ -1633,11 +1630,9 @@ static int si_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_ce", chip_name);
-	rdev->ce_fw = firmware_get(fw_name);
-	if (rdev->ce_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev);
+	if (err)
 		goto out;
-	}
 	if (rdev->ce_fw->datasize != ce_req_size) {
 		DRM_ERROR(
 		       "si_cp: Bogus length %zu in firmware \"%s\"\n",
@@ -1645,13 +1640,10 @@ static int si_init_microcode(struct radeon_device *rdev)
 		err = -EINVAL;
 	}
 
-	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_rlc",
-		  rlc_chip_name);
-	rdev->rlc_fw = firmware_get(fw_name);
-	if (rdev->rlc_fw == NULL) {
-		err = -ENOENT;
+	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_rlc", rlc_chip_name);
+	err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev);
+	if (err)
 		goto out;
-	}
 	if (rdev->rlc_fw->datasize != rlc_req_size) {
 		DRM_ERROR(
 		       "si_rlc: Bogus length %zu in firmware \"%s\"\n",
@@ -1660,11 +1652,9 @@ static int si_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc", chip_name);
-	rdev->mc_fw = firmware_get(fw_name);
-	if (rdev->mc_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
+	if (err)
 		goto out;
-	}
 	if (rdev->mc_fw->datasize != mc_req_size) {
 		DRM_ERROR(
 		       "si_mc: Bogus length %zu in firmware \"%s\"\n",
@@ -1693,30 +1683,18 @@ out:
 			DRM_ERROR(
 			       "si_cp: Failed to load firmware \"%s\"\n",
 			       fw_name);
-		if (rdev->pfp_fw != NULL) {
-			firmware_put(rdev->pfp_fw, FIRMWARE_UNLOAD);
-			rdev->pfp_fw = NULL;
-		}
-		if (rdev->me_fw != NULL) {
-			firmware_put(rdev->me_fw, FIRMWARE_UNLOAD);
-			rdev->me_fw = NULL;
-		}
-		if (rdev->ce_fw != NULL) {
-			firmware_put(rdev->ce_fw, FIRMWARE_UNLOAD);
-			rdev->ce_fw = NULL;
-		}
-		if (rdev->rlc_fw != NULL) {
-			firmware_put(rdev->rlc_fw, FIRMWARE_UNLOAD);
-			rdev->rlc_fw = NULL;
-		}
-		if (rdev->mc_fw != NULL) {
-			firmware_put(rdev->mc_fw, FIRMWARE_UNLOAD);
-			rdev->mc_fw = NULL;
-		}
-		if (rdev->smc_fw != NULL) {
-			firmware_put(rdev->smc_fw, FIRMWARE_UNLOAD);
-			rdev->smc_fw = NULL;
-		}
+		release_firmware(rdev->pfp_fw);
+		rdev->pfp_fw = NULL;
+		release_firmware(rdev->me_fw);
+		rdev->me_fw = NULL;
+		release_firmware(rdev->ce_fw);
+		rdev->ce_fw = NULL;
+		release_firmware(rdev->rlc_fw);
+		rdev->rlc_fw = NULL;
+		release_firmware(rdev->mc_fw);
+		rdev->mc_fw = NULL;
+		release_firmware(rdev->smc_fw);
+		rdev->smc_fw = NULL;
 	}
 	return err;
 }
@@ -1731,36 +1709,18 @@ out:
  */
 static void si_fini_microcode(struct radeon_device *rdev)
 {
-
-	if (rdev->pfp_fw != NULL) {
-		firmware_put(rdev->pfp_fw, FIRMWARE_UNLOAD);
-		rdev->pfp_fw = NULL;
-	}
-
-	if (rdev->me_fw != NULL) {
-		firmware_put(rdev->me_fw, FIRMWARE_UNLOAD);
-		rdev->me_fw = NULL;
-	}
-
-	if (rdev->rlc_fw != NULL) {
-		firmware_put(rdev->rlc_fw, FIRMWARE_UNLOAD);
-		rdev->rlc_fw = NULL;
-	}
-
-	if (rdev->mc_fw != NULL) {
-		firmware_put(rdev->mc_fw, FIRMWARE_UNLOAD);
-		rdev->mc_fw = NULL;
-	}
-
-	if (rdev->smc_fw != NULL) {
-		firmware_put(rdev->smc_fw, FIRMWARE_UNLOAD);
-		rdev->smc_fw = NULL;
-	}
-
-	if (rdev->ce_fw != NULL) {
-		firmware_put(rdev->ce_fw, FIRMWARE_UNLOAD);
-		rdev->ce_fw = NULL;
-	}
+	release_firmware(rdev->pfp_fw);
+	rdev->pfp_fw = NULL;
+	release_firmware(rdev->me_fw);
+	rdev->me_fw = NULL;
+	release_firmware(rdev->rlc_fw);
+	rdev->rlc_fw = NULL;
+	release_firmware(rdev->mc_fw);
+	rdev->mc_fw = NULL;
+	release_firmware(rdev->smc_fw);
+	rdev->smc_fw = NULL;
+	release_firmware(rdev->ce_fw);
+	rdev->ce_fw = NULL;
 }
 
 /* watermark setup */

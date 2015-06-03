@@ -107,7 +107,7 @@ int radeon_uvd_init(struct radeon_device *rdev)
 	if (r) {
 		dev_err(rdev->dev, "radeon_uvd: Can't load firmware \"%s\"\n",
 			fw_name);
-		return -EINVAL;
+		return r;
 	}
 
 	bo_size = RADEON_GPU_PAGE_ALIGN(rdev->uvd_fw->datasize + 8) +

@@ -34,6 +34,7 @@
 #include <sys/systm.h>
 #include <sys/linker.h>
 #include <sys/firmware.h>
+#include <linux/module.h>
 
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
@@ -44,6 +45,28 @@
 #define PM4_UCODE_SIZE 1792
 #define R700_PFP_UCODE_SIZE 848
 #define R700_PM4_UCODE_SIZE 1360
+
+/* Firmware Names */
+MODULE_FIRMWARE("radeon/R600_pfp.bin");
+MODULE_FIRMWARE("radeon/R600_me.bin");
+MODULE_FIRMWARE("radeon/RV610_pfp.bin");
+MODULE_FIRMWARE("radeon/RV610_me.bin");
+MODULE_FIRMWARE("radeon/RV630_pfp.bin");
+MODULE_FIRMWARE("radeon/RV630_me.bin");
+MODULE_FIRMWARE("radeon/RV620_pfp.bin");
+MODULE_FIRMWARE("radeon/RV620_me.bin");
+MODULE_FIRMWARE("radeon/RV635_pfp.bin");
+MODULE_FIRMWARE("radeon/RV635_me.bin");
+MODULE_FIRMWARE("radeon/RV670_pfp.bin");
+MODULE_FIRMWARE("radeon/RV670_me.bin");
+MODULE_FIRMWARE("radeon/RS780_pfp.bin");
+MODULE_FIRMWARE("radeon/RS780_me.bin");
+MODULE_FIRMWARE("radeon/RV770_pfp.bin");
+MODULE_FIRMWARE("radeon/RV770_me.bin");
+MODULE_FIRMWARE("radeon/RV730_pfp.bin");
+MODULE_FIRMWARE("radeon/RV730_me.bin");
+MODULE_FIRMWARE("radeon/RV710_pfp.bin");
+MODULE_FIRMWARE("radeon/RV710_me.bin");
 
 # define ATI_PCIGART_PAGE_SIZE		4096	/**< PCI GART page size */
 # define ATI_PCIGART_PAGE_MASK		(~(ATI_PCIGART_PAGE_SIZE-1))
@@ -297,6 +320,7 @@ static void r600_vm_init(struct drm_device *dev)
 
 static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 {
+	struct platform_device *pdev;
 	const char *chip_name;
 	size_t pfp_req_size, me_req_size;
 	char fw_name[30];
@@ -327,14 +351,11 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 	}
 
 	DRM_INFO("Loading %s CP Microcode\n", chip_name);
-	err = 0;
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_pfp", chip_name);
-	dev_priv->pfp_fw = firmware_get(fw_name);
-	if (dev_priv->pfp_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&dev_priv->pfp_fw, fw_name, &pdev->dev);
+	if (err)
 		goto out;
-	}
 	if (dev_priv->pfp_fw->datasize != pfp_req_size) {
 		DRM_ERROR(
 		       "r600_cp: Bogus length %zu in firmware \"%s\"\n",
@@ -344,11 +365,9 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_me", chip_name);
-	dev_priv->me_fw = firmware_get(fw_name);
-	if (dev_priv->me_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&dev_priv->me_fw, fw_name, &pdev->dev);
+	if (err)
 		goto out;
-	}
 	if (dev_priv->me_fw->datasize != me_req_size) {
 		DRM_ERROR(
 		       "r600_cp: Bogus length %zu in firmware \"%s\"\n",
@@ -361,14 +380,10 @@ out:
 			DRM_ERROR(
 			       "r600_cp: Failed to load firmware \"%s\"\n",
 			       fw_name);
-		if (dev_priv->pfp_fw != NULL) {
-			firmware_put(dev_priv->pfp_fw, FIRMWARE_UNLOAD);
-			dev_priv->pfp_fw = NULL;
-		}
-		if (dev_priv->me_fw != NULL) {
-			firmware_put(dev_priv->me_fw, FIRMWARE_UNLOAD);
-			dev_priv->me_fw = NULL;
-		}
+		release_firmware(dev_priv->pfp_fw);
+		dev_priv->pfp_fw = NULL;
+		release_firmware(dev_priv->me_fw);
+		dev_priv->me_fw = NULL;
 	}
 	return err;
 }

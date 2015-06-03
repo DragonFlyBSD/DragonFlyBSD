@@ -21,8 +21,8 @@
  *
  * Authors: Alex Deucher
  */
-#include <linux/module.h>
 #include <linux/firmware.h>
+#include <linux/module.h>
 #include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
@@ -774,14 +774,11 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	}
 
 	DRM_INFO("Loading %s Microcode\n", chip_name);
-	err = 0;
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_pfp", chip_name);
-	rdev->pfp_fw = firmware_get(fw_name);
-	if (rdev->pfp_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&rdev->pfp_fw, fw_name, rdev->dev);
+	if (err)
 		goto out;
-	}
 	if (rdev->pfp_fw->datasize != pfp_req_size) {
 		printk(KERN_ERR
 		       "cik_cp: Bogus length %zu in firmware \"%s\"\n",
@@ -791,11 +788,9 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_me", chip_name);
-	rdev->me_fw = firmware_get(fw_name);
-	if (rdev->me_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
+	if (err)
 		goto out;
-	}
 	if (rdev->me_fw->datasize != me_req_size) {
 		printk(KERN_ERR
 		       "cik_cp: Bogus length %zu in firmware \"%s\"\n",
@@ -804,11 +799,9 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_ce", chip_name);
-	rdev->ce_fw = firmware_get(fw_name);
-	if (rdev->ce_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&rdev->ce_fw, fw_name, rdev->dev);
+	if (err)
 		goto out;
-	}
 	if (rdev->ce_fw->datasize != ce_req_size) {
 		printk(KERN_ERR
 		       "cik_cp: Bogus length %zu in firmware \"%s\"\n",
@@ -817,11 +810,9 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mec", chip_name);
-	rdev->mec_fw = firmware_get(fw_name);
-	if (rdev->mec_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&rdev->mec_fw, fw_name, rdev->dev);
+	if (err)
 		goto out;
-	}
 	if (rdev->mec_fw->datasize != mec_req_size) {
 		printk(KERN_ERR
 		       "cik_cp: Bogus length %zu in firmware \"%s\"\n",
@@ -830,11 +821,9 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_rlc", chip_name);
-	rdev->rlc_fw = firmware_get(fw_name);
-	if (rdev->rlc_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&rdev->rlc_fw, fw_name, rdev->dev);
+	if (err)
 		goto out;
-	}
 	if (rdev->rlc_fw->datasize != rlc_req_size) {
 		printk(KERN_ERR
 		       "cik_rlc: Bogus length %zu in firmware \"%s\"\n",
@@ -843,11 +832,9 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_sdma", chip_name);
-	rdev->sdma_fw = firmware_get(fw_name);
-	if (rdev->sdma_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&rdev->sdma_fw, fw_name, rdev->dev);
+	if (err)
 		goto out;
-	}
 	if (rdev->sdma_fw->datasize != sdma_req_size) {
 		printk(KERN_ERR
 		       "cik_sdma: Bogus length %zu in firmware \"%s\"\n",
@@ -858,11 +845,9 @@ static int cik_init_microcode(struct radeon_device *rdev)
 	/* No MC ucode on APUs */
 	if (!(rdev->flags & RADEON_IS_IGP)) {
 		ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_mc", chip_name);
-		rdev->mc_fw = firmware_get(fw_name);
-		if (rdev->mc_fw == NULL) {
-			err = -ENOENT;
+		err = request_firmware(&rdev->mc_fw, fw_name, rdev->dev);
+		if (err)
 			goto out;
-		}
 		if (rdev->mc_fw->datasize != mc_req_size) {
 			printk(KERN_ERR
 			       "cik_mc: Bogus length %zu in firmware \"%s\"\n",
@@ -877,34 +862,20 @@ out:
 			printk(KERN_ERR
 			       "cik_cp: Failed to load firmware \"%s\"\n",
 			       fw_name);
-		if (rdev->pfp_fw != NULL) {
-			firmware_put(rdev->pfp_fw, FIRMWARE_UNLOAD);
-			rdev->pfp_fw = NULL;
-		}
-		if (rdev->me_fw != NULL) {
-			firmware_put(rdev->me_fw, FIRMWARE_UNLOAD);
-			rdev->me_fw = NULL;
-		}
-		if (rdev->ce_fw != NULL) {
-			firmware_put(rdev->ce_fw, FIRMWARE_UNLOAD);
-			rdev->ce_fw = NULL;
-		}
-		if (rdev->mec_fw != NULL) {
-			firmware_put(rdev->mec_fw, FIRMWARE_UNLOAD);
-			rdev->mec_fw = NULL;
-		}
-		if (rdev->rlc_fw != NULL) {
-			firmware_put(rdev->rlc_fw, FIRMWARE_UNLOAD);
-			rdev->rlc_fw = NULL;
-		}
-		if (rdev->sdma_fw != NULL) {
-			firmware_put(rdev->sdma_fw, FIRMWARE_UNLOAD);
-			rdev->sdma_fw = NULL;
-		}
-		if (rdev->mc_fw != NULL) {
-			firmware_put(rdev->mc_fw, FIRMWARE_UNLOAD);
-			rdev->mc_fw = NULL;
-		}
+		release_firmware(rdev->pfp_fw);
+		rdev->pfp_fw = NULL;
+		release_firmware(rdev->me_fw);
+		rdev->me_fw = NULL;
+		release_firmware(rdev->ce_fw);
+		rdev->ce_fw = NULL;
+		release_firmware(rdev->mec_fw);
+		rdev->mec_fw = NULL;
+		release_firmware(rdev->rlc_fw);
+		rdev->rlc_fw = NULL;
+		release_firmware(rdev->sdma_fw);
+		rdev->sdma_fw = NULL;
+		release_firmware(rdev->mc_fw);
+		rdev->mc_fw = NULL;
 	}
 	return err;
 }

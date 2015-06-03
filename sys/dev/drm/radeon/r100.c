@@ -39,6 +39,9 @@
 #include "rv250d.h"
 #include "atom.h"
 
+#include <linux/firmware.h>
+#include <linux/module.h>
+
 #include "r100_reg_safe.h"
 #include "rn50_reg_safe.h"
 
@@ -50,6 +53,14 @@
 #define FIRMWARE_RS690		"radeonkmsfw_RS690_cp"
 #define FIRMWARE_RS600		"radeonkmsfw_RS600_cp"
 #define FIRMWARE_R520		"radeonkmsfw_R520_cp"
+
+MODULE_FIRMWARE(FIRMWARE_R100);
+MODULE_FIRMWARE(FIRMWARE_R200);
+MODULE_FIRMWARE(FIRMWARE_R300);
+MODULE_FIRMWARE(FIRMWARE_R420);
+MODULE_FIRMWARE(FIRMWARE_RS690);
+MODULE_FIRMWARE(FIRMWARE_RS600);
+MODULE_FIRMWARE(FIRMWARE_R520);
 
 #include "r100_track.h"
 
@@ -1024,18 +1035,16 @@ static int r100_cp_init_microcode(struct radeon_device *rdev)
 		fw_name = FIRMWARE_R520;
 	}
 
-	err = 0;
-	rdev->me_fw = firmware_get(fw_name);
-	if (rdev->me_fw == NULL) {
+	err = request_firmware(&rdev->me_fw, fw_name, rdev->dev);
+	if (err) {
 		DRM_ERROR("radeon_cp: Failed to load firmware \"%s\"\n",
 		       fw_name);
-		err = -ENOENT;
 	} else if (rdev->me_fw->datasize % 8) {
 		DRM_ERROR(
 		       "radeon_cp: Bogus length %zu in firmware \"%s\"\n",
 		       rdev->me_fw->datasize, fw_name);
 		err = -EINVAL;
-		firmware_put(rdev->me_fw, FIRMWARE_UNLOAD);
+		release_firmware(rdev->me_fw);
 		rdev->me_fw = NULL;
 	}
 	return err;
@@ -1051,11 +1060,8 @@ static int r100_cp_init_microcode(struct radeon_device *rdev)
  */
 static void r100_cp_fini_microcode (struct radeon_device *rdev)
 {
-
-	if (rdev->me_fw != NULL) {
-		firmware_put(rdev->me_fw, FIRMWARE_UNLOAD);
-		rdev->me_fw = NULL;
-	}
+	release_firmware(rdev->me_fw);
+	rdev->me_fw = NULL;
 }
 
 static void r100_cp_load_microcode(struct radeon_device *rdev)
