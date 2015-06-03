@@ -879,6 +879,31 @@ int drm_fb_helper_pan_display(struct fb_var_screeninfo *var,
 EXPORT_SYMBOL(drm_fb_helper_pan_display);
 #endif
 
+static void
+do_restore_fbdev_mode(void *context, int pending)
+{
+	struct drm_fb_helper *fb_helper = context;
+	struct drm_device *dev = fb_helper->dev;
+
+	if (!fb_helper->fb)
+		return;
+
+	drm_modeset_lock_all(dev);
+	drm_fb_helper_restore_fbdev_mode(fb_helper);
+	drm_modeset_unlock_all(dev);
+}
+
+static void
+sc_restore_fbdev_mode(void *cookie)
+{
+	struct drm_fb_helper *fb_helper = cookie;
+
+	if (!fb_helper->fb)
+		return;
+
+	taskqueue_enqueue(taskqueue_thread[0], &fb_helper->fb_mode_task);
+}
+
 /*
  * Allocates the backing storage and sets up the fbdev info structure through
  * the ->fb_probe callback and then registers the fbdev and sets up the panic
@@ -893,6 +918,7 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 	struct fb_info *info;
 	struct drm_fb_helper_surface_size sizes;
 	int gamma_size = 0;
+	int kms_console = 0;
 
 	memset(&sizes, 0, sizeof(struct drm_fb_helper_surface_size));
 	sizes.surface_depth = 24;
@@ -982,6 +1008,15 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 		if (fb_helper->crtc_info[i].mode_set.num_connectors)
 			fb_helper->crtc_info[i].mode_set.fb = fb_helper->fb;
 
+	TUNABLE_INT_FETCH("kern.kms_console", &kms_console);
+	if (kms_console) {
+		TASK_INIT(&fb_helper->fb_mode_task, 0, do_restore_fbdev_mode,
+		    fb_helper);
+		info->cookie = fb_helper;
+		info->restore = (void *)&sc_restore_fbdev_mode;
+		if (register_framebuffer(info) < 0)
+			return -EINVAL;
+	}
 
 #if 0
 	info->var.pixclock = 0;

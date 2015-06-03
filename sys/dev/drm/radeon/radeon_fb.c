@@ -191,9 +191,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 {
 	struct radeon_fbdev *rfbdev = (struct radeon_fbdev *)helper;
 	struct radeon_device *rdev = rfbdev->rdev;
-#ifdef DUMBBELL_WIP
 	struct fb_info *info;
-#endif /* DUMBBELL_WIP */
 	struct drm_framebuffer *fb = NULL;
 	struct drm_mode_fb_cmd2 mode_cmd;
 	struct drm_gem_object *gobj = NULL;
@@ -201,10 +199,9 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 #ifdef DUMBBELL_WIP
 	device_t device = rdev->dev;
 #endif /* DUMBBELL_WIP */
+	device_t vga_dev = device_get_parent(rdev->dev);
 	int ret;
-#ifdef DUMBBELL_WIP
 	unsigned long tmp;
-#endif /* DUMBBELL_WIP */
 
 	mode_cmd.width = sizes->surface_width;
 	mode_cmd.height = sizes->surface_height;
@@ -224,16 +221,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 
 	rbo = gem_to_radeon_bo(gobj);
 
-#ifdef DUMBBELL_WIP
-	/* okay we have an object now allocate the framebuffer */
-	info = framebuffer_alloc(0, device);
-	if (info == NULL) {
-		ret = -ENOMEM;
-		goto out_unref;
-	}
-
-	info->par = rfbdev;
-#endif /* DUMBBELL_WIP */
+	info = kmalloc(sizeof(*info), M_DRM, M_WAITOK | M_ZERO);
 
 	ret = radeon_framebuffer_init(rdev->ddev, &rfbdev->rfb, &mode_cmd, gobj);
 	if (ret) {
@@ -245,56 +233,23 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 
 	/* setup helper */
 	rfbdev->helper.fb = fb;
-#ifdef DUMBBELL_WIP
 	rfbdev->helper.fbdev = info;
 
-	memset_io(rbo->kptr, 0x0, radeon_bo_size(rbo));
-
-	strcpy(info->fix.id, "radeondrmfb");
-
-	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->depth);
-
-	info->flags = FBINFO_DEFAULT | FBINFO_CAN_FORCE_OUTPUT;
-	info->fbops = &radeonfb_ops;
-
+	memset(rbo->kptr, 0, radeon_bo_size(rbo));
 	tmp = radeon_bo_gpu_offset(rbo) - rdev->mc.vram_start;
-	info->fix.smem_start = rdev->mc.aper_base + tmp;
-	info->fix.smem_len = radeon_bo_size(rbo);
-	info->screen_base = rbo->kptr;
-	info->screen_size = radeon_bo_size(rbo);
+	info->vaddr = (vm_offset_t)rbo->kptr;
+	info->paddr = rdev->mc.aper_base + tmp;
+	info->width = sizes->surface_width;
+	info->height = sizes->surface_height;
+	info->stride = sizes->surface_width * (sizes->surface_bpp/8);
+	info->depth = sizes->surface_bpp;
+	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
 
-	drm_fb_helper_fill_var(info, &rfbdev->helper, sizes->fb_width, sizes->fb_height);
-
-	/* setup aperture base/size for vesafb takeover */
-	info->apertures = alloc_apertures(1);
-	if (!info->apertures) {
-		ret = -ENOMEM;
-		goto out_unref;
-	}
-	info->apertures->ranges[0].base = rdev->ddev->mode_config.fb_base;
-	info->apertures->ranges[0].size = rdev->mc.aper_size;
-
-	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
-
-	if (info->screen_base == NULL) {
-		ret = -ENOSPC;
-		goto out_unref;
-	}
-
-	ret = fb_alloc_cmap(&info->cmap, 256, 0);
-	if (ret) {
-		ret = -ENOMEM;
-		goto out_unref;
-	}
-
-	DRM_INFO("fb mappable at 0x%lX\n",  info->fix.smem_start);
+	DRM_INFO("fb mappable at 0x%jX\n",  info->paddr);
 	DRM_INFO("vram apper at 0x%lX\n",  (unsigned long)rdev->mc.aper_base);
 	DRM_INFO("size %lu\n", (unsigned long)radeon_bo_size(rbo));
 	DRM_INFO("fb depth is %d\n", fb->depth);
 	DRM_INFO("   pitch is %d\n", fb->pitches[0]);
-
-	vga_switcheroo_client_fb_set(rdev->ddev->pdev, info);
-#endif /* DUMBBELL_WIP */
 	return 0;
 
 out_unref:
@@ -317,6 +272,7 @@ void radeon_fb_output_poll_changed(struct radeon_device *rdev)
 
 static int radeon_fbdev_destroy(struct drm_device *dev, struct radeon_fbdev *rfbdev)
 {
+	/* XXX unconfigure fb_info from syscons */
 #ifdef DUMBBELL_WIP
 	struct fb_info *info;
 #endif /* DUMBBELL_WIP */

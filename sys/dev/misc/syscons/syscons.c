@@ -64,6 +64,7 @@
 #endif
 #include <machine/frame.h>
 
+#include <dev/drm/include/linux/fb.h>
 #include <dev/misc/kbd/kbdreg.h>
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>
@@ -270,6 +271,41 @@ sc_probe_unit(int unit, int flags)
     /* syscons will be attached even when there is no keyboard */
     sckbdprobe(unit, flags, FALSE);
 
+    return 0;
+}
+
+int
+register_framebuffer(struct fb_info *info)
+{
+    sc_softc_t *sc;
+
+    /* For now ignore framebuffers, which don't replace the vga display */
+    if (!info->is_vga_boot_display)
+	return 0;
+
+    lwkt_gettoken(&tty_token);
+    sc = sc_get_softc(0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
+    if (sc == NULL) {
+	lwkt_reltoken(&tty_token);
+        kprintf("%s: sc_get_softc(%d, %d) returned NULL\n", __func__,
+	    0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
+	return 0;
+    }
+
+    /* Ignore this framebuffer if we have already switched to a framebuffer */
+    if (sc->fbi != NULL) {
+	lwkt_reltoken(&tty_token);
+	return 0;
+    }
+
+    sc->fbi = info;
+
+    if (sc->fbi != NULL) {
+	sc_update_render(sc->cur_scp);
+	sc->fbi->restore(sc->fbi->cookie);
+    }
+
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -2636,6 +2672,7 @@ exchange_scr(sc_softc_t *sc)
 	sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, scp->xsize, scp->ysize,
 		    (void *)sc->adp->va_window, FALSE);
     scp->status |= MOUSE_HIDDEN;
+    sc_update_render(scp);     /* Switch to kms renderer if necessary */
     sc_move_cursor(scp, scp->xpos, scp->ypos);
     if (!ISGRAPHSC(scp))
 	sc_set_cursor_image(scp);
@@ -2651,6 +2688,9 @@ exchange_scr(sc_softc_t *sc)
     update_kbd_state(scp, scp->status, LOCK_MASK, TRUE);
 
     mark_all(scp);
+    if (scp->sc->fbi != NULL) {
+	scp->sc->fbi->restore(scp->sc->fbi->cookie);
+    }
     lwkt_reltoken(&tty_token);
 }
 
@@ -3149,10 +3189,17 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 #endif
 	}
     }
-    sc_vtb_init(&scp->vtb, VTB_MEMORY, 0, 0, NULL, FALSE);
-    sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, 0, 0, NULL, FALSE);
     scp->xoff = scp->yoff = 0;
     scp->xpos = scp->ypos = 0;
+    scp->fbi = sc->fbi;
+    if (scp->fbi != NULL) {
+	scp->xpixel = scp->fbi->width;
+	scp->ypixel = scp->fbi->height;
+	scp->xsize = scp->xpixel / 8;
+	scp->ysize = scp->ypixel / scp->font_size;
+    }
+    sc_vtb_init(&scp->vtb, VTB_MEMORY, 0, 0, NULL, FALSE);
+    sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, 0, 0, NULL, FALSE);
     scp->start = scp->xsize * scp->ysize - 1;
     scp->end = 0;
     scp->tsw = NULL;
@@ -3198,6 +3245,9 @@ sc_init_emulator(scr_stat *scp, char *name)
     rndr = NULL;
     if (strcmp(sw->te_renderer, "*") != 0) {
 	rndr = sc_render_match(scp, sw->te_renderer, scp->model);
+    }
+    if (rndr == NULL && scp->sc->fbi != NULL) {
+	rndr = sc_render_match(scp, "kms", scp->model);
     }
     if (rndr == NULL) {
 	rndr = sc_render_match(scp, scp->sc->adp->va_name, scp->model);
@@ -3628,7 +3678,7 @@ set_mode(scr_stat *scp)
 
     lwkt_gettoken(&tty_token);
     /* reject unsupported mode */
-    if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, scp->mode, &info)) {
+    if (scp->sc->fbi == NULL && (*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, scp->mode, &info)) {
         lwkt_reltoken(&tty_token);
 	return 1;
     }
@@ -3640,9 +3690,12 @@ set_mode(scr_stat *scp)
     }
 
     /* setup video hardware for the given mode */
-    (*vidsw[scp->sc->adapter]->set_mode)(scp->sc->adp, scp->mode);
+    if (scp->sc->fbi == NULL)
+	(*vidsw[scp->sc->adapter]->set_mode)(scp->sc->adp, scp->mode);
     sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, scp->xsize, scp->ysize,
 		(void *)scp->sc->adp->va_window, FALSE);
+    if (scp->sc->fbi != NULL)
+	goto done;
 
 #ifndef SC_NO_FONT_LOADING
     /* load appropriate font */
@@ -3674,6 +3727,7 @@ set_mode(scr_stat *scp)
     sc_set_border(scp, scp->border);
     sc_set_cursor_image(scp);
 
+done:
     lwkt_reltoken(&tty_token);
     return 0;
 }

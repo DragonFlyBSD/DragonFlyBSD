@@ -29,7 +29,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.21 2008/08/03 03:00:21 dillon Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -199,6 +198,8 @@ typedef struct sc_softc {
 	struct video_adapter *adp;
 	int		initial_mode;		/* initial video mode */
 
+	struct fb_info	*fbi;
+
 	int		first_vty;
 	int		vtys;
 	cdev_t		*dev;
@@ -253,6 +254,7 @@ typedef struct scr_stat {
 	struct sc_rndr_sw *rndr;		/* renderer */
 	sc_vtb_t	scr;
 	sc_vtb_t	vtb;
+	struct fb_info	*fbi;
 
 	int 		xpos;			/* current X position */
 	int 		ypos;			/* current Y position */
@@ -260,6 +262,7 @@ typedef struct scr_stat {
 	int 		ysize;			/* Y text size */
 	int 		xpixel;			/* X graphics size */
 	int 		ypixel;			/* Y graphics size */
+	int		xpad;			/* for fbi->stride % 8 != 0 */
 	int		xoff;			/* X offset in pixel mode */
 	int		yoff;			/* Y offset in pixel mode */
 
@@ -570,6 +573,7 @@ int		sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data,
 int		sc_render_add(sc_renderer_t *rndr);
 int		sc_render_remove(sc_renderer_t *rndr);
 sc_rndr_sw_t	*sc_render_match(scr_stat *scp, char *name, int model);
+void		sc_update_render(scr_stat *scp);
 
 /* scvtb.c */
 void		sc_vtb_init(sc_vtb_t *vtb, int type, int cols, int rows, 

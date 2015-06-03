@@ -92,6 +92,7 @@ dev/misc/kbd/kbdsw.c			optional	atkbd
 dev/misc/kbd/kbdsw.c			optional	sc
 dev/misc/kbd/kbdsw.c			optional	ukbd
 dev/misc/syscons/schistory.c		optional	sc
+dev/misc/syscons/sckmsrndr.c		optional	sc
 dev/misc/syscons/scmouse.c		optional	sc
 dev/misc/syscons/scterm.c		optional	sc
 dev/misc/syscons/scterm-dumb.c		optional	sc

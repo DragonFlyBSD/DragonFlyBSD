@@ -29,7 +29,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.16 2007/08/19 11:39:11 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -44,6 +43,7 @@
 
 #include <machine/console.h>
 
+#include <dev/drm/include/linux/fb.h>
 #include <dev/video/fb/fbreg.h>
 #include "syscons.h"
 
@@ -109,7 +109,13 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
 	return error;
     }
 
-    if (sc_render_match(scp, scp->sc->adp->va_name, V_INFO_MM_TEXT) == NULL) {
+    if (scp->sc->fbi != NULL &&
+	sc_render_match(scp, "kms", V_INFO_MM_TEXT) == NULL) {
+	crit_exit();
+	return ENODEV;
+    }
+    if (scp->sc->fbi == NULL &&
+	sc_render_match(scp, scp->sc->adp->va_name, V_INFO_MM_TEXT) == NULL) {
 	crit_exit();
 	return ENODEV;
     }
@@ -192,7 +198,13 @@ sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode)
 	return error;
     }
 
-    if (sc_render_match(scp, scp->sc->adp->va_name, V_INFO_MM_OTHER) == NULL) {
+    if (scp->sc->fbi != NULL &&
+	sc_render_match(scp, "kms", V_INFO_MM_OTHER) == NULL) {
+	crit_exit();
+	return ENODEV;
+    }
+    if (scp->sc->fbi == NULL &&
+	sc_render_match(scp, scp->sc->adp->va_name, V_INFO_MM_OTHER) == NULL) {
 	crit_exit();
 	return ENODEV;
     }
@@ -405,7 +417,9 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 {
     scr_stat *scp;
     video_adapter_t *adp;
+#ifndef SC_NO_MODE_CHANGE
     video_info_t info;
+#endif
     int error, ret;
 
 	KKASSERT(tp->t_dev);
@@ -728,4 +742,92 @@ sc_render_match(scr_stat *scp, char *name, int model)
 	}
 
 	return NULL;
+}
+
+#define VIRTUAL_TTY(sc, x) ((SC_DEV((sc),(x)) != NULL) ?	\
+	(SC_DEV((sc),(x))->si_tty) : NULL)
+
+void
+sc_update_render(scr_stat *scp)
+{
+	sc_rndr_sw_t *rndr;
+	sc_term_sw_t *sw;
+	struct tty *tp;
+	int prev_ysize, new_ysize;
+	int error;
+
+	sw = scp->tsw;
+	if (sw == NULL) {
+		return;
+	}
+
+	if (scp->rndr == NULL)
+		return;
+
+	if (scp->fbi == scp->sc->fbi)
+		return;
+
+	crit_enter();
+	scp->fbi = scp->sc->fbi;
+	rndr = NULL;
+	if (strcmp(sw->te_renderer, "*") != 0) {
+		rndr = sc_render_match(scp, sw->te_renderer, scp->model);
+	}
+	if (rndr == NULL && scp->sc->fbi != NULL) {
+		rndr = sc_render_match(scp, "kms", scp->model);
+	}
+	if (rndr != NULL) {
+		scp->rndr = rndr;
+		/* Mostly copied from sc_set_text_mode */
+		if ((error = sc_clean_up(scp))) {
+			crit_exit();
+			return;
+		}
+		new_ysize = 0;
+#ifndef SC_NO_HISTORY
+		if (scp->history != NULL) {
+			sc_hist_save(scp);
+			new_ysize = sc_vtb_rows(scp->history);
+		}
+#endif
+		prev_ysize = scp->ysize;
+		scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
+		scp->status &= ~(GRAPHICS_MODE | PIXEL_MODE | MOUSE_VISIBLE);
+		scp->model = V_INFO_MM_TEXT;
+		scp->xpixel = scp->fbi->width;
+		scp->ypixel = scp->fbi->height;
+		scp->xsize = scp->xpixel / 8;
+		scp->ysize = scp->ypixel / scp->font_size;
+		scp->xpad = scp->fbi->stride / 4 - scp->xsize * 8;
+
+		/* allocate buffers */
+		sc_alloc_scr_buffer(scp, TRUE, TRUE);
+		sc_init_emulator(scp, NULL);
+#ifndef SC_NO_CUTPASTE
+		sc_alloc_cut_buffer(scp, FALSE);
+#endif
+#ifndef SC_NO_HISTORY
+		sc_alloc_history_buffer(scp, new_ysize, prev_ysize, FALSE);
+#endif
+		crit_exit();
+		scp->status &= ~UNKNOWN_MODE;
+		tp = VIRTUAL_TTY(scp->sc, scp->index);
+		if (tp == NULL)
+			return;
+		if (tp->t_winsize.ws_col != scp->xsize ||
+		    tp->t_winsize.ws_row != scp->ysize) {
+			tp->t_winsize.ws_col = scp->xsize;
+			tp->t_winsize.ws_row = scp->ysize;
+			pgsignal(tp->t_pgrp, SIGWINCH, 1);
+		}
+		return;
+	}
+	if (rndr == NULL) {
+		rndr = sc_render_match(scp, scp->sc->adp->va_name, scp->model);
+	}
+
+	if (rndr != NULL) {
+		scp->rndr = rndr;
+	}
+	crit_exit();
 }

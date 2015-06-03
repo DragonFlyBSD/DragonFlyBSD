@@ -1975,6 +1975,7 @@ dev/drm/ttm/ttm_bo_vm.c			optional drm
 #dev/drm/i915/intel_dsi.c		optional i915kms drm
 #dev/drm/i915/intel_dsi_cmd.c		optional i915kms drm
 #dev/drm/i915/intel_dsi_pll.c		optional i915kms drm
+#dev/drm/i915/intel_fbdev.c		optional i915kms drm
 #dev/drm/i915/intel_hdmi.c		optional i915kms drm
 #dev/drm/i915/intel_i2c.c		optional i915kms drm
 #dev/drm/i915/intel_lvds.c		optional i915kms drm

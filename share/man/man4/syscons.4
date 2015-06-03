@@ -360,6 +360,19 @@ This option implies the
 .Dv SC_NO_CUTPASTE
 option too.
 .El
+.Ss Loader Tunables
+The following tunable is available and can be set in
+.Xr loader.conf 5 .
+.Bl -tag -width ".Va kern.kms_console"
+.It Va kern.kms_console
+Setting this tunable to 1 enables experimental framebuffer support
+in conjunction with the
+.Nm i915kms
+or
+.Nm radeonkms
+drivers.
+It is 0 by default.
+.El
 .Ss Driver Flags
 The following driver flags can be used to control the
 .Nm
