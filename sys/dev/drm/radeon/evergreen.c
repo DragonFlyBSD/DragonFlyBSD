@@ -134,9 +134,6 @@ static u32 sumo_rlc_save_restore_register_list[] =
 static u32 sumo_rlc_save_restore_register_list_size = ARRAY_SIZE(sumo_rlc_save_restore_register_list);
 
 static void evergreen_gpu_init(struct radeon_device *rdev);
-void evergreen_pcie_gen2_enable(struct radeon_device *rdev);
-void evergreen_print_gpu_status_regs(struct radeon_device *rdev);
-void evergreen_program_aspm(struct radeon_device *rdev);
 
 static const u32 evergreen_golden_registers[] =
 {

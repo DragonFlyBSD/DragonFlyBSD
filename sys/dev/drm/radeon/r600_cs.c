@@ -33,10 +33,10 @@
 #include "radeon_asic.h"
 #include "r600d.h"
 #include "r600_reg_safe.h"
-#include "r600_cp.h"
-#include "r600_cs.h"
 
 static int r600_nomm;
+extern void r600_cs_legacy_get_tiling_conf(struct drm_device *dev, u32 *npipes, u32 *nbanks, u32 *group_size);
+
 
 struct r600_cs_track {
 	/* configuration we miror so that we use same code btw kms/ums */

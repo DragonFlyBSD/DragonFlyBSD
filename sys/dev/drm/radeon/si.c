@@ -76,7 +76,6 @@ MODULE_FIRMWARE("radeon/HAINAN_smc.bin");
 
 static void si_pcie_gen3_enable(struct radeon_device *rdev);
 static void si_program_aspm(struct radeon_device *rdev);
-extern void evergreen_print_gpu_status_regs(struct radeon_device *rdev);
 
 static const u32 verde_rlc_save_restore_register_list[] =
 {

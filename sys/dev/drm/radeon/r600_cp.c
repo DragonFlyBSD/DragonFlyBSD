@@ -39,7 +39,6 @@
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon_drv.h"
-#include "r600_cp.h"
 
 #define PFP_UCODE_SIZE 576
 #define PM4_UCODE_SIZE 1792
@@ -67,6 +66,13 @@ MODULE_FIRMWARE("radeon/RV730_pfp.bin");
 MODULE_FIRMWARE("radeon/RV730_me.bin");
 MODULE_FIRMWARE("radeon/RV710_pfp.bin");
 MODULE_FIRMWARE("radeon/RV710_me.bin");
+
+
+void r600_cs_legacy_get_tiling_conf(struct drm_device *dev, u32 *npipes, u32 *nbanks, u32 *group_size);
+int r600_cs_legacy(struct drm_device *dev, void *data, struct drm_file *filp,
+			unsigned family, u32 *ib, int *l);
+void r600_cs_legacy_init(void);
+
 
 # define ATI_PCIGART_PAGE_SIZE		4096	/**< PCI GART page size */
 # define ATI_PCIGART_PAGE_MASK		(~(ATI_PCIGART_PAGE_SIZE-1))
@@ -1880,7 +1886,7 @@ static void r600_cp_init_ring_buffer(struct drm_device *dev,
 	} else
 #endif
 		ring_start = (dev_priv->cp_ring->offset
-			      - (unsigned long)dev->sg->vaddr>
+			      - (unsigned long)dev->sg->vaddr
 			      + dev_priv->gart_vm_start);
 
 	RADEON_WRITE(R600_CP_RB_BASE, ring_start >> 8);
