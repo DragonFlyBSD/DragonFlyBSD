@@ -236,7 +236,7 @@ sensor_find(struct ksensordev *sensdev, enum sensor_type type, int numt)
 void
 sensor_task_register(void *arg, void (*func)(void *), int period)
 {
-	sensor_task_register2(arg, func, period, SENSOR_TASK_DEFCPU);
+	sensor_task_register2(arg, func, period, -1);
 }
 
 void
@@ -276,6 +276,8 @@ sensor_task_register2(void *arg, void (*func)(void *), int period, int cpu)
 	struct sensor_taskthr	*thr;
 	struct sensor_task	*st;
 
+	if (cpu < 0)
+		cpu = SENSOR_TASK_DEFCPU;
 	KASSERT(cpu >= 0 && cpu < ncpus, ("invalid cpuid %d", cpu));
 	thr = &sensor_task_threads[cpu];
 
