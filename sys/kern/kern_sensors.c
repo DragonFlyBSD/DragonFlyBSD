@@ -36,6 +36,11 @@
 
 #include <sys/mplock2.h>
 
+/*
+ * Default to the last cpu's sensor thread
+ */
+#define SENSOR_TASK_DEFCPU	(ncpus - 1)
+
 static int		sensordev_idmax;
 static TAILQ_HEAD(sensordev_list, ksensordev) sensordev_list =
     TAILQ_HEAD_INITIALIZER(sensordev_list);
@@ -51,17 +56,19 @@ struct sensor_task {
 	int				period;
 	time_t				nextrun;	/* time_uptime */
 	int				running;
+	int				cpuid;
 	TAILQ_ENTRY(sensor_task)	entry;
+};
+TAILQ_HEAD(sensor_tasklist, sensor_task);
+
+struct sensor_taskthr {
+	struct sensor_tasklist		list;
+	struct lock			lock;
 };
 
 static void		sensor_task_thread(void *);
-static void		sensor_task_schedule(struct sensor_task *);
-
-static TAILQ_HEAD(, sensor_task) sensor_tasklist =
-    TAILQ_HEAD_INITIALIZER(sensor_tasklist);
-
-static struct lock	sensor_task_lock =
-    LOCK_INITIALIZER("ksensor_task", 0, LK_CANRECURSE);
+static void		sensor_task_schedule(struct sensor_taskthr *,
+			    struct sensor_task *);
 
 static void		sensordev_sysctl_install(struct ksensordev *);
 static void		sensordev_sysctl_deinstall(struct ksensordev *);
@@ -69,6 +76,8 @@ static void		sensor_sysctl_install(struct ksensordev *,
 			    struct ksensor *);
 static void		sensor_sysctl_deinstall(struct ksensordev *,
 			    struct ksensor *);
+
+static struct sensor_taskthr sensor_task_threads[MAXCPU];
 
 void
 sensordev_install(struct ksensordev *sensdev)
@@ -227,54 +236,85 @@ sensor_find(struct ksensordev *sensdev, enum sensor_type type, int numt)
 void
 sensor_task_register(void *arg, void (*func)(void *), int period)
 {
-	struct sensor_task	*st;
-
-	st = kmalloc(sizeof(struct sensor_task), M_DEVBUF, M_WAITOK);
-
-	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
-	st->arg = arg;
-	st->func = func;
-	st->period = period;
-
-	st->running = 1;
-
-	st->nextrun = 0;
-	TAILQ_INSERT_HEAD(&sensor_tasklist, st, entry);
-
-	wakeup(&sensor_tasklist);
-
-	lockmgr(&sensor_task_lock, LK_RELEASE);
+	sensor_task_register2(arg, func, period, SENSOR_TASK_DEFCPU);
 }
 
 void
 sensor_task_unregister(void *arg)
 {
+	struct sensor_taskthr	*thr = &sensor_task_threads[SENSOR_TASK_DEFCPU];
 	struct sensor_task	*st;
 
-	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
-	TAILQ_FOREACH(st, &sensor_tasklist, entry)
+	lockmgr(&thr->lock, LK_EXCLUSIVE);
+	TAILQ_FOREACH(st, &thr->list, entry)
 		if (st->arg == arg)
 			st->running = 0;
-	lockmgr(&sensor_task_lock, LK_RELEASE);
+	lockmgr(&thr->lock, LK_RELEASE);
+}
+
+void
+sensor_task_unregister2(struct sensor_task *st)
+{
+	struct sensor_taskthr *thr;
+
+	KASSERT(st->cpuid >= 0 && st->cpuid < ncpus,
+	    ("invalid task cpuid %d", st->cpuid));
+	thr = &sensor_task_threads[st->cpuid];
+
+	/*
+	 * Hold the lock then zero-out running, so upon returning
+	 * to the caller, the task will no longer run.
+	 */
+	lockmgr(&thr->lock, LK_EXCLUSIVE);
+	st->running = 0;
+	lockmgr(&thr->lock, LK_RELEASE);
+}
+
+struct sensor_task *
+sensor_task_register2(void *arg, void (*func)(void *), int period, int cpu)
+{
+	struct sensor_taskthr	*thr;
+	struct sensor_task	*st;
+
+	KASSERT(cpu >= 0 && cpu < ncpus, ("invalid cpuid %d", cpu));
+	thr = &sensor_task_threads[cpu];
+
+	st = kmalloc(sizeof(struct sensor_task), M_DEVBUF, M_WAITOK);
+
+	lockmgr(&thr->lock, LK_EXCLUSIVE);
+	st->arg = arg;
+	st->func = func;
+	st->period = period;
+	st->cpuid = cpu;
+
+	st->running = 1;
+
+	st->nextrun = 0;
+	TAILQ_INSERT_HEAD(&thr->list, st, entry);
+
+	wakeup(&thr->list);
+
+	lockmgr(&thr->lock, LK_RELEASE);
+
+	return st;
 }
 
 static void
-sensor_task_thread(void *arg)
+sensor_task_thread(void *xthr)
 {
+	struct sensor_taskthr	*thr = xthr;
 	struct sensor_task	*st, *nst;
 	time_t			now;
 
-	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
+	lockmgr(&thr->lock, LK_EXCLUSIVE);
 
 	for (;;) {
-		while (TAILQ_EMPTY(&sensor_tasklist)) {
-			lksleep(&sensor_tasklist, &sensor_task_lock, 0,
-			    "waittask", 0);
-		}
+		while (TAILQ_EMPTY(&thr->list))
+			lksleep(&thr->list, &thr->lock, 0, "waittask", 0);
 
-		while ((nst = TAILQ_FIRST(&sensor_tasklist))->nextrun >
+		while ((nst = TAILQ_FIRST(&thr->list))->nextrun >
 		    (now = time_uptime)) {
-			lksleep(&sensor_tasklist, &sensor_task_lock, 0,
+			lksleep(&thr->list, &thr->lock, 0,
 			    "timeout", (nst->nextrun - now) * hz);
 		}
 
@@ -285,7 +325,7 @@ sensor_task_thread(void *arg)
 				break;
 
 			/* take it out while we work on it */
-			TAILQ_REMOVE(&sensor_tasklist, st, entry);
+			TAILQ_REMOVE(&thr->list, st, entry);
 
 			if (!st->running) {
 				kfree(st, M_DEVBUF);
@@ -295,24 +335,24 @@ sensor_task_thread(void *arg)
 			/* run the task */
 			st->func(st->arg);
 			/* stick it back in the tasklist */
-			sensor_task_schedule(st);
+			sensor_task_schedule(thr, st);
 		}
 	}
 
-	lockmgr(&sensor_task_lock, LK_RELEASE);
+	lockmgr(&thr->lock, LK_RELEASE);
 }
 
 static void
-sensor_task_schedule(struct sensor_task *st)
+sensor_task_schedule(struct sensor_taskthr *thr, struct sensor_task *st)
 {
 	struct sensor_task 	*cst;
 
-	KASSERT(lockstatus(&sensor_task_lock, curthread) == LK_EXCLUSIVE,
+	KASSERT(lockstatus(&thr->lock, curthread) == LK_EXCLUSIVE,
 	    ("sensor task lock is not held"));
 
 	st->nextrun = time_uptime + st->period;
 
-	TAILQ_FOREACH(cst, &sensor_tasklist, entry) {
+	TAILQ_FOREACH(cst, &thr->list, entry) {
 		if (cst->nextrun > st->nextrun) {
 			TAILQ_INSERT_BEFORE(cst, st, entry);
 			return;
@@ -320,7 +360,7 @@ sensor_task_schedule(struct sensor_task *st)
 	}
 
 	/* must be an empty list, or at the end of the list */
-	TAILQ_INSERT_TAIL(&sensor_tasklist, st, entry);
+	TAILQ_INSERT_TAIL(&thr->list, st, entry);
 }
 
 /*
@@ -489,12 +529,19 @@ sysctl_sensors_handler(SYSCTL_HANDLER_ARGS)
 static void
 sensor_sysinit(void *arg __unused)
 {
-	int error, cpu;
+	int cpu;
 
-	cpu = ncpus - 1; /* stick to the last CPU */
-	error = kthread_create_cpu(sensor_task_thread, NULL, NULL, cpu,
-	    "sensors");
-	if (error)
-		panic("sensors kthread on cpu%d failed: %d", cpu, error);
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		struct sensor_taskthr *thr = &sensor_task_threads[cpu];
+		int error;
+
+		TAILQ_INIT(&thr->list);
+		lockinit(&thr->lock, "sensorthr", 0, LK_CANRECURSE);
+
+		error = kthread_create_cpu(sensor_task_thread, thr, NULL, cpu,
+		    "sensors %d", cpu);
+		if (error)
+			panic("sensors kthread on cpu%d failed: %d", cpu, error);
+	}
 }
 SYSINIT(sensor, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, sensor_sysinit, NULL);

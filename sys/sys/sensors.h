@@ -173,9 +173,21 @@ void		sensordev_deinstall(struct ksensordev *);
 void		sensor_attach(struct ksensordev *, struct ksensor *);
 void		sensor_detach(struct ksensordev *, struct ksensor *);
 
-/* task scheduling */
+/*
+ * Task scheduling
+ * Deprecated; use sensor_task_{register,unregiser}2() instead.
+ */
 void		sensor_task_register(void *, void (*)(void *), int);
 void		sensor_task_unregister(void *);
+
+/*
+ * Task scheduling
+ */
+struct sensor_task;
+struct sensor_task *
+		sensor_task_register2(void *, void (*)(void *),
+		    int period, int cpu);
+void		sensor_task_unregister2(struct sensor_task *);
 
 static __inline void
 sensor_set_invalid(struct ksensor *sens)
