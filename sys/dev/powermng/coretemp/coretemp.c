@@ -96,7 +96,6 @@
      (MSR_PKGTM_STATUS_CRIT | MSR_PKGTM_STATUS_CRIT_LOG))
 
 #define CORETEMP_TEMP_INVALID	-1
-#define CORETEMP_TEMP_NOUPDATE	-2
 
 struct coretemp_sensor {
 	struct ksensordev	c_sensdev;
@@ -111,15 +110,13 @@ struct coretemp_softc {
 	struct coretemp_sensor	*sc_sens;
 	struct coretemp_sensor	*sc_pkg_sens;
 
-	struct globaldata	*sc_gd;
+	struct sensor_task	*sc_senstask;
 	int			sc_cpu;
 	volatile uint32_t	sc_flags;	/* CORETEMP_FLAG_ */
 	volatile uint64_t	sc_msr;
 	volatile uint64_t	sc_pkg_msr;
 };
 
-#define CORETEMP_FLAG_INITED	0x1
-#define CORETEMP_FLAG_PENDING	0x2
 #define CORETEMP_FLAG_CRIT	0x4
 #define CORETEMP_FLAG_PKGCRIT	0x8
 
@@ -133,9 +130,7 @@ static int	coretemp_probe(device_t dev);
 static int	coretemp_attach(device_t dev);
 static int	coretemp_detach(device_t dev);
 
-static void	coretemp_ipi_func(void *sc);
-static void	coretemp_ipi_send(struct coretemp_softc *sc, uint32_t flags);
-static boolean_t coretemp_msr_fetch(struct coretemp_softc *sc, uint64_t *msr,
+static void	coretemp_msr_fetch(struct coretemp_softc *sc, uint64_t *msr,
 		    uint64_t *pkg_msr);
 static int	coretemp_msr_temp(struct coretemp_softc *sc, uint64_t msr);
 static void	coretemp_sensor_update(struct coretemp_softc *sc, int temp);
@@ -335,7 +330,6 @@ coretemp_attach(device_t dev)
 		device_printf(dev, "Setting TjMax=%d\n", sc->sc_tjmax);
 
 	sc->sc_cpu = device_get_unit(device_get_parent(dev));
-	sc->sc_gd = globaldata_find(sc->sc_cpu);
 
 	start_node = get_cpu_node_by_cpuid(sc->sc_cpu);
 
@@ -435,10 +429,13 @@ coretemp_attach(device_t dev)
 		}
 	}
 
-	if (CORETEMP_HAS_PKGSENSOR(sc))
-		sensor_task_register(sc, coretemp_pkg_sensor_task, 2);
-	else
-		sensor_task_register(sc, coretemp_sensor_task, 2);
+	if (CORETEMP_HAS_PKGSENSOR(sc)) {
+		sc->sc_senstask = sensor_task_register2(sc,
+		    coretemp_pkg_sensor_task, 2, sc->sc_cpu);
+	} else {
+		sc->sc_senstask = sensor_task_register2(sc,
+		    coretemp_sensor_task, 2, sc->sc_cpu);
+	}
 
 	return (0);
 }
@@ -451,8 +448,7 @@ coretemp_detach(device_t dev)
 	if (sc->sc_nsens > 0) {
 		int i;
 
-		sensor_task_unregister(sc);
-		lwkt_synchronize_ipiqs("coretemp");
+		sensor_task_unregister2(sc->sc_senstask);
 
 		for (i = 0; i < sc->sc_nsens; ++i)
 			sensordev_deinstall(&sc->sc_sens[i].c_sensdev);
@@ -464,28 +460,6 @@ coretemp_detach(device_t dev)
 		}
 	}
 	return (0);
-}
-
-static void
-coretemp_ipi_func(void *xsc)
-{
-	struct coretemp_softc *sc = xsc; 
-
-	sc->sc_msr = rdmsr(MSR_THERM_STATUS);
-	if (CORETEMP_HAS_PKGSENSOR(sc))
-		sc->sc_pkg_msr = rdmsr(MSR_PKG_THERM_STATUS);
-	cpu_sfence();
-	atomic_clear_int(&sc->sc_flags, CORETEMP_FLAG_PENDING);
-}
-
-static void
-coretemp_ipi_send(struct coretemp_softc *sc, uint32_t flags)
-{
-	KASSERT((sc->sc_flags & CORETEMP_FLAG_PENDING) == 0,
-	    ("coretemp: cpu%d ipi is still pending", sc->sc_cpu));
-	atomic_set_int(&sc->sc_flags, flags | CORETEMP_FLAG_PENDING);
-	cpu_mfence();
-	lwkt_send_ipiq_passive(sc->sc_gd, coretemp_ipi_func, sc);
 }
 
 static int
@@ -528,10 +502,10 @@ coretemp_msr_temp(struct coretemp_softc *sc, uint64_t msr)
 			    get_chip_ID(sc->sc_cpu),
 			    get_core_number_within_chip(sc->sc_cpu));
 			devctl_notify("coretemp", "Thermal", stemp, data);
-			atomic_set_int(&sc->sc_flags, CORETEMP_FLAG_CRIT);
+			sc->sc_flags |= CORETEMP_FLAG_CRIT;
 		}
 	} else if (sc->sc_flags & CORETEMP_FLAG_CRIT) {
-		atomic_clear_int(&sc->sc_flags, CORETEMP_FLAG_CRIT);
+		sc->sc_flags &= ~CORETEMP_FLAG_CRIT;
 	}
 
 	return temp;
@@ -572,43 +546,25 @@ coretemp_pkg_msr_temp(struct coretemp_softc *sc, uint64_t msr)
 			ksnprintf(data, sizeof(data), "notify=0xcc node=%d",
 			    get_chip_ID(sc->sc_cpu));
 			devctl_notify("coretemp", "Thermal", stemp, data);
-			atomic_set_int(&sc->sc_flags, CORETEMP_FLAG_PKGCRIT);
+			sc->sc_flags |= CORETEMP_FLAG_PKGCRIT;
 		}
 	} else if (sc->sc_flags & CORETEMP_FLAG_PKGCRIT) {
-		atomic_clear_int(&sc->sc_flags, CORETEMP_FLAG_PKGCRIT);
+		sc->sc_flags &= ~CORETEMP_FLAG_PKGCRIT;
 	}
 
 	return temp;
 }
 
-static boolean_t
+static void
 coretemp_msr_fetch(struct coretemp_softc *sc, uint64_t *msr, uint64_t *pkg_msr)
 {
-	/*
-	 * Send IPI to the specific CPU to read the correct temperature.
-	 * If the IPI does not complete yet, i.e. CORETEMP_FLAG_PENDING,
-	 * return false.
-	 */
-	if (sc->sc_cpu != mycpuid) {
-		if ((sc->sc_flags & CORETEMP_FLAG_INITED) == 0) {
-			coretemp_ipi_send(sc, CORETEMP_FLAG_INITED);
-			return FALSE;
-		} else {
-			if (sc->sc_flags & CORETEMP_FLAG_PENDING) {
-				/* IPI does not complete yet */
-				return FALSE;
-			}
-			*msr = sc->sc_msr;
-			if (pkg_msr != NULL)
-				*pkg_msr = sc->sc_pkg_msr;
-			coretemp_ipi_send(sc, 0);
-		}
-	} else {
-		*msr = rdmsr(MSR_THERM_STATUS);
-		if (pkg_msr != NULL)
-			*pkg_msr = rdmsr(MSR_PKG_THERM_STATUS);
-	}
-	return TRUE;
+	KASSERT(sc->sc_cpu == mycpuid,
+	    ("%s not on the target cpu%d, but on %d",
+	     device_get_name(sc->sc_dev), sc->sc_cpu, mycpuid));
+
+	*msr = rdmsr(MSR_THERM_STATUS);
+	if (pkg_msr != NULL)
+		*pkg_msr = rdmsr(MSR_PKG_THERM_STATUS);
 }
 
 static void
@@ -616,9 +572,7 @@ coretemp_sensor_update(struct coretemp_softc *sc, int temp)
 {
 	int i;
 
-	if (temp == CORETEMP_TEMP_NOUPDATE) {
-		/* No updates; keep the previous value */
-	} else if (temp == CORETEMP_TEMP_INVALID) {
+	if (temp == CORETEMP_TEMP_INVALID) {
 		for (i = 0; i < sc->sc_nsens; ++i)
 			sensor_set_invalid(&sc->sc_sens[i].c_sens);
 	} else {
@@ -633,9 +587,7 @@ static void
 coretemp_pkg_sensor_update(struct coretemp_softc *sc, int temp)
 {
 	KKASSERT(sc->sc_pkg_sens != NULL);
-	if (temp == CORETEMP_TEMP_NOUPDATE) {
-		/* No updates; keep the previous value */
-	} else if (temp == CORETEMP_TEMP_INVALID) {
+	if (temp == CORETEMP_TEMP_INVALID) {
 		sensor_set_invalid(&sc->sc_pkg_sens->c_sens);
 	} else {
 		coretemp_sensor_set(&sc->sc_pkg_sens->c_sens, sc,
@@ -650,10 +602,8 @@ coretemp_sensor_task(void *arg)
 	uint64_t msr;
 	int temp;
 
-	if (!coretemp_msr_fetch(sc, &msr, NULL))
-		temp = CORETEMP_TEMP_NOUPDATE;
-	else
-		temp = coretemp_msr_temp(sc, msr);
+	coretemp_msr_fetch(sc, &msr, NULL);
+	temp = coretemp_msr_temp(sc, msr);
 
 	coretemp_sensor_update(sc, temp);
 }
@@ -665,13 +615,9 @@ coretemp_pkg_sensor_task(void *arg)
 	uint64_t msr, pkg_msr;
 	int temp, pkg_temp;
 
-	if (!coretemp_msr_fetch(sc, &msr, &pkg_msr)) {
-		temp = CORETEMP_TEMP_NOUPDATE;
-		pkg_temp = CORETEMP_TEMP_NOUPDATE;
-	} else {
-		temp = coretemp_msr_temp(sc, msr);
-		pkg_temp = coretemp_pkg_msr_temp(sc, pkg_msr);
-	}
+	coretemp_msr_fetch(sc, &msr, &pkg_msr);
+	temp = coretemp_msr_temp(sc, msr);
+	pkg_temp = coretemp_pkg_msr_temp(sc, pkg_msr);
 
 	coretemp_sensor_update(sc, temp);
 	coretemp_pkg_sensor_update(sc, pkg_temp);
