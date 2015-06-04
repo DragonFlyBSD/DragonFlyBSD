@@ -870,6 +870,8 @@ fairq_pollq(struct fairq_class *cl, uint64_t cur_time, int *hit_limit)
 	if (b == NULL)
 		return(NULL);
 	m = qhead(&b->queue);
+	if (m == NULL)
+		return(NULL);
 	cl->cl_advanced = 1;	/* so next select/get doesn't re-advance */
 
 	/*
