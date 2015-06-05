@@ -30,16 +30,12 @@
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 #include <sys/lock.h>
+#include <sys/cpu_topology.h>
 
 #include <sys/sysctl.h>
 #include <sys/sensors.h>
 
 #include <sys/mplock2.h>
-
-/*
- * Default to the last cpu's sensor thread
- */
-#define SENSOR_TASK_DEFCPU	(ncpus - 1)
 
 static int		sensordev_idmax;
 static TAILQ_HEAD(sensordev_list, ksensordev) sensordev_list =
@@ -78,6 +74,7 @@ static void		sensor_sysctl_deinstall(struct ksensordev *,
 			    struct ksensor *);
 
 static struct sensor_taskthr sensor_task_threads[MAXCPU];
+static int		sensor_task_default_cpu;
 
 void
 sensordev_install(struct ksensordev *sensdev)
@@ -242,9 +239,10 @@ sensor_task_register(void *arg, void (*func)(void *), int period)
 void
 sensor_task_unregister(void *arg)
 {
-	struct sensor_taskthr	*thr = &sensor_task_threads[SENSOR_TASK_DEFCPU];
+	struct sensor_taskthr	*thr;
 	struct sensor_task	*st;
 
+	thr = &sensor_task_threads[sensor_task_default_cpu];
 	lockmgr(&thr->lock, LK_EXCLUSIVE);
 	TAILQ_FOREACH(st, &thr->list, entry)
 		if (st->arg == arg)
@@ -277,7 +275,7 @@ sensor_task_register2(void *arg, void (*func)(void *), int period, int cpu)
 	struct sensor_task	*st;
 
 	if (cpu < 0)
-		cpu = SENSOR_TASK_DEFCPU;
+		cpu = sensor_task_default_cpu;
 	KASSERT(cpu >= 0 && cpu < ncpus, ("invalid cpuid %d", cpu));
 	thr = &sensor_task_threads[cpu];
 
@@ -531,7 +529,25 @@ sysctl_sensors_handler(SYSCTL_HANDLER_ARGS)
 static void
 sensor_sysinit(void *arg __unused)
 {
+	const cpu_node_t *node;
 	int cpu;
+
+	/*
+	 * By default, stick sensor tasks to the cpu belonging to
+	 * the first cpu package, since most of the time accessing
+	 * sensor devices from the first cpu package will be faster,
+	 * e.g. through DMI or DMI2 on Intel CPUs; no QPI will be
+	 * generated.
+	 */
+	node = get_cpu_node_by_chipid(0);
+	if (node != NULL && node->child_no > 0)
+		sensor_task_default_cpu = BSRCPUMASK(node->members);
+	else
+		sensor_task_default_cpu = ncpus - 1;
+	if (bootverbose) {
+		kprintf("sensors: tasks default to cpu%d\n",
+		    sensor_task_default_cpu);
+	}
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		struct sensor_taskthr *thr = &sensor_task_threads[cpu];
