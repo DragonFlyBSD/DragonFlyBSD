@@ -36,6 +36,7 @@
 #include <sys/systm.h>
 #include <sys/bitops.h>
 #include <sys/bus.h>
+#include <sys/cpu_topology.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/sensors.h>
@@ -66,6 +67,7 @@ struct memtemp_e5_dimm {
 	int				dimm_flags;
 
 	struct dimm_softc		*dimm_softc;
+	struct sensor_task		*dimm_senstask;
 };
 
 #define MEMTEMP_E5_DIMM_FLAG_CRIT	0x1
@@ -214,10 +216,20 @@ static int
 memtemp_e5_attach(device_t dev)
 {
 	struct memtemp_e5_softc *sc = device_get_softc(dev);
-	int dimm;
+	const cpu_node_t *node;
+	int dimm, cpuid = -1;
 
 	sc->temp_dev = dev;
 	TAILQ_INIT(&sc->temp_dimm);
+
+	node = get_cpu_node_by_chipid(sc->temp_node);
+	if (node != NULL && node->child_no > 0) {
+		cpuid = BSRCPUMASK(node->members);
+		if (bootverbose) {
+			device_printf(dev, "node%d chan%d -> cpu%d\n",
+			    sc->temp_node, sc->temp_chan->chan_ext, cpuid);
+		}
+	}
 
 	for (dimm = 0; dimm < PCI_E5_IMC_CHN_DIMM_MAX; ++dimm) {
 		char temp_lostr[16], temp_midstr[16], temp_histr[16];
@@ -307,7 +319,8 @@ memtemp_e5_attach(device_t dev)
 		sens->type = SENSOR_TEMP;
 		sensor_set_unknown(sens);
 		dimm_sensor_attach(dimm_sc->dimm_softc, sens);
-		sensor_task_register(dimm_sc, memtemp_e5_sensor_task, 5);
+		dimm_sc->dimm_senstask = sensor_task_register2(dimm_sc,
+		    memtemp_e5_sensor_task, 5, cpuid);
 
 		TAILQ_INSERT_TAIL(&sc->temp_dimm, dimm_sc, dimm_link);
 	}
@@ -323,7 +336,7 @@ memtemp_e5_detach(device_t dev)
 	while ((dimm_sc = TAILQ_FIRST(&sc->temp_dimm)) != NULL) {
 		TAILQ_REMOVE(&sc->temp_dimm, dimm_sc, dimm_link);
 
-		sensor_task_unregister(dimm_sc);
+		sensor_task_unregister2(dimm_sc->dimm_senstask);
 		dimm_sensor_detach(dimm_sc->dimm_softc, &dimm_sc->dimm_sensor);
 		dimm_destroy(dimm_sc->dimm_softc);
 
