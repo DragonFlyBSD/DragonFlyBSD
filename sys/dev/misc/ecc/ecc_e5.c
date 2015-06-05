@@ -36,6 +36,7 @@
 #include <sys/systm.h>
 #include <sys/bitops.h>
 #include <sys/bus.h>
+#include <sys/cpu_topology.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
@@ -67,13 +68,11 @@ struct ecc_e5_softc {
 	device_t		ecc_dev;
 	const struct e5_imc_chan *ecc_chan;
 	int			ecc_node;
-	uint32_t		ecc_flags;
 	int			ecc_rank_cnt;
 	struct ecc_e5_rank	ecc_rank[PCI_E5_IMC_ERROR_RANK_MAX];
+	struct sensor_task	*ecc_senstask;
 	TAILQ_HEAD(, ecc_e5_dimm) ecc_dimm;
 };
-
-#define ECC_E5_FLAG_SENSTASK	0x1
 
 #define ecc_printf(sc, fmt, arg...) \
 	device_printf((sc)->ecc_dev, fmt , ##arg)
@@ -179,8 +178,9 @@ static int
 ecc_e5_attach(device_t dev)
 {
 	struct ecc_e5_softc *sc = device_get_softc(dev);
+	int dimm, rank, error, cpuid;
+	const cpu_node_t *node;
 	uint32_t mcmtr;
-	int dimm, rank, error;
 
 	TAILQ_INIT(&sc->ecc_dimm);
 	sc->ecc_dev = dev;
@@ -336,8 +336,18 @@ ecc_e5_attach(device_t dev)
 		    __SHIFTOUT(thr, mask));
 	}
 
-	sc->ecc_flags |= ECC_E5_FLAG_SENSTASK;
-	sensor_task_register(sc, ecc_e5_sensor_task, 1);
+	cpuid = -1;
+	node = get_cpu_node_by_chipid(sc->ecc_node);
+	if (node != NULL && node->child_no > 0) {
+		cpuid = BSRCPUMASK(node->members);
+		if (bootverbose) {
+			device_printf(dev, "node%d chan%d -> cpu%d\n",
+			    sc->ecc_node, sc->ecc_chan->chan_ext, cpuid);
+		}
+	}
+	sc->ecc_senstask = sensor_task_register2(sc, ecc_e5_sensor_task,
+	    1, cpuid);
+
 	return 0;
 failed:
 	ecc_e5_detach(dev);
@@ -393,8 +403,10 @@ ecc_e5_stop(device_t dev)
 {
 	struct ecc_e5_softc *sc = device_get_softc(dev);
 
-	if (sc->ecc_flags & ECC_E5_FLAG_SENSTASK)
-		sensor_task_unregister(sc);
+	if (sc->ecc_senstask != NULL) {
+		sensor_task_unregister2(sc->ecc_senstask);
+		sc->ecc_senstask = NULL;
+	}
 }
 
 static int
