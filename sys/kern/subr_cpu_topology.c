@@ -495,6 +495,37 @@ get_cpumask_from_level(int cpuid,
 	return mask;
 }
 
+static const cpu_node_t *
+get_cpu_node_by_chipid2(const cpu_node_t *node, int chip_id)
+{
+	int cpuid;
+
+	if (node->type != CHIP_LEVEL) {
+		const cpu_node_t *ret = NULL;
+		int i;
+
+		for (i = 0; i < node->child_no; ++i) {
+			ret = get_cpu_node_by_chipid2(node->child_node[i],
+			    chip_id);
+			if (ret != NULL)
+				break;
+		}
+		return ret;
+	}
+
+	cpuid = BSRCPUMASK(node->members);
+	if (get_chip_ID(cpuid) == chip_id)
+		return node;
+	return NULL;
+}
+
+const cpu_node_t *
+get_cpu_node_by_chipid(int chip_id)
+{
+	KASSERT(cpu_root_node != NULL, ("cpu_root_node isn't initialized"));
+	return get_cpu_node_by_chipid2(cpu_root_node, chip_id);
+}
+
 /* init pcpu_sysctl structure info */
 static void
 init_pcpu_topology_sysctl(void)
