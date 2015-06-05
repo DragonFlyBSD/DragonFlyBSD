@@ -3805,6 +3805,13 @@ sc_paste(scr_stat *scp, u_char *p, int count)
     struct tty *tp;
     u_char *rmap;
 
+    /*
+     * Holy hell, don't try to inject a paste buffer if the keyboard
+     * is not in ascii mode!
+     */
+    if (scp->kbd_mode != K_XLATE)
+	return;
+
     lwkt_gettoken(&tty_token);
     if (scp->status & MOUSE_VISIBLE) {
 	tp = VIRTUAL_TTY(scp->sc, scp->sc->cur_scp->index);
