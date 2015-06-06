@@ -42,12 +42,12 @@
 
 /*
  * Each disk drive contains some number of file systems.
- * A file system consists of a number of cylinder groups.
- * Each cylinder group has inodes and data.
+ * A file system consists of a number of block groups.
+ * Each block group has inodes and data.
  *
  * A file system is described by its super-block, which in turn
- * describes the cylinder groups.  The super-block is critical
- * data and is replicated in each cylinder group to protect against
+ * describes the block groups.  The super-block is critical
+ * data and is replicated in each block group to protect against
  * catastrophic loss.  This is done at `newfs' time and the critical
  * super-block data does not change, so the copies need not be
  * referenced further unless disaster strikes.
@@ -74,7 +74,7 @@
  */
 
 /*
- * Convert cylinder group to base address of its global summary info.
+ * Convert block group to base address of its global summary info.
  */
 #define fs_cs(fs, cgindx)      (((struct ext2_group_desc *) \
         (fs->s_group_desc[cgindx / EXT2_DESC_PER_BLOCK(fs)]->b_data)) \
@@ -98,8 +98,8 @@
 #define	ino_to_fsbo(fs, x)	((x-1) % EXT2_INODES_PER_BLOCK(fs))
 
 /*
- * Give cylinder group number for a file system block.
- * Give cylinder group block number for a file system block.
+ * Give block group number for a file system block.
+ * Give block group block number for a file system block.
  */
 #define	dtog(fs, d)	(((d) - fs->s_es->s_first_data_block) / \
 			EXT2_BLOCKS_PER_GROUP(fs))
