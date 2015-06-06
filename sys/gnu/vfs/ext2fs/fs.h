@@ -55,6 +55,10 @@
  * The first boot and super blocks are given in absolute disk addresses.
  * The byte-offset forms are preferred, as they don't imply a sector size.
  */
+
+#ifndef _LINUX_EXT2_FS_FS
+#define _LINUX_EXT2_FS_FS
+
 #define BBSIZE		1024
 #define SBSIZE		1024
 #define	BBOFF		((off_t)(0))
@@ -194,3 +198,5 @@ extern u_char *fragtbl[];
 	else \
 		brelse(bp); \
 }
+
+#endif /* _LINUX_EXT2_FS_FS */
