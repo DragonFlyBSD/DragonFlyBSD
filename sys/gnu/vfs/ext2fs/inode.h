@@ -57,11 +57,7 @@
 #include <sys/queue.h>
 #endif
 #include "dinode.h"
-
-/*
- * This must agree with the definition in "dir.h"
- */
-#define	doff_t		int32_t
+#include "dir.h"
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 

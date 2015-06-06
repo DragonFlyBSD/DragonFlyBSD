@@ -42,6 +42,8 @@
 #ifndef _VFS_GNU_EXT2FS_DIR_H_
 #define	_VFS_GNU_EXT2FS_DIR_H_
 
+#include "ext2_fs.h"
+
 /*
  * Theoretically, directories can be more than 2Gb in length, however, in
  * practice this seems unlikely. So, we define the type doff_t as a 32-bit
@@ -76,7 +78,7 @@
  * dp->d_ino set to 0.
  */
 #define DIRBLKSIZ	DEV_BSIZE
-#define	MAXNAMLEN	255
+#define MAXNAMLEN	EXT2_NAME_LEN
 
 struct	direct {
 	uint32_t d_ino;		/* inode number of entry */

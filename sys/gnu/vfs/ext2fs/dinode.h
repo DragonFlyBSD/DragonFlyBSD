@@ -113,6 +113,7 @@ struct ext2_dinode {
 #define	di_ouid		di_u.oldids[0]
 #define	di_rdev		di_db[0]
 #define	di_shortlink	di_db
+#define	MAXSYMLINKLEN	EXT2_MAXSYMLINKLEN
 
 /* File permissions. */
 #define	IEXEC		0000100		/* Executable. */
