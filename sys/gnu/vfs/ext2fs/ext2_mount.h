@@ -70,7 +70,7 @@ struct vnode;
 struct netexport;
 
 /* This structure describes the UFS specific mount structure data. */
-struct ext2mount {
+struct ext2_mount {
 	struct	mount *um_mountp;		/* filesystem vfs structure */
 	cdev_t	um_dev;				/* device mounted */
 	struct	vnode *um_devvp;		/* block device mounted vnode */
@@ -109,11 +109,11 @@ struct ext2mount {
 #define	QTF_OPENING	0x01			/* Q_QUOTAON in progress */
 #define	QTF_CLOSING	0x02			/* Q_QUOTAOFF in progress */
 
-/* Convert mount ptr to ext2mount ptr. */
-#define VFSTOEXT2(mp)	((struct ext2mount *)((mp)->mnt_data))
+/* Convert mount ptr to ext2_mount ptr. */
+#define VFSTOEXT2(mp)	((struct ext2_mount *)((mp)->mnt_data))
 
 /*
- * Macros to access filesystem parameters in the ext2mount structure.
+ * Macros to access filesystem parameters in the ext2_mount structure.
  * Used by ext2_bmap.
  */
 #define MNINDIR(ump)			((ump)->um_nindir)

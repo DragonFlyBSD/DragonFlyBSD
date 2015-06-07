@@ -82,7 +82,7 @@ static int ext2_mount (struct mount *, char *, caddr_t, struct ucred *);
 static int ext2_mountfs (struct vnode *, struct mount *, struct ucred *);
 static int ext2_root(struct mount *, struct vnode **);
 static int ext2_reload (struct mount *mountp, struct ucred *cred);
-static int ext2_sbupdate (struct ext2mount *, int);
+static int ext2_sbupdate (struct ext2_mount *, int);
 static int ext2_statfs (struct mount *, struct statfs *, struct ucred *);
 static int ext2_sync (struct mount *, int);
 static int ext2_unmount (struct mount *, int);
@@ -272,7 +272,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct vnode *devvp;
 	struct ext2_args args;
-	struct ext2mount *ump = NULL;
+	struct ext2_mount *ump = NULL;
 	struct ext2_sb_info *fs;
 	size_t size;
 	int error, flags;
@@ -731,7 +731,7 @@ ext2_reload_scan(struct mount *mp, struct vnode *vp, void *data)
 static int
 ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 {
-	struct ext2mount *ump;
+	struct ext2_mount *ump;
 	struct buf *bp;
 	struct ext2_sb_info *fs;
 	struct ext2_super_block *es;
@@ -871,7 +871,7 @@ out:
 static int
 ext2_unmount(struct mount *mp, int mntflags)
 {
-	struct ext2mount *ump;
+	struct ext2_mount *ump;
 	struct ext2_sb_info *fs;
 	int error, flags, ronly, i;
 
@@ -927,7 +927,7 @@ ext2_unmount(struct mount *mp, int mntflags)
 static int
 ext2_flushfiles(struct mount *mp, int flags)
 {
-	struct ext2mount *ump;
+	struct ext2_mount *ump;
 	int error;
 #if QUOTA
 	int i;
@@ -961,7 +961,7 @@ static int
 ext2_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
         unsigned long overhead;
-	struct ext2mount *ump;
+	struct ext2_mount *ump;
 	struct ext2_sb_info *fs;
 	struct ext2_super_block *es;
 	int i, nsb;
@@ -1017,7 +1017,7 @@ static int ext2_sync_scan(struct mount *mp, struct vnode *vp, void *data);
 static int
 ext2_sync(struct mount *mp, int waitfor)
 {
-	struct ext2mount *ump = VFSTOEXT2(mp);
+	struct ext2_mount *ump = VFSTOEXT2(mp);
 	struct ext2_sb_info *fs;
 	struct scaninfo scaninfo;
 	int error;
@@ -1094,7 +1094,7 @@ ext2_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 {
 	struct ext2_sb_info *fs;
 	struct inode *ip;
-	struct ext2mount *ump;
+	struct ext2_mount *ump;
 	struct buf *bp;
 	struct vnode *vp;
 	cdev_t dev;
@@ -1305,7 +1305,7 @@ ext2_check_export(struct mount *mp, struct sockaddr *nam, int *exflagsp,
                  struct ucred **credanonp)
 {
 	struct netcred *np;
-	struct ext2mount *ump;
+	struct ext2_mount *ump;
 
 	ump = VFSTOEXT2(mp);
 	/*
@@ -1324,7 +1324,7 @@ ext2_check_export(struct mount *mp, struct sockaddr *nam, int *exflagsp,
  * Write a superblock and associated information back to disk.
  */
 static int
-ext2_sbupdate(struct ext2mount *mp, int waitfor)
+ext2_sbupdate(struct ext2_mount *mp, int waitfor)
 {
 	struct ext2_sb_info *fs = mp->um_e2fs;
 	struct ext2_super_block *es = fs->s_es;

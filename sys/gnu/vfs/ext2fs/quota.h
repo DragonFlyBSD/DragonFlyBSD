@@ -54,7 +54,7 @@
 
 /*
  * The following constants define the usage of the quota file array in the
- * ext2mount structure and dquot array in the inode structure.  The semantics
+ * ext2_mount structure and dquot array in the inode structure.  The semantics
  * of the elements of these arrays are defined in the routine getinoquota;
  * the remainder of the quota code treats them generically and need not be
  * inspected when changing the size of the array.
@@ -94,7 +94,7 @@
  * The following structure defines the format of the disk quota file
  * (as it appears on disk) - the file is an array of these structures
  * indexed by user or group number.  The setquota system call establishes
- * the vnode for each quota file (a pointer is retained in the ext2mount
+ * the vnode for each quota file (a pointer is retained in the ext2_mount
  * structure).
  */
 struct ext2_dqblk {
@@ -125,7 +125,7 @@ struct ext2_dquot {
 	uint16_t dq_type;		/* quota type of this dquot */
 	uint32_t dq_cnt;		/* count of active references */
 	uint32_t dq_id;		/* identifier this applies to */
-	struct	ext2mount *dq_ump;	/* filesystem that this is taken from */
+	struct	ext2_mount *dq_ump;	/* filesystem that this is taken from */
 	struct	ext2_dqblk dq_dqb;	/* actual usage & quotas */
 };
 /*
