@@ -60,7 +60,7 @@ int init_config(void)
 
 char driver_name[] = "hpt27xx";
 char driver_name_long[] = "RocketRAID 27xx controller driver";
-char driver_ver[] = "v1.0 (" __DATE__ " " __TIME__ ")";
+char driver_ver[] = "v1.0";
 int  osm_max_targets = 0xff;
 
 
