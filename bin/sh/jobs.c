@@ -178,7 +178,10 @@ setjobctl(int on)
 		do { /* while we are in the background */
 			initialpgrp = tcgetpgrp(ttyfd);
 			if (initialpgrp < 0) {
-out:				jobctl_notty();
+#if !defined(O_CLOEXEC) || !defined(F_DUPFD_CLOEXEC)
+out:
+#endif
+				jobctl_notty();
 				return;
 			}
 			if (initialpgrp != getpgrp()) {
