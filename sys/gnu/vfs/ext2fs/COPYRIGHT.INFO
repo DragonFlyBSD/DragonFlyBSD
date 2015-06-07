@@ -44,7 +44,7 @@ dyson@freebsd.org
 	ext2_bmap.c
 	ext2_ihash.c
 	ext2_quota.c
-	ext2mount.h
+	ext2_mount.h
 	inode.h
 	quota.h
 

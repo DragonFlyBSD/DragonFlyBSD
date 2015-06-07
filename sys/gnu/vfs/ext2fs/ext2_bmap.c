@@ -52,7 +52,7 @@
 #include "dinode.h"
 #include "inode.h"
 #include "ext2_fs_sb.h"
-#include "ext2mount.h"
+#include "ext2_mount.h"
 #include "ext2_extern.h"
 #include "fs.h"
 

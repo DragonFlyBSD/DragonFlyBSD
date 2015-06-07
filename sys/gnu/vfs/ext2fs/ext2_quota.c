@@ -51,7 +51,7 @@
 #include "quota.h"
 #include "dinode.h"
 #include "inode.h"
-#include "ext2mount.h"
+#include "ext2_mount.h"
 #include "ext2_extern.h"
 
 static MALLOC_DEFINE(M_EXT2DQUOT, "EXT2 quota", "EXT2 quota entries");
