@@ -44,7 +44,7 @@
 #include <err.h>
 #include "extern.h"
 
-int Fflag, fflag, rflag, rval, no_files;
+int Fflag, fflag, qflag, rflag, rval, no_files;
 const char *fname;
 
 file_info_t *files;
@@ -66,7 +66,7 @@ main(int argc, char **argv)
 
 	obsolete(argv);
 	style_set = 0;
-	while ((ch = getopt(argc, argv, "Fb:c:fn:r")) != -1)
+	while ((ch = getopt(argc, argv, "Fb:c:fn:qr")) != -1)
 		switch(ch) {
 		case 'F':	/* -F is superset of (and implies) -f */
 			Fflag = fflag = 1;
@@ -82,6 +82,9 @@ main(int argc, char **argv)
 			break;
 		case 'n':
 			getarg(1, FLINES, RLINES, &style, &style_set, &off);
+			break;
+		case 'q':
+			qflag = 1;
 			break;
 		case 'r':
 			rflag = 1;
