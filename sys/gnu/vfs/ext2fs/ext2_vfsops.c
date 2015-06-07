@@ -504,9 +504,9 @@ static int
 compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
 		struct ext2_sb_info *fs)
 {
-    int db_count, error;
-    int i, j;
-    int logic_sb_block = 1;	/* XXX for now */
+	int db_count, error;
+	int i, j;
+	int logic_sb_block = 1;	/* XXX for now */
 
 #if 1
 #define V(v)
@@ -514,104 +514,104 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
 #define V(v)  kprintf(#v"= %d\n", fs->v);
 #endif
 
-    fs->s_blocksize = EXT2_MIN_BLOCK_SIZE << es->s_log_block_size;
-    V(s_blocksize)
-    fs->s_bshift = EXT2_MIN_BLOCK_LOG_SIZE + es->s_log_block_size;
-    V(s_bshift)
-    fs->s_fsbtodb = es->s_log_block_size + 1;
-    V(s_fsbtodb)
-    fs->s_qbmask = fs->s_blocksize - 1;
-    V(s_bmask)
-    fs->s_blocksize_bits = EXT2_BLOCK_SIZE_BITS(es);
-    V(s_blocksize_bits)
-    fs->s_frag_size = EXT2_MIN_FRAG_SIZE << es->s_log_frag_size;
-    V(s_frag_size)
-    if (fs->s_frag_size)
-	fs->s_frags_per_block = fs->s_blocksize / fs->s_frag_size;
-    V(s_frags_per_block)
-    fs->s_blocks_per_group = es->s_blocks_per_group;
-    V(s_blocks_per_group)
-    fs->s_frags_per_group = es->s_frags_per_group;
-    V(s_frags_per_group)
-    fs->s_inodes_per_group = es->s_inodes_per_group;
-    V(s_inodes_per_group)
-    if (es->s_rev_level == EXT2_GOOD_OLD_REV) {
-        fs->s_first_ino = EXT2_GOOD_OLD_FIRST_INO;
-        fs->s_inode_size = EXT2_GOOD_OLD_INODE_SIZE;
-    } else {
-        fs->s_first_ino = es->s_first_ino;
-        fs->s_inode_size = es->s_inode_size;
-        /*
-         * Simple sanity check for superblock inode size value.
-         */
-        if (fs->s_inode_size < EXT2_GOOD_OLD_INODE_SIZE ||
-            fs->s_inode_size > fs->s_blocksize ||
-            (fs->s_inode_size & (fs->s_inode_size - 1)) != 0) {
-            kprintf("EXT2-fs: invalid inode size %d\n",
-                fs->s_inode_size);
-            return (EIO);
+	fs->s_blocksize = EXT2_MIN_BLOCK_SIZE << es->s_log_block_size;
+	V(s_blocksize)
+	fs->s_bshift = EXT2_MIN_BLOCK_LOG_SIZE + es->s_log_block_size;
+	V(s_bshift)
+	fs->s_fsbtodb = es->s_log_block_size + 1;
+	V(s_fsbtodb)
+	fs->s_qbmask = fs->s_blocksize - 1;
+	V(s_bmask)
+	fs->s_blocksize_bits = EXT2_BLOCK_SIZE_BITS(es);
+	V(s_blocksize_bits)
+	fs->s_frag_size = EXT2_MIN_FRAG_SIZE << es->s_log_frag_size;
+	V(s_frag_size)
+	if (fs->s_frag_size)
+		fs->s_frags_per_block = fs->s_blocksize / fs->s_frag_size;
+	V(s_frags_per_block)
+	fs->s_blocks_per_group = es->s_blocks_per_group;
+	V(s_blocks_per_group)
+	fs->s_frags_per_group = es->s_frags_per_group;
+	V(s_frags_per_group)
+	fs->s_inodes_per_group = es->s_inodes_per_group;
+	V(s_inodes_per_group)
+	if (es->s_rev_level == EXT2_GOOD_OLD_REV) {
+		fs->s_first_ino = EXT2_GOOD_OLD_FIRST_INO;
+		fs->s_inode_size = EXT2_GOOD_OLD_INODE_SIZE;
+	} else {
+		fs->s_first_ino = es->s_first_ino;
+		fs->s_inode_size = es->s_inode_size;
+		/*
+		 * Simple sanity check for superblock inode size value.
+		 */
+		if (fs->s_inode_size < EXT2_GOOD_OLD_INODE_SIZE ||
+		    fs->s_inode_size > fs->s_blocksize ||
+		    (fs->s_inode_size & (fs->s_inode_size - 1)) != 0) {
+			kprintf("EXT2-fs: invalid inode size %d\n",
+			fs->s_inode_size);
+			return (EIO);
+		}
         }
-    }
-    V(s_first_ino)
-    V(s_inode_size)
-    fs->s_inodes_per_block = fs->s_blocksize / EXT2_INODE_SIZE(fs);
-    V(s_inodes_per_block)
-    fs->s_itb_per_group = fs->s_inodes_per_group /fs->s_inodes_per_block;
-    V(s_itb_per_group)
-    fs->s_desc_per_block = fs->s_blocksize / sizeof (struct ext2_group_desc);
-    V(s_desc_per_block)
-    /* s_resuid / s_resgid ? */
-    fs->s_groups_count = (es->s_blocks_count -
-			  es->s_first_data_block +
-			  EXT2_BLOCKS_PER_GROUP(fs) - 1) /
-			 EXT2_BLOCKS_PER_GROUP(fs);
-    V(s_groups_count)
-    db_count = (fs->s_groups_count + EXT2_DESC_PER_BLOCK(fs) - 1) /
-	EXT2_DESC_PER_BLOCK(fs);
-    fs->s_db_per_group = db_count;
-    V(s_db_per_group)
+	V(s_first_ino)
+	V(s_inode_size)
+	fs->s_inodes_per_block = fs->s_blocksize / EXT2_INODE_SIZE(fs);
+	V(s_inodes_per_block)
+	fs->s_itb_per_group = fs->s_inodes_per_group /fs->s_inodes_per_block;
+	V(s_itb_per_group)
+	fs->s_desc_per_block = fs->s_blocksize / sizeof (struct ext2_group_desc);
+	V(s_desc_per_block)
+	/* s_resuid / s_resgid ? */
+	fs->s_groups_count = (es->s_blocks_count - es->s_first_data_block +
+			      EXT2_BLOCKS_PER_GROUP(fs) - 1) /
+			      EXT2_BLOCKS_PER_GROUP(fs);
+	V(s_groups_count)
+	db_count = (fs->s_groups_count + EXT2_DESC_PER_BLOCK(fs) - 1) /
+					 EXT2_DESC_PER_BLOCK(fs);
+	fs->s_db_per_group = db_count;
+	V(s_db_per_group)
 
-    fs->s_group_desc = kmalloc(db_count * sizeof (struct buf *),
-		M_EXT2MNT, M_WAITOK);
+	fs->s_group_desc = kmalloc(db_count * sizeof (struct buf *),
+				M_EXT2MNT, M_WAITOK);
 
-    /* adjust logic_sb_block */
-    if(fs->s_blocksize > SBSIZE)
-	/* Godmar thinks: if the blocksize is greater than 1024, then
-	   the superblock is logically part of block zero.
-	 */
-        logic_sb_block = 0;
+	/* adjust logic_sb_block */
+	if (fs->s_blocksize > SBSIZE)
+		/*
+		 * Godmar thinks: if the blocksize is greater than 1024,
+		 * then, the superblock is logically part of block zero.
+		 */
+		logic_sb_block = 0;
 
-    for (i = 0; i < db_count; i++) {
-	error = bread(devvp, fsbtodoff(fs, logic_sb_block + i + 1),
-		      fs->s_blocksize, &fs->s_group_desc[i]);
-	if(error) {
-	    for (j = 0; j < i; j++)
-		brelse(fs->s_group_desc[j]);
-	    kfree(fs->s_group_desc, M_EXT2MNT);
-	    kprintf("EXT2-fs: unable to read group descriptors (%d)\n", error);
-	    return EIO;
+	for (i = 0; i < db_count; i++) {
+		error = bread(devvp, fsbtodoff(fs, logic_sb_block + i + 1),
+				fs->s_blocksize, &fs->s_group_desc[i]);
+		if (error) {
+			for (j = 0; j < i; j++)
+				brelse(fs->s_group_desc[j]);
+			kfree(fs->s_group_desc, M_EXT2MNT);
+			kprintf("EXT2-fs: unable to read group descriptors (%d)\n", error);
+			return EIO;
+		}
+		/* Set the B_LOCKED flag on the buffer, then brelse() it */
+		LCK_BUF(fs->s_group_desc[i])
 	}
-	/* Set the B_LOCKED flag on the buffer, then brelse() it */
-	LCK_BUF(fs->s_group_desc[i])
-    }
-    if(!ext2_check_descriptors(fs)) {
-	    for (j = 0; j < db_count; j++)
-		    ULCK_BUF(fs->s_group_desc[j])
-	    kfree(fs->s_group_desc, M_EXT2MNT);
-	    kprintf("EXT2-fs: (ext2_check_descriptors failure) "
-		   "unable to read group descriptors\n");
-	    return EIO;
-    }
+	if (!ext2_check_descriptors(fs)) {
+		for (j = 0; j < db_count; j++)
+			ULCK_BUF(fs->s_group_desc[j])
+		kfree(fs->s_group_desc, M_EXT2MNT);
+		kprintf("EXT2-fs: (ext2_check_descriptors failure) "
+			"unable to read group descriptors\n");
+		return EIO;
+	}
 
-    for (i = 0; i < EXT2_MAX_GROUP_LOADED; i++) {
-	    fs->s_inode_bitmap_number[i] = 0;
-	    fs->s_inode_bitmap[i] = NULL;
-	    fs->s_block_bitmap_number[i] = 0;
-	    fs->s_block_bitmap[i] = NULL;
-    }
-    fs->s_loaded_inode_bitmaps = 0;
-    fs->s_loaded_block_bitmaps = 0;
-    return 0;
+	for (i = 0; i < EXT2_MAX_GROUP_LOADED; i++) {
+		fs->s_inode_bitmap_number[i] = 0;
+		fs->s_inode_bitmap[i] = NULL;
+		fs->s_block_bitmap_number[i] = 0;
+		fs->s_block_bitmap[i] = NULL;
+	}
+	fs->s_loaded_inode_bitmaps = 0;
+	fs->s_loaded_block_bitmaps = 0;
+	return 0;
 }
 
 /*
