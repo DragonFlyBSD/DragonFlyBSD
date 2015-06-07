@@ -47,16 +47,16 @@
 #include <machine/setjmp.h>
 
 __BEGIN_DECLS
-int	setjmp (jmp_buf);
+int	setjmp (jmp_buf) __returns_twice;
 void	longjmp (jmp_buf, int) __dead2;
 
 #if __POSIX_VISIBLE || __XSI_VISIBLE
-int	sigsetjmp (sigjmp_buf, int);
+int	sigsetjmp (sigjmp_buf, int) __returns_twice;
 void	siglongjmp (sigjmp_buf, int) __dead2;
 #endif
 
 #if __XSI_VISIBLE >= 500
-int	_setjmp (jmp_buf);
+int	_setjmp (jmp_buf) __returns_twice;
 void	_longjmp (jmp_buf, int) __dead2;
 #endif
 

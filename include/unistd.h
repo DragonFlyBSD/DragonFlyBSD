@@ -480,7 +480,7 @@ char	*getwd(char *);			/* LEGACY (obsoleted by getcwd()) */
 unsigned int
 	 ualarm(unsigned int, unsigned int);
 int	 usleep(unsigned int);
-pid_t	 vfork(void);
+pid_t	 vfork(void) __returns_twice;
 #endif
 
 #if __BSD_VISIBLE

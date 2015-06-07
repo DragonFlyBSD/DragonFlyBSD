@@ -173,6 +173,7 @@
 #define __always_inline
 #define __nonnull(x)
 #define __heedresult
+#define __returns_twice
 
 #else
 
@@ -213,6 +214,12 @@
 #define __heedresult
 #define __nonnull(x)
 #define __used		__unused
+#endif
+
+#if __GNUC_PREREQ__(4, 1)
+#define __returns_twice __attribute__((__returns_twice__))
+#else
+#define __returns_twice
 #endif
 
 #endif	/* LINT */
