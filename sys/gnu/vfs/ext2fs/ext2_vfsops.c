@@ -418,7 +418,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 /*
  * checks that the data in the descriptor blocks make sense
- * this is taken from ext2/super.c
+ * this is taken from linux/fs/ext2/super.c
  */
 static int
 ext2_check_descriptors(struct ext2_sb_info *sb)
@@ -705,12 +705,12 @@ ext2_reload_scan(struct mount *mp, struct vnode *vp, void *data)
 		return(0);
 
 	/*
-	 * Step 5: invalidate all cached file data.
+	 * Step 1: invalidate all cached file data.
 	 */
 	if (vinvalbuf(vp, 0, 0, 0))
 		panic("ext2_reload: dirty2");
 	/*
-	 * Step 6: re-read inode data for all active vnodes.
+	 * Step 2: re-read inode data for all active vnodes.
 	 */
 	ip = VTOI(vp);
 	error = bread(info->devvp,
@@ -955,7 +955,7 @@ ext2_flushfiles(struct mount *mp, int flags)
 
 /*
  * Get file system statistics.
- * taken from ext2/super.c ext2_statfs
+ * taken from linux/fs/ext2/super.c ext2_statfs
  */
 static int
 ext2_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
