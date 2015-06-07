@@ -46,9 +46,6 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
-#ifndef _SYS_LOCK_H_
-#include <sys/lock.h>
-#endif
 
 /*
  * Definitions for sysctl call.  The sysctl call uses a hierarchical name
@@ -111,6 +108,9 @@ struct ctlname {
 #ifdef _KERNEL
 
 #include <sys/kernel.h>			/* for DATA_SET */
+#ifndef _SYS_LOCK_H_
+#include <sys/lock.h>
+#endif
 
 #define SYSCTL_HANDLER_ARGS struct sysctl_oid *oidp, void *arg1, int arg2, \
 	struct sysctl_req *req
