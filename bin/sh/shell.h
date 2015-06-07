@@ -53,6 +53,22 @@
 /* #define DEBUG 1 */
 
 /*
+ * Allow compilation with older versions of DragonFly or on
+ * systems without these features.
+ */
+#ifdef F_DUPFD_CLOEXEC
+#define F_DUPFD_CLOEXEC_MAYBE	F_DUPFD_CLOEXEC
+#else
+#define F_DUPFD_CLOEXEC_MAYBE	F_DUPFD
+#endif
+
+#ifdef O_CLOEXEC
+#define O_CLOEXEC_MAYBE		O_CLOEXEC
+#else
+#define O_CLOEXEC_MAYBE		0
+#endif
+
+/*
  * Type of used arithmetics. SUSv3 requires us to have at least signed long.
  */
 typedef intmax_t arith_t;

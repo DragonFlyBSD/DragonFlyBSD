@@ -368,10 +368,10 @@ setinputfile(const char *fname, int push)
 	int fd2;
 
 	INTOFF;
-	if ((fd = open(fname, O_RDONLY | O_CLOEXEC)) < 0)
+	if ((fd = open(fname, O_RDONLY | O_CLOEXEC_MAYBE)) < 0)
 		error("cannot open %s: %s", fname, strerror(errno));
 	if (fd < 10) {
-		fd2 = fcntl(fd, F_DUPFD_CLOEXEC, 10);
+		fd2 = fcntl(fd, F_DUPFD_CLOEXEC_MAYBE, 10);
 		close(fd);
 		if (fd2 < 0)
 			error("Out of file descriptors");
@@ -390,6 +390,9 @@ setinputfile(const char *fname, int push)
 void
 setinputfd(int fd, int push)
 {
+#if !defined(O_CLOEXEC) || !defined(F_DUPFD_CLOEXEC)
+	fcntl(fd, F_SETFD, FD_CLOEXEC);
+#endif
 	if (push) {
 		pushfile();
 		parsefile->buf = ckmalloc(BUFSIZ + 1);
