@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)bltin.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/bltin/bltin.h 223060 2011-06-13 21:03:27Z jilles $
+ * $FreeBSD$
  */
 
 /*
@@ -46,6 +42,7 @@
 #include "../shell.h"
 #include "../mystring.h"
 #ifdef SHELL
+#include "../error.h"
 #include "../output.h"
 #include "builtins.h"
 #define FILE struct output
@@ -66,6 +63,7 @@
 #define warnx warning
 #define warn(fmt, ...) warning(fmt ": %s", __VA_ARGS__, strerror(errno))
 #define errx(exitstatus, ...) error(__VA_ARGS__)
+
 #else
 #undef NULL
 #include <stdio.h>
@@ -75,6 +73,7 @@
 
 #include <unistd.h>
 
-pid_t getjobpgrp(char *);
+pointer stalloc(int);
+int killjob(const char *, int);
 
 extern char *commandname;

@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
+ * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -28,21 +28,26 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)error.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/error.c 216622 2010-12-21 20:47:06Z jilles $
  */
+
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)error.c	8.2 (Berkeley) 5/4/95";
+#endif
+#endif /* not lint */
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * Errors and exceptions.
  */
 
 #include "shell.h"
+#include "eval.h"
 #include "main.h"
 #include "options.h"
 #include "output.h"
 #include "error.h"
-#include "eval.h"  /* defines commandname */
 #include "nodes.h" /* show.h needs nodes.h */
 #include "show.h"
 #include "trap.h"
@@ -85,13 +90,14 @@ exraise(int e)
 
 
 /*
- * Called from trap.c when a SIGINT is received.  (If the user specifies
- * that SIGINT is to be trapped or ignored using the trap builtin, then
- * this routine is not called.)  Suppressint is nonzero when interrupts
- * are held using the INTOFF macro.  If SIGINTs are not suppressed and
- * the shell is not a root shell, then we want to be terminated if we
- * get here, as if we were terminated directly by a SIGINT.  Arrange for
- * this here.
+ * Called from trap.c when a SIGINT is received and not suppressed, or when
+ * an interrupt is pending and interrupts are re-enabled using INTON.
+ * (If the user specifies that SIGINT is to be trapped or ignored using the
+ * trap builtin, then this routine is not called.)  Suppressint is nonzero
+ * when interrupts are held using the INTOFF macro.  If SIGINTs are not
+ * suppressed and the shell is not a root shell, then we want to be
+ * terminated if we get here, as if we were terminated directly by a SIGINT.
+ * Arrange for this here.
  */
 
 void
@@ -99,16 +105,6 @@ onint(void)
 {
 	sigset_t sigs;
 
-	/*
-	 * The !in_dotrap here is safe.  The only way we can arrive here
-	 * with in_dotrap set is that a trap handler set SIGINT to SIG_DFL
-	 * and killed itself.
-	 */
-
-	if (suppressint && !in_dotrap) {
-		intpending++;
-		return;
-	}
 	intpending = 0;
 	sigemptyset(&sigs);
 	sigprocmask(SIG_SETMASK, &sigs, NULL);
@@ -125,6 +121,7 @@ onint(void)
 	else {
 		signal(SIGINT, SIG_DFL);
 		kill(getpid(), SIGINT);
+		_exit(128 + SIGINT);
 	}
 }
 
@@ -134,6 +131,8 @@ vwarning(const char *msg, va_list ap)
 {
 	if (commandname)
 		outfmt(out2, "%s: ", commandname);
+	else if (arg0)
+		outfmt(out2, "%s: ", arg0);
 	doformat(out2, msg, ap);
 	out2fmt_flush("\n");
 }

@@ -1,5 +1,5 @@
-#	@(#)Makefile	8.4 (Berkeley) 5/5/95
-# $FreeBSD: head/bin/sh/Makefile 235927 2012-05-24 19:48:15Z marcel $
+# Makefile for /bin/sh
+#
 
 PROG=	sh
 INSTALLFLAGS= -S

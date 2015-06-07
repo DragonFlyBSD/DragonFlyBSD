@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)expand.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/expand.h 246288 2013-02-03 15:54:57Z jilles $
+ * $FreeBSD$
  */
 
 struct strlist {
@@ -54,7 +50,6 @@ struct arglist {
 #define EXP_FULL	0x1	/* perform word splitting & file globbing */
 #define EXP_TILDE	0x2	/* do normal tilde expansion */
 #define	EXP_VARTILDE	0x4	/* expand tildes in an assignment */
-#define	EXP_REDIR	0x8	/* file glob for a redirection (1 match only) */
 #define EXP_CASE	0x10	/* keeps quotes around for CASE pattern */
 #define EXP_SPLIT_LIT	0x20	/* IFS split literal text ${v+-a b c} */
 #define EXP_LIT_QUOTED	0x40	/* for EXP_SPLIT_LIT, start off quoted */
@@ -62,6 +57,5 @@ struct arglist {
 
 union node;
 void expandarg(union node *, struct arglist *, int);
-void expari(int);
 void rmescapes(char *);
 int casematch(union node *, const char *);

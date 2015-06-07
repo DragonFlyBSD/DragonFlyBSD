@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
+ * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -28,10 +28,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)trap.c	8.5 (Berkeley) 6/5/95
- * $FreeBSD: head/bin/sh/trap.c 253658 2013-07-25 19:48:15Z jilles $
  */
+
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)trap.c	8.5 (Berkeley) 6/5/95";
+#endif
+#endif /* not lint */
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <signal.h>
 #include <unistd.h>
@@ -69,12 +74,12 @@
 
 static char sigmode[NSIG];	/* current value of signal */
 volatile sig_atomic_t pendingsig;	/* indicates some signal received */
-int in_dotrap;			/* do we execute in a trap handler? */
+volatile sig_atomic_t pendingsig_waitcmd;	/* indicates wait builtin should be interrupted */
+static int in_dotrap;			/* do we execute in a trap handler? */
 static char *volatile trap[NSIG];	/* trap handler commands */
 static volatile sig_atomic_t gotsig[NSIG];
 				/* indicates specified signal received */
 static int ignore_sigchld;	/* Used while handling SIGCHLD traps. */
-volatile sig_atomic_t gotwinch;
 static int last_trapsig;
 
 static int exiting;		/* exitshell() has been called */
@@ -178,7 +183,7 @@ trapcmd(int argc __unused, char **argv)
 		return 0;
 	}
 	action = NULL;
-	if (*argv && sigstring_to_signum(*argv) == -1) {
+	if (*argv && !is_number(*argv)) {
 		if (strcmp(*argv, "-") == 0)
 			argv++;
 		else {
@@ -287,12 +292,6 @@ setsignal(int signo)
 				action = S_IGN;
 			break;
 #endif
-#ifndef NO_HISTORY
-		case SIGWINCH:
-			if (rootshell && iflag)
-				action = S_CATCH;
-			break;
-#endif
 		}
 	}
 
@@ -342,7 +341,7 @@ getsigaction(int signo, sig_t *sigact)
 {
 	struct sigaction sa;
 
-	if (sigaction(signo, NULL, &sa) == -1)
+	if (sigaction(signo, (struct sigaction *)0, &sa) == -1)
 		return 0;
 	*sigact = (sig_t) sa.sa_handler;
 	return 1;
@@ -356,10 +355,12 @@ void
 ignoresig(int signo)
 {
 
+	if (sigmode[signo] == 0)
+		setsignal(signo);
 	if (sigmode[signo] != S_IGN && sigmode[signo] != S_HARD_IGN) {
 		signal(signo, SIG_IGN);
+		sigmode[signo] = S_IGN;
 	}
-	sigmode[signo] = S_HARD_IGN;
 }
 
 
@@ -379,34 +380,28 @@ onsig(int signo)
 {
 
 	if (signo == SIGINT && trap[SIGINT] == NULL) {
+		/*
+		 * The !in_dotrap here is safe.  The only way we can arrive
+		 * here with in_dotrap set is that a trap handler set SIGINT to
+		 * SIG_DFL and killed itself.
+		 */
+		if (suppressint && !in_dotrap)
+			SET_PENDING_INT;
+		else
 		onint();
 		return;
 	}
 
 	/* If we are currently in a wait builtin, prepare to break it */
-	if ((signo == SIGINT || signo == SIGQUIT) && in_waitcmd != 0) {
-		breakwaitcmd = 1;
-		pendingsig = signo;
-	}
+	if (signo == SIGINT || signo == SIGQUIT)
+		pendingsig_waitcmd = signo;
 
 	if (trap[signo] != NULL && trap[signo][0] != '\0' &&
 	    (signo != SIGCHLD || !ignore_sigchld)) {
 		gotsig[signo] = 1;
 		pendingsig = signo;
-
-		/*
-		 * If a trap is set, not ignored and not the null command, we
-		 * need to make sure traps are executed even when a child
-		 * blocks signals.
-		 */
-		if (Tflag && !(trap[signo][0] == ':' && trap[signo][1] == '\0'))
-			breakwaitcmd = 1;
+		pendingsig_waitcmd = signo;
 	}
-
-#ifndef NO_HISTORY
-	if (signo == SIGWINCH)
-		gotwinch = 1;
-#endif
 }
 
 
@@ -423,6 +418,7 @@ dotrap(void)
 	in_dotrap++;
 	for (;;) {
 		pendingsig = 0;
+		pendingsig_waitcmd = 0;
 		for (i = 1; i < NSIG; i++) {
 			if (gotsig[i]) {
 				gotsig[i] = 0;
@@ -491,9 +487,6 @@ setinteractive(int on)
 	setsignal(SIGINT);
 	setsignal(SIGQUIT);
 	setsignal(SIGTERM);
-#ifndef NO_HISTORY
-	setsignal(SIGWINCH);
-#endif
 	is_interactive = on;
 }
 
@@ -515,7 +508,7 @@ exitshell_savedstatus(void)
 {
 	struct jmploc loc1, loc2;
 	char *p;
-	volatile int sig = 0;
+	int sig = 0;
 	sigset_t sigs;
 
 	if (!exiting) {
@@ -526,12 +519,7 @@ exitshell_savedstatus(void)
 			exiting_exitstatus = oexitstatus;
 	}
 	exitstatus = oexitstatus = exiting_exitstatus;
-	if (setjmp(loc1.loc)) {
-		goto l1;
-	}
-	if (setjmp(loc2.loc)) {
-		goto l2;
-	}
+	if (!setjmp(loc1.loc)) {
 	handler = &loc1;
 	if ((p = trap[0]) != NULL && *p != '\0') {
 		/*
@@ -542,12 +530,14 @@ exitshell_savedstatus(void)
 		trap[0] = NULL;
 		evalstring(p, 0);
 	}
-l1:   handler = &loc2;			/* probably unnecessary */
+	}
+	if (!setjmp(loc2.loc)) {
+		handler = &loc2;		/* probably unnecessary */
 	flushall();
 #if JOBS
 	setjobctl(0);
 #endif
-l2:
+	}
 	if (sig != 0 && sig != SIGSTOP && sig != SIGTSTP && sig != SIGTTIN &&
 	    sig != SIGTTOU) {
 		signal(sig, SIG_DFL);

@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
+ * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -28,10 +28,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)histedit.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/histedit.c 240541 2012-09-15 21:56:30Z jilles $
  */
+
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)histedit.c	8.2 (Berkeley) 5/4/95";
+#endif
+#endif /* not lint */
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <limits.h>
@@ -49,8 +54,8 @@
 #include "main.h"
 #include "output.h"
 #include "mystring.h"
-#include "myhistedit.h"
 #ifndef NO_HISTORY
+#include "myhistedit.h"
 #include "error.h"
 #include "eval.h"
 #include "memalloc.h"
@@ -108,10 +113,8 @@ histedit(void)
 			if (el_in == NULL || el_err == NULL || el_out == NULL)
 				goto bad;
 			term = lookupvar("TERM");
-			if (term) {
-				if (setenv("TERM", term, 1) == -1)
-					error("setenv: cannot set TERM=1");
-			}
+			if (term)
+				setenv("TERM", term, 1);
 			else
 				unsetenv("TERM");
 			el = el_init(arg0, el_in, el_out, el_err);
@@ -119,9 +122,9 @@ histedit(void)
 				if (hist)
 					el_set(el, EL_HIST, history, hist);
 				el_set(el, EL_PROMPT, getprompt);
-				el_set(el, EL_ADDFN, "rl-complete",
-				    "ReadLine compatible completion function",
-				    _el_fn_complete);
+				el_set(el, EL_ADDFN, "sh-complete",
+				    "Filename completion",
+				    _el_fn_sh_complete);
 			} else {
 bad:
 				out2fmt_flush("sh: can't initialize editing\n");
@@ -138,8 +141,7 @@ bad:
 				el_set(el, EL_EDITOR, "vi");
 			else if (Eflag)
 				el_set(el, EL_EDITOR, "emacs");
-			el_set(el, EL_BIND, "^I",
-			    tabcomplete ? "rl-complete" : "ed-insert", NULL);
+			el_set(el, EL_BIND, "^I", "sh-complete", NULL);
 			el_source(el, NULL);
 		}
 	} else {
@@ -164,9 +166,10 @@ sethistsize(const char *hs)
 	HistEvent he;
 
 	if (hist != NULL) {
-		if (hs == NULL || *hs == '\0' ||
-		   (histsize = atoi(hs)) < 0)
+		if (hs == NULL || !is_number(hs))
 			histsize = 100;
+		else
+			histsize = atoi(hs);
 		history(hist, &he, H_SETSIZE, histsize);
 		history(hist, &he, H_SETUNIQUE, 1);
 	}
@@ -183,11 +186,11 @@ int
 histcmd(int argc, char **argv __unused)
 {
 	int ch;
-	const char *volatile editor = NULL;
+	const char *editor = NULL;
 	HistEvent he;
-	volatile int lflg = 0, nflg = 0, rflg = 0, sflg = 0;
+	int lflg = 0, nflg = 0, rflg = 0, sflg = 0;
 	int i, retval;
-	const char *firststr = NULL, *laststr = NULL;
+	const char *firststr, *laststr;
 	int first, last, direction;
 	char *pat = NULL, *repl = NULL;
 	static int active = 0;
@@ -335,9 +338,8 @@ histcmd(int argc, char **argv __unused)
 				out1fmt("%5d ", he.num);
 			out1str(he.str);
 		} else {
-			char *s = pat ?
-			   fc_replace(he.str, pat, repl) :
-			   __DECONST(char *, he.str);
+			const char *s = pat ?
+			   fc_replace(he.str, pat, repl) : he.str;
 
 			if (sflg) {
 				if (displayhist) {
@@ -475,14 +477,14 @@ bindcmd(int argc, char **argv)
 
 	if (el == NULL)
 		error("line editing is disabled");
-	return (el_parse(el, argc, (const char **)argv));
+	return (el_parse(el, argc, __DECONST(const char **, argv)));
 }
 
 #else
 #include "error.h"
 
 int
-histcmd(int argc __unused, char **argv __unused)
+histcmd(int argc, char **argv)
 {
 
 	error("not compiled with history support");
@@ -491,7 +493,7 @@ histcmd(int argc __unused, char **argv __unused)
 }
 
 int
-bindcmd(int argc __unused, char **argv __unused)
+bindcmd(int argc, char **argv)
 {
 
 	error("not compiled with line editing support");

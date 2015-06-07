@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,10 +30,10 @@
  * SUCH DAMAGE.
  *
  *	@(#)eval.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/eval.h 253650 2013-07-25 15:08:41Z jilles $
+ * $FreeBSD$
  */
 
-extern const char *commandname;	/* currently executing command */
+extern char *commandname;	/* currently executing command */
 extern int exitstatus;		/* exit status of last command */
 extern int oexitstatus;		/* saved exit status */
 extern struct strlist *cmdenviron;  /* environment for builtin command */
@@ -57,7 +53,7 @@ void reseteval(void);
 #define EV_TESTED 02		/* exit status is checked; ignore -e flag */
 #define EV_BACKCMD 04		/* command executing within back quotes */
 
-void evalstring(char *, int);
+void evalstring(const char *, int);
 union node;	/* BLETCH for ansi C */
 void evaltree(union node *, int);
 void evalbackcmd(union node *, struct backcmd *);
@@ -71,5 +67,4 @@ extern int skipcount;
 /* reasons for skipping commands (see comment on breakcmd routine) */
 #define SKIPBREAK	1
 #define SKIPCONT	2
-#define SKIPFUNC	3
-#define SKIPFILE	4
+#define SKIPRETURN	3

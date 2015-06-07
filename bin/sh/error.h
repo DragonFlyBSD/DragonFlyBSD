@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)error.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/error.h 220978 2011-04-23 22:28:56Z jilles $
+ * $FreeBSD$
  */
 
 /*
@@ -79,11 +75,12 @@ extern volatile sig_atomic_t intpending;
 #define is_int_on() suppressint
 #define SETINTON(s) suppressint = (s)
 #define FORCEINTON {suppressint = 0; if (intpending) onint();}
+#define SET_PENDING_INT intpending = 1
 #define CLEAR_PENDING_INT intpending = 0
 #define int_pending() intpending
 
 void exraise(int) __dead2;
-void onint(void);
+void onint(void) __dead2;
 void warning(const char *, ...) __printflike(1, 2);
 void error(const char *, ...) __printf0like(1, 2) __dead2;
 void exerror(int, const char *, ...) __printf0like(2, 3) __dead2;

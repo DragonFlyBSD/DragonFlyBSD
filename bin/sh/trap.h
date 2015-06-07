@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,12 +30,11 @@
  * SUCH DAMAGE.
  *
  *	@(#)trap.h	8.3 (Berkeley) 6/5/95
- * $FreeBSD: head/bin/sh/trap.h 247206 2013-02-23 22:50:57Z jilles $
+ * $FreeBSD$
  */
 
 extern volatile sig_atomic_t pendingsig;
-extern int in_dotrap;
-extern volatile sig_atomic_t gotwinch;
+extern volatile sig_atomic_t pendingsig_waitcmd;
 
 void clear_traps(void);
 int have_traps(void);

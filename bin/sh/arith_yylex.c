@@ -30,9 +30,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: head/bin/sh/arith_yylex.c 230530 2012-01-25 08:42:19Z charnier $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <inttypes.h>
 #include <stdlib.h>
@@ -48,8 +49,6 @@
 #if ARITH_BOR + 11 != ARITH_BORASS || ARITH_ASS + 11 != ARITH_EQ
 #error Arithmetic tokens are out of order.
 #endif
-
-extern const char *arith_buf;
 
 int
 yylex(void)
@@ -217,9 +216,13 @@ checkeqcur:
 			value += ARITH_REM - '%';
 			goto checkeq;
 		case '+':
+			if (buf[1] == '+')
+				return ARITH_BAD;
 			value += ARITH_ADD - '+';
 			goto checkeq;
 		case '-':
+			if (buf[1] == '-')
+				return ARITH_BAD;
 			value += ARITH_SUB - '-';
 			goto checkeq;
 		case '~':
