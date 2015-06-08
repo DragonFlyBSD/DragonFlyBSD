@@ -279,8 +279,6 @@ madt_lapic_pass2_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
 	if (lapic_ent->LapicFlags & ACPI_MADT_ENABLED) {
 		int cpu;
 
-		MADT_VPRINTF("cpu id %d, apic id %d\n",
-			     lapic_ent->ProcessorId, lapic_ent->Id);
 		if (lapic_ent->Id == arg->bsp_apic_id) {
 			cpu = 0;
 			arg->bsp_found = 1;
@@ -288,6 +286,8 @@ madt_lapic_pass2_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
 			cpu = arg->cpu;
 			arg->cpu++;
 		}
+		MADT_VPRINTF("cpu id %d, acpi id %d, apic id %d\n",
+		    cpu, lapic_ent->ProcessorId, lapic_ent->Id);
 		lapic_set_cpuid(cpu, lapic_ent->Id);
 		CPUID_TO_ACPIID(cpu) = lapic_ent->ProcessorId;
 	}
