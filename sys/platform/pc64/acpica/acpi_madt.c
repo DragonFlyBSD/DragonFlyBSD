@@ -41,6 +41,7 @@
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/apicvar.h>
+#include <machine_base/acpica/acpi_md_cpu.h>
 
 #include <contrib/dev/acpica/source/include/acpi.h>
 
@@ -76,10 +77,16 @@ static int			madt_ioapic_probe(struct ioapic_enumerator *);
 
 static vm_paddr_t		madt_phyaddr;
 
+u_int				cpu_id_to_acpi_id[NAPICID];
+
 static void
 madt_probe(void)
 {
 	vm_paddr_t madt_paddr;
+	int i;
+
+	for (i = 0; i < NAPICID; ++i)
+		CPUID_TO_ACPIID(i) = (u_int)-1;
 
 	KKASSERT(madt_phyaddr == 0);
 
@@ -270,15 +277,19 @@ madt_lapic_pass2_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
 
 	lapic_ent = (const ACPI_MADT_LOCAL_APIC *)ent;
 	if (lapic_ent->LapicFlags & ACPI_MADT_ENABLED) {
+		int cpu;
+
 		MADT_VPRINTF("cpu id %d, apic id %d\n",
 			     lapic_ent->ProcessorId, lapic_ent->Id);
 		if (lapic_ent->Id == arg->bsp_apic_id) {
-			lapic_set_cpuid(0, lapic_ent->Id);
+			cpu = 0;
 			arg->bsp_found = 1;
 		} else {
-			lapic_set_cpuid(arg->cpu, lapic_ent->Id);
+			cpu = arg->cpu;
 			arg->cpu++;
 		}
+		lapic_set_cpuid(cpu, lapic_ent->Id);
+		CPUID_TO_ACPIID(cpu) = lapic_ent->ProcessorId;
 	}
 	return 0;
 }

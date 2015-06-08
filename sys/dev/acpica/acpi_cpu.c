@@ -284,15 +284,21 @@ acpi_cpu_get_id(uint32_t idx, uint32_t *acpi_id, uint32_t *cpu_id)
 	KASSERT(md != NULL, ("no pcpu data for %d", i));
 	if (idx-- == 0) {
 	    /*
-	     * If pc_acpi_id was not initialized (e.g., a non-APIC UP box)
+	     * If gd_acpi_id was not initialized (e.g., box w/o MADT)
 	     * override it with the value from the ASL.  Otherwise, if the
 	     * two don't match, prefer the MADT-derived value.  Finally,
-	     * return the pc_cpuid to reference this processor.
+	     * return the gd_cpuid to reference this processor.
 	     */
-	    if (md->gd_acpi_id == 0xffffffff)
+	    if (md->gd_acpi_id == 0xffffffff) {
+		kprintf("cpu%d: acpi id was not set, set it to %u\n",
+		    i, *acpi_id);
 		md->gd_acpi_id = *acpi_id;
-	    else if (md->gd_acpi_id != *acpi_id)
+	    } else if (md->gd_acpi_id != *acpi_id) {
+		kprintf("cpu%d: acpi id mismatch, madt %u, "
+		    "processor object %u\n",
+		    i, md->gd_acpi_id, *acpi_id);
 		*acpi_id = md->gd_acpi_id;
+	    }
 	    *cpu_id = md->mi.gd_cpuid;
 	    return 0;
 	}
