@@ -1,0 +1,4 @@
+# $FreeBSD: head/tools/tools/drm/radeon/README 254885 2013-08-25 19:37:15Z dumbbell $
+
+firmwares	Tools to handle Radeon firmwares imported into the tree.
+mkregtable	Generate headers used to build the Radeon driver.
