@@ -1,5 +1,3 @@
-/* $FreeBSD: head/sys/dev/drm2/radeon/r600_reg_safe.h 254885 2013-08-25 19:37:15Z dumbbell $ */
-
 static const unsigned r600_reg_safe_bm[1952] = {
 	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
 	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
