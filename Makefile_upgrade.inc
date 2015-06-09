@@ -2111,6 +2111,7 @@ TO_REMOVE+=/usr/share/man/man5/texinfo.5.gz
 TO_REMOVE+=/usr/share/mk/bsd.info.mk
 TO_REMOVE+=/usr/share/man/en.ISO8859-15
 TO_REMOVE+=/usr/share/zoneinfo/America/Montreal
+TO_REMOVE+=/usr/include/gnu/vfs/ext2fs/ext2mount.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
