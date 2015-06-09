@@ -10,4 +10,8 @@ SUBDIR:= ${SUBDIR:N${dir}}
 .endif
 .endfor
 
+# Empty for concurrent build
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

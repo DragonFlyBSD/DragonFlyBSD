@@ -36,4 +36,8 @@ SUBDIR+=	mppc
 SUBDIR+=	sync_ar sync_sr
 .endif
 
+# empty to allow concurrent building
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

@@ -119,4 +119,8 @@ acpi_wakecode.h: acpi_wakecode.S
 SUBDIR=	acpi_asus acpi_dock acpi_fujitsu acpi_hp acpi_panasonic acpi_sony
 SUBDIR+=acpi_thinkpad acpi_toshiba acpi_video acpi_wmi aibs
 
+# Empty for concurrent build
+#
+SUBDIR_ORDERED=
+
 .include <bsd.kmod.mk>

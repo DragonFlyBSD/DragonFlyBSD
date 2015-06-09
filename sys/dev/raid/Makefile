@@ -5,4 +5,8 @@ SUBDIR=	aac amr arcmsr asr ciss hpt27xx hptiop hptmv hptrr \
 SUBDIR+=pst
 .endif
 
+# Empty for concurrent build
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

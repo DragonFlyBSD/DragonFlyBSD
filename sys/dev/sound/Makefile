@@ -1,7 +1,12 @@
-# $FreeBSD: head/sys/modules/sound/Makefile 132236 2004-07-16 04:00:08Z tanimura $
+# Makefile
+#
 
 SUBDIR =
 SUBDIR += sound
 SUBDIR += driver
+
+# empty to allow concurrent building
+#
+SUBDIR_ORDERED=
 
 .include <bsd.subdir.mk>
