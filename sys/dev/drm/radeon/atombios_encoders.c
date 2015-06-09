@@ -275,9 +275,79 @@ static void radeon_atom_backlight_exit(struct radeon_encoder *radeon_encoder)
 
 #else /* !CONFIG_BACKLIGHT_CLASS_DEVICE */
 
+/*
+ * Read max backlight level
+ */
+static int
+sysctl_backlight_max(SYSCTL_HANDLER_ARGS)
+{
+	int err, val;
+
+	val = RADEON_MAX_BL_LEVEL;
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	return(err);
+}
+
+/*
+ * Read/write backlight level
+ */
+static int
+sysctl_backlight_handler(SYSCTL_HANDLER_ARGS)
+{
+	struct radeon_encoder *encoder;
+	struct radeon_encoder_atom_dig *dig;
+	int err, val;
+
+	encoder = (struct radeon_encoder *)arg1;
+	dig = encoder->enc_priv;
+	val = dig->backlight_level;
+
+	err = sysctl_handle_int(oidp, &val, 0, req);
+	if (err != 0 || req->newptr == NULL) {
+		return(err);
+	}
+	if (dig->backlight_level != val && val >= 0 &&
+	    val <= RADEON_MAX_BL_LEVEL) {
+		atombios_set_backlight_level(encoder, val);
+	}
+
+	return(err);
+}
+
 void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
 				struct drm_connector *drm_connector)
 {
+	struct drm_device *dev = radeon_encoder->base.dev;
+	struct radeon_device *rdev = dev->dev_private;
+	struct radeon_encoder_atom_dig *dig;
+
+	if (!radeon_encoder->enc_priv)
+		return;
+
+	if (!rdev->is_atom_bios)
+		return;
+
+	if (!(rdev->mode_info.firmware_flags & ATOM_BIOS_INFO_BL_CONTROLLED_BY_GPU))
+		return;
+
+	dig = radeon_encoder->enc_priv;
+	dig->backlight_level = radeon_atom_get_backlight_level_from_reg(rdev);
+
+	DRM_INFO("radeon atom DIG backlight initialized\n");
+
+	SYSCTL_ADD_PROC(&drm_connector->dev->sysctl->ctx, &sysctl__hw_children,
+			OID_AUTO, "backlight_max",
+			CTLTYPE_INT | CTLFLAG_RD | CTLFLAG_ANYBODY,
+			radeon_encoder, sizeof(int),
+			sysctl_backlight_max,
+			"I", "Max backlight level");
+	SYSCTL_ADD_PROC(&drm_connector->dev->sysctl->ctx, &sysctl__hw_children,
+			OID_AUTO, "backlight_level",
+			CTLTYPE_INT | CTLFLAG_RW | CTLFLAG_ANYBODY,
+			radeon_encoder, sizeof(int),
+			sysctl_backlight_handler,
+			"I", "Backlight level");
+	return;
 }
 
 static void radeon_atom_backlight_exit(struct radeon_encoder *encoder)
