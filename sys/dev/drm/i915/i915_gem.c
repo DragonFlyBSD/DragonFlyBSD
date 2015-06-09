@@ -1360,7 +1360,11 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
-	addr = 0;
+	/*
+	 * Call hint to ensure that NULL is not returned as a valid address
+	 * and to reduce vm_map traversals.
+	 */
+	addr = vm_map_hint(p, 0, PROT_READ|PROT_WRITE);
 	vm_object_hold(obj->vm_obj);
 	vm_object_reference_locked(obj->vm_obj);
 	vm_object_drop(obj->vm_obj);
