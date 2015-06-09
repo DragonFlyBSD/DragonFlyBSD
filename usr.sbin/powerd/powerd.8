@@ -60,6 +60,20 @@ This effects how quickly powerd ratchets down the frequency
 and cpus on an idle machine.  Longer times will ratchet down
 more slowly.
 For example, a workstation might want to use a value of 30.0.
+.It Fl B Ar minimum_battery_life
+If battery life is less than or equal to the specified value,
+the machine will be powered off immediately.
+Default is 2 (2% battery life left).
+.It Fl L Ar battery_life_linger
+If battery life is less than or equal to the configured value,
+and
+.Nm
+just started,
+shutting down the machine will be delayed by the specified value.
+Default is 60 seconds.
+.It Fl P Ar battery_poll_interval
+Poll the battery life at the specified interval.
+Default is 5 seconds.
 .El
 .Sh EXAMPLES
 The defaults work well for servers but a workstation user might want

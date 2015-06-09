@@ -42,6 +42,7 @@
 #include <sys/sysctl.h>
 #include <sys/kinfo.h>
 #include <sys/file.h>
+#include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -52,6 +53,8 @@ static void usage(void);
 static double getcputime(void);
 static void acpi_setcpufreq(int nstate);
 static void setupdominfo(void);
+static int has_battery(void);
+static int mon_battery(void);
 
 int DebugOpt;
 int TurboOpt = 1;
@@ -66,6 +69,11 @@ int CpuToDom[256];	/* domain a particular cpu belongs to */
 int Hysteresis = 10;	/* percentage */
 double TriggerUp = 0.25;/* single-cpu load to force max freq */
 double TriggerDown; /* load per cpu to force the min freq */
+static int BatLifeMin = 2; /* shutdown the box, if low on battery life */
+static struct timespec BatLifePrevT;
+static struct timespec BatLifeStartT;
+static int BatLifeLinger = 60; /* unit: sec */
+static int BatLifePollIntvl = 5; /* unit: sec */
 
 static void sigintr(int signo);
 
@@ -82,11 +90,12 @@ main(int ac, char **av)
 	int dstate;
 	int nstate;
 	char buf[64];
+	int monbat;
 
 	srt = 8.0;	/* time for samples - 8 seconds */
 	pollrate = 1.0;	/* polling rate in seconds */
 
-	while ((ch = getopt(ac, av, "dp:r:tu:T:")) != -1) {
+	while ((ch = getopt(ac, av, "dp:r:tu:B:L:P:T:")) != -1) {
 		switch(ch) {
 		case 'd':
 			DebugOpt = 1;
@@ -94,14 +103,23 @@ main(int ac, char **av)
 		case 'p':
 			Hysteresis = (int)strtol(optarg, NULL, 10);
 			break;
+		case 'r':
+			pollrate = strtod(optarg, NULL);
+			break;
 		case 't':
 			TurboOpt = 0;
 			break;
 		case 'u':
 			TriggerUp = (double)strtol(optarg, NULL, 10) / 100;
 			break;
-		case 'r':
-			pollrate = strtod(optarg, NULL);
+		case 'B':
+			BatLifeMin = strtol(optarg, NULL, 10);
+			break;
+		case 'L':
+			BatLifeLinger = strtol(optarg, NULL, 10);
+			break;
+		case 'P':
+			BatLifePollIntvl = strtol(optarg, NULL, 10);
 			break;
 		case 'T':
 			srt = strtod(optarg, NULL);
@@ -154,6 +172,9 @@ main(int ac, char **av)
 		snprintf(buf, sizeof(buf), "%d\n", (int)getpid());
 		write(PowerFd, buf, strlen(buf));
 	}
+
+	/* Do we need to monitor battery life? */
+	monbat = has_battery();
 
 	/*
 	 * Wait hw.acpi.cpu.px_dom* sysctl to be created by kernel
@@ -229,6 +250,8 @@ main(int ac, char **av)
 		}
 		if (nstate != CpuLimit)
 			acpi_setcpufreq(nstate);
+		if (monbat)
+			monbat = mon_battery();
 		usleep((int)(pollrate * 1000000.0));
 	}
 }
@@ -446,6 +469,116 @@ static
 void
 usage(void)
 {
-	fprintf(stderr, "usage: powerd [-dt] [-p hysteresis] [-u trigger_up]\n");
+	fprintf(stderr, "usage: powerd [-dt] [-p hysteresis] "
+	    "[-u trigger_up] [-T sample_interval] "
+	    "[-B min_battery_life] [-L low_battery_linger] "
+	    "[-P battery_poll_interval]\n");
 	exit(1);
+}
+
+#ifndef timespecsub
+#define timespecsub(vvp, uvp)						\
+	do {								\
+		(vvp)->tv_sec -= (uvp)->tv_sec;				\
+		(vvp)->tv_nsec -= (uvp)->tv_nsec;			\
+		if ((vvp)->tv_nsec < 0) {				\
+			(vvp)->tv_sec--;				\
+			(vvp)->tv_nsec += 1000000000;			\
+		}							\
+	} while (0)
+#endif
+
+#define BAT_SYSCTL_TIME_MAX	50000000 /* unit: nanosecond */
+
+static int
+has_battery(void)
+{
+	struct timespec s, e;
+	size_t len;
+	int val;
+
+	clock_gettime(CLOCK_MONOTONIC_FAST, &s);
+	BatLifePrevT = s;
+	BatLifeStartT = s;
+
+	len = sizeof(val);
+	if (sysctlbyname("hw.acpi.acline", &val, &len, NULL, 0) < 0) {
+		/* No AC line information */
+		return 0;
+	}
+	clock_gettime(CLOCK_MONOTONIC_FAST, &e);
+
+	timespecsub(&e, &s);
+	if (e.tv_sec > 0 || e.tv_nsec > BAT_SYSCTL_TIME_MAX) {
+		/* hw.acpi.acline takes to long to be useful */
+		syslog(LOG_NOTICE, "hw.acpi.acline takes too long");
+		return 0;
+	}
+
+	clock_gettime(CLOCK_MONOTONIC_FAST, &s);
+	len = sizeof(val);
+	if (sysctlbyname("hw.acpi.battery.life", &val, &len, NULL, 0) < 0) {
+		/* No battery life */
+		return 0;
+	}
+	clock_gettime(CLOCK_MONOTONIC_FAST, &e);
+
+	timespecsub(&e, &s);
+	if (e.tv_sec > 0 || e.tv_nsec > BAT_SYSCTL_TIME_MAX) {
+		/* hw.acpi.battery.life takes to long to be useful */
+		syslog(LOG_NOTICE, "hw.acpi.battery.life takes too long");
+		return 0;
+	}
+	return 1;
+}
+
+static int
+mon_battery(void)
+{
+	struct timespec cur, ts;
+	int acline, life;
+	size_t len;
+
+	clock_gettime(CLOCK_MONOTONIC_FAST, &cur);
+	ts = cur;
+	timespecsub(&ts, &BatLifePrevT);
+	if (ts.tv_sec < BatLifePollIntvl)
+		return 1;
+	BatLifePrevT = cur;
+
+	len = sizeof(acline);
+	if (sysctlbyname("hw.acpi.acline", &acline, &len, NULL, 0) < 0)
+		return 1;
+	if (acline)
+		return 1;
+
+	len = sizeof(life);
+	if (sysctlbyname("hw.acpi.battery.life", &life, &len, NULL, 0) < 0)
+		return 1;
+
+	if (BatLifeLinger > 0) {
+		ts = cur;
+		timespecsub(&ts, &BatLifeStartT);
+		if (ts.tv_sec > BatLifeLinger)
+			BatLifeLinger = 0;
+	}
+
+	if (life <= BatLifeMin) {
+		if (BatLifeLinger <= 0) {
+			syslog(LOG_ALERT, "low battery life %d%%, "
+			    "shutting down", life);
+			if (vfork() == 0)
+				execlp("poweroff", "poweroff", NULL);
+			return 0;
+		} else {
+			static int logged;
+
+			if (!logged) {
+				logged = 1;
+				syslog(LOG_ALERT, "low battery life %d%%, "
+				    "please plugin AC line", life);
+			}
+		}
+	}
+	return 1;
 }
