@@ -1,0 +1,115 @@
+.\"
+.\" Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd June 9, 2015
+.Dt RADEONKMS 4
+.Os
+.Sh NAME
+.Nm radeonkms
+.Nd Driver for AMD/ATI Radeon graphics chipsets
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for the AMD Radeon graphics chips.
+.Sh LOADER TUNABLES
+Tunables can be set at the
+.Xr loader 8
+prompt before booting the kernel or stored in
+.Xr loader.conf 5 .
+.Bl -tag -width "xxxxxx"
+.It Va drm.radeon.no_wb
+Disables AGP writeback for scratch registers.
+.It Va drm.radeon.dynclks
+Enable/Disable dynamic clocks
+.\".It Va drm.radeon.r4xx_atom
+.\"XXX
+.\".It Va drm.radeon.vram_limit
+.\"XXX
+.\".It Va drm.radeon.agpmode
+.\"XXX
+.\".It Va drm.radeon.gart_size
+.\"XXX
+.\".It Va drm.radeon.benchmarking
+.\"XXX
+.\".It Va drm.radeon.testing
+.\"XXX
+.\".It Va drm.radeon.connector_table
+.\"XXX
+.\".It Va drm.radeon.tv
+.\"XXX
+.\".It Va drm.radeon.audio
+.\"XXX
+.\".It Va drm.radeon.disp_priority
+.\"XXX
+.\".It Va drm.radeon.hw_i2c
+.\"XXX
+.\".It Va drm.radeon.pcie_gen2
+.\"XXX
+.It Va drm.radeon.msi
+Enable/Disable MSI (message signaled interrupts)
+1 = enable, 0 = disable, -1 = auto (default)
+.\".It Va drm.radeon.lockup_timeout
+.\"XXX
+.It Va drm.radeon.fastfb
+Direct FB access for IGP chips, which can significantly improve performance
+for some applications.
+This option only affects the RS690, RS780 and RS880 chipsets, and only
+when no sideport memory is available.
+1 = enable, 0 = disable (default)
+.It Va drm.radeon.dpm
+DPM (dynamic power management) support.
+1 = enable, 0 = disable, -1 = auto (default)
+.\".It Va drm.radeon.aspm
+.\"XXX
+.El
+.Sh SYSCTL VARIABLES
+If display backlight level can be controlled by the GPU (which is often
+the case in notebooks), the sysctl
+.Va hw.backlight_level
+can be used to adjust the backlight level.
+Permitted values are from 0 to the value returned from the
+.Va hw.backlight_max
+sysctl.
+.Sh SEE ALSO
+.Xr drm 4 ,
+.Xr syscons 4
+.Sh HISTORY
+The
+.Nm
+driver was first available for Linux.
+.Sh BUGS
+Enabling
+.Va drm.radeon.fastfb
+on RS690 chipsets can cause graphics corruption when hardware acceleration
+is used.
+Display backlight control with the
+.Va hw.backlight_level
+sysctl is only supported for chipsets using AtomBIOS (which includes some
+R400 chipsets and all later generations).

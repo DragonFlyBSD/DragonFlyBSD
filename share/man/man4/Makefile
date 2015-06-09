@@ -110,6 +110,7 @@ MAN=	aac.4 \
 	hptiop.4 \
 	hptmv.4 \
 	hptrr.4 \
+	i915kms.4 \
 	ichiic.4 \
 	ichsmb.4 \
 	ichwd.4 \
@@ -248,6 +249,7 @@ MAN=	aac.4 \
 	pty.4 \
 	puc.4 \
 	puffs.4 \
+	radeonkms.4 \
 	ral.4 \
 	random.4 \
 	rdrand.4 \
@@ -426,9 +428,6 @@ MLINKS+=cue.4 if_cue.4
 MLINKS+=dc.4 if_dc.4
 MLINKS+=disc.4 if_disc.4
 MLINKS+=dm.4 dm_target_linear.4
-MLINKS+=drm.4 i915kms.4 \
-	drm.4 radeondrm.4 \
-	drm.4 radeon.4
 MLINKS+=dsched.4 dsched_fq.4
 MLINKS+=em.4 emx.4 \
 	em.4 if_em.4 \
@@ -442,6 +441,8 @@ MLINKS+=fwe.4 if_fwe.4
 MLINKS+=fxp.4 if_fxp.4
 MLINKS+=gif.4 if_gif.4
 MLINKS+=gre.4 if_gre.4
+MLINKS+=i915kms.4 i915.4 \
+	i915kms.4 i915drm.4
 MLINKS+=ichiic.4 ig4.4
 MLINKS+=igb.4 if_igb.4
 MLINKS+=iicbus.4 ic.4 \
@@ -479,6 +480,8 @@ MLINKS+=pccbb.4 cbb.4
 MLINKS+=pcm.4 sound.4
 MLINKS+=pcn.4 if_pcn.4
 MLINKS+=ppp.4 if_ppp.4
+MLINKS+=radeonkms.4 radeon.4 \
+	radeonkms.4 radeondrm.4
 MLINKS+=ral.4 if_ral.4
 MLINKS+=random.4 urandom.4
 MLINKS+=re.4 if_re.4
