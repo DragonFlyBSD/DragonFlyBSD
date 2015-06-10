@@ -50,7 +50,7 @@
 #include <syslog.h>
 
 static void usage(void);
-static double getcputime(void);
+static double getcputime(double);
 static void acpi_setcpufreq(int nstate);
 static void setupdominfo(void);
 static int has_battery(void);
@@ -190,7 +190,7 @@ main(int ac, char **av)
 		 * Prime delta cputime calculation, make sure at least
 		 * dom0 exists.
 		 */
-		getcputime();
+		getcputime(pollrate);
 
 		setupdominfo();
 		if (DomBeg >= DomEnd) {
@@ -224,7 +224,7 @@ main(int ac, char **av)
 	 * frequency and mapped out of the user process scheduler.
 	 */
 	for (;;) {
-		qavg = getcputime();
+		qavg = getcputime(pollrate);
 		uavg = (uavg * 2.0 + qavg) / 3.0;	/* speeding up */
 		davg = (davg * srt + qavg) / (srt + 1);	/* slowing down */
 		if (davg < uavg)
@@ -324,7 +324,7 @@ setupdominfo(void)
  */
 static
 double
-getcputime(void)
+getcputime(double pollrate)
 {
 	static struct kinfo_cputime ocpu_time[64];
 	static struct kinfo_cputime ncpu_time[64];
@@ -348,7 +348,7 @@ getcputime(void)
 			 (ocpu_time[cpu].cp_user + ocpu_time[cpu].cp_sys +
 			  ocpu_time[cpu].cp_nice + ocpu_time[cpu].cp_intr);
 	}
-	return((double)delta / 1000000.0);
+	return((double)delta / (pollrate * 1000000.0));
 }
 
 /*
