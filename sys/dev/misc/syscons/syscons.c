@@ -5,6 +5,8 @@
  * This code is derived from software contributed to The DragonFly Project
  * by Sascha Wildner <saw@online.de>
  *
+ * Simple font scaling code by Sascha Wildner and Matthew Dillon
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -881,7 +883,7 @@ scioctl(struct dev_ioctl_args *ap)
 	vid_info_t *ptr = (vid_info_t*)data;
 	if (ptr->size == sizeof(struct vid_info)) {
 	    ptr->m_num = sc->cur_scp->index;
-	    ptr->font_size = scp->font_size;
+	    ptr->font_size = scp->font_height;
 	    ptr->mv_col = scp->xpos;
 	    ptr->mv_row = scp->ypos;
 	    ptr->mv_csz = scp->xsize;
@@ -1441,7 +1443,7 @@ scioctl(struct dev_ioctl_args *ap)
 	 * Always use the font page #0. XXX
 	 * Don't load if the current font size is not 8x8.
 	 */
-	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_size < 14))
+	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_height < 14))
 	    sc_load_font(sc->cur_scp, 0, 8, sc->font_8, 0, 256);
 	syscons_unlock();
 	lwkt_reltoken(&tty_token);
@@ -1476,8 +1478,8 @@ scioctl(struct dev_ioctl_args *ap)
 	 * Don't load if the current font size is not 8x14.
 	 */
 	if (ISTEXTSC(sc->cur_scp)
-	    && (sc->cur_scp->font_size >= 14)
-	    && (sc->cur_scp->font_size < 16)) {
+	    && (sc->cur_scp->font_height >= 14)
+	    && (sc->cur_scp->font_height < 16)) {
 	    sc_load_font(sc->cur_scp, 0, 14, sc->font_14, 0, 256);
 	}
 	syscons_unlock();
@@ -1512,7 +1514,7 @@ scioctl(struct dev_ioctl_args *ap)
 	 * Always use the font page #0. XXX
 	 * Don't load if the current font size is not 8x16.
 	 */
-	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_size >= 16))
+	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_height >= 16))
 	    sc_load_font(sc->cur_scp, 0, 16, sc->font_16, 0, 256);
 	syscons_unlock();
 	lwkt_reltoken(&tty_token);
@@ -2741,10 +2743,10 @@ update_cursor_image(scr_stat *scp)
 
     if (scp->sc->flags & SC_CHAR_CURSOR) {
 	scp->cursor_base = imax(0, scp->sc->cursor_base);
-	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_size);
+	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_height);
     } else {
 	scp->cursor_base = 0;
-	scp->cursor_height = scp->font_size;
+	scp->cursor_height = scp->font_height;
     }
     blink = scp->sc->flags & SC_BLINK_CURSOR;
 
@@ -2763,10 +2765,10 @@ sc_set_cursor_image(scr_stat *scp)
 {
     if (scp->sc->flags & SC_CHAR_CURSOR) {
 	scp->cursor_base = imax(0, scp->sc->cursor_base);
-	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_size);
+	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_height);
     } else {
 	scp->cursor_base = 0;
-	scp->cursor_height = scp->font_size;
+	scp->cursor_height = scp->font_height;
     }
 
     /* assert(scp == scp->sc->cur_scp); */
@@ -2903,12 +2905,12 @@ scinit(int unit, int flags)
 	scp->xpos = col;
 	scp->ypos = row;
 	scp->cursor_pos = scp->cursor_oldpos = row*scp->xsize + col;
-	if (bios_value.cursor_end < scp->font_size)
-	    sc->cursor_base = scp->font_size - bios_value.cursor_end - 1;
+	if (bios_value.cursor_end < scp->font_height)
+	    sc->cursor_base = scp->font_height - bios_value.cursor_end - 1;
 	else
 	    sc->cursor_base = 0;
 	i = bios_value.cursor_end - bios_value.cursor_start + 1;
-	sc->cursor_height = imin(i, scp->font_size);
+	sc->cursor_height = imin(i, scp->font_height);
 #ifndef SC_NO_SYSMOUSE
 	sc_mouse_move(scp, scp->xpixel/2, scp->ypixel/2);
 #endif
@@ -2926,18 +2928,18 @@ scinit(int unit, int flags)
 	    bcopy(dflt_font_14, sc->font_14, sizeof(dflt_font_14));
 	    bcopy(dflt_font_16, sc->font_16, sizeof(dflt_font_16));
 	    sc->fonts_loaded = FONT_16 | FONT_14 | FONT_8;
-	    if (scp->font_size < 14) {
+	    if (scp->font_height < 14) {
 		sc_load_font(scp, 0, 8, sc->font_8, 0, 256);
-	    } else if (scp->font_size >= 16) {
+	    } else if (scp->font_height >= 16) {
 		sc_load_font(scp, 0, 16, sc->font_16, 0, 256);
 	    } else {
 		sc_load_font(scp, 0, 14, sc->font_14, 0, 256);
 	    }
 #else /* !SC_DFLT_FONT */
-	    if (scp->font_size < 14) {
+	    if (scp->font_height < 14) {
 		sc_save_font(scp, 0, 8, sc->font_8, 0, 256);
 		sc->fonts_loaded = FONT_8;
-	    } else if (scp->font_size >= 16) {
+	    } else if (scp->font_height >= 16) {
 		sc_save_font(scp, 0, 16, sc->font_16, 0, 256);
 		sc->fonts_loaded = FONT_16;
 	    } else {
@@ -3142,6 +3144,7 @@ static void
 init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 {
     video_info_t info;
+    int scaled_font_height;
 
     bzero(scp, sizeof(*scp));
 
@@ -3159,29 +3162,31 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 	scp->ypixel = info.vi_height;
 	scp->xsize = info.vi_width/8;
 	scp->ysize = info.vi_height/info.vi_cheight;
-	scp->font_size = 0;
+	scp->font_height = 0;
+	scp->font_width = 0;
 	scp->font = NULL;
     } else {
 	scp->xsize = info.vi_width;
 	scp->ysize = info.vi_height;
 	scp->xpixel = scp->xsize*8;
 	scp->ypixel = scp->ysize*info.vi_cheight;
+	scp->font_width = 8;
 	if (info.vi_cheight < 14) {
-	    scp->font_size = 8;
+	    scp->font_height = 8;
 #ifndef SC_NO_FONT_LOADING
 	    scp->font = sc->font_8;
 #else
 	    scp->font = NULL;
 #endif
 	} else if (info.vi_cheight >= 16) {
-	    scp->font_size = 16;
+	    scp->font_height = 16;
 #ifndef SC_NO_FONT_LOADING
 	    scp->font = sc->font_16;
 #else
 	    scp->font = NULL;
 #endif
 	} else {
-	    scp->font_size = 14;
+	    scp->font_height = 14;
 #ifndef SC_NO_FONT_LOADING
 	    scp->font = sc->font_14;
 #else
@@ -3195,8 +3200,14 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     if (scp->fbi != NULL) {
 	scp->xpixel = scp->fbi->width;
 	scp->ypixel = scp->fbi->height;
-	scp->xsize = scp->xpixel / 8;
-	scp->ysize = scp->ypixel / scp->font_size;
+
+	scp->blk_width = scp->xpixel / 80;
+	scaled_font_height = scp->blk_width * 100 / scp->font_width;
+	scp->blk_height = scp->ypixel * 100 / scaled_font_height;
+
+	scp->xsize = scp->xpixel / scp->blk_width;
+	scp->ysize = scp->ypixel / scp->blk_height;
+	scp->xpad = scp->fbi->stride / 4 - scp->xsize * scp->blk_width;
     }
     sc_vtb_init(&scp->vtb, VTB_MEMORY, 0, 0, NULL, FALSE);
     sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, 0, 0, NULL, FALSE);
@@ -3207,8 +3218,8 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     scp->rndr = NULL;
     scp->border = BG_BLACK;
     scp->cursor_base = sc->cursor_base;
-    scp->cursor_height = imin(sc->cursor_height, scp->font_size);
-    scp->mouse_cut_start = scp->xsize*scp->ysize;
+    scp->cursor_height = imin(sc->cursor_height, scp->font_height);
+    scp->mouse_cut_start = scp->xsize * scp->ysize;
     scp->mouse_cut_end = -1;
     scp->mouse_signal = 0;
     scp->mouse_pid = 0;
@@ -3701,10 +3712,10 @@ set_mode(scr_stat *scp)
     /* load appropriate font */
     if (!(scp->status & GRAPHICS_MODE)) {
 	if (!(scp->status & PIXEL_MODE) && ISFONTAVAIL(scp->sc->adp->va_flags)) {
-	    if (scp->font_size < 14) {
+	    if (scp->font_height < 14) {
 		if (scp->sc->fonts_loaded & FONT_8)
 		    sc_load_font(scp, 0, 8, scp->sc->font_8, 0, 256);
-	    } else if (scp->font_size >= 16) {
+	    } else if (scp->font_height >= 16) {
 		if (scp->sc->fonts_loaded & FONT_16)
 		    sc_load_font(scp, 0, 16, scp->sc->font_16, 0, 256);
 	    } else {

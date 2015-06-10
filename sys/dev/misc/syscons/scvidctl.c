@@ -5,7 +5,9 @@
  * All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Sascha Wildner <saw@online.de>
+ * by Sascha Wildner <saw@online.de>.
+ *
+ * Simple font scaling code by Sascha Wildner and Matthew Dillon
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,6 +50,9 @@
 #include "syscons.h"
 
 SET_DECLARE(scrndr_set, const sc_renderer_t);
+
+static int desired_cols = 0;
+TUNABLE_INT("kern.kms_columns", &desired_cols);
 
 int
 sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
@@ -144,7 +149,8 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
     scp->xpixel = scp->xsize*8;
     scp->ypixel = scp->ysize*fontsize;
     scp->font = font;
-    scp->font_size = fontsize;
+    scp->font_height = fontsize;
+    scp->font_width = 8;
 
     /* allocate buffers */
     sc_alloc_scr_buffer(scp, TRUE, TRUE);
@@ -223,7 +229,8 @@ sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode)
     scp->xpixel = info.vi_width;
     scp->ypixel = info.vi_height;
     scp->font = NULL;
-    scp->font_size = 0;
+    scp->font_height = 0;
+    scp->font_width = 0;
 #ifndef SC_NO_SYSMOUSE
     /* move the mouse cursor at the center of the screen */
     sc_mouse_move(scp, scp->xpixel / 2, scp->ypixel / 2);
@@ -375,7 +382,8 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
     scp->xoff = (scp->xpixel/8 - xsize)/2;
     scp->yoff = (scp->ypixel/fontsize - ysize)/2;
     scp->font = font;
-    scp->font_size = fontsize;
+    scp->font_height = fontsize;
+    scp->font_width = 8;
 
     /* allocate buffers */
     sc_alloc_scr_buffer(scp, TRUE, TRUE);
@@ -623,7 +631,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    if (scp->status & GRAPHICS_MODE) {
 	        lwkt_reltoken(&tty_token);
 		return sc_set_pixel_mode(scp, tp, scp->xsize, scp->ysize, 
-					 scp->font_size);
+					 scp->font_height);
 	    }
 	    crit_enter();
 	    if ((error = sc_clean_up(scp))) {
@@ -796,9 +804,40 @@ sc_update_render(scr_stat *scp)
 		scp->model = V_INFO_MM_TEXT;
 		scp->xpixel = scp->fbi->width;
 		scp->ypixel = scp->fbi->height;
-		scp->xsize = scp->xpixel / 8;
-		scp->ysize = scp->ypixel / scp->font_size;
-		scp->xpad = scp->fbi->stride / 4 - scp->xsize * 8;
+
+		/*
+		 * Assume square pixels for now
+		 */
+		kprintf("kms console: xpixels %d ypixels %d\n",
+			scp->xpixel, scp->ypixel);
+
+		/*
+		 * If columns not specified in /boot/loader.conf then
+		 * calculate a non-fractional scaling that yields a
+		 * reasonable number of rows and columns.
+		 */
+		if (desired_cols == 0) {
+			int nomag = 1;
+			while (scp->xpixel / (scp->font_width * nomag) >= 80 &&
+			       scp->ypixel / (scp->font_height * nomag) >= 25) {
+				++nomag;
+			}
+			if (nomag > 1)
+				--nomag;
+			desired_cols = scp->xpixel / (scp->font_width * nomag);
+		}
+		scp->blk_width = scp->xpixel / desired_cols;
+		scp->blk_height = scp->blk_width * scp->font_height /
+				  scp->font_width;
+
+		/* scp->xsize = scp->xpixel / scp->blk_width; total possible */
+		scp->xsize = desired_cols;
+		scp->ysize = scp->ypixel / scp->blk_height;
+		scp->xpad = scp->fbi->stride / 4 - scp->xsize * scp->blk_width;
+
+		kprintf("kms console: scale-to %dx%d cols=%d rows=%d\n",
+			scp->blk_width, scp->blk_height,
+			scp->xsize, scp->ysize);
 
 		/* allocate buffers */
 		sc_alloc_scr_buffer(scp, TRUE, TRUE);

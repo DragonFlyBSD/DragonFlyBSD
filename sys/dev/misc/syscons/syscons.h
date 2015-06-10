@@ -112,9 +112,10 @@ MALLOC_DECLARE(M_SYSCONS);
 #define	VIDEO_MEMORY_POS(scp, pos, x) 					\
 	((scp)->sc->adp->va_window +					\
 	 (x) * (scp)->xoff +						\
-	 (scp)->yoff * (scp)->font_size * (scp)->sc->adp->va_line_width +\
+	 (scp)->yoff * (scp)->font_height * (scp)->sc->adp->va_line_width +\
 	 (x) * ((pos) % (scp)->xsize) +					\
-	 (scp)->font_size * (scp)->sc->adp->va_line_width * (pos / (scp)->xsize))
+	 (scp)->font_height * (scp)->sc->adp->va_line_width *		\
+	 (pos / (scp)->xsize))
 #endif
 
 /* vty status flags (scp->status) */
@@ -262,12 +263,15 @@ typedef struct scr_stat {
 	int 		ysize;			/* Y text size */
 	int 		xpixel;			/* X graphics size */
 	int 		ypixel;			/* Y graphics size */
-	int		xpad;			/* for fbi->stride % 8 != 0 */
+	int		xpad;		/* for fbi->stride % font_width != 0 */
 	int		xoff;			/* X offset in pixel mode */
 	int		yoff;			/* Y offset in pixel mode */
 
 	u_char		*font;			/* current font */
-	int		font_size;		/* fontsize in Y direction */
+	int		font_height;		/* font source Y pixels */
+	int		font_width;		/* font source X pixels */
+	int		blk_height;		/* fbtarget Y pixels */
+	int		blk_width;		/* fbtarget X pixels */
 
 	int		start;			/* modified area start */
 	int		end;			/* modified area end */
