@@ -263,7 +263,7 @@ typedef struct scr_stat {
 	int 		ysize;			/* Y text size */
 	int 		xpixel;			/* X graphics size */
 	int 		ypixel;			/* Y graphics size */
-	int		xpad;		/* for fbi->stride % font_width != 0 */
+	int		xpad;	/* for xsize * font_width != fbi->stride */
 	int		xoff;			/* X offset in pixel mode */
 	int		yoff;			/* Y offset in pixel mode */
 
