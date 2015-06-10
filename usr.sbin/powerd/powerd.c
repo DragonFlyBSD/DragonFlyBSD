@@ -470,7 +470,7 @@ void
 usage(void)
 {
 	fprintf(stderr, "usage: powerd [-dt] [-p hysteresis] "
-	    "[-u trigger_up] [-T sample_interval] "
+	    "[-u trigger_up] [-T sample_interval] [-r poll_interval] "
 	    "[-B min_battery_life] [-L low_battery_linger] "
 	    "[-P battery_poll_interval]\n");
 	exit(1);
