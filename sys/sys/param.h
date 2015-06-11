@@ -121,9 +121,11 @@
  * 400105 - Switch to gcc50 as the primary compiler
  * 400106 - Added pipe2() system call
  * 400107 - Add futimens() and utimensat() syscalls
+ * 400200 - 4.2 release
+ * 400300 - 4.3 development
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400107	/* propagated to newvers */
+#define __DragonFly_version 400300	/* propagated to newvers */
 
 #include <sys/_null.h>
 
