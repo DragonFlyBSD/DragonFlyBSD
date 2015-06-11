@@ -1386,7 +1386,6 @@ TO_REMOVE+=/usr/share/man/man2/syslink.2.gz
 TO_REMOVE+=/usr/share/man/man4/uhidev.4.gz
 TO_REMOVE+=/boot/kernel/drmn.ko
 TO_REMOVE+=/boot/kernel/i915.ko
-TO_REMOVE+=/usr/share/man/man4/i915drm.4.gz
 TO_REMOVE+=/usr/include/regexp.h
 TO_REMOVE+=/usr/include/sys/localedef.h
 TO_REMOVE+=/usr/share/locale/ASCII
