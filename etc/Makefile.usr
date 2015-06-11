@@ -73,7 +73,7 @@ src-create-repo:
 	cd ${.CURDIR}/src && \
 		git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch origin
-	cd ${.CURDIR}/src && git branch master origin/master
+	cd ${.CURDIR}/src && git branch DragonFly_RELEASE_4_2 origin/DragonFly_RELEASE_4_2
 .endif
 
 src-create: src-create-repo
@@ -82,7 +82,7 @@ src-create: src-create-repo
 .elif exists (${.CURDIR}/src)
 	@echo ${ERRSR}
 .else
-	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git checkout DragonFly_RELEASE_4_2
 	cd ${.CURDIR}/src && git pull
 .endif
 
@@ -99,8 +99,8 @@ src-create-shallow:
 	cd ${.CURDIR}/src && \
 	    git remote add origin git://${GITHOST}/dragonfly.git
 	cd ${.CURDIR}/src && git fetch --depth=1 origin
-	cd ${.CURDIR}/src && git branch master origin/master
-	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git branch DragonFly_RELEASE_4_2 origin/DragonFly_RELEASE_4_2
+	cd ${.CURDIR}/src && git checkout DragonFly_RELEASE_4_2
 	cd ${.CURDIR}/src && git pull
 .endif
 
@@ -110,7 +110,7 @@ src-checkout:
 .elif !exists (${.CURDIR}/src)
 	@echo ${ERRNSR}
 .else
-	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git checkout DragonFly_RELEASE_4_2
 .endif
 
 src-update:
