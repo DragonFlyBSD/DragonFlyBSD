@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/syscons.4,v 1.10.2.14 2003/04/25 21:21:36 brueffer Exp $
 .\"
-.Dd June 10, 2015
+.Dd June 11, 2015
 .Dt SYSCONS 4
 .Os
 .Sh NAME
@@ -267,12 +267,16 @@ The number of columns to use in conjunction with the
 and
 .Xr radeonkms 4
 drivers.
+The font size is scaled to match the requested number of columns.
 This requires
 .Va kern.kms_console
 to be set to 1.
 By default,
 .Nm
 tries to find a more or less pleasant looking default.
+Setting
+.Va kern.kms_columns
+to a negative value turns off scaling.
 .El
 .Ss Kernel Configuration Options
 The following kernel configuration options control the

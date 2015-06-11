@@ -814,7 +814,8 @@ sc_update_render(scr_stat *scp)
 		/*
 		 * If columns not specified in /boot/loader.conf then
 		 * calculate a non-fractional scaling that yields a
-		 * reasonable number of rows and columns.
+		 * reasonable number of rows and columns. If it is <0,
+		 * don't scale at all.
 		 */
 		if (desired_cols == 0) {
 			int nomag = 1;
@@ -825,6 +826,8 @@ sc_update_render(scr_stat *scp)
 			if (nomag > 1)
 				--nomag;
 			desired_cols = scp->xpixel / (scp->font_width * nomag);
+		} else if (desired_cols < 0) {
+			desired_cols = scp->xpixel / scp->font_width;
 		}
 		scp->blk_width = scp->xpixel / desired_cols;
 		scp->blk_height = scp->blk_width * scp->font_height /
