@@ -53,6 +53,8 @@
 #include <sys/kernel.h>
 #include <sys/cons.h>
 #include <sys/random.h>
+#include <sys/globaldata.h>
+#include <sys/thread.h>
 
 #include <sys/thread2.h>
 #include <sys/mutex2.h>
@@ -173,6 +175,7 @@ static void init_scp(sc_softc_t *sc, int vty, scr_stat *scp);
 static timeout_t scrn_timer;
 static int and_region(int *s1, int *e1, int s2, int e2);
 static void scrn_update(scr_stat *scp, int show_cursor);
+static void scrn_update_yield(void);
 
 #if NSPLASH > 0
 static int scsplash_callback(int event, void *arg);
@@ -1978,6 +1981,9 @@ and_region(int *s1, int *e1, int s2, int e2)
     return TRUE;
 }
 
+/*
+ * syscons_lock held, this function may temporarily release the lock.
+ */
 static void 
 scrn_update(scr_stat *scp, int show_cursor)
 {
@@ -2035,22 +2041,25 @@ scrn_update(scr_stat *scp, int show_cursor)
 	    e = end;
 	    /* does the cut-mark region overlap with the update region? */
 	    if (and_region(&s, &e, scp->start, scp->end)) {
-		(*scp->rndr->draw)(scp, s, e - s + 1, TRUE);
+		(*scp->rndr->draw)(scp, s, e - s + 1,
+				   TRUE, scrn_update_yield);
 		s = 0;
 		e = start - 1;
 		if (and_region(&s, &e, scp->start, scp->end))
-		    (*scp->rndr->draw)(scp, s, e - s + 1, FALSE);
+		    (*scp->rndr->draw)(scp, s, e - s + 1,
+				       FALSE, scrn_update_yield);
 		s = end + 1;
 		e = scp->xsize*scp->ysize - 1;
 		if (and_region(&s, &e, scp->start, scp->end))
-		    (*scp->rndr->draw)(scp, s, e - s + 1, FALSE);
+		    (*scp->rndr->draw)(scp, s, e - s + 1,
+				       FALSE, scrn_update_yield);
 	    } else {
-		(*scp->rndr->draw)(scp, scp->start,
-				   scp->end - scp->start + 1, FALSE);
+		(*scp->rndr->draw)(scp, scp->start, scp->end - scp->start + 1,
+				   FALSE, scrn_update_yield);
 	    }
 	} else {
-	    (*scp->rndr->draw)(scp, scp->start,
-			       scp->end - scp->start + 1, FALSE);
+	    (*scp->rndr->draw)(scp, scp->start, scp->end - scp->start + 1,
+			       FALSE, scrn_update_yield);
 	}
     }
 
@@ -2098,6 +2107,22 @@ scrn_update(scr_stat *scp, int show_cursor)
     scp->start = scp->xsize*scp->ysize - 1;
 
     --scp->sc->videoio_in_progress;
+}
+
+/*
+ *
+ */
+static
+void
+scrn_update_yield(void)
+{
+    struct globaldata *gd = mycpu;
+    thread_t td = gd->gd_curthread;
+    if ((gd->gd_reqflags & RQF_IDLECHECK_MASK) && td->td_nest_count < 2) {
+	    syscons_unlock();
+	    splz();
+	    syscons_lock();
+    }
 }
 
 #if NSPLASH > 0
@@ -3876,7 +3901,7 @@ sc_blink_screen(scr_stat *scp)
 	    sc_switch_scr(scp->sc, scp->sc->delayed_next_scr - 1);
     } else {
 	(*scp->rndr->draw)(scp, 0, scp->xsize*scp->ysize,
-			   scp->sc->blink_in_progress & 1);
+			   scp->sc->blink_in_progress & 1, scrn_update_yield);
 	scp->sc->blink_in_progress--;
     }
 }
@@ -3904,7 +3929,7 @@ blink_screen_callout(void *arg)
     } else {
 	syscons_lock();
 	(*scp->rndr->draw)(scp, 0, scp->xsize*scp->ysize, 
-			   scp->sc->blink_in_progress & 1);
+			   scp->sc->blink_in_progress & 1, scrn_update_yield);
 	scp->sc->blink_in_progress--;
 	syscons_unlock();
 	callout_reset(&scp->blink_screen_ch, hz / 10,

@@ -409,10 +409,11 @@ extern struct linker_set scterm_set;
 
 /* renderer function table */
 typedef void	vr_draw_border_t(scr_stat *scp, int color);
-typedef void	vr_draw_t(scr_stat *scp, int from, int count, int flip);
+typedef void	vr_draw_t(scr_stat *scp, int from, int count,
+				int flip, void (*yield_func)(void));
 typedef void	vr_set_cursor_t(scr_stat *scp, int base, int height, int blink);
 typedef void	vr_draw_cursor_t(scr_stat *scp, int at, int blink,
-				 int on, int flip);
+				int on, int flip);
 typedef void	vr_blink_cursor_t(scr_stat *scp, int at, int flip);
 typedef void	vr_set_mouse_t(scr_stat *scp);
 typedef void	vr_draw_mouse_t(scr_stat *scp, int x, int y, int on);
