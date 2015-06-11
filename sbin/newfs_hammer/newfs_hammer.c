@@ -572,9 +572,10 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 
 		freebytes = freeblks * HAMMER_BIGBLOCK_SIZE64;
 		if (freebytes < 10*GIG && ForceOpt == 0) {
-			errx(1, "Cannot create a HAMMER filesystem less than "
-				"10GB unless you use -f.  HAMMER filesystems\n"
-				"less than 50GB are not recommended\n");
+			errx(1, "Cannot create a HAMMER filesystem less than 10GB "
+				"unless you use -f\n(for the size of Volume %d).  "
+				"HAMMER filesystems less than 50GB are not "
+				"recommended.\n", RootVolNo);
 		}
 			
 		for (i = 8; i < HAMMER_MAX_ZONES; ++i) {
