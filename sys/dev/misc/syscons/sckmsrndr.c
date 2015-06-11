@@ -248,6 +248,7 @@ kms_draw(scr_stat *scp, int from, int count,
 			    scp->xpad * pixel_size;
 		}
 
+#if 0 /* XXX temporarily disabled */
 		/*
 		 * Updating the framebuffer can take a very long time,
 		 * if the system is operating normally we try to at
@@ -255,6 +256,7 @@ kms_draw(scr_stat *scp, int from, int count,
 		 */
 		if ((count & 255) == 0 && func_yield && panicstr == NULL)
 			func_yield();
+#endif
 	}
 }
 
