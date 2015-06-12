@@ -241,7 +241,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	info->paddr = rdev->mc.aper_base + tmp;
 	info->width = sizes->surface_width;
 	info->height = sizes->surface_height;
-	info->stride = sizes->surface_width * (sizes->surface_bpp/8);
+	info->stride = fb->pitches[0];
 	info->depth = sizes->surface_bpp;
 	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
 
