@@ -241,14 +241,7 @@ static int radeonfb_create(struct drm_fb_helper *helper,
 	info->paddr = rdev->mc.aper_base + tmp;
 	info->width = sizes->surface_width;
 	info->height = sizes->surface_height;
-	info->stride = sizes->surface_width * (sizes->surface_bpp/8);
-
-	/*
-	 * Most standard resolutions are divisible by 256, but less-standard
-	 * resolutions such as 1680 are not.  At least some radeon frame
-	 * buffers (? some, all ?) have to be 256-byte aligned.
-	 */
-	info->stride = (info->stride + 255) & ~255;
+	info->stride = fb->pitches[0];
 	info->depth = sizes->surface_bpp;
 	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
 
