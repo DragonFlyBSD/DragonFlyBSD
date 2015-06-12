@@ -2111,6 +2111,7 @@ TO_REMOVE+=/usr/share/mk/bsd.info.mk
 TO_REMOVE+=/usr/share/man/en.ISO8859-15
 TO_REMOVE+=/usr/share/zoneinfo/America/Montreal
 TO_REMOVE+=/usr/include/gnu/vfs/ext2fs/ext2mount.h
+TO_REMOVE+=/usr/include/bus/u4b/usb_freebsd.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
