@@ -91,6 +91,16 @@ SENDMAIL_ALIASES?=	/etc/mail/aliases
 SENDMAIL_START_SCRIPT?=	/etc/rc.sendmail
 
 #
+# Permissions set on various generated databases such as alias and map
+#
+SENDMAIL_MAP_PERMS?=	640
+
+#
+# Template location of m4 files used for cf file regeneration
+#
+SENDMAIL_CF_DIR?=	/usr/local/share/sendmail/cf
+
+#
 # Some useful programs we need.
 #
 SENDMAIL?=		/usr/local/sbin/sendmail
