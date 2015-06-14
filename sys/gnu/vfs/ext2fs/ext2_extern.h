@@ -50,6 +50,7 @@ struct mount;
 struct vfsconf;
 struct vnode;
 struct indir;
+struct statfs;
 
 int	ext2_alloc (struct inode *,
 	    daddr_t, daddr_t, int, struct ucred *, daddr_t *);
@@ -110,6 +111,9 @@ int	ext2_uninit(struct vfsconf *);
 void	ext2_ihashinit(void);
 struct vnode *ext2_ihashlookup(cdev_t dev, ino_t inum);
 int	ext2_ihashcheck(cdev_t dev, ino_t inum);
+
+int	ext2_check_descriptors(struct ext2_sb_info *sb);
+int	ext2_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred);
 
 /*
  * This macro allows the ufs code to distinguish between an EXT2 and a
