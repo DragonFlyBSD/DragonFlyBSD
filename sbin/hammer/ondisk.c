@@ -116,11 +116,11 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	for (i = 0; i < HAMMER_BUFLISTS; ++i)
 		TAILQ_INIT(&vol->buffer_lists[i]);
 	vol->name = strdup(filename);
-	vol->fd = open(filename, oflags);
+	vol->fd = open(vol->name, oflags);
 	if (vol->fd < 0) {
+		err(1, "setup_volume: %s: Open failed", vol->name);
 		free(vol->name);
 		free(vol);
-		err(1, "setup_volume: %s: Open failed", filename);
 	}
 
 	/*
@@ -133,7 +133,7 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 		n = pread(vol->fd, ondisk, HAMMER_BUFSIZE, 0);
 		if (n != HAMMER_BUFSIZE) {
 			err(1, "setup_volume: %s: Read failed at offset 0",
-			    filename);
+			    vol->name);
 		}
 		vol_no = ondisk->vol_no;
 		if (RootVolNo < 0) {
@@ -167,8 +167,8 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	 */
 	TAILQ_FOREACH(scan, &VolList, entry) {
 		if (scan->vol_no == vol_no) {
-			errx(1, "setup_volume %s: Duplicate volume number %d "
-				"against %s", filename, vol_no, scan->name);
+			errx(1, "setup_volume: %s: Duplicate volume number %d "
+				"against %s", vol->name, vol_no, scan->name);
 		}
 	}
 	TAILQ_INSERT_TAIL(&VolList, vol, entry);
