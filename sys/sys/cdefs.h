@@ -228,7 +228,7 @@
 #define __func__        NULL
 #endif
 
-#if (__GNUC_PREREQ__(2, 0) && !defined(__STRICT_ANSI)) || \
+#if (__GNUC_PREREQ__(2, 0) && !defined(__STRICT_ANSI__)) || \
     __STDC_VERSION__ >= 199901
 #define	__LONG_LONG_SUPPORTED
 #endif
