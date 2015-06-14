@@ -33,6 +33,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -107,6 +108,7 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	struct volume_info *scan;
 	struct hammer_volume_ondisk *ondisk;
 	int i, n;
+	struct stat st1, st2;
 
 	/*
 	 * Allocate the volume structure
@@ -162,6 +164,10 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 		vol->cache.modified = 1;
         }
 
+	if (fstat(vol->fd, &st1) != 0){
+		errx(1, "setup_volume: %s: Failed to stat", vol->name);
+	}
+
 	/*
 	 * Link the volume structure in
 	 */
@@ -169,6 +175,14 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 		if (scan->vol_no == vol_no) {
 			errx(1, "setup_volume: %s: Duplicate volume number %d "
 				"against %s", vol->name, vol_no, scan->name);
+		}
+		if (fstat(scan->fd, &st2) != 0){
+			errx(1, "setup_volume: %s: Failed to stat %s",
+				vol->name, scan->name);
+		}
+		if ((st1.st_ino == st2.st_ino) && (st1.st_dev == st2.st_dev)) {
+			errx(1, "setup_volume: %s: Specified more than once",
+				vol->name);
 		}
 	}
 	TAILQ_INSERT_TAIL(&VolList, vol, entry);
