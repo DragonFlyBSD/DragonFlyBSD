@@ -49,6 +49,8 @@
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
 
+#include "cpu_if.h"
+
 #define MSR_THERM_STATUS_TM_STATUS	__BIT64(0)
 #define MSR_THERM_STATUS_TM_STATUS_LOG	__BIT64(1)
 #define MSR_THERM_STATUS_PROCHOT	__BIT64(2)
@@ -98,7 +100,7 @@
 #define CORETEMP_TEMP_INVALID	-1
 
 struct coretemp_sensor {
-	struct ksensordev	c_sensdev;
+	struct ksensordev	*c_sensdev;
 	struct ksensor		c_sens;
 };
 
@@ -229,6 +231,7 @@ coretemp_attach(device_t dev)
 	int ret, tjtarget, cpu, sens_idx;
 	int master_cpu;
 	struct coretemp_sensor *csens;
+	boolean_t sens_task = FALSE;
 
 	sc->sc_dev = dev;
 	pdev = device_get_parent(dev);
@@ -363,23 +366,38 @@ coretemp_attach(device_t dev)
 
 	sens_idx = 0;
 	CPUSET_FOREACH(cpu, cpu_mask) {
+		device_t cpu_dev;
+
+		cpu_dev = devclass_find_unit("cpu", cpu);
+		if (cpu_dev == NULL)
+			continue;
+
 		KKASSERT(sens_idx < sc->sc_nsens);
 		csens = &sc->sc_sens[sens_idx];
+
+		csens->c_sensdev = CPU_GET_SENSDEV(cpu_dev);
+		if (csens->c_sensdev == NULL)
+			continue;
 
 		/*
 		 * Add hw.sensors.cpuN.temp0 MIB.
 		 */
-		ksnprintf(csens->c_sensdev.xname,
-		    sizeof(csens->c_sensdev.xname), "cpu%d", cpu);
 		ksnprintf(csens->c_sens.desc, sizeof(csens->c_sens.desc),
 		    "node%d core%d temp", get_chip_ID(cpu),
 		    get_core_number_within_chip(cpu));
 		csens->c_sens.type = SENSOR_TEMP;
 		sensor_set_unknown(&csens->c_sens);
-		sensor_attach(&csens->c_sensdev, &csens->c_sens);
-		sensordev_install(&csens->c_sensdev);
+		sensor_attach(csens->c_sensdev, &csens->c_sens);
 
 		++sens_idx;
+	}
+
+	if (sens_idx == 0) {
+		kfree(sc->sc_sens, M_DEVBUF);
+		sc->sc_sens = NULL;
+		sc->sc_nsens = 0;
+	} else {
+		sens_task = TRUE;
 	}
 
 	if (cpu_thermal_feature & CPUID_THERMAL_PTM) {
@@ -412,29 +430,36 @@ coretemp_attach(device_t dev)
 			csens = sc->sc_pkg_sens =
 			    kmalloc(sizeof(struct coretemp_sensor), M_DEVBUF,
 			    M_WAITOK | M_ZERO);
+			csens->c_sensdev = kmalloc(sizeof(struct ksensordev),
+			    M_DEVBUF, M_WAITOK | M_ZERO);
 
 			/*
 			 * Add hw.sensors.cpu_nodeN.temp0 MIB.
 			 */
-			ksnprintf(csens->c_sensdev.xname,
-			    sizeof(csens->c_sensdev.xname), "cpu_node%d",
+			ksnprintf(csens->c_sensdev->xname,
+			    sizeof(csens->c_sensdev->xname), "cpu_node%d",
 			    get_chip_ID(sc->sc_cpu));
 			ksnprintf(csens->c_sens.desc,
 			    sizeof(csens->c_sens.desc), "node%d temp",
 			    get_chip_ID(sc->sc_cpu));
 			csens->c_sens.type = SENSOR_TEMP;
 			sensor_set_unknown(&csens->c_sens);
-			sensor_attach(&csens->c_sensdev, &csens->c_sens);
-			sensordev_install(&csens->c_sensdev);
+			sensor_attach(csens->c_sensdev, &csens->c_sens);
+			sensordev_install(csens->c_sensdev);
+
+			sens_task = TRUE;
 		}
 	}
 
-	if (CORETEMP_HAS_PKGSENSOR(sc)) {
-		sc->sc_senstask = sensor_task_register2(sc,
-		    coretemp_pkg_sensor_task, 2, sc->sc_cpu);
-	} else {
-		sc->sc_senstask = sensor_task_register2(sc,
-		    coretemp_sensor_task, 2, sc->sc_cpu);
+	if (sens_task) {
+		if (CORETEMP_HAS_PKGSENSOR(sc)) {
+			sc->sc_senstask = sensor_task_register2(sc,
+			    coretemp_pkg_sensor_task, 2, sc->sc_cpu);
+		} else {
+			KASSERT(sc->sc_sens != NULL, ("no sensors"));
+			sc->sc_senstask = sensor_task_register2(sc,
+			    coretemp_sensor_task, 2, sc->sc_cpu);
+		}
 	}
 
 	return (0);
@@ -444,20 +469,28 @@ static int
 coretemp_detach(device_t dev)
 {
 	struct coretemp_softc *sc = device_get_softc(dev);
+	struct coretemp_sensor *csens;
+
+	if (sc->sc_senstask != NULL)
+		sensor_task_unregister2(sc->sc_senstask);
 
 	if (sc->sc_nsens > 0) {
 		int i;
 
-		sensor_task_unregister2(sc->sc_senstask);
-
-		for (i = 0; i < sc->sc_nsens; ++i)
-			sensordev_deinstall(&sc->sc_sens[i].c_sensdev);
-		kfree(sc->sc_sens, M_DEVBUF);
-
-		if (sc->sc_pkg_sens != NULL) {
-			sensordev_deinstall(&sc->sc_pkg_sens->c_sensdev);
-			kfree(sc->sc_pkg_sens, M_DEVBUF);
+		for (i = 0; i < sc->sc_nsens; ++i) {
+			csens = &sc->sc_sens[i];
+			if (csens->c_sensdev == NULL)
+				continue;
+			sensor_detach(csens->c_sensdev, &csens->c_sens);
 		}
+		kfree(sc->sc_sens, M_DEVBUF);
+	}
+
+	if (sc->sc_pkg_sens != NULL) {
+		csens = sc->sc_pkg_sens;
+		sensordev_deinstall(csens->c_sensdev);
+		kfree(csens->c_sensdev, M_DEVBUF);
+		kfree(csens, M_DEVBUF);
 	}
 	return (0);
 }
@@ -570,14 +603,25 @@ coretemp_msr_fetch(struct coretemp_softc *sc, uint64_t *msr, uint64_t *pkg_msr)
 static void
 coretemp_sensor_update(struct coretemp_softc *sc, int temp)
 {
+	struct coretemp_sensor *csens;
 	int i;
 
+	if (sc->sc_sens == NULL)
+		return;
+
 	if (temp == CORETEMP_TEMP_INVALID) {
-		for (i = 0; i < sc->sc_nsens; ++i)
-			sensor_set_invalid(&sc->sc_sens[i].c_sens);
+		for (i = 0; i < sc->sc_nsens; ++i) {
+			csens = &sc->sc_sens[i];
+			if (csens->c_sensdev == NULL)
+				continue;
+			sensor_set_invalid(&csens->c_sens);
+		}
 	} else {
 		for (i = 0; i < sc->sc_nsens; ++i) {
-			coretemp_sensor_set(&sc->sc_sens[i].c_sens, sc,
+			csens = &sc->sc_sens[i];
+			if (csens->c_sensdev == NULL)
+				continue;
+			coretemp_sensor_set(&csens->c_sens, sc,
 			    CORETEMP_FLAG_CRIT, temp);
 		}
 	}

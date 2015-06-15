@@ -50,6 +50,7 @@ snd_fxdiv_gen.h			optional sound				   \
 	compile-with	"${AWK} -f $S/tools/sound/snd_fxdiv_gen.awk -- > snd_fxdiv_gen.h" \
 	no-obj no-implicit-rule before-depend				   \
 	clean		"snd_fxdiv_gen.h"
+kern/cpu_if.m				standard
 kern/device_if.m			standard
 kern/bus_if.m				standard
 bus/cam/cam.c				optional scbus

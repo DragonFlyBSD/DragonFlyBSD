@@ -40,6 +40,7 @@
 #include "acpi.h"
 #include "acpivar.h"
 #include "acpi_cpu.h"
+#include "cpu_if.h"
 
 #define ACPI_NOTIFY_CX_STATES	0x81	/* _CST changed. */
 
@@ -52,6 +53,8 @@ static struct resource *
 			int, int *, u_long, u_long, u_long, u_int, int);
 static int	acpi_cpu_release_resource(device_t, device_t,
 			int, int, struct resource *);
+static struct ksensordev *
+		acpi_cpu_get_sensdev(device_t);
 
 static int	acpi_cpu_get_id(uint32_t, uint32_t *, uint32_t *);
 static void	acpi_cpu_notify(ACPI_HANDLE, UINT32, void *);
@@ -80,6 +83,9 @@ static device_method_t acpi_cpu_methods[] = {
     DEVMETHOD(bus_deactivate_resource,	bus_generic_deactivate_resource),
     DEVMETHOD(bus_setup_intr,		bus_generic_setup_intr),
     DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
+
+    /* CPU interface */
+    DEVMETHOD(cpu_get_sensdev,		acpi_cpu_get_sensdev),
 
     DEVMETHOD_END
 };
@@ -218,6 +224,10 @@ acpi_cpu_attach(device_t dev)
 	}
     }
 
+    ksnprintf(sc->cpu_sensdev.xname, sizeof(sc->cpu_sensdev.xname), "%s",
+	device_get_nameunit(dev));
+    sensordev_install(&sc->cpu_sensdev);
+
     child = BUS_ADD_CHILD(dev, dev, 0, "cpu_cst", -1);
     if (child == NULL)
 	return ENXIO;
@@ -317,4 +327,12 @@ acpi_cpu_notify(ACPI_HANDLE handler __unused, UINT32 notify, void *xsc)
 	    sc->cpu_cst_notify(sc->cpu_cst);
 	break;
     }
+}
+
+static struct ksensordev *
+acpi_cpu_get_sensdev(device_t dev)
+{
+    struct acpi_cpu_softc *sc = device_get_softc(dev);
+
+    return &sc->cpu_sensdev;
 }

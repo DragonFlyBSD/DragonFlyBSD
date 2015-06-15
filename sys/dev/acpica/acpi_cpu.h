@@ -30,6 +30,8 @@
 #ifndef __ACPI_CPU_H__
 #define __ACPI_CPU_H__
 
+#include <sys/sensors.h>
+
 struct acpi_cpu_softc {
 	device_t		cpu_cst;
 	void			(*cpu_cst_notify)(device_t);
@@ -41,6 +43,8 @@ struct acpi_cpu_softc {
 
 	struct sysctl_ctx_list	pcpu_sysctl_ctx;
 	struct sysctl_oid	*pcpu_sysctl_tree;	/* hw.acpi.cpuX */
+
+	struct ksensordev	cpu_sensdev;
 };
 
 uint32_t	acpi_cpu_md_features(void);
