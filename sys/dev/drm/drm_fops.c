@@ -361,7 +361,7 @@ int drm_release(device_t kdev)
 	if (dev->irqr) {
 		bus_release_resource(dev->dev, SYS_RES_IRQ, dev->irqrid,
 		    dev->irqr);
-		if (dev->msi_enabled) {
+		if (dev->irq_type == PCI_INTR_TYPE_MSI) {
 			pci_release_msi(dev->dev);
 			DRM_INFO("MSI released\n");
 		}

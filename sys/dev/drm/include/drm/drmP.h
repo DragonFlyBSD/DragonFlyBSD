@@ -1035,7 +1035,7 @@ struct drm_device {
 	drm_device_dma_t  *dma;		/* Optional pointer for DMA support */
 
 	int		  irq;		/* Interrupt used by board	   */
-	int		  msi_enabled;	/* MSI enabled */
+	int		  irq_type;	/* IRQ type (MSI enabled or not) */
 	int		  irqrid;	/* Interrupt used by board */
 	struct resource   *irqr;	/* Resource for interrupt used by board	   */
 	void		  *irqh;	/* Handle from bus_setup_intr      */

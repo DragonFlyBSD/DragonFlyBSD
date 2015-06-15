@@ -224,10 +224,13 @@ static struct dev_ops drm_cdevsw = {
 	.d_mmap_single = drm_mmap_single,
 };
 
-static int drm_msi = 1;	/* Enable by default. */
-TUNABLE_INT("hw.drm.msi", &drm_msi);
+static int drm_msi = 0;	/* Disable by default. This is because there are issues with
+			   freezes using MSI and i915 
+			 */
+TUNABLE_INT("hw.drm.msi.enable", &drm_msi);
 SYSCTL_NODE(_hw, OID_AUTO, drm, CTLFLAG_RW, NULL, "DRM device");
-SYSCTL_INT(_hw_drm, OID_AUTO, msi, CTLFLAG_RD, &drm_msi, 1,
+SYSCTL_NODE(_hw_drm, OID_AUTO, msi, CTLFLAG_RW, NULL, "DRM device msi");
+SYSCTL_INT(_hw_drm_msi, OID_AUTO, enable, CTLFLAG_RD, &drm_msi, 0,
     "Enable MSI interrupts for drm devices");
 
 static struct drm_msi_blacklist_entry drm_msi_blacklist[] = {
@@ -287,8 +290,9 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 {
 	struct drm_device *dev;
 	drm_pci_id_list_t *id_entry;
-	int unit, error, msicount;
-	int rid = 0;
+	int unit, error;
+	u_int irq_flags;
+	int msi_enable;
 
 	unit = device_get_unit(kdev);
 	dev = device_get_softc(kdev);
@@ -313,23 +317,18 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	dev->id_entry = id_entry;
 
 	if (drm_core_check_feature(dev, DRIVER_HAVE_IRQ)) {
-		if (drm_msi &&
-		    !drm_msi_is_blacklisted(dev, dev->id_entry->driver_private)) {
-			msicount = pci_msi_count(dev->dev);
-			DRM_DEBUG("MSI count = %d\n", msicount);
-			if (msicount > 1)
-				msicount = 1;
+		msi_enable = drm_msi;
 
-			if (pci_alloc_msi(dev->dev, &rid, msicount, -1) == 0) {
-				DRM_INFO("MSI enabled %d message(s)\n",
-				    msicount);
-				dev->msi_enabled = 1;
-				dev->irqrid = rid;
-			}
+		if (drm_msi_is_blacklisted(dev, dev->id_entry->driver_private)) {
+			msi_enable = 0;
 		}
 
+		dev->irq_type = pci_alloc_1intr(dev->dev, msi_enable,
+		    &dev->irqrid, &irq_flags);
+
 		dev->irqr = bus_alloc_resource_any(dev->dev, SYS_RES_IRQ,
-		    &dev->irqrid, RF_SHAREABLE);
+		    &dev->irqrid, irq_flags);
+
 		if (!dev->irqr) {
 			return (ENOENT);
 		}
@@ -356,7 +355,7 @@ error:
 		bus_release_resource(dev->dev, SYS_RES_IRQ,
 		    dev->irqrid, dev->irqr);
 	}
-	if (dev->msi_enabled) {
+	if (dev->irq_type == PCI_INTR_TYPE_MSI) {
 		pci_release_msi(dev->dev);
 	}
 	return (error);

@@ -271,7 +271,7 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 		return r;
 	}
 	/* enable msi */
-	rdev->msi_enabled = rdev->ddev->msi_enabled;
+	rdev->msi_enabled = (rdev->ddev->irq_type == PCI_INTR_TYPE_MSI);
 
 	rdev->irq.installed = true;
 	DRM_UNLOCK(rdev->ddev);
