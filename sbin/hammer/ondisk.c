@@ -624,6 +624,44 @@ initialize_freemap(struct volume_info *vol)
 }
 
 /*
+ * Returns the number of bigblocks available for filesystem data and undos
+ * without formatting.
+ */
+int64_t
+count_freemap(struct volume_info *vol)
+{
+	hammer_off_t phys_offset;
+	hammer_off_t vol_free_off;
+	hammer_off_t aligned_vol_free_end;
+	int64_t count = 0;
+
+	vol_free_off = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	aligned_vol_free_end = (vol->vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
+				& ~HAMMER_BLOCKMAP_LAYER2_MASK;
+
+	if (vol->vol_no == RootVolNo)
+		vol_free_off += HAMMER_BIGBLOCK_SIZE;
+
+	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	     phys_offset < aligned_vol_free_end;
+	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
+		vol_free_off += HAMMER_BIGBLOCK_SIZE;
+	}
+
+	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	     phys_offset < aligned_vol_free_end;
+	     phys_offset += HAMMER_BIGBLOCK_SIZE) {
+		if (phys_offset < vol_free_off) {
+			;
+		} else if (phys_offset < vol->vol_free_end) {
+			++count;
+		}
+	}
+
+	return(count);
+}
+
+/*
  * Allocate big-blocks using our poor-man's volume->vol_free_off.
  *
  * If the zone is HAMMER_ZONE_FREEMAP_INDEX we are bootstrapping the freemap

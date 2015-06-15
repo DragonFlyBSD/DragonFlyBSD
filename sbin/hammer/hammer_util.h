@@ -156,6 +156,7 @@ int hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf);
 
 void format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap);
 int64_t initialize_freemap(struct volume_info *vol);
+int64_t count_freemap(struct volume_info *vol);
 
 void flush_all_volumes(void);
 void flush_volume(struct volume_info *vol);

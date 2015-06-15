@@ -560,16 +560,9 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 	 */
 	if (vol->vol_no == RootVolNo) {
 		/*
-		 * Starting TID
+		 * Check freemap counts before formatting
 		 */
-		ondisk->vol0_next_tid = createtid();
-
-		format_freemap(vol,
-			&ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX]);
-
-		freeblks = initialize_freemap(vol);
-		ondisk->vol0_stat_freebigblocks = freeblks;
-
+		freeblks = count_freemap(vol);
 		freebytes = freeblks * HAMMER_BIGBLOCK_SIZE64;
 		if (freebytes < 10*GIG && ForceOpt == 0) {
 			errx(1, "Cannot create a HAMMER filesystem less than 10GB "
@@ -577,7 +570,16 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 				"HAMMER filesystems less than 50GB are not "
 				"recommended.\n", RootVolNo);
 		}
+
+		/*
+		 * Starting TID
+		 */
+		ondisk->vol0_next_tid = createtid();
+
+		format_freemap(vol,
+			&ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX]);
 			
+		ondisk->vol0_stat_freebigblocks = initialize_freemap(vol);
 		for (i = 8; i < HAMMER_MAX_ZONES; ++i) {
 			format_blockmap(&ondisk->vol0_blockmap[i],
 					HAMMER_ZONE_ENCODE(i, 0));
