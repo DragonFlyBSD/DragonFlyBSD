@@ -46,6 +46,7 @@ enum ipfw_layer4_opcodes {
 	O_LAYER4_TCPFLAG,
 	O_LAYER4_UID,
 	O_LAYER4_GID,
+	O_LAYER4_ESTABLISHED,
 };
 
 #endif

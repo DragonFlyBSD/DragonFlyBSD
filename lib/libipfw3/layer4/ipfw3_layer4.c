@@ -106,6 +106,15 @@ parse_gid(ipfw_insn **cmd, int *ac, char **av[])
 }
 
 void
+parse_established(ipfw_insn **cmd, int *ac, char **av[])
+{
+	NEXT_ARG1;
+	(*cmd)->opcode = O_LAYER4_ESTABLISHED;
+	(*cmd)->module = MODULE_LAYER4_ID;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
+}
+
+void
 show_tcpflag(ipfw_insn *cmd)
 {
 	printf(" tcpflag %d", cmd->arg1);
@@ -135,6 +144,11 @@ show_gid(ipfw_insn *cmd)
 	}
 }
 
+void
+show_established(ipfw_insn *cmd)
+{
+	printf(" established");
+}
 
 void
 load_module(register_func function, register_keyword keyword)
@@ -148,4 +162,7 @@ load_module(register_func function, register_keyword keyword)
 	keyword(MODULE_LAYER4_ID, O_LAYER4_GID, "gid", IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_LAYER4_ID, O_LAYER4_GID,
 			(parser_func)parse_gid, (shower_func)show_gid);
+	keyword(MODULE_LAYER4_ID, O_LAYER4_ESTABLISHED, "established", IPFW_KEYWORD_TYPE_FILTER);
+	function(MODULE_LAYER4_ID, O_LAYER4_ESTABLISHED,
+			(parser_func)parse_established, (shower_func)show_established);
 }
