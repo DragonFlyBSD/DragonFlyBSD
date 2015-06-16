@@ -1276,7 +1276,7 @@ delete_nat_config(int ac, char *av[])
 		i = atoi(*av);
 	}
 	if (do_set_x(IP_FW_NAT_DEL, &i, sizeof(i)) == -1)
-		err(EX_UNAVAILABLE, "getsockopt(%s)", "IP_FW_NAT_DEL");
+		errx(EX_USAGE, "NAT %d in use or not exists", i);
 }
 
 static void
@@ -2043,9 +2043,12 @@ flush(void)
 			return;
 	}
 	if (do_set_x(cmd, NULL, 0) < 0 ) {
-		err(EX_UNAVAILABLE, "do_set_x(%s)",
-			do_pipe? "IP_DUMMYNET_FLUSH":
-			(do_nat? "IP_FW_NAT_FLUSH": "IP_FW_FLUSH"));
+		if (do_pipe)
+			errx(EX_USAGE, "pipe/queue in use");
+		else if (do_nat)
+			errx(EX_USAGE, "NAT configuration in use");
+		else
+			errx(EX_USAGE, "do_set_x(IP_FWFLUSH) failed");
 	}
 	if (!do_quiet) {
 		printf("Flushed all %s.\n", do_pipe ? "pipes":

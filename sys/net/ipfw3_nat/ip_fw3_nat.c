@@ -80,7 +80,8 @@
 
 static struct lock nat_lock;
 
-extern struct ipfw_nat_context *ipfw_nat_ctx;
+extern struct ipfw_nat_context	*ipfw_nat_ctx;
+extern struct ipfw_context	*ipfw_ctx[MAXCPU];
 extern ipfw_nat_cfg_t *ipfw_nat_cfg_ptr;
 extern ipfw_nat_cfg_t *ipfw_nat_del_ptr;
 extern ipfw_nat_cfg_t *ipfw_nat_flush_ptr;
@@ -498,8 +499,11 @@ done:
 int
 ipfw_nat_del(struct sockopt *sopt)
 {
-	struct cfg_nat *n;
-	int *i;
+	struct ipfw_context *ctx;
+	struct cfg_nat *n, *tmp;
+	struct ip_fw *f;
+	ipfw_insn *cmd;
+	int *i, cpu;
 
 	i = sopt->sopt_val;
 	lockmgr(&nat_lock, LK_EXCLUSIVE);
@@ -508,6 +512,25 @@ ipfw_nat_del(struct sockopt *sopt)
 		lockmgr(&nat_lock, LK_RELEASE);
 		return EINVAL;
 	}
+
+	/*
+	 * stop deleting when this cfg_nat was in use in ipfw_ctx
+	 */
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		ctx = ipfw_ctx[cpu];
+		for (f = ctx->ipfw_rule_chain; f; f = f->next) {
+			cmd = ACTION_PTR(f);
+			if ((int)cmd->module == MODULE_NAT_ID &&
+					(int)cmd->opcode == O_NAT_NAT) {
+				tmp = ((ipfw_insn_nat *)cmd)->nat;
+				if (tmp != NULL && tmp->id == n->id) {
+					lockmgr(&nat_lock, LK_RELEASE);
+					return EINVAL;
+				}
+			}
+		}
+	}
+
 	UNHOOK_NAT(n);
 	del_redir_spool_cfg(n, &n->redir_chain);
 	LibAliasUninit(n->lib);
@@ -519,10 +542,28 @@ ipfw_nat_del(struct sockopt *sopt)
 int
 ipfw_nat_flush(struct sockopt *sopt)
 {
-	struct cfg_nat *ptr, *ptr_temp;
+	struct ipfw_context *ctx;
+	struct cfg_nat *ptr, *tmp;
+	struct ip_fw *f;
+	ipfw_insn *cmd;
+	int cpu;
+
+	/*
+	 * stop flushing when any cfg_nat was in use in ipfw_ctx
+	 */
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		ctx = ipfw_ctx[cpu];
+		for (f = ctx->ipfw_rule_chain; f; f = f->next) {
+			cmd = ACTION_PTR(f);
+			if ((int)cmd->module == MODULE_NAT_ID &&
+				(int)cmd->opcode == O_NAT_NAT) {
+				return EINVAL;
+			}
+		}
+	}
 
 	lockmgr(&nat_lock, LK_EXCLUSIVE);
-	LIST_FOREACH_MUTABLE(ptr, &(ipfw_nat_ctx->nat), _next, ptr_temp) {
+	LIST_FOREACH_MUTABLE(ptr, &(ipfw_nat_ctx->nat), _next, tmp) {
 		LIST_REMOVE(ptr, _next);
 		del_redir_spool_cfg(ptr, &ptr->redir_chain);
 		LibAliasUninit(ptr->lib);
