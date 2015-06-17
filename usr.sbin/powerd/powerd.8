@@ -9,11 +9,14 @@
 .Nd simple ACPI based CPU/power control
 .Sh SYNOPSIS
 .Nm
-.Op Fl dt
+.Op Fl dtQ
 .Op Fl p Ar hysteresis
 .Op Fl u Ar trigger_up
 .Op Fl r Ar poll_time
 .Op Fl T Ar sample_time
+.Op Fl B Ar minimum_battery_life
+.Op Fl L Ar battery_life_linger
+.Op Fl P Ar battery_poll_interval
 .Sh DESCRIPTION
 The
 .Nm
@@ -62,18 +65,25 @@ more slowly.
 For example, a workstation might want to use a value of 30.0.
 .It Fl B Ar minimum_battery_life
 If battery life is less than or equal to the specified value,
-the machine will be powered off immediately.
+the machine will start shutting down process.
 Default is 2 (2% battery life left).
 .It Fl L Ar battery_life_linger
 If battery life is less than or equal to the configured value,
-and
-.Nm
-just started,
 shutting down the machine will be delayed by the specified value.
+During the delay,
+alert message will be logged to the console,
+and audio alert will be alarmed.
+If AC line is plugged in during this delay,
+shutting down process will be cancelled.
 Default is 60 seconds.
 .It Fl P Ar battery_poll_interval
 Poll the battery life at the specified interval.
+If 0 is specified,
+battery life monitoring will be disabled.
 Default is 5 seconds.
+.It Fl Q
+Don't alarm audio alert,
+if the battery life is low.
 .El
 .Sh EXAMPLES
 The defaults work well for servers but a workstation user might want

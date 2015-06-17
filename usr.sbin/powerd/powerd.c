@@ -42,12 +42,15 @@
 #include <sys/sysctl.h>
 #include <sys/kinfo.h>
 #include <sys/file.h>
+#include <sys/soundcard.h>
 #include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <syslog.h>
+
+#include "alert1.h"
 
 static void usage(void);
 static double getcputime(double);
@@ -71,9 +74,13 @@ double TriggerUp = 0.25;/* single-cpu load to force max freq */
 double TriggerDown; /* load per cpu to force the min freq */
 static int BatLifeMin = 2; /* shutdown the box, if low on battery life */
 static struct timespec BatLifePrevT;
-static struct timespec BatLifeStartT;
-static int BatLifeLinger = 60; /* unit: sec */
 static int BatLifePollIntvl = 5; /* unit: sec */
+
+static struct timespec BatShutdownStartT;
+static int BatShutdownLinger = -1;
+static int BatShutdownLingerSet = 60; /* unit: sec */
+static int BatShutdownLingerCnt;
+static int BatShutdownAudioAlert = 1;
 
 static void sigintr(int signo);
 
@@ -95,7 +102,7 @@ main(int ac, char **av)
 	srt = 8.0;	/* time for samples - 8 seconds */
 	pollrate = 1.0;	/* polling rate in seconds */
 
-	while ((ch = getopt(ac, av, "dp:r:tu:B:L:P:T:")) != -1) {
+	while ((ch = getopt(ac, av, "dp:r:tu:B:L:P:QT:")) != -1) {
 		switch(ch) {
 		case 'd':
 			DebugOpt = 1;
@@ -116,10 +123,15 @@ main(int ac, char **av)
 			BatLifeMin = strtol(optarg, NULL, 10);
 			break;
 		case 'L':
-			BatLifeLinger = strtol(optarg, NULL, 10);
+			BatShutdownLingerSet = strtol(optarg, NULL, 10);
+			if (BatShutdownLingerSet < 0)
+				BatShutdownLingerSet = 0;
 			break;
 		case 'P':
 			BatLifePollIntvl = strtol(optarg, NULL, 10);
+			break;
+		case 'Q':
+			BatShutdownAudioAlert = 0;
 			break;
 		case 'T':
 			srt = strtod(optarg, NULL);
@@ -174,7 +186,10 @@ main(int ac, char **av)
 	}
 
 	/* Do we need to monitor battery life? */
-	monbat = has_battery();
+	if (BatLifePollIntvl <= 0)
+		monbat = 0;
+	else
+		monbat = has_battery();
 
 	/*
 	 * Wait hw.acpi.cpu.px_dom* sysctl to be created by kernel
@@ -472,7 +487,7 @@ usage(void)
 	fprintf(stderr, "usage: powerd [-dt] [-p hysteresis] "
 	    "[-u trigger_up] [-T sample_interval] [-r poll_interval] "
 	    "[-B min_battery_life] [-L low_battery_linger] "
-	    "[-P battery_poll_interval]\n");
+	    "[-P battery_poll_interval] [-Q]\n");
 	exit(1);
 }
 
@@ -499,7 +514,6 @@ has_battery(void)
 
 	clock_gettime(CLOCK_MONOTONIC_FAST, &s);
 	BatLifePrevT = s;
-	BatLifeStartT = s;
 
 	len = sizeof(val);
 	if (sysctlbyname("hw.acpi.acline", &val, &len, NULL, 0) < 0) {
@@ -532,6 +546,42 @@ has_battery(void)
 	return 1;
 }
 
+static void
+low_battery_alert(int life)
+{
+	int fmt, stereo, freq;
+	int fd;
+
+	syslog(LOG_ALERT, "low battery life %d%%, please plugin AC line, #%d",
+	    life, BatShutdownLingerCnt);
+	++BatShutdownLingerCnt;
+
+	if (!BatShutdownAudioAlert)
+		return;
+
+	fd = open("/dev/dsp", O_WRONLY);
+	if (fd < 0)
+		return;
+
+	fmt = AFMT_S16_LE;
+	if (ioctl(fd, SNDCTL_DSP_SETFMT, &fmt, sizeof(fmt)) < 0)
+		goto done;
+
+	stereo = 0;
+	if (ioctl(fd, SNDCTL_DSP_STEREO, &stereo, sizeof(stereo)) < 0)
+		goto done;
+
+	freq = 44100;
+	if (ioctl(fd, SNDCTL_DSP_SPEED, &freq, sizeof(freq)) < 0)
+		goto done;
+
+	write(fd, alert1, sizeof(alert1));
+	write(fd, alert1, sizeof(alert1));
+
+done:
+	close(fd);
+}
+
 static int
 mon_battery(void)
 {
@@ -549,36 +599,35 @@ mon_battery(void)
 	len = sizeof(acline);
 	if (sysctlbyname("hw.acpi.acline", &acline, &len, NULL, 0) < 0)
 		return 1;
-	if (acline)
+	if (acline) {
+		BatShutdownLinger = -1;
+		BatShutdownLingerCnt = 0;
 		return 1;
+	}
 
 	len = sizeof(life);
 	if (sysctlbyname("hw.acpi.battery.life", &life, &len, NULL, 0) < 0)
 		return 1;
 
-	if (BatLifeLinger > 0) {
+	if (BatShutdownLinger > 0) {
 		ts = cur;
-		timespecsub(&ts, &BatLifeStartT);
-		if (ts.tv_sec > BatLifeLinger)
-			BatLifeLinger = 0;
+		timespecsub(&ts, &BatShutdownStartT);
+		if (ts.tv_sec > BatShutdownLinger)
+			BatShutdownLinger = 0;
 	}
 
 	if (life <= BatLifeMin) {
-		if (BatLifeLinger <= 0) {
+		if (BatShutdownLinger == 0 || BatShutdownLingerSet == 0) {
 			syslog(LOG_ALERT, "low battery life %d%%, "
 			    "shutting down", life);
 			if (vfork() == 0)
 				execlp("poweroff", "poweroff", NULL);
 			return 0;
-		} else {
-			static int logged;
-
-			if (!logged) {
-				logged = 1;
-				syslog(LOG_ALERT, "low battery life %d%%, "
-				    "please plugin AC line", life);
-			}
+		} else if (BatShutdownLinger < 0) {
+			BatShutdownLinger = BatShutdownLingerSet;
+			BatShutdownStartT = cur;
 		}
+		low_battery_alert(life);
 	}
 	return 1;
 }
