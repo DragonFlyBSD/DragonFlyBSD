@@ -40,11 +40,15 @@
 #define _IP_FW3_H_
 
 #ifdef _KERNEL
+#include <net/bpf.h>
 #include <net/netisr2.h>
 
 int     ip_fw3_sockopt(struct sockopt *);
 extern int ip_fw3_loaded;
 
+#else
+#include <pcap/bpf.h>
+#define PCAP_DONT_INCLUDE_PCAP_BPF_H
 #endif
 
 #define	IPFW3_LOADED	(ip_fw3_loaded)
@@ -193,6 +197,15 @@ typedef struct	_ipfw_insn_limit {
 	uint16_t conn_limit;
 } ipfw_insn_limit;
 
+/*
+ * This is used for bpf filtering.
+ */
+typedef struct _ipfw_insn_bpf {
+	ipfw_insn o;
+	char bf_str[128];
+	u_int bf_len;
+	struct bpf_insn bf_insn[1];
+} ipfw_insn_bpf;
 
 /*
  * Here we have the structure representing an ipfw rule.

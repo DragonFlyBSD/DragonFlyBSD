@@ -1025,6 +1025,8 @@ _startup_libs=		lib/csu lib/libc lib/libc_rtld
 _prebuild_libs=		lib/libbz2 lib/liblzma lib/libz
 _prebuild_libs+=	lib/libutil
 
+_prebuild_libs+=	lib/libpcap
+
 _generic_libs=	gnu/lib
 
 _prebuild_libs+= lib/libcom_err lib/libcrypt lib/libmd \
