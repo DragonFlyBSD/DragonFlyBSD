@@ -1379,5 +1379,11 @@ void hammer2_syncthr_freeze(hammer2_syncthr_t *thr);
 void hammer2_syncthr_unfreeze(hammer2_syncthr_t *thr);
 void hammer2_syncthr_primary(void *arg);
 
+/*
+ * hammer2_strategy.c
+ */
+int hammer2_vop_strategy(struct vop_strategy_args *ap);
+int hammer2_vop_bmap(struct vop_bmap_args *ap);
+
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */
