@@ -66,6 +66,8 @@ static int hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 static void hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize);
 static void hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize);
 
+struct objcache *cache_vop_info;
+
 static __inline
 void
 hammer2_knote(struct vnode *vp, int flags)
@@ -82,7 +84,6 @@ int
 hammer2_vop_inactive(struct vop_inactive_args *ap)
 {
 	hammer2_inode_t *ip;
-	hammer2_cluster_t *cluster;
 	struct vnode *vp;
 
 	LOCKSTART;
@@ -99,30 +100,25 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	}
 
 	/*
-	 * Detect updates to the embedded data which may be synchronized by
-	 * the strategy code.  Simply mark the inode modified so it gets
-	 * picked up by our normal flush.
-	 */
-	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_NEVER |
-					 HAMMER2_RESOLVE_RDONLY);
-	KKASSERT(cluster);
-
-	/*
-	 * Check for deleted inodes and recycle immediately.
+	 * Check for deleted inodes and recycle immediately on the last
+	 * release.  Be sure to destroy any left-over buffer cache buffers
+	 * so we do not waste time trying to flush them.
 	 *
 	 * WARNING: nvtruncbuf() can only be safely called without the inode
 	 *	    lock held due to the way our write thread works.
 	 */
-	if (hammer2_cluster_isunlinked(cluster)) {
+	if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
 		hammer2_key_t lbase;
 		int nblksize;
 
+		/*
+		 * Detect updates to the embedded data which may be
+		 * synchronized by the strategy code.  Simply mark the
+		 * inode modified so it gets picked up by our normal flush.
+		 */
 		nblksize = hammer2_calc_logical(ip, 0, &lbase, NULL);
-		hammer2_inode_unlock(ip, cluster);
 		nvtruncbuf(vp, 0, nblksize, 0, 0);
 		vrecycle(vp);
-	} else {
-		hammer2_inode_unlock(ip, cluster);
 	}
 	LOCKSTOP;
 	return (0);
@@ -136,7 +132,6 @@ static
 int
 hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 {
-	hammer2_cluster_t *cluster;
 	hammer2_inode_t *ip;
 	hammer2_pfs_t *pmp;
 	struct vnode *vp;
@@ -148,13 +143,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		LOCKSTOP;
 		return(0);
 	}
-
-	/*
-	 * Inode must be locked for reclaim.
-	 */
 	pmp = ip->pmp;
-	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_NEVER |
-					 HAMMER2_RESOLVE_RDONLY);
 
 	/*
 	 * The final close of a deleted file or directory marks it for
@@ -175,12 +164,15 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	vclrisdirty(vp);
 
 	/*
+	 * Once reclaimed the inode is disconnected from the normal flush
+	 * mechanism and must be tracked
+	 *
 	 * A reclaim can occur at any time so we cannot safely start a
 	 * transaction to handle reclamation of unlinked files.  Instead,
 	 * the ip is left with a reference and placed on a linked list and
 	 * handled later on.
 	 */
-	if (hammer2_cluster_isunlinked(cluster)) {
+	if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
 		hammer2_inode_unlink_t *ipul;
 
 		ipul = kmalloc(sizeof(*ipul), pmp->minode, M_WAITOK | M_ZERO);
@@ -189,14 +181,10 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		hammer2_spin_ex(&pmp->list_spin);
 		TAILQ_INSERT_TAIL(&pmp->unlinkq, ipul, entry);
 		hammer2_spin_unex(&pmp->list_spin);
-		hammer2_inode_unlock(ip, cluster);	/* unlock */
 		/* retain ref from vp for ipul */
 	} else {
-		hammer2_inode_unlock(ip, cluster);	/* unlock */
 		hammer2_inode_drop(ip);			/* vp ref */
 	}
-	/* cluster no longer referenced */
-	/* cluster = NULL; not needed */
 
 	/*
 	 * XXX handle background sync when ip dirty, kernel will no longer

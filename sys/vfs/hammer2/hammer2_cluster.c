@@ -192,71 +192,6 @@ hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref)
 }
 
 /*
- * Return non-zero if the chain representing an inode has been flagged
- * as having been unlinked.  Allows the vnode reclaim to avoid loading
- * the inode data from disk e.g. when unmount or recycling old, clean
- * vnodes.
- *
- * The cluster does not need to be locked.
- * The focus cannot be used since the cluster might not be locked.
- */
-int
-hammer2_cluster_isunlinked(hammer2_cluster_t *cluster)
-{
-	hammer2_chain_t *chain;
-	int flags;
-	int i;
-
-	flags = 0;
-	for (i = 0; i < cluster->nchains; ++i) {
-		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0)
-			continue;
-		chain = cluster->array[i].chain;
-		if (chain)
-			flags |= chain->flags;
-	}
-	return (flags & HAMMER2_CHAIN_UNLINKED);
-}
-
-/*
- * Set a bitmask of flags in all chains related to a cluster.
- * The cluster should probably be locked.
- *
- * XXX Only operate on FEMOD elements?
- */
-void
-hammer2_cluster_set_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
-{
-	hammer2_chain_t *chain;
-	int i;
-
-	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i].chain;
-		if (chain)
-			atomic_set_int(&chain->flags, flags);
-	}
-}
-
-/*
- * Set a bitmask of flags in all chains related to a cluster.
- * The cluster should probably be locked.
- *
- * XXX Only operate on FEMOD elements?
- */
-void
-hammer2_cluster_clr_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
-{
-	hammer2_chain_t *chain;
-	int i;
-
-	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i].chain;
-		if (chain)
-			atomic_clear_int(&chain->flags, flags);
-	}
-}
-
-/*
  * Flag the cluster for flushing recursively up to the root.  Despite the
  * work it does, this is relatively benign.  It just makes sure that the
  * flusher has top-down visibility to this cluster.
@@ -1677,14 +1612,6 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 			if (nchain)
 				nchain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
 		}
-#if 0
-		/* XXX can't set this unless we do an explicit flush, which
-		   we also need a pmp assigned to do, else the flush code
-		   won't flush ncluster because it thinks it is crossing a
-		   flush boundary */
-		hammer2_cluster_set_chainflags(ncluster,
-					       HAMMER2_CHAIN_PFSBOUNDARY);
-#endif
 
 		/* XXX hack blockset copy */
 		/* XXX doesn't work with real cluster */

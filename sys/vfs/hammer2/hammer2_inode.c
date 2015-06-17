@@ -1028,8 +1028,6 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 		 * We will return ocluster (the hardlink target).
 		 */
 		hammer2_cluster_modify(trans, ncluster, 0);
-		hammer2_cluster_clr_chainflags(ncluster,
-					       HAMMER2_CHAIN_UNLINKED);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		wipdata = &hammer2_cluster_wdata(ncluster)->ipdata;
 		bcopy(name, wipdata->filename, name_len);
@@ -1054,8 +1052,6 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 		 * The bref key has already been adjusted by inode_connect().
 		 */
 		hammer2_cluster_modify(trans, ncluster, 0);
-		hammer2_cluster_clr_chainflags(ncluster,
-					       HAMMER2_CHAIN_UNLINKED);
 		wipdata = &hammer2_cluster_wdata(ncluster)->ipdata;
 
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
@@ -1453,18 +1449,21 @@ again:
 		/*
 		 * Target nlinks has reached 0, file now unlinked (but may
 		 * still be open).
+		 *
+		 * nlinks will be -1 for a normal remove().  If this is the
+		 * last link we must flag the inode on deactivation. XXX race ?
 		 */
-		/* XXX need interlock if mounted
-		if ((cluster->focus->flags & HAMMER2_CHAIN_PFSROOT) &&
-		    cluster->pmp) {
-			error = EINVAL;
-			kprintf("hammer2: PFS \"%s\" cannot be deleted "
-				"while still mounted\n",
-				wipdata->filename);
-			goto done;
+		hammer2_inode_t *ip;
+
+		if (nlinks == -1) {
+			ip = hammer2_inode_lookup(trans->pmp, ripdata->inum);
+			if (ip) {
+				atomic_set_int(&ip->flags,
+					       HAMMER2_INODE_ISUNLINKED);
+				hammer2_inode_drop(ip);
+			}
 		}
-		*/
-		hammer2_cluster_set_chainflags(cluster, HAMMER2_CHAIN_UNLINKED);
+
 		if (nch && cache_isopen(nch)) {
 			/*
 			 * If an unlinked file is still open we must update
