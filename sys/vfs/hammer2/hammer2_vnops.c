@@ -296,7 +296,7 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_gid = hammer2_to_unix_xid(&ripdata->meta.gid);
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
-	vap->va_size = ip->size;	/* protected by shared lock */
+	vap->va_size = ip->meta.size;	/* protected by shared lock */
 	vap->va_blocksize = HAMMER2_PBUFSIZE;
 	vap->va_flags = ripdata->meta.uflags;
 	hammer2_time_to_timespec(ripdata->meta.ctime, &vap->va_ctime);
@@ -415,13 +415,13 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	/*
 	 * Resize the file
 	 */
-	if (vap->va_size != VNOVAL && ip->size != vap->va_size) {
+	if (vap->va_size != VNOVAL && ip->meta.size != vap->va_size) {
 		switch(vp->v_type) {
 		case VREG:
-			if (vap->va_size == ip->size)
+			if (vap->va_size == ip->meta.size)
 				break;
 			hammer2_inode_unlock(ip, cluster);
-			if (vap->va_size < ip->size) {
+			if (vap->va_size < ip->meta.size) {
 				hammer2_truncate_file(ip, vap->va_size);
 			} else {
 				hammer2_extend_file(ip, vap->va_size);
@@ -838,7 +838,7 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 	 *	    vnode level.
 	 */
 	hammer2_mtx_sh(&ip->lock);
-	size = ip->size;
+	size = ip->meta.size;
 	hammer2_mtx_unlock(&ip->lock);
 
 	while (uio->uio_resid > 0 && uio->uio_offset < size) {
@@ -896,8 +896,8 @@ hammer2_write_file(hammer2_inode_t *ip,
 	 */
 	hammer2_mtx_ex(&ip->lock);
 	if (ioflag & IO_APPEND)
-		uio->uio_offset = ip->size;
-	old_eof = ip->size;
+		uio->uio_offset = ip->meta.size;
+	old_eof = ip->meta.size;
 	hammer2_mtx_unlock(&ip->lock);
 
 	/*
@@ -1046,7 +1046,7 @@ hammer2_write_file(hammer2_inode_t *ip,
 		hammer2_truncate_file(ip, old_eof);
 	} else if (modified) {
 		hammer2_mtx_ex(&ip->lock);
-		hammer2_update_time(&ip->mtime);
+		hammer2_update_time(&ip->meta.mtime);
 		atomic_set_int(&ip->flags, HAMMER2_INODE_MTIME);
 		hammer2_mtx_unlock(&ip->lock);
 	}
@@ -1084,7 +1084,7 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			   0);
 	}
 	hammer2_mtx_ex(&ip->lock);
-	ip->size = nsize;
+	ip->meta.size = nsize;
 	atomic_set_int(&ip->flags, HAMMER2_INODE_RESIZED);
 	hammer2_mtx_unlock(&ip->lock);
 	LOCKSTOP;
@@ -1109,8 +1109,8 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 
 	LOCKSTART;
 	hammer2_mtx_ex(&ip->lock);
-	osize = ip->size;
-	ip->size = nsize;
+	osize = ip->meta.size;
+	ip->meta.size = nsize;
 	hammer2_mtx_unlock(&ip->lock);
 
 	if (ip->vp) {
@@ -1454,7 +1454,8 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * WARNING! chain can get moved by the connect (indirectly due to
 	 *	    potential indirect block creation).
 	 */
-	error = hammer2_inode_connect(&trans, &cluster, 1,
+	error = hammer2_inode_connect(&trans,
+				      ip, &cluster, 1,
 				      tdip, tdcluster,
 				      name, name_len, 0);
 	if (error == 0) {
@@ -1634,7 +1635,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 				 HAMMER2_OPFLAG_DIRECTDATA);
 			bcopy(ap->a_target, nipdata->u.data, bytes);
 			nipdata->meta.size = bytes;
-			nip->size = bytes;
+			nip->meta.size = bytes;
 			hammer2_cluster_modsync(ncparent);
 			hammer2_inode_unlock(nip, ncparent);
 			/* nipdata = NULL; not needed */
@@ -1901,7 +1902,8 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * NOTE:    Pass nlinks as 0 because we retained the link count from
 	 *	    the unlink, so we do not have to modify it.
 	 */
-	error = hammer2_inode_connect(&trans, &cluster, hlink,
+	error = hammer2_inode_connect(&trans,
+				      ip, &cluster, hlink,
 				      tdip, tdcluster,
 				      tname, tname_len, 0);
 	if (error == 0) {
@@ -2099,7 +2101,7 @@ filt_hammer2read(struct knote *kn, long hint)
 		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
 		return(1);
 	}
-	off = ip->size - kn->kn_fp->f_offset;
+	off = ip->meta.size - kn->kn_fp->f_offset;
 	kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
 	if (kn->kn_sfflags & NOTE_OLDAPI)
 		return(1);

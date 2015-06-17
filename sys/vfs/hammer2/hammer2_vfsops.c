@@ -212,20 +212,17 @@ static void hammer2_unmount_helper(struct mount *mp, hammer2_pfs_t *pmp,
  */
 static void hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_inode_t *ip,
-				const hammer2_inode_data_t *ripdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase, int ioflag, int pblksize,
 				int *errorp);
 static void hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_inode_t *ip,
-				const hammer2_inode_data_t *ripdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase, int ioflag,
 				int pblksize, int *errorp,
 				int comp_algo, int check_algo);
 static void hammer2_zero_check_and_write(struct buf *bp,
 				hammer2_trans_t *trans, hammer2_inode_t *ip,
-				const hammer2_inode_data_t *ripdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase,
 				int ioflag, int pblksize, int *errorp,
@@ -233,7 +230,6 @@ static void hammer2_zero_check_and_write(struct buf *bp,
 static int test_block_zeros(const char *buf, size_t bytes);
 static void zero_write(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_inode_t *ip,
-				const hammer2_inode_data_t *ripdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase,
 				int *errorp);
@@ -1214,7 +1210,6 @@ hammer2_write_thread(void *arg)
 	struct vnode *vp;
 	hammer2_inode_t *ip;
 	hammer2_cluster_t *cparent;
-	const hammer2_inode_data_t *ripdata;
 	hammer2_key_t lbase;
 	int lblksize;
 	int pblksize;
@@ -1283,15 +1278,13 @@ hammer2_write_thread(void *arg)
 					 HAMMER2_INODE_MTIME)) {
 				hammer2_inode_fsync(&trans, ip, cparent);
 			}
-			ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
 			lblksize = hammer2_calc_logical(ip, bio->bio_offset,
 							&lbase, NULL);
-			pblksize = hammer2_calc_physical(ip, ripdata, lbase);
-			hammer2_write_file_core(bp, &trans, ip, ripdata,
+			pblksize = hammer2_calc_physical(ip, lbase);
+			hammer2_write_file_core(bp, &trans, ip,
 						cparent,
 						lbase, IO_ASYNC,
 						pblksize, &error);
-			/* ripdata can be invalid after call */
 			hammer2_inode_unlock(ip, cparent);
 			if (error) {
 				kprintf("hammer2: error in buffer write\n");
@@ -1433,14 +1426,13 @@ static
 void
 hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 			hammer2_inode_t *ip,
-			const hammer2_inode_data_t *ripdata,
 			hammer2_cluster_t *cparent,
 			hammer2_key_t lbase, int ioflag, int pblksize,
 			int *errorp)
 {
 	hammer2_cluster_t *cluster;
 
-	switch(HAMMER2_DEC_ALGO(ripdata->meta.comp_algo)) {
+	switch(HAMMER2_DEC_ALGO(ip->meta.comp_algo)) {
 	case HAMMER2_COMP_NONE:
 		/*
 		 * We have to assign physical storage to the buffer
@@ -1466,9 +1458,8 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 			hammer2_cluster_modsync(cluster);
 		} else {
 			hammer2_write_bp(cluster, bp, ioflag, pblksize,
-					 errorp, ripdata->meta.check_algo);
+					 errorp, ip->meta.check_algo);
 		}
-		/* ripdata can become invalid */
 		if (cluster) {
 			hammer2_cluster_unlock(cluster);
 			hammer2_cluster_drop(cluster);
@@ -1479,9 +1470,9 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		 * Check for zero-fill only
 		 */
 		hammer2_zero_check_and_write(bp, trans, ip,
-				    ripdata, cparent, lbase,
+				    cparent, lbase,
 				    ioflag, pblksize, errorp,
-				    ripdata->meta.check_algo);
+				    ip->meta.check_algo);
 		break;
 	case HAMMER2_COMP_LZ4:
 	case HAMMER2_COMP_ZLIB:
@@ -1490,11 +1481,11 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		 * Check for zero-fill and attempt compression.
 		 */
 		hammer2_compress_and_write(bp, trans, ip,
-					   ripdata, cparent,
+					   cparent,
 					   lbase, ioflag,
 					   pblksize, errorp,
-					   ripdata->meta.comp_algo,
-					   ripdata->meta.check_algo);
+					   ip->meta.comp_algo,
+					   ip->meta.check_algo);
 		break;
 	}
 }
@@ -1507,7 +1498,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 static
 void
 hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
-	hammer2_inode_t *ip, const hammer2_inode_data_t *ripdata,
+	hammer2_inode_t *ip,
 	hammer2_cluster_t *cparent,
 	hammer2_key_t lbase, int ioflag, int pblksize,
 	int *errorp, int comp_algo, int check_algo)
@@ -1520,7 +1511,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 	char *comp_buffer;
 
 	if (test_block_zeros(bp->b_data, pblksize)) {
-		zero_write(bp, trans, ip, ripdata, cparent, lbase, errorp);
+		zero_write(bp, trans, ip, cparent, lbase, errorp);
 		return;
 	}
 
@@ -1623,8 +1614,6 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 	cluster = hammer2_assign_physical(trans, ip, cparent,
 					  lbase, comp_block_size,
 					  errorp);
-	ripdata = NULL;
-
 	if (*errorp) {
 		kprintf("WRITE PATH: An error occurred while "
 			"assigning physical space.\n");
@@ -1751,7 +1740,7 @@ done:
 static
 void
 hammer2_zero_check_and_write(struct buf *bp, hammer2_trans_t *trans,
-	hammer2_inode_t *ip, const hammer2_inode_data_t *ripdata,
+	hammer2_inode_t *ip,
 	hammer2_cluster_t *cparent,
 	hammer2_key_t lbase, int ioflag, int pblksize, int *errorp,
 	int check_algo)
@@ -1759,14 +1748,12 @@ hammer2_zero_check_and_write(struct buf *bp, hammer2_trans_t *trans,
 	hammer2_cluster_t *cluster;
 
 	if (test_block_zeros(bp->b_data, pblksize)) {
-		zero_write(bp, trans, ip, ripdata, cparent, lbase, errorp);
-		/* ripdata can become invalid */
+		zero_write(bp, trans, ip, cparent, lbase, errorp);
 	} else {
 		cluster = hammer2_assign_physical(trans, ip, cparent,
 						  lbase, pblksize, errorp);
 		hammer2_write_bp(cluster, bp, ioflag, pblksize, errorp,
 				 check_algo);
-		/* ripdata can become invalid */
 		if (cluster) {
 			hammer2_cluster_unlock(cluster);
 			hammer2_cluster_drop(cluster);
@@ -1797,7 +1784,7 @@ test_block_zeros(const char *buf, size_t bytes)
 static
 void
 zero_write(struct buf *bp, hammer2_trans_t *trans,
-	   hammer2_inode_t *ip, const hammer2_inode_data_t *ripdata,
+	   hammer2_inode_t *ip,
 	   hammer2_cluster_t *cparent,
 	   hammer2_key_t lbase, int *errorp __unused)
 {

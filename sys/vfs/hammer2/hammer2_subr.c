@@ -316,45 +316,20 @@ hammer2_getradix(size_t bytes)
 }
 
 /*
- * ip must be locked sh/ex
- *
- * Use 16KB logical buffers for file blocks <= 1MB and 64KB logical buffers
- * otherwise.  The write code may utilize smaller device buffers when
- * compressing or handling the EOF case, but is not able to coalesce smaller
- * logical buffers into larger device buffers.
- *
- * For now this means that even large files will have a bunch of 16KB blocks
- * at the beginning of the file.  On the plus side this tends to cause small
- * files to cluster together in the freemap.
+ * The logical block size is currently always PBUFSIZE.
  */
 int
 hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 		     hammer2_key_t *lbasep, hammer2_key_t *leofp)
 {
-#if 0
-	if (uoff < (hammer2_off_t)1024 * 1024) {
-		if (lbasep)
-			*lbasep = uoff & ~HAMMER2_LBUFMASK64;
-		if (leofp) {
-			if (ip->size > (hammer2_key_t)1024 * 1024)
-				*leofp = (hammer2_key_t)1024 * 1024;
-			else
-				*leofp = (ip->size + HAMMER2_LBUFMASK64) &
-					 ~HAMMER2_LBUFMASK64;
-		}
-		return (HAMMER2_LBUFSIZE);
-	} else {
-#endif
-		if (lbasep)
-			*lbasep = uoff & ~HAMMER2_PBUFMASK64;
-		if (leofp) {
-			*leofp = (ip->size + HAMMER2_PBUFMASK64) &
-				 ~HAMMER2_PBUFMASK64;
-		}
-		return (HAMMER2_PBUFSIZE);
-#if 0
+	KKASSERT(ip->flags & HAMMER2_INODE_METAGOOD);
+	if (lbasep)
+		*lbasep = uoff & ~HAMMER2_PBUFMASK64;
+	if (leofp) {
+		*leofp = (ip->meta.size + HAMMER2_PBUFMASK64) &
+			 ~HAMMER2_PBUFMASK64;
 	}
-#endif
+	return (HAMMER2_PBUFSIZE);
 }
 
 /*
@@ -365,20 +340,19 @@ hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
  * Returns 0 if the requested base offset is beyond the file EOF.
  */
 int
-hammer2_calc_physical(hammer2_inode_t *ip,
-		      const hammer2_inode_data_t *ipdata,
-		      hammer2_key_t lbase)
+hammer2_calc_physical(hammer2_inode_t *ip, hammer2_key_t lbase)
 {
 	int lblksize;
 	int pblksize;
 	int eofbytes;
 
+	KKASSERT(ip->flags & HAMMER2_INODE_METAGOOD);
 	lblksize = hammer2_calc_logical(ip, lbase, NULL, NULL);
-	if (lbase + lblksize <= ipdata->meta.size)
+	if (lbase + lblksize <= ip->meta.size)
 		return (lblksize);
-	if (lbase >= ipdata->meta.size)
+	if (lbase >= ip->meta.size)
 		return (0);
-	eofbytes = (int)(ipdata->meta.size - lbase);
+	eofbytes = (int)(ip->meta.size - lbase);
 	pblksize = lblksize;
 	while (pblksize >= eofbytes && pblksize >= HAMMER2_ALLOC_MIN)
 		pblksize >>= 1;

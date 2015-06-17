@@ -675,12 +675,10 @@ struct hammer2_inode {
 	struct spinlock		cluster_spin;	/* update cluster */
 	hammer2_cluster_t	cluster;
 	struct lockf		advlock;
-	hammer2_tid_t		inum;
 	u_int			flags;
 	u_int			refs;		/* +vpref, +flushref */
 	uint8_t			comp_heuristic;
-	hammer2_off_t		size;		/* cache file size */
-	uint64_t		mtime;		/* cache mtime */
+	hammer2_inode_meta_t	meta;		/* copy of meta-data */
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
@@ -692,7 +690,7 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_RESIZED		0x0010
 #define HAMMER2_INODE_MTIME		0x0020
 #define HAMMER2_INODE_ISUNLINKED	0x0040
-#define HAMMER2_INODE_DATAGOOD		0x0080	/* inode meta-data */
+#define HAMMER2_INODE_METAGOOD		0x0080	/* inode meta-data good */
 
 int hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2);
 RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
@@ -1092,9 +1090,7 @@ int hammer2_getradix(size_t bytes);
 
 int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 			hammer2_key_t *lbasep, hammer2_key_t *leofp);
-int hammer2_calc_physical(hammer2_inode_t *ip,
-			const hammer2_inode_data_t *ipdata,
-			hammer2_key_t lbase);
+int hammer2_calc_physical(hammer2_inode_t *ip, hammer2_key_t lbase);
 void hammer2_update_time(uint64_t *timep);
 void hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
 
@@ -1124,7 +1120,8 @@ hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
 			hammer2_cluster_t **clusterp,
 			int flags, int *errorp);
 int hammer2_inode_connect(hammer2_trans_t *trans,
-			hammer2_cluster_t **clusterp, int hlink,
+			hammer2_inode_t *ip, hammer2_cluster_t **clusterp,
+			int hlink,
 			hammer2_inode_t *dip, hammer2_cluster_t *dcluster,
 			const uint8_t *name, size_t name_len,
 			hammer2_key_t key);

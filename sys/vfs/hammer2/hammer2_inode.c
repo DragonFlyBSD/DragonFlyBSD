@@ -49,14 +49,14 @@ static void hammer2_inode_move_to_hidden(hammer2_trans_t *trans,
 					 hammer2_tid_t inum);
 
 RB_GENERATE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
-	     hammer2_tid_t, inum);
+	     hammer2_tid_t, meta.inum);
 
 int
 hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
 {
-	if (ip1->inum < ip2->inum)
+	if (ip1->meta.inum < ip2->meta.inum)
 		return(-1);
-	if (ip1->inum > ip2->inum)
+	if (ip1->meta.inum > ip2->meta.inum)
 		return(1);
 	return(0);
 }
@@ -553,13 +553,13 @@ again:
 	nip->cluster.flags |= HAMMER2_CLUSTER_INODE;
 	if (cluster) {
 		nipdata = &hammer2_cluster_rdata(cluster)->ipdata;
-		nip->inum = nipdata->meta.inum;
-		nip->size = nipdata->meta.size;
-		nip->mtime = nipdata->meta.mtime;
+		nip->meta = nipdata->meta;
+		atomic_set_int(&nip->flags, HAMMER2_INODE_METAGOOD);
 		hammer2_inode_repoint(nip, NULL, cluster);
 	} else {
-		nip->inum = 1;			/* PFS inum is always 1 XXX */
+		nip->meta.inum = 1;		/* PFS inum is always 1 XXX */
 		/* mtime will be updated when a cluster is available */
+		atomic_set_int(&nip->flags, HAMMER2_INODE_METAGOOD);
 	}
 
 	nip->pip = dip;				/* can be NULL */
@@ -790,6 +790,7 @@ retry:
 	bcopy(name, nipdata->filename, name_len);
 	nipdata->meta.name_key = lhc;
 	nipdata->meta.name_len = name_len;
+	nip->meta = nipdata->meta;
 	hammer2_cluster_modsync(cluster);
 	*clusterp = cluster;
 
@@ -807,7 +808,8 @@ retry:
 static
 void
 hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
-			hammer2_inode_t *dip, hammer2_cluster_t *dcluster,
+			hammer2_inode_t *ip, hammer2_inode_t *dip,
+			hammer2_cluster_t *dcluster,
 			int nlinks, int *errorp)
 {
 	const hammer2_inode_data_t *iptmp;
@@ -886,6 +888,14 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 	nipdata->meta.name_len = strlen(nipdata->filename);
 	nipdata->meta.name_key = lhc;
 	nipdata->meta.nlinks += nlinks;
+
+	/*
+	 * Resync ip->meta.  Some fields have to be retained.
+	 */
+	nipdata->meta.size = ip->meta.size;
+	nipdata->meta.mtime = ip->meta.mtime;
+	ip->meta = nipdata->meta;
+
 	hammer2_cluster_modsync(cluster);
 }
 
@@ -902,7 +912,8 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
  */
 int
 hammer2_inode_connect(hammer2_trans_t *trans,
-		      hammer2_cluster_t **clusterp, int hlink,
+		      hammer2_inode_t *ip, hammer2_cluster_t **clusterp,
+		      int hlink,
 		      hammer2_inode_t *dip, hammer2_cluster_t *dcluster,
 		      const uint8_t *name, size_t name_len,
 		      hammer2_key_t lhc)
@@ -1064,6 +1075,15 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 		wipdata->meta.name_len = name_len;
 		wipdata->meta.nlinks = 1;
 		hammer2_cluster_modsync(ncluster);
+
+		/*
+		 * Resync the in-memory inode, some fields must be retained.
+		 */
+		if (ip) {	/* XXX move_to_hidden passes NULL */
+			wipdata->meta.size = ip->meta.size;
+			wipdata->meta.mtime = ip->meta.mtime;
+			ip->meta = wipdata->meta;
+		}
 	}
 
 	/*
@@ -1478,6 +1498,7 @@ again:
 			wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
 			ripdata = wipdata;
 			wipdata->meta.nlinks += nlinks;
+			/* XXX race */
 			/* XXX debugging */
 			if ((int64_t)wipdata->meta.nlinks < 0) {
 				wipdata->meta.nlinks = 0;
@@ -1679,7 +1700,8 @@ hammer2_inode_move_to_hidden(hammer2_trans_t *trans,
 
 	hammer2_cluster_delete(trans, *cparentp, *clusterp, 0);
 	dcluster = hammer2_inode_lock(pmp->ihidden, HAMMER2_RESOLVE_ALWAYS);
-	error = hammer2_inode_connect(trans, clusterp, 0,
+	error = hammer2_inode_connect(trans,
+				      NULL/*XXX*/, clusterp, 0,
 				      pmp->ihidden, dcluster,
 				      NULL, 0, inum);
 	hammer2_inode_unlock(pmp->ihidden, dcluster);
@@ -1837,7 +1859,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 	 *	    to the older/original version.
 	 */
 	KKASSERT(cluster->focus->flags & HAMMER2_CHAIN_DELETED);
-	hammer2_hardlink_shiftup(trans, cluster, cdip, cdcluster,
+	hammer2_hardlink_shiftup(trans, cluster, ip, cdip, cdcluster,
 				 nlinks, &error);
 
 	if (error == 0)
@@ -2038,13 +2060,14 @@ hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	if (ip->flags & HAMMER2_INODE_MTIME) {
 		wipdata = hammer2_cluster_modify_ip(trans, ip, cparent, 0);
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_MTIME);
-		wipdata->meta.mtime = ip->mtime;
+		wipdata->meta.mtime = ip->meta.mtime;
 		dosync = 1;
 		ripdata = wipdata;
 	}
-	if ((ip->flags & HAMMER2_INODE_RESIZED) && ip->size < ripdata->meta.size) {
+	if ((ip->flags & HAMMER2_INODE_RESIZED) &&
+	    ip->meta.size < ripdata->meta.size) {
 		wipdata = hammer2_cluster_modify_ip(trans, ip, cparent, 0);
-		wipdata->meta.size = ip->size;
+		wipdata->meta.size = ip->meta.size;
 		dosync = 1;
 		ripdata = wipdata;
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED);
@@ -2084,9 +2107,9 @@ hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		hammer2_cluster_lookup_done(dparent);
 	} else
 	if ((ip->flags & HAMMER2_INODE_RESIZED) &&
-	    ip->size > ripdata->meta.size) {
+	    ip->meta.size > ripdata->meta.size) {
 		wipdata = hammer2_cluster_modify_ip(trans, ip, cparent, 0);
-		wipdata->meta.size = ip->size;
+		wipdata->meta.size = ip->meta.size;
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED);
 
 		/*
@@ -2094,7 +2117,7 @@ hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		 * available.
 		 */
 		if ((wipdata->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA) &&
-		    ip->size > HAMMER2_EMBEDDED_BYTES) {
+		    ip->meta.size > HAMMER2_EMBEDDED_BYTES) {
 			wipdata->meta.op_flags &= ~HAMMER2_OPFLAG_DIRECTDATA;
 			bzero(&wipdata->u.blockset,
 			      sizeof(wipdata->u.blockset));
