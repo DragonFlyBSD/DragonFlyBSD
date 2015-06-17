@@ -552,19 +552,20 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 		 */
 		rawip = (void *)(buf + (HAMMER2_OFF_MASK_LO &
 					root_blockref[i].data_off));
-		rawip->version = HAMMER2_INODE_VERSION_ONE;
-		rawip->ctime = now;
-		rawip->mtime = now;
+		rawip->meta.version = HAMMER2_INODE_VERSION_ONE;
+		rawip->meta.ctime = now;
+		rawip->meta.mtime = now;
 		/* rawip->atime = now; NOT IMPL MUST BE ZERO */
-		rawip->btime = now;
-		rawip->type = HAMMER2_OBJTYPE_DIRECTORY;
-		rawip->mode = 0755;
-		rawip->inum = 1;	/* root inode, inumber 1 */
-		rawip->nlinks = 1; 	/* directory link count compat */
+		rawip->meta.btime = now;
+		rawip->meta.type = HAMMER2_OBJTYPE_DIRECTORY;
+		rawip->meta.mode = 0755;
+		rawip->meta.inum = 1;	/* root inode, inumber 1 */
+		rawip->meta.nlinks = 1;	/* directory link count compat */
 
-		rawip->name_len = strlen(Label[i]);
-		bcopy(Label[i], rawip->filename, rawip->name_len);
-		rawip->name_key = dirhash(rawip->filename, rawip->name_len);
+		rawip->meta.name_len = strlen(Label[i]);
+		bcopy(Label[i], rawip->filename, rawip->meta.name_len);
+		rawip->meta.name_key =
+				dirhash(rawip->filename, rawip->meta.name_len);
 
 		/*
 		 * Compression mode and supported copyids.
@@ -573,15 +574,15 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 		 * (pfs-create also does the same if the pfs is named "BOOT")
 		 */
 		if (strcasecmp(Label[i], "BOOT") == 0) {
-			rawip->comp_algo = HAMMER2_ENC_ALGO(
-						HAMMER2_COMP_AUTOZERO);
-			rawip->check_algo = HAMMER2_ENC_ALGO(
-						HAMMER2_CHECK_ISCSI32);
+			rawip->meta.comp_algo = HAMMER2_ENC_ALGO(
+						    HAMMER2_COMP_AUTOZERO);
+			rawip->meta.check_algo = HAMMER2_ENC_ALGO(
+						    HAMMER2_CHECK_ISCSI32);
 		} else  {
-			rawip->comp_algo = HAMMER2_ENC_ALGO(
-						HAMMER2_COMP_NEWFS_DEFAULT);
-			rawip->check_algo = HAMMER2_ENC_ALGO(
-						HAMMER2_CHECK_ISCSI32);
+			rawip->meta.comp_algo = HAMMER2_ENC_ALGO(
+						    HAMMER2_COMP_NEWFS_DEFAULT);
+			rawip->meta.check_algo = HAMMER2_ENC_ALGO(
+						    HAMMER2_CHECK_ISCSI32);
 		}
 
 		/*
@@ -589,11 +590,13 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 		 *	 don't know how many masters there are.  The quorum
 		 *	 calculation will effectively be 1 ( 0 / 2 + 1 ).
 		 */
-		rawip->pfs_clid = Hammer2_PfsCLID[i];
-		rawip->pfs_fsid = Hammer2_PfsFSID[i];
-		rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
-		rawip->op_flags |= HAMMER2_OPFLAG_PFSROOT;
-		rawip->pfs_inum = 16;	/* first allocatable inode number */
+		rawip->meta.pfs_clid = Hammer2_PfsCLID[i];
+		rawip->meta.pfs_fsid = Hammer2_PfsFSID[i];
+		rawip->meta.pfs_type = HAMMER2_PFSTYPE_MASTER;
+		rawip->meta.op_flags |= HAMMER2_OPFLAG_PFSROOT;
+
+		/* first allocatable inode number */
+		rawip->meta.pfs_inum = 16;
 
 		/* rawip->u.blockset is left empty */
 
@@ -605,7 +608,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 		 * The key field for a directory entry's blockref is
 		 * essentially the name key for the entry.
 		 */
-		root_blockref[i].key = rawip->name_key;
+		root_blockref[i].key = rawip->meta.name_key;
 		root_blockref[i].copyid = HAMMER2_COPYID_LOCAL;
 		root_blockref[i].keybits = 0;
 		root_blockref[i].check.iscsi32.value =
@@ -628,21 +631,21 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 * having to worry about the hash.  Use index 0.
 	 */
 	rawip = (void *)(buf + (HAMMER2_OFF_MASK_LO & sroot_blockref.data_off));
-	rawip->version = HAMMER2_INODE_VERSION_ONE;
-	rawip->ctime = now;
-	rawip->mtime = now;
-	/* rawip->atime = now; NOT IMPL MUST BE ZERO */
-	rawip->btime = now;
-	rawip->type = HAMMER2_OBJTYPE_DIRECTORY;
-	rawip->mode = 0700;		/* super-root - root only */
-	rawip->inum = 0;		/* super root inode, inumber 0 */
-	rawip->nlinks = 2; 		/* directory link count compat */
+	rawip->meta.version = HAMMER2_INODE_VERSION_ONE;
+	rawip->meta.ctime = now;
+	rawip->meta.mtime = now;
+	/* rawip->meta.atime = now; NOT IMPL MUST BE ZERO */
+	rawip->meta.btime = now;
+	rawip->meta.type = HAMMER2_OBJTYPE_DIRECTORY;
+	rawip->meta.mode = 0700;	/* super-root - root only */
+	rawip->meta.inum = 0;		/* super root inode, inumber 0 */
+	rawip->meta.nlinks = 2; 	/* directory link count compat */
 
-	rawip->name_len = 0;		/* super-root is unnamed */
-	rawip->name_key = 0;
+	rawip->meta.name_len = 0;	/* super-root is unnamed */
+	rawip->meta.name_key = 0;
 
-	rawip->comp_algo = HAMMER2_ENC_ALGO(HAMMER2_COMP_AUTOZERO);
-	rawip->check_algo = HAMMER2_ENC_ALGO(HAMMER2_CHECK_ISCSI32);
+	rawip->meta.comp_algo = HAMMER2_ENC_ALGO(HAMMER2_COMP_AUTOZERO);
+	rawip->meta.check_algo = HAMMER2_ENC_ALGO(HAMMER2_CHECK_ISCSI32);
 
 	/*
 	 * The super-root is flagged as a PFS and typically given its own
@@ -655,10 +658,12 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 *  transaction id domain, so normal mechanics cannot cross a PFS
 	 *  boundary).
 	 */
-	rawip->pfs_clid = Hammer2_SupCLID;
-	rawip->pfs_fsid = Hammer2_SupFSID;
-	rawip->pfs_type = HAMMER2_PFSTYPE_SUPROOT;
-	rawip->pfs_inum = 16;	/* first allocatable inode number */
+	rawip->meta.pfs_clid = Hammer2_SupCLID;
+	rawip->meta.pfs_fsid = Hammer2_SupFSID;
+	rawip->meta.pfs_type = HAMMER2_PFSTYPE_SUPROOT;
+
+	/* first allocatable inode number */
+	rawip->meta.pfs_inum = 16;
 
 	/*
 	 * Currently newfs_hammer2 just throws the PFS inodes into the

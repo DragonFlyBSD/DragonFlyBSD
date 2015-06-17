@@ -494,7 +494,7 @@ struct hammer2_volconf {
 	uuid_t	pfs_clid;	/* 20-2F copy target must match this uuid */
 	uint8_t label[16];	/* 30-3F import/export label */
 	uint8_t path[64];	/* 40-7F target specification string or key */
-};
+} __packed;
 
 typedef struct hammer2_volconf hammer2_volconf_t;
 
@@ -511,7 +511,7 @@ struct dmsg_lnk_hammer2_volconf {
 	int32_t			unused01;
 	uuid_t			mediaid;
 	int64_t			reserved02[32];
-};
+} __packed;
 
 typedef struct dmsg_lnk_hammer2_volconf dmsg_lnk_hammer2_volconf_t;
 
@@ -620,7 +620,7 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 			char reserved[48];
 		} freemap;
 	} check;
-};
+} __packed;
 
 typedef struct hammer2_blockref hammer2_blockref_t;
 
@@ -668,7 +668,7 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 
 /*
  * Encode/decode check or compression algorithm request in
- * ipdata->check_algo and ipdata->comp_algo.
+ * ipdata->meta.check_algo and ipdata->meta.comp_algo.
  */
 #define HAMMER2_ENC_ALGO(n)		(n)
 #define HAMMER2_DEC_ALGO(n)		((n) & 15)
@@ -786,7 +786,7 @@ struct hammer2_bmap_data {
 	uint32_t reserved20[8];	/* 20-3F 256 bits manages 128K/1KB/2-bits */
 				/* 40-7F 512 bits manages 4MB of storage */
 	hammer2_bitmap_t bitmapq[HAMMER2_BMAP_ELEMENTS];
-};
+} __packed;
 
 typedef struct hammer2_bmap_data hammer2_bmap_data_t;
 
@@ -798,7 +798,10 @@ typedef struct hammer2_bmap_data hammer2_bmap_data_t;
  *
  * The inode is 1024 bytes, made up of 256 bytes of meta-data, 256 bytes
  * for the filename, and 512 bytes worth of direct file data OR an embedded
- * blockset.
+ * blockset.  The in-memory hammer2_inode structure contains only the mostly-
+ * node-independent meta-data portion (some flags are node-specific and will
+ * not be synchronized).  The rest of the inode is node-specific and chain I/O
+ * is required to obtain it.
  *
  * Directories represent one inode per blockref.  Inodes are not laid out
  * as a file but instead are represented by the related blockrefs.  The
@@ -844,7 +847,7 @@ typedef struct hammer2_bmap_data hammer2_bmap_data_t;
 #define HAMMER2_INODE_HIDDENDIR		16	/* special inode */
 #define HAMMER2_INODE_START		1024	/* dynamically allocated */
 
-struct hammer2_inode_data {
+struct hammer2_inode_meta {
 	uint16_t	version;	/* 0000 inode data version */
 	uint8_t		reserved02;	/* 0002 */
 	uint8_t		pfs_subtype;	/* 0003 pfs sub-type */
@@ -918,14 +921,19 @@ struct hammer2_inode_data {
 	 */
 	uint64_t	decrypt_check;	/* 00E0 decryption validator */
 	hammer2_off_t	reservedE0[3];	/* 00E8/F0/F8 */
+} __packed;
 
+typedef struct hammer2_inode_meta hammer2_inode_meta_t;
+
+struct hammer2_inode_data {
+	hammer2_inode_meta_t	meta;	/* 0000-00FF */
 	unsigned char	filename[HAMMER2_INODE_MAXNAME];
 					/* 0100-01FF (256 char, unterminated) */
 	union {				/* 0200-03FF (64x8 = 512 bytes) */
 		struct hammer2_blockset blockset;
 		char data[HAMMER2_EMBEDDED_BYTES];
 	} u;
-};
+} __packed;
 
 typedef struct hammer2_inode_data hammer2_inode_data_t;
 
@@ -1201,7 +1209,7 @@ struct hammer2_volume_data {
 	 * icrc on entire volume header
 	 */
 	hammer2_crc32_t	icrc_volheader;		/* FFFC-FFFF full volume icrc*/
-};
+} __packed;
 
 typedef struct hammer2_volume_data hammer2_volume_data_t;
 
@@ -1243,7 +1251,7 @@ union hammer2_media_data {
 	hammer2_blockref_t	npdata[HAMMER2_IND_COUNT_MAX];
 	hammer2_bmap_data_t	bmdata[HAMMER2_FREEMAP_COUNT];
 	char			buf[HAMMER2_PBUFSIZE];
-};
+} __packed;
 
 typedef union hammer2_media_data hammer2_media_data_t;
 

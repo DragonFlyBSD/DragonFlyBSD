@@ -253,9 +253,10 @@ hammer2_vop_access(struct vop_access_args *ap)
 	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
 					 HAMMER2_RESOLVE_SHARED);
 	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-	uid = hammer2_to_unix_xid(&ripdata->uid);
-	gid = hammer2_to_unix_xid(&ripdata->gid);
-	error = vop_helper_access(ap, uid, gid, ripdata->mode, ripdata->uflags);
+	uid = hammer2_to_unix_xid(&ripdata->meta.uid);
+	gid = hammer2_to_unix_xid(&ripdata->meta.gid);
+	error = vop_helper_access(ap, uid, gid,
+				  ripdata->meta.mode, ripdata->meta.uflags);
 	hammer2_inode_unlock(ip, cluster);
 
 	LOCKSTOP;
@@ -288,25 +289,25 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	hammer2_cluster_bref(cluster, &bref);
 
 	vap->va_fsid = pmp->mp->mnt_stat.f_fsid.val[0];
-	vap->va_fileid = ripdata->inum;
-	vap->va_mode = ripdata->mode;
-	vap->va_nlink = ripdata->nlinks;
-	vap->va_uid = hammer2_to_unix_xid(&ripdata->uid);
-	vap->va_gid = hammer2_to_unix_xid(&ripdata->gid);
+	vap->va_fileid = ripdata->meta.inum;
+	vap->va_mode = ripdata->meta.mode;
+	vap->va_nlink = ripdata->meta.nlinks;
+	vap->va_uid = hammer2_to_unix_xid(&ripdata->meta.uid);
+	vap->va_gid = hammer2_to_unix_xid(&ripdata->meta.gid);
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
 	vap->va_size = ip->size;	/* protected by shared lock */
 	vap->va_blocksize = HAMMER2_PBUFSIZE;
-	vap->va_flags = ripdata->uflags;
-	hammer2_time_to_timespec(ripdata->ctime, &vap->va_ctime);
-	hammer2_time_to_timespec(ripdata->mtime, &vap->va_mtime);
-	hammer2_time_to_timespec(ripdata->mtime, &vap->va_atime);
+	vap->va_flags = ripdata->meta.uflags;
+	hammer2_time_to_timespec(ripdata->meta.ctime, &vap->va_ctime);
+	hammer2_time_to_timespec(ripdata->meta.mtime, &vap->va_mtime);
+	hammer2_time_to_timespec(ripdata->meta.mtime, &vap->va_atime);
 	vap->va_gen = 1;
 	vap->va_bytes = bref.data_count;
 	vap->va_type = hammer2_get_vtype(ripdata);
 	vap->va_filerev = 0;
-	vap->va_uid_uuid = ripdata->uid;
-	vap->va_gid_uuid = ripdata->gid;
+	vap->va_uid_uuid = ripdata->meta.uid;
+	vap->va_gid_uuid = ripdata->meta.gid;
 	vap->va_vaflags = VA_UID_UUID_VALID | VA_GID_UUID_VALID |
 			  VA_FSID_UUID_VALID;
 
@@ -354,35 +355,35 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	if (vap->va_flags != VNOVAL) {
 		u_int32_t flags;
 
-		flags = ripdata->uflags;
+		flags = ripdata->meta.uflags;
 		error = vop_helper_setattr_flags(&flags, vap->va_flags,
-					 hammer2_to_unix_xid(&ripdata->uid),
-					 ap->a_cred);
+				     hammer2_to_unix_xid(&ripdata->meta.uid),
+				     ap->a_cred);
 		if (error == 0) {
-			if (ripdata->uflags != flags) {
+			if (ripdata->meta.uflags != flags) {
 				wipdata = hammer2_cluster_modify_ip(&trans, ip,
 								    cluster, 0);
-				wipdata->uflags = flags;
-				wipdata->ctime = ctime;
+				wipdata->meta.uflags = flags;
+				wipdata->meta.ctime = ctime;
 				kflags |= NOTE_ATTRIB;
 				dosync = 1;
 				ripdata = wipdata;
 			}
-			if (ripdata->uflags & (IMMUTABLE | APPEND)) {
+			if (ripdata->meta.uflags & (IMMUTABLE | APPEND)) {
 				error = 0;
 				goto done;
 			}
 		}
 		goto done;
 	}
-	if (ripdata->uflags & (IMMUTABLE | APPEND)) {
+	if (ripdata->meta.uflags & (IMMUTABLE | APPEND)) {
 		error = EPERM;
 		goto done;
 	}
 	if (vap->va_uid != (uid_t)VNOVAL || vap->va_gid != (gid_t)VNOVAL) {
-		mode_t cur_mode = ripdata->mode;
-		uid_t cur_uid = hammer2_to_unix_xid(&ripdata->uid);
-		gid_t cur_gid = hammer2_to_unix_xid(&ripdata->gid);
+		mode_t cur_mode = ripdata->meta.mode;
+		uid_t cur_uid = hammer2_to_unix_xid(&ripdata->meta.uid);
+		gid_t cur_gid = hammer2_to_unix_xid(&ripdata->meta.gid);
 		uuid_t uuid_uid;
 		uuid_t uuid_gid;
 
@@ -392,16 +393,18 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 		if (error == 0) {
 			hammer2_guid_to_uuid(&uuid_uid, cur_uid);
 			hammer2_guid_to_uuid(&uuid_gid, cur_gid);
-			if (bcmp(&uuid_uid, &ripdata->uid, sizeof(uuid_uid)) ||
-			    bcmp(&uuid_gid, &ripdata->gid, sizeof(uuid_gid)) ||
-			    ripdata->mode != cur_mode
+			if (bcmp(&uuid_uid, &ripdata->meta.uid,
+				 sizeof(uuid_uid)) ||
+			    bcmp(&uuid_gid, &ripdata->meta.gid,
+				 sizeof(uuid_gid)) ||
+			    ripdata->meta.mode != cur_mode
 			) {
 				wipdata = hammer2_cluster_modify_ip(&trans, ip,
 								    cluster, 0);
-				wipdata->uid = uuid_uid;
-				wipdata->gid = uuid_gid;
-				wipdata->mode = cur_mode;
-				wipdata->ctime = ctime;
+				wipdata->meta.uid = uuid_uid;
+				wipdata->meta.gid = uuid_gid;
+				wipdata->meta.mode = cur_mode;
+				wipdata->meta.ctime = ctime;
 				dosync = 1;
 				ripdata = wipdata;
 			}
@@ -438,7 +441,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	/* atime not supported */
 	if (vap->va_atime.tv_sec != VNOVAL) {
 		wipdata = hammer2_cluster_modify_ip(&trans, ip, cluster, 0);
-		wipdata->atime = hammer2_timespec_to_time(&vap->va_atime);
+		wipdata->meta.atime = hammer2_timespec_to_time(&vap->va_atime);
 		kflags |= NOTE_ATTRIB;
 		dosync = 1;
 		ripdata = wipdata;
@@ -446,24 +449,24 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 #endif
 	if (vap->va_mtime.tv_sec != VNOVAL) {
 		wipdata = hammer2_cluster_modify_ip(&trans, ip, cluster, 0);
-		wipdata->mtime = hammer2_timespec_to_time(&vap->va_mtime);
+		wipdata->meta.mtime = hammer2_timespec_to_time(&vap->va_mtime);
 		kflags |= NOTE_ATTRIB;
 		domtime = 0;
 		dosync = 1;
 		ripdata = wipdata;
 	}
 	if (vap->va_mode != (mode_t)VNOVAL) {
-		mode_t cur_mode = ripdata->mode;
-		uid_t cur_uid = hammer2_to_unix_xid(&ripdata->uid);
-		gid_t cur_gid = hammer2_to_unix_xid(&ripdata->gid);
+		mode_t cur_mode = ripdata->meta.mode;
+		uid_t cur_uid = hammer2_to_unix_xid(&ripdata->meta.uid);
+		gid_t cur_gid = hammer2_to_unix_xid(&ripdata->meta.gid);
 
 		error = vop_helper_chmod(ap->a_vp, vap->va_mode, ap->a_cred,
 					 cur_uid, cur_gid, &cur_mode);
-		if (error == 0 && ripdata->mode != cur_mode) {
+		if (error == 0 && ripdata->meta.mode != cur_mode) {
 			wipdata = hammer2_cluster_modify_ip(&trans, ip,
 							    cluster, 0);
-			wipdata->mode = cur_mode;
-			wipdata->ctime = ctime;
+			wipdata->meta.mode = cur_mode;
+			wipdata->meta.ctime = ctime;
 			kflags |= NOTE_ATTRIB;
 			dosync = 1;
 			ripdata = wipdata;
@@ -562,7 +565,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	cluster = (void *)(intptr_t)-1;	/* non-NULL for early goto done case */
 
 	if (saveoff == 0) {
-		inum = ripdata->inum & HAMMER2_DIRHASH_USERMSK;
+		inum = ripdata->meta.inum & HAMMER2_DIRHASH_USERMSK;
 		r = vop_write_dirent(&error, uio, inum, DT_DIR, 1, ".");
 		if (r)
 			goto done;
@@ -580,7 +583,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		 *
 		 * (ip is the current dir. xip is the parent dir).
 		 */
-		inum = ripdata->inum & HAMMER2_DIRHASH_USERMSK;
+		inum = ripdata->meta.inum & HAMMER2_DIRHASH_USERMSK;
 		while (ip->pip != NULL && ip != ip->pmp->iroot) {
 			xip = ip->pip;
 			hammer2_inode_ref(xip);
@@ -596,7 +599,8 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
 			if (xip == ip->pip) {
 				inum = hammer2_cluster_rdata(xcluster)->
-					ipdata.inum & HAMMER2_DIRHASH_USERMSK;
+					ipdata.meta.inum &
+					 HAMMER2_DIRHASH_USERMSK;
 				hammer2_inode_unlock(xip, xcluster);
 				break;
 			}
@@ -644,10 +648,10 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			dtype = hammer2_get_dtype(ripdata);
 			saveoff = bref.key & HAMMER2_DIRHASH_USERMSK;
 			r = vop_write_dirent(&error, uio,
-					     ripdata->inum &
+					     ripdata->meta.inum &
 					      HAMMER2_DIRHASH_USERMSK,
 					     dtype,
-					     ripdata->name_len,
+					     ripdata->meta.name_len,
 					     ripdata->filename);
 			if (r)
 				break;
@@ -1157,7 +1161,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	while (cluster) {
 		if (hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE) {
 			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-			if (ripdata->name_len == name_len &&
+			if (ripdata->meta.name_len == name_len &&
 			    bcmp(ripdata->filename, name, name_len) == 0) {
 				break;
 			}
@@ -1174,8 +1178,8 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 */
 	if (cluster) {
 		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-		if (ripdata->type == HAMMER2_OBJTYPE_HARDLINK) {
-			hammer2_tid_t inum = ripdata->inum;
+		if (ripdata->meta.type == HAMMER2_OBJTYPE_HARDLINK) {
+			hammer2_tid_t inum = ripdata->meta.inum;
 			error = hammer2_hardlink_find(dip, NULL, &cluster);
 			if (error) {
 				kprintf("hammer2: unable to find hardlink "
@@ -1194,7 +1198,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	if (cluster) {
 		ip = hammer2_inode_get(dip->pmp, dip, cluster);
 		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-		if (ripdata->type == HAMMER2_OBJTYPE_HARDLINK) {
+		if (ripdata->meta.type == HAMMER2_OBJTYPE_HARDLINK) {
 			kprintf("nresolve: fixup hardlink\n");
 			hammer2_inode_ref(ip);
 			hammer2_inode_unlock(ip, NULL);
@@ -1205,7 +1209,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 			hammer2_inode_drop(ip);
 			kprintf("nresolve: fixup to type %02x\n",
-				ripdata->type);
+				ripdata->meta.type);
 		}
 	} else {
 		ip = NULL;
@@ -1219,7 +1223,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 * XXX upgrade shared lock?
 	 */
 	if (ochain && chain &&
-	    chain->data->ipdata.nlinks == 1 && !dip->pmp->ronly) {
+	    chain->data->ipdata.meta.nlinks == 1 && !dip->pmp->ronly) {
 		kprintf("hammer2: need to unconsolidate hardlink for %s\n",
 			chain->data->ipdata.filename);
 		/* XXX retain shared lock on dip? (currently not held) */
@@ -1367,7 +1371,7 @@ hammer2_vop_advlock(struct vop_advlock_args *ap)
 	cparent = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
 					 HAMMER2_RESOLVE_SHARED);
 	ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
-	size = ripdata->size;
+	size = ripdata->meta.size;
 	hammer2_inode_unlock(ip, cparent);
 	return (lf_advlock(ap, &ip->advlock, size));
 }
@@ -1626,10 +1630,10 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		bytes = strlen(ap->a_target);
 
 		if (bytes <= HAMMER2_EMBEDDED_BYTES) {
-			KKASSERT(nipdata->op_flags &
+			KKASSERT(nipdata->meta.op_flags &
 				 HAMMER2_OPFLAG_DIRECTDATA);
 			bcopy(ap->a_target, nipdata->u.data, bytes);
-			nipdata->size = bytes;
+			nipdata->meta.size = bytes;
 			nip->size = bytes;
 			hammer2_cluster_modsync(ncparent);
 			hammer2_inode_unlock(nip, ncparent);

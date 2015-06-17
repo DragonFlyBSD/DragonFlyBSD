@@ -126,7 +126,7 @@ hammer2_cluster_reconnect(hammer2_dev_t *hmp, struct file *fp)
 	hmp->iocom.auto_lnk_conn.peer_mask = 1LLU << DMSG_PEER_HAMMER2;
 
 #if 0
-	switch (ipdata->pfs_type) {
+	switch (ipdata->meta.pfs_type) {
 	case DMSG_PFSTYPE_CLIENT:
 		hmp->iocom.auto_lnk_conn.peer_mask &=
 				~(1LLU << DMSG_PFSTYPE_CLIENT);
@@ -312,12 +312,12 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 		rmsg = kdmsg_msg_alloc(&hmp->iocom.state0,
 				       DMSG_LNK_SPAN | DMSGF_CREATE,
 				       hammer2_lnk_span_reply, NULL);
-		rmsg->any.lnk_span.peer_id = ripdata->pfs_clid;
-		rmsg->any.lnk_span.pfs_id = ripdata->pfs_fsid;
-		rmsg->any.lnk_span.pfs_type = ripdata->pfs_type;
+		rmsg->any.lnk_span.peer_id = ripdata->meta.pfs_clid;
+		rmsg->any.lnk_span.pfs_id = ripdata->meta.pfs_fsid;
+		rmsg->any.lnk_span.pfs_type = ripdata->meta.pfs_type;
 		rmsg->any.lnk_span.peer_type = DMSG_PEER_HAMMER2;
 		rmsg->any.lnk_span.proto_version = DMSG_SPAN_PROTO_1;
-		name_len = ripdata->name_len;
+		name_len = ripdata->meta.name_len;
 		if (name_len >= sizeof(rmsg->any.lnk_span.peer_label))
 			name_len = sizeof(rmsg->any.lnk_span.peer_label) - 1;
 		bcopy(ripdata->filename,

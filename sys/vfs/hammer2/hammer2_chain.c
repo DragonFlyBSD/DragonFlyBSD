@@ -1670,7 +1670,8 @@ again:
 		 *
 		 * This is only applicable to regular files and softlinks.
 		 */
-		if (parent->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
+		if (parent->data->ipdata.meta.op_flags &
+		    HAMMER2_OPFLAG_DIRECTDATA) {
 			if (flags & HAMMER2_LOOKUP_NODIRECT) {
 				chain = NULL;
 				*key_nextp = key_end + 1;
@@ -2041,8 +2042,10 @@ again:
 		/*
 		 * An inode with embedded data has no sub-chains.
 		 */
-		if (parent->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA)
+		if (parent->data->ipdata.meta.op_flags &
+		    HAMMER2_OPFLAG_DIRECTDATA) {
 			goto done;
+		}
 		base = &parent->data->ipdata.u.blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
@@ -2315,7 +2318,7 @@ again:
 
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
-		KKASSERT((parent->data->ipdata.op_flags &
+		KKASSERT((parent->data->ipdata.meta.op_flags &
 			  HAMMER2_OPFLAG_DIRECTDATA) == 0);
 		KKASSERT(parent->data != NULL);
 		base = &parent->data->ipdata.u.blockset.blockref[0];
@@ -2599,7 +2602,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 			 * an OBJTYPE_HARDLINK placeholding inode.
 			 */
 			if (parent->data &&
-			    (parent->data->ipdata.op_flags &
+			    (parent->data->ipdata.meta.op_flags &
 			     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
 				base =
 				   &parent->data->ipdata.u.blockset.blockref[0];
@@ -3840,8 +3843,10 @@ hammer2_base_sort(hammer2_chain_t *chain)
 		 *
 		 * This is only applicable to regular files and softlinks.
 		 */
-		if (chain->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA)
+		if (chain->data->ipdata.meta.op_flags &
+		    HAMMER2_OPFLAG_DIRECTDATA) {
 			return;
+		}
 		base = &chain->data->ipdata.u.blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;

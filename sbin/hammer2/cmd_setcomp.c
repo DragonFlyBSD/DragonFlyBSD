@@ -149,7 +149,7 @@ cmd_setcomp_core(uint8_t comp_algo, const char *path_str, struct stat *st)
 		goto failed;
 	}
 	printf("%s\tcomp_algo=0x%02x\n", path_str, comp_algo);
-	inode.ip_data.comp_algo = comp_algo;
+	inode.ip_data.meta.comp_algo = comp_algo;
 	res = ioctl(fd, HAMMER2IOC_INODE_SET, &inode);
 	if (res < 0) {
 		fprintf(stderr,

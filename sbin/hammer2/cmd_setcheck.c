@@ -113,7 +113,7 @@ cmd_setcheck_core(uint8_t check_algo, const char *path_str, struct stat *st)
 		goto failed;
 	}
 	printf("%s\tcheck_algo=0x%02x\n", path_str, check_algo);
-	inode.ip_data.check_algo = check_algo;
+	inode.ip_data.meta.check_algo = check_algo;
 	res = ioctl(fd, HAMMER2IOC_INODE_SET, &inode);
 	if (res < 0) {
 		fprintf(stderr,

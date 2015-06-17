@@ -990,7 +990,7 @@ hammer2_cluster_modsync(hammer2_cluster_t *cluster)
 		case HAMMER2_BREF_TYPE_INODE:
 			ripdata = &focus->data->ipdata;
 			wipdata = &scan->data->ipdata;
-			if ((ripdata->op_flags &
+			if ((ripdata->meta.op_flags &
 			    HAMMER2_OPFLAG_DIRECTDATA) == 0) {
 				bcopy(ripdata, wipdata,
 				      offsetof(hammer2_inode_data_t, u));
@@ -1556,7 +1556,7 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 	 */
 	ripdata = &hammer2_cluster_rdata(ocluster)->ipdata;
 #if 0
-	opfs_clid = ripdata->pfs_clid;
+	opfs_clid = ripdata->meta.pfs_clid;
 #endif
 	hmp = ocluster->focus->hmp;	/* XXX find synchronized local disk */
 
@@ -1583,10 +1583,10 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 
 	if (nip) {
 		wipdata = hammer2_cluster_modify_ip(trans, nip, ncluster, 0);
-		wipdata->pfs_type = HAMMER2_PFSTYPE_MASTER;
-		wipdata->pfs_subtype = HAMMER2_PFSSUBTYPE_SNAPSHOT;
-		wipdata->op_flags |= HAMMER2_OPFLAG_PFSROOT;
-		kern_uuidgen(&wipdata->pfs_fsid, 1);
+		wipdata->meta.pfs_type = HAMMER2_PFSTYPE_MASTER;
+		wipdata->meta.pfs_subtype = HAMMER2_PFSSUBTYPE_SNAPSHOT;
+		wipdata->meta.op_flags |= HAMMER2_OPFLAG_PFSROOT;
+		kern_uuidgen(&wipdata->meta.pfs_fsid, 1);
 
 		/*
 		 * Give the snapshot its own private cluster.  As a snapshot
@@ -1595,11 +1595,11 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 		 */
 #if 0
 		if (ocluster->focus->flags & HAMMER2_CHAIN_PFSBOUNDARY)
-			wipdata->pfs_clid = opfs_clid;
+			wipdata->meta.pfs_clid = opfs_clid;
 		else
-			kern_uuidgen(&wipdata->pfs_clid, 1);
+			kern_uuidgen(&wipdata->meta.pfs_clid, 1);
 #endif
-		kern_uuidgen(&wipdata->pfs_clid, 1);
+		kern_uuidgen(&wipdata->meta.pfs_clid, 1);
 
 		for (i = 0; i < ncluster->nchains; ++i) {
 			if ((ncluster->array[i].flags &

@@ -808,7 +808,7 @@ again:
 			 *	 changes to the inode data, the system might
 			 *	 have already flushed the buffer.
 			 */
-			if (chain->data->ipdata.op_flags &
+			if (chain->data->ipdata.meta.op_flags &
 			    HAMMER2_OPFLAG_PFSROOT) {
 				/*
 				 * non-NULL pmp if mounted as a PFS.  We must
@@ -819,7 +819,7 @@ again:
 				hammer2_io_setdirty(chain->dio);
 				ipdata = &chain->data->ipdata;
 				if (chain->pmp) {
-					ipdata->pfs_inum =
+					ipdata->meta.pfs_inum =
 						chain->pmp->inode_tid;
 				}
 			} else {
@@ -946,7 +946,7 @@ again:
 			 * no block array if the inode is flagged DIRECTDATA.
 			 */
 			if (parent->data &&
-			    (parent->data->ipdata.op_flags &
+			    (parent->data->ipdata.meta.op_flags &
 			     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
 				base = &parent->data->
 					ipdata.u.blockset.blockref[0];

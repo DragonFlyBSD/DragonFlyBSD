@@ -104,6 +104,8 @@ struct hammer2_pfs;
 struct hammer2_span;
 struct hammer2_state;
 struct hammer2_msg;
+struct hammer2_syncthr;
+struct hammer2_vop_info;
 
 /*
  * Mutex and lock shims.  Hammer2 requires support for asynchronous and
@@ -690,6 +692,7 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_RESIZED		0x0010
 #define HAMMER2_INODE_MTIME		0x0020
 #define HAMMER2_INODE_ISUNLINKED	0x0040
+#define HAMMER2_INODE_DATAGOOD		0x0080	/* inode meta-data */
 
 int hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2);
 RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
@@ -757,18 +760,26 @@ struct hammer2_trans_manage {
 typedef struct hammer2_trans_manage hammer2_trans_manage_t;
 
 /*
- * Collection point for distributed frontend operation.  Uses a managed
- * objcache.
+ * hammer2_vop_info - container for VOP operation.
+ *
+ * This structure is used to distribute a VOP operation across multiple
+ * nodes.  It provides a rendezvous for concurrent node execution and
+ * can be detached from the frontend operation to allow the frontend to
+ * return early.
  */
 struct hammer2_vop_info {
 	hammer2_inode_t	*dip;
 	hammer2_inode_t	*ip;
 	struct uio	*uio;
+	int		clidx;
+	void		(*xio_func)(struct hammer2_syncthr *thr,
+				    struct hammer2_vop_info *info);
 };
 
+typedef struct hammer2_vop_info hammer2_vop_info_t;
 
 /*
- * Cluster node synchronization thread element.
+ * Cluster node synchronization and operation thread element.
  *
  * Multiple syncthr's can hang off of a hammer2_pfs structure, typically one
  * for each block device that is part of the PFS.  Synchronization threads
@@ -782,7 +793,6 @@ struct hammer2_vop_info {
  */
 struct hammer2_syncthr {
 	struct hammer2_pfs *pmp;
-	kdmsg_state_t	*span;
 	thread_t	td;
 	uint32_t	flags;
 	int		depth;
@@ -795,7 +805,7 @@ typedef struct hammer2_syncthr hammer2_syncthr_t;
 
 #define HAMMER2_SYNCTHR_UNMOUNTING	0x0001	/* unmount request */
 #define HAMMER2_SYNCTHR_DEV		0x0002	/* related to dev, not pfs */
-#define HAMMER2_SYNCTHR_SPANNED		0x0004	/* LNK_SPAN active */
+#define HAMMER2_SYNCTHR_UNUSED04	0x0004
 #define HAMMER2_SYNCTHR_REMASTER	0x0008	/* remaster request */
 #define HAMMER2_SYNCTHR_STOP		0x0010	/* exit request */
 #define HAMMER2_SYNCTHR_FREEZE		0x0020	/* force idle */
@@ -1041,6 +1051,7 @@ extern long hammer2_ioa_volu_write;
 
 extern struct objcache *cache_buffer_read;
 extern struct objcache *cache_buffer_write;
+extern struct objcache *cache_vop_info;
 
 extern int destroy;
 extern int write_thread_wakeup;

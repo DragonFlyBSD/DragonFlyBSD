@@ -741,7 +741,7 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
 	 */
 	switch(chain->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
-		if ((focus->data->ipdata.op_flags &
+		if ((focus->data->ipdata.meta.op_flags &
 		     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
 			bcopy(focus->data, chain->data,
 			      offsetof(hammer2_inode_data_t, u));
@@ -876,7 +876,7 @@ hammer2_sync_replace(hammer2_syncthr_t *thr,
 	 */
 	switch(chain->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
-		if ((focus->data->ipdata.op_flags &
+		if ((focus->data->ipdata.meta.op_flags &
 		     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
 			/*
 			 * If DIRECTDATA is transitioning to 0 or the old
@@ -884,7 +884,7 @@ hammer2_sync_replace(hammer2_syncthr_t *thr,
 			 * the block table.
 			 */
 			if (otype != HAMMER2_BREF_TYPE_INODE ||
-			    (chain->data->ipdata.op_flags &
+			    (chain->data->ipdata.meta.op_flags &
 			     HAMMER2_OPFLAG_DIRECTDATA)) {
 				kprintf("chain inode transiiton away from dd\n");
 				bzero(&chain->data->ipdata.u,

@@ -106,11 +106,13 @@ long hammer2_ioa_meta_write;
 long hammer2_ioa_indr_write;
 long hammer2_ioa_volu_write;
 
-MALLOC_DECLARE(C_BUFFER);
-MALLOC_DEFINE(C_BUFFER, "compbuffer", "Buffer used for compression.");
+MALLOC_DECLARE(M_HAMMER2_CBUFFER);
+MALLOC_DEFINE(M_HAMMER2_CBUFFER, "HAMMER2-compbuffer",
+		"Buffer used for compression.");
 
-MALLOC_DECLARE(D_BUFFER);
-MALLOC_DEFINE(D_BUFFER, "decompbuffer", "Buffer used for decompression.");
+MALLOC_DECLARE(M_HAMMER2_DEBUFFER);
+MALLOC_DEFINE(M_HAMMER2_DEBUFFER, "HAMMER2-decompbuffer",
+		"Buffer used for decompression.");
 
 SYSCTL_NODE(_vfs, OID_AUTO, hammer2, CTLFLAG_RW, 0, "HAMMER2 filesystem");
 
@@ -268,6 +270,7 @@ hammer2_vfs_init(struct vfsconf *conf)
 {
 	static struct objcache_malloc_args margs_read;
 	static struct objcache_malloc_args margs_write;
+	static struct objcache_malloc_args margs_vop;
 
 	int error;
 
@@ -284,10 +287,13 @@ hammer2_vfs_init(struct vfsconf *conf)
 		kprintf("HAMMER2 structure size mismatch; cannot continue.\n");
 	
 	margs_read.objsize = 65536;
-	margs_read.mtype = D_BUFFER;
+	margs_read.mtype = M_HAMMER2_DEBUFFER;
 	
 	margs_write.objsize = 32768;
-	margs_write.mtype = C_BUFFER;
+	margs_write.mtype = M_HAMMER2_CBUFFER;
+
+	margs_vop.objsize = sizeof(hammer2_vop_info_t);
+	margs_vop.mtype = M_HAMMER2;
 	
 	cache_buffer_read = objcache_create(margs_read.mtype->ks_shortdesc,
 				0, 1, NULL, NULL, NULL, objcache_malloc_alloc,
@@ -295,6 +301,10 @@ hammer2_vfs_init(struct vfsconf *conf)
 	cache_buffer_write = objcache_create(margs_write.mtype->ks_shortdesc,
 				0, 1, NULL, NULL, NULL, objcache_malloc_alloc,
 				objcache_malloc_free, &margs_write);
+	cache_vop_info = objcache_create(margs_vop.mtype->ks_shortdesc,
+				0, 1, NULL, NULL, NULL, objcache_malloc_alloc,
+				objcache_malloc_free, &margs_vop);
+
 
 	lockinit(&hammer2_mntlk, "mntlk", 0, 0);
 	TAILQ_INIT(&hammer2_mntlist);
@@ -311,6 +321,7 @@ hammer2_vfs_uninit(struct vfsconf *vfsp __unused)
 {
 	objcache_destroy(cache_buffer_read);
 	objcache_destroy(cache_buffer_write);
+	objcache_destroy(cache_vop_info);
 	return 0;
 }
 
@@ -343,7 +354,7 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 	 */
 	if (ripdata) {
 		TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
-			if (bcmp(&pmp->pfs_clid, &ripdata->pfs_clid,
+			if (bcmp(&pmp->pfs_clid, &ripdata->meta.pfs_clid,
 				 sizeof(pmp->pfs_clid)) == 0) {
 					break;
 			}
@@ -368,7 +379,7 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		 * initial 
 		 */
 		if (ripdata)
-			pmp->pfs_clid = ripdata->pfs_clid;
+			pmp->pfs_clid = ripdata->meta.pfs_clid;
 		hammer2_mtx_init(&pmp->wthread_mtx, "h2wthr");
 		bioq_init(&pmp->wthread_bioq);
 		TAILQ_INSERT_TAIL(&hammer2_pfslist, pmp, mntentry);
@@ -423,7 +434,7 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		rchain->pmp = pmp;
 		hammer2_chain_ref(rchain);
 		iroot->cluster.array[j].chain = rchain;
-		pmp->pfs_types[j] = ripdata->pfs_type;
+		pmp->pfs_types[j] = ripdata->meta.pfs_type;
 		pmp->pfs_names[j] = kstrdup(ripdata->filename, M_HAMMER2);
 
 		/*
@@ -457,13 +468,13 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 	 * (This informs us of masters that might not currently be
 	 *  discoverable by this mount).
 	 */
-	if (ripdata && pmp->pfs_nmasters < ripdata->pfs_nmasters) {
-		pmp->pfs_nmasters = ripdata->pfs_nmasters;
+	if (ripdata && pmp->pfs_nmasters < ripdata->meta.pfs_nmasters) {
+		pmp->pfs_nmasters = ripdata->meta.pfs_nmasters;
 	}
 
 	/*
 	 * Count visible masters.  Masters are usually added with
-	 * ripdata->pfs_nmasters set to 1.  This detects when there
+	 * ripdata->meta.pfs_nmasters set to 1.  This detects when there
 	 * are more (XXX and must update the master inodes).
 	 */
 	count = 0;
@@ -973,7 +984,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 */
 		ripdata = &hammer2_chain_rdata(schain)->ipdata;
 		KKASSERT(schain->pmp == NULL);
-		spmp->pfs_clid = ripdata->pfs_clid;
+		spmp->pfs_clid = ripdata->meta.pfs_clid;
 
 		/*
 		 * Replace the dummy spmp->iroot with a real one.  It's
@@ -987,7 +998,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		spmp->iroot = NULL;
 		spmp->iroot = hammer2_inode_get(spmp, NULL, cluster);
 		spmp->spmp_hmp = hmp;
-		spmp->pfs_types[0] = ripdata->pfs_type;
+		spmp->pfs_types[0] = ripdata->meta.pfs_type;
 		hammer2_inode_ref(spmp->iroot);
 		hammer2_inode_unlock(spmp->iroot, cluster);
 		schain = NULL;
@@ -1429,7 +1440,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 {
 	hammer2_cluster_t *cluster;
 
-	switch(HAMMER2_DEC_ALGO(ripdata->comp_algo)) {
+	switch(HAMMER2_DEC_ALGO(ripdata->meta.comp_algo)) {
 	case HAMMER2_COMP_NONE:
 		/*
 		 * We have to assign physical storage to the buffer
@@ -1447,14 +1458,15 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 
 			wipdata = hammer2_cluster_modify_ip(trans, ip,
 							    cluster, 0);
-			KKASSERT(wipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA);
+			KKASSERT(wipdata->meta.op_flags &
+				 HAMMER2_OPFLAG_DIRECTDATA);
 			KKASSERT(bp->b_loffset == 0);
 			bcopy(bp->b_data, wipdata->u.data,
 			      HAMMER2_EMBEDDED_BYTES);
 			hammer2_cluster_modsync(cluster);
 		} else {
 			hammer2_write_bp(cluster, bp, ioflag, pblksize,
-					 errorp, ripdata->check_algo);
+					 errorp, ripdata->meta.check_algo);
 		}
 		/* ripdata can become invalid */
 		if (cluster) {
@@ -1469,7 +1481,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		hammer2_zero_check_and_write(bp, trans, ip,
 				    ripdata, cparent, lbase,
 				    ioflag, pblksize, errorp,
-				    ripdata->check_algo);
+				    ripdata->meta.check_algo);
 		break;
 	case HAMMER2_COMP_LZ4:
 	case HAMMER2_COMP_ZLIB:
@@ -1481,8 +1493,8 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 					   ripdata, cparent,
 					   lbase, ioflag,
 					   pblksize, errorp,
-					   ripdata->comp_algo,
-					   ripdata->check_algo);
+					   ripdata->meta.comp_algo,
+					   ripdata->meta.check_algo);
 		break;
 	}
 }
@@ -1624,7 +1636,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 		hammer2_inode_data_t *wipdata;
 
 		wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
-		KKASSERT(wipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA);
+		KKASSERT(wipdata->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA);
 		KKASSERT(bp->b_loffset == 0);
 		bcopy(bp->b_data, wipdata->u.data, HAMMER2_EMBEDDED_BYTES);
 		hammer2_cluster_modsync(cluster);
@@ -1801,7 +1813,8 @@ zero_write(struct buf *bp, hammer2_trans_t *trans,
 
 			wipdata = hammer2_cluster_modify_ip(trans, ip,
 							    cluster, 0);
-			KKASSERT(wipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA);
+			KKASSERT(wipdata->meta.op_flags &
+				 HAMMER2_OPFLAG_DIRECTDATA);
 			KKASSERT(bp->b_loffset == 0);
 			bzero(wipdata->u.data, HAMMER2_EMBEDDED_BYTES);
 			hammer2_cluster_modsync(cluster);
@@ -1845,7 +1858,8 @@ hammer2_write_bp(hammer2_cluster_t *cluster, struct buf *bp, int ioflag,
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_INODE:
 			wipdata = &hammer2_chain_wdata(chain)->ipdata;
-			KKASSERT(wipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA);
+			KKASSERT(wipdata->meta.op_flags &
+				 HAMMER2_OPFLAG_DIRECTDATA);
 			KKASSERT(bp->b_loffset == 0);
 			bcopy(bp->b_data, wipdata->u.data,
 			      HAMMER2_EMBEDDED_BYTES);
@@ -2235,7 +2249,7 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 /*
  * Filesystem status
  *
- * XXX incorporate ipdata->inode_quota and data_quota
+ * XXX incorporate ipdata->meta.inode_quota and data_quota
  */
 static
 int
@@ -2409,7 +2423,7 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 		 */
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
 		ripdata = &hammer2_chain_rdata(parent)->ipdata;
-		if (ripdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
+		if (ripdata->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
 			/* not applicable to recovery scan */
 			hammer2_chain_unlock(parent);
 			return 0;

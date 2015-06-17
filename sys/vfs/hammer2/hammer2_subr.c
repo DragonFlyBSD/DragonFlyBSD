@@ -73,8 +73,8 @@ hammer2_get_dtype(const hammer2_inode_data_t *ipdata)
 {
 	uint8_t type;
 
-	if ((type = ipdata->type) == HAMMER2_OBJTYPE_HARDLINK)
-		type = ipdata->target_type;
+	if ((type = ipdata->meta.type) == HAMMER2_OBJTYPE_HARDLINK)
+		type = ipdata->meta.target_type;
 
 	switch(type) {
 	case HAMMER2_OBJTYPE_UNKNOWN:
@@ -109,7 +109,7 @@ hammer2_get_dtype(const hammer2_inode_data_t *ipdata)
 int
 hammer2_get_vtype(const hammer2_inode_data_t *ipdata)
 {
-	switch(ipdata->type) {
+	switch(ipdata->meta.type) {
 	case HAMMER2_OBJTYPE_UNKNOWN:
 		return (VBAD);
 	case HAMMER2_OBJTYPE_DIRECTORY:
@@ -374,11 +374,11 @@ hammer2_calc_physical(hammer2_inode_t *ip,
 	int eofbytes;
 
 	lblksize = hammer2_calc_logical(ip, lbase, NULL, NULL);
-	if (lbase + lblksize <= ipdata->size)
+	if (lbase + lblksize <= ipdata->meta.size)
 		return (lblksize);
-	if (lbase >= ipdata->size)
+	if (lbase >= ipdata->meta.size)
 		return (0);
-	eofbytes = (int)(ipdata->size - lbase);
+	eofbytes = (int)(ipdata->meta.size - lbase);
 	pblksize = lblksize;
 	while (pblksize >= eofbytes && pblksize >= HAMMER2_ALLOC_MIN)
 		pblksize >>= 1;

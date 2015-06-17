@@ -151,7 +151,7 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
 
 		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 		hammer2_cluster_bref(cluster, &bref);
-		pmp->inode_tid = ripdata->pfs_inum + 1;
+		pmp->inode_tid = ripdata->meta.pfs_inum + 1;
 		pmp->modify_tid = bref.modify_tid;
 		kprintf("PMP focus good set nextino=%ld mod=%016jx\n",
 			pmp->inode_tid, pmp->modify_tid);
@@ -414,15 +414,15 @@ hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
 			continue;
 		}
 
-		switch (ripdata->type) {
+		switch (ripdata->meta.type) {
 		case HAMMER2_OBJTYPE_DIRECTORY:
 			vp->v_type = VDIR;
 			break;
 		case HAMMER2_OBJTYPE_REGFILE:
 			vp->v_type = VREG;
-			vinitvmio(vp, ripdata->size,
+			vinitvmio(vp, ripdata->meta.size,
 				  HAMMER2_LBUFSIZE,
-				  (int)ripdata->size & HAMMER2_LBUFMASK);
+				  (int)ripdata->meta.size & HAMMER2_LBUFMASK);
 			break;
 		case HAMMER2_OBJTYPE_SOFTLINK:
 			/*
@@ -431,25 +431,28 @@ hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
 			 * association.
 			 */
 			vp->v_type = VLNK;
-			vinitvmio(vp, ripdata->size,
+			vinitvmio(vp, ripdata->meta.size,
 				  HAMMER2_LBUFSIZE,
-				  (int)ripdata->size & HAMMER2_LBUFMASK);
+				  (int)ripdata->meta.size & HAMMER2_LBUFMASK);
 			break;
 		case HAMMER2_OBJTYPE_CDEV:
 			vp->v_type = VCHR;
 			/* fall through */
 		case HAMMER2_OBJTYPE_BDEV:
 			vp->v_ops = &pmp->mp->mnt_vn_spec_ops;
-			if (ripdata->type != HAMMER2_OBJTYPE_CDEV)
+			if (ripdata->meta.type != HAMMER2_OBJTYPE_CDEV)
 				vp->v_type = VBLK;
-			addaliasu(vp, ripdata->rmajor, ripdata->rminor);
+			addaliasu(vp,
+				  ripdata->meta.rmajor,
+				  ripdata->meta.rminor);
 			break;
 		case HAMMER2_OBJTYPE_FIFO:
 			vp->v_type = VFIFO;
 			vp->v_ops = &pmp->mp->mnt_vn_fifo_ops;
 			break;
 		default:
-			panic("hammer2: unhandled objtype %d", ripdata->type);
+			panic("hammer2: unhandled objtype %d",
+			      ripdata->meta.type);
 			break;
 		}
 
@@ -509,7 +512,7 @@ hammer2_inode_get(hammer2_pfs_t *pmp, hammer2_inode_t *dip,
 again:
 	while (cluster) {
 		iptmp = &hammer2_cluster_rdata(cluster)->ipdata;
-		nip = hammer2_inode_lookup(pmp, iptmp->inum);
+		nip = hammer2_inode_lookup(pmp, iptmp->meta.inum);
 		if (nip == NULL)
 			break;
 
@@ -550,9 +553,9 @@ again:
 	nip->cluster.flags |= HAMMER2_CLUSTER_INODE;
 	if (cluster) {
 		nipdata = &hammer2_cluster_rdata(cluster)->ipdata;
-		nip->inum = nipdata->inum;
-		nip->size = nipdata->size;
-		nip->mtime = nipdata->mtime;
+		nip->inum = nipdata->meta.inum;
+		nip->size = nipdata->meta.size;
+		nip->mtime = nipdata->meta.mtime;
 		hammer2_inode_repoint(nip, NULL, cluster);
 	} else {
 		nip->inum = 1;			/* PFS inum is always 1 XXX */
@@ -644,11 +647,11 @@ hammer2_inode_create(hammer2_trans_t *trans, hammer2_inode_t *dip,
 retry:
 	cparent = hammer2_inode_lock(dip, HAMMER2_RESOLVE_ALWAYS);
 	dipdata = &hammer2_cluster_rdata(cparent)->ipdata;
-	dip_uid = dipdata->uid;
-	dip_gid = dipdata->gid;
-	dip_mode = dipdata->mode;
-	dip_comp_algo = dipdata->comp_algo;
-	dip_check_algo = dipdata->check_algo;
+	dip_uid = dipdata->meta.uid;
+	dip_gid = dipdata->meta.gid;
+	dip_mode = dipdata->meta.mode;
+	dip_comp_algo = dipdata->meta.comp_algo;
+	dip_check_algo = dipdata->meta.check_algo;
 
 	error = 0;
 	while (error == 0) {
@@ -711,41 +714,41 @@ retry:
 	 */
 	KKASSERT(cluster->focus->flags & HAMMER2_CHAIN_MODIFIED);
 	nipdata = &hammer2_cluster_wdata(cluster)->ipdata;
-	nipdata->inum = trans->inode_tid;
+	nipdata->meta.inum = trans->inode_tid;
 	hammer2_cluster_modsync(cluster);
 	nip = hammer2_inode_get(dip->pmp, dip, cluster);
 	nipdata = &hammer2_cluster_wdata(cluster)->ipdata;
 
 	if (vap) {
 		KKASSERT(trans->inodes_created == 0);
-		nipdata->type = hammer2_get_obj_type(vap->va_type);
-		nipdata->inum = trans->inode_tid;
+		nipdata->meta.type = hammer2_get_obj_type(vap->va_type);
+		nipdata->meta.inum = trans->inode_tid;
 		++trans->inodes_created;
 
-		switch (nipdata->type) {
+		switch (nipdata->meta.type) {
 		case HAMMER2_OBJTYPE_CDEV:
 		case HAMMER2_OBJTYPE_BDEV:
-			nipdata->rmajor = vap->va_rmajor;
-			nipdata->rminor = vap->va_rminor;
+			nipdata->meta.rmajor = vap->va_rmajor;
+			nipdata->meta.rminor = vap->va_rminor;
 			break;
 		default:
 			break;
 		}
 	} else {
-		nipdata->type = HAMMER2_OBJTYPE_DIRECTORY;
-		nipdata->inum = 1;
+		nipdata->meta.type = HAMMER2_OBJTYPE_DIRECTORY;
+		nipdata->meta.inum = 1;
 	}
 	
 	/* Inherit parent's inode compression mode. */
 	nip->comp_heuristic = 0;
-	nipdata->comp_algo = dip_comp_algo;
-	nipdata->check_algo = dip_check_algo;
-	nipdata->version = HAMMER2_INODE_VERSION_ONE;
-	hammer2_update_time(&nipdata->ctime);
-	nipdata->mtime = nipdata->ctime;
+	nipdata->meta.comp_algo = dip_comp_algo;
+	nipdata->meta.check_algo = dip_check_algo;
+	nipdata->meta.version = HAMMER2_INODE_VERSION_ONE;
+	hammer2_update_time(&nipdata->meta.ctime);
+	nipdata->meta.mtime = nipdata->meta.ctime;
 	if (vap)
-		nipdata->mode = vap->va_mode;
-	nipdata->nlinks = 1;
+		nipdata->meta.mode = vap->va_mode;
+	nipdata->meta.nlinks = 1;
 	if (vap) {
 		if (dip && dip->pmp) {
 			xuid = hammer2_to_unix_xid(&dip_uid);
@@ -759,18 +762,18 @@ retry:
 			xuid = 0;
 		}
 		if (vap->va_vaflags & VA_UID_UUID_VALID)
-			nipdata->uid = vap->va_uid_uuid;
+			nipdata->meta.uid = vap->va_uid_uuid;
 		else if (vap->va_uid != (uid_t)VNOVAL)
-			hammer2_guid_to_uuid(&nipdata->uid, vap->va_uid);
+			hammer2_guid_to_uuid(&nipdata->meta.uid, vap->va_uid);
 		else
-			hammer2_guid_to_uuid(&nipdata->uid, xuid);
+			hammer2_guid_to_uuid(&nipdata->meta.uid, xuid);
 
 		if (vap->va_vaflags & VA_GID_UUID_VALID)
-			nipdata->gid = vap->va_gid_uuid;
+			nipdata->meta.gid = vap->va_gid_uuid;
 		else if (vap->va_gid != (gid_t)VNOVAL)
-			hammer2_guid_to_uuid(&nipdata->gid, vap->va_gid);
+			hammer2_guid_to_uuid(&nipdata->meta.gid, vap->va_gid);
 		else if (dip)
-			nipdata->gid = dip_gid;
+			nipdata->meta.gid = dip_gid;
 	}
 
 	/*
@@ -778,15 +781,15 @@ retry:
 	 * directly embedded in the inode.  This flag will be cleared if
 	 * the size is extended past the embedded limit.
 	 */
-	if (nipdata->type == HAMMER2_OBJTYPE_REGFILE ||
-	    nipdata->type == HAMMER2_OBJTYPE_SOFTLINK) {
-		nipdata->op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
+	if (nipdata->meta.type == HAMMER2_OBJTYPE_REGFILE ||
+	    nipdata->meta.type == HAMMER2_OBJTYPE_SOFTLINK) {
+		nipdata->meta.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
 	}
 
 	KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 	bcopy(name, nipdata->filename, name_len);
-	nipdata->name_key = lhc;
-	nipdata->name_len = name_len;
+	nipdata->meta.name_key = lhc;
+	nipdata->meta.name_len = name_len;
 	hammer2_cluster_modsync(cluster);
 	*clusterp = cluster;
 
@@ -815,7 +818,7 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 	hammer2_blockref_t bref;
 
 	iptmp = &hammer2_cluster_rdata(cluster)->ipdata;
-	lhc = iptmp->inum;
+	lhc = iptmp->meta.inum;
 	KKASSERT((lhc & HAMMER2_DIRHASH_VISIBLE) == 0);
 
 	/*
@@ -879,10 +882,10 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 	hammer2_cluster_modify(trans, cluster, 0);
 	nipdata = &hammer2_cluster_wdata(cluster)->ipdata;
 	ksnprintf(nipdata->filename, sizeof(nipdata->filename),
-		  "0x%016jx", (intmax_t)nipdata->inum);
-	nipdata->name_len = strlen(nipdata->filename);
-	nipdata->name_key = lhc;
-	nipdata->nlinks += nlinks;
+		  "0x%016jx", (intmax_t)nipdata->meta.inum);
+	nipdata->meta.name_len = strlen(nipdata->filename);
+	nipdata->meta.name_key = lhc;
+	nipdata->meta.nlinks += nlinks;
 	hammer2_cluster_modsync(cluster);
 }
 
@@ -1031,15 +1034,16 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		wipdata = &hammer2_cluster_wdata(ncluster)->ipdata;
 		bcopy(name, wipdata->filename, name_len);
-		wipdata->name_key = lhc;
-		wipdata->name_len = name_len;
-		wipdata->target_type =
-				hammer2_cluster_rdata(ocluster)->ipdata.type;
-		wipdata->type = HAMMER2_OBJTYPE_HARDLINK;
-		wipdata->inum = hammer2_cluster_rdata(ocluster)->ipdata.inum;
-		wipdata->version = HAMMER2_INODE_VERSION_ONE;
-		wipdata->nlinks = 1;
-		wipdata->op_flags = HAMMER2_OPFLAG_DIRECTDATA;
+		wipdata->meta.name_key = lhc;
+		wipdata->meta.name_len = name_len;
+		wipdata->meta.target_type =
+			    hammer2_cluster_rdata(ocluster)->ipdata.meta.type;
+		wipdata->meta.type = HAMMER2_OBJTYPE_HARDLINK;
+		wipdata->meta.inum =
+			    hammer2_cluster_rdata(ocluster)->ipdata.meta.inum;
+		wipdata->meta.version = HAMMER2_INODE_VERSION_ONE;
+		wipdata->meta.nlinks = 1;
+		wipdata->meta.op_flags = HAMMER2_OPFLAG_DIRECTDATA;
 		hammer2_cluster_modsync(ncluster);
 		hammer2_cluster_unlock(ncluster);
 		hammer2_cluster_drop(ncluster);
@@ -1056,9 +1060,9 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		bcopy(name, wipdata->filename, name_len);
-		wipdata->name_key = lhc;
-		wipdata->name_len = name_len;
-		wipdata->nlinks = 1;
+		wipdata->meta.name_key = lhc;
+		wipdata->meta.name_len = name_len;
+		wipdata->meta.nlinks = 1;
 		hammer2_cluster_modsync(ncluster);
 	}
 
@@ -1297,7 +1301,7 @@ again:
 	while (cluster) {
 		if (hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE) {
 			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-			if (ripdata->name_len == name_len &&
+			if (ripdata->meta.name_len == name_len &&
 			    bcmp(ripdata->filename, name, name_len) == 0) {
 				break;
 			}
@@ -1318,10 +1322,10 @@ again:
 		goto done;
 	}
 	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-	type = ripdata->type;
+	type = ripdata->meta.type;
 	if (type == HAMMER2_OBJTYPE_HARDLINK) {
 		hlink = 1;
-		type = ripdata->target_type;
+		type = ripdata->meta.target_type;
 	}
 
 	if (type == HAMMER2_OBJTYPE_DIRECTORY && isdir == 0) {
@@ -1343,7 +1347,7 @@ again:
 	 * NOTE: hammer2_hardlink_find() will locate the hardlink target,
 	 *	 returning a modified hparent and hcluster.
 	 */
-	if (ripdata->type == HAMMER2_OBJTYPE_HARDLINK) {
+	if (ripdata->meta.type == HAMMER2_OBJTYPE_HARDLINK) {
 		if (hcluster == NULL) {
 			hcluster = cluster;
 			cluster = NULL;	/* safety */
@@ -1443,7 +1447,7 @@ again:
 	 *	 incrementing.
 	 */
 	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-	last_link = (ripdata->nlinks + nlinks == 0);
+	last_link = (ripdata->meta.nlinks + nlinks == 0);
 
 	if (last_link) {
 		/*
@@ -1456,7 +1460,8 @@ again:
 		hammer2_inode_t *ip;
 
 		if (nlinks == -1) {
-			ip = hammer2_inode_lookup(trans->pmp, ripdata->inum);
+			ip = hammer2_inode_lookup(trans->pmp,
+						  ripdata->meta.inum);
 			if (ip) {
 				atomic_set_int(&ip->flags,
 					       HAMMER2_INODE_ISUNLINKED);
@@ -1472,14 +1477,14 @@ again:
 			hammer2_cluster_modify(trans, cluster, 0);
 			wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
 			ripdata = wipdata;
-			wipdata->nlinks += nlinks;
+			wipdata->meta.nlinks += nlinks;
 			/* XXX debugging */
-			if ((int64_t)wipdata->nlinks < 0) {
-				wipdata->nlinks = 0;
+			if ((int64_t)wipdata->meta.nlinks < 0) {
+				wipdata->meta.nlinks = 0;
 			}
 			hammer2_cluster_modsync(cluster);
 			hammer2_inode_move_to_hidden(trans, &cparent, &cluster,
-						     wipdata->inum);
+						     wipdata->meta.inum);
 		} else {
 			/*
 			 * This won't get everything if a vnode is still
@@ -1510,9 +1515,10 @@ again:
 		hammer2_cluster_modify(trans, cluster, 0);
 		wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
 		ripdata = wipdata;
-		wipdata->nlinks += nlinks;
-		if ((int64_t)wipdata->nlinks < 0) {	/* XXX debugging */
-			wipdata->nlinks = 0;
+		wipdata->meta.nlinks += nlinks;
+		/* XXX debugging */
+		if ((int64_t)wipdata->meta.nlinks < 0) {
+			wipdata->meta.nlinks = 0;
 		}
 		hammer2_cluster_modsync(cluster);
 	}
@@ -1581,8 +1587,8 @@ hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 	 */
 	cparent = hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_ALWAYS);
 	ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
-	dip_check_algo = ripdata->check_algo;
-	dip_comp_algo = ripdata->comp_algo;
+	dip_check_algo = ripdata->meta.check_algo;
+	dip_comp_algo = ripdata->meta.comp_algo;
 	ripdata = NULL;
 
 	cluster = hammer2_cluster_lookup(cparent, &key_dummy,
@@ -1634,11 +1640,11 @@ hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 
 	hammer2_cluster_modify(&trans, cluster, 0);
 	wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
-	wipdata->type = HAMMER2_OBJTYPE_DIRECTORY;
-	wipdata->inum = HAMMER2_INODE_HIDDENDIR;
-	wipdata->nlinks = 1;
-	wipdata->comp_algo = dip_comp_algo;
-	wipdata->check_algo = dip_check_algo;
+	wipdata->meta.type = HAMMER2_OBJTYPE_DIRECTORY;
+	wipdata->meta.inum = HAMMER2_INODE_HIDDENDIR;
+	wipdata->meta.nlinks = 1;
+	wipdata->meta.comp_algo = dip_comp_algo;
+	wipdata->meta.check_algo = dip_check_algo;
 	hammer2_cluster_modsync(cluster);
 	kprintf("hammer2: PFS root missing hidden directory, creating\n");
 
@@ -1709,7 +1715,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 	cluster = *clusterp;
 	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 	if (nlinks == 0 &&			/* no hardlink needed */
-	    (ripdata->name_key & HAMMER2_DIRHASH_VISIBLE)) {
+	    (ripdata->meta.name_key & HAMMER2_DIRHASH_VISIBLE)) {
 		return (0);
 	}
 
@@ -1729,11 +1735,11 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 	 */
 	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 	if (cdip == ip->pip &&
-	    (ripdata->name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
+	    (ripdata->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
 		if (nlinks) {
 			hammer2_cluster_modify(trans, cluster, 0);
 			wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
-			wipdata->nlinks += nlinks;
+			wipdata->meta.nlinks += nlinks;
 			hammer2_cluster_modsync(cluster);
 			ripdata = wipdata;
 		}
@@ -1763,8 +1769,8 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 	hammer2_cluster_delete(trans, cparent, cluster, 0);
 
 	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-	KKASSERT(ripdata->type != HAMMER2_OBJTYPE_HARDLINK);
-	if (ripdata->name_key & HAMMER2_DIRHASH_VISIBLE) {
+	KKASSERT(ripdata->meta.type != HAMMER2_OBJTYPE_HARDLINK);
+	if (ripdata->meta.name_key & HAMMER2_DIRHASH_VISIBLE) {
 		hammer2_cluster_t *ncluster;
 		hammer2_key_t lhc;
 
@@ -1779,41 +1785,42 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 		wipdata = &hammer2_cluster_wdata(ncluster)->ipdata;
 
 		/* wipdata->comp_algo = ripdata->comp_algo; */
-		wipdata->comp_algo = 0;
-		wipdata->check_algo = 0;
-		wipdata->version = HAMMER2_INODE_VERSION_ONE;
-		wipdata->inum = ripdata->inum;
-		wipdata->target_type = ripdata->type;
-		wipdata->type = HAMMER2_OBJTYPE_HARDLINK;
-		wipdata->uflags = 0;
-		wipdata->rmajor = 0;
-		wipdata->rminor = 0;
-		wipdata->ctime = 0;
-		wipdata->mtime = 0;
-		wipdata->atime = 0;
-		wipdata->btime = 0;
-		bzero(&wipdata->uid, sizeof(wipdata->uid));
-		bzero(&wipdata->gid, sizeof(wipdata->gid));
-		wipdata->op_flags = HAMMER2_OPFLAG_DIRECTDATA;
-		wipdata->cap_flags = 0;
-		wipdata->mode = 0;
-		wipdata->size = 0;
-		wipdata->nlinks = 1;
-		wipdata->iparent = 0;	/* XXX */
-		wipdata->pfs_type = 0;
-		wipdata->pfs_inum = 0;
-		bzero(&wipdata->pfs_clid, sizeof(wipdata->pfs_clid));
-		bzero(&wipdata->pfs_fsid, sizeof(wipdata->pfs_fsid));
-		wipdata->data_quota = 0;
+		wipdata->meta.comp_algo = 0;
+		wipdata->meta.check_algo = 0;
+		wipdata->meta.version = HAMMER2_INODE_VERSION_ONE;
+		wipdata->meta.inum = ripdata->meta.inum;
+		wipdata->meta.target_type = ripdata->meta.type;
+		wipdata->meta.type = HAMMER2_OBJTYPE_HARDLINK;
+		wipdata->meta.uflags = 0;
+		wipdata->meta.rmajor = 0;
+		wipdata->meta.rminor = 0;
+		wipdata->meta.ctime = 0;
+		wipdata->meta.mtime = 0;
+		wipdata->meta.atime = 0;
+		wipdata->meta.btime = 0;
+		bzero(&wipdata->meta.uid, sizeof(wipdata->meta.uid));
+		bzero(&wipdata->meta.gid, sizeof(wipdata->meta.gid));
+		wipdata->meta.op_flags = HAMMER2_OPFLAG_DIRECTDATA;
+		wipdata->meta.cap_flags = 0;
+		wipdata->meta.mode = 0;
+		wipdata->meta.size = 0;
+		wipdata->meta.nlinks = 1;
+		wipdata->meta.iparent = 0;	/* XXX */
+		wipdata->meta.pfs_type = 0;
+		wipdata->meta.pfs_inum = 0;
+		bzero(&wipdata->meta.pfs_clid, sizeof(wipdata->meta.pfs_clid));
+		bzero(&wipdata->meta.pfs_fsid, sizeof(wipdata->meta.pfs_fsid));
+		wipdata->meta.data_quota = 0;
 		/* wipdata->data_count = 0; */
-		wipdata->inode_quota = 0;
+		wipdata->meta.inode_quota = 0;
 		/* wipdata->inode_count = 0; */
-		wipdata->attr_tid = 0;
-		wipdata->dirent_tid = 0;
+		wipdata->meta.attr_tid = 0;
+		wipdata->meta.dirent_tid = 0;
 		bzero(&wipdata->u, sizeof(wipdata->u));
-		bcopy(ripdata->filename, wipdata->filename, ripdata->name_len);
-		wipdata->name_key = ncluster->focus->bref.key;
-		wipdata->name_len = ripdata->name_len;
+		bcopy(ripdata->filename, wipdata->filename,
+		      ripdata->meta.name_len);
+		wipdata->meta.name_key = ncluster->focus->bref.key;
+		wipdata->meta.name_len = ripdata->meta.name_len;
 		/* XXX transaction ids */
 		hammer2_cluster_modsync(ncluster);
 		hammer2_cluster_unlock(ncluster);
@@ -1909,7 +1916,7 @@ hammer2_hardlink_find(hammer2_inode_t *dip,
 	 * data.
 	 */
 	ipdata = &hammer2_cluster_rdata(cluster)->ipdata;
-	lhc = ipdata->inum;
+	lhc = ipdata->meta.inum;
 	ipdata = NULL;			/* safety */
 	hammer2_cluster_unlock(cluster);
 	hammer2_cluster_drop(cluster);
@@ -2031,13 +2038,13 @@ hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	if (ip->flags & HAMMER2_INODE_MTIME) {
 		wipdata = hammer2_cluster_modify_ip(trans, ip, cparent, 0);
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_MTIME);
-		wipdata->mtime = ip->mtime;
+		wipdata->meta.mtime = ip->mtime;
 		dosync = 1;
 		ripdata = wipdata;
 	}
-	if ((ip->flags & HAMMER2_INODE_RESIZED) && ip->size < ripdata->size) {
+	if ((ip->flags & HAMMER2_INODE_RESIZED) && ip->size < ripdata->meta.size) {
 		wipdata = hammer2_cluster_modify_ip(trans, ip, cparent, 0);
-		wipdata->size = ip->size;
+		wipdata->meta.size = ip->size;
 		dosync = 1;
 		ripdata = wipdata;
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED);
@@ -2046,7 +2053,7 @@ hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		 * We must delete any chains beyond the EOF.  The chain
 		 * straddling the EOF will be pending in the bioq.
 		 */
-		lbase = (ripdata->size + HAMMER2_PBUFMASK64) &
+		lbase = (ripdata->meta.size + HAMMER2_PBUFMASK64) &
 			~HAMMER2_PBUFMASK64;
 		dparent = hammer2_cluster_lookup_init(&ip->cluster, 0);
 		cluster = hammer2_cluster_lookup(dparent, &key_next,
@@ -2076,18 +2083,19 @@ hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		}
 		hammer2_cluster_lookup_done(dparent);
 	} else
-	if ((ip->flags & HAMMER2_INODE_RESIZED) && ip->size > ripdata->size) {
+	if ((ip->flags & HAMMER2_INODE_RESIZED) &&
+	    ip->size > ripdata->meta.size) {
 		wipdata = hammer2_cluster_modify_ip(trans, ip, cparent, 0);
-		wipdata->size = ip->size;
+		wipdata->meta.size = ip->size;
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED);
 
 		/*
 		 * When resizing larger we may not have any direct-data
 		 * available.
 		 */
-		if ((wipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA) &&
+		if ((wipdata->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA) &&
 		    ip->size > HAMMER2_EMBEDDED_BYTES) {
-			wipdata->op_flags &= ~HAMMER2_OPFLAG_DIRECTDATA;
+			wipdata->meta.op_flags &= ~HAMMER2_OPFLAG_DIRECTDATA;
 			bzero(&wipdata->u.blockset,
 			      sizeof(wipdata->u.blockset));
 		}

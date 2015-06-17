@@ -74,16 +74,19 @@ cmd_stat(int ac, const char **av)
 			continue;
 		}
 		printf("%-*.*s ", w, w, av[i]);
-		printf("%3d ", ino.ip_data.ncopies);
+		printf("%3d ", ino.ip_data.meta.ncopies);
 		printf("%9s ", sizetostr(ino.data_count));
 		printf("%9s ", counttostr(ino.inode_count));
 		/*printf("%p ", ino.kdata); debugging */
-		printf("comp=%s ", compmodestr(ino.ip_data.comp_algo));
-		printf("check=%s ", checkmodestr(ino.ip_data.check_algo));
-		if (ino.ip_data.data_quota || ino.ip_data.inode_quota) {
+		printf("comp=%s ", compmodestr(ino.ip_data.meta.comp_algo));
+		printf("check=%s ", checkmodestr(ino.ip_data.meta.check_algo));
+		if (ino.ip_data.meta.data_quota ||
+		    ino.ip_data.meta.inode_quota) {
 			printf(" quota ");
-			printf("%12s", sizetostr(ino.ip_data.data_quota));
-			printf("/%-12s", counttostr(ino.ip_data.inode_quota));
+			printf("%12s",
+				sizetostr(ino.ip_data.meta.data_quota));
+			printf("/%-12s",
+				counttostr(ino.ip_data.meta.inode_quota));
 		}
 		printf("\n");
 	}

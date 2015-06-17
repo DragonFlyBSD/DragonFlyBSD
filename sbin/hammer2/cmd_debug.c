@@ -564,95 +564,95 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		printf("{\n");
-		if (media.ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
+		if (media.ipdata.meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
 			/* no blockrefs */
 		} else {
 			bscan = &media.ipdata.u.blockset.blockref[0];
 			bcount = HAMMER2_SET_COUNT;
 		}
-		namelen = media.ipdata.name_len;
+		namelen = media.ipdata.meta.name_len;
 		if (namelen > HAMMER2_INODE_MAXNAME)
 			namelen = 0;
 		tabprintf(tab, "filename \"%*.*s\"\n",
 			  namelen, namelen, media.ipdata.filename);
-		tabprintf(tab, "version  %d\n", media.ipdata.version);
+		tabprintf(tab, "version  %d\n", media.ipdata.meta.version);
 		tabprintf(tab, "uflags   0x%08x\n",
-			  media.ipdata.uflags);
-		if (media.ipdata.rmajor || media.ipdata.rminor) {
+			  media.ipdata.meta.uflags);
+		if (media.ipdata.meta.rmajor || media.ipdata.meta.rminor) {
 			tabprintf(tab, "rmajor   %d\n",
-				  media.ipdata.rmajor);
+				  media.ipdata.meta.rmajor);
 			tabprintf(tab, "rminor   %d\n",
-				  media.ipdata.rminor);
+				  media.ipdata.meta.rminor);
 		}
 		tabprintf(tab, "ctime    %s\n",
-			  hammer2_time64_to_str(media.ipdata.ctime, &str));
+			  hammer2_time64_to_str(media.ipdata.meta.ctime, &str));
 		tabprintf(tab, "mtime    %s\n",
-			  hammer2_time64_to_str(media.ipdata.mtime, &str));
+			  hammer2_time64_to_str(media.ipdata.meta.mtime, &str));
 		tabprintf(tab, "atime    %s\n",
-			  hammer2_time64_to_str(media.ipdata.atime, &str));
+			  hammer2_time64_to_str(media.ipdata.meta.atime, &str));
 		tabprintf(tab, "btime    %s\n",
-			  hammer2_time64_to_str(media.ipdata.btime, &str));
+			  hammer2_time64_to_str(media.ipdata.meta.btime, &str));
 		tabprintf(tab, "uid      %s\n",
-			  hammer2_uuid_to_str(&media.ipdata.uid, &str));
+			  hammer2_uuid_to_str(&media.ipdata.meta.uid, &str));
 		tabprintf(tab, "gid      %s\n",
-			  hammer2_uuid_to_str(&media.ipdata.gid, &str));
-		if (media.ipdata.type == HAMMER2_OBJTYPE_HARDLINK)
+			  hammer2_uuid_to_str(&media.ipdata.meta.gid, &str));
+		if (media.ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK)
 			tabprintf(tab, "type     %s (%s)\n",
-			      hammer2_iptype_to_str(media.ipdata.type),
-			      hammer2_iptype_to_str(media.ipdata.target_type));
+			      hammer2_iptype_to_str(media.ipdata.meta.type),
+			      hammer2_iptype_to_str(media.ipdata.meta.target_type));
 		else
 			tabprintf(tab, "type     %s\n",
-				  hammer2_iptype_to_str(media.ipdata.type));
+			      hammer2_iptype_to_str(media.ipdata.meta.type));
 		tabprintf(tab, "opflgs   0x%02x\n",
-			  media.ipdata.op_flags);
+			  media.ipdata.meta.op_flags);
 		tabprintf(tab, "capflgs  0x%04x\n",
-			  media.ipdata.cap_flags);
+			  media.ipdata.meta.cap_flags);
 		tabprintf(tab, "mode     %-7o\n",
-			  media.ipdata.mode);
+			  media.ipdata.meta.mode);
 		tabprintf(tab, "inum     0x%016jx\n",
-			  media.ipdata.inum);
+			  media.ipdata.meta.inum);
 		tabprintf(tab, "size     %ju\n",
-			  (uintmax_t)media.ipdata.size);
+			  (uintmax_t)media.ipdata.meta.size);
 		tabprintf(tab, "nlinks   %ju\n",
-			  (uintmax_t)media.ipdata.nlinks);
+			  (uintmax_t)media.ipdata.meta.nlinks);
 		tabprintf(tab, "iparent  0x%016jx\n",
-			  (uintmax_t)media.ipdata.iparent);
+			  (uintmax_t)media.ipdata.meta.iparent);
 		tabprintf(tab, "name_key 0x%016jx\n",
-			  (uintmax_t)media.ipdata.name_key);
+			  (uintmax_t)media.ipdata.meta.name_key);
 		tabprintf(tab, "name_len %u\n",
-			  media.ipdata.name_len);
+			  media.ipdata.meta.name_len);
 		tabprintf(tab, "ncopies  %u\n",
-			  media.ipdata.ncopies);
+			  media.ipdata.meta.ncopies);
 		tabprintf(tab, "compalg  %u\n",
-			  media.ipdata.comp_algo);
+			  media.ipdata.meta.comp_algo);
 		tabprintf(tab, "checkalg %u\n",
-			  media.ipdata.check_algo);
-		if (media.ipdata.op_flags & HAMMER2_OPFLAG_PFSROOT) {
+			  media.ipdata.meta.check_algo);
+		if (media.ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) {
 			tabprintf(tab, "pfs_type %u (%s)\n",
-				  media.ipdata.pfs_type,
-				  hammer2_pfstype_to_str(media.ipdata.pfs_type));
+				  media.ipdata.meta.pfs_type,
+				  hammer2_pfstype_to_str(media.ipdata.meta.pfs_type));
 			tabprintf(tab, "pfs_inum 0x%016jx\n",
-				  (uintmax_t)media.ipdata.pfs_inum);
+				  (uintmax_t)media.ipdata.meta.pfs_inum);
 			tabprintf(tab, "pfs_clid %s\n",
-				  hammer2_uuid_to_str(&media.ipdata.pfs_clid,
+				  hammer2_uuid_to_str(&media.ipdata.meta.pfs_clid,
 						      &str));
 			tabprintf(tab, "pfs_fsid %s\n",
-				  hammer2_uuid_to_str(&media.ipdata.pfs_fsid,
+				  hammer2_uuid_to_str(&media.ipdata.meta.pfs_fsid,
 						      &str));
 		}
 		tabprintf(tab, "data_quota  %ju\n",
-			  (uintmax_t)media.ipdata.data_quota);
+			  (uintmax_t)media.ipdata.meta.data_quota);
 		tabprintf(tab, "data_count  %ju\n",
 			  (uintmax_t)bref->data_count);
 		tabprintf(tab, "inode_quota %ju\n",
-			  (uintmax_t)media.ipdata.inode_quota);
+			  (uintmax_t)media.ipdata.meta.inode_quota);
 		tabprintf(tab, "inode_count %ju\n",
 			  (uintmax_t)bref->inode_count);
 		tabprintf(tab, "attr_tid    0x%016jx\n",
-			  (uintmax_t)media.ipdata.attr_tid);
-		if (media.ipdata.type == HAMMER2_OBJTYPE_DIRECTORY) {
+			  (uintmax_t)media.ipdata.meta.attr_tid);
+		if (media.ipdata.meta.type == HAMMER2_OBJTYPE_DIRECTORY) {
 			tabprintf(tab, "dirent_tid  %016jx\n",
-				  (uintmax_t)media.ipdata.dirent_tid);
+				  (uintmax_t)media.ipdata.meta.dirent_tid);
 		}
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
