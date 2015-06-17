@@ -1365,12 +1365,19 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	 * and to reduce vm_map traversals.
 	 */
 	addr = vm_map_hint(p, 0, PROT_READ|PROT_WRITE);
+
+	/*
+	 * Use 256KB alignment.  It is unclear why this matters for a
+	 * virtual address but it appears to fix a number of application/X
+	 * crashes and kms console switching is much faster.
+	 */
 	vm_object_hold(obj->vm_obj);
 	vm_object_reference_locked(obj->vm_obj);
 	vm_object_drop(obj->vm_obj);
+
 	rv = vm_map_find(map, obj->vm_obj, NULL,
 			 args->offset, &addr, args->size,
-			 PAGE_SIZE, /* align */
+			 256 * 1024, /* align */
 			 TRUE, /* fitit */
 			 VM_MAPTYPE_NORMAL, /* maptype */
 			 VM_PROT_READ | VM_PROT_WRITE, /* prot */
