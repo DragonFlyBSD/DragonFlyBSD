@@ -223,7 +223,6 @@ static int			cpu_mwait_c3_preamble =
 SYSCTL_STRING(_machdep_mwait_CX, OID_AUTO, supported, CTLFLAG_RD,
     cpu_mwait_cx_supported, 0, "MWAIT supported C states");
 
-static struct lwkt_serialize cpu_mwait_cx_slize = LWKT_SERIALIZE_INITIALIZER;
 static int	cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS,
 		    int *, boolean_t);
 static int	cpu_mwait_cx_idle_sysctl(SYSCTL_HANDLER_ARGS);
@@ -2764,10 +2763,8 @@ cpu_mwait_cx_idle_sysctl(SYSCTL_HANDLER_ARGS)
 {
 	int error;
 
-	lwkt_serialize_enter(&cpu_mwait_cx_slize);
 	error = cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
 	    &cpu_mwait_halt, TRUE);
-	lwkt_serialize_exit(&cpu_mwait_cx_slize);
 	return error;
 }
 
@@ -2776,9 +2773,7 @@ cpu_mwait_cx_spin_sysctl(SYSCTL_HANDLER_ARGS)
 {
 	int error;
 
-	lwkt_serialize_enter(&cpu_mwait_cx_slize);
 	error = cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
 	    &cpu_mwait_spin, FALSE);
-	lwkt_serialize_exit(&cpu_mwait_cx_slize);
 	return error;
 }
