@@ -104,8 +104,8 @@ struct hammer2_pfs;
 struct hammer2_span;
 struct hammer2_state;
 struct hammer2_msg;
-struct hammer2_syncthr;
-struct hammer2_vop_info;
+struct hammer2_thread;
+struct hammer2_xop;
 
 /*
  * Mutex and lock shims.  Hammer2 requires support for asynchronous and
@@ -533,6 +533,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * to a chain still part of the synchronized set.
  */
 #define HAMMER2_MAXCLUSTER	8
+#define HAMMER2_XOPGROUPS	16
 
 struct hammer2_cluster_item {
 #if 0
@@ -759,57 +760,73 @@ struct hammer2_trans_manage {
 typedef struct hammer2_trans_manage hammer2_trans_manage_t;
 
 /*
- * hammer2_vop_info - container for VOP operation.
+ * Hammer2 support thread element.
+ *
+ * Potentially many support threads can hang off of hammer2, primarily
+ * off the hammer2_pfs structure.  Typically:
+ *
+ * td x Nodes		 	A synchronization thread for each node.
+ * td x Nodes x workers		Worker threads for frontend operations.
+ * td x 1			Bioq thread for logical buffer writes.
+ *
+ * In addition, the synchronization thread(s) associated with the
+ * super-root PFS (spmp) for a node is responsible for automatic bulkfree
+ * and dedup scans.
+ */
+struct hammer2_thread {
+	struct hammer2_pfs *pmp;
+	thread_t	td;
+	uint32_t	flags;
+	int		depth;
+	int		clindex;	/* cluster element index */
+	int		repidx;
+	hammer2_trans_t	trans;
+	struct lock	lk;		/* thread control lock */
+};
+
+typedef struct hammer2_thread hammer2_thread_t;
+
+#define HAMMER2_THREAD_UNMOUNTING	0x0001	/* unmount request */
+#define HAMMER2_THREAD_DEV		0x0002	/* related to dev, not pfs */
+#define HAMMER2_THREAD_UNUSED04		0x0004
+#define HAMMER2_THREAD_REMASTER		0x0008	/* remaster request */
+#define HAMMER2_THREAD_STOP		0x0010	/* exit request */
+#define HAMMER2_THREAD_FREEZE		0x0020	/* force idle */
+#define HAMMER2_THREAD_FROZEN		0x0040	/* restart */
+
+
+/*
+ * hammer2_xop - container for VOP/XOP operation.
  *
  * This structure is used to distribute a VOP operation across multiple
  * nodes.  It provides a rendezvous for concurrent node execution and
  * can be detached from the frontend operation to allow the frontend to
  * return early.
  */
-struct hammer2_vop_info {
-	hammer2_inode_t	*dip;
-	hammer2_inode_t	*ip;
-	struct uio	*uio;
-	int		clidx;
-	void		(*xio_func)(struct hammer2_syncthr *thr,
-				    struct hammer2_vop_info *info);
+struct hammer2_xop {
+	struct hammer2_xop	*next;
+	hammer2_inode_t		*dip;
+	hammer2_inode_t		*ip;
+	void			(*func)(struct hammer2_thread *thr,
+					struct hammer2_xop *xop);
+	int			refs;
 };
 
-typedef struct hammer2_vop_info hammer2_vop_info_t;
+typedef struct hammer2_xop hammer2_xop_t;
+
+TAILQ_HEAD(hammer2_xop_list, hammer2_xop);
 
 /*
- * Cluster node synchronization and operation thread element.
- *
- * Multiple syncthr's can hang off of a hammer2_pfs structure, typically one
- * for each block device that is part of the PFS.  Synchronization threads
- * for PFSs accessed over the network are handled by their respective hosts.
- *
- * Synchronization threads are responsible for keeping a local node
- * synchronized to the greater cluster.
- *
- * A syncthr can also hang off each hammer2_dev's super-root PFS (spmp).
- * This thread is responsible for automatic bulkfree and dedup scans.
+ * hammer2_xop_group - Manage XOP support threads.
  */
-struct hammer2_syncthr {
-	struct hammer2_pfs *pmp;
-	thread_t	td;
-	uint32_t	flags;
-	int		depth;
-	int		clindex;	/* sync_thrs[] array index */
-	hammer2_trans_t	trans;
-	struct lock	lk;
+struct hammer2_xop_group {
+	hammer2_thread_t	thrs[HAMMER2_MAXCLUSTER];
+	hammer2_mtx_t		mtx;
+	hammer2_xop_t		marker;
+	hammer2_xop_t		**xop_tailp;
 };
 
-typedef struct hammer2_syncthr hammer2_syncthr_t;
-
-#define HAMMER2_SYNCTHR_UNMOUNTING	0x0001	/* unmount request */
-#define HAMMER2_SYNCTHR_DEV		0x0002	/* related to dev, not pfs */
-#define HAMMER2_SYNCTHR_UNUSED04	0x0004
-#define HAMMER2_SYNCTHR_REMASTER	0x0008	/* remaster request */
-#define HAMMER2_SYNCTHR_STOP		0x0010	/* exit request */
-#define HAMMER2_SYNCTHR_FREEZE		0x0020	/* force idle */
-#define HAMMER2_SYNCTHR_FROZEN		0x0040	/* restart */
-
+typedef struct hammer2_xop_group hammer2_xop_group_t;
 
 /*
  * Global (per partition) management structure, represents a hard block
@@ -932,12 +949,13 @@ struct hammer2_pfs {
 	int			count_lwinprog;	/* logical write in prog */
 	struct spinlock		list_spin;
 	struct h2_unlk_list	unlinkq;	/* last-close unlink */
-	hammer2_syncthr_t	sync_thrs[HAMMER2_MAXCLUSTER];
+	hammer2_thread_t	sync_thrs[HAMMER2_MAXCLUSTER];
 	thread_t		wthread_td;	/* write thread td */
 	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
 	hammer2_mtx_t 		wthread_mtx;	/* interlock */
 	int			wthread_destroy;/* termination sequencing */
 	uint32_t		flags;		/* cached cluster flags */
+	hammer2_xop_group_t	xop_groups[HAMMER2_XOPGROUPS];
 };
 
 typedef struct hammer2_pfs hammer2_pfs_t;
@@ -1050,7 +1068,7 @@ extern long hammer2_ioa_volu_write;
 
 extern struct objcache *cache_buffer_read;
 extern struct objcache *cache_buffer_write;
-extern struct objcache *cache_vop_info;
+extern struct objcache *cache_xops;
 
 extern int destroy;
 extern int write_thread_wakeup;
@@ -1275,6 +1293,24 @@ void hammer2_io_brelse(hammer2_io_t **diop);
 void hammer2_io_bqrelse(hammer2_io_t **diop);
 
 /*
+ * hammer2_xops.c
+ */
+void hammer2_xop_group_init(hammer2_pfs_t *pfs, hammer2_xop_group_t *xgrp);
+int hammer2_xop_readdir(struct vop_readdir_args *ap);
+int hammer2_xop_readlink(struct vop_readlink_args *ap);
+int hammer2_xop_nresolve(struct vop_nresolve_args *ap);
+int hammer2_xop_nlookupdotdot(struct vop_nlookupdotdot_args *ap);
+int hammer2_xop_nmkdir(struct vop_nmkdir_args *ap);
+int hammer2_xop_advlock(struct vop_advlock_args *ap);
+int hammer2_xop_nlink(struct vop_nlink_args *ap);
+int hammer2_xop_ncreate(struct vop_ncreate_args *ap);
+int hammer2_xop_nmknod(struct vop_nmknod_args *ap);
+int hammer2_xop_nsymlink(struct vop_nsymlink_args *ap);
+int hammer2_xop_nremove(struct vop_nremove_args *ap);
+int hammer2_xop_nrmdir(struct vop_nrmdir_args *ap);
+int hammer2_xop_nrename(struct vop_nrename_args *ap);
+
+/*
  * hammer2_msgops.c
  */
 int hammer2_msg_dbg_rcvmsg(kdmsg_msg_t *msg);
@@ -1387,16 +1423,18 @@ void hammer2_iocom_uninit(hammer2_dev_t *hmp);
 void hammer2_cluster_reconnect(hammer2_dev_t *hmp, struct file *fp);
 
 /*
- * hammer2_syncthr.c
+ * hammer2_thread.c
  */
-void hammer2_syncthr_create(hammer2_syncthr_t *thr, hammer2_pfs_t *pmp,
-			int clindex, void (*func)(void *arg));
-void hammer2_syncthr_delete(hammer2_syncthr_t *thr);
-void hammer2_syncthr_remaster(hammer2_syncthr_t *thr);
-void hammer2_syncthr_freeze(hammer2_syncthr_t *thr);
-void hammer2_syncthr_unfreeze(hammer2_syncthr_t *thr);
-void hammer2_syncthr_primary(void *arg);
-void hammer2_bioq_sync(hammer2_pfs_t *pmp);
+void hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
+			const char *id, int clindex, int repidx,
+			void (*func)(void *arg));
+void hammer2_thr_delete(hammer2_thread_t *thr);
+void hammer2_thr_remaster(hammer2_thread_t *thr);
+void hammer2_thr_freeze_async(hammer2_thread_t *thr);
+void hammer2_thr_freeze(hammer2_thread_t *thr);
+void hammer2_thr_unfreeze(hammer2_thread_t *thr);
+void hammer2_primary_sync_thread(void *arg);
+void hammer2_primary_xops_thread(void *arg);
 
 /*
  * hammer2_strategy.c
@@ -1404,6 +1442,7 @@ void hammer2_bioq_sync(hammer2_pfs_t *pmp);
 int hammer2_vop_strategy(struct vop_strategy_args *ap);
 int hammer2_vop_bmap(struct vop_bmap_args *ap);
 void hammer2_write_thread(void *arg);
+void hammer2_bioq_sync(hammer2_pfs_t *pmp);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

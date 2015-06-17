@@ -256,7 +256,7 @@ hammer2_vfs_init(struct vfsconf *conf)
 	margs_write.objsize = 32768;
 	margs_write.mtype = M_HAMMER2_CBUFFER;
 
-	margs_vop.objsize = sizeof(hammer2_vop_info_t);
+	margs_vop.objsize = sizeof(hammer2_xop_t);
 	margs_vop.mtype = M_HAMMER2;
 	
 	cache_buffer_read = objcache_create(margs_read.mtype->ks_shortdesc,
@@ -265,7 +265,7 @@ hammer2_vfs_init(struct vfsconf *conf)
 	cache_buffer_write = objcache_create(margs_write.mtype->ks_shortdesc,
 				0, 1, NULL, NULL, NULL, objcache_malloc_alloc,
 				objcache_malloc_free, &margs_write);
-	cache_vop_info = objcache_create(margs_vop.mtype->ks_shortdesc,
+	cache_xops = objcache_create(margs_vop.mtype->ks_shortdesc,
 				0, 1, NULL, NULL, NULL, objcache_malloc_alloc,
 				objcache_malloc_free, &margs_vop);
 
@@ -285,7 +285,7 @@ hammer2_vfs_uninit(struct vfsconf *vfsp __unused)
 {
 	objcache_destroy(cache_buffer_read);
 	objcache_destroy(cache_buffer_write);
-	objcache_destroy(cache_vop_info);
+	objcache_destroy(cache_xops);
 	return 0;
 }
 
@@ -338,6 +338,9 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		TAILQ_INIT(&pmp->unlinkq);
 		spin_init(&pmp->list_spin, "hm2pfsalloc_list");
 
+		for (j = 0; j < HAMMER2_XOPGROUPS; ++j)
+			hammer2_xop_group_init(pmp, &pmp->xop_groups[j]);
+
 		/*
 		 * Save the last media transaction id for the flusher.  Set
 		 * initial 
@@ -354,8 +357,8 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		 * XXX
 		 */
 		/*
-		pmp->primary_thr.flags = HAMMER2_SYNCTHR_FROZEN |
-					 HAMMER2_SYNCTHR_REMASTER;
+		pmp->primary_thr.flags = HAMMER2_THREAD_FROZEN |
+					 HAMMER2_THREAD_REMASTER;
 		*/
 	}
 
@@ -450,7 +453,7 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		pmp->pfs_nmasters = count;
 
 	/*
-	 * Create missing synchronization threads.
+	 * Create missing synchronization and support threads.
 	 *
 	 * Single-node masters (including snapshots) have nothing to
 	 * synchronize and do not require this thread.
@@ -463,13 +466,37 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 	 * any given target do not affect other targets.
 	 */
 	for (i = 0; i < iroot->cluster.nchains; ++i) {
-		if (pmp->sync_thrs[i].td)
+		/*
+		 * Single-node masters (including snapshots) have nothing
+		 * to synchronize and will make direct xops support calls,
+		 * thus they do not require this thread.
+		 *
+		 * Note that there can be thousands of snapshots.  We do not
+		 * want to create thousands of threads.
+		 */
+		if (pmp->pfs_nmasters <= 1 &&
+		    pmp->pfs_types[i] == HAMMER2_PFSTYPE_MASTER) {
 			continue;
-		if ((pmp->pfs_nmasters > 1 &&
-		     (pmp->pfs_types[i] == HAMMER2_PFSTYPE_MASTER)) ||
-		    pmp->pfs_types[i] != HAMMER2_PFSTYPE_MASTER) {
-			hammer2_syncthr_create(&pmp->sync_thrs[i], pmp, i,
-					       hammer2_syncthr_primary);
+		}
+
+		/*
+		 * Sync support thread
+		 */
+		if (pmp->sync_thrs[i].td == NULL) {
+			hammer2_thr_create(&pmp->sync_thrs[i], pmp,
+					   "h2nod", i, 0,
+					   hammer2_primary_sync_thread);
+		}
+
+		/*
+		 * Xops support threads
+		 */
+		for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+			if (pmp->xop_groups[j].thrs[i].td)
+				continue;
+			hammer2_thr_create(&pmp->xop_groups[j].thrs[i], pmp,
+					   "h2xop", i, j,
+					   hammer2_primary_xops_thread);
 		}
 	}
 
@@ -488,6 +515,7 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 {
 	hammer2_inode_t *iroot;
 	int i;
+	int j;
 
 	/*
 	 * Cleanup our reference on iroot.  iroot is (should) not be needed
@@ -497,8 +525,11 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 
 	iroot = pmp->iroot;
 	if (iroot) {
-		for (i = 0; i < iroot->cluster.nchains; ++i)
-			hammer2_syncthr_delete(&pmp->sync_thrs[i]);
+		for (i = 0; i < iroot->cluster.nchains; ++i) {
+			hammer2_thr_delete(&pmp->sync_thrs[i]);
+			for (j = 0; j < HAMMER2_XOPGROUPS; ++j)
+				hammer2_thr_delete(&pmp->xop_groups[j].thrs[i]);
+		}
 #if REPORT_REFS_ERRORS
 		if (pmp->iroot->refs != 1)
 			kprintf("PMP->IROOT %p REFS WRONG %d\n",
@@ -532,6 +563,7 @@ hammer2_pfsfree_scan(hammer2_dev_t *hmp)
 	hammer2_chain_t *rchain;
 	int didfreeze;
 	int i;
+	int j;
 
 again:
 	TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
@@ -563,8 +595,20 @@ again:
 			 * Make sure all synchronization threads are locked
 			 * down.
 			 */
-			for (i = 0; i < iroot->cluster.nchains; ++i)
-				hammer2_syncthr_freeze(&pmp->sync_thrs[i]);
+			for (i = 0; i < iroot->cluster.nchains; ++i) {
+				hammer2_thr_freeze_async(&pmp->sync_thrs[i]);
+				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+					hammer2_thr_freeze_async(
+						&pmp->xop_groups[j].thrs[i]);
+				}
+			}
+			for (i = 0; i < iroot->cluster.nchains; ++i) {
+				hammer2_thr_freeze(&pmp->sync_thrs[i]);
+				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+					hammer2_thr_freeze(
+						&pmp->xop_groups[j].thrs[i]);
+				}
+			}
 
 			/*
 			 * Lock the inode and clean out matching chains.
@@ -585,7 +629,11 @@ again:
 				rchain = cluster->array[i].chain;
 				if (rchain == NULL || rchain->hmp != hmp)
 					continue;
-				hammer2_syncthr_delete(&pmp->sync_thrs[i]);
+				hammer2_thr_delete(&pmp->sync_thrs[i]);
+				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+					hammer2_thr_delete(
+						&pmp->xop_groups[j].thrs[i]);
+				}
 				rchain = cluster->array[i].chain;
 				cluster->array[i].chain = NULL;
 				pmp->pfs_types[i] = 0;
@@ -633,8 +681,14 @@ again:
 		 */
 		if (didfreeze) {
 			for (i = 0; i < iroot->cluster.nchains; ++i) {
-				hammer2_syncthr_remaster(&pmp->sync_thrs[i]);
-				hammer2_syncthr_unfreeze(&pmp->sync_thrs[i]);
+				hammer2_thr_remaster(&pmp->sync_thrs[i]);
+				hammer2_thr_unfreeze(&pmp->sync_thrs[i]);
+				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+					hammer2_thr_remaster(
+						&pmp->xop_groups[j].thrs[i]);
+					hammer2_thr_unfreeze(
+						&pmp->xop_groups[j].thrs[i]);
+				}
 			}
 		}
 	}

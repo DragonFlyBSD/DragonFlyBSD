@@ -36,53 +36,58 @@
  */
 #include "hammer2.h"
 
-#define HAMMER2_SYNCTHR_DEBUG 1
+#define HAMMER2_THREAD_DEBUG 1
 
-static int hammer2_sync_slaves(hammer2_syncthr_t *thr,
+static int hammer2_sync_slaves(hammer2_thread_t *thr,
 			hammer2_cluster_t *cparent, int *errors);
-static void hammer2_update_pfs_status(hammer2_syncthr_t *thr,
+static void hammer2_update_pfs_status(hammer2_thread_t *thr,
 			hammer2_cluster_t *cparent);
-static int hammer2_sync_insert(hammer2_syncthr_t *thr,
+static int hammer2_sync_insert(hammer2_thread_t *thr,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			hammer2_tid_t modify_tid,
 			int i, int *errors);
-static int hammer2_sync_destroy(hammer2_syncthr_t *thr,
+static int hammer2_sync_destroy(hammer2_thread_t *thr,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			int i, int *errors);
-static int hammer2_sync_replace(hammer2_syncthr_t *thr,
+static int hammer2_sync_replace(hammer2_thread_t *thr,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			hammer2_tid_t modify_tid,
 			int i, int *errors);
 
+/****************************************************************************
+ *			    HAMMER2 THREAD API			    	    *
+ ****************************************************************************/
 /*
- * Initialize the suspplied syncthr structure, starting the specified
+ * Initialize the suspplied thread structure, starting the specified
  * thread.
  */
 void
-hammer2_syncthr_create(hammer2_syncthr_t *thr, hammer2_pfs_t *pmp,
-		       int clindex, void (*func)(void *arg))
+hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
+		   const char *id, int clindex, int repidx,
+		   void (*func)(void *arg))
 {
-	lockinit(&thr->lk, "h2syncthr", 0, 0);
+	lockinit(&thr->lk, "h2thr", 0, 0);
 	thr->pmp = pmp;
 	thr->clindex = clindex;
+	thr->repidx = repidx;
 	lwkt_create(func, thr, &thr->td, NULL, 0, -1,
-		    "h2nod-%s", pmp->pfs_names[clindex]);
+		    "%s-%s", id, pmp->pfs_names[clindex]);
 }
 
 /*
- * Terminate a syncthr.  This function will silently return if the syncthr
+ * Terminate a thread.  This function will silently return if the thread
  * was never initialized or has already been deleted.
  *
  * This is accomplished by setting the STOP flag and waiting for the td
  * structure to become NULL.
  */
 void
-hammer2_syncthr_delete(hammer2_syncthr_t *thr)
+hammer2_thr_delete(hammer2_thread_t *thr)
 {
 	if (thr->td == NULL)
 		return;
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
-	atomic_set_int(&thr->flags, HAMMER2_SYNCTHR_STOP);
+	atomic_set_int(&thr->flags, HAMMER2_THREAD_STOP);
 	wakeup(&thr->flags);
 	while (thr->td) {
 		lksleep(thr, &thr->lk, 0, "h2thr", hz);
@@ -98,41 +103,51 @@ hammer2_syncthr_delete(hammer2_syncthr_t *thr)
  * The thread always recalculates mastership relationships when restarting.
  */
 void
-hammer2_syncthr_remaster(hammer2_syncthr_t *thr)
+hammer2_thr_remaster(hammer2_thread_t *thr)
 {
 	if (thr->td == NULL)
 		return;
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
-	atomic_set_int(&thr->flags, HAMMER2_SYNCTHR_REMASTER);
+	atomic_set_int(&thr->flags, HAMMER2_THREAD_REMASTER);
 	wakeup(&thr->flags);
 	lockmgr(&thr->lk, LK_RELEASE);
 }
 
 void
-hammer2_syncthr_freeze(hammer2_syncthr_t *thr)
+hammer2_thr_freeze_async(hammer2_thread_t *thr)
+{
+	atomic_set_int(&thr->flags, HAMMER2_THREAD_FREEZE);
+	wakeup(&thr->flags);
+}
+
+void
+hammer2_thr_freeze(hammer2_thread_t *thr)
 {
 	if (thr->td == NULL)
 		return;
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
-	atomic_set_int(&thr->flags, HAMMER2_SYNCTHR_FREEZE);
+	atomic_set_int(&thr->flags, HAMMER2_THREAD_FREEZE);
 	wakeup(&thr->flags);
-	while ((thr->flags & HAMMER2_SYNCTHR_FROZEN) == 0) {
+	while ((thr->flags & HAMMER2_THREAD_FROZEN) == 0) {
 		lksleep(thr, &thr->lk, 0, "h2frz", hz);
 	}
 	lockmgr(&thr->lk, LK_RELEASE);
 }
 
 void
-hammer2_syncthr_unfreeze(hammer2_syncthr_t *thr)
+hammer2_thr_unfreeze(hammer2_thread_t *thr)
 {
 	if (thr->td == NULL)
 		return;
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
-	atomic_clear_int(&thr->flags, HAMMER2_SYNCTHR_FROZEN);
+	atomic_clear_int(&thr->flags, HAMMER2_THREAD_FROZEN);
 	wakeup(&thr->flags);
 	lockmgr(&thr->lk, LK_RELEASE);
 }
 
+/****************************************************************************
+ *			    HAMMER2 SYNC THREADS 			    *
+ ****************************************************************************/
 /*
  * Primary management thread for an element of a node.  A thread will exist
  * for each element requiring management.
@@ -144,9 +159,9 @@ hammer2_syncthr_unfreeze(hammer2_syncthr_t *thr)
  * On a PFS    - handles remastering and synchronization
  */
 void
-hammer2_syncthr_primary(void *arg)
+hammer2_primary_sync_thread(void *arg)
 {
-	hammer2_syncthr_t *thr = arg;
+	hammer2_thread_t *thr = arg;
 	hammer2_cluster_t *cparent;
 	hammer2_chain_t *chain;
 	hammer2_pfs_t *pmp;
@@ -156,19 +171,19 @@ hammer2_syncthr_primary(void *arg)
 	pmp = thr->pmp;
 
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
-	while ((thr->flags & HAMMER2_SYNCTHR_STOP) == 0) {
+	while ((thr->flags & HAMMER2_THREAD_STOP) == 0) {
 		/*
 		 * Handle freeze request
 		 */
-		if (thr->flags & HAMMER2_SYNCTHR_FREEZE) {
-			atomic_set_int(&thr->flags, HAMMER2_SYNCTHR_FROZEN);
-			atomic_clear_int(&thr->flags, HAMMER2_SYNCTHR_FREEZE);
+		if (thr->flags & HAMMER2_THREAD_FREEZE) {
+			atomic_set_int(&thr->flags, HAMMER2_THREAD_FROZEN);
+			atomic_clear_int(&thr->flags, HAMMER2_THREAD_FREEZE);
 		}
 
 		/*
 		 * Force idle if frozen until unfrozen or stopped.
 		 */
-		if (thr->flags & HAMMER2_SYNCTHR_FROZEN) {
+		if (thr->flags & HAMMER2_THREAD_FROZEN) {
 			lksleep(&thr->flags, &thr->lk, 0, "frozen", 0);
 			continue;
 		}
@@ -176,8 +191,8 @@ hammer2_syncthr_primary(void *arg)
 		/*
 		 * Reset state on REMASTER request
 		 */
-		if (thr->flags & HAMMER2_SYNCTHR_REMASTER) {
-			atomic_clear_int(&thr->flags, HAMMER2_SYNCTHR_REMASTER);
+		if (thr->flags & HAMMER2_THREAD_REMASTER) {
+			atomic_clear_int(&thr->flags, HAMMER2_THREAD_REMASTER);
 			/* reset state */
 		}
 
@@ -237,7 +252,7 @@ hammer2_syncthr_primary(void *arg)
  */
 static
 void
-hammer2_update_pfs_status(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent)
+hammer2_update_pfs_status(hammer2_thread_t *thr, hammer2_cluster_t *cparent)
 {
 	hammer2_pfs_t *pmp = thr->pmp;
 	uint32_t flags;
@@ -320,7 +335,7 @@ dumpcluster(const char *label,
  */
 static
 int
-hammer2_sync_slaves(hammer2_syncthr_t *thr, hammer2_cluster_t *cparent,
+hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_cluster_t *cparent,
 		    int *errors)
 {
 	hammer2_pfs_t *pmp;
@@ -670,7 +685,7 @@ skip2:
  */
 static
 int
-hammer2_sync_insert(hammer2_syncthr_t *thr,
+hammer2_sync_insert(hammer2_thread_t *thr,
 		    hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		    hammer2_tid_t modify_tid, int i, int *errors)
 {
@@ -679,7 +694,7 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
 	hammer2_key_t dummy;
 
 	focus = cluster->focus;
-#if HAMMER2_SYNCTHR_DEBUG
+#if HAMMER2_THREAD_DEBUG
 	if (hammer2_debug & 1)
 	kprintf("insert rec par=%p/%d.%016jx slave %d %d.%016jx mod=%016jx\n",
 		cparent->array[i].chain, 
@@ -789,14 +804,14 @@ hammer2_sync_insert(hammer2_syncthr_t *thr,
  */
 static
 int
-hammer2_sync_destroy(hammer2_syncthr_t *thr,
+hammer2_sync_destroy(hammer2_thread_t *thr,
 		     hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		     int i, int *errors)
 {
 	hammer2_chain_t *chain;
 
 	chain = cluster->array[i].chain;
-#if HAMMER2_SYNCTHR_DEBUG
+#if HAMMER2_THREAD_DEBUG
 	if (hammer2_debug & 1)
 	kprintf("destroy rec %p/%p slave %d %d.%016jx\n",
 		cparent, cluster,
@@ -830,7 +845,7 @@ hammer2_sync_destroy(hammer2_syncthr_t *thr,
  */
 static
 int
-hammer2_sync_replace(hammer2_syncthr_t *thr,
+hammer2_sync_replace(hammer2_thread_t *thr,
 		     hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 		     hammer2_tid_t modify_tid, int i, int *errors)
 {
@@ -841,7 +856,7 @@ hammer2_sync_replace(hammer2_syncthr_t *thr,
 
 	focus = cluster->focus;
 	chain = cluster->array[i].chain;
-#if HAMMER2_SYNCTHR_DEBUG
+#if HAMMER2_THREAD_DEBUG
 	if (hammer2_debug & 1)
 	kprintf("replace rec %p/%p slave %d %d.%016jx mod=%016jx\n",
 		cparent, cluster,
@@ -887,7 +902,7 @@ hammer2_sync_replace(hammer2_syncthr_t *thr,
 			if (otype != HAMMER2_BREF_TYPE_INODE ||
 			    (chain->data->ipdata.meta.op_flags &
 			     HAMMER2_OPFLAG_DIRECTDATA)) {
-				kprintf("chain inode transiiton away from dd\n");
+				kprintf("chain inode trans away from dd\n");
 				bzero(&chain->data->ipdata.u,
 				      sizeof(chain->data->ipdata.u));
 			}
@@ -916,4 +931,91 @@ hammer2_sync_replace(hammer2_syncthr_t *thr,
 	cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
 
 	return 0;
+}
+
+/****************************************************************************
+ *			    HAMMER2 XOPS THREADS 			    *
+ ****************************************************************************/
+
+void
+hammer2_xop_group_init(hammer2_pfs_t *pmp, hammer2_xop_group_t *xgrp)
+{
+	hammer2_mtx_init(&xgrp->mtx, "h2xopq");
+	xgrp->xop_tailp = &xgrp->marker.next;
+	xgrp->marker.refs = 0x7FFFFFFF;
+}
+
+/*
+ * Primary management thread for xops support.  Each node has several such
+ * threads which replicate front-end operations on cluster nodes.
+ *
+ * XOPS thread node operations, allowing the function to focus on a single
+ * node in the cluster after validating the operation with the cluster.
+ * This is primarily what prevents dead or stalled nodes from stalling
+ * the front-end.
+ */
+void
+hammer2_primary_xops_thread(void *arg)
+{
+	hammer2_thread_t *thr = arg;
+	hammer2_pfs_t *pmp;
+	hammer2_xop_t *xop;
+	hammer2_xop_t *prev;
+	hammer2_xop_group_t *xgrp;
+
+	pmp = thr->pmp;
+	xgrp = &pmp->xop_groups[thr->repidx];
+	prev = &xgrp->marker;
+
+	lockmgr(&thr->lk, LK_EXCLUSIVE);
+	while ((thr->flags & HAMMER2_THREAD_STOP) == 0) {
+		/*
+		 * Handle freeze request
+		 */
+		if (thr->flags & HAMMER2_THREAD_FREEZE) {
+			atomic_set_int(&thr->flags, HAMMER2_THREAD_FROZEN);
+			atomic_clear_int(&thr->flags, HAMMER2_THREAD_FREEZE);
+		}
+
+		/*
+		 * Force idle if frozen until unfrozen or stopped.
+		 */
+		if (thr->flags & HAMMER2_THREAD_FROZEN) {
+			lksleep(&thr->flags, &thr->lk, 0, "frozen", 0);
+			continue;
+		}
+
+		/*
+		 * Reset state on REMASTER request
+		 */
+		if (thr->flags & HAMMER2_THREAD_REMASTER) {
+			atomic_clear_int(&thr->flags, HAMMER2_THREAD_REMASTER);
+			/* reset state */
+		}
+
+		/*
+		 * Process requests.  All requests are persistent until the
+		 * last thread has processed it.
+		 */
+		kprintf("xops_slave clindex %d\n", thr->clindex);
+
+		while ((xop = prev->next) != NULL) {
+			if (atomic_fetchadd_int(&prev->refs, -1) == 1) {
+				KKASSERT(prev == xgrp->marker.next);
+				xgrp->marker.next = xop;
+				objcache_put(cache_xops, prev);
+			}
+			xop->func(thr, xop);
+			prev = xop;
+		}
+
+		/*
+		 * Wait for event.
+		 */
+		lksleep(&thr->flags, &thr->lk, 0, "h2idle", 0);
+	}
+	thr->td = NULL;
+	wakeup(thr);
+	lockmgr(&thr->lk, LK_RELEASE);
+	/* thr structure can go invalid after this point */
 }
