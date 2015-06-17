@@ -1286,7 +1286,6 @@ int hammer2_msg_adhoc_input(kdmsg_msg_t *msg);
 void hammer2_clusterctl_wakeup(kdmsg_iocom_t *iocom);
 void hammer2_volconf_update(hammer2_dev_t *hmp, int index);
 void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx);
-void hammer2_bioq_sync(hammer2_pfs_t *pmp);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
 hammer2_pfs_t *hammer2_pfsalloc(hammer2_cluster_t *cluster,
 				const hammer2_inode_data_t *ripdata,
@@ -1397,12 +1396,14 @@ void hammer2_syncthr_remaster(hammer2_syncthr_t *thr);
 void hammer2_syncthr_freeze(hammer2_syncthr_t *thr);
 void hammer2_syncthr_unfreeze(hammer2_syncthr_t *thr);
 void hammer2_syncthr_primary(void *arg);
+void hammer2_bioq_sync(hammer2_pfs_t *pmp);
 
 /*
  * hammer2_strategy.c
  */
 int hammer2_vop_strategy(struct vop_strategy_args *ap);
 int hammer2_vop_bmap(struct vop_bmap_args *ap);
+void hammer2_write_thread(void *arg);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */
