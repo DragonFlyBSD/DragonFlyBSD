@@ -1029,7 +1029,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * cluster->pmp will incorrectly point to spmp and must be fixed
 	 * up later on.
 	 */
-	cparent = hammer2_inode_lock(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
+	cparent = hammer2_inode_cluster(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
 	lhc = hammer2_dirhash(label, strlen(label));
 	cluster = hammer2_cluster_lookup(cparent, &key_next,
 				      lhc, lhc + HAMMER2_DIRHASH_LOMASK,
@@ -1174,7 +1175,8 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 	 * up later on.
 	 */
 	spmp = hmp->spmp;
-	cparent = hammer2_inode_lock(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
+	cparent = hammer2_inode_cluster(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
 	cluster = hammer2_cluster_lookup(cparent, &key_next,
 					 HAMMER2_KEY_MIN,
 					 HAMMER2_KEY_MAX,
@@ -1272,8 +1274,9 @@ hammer2_write_thread(void *arg)
 			 * NOTE: hammer2_write_file_core() may indirectly
 			 *	 modify and modsync the inode.
 			 */
-			cparent = hammer2_inode_lock(ip,
-						     HAMMER2_RESOLVE_ALWAYS);
+			hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+			cparent = hammer2_inode_cluster(ip,
+							HAMMER2_RESOLVE_ALWAYS);
 			if (ip->flags & (HAMMER2_INODE_RESIZED |
 					 HAMMER2_INODE_MTIME)) {
 				hammer2_inode_fsync(&trans, ip, cparent);
@@ -2220,9 +2223,32 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 		*vpp = NULL;
 		error = EINVAL;
 	} else {
-		cparent = hammer2_inode_lock(pmp->iroot,
+		hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_ALWAYS |
+					       HAMMER2_RESOLVE_SHARED);
+		cparent = hammer2_inode_cluster(pmp->iroot,
 						HAMMER2_RESOLVE_ALWAYS |
 					        HAMMER2_RESOLVE_SHARED);
+
+		/*
+		 * Initialize pmp->inode_tid and pmp->modify_tid on first access
+		 * to the root of mount that resolves good.
+		 * XXX probably not the best place for this.
+		 */
+		if (pmp->inode_tid == 0 &&
+		    cparent->error == 0 && cparent->focus) {
+			const hammer2_inode_data_t *ripdata;
+			hammer2_blockref_t bref;
+
+			ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
+			hammer2_cluster_bref(cparent, &bref);
+			pmp->inode_tid = ripdata->meta.pfs_inum + 1;
+			pmp->modify_tid = bref.modify_tid;
+			pmp->iroot->meta = ripdata->meta;
+			hammer2_cluster_bref(cparent, &pmp->iroot->bref);
+			kprintf("PMP focus good set nextino=%ld mod=%016jx\n",
+				pmp->inode_tid, pmp->modify_tid);
+		}
+
 		vp = hammer2_igetv(pmp->iroot, cparent, &error);
 		hammer2_inode_unlock(pmp->iroot, cparent);
 		*vpp = vp;

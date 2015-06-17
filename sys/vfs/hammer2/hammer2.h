@@ -679,6 +679,7 @@ struct hammer2_inode {
 	u_int			refs;		/* +vpref, +flushref */
 	uint8_t			comp_heuristic;
 	hammer2_inode_meta_t	meta;		/* copy of meta-data */
+	hammer2_blockref_t	bref;		/* copy of bref statistics */
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
@@ -1063,8 +1064,9 @@ extern int write_thread_wakeup;
 int hammer2_signal_check(time_t *timep);
 const char *hammer2_error_str(int error);
 
-hammer2_cluster_t *hammer2_inode_lock(hammer2_inode_t *ip, int how);
+void hammer2_inode_lock(hammer2_inode_t *ip, int how);
 void hammer2_inode_unlock(hammer2_inode_t *ip, hammer2_cluster_t *cluster);
+hammer2_cluster_t *hammer2_inode_cluster(hammer2_inode_t *ip, int how);
 hammer2_mtx_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
 void hammer2_inode_lock_temp_restore(hammer2_inode_t *ip,
 			hammer2_mtx_state_t ostate);
@@ -1076,7 +1078,7 @@ void hammer2_dev_shlock(hammer2_dev_t *hmp);
 void hammer2_dev_unlock(hammer2_dev_t *hmp);
 
 int hammer2_get_dtype(const hammer2_inode_data_t *ipdata);
-int hammer2_get_vtype(const hammer2_inode_data_t *ipdata);
+int hammer2_get_vtype(uint8_t type);
 u_int8_t hammer2_get_obj_type(enum vtype vtype);
 void hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts);
 u_int64_t hammer2_timespec_to_time(const struct timespec *ts);

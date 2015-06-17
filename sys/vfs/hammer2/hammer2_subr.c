@@ -107,9 +107,9 @@ hammer2_get_dtype(const hammer2_inode_data_t *ipdata)
  * Return the directory entry type for an inode
  */
 int
-hammer2_get_vtype(const hammer2_inode_data_t *ipdata)
+hammer2_get_vtype(uint8_t type)
 {
-	switch(ipdata->meta.type) {
+	switch(type) {
 	case HAMMER2_OBJTYPE_UNKNOWN:
 		return (VBAD);
 	case HAMMER2_OBJTYPE_DIRECTORY:

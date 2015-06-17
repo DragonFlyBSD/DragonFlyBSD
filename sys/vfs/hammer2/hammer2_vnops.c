@@ -225,7 +225,8 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 * which call this function will eventually call chain_flush
 	 * on the volume root as a catch-all, which is far more optimal.
 	 */
-	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	cluster = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	/*vclrisdirty(vp);*/
 	if (ip->flags & (HAMMER2_INODE_RESIZED|HAMMER2_INODE_MTIME))
@@ -243,21 +244,16 @@ int
 hammer2_vop_access(struct vop_access_args *ap)
 {
 	hammer2_inode_t *ip = VTOI(ap->a_vp);
-	const hammer2_inode_data_t *ripdata;
-	hammer2_cluster_t *cluster;
 	uid_t uid;
 	gid_t gid;
 	int error;
 
 	LOCKSTART;
-	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
-					 HAMMER2_RESOLVE_SHARED);
-	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-	uid = hammer2_to_unix_xid(&ripdata->meta.uid);
-	gid = hammer2_to_unix_xid(&ripdata->meta.gid);
-	error = vop_helper_access(ap, uid, gid,
-				  ripdata->meta.mode, ripdata->meta.uflags);
-	hammer2_inode_unlock(ip, cluster);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS | HAMMER2_RESOLVE_SHARED);
+	uid = hammer2_to_unix_xid(&ip->meta.uid);
+	gid = hammer2_to_unix_xid(&ip->meta.gid);
+	error = vop_helper_access(ap, uid, gid, ip->meta.mode, ip->meta.uflags);
+	hammer2_inode_unlock(ip, NULL);
 
 	LOCKSTOP;
 	return (error);
@@ -267,11 +263,8 @@ static
 int
 hammer2_vop_getattr(struct vop_getattr_args *ap)
 {
-	const hammer2_inode_data_t *ripdata;
-	hammer2_cluster_t *cluster;
 	hammer2_pfs_t *pmp;
 	hammer2_inode_t *ip;
-	hammer2_blockref_t bref;
 	struct vnode *vp;
 	struct vattr *vap;
 
@@ -282,36 +275,32 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	ip = VTOI(vp);
 	pmp = ip->pmp;
 
-	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
-					 HAMMER2_RESOLVE_SHARED);
-	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-	KKASSERT(hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE);
-	hammer2_cluster_bref(cluster, &bref);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS | HAMMER2_RESOLVE_SHARED);
 
 	vap->va_fsid = pmp->mp->mnt_stat.f_fsid.val[0];
-	vap->va_fileid = ripdata->meta.inum;
-	vap->va_mode = ripdata->meta.mode;
-	vap->va_nlink = ripdata->meta.nlinks;
-	vap->va_uid = hammer2_to_unix_xid(&ripdata->meta.uid);
-	vap->va_gid = hammer2_to_unix_xid(&ripdata->meta.gid);
+	vap->va_fileid = ip->meta.inum;
+	vap->va_mode = ip->meta.mode;
+	vap->va_nlink = ip->meta.nlinks;
+	vap->va_uid = hammer2_to_unix_xid(&ip->meta.uid);
+	vap->va_gid = hammer2_to_unix_xid(&ip->meta.gid);
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
 	vap->va_size = ip->meta.size;	/* protected by shared lock */
 	vap->va_blocksize = HAMMER2_PBUFSIZE;
-	vap->va_flags = ripdata->meta.uflags;
-	hammer2_time_to_timespec(ripdata->meta.ctime, &vap->va_ctime);
-	hammer2_time_to_timespec(ripdata->meta.mtime, &vap->va_mtime);
-	hammer2_time_to_timespec(ripdata->meta.mtime, &vap->va_atime);
+	vap->va_flags = ip->meta.uflags;
+	hammer2_time_to_timespec(ip->meta.ctime, &vap->va_ctime);
+	hammer2_time_to_timespec(ip->meta.mtime, &vap->va_mtime);
+	hammer2_time_to_timespec(ip->meta.mtime, &vap->va_atime);
 	vap->va_gen = 1;
-	vap->va_bytes = bref.data_count;
-	vap->va_type = hammer2_get_vtype(ripdata);
+	vap->va_bytes = ip->bref.data_count;
+	vap->va_type = hammer2_get_vtype(ip->meta.type);
 	vap->va_filerev = 0;
-	vap->va_uid_uuid = ripdata->meta.uid;
-	vap->va_gid_uuid = ripdata->meta.gid;
+	vap->va_uid_uuid = ip->meta.uid;
+	vap->va_gid_uuid = ip->meta.gid;
 	vap->va_vaflags = VA_UID_UUID_VALID | VA_GID_UUID_VALID |
 			  VA_FSID_UUID_VALID;
 
-	hammer2_inode_unlock(ip, cluster);
+	hammer2_inode_unlock(ip, NULL);
 
 	LOCKSTOP;
 	return (0);
@@ -348,7 +337,8 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 
 	hammer2_pfs_memory_wait(ip->pmp);
 	hammer2_trans_init(&trans, ip->pmp, 0);
-	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	cluster = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
 	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 	error = 0;
 
@@ -426,7 +416,8 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 			} else {
 				hammer2_extend_file(ip, vap->va_size);
 			}
-			cluster = hammer2_inode_lock(ip,
+			hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+			cluster = hammer2_inode_cluster(ip,
 						     HAMMER2_RESOLVE_ALWAYS);
 			/* RELOAD */
 			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
@@ -547,8 +538,9 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	}
 	cookie_index = 0;
 
-	cparent = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
-					 HAMMER2_RESOLVE_SHARED);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS | HAMMER2_RESOLVE_SHARED);
+	cparent = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS |
+					    HAMMER2_RESOLVE_SHARED);
 
 	ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
 
@@ -588,11 +580,15 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			xip = ip->pip;
 			hammer2_inode_ref(xip);
 			hammer2_inode_unlock(ip, cparent);
-			xcluster = hammer2_inode_lock(xip,
+			hammer2_inode_lock(xip, HAMMER2_RESOLVE_ALWAYS |
+					        HAMMER2_RESOLVE_SHARED);
+			xcluster = hammer2_inode_cluster(xip,
 						      HAMMER2_RESOLVE_ALWAYS |
 						      HAMMER2_RESOLVE_SHARED);
 
-			cparent = hammer2_inode_lock(ip,
+			hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
+					       HAMMER2_RESOLVE_SHARED);
+			cparent = hammer2_inode_cluster(ip,
 						      HAMMER2_RESOLVE_ALWAYS |
 						      HAMMER2_RESOLVE_SHARED);
 			hammer2_inode_drop(xip);
@@ -1152,8 +1148,10 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	/*
 	 * Note: In DragonFly the kernel handles '.' and '..'.
 	 */
-	cparent = hammer2_inode_lock(dip, HAMMER2_RESOLVE_ALWAYS |
-					  HAMMER2_RESOLVE_SHARED);
+	hammer2_inode_lock(dip, HAMMER2_RESOLVE_ALWAYS |
+			        HAMMER2_RESOLVE_SHARED);
+	cparent = hammer2_inode_cluster(dip, HAMMER2_RESOLVE_ALWAYS |
+					     HAMMER2_RESOLVE_SHARED);
 
 	cluster = hammer2_cluster_lookup(cparent, &key_next,
 					 lhc, lhc + HAMMER2_DIRHASH_LOMASK,
@@ -1204,7 +1202,8 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 			hammer2_inode_unlock(ip, NULL);
 			hammer2_cluster_unlock(cluster);
 			hammer2_cluster_drop(cluster);
-			cluster = hammer2_inode_lock(ip,
+			hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+			cluster = hammer2_inode_cluster(ip,
 						     HAMMER2_RESOLVE_ALWAYS);
 			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 			hammer2_inode_drop(ip);
@@ -1294,7 +1293,8 @@ hammer2_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 		LOCKSTOP;
 		return ENOENT;
 	}
-	cparent = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	cparent = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
 	*ap->a_vpp = hammer2_igetv(ip, cparent, &error);
 	hammer2_inode_unlock(ip, cparent);
 
@@ -1368,8 +1368,10 @@ hammer2_vop_advlock(struct vop_advlock_args *ap)
 	hammer2_cluster_t *cparent;
 	hammer2_off_t size;
 
-	cparent = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
-					 HAMMER2_RESOLVE_SHARED);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
+			       HAMMER2_RESOLVE_SHARED);
+	cparent = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS |
+					    HAMMER2_RESOLVE_SHARED);
 	ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
 	size = ripdata->meta.size;
 	hammer2_inode_unlock(ip, cparent);
@@ -1439,10 +1441,16 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	fdip = ip->pip;
 	cdip = hammer2_inode_common_parent(fdip, tdip);
-	cdcluster = hammer2_inode_lock(cdip, HAMMER2_RESOLVE_ALWAYS);
-	fdcluster = hammer2_inode_lock(fdip, HAMMER2_RESOLVE_ALWAYS);
-	tdcluster = hammer2_inode_lock(tdip, HAMMER2_RESOLVE_ALWAYS);
-	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(cdip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(fdip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(tdip, HAMMER2_RESOLVE_ALWAYS);
+	cdcluster = hammer2_inode_cluster(cdip, HAMMER2_RESOLVE_ALWAYS);
+	fdcluster = hammer2_inode_cluster(fdip, HAMMER2_RESOLVE_ALWAYS);
+	tdcluster = hammer2_inode_cluster(tdip, HAMMER2_RESOLVE_ALWAYS);
+
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	cluster = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
+
 	error = hammer2_hardlink_consolidate(&trans, ip, &cluster,
 					     cdip, cdcluster, 1);
 	if (error)
@@ -1819,9 +1827,12 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *	    other pointers.
 	 */
 	cdip = hammer2_inode_common_parent(ip->pip, tdip);
-	cdcluster = hammer2_inode_lock(cdip, HAMMER2_RESOLVE_ALWAYS);
-	fdcluster = hammer2_inode_lock(fdip, HAMMER2_RESOLVE_ALWAYS);
-	tdcluster = hammer2_inode_lock(tdip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(cdip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(fdip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(tdip, HAMMER2_RESOLVE_ALWAYS);
+	cdcluster = hammer2_inode_cluster(cdip, HAMMER2_RESOLVE_ALWAYS);
+	fdcluster = hammer2_inode_cluster(fdip, HAMMER2_RESOLVE_ALWAYS);
+	tdcluster = hammer2_inode_cluster(tdip, HAMMER2_RESOLVE_ALWAYS);
 
 	/*
 	 * Keep a tight grip on the inode so the temporary unlinking from
@@ -1857,7 +1868,8 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *	     we do use one later remember that it must be reloaded
 	 *	     on any modification to the inode, including connects.
 	 */
-	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	cluster = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_hardlink_consolidate(&trans, ip, &cluster,
 					     cdip, cdcluster, 0);
 	if (error)
@@ -2008,7 +2020,8 @@ hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfs_t *pmp)
 		ip = ipul->ip;
 		kfree(ipul, pmp->minode);
 
-		cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+		cluster = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
 		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 		if (hammer2_debug & 0x400) {
 			kprintf("hammer2: unlink on reclaim: %s refs=%d\n",

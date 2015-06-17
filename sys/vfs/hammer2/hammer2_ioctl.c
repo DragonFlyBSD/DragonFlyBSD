@@ -380,8 +380,12 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	error = 0;
 	hmp = ip->pmp->iroot->cluster.focus->hmp; /* XXX */
 	pfs = data;
-	cparent = hammer2_inode_lock(hmp->spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
-	rcluster = hammer2_inode_lock(ip->pmp->iroot, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(hmp->spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
+	cparent = hammer2_inode_cluster(hmp->spmp->iroot,
+					HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(ip->pmp->iroot, HAMMER2_RESOLVE_ALWAYS);
+	rcluster = hammer2_inode_cluster(ip->pmp->iroot,
+					 HAMMER2_RESOLVE_ALWAYS);
 
 	/*
 	 * Search for the first key or specific key.  Remember that keys
@@ -473,8 +477,11 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	error = 0;
 	hmp = ip->pmp->iroot->cluster.focus->hmp; /* XXX */
 	pfs = data;
-	cparent = hammer2_inode_lock(hmp->spmp->iroot, HAMMER2_RESOLVE_ALWAYS |
-						       HAMMER2_RESOLVE_SHARED);
+	hammer2_inode_lock(hmp->spmp->iroot, HAMMER2_RESOLVE_ALWAYS |
+					     HAMMER2_RESOLVE_SHARED);
+	cparent = hammer2_inode_cluster(hmp->spmp->iroot,
+					HAMMER2_RESOLVE_ALWAYS |
+				        HAMMER2_RESOLVE_SHARED);
 
 	pfs->name[sizeof(pfs->name) - 1] = 0;
 	len = strlen(pfs->name);
@@ -627,7 +634,8 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 
 	hammer2_trans_init(&trans, ip->pmp,
 			   HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_NEWINODE);
-	cparent = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	cparent = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_cluster_snapshot(&trans, cparent, pfs);
 	hammer2_inode_unlock(ip, cparent);
 	hammer2_trans_done(&trans);
@@ -648,8 +656,10 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 
 	ino = data;
 
-	cluster = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
-					 HAMMER2_RESOLVE_SHARED);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
+			       HAMMER2_RESOLVE_SHARED);
+	cluster = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS |
+					    HAMMER2_RESOLVE_SHARED);
 	if (cluster->error) {
 		error = EIO;
 	} else {
@@ -681,7 +691,8 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 	int dosync = 0;
 
 	hammer2_trans_init(&trans, ip->pmp, 0);
-	cparent = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
+	cparent = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
 	ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
 
 	if (ino->ip_data.meta.check_algo != ripdata->meta.check_algo) {

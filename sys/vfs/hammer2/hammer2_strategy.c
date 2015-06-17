@@ -249,8 +249,10 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	/*
 	 * Lookup the file offset.
 	 */
-	cparent = hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
-					 HAMMER2_RESOLVE_SHARED);
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
+			       HAMMER2_RESOLVE_SHARED);
+	cparent = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS |
+					    HAMMER2_RESOLVE_SHARED);
 	cluster = hammer2_cluster_lookup(cparent, &key_dummy,
 				       lbase, lbase,
 				       HAMMER2_LOOKUP_NODATA |

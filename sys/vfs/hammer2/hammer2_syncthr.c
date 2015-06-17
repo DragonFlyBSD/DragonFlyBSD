@@ -185,8 +185,9 @@ hammer2_syncthr_primary(void *arg)
 		 * Synchronization scan.
 		 */
 		hammer2_trans_init(&thr->trans, pmp, HAMMER2_TRANS_KEEPMODIFY);
-		cparent = hammer2_inode_lock(pmp->iroot,
-					     HAMMER2_RESOLVE_ALWAYS);
+		hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_ALWAYS);
+		cparent = hammer2_inode_cluster(pmp->iroot,
+					        HAMMER2_RESOLVE_ALWAYS);
 		hammer2_update_pfs_status(thr, cparent);
 		hammer2_inode_unlock(pmp->iroot, NULL);
 		bzero(errors, sizeof(errors));
