@@ -26,7 +26,7 @@
  * $FreeBSD: /repoman/r/ncvs/src/sbin/i386/fdisk/fdisk.c,v 1.36.2.14 2004/01/30 14:40:47 harti Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
 #include <sys/ioctl_compat.h>
@@ -62,7 +62,7 @@ static char lbuf[LBUF];
 #define Hex(str, ans, tmp) if (hex(str, &tmp, ans)) ans = tmp
 #define String(str, ans, len) {char *z = ans; char **dflt = &z; if (string(str, dflt)) strncpy(ans, *dflt, len); }
 
-#define RoundCyl(x) ((((x) + cylsecs - 1) / cylsecs) * cylsecs)
+#define RoundCyl(x) roundup(x, cylsecs)
 
 #define MAX_SEC_SIZE 2048	/* maximum section size that is supported */
 #define MIN_SEC_SIZE 512	/* the sector size to start sensing at */
@@ -575,7 +575,7 @@ struct dos_partition *partp = (struct dos_partition *) (&mboot.parts[3]);
 
 	partp->dp_typ = DOSPTYP_386BSD;
 	partp->dp_flag = ACTIVE;
-	start = ((start + dos_sectors - 1) / dos_sectors) * dos_sectors;
+	start = roundup(start, dos_sectors);
 	if(start == 0)
 		start = dos_sectors;
 	partp->dp_start = start;

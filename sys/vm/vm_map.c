@@ -1244,7 +1244,7 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 		 * be sure that we didn't wrap the address.
 		 */
 		if (align_mask == (vm_offset_t)-1)
-			end = ((start + align - 1) / align) * align;
+			end = roundup(start, align);
 		else
 			end = (start + align_mask) & ~align_mask;
 		if (end < start)
