@@ -591,10 +591,8 @@ hammer2_write_thread(void *arg)
 			hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
 			cparent = hammer2_inode_cluster(ip,
 							HAMMER2_RESOLVE_ALWAYS);
-			if (ip->flags & (HAMMER2_INODE_RESIZED |
-					 HAMMER2_INODE_MTIME)) {
+			if (ip->flags & HAMMER2_INODE_RESIZED)
 				hammer2_inode_fsync(&trans, ip, cparent);
-			}
 			lblksize = hammer2_calc_logical(ip, bio->bio_offset,
 							&lbase, NULL);
 			pblksize = hammer2_calc_physical(ip, lbase);

@@ -681,16 +681,22 @@ struct hammer2_inode {
 	uint8_t			comp_heuristic;
 	hammer2_inode_meta_t	meta;		/* copy of meta-data */
 	hammer2_blockref_t	bref;		/* copy of bref statistics */
+	hammer2_off_t		osize;
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
 
+/*
+ * MODIFIED	- Inode is in a modified state, ip->meta may have changes.
+ * RESIZED	- Inode truncated (any) or inode extended beyond
+ *		  EMBEDDED_BYTES.
+ */
 #define HAMMER2_INODE_MODIFIED		0x0001
 #define HAMMER2_INODE_SROOT		0x0002	/* kmalloc special case */
 #define HAMMER2_INODE_RENAME_INPROG	0x0004
 #define HAMMER2_INODE_ONRBTREE		0x0008
-#define HAMMER2_INODE_RESIZED		0x0010
-#define HAMMER2_INODE_MTIME		0x0020
+#define HAMMER2_INODE_RESIZED		0x0010	/* requires inode_fsync */
+#define HAMMER2_INODE_UNUSED0020	0x0020
 #define HAMMER2_INODE_ISUNLINKED	0x0040
 #define HAMMER2_INODE_METAGOOD		0x0080	/* inode meta-data good */
 
@@ -805,11 +811,11 @@ typedef struct hammer2_thread hammer2_thread_t;
  */
 struct hammer2_xop {
 	struct hammer2_xop	*next;
-	hammer2_inode_t		*dip;
-	hammer2_inode_t		*ip;
 	void			(*func)(struct hammer2_thread *thr,
 					struct hammer2_xop *xop);
 	int			refs;
+	hammer2_inode_t		*dip;
+	hammer2_inode_t		*ip;
 };
 
 typedef struct hammer2_xop hammer2_xop_t;
@@ -1130,7 +1136,7 @@ void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 			hammer2_cluster_t *cluster);
 void hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 			int idx);
-
+void hammer2_inode_modify(hammer2_trans_t *trans, hammer2_inode_t *ip);
 void hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfs_t *pmp);
 
 hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
@@ -1149,7 +1155,8 @@ hammer2_inode_t *hammer2_inode_common_parent(hammer2_inode_t *fdip,
 			hammer2_inode_t *tdip);
 void hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			hammer2_cluster_t *cparent);
-int hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
+int hammer2_unlink_file(hammer2_trans_t *trans,
+			hammer2_inode_t *dip, hammer2_inode_t *ip,
 			const uint8_t *name, size_t name_len, int isdir,
 			int *hlinkp, struct nchandle *nch, int nlinks);
 int hammer2_hardlink_consolidate(hammer2_trans_t *trans,
@@ -1370,10 +1377,10 @@ void hammer2_cluster_unlock_except(hammer2_cluster_t *cluster, int idx);
 void hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			int nradix, int flags);
+void hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
+			int flags);
 hammer2_inode_data_t *hammer2_cluster_modify_ip(hammer2_trans_t *trans,
 			hammer2_inode_t *ip, hammer2_cluster_t *cluster,
-			int flags);
-void hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 			int flags);
 void hammer2_cluster_modsync(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_lookup_init(hammer2_cluster_t *cparent,

@@ -907,12 +907,9 @@ hammer2_inode_data_t *
 hammer2_cluster_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			  hammer2_cluster_t *cluster, int flags)
 {
-	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
+	hammer2_inode_modify(trans, ip);
 	hammer2_cluster_modify(trans, cluster, flags);
-
 	hammer2_inode_repoint(ip, NULL, cluster);
-	if (ip->vp)
-		vsetisdirty(ip->vp);
 	return (&hammer2_cluster_wdata(cluster)->ipdata);
 }
 

@@ -2105,10 +2105,10 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	 *	    hold a lock on the vnode).
 	 */
 	hammer2_inode_ref(ip);
-	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	if ((ip->flags & HAMMER2_INODE_MODIFIED) ||
 	    !RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vfsync(vp, info->waitfor, 1, NULL, NULL);
+		hammer2_inode_fsync(&info->trans, ip, NULL);
 	}
 	if ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
 	    RB_EMPTY(&vp->v_rbdirty_tree)) {
