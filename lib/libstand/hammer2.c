@@ -318,7 +318,8 @@ again:
 		 * Special case embedded file data
 		 */
 		if (base->type == HAMMER2_BREF_TYPE_INODE) {
-			if (media.ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
+			if (media.ipdata.meta.op_flags &
+			    HAMMER2_OPFLAG_DIRECTDATA) {
 				*pptr = media.ipdata.u.data;
 				bref_ret->type = HAMMER2_BREF_TYPE_DATA;
 				bref_ret->key = 0;
@@ -440,7 +441,7 @@ h2resolve(struct hammer2_fs *hfs, const char *path,
 					 &bres, (void **)&ino);
 			if (bytes == 0)
 				break;
-			if (len == ino->name_len &&
+			if (len == ino->meta.name_len &&
 			    memcmp(path, ino->filename, len) == 0) {
 				if (inop)
 					*inop = ino;
@@ -462,7 +463,7 @@ h2resolve(struct hammer2_fs *hfs, const char *path,
 		 * we fail.
 		 */
 		path += len;
-		if (*path && ino->type != HAMMER2_OBJTYPE_DIRECTORY) {
+		if (*path && ino->meta.type != HAMMER2_OBJTYPE_DIRECTORY) {
 			bref->data_off = (hammer2_off_t)-1;
 			break;
 		}
@@ -762,9 +763,10 @@ hammer2_open(const char *path, struct open_file *f)
 		return(-1);
 	}
 	if (ipdata) {
-		hf->fsize = ipdata->size;
-		hf->type = ipdata->type;
-		hf->mode = ipdata->mode | hammer2_get_mode(ipdata->type);
+		hf->fsize = ipdata->meta.size;
+		hf->type = ipdata->meta.type;
+		hf->mode = ipdata->meta.mode |
+			   hammer2_get_mode(ipdata->meta.type);
 	} else {
 		hf->fsize = 0;
 		hf->type = HAMMER2_OBJTYPE_DIRECTORY;
@@ -853,9 +855,9 @@ hammer2_readdir(struct open_file *f, struct dirent *den)
 				 &bres, (void **)&ipdata);
 		if (bytes <= 0)
 			break;
-		den->d_namlen = ipdata->name_len;
-		den->d_type = hammer2_get_dtype(ipdata->type);
-		den->d_ino = ipdata->inum;
+		den->d_namlen = ipdata->meta.name_len;
+		den->d_type = hammer2_get_dtype(ipdata->meta.type);
+		den->d_ino = ipdata->meta.inum;
 		bcopy(ipdata->filename, den->d_name, den->d_namlen);
 		den->d_name[den->d_namlen] = 0;
 
