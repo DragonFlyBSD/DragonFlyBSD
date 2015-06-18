@@ -28,7 +28,6 @@
  *
  * @(#)interactive.c	8.5 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/interactive.c,v 1.8.2.1 2001/01/03 14:36:08 iedowse Exp $
- * $DragonFly: src/sbin/restore/interactive.c,v 1.10 2005/11/06 12:49:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -47,8 +46,6 @@
 
 #include "restore.h"
 #include "extern.h"
-
-#define round(a, b) (((a) + (b) - 1) / (b) * (b))
 
 /*
  * Things to handle interruptions.
