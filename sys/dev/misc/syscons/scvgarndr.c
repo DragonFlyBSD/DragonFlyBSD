@@ -171,8 +171,7 @@ vga_txtborder(scr_stat *scp, int color)
 }
 
 static void
-vga_txtdraw(scr_stat *scp, int from, int count,
-	    int flip, void (*func_yield)(void))
+vga_txtdraw(scr_stat *scp, int from, int count, int flip)
 {
 	uint16_t *p;
 	int c;
@@ -592,8 +591,7 @@ vga_pxlborder_planar(scr_stat *scp, int color)
 }
 
 static void
-vga_vgadraw_direct(scr_stat *scp, int from, int count,
-		   int flip, void (*func_yield)(void))
+vga_vgadraw_direct(scr_stat *scp, int from, int count, int flip)
 {
 	int line_width, pixel_size;
 	int a, i, j, k, l, pos;
@@ -653,8 +651,7 @@ vga_vgadraw_direct(scr_stat *scp, int from, int count,
 }
 
 static void
-vga_vgadraw_packed(scr_stat *scp, int from, int count,
-		   int flip, void (*func_yield)(void))
+vga_vgadraw_packed(scr_stat *scp, int from, int count, int flip)
 {
 	int line_width;
 	int a, i, j;
@@ -709,8 +706,7 @@ vga_vgadraw_packed(scr_stat *scp, int from, int count,
 }
 
 static void
-vga_vgadraw_planar(scr_stat *scp, int from, int count,
-		   int flip, void (*func_yield)(void))
+vga_vgadraw_planar(scr_stat *scp, int from, int count, int flip)
 {
 	vm_offset_t d;
 	vm_offset_t e;
@@ -1194,9 +1190,9 @@ remove_pxlmouse(scr_stat *scp, int x, int y)
 	row = y / scp->font_height - scp->yoff;
 	pos = row * scp->xsize + col;
 	i = (col < scp->xsize - 1) ? 2 : 1;
-	(*scp->rndr->draw)(scp, pos, i, FALSE, NULL);
+	(*scp->rndr->draw)(scp, pos, i, FALSE);
 	if (row < scp->ysize - 1)
-		(*scp->rndr->draw)(scp, pos + scp->xsize, i, FALSE, NULL);
+		(*scp->rndr->draw)(scp, pos + scp->xsize, i, FALSE);
 }
 
 static void 

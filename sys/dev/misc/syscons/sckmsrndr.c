@@ -205,8 +205,7 @@ blit_blk(scr_stat *scp, u_char *char_data, int sw, int sh,
 /* KMS renderer */
 
 static void
-kms_draw(scr_stat *scp, int from, int count,
-	 int flip, void (*func_yield)(void))
+kms_draw(scr_stat *scp, int from, int count, int flip)
 {
 	sc_softc_t *sc = scp->sc;
 	u_char *char_data;
@@ -247,16 +246,6 @@ kms_draw(scr_stat *scp, int from, int count,
 			    (scp->blk_height - 1) * line_width +
 			    scp->xpad * pixel_size;
 		}
-
-#if 0 /* XXX temporarily disabled */
-		/*
-		 * Updating the framebuffer can take a very long time,
-		 * if the system is operating normally we try to at
-		 * least allow pending interrupts to run.
-		 */
-		if ((count & 255) == 0 && func_yield && panicstr == NULL)
-			func_yield();
-#endif
 	}
 }
 
@@ -392,9 +381,9 @@ remove_kmsmouse(scr_stat *scp, int x, int y)
 	row = y / scp->font_height - scp->yoff;
 	pos = row * scp->xsize + col;
 	i = (col < scp->xsize - 1) ? 2 : 1;
-	(*scp->rndr->draw)(scp, pos, i, FALSE, NULL);
+	(*scp->rndr->draw)(scp, pos, i, FALSE);
 	if (row < scp->ysize - 1)
-		(*scp->rndr->draw)(scp, pos + scp->xsize, i, FALSE, NULL);
+		(*scp->rndr->draw)(scp, pos + scp->xsize, i, FALSE);
 }
 
 static void

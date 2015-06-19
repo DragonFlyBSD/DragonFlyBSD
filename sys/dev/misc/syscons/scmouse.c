@@ -156,13 +156,13 @@ sc_draw_mouse_image(scr_stat *scp)
     if (ISGRAPHSC(scp))
 	return;
 
-    ++scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, 1);
     (*scp->rndr->draw_mouse)(scp, scp->mouse_xpos, scp->mouse_ypos, TRUE);
     scp->mouse_oldpos = scp->mouse_pos;
     scp->mouse_oldxpos = scp->mouse_xpos;
     scp->mouse_oldypos = scp->mouse_ypos;
     scp->status |= MOUSE_VISIBLE;
-    --scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, -1);
 }
 
 void
@@ -174,7 +174,7 @@ sc_remove_mouse_image(scr_stat *scp)
     if (ISGRAPHSC(scp))
 	return;
 
-    ++scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, 1);
     (*scp->rndr->draw_mouse)(scp,
 			     (scp->mouse_oldpos%scp->xsize + scp->xoff) *
 			      scp->font_width,
@@ -193,7 +193,7 @@ sc_remove_mouse_image(scr_stat *scp)
 	mark_for_update(scp, i + 1);
     }
     scp->status &= ~MOUSE_VISIBLE;
-    --scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, -1);
 }
 
 int

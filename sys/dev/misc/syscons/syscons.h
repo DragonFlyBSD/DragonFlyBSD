@@ -209,10 +209,10 @@ typedef struct sc_softc {
 	struct scr_stat	*new_scp;
 	struct scr_stat	*old_scp;
 	int     	delayed_next_scr;
+	int        	videoio_in_progress;
 
 	char        	font_loading_in_progress;
 	char        	switch_in_progress;
-	char        	videoio_in_progress;
 	char        	write_in_progress;
 	char        	blink_in_progress;
 
@@ -275,6 +275,7 @@ typedef struct scr_stat {
 
 	int		start;			/* modified area start */
 	int		end;			/* modified area end */
+	int		show_cursor;		/* used by async scrn_update */
 
 	struct sc_term_sw *tsw;
 	void		*ts;
@@ -319,8 +320,10 @@ typedef struct scr_stat {
 	int		history_pos;		/* position shown on screen */
 	int		history_size;		/* size of history buffer */
 
-	int		splash_save_mode;	/* saved mode for splash screen */
-	int		splash_save_status;	/* saved status for splash screen */
+	int		splash_save_mode;	/* saved mode for splash scr */
+	int		splash_save_status;	/* saved status for splash scr*/
+	int		queue_update_td;
+	struct thread	*asynctd;
 #ifdef _SCR_MD_STAT_DECLARED_
 	scr_md_stat_t	md;			/* machine dependent vars */
 #endif
@@ -409,11 +412,10 @@ extern struct linker_set scterm_set;
 
 /* renderer function table */
 typedef void	vr_draw_border_t(scr_stat *scp, int color);
-typedef void	vr_draw_t(scr_stat *scp, int from, int count,
-				int flip, void (*yield_func)(void));
+typedef void	vr_draw_t(scr_stat *scp, int from, int count, int flip);
 typedef void	vr_set_cursor_t(scr_stat *scp, int base, int height, int blink);
 typedef void	vr_draw_cursor_t(scr_stat *scp, int at, int blink,
-				int on, int flip);
+				 int on, int flip);
 typedef void	vr_blink_cursor_t(scr_stat *scp, int at, int flip);
 typedef void	vr_set_mouse_t(scr_stat *scp);
 typedef void	vr_draw_mouse_t(scr_stat *scp, int x, int y, int on);
