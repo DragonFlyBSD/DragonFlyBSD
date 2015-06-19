@@ -233,6 +233,17 @@
 #define	__LONG_LONG_SUPPORTED
 #endif
 
+/* C++11 exposes a load of C99 stuff */
+#if defined(__cplusplus) && __cplusplus >= 201103L
+#define	__LONG_LONG_SUPPORTED
+#ifndef	__STDC_LIMIT_MACROS
+#define	__STDC_LIMIT_MACROS
+#endif
+#ifndef	__STDC_CONSTANT_MACROS
+#define	__STDC_CONSTANT_MACROS
+#endif
+#endif
+
 /*
  * GNU C version 2.96 adds explicit branch prediction so that
  * the CPU back-end can hint the processor and also so that
