@@ -27,7 +27,7 @@ changecom(,)dnl
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
 .\"
-.Dd August 6, 2009
+.Dd June 20, 2015
 .Dt PPP 8
 .Os
 .Sh NAME
@@ -430,7 +430,7 @@ When you first run
 you may need to deal with some initial configuration details.
 .Bl -bullet
 .It
-Your kernel must {include} a tunnel device (the GENERIC kernel includes
+Your kernel must {include} a tunnel device (the X86_64_GENERIC kernel includes
 one by default).
 If it doesn't, or if you require more than one tun
 interface, you'll need to rebuild your kernel with the following line in

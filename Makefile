@@ -62,8 +62,8 @@
 #
 # 1.  `cd /usr/src'       (or to the directory containing your source tree).
 # 2.  `make buildworld'
-# 3.  `make buildkernel KERNCONF=YOUR_KERNEL_HERE'     (default is GENERIC).
-# 4.  `make installkernel KERNCONF=YOUR_KERNEL_HERE'   (default is GENERIC).
+# 3.  `make buildkernel KERNCONF=YOUR_KERNEL_HERE'   (default is X86_64_GENERIC).
+# 4.  `make installkernel KERNCONF=YOUR_KERNEL_HERE' (default is X86_64_GENERIC).
 # 5.  `make installworld'
 # 6.  `make upgrade'
 # 7.  `reboot'

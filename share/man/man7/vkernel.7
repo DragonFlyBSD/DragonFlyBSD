@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd December 10, 2014
+.Dd June 20, 2015
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -334,7 +334,7 @@ to
 .Xr config 8 .
 .Bd -literal
 cd /usr/src
-make -DNO_MODULES CONFIGARGS=-p buildkernel KERNCONF=VKERNEL
+make -DNO_MODULES CONFIGARGS=-p buildkernel KERNCONF=VKERNEL64
 .Ed
 .Sh FILES
 .Bl -tag -width ".It Pa /sys/config/VKERNEL64" -compact
@@ -344,13 +344,11 @@ device nodes
 .It Pa /dev/vkdX
 .Nm vkd
 device nodes
-.It Pa /sys/config/VKERNEL
 .It Pa /sys/config/VKERNEL64
 .El
 .Pp
-Per architecture
 .Nm
-configuration files, for
+configuration file, for
 .Xr config 8 .
 .Sh CONFIGURATION FILES
 Your virtual kernel is a complete
@@ -452,14 +450,14 @@ vnconfig -u vn0
 .Ed
 .Ss Compiling the virtual kernel
 In order to compile a virtual kernel use the
-.Li VKERNEL
+.Li VKERNEL64
 kernel configuration file residing in
 .Pa /sys/config
 (or a configuration file derived thereof):
 .Bd -literal
 cd /usr/src
-make -DNO_MODULES buildkernel KERNCONF=VKERNEL
-make -DNO_MODULES installkernel KERNCONF=VKERNEL DESTDIR=/var/vkernel
+make -DNO_MODULES buildkernel KERNCONF=VKERNEL64
+make -DNO_MODULES installkernel KERNCONF=VKERNEL64 DESTDIR=/var/vkernel
 .Ed
 .Ss Enabling virtual kernel operation
 A special

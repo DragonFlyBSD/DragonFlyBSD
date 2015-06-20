@@ -29,11 +29,9 @@ DONE
 cat >${UPPER} <<DONE
 # Configuration file for kernel type: ${UPPER}
 ident	${UPPER}
-# \$FreeBSD: src/share/examples/drivers/make_device_driver.sh,v 1.6.2.1 2001/07/25 15:56:09 dd Exp $"
-# \$DragonFly: src/share/examples/drivers/make_device_driver.sh,v 1.6 2007/05/17 08:19:01 swildner Exp $"
 DONE
 
-grep -v GENERIC < GENERIC >>${UPPER}
+grep -v X86_64_GENERIC < X86_64_GENERIC >>${UPPER}
 
 cat >>${UPPER} <<DONE
 # trust me, you'll need this
@@ -46,7 +44,6 @@ cat >../isa/${1}.c <<DONE
  * Copyright ME
  *
  * ${1} driver
- * \$FreeBSD: src/share/examples/drivers/make_device_driver.sh,v 1.6.2.1 2001/07/25 15:56:09 dd Exp $
  */
 
 

@@ -25,9 +25,7 @@ MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 
 # XXX makeshift fix to build the right kernel for the (target) architecture
 # We should configure this in the platform files somehow
-.if ${MACHINE_ARCH} == "i386"
-KERNCONF ?= GENERIC
-.else
+.if ${MACHINE_ARCH} == "x86_64"
 KERNCONF ?= X86_64_GENERIC
 .endif
 

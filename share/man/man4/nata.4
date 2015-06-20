@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ata.4,v 1.72 2007/03/10 12:44:22 brueffer Exp $
 .\"
-.Dd February 22, 2014
+.Dd June 20, 2015
 .Dt NATA 4
 .Os
 .Sh NAME
@@ -183,7 +183,7 @@ support it and can potentially
 .Em hang
 the entire system causing data loss.
 .Sh FILES
-.Bl -tag -width ".Pa /sys/config/GENERIC" -compact
+.Bl -tag -width ".Pa /sys/config/X86_64_GENERIC" -compact
 .It Pa /dev/ad*
 ATA disk device nodes
 .It Pa /dev/ar*
@@ -194,7 +194,7 @@ ATAPI CD-ROM device nodes
 ATAPI floppy drive device nodes
 .It Pa /dev/ast*
 ATAPI tape drive device nodes
-.It Pa /sys/config/GENERIC
+.It Pa /sys/config/X86_64_GENERIC
 sample generic kernel config file for
 .Nm
 based systems
