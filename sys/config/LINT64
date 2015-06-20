@@ -394,6 +394,9 @@ pseudo-device	stf			#6to4 IPv6 over IPv4 encapsulation
 # firewall rules in /etc/rc.firewall after you've tested that the new kernel
 # feature works properly.
 #
+# IPFIREWALL3 is based on a newer version of FreeBSD's ipfw2, along with
+# some enhancements. See ipfw3(4).
+#
 # IPFIREWALL_DEFAULT_TO_ACCEPT causes the default rule (at boot) to
 # allow everything.  Use with care, if a cracker can crash your
 # firewall machine, they can get to your protected machines.  However,
@@ -427,6 +430,8 @@ options 	IPDIVERT		#divert sockets
 options 	IPSTEALTH		#support for stealth forwarding
 options 	TCPDEBUG
 options		ICMPPRINTFS
+
+options		IPFIREWALL3
 
 device		pf
 device		pflog
