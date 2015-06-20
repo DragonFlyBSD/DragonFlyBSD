@@ -2117,9 +2117,14 @@ TO_REMOVE+=/etc/rc.d/apm
 TO_REMOVE+=/etc/rc.d/apmd
 TO_REMOVE+=/etc/rc.d/battd
 TO_REMOVE+=/usr/sbin/apmd
+TO_REMOVE+=/usr/sbin/battd
+TO_REMOVE+=/usr/sbin/zzz
+TO_REMOVE+=/usr/share/examples/etc/apmd.conf
 TO_REMOVE+=/usr/share/man/man4/apm.4.gz
+TO_REMOVE+=/usr/share/man/man8/apmconf.8.gz
 TO_REMOVE+=/usr/share/man/man8/apmd.8.gz
 TO_REMOVE+=/usr/share/man/man8/battd.8.gz
+TO_REMOVE+=/usr/share/man/man8/zzz.8.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
