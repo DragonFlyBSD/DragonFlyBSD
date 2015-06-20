@@ -36,9 +36,6 @@
 #include "use_splash.h"
 #include "opt_syscons.h"
 #include "opt_ddb.h"
-#ifdef __i386__
-#include "use_apm.h"
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -61,9 +58,6 @@
 #include <machine/console.h>
 #include <machine/psl.h>
 #include <machine/pc/display.h>
-#ifdef __i386__
-#include <machine/apm_bios.h>
-#endif
 #include <machine/frame.h>
 
 #include <dev/drm/include/linux/fb.h>
@@ -3581,18 +3575,9 @@ next_code:
 #endif
 		break;
 
-#if __i386__ && NAPM > 0
-	    case SUSP:
-		apm_suspend(PMST_SUSPEND);
-		break;
-	    case STBY:
-		apm_suspend(PMST_STANDBY);
-		break;
-#else
 	    case SUSP:
 	    case STBY:
 		break;
-#endif
 
 	    case DBG:
 #ifndef SC_DISABLE_DDBKEY

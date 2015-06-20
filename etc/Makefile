@@ -5,7 +5,7 @@ SUBDIR=	sendmail
 
 # Files that should be installed read-only (444)
 #
-BINUPDATE= apmd.conf devd.conf fbtab gettytab network.subr \
+BINUPDATE= devd.conf fbtab gettytab network.subr \
 	pf.os \
 	protocols \
 	rc rc.firewall6 \

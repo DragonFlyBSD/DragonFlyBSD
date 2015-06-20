@@ -12,7 +12,6 @@ which can be accessed by `man 5 crontab'.
 This directory contains the following files:
 
 amd.map		- configuration file for amd(8)
-apmd.conf	- configuration file for apmd(8)
 auth.conf	- authentication capability database
 crontab		- system scheduled command table
 csh.cshrc	- system-wide .cshrc for csh(1)
@@ -58,11 +57,11 @@ protocols	- protocol name database
 rc		- system startup script
 rc.firewall	- setup system for ipfw(8)
 rc.firewall6	- setup system for ip6fw(8)
-rc.resume	- run command for APM / ACPI resume event
+rc.resume	- run command for ACPI resume event
 rc.sendmail	- sendmail(8) rc script
 rc.shutdown	- system shutdown script
 rc.subr		- subroutines for rc(8) scripts
-rc.suspend	- run command for APM / ACPI suspend event
+rc.suspend	- run command for ACPI suspend event
 regdomain.xml	- 802.11 regulatory definitions used by ifconfig(8)
 remote		- configuration file for tip(1)
 rpc		- rpc program number database

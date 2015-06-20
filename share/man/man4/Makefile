@@ -35,7 +35,6 @@ MAN=	aac.4 \
 	amdsmb.4 \
 	amr.4 \
 	an.4 \
-	apm.4 \
 	aps.4 \
 	arcmsr.4 \
 	arp.4 \

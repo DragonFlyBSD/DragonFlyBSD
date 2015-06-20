@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd December 21, 2014
+.Dd June 20, 2015
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -137,42 +137,6 @@ The
 driver is needed for a swapfile and will be loaded if it is not
 already compiled into the kernel or loaded via
 .Xr loader.conf 5 .
-.It Va apm_enable
-.Pq Vt bool
-If set to
-.Dq Li YES ,
-enable support for Automatic Power Management with the
-.Xr apm 8
-command.
-.It Va apmd_enable
-.Pq Vt bool
-Run
-.Xr apmd 8
-to handle APM event from userland.
-This also enables support for APM.
-.It Va apmd_flags
-.Pq Vt str
-If
-.Va apmd_enable
-is set to
-.Dq Li YES ,
-these are the flags to pass to the
-.Xr apmd 8
-daemon.
-.It Va battd_enable
-Enable
-.Xr battd 8
-to monitor the status of batteries present in the system.
-This also enables support for APM.
-.It Va battd_flags
-.Pq Vt str
-If
-.Va battd_enable
-is set to
-.Dq Li YES ,
-these are the flags to pass to the
-.Xr battd 8
-daemon.
 .It Va devd_enable
 .Pq Vt bool
 Run
@@ -2660,7 +2624,6 @@ if it is not set.
 .Xr varsym.conf 5 ,
 .Xr accton 8 ,
 .Xr amd 8 ,
-.Xr apm 8 ,
 .Xr btconfig 8 ,
 .Xr bthcid 8 ,
 .Xr cron 8 ,

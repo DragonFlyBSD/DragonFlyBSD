@@ -16,8 +16,4 @@ SUBDIR += snake
 SUBDIR += star
 SUBDIR += warp
 
-.ifdef SYSCONS_APM_SUPPORT
-SUBDIR += apm
-.endif
-
 .include <bsd.subdir.mk>

@@ -5,9 +5,8 @@
 
 # note: bgfsk and lomac left out (from 5.0)
 #
-FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
-	amd apm apmd \
-	battd bootconf bootparams btconfig bthcid ccd cleanvar cryptdisks \
+FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz amd \
+	bootconf bootparams btconfig bthcid ccd cleanvar cryptdisks \
 	cleartmp cron cryptdisks devd devfs dhclient diskless dmesg dumpon \
 	fixbootfile fsck ftpd hostapd hostname hotplugd \
 	inetd initdiskless initrandom ip6fw ipfw ipsec \
