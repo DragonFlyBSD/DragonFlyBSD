@@ -46,6 +46,19 @@ enum ipfw_nat_opcodes {
 	O_NAT_NAT,
 };
 
+struct ipfw_ioc_nat_state {
+	struct in_addr	src_addr;
+	struct in_addr	dst_addr;
+	struct in_addr	alias_addr;
+	int		link_type;
+	int		timestamp;
+	int		expire_time;
+	int		nat_id;
+	u_short		src_port;
+	u_short		dst_port;
+	u_short		alias_port;
+};
+
 /* Redirect modes id. */
 #define REDIR_ADDR		0x01
 #define REDIR_PORT		0x02

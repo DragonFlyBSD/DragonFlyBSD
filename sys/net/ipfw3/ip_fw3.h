@@ -530,8 +530,8 @@ typedef void ipfw_basic_append_state_t(struct ipfw_ioc_state *);
 #define IP_FW_NAT_CFG		68   /* add/config a nat rule */
 #define IP_FW_NAT_DEL		69   /* delete a nat rule */
 #define IP_FW_NAT_FLUSH		70   /* get configuration of a nat rule */
-#define IP_FW_NAT_GET		71   /* get log of a nat rule */
-#define IP_FW_NAT_LOG		72   /* get log of a nat rule */
+#define IP_FW_NAT_GET		71   /* get config of a nat rule */
+#define IP_FW_NAT_LOG		72   /* get nat record of a nat rule */
 
 #define IP_FW_STATE_ADD		56   /* add one state */
 #define IP_FW_STATE_DEL		57   /* delete states of one rulenum */

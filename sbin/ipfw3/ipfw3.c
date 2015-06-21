@@ -2708,6 +2708,80 @@ show_nat(int ac, char **av) {
 	}
 }
 
+int
+get_kern_boottime(void)
+{
+	struct timeval boottime;
+	size_t size;
+	int mib[2];
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_BOOTTIME;
+	size = sizeof(boottime);
+	if (sysctl(mib, 2, &boottime, &size, NULL, 0) != -1 &&
+			boottime.tv_sec != 0) {
+		return boottime.tv_sec;
+	}
+	return -1;
+}
+
+void
+show_nat_state(int ac, char **av)
+{
+	int nbytes, nalloc;
+	int nat_id;
+	uint8_t *data;
+
+	nalloc = 1024;
+	data = NULL;
+
+	NEXT_ARG;
+	if (ac == 0)
+		nat_id = 0;
+	else
+		nat_id = strtoul(*av, NULL, 10);
+
+	nbytes = nalloc;
+	while (nbytes >= nalloc) {
+		nalloc = nalloc * 2;
+		nbytes = nalloc;
+		if ((data = realloc(data, nbytes)) == NULL) {
+			err(EX_OSERR, "realloc");
+		}
+		memcpy(data, &nat_id, sizeof(int));
+		if (do_get_x(IP_FW_NAT_LOG, data, &nbytes) < 0) {
+			err(EX_OSERR, "do_get_x(IP_FW_NAT_GET_STATE)");
+		}
+	}
+	if (nbytes == 0)
+		exit(EX_OK);
+	struct ipfw_ioc_nat_state *nat_state;
+	nat_state =(struct ipfw_ioc_nat_state *)data;
+	int count = nbytes / sizeof( struct ipfw_ioc_nat_state);
+	int i, uptime_sec;
+	uptime_sec = get_kern_boottime();
+	for (i = 0; i < count; i ++) {
+		struct protoent *pe = getprotobynumber(nat_state->link_type);
+		printf("%s ", pe->p_name);
+		printf("%s:%hu => ",inet_ntoa(nat_state->src_addr),
+				htons(nat_state->src_port));
+		printf("%s:%hu",inet_ntoa(nat_state->alias_addr),
+				htons(nat_state->alias_port));
+		printf(" -> %s:%hu ",inet_ntoa(nat_state->dst_addr),
+				htons(nat_state->dst_port));
+		if (do_time == 1) {
+			char timestr[30];
+			time_t t = _long_to_time(uptime_sec + nat_state->timestamp);
+			strcpy(timestr, ctime(&t));
+			*strchr(timestr, '\n') = '\0';
+			printf("%s ", timestr);
+		} else if (do_time == 2) {
+			printf( "%10u ", uptime_sec + nat_state->timestamp);
+		}
+		printf("\n");
+		nat_state++;
+	}
+}
+
 /*
  * do_set_x - extended version og do_set
  * insert a x_header in the beginning of the rule buf
@@ -2995,7 +3069,20 @@ ipfw_main(int ac, char **av)
 			flush();
 		} else if (!strncmp(*av, "show", strlen(*av)) ||
 				!strncmp(*av, "list", strlen(*av))) {
-			show_nat(ac, av);
+			if (ac > 2 && isdigit(*(av[1]))) {
+				char *p = av[1];
+				av[1] = av[2];
+				av[2] = p;
+			}
+			NEXT_ARG;
+			if (!strncmp(*av, "config", strlen(*av))) {
+				show_nat(ac, av);
+			} else if (!strncmp(*av, "state", strlen(*av))) {
+				show_nat_state(ac,av);
+			} else {
+				 errx(EX_USAGE,
+					"bad nat show command `%s'", *av);
+			}
 		} else if (!strncmp(*av, "delete", strlen(*av))) {
 			delete_nat_config(ac, av);
 		} else {

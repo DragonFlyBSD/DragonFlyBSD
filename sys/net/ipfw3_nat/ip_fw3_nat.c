@@ -303,38 +303,44 @@ nospace:
 static int
 ipfw_nat_get_log(struct sockopt *sopt)
 {
-	struct cfg_nat *ptr;
-	int cnt, data_size, i, size, sof;
-	uint8_t *data;
+	struct cfg_nat *t;
+	struct alias_link *lnk;
+	struct libalias *la;
+	size_t sopt_size, all_lnk_size = 0;
+	int i, *nat_id;
+	struct ipfw_ioc_nat_state *nat_state;
 
-	data = NULL;
-	sof = LIBALIAS_BUF_SIZE;
-	cnt = 0;
-
-	size = i = 0;
-	data_size = 1024;
-
-	data = krealloc(data, data_size, M_IPFW_NAT, M_WAITOK);
+	nat_id = (int *)(sopt->sopt_val);
+	sopt_size = sopt->sopt_valsize;
 
 	lockmgr(&nat_lock, LK_SHARED);
-	LIST_FOREACH(ptr, &((*ipfw_nat_ctx).nat), _next) {
-		if (ptr->lib->logDesc == NULL)
-			continue;
-		cnt++;
-		size = cnt * (sof + sizeof(int));
-		if (size > data_size) {
-			data_size = data_size * 2 + 256;
-			data = krealloc(data, data_size, M_IPFW_NAT, M_WAITOK);
+	LOOKUP_NAT((*ipfw_nat_ctx), *nat_id, t);
+	if (t != NULL) {
+		nat_state = (struct ipfw_ioc_nat_state *)sopt->sopt_val;
+		la = t->lib;
+		LIBALIAS_LOCK_ASSERT(la);
+		for (i = 0; i < LINK_TABLE_OUT_SIZE; i ++) {
+			LIST_FOREACH(lnk, &la->linkTableOut[i], list_out) {
+				all_lnk_size += sizeof(*nat_state);
+				if (all_lnk_size > sopt_size)
+					goto nospace;
+				nat_state->src_addr = lnk->src_addr;
+				nat_state->dst_addr = lnk->dst_addr;
+				nat_state->alias_addr = lnk->alias_addr;
+				nat_state->src_port = lnk->src_port;
+				nat_state->dst_port = lnk->dst_port;
+				nat_state->alias_port = lnk->alias_port;
+				nat_state->link_type = lnk->link_type;
+				nat_state->timestamp = lnk->timestamp;
+				nat_state++;
+			}
 		}
-
-		bcopy(&ptr->id, &data[i], sizeof(int));
-		i += sizeof(int);
-		bcopy(ptr->lib->logDesc, &data[i], sof);
-		i += sof;
 	}
+	sopt->sopt_valsize = all_lnk_size;
 	lockmgr(&nat_lock, LK_RELEASE);
-	sooptcopyout(sopt, data, size);
-	kfree(data, M_IPFW_NAT);
+	return 0;
+nospace:
+	lockmgr(&nat_lock, LK_RELEASE);
 	return 0;
 }
 
