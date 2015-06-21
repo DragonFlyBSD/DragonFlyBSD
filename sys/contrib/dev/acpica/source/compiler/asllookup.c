@@ -109,6 +109,13 @@ LkFindUnreferencedObjects (
  *              if they are not referenced.
  *
  ******************************************************************************/
+typedef struct asl_method_local
+{
+    UINT32                  Flags;
+    ACPI_PARSE_OBJECT       *Op;
+
+} ASL_METHOD_LOCAL;
+
 
 static ACPI_STATUS
 LkIsObjectUsed (
@@ -119,6 +126,8 @@ LkIsObjectUsed (
 {
     ACPI_NAMESPACE_NODE     *Node = ACPI_CAST_PTR (ACPI_NAMESPACE_NODE, ObjHandle);
     ACPI_NAMESPACE_NODE     *Next;
+    ASL_METHOD_LOCAL        *MethodLocals;
+    UINT32                  i;
 
 
     /* Referenced flag is set during the namespace xref */
@@ -144,6 +153,24 @@ LkIsObjectUsed (
     case ACPI_TYPE_LOCAL_RESOURCE:
 
         return (AE_OK);
+
+    case ACPI_TYPE_METHOD:
+
+        /* Check for Locals that are set but never used */
+
+        MethodLocals = (ASL_METHOD_LOCAL *) Node->Object;
+        for (i = 0; i < ACPI_METHOD_NUM_LOCALS; i++)
+        {
+            if (MethodLocals[i].Flags & ANOBJ_IS_REFERENCED)
+            {
+                sprintf (MsgBuffer, "Local%u",
+                    i);
+
+                AslError (ASL_REMARK, ASL_MSG_LOCAL_NOT_USED,
+                    MethodLocals[i].Op, MsgBuffer);
+            }
+        }
+        break;
 
     default:
 
