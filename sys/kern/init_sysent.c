@@ -7,16 +7,11 @@
 
 #include "opt_compat.h"
 
-#ifdef __i386__
-#include "opt_compatdf12.h"
-#endif
-
 #include <sys/param.h>
 #include <sys/sysent.h>
 #include <sys/sysproto.h>
 #include <sys/statvfs.h>
 #include <emulation/43bsd/stat.h>
-#include <emulation/dragonfly12/stat.h>
 
 #define AS(name) ((sizeof(struct name) - sizeof(struct sysmsg)) / sizeof(register_t))
 
@@ -24,12 +19,6 @@
 #define compat(n, name) n, (sy_call_t *)__CONCAT(sys_,__CONCAT(o,name))
 #else
 #define compat(n, name) 0, (sy_call_t *)sys_nosys
-#endif
-
-#ifdef COMPAT_DF12
-#define compatdf12(n, name) n, (sy_call_t *)__CONCAT(sys_,__CONCAT(dfbsd12_,name))
-#else
-#define compatdf12(n, name) 0, (sy_call_t *)sys_nosys
 #endif
 
 /* The casts are bogus but will do for now. */
@@ -224,15 +213,15 @@ struct sysent sysent[] = {
 	{ 0, (sy_call_t *)sys_nosys },			/* 185 = lfs_markv */
 	{ 0, (sy_call_t *)sys_nosys },			/* 186 = lfs_segclean */
 	{ 0, (sy_call_t *)sys_nosys },			/* 187 = lfs_segwait */
-	{ compatdf12(AS(dfbsd12_stat_args),stat) },		/* 188 = old stat */
-	{ compatdf12(AS(dfbsd12_fstat_args),fstat) },	/* 189 = old fstat */
-	{ compatdf12(AS(dfbsd12_lstat_args),lstat) },	/* 190 = old lstat */
+	{ 0, (sy_call_t *)sys_nosys },			/* 188 = nosys */
+	{ 0, (sy_call_t *)sys_nosys },			/* 189 = nosys */
+	{ 0, (sy_call_t *)sys_nosys },			/* 190 = nosys */
 	{ AS(pathconf_args), (sy_call_t *)sys_pathconf },	/* 191 = pathconf */
 	{ AS(fpathconf_args), (sy_call_t *)sys_fpathconf },	/* 192 = fpathconf */
 	{ 0, (sy_call_t *)sys_nosys },			/* 193 = nosys */
 	{ AS(__getrlimit_args), (sy_call_t *)sys_getrlimit },	/* 194 = getrlimit */
 	{ AS(__setrlimit_args), (sy_call_t *)sys_setrlimit },	/* 195 = setrlimit */
-	{ compatdf12(AS(dfbsd12_getdirentries_args),getdirentries) },	/* 196 = old getdirentries */
+	{ 0, (sy_call_t *)sys_nosys },			/* 196 = nosys */
 	{ AS(mmap_args), (sy_call_t *)sys_mmap },	/* 197 = mmap */
 	{ 0, (sy_call_t *)sys_nosys },			/* 198 = __syscall */
 	{ AS(lseek_args), (sy_call_t *)sys_lseek },	/* 199 = lseek */
@@ -308,7 +297,7 @@ struct sysent sysent[] = {
 	{ 0, (sy_call_t *)sys_nosys },			/* 269 = nosys */
 	{ 0, (sy_call_t *)sys_nosys },			/* 270 = nosys */
 	{ 0, (sy_call_t *)sys_nosys },			/* 271 = nosys */
-	{ compatdf12(AS(dfbsd12_getdents_args),getdents) },	/* 272 = old getdents */
+	{ 0, (sy_call_t *)sys_nosys },			/* 272 = nosys */
 	{ 0, (sy_call_t *)sys_nosys },			/* 273 = nosys */
 	{ AS(lchmod_args), (sy_call_t *)sys_lchmod },	/* 274 = lchmod */
 	{ AS(lchown_args), (sy_call_t *)sys_lchown },	/* 275 = netbsd_lchown */
@@ -335,7 +324,7 @@ struct sysent sysent[] = {
 	{ 0, (sy_call_t *)sys_nosys },			/* 296 = nosys */
 	{ AS(fhstatfs_args), (sy_call_t *)sys_fhstatfs },	/* 297 = fhstatfs */
 	{ AS(fhopen_args), (sy_call_t *)sys_fhopen },	/* 298 = fhopen */
-	{ compatdf12(AS(dfbsd12_fhstat_args),fhstat) },	/* 299 = old fhstat */
+	{ 0, (sy_call_t *)sys_nosys },			/* 299 = nosys */
 	{ AS(modnext_args), (sy_call_t *)sys_modnext },	/* 300 = modnext */
 	{ AS(modstat_args), (sy_call_t *)sys_modstat },	/* 301 = modstat */
 	{ AS(modfnext_args), (sy_call_t *)sys_modfnext },	/* 302 = modfnext */

@@ -6,8 +6,6 @@ set -e
 
 # name of compat option:
 compat=COMPAT_43
-# name of DragonFly 1.2 compat option
-compatdf12=COMPAT_DF12
 
 # output files:
 sysnames="syscalls.c"
@@ -24,17 +22,15 @@ namesname="syscallnames"
 # tmp files:
 sysdcl="sysent.dcl.$$"
 syscompat="sysent.compat.$$"
-syscompatdf12="sysent.compatdf12.$$"
 syscompatdcl="sysent.compatdcl.$$"
-syscompatdcldf12="sysent.compatdcldf12.$$"
 sysent="sysent.switch.$$"
 sysinc="sysinc.switch.$$"
 sysarg="sysarg.switch.$$"
 sysun="sysunion.switch.$$"
 
-trap "rm $sysdcl $syscompat $syscompatdf12 $syscompatdcl $syscompatdcldf12 $sysent $sysinc $sysarg $sysun" 0
+trap "rm $sysdcl $syscompat $syscompatdcl $sysent $sysinc $sysarg $sysun" 0
 
-touch $sysdcl $syscompat $syscompatdf12 $syscompatdcl $syscompatdcldf12 $sysent $sysinc $sysarg $sysun
+touch $sysdcl $syscompat $syscompatdcl $sysent $sysinc $sysarg $sysun
 
 case $# in
     0)	echo "Usage: $0 input-file <config-file>" 1>&2
@@ -64,9 +60,7 @@ s/\$//g
 		sysproto = \"$sysproto\"
 		sysproto_h = \"$sysproto_h\"
 		syscompat = \"$syscompat\"
-		syscompatdf12 = \"$syscompatdf12\"
 		syscompatdcl = \"$syscompatdcl\"
-		syscompatdcldf12 = \"$syscompatdcldf12\"
 		sysent = \"$sysent\"
 		syssw = \"$syssw\"
 		sysinc = \"$sysinc\"
@@ -76,7 +70,6 @@ s/\$//g
 		syshdr = \"$syshdr\"
 		sysmk = \"$sysmk\"
 		compat = \"$compat\"
-		compatdf12 = \"$compatdf12\"
 		syscallprefix = \"$syscallprefix\"
 		switchname = \"$switchname\"
 		namesname = \"$namesname\"
@@ -105,7 +98,6 @@ s/\$//g
 		printf "\t\t0 : sizeof(register_t) - sizeof(t))\n\n" > sysarg
 
 		printf "\n#ifdef %s\n\n", compat > syscompat
-		printf "\n#ifdef %s\n\n", compatdf12 > syscompatdf12
 
 		printf "/*\n * System call names.\n *\n" > sysnames
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysnames
@@ -138,7 +130,6 @@ s/\$//g
 
 		printf "\n#ifdef _KERNEL\n\n" > sysdcl
 		printf "\n#ifdef _KERNEL\n\n" > syscompatdcl
-		printf "\n#ifdef _KERNEL\n\n" > syscompatdcldf12
 	}
 	NF == 0 || $1 ~ /^;/ {
 		next
@@ -152,7 +143,6 @@ s/\$//g
 		print > sysdcl
 		print > sysarg
 		print > syscompat
-		print > syscompatdf12
 		print > sysnames
 		print > sysun
 		savesyscall = syscall
@@ -164,7 +154,6 @@ s/\$//g
 		print > sysarg
 		print > sysun
 		print > syscompat
-		print > syscompatdf12
 		print > sysnames
 		syscall = savesyscall
 		next
@@ -175,7 +164,6 @@ s/\$//g
 		print > sysarg
 		print > sysun
 		print > syscompat
-		print > syscompatdf12
 		print > sysnames
 		next
 	}
@@ -243,10 +231,6 @@ s/\$//g
 			if ($2 == "COMPAT") {
 				argalias = "o" argalias
 				usefuncname = "sys_o" funcname
-			}
-			if ($2 == "COMPAT_DF12") {
-				argalias = "dfbsd12_" argalias
-				usefuncname = "sys_dfbsd12_" funcname
 			}
 		}
 		f++
@@ -386,46 +370,6 @@ s/\$//g
 		syscall++
 		next
 	}
-	$2 == "COMPAT_DF12" {
-		ncompatdf12++
-		parseline()
-		if (argc != 0) {
-			printf("#ifdef %s\n", compatdf12) > sysun
-			printf("\tstruct\t%s %s;\n", argalias, usefuncname) > sysun
-			printf("#endif\n") > sysun
-			printf("struct\t%s {\n", argalias) > syscompatdf12
-			printf("#ifdef _KERNEL\n") > syscompatdf12
-			printf("\tstruct sysmsg sysmsg;\n") > syscompatdf12
-			printf("#endif\n") > syscompatdf12
-			for (i = 1; i <= argc; i++)
-				printf("\t%s\t%s;\tchar %s_[PAD_(%s)];\n",
-				    argtype[i], argname[i],
-				    argname[i], argtype[i]) > syscompatdf12
-			printf("};\n") > syscompatdf12
-		}
-		else {
-			printf("\tstruct\t%s %s;\n", argalias, usefuncname) > sysun
-			printf("struct\t%s {\n", argalias) > sysarg
-			printf("#ifdef _KERNEL\n") > sysarg
-			printf("\tstruct sysmsg sysmsg;\n") > sysarg
-			printf("#endif\n") > sysarg
-			printf("\tregister_t dummy;\n") > sysarg
-			printf("};\n") > sysarg
-		}
-		printf("%s\tsys_dfbsd12_%s (struct %s *);\n",
-		    rettype, funcname, argalias) > syscompatdcldf12
-		printf("\t{ compatdf12(%s,%s) },",
-		    argssize, funcname) > sysent
-		align_sysent_comment(8 + 9 + \
-		    length(argssize) + 1 + length(funcname) + 4)
-		printf("/* %d = old %s */\n", syscall, funcalias) > sysent
-		printf("\t\"old.%s\",\t\t/* %d = old %s */\n",
-		    funcalias, syscall, funcalias) > sysnames
-		printf("\t\t\t\t/* %d is old %s */\n",
-		    syscall, funcalias) > syshdr
-		syscall++
-		next
-	}
 	$2 == "LIBCOMPAT" {
 		ncompat++
 		parseline()
@@ -477,21 +421,8 @@ s/\$//g
 			printf "#endif\n" > sysinc
 		}
 
-		if (ncompatdf12 != 0) {
-			printf "#ifdef __i386__\n" > syssw
-			printf "#include \"opt_compatdf12.h\"\n" > syssw
-			printf "#endif\n\n" > syssw
-			printf "\n#ifdef %s\n", compatdf12 > sysinc
-			printf "#define compatdf12(n, name) n, (sy_call_t *)__CONCAT(sys_,__CONCAT(dfbsd12_,name))\n" > sysinc
-			printf "#else\n" > sysinc
-			printf "#define compatdf12(n, name) 0, (sy_call_t *)sys_nosys\n" > sysinc
-			printf "#endif\n" > sysinc
-		}
-
 		printf("\n#endif /* _KERNEL */\n") > syscompatdcl
-		printf("\n#endif /* _KERNEL */\n") > syscompatdcldf12
 		printf("\n#endif /* %s */\n\n", compat) > syscompatdcl
-		printf("\n#endif /* %s */\n\n", compatdf12) > syscompatdcldf12
 
 		printf("\n") > sysmk
 		printf("};\n") > sysent
@@ -505,5 +436,5 @@ s/\$//g
 	} '
 
 cat $sysinc $sysent >> $syssw
-cat $sysarg $syscompat $syscompatdcl $syscompatdf12 $syscompatdcldf12 $sysdcl > $sysproto
+cat $sysarg $syscompat $syscompatdcl $sysdcl > $sysproto
 cat $sysun > $sysunion

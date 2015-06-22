@@ -212,22 +212,10 @@ union sysunion {
 	struct	setgid_args setgid;
 	struct	setegid_args setegid;
 	struct	seteuid_args seteuid;
-#ifdef COMPAT_DF12
-	struct	dfbsd12_stat_args sys_dfbsd12_stat;
-#endif
-#ifdef COMPAT_DF12
-	struct	dfbsd12_fstat_args sys_dfbsd12_fstat;
-#endif
-#ifdef COMPAT_DF12
-	struct	dfbsd12_lstat_args sys_dfbsd12_lstat;
-#endif
 	struct	pathconf_args pathconf;
 	struct	fpathconf_args fpathconf;
 	struct	__getrlimit_args getrlimit;
 	struct	__setrlimit_args setrlimit;
-#ifdef COMPAT_DF12
-	struct	dfbsd12_getdirentries_args sys_dfbsd12_getdirentries;
-#endif
 	struct	mmap_args mmap;
 	struct	lseek_args lseek;
 	struct	truncate_args truncate;
@@ -259,18 +247,12 @@ union sysunion {
 	struct	openbsd_poll_args openbsd_poll;
 	struct	issetugid_args issetugid;
 	struct	lchown_args lchown;
-#ifdef COMPAT_DF12
-	struct	dfbsd12_getdents_args sys_dfbsd12_getdents;
-#endif
 	struct	lchmod_args lchmod;
 	struct	lutimes_args lutimes;
 	struct	extpreadv_args extpreadv;
 	struct	extpwritev_args extpwritev;
 	struct	fhstatfs_args fhstatfs;
 	struct	fhopen_args fhopen;
-#ifdef COMPAT_DF12
-	struct	dfbsd12_fhstat_args sys_dfbsd12_fhstat;
-#endif
 	struct	modnext_args modnext;
 	struct	modstat_args modstat;
 	struct	modfnext_args modfnext;

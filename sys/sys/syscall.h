@@ -172,14 +172,10 @@
 #define	SYS_setgid	181
 #define	SYS_setegid	182
 #define	SYS_seteuid	183
-				/* 188 is old stat */
-				/* 189 is old fstat */
-				/* 190 is old lstat */
 #define	SYS_pathconf	191
 #define	SYS_fpathconf	192
 #define	SYS_getrlimit	194
 #define	SYS_setrlimit	195
-				/* 196 is old getdirentries */
 #define	SYS_mmap	197
 #define	SYS___syscall	198
 #define	SYS_lseek	199
@@ -212,7 +208,6 @@
 #define	SYS_openbsd_poll	252
 #define	SYS_issetugid	253
 #define	SYS_lchown	254
-				/* 272 is old getdents */
 #define	SYS_lchmod	274
 #define	SYS_netbsd_lchown	275
 #define	SYS_lutimes	276
@@ -224,7 +219,6 @@
 #define	SYS_extpwritev	290
 #define	SYS_fhstatfs	297
 #define	SYS_fhopen	298
-				/* 299 is old fhstat */
 #define	SYS_modnext	300
 #define	SYS_modstat	301
 #define	SYS_modfnext	302
