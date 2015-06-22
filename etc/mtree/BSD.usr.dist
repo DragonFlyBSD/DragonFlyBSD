@@ -64,10 +64,6 @@
         ..
         aout
         ..
-        compat
-            aout
-            ..
-        ..
     ..
     libdata
         gcc47

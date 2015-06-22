@@ -92,10 +92,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libz \
 	pam_module
 
-.if exists(${.CURDIR}/compat/${MACHINE_ARCH}/Makefile)
-SUBDIR+= compat/${MACHINE_ARCH}
-.endif
-
 .if !defined(NO_LIBC_R)
 _libc_r=	libc_r
 .endif

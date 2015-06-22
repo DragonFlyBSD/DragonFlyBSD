@@ -275,7 +275,7 @@ customizeiso:
 	mount_null /dev ${ISOROOT}/dev
 .if !empty(DPORTS_PACKAGES)
 	cp /etc/resolv.conf ${ISOROOT}/etc
-	${CHROOT_CMD} "ldconfig -elf /lib /usr/lib /usr/lib/gcc* /usr/lib/compat"
+	${CHROOT_CMD} "ldconfig -elf /lib /usr/lib /usr/lib/gcc*"
 	-@umount ${ISOROOT}/usr/distfiles
 	-@umount ${ISOROOT}/usr/dports
 	rm -rf ${ISOROOT}/usr/obj/dports

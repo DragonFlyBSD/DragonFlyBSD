@@ -2125,6 +2125,7 @@ TO_REMOVE+=/usr/share/man/man8/apmconf.8.gz
 TO_REMOVE+=/usr/share/man/man8/apmd.8.gz
 TO_REMOVE+=/usr/share/man/man8/battd.8.gz
 TO_REMOVE+=/usr/share/man/man8/zzz.8.gz
+TO_REMOVE+=/usr/lib/compat
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

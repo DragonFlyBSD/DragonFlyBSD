@@ -63,12 +63,6 @@ PPPCNF=	ppp.conf
 ETCMAIL=aliases mailer.conf access.sample virtusertable.sample \
 	mailertable.sample
 
-# List of libraries in /usr/lib/compat that might have to be removed
-# from /usr/lib.
-.if ${MACHINE_ARCH} == "i386"
-COMPAT_LIBS != cd ${DESTDIR}/usr/lib/compat && find . -name '*.so.*'
-.endif
-
 # Use this directory as the source for new configuration files when upgrading
 UPGRADE_SRCDIR?=${.CURDIR}
 
