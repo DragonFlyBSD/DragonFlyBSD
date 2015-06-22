@@ -308,7 +308,7 @@ TUNABLE_INT("hw.pci.honor_msi_blacklist", &pci_honor_msi_blacklist);
 SYSCTL_INT(_hw_pci, OID_AUTO, honor_msi_blacklist, CTLFLAG_RD,
     &pci_honor_msi_blacklist, 1, "Honor chipset blacklist for MSI");
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 static int pci_usb_takeover = 1;
 TUNABLE_INT("hw.pci.usb_early_takeover", &pci_usb_takeover);
 SYSCTL_INT(_hw_pci, OID_AUTO, usb_early_takeover, CTLFLAG_RD,
@@ -632,7 +632,7 @@ pci_read_cap_pmgt(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 static void
 pci_read_cap_ht(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 {
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 
 #define REG(n, w)	\
 	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
@@ -671,7 +671,7 @@ pci_read_cap_ht(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 
 #undef REG
 
-#endif	/* __i386__ || __x86_64__ */
+#endif	/* __x86_64__ */
 }
 
 static void
@@ -855,7 +855,7 @@ pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 		}
 	}
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 	/*
 	 * Enable the MSI mapping window for all HyperTransport
 	 * slaves.  PCI-PCI bridges have their windows enabled via

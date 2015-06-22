@@ -30,20 +30,15 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/bus/pci/pci_cfgreg.h,v 1.1 2008/08/02 01:14:40 dillon Exp $
  */
 
 #ifndef _BUS_PCI_PCI_CFGREG_H_
 #define _BUS_PCI_PCI_CFGREG_H_
 
-#if defined(__i386__)
-#include "i386/pci_cfgreg.h"
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 #include "x86_64/pci_cfgreg.h"
 #else
 #error "No pci_cfgreg.h for this architecture"
 #endif
 
 #endif
-

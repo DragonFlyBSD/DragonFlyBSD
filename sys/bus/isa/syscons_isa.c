@@ -38,24 +38,6 @@
 
 #include <machine/console.h>
 
-#ifdef __i386__
-
-#include <machine/clock.h>
-#include <machine/md_var.h>
-#include <machine/pc/bios.h>
-
-#include <vm/vm.h>
-#include <vm/pmap.h>
-
-#include <machine_base/isa/timerreg.h>
-
-#define BIOS_CLKED	(1 << 6)
-#define BIOS_NLKED	(1 << 5)
-#define BIOS_SLKED	(1 << 4)
-#define BIOS_ALKED	0
-
-#endif /* __i386__ */
-
 #include <dev/misc/syscons/syscons.h>
 
 #include "isareg.h"
@@ -189,23 +171,10 @@ sc_get_cons_priority(int *unit, int *flags)
 void
 sc_get_bios_values(bios_values_t *values)
 {
-#ifdef __i386__
-	u_int8_t shift;
-
-	values->cursor_start = *(u_int8_t *)BIOS_PADDRTOVADDR(0x461);
-	values->cursor_end = *(u_int8_t *)BIOS_PADDRTOVADDR(0x460);
-	shift = *(u_int8_t *)BIOS_PADDRTOVADDR(0x417);
-	values->shift_state = ((shift & BIOS_CLKED) ? CLKED : 0)
-			       | ((shift & BIOS_NLKED) ? NLKED : 0)
-			       | ((shift & BIOS_SLKED) ? SLKED : 0)
-			       | ((shift & BIOS_ALKED) ? ALKED : 0);
-	values->bell_pitch = BELL_PITCH;
-#else /* !__i386__ */
 	values->cursor_start = 0;
 	values->cursor_end = 32;
 	values->shift_state = 0;
 	values->bell_pitch = BELL_PITCH;
-#endif /* __i386__ */
 }
 
 int
@@ -214,26 +183,6 @@ sc_tone(int hertz)
 	return EBUSY;
 #if 0
 	/* XXX use sound device if available */
-#ifdef __i386__
-	int pitch;
-
-	if (hertz) {
-		/* set command for counter 2, 2 byte write */
-		if (acquire_timer2(TIMER_16BIT | TIMER_SQWAVE))
-			return EBUSY;
-		/* set pitch */
-		pitch = cputimer_freq/hertz;
-		outb(TIMER_CNTR2, pitch);
-		outb(TIMER_CNTR2, pitch >> 8);
-		/* enable counter 2 output to speaker */
-		outb(IO_PPI, inb(IO_PPI) | 3);
-	} else {
-		/* disable counter 2 output to speaker */
-		if (release_timer2() == 0)
-			outb(IO_PPI, inb(IO_PPI) & 0xFC);
-	}
-#endif /* __i386__ */
-
 	return 0;
 #endif
 }

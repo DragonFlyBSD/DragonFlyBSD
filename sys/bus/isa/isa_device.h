@@ -30,20 +30,15 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/bus/isa/isa_device.h,v 1.1 2008/08/02 01:14:39 dillon Exp $
  */
 
 #ifndef _BUS_ISA_ISA_DEVICE_H_
 #define _BUS_ISA_ISA_DEVICE_H_
 
-#if defined(__i386__)
-#include "i386/isa_device.h"
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 #include "x86_64/isa_device.h"
 #else
 #error "No isa_device.h for this architecture"
 #endif
 
 #endif
-

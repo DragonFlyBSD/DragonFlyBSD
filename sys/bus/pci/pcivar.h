@@ -237,7 +237,7 @@ struct pci_devinfo {
 
 /*
  * Define pci-specific resource flags for accessing memory via dense
- * or bwx memory spaces. These flags are ignored on i386.
+ * or bwx memory spaces.
  */
 #define	PCI_RF_DENSE	0x10000
 #define	PCI_RF_BWX	0x20000
@@ -337,8 +337,8 @@ PCIB_ACCESSOR(bus,		BUS,		uint32_t)
 
 /*
  * PCI interrupt validation.  Invalid interrupt values such as 0 or 128
- * on i386 or other platforms should be mapped out in the MD pcireadconf
- * code and not here, since the only MI invalid IRQ is 255.
+ * should be mapped out in the MD pcireadconf code and not here, since
+ * the only MI invalid IRQ is 255.
  */
 #define	PCI_INVALID_IRQ		255
 #define	PCI_INTERRUPT_VALID(x)	((x) != PCI_INVALID_IRQ)
@@ -561,11 +561,7 @@ struct pci_device {
     int    (*pd_shutdown) (int, int);
 };
 
-#ifdef __i386__
-typedef u_short pci_port_t;
-#else
 typedef u_int pci_port_t;
-#endif
 
 u_long pci_conf_read (pcici_t tag, u_long reg);
 void pci_conf_write (pcici_t tag, u_long reg, u_long data);

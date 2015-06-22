@@ -30,16 +30,12 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/bus/pci/pcibus.h,v 1.1 2008/08/02 01:14:40 dillon Exp $
  */
 
 #ifndef _BUS_PCI_PCIBUS_H_
 #define _BUS_PCI_PCIBUS_H_
 
-#if defined(__i386__)
-#include "i386/pcibus.h"
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 #include "x86_64/pcibus.h"
 #else
 #error "No pcibus.h for this architecture"

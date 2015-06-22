@@ -157,8 +157,8 @@
 
 /* The following line was changed to support more architectures (simpler
    chipsets (like those for Alpha) only use 4, but more complex controllers
-   (usually modern i386's) can use an additional 4; the probe to see if
-   the additional 4 can be used by the specific chipset is now done in the ppc
+   can use an additional 4; the probe to see if the additional 4
+   can be used by the specific chipset is now done in the ppc
    code by ppc_probe()... */
 
 #define IO_LPTSIZE_EXTENDED	8	/* "Extended" LPT controllers */
