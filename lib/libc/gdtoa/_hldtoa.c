@@ -31,10 +31,6 @@
 #include <math.h>
 #include <stdint.h>
 
-#ifdef __i386__
-#include <ieeefp.h>
-#endif
-
 #include "../stdio/floatio.h"
 #include "fpmath.h"
 #include "gdtoaimp.h"
@@ -80,9 +76,6 @@ __hldtoa(long double e, const char *xdigs, int ndigits, int *decpt, int *sign,
 	manh_t manh;
 	manl_t manl;
 	int bufsize;
-#ifdef __i386__
-	fp_prec_t oldprec;
-#endif
 
 	u.e = e;
 	*sign = u.bits.sign;
@@ -95,14 +88,8 @@ __hldtoa(long double e, const char *xdigs, int ndigits, int *decpt, int *sign,
 		*decpt = 1;
 		return (nrv_alloc("0", rve, 1));
 	case FP_SUBNORMAL:
-#ifdef __i386__
-		oldprec = fpsetprec(FP_PE);
-#endif
 		u.e *= 0x1p514L;
 		*decpt = u.bits.exp - (514 + LDBL_ADJ);
-#ifdef __i386__
-		fpsetprec(oldprec);
-#endif
 		break;
 	case FP_INFINITE:
 		*decpt = INT_MAX;
@@ -128,16 +115,10 @@ __hldtoa(long double e, const char *xdigs, int ndigits, int *decpt, int *sign,
 	if (SIGFIGS > ndigits && ndigits > 0) {
 		float redux = one[u.bits.sign];
 		int offset = 4 * ndigits + LDBL_MAX_EXP - 4 - LDBL_MANT_DIG;
-#ifdef __i386__
-		oldprec = fpsetprec(FP_PE);
-#endif
 		u.bits.exp = offset;
 		u.e += redux;
 		u.e -= redux;
 		*decpt += u.bits.exp - offset;
-#ifdef __i386__
-		fpsetprec(oldprec);
-#endif
 	}
 
 	mask_nbit_l(u);

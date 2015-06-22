@@ -1,9 +1,8 @@
 .\" $FreeBSD: src/lib/libc/sys/ptrace.2,v 1.12.2.12 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/ptrace.2,v 1.4 2006/05/26 19:39:37 swildner Exp $
 .\"	$NetBSD: ptrace.2,v 1.2 1995/02/27 12:35:37 cgd Exp $
 .\"
 .\" This file is in the public domain.
-.Dd January 18, 2015
+.Dd June 22, 2015
 .Dt PTRACE 2
 .Os
 .Sh NAME
@@ -165,8 +164,8 @@ succeeds, the traced process is no longer traced and continues
 execution normally.
 .El
 .Pp
-Additionally, machine-specific requests can exist.  On the i386, these
-are:
+Additionally, machine-specific requests can exist.
+On x86_64, these are:
 .Bl -tag -width 12n
 .It Dv PT_GETREGS
 This request reads the traced process' machine registers into the
@@ -311,9 +310,7 @@ above.
 .Xr execve 2 ,
 .Xr sigaction 2 ,
 .Xr wait 2 ,
-.Xr execv 3 ,
-.Xr i386_clr_watch 3 ,
-.Xr i386_set_watch 3
+.Xr execv 3
 .Sh HISTORY
 A
 .Fn ptrace

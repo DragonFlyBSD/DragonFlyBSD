@@ -28,7 +28,7 @@
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.33.2.13 2002/04/07 04:57:14 dd Exp $
 .\"
-.Dd January 18, 2015
+.Dd June 22, 2015
 .Dt SYSCTL 3
 .Os
 .Sh NAME
@@ -553,7 +553,7 @@ followed by the vnode itself
 .El
 .Ss CTL_MACHDEP
 The set of variables defined is architecture dependent.
-The following variables are defined for the i386 architecture.
+The following variables are defined for the x86_64 architecture.
 .Bl -column "CONSOLE_DEVICEXXX" "struct bootinfoXXX" -offset indent
 .It Sy "Second level name" Ta Sy "Type" Ta Sy "Changeable"
 .It Dv CPU_CONSDEV Ta "dev_t" Ta "no"

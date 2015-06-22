@@ -48,9 +48,6 @@
 __weak_reference(__libc_allocate_tls, _rtld_allocate_tls);
 __weak_reference(__libc_free_tls, _rtld_free_tls);
 __weak_reference(__libc_call_init, _rtld_call_init);
-#ifdef __i386__
-__weak_reference(___libc_tls_get_addr, ___tls_get_addr);
-#endif
 __weak_reference(__libc_tls_get_addr, __tls_get_addr);
 __weak_reference(__libc_tls_get_addr_tcb, __tls_get_addr_tcb);
 __weak_reference(_libc_init_tls, _init_tls);
@@ -71,21 +68,6 @@ static size_t tls_static_space;
 static size_t tls_init_size;
 static void *tls_init;
 static struct tls_tcb *initial_tcb;
-#endif
-
-#ifdef __i386__
-
-/* GNU ABI */
-
-void *___libc_tls_get_addr(void *ti) __attribute__((__regparm__(1)));
-
-__attribute__((__regparm__(1)))
-void *
-___libc_tls_get_addr(void *ti __unused)
-{
-	return (0);
-}
-
 #endif
 
 void *__libc_tls_get_addr(void *ti);
