@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.27 2008/11/13 02:04:27 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -84,6 +82,7 @@ extern int RunningIoctl;
 extern int DidInterrupt;
 extern int ForceOpt;
 extern int BulkOpt;
+extern int AllPFS;
 extern u_int64_t BandwidthOpt;
 extern u_int64_t SplitupOpt;
 extern u_int64_t MemoryLimit;
@@ -91,8 +90,8 @@ extern const char *SplitupOptStr;
 extern const char *LinkPath;
 extern const char *CyclePath;
 
-void hammer_cmd_show(hammer_tid_t node_offset, u_int32_t lo,
-		int64_t obj_id, int depth,
+void hammer_cmd_show(hammer_tid_t node_offset, const char *arg,
+		int filter, int depth,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound);
 void hammer_cmd_show_undo(void);
 void hammer_cmd_sshremote(const char *cmd, const char *target);
@@ -132,6 +131,7 @@ void hammer_cmd_volume_del(char **av, int ac);
 void hammer_cmd_volume_list(char **av, int ac);
 void hammer_cmd_dedup_simulate(char **av, int ac);
 void hammer_cmd_dedup(char **av, int ac);
+void hammer_cmd_abort_cleanup(char **av, int ac);
 
 void hammer_get_cycle(hammer_base_elm_t base, hammer_tid_t *tidp);
 void hammer_set_cycle(hammer_base_elm_t base, hammer_tid_t tid);

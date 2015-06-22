@@ -25,11 +25,12 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/DB_COMMAND.9,v 1.6 2012/05/20 16:43:47 gjb Exp $
 .\"
-.Dd July 1, 2012
+.Dd May 5, 2015
 .Dt DB_COMMAND 9
 .Os
 .Sh NAME
 .Nm DB_COMMAND ,
+.Nm DB_COMMAND_FLAG ,
 .Nm DB_SHOW_COMMAND
 .Nd Extends the ddb command set
 .Sh SYNOPSIS
@@ -37,6 +38,11 @@
 .Fo DB_COMMAND
 .Fa command_name
 .Fa command_function
+.Fc
+.Fo DB_COMMAND_FLAG
+.Fa command_name
+.Fa command_function
+.Fa flag
 .Fc
 .Fn DB_SHOW_COMMAND "command_name" "command_function"
 .Sh DESCRIPTION
@@ -49,6 +55,13 @@ Invoking
 .Fa command_name
 from ddb will call
 .Fa command_function .
+.Pp
+The
+.Fn DB_COMMAND_FLAG
+macro is a variant of
+.Fn DB_COMMAND
+which allows for specifying an additional
+.Fa flag .
 .Pp
 The
 .Fn DB_SHOW_COMMAND

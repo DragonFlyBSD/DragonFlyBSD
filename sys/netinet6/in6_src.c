@@ -381,12 +381,18 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 int
 in6_selecthlim(struct in6pcb *in6p, struct ifnet *ifp)
 {
-	if (in6p && in6p->in6p_hops >= 0)
+	int hlim;
+
+	if (in6p && in6p->in6p_hops >= 0) {
 		return (in6p->in6p_hops);
-	else if (ifp)
-		return (ND_IFINFO(ifp)->chlim);
-	else
-		return (ip6_defhlim);
+	} else if (ifp) {
+		hlim = ND_IFINFO(ifp)->chlim;
+		if (hlim < ip6_minhlim)
+			hlim = ip6_minhlim;
+	} else {
+		hlim = ip6_defhlim;
+	}
+	return (hlim);
 }
 
 /*

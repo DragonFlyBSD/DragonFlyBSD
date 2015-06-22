@@ -155,10 +155,7 @@ it_attach(struct device *dev)
 	it_setup_volt(sc, 3, 9);
 	it_setup_temp(sc, 12, 3);
 
-	if (sensor_task_register(sc, it_refresh, 5)) {
-		device_printf(sc->sc_dev, "unable to register update task\n");
-		return 1;
-	}
+	sensor_task_register(sc, it_refresh, 5);
 
 	/* Activate monitoring */
 	cr = it_readreg(sc, ITD_CONFIG);

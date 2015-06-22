@@ -354,7 +354,7 @@ information.
 .It Sy "Second level name" Ta Sy "Type" Ta Sy "Changeable"
 .It Dv KERN_ARGMAX Ta "integer" Ta "no"
 .It Dv KERN_BOOTFILE Ta "string" Ta "yes"
-.It Dv KERN_BOOTTIME Ta "struct timeval" Ta "no"
+.It Dv KERN_BOOTTIME Ta "struct timespec" Ta "no"
 .It Dv KERN_CLOCKRATE Ta "struct clockinfo" Ta "no"
 .It Dv KERN_FILE Ta "struct kinfo_file" Ta "no"
 .It Dv KERN_HOSTID Ta "integer" Ta "yes"
@@ -373,7 +373,7 @@ information.
 .It Dv KERN_OSREV Ta "integer" Ta "no"
 .It Dv KERN_OSTYPE Ta "string" Ta "no"
 .It Dv KERN_POSIX1 Ta "integer" Ta "no"
-.It Dv KERN_PROC Ta "struct proc" Ta "no"
+.It Dv KERN_PROC Ta "struct kinfo_proc" Ta "no"
 .It Dv KERN_PROF Ta "node" Ta "not applicable"
 .It Dv KERN_QUANTUM Ta "integer" Ta "yes"
 .It Dv KERN_SAVED_IDS Ta "integer" Ta "no"
@@ -389,7 +389,7 @@ The maximum bytes of argument to
 The full pathname of the file from which the kernel was loaded.
 .It Dv KERN_BOOTTIME
 A
-.Vt struct timeval
+.Vt struct timespec
 structure is returned.
 This structure contains the time that the system was booted.
 .It Dv KERN_CLOCKRATE

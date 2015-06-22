@@ -27,6 +27,24 @@
 #ifndef _LINUX_FB_H_
 #define _LINUX_FB_H_
 
+#include <uapi_linux/fb.h>
+
 #include <linux/backlight.h>
+
+#define	KHZ2PICOS(a)	(1000000000UL/(a))
+
+struct fb_info {
+	vm_offset_t vaddr;
+	vm_paddr_t paddr;
+	uint16_t width;
+	uint16_t height;
+	uint16_t stride;
+	uint16_t depth;
+	int is_vga_boot_display;
+	void *cookie;
+	void (*restore)(void *);
+};
+
+extern int register_framebuffer(struct fb_info *fb_info);
 
 #endif	/* _LINUX_FB_H_ */

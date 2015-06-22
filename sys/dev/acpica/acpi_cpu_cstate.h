@@ -64,4 +64,7 @@ extern int	acpi_cst_quirks;	/* ACPI_CST_QUIRK_ */
 
 int	acpi_cst_md_cx_setup(struct acpi_cst_cx *);
 
+extern int	acpi_cst_force_bmarb;
+extern int	acpi_cst_force_bmsts;
+
 #endif	/* !__ACPI_CPU_CSTATE_H__ */

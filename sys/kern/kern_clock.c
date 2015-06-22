@@ -396,11 +396,16 @@ set_timeofday(struct timespec *ts)
  * manipulate objects owned by the current cpu.
  */
 static void
-hardclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
+hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 {
 	sysclock_t cputicks;
 	struct proc *p;
 	struct globaldata *gd = mycpu;
+
+	if ((gd->gd_reqflags & RQF_IPIQ) == 0 && lwkt_need_ipiq_process(gd)) {
+		/* Defer to doreti on passive IPIQ processing */
+		need_ipiq();
+	}
 
 	/*
 	 * Realtime updates are per-cpu.  Note that timer corrections as

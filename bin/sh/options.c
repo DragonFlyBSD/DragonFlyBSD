@@ -28,10 +28,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)options.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/options.c 240247 2012-09-08 19:24:03Z jilles $
  */
+
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)options.c	8.2 (Berkeley) 5/4/95";
+#endif
+#endif /* not lint */
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <signal.h>
 #include <unistd.h>
@@ -59,7 +64,7 @@
 char *arg0;			/* value of $0 */
 struct shparam shellparam;	/* current positional parameters */
 char **argptr;			/* argument list for builtin commands */
-const char *shoptarg;		/* set by nextopt (like getopt) */
+char *shoptarg;			/* set by nextopt (like getopt) */
 char *nextopt_optptr;		/* used by nextopt */
 
 char *minusc;			/* argument to -c option */
@@ -97,8 +102,6 @@ procargs(int argc, char **argv)
 	}
 	if (mflag == 2)
 		mflag = iflag;
-	/* turn on tabcomplete in an interactive shell by default */
-	tabcomplete = iflag;
 	for (i = 0; i < NOPTS; i++)
 		if (optlist[i].val == 2)
 			optlist[i].val = 0;
@@ -322,6 +325,7 @@ setparam(char **argv)
 	shellparam.malloc = 1;
 	shellparam.nparam = nparam;
 	shellparam.p = newparam;
+	shellparam.optp = NULL;
 	shellparam.reset = 1;
 	shellparam.optnext = NULL;
 }
@@ -332,7 +336,7 @@ setparam(char **argv)
  */
 
 void
-freeparam(volatile struct shparam *param)
+freeparam(struct shparam *param)
 {
 	char **ap;
 
@@ -340,6 +344,11 @@ freeparam(volatile struct shparam *param)
 		for (ap = param->p ; *ap ; ap++)
 			ckfree(*ap);
 		ckfree(param->p);
+	}
+	if (param->optp) {
+		for (ap = param->optp ; *ap ; ap++)
+			ckfree(*ap);
+		ckfree(param->optp);
 	}
 }
 
@@ -414,20 +423,33 @@ getoptsreset(const char *value)
 int
 getoptscmd(int argc, char **argv)
 {
-	char **optbase = NULL;
+	char **optbase = NULL, **ap;
+	int i;
 
 	if (argc < 3)
 		error("usage: getopts optstring var [arg]");
-	else if (argc == 3)
-		optbase = shellparam.p;
-	else
-		optbase = &argv[3];
 
 	if (shellparam.reset == 1) {
+		INTOFF;
+		if (shellparam.optp) {
+			for (ap = shellparam.optp ; *ap ; ap++)
+				ckfree(*ap);
+			ckfree(shellparam.optp);
+			shellparam.optp = NULL;
+		}
+		if (argc > 3) {
+			shellparam.optp = ckmalloc((argc - 2) * sizeof *ap);
+			memset(shellparam.optp, '\0', (argc - 2) * sizeof *ap);
+			for (i = 0; i < argc - 3; i++)
+				shellparam.optp[i] = savestr(argv[i + 3]);
+		}
+		INTON;
+		optbase = argc == 3 ? shellparam.p : shellparam.optp;
 		shellparam.optnext = optbase;
 		shellparam.optptr = NULL;
 		shellparam.reset = 0;
-	}
+	} else
+		optbase = shellparam.optp ? shellparam.optp : shellparam.p;
 
 	return getopts(argv[1], argv[2], optbase, &shellparam.optnext,
 		       &shellparam.optptr);
@@ -435,7 +457,7 @@ getoptscmd(int argc, char **argv)
 
 static int
 getopts(char *optstr, char *optvar, char **optfirst, char ***optnext,
-    char **optp)
+    char **optptr)
 {
 	char *p, *q;
 	char c = '?';
@@ -443,8 +465,9 @@ getopts(char *optstr, char *optvar, char **optfirst, char ***optnext,
 	int ind = 0;
 	int err = 0;
 	char s[10];
+	const char *newoptarg = NULL;
 
-	if ((p = *optp) == NULL || *p == '\0') {
+	if ((p = *optptr) == NULL || *p == '\0') {
 		/* Current word is done, advance */
 		if (*optnext == NULL)
 			return 1;
@@ -468,14 +491,12 @@ atend:
 			if (optstr[0] == ':') {
 				s[0] = c;
 				s[1] = '\0';
-				err |= setvarsafe("OPTARG", s, 0);
+				newoptarg = s;
 			}
-			else {
-				out1fmt("Illegal option -%c\n", c);
-				unsetvar("OPTARG");
-			}
+			else
+				out2fmt_flush("Illegal option -%c\n", c);
 			c = '?';
-			goto bad;
+			goto out;
 		}
 		if (*++q == ':')
 			q++;
@@ -486,33 +507,33 @@ atend:
 			if (optstr[0] == ':') {
 				s[0] = c;
 				s[1] = '\0';
-				err |= setvarsafe("OPTARG", s, 0);
+				newoptarg = s;
 				c = ':';
 			}
 			else {
-				out1fmt("No arg for -%c option\n", c);
-				unsetvar("OPTARG");
+				out2fmt_flush("No arg for -%c option\n", c);
 				c = '?';
 			}
-			goto bad;
+			goto out;
 		}
 
 		if (p == **optnext)
 			(*optnext)++;
-		setvarsafe("OPTARG", p, 0);
+		newoptarg = p;
 		p = NULL;
 	}
-	else
-		setvarsafe("OPTARG", "", 0);
-	ind = *optnext - optfirst + 1;
-	goto out;
 
-bad:
-	ind = 1;
-	*optnext = NULL;
-	p = NULL;
 out:
-	*optp = p;
+	if (*optnext != NULL)
+		ind = *optnext - optfirst + 1;
+	*optptr = p;
+	if (newoptarg != NULL)
+		err |= setvarsafe("OPTARG", newoptarg, 0);
+	else {
+		INTOFF;
+		err |= unsetvar("OPTARG");
+		INTON;
+	}
 	fmtstr(s, sizeof(s), "%d", ind);
 	err |= setvarsafe("OPTIND", s, VNOFUNC);
 	s[0] = c;
@@ -520,7 +541,7 @@ out:
 	err |= setvarsafe(optvar, s, 0);
 	if (err) {
 		*optnext = NULL;
-		*optp = NULL;
+		*optptr = NULL;
 		flushall();
 		exraise(EXERROR);
 	}

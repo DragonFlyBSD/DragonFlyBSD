@@ -26,12 +26,12 @@
  * Authors:
  *    Kevin E. Martin <martin@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_drv.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #ifndef __RADEON_DRV_H__
 #define __RADEON_DRV_H__
+
+#include <linux/firmware.h>
 
 #include "radeon_family.h"
 
@@ -2000,7 +2000,7 @@ do {									\
 
 #define VB_AGE_TEST_WITH_RETURN( dev_priv )				\
 do {								\
-	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;\
+	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;	\
 	drm_radeon_sarea_t *sarea_priv = master_priv->sarea_priv;	\
 	if ( sarea_priv->last_dispatch >= RADEON_MAX_VB_AGE ) {		\
 		int __ret;						\

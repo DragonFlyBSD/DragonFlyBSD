@@ -5,5 +5,5 @@
 sendmail	/usr/local/sbin/smtpctl
 mailq		/usr/local/sbin/smtpctl
 newaliases	/usr/local/sbin/smtpctl
-hoststat	true
-purgestat	true
+hoststat	/usr/bin/true
+purgestat	/usr/bin/true

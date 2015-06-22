@@ -175,7 +175,16 @@ struct ucom_softc {
 	struct ucom_super_softc *sc_super;
 	struct tty *sc_tty;
 	struct dev *sc_dev;
-	cdev_t sc_cdev; 
+	cdev_t sc_cdev;			/* this is the /dev/ttyUX */
+	cdev_t sc_cdev_init;		/* /dev/ttyUX.init */
+	cdev_t sc_cdev_lock;		/* /dev/ttyUX.lock */
+	cdev_t sc_cdev2;		/* /dev/cuaUX */
+	cdev_t sc_cdev2_init;		/* /dev/cuaUX.init */
+	cdev_t sc_cdev2_lock;		/* /dev/cuaUX.lock */
+	struct termios sc_it_in;	/* Initial state in */
+	struct termios sc_it_out;	/* Initial state out */
+	struct termios sc_lt_in;	/* Lockstate in */
+	struct termios sc_lt_out;	/* Lockstate out */
 	struct lock *sc_lock;
 	void   *sc_parent;
 	int sc_subunit;

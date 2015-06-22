@@ -31,11 +31,10 @@ KMOD	= acpi
 
 # ACPICA sources
 SRCS+=	ahids.c ahuuids.c
-#SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
-#SRCS+=	dbinput.c dbstats.c dbtest.c dbutils.c dbxface.c
-#SRCS+=	dbmethod.c dbnames.c
-#SRCS+=	dmbuffer.c dmdeferred.c dmnames.c dmobject.c dmopcode.c
-#SRCS+=	dmresrc.c dmresrcl.c dmresrcl2.c dmresrcs.c dmutils.c dmwalk.c
+SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
+SRCS+=	dbinput.c dbmethod.c dbnames.c dbstats.c dbtest.c dbutils.c dbxface.c
+SRCS+=	dmbuffer.c dmcstyle.c dmdeferred.c dmnames.c dmobject.c dmopcode.c
+SRCS+=	dmresrc.c dmresrcl.c dmresrcl2.c dmresrcs.c dmutils.c dmwalk.c
 SRCS+=	dsfield.c dsinit.c dsmethod.c dsmthdat.c
 SRCS+=	dsobject.c dsopcode.c dsutils.c dswexec.c dswload.c
 SRCS+=	dswscope.c dswstate.c dsargs.c dscontrol.c dswload2.c
@@ -81,8 +80,9 @@ SRCS+=  OsdHardware.c OsdInterrupt.c OsdMemory.c OsdSchedule.c
 SRCS+=  OsdStream.c OsdSynch.c OsdTable.c OsdEnvironment.c
 SRCS+=  opt_acpi.h opt_ddb.h opt_ktr.h
 SRCS+=  device_if.h bus_if.h pci_if.h pcib_if.h isa_if.h acpi_if.h
-SRCS+=  acpi_quirks.h acpi_wmi_if.h
+SRCS+=  acpi_quirks.h acpi_wmi_if.h cpu_if.h
 
+.if !defined(BUILDING_WITH_KERNEL)
 .if ACPI_NO_SEMAPHORES
 CFLAGS+=-DACPI_NO_SEMAPHORES
 .endif
@@ -93,6 +93,7 @@ opt_ddb.h: Makefile
 .else
 opt_ddb.h: Makefile
 	echo -n > ${.TARGET}
+.endif
 .endif
 
 # Machine-specific code for P-State
@@ -117,5 +118,9 @@ acpi_wakecode.h: acpi_wakecode.S
 
 SUBDIR=	acpi_asus acpi_dock acpi_fujitsu acpi_hp acpi_panasonic acpi_sony
 SUBDIR+=acpi_thinkpad acpi_toshiba acpi_video acpi_wmi aibs
+
+# Empty for concurrent build
+#
+SUBDIR_ORDERED=
 
 .include <bsd.kmod.mk>

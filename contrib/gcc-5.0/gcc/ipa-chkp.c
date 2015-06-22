@@ -264,7 +264,7 @@ chkp_copy_function_type_adding_bounds (tree orig_type)
   if (!arg_type)
     return orig_type;
 
-  type = copy_node (orig_type);
+  type = build_distinct_type_copy (orig_type);
   TYPE_ARG_TYPES (type) = copy_list (TYPE_ARG_TYPES (type));
 
   for (arg_type = TYPE_ARG_TYPES (type);
@@ -550,6 +550,9 @@ chkp_maybe_create_clone (tree fndecl)
 	      clone->thunk.thunk_p = true;
 	      clone->thunk.add_pointer_bounds_args = true;
 	      clone->create_edge (node, NULL, 0, CGRAPH_FREQ_BASE);
+	      /* Thunk shouldn't be a cdtor.  */
+	      DECL_STATIC_CONSTRUCTOR (clone->decl) = 0;
+	      DECL_STATIC_DESTRUCTOR (clone->decl) = 0;
 	    }
 	  else
 	    {
@@ -574,7 +577,8 @@ chkp_maybe_create_clone (tree fndecl)
 
       /* Clones have the same comdat group as originals.  */
       if (node->same_comdat_group
-	  || DECL_ONE_ONLY (node->decl))
+	  || (DECL_ONE_ONLY (node->decl)
+	      && !DECL_EXTERNAL (node->decl)))
 	clone->add_to_same_comdat_group (node);
 
       if (gimple_has_body_p (fndecl))
@@ -592,7 +596,8 @@ chkp_maybe_create_clone (tree fndecl)
       /* Clone all thunks.  */
       for (e = node->callers; e; e = e->next_caller)
 	if (e->caller->thunk.thunk_p
-	    && !e->caller->thunk.add_pointer_bounds_args)
+	    && !e->caller->thunk.add_pointer_bounds_args
+	    && !e->caller->instrumentation_clone)
 	  {
 	    struct cgraph_node *thunk
 	      = chkp_maybe_create_clone (e->caller->decl);
@@ -712,6 +717,9 @@ chkp_produce_thunks (bool early)
 			     0, CGRAPH_FREQ_BASE);
 	  node->create_reference (node->instrumented_version,
 			       IPA_REF_CHKP, NULL);
+	  /* Thunk shouldn't be a cdtor.  */
+	  DECL_STATIC_CONSTRUCTOR (node->decl) = 0;
+	  DECL_STATIC_DESTRUCTOR (node->decl) = 0;
 	}
     }
 

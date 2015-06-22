@@ -28,7 +28,6 @@
  *
  * @(#)instr.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/cribbage/instr.c,v 1.5 1999/12/12 03:04:15 billf Exp $
- * $DragonFly: src/games/cribbage/instr.c,v 1.4 2006/09/09 02:21:49 pavalos Exp $
  */
 
 #include <sys/wait.h>
@@ -49,7 +48,7 @@ void
 instructions(void)
 {
 	struct stat sb;
-	union wait pstat;
+	int pstat;
 	pid_t pid;
 	const char *pager, *path;
 
@@ -73,9 +72,9 @@ instructions(void)
 		_exit(1);
 	default:
 		do {
-			pid = waitpid(pid, (int *)&pstat, 0);
+			pid = waitpid(pid, &pstat, 0);
 		} while (pid == -1 && errno == EINTR);
-		if (pid == -1 || pstat.w_status)
+		if (pid == -1 || WEXITSTATUS(pstat))
 			exit(1);
 	}
 }

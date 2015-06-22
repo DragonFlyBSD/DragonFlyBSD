@@ -49,14 +49,13 @@ static device_t	acpi_dev;
 
 #include <machine/apm_bios.h>
 #include <machine/pc/bios.h>
-#include <machine_base/apm/apm.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine/smp.h>
 
 uint32_t acpi_reset_video = 1;
 TUNABLE_INT("hw.acpi.reset_video", &acpi_reset_video);
 
-static struct apm_softc	apm_softc;
+static int apm_active;
 
 static d_open_t apmopen;
 static d_close_t apmclose;
@@ -134,7 +133,7 @@ acpi_capm_get_info(apm_info_t aip)
 	aip->ai_infoversion = 1;
 	aip->ai_major       = 1;
 	aip->ai_minor       = 2;
-	aip->ai_status      = apm_softc.active;
+	aip->ai_status      = apm_active;
 	aip->ai_capabilities= 0xff00;	/* XXX unknown */
 
 	if (acpi_acad_get_acline(&acline))
@@ -220,7 +219,7 @@ apmioctl(struct dev_ioctl_args *ap)
 	case APMIO_SUSPEND:
 		if ((ap->a_fflag & FWRITE) == 0)
 			return (EPERM);
-		if (apm_softc.active)
+		if (apm_active)
 			acpi_SetSleepState(acpi_sc, acpi_sc->acpi_suspend_sx);
 		else
 			error = EINVAL;
@@ -228,7 +227,7 @@ apmioctl(struct dev_ioctl_args *ap)
 	case APMIO_STANDBY:
 		if ((ap->a_fflag & FWRITE) == 0)
 			return (EPERM);
-		if (apm_softc.active)
+		if (apm_active)
 			acpi_SetSleepState(acpi_sc, acpi_sc->acpi_standby_sx);
 		else
 			error = EINVAL;
@@ -255,12 +254,12 @@ apmioctl(struct dev_ioctl_args *ap)
 	case APMIO_ENABLE:
 		if ((ap->a_fflag & FWRITE) == 0)
 			return (EPERM);
-		apm_softc.active = 1;
+		apm_active = 1;
 		break;
 	case APMIO_DISABLE:
 		if ((ap->a_fflag & FWRITE) == 0)
 			return (EPERM);
-		apm_softc.active = 0;
+		apm_active = 0;
 		break;
 	case APMIO_HALTCPU:
 		break;

@@ -49,10 +49,25 @@
 */
 static inline u64 div_u64_rem(u64 dividend, u32 divisor, u32 *remainder)
 {
-        *remainder = dividend % divisor;
-        return dividend / divisor;
+	*remainder = dividend % divisor;
+	return dividend / divisor;
 }
 
+/**
+ * div64_u64 - unsigned 64bit divide with 64bit divisor
+ */
+static inline u64 div64_u64(u64 dividend, u64 divisor)
+{
+	return dividend / divisor;
+}
+
+/**
+ * div64_s64 - signed 64bit divide with 64bit divisor
+ */
+static inline s64 div64_s64(s64 dividend, s64 divisor)
+{
+	return dividend / divisor;
+}
 
 #elif BITS_PER_LONG == 32
 

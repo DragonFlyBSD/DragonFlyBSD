@@ -14,8 +14,8 @@
 # If the host system does not have the desired compiler for HOST_CCVER
 # we back off to something it probably does have.
 
-_DEFAULT_CCVER=		gcc47
-_DEFAULT_BINUTILSVER=	binutils224
+_DEFAULT_CCVER=		gcc50
+_DEFAULT_BINUTILSVER=	binutils225
 
 CCVER ?= ${_DEFAULT_CCVER}
 _CCVER := ${CCVER}

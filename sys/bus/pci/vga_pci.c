@@ -260,6 +260,24 @@ vga_pci_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
 	return (EINVAL);
 }
 
+static int
+vga_pci_setup_intr(device_t dev, device_t child, struct resource *irq,
+    int flags, driver_intr_t *intr, void *arg, void **cookiep,
+    lwkt_serialize_t serializer, const char *desc)
+{
+
+	return (BUS_SETUP_INTR(device_get_parent(dev), dev, irq, flags,
+	    intr, arg, cookiep, serializer, desc));
+}
+
+static int
+vga_pci_teardown_intr(device_t dev, device_t child, struct resource *irq,
+    void *cookie)
+{
+
+	return (BUS_TEARDOWN_INTR(device_get_parent(dev), dev, irq, cookie));
+}
+
 static struct vga_resource *
 lookup_res(struct vga_pci_softc *sc, int rid)
 {
@@ -374,6 +392,21 @@ vga_pci_disable_io(device_t dev, device_t child, int space)
 }
 
 static int
+vga_pci_get_vpd_ident(device_t dev, device_t child, const char **identptr)
+{
+
+	return (pci_get_vpd_ident(dev, identptr));
+}
+
+static int
+vga_pci_get_vpd_readonly(device_t dev, device_t child, const char *kw,
+    const char **vptr)
+{
+
+	return (pci_get_vpd_readonly(dev, kw, vptr));
+}
+
+static int
 vga_pci_set_powerstate(device_t dev, device_t child, int state)
 {
 
@@ -408,6 +441,44 @@ vga_pci_find_extcap(device_t dev, device_t child, int capability,
 	return (pci_find_extcap(dev, capability, capreg));
 }
 
+static int
+vga_pci_alloc_msi(device_t dev, device_t child, int *rid, int count,
+    int cpuid)
+{
+	struct vga_pci_softc *sc;
+	int error;
+
+	sc = device_get_softc(dev);
+	if (sc->vga_msi_child != NULL)
+		return (EBUSY);
+	error = pci_alloc_msi(dev, rid, count, cpuid);
+	if (error == 0)
+		sc->vga_msi_child = child;
+	return (error);
+}
+
+static int
+vga_pci_release_msi(device_t dev, device_t child)
+{
+	struct vga_pci_softc *sc;
+	int error;
+
+	sc = device_get_softc(dev);
+	if (sc->vga_msi_child != child)
+		return (ENXIO);
+	error = pci_release_msi(dev);
+	if (error == 0)
+		sc->vga_msi_child = NULL;
+	return (error);
+}
+
+static int
+vga_pci_msi_count(device_t dev, device_t child)
+{
+
+	return (pci_msi_count(dev));
+}
+
 static device_method_t vga_pci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		vga_pci_probe),
@@ -419,8 +490,8 @@ static device_method_t vga_pci_methods[] = {
 	/* Bus interface */
 	DEVMETHOD(bus_read_ivar,	vga_pci_read_ivar),
 	DEVMETHOD(bus_write_ivar,	vga_pci_write_ivar),
-	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
-	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
+	DEVMETHOD(bus_setup_intr,	vga_pci_setup_intr),
+	DEVMETHOD(bus_teardown_intr,	vga_pci_teardown_intr),
 
 	DEVMETHOD(bus_alloc_resource,	vga_pci_alloc_resource),
 	DEVMETHOD(bus_release_resource,	vga_pci_release_resource),
@@ -434,10 +505,15 @@ static device_method_t vga_pci_methods[] = {
 	DEVMETHOD(pci_disable_busmaster, vga_pci_disable_busmaster),
 	DEVMETHOD(pci_enable_io,	vga_pci_enable_io),
 	DEVMETHOD(pci_disable_io,	vga_pci_disable_io),
+	DEVMETHOD(pci_get_vpd_ident,	vga_pci_get_vpd_ident),
+	DEVMETHOD(pci_get_vpd_readonly,	vga_pci_get_vpd_readonly),
 	DEVMETHOD(pci_get_powerstate,	vga_pci_get_powerstate),
 	DEVMETHOD(pci_set_powerstate,	vga_pci_set_powerstate),
 	DEVMETHOD(pci_assign_interrupt,	vga_pci_assign_interrupt),
 	DEVMETHOD(pci_find_extcap,	vga_pci_find_extcap),
+	DEVMETHOD(pci_alloc_msi,	vga_pci_alloc_msi),
+	DEVMETHOD(pci_release_msi,	vga_pci_release_msi),
+	DEVMETHOD(pci_msi_count,	vga_pci_msi_count),
 
 	DEVMETHOD_END
 };

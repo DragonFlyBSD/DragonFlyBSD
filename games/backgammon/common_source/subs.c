@@ -60,7 +60,7 @@ errexit(const char *s)
 {
 	write(2, "\n", 1);
 	perror(s);
-	getout();
+	getout(0);
 }
 
 int
@@ -101,7 +101,7 @@ readc(void)
 		errexit("readc");
 #ifdef WHY_IS_THIS_HARDWIRED_IN_HERE
 	if (c == '\177')
-		getout();
+		getout(0);
 #endif
 	if (c == '\033' || c == '\015')
 		return ('\n');
@@ -370,7 +370,7 @@ getarg(int argc, char **argv)
 		case 'h':
 			for (i = 0; descr[i] != NULL; i++)
 				puts(descr[i]);
-			getout();
+			getout(0);
 		}
 	}
 	argc -= optind;
@@ -423,7 +423,7 @@ fixtty(int mode)
 }
 
 void
-getout(void)
+getout(__unused int sig)
 {
 	/* go to bottom of screen */
 	if (tflag) {

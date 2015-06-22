@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  *	@(#)robots.h	8.1 (Berkeley) 5/31/93
- * $DragonFly: src/games/robots/robots.h,v 1.2 2006/08/27 21:45:07 pavalos Exp $
  */
 
 #include <curses.h>
@@ -102,10 +101,10 @@ void get_move(void);
 void init_field(void);
 bool jumping(void);
 void make_level(void);
-void move_robots(bool);
+void move_robots(int);
 void play_level(void);
 int query(const char *);
-void quit(void);
+void quit(int);
 void reset_count(void);
 COORD *rnd_pos(void);
 void score(void);

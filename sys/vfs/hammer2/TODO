@@ -1,4 +1,22 @@
 
+* Convert xops and hammer2_update_spans() from cluster back into chain calls
+
+* syncthr leaves inode locks for entire sync, which is wrong.
+
+* recovery scan vs unmount.  At the moment an unmount does its flushes,
+  and if successful the freemap will be fully up-to-date, but the mount
+  code doesn't know that and the last flush batch will probably match
+  the PFS root mirror_tid.  If it was a large cpdup the (unnecessary)
+  recovery pass at mount time can be extensive.  Add a CLEAN flag to the
+  volume header to optimize out the unnecessary recovery pass.
+
+* More complex transaction sequencing and flush merging.  Right now it is
+  all serialized against flushes.
+
+* adding new pfs - freeze and force remaster
+
+* removing a pfs - freeze and force remaster
+
 * bulkfree - sync between passes and enforce serialization of operation
 
 * bulkfree - signal check, allow interrupt

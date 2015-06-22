@@ -2988,6 +2988,17 @@ ix86_parse_stringop_strategy_string (char *strategy_str, bool is_memset)
           return;
         }
 
+      if ((stringop_alg) i == rep_prefix_8_byte
+	  && !TARGET_64BIT)
+	{
+	  /* rep; movq isn't available in 32-bit code.  */
+	  error ("stringop strategy name %s specified for option %s "
+		 "not supported for 32-bit code",
+                 alg_name,
+                 is_memset ? "-mmemset_strategy=" : "-mmemcpy_strategy=");
+	  return;
+	}
+
       input_ranges[n].max = maxs;
       input_ranges[n].alg = (stringop_alg) i;
       if (!strcmp (align, "align"))
@@ -5649,7 +5660,7 @@ ix86_handle_cconv_attribute (tree *node, tree name,
   else if (is_attribute_p ("thiscall", name))
     {
       if (TREE_CODE (*node) != METHOD_TYPE && pedantic)
-	warning (OPT_Wattributes, "%qE attribute is used for none class-method",
+	warning (OPT_Wattributes, "%qE attribute is used for non-class method",
 	         name);
       if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
 	{
@@ -5867,7 +5878,10 @@ ix86_function_regparm (const_tree type, const_tree decl)
 /* Return 1 or 2, if we can pass up to SSE_REGPARM_MAX SFmode (1) and
    DFmode (2) arguments in SSE registers for a function with the
    indicated TYPE and DECL.  DECL may be NULL when calling function
-   indirectly or considering a libcall.  Otherwise return 0.  */
+   indirectly or considering a libcall.  Return -1 if any FP parameter
+   should be rejected by error.  This is used in siutation we imply SSE
+   calling convetion but the function is called from another function with
+   SSE disabled. Otherwise return 0.  */
 
 static int
 ix86_function_sseregparm (const_tree type, const_tree decl, bool warn)
@@ -5916,14 +5930,13 @@ ix86_function_sseregparm (const_tree type, const_tree decl, bool warn)
 	{
 	  /* Refuse to produce wrong code when local function with SSE enabled
 	     is called from SSE disabled function.
-	     We may work hard to work out these scenarios but hopefully
-	     it doesnot matter in practice.  */
+	     FIXME: We need a way to detect these cases cross-ltrans partition
+	     and avoid using SSE calling conventions on local functions called
+	     from function with SSE disabled.  For now at least delay the
+	     warning until we know we are going to produce wrong code.
+	     See PR66047  */
 	  if (!TARGET_SSE && warn)
-	    {
-	      error ("calling %qD with SSE caling convention without "
-		     "SSE/SSE2 enabled", decl);
-	      return 0;
-	    }
+	    return -1;
 	  return TARGET_SSE2_P (target_opts_for_fn (target->decl)
 				->x_ix86_isa_flags) ? 2 : 1;
 	}
@@ -6479,6 +6492,7 @@ init_cumulative_args (CUMULATIVE_ARGS *cum,  /* Argument info to initialize */
   cum->bnd_regno = FIRST_BND_REG;
   cum->bnds_in_bt = 0;
   cum->force_bnd_pass = 0;
+  cum->decl = fndecl;
 
   if (!TARGET_64BIT)
     {
@@ -7424,6 +7438,7 @@ function_arg_advance_32 (CUMULATIVE_ARGS *cum, machine_mode mode,
 			 HOST_WIDE_INT words)
 {
   int res = 0;
+  bool error_p = NULL;
 
   switch (mode)
     {
@@ -7456,9 +7471,13 @@ function_arg_advance_32 (CUMULATIVE_ARGS *cum, machine_mode mode,
       gcc_unreachable ();
 
     case DFmode:
+      if (cum->float_in_sse == -1)
+	error_p = 1;
       if (cum->float_in_sse < 2)
 	break;
     case SFmode:
+      if (cum->float_in_sse == -1)
+	error_p = 1;
       if (cum->float_in_sse < 1)
 	break;
       /* FALLTHRU */
@@ -7513,6 +7532,14 @@ function_arg_advance_32 (CUMULATIVE_ARGS *cum, machine_mode mode,
 	    }
 	}
       break;
+    }
+  if (error_p)
+    {
+      cum->float_in_sse = 0;
+      error ("calling %qD with SSE calling convention without "
+	     "SSE/SSE2 enabled", cum->decl);
+      sorry ("this is a GCC bug that can be worked around by adding "
+	     "attribute used to function called");
     }
 
   return res;
@@ -7646,10 +7673,11 @@ ix86_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
     (otherwise it is an extra parameter matching an ellipsis).  */
 
 static rtx
-function_arg_32 (const CUMULATIVE_ARGS *cum, machine_mode mode,
+function_arg_32 (CUMULATIVE_ARGS *cum, machine_mode mode,
 		 machine_mode orig_mode, const_tree type,
 		 HOST_WIDE_INT bytes, HOST_WIDE_INT words)
 {
+  bool error_p = false;
   /* Avoid the AL settings for the Unix64 ABI.  */
   if (mode == VOIDmode)
     return constm1_rtx;
@@ -7690,9 +7718,13 @@ function_arg_32 (const CUMULATIVE_ARGS *cum, machine_mode mode,
       break;
 
     case DFmode:
+      if (cum->float_in_sse == -1)
+	error_p = 1;
       if (cum->float_in_sse < 2)
 	break;
     case SFmode:
+      if (cum->float_in_sse == -1)
+	error_p = 1;
       if (cum->float_in_sse < 1)
 	break;
       /* FALLTHRU */
@@ -7750,6 +7782,14 @@ function_arg_32 (const CUMULATIVE_ARGS *cum, machine_mode mode,
 				        cum->mmx_regno + FIRST_MMX_REG);
 	}
       break;
+    }
+  if (error_p)
+    {
+      cum->float_in_sse = 0;
+      error ("calling %qD with SSE calling convention without "
+	     "SSE/SSE2 enabled", cum->decl);
+      sorry ("this is a GCC bug that can be worked around by adding "
+	     "attribute used to function called");
     }
 
   return NULL_RTX;
@@ -8230,8 +8270,15 @@ function_value_32 (machine_mode orig_mode, machine_mode mode,
   if ((fn || fntype) && (mode == SFmode || mode == DFmode))
     {
       int sse_level = ix86_function_sseregparm (fntype, fn, false);
-      if ((sse_level >= 1 && mode == SFmode)
-	  || (sse_level == 2 && mode == DFmode))
+      if (sse_level == -1)
+	{
+	  error ("calling %qD with SSE caling convention without "
+		 "SSE/SSE2 enabled", fn);
+	  sorry ("this is a GCC bug that can be worked around by adding "
+		 "attribute used to function called");
+	}
+      else if ((sse_level >= 1 && mode == SFmode)
+	       || (sse_level == 2 && mode == DFmode))
 	regno = FIRST_SSE_REG;
     }
 
@@ -13881,6 +13928,12 @@ legitimize_pic_address (rtx orig, rtx reg)
 		}
 	      else
 		{
+		  /* For %rip addressing, we have to use just disp32, not
+		     base nor index.  */
+		  if (TARGET_64BIT
+		      && (GET_CODE (base) == SYMBOL_REF
+			  || GET_CODE (base) == LABEL_REF))
+		    base = force_reg (mode, base);
 		  if (GET_CODE (new_rtx) == PLUS
 		      && CONSTANT_P (XEXP (new_rtx, 1)))
 		    {
@@ -23457,12 +23510,19 @@ counter_mode (rtx count_exp)
 static rtx
 ix86_copy_addr_to_reg (rtx addr)
 {
+  rtx reg;
   if (GET_MODE (addr) == Pmode || GET_MODE (addr) == VOIDmode)
-    return copy_addr_to_reg (addr);
+    {
+      reg = copy_addr_to_reg (addr);
+      REG_POINTER (reg) = 1;
+      return reg;
+    }
   else
     {
       gcc_assert (GET_MODE (addr) == DImode && Pmode == SImode);
-      return gen_rtx_SUBREG (SImode, copy_to_mode_reg (DImode, addr), 0);
+      reg = copy_to_mode_reg (DImode, addr);
+      REG_POINTER (reg) = 1;
+      return gen_rtx_SUBREG (SImode, reg, 0);
     }
 }
 
@@ -24354,6 +24414,8 @@ expand_set_or_movmem_prologue_epilogue_by_misaligned_moves (rtx destmem, rtx src
       *destptr = expand_simple_binop (GET_MODE (*destptr), PLUS, *destptr,
 				      GEN_INT (prolog_size),
 				      NULL_RTX, 1, OPTAB_DIRECT);
+      if (REG_P (*destptr) && REG_P (saveddest) && REG_POINTER (saveddest))
+	REG_POINTER (*destptr) = 1;
       *destptr = expand_simple_binop (GET_MODE (*destptr), AND, *destptr,
 				      GEN_INT (-desired_align),
 				      *destptr, 1, OPTAB_DIRECT);
@@ -24363,8 +24425,8 @@ expand_set_or_movmem_prologue_epilogue_by_misaligned_moves (rtx destmem, rtx src
 				       saveddest, 1, OPTAB_DIRECT);
       /* Adjust srcptr and count.  */
       if (!issetmem)
-	*srcptr = expand_simple_binop (GET_MODE (*srcptr), MINUS, *srcptr, saveddest,
-					*srcptr, 1, OPTAB_DIRECT);
+	*srcptr = expand_simple_binop (GET_MODE (*srcptr), MINUS, *srcptr,
+				       saveddest, *srcptr, 1, OPTAB_DIRECT);
       *count = expand_simple_binop (GET_MODE (*count), PLUS, *count,
 				    saveddest, *count, 1, OPTAB_DIRECT);
       /* We copied at most size + prolog_size.  */
@@ -25609,8 +25671,19 @@ ix86_expand_call (rtx retval, rtx fnaddr, rtx callarg1,
 	{
 	  rtx b0 = gen_rtx_REG (BND64mode, FIRST_BND_REG);
 	  rtx b1 = gen_rtx_REG (BND64mode, FIRST_BND_REG + 1);
-	  retval = gen_rtx_PARALLEL (VOIDmode, gen_rtvec (3, retval, b0, b1));
-	  chkp_put_regs_to_expr_list (retval);
+	  if (GET_CODE (retval) == PARALLEL)
+	    {
+	      b0 = gen_rtx_EXPR_LIST (VOIDmode, b0, const0_rtx);
+	      b1 = gen_rtx_EXPR_LIST (VOIDmode, b1, const0_rtx);
+	      rtx par = gen_rtx_PARALLEL (VOIDmode, gen_rtvec (2, b0, b1));
+	      retval = chkp_join_splitted_slot (retval, par);
+	    }
+	  else
+	    {
+	      retval = gen_rtx_PARALLEL (VOIDmode,
+					 gen_rtvec (3, retval, b0, b1));
+	      chkp_put_regs_to_expr_list (retval);
+	    }
 	}
 
       call = gen_rtx_SET (VOIDmode, retval, call);
@@ -30588,6 +30661,8 @@ struct builtin_isa {
 
 static struct builtin_isa ix86_builtins_isa[(int) IX86_BUILTIN_MAX];
 
+/* Bits that can still enable any inclusion of a builtin.  */
+static HOST_WIDE_INT deferred_isa_values = 0;
 
 /* Add an ix86 target builtin function with CODE, NAME and TYPE.  Save the MASK
    of which isa_flags to use in the ix86_builtins_isa array.  Stores the
@@ -30631,6 +30706,9 @@ def_builtin (HOST_WIDE_INT mask, const char *name,
 	}
       else
 	{
+	  /* Just a MASK where set_and_not_built_p == true can potentially
+	     include a builtin.  */
+	  deferred_isa_values |= mask;
 	  ix86_builtins[(int) code] = NULL_TREE;
 	  ix86_builtins_isa[(int) code].tcode = tcode;
 	  ix86_builtins_isa[(int) code].name = name;
@@ -30666,6 +30744,12 @@ def_builtin_const (HOST_WIDE_INT mask, const char *name,
 static void
 ix86_add_new_builtins (HOST_WIDE_INT isa)
 {
+  if ((isa & deferred_isa_values) == 0)
+    return;
+
+  /* Bits in ISA value can be removed from potential isa values.  */
+  deferred_isa_values &= ~isa;
+
   int i;
   tree saved_current_target_pragma = current_target_pragma;
   current_target_pragma = NULL_TREE;
@@ -35826,6 +35910,15 @@ safe_vector_operand (rtx x, machine_mode mode)
   return x;
 }
 
+/* Fixup modeless constants to fit required mode.  */
+static rtx
+fixup_modeless_constant (rtx x, machine_mode mode)
+{
+  if (GET_MODE (x) == VOIDmode)
+    x = convert_to_mode (mode, x, 1);
+  return x;
+}
+
 /* Subroutine of ix86_expand_builtin to take care of binop insns.  */
 
 static rtx
@@ -37472,6 +37565,8 @@ ix86_expand_args_builtin (const struct builtin_description *d,
 	  if (memory_operand (op, mode))
 	    num_memory++;
 
+	  op = fixup_modeless_constant (op, mode);
+
 	  if (GET_MODE (op) == mode || GET_MODE (op) == VOIDmode)
 	    {
 	      if (optimize || !match || num_memory > 1)
@@ -37624,7 +37719,7 @@ ix86_expand_sse_comi_round (const struct builtin_description *d,
     }
   if (INTVAL (op2) < 0 || INTVAL (op2) >= 32)
     {
-      error ("incorect comparison mode");
+      error ("incorrect comparison mode");
       return const0_rtx;
     }
 
@@ -37844,6 +37939,8 @@ ix86_expand_round_builtin (const struct builtin_description *d,
 	{
 	  if (VECTOR_MODE_P (mode))
 	    op = safe_vector_operand (op, mode);
+
+	  op = fixup_modeless_constant (op, mode);
 
 	  if (GET_MODE (op) == mode || GET_MODE (op) == VOIDmode)
 	    {
@@ -38251,6 +38348,8 @@ ix86_expand_special_args_builtin (const struct builtin_description *d,
 	      /* This must be register.  */
 	      if (VECTOR_MODE_P (mode))
 		op = safe_vector_operand (op, mode);
+
+	      op = fixup_modeless_constant (op, mode);
 
 	      if (GET_MODE (op) == mode || GET_MODE (op) == VOIDmode)
 		op = copy_to_mode_reg (mode, op);
@@ -39815,6 +39914,9 @@ addcarryx:
 	op1 = copy_to_mode_reg (Pmode, op1);
       if (!insn_data[icode].operand[3].predicate (op2, mode2))
 	op2 = copy_to_mode_reg (mode2, op2);
+
+      op3 = fixup_modeless_constant (op3, mode3);
+
       if (GET_MODE (op3) == mode3 || GET_MODE (op3) == VOIDmode)
 	{
 	  if (!insn_data[icode].operand[4].predicate (op3, mode3))
@@ -39958,6 +40060,8 @@ addcarryx:
       if (!insn_data[icode].operand[0].predicate (op0, Pmode))
 	op0 = copy_to_mode_reg (Pmode, op0);
 
+      op1 = fixup_modeless_constant (op1, mode1);
+
       if (GET_MODE (op1) == mode1 || GET_MODE (op1) == VOIDmode)
 	{
 	  if (!insn_data[icode].operand[1].predicate (op1, mode1))
@@ -40003,6 +40107,8 @@ addcarryx:
       mode1 = insn_data[icode].operand[1].mode;
       mode3 = insn_data[icode].operand[3].mode;
       mode4 = insn_data[icode].operand[4].mode;
+
+      op0 = fixup_modeless_constant (op0, mode0);
 
       if (GET_MODE (op0) == mode0
 	  || (GET_MODE (op0) == VOIDmode && op0 != constm1_rtx))
@@ -41230,7 +41336,7 @@ ix86_register_priority (int hard_regno)
   if (FIRST_REX_SSE_REG <= hard_regno && hard_regno <= LAST_REX_SSE_REG)
     return 2;
   /* Usage of AX register results in smaller code.  Prefer it.  */
-  if (hard_regno == 0)
+  if (hard_regno == AX_REG)
     return 4;
   return 3;
 }
@@ -46833,15 +46939,16 @@ expand_vselect_vconcat (rtx target, rtx op0, rtx op1,
 static bool
 expand_vec_perm_blend (struct expand_vec_perm_d *d)
 {
-  machine_mode vmode = d->vmode;
+  machine_mode mmode, vmode = d->vmode;
   unsigned i, mask, nelt = d->nelt;
-  rtx target, op0, op1, x;
+  rtx target, op0, op1, maskop, x;
   rtx rperm[32], vperm;
 
   if (d->one_operand_p)
     return false;
   if (TARGET_AVX512F && GET_MODE_SIZE (vmode) == 64
-      && GET_MODE_SIZE (GET_MODE_INNER (vmode)) >= 4)
+      && (TARGET_AVX512BW
+	  || GET_MODE_SIZE (GET_MODE_INNER (vmode)) >= 4))
     ;
   else if (TARGET_AVX2 && GET_MODE_SIZE (vmode) == 32)
     ;
@@ -47015,8 +47122,33 @@ expand_vec_perm_blend (struct expand_vec_perm_d *d)
       gcc_unreachable ();
     }
 
+  switch (vmode)
+    {
+    case V8DFmode:
+    case V8DImode:
+      mmode = QImode;
+      break;
+    case V16SFmode:
+    case V16SImode:
+      mmode = HImode;
+      break;
+    case V32HImode:
+      mmode = SImode;
+      break;
+    case V64QImode:
+      mmode = DImode;
+      break;
+    default:
+      mmode = VOIDmode;
+    }
+  
+  if (mmode != VOIDmode)
+    maskop = force_reg (mmode, gen_int_mode (mask, mmode));
+  else
+    maskop = GEN_INT (mask);
+
   /* This matches five different patterns with the different modes.  */
-  x = gen_rtx_VEC_MERGE (vmode, op1, op0, GEN_INT (mask));
+  x = gen_rtx_VEC_MERGE (vmode, op1, op0, maskop);
   x = gen_rtx_SET (VOIDmode, target, x);
   emit_insn (x);
   if (target != d->target)
@@ -51547,7 +51679,7 @@ ix86_loop_unroll_adjust (unsigned nunroll, struct loop *loop)
   for (i = 0; i < loop->num_nodes; i++)
     FOR_BB_INSNS (bbs[i], insn)
       if (NONDEBUG_INSN_P (insn))
-	FOR_EACH_SUBRTX (iter, array, insn, NONCONST)
+	FOR_EACH_SUBRTX (iter, array, PATTERN (insn), NONCONST)
 	  if (const_rtx x = *iter)
 	    if (MEM_P (x))
 	      {
@@ -51742,6 +51874,21 @@ ix86_initialize_bounds (tree var, tree lb, tree ub, tree *stmts)
   return 2;
 }
 
+#if !TARGET_MACHO && !TARGET_DLLIMPORT_DECL_ATTRIBUTES
+/* For i386, common symbol is local only for non-PIE binaries.  For
+   x86-64, common symbol is local only for non-PIE binaries or linker
+   supports copy reloc in PIE binaries.   */
+
+static bool
+ix86_binds_local_p (const_tree exp)
+{
+  return default_binds_local_p_3 (exp, flag_shlib != 0, true, true,
+				  (!flag_pic
+				   || (TARGET_64BIT
+				       && HAVE_LD_PIE_COPYRELOC != 0)));
+}
+#endif
+
 /* Initialize the GCC target structure.  */
 #undef TARGET_RETURN_IN_MEMORY
 #define TARGET_RETURN_IN_MEMORY ix86_return_in_memory
@@ -51874,6 +52021,9 @@ ix86_initialize_bounds (tree var, tree lb, tree ub, tree *stmts)
 #if TARGET_MACHO
 #undef TARGET_BINDS_LOCAL_P
 #define TARGET_BINDS_LOCAL_P darwin_binds_local_p
+#else
+#undef TARGET_BINDS_LOCAL_P
+#define TARGET_BINDS_LOCAL_P ix86_binds_local_p
 #endif
 #if TARGET_DLLIMPORT_DECL_ATTRIBUTES
 #undef TARGET_BINDS_LOCAL_P

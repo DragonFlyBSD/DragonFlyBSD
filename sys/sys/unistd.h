@@ -116,9 +116,7 @@
 #if __BSD_VISIBLE
 #define	SEEK_DATA	3	/* set file offset to next data past offset */
 #define	SEEK_HOLE	4	/* set file offset to next hole past offset */
-#endif
 
-#ifndef _POSIX_SOURCE
 /* whence values for lseek(2); renamed by POSIX 1003.1 */
 #define	L_SET		SEEK_SET
 #define	L_INCR		SEEK_CUR

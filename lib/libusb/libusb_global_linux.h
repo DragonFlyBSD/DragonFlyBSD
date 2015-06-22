@@ -54,7 +54,7 @@
 #include <sys/poll.h>
 #include <sys/time.h>
 #include <bus/u4b/usb_endian.h>
-#include <bus/u4b/usb_freebsd.h>
+#include <bus/u4b/usb_dragonfly.h>
 
 #include <compat/linux/linux_ioctl.h>
 

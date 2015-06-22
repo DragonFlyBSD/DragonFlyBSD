@@ -50,7 +50,7 @@ main(int ac, char **av)
 	const char *sel_path = NULL;
 	const char *uuid_str = NULL;
 	const char *arg;
-	int pfs_type = DMSG_PFSTYPE_NONE;
+	int pfs_type = HAMMER2_PFSTYPE_NONE;
 	int all_opt = 0;
 	int ecode = 0;
 	int ch;
@@ -87,8 +87,8 @@ main(int ac, char **av)
 			 */
 			if (strcasecmp(optarg, "CACHE") == 0) {
 				pfs_type = HAMMER2_PFSTYPE_CACHE;
-			} else if (strcasecmp(optarg, "COPY") == 0) {
-				pfs_type = HAMMER2_PFSTYPE_COPY;
+			} else if (strcasecmp(optarg, "DUMMY") == 0) {
+				pfs_type = HAMMER2_PFSTYPE_DUMMY;
 			} else if (strcasecmp(optarg, "SLAVE") == 0) {
 				pfs_type = HAMMER2_PFSTYPE_SLAVE;
 			} else if (strcasecmp(optarg, "SOFT_SLAVE") == 0) {
@@ -179,7 +179,14 @@ main(int ac, char **av)
 		/*
 		 * Get status of PFS and its connections (-a for all PFSs)
 		 */
-		ecode = cmd_remote_status(sel_path, all_opt);
+		if (ac < 2) {
+			ecode = cmd_remote_status(sel_path, all_opt);
+		} else {
+			int i;
+
+			for (i = 1; i < ac; ++i)
+				ecode = cmd_remote_status(av[i], all_opt);
+		}
 	} else if (strcmp(av[0], "pfs-clid") == 0) {
 		/*
 		 * Print cluster id (uuid) for specific PFS
@@ -444,7 +451,7 @@ usage(int code)
 			"Del cluster link\n"
 		"    hash filename*               "
 			"Print directory hash\n"
-		"    status                       "
+		"    status [<path>...]           "
 			"Report cluster status\n"
 		"    pfs-list [<path>]            "
 			"List PFSs\n"
@@ -478,6 +485,8 @@ usage(int code)
 			"Set comp algo {none, autozero, lz4, zlib} & level\n"
 		"    setcheck check path...       "
 			"Set check algo {none, crc32, crc64, sha192}\n"
+		"    clrcheck path...             "
+			"Clear check code override\n"
 		"    setcrc32 path...             "
 			"Set check algo to crc32\n"
 		"    setcrc64 path...             "

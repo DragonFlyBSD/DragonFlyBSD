@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd March 19, 2015
+.Dd April 10, 2015
 .Dt MUTEX 9
 .Os
 .Sh NAME
@@ -64,21 +64,21 @@
 .In sys/globaldata.h
 .In sys/mutex2.h
 .Ft void
-.Fn mtx_init "mtx_t *mtx"
+.Fn mtx_init "mtx_t *mtx, const char *ident"
 .Ft void
 .Fn mtx_uninit "mtx_t *mtx"
 .Ft int
-.Fn mtx_lock_sh "mtx_t *mtx" "const char *ident" "int flags" "int to"
+.Fn mtx_lock_sh "mtx_t *mtx" "int flags" "int to"
 .\".Ft int
-.\".Fn mtx_lock_sh_link "mtx_t *mtx" "mtx_link_t *link" "const char *ident" "int flags" "int to"
+.\".Fn mtx_lock_sh_link "mtx_t *mtx" "mtx_link_t *link" "int flags" "int to"
 .Ft int
-.Fn mtx_lock_sh_quick "mtx_t *mtx" "const char *ident"
+.Fn mtx_lock_sh_quick "mtx_t *mtx"
 .Ft int
-.Fn mtx_lock_ex "mtx_t *mtx" "const char *ident" "int flags" "int to"
+.Fn mtx_lock_ex "mtx_t *mtx" "int flags" "int to"
 .\".Ft int
-.\".Fn mtx_lock_ex_link "mtx_t *mtx" "mtx_link_t *link" "const char *ident" "int flags" "int to"
+.\".Fn mtx_lock_ex_link "mtx_t *mtx" "mtx_link_t *link" "int flags" "int to"
 .Ft int
-.Fn mtx_lock_ex_quick "mtx_t *mtx" "const char *ident"
+.Fn mtx_lock_ex_quick "mtx_t *mtx"
 .Ft void
 .Fn mtx_lock "mtx_t *mtx"
 .Ft void
@@ -142,6 +142,11 @@ The
 .Fn mtx_init
 function initializes a mutex to the unlocked state.
 It is an error to use a mutex without initializing it.
+The
+.Fa ident
+parameter is as in
+.Xr tsleep 9 ,
+it is a string describing the reason for a thread to be blocked.
 .Pp
 The
 .Fn mtx_uninit
@@ -151,11 +156,6 @@ The
 .Fn mtx_lock_sh
 function attempts to lock a mutex in shared mode and blocks the current
 thread until it is able to do so.
-The
-.Fa ident
-parameter is as in
-.Xr tsleep 9 ,
-it is a string describing the reason for a thread to be blocked.
 The
 .Fa flags
 parameter is passed to
@@ -176,17 +176,16 @@ functions return 0 on success, or the
 .Fn tsleep
 return code on failure.
 An error can only be returned if
-.Dv PCATCH is specified in the flags.
+.Dv PCATCH
+is specified in the flags.
 .Pp
 The
 .Fn mtx_lock_ex
 function attempts to lock a mutex exclusively and blocks the current thread
 until it is able to do so.
 The
-.Fa ident
-and
 .Fa flags
-parameters are as in
+parameter is as in
 .Xr tsleep 9 .
 The
 .Fa to

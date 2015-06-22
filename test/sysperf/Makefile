@@ -26,11 +26,11 @@ all:	$(TARGETS)
 /tmp/sc1: syscall1.c blib.c
 	$(CC) $(CFLAGS) syscall1.c blib.c -o /tmp/sc1
 
-/tmp/sc2: syscall2.c getuid_msg.c blib.c
-	$(CC) $(CFLAGS) syscall2.c getuid_msg.c blib.c -o /tmp/sc2
+/tmp/sc2: syscall2.c blib.c
+	$(CC) $(CFLAGS) syscall2.c blib.c -o /tmp/sc2
 
-/tmp/sc3: syscall3.c getuid_msg.c blib.c
-	$(CC) $(CFLAGS) syscall3.c getuid_msg.c blib.c -o /tmp/sc3
+/tmp/sc3: syscall3.c blib.c
+	$(CC) $(CFLAGS) syscall3.c blib.c -o /tmp/sc3
 
 /tmp/sc4: syscall4.c blib.c
 	$(CC) $(CFLAGS) syscall4.c blib.c -o /tmp/sc4

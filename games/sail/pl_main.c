@@ -28,7 +28,6 @@
  *
  * @(#)pl_main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_main.c,v 1.6 1999/11/30 03:49:38 billf Exp $
- * $DragonFly: src/games/sail/pl_main.c,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -104,8 +103,8 @@ reprint:
 	windspeed = cc->windspeed;
 	winddir = cc->winddir;
 
-	signal(SIGHUP, (sig_t)choke);
-	signal(SIGINT, (sig_t)choke);
+	signal(SIGHUP, choke);
+	signal(SIGINT, choke);
 
 	hasdriver = sync_exists(game);
 	if (sync_open() < 0) {
@@ -174,7 +173,7 @@ reprint:
 	if (Sync() < 0)
 		leave(LEAVE_SYNC);
 
-	signal(SIGCHLD, (sig_t)child);
+	signal(SIGCHLD, child);
 	if (!hasdriver)
 		switch (fork()) {
 		case 0:
@@ -240,5 +239,5 @@ reprint:
 	snprintf(message, sizeof message, "Captain %s assuming command",
 		 captain);
 	Writestr(W_SIGNAL, ms, message);
-	newturn();
+	newturn(0);
 }

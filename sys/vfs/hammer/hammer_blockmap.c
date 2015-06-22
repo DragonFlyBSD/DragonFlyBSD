@@ -370,7 +370,7 @@ again:
 	 * need to save it.
 	 */
 	if (use_hint == 0) {
-		hammer_modify_volume(NULL, root_volume, NULL, 0);
+		hammer_modify_volume_noundo(NULL, root_volume);
 		blockmap->next_offset = next_offset + bytes;
 		hammer_modify_volume_done(root_volume);
 	}
@@ -1346,6 +1346,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(zone_offset);
 	layer1 = hammer_bread(hmp, layer1_offset, errorp, &buffer);
 	if (*errorp) {
+		*curp = 0;
 		bytes = 0;
 		goto failed;
 	}
@@ -1366,6 +1367,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(zone_offset);
 	layer2 = hammer_bread(hmp, layer2_offset, errorp, &buffer);
 	if (*errorp) {
+		*curp = 0;
 		bytes = 0;
 		goto failed;
 	}

@@ -1,0 +1,96 @@
+TARGET_TUPLE?=	x86_64-just-dragonfly
+
+NATIVE_EMULATION=	elf_x86_64
+X86_EMULATION=		elf_i386
+L1OM_EMULATION=		elf_l1om
+K1OM_EMULATION=		elf_k1om
+HOST=			${TARGET_TUPLE}
+FLAGS_GROUPS=		emul
+emul_FLAGS=		-DDEFAULT_EMULATION=\"${NATIVE_EMULATION}\" \
+			-DTARGET=\"${TARGET_TUPLE}\"
+emul_FLAGS_FILES=	ldmain.c
+
+_x86_64_path=	${USRDATA_PREFIX}/lib:${USRDATA_PREFIX}/usr/lib
+_i386_path=	${USRDATA_PREFIX}/lib/i386:${USRDATA_PREFIX}/usr/lib/i386
+
+.for EMUL in ${NATIVE_EMULATION} ${X86_EMULATION} ${L1OM_EMULATION} ${K1OM_EMULATION}
+EMS+=			${EMUL}
+SRCS+=			e${EMUL}.c
+CLEANFILES+=		e${EMUL}.c
+. for ext in ${ELF_SCR_EXT}
+LDSCRIPTS_${EMUL}+=	${EMUL}.${ext}
+. endfor
+LDSCRIPTS+=		${LDSCRIPTS_${EMUL}}
+.endfor
+
+e${NATIVE_EMULATION}.c ${LDSCRIPTS_${NATIVE_EMULATION}}: \
+    emulparams/${NATIVE_EMULATION}.sh emultempl/elf32.em \
+    scripttempl/elf.sc genscripts.sh stringify.sed
+	sh ${SRCDIR}/ld/genscripts.sh \
+		${SRCDIR:Q}/ld \
+		${_x86_64_path:Q} \
+		"" \
+		"" \
+		${HOST} \
+		${TARGET_TUPLE:Q} \
+		${TARGET_TUPLE:Q} \
+		${NATIVE_EMULATION:Q} \
+		"" \
+		no \
+		yes \
+		${NATIVE_EMULATION:Q} \
+		${TARGET_TUPLE:Q}
+
+e${X86_EMULATION}.c ${LDSCRIPTS_${X86_EMULATION}}: \
+    emulparams/${X86_EMULATION}.sh emultempl/elf32.em \
+    scripttempl/elf.sc genscripts.sh stringify.sed
+	sh ${SRCDIR}/ld/genscripts.sh \
+		${SRCDIR:Q}/ld \
+		${_i386_path:Q} \
+		"" \
+		"" \
+		${HOST} \
+		${TARGET_TUPLE:Q} \
+		${TARGET_TUPLE:Q} \
+		${X86_EMULATION:Q} \
+		"" \
+		no \
+		yes \
+		${X86_EMULATION:Q} \
+		${TARGET_TUPLE:Q}
+
+e${L1OM_EMULATION}.c ${LDSCRIPTS_${L1OM_EMULATION}}: \
+    emulparams/${L1OM_EMULATION}.sh emultempl/elf32.em \
+    scripttempl/elf.sc genscripts.sh stringify.sed
+	sh ${SRCDIR}/ld/genscripts.sh \
+		${SRCDIR:Q}/ld \
+		${_x86_64_path:Q} \
+		"" \
+		"" \
+		${HOST} \
+		${TARGET_TUPLE:Q} \
+		${TARGET_TUPLE:Q} \
+		${L1OM_EMULATION:Q} \
+		"" \
+		no \
+		yes \
+		${L1OM_EMULATION:Q} \
+		${TARGET_TUPLE:Q}
+
+e${K1OM_EMULATION}.c ${LDSCRIPTS_${K1OM_EMULATION}}: \
+    emulparams/${K1OM_EMULATION}.sh emultempl/elf32.em \
+    scripttempl/elf.sc genscripts.sh stringify.sed
+	sh ${SRCDIR}/ld/genscripts.sh \
+		${SRCDIR:Q}/ld \
+		${_x86_64_path:Q} \
+		"" \
+		"" \
+		${HOST} \
+		${TARGET_TUPLE:Q} \
+		${TARGET_TUPLE:Q} \
+		${K1OM_EMULATION:Q} \
+		"" \
+		no \
+		yes \
+		${K1OM_EMULATION:Q} \
+		${TARGET_TUPLE:Q}

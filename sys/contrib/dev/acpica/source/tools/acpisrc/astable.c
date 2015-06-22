@@ -167,11 +167,16 @@ ACPI_STRING_TABLE           LinuxDataTypes[] = {
     {"INT16",                   "s16",              REPLACE_WHOLE_WORD},
     {"INT8",                    "s8",               REPLACE_WHOLE_WORD},
 
+    {"__FUNCTION__",            "__func__",         REPLACE_WHOLE_WORD},
+
     {NULL,                      NULL,               0}
 };
 
 ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
 
+    {"ACPI_ADDRESS16_ATTRIBUTE",            SRC_TYPE_STRUCT},
+    {"ACPI_ADDRESS32_ATTRIBUTE",            SRC_TYPE_STRUCT},
+    {"ACPI_ADDRESS64_ATTRIBUTE",            SRC_TYPE_STRUCT},
     {"ACPI_ADDRESS_RANGE",                  SRC_TYPE_STRUCT},
     {"ACPI_ADR_SPACE_HANDLER",              SRC_TYPE_SIMPLE},
     {"ACPI_ADR_SPACE_SETUP",                SRC_TYPE_SIMPLE},
@@ -314,6 +319,7 @@ ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
     {"ACPI_PACKAGE_INFO",                   SRC_TYPE_STRUCT},
     {"ACPI_PACKAGE_INFO2",                  SRC_TYPE_STRUCT},
     {"ACPI_PACKAGE_INFO3",                  SRC_TYPE_STRUCT},
+    {"ACPI_PACKAGE_INFO4",                  SRC_TYPE_STRUCT},
     {"ACPI_PARSE_DOWNWARDS",                SRC_TYPE_SIMPLE},
     {"ACPI_PARSE_OBJ_ASL",                  SRC_TYPE_STRUCT},
     {"ACPI_PARSE_OBJ_COMMON",               SRC_TYPE_STRUCT},
@@ -515,12 +521,15 @@ ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
     {"ACPI_TABLE_HEST",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_HPET",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_IBFT",                     SRC_TYPE_STRUCT},
+    {"ACPI_TABLE_IORT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_IVRS",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_MADT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_MCFG",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_MCHI",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_MPST",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_MSCT",                     SRC_TYPE_STRUCT},
+    {"ACPI_TABLE_MSDM",                     SRC_TYPE_STRUCT},
+    {"ACPI_TABLE_NFIT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_PCCT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_RSDP",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_RSDT",                     SRC_TYPE_STRUCT},
@@ -532,6 +541,7 @@ ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
     {"ACPI_TABLE_SPCR",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_SPMI",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_SRAT",                     SRC_TYPE_STRUCT},
+    {"ACPI_TABLE_STAO",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_TCPA",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_TPM2",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_UEFI",                     SRC_TYPE_STRUCT},
@@ -539,6 +549,8 @@ ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
     {"ACPI_TABLE_WDAT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_WDDT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_WDRT",                     SRC_TYPE_STRUCT},
+    {"ACPI_TABLE_WPBT",                     SRC_TYPE_STRUCT},
+    {"ACPI_TABLE_XENV",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_XSDT",                     SRC_TYPE_STRUCT},
 
     {"ACPI_ASF_ADDRESS",                    SRC_TYPE_STRUCT},
@@ -562,6 +574,10 @@ ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
     {"ACPI_DMAR_RHSA",                      SRC_TYPE_STRUCT},
     {"ACPI_DMAR_HARDWARE_UNIT",             SRC_TYPE_STRUCT},
     {"ACPI_DMAR_RESERVED_MEMORY",           SRC_TYPE_STRUCT},
+    {"ACPI_DRTM_DPS_ID",                    SRC_TYPE_STRUCT},
+    {"ACPI_DRTM_RESOURCE",                  SRC_TYPE_STRUCT},
+    {"ACPI_DRTM_RESOURCE_LIST",             SRC_TYPE_STRUCT},
+    {"ACPI_DRTM_VTABLE_LIST",               SRC_TYPE_STRUCT},
     {"ACPI_EINJ_ENTRY",                     SRC_TYPE_STRUCT},
     {"ACPI_EINJ_TRIGGER",                   SRC_TYPE_STRUCT},
     {"ACPI_ERST_ENTRY",                     SRC_TYPE_STRUCT},
@@ -591,6 +607,13 @@ ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
     {"ACPI_IBFT_INITIATOR",                 SRC_TYPE_STRUCT},
     {"ACPI_IBFT_NIC",                       SRC_TYPE_STRUCT},
     {"ACPI_IBFT_TARGET",                    SRC_TYPE_STRUCT},
+    {"ACPI_IORT_ID_MAPPING",                SRC_TYPE_STRUCT},
+    {"ACPI_IORT_ITS_GROUP",                 SRC_TYPE_STRUCT},
+    {"ACPI_IORT_MEMORY_ACCESS",             SRC_TYPE_STRUCT},
+    {"ACPI_IORT_NAMED_COMPONENT",           SRC_TYPE_STRUCT},
+    {"ACPI_IORT_NODE",                      SRC_TYPE_STRUCT},
+    {"ACPI_IORT_ROOT_COMPLEX",              SRC_TYPE_STRUCT},
+    {"ACPI_IORT_SMMU",                      SRC_TYPE_STRUCT},
     {"ACPI_IVRS_HEADER",                    SRC_TYPE_STRUCT},
     {"ACPI_IVRS_HARDWARE",                  SRC_TYPE_STRUCT},
     {"ACPI_IVRS_DE_HEADER",                 SRC_TYPE_STRUCT},
@@ -624,6 +647,14 @@ ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
     {"ACPI_MPST_POWER_STATE",               SRC_TYPE_STRUCT},
     {"ACPI_MCFG_ALLOCATION",                SRC_TYPE_STRUCT},
     {"ACPI_MSCT_PROXIMITY",                 SRC_TYPE_STRUCT},
+    {"ACPI_NFIT_HEADER",                    SRC_TYPE_STRUCT},
+    {"ACPI_NFIT_SYSTEM_ADDRESS",            SRC_TYPE_STRUCT},
+    {"ACPI_NFIT_MEMORY_MAP",                SRC_TYPE_STRUCT},
+    {"ACPI_NFIT_INTERLEAVE",                SRC_TYPE_STRUCT},
+    {"ACPI_NFIT_SMBIOS",                    SRC_TYPE_STRUCT},
+    {"ACPI_NFIT_CONTROL_REGION",            SRC_TYPE_STRUCT},
+    {"ACPI_NFIT_DATA_REGION",               SRC_TYPE_STRUCT},
+    {"ACPI_NFIT_FLUSH_ADDRESS",             SRC_TYPE_STRUCT},
     {"ACPI_PCCT_HW_REDUCED",                SRC_TYPE_STRUCT},
     {"ACPI_PCCT_SHARED_MEMORY",             SRC_TYPE_STRUCT},
     {"ACPI_PCCT_SUBSPACE",                  SRC_TYPE_STRUCT},
@@ -631,9 +662,6 @@ ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
     {"ACPI_RSDP_EXTENSION",                 SRC_TYPE_STRUCT},
     {"ACPI_S3PT_RESUME",                    SRC_TYPE_STRUCT},
     {"ACPI_S3PT_SUSPEND",                   SRC_TYPE_STRUCT},
-    {"ACPI_SLIC_HEADER",                    SRC_TYPE_STRUCT},
-    {"ACPI_SLIC_KEY",                       SRC_TYPE_STRUCT},
-    {"ACPI_SLIC_MARKER",                    SRC_TYPE_STRUCT},
     {"ACPI_SRAT_CPU_AFFINITY",              SRC_TYPE_STRUCT},
     {"ACPI_SRAT_HEADER",                    SRC_TYPE_STRUCT},
     {"ACPI_SRAT_MEM_AFFINITY",              SRC_TYPE_STRUCT},
@@ -688,14 +716,6 @@ ACPI_IDENTIFIER_TABLE       LinuxAddStruct[] = {
     {"acpi_parse_object"},
     {"acpi_table_desc"},
     {"acpi_walk_state"},
-    {NULL}
-};
-
-
-ACPI_IDENTIFIER_TABLE       LinuxEliminateMacros[] = {
-
-    {"ACPI_GET_ADDRESS"},
-    {"ACPI_VALID_ADDRESS"},
     {NULL}
 };
 
@@ -781,7 +801,7 @@ ACPI_CONVERSION_TABLE       LinuxConversionTable = {
     LinuxDataTypes,
     LinuxEliminateLines_C,
     NULL,
-    LinuxEliminateMacros,
+    NULL,
     AcpiIdentifiers,
     NULL,
     (CVT_COUNT_TABS | CVT_COUNT_NON_ANSI_COMMENTS | CVT_COUNT_LINES |

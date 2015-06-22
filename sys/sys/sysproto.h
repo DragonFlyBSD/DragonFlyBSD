@@ -2278,6 +2278,29 @@ struct	chflagsat_args {
 	int	flags;	char flags_[PAD_(int)];
 	int	atflags;	char atflags_[PAD_(int)];
 };
+struct	pipe2_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int *	fildes;	char fildes_[PAD_(int *)];
+	int	flags;	char flags_[PAD_(int)];
+};
+struct	utimensat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	fd;	char fd_[PAD_(int)];
+	const char *	path;	char path_[PAD_(const char *)];
+	const struct timespec *	ts;	char ts_[PAD_(const struct timespec *)];
+	int	flags;	char flags_[PAD_(int)];
+};
+struct	futimens_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	fd;	char fd_[PAD_(int)];
+	const struct timespec *	ts;	char ts_[PAD_(const struct timespec *)];
+};
 
 #ifdef COMPAT_43
 
@@ -2885,6 +2908,9 @@ int	sys_vmm_guest_ctl (struct vmm_guest_ctl_args *);
 int	sys_vmm_guest_sync_addr (struct vmm_guest_sync_addr_args *);
 int	sys_procctl (struct procctl_args *);
 int	sys_chflagsat (struct chflagsat_args *);
+int	sys_pipe2 (struct pipe2_args *);
+int	sys_utimensat (struct utimensat_args *);
+int	sys_futimens (struct futimens_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

@@ -462,9 +462,9 @@ boolean	init(int, char**);
 void	clean_up(const char *);
 void	start_window(void);
 void	stop_window(void);
-void	byebye(void);
-void	onintr(void);
-void	error_save(void);
+void	byebye(int);
+void	onintr(int);
+void	error_save(int);
 
 /* inventory.c */
 void	inventory(const object *, unsigned short);

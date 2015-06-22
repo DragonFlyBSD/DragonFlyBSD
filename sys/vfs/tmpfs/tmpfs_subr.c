@@ -39,7 +39,6 @@
 #include <sys/namei.h>
 #include <sys/priv.h>
 #include <sys/proc.h>
-#include <sys/spinlock2.h>
 #include <sys/stat.h>
 #include <sys/systm.h>
 #include <sys/vnode.h>
@@ -199,6 +198,8 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
  * allocated, it cannot be deleted during the whole life of the file
  * system.  Instead, they are moved to the available list and remain there
  * until reused.
+ *
+ * A caller must have TMPFS_NODE_LOCK(node) and this function unlocks it.
  */
 void
 tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
@@ -215,7 +216,7 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 	LIST_REMOVE(node, tn_entries);
 	tmp->tm_nodes_inuse--;
 	TMPFS_UNLOCK(tmp);
-	TMPFS_NODE_UNLOCK(node);
+	TMPFS_NODE_UNLOCK(node);  /* Caller has this lock */
 
 	switch (node->tn_type) {
 	case VNON:
@@ -583,7 +584,7 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
 /* --------------------------------------------------------------------- */
 
 /*
- * Attaches the directory entry de to the directory represented by vp.
+ * Attaches the directory entry de to the directory represented by dnode.
  * Note that this does not change the link count of the node pointed by
  * the directory entry, as this is done by tmpfs_alloc_dirent.
  */
@@ -612,7 +613,7 @@ tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 /* --------------------------------------------------------------------- */
 
 /*
- * Detaches the directory entry de from the directory represented by vp.
+ * Detaches the directory entry de from the directory represented by dnode.
  * Note that this does not change the link count of the node pointed by
  * the directory entry, as this is done by tmpfs_free_dirent.
  */
@@ -1353,7 +1354,9 @@ tmpfs_fetch_ino(struct tmpfs_mount *tmp)
 {
 	ino_t ret;
 
+	TMPFS_LOCK(tmp);
 	ret = tmp->tm_ino++;
+	TMPFS_UNLOCK(tmp);
 
 	return (ret);
 }

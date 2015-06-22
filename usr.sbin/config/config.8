@@ -28,7 +28,7 @@
 .\"     @(#)config.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/usr.sbin/config/config.8,v 1.21.2.7 2003/04/23 07:32:39 brueffer Exp $
 .\"
-.Dd March 28, 2010
+.Dd June 20, 2015
 .Dt CONFIG 8
 .Os
 .Sh NAME
@@ -187,21 +187,9 @@ their debug information by
 list of common files system is built from
 .It Pa /sys/config/ Ns Ar SYSTEM_NAME
 default location for kernel configuration file
-.It Pa /sys/config/GENERIC
-default
-.Sy i386
-kernel configuration file
-.It Pa /sys/config/LINT
+.It Pa /sys/config/LINT64
 kernel configuration file for checking all the sources,
 includes description of kernel configuration options
-.It Pa /sys/config/SOEKRIS
-kernel configuration file for the
-.Tn Soekris Engineering net5501
-board
-.It Pa /sys/config/VKERNEL
-default 32 bit
-.Xr vkernel 7
-kernel configuration file
 .It Pa /sys/config/VKERNEL64
 default 64 bit
 .Xr vkernel 7

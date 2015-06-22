@@ -13,11 +13,7 @@
 # 2. Redistributions in binary form must reproduce the above copyright
 #    notice, this list of conditions and the following disclaimer in the
 #    documentation and/or other materials provided with the distribution.
-# 3. All advertising materials mentioning features or use of this software
-#    must display the following acknowledgement:
-#	This product includes software developed by the University of
-#	California, Berkeley and its contributors.
-# 4. Neither the name of the University nor the names of its contributors
+# 3. Neither the name of the University nor the names of its contributors
 #    may be used to endorse or promote products derived from this software
 #    without specific prior written permission.
 #
@@ -34,7 +30,7 @@
 # SUCH DAMAGE.
 #
 #	@(#)nodetypes	8.2 (Berkeley) 5/4/95
-# $FreeBSD: head/bin/sh/nodetypes 246288 2013-02-03 15:54:57Z jilles $
+# $FreeBSD$
 
 # This file describes the nodes used in parse trees.  Unindented lines
 # contain a node type followed by a structure tag.  Subsequent indented
@@ -122,16 +118,16 @@ NFROMTO nfile			# fd<> fname
 NAPPEND nfile			# fd>> fname
 NCLOBBER nfile			# fd>| fname
 	type	  int
-	next	  nodeptr		# next redirection in list
 	fd	  int			# file descriptor being redirected
+	next	  nodeptr		# next redirection in list
 	fname	  nodeptr		# file name, in a NARG node
 	expfname  temp	char *expfname	# actual file name
 
 NTOFD ndup			# fd<&dupfd
 NFROMFD ndup			# fd>&dupfd
 	type	  int
-	next	  nodeptr		# next redirection in list
 	fd	  int			# file descriptor being redirected
+	next	  nodeptr		# next redirection in list
 	dupfd	  int			# file descriptor to duplicate
 	vname	  nodeptr		# file name if fd>&$var
 
@@ -139,10 +135,10 @@ NFROMFD ndup			# fd>&dupfd
 NHERE nhere			# fd<<\!
 NXHERE nhere			# fd<<!
 	type	  int
-	next	  nodeptr		# next redirection in list
 	fd	  int			# file descriptor being redirected
+	next	  nodeptr		# next redirection in list
 	doc	  nodeptr		# input to command (NARG node)
-	expdoc    temp	char *expdoc	# actual document (for NXHERE)
+	expdoc    temp	const char *expdoc	# actual document (for NXHERE)
 
 NNOT nnot			# ! command  (actually pipeline)
 	type	int

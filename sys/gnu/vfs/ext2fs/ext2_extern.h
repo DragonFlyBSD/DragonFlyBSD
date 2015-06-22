@@ -50,6 +50,7 @@ struct mount;
 struct vfsconf;
 struct vnode;
 struct indir;
+struct statfs;
 
 int	ext2_alloc (struct inode *,
 	    daddr_t, daddr_t, int, struct ucred *, daddr_t *);
@@ -77,19 +78,19 @@ int	ext2_dirrewrite (struct inode *,
 		struct inode *, struct componentname *);
 int	ext2_dirempty (struct inode *, ino_t, struct ucred *);
 int	ext2_checkpath (struct inode *, struct inode *, struct ucred *);
-struct  ext2_group_desc * get_group_desc (struct mount * ,
-		unsigned int , struct buf ** );
+struct  ext2_group_desc *get_group_desc (struct mount *,
+		unsigned int, struct buf **);
 int	ext2_group_sparse (int group);
 void	ext2_discard_prealloc (struct inode *);
 int	ext2_inactive (struct vop_inactive_args *);
-int	ext2_new_block (struct mount * mp, unsigned long goal,
-			    u_int32_t * prealloc_count,
-			    u_int32_t * prealloc_block);
-ino_t	ext2_new_inode (const struct inode * dir, int mode);
+int	ext2_new_block (struct mount *mp, unsigned long goal,
+			    u_int32_t *prealloc_count,
+			    u_int32_t *prealloc_block);
+ino_t	ext2_new_inode (const struct inode *dir, int mode);
 unsigned long ext2_count_free (struct buf *map, unsigned int numchars);
-void	ext2_free_blocks (struct mount * mp, unsigned long block,
+void	ext2_free_blocks (struct mount *mp, unsigned long block,
 			      unsigned long count);
-void	ext2_free_inode (struct inode * inode);
+void	ext2_free_inode (struct inode *inode);
 void	ext2_ei2di (struct ext2_inode *ei, struct ext2_dinode *di);
 void	ext2_di2ei (struct ext2_dinode *di, struct ext2_inode *ei);
 void	mark_buffer_dirty (struct buf *bh);
@@ -110,6 +111,9 @@ int	ext2_uninit(struct vfsconf *);
 void	ext2_ihashinit(void);
 struct vnode *ext2_ihashlookup(cdev_t dev, ino_t inum);
 int	ext2_ihashcheck(cdev_t dev, ino_t inum);
+
+int	ext2_check_descriptors(struct ext2_sb_info *sb);
+int	ext2_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred);
 
 /*
  * This macro allows the ufs code to distinguish between an EXT2 and a

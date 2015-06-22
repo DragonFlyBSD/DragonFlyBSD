@@ -5,7 +5,7 @@ SUBDIR=	sendmail
 
 # Files that should be installed read-only (444)
 #
-BINUPDATE= apmd.conf devd.conf fbtab gettytab network.subr \
+BINUPDATE= devd.conf fbtab gettytab network.subr \
 	pf.os \
 	protocols \
 	rc rc.firewall6 \
@@ -84,14 +84,15 @@ remove-obsolete-files:
 		/usr/bin/false; \
 	fi;
 	@echo "===> Remove now obsolete files"
-	@for item in ${TO_REMOVE:M*.info.gz}; do \
-		if [ -e ${DESTDIR}$${item} ]; then \
-			install-info --delete ${DESTDIR}$${item} \
-			    /usr/share/info/dir; \
-		fi; \
-	done;
 	@for item in ${TO_REMOVE}; do \
 		if [ -e ${DESTDIR}$${item} -o -L ${DESTDIR}$${item} ]; then \
+			echo "${DESTDIR}$${item}"; \
+			chflags -Rf noschg "${DESTDIR}$${item}"; \
+			rm -rf "${DESTDIR}$${item}"; \
+		fi; \
+	done;
+	@for item in ${TO_REMOVE:M*/man/man[1-9]/*:C@/man/man([1-9])/@/man/cat\1/@g}; do \
+		if [ -e ${DESTDIR}$${item} ]; then \
 			echo "${DESTDIR}$${item}"; \
 			chflags -Rf noschg "${DESTDIR}$${item}"; \
 			rm -rf "${DESTDIR}$${item}"; \
@@ -355,16 +356,6 @@ distrib-dirs:
 	mtree -deU -f ${.CURDIR}/mtree/BSD.include.dist \
 		-p ${DESTDIR}/usr/include
 	cd ${DESTDIR}/; test -e sys || (rm -f sys;  ${LN} -s usr/src/sys sys)
-	cd ${DESTDIR}/usr/share/man/en.ISO8859-1; ${LN} -sf ../man* .
-	cd ${DESTDIR}/usr/share/man; \
-	set - `grep "^[a-zA-Z]" ${.CURDIR}/man.alias`; \
-	while [ $$# -gt 0 ] ; \
-	do \
-		rm -rf "$$1"; \
-		${LN} -s "$$2" "$$1"; \
-		shift; shift; \
-	done
-	cd ${DESTDIR}/usr/share/openssl/man/en.ISO8859-1; ${LN} -sf ../man* .
 	cd ${DESTDIR}/usr/share/nls; \
 	set - `grep "^[a-zA-Z]" ${.CURDIR}/nls.alias`; \
 	while [ $$# -gt 0 ] ; \

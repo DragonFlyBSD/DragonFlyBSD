@@ -73,12 +73,14 @@ dmsg_peer_type_to_str(uint8_t type)
 	switch(type) {
 	case DMSG_PEER_NONE:
 		return("NONE");
-	case DMSG_PEER_CLUSTER:
-		return("CLUSTER");
+	case DMSG_PEER_ROUTER:
+		return("ROUTER");
 	case DMSG_PEER_BLOCK:
 		return("BLOCK");
 	case DMSG_PEER_HAMMER2:
 		return("HAMMER2");
+	case DMSG_PEER_CLIENT:
+		return("CLIENT");
 	default:
 		return("?PEERTYPE?");
 	}

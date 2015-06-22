@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 François Tigeot
+ * Copyright (c) 2013,2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 #ifndef _LINUX_EXPORT_H_
 #define _LINUX_EXPORT_H_
 
-#define EXPORT_SYMBOL(x)
+#define EXPORT_SYMBOL(name)
+#define EXPORT_SYMBOL_GPL(name)
 
 #endif	/* _LINUX_EXPORT_H_ */

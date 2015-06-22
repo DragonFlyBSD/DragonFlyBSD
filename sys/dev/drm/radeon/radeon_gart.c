@@ -211,7 +211,6 @@ void radeon_gart_table_vram_free(struct radeon_device *rdev)
 	if (rdev->gart.robj == NULL) {
 		return;
 	}
-	radeon_gart_table_vram_unpin(rdev);
 	radeon_bo_unref(&rdev->gart.robj);
 }
 
@@ -237,7 +236,7 @@ void radeon_gart_unbind(struct radeon_device *rdev, unsigned offset,
 	u64 page_base;
 
 	if (!rdev->gart.ready) {
-		DRM_ERROR("trying to unbind memory from uninitialized GART !\n");
+		WARN(1, "trying to unbind memory from uninitialized GART !\n");
 		return;
 	}
 	t = offset / RADEON_GPU_PAGE_SIZE;
@@ -255,7 +254,7 @@ void radeon_gart_unbind(struct radeon_device *rdev, unsigned offset,
 			}
 		}
 	}
-	cpu_mfence();
+	mb();
 	radeon_gart_tlb_flush(rdev);
 }
 
@@ -281,7 +280,7 @@ int radeon_gart_bind(struct radeon_device *rdev, unsigned offset,
 	int i, j;
 
 	if (!rdev->gart.ready) {
-		DRM_ERROR("trying to bind memory to uninitialized GART !\n");
+		WARN(1, "trying to bind memory to uninitialized GART !\n");
 		return -EINVAL;
 	}
 	t = offset / RADEON_GPU_PAGE_SIZE;
@@ -298,7 +297,7 @@ int radeon_gart_bind(struct radeon_device *rdev, unsigned offset,
 			}
 		}
 	}
-	cpu_mfence();
+	mb();
 	radeon_gart_tlb_flush(rdev);
 	return 0;
 }
@@ -326,7 +325,7 @@ void radeon_gart_restore(struct radeon_device *rdev)
 			page_base += RADEON_GPU_PAGE_SIZE;
 		}
 	}
-	cpu_mfence();
+	mb();
 	radeon_gart_tlb_flush(rdev);
 }
 
@@ -472,6 +471,7 @@ int radeon_vm_manager_init(struct radeon_device *rdev)
 		size *= 2;
 		r = radeon_sa_bo_manager_init(rdev, &rdev->vm_manager.sa_manager,
 					      RADEON_GPU_PAGE_ALIGN(size),
+					      RADEON_VM_PTB_ALIGN_SIZE,
 					      RADEON_GEM_DOMAIN_VRAM);
 		if (r) {
 			dev_err(rdev->dev, "failed to allocate vm bo (%dKB)\n",
@@ -534,7 +534,7 @@ static void radeon_vm_free_pt(struct radeon_device *rdev,
 	for (i = 0; i < radeon_vm_num_pdes(rdev); i++)
 		radeon_sa_bo_free(rdev, &vm->page_tables[i], vm->fence);
 
-	drm_free(vm->page_tables, M_DRM);
+	kfree(vm->page_tables);
 }
 
 /**
@@ -625,10 +625,10 @@ int radeon_vm_alloc_pt(struct radeon_device *rdev, struct radeon_vm *vm)
 	}
 
 retry:
-	pd_size = RADEON_GPU_PAGE_ALIGN(radeon_vm_directory_size(rdev));
+	pd_size = radeon_vm_directory_size(rdev);
 	r = radeon_sa_bo_new(rdev, &rdev->vm_manager.sa_manager,
 			     &vm->page_directory, pd_size,
-			     RADEON_GPU_PAGE_SIZE, false);
+			     RADEON_VM_PTB_ALIGN_SIZE, false);
 	if (r == -ENOMEM) {
 		r = radeon_vm_evict(rdev, vm);
 		if (r)
@@ -646,7 +646,7 @@ retry:
 	memset(pd_addr, 0, pd_size);
 
 	pts_size = radeon_vm_num_pdes(rdev) * sizeof(struct radeon_sa_bo *);
-	vm->page_tables = kmalloc(pts_size, M_DRM, M_ZERO | M_WAITOK);
+	vm->page_tables = kzalloc(pts_size, GFP_KERNEL);
 
 	if (vm->page_tables == NULL) {
 		DRM_ERROR("Cannot allocate memory for page table array\n");
@@ -723,7 +723,7 @@ struct radeon_fence *radeon_vm_grab_id(struct radeon_device *rdev,
 	}
 
 	/* should never happen */
-	panic("%s: failed to allocate next VMID", __func__);
+	BUG();
 	return NULL;
 }
 
@@ -794,8 +794,7 @@ struct radeon_bo_va *radeon_vm_bo_add(struct radeon_device *rdev,
 {
 	struct radeon_bo_va *bo_va;
 
-	bo_va = kmalloc(sizeof(struct radeon_bo_va), M_DRM,
-			M_ZERO | M_WAITOK);
+	bo_va = kzalloc(sizeof(struct radeon_bo_va), GFP_KERNEL);
 	if (bo_va == NULL) {
 		return NULL;
 	}
@@ -1203,17 +1202,19 @@ int radeon_vm_bo_update_pte(struct radeon_device *rdev,
 int radeon_vm_bo_rmv(struct radeon_device *rdev,
 		     struct radeon_bo_va *bo_va)
 {
-	int r;
+	int r = 0;
 
 	lockmgr(&rdev->vm_manager.lock, LK_EXCLUSIVE);
 	lockmgr(&bo_va->vm->mutex, LK_EXCLUSIVE);
-	r = radeon_vm_bo_update_pte(rdev, bo_va->vm, bo_va->bo, NULL);
+	if (bo_va->soffset) {
+		r = radeon_vm_bo_update_pte(rdev, bo_va->vm, bo_va->bo, NULL);
+	}
 	lockmgr(&rdev->vm_manager.lock, LK_RELEASE);
 	list_del(&bo_va->vm_list);
 	lockmgr(&bo_va->vm->mutex, LK_RELEASE);
 	list_del(&bo_va->bo_list);
 
-	drm_free(bo_va, M_DRM);
+	kfree(bo_va);
 	return r;
 }
 
@@ -1281,7 +1282,7 @@ void radeon_vm_fini(struct radeon_device *rdev, struct radeon_vm *vm)
 		if (!r) {
 			list_del_init(&bo_va->bo_list);
 			radeon_bo_unreserve(bo_va->bo);
-			drm_free(bo_va, M_DRM);
+			kfree(bo_va);
 		}
 	}
 	radeon_fence_unref(&vm->fence);

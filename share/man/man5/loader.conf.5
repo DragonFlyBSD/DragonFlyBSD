@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.conf.5,v 1.18 2002/08/27 01:02:56 trhodes Exp $
-.Dd November 29, 2014
+.Dd March 28, 2015
 .Dt LOADER.CONF 5
 .Os
 .Sh NAME
@@ -219,38 +219,40 @@ Note that in comconsole mode the kernel will pick up the baud rate
 from the boot loader, so no kernel recompile is needed.
 .It Va kernel
 .Pq Dq kernel .
+.It Va loader_plain
+.Pq Dq NO
+Unlike in the past, the loader defaults to displaying Fred, the official
+.Dx
+mascot, in color when the boot menu appears, unless
+.Pa console
+is set to
+.Dq comconsole
+in
+.Pa loader.conf
+or in the environment. If set to
+.Dq YES ,
+Fred will always be displayed in monochrome.
+.It Va fred_is_red
+.Pq Dq NO
+Under color mode, Fred is depicted as a blue dragonfly with cyan wings
+by default.  If set to
+.Dq YES ,
+Fred will be shown as a red dragonfly with red wings instead.
 .It Va fred_disable
 .Pq Dq NO
-Shows a monochrome version of Fred, the official
-.Dx
-mascot, when the
-boot menu appears.
-To make his life a bit more colorful, consider setting
-.Pa loader_color
-to
-.Dq YES .
+Fred is displayed with the menu by default.  If set to
+.Dq YES ,
+Fred will not be shown.  The area will simply be blank.
 .It Va fred_on_left
-.Pq Dq NO
-Shows Fred on the left side of the menu rather than the right side.
-.It Va fred_separated
-.Pq Dq NO
-Draws a line between Fred and the menu block.
-.It Va loader_color
 .Pq Dq NO
 If set to
 .Dq YES ,
-you'll meet Fred, the official
-.Dx
-mascot, in technicolor when the
-boot menu appears (remember to set
-.Pa fred_disable
-to
-.Dq NO
-for this to work.)
-.It Va fred_is blue
+Fred will be displayed on the left side of the menu rather than the right side.
+.It Va fred_separated
 .Pq Dq NO
-When a color loader is requested, Fred is depicted as a red dragonfly
-with red wings.  This setting causes Fred to be shown as a blue dragonfly.
+If set to
+.Dq YES ,
+a line will be drawn between Fred and the menu block.
 .It Va splash_bmp_load
 .Pq Dq NO
 If set to

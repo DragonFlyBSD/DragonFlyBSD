@@ -1,19 +1,19 @@
-BMAKE 2013-10-01
+BMAKE 2014-11-11
 ================
 
 Original source can be downloaded from:
 http://www.crufty.net/ftp/pub/sjg
 
-file = bmake-20131001.tar.gz
-date = 21 November 2013
-size = 506072
-sha1 = 436733e4ec8751f527fe5bd82088ba3d81ce9ce5
+file = bmake-20141111.tar.gz
+date = 11 November 2014
+size = 524560
+sha1 = a6f670210f9ccde09a0e93a29a766f4726ddfeed
 
 The file README.DELETED contains a list of deleted files and directories.
 
 The following files have been patched:
 bmake.1
+job.c
 main.c
 meta.c
-parse.c
 var.c

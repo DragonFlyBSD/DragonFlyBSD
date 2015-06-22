@@ -152,11 +152,12 @@ struct swswapoffinfo {
  */
 
 int swap_pager_full;		/* swap space exhaustion (task killing) */
+int swap_fail_ticks;		/* when we became exhausted */
+int swap_pager_almost_full;	/* swap space exhaustion (w/ hysteresis)*/
 int vm_swap_cache_use;
 int vm_swap_anon_use;
 static int vm_report_swap_allocs;
 
-static int swap_pager_almost_full; /* swap space exhaustion (w/ hysteresis)*/
 static int nsw_rcount;		/* free read buffers			*/
 static int nsw_wcount_sync;	/* limit write buffers / synchronous	*/
 static int nsw_wcount_async;	/* limit write buffers / asynchronous	*/
@@ -305,6 +306,7 @@ swp_sizecheck(void)
 		if (swap_pager_almost_full == 0) {
 			kprintf("swap_pager: out of swap space\n");
 			swap_pager_almost_full = 1;
+			swap_fail_ticks = ticks;
 		}
 	} else {
 		swap_pager_full = 0;
@@ -495,6 +497,8 @@ swp_pager_getswapspace(vm_object_t object, int npages)
 			kprintf("swap_pager_getswapspace: failed alloc=%d\n",
 				npages);
 			swap_pager_full = 2;
+			if (swap_pager_almost_full == 0)
+				swap_fail_ticks = ticks;
 			swap_pager_almost_full = 1;
 		}
 	} else {
@@ -1673,10 +1677,21 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 
 /*
  * No requirements.
+ *
+ * Recalculate the low and high-water marks.
  */
 void
 swap_pager_newswap(void)
 {
+	if (vm_swap_max) {
+		nswap_lowat = vm_swap_max * 4 / 100;	/* 4% left */
+		nswap_hiwat = vm_swap_max * 6 / 100;	/* 6% left */
+		kprintf("swap low/high-water marks set to %d/%d\n",
+			nswap_lowat, nswap_hiwat);
+	} else {
+		nswap_lowat = 128;
+		nswap_hiwat = 512;
+	}
 	swp_sizecheck();
 }
 

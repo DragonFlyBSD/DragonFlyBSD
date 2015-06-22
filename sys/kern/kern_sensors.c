@@ -30,21 +30,20 @@
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 #include <sys/lock.h>
+#include <sys/cpu_topology.h>
 
 #include <sys/sysctl.h>
 #include <sys/sensors.h>
 
 #include <sys/mplock2.h>
 
-static int		sensor_task_lock_inited = 0;
-static struct lock	sensor_task_lock;
-static struct spinlock	sensor_dev_lock = SPINLOCK_INITIALIZER(sensor_dev_lock, "sensor_dev_lock");
+static int		sensordev_idmax;
+static TAILQ_HEAD(sensordev_list, ksensordev) sensordev_list =
+    TAILQ_HEAD_INITIALIZER(sensordev_list);
 
-int			sensordev_count = 0;
-SLIST_HEAD(, ksensordev) sensordev_list = SLIST_HEAD_INITIALIZER(sensordev_list);
-
-struct ksensordev	*sensordev_get(int);
-struct ksensor		*sensor_find(struct ksensordev *, enum sensor_type, int);
+static struct ksensordev *sensordev_get(int);
+static struct ksensor	*sensor_find(struct ksensordev *, enum sensor_type,
+			    int);
 
 struct sensor_task {
 	void				*arg;
@@ -52,45 +51,63 @@ struct sensor_task {
 
 	int				period;
 	time_t				nextrun;	/* time_uptime */
-	volatile int			running;
+	int				running;
+	int				cpuid;
 	TAILQ_ENTRY(sensor_task)	entry;
 };
+TAILQ_HEAD(sensor_tasklist, sensor_task);
 
-void	sensor_task_thread(void *);
-void	sensor_task_schedule(struct sensor_task *);
+struct sensor_taskthr {
+	struct sensor_tasklist		list;
+	struct lock			lock;
+};
 
-TAILQ_HEAD(, sensor_task) tasklist = TAILQ_HEAD_INITIALIZER(tasklist);
+static void		sensor_task_thread(void *);
+static void		sensor_task_schedule(struct sensor_taskthr *,
+			    struct sensor_task *);
 
-#ifndef NOSYSCTL8HACK
-void	sensor_sysctl8magic_install(struct ksensordev *);
-void	sensor_sysctl8magic_deinstall(struct ksensordev *);
-#endif
+static void		sensordev_sysctl_install(struct ksensordev *);
+static void		sensordev_sysctl_deinstall(struct ksensordev *);
+static void		sensor_sysctl_install(struct ksensordev *,
+			    struct ksensor *);
+static void		sensor_sysctl_deinstall(struct ksensordev *,
+			    struct ksensor *);
+
+static struct sensor_taskthr sensor_task_threads[MAXCPU];
+static int		sensor_task_default_cpu;
 
 void
 sensordev_install(struct ksensordev *sensdev)
 {
-	struct ksensordev *v, *nv;
+	struct ksensordev *v, *after = NULL;
+	int num = 0;
 
-	/* mtx_lock(&Giant); */
-	spin_lock(&sensor_dev_lock);
-	if (sensordev_count == 0) {
-		sensdev->num = 0;
-		SLIST_INSERT_HEAD(&sensordev_list, sensdev, list);
-	} else {
-		for (v = SLIST_FIRST(&sensordev_list);
-		    (nv = SLIST_NEXT(v, list)) != NULL; v = nv)
-			if (nv->num - v->num > 1)
-				break;
-		sensdev->num = v->num + 1;
-		SLIST_INSERT_AFTER(v, sensdev, list);
+	SYSCTL_XLOCK();
+
+	TAILQ_FOREACH(v, &sensordev_list, list) {
+		if (v->num == num) {
+			++num;
+			after = v;
+		} else if (v->num > num) {
+			break;
+		}
 	}
-	sensordev_count++;
-	/* mtx_unlock(&Giant); */
-	spin_unlock(&sensor_dev_lock);
 
-#ifndef NOSYSCTL8HACK
-	sensor_sysctl8magic_install(sensdev);
-#endif
+	sensdev->num = num;
+	if (after == NULL) {
+		KKASSERT(sensdev->num == 0);
+		TAILQ_INSERT_HEAD(&sensordev_list, sensdev, list);
+	} else {
+		TAILQ_INSERT_AFTER(&sensordev_list, after, sensdev, list);
+	}
+
+	/* Save max sensor device id */
+	sensordev_idmax = TAILQ_LAST(&sensordev_list, sensordev_list)->num + 1;
+
+	/* Install sysctl node for this sensor device */
+	sensordev_sysctl_install(sensdev);
+
+	SYSCTL_XUNLOCK();
 }
 
 void
@@ -100,8 +117,8 @@ sensor_attach(struct ksensordev *sensdev, struct ksensor *sens)
 	struct ksensors_head *sh;
 	int i;
 
-	/* mtx_lock(&Giant); */
-	spin_lock(&sensor_dev_lock);
+	SYSCTL_XLOCK();
+
 	sh = &sensdev->sensors_list;
 	if (sensdev->sensors_count == 0) {
 		for (i = 0; i < SENSOR_MAX_TYPES; i++)
@@ -121,29 +138,43 @@ sensor_attach(struct ksensordev *sensdev, struct ksensor *sens)
 			sens->numt = 0;
 		SLIST_INSERT_AFTER(v, sens, list);
 	}
-	/* we only increment maxnumt[] if the sensor was added
+	/*
+	 * We only increment maxnumt[] if the sensor was added
 	 * to the last position of sensors of this type
 	 */
 	if (sensdev->maxnumt[sens->type] == sens->numt)
 		sensdev->maxnumt[sens->type]++;
 	sensdev->sensors_count++;
-	spin_unlock(&sensor_dev_lock);
-	/* mtx_unlock(&Giant); */
+
+	/* Install sysctl node for this sensor */
+	sensor_sysctl_install(sensdev, sens);
+
+	SYSCTL_XUNLOCK();
 }
 
 void
 sensordev_deinstall(struct ksensordev *sensdev)
 {
-	/* mtx_lock(&Giant); */
-	spin_lock(&sensor_dev_lock);
-	sensordev_count--;
-	SLIST_REMOVE(&sensordev_list, sensdev, ksensordev, list);
-	/* mtx_unlock(&Giant); */
-	spin_unlock(&sensor_dev_lock);
+	struct ksensordev *last;
 
-#ifndef NOSYSCTL8HACK
-	sensor_sysctl8magic_deinstall(sensdev);
-#endif
+	SYSCTL_XLOCK();
+
+	TAILQ_REMOVE(&sensordev_list, sensdev, list);
+
+	/* Adjust max sensor device id */
+	last = TAILQ_LAST(&sensordev_list, sensordev_list);
+	if (last != NULL)
+		sensordev_idmax = last->num + 1;
+	else
+		sensordev_idmax = 0;
+
+	/*
+	 * Deinstall sensor device's sysctl node; this also
+	 * removes all attached sensors' sysctl nodes.
+	 */
+	sensordev_sysctl_deinstall(sensdev);
+
+	SYSCTL_XUNLOCK();
 }
 
 void
@@ -151,116 +182,141 @@ sensor_detach(struct ksensordev *sensdev, struct ksensor *sens)
 {
 	struct ksensors_head *sh;
 
-	/* mtx_lock(&Giant); */
+	SYSCTL_XLOCK();
+
 	sh = &sensdev->sensors_list;
 	sensdev->sensors_count--;
 	SLIST_REMOVE(sh, sens, ksensor, list);
-	/* we only decrement maxnumt[] if this is the tail 
+	/*
+	 * We only decrement maxnumt[] if this is the tail 
 	 * sensor of this type
 	 */
 	if (sens->numt == sensdev->maxnumt[sens->type] - 1)
 		sensdev->maxnumt[sens->type]--;
-	/* mtx_unlock(&Giant); */
+
+	/* Deinstall sensor's sysctl node */
+	sensor_sysctl_deinstall(sensdev, sens);
+
+	SYSCTL_XUNLOCK();
 }
 
-struct ksensordev *
+static struct ksensordev *
 sensordev_get(int num)
 {
 	struct ksensordev *sd;
 
-	spin_lock(&sensor_dev_lock);
-	SLIST_FOREACH(sd, &sensordev_list, list)
-		if (sd->num == num) {
-			spin_unlock(&sensor_dev_lock);
-			return (sd);
-		}
+	SYSCTL_ASSERT_XLOCKED();
 
-	spin_unlock(&sensor_dev_lock);
+	TAILQ_FOREACH(sd, &sensordev_list, list) {
+		if (sd->num == num)
+			return (sd);
+	}
 	return (NULL);
 }
 
-struct ksensor *
+static struct ksensor *
 sensor_find(struct ksensordev *sensdev, enum sensor_type type, int numt)
 {
 	struct ksensor *s;
 	struct ksensors_head *sh;
 
-	spin_lock(&sensor_dev_lock);
+	SYSCTL_ASSERT_XLOCKED();
+
 	sh = &sensdev->sensors_list;
 	SLIST_FOREACH(s, sh, list) {
-		if (s->type == type && s->numt == numt) {
-			spin_unlock(&sensor_dev_lock);
+		if (s->type == type && s->numt == numt)
 			return (s);
-		}
 	}
-
-	spin_unlock(&sensor_dev_lock);
 	return (NULL);
 }
 
-int
+void
 sensor_task_register(void *arg, void (*func)(void *), int period)
 {
-	struct sensor_task	*st;
-	int			 create_thread = 0;
-
-	st = kmalloc(sizeof(struct sensor_task), M_DEVBUF, M_NOWAIT);
-	if (st == NULL)
-		return (1);
-
-	if (atomic_cmpset_int(&sensor_task_lock_inited, 0, 1)) {
-		lockinit(&sensor_task_lock, "ksensor_task", 0, LK_CANRECURSE);
-	}
-
-	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
-	st->arg = arg;
-	st->func = func;
-	st->period = period;
-
-	st->running = 1;
-
-	if (TAILQ_EMPTY(&tasklist))
-		create_thread = 1;
-
-	st->nextrun = 0;
-	TAILQ_INSERT_HEAD(&tasklist, st, entry);
-
-	if (create_thread)
-		if (kthread_create(sensor_task_thread, NULL, NULL,
-		    "sensors") != 0)
-			panic("sensors kthread");
-	
-	wakeup(&tasklist);
-
-	lockmgr(&sensor_task_lock, LK_RELEASE);
-	return (0);
+	sensor_task_register2(arg, func, period, -1);
 }
 
 void
 sensor_task_unregister(void *arg)
 {
+	struct sensor_taskthr	*thr;
 	struct sensor_task	*st;
 
-	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
-	TAILQ_FOREACH(st, &tasklist, entry)
+	thr = &sensor_task_threads[sensor_task_default_cpu];
+	lockmgr(&thr->lock, LK_EXCLUSIVE);
+	TAILQ_FOREACH(st, &thr->list, entry)
 		if (st->arg == arg)
 			st->running = 0;
-	lockmgr(&sensor_task_lock, LK_RELEASE);
+	lockmgr(&thr->lock, LK_RELEASE);
 }
 
 void
-sensor_task_thread(void *arg)
+sensor_task_unregister2(struct sensor_task *st)
 {
+	struct sensor_taskthr *thr;
+
+	KASSERT(st->cpuid >= 0 && st->cpuid < ncpus,
+	    ("invalid task cpuid %d", st->cpuid));
+	thr = &sensor_task_threads[st->cpuid];
+
+	/*
+	 * Hold the lock then zero-out running, so upon returning
+	 * to the caller, the task will no longer run.
+	 */
+	lockmgr(&thr->lock, LK_EXCLUSIVE);
+	st->running = 0;
+	lockmgr(&thr->lock, LK_RELEASE);
+}
+
+struct sensor_task *
+sensor_task_register2(void *arg, void (*func)(void *), int period, int cpu)
+{
+	struct sensor_taskthr	*thr;
+	struct sensor_task	*st;
+
+	if (cpu < 0)
+		cpu = sensor_task_default_cpu;
+	KASSERT(cpu >= 0 && cpu < ncpus, ("invalid cpuid %d", cpu));
+	thr = &sensor_task_threads[cpu];
+
+	st = kmalloc(sizeof(struct sensor_task), M_DEVBUF, M_WAITOK);
+
+	lockmgr(&thr->lock, LK_EXCLUSIVE);
+	st->arg = arg;
+	st->func = func;
+	st->period = period;
+	st->cpuid = cpu;
+
+	st->running = 1;
+
+	st->nextrun = 0;
+	TAILQ_INSERT_HEAD(&thr->list, st, entry);
+
+	wakeup(&thr->list);
+
+	lockmgr(&thr->lock, LK_RELEASE);
+
+	return st;
+}
+
+static void
+sensor_task_thread(void *xthr)
+{
+	struct sensor_taskthr	*thr = xthr;
 	struct sensor_task	*st, *nst;
 	time_t			now;
 
-	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
+	lockmgr(&thr->lock, LK_EXCLUSIVE);
 
-	while (!TAILQ_EMPTY(&tasklist)) {
-		while ((nst = TAILQ_FIRST(&tasklist))->nextrun >
-		    (now = time_uptime))
-			lksleep(&tasklist, &sensor_task_lock, 0, "timeout",
-			       (nst->nextrun - now) * hz);
+	for (;;) {
+		while (TAILQ_EMPTY(&thr->list))
+			lksleep(&thr->list, &thr->lock, 0, "waittask", 0);
+
+		while ((nst = TAILQ_FIRST(&thr->list))->nextrun >
+		    (now = time_uptime)) {
+			lksleep(&thr->list, &thr->lock, 0,
+			    "timeout", (nst->nextrun - now) * hz);
+		}
 
 		while ((st = nst) != NULL) {
 			nst = TAILQ_NEXT(st, entry);
@@ -269,7 +325,7 @@ sensor_task_thread(void *arg)
 				break;
 
 			/* take it out while we work on it */
-			TAILQ_REMOVE(&tasklist, st, entry);
+			TAILQ_REMOVE(&thr->list, st, entry);
 
 			if (!st->running) {
 				kfree(st, M_DEVBUF);
@@ -279,103 +335,121 @@ sensor_task_thread(void *arg)
 			/* run the task */
 			st->func(st->arg);
 			/* stick it back in the tasklist */
-			sensor_task_schedule(st);
+			sensor_task_schedule(thr, st);
 		}
 	}
 
-	lockmgr(&sensor_task_lock, LK_RELEASE);
+	lockmgr(&thr->lock, LK_RELEASE);
 }
 
-void
-sensor_task_schedule(struct sensor_task *st)
+static void
+sensor_task_schedule(struct sensor_taskthr *thr, struct sensor_task *st)
 {
 	struct sensor_task 	*cst;
 
-	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
+	KASSERT(lockstatus(&thr->lock, curthread) == LK_EXCLUSIVE,
+	    ("sensor task lock is not held"));
+
 	st->nextrun = time_uptime + st->period;
 
-	TAILQ_FOREACH(cst, &tasklist, entry) {
+	TAILQ_FOREACH(cst, &thr->list, entry) {
 		if (cst->nextrun > st->nextrun) {
 			TAILQ_INSERT_BEFORE(cst, st, entry);
-			lockmgr(&sensor_task_lock, LK_RELEASE);
 			return;
 		}
 	}
 
 	/* must be an empty list, or at the end of the list */
-	TAILQ_INSERT_TAIL(&tasklist, st, entry);
-	lockmgr(&sensor_task_lock, LK_RELEASE);
+	TAILQ_INSERT_TAIL(&thr->list, st, entry);
 }
 
 /*
  * sysctl glue code
  */
-int sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS);
-int sysctl_handle_sensor(SYSCTL_HANDLER_ARGS);
-int sysctl_sensors_handler(SYSCTL_HANDLER_ARGS);
-
-#ifndef NOSYSCTL8HACK
+static int	sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS);
+static int	sysctl_handle_sensor(SYSCTL_HANDLER_ARGS);
+static int	sysctl_sensors_handler(SYSCTL_HANDLER_ARGS);
 
 SYSCTL_NODE(_hw, OID_AUTO, sensors, CTLFLAG_RD, NULL,
     "Hardware Sensors sysctl internal magic");
 SYSCTL_NODE(_hw, HW_SENSORS, _sensors, CTLFLAG_RD, sysctl_sensors_handler,
     "Hardware Sensors XP MIB interface");
 
-#else /* NOSYSCTL8HACK */
+SYSCTL_INT(_hw_sensors, OID_AUTO, dev_idmax, CTLFLAG_RD,
+    &sensordev_idmax, 0, "Max sensor device id");
 
-SYSCTL_NODE(_hw, HW_SENSORS, sensors, CTLFLAG_RD, sysctl_sensors_handler,
-    "Hardware Sensors");
-int sensors_debug = 1;
-SYSCTL_INT(_hw_sensors, OID_AUTO, debug, CTLFLAG_RD, &sensors_debug, 0, "sensors debug");
-
-#endif /* !NOSYSCTL8HACK */
-
-
-#ifndef NOSYSCTL8HACK
-
-/*
- * XXX:
- * FreeBSD's sysctl(9) .oid_handler functionality is not accustomed
- * for the CTLTYPE_NODE handler to handle the undocumented sysctl
- * magic calls.  As soon as such functionality is developed, 
- * sysctl_sensors_handler() should be converted to handle all such
- * calls, and these sysctl_add_oid(9) calls should be removed 
- * "with a big axe".  This whole sysctl_add_oid(9) business is solely
- * to please sysctl(8).
- */
-
-void
-sensor_sysctl8magic_install(struct ksensordev *sensdev)
+static void
+sensordev_sysctl_install(struct ksensordev *sensdev)
 {
-	struct sysctl_oid_list *ol;	
 	struct sysctl_ctx_list *cl = &sensdev->clist;
 	struct ksensor *s;
 	struct ksensors_head *sh = &sensdev->sensors_list;
 
-	sysctl_ctx_init(cl);
-	ol = SYSCTL_CHILDREN(SYSCTL_ADD_NODE(cl, (&SYSCTL_NODE_CHILDREN(_hw,
-	    sensors)), sensdev->num, sensdev->xname, CTLFLAG_RD, NULL, ""));
-	SLIST_FOREACH(s, sh, list) {
-		char n[32];
+	SYSCTL_ASSERT_XLOCKED();
 
-		ksnprintf(n, sizeof(n), "%s%d", sensor_type_s[s->type], s->numt);
-		SYSCTL_ADD_PROC(cl, ol, OID_AUTO, n, CTLTYPE_STRUCT |
-		    CTLFLAG_RD, s, 0, sysctl_handle_sensor, "S,sensor", "");
+	KASSERT(sensdev->oid == NULL,
+	    ("sensor device %s sysctl node already installed", sensdev->xname));
+
+	sysctl_ctx_init(cl);
+	sensdev->oid = SYSCTL_ADD_NODE(cl, SYSCTL_STATIC_CHILDREN(_hw_sensors),
+	    sensdev->num, sensdev->xname, CTLFLAG_RD, NULL, "");
+	if (sensdev->oid == NULL) {
+		kprintf("sensor: add sysctl tree for %s failed\n",
+		    sensdev->xname);
+		return;
+	}
+
+	/* Install sysctl nodes for sensors attached to this sensor device */
+	SLIST_FOREACH(s, sh, list)
+		sensor_sysctl_install(sensdev, s);
+}
+
+static void
+sensor_sysctl_install(struct ksensordev *sensdev, struct ksensor *sens)
+{
+	char n[32];
+
+	SYSCTL_ASSERT_XLOCKED();
+
+	if (sensdev->oid == NULL) {
+		/* Sensor device sysctl node is not installed yet */
+		return;
+	}
+
+	ksnprintf(n, sizeof(n), "%s%d", sensor_type_s[sens->type], sens->numt);
+	KASSERT(sens->oid == NULL,
+	    ("sensor %s:%s sysctl node already installed", sensdev->xname, n));
+
+	sens->oid = SYSCTL_ADD_PROC(&sensdev->clist,
+	    SYSCTL_CHILDREN(sensdev->oid), OID_AUTO, n,
+	    CTLTYPE_STRUCT | CTLFLAG_RD, sens, 0, sysctl_handle_sensor,
+	    "S,sensor", "");
+}
+
+static void
+sensordev_sysctl_deinstall(struct ksensordev *sensdev)
+{
+	SYSCTL_ASSERT_XLOCKED();
+
+	if (sensdev->oid != NULL) {
+		sysctl_ctx_free(&sensdev->clist);
+		sensdev->oid = NULL;
 	}
 }
 
-void
-sensor_sysctl8magic_deinstall(struct ksensordev *sensdev)
+static void
+sensor_sysctl_deinstall(struct ksensordev *sensdev, struct ksensor *sens)
 {
-	struct sysctl_ctx_list *cl = &sensdev->clist;
+	SYSCTL_ASSERT_XLOCKED();
 
-	sysctl_ctx_free(cl);
+	if (sensdev->oid != NULL && sens->oid != NULL) {
+		sysctl_ctx_entry_del(&sensdev->clist, sens->oid);
+		sysctl_remove_oid(sens->oid, 1, 0);
+	}
+	sens->oid = NULL;
 }
 
-#endif /* !NOSYSCTL8HACK */
-
-
-int
+static int
 sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS)
 {
 	struct ksensordev *ksd = arg1;
@@ -396,10 +470,9 @@ sysctl_handle_sensordev(SYSCTL_HANDLER_ARGS)
 
 	kfree(usd, M_TEMP);
 	return (error);
-
 }
 
-int
+static int
 sysctl_handle_sensor(SYSCTL_HANDLER_ARGS)
 {
 	struct ksensor *ks = arg1;
@@ -425,7 +498,7 @@ sysctl_handle_sensor(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-int
+static int
 sysctl_sensors_handler(SYSCTL_HANDLER_ARGS)
 {
 	int *name = arg1;
@@ -452,3 +525,41 @@ sysctl_sensors_handler(SYSCTL_HANDLER_ARGS)
 		return (ENOENT);
 	return (sysctl_handle_sensor(NULL, ks, 0, req));
 }
+
+static void
+sensor_sysinit(void *arg __unused)
+{
+	const cpu_node_t *node;
+	int cpu;
+
+	/*
+	 * By default, stick sensor tasks to the cpu belonging to
+	 * the first cpu package, since most of the time accessing
+	 * sensor devices from the first cpu package will be faster,
+	 * e.g. through DMI or DMI2 on Intel CPUs; no QPI will be
+	 * generated.
+	 */
+	node = get_cpu_node_by_chipid(0);
+	if (node != NULL && node->child_no > 0)
+		sensor_task_default_cpu = BSRCPUMASK(node->members);
+	else
+		sensor_task_default_cpu = ncpus - 1;
+	if (bootverbose) {
+		kprintf("sensors: tasks default to cpu%d\n",
+		    sensor_task_default_cpu);
+	}
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		struct sensor_taskthr *thr = &sensor_task_threads[cpu];
+		int error;
+
+		TAILQ_INIT(&thr->list);
+		lockinit(&thr->lock, "sensorthr", 0, LK_CANRECURSE);
+
+		error = kthread_create_cpu(sensor_task_thread, thr, NULL, cpu,
+		    "sensors %d", cpu);
+		if (error)
+			panic("sensors kthread on cpu%d failed: %d", cpu, error);
+	}
+}
+SYSINIT(sensor, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, sensor_sysinit, NULL);

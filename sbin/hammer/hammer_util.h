@@ -40,6 +40,13 @@
 #include <uuid.h>
 
 /*
+ * pidfile management - common definitions so code is more robust
+ */
+
+#define PIDFILE_BUFSIZE	64
+static const char pidfile_loc[] = "/var/run";
+
+/*
  * Cache management - so the user code can keep its memory use under control
  */
 struct volume_info;
@@ -97,8 +104,6 @@ struct buffer_info {
 	void			*ondisk;
 };
 
-#define HAMMER_BUFINFO_READAHEAD	0x0001
-
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
 extern int64_t BootAreaSize;
@@ -137,7 +142,10 @@ hammer_off_t blockmap_lookup(hammer_off_t bmap_off,
 void format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_base);
 void format_undomap(hammer_volume_ondisk_t ondisk);
 
-void *alloc_btree_element(hammer_off_t *offp);
+void *alloc_btree_element(hammer_off_t *offp,
+			 struct buffer_info **data_bufferp);
+void *alloc_meta_element(hammer_off_t *offp, int32_t data_len,
+			 struct buffer_info **data_bufferp);
 void *alloc_data_element(hammer_off_t *offp, int32_t data_len,
 			 struct buffer_info **data_bufferp);
 
@@ -148,6 +156,7 @@ int hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf);
 
 void format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap);
 int64_t initialize_freemap(struct volume_info *vol);
+int64_t count_freemap(struct volume_info *vol);
 
 void flush_all_volumes(void);
 void flush_volume(struct volume_info *vol);

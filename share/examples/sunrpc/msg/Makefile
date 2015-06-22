@@ -4,7 +4,7 @@
 BIN = printmsg msg_svc rprintmsg
 GEN = msg_clnt.c msg_svc.c msg.h
 LIB = -lrpclib
-RPCCOM = rpcgen
+RPCCOM = rpcgen -Y "${OBJFORMAT_PATH}/usr/bin"
 
 all: $(BIN)
 

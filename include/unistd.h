@@ -350,6 +350,7 @@ off_t	 lseek(int, off_t, int);
 long	 pathconf(const char *, int);
 int	 pause(void);
 int	 pipe(int *);
+int	 pipe2(int *, int);
 ssize_t	 read(int, void *, size_t);
 int	 rmdir(const char *);
 int	 setgid(gid_t);
@@ -479,7 +480,7 @@ char	*getwd(char *);			/* LEGACY (obsoleted by getcwd()) */
 unsigned int
 	 ualarm(unsigned int, unsigned int);
 int	 usleep(unsigned int);
-pid_t	 vfork(void);
+pid_t	 vfork(void) __returns_twice;
 #endif
 
 #if __BSD_VISIBLE

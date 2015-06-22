@@ -9,4 +9,8 @@ SUBDIR= an age alc ale ath bce bfe bge bwn \
 SUBDIR+=ar ed sbni sr
 .endif
 
+# Empty for concurrent build
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

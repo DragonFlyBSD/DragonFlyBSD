@@ -661,7 +661,8 @@ emx_attach(device_t dev)
 	if (sc->hw.mac.type == e1000_82571 ||
 	    sc->hw.mac.type == e1000_82572 ||
 	    sc->hw.mac.type == e1000_80003es2lan ||
-	    sc->hw.mac.type == e1000_pch_lpt)
+	    sc->hw.mac.type == e1000_pch_lpt ||
+	    sc->hw.mac.type == e1000_82574)
 		tx_ring_max = EMX_NTX_RING;
 	sc->tx_ring_cnt = device_getenv_int(dev, "txr", emx_txr);
 	sc->tx_ring_cnt = if_ring_count2(sc->tx_ring_cnt, tx_ring_max);
@@ -1033,6 +1034,14 @@ emx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			emx_tx_collect(tdata);
 			continue;
 		}
+
+		/*
+		 * TX interrupt are aggressively aggregated, so increasing
+		 * opackets at TX interrupt time will make the opackets
+		 * statistics vastly inaccurate; we do the opackets increment
+		 * now.
+		 */
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 		if (nsegs >= tdata->tx_wreg_nsegs) {
 			E1000_WRITE_REG(&sc->hw, E1000_TDT(tdata->idx), idx);
@@ -2283,7 +2292,7 @@ emx_init_tx_ring(struct emx_txdata *tdata)
 static void
 emx_init_tx_unit(struct emx_softc *sc)
 {
-	uint32_t tctl, tarc, tipg = 0;
+	uint32_t tctl, tarc, tipg = 0, txdctl;
 	int i;
 
 	for (i = 0; i < sc->tx_ring_inuse; ++i) {
@@ -2327,6 +2336,14 @@ emx_init_tx_unit(struct emx_softc *sc)
 	/* NOTE: 0 is not allowed for TIDV */
 	E1000_WRITE_REG(&sc->hw, E1000_TIDV, 1);
 	E1000_WRITE_REG(&sc->hw, E1000_TADV, 0);
+
+	/*
+	 * Errata workaround (obtained from Linux).  This is necessary
+	 * to make multiple TX queues work on 82574.
+	 * XXX can't find it in any published errata though.
+	 */
+	txdctl = E1000_READ_REG(&sc->hw, E1000_TXDCTL(0));
+	E1000_WRITE_REG(&sc->hw, E1000_TXDCTL(1), txdctl);
 
 	if (sc->hw.mac.type == e1000_82571 ||
 	    sc->hw.mac.type == e1000_82572) {
@@ -2520,7 +2537,6 @@ emx_txcsum(struct emx_txdata *tdata, struct mbuf *mp,
 static void
 emx_txeof(struct emx_txdata *tdata)
 {
-	struct ifnet *ifp = &tdata->sc->arpcom.ac_if;
 	struct emx_txbuf *tx_buffer;
 	int first, num_avail;
 
@@ -2551,7 +2567,6 @@ emx_txeof(struct emx_txdata *tdata)
 
 				tx_buffer = &tdata->tx_buf[first];
 				if (tx_buffer->m_head) {
-					IFNET_STAT_INC(ifp, opackets, 1);
 					bus_dmamap_unload(tdata->txtag,
 							  tx_buffer->map);
 					m_freem(tx_buffer->m_head);
@@ -2585,7 +2600,6 @@ emx_txeof(struct emx_txdata *tdata)
 static void
 emx_tx_collect(struct emx_txdata *tdata)
 {
-	struct ifnet *ifp = &tdata->sc->arpcom.ac_if;
 	struct emx_txbuf *tx_buffer;
 	int tdh, first, num_avail, dd_idx = -1;
 
@@ -2609,7 +2623,6 @@ emx_tx_collect(struct emx_txdata *tdata)
 
 		tx_buffer = &tdata->tx_buf[first];
 		if (tx_buffer->m_head) {
-			IFNET_STAT_INC(ifp, opackets, 1);
 			bus_dmamap_unload(tdata->txtag,
 					  tx_buffer->map);
 			m_freem(tx_buffer->m_head);

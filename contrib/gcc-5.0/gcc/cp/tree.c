@@ -822,10 +822,9 @@ build_cplus_array_type (tree elt_type, tree index_type)
   if (elt_type == error_mark_node || index_type == error_mark_node)
     return error_mark_node;
 
-  bool dependent
-    = (processing_template_decl
-       && (dependent_type_p (elt_type)
-	   || (index_type && !TREE_CONSTANT (TYPE_MAX_VALUE (index_type)))));
+  bool dependent = (processing_template_decl
+		    && (dependent_type_p (elt_type)
+			|| (index_type && dependent_type_p (index_type))));
 
   if (elt_type != TYPE_MAIN_VARIANT (elt_type))
     /* Start with an array of the TYPE_MAIN_VARIANT.  */
@@ -881,12 +880,19 @@ build_cplus_array_type (tree elt_type, tree index_type)
 	{
 	  t = build_min_array_type (elt_type, index_type);
 	  set_array_type_canon (t, elt_type, index_type);
+	  if (!dependent)
+	    {
+	      layout_type (t);
+	      /* Make sure sizes are shared with the main variant.
+		 layout_type can't be called after setting TYPE_NEXT_VARIANT,
+		 as it will overwrite alignment etc. of all variants.  */
+	      TYPE_SIZE (t) = TYPE_SIZE (m);
+	      TYPE_SIZE_UNIT (t) = TYPE_SIZE_UNIT (m);
+	    }
 
 	  TYPE_MAIN_VARIANT (t) = m;
 	  TYPE_NEXT_VARIANT (t) = TYPE_NEXT_VARIANT (m);
 	  TYPE_NEXT_VARIANT (m) = t;
-	  if (!dependent)
-	    layout_type (t);
 	}
     }
 
@@ -1073,6 +1079,8 @@ cp_build_qualified_type_real (tree type,
 	    {
 	      t = build_variant_type_copy (t);
 	      TYPE_NAME (t) = TYPE_NAME (type);
+	      TYPE_ALIGN (t) = TYPE_ALIGN (type);
+	      TYPE_USER_ALIGN (t) = TYPE_USER_ALIGN (type);
 	    }
 	}
 
@@ -1199,6 +1207,7 @@ strip_typedefs (tree t)
     {
       bool changed = false;
       vec<tree,va_gc> *vec = make_tree_vector ();
+      tree r = t;
       for (; t; t = TREE_CHAIN (t))
 	{
 	  gcc_assert (!TREE_PURPOSE (t));
@@ -1207,7 +1216,6 @@ strip_typedefs (tree t)
 	    changed = true;
 	  vec_safe_push (vec, elt);
 	}
-      tree r = t;
       if (changed)
 	r = build_tree_list_vec (vec);
       release_tree_vector (vec);
@@ -1342,7 +1350,7 @@ strip_typedefs (tree t)
     case DECLTYPE_TYPE:
       result = strip_typedefs_expr (DECLTYPE_TYPE_EXPR (t));
       if (result == DECLTYPE_TYPE_EXPR (t))
-	return t;
+	result = NULL_TREE;
       else
 	result = (finish_decltype_type
 		  (result,
@@ -1416,8 +1424,8 @@ strip_typedefs_expr (tree t)
 	    && type2 == TRAIT_EXPR_TYPE2 (t))
 	  return t;
 	r = copy_node (t);
-	TRAIT_EXPR_TYPE1 (t) = type1;
-	TRAIT_EXPR_TYPE2 (t) = type2;
+	TRAIT_EXPR_TYPE1 (r) = type1;
+	TRAIT_EXPR_TYPE2 (r) = type2;
 	return r;
       }
 
@@ -3485,13 +3493,17 @@ check_abi_tag_redeclaration (const_tree decl, const_tree old, const_tree new_)
   return true;
 }
 
-/* Handle an "abi_tag" attribute; arguments as in
-   struct attribute_spec.handler.  */
+/* The abi_tag attribute with the name NAME was given ARGS.  If they are
+   ill-formed, give an error and return false; otherwise, return true.  */
 
-static tree
-handle_abi_tag_attribute (tree* node, tree name, tree args,
-			  int flags, bool* no_add_attrs)
+bool
+check_abi_tag_args (tree args, tree name)
 {
+  if (!args)
+    {
+      error ("the %qE attribute requires arguments", name);
+      return false;
+    }
   for (tree arg = args; arg; arg = TREE_CHAIN (arg))
     {
       tree elt = TREE_VALUE (arg);
@@ -3502,7 +3514,7 @@ handle_abi_tag_attribute (tree* node, tree name, tree args,
 	{
 	  error ("arguments to the %qE attribute must be narrow string "
 		 "literals", name);
-	  goto fail;
+	  return false;
 	}
       const char *begin = TREE_STRING_POINTER (elt);
       const char *end = begin + TREE_STRING_LENGTH (elt);
@@ -3517,7 +3529,7 @@ handle_abi_tag_attribute (tree* node, tree name, tree args,
 			 "identifiers", name);
 		  inform (input_location, "%<%c%> is not a valid first "
 			  "character for an identifier", c);
-		  goto fail;
+		  return false;
 		}
 	    }
 	  else if (p == end - 1)
@@ -3530,11 +3542,23 @@ handle_abi_tag_attribute (tree* node, tree name, tree args,
 			 "identifiers", name);
 		  inform (input_location, "%<%c%> is not a valid character "
 			  "in an identifier", c);
-		  goto fail;
+		  return false;
 		}
 	    }
 	}
     }
+  return true;
+}
+
+/* Handle an "abi_tag" attribute; arguments as in
+   struct attribute_spec.handler.  */
+
+static tree
+handle_abi_tag_attribute (tree* node, tree name, tree args,
+			  int flags, bool* no_add_attrs)
+{
+  if (!check_abi_tag_args (args, name))
+    goto fail;
 
   if (TYPE_P (*node))
     {
@@ -3578,14 +3602,16 @@ handle_abi_tag_attribute (tree* node, tree name, tree args,
     }
   else
     {
-      if (TREE_CODE (*node) != FUNCTION_DECL)
+      if (TREE_CODE (*node) != FUNCTION_DECL
+	  && TREE_CODE (*node) != VAR_DECL)
 	{
-	  error ("%qE attribute applied to non-function %qD", name, *node);
+	  error ("%qE attribute applied to non-function, non-variable %qD",
+		 name, *node);
 	  goto fail;
 	}
       else if (DECL_LANGUAGE (*node) == lang_c)
 	{
-	  error ("%qE attribute applied to extern \"C\" function %qD",
+	  error ("%qE attribute applied to extern \"C\" declaration %qD",
 		 name, *node);
 	  goto fail;
 	}

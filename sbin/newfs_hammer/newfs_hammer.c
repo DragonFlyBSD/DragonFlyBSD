@@ -560,23 +560,26 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 	 */
 	if (vol->vol_no == RootVolNo) {
 		/*
+		 * Check freemap counts before formatting
+		 */
+		freeblks = count_freemap(vol);
+		freebytes = freeblks * HAMMER_BIGBLOCK_SIZE64;
+		if (freebytes < 10*GIG && ForceOpt == 0) {
+			errx(1, "Cannot create a HAMMER filesystem less than 10GB "
+				"unless you use -f\n(for the size of Volume %d).  "
+				"HAMMER filesystems less than 50GB are not "
+				"recommended.\n", RootVolNo);
+		}
+
+		/*
 		 * Starting TID
 		 */
 		ondisk->vol0_next_tid = createtid();
 
 		format_freemap(vol,
 			&ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX]);
-
-		freeblks = initialize_freemap(vol);
-		ondisk->vol0_stat_freebigblocks = freeblks;
-
-		freebytes = freeblks * HAMMER_BIGBLOCK_SIZE64;
-		if (freebytes < 10*GIG && ForceOpt == 0) {
-			errx(1, "Cannot create a HAMMER filesystem less than "
-				"10GB unless you use -f.  HAMMER filesystems\n"
-				"less than 50GB are not recommended\n");
-		}
 			
+		ondisk->vol0_stat_freebigblocks = initialize_freemap(vol);
 		for (i = 8; i < HAMMER_MAX_ZONES; ++i) {
 			format_blockmap(&ondisk->vol0_blockmap[i],
 					HAMMER_ZONE_ENCODE(i, 0));
@@ -609,17 +612,18 @@ format_root(const char *label)
 	hammer_node_ondisk_t bnode;
 	struct hammer_inode_data *idata;
 	hammer_pseudofs_data_t pfsd;
+	struct buffer_info *data_buffer0 = NULL;
 	struct buffer_info *data_buffer1 = NULL;
 	struct buffer_info *data_buffer2 = NULL;
 	hammer_btree_elm_t elm;
 	u_int64_t xtime;
 
 	/*
-	 * Allocate zero-filled root btree node and data
+	 * Allocate zero-filled root btree node, inode and pfs
 	 */
-	bnode = alloc_btree_element(&btree_off);
-	idata = alloc_data_element(&data_off, sizeof(*idata), &data_buffer1);
-	pfsd = alloc_data_element(&pfsd_off, sizeof(*pfsd), &data_buffer2);
+	bnode = alloc_btree_element(&btree_off, &data_buffer0);
+	idata = alloc_meta_element(&data_off, sizeof(*idata), &data_buffer1);
+	pfsd = alloc_meta_element(&pfsd_off, sizeof(*pfsd), &data_buffer2);
 	create_tid = createtid();
 	xtime = nowtime();
 

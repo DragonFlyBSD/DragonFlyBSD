@@ -91,8 +91,7 @@ hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		 * lock the parent, the lock eats the ref.
 		 */
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
-					   HAMMER2_RESOLVE_SHARED |
-					   HAMMER2_RESOLVE_NOREF);
+					   HAMMER2_RESOLVE_SHARED);
 
 		/*
 		 * Generally loop on the contents if we have not been flagged
@@ -108,6 +107,7 @@ hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
 
 			if (doabort & HAMMER2_BULK_ABORT) {
 				hammer2_chain_unlock(chain);
+				hammer2_chain_drop(chain);
 				chain = NULL;
 				break;
 			}
@@ -144,6 +144,7 @@ hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		 * save structure if we didn't recycle it above.
 		 */
 		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
 		if (save)
 			kfree(save, M_HAMMER2);
 	}
@@ -189,7 +190,7 @@ hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
  * Bulkfree callback info
  */
 typedef struct hammer2_bulkfree_info {
-	hammer2_mount_t		*hmp;
+	hammer2_dev_t		*hmp;
 	hammer2_trans_t		*trans;
 	kmem_anon_desc_t	kp;
 	hammer2_off_t		sbase;		/* sub-loop iteration */
@@ -210,7 +211,7 @@ static void h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_bmap_data_t *live, hammer2_bmap_data_t *bmap);
 
 int
-hammer2_bulkfree_pass(hammer2_mount_t *hmp, hammer2_ioc_bulkfree_t *bfi)
+hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 {
 	hammer2_trans_t trans;
 	hammer2_bulkfree_info_t cbinfo;
@@ -252,6 +253,7 @@ hammer2_bulkfree_pass(hammer2_mount_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 			cbinfo.sstop = hmp->voldata.volu_size;
 		else
 			cbinfo.sstop = cbinfo.sbase + incr;
+		if (hammer2_debug & 1)
 		kprintf("bulkfree pass %016jx/%jdGB\n",
 			(intmax_t)cbinfo.sbase,
 			(intmax_t)incr / HAMMER2_FREEMAP_LEVEL1_SIZE);
@@ -401,32 +403,33 @@ h2_bulkfree_callback(hammer2_chain_t *chain, void *info)
 		bmap->linear = (int32_t)data_off + (int32_t)bytes;
 
 	/*
-	 * Adjust the uint32_t bitmap[8].  2 bits per entry, to code 11.
-	 * Shortcut aligned 64KB allocations.
+	 * Adjust the hammer2_bitmap_t bitmap[HAMMER2_BMAP_ELEMENTS].
+	 * 64-bit entries, 2 bits per entry, to code 11.
 	 *
 	 * NOTE: The allocation can be smaller than HAMMER2_FREEMAP_BLOCK_SIZE.
 	 */
 	while (bytes > 0) {
 		int bindex;
-		uint32_t bmask;
+		hammer2_bitmap_t bmask;
 
 		bindex = (int)data_off >> (HAMMER2_FREEMAP_BLOCK_RADIX +
 					   HAMMER2_BMAP_INDEX_RADIX);
-		bmask = 3 << ((((int)data_off & HAMMER2_BMAP_INDEX_MASK) >>
-			     HAMMER2_FREEMAP_BLOCK_RADIX) << 1);
+		bmask = (hammer2_bitmap_t)3 <<
+			((((int)data_off & HAMMER2_BMAP_INDEX_MASK) >>
+			 HAMMER2_FREEMAP_BLOCK_RADIX) << 1);
 
 		/*
 		 * NOTE! The (avail) calculation is bitmap-granular.  Multiple
 		 *	 sub-granular records can wind up at the same bitmap
 		 *	 position.
 		 */
-		if ((bmap->bitmap[bindex] & bmask) == 0) {
+		if ((bmap->bitmapq[bindex] & bmask) == 0) {
 			if (bytes < HAMMER2_FREEMAP_BLOCK_SIZE) {
 				bmap->avail -= HAMMER2_FREEMAP_BLOCK_SIZE;
 			} else {
 				bmap->avail -= bytes;
 			}
-			bmap->bitmap[bindex] |= bmask;
+			bmap->bitmapq[bindex] |= bmask;
 		}
 		data_off += HAMMER2_FREEMAP_BLOCK_SIZE;
 		if (bytes < HAMMER2_FREEMAP_BLOCK_SIZE)
@@ -460,7 +463,6 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	hammer2_chain_t *live_chain;
 	int cache_index = -1;
 	int bmapindex;
-	int ddflag;
 
 	kprintf("hammer2_bulkfree - range %016jx-%016jx\n",
 		(intmax_t)cbinfo->sbase,
@@ -470,6 +472,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	bmap = cbinfo->bmap;
 
 	live_parent = &cbinfo->hmp->fchain;
+	hammer2_chain_ref(live_parent);
 	hammer2_chain_lock(live_parent, HAMMER2_RESOLVE_ALWAYS);
 	live_chain = NULL;
 
@@ -488,16 +491,17 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		 */
 		key = (data_off & ~HAMMER2_FREEMAP_LEVEL1_MASK);
 		if (live_chain == NULL || live_chain->bref.key != key) {
-			if (live_chain)
+			if (live_chain) {
 				hammer2_chain_unlock(live_chain);
+				hammer2_chain_drop(live_chain);
+			}
 			live_chain = hammer2_chain_lookup(
 					    &live_parent,
 					    &key_dummy,
 					    key,
 					    key + HAMMER2_FREEMAP_LEVEL1_MASK,
 					    &cache_index,
-					    HAMMER2_LOOKUP_ALWAYS,
-					    &ddflag);
+					    HAMMER2_LOOKUP_ALWAYS);
 			if (live_chain)
 				kprintf("live_chain %016jx\n", (intmax_t)key);
 					
@@ -510,6 +514,16 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 					"near %016jx\n",
 					(intmax_t)data_off);
 			}
+			goto next;
+		}
+		if (live_chain->error) {
+			kprintf("hammer2_bulkfree: error %s looking up "
+				"live leaf for allocated data near %016jx\n",
+				hammer2_error_str(live_chain->error),
+				(intmax_t)data_off);
+			hammer2_chain_unlock(live_chain);
+			hammer2_chain_drop(live_chain);
+			live_chain = NULL;
 			goto next;
 		}
 
@@ -525,8 +539,11 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		    live->avail == HAMMER2_FREEMAP_LEVEL0_SIZE) {
 			goto next;
 		}
-		if (bcmp(live->bitmap, bmap->bitmap, sizeof(bmap->bitmap)) == 0)
+		if (bcmp(live->bitmapq, bmap->bitmapq,
+			 sizeof(bmap->bitmapq)) == 0) {
 			goto next;
+		}
+		if (hammer2_debug & 1)
 		kprintf("live %016jx %04d.%04x (avail=%d)\n",
 			data_off, bmapindex, live->class, live->avail);
 
@@ -536,10 +553,14 @@ next:
 		data_off += HAMMER2_FREEMAP_LEVEL0_SIZE;
 		++bmap;
 	}
-	if (live_chain)
+	if (live_chain) {
 		hammer2_chain_unlock(live_chain);
-	if (live_parent)
+		hammer2_chain_drop(live_chain);
+	}
+	if (live_parent) {
 		hammer2_chain_unlock(live_parent);
+		hammer2_chain_drop(live_parent);
+	}
 }
 
 static
@@ -549,16 +570,18 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 {
 	int bindex;
 	int scount;
-	uint32_t lmask;
-	uint32_t mmask;
+	hammer2_bitmap_t lmask;
+	hammer2_bitmap_t mmask;
 
-	for (bindex = 0; bindex < 8; ++bindex) {
-		lmask = live->bitmap[bindex];
-		mmask = bmap->bitmap[bindex];
+	for (bindex = 0; bindex < HAMMER2_BMAP_ELEMENTS; ++bindex) {
+		lmask = live->bitmapq[bindex];
+		mmask = bmap->bitmapq[bindex];
 		if (lmask == mmask)
 			continue;
 
-		for (scount = 0; scount < 32; scount += 2) {
+		for (scount = 0;
+		     scount < HAMMER2_BMAP_BITS_PER_ELEMENT;
+		     scount += 2) {
 			if ((mmask & 3) == 0) {
 				/*
 				 * in-memory 00		live 11 -> 10
@@ -572,7 +595,8 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 						"transition m=00/l=01\n");
 					break;
 				case 2:	/* 10 -> 00 */
-					live->bitmap[bindex] &= ~(2 << scount);
+					live->bitmapq[bindex] &=
+					    ~((hammer2_bitmap_t)2 << scount);
 					live->avail +=
 						HAMMER2_FREEMAP_BLOCK_SIZE;
 					cbinfo->adj_free +=
@@ -580,7 +604,8 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 					++cbinfo->count_10_00;
 					break;
 				case 3:	/* 11 -> 10 */
-					live->bitmap[bindex] &= ~(1 << scount);
+					live->bitmapq[bindex] &=
+					    ~((hammer2_bitmap_t)1 << scount);
 					++cbinfo->count_11_10;
 					break;
 				}
@@ -599,7 +624,8 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 						"transition m=11/l=01\n");
 					break;
 				case 2:	/* 10 -> 11 */
-					live->bitmap[bindex] |= (1 << scount);
+					live->bitmapq[bindex] |=
+						((hammer2_bitmap_t)1 << scount);
 					++cbinfo->count_10_11;
 					break;
 				case 3:	/* 11 */
@@ -616,8 +642,8 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 	 * fields if so.  Otherwise check to see if we can reduce the linear
 	 * offset.
 	 */
-	for (bindex = 7; bindex >= 0; --bindex) {
-		if (live->bitmap[bindex] != 0)
+	for (bindex = HAMMER2_BMAP_ELEMENTS - 1; bindex >= 0; --bindex) {
+		if (live->bitmapq[bindex] != 0)
 			break;
 	}
 	if (bindex < 0) {

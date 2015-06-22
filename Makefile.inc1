@@ -34,13 +34,6 @@ SUBDIR=
 SUBDIR+= libexec
 .endif
 
-# We must do share/info early so that installation of info `dir'
-# entries works correctly.  Do it first since it is less likely to
-# grow dependencies on include and lib than vice versa.
-.if exists(${.CURDIR}/share/info)
-SUBDIR+= share/info
-.endif
-
 # We must do include and lib early so that the perl *.ph generation
 # works correctly as it uses the header files installed by this.
 .if exists(${.CURDIR}/include)
@@ -130,9 +123,9 @@ DESTDIRBASE:=		${OBJTREE}${.CURDIR}
 .MAKEFLAGS:=	${.MAKEFLAGS:NDESTDIR=*}
 
 # This section sets the tools used to build the world/kernel
-WORLD_CCVER?=		gcc47
+WORLD_CCVER?=		gcc50
 WORLD_LDVER?=		ld.bfd
-WORLD_BINUTILSVER?=	binutils224
+WORLD_BINUTILSVER?=	binutils225
 
 # Set the backup parameters if they are not already defined
 #
@@ -262,7 +255,7 @@ BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
 BMAKE=		${BMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
-		-DNOINFO -DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
+		-DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
 		-DNO_WERROR -DNO_NLS -DSYSBUILD
 
 # build-tool stage
@@ -291,6 +284,7 @@ XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh" \
 		TOOLS_PREFIX=${CTOOLSDEST} \
 		USRDATA_PREFIX=${WORLDDEST} \
+		SELECT_LINKER=${WORLD_LDVER} \
 		M4=${BTOOLSDEST}/usr/bin/m4 \
 		PATH=${BTOOLSPATH}:${PATH}
 
@@ -408,7 +402,7 @@ _libraries:
 	@echo "--------------------------------------------------------------"
 	@echo ">>> stage 4b: building libraries"
 	@echo "--------------------------------------------------------------"
-	cd ${.CURDIR}; ${WMAKE} -DNOHTML -DNOINFO -DNOMAN -DNOFSCHG libraries
+	cd ${.CURDIR}; ${WMAKE} -DNOHTML -DNOMAN -DNOFSCHG libraries
 _depend:
 	@echo
 	@echo "--------------------------------------------------------------"
@@ -575,7 +569,7 @@ reinstall:
 # buildkernel, nativekernel, quickkernel, and installkernel
 #
 # Which kernels to build and/or install is specified by setting
-# KERNCONF. If not defined a GENERIC kernel is built/installed.
+# KERNCONF. If not defined an X86_64_GENERIC kernel is built/installed.
 # Only the existing (depending TARGET) config files are used
 # for building kernels and only the first of these is designated
 # as the one being installed.
@@ -597,9 +591,7 @@ KERNWARN=	yes
 .else
 # XXX makeshift fix to build the right kernel for the (target) architecture
 # We should configure this in the platform files somehow
-.if ${TARGET_ARCH} == "i386"
-KERNCONF?=	GENERIC
-.else
+.if ${TARGET_ARCH} == "x86_64"
 KERNCONF?=	X86_64_GENERIC
 .endif
 .endif
@@ -884,9 +876,8 @@ BSTRAPDIRS2= \
 	usr.bin/tail usr.bin/unifdef usr.bin/tic \
 	usr.sbin/chown usr.sbin/mtree usr.sbin/config \
 	usr.sbin/btxld usr.sbin/zic usr.sbin/makewhatis \
-	gnu/usr.bin/texinfo gnu/usr.bin/grep usr.bin/sort \
-	usr.bin/gzip usr.bin/bzip2 usr.bin/mkcsmapper usr.bin/mkesdb \
-	usr.bin/crunch
+	gnu/usr.bin/grep usr.bin/sort usr.bin/gzip usr.bin/bzip2 \
+	usr.bin/mkcsmapper usr.bin/mkesdb usr.bin/crunch
 
 bootstrap-tools: bootstrap-tools-before bootstrap-tools-targets1 bootstrap-tools-targets2
 	touch ${BTOOLSDEST}/.bootstrap_done
@@ -922,12 +913,12 @@ _share=	share/syscons/scrnmaps
 .endif
 
 _gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
-.if !defined(NO_GCC50)
 _gcc50_cross= gnu/usr.bin/cc50
 _gcc50_tools= gnu/usr.bin/cc50/cc_prep gnu/usr.bin/cc50/cc_tools
-.endif
+.if !defined(NO_ALTCOMPILER)
 _gcc47_cross= gnu/usr.bin/cc47
 _gcc47_tools= gnu/usr.bin/cc47/cc_prep gnu/usr.bin/cc47/cc_tools
+.endif
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
 
@@ -996,12 +987,12 @@ hierarchy:
 #
 libraries:
 	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
-		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD;
-.if !defined(NO_GCC50)
-	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc50 \
 		make -f Makefile.inc1 _startup_libs50 -DSYSBUILD;
+.if !defined(NO_ALTCOMPILER)
+	cd ${.CURDIR}; \
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
+		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD;
 .endif
 	cd ${.CURDIR}; \
 	    make -f Makefile.inc1 _startup_libs -DSYSBUILD; \
@@ -1031,6 +1022,8 @@ _startup_libs=		lib/csu lib/libc lib/libc_rtld
 
 _prebuild_libs=		lib/libbz2 lib/liblzma lib/libz
 _prebuild_libs+=	lib/libutil
+
+_prebuild_libs+=	lib/libpcap
 
 _generic_libs=	gnu/lib
 

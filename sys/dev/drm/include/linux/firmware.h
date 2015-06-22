@@ -38,12 +38,14 @@ request_firmware(const struct firmware **fw, const char *name, __unused device_t
 	if (*fw) {
 		return 0;
 	}
-	return -1;
+	return -ENOENT;
 }
 
 static inline void
 release_firmware(const struct firmware *fw) {
-	firmware_put(fw, FIRMWARE_UNLOAD);
+	if (fw != NULL) {
+		firmware_put(fw, FIRMWARE_UNLOAD);
+	}
 }
 
 #endif	/* _LINUX_FIRMWARE_H_ */

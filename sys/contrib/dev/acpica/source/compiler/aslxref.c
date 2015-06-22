@@ -455,6 +455,14 @@ XfCheckIllegalReference (
 #endif
 
 
+typedef struct asl_method_local
+{
+    UINT32                  Flags;
+    ACPI_PARSE_OBJECT       *Op;
+
+} ASL_METHOD_LOCAL;
+
+
 /*******************************************************************************
  *
  * FUNCTION:    XfNamespaceLocateBegin
@@ -496,6 +504,7 @@ XfNamespaceLocateBegin (
     UINT8                   Message = 0;
     const ACPI_OPCODE_INFO  *OpInfo;
     UINT32                  Flags;
+    ASL_METHOD_LOCAL        *MethodLocals;
 
 
     ACPI_FUNCTION_TRACE_PTR (XfNamespaceLocateBegin, Op);
@@ -515,6 +524,56 @@ XfNamespaceLocateBegin (
     /* We are only interested in opcodes that have an associated name */
 
     OpInfo = AcpiPsGetOpcodeInfo (Op->Asl.AmlOpcode);
+
+
+    if (OpInfo->Type == AML_TYPE_LOCAL_VARIABLE)
+    {
+        if (!(Op->Asl.CompileFlags & NODE_IS_TARGET))
+        {
+            return_ACPI_STATUS (AE_OK);
+        }
+
+        /* Find parent method Op */
+
+        NextOp = Op->Asl.Parent;
+        while (NextOp)
+        {
+            if (NextOp->Asl.AmlOpcode == AML_METHOD_OP)
+            {
+                break;
+            }
+            NextOp = NextOp->Asl.Parent;
+        }
+
+        if (!NextOp)
+        {
+            return_ACPI_STATUS (AE_OK);
+        }
+
+        /* Get method node */
+
+        Node = NextOp->Asl.Node;
+
+        /* Create local/arg object and install in method node */
+
+        if (!Node->Object)
+        {
+            MethodLocals = UtLocalCalloc (sizeof (ASL_METHOD_LOCAL) * ACPI_METHOD_NUM_LOCALS);
+            Node->Object = (ACPI_OPERAND_OBJECT *) MethodLocals;
+
+            /* Mark this Local as referenced */
+
+            MethodLocals[Op->Asl.AmlOpcode & 0x0007].Flags = ANOBJ_IS_REFERENCED;
+            MethodLocals[Op->Asl.AmlOpcode & 0x0007].Op = Op;
+        }
+
+        return_ACPI_STATUS (AE_OK);
+    }
+
+    if (OpInfo->Type == AML_TYPE_METHOD_ARGUMENT)
+    {
+        return_ACPI_STATUS (AE_OK);
+    }
 
     if ((!(OpInfo->Flags & AML_NAMED)) &&
         (!(OpInfo->Flags & AML_CREATE)) &&

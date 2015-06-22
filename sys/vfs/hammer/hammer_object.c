@@ -1311,7 +1311,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		if (bdata == NULL)
 			goto done_unlock;
 		hammer_crc_set_leaf(record->data, &record->leaf);
-		hammer_modify_buffer(trans, cursor->data_buffer, NULL, 0);
+		hammer_modify_buffer_noundo(trans, cursor->data_buffer);
 		bcopy(record->data, bdata, record->leaf.data_len);
 		hammer_modify_buffer_done(cursor->data_buffer);
 	} else {
@@ -2337,7 +2337,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 			return (error);
 		}
 		leaf->data_offset = ndata_offset;
-		hammer_modify_buffer(trans, data_buffer, NULL, 0);
+		hammer_modify_buffer_noundo(trans, data_buffer);
 
 		switch(mode) {
 		case HAMMER_CREATE_MODE_UMIRROR:
@@ -2411,7 +2411,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 	if (high_tid < leaf->base.delete_tid)
 		high_tid = leaf->base.delete_tid;
 	if (trans->rootvol->ondisk->vol0_next_tid < high_tid) {
-		hammer_modify_volume(trans, trans->rootvol, NULL, 0);
+		hammer_modify_volume_noundo(trans, trans->rootvol);
 		trans->rootvol->ondisk->vol0_next_tid = high_tid;
 		hammer_modify_volume_done(trans->rootvol);
 	}
@@ -2446,6 +2446,9 @@ failed:
  *
  * An element can be un-deleted by passing a delete_tid of 0 with
  * HAMMER_DELETE_ADJUST.
+ *
+ * This function will store the number of bytes deleted in *stat_bytes
+ * if stat_bytes is not NULL.
  */
 int
 hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
@@ -2459,6 +2462,8 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	hammer_btree_elm_t elm;
 	hammer_off_t data_offset;
 	int32_t data_len;
+	int64_t bytes;
+	int ndelete;
 	int error;
 	int icount;
 	int doprop;
@@ -2474,6 +2479,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	KKASSERT(elm->base.btype == HAMMER_BTREE_TYPE_RECORD);
 
 	hammer_sync_lock_sh(trans);
+	bytes = 0;
 	doprop = 0;
 	icount = 0;
 
@@ -2546,7 +2552,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			icount = -1;
 		}
 
-		error = hammer_btree_delete(cursor);
+		error = hammer_btree_delete(cursor, &ndelete);
 		if (error == 0) {
 			/*
 			 * The deletion moves the next element (if any) to
@@ -2559,14 +2565,15 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 				cursor->flags |= HAMMER_CURSOR_RETEST;
 				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 			}
-		}
-		if (error == 0) {
+			bytes += (ndelete * sizeof(struct hammer_node_ondisk));
+
 			switch(data_offset & HAMMER_OFF_ZONE_MASK) {
 			case HAMMER_ZONE_LARGE_DATA:
 			case HAMMER_ZONE_SMALL_DATA:
 			case HAMMER_ZONE_META:
 				hammer_blockmap_free(trans,
 						     data_offset, data_len);
+				bytes += data_len;
 				break;
 			default:
 				break;
@@ -2586,7 +2593,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			hammer_modify_volume_done(trans->rootvol);
 		}
 		if (trans->rootvol->ondisk->vol0_next_tid < delete_tid) {
-			hammer_modify_volume(trans, trans->rootvol, NULL, 0);
+			hammer_modify_volume_noundo(trans, trans->rootvol);
 			trans->rootvol->ondisk->vol0_next_tid = delete_tid;
 			hammer_modify_volume_done(trans->rootvol);
 		}
@@ -2612,6 +2619,8 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 		else
 			hammer_btree_do_propagation(cursor, NULL, leaf);
 	}
+	if (stat_bytes)
+		*stat_bytes = bytes;
 	hammer_sync_unlock(trans);
 	return (error);
 }

@@ -33,6 +33,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -83,6 +84,19 @@ buffer_hash(hammer_off_t buf_offset)
 	return(hi);
 }
 
+static struct buffer_info*
+find_buffer(struct volume_info *volume, hammer_off_t buf_offset)
+{
+	int hi;
+	struct buffer_info *buf;
+
+	hi = buffer_hash(buf_offset);
+	TAILQ_FOREACH(buf, &volume->buffer_lists[hi], entry)
+		if (buf->buf_offset == buf_offset)
+			return(buf);
+	return(NULL);
+}
+
 /*
  * Lookup the requested information structure and related on-disk buffer.
  * Missing structures are created.
@@ -94,6 +108,7 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	struct volume_info *scan;
 	struct hammer_volume_ondisk *ondisk;
 	int i, n;
+	struct stat st1, st2;
 
 	/*
 	 * Allocate the volume structure
@@ -103,11 +118,11 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	for (i = 0; i < HAMMER_BUFLISTS; ++i)
 		TAILQ_INIT(&vol->buffer_lists[i]);
 	vol->name = strdup(filename);
-	vol->fd = open(filename, oflags);
+	vol->fd = open(vol->name, oflags);
 	if (vol->fd < 0) {
+		err(1, "setup_volume: %s: Open failed", vol->name);
 		free(vol->name);
 		free(vol);
-		err(1, "setup_volume: %s: Open failed", filename);
 	}
 
 	/*
@@ -120,7 +135,7 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 		n = pread(vol->fd, ondisk, HAMMER_BUFSIZE, 0);
 		if (n != HAMMER_BUFSIZE) {
 			err(1, "setup_volume: %s: Read failed at offset 0",
-			    filename);
+			    vol->name);
 		}
 		vol_no = ondisk->vol_no;
 		if (RootVolNo < 0) {
@@ -149,13 +164,25 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 		vol->cache.modified = 1;
         }
 
+	if (fstat(vol->fd, &st1) != 0){
+		errx(1, "setup_volume: %s: Failed to stat", vol->name);
+	}
+
 	/*
 	 * Link the volume structure in
 	 */
 	TAILQ_FOREACH(scan, &VolList, entry) {
 		if (scan->vol_no == vol_no) {
-			errx(1, "setup_volume %s: Duplicate volume number %d "
-				"against %s", filename, vol_no, scan->name);
+			errx(1, "setup_volume: %s: Duplicate volume number %d "
+				"against %s", vol->name, vol_no, scan->name);
+		}
+		if (fstat(scan->fd, &st2) != 0){
+			errx(1, "setup_volume: %s: Failed to stat %s",
+				vol->name, scan->name);
+		}
+		if ((st1.st_ino == st2.st_ino) && (st1.st_dev == st2.st_dev)) {
+			errx(1, "setup_volume: %s: Specified more than once",
+				vol->name);
 		}
 	}
 	TAILQ_INSERT_TAIL(&VolList, vol, entry);
@@ -197,12 +224,15 @@ get_volume(int32_t vol_no)
 void
 rel_volume(struct volume_info *volume)
 {
+	if (volume == NULL)
+		return;
 	/* not added to or removed from hammer cache */
 	--volume->cache.refs;
 }
 
 /*
- * Acquire the specified buffer.
+ * Acquire the specified buffer.  isnew is -1 only when called
+ * via get_buffer_readahead() to prevent another readahead.
  */
 struct buffer_info *
 get_buffer(hammer_off_t buf_offset, int isnew)
@@ -236,13 +266,8 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	}
 
 	buf_offset &= ~HAMMER_BUFMASK64;
+	buf = find_buffer(volume, buf_offset);
 
-	hi = buffer_hash(buf_offset);
-
-	TAILQ_FOREACH(buf, &volume->buffer_lists[hi], entry) {
-		if (buf->buf_offset == buf_offset)
-			break;
-	}
 	if (buf == NULL) {
 		buf = malloc(sizeof(*buf));
 		bzero(buf, sizeof(*buf));
@@ -255,23 +280,19 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		buf->raw_offset = volume->ondisk->vol_buf_beg +
 				  (buf_offset & HAMMER_OFF_SHORT_MASK);
 		buf->volume = volume;
+		hi = buffer_hash(buf_offset);
 		TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buf, entry);
 		++volume->cache.refs;
 		buf->cache.u.buffer = buf;
 		hammer_cache_add(&buf->cache, ISBUFFER);
 		dora = (isnew == 0);
-		if (isnew < 0)
-			buf->flags |= HAMMER_BUFINFO_READAHEAD;
 	} else {
 		if (DebugOpt) {
 			fprintf(stderr, "get_buffer: %016llx %016llx at %p *\n",
 				(long long)orig_offset, (long long)buf_offset,
 				buf);
 		}
-		if (isnew >= 0) {
-			buf->flags &= ~HAMMER_BUFINFO_READAHEAD;
-			hammer_cache_used(&buf->cache);
-		}
+		hammer_cache_used(&buf->cache);
 		++buf->use_count;
 	}
 	++buf->cache.refs;
@@ -310,7 +331,6 @@ get_buffer_readahead(struct buffer_info *base)
 	int64_t raw_offset;
 	int ri = UseReadBehind;
 	int re = UseReadAhead;
-	int hi;
 
 	raw_offset = base->raw_offset + ri * HAMMER_BUFSIZE;
 	vol = base->volume;
@@ -318,19 +338,14 @@ get_buffer_readahead(struct buffer_info *base)
 	while (ri < re) {
 		if (raw_offset >= vol->ondisk->vol_buf_end)
 			break;
-		if (raw_offset < vol->ondisk->vol_buf_beg) {
+		if (raw_offset < vol->ondisk->vol_buf_beg || ri == 0) {
 			++ri;
 			raw_offset += HAMMER_BUFSIZE;
 			continue;
 		}
-		buf_offset = HAMMER_VOL_ENCODE(vol->vol_no) |
-			     HAMMER_ZONE_RAW_BUFFER |
-			     (raw_offset - vol->ondisk->vol_buf_beg);
-		hi = buffer_hash(raw_offset);
-		TAILQ_FOREACH(buf, &vol->buffer_lists[hi], entry) {
-			if (buf->raw_offset == raw_offset)
-				break;
-		}
+		buf_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no,
+			raw_offset - vol->ondisk->vol_buf_beg);
+		buf = find_buffer(vol, buf_offset);
 		if (buf == NULL) {
 			buf = get_buffer(buf_offset, -1);
 			rel_buffer(buf);
@@ -346,6 +361,8 @@ rel_buffer(struct buffer_info *buffer)
 	struct volume_info *volume;
 	int hi;
 
+	if (buffer == NULL)
+		return;
 	assert(buffer->cache.refs > 0);
 	if (--buffer->cache.refs == 0) {
 		if (buffer->cache.delete) {
@@ -418,19 +435,30 @@ get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp,
 }
 
 /*
- * Allocate HAMMER elements - btree nodes, data storage
+ * Allocate HAMMER elements - btree nodes, meta data, data storage
  */
 void *
-alloc_btree_element(hammer_off_t *offp)
+alloc_btree_element(hammer_off_t *offp,
+		    struct buffer_info **data_bufferp)
 {
-	struct buffer_info *buffer = NULL;
 	hammer_node_ondisk_t node;
 
 	node = alloc_blockmap(HAMMER_ZONE_BTREE_INDEX, sizeof(*node),
-			      offp, &buffer);
+			      offp, data_bufferp);
 	bzero(node, sizeof(*node));
-	/* XXX buffer not released, pointer remains valid */
-	return(node);
+	return (node);
+}
+
+void *
+alloc_meta_element(hammer_off_t *offp, int32_t data_len,
+		   struct buffer_info **data_bufferp)
+{
+	void *data;
+
+	data = alloc_blockmap(HAMMER_ZONE_META_INDEX, data_len,
+			      offp, data_bufferp);
+	bzero(data, data_len);
+	return (data);
 }
 
 void *
@@ -596,6 +624,44 @@ initialize_freemap(struct volume_info *vol)
 }
 
 /*
+ * Returns the number of bigblocks available for filesystem data and undos
+ * without formatting.
+ */
+int64_t
+count_freemap(struct volume_info *vol)
+{
+	hammer_off_t phys_offset;
+	hammer_off_t vol_free_off;
+	hammer_off_t aligned_vol_free_end;
+	int64_t count = 0;
+
+	vol_free_off = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	aligned_vol_free_end = (vol->vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
+				& ~HAMMER_BLOCKMAP_LAYER2_MASK;
+
+	if (vol->vol_no == RootVolNo)
+		vol_free_off += HAMMER_BIGBLOCK_SIZE;
+
+	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	     phys_offset < aligned_vol_free_end;
+	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
+		vol_free_off += HAMMER_BIGBLOCK_SIZE;
+	}
+
+	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
+	     phys_offset < aligned_vol_free_end;
+	     phys_offset += HAMMER_BIGBLOCK_SIZE) {
+		if (phys_offset < vol_free_off) {
+			;
+		} else if (phys_offset < vol->vol_free_end) {
+			++count;
+		}
+	}
+
+	return(count);
+}
+
+/*
  * Allocate big-blocks using our poor-man's volume->vol_free_off.
  *
  * If the zone is HAMMER_ZONE_FREEMAP_INDEX we are bootstrapping the freemap
@@ -611,14 +677,10 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	hammer_off_t layer_offset;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
-	int didget;
 
-	if (volume == NULL) {
+	if (volume == NULL)
 		volume = get_volume(RootVolNo);
-		didget = 1;
-	} else {
-		didget = 0;
-	}
+
 	result_offset = volume->vol_free_off;
 	if (result_offset >= volume->vol_free_end)
 		panic("alloc_bigblock: Ran out of room, filesystem too small");
@@ -655,8 +717,7 @@ alloc_bigblock(struct volume_info *volume, int zone)
 		rel_volume(root_vol);
 	}
 
-	if (didget)
-		rel_volume(volume);
+	rel_volume(volume);
 	return(result_offset);
 }
 
@@ -760,8 +821,7 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 
 		scan += bytes;
 	}
-	if (buffer)
-		rel_buffer(buffer);
+	rel_buffer(buffer);
 }
 
 /*
@@ -875,24 +935,17 @@ again:
 	layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 	layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 
-	zone2_offset = (*result_offp & ~HAMMER_OFF_ZONE_MASK) |
-			HAMMER_ZONE_ENCODE(zone, 0);
+	zone2_offset = HAMMER_ZONE_ENCODE(zone,
+			*result_offp & ~HAMMER_OFF_ZONE_MASK);
 
 	ptr = get_buffer_data(zone2_offset, bufferp, 0);
 	(*bufferp)->cache.modified = 1;
 
-	if (buffer1)
-		rel_buffer(buffer1);
-	if (buffer2)
-		rel_buffer(buffer2);
-
+	rel_buffer(buffer1);
+	rel_buffer(buffer2);
 	rel_volume(volume);
 	return(ptr);
 }
-
-/*
- * Flush various tracking structures to disk
- */
 
 /*
  * Flush various tracking structures to disk

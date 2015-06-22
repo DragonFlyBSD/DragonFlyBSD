@@ -124,7 +124,7 @@ hammer_generate_undo(hammer_transaction_t trans,
 	undomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	/* no undo recursion */
-	hammer_modify_volume(NULL, root_volume, NULL, 0);
+	hammer_modify_volume_noundo(NULL, root_volume);
 	hammer_lock_ex(&hmp->undo_lock);
 
 	/* undo had better not roll over (loose test) */
@@ -158,7 +158,7 @@ hammer_generate_undo(hammer_transaction_t trans,
 		if (error)
 			break;
 		/* no undo recursion */
-		hammer_modify_buffer(NULL, buffer, NULL, 0);
+		hammer_modify_buffer_noundo(NULL, buffer);
 
 		/*
 		 * Calculate how big a media structure fits up to the next
@@ -356,7 +356,7 @@ hammer_upgrade_undo_4(hammer_transaction_t trans)
 
 	/* no undo recursion */
 	hammer_lock_ex(&hmp->undo_lock);
-	hammer_modify_volume(NULL, root_volume, NULL, 0);
+	hammer_modify_volume_noundo(NULL, root_volume);
 
 	/*
 	 * Adjust the in-core undomap and the on-disk undomap.
@@ -381,7 +381,7 @@ hammer_upgrade_undo_4(hammer_transaction_t trans)
 		head = hammer_bnew(hmp, next_offset, &error, &buffer);
 		if (error)
 			break;
-		hammer_modify_buffer(NULL, buffer, NULL, 0);
+		hammer_modify_buffer_noundo(NULL, buffer);
 		tail = (void *)((char *)head + bytes - sizeof(*tail));
 
 		head->hdr_signature = HAMMER_HEAD_SIGNATURE;

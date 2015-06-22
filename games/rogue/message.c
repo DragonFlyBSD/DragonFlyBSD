@@ -31,7 +31,6 @@
  *
  * @(#)message.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/message.c,v 1.7.2.1 2000/07/20 10:35:07 kris Exp $
- * $DragonFly: src/games/rogue/message.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -97,7 +96,7 @@ message(const char *msg, boolean intrpt)
 
 	if (did_int) {
 		did_int = 0;
-		onintr();
+		onintr(0);
 	}
 }
 

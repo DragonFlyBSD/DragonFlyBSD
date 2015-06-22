@@ -56,7 +56,7 @@
 #define O_BINARY 0
 #endif
 
-#ifdef _FreeBSD
+#if defined(_DragonFly) || defined(_FreeBSD)
 #define MMAP_FLAGS          MAP_SHARED
 #else
 #define MMAP_FLAGS          MAP_PRIVATE
@@ -166,6 +166,6 @@ AcpiOsUnmapMemory (
 
 
     PageSize = AcpiOsGetPageSize ();
-    Offset = (ACPI_PHYSICAL_ADDRESS) Where % PageSize;
+    Offset = ACPI_TO_INTEGER (Where) % PageSize;
     munmap ((UINT8 *) Where - Offset, (Length + Offset));
 }

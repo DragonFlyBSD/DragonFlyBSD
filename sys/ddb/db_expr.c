@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_expr.c,v 1.13 1999/08/28 00:41:07 peter Exp $
- * $DragonFly: src/sys/ddb/db_expr.c,v 1.4 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -154,7 +153,7 @@ db_mult_expr(db_expr_t *valuep)
 		else if (t == tPCT)
 		    lhs %= rhs;
 		else
-		    lhs = ((lhs+rhs-1)/rhs)*rhs;
+		    lhs = roundup(lhs, rhs);
 	    }
 	    t = db_read_token();
 	}

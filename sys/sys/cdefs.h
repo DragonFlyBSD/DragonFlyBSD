@@ -173,6 +173,7 @@
 #define __always_inline
 #define __nonnull(x)
 #define __heedresult
+#define __returns_twice
 
 #else
 
@@ -215,15 +216,32 @@
 #define __used		__unused
 #endif
 
+#if __GNUC_PREREQ__(4, 1)
+#define __returns_twice __attribute__((__returns_twice__))
+#else
+#define __returns_twice
+#endif
+
 #endif	/* LINT */
 
 #if !__GNUC_PREREQ__(2, 7) && __STDC_VERSION < 199901
 #define __func__        NULL
 #endif
 
-#if (__GNUC_PREREQ__(2, 0) && !defined(__STRICT_ANSI)) || \
+#if (__GNUC_PREREQ__(2, 0) && !defined(__STRICT_ANSI__)) || \
     __STDC_VERSION__ >= 199901
 #define	__LONG_LONG_SUPPORTED
+#endif
+
+/* C++11 exposes a load of C99 stuff */
+#if defined(__cplusplus) && __cplusplus >= 201103L
+#define	__LONG_LONG_SUPPORTED
+#ifndef	__STDC_LIMIT_MACROS
+#define	__STDC_LIMIT_MACROS
+#endif
+#ifndef	__STDC_CONSTANT_MACROS
+#define	__STDC_CONSTANT_MACROS
+#endif
 #endif
 
 /*

@@ -51,9 +51,9 @@
 #endif	/* _POSIX_SOURCE */
 
 #ifdef _KERNEL
-#define __dev_t	udev_t
+#define	__dev_t	udev_t
 #else
-#define __dev_t	dev_t
+#define	__dev_t	dev_t
 #endif
 
 /*
@@ -84,19 +84,19 @@ struct stat {
 };
 
 /*#define _ST_FSMID_PRESENT_*/
-#define _ST_FLAGS_PRESENT_
+#define	_ST_FLAGS_PRESENT_
 
 #undef __dev_t
 
-#define st_atime st_atim.tv_sec
-#define st_mtime st_mtim.tv_sec
-#define st_ctime st_ctim.tv_sec
+#define	st_atime st_atim.tv_sec
+#define	st_mtime st_mtim.tv_sec
+#define	st_ctime st_ctim.tv_sec
 
 /* BSD compatibility */
 #ifndef _POSIX_SOURCE
-#define st_atimespec st_atim
-#define st_mtimespec st_mtim
-#define st_ctimespec st_ctim
+#define	st_atimespec st_atim
+#define	st_mtimespec st_mtim
+#define	st_ctimespec st_ctim
 #endif
 
 #define	S_ISUID	0004000			/* set user id on execution */
@@ -167,7 +167,7 @@ struct stat {
 							/* 0666 */
 #define	DEFFILEMODE	(S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)
 
-#define S_BLKSIZE	512		/* block size used in the stat struct */
+#define	S_BLKSIZE	512		/* block size used in the stat struct */
 
 /*
  * Definitions of flags stored in file flags word.
@@ -178,11 +178,11 @@ struct stat {
 #define	UF_NODUMP	0x00000001	/* do not dump file */
 #define	UF_IMMUTABLE	0x00000002	/* file may not be changed */
 #define	UF_APPEND	0x00000004	/* writes to file may only append */
-#define UF_OPAQUE	0x00000008	/* directory is opaque wrt. union */
-#define UF_NOUNLINK	0x00000010	/* file may not be removed or renamed */
-#define UF_FBSDRSVD20	0x00000020	/* (unused) */
-#define UF_NOHISTORY	0x00000040	/* do not retain history/snapshots */
-#define UF_CACHE	0x00000080	/* enable data swapcache */
+#define	UF_OPAQUE	0x00000008	/* directory is opaque wrt. union */
+#define	UF_NOUNLINK	0x00000010	/* file may not be removed or renamed */
+#define	UF_FBSDRSVD20	0x00000020	/* (unused) */
+#define	UF_NOHISTORY	0x00000040	/* do not retain history/snapshots */
+#define	UF_CACHE	0x00000080	/* enable data swapcache */
 /*
  * Super-user changeable flags.
  */
@@ -191,9 +191,9 @@ struct stat {
 #define	SF_IMMUTABLE	0x00020000	/* file may not be changed */
 #define	SF_APPEND	0x00040000	/* writes to file may only append */
 #define	SF_NOUNLINK	0x00100000	/* file may not be removed or renamed */
-#define SF_FBSDRSVD20	0x00200000	/* (used by FreeBSD for snapshots) */
-#define SF_NOHISTORY	0x00400000	/* do not retain history/snapshots */
-#define SF_NOCACHE	0x00800000	/* disable data swapcache */
+#define	SF_FBSDRSVD20	0x00200000	/* (used by FreeBSD for snapshots) */
+#define	SF_NOHISTORY	0x00400000	/* do not retain history/snapshots */
+#define	SF_NOCACHE	0x00800000	/* disable data swapcache */
 
 #ifdef _KERNEL
 /*
@@ -207,23 +207,30 @@ struct stat {
 
 #endif /* !_POSIX_SOURCE */
 
+#if __POSIX_VISIBLE >= 200809
+#define	UTIME_NOW	-1
+#define	UTIME_OMIT	-2
+#endif
+
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	chmod (const char *, mode_t);
+int	chmod(const char *, mode_t);
 #if __POSIX_VISIBLE >= 200809
-int	fchmodat (int, const char *, mode_t, int);
+int	fchmodat(int, const char *, mode_t, int);
+int	futimens(int, const struct timespec *);
+int	utimensat(int, const char *, const struct timespec *, int);
 #endif
-int	fstat (int, struct stat *);
-int	mkdir (const char *, mode_t);
-int	mkfifo (const char *, mode_t);
+int	fstat(int, struct stat *);
+int	mkdir(const char *, mode_t);
+int	mkfifo(const char *, mode_t);
 #if !defined(_MKNOD_DECLARED) && __XSI_VISIBLE
 int	mknod(const char *, mode_t, dev_t);
 #define	_MKNOD_DECLARED
 #endif
-int	stat (const char *, struct stat *);
-mode_t	umask (mode_t);
+int	stat(const char *, struct stat *);
+mode_t	umask(mode_t);
 #if __POSIX_VISIBLE >= 200809
 int	fstatat(int, const char *, struct stat *, int);
 int	mkdirat(int, const char *, mode_t);
@@ -234,13 +241,13 @@ int	mknodat(int, const char *, mode_t, dev_t);
 #endif
 
 #ifndef _POSIX_SOURCE
-int	chflags (const char *, u_long);
-int	fchflags (int, u_long);
-int	lchflags (const char *, u_long);
+int	chflags(const char *, u_long);
+int	fchflags(int, u_long);
+int	lchflags(const char *, u_long);
 int	chflagsat(int, const char *, u_long, int);
-int	fchmod (int, mode_t);
-int	lchmod (const char *, mode_t);
-int	lstat (const char *, struct stat *);
+int	fchmod(int, mode_t);
+int	lchmod(const char *, mode_t);
+int	lstat(const char *, struct stat *);
 #endif
 __END_DECLS
 

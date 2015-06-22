@@ -129,6 +129,11 @@ int kern_socket(int domain, int type, int protocol, int *res);
 int kern_socketpair(int domain, int type, int protocol, int *sockv);
 
 /*
+ * Prototypes for syscalls in kern/sys_pipe.c
+ */
+int kern_pipe(long *fds, int flags);
+
+/*
  * Prototypes for syscalls in kern/vfs_syscalls.c
  */
 int kern_access(struct nlookupdata *nd, int amode, int flags);
@@ -139,6 +144,7 @@ int kern_chroot(struct nchandle *nch);
 int kern_fstatfs(int fd, struct statfs *buf);
 int kern_fstatvfs(int fd, struct statvfs *buf);
 int kern_ftruncate(int fd, off_t length);
+int kern_futimens(int fd, struct timespec *ts);
 int kern_futimes(int fd, struct timeval *tptr);
 int kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res,
 		       enum uio_seg);
@@ -162,6 +168,7 @@ int kern_statvfs(struct nlookupdata *nd, struct statvfs *buf);
 int kern_symlink(struct nlookupdata *nd, char *path, int mode);
 int kern_truncate(struct nlookupdata *nd, off_t length);
 int kern_unlink(struct nlookupdata *nd);
+int kern_utimensat(struct nlookupdata *nd, const struct timespec *ts, int flag);
 int kern_utimes(struct nlookupdata *nd, struct timeval *tptr);
 struct uuid *kern_uuidgen(struct uuid *store, size_t count);
 

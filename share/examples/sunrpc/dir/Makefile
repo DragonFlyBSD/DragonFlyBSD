@@ -4,7 +4,7 @@
 BIN = dir_svc rls
 GEN = dir_clnt.c dir_svc.c dir_xdr.c dir.h
 LIB = -lrpclib
-RPCCOM = rpcgen
+RPCCOM = rpcgen -Y "${OBJFORMAT_PATH}/usr/bin"
 
 all: $(BIN)
 

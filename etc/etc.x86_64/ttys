@@ -40,14 +40,14 @@ ttyv5	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv6	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv7	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv8	"/usr/local/bin/xdm -nodaemon"	xterm	off secure
-# Serial terminals
-# The 'dialup' keyword identifies dialin lines to login, fingerd etc.
-ttyd0	"/usr/libexec/getty std.9600"	dialup	off secure
-ttyd1	"/usr/libexec/getty std.9600"	dialup	off secure
-ttyd2	"/usr/libexec/getty std.9600"	dialup	off secure
-ttyd3	"/usr/libexec/getty std.9600"	dialup	off secure
+# Serial terminals - keep it simple
+#
+ttyd0	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
+ttyd1	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
+ttyd2	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
+ttyd3	"/usr/libexec/getty std.9600"	dialup	on secure ifconsole
 # Dumb console
-dcons	"/usr/libexec/getty std.9600"	vt100	off secure
+dcons	"/usr/libexec/getty std.9600"	vt100	on secure ifconsole
 # Pseudo terminals
 ttyp0	none			network
 ttyp1	none			network

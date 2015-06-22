@@ -572,7 +572,7 @@ ng_attach_cntl(struct socket *so)
 	priv->refs++;
 
 	/* Initialize mutex. */
-	mtx_init(&priv->mtx);
+	mtx_init(&priv->mtx, "ng_socket");
 
 	/* Make the generic node components */
 	if ((error = ng_make_node_common(&typestruct, &priv->node)) != 0) {

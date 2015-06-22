@@ -34,7 +34,6 @@
 #include "evergreend.h"
 #include "evergreen_reg_safe.h"
 #include "cayman_reg_safe.h"
-#include "r600_cs.h"
 
 #define MAX(a,b)                   (((a)>(b))?(a):(b))
 #define MIN(a,b)                   (((a)<(b))?(a):(b))
@@ -505,9 +504,9 @@ static int evergreen_cs_track_validate_htile(struct radeon_cs_parser *p,
 
 	if (G_028ABC_LINEAR(track->htile_surface)) {
 		/* pitch must be 16 htiles aligned == 16 * 8 pixel aligned */
-		nbx = roundup(nbx, 16 * 8);
+		nbx = round_up(nbx, 16 * 8);
 		/* height is npipes htiles aligned == npipes * 8 pixel aligned */
-		nby = roundup(nby, track->npipes * 8);
+		nby = round_up(nby, track->npipes * 8);
 	} else {
 		/* always assume 8x8 htile */
 		/* align is htile align * 8, htile align vary according to
@@ -516,23 +515,23 @@ static int evergreen_cs_track_validate_htile(struct radeon_cs_parser *p,
 		switch (track->npipes) {
 		case 8:
 			/* HTILE_WIDTH = 8 & HTILE_HEIGHT = 8*/
-			nbx = roundup(nbx, 64 * 8);
-			nby = roundup(nby, 64 * 8);
+			nbx = round_up(nbx, 64 * 8);
+			nby = round_up(nby, 64 * 8);
 			break;
 		case 4:
 			/* HTILE_WIDTH = 8 & HTILE_HEIGHT = 8*/
-			nbx = roundup(nbx, 64 * 8);
-			nby = roundup(nby, 32 * 8);
+			nbx = round_up(nbx, 64 * 8);
+			nby = round_up(nby, 32 * 8);
 			break;
 		case 2:
 			/* HTILE_WIDTH = 8 & HTILE_HEIGHT = 8*/
-			nbx = roundup(nbx, 32 * 8);
-			nby = roundup(nby, 32 * 8);
+			nbx = round_up(nbx, 32 * 8);
+			nby = round_up(nby, 32 * 8);
 			break;
 		case 1:
 			/* HTILE_WIDTH = 8 & HTILE_HEIGHT = 8*/
-			nbx = roundup(nbx, 32 * 8);
-			nby = roundup(nby, 16 * 8);
+			nbx = round_up(nbx, 32 * 8);
+			nby = round_up(nby, 16 * 8);
 			break;
 		default:
 			dev_warn(p->dev, "%s:%d invalid num pipes %d\n",
@@ -821,7 +820,7 @@ static int evergreen_cs_track_validate_texture(struct radeon_cs_parser *p,
 
 	/* align height */
 	evergreen_surface_check(p, &surf, NULL);
-	surf.nby = roundup(surf.nby, surf.halign);
+	surf.nby = ALIGN(surf.nby, surf.halign);
 
 	r = evergreen_surface_check(p, &surf, "texture");
 	if (r) {
@@ -894,8 +893,8 @@ static int evergreen_cs_track_validate_texture(struct radeon_cs_parser *p,
 				 __func__, __LINE__, surf.mode);
 			return -EINVAL;
 		}
-		surf.nbx = roundup(surf.nbx, surf.palign);
-		surf.nby = roundup(surf.nby, surf.halign);
+		surf.nbx = ALIGN(surf.nbx, surf.palign);
+		surf.nby = ALIGN(surf.nby, surf.halign);
 
 		r = evergreen_surface_check(p, &surf, "mipmap");
 		if (r) {
@@ -1056,7 +1055,7 @@ static int evergreen_packet0_check(struct radeon_cs_parser *p,
 		}
 		break;
 	default:
-		DRM_ERROR("Forbidden register 0x%04X in cs at %d\n",
+		printk(KERN_ERR "Forbidden register 0x%04X in cs at %d\n",
 		       reg, idx);
 		return -EINVAL;
 	}
@@ -1100,9 +1099,9 @@ static int evergreen_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 	int r;
 
 	if (p->rdev->family >= CHIP_CAYMAN)
-		last_reg = DRM_ARRAY_SIZE(cayman_reg_safe_bm);
+		last_reg = ARRAY_SIZE(cayman_reg_safe_bm);
 	else
-		last_reg = DRM_ARRAY_SIZE(evergreen_reg_safe_bm);
+		last_reg = ARRAY_SIZE(evergreen_reg_safe_bm);
 
 	i = (reg >> 7);
 	if (i >= last_reg) {
@@ -1768,9 +1767,9 @@ static bool evergreen_is_safe_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 	u32 last_reg, m, i;
 
 	if (p->rdev->family >= CHIP_CAYMAN)
-		last_reg = DRM_ARRAY_SIZE(cayman_reg_safe_bm);
+		last_reg = ARRAY_SIZE(cayman_reg_safe_bm);
 	else
-		last_reg = DRM_ARRAY_SIZE(evergreen_reg_safe_bm);
+		last_reg = ARRAY_SIZE(evergreen_reg_safe_bm);
 
 	i = (reg >> 7);
 	if (i >= last_reg) {
@@ -2570,8 +2569,7 @@ int evergreen_cs_parse(struct radeon_cs_parser *p)
 
 	if (p->track == NULL) {
 		/* initialize tracker, we are in kms */
-		track = kmalloc(sizeof(*track), M_DRM,
-				M_ZERO | M_WAITOK);
+		track = kzalloc(sizeof(*track), GFP_KERNEL);
 		if (track == NULL)
 			return -ENOMEM;
 		evergreen_cs_track_init(track);
@@ -2637,7 +2635,7 @@ int evergreen_cs_parse(struct radeon_cs_parser *p)
 	do {
 		r = radeon_cs_packet_parse(p, &pkt, p->idx);
 		if (r) {
-			drm_free(p->track, M_DRM);
+			kfree(p->track);
 			p->track = NULL;
 			return r;
 		}
@@ -2653,12 +2651,12 @@ int evergreen_cs_parse(struct radeon_cs_parser *p)
 			break;
 		default:
 			DRM_ERROR("Unknown packet type %d !\n", pkt.type);
-			drm_free(p->track, M_DRM);
+			kfree(p->track);
 			p->track = NULL;
 			return -EINVAL;
 		}
 		if (r) {
-			drm_free(p->track, M_DRM);
+			kfree(p->track);
 			p->track = NULL;
 			return r;
 		}
@@ -2669,7 +2667,7 @@ int evergreen_cs_parse(struct radeon_cs_parser *p)
 		mdelay(1);
 	}
 #endif
-	drm_free(p->track, M_DRM);
+	kfree(p->track);
 	p->track = NULL;
 	return 0;
 }

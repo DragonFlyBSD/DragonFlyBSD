@@ -206,6 +206,24 @@
 #define	GEN6_PTE_GFDT		0x00000008	/* Graphics Data Type */
 
 /*
+ * Broadwell (taken from i915_gem_gtt.h)
+ */
+#define GEN8_PPAT_AGE(x)                (x<<4)
+#define GEN8_PPAT_LLCeLLC               (3<<2)
+#define GEN8_PPAT_LLCELLC               (2<<2)
+#define GEN8_PPAT_LLC                   (1<<2)
+#define GEN8_PPAT_WB                    (3<<0)
+#define GEN8_PPAT_WT                    (2<<0)
+#define GEN8_PPAT_WC                    (1<<0)
+#define GEN8_PPAT_UC                    (0<<0)
+
+#define GEN8_PTE_PRESENT		0x0001
+#define GEN8_PTE_RW			0x0002
+#define GEN8_PTE_PWT			0x0008
+#define GEN8_PTE_PCD			0x0010
+#define GEN8_PTE_PAT			0x0080
+
+/*
  * Memory mapped register offsets for i810 chipset.
  */
 #define AGP_I810_PGTBL_CTL	0x2020

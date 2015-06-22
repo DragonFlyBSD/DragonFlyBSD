@@ -1330,7 +1330,7 @@ kprint_cpuset(cpumask_t *mask)
 	if (more)
 		kprintf(", ");
 	if (b >= 0) {
-		if (b == e + 1) {
+		if (b == e - 1) {
 			kprintf("%d", b);
 		} else {
 			kprintf("%d-%d", b, e - 1);

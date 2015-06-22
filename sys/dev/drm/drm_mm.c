@@ -44,6 +44,7 @@
 #include <drm/drmP.h>
 #include <drm/drm_mm.h>
 #include <linux/slab.h>
+#include <linux/seq_file.h>
 #include <linux/export.h>
 
 #define MM_UNUSED_TARGET 4
@@ -146,33 +147,27 @@ static void drm_mm_insert_helper(struct drm_mm_node *hole_node,
 	}
 }
 
-struct drm_mm_node *drm_mm_create_block(struct drm_mm *mm,
-					unsigned long start,
-					unsigned long size,
-					bool atomic)
+int drm_mm_reserve_node(struct drm_mm *mm, struct drm_mm_node *node)
 {
-	struct drm_mm_node *hole, *node;
-	unsigned long end = start + size;
+	struct drm_mm_node *hole;
+	unsigned long end = node->start + node->size;
 	unsigned long hole_start;
 	unsigned long hole_end;
 
+	BUG_ON(node == NULL);
+
+	/* Find the relevant hole to add our node to */
 	drm_mm_for_each_hole(hole, mm, hole_start, hole_end) {
-		if (hole_start > start || hole_end < end)
+		if (hole_start > node->start || hole_end < end)
 			continue;
 
-		node = drm_mm_kmalloc(mm, atomic);
-		if (unlikely(node == NULL))
-			return NULL;
-
-		node->start = start;
-		node->size = size;
 		node->mm = mm;
 		node->allocated = 1;
 
 		INIT_LIST_HEAD(&node->hole_stack);
 		list_add(&node->node_list, &hole->node_list);
 
-		if (start == hole_start) {
+		if (node->start == hole_start) {
 			hole->hole_follows = 0;
 			list_del_init(&hole->hole_stack);
 		}
@@ -183,13 +178,14 @@ struct drm_mm_node *drm_mm_create_block(struct drm_mm *mm,
 			node->hole_follows = 1;
 		}
 
-		return node;
+		return 0;
 	}
 
-	WARN(1, "no hole found for block 0x%lx + 0x%lx\n", start, size);
-	return NULL;
+	WARN(1, "no hole found for node 0x%lx + 0x%lx\n",
+	     node->start, node->size);
+	return -ENOSPC;
 }
-EXPORT_SYMBOL(drm_mm_create_block);
+EXPORT_SYMBOL(drm_mm_reserve_node);
 
 struct drm_mm_node *drm_mm_get_block_generic(struct drm_mm_node *hole_node,
 					     unsigned long size,
@@ -216,12 +212,13 @@ EXPORT_SYMBOL(drm_mm_get_block_generic);
  */
 int drm_mm_insert_node_generic(struct drm_mm *mm, struct drm_mm_node *node,
 			       unsigned long size, unsigned alignment,
-			       unsigned long color)
+			       unsigned long color,
+			       enum drm_mm_search_flags flags)
 {
 	struct drm_mm_node *hole_node;
 
 	hole_node = drm_mm_search_free_generic(mm, size, alignment,
-					       color, 0);
+					       color, flags);
 	if (!hole_node)
 		return -ENOSPC;
 
@@ -229,13 +226,6 @@ int drm_mm_insert_node_generic(struct drm_mm *mm, struct drm_mm_node *node,
 	return 0;
 }
 EXPORT_SYMBOL(drm_mm_insert_node_generic);
-
-int drm_mm_insert_node(struct drm_mm *mm, struct drm_mm_node *node,
-		       unsigned long size, unsigned alignment)
-{
-	return drm_mm_insert_node_generic(mm, node, size, alignment, 0);
-}
-EXPORT_SYMBOL(drm_mm_insert_node);
 
 static void drm_mm_insert_helper_range(struct drm_mm_node *hole_node,
 				       struct drm_mm_node *node,
@@ -317,13 +307,14 @@ EXPORT_SYMBOL(drm_mm_get_block_range_generic);
  */
 int drm_mm_insert_node_in_range_generic(struct drm_mm *mm, struct drm_mm_node *node,
 					unsigned long size, unsigned alignment, unsigned long color,
-					unsigned long start, unsigned long end)
+					unsigned long start, unsigned long end,
+					enum drm_mm_search_flags flags)
 {
 	struct drm_mm_node *hole_node;
 
 	hole_node = drm_mm_search_free_in_range_generic(mm,
 							size, alignment, color,
-							start, end, 0);
+							start, end, flags);
 	if (!hole_node)
 		return -ENOSPC;
 
@@ -334,14 +325,6 @@ int drm_mm_insert_node_in_range_generic(struct drm_mm *mm, struct drm_mm_node *n
 }
 EXPORT_SYMBOL(drm_mm_insert_node_in_range_generic);
 
-int drm_mm_insert_node_in_range(struct drm_mm *mm, struct drm_mm_node *node,
-				unsigned long size, unsigned alignment,
-				unsigned long start, unsigned long end)
-{
-	return drm_mm_insert_node_in_range_generic(mm, node, size, alignment, 0, start, end);
-}
-EXPORT_SYMBOL(drm_mm_insert_node_in_range);
-
 /**
  * Remove a memory node from the allocator.
  */
@@ -349,6 +332,9 @@ void drm_mm_remove_node(struct drm_mm_node *node)
 {
 	struct drm_mm *mm = node->mm;
 	struct drm_mm_node *prev_node;
+
+	if (WARN_ON(!node->allocated))
+		return;
 
 	BUG_ON(node->scanned_block || node->scanned_prev_free
 				   || node->scanned_next_free);
@@ -417,7 +403,7 @@ struct drm_mm_node *drm_mm_search_free_generic(const struct drm_mm *mm,
 					       unsigned long size,
 					       unsigned alignment,
 					       unsigned long color,
-					       bool best_match)
+					       enum drm_mm_search_flags flags)
 {
 	struct drm_mm_node *entry;
 	struct drm_mm_node *best;
@@ -440,7 +426,7 @@ struct drm_mm_node *drm_mm_search_free_generic(const struct drm_mm *mm,
 		if (!check_free_hole(adj_start, adj_end, size, alignment))
 			continue;
 
-		if (!best_match)
+		if (!(flags & DRM_MM_SEARCH_BEST))
 			return entry;
 
 		if (entry->size < best_size) {
@@ -459,7 +445,7 @@ struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_mm *mm,
 							unsigned long color,
 							unsigned long start,
 							unsigned long end,
-							bool best_match)
+							enum drm_mm_search_flags flags)
 {
 	struct drm_mm_node *entry;
 	struct drm_mm_node *best;
@@ -487,7 +473,7 @@ struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_mm *mm,
 		if (!check_free_hole(adj_start, adj_end, size, alignment))
 			continue;
 
-		if (!best_match)
+		if (!(flags & DRM_MM_SEARCH_BEST))
 			return entry;
 
 		if (entry->size < best_size) {
@@ -633,8 +619,8 @@ EXPORT_SYMBOL(drm_mm_scan_add_block);
  * corrupted.
  *
  * When the scan list is empty, the selected memory nodes can be freed. An
- * immediately following drm_mm_search_free with best_match = 0 will then return
- * the just freed block (because its at the top of the free_stack list).
+ * immediately following drm_mm_search_free with !DRM_MM_SEARCH_BEST will then
+ * return the just freed block (because its at the top of the free_stack list).
  *
  * Returns one if this block should be evicted, zero otherwise. Will always
  * return zero when no hole has been found.
@@ -696,8 +682,8 @@ void drm_mm_takedown(struct drm_mm * mm)
 {
 	struct drm_mm_node *entry, *next;
 
-	if (WARN(!list_empty(&mm->head_node.node_list),
-		 "Memory manager not clean. Delaying takedown\n")) {
+	if (!list_empty(&mm->head_node.node_list)) {
+		DRM_ERROR("Memory manager not clean. Delaying takedown\n");
 		return;
 	}
 
@@ -713,41 +699,40 @@ void drm_mm_takedown(struct drm_mm * mm)
 }
 EXPORT_SYMBOL(drm_mm_takedown);
 
-static unsigned long drm_mm_debug_hole(struct drm_mm_node *entry,
-				       const char *prefix)
-{
-	unsigned long hole_start, hole_end, hole_size;
-
-	if (entry->hole_follows) {
-		hole_start = drm_mm_hole_node_start(entry);
-		hole_end = drm_mm_hole_node_end(entry);
-		hole_size = hole_end - hole_start;
-		kprintf("%s 0x%08lx-0x%08lx: %8lu: free\n",
-			prefix, hole_start, hole_end,
-			hole_size);
-		return hole_size;
-	}
-
-	return 0;
-}
-
 void drm_mm_debug_table(struct drm_mm *mm, const char *prefix)
 {
 	struct drm_mm_node *entry;
 	unsigned long total_used = 0, total_free = 0, total = 0;
+	unsigned long hole_start, hole_end, hole_size;
 
-	total_free += drm_mm_debug_hole(&mm->head_node, prefix);
+	hole_start = drm_mm_hole_node_start(&mm->head_node);
+	hole_end = drm_mm_hole_node_end(&mm->head_node);
+	hole_size = hole_end - hole_start;
+	if (hole_size)
+		printk(KERN_DEBUG "%s 0x%08lx-0x%08lx: %8lu: free\n",
+			prefix, hole_start, hole_end,
+			hole_size);
+	total_free += hole_size;
 
 	drm_mm_for_each_node(entry, mm) {
-		kprintf("%s 0x%08lx-0x%08lx: %8lu: used\n",
+		printk(KERN_DEBUG "%s 0x%08lx-0x%08lx: %8lu: used\n",
 			prefix, entry->start, entry->start + entry->size,
 			entry->size);
 		total_used += entry->size;
-		total_free += drm_mm_debug_hole(entry, prefix);
+
+		if (entry->hole_follows) {
+			hole_start = drm_mm_hole_node_start(entry);
+			hole_end = drm_mm_hole_node_end(entry);
+			hole_size = hole_end - hole_start;
+			printk(KERN_DEBUG "%s 0x%08lx-0x%08lx: %8lu: free\n",
+				prefix, hole_start, hole_end,
+				hole_size);
+			total_free += hole_size;
+		}
 	}
 	total = total_free + total_used;
 
-	kprintf("%s total: %lu, used %lu free %lu\n", prefix, total,
+	printk(KERN_DEBUG "%s total: %lu, used %lu free %lu\n", prefix, total,
 		total_used, total_free);
 }
 EXPORT_SYMBOL(drm_mm_debug_table);

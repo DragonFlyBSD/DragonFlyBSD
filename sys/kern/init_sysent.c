@@ -574,4 +574,7 @@ struct sysent sysent[] = {
 	{ AS(vmm_guest_sync_addr_args), (sy_call_t *)sys_vmm_guest_sync_addr },	/* 535 = vmm_guest_sync_addr */
 	{ AS(procctl_args), (sy_call_t *)sys_procctl },	/* 536 = procctl */
 	{ AS(chflagsat_args), (sy_call_t *)sys_chflagsat },	/* 537 = chflagsat */
+	{ AS(pipe2_args), (sy_call_t *)sys_pipe2 },	/* 538 = pipe2 */
+	{ AS(utimensat_args), (sy_call_t *)sys_utimensat },	/* 539 = utimensat */
+	{ AS(futimens_args), (sy_call_t *)sys_futimens },	/* 540 = futimens */
 };

@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)parser.h	8.3 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/parser.h 253650 2013-07-25 15:08:41Z jilles $
+ * $FreeBSD$
  */
 
 /* control characters in argument strings */
@@ -72,19 +68,17 @@
 
 /*
  * NEOF is returned by parsecmd when it encounters an end of file.  It
- * must be distinct from NULL, so we use the address of a variable that
- * happens to be handy.
+ * must be distinct from NULL.
  */
-extern int tokpushback;
-#define NEOF ((union node *)&tokpushback)
+#define NEOF ((union node *)-1)
 extern int whichprompt;		/* 1 == PS1, 2 == PS2 */
 extern const char *const parsekwd[];
 
 
 union node *parsecmd(int);
+void forcealias(void);
 void fixredir(union node *, const char *, int);
-void resetparser(void);
 int goodname(const char *);
 int isassignment(const char *);
-const char *getprompt(void *);
+char *getprompt(void *);
 const char *expandstr(const char *);

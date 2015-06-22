@@ -5,8 +5,8 @@ SRCS+=	cmd_service.c cmd_leaf.c cmd_debug.c
 SRCS+=	cmd_rsa.c cmd_stat.c cmd_setcomp.c cmd_setcheck.c
 SRCS+=	cmd_bulkfree.c
 SRCS+=	print_inode.c
-#MAN=	hammer2.8
-NOMAN=	TRUE
+MAN=	hammer2.8
+#NOMAN=	TRUE
 DEBUG_FLAGS=-g
 
 CFLAGS+= -I${.CURDIR}/../../sys

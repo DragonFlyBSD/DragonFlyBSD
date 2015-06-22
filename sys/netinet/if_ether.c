@@ -661,6 +661,7 @@ arpintr(netmsg_t msg)
 static int	log_arp_wrong_iface = 1;
 static int	log_arp_movements = 1;
 static int	log_arp_permanent_modify = 1;
+static int	log_arp_creation_failure = 1;
 
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_wrong_iface, CTLFLAG_RW,
 	   &log_arp_wrong_iface, 0,
@@ -672,6 +673,8 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_permanent_modify, CTLFLAG_RW,
 	   &log_arp_permanent_modify, 0,
 	   "Log arp replies from MACs different than the one "
 	   "in the permanent arp entry");
+SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_creation_failure, CTLFLAG_RW,
+	   &log_arp_creation_failure, 0, "Log arp creation failure");
 
 static void
 arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
@@ -1238,7 +1241,7 @@ arplookup(in_addr_t addr, boolean_t create, boolean_t generate_report,
 		why = "gateway route is not ours";
 
 	if (why) {
-		if (create) {
+		if (create && log_arp_creation_failure) {
 			log(LOG_DEBUG, "arplookup %s failed: %s\n",
 			    inet_ntoa(sin.sin_addr), why);
 		}

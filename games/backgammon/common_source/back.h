@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  *	@(#)back.h	8.1 (Berkeley) 5/31/93
- * $DragonFly: src/games/backgammon/common_source/back.h,v 1.2 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include <termios.h>
@@ -143,7 +142,7 @@ int	freemen(int);
 void	getarg(int, char **);
 int	getcaps(const char *);
 void	getmove(void);
-void	getout(void);		/* function to exit backgammon cleanly */
+void	getout(int);		/* function to exit backgammon cleanly */
 void	gwrite(void);
 void	init(void);
 int	makmove(int);

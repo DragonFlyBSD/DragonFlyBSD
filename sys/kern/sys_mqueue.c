@@ -92,7 +92,6 @@ static int	mqfilter_read(struct knote *kn, long hint);
 static int	mqfilter_write(struct knote *kn, long hint);
 
 /* Some time-related utility functions */
-static int	itimespecfix(struct timespec *ts);
 static int	tstohz(const struct timespec *ts);
 
 /* File operations vector */
@@ -216,19 +215,6 @@ mqueue_linear_insert(struct mqueue *mq, struct mq_msg *msg)
 	} else {
 		TAILQ_INSERT_BEFORE(mit, msg, msg_queue);
 	}
-}
-
-/*
- * Validate input.
- */
-static int
-itimespecfix(struct timespec *ts)
-{
-	if (ts->tv_sec < 0 || ts->tv_nsec < 0 || ts->tv_nsec >= 1000000000)
-		return (EINVAL);
-	if (ts->tv_sec == 0 && ts->tv_nsec != 0 && ts->tv_nsec < nstick)
-		ts->tv_nsec = nstick;
-	return (0);
 }
 
 /*

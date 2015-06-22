@@ -3,6 +3,7 @@ GCC_NO_LIBS=	yes
 LOCAL_CONFIG=	yes
 .include "../Makefile.inc"
 .PATH: ${GCCDIR}/libbacktrace
+.PATH: ${GCCDIR}/libgcc
 
 LIB=		backtrace
 INTERNALLIB=	YES
@@ -21,5 +22,12 @@ SRCS=		atomic.c \
 		elf.c \
 		mmapio.c \
 		mmap.c
+
+backtrace.o:	unwind.h
+
+unwind.h: unwind-generic.h
+	cp ${.ALLSRC} ${.TARGET}
+
+CLEANFILES=	unwind.h
 
 .include <bsd.lib.mk>

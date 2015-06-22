@@ -21,7 +21,7 @@ cd /sys
 init=false
 
 # Which kernels you want to check
-kernels="LINT GENERIC"
+kernels="LINT64 X86_64_GENERIC"
 
 NO_MODULES=yes
 export NO_MODULES
@@ -54,13 +54,13 @@ find . -name '*.o' -size 0 -print | xargs rm -f
 echo "Configuring kernels"
 (
 	cd i386/conf
-	make LINT
+	make LINT64
 	if $init ; then
-		config -r LINT
-		config -r GENERIC
+		config -r LINT64
+		config -r X86_64_GENERIC
 	else
-		config LINT
-		config GENERIC
+		config LINT64
+		config X86_64_GENERIC
 	fi
 )
 

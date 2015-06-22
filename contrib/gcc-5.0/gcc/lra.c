@@ -1633,7 +1633,8 @@ lra_update_insn_regno_info (rtx_insn *insn)
   lra_insn_recog_data_t data;
   struct lra_static_insn_data *static_data;
   enum rtx_code code;
-
+  rtx link;
+  
   if (! INSN_P (insn))
     return;
   data = lra_get_insn_recog_data (insn);
@@ -1648,6 +1649,18 @@ lra_update_insn_regno_info (rtx_insn *insn)
   if ((code = GET_CODE (PATTERN (insn))) == CLOBBER || code == USE)
     add_regs_to_insn_regno_info (data, XEXP (PATTERN (insn), 0), uid,
 				 code == USE ? OP_IN : OP_OUT, false);
+  if (CALL_P (insn))
+    /* On some targets call insns can refer to pseudos in memory in
+       CALL_INSN_FUNCTION_USAGE list.  Process them in order to
+       consider their occurrences in calls for different
+       transformations (e.g. inheritance) with given pseudos.  */
+    for (link = CALL_INSN_FUNCTION_USAGE (insn);
+	 link != NULL_RTX;
+	 link = XEXP (link, 1))
+      if (((code = GET_CODE (XEXP (link, 0))) == USE || code == CLOBBER)
+	  && MEM_P (XEXP (XEXP (link, 0), 0)))
+	add_regs_to_insn_regno_info (data, XEXP (XEXP (link, 0), 0), uid,
+				     code == USE ? OP_IN : OP_OUT, false);
   if (NONDEBUG_INSN_P (insn))
     setup_insn_reg_info (data, freq);
 }
@@ -2167,6 +2180,10 @@ int lra_new_regno_start;
 /* Start of reload pseudo regnos before the new spill pass.  */
 int lra_constraint_new_regno_start;
 
+/* Avoid spilling pseudos with regno more than the following value if
+   it is possible.  */
+int lra_bad_spill_regno_start;
+
 /* Inheritance pseudo regnos before the new spill pass.	 */
 bitmap_head lra_inheritance_pseudos;
 
@@ -2247,6 +2264,7 @@ lra (FILE *f)
   lra_live_range_iter = lra_coalesce_iter = lra_constraint_iter = 0;
   lra_assignment_iter = lra_assignment_iter_after_spill = 0;
   lra_inheritance_iter = lra_undo_inheritance_iter = 0;
+  lra_rematerialization_iter = 0;
 
   setup_reg_spill_flag ();
 
@@ -2255,6 +2273,7 @@ lra (FILE *f)
      permit changing reg classes for pseudos created by this
      simplification.  */
   lra_constraint_new_regno_start = lra_new_regno_start = max_reg_num ();
+  lra_bad_spill_regno_start = INT_MAX;
   remove_scratches ();
   scratch_p = lra_constraint_new_regno_start != max_reg_num ();
 
@@ -2393,6 +2412,13 @@ lra (FILE *f)
 	 some eliminations.  So update the offsets here.  */
       lra_eliminate (false, false);
       lra_constraint_new_regno_start = max_reg_num ();
+      if (lra_bad_spill_regno_start == INT_MAX
+	  && lra_inheritance_iter > LRA_MAX_INHERITANCE_PASSES
+	  && lra_rematerialization_iter > LRA_MAX_REMATERIALIZATION_PASSES)
+	/* After switching off inheritance and rematerialization
+	   passes, avoid spilling reload pseudos will be created to
+	   prevent LRA cycling in some complicated cases.  */
+	lra_bad_spill_regno_start = lra_constraint_new_regno_start;
       lra_assignment_iter_after_spill = 0;
     }
   restore_scratches ();

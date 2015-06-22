@@ -1047,6 +1047,10 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	 * Special case for @@PFS softlinks.  The actual size of the
 	 * expanded softlink is "@@0x%016llx:%05d" == 26 bytes.
 	 * or for MAX_TID is    "@@-1:%05d" == 10 bytes.
+	 *
+	 * Note that userspace hammer command does not allow users to
+	 * create a @@PFS softlink under an existing other PFS (id!=0)
+	 * so the ip localization here for @@PFS softlink is always 0.
 	 */
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_SOFTLINK &&
 	    ip->ino_data.size == 10 &&
@@ -1351,6 +1355,9 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	else
 		parent_obj_localization = dip->obj_localization;
 
+	/*
+	 * It's probably a PFS root when dip->ino_data.parent_obj_id is 0.
+	 */
 	if (parent_obj_id == 0) {
 		if (dip->obj_id == HAMMER_OBJID_ROOT &&
 		   asof != hmp->asof) {
@@ -1816,6 +1823,10 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	 * Also expand special "@@PFS%05d" softlinks (expansion only
 	 * occurs for non-historical (current) accesses made from the
 	 * primary filesystem).
+	 *
+	 * Note that userspace hammer command does not allow users to
+	 * create a @@PFS softlink under an existing other PFS (id!=0)
+	 * so the ip localization here for @@PFS softlink is always 0.
 	 */
 	if (ip->ino_data.size <= HAMMER_INODE_BASESYMLEN) {
 		char *ptr;

@@ -24,10 +24,7 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/r520.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
@@ -89,7 +86,7 @@ static void r520_gpu_init(struct radeon_device *rdev)
 	      (((gb_pipe_select >> 8) & 0xF) << 4);
 	WREG32_PLL(0x000D, tmp);
 	if (r520_mc_wait_for_idle(rdev)) {
-		DRM_ERROR("Failed to wait MC idle while "
+		printk(KERN_WARNING "Failed to wait MC idle while "
 		       "programming pipes. Bad things might happen.\n");
 	}
 }
@@ -197,6 +194,12 @@ static int r520_startup(struct radeon_device *rdev)
 	}
 
 	/* Enable IRQ */
+	if (!rdev->irq.installed) {
+		r = radeon_irq_kms_init(rdev);
+		if (r)
+			return r;
+	}
+
 	rs600_irq_set(rdev);
 	rdev->config.r300.hdp_cntl = RREG32(RADEON_HOST_PATH_CNTL);
 	/* 1M ring buffer */
@@ -298,9 +301,6 @@ int r520_init(struct radeon_device *rdev)
 	rv515_debugfs(rdev);
 	/* Fence driver */
 	r = radeon_fence_driver_init(rdev);
-	if (r)
-		return r;
-	r = radeon_irq_kms_init(rdev);
 	if (r)
 		return r;
 	/* Memory manager */

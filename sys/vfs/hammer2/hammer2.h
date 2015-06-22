@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -81,29 +81,89 @@
 #include <sys/buf.h>
 #include <sys/queue.h>
 #include <sys/limits.h>
-#include <sys/signal2.h>
 #include <sys/dmsg.h>
 #include <sys/mutex.h>
 #include <sys/kern_syscall.h>
 
+#include <sys/signal2.h>
 #include <sys/buf2.h>
 #include <sys/mutex2.h>
+#include <sys/thread2.h>
 
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
 #include "hammer2_ioctl.h"
-#include "hammer2_ccms.h"
 
 struct hammer2_io;
 struct hammer2_iocb;
 struct hammer2_chain;
 struct hammer2_cluster;
 struct hammer2_inode;
-struct hammer2_mount;
-struct hammer2_pfsmount;
+struct hammer2_dev;
+struct hammer2_pfs;
 struct hammer2_span;
 struct hammer2_state;
 struct hammer2_msg;
+struct hammer2_thread;
+struct hammer2_xop;
+
+/*
+ * Mutex and lock shims.  Hammer2 requires support for asynchronous and
+ * abortable locks, and both exclusive and shared spinlocks.  Normal
+ * synchronous non-abortable locks can be substituted for spinlocks.
+ */
+typedef mtx_t				hammer2_mtx_t;
+typedef mtx_link_t			hammer2_mtx_link_t;
+typedef mtx_state_t			hammer2_mtx_state_t;
+
+typedef struct spinlock			hammer2_spin_t;
+
+#define hammer2_mtx_ex			mtx_lock_ex_quick
+#define hammer2_mtx_sh			mtx_lock_sh_quick
+#define hammer2_mtx_unlock		mtx_unlock
+#define hammer2_mtx_owned		mtx_owned
+#define hammer2_mtx_init		mtx_init
+#define hammer2_mtx_temp_release	mtx_lock_temp_release
+#define hammer2_mtx_temp_restore	mtx_lock_temp_restore
+#define hammer2_mtx_refs		mtx_lockrefs
+
+#define hammer2_spin_init		spin_init
+#define hammer2_spin_sh			spin_lock_shared
+#define hammer2_spin_ex			spin_lock
+#define hammer2_spin_unsh		spin_unlock_shared
+#define hammer2_spin_unex		spin_unlock
+
+/*
+ * General lock support
+ */
+static __inline
+int
+hammer2_mtx_upgrade(hammer2_mtx_t *mtx)
+{
+	int wasexclusive;
+
+	if (mtx_islocked_ex(mtx)) {
+		wasexclusive = 1;
+	} else {
+		mtx_unlock(mtx);
+		mtx_lock_ex_quick(mtx);
+		wasexclusive = 0;
+	}
+	return wasexclusive;
+}
+
+/*
+ * Downgrade an inode lock from exclusive to shared only if the inode
+ * lock was previously shared.  If the inode lock was previously exclusive,
+ * this is a NOP.
+ */
+static __inline
+void
+hammer2_mtx_downgrade(hammer2_mtx_t *mtx, int wasexclusive)
+{
+	if (wasexclusive == 0)
+		mtx_downgrade(mtx);
+}
 
 /*
  * The xid tracks internal transactional updates.
@@ -184,20 +244,19 @@ TAILQ_HEAD(h2_iocb_list, hammer2_iocb);
 #define CHAIN_CORE_DELETE_BMAP_ENTRIES	\
 	(HAMMER2_PBUFSIZE / sizeof(hammer2_blockref_t) / sizeof(uint32_t))
 
+/*
+ * Core topology for chain (embedded in chain).  Protected by a spinlock.
+ */
 struct hammer2_chain_core {
-	struct ccms_cst	cst;
+	hammer2_spin_t	spin;
 	struct hammer2_chain_tree rbtree; /* sub-chains */
 	int		live_zero;	/* blockref array opt */
-	u_int		flags;
 	u_int		live_count;	/* live (not deleted) chains in tree */
 	u_int		chain_count;	/* live + deleted chains under core */
 	int		generation;	/* generation number (inserts only) */
 };
 
 typedef struct hammer2_chain_core hammer2_chain_core_t;
-
-#define HAMMER2_CORE_UNUSED0001		0x0001
-#define HAMMER2_CORE_COUNTEDBREFS	0x0002
 
 RB_HEAD(hammer2_io_tree, hammer2_io);
 
@@ -239,7 +298,7 @@ struct hammer2_io {
 	RB_ENTRY(hammer2_io) rbnode;	/* indexed by device offset */
 	struct h2_iocb_list iocbq;
 	struct spinlock spin;
-	struct hammer2_mount *hmp;
+	struct hammer2_dev *hmp;
 	struct buf	*bp;
 	off_t		pbase;
 	int		psize;
@@ -260,24 +319,23 @@ typedef struct hammer2_io hammer2_io_t;
  * Primary chain structure keeps track of the topology in-memory.
  */
 struct hammer2_chain {
+	hammer2_mtx_t		lock;
 	hammer2_chain_core_t	core;
 	RB_ENTRY(hammer2_chain) rbnode;		/* live chain(s) */
 	hammer2_blockref_t	bref;
 	struct hammer2_chain	*parent;
 	struct hammer2_state	*state;		/* if active cache msg */
-	struct hammer2_mount	*hmp;
-	struct hammer2_pfsmount	*pmp;		/* (pfs-cluster pmp or spmp) */
+	struct hammer2_dev	*hmp;
+	struct hammer2_pfs	*pmp;		/* A PFS or super-root (spmp) */
 
 	hammer2_xid_t	flush_xid;		/* flush sequencing */
-	hammer2_key_t   data_count;		/* delta's to apply */
-	hammer2_key_t   inode_count;		/* delta's to apply */
-	hammer2_key_t   data_count_up;		/* delta's to apply */
-	hammer2_key_t   inode_count_up;		/* delta's to apply */
 	hammer2_io_t	*dio;			/* physical data buffer */
 	u_int		bytes;			/* physical data size */
 	u_int		flags;
 	u_int		refs;
 	u_int		lockcnt;
+	int		error;			/* on-lock data error state */
+
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush list */
 };
@@ -290,40 +348,45 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 /*
  * Special notes on flags:
  *
- * INITIAL - This flag allows a chain to be created and for storage to
- *	     be allocated without having to immediately instantiate the
- *	     related buffer.  The data is assumed to be all-zeros.  It
- *	     is primarily used for indirect blocks.
+ * INITIAL	- This flag allows a chain to be created and for storage to
+ *		  be allocated without having to immediately instantiate the
+ *		  related buffer.  The data is assumed to be all-zeros.  It
+ *		  is primarily used for indirect blocks.
  *
- * MODIFIED- The chain's media data has been modified.
- * UPDATE  - Chain might not be modified but parent blocktable needs update
+ * MODIFIED	- The chain's media data has been modified.
  *
- * BMAPPED - Indicates that the chain is present in the parent blockmap.
- * BMAPUPD - Indicates that the chain is present but needs to be updated
- *	     in the parent blockmap.
+ * UPDATE	- Chain might not be modified but parent blocktable needs update
+ *
+ * FICTITIOUS	- Faked chain as a placeholder for an error condition.  This
+ *		  chain is unsuitable for I/O.
+ *
+ * BMAPPED	- Indicates that the chain is present in the parent blockmap.
+ *
+ * BMAPUPD	- Indicates that the chain is present but needs to be updated
+ *		  in the parent blockmap.
  */
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
 #define HAMMER2_CHAIN_DESTROY		0x00000004
-#define HAMMER2_CHAIN_UNLINKED		0x00000008	/* unlinked file */
+#define HAMMER2_CHAIN_UNUSED0008	0x00000008
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_UPDATE		0x00000040	/* need parent update */
 #define HAMMER2_CHAIN_DEFERRED		0x00000080	/* flush depth defer */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
 #define HAMMER2_CHAIN_ONFLUSH		0x00000200	/* on a flush list */
-#define HAMMER2_CHAIN_UNUSED00000400	0x00000400
+#define HAMMER2_CHAIN_FICTITIOUS	0x00000400	/* unsuitable for I/O */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
-#define HAMMER2_CHAIN_UNUSED00001000	0x00001000
-#define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
+#define HAMMER2_CHAIN_DELAYED		0x00001000	/* delayed flush */
+#define HAMMER2_CHAIN_COUNTEDBREFS	0x00002000	/* block table stats */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
-#define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
+#define HAMMER2_CHAIN_UNUSED00008000	0x00008000
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
 #define HAMMER2_CHAIN_RELEASE		0x00020000	/* don't keep around */
 #define HAMMER2_CHAIN_BMAPPED		0x00040000	/* present in blkmap */
 #define HAMMER2_CHAIN_BMAPUPD		0x00080000	/* +needs updating */
-#define HAMMER2_CHAIN_UNUSED00100000	0x00100000
-#define HAMMER2_CHAIN_UNUSED00200000	0x00200000
+#define HAMMER2_CHAIN_IOINPROG		0x00100000	/* I/O interlock */
+#define HAMMER2_CHAIN_IOSIGNAL		0x00200000	/* I/O interlock */
 #define HAMMER2_CHAIN_PFSBOUNDARY	0x00400000	/* super->pfs inode */
 
 #define HAMMER2_CHAIN_FLUSH_MASK	(HAMMER2_CHAIN_MODIFIED |	\
@@ -331,17 +394,45 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 					 HAMMER2_CHAIN_ONFLUSH)
 
 /*
+ * Hammer2 error codes, used by chain->error and cluster->error.  The error
+ * code is typically set on-lock unless no I/O was requested, and set on
+ * I/O otherwise.  If set for a cluster it generally means that the cluster
+ * code could not find a valid copy to present.
+ *
+ * IO		- An I/O error occurred
+ * CHECK	- I/O succeeded but did not match the check code
+ * INCOMPLETE	- A cluster is not complete enough to use, or
+ *		  a chain cannot be loaded because its parent has an error.
+ *
+ * NOTE: API allows callers to check zero/non-zero to determine if an error
+ *	 condition exists.
+ *
+ * NOTE: Chain's data field is usually NULL on an IO error but not necessarily
+ *	 NULL on other errors.  Check chain->error, not chain->data.
+ */
+#define HAMMER2_ERROR_NONE		0
+#define HAMMER2_ERROR_IO		1	/* device I/O error */
+#define HAMMER2_ERROR_CHECK		2	/* check code mismatch */
+#define HAMMER2_ERROR_INCOMPLETE	3	/* incomplete cluster */
+#define HAMMER2_ERROR_DEPTH		4	/* temporary depth limit */
+
+/*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
  *
  * NOTE: MATCHIND allows an indirect block / freemap node to be returned
  *	 when the passed key range matches the radix.  Remember that key_end
  *	 is inclusive (e.g. {0x000,0xFFF}, not {0x000,0x1000}).
+ *
+ * NOTE: NODIRECT prevents a lookup of offset 0 in an inode from returning
+ *	 the inode itself if the inode is in DIRECTDATA mode (i.e. file is
+ *	 <= 512 bytes).
  */
 #define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
 #define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
+#define HAMMER2_LOOKUP_NODIRECT		0x00000004	/* no offset=0 DD */
 #define HAMMER2_LOOKUP_SHARED		0x00000100
 #define HAMMER2_LOOKUP_MATCHIND		0x00000200	/* return all chains */
-#define HAMMER2_LOOKUP_UNUSED0400	0x00000400
+#define HAMMER2_LOOKUP_ALLNODES		0x00000400	/* allow NULL focus */
 #define HAMMER2_LOOKUP_ALWAYS		0x00000800	/* resolve data */
 
 /*
@@ -357,6 +448,11 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 /*
  * Flags passed to hammer2_chain_lock()
+ *
+ * NOTE: RDONLY is set to optimize cluster operations when *no* modifications
+ *	 will be made to either the cluster being locked or any underlying
+ *	 cluster.  It allows the cluster to lock and access data for a subset
+ *	 of available nodes instead of all available nodes.
  */
 #define HAMMER2_RESOLVE_NEVER		1
 #define HAMMER2_RESOLVE_MAYBE		2
@@ -364,7 +460,8 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_RESOLVE_MASK		0x0F
 
 #define HAMMER2_RESOLVE_SHARED		0x10	/* request shared lock */
-#define HAMMER2_RESOLVE_NOREF		0x20	/* already ref'd on lock */
+#define HAMMER2_RESOLVE_UNUSED20	0x20
+#define HAMMER2_RESOLVE_RDONLY		0x40	/* higher level op flag */
 
 /*
  * Flags passed to hammer2_chain_delete()
@@ -373,6 +470,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_DELETE_NOSTATS		0x0002
 
 #define HAMMER2_INSERT_NOSTATS		0x0002
+#define HAMMER2_INSERT_PFSROOT		0x0004
 
 /*
  * Flags passed to hammer2_chain_delete_duplicate()
@@ -409,49 +507,161 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 /*
  * HAMMER2 cluster - A set of chains representing the same entity.
  *
- * The hammer2_pfsmount structure embeds a hammer2_cluster.  All other
- * hammer2_cluster use cases use temporary allocations.
+ * hammer2_cluster typically represents a temporary set of representitive
+ * chains.  The one exception is that a hammer2_cluster is embedded in
+ * hammer2_inode.  This embedded cluster is ONLY used to track the
+ * representitive chains and cannot be directly locked.
  *
- * The cluster API mimics the chain API.  Except as used in the pfsmount,
- * the cluster structure is a temporary 'working copy' of a set of chains
- * representing targets compatible with the operation.  However, for
- * performance reasons the cluster API does not necessarily issue concurrent
- * requests to the underlying chain API for all compatible chains all the
- * time.  This may sometimes necessitate revisiting parent cluster nodes
- * to 'flesh out' (validate more chains).
+ * A cluster is usually temporary (and thus per-thread) for locking purposes,
+ * allowing us to embed the asynchronous storage required for cluster
+ * operations in the cluster itself and adjust the state and status without
+ * having to worry too much about SMP issues.
  *
- * If an insufficient number of chains remain in a working copy, the operation
- * may have to be downgraded, retried, or stall until the requisit number
- * of chains are available.
+ * The exception is the cluster embedded in the hammer2_inode structure.
+ * This is used to cache the cluster state on an inode-by-inode basis.
+ * Individual hammer2_chain structures not incorporated into clusters might
+ * also stick around to cache miscellanious elements.
+ *
+ * Because the cluster is a 'working copy' and is usually subject to cluster
+ * quorum rules, it is quite possible for us to end up with an insufficient
+ * number of live chains to execute an operation.  If an insufficient number
+ * of chains remain in a working copy, the operation may have to be
+ * downgraded, retried, stall until the requisit number of chains are
+ * available, or possibly even error out depending on the mount type.
+ *
+ * A cluster's focus is set when it is locked.  The focus can only be set
+ * to a chain still part of the synchronized set.
  */
 #define HAMMER2_MAXCLUSTER	8
+#define HAMMER2_XOPGROUPS	16
 
-struct hammer2_cluster {
-	int			status;		/* operational status */
-	int			refs;		/* track for deallocation */
-	struct hammer2_pfsmount	*pmp;
+struct hammer2_cluster_item {
+#if 0
+	hammer2_mtx_link_t	async_link;
+#endif
+	hammer2_chain_t		*chain;
+#if 0
+	struct hammer2_cluster	*cluster;	/* link back to cluster */
+#endif
+	int			cache_index;
 	uint32_t		flags;
-	int			nchains;
-	hammer2_iocb_t		iocb;
-	hammer2_chain_t		*focus;		/* current focus (or mod) */
-	hammer2_chain_t		*array[HAMMER2_MAXCLUSTER];
-	char			missed[HAMMER2_MAXCLUSTER];
-	int			cache_index[HAMMER2_MAXCLUSTER];
 };
 
-typedef struct hammer2_cluster hammer2_cluster_t;
+typedef struct hammer2_cluster_item hammer2_cluster_item_t;
 
-#define HAMMER2_CLUSTER_INODE	0x00000001	/* embedded in inode */
-#define HAMMER2_CLUSTER_NOSYNC	0x00000002	/* not in sync (cumulative) */
+/*
+ * INVALID	- Invalid for focus, i.e. not part of synchronized set.
+ *		  Once set, this bit is sticky across operations.
+ *
+ * FEMOD	- Indicates that front-end modifying operations can
+ *		  mess with this entry and MODSYNC will copy also
+ *		  effect it.
+ */
+#define HAMMER2_CITEM_INVALID	0x00000001
+#define HAMMER2_CITEM_FEMOD	0x00000002
 
+struct hammer2_cluster {
+	int			refs;		/* track for deallocation */
+	int			ddflag;
+	struct hammer2_pfs	*pmp;
+	uint32_t		flags;
+	int			nchains;
+	int			error;		/* error code valid on lock */
+	int			focus_index;
+	hammer2_iocb_t		iocb;
+	hammer2_chain_t		*focus;		/* current focus (or mod) */
+	hammer2_cluster_item_t	array[HAMMER2_MAXCLUSTER];
+};
+
+typedef struct hammer2_cluster	hammer2_cluster_t;
+
+/*
+ * WRHARD	- Hard mounts can write fully synchronized
+ * RDHARD	- Hard mounts can read fully synchronized
+ * UNHARD	- Unsynchronized masters present
+ * NOHARD	- No masters visible
+ * WRSOFT	- Soft mounts can write to at least the SOFT_MASTER
+ * RDSOFT	- Soft mounts can read from at least a SOFT_SLAVE
+ * UNSOFT	- Unsynchronized slaves present
+ * NOSOFT	- No slaves visible
+ * RDSLAVE	- slaves are accessible (possibly unsynchronized or remote).
+ * MSYNCED	- All masters are fully synchronized
+ * SSYNCED	- All known local slaves are fully synchronized to masters
+ *
+ * All available masters are always incorporated.  All PFSs belonging to a
+ * cluster (master, slave, copy, whatever) always try to synchronize the
+ * total number of known masters in the PFSs root inode.
+ *
+ * A cluster might have access to many slaves, copies, or caches, but we
+ * have a limited number of cluster slots.  Any such elements which are
+ * directly mounted from block device(s) will always be incorporated.   Note
+ * that SSYNCED only applies to such elements which are directly mounted,
+ * not to any remote slaves, copies, or caches that could be available.  These
+ * bits are used to monitor and drive our synchronization threads.
+ *
+ * When asking the question 'is any data accessible at all', then a simple
+ * test against (RDHARD|RDSOFT|RDSLAVE) gives you the answer.  If any of
+ * these bits are set the object can be read with certain caveats:
+ * RDHARD - no caveats.  RDSOFT - authoritative but might not be synchronized.
+ * and RDSLAVE - not authoritative, has some data but it could be old or
+ * incomplete.
+ *
+ * When both soft and hard mounts are available, data will be read and written
+ * via the soft mount only.  But all might be in the cluster because
+ * background synchronization threads still need to do their work.
+ */
+#define HAMMER2_CLUSTER_INODE	0x00000001	/* embedded in inode struct */
+#define HAMMER2_CLUSTER_UNUSED2	0x00000002
+#define HAMMER2_CLUSTER_LOCKED	0x00000004	/* cluster lks not recursive */
+#define HAMMER2_CLUSTER_WRHARD	0x00000100	/* hard-mount can write */
+#define HAMMER2_CLUSTER_RDHARD	0x00000200	/* hard-mount can read */
+#define HAMMER2_CLUSTER_UNHARD	0x00000400	/* unsynchronized masters */
+#define HAMMER2_CLUSTER_NOHARD	0x00000800	/* no masters visible */
+#define HAMMER2_CLUSTER_WRSOFT	0x00001000	/* soft-mount can write */
+#define HAMMER2_CLUSTER_RDSOFT	0x00002000	/* soft-mount can read */
+#define HAMMER2_CLUSTER_UNSOFT	0x00004000	/* unsynchronized slaves */
+#define HAMMER2_CLUSTER_NOSOFT	0x00008000	/* no slaves visible */
+#define HAMMER2_CLUSTER_MSYNCED	0x00010000	/* all masters synchronized */
+#define HAMMER2_CLUSTER_SSYNCED	0x00020000	/* known slaves synchronized */
+
+#define HAMMER2_CLUSTER_ANYDATA	( HAMMER2_CLUSTER_RDHARD |	\
+				  HAMMER2_CLUSTER_RDSOFT |	\
+				  HAMMER2_CLUSTER_RDSLAVE)
+
+#define HAMMER2_CLUSTER_RDOK	( HAMMER2_CLUSTER_RDHARD |	\
+				  HAMMER2_CLUSTER_RDSOFT)
+
+#define HAMMER2_CLUSTER_WROK	( HAMMER2_CLUSTER_WRHARD |	\
+				  HAMMER2_CLUSTER_WRSOFT)
+
+#define HAMMER2_CLUSTER_ZFLAGS	( HAMMER2_CLUSTER_WRHARD |	\
+				  HAMMER2_CLUSTER_RDHARD |	\
+				  HAMMER2_CLUSTER_WRSOFT |	\
+				  HAMMER2_CLUSTER_RDSOFT |	\
+				  HAMMER2_CLUSTER_MSYNCED |	\
+				  HAMMER2_CLUSTER_SSYNCED)
+
+/*
+ * Helper functions (cluster must be locked for flags to be valid).
+ */
+static __inline
+int
+hammer2_cluster_rdok(hammer2_cluster_t *cluster)
+{
+	return (cluster->flags & HAMMER2_CLUSTER_RDOK);
+}
+
+static __inline
+int
+hammer2_cluster_wrok(hammer2_cluster_t *cluster)
+{
+	return (cluster->flags & HAMMER2_CLUSTER_WROK);
+}
 
 RB_HEAD(hammer2_inode_tree, hammer2_inode);
 
 /*
  * A hammer2 inode.
- *
- * NOTE: The inode's attribute CST which is also used to lock the inode
- *	 is embedded in the chain (chain.cst) and aliased w/ attr_cst.
  *
  * NOTE: The inode-embedded cluster is never used directly for I/O (since
  *	 it may be shared).  Instead it will be replicated-in and synchronized
@@ -459,28 +669,36 @@ RB_HEAD(hammer2_inode_tree, hammer2_inode);
  */
 struct hammer2_inode {
 	RB_ENTRY(hammer2_inode) rbnode;		/* inumber lookup (HL) */
-	ccms_cst_t		topo_cst;	/* directory topology cst */
-	struct hammer2_pfsmount	*pmp;		/* PFS mount */
+	hammer2_mtx_t		lock;		/* inode lock */
+	struct hammer2_pfs	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;
+	struct spinlock		cluster_spin;	/* update cluster */
 	hammer2_cluster_t	cluster;
 	struct lockf		advlock;
-	hammer2_tid_t		inum;
 	u_int			flags;
 	u_int			refs;		/* +vpref, +flushref */
 	uint8_t			comp_heuristic;
-	hammer2_off_t		size;
-	uint64_t		mtime;
+	hammer2_inode_meta_t	meta;		/* copy of meta-data */
+	hammer2_blockref_t	bref;		/* copy of bref statistics */
+	hammer2_off_t		osize;
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
 
+/*
+ * MODIFIED	- Inode is in a modified state, ip->meta may have changes.
+ * RESIZED	- Inode truncated (any) or inode extended beyond
+ *		  EMBEDDED_BYTES.
+ */
 #define HAMMER2_INODE_MODIFIED		0x0001
 #define HAMMER2_INODE_SROOT		0x0002	/* kmalloc special case */
 #define HAMMER2_INODE_RENAME_INPROG	0x0004
 #define HAMMER2_INODE_ONRBTREE		0x0008
-#define HAMMER2_INODE_RESIZED		0x0010
-#define HAMMER2_INODE_MTIME		0x0020
+#define HAMMER2_INODE_RESIZED		0x0010	/* requires inode_fsync */
+#define HAMMER2_INODE_UNUSED0020	0x0020
+#define HAMMER2_INODE_ISUNLINKED	0x0040
+#define HAMMER2_INODE_METAGOOD		0x0080	/* inode meta-data good */
 
 int hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2);
 RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
@@ -500,50 +718,17 @@ typedef struct hammer2_inode_unlink hammer2_inode_unlink_t;
 /*
  * A hammer2 transaction and flush sequencing structure.
  *
- * This global structure is tied into hammer2_mount and is used
- * to sequence modifying operations and flushes.
- *
- * (a) Any modifying operations with sync_tid >= flush_tid will stall until
- *     all modifying operating with sync_tid < flush_tid complete.
- *
- *     The flush related to flush_tid stalls until all modifying operations
- *     with sync_tid < flush_tid complete.
- *
- * (b) Once unstalled, modifying operations with sync_tid > flush_tid are
- *     allowed to run.  All modifications cause modify/duplicate operations
- *     to occur on the related chains.  Note that most INDIRECT blocks will
- *     be unaffected because the modifications just overload the RBTREE
- *     structurally instead of actually modifying the indirect blocks.
- *
- * (c) The actual flush unstalls and RUNS CONCURRENTLY with (b), but only
- *     utilizes the chain structures with sync_tid <= flush_tid.  The
- *     flush will modify related indirect blocks and inodes in-place
- *     (rather than duplicate) since the adjustments are compatible with
- *     (b)'s RBTREE overloading
- *
- *     SPECIAL NOTE:  Inode modifications have to also propagate along any
- *		      modify/duplicate chains.  File writes detect the flush
- *		      and force out the conflicting buffer cache buffer(s)
- *		      before reusing them.
- *
- * (d) Snapshots can be made instantly but must be flushed and disconnected
- *     from their duplicative source before they can be mounted.  This is
- *     because while H2's on-media structure supports forks, its in-memory
- *     structure only supports very simple forking for background flushing
- *     purposes.
- *
- * TODO: Flush merging.  When fsync() is called on multiple discrete files
- *	 concurrently there is no reason to stall the second fsync.
- *	 The final flush that reaches to root can cover both fsync()s.
- *
- *     The chains typically terminate as they fly onto the disk.  The flush
- *     ultimately reaches the volume header.
+ * This global structure is tied into hammer2_dev and is used
+ * to sequence modifying operations and flushes.  These operations
+ * run on whole cluster PFSs, not individual nodes (at this level),
+ * so we do not record mirror_tid here.
  */
 struct hammer2_trans {
 	TAILQ_ENTRY(hammer2_trans) entry;
-	struct hammer2_pfsmount *pmp;
-	hammer2_xid_t		sync_xid;
+	struct hammer2_pfs	*pmp;
+	hammer2_xid_t		sync_xid;	/* transaction sequencer */
 	hammer2_tid_t		inode_tid;	/* inode number assignment */
+	hammer2_tid_t		modify_tid;	/* modify transaction id */
 	thread_t		td;		/* pointer */
 	int			flags;
 	int			blocked;
@@ -557,16 +742,13 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_TRANS_CONCURRENT	0x0002	/* concurrent w/flush */
 #define HAMMER2_TRANS_BUFCACHE		0x0004	/* from bioq strategy write */
 #define HAMMER2_TRANS_NEWINODE		0x0008	/* caller allocating inode */
-#define HAMMER2_TRANS_UNUSED0010	0x0010
+#define HAMMER2_TRANS_KEEPMODIFY	0x0010	/* do not change bref.modify */
 #define HAMMER2_TRANS_PREFLUSH		0x0020	/* preflush state */
 
 #define HAMMER2_FREEMAP_HEUR_NRADIX	4	/* pwr 2 PBUFRADIX-MINIORADIX */
 #define HAMMER2_FREEMAP_HEUR_TYPES	8
 #define HAMMER2_FREEMAP_HEUR		(HAMMER2_FREEMAP_HEUR_NRADIX * \
 					 HAMMER2_FREEMAP_HEUR_TYPES)
-
-#define HAMMER2_CLUSTER_COPY_NOCHAINS	0x0001	/* do not copy or ref chains */
-#define HAMMER2_CLUSTER_COPY_NOREF	0x0002	/* do not ref chains or cl */
 
 /*
  * Transaction Rendezvous
@@ -584,13 +766,90 @@ struct hammer2_trans_manage {
 typedef struct hammer2_trans_manage hammer2_trans_manage_t;
 
 /*
- * Global (per device) mount structure for device (aka vp->v_mount->hmp)
+ * Hammer2 support thread element.
+ *
+ * Potentially many support threads can hang off of hammer2, primarily
+ * off the hammer2_pfs structure.  Typically:
+ *
+ * td x Nodes		 	A synchronization thread for each node.
+ * td x Nodes x workers		Worker threads for frontend operations.
+ * td x 1			Bioq thread for logical buffer writes.
+ *
+ * In addition, the synchronization thread(s) associated with the
+ * super-root PFS (spmp) for a node is responsible for automatic bulkfree
+ * and dedup scans.
  */
-struct hammer2_mount {
+struct hammer2_thread {
+	struct hammer2_pfs *pmp;
+	thread_t	td;
+	uint32_t	flags;
+	int		depth;
+	int		clindex;	/* cluster element index */
+	int		repidx;
+	hammer2_trans_t	trans;
+	struct lock	lk;		/* thread control lock */
+};
+
+typedef struct hammer2_thread hammer2_thread_t;
+
+#define HAMMER2_THREAD_UNMOUNTING	0x0001	/* unmount request */
+#define HAMMER2_THREAD_DEV		0x0002	/* related to dev, not pfs */
+#define HAMMER2_THREAD_UNUSED04		0x0004
+#define HAMMER2_THREAD_REMASTER		0x0008	/* remaster request */
+#define HAMMER2_THREAD_STOP		0x0010	/* exit request */
+#define HAMMER2_THREAD_FREEZE		0x0020	/* force idle */
+#define HAMMER2_THREAD_FROZEN		0x0040	/* restart */
+
+
+/*
+ * hammer2_xop - container for VOP/XOP operation.
+ *
+ * This structure is used to distribute a VOP operation across multiple
+ * nodes.  It provides a rendezvous for concurrent node execution and
+ * can be detached from the frontend operation to allow the frontend to
+ * return early.
+ */
+struct hammer2_xop {
+	struct hammer2_xop	*next;
+	void			(*func)(struct hammer2_thread *thr,
+					struct hammer2_xop *xop);
+	int			refs;
+	hammer2_inode_t		*dip;
+	hammer2_inode_t		*ip;
+};
+
+typedef struct hammer2_xop hammer2_xop_t;
+
+TAILQ_HEAD(hammer2_xop_list, hammer2_xop);
+
+/*
+ * hammer2_xop_group - Manage XOP support threads.
+ */
+struct hammer2_xop_group {
+	hammer2_thread_t	thrs[HAMMER2_MAXCLUSTER];
+	hammer2_mtx_t		mtx;
+	hammer2_xop_t		marker;
+	hammer2_xop_t		**xop_tailp;
+};
+
+typedef struct hammer2_xop_group hammer2_xop_group_t;
+
+/*
+ * Global (per partition) management structure, represents a hard block
+ * device.  Typically referenced by hammer2_chain structures when applicable.
+ * Typically not used for network-managed elements.
+ *
+ * Note that a single hammer2_dev can be indirectly tied to multiple system
+ * mount points.  There is no direct relationship.  System mounts are
+ * per-cluster-id, not per-block-device, and a single hard mount might contain
+ * many PFSs and those PFSs might combine together in various ways to form
+ * the set of available clusters.
+ */
+struct hammer2_dev {
 	struct vnode	*devvp;		/* device vnode */
 	int		ronly;		/* read-only mount */
-	int		pmp_count;	/* PFS mounts backed by us */
-	TAILQ_ENTRY(hammer2_mount) mntentry; /* hammer2_mntlist */
+	int		mount_count;	/* number of actively mounted PFSs */
+	TAILQ_ENTRY(hammer2_dev) mntentry; /* hammer2_mntlist */
 
 	struct malloc_type *mchain;
 	int		nipstacks;
@@ -603,63 +862,109 @@ struct hammer2_mount {
 	hammer2_chain_t fchain;		/* anchor chain (freemap) */
 	struct spinlock	list_spin;
 	struct h2_flush_list	flushq;	/* flush seeds */
-	struct hammer2_pfsmount *spmp;	/* super-root pmp for transactions */
+	struct hammer2_pfs *spmp;	/* super-root pmp for transactions */
 	struct lock	vollk;		/* lockmgr lock */
 	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR];
 	int		volhdrno;	/* last volhdrno written */
+	char		devrepname[64];	/* for kprintf */
 	hammer2_volume_data_t voldata;
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
 };
 
-typedef struct hammer2_mount hammer2_mount_t;
+typedef struct hammer2_dev hammer2_dev_t;
 
 /*
- * HAMMER2 PFS mount point structure (aka vp->v_mount->mnt_data).
- * This has a 1:1 correspondence to struct mount (note that the
- * hammer2_mount structure has a N:1 correspondence).
- *
- * This structure represents a cluster mount and not necessarily a
- * PFS under a specific device mount (HMP).  The distinction is important
- * because the elements backing a cluster mount can change on the fly.
- *
- * Usually the first element under the cluster represents the original
- * user-requested mount that bootstraps the whole mess.  In significant
- * setups the original is usually just a read-only media image (or
- * representitive file) that simply contains a bootstrap volume header
- * listing the configuration.
+ * Helper functions (cluster must be locked for flags to be valid).
  */
-struct hammer2_pfsmount {
+static __inline
+int
+hammer2_chain_rdok(hammer2_chain_t *chain)
+{
+	return (chain->error == 0);
+}
+
+static __inline
+int
+hammer2_chain_wrok(hammer2_chain_t *chain)
+{
+	return (chain->error == 0 && chain->hmp->ronly == 0);
+}
+
+/*
+ * Per-cluster management structure.  This structure will be tied to a
+ * system mount point if the system is mounting the PFS, but is also used
+ * to manage clusters encountered during the super-root scan or received
+ * via LNK_SPANs that might not be mounted.
+ *
+ * This structure is also used to represent the super-root that hangs off
+ * of a hard mount point.  The super-root is not really a cluster element.
+ * In this case the spmp_hmp field will be non-NULL.  It's just easier to do
+ * this than to special case super-root manipulation in the hammer2_chain*
+ * code as being only hammer2_dev-related.
+ *
+ * pfs_mode and pfs_nmasters are rollup fields which critically describes
+ * how elements of the cluster act on the cluster.  pfs_mode is only applicable
+ * when a PFS is mounted by the system.  pfs_nmasters is our best guess as to
+ * how many masters have been configured for a cluster and is always
+ * applicable.  pfs_types[] is an array with 1:1 correspondance to the
+ * iroot cluster and describes the PFS types of the nodes making up the
+ * cluster.
+ *
+ * WARNING! Portions of this structure have deferred initialization.  In
+ *	    particular, if not mounted there will be no ihidden or wthread.
+ *	    umounted network PFSs will also be missing iroot and numerous
+ *	    other fields will not be initialized prior to mount.
+ *
+ *	    Synchronization threads are chain-specific and only applicable
+ *	    to local hard PFS entries.  A hammer2_pfs structure may contain
+ *	    more than one when multiple hard PFSs are present on the local
+ *	    machine which require synchronization monitoring.  Most PFSs
+ *	    (such as snapshots) are 1xMASTER PFSs which do not need a
+ *	    synchronization thread.
+ *
+ * WARNING! The chains making up pfs->iroot's cluster are accounted for in
+ *	    hammer2_dev->mount_count when the pfs is associated with a mount
+ *	    point.
+ */
+struct hammer2_pfs {
 	struct mount		*mp;
-	TAILQ_ENTRY(hammer2_pfsmount) mntentry; /* hammer2_pfslist */
+	TAILQ_ENTRY(hammer2_pfs) mntentry;	/* hammer2_pfslist */
 	uuid_t			pfs_clid;
-	uuid_t			pfs_fsid;
-	hammer2_mount_t		*spmp_hmp;	/* (spmp only) */
+	hammer2_dev_t		*spmp_hmp;	/* only if super-root pmp */
 	hammer2_inode_t		*iroot;		/* PFS root inode */
 	hammer2_inode_t		*ihidden;	/* PFS hidden directory */
+	uint8_t			pfs_types[HAMMER2_MAXCLUSTER];
+	char			*pfs_names[HAMMER2_MAXCLUSTER];
+	hammer2_trans_manage_t	tmanage;	/* transaction management */
 	struct lock		lock;		/* PFS lock for certain ops */
-	hammer2_off_t		inode_count;	/* copy of inode_count */
-	ccms_domain_t		ccms_dom;
 	struct netexport	export;		/* nfs export */
 	int			ronly;		/* read-only mount */
 	struct malloc_type	*minode;
 	struct malloc_type	*mmsg;
 	struct spinlock		inum_spin;	/* inumber lookup */
 	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
-	hammer2_tid_t		alloc_tid;
-	hammer2_tid_t		flush_tid;
-	hammer2_tid_t		inode_tid;
+	hammer2_tid_t		modify_tid;	/* modify transaction id */
+	hammer2_tid_t		inode_tid;	/* inode allocator */
+	uint8_t			pfs_nmasters;	/* total masters */
+	uint8_t			pfs_mode;	/* operating mode PFSMODE */
+	uint8_t			unused01;
+	uint8_t			unused02;
+	uint32_t		unused03;
 	long			inmem_inodes;
 	uint32_t		inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */
 	struct spinlock		list_spin;
 	struct h2_unlk_list	unlinkq;	/* last-close unlink */
+	hammer2_thread_t	sync_thrs[HAMMER2_MAXCLUSTER];
 	thread_t		wthread_td;	/* write thread td */
 	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
-	struct mtx		wthread_mtx;	/* interlock */
+	hammer2_mtx_t 		wthread_mtx;	/* interlock */
 	int			wthread_destroy;/* termination sequencing */
+	uint32_t		flags;		/* cached cluster flags */
+	hammer2_xop_group_t	xop_groups[HAMMER2_XOPGROUPS];
 };
 
-typedef struct hammer2_pfsmount hammer2_pfsmount_t;
+typedef struct hammer2_pfs hammer2_pfs_t;
 
 #define HAMMER2_DIRTYCHAIN_WAITING	0x80000000
 #define HAMMER2_DIRTYCHAIN_MASK		0x7FFFFFFF
@@ -724,10 +1029,10 @@ hammer2_devblksize(size_t bytes)
 
 
 static __inline
-hammer2_pfsmount_t *
+hammer2_pfs_t *
 MPTOPMP(struct mount *mp)
 {
-	return ((hammer2_pfsmount_t *)mp->mnt_data);
+	return ((hammer2_pfs_t *)mp->mnt_data);
 }
 
 #define LOCKSTART	int __nlocks = curthread->td_locks
@@ -769,11 +1074,10 @@ extern long hammer2_ioa_volu_write;
 
 extern struct objcache *cache_buffer_read;
 extern struct objcache *cache_buffer_write;
+extern struct objcache *cache_xops;
 
 extern int destroy;
 extern int write_thread_wakeup;
-
-extern mtx_t thread_protect;
 
 /*
  * hammer2_subr.c
@@ -782,38 +1086,37 @@ extern mtx_t thread_protect;
 #define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
 
 int hammer2_signal_check(time_t *timep);
-hammer2_cluster_t *hammer2_inode_lock_ex(hammer2_inode_t *ip);
-hammer2_cluster_t *hammer2_inode_lock_nex(hammer2_inode_t *ip, int how);
-hammer2_cluster_t *hammer2_inode_lock_sh(hammer2_inode_t *ip);
-void hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_cluster_t *chain);
-void hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_cluster_t *chain);
-ccms_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
-void hammer2_inode_lock_temp_restore(hammer2_inode_t *ip, ccms_state_t ostate);
-ccms_state_t hammer2_inode_lock_upgrade(hammer2_inode_t *ip);
-void hammer2_inode_lock_downgrade(hammer2_inode_t *ip, ccms_state_t ostate);
+const char *hammer2_error_str(int error);
 
-void hammer2_mount_exlock(hammer2_mount_t *hmp);
-void hammer2_mount_shlock(hammer2_mount_t *hmp);
-void hammer2_mount_unlock(hammer2_mount_t *hmp);
+void hammer2_inode_lock(hammer2_inode_t *ip, int how);
+void hammer2_inode_unlock(hammer2_inode_t *ip, hammer2_cluster_t *cluster);
+hammer2_cluster_t *hammer2_inode_cluster(hammer2_inode_t *ip, int how);
+hammer2_mtx_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
+void hammer2_inode_lock_temp_restore(hammer2_inode_t *ip,
+			hammer2_mtx_state_t ostate);
+int hammer2_inode_lock_upgrade(hammer2_inode_t *ip);
+void hammer2_inode_lock_downgrade(hammer2_inode_t *ip, int);
+
+void hammer2_dev_exlock(hammer2_dev_t *hmp);
+void hammer2_dev_shlock(hammer2_dev_t *hmp);
+void hammer2_dev_unlock(hammer2_dev_t *hmp);
 
 int hammer2_get_dtype(const hammer2_inode_data_t *ipdata);
-int hammer2_get_vtype(const hammer2_inode_data_t *ipdata);
+int hammer2_get_vtype(uint8_t type);
 u_int8_t hammer2_get_obj_type(enum vtype vtype);
 void hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts);
 u_int64_t hammer2_timespec_to_time(const struct timespec *ts);
 u_int32_t hammer2_to_unix_xid(const uuid_t *uuid);
 void hammer2_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
-hammer2_xid_t hammer2_trans_newxid(hammer2_pfsmount_t *pmp);
-void hammer2_trans_manage_init(void);
+hammer2_xid_t hammer2_trans_newxid(hammer2_pfs_t *pmp);
+void hammer2_trans_manage_init(hammer2_trans_manage_t *tman);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
 int hammer2_getradix(size_t bytes);
 
 int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 			hammer2_key_t *lbasep, hammer2_key_t *leofp);
-int hammer2_calc_physical(hammer2_inode_t *ip,
-			const hammer2_inode_data_t *ipdata,
-			hammer2_key_t lbase);
+int hammer2_calc_physical(hammer2_inode_t *ip, hammer2_key_t lbase);
 void hammer2_update_time(uint64_t *timep);
 void hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
 
@@ -822,26 +1125,29 @@ void hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
  */
 struct vnode *hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent,
 			int *errorp);
-void hammer2_inode_lock_nlinks(hammer2_inode_t *ip);
-void hammer2_inode_unlock_nlinks(hammer2_inode_t *ip);
-hammer2_inode_t *hammer2_inode_lookup(hammer2_pfsmount_t *pmp,
+hammer2_inode_t *hammer2_inode_lookup(hammer2_pfs_t *pmp,
 			hammer2_tid_t inum);
-hammer2_inode_t *hammer2_inode_get(hammer2_pfsmount_t *pmp,
+hammer2_inode_t *hammer2_inode_get(hammer2_pfs_t *pmp,
 			hammer2_inode_t *dip, hammer2_cluster_t *cluster);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
 void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 			hammer2_cluster_t *cluster);
-void hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp);
+void hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
+			int idx);
+void hammer2_inode_modify(hammer2_trans_t *trans, hammer2_inode_t *ip);
+void hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfs_t *pmp);
 
 hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
 			hammer2_inode_t *dip,
 			struct vattr *vap, struct ucred *cred,
 			const uint8_t *name, size_t name_len,
-			hammer2_cluster_t **clusterp, int *errorp);
+			hammer2_cluster_t **clusterp,
+			int flags, int *errorp);
 int hammer2_inode_connect(hammer2_trans_t *trans,
-			hammer2_cluster_t **clusterp, int hlink,
+			hammer2_inode_t *ip, hammer2_cluster_t **clusterp,
+			int hlink,
 			hammer2_inode_t *dip, hammer2_cluster_t *dcluster,
 			const uint8_t *name, size_t name_len,
 			hammer2_key_t key);
@@ -849,7 +1155,8 @@ hammer2_inode_t *hammer2_inode_common_parent(hammer2_inode_t *fdip,
 			hammer2_inode_t *tdip);
 void hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			hammer2_cluster_t *cparent);
-int hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
+int hammer2_unlink_file(hammer2_trans_t *trans,
+			hammer2_inode_t *dip, hammer2_inode_t *ip,
 			const uint8_t *name, size_t name_len, int isdir,
 			int *hlinkp, struct nchandle *nch, int nlinks);
 int hammer2_hardlink_consolidate(hammer2_trans_t *trans,
@@ -859,32 +1166,32 @@ int hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 int hammer2_hardlink_deconsolidate(hammer2_trans_t *trans, hammer2_inode_t *dip,
 			hammer2_chain_t **chainp, hammer2_chain_t **ochainp);
 int hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_cluster_t **cparentp,
-			hammer2_cluster_t *cluster);
+			hammer2_cluster_t **clusterp);
 int hammer2_parent_find(hammer2_cluster_t **cparentp,
 			hammer2_cluster_t *cluster);
-void hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp);
+void hammer2_inode_install_hidden(hammer2_pfs_t *pmp);
 
 /*
  * hammer2_chain.c
  */
-void hammer2_voldata_lock(hammer2_mount_t *hmp);
-void hammer2_voldata_unlock(hammer2_mount_t *hmp);
-void hammer2_voldata_modify(hammer2_mount_t *hmp);
-hammer2_chain_t *hammer2_chain_alloc(hammer2_mount_t *hmp,
-				hammer2_pfsmount_t *pmp,
+void hammer2_voldata_lock(hammer2_dev_t *hmp);
+void hammer2_voldata_unlock(hammer2_dev_t *hmp);
+void hammer2_voldata_modify(hammer2_dev_t *hmp);
+hammer2_chain_t *hammer2_chain_alloc(hammer2_dev_t *hmp,
+				hammer2_pfs_t *pmp,
 				hammer2_trans_t *trans,
 				hammer2_blockref_t *bref);
-void hammer2_chain_core_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain);
+void hammer2_chain_core_init(hammer2_chain_t *chain);
 void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
-int hammer2_chain_lock(hammer2_chain_t *chain, int how);
+void hammer2_chain_lock(hammer2_chain_t *chain, int how);
+void hammer2_chain_load_data(hammer2_chain_t *chain);
 const hammer2_media_data_t *hammer2_chain_rdata(hammer2_chain_t *chain);
 hammer2_media_data_t *hammer2_chain_wdata(hammer2_chain_t *chain);
 
 /*
  * hammer2_cluster.c
  */
-int hammer2_cluster_isunlinked(hammer2_cluster_t *cluster);
 void hammer2_cluster_load_async(hammer2_cluster_t *cluster,
 				void (*callback)(hammer2_iocb_t *iocb),
 				void *ptr);
@@ -904,7 +1211,7 @@ void hammer2_chain_lookup_done(hammer2_chain_t *parent);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_chain_t **parentp,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
-				int *cache_indexp, int flags, int *ddflagp);
+				int *cache_indexp, int flags);
 hammer2_chain_t *hammer2_chain_next(hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
 				hammer2_key_t *key_nextp,
@@ -916,7 +1223,7 @@ hammer2_chain_t *hammer2_chain_scan(hammer2_chain_t *parent,
 
 int hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
-				hammer2_pfsmount_t *pmp,
+				hammer2_pfs_t *pmp,
 				hammer2_key_t key, int keybits,
 				int type, size_t bytes, int flags);
 void hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
@@ -928,7 +1235,8 @@ void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				hammer2_chain_t *chain, int flags);
 void hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
 				hammer2_chain_t **chainp, int flags);
-void hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);
+void hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain, int istop);
+void hammer2_delayed_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_commit(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_setflush(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,
@@ -938,9 +1246,9 @@ void hammer2_chain_setcheck(hammer2_chain_t *chain, void *bdata);
 int hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata);
 
 
-void hammer2_pfs_memory_wait(hammer2_pfsmount_t *pmp);
-void hammer2_pfs_memory_inc(hammer2_pfsmount_t *pmp);
-void hammer2_pfs_memory_wakeup(hammer2_pfsmount_t *pmp);
+void hammer2_pfs_memory_wait(hammer2_pfs_t *pmp);
+void hammer2_pfs_memory_inc(hammer2_pfs_t *pmp);
+void hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp);
 
 void hammer2_base_delete(hammer2_trans_t *trans, hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
@@ -952,10 +1260,10 @@ void hammer2_base_insert(hammer2_trans_t *trans, hammer2_chain_t *chain,
 /*
  * hammer2_trans.c
  */
-void hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp,
+void hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfs_t *pmp,
 				int flags);
-void hammer2_trans_spmp(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp);
 void hammer2_trans_done(hammer2_trans_t *trans);
+void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
 
 /*
  * hammer2_ioctl.c
@@ -967,20 +1275,20 @@ int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
  * hammer2_io.c
  */
 void hammer2_io_putblk(hammer2_io_t **diop);
-void hammer2_io_cleanup(hammer2_mount_t *hmp, struct hammer2_io_tree *tree);
+void hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree);
 char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
-void hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize,
+void hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_iocb_t *iocb);
 void hammer2_io_complete(hammer2_iocb_t *iocb);
 void hammer2_io_callback(struct bio *bio);
 void hammer2_iocb_wait(hammer2_iocb_t *iocb);
-int hammer2_io_new(hammer2_mount_t *hmp, off_t lbase, int lsize,
+int hammer2_io_new(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-int hammer2_io_newnz(hammer2_mount_t *hmp, off_t lbase, int lsize,
+int hammer2_io_newnz(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-int hammer2_io_newq(hammer2_mount_t *hmp, off_t lbase, int lsize,
+int hammer2_io_newq(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-int hammer2_io_bread(hammer2_mount_t *hmp, off_t lbase, int lsize,
+int hammer2_io_bread(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_io_t **diop);
 void hammer2_io_bawrite(hammer2_io_t **diop);
 void hammer2_io_bdwrite(hammer2_io_t **diop);
@@ -992,6 +1300,24 @@ void hammer2_io_brelse(hammer2_io_t **diop);
 void hammer2_io_bqrelse(hammer2_io_t **diop);
 
 /*
+ * hammer2_xops.c
+ */
+void hammer2_xop_group_init(hammer2_pfs_t *pfs, hammer2_xop_group_t *xgrp);
+int hammer2_xop_readdir(struct vop_readdir_args *ap);
+int hammer2_xop_readlink(struct vop_readlink_args *ap);
+int hammer2_xop_nresolve(struct vop_nresolve_args *ap);
+int hammer2_xop_nlookupdotdot(struct vop_nlookupdotdot_args *ap);
+int hammer2_xop_nmkdir(struct vop_nmkdir_args *ap);
+int hammer2_xop_advlock(struct vop_advlock_args *ap);
+int hammer2_xop_nlink(struct vop_nlink_args *ap);
+int hammer2_xop_ncreate(struct vop_ncreate_args *ap);
+int hammer2_xop_nmknod(struct vop_nmknod_args *ap);
+int hammer2_xop_nsymlink(struct vop_nsymlink_args *ap);
+int hammer2_xop_nremove(struct vop_nremove_args *ap);
+int hammer2_xop_nrmdir(struct vop_nrmdir_args *ap);
+int hammer2_xop_nrename(struct vop_nrename_args *ap);
+
+/*
  * hammer2_msgops.c
  */
 int hammer2_msg_dbg_rcvmsg(kdmsg_msg_t *msg);
@@ -1001,20 +1327,23 @@ int hammer2_msg_adhoc_input(kdmsg_msg_t *msg);
  * hammer2_vfsops.c
  */
 void hammer2_clusterctl_wakeup(kdmsg_iocom_t *iocom);
-void hammer2_volconf_update(hammer2_mount_t *hmp, int index);
+void hammer2_volconf_update(hammer2_dev_t *hmp, int index);
 void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx);
-void hammer2_bioq_sync(hammer2_pfsmount_t *pmp);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
-void hammer2_lwinprog_ref(hammer2_pfsmount_t *pmp);
-void hammer2_lwinprog_drop(hammer2_pfsmount_t *pmp);
-void hammer2_lwinprog_wait(hammer2_pfsmount_t *pmp);
+hammer2_pfs_t *hammer2_pfsalloc(hammer2_cluster_t *cluster,
+				const hammer2_inode_data_t *ripdata,
+				hammer2_tid_t modify_tid);
+
+void hammer2_lwinprog_ref(hammer2_pfs_t *pmp);
+void hammer2_lwinprog_drop(hammer2_pfs_t *pmp);
+void hammer2_lwinprog_wait(hammer2_pfs_t *pmp);
 
 /*
  * hammer2_freemap.c
  */
 int hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 				size_t bytes);
-void hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+void hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 				hammer2_blockref_t *bref, int how);
 
 /*
@@ -1027,33 +1356,31 @@ hammer2_media_data_t *hammer2_cluster_wdata(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_from_chain(hammer2_chain_t *chain);
 int hammer2_cluster_modified(hammer2_cluster_t *cluster);
 int hammer2_cluster_duplicated(hammer2_cluster_t *cluster);
-void hammer2_cluster_set_chainflags(hammer2_cluster_t *cluster, uint32_t flags);
-void hammer2_cluster_clr_chainflags(hammer2_cluster_t *cluster, uint32_t flags);
 void hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref);
 void hammer2_cluster_setflush(hammer2_trans_t *trans,
 			hammer2_cluster_t *cluster);
 void hammer2_cluster_setmethod_check(hammer2_trans_t *trans,
 			hammer2_cluster_t *cluster, int check_algo);
-hammer2_cluster_t *hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
+hammer2_cluster_t *hammer2_cluster_alloc(hammer2_pfs_t *pmp,
 			hammer2_trans_t *trans,
 			hammer2_blockref_t *bref);
 void hammer2_cluster_ref(hammer2_cluster_t *cluster);
 void hammer2_cluster_drop(hammer2_cluster_t *cluster);
 void hammer2_cluster_wait(hammer2_cluster_t *cluster);
-int hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
-void hammer2_cluster_replace(hammer2_cluster_t *dst, hammer2_cluster_t *src);
-void hammer2_cluster_replace_locked(hammer2_cluster_t *dst,
-			hammer2_cluster_t *src);
-hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster,
-			int with_chains);
+void hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
+void hammer2_cluster_lock_except(hammer2_cluster_t *cluster, int idx, int how);
+void hammer2_cluster_resolve(hammer2_cluster_t *cluster);
+void hammer2_cluster_forcegood(hammer2_cluster_t *cluster);
+hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
+void hammer2_cluster_unlock_except(hammer2_cluster_t *cluster, int idx);
 void hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 			int nradix, int flags);
+void hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
+			int flags);
 hammer2_inode_data_t *hammer2_cluster_modify_ip(hammer2_trans_t *trans,
 			hammer2_inode_t *ip, hammer2_cluster_t *cluster,
-			int flags);
-void hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 			int flags);
 void hammer2_cluster_modsync(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_lookup_init(hammer2_cluster_t *cparent,
@@ -1062,12 +1389,18 @@ void hammer2_cluster_lookup_done(hammer2_cluster_t *cparent);
 hammer2_cluster_t *hammer2_cluster_lookup(hammer2_cluster_t *cparent,
 			hammer2_key_t *key_nextp,
 			hammer2_key_t key_beg, hammer2_key_t key_end,
-			int flags, int *ddflagp);
+			int flags);
 hammer2_cluster_t *hammer2_cluster_next(hammer2_cluster_t *cparent,
 			hammer2_cluster_t *cluster,
 			hammer2_key_t *key_nextp,
 			hammer2_key_t key_beg, hammer2_key_t key_end,
 			int flags);
+void hammer2_cluster_next_single_chain(hammer2_cluster_t *cparent,
+			hammer2_cluster_t *cluster,
+			hammer2_key_t *key_nextp,
+			hammer2_key_t key_beg,
+			hammer2_key_t key_end,
+			int i, int flags);
 hammer2_cluster_t *hammer2_cluster_scan(hammer2_cluster_t *cparent,
 			hammer2_cluster_t *cluster, int flags);
 int hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
@@ -1086,15 +1419,37 @@ hammer2_cluster_t *hammer2_cluster_parent(hammer2_cluster_t *cluster);
 int hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			int (*func)(hammer2_chain_t *chain, void *info),
 			void *info);
-int hammer2_bulkfree_pass(hammer2_mount_t *hmp,
+int hammer2_bulkfree_pass(hammer2_dev_t *hmp,
 			struct hammer2_ioc_bulkfree *bfi);
 
 /*
  * hammer2_iocom.c
  */
-void hammer2_iocom_init(hammer2_mount_t *hmp);
-void hammer2_iocom_uninit(hammer2_mount_t *hmp);
-void hammer2_cluster_reconnect(hammer2_mount_t *hmp, struct file *fp);
+void hammer2_iocom_init(hammer2_dev_t *hmp);
+void hammer2_iocom_uninit(hammer2_dev_t *hmp);
+void hammer2_cluster_reconnect(hammer2_dev_t *hmp, struct file *fp);
+
+/*
+ * hammer2_thread.c
+ */
+void hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
+			const char *id, int clindex, int repidx,
+			void (*func)(void *arg));
+void hammer2_thr_delete(hammer2_thread_t *thr);
+void hammer2_thr_remaster(hammer2_thread_t *thr);
+void hammer2_thr_freeze_async(hammer2_thread_t *thr);
+void hammer2_thr_freeze(hammer2_thread_t *thr);
+void hammer2_thr_unfreeze(hammer2_thread_t *thr);
+void hammer2_primary_sync_thread(void *arg);
+void hammer2_primary_xops_thread(void *arg);
+
+/*
+ * hammer2_strategy.c
+ */
+int hammer2_vop_strategy(struct vop_strategy_args *ap);
+int hammer2_vop_bmap(struct vop_bmap_args *ap);
+void hammer2_write_thread(void *arg);
+void hammer2_bioq_sync(hammer2_pfs_t *pmp);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

@@ -100,11 +100,6 @@ int cpu_mwait_spin = 0;
 static void lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame);
 static void lwkt_setcpu_remote(void *arg);
 
-extern void cpu_heavy_restore(void);
-extern void cpu_lwkt_restore(void);
-extern void cpu_kthread_restore(void);
-extern void cpu_idle_restore(void);
-
 /*
  * We can make all thread ports use the spin backend instead of the thread
  * backend.  This should only be set to debug the spin backend.
@@ -276,7 +271,7 @@ _lwkt_thread_dtor(void *obj, void *privdata)
  * Nominally cache up to 32 thread + kstack structures.  Cache more on
  * systems with a lot of cpu cores.
  */
-void
+static void
 lwkt_init(void)
 {
     TUNABLE_INT("lwkt.cache_threads", &lwkt_cache_threads);
@@ -290,6 +285,7 @@ lwkt_init(void)
 				0, lwkt_cache_threads,
 				_lwkt_thread_ctor, _lwkt_thread_dtor, NULL);
 }
+SYSINIT(lwkt_init, SI_BOOT2_LWKT_INIT, SI_ORDER_FIRST, lwkt_init, NULL);
 
 /*
  * Schedule a thread to run.  As the current thread we can always safely
@@ -1776,8 +1772,7 @@ crit_panic(void)
 
 /*
  * Called from debugger/panic on cpus which have been stopped.  We must still
- * process the IPIQ while stopped, even if we were stopped while in a critical
- * section (XXX).
+ * process the IPIQ while stopped.
  *
  * If we are dumping also try to process any pending interrupts.  This may
  * or may not work depending on the state of the cpu at the point it was
@@ -1788,12 +1783,12 @@ lwkt_smp_stopped(void)
 {
     globaldata_t gd = mycpu;
 
-    crit_enter_gd(gd);
     if (dumping) {
 	lwkt_process_ipiq();
+	--gd->gd_intr_nesting_level;
 	splz();
+	++gd->gd_intr_nesting_level;
     } else {
 	lwkt_process_ipiq();
     }
-    crit_exit_gd(gd);
 }

@@ -38,6 +38,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/bitops.h>
+#include <sys/sensors.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -49,11 +50,19 @@
 #include "coremctl_if.h"
 #include "pcib_if.h"
 
+#include <dev/misc/dimm/dimm.h>
 #include <dev/misc/coremctl/coremctl_reg.h>
 
 #define ECC_E3_VER_1	1	/* Sandy Bridge */
 #define ECC_E3_VER_2	2	/* Ivy Bridge */
 #define ECC_E3_VER_3	3	/* Haswell */
+
+#define ECC_E3_THRESH_DEFAULT	5
+
+#define ECC_E3_CHAN_MAX		2
+#define ECC_E3_CHAN_DIMM_MAX	2
+#define ECC_E3_DIMM_RANK_MAX	2
+#define ECC_E3_CHAN_RANK_MAX	(ECC_E3_CHAN_DIMM_MAX  * ECC_E3_DIMM_RANK_MAX)
 
 struct ecc_e3_type {
 	uint16_t	did;
@@ -61,12 +70,46 @@ struct ecc_e3_type {
 	int		ver;		/* ECC_E3_VER_ */
 };
 
+struct ecc_e3_dimm {
+	TAILQ_ENTRY(ecc_e3_dimm) dimm_link;
+	struct dimm_softc	*dimm_softc;
+	struct ksensor		dimm_sensor;
+};
+
+struct ecc_e3_rank {
+	struct ecc_e3_dimm	*rank_dimm_sc;
+};
+
+struct ecc_e3_chan {
+	int			chan_id;
+	int			chan_errlog0;
+	int			chan_rank_cnt;
+	struct ecc_e3_rank	chan_rank[ECC_E3_CHAN_RANK_MAX];
+};
+
 struct ecc_e3_softc {
 	device_t	ecc_dev;
 	device_t	ecc_parent;	/* non-NULL if parent has MCHBAR */
-	struct callout	ecc_callout;
 	int		ecc_ver;	/* ECC_E3_VER_ */
+	uint32_t	ecc_flags;	/* ECC_E3_FLAG_ */
+
+	struct ecc_e3_chan ecc_chan[ECC_E3_CHAN_MAX];
+	TAILQ_HEAD(, ecc_e3_dimm) ecc_dimm;
+
+	/*
+	 * If the parent does not have MCHBAR,
+	 * i.e. no DIMM location information
+	 * for the ECC errors, fallback to the
+	 * sensor and counters below.
+	 */
+	struct ksensordev ecc_sensdev;
+	struct ksensor	ecc_sens;
+	int		ecc_count;
+	int		ecc_thresh;
 };
+
+#define ECC_E3_FLAG_SENSTASK	0x1
+#define ECC_E3_FLAG_CRIT	0x2
 
 #define ecc_printf(sc, fmt, arg...) \
 	device_printf((sc)->ecc_dev, fmt , ##arg)
@@ -76,11 +119,15 @@ static int	ecc_e3_attach(device_t);
 static int	ecc_e3_detach(device_t);
 static void	ecc_e3_shutdown(device_t);
 
-static void	ecc_e3_chaninfo(struct ecc_e3_softc *, uint32_t, const char *);
-static void	ecc_e3_status(struct ecc_e3_softc *);
-static void	ecc_e3_callout(void *);
-static void	ecc_e3_errlog(struct ecc_e3_softc *);
-static void	ecc_e3_errlog_ch(struct ecc_e3_softc *, int, int, const char *);
+static void	ecc_e3_attach_ch(struct ecc_e3_softc *, struct ecc_e3_chan *,
+		    int, uint32_t, int);
+static void	ecc_e3_errlog(struct ecc_e3_softc *, boolean_t);
+static void	ecc_e3_errlog_ch(struct ecc_e3_softc *, struct ecc_e3_chan *,
+		    boolean_t);
+static void	ecc_e3_stop(struct ecc_e3_softc *);
+
+static void	ecc_e3_sensor_task(void *);
+static void	ecc_e3_sensor_update(struct ecc_e3_softc *, boolean_t);
 
 static const struct ecc_e3_type ecc_e3_types[] = {
 	{ PCI_E3V1_MEMCTL_DID, "Intel E3 ECC", ECC_E3_VER_1 },
@@ -151,7 +198,7 @@ ecc_e3_attach(device_t dev)
 	uint32_t val;
 	int error;
 
-	callout_init_mp(&sc->ecc_callout);
+	TAILQ_INIT(&sc->ecc_dimm);
 	sc->ecc_dev = dev;
 
 	/* Probe the existance of MCHBAR */
@@ -174,10 +221,10 @@ ecc_e3_attach(device_t dev)
 		dimm_ch0 = CSR_READ_4(sc, MCH_CORE_DIMM_CH0);
 		dimm_ch1 = CSR_READ_4(sc, MCH_CORE_DIMM_CH1);
 
-		if (bootverbose) {
-			ecc_e3_chaninfo(sc, dimm_ch0, "channel0");
-			ecc_e3_chaninfo(sc, dimm_ch1, "channel1");
-		}
+		ecc_e3_attach_ch(sc, &sc->ecc_chan[0], 0, dimm_ch0,
+		    MCH_E3_ERRLOG0_C0);
+		ecc_e3_attach_ch(sc, &sc->ecc_chan[1], 1, dimm_ch1,
+		    MCH_E3_ERRLOG0_C1);
 
 		ecc_active = 1;
 		if (sc->ecc_ver == ECC_E3_VER_1 ||
@@ -221,38 +268,51 @@ ecc_e3_attach(device_t dev)
 			return 0;
 	} else {
 		ecc_printf(sc, "MCHBAR is not enabled\n");
+
+		/*
+		 * Add hw.sensors.eccN.ecc0 MIB.
+		 */
+		strlcpy(sc->ecc_sensdev.xname, device_get_nameunit(dev),
+		    sizeof(sc->ecc_sensdev.xname));
+		strlcpy(sc->ecc_sens.desc, "node0 ecc",
+		    sizeof(sc->ecc_sens.desc));
+		sc->ecc_sens.type = SENSOR_ECC;
+		sensor_set(&sc->ecc_sens, 0, SENSOR_S_OK);
+		sensor_attach(&sc->ecc_sensdev, &sc->ecc_sens);
+		sensordev_install(&sc->ecc_sensdev);
+
+		sc->ecc_thresh = ECC_E3_THRESH_DEFAULT;
+		SYSCTL_ADD_INT(device_get_sysctl_ctx(dev),
+		    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
+		    OID_AUTO, "thresh", CTLFLAG_RW, &sc->ecc_thresh, 0,
+		    "Raise alarm once number of ECC errors "
+		    "goes above this value");
 	}
 
-	ecc_e3_status(sc);
-	callout_reset(&sc->ecc_callout, hz, ecc_e3_callout, sc);
+	sc->ecc_flags |= ECC_E3_FLAG_SENSTASK;
+	sensor_task_register(sc, ecc_e3_sensor_task, 1);
 
 	return 0;
 }
 
 static void
-ecc_e3_callout(void *xsc)
+ecc_e3_sensor_task(void *xsc)
 {
 	struct ecc_e3_softc *sc = xsc;
-
-	ecc_e3_status(sc);
-	callout_reset(&sc->ecc_callout, hz, ecc_e3_callout, sc);
-}
-
-static void
-ecc_e3_status(struct ecc_e3_softc *sc)
-{
 	device_t dev = sc->ecc_dev;
 	uint16_t errsts;
 
 	errsts = pci_read_config(dev, PCI_E3_ERRSTS, 2);
-	if (errsts & PCI_E3_ERRSTS_DMERR)
-		ecc_printf(sc, "Uncorrectable multilple-bit ECC error\n");
-	else if (errsts & PCI_E3_ERRSTS_DSERR)
-		ecc_printf(sc, "Correctable single-bit ECC error\n");
-
 	if (errsts & (PCI_E3_ERRSTS_DSERR | PCI_E3_ERRSTS_DMERR)) {
+		boolean_t crit = FALSE;
+
+		if (errsts & PCI_E3_ERRSTS_DMERR)
+			crit = TRUE;
+
 		if (sc->ecc_parent != NULL)
-			ecc_e3_errlog(sc);
+			ecc_e3_errlog(sc, crit);
+		else
+			ecc_e3_sensor_update(sc, crit);
 
 		/* Clear pending errors */
 		pci_write_config(dev, PCI_E3_ERRSTS, errsts, 2);
@@ -260,63 +320,129 @@ ecc_e3_status(struct ecc_e3_softc *sc)
 }
 
 static void
-ecc_e3_chaninfo(struct ecc_e3_softc *sc, uint32_t dimm_ch, const char *desc)
+ecc_e3_attach_ch(struct ecc_e3_softc *sc, struct ecc_e3_chan *chan,
+    int chanid, uint32_t dimm_ch, int errlog0)
 {
-	int size_a, size_b, ecc;
+	int dimm_size[ECC_E3_CHAN_DIMM_MAX];
+	uint32_t dimm_szmask[ECC_E3_CHAN_DIMM_MAX];
+	uint32_t dimm_dlrank[ECC_E3_CHAN_DIMM_MAX];
+	int rank, dimm;
 
-	size_a = __SHIFTOUT(dimm_ch, MCH_CORE_DIMM_A_SIZE);
-	size_b = __SHIFTOUT(dimm_ch, MCH_CORE_DIMM_B_SIZE);
-	if (size_a == 0 && size_b == 0)
+	dimm_szmask[0] = MCH_CORE_DIMM_A_SIZE;
+	dimm_dlrank[0] = MCH_CORE_DIMM_A_DUAL_RANK;
+	dimm_szmask[1] = MCH_CORE_DIMM_B_SIZE;
+	dimm_dlrank[1] = MCH_CORE_DIMM_B_DUAL_RANK;
+	if (dimm_ch & MCH_CORE_DIMM_A_SELECT) {
+		dimm_szmask[0] = MCH_CORE_DIMM_B_SIZE;
+		dimm_dlrank[0] = MCH_CORE_DIMM_B_DUAL_RANK;
+		dimm_szmask[1] = MCH_CORE_DIMM_A_SIZE;
+		dimm_dlrank[1] = MCH_CORE_DIMM_A_DUAL_RANK;
+	}
+
+	dimm_size[0] = __SHIFTOUT(dimm_ch, dimm_szmask[0]);
+	dimm_size[1] = __SHIFTOUT(dimm_ch, dimm_szmask[1]);
+	if (dimm_size[0] == 0 && dimm_size[1] == 0)
 		return;
 
-	ecc = __SHIFTOUT(dimm_ch, MCH_E3_DIMM_ECC);
-	if (ecc == MCH_E3_DIMM_ECC_NONE) {
-		ecc_printf(sc, "%s, no ECC active\n", desc);
-	} else if (ecc == MCH_E3_DIMM_ECC_ALL) {
-		ecc_printf(sc, "%s, ECC active IO/logic\n", desc);
-	} else {
-		if (sc->ecc_ver == ECC_E3_VER_1 ||
-		    sc->ecc_ver == ECC_E3_VER_2) {
-			if (ecc == MCH_E3_DIMM_ECC_IO)
-				ecc_printf(sc, "%s, ECC active IO\n", desc);
-			else
-				ecc_printf(sc, "%s, ECC active logic\n", desc);
-		} else { /* v3 */
-			ecc_printf(sc, "%s, invalid ECC active 0x%x\n",
-			    desc, ecc);
+	if (bootverbose) {
+		int ecc;
+
+		ecc = __SHIFTOUT(dimm_ch, MCH_E3_DIMM_ECC);
+		if (ecc == MCH_E3_DIMM_ECC_NONE) {
+			ecc_printf(sc, "channel%d, no ECC active\n", chanid);
+		} else if (ecc == MCH_E3_DIMM_ECC_ALL) {
+			ecc_printf(sc, "channel%d, ECC active IO/logic\n",
+			    chanid);
+		} else {
+			if (sc->ecc_ver == ECC_E3_VER_1 ||
+			    sc->ecc_ver == ECC_E3_VER_2) {
+				if (ecc == MCH_E3_DIMM_ECC_IO) {
+					ecc_printf(sc, "channel%d, "
+					    "ECC active IO\n", chanid);
+				} else {
+					ecc_printf(sc, "channel%d, "
+					    "ECC active logic\n", chanid);
+				}
+			} else { /* v3 */
+				ecc_printf(sc, "channel%d, "
+				    "invalid ECC active 0x%x\n", chanid, ecc);
+			}
 		}
+	}
+
+	chan->chan_id = chanid;
+	chan->chan_errlog0 = errlog0;
+
+	rank = 0;
+	for (dimm = 0; dimm < ECC_E3_CHAN_DIMM_MAX; ++dimm) {
+		struct ecc_e3_dimm *dimm_sc;
+		struct ecc_e3_rank *rk;
+		struct ksensor *sens;
+
+		if (dimm_size[dimm] == 0)
+			continue;
+
+		dimm_sc = kmalloc(sizeof(*dimm_sc), M_DEVBUF,
+		    M_WAITOK | M_ZERO);
+		dimm_sc->dimm_softc = dimm_create(0, chanid, dimm);
+
+		sens = &dimm_sc->dimm_sensor;
+		ksnprintf(sens->desc, sizeof(sens->desc),
+		    "node0 chan%d DIMM%d ecc", chanid, dimm);
+		sens->type = SENSOR_ECC;
+		sensor_set(sens, 0, SENSOR_S_OK);
+		dimm_sensor_attach(dimm_sc->dimm_softc, sens);
+
+		TAILQ_INSERT_TAIL(&sc->ecc_dimm, dimm_sc, dimm_link);
+
+		KKASSERT(rank < ECC_E3_CHAN_RANK_MAX - 1);
+		rk = &chan->chan_rank[rank];
+		rank++;
+		rk->rank_dimm_sc = dimm_sc;
+		if (dimm_ch & dimm_dlrank[dimm]) {
+			rk = &chan->chan_rank[rank];
+			rank++;
+			rk->rank_dimm_sc = dimm_sc;
+		}
+	}
+	chan->chan_rank_cnt = rank;
+}
+
+static void
+ecc_e3_errlog(struct ecc_e3_softc *sc, boolean_t crit)
+{
+	int i;
+
+	for (i = 0; i < ECC_E3_CHAN_MAX; ++i) {
+		struct ecc_e3_chan *chan = &sc->ecc_chan[i];
+
+		if (chan->chan_errlog0 != 0)
+			ecc_e3_errlog_ch(sc, chan, crit);
 	}
 }
 
 static void
-ecc_e3_errlog(struct ecc_e3_softc *sc)
+ecc_e3_errlog_ch(struct ecc_e3_softc *sc, struct ecc_e3_chan *chan,
+    boolean_t crit)
 {
-	ecc_e3_errlog_ch(sc, MCH_E3_ERRLOG0_C0, MCH_E3_ERRLOG1_C0,
-	    "channel0");
-	ecc_e3_errlog_ch(sc, MCH_E3_ERRLOG0_C1, MCH_E3_ERRLOG1_C1,
-	    "channel1");
-}
+	uint32_t err0;
+	int rank;
 
-static void
-ecc_e3_errlog_ch(struct ecc_e3_softc *sc, int err0_ofs, int err1_ofs,
-    const char *desc)
-{
-	uint32_t err0, err1;
-
-	err0 = CSR_READ_4(sc, err0_ofs);
+	err0 = CSR_READ_4(sc, chan->chan_errlog0);
 	if ((err0 & (MCH_E3_ERRLOG0_CERRSTS | MCH_E3_ERRLOG0_MERRSTS)) == 0)
 		return;
 
-	err1 = CSR_READ_4(sc, err1_ofs);
+	rank = __SHIFTOUT(err0, MCH_E3_ERRLOG0_ERRRANK);
+	if (rank >= chan->chan_rank_cnt) {
+		ecc_printf(sc, "channel%d rank%d %serror\n", chan->chan_id,
+		    rank, crit ? "critical " : "");
+	} else {
+		struct ecc_e3_dimm *dimm_sc;
 
-	ecc_printf(sc, "%s error @bank %d, rank %d, chunk %d, syndrome %d, "
-	    "row %d, col %d\n", desc,
-	    __SHIFTOUT(err0, MCH_E3_ERRLOG0_ERRBANK),
-	    __SHIFTOUT(err0, MCH_E3_ERRLOG0_ERRRANK),
-	    __SHIFTOUT(err0, MCH_E3_ERRLOG0_ERRCHUNK),
-	    __SHIFTOUT(err0, MCH_E3_ERRLOG0_ERRSYND),
-	    __SHIFTOUT(err1, MCH_E3_ERRLOG1_ERRROW),
-	    __SHIFTOUT(err1, MCH_E3_ERRLOG1_ERRCOL));
+		dimm_sc = chan->chan_rank[rank].rank_dimm_sc;
+		dimm_sensor_ecc_add(dimm_sc->dimm_softc, &dimm_sc->dimm_sensor,
+		    1, crit);
+	}
 }
 
 static int
@@ -324,14 +450,60 @@ ecc_e3_detach(device_t dev)
 {
 	struct ecc_e3_softc *sc = device_get_softc(dev);
 
-	callout_stop_sync(&sc->ecc_callout);
+	ecc_e3_stop(sc);
+
+	if (sc->ecc_parent != NULL) {
+		struct ecc_e3_dimm *dimm_sc;
+
+		while ((dimm_sc = TAILQ_FIRST(&sc->ecc_dimm)) != NULL) {
+			TAILQ_REMOVE(&sc->ecc_dimm, dimm_sc, dimm_link);
+			dimm_sensor_detach(dimm_sc->dimm_softc,
+			    &dimm_sc->dimm_sensor);
+			dimm_destroy(dimm_sc->dimm_softc);
+
+			kfree(dimm_sc, M_DEVBUF);
+		}
+	} else {
+		sensordev_deinstall(&sc->ecc_sensdev);
+	}
 	return 0;
 }
 
 static void
 ecc_e3_shutdown(device_t dev)
 {
-	struct ecc_e3_softc *sc = device_get_softc(dev);
+	ecc_e3_stop(device_get_softc(dev));
+}
 
-	callout_stop_sync(&sc->ecc_callout);
+static void
+ecc_e3_stop(struct ecc_e3_softc *sc)
+{
+	if (sc->ecc_flags & ECC_E3_FLAG_SENSTASK)
+		sensor_task_unregister(sc);
+}
+
+static void
+ecc_e3_sensor_update(struct ecc_e3_softc *sc, boolean_t crit)
+{
+	enum sensor_status status;
+
+	sc->ecc_count++;
+	if (!crit && sc->ecc_count >= sc->ecc_thresh)
+		crit = TRUE;
+
+	if (crit && (sc->ecc_flags & ECC_E3_FLAG_CRIT) == 0) {
+		char ecc_str[16];
+
+		ksnprintf(ecc_str, sizeof(ecc_str), "%d", sc->ecc_count);
+		devctl_notify("ecc", "ECC", ecc_str, "node=0");
+
+		ecc_printf(sc, "too many ECC errors %d\n", sc->ecc_count);
+		sc->ecc_flags |= ECC_E3_FLAG_CRIT;
+	}
+
+	if (sc->ecc_flags & ECC_E3_FLAG_CRIT)
+		status = SENSOR_S_CRIT;
+	else
+		status = SENSOR_S_OK;
+	sensor_set(&sc->ecc_sens, sc->ecc_count, status);
 }

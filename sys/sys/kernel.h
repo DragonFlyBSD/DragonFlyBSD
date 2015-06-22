@@ -154,6 +154,7 @@ enum sysinit_sub_id {
 	SI_BOOT2_FINISH_CPU	= 0x1a90000,	/* finish CPU startup */
 	SI_BOOT2_CLOCKREG	= 0x1ac0000,	/* register available clocks */
 	SI_BOOT2_OBJCACHE	= 0x1b00000,
+	SI_BOOT2_LWKT_INIT	= 0x1b40000,
 	SI_BOOT2_SOFTCLOCK	= 0x1b80000,
 	SI_BOOT2_CLOCKS		= 0x1c00000,	/* select & start clocks */
 	SI_BOOT2_FINISH_SMP	= 0x1c80000,	/* SMP go (& synch clocks) */

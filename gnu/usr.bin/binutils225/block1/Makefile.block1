@@ -1,0 +1,39 @@
+# This is included explicitly at the top of each sub-Makefile.  We can't
+# use the normal "Makefile.inc" mechanism, because we need some of these
+# definitions before the sub-Makefile is processed.
+
+RELTOP:= ../..
+
+# RELTOP is the relative path to this point in the source or object
+# tree, from any subdirectory of same.  It gets extra "../" prefixes
+# added to it as we descend into subdirectories.
+
+RELSRC=	${RELTOP}/../../../contrib/binutils-2.25
+SRCDIR=	${.CURDIR}/${RELSRC}
+
+CFLAGS+= -I${.CURDIR} -I${.OBJDIR}
+CFLAGS+= -I${SRCDIR}/include
+
+TARGET_CANONICAL=		x86_64-just-dragonfly
+BFD_HOST_64_BIT_DEFINED?=	1
+BFD_HOST_64BIT_LONG?=		1
+BFD_HOST_64BIT_LONG_LONG?=	0
+BFD_HOST_64_BIT?=		long
+BFD_HOST_U_64_BIT?=		unsigned long
+BFD_HOSTPTR_T?=			unsigned long
+BFD_ARCH_SIZE?=			64
+BFD_DEFAULT_TARGET_SIZE?=	64
+
+bfd.h: 	${SRCDIR}/bfd/bfd-in2.h
+	sed -e "s/@supports_plugins@/0/g" \
+	    -e "s/@wordsize@/${BFD_ARCH_SIZE}/g" \
+	    -e "s/@bfd_default_target_size@/${BFD_DEFAULT_TARGET_SIZE}/g" \
+	    -e "s/@BFD_HOST_64BIT_LONG@/${BFD_HOST_64BIT_LONG}/g" \
+	    -e "s/@BFD_HOST_64BIT_LONG_LONG@/${BFD_HOST_64BIT_LONG_LONG}/g" \
+	    -e "s/@BFD_HOST_64_BIT@/${BFD_HOST_64_BIT}/g" \
+	    -e "s/@BFD_HOST_U_64_BIT@/${BFD_HOST_U_64_BIT}/g" \
+	    -e "s/@BFD_HOST_64_BIT_DEFINED@/${BFD_HOST_64_BIT_DEFINED}/g" \
+	    -e "s/@bfd_file_ptr@/${BFD_HOST_64_BIT}/g" \
+	    -e "s/@BFD_HOSTPTR_T@/${BFD_HOSTPTR_T}/g" \
+	    < ${.ALLSRC} > bfd.h.new
+	mv -f bfd.h.new bfd.h

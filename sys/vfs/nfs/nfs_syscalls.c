@@ -409,7 +409,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	atomic_clear_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE);
 
 	slp = kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK | M_ZERO);
-	mtx_init(&slp->ns_solock);
+	mtx_init(&slp->ns_solock, "nfsvc");
 	STAILQ_INIT(&slp->ns_rec);
 	TAILQ_INIT(&slp->ns_uidlruhead);
 	lwkt_token_init(&slp->ns_token, "nfssrv_token");
@@ -923,7 +923,7 @@ nfs_slplock(struct nfssvc_sock *slp, int wait)
 	mtx_t *mtx = &slp->ns_solock;
 
 	if (wait) {
-		mtx_lock_ex(mtx, "nfsslplck", 0, 0);
+		mtx_lock_ex(mtx, 0, 0);
 		return(1);
 	} else if (mtx_lock_ex_try(mtx) == 0) {
 		return(1);

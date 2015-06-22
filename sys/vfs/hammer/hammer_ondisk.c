@@ -626,8 +626,12 @@ found_aliased:
 		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
 				   hammer_xlate_to_zone2(buf_offset));
 		if (buffer) {
-			kprintf("HAMMER: recovered aliased %016jx\n",
-				(intmax_t)buf_offset);
+			if (hammer_debug_general & 0x0001) {
+				krateprintf(&hmp->kdiag,
+					    "HAMMER: recovered "
+					    "aliased %016jx\n",
+					    (intmax_t)buf_offset);
+			}
 			goto found_aliased;
 		}
 	}
@@ -833,10 +837,13 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 			ret_error = error;
 			if (report_conflicts ||
 			    (hammer_debug_general & 0x8000)) {
-				kprintf("hammer_del_buffers: unable to "
-					"invalidate %016llx buffer=%p rep=%d\n",
+				krateprintf(&hmp->kdiag,
+					"hammer_del_buffers: unable to "
+					"invalidate %016llx buffer=%p "
+					"rep=%d lkrefs=%08x\n",
 					(long long)base_offset,
-					buffer, report_conflicts);
+					buffer, report_conflicts,
+					(buffer ? buffer->io.lock.refs : -1));
 			}
 		}
 		base_offset += HAMMER_BUFSIZE;
@@ -1668,6 +1675,23 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			break;
 		case HAMMER_RECTYPE_DATA:
 		case HAMMER_RECTYPE_DB:
+			/*
+			 * This is an exceptional case. HAMMER usually
+			 * uses HAMMER_ZONE_LARGE_DATA when the data length
+			 * is >=HAMMER_BUFSIZE, but not 1/2 of that. Mirror
+			 * write code seems to be the only case that allocates
+			 * HAMMER_RECTYPE_DATA via this function.
+			 *
+			 * When data_len is >HAMMER_BUFSIZE/2 it uses
+			 * HAMMER_ZONE_LARGE_DATA but data_len is also rounded
+			 * up so it doesn't make much difference from the
+			 * normal way of using this zone.
+			 *
+			 * Also note hammer_vop_strategy_write() could have
+			 * rounded up storage allocation size of the original
+			 * mirror source to fs block size when it was written
+			 * if the file size was >HAMMER_BUFSIZE/2.
+			 */
 			if (data_len <= HAMMER_BUFSIZE / 2) {
 				zone = HAMMER_ZONE_SMALL_DATA_INDEX;
 			} else {

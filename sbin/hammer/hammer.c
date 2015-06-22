@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.44 2008/11/13 02:04:27 dillon Exp $
  */
 
 #include "hammer.h"
@@ -58,6 +56,7 @@ int ForceOpt;
 int RunningIoctl;
 int DidInterrupt;
 int BulkOpt;
+int AllPFS;
 u_int64_t BandwidthOpt;
 u_int64_t SplitupOpt = 4ULL * 1024ULL * 1024ULL * 1024ULL;
 u_int64_t MemoryLimit = 1024LLU * 1024 * 1024;
@@ -77,7 +76,7 @@ main(int ac, char **av)
 	int cacheSize = 0;
 
 	while ((ch = getopt(ac, av,
-			    "b:c:de:hf:i:m:p:qrs:t:v2yBC:FR:S:T:X")) != -1) {
+			    "b:c:de:hf:i:m:p:qrs:t:v2yABC:FR:S:T:X")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -198,6 +197,9 @@ main(int ac, char **av)
 				--VerboseOpt;
 			else
 				++QuietOpt;
+			break;
+		case 'A':
+			AllPFS = 1;
 			break;
 		case 'B':
 			BulkOpt = 1;
@@ -396,6 +398,10 @@ main(int ac, char **av)
 		hammer_cmd_cleanup(av + 1, ac - 1);
 		exit(0);
 	}
+	if (strcmp(av[0], "abort-cleanup") == 0) {
+		hammer_cmd_abort_cleanup(av + 1, ac - 1);
+		exit(0);
+	}
 	if (strcmp(av[0], "info") == 0) {
 		hammer_cmd_info(av + 1, ac - 1);
 		exit(0);
@@ -521,13 +527,19 @@ main(int ac, char **av)
 	}
 
 	if (strcmp(av[0], "show") == 0) {
-		u_int32_t lo = 0;
-		intmax_t obj_id = (int64_t)HAMMER_MIN_OBJID;
+		const char *arg = NULL;
+		int filter = -1;
 
 		hammer_parsedevs(blkdevs);
 		if (ac > 1)
-			sscanf(av[1], "%08x:%jx", &lo, &obj_id);
-		hammer_cmd_show(-1, lo, (int64_t)obj_id, 0, NULL, NULL);
+			arg = av[1];
+		if (ac > 2) {
+			if (strcmp(av[2], "filter") == 0)
+				filter = 1;
+			else if (strcmp(av[2], "nofilter") == 0)
+				filter = 0;
+		}
+		hammer_cmd_show(-1, arg, filter, 0, NULL, NULL);
 		exit(0);
 	}
 	if (strcmp(av[0], "show-undo") == 0) {
@@ -586,7 +598,9 @@ hammer_parsedevs(const char *blkdevs)
 			hammer_parsedevs(volname);
 		else
 			setup_volume(-1, volname, 0, O_RDONLY);
+		free(volname);
 	}
+	free(copy);
 }
 
 static
@@ -612,7 +626,7 @@ usage(int exit_code)
 {
 	fprintf(stderr,
 		"hammer -h\n"
-		"hammer [-2BqrvXy] [-b bandwidth] [-C cachesize[:readahead]] [-c cyclefile]\n"
+		"hammer [-2ABqrvXy] [-b bandwidth] [-C cachesize[:readahead]] [-c cyclefile]\n"
 		"       [-f blkdevs] [-i delay] [-t seconds] [-S splitup]\n"
 		"	command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
@@ -623,6 +637,7 @@ usage(int exit_code)
 		"hammer namekey2 <path>\n"
 		"hammer namekey32 <path>\n"
 		"hammer cleanup [<filesystem> ...]\n"
+		"hammer abort-cleanup\n"
 		"hammer info [<dirpath> ...]\n"
 		"hammer snapshot [<filesystem>] <snapshot-dir>\n"
 		"hammer snapshot <filesystem> <snapshot-dir> [<note>]\n"

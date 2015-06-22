@@ -50,12 +50,13 @@
  * Initialize a new mutex, placing it in an unlocked state with no refs.
  */
 static __inline void
-mtx_init(mtx_t *mtx)
+mtx_init(mtx_t *mtx, const char *ident)
 {
 	mtx->mtx_lock = 0;
 	mtx->mtx_owner = NULL;
 	mtx->mtx_exlink = NULL;
 	mtx->mtx_shlink = NULL;
+	mtx->mtx_ident = ident;
 }
 
 /*
@@ -106,11 +107,10 @@ mtx_uninit(mtx_t *mtx)
  * is valid.
  */
 static __inline int
-mtx_lock_ex_link(mtx_t *mtx, mtx_link_t *link,
-                 const char *ident, int flags, int to)
+mtx_lock_ex_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 {
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, MTX_EXCLUSIVE | 1) == 0)
-		return(_mtx_lock_ex_link(mtx, link, ident, flags, to));
+		return(_mtx_lock_ex_link(mtx, link, flags, to));
 	mtx->mtx_owner = curthread;
 	link->state = MTX_LINK_ACQUIRED;
 
@@ -125,7 +125,7 @@ static __inline void
 mtx_lock(mtx_t *mtx)
 {
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, MTX_EXCLUSIVE | 1) == 0) {
-		_mtx_lock_ex(mtx, "mtxex", 0, 0);
+		_mtx_lock_ex(mtx, 0, 0);
 		return;
 	}
 	mtx->mtx_owner = curthread;
@@ -138,29 +138,28 @@ mtx_lock(mtx_t *mtx)
  * An error can only be returned if PCATCH is specified in the flags.
  */
 static __inline int
-mtx_lock_ex(mtx_t *mtx, const char *ident, int flags, int to)
+mtx_lock_ex(mtx_t *mtx, int flags, int to)
 {
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, MTX_EXCLUSIVE | 1) == 0)
-		return(_mtx_lock_ex(mtx, ident, flags, to));
+		return(_mtx_lock_ex(mtx, flags, to));
 	mtx->mtx_owner = curthread;
 	return(0);
 }
 
 static __inline int
-mtx_lock_ex_quick(mtx_t *mtx, const char *ident)
+mtx_lock_ex_quick(mtx_t *mtx)
 {
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, MTX_EXCLUSIVE | 1) == 0)
-		return(_mtx_lock_ex_quick(mtx, ident));
+		return(_mtx_lock_ex_quick(mtx));
 	mtx->mtx_owner = curthread;
 	return(0);
 }
 
 static __inline int
-mtx_lock_sh_link(mtx_t *mtx, mtx_link_t *link,
-		 const char *ident, int flags, int to)
+mtx_lock_sh_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 {
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, 1) == 0)
-		return(_mtx_lock_sh_link(mtx, link, ident, flags, to));
+		return(_mtx_lock_sh_link(mtx, link, flags, to));
 	link->state = MTX_LINK_ACQUIRED;
 	return(0);
 }
@@ -172,18 +171,18 @@ mtx_lock_sh_link(mtx_t *mtx, mtx_link_t *link,
  * An error can only be returned if PCATCH is specified in the flags.
  */
 static __inline int
-mtx_lock_sh(mtx_t *mtx, const char *ident, int flags, int to)
+mtx_lock_sh(mtx_t *mtx, int flags, int to)
 {
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, 1) == 0)
-		return(_mtx_lock_sh(mtx, ident, flags, to));
+		return(_mtx_lock_sh(mtx, flags, to));
 	return(0);
 }
 
 static __inline int
-mtx_lock_sh_quick(mtx_t *mtx, const char *ident)
+mtx_lock_sh_quick(mtx_t *mtx)
 {
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, 1) == 0)
-		return(_mtx_lock_sh_quick(mtx, ident));
+		return(_mtx_lock_sh_quick(mtx));
 	return(0);
 }
 
@@ -276,7 +275,7 @@ static __inline void
 mtx_downgrade(mtx_t *mtx)
 {
 	mtx->mtx_owner = NULL;
-	if (atomic_cmpset_int(&mtx->mtx_lock, MTX_EXCLUSIVE | 1, 0) == 0)
+	if (atomic_cmpset_int(&mtx->mtx_lock, MTX_EXCLUSIVE | 1, 1) == 0)
 		_mtx_downgrade(mtx);
 }
 
@@ -375,9 +374,11 @@ mtx_islocked(mtx_t *mtx)
 
 /*
  * Return TRUE (non-zero) if the mutex is locked exclusively by anyone,
- * including the owner.
+ * including the owner.  Returns FALSE (0) if the mutex is unlocked or
+ * if it is locked shared by one or more entities.
  *
- * The mutex may in an unlocked or shared lock state.
+ * A caller wishing to check whether a lock is owned exclusively by it
+ * should use mtx_owned().
  */
 static __inline int
 mtx_islocked_ex(mtx_t *mtx)
@@ -432,10 +433,42 @@ mtx_notowned(mtx_t *mtx)
  * NOTE: If the mutex is held exclusively by someone other then the
  *	 caller the lock count for the other owner is still returned.
  */
-static __inline int
+static __inline
+int
 mtx_lockrefs(mtx_t *mtx)
 {
 	return(mtx->mtx_lock & MTX_MASK);
+}
+
+/*
+ * Lock must held and will be released on return.  Returns state
+ * which can be passed to mtx_lock_temp_restore() to return the
+ * lock to its previous state.
+ */
+static __inline
+mtx_state_t
+mtx_lock_temp_release(mtx_t *mtx)
+{
+	mtx_state_t state;
+
+	state = (mtx->mtx_lock & MTX_EXCLUSIVE);
+	mtx_unlock(mtx);
+
+	return state;
+}
+
+/*
+ * Restore the previous state of a lock released with
+ * mtx_lock_temp_release() or mtx_lock_upgrade().
+ */
+static __inline
+void
+mtx_lock_temp_restore(mtx_t *mtx, mtx_state_t state)
+{
+	if (state & MTX_EXCLUSIVE)
+		mtx_lock_ex_quick(mtx);
+	else
+		mtx_lock_sh_quick(mtx);
 }
 
 #endif

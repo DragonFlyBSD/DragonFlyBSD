@@ -28,7 +28,6 @@
  *
  * @(#)move.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/move.c,v 1.6 1999/11/30 03:49:18 billf Exp $
- * $DragonFly: src/games/robots/move.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
 #include <sys/ttydefaults.h>
@@ -152,7 +151,7 @@ over:
 		  case 'q':
 		  case 'Q':
 			if (query("Really quit?"))
-				quit();
+				quit(0);
 			refresh();
 			break;
 		  case 'w':

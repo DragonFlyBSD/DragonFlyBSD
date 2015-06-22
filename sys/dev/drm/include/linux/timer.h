@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014,2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,8 @@
 #include <sys/kernel.h>
 #include <sys/callout.h>
 #include <sys/thread.h>
+
+#include <linux/ktime.h>
 
 struct timer_list {
 	struct callout	timer_callout;
@@ -78,6 +80,8 @@ do {									\
 	lwkt_reltoken(&(timer)->timer_token);				\
 } while (0)
 
+#define mod_timer_pinned(timer, exp)	mod_timer(timer, exp)
+
 #define	add_timer(timer)						\
 	lwkt_gettoken(&(timer)->timer_token);				\
 	callout_reset(&(timer)->timer_callout,				\
@@ -115,5 +119,7 @@ round_jiffies_up_relative(unsigned long j)
 {
 	return roundup(j, hz);
 }
+
+#define destroy_timer_on_stack(timer)
 
 #endif /* _LINUX_TIMER_H_ */

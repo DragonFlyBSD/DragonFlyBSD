@@ -171,11 +171,27 @@ int	kvm_access_check(vm_offset_t, vm_offset_t, int);
 
 vm_paddr_t kvtop(void *addr);
 
-extern uint32_t crc32_tab[];
+/*
+ * Old CRC32 API
+ */
+extern const uint32_t crc32_tab[];
 uint32_t crc32(const void *buf, size_t size);
 uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
+
+/*
+ * Newer (fast) iscsi CRC32 APIs.
+ *
+ * NOTE: iscsi_crc32_ext() inverts ocrc input and output as expected,
+ *	 pass a seed of 0 for the equivalent of iscsi_crc32().
+ *
+ *	 calculate_crc32c() does not invert crc32c input and output
+ *	 to maintain FreeBSD API compatibility.
+ */
 uint32_t iscsi_crc32(const void *buf, size_t size);
 uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
+uint32_t calculate_crc32c(uint32_t crc32c, const unsigned char *buffer,
+			unsigned int length);
+
 void	init_param1 (void);
 void	init_param2 (int physpages);
 void	tablefull (const char *);

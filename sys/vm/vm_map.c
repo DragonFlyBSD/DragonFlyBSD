@@ -1244,7 +1244,7 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 		 * be sure that we didn't wrap the address.
 		 */
 		if (align_mask == (vm_offset_t)-1)
-			end = ((start + align - 1) / align) * align;
+			end = roundup(start, align);
 		else
 			end = (start + align_mask) & ~align_mask;
 		if (end < start)
@@ -4116,6 +4116,16 @@ RetryLookup:
 		 */
 
 		if (fault_type & VM_PROT_WRITE) {
+			/*
+			 * Not allowed if TDF_NOFAULT is set as the shadowing
+			 * operation can deadlock against the faulting
+			 * function due to the copy-on-write.
+			 */
+			if (curthread->td_flags & TDF_NOFAULT) {
+				rv = KERN_FAILURE_NOFAULT;
+				goto done;
+			}
+
 			/*
 			 * Make a new object, and place it in the object
 			 * chain.  Note that no new references have appeared

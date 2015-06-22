@@ -25,8 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD$
  */
 
 #ifndef AGP_AGP_I810_H
@@ -37,6 +35,8 @@
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
+
+#include <linux/types.h>
 
 /* Special gtt memory types */
 #define AGP_DCACHE_MEMORY	1
@@ -80,7 +80,8 @@ void agp_intel_gtt_insert_sg_entries(device_t dev, struct sglist *sg_list,
 void agp_intel_gtt_insert_pages(device_t dev, u_int first_entry,
     u_int num_entries, vm_page_t *pages, u_int flags);
 
-struct intel_gtt *intel_gtt_get(void);
+void intel_gtt_get(size_t *gtt_total, size_t *stolen_size,
+		   phys_addr_t *mappable_base, unsigned long *mappable_end);
 
 int intel_gtt_chipset_flush(void);
 void intel_gtt_unmap_memory(struct sglist *sg_list);
@@ -91,8 +92,7 @@ void intel_gtt_insert_sg_entries(struct sglist *sg_list, u_int pg_start,
     u_int flags);
 void intel_gtt_insert_pages(u_int first_entry, u_int num_entries,
     vm_page_t *pages, u_int flags);
-vm_paddr_t intel_gtt_read_pte_paddr(u_int entry);
-u_int32_t intel_gtt_read_pte(u_int entry);
+void intel_gtt_sync_pte(u_int entry);
 void intel_gtt_write(u_int entry, uint32_t val);
 
 #endif

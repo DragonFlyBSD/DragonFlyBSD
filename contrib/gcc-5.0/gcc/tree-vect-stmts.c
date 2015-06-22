@@ -5780,6 +5780,22 @@ vectorizable_load (gimple stmt, gimple_stmt_iterator *gsi, gimple *vec_stmt,
       gcc_assert (! nested_in_vect_loop && !STMT_VINFO_GATHER_P (stmt_info));
 
       first_stmt = GROUP_FIRST_ELEMENT (stmt_info);
+
+      /* If this is single-element interleaving with an element distance
+         that leaves unused vector loads around punt - we at least create
+	 very sub-optimal code in that case (and blow up memory,
+	 see PR65518).  */
+      if (first_stmt == stmt
+	  && !GROUP_NEXT_ELEMENT (stmt_info)
+	  && GROUP_SIZE (stmt_info) > TYPE_VECTOR_SUBPARTS (vectype))
+	{
+	  if (dump_enabled_p ())
+	    dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+			     "single-element interleaving not supported "
+			     "for not adjacent vector loads\n");
+	  return false;
+	}
+
       if (!slp && !PURE_SLP_STMT (stmt_info))
 	{
 	  group_size = GROUP_SIZE (vinfo_for_stmt (first_stmt));
@@ -6468,9 +6484,8 @@ vectorizable_load (gimple stmt, gimple_stmt_iterator *gsi, gimple *vec_stmt,
 		case dr_explicit_realign:
 		  {
 		    tree ptr, bump;
-		    tree vs_minus_1;
 
-		    vs_minus_1 = size_int (TYPE_VECTOR_SUBPARTS (vectype) - 1);
+		    tree vs = size_int (TYPE_VECTOR_SUBPARTS (vectype));
 
 		    if (compute_in_loop)
 		      msq = vect_setup_realignment (first_stmt, gsi,
@@ -6499,8 +6514,9 @@ vectorizable_load (gimple stmt, gimple_stmt_iterator *gsi, gimple *vec_stmt,
 		    vect_finish_stmt_generation (stmt, new_stmt, gsi);
 		    msq = new_temp;
 
-		    bump = size_binop (MULT_EXPR, vs_minus_1,
+		    bump = size_binop (MULT_EXPR, vs,
 				       TYPE_SIZE_UNIT (elem_type));
+		    bump = size_binop (MINUS_EXPR, bump, size_one_node);
 		    ptr = bump_vector_ptr (dataref_ptr, NULL, gsi, stmt, bump);
 		    new_stmt = gimple_build_assign
 				 (NULL_TREE, BIT_AND_EXPR, ptr,

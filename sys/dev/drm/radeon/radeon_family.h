@@ -24,8 +24,6 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_family.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 /* this file defines the CHIP_  and family flags used in the pciids,
@@ -94,6 +92,10 @@ enum radeon_family {
 	CHIP_PITCAIRN,
 	CHIP_VERDE,
 	CHIP_OLAND,
+	CHIP_HAINAN,
+	CHIP_BONAIRE,
+	CHIP_KAVERI,
+	CHIP_KABINI,
 	CHIP_LAST,
 };
 

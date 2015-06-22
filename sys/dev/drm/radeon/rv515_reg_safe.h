@@ -1,5 +1,3 @@
-/* $FreeBSD: head/sys/dev/drm2/radeon/rv515_reg_safe.h 254885 2013-08-25 19:37:15Z dumbbell $ */
-
 static const unsigned rv515_reg_safe_bm[219] = {
 	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
 	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,

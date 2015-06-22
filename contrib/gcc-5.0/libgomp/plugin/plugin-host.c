@@ -95,12 +95,6 @@ GOMP_OFFLOAD_get_num_devices (void)
 }
 
 STATIC void
-GOMP_OFFLOAD_register_image (void *host_table __attribute__ ((unused)),
-			     void *target_data __attribute__ ((unused)))
-{
-}
-
-STATIC void
 GOMP_OFFLOAD_init_device (int n __attribute__ ((unused)))
 {
 }
@@ -111,35 +105,17 @@ GOMP_OFFLOAD_fini_device (int n __attribute__ ((unused)))
 }
 
 STATIC int
-GOMP_OFFLOAD_get_table (int n __attribute__ ((unused)),
-			struct mapping_table **table __attribute__ ((unused)))
-{
-  return 0;
-}
-
-STATIC void *
-GOMP_OFFLOAD_openacc_open_device (int n)
-{
-  return (void *) (intptr_t) n;
-}
-
-STATIC int
-GOMP_OFFLOAD_openacc_close_device (void *hnd)
-{
-  return 0;
-}
-
-STATIC int
-GOMP_OFFLOAD_openacc_get_device_num (void)
+GOMP_OFFLOAD_load_image (int n __attribute__ ((unused)),
+			 void *i __attribute__ ((unused)),
+			 struct addr_pair **r __attribute__ ((unused)))
 {
   return 0;
 }
 
 STATIC void
-GOMP_OFFLOAD_openacc_set_device_num (int n)
+GOMP_OFFLOAD_unload_image (int n __attribute__ ((unused)),
+			   void *i __attribute__ ((unused)))
 {
-  if (n > 0)
-    GOMP (fatal) ("device number %u out of range for host execution", n);
 }
 
 STATIC void *
@@ -253,7 +229,7 @@ GOMP_OFFLOAD_openacc_async_wait_all_async (int async __attribute__ ((unused)))
 }
 
 STATIC void *
-GOMP_OFFLOAD_openacc_create_thread_data (void *targ_data
+GOMP_OFFLOAD_openacc_create_thread_data (int ord
 					 __attribute__ ((unused)))
 {
   return NULL;

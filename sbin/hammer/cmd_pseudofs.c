@@ -35,48 +35,25 @@
  */
 
 #include "hammer.h"
+#include <libgen.h>
 
+static int scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path);
 static void parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd);
 static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
 static void pseudofs_usage(int code);
-static char *strtrl(char **path, int len);
 static int getyn(void);
 static int timetosecs(char *str);
 
 /*
- * Calculate the pfs_id given a path to a directory or a @@PFS or @@%llx:%d
- * softlink.
+ * Return a directory that contains path.
+ * If '/' is not found in the path then '.' is returned.
+ * A caller need to free the returned pointer.
  */
-int
-getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
+static char*
+getdir(const char *path)
 {
-	uintmax_t dummy_tid;
-	struct stat st;
 	char *dirpath;
-	char buf[64];
-	size_t len;
-	int fd;
-	int n;
 
-	bzero(pfs, sizeof(*pfs));
-	pfs->ondisk = malloc(sizeof(*pfs->ondisk));
-	bzero(pfs->ondisk, sizeof(*pfs->ondisk));
-	pfs->bytes = sizeof(*pfs->ondisk);
-
-	/*
-	 * Trailing '/' must be removed so that upon pfs-destroy
-	 * the symlink can be deleted without problems.
-	 * Root directory (/) must be excluded from this.
-	 */
-	len = strnlen(path, MAXPATHLEN);
-	if (len > 1) {
-		if (strtrl(&path, len) == NULL)
-			errx(1, "Unexpected NULL path");
-	}
-
-	/*
-	 * Calculate the directory containing the softlink
-	 */
 	dirpath = strdup(path);
 	if (strrchr(dirpath, '/')) {
 		*strrchr(dirpath, '/') = 0;
@@ -89,74 +66,134 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 		dirpath = strdup(".");
 	}
 
-	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
-		/*
-		 * Avoid foot-shooting.  Don't let the user access a PFS
-		 * softlink via a PFS.  PFS softlinks may only be accessed
-		 * via the master filesystem.
-		 */
-		fd = open(dirpath, O_RDONLY);
-		if (fd < 0)
-			goto done;
-		pfs->pfs_id = -1;
-		ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs);
-		if (pfs->pfs_id != 0) {
-			fprintf(stderr,
-				"You are attempting to access a PFS softlink "
-				"from a PFS.  It may not represent the PFS\n"
-				"on the main filesystem mount that you "
-				"expect!  You may only access PFS softlinks\n"
-				"via the main filesystem mount!\n");
-			exit(1);
-		}
-		close(fd);
+	return(dirpath);
+}
 
+/*
+ * Calculate the pfs_id given a path to a directory or a @@PFS or @@%llx:%d
+ * softlink.
+ */
+int
+getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
+{
+	int fd;
+	char *p;
+
+	bzero(pfs, sizeof(*pfs));
+	pfs->ondisk = malloc(sizeof(*pfs->ondisk));
+	bzero(pfs->ondisk, sizeof(*pfs->ondisk));
+	pfs->bytes = sizeof(*pfs->ondisk);
+
+	/*
+	 * Trailing '/' must be removed so that upon pfs-destroy
+	 * the symlink can be deleted without problems.
+	 * Root directory (/) must be excluded from this.
+	 */
+	p = path + (int)strlen(path) - 1;
+	assert(p >= path);
+	while (p != path && *p == '/')
+		*p-- = 0;
+
+	fd = scanpfsid(pfs, path);
+	if (fd < 0) {
 		/*
-		 * Extract the PFS from the link.  HAMMER will automatically
-		 * convert @@PFS%05d links so if actually see one in that
-		 * form the target PFS may not exist or may be corrupt.  But
-		 * we can extract the PFS id anyway.
+		 * Once it comes here the hammer command may fail even if
+		 * this function returns valid file descriptor.
 		 */
-		n = readlink(path, buf, sizeof(buf) - 1);
-		if (n < 0)
-			n = 0;
-		buf[n] = 0;
-		if (sscanf(buf, "@@PFS%d", &pfs->pfs_id) == 1) {
-			fd = open(dirpath, O_RDONLY);
-			goto done;
-		}
-		if (sscanf(buf, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
-			fd = open(dirpath, O_RDONLY);
-			goto done;
+		fd = open(path, O_RDONLY);
+		if (fd >= 0) {
+			pfs->pfs_id = -1;
+			ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs);
+			if (pfs->pfs_id == -1) {
+				close(fd);
+				fd = -1;
+			}
 		}
 	}
 
-	/*
-	 * Try to open the path and request the pfs_id that way.
-	 */
-	fd = open(path, O_RDONLY);
-	if (fd >= 0) {
-		pfs->pfs_id = -1;
-		ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs);
-		if (pfs->pfs_id == -1) {
-			close(fd);
-			fd = -1;
-		}
-	}
-
-	/*
-	 * Cleanup
-	 */
-done:
 	if (fd < 0) {
 		fprintf(stderr, "Cannot access PFS %s: %s\n",
 			path, strerror(errno));
 		exit(1);
 	}
+
+	/*
+	 * pfs.pfs_id should have been set to non -1.  In this case fd
+	 * could be any fd of HAMMER inodes since HAMMERIOC_GET_PSEUDOFS
+	 * doesn't depend on inode attributes if it's set to a valid id.
+	 */
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs) < 0) {
 		fprintf(stderr, "Cannot access PFS %s: %s\n",
 			path, strerror(errno));
 		exit(1);
+	}
+	return(fd);
+}
+
+/*
+ * Extract the PFS id from path.  Return a file descriptor of
+ * the parent directory which is expected to be located under
+ * the root filesystem (not another PFS).
+ */
+static int
+scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
+{
+	int fd;
+	int n;
+	const char *p;
+	char *dirpath;
+	char buf[64];
+	uintmax_t dummy_tid;
+	struct stat st;
+
+	if (stat(path, &st)) {
+		/* possibly slave PFS */
+	} else if (S_ISDIR(st.st_mode)) {
+		/* possibly master or slave PFS */
+	} else {
+		return -1;  /* neither */
+	}
+
+	/*
+	 * If the path is a link read the link.
+	 */
+	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
+		n = readlink(path, buf, sizeof(buf) - 1);
+		if (n < 0)
+			n = 0;
+		buf[n] = 0;
+		p = buf;
+	} else {
+		p = path;
+	}
+
+	/*
+	 * The symlink created by pfs-master|slave is just a symlink.
+	 * One could happen to remove a symlink and relink PFS as
+	 * # ln -s ./@@-1:00001 ./link
+	 * which results PFS having something extra before @@.
+	 * One could also directly use the PFS and results the same.
+	 * Get rid of it before we extract the PFS id.
+	 */
+	if (strchr(p, '/')) {
+		p = basename(p);
+		if (p == NULL)
+			err(1, "basename");
+	}
+
+	/*
+	 * Extract the PFS from the link.  HAMMER will automatically
+	 * convert @@PFS%05d links so if actually see one in that
+	 * form the target PFS may not exist or may be corrupt.  But
+	 * we can extract the PFS id anyway.
+	 */
+	dirpath = getdir(path);
+	if (sscanf(p, "@@PFS%d", &pfs->pfs_id) == 1) {
+		fd = open(dirpath, O_RDONLY);
+	} else if (sscanf(p, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
+		fd = open(dirpath, O_RDONLY);
+	} else {
+		fd = -1;  /* Failed to scan PFS id */
 	}
 	free(dirpath);
 	return(fd);
@@ -165,7 +202,8 @@ done:
 void
 relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs)
 {
-	close(fd);
+	if (fd >= 0)
+		close(fd);
 	if (pfs->ondisk) {
 		free(pfs->ondisk);
 		pfs->ondisk = NULL;
@@ -183,10 +221,10 @@ hammer_cmd_pseudofs_status(char **av, int ac)
 		pseudofs_usage(1);
 
 	for (i = 0; i < ac; ++i) {
-		printf("%s\t", av[i]);
 		fd = getpfs(&pfs, av[i]);
+		printf("%s\t", av[i]);
 		if (fd < 0 || ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
-			printf("Not a HAMMER root\n");
+			printf("Invalid PFS path %s\n", av[i]);
 		} else {
 			printf("PFS #%d {\n", pfs.pfs_id);
 			dump_pfsd(pfs.ondisk, fd);
@@ -196,6 +234,7 @@ hammer_cmd_pseudofs_status(char **av, int ac)
 			close(fd);
 		if (pfs.ondisk)
 			free(pfs.ondisk);
+		relpfs(fd, &pfs);
 	}
 }
 
@@ -224,20 +263,33 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	 * Figure out the directory prefix, taking care of degenerate
 	 * cases.
 	 */
-	dirpath = strdup(path);
-	if (strrchr(dirpath, '/') != NULL) {
-		*strrchr(dirpath, '/') = 0;
-		if (dirpath[0] == 0) {
-			free(dirpath);
-			dirpath = strdup("/");
-		}
-	} else {
-		free(dirpath);
-		dirpath = strdup(".");
-	}
+	dirpath = getdir(path);
 	fd = open(dirpath, O_RDONLY);
 	if (fd < 0) {
 		fprintf(stderr, "Cannot open directory %s\n", dirpath);
+		exit(1);
+	}
+
+	/*
+	 * Avoid foot-shooting.  Don't let the user create a PFS
+	 * softlink via a PFS.  PFS softlinks may only be accessed
+	 * via the master filesystem.  Checking it here ensures
+	 * other PFS commands access PFS under the master filesystem.
+	 */
+	bzero(&pfs, sizeof(pfs));
+	bzero(&pfsd, sizeof(pfsd));
+	pfs.pfs_id = -1;
+	pfs.ondisk = &pfsd;
+	pfs.bytes = sizeof(pfsd);
+
+	ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs);
+	if (pfs.pfs_id != 0) {
+		fprintf(stderr,
+			"You are attempting to access a PFS softlink "
+			"from a PFS.  It may not represent the PFS\n"
+			"on the main filesystem mount that you "
+			"expect!  You may only access PFS softlinks\n"
+			"via the main filesystem mount!\n");
 		exit(1);
 	}
 
@@ -268,7 +320,6 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	 * Create the new PFS
 	 */
 	printf("Creating PFS #%d\t", pfs_id);
-	bzero(&pfsd, sizeof(pfsd));
 	init_pfsd(&pfsd, is_slave);
 	pfs.pfs_id = pfs_id;
 	pfs.ondisk = &pfsd;
@@ -288,6 +339,7 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 			hammer_cmd_pseudofs_update(av, ac);
 		}
 	}
+	free(dirpath);
 	close(fd);
 }
 
@@ -295,13 +347,13 @@ void
 hammer_cmd_pseudofs_destroy(char **av, int ac)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
+	struct hammer_pseudofs_data pfsd;
 	struct stat st;
 	int fd;
 	int i;
 
 	if (ac == 0)
 		pseudofs_usage(1);
-	bzero(&pfs, sizeof(pfs));
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == 0) {
@@ -339,6 +391,12 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 	fflush(stdout);
 
 	/*
+	 * Save the original PFS data so we can restore if on failure.
+	 * It fails to destroy, for example, if the PFS is still mounted.
+	 */
+	bcopy(pfs.ondisk, &pfsd, sizeof(pfsd));
+
+	/*
 	 * Set the sync_beg_tid and sync_end_tid's to 1, once we start the
 	 * RMR the PFS is basically destroyed even if someone ^C's it.
 	 */
@@ -369,7 +427,19 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 	} else {
 		printf("pfs-destroy of PFS#%d failed: %s\n",
 			pfs.pfs_id, strerror(errno));
+		/*
+		 * Restore the pfsd as we don't want to keep it downgraded.
+		 * This simply restores ondisk PFS with the original data
+		 * without creating a new root inode as it already exists.
+		 */
+		bcopy(&pfsd, pfs.ondisk, sizeof(pfsd));
+		if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) < 0) {
+			printf("Failed to restore the original PFS#%d data\n",
+				pfs.pfs_id);
+			exit(1);
+		}
 	}
+	relpfs(fd, &pfs);
 }
 
 void
@@ -380,14 +450,17 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 
 	if (ac == 0)
 		pseudofs_usage(1);
-	bzero(&pfs, sizeof(pfs));
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == 0) {
 		fprintf(stderr, "You cannot upgrade PFS#0"
 				" (It should already be a master)\n");
 		exit(1);
+	} else if ((pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
+		printf("It is already a master\n");
+		exit(1);
 	}
+
 	if (ioctl(fd, HAMMERIOC_UPG_PSEUDOFS, &pfs) == 0) {
 		printf("pfs-upgrade of PFS#%d (%s) succeeded\n",
 			pfs.pfs_id, pfs.ondisk->label);
@@ -395,6 +468,7 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 		fprintf(stderr, "pfs-upgrade of PFS#%d (%s) failed: %s\n",
 			pfs.pfs_id, pfs.ondisk->label, strerror(errno));
 	}
+	relpfs(fd, &pfs);
 }
 
 void
@@ -405,11 +479,13 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 
 	if (ac == 0)
 		pseudofs_usage(1);
-	bzero(&pfs, sizeof(pfs));
 	fd = getpfs(&pfs, av[0]);
 
 	if (pfs.pfs_id == 0) {
 		fprintf(stderr, "You cannot downgrade PFS#0\n");
+		exit(1);
+	} else if (pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) {
+		printf("It is already a slave\n");
 		exit(1);
 	}
 
@@ -420,6 +496,7 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 		fprintf(stderr, "pfs-downgrade of PFS#%d (%s) failed: %s\n",
 			pfs.pfs_id, pfs.ondisk->label, strerror(errno));
 	}
+	relpfs(fd, &pfs);
 }
 
 void
@@ -430,7 +507,6 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 
 	if (ac == 0)
 		pseudofs_usage(1);
-	bzero(&pfs, sizeof(pfs));
 	fd = getpfs(&pfs, av[0]);
 
 	printf("%s\n", av[0]);
@@ -461,6 +537,7 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 			exit(1);
 		}
 	}
+	relpfs(fd, &pfs);
 }
 
 static void
@@ -468,6 +545,7 @@ init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave)
 {
 	uint32_t status;
 
+	bzero(pfsd, sizeof(*pfsd));
 	pfsd->sync_beg_tid = 1;
 	pfsd->sync_end_tid = 1;
 	pfsd->sync_beg_ts = 0;
@@ -493,9 +571,6 @@ dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 	uuid_to_string(&pfsd->unique_uuid, &str, &status);
 	printf("    unique-uuid=%s\n", str);
 	free(str);
-	if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
-		printf("    slave\n");
-	}
 	printf("    label=\"%s\"\n", pfsd->label);
 	if (pfsd->snapshots[0])
 		printf("    snapshots=\"%s\"\n", pfsd->snapshots);
@@ -733,22 +808,4 @@ timetosecs(char *str)
 	if (v > 0x7FFFFFFF)
 		v = 0x7FFFFFFF;
 	return((int)v);
-}
-
-static
-char *
-strtrl(char **path, int len)
-{
-	char *s, *p;
-
-	s = *path;
-	if (s == NULL)
-		return NULL;
-
-	p = s + len;
-	/* Attempt to remove all trailing slashes */
-	while (p-- > s && *p == '/')
-		*p = '\0';
-
-	return p;
 }

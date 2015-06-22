@@ -54,6 +54,8 @@ typedef struct {
 #define atomic_xchg(p, v)		atomic_swap_int(&((p)->counter), v)
 #define atomic64_xchg(p, v)		atomic_swap_long(&((p)->counter), v)
 
+#define atomic_cmpset(p, o, n)		atomic_cmpset_32(&((p)->counter), o, n)
+
 static inline int
 atomic_add_return(int i, atomic_t *v)
 {
@@ -135,5 +137,9 @@ static inline int atomic_add_unless(atomic_t *v, int a, int u)
 		:				\
 		: "r" (mask), "m" (*addr)	\
 		: "memory");
+
+
+#define smp_mb__before_atomic_inc()	cpu_ccfence()
+#define smp_mb__after_atomic_inc()	cpu_ccfence()
 
 #endif	/* _ASM_ATOMIC_H_ */

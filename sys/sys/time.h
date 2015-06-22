@@ -202,6 +202,7 @@ void	getnanouptime (struct timespec *tv);
 void	getnanotime (struct timespec *tv);
 int	itimerdecr (struct itimerval *itp, int usec);
 int	itimerfix (struct timeval *tv);
+int	itimespecfix (struct timespec *ts);
 int 	ppsratecheck (struct timeval *, int *, int usec);
 int 	ratecheck (struct timeval *, const struct timeval *);
 void	microuptime (struct timeval *tv);

@@ -28,10 +28,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)mail.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/mail.c 213760 2010-10-13 04:01:01Z obrien $
  */
+
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)mail.c	8.2 (Berkeley) 5/4/95";
+#endif
+#endif /* not lint */
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * Routines to check for mail.  (Perhaps make part of main.c?)
@@ -80,7 +85,7 @@ chkmail(int silent)
 	setstackmark(&smark);
 	mpath = mpathset()? mpathval() : mailval();
 	for (i = 0 ; i < nmboxes ; i++) {
-		p = padvance(&mpath, nullstr);
+		p = padvance(&mpath, "");
 		if (p == NULL)
 			break;
 		if (*p == '\0')

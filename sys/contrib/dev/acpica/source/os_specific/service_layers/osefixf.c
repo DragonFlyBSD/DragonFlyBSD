@@ -45,6 +45,9 @@
 #include "accommon.h"
 #include "acapps.h"
 
+#define _COMPONENT          ACPI_OS_SERVICES
+        ACPI_MODULE_NAME    ("osefixf")
+
 
 /* Local definitions */
 
@@ -88,6 +91,10 @@ AcpiEfiFlushFile (
 /* Local variables */
 
 static EFI_FILE_HANDLE      AcpiGbl_EfiCurrentVolume = NULL;
+EFI_GUID                    AcpiGbl_LoadedImageProtocol = LOADED_IMAGE_PROTOCOL;
+EFI_GUID                    AcpiGbl_TextInProtocol = SIMPLE_TEXT_INPUT_PROTOCOL;
+EFI_GUID                    AcpiGbl_TextOutProtocol = SIMPLE_TEXT_OUTPUT_PROTOCOL;
+EFI_GUID                    AcpiGbl_FileSystemProtocol = SIMPLE_FILE_SYSTEM_PROTOCOL;
 
 
 /******************************************************************************
@@ -141,7 +148,7 @@ static ACPI_PHYSICAL_ADDRESS
 AcpiEfiGetRsdpViaGuid (
     EFI_GUID                *Guid)
 {
-    unsigned long           Address = 0;
+    ACPI_PHYSICAL_ADDRESS   Address = 0;
     int                     i;
 
 
@@ -149,13 +156,13 @@ AcpiEfiGetRsdpViaGuid (
     {
         if (AcpiEfiCompareGuid (&ST->ConfigurationTable[i].VendorGuid, Guid))
         {
-            Address = (ACPI_PHYSICAL_ADDRESS)
-                    ST->ConfigurationTable[i].VendorTable;
+            Address = ACPI_PTR_TO_PHYSADDR (
+                    ST->ConfigurationTable[i].VendorTable);
             break;
         }
     }
 
-    return ((ACPI_PHYSICAL_ADDRESS) (Address));
+    return (Address);
 }
 
 
@@ -328,7 +335,7 @@ AcpiOsAllocateZeroed (
     Mem = AcpiOsAllocate (Size);
     if (Mem)
     {
-        ACPI_MEMSET (Mem, 0, Size);
+        memset (Mem, 0, Size);
     }
 
     return (Mem);
@@ -400,7 +407,7 @@ AcpiOsOpenFile (
 
     /* Allocate path buffer */
 
-    Count = ACPI_STRLEN (Path);
+    Count = strlen (Path);
     Path16 = ACPI_ALLOCATE_ZEROED ((Count + 1) * sizeof (CHAR16));
     if (!Path16)
     {
@@ -813,14 +820,14 @@ AcpiEfiArgify (
 
     while (*String != '\0')
     {
-        while (ACPI_IS_SPACE (*String))
+        while (isspace (*String))
         {
             *String++ = '\0';
         }
         Arg = CopyBuffer;
         while (*String != '\0')
         {
-            if (ACPI_IS_SPACE (*String) &&
+            if (isspace (*String) &&
                 !IsSingleQuote && !IsDoubleQuote && !IsEscape)
             {
                 *Arg++ = '\0';
@@ -1029,21 +1036,23 @@ efi_main (
     EFI_FILE_IO_INTERFACE   *Volume = NULL;
 
 
-    /* Initialize EFI library */
+    /* Initialize global variables */
 
-    InitializeLib (Image, SystemTab);
+    ST = SystemTab;
+    BS = SystemTab->BootServices;
 
     /* Retrieve image information */
 
     EfiStatus = uefi_call_wrapper (BS->HandleProtocol, 3,
-        Image, &LoadedImageProtocol, ACPI_CAST_PTR (VOID, &Info));
+        Image, &AcpiGbl_LoadedImageProtocol, ACPI_CAST_PTR (VOID, &Info));
     if (EFI_ERROR (EfiStatus))
     {
         AcpiLogError ("EFI_BOOT_SERVICES->HandleProtocol(LoadedImageProtocol) failure.\n");
         return (EfiStatus);
     }
+
     EfiStatus = uefi_call_wrapper (BS->HandleProtocol, 3,
-        Info->DeviceHandle, &FileSystemProtocol, (void **) &Volume);
+        Info->DeviceHandle, &AcpiGbl_FileSystemProtocol, (void **) &Volume);
     if (EFI_ERROR (EfiStatus))
     {
         AcpiLogError ("EFI_BOOT_SERVICES->HandleProtocol(FileSystemProtocol) failure.\n");

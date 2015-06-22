@@ -114,11 +114,13 @@ vlogline(int level, int newline, const char *ctl, va_list va)
     static char line_build[1024];
     static int line_index;
     int priority;
+    va_list vacopy;
 
     /*
      * Output to stderr directly but build the log line for syslog.
      */
     if (level <= debug_level) {
+	va_copy(vacopy, va);
 	if (log_stderr) {
 	    vfprintf(stderr, ctl, va);
 	    if (newline)
@@ -127,7 +129,7 @@ vlogline(int level, int newline, const char *ctl, va_list va)
 	}
 	if (debug_opt == 0) {
 	    vsnprintf(line_build + line_index, sizeof(line_build) - line_index, 
-		    ctl, va);
+		    ctl, vacopy);
 	    line_index += strlen(line_build + line_index);
 	    if (line_index && line_build[line_index-1] == '\n') {
 		newline = 1;
@@ -151,6 +153,7 @@ vlogline(int level, int newline, const char *ctl, va_list va)
 		line_index = 0;
 	    }
 	}
+	va_end(vacopy);
     }
 }
 

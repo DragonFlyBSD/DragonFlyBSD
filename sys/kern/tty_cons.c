@@ -129,6 +129,9 @@ struct consdev *cn_tab;		/* physical console device info */
 struct consdev *gdb_tab;	/* physical gdb debugger device info */
 
 SYSCTL_INT(_kern, OID_AUTO, sysbeep_enable, CTLFLAG_RW, &sysbeep_enable, 0, "");
+static uint32_t console_rdev;
+SYSCTL_INT(_kern, OID_AUTO, console_rdev, CTLFLAG_RW,
+	&console_rdev, 0, "");
 
 CONS_DRIVER(cons, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 SET_DECLARE(cons_set, struct consdev);
@@ -225,6 +228,13 @@ cninit_finish(void)
 
 	cn_fwd_ops = dev_ops_intercept(cn_tab->cn_dev, &cn_iops);
 	cn_dev = cn_tab->cn_dev;
+	if (cn_dev) {
+		console_rdev = makeudev(cn_dev->si_umajor,
+					(cn_dev->si_uminor == 255 ?
+					    0 : cn_dev->si_uminor));
+	} else {
+		console_rdev = 0;
+	}
 	console_pausing = 0;
 }
 

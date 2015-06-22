@@ -206,6 +206,7 @@ extern long passive_fd_list_hits;
 
 extern struct vop_ops dirfs_vnode_vops;
 
+#ifdef _KERNEL
 /*
  * Misc functions for node operations
  */
@@ -237,6 +238,7 @@ dirfs_node_clrflags(dirfs_node_t dnp, int flags)
 	atomic_clear_int(&dnp->dn_state, flags);
 }
 
+#endif
 
 /*
  * Prototypes

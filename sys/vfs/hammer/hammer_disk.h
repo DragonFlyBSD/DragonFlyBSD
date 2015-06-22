@@ -199,6 +199,12 @@ typedef u_int32_t hammer_crc_t;
 	HAMMER_SHORT_OFF_ENCODE(offset))
 
 /*
+ * Translate a zone address to zone-2 address.
+ */
+#define hammer_xlate_to_zone2(offset) \
+	(((offset) & ~HAMMER_OFF_ZONE_MASK) | HAMMER_ZONE_RAW_BUFFER)
+
+/*
  * Big-Block backing store
  *
  * A blockmap is a two-level map which translates a blockmap-backed zone

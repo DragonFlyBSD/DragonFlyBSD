@@ -27,9 +27,8 @@
 .\"
 .\"     From: @(#)inet.4	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man4/inet.4,v 1.11.2.6 2001/12/17 11:30:12 ru Exp $
-.\" $DragonFly: src/share/man/man4/inet.4,v 1.8 2008/05/02 02:05:05 swildner Exp $
 .\"
-.Dd February 14, 1995
+.Dd March 22, 2015
 .Dt INET 4
 .Os
 .Sh NAME
@@ -67,11 +66,11 @@ Sockets bound to the Internet protocol family utilize
 the following addressing structure,
 .Bd -literal -offset indent
 struct sockaddr_in {
-	u_char	sin_len;
-	u_char	sin_family;
-	u_short	sin_port;
-	struct	in_addr sin_addr;
-	char	sin_zero[8];
+	u_char		sin_len;
+	sa_family_t	sin_family;
+	u_short		sin_port;
+	struct in_addr	sin_addr;
+	char		sin_zero[8];
 };
 .Ed
 .Pp

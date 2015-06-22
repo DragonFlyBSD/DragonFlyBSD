@@ -32,8 +32,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IPFW_LAYER2_H
-#define _IPFW_LAYER2_H
+#ifndef _IPFW_LAYER4_H
+#define _IPFW_LAYER4_H
 
 #include "../../../sys/net/ipfw3_layer4/ip_fw3_layer4.h"
 

@@ -22,16 +22,10 @@
  *
  * Authors: Dave Airlie
  *          Alex Deucher
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_cursor.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon.h"
-
-#define CURSOR_WIDTH 64
-#define CURSOR_HEIGHT 64
 
 static void radeon_lock_cursor(struct drm_crtc *crtc, bool lock)
 {
@@ -170,7 +164,8 @@ int radeon_crtc_cursor_set(struct drm_crtc *crtc,
 		goto unpin;
 	}
 
-	if ((width > CURSOR_WIDTH) || (height > CURSOR_HEIGHT)) {
+	if ((width > radeon_crtc->max_cursor_width) ||
+	    (height > radeon_crtc->max_cursor_height)) {
 		DRM_ERROR("bad cursor width or height %d x %d\n", width, height);
 		return -EINVAL;
 	}
@@ -236,11 +231,11 @@ int radeon_crtc_cursor_move(struct drm_crtc *crtc,
 	DRM_DEBUG("x %d y %d c->x %d c->y %d\n", x, y, crtc->x, crtc->y);
 
 	if (x < 0) {
-		xorigin = min(-x, CURSOR_WIDTH - 1);
+		xorigin = min(-x, radeon_crtc->max_cursor_width - 1);
 		x = 0;
 	}
 	if (y < 0) {
-		yorigin = min(-y, CURSOR_HEIGHT - 1);
+		yorigin = min(-y, radeon_crtc->max_cursor_height - 1);
 		y = 0;
 	}
 
@@ -280,9 +275,7 @@ int radeon_crtc_cursor_move(struct drm_crtc *crtc,
 				cursor_end = x - xorigin + w;
 				if (!(cursor_end & 0x7f)) {
 					x--;
-					if (x < 0) {
-						DRM_ERROR("%s: x(%d) < 0", __func__, x);
-					}
+					WARN_ON_ONCE(x < 0);
 				}
 			}
 		}

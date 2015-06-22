@@ -1,6 +1,6 @@
-# $FreeBSD: head/sys/modules/iwnfw/iwn2000/Makefile 254993 2013-08-28 15:12:51Z gnn $
+# $FreeBSD: head/sys/modules/iwnfw/iwn105/Makefile 260552 2014-01-11 18:56:48Z gavin $
 
-KMOD=	iwn2000fw
+KMOD=	iwn105fw
 IMG=	iwlwifi-105-6-18.168.6.1
 
 .include <bsd.kmod.mk>

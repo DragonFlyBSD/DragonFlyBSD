@@ -196,7 +196,7 @@ vga_txtdraw(scr_stat *scp, int from, int count, int flip)
 static void 
 vga_txtcursor_shape(scr_stat *scp, int base, int height, int blink)
 {
-	if (base < 0 || base >= scp->font_size)
+	if (base < 0 || base >= scp->font_height)
 		return;
 
 	/* the caller may set height <= 0 in order to disable the cursor */
@@ -206,7 +206,8 @@ vga_txtcursor_shape(scr_stat *scp, int base, int height, int blink)
 #endif
 	(*vidsw[scp->sc->adapter]->set_hw_cursor_shape)(scp->sc->adp,
 							base, height,
-							scp->font_size, blink);
+							scp->font_height,
+							blink);
 
 }
 
@@ -225,10 +226,10 @@ draw_txtcharcursor(scr_stat *scp, int at, u_short c, u_short a, int flip)
 		int h;
 		int i;
 
-		if (scp->font_size < 14) {
+		if (scp->font_height < 14) {
 			font = sc->font_8;
 			h = 8;
-		} else if (scp->font_size >= 16) {
+		} else if (scp->font_height >= 16) {
 			font = sc->font_16;
 			h = 16;
 		} else {
@@ -339,35 +340,37 @@ draw_txtmouse(scr_stat *scp, int x, int y)
 	int i;
 
 	/* prepare mousepointer char's bitmaps */
-	pos = (y/scp->font_size - scp->yoff)*scp->xsize + x/8 - scp->xoff;
-	bcopy(scp->font + sc_vtb_getc(&scp->scr, pos)*scp->font_size,
-	      &font_buf[0], scp->font_size);
-	bcopy(scp->font + sc_vtb_getc(&scp->scr, pos + 1)*scp->font_size,
-	      &font_buf[32], scp->font_size);
+	pos = (y / scp->font_height - scp->yoff) * scp->xsize +
+	      x / scp->font_width - scp->xoff;
+	bcopy(scp->font + sc_vtb_getc(&scp->scr, pos) * scp->font_height,
+	      &font_buf[0], scp->font_height);
+	bcopy(scp->font + sc_vtb_getc(&scp->scr, pos + 1) * scp->font_height,
+	      &font_buf[32], scp->font_height);
 	bcopy(scp->font 
-		 + sc_vtb_getc(&scp->scr, pos + scp->xsize)*scp->font_size,
-	      &font_buf[64], scp->font_size);
-	bcopy(scp->font
-		 + sc_vtb_getc(&scp->scr, pos + scp->xsize + 1)*scp->font_size,
-	      &font_buf[96], scp->font_size);
-	for (i = 0; i < scp->font_size; ++i) {
-		cursor[i] = font_buf[i]<<8 | font_buf[i+32];
-		cursor[i + scp->font_size] = font_buf[i+64]<<8 | font_buf[i+96];
+		 + sc_vtb_getc(&scp->scr, pos + scp->xsize) * scp->font_height,
+	      &font_buf[64], scp->font_height);
+	bcopy(scp->font +
+	      sc_vtb_getc(&scp->scr, pos + scp->xsize + 1) * scp->font_height,
+	      &font_buf[96], scp->font_height);
+	for (i = 0; i < scp->font_height; ++i) {
+		cursor[i] = (font_buf[i]<<8) | font_buf[i+32];
+		cursor[i + scp->font_height] = (font_buf[i+64]<<8) |
+					       font_buf[i+96];
 	}
 
 	/* now and-or in the mousepointer image */
-	xoffset = x%8;
-	yoffset = y%scp->font_size;
+	xoffset = x % scp->font_width;
+	yoffset = y % scp->font_height;
 	for (i = 0; i < 16; ++i) {
 		cursor[i + yoffset] =
 	    		(cursor[i + yoffset] & ~(mouse_and_mask[i] >> xoffset))
 	    		| (mouse_or_mask[i] >> xoffset);
 	}
-	for (i = 0; i < scp->font_size; ++i) {
+	for (i = 0; i < scp->font_height; ++i) {
 		font_buf[i] = (cursor[i] & 0xff00) >> 8;
 		font_buf[i + 32] = cursor[i] & 0xff;
-		font_buf[i + 64] = (cursor[i + scp->font_size] & 0xff00) >> 8;
-		font_buf[i + 96] = cursor[i + scp->font_size] & 0xff;
+		font_buf[i + 64] = (cursor[i + scp->font_height] & 0xff00) >> 8;
+		font_buf[i + 96] = cursor[i + scp->font_height] & 0xff;
 	}
 
 #if 1
@@ -401,7 +404,8 @@ draw_txtmouse(scr_stat *scp, int x, int y)
 	int color;
 	int a;
 
-	pos = (y/scp->font_size - scp->yoff)*scp->xsize + x/8 - scp->xoff;
+	pos = (y / scp->font_height - scp->yoff)*
+	      scp->xsize + x / scp->font_width - scp->xoff;
 	a = sc_vtb_geta(&scp->scr, pos);
 	if (scp->sc->adp->va_flags & V_ADP_COLOR)
 		color = (col_conv[(a & 0xf000) >> 12] << 12)
@@ -449,13 +453,13 @@ vga_pxlborder_direct(scr_stat *scp, int color)
 
 	if (scp->yoff > 0) {
 		draw_pos = scp->sc->adp->va_window;
-		draw_end = draw_pos + line_width * scp->yoff * scp->font_size;
+		draw_end = draw_pos + line_width * scp->yoff * scp->font_height;
 
 		for (p = draw_pos; p < draw_end; p += 4)
 			writel(p, u32);
 	}
 
-	y = (scp->yoff + scp->ysize) * scp->font_size;
+	y = (scp->yoff + scp->ysize) * scp->font_height;
 
 	if (scp->ypixel > y) {
 		draw_pos = scp->sc->adp->va_window + line_width * y;
@@ -465,14 +469,15 @@ vga_pxlborder_direct(scr_stat *scp, int color)
 			writel(p, u32); 
 	}
 
-	y = scp->yoff * scp->font_size;
-	x = scp->xpixel / 8 - scp->xoff - scp->xsize;
+	y = scp->yoff * scp->font_height;
+	x = scp->xpixel / scp->font_width - scp->xoff - scp->xsize;
 
-	for (i = 0; i < scp->ysize * scp->font_size; ++i) {
+	for (i = 0; i < scp->ysize * scp->font_height; ++i) {
 		if (scp->xoff > 0) {
 			draw_pos = scp->sc->adp->va_window +
 			    line_width * (y + i);
-			draw_end = draw_pos + scp->xoff * 8 * pixel_size;
+			draw_end = draw_pos +
+				   scp->xoff * scp->font_width * pixel_size;
 
 			for (p = draw_pos; p < draw_end; p += 4)
 				writel(p, u32);
@@ -504,13 +509,13 @@ vga_pxlborder_packed(scr_stat *scp, int color)
 
 	if (scp->yoff > 0) {
 		draw_pos = scp->sc->adp->va_window;
-		draw_end = draw_pos + line_width * scp->yoff * scp->font_size;
+		draw_end = draw_pos + line_width * scp->yoff * scp->font_height;
 
 		for (p = draw_pos; p < draw_end; p += 4)
 			writel(p, u32);
 	}
 
-	y = (scp->yoff + scp->ysize) * scp->font_size;
+	y = (scp->yoff + scp->ysize) * scp->font_height;
 
 	if (scp->ypixel > y) {
 		draw_pos = scp->sc->adp->va_window + line_width * y;
@@ -520,14 +525,14 @@ vga_pxlborder_packed(scr_stat *scp, int color)
 			writel(p, u32);
 	}
 
-	y = scp->yoff * scp->font_size;
-	x = scp->xpixel / 8 - scp->xoff - scp->xsize;
+	y = scp->yoff * scp->font_height;
+	x = scp->xpixel / scp->font_width - scp->xoff - scp->xsize;
 
-	for (i = 0; i < scp->ysize * scp->font_size; ++i) {
+	for (i = 0; i < scp->ysize * scp->font_height; ++i) {
 		if (scp->xoff > 0) {
 			draw_pos = scp->sc->adp->va_window +
 			    line_width * (y + i);
-			draw_end = draw_pos + scp->xoff * 8;
+			draw_end = draw_pos + scp->xoff * scp->font_width;
 
 			for (p = draw_pos; p < draw_end; p += 4)
 				writel(p, u32);
@@ -566,13 +571,14 @@ vga_pxlborder_planar(scr_stat *scp, int color)
 	line_width = scp->sc->adp->va_line_width;
 	p = scp->sc->adp->va_window;
 	if (scp->yoff > 0)
-		bzero_io((void *)p, line_width*scp->yoff*scp->font_size);
-	y = (scp->yoff + scp->ysize)*scp->font_size;
+		bzero_io((void *)p, line_width*scp->yoff*scp->font_height);
+	y = (scp->yoff + scp->ysize)*scp->font_height;
 	if (scp->ypixel > y)
-		bzero_io((void *)(p + line_width*y), line_width*(scp->ypixel - y));
-	y = scp->yoff*scp->font_size;
-	x = scp->xpixel/8 - scp->xoff - scp->xsize;
-	for (i = 0; i < scp->ysize*scp->font_size; ++i) {
+		bzero_io((void *)(p + line_width*y),
+			 line_width*(scp->ypixel - y));
+	y = scp->yoff*scp->font_height;
+	x = scp->xpixel/scp->font_width - scp->xoff - scp->xsize;
+	for (i = 0; i < scp->ysize*scp->font_height; ++i) {
 		if (scp->xoff > 0)
 			bzero_io((void *)(p + line_width*(y + i)), scp->xoff);
 		if (x > 0)
@@ -616,9 +622,9 @@ vga_vgadraw_direct(scr_stat *scp, int from, int count, int flip)
 
 		p = draw_pos;
 		char_data = &(scp->font[sc_vtb_getc(&scp->vtb, i) *
-		    scp->font_size]);
+		    scp->font_height]);
 
-		for (j = 0; j < scp->font_size; ++j, ++char_data) {
+		for (j = 0; j < scp->font_height; ++j, ++char_data) {
 			pos = 7;
 
 			for (k = 0; k < 2 * pixel_size; ++k) {
@@ -640,7 +646,7 @@ vga_vgadraw_direct(scr_stat *scp, int from, int count, int flip)
 
 		if ((i % scp->xsize) == scp->xsize - 1)
 			draw_pos += scp->xoff * 16 * pixel_size +
-			     (scp->font_size - 1) * line_width;
+			     (scp->font_height - 1) * line_width;
 	}
 }
 
@@ -673,9 +679,9 @@ vga_vgadraw_packed(scr_stat *scp, int from, int count, int flip)
 
 		p = draw_pos;
 		char_data = &(scp->font[sc_vtb_getc(&scp->vtb, i) *
-		    scp->font_size]);
+		    scp->font_height]);
 
-		for (j = 0; j < scp->font_size; ++j, ++char_data) {
+		for (j = 0; j < scp->font_height; ++j, ++char_data) {
 			u32 = ((*char_data & 1 ? fg : bg) << 24) +
 			      ((*char_data & 2 ? fg : bg) << 16) +
 			      ((*char_data & 4 ? fg : bg) << 8) +
@@ -691,11 +697,11 @@ vga_vgadraw_packed(scr_stat *scp, int from, int count, int flip)
 			p += line_width;
 		}
 
-		draw_pos += 8;
+		draw_pos += scp->font_width;
 
 		if ((i % scp->xsize) == scp->xsize - 1)
 			draw_pos += scp->xoff * 16 +
-			     (scp->font_size - 1) * line_width;
+			     (scp->font_height - 1) * line_width;
 	}
 }
 
@@ -744,15 +750,15 @@ vga_vgadraw_planar(scr_stat *scp, int from, int count, int flip)
 		/* foreground color */
 		outw(GDCIDX, col1 | 0x00);	/* set/reset */
 		e = d;
-		f = &(scp->font[sc_vtb_getc(&scp->vtb, i)*scp->font_size]);
-		for (j = 0; j < scp->font_size; ++j, ++f) {
+		f = &(scp->font[sc_vtb_getc(&scp->vtb, i)*scp->font_height]);
+		for (j = 0; j < scp->font_height; ++j, ++f) {
 	        	writeb(e, *f);
 			e += line_width;
 		}
 		++d;
 		if ((i % scp->xsize) == scp->xsize - 1)
 			d += scp->xoff*2 
-				 + (scp->font_size - 1)*line_width;
+				 + (scp->font_height - 1)*line_width;
 	}
 	outw(GDCIDX, 0x0005);		/* read mode 0, write mode 0 */
 	outw(GDCIDX, 0x0000);		/* set/reset */
@@ -762,7 +768,7 @@ vga_vgadraw_planar(scr_stat *scp, int from, int count, int flip)
 static void 
 vga_pxlcursor_shape(scr_stat *scp, int base, int height, int blink)
 {
-	if (base < 0 || base >= scp->font_size)
+	if (base < 0 || base >= scp->font_height)
 		return;
 	/* the caller may set height <= 0 in order to disable the cursor */
 #if 0
@@ -783,8 +789,8 @@ draw_pxlcursor_direct(scr_stat *scp, int at, int on, int flip)
 	line_width = scp->sc->adp->va_line_width;
 	pixel_size = scp->sc->adp->va_info.vi_pixel_size;
 
-	draw_pos = VIDEO_MEMORY_POS(scp, at, 8 * pixel_size) +
-	    (scp->font_size - scp->cursor_base - 1) * line_width;
+	draw_pos = VIDEO_MEMORY_POS(scp, at, scp->font_width * pixel_size) +
+	    (scp->font_height - scp->cursor_base - 1) * line_width;
 
 	a = sc_vtb_geta(&scp->vtb, at);
 
@@ -800,10 +806,10 @@ draw_pxlcursor_direct(scr_stat *scp, int at, int on, int flip)
 		    ((a & 0xf000) >> 4)) >> 8];
 	}
 
-	char_data = &(scp->font[sc_vtb_getc(&scp->vtb, at) * scp->font_size +
-	    scp->font_size - scp->cursor_base - 1]);
+	char_data = &(scp->font[sc_vtb_getc(&scp->vtb, at) * scp->font_height +
+	    scp->font_height - scp->cursor_base - 1]);
 
-	height = imin(scp->cursor_height, scp->font_size);
+	height = imin(scp->cursor_height, scp->font_height);
 
 	for (i = 0; i < height; ++i, --char_data) {
 		pos = 7;
@@ -836,7 +842,7 @@ draw_pxlcursor_packed(scr_stat *scp, int at, int on, int flip)
 	line_width = scp->sc->adp->va_line_width;
 
 	draw_pos = VIDEO_MEMORY_POS(scp, at, 8) +
-	    (scp->font_size - scp->cursor_base - 1) * line_width;
+	    (scp->font_height - scp->cursor_base - 1) * line_width;
 
 	a = sc_vtb_geta(&scp->vtb, at);
 
@@ -848,10 +854,10 @@ draw_pxlcursor_packed(scr_stat *scp, int at, int on, int flip)
 		bg = ((on) ? (a & 0x0f00) : ((a & 0xf000) >> 4)) >> 8;
 	}
 
-	char_data = &(scp->font[sc_vtb_getc(&scp->vtb, at) * scp->font_size +
-	    scp->font_size - scp->cursor_base - 1]);
+	char_data = &(scp->font[sc_vtb_getc(&scp->vtb, at) * scp->font_height +
+	    scp->font_height - scp->cursor_base - 1]);
 
-	height = imin(scp->cursor_height, scp->font_size);
+	height = imin(scp->cursor_height, scp->font_height);
 
 	for (i = 0; i < height; ++i, --char_data) {
 		u32 = ((*char_data & 1 ? fg : bg) << 24) +
@@ -885,7 +891,7 @@ draw_pxlcursor_planar(scr_stat *scp, int at, int on, int flip)
 	line_width = scp->sc->adp->va_line_width;
 
 	d = VIDEO_MEMORY_POS(scp, at, 1) +
-	    (scp->font_size - scp->cursor_base - 1) * line_width;
+	    (scp->font_height - scp->cursor_base - 1) * line_width;
 
 	outw(GDCIDX, 0x0005);		/* read mode 0, write mode 0 */
 	outw(GDCIDX, 0x0003);		/* data rotate/function select */
@@ -906,9 +912,9 @@ draw_pxlcursor_planar(scr_stat *scp, int at, int on, int flip)
 	else
 		col = (on) ? ((a & 0xf000) >> 4) : (a & 0x0f00);
 	outw(GDCIDX, col | 0x00);	/* set/reset */
-	f = &(scp->font[sc_vtb_getc(&scp->vtb, at)*scp->font_size
-		+ scp->font_size - scp->cursor_base - 1]);
-	height = imin(scp->cursor_height, scp->font_size);
+	f = &(scp->font[sc_vtb_getc(&scp->vtb, at)*scp->font_height
+		+ scp->font_height - scp->cursor_base - 1]);
+	height = imin(scp->cursor_height, scp->font_height);
 	for (i = 0; i < height; ++i, --f) {
 		outw(GDCIDX, (*f << 8) | 0x08);	/* bit mask */
 	       	writeb(d, 0);
@@ -1055,7 +1061,7 @@ draw_pxlmouse_direct(scr_stat *scp, int x, int y)
 	pixel_size = scp->sc->adp->va_info.vi_pixel_size;
 
 	xend = imin(x + 8, 8 * (scp->xoff + scp->xsize));
-	yend = imin(y + 16, scp->font_size * (scp->yoff + scp->ysize));
+	yend = imin(y + 16, scp->font_height * (scp->yoff + scp->ysize));
 
 	draw_pos = scp->sc->adp->va_window + y * line_width + x * pixel_size;
 
@@ -1097,9 +1103,10 @@ draw_pxlmouse_packed(scr_stat *scp, int x, int y)
 
 	line_width = scp->sc->adp->va_line_width;
 
-	xend = imin(8 * (scp->xoff + scp->xsize), imin(x + 16, scp->xpixel));
-	yend = imin(scp->font_size * (scp->yoff + scp->ysize),
-	    imin(y + 16, scp->ypixel));
+	xend = imin(scp->font_width * (scp->xoff + scp->xsize),
+		    imin(x + 16, scp->xpixel));
+	yend = imin(scp->font_height * (scp->yoff + scp->ysize),
+		    imin(y + 16, scp->ypixel));
 
 	draw_pos = scp->sc->adp->va_window + y * line_width + x;
 
@@ -1127,7 +1134,7 @@ draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 
 	line_width = scp->sc->adp->va_line_width;
 	xoff = (x - scp->xoff*8)%8;
-	ymax = imin(y + 16, scp->font_size * (scp->yoff + scp->ysize));
+	ymax = imin(y + 16, scp->font_height * (scp->yoff + scp->ysize));
 
 	outw(GDCIDX, 0x0805);		/* read mode 1, write mode 0 */
 	outw(GDCIDX, 0x0001);		/* set/reset enable */
@@ -1179,9 +1186,9 @@ remove_pxlmouse(scr_stat *scp, int x, int y)
 	int i;
 
 	/* erase the mouse cursor image */
-	col = x/8 - scp->xoff;
-	row = y/scp->font_size - scp->yoff;
-	pos = row*scp->xsize + col;
+	col = x / scp->font_width - scp->xoff;
+	row = y / scp->font_height - scp->yoff;
+	pos = row * scp->xsize + col;
 	i = (col < scp->xsize - 1) ? 2 : 1;
 	(*scp->rndr->draw)(scp, pos, i, FALSE);
 	if (row < scp->ysize - 1)

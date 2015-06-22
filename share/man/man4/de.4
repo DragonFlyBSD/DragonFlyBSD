@@ -23,28 +23,34 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/de.4,v 1.9.2.4 2001/08/17 13:08:37 ru Exp $
+.\" $FreeBSD: head/share/man/man4/de.4 213573 2010-10-08 12:40:16Z uqs $
 .\"
-.Dd September 5, 2013
+.Dd April 11, 2015
 .Dt DE 4
 .Os
 .Sh NAME
 .Nm de
-.Nd DEC DC21x4x Ethernet device driver
+.Nd "DEC DC21x4x Ethernet device driver"
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd "device de"
+.Ed
+.\".Pp
+.\"Alternatively, to load the driver as a
+.\"module at boot time, place the following line in
+.\".Xr loader.conf 5 :
+.\".Bd -literal -offset indent
+.\"if_de_load="YES"
+.\".Ed
 .Sh DESCRIPTION
 The
 .Nm
 driver provides support for the Ethernet adapters based on the Digital
-Equipment DC21x4x based self-contained Ethernet chips.
-.Pp
-It supports the DEC PCI DE435 card, DEC DE450, DEC DE500,
-SMC 8432, 9332 and 9334, Cogent EM100FX and EM440TX, Asante,
-ZNYX ZX3xx, and others based on the 21040 and 21041 Ethernet controllers or
-the 21140[A], 21141, 21142 and 21143 Fast 100Mbps Ethernet controllers.
-A DEC DC21x4x adapter is also found in Microsoft Virtual PC and (as the
-legacy adapter) in Hyper-V.
+Equipment DC21x4x based self-contained Ethernet and Fast Ethernet
+chips.
 .Pp
 The
 .Nm
@@ -59,7 +65,7 @@ Set 10Mbps operation on the BNC port
 .It 10base5/AUI
 Set 10Mbps operation on the AUI port
 .It 100baseTX
-Set 100Mbps (fast ethernet) operation
+Set 100Mbps (Fast Ethernet) operation
 .It 100baseFX
 Set 100Mbps operation
 .It 100baseT4
@@ -80,13 +86,40 @@ setup utility and are not changeable.
 .Pp
 Use the
 .Xr ifconfig 8
-command an in particular the
+command and in particular the
 .Fl m
 flag to list the supported media types for your particular card.
 .Pp
 The old
 .Dq ifconfig linkN
 method of configuration is not supported.
+.Sh HARDWARE
+Adapters supported by the
+.Nm
+driver include:
+.Pp
+.Bl -bullet -compact
+.It
+Adaptec ANA-6944/TX
+.It
+Cogent EM100FX and EM440TX
+.It
+Corega FastEther PCI-TX
+.It
+D-Link DFE-500TX
+.It
+DEC DE435, DEC DE450, and DEC DE500
+.It
+ELECOM LD-PCI2T, LD-PCITS
+.It
+Microsoft Virtual PC and the legacy adapter in Hyper-V
+.It
+I-O DATA LA2/T-PCI
+.It
+SMC Etherpower 8432, 9332 and 9334
+.It
+ZNYX ZX3xx
+.El
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "de%d: waking device from sleep/snooze mode"
@@ -103,6 +136,7 @@ devices allowed in a single machine.
 Certain revisions of the chipset are not supported by this driver.
 .El
 .Sh SEE ALSO
+.Xr altq 4 ,
 .Xr arp 4 ,
 .Xr ifmedia 4 ,
 .Xr netintro 4 ,

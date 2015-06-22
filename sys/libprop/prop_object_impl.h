@@ -295,7 +295,7 @@ SYSINIT(pp##_init, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, pp##_init, NULL)
 #define	_PROP_MUTEX_UNLOCK(x)		lockmgr(&(x), LK_RELEASE)
 
 #define	_PROP_RWLOCK_DECL(x)		struct mtx x;
-#define	_PROP_RWLOCK_INIT(x)		mtx_init(&(x))
+#define	_PROP_RWLOCK_INIT(x)		mtx_init(&(x), "prop")
 #define	_PROP_RWLOCK_RDLOCK(x)		mtx_lock(&(x))
 #define	_PROP_RWLOCK_WRLOCK(x)		mtx_lock(&(x))
 #define	_PROP_RWLOCK_UNLOCK(x)		mtx_unlock(&(x))

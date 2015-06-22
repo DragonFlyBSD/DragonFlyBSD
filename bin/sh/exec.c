@@ -28,10 +28,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)exec.c	8.4 (Berkeley) 6/8/95
- * $FreeBSD: head/bin/sh/exec.c 253650 2013-07-25 15:08:41Z jilles $
  */
+
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)exec.c	8.4 (Berkeley) 6/8/95";
+#endif
+#endif /* not lint */
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -94,6 +99,8 @@ static void printentry(struct tblentry *, int);
 static struct tblentry *cmdlookup(const char *, int);
 static void delete_cmd_entry(void);
 static void addcmdentry(const char *, struct cmdentry *);
+
+
 
 /*
  * Exec a program.  Never returns.  If you change this routine, you may
@@ -180,14 +187,15 @@ padvance(const char **path, const char *name)
 {
 	const char *p, *start;
 	char *q;
-	size_t len;
+	size_t len, namelen;
 
 	if (*path == NULL)
 		return NULL;
 	start = *path;
 	for (p = start; *p && *p != ':' && *p != '%'; p++)
 		; /* nothing */
-	len = p - start + strlen(name) + 2;	/* "2" is for '/' and '\0' */
+	namelen = strlen(name);
+	len = p - start + namelen + 2;	/* "2" is for '/' and '\0' */
 	STARTSTACKSTR(q);
 	CHECKSTRSPACE(len, q);
 	if (p != start) {
@@ -195,7 +203,7 @@ padvance(const char **path, const char *name)
 		q += p - start;
 		*q++ = '/';
 	}
-	strcpy(q, name);
+	memcpy(q, name, namelen + 1);
 	pathopt = NULL;
 	if (*p == '%') {
 		pathopt = ++p;
@@ -354,15 +362,13 @@ find_command(const char *name, struct cmdentry *entry, int act,
 
 	e = ENOENT;
 	idx = -1;
-loop:
-	while ((fullname = padvance(&path, name)) != NULL) {
-		stunalloc(fullname);
+	for (;(fullname = padvance(&path, name)) != NULL; stunalloc(fullname)) {
 		idx++;
 		if (pathopt) {
-			if (prefix("func", pathopt)) {
+			if (strncmp(pathopt, "func", 4) == 0) {
 				/* handled below */
 			} else {
-				goto loop;	/* ignore unimplemented options */
+				continue; /* ignore unimplemented options */
 			}
 		}
 		if (fullname[0] != '/')
@@ -370,13 +376,12 @@ loop:
 		if (stat(fullname, &statb) < 0) {
 			if (errno != ENOENT && errno != ENOTDIR)
 				e = errno;
-			goto loop;
+			continue;
 		}
 		e = EACCES;	/* if we fail, this will be the error */
 		if (!S_ISREG(statb.st_mode))
-			goto loop;
+			continue;
 		if (pathopt) {		/* this is a %func directory */
-			stalloc(strlen(fullname) + 1);
 			readcmdfile(fullname);
 			if ((cmdp = cmdlookup(name, 0)) == NULL || cmdp->cmdtype != CMDFUNCTION)
 				error("%s not defined in %s", name, fullname);
@@ -397,6 +402,7 @@ loop:
 #endif
 		TRACE(("searchexec \"%s\" returns \"%s\"\n", name, fullname));
 		INTOFF;
+		stunalloc(fullname);
 		cmdp = cmdlookup(name, 1);
 		if (cmdp->cmdtype == CMDFUNCTION)
 			cmdp = &loc_cmd;
@@ -417,14 +423,11 @@ loop:
 	return;
 
 success:
-	if (cmdp) {
 		if (cd)
 			cmdtable_cd = 1;
 		entry->cmdtype = cmdp->cmdtype;
 		entry->u = cmdp->param;
 		entry->special = cmdp->special;
-	} else
-		entry->cmdtype = CMDUNKNOWN;
 }
 
 
@@ -523,6 +526,7 @@ cmdlookup(const char *name, int add)
 	const char *p;
 	struct tblentry *cmdp;
 	struct tblentry **pp;
+	size_t len;
 
 	p = name;
 	hashval = *p << 4;
@@ -537,11 +541,11 @@ cmdlookup(const char *name, int add)
 	}
 	if (add && cmdp == NULL) {
 		INTOFF;
-		cmdp = *pp = ckmalloc(sizeof (struct tblentry)
-					+ strlen(name) + 1);
+		len = strlen(name);
+		cmdp = *pp = ckmalloc(sizeof (struct tblentry) + len + 1);
 		cmdp->next = NULL;
 		cmdp->cmdtype = CMDUNKNOWN;
-		strcpy(cmdp->cmdname, name);
+		memcpy(cmdp->cmdname, name, len + 1);
 		INTON;
 	}
 	lastcmdentry = pp;
@@ -606,6 +610,7 @@ defun(const char *name, union node *func)
 
 /*
  * Delete a function if it exists.
+ * Called with interrupts off.
  */
 
 int
@@ -616,6 +621,7 @@ unsetfunc(const char *name)
 	if ((cmdp = cmdlookup(name, 0)) != NULL && cmdp->cmdtype == CMDFUNCTION) {
 		unreffunc(cmdp->param.func);
 		delete_cmd_entry();
+		return (0);
 	}
 	return (0);
 }
@@ -646,7 +652,7 @@ typecmd_impl(int argc, char **argv, int cmd, const char *path)
 	const char * const *pp;
 	struct alias *ap;
 	int i;
-	int err = 0;
+	int error1 = 0;
 
 	if (path != pathval())
 		clearcmdentry();
@@ -667,9 +673,11 @@ typecmd_impl(int argc, char **argv, int cmd, const char *path)
 
 		/* Then look at the aliases */
 		if ((ap = lookupalias(argv[i], 1)) != NULL) {
-			if (cmd == TYPECMD_SMALLV)
-				out1fmt("alias %s='%s'\n", argv[i], ap->val);
-			else
+			if (cmd == TYPECMD_SMALLV) {
+				out1fmt("alias %s=", argv[i]);
+				out1qstr(ap->val);
+				outcslow('\n', out1);
+			} else
 				out1fmt("%s is an alias for %s\n", argv[i],
 				    ap->val);
 			continue;
@@ -704,7 +712,7 @@ typecmd_impl(int argc, char **argv, int cmd, const char *path)
 						" a tracked alias for" : "",
 					    name);
 			} else {
-				if (access(argv[i], X_OK) == 0) {
+				if (eaccess(argv[i], X_OK) == 0) {
 					if (cmd == TYPECMD_SMALLV)
 						out1fmt("%s\n", argv[i]);
 					else
@@ -714,7 +722,7 @@ typecmd_impl(int argc, char **argv, int cmd, const char *path)
 					if (cmd != TYPECMD_SMALLV)
 						outfmt(out2, "%s: %s\n",
 						    argv[i], strerror(errno));
-					err |= 127;
+					error1 |= 127;
 				}
 			}
 			break;
@@ -739,7 +747,7 @@ typecmd_impl(int argc, char **argv, int cmd, const char *path)
 		default:
 			if (cmd != TYPECMD_SMALLV)
 				outfmt(out2, "%s: not found\n", argv[i]);
-			err |= 127;
+			error1 |= 127;
 			break;
 		}
 	}
@@ -747,7 +755,7 @@ typecmd_impl(int argc, char **argv, int cmd, const char *path)
 	if (path != pathval())
 		clearcmdentry();
 
-	return err;
+	return error1;
 }
 
 /*
@@ -757,5 +765,7 @@ typecmd_impl(int argc, char **argv, int cmd, const char *path)
 int
 typecmd(int argc, char **argv)
 {
+	if (argc > 2 && strcmp(argv[1], "--") == 0)
+		argc--, argv++;
 	return typecmd_impl(argc, argv, TYPECMD_TYPE, bltinlookup("PATH", 1));
 }

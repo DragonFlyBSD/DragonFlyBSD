@@ -341,7 +341,6 @@ static DEV_INFO device_info[] = {
 {"joy",         "Joystick",				FLG_FIXED,	CLS_INPUT},
 {"sc",          "Syscons console driver",		FLG_IMMUTABLE,	CLS_INPUT},
 
-{"apm",         "Advanced Power Management",		FLG_FIXED,	CLS_MISC},
 {"pcic",        "PC-card controller",			0,		CLS_MISC},
 {"npx",	        "Math coprocessor",			FLG_IMMUTABLE,	CLS_MISC},
 {"vga",	        "Catchall PCI VGA driver",		FLG_INVISIBLE,	CLS_MISC},

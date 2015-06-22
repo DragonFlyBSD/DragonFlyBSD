@@ -488,7 +488,7 @@ newpos(void)
 	switch (mode) {
 	case -1:	/* error! */
 		write(2, "\r\nInternal cursor error.\r\n", 26);
-		getout();
+		getout(0);
 
 	case 0:		/* direct cursor motion */
 		tputs(m, abs(curr - r), addbuf);

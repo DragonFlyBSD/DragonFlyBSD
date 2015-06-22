@@ -25,13 +25,12 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.suspend,v 1.6 2004/01/21 03:03:40 njl Exp $
-# $DragonFly: src/etc/rc.suspend,v 1.4 2007/12/27 20:00:51 matthias Exp $
 #
 
 # sample run command file for APM Suspend Event
 
 if [ $# -ne 2 ]; then
-	echo "Usage: $0 [apm|acpi] [standby,suspend|1-5]"
+	echo "Usage: $0 [acpi] [standby,suspend|1-5]"
 	exit 1
 fi
 
@@ -55,9 +54,7 @@ echo $$ 2> /dev/null > /var/run/rc.suspend.pid
 
 logger -t $subsystem suspend at `date +'%Y%m%d %H:%M:%S'`
 sync && sync && sync
-[ $subsystem = "apm" ] && sleep 3
 
 rm -f /var/run/rc.suspend.pid
-[ $subsystem = "apm" ] && zzz
 
 exit 0

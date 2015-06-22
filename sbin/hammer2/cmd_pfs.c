@@ -61,14 +61,11 @@ cmd_pfs_list(const char *sel_path)
 			       "Label\n");
 		}
 		switch(pfs.pfs_type) {
-		case DMSG_PFSTYPE_NONE:
+		case HAMMER2_PFSTYPE_NONE:
 			printf("NONE        ");
 			break;
 		case HAMMER2_PFSTYPE_CACHE:
 			printf("CACHE       ");
-			break;
-		case HAMMER2_PFSTYPE_COPY:
-			printf("COPY        ");
 			break;
 		case HAMMER2_PFSTYPE_SLAVE:
 			printf("SLAVE       ");
@@ -80,11 +77,20 @@ cmd_pfs_list(const char *sel_path)
 			printf("SOFT_MASTER ");
 			break;
 		case HAMMER2_PFSTYPE_MASTER:
-			printf("MASTER      ");
-			break;
-		case HAMMER2_PFSTYPE_SNAPSHOT:
-			printf("SNAPSHOT    ");
-			break;
+			switch (pfs.pfs_subtype) {
+			case HAMMER2_PFSSUBTYPE_NONE:
+				printf("MASTER      ");
+				break;
+			case HAMMER2_PFSSUBTYPE_SNAPSHOT:
+				printf("SNAPSHOT    ");
+				break;
+			case HAMMER2_PFSSUBTYPE_AUTOSNAP:
+				printf("AUTOSNAP    ");
+				break;
+			default:
+				printf("MASTER(sub?)");
+				break;
+			}
 		default:
 			printf("%02x          ", pfs.pfs_type);
 			break;
@@ -142,10 +148,17 @@ cmd_pfs_create(const char *sel_path, const char *name,
 	uint32_t status;
 
 	/*
-	 * Default to MASTER
+	 * Default to MASTER if no uuid was specified.
+	 * Default to SLAVE if a uuid was specified.
+	 *
+	 * When adding masters to a cluster, the new PFS must be added as
+	 * a slave and then upgraded to ensure proper synchronization.
 	 */
-	if (pfs_type == DMSG_PFSTYPE_NONE) {
-		pfs_type = HAMMER2_PFSTYPE_MASTER;
+	if (pfs_type == HAMMER2_PFSTYPE_NONE) {
+		if (uuid_str)
+			pfs_type = HAMMER2_PFSTYPE_SLAVE;
+		else
+			pfs_type = HAMMER2_PFSTYPE_MASTER;
 	}
 
 	if ((fd = hammer2_ioctl_handle(sel_path)) < 0)
@@ -162,7 +175,18 @@ cmd_pfs_create(const char *sel_path, const char *name,
 		uuid_create(&pfs.pfs_fsid, &status);
 	if (status == uuid_s_ok) {
 		if (ioctl(fd, HAMMER2IOC_PFS_CREATE, &pfs) < 0) {
-			perror("ioctl");
+			if (errno == EEXIST) {
+				fprintf(stderr,
+					"NOTE: Typically the same name is "
+					"used for cluster elements on "
+					"different mounts,\n"
+					"      but cluster elements on the "
+					"same mount require unique names.\n"
+					"pfs-create %s: already present\n",
+					name);
+			} else {
+				perror("ioctl");
+			}
 			ecode = 1;
 		}
 	} else {

@@ -1223,6 +1223,8 @@ sys_poll(struct poll_args *uap)
 	int error;
 
 	if (uap->timeout != INFTIM) {
+		if (uap->timeout < 0)
+			return (EINVAL);
 		ts.tv_sec = uap->timeout / 1000;
 		ts.tv_nsec = (uap->timeout % 1000) * 1000 * 1000;
 		tsp = &ts;

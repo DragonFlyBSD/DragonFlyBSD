@@ -533,20 +533,24 @@ menu_display(void)
 	dvar_t dvar;
 	int i;
 	int logo_left = 0;		/* default to fred on right */
-	int separated = 0;		/* default no line b/w fred & menu */
-	char **logo = logo_mono;
+	int separated = 0;		/* default blue fred without line */
+	char **logo = logo_indigo;
+	char *console_val = getenv("console");
 
-	if (dvar_istrue(dvar_get("loader_color")))
+	if (dvar_istrue(dvar_get("fred_is_red")))
 		logo = logo_color;
+
+	if (dvar_istrue(dvar_get("loader_plain")))
+		logo = logo_mono;
+
+	if (strcmp(console_val, "comconsole") == 0)
+		logo = logo_mono;
 
 	if (dvar_istrue(dvar_get("fred_disable")))
 		logo = NULL;
 
 	if (dvar_istrue(dvar_get("fred_on_left")))
 		logo_left = 1;
-
-	if (dvar_istrue(dvar_get("fred_is_blue")))
-		logo = logo_indigo;
 
 	if (dvar_istrue(dvar_get("fred_separated")))
 		separated = 1;

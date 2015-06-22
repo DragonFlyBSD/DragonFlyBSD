@@ -172,6 +172,12 @@ static int	acpi_cst_cx_setup(struct acpi_cst_cx *cx);
 static void	acpi_cst_c1_halt_enter(const struct acpi_cst_cx *);
 static void	acpi_cst_cx_io_enter(const struct acpi_cst_cx *);
 
+int		acpi_cst_force_bmarb;
+TUNABLE_INT("hw.acpi.cpu.cst.force_bmarb", &acpi_cst_force_bmarb);
+
+int		acpi_cst_force_bmsts;
+TUNABLE_INT("hw.acpi.cpu.cst.force_bmsts", &acpi_cst_force_bmsts);
+
 static device_method_t acpi_cst_methods[] = {
     /* Device interface */
     DEVMETHOD(device_probe,	acpi_cst_probe),

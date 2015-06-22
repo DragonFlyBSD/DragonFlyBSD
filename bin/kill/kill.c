@@ -121,7 +121,7 @@ main(int argc, char **argv)
 	for (errors = 0; argc; argc--, argv++) {
 #ifdef SHELL
 		if (**argv == '%')
-			pid = getjobpgrp(*argv);
+			pid = killjob(*argv, numsig);
 		else
 #endif
 		{

@@ -28,7 +28,6 @@
  *
  * @(#)move_robs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/move_robs.c,v 1.4 1999/11/30 03:49:19 billf Exp $
- * $DragonFly: src/games/robots/move_robs.c,v 1.4 2006/08/27 21:45:07 pavalos Exp $
  */
 
 #include "robots.h"
@@ -41,12 +40,12 @@ static int sign(int);
  *	Move the robots around
  */
 void
-move_robots(bool was_sig)
+move_robots(int was_sig)
 {
 	COORD *rp;
 
 	if (Real_time)
-		signal(SIGALRM, (sig_t)move_robots);
+		signal(SIGALRM, move_robots);
 #ifdef DEBUG
 	move(Min.y, Min.x);
 	addch(inch());

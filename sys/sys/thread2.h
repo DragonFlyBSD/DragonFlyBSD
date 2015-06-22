@@ -350,6 +350,18 @@ lwkt_send_ipiq2_bycpu(int dcpu, ipifunc2_t func, void *arg1, int arg2)
     return(lwkt_send_ipiq3_bycpu(dcpu, (ipifunc3_t)func, arg1, arg2));
 }
 
+static __inline int
+lwkt_need_ipiq_process(globaldata_t gd)
+{
+    lwkt_ipiq_t ipiq;
+
+    if (CPUMASK_TESTNZERO(gd->gd_ipimask))
+	return 1;
+
+    ipiq = &gd->gd_cpusyncq;
+    return (ipiq->ip_rindex != ipiq->ip_windex);
+}
+
 #endif	/* _KERNEL */
 #endif	/* _SYS_THREAD2_H_ */
 

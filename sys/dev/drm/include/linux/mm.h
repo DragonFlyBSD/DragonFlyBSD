@@ -3,6 +3,8 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
+ * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,7 +32,11 @@
 #define	_LINUX_MM_H_
 
 #include <linux/errno.h>
+#include <linux/gfp.h>
 #include <linux/kernel.h>
+
+#include <asm/page.h>
+#include <asm/pgtable.h>
 
 #define PAGE_ALIGN(addr) round_page(addr)
 
@@ -74,6 +80,56 @@ io_remap_pfn_range(struct vm_area_struct *vma,
 	return (0);
 }
 
+static inline unsigned long
+vma_pages(struct vm_area_struct *vma)
+{
+	unsigned long size;
+
+	size = vma->vm_end - vma->vm_start;
+
+	return size >> PAGE_SHIFT;
+}
+
 #define offset_in_page(off)	((off) & PAGE_MASK)
+
+static inline void
+set_page_dirty(struct vm_page *page)
+{
+	vm_page_dirty(page);
+}
+
+/*
+ * Allocate multiple contiguous pages.  The DragonFly code can only do
+ * multiple allocations via the free page reserve.  Linux does not appear
+ * to restrict the address space, so neither do we.
+ */
+static inline struct vm_page *
+alloc_pages(int flags, u_int order)
+{
+	size_t bytes = PAGE_SIZE << order;
+	struct vm_page *pgs;
+
+	pgs = vm_page_alloc_contig(0LLU, ~0LLU, bytes, bytes, bytes,
+				   VM_MEMATTR_DEFAULT);
+	kprintf("alloc_pages order %u vm_pages=%p\n", order, pgs);
+	return pgs;
+}
+
+/*
+ * Free multiple contiguous pages
+ */
+static inline void
+__free_pages(struct vm_page *pgs, u_int order)
+{
+	size_t bytes = PAGE_SIZE << order;
+
+	vm_page_free_contig(pgs, bytes);
+}
+
+static inline void
+get_page(struct vm_page *page)
+{
+	vm_page_hold(page);
+}
 
 #endif	/* _LINUX_MM_H_ */

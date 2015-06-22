@@ -56,7 +56,7 @@
 
 #include "quota.h"
 #include "inode.h"
-#include "ext2mount.h"
+#include "ext2_mount.h"
 
 #include "ext2_fs.h"
 #include "ext2_fs_sb.h"
@@ -251,9 +251,9 @@ return ENOSPC;
 	}
 #endif
 	/*
-	 * If the latest allocation is in a new cylinder group, assume that
+	 * If the latest allocation is in a new block group, assume that
 	 * the filesystem has decided to move and do not force it back to
-	 * the previous cylinder group.
+	 * the previous block group.
 	 */
 	if (dtog(fs, dofftofsb(fs, buflist->bs_children[0]->b_bio2.bio_offset)) !=
 	    dtog(fs, dofftofsb(fs, buflist->bs_children[len - 1]->b_bio2.bio_offset)))

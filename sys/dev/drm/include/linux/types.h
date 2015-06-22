@@ -2,6 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
+ * Copyright (c) 2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -56,5 +57,7 @@ typedef vm_paddr_t resource_size_t;
 
 #define	DECLARE_BITMAP(n, bits)						\
 	unsigned long n[howmany(bits, sizeof(long) * 8)]
+
+typedef unsigned int gfp_t;
 
 #endif	/* _LINUX_TYPES_H_ */

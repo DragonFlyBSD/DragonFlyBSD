@@ -37,14 +37,11 @@
  */
 
 #include <sys/param.h>
-#include <sys/types.h>
 #ifdef _KERNEL
 #include <sys/kernel.h>
-#endif
-#include <sys/conf.h>
-#ifdef _KERNEL
 #include <sys/systm.h>
 #endif
+#include <sys/conf.h>
 #include <sys/tree.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
@@ -61,8 +58,8 @@
 #include <sys/limits.h>
 #include <vm/vm_extern.h>
 
-#include <sys/buf2.h>
 #ifdef _KERNEL
+#include <sys/buf2.h>
 #include <sys/signal2.h>
 #include <vm/vm_page2.h>
 #endif
@@ -925,6 +922,7 @@ struct hammer_mount {
 	int	dedup_cache_count;
 	int	error;				/* critical I/O error */
 	struct krate	krate;			/* rate limited kprintf */
+	struct krate	kdiag;			/* rate limited kprintf */
 	hammer_tid_t	asof;			/* snapshot mount */
 	hammer_tid_t	next_tid;
 	hammer_tid_t	flush_tid1;		/* flusher tid sequencing */
@@ -983,9 +981,9 @@ struct hammer_sync_info {
 #define HAMMER_REBALANCE_MIN_BUFS	\
 	(HAMMER_BTREE_LEAF_ELMS * HAMMER_BTREE_LEAF_ELMS)
 
+#endif  /* _KERNEL || _KERNEL_STRUCTURES */
 
-#endif
-
+#if defined(_KERNEL)
 /*
  * checkspace slop (8MB chunks), higher numbers are more conservative.
  */
@@ -995,8 +993,6 @@ struct hammer_sync_info {
 #define HAMMER_CHKSPC_CREATE	20
 #define HAMMER_CHKSPC_REMOVE	10
 #define HAMMER_CHKSPC_EMERGENCY	0
-
-#if defined(_KERNEL)
 
 extern struct vop_ops hammer_vnode_vops;
 extern struct vop_ops hammer_spec_vops;
@@ -1231,7 +1227,7 @@ int	hammer_btree_iterate(hammer_cursor_t cursor);
 int	hammer_btree_iterate_reverse(hammer_cursor_t cursor);
 int	hammer_btree_insert(hammer_cursor_t cursor,
 			    hammer_btree_leaf_elm_t elm, int *doprop);
-int	hammer_btree_delete(hammer_cursor_t cursor);
+int	hammer_btree_delete(hammer_cursor_t cursor, int *ndelete);
 void	hammer_btree_do_propagation(hammer_cursor_t cursor,
 			    hammer_pseudofs_inmem_t pfsm,
 			    hammer_btree_leaf_elm_t leaf);
@@ -1484,6 +1480,8 @@ int hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_pseudofs_rw *pfs);
 int hammer_ioc_wait_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_pseudofs_rw *pfs);
+int hammer_ioc_iterate_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_pfs_iterate *pi);
 int hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_volume *ioc);
 int hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
@@ -1541,9 +1539,6 @@ hammer_checkspace(hammer_mount_t hmp, int slop)
 	return(_hammer_checkspace(hmp, slop, NULL));
 }
 
-#endif
-
-#ifdef _KERNEL
 static __inline void
 hammer_wait_mem_record(hammer_record_t record)
 {
@@ -1554,6 +1549,18 @@ static __inline void
 hammer_lock_ex(struct hammer_lock *lock)
 {
 	hammer_lock_ex_ident(lock, "hmrlck");
+}
+
+static __inline void
+hammer_modify_volume_noundo(hammer_transaction_t trans, hammer_volume_t volume)
+{
+	hammer_modify_volume(trans, volume, NULL, 0);
+}
+
+static __inline void
+hammer_modify_buffer_noundo(hammer_transaction_t trans, hammer_buffer_t buffer)
+{
+	hammer_modify_buffer(trans, buffer, NULL, 0);
 }
 
 /*
@@ -1616,12 +1623,6 @@ hammer_modify_node_done(hammer_node_t node)
 }
 
 /*
- * Translate a zone address to zone-2 address.
- */
-#define hammer_xlate_to_zone2(offset) \
-	(((offset) & ~HAMMER_OFF_ZONE_MASK) | HAMMER_ZONE_RAW_BUFFER)
-
-/*
  * Lookup a blockmap offset.
  */
 static __inline hammer_off_t
@@ -1645,7 +1646,6 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 
 	return hammer_blockmap_lookup_verify(hmp, zone_offset, errorp);
 }
-#endif
 
 #define hammer_modify_volume_field(trans, vol, field)		\
 	hammer_modify_volume(trans, vol, &(vol)->ondisk->field,	\
@@ -1655,7 +1655,6 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 	hammer_modify_node(trans, node, &(node)->ondisk->field,	\
 			     sizeof((node)->ondisk->field))
 
-#ifdef _KERNEL
 /*
  * The HAMMER_INODE_CAP_DIR_LOCAL_INO capability is set on newly
  * created directories for HAMMER version 2 or greater and causes
@@ -1673,4 +1672,4 @@ hammer_dir_localization(hammer_inode_t dip)
 	else
 		return(HAMMER_LOCALIZE_MISC);
 }
-#endif
+#endif  /* _KERNEL */

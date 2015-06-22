@@ -28,10 +28,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)miscbltin.c	8.4 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/miscbltin.c 250214 2013-05-03 15:28:31Z jilles $
  */
+
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)miscbltin.c	8.4 (Berkeley) 5/4/95";
+#endif
+#endif /* not lint */
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 /*
  * Miscellaneous builtins.
@@ -57,11 +62,11 @@
 #include "syntax.h"
 #include "trap.h"
 
+#undef eflag
+
 int readcmd(int, char **);
 int umaskcmd(int, char **);
 int ulimitcmd(int, char **);
-
-#undef eflag
 
 /*
  * The read builtin.  The -r option causes backslashes to be treated like
@@ -87,7 +92,7 @@ readcmd(int argc __unused, char **argv __unused)
 	int backslash;
 	char c;
 	int rflag;
-	const char *prompt;
+	char *prompt;
 	const char *ifs;
 	char *p;
 	int startword;
@@ -260,7 +265,7 @@ readcmd(int argc __unused, char **argv __unused)
 
 	/* Set any remaining args to "" */
 	while (*++ap != NULL)
-		setvar(*ap, nullstr, 0);
+		setvar(*ap, "", 0);
 	return status;
 }
 
@@ -330,7 +335,7 @@ umaskcmd(int argc __unused, char **argv __unused)
 		} else {
 			void *set;
 			INTOFF;
-			if ((set = setmode (ap)) == NULL)
+			if ((set = setmode (ap)) == 0)
 				error("Illegal number: %s", ap);
 
 			mask = getmode (set, ~mask & 0777);
@@ -383,10 +388,10 @@ static const struct limits limits[] = {
 	{ "locked memory",	"kbytes",	RLIMIT_MEMLOCK, 1024, 'l' },
 #endif
 #ifdef RLIMIT_NPROC
-	{ "max user processes",	NULL,		RLIMIT_NPROC,      1, 'u' },
+	{ "max user processes",	(char *)0,	RLIMIT_NPROC,      1, 'u' },
 #endif
 #ifdef RLIMIT_NOFILE
-	{ "open files",		NULL,		RLIMIT_NOFILE,     1, 'n' },
+	{ "open files",		(char *)0,	RLIMIT_NOFILE,     1, 'n' },
 #endif
 #ifdef RLIMIT_VMEM
 	{ "virtual mem size",	"kbytes",	RLIMIT_VMEM,	1024, 'v' },
@@ -397,26 +402,48 @@ static const struct limits limits[] = {
 #ifdef RLIMIT_SBSIZE
 	{ "sbsize",		"bytes",	RLIMIT_SBSIZE,	   1, 'b' },
 #endif
-#ifdef RLIMIT_POSIXLOCK
-	{ "posixlocks",		NULL,		RLIMIT_POSIXLOCK,  1, 'k' },
+#ifdef RLIMIT_NPTS
+	{ "pseudo-terminals",	(char *)0,	RLIMIT_NPTS,	   1, 'p' },
 #endif
-	{ NULL,			NULL,		0,		   0, '\0' }
+#ifdef RLIMIT_KQUEUES
+	{ "kqueues",		(char *)0,	RLIMIT_KQUEUES,	   1, 'k' },
+#endif
+	{ (char *) 0,		(char *)0,	0,		   0, '\0' }
 };
+
+enum limithow { SOFT = 0x1, HARD = 0x2 };
+
+static void
+printlimit(enum limithow how, const struct rlimit *limit,
+    const struct limits *l)
+{
+	rlim_t val = 0;
+
+	if (how & SOFT)
+		val = limit->rlim_cur;
+	else if (how & HARD)
+		val = limit->rlim_max;
+	if (val == RLIM_INFINITY)
+		out1str("unlimited\n");
+	else
+	{
+		val /= l->factor;
+		out1fmt("%jd\n", (intmax_t)val);
+	}
+}
 
 int
 ulimitcmd(int argc __unused, char **argv __unused)
 {
-	int	c;
 	rlim_t val = 0;
-	enum { SOFT = 0x1, HARD = 0x2 }
-			how = SOFT | HARD;
+	enum limithow how = SOFT | HARD;
 	const struct limits	*l;
 	int		set, all = 0;
 	int		optc, what;
 	struct rlimit	limit;
 
 	what = 'f';
-	while ((optc = nextopt("HSatfdsmcnuvlbk")) != '\0')
+	while ((optc = nextopt("HSatfdsmcnuvlbpwk")) != '\0')
 		switch (optc) {
 		case 'H':
 			how = HARD;
@@ -445,17 +472,22 @@ ulimitcmd(int argc __unused, char **argv __unused)
 		if (strcmp(p, "unlimited") == 0)
 			val = RLIM_INFINITY;
 		else {
-			val = 0;
+			char *end;
+			uintmax_t uval;
 
-			while ((c = *p++) >= '0' && c <= '9')
-			{
-				val = (val * 10) + (long)(c - '0');
-				if (val < 0)
-					break;
-			}
-			if (c)
+			if (*p < '0' || *p > '9')
 				error("bad number");
-			val *= l->factor;
+			errno = 0;
+			uval = strtoumax(p, &end, 10);
+			if (errno != 0 || *end != '\0')
+				error("bad number");
+			if (uval > UINTMAX_MAX / l->factor)
+				error("bad number");
+			uval *= l->factor;
+			val = (rlim_t)uval;
+			if (val < 0 || (uintmax_t)val != uval ||
+			    val == RLIM_INFINITY)
+				error("bad number");
 		}
 	}
 	if (all) {
@@ -463,10 +495,6 @@ ulimitcmd(int argc __unused, char **argv __unused)
 			char optbuf[40];
 			if (getrlimit(l->cmd, &limit) < 0)
 				error("can't get limit: %s", strerror(errno));
-			if (how & SOFT)
-				val = limit.rlim_cur;
-			else if (how & HARD)
-				val = limit.rlim_max;
 
 			if (l->units)
 				snprintf(optbuf, sizeof(optbuf),
@@ -475,13 +503,7 @@ ulimitcmd(int argc __unused, char **argv __unused)
 				snprintf(optbuf, sizeof(optbuf),
 					"(-%c) ", l->option);
 			out1fmt("%-18s %18s ", l->name, optbuf);
-			if (val == RLIM_INFINITY)
-				out1str("unlimited\n");
-			else
-			{
-				val /= l->factor;
-				out1fmt("%jd\n", (intmax_t)val);
-			}
+			printlimit(how, &limit, l);
 		}
 		return 0;
 	}
@@ -495,19 +517,7 @@ ulimitcmd(int argc __unused, char **argv __unused)
 			limit.rlim_max = val;
 		if (setrlimit(l->cmd, &limit) < 0)
 			error("bad limit: %s", strerror(errno));
-	} else {
-		if (how & SOFT)
-			val = limit.rlim_cur;
-		else if (how & HARD)
-			val = limit.rlim_max;
-
-		if (val == RLIM_INFINITY)
-			out1str("unlimited\n");
-		else
-		{
-			val /= l->factor;
-			out1fmt("%jd\n", (intmax_t)val);
-		}
-	}
+	} else
+		printlimit(how, &limit, l);
 	return 0;
 }

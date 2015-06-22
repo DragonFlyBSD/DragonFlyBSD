@@ -207,10 +207,7 @@ kate_attach(struct device *dev)
 		sensor_attach(&sc->sc_sensordev, &sc->sc_sensors[i]);
 	}
 
-	if (sensor_task_register(sc, kate_refresh, 5)) {
-		device_printf(dev, "unable to register update task\n");
-		return ENXIO;
-	}
+	sensor_task_register(sc, kate_refresh, 5);
 
 	sensordev_install(&sc->sc_sensordev);
 	return 0;

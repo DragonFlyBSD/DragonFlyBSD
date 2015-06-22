@@ -27,11 +27,12 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/acpi/acpiconf/acpiconf.8 267668 2014-06-20 09:57:27Z bapt $
 .\"
-.Dd September 11, 2014
+.Dd June 20, 2015
 .Dt ACPICONF 8
 .Os
 .Sh NAME
-.Nm acpiconf
+.Nm acpiconf ,
+.Nm apm
 .Nd control ACPI power management
 .Sh SYNOPSIS
 .Nm
@@ -39,6 +40,8 @@
 .Op Fl i Ar batt
 .Op Fl k Ar ack
 .Op Fl s Ar type
+.Pp
+.Nm apm
 .Sh DESCRIPTION
 The
 .Nm
@@ -78,6 +81,10 @@ and
 scripts are executable, they will be run before and after entering
 the given sleep state.
 .El
+.Pp
+.Nm apm
+is a shortcut for
+.Nm Fl i Ar 0 .
 .Sh SEE ALSO
 .Xr acpi 4 ,
 .Xr acpibin 8 ,
@@ -86,7 +93,6 @@ the given sleep state.
 .Xr acpihelp 8 ,
 .Xr acpinames 8 ,
 .Xr acpixtract 8 ,
-.Xr apm 8 ,
 .Xr iasl 8
 .Sh HISTORY
 The

@@ -1,0 +1,42 @@
+# This is included explicitly at the top of each sub-Makefile.  We can't
+# use the normal "Makefile.inc" mechanism, because we need some of these
+# definitions before the sub-Makefile is processed.
+
+RELTOP:= ../..
+
+# RELTOP is the relative path to this point in the source or object
+# tree, from any subdirectory of same.  It gets extra "../" prefixes
+# added to it as we descend into subdirectories.
+
+RELSRC=	${RELTOP}/../../../contrib/binutils-2.25
+SRCDIR=	${.CURDIR}/${RELSRC}
+OBJTOP=	${.OBJDIR}/${RELTOP}
+
+.PATH: ${SRCDIR}/gold
+
+CFLAGS=  -DHAVE_CONFIG_H
+CFLAGS+= -D_LARGEFILE_SOURCE
+CFLAGS+= -D_FILE_OFFSET_BITS=64
+CFLAGS+= -DBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
+CFLAGS+= -DTOOLBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
+CFLAGS+= -DTOOLLIBDIR="\"${TOOLS_PREFIX}${LIBDIR}\""
+CFLAGS+= -DUSRDATA_PREFIX="\"${USRDATA_PREFIX}\""
+CFLAGS+= -I. -I${.CURDIR} -I${SRCDIR}/gold
+CFLAGS+= -I${SRCDIR}/include -I${SRCDIR}/elfcpp
+
+LDADD_IBERTY=	${OBJTOP}/block1/libiberty/libiberty.a
+LDADD_GOLD=	${OBJTOP}/block2/libgold/libgold.a
+STD_LDADD=	${LDADD_GOLD} ${LDADD_IBERTY} -lz
+
+# source files common to both ld.gold and incremental-dump
+
+GOLD_COMMON=	i386.cc \
+		x86_64.cc \
+		sparc.cc \
+		powerpc.cc \
+		arm.cc \
+		arm-reloc-property.cc \
+		tilegx.cc \
+		mips.cc \
+		aarch64.cc \
+		aarch64-reloc-property.cc

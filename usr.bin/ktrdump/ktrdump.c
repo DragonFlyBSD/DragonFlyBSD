@@ -756,7 +756,7 @@ read_symbols(const char *file)
 	char cmd[256];
 	size_t buflen = sizeof(buf);
 	FILE *fp;
-	struct symdata *sym;
+	struct symdata *sym = NULL;
 	char *s1;
 	char *s2;
 	char *s3;
@@ -765,7 +765,7 @@ read_symbols(const char *file)
 
 	if (file == NULL) {
 		if (sysctlbyname("kern.bootfile", buf, &buflen, NULL, 0) < 0)
-			file = "/boot/kernel";
+			file = "/boot/kernel/kernel";
 		else
 			file = buf;
 	}
@@ -782,12 +782,18 @@ read_symbols(const char *file)
 			sym->symname = strdup(s3);
 			if (strcmp(s3, "kernbase") == 0)
 				symbegin = sym->symaddr;
-			if (strcmp(s3, "end") == 0)
+			if (strcmp(s3, "end") == 0 || strcmp(s3, "_end") == 0)
 				symend = sym->symaddr;
 			TAILQ_INSERT_TAIL(&symlist, sym, link);
 		    }
 		}
 		pclose(fp);
+	}
+	if (symend == NULL) {
+		if (sym != NULL) 
+			symend = sym->symaddr;
+		else
+			symend = (char *)-1;
 	}
 	symcache = TAILQ_FIRST(&symlist);
 }

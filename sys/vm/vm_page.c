@@ -343,19 +343,19 @@ vm_page_startup(void)
 	/*
 	 * (only applies to real kernels)
 	 *
-	 * Initialize the contiguous reserve map.  We initially reserve up
-	 * to 1/4 available physical memory or 65536 pages (~256MB), whichever
-	 * is lower.
+	 * Reserve a large amount of low memory for potential 32-bit DMA
+	 * space allocations.  Once device initialization is complete we
+	 * release most of it, but keep (vm_dma_reserved) memory reserved
+	 * for later use.  Typically for X / graphics.  Through trial and
+	 * error we find that GPUs usually requires ~60-100MB or so.
 	 *
-	 * Once device initialization is complete we return most of the
-	 * reserved memory back to the normal page queues but leave some
-	 * in reserve for things like usb attachments.
+	 * By default, 128M is left in reserve on machines with 2G+ of ram.
 	 */
 	vm_low_phys_reserved = (vm_paddr_t)65536 << PAGE_SHIFT;
 	if (vm_low_phys_reserved > total / 4)
 		vm_low_phys_reserved = total / 4;
 	if (vm_dma_reserved == 0) {
-		vm_dma_reserved = 16 * 1024 * 1024;	/* 16MB */
+		vm_dma_reserved = 128 * 1024 * 1024;	/* 128MB */
 		if (vm_dma_reserved > total / 16)
 			vm_dma_reserved = total / 16;
 	}

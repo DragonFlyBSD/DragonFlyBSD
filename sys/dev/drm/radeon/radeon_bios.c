@@ -33,6 +33,7 @@
 #include "radeon.h"
 #include "atom.h"
 
+#include <linux/slab.h>
 /*
  * BIOS.
  */
@@ -195,7 +196,7 @@ static int radeon_atrm_call(ACPI_HANDLE atrm_handle, uint8_t *bios,
 
 	status = AcpiEvaluateObject(atrm_handle, NULL, &atrm_arg, &buffer);
 	if (ACPI_FAILURE(status)) {
-		DRM_ERROR("failed to evaluate ATRM got %s\n", AcpiFormatException(status));
+		printk("failed to evaluate ATRM got %s\n", AcpiFormatException(status));
 		return -ENODEV;
 	}
 
@@ -285,7 +286,7 @@ static bool radeon_atrm_get_bios(struct radeon_device *rdev)
 			DRM_INFO("%s: Incorrect BIOS signature: 0x%02X%02X\n",
 			    __func__, rdev->bios[0], rdev->bios[1]);
 		}
-		drm_free(rdev->bios, M_DRM);
+		kfree(rdev->bios);
 		return false;
 	}
 	return true;
@@ -310,24 +311,28 @@ static bool ni_read_disabled_bios(struct radeon_device *rdev)
 
 	/* enable the rom */
 	WREG32(R600_BUS_CNTL, (bus_cntl & ~R600_BIOS_ROM_DIS));
-	/* Disable VGA mode */
-	WREG32(AVIVO_D1VGA_CONTROL,
-	       (d1vga_control & ~(AVIVO_DVGA_CONTROL_MODE_ENABLE |
-		AVIVO_DVGA_CONTROL_TIMING_SELECT)));
-	WREG32(AVIVO_D2VGA_CONTROL,
-	       (d2vga_control & ~(AVIVO_DVGA_CONTROL_MODE_ENABLE |
-		AVIVO_DVGA_CONTROL_TIMING_SELECT)));
-	WREG32(AVIVO_VGA_RENDER_CONTROL,
-	       (vga_render_control & ~AVIVO_VGA_VSTATUS_CNTL_MASK));
+	if (!ASIC_IS_NODCE(rdev)) {
+		/* Disable VGA mode */
+		WREG32(AVIVO_D1VGA_CONTROL,
+		       (d1vga_control & ~(AVIVO_DVGA_CONTROL_MODE_ENABLE |
+					  AVIVO_DVGA_CONTROL_TIMING_SELECT)));
+		WREG32(AVIVO_D2VGA_CONTROL,
+		       (d2vga_control & ~(AVIVO_DVGA_CONTROL_MODE_ENABLE |
+					  AVIVO_DVGA_CONTROL_TIMING_SELECT)));
+		WREG32(AVIVO_VGA_RENDER_CONTROL,
+		       (vga_render_control & ~AVIVO_VGA_VSTATUS_CNTL_MASK));
+	}
 	WREG32(R600_ROM_CNTL, rom_cntl | R600_SCK_OVERWRITE);
 
 	r = radeon_read_bios(rdev);
 
 	/* restore regs */
 	WREG32(R600_BUS_CNTL, bus_cntl);
-	WREG32(AVIVO_D1VGA_CONTROL, d1vga_control);
-	WREG32(AVIVO_D2VGA_CONTROL, d2vga_control);
-	WREG32(AVIVO_VGA_RENDER_CONTROL, vga_render_control);
+	if (!ASIC_IS_NODCE(rdev)) {
+		WREG32(AVIVO_D1VGA_CONTROL, d1vga_control);
+		WREG32(AVIVO_D2VGA_CONTROL, d2vga_control);
+		WREG32(AVIVO_VGA_RENDER_CONTROL, vga_render_control);
+	}
 	WREG32(R600_ROM_CNTL, rom_cntl);
 	return r;
 }
@@ -731,7 +736,7 @@ bool radeon_get_bios(struct radeon_device *rdev)
 		return false;
 	}
 	if (rdev->bios[0] != 0x55 || rdev->bios[1] != 0xaa) {
-		DRM_ERROR("BIOS signature incorrect %x %x\n", rdev->bios[0], rdev->bios[1]);
+		printk("BIOS signature incorrect %x %x\n", rdev->bios[0], rdev->bios[1]);
 		goto free_bios;
 	}
 
@@ -756,7 +761,7 @@ bool radeon_get_bios(struct radeon_device *rdev)
 	DRM_DEBUG("%sBIOS detected\n", rdev->is_atom_bios ? "ATOM" : "COM");
 	return true;
 free_bios:
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 	return false;
 }

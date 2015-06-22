@@ -394,6 +394,9 @@ pseudo-device	stf			#6to4 IPv6 over IPv4 encapsulation
 # firewall rules in /etc/rc.firewall after you've tested that the new kernel
 # feature works properly.
 #
+# IPFIREWALL3 is based on a newer version of FreeBSD's ipfw2, along with
+# some enhancements. See ipfw3(4).
+#
 # IPFIREWALL_DEFAULT_TO_ACCEPT causes the default rule (at boot) to
 # allow everything.  Use with care, if a cracker can crash your
 # firewall machine, they can get to your protected machines.  However,
@@ -427,6 +430,8 @@ options 	IPDIVERT		#divert sockets
 options 	IPSTEALTH		#support for stealth forwarding
 options 	TCPDEBUG
 options		ICMPPRINTFS
+
+options		IPFIREWALL3
 
 device		pf
 device		pflog
@@ -1269,7 +1274,8 @@ options		SND_OLDSTEREO
 # Miscellaneous hardware:
 #
 # bktr: Brooktree bt848/848a/849a/878/879 video capture and TV Tuner board
-# coremctl: Intel Core/E3 memory controller (required by ecc(4))
+# coremctl: Intel Core/E3 memory controller (required by ecc(4) and memtemp(4))
+# dimm: Location inforamtion (required by ecc(4) and memtemp(4))
 # ecc: ECC memory controller
 # ipmi: Intelligent Platform Management Interface
 # joy: joystick
@@ -1286,6 +1292,7 @@ options		SND_OLDSTEREO
 #  The cards can use an IRQ of 11, 12 or 15.
 
 device		coremctl
+device		dimm
 device		ecc
 device		joy0	at isa? port IO_GAME
 device		nrp
@@ -2174,16 +2181,16 @@ device		aibs		# ASUSTeK AI Booster (ACPI ASOC ATK0110)
 
 # DRM options:
 # drm:		General DRM code
-# i915kmsdrm:	Intel integrated GPUs, starting from the 830M family
-# radeonkmsdrm:	ATI Radeon cards
+# i915kms:	Intel integrated GPUs, starting from the 830M family
+# radeonkms:	ATI Radeon cards
 #
 # DRM_DEBUG:	include debug printfs, very slow
 #
 # DRM requires AGP in the kernel.
 
 device		drm
-#device		"i915kmsdrm"	# breaks VGA console, disabled by default
-#device		radeonkmsdrm	# breaks VGA console, disabled by default
+#device		"i915kms"	# breaks VGA console, disabled by default
+#device		radeonkms	# breaks VGA console, disabled by default
 
 options 	DRM_DEBUG
 options 	DRM_LINUX

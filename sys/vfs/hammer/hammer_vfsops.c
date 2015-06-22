@@ -488,6 +488,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 		hmp->krate.freq = 1;	/* maximum reporting rate (hz) */
 		hmp->krate.count = -16;	/* initial burst */
+		hmp->kdiag.freq = 1;	/* maximum reporting rate (hz) */
+		hmp->kdiag.count = -16;	/* initial burst */
 
 		hmp->sync_lock.refs = 1;
 		hmp->free_lock.refs = 1;
@@ -669,8 +671,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	/*
 	 * MPSAFE code.  Note that VOPs and VFSops which are not MPSAFE
 	 * will acquire a per-mount token prior to entry and release it
-	 * on return, so even if we do not specify it we no longer get
-	 * the BGL regardlless of how we are flagged.
+	 * on return.
 	 */
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
 	/*MNTK_RD_MPSAFE | MNTK_GA_MPSAFE | MNTK_IN_MPSAFE;*/

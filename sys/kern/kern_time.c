@@ -911,22 +911,28 @@ done:
 }
 
 /*
- * Check that a proposed value to load into the .it_value or
- * .it_interval part of an interval timer is acceptable, and
- * fix it to have at least minimal value (i.e. if it is less
- * than the resolution of the clock, round it up.)
- *
- * MPSAFE
+ * Used to validate itimer timeouts and utimes*() timespecs.
  */
 int
 itimerfix(struct timeval *tv)
 {
-
-	if (tv->tv_sec < 0 || tv->tv_sec > 100000000 ||
-	    tv->tv_usec < 0 || tv->tv_usec >= 1000000)
+	if (tv->tv_sec < 0 || tv->tv_usec < 0 || tv->tv_usec >= 1000000)
 		return (EINVAL);
 	if (tv->tv_sec == 0 && tv->tv_usec != 0 && tv->tv_usec < ustick)
 		tv->tv_usec = ustick;
+	return (0);
+}
+
+/*
+ * Used to validate timeouts and utimes*() timespecs.
+ */
+int
+itimespecfix(struct timespec *ts)
+{
+	if (ts->tv_sec < 0 || ts->tv_nsec < 0 || ts->tv_nsec >= 1000000000ULL)
+		return (EINVAL);
+	if (ts->tv_sec == 0 && ts->tv_nsec != 0 && ts->tv_nsec < nstick)
+		ts->tv_nsec = nstick;
 	return (0);
 }
 

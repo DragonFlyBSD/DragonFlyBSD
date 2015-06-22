@@ -24,8 +24,6 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/r500_reg.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 #ifndef __R500_REG_H__
 #define __R500_REG_H__
@@ -364,7 +362,9 @@
 #define AVIVO_D1CRTC_STATUS_HV_COUNT                            0x60ac
 #define AVIVO_D1CRTC_STEREO_CONTROL                             0x60c4
 
+#define AVIVO_D1MODE_MASTER_UPDATE_LOCK                         0x60e0
 #define AVIVO_D1MODE_MASTER_UPDATE_MODE                         0x60e4
+#define AVIVO_D1CRTC_UPDATE_LOCK                                0x60e8
 
 /* master controls */
 #define AVIVO_DC_CRTC_MASTER_EN                                 0x60f8

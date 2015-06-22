@@ -7,7 +7,7 @@ CFLAGS+= -I${.CURDIR}/../../sys -I${.CURDIR}/../hammer -DALIST_NO_DEBUG
 SRCS= newfs_hammer.c
 
 .PATH: ${.CURDIR}/../../sys/libkern
-SRCS+= crc32.c
+SRCS+= crc32.c icrc32.c
 .PATH: ${.CURDIR}/../hammer
 SRCS+= ondisk.c cache.c blockmap.c
 

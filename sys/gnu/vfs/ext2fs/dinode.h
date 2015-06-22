@@ -42,7 +42,7 @@
 #ifndef _VFS_GNU_EXT2FS_DINODE_H_
 #define _VFS_GNU_EXT2FS_DINODE_H_
 
-typedef __uint32_t	ext2_ino_t;
+#include "ext2_fs.h"
 
 /*
  * The root inode is the root of the filesystem.  Inode 0 can't be used for
@@ -50,13 +50,15 @@ typedef __uint32_t	ext2_ino_t;
  * the root inode is 2.  (Inode 1 is no longer used for this purpose, however
  * numerous dump tapes make this assumption, so we are stuck with it).
  */
-#define	ROOTINO	((ino_t)2)
+#define	EXT2_ROOTINO	((ino_t)EXT2_ROOT_INO)
 
 /*
  * The Whiteout inode# is a dummy non-zero inode number which will
  * never be allocated to a real file.  It is used as a place holder
  * in the directory entry which has been tagged as a DT_W entry.
- * See the comments about ROOTINO above.
+ * See the comments about EXT2_ROOTINO above.
+ *
+ * Note that ext2 ondisk specification defines 1 as EXT2_BAD_INO.
  */
 #define	WINO	((ino_t)1)
 
@@ -69,8 +71,11 @@ typedef __uint32_t	ext2_ino_t;
 
 typedef __int32_t       ext2_daddr_t;
 
-#define	NDADDR	12			/* Direct addresses in inode. */
-#define	NIADDR	3			/* Indirect addresses in inode. */
+/* Direct addresses in inode */
+#define	NDADDR	EXT2_NDIR_BLOCKS
+
+/* Indirect addresses in inode */
+#define	NIADDR	(EXT2_N_BLOCKS - EXT2_NDIR_BLOCKS)
 
 struct ext2_dinode {
 	uint16_t	di_mode;	/*   0: IFMT, permissions; see below. */
@@ -108,7 +113,7 @@ struct ext2_dinode {
 #define	di_ouid		di_u.oldids[0]
 #define	di_rdev		di_db[0]
 #define	di_shortlink	di_db
-#define	MAXSYMLINKLEN	((NDADDR + NIADDR) * sizeof(ext2_daddr_t))
+#define	MAXSYMLINKLEN	EXT2_MAXSYMLINKLEN
 
 /* File permissions. */
 #define	IEXEC		0000100		/* Executable. */

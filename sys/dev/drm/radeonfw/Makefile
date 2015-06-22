@@ -222,4 +222,8 @@ SUBDIR=									\
 	verde_rlc							\
 	verde_smc
 
+# empty to allow concurrent building
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

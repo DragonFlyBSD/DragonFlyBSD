@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)options.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/options.h 223281 2011-06-18 23:43:28Z jilles $
+ * $FreeBSD$
  */
 
 struct shparam {
@@ -42,6 +38,7 @@ struct shparam {
 	unsigned char malloc;	/* if parameter list dynamically allocated */
 	unsigned char reset;	/* if getopts has been reset */
 	char **p;		/* parameter list */
+	char **optp;		/* parameter list for getopts */
 	char **optnext;		/* next parameter to be processed by getopts */
 	char *optptr;		/* used by getopts */
 };
@@ -67,9 +64,8 @@ struct shparam {
 #define	Tflag optlist[16].val
 #define	Pflag optlist[17].val
 #define	hflag optlist[18].val
-#define	tabcomplete optlist[19].val
 
-#define NOPTS	20
+#define NOPTS	19
 
 struct optent {
 	const char *name;
@@ -77,6 +73,7 @@ struct optent {
 	char val;
 };
 
+extern struct optent optlist[NOPTS];
 #ifdef DEFINE_OPTIONS
 struct optent optlist[NOPTS] = {
 	{ "errexit",	'e',	0 },
@@ -98,10 +95,7 @@ struct optent optlist[NOPTS] = {
 	{ "trapsasync",	'T',	0 },
 	{ "physical",	'P',	0 },
 	{ "trackall",	'h',	0 },
-	{ "tabcomplete", '\0',	0 },
 };
-#else
-extern struct optent optlist[NOPTS];
 #endif
 
 
@@ -109,12 +103,12 @@ extern char *minusc;		/* argument to -c option */
 extern char *arg0;		/* $0 */
 extern struct shparam shellparam;  /* $@ */
 extern char **argptr;		/* argument list for builtin commands */
-extern const char *shoptarg;	/* set by nextopt */
+extern char *shoptarg;		/* set by nextopt */
 extern char *nextopt_optptr;	/* used by nextopt */
 
 void procargs(int, char **);
 void optschanged(void);
 void setparam(char **);
-void freeparam(volatile struct shparam *);
+void freeparam(struct shparam *);
 int nextopt(const char *);
 void getoptsreset(const char *);

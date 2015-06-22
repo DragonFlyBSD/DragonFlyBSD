@@ -28,10 +28,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)show.c	8.3 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/show.c 213811 2010-10-13 22:18:03Z obrien $
  */
+
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)show.c	8.3 (Berkeley) 5/4/95";
+#endif
+#endif /* not lint */
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -293,9 +298,9 @@ sh_trace(const char *fmt, ...)
 	va_list va;
 	va_start(va, fmt);
 	if (tracefile != NULL) {
-		vfprintf(tracefile, fmt, va);
+		(void) vfprintf(tracefile, fmt, va);
 		if (strchr(fmt, '\n'))
-			fflush(tracefile);
+			(void) fflush(tracefile);
 	}
 	va_end(va);
 }
@@ -385,11 +390,11 @@ opentrace(void)
 			else
 				p = "/tmp";
 		}
-		scopy(p, s);
+		strcpy(s, p);
 		strcat(s, "/trace");
 	}
 #else
-	scopy("./trace", s);
+	strcpy(s, "./trace");
 #endif /* not_this_way */
 	if ((tracefile = fopen(s, "a")) == NULL) {
 		fprintf(stderr, "Can't open %s: %s\n", s, strerror(errno));

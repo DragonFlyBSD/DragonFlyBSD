@@ -63,9 +63,6 @@
 
 #include <vfs/fifofs/fifo.h>
 #include <vfs/tmpfs/tmpfs_vnops.h>
-#if 0
-#include <vfs/tmpfs/tmpfs.h>
-#endif
 #include "tmpfs.h"
 
 static void tmpfs_strategy_done(struct bio *bio);
@@ -972,8 +969,6 @@ tmpfs_nlink(struct vop_nlink_args *v)
 	struct mount *mp;
 	int error;
 
-	if (dvp->v_mount != vp->v_mount)
-		return(EXDEV);
 	mp = dvp->v_mount;
 
 	KKASSERT(dvp != vp); /* XXX When can this be false? */
@@ -1368,10 +1363,10 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	TMPFS_NODE_UNLOCK(dnode);
 
 	/* No vnode should be allocated for this entry from this point */
-	TMPFS_NODE_LOCK(node);
-	TMPFS_ASSERT_ELOCKED(node);
 	TMPFS_NODE_LOCK(dnode);
 	TMPFS_ASSERT_ELOCKED(dnode);
+	TMPFS_NODE_LOCK(node);
+	TMPFS_ASSERT_ELOCKED(node);
 
 	/*
 	 * Must set parent linkage to NULL (tested by ncreate to disallow
@@ -1383,8 +1378,8 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
 			    TMPFS_NODE_MODIFIED;
 
-	TMPFS_NODE_UNLOCK(dnode);
 	TMPFS_NODE_UNLOCK(node);
+	TMPFS_NODE_UNLOCK(dnode);
 
 	/* Free the directory entry we just deleted.  Note that the node
 	 * referred by it will not be removed until the vnode is really
@@ -1648,36 +1643,36 @@ tmpfs_reclaim(struct vop_reclaim_args *v)
 	return 0;
 }
 
-/* --------------------------------------------------------------------- */ 
+/* --------------------------------------------------------------------- */
 
-static int 
-tmpfs_mountctl(struct vop_mountctl_args *ap) 
-{ 
-	struct tmpfs_mount *tmp; 
-	struct mount *mp; 
-	int rc; 
+static int
+tmpfs_mountctl(struct vop_mountctl_args *ap)
+{
+	struct tmpfs_mount *tmp;
+	struct mount *mp;
+	int rc;
 
 	mp = ap->a_head.a_ops->head.vv_mount;
 	lwkt_gettoken(&mp->mnt_token);
 
-	switch (ap->a_op) { 
-	case (MOUNTCTL_SET_EXPORT): 
-		tmp = (struct tmpfs_mount *) mp->mnt_data; 
- 
-		if (ap->a_ctllen != sizeof(struct export_args)) 
-			rc = (EINVAL); 
-		else 
-			rc = vfs_export(mp, &tmp->tm_export, 
-					(const struct export_args *) ap->a_ctl); 
-		break; 
-	default: 
-		rc = vop_stdmountctl(ap); 
-		break; 
-	} 
+	switch (ap->a_op) {
+	case (MOUNTCTL_SET_EXPORT):
+		tmp = (struct tmpfs_mount *) mp->mnt_data;
+
+		if (ap->a_ctllen != sizeof(struct export_args))
+			rc = (EINVAL);
+		else
+			rc = vfs_export(mp, &tmp->tm_export,
+					(const struct export_args *) ap->a_ctl);
+		break;
+	default:
+		rc = vop_stdmountctl(ap);
+		break;
+	}
 
 	lwkt_reltoken(&mp->mnt_token);
-	return (rc); 
-} 
+	return (rc);
+}
 
 /* --------------------------------------------------------------------- */
 

@@ -408,4 +408,7 @@ union sysunion {
 	struct	vmm_guest_sync_addr_args vmm_guest_sync_addr;
 	struct	procctl_args procctl;
 	struct	chflagsat_args chflagsat;
+	struct	pipe2_args pipe2;
+	struct	utimensat_args utimensat;
+	struct	futimens_args futimens;
 };

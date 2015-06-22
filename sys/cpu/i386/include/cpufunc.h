@@ -576,6 +576,21 @@ rdtsc(void)
 	return (rv);
 }
 
+#ifdef _KERNEL
+#include <machine/cputypes.h>
+#include <machine/md_var.h>
+
+static __inline u_int64_t
+rdtsc_ordered(void)
+{
+	if (cpu_vendor_id == CPU_VENDOR_INTEL)
+		cpu_lfence();
+	else
+		cpu_mfence();
+	return rdtsc();
+}
+#endif
+
 static __inline void
 wbinvd(void)
 {

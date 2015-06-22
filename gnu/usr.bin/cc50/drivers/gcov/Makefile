@@ -8,7 +8,7 @@ MAN=		${MFILE}
 
 SRCS=		gcov.c
 
-DOC_Release=	${GCCDIR}/gcc/doc/gcov.1
+DOC_Release=	gcov.1	#${GCCDIR}/gcc/doc/gcov.1
 DOC_Snapshot=	gcov.1
 
 ${MFILE}: ${DOC_${GCCRELEASE}}

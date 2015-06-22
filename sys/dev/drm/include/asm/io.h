@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,8 @@
 #include <machine/pmap.h>
 #include <vm/vm.h>
 
+#include <asm/page.h>
+
 #define ioread8(addr)		*(volatile uint8_t *)((char *)addr)
 #define ioread16(addr)		*(volatile uint16_t *)((char *)addr)
 #define ioread32(addr)		*(volatile uint32_t *)((char *)addr)
@@ -48,5 +50,12 @@ static inline void __iomem *ioremap_wc(resource_size_t phys_addr, unsigned long 
 {
 	return pmap_mapdev_attr(phys_addr, size, VM_MEMATTR_WRITE_COMBINING);
 }
+
+static inline void iounmap(void __iomem *ptr, unsigned long size)
+{
+	pmap_unmapdev((vm_offset_t) ptr, size);
+}
+
+#define mmiowb cpu_sfence
 
 #endif	/* _ASM_IO_H_ */

@@ -142,10 +142,7 @@ km_attach(struct device *dev)
 	sc->sc_sensor.type = SENSOR_TEMP;
 	sensor_attach(&sc->sc_sensordev, &sc->sc_sensor);
 
-	if (sensor_task_register(sc, km_refresh, 5)) {
-		device_printf(dev, "unable to register update task\n");
-		return ENXIO;
-	}
+	sensor_task_register(sc, km_refresh, 5);
 
 	sensordev_install(&sc->sc_sensordev);
 	return 0;

@@ -36,6 +36,7 @@
 #include <sys/systm.h>
 #include <sys/bitops.h>
 #include <sys/bus.h>
+#include <sys/cpu_topology.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/sensors.h>
@@ -49,6 +50,7 @@
 
 #include "pcib_if.h"
 
+#include <dev/misc/dimm/dimm.h>
 #include <dev/misc/ecc/e5_imc_reg.h>
 #include <dev/misc/ecc/e5_imc_var.h>
 
@@ -59,13 +61,13 @@ struct memtemp_e5_softc;
 
 struct memtemp_e5_dimm {
 	TAILQ_ENTRY(memtemp_e5_dimm)	dimm_link;
-	struct ksensordev		dimm_sensordev;
 	struct ksensor			dimm_sensor;
 	struct memtemp_e5_softc		*dimm_parent;
 	int				dimm_id;
-	int				dimm_temp_hiwat;
-	int				dimm_temp_lowat;
 	int				dimm_flags;
+
+	struct dimm_softc		*dimm_softc;
+	struct sensor_task		*dimm_senstask;
 };
 
 #define MEMTEMP_E5_DIMM_FLAG_CRIT	0x1
@@ -140,6 +142,7 @@ static driver_t memtemp_e5_driver = {
 static devclass_t memtemp_devclass;
 DRIVER_MODULE(memtemp_e5, pci, memtemp_e5_driver, memtemp_devclass, NULL, NULL);
 MODULE_DEPEND(memtemp_e5, pci, 1, 1, 1);
+MODULE_DEPEND(memtemp_e5, dimm, 1, 1, 1);
 
 static int
 memtemp_e5_probe(device_t dev)
@@ -159,7 +162,6 @@ memtemp_e5_probe(device_t dev)
 	for (c = memtemp_e5_chans; c->desc != NULL; ++c) {
 		if (c->did == did && c->slot == slot && c->func == func) {
 			struct memtemp_e5_softc *sc = device_get_softc(dev);
-			char desc[128];
 			uint32_t cfg;
 			int node;
 
@@ -177,9 +179,7 @@ memtemp_e5_probe(device_t dev)
 			if ((cfg & PCI_E5_IMC_THERMAL_CHN_TEMP_CFG_CLTT) == 0)
 				break;
 
-			ksnprintf(desc, sizeof(desc), "%s node%d channel%d",
-			    c->desc, node, c->chan_ext);
-			device_set_desc_copy(dev, desc);
+			device_set_desc(dev, c->desc);
 
 			sc->temp_chan = c;
 			sc->temp_node = node;
@@ -216,16 +216,28 @@ static int
 memtemp_e5_attach(device_t dev)
 {
 	struct memtemp_e5_softc *sc = device_get_softc(dev);
-	int dimm;
+	const cpu_node_t *node;
+	int dimm, cpuid = -1;
 
 	sc->temp_dev = dev;
 	TAILQ_INIT(&sc->temp_dimm);
 
+	node = get_cpu_node_by_chipid(sc->temp_node);
+	if (node != NULL && node->child_no > 0) {
+		cpuid = BSRCPUMASK(node->members);
+		if (bootverbose) {
+			device_printf(dev, "node%d chan%d -> cpu%d\n",
+			    sc->temp_node, sc->temp_chan->chan_ext, cpuid);
+		}
+	}
+
 	for (dimm = 0; dimm < PCI_E5_IMC_CHN_DIMM_MAX; ++dimm) {
 		char temp_lostr[16], temp_midstr[16], temp_histr[16];
 		struct memtemp_e5_dimm *dimm_sc;
-		int dimm_extid, temp_lo, temp_mid, temp_hi;
+		int temp_lo, temp_mid, temp_hi;
+		int temp_hiwat, temp_lowat, has_temp_thresh = 1;
 		uint32_t dimmmtr, temp_th;
+		struct ksensor *sens;
 
 		dimmmtr = IMC_CTAD_READ_4(dev, sc->temp_chan,
 		    PCI_E5_IMC_CTAD_DIMMMTR(dimm));
@@ -266,39 +278,49 @@ memtemp_e5_attach(device_t dev)
 		 *   so ignore TEMPLO here.
 		 */
 		if (temp_mid <= 0) {
-			if (temp_hi <= 0)
-				dimm_sc->dimm_temp_hiwat = MEMTEMP_E5_DIMM_TEMP_HIWAT;
-			else
-				dimm_sc->dimm_temp_hiwat = temp_hi;
+			if (temp_hi <= 0) {
+				temp_hiwat = MEMTEMP_E5_DIMM_TEMP_HIWAT;
+				has_temp_thresh = 0;
+			} else {
+				temp_hiwat = temp_hi;
+			}
 		} else {
-			dimm_sc->dimm_temp_hiwat = temp_mid;
+			temp_hiwat = temp_mid;
 		}
-		if (dimm_sc->dimm_temp_hiwat < MEMTEMP_E5_DIMM_TEMP_STEP)
-			dimm_sc->dimm_temp_hiwat = MEMTEMP_E5_DIMM_TEMP_HIWAT;
-		dimm_sc->dimm_temp_lowat = dimm_sc->dimm_temp_hiwat -
-		    MEMTEMP_E5_DIMM_TEMP_STEP;
-
-		device_printf(dev, "DIMM%d "
-		    "temp_hi %s, temp_mid %s, temp_lo %s\n", dimm,
-		    temp_histr, temp_midstr, temp_lostr);
-		device_printf(dev, "DIMM%d hiwat %dC, lowat %dC\n", dimm,
-		    dimm_sc->dimm_temp_hiwat, dimm_sc->dimm_temp_lowat);
-
-		dimm_extid =
-		(sc->temp_node * PCI_E5_IMC_CHN_MAX * PCI_E5_IMC_CHN_DIMM_MAX) +
-		(sc->temp_chan->chan_ext * PCI_E5_IMC_CHN_DIMM_MAX) + dimm;
-		ksnprintf(dimm_sc->dimm_sensordev.xname,
-		    sizeof(dimm_sc->dimm_sensordev.xname),
-		    "dimm%d", dimm_extid);
-		dimm_sc->dimm_sensor.type = SENSOR_TEMP;
-		sensor_attach(&dimm_sc->dimm_sensordev, &dimm_sc->dimm_sensor);
-		if (sensor_task_register(dimm_sc, memtemp_e5_sensor_task, 2)) {
-			device_printf(dev, "DIMM%d sensor task register "
-			    "failed\n", dimm);
-			kfree(dimm_sc, M_DEVBUF);
-			continue;
+		if (temp_hiwat < MEMTEMP_E5_DIMM_TEMP_STEP) {
+			temp_hiwat = MEMTEMP_E5_DIMM_TEMP_HIWAT;
+			has_temp_thresh = 0;
 		}
-		sensordev_install(&dimm_sc->dimm_sensordev);
+		temp_lowat = temp_hiwat - MEMTEMP_E5_DIMM_TEMP_STEP;
+
+		if (bootverbose) {
+			device_printf(dev, "DIMM%d "
+			    "temp_hi %s, temp_mid %s, temp_lo %s\n", dimm,
+			    temp_histr, temp_midstr, temp_lostr);
+		}
+
+		dimm_sc->dimm_softc = dimm_create(sc->temp_node,
+		    sc->temp_chan->chan_ext, dimm);
+
+		if (has_temp_thresh) {
+			if (bootverbose) {
+				device_printf(dev, "DIMM%d "
+				    "hiwat %dC, lowat %dC\n",
+				    dimm, temp_hiwat, temp_lowat);
+			}
+			dimm_set_temp_thresh(dimm_sc->dimm_softc,
+			    temp_hiwat, temp_lowat);
+		}
+
+		sens = &dimm_sc->dimm_sensor;
+		ksnprintf(sens->desc, sizeof(sens->desc),
+		    "node%d chan%d DIMM%d temp",
+		    sc->temp_node, sc->temp_chan->chan_ext, dimm);
+		sens->type = SENSOR_TEMP;
+		sensor_set_unknown(sens);
+		dimm_sensor_attach(dimm_sc->dimm_softc, sens);
+		dimm_sc->dimm_senstask = sensor_task_register2(dimm_sc,
+		    memtemp_e5_sensor_task, 5, cpuid);
 
 		TAILQ_INSERT_TAIL(&sc->temp_dimm, dimm_sc, dimm_link);
 	}
@@ -314,8 +336,9 @@ memtemp_e5_detach(device_t dev)
 	while ((dimm_sc = TAILQ_FIRST(&sc->temp_dimm)) != NULL) {
 		TAILQ_REMOVE(&sc->temp_dimm, dimm_sc, dimm_link);
 
-		sensordev_deinstall(&dimm_sc->dimm_sensordev);
-		sensor_task_unregister(dimm_sc);
+		sensor_task_unregister2(dimm_sc->dimm_senstask);
+		dimm_sensor_detach(dimm_sc->dimm_softc, &dimm_sc->dimm_sensor);
+		dimm_destroy(dimm_sc->dimm_softc);
 
 		kfree(dimm_sc, M_DEVBUF);
 	}
@@ -328,11 +351,10 @@ memtemp_e5_sensor_task(void *xdimm_sc)
 	struct memtemp_e5_dimm *dimm_sc = xdimm_sc;
 	struct ksensor *sensor = &dimm_sc->dimm_sensor;
 	device_t dev = dimm_sc->dimm_parent->temp_dev;
-	int dimm = dimm_sc->dimm_id;
 	uint32_t val;
 	int temp, reg;
 
-	reg = PCI_E5_IMC_THERMAL_DIMMTEMPSTAT(dimm);
+	reg = PCI_E5_IMC_THERMAL_DIMMTEMPSTAT(dimm_sc->dimm_id);
 
 	val = pci_read_config(dev, reg, 4);
 	if (val & (PCI_E5_IMC_THERMAL_DIMMTEMPSTAT_TEMPHI |
@@ -348,38 +370,5 @@ memtemp_e5_sensor_task(void *xdimm_sc)
 		sensor->value = 0;
 		return;
 	}
-
-	/*
-	 * Some BIOSes will always turn on TEMPMID, so we rely on
-	 * our own hiwat/lowat to send the notification.
-	 */
-	if (temp >= dimm_sc->dimm_temp_hiwat &&
-	    (dimm_sc->dimm_flags & MEMTEMP_E5_DIMM_FLAG_CRIT) == 0) {
-		int node, chan;
-		char temp_str[16], data[64];
-
-		node = dimm_sc->dimm_parent->temp_node;
-		chan = dimm_sc->dimm_parent->temp_chan->chan_ext;
-
-		ksnprintf(temp_str, sizeof(temp_str), "%d", temp);
-		ksnprintf(data, sizeof(data),
-		    "node=%d channel=%d dimm=%d", node, chan, dimm);
-		devctl_notify("memtemp", "Thermal", temp_str, data);
-
-		device_printf(dev, "node%d channel%d DIMM%d "
-		    "temperature (%dC) is too high (>= %d)\n",
-		    node, chan, dimm, temp, dimm_sc->dimm_temp_hiwat);
-
-		dimm_sc->dimm_flags |= MEMTEMP_E5_DIMM_FLAG_CRIT;
-	} else if ((dimm_sc->dimm_flags & MEMTEMP_E5_DIMM_FLAG_CRIT) &&
-	     temp < dimm_sc->dimm_temp_lowat) {
-		dimm_sc->dimm_flags &= ~MEMTEMP_E5_DIMM_FLAG_CRIT;
-	}
-
-	if (dimm_sc->dimm_flags & MEMTEMP_E5_DIMM_FLAG_CRIT)
-		sensor->status = SENSOR_S_CRIT;
-	else
-		sensor->status = SENSOR_S_OK;
-	sensor->flags &= ~SENSOR_FINVALID;
-	sensor->value = (temp * 1000000) + 273150000;
+	dimm_sensor_temp(dimm_sc->dimm_softc, sensor, temp);
 }

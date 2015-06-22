@@ -9,7 +9,6 @@ SUBDIR+=	libcommon-target
 SUBDIR+=	libcpp
 SUBDIR+=	cc1
 SUBDIR+=	cc
-SUBDIR+=	doc
 SUBDIR+=	cpp
 SUBDIR+=	gcov
 SUBDIR+=	cc1plus

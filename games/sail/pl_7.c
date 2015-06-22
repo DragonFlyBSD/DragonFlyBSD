@@ -80,7 +80,7 @@ cleanupscreen(void)
 }
 
 void
-newturn(void)
+newturn(__unused int sig)
 {
 	repaired = loaded = fired = changed = 0;
 	movebuf[0] = '\0';
@@ -129,7 +129,7 @@ newturn(void)
 	adjustview();
 	draw_screen();
 
-	signal(SIGALRM, (sig_t)newturn);
+	signal(SIGALRM, newturn);
 	alarm(7);
 }
 

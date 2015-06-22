@@ -45,30 +45,12 @@
 
 #define TXTLEN	64
 
-#define HAMMER_BUFLISTS		64
-#define HAMMER_BUFLISTMASK	(HAMMER_BUFLISTS - 1)
-#define HAMMER_BUFINFO_READAHEAD	0x0001
 /*
  * WARNING: Do not make the SNAPSHOTS_BASE "/var/snapshots" because
  * it will interfere with the older HAMMER VERS < 3 snapshots directory
  * for the /var PFS.
  */
 #define SNAPSHOTS_BASE	"/var/hammer"	/* HAMMER VERS >= 3 */
-#define WS	" \t\r\n"
-
-#define SERIALBUF_SIZE	(512 * 1024)
-#define RD_HSIZE	32768
-#define RD_HMASK	(RD_HSIZE - 1)
-
-#define DICTF_MADEDIR	0x01
-#define DICTF_MADEFILE	0x02
-#define DICTF_PARENT	0x04	/* parent attached for real */
-#define DICTF_TRAVERSED	0x80
-#define FLAG_TOOFARLEFT		0x0001
-#define FLAG_TOOFARRIGHT	0x0002
-#define FLAG_BADTYPE		0x0004
-#define FLAG_BADCHILDPARENT	0x0008
-#define FLAG_BADMIRRORTID	0x0010
 
 /*
  * Hammer information system structures

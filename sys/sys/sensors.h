@@ -49,6 +49,13 @@ enum sensor_type {
 	SENSOR_LUX,			/* illuminance (mulx) */
 	SENSOR_DRIVE,			/* disk */
 	SENSOR_TIMEDELTA,		/* system time error (nSec) */
+	SENSOR_ECC,			/* memory ecc */
+	SENSOR_RESERVED_A,		/* reserved */
+	SENSOR_RESERVED_B,		/* reserved */
+	SENSOR_RESERVED_C,		/* reserved */
+	SENSOR_RESERVED_D,		/* reserved */
+	SENSOR_RESERVED_E,		/* reserved */
+	SENSOR_RESERVED_F,		/* reserved */
 	SENSOR_MAX_TYPES
 };
 
@@ -68,6 +75,13 @@ static const char * const sensor_type_s[SENSOR_MAX_TYPES + 1] = {
 	"illuminance",
 	"drive",
 	"timedelta",
+	"ecc",
+	"reserved_a"
+	"reserved_b"
+	"reserved_c"
+	"reserved_d"
+	"reserved_e"
+	"reserved_f"
 	"undefined"
 };
 
@@ -91,7 +105,8 @@ enum sensor_status {
 	SENSOR_S_UNKNOWN		/* status is unknown */
 };
 
-/* Sensor data:
+/*
+ * Sensor data:
  * New fields should be added at the end to encourage backwards compat
  */
 struct sensor {
@@ -106,7 +121,8 @@ struct sensor {
 #define SENSOR_FUNKNOWN		0x0002	/* sensor value is unknown */
 };
 
-/* Sensor device data:
+/*
+ * Sensor device data:
  * New fields should be added at the end to encourage backwards compat
  */
 struct sensordev {
@@ -119,10 +135,9 @@ struct sensordev {
 #define MAXSENSORDEVICES 32
 
 #ifdef _KERNEL
+
 #include <sys/queue.h>
-#ifndef NOSYSCTL8HACK
- #include <sys/sysctl.h>
-#endif
+#include <sys/sysctl.h>
 
 /* Sensor data */
 struct ksensor {
@@ -134,36 +149,77 @@ struct ksensor {
 	enum sensor_status status;	/* sensor status */
 	int numt;			/* sensor number of .type type */
 	int flags;			/* sensor flags, ie. SENSOR_FINVALID */
+	struct sysctl_oid *oid;
 };
 SLIST_HEAD(ksensors_head, ksensor);
 
 /* Sensor device data */
 struct ksensordev {
-	SLIST_ENTRY(ksensordev)	list;
+	TAILQ_ENTRY(ksensordev)	list;
 	int num;			/* sensordev number */
 	char xname[16];			/* unix device name */
 	int maxnumt[SENSOR_MAX_TYPES];
 	int sensors_count;
 	struct ksensors_head sensors_list;
-#ifndef NOSYSCTL8HACK
-	struct sysctl_ctx_list clist;	/* XXX: sysctl(9) .oid_handler() for
-					 * CTLTYPE_NODE type doesn't support
-					 * the undocumented sysctl magic.
-					 */
-#endif /* !NOSYSCTL8HACK */
+	struct sysctl_oid *oid;
+	struct sysctl_ctx_list clist;
 };
 
 /* struct ksensordev */
-void			 sensordev_install(struct ksensordev *);
-void			 sensordev_deinstall(struct ksensordev *);
+void		sensordev_install(struct ksensordev *);
+void		sensordev_deinstall(struct ksensordev *);
 
 /* struct ksensor */
-void			 sensor_attach(struct ksensordev *, struct ksensor *);
-void			 sensor_detach(struct ksensordev *, struct ksensor *);
+void		sensor_attach(struct ksensordev *, struct ksensor *);
+void		sensor_detach(struct ksensordev *, struct ksensor *);
 
-/* task scheduling */
-int		sensor_task_register(void *, void (*)(void *), int);
+/*
+ * Task scheduling
+ * Deprecated; use sensor_task_{register,unregiser}2() instead.
+ */
+void		sensor_task_register(void *, void (*)(void *), int);
 void		sensor_task_unregister(void *);
+
+/*
+ * Task scheduling
+ */
+struct sensor_task;
+struct sensor_task *
+		sensor_task_register2(void *, void (*)(void *),
+		    int period, int cpu);
+void		sensor_task_unregister2(struct sensor_task *);
+
+static __inline void
+sensor_set_invalid(struct ksensor *sens)
+{
+	sens->status = SENSOR_S_UNSPEC;
+	sens->flags &= ~(SENSOR_FUNKNOWN | SENSOR_FINVALID);
+	sens->flags |= SENSOR_FINVALID;
+	sens->value = 0;
+}
+
+static __inline void
+sensor_set_unknown(struct ksensor *sens)
+{
+	sens->status = SENSOR_S_UNKNOWN;
+	sens->flags &= ~(SENSOR_FUNKNOWN | SENSOR_FINVALID);
+	sens->flags |= SENSOR_FUNKNOWN;
+	sens->value = 0;
+}
+
+static __inline void
+sensor_set(struct ksensor *sens, int val, enum sensor_status status)
+{
+	sens->status = status;
+	sens->flags &= ~(SENSOR_FUNKNOWN | SENSOR_FINVALID);
+	sens->value = val;
+}
+
+static __inline void
+sensor_set_temp_degc(struct ksensor *sens, int degc, enum sensor_status status)
+{
+	sensor_set(sens, (degc * 1000000) + 273150000, status);
+}
 
 #endif	/* _KERNEL */
 

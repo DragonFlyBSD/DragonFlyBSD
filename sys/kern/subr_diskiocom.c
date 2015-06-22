@@ -142,34 +142,47 @@ disk_iocom_reconnect(struct disk *dp, struct file *fp)
 
 	kdmsg_iocom_reconnect(&dp->d_iocom, fp, devname);
 
-	dp->d_iocom.auto_lnk_conn.pfs_type = DMSG_PFSTYPE_SERVER;
 	dp->d_iocom.auto_lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
 	dp->d_iocom.auto_lnk_conn.peer_type = DMSG_PEER_BLOCK;
 	dp->d_iocom.auto_lnk_conn.peer_mask = 1LLU << DMSG_PEER_BLOCK;
-	dp->d_iocom.auto_lnk_conn.pfs_mask = (uint64_t)-1;
-	ksnprintf(dp->d_iocom.auto_lnk_conn.cl_label,
-		  sizeof(dp->d_iocom.auto_lnk_conn.cl_label),
-		  "%s/%s", hostname, devname);
+	dp->d_iocom.auto_lnk_conn.peer_mask = (uint64_t)-1;
+#if 0
 	if (dp->d_info.d_serialno) {
-		ksnprintf(dp->d_iocom.auto_lnk_conn.fs_label,
-			  sizeof(dp->d_iocom.auto_lnk_conn.fs_label),
-			  "%s", dp->d_info.d_serialno);
+		ksnprintf(dp->d_iocom.auto_lnk_conn.peer_label,
+			  sizeof(dp->d_iocom.auto_lnk_conn.peer_label),
+			  "%s/%s", hostname, dp->d_info.d_serialno);
+	} else {
+		ksnprintf(dp->d_iocom.auto_lnk_conn.peer_label,
+			  sizeof(dp->d_iocom.auto_lnk_conn.peer_label),
+			  "%s/%s", hostname, devname);
 	}
+#endif
+	ksnprintf(dp->d_iocom.auto_lnk_conn.peer_label,
+		  sizeof(dp->d_iocom.auto_lnk_conn.peer_label),
+		  "%s/%s", hostname, devname);
 
-	dp->d_iocom.auto_lnk_span.pfs_type = DMSG_PFSTYPE_SERVER;
 	dp->d_iocom.auto_lnk_span.proto_version = DMSG_SPAN_PROTO_1;
 	dp->d_iocom.auto_lnk_span.peer_type = DMSG_PEER_BLOCK;
 	dp->d_iocom.auto_lnk_span.media.block.bytes =
 						dp->d_info.d_media_size;
 	dp->d_iocom.auto_lnk_span.media.block.blksize =
 						dp->d_info.d_media_blksize;
-	ksnprintf(dp->d_iocom.auto_lnk_span.cl_label,
-		  sizeof(dp->d_iocom.auto_lnk_span.cl_label),
-		  "%s/%s", hostname, devname);
+	ksnprintf(dp->d_iocom.auto_lnk_span.peer_label,
+		  sizeof(dp->d_iocom.auto_lnk_span.peer_label),
+		  "%s", dp->d_iocom.auto_lnk_conn.peer_label);
 	if (dp->d_info.d_serialno) {
-		ksnprintf(dp->d_iocom.auto_lnk_span.fs_label,
-			  sizeof(dp->d_iocom.auto_lnk_span.fs_label),
+		ksnprintf(dp->d_iocom.auto_lnk_span.pfs_label,
+			  sizeof(dp->d_iocom.auto_lnk_span.pfs_label),
 			  "%s", dp->d_info.d_serialno);
+	} else {
+		/* 
+		 * If no serial number is available generate a dummy serial
+		 * number from the host and device name and pray.  This will
+		 * allow e.g. /dev/vn* to look meaningful on a remote machine.
+		 */
+		ksnprintf(dp->d_iocom.auto_lnk_span.pfs_label,
+			  sizeof(dp->d_iocom.auto_lnk_span.pfs_label),
+			  "%s.%s", hostname, devname);
 	}
 
 	kdmsg_iocom_autoinitiate(&dp->d_iocom, NULL);

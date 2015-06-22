@@ -5,7 +5,9 @@
  * All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Sascha Wildner <saw@online.de>
+ * by Sascha Wildner <saw@online.de>.
+ *
+ * Simple font scaling code by Sascha Wildner and Matthew Dillon
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,7 +31,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.16 2007/08/19 11:39:11 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -44,10 +45,14 @@
 
 #include <machine/console.h>
 
+#include <dev/drm/include/linux/fb.h>
 #include <dev/video/fb/fbreg.h>
 #include "syscons.h"
 
 SET_DECLARE(scrndr_set, const sc_renderer_t);
+
+static int desired_cols = 0;
+TUNABLE_INT("kern.kms_columns", &desired_cols);
 
 int
 sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
@@ -109,7 +114,13 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
 	return error;
     }
 
-    if (sc_render_match(scp, scp->sc->adp->va_name, V_INFO_MM_TEXT) == NULL) {
+    if (scp->sc->fbi != NULL &&
+	sc_render_match(scp, "kms", V_INFO_MM_TEXT) == NULL) {
+	crit_exit();
+	return ENODEV;
+    }
+    if (scp->sc->fbi == NULL &&
+	sc_render_match(scp, scp->sc->adp->va_name, V_INFO_MM_TEXT) == NULL) {
 	crit_exit();
 	return ENODEV;
     }
@@ -138,7 +149,8 @@ sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
     scp->xpixel = scp->xsize*8;
     scp->ypixel = scp->ysize*fontsize;
     scp->font = font;
-    scp->font_size = fontsize;
+    scp->font_height = fontsize;
+    scp->font_width = 8;
 
     /* allocate buffers */
     sc_alloc_scr_buffer(scp, TRUE, TRUE);
@@ -192,7 +204,13 @@ sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode)
 	return error;
     }
 
-    if (sc_render_match(scp, scp->sc->adp->va_name, V_INFO_MM_OTHER) == NULL) {
+    if (scp->sc->fbi != NULL &&
+	sc_render_match(scp, "kms", V_INFO_MM_OTHER) == NULL) {
+	crit_exit();
+	return ENODEV;
+    }
+    if (scp->sc->fbi == NULL &&
+	sc_render_match(scp, scp->sc->adp->va_name, V_INFO_MM_OTHER) == NULL) {
 	crit_exit();
 	return ENODEV;
     }
@@ -211,7 +229,8 @@ sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode)
     scp->xpixel = info.vi_width;
     scp->ypixel = info.vi_height;
     scp->font = NULL;
-    scp->font_size = 0;
+    scp->font_height = 0;
+    scp->font_width = 0;
 #ifndef SC_NO_SYSMOUSE
     /* move the mouse cursor at the center of the screen */
     sc_mouse_move(scp, scp->xpixel / 2, scp->ypixel / 2);
@@ -363,7 +382,8 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
     scp->xoff = (scp->xpixel/8 - xsize)/2;
     scp->yoff = (scp->ypixel/fontsize - ysize)/2;
     scp->font = font;
-    scp->font_size = fontsize;
+    scp->font_height = fontsize;
+    scp->font_width = 8;
 
     /* allocate buffers */
     sc_alloc_scr_buffer(scp, TRUE, TRUE);
@@ -405,7 +425,9 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 {
     scr_stat *scp;
     video_adapter_t *adp;
+#ifndef SC_NO_MODE_CHANGE
     video_info_t info;
+#endif
     int error, ret;
 
 	KKASSERT(tp->t_dev);
@@ -609,7 +631,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    if (scp->status & GRAPHICS_MODE) {
 	        lwkt_reltoken(&tty_token);
 		return sc_set_pixel_mode(scp, tp, scp->xsize, scp->ysize, 
-					 scp->font_size);
+					 scp->font_height);
 	    }
 	    crit_enter();
 	    if ((error = sc_clean_up(scp))) {
@@ -728,4 +750,126 @@ sc_render_match(scr_stat *scp, char *name, int model)
 	}
 
 	return NULL;
+}
+
+#define VIRTUAL_TTY(sc, x) ((SC_DEV((sc),(x)) != NULL) ?	\
+	(SC_DEV((sc),(x))->si_tty) : NULL)
+
+void
+sc_update_render(scr_stat *scp)
+{
+	sc_rndr_sw_t *rndr;
+	sc_term_sw_t *sw;
+	struct tty *tp;
+	int prev_ysize, new_ysize;
+	int error;
+
+	sw = scp->tsw;
+	if (sw == NULL) {
+		return;
+	}
+
+	if (scp->rndr == NULL)
+		return;
+
+	if (scp->fbi == scp->sc->fbi)
+		return;
+
+	crit_enter();
+	scp->fbi = scp->sc->fbi;
+	rndr = NULL;
+	if (strcmp(sw->te_renderer, "*") != 0) {
+		rndr = sc_render_match(scp, sw->te_renderer, scp->model);
+	}
+	if (rndr == NULL && scp->sc->fbi != NULL) {
+		rndr = sc_render_match(scp, "kms", scp->model);
+	}
+	if (rndr != NULL) {
+		scp->rndr = rndr;
+		/* Mostly copied from sc_set_text_mode */
+		if ((error = sc_clean_up(scp))) {
+			crit_exit();
+			return;
+		}
+		new_ysize = 0;
+#ifndef SC_NO_HISTORY
+		if (scp->history != NULL) {
+			sc_hist_save(scp);
+			new_ysize = sc_vtb_rows(scp->history);
+		}
+#endif
+		prev_ysize = scp->ysize;
+		scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
+		scp->status &= ~(GRAPHICS_MODE | PIXEL_MODE | MOUSE_VISIBLE);
+		scp->model = V_INFO_MM_TEXT;
+		scp->xpixel = scp->fbi->width;
+		scp->ypixel = scp->fbi->height;
+
+		/*
+		 * Assume square pixels for now
+		 */
+		kprintf("kms console: xpixels %d ypixels %d\n",
+			scp->xpixel, scp->ypixel);
+
+		/*
+		 * If columns not specified in /boot/loader.conf then
+		 * calculate a non-fractional scaling that yields a
+		 * reasonable number of rows and columns. If it is <0,
+		 * don't scale at all.
+		 */
+		if (desired_cols == 0) {
+			int nomag = 1;
+			while (scp->xpixel / (scp->font_width * nomag) >= 80 &&
+			       scp->ypixel / (scp->font_height * nomag) >= 25) {
+				++nomag;
+			}
+			if (nomag > 1)
+				--nomag;
+			desired_cols = scp->xpixel / (scp->font_width * nomag);
+		} else if (desired_cols < 0) {
+			desired_cols = scp->xpixel / scp->font_width;
+		}
+		scp->blk_width = scp->xpixel / desired_cols;
+		scp->blk_height = scp->blk_width * scp->font_height /
+				  scp->font_width;
+
+		/* scp->xsize = scp->xpixel / scp->blk_width; total possible */
+		scp->xsize = desired_cols;
+		scp->ysize = scp->ypixel / scp->blk_height;
+		scp->xpad = scp->fbi->stride / 4 - scp->xsize * scp->blk_width;
+
+		kprintf("kms console: scale-to %dx%d cols=%d rows=%d\n",
+			scp->blk_width, scp->blk_height,
+			scp->xsize, scp->ysize);
+
+		/* allocate buffers */
+		sc_alloc_scr_buffer(scp, TRUE, TRUE);
+		sc_init_emulator(scp, NULL);
+#ifndef SC_NO_CUTPASTE
+		sc_alloc_cut_buffer(scp, FALSE);
+#endif
+#ifndef SC_NO_HISTORY
+		sc_alloc_history_buffer(scp, new_ysize, prev_ysize, FALSE);
+#endif
+		crit_exit();
+		scp->status &= ~UNKNOWN_MODE;
+		tp = VIRTUAL_TTY(scp->sc, scp->index);
+		if (tp == NULL)
+			return;
+		if (tp->t_winsize.ws_col != scp->xsize ||
+		    tp->t_winsize.ws_row != scp->ysize) {
+			tp->t_winsize.ws_col = scp->xsize;
+			tp->t_winsize.ws_row = scp->ysize;
+			pgsignal(tp->t_pgrp, SIGWINCH, 1);
+		}
+		return;
+	}
+	if (rndr == NULL) {
+		rndr = sc_render_match(scp, scp->sc->adp->va_name, scp->model);
+	}
+
+	if (rndr != NULL) {
+		scp->rndr = rndr;
+	}
+	crit_exit();
 }

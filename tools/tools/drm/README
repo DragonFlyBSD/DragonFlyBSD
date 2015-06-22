@@ -1,0 +1,5 @@
+# $FreeBSD: head/tools/tools/drm/README 254885 2013-08-25 19:37:15Z dumbbell $
+
+gen-drm_pciids	Generate drm_pciids.h based on Linux' drm_pciids.h, DragonFly's
+		drm_pciids.h and misc/pciids database.
+radeon		Tools specific to the Radeon device driver.

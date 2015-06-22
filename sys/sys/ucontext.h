@@ -31,6 +31,9 @@
 #ifndef _SYS_UCONTEXT_H_
 #define	_SYS_UCONTEXT_H_
 
+#ifndef _SYS_CDEFS_H_
+#include <sys/cdefs.h>
+#endif
 #ifndef _SYS_SIGNAL_H_
 #include <sys/signal.h>
 #endif
@@ -58,8 +61,8 @@ typedef struct __ucontext {
 __BEGIN_DECLS
   
 #if __BSD_VISIBLE || __POSIX_VISIBLE < 200809
-int	getcontext(ucontext_t *);
-int	setcontext(const ucontext_t *);
+int	getcontext(ucontext_t *) __returns_twice;
+int	setcontext(const ucontext_t *) __dead2;
 void	makecontext(ucontext_t *, void (*)(void), int, ...);
 int	swapcontext(ucontext_t *, const ucontext_t *);
 #endif

@@ -157,6 +157,8 @@ again:
 					 NULL, &mirror.tid_beg);
 		if (n < 0) {	/* got TERM record */
 			relpfs(fd, &pfs);
+			free(buf);
+			free(histogram_ary);
 			return;
 		}
 		++mirror.tid_beg;
@@ -405,6 +407,7 @@ done:
 					CyclePath, (uintmax_t)sync_tid);
 			}
 		}
+		free(mrec);
 	} else if (CyclePath) {
 		/* NOTE! mirror.tid_beg cannot be updated */
 		fprintf(stderr, "Warning: cycle file (-c option) cannot be "
@@ -472,6 +475,8 @@ done:
 	write_mrecord(1, HAMMER_MREC_TYPE_TERM,
 		      &mrec_tmp, sizeof(mrec_tmp.sync));
 	relpfs(fd, &pfs);
+	free(buf);
+	free(histogram_ary);
 	fprintf(stderr, "Mirror-read %s succeeded\n", filesystem);
 }
 
@@ -796,6 +801,7 @@ again:
 	 * Validate packet
 	 */
 	if (mrec->head.type == HAMMER_MREC_TYPE_TERM) {
+		free(buf);
 		return;
 	}
 	if (mrec->head.type != HAMMER_MREC_TYPE_PFSD) {
@@ -843,6 +849,7 @@ again:
 				 &mirror.tid_beg, &mirror.tid_end);
 	if (n < 0) {	/* got TERM record */
 		relpfs(fd, &pfs);
+		free(buf);
 		return;
 	}
 
@@ -892,7 +899,9 @@ again:
 
 	if (mrec && mrec->head.type == HAMMER_MREC_TYPE_TERM) {
 		fprintf(stderr, "Mirror-write: received termination request\n");
+		relpfs(fd, &pfs);
 		free(mrec);
+		free(buf);
 		return;
 	}
 
@@ -974,8 +983,11 @@ hammer_cmd_mirror_dump(char **av, int ac)
 	 */
 	if (header_only && mrec != NULL) {
 		dump_pfsd(&mrec->pfs.pfsd, -1);
+		free(mrec);
+		free(buf);
 		return;
 	}
+	free(mrec);
 
 again:
 	/*
@@ -997,8 +1009,9 @@ again:
 			switch(mrec->head.type & HAMMER_MRECF_TYPE_MASK) {
 			case HAMMER_MREC_TYPE_REC_BADCRC:
 			case HAMMER_MREC_TYPE_REC:
-				printf("Record obj=%016jx key=%016jx "
+				printf("Record lo=%08x obj=%016jx key=%016jx "
 				       "rt=%02x ot=%02x",
+				        mrec->rec.leaf.base.localization,
 					(uintmax_t)mrec->rec.leaf.base.obj_id,
 					(uintmax_t)mrec->rec.leaf.base.key,
 					mrec->rec.leaf.base.rec_type,
@@ -1014,8 +1027,9 @@ again:
 				    mrec->rec.leaf.data_len);
 				break;
 			case HAMMER_MREC_TYPE_PASS:
-				printf("Pass   obj=%016jx key=%016jx "
+				printf("Pass   lo=%08x obj=%016jx key=%016jx "
 				       "rt=%02x ot=%02x\n",
+				        mrec->rec.leaf.base.localization,
 					(uintmax_t)mrec->rec.leaf.base.obj_id,
 					(uintmax_t)mrec->rec.leaf.base.key,
 					mrec->rec.leaf.base.rec_type,
@@ -1026,11 +1040,13 @@ again:
 					mrec->rec.leaf.data_len);
 				break;
 			case HAMMER_MREC_TYPE_SKIP:
-				printf("Skip   obj=%016jx key=%016jx rt=%02x to\n"
-				       "       obj=%016jx key=%016jx rt=%02x\n",
+				printf("Skip   lo=%08x obj=%016jx key=%016jx rt=%02x to\n"
+				       "       lo=%08x obj=%016jx key=%016jx rt=%02x\n",
+				       mrec->skip.skip_beg.localization,
 				       (uintmax_t)mrec->skip.skip_beg.obj_id,
 				       (uintmax_t)mrec->skip.skip_beg.key,
 				       mrec->skip.skip_beg.rec_type,
+				       mrec->skip.skip_end.localization,
 				       (uintmax_t)mrec->skip.skip_end.obj_id,
 				       (uintmax_t)mrec->skip.skip_end.key,
 				       mrec->skip.skip_end.rec_type);
@@ -1052,13 +1068,17 @@ again:
 		fprintf(stderr, "Mirror-dump: Did not get termination "
 				"sync record\n");
 	}
+	free(mrec);
 
 	/*
 	 * Continue with more batches until EOF.
 	 */
 	mrec = read_mrecord(0, &error, &pickup);
-	if (mrec)
+	if (mrec) {
+		free(mrec);
 		goto again;
+	}
+	free(buf);
 }
 
 void
@@ -1103,8 +1123,6 @@ again:
 
 			if (CompressOpt)
 				xav[xac++] = "-C";
-
-			user = strndup(av[0], (rfs - av[0]));
 
 			if ((host = strchr(av[0], '@')) != NULL) {
 				user = strndup( av[0], (host++ - av[0]));
@@ -1187,8 +1205,6 @@ again:
 
 			if (CompressOpt)
 				xav[xac++] = "-C";
-
-			user = strndup(av[1], (rfs - av[1]));
 
 			if ((host = strchr(av[1], '@')) != NULL) {
 				user = strndup( av[1], (host++ - av[1]));

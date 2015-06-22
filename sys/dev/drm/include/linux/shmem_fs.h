@@ -32,6 +32,8 @@
 #ifndef _LINUX_SHMEM_FS_H_
 #define _LINUX_SHMEM_FS_H_
 
+#include <linux/pagemap.h>
+
 #define	VM_OBJECT_LOCK_ASSERT_OWNED(object)
 
 vm_page_t shmem_read_mapping_page(vm_object_t, vm_pindex_t);

@@ -31,13 +31,13 @@
  *
  * $FreeBSD: head/sys/dev/drm2/radeon/radeon_object.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon.h"
 #ifdef DUMBBELL_WIP
 #include "radeon_trace.h"
 #endif /* DUMBBELL_WIP */
+#include <linux/io.h>
 
 
 static void radeon_bo_clear_surface_reg(struct radeon_bo *bo);
@@ -68,7 +68,7 @@ static void radeon_ttm_bo_destroy(struct ttm_buffer_object *tbo)
 	radeon_bo_clear_surface_reg(bo);
 	radeon_bo_clear_va(bo);
 	drm_gem_object_release(&bo->gem_base);
-	drm_free(bo, M_DRM);
+	kfree(bo);
 }
 
 bool radeon_ttm_bo_is_radeon_bo(struct ttm_buffer_object *bo)
@@ -119,7 +119,7 @@ int radeon_bo_create(struct radeon_device *rdev,
 	size_t acc_size;
 	int r;
 
-	size = roundup2(size, PAGE_SIZE);
+	size = ALIGN(size, PAGE_SIZE);
 
 	if (kernel) {
 		type = ttm_bo_type_kernel;
@@ -133,17 +133,15 @@ int radeon_bo_create(struct radeon_device *rdev,
 	acc_size = ttm_bo_dma_acc_size(&rdev->mman.bdev, size,
 				       sizeof(struct radeon_bo));
 
-	bo = kmalloc(sizeof(struct radeon_bo), M_DRM,
-		     M_ZERO | M_WAITOK);
+	bo = kzalloc(sizeof(struct radeon_bo), GFP_KERNEL);
 	if (bo == NULL)
 		return -ENOMEM;
 	r = drm_gem_object_init(rdev->ddev, &bo->gem_base, size);
 	if (unlikely(r)) {
-		drm_free(bo, M_DRM);
+		kfree(bo);
 		return r;
 	}
 	bo->rdev = rdev;
-	bo->gem_base.driver_private = NULL;
 	bo->surface_reg = -1;
 	INIT_LIST_HEAD(&bo->list);
 	INIT_LIST_HEAD(&bo->va);
@@ -328,8 +326,9 @@ void radeon_bo_force_delete(struct radeon_device *rdev)
 int radeon_bo_init(struct radeon_device *rdev)
 {
 	/* Add an MTRR for the VRAM */
-	rdev->mc.vram_mtrr = drm_mtrr_add(rdev->mc.aper_base, rdev->mc.aper_size,
-			DRM_MTRR_WC);
+	if (!rdev->fastfb_working) {
+		rdev->mc.vram_mtrr = arch_phys_wc_add(rdev->mc.aper_base, rdev->mc.aper_size);
+	}
 	DRM_INFO("Detected VRAM RAM=%juM, BAR=%juM\n",
 		(uintmax_t)rdev->mc.mc_vram_size >> 20,
 		(uintmax_t)rdev->mc.aper_size >> 20);
@@ -341,19 +340,20 @@ int radeon_bo_init(struct radeon_device *rdev)
 void radeon_bo_fini(struct radeon_device *rdev)
 {
 	radeon_ttm_fini(rdev);
+	arch_phys_wc_del(rdev->mc.vram_mtrr);
 }
 
 void radeon_bo_list_add_object(struct radeon_bo_list *lobj,
 				struct list_head *head)
 {
-	if (lobj->wdomain) {
+	if (lobj->written) {
 		list_add(&lobj->tv.head, head);
 	} else {
 		list_add_tail(&lobj->tv.head, head);
 	}
 }
 
-int radeon_bo_list_validate(struct list_head *head)
+int radeon_bo_list_validate(struct list_head *head, int ring)
 {
 	struct radeon_bo_list *lobj;
 	struct radeon_bo *bo;
@@ -367,15 +367,17 @@ int radeon_bo_list_validate(struct list_head *head)
 	list_for_each_entry(lobj, head, tv.head) {
 		bo = lobj->bo;
 		if (!bo->pin_count) {
-			domain = lobj->wdomain ? lobj->wdomain : lobj->rdomain;
+			domain = lobj->domain;
 			
 		retry:
 			radeon_ttm_placement_from_domain(bo, domain);
+			if (ring == R600_RING_TYPE_UVD_INDEX)
+				radeon_uvd_force_into_uvd_segment(bo);
 			r = ttm_bo_validate(&bo->tbo, &bo->placement,
 						true, false);
 			if (unlikely(r)) {
-				if (r != -ERESTARTSYS && domain == RADEON_GEM_DOMAIN_VRAM) {
-					domain |= RADEON_GEM_DOMAIN_GTT;
+				if (r != -ERESTARTSYS && domain != lobj->alt_domain) {
+					domain = lobj->alt_domain;
 					goto retry;
 				}
 				return r;

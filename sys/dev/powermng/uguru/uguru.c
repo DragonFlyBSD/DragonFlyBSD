@@ -873,11 +873,7 @@ done:
 	}
 	sc->uguru_sensors = sensors;
 
-	if (sensor_task_register(sc, uguru_refresh, UGURU_INTERVAL) != 0) {
-		kprintf("%s: unable to register update task\n",
-		    sc->sc_sensordev.xname);
-		return ENXIO;
-	}
+	sensor_task_register(sc, uguru_refresh, UGURU_INTERVAL);
 	sensordev_install(&sc->sc_sensordev);
 
 	ksnprintf(fulldesc, sizeof(fulldesc),

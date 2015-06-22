@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <grp.h>
 #include <pwd.h>
+#include <pcap.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -50,6 +51,16 @@
 #include "../../../sbin/ipfw3/ipfw.h"
 #include "ipfw3_layer4.h"
 
+int
+char_at(char *str, char c)
+{
+	int pos;
+	for (pos = 0; str[pos] != '\0'; pos++) {
+		if (str[pos] == c)
+			return pos;
+	}
+	return -1;
+}
 
 void
 parse_tcpflag(ipfw_insn **cmd, int *ac, char **av[])
@@ -106,6 +117,46 @@ parse_gid(ipfw_insn **cmd, int *ac, char **av[])
 }
 
 void
+parse_established(ipfw_insn **cmd, int *ac, char **av[])
+{
+	NEXT_ARG1;
+	(*cmd)->opcode = O_LAYER4_ESTABLISHED;
+	(*cmd)->module = MODULE_LAYER4_ID;
+	(*cmd)->len |= LEN_OF_IPFWINSN;
+}
+
+void
+parse_bpf(ipfw_insn **cmd, int *ac, char **av[])
+{
+	struct bpf_program program;
+	ipfw_insn_bpf *bpf;
+	int avlen;
+
+	NEXT_ARG1;
+	(*cmd)->opcode = O_LAYER4_BPF;
+	(*cmd)->module = MODULE_LAYER4_ID;
+
+	avlen = strlen(**av);
+	if (avlen > 256)
+		errx(EX_DATAERR, "bpf \"%s\" too long (max 256)", **av);
+	bpf = (ipfw_insn_bpf *)(*cmd);
+	strcpy(bpf->bf_str, **av);
+	if (pcap_compile_nopcap(65535, DLT_RAW, &program, **av, 1,
+			PCAP_NETMASK_UNKNOWN))
+		errx(EX_DATAERR, "bpf \"%s\" compilation error", **av);
+	bpf->bf_len = program.bf_len;
+
+	memcpy(&bpf->bf_insn, program.bf_insns,
+			sizeof(struct bpf_insn) * program.bf_len);
+	(*cmd)->len |= (sizeof(ipfw_insn_bpf) +
+			sizeof(struct bpf_insn) * (bpf->bf_len - 1)) /
+			sizeof(uint32_t);
+
+	pcap_freecode(&program);
+	NEXT_ARG1;
+}
+
+void
 show_tcpflag(ipfw_insn *cmd)
 {
 	printf(" tcpflag %d", cmd->arg1);
@@ -135,6 +186,19 @@ show_gid(ipfw_insn *cmd)
 	}
 }
 
+void
+show_established(ipfw_insn *cmd)
+{
+	printf(" established");
+}
+
+void
+show_bpf(ipfw_insn *cmd, int show_or)
+{
+	ipfw_insn_bpf *bpf;
+	bpf = (ipfw_insn_bpf *)cmd;
+	printf(" bpf \"%s\"", bpf->bf_str);
+}
 
 void
 load_module(register_func function, register_keyword keyword)
@@ -148,4 +212,10 @@ load_module(register_func function, register_keyword keyword)
 	keyword(MODULE_LAYER4_ID, O_LAYER4_GID, "gid", IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_LAYER4_ID, O_LAYER4_GID,
 			(parser_func)parse_gid, (shower_func)show_gid);
+	keyword(MODULE_LAYER4_ID, O_LAYER4_ESTABLISHED, "established", IPFW_KEYWORD_TYPE_FILTER);
+	function(MODULE_LAYER4_ID, O_LAYER4_ESTABLISHED,
+			(parser_func)parse_established, (shower_func)show_established);
+	keyword(MODULE_LAYER4_ID, O_LAYER4_BPF, "bpf", IPFW_KEYWORD_TYPE_FILTER);
+	function(MODULE_LAYER4_ID, O_LAYER4_BPF,
+			(parser_func)parse_bpf, (shower_func)show_bpf);
 }

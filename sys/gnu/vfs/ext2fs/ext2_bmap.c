@@ -52,7 +52,7 @@
 #include "dinode.h"
 #include "inode.h"
 #include "ext2_fs_sb.h"
-#include "ext2mount.h"
+#include "ext2_mount.h"
 #include "ext2_extern.h"
 #include "fs.h"
 
@@ -125,7 +125,7 @@ ext2_bmaparray(struct vnode *vp, ext2_daddr_t bn, ext2_daddr_t *bnp,
 {
 	struct inode *ip;
 	struct buf *bp;
-	struct ext2mount *ump;
+	struct ext2_mount *ump;
 	struct mount *mp;
 	struct ext2_sb_info *fs;
 	struct indir a[NIADDR+1], *xap;
@@ -269,7 +269,7 @@ int
 ext2_getlbns(struct vnode *vp, ext2_daddr_t bn, struct indir *ap, int *nump)
 {
 	long blockcnt, metalbn, realbn;
-	struct ext2mount *ump;
+	struct ext2_mount *ump;
 	int i, numlevels, off;
 	int64_t qblockcnt;
 

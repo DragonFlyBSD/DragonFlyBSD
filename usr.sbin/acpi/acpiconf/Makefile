@@ -3,5 +3,7 @@
 
 PROG=	acpiconf
 MAN=	acpiconf.8
+LINKS=	${BINDIR}/acpiconf ${BINDIR}/apm
+MLINKS=	acpiconf.8 apm.8
 
 .include <bsd.prog.mk>

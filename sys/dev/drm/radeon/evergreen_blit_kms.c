@@ -22,8 +22,6 @@
  *
  * Authors:
  *     Alex Deucher <alexander.deucher@amd.com>
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/evergreen_blit_kms.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #include <drm/drmP.h>
@@ -45,7 +43,7 @@ set_render_target(struct radeon_device *rdev, int format,
 	u32 cb_color_info;
 	int pitch, slice;
 
-	h = roundup2(h, 8);
+	h = ALIGN(h, 8);
 	if (h < 8)
 		h = 8;
 
@@ -598,7 +596,7 @@ set_default_state(struct radeon_device *rdev)
 	radeon_ring_write(ring, 1);
 
 	/* emit an IB pointing at default state */
-	dwords = roundup2(rdev->r600_blit.state_len, 0x10);
+	dwords = ALIGN(rdev->r600_blit.state_len, 0x10);
 	gpu_addr = rdev->r600_blit.shader_gpu_addr + rdev->r600_blit.state_offset;
 	radeon_ring_write(ring, PACKET3(PACKET3_INDIRECT_BUFFER, 2));
 	radeon_ring_write(ring, gpu_addr & 0xFFFFFFFC);
@@ -650,21 +648,21 @@ int evergreen_blit_init(struct radeon_device *rdev)
 	}
 
 	obj_size = dwords * 4;
-	obj_size = roundup2(obj_size, 256);
+	obj_size = ALIGN(obj_size, 256);
 
 	rdev->r600_blit.vs_offset = obj_size;
 	if (rdev->family < CHIP_CAYMAN)
 		obj_size += evergreen_vs_size * 4;
 	else
 		obj_size += cayman_vs_size * 4;
-	obj_size = roundup2(obj_size, 256);
+	obj_size = ALIGN(obj_size, 256);
 
 	rdev->r600_blit.ps_offset = obj_size;
 	if (rdev->family < CHIP_CAYMAN)
 		obj_size += evergreen_ps_size * 4;
 	else
 		obj_size += cayman_ps_size * 4;
-	obj_size = roundup2(obj_size, 256);
+	obj_size = ALIGN(obj_size, 256);
 
 	/* pin copy shader into vram if not already initialized */
 	if (!rdev->r600_blit.shader_obj) {

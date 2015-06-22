@@ -85,6 +85,22 @@ static void radeon_hotplug_work_func(void *arg, int pending)
 }
 
 /**
+ * radeon_irq_reset_work_func - execute gpu reset
+ *
+ * @work: work struct
+ *
+ * Execute scheduled gpu reset (cayman+).
+ * This function is called when the irq handler
+ * thinks we need a gpu reset.
+ */
+static void radeon_irq_reset_work_func(void *arg, int pending)
+{
+	struct radeon_device *rdev = arg;
+
+	radeon_gpu_reset(rdev);
+}
+
+/**
  * radeon_driver_irq_preinstall_kms - drm irq preinstall callback
  *
  * @dev: drm dev pointer
@@ -101,6 +117,7 @@ void radeon_driver_irq_preinstall_kms(struct drm_device *dev)
 	/* Disable *all* interrupts */
 	for (i = 0; i < RADEON_NUM_RINGS; i++)
 		atomic_set(&rdev->irq.ring_int[i], 0);
+	rdev->irq.dpm_thermal = false;
 	for (i = 0; i < RADEON_MAX_HPD_PINS; i++)
 		rdev->irq.hpd[i] = false;
 	for (i = 0; i < RADEON_MAX_CRTCS; i++) {
@@ -147,6 +164,7 @@ void radeon_driver_irq_uninstall_kms(struct drm_device *dev)
 	/* Disable *all* interrupts */
 	for (i = 0; i < RADEON_NUM_RINGS; i++)
 		atomic_set(&rdev->irq.ring_int[i], 0);
+	rdev->irq.dpm_thermal = false;
 	for (i = 0; i < RADEON_MAX_HPD_PINS; i++)
 		rdev->irq.hpd[i] = false;
 	for (i = 0; i < RADEON_MAX_CRTCS; i++) {
@@ -246,8 +264,6 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 {
 	int r = 0;
 
-	TASK_INIT(&rdev->hotplug_work, 0, radeon_hotplug_work_func, rdev);
-	TASK_INIT(&rdev->audio_work, 0, r600_audio_update_hdmi, rdev);
 
 	lockinit(&rdev->irq.lock, "drm__radeon_device__irq__lock", 0, LK_CANRECURSE);
 	r = drm_vblank_init(rdev->ddev, rdev->num_crtc);
@@ -255,7 +271,7 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 		return r;
 	}
 	/* enable msi */
-	rdev->msi_enabled = rdev->ddev->msi_enabled;
+	rdev->msi_enabled = (rdev->ddev->irq_type == PCI_INTR_TYPE_MSI);
 
 	rdev->irq.installed = true;
 	DRM_UNLOCK(rdev->ddev);
@@ -265,12 +281,17 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 		rdev->irq.installed = false;
 		return r;
 	}
+
+	TASK_INIT(&rdev->hotplug_work, 0, radeon_hotplug_work_func, rdev);
+	TASK_INIT(&rdev->audio_work, 0, r600_audio_update_hdmi, rdev);
+	TASK_INIT(&rdev->reset_work, 0, radeon_irq_reset_work_func, rdev);
+
 	DRM_INFO("radeon: irq initialized.\n");
 	return 0;
 }
 
 /**
- * radeon_irq_kms_fini - tear down driver interrrupt info
+ * radeon_irq_kms_fini - tear down driver interrupt info
  *
  * @rdev: radeon device pointer
  *

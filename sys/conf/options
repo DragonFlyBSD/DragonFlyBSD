@@ -2,13 +2,13 @@
 #
 #        On the handling of kernel options
 #
-# All kernel options should be listed in LINT, with suitable
+# All kernel options should be listed in LINT64, with suitable
 # descriptions.  Negative options (options that make some code not
-# compile) should be commented out; LINT should compile as much code
+# compile) should be commented out; LINT64 should compile as much code
 # as possible.  Try to structure option-using code so that a single
 # option only switch code on, or only switch code off, to make it
 # possible to have a full compile-test.  If necessary, you can include
-# "opt_lint.h" and check for COMPILING_LINT to get maximum code
+# "opt_lint.h" and check for COMPILING_LINT64 to get maximum code
 # coverage.
 #
 # All new options shall also be listed in either "conf/options" or

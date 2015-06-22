@@ -240,7 +240,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     private:
       typedef _ITp 	__int_type;
 
-      __int_type 	_M_i;
+      static constexpr int _S_alignment =
+	sizeof(_ITp) > alignof(_ITp) ? sizeof(_ITp) : alignof(_ITp);
+
+      alignas(_S_alignment) __int_type _M_i;
 
     public:
       __atomic_base() noexcept = default;
@@ -346,11 +349,19 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       bool
       is_lock_free() const noexcept
-      { return __atomic_is_lock_free(sizeof(_M_i), nullptr); }
+      {
+	// Produce a fake, minimally aligned pointer.
+	void *__a = reinterpret_cast<void *>(-__alignof(_M_i));
+	return __atomic_is_lock_free(sizeof(_M_i), __a);
+      }
 
       bool
       is_lock_free() const volatile noexcept
-      { return __atomic_is_lock_free(sizeof(_M_i), nullptr); }
+      {
+	// Produce a fake, minimally aligned pointer.
+	void *__a = reinterpret_cast<void *>(-__alignof(_M_i));
+	return __atomic_is_lock_free(sizeof(_M_i), __a);
+      }
 
       _GLIBCXX_ALWAYS_INLINE void
       store(__int_type __i, memory_order __m = memory_order_seq_cst) noexcept
@@ -653,11 +664,19 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       bool
       is_lock_free() const noexcept
-      { return __atomic_is_lock_free(sizeof(__pointer_type), nullptr); }
+      {
+	// Produce a fake, minimally aligned pointer.
+	void *__a = reinterpret_cast<void *>(-__alignof(_M_p));
+	return __atomic_is_lock_free(sizeof(_M_p), __a);
+      }
 
       bool
       is_lock_free() const volatile noexcept
-      { return __atomic_is_lock_free(sizeof(__pointer_type), nullptr); }
+      {
+	// Produce a fake, minimally aligned pointer.
+	void *__a = reinterpret_cast<void *>(-__alignof(_M_p));
+	return __atomic_is_lock_free(sizeof(_M_p), __a);
+      }
 
       _GLIBCXX_ALWAYS_INLINE void
       store(__pointer_type __p,

@@ -80,7 +80,8 @@
 
 static struct lock nat_lock;
 
-extern struct ipfw_nat_context *ipfw_nat_ctx;
+extern struct ipfw_nat_context	*ipfw_nat_ctx;
+extern struct ipfw_context	*ipfw_ctx[MAXCPU];
 extern ipfw_nat_cfg_t *ipfw_nat_cfg_ptr;
 extern ipfw_nat_cfg_t *ipfw_nat_del_ptr;
 extern ipfw_nat_cfg_t *ipfw_nat_flush_ptr;
@@ -302,38 +303,44 @@ nospace:
 static int
 ipfw_nat_get_log(struct sockopt *sopt)
 {
-	struct cfg_nat *ptr;
-	int cnt, data_size, i, size, sof;
-	uint8_t *data;
+	struct cfg_nat *t;
+	struct alias_link *lnk;
+	struct libalias *la;
+	size_t sopt_size, all_lnk_size = 0;
+	int i, *nat_id;
+	struct ipfw_ioc_nat_state *nat_state;
 
-	data = NULL;
-	sof = LIBALIAS_BUF_SIZE;
-	cnt = 0;
-
-	size = i = 0;
-	data_size = 1024;
-
-	data = krealloc(data, data_size, M_IPFW_NAT, M_WAITOK);
+	nat_id = (int *)(sopt->sopt_val);
+	sopt_size = sopt->sopt_valsize;
 
 	lockmgr(&nat_lock, LK_SHARED);
-	LIST_FOREACH(ptr, &((*ipfw_nat_ctx).nat), _next) {
-		if (ptr->lib->logDesc == NULL)
-			continue;
-		cnt++;
-		size = cnt * (sof + sizeof(int));
-		if (size > data_size) {
-			data_size = data_size * 2 + 256;
-			data = krealloc(data, data_size, M_IPFW_NAT, M_WAITOK);
+	LOOKUP_NAT((*ipfw_nat_ctx), *nat_id, t);
+	if (t != NULL) {
+		nat_state = (struct ipfw_ioc_nat_state *)sopt->sopt_val;
+		la = t->lib;
+		LIBALIAS_LOCK_ASSERT(la);
+		for (i = 0; i < LINK_TABLE_OUT_SIZE; i ++) {
+			LIST_FOREACH(lnk, &la->linkTableOut[i], list_out) {
+				all_lnk_size += sizeof(*nat_state);
+				if (all_lnk_size > sopt_size)
+					goto nospace;
+				nat_state->src_addr = lnk->src_addr;
+				nat_state->dst_addr = lnk->dst_addr;
+				nat_state->alias_addr = lnk->alias_addr;
+				nat_state->src_port = lnk->src_port;
+				nat_state->dst_port = lnk->dst_port;
+				nat_state->alias_port = lnk->alias_port;
+				nat_state->link_type = lnk->link_type;
+				nat_state->timestamp = lnk->timestamp;
+				nat_state++;
+			}
 		}
-
-		bcopy(&ptr->id, &data[i], sizeof(int));
-		i += sizeof(int);
-		bcopy(ptr->lib->logDesc, &data[i], sof);
-		i += sof;
 	}
+	sopt->sopt_valsize = all_lnk_size;
 	lockmgr(&nat_lock, LK_RELEASE);
-	sooptcopyout(sopt, data, size);
-	kfree(data, M_IPFW_NAT);
+	return 0;
+nospace:
+	lockmgr(&nat_lock, LK_RELEASE);
 	return 0;
 }
 
@@ -498,8 +505,11 @@ done:
 int
 ipfw_nat_del(struct sockopt *sopt)
 {
-	struct cfg_nat *n;
-	int *i;
+	struct ipfw_context *ctx;
+	struct cfg_nat *n, *tmp;
+	struct ip_fw *f;
+	ipfw_insn *cmd;
+	int *i, cpu;
 
 	i = sopt->sopt_val;
 	lockmgr(&nat_lock, LK_EXCLUSIVE);
@@ -508,6 +518,25 @@ ipfw_nat_del(struct sockopt *sopt)
 		lockmgr(&nat_lock, LK_RELEASE);
 		return EINVAL;
 	}
+
+	/*
+	 * stop deleting when this cfg_nat was in use in ipfw_ctx
+	 */
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		ctx = ipfw_ctx[cpu];
+		for (f = ctx->ipfw_rule_chain; f; f = f->next) {
+			cmd = ACTION_PTR(f);
+			if ((int)cmd->module == MODULE_NAT_ID &&
+					(int)cmd->opcode == O_NAT_NAT) {
+				tmp = ((ipfw_insn_nat *)cmd)->nat;
+				if (tmp != NULL && tmp->id == n->id) {
+					lockmgr(&nat_lock, LK_RELEASE);
+					return EINVAL;
+				}
+			}
+		}
+	}
+
 	UNHOOK_NAT(n);
 	del_redir_spool_cfg(n, &n->redir_chain);
 	LibAliasUninit(n->lib);
@@ -519,10 +548,28 @@ ipfw_nat_del(struct sockopt *sopt)
 int
 ipfw_nat_flush(struct sockopt *sopt)
 {
-	struct cfg_nat *ptr, *ptr_temp;
+	struct ipfw_context *ctx;
+	struct cfg_nat *ptr, *tmp;
+	struct ip_fw *f;
+	ipfw_insn *cmd;
+	int cpu;
+
+	/*
+	 * stop flushing when any cfg_nat was in use in ipfw_ctx
+	 */
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		ctx = ipfw_ctx[cpu];
+		for (f = ctx->ipfw_rule_chain; f; f = f->next) {
+			cmd = ACTION_PTR(f);
+			if ((int)cmd->module == MODULE_NAT_ID &&
+				(int)cmd->opcode == O_NAT_NAT) {
+				return EINVAL;
+			}
+		}
+	}
 
 	lockmgr(&nat_lock, LK_EXCLUSIVE);
-	LIST_FOREACH_MUTABLE(ptr, &(ipfw_nat_ctx->nat), _next, ptr_temp) {
+	LIST_FOREACH_MUTABLE(ptr, &(ipfw_nat_ctx->nat), _next, tmp) {
 		LIST_REMOVE(ptr, _next);
 		del_redir_spool_cfg(ptr, &ptr->redir_chain);
 		LibAliasUninit(ptr->lib);

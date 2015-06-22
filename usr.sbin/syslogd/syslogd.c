@@ -1388,10 +1388,10 @@ reapchild(int signo __unused)
 
 		/* First, look if it's a process from the dead queue. */
 		if (deadq_remove(pid))
-			goto oncemore;
+			continue;
 
 		/* Now, look in list of active processes. */
-		for (f = Files; f; f = f->f_next)
+		for (f = Files; f; f = f->f_next) {
 			if (f->f_type == F_PIPE &&
 			    f->f_un.f_pipe.f_pid == pid) {
 				(void)close(f->f_file);
@@ -1400,8 +1400,7 @@ reapchild(int signo __unused)
 					      f->f_un.f_pipe.f_pname);
 				break;
 			}
-	  oncemore:
-		continue;
+		}
 	}
 }
 

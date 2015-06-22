@@ -1152,7 +1152,6 @@ vect_peeling_hash_get_lowest_cost (_vect_peel_info **slot,
   vec<data_reference_p> datarefs = LOOP_VINFO_DATAREFS (loop_vinfo);
   struct data_reference *dr;
   stmt_vector_for_cost prologue_cost_vec, body_cost_vec, epilogue_cost_vec;
-  int single_iter_cost;
 
   prologue_cost_vec.create (2);
   body_cost_vec.create (2);
@@ -1175,14 +1174,11 @@ vect_peeling_hash_get_lowest_cost (_vect_peel_info **slot,
       SET_DR_MISALIGNMENT (dr, save_misalignment);
     }
 
-  single_iter_cost = vect_get_single_scalar_iteration_cost (loop_vinfo);
+  auto_vec<stmt_info_for_cost> scalar_cost_vec;
+  vect_get_single_scalar_iteration_cost (loop_vinfo, &scalar_cost_vec);
   outside_cost += vect_get_known_peeling_cost
     (loop_vinfo, elem->npeel, &dummy,
-     /* ???  We use this cost as number of stmts with scalar_stmt cost,
-	thus divide by that.  This introduces rounding errors, thus better 
-	introduce a new cost kind (raw_cost?  scalar_iter_cost?). */
-     single_iter_cost / vect_get_stmt_cost (scalar_stmt),
-     &prologue_cost_vec, &epilogue_cost_vec);
+     &scalar_cost_vec, &prologue_cost_vec, &epilogue_cost_vec);
 
   /* Prologue and epilogue costs are added to the target model later.
      These costs depend only on the scalar iteration cost, the
@@ -3845,6 +3841,20 @@ vect_get_new_vect_var (tree type, enum vect_var_kind var_kind, const char *name)
   return new_vect_var;
 }
 
+/* Duplicate ptr info and set alignment/misaligment on NAME from DR.  */
+
+static void
+vect_duplicate_ssa_name_ptr_info (tree name, data_reference *dr,
+				  stmt_vec_info stmt_info)
+{
+  duplicate_ssa_name_ptr_info (name, DR_PTR_INFO (dr));
+  unsigned int align = TYPE_ALIGN_UNIT (STMT_VINFO_VECTYPE (stmt_info));
+  int misalign = DR_MISALIGNMENT (dr);
+  if (misalign == -1)
+    mark_ptr_info_alignment_unknown (SSA_NAME_PTR_INFO (name));
+  else
+    set_ptr_info_alignment (SSA_NAME_PTR_INFO (name), align, misalign);
+}
 
 /* Function vect_create_addr_base_for_vector_ref.
 
@@ -3964,13 +3974,9 @@ vect_create_addr_base_for_vector_ref (gimple stmt,
   if (DR_PTR_INFO (dr)
       && TREE_CODE (addr_base) == SSA_NAME)
     {
-      duplicate_ssa_name_ptr_info (addr_base, DR_PTR_INFO (dr));
-      unsigned int align = TYPE_ALIGN_UNIT (STMT_VINFO_VECTYPE (stmt_info));
-      int misalign = DR_MISALIGNMENT (dr);
-      if (offset || byte_offset || (misalign == -1))
+      vect_duplicate_ssa_name_ptr_info (addr_base, dr, stmt_info);
+      if (offset || byte_offset)
 	mark_ptr_info_alignment_unknown (SSA_NAME_PTR_INFO (addr_base));
-      else
-	set_ptr_info_alignment (SSA_NAME_PTR_INFO (addr_base), align, misalign);
     }
 
   if (dump_enabled_p ())
@@ -4210,7 +4216,7 @@ vect_create_data_ref_ptr (gimple stmt, tree aggr_type, struct loop *at_loop,
       aggr_ptr_init = make_ssa_name (aggr_ptr, vec_stmt);
       /* Copy the points-to information if it exists. */
       if (DR_PTR_INFO (dr))
-	duplicate_ssa_name_ptr_info (aggr_ptr_init, DR_PTR_INFO (dr));
+	vect_duplicate_ssa_name_ptr_info (aggr_ptr_init, dr, stmt_info);
       gimple_assign_set_lhs (vec_stmt, aggr_ptr_init);
       if (pe)
 	{
@@ -4253,8 +4259,8 @@ vect_create_data_ref_ptr (gimple stmt, tree aggr_type, struct loop *at_loop,
       /* Copy the points-to information if it exists. */
       if (DR_PTR_INFO (dr))
 	{
-	  duplicate_ssa_name_ptr_info (indx_before_incr, DR_PTR_INFO (dr));
-	  duplicate_ssa_name_ptr_info (indx_after_incr, DR_PTR_INFO (dr));
+	  vect_duplicate_ssa_name_ptr_info (indx_before_incr, dr, stmt_info);
+	  vect_duplicate_ssa_name_ptr_info (indx_after_incr, dr, stmt_info);
 	}
       if (ptr_incr)
 	*ptr_incr = incr;
@@ -4283,8 +4289,8 @@ vect_create_data_ref_ptr (gimple stmt, tree aggr_type, struct loop *at_loop,
       /* Copy the points-to information if it exists. */
       if (DR_PTR_INFO (dr))
 	{
-	  duplicate_ssa_name_ptr_info (indx_before_incr, DR_PTR_INFO (dr));
-	  duplicate_ssa_name_ptr_info (indx_after_incr, DR_PTR_INFO (dr));
+	  vect_duplicate_ssa_name_ptr_info (indx_before_incr, dr, stmt_info);
+	  vect_duplicate_ssa_name_ptr_info (indx_after_incr, dr, stmt_info);
 	}
       if (ptr_incr)
 	*ptr_incr = incr;

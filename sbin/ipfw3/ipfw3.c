@@ -246,8 +246,6 @@ struct ipfw_mapping {
 	shower_func shower;
 };
 
-static uint32_t new_rule_buf[IPFW_RULE_SIZE_MAX];	/* buf use in do_get/set_x */
-
 struct ipfw_keyword keywords[KEYWORD_SIZE];
 struct ipfw_mapping mappings[MAPPING_SIZE];
 
@@ -312,7 +310,7 @@ show_deny(ipfw_insn *cmd)
 }
 
 static void
-load_modules()
+load_modules(void)
 {
 	const char *error;
 	init_module mod_init_func;
@@ -350,7 +348,7 @@ load_modules()
 }
 
 void
-prepare_default_funcs()
+prepare_default_funcs(void)
 {
 	/* register allow*/
 	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_ACCEPT,
@@ -1278,7 +1276,7 @@ delete_nat_config(int ac, char *av[])
 		i = atoi(*av);
 	}
 	if (do_set_x(IP_FW_NAT_DEL, &i, sizeof(i)) == -1)
-		err(EX_UNAVAILABLE, "getsockopt(%s)", "IP_FW_NAT_DEL");
+		errx(EX_USAGE, "NAT %d in use or not exists", i);
 }
 
 static void
@@ -2045,9 +2043,12 @@ flush(void)
 			return;
 	}
 	if (do_set_x(cmd, NULL, 0) < 0 ) {
-		err(EX_UNAVAILABLE, "do_set_x(%s)",
-			do_pipe? "IP_DUMMYNET_FLUSH":
-			(do_nat? "IP_FW_NAT_FLUSH": "IP_FW_FLUSH"));
+		if (do_pipe)
+			errx(EX_USAGE, "pipe/queue in use");
+		else if (do_nat)
+			errx(EX_USAGE, "NAT configuration in use");
+		else
+			errx(EX_USAGE, "do_set_x(IP_FWFLUSH) failed");
 	}
 	if (!do_quiet) {
 		printf("Flushed all %s.\n", do_pipe ? "pipes":
@@ -2707,6 +2708,80 @@ show_nat(int ac, char **av) {
 	}
 }
 
+int
+get_kern_boottime(void)
+{
+	struct timeval boottime;
+	size_t size;
+	int mib[2];
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_BOOTTIME;
+	size = sizeof(boottime);
+	if (sysctl(mib, 2, &boottime, &size, NULL, 0) != -1 &&
+			boottime.tv_sec != 0) {
+		return boottime.tv_sec;
+	}
+	return -1;
+}
+
+void
+show_nat_state(int ac, char **av)
+{
+	int nbytes, nalloc;
+	int nat_id;
+	uint8_t *data;
+
+	nalloc = 1024;
+	data = NULL;
+
+	NEXT_ARG;
+	if (ac == 0)
+		nat_id = 0;
+	else
+		nat_id = strtoul(*av, NULL, 10);
+
+	nbytes = nalloc;
+	while (nbytes >= nalloc) {
+		nalloc = nalloc * 2;
+		nbytes = nalloc;
+		if ((data = realloc(data, nbytes)) == NULL) {
+			err(EX_OSERR, "realloc");
+		}
+		memcpy(data, &nat_id, sizeof(int));
+		if (do_get_x(IP_FW_NAT_LOG, data, &nbytes) < 0) {
+			err(EX_OSERR, "do_get_x(IP_FW_NAT_GET_STATE)");
+		}
+	}
+	if (nbytes == 0)
+		exit(EX_OK);
+	struct ipfw_ioc_nat_state *nat_state;
+	nat_state =(struct ipfw_ioc_nat_state *)data;
+	int count = nbytes / sizeof( struct ipfw_ioc_nat_state);
+	int i, uptime_sec;
+	uptime_sec = get_kern_boottime();
+	for (i = 0; i < count; i ++) {
+		struct protoent *pe = getprotobynumber(nat_state->link_type);
+		printf("%s ", pe->p_name);
+		printf("%s:%hu => ",inet_ntoa(nat_state->src_addr),
+				htons(nat_state->src_port));
+		printf("%s:%hu",inet_ntoa(nat_state->alias_addr),
+				htons(nat_state->alias_port));
+		printf(" -> %s:%hu ",inet_ntoa(nat_state->dst_addr),
+				htons(nat_state->dst_port));
+		if (do_time == 1) {
+			char timestr[30];
+			time_t t = _long_to_time(uptime_sec + nat_state->timestamp);
+			strcpy(timestr, ctime(&t));
+			*strchr(timestr, '\n') = '\0';
+			printf("%s ", timestr);
+		} else if (do_time == 2) {
+			printf( "%10u ", uptime_sec + nat_state->timestamp);
+		}
+		printf("\n");
+		nat_state++;
+	}
+}
+
 /*
  * do_set_x - extended version og do_set
  * insert a x_header in the beginning of the rule buf
@@ -2715,19 +2790,21 @@ show_nat(int ac, char **av) {
 int
 do_set_x(int optname, void *rule, int optlen)
 {
-	int len;
+	int len, *newbuf;
 
 	ip_fw_x_header *x_header;
-	if (ipfw_socket < 0) {
-		err(EX_UNAVAILABLE, "socket");
-	}
-	bzero(new_rule_buf, IPFW_RULE_SIZE_MAX);
-	x_header = (ip_fw_x_header *)new_rule_buf;
+	if (ipfw_socket < 0)
+		err(EX_UNAVAILABLE, "socket not avaialble");
+	len = optlen + sizeof(ip_fw_x_header);
+	newbuf = malloc(len);
+	if (newbuf == NULL)
+		err(EX_OSERR, "malloc newbuf in do_set_x");
+	bzero(newbuf, len);
+	x_header = (ip_fw_x_header *)newbuf;
 	x_header->opcode = optname;
 	/* copy the rule into the newbuf, just after the x_header*/
 	bcopy(rule, ++x_header, optlen);
-	len = optlen + sizeof(ip_fw_x_header);
-	return setsockopt(ipfw_socket, IPPROTO_IP, IP_FW_X, new_rule_buf, len);
+	return setsockopt(ipfw_socket, IPPROTO_IP, IP_FW_X, newbuf, len);
 }
 
 /*
@@ -2736,20 +2813,22 @@ do_set_x(int optname, void *rule, int optlen)
 int
 do_get_x(int optname, void *rule, int *optlen)
 {
-	int len, retval;
+	int len, *newbuf, retval;
 
 	ip_fw_x_header *x_header;
-	if (ipfw_socket < 0) {
-		err(EX_UNAVAILABLE, "socket");
-	}
-	bzero(new_rule_buf, IPFW_RULE_SIZE_MAX);
-	x_header = (ip_fw_x_header *)new_rule_buf;
+	if (ipfw_socket < 0)
+		err(EX_UNAVAILABLE, "socket not avaialble");
+	len = *optlen + sizeof(ip_fw_x_header);
+	newbuf = malloc(len);
+	if (newbuf == NULL)
+		err(EX_OSERR, "malloc newbuf in do_get_x");
+	bzero(newbuf, len);
+	x_header = (ip_fw_x_header *)newbuf;
 	x_header->opcode = optname;
 	/* copy the rule into the newbuf, just after the x_header*/
 	bcopy(rule, ++x_header, *optlen);
-	len = *optlen + sizeof(ip_fw_x_header);
-	retval = getsockopt(ipfw_socket, IPPROTO_IP, IP_FW_X, new_rule_buf, &len);
-	bcopy(new_rule_buf, rule, len);
+	retval = getsockopt(ipfw_socket, IPPROTO_IP, IP_FW_X, newbuf, &len);
+	bcopy(newbuf, rule, len);
 	*optlen=len;
 	return retval;
 }
@@ -2990,7 +3069,20 @@ ipfw_main(int ac, char **av)
 			flush();
 		} else if (!strncmp(*av, "show", strlen(*av)) ||
 				!strncmp(*av, "list", strlen(*av))) {
-			show_nat(ac, av);
+			if (ac > 2 && isdigit(*(av[1]))) {
+				char *p = av[1];
+				av[1] = av[2];
+				av[2] = p;
+			}
+			NEXT_ARG;
+			if (!strncmp(*av, "config", strlen(*av))) {
+				show_nat(ac, av);
+			} else if (!strncmp(*av, "state", strlen(*av))) {
+				show_nat_state(ac,av);
+			} else {
+				 errx(EX_USAGE,
+					"bad nat show command `%s'", *av);
+			}
 		} else if (!strncmp(*av, "delete", strlen(*av))) {
 			delete_nat_config(ac, av);
 		} else {
@@ -3043,43 +3135,42 @@ ipfw_readfile(int ac, char *av[])
 	pid_t	preproc = 0;
 	int	c;
 
-	while ((c = getopt(ac, av, "D:U:p:q")) != -1)
+	while ((c = getopt(ac, av, "D:U:p:q")) != -1) {
 		switch (c) {
-			case 'D':
-				if (!pflag)
-					errx(EX_USAGE, "-D requires -p");
-				if (i > MAX_ARGS - 2)
-					errx(EX_USAGE,
-							"too many -D or -U options");
-				args[i++] = "-D";
-				args[i++] = optarg;
-				break;
+		case 'D':
+			if (!pflag)
+				errx(EX_USAGE, "-D requires -p");
+			if (i > MAX_ARGS - 2)
+				errx(EX_USAGE, "too many -D or -U options");
+			args[i++] = "-D";
+			args[i++] = optarg;
+			break;
 
-			case 'U':
-				if (!pflag)
-					errx(EX_USAGE, "-U requires -p");
-				if (i > MAX_ARGS - 2)
-					errx(EX_USAGE,
-							"too many -D or -U options");
-				args[i++] = "-U";
-				args[i++] = optarg;
-				break;
+		case 'U':
+			if (!pflag)
+				errx(EX_USAGE, "-U requires -p");
+			if (i > MAX_ARGS - 2)
+				errx(EX_USAGE, "too many -D or -U options");
+			args[i++] = "-U";
+			args[i++] = optarg;
+			break;
 
-			case 'p':
-				pflag = 1;
-				cmd = optarg;
-				args[0] = cmd;
-				i = 1;
-				break;
+		case 'p':
+			pflag = 1;
+			cmd = optarg;
+			args[0] = cmd;
+			i = 1;
+			break;
 
-			case 'q':
-				qflag = 1;
-				break;
+		case 'q':
+			qflag = 1;
+			break;
 
-			default:
-				errx(EX_USAGE, "bad arguments, for usage"
-						" summary ``ipfw''");
+		default:
+			errx(EX_USAGE, "bad arguments, for usage"
+			    " summary ``ipfw''");
 		}
+	}
 
 	av += optind;
 	ac -= optind;
@@ -3099,32 +3190,32 @@ ipfw_readfile(int ac, char *av[])
 			err(EX_OSERR, "cannot create pipe");
 
 		switch ((preproc = fork())) {
-			case -1:
-				err(EX_OSERR, "cannot fork");
+		case -1:
+			err(EX_OSERR, "cannot fork");
 
-			case 0:
-				/* child */
-				if (dup2(fileno(f), 0) == -1 ||
-					dup2(pipedes[1], 1) == -1) {
-					err(EX_OSERR, "dup2()");
-				}
-				fclose(f);
-				close(pipedes[1]);
-				close(pipedes[0]);
-				execvp(cmd, args);
-				err(EX_OSERR, "execvp(%s) failed", cmd);
+		case 0:
+			/* child */
+			if (dup2(fileno(f), 0) == -1 ||
+			    dup2(pipedes[1], 1) == -1) {
+				err(EX_OSERR, "dup2()");
+			}
+			fclose(f);
+			close(pipedes[1]);
+			close(pipedes[0]);
+			execvp(cmd, args);
+			err(EX_OSERR, "execvp(%s) failed", cmd);
 
-			default:
-				/* parent */
-				fclose(f);
-				close(pipedes[1]);
-				if ((f = fdopen(pipedes[0], "r")) == NULL) {
-					int savederrno = errno;
+		default:
+			/* parent */
+			fclose(f);
+			close(pipedes[1]);
+			if ((f = fdopen(pipedes[0], "r")) == NULL) {
+				int savederrno = errno;
 
-					kill(preproc, SIGTERM);
-					errno = savederrno;
-					err(EX_OSERR, "fdopen()");
-				}
+				kill(preproc, SIGTERM);
+				errno = savederrno;
+				err(EX_OSERR, "fdopen()");
+			}
 		}
 	}
 

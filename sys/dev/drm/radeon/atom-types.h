@@ -20,8 +20,6 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  * Author: Dave Airlie
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/atom-types.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #ifndef ATOM_TYPES_H

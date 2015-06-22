@@ -152,7 +152,7 @@ struct in6_addr {
 #endif
 struct sockaddr_in6 {
 	uint8_t		sin6_len;	/* length of this struct(sa_family_t)*/
-	uint8_t		sin6_family;	/* AF_INET6 (sa_family_t) */
+	sa_family_t	sin6_family;	/* AF_INET6 */
 	uint16_t	sin6_port;	/* Transport layer port # (in_port_t)*/
 	uint32_t	sin6_flowinfo;	/* IP6 flow information */
 	struct in6_addr	sin6_addr;	/* IP6 address */
@@ -626,6 +626,7 @@ struct ip6_mtuinfo {
 #define IPV6CTL_RIP6STATS	36	/* raw_ip6 stats */
 
 #define IPV6CTL_ADDRCTLPOLICY	38	/* get/set address selection policy */
+#define IPV6CTL_MINHLIM		39	/* minimum Hop-Limit */
 
 /* New entries should be added here from current IPV6CTL_MAXID value. */
 /* to define items, should talk with KAME guys first, for *BSD compatibility */

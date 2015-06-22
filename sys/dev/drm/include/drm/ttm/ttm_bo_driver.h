@@ -39,6 +39,10 @@
 #include <sys/tree.h>
 #include <linux/workqueue.h>
 
+/* XXX nasty hack, but does the job */
+#undef RB_ROOT
+#define	RB_ROOT(head)	(head)->rbh_root
+
 struct ttm_backend_func {
 	/**
 	 * struct ttm_backend_func member bind

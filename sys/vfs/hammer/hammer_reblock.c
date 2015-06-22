@@ -63,15 +63,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	int error;
 	int seq;
 	int slop;
-
-	/*
-	 * A fill level <= 20% is considered an emergency.  free_level is
-	 * inverted from fill_level.
-	 */
-	if (reblock->free_level >= HAMMER_BIGBLOCK_SIZE * 8 / 10)
-		slop = HAMMER_CHKSPC_EMERGENCY;
-	else
-		slop = HAMMER_CHKSPC_REBLOCK;
+	u_int32_t key_end_localization;
 
 	if ((reblock->key_beg.localization | reblock->key_end.localization) &
 	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
@@ -79,12 +71,34 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 	if (reblock->key_beg.obj_id >= reblock->key_end.obj_id)
 		return(EINVAL);
-	if (reblock->free_level < 0)
+	if (reblock->free_level < 0 ||
+	    reblock->free_level > HAMMER_BIGBLOCK_SIZE)
 		return(EINVAL);
 
+	/*
+	 * A fill_percentage <= 20% is considered an emergency.  free_level is
+	 * inverted from fill_percentage.
+	 */
+	if (reblock->free_level >= HAMMER_BIGBLOCK_SIZE * 8 / 10)
+		slop = HAMMER_CHKSPC_EMERGENCY;
+	else
+		slop = HAMMER_CHKSPC_REBLOCK;
+
+	/*
+	 * Ioctl caller has only set localization type to reblock.
+	 * Initialize cursor key localization with ip localization.
+	 */
 	reblock->key_cur = reblock->key_beg;
 	reblock->key_cur.localization &= HAMMER_LOCALIZE_MASK;
-	reblock->key_cur.localization += ip->obj_localization;
+	if (reblock->allpfs == 0)
+		reblock->key_cur.localization += ip->obj_localization;
+
+	key_end_localization = reblock->key_end.localization;
+	key_end_localization &= HAMMER_LOCALIZE_MASK;
+	if (reblock->allpfs == 0)
+		key_end_localization += ip->obj_localization;
+	else
+		key_end_localization += ((HAMMER_MAX_PFS - 1) << 16);
 
 	checkspace_count = 0;
 	seq = trans->hmp->flusher.done;
@@ -102,9 +116,7 @@ retry:
 	cursor.key_beg.rec_type = HAMMER_MIN_RECTYPE;
 	cursor.key_beg.obj_type = 0;
 
-	cursor.key_end.localization = (reblock->key_end.localization &
-					HAMMER_LOCALIZE_MASK) +
-				      ip->obj_localization;
+	cursor.key_end.localization = key_end_localization;
 	cursor.key_end.obj_id = reblock->key_end.obj_id;
 	cursor.key_end.key = HAMMER_MAX_KEY;
 	cursor.key_end.create_tid = HAMMER_MAX_TID - 1;
@@ -425,7 +437,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	 * will not be able to invalidate it if the cursor is holding
 	 * a data buffer cached in that big block.
 	 */
-	hammer_modify_buffer(cursor->trans, data_buffer, NULL, 0);
+	hammer_modify_buffer_noundo(cursor->trans, data_buffer);
 	bcopy(cursor->data, ndata, elm->leaf.data_len);
 	hammer_modify_buffer_done(data_buffer);
 	hammer_cursor_invalidate_cache(cursor);

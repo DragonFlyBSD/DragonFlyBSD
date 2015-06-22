@@ -59,6 +59,7 @@ hammer_ioc_rebalance(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_btree_leaf_elm_t elm;
 	int error;
 	int seq;
+	u_int32_t key_end_localization;
 
 	if ((rebal->key_beg.localization | rebal->key_end.localization) &
 	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
@@ -76,9 +77,21 @@ hammer_ioc_rebalance(hammer_transaction_t trans, hammer_inode_t ip,
 	if (rebal->saturation > HAMMER_BTREE_INT_ELMS)
 		rebal->saturation = HAMMER_BTREE_INT_ELMS;
 
+	/*
+	 * Ioctl caller has only set localization type to rebalance.
+	 * Initialize cursor key localization with ip localization.
+	 */
 	rebal->key_cur = rebal->key_beg;
 	rebal->key_cur.localization &= HAMMER_LOCALIZE_MASK;
-	rebal->key_cur.localization += ip->obj_localization;
+	if (rebal->allpfs == 0)
+		rebal->key_cur.localization += ip->obj_localization;
+
+	key_end_localization = rebal->key_end.localization;
+	key_end_localization &= HAMMER_LOCALIZE_MASK;
+	if (rebal->allpfs == 0)
+		key_end_localization += ip->obj_localization;
+	else
+		key_end_localization += ((HAMMER_MAX_PFS - 1) << 16);
 
 	hammer_btree_lcache_init(trans->hmp, &lcache, 2);
 
@@ -95,8 +108,7 @@ retry:
 	}
 	cursor.key_beg = rebal->key_cur;
 	cursor.key_end = rebal->key_end;
-	cursor.key_end.localization &= HAMMER_LOCALIZE_MASK;
-	cursor.key_end.localization += ip->obj_localization;
+	cursor.key_end.localization = key_end_localization;
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 	cursor.flags |= HAMMER_CURSOR_BACKEND;
 

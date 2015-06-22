@@ -1,27 +1,24 @@
-/*
- * $DragonFly: src/games/larn/signal.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $
- */
 /* "Larn is copyrighted 1986 by Noah Morgan.\n" */
 
 #include <signal.h>
 #include "header.h"
 
 static void s2choose(void);
-static void cntlc(void);
-static void sgam(void);
+static void cntlc(int);
+static void sgam(int);
 #ifdef SIGTSTP
-static void tstop(void);
+static void tstop(int);
 #endif
-static void sigill(void);
-static void sigtrap(void);
-static void sigiot(void);
-static void sigemt(void);
-static void sigfpe(void);
-static void sigbus(void);
-static void sigsegv(void);
-static void sigsys(void);
-static void sigpipe(void);
-static void sigterm(void);
+static void sigill(int);
+static void sigtrap(int);
+static void sigiot(int);
+static void sigemt(int);
+static void sigfpe(int);
+static void sigbus(int);
+static void sigsegv(int);
+static void sigsys(int);
+static void sigpipe(int);
+static void sigterm(int);
 static void sigpanic(int);
 
 #define BIT(a) (1<<((a)-1))
@@ -39,7 +36,7 @@ s2choose(void)	/* text to be displayed if ^C during intro screen */
 }
 
 static void
-cntlc(void)	/* what to do for a ^C */
+cntlc(__unused int sig)	/* what to do for a ^C */
 {
 	if (nosignal)	/* don't do anything if inhibited */
 		return;
@@ -51,15 +48,15 @@ cntlc(void)	/* what to do for a ^C */
 	else
 		showplayer();
 	lflush();
-	signal(SIGQUIT, (sig_t)cntlc);
-	signal(SIGINT, (sig_t)cntlc);
+	signal(SIGQUIT, cntlc);
+	signal(SIGINT, cntlc);
 }
 
 /*
  *	subroutine to save the game if a hangup signal
  */
 static void
-sgam(void)
+sgam(__unused int sig)
 {
 	savegame(savefilename);
 	wizard = 1;
@@ -68,7 +65,7 @@ sgam(void)
 
 #ifdef SIGTSTP
 static void
-tstop(void) /* control Y */
+tstop(__unused int sig) /* control Y */
 {
 	if (nosignal)		/* nothing if inhibited */
 		return;
@@ -83,7 +80,7 @@ tstop(void) /* control Y */
 	kill(getpid(), SIGTSTP);
 
 	setupvt100();
-	signal(SIGTSTP, (sig_t)tstop);
+	signal(SIGTSTP, tstop);
 	if (predostuff == 1)
 		s2choose();
 	else
@@ -97,61 +94,61 @@ tstop(void) /* control Y */
  *	subroutine to issue the needed signal traps  called from main()
  */
 static void
-sigill(void)
+sigill(__unused int sig)
 {
 	sigpanic(SIGILL);
 }
 
 static void
-sigtrap(void)
+sigtrap(__unused int sig)
 {
 	sigpanic(SIGTRAP);
 }
 
 static void
-sigiot(void)
+sigiot(__unused int sig)
 {
 	sigpanic(SIGIOT);
 }
 
 static void
-sigemt(void)
+sigemt(__unused int sig)
 {
 	sigpanic(SIGEMT);
 }
 
 static void
-sigfpe(void)
+sigfpe(__unused int sig)
 {
 	sigpanic(SIGFPE);
 }
 
 static void
-sigbus(void)
+sigbus(__unused int sig)
 {
 	sigpanic(SIGBUS);
 }
 
 static void
-sigsegv(void)
+sigsegv(__unused int sig)
 {
 	sigpanic(SIGSEGV);
 }
 
 static void
-sigsys(void)
+sigsys(__unused int sig)
 {
 	sigpanic(SIGSYS);
 }
 
 static void
-sigpipe(void)
+sigpipe(__unused int sig)
 {
 	sigpanic(SIGPIPE);
 }
 
 static void
-sigterm(void)
+sigterm(__unused int sig)
 {
 	sigpanic(SIGTERM);
 }
@@ -159,23 +156,23 @@ sigterm(void)
 void
 sigsetup(void)
 {
-	signal(SIGQUIT, (sig_t)cntlc);
-	signal(SIGINT, (sig_t)cntlc);
+	signal(SIGQUIT, cntlc);
+	signal(SIGINT, cntlc);
 	signal(SIGKILL, SIG_IGN);
-	signal(SIGHUP, (sig_t)sgam);
-	signal(SIGILL, (sig_t)sigill);
-	signal(SIGTRAP, (sig_t)sigtrap);
-	signal(SIGIOT, (sig_t)sigiot);
-	signal(SIGEMT, (sig_t)sigemt);
-	signal(SIGFPE, (sig_t)sigfpe);
-	signal(SIGBUS, (sig_t)sigbus);
-	signal(SIGSEGV, (sig_t)sigsegv);
-	signal(SIGSYS, (sig_t)sigsys);
-	signal(SIGPIPE, (sig_t)sigpipe);
-	signal(SIGTERM, (sig_t)sigterm);
+	signal(SIGHUP, sgam);
+	signal(SIGILL, sigill);
+	signal(SIGTRAP, sigtrap);
+	signal(SIGIOT, sigiot);
+	signal(SIGEMT, sigemt);
+	signal(SIGFPE, sigfpe);
+	signal(SIGBUS, sigbus);
+	signal(SIGSEGV, sigsegv);
+	signal(SIGSYS, sigsys);
+	signal(SIGPIPE, sigpipe);
+	signal(SIGTERM, sigterm);
 #ifdef SIGTSTP
-	signal(SIGTSTP, (sig_t)tstop);
-	signal(SIGSTOP, (sig_t)tstop);
+	signal(SIGTSTP, tstop);
+	signal(SIGSTOP, tstop);
 #endif /* SIGTSTP */
 }
 

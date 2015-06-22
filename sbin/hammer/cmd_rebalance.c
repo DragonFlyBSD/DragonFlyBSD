@@ -58,6 +58,7 @@ hammer_cmd_rebalance(char **av, int ac)
 
 	rebal.key_end.localization = HAMMER_MAX_LOCALIZATION;
 	rebal.key_end.obj_id = HAMMER_MAX_OBJID;
+	rebal.allpfs = AllPFS;
 
 	if (ac == 0)
 		rebalance_usage(1);

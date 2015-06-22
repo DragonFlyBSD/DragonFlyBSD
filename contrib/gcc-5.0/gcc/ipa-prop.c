@@ -715,18 +715,8 @@ param_type_may_change_p (tree function, tree arg, gimple call)
 	  /* Walk the inline stack and watch out for ctors/dtors.  */
 	  for (tree block = gimple_block (call); block && TREE_CODE (block) == BLOCK;
 	       block = BLOCK_SUPERCONTEXT (block))
-	    if (BLOCK_ABSTRACT_ORIGIN (block)
-	        && TREE_CODE (BLOCK_ABSTRACT_ORIGIN (block)) == FUNCTION_DECL)
-	      {
-		tree fn = BLOCK_ABSTRACT_ORIGIN (block);
-
-		if (flags_from_decl_or_type (fn) & (ECF_PURE | ECF_CONST))
-		  continue;
-		if (TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE
-		    && (DECL_CXX_CONSTRUCTOR_P (fn)
-		        || DECL_CXX_DESTRUCTOR_P (fn)))
-		  return true;
-	      }
+	    if (inlined_polymorphic_ctor_dtor_block_p (block, false))
+	      return true;
 	  return false;
 	}
     }
@@ -2636,9 +2626,29 @@ ipa_make_edge_direct_to_target (struct cgraph_edge *ie, tree target,
       target = canonicalize_constructor_val (target, NULL);
       if (!target || TREE_CODE (target) != FUNCTION_DECL)
 	{
-	  if (ie->indirect_info->member_ptr)
-	    /* Member pointer call that goes through a VMT lookup.  */
-	    return NULL;
+	  /* Member pointer call that goes through a VMT lookup.  */
+	  if (ie->indirect_info->member_ptr
+	      /* Or if target is not an invariant expression and we do not
+		 know if it will evaulate to function at runtime.
+		 This can happen when folding through &VAR, where &VAR
+		 is IP invariant, but VAR itself is not.
+
+		 TODO: Revisit this when GCC 5 is branched.  It seems that
+		 member_ptr check is not needed and that we may try to fold
+		 the expression and see if VAR is readonly.  */
+	      || !is_gimple_ip_invariant (target))
+	    {
+	      if (dump_enabled_p ())
+		{
+		  location_t loc = gimple_location_safe (ie->call_stmt);
+		  dump_printf_loc (MSG_OPTIMIZED_LOCATIONS, loc,
+				   "discovered direct call non-invariant "
+				   "%s/%i\n",
+				   ie->caller->name (), ie->caller->order);
+		}
+	      return NULL;
+	    }
+
 
           if (dump_enabled_p ())
 	    {

@@ -99,6 +99,7 @@ BACKEND_OBJS= \
 	function.o \
 	fwprop.o \
 	gcse.o \
+	gcse-common.o \
 	ggc-common.o \
 	gimple.o \
 	gimple-builder.o \

@@ -335,12 +335,15 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			 * non-root filesystem paths and setting VROOT may
 			 * confuse the namecache.  Set VPFSROOT instead.
 			 */
-			if (ip->obj_id == HAMMER_OBJID_ROOT &&
-			    ip->obj_asof == hmp->asof) {
-				if (ip->obj_localization == 0)
-					vsetflags(vp, VROOT);
-				else
+			if (ip->obj_id == HAMMER_OBJID_ROOT) {
+				if (ip->obj_asof == hmp->asof) {
+					if (ip->obj_localization == 0)
+						vsetflags(vp, VROOT);
+					else
+						vsetflags(vp, VPFSROOT);
+				} else {
 					vsetflags(vp, VPFSROOT);
+				}
 			}
 
 			vp->v_data = (void *)ip;
@@ -854,7 +857,8 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 
 	/*
 	 * Setup the ".." pointer.  This only needs to be done for directories
-	 * but we do it for all objects as a recovery aid.
+	 * but we do it for all objects as a recovery aid if dip exists.
+	 * The inode is probably a PFS root if dip is NULL.
 	 */
 	if (dip)
 		ip->ino_data.parent_obj_id = dip->ino_leaf.base.obj_id;
@@ -1469,8 +1473,6 @@ retry:
 void
 hammer_rel_inode(struct hammer_inode *ip, int flush)
 {
-	/*hammer_mount_t hmp = ip->hmp;*/
-
 	/*
 	 * Handle disposition when dropping the last ref.
 	 */
@@ -1905,9 +1907,21 @@ hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
  * This helper function takes a record representing the dependancy between
  * the parent inode and child inode.
  *
- * record->ip		= parent inode
- * record->target_ip	= child inode
+ * record		= record in question (*rec in below)
+ * record->ip		= parent inode (*pip in below)
+ * record->target_ip	= child inode (*ip in below)
  * 
+ * *pip--------------\
+ *    ^               \rec_tree
+ *     \               \
+ *      \ip            /\\\\\ rbtree of recs from parent inode's view
+ *       \            //\\\\\\
+ *        \          / ........
+ *         \        /
+ *          \------*rec------target_ip------>*ip
+ *               ...target_entry<----...----->target_list<---...
+ *                                            list of recs from inode's view
+ *
  * We are asked to recurse upwards and convert the record from SETUP
  * to FLUSH if possible.
  *

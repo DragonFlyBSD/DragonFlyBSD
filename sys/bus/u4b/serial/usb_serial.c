@@ -214,6 +214,12 @@ MODULE_VERSION(ucom, UCOM_MODVER);
 #define	UCOM_UNIT_MAX 		128	/* maximum number of units */
 #define	UCOM_TTY_PREFIX		"ucom"
 
+
+#define CALLOUT_MASK            0x80
+#define CONTROL_MASK            0x60
+#define CONTROL_INIT_STATE      0x20
+#define CONTROL_LOCK_STATE      0x40
+
 static struct unrhdr *ucom_unrhdr;
 static struct lock ucom_lock;
 static int ucom_close_refs;
@@ -367,6 +373,11 @@ ucom_detach(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 		return;		/* not initialized */
 
 	destroy_dev(sc->sc_cdev);
+	destroy_dev(sc->sc_cdev_init);
+	destroy_dev(sc->sc_cdev_lock);
+	destroy_dev(sc->sc_cdev2);
+	destroy_dev(sc->sc_cdev2_init);
+	destroy_dev(sc->sc_cdev2_lock);
 
 	lwkt_gettoken(&tty_token);
 
@@ -431,7 +442,6 @@ ucom_attach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 {
 	struct tty *tp;
 	char buf[32];			/* temporary TTY device name buffer */
-	cdev_t dev;
 
 	lwkt_gettoken(&tty_token);
 	
@@ -467,13 +477,32 @@ ucom_attach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 		}
 	}
 
-	dev = make_dev(&ucom_ops, ssc->sc_unit | 0x80, // XXX UCOM_CALLOUT_MASK,
-			UID_UUCP, GID_DIALER, 0660,
-			buf, ssc->sc_unit);
-	dev->si_tty = tp;
+	sc->sc_cdev = make_dev(&ucom_ops, ssc->sc_unit,
+			UID_ROOT, GID_WHEEL, 0600, "ttyU%r", ssc->sc_unit);
+	sc->sc_cdev_init = make_dev(&ucom_ops, ssc->sc_unit | CONTROL_INIT_STATE,
+			UID_ROOT, GID_WHEEL, 0600, "ttyiU%r", ssc->sc_unit);
+	sc->sc_cdev_lock = make_dev(&ucom_ops, ssc->sc_unit | CONTROL_LOCK_STATE,
+			UID_ROOT, GID_WHEEL, 0600, "ttylU%r", ssc->sc_unit);
+	sc->sc_cdev2 = make_dev(&ucom_ops, ssc->sc_unit | CALLOUT_MASK,
+			UID_UUCP, GID_DIALER, 0660, "cuaU%r", ssc->sc_unit);
+	sc->sc_cdev2_init = make_dev(&ucom_ops, ssc->sc_unit | CALLOUT_MASK | CONTROL_INIT_STATE,
+			UID_UUCP, GID_DIALER, 0660, "cuaiU%r", ssc->sc_unit);
+	sc->sc_cdev2_lock = make_dev(&ucom_ops, ssc->sc_unit | CALLOUT_MASK | CONTROL_LOCK_STATE,
+			UID_UUCP, GID_DIALER, 0660, "cualU%r", ssc->sc_unit);
+
+	sc->sc_cdev->si_tty = tp;
+	sc->sc_cdev_init->si_tty = tp;
+	sc->sc_cdev_lock->si_tty = tp;
+
+	sc->sc_cdev->si_drv1 = sc;
+	sc->sc_cdev_init->si_drv1 = sc;
+	sc->sc_cdev_lock->si_drv1 = sc;
+
+	sc->sc_cdev2->si_drv1 = sc;
+	sc->sc_cdev2_init->si_drv1 = sc;
+	sc->sc_cdev2_lock->si_drv1 = sc;
+
 	sc->sc_tty = tp;
-	dev->si_drv1 = sc;
-	sc->sc_cdev = dev;
 	
 	DPRINTF("ttycreate: %s\n", buf);
 
@@ -755,11 +784,16 @@ ucom_dev_open(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct ucom_softc *sc = (struct ucom_softc *)dev->si_drv1;
 	int error;
+	int mynor;
 
-	UCOM_MTX_LOCK(sc);
-	error = ucom_open(sc);
-	UCOM_MTX_UNLOCK(sc);
+	error = 0;
+	mynor = minor(dev);
 
+	if (!(mynor & CALLOUT_MASK)) {
+		UCOM_MTX_LOCK(sc);
+		error = ucom_open(sc);
+		UCOM_MTX_UNLOCK(sc);
+	}
 	return error;	
 }
 
@@ -768,6 +802,10 @@ ucom_open(struct ucom_softc *sc)
 {
 	int error;
 	struct tty *tp;
+
+	int mynor;
+
+	mynor = minor(sc->sc_cdev);
 
 	if (sc->sc_flag & UCOM_FLAG_GONE) {
 		return (ENXIO);
@@ -800,9 +838,8 @@ ucom_open(struct ucom_softc *sc)
 
 		tp->t_dev = reference_dev(sc->sc_cdev);
 	
-		t.c_ispeed = 0;
-		t.c_ospeed = TTYDEF_SPEED;
-		t.c_cflag = TTYDEF_CFLAG;
+                t = mynor & CALLOUT_MASK ? sc->sc_it_out : sc->sc_it_in;
+
 		tp->t_ospeed = 0;
 		ucom_param(tp, &t);
 		tp->t_iflag = TTYDEF_IFLAG;
@@ -1058,15 +1095,59 @@ ucom_dev_ioctl(struct dev_ioctl_args *ap)
 	struct tty *tp = sc->sc_tty;
 	int d;
 	int error;
+	int mynor;
 
 	UCOM_MTX_LOCK(sc);
 	lwkt_gettoken(&tty_token);
+
+	mynor = minor(dev);
 
 	if (!(sc->sc_flag & UCOM_FLAG_HL_READY)) {
 		lwkt_reltoken(&tty_token);
 		return (EIO);
 	}
 	DPRINTF("cmd = 0x%08lx\n", cmd);
+	if (mynor & CONTROL_MASK) {
+		struct termios *ct;
+
+                switch (mynor & CONTROL_MASK) {
+                case CONTROL_INIT_STATE:
+                        ct = mynor & CALLOUT_MASK ? &sc->sc_it_out : &sc->sc_it_in;
+                        break;
+                case CONTROL_LOCK_STATE:
+                        ct = mynor & CALLOUT_MASK ? &sc->sc_lt_out : &sc->sc_lt_in;
+                        break;
+                default:
+                        lwkt_reltoken(&tty_token);
+                        return (ENODEV);        /* /dev/nodev */
+                }
+                switch (ap->a_cmd) {
+                case TIOCSETA:
+                        error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
+                        if (error != 0) {
+                                lwkt_reltoken(&tty_token);
+                                return (error);
+                        }
+                        *ct = *(struct termios *)data;
+                        lwkt_reltoken(&tty_token);
+                        return (0);
+                case TIOCGETA:
+                        *(struct termios *)data = *ct;
+                        lwkt_reltoken(&tty_token);
+                        return (0);
+                case TIOCGETD:
+                        *(int *)data = TTYDISC;
+                        lwkt_reltoken(&tty_token);
+                        return (0);
+                case TIOCGWINSZ:
+                        bzero(data, sizeof(struct winsize));
+                        lwkt_reltoken(&tty_token);
+                        return (0);
+                default:
+                        lwkt_reltoken(&tty_token);
+                        return (ENOTTY);
+                }
+	}
 
 	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data,
                                               ap->a_fflag, ap->a_cred);

@@ -1,14 +1,9 @@
 #	from: @(#)Makefile	2.3 88/08/11 4.0 RPCSRC
 # $FreeBSD: src/include/rpcsvc/Makefile,v 1.24.2.1 2002/07/22 14:21:46 ru Exp $
-# $DragonFly: src/include/rpcsvc/Makefile,v 1.3 2004/02/02 05:43:13 dillon Exp $
 
 .SUFFIXES: .x
 
-# Inherit CPP_PATH from the buildworld so we use the correct cpp
-# binary.  Otherwise the system cpp might get confused with our
-# OBJFORMAT_PATH.
-#
-RPCCOM = rpcgen -C
+RPCCOM = rpcgen -C -Y "${OBJFORMAT_PATH}/usr/bin"
 
 HDRS= key_prot.h klm_prot.h mount.h nfs_prot.h nlm_prot.h rex.h rnusers.h \
       rquota.h rstat.h rwall.h sm_inter.h spray.h yppasswd.h yp.h \

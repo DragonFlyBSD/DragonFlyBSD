@@ -23,10 +23,7 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/atombios_dp.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon.h"
@@ -47,6 +44,41 @@ static char *pre_emph_names[] = {
 };
 
 /***** radeon AUX functions *****/
+
+/* Atom needs data in little endian format
+ * so swap as appropriate when copying data to
+ * or from atom. Note that atom operates on
+ * dw units.
+ */
+static void radeon_copy_swap(u8 *dst, u8 *src, u8 num_bytes, bool to_le)
+{
+#ifdef __BIG_ENDIAN
+	u8 src_tmp[20], dst_tmp[20]; /* used for byteswapping */
+	u32 *dst32, *src32;
+	int i;
+
+	memcpy(src_tmp, src, num_bytes);
+	src32 = (u32 *)src_tmp;
+	dst32 = (u32 *)dst_tmp;
+	if (to_le) {
+		for (i = 0; i < ((num_bytes + 3) / 4); i++)
+			dst32[i] = cpu_to_le32(src32[i]);
+		memcpy(dst, dst_tmp, num_bytes);
+	} else {
+		u8 dws = num_bytes & ~3;
+		for (i = 0; i < ((num_bytes + 3) / 4); i++)
+			dst32[i] = le32_to_cpu(src32[i]);
+		memcpy(dst, dst_tmp, dws);
+		if (num_bytes % 4) {
+			for (i = 0; i < (num_bytes % 4); i++)
+				dst[dws+i] = dst_tmp[dws+i];
+		}
+	}
+#else
+	memcpy(dst, src, num_bytes);
+#endif
+}
+
 union aux_channel_transaction {
 	PROCESS_AUX_CHANNEL_TRANSACTION_PS_ALLOCATION v1;
 	PROCESS_AUX_CHANNEL_TRANSACTION_PARAMETERS_V2 v2;
@@ -68,10 +100,10 @@ static int radeon_process_aux_ch(struct radeon_i2c_chan *chan,
 
 	base = (unsigned char *)(rdev->mode_info.atom_context->scratch + 1);
 
-	memcpy(base, send, send_bytes);
+	radeon_copy_swap(base, send, send_bytes, true);
 
-	args.v1.lpAuxRequest = 0 + 4;
-	args.v1.lpDataOut = 16 + 4;
+	args.v1.lpAuxRequest = cpu_to_le16((u16)(0 + 4));
+	args.v1.lpDataOut = cpu_to_le16((u16)(16 + 4));
 	args.v1.ucDataOutLen = 0;
 	args.v1.ucChannelID = chan->rec.i2c_id;
 	args.v1.ucDelay = delay / 10;
@@ -105,7 +137,7 @@ static int radeon_process_aux_ch(struct radeon_i2c_chan *chan,
 		recv_bytes = recv_size;
 
 	if (recv && recv_size)
-		memcpy(recv, base + 16, recv_bytes);
+		radeon_copy_swap(recv, base + 16, recv_bytes, false);
 
 	return recv_bytes;
 }
@@ -125,7 +157,7 @@ static int radeon_dp_aux_native_write(struct radeon_connector *radeon_connector,
 
 	msg[0] = address;
 	msg[1] = address >> 8;
-	msg[2] = AUX_NATIVE_WRITE << 4;
+	msg[2] = DP_AUX_NATIVE_WRITE << 4;
 	msg[3] = (msg_bytes << 4) | (send_bytes - 1);
 	memcpy(&msg[4], send, send_bytes);
 
@@ -136,10 +168,11 @@ static int radeon_dp_aux_native_write(struct radeon_connector *radeon_connector,
 			continue;
 		else if (ret < 0)
 			return ret;
-		if ((ack & AUX_NATIVE_REPLY_MASK) == AUX_NATIVE_REPLY_ACK)
+		ack >>= 4;
+		if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_ACK)
 			return send_bytes;
-		else if ((ack & AUX_NATIVE_REPLY_MASK) == AUX_NATIVE_REPLY_DEFER)
-			DRM_UDELAY(400);
+		else if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_DEFER)
+			udelay(400);
 		else
 			return -EIO;
 	}
@@ -159,7 +192,7 @@ static int radeon_dp_aux_native_read(struct radeon_connector *radeon_connector,
 
 	msg[0] = address;
 	msg[1] = address >> 8;
-	msg[2] = AUX_NATIVE_READ << 4;
+	msg[2] = DP_AUX_NATIVE_READ << 4;
 	msg[3] = (msg_bytes << 4) | (recv_bytes - 1);
 
 	for (retry = 0; retry < 4; retry++) {
@@ -169,10 +202,11 @@ static int radeon_dp_aux_native_read(struct radeon_connector *radeon_connector,
 			continue;
 		else if (ret < 0)
 			return ret;
-		if ((ack & AUX_NATIVE_REPLY_MASK) == AUX_NATIVE_REPLY_ACK)
+		ack >>= 4;
+		if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_ACK)
 			return ret;
-		else if ((ack & AUX_NATIVE_REPLY_MASK) == AUX_NATIVE_REPLY_DEFER)
-			DRM_UDELAY(400);
+		else if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_DEFER)
+			udelay(400);
 		else if (ret == 0)
 			return -EPROTO;
 		else
@@ -200,7 +234,7 @@ static u8 radeon_read_dpcd_reg(struct radeon_connector *radeon_connector,
 
 int radeon_dp_i2c_aux_ch(device_t dev, int mode, u8 write_byte, u8 *read_byte)
 {
-	struct iic_dp_aux_data *algo_data = device_get_softc(dev);
+	struct i2c_algo_dp_aux_data *algo_data = device_get_softc(dev);
 	struct radeon_i2c_chan *auxch = algo_data->priv;
 	u16 address = algo_data->address;
 	u8 msg[5];
@@ -213,12 +247,12 @@ int radeon_dp_i2c_aux_ch(device_t dev, int mode, u8 write_byte, u8 *read_byte)
 
 	/* Set up the command byte */
 	if (mode & MODE_I2C_READ)
-		msg[2] = AUX_I2C_READ << 4;
+		msg[2] = DP_AUX_I2C_READ << 4;
 	else
-		msg[2] = AUX_I2C_WRITE << 4;
+		msg[2] = DP_AUX_I2C_WRITE << 4;
 
 	if (!(mode & MODE_I2C_STOP))
-		msg[2] |= AUX_I2C_MOT << 4;
+		msg[2] |= DP_AUX_I2C_MOT << 4;
 
 	msg[0] = address;
 	msg[1] = address >> 8;
@@ -249,35 +283,35 @@ int radeon_dp_i2c_aux_ch(device_t dev, int mode, u8 write_byte, u8 *read_byte)
 			return ret;
 		}
 
-		switch (ack & AUX_NATIVE_REPLY_MASK) {
-		case AUX_NATIVE_REPLY_ACK:
+		switch ((ack >> 4) & DP_AUX_NATIVE_REPLY_MASK) {
+		case DP_AUX_NATIVE_REPLY_ACK:
 			/* I2C-over-AUX Reply field is only valid
 			 * when paired with AUX ACK.
 			 */
 			break;
-		case AUX_NATIVE_REPLY_NACK:
+		case DP_AUX_NATIVE_REPLY_NACK:
 			DRM_DEBUG_KMS("aux_ch native nack\n");
 			return -EREMOTEIO;
-		case AUX_NATIVE_REPLY_DEFER:
+		case DP_AUX_NATIVE_REPLY_DEFER:
 			DRM_DEBUG_KMS("aux_ch native defer\n");
-			DRM_UDELAY(400);
+			udelay(400);
 			continue;
 		default:
 			DRM_ERROR("aux_ch invalid native reply 0x%02x\n", ack);
 			return -EREMOTEIO;
 		}
 
-		switch (ack & AUX_I2C_REPLY_MASK) {
-		case AUX_I2C_REPLY_ACK:
+		switch ((ack >> 4) & DP_AUX_I2C_REPLY_MASK) {
+		case DP_AUX_I2C_REPLY_ACK:
 			if (mode == MODE_I2C_READ)
 				*read_byte = reply[0];
 			return ret;
-		case AUX_I2C_REPLY_NACK:
+		case DP_AUX_I2C_REPLY_NACK:
 			DRM_DEBUG_KMS("aux_i2c nack\n");
 			return -EREMOTEIO;
-		case AUX_I2C_REPLY_DEFER:
+		case DP_AUX_I2C_REPLY_DEFER:
 			DRM_DEBUG_KMS("aux_i2c defer\n");
-			DRM_UDELAY(400);
+			udelay(400);
 			break;
 		default:
 			DRM_ERROR("aux_i2c invalid reply 0x%02x\n", ack);
@@ -684,7 +718,7 @@ static int radeon_dp_link_train_init(struct radeon_dp_link_train_info *dp_info)
 
 static int radeon_dp_link_train_finish(struct radeon_dp_link_train_info *dp_info)
 {
-	DRM_UDELAY(400);
+	udelay(400);
 
 	/* disable the training pattern on the sink */
 	radeon_write_dpcd_reg(dp_info->radeon_connector,
@@ -712,7 +746,7 @@ static int radeon_dp_link_train_cr(struct radeon_dp_link_train_info *dp_info)
 	memset(dp_info->train_set, 0, 4);
 	radeon_dp_update_vs_emph(dp_info);
 
-	DRM_UDELAY(400);
+	udelay(400);
 
 	/* clock recovery loop */
 	clock_recovery = false;

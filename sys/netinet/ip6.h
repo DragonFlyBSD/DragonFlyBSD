@@ -261,6 +261,7 @@ struct ip6_frag {
  */
 #define IPV6_MAXHLIM	255	/* maximun hoplimit */
 #define IPV6_DEFHLIM	64	/* default hlim */
+#define IPV6_MINHLIM	40	/* minimum hop limit */
 #define IPV6_FRAGTTL	120	/* ttl for fragment packets, in slowtimo tick */
 #define IPV6_HLIMDEC	1	/* subtracted when forwaeding */
 

@@ -550,7 +550,7 @@ static int r100_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 				    (48 << RADEON_I2C_TIME_LIMIT_SHIFT)));
 		WREG32(i2c_cntl_0, reg);
 		for (k = 0; k < 32; k++) {
-			DRM_UDELAY(10);
+			udelay(10);
 			tmp = RREG32(i2c_cntl_0);
 			if (tmp & RADEON_I2C_GO)
 				continue;
@@ -582,7 +582,7 @@ static int r100_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 						    (48 << RADEON_I2C_TIME_LIMIT_SHIFT)));
 				WREG32(i2c_cntl_0, reg | RADEON_I2C_RECEIVE);
 				for (k = 0; k < 32; k++) {
-					DRM_UDELAY(10);
+					udelay(10);
 					tmp = RREG32(i2c_cntl_0);
 					if (tmp & RADEON_I2C_GO)
 						continue;
@@ -610,7 +610,7 @@ static int r100_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 						    (48 << RADEON_I2C_TIME_LIMIT_SHIFT)));
 				WREG32(i2c_cntl_0, reg);
 				for (k = 0; k < 32; k++) {
-					DRM_UDELAY(10);
+					udelay(10);
 					tmp = RREG32(i2c_cntl_0);
 					if (tmp & RADEON_I2C_GO)
 						continue;
@@ -710,7 +710,7 @@ static int r500_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 
 	WREG32(AVIVO_DC_I2C_ARBITRATION, AVIVO_DC_I2C_SW_WANTS_TO_USE_I2C);
 	for (i = 0; i < 50; i++) {
-		DRM_UDELAY(1);
+		udelay(1);
 		if (RREG32(AVIVO_DC_I2C_ARBITRATION) & AVIVO_DC_I2C_SW_CAN_USE_I2C)
 			break;
 	}
@@ -744,7 +744,7 @@ static int r500_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 					      AVIVO_DC_I2C_NACK |
 					      AVIVO_DC_I2C_HALT));
 		WREG32(AVIVO_DC_I2C_RESET, AVIVO_DC_I2C_SOFT_RESET);
-		DRM_UDELAY(1);
+		udelay(1);
 		WREG32(AVIVO_DC_I2C_RESET, 0);
 
 		WREG32(AVIVO_DC_I2C_DATA, (p->slave << 1) & 0xff);
@@ -757,7 +757,7 @@ static int r500_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 		WREG32(AVIVO_DC_I2C_CONTROL1, reg);
 		WREG32(AVIVO_DC_I2C_STATUS1, AVIVO_DC_I2C_GO);
 		for (j = 0; j < 200; j++) {
-			DRM_UDELAY(50);
+			udelay(50);
 			tmp = RREG32(AVIVO_DC_I2C_STATUS1);
 			if (tmp & AVIVO_DC_I2C_GO)
 				continue;
@@ -788,7 +788,7 @@ static int r500_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 							      AVIVO_DC_I2C_NACK |
 							      AVIVO_DC_I2C_HALT));
 				WREG32(AVIVO_DC_I2C_RESET, AVIVO_DC_I2C_SOFT_RESET);
-				DRM_UDELAY(1);
+				udelay(1);
 				WREG32(AVIVO_DC_I2C_RESET, 0);
 
 				WREG32(AVIVO_DC_I2C_DATA, ((p->slave << 1) & 0xff) | 0x1);
@@ -799,7 +799,7 @@ static int r500_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 				WREG32(AVIVO_DC_I2C_CONTROL1, reg | AVIVO_DC_I2C_RECEIVE);
 				WREG32(AVIVO_DC_I2C_STATUS1, AVIVO_DC_I2C_GO);
 				for (j = 0; j < 200; j++) {
-					DRM_UDELAY(50);
+					udelay(50);
 					tmp = RREG32(AVIVO_DC_I2C_STATUS1);
 					if (tmp & AVIVO_DC_I2C_GO)
 						continue;
@@ -828,7 +828,7 @@ static int r500_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 							      AVIVO_DC_I2C_NACK |
 							      AVIVO_DC_I2C_HALT));
 				WREG32(AVIVO_DC_I2C_RESET, AVIVO_DC_I2C_SOFT_RESET);
-				DRM_UDELAY(1);
+				udelay(1);
 				WREG32(AVIVO_DC_I2C_RESET, 0);
 
 				WREG32(AVIVO_DC_I2C_DATA, (p->slave << 1) & 0xff);
@@ -842,7 +842,7 @@ static int r500_hw_i2c_xfer(struct radeon_i2c_chan *i2c,
 				WREG32(AVIVO_DC_I2C_CONTROL1, reg);
 				WREG32(AVIVO_DC_I2C_STATUS1, AVIVO_DC_I2C_GO);
 				for (j = 0; j < 200; j++) {
-					DRM_UDELAY(50);
+					udelay(50);
 					tmp = RREG32(AVIVO_DC_I2C_STATUS1);
 					if (tmp & AVIVO_DC_I2C_GO)
 						continue;
@@ -867,7 +867,7 @@ done:
 				      AVIVO_DC_I2C_NACK |
 				      AVIVO_DC_I2C_HALT));
 	WREG32(AVIVO_DC_I2C_RESET, AVIVO_DC_I2C_SOFT_RESET);
-	DRM_UDELAY(1);
+	udelay(1);
 	WREG32(AVIVO_DC_I2C_RESET, 0);
 
 	WREG32(AVIVO_DC_I2C_ARBITRATION, AVIVO_DC_I2C_SW_DONE_USING_I2C);
@@ -1042,8 +1042,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 	if (rec->mm_i2c && (radeon_hw_i2c == 0))
 		return NULL;
 
-	i2c = kmalloc(sizeof(struct radeon_i2c_chan), M_DRM,
-		      M_ZERO | M_WAITOK);
+	i2c = kzalloc(sizeof(struct radeon_i2c_chan), GFP_KERNEL);
 	if (i2c == NULL)
 		return NULL;
 
@@ -1161,7 +1160,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 	return i2c;
 out_free:
 	rel_mplock();
-	drm_free(i2c, M_DRM);
+	kfree(i2c);
 	return NULL;
 
 }
@@ -1173,8 +1172,7 @@ struct radeon_i2c_chan *radeon_i2c_create_dp(struct drm_device *dev,
 	struct radeon_i2c_chan *i2c;
 	int ret;
 
-	i2c = kmalloc(sizeof(struct radeon_i2c_chan), M_DRM,
-		      M_ZERO | M_WAITOK);
+	i2c = kzalloc(sizeof(struct radeon_i2c_chan), GFP_KERNEL);
 	if (i2c == NULL)
 		return NULL;
 
@@ -1191,7 +1189,7 @@ struct radeon_i2c_chan *radeon_i2c_create_dp(struct drm_device *dev,
 
 	return i2c;
 out_free:
-	drm_free(i2c, M_DRM);
+	kfree(i2c);
 	return NULL;
 
 }
@@ -1209,7 +1207,7 @@ void radeon_i2c_destroy(struct radeon_i2c_chan *i2c)
 		KASSERT(ret == 0, ("unable to detach iic bus %s: %d",
 		    i2c->name, ret));
 	}
-	drm_free(i2c, M_DRM);
+	kfree(i2c);
 }
 
 /* Add the default buses */

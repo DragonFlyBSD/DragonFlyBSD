@@ -29,8 +29,12 @@
 
 #define PCI_ANY_ID	(~0u)
 
+#include <sys/param.h>
 #include <sys/bus.h>
+#include <sys/pciio.h>
+#include <sys/rman.h>
 #include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
 #include <linux/types.h>
 #include <linux/device.h>
@@ -50,9 +54,12 @@ struct pci_device_id {
 
 struct pci_dev {
 	struct device	*dev;
+	unsigned short device;
 };
 
 #define PCI_DEVFN(slot, func)   ((((slot) & 0x1f) << 3) | ((func) & 0x07))
+
+#define PCI_DMA_BIDIRECTIONAL	0
 
 static inline int
 pci_read_config_byte(struct pci_dev *pdev, int where, u8 *val)
@@ -122,6 +129,80 @@ static inline int
 pci_set_consistent_dma_mask(struct pci_dev *dev, u64 mask)
 {
 	return -EIO;
+}
+
+typedef int pci_power_t;
+
+#define PCI_D0		0
+#define PCI_D1		1
+#define PCI_D2		2
+#define PCI_D3hot	3
+#define PCI_D3cold	4
+
+#include <asm/pci.h>
+
+static inline struct resource_list_entry*
+_pci_get_rle(struct pci_dev *pdev, int bar)
+{
+	struct pci_devinfo *dinfo;
+	struct device *dev = pdev->dev;
+	struct resource_list_entry *rle;
+
+	dinfo = device_get_ivars(dev);
+
+	/* Some child devices don't have registered resources, they
+	 * are only present in the parent */
+	if (dinfo == NULL) {
+		kprintf("_pci_get_rle: dinfo was NULL, trying again with parent\n");
+		dev = device_get_parent(dev);
+	}
+	dinfo = device_get_ivars(dev);
+	if (dinfo == NULL)
+		return NULL;
+
+	rle = resource_list_find(&dinfo->resources, SYS_RES_MEMORY, PCIR_BAR(bar));
+	if (rle == NULL) {
+		rle = resource_list_find(&dinfo->resources,
+					 SYS_RES_IOPORT, PCIR_BAR(bar));
+	}
+
+	return rle;
+}
+
+/*
+ * Returns the first address (memory address or I/O port number)
+ * associated with one of the PCI I/O regions.The region is selected by
+ * the integer bar (the base address register), ranging from 0–5 (inclusive).
+ * The return value can be used by ioremap()
+ */
+static inline phys_addr_t
+pci_resource_start(struct pci_dev *pdev, int bar)
+{
+	struct resource_list_entry *rle;
+
+	rle = _pci_get_rle(pdev, bar);
+	if (rle == NULL)
+		return -1;
+
+	kprintf("pci_resource_start(0x%x, 0x%x) = 0x%lx\n",
+		pdev->device, PCIR_BAR(bar), rman_get_start(rle->res));
+
+	return  rman_get_start(rle->res);
+}
+
+static inline phys_addr_t
+pci_resource_len(struct pci_dev *pdev, int bar)
+{
+	struct resource_list_entry *rle;
+
+	rle = _pci_get_rle(pdev, bar);
+	if (rle == NULL)
+		return -1;
+
+	kprintf("pci_resource_len(0x%x, 0x%x) = 0x%lx\n",
+		pdev->device, PCIR_BAR(bar), rman_get_size(rle->res));
+
+	return  rman_get_size(rle->res);
 }
 
 #endif /* LINUX_PCI_H */

@@ -41,8 +41,6 @@
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
-#define	FS			struct ext2_sb_info
-#define	I_FS			i_e2fs
 
 /*
  * Vnode op for reading.
@@ -57,7 +55,7 @@ ext2_read(struct vop_read_args *ap)
 	struct vnode *vp;
 	struct inode *ip;
 	struct uio *uio;
-	FS *fs;
+	struct ext2_sb_info *fs;
 	struct buf *bp;
 	daddr_t lbn, nextlbn;
 	off_t nextloffset;
@@ -80,7 +78,7 @@ ext2_read(struct vop_read_args *ap)
 	} else if (vp->v_type != VREG && vp->v_type != VDIR)
 		panic("ext2_read: type %d", vp->v_type);
 #endif
-	fs = ip->I_FS;
+	fs = ip->i_e2fs;
 #if 0
 	if ((u_quad_t)uio->uio_offset > fs->fs_maxfilesize)
 		return (EFBIG);
@@ -163,7 +161,7 @@ ext2_write(struct vop_write_args *ap)
 	struct vnode *vp;
 	struct uio *uio;
 	struct inode *ip;
-	FS *fs;
+	struct ext2_sb_info *fs;
 	struct buf *bp;
 	struct thread *td;
 	daddr_t lbn;
@@ -199,7 +197,7 @@ ext2_write(struct vop_write_args *ap)
 		panic("ext2_write: type");
 	}
 
-	fs = ip->I_FS;
+	fs = ip->i_e2fs;
 #if 0
 	if (uio->uio_offset < 0 ||
 	    (u_quad_t)uio->uio_offset + uio->uio_resid > fs->fs_maxfilesize)

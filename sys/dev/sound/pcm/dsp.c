@@ -2391,19 +2391,12 @@ dsp_clone(struct dev_clone_args *ap)
 	KASSERT(dsp_umax >= 0 && dsp_cmax >= 0, ("Uninitialized unit!"));
 
 	/*
-	 * unit already associated with device, we can just obtain it.
-	 * the default dsp device is a devfs alias to the correct
-	 * device so nothing to worry about there either.
+	 * The default dsp device has a special unit which must be adjusted,
+	 * otherwise the unit number is already correct.
 	 */
 	unit = PCMUNIT(i_dev);
-
-#if 0
-	/* not applicable to DFly */
-	d = dsp_get_info(i_dev);
-	if (d != NULL) {
-		return (ENODEV);
-	}
-#endif
+	if (unit == PCMUNIT_DEFAULT)
+		unit = snd_unit;
 
 	ksnprintf(sname, sizeof(sname), "%s", ap->a_name);
 	len = strlen(sname);
@@ -2425,8 +2418,6 @@ dsp_clone(struct dev_clone_args *ap)
 		devcmax = dsp_cdevs[i].max - 1;
 		break;
 	}
-
-	unit = snd_unit;	/* XXX: I don't understand the freebsd code */
 
 	d = devclass_get_softc(pcm_devclass, unit);
 	if (!PCM_REGISTERED(d) || d->clones == NULL) {
@@ -2514,7 +2505,8 @@ dsp_clone_alloc:
 		snd_clone_setmaxunit(d->clones, tumax);
 	if (ce != NULL) {
 		/*
-		 * NOTE: subunit is a unique number unrelated to the channel id.
+		 * NOTE: Subunit is a unique number unrelated to the
+		 *	 channel id.
 		 */
 		udcmask |= snd_c2unit(cunit);
 		int subunit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(dsp), 0);
@@ -2527,7 +2519,8 @@ dsp_clone_alloc:
 		err = 0;
 	} else {
 		/*
-		 * Use device already registered, we must add a ref to the device.
+		 * Use device already registered, we must add a ref to the
+		 * device.
 		 */
 		err = 0;
 	}

@@ -27,15 +27,16 @@
 #ifndef _LINUX_IO_H_
 #define _LINUX_IO_H_
 
-#include <asm/io.h>
 #include <linux/kernel.h>
+#include <asm/io.h>
+#include <asm/page.h>
 
 #if defined(writel)
 #undef writel
 #endif
 
 static inline void
-writel(uint32_t value, void *addr)
+writel(uint32_t value, volatile void *addr)
 {
 	*(volatile uint32_t *)addr = value;
 }

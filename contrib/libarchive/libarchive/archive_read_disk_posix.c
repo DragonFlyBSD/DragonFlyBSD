@@ -1918,11 +1918,21 @@ close_and_restore_time(int fd, struct tree *t, struct restore_time *rt)
 	}
 
 #if defined(HAVE_FUTIMENS) && !defined(__CYGWIN__)
-	timespecs[1].tv_sec = rt->mtime;
-	timespecs[1].tv_nsec = rt->mtime_nsec;
+	if (rt->mtime == (time_t)-1) {
+		timespecs[1].tv_sec = 0;
+		timespecs[1].tv_nsec = UTIME_OMIT;
+	} else {
+		timespecs[1].tv_sec = rt->mtime;
+		timespecs[1].tv_nsec = rt->mtime_nsec;
+	}
 
-	timespecs[0].tv_sec = rt->atime;
-	timespecs[0].tv_nsec = rt->atime_nsec;
+	if (rt->atime == (time_t)-1) {
+		timespecs[0].tv_sec = 0;
+		timespecs[0].tv_nsec = UTIME_OMIT;
+	} else {
+		timespecs[0].tv_sec = rt->atime;
+		timespecs[0].tv_nsec = rt->atime_nsec;
+	}
 	/* futimens() is defined in POSIX.1-2008. */
 	if (futimens(fd, timespecs) == 0)
 		return (close(fd));

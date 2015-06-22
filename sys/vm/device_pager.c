@@ -80,7 +80,7 @@ struct pagerops devicepagerops = {
 static struct pagerlst dev_pager_object_list =
 		TAILQ_HEAD_INITIALIZER(dev_pager_object_list);
 /* protect list manipulation */
-static struct mtx dev_pager_mtx = MTX_INITIALIZER;
+static struct mtx dev_pager_mtx = MTX_INITIALIZER("devpgr");
 
 static int old_dev_pager_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
     vm_ooffset_t foff, struct ucred *cred, u_short *pg_color);

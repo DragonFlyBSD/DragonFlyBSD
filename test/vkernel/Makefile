@@ -10,9 +10,7 @@ EXTRAOPTS ?=
 
 all: help
 
-.if ${MACHINE_ARCH} == "i386"
-USEKERNEL=VKERNEL
-.else
+.if ${MACHINE_ARCH} == "x86_64"
 USEKERNEL=VKERNEL64
 .endif
 

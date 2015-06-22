@@ -2795,10 +2795,20 @@ set_time(int fd, int mode, const char *name,
 	 */
 	struct timespec ts[2];
 	(void)mode; /* UNUSED */
-	ts[0].tv_sec = atime;
-	ts[0].tv_nsec = atime_nsec;
-	ts[1].tv_sec = mtime;
-	ts[1].tv_nsec = mtime_nsec;
+	if (atime == (time_t)-1) {
+		ts[0].tv_sec = 0;
+		ts[0].tv_nsec = UTIME_OMIT;
+	} else {
+		ts[0].tv_sec = atime;
+		ts[0].tv_nsec = atime_nsec;
+	}
+	if (mtime == (time_t)-1) {
+		ts[1].tv_sec = 0;
+		ts[1].tv_nsec = UTIME_OMIT;
+	} else {
+		ts[1].tv_sec = mtime;
+		ts[1].tv_nsec = mtime_nsec;
+	}
 	if (fd >= 0)
 		return futimens(fd, ts);
 	return utimensat(AT_FDCWD, name, ts, AT_SYMLINK_NOFOLLOW);

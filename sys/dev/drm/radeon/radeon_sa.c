@@ -52,7 +52,7 @@ static void radeon_sa_bo_try_free(struct radeon_sa_manager *sa_manager);
 
 int radeon_sa_bo_manager_init(struct radeon_device *rdev,
 			      struct radeon_sa_manager *sa_manager,
-			      unsigned size, u32 domain)
+			      unsigned size, u32 align, u32 domain)
 {
 	int i, r;
 
@@ -62,14 +62,15 @@ int radeon_sa_bo_manager_init(struct radeon_device *rdev,
 	sa_manager->bo = NULL;
 	sa_manager->size = size;
 	sa_manager->domain = domain;
+	sa_manager->align = align;
 	sa_manager->hole = &sa_manager->olist;
 	INIT_LIST_HEAD(&sa_manager->olist);
 	for (i = 0; i < RADEON_NUM_RINGS; ++i) {
 		INIT_LIST_HEAD(&sa_manager->flist[i]);
 	}
 
-	r = radeon_bo_create(rdev, size, RADEON_GPU_PAGE_SIZE, true,
-			     RADEON_GEM_DOMAIN_CPU, NULL, &sa_manager->bo);
+	r = radeon_bo_create(rdev, size, align, true,
+			     domain, NULL, &sa_manager->bo);
 	if (r) {
 		dev_err(rdev->dev, "(%d) failed to allocate bo for manager\n", r);
 		return r;
@@ -154,7 +155,7 @@ static void radeon_sa_bo_remove_locked(struct radeon_sa_bo *sa_bo)
 	list_del_init(&sa_bo->olist);
 	list_del_init(&sa_bo->flist);
 	radeon_fence_unref(&sa_bo->fence);
-	drm_free(sa_bo, M_DRM);
+	kfree(sa_bo);
 }
 
 static void radeon_sa_bo_try_free(struct radeon_sa_manager *sa_manager)
@@ -324,8 +325,8 @@ int radeon_sa_bo_new(struct radeon_device *rdev,
 	unsigned tries[RADEON_NUM_RINGS];
 	int i, r;
 
-	KASSERT(align <= RADEON_GPU_PAGE_SIZE, ("align > RADEON_GPU_PAGE_SIZE"));
-	KASSERT(size <= sa_manager->size, ("size > sa_manager->size"));
+	BUG_ON(align > sa_manager->align);
+	BUG_ON(size > sa_manager->size);
 
 	*sa_bo = kmalloc(sizeof(struct radeon_sa_bo), M_DRM,
 			 M_WAITOK | M_ZERO);
@@ -375,7 +376,7 @@ int radeon_sa_bo_new(struct radeon_device *rdev,
 	} while (!r);
 
 	lockmgr(&sa_manager->wq_lock, LK_RELEASE);
-	drm_free(*sa_bo, M_DRM);
+	kfree(*sa_bo);
 	*sa_bo = NULL;
 	return r;
 }

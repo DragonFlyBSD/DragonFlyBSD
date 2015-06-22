@@ -39,6 +39,7 @@
 #include "radeon_irq_kms.h"
 
 #include <drm/drm_pciids.h>
+#include <linux/module.h>
 
 /*
  * KMS wrapper.
@@ -73,14 +74,20 @@
  *   2.28.0 - r600-eg: Add MEM_WRITE packet support
  *   2.29.0 - R500 FP16 color clear registers
  *   2.30.0 - fix for FMASK texturing
+ *   2.31.0 - Add fastfb support for rs690
+ *   2.32.0 - new info request for rings working
+ *   2.33.0 - Add SI tiling mode array query
+ *   2.34.0 - Add CIK tiling mode array query
  */
 #define KMS_DRIVER_MAJOR	2
-#define KMS_DRIVER_MINOR	30
+#define KMS_DRIVER_MINOR	34
 #define KMS_DRIVER_PATCHLEVEL	0
 int radeon_suspend_kms(struct drm_device *dev);
 int radeon_resume_kms(struct drm_device *dev);
 extern int radeon_get_crtc_scanoutpos(struct drm_device *dev, int crtc,
-				      int *vpos, int *hpos);
+				      unsigned int flags,
+				      int *vpos, int *hpos, ktime_t *stime,
+				      ktime_t *etime);
 extern struct drm_ioctl_desc radeon_ioctls_kms[];
 extern int radeon_max_kms_ioctl;
 #ifdef DUMBBELL_WIP
@@ -100,6 +107,7 @@ struct drm_gem_object *radeon_gem_prime_import_sg_table(struct drm_device *dev,
 							size_t size,
 							struct sg_table *sg);
 int radeon_gem_prime_pin(struct drm_gem_object *obj);
+void radeon_gem_prime_unpin(struct drm_gem_object *obj);
 void *radeon_gem_prime_vmap(struct drm_gem_object *obj);
 void radeon_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
 
@@ -134,6 +142,88 @@ int radeon_hw_i2c = 0;
 int radeon_pcie_gen2 = -1;
 int radeon_msi = -1;
 int radeon_lockup_timeout = 10000;
+int radeon_fastfb = 0;
+int radeon_dpm = -1;
+int radeon_aspm = -1;
+
+TUNABLE_INT("drm.radeon.no_wb", &radeon_no_wb);
+MODULE_PARM_DESC(no_wb, "Disable AGP writeback for scratch registers");
+module_param_named(no_wb, radeon_no_wb, int, 0444);
+
+MODULE_PARM_DESC(modeset, "Disable/Enable modesetting");
+module_param_named(modeset, radeon_modeset, int, 0400);
+
+TUNABLE_INT("drm.radeon.dynclks", &radeon_dynclks);
+MODULE_PARM_DESC(dynclks, "Disable/Enable dynamic clocks");
+module_param_named(dynclks, radeon_dynclks, int, 0444);
+
+TUNABLE_INT("drm.radeon.r4xx_atom", &radeon_r4xx_atom);
+MODULE_PARM_DESC(r4xx_atom, "Enable ATOMBIOS modesetting for R4xx");
+module_param_named(r4xx_atom, radeon_r4xx_atom, int, 0444);
+
+TUNABLE_INT("drm.radeon.vram_limit", &radeon_vram_limit);
+MODULE_PARM_DESC(vramlimit, "Restrict VRAM for testing");
+module_param_named(vramlimit, radeon_vram_limit, int, 0600);
+
+TUNABLE_INT("drm.radeon.agpmode", &radeon_agpmode);
+MODULE_PARM_DESC(agpmode, "AGP Mode (-1 == PCI)");
+module_param_named(agpmode, radeon_agpmode, int, 0444);
+
+TUNABLE_INT("drm.radeon.gart_size", &radeon_gart_size);
+MODULE_PARM_DESC(gartsize, "Size of PCIE/IGP gart to setup in megabytes (32, 64, etc)");
+module_param_named(gartsize, radeon_gart_size, int, 0600);
+
+TUNABLE_INT("drm.radeon.benchmarking", &radeon_benchmarking);
+MODULE_PARM_DESC(benchmark, "Run benchmark");
+module_param_named(benchmark, radeon_benchmarking, int, 0444);
+
+TUNABLE_INT("drm.radeon.testing", &radeon_testing);
+MODULE_PARM_DESC(test, "Run tests");
+module_param_named(test, radeon_testing, int, 0444);
+
+TUNABLE_INT("drm.radeon.connector_table", &radeon_connector_table);
+MODULE_PARM_DESC(connector_table, "Force connector table");
+module_param_named(connector_table, radeon_connector_table, int, 0444);
+
+TUNABLE_INT("drm.radeon.tv", &radeon_tv);
+MODULE_PARM_DESC(tv, "TV enable (0 = disable)");
+module_param_named(tv, radeon_tv, int, 0444);
+
+TUNABLE_INT("drm.radeon.audio", &radeon_audio);
+MODULE_PARM_DESC(audio, "Audio enable (1 = enable)");
+module_param_named(audio, radeon_audio, int, 0444);
+
+TUNABLE_INT("drm.radeon.disp_priority", &radeon_disp_priority);
+MODULE_PARM_DESC(disp_priority, "Display Priority (0 = auto, 1 = normal, 2 = high)");
+module_param_named(disp_priority, radeon_disp_priority, int, 0444);
+
+TUNABLE_INT("drm.radeon.hw_i2c", &radeon_hw_i2c);
+MODULE_PARM_DESC(hw_i2c, "hw i2c engine enable (0 = disable)");
+module_param_named(hw_i2c, radeon_hw_i2c, int, 0444);
+
+TUNABLE_INT("drm.radeon.pcie_gen2", &radeon_pcie_gen2);
+MODULE_PARM_DESC(pcie_gen2, "PCIE Gen2 mode (-1 = auto, 0 = disable, 1 = enable)");
+module_param_named(pcie_gen2, radeon_pcie_gen2, int, 0444);
+
+TUNABLE_INT("drm.radeon.msi", &radeon_msi);
+MODULE_PARM_DESC(msi, "MSI support (1 = enable, 0 = disable, -1 = auto)");
+module_param_named(msi, radeon_msi, int, 0444);
+
+TUNABLE_INT("drm.radeon.lockup_timeout", &radeon_lockup_timeout);
+MODULE_PARM_DESC(lockup_timeout, "GPU lockup timeout in ms (defaul 10000 = 10 seconds, 0 = disable)");
+module_param_named(lockup_timeout, radeon_lockup_timeout, int, 0444);
+
+TUNABLE_INT("drm.radeon.fastfb", &radeon_fastfb);
+MODULE_PARM_DESC(fastfb, "Direct FB access for IGP chips (0 = disable, 1 = enable)");
+module_param_named(fastfb, radeon_fastfb, int, 0444);
+
+TUNABLE_INT("drm.radeon.dpm", &radeon_dpm);
+MODULE_PARM_DESC(dpm, "DPM support (1 = enable, 0 = disable, -1 = auto)");
+module_param_named(dpm, radeon_dpm, int, 0444);
+
+TUNABLE_INT("drm.radeon.aspm", &radeon_aspm);
+MODULE_PARM_DESC(aspm, "ASPM support (1 = enable, 0 = disable, -1 = auto)");
+module_param_named(aspm, radeon_aspm, int, 0444);
 
 static drm_pci_id_list_t pciidlist[] = {
 	radeon_PCI_IDS
@@ -142,56 +232,6 @@ static drm_pci_id_list_t pciidlist[] = {
 #ifdef CONFIG_DRM_RADEON_UMS
 
 #ifdef DUMBBELL_WIP
-MODULE_PARM_DESC(no_wb, "Disable AGP writeback for scratch registers");
-module_param_named(no_wb, radeon_no_wb, int, 0444);
-
-MODULE_PARM_DESC(modeset, "Disable/Enable modesetting");
-module_param_named(modeset, radeon_modeset, int, 0400);
-
-MODULE_PARM_DESC(dynclks, "Disable/Enable dynamic clocks");
-module_param_named(dynclks, radeon_dynclks, int, 0444);
-
-MODULE_PARM_DESC(r4xx_atom, "Enable ATOMBIOS modesetting for R4xx");
-module_param_named(r4xx_atom, radeon_r4xx_atom, int, 0444);
-
-MODULE_PARM_DESC(vramlimit, "Restrict VRAM for testing");
-module_param_named(vramlimit, radeon_vram_limit, int, 0600);
-
-MODULE_PARM_DESC(agpmode, "AGP Mode (-1 == PCI)");
-module_param_named(agpmode, radeon_agpmode, int, 0444);
-
-MODULE_PARM_DESC(gartsize, "Size of PCIE/IGP gart to setup in megabytes (32, 64, etc)");
-module_param_named(gartsize, radeon_gart_size, int, 0600);
-
-MODULE_PARM_DESC(benchmark, "Run benchmark");
-module_param_named(benchmark, radeon_benchmarking, int, 0444);
-
-MODULE_PARM_DESC(test, "Run tests");
-module_param_named(test, radeon_testing, int, 0444);
-
-MODULE_PARM_DESC(connector_table, "Force connector table");
-module_param_named(connector_table, radeon_connector_table, int, 0444);
-
-MODULE_PARM_DESC(tv, "TV enable (0 = disable)");
-module_param_named(tv, radeon_tv, int, 0444);
-
-MODULE_PARM_DESC(audio, "Audio enable (1 = enable)");
-module_param_named(audio, radeon_audio, int, 0444);
-
-MODULE_PARM_DESC(disp_priority, "Display Priority (0 = auto, 1 = normal, 2 = high)");
-module_param_named(disp_priority, radeon_disp_priority, int, 0444);
-
-MODULE_PARM_DESC(hw_i2c, "hw i2c engine enable (0 = disable)");
-module_param_named(hw_i2c, radeon_hw_i2c, int, 0444);
-
-MODULE_PARM_DESC(pcie_gen2, "PCIE Gen2 mode (-1 = auto, 0 = disable, 1 = enable)");
-module_param_named(pcie_gen2, radeon_pcie_gen2, int, 0444);
-
-MODULE_PARM_DESC(msi, "MSI support (1 = enable, 0 = disable, -1 = auto)");
-module_param_named(msi, radeon_msi, int, 0444);
-
-MODULE_PARM_DESC(lockup_timeout, "GPU lockup timeout in ms (defaul 10000 = 10 seconds, 0 = disable)");
-module_param_named(lockup_timeout, radeon_lockup_timeout, int, 0444);
 
 static int radeon_suspend(struct drm_device *dev, pm_message_t state)
 {
@@ -240,7 +280,7 @@ static const struct file_operations radeon_driver_old_fops = {
 
 static struct drm_driver driver_old = {
 	.driver_features =
-	    DRIVER_USE_AGP | DRIVER_USE_MTRR | DRIVER_PCI_DMA | DRIVER_SG |
+	    DRIVER_USE_AGP | DRIVER_PCI_DMA | DRIVER_SG |
 	    DRIVER_HAVE_IRQ | DRIVER_HAVE_DMA | DRIVER_IRQ_SHARED,
 	.dev_priv_size = sizeof(drm_radeon_buf_priv_t),
 	.load = radeon_driver_load,
@@ -353,7 +393,7 @@ static const struct file_operations radeon_driver_kms_fops = {
 
 static struct drm_driver kms_driver = {
 	.driver_features =
-	    DRIVER_USE_AGP | DRIVER_USE_MTRR | DRIVER_PCI_DMA | DRIVER_SG |
+	    DRIVER_USE_AGP | DRIVER_PCI_DMA | DRIVER_SG |
 	    DRIVER_HAVE_IRQ | DRIVER_HAVE_DMA | DRIVER_IRQ_SHARED | DRIVER_GEM |
 	    DRIVER_PRIME /* | DRIVE_MODESET */,
 #ifdef DUMBBELL_WIP
@@ -381,7 +421,6 @@ static struct drm_driver kms_driver = {
 	.irq_uninstall = radeon_driver_irq_uninstall_kms,
 	.irq_handler = radeon_driver_irq_handler_kms,
 	.ioctls = radeon_ioctls_kms,
-	.gem_init_object = radeon_gem_object_init,
 	.gem_free_object = radeon_gem_object_free,
 	.gem_open_object = radeon_gem_object_open,
 	.gem_close_object = radeon_gem_object_close,
@@ -399,6 +438,7 @@ static struct drm_driver kms_driver = {
 	.gem_prime_export = drm_gem_prime_export,
 	.gem_prime_import = drm_gem_prime_import,
 	.gem_prime_pin = radeon_gem_prime_pin,
+	.gem_prime_unpin = radeon_gem_prime_unpin,
 	.gem_prime_get_sg_table = radeon_gem_prime_get_sg_table,
 	.gem_prime_import_sg_table = radeon_gem_prime_import_sg_table,
 	.gem_prime_vmap = radeon_gem_prime_vmap,

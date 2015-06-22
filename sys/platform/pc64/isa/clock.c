@@ -149,7 +149,8 @@ static struct cputimer	i8254_cputimer = {
     0, 0, 0
 };
 
-static sysclock_t tsc_cputimer_count(void);
+static sysclock_t tsc_cputimer_count_mfence(void);
+static sysclock_t tsc_cputimer_count_lfence(void);
 static void tsc_cputimer_construct(struct cputimer *, sysclock_t);
 
 static struct cputimer	tsc_cputimer = {
@@ -157,7 +158,7 @@ static struct cputimer	tsc_cputimer = {
     "TSC",
     CPUTIMER_PRI_TSC,
     CPUTIMER_TSC,
-    tsc_cputimer_count,
+    tsc_cputimer_count_mfence, /* safe bet */
     cputimer_default_fromhz,
     cputimer_default_fromus,
     tsc_cputimer_construct,
@@ -1197,24 +1198,107 @@ hw_i8254_timestamp(SYSCTL_HANDLER_ARGS)
     return(SYSCTL_OUT(req, buf, strlen(buf) + 1));
 }
 
-static uint64_t		tsc_mpsync_target;
+struct tsc_mpsync_arg {
+	volatile uint64_t	tsc_target;
+	volatile int		tsc_mpsync;
+};
+
+struct tsc_mpsync_thr {
+	volatile int		tsc_done_cnt;
+	volatile int		tsc_mpsync_cnt;
+};
 
 static void
-tsc_mpsync_test_remote(void *arg __unused)
+tsc_mpsync_test_remote(void *xarg)
 {
+	struct tsc_mpsync_arg *arg = xarg;
 	uint64_t tsc;
 
-	tsc = rdtsc();
-	if (tsc < tsc_mpsync_target)
-		tsc_mpsync = 0;
+	tsc = rdtsc_ordered();
+	if (tsc < arg->tsc_target)
+		arg->tsc_mpsync = 0;
+}
+
+static void
+tsc_mpsync_test_loop(struct tsc_mpsync_arg *arg)
+{
+	struct globaldata *gd = mycpu;
+	uint64_t test_end, test_begin;
+	u_int i;
+
+	if (bootverbose) {
+		kprintf("cpu%d: TSC testing MP synchronization ...\n",
+		    gd->gd_cpuid);
+	}
+
+	test_begin = rdtsc_ordered();
+	/* Run test for 100ms */
+	test_end = test_begin + (tsc_frequency / 10);
+
+	arg->tsc_mpsync = 1;
+	arg->tsc_target = test_begin;
+
+#define TSC_TEST_TRYMAX		1000000	/* Make sure we could stop */
+#define TSC_TEST_TRYMIN		50000
+
+	for (i = 0; i < TSC_TEST_TRYMAX; ++i) {
+		struct lwkt_cpusync cs;
+
+		crit_enter();
+		lwkt_cpusync_init(&cs, gd->gd_other_cpus,
+		    tsc_mpsync_test_remote, arg);
+		lwkt_cpusync_interlock(&cs);
+		arg->tsc_target = rdtsc_ordered();
+		cpu_mfence();
+		lwkt_cpusync_deinterlock(&cs);
+		crit_exit();
+
+		if (!arg->tsc_mpsync) {
+			kprintf("cpu%d: TSC is not MP synchronized @%u\n",
+			    gd->gd_cpuid, i);
+			break;
+		}
+		if (arg->tsc_target > test_end && i >= TSC_TEST_TRYMIN)
+			break;
+	}
+
+#undef TSC_TEST_TRYMIN
+#undef TSC_TEST_TRYMAX
+
+	if (arg->tsc_target == test_begin) {
+		kprintf("cpu%d: TSC does not tick?!\n", gd->gd_cpuid);
+		/* XXX disable TSC? */
+		tsc_invariant = 0;
+		arg->tsc_mpsync = 0;
+		return;
+	}
+
+	if (arg->tsc_mpsync && bootverbose) {
+		kprintf("cpu%d: TSC is MP synchronized after %u tries\n",
+		    gd->gd_cpuid, i);
+	}
+}
+
+static void
+tsc_mpsync_ap_thread(void *xthr)
+{
+	struct tsc_mpsync_thr *thr = xthr;
+	struct tsc_mpsync_arg arg;
+
+	tsc_mpsync_test_loop(&arg);
+	if (arg.tsc_mpsync) {
+		atomic_add_int(&thr->tsc_mpsync_cnt, 1);
+		cpu_sfence();
+	}
+	atomic_add_int(&thr->tsc_done_cnt, 1);
+
+	lwkt_exit();
 }
 
 static void
 tsc_mpsync_test(void)
 {
-	struct globaldata *gd = mycpu;
-	uint64_t test_end, test_begin;
-	u_int i;
+	struct tsc_mpsync_arg arg;
 
 	if (!tsc_invariant) {
 		/* Not even invariant TSC */
@@ -1242,50 +1326,39 @@ tsc_mpsync_test(void)
 	}
 
 	kprintf("TSC testing MP synchronization ...\n");
-	tsc_mpsync = 1;
 
-	/* Run test for 100ms */
-	test_begin = rdtsc();
-	test_end = test_begin + (tsc_frequency / 10);
+	tsc_mpsync_test_loop(&arg);
+	if (arg.tsc_mpsync) {
+		struct tsc_mpsync_thr thr;
+		int cpu;
 
-#define TSC_TEST_TRYMAX		1000000	/* Make sure we could stop */
+		/*
+		 * Test TSC MP synchronization on APs.
+		 */
 
-	for (i = 0; i < TSC_TEST_TRYMAX; ++i) {
-		struct lwkt_cpusync cs;
+		thr.tsc_done_cnt = 1;
+		thr.tsc_mpsync_cnt = 1;
 
-		crit_enter();
-		lwkt_cpusync_init(&cs, gd->gd_other_cpus,
-				  tsc_mpsync_test_remote, NULL);
-		lwkt_cpusync_interlock(&cs);
-		tsc_mpsync_target = rdtsc();
-		cpu_mfence();
-		lwkt_cpusync_deinterlock(&cs);
-		crit_exit();
+		for (cpu = 0; cpu < ncpus; ++cpu) {
+			if (cpu == mycpuid)
+				continue;
 
-		if (!tsc_mpsync) {
-			kprintf("TSC is not MP synchronized @%u\n", i);
-			break;
-		}
-		if (tsc_mpsync_target > test_end)
-			break;
-	}
-
-#undef TSC_TEST_TRYMAX
-
-	if (tsc_mpsync) {
-		if (tsc_mpsync_target == test_begin) {
-			kprintf("TSC does not tick?!");
-			/* XXX disable TSC? */
-			tsc_invariant = 0;
-			tsc_mpsync = 0;
-			return;
+			lwkt_create(tsc_mpsync_ap_thread, &thr, NULL,
+			    NULL, 0, cpu, "tsc mpsync %d", cpu);
 		}
 
-		kprintf("TSC is MP synchronized");
-		if (bootverbose)
-			kprintf(", after %u tries", i);
-		kprintf("\n");
+		while (thr.tsc_done_cnt != ncpus) {
+			cpu_pause();
+			cpu_lfence();
+		}
+		if (thr.tsc_mpsync_cnt == ncpus)
+			tsc_mpsync = 1;
 	}
+
+	if (tsc_mpsync)
+		kprintf("TSC is MP synchronized\n");
+	else
+		kprintf("TSC is not MP synchronized\n");
 }
 SYSINIT(tsc_mpsync, SI_BOOT2_FINISH_SMP, SI_ORDER_ANY, tsc_mpsync_test, NULL);
 
@@ -1297,10 +1370,10 @@ static void
 tsc_cputimer_construct(struct cputimer *timer, sysclock_t oldclock)
 {
 	timer->base = 0;
-	timer->base = oldclock - tsc_cputimer_count();
+	timer->base = oldclock - timer->count();
 }
 
-static sysclock_t
+static __inline sysclock_t
 tsc_cputimer_count(void)
 {
 	uint64_t tsc;
@@ -1309,6 +1382,20 @@ tsc_cputimer_count(void)
 	tsc >>= tsc_cputimer_shift;
 
 	return (tsc + tsc_cputimer.base);
+}
+
+static sysclock_t
+tsc_cputimer_count_lfence(void)
+{
+	cpu_lfence();
+	return tsc_cputimer_count();
+}
+
+static sysclock_t
+tsc_cputimer_count_mfence(void)
+{
+	cpu_mfence();
+	return tsc_cputimer_count();
 }
 
 static void
@@ -1333,6 +1420,11 @@ tsc_cputimer_register(void)
 	    (uintmax_t)freq, tsc_cputimer_shift);
 
 	tsc_cputimer.freq = freq;
+
+	if (cpu_vendor_id == CPU_VENDOR_INTEL)
+		tsc_cputimer.count = tsc_cputimer_count_lfence;
+	else
+		tsc_cputimer.count = tsc_cputimer_count_mfence; /* safe bet */
 
 	cputimer_register(&tsc_cputimer);
 	cputimer_select(&tsc_cputimer, 0);

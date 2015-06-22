@@ -32,7 +32,6 @@
  *
  *	@(#)un.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/un.h,v 1.17.2.1 2002/03/09 05:22:23 dd Exp $
- * $DragonFly: src/sys/sys/un.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_UN_H_
@@ -46,13 +45,18 @@
 #include <sys/file.h>
 #endif
 
+#ifndef _SA_FAMILY_T_DECLARED
+typedef	__uint8_t	sa_family_t;
+#define	_SA_FAMILY_T_DECLARED
+#endif
+
 /*
  * Definitions for UNIX IPC domain.
  */
 struct	sockaddr_un {
-	u_char	sun_len;		/* sockaddr len including null */
-	u_char	sun_family;		/* AF_UNIX */
-	char	sun_path[104];		/* path name (gag) */
+	u_char		sun_len;	/* sockaddr len including null */
+	sa_family_t	sun_family;	/* AF_UNIX */
+	char		sun_path[104];	/* path name (gag) */
 };
 
 /* Socket options. */

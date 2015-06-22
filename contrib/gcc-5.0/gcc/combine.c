@@ -475,7 +475,7 @@ static rtx force_to_mode (rtx, machine_mode,
 			  unsigned HOST_WIDE_INT, int);
 static rtx if_then_else_cond (rtx, rtx *, rtx *);
 static rtx known_cond (rtx, enum rtx_code, rtx, rtx);
-static int rtx_equal_for_field_assignment_p (rtx, rtx);
+static int rtx_equal_for_field_assignment_p (rtx, rtx, bool = false);
 static rtx make_field_assignment (rtx);
 static rtx apply_distributive_law (rtx);
 static rtx distribute_and_simplify_rtx (rtx, int);
@@ -2492,14 +2492,11 @@ update_cfg_for_uncondjump (rtx_insn *insn)
     }
 }
 
-#ifndef HAVE_cc0
-/* Return whether INSN is a PARALLEL of exactly N register SETs followed
+/* Return whether PAT is a PARALLEL of exactly N register SETs followed
    by an arbitrary number of CLOBBERs.  */
 static bool
-is_parallel_of_n_reg_sets (rtx_insn *insn, int n)
+is_parallel_of_n_reg_sets (rtx pat, int n)
 {
-  rtx pat = PATTERN (insn);
-
   if (GET_CODE (pat) != PARALLEL)
     return false;
 
@@ -2519,6 +2516,7 @@ is_parallel_of_n_reg_sets (rtx_insn *insn, int n)
   return true;
 }
 
+#ifndef HAVE_cc0
 /* Return whether INSN, a PARALLEL of N register SETs (and maybe some
    CLOBBERs), can be split into individual SETs in that order, without
    changing semantics.  */
@@ -2907,7 +2905,7 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
      decrement insn.  */
 
   if (i1 == 0
-      && is_parallel_of_n_reg_sets (i2, 2)
+      && is_parallel_of_n_reg_sets (PATTERN (i2), 2)
       && (GET_MODE_CLASS (GET_MODE (SET_DEST (XVECEXP (PATTERN (i2), 0, 0))))
 	  == MODE_CC)
       && GET_CODE (SET_SRC (XVECEXP (PATTERN (i2), 0, 0))) == COMPARE
@@ -2939,7 +2937,7 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
      make those two SETs separate I1 and I2 insns, and make an I0 that is
      the original I1.  */
   if (i0 == 0
-      && is_parallel_of_n_reg_sets (i2, 2)
+      && is_parallel_of_n_reg_sets (PATTERN (i2), 2)
       && can_split_parallel_of_n_reg_sets (i2, 2)
       && !reg_used_between_p (SET_DEST (XVECEXP (PATTERN (i2), 0, 0)), i2, i3)
       && !reg_used_between_p (SET_DEST (XVECEXP (PATTERN (i2), 0, 1)), i2, i3))
@@ -3460,10 +3458,7 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
      debug info less accurate.  */
 
   if (!(added_sets_2 && i1 == 0)
-      && GET_CODE (newpat) == PARALLEL
-      && XVECLEN (newpat, 0) == 2
-      && GET_CODE (XVECEXP (newpat, 0, 0)) == SET
-      && GET_CODE (XVECEXP (newpat, 0, 1)) == SET
+      && is_parallel_of_n_reg_sets (newpat, 2)
       && asm_noperands (newpat) < 0)
     {
       rtx set0 = XVECEXP (newpat, 0, 0);
@@ -9184,8 +9179,23 @@ known_cond (rtx x, enum rtx_code cond, rtx reg, rtx val)
    assignment as a field assignment.  */
 
 static int
-rtx_equal_for_field_assignment_p (rtx x, rtx y)
+rtx_equal_for_field_assignment_p (rtx x, rtx y, bool widen_x)
 {
+  if (widen_x && GET_MODE (x) != GET_MODE (y))
+    {
+      if (GET_MODE_SIZE (GET_MODE (x)) > GET_MODE_SIZE (GET_MODE (y)))
+	return 0;
+      if (BYTES_BIG_ENDIAN != WORDS_BIG_ENDIAN)
+	return 0;
+      /* For big endian, adjust the memory offset.  */
+      if (BYTES_BIG_ENDIAN)
+	x = adjust_address_nv (x, GET_MODE (y),
+			       -subreg_lowpart_offset (GET_MODE (x),
+						       GET_MODE (y)));
+      else
+	x = adjust_address_nv (x, GET_MODE (y), 0);
+    }
+
   if (x == y || rtx_equal_p (x, y))
     return 1;
 
@@ -9339,16 +9349,15 @@ make_field_assignment (rtx x)
   /* The second SUBREG that might get in the way is a paradoxical
      SUBREG around the first operand of the AND.  We want to 
      pretend the operand is as wide as the destination here.   We
-     do this by creating a new MEM in the wider mode for the sole
+     do this by adjusting the MEM to wider mode for the sole
      purpose of the call to rtx_equal_for_field_assignment_p.   Also
      note this trick only works for MEMs.  */
   else if (GET_CODE (rhs) == AND
 	   && paradoxical_subreg_p (XEXP (rhs, 0))
-	   && GET_CODE (SUBREG_REG (XEXP (rhs, 0))) == MEM
+	   && MEM_P (SUBREG_REG (XEXP (rhs, 0)))
 	   && CONST_INT_P (XEXP (rhs, 1))
-	   && rtx_equal_for_field_assignment_p (gen_rtx_MEM (GET_MODE (dest),
-							     XEXP (SUBREG_REG (XEXP (rhs, 0)), 0)),
-						dest))
+	   && rtx_equal_for_field_assignment_p (SUBREG_REG (XEXP (rhs, 0)),
+						dest, true))
     c1 = INTVAL (XEXP (rhs, 1)), other = lhs;
   else if (GET_CODE (lhs) == AND
 	   && CONST_INT_P (XEXP (lhs, 1))
@@ -9357,16 +9366,15 @@ make_field_assignment (rtx x)
   /* The second SUBREG that might get in the way is a paradoxical
      SUBREG around the first operand of the AND.  We want to 
      pretend the operand is as wide as the destination here.   We
-     do this by creating a new MEM in the wider mode for the sole
+     do this by adjusting the MEM to wider mode for the sole
      purpose of the call to rtx_equal_for_field_assignment_p.   Also
      note this trick only works for MEMs.  */
   else if (GET_CODE (lhs) == AND
 	   && paradoxical_subreg_p (XEXP (lhs, 0))
-	   && GET_CODE (SUBREG_REG (XEXP (lhs, 0))) == MEM
+	   && MEM_P (SUBREG_REG (XEXP (lhs, 0)))
 	   && CONST_INT_P (XEXP (lhs, 1))
-	   && rtx_equal_for_field_assignment_p (gen_rtx_MEM (GET_MODE (dest),
-							     XEXP (SUBREG_REG (XEXP (lhs, 0)), 0)),
-						dest))
+	   && rtx_equal_for_field_assignment_p (SUBREG_REG (XEXP (lhs, 0)),
+						dest, true))
     c1 = INTVAL (XEXP (lhs, 1)), other = rhs;
   else
     return x;

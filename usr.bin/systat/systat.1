@@ -29,7 +29,7 @@
 .\" $FreeBSD: src/usr.bin/systat/systat.1,v 1.23.2.9 2002/12/29 16:35:40 schweikh Exp $
 .\" $DragonFly: src/usr.bin/systat/systat.1,v 1.8 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd September 28, 2009
+.Dd May 24, 2015
 .Dt SYSTAT 1
 .Os
 .Sh NAME
@@ -261,6 +261,54 @@ Display, in the lower window,
 the current values of available hardware sensors,
 in a format similar to that of
 .Xr sysctl 8 .
+.Pp
+The following commands are specific to the
+.Ic sensors
+display; the minimum unambiguous prefix may be supplied.
+.Pp
+.Bl -tag -width Fl -compact
+.It Ic type Op Ar type ...
+Display only the sensors which match the specified
+.Ar type .
+Multiple types may be specified,
+separated by spaces.
+If no types are specified,
+all available sensors will be displayed.
+Supported values of
+.Ar type
+are
+.Cm temp ,
+.Cm fan ,
+.Cm volt ,
+.Cm acvolt ,
+.Cm resistance ,
+.Cm power ,
+.Cm current ,
+.Cm watthour ,
+.Cm amphour ,
+.Cm indicator ,
+.Cm raw ,
+.Cm percent ,
+.Cm illuminance ,
+.Cm drive ,
+.Cm timedelta ,
+and
+.Cm ecc .
+.It Ic match Op Ar device ...
+Display only the sensors match the specified
+.Ar device .
+Multiple devices may be specified,
+separated by spaces.
+If no devices are specified,
+all available sensors will be displayed.
+A device type could be specified by using
+an asterisk
+.Pq Sq Li *
+in the place of the device unit.
+For example:
+.Pp
+.Dl match cpu*
+.El
 .It Ic swap
 Show information about swap space usage on all the
 swap areas compiled into the kernel.

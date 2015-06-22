@@ -87,6 +87,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "builtins.h"
 #include "tree-object-size.h"
 #include "tree-eh.h"
+#include "tree-cfg.h"
 
 /* Map from a tree to a VAR_DECL tree.  */
 
@@ -686,6 +687,21 @@ is_ubsan_builtin_p (tree t)
 		     "__builtin___ubsan_", 18) == 0;
 }
 
+/* Create a callgraph edge for statement STMT.  */
+
+static void
+ubsan_create_edge (gimple stmt)
+{
+  gcall *call_stmt = dyn_cast <gcall *> (stmt);
+  basic_block bb = gimple_bb (stmt);
+  int freq = compute_call_stmt_bb_frequency (current_function_decl, bb);
+  cgraph_node *node = cgraph_node::get (current_function_decl);
+  tree decl = gimple_call_fndecl (call_stmt);
+  if (decl)
+    node->create_edge (cgraph_node::get_create (decl), call_stmt, bb->count,
+		       freq);
+}
+
 /* Expand the UBSAN_BOUNDS special builtin function.  */
 
 bool
@@ -1217,9 +1233,9 @@ instrument_mem_ref (tree mem, tree base, gimple_stmt_iterator *iter,
   tree t = TREE_OPERAND (base, 0);
   if (!POINTER_TYPE_P (TREE_TYPE (t)))
     return;
-  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (TREE_TYPE (t))) && mem != base)
+  if (RECORD_OR_UNION_TYPE_P (TREE_TYPE (base)) && mem != base)
     ikind = UBSAN_MEMBER_ACCESS;
-  tree kind = build_int_cst (TREE_TYPE (t), ikind);
+  tree kind = build_int_cst (build_pointer_type (TREE_TYPE (base)), ikind);
   tree alignt = build_int_cst (pointer_sized_int_node, align);
   gcall *g = gimple_build_call_internal (IFN_UBSAN_NULL, 3, t, kind, alignt);
   gimple_set_location (g, gimple_location (gsi_stmt (*iter)));
@@ -1405,7 +1421,7 @@ instrument_bool_enum_load (gimple_stmt_iterator *gsi)
       || TREE_CODE (gimple_assign_lhs (stmt)) != SSA_NAME)
     return;
 
-  bool can_throw = stmt_could_throw_p (stmt);
+  bool ends_bb = stmt_ends_bb_p (stmt);
   location_t loc = gimple_location (stmt);
   tree lhs = gimple_assign_lhs (stmt);
   tree ptype = build_pointer_type (TREE_TYPE (rhs));
@@ -1417,7 +1433,7 @@ instrument_bool_enum_load (gimple_stmt_iterator *gsi)
   tree mem = build2 (MEM_REF, utype, gimple_assign_lhs (g),
 		     build_int_cst (atype, 0));
   tree urhs = make_ssa_name (utype);
-  if (can_throw)
+  if (ends_bb)
     {
       gimple_assign_set_lhs (stmt, urhs);
       g = gimple_build_assign (lhs, NOP_EXPR, urhs);
@@ -1454,7 +1470,7 @@ instrument_bool_enum_load (gimple_stmt_iterator *gsi)
   gimple_set_location (g, loc);
   gsi_insert_after (gsi, g, GSI_NEW_STMT);
 
-  if (!can_throw)
+  if (!ends_bb)
     {
       gimple_assign_set_rhs_with_ops (&gsi2, NOP_EXPR, urhs);
       update_stmt (stmt);
@@ -1483,6 +1499,7 @@ instrument_bool_enum_load (gimple_stmt_iterator *gsi)
     }
   gimple_set_location (g, loc);
   gsi_insert_before (&gsi2, g, GSI_SAME_STMT);
+  ubsan_create_edge (g);
   *gsi = gsi_for_stmt (stmt);
 }
 
@@ -1670,6 +1687,7 @@ instrument_nonnull_arg (gimple_stmt_iterator *gsi)
 	    }
 	  gimple_set_location (g, loc[0]);
 	  gsi_insert_before (gsi, g, GSI_SAME_STMT);
+	  ubsan_create_edge (g);
 	}
       *gsi = gsi_for_stmt (stmt);
     }
@@ -1722,6 +1740,7 @@ instrument_nonnull_return (gimple_stmt_iterator *gsi)
 	}
       gimple_set_location (g, loc[0]);
       gsi_insert_before (gsi, g, GSI_SAME_STMT);
+      ubsan_create_edge (g);
       *gsi = gsi_for_stmt (stmt);
     }
   flag_delete_null_pointer_checks = save_flag_delete_null_pointer_checks;
@@ -1818,6 +1837,7 @@ instrument_object_size (gimple_stmt_iterator *gsi, bool is_lhs)
 
   tree sizet;
   tree base_addr = base;
+  gimple bos_stmt = NULL;
   if (decl_p)
     base_addr = build1 (ADDR_EXPR,
 			build_pointer_type (TREE_TYPE (base)), base);
@@ -1834,6 +1854,17 @@ instrument_object_size (gimple_stmt_iterator *gsi, bool is_lhs)
 				   integer_zero_node);
       sizet = force_gimple_operand_gsi (gsi, sizet, false, NULL_TREE, true,
 					GSI_SAME_STMT);
+      /* If the call above didn't end up being an integer constant, go one
+	 statement back and get the __builtin_object_size stmt.  Save it,
+	 we might need it later.  */
+      if (SSA_VAR_P (sizet))
+	{
+	  gsi_prev (gsi);
+	  bos_stmt = gsi_stmt (*gsi);
+
+	  /* Move on to where we were.  */
+	  gsi_next (gsi);
+	}
     }
   else
     return;
@@ -1870,7 +1901,10 @@ instrument_object_size (gimple_stmt_iterator *gsi, bool is_lhs)
 	}
     }
 
-  /* Nope.  Emit the check.  */
+  if (bos_stmt && gimple_call_builtin_p (bos_stmt, BUILT_IN_OBJECT_SIZE))
+    ubsan_create_edge (bos_stmt);
+
+  /* We have to emit the check.  */
   t = force_gimple_operand_gsi (gsi, t, true, NULL_TREE, true,
 				GSI_SAME_STMT);
   ptr = force_gimple_operand_gsi (gsi, ptr, true, NULL_TREE, true,

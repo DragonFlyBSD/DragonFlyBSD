@@ -1,4 +1,4 @@
-/*	$NetBSD: job.c,v 1.176 2013/08/04 16:48:15 sjg Exp $	*/
+/*	$NetBSD: job.c,v 1.177 2014/07/16 15:33:41 christos Exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
@@ -70,14 +70,14 @@
  */
 
 #ifndef MAKE_NATIVE
-static char rcsid[] = "$NetBSD: job.c,v 1.176 2013/08/04 16:48:15 sjg Exp $";
+static char rcsid[] = "$NetBSD: job.c,v 1.177 2014/07/16 15:33:41 christos Exp $";
 #else
 #include <sys/cdefs.h>
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)job.c	8.2 (Berkeley) 3/19/94";
 #else
-__RCSID("$NetBSD: job.c,v 1.176 2013/08/04 16:48:15 sjg Exp $");
+__RCSID("$NetBSD: job.c,v 1.177 2014/07/16 15:33:41 christos Exp $");
 #endif
 #endif /* not lint */
 #endif
@@ -1361,11 +1361,18 @@ JobExec(Job *job, char **argv)
 	(void)lseek(0, (off_t)0, SEEK_SET);
 
 	/*
-	 * Always pass job token pipe to submakes.  OP_MAKE simply doesn't
-	 * catch all situations and can lead to a massive multiplication of
-	 * jobs.
+	 * Always pass job token pipe to submakes.  In the previous version
+	 * only the OP_MAKE flag was checked, which simply doesn't catch all
+	 * situtions and can lead to a massive multiplication of jobs.  This
+	 * may have been corrected with OR OP_SUBMAKE, but until this is
+	 * known for sure, keep the original modication in place
+	 *
+	 * if (job->node->type & (OP_MAKE | OP_SUBMAKE))
 	 */
-	/*if (job->node->type & OP_MAKE)*/ {
+	{
+		/*
+		 * Pass job token pipe to submakes.
+		 */
 		fcntl(tokenWaitJob.inPipe, F_SETFD, 0);
 		fcntl(tokenWaitJob.outPipe, F_SETFD, 0);		
 	}

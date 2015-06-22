@@ -84,7 +84,7 @@
 #include "dir.h"
 #include "quota.h"
 #include "inode.h"
-#include "ext2mount.h"
+#include "ext2_mount.h"
 #include "ext2_fs_sb.h"
 #include "fs.h"
 #include "ext2_extern.h"
@@ -1917,7 +1917,7 @@ ext2_vinit(struct mount *mntp, struct vnode **vpp)
 
 	}
 
-	if (ip->i_number == ROOTINO)
+	if (ip->i_number == EXT2_ROOTINO)
 		vp->v_flag |= VROOT;
 	/*
 	 * Initialize modrev times

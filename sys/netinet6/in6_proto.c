@@ -417,6 +417,7 @@ int	nd6_onlink_ns_rfc4861 = 0; /* allow 'on-link' nd6 NS (as in RFC 4861) */
 int	ip6_forwarding = IPV6FORWARDING;	/* act as router? */
 int	ip6_sendredirects = IPV6_SENDREDIRECTS;
 int	ip6_defhlim = IPV6_DEFHLIM;
+int	ip6_minhlim = IPV6_MINHLIM;
 int	ip6_defmcasthlim = IPV6_DEFAULT_MULTICAST_HOPS;
 int	ip6_accept_rtadv = 0;	/* "IPV6FORWARDING ? 0 : 1" is dangerous */
 int	ip6_maxfragpackets;	/* initialized in frag6.c:frag6_init() */
@@ -523,6 +524,8 @@ SYSCTL_INT(_net_inet6_ip6, IPV6CTL_SENDREDIRECTS, redirect, CTLFLAG_RW,
     &ip6_sendredirects, 0, "Enable sending IP redirects");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_DEFHLIM,
     hlim, CTLFLAG_RW, &ip6_defhlim, 0, "Default hop limit");
+SYSCTL_INT(_net_inet6_ip6, IPV6CTL_MINHLIM,
+    minhlim, CTLFLAG_RW, &ip6_minhlim, 0, "Default hop limit");
 SYSCTL_STRUCT(_net_inet6_ip6, IPV6CTL_STATS, stats, CTLFLAG_RD,
     &ip6stat, ip6stat, "IP stats");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_MAXFRAGPACKETS, maxfragpackets,

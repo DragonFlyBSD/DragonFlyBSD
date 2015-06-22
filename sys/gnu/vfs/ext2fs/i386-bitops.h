@@ -108,7 +108,7 @@ find_first_zero_bit(void *addr, unsigned size)
 static __inline__ int
 find_next_zero_bit(void *addr, int size, int offset)
 {
-	unsigned long * p = ((unsigned long *) addr) + (offset >> 5);
+	unsigned long *p = ((unsigned long *) addr) + (offset >> 5);
 	int set = 0, bit = offset & 31, res;
 
 	if (bit) {

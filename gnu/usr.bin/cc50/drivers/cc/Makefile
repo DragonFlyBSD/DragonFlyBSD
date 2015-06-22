@@ -13,7 +13,7 @@ CFLAGS+=	-DCONFIGURE_SPECS="\"\"" \
 		-DACCEL_DIR_SUFFIX="\"\"" \
 		-DDEFAULT_REAL_TARGET_MACHINE="\"${target_machine}\""
 
-DOC_Release=	${GCCDIR}/gcc/doc/gcc.1
+DOC_Release=	gcc.1	#${GCCDIR}/gcc/doc/gcc.1
 DOC_Snapshot=	gcc.1
 
 ${MFILE}: ${DOC_${GCCRELEASE}}

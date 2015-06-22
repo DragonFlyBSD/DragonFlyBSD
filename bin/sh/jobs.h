@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)jobs.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/jobs.h 238470 2012-07-15 10:49:16Z jilles $
+ * $FreeBSD$
  */
 
 /* Mode argument to forkshell.  Don't change FORK_FG or FORK_BG. */
@@ -87,12 +83,9 @@ enum {
 };
 
 extern int job_warning;		/* user was warned about stopped jobs */
-extern int in_waitcmd;		/* are we in waitcmd()? */
-extern volatile sig_atomic_t breakwaitcmd; /* break wait to process traps? */
 
 void setjobctl(int);
 void showjobs(int, int);
-pid_t getjobpgrp(char *);
 struct job *makejob(union node *, int);
 pid_t forkshell(struct job *, union node *, int);
 pid_t vforkexecshell(struct job *, char **, char **, const char *, int, int []);

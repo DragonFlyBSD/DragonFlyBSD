@@ -287,7 +287,7 @@ ng_pptpgre_constructor(node_p node)
 	NG_NODE_SET_PRIVATE(node, priv);
 
 	/* Initialize state */
-	mtx_init(&priv->uppersess.mtx);
+	mtx_init(&priv->uppersess.mtx, "ng_pptpgre usess");
 	ng_callout_init(&priv->uppersess.sackTimer);
 	ng_callout_init(&priv->uppersess.rackTimer);
 	priv->uppersess.node = node;
@@ -343,7 +343,7 @@ ng_pptpgre_newhook(node_p node, hook_p hook, const char *name)
 			return (ENOMEM);
 	
 		/* Initialize state */
-		mtx_init(&hpriv->mtx);
+		mtx_init(&hpriv->mtx, "ng_pptpgre");
 		ng_callout_init(&hpriv->sackTimer);
 		ng_callout_init(&hpriv->rackTimer);
 		hpriv->conf.cid = cid;

@@ -85,8 +85,9 @@
 static int btree_search(hammer_cursor_t cursor, int flags);
 static int btree_split_internal(hammer_cursor_t cursor);
 static int btree_split_leaf(hammer_cursor_t cursor);
-static int btree_remove(hammer_cursor_t cursor);
-static int btree_node_is_full(hammer_node_ondisk_t node);
+static int btree_remove(hammer_cursor_t cursor, int *ndelete);
+static __inline int btree_node_is_full(hammer_node_ondisk_t node);
+static __inline int btree_max_elements(u_int8_t type);
 static int hammer_btree_mirror_propagate(hammer_cursor_t cursor,	
 			hammer_tid_t mirror_tid);
 static void hammer_make_separator(hammer_base_elm_t key1,
@@ -763,6 +764,15 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	int error;
 
 	/*
+	 * Certain types of corruption can result in a NULL node pointer.
+	 */
+	if (cursor->node == NULL) {
+		kprintf("hammer: NULL cursor->node, filesystem might "
+			"have gotten corrupted\n");
+		return (EINVAL);
+	}
+
+	/*
 	 * The case where the data reference resolves to the same buffer
 	 * as the record reference must be handled.
 	 */
@@ -930,9 +940,12 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm,
  *
  * This function can return EDEADLK, requiring the caller to retry the
  * operation after clearing the deadlock.
+ *
+ * This function will store the number of deleted btree nodes in *ndelete
+ * if ndelete is not NULL.
  */
 int
-hammer_btree_delete(hammer_cursor_t cursor)
+hammer_btree_delete(hammer_cursor_t cursor, int *ndelete)
 {
 	hammer_node_ondisk_t ondisk;
 	hammer_node_t node;
@@ -941,6 +954,8 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	int i;
 
 	KKASSERT (cursor->trans->sync_lock_refs > 0);
+	if (ndelete)
+		*ndelete = 0;
 	if ((error = hammer_cursor_upgrade(cursor)) != 0)
 		return(error);
 	++hammer_stats_btree_deletes;
@@ -987,7 +1002,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	 */
 	KKASSERT(cursor->index <= ondisk->count);
 	if (ondisk->count == 0) {
-		error = btree_remove(cursor);
+		error = btree_remove(cursor, ndelete);
 		if (error == EDEADLK)
 			error = 0;
 	} else {
@@ -1022,8 +1037,6 @@ hammer_btree_delete(hammer_cursor_t cursor)
  * - Internal node recursions have a boundary on the left AND right.  The
  *   right boundary is non-inclusive.  The create_tid is a generic part
  *   of the key for internal nodes.
- *
- * - Leaf nodes contain terminal elements only now.
  *
  * - Filesystem lookups typically set HAMMER_CURSOR_ASOF, indicating a
  *   historical search.  ASOF and INSERT are mutually exclusive.  When
@@ -2234,7 +2247,7 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
  * for further iteration but not for an immediate insertion or deletion.
  */
 static int
-btree_remove(hammer_cursor_t cursor)
+btree_remove(hammer_cursor_t cursor, int *ndelete)
 {
 	hammer_node_ondisk_t ondisk;
 	hammer_btree_elm_t elm;
@@ -2303,7 +2316,7 @@ btree_remove(hammer_cursor_t cursor)
 
 		if (error == 0) {
 			hammer_cursor_deleted_element(cursor->node, 0);
-			error = btree_remove(cursor);
+			error = btree_remove(cursor, ndelete);
 			if (error == 0) {
 				KKASSERT(node != cursor->node);
 				hammer_cursor_removed_node(
@@ -2316,6 +2329,8 @@ btree_remove(hammer_cursor_t cursor)
 				hammer_modify_node_done(node);
 				hammer_flush_node(node, 0);
 				hammer_delete_node(cursor->trans, node);
+				if (ndelete)
+					(*ndelete)++;
 			} else {
 				/*
 				 * Defer parent removal because we could not
@@ -2392,6 +2407,8 @@ btree_remove(hammer_cursor_t cursor)
 		 */
 		cursor->flags |= HAMMER_CURSOR_ITERATE_CHECK;
 		error = hammer_cursor_up(cursor);
+		if (ndelete)
+			(*ndelete)++;
 	}
 	return (error);
 }
@@ -3020,26 +3037,15 @@ hammer_make_separator(hammer_base_elm_t key1, hammer_base_elm_t key2,
 /*
  * Return whether a generic internal or leaf node is full
  */
-static int
+static __inline
+int
 btree_node_is_full(hammer_node_ondisk_t node)
 {
-	switch(node->type) {
-	case HAMMER_BTREE_TYPE_INTERNAL:
-		if (node->count == HAMMER_BTREE_INT_ELMS)
-			return(1);
-		break;
-	case HAMMER_BTREE_TYPE_LEAF:
-		if (node->count == HAMMER_BTREE_LEAF_ELMS)
-			return(1);
-		break;
-	default:
-		panic("illegal btree type");
-	}
-	return(0);
+	return(btree_max_elements(node->type) == node->count);
 }
 
-#if 0
-static int
+static __inline
+int
 btree_max_elements(u_int8_t type)
 {
 	if (type == HAMMER_BTREE_TYPE_LEAF)
@@ -3048,7 +3054,6 @@ btree_max_elements(u_int8_t type)
 		return(HAMMER_BTREE_INT_ELMS);
 	panic("btree_max_elements: bad type %d", type);
 }
-#endif
 
 void
 hammer_print_btree_node(hammer_node_ondisk_t ondisk)

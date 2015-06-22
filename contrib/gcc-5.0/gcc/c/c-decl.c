@@ -168,10 +168,6 @@ static int warn_about_return_type;
 
 static bool undef_nested_function;
 
-/* Mode used to build pointers (VOIDmode means ptr_mode).  */
-
-machine_mode c_default_pointer_mode = VOIDmode;
-
 /* If non-zero, implicit "omp declare target" attribute is added into the
    attribute lists.  */
 int current_omp_declare_target_attribute;
@@ -4407,7 +4403,8 @@ c_decl_attributes (tree *node, tree attributes, int flags)
 {
   /* Add implicit "omp declare target" attribute if requested.  */
   if (current_omp_declare_target_attribute
-      && ((TREE_CODE (*node) == VAR_DECL && TREE_STATIC (*node))
+      && ((TREE_CODE (*node) == VAR_DECL
+	   && (TREE_STATIC (*node) || DECL_EXTERNAL (*node)))
 	  || TREE_CODE (*node) == FUNCTION_DECL))
     {
       if (TREE_CODE (*node) == VAR_DECL

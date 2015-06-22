@@ -28,10 +28,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)cd.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/cd.c 240541 2012-09-15 21:56:30Z jilles $
  */
+
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)cd.c	8.2 (Berkeley) 5/4/95";
+#endif
+#endif /* not lint */
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -117,7 +122,7 @@ cdcmd(int argc __unused, char **argv __unused)
 	    (dest[0] == '.' && (dest[1] == '/' || dest[1] == '\0')) ||
 	    (dest[0] == '.' && dest[1] == '.' && (dest[2] == '/' || dest[2] == '\0')) ||
 	    (path = bltinlookup("CDPATH", 1)) == NULL)
-		path = nullstr;
+		path = "";
 	while ((p = padvance(&path, dest)) != NULL) {
 		if (stat(p, &statb) < 0) {
 			if (errno != ENOENT)
@@ -184,8 +189,7 @@ cdlogical(char *dest)
 	 *  next time we get the value of the current directory.
 	 */
 	badstat = 0;
-	cdcomppath = stalloc(strlen(dest) + 1);
-	scopy(dest, cdcomppath);
+	cdcomppath = stsavestr(dest);
 	STARTSTACKSTR(p);
 	if (*dest == '/') {
 		STPUTC('/', p);
@@ -278,8 +282,7 @@ findcwd(char *dir)
 	 */
 	if (dir == NULL || curdir == NULL)
 		return getpwd2();
-	cdcomppath = stalloc(strlen(dir) + 1);
-	scopy(dir, cdcomppath);
+	cdcomppath = stsavestr(dir);
 	STARTSTACKSTR(new);
 	if (*dir != '/') {
 		STPUTS(curdir, new);

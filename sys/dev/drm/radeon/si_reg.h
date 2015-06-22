@@ -20,8 +20,6 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  * Authors: Alex Deucher
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/si_reg.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 #ifndef __SI_REG_H__
 #define __SI_REG_H__

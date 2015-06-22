@@ -89,6 +89,7 @@ int	 cmdkre(const char *, char *);
 int	 cmdnetstat(const char *, char *);
 int	 cmdnetbw(const char *, char *);
 int	 cmdpftop(const char *, char *);
+int	 cmdsensors(const char *, char *);
 struct	 cmdtab *lookup(const char *);
 void	 command(const char *);
 void	 die(int);

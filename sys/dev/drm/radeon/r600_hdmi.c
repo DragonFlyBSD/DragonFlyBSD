@@ -22,10 +22,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  * Authors: Christian König
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/r600_hdmi.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <linux/hdmi.h>
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
@@ -136,14 +133,7 @@ static void r600_hdmi_update_avi_infoframe(struct drm_encoder *encoder,
 	struct radeon_encoder_atom_dig *dig = radeon_encoder->enc_priv;
 	uint32_t offset = dig->afmt->offset;
 	uint8_t *frame = (uint8_t*)buffer + 3;
-
-	/* Our header values (type, version, length) should be alright, Intel
-	 * is using the same. Checksum function also seems to be OK, it works
-	 * fine for audio infoframe. However calculated value is always lower
-	 * by 2 in comparison to fglrx. It breaks displaying anything in case
-	 * of TVs that strictly check the checksum. Hack it manually here to
-	 * workaround this issue. */
-	frame[0x0] += 2;
+	uint8_t *header = buffer;
 
 	WREG32(HDMI0_AVI_INFO0 + offset,
 		frame[0x0] | (frame[0x1] << 8) | (frame[0x2] << 16) | (frame[0x3] << 24));
@@ -152,7 +142,7 @@ static void r600_hdmi_update_avi_infoframe(struct drm_encoder *encoder,
 	WREG32(HDMI0_AVI_INFO2 + offset,
 		frame[0x8] | (frame[0x9] << 8) | (frame[0xA] << 16) | (frame[0xB] << 24));
 	WREG32(HDMI0_AVI_INFO3 + offset,
-		frame[0xC] | (frame[0xD] << 8));
+		frame[0xC] | (frame[0xD] << 8) | (header[1] << 24));
 }
 
 /*
@@ -229,6 +219,69 @@ static void r600_hdmi_audio_workaround(struct drm_encoder *encoder)
 		 value, ~HDMI0_AUDIO_TEST_EN);
 }
 
+void r600_audio_set_dto(struct drm_encoder *encoder, u32 clock)
+{
+	struct drm_device *dev = encoder->dev;
+	struct radeon_device *rdev = dev->dev_private;
+	struct radeon_encoder *radeon_encoder = to_radeon_encoder(encoder);
+	struct radeon_encoder_atom_dig *dig = radeon_encoder->enc_priv;
+	u32 base_rate = 24000;
+	u32 max_ratio = clock / base_rate;
+	u32 dto_phase;
+	u32 dto_modulo = clock;
+	u32 wallclock_ratio;
+	u32 dto_cntl;
+
+	if (!dig || !dig->afmt)
+		return;
+
+	if (max_ratio >= 8) {
+		dto_phase = 192 * 1000;
+		wallclock_ratio = 3;
+	} else if (max_ratio >= 4) {
+		dto_phase = 96 * 1000;
+		wallclock_ratio = 2;
+	} else if (max_ratio >= 2) {
+		dto_phase = 48 * 1000;
+		wallclock_ratio = 1;
+	} else {
+		dto_phase = 24 * 1000;
+		wallclock_ratio = 0;
+	}
+
+	/* there are two DTOs selected by DCCG_AUDIO_DTO_SELECT.
+	 * doesn't matter which one you use.  Just use the first one.
+	 */
+	/* XXX two dtos; generally use dto0 for hdmi */
+	/* Express [24MHz / target pixel clock] as an exact rational
+	 * number (coefficient of two integer numbers.  DCCG_AUDIO_DTOx_PHASE
+	 * is the numerator, DCCG_AUDIO_DTOx_MODULE is the denominator
+	 */
+	if (ASIC_IS_DCE3(rdev)) {
+		/* according to the reg specs, this should DCE3.2 only, but in
+		 * practice it seems to cover DCE3.0 as well.
+		 */
+		if (dig->dig_encoder == 0) {
+			dto_cntl = RREG32(DCCG_AUDIO_DTO0_CNTL) & ~DCCG_AUDIO_DTO_WALLCLOCK_RATIO_MASK;
+			dto_cntl |= DCCG_AUDIO_DTO_WALLCLOCK_RATIO(wallclock_ratio);
+			WREG32(DCCG_AUDIO_DTO0_CNTL, dto_cntl);
+			WREG32(DCCG_AUDIO_DTO0_PHASE, dto_phase);
+			WREG32(DCCG_AUDIO_DTO0_MODULE, dto_modulo);
+			WREG32(DCCG_AUDIO_DTO_SELECT, 0); /* select DTO0 */
+		} else {
+			dto_cntl = RREG32(DCCG_AUDIO_DTO1_CNTL) & ~DCCG_AUDIO_DTO_WALLCLOCK_RATIO_MASK;
+			dto_cntl |= DCCG_AUDIO_DTO_WALLCLOCK_RATIO(wallclock_ratio);
+			WREG32(DCCG_AUDIO_DTO1_CNTL, dto_cntl);
+			WREG32(DCCG_AUDIO_DTO1_PHASE, dto_phase);
+			WREG32(DCCG_AUDIO_DTO1_MODULE, dto_modulo);
+			WREG32(DCCG_AUDIO_DTO_SELECT, 1); /* select DTO1 */
+		}
+	} else {
+		/* according to the reg specs, this should be DCE2.0 and DCE3.0 */
+		WREG32(AUDIO_DTO, AUDIO_DTO_PHASE(base_rate / 10) |
+		       AUDIO_DTO_MODULE(clock / 10));
+	}
+}
 
 /*
  * update the info frames with the data from the current display mode
@@ -244,12 +297,15 @@ void r600_hdmi_setmode(struct drm_encoder *encoder, struct drm_display_mode *mod
 	uint32_t offset;
 	ssize_t err;
 
+	if (!dig || !dig->afmt)
+		return;
+
 	/* Silent, r600_hdmi_enable will raise WARN for us */
 	if (!dig->afmt->enabled)
 		return;
 	offset = dig->afmt->offset;
 
-	r600_audio_set_clock(encoder, mode->clock);
+	r600_audio_set_dto(encoder, mode->clock);
 
 	WREG32(HDMI0_VBI_PACKET_CONTROL + offset,
 	       HDMI0_NULL_SEND); /* send null packets when required */
@@ -418,114 +474,75 @@ void r600_hdmi_update_audio_settings(struct drm_encoder *encoder)
 /*
  * enable the HDMI engine
  */
-void r600_hdmi_enable(struct drm_encoder *encoder)
+void r600_hdmi_enable(struct drm_encoder *encoder, bool enable)
 {
 	struct drm_device *dev = encoder->dev;
 	struct radeon_device *rdev = dev->dev_private;
 	struct radeon_encoder *radeon_encoder = to_radeon_encoder(encoder);
 	struct radeon_encoder_atom_dig *dig = radeon_encoder->enc_priv;
-	uint32_t offset;
-	u32 hdmi;
+	u32 hdmi = HDMI0_ERROR_ACK;
 
-	if (ASIC_IS_DCE6(rdev))
+	if (!dig || !dig->afmt)
 		return;
 
 	/* Silent, r600_hdmi_enable will raise WARN for us */
-	if (dig->afmt->enabled)
+	if (enable && dig->afmt->enabled)
 		return;
-	offset = dig->afmt->offset;
+	if (!enable && !dig->afmt->enabled)
+		return;
 
 	/* Older chipsets require setting HDMI and routing manually */
-	if (rdev->family >= CHIP_R600 && !ASIC_IS_DCE3(rdev)) {
-		hdmi = HDMI0_ERROR_ACK | HDMI0_ENABLE;
+	if (!ASIC_IS_DCE3(rdev)) {
+		if (enable)
+			hdmi |= HDMI0_ENABLE;
 		switch (radeon_encoder->encoder_id) {
 		case ENCODER_OBJECT_ID_INTERNAL_KLDSCP_TMDS1:
-			WREG32_P(AVIVO_TMDSA_CNTL, AVIVO_TMDSA_CNTL_HDMI_EN,
-				 ~AVIVO_TMDSA_CNTL_HDMI_EN);
-			hdmi |= HDMI0_STREAM(HDMI0_STREAM_TMDSA);
+			if (enable) {
+				WREG32_OR(AVIVO_TMDSA_CNTL, AVIVO_TMDSA_CNTL_HDMI_EN);
+				hdmi |= HDMI0_STREAM(HDMI0_STREAM_TMDSA);
+			} else {
+				WREG32_AND(AVIVO_TMDSA_CNTL, ~AVIVO_TMDSA_CNTL_HDMI_EN);
+			}
 			break;
 		case ENCODER_OBJECT_ID_INTERNAL_LVTM1:
-			WREG32_P(AVIVO_LVTMA_CNTL, AVIVO_LVTMA_CNTL_HDMI_EN,
-				 ~AVIVO_LVTMA_CNTL_HDMI_EN);
-			hdmi |= HDMI0_STREAM(HDMI0_STREAM_LVTMA);
+			if (enable) {
+				WREG32_OR(AVIVO_LVTMA_CNTL, AVIVO_LVTMA_CNTL_HDMI_EN);
+				hdmi |= HDMI0_STREAM(HDMI0_STREAM_LVTMA);
+			} else {
+				WREG32_AND(AVIVO_LVTMA_CNTL, ~AVIVO_LVTMA_CNTL_HDMI_EN);
+			}
 			break;
 		case ENCODER_OBJECT_ID_INTERNAL_DDI:
-			WREG32_P(DDIA_CNTL, DDIA_HDMI_EN, ~DDIA_HDMI_EN);
-			hdmi |= HDMI0_STREAM(HDMI0_STREAM_DDIA);
+			if (enable) {
+				WREG32_OR(DDIA_CNTL, DDIA_HDMI_EN);
+				hdmi |= HDMI0_STREAM(HDMI0_STREAM_DDIA);
+			} else {
+				WREG32_AND(DDIA_CNTL, ~DDIA_HDMI_EN);
+			}
 			break;
 		case ENCODER_OBJECT_ID_INTERNAL_KLDSCP_DVO1:
-			hdmi |= HDMI0_STREAM(HDMI0_STREAM_DVOA);
+			if (enable)
+				hdmi |= HDMI0_STREAM(HDMI0_STREAM_DVOA);
 			break;
 		default:
 			dev_err(rdev->dev, "Invalid encoder for HDMI: 0x%X\n",
 				radeon_encoder->encoder_id);
 			break;
 		}
-		WREG32(HDMI0_CONTROL + offset, hdmi);
+		WREG32(HDMI0_CONTROL + dig->afmt->offset, hdmi);
 	}
 
 	if (rdev->irq.installed) {
 		/* if irq is available use it */
-		radeon_irq_kms_enable_afmt(rdev, dig->afmt->id);
+		/* XXX: shouldn't need this on any asics.  Double check DCE2/3 */
+		if (enable)
+			radeon_irq_kms_enable_afmt(rdev, dig->afmt->id);
+		else
+			radeon_irq_kms_disable_afmt(rdev, dig->afmt->id);
 	}
 
-	dig->afmt->enabled = true;
+	dig->afmt->enabled = enable;
 
-	DRM_DEBUG("Enabling HDMI interface @ 0x%04X for encoder 0x%x\n",
-		  offset, radeon_encoder->encoder_id);
-}
-
-/*
- * disable the HDMI engine
- */
-void r600_hdmi_disable(struct drm_encoder *encoder)
-{
-	struct drm_device *dev = encoder->dev;
-	struct radeon_device *rdev = dev->dev_private;
-	struct radeon_encoder *radeon_encoder = to_radeon_encoder(encoder);
-	struct radeon_encoder_atom_dig *dig = radeon_encoder->enc_priv;
-	uint32_t offset;
-
-	if (ASIC_IS_DCE6(rdev))
-		return;
-
-	/* Called for ATOM_ENCODER_MODE_HDMI only */
-	if (!dig || !dig->afmt) {
-		return;
-	}
-	if (!dig->afmt->enabled)
-		return;
-	offset = dig->afmt->offset;
-
-	DRM_DEBUG("Disabling HDMI interface @ 0x%04X for encoder 0x%x\n",
-		  offset, radeon_encoder->encoder_id);
-
-	/* disable irq */
-	radeon_irq_kms_disable_afmt(rdev, dig->afmt->id);
-
-	/* Older chipsets not handled by AtomBIOS */
-	if (rdev->family >= CHIP_R600 && !ASIC_IS_DCE3(rdev)) {
-		switch (radeon_encoder->encoder_id) {
-		case ENCODER_OBJECT_ID_INTERNAL_KLDSCP_TMDS1:
-			WREG32_P(AVIVO_TMDSA_CNTL, 0,
-				 ~AVIVO_TMDSA_CNTL_HDMI_EN);
-			break;
-		case ENCODER_OBJECT_ID_INTERNAL_LVTM1:
-			WREG32_P(AVIVO_LVTMA_CNTL, 0,
-				 ~AVIVO_LVTMA_CNTL_HDMI_EN);
-			break;
-		case ENCODER_OBJECT_ID_INTERNAL_DDI:
-			WREG32_P(DDIA_CNTL, 0, ~DDIA_HDMI_EN);
-			break;
-		case ENCODER_OBJECT_ID_INTERNAL_KLDSCP_DVO1:
-			break;
-		default:
-			dev_err(rdev->dev, "Invalid encoder for HDMI: 0x%X\n",
-				radeon_encoder->encoder_id);
-			break;
-		}
-		WREG32(HDMI0_CONTROL + offset, HDMI0_ERROR_ACK);
-	}
-
-	dig->afmt->enabled = false;
+	DRM_DEBUG("%sabling HDMI interface @ 0x%04X for encoder 0x%x\n",
+		  enable ? "En" : "Dis", dig->afmt->offset, radeon_encoder->encoder_id);
 }

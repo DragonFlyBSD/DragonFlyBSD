@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/main.c,v 1.7 1999/11/30 03:49:18 billf Exp $
- * $DragonFly: src/games/robots/main.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
 #include "robots.h"
@@ -102,7 +101,7 @@ main(int argc, char **argv)
 	}
 
 	initscr();
-	signal(SIGINT, (sig_t)quit);
+	signal(SIGINT, quit);
 	cbreak();
 	noecho();
 	nonl();
@@ -119,7 +118,7 @@ main(int argc, char **argv)
 
 	srandomdev();
 	if (Real_time)
-		signal(SIGALRM, (sig_t)move_robots);
+		signal(SIGALRM, move_robots);
 	do {
 		init_field();
 		for (Level = Start_level; !Dead; Level++) {
@@ -131,7 +130,7 @@ main(int argc, char **argv)
 		refresh();
 		score();
 	} while (another());
-	quit();
+	quit(0);
 	/* NOTREACHED */
 	return(0);
 }
@@ -141,7 +140,7 @@ main(int argc, char **argv)
  *	Leave the program elegantly.
  */
 void
-quit(void)
+quit(__unused int sig)
 {
 	endwin();
 	exit(0);

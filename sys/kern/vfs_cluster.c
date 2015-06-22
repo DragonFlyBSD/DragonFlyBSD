@@ -1030,7 +1030,8 @@ cluster_callback(struct bio *bio)
 		panic("cluster_callback: unexpected EOF on cluster %p!", bio);
 	}
 
-	pmap_qremove(trunc_page((vm_offset_t) bp->b_data), bp->b_xio.xio_npages);
+	pmap_qremove(trunc_page((vm_offset_t) bp->b_data),
+		     bp->b_xio.xio_npages);
 	/*
 	 * Move memory from the large cluster buffer into the component
 	 * buffers and mark IO as done on these.  Since the memory map
@@ -1054,6 +1055,13 @@ cluster_callback(struct bio *bio)
 			 */
 			if (tbp->b_flags & B_DIRECT)
 				tbp->b_flags |= B_RELBUF;
+
+			/*
+			 * XXX I think biodone() below will do this, but do
+			 *     it here anyway for consistency.
+			 */
+			if (tbp->b_cmd == BUF_CMD_WRITE)
+				bundirty(tbp);
 		}
 		biodone(&tbp->b_bio1);
 	}
@@ -1506,7 +1514,12 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
 			bp->b_bcount += blksize;
 			bp->b_bufsize += blksize;
 
-			bundirty(tbp);
+			/*
+			 * NOTE: see bwrite/bawrite code for why we no longer
+			 *	 undirty tbp here.
+			 *
+			 *       bundirty(tbp); REMOVED
+			 */
 			tbp->b_flags &= ~B_ERROR;
 			tbp->b_cmd = BUF_CMD_WRITE;
 			BUF_KERNPROC(tbp);

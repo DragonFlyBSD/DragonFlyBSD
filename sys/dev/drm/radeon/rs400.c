@@ -27,7 +27,6 @@
  *
  * $FreeBSD: head/sys/dev/drm2/radeon/rs400.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
@@ -79,7 +78,7 @@ int rs400_gart_init(struct radeon_device *rdev)
 	int r;
 
 	if (rdev->gart.ptr) {
-		DRM_ERROR("RS400 GART already initialized\n");
+		WARN(1, "RS400 GART already initialized\n");
 		return 0;
 	}
 	/* Check gart size */
@@ -251,7 +250,7 @@ static void rs400_gpu_init(struct radeon_device *rdev)
 	/* FIXME: is this correct ? */
 	r420_pipes_init(rdev);
 	if (rs400_mc_wait_for_idle(rdev)) {
-		DRM_ERROR("rs400: Failed to wait MC idle while "
+		printk(KERN_WARNING "rs400: Failed to wait MC idle while "
 		       "programming pipes. Bad things might happen. %08x\n", RREG32(RADEON_MC_STATUS));
 	}
 }
@@ -421,6 +420,12 @@ static int rs400_startup(struct radeon_device *rdev)
 	}
 
 	/* Enable IRQ */
+	if (!rdev->irq.installed) {
+		r = radeon_irq_kms_init(rdev);
+		if (r)
+			return r;
+	}
+
 	r100_irq_set(rdev);
 	rdev->config.r300.hdp_cntl = RREG32(RADEON_HOST_PATH_CNTL);
 	/* 1M ring buffer */
@@ -490,7 +495,7 @@ void rs400_fini(struct radeon_device *rdev)
 	radeon_fence_driver_fini(rdev);
 	radeon_bo_fini(rdev);
 	radeon_atombios_fini(rdev);
-	drm_free(rdev->bios, M_DRM);
+	kfree(rdev->bios);
 	rdev->bios = NULL;
 }
 
@@ -537,9 +542,6 @@ int rs400_init(struct radeon_device *rdev)
 	rs400_mc_init(rdev);
 	/* Fence driver */
 	r = radeon_fence_driver_init(rdev);
-	if (r)
-		return r;
-	r = radeon_irq_kms_init(rdev);
 	if (r)
 		return r;
 	/* Memory manager */

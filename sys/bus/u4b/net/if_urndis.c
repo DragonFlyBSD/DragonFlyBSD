@@ -855,12 +855,12 @@ urndis_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 				    rm_dataoffset), actlen);
 				goto tr_setup;
 			} else if (msg.rm_datalen < (uint32_t)sizeof(struct ether_header)) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				DPRINTF("invalid ethernet size "
 				    "%u < %u\n", msg.rm_datalen, (unsigned)sizeof(struct ether_header));
 				goto tr_setup;
 			} else if (msg.rm_datalen > (uint32_t)MCLBYTES) {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 				DPRINTF("invalid ethernet size "
 				    "%u > %u\n",
 				    msg.rm_datalen, (unsigned)MCLBYTES);
@@ -882,7 +882,7 @@ urndis_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 				/* enqueue */
 				uether_rxmbuf(&sc->sc_ue, m, msg.rm_datalen);
 			} else {
-				ifp->if_ierrors++;
+				IFNET_STAT_INC(ifp, ierrors, 1);
 			}
 			offset += msg.rm_len;
 			actlen -= msg.rm_len;
@@ -928,11 +928,15 @@ urndis_bulk_write_callback(struct usb_xfer *xfer, usb_error_t error)
 	case USB_ST_TRANSFERRED:
 		DPRINTFN(11, "%u bytes in %u frames\n", actlen, aframes);
 
-		ifp->if_opackets++;
+		ifq_clr_oactive(&ifp->if_snd);
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 		/* FALLTHROUGH */
 	case USB_ST_SETUP:
 tr_setup:
+		if (ifq_is_oactive(&ifp->if_snd)) {
+			return;
+		}
 		memset(&msg, 0, sizeof(msg));
 
 		for (x = 0; x != RNDIS_TX_FRAMES_MAX; x++) {
@@ -948,7 +952,7 @@ tr_setup:
 
 			if ((m->m_pkthdr.len + sizeof(msg)) > RNDIS_TX_MAXLEN) {
 				DPRINTF("Too big packet\n");
-				ifp->if_oerrors++;
+				IFNET_STAT_INC(ifp, oerrors, 1);
 
 				/* Free buffer */
 				m_freem(m);
@@ -977,6 +981,7 @@ tr_setup:
 		if (x != 0) {
 			usbd_xfer_set_frames(xfer, x);
 			usbd_transfer_submit(xfer);
+			ifq_set_oactive(&ifp->if_snd);
 		}
 		break;
 
@@ -984,8 +989,8 @@ tr_setup:
 		DPRINTFN(11, "transfer error, %s\n", usbd_errstr(error));
 
 		/* count output errors */
-		ifp->if_oerrors++;
-
+		IFNET_STAT_INC(ifp, oerrors, 1);
+		ifq_clr_oactive(&ifp->if_snd);
 		if (error != USB_ERR_CANCELLED) {
 			/* try to clear stall first */
 			usbd_xfer_set_stall(xfer);

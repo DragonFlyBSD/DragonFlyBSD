@@ -30,9 +30,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: head/bin/sh/arith_yacc.c 230530 2012-01-25 08:42:19Z charnier $
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <limits.h>
 #include <errno.h>
@@ -41,7 +42,6 @@
 #include <stdio.h>
 #include "arith.h"
 #include "arith_yacc.h"
-#include "builtins.h"
 #include "expand.h"
 #include "shell.h"
 #include "error.h"
@@ -84,15 +84,15 @@ static const char prec[ARITH_BINOP_MAX - ARITH_BINOP_MIN] = {
 
 #define ARITH_MAX_PREC 8
 
-static __dead2 void
-yyerror(const char *s)
+int letcmd(int, char **);
+
+static __dead2 void yyerror(const char *s)
 {
 	error("arithmetic expression: %s: \"%s\"", s, arith_startbuf);
 	/* NOTREACHED */
 }
 
-static arith_t
-arith_lookupvarint(char *varname)
+static arith_t arith_lookupvarint(char *varname)
 {
 	const char *str;
 	char *p;
@@ -110,20 +110,17 @@ arith_lookupvarint(char *varname)
 	return result;
 }
 
-static inline int
-arith_prec(int op)
+static inline int arith_prec(int op)
 {
 	return prec[op - ARITH_BINOP_MIN];
 }
 
-static inline int
-higher_prec(int op1, int op2)
+static inline int higher_prec(int op1, int op2)
 {
 	return arith_prec(op1) < arith_prec(op2);
 }
 
-static arith_t
-do_binop(int op, arith_t a, arith_t b)
+static arith_t do_binop(int op, arith_t a, arith_t b)
 {
 
 	switch (op) {
@@ -142,9 +139,9 @@ do_binop(int op, arith_t a, arith_t b)
 	case ARITH_SUB:
 		return (uintmax_t)a - (uintmax_t)b;
 	case ARITH_LSHIFT:
-		return a << b;
+		return (uintmax_t)a << (b & (sizeof(uintmax_t) * CHAR_BIT - 1));
 	case ARITH_RSHIFT:
-		return a >> b;
+		return a >> (b & (sizeof(uintmax_t) * CHAR_BIT - 1));
 	case ARITH_LT:
 		return a < b;
 	case ARITH_LE:
@@ -168,8 +165,7 @@ do_binop(int op, arith_t a, arith_t b)
 
 static arith_t assignment(int var, int noeval);
 
-static arith_t
-primary(int token, union yystype *val, int op, int noeval)
+static arith_t primary(int token, union yystype *val, int op, int noeval)
 {
 	arith_t result;
 
@@ -206,8 +202,7 @@ again:
 	}
 }
 
-static arith_t
-binop2(arith_t a, int op, int precedence, int noeval)
+static arith_t binop2(arith_t a, int op, int precedence, int noeval)
 {
 	for (;;) {
 		union yystype val;
@@ -237,8 +232,7 @@ binop2(arith_t a, int op, int precedence, int noeval)
 	}
 }
 
-static arith_t
-binop(int token, union yystype *val, int op, int noeval)
+static arith_t binop(int token, union yystype *val, int op, int noeval)
 {
 	arith_t a = primary(token, val, op, noeval);
 
@@ -249,8 +243,7 @@ binop(int token, union yystype *val, int op, int noeval)
 	return binop2(a, op, ARITH_MAX_PREC, noeval);
 }
 
-static arith_t
-and(int token, union yystype *val, int op, int noeval)
+static arith_t and(int token, union yystype *val, int op, int noeval)
 {
 	arith_t a = binop(token, val, op, noeval);
 	arith_t b;
@@ -267,8 +260,7 @@ and(int token, union yystype *val, int op, int noeval)
 	return a && b;
 }
 
-static arith_t
-or(int token, union yystype *val, int op, int noeval)
+static arith_t or(int token, union yystype *val, int op, int noeval)
 {
 	arith_t a = and(token, val, op, noeval);
 	arith_t b;
@@ -285,8 +277,7 @@ or(int token, union yystype *val, int op, int noeval)
 	return a || b;
 }
 
-static arith_t
-cond(int token, union yystype *val, int op, int noeval)
+static arith_t cond(int token, union yystype *val, int op, int noeval)
 {
 	arith_t a = or(token, val, op, noeval);
 	arith_t b;
@@ -308,8 +299,7 @@ cond(int token, union yystype *val, int op, int noeval)
 	return a ? b : c;
 }
 
-static arith_t
-assignment(int var, int noeval)
+static arith_t assignment(int var, int noeval)
 {
 	union yystype val = yylval;
 	int op = yylex();
@@ -333,8 +323,7 @@ assignment(int var, int noeval)
 	return result;
 }
 
-arith_t
-arith(const char *s)
+arith_t arith(const char *s)
 {
 	struct stackmark smark;
 	arith_t result;
@@ -390,4 +379,3 @@ letcmd(int argc, char **argv)
 	out1fmt(ARITH_FORMAT_STR "\n", i);
 	return !i;
 }
-

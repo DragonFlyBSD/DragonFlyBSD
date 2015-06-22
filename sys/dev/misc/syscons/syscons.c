@@ -5,6 +5,8 @@
  * This code is derived from software contributed to The DragonFly Project
  * by Sascha Wildner <saw@online.de>
  *
+ * Simple font scaling code by Sascha Wildner and Matthew Dillon
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -34,9 +36,6 @@
 #include "use_splash.h"
 #include "opt_syscons.h"
 #include "opt_ddb.h"
-#ifdef __i386__
-#include "use_apm.h"
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -59,11 +58,9 @@
 #include <machine/console.h>
 #include <machine/psl.h>
 #include <machine/pc/display.h>
-#ifdef __i386__
-#include <machine/apm_bios.h>
-#endif
 #include <machine/frame.h>
 
+#include <dev/drm/include/linux/fb.h>
 #include <dev/misc/kbd/kbdreg.h>
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>
@@ -74,6 +71,9 @@
 
 #define DEFAULT_BLANKTIME	(5*60)		/* 5 minutes */
 #define MAX_BLANKTIME		(7*24*60*60)	/* 7 days!? */
+
+#define SCRN_ASYNCOK		0x0001
+#define SCRN_BULKUNLOCK		0x0002
 
 #define KEYCODE_BS		0x0e		/* "<-- Backspace" key, XXX */
 #define WANT_UNLOCK(m) do {	  \
@@ -146,7 +146,7 @@ static	cdev_t	cctl_dev;
 static	timeout_t blink_screen_callout;
 #endif
 static  void	sc_blink_screen(scr_stat *scp);
-static	struct mtx	syscons_mtx = MTX_INITIALIZER;
+static	struct mtx	syscons_mtx = MTX_INITIALIZER("syscons");
 
 /* prototypes */
 static int scvidprobe(int unit, int flags, int cons);
@@ -169,7 +169,8 @@ static scr_stat *alloc_scp(sc_softc_t *sc, int vty);
 static void init_scp(sc_softc_t *sc, int vty, scr_stat *scp);
 static timeout_t scrn_timer;
 static int and_region(int *s1, int *e1, int s2, int e2);
-static void scrn_update(scr_stat *scp, int show_cursor);
+static void scrn_update(scr_stat *scp, int show_cursor, int flags);
+static void scrn_update_thread(void *arg);
 
 #if NSPLASH > 0
 static int scsplash_callback(int event, void *arg);
@@ -270,6 +271,41 @@ sc_probe_unit(int unit, int flags)
     /* syscons will be attached even when there is no keyboard */
     sckbdprobe(unit, flags, FALSE);
 
+    return 0;
+}
+
+int
+register_framebuffer(struct fb_info *info)
+{
+    sc_softc_t *sc;
+
+    /* For now ignore framebuffers, which don't replace the vga display */
+    if (!info->is_vga_boot_display)
+	return 0;
+
+    lwkt_gettoken(&tty_token);
+    sc = sc_get_softc(0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
+    if (sc == NULL) {
+	lwkt_reltoken(&tty_token);
+        kprintf("%s: sc_get_softc(%d, %d) returned NULL\n", __func__,
+	    0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
+	return 0;
+    }
+
+    /* Ignore this framebuffer if we have already switched to a framebuffer */
+    if (sc->fbi != NULL) {
+	lwkt_reltoken(&tty_token);
+	return 0;
+    }
+
+    sc->fbi = info;
+
+    if (sc->fbi != NULL) {
+	sc_update_render(sc->cur_scp);
+	sc->fbi->restore(sc->fbi->cookie);
+    }
+
+    lwkt_reltoken(&tty_token);
     return 0;
 }
 
@@ -562,6 +598,15 @@ scopen(struct dev_open_args *ap)
 	tp->t_winsize.ws_row = scp->ysize;
     }
 
+    /*
+     * Start optional support thread for syscons refreshes.  This thread
+     * will execute the refresh without the syscons_lock held and will
+     * allow interrupts while it is doing so.
+     */
+    if (scp->asynctd == NULL) {
+	    lwkt_create(scrn_update_thread, scp, &scp->asynctd, NULL, 0, -1,
+			"syscons%d", SC_VTY(dev));
+    }
     lwkt_reltoken(&tty_token);
     return error;
 }
@@ -845,7 +890,7 @@ scioctl(struct dev_ioctl_args *ap)
 	vid_info_t *ptr = (vid_info_t*)data;
 	if (ptr->size == sizeof(struct vid_info)) {
 	    ptr->m_num = sc->cur_scp->index;
-	    ptr->font_size = scp->font_size;
+	    ptr->font_size = scp->font_height;
 	    ptr->mv_col = scp->xpos;
 	    ptr->mv_row = scp->ypos;
 	    ptr->mv_csz = scp->xsize;
@@ -1405,7 +1450,7 @@ scioctl(struct dev_ioctl_args *ap)
 	 * Always use the font page #0. XXX
 	 * Don't load if the current font size is not 8x8.
 	 */
-	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_size < 14))
+	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_height < 14))
 	    sc_load_font(sc->cur_scp, 0, 8, sc->font_8, 0, 256);
 	syscons_unlock();
 	lwkt_reltoken(&tty_token);
@@ -1440,8 +1485,8 @@ scioctl(struct dev_ioctl_args *ap)
 	 * Don't load if the current font size is not 8x14.
 	 */
 	if (ISTEXTSC(sc->cur_scp)
-	    && (sc->cur_scp->font_size >= 14)
-	    && (sc->cur_scp->font_size < 16)) {
+	    && (sc->cur_scp->font_height >= 14)
+	    && (sc->cur_scp->font_height < 16)) {
 	    sc_load_font(sc->cur_scp, 0, 14, sc->font_14, 0, 256);
 	}
 	syscons_unlock();
@@ -1476,7 +1521,7 @@ scioctl(struct dev_ioctl_args *ap)
 	 * Always use the font page #0. XXX
 	 * Don't load if the current font size is not 8x16.
 	 */
-	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_size >= 16))
+	if (ISTEXTSC(sc->cur_scp) && (sc->cur_scp->font_height >= 16))
 	    sc_load_font(sc->cur_scp, 0, 16, sc->font_16, 0, 256);
 	syscons_unlock();
 	lwkt_reltoken(&tty_token);
@@ -1819,7 +1864,7 @@ sccnupdate(scr_stat *scp)
      */
 
     if (!ISGRAPHSC(scp) && !(scp->sc->flags & SC_SCRN_BLANKED))
-	scrn_update(scp, TRUE);
+	scrn_update(scp, TRUE, SCRN_ASYNCOK);
 }
 
 static void
@@ -1916,7 +1961,7 @@ scrn_timer(void *arg)
     /* Update the screen */
     scp = sc->cur_scp;		/* cur_scp may have changed... */
     if (!ISGRAPHSC(scp) && !(sc->flags & SC_SCRN_BLANKED))
-	scrn_update(scp, TRUE);
+	scrn_update(scp, TRUE, SCRN_ASYNCOK);
 
 #if NSPLASH > 0
     /* should we activate the screen saver? */
@@ -1940,17 +1985,43 @@ and_region(int *s1, int *e1, int s2, int e2)
     return TRUE;
 }
 
+/*
+ * Refresh modified frame buffer range.  Also used to
+ * scroll (entire FB is marked modified).
+ *
+ * This function is allowed to run without the syscons_lock,
+ * so scp fields can change unexpected.  We cache most values
+ * that we care about and silently discard illegal ranges.
+ */
 static void 
-scrn_update(scr_stat *scp, int show_cursor)
+scrn_update(scr_stat *scp, int show_cursor, int flags)
 {
     int start;
     int end;
     int s;
     int e;
 
+    /*
+     * Try to run large screen updates as an async operation.
+     */
+    if ((flags & SCRN_ASYNCOK) && scp->asynctd &&
+	(scp->end - scp->start) > 16 &&
+	panicstr == NULL && shutdown_in_progress == 0) {
+	scp->show_cursor = show_cursor;
+	scp->queue_update_td = 1;
+	wakeup(&scp->asynctd);
+	return;
+    }
+    if (flags & SCRN_BULKUNLOCK)
+	syscons_lock();
+
+    /*
+     * Synchronous operation or called from
+     */
+
     /* assert(scp == scp->sc->cur_scp) */
 
-    ++scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, 1);
 
 #ifndef SC_NO_CUTPASTE
     /* remove the previous mouse pointer image if necessary */
@@ -1982,52 +2053,54 @@ scrn_update(scr_stat *scp, int show_cursor)
     }
 #endif
 
-    /* update screen image */
-    if (scp->start <= scp->end)  {
-	if (scp->mouse_cut_end >= 0) {
-	    /* there is a marked region for cut & paste */
-	    if (scp->mouse_cut_start <= scp->mouse_cut_end) {
-		start = scp->mouse_cut_start;
-		end = scp->mouse_cut_end;
-	    } else {
-		start = scp->mouse_cut_end;
-		end = scp->mouse_cut_start - 1;
+    /*
+     * Main update, extract update range and reset
+     * ASAP.
+     */
+    start = scp->start;
+    end = scp->end;
+    scp->end = 0;
+    scp->start = scp->xsize * scp->ysize - 1;
+
+    if (start <= end)  {
+	if (flags & SCRN_BULKUNLOCK)
+	    syscons_unlock();
+	(*scp->rndr->draw)(scp, start, end - start + 1, FALSE);
+	if (flags & SCRN_BULKUNLOCK)
+	    syscons_lock();
+
+	/*
+	 * Handle cut sequence
+	 */
+	s = scp->mouse_cut_start;
+	e = scp->mouse_cut_end;
+	cpu_ccfence();		/* allowed to race */
+
+	if (e >= 0) {
+	    if (s > e) {
+		int r = s;
+		s = e;
+		e = r;
 	    }
-	    s = start;
-	    e = end;
 	    /* does the cut-mark region overlap with the update region? */
-	    if (and_region(&s, &e, scp->start, scp->end)) {
+	    if (and_region(&s, &e, start, end)) {
+		if (flags & SCRN_BULKUNLOCK)
+		    syscons_unlock();
 		(*scp->rndr->draw)(scp, s, e - s + 1, TRUE);
-		s = 0;
-		e = start - 1;
-		if (and_region(&s, &e, scp->start, scp->end))
-		    (*scp->rndr->draw)(scp, s, e - s + 1, FALSE);
-		s = end + 1;
-		e = scp->xsize*scp->ysize - 1;
-		if (and_region(&s, &e, scp->start, scp->end))
-		    (*scp->rndr->draw)(scp, s, e - s + 1, FALSE);
-	    } else {
-		(*scp->rndr->draw)(scp, scp->start,
-				   scp->end - scp->start + 1, FALSE);
+		if (flags & SCRN_BULKUNLOCK)
+		    syscons_lock();
 	    }
-	} else {
-	    (*scp->rndr->draw)(scp, scp->start,
-			       scp->end - scp->start + 1, FALSE);
 	}
     }
 
     /* we are not to show the cursor and the mouse pointer... */
-    if (!show_cursor) {
-        scp->end = 0;
-        scp->start = scp->xsize*scp->ysize - 1;
-	--scp->sc->videoio_in_progress;
-	return;
-    }
+    if (!show_cursor)
+	goto cleanup;
 
     /* update cursor image */
     if (scp->status & CURSOR_ENABLED) {
-	s = scp->start;
-	e = scp->end;
+	s = start;
+	e = end;
         /* did cursor move since last time ? */
         if (scp->cursor_pos != scp->cursor_oldpos) {
             /* do we need to remove old cursor image ? */
@@ -2056,10 +2129,34 @@ scrn_update(scr_stat *scp, int show_cursor)
     }
 #endif /* SC_NO_CUTPASTE */
 
-    scp->end = 0;
-    scp->start = scp->xsize*scp->ysize - 1;
+    /*
+     * Cleanup
+     */
+cleanup:
+    atomic_add_int(&scp->sc->videoio_in_progress, -1);
+    if (flags & SCRN_BULKUNLOCK)
+	syscons_unlock();
+}
 
-    --scp->sc->videoio_in_progress;
+/*
+ * Thread handles potentially expensive screen updates.   The function is
+ * expected to operate safely without locks.
+ */
+static void
+scrn_update_thread(void *arg)
+{
+	scr_stat *scp = arg;
+	for (;;) {
+		if (scp->queue_update_td == 0) {
+			tsleep_interlock(&scp->asynctd, 0);
+			if (scp->queue_update_td == 0)
+				tsleep(&scp->asynctd, PINTERLOCKED, "wait", 0);
+		}
+		scp->queue_update_td = 0;
+		atomic_add_int(&scp->sc->videoio_in_progress, 1);
+		scrn_update(scp, scp->show_cursor, SCRN_BULKUNLOCK);
+		atomic_add_int(&scp->sc->videoio_in_progress, -1);
+	}
 }
 
 #if NSPLASH > 0
@@ -2636,6 +2733,7 @@ exchange_scr(sc_softc_t *sc)
 	sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, scp->xsize, scp->ysize,
 		    (void *)sc->adp->va_window, FALSE);
     scp->status |= MOUSE_HIDDEN;
+    sc_update_render(scp);     /* Switch to kms renderer if necessary */
     sc_move_cursor(scp, scp->xpos, scp->ypos);
     if (!ISGRAPHSC(scp))
 	sc_set_cursor_image(scp);
@@ -2651,6 +2749,9 @@ exchange_scr(sc_softc_t *sc)
     update_kbd_state(scp, scp->status, LOCK_MASK, TRUE);
 
     mark_all(scp);
+    if (scp->sc->fbi != NULL) {
+	scp->sc->fbi->restore(scp->sc->fbi->cookie);
+    }
     lwkt_reltoken(&tty_token);
 }
 
@@ -2675,23 +2776,23 @@ void
 sc_draw_cursor_image(scr_stat *scp)
 {
     /* assert(scp == scp->sc->cur_scp); */
-    ++scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, 1);
     (*scp->rndr->draw_cursor)(scp, scp->cursor_pos,
 			      scp->sc->flags & SC_BLINK_CURSOR, TRUE,
 			      sc_inside_cutmark(scp, scp->cursor_pos));
     scp->cursor_oldpos = scp->cursor_pos;
-    --scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, -1);
 }
 
 void
 sc_remove_cursor_image(scr_stat *scp)
 {
     /* assert(scp == scp->sc->cur_scp); */
-    ++scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, 1);
     (*scp->rndr->draw_cursor)(scp, scp->cursor_oldpos,
 			      scp->sc->flags & SC_BLINK_CURSOR, FALSE,
 			      sc_inside_cutmark(scp, scp->cursor_oldpos));
-    --scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, -1);
 }
 
 static void
@@ -2701,21 +2802,21 @@ update_cursor_image(scr_stat *scp)
 
     if (scp->sc->flags & SC_CHAR_CURSOR) {
 	scp->cursor_base = imax(0, scp->sc->cursor_base);
-	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_size);
+	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_height);
     } else {
 	scp->cursor_base = 0;
-	scp->cursor_height = scp->font_size;
+	scp->cursor_height = scp->font_height;
     }
     blink = scp->sc->flags & SC_BLINK_CURSOR;
 
     /* assert(scp == scp->sc->cur_scp); */
-    ++scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, 1);
     (*scp->rndr->draw_cursor)(scp, scp->cursor_oldpos, blink, FALSE, 
 			      sc_inside_cutmark(scp, scp->cursor_pos));
     (*scp->rndr->set_cursor)(scp, scp->cursor_base, scp->cursor_height, blink);
     (*scp->rndr->draw_cursor)(scp, scp->cursor_pos, blink, TRUE, 
 			      sc_inside_cutmark(scp, scp->cursor_pos));
-    --scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, -1);
 }
 
 void
@@ -2723,17 +2824,17 @@ sc_set_cursor_image(scr_stat *scp)
 {
     if (scp->sc->flags & SC_CHAR_CURSOR) {
 	scp->cursor_base = imax(0, scp->sc->cursor_base);
-	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_size);
+	scp->cursor_height = imin(scp->sc->cursor_height, scp->font_height);
     } else {
 	scp->cursor_base = 0;
-	scp->cursor_height = scp->font_size;
+	scp->cursor_height = scp->font_height;
     }
 
     /* assert(scp == scp->sc->cur_scp); */
-    ++scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, 1);
     (*scp->rndr->set_cursor)(scp, scp->cursor_base, scp->cursor_height,
 			     scp->sc->flags & SC_BLINK_CURSOR);
-    --scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, -1);
 }
 
 static void
@@ -2863,12 +2964,12 @@ scinit(int unit, int flags)
 	scp->xpos = col;
 	scp->ypos = row;
 	scp->cursor_pos = scp->cursor_oldpos = row*scp->xsize + col;
-	if (bios_value.cursor_end < scp->font_size)
-	    sc->cursor_base = scp->font_size - bios_value.cursor_end - 1;
+	if (bios_value.cursor_end < scp->font_height)
+	    sc->cursor_base = scp->font_height - bios_value.cursor_end - 1;
 	else
 	    sc->cursor_base = 0;
 	i = bios_value.cursor_end - bios_value.cursor_start + 1;
-	sc->cursor_height = imin(i, scp->font_size);
+	sc->cursor_height = imin(i, scp->font_height);
 #ifndef SC_NO_SYSMOUSE
 	sc_mouse_move(scp, scp->xpixel/2, scp->ypixel/2);
 #endif
@@ -2886,18 +2987,18 @@ scinit(int unit, int flags)
 	    bcopy(dflt_font_14, sc->font_14, sizeof(dflt_font_14));
 	    bcopy(dflt_font_16, sc->font_16, sizeof(dflt_font_16));
 	    sc->fonts_loaded = FONT_16 | FONT_14 | FONT_8;
-	    if (scp->font_size < 14) {
+	    if (scp->font_height < 14) {
 		sc_load_font(scp, 0, 8, sc->font_8, 0, 256);
-	    } else if (scp->font_size >= 16) {
+	    } else if (scp->font_height >= 16) {
 		sc_load_font(scp, 0, 16, sc->font_16, 0, 256);
 	    } else {
 		sc_load_font(scp, 0, 14, sc->font_14, 0, 256);
 	    }
 #else /* !SC_DFLT_FONT */
-	    if (scp->font_size < 14) {
+	    if (scp->font_height < 14) {
 		sc_save_font(scp, 0, 8, sc->font_8, 0, 256);
 		sc->fonts_loaded = FONT_8;
-	    } else if (scp->font_size >= 16) {
+	    } else if (scp->font_height >= 16) {
 		sc_save_font(scp, 0, 16, sc->font_16, 0, 256);
 		sc->fonts_loaded = FONT_16;
 	    } else {
@@ -3102,6 +3203,7 @@ static void
 init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 {
     video_info_t info;
+    int scaled_font_height;
 
     bzero(scp, sizeof(*scp));
 
@@ -3119,29 +3221,31 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 	scp->ypixel = info.vi_height;
 	scp->xsize = info.vi_width/8;
 	scp->ysize = info.vi_height/info.vi_cheight;
-	scp->font_size = 0;
+	scp->font_height = 0;
+	scp->font_width = 0;
 	scp->font = NULL;
     } else {
 	scp->xsize = info.vi_width;
 	scp->ysize = info.vi_height;
 	scp->xpixel = scp->xsize*8;
 	scp->ypixel = scp->ysize*info.vi_cheight;
+	scp->font_width = 8;
 	if (info.vi_cheight < 14) {
-	    scp->font_size = 8;
+	    scp->font_height = 8;
 #ifndef SC_NO_FONT_LOADING
 	    scp->font = sc->font_8;
 #else
 	    scp->font = NULL;
 #endif
 	} else if (info.vi_cheight >= 16) {
-	    scp->font_size = 16;
+	    scp->font_height = 16;
 #ifndef SC_NO_FONT_LOADING
 	    scp->font = sc->font_16;
 #else
 	    scp->font = NULL;
 #endif
 	} else {
-	    scp->font_size = 14;
+	    scp->font_height = 14;
 #ifndef SC_NO_FONT_LOADING
 	    scp->font = sc->font_14;
 #else
@@ -3149,10 +3253,23 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 #endif
 	}
     }
-    sc_vtb_init(&scp->vtb, VTB_MEMORY, 0, 0, NULL, FALSE);
-    sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, 0, 0, NULL, FALSE);
     scp->xoff = scp->yoff = 0;
     scp->xpos = scp->ypos = 0;
+    scp->fbi = sc->fbi;
+    if (scp->fbi != NULL) {
+	scp->xpixel = scp->fbi->width;
+	scp->ypixel = scp->fbi->height;
+
+	scp->blk_width = scp->xpixel / 80;
+	scaled_font_height = scp->blk_width * 100 / scp->font_width;
+	scp->blk_height = scp->ypixel * 100 / scaled_font_height;
+
+	scp->xsize = scp->xpixel / scp->blk_width;
+	scp->ysize = scp->ypixel / scp->blk_height;
+	scp->xpad = scp->fbi->stride / 4 - scp->xsize * scp->blk_width;
+    }
+    sc_vtb_init(&scp->vtb, VTB_MEMORY, 0, 0, NULL, FALSE);
+    sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, 0, 0, NULL, FALSE);
     scp->start = scp->xsize * scp->ysize - 1;
     scp->end = 0;
     scp->tsw = NULL;
@@ -3160,8 +3277,8 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     scp->rndr = NULL;
     scp->border = BG_BLACK;
     scp->cursor_base = sc->cursor_base;
-    scp->cursor_height = imin(sc->cursor_height, scp->font_size);
-    scp->mouse_cut_start = scp->xsize*scp->ysize;
+    scp->cursor_height = imin(sc->cursor_height, scp->font_height);
+    scp->mouse_cut_start = scp->xsize * scp->ysize;
     scp->mouse_cut_end = -1;
     scp->mouse_signal = 0;
     scp->mouse_pid = 0;
@@ -3198,6 +3315,9 @@ sc_init_emulator(scr_stat *scp, char *name)
     rndr = NULL;
     if (strcmp(sw->te_renderer, "*") != 0) {
 	rndr = sc_render_match(scp, sw->te_renderer, scp->model);
+    }
+    if (rndr == NULL && scp->sc->fbi != NULL) {
+	rndr = sc_render_match(scp, "kms", scp->model);
     }
     if (rndr == NULL) {
 	rndr = sc_render_match(scp, scp->sc->adp->va_name, scp->model);
@@ -3455,18 +3575,9 @@ next_code:
 #endif
 		break;
 
-#if __i386__ && NAPM > 0
-	    case SUSP:
-		apm_suspend(PMST_SUSPEND);
-		break;
-	    case STBY:
-		apm_suspend(PMST_STANDBY);
-		break;
-#else
 	    case SUSP:
 	    case STBY:
 		break;
-#endif
 
 	    case DBG:
 #ifndef SC_DISABLE_DDBKEY
@@ -3628,7 +3739,7 @@ set_mode(scr_stat *scp)
 
     lwkt_gettoken(&tty_token);
     /* reject unsupported mode */
-    if ((*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, scp->mode, &info)) {
+    if (scp->sc->fbi == NULL && (*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, scp->mode, &info)) {
         lwkt_reltoken(&tty_token);
 	return 1;
     }
@@ -3640,18 +3751,21 @@ set_mode(scr_stat *scp)
     }
 
     /* setup video hardware for the given mode */
-    (*vidsw[scp->sc->adapter]->set_mode)(scp->sc->adp, scp->mode);
+    if (scp->sc->fbi == NULL)
+	(*vidsw[scp->sc->adapter]->set_mode)(scp->sc->adp, scp->mode);
     sc_vtb_init(&scp->scr, VTB_FRAMEBUFFER, scp->xsize, scp->ysize,
 		(void *)scp->sc->adp->va_window, FALSE);
+    if (scp->sc->fbi != NULL)
+	goto done;
 
 #ifndef SC_NO_FONT_LOADING
     /* load appropriate font */
     if (!(scp->status & GRAPHICS_MODE)) {
 	if (!(scp->status & PIXEL_MODE) && ISFONTAVAIL(scp->sc->adp->va_flags)) {
-	    if (scp->font_size < 14) {
+	    if (scp->font_height < 14) {
 		if (scp->sc->fonts_loaded & FONT_8)
 		    sc_load_font(scp, 0, 8, scp->sc->font_8, 0, 256);
-	    } else if (scp->font_size >= 16) {
+	    } else if (scp->font_height >= 16) {
 		if (scp->sc->fonts_loaded & FONT_16)
 		    sc_load_font(scp, 0, 16, scp->sc->font_16, 0, 256);
 	    } else {
@@ -3674,6 +3788,7 @@ set_mode(scr_stat *scp)
     sc_set_border(scp, scp->border);
     sc_set_cursor_image(scp);
 
+done:
     lwkt_reltoken(&tty_token);
     return 0;
 }
@@ -3708,9 +3823,9 @@ refresh_ega_palette(scr_stat *scp)
 void
 sc_set_border(scr_stat *scp, int color)
 {
-    ++scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, 1);
     (*scp->rndr->draw_border)(scp, color);
-    --scp->sc->videoio_in_progress;
+    atomic_add_int(&scp->sc->videoio_in_progress, -1);
 }
 
 #ifndef SC_NO_FONT_LOADING
@@ -3750,6 +3865,13 @@ sc_paste(scr_stat *scp, u_char *p, int count)
 {
     struct tty *tp;
     u_char *rmap;
+
+    /*
+     * Holy hell, don't try to inject a paste buffer if the keyboard
+     * is not in ascii mode!
+     */
+    if (scp->kbd_mode != K_XLATE)
+	return;
 
     lwkt_gettoken(&tty_token);
     if (scp->status & MOUSE_VISIBLE) {

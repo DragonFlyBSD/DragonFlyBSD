@@ -238,6 +238,8 @@ typedef enum
     ASL_MSG_MISSING_DEPENDENCY,
     ASL_MSG_ILLEGAL_FORWARD_REF,
     ASL_MSG_ILLEGAL_METHOD_REF,
+    ASL_MSG_LOCAL_NOT_USED,
+    ASL_MSG_ARG_NOT_USED,
 
     /* These messages are used by the Data Table compiler only */
 
@@ -267,6 +269,7 @@ typedef enum
     ASL_MSG_UNKNOWN_DIRECTIVE,
     ASL_MSG_UNKNOWN_PRAGMA,
     ASL_MSG_WARNING_DIRECTIVE,
+    ASL_MSG_INCLUDE_FILE
 
 } ASL_MESSAGE_IDS;
 

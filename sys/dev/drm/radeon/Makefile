@@ -74,7 +74,26 @@ SRCS	+=								\
 	cayman_blit_shaders.c						\
 	ni.c								\
 	si.c								\
-	si_blit_shaders.c
+	si_blit_shaders.c						\
+	radeon_uvd.c							\
+	cik.c								\
+	cik_blit_shaders.c						\
+	r600_dpm.c							\
+	rs780_dpm.c							\
+	rv6xx_dpm.c							\
+	rv770_dpm.c							\
+	rv730_dpm.c							\
+	rv740_dpm.c							\
+	rv770_smc.c							\
+	cypress_dpm.c							\
+	btc_dpm.c							\
+	sumo_dpm.c							\
+	sumo_smc.c							\
+	trinity_dpm.c							\
+	trinity_smc.c							\
+	ni_dpm.c							\
+	si_smc.c							\
+	si_dpm.c
 
 
 # UMS driver

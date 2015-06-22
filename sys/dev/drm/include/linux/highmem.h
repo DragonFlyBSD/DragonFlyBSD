@@ -29,6 +29,10 @@
 
 #include <machine/vmparam.h>
 
+#include <linux/uaccess.h>
+
+#include <asm/cacheflush.h>
+
 static inline void *kmap(struct vm_page *pg)
 {
 	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pg));

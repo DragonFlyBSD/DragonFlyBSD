@@ -399,10 +399,7 @@ lm_attach(struct lm_softc *sc)
 	if (sc->numsensors == 0)
 		return;
 
-	if (sensor_task_register(sc, lm_refresh, 5)) {
-		device_printf(sc->sc_dev, "unable to register update task\n");
-		return;
-	}
+	sensor_task_register(sc, lm_refresh, 5);
 
 	/* Start the monitoring loop */
 	config = sc->lm_readreg(sc, LM_CONFIG);

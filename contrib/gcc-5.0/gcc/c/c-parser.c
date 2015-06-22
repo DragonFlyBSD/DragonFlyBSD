@@ -991,24 +991,24 @@ c_parser_skip_to_end_of_parameter (c_parser *parser)
    end of line marker.  */
 
 static void
-c_parser_skip_to_pragma_eol (c_parser *parser)
+c_parser_skip_to_pragma_eol (c_parser *parser, bool error_if_not_eol = true)
 {
   gcc_assert (parser->in_pragma);
   parser->in_pragma = false;
 
-  if (!c_parser_require (parser, CPP_PRAGMA_EOL, "expected end of line"))
-    while (true)
-      {
-	c_token *token = c_parser_peek_token (parser);
-	if (token->type == CPP_EOF)
-	  break;
-	if (token->type == CPP_PRAGMA_EOL)
-	  {
-	    c_parser_consume_token (parser);
-	    break;
-	  }
-	c_parser_consume_token (parser);
-      }
+  if (error_if_not_eol && c_parser_peek_token (parser)->type != CPP_PRAGMA_EOL)
+    c_parser_error (parser, "expected end of line");
+
+  cpp_ttype token_type;
+  do
+    {
+      c_token *token = c_parser_peek_token (parser);
+      token_type = token->type;
+      if (token_type == CPP_EOF)
+	break;
+      c_parser_consume_token (parser);
+    }
+  while (token_type != CPP_PRAGMA_EOL);
 
   parser->error = false;
 }
@@ -12153,7 +12153,7 @@ c_parser_oacc_enter_exit_data (c_parser *parser, bool enter)
       return;
     }
 
-  stmt = enter ? make_node (OACC_ENTER_DATA) : make_node (OACC_EXIT_DATA);;
+  stmt = enter ? make_node (OACC_ENTER_DATA) : make_node (OACC_EXIT_DATA);
   TREE_TYPE (stmt) = void_type_node;
   if (enter)
     OACC_ENTER_DATA_CLAUSES (stmt) = clauses;
@@ -13069,12 +13069,9 @@ c_parser_omp_for_loop (location_t loc, c_parser *parser, enum tree_code code,
 		      }
 		    else
 		      {
-			/* Copy lastprivate (decl) clause to OMP_FOR_CLAUSES,
-			   change it to shared (decl) in
-			   OMP_PARALLEL_CLAUSES.  */
-			tree l = build_omp_clause (OMP_CLAUSE_LOCATION (*c),
-						   OMP_CLAUSE_LASTPRIVATE);
-			OMP_CLAUSE_DECL (l) = OMP_CLAUSE_DECL (*c);
+			/* Move lastprivate (decl) clause to OMP_FOR_CLAUSES.  */
+			tree l = *c;
+			*c = OMP_CLAUSE_CHAIN (*c);
 			if (code == OMP_SIMD)
 			  {
 			    OMP_CLAUSE_CHAIN (l)
@@ -13086,7 +13083,6 @@ c_parser_omp_for_loop (location_t loc, c_parser *parser, enum tree_code code,
 			    OMP_CLAUSE_CHAIN (l) = clauses;
 			    clauses = l;
 			  }
-			OMP_CLAUSE_SET_CODE (*c, OMP_CLAUSE_SHARED);
 		      }
 		  }
 	    }
@@ -13223,7 +13219,7 @@ c_parser_omp_for (location_t loc, c_parser *parser,
     }
   if (!flag_openmp)  /* flag_openmp_simd  */
     {
-      c_parser_skip_to_pragma_eol (parser);
+      c_parser_skip_to_pragma_eol (parser, false);
       return NULL_TREE;
     }
 
@@ -13448,7 +13444,7 @@ c_parser_omp_parallel (location_t loc, c_parser *parser,
     }
   else if (!flag_openmp)  /* flag_openmp_simd  */
     {
-      c_parser_skip_to_pragma_eol (parser);
+      c_parser_skip_to_pragma_eol (parser, false);
       return NULL_TREE;
     }
   else if (c_parser_next_token_is (parser, CPP_NAME))
@@ -13708,7 +13704,7 @@ c_parser_omp_distribute (location_t loc, c_parser *parser,
     }
   if (!flag_openmp)  /* flag_openmp_simd  */
     {
-      c_parser_skip_to_pragma_eol (parser);
+      c_parser_skip_to_pragma_eol (parser, false);
       return NULL_TREE;
     }
 
@@ -13771,12 +13767,13 @@ c_parser_omp_teams (location_t loc, c_parser *parser,
 	  TREE_TYPE (ret) = void_type_node;
 	  OMP_TEAMS_CLAUSES (ret) = clauses;
 	  OMP_TEAMS_BODY (ret) = block;
+	  OMP_TEAMS_COMBINED (ret) = 1;
 	  return add_stmt (ret);
 	}
     }
   if (!flag_openmp)  /* flag_openmp_simd  */
     {
-      c_parser_skip_to_pragma_eol (parser);
+      c_parser_skip_to_pragma_eol (parser, false);
       return NULL_TREE;
     }
 
@@ -13851,7 +13848,7 @@ c_parser_omp_target_update (location_t loc, c_parser *parser,
       && find_omp_clause (clauses, OMP_CLAUSE_FROM) == NULL_TREE)
     {
       error_at (loc,
-		"%<#pragma omp target update must contain at least one "
+		"%<#pragma omp target update%> must contain at least one "
 		"%<from%> or %<to%> clauses");
       return false;
     }
@@ -13921,7 +13918,7 @@ c_parser_omp_target (c_parser *parser, enum pragma_context context)
 	}
       else if (!flag_openmp)  /* flag_openmp_simd  */
 	{
-	  c_parser_skip_to_pragma_eol (parser);
+	  c_parser_skip_to_pragma_eol (parser, false);
 	  return false;
 	}
       else if (strcmp (p, "data") == 0)
@@ -14604,7 +14601,7 @@ c_parser_omp_declare (c_parser *parser, enum pragma_context context)
 	}
       if (!flag_openmp)  /* flag_openmp_simd  */
 	{
-	  c_parser_skip_to_pragma_eol (parser);
+	  c_parser_skip_to_pragma_eol (parser, false);
 	  return;
 	}
       if (strcmp (p, "target") == 0)

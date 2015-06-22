@@ -40,6 +40,7 @@
 #include "acpi.h"
 #include "acpivar.h"
 #include "acpi_cpu.h"
+#include "cpu_if.h"
 
 #define ACPI_NOTIFY_CX_STATES	0x81	/* _CST changed. */
 
@@ -52,6 +53,8 @@ static struct resource *
 			int, int *, u_long, u_long, u_long, u_int, int);
 static int	acpi_cpu_release_resource(device_t, device_t,
 			int, int, struct resource *);
+static struct ksensordev *
+		acpi_cpu_get_sensdev(device_t);
 
 static int	acpi_cpu_get_id(uint32_t, uint32_t *, uint32_t *);
 static void	acpi_cpu_notify(ACPI_HANDLE, UINT32, void *);
@@ -80,6 +83,9 @@ static device_method_t acpi_cpu_methods[] = {
     DEVMETHOD(bus_deactivate_resource,	bus_generic_deactivate_resource),
     DEVMETHOD(bus_setup_intr,		bus_generic_setup_intr),
     DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
+
+    /* CPU interface */
+    DEVMETHOD(cpu_get_sensdev,		acpi_cpu_get_sensdev),
 
     DEVMETHOD_END
 };
@@ -218,6 +224,10 @@ acpi_cpu_attach(device_t dev)
 	}
     }
 
+    ksnprintf(sc->cpu_sensdev.xname, sizeof(sc->cpu_sensdev.xname), "%s",
+	device_get_nameunit(dev));
+    sensordev_install(&sc->cpu_sensdev);
+
     child = BUS_ADD_CHILD(dev, dev, 0, "cpu_cst", -1);
     if (child == NULL)
 	return ENXIO;
@@ -284,15 +294,21 @@ acpi_cpu_get_id(uint32_t idx, uint32_t *acpi_id, uint32_t *cpu_id)
 	KASSERT(md != NULL, ("no pcpu data for %d", i));
 	if (idx-- == 0) {
 	    /*
-	     * If pc_acpi_id was not initialized (e.g., a non-APIC UP box)
+	     * If gd_acpi_id was not initialized (e.g., box w/o MADT)
 	     * override it with the value from the ASL.  Otherwise, if the
 	     * two don't match, prefer the MADT-derived value.  Finally,
-	     * return the pc_cpuid to reference this processor.
+	     * return the gd_cpuid to reference this processor.
 	     */
-	    if (md->gd_acpi_id == 0xffffffff)
+	    if (md->gd_acpi_id == 0xffffffff) {
+		kprintf("cpu%d: acpi id was not set, set it to %u\n",
+		    i, *acpi_id);
 		md->gd_acpi_id = *acpi_id;
-	    else if (md->gd_acpi_id != *acpi_id)
+	    } else if (md->gd_acpi_id != *acpi_id) {
+		kprintf("cpu%d: acpi id mismatch, madt %u, "
+		    "processor object %u\n",
+		    i, md->gd_acpi_id, *acpi_id);
 		*acpi_id = md->gd_acpi_id;
+	    }
 	    *cpu_id = md->mi.gd_cpuid;
 	    return 0;
 	}
@@ -311,4 +327,12 @@ acpi_cpu_notify(ACPI_HANDLE handler __unused, UINT32 notify, void *xsc)
 	    sc->cpu_cst_notify(sc->cpu_cst);
 	break;
     }
+}
+
+static struct ksensordev *
+acpi_cpu_get_sensdev(device_t dev)
+{
+    struct acpi_cpu_softc *sc = device_get_softc(dev);
+
+    return &sc->cpu_sensdev;
 }

@@ -2,6 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
+ * Copyright (c) 2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -60,6 +61,14 @@ __copy_from_user(void *to, const void *from, unsigned len)
 {
 	if (copyin(from, to, len))
 		return len;
+	return 0;
+}
+
+static inline int
+__copy_from_user_inatomic(void *dst, const void __user *src, unsigned size)
+{
+	if (copyin_nofault(src, dst, size))
+		return size;
 	return 0;
 }
 

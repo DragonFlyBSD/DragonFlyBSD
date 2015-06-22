@@ -4,13 +4,12 @@
 # 	This file is under a "BSD" copyright (c) by David O'Brien 1998
 #
 # $FreeBSD: src/usr.sbin/amd/amd/Makefile,v 1.17.2.1 2001/04/25 12:09:12 ru Exp $
-# $DragonFly: src/usr.sbin/amd/amd/Makefile,v 1.4 2006/05/14 18:07:29 swildner Exp $
 #
 
 .PATH:		${.CURDIR}/../../../contrib/amd/amd
 
 PROG=		amd
-MAN=		amd.8
+MAN=		amd.8 am-utils.7
 
 SRCS=		conf_parse.y conf_tok.l
 SRCS+=		am_ops.c amd.c amfs_auto.c amfs_direct.c amfs_error.c

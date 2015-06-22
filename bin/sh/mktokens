@@ -15,11 +15,7 @@
 # 2. Redistributions in binary form must reproduce the above copyright
 #    notice, this list of conditions and the following disclaimer in the
 #    documentation and/or other materials provided with the distribution.
-# 3. All advertising materials mentioning features or use of this software
-#    must display the following acknowledgement:
-#	This product includes software developed by the University of
-#	California, Berkeley and its contributors.
-# 4. Neither the name of the University nor the names of its contributors
+# 3. Neither the name of the University nor the names of its contributors
 #    may be used to endorse or promote products derived from this software
 #    without specific prior written permission.
 #
@@ -36,7 +32,7 @@
 # SUCH DAMAGE.
 #
 #	@(#)mktokens	8.1 (Berkeley) 5/31/93
-# $FreeBSD: head/bin/sh/mktokens 223186 2011-06-17 13:03:49Z jilles $
+# $FreeBSD$
 
 # The following is a list of tokens.  The second column is nonzero if the
 # token marks the end of a list.  The third column is the name to print in
@@ -78,11 +74,11 @@ exec > token.h
 awk '{print "#define " $1 " " NR-1}' $temp
 echo '
 /* Array indicating which tokens mark the end of a list */
-const char tokendlist[] = {'
+static const char tokendlist[] = {'
 awk '{print "\t" $2 ","}' $temp
 echo '};
 
-const char *const tokname[] = {'
+static const char *const tokname[] = {'
 sed -e 's/"/\\"/g' \
     -e 's/[^	 ]*[	 ][	 ]*[^	 ]*[	 ][	 ]*\(.*\)/	"\1",/' \
     $temp
@@ -91,7 +87,7 @@ echo '};
 sed 's/"//g' $temp | awk '
 /TIF/{print "#define KWDOFFSET " NR-1; print ""; print "const char *const parsekwd[] = {"}
 /TIF/,/neverfound/{print "	\"" $3 "\","}'
-echo '	NULL
+echo '	0
 };'
 
 rm $temp

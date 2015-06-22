@@ -37,11 +37,11 @@
 #include <unistd.h>
 
 #ifndef CCVER_DEFAULT
-#define CCVER_DEFAULT "gcc47"
+#define CCVER_DEFAULT "gcc50"
 #endif
 
 #ifndef BINUTILSVER_DEFAULT
-#define	BINUTILSVER_DEFAULT "binutils224"
+#define	BINUTILSVER_DEFAULT "binutils225"
 #endif
 
 #define LINKER_DEFAULT "ld.bfd"

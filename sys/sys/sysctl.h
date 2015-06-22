@@ -92,6 +92,9 @@ struct ctlname {
 #define	CTLFLAG_SKIP	0x01000000	/* Skip this sysctl when listing */
 #define	CTLMASK_SECURE	0x00F00000	/* Secure level */
 #define	CTLFLAG_DYING	0x00010000	/* Oid is being removed */
+#define CTLFLAG_SHLOCK	0x00008000	/* shlock on write (def is exlock) */
+#define CTLFLAG_EXLOCK	0x00004000	/* exlock on read (def is shlock) */
+#define CTLMASK_TYPE	0x0000000F	/* type field */
 
 /*
  * USE THIS instead of a hardwired number from the categories below
@@ -105,6 +108,9 @@ struct ctlname {
 #ifdef _KERNEL
 
 #include <sys/kernel.h>			/* for DATA_SET */
+#ifndef _SYS_LOCK_H_
+#include <sys/lock.h>
+#endif
 
 #define SYSCTL_HANDLER_ARGS struct sysctl_oid *oidp, void *arg1, int arg2, \
 	struct sysctl_req *req
@@ -147,6 +153,7 @@ struct sysctl_oid {
 	int		oid_refcnt;
 	u_int		 oid_running;
 	const char	*oid_descr;
+	struct lock	oid_lock;	/* per-node lock */
 };
 
 #define SYSCTL_IN(r, p, l) (r->newfunc)(r, p, l)
@@ -158,6 +165,15 @@ int sysctl_handle_quad(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_intptr(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_string(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_opaque(SYSCTL_HANDLER_ARGS);
+
+extern struct lock sysctllock;
+
+#define	SYSCTL_XLOCK()		lockmgr(&sysctllock, LK_EXCLUSIVE)
+#define	SYSCTL_XUNLOCK()	lockmgr(&sysctllock, LK_RELEASE)
+#define	SYSCTL_SLOCK()		lockmgr(&sysctllock, LK_SHARED)
+#define	SYSCTL_SUNLOCK()	lockmgr(&sysctllock, LK_RELEASE)
+#define	SYSCTL_ASSERT_XLOCKED() \
+	KKASSERT(lockstatus(&sysctllock, curthread) != 0)
 
 /*
  * These functions are used to add/remove an oid from the mib.

@@ -90,7 +90,7 @@ struct hammer2_ioc_pfs {
 	hammer2_key_t		name_key;	/* super-root directory scan */
 	hammer2_key_t		name_next;	/* (GET only) */
 	uint8_t			pfs_type;	/* e.g. MASTER, SLAVE, ... */
-	uint8_t			reserved0011;
+	uint8_t			pfs_subtype;	/* e.g. SNAPSHOT */
 	uint8_t			reserved0012;
 	uint8_t			reserved0013;
 	uint32_t		reserved0014;
@@ -108,6 +108,8 @@ typedef struct hammer2_ioc_pfs hammer2_ioc_pfs_t;
 struct hammer2_ioc_inode {
 	uint32_t		flags;
 	void			*kdata;
+	hammer2_key_t		data_count;
+	hammer2_key_t		inode_count;
 	hammer2_inode_data_t	ip_data;
 };
 

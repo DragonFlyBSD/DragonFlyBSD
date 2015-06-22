@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 1993 Daniel Boulet
+ * Copyright (c) 1994 Ugen J.S.Antsilevich
+ * Copyright (c) 2002 Luigi Rizzo, Universita` di Pisa
  * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -37,11 +40,15 @@
 #define _IP_FW3_H_
 
 #ifdef _KERNEL
+#include <net/bpf.h>
 #include <net/netisr2.h>
 
 int     ip_fw3_sockopt(struct sockopt *);
 extern int ip_fw3_loaded;
 
+#else
+#include <pcap/bpf.h>
+#define PCAP_DONT_INCLUDE_PCAP_BPF_H
 #endif
 
 #define	IPFW3_LOADED	(ip_fw3_loaded)
@@ -190,6 +197,15 @@ typedef struct	_ipfw_insn_limit {
 	uint16_t conn_limit;
 } ipfw_insn_limit;
 
+/*
+ * This is used for bpf filtering.
+ */
+typedef struct _ipfw_insn_bpf {
+	ipfw_insn o;
+	char bf_str[128];
+	u_int bf_len;
+	struct bpf_insn bf_insn[1];
+} ipfw_insn_bpf;
 
 /*
  * Here we have the structure representing an ipfw rule.
@@ -514,8 +530,8 @@ typedef void ipfw_basic_append_state_t(struct ipfw_ioc_state *);
 #define IP_FW_NAT_CFG		68   /* add/config a nat rule */
 #define IP_FW_NAT_DEL		69   /* delete a nat rule */
 #define IP_FW_NAT_FLUSH		70   /* get configuration of a nat rule */
-#define IP_FW_NAT_GET		71   /* get log of a nat rule */
-#define IP_FW_NAT_LOG		72   /* get log of a nat rule */
+#define IP_FW_NAT_GET		71   /* get config of a nat rule */
+#define IP_FW_NAT_LOG		72   /* get nat record of a nat rule */
 
 #define IP_FW_STATE_ADD		56   /* add one state */
 #define IP_FW_STATE_DEL		57   /* delete states of one rulenum */

@@ -24,7 +24,7 @@
 .\" OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 .\" ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd August 19, 2007
+.Dd April 10, 2015
 .Dt SENSOR_ATTACH 9
 .Os
 .Sh NAME
@@ -46,7 +46,7 @@
 .Fn "sensor_attach" "struct ksensordev *sensdev" "struct ksensor *sens"
 .Ft void
 .Fn "sensor_detach" "struct ksensordev *sensdev" "struct ksensor *sens"
-.Ft int
+.Ft void
 .Fn "sensor_task_register" "void *arg" "void (*func)(void *)" "int period"
 .Ft void
 .Fn "sensor_task_unregister" "void *arg"

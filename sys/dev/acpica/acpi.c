@@ -277,6 +277,13 @@ SYSCTL_INT(_debug_acpi, OID_AUTO, fadt_addr32, CTLFLAG_RD,
     &acpi_fadt_addr32, 1,
     "Prefer 32-bit FADT register addresses over 64-bit ones.");
 
+/* Prefer 32-bit FACS table addresses over the 64-bit ones. */
+static int acpi_facs_addr32 = 1;
+TUNABLE_INT("debug.acpi.facs_addr32", &acpi_facs_addr32);
+SYSCTL_INT(_debug_acpi, OID_AUTO, facs_addr32, CTLFLAG_RD,
+    &acpi_facs_addr32, 1,
+    "Prefer 32-bit FACS table addresses over 64-bit ones.");
+
 /* Power devices off and on in suspend and resume.  XXX Remove once tested. */
 static int acpi_do_powerstate = 1;
 TUNABLE_INT("debug.acpi.do_powerstate", &acpi_do_powerstate);
@@ -490,6 +497,7 @@ acpi_attach(device_t dev)
     AcpiGbl_EnableAmlDebugObject = acpi_debug_objects ? TRUE : FALSE;
     AcpiGbl_EnableInterpreterSlack = acpi_interpreter_slack ? TRUE : FALSE;
     AcpiGbl_Use32BitFadtAddresses = acpi_fadt_addr32 ? TRUE : FALSE;
+    AcpiGbl_Use32BitFacsAddresses = acpi_facs_addr32 ? TRUE : FALSE;
 
 #ifndef ACPI_DEBUG
     /*
@@ -531,7 +539,7 @@ acpi_attach(device_t dev)
      * XXX We should arrange for the object init pass after we have attached
      *     all our child devices, but on many systems it works here.
      */
-    flags = 0;
+    flags = ACPI_FULL_INITIALIZATION;
     if (ktestenv("debug.acpi.avoid"))
 	flags = ACPI_NO_DEVICE_INIT | ACPI_NO_OBJECT_INIT;
 

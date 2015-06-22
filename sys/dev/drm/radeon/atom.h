@@ -20,8 +20,6 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  * Author: Stanislaw Skowronek
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/atom.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #ifndef ATOM_H
@@ -126,7 +124,7 @@ struct card_info {
 struct atom_context {
 	struct card_info *card;
 	struct lock mutex;
-	void *bios;
+	uint8_t *bios;
 	uint32_t cmd_table, data_table;
 	uint16_t *iio;
 

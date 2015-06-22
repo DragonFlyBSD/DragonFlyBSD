@@ -85,7 +85,8 @@ static int checkvp_chdir (struct vnode *vn, struct thread *td);
 static void checkdirs (struct nchandle *old_nch, struct nchandle *new_nch);
 static int chroot_refuse_vdir_fds (struct filedesc *fdp);
 static int chroot_visible_mnt(struct mount *mp, struct proc *p);
-static int getutimes (const struct timeval *, struct timespec *);
+static int getutimes (struct timeval *, struct timespec *);
+static int getutimens (const struct timespec *, struct timespec *, int *);
 static int setfown (struct mount *, struct vnode *, uid_t, gid_t);
 static int setfmode (struct vnode *, int);
 static int setfflags (struct vnode *, int);
@@ -1965,7 +1966,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 			fdrop(fp);
 			return (error);
 		}
-		fp->f_flag |= FHASLOCK;
+		atomic_set_int(&fp->f_flag, FHASLOCK); /* race ok */
 	}
 #if 0
 	/*
@@ -1981,11 +1982,11 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * release our private reference, leaving the one associated with the
 	 * descriptor table intact.
 	 */
+	if (oflags & O_CLOEXEC)
+		fdp->fd_files[indx].fileflags |= UF_EXCLOSE;
 	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	*res = indx;
-	if (oflags & O_CLOEXEC)
-		error = fsetfdflags(fdp, *res, UF_EXCLOSE);
 	return (error);
 }
 
@@ -3378,19 +3379,61 @@ sys_fchownat(struct fchownat_args *uap)
 
 
 static int
-getutimes(const struct timeval *tvp, struct timespec *tsp)
+getutimes(struct timeval *tvp, struct timespec *tsp)
 {
 	struct timeval tv[2];
+	int error;
 
 	if (tvp == NULL) {
 		microtime(&tv[0]);
 		TIMEVAL_TO_TIMESPEC(&tv[0], &tsp[0]);
 		tsp[1] = tsp[0];
 	} else {
+		if ((error = itimerfix(tvp)) != 0)
+			return (error);
 		TIMEVAL_TO_TIMESPEC(&tvp[0], &tsp[0]);
 		TIMEVAL_TO_TIMESPEC(&tvp[1], &tsp[1]);
 	}
 	return 0;
+}
+
+static int
+getutimens(const struct timespec *ts, struct timespec *newts, int *nullflag)
+{
+	struct timespec tsnow;
+	int error;
+
+	*nullflag = 0;
+	nanotime(&tsnow);
+	if (ts == NULL) {
+		newts[0] = tsnow;
+		newts[1] = tsnow;
+		*nullflag = 1;
+		return (0);
+	}
+
+	newts[0] = ts[0];
+	newts[1] = ts[1];
+	if (newts[0].tv_nsec == UTIME_OMIT && newts[1].tv_nsec == UTIME_OMIT)
+		return (0);
+	if (newts[0].tv_nsec == UTIME_NOW && newts[1].tv_nsec == UTIME_NOW)
+		*nullflag = 1;
+
+	if (newts[0].tv_nsec == UTIME_OMIT)
+		newts[0].tv_sec = VNOVAL;
+	else if (newts[0].tv_nsec == UTIME_NOW)
+		newts[0] = tsnow;
+	else if ((error = itimespecfix(&newts[0])) != 0)
+		return (error);
+
+	if (newts[1].tv_nsec == UTIME_OMIT)
+		newts[1].tv_sec = VNOVAL;
+	else if (newts[1].tv_nsec == UTIME_NOW)
+		newts[1] = tsnow;
+	else if ((error = itimespecfix(&newts[1])) != 0)
+		return (error);
+
+	return (0);
 }
 
 static int
@@ -3414,38 +3457,13 @@ int
 kern_utimes(struct nlookupdata *nd, struct timeval *tptr)
 {
 	struct timespec ts[2];
-	struct vnode *vp;
-	struct vattr vattr;
 	int error;
 
-	if ((error = getutimes(tptr, ts)) != 0)
-		return (error);
-
-	/*
-	 * NOTE: utimes() succeeds for the owner even if the file
-	 * is not user-writable.
-	 */
-	nd->nl_flags |= NLC_OWN | NLC_WRITE;
-
-	if ((error = nlookup(nd)) != 0)
-		return (error);
-	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
-		return (error);
-	if ((error = cache_vref(&nd->nl_nch, nd->nl_cred, &vp)) != 0)
-		return (error);
-
-	/*
-	 * note: vget is required for any operation that might mod the vnode
-	 * so VINACTIVE is properly cleared.
-	 */
-	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
-		error = vget(vp, LK_EXCLUSIVE);
-		if (error == 0) {
-			error = setutimes(vp, &vattr, ts, (tptr == NULL));
-			vput(vp);
-		}
+	if (tptr) {
+		if ((error = getutimes(tptr, ts)) != 0)
+			return (error);
 	}
-	vrele(vp);
+	error = kern_utimensat(nd, tptr ? ts : NULL, 0);
 	return (error);
 }
 
@@ -3503,17 +3521,18 @@ sys_lutimes(struct lutimes_args *uap)
  * or not.
  */
 int
-kern_futimes(int fd, struct timeval *tptr)
+kern_futimens(int fd, struct timespec *ts)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct timespec ts[2];
+	struct timespec newts[2];
 	struct file *fp;
 	struct vnode *vp;
 	struct vattr vattr;
+	int nullflag;
 	int error;
 
-	error = getutimes(tptr, ts);
+	error = getutimens(ts, newts, &nullflag);
 	if (error)
 		return (error);
 	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
@@ -3530,13 +3549,46 @@ kern_futimes(int fd, struct timeval *tptr)
 						   fp->f_cred);
 			}
 			if (error == 0) {
-				error = setutimes(vp, &vattr, ts,
-						  (tptr == NULL));
+				error = setutimes(vp, &vattr, newts, nullflag);
 			}
 			vput(vp);
 		}
 	}
 	fdrop(fp);
+	return (error);
+}
+
+/*
+ * futimens_args(int fd, struct timespec *ts)
+ *
+ * Set the access and modification times of a file.
+ */
+int
+sys_futimens(struct futimens_args *uap)
+{
+	struct timespec ts[2];
+	int error;
+
+	if (uap->ts) {
+		error = copyin(uap->ts, ts, sizeof(ts));
+		if (error)
+			return (error);
+	}
+	error = kern_futimens(uap->fd, uap->ts ? ts : NULL);
+	return (error);
+}
+
+int
+kern_futimes(int fd, struct timeval *tptr)
+{
+	struct timespec ts[2];
+	int error;
+
+	if (tptr) {
+		if ((error = getutimes(tptr, ts)) != 0)
+			return (error);
+	}
+	error = kern_futimens(fd, tptr ? ts : NULL);
 	return (error);
 }
 
@@ -3557,7 +3609,69 @@ sys_futimes(struct futimes_args *uap)
 			return (error);
 	}
 	error = kern_futimes(uap->fd, uap->tptr ? tv : NULL);
+	return (error);
+}
 
+int
+kern_utimensat(struct nlookupdata *nd, const struct timespec *ts, int flags)
+{
+	struct timespec newts[2];
+	struct vnode *vp;
+	struct vattr vattr;
+	int nullflag;
+	int error;
+
+	if (flags & ~AT_SYMLINK_NOFOLLOW)
+		return (EINVAL);
+
+	error = getutimens(ts, newts, &nullflag);
+	if (error)
+		return (error);
+
+	nd->nl_flags |= NLC_OWN | NLC_WRITE;
+	if ((error = nlookup(nd)) != 0)
+		return (error);
+	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
+		return (error);
+	if ((error = cache_vref(&nd->nl_nch, nd->nl_cred, &vp)) != 0)
+		return (error);
+	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
+		error = vget(vp, LK_EXCLUSIVE);
+		if (error == 0) {
+			error = setutimes(vp, &vattr, newts, nullflag);
+			vput(vp);
+		}
+	}
+	vrele(vp);
+	return (error);
+}
+
+/*
+ * utimensat_args(int fd, const char *path, const struct timespec *ts, int flags);
+ *
+ * Set file access and modification times of a file.
+ */
+int
+sys_utimensat(struct utimensat_args *uap)
+{
+	struct timespec ts[2];
+	struct nlookupdata nd;
+	struct file *fp;
+	int error;
+	int flags;
+
+	if (uap->ts) {
+		error = copyin(uap->ts, ts, sizeof(ts));
+		if (error)
+			return (error);
+	}
+
+	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path,
+	                        UIO_USERSPACE, flags);
+	if (error == 0)
+		error = kern_utimensat(&nd, uap->ts ? ts : NULL, uap->flags);
+	nlookup_done_at(&nd, fp);
 	return (error);
 }
 
@@ -4461,7 +4575,7 @@ sys_fhopen(struct fhopen_args *uap)
 			goto done;
 		}
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-		fp->f_flag |= FHASLOCK;
+		atomic_set_int(&fp->f_flag, FHASLOCK);	/* race ok */
 	}
 
 	/*
@@ -4469,11 +4583,11 @@ sys_fhopen(struct fhopen_args *uap)
 	 * reserved descriptor and return it.
 	 */
 	vput(vp);
+	if (uap->flags & O_CLOEXEC)
+		fdp->fd_files[indx].fileflags |= UF_EXCLOSE;
 	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	uap->sysmsg_result = indx;
-	if (uap->flags & O_CLOEXEC)
-		error = fsetfdflags(fdp, indx, UF_EXCLOSE);
 	return (error);
 
 bad_drop:

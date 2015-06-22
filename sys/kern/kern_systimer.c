@@ -121,8 +121,7 @@ systimer_intr(sysclock_t *timep, int in_ipi, struct intrframe *frame)
 	    if ((info->flags & SYSTF_NONQUEUED) &&
 		(int)(info->time - time) <= 0
 	    ) {
-		info->time += ((time - info->time + info->periodic - 1) / 
-				info->periodic) * info->periodic;
+		info->time += roundup(time - info->time, info->periodic);
 	    }
 	    systimer_add(info);
 	}

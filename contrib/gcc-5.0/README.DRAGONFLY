@@ -1,13 +1,15 @@
-GCC-5.0.0 SNAPSHOT
+GCC-5.1.1 RELEASE
 ==================
 
-Original source can be downloaded from:
+Original source of man pages can be downloaded from:
 http://ftp.gnu.org/gnu/gcc
 
-XXX file = gcc-5-20150201.tar.bz2
-XXX date = 1 Febuary 2015
-XXX size = 89749171
-XXX sha1 = 0558cb236c982b5e1931ed18fc06967b3da1cd99
+file = gcc-5.1.0-RC-20150412.tar.bz2
+date = 13 April 2015
+size = 95081824
+sha1 = 405c12ba75a30d52ed3e0b369e84e36a6ec7d6a4
+
+The source files are pulled directly from GCC's Subversion repository.
 See LAST_UPDATED for SVN revision
 
 The file README.DELETED contains a list of deleted files and directories.

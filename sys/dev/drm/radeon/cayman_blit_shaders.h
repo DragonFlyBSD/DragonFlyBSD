@@ -20,7 +20,6 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * $FreeBSD: head/sys/dev/drm2/radeon/cayman_blit_shaders.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #ifndef CAYMAN_BLIT_SHADERS_H

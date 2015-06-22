@@ -58,6 +58,7 @@
 #include <machine/cputypes.h>
 #include <machine_base/apic/lapic.h>
 #include <machine_base/apic/ioapic.h>
+#include <machine_base/acpica/acpi_md_cpu.h>
 #include <machine/psl.h>
 #include <machine/segments.h>
 #include <machine/tss.h>
@@ -451,6 +452,8 @@ start_all_aps(u_int boot_addr)
 		gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
 		bzero(gd->mi.gd_ipiq, ipiq_size);
 
+		gd->gd_acpi_id = CPUID_TO_ACPIID(gd->mi.gd_cpuid);
+
 		/* setup a vector to our boot code */
 		*((volatile u_short *) WARMBOOT_OFF) = WARMBOOT_TARGET;
 		*((volatile u_short *) WARMBOOT_SEG) = (boot_addr >> 4);
@@ -497,6 +500,9 @@ start_all_aps(u_int boot_addr)
 	/* build our map of 'other' CPUs */
 	mycpu->gd_other_cpus = smp_startup_mask;
 	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
+
+	gd = (struct mdglobaldata *)mycpu;
+	gd->gd_acpi_id = CPUID_TO_ACPIID(mycpu->gd_cpuid);
 
 	ipiq_size = sizeof(struct lwkt_ipiq) * ncpus;
 	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
@@ -1229,11 +1235,15 @@ cpu_send_ipiq_passive(int dcpu)
 static void
 mp_bsp_simple_setup(void)
 {
+	struct mdglobaldata *gd;
 	size_t ipiq_size;
 
 	/* build our map of 'other' CPUs */
 	mycpu->gd_other_cpus = smp_startup_mask;
 	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
+
+	gd = (struct mdglobaldata *)mycpu;
+	gd->gd_acpi_id = CPUID_TO_ACPIID(mycpu->gd_cpuid);
 
 	ipiq_size = sizeof(struct lwkt_ipiq) * ncpus;
 	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);

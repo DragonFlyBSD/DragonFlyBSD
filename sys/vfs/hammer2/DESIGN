@@ -2,31 +2,54 @@
 			    HAMMER2 DESIGN DOCUMENT
 
 				Matthew Dillon
-				 08-Feb-2012
-				 14-May-2013
 			     dillon@backplane.com
 
-* These features have been speced in the media structures.
+			       03-Apr-2015 (v3)
+			       14-May-2013 (v2)
+			       08-Feb-2012 (v1)
 
-* Implementation work has begun.
+			Current Status as of document date
 
-* Filesytem core is now operational, cluster messaging links are primitive
-  but work (and are fully encrypted).  Work continues on the block allocator
-  and work has not yet begun on copies, block-encryption, block-compression,
-  mirroring, or quorum/cluster ops.
+* Filesystem Core	- operational
+  - bulkfree		- operational
+  - Compression		- operational
+  - Snapshots		- operational
+  - Deduper		- specced
+  - Subhierarchy quotas - specced
+  - Logical Encryption	- not specced yet
+  - Copies		- not specced yet
+  - fsync bypass	- not specced yet
 
-* Obviously a fully functional filesystem is not yet ready but once the
-  freemap and the backend garbage collector is implemented the HAMMER2
-  filesystem will be usable.  Missing many features, but usable.
-
-* Design of all media elements is complete.
+* Clustering core
+  - Network msg core	- operational
+  - Network blk device	- operational
+  - Error handling	- under development
+  - Quorum Protocol	- under development
+  - Synchronization	- under development
+  - Transaction replay	- not specced yet
+  - Cache coherency	- not specced yet
 
 				    Feature List
 
-* Multiple roots (allowing snapshots to be mounted).  This is implemented
-  via the super-root concept.  When mounting a HAMMER2 filesystem you specify
-  a device path and a directory name in the super-root.  (HAMMER1 had only
-  one root).
+* Block topology (both the main topology and the freemap) use a copy-on-write
+  design.  Media-level block frees are delayed and flushes rotate between
+  4 volume headers (maxes out at 4 if the filesystem is > ~8GB).  Flushes
+  will allocate new blocks up to the root in order to propagate block table
+  changes and transaction ids.
+
+* Incremental update scans are trivial by design.
+
+* Multiple roots, with many features.  This is implemented via the super-root
+  concept.  When mounting a HAMMER2 filesystem you specify a device path and
+  a directory name in the super-root.  (HAMMER1 had only one root).
+
+* All cluster types and multiple PFSs (belonging to the same or different
+  clusters) can be mixed on one physical filesystem.
+
+  This allows independent cluster components to be configured within a
+  single formatted H2 filesystem.  Each component is a super-root entry,
+  a cluster identifier, and a unique identifier.  The network protocl
+  integrates the component into the cluster when it is created
 
 * Roots are really no different from snapshots (HAMMER1 distinguished between
   its root mount and its PFS's.  HAMMER2 does not).
@@ -38,18 +61,17 @@
   automatic fine-grained snapshots.  H2 snapshots are cheap enough that you
   can create fine-grained snapshots if you desire.
 
-* HAMMER2 flushes formalized a synchronization point for the flush, wait
-  for all running modifying operations to complete to memory (not to disk)
-  while temporarily stalling new modifying operation initiations.  The
-  flush is then able to proceed concurrent with unstalling and allowing
-  new modifying operations to run.
+* HAMMER2 formalizes a synchronization point for the flush, does a pre-flush
+  that does not update the volume root, then waits for all running modifying
+  operations to complete to memory (not to disk) while temporarily stalling
+  new modifying operation initiations.  The final flush is then executed.
 
-* The flush is fully meta-data-synchronized in HAMMER2.  In HAMMER1 it was
-  possible for flushes to bisect inode creation vs directory entry creation
-  and to create problems with directory renames.  HAMMER2 has no issues with
-  any of these.  Dealing with data synchronization is another matter but
-  it should be possible to address explcit write()'s properly.  mmap()'d
-  R+W data... not so easy.
+  At the moment we do not allow concurrent modifying operations during the
+  final flush phase.  Ultimately I would like to, but doing so can be complex.
+
+* HAMMER2 flushes and synchronization points do not bisect VOPs (system calls).
+  (HAMMER1 flushes could wind up bisecting VOPs).  This means the H2 flushes
+  leave the filesystem in a far more consistent state than H1 flushes did.
 
 * Directory sub-hierarchy-based quotas for space and inode usage tracking.
   Any directory can be used.
@@ -58,65 +80,88 @@
   is completely asynchronous and dirty buffers can be retired by the OS
   directly to backing store with no further interactions with the filesystem.
 
-* Incremental queueless mirroring / mirroring-streams.  Because HAMMER2 is
-  block-oriented and copy-on-write each blockref tracks both direct
-  modifications to the referenced data via (modify_tid) and indirect
-  modifications to the referenced data or any sub-tree via (mirror_tid).
-  This makes it possible to do an incremental scan of meta-data that covers
-  only changes made since the mirror_tid recorded in a prior-run.
+* Background synchronization and mirroring occurs at the logical level.
+  When a failure occurs or a normal validation scan comes up with
+  discrepancies, the synchronization thread will use the quorum to figure
+  out which information is not correct and update accordingly.
 
-  This feature is also intended to be used to locate recently allocated
-  blocks and thus be able to fixup the freemap after a crash.
-
-  HAMMER2 mirroring works a bit differently than HAMMER1 mirroring in
-  that HAMMER2 does not keep track of 'deleted' records.  Instead any
-  recursion by the mirroring code which finds that (modify_tid) has
-  been updated must also send the direct block table or indirect block
-  table state it winds up recursing through so the target can check
-  similar key ranges and locate elements to be deleted.  This can be
-  avoided if the mirroring stream is mostly caught up in that very recent
-  deletions will be cached in memory and can be queried, allowing shorter
-  record deletions to be passed in the stream instead.
-
-* Will support multiple compression algorithms configured on subdirectory
-  tree basis and on a file basis.  Up to 64K block compression will be used.
-  Only compression ratios near powers of 2 that are at least 2:1 (e.g. 2:1,
+* Support for multiple compression algorithms configured on subdirectory
+  tree basis and on a file basis.  Block compression up to 64KB will be used.
+  Only compression ratios at powers of 2 that are at least 2:1 (e.g. 2:1,
   4:1, 8:1, etc) will work in this scheme because physical block allocations
-  in HAMMER2 are always power-of-2.
+  in HAMMER2 are always power-of-2.  Modest compression can be achieved with
+  low overhead, is turned on by default, and is compatible with deduplication.
 
-  Compression algorithm #0 will mean no compression and no zero-checking.
-  Compression algorithm #1 will mean zero-checking but no other compression.
-  Real compression will be supported starting with algorithm 2.
+* Encryption.  Whole-disk encryption is supported by another layer, but I
+  intend to give H2 an encryption feature at the logical layer which works
+  approximately as follows:
+
+  - Encryption controlled by the client on an inode/sub-tree basis.
+  - Server has no visibility to decrypted data.
+  - Encrypt filenames in directory entries.  Since the filename[] array
+    is 256 bytes wide, client can add random bytes after the normal
+    terminator to make it virtually impossible for an attacker to figure
+    out the filename.
+  - Encrypt file size and most inode contents.
+  - Encrypt file data (holes are not encrypted).
+  - Encryption occurs after compression, with random filler.
+  - Check codes calculated after encryption & compression (not before).
+
+  - Blockrefs are not encrypted.
+  - Directory and File Topology is not encrypted.
+  - Encryption is not sub-topology validation.  Client would have to keep
+    track of that itself.  Server or other clients can still e.g. remove
+    files, rename, etc.
+
+  In particular, note that even though the file size field can be encrypted,
+  the server does have visibility on the block topology and thus has a pretty
+  good idea how big the file is.  However, a client could add junk blocks
+  at the end of a file to make this less apparent, at the cost of space.
+
+  If a client really wants a fully validated H2-encrypted space the easiest
+  solution is to format a filesystem within an encrypted file by treating it
+  as a block device, but I digress.
 
 * Zero detection on write (writing all-zeros), which requires the data
-  buffer to be scanned, will be supported as compression algorithm #1.
-  This allows the writing of 0's to create holes and will be the default
-  compression algorithm for HAMMER2.
+  buffer to be scanned, is fully supported.  This allows the writing of 0's
+  to create holes.
 
-* Copies support for redundancy.  Each copy has its own blockref.  The
-  blockrefs representing the copies must exist within the same blockset
-  (set of 8 blockrefs), though I may relax this requirement in the
-  implementation.
+* Copies support for redundancy within a single physical filesystem.
+  Up to 256 physical disks and/or partitions can be ganged to form a
+  single physical filesystem.  If you use a disk or RAID aggregation 
+  layer then the actual number of physical disks that can be associated
+  with a single H2 filesystem is unbounded.
 
-  The design is such that the filesystem should be able to function at
-  full speed even if disks are pulled or inserted, as long as at least one
-  good copy is present.  A background task will be needed to resynchronize
-  missing copies (or remove excessive copies in the case where the copies
-  value is reduced on a live filesystem).
+  H2 puts an 8-bit copyid in the blockref structure to represent potentially
+  multiple copies of a block.  The copyid corresponds to a configuration
+  specification in the volume header.  The full algorithm has not been
+  specced yet.
 
-  Copies are specified using the same copyinfo[] array that is used to
-  specify cluster interconnections for PFS's.
+  Copies support is implemented by having multiple blockref entries for
+  the same key, each with a different copyid.  The copyid represents which
+  of the 256 slots is used.  Meta-data is also subject to the copies
+  mechanism.  However, for both meta-data and data, each copy should be
+  identical so the check fields in the blockref for all copies should wind
+  up being the same, and any valid copy can be used by the block-level
+  hammer2_chain code to access the filesystem.  File accesses will attempt
+  to use the same copy.  If an I/O read error occurs, a different copy will
+  be chosen.  Modifying operations must update all copies and/or create
+  new copies as needed.  If a write error occurs on a copy and other copies
+  are available, the errored target will be taken offline.
 
-* Clusterable with MESI cache coherency and dynamic granularity.
-  The media format for HAMMER1 was less condusive to logical clustering
-  than I had hoped so I was never able to get that aspect of my personal goals
-  working with HAMMER1.  HAMMER2 effectively solves the issues that cropped
-  up with HAMMER1 (mainly that HAMMER1's B-Tree did not reflect the logical
-  file/directory hierarchy, making cache coherency very difficult).
+  It is possible to configure H2 to write out fewer copies on-write and then
+  use a background scan to beef-up the number of copies to improve real-time
+  throughput.
 
-* Hardlinks will be supported.  All other standard features will be supported
-  too of course.  Hardlinks in this sort of filesystem require significant
-  work.
+* MESI Cache coherency for multi-master/multi-client clustering operations.
+  The servers hosting the MASTERs are also responsible for keeping track of
+  the cache state.
+
+* Hardlinks and softlinks are supported.  Hardlinks are somewhat complex to
+  deal with and there is still an edge case.  I am trying to avoid storing
+  the hardlinks at the root level because that messes up my concept for
+  sub-tree quotas and is unnecessarily burdensome in terms of SMP collisions
+  under heavy loads.
 
 * The media blockref structure is now large enough to support up to a 192-bit
   check value, which would typically be a cryptographic hash of some sort.
@@ -126,15 +171,17 @@
 * Fully verified deduplication will be supported and automatic (and
   necessary in many respects).
 
-* Non-verified de-duplication will be supported as a configurable option on
-  a file or subdirectory tree.  Non-verified deduplication would use the
-  largest available check code (192 bits) and not bother to verify data
-  matches during the dedup pass, which is necessary on extremely large
-  filesystems with a great deal of deduplicable data (as otherwise a large
-  chunk of the media would have to be read to implement the dedup).
+* Unverified de-duplication will be supported as a configurable option on a
+  file or subdirectory tree.  Unverified deduplication must use the largest
+  available check code (192 bits).  It will not verify that data content with
+  the same check code is actually identical during the dedup pass, resulting
+  in approximately 100x to 1000x the deduplication performance but at the cost
+  of potentially corrupting some data.
 
-  This feature is intended only for those files where occassional corruption
-  is ok, such as in a large data store of farmed web content.
+  The Unverified dedup feature is intended only for those files where
+  occassional corruption is ok, such as in a web-crawler data store or
+  other situations where the data content is not critically important
+  or can be externally recovered if it becomes corrupt.
 
 				GENERAL DESIGN
 
@@ -146,211 +193,344 @@ filesystem directory/file hierarchy snapshots and other similar operations
 can be trivially performed on an entire subdirectory tree at any level in
 the filesystem.
 
+The copy-on-write design implements a block table in a radix-tree format,
+with a small 8x fan-out in the volume header and inode and a large 256x or
+1024x fan-out for indirect blocks.  The table is built bottom-up.
+Intermediate radii are only created when necessary so small files will use
+much shallower radix block trees.  The inode itself can accomodate files
+up 512KB (65536x8).  Directories also use a radix block table and directory
+inodes can accomodate up to 8 entries before pushing an indirect radix block.
+
 The copy-on-write nature of the filesystem implies that any modification
 whatsoever will have to eventually synchronize new disk blocks all the way
 to the super-root of the filesystem and the volume header itself.  This forms
-the basis for crash recovery.  All disk writes are to new blocks except for
-the volume header, thus allowing all writes to run concurrently except for
-the volume header update at the end.
+the basis for crash recovery and also ensures that recovery occurs on a
+completed high-level transaction boundary.  All disk writes are to new blocks
+except for the volume header (which cycles through 4 copies), thus allowing
+all writes to run asynchronously and concurrently prior to and during a flush,
+and then just doing a final synchronization and volume header update at the
+end.  Many of HAMMER2s features are enabled by this core design feature.
 
 Clearly this method requires intermediate modifications to the chain to be
 cached so multiple modifications can be aggregated prior to being
-synchronized.  One advantage, however, is that the cache can be flushed at
-any time WITHOUT having to allocate yet another new block when further
-modifications are made as long as the volume header has not yet been flushed.
-This means that buffer cache overhead is very well bounded and can handle
-filesystem operations of any complexity even on boxes with very small amounts
-of physical memory.
+synchronized.  One advantage, however, is that the normal buffer cache can
+be used and intermediate elements can be retired to disk by H2 or the OS
+at any time.  This means that HAMMER2 has very low resource overhead from the
+point of view of the operating system.  Unlike HAMMER1 which had to lock
+dirty buffers in memory for long periods of time, HAMMER2 has no such
+requirement.
 
-I intend to implement a shortcut to make fsync()'s run fast, and that is to
-allow deep updates to blockrefs to shortcut to auxillary space in the
-volume header to satisfy the fsync requirement.  The related blockref is
-then recorded when the filesystem is mounted after a crash and the update
-chain is reconstituted when a matching blockref is encountered again during
-normal operation of the filesystem.
+Buffer cache overhead is very well bounded and can handle filesystem
+operations of any complexity, even on boxes with very small amounts
+of physical memory.  Buffer cache overhead is significantly lower with H2
+than with H1 (and orders of magnitude lower than ZFS).
 
-Basically this means that no real work needs to be done at mount-time
-even after a crash.
+At some point I intend to implement a shortcut to make fsync()'s run fast,
+and that is to allow deep updates to blockrefs to shortcut to auxillary
+space in the volume header to satisfy the fsync requirement.  The related
+blockref is then recorded when the filesystem is mounted after a crash and
+the update chain is reconstituted when a matching blockref is encountered
+again during normal operation of the filesystem.
+
+			    MIRROR_TID, MODIFY_TID
+
+In HAMMER2, the core block reference is 64-byte structure called a blockref.
+The blockref contains various bits of information including the 64-bit radix
+key (typically a directory hash if a directory entry, inode number if a
+hidden hardlink target, or file offset if a file block), 64-bit data offset
+with the physical block size radix encoded in it (physical block size can be
+different from logical block size due to compression), two 64-bit transaction
+ids, type information, and 192 bits worth of check data for the block being
+reference which can be a simple CRC or stronger HASH.
+
+Both mirror_tid and modify_tid propagate upward from the change point all the
+way to the root, but serve different purposes and work in slightly different
+ways.
+
+mirror_tid - This is a media-centric (as in physical disk partition)
+	     transaction id which tracks media-level updates.
+
+	     Whenever any block in the media topology is modified, its
+	     mirror_tid is updated with the flush id and will propagate
+	     upward during the flush all the way to the volume header.
+
+	     mirror_tid is monotonic.
+
+modify_tid - This is a cluster-centric (as in across all the nodes used
+	     to build a cluster) transaction id which tracks filesystem-level
+	     updates.
+
+	     modify_tid is updated when the front-end of the filesystem makes
+	     a change to an inode or data block.  It will also propagate
+	     upward, stopping at the root of the PFS (the mount point for
+	     the cluster).
+
+The major difference between mirror_tid and modify_tid is that for any given
+element in the topology residing on different nodes.  e.g. file "x" on node 1
+and file "x" on node 2, if the files are synchronized with each other they
+will have the same modify_tid on a block-by-block basis, and a single check
+of the inode's modify_tid is sufficient to determine that the files are fully
+synchronized and identical.  These same inodes and representitive blocks will
+have very different mirror_tids because the nodes will reside on different
+physical media.
+
+I noted above that modify_tids also propagate upward, but not in all cases.
+A node which is undergoing SYNCHRONIZATION only updates the modify_tid of
+a block when it has determined that the block and its entire sub-block
+hierarchy has been synchronized to that point.
+
+The synchronization code updates an out-of-sync node bottom-up and will
+definitely set modify_tid as it goes, but media flushes can occur at any
+time and these flushes will use mirror_tid for flush and freemap management.
+The mirror_tid for each flush propagates upward to the volume header on each
+flush.
+
+* The synchronization code is able to determine that a sub-tree is
+  synchronized simply by observing the modify_tid at the root of the sub-tree,
+  on a directory-by-directory basis.
+
+* The synchronization code is able to do an incremental update of an
+  out-of-sync node simply by skipping elements with matching modify_tids.
+
+* The synchronization code can be interrupted and restarted at any time,
+  and is able to pick up where it left off with very little overhead.
+
+* The synchronization code does not inhibit media flushes.  Media flushes
+  can occur (and must occur) while synchronization is ongoing.
+
+There are several other stored transaction ids in HAMMER2.  There is a
+separate freemap_tid in the volume header that is used to allow freemap
+flushes to be deferred, and inodes have an attr_tid and a dirent_tid which
+tracks attribute changes and (for directories) create/rename/delete changes.
+The inode TIDs are used as an aid for the cache coherency subsystem.
+
+Remember that since this is a copy-on-write filesystem, we can propagate
+a considerable amount of information up the tree to the volume header
+without adding to the I/O we already have to do.
+
+			    DIRECTORIES AND INODES
 
 Directories are hashed, and another major design element is that directory
-entries ARE INODES.  They are one and the same.  In addition to directory
-entries being inodes the data for very small files (512 bytes or smaller)
-can be directly embedded in the inode (overloaded onto the same space that
-the direct blockref array uses).  This should result in very high
-performance.
+entries ARE inodes.  They are one and the same, with a special placemarker
+for hardlinks.  Inodes are 1KB.
+
+Hardlinks are implemented with placemarkers as directory entries which simply
+represent the inode number.  The actual file resides in a parent directory
+that is common to all hardlinks to that file.  If the hardlinks are all within
+a single directory, the actual hardlink inode is in that directory.  The
+hardlink target, as we call it, is a hidden directory entry in a common parent
+whos key is basically just the inode number itself, so lookups are fast.
+
+Half of the inode structure (512 bytes) is used to hold top-level blockrefs
+to the radix block tree representing the file contents.  Files which are
+less than or equal to 512 bytes in size will simply store the file contents
+in this area instead of a blockref array.  So files <= 512 bytes take only
+1KB of space inclusive of the inode.
 
 Inode numbers are not spatially referenced, which complicates NFS servers
 but doesn't complicate anything else.  The inode number is stored in the
-inode itself, an absolutely necessary feature in order to support the
-hugely flexible snapshots that we want to have in HAMMER2.
+inode itself, an absolute necessity required to properly support HAMMER2s
+hugely flexible snapshots.  I would like to support NFS services but it
+would require (probably) a lookaside index in the root for inode lookups
+and might not happen quickly.
+
+				    RECOVERY
+
+H2 allows freemap flushes to lag behind topology flushes.  The freemap flush
+tracks a separate transaction id (via mirror_tid) in the volume header.
+
+On mount, HAMMER2 will first locate the highest-sequenced check-code-validated
+volume header from the 4 copies available (if the filesystem is big enough,
+e.g. > ~10GB or so, there will be 4 copies of the volume header).
+
+HAMMER2 will then run an incremental scan of the topology for mirror_tid
+transaction ids between the last freemap flush tid and the last topology
+flush tid in order to synchronize the freemap.  Because this scan is
+incremental the time it takes to run will be relatively short and well-bounded
+at mount-time.  This is NOT fsck.  Freemap flushes can be avoided for any
+number of normal topology flushes but should still occur frequently enough
+to avoid long recovery times in case of a crash.
+
+The filesystem is then ready for use.
 
 			    DISK I/O OPTIMIZATIONS
 
-The freemap implements a 1KB allocation resolution.  The minimum I/O size
-is 16KB.  HAMMER2 typically implements 16KB and 64KB physical I/O sizes
-and will cluster larger I/O's.
+The freemap implements a 1KB allocation resolution.  Each 2MB segment managed
+by the freemap is zoned and has a tendancy to collect inodes, small data,
+indirect blocks, and larger data blocks into separate segments.  The idea is
+to greatly improve I/O performance (particularly by laying inodes down next
+to each other which has a huge effect on directory scans).
 
-Each 2MB segment managed by the freemap handles just one particular
-physical I/O size.  Typically this means that inodes, small data, and
-initial (small) indirect blocks get clustered together.  Also large 64KB
-file-data and indirect blocks get clustered together.
+The current implementation of HAMMER2 implements a fixed block size of 64KB
+in order to allow the mapping of hammer2_dio's in its IO subsystem to
+conumers that might desire different sizes.  This way we don't have to
+worry about matching the buffer cache / DIO cache to the variable block
+size of underlying elements.
 
-				  HARDLINKS
+The biggest issue we are avoiding by having a fixed 64KB I/O size is not
+actually to help nominal front-end access issue but instead to reduce the
+complexity when blocks are freed and reused for another purpose.  HAMMER1
+had to have specialized code to check for and invalidate buffer cache buffers
+in the free/reuse case.  HAMMER2 does not need such code.
 
-Hardlinks are a particularly sticky problem for HAMMER2 due to the lack of
-a spatial reference to the inode number.  We do not want to have to have
-an index of inode numbers for any basic HAMMER2 feature if we can help it.
+That said, HAMMER2 places no major restrictions on mixing block sizes within
+a 64KB block.  The only restriction is that a HAMMER2 block cannot cross
+a 64KB boundary.  The soft restrictions the block allocator puts in place
+exist primarily for performance reasons (i.e. try to collect 1K inodes
+together).  The 2MB freemap zone granularity should work very well in this
+regard.
 
-Hardlinks are handled by placing the inode for a multiply-hardlinked file
-in the closest common parent directory.  If "a/x" and "a/y" are hardlinked
-the inode for the hardlinked file will be placed in directory "a", e.g.
-"a/3239944", but it will be invisible and will be in an out-of-band namespace.
-The directory entries "a/x" and "a/y" will be given the same inode number
-but in fact just be placemarks that cause HAMMER2 to recurse upwards through
-the directory tree to find the invisible inode number.
+HAMMER2 also allows OS support for ganging buffers together into even
+larger blocks for I/O (OS buffer cache 'clustering'), OS-supported read-ahead,
+OS-driven asynchronous retirement, and other performance features typically
+provided by the OS at the block-level to ensure smooth system operation.
 
-Because directories are hashed and a different namespace (hash key range)
-is used for hardlinked inodes, standard directory scans are able to trivially
-skip this invisible namespace and inode-specific lookups can restrict their
-lookup to within this space.
-
-The nature of snapshotting makes handling link-count 2->1 and 1->2 cases
-trivial.  Basically the inode media structure is copied as needed to break-up
-or re-form the standard directory entry/inode.  There are no backpointers in
-HAMMER2 and no reference counts on the blocks (see FREEMAP NOTES below), so
-it is an utterly trivial operation.
+By avoiding wiring buffers/memory and allowing these features to run normally,
+HAMMER2 winds up with very low OS overhead.
 
 				FREEMAP NOTES
 
+The freemap is stored in the reserved blocks situated in the ~4MB reserved
+area at the baes of every ~1GB level-1 zone.  The current implementation
+reserves 8 copies of every freemap block and cycles through them in order
+to make the freemap operate in a copy-on-write fashion.
+
+    - Freemap is copy-on-write.
+    - Freemap operations are transactional, same as everything else.
+    - All backup volume headers are consistent on-mount.
+
+The Freemap is organized using the same radix blockmap algorithm used for
+files and directories, but with fixed radix values.  For a maximally-sized
+filesystem the Freemap will wind up being a 5-level-deep radix blockmap,
+but the top-level is embedded in the volume header so insofar as performance
+goes it is really just a 4-level blockmap.
+
+The freemap radix allocation mechanism is also the same, meaning that it is
+bottom-up and will not allocate unnecessary intermediate levels for smaller
+filesystems.  The number of blockmap levels not including the volume header
+for various filesystem sizes is as follows:
+	
+	up-to		#of freemap levels
+	1GB		1-level
+	256GB		2-level
+	64TB		3-level
+	16PB		4-level
+	4EB		5-level
+	16EB		6-level
+
+The Freemap has bitmap granularity down to 16KB and a linear iterator that
+can linearly allocate space down to 1KB.  Due to fragmentation it is possible
+for the linear allocator to become marginalized, but it is relatively easy
+to for a reallocation of small blocks every once in a while (like once a year
+if you care at all) and once the old data cycles out of the snapshots, or you
+also rewrite the snapshots (which you can do), the freemap should wind up
+relatively optimal again.  Generally speaking I believe that algorithms can
+be developed to make this a non-problem without requiring any media structure
+changes.
+
 In order to implement fast snapshots (and writable snapshots for that
-matter), HAMMER2 does NOT ref-count allocations.  The freemap which
-is still under design just won't do that.  All the freemap does is
-keep track of 100% free blocks.
+matter), HAMMER2 does NOT ref-count allocations.  All the freemap does is
+keep track of 100% free blocks plus some extra bits for staging the bulkfree
+scan.  The lack of ref-counting makes it possible to:
 
-This not only trivializes all the snapshot features it also trivializes
-hardlink handling and solves the problem of keeping the freemap sychronized
-in the event of a crash.  Now all we have to do after a crash is make
-sure blocks allocated before the freemap was flushed are properly
-marked as allocated in the allocmap.  This is a trivial exercise using the
-same algorithm the mirror streaming code uses (which is very similar to
-HAMMER1)... an incremental meta-data scan that covers only the blocks that
-might have been allocated between the last allocation map sync and now.
+    - Completely trivialize HAMMER2s snapshot operations.
+    - Allows any volume header backup to be used trivially.
+    - Allows whole sub-trees to be destroyed without having to scan them.
+    - Simplifies normal crash recovery operations.
+    - Simplifies catastrophic recovery operations.
 
-Thus the freemap does not have to be synchronized during a fsync().
+Normal crash recovery is simply a matter of doing an incremental scan
+of the topology between the last flushed freemap TID and the last flushed
+topology TID.  This usually takes only a few seconds and allows:
 
-The complexity is in figuring out what can be freed... that is, when one
-can mark blocks in the freemap as being free.  HAMMER2 implements this as
-a background task which essentially must scan available meta-data to
-determine which blocks are not being referenced.
+    - Freemap flushes to be be deferred for any number of topology flush
+      cycles.
+    - Does not have to be flushed for fsync, reducing fsync overhead.
+
+				FREEMAP - BULKFREE
+
+Blocks are freed via a bulkfree scan, which is a two-stage meta-data scan.
+Blocks are first marked as being possibly free and then finalized in the
+second scan.  Live filesystem operations are allowed to run during these
+scans and any freemap block that is allocated or adjusted after the first
+scan will simply be re-marked as allocated and the second scan will not
+transition it to being free.
+
+The cost of not doing ref-count tracking is that HAMMER2 must perform two
+bulkfree scans of the meta-data to determine which blocks can actually be
+freed.  This can be complicated by the volume header backups and snapshots
+which cause the same meta-data topology to be scanned over and over again,
+but mitigated somewhat by keeping a cache of higher-level nodes to detect
+when we would scan a sub-topology that we have already scanned.  Due to the
+copy-on-write nature of the filesystem, such detection is easy to implement.
 
 Part of the ongoing design work is finding ways to reduce the scope of this
 meta-data scan so the entire filesystem's meta-data does not need to be
 scanned (though in tests with HAMMER1, even full meta-data scans have
-turned out to be fairly low cost).  In other words, its an area that we
-can continue to improve on as the filesystem matures.  Not only that, but
-we can completely change the freemap algorithms without creating
-incompatibilities (at worse simply having to require that a R+W mount do
-a full meta-data scan when upgrading or downgrading the freemap algorithm).
+turned out to be fairly low cost).  In other words, its an area where
+improvements can be made without any media format changes.
+
+Another advantage of operating the freemap like this is that some future
+version of HAMMER2 might decide to completely change how the freemap works
+and would be able to make the change with relatively low downtime.
 
 				  CLUSTERING
 
 Clustering, as always, is the most difficult bit but we have some advantages
 with HAMMER2 that we did not have with HAMMER1.  First, HAMMER2's media
-structures generally follow the kernel's filesystem hiearchy.  Second,
+structures generally follow the kernel's filesystem hiearchy which allows
+cluster operations to use topology cache and lock state.  Second,
 HAMMER2's writable snapshots make it possible to implement several forms
 of multi-master clustering.
 
 The mount device path you specify serves to bootstrap your entry into
-the cluster.  This can be local media or directly specify a network
-cluster connection (or several).  When a local media mount is used the
-volume header is scanned for local copies and the best volume header is
-selected from all available copies.  Multiple devices may be specified for
-redundancy.
+the cluster.  This is typically local media.  It can even be a ram-disk
+that only contains placemarkers that help HAMMER2 connect to a fully
+networked cluster.
 
-The volume header on local media also contains cluster connection
-specifications keyed by super-root pfsid.  Network connections are
-maintained to all targets.  ALL ELEMENTS ARE TREATED ACCORDING TO TYPE
-NO MATTER WHICH ONE YOU MOUNT FROM.
+With HAMMER2 you mount a directory entry under the super-root.  This entry
+will contain a cluster identifier that helps HAMMER2 identify and integrate
+with the nodes making up the cluster.  HAMMER2 will automatically integrate
+*all* entries under the super-root when you mount one of them.  You have to
+mount at least one for HAMMER2 to integrate the block device in the larger
+cluster.  This mount will typically be a SOFT_MASTER, DUMMY, SLAVE, or CACHE
+mount that simply serves to cause hammer to integrate the rest of the
+represented cluster.  ALL CLUSTER ELEMENTS ARE TREATED ACCORDING TO TYPE
+NO MATTER WHICH ONE YOU MOUNT.
 
-The actual networked cluster may be far larger than the elements you list
-in the hammer2_copy_data[] array, but your machine will only make direct
-connections as specified by the array.
+For cluster servers every HAMMER2-formatted partition has a "LOCAL" MASTER
+which can be mounted in order to make the rest of the elements under the
+super-root available to the network.  (In a prior specification I emplaced
+the cluster connections in the volume header's configuration space but I no
+longer do that).
 
-In the simplest case you simply network a few machines together as ring 0
-masters and each client connects directly to all the masters (and/or are
-the masters themselves).  Thus any quorum operation is straight-forward.
-These master nodes are labeled 'ring 0'.
+Connecting to the wider networked cluster involves setting up the /etc/hammer2
+directory with appropriate IP addresses and keys.  The user-mode hammer2
+service daemon maintains the connections and performs graph operations
+via libdmsg.
 
-If you have too many clients to reasonably connect directly you set up
-sub-clusters as satellites.  This is called 'ring 1'.  Ring 1 may contain
-several sub-clusters.  A client then connects to all the nodes in a
-particular sub-cluster (typically 3).  The quorum protocol runs as per
-normal except that once the operation is resolved against the sub-cluster
-an aggregation must be resolved against the master nodes (ring 0).  The
-sub-cluster does this for the client... all the client sees is the normal
-quorum operation against the sub-cluster.
+Node types within the cluster:
 
-Since each node in the sub-cluster connects to all master nodes we get
-a multiplication.  If we set a reasonable upper limit of, say, 256
-connections at each master node then ring 1 may contain 85 sub-clusters x 3
-nodes in each sub-cluster.
+    DUMMY	- Used as a local placeholder (typically in ramdisk)
+    CACHE	- Used as a local placeholder and cache (typically on a SSD)
+    SLAVE	- A SLAVE in the cluster, can source data on quorum agreement.
+    MASTER	- A MASTER in the cluster, can source and sink data on quorum
+		  agreement.
+    SOFT_SLAVE	- A SLAVE in the cluster, can source data locally without
+		  quorum agreement (must be directly mounted).
+    SOFT_MASTER	- A local MASTER but *not* a MASTER in the cluster.  Can source
+		  and sink data locally without quorum agreement, intended to
+		  be synchronized with the real MASTERs when connectivity
+		  allows.  Operations are not coherent with the real MASTERS
+		  even when they are available.
 
-In the most complex case when one wishes to support potentially millions
-of clients then further fan-out is required into ring 2, ring 3, and
-so forth.  However, each sub-cluster in ring 2 must only connect to
-1 sub-cluster in ring 1 (otherwise the cache state will become mightily
-confused).  Using reasonable metrics this will allow ring 2 to contain
-85 * 85 = 7225 sub-clusters.  At this point you could have 1000 clients
-connect to each sub-cluster and support 7.2 million clients, but if that
-isn't enough going to another ring will support 61M clients, and so forth.
+    NOTE: SNAPSHOT, AUTOSNAP, etc represent sub-types, typically under a
+	  SLAVE.  A SNAPSHOT or AUTOSNAP is a SLAVE sub-type that is no longer
+	  synchronized against current masters.
 
-Each ring imposes additional latencies for cache operations but the key
-to making this work efficiently is that the satellite clusters can negotiate
-coarse-grained cache coherency locks with the next lower ring and then
-fan-out finer-grained locks to the next higher ring.  Since caching can
-occur anywhere (including on the connecting client), it is the cache
-coherency lock that ultimately dictates efficiency and allows a client
-(or satellite) to access large amoutns of data from local storage.
-
-Modifying operations, particularly commits, also have higher latencies
-when multiple rings are in use.  In this situation it is possible to
-short-cut localized operations by having competing clients connect to
-to sub-clusters which are near each other topologically... having the
-competing clients connect to the same sub-cluster would be the most optimal.
-
-In addition, sub-clusters (typically in ring 1) can act in SOFT_MASTER mode
-which allows the sub-cluster to acknowledge a full commit within its own
-quorum only, and then resolve asynchronously to the masters in ring 0.
-
-The nodes in these intermediate rings can be pure proxies with only memory
-caches, use local media for persistent cache, or use local media to
-completely slave the filesystem.
-
-    ADMIN	- Media does not participate, administrative proxy only
-    CLIENT	- Media does not participate, client only
-    CACHE	- Media only acts as a persistent cache
-    COPY	- Media only acts as a local copy
-    SLAVE	- Media is a RO slave that can be mounted RW
-
-    SOFT_SLAVE	- This is a SLAVE which can become writable when
-		  the quorum is not available, but is not guaranteed
-		  to be able to be merged back when the quorum becomes
-		  available again.  Elements which cannot be merged
-		  back remain localized and writable until manual
-		  or scripted intervention recombines them.
-
-    SOFT_MASTER	- Similar to the above but can form a sub-cluster
-		  and run the quorum protocol within the sub-cluster
-		  to serve machines that connect to the sub-cluster
-		  when the master cluster is not available.
-
-		  The SOFT_MASTER nodes in a sub-cluster must be
-		  fully interconnected with each other.
-
-    MASTER	- This is a MASTER node in the quorum protocol.
-
-		  The MASTER nodes in a cluster must be fully
-		  interconnected with each other.
+    NOTE: Any SLAVE or other copy can be turned into its own writable MASTER
+	  by giving it a unique cluster id, taking it out of the cluster that
+	  originally spawned it.
 
 There are four major protocols:
 
@@ -411,20 +591,160 @@ There are four major protocols:
 
 	This is basically the physical media protocol.
 
-There are lots of ways to implement multi-master environments using the
-above core features but the implementation is going to be fairly complex
-even with HAMMER2's feature set.
+		       MASTER & SLAVE SYNCHRONIZATION
 
-Keep in mind that modifications propagate all the way to the super-root
-and volume header, so in any clustered arrangement the use of (modify_tid)
-and (mirror_tid) is critical in determining the synchronization state of
-portion(s) of the filesystem.
+With HAMMER2 I really want to be hard-nosed about the consistency of the
+filesystem, including the consistency of SLAVEs (snapshots, etc).  In order
+to guarantee consistency we take advantage of the copy-on-write nature of
+the filesystem by forking consistent nodes and using the forked copy as the
+source for synchronization.
 
-Specifically, since any modification propagates to the root the (mirror_tid)
-in higher level directories is going to be in a constant state of flux.  This
-state of flux DOES NOT invalidate the cache state for these higher levels
-of directories.  Instead, the (modify_tid) is used on a node-by-node basis
-to determine cache state at any given level, and (mirror_tid) is used to
-determine whether any recursively underlying state is desynchronized.
-The inode structure also has two additional transaction ids used to optimize
-path lookups, stat, and directory lookup/scan operations.
+Similarly, the target for synchronization is not updated on the fly but instead
+is also forked and the forked copy is updated.  When synchronization is
+complete, forked sources can be thrown away and forked copies can replace
+the original synchronization target.
+
+This may seem complex, but 'forking a copy' is actually a virtually free
+operation.  The top-level inode (under the super-root), on-media, is simply
+copied to a new inode and poof, we have an unchanging snapshot to work with.
+
+	- Making a snapshot is fast... almost instantanious.
+
+	- Snapshots are used for various purposes, including synchronization
+	  of out-of-date nodes.
+
+	- A snapshot can be converted into a MASTER or some other PFS type.
+
+	- A snapshot can be forked off from its parent cluster entirely and
+	  turned into its own writable filesystem, either as a single MASTER
+	  or this can be done across the cluster by forking a quorum+ of
+	  existing MASTERs and transfering them all to a new cluster id.
+
+More complex is reintegrating the target once the synchronization is complete.
+For SLAVEs we just delete the old SLAVE and rename the copy to the same name.
+However, if the SLAVE is mounted and not optioned as a static mount (that is
+the mounter wants to see updates as they are synchronized), a reconciliation
+must occur on the live mount to clean up the vnode, inode, and chain caches
+and shift any remaining vnodes over to the updated copy.
+
+	- A mounted SLAVE can track updates made to the SLAVE but the
+	  actual mechanism is that the SLAVE PFS is replaced with an
+	  updated copy, typically every 30-60 seconds.
+
+Reintegrating a MASTER which has fallen out of the quorum due to being out
+of date is also somewhat more complex.  The same updating mechanic is used,
+we actually have to throw the 'old' MASTER away once the new one has been
+updated.  However if the cluster is undergoing heavy modifications the
+updated MASTER will be out of date almost the instant its source is
+snapshotted.  Reintegrating a MASTER thus requires a somewhat more complex
+interaction.
+
+	- If a MASTER is really out of date we can run one or more
+	  synchronization passes concurrent with modifying operations.
+	  The quorum can remain live.
+
+	- A final synchronization pass is required with quorum operations
+	  blocked to reintegrate the now up-to-date MASTER into the cluster.
+
+
+				QUORUM OPERATIONS
+
+Quorum operations can be broken down into HARD BLOCK operations and NETWORK
+operations.  If your MASTERs are all local mounts, then failures and
+sequencing is easy to deal with.
+
+Quorum operations on a networked cluster are more complex.  The problems:
+
+    - Masters cannot rely on clients to moderate quorum transactions.
+      Apart from the reliance being unsafe, the client could also
+      lose contact with one or more masters during the transaction and
+      leave one or more masters out-of-sync without the master(s) knowing
+      they are out of sync.
+
+    - When many clients are present, we do not want a flakey network
+      link from one to cause one or more masters to go out of
+      synchronization and potentially stall the whole works.
+
+    - Normal hammer2 mounts allow a virtually unlimited number of modifying
+      transactions between actual flushes.  The media flush rolls everything
+      up into a single transaction id per flush.  Detection of 'missing'
+      transactions in a concurrent multi-client setup when one or more client
+      temporarily loses connectivity is thus difficult.
+
+    - Clients have a limited amount of time to reconnect to a cluster after
+      a network disconnect before their MESI cache states are lost.
+
+    - Clients may proceed with several transactions before knowing for sure
+      that earlier transactions were completely successful.  Performance is
+      important, we won't be waiting for a full quorum-verified synchronous
+      flush to media before allowing a system call to return.
+
+    - Masters can decide that a client's MESI cache states were lost (i.e.
+      that the transaction was too slow) as well.
+
+The solutions (for modifying transactions):
+
+    - Masters handle quorum confirmation amongst themselves and do not rely
+      on the client for that purpose.
+
+    - A client can connect to one or more masters regardless of the size of
+      the quorum and can submit modifying operations to a single master if
+      desired.  The master will take care of the rest.
+
+      A client must still validate the quorum (and obtain MESI cache states)
+      when doing read-only operations in order to present the correct data
+      to the user process for the VOP.
+
+    - Masters will run a 2-phase commit amongst themselves, often concurrent
+      with other non-conflicting transactions, and will serialize operations
+      and/or enforce synchronization points for 2-phase completion on
+      serialized transactions from the same client or when cache state
+      ownership is shifted from one client to another.
+
+    - Clients will usually allow operations to run asynchronously and return
+      from system calls more or less ASAP once they own the necessary cache
+      coherency locks.  The client can select the validation mode to wait for
+      with mount options:
+
+      (1) Fully async		(mount -o async)
+      (2) Wait for phase-1 ack	(mount)
+      (3) Wait for phase-2 ack	(mount -o sync)		(fsync - wait p2ack)
+      (4) Wait for flush	(mount -o sync)		(fsync - wait flush)
+
+      Modifying system calls cannot be told to wait for a full media
+      flush, as full media flushes are prohibitively expensive.  You
+      still have to fsync().
+
+      The fsync wait mode for network links can be selected, either to
+      return after the phase-2 ack or to return after the media flush.
+      The default is to wait for the phase-2 ack, which at least guarantees
+      that a network failure after that point will not disrupt operations
+      issued before the fsync.
+
+    - Clients must adjust the chain state for modifying operations prior to
+      releasing chain locks / returning from the system call, even if the
+      masters have not finished the transaction.  A late failure by the
+      cluster will result in desynchronized state which requires erroring
+      out the whole filesystem or resynchronizing somehow.
+
+    - Clients can opt to keep a record of transactions through the phase-2
+      ack or the actual media flush on the masters.
+
+      However, replaying/revalidating the log cannot necessarily guarantee
+      success.  If the masters lose synchronization due to network issues
+      between masters (or if the client was mounted fully-async), or if enough
+      masters crash simultaniously such that a quorum fails to flush even
+      after the phase-2 ack, then it is possible that by the time a client
+      is able to replay/revalidate, some other client has squeeded in and
+      committed something that would conflict.
+
+      If the client crashes it works similarly to a crash with a local storage
+      mount... many dirty buffers might be lost.  And the same happens in
+      the cluster case.
+
+				TRANSACTION LOG
+
+Keeping a short-term transaction log, much less being able to properly replay
+it, is fraught with difficulty and I've made it a separate development task.
+    
+

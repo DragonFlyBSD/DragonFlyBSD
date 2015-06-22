@@ -71,9 +71,9 @@ static __inline void collect_btree_internal(hammer_btree_elm_t elm);
 static __inline void collect_btree_leaf(hammer_btree_elm_t elm);
 static __inline void collect_undo(hammer_off_t scan_offset,
 	hammer_fifo_head_t head);
-static void collect_blockmap(hammer_off_t offset, int32_t length);
+static void collect_blockmap(hammer_off_t offset, int32_t length, int zone);
 static struct hammer_blockmap_layer2 *collect_get_track(
-	collect_t collect, hammer_off_t offset,
+	collect_t collect, hammer_off_t offset, int zone,
 	struct hammer_blockmap_layer2 *layer2);
 static collect_t collect_get(hammer_off_t phys_offset);
 static void dump_collect_table(void);
@@ -155,10 +155,8 @@ dump_blockmap(const char *label, int zone)
 				layer2->bytes_free);
 		}
 	}
-	if (buffer1)
-		rel_buffer(buffer1);
-	if (buffer2)
-		rel_buffer(buffer2);
+	rel_buffer(buffer1);
+	rel_buffer(buffer2);
 	rel_volume(root_volume);
 }
 
@@ -293,7 +291,8 @@ void
 collect_btree_root(hammer_off_t node_offset)
 {
 	collect_blockmap(node_offset,
-		sizeof(struct hammer_node_ondisk)); /* 4KB */
+		sizeof(struct hammer_node_ondisk),  /* 4KB */
+		HAMMER_ZONE_BTREE_INDEX);
 }
 
 static __inline
@@ -301,27 +300,61 @@ void
 collect_btree_internal(hammer_btree_elm_t elm)
 {
 	collect_blockmap(elm->internal.subtree_offset,
-		sizeof(struct hammer_node_ondisk)); /* 4KB */
+		sizeof(struct hammer_node_ondisk),  /* 4KB */
+		HAMMER_ZONE_BTREE_INDEX);
 }
 
 static __inline
 void
 collect_btree_leaf(hammer_btree_elm_t elm)
 {
+	int zone;
+
+	switch (elm->base.rec_type) {
+	case HAMMER_RECTYPE_INODE:
+	case HAMMER_RECTYPE_DIRENTRY:
+	case HAMMER_RECTYPE_EXT:
+	case HAMMER_RECTYPE_FIX:
+	case HAMMER_RECTYPE_PFS:
+	case HAMMER_RECTYPE_SNAPSHOT:
+	case HAMMER_RECTYPE_CONFIG:
+		zone = HAMMER_ZONE_META_INDEX;
+		break;
+	case HAMMER_RECTYPE_DATA:
+	case HAMMER_RECTYPE_DB:
+		/*
+		 * There is an exceptional case where HAMMER uses
+		 * HAMMER_ZONE_LARGE_DATA when the data length is
+		 * >HAMMER_BUFSIZE/2 (not >=HAMMER_BUFSIZE).
+		 * This exceptional case is currently being used
+		 * by mirror write code, however the following code
+		 * can ignore that and simply use the normal way
+		 * of selecting a zone using >=HAMMER_BUFSIZE.
+		 * See hammer_alloc_data() for details.
+		 */
+		zone = elm->leaf.data_len >= HAMMER_BUFSIZE ?
+		       HAMMER_ZONE_LARGE_DATA_INDEX :
+		       HAMMER_ZONE_SMALL_DATA_INDEX;
+		break;
+	default:
+		zone = HAMMER_ZONE_UNAVAIL_INDEX;
+		break;
+	}
 	collect_blockmap(elm->leaf.data_offset,
-		(elm->leaf.data_len + 15) & ~15);
+		(elm->leaf.data_len + 15) & ~15, zone);
 }
 
 static __inline
 void
 collect_undo(hammer_off_t scan_offset, hammer_fifo_head_t head)
 {
-	collect_blockmap(scan_offset, head->hdr_size);
+	collect_blockmap(scan_offset, head->hdr_size,
+		HAMMER_ZONE_UNDO_INDEX);
 }
 
 static
 void
-collect_blockmap(hammer_off_t offset, int32_t length)
+collect_blockmap(hammer_off_t offset, int32_t length, int zone)
 {
 	struct hammer_blockmap_layer1 layer1;
 	struct hammer_blockmap_layer2 layer2;
@@ -332,12 +365,13 @@ collect_blockmap(hammer_off_t offset, int32_t length)
 
 	result_offset = blockmap_lookup(offset, &layer1, &layer2, &error);
 	if (AssertOnFailure) {
+		assert(HAMMER_ZONE_DECODE(offset) == zone);
 		assert(HAMMER_ZONE_DECODE(result_offset) ==
 			HAMMER_ZONE_RAW_BUFFER_INDEX);
 		assert(error == 0);
 	}
 	collect = collect_get(layer1.phys_offset); /* layer2 address */
-	track2 = collect_get_track(collect, offset, &layer2);
+	track2 = collect_get_track(collect, offset, zone, &layer2);
 	track2->bytes_free -= length;
 }
 
@@ -373,7 +407,7 @@ collect_rel(collect_t collect)
 
 static
 struct hammer_blockmap_layer2 *
-collect_get_track(collect_t collect, hammer_off_t offset,
+collect_get_track(collect_t collect, hammer_off_t offset, int zone,
 		  struct hammer_blockmap_layer2 *layer2)
 {
 	struct hammer_blockmap_layer2 *track2;
@@ -383,6 +417,7 @@ collect_get_track(collect_t collect, hammer_off_t offset,
 	track2 = &collect->track2[i];
 	if (track2->entry_crc == 0) {
 		collect->layer2[i] = *layer2;
+		track2->zone = zone;
 		track2->bytes_free = HAMMER_BIGBLOCK_SIZE;
 		track2->entry_crc = 1;	/* steal field to tag track load */
 	}
@@ -432,16 +467,18 @@ dump_collect(collect_t collect, int *stats)
 {
 	struct hammer_blockmap_layer2 *track2;
 	struct hammer_blockmap_layer2 *layer2;
+	hammer_off_t offset;
 	size_t i;
 	int zone;
 
 	for (i = 0; i < HAMMER_BLOCKMAP_RADIX2; ++i) {
 		track2 = &collect->track2[i];
 		layer2 = &collect->layer2[i];
+		offset = collect->phys_offset + i * HAMMER_BIGBLOCK_SIZE;
 
 		/*
-		 * Currently just check bigblocks referenced by data
-		 * or B-Tree nodes.
+		 * Check bigblocks referenced by data, B-Tree nodes
+		 * and UNDO fifo.
 		 */
 		if (track2->entry_crc == 0)
 			continue;
@@ -454,18 +491,22 @@ dump_collect(collect_t collect, int *stats)
 		}
 		stats[zone]++;
 
-		if (track2->bytes_free != layer2->bytes_free) {
+		if (track2->zone != layer2->zone) {
+			printf("BZ\tblock=%016jx calc zone=%2d, got zone=%2d\n",
+				(intmax_t)offset,
+				track2->zone,
+				layer2->zone);
+			collect->error++;
+		} else if (track2->bytes_free != layer2->bytes_free) {
 			printf("BM\tblock=%016jx zone=%2d calc %d free, got %d\n",
-				(intmax_t)(collect->phys_offset +
-					   i * HAMMER_BIGBLOCK_SIZE),
+				(intmax_t)offset,
 				layer2->zone,
 				track2->bytes_free,
 				layer2->bytes_free);
 			collect->error++;
 		} else if (VerboseOpt) {
 			printf("\tblock=%016jx zone=%2d %d free (correct)\n",
-				(intmax_t)(collect->phys_offset +
-					   i * HAMMER_BIGBLOCK_SIZE),
+				(intmax_t)offset,
 				layer2->zone,
 				track2->bytes_free);
 		}

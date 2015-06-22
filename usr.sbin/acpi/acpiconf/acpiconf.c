@@ -188,13 +188,19 @@ usage(const char* prog)
 int
 main(int argc, char *argv[])
 {
-	char	c, *prog;
+	char	c, *prog, *ptr;
 	int	sleep_type;
 
 	prog = argv[0];
-	if (argc < 2)
+	if (strstr((ptr = strrchr(prog, '/')) ? ptr + 1 : prog, "apm") != 0) {
+		acpi_init();
+		acpi_battinfo(0);
+		close(acpifd);
+		exit(0);
+	} else if (argc < 2) {
 		usage(prog);
 		/* NOTREACHED */
+	}
 
 	sleep_type = -1;
 	acpi_init();

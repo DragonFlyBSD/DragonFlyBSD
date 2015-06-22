@@ -55,7 +55,10 @@
 /*
  * Data types.
  */
+#ifndef _SA_FAMILY_T_DECLARED
 typedef __uint8_t	sa_family_t;
+#define	_SA_FAMILY_T_DECLARED
+#endif
 
 #ifndef _SOCKLEN_T_DECLARED
 #define _SOCKLEN_T_DECLARED

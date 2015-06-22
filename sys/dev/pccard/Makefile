@@ -3,4 +3,8 @@
 
 SUBDIR=cardbus exca pccbb
 
+# Empty for concurrent build
+#
+SUBDIR_ORDERED=
+
 .include <bsd.subdir.mk>

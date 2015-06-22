@@ -85,7 +85,7 @@ struct	cmdtab cmdtab[] = {
 	  initicmp6,	openicmp6,	closeicmp6,	cmdmode,
 	  reseticmp6,	CF_LOADAV },
 	{ "sensors",	showsensors,	fetchsensors,	labelsensors,
-	  initsensors,	opensensors,	closesensors,	NULL,
+	  initsensors,	opensensors,	closesensors,	cmdsensors,
 	  NULL,		CF_LOADAV },
         { .c_name = NULL }
 };

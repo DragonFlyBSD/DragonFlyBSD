@@ -58,6 +58,7 @@
 #include <netinet/udp_var.h>
 #include <netinet/if_ether.h>
 
+#include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/netmsg2.h>
 #include <net/netisr2.h>
@@ -75,6 +76,12 @@ check_uid(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 void
 check_gid(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void
+check_established(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void
+check_bpf(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 
 /*
@@ -155,6 +162,45 @@ check_gid(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	*cmd_ctl = IP_FW_CTL_NO;
 }
 
+/*
+ * match TCP packets which have all tcpflag except SYN.
+ */
+void check_established(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	struct ipfw_flow_id *fid;
+	struct mbuf *m = (*args)->m;
+	struct ip *ip = mtod(m, struct ip *);
+
+	*cmd_ctl = IP_FW_CTL_NO;
+	fid = &(*args)->f_id;
+	if (fid->proto == IPPROTO_TCP) {
+		/* offset == 0 && */
+		if ((L3HDR(struct tcphdr, ip)->th_flags &
+				(TH_RST | TH_ACK | TH_SYN)) != TH_SYN) {
+			*cmd_val = IP_FW_MATCH;
+			return;
+		}
+	}
+	*cmd_val = IP_FW_NOT_MATCH;
+}
+
+void
+check_bpf(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	u_int slen = 0;
+	struct mbuf *m = (*args)->m;
+	ipfw_insn_bpf *bpf = (ipfw_insn_bpf *)cmd;
+	*cmd_ctl = IP_FW_CTL_NO;
+	slen = bpf_filter(bpf->bf_insn, (u_char *)m, m_lengthm(m, NULL), 0);
+	if (slen != 0)
+		*cmd_val = IP_FW_MATCH;
+	else
+		*cmd_val = IP_FW_NOT_MATCH;
+}
+
+
 static int
 ipfw3_layer4_init(void)
 {
@@ -165,6 +211,10 @@ ipfw3_layer4_init(void)
 			(filter_func)check_uid);
 	register_ipfw_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_GID,
 			(filter_func)check_gid);
+	register_ipfw_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_ESTABLISHED,
+			(filter_func)check_established);
+	register_ipfw_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_BPF,
+			(filter_func)check_bpf);
 	return 0;
 }
 

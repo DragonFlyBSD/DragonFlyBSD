@@ -260,9 +260,11 @@ showfilename(int at_index, const char *filename)
 
 	if (last_index == at_index)
 		return;
-	if (continuing)
-		printf("\n");
-	printf("==> %s <==\n", filename);
+	if (!qflag) {
+		if (continuing)
+			printf("\n");
+		printf("==> %s <==\n", filename);
+	}
 	continuing = 1;
 	last_index = at_index;
 }

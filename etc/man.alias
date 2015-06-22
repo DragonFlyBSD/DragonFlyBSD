@@ -1,5 +1,0 @@
-# $FreeBSD: src/etc/man.alias,v 1.2.2.1 2002/01/05 15:31:31 phantom Exp $
-# $DragonFly: src/etc/man.alias,v 1.2 2003/06/17 04:24:45 dillon Exp $
-
-en.ISO8859-15   en.ISO8859-1
-

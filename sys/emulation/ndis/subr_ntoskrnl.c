@@ -293,14 +293,14 @@ ntoskrnl_libinit(void)
 	int			i;
 
 	lockinit(&ntoskrnl_dispatchlock, MTX_NDIS_LOCK, 0, LK_CANRECURSE);
-	mtx_init(&ntoskrnl_interlock);
+	mtx_init(&ntoskrnl_interlock, "ndis1");
 	KeInitializeSpinLock(&ntoskrnl_cancellock);
 	KeInitializeSpinLock(&ntoskrnl_intlock);
 	TAILQ_INIT(&ntoskrnl_reflist);
 
 	InitializeListHead(&ntoskrnl_calllist);
 	InitializeListHead(&ntoskrnl_intlist);
-	mtx_init(&ntoskrnl_calllock);
+	mtx_init(&ntoskrnl_calllock, "ndis2");
 
 	kq_queues = ExAllocatePoolWithTag(NonPagedPool,
 #ifdef NTOSKRNL_MULTIPLE_DPCS

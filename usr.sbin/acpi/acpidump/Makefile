@@ -33,11 +33,11 @@ SRCS+=	\
 	utxferror.c
 
 SRCS+=	\
-	osdragonflytbl.c
+	osbsdtbl.c
 
 CFLAGS+= \
 	-DACPI_DUMP_APP \
 	-I${UTILDIR} \
-	-D_FreeBSD
+	-D_DragonFly
 
 .include <bsd.prog.mk>

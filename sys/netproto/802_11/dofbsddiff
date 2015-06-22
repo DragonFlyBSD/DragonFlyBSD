@@ -1,0 +1,21 @@
+#!/bin/csh
+#
+
+if ( $# > 0 ) then
+    set dbase = "${argv[1]}/"
+else
+    set dbase = "/archive/FreeBSD-current/sys/net80211"
+endif
+
+foreach i ( `find . -type f` )
+    set spath = "$i"
+    set name = "$i:t"
+    if ( "$name" == "Makefile" ) then
+	continue
+    endif
+    set dpath = `find $dbase -type f -name $name`
+    if ( "$dpath" == "" ) then
+	continue;
+    endif
+    diff -w -u $dpath $spath
+end

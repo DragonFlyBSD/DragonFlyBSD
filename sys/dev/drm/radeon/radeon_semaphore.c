@@ -22,9 +22,7 @@
  * next paragraph) shall be included in all copies or substantial portions
  * of the Software.
  *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_semaphore.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 /*
  * Authors:
  *    Christian König <deathsimple@vodafone.de>
@@ -46,7 +44,7 @@ int radeon_semaphore_create(struct radeon_device *rdev,
 	r = radeon_sa_bo_new(rdev, &rdev->ring_tmp_bo,
 			     &(*semaphore)->sa_bo, 8, 8, true);
 	if (r) {
-		drm_free(*semaphore, M_DRM);
+		kfree(*semaphore);
 		*semaphore = NULL;
 		return r;
 	}
@@ -117,6 +115,6 @@ void radeon_semaphore_free(struct radeon_device *rdev,
 			" hardware lockup imminent!\n", *semaphore);
 	}
 	radeon_sa_bo_free(rdev, &(*semaphore)->sa_bo, fence);
-	drm_free(*semaphore, M_DRM);
+	kfree(*semaphore);
 	*semaphore = NULL;
 }

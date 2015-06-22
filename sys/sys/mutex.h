@@ -69,12 +69,15 @@ struct mtx {
 	struct thread	*mtx_owner;
 	mtx_link_t	*mtx_exlink;
 	mtx_link_t	*mtx_shlink;
+	const char	*mtx_ident;
 } __cachealign;
 
-typedef struct mtx mtx_t;
+typedef struct mtx	mtx_t;
+typedef u_int		mtx_state_t;
 
-#define MTX_INITIALIZER	{ .mtx_lock = 0, .mtx_owner = NULL, \
-			  .mtx_exlink = NULL, .mtx_shlink = NULL }
+#define MTX_INITIALIZER(ident)	{ .mtx_lock = 0, .mtx_owner = NULL, \
+			  	  .mtx_exlink = NULL, .mtx_shlink = NULL, \
+				  .mtx_ident = ident }
 
 #define MTX_EXCLUSIVE	0x80000000
 #define MTX_SHWANTED	0x40000000
@@ -101,14 +104,12 @@ typedef struct mtx mtx_t;
  */
 #ifdef _KERNEL
 
-int	_mtx_lock_ex_link(mtx_t *mtx, mtx_link_t *link,
-				const char *ident, int flags, int to);
-int	_mtx_lock_ex(mtx_t *mtx, const char *ident, int flags, int to);
-int	_mtx_lock_sh_link(mtx_t *mtx, mtx_link_t *link,
-				const char *ident, int flags, int to);
-int	_mtx_lock_sh(mtx_t *mtx, const char *ident, int flags, int to);
-int	_mtx_lock_ex_quick(mtx_t *mtx, const char *ident);
-int	_mtx_lock_sh_quick(mtx_t *mtx, const char *ident);
+int	_mtx_lock_ex_link(mtx_t *mtx, mtx_link_t *link, int flags, int to);
+int	_mtx_lock_ex(mtx_t *mtx, int flags, int to);
+int	_mtx_lock_sh_link(mtx_t *mtx, mtx_link_t *link, int flags, int to);
+int	_mtx_lock_sh(mtx_t *mtx, int flags, int to);
+int	_mtx_lock_ex_quick(mtx_t *mtx);
+int	_mtx_lock_sh_quick(mtx_t *mtx);
 void	_mtx_spinlock(mtx_t *mtx);
 int	_mtx_spinlock_try(mtx_t *mtx);
 int	_mtx_lock_ex_try(mtx_t *mtx);
@@ -117,8 +118,7 @@ void	_mtx_downgrade(mtx_t *mtx);
 int	_mtx_upgrade_try(mtx_t *mtx);
 void	_mtx_unlock(mtx_t *mtx);
 void	mtx_abort_link(mtx_t *mtx, mtx_link_t *link);
-int	mtx_wait_link(mtx_t *mtx, mtx_link_t *link,
-				const char *ident, int flags, int to);
+int	mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to);
 
 #endif
 

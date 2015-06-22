@@ -2,7 +2,6 @@
  * io.c - input/output routines for Phantasia
  *
  * $FreeBSD: src/games/phantasia/io.c,v 1.6 1999/11/16 02:57:33 billf Exp $
- * $DragonFly: src/games/phantasia/io.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 #include <string.h>
@@ -15,7 +14,7 @@ extern	void	leavegame(void);
 /* phantglobs.c */
 extern	double	drandom(void);
 
-void	catchalarm(void);
+void	catchalarm(int);
 int	getanswer(const char *, bool);
 void	getstring(char *, int);
 double	infloat(void);
@@ -282,7 +281,7 @@ getanswer(const char *choices, bool def)
 #ifdef BSD41
 			sigset(SIGALRM, catchalarm);
 #else
-			signal(SIGALRM, (sig_t)catchalarm);
+			signal(SIGALRM, catchalarm);
 #endif
 			/* set timeout */
 			if (Timeout)
@@ -342,7 +341,7 @@ YELL:				mvprintw(oldy + 1, 0,
  */
 
 void
-catchalarm(void)
+catchalarm(__unused int sig)
 {
 	longjmp(Timeoenv, 1);
 }

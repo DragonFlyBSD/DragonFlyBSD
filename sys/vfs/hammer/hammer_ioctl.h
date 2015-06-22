@@ -122,7 +122,8 @@ struct hammer_ioc_rebalance {
 	int64_t		stat_deletions; /* number of nodes deleted */
 	int64_t		stat_collisions;/* number of collision retries */
 	int64_t		stat_nrebal;	/* number of btree-nodes rebalanced */
-	int64_t		stat_unused04;
+	int32_t		allpfs;		/* rebalance all PFS if set */
+	int32_t		unused04;
 };
 
 /*
@@ -198,7 +199,7 @@ struct hammer_ioc_reblock {
 	int64_t		data_moves;		/* Data segments moved */
 	int64_t		data_byte_moves;	/* Data bytes moved */
 
-	int32_t		unused02;
+	int32_t		allpfs;			/* Reblock all PFS if set */
 	int32_t		unused03;
 };
 
@@ -246,7 +247,7 @@ struct hammer_ioc_info {
  */
 struct hammer_ioc_pfs_iterate {
 	struct hammer_ioc_head  head;
-	uint32_t pos;
+	uint32_t pos;  /* set PFS id here */
 	struct hammer_pseudofs_data *ondisk;
 };
 

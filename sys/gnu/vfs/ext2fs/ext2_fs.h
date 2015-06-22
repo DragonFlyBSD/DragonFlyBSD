@@ -77,20 +77,20 @@
  * Debug code
  */
 #ifdef EXT2FS_DEBUG
-#	define ext2_debug(f, a...)	{ \
+#define ext2_debug(f, a...)	{ \
 					kprintf ("EXT2-fs DEBUG (%s, %d): %s:", \
 						__FILE__, __LINE__, __func__); \
 					kprintf (f, ## a); \
-					}
+				}
 #else
-#	define ext2_debug(f, a...)	/**/
+#define ext2_debug(f, a...)	/**/
 #endif
 
 /*
  * Special inodes numbers
  */
 #define	EXT2_BAD_INO		 1	/* Bad blocks inode */
-#define EXT2_ROOT_INO		 2	/* Root inode */
+#define EXT2_ROOT_INO		 2	/* Root inode, but rather use EXT2_ROOTINO */
 #define EXT2_ACL_IDX_INO	 3	/* ACL inode */
 #define EXT2_ACL_DATA_INO	 4	/* ACL inode */
 #define EXT2_BOOT_LOADER_INO	 5	/* Boot loader inode */
@@ -115,6 +115,18 @@
  * not accessible.  This depends on __KERNEL__ not being defined for
  * kernel builds under FreeBSD.
  */
+/*
+ * Arguments s of the following EXT2_XXX(s) macros in Linux kernel take
+ * generic (non-ext2 specific) inmemory superblock structure.  On DragonFly,
+ * the type of s is either generic inmemory, ext2 inmemory, or ext2 ondisk
+ * superblock structure.  These macro definitions are actually taken from
+ * e2fsprogs and made to work.
+ *
+ * Also note that on DragonFly, the macro EXT2_SB(s) takes ext2 ondisk
+ * superblock structure and does nothing (see the comment on EXT2_SB(s),
+ * it's for userspace to access ondisk superblock structure for testings,
+ * etc, originally introduced by e2fsprogs).
+ */
 
 /*
  * Macro-instructions used to manage several block sizes
@@ -122,20 +134,25 @@
 #define EXT2_MIN_BLOCK_SIZE		1024
 #define	EXT2_MAX_BLOCK_SIZE		4096
 #define EXT2_MIN_BLOCK_LOG_SIZE		  10
-#if defined(__KERNEL__) || (defined(__DragonFly__) && defined(_KERNEL))
-# define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
+#if (defined(__DragonFly__) && defined(_KERNEL))
+#define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
 #else
-# define EXT2_BLOCK_SIZE(s)		(EXT2_MIN_BLOCK_SIZE << (s)->s_log_block_size)
+#define EXT2_BLOCK_SIZE(s)		(EXT2_MIN_BLOCK_SIZE << (s)->s_log_block_size)
 #endif
 #define EXT2_ACLE_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (struct ext2_acl_entry))
 #define	EXT2_ADDR_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (__u32))
-#ifdef __KERNEL__
-# define EXT2_BLOCK_SIZE_BITS(s)	((s)->s_blocksize_bits)
-#else
-# define EXT2_BLOCK_SIZE_BITS(s)	((s)->s_log_block_size + 10)
-#endif
-#if defined(__KERNEL__) || defined _KERNEL
-#define	EXT2_ADDR_PER_BLOCK_BITS(s)	((s)->s_addr_per_block_bits)
+/*
+ * XXX DragonFly's inmemory superblock has no s_addr_per_block_bits.
+ */
+/* #define EXT2_ADDR_PER_BLOCK_BITS(s)	((s)->s_addr_per_block_bits) */
+/*
+ * XXX The first one takes ext2 inmemory superblock structure and the
+ * second one takes ext2 ondisk superblock structure.  The second one
+ * has been used on DragonFly to compute ((s)->s_blocksize_bits).
+ */
+/* #define EXT2_BLOCK_SIZE_BITS(s)	((s)->s_blocksize_bits) */
+#define EXT2_BLOCK_SIZE_BITS(s)	((s)->s_log_block_size + 10)  /* log2(siz)-10 + log2(1024) */
+#if defined _KERNEL
 #define EXT2_INODE_SIZE(s)		((s)->s_inode_size)
 #define EXT2_FIRST_INO(s)		((s)->s_first_ino)
 #else
@@ -153,16 +170,18 @@
 #define EXT2_MIN_FRAG_SIZE		1024
 #define	EXT2_MAX_FRAG_SIZE		4096
 #define EXT2_MIN_FRAG_LOG_SIZE		  10
-#ifdef __KERNEL__
-# define EXT2_FRAG_SIZE(s)		((s)->u.ext2_sb.s_frag_size)
-# define EXT2_FRAGS_PER_BLOCK(s)	((s)->u.ext2_sb.s_frags_per_block)
+#if defined(_KERNEL) && defined(__DragonFly__)
+#define EXT2_FRAG_SIZE(s)		((s)->s_frag_size)
+/*
+ * XXX The second one has been used on DragonFly, but the first one
+ * with properly initialized s_frags_per_block is probably a better way.
+ * Also note that ext2 does not support block fragmentation.
+ */
+/* #define EXT2_FRAGS_PER_BLOCK(s)         ((s)->s_frags_per_block) */
+#define EXT2_FRAGS_PER_BLOCK(s)	(EXT2_BLOCK_SIZE(s) / EXT2_FRAG_SIZE(s))
 #else
-# if defined(_KERNEL) && defined(__DragonFly__)
-# define EXT2_FRAG_SIZE(s)		((s)->s_frag_size)
-# else
-# define EXT2_FRAG_SIZE(s)		(EXT2_MIN_FRAG_SIZE << (s)->s_log_frag_size)
-# endif
-# define EXT2_FRAGS_PER_BLOCK(s)	(EXT2_BLOCK_SIZE(s) / EXT2_FRAG_SIZE(s))
+#define EXT2_FRAG_SIZE(s)		(EXT2_MIN_FRAG_SIZE << (s)->s_log_frag_size)
+#define EXT2_FRAGS_PER_BLOCK(s)	(EXT2_BLOCK_SIZE(s) / EXT2_FRAG_SIZE(s))
 #endif
 
 /*
@@ -205,16 +224,9 @@ struct ext2_group_desc
 /*
  * Macro-instructions used to manage group descriptors
  */
-#ifdef __KERNEL__
-# define EXT2_BLOCKS_PER_GROUP(s)	((s)->u.ext2_sb.s_blocks_per_group)
-# define EXT2_DESC_PER_BLOCK(s)		((s)->u.ext2_sb.s_desc_per_block)
-# define EXT2_INODES_PER_GROUP(s)	((s)->u.ext2_sb.s_inodes_per_group)
-# define EXT2_DESC_PER_BLOCK_BITS(s)	((s)->u.ext2_sb.s_desc_per_block_bits)
-#else
-# define EXT2_BLOCKS_PER_GROUP(s)	((s)->s_blocks_per_group)
-# define EXT2_DESC_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (struct ext2_group_desc))
-# define EXT2_INODES_PER_GROUP(s)	((s)->s_inodes_per_group)
-#endif
+#define EXT2_BLOCKS_PER_GROUP(s)	((s)->s_blocks_per_group)
+#define EXT2_DESC_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (struct ext2_group_desc))
+#define EXT2_INODES_PER_GROUP(s)	((s)->s_inodes_per_group)
 
 /*
  * Constants relative to the data blocks
@@ -301,7 +313,9 @@ struct ext2_inode {
 			__u8	l_i_frag;	/* Fragment number */
 			__u8	l_i_fsize;	/* Fragment size */
 			__u16	i_pad1;
-			__u32	l_i_reserved2[2];
+			__u16	l_i_uid_high;	/* these 2 fields    */
+			__u16	l_i_gid_high;	/* were reserved2[0] */
+			__u32	l_i_reserved2;
 		} linux2;
 		struct {
 			__u8	h_i_frag;	/* Fragment number */
@@ -326,6 +340,10 @@ struct ext2_inode {
 #define i_reserved1	osd1.linux1.l_i_reserved1
 #define i_frag		osd2.linux2.l_i_frag
 #define i_fsize		osd2.linux2.l_i_fsize
+#define i_uid_low	i_uid
+#define i_gid_low	i_gid
+#define i_uid_high	osd2.linux2.l_i_uid_high
+#define i_gid_high	osd2.linux2.l_i_gid_high
 #define i_reserved2	osd2.linux2.l_i_reserved2
 #endif
 
@@ -366,6 +384,14 @@ struct ext2_inode {
 #define EXT2_MOUNT_ERRORS_RO		0x0020	/* Remount fs ro on errors */
 #define EXT2_MOUNT_ERRORS_PANIC		0x0040	/* Panic on errors */
 #define EXT2_MOUNT_MINIX_DF		0x0080	/* Mimics the Minix statfs */
+#define EXT2_MOUNT_NOBH			0x000100  /* No buffer_heads */
+#define EXT2_MOUNT_NO_UID32		0x000200  /* Disable 32-bit UIDs */
+#define EXT2_MOUNT_XATTR_USER		0x004000  /* Extended user attributes */
+#define EXT2_MOUNT_POSIX_ACL		0x008000  /* POSIX Access Control Lists */
+#define EXT2_MOUNT_XIP			0x010000  /* Obsolete, use DAX */
+#define EXT2_MOUNT_USRQUOTA		0x020000  /* user quota */
+#define EXT2_MOUNT_GRPQUOTA		0x040000  /* group quota */
+#define EXT2_MOUNT_RESERVATION		0x080000  /* Preallocation */
 
 #define clear_opt(o, opt)		o &= ~EXT2_MOUNT_##opt
 #define set_opt(o, opt)			o |= EXT2_MOUNT_##opt
@@ -444,17 +470,26 @@ struct ext2_super_block {
 	__u8	s_prealloc_blocks;	/* Nr of blocks to try to preallocate*/
 	__u8	s_prealloc_dir_blocks;	/* Nr to preallocate for dirs */
 	__u16	s_padding1;
-	__u32	s_reserved[204];	/* Padding to the end of the block */
+	/*
+	 * Journaling support for ext3.
+	 */
+	__u8	s_journal_uuid[16];	/* uuid of journal superblock */
+	__u32	s_journal_inum;		/* inode number of journal file */
+	__u32	s_journal_dev;		/* device number of journal file */
+	__u32	s_last_orphan;		/* start of list of inodes to delete */
+	__u32	s_hash_seed[4];		/* HTREE hash seed */
+	__u8	s_def_hash_version;	/* Default hash version to use */
+	__u8	s_reserved_char_pad;
+	__u16	s_reserved_word_pad;
+	__u32	s_default_mount_opts;
+	__u32	s_first_meta_bg; 	/* First metablock block group */
+	__u32	s_reserved[190];	/* Padding to the end of the block */
 };
 
-#ifdef __KERNEL__
-#define EXT2_SB(sb)	(&((sb)->u.ext2_sb))
-#else
 /* Assume that user mode programs are passing in an ext2fs superblock, not
  * a kernel struct super_block.  This will allow us to call the feature-test
  * macros from user land. */
 #define EXT2_SB(sb)	(sb)
-#endif
 
 /*
  * Codes for operating systems
@@ -486,18 +521,48 @@ struct ext2_super_block {
 	( EXT2_SB(sb)->s_feature_ro_compat & (mask) )
 #define EXT2_HAS_INCOMPAT_FEATURE(sb,mask)			\
 	( EXT2_SB(sb)->s_feature_incompat & (mask) )
+#define EXT2_SET_COMPAT_FEATURE(sb,mask)			\
+	EXT2_SB(sb)->s_es->s_feature_compat |= (mask)
+#define EXT2_SET_RO_COMPAT_FEATURE(sb,mask)			\
+	EXT2_SB(sb)->s_es->s_feature_ro_compat |= (mask)
+#define EXT2_SET_INCOMPAT_FEATURE(sb,mask)			\
+	EXT2_SB(sb)->s_es->s_feature_incompat |= (mask)
+#define EXT2_CLEAR_COMPAT_FEATURE(sb,mask)			\
+	EXT2_SB(sb)->s_es->s_feature_compat &= ~(mask)
+#define EXT2_CLEAR_RO_COMPAT_FEATURE(sb,mask)			\
+	EXT2_SB(sb)->s_es->s_feature_ro_compat &= ~(mask)
+#define EXT2_CLEAR_INCOMPAT_FEATURE(sb,mask)			\
+	EXT2_SB(sb)->s_es->s_feature_incompat &= ~(mask)
 
 #define EXT2_FEATURE_COMPAT_DIR_PREALLOC	0x0001
+#define EXT2_FEATURE_COMPAT_IMAGIC_INODES	0x0002
+#define EXT3_FEATURE_COMPAT_HAS_JOURNAL		0x0004
+#define EXT2_FEATURE_COMPAT_EXT_ATTR		0x0008
+#define EXT2_FEATURE_COMPAT_RESIZE_INO		0x0010
+#define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
+#define EXT2_FEATURE_COMPAT_ANY			0xffffffff
 
 #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
 #define EXT2_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
 #define EXT2_FEATURE_RO_COMPAT_BTREE_DIR	0x0004
+#define EXT2_FEATURE_RO_COMPAT_ANY		0xffffffff
 
 #define EXT2_FEATURE_INCOMPAT_COMPRESSION	0x0001
 #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
+#define EXT3_FEATURE_INCOMPAT_RECOVER		0x0004
+#define EXT3_FEATURE_INCOMPAT_JOURNAL_DEV	0x0008
+#define EXT2_FEATURE_INCOMPAT_META_BG		0x0010
+#define EXT2_FEATURE_INCOMPAT_ANY		0xffffffff
 
-#define EXT2_FEATURE_COMPAT_SUPP	0
-#define EXT2_FEATURE_INCOMPAT_SUPP	EXT2_FEATURE_INCOMPAT_FILETYPE
+#if 1
+#define EXT2_FEATURE_COMPAT_SUPP       0
+#define EXT2_FEATURE_INCOMPAT_SUPP     EXT2_FEATURE_INCOMPAT_FILETYPE
+#else
+#define EXT2_FEATURE_COMPAT_SUPP	EXT2_FEATURE_COMPAT_EXT_ATTR
+#define EXT2_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE| \
+					 EXT2_FEATURE_INCOMPAT_META_BG)
+#endif
+
 #ifdef notyet
 #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
@@ -505,6 +570,8 @@ struct ext2_super_block {
 #else
 #define EXT2_FEATURE_RO_COMPAT_SUPP	EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER
 #endif
+#define EXT2_FEATURE_RO_COMPAT_UNSUPPORTED	~EXT2_FEATURE_RO_COMPAT_SUPP
+#define EXT2_FEATURE_INCOMPAT_UNSUPPORTED	~EXT2_FEATURE_INCOMPAT_SUPP
 
 /*
  * Default values for user and/or group using reserved blocks
@@ -562,5 +629,6 @@ struct ext2_dir_entry_2 {
 #define EXT2_DIR_ROUND 			(EXT2_DIR_PAD - 1)
 #define EXT2_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT2_DIR_ROUND) & \
 					 ~EXT2_DIR_ROUND)
+#define EXT2_MAX_REC_LEN		((1<<16)-1)
 
 #endif	/* _LINUX_EXT2_FS_H */

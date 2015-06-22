@@ -22,10 +22,7 @@
  *
  * Authors: Dave Airlie
  *          Alex Deucher
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_legacy_crtc.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <drm/drm_crtc_helper.h>
 #include <uapi_drm/radeon_drm.h>
@@ -882,7 +879,7 @@ static void radeon_set_pll(struct drm_crtc *crtc, struct drm_display_mode *mode)
 			  (unsigned)((pll_fb_post_div &
 				      RADEON_P2PLL_POST0_DIV_MASK) >> 16));
 
-		DRM_MDELAY(50); /* Let the clock to lock */
+		mdelay(50); /* Let the clock to lock */
 
 		WREG32_PLL_P(RADEON_PIXCLKS_CNTL,
 			     RADEON_PIX2CLK_SRC_SEL_P2PLLCLK,
@@ -987,7 +984,7 @@ static void radeon_set_pll(struct drm_crtc *crtc, struct drm_display_mode *mode)
 			  pll_fb_post_div & RADEON_PPLL_FB3_DIV_MASK,
 			  (pll_fb_post_div & RADEON_PPLL_POST3_DIV_MASK) >> 16);
 
-		DRM_MDELAY(50); /* Let the clock to lock */
+		mdelay(50); /* Let the clock to lock */
 
 		WREG32_PLL_P(RADEON_VCLK_ECP_CNTL,
 			     RADEON_VCLK_SRC_SEL_PPLLCLK,
@@ -1034,11 +1031,9 @@ static int radeon_crtc_mode_set(struct drm_crtc *crtc,
 
 static void radeon_crtc_prepare(struct drm_crtc *crtc)
 {
-	struct radeon_crtc *radeon_crtc = to_radeon_crtc(crtc);
 	struct drm_device *dev = crtc->dev;
 	struct drm_crtc *crtci;
 
-	radeon_crtc->in_mode_set = true;
 	/*
 	* The hardware wedges sometimes if you reconfigure one CRTC
 	* whilst another is running (see fdo bug #24611).
@@ -1049,7 +1044,6 @@ static void radeon_crtc_prepare(struct drm_crtc *crtc)
 
 static void radeon_crtc_commit(struct drm_crtc *crtc)
 {
-	struct radeon_crtc *radeon_crtc = to_radeon_crtc(crtc);
 	struct drm_device *dev = crtc->dev;
 	struct drm_crtc *crtci;
 
@@ -1060,7 +1054,6 @@ static void radeon_crtc_commit(struct drm_crtc *crtc)
 		if (crtci->enabled)
 			radeon_crtc_dpms(crtci, DRM_MODE_DPMS_ON);
 	}
-	radeon_crtc->in_mode_set = false;
 }
 
 static const struct drm_crtc_helper_funcs legacy_helper_funcs = {

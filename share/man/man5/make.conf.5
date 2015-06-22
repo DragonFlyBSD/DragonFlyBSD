@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
 .\"
-.Dd March 10, 2015
+.Dd June 20, 2015
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -118,9 +118,9 @@ We currently recommend that an override NOT be set in
 Currently accepted values for compilers which are part of
 .Dx
 are
-.Dq gcc50
-and
 .Dq gcc47
+and
+.Dq gcc50
 (default).
 All other values will handled according to the settings in
 .Xr compilers.conf 5 .
@@ -148,15 +148,15 @@ is the default value.
 .Pq Vt str
 Controls which binutils to use by default.
 Currently accepted values are
-.Dq binutils222
-and
 .Dq binutils224
+and
+.Dq binutils225
 (default).
 .It Va WORLD_BINUTILSVER
 .Pq Vt str
 Controls which version of binutils builds the base system, including
 the kernel.
-.Dq binutils222
+.Dq binutils225
 is the default value.
 .It Va CFLAGS
 .Pq Vt str
@@ -326,17 +326,17 @@ and installed by
 .Dq Li "${MAKE} installkernel" .
 For example,
 .Bd -literal -offset indent
-KERNCONF=MINE DEBUG GENERIC OTHERMACHINE
+KERNCONF=MINE DEBUG X86_64_GENERIC OTHERMACHINE
 .Ed
 .Pp
 will build the kernels specified by the config files
-.Pa MINE , DEBUG , GENERIC ,
+.Pa MINE , DEBUG , X86_64_GENERIC ,
 and
 .Pa OTHERMACHINE ,
 and install the kernel specified by the config file
 .Pa MINE .
 It defaults to
-.Pa GENERIC .
+.Pa X86_64_GENERIC .
 .It Va NO_CPU_COPTFLAGS
 .Pq Vt str
 Setting this variable will prevent CPU specific compiler flags
@@ -383,6 +383,9 @@ Set to build modules with the system instead of the kernel.
 .It Va NO_ALTBINUTILS
 .Pq Vt bool
 Set to not build the alternative (non-default) set of binutils.
+.It Va NO_ALTCOMPILER
+.Pq Vt bool
+Set to not build the designated secondary compiler (GCC 4.7).
 .It Va NO_CRYPT
 .Pq Vt bool
 Set to not build crypto code.
@@ -392,9 +395,6 @@ Set to not build CVS.
 .It Va NO_GAMES
 .Pq Vt bool
 Set to not build games.
-.It Va NO_GCC50
-.Pq Vt bool
-Set to not build the alternative version of GCC (5.0).
 .It Va NO_GDB
 .Pq Vt bool
 Set to not build
@@ -435,14 +435,6 @@ instead of
 .Pq Vt bool
 Set to not install certain components with flag schg.
 This is useful in a jailed environment.
-.It Va NOINFO
-.Pq Vt bool
-Set to not make or install
-.Xr info 5
-files.
-.It Va NOINFOCOMPRESS
-.Pq Vt bool
-Set to not compress the info pages.
 .It Va NOMAN
 .Pq Vt bool
 Set to not build manual pages
@@ -483,18 +475,6 @@ file, e.g.,
 .Pa /etc/mail/mysubmit.mc .
 Use with caution as a make install will overwrite any existing
 .Pa /etc/mail/submit.cf .
-.It Va SENDMAIL_ADDITIONAL_MC
-.Pq Vt str
-Additional
-.Pa .mc
-files which should be built into
-.Pa .cf
-files at build time.
-The value should include the full path to the
-.Pa .mc
-file(s), e.g.,
-.Pa /etc/mail/foo.mc
-.Pa /etc/mail/bar.mc .
 .It Va SENDMAIL_CF_DIR
 .Pq Vt str
 Override the default location for the

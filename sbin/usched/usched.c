@@ -53,8 +53,10 @@ main(int ac, char **av)
 	char *sched = NULL;
 	char *cpustr = NULL;
 	char *sched_cpustr = NULL;
+	char *p = NULL;
 	cpumask_t cpumask;
 	int cpuid;
+	pid_t pid = getpid();  /* See usched_set(2) - BUGS */
 
 	CPUMASK_ASSZERO(cpumask);
 
@@ -89,9 +91,9 @@ main(int ac, char **av)
 	 * XXX needs expanded support for > 64 cpus
 	 */
 	if (cpustr != NULL) {
-		unsigned long v;
+		uint64_t v;
 
-		v = strtoul(cpustr, NULL, 0);
+		v = (uint64_t)strtoull(cpustr, NULL, 0);
 		for (cpuid = 0; cpuid < (int)sizeof(v) * 8; ++cpuid) {
 			if (v & (1LU << cpuid))
 				CPUMASK_ORBIT(cpumask, cpuid);
@@ -101,9 +103,11 @@ main(int ac, char **av)
 	if (strlen(sched) != 0) {
 		if (DebugOpt)
 			fprintf(stderr, "DEBUG: USCHED_SET_SCHEDULER: scheduler: %s\n", sched);
-		res = usched_set(getpid(), USCHED_SET_SCHEDULER, sched, strlen(sched));
+		res = usched_set(pid, USCHED_SET_SCHEDULER, sched, strlen(sched));
 		if (res != 0) {
-			perror("usched_set(,USCHED_SET_SCHEDULER,,)");
+			asprintf(&p, "usched_set(%d, USCHED_SET_SCHEDULER, \"%s\", %d)",
+				pid, sched, (int)strlen(sched));
+			perror(p);
 			exit(1);
 		}
 	}
@@ -116,10 +120,11 @@ main(int ac, char **av)
 			fprintf(stderr, "DEBUG: USCHED_SET_CPU: cpuid: %d\n",
 				cpuid);
 		}
-		res = usched_set(getpid(), USCHED_SET_CPU,
-				 &cpuid, sizeof(int));
+		res = usched_set(pid, USCHED_SET_CPU, &cpuid, sizeof(int));
 		if (res != 0) {
-			perror("usched_set(,USCHED_SET_CPU,,)");
+			asprintf(&p, "usched_set(%d, USCHED_SET_CPU, &%d, %d)",
+				pid, cpuid, (int)sizeof(int));
+			perror(p);
 			exit(1);
 		}
 		CPUMASK_NANDBIT(cpumask, cpuid);
@@ -133,10 +138,11 @@ main(int ac, char **av)
 					"DEBUG: USCHED_ADD_CPU: cpuid: %d\n",
 					cpuid);
 			}
-			res = usched_set(getpid(), USCHED_ADD_CPU,
-					 &cpuid, sizeof(int));
+			res = usched_set(pid, USCHED_ADD_CPU, &cpuid, sizeof(int));
 			if (res != 0) {
-				perror("usched_set(,USCHED_ADD_CPU,,)");
+				asprintf(&p, "usched_set(%d, USCHED_ADD_CPU, &%d, %d)",
+					pid, cpuid, (int)sizeof(int));
+				perror(p);
 				exit(1);
 			}
 		}

@@ -1,11 +1,11 @@
 /******************************************************************************
  *
- * Name: acdragonflyex.h - Extra OS specific defines, etc. for DragonFly
+ * Name: acdragonflyex.h - Extra OS specific defines, etc. for DragonFly BSD
  *
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2014, Intel Corp.
+ * Copyright (C) 2000 - 2015, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,34 +49,34 @@
 #ifdef ACPI_DEBUG_CACHE
 ACPI_STATUS
 _AcpiOsReleaseObject (
-    ACPI_CACHE_T		*Cache,
-    void			*Object,
-    const char			*func,
-    int				line);
+    ACPI_CACHE_T                *Cache,
+    void                        *Object,
+    const char                  *func,
+    int                         line);
 #endif
 
 #ifdef ACPI_DEBUG_LOCKS
 ACPI_CPU_FLAGS
 _AcpiOsAcquireLock (
-    ACPI_SPINLOCK		Spin,
-    const char			*func,
-    int				line);
+    ACPI_SPINLOCK               Spin,
+    const char                  *func,
+    int                         line);
 #endif
 
 #ifdef ACPI_DEBUG_MEMMAP
 void *
 _AcpiOsMapMemory (
-    ACPI_PHYSICAL_ADDRESS	Where,
-    ACPI_SIZE			Length,
-    const char			*caller,
-    int				line);
+    ACPI_PHYSICAL_ADDRESS       Where,
+    ACPI_SIZE                   Length,
+    const char                  *caller,
+    int                         line);
 
 void
 _AcpiOsUnmapMemory (
-    void			*LogicalAddress,
-    ACPI_SIZE			Length,
-    const char			*caller,
-    int				line);
+    void                        *LogicalAddress,
+    ACPI_SIZE                   Length,
+    const char                  *caller,
+    int                         line);
 #endif
 
 #endif /* _KERNEL */

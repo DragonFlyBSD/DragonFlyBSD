@@ -27,11 +27,15 @@
 #ifndef _LINUX_SEQ_FILE_H_
 #define _LINUX_SEQ_FILE_H_
 
+#include <linux/types.h>
+
 struct seq_file {
 	char	*buf;
 	size_t	size;
 };
 
 #define seq_printf(m, args...) ksnprintf((m)->buf, (m)->size, args)
+
+#define seq_puts(m, str)	ksnprintf((m)->buf, (m)->size, str)
 
 #endif	/* _LINUX_SEQ_FILE_H_ */

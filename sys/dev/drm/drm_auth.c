@@ -36,28 +36,29 @@
 
 #include <drm/drmP.h>
 
-static int drm_hash_magic(drm_magic_t magic)
-{
-	return magic & (DRM_HASH_SIZE-1);
-}
-
 /**
- * Returns the file private associated with the given magic number.
+ * Find the file with the given magic number.
+ *
+ * \param dev DRM device.
+ * \param magic magic number.
+ *
+ * Searches in drm_device::magiclist within all files with the same hash key
+ * the one with matching magic number, while holding the drm_device::struct_mutex
+ * lock.
  */
 static struct drm_file *drm_find_file(struct drm_device *dev, drm_magic_t magic)
 {
+	struct drm_file *retval = NULL;
 	drm_magic_entry_t *pt;
-	int hash = drm_hash_magic(magic);
+	struct drm_hash_item *hash;
 
-	DRM_LOCK_ASSERT(dev);
-
-	for (pt = dev->magiclist[hash].head; pt; pt = pt->next) {
-		if (pt->magic == magic) {
-			return pt->priv;
-		}
+	mutex_lock(&dev->struct_mutex);
+	if (!drm_ht_find_item(&dev->magiclist, (unsigned long)magic, &hash)) {
+		pt = drm_hash_entry(hash, drm_magic_entry_t, hash_item);
+		retval = pt->priv;
 	}
-
-	return NULL;
+	mutex_unlock(&dev->struct_mutex);
+	return retval;
 }
 
 /**
@@ -67,28 +68,19 @@ static struct drm_file *drm_find_file(struct drm_device *dev, drm_magic_t magic)
 static int drm_add_magic(struct drm_device *dev, struct drm_file *priv,
 			 drm_magic_t magic)
 {
-	int		  hash;
 	drm_magic_entry_t *entry;
 
 	DRM_DEBUG("%d\n", magic);
 
-	DRM_LOCK_ASSERT(dev);
-
-	hash = drm_hash_magic(magic);
-	entry = kmalloc(sizeof(*entry), M_DRM, M_ZERO | M_WAITOK | M_NULLOK);
+	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
 	if (!entry)
-		return ENOMEM;
-	entry->magic = magic;
-	entry->priv  = priv;
-	entry->next  = NULL;
-
-	if (dev->magiclist[hash].tail) {
-		dev->magiclist[hash].tail->next = entry;
-		dev->magiclist[hash].tail	= entry;
-	} else {
-		dev->magiclist[hash].head	= entry;
-		dev->magiclist[hash].tail	= entry;
-	}
+		return -ENOMEM;
+	entry->priv = priv;
+	entry->hash_item.key = (unsigned long)magic;
+	mutex_lock(&dev->struct_mutex);
+	drm_ht_insert_item(&dev->magiclist, &entry->hash_item);
+	list_add_tail(&entry->head, &dev->magicfree);
+	mutex_unlock(&dev->struct_mutex);
 
 	return 0;
 }
@@ -99,32 +91,24 @@ static int drm_add_magic(struct drm_device *dev, struct drm_file *priv,
  */
 static int drm_remove_magic(struct drm_device *dev, drm_magic_t magic)
 {
-	drm_magic_entry_t *prev = NULL;
 	drm_magic_entry_t *pt;
-	int		  hash;
-
-	DRM_LOCK_ASSERT(dev);
+	struct drm_hash_item *hash;
 
 	DRM_DEBUG("%d\n", magic);
-	hash = drm_hash_magic(magic);
 
-	for (pt = dev->magiclist[hash].head; pt; prev = pt, pt = pt->next) {
-		if (pt->magic == magic) {
-			if (dev->magiclist[hash].head == pt) {
-				dev->magiclist[hash].head = pt->next;
-			}
-			if (dev->magiclist[hash].tail == pt) {
-				dev->magiclist[hash].tail = prev;
-			}
-			if (prev) {
-				prev->next = pt->next;
-			}
-			drm_free(pt, M_DRM);
-			return 0;
-		}
+	mutex_lock(&dev->struct_mutex);
+	if (drm_ht_find_item(&dev->magiclist, (unsigned long)magic, &hash)) {
+		mutex_unlock(&dev->struct_mutex);
+		return -EINVAL;
 	}
+	pt = drm_hash_entry(hash, drm_magic_entry_t, hash_item);
+	drm_ht_remove_item(&dev->magiclist, hash);
+	list_del(&pt->head);
+	mutex_unlock(&dev->struct_mutex);
 
-	return EINVAL;
+	kfree(pt);
+
+	return 0;
 }
 
 /**

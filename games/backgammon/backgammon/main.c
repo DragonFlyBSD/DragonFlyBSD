@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/backgammon/main.c,v 1.13 1999/11/30 03:48:22 billf Exp $
- * $DragonFly: src/games/backgammon/backgammon/main.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include <stdio.h>
@@ -92,7 +91,7 @@ main(int argc, char **argv)
 	/* initialization */
 	bflag = 2;				/* default no board */
 	acnt = 1;				/* Number of args */
-	signal(SIGINT, (sig_t)getout);		/* trap interrupts */
+	signal(SIGINT, getout);			/* trap interrupts */
 	if (tcgetattr(0, &tty) == -1)		/* get old tty mode */
 		errexit("backgammon(tcgetattr)");
 	old = tty.c_lflag;
@@ -182,7 +181,7 @@ main(int argc, char **argv)
 					else
 						writec('\n');
 					writel("Password:");
-					signal(SIGALRM, (sig_t)getout);
+					signal(SIGALRM, getout);
 					cflag = 1;
 					alarm(10);
 					for (i = 0; i < 10; i++) {
@@ -198,7 +197,7 @@ main(int argc, char **argv)
 						pbuf[i] = '\0';
 					for (i = 0; i < 9; i++)
 						if (pbuf[i] != password[i])
-							getout();
+							getout(0);
 					iroll = 1;
 					if (tflag)
 						curmove(curr, 0);
@@ -512,7 +511,7 @@ main(int argc, char **argv)
 	}
 
 	/* leave peacefully */
-	getout();
+	getout(0);
 	/* NOTREACHED */
 	return (0);
 }

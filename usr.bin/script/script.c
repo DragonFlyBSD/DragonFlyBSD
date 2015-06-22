@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)script.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/usr.bin/script/script.c,v 1.11.2.2 2004/03/13 09:21:00 cperciva Exp $
- * $DragonFly: src/usr.bin/script/script.c,v 1.10 2005/03/16 06:26:49 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -207,10 +206,10 @@ reap(pid_t child)
 {
 	int e;
 	pid_t pid;
-	union wait status;
+	int status;
 
 	e = 0;
-	while ((pid = wait3((int *)&status, WNOHANG, NULL)) > 0) {
+	while ((pid = wait3(&status, WNOHANG, NULL)) > 0) {
 	        if (pid == child) {
 			if (WIFEXITED(status))
 				e = WEXITSTATUS(status);

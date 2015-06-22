@@ -3,6 +3,11 @@
 #ifndef PREFIX2
 #define PREFIX2	PREFIX1
 #endif
+#ifdef CTOOLS
+#define RUNPATH "-rpath"
+#else
+#define RUNPATH "--enable-new-dtags -rpath"
+#endif
 
 #define LINK_LIBGCC_SPEC ""
 #define LIBGCC_SPEC \
@@ -19,14 +24,14 @@
 #undef	LINK_SPEC
 #define LINK_SPEC DFBSD_LINK_SPEC \
 "%{pg: -L"PREFIX2"/lib/gcc"GCCSHORTVER"/profile \
-  %{!static: -rpath /usr/lib/gcc"GCCSHORTVER"/profile} \
+  %{!static: "RUNPATH" /usr/lib/gcc"GCCSHORTVER"/profile} \
  } \
  -L"PREFIX2"/lib/gcc"GCCSHORTVER" \
- %{!static: -rpath /usr/lib/gcc"GCCSHORTVER"} \
+ %{!static: "RUNPATH" /usr/lib/gcc"GCCSHORTVER"} \
  %{pg: \
   %{!nostdlib: \
    %{!nodefaultlibs: -L"PREFIX2"/lib/profile \
-    %{!static: -rpath /usr/lib/profile} \
+    %{!static: "RUNPATH" /usr/lib/profile} \
    } \
   } \
  }"

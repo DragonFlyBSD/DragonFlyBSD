@@ -391,58 +391,54 @@ struct dmsg_lnk_auth {
  * LNK_CONN - Register connection info for SPAN protocol
  *	      (transaction, left open, iocom->state0 only).
  *
- * LNK_CONN identifies a streaming connection into the cluster and serves
- * to identify, enable, and specify filters for the SPAN protocol.
+ * LNK_CONN identifies a streaming connection into the cluster.
  *
  * peer_mask serves to filter the SPANs we receive by peer_type.  A cluster
  * controller typically sets this to (uint64_t)-1, indicating that it wants
  * everything.  A block devfs interface might set it to 1 << DMSG_PEER_DISK,
  * and a hammer2 mount might set it to 1 << DMSG_PEER_HAMMER2.
  *
- * mediaid allows multiple (e.g. HAMMER2) connections belonging to the same
- * media to transmit duplicative LNK_VOLCONF updates without causing
- * confusion in the cluster controller.
+ * media_iud allows multiple (e.g. HAMMER2) connections belonging to the same
+ * media to transmit duplicative LNK_VOLCONF updates without causing confusion
+ * in the cluster controller.
  *
  * pfs_clid, pfs_fsid, pfs_type, and label are peer-specific and must be
  * left empty (zero-fill) if not supported by a particular peer.
- *
- * DMSG_PEER_CLUSTER		filter: none
- * DMSG_PEER_BLOCK		filter: label
- * DMSG_PEER_HAMMER2		filter: pfs_clid if not empty, and label
  */
 struct dmsg_lnk_conn {
 	dmsg_hdr_t	head;
-	uuid_t		mediaid;	/* media configuration id */
-	uuid_t		pfs_clid;	/* rendezvous pfs uuid */
-	uuid_t		pfs_fsid;	/* unique pfs uuid */
+	uuid_t		media_id;	/* media configuration id */
+	uuid_t		peer_id;	/* unique peer uuid */
+	uuid_t		reserved01;
 	uint64_t	peer_mask;	/* PEER mask for SPAN filtering */
 	uint8_t		peer_type;	/* see DMSG_PEER_xxx */
-	uint8_t		pfs_type;	/* pfs type */
+	uint8_t		reserved02;
 	uint16_t	proto_version;	/* high level protocol support */
 	uint32_t	status;		/* status flags */
 	uint32_t	rnss;		/* node's generated rnss */
-	uint8_t		reserved02[8];
-	uint32_t	reserved03[12];
-	uint64_t	pfs_mask;	/* PFS mask for SPAN filtering */
-	char		cl_label[DMSG_LABEL_SIZE]; /* cluster label */
-	char		fs_label[DMSG_LABEL_SIZE]; /* PFS label */
+	uint8_t		reserved03[8];
+	uint32_t	reserved04[14];
+	char		peer_label[DMSG_LABEL_SIZE]; /* peer identity string */
 };
 
 typedef struct dmsg_lnk_conn dmsg_lnk_conn_t;
 
 /*
- * PFSTYPEs 0-15 used by sys/dmsg.h 16-31 reserved by hammer2.
+ * PEER types 0-63 are defined here.  There is a limit of 64 types due to
+ * the width of peer_mask.
+ *
+ * PFS types depend on the peer type.  sys/dmsg.h only defines the default.
+ * peer-specific headers define PFS types for any given peer.
  */
-#define DMSG_PFSTYPE_NONE		0
-#define DMSG_PFSTYPE_ADMIN		1
-#define DMSG_PFSTYPE_CLIENT		2
-#define DMSG_PFSTYPE_SERVER		3
-#define DMSG_PFSTYPE_MAX		32
+#define DMSG_PEER_NONE			0
+#define DMSG_PEER_ROUTER		1	/* server: cluster controller */
+#define DMSG_PEER_BLOCK			2	/* server: block devices */
+#define DMSG_PEER_HAMMER2		3	/* server: h2 mounted volume */
+#define DMSG_PEER_CLIENT		63	/* a client connection */
+#define DMSG_PEER_MAX			64
 
-#define DMSG_PEER_NONE		0
-#define DMSG_PEER_CLUSTER	1	/* a cluster controller */
-#define DMSG_PEER_BLOCK		2	/* block devices */
-#define DMSG_PEER_HAMMER2	3	/* hammer2-mounted volumes */
+#define DMSG_PFSTYPE_DEFAULT		0
+#define DMSG_PFSTYPE_MASK		0x0F
 
 /*
  * Structures embedded in LNK_SPAN
@@ -450,6 +446,7 @@ typedef struct dmsg_lnk_conn dmsg_lnk_conn_t;
 struct dmsg_media_block {
 	uint64_t	bytes;		/* media size in bytes */
 	uint32_t	blksize;	/* media block size */
+	uint32_t	reserved01;
 };
 
 typedef struct dmsg_media_block dmsg_media_block_t;
@@ -503,8 +500,8 @@ typedef struct dmsg_media_block dmsg_media_block_t;
  */
 struct dmsg_lnk_span {
 	dmsg_hdr_t	head;
-	uuid_t		pfs_clid;	/* rendezvous pfs uuid */
-	uuid_t		pfs_fsid;	/* unique pfs id (differentiate node) */
+	uuid_t		peer_id;
+	uuid_t		pfs_id;		/* unique pfs id */
 	uint8_t		pfs_type;	/* PFS type */
 	uint8_t		peer_type;	/* PEER type */
 	uint16_t	proto_version;	/* high level protocol support */
@@ -524,8 +521,8 @@ struct dmsg_lnk_span {
 	 *	 for PEER_BLOCK cl_label is typically host/device and
 	 *	 fs_label is typically the serial number string.
 	 */
-	char		cl_label[DMSG_LABEL_SIZE]; /* cluster label */
-	char		fs_label[DMSG_LABEL_SIZE]; /* PFS label */
+	char		peer_label[DMSG_LABEL_SIZE];	/* peer label */
+	char		pfs_label[DMSG_LABEL_SIZE];	/* PFS label */
 };
 
 typedef struct dmsg_lnk_span dmsg_lnk_span_t;

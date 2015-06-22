@@ -100,8 +100,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 		result_offset = root_volume->ondisk->vol0_undo_array[i] +
 				(zone_offset & HAMMER_BIGBLOCK_MASK64);
 	} else {
-		result_offset = (zone_offset & ~HAMMER_OFF_ZONE_MASK) |
-				HAMMER_ZONE_RAW_BUFFER;
+		result_offset = hammer_xlate_to_zone2(zone_offset);
 	}
 
 	/*
@@ -172,12 +171,9 @@ blockmap_lookup(hammer_off_t zone_offset,
 		*save_layer2 = *layer2;
 
 done:
-	if (buffer1)
-		rel_buffer(buffer1);
-	if (buffer2)
-		rel_buffer(buffer2);
-	if (root_volume)
-		rel_volume(root_volume);
+	rel_buffer(buffer1);
+	rel_buffer(buffer2);
+	rel_volume(root_volume);
 
 	if (errorp)
 		*errorp = error;

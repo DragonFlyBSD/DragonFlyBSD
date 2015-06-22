@@ -253,7 +253,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	    tmpfs_node_init, tmpfs_node_fini,
 	    &tmp->tm_node_zone_malloc_args);
 
-	tmp->tm_ino = 2;
+	tmp->tm_ino = TMPFS_ROOTINO;
 
 	/* Allocate the root node. */
 	error = tmpfs_alloc_node(tmp, VDIR, root_uid, root_gid,
@@ -272,8 +272,8 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	    kfree(tmp, M_TMPFSMNT);
 	    return error;
 	}
-	KASSERT(root->tn_id >= 0,
-		("tmpfs root with invalid ino: %d", (int)root->tn_id));
+	KASSERT(root->tn_id == TMPFS_ROOTINO,
+		("tmpfs root with invalid ino: %ju", (uintmax_t)root->tn_id));
 
 	++root->tn_links;	/* prevent destruction */
 	tmp->tm_root = root;
@@ -366,7 +366,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	}
 
 	/*
-	 * Flush all vnodes on the mount.
+	 * Flush all vnodes on the unmount.
 	 *
 	 * If we fail to flush, we cannot unmount, but all the nodes have
 	 * already been truncated. Erroring out is the best we can do.
@@ -544,7 +544,7 @@ tmpfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	return 0;
 }
 
-/* --------------------------------------------------------------------- */ 
+/* --------------------------------------------------------------------- */
 
 static int
 tmpfs_vptofh(struct vnode *vp, struct fid *fhp)
@@ -562,25 +562,25 @@ tmpfs_vptofh(struct vnode *vp, struct fid *fhp)
 
 /* --------------------------------------------------------------------- */
 
-static int 
-tmpfs_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp, 
-	       struct ucred **credanonp) 
-{ 
-	struct tmpfs_mount *tmp; 
-	struct netcred *nc; 
- 
+static int
+tmpfs_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp,
+	       struct ucred **credanonp)
+{
+	struct tmpfs_mount *tmp;
+	struct netcred *nc;
+
 	tmp = (struct tmpfs_mount *) mp->mnt_data;
-	nc = vfs_export_lookup(mp, &tmp->tm_export, nam); 
-	if (nc == NULL) 
-		return (EACCES); 
+	nc = vfs_export_lookup(mp, &tmp->tm_export, nam);
+	if (nc == NULL)
+		return (EACCES);
 
-	*exflagsp = nc->netc_exflags; 
-	*credanonp = &nc->netc_anon; 
- 
-	return (0); 
-} 
+	*exflagsp = nc->netc_exflags;
+	*credanonp = &nc->netc_anon;
 
-/* --------------------------------------------------------------------- */ 
+	return (0);
+}
+
+/* --------------------------------------------------------------------- */
 
 /*
  * tmpfs vfs operations.

@@ -1,0 +1,17 @@
+#!/bin/sh
+# $FreeBSD: head/tools/tools/drm/radeon/firmwares/encode-firmwares 254885 2013-08-25 19:37:15Z dumbbell $
+
+set -e
+
+scriptdir=$(cd $(dirname $0) && pwd)
+fwdir="$scriptdir/../../../../../sys/contrib/dev/drm/radeonfw"
+srcdir=$1
+
+if [ -z "$srcdir" -o ! -d "$srcdir" ]; then
+	echo "Syntax: $(basename $0) <path to original firmwares>" 1>&2
+	exit
+fi
+
+for file in "$srcdir"/*.bin; do
+	uuencode -o "$fwdir"/$(basename $file).uu $file $(basename $file)
+done

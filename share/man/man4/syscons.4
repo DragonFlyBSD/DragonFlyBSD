@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/syscons.4,v 1.10.2.14 2003/04/25 21:21:36 brueffer Exp $
 .\"
-.Dd August 19, 2007
+.Dd June 11, 2015
 .Dt SYSCONS 4
 .Os
 .Sh NAME
@@ -64,9 +64,17 @@ The
 .Nm
 driver is implemented on top of the keyboard driver
 .Pq Xr atkbd 4
-and the video card driver
-.Pq Xr vga 4
-and so requires both of them to be configured in the system.
+and the video card drivers
+.Xr ( i915kms 4 ,
+.Xr radeonkms 4 ,
+or
+.Xr vga 4 ) .
+Please see
+.Sx Loader Tunables
+below on how to make the console work with
+.Xr i915kms 4
+or
+.Xr radeonkms 4 .
 .Pp
 There can be only one
 .Nm
@@ -241,6 +249,35 @@ and
 .Xr vidcontrol 1
 for more details.
 .Sh DRIVER CONFIGURATION
+.Ss Loader Tunables
+The following tunable is available and can be set in
+.Xr loader.conf 5 .
+.Bl -tag -width ".Va kern.kms_console"
+.It Va kern.kms_console
+Setting this tunable to 1 enables experimental framebuffer support
+in conjunction with the
+.Xr i915kms 4
+or
+.Xr radeonkms 4
+drivers.
+It is 0 by default.
+.It Va kern.kms_columns
+The number of columns to use in conjunction with the
+.Xr i915kms 4
+and
+.Xr radeonkms 4
+drivers.
+The font size is scaled to match the requested number of columns.
+This requires
+.Va kern.kms_console
+to be set to 1.
+By default,
+.Nm
+tries to find a more or less pleasant looking default.
+Setting
+.Va kern.kms_columns
+to a negative value turns off scaling.
+.El
 .Ss Kernel Configuration Options
 The following kernel configuration options control the
 .Nm

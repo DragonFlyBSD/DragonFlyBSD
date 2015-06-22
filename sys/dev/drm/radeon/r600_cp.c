@@ -34,16 +34,45 @@
 #include <sys/systm.h>
 #include <sys/linker.h>
 #include <sys/firmware.h>
+#include <linux/module.h>
 
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon_drv.h"
-#include "r600_cp.h"
 
 #define PFP_UCODE_SIZE 576
 #define PM4_UCODE_SIZE 1792
 #define R700_PFP_UCODE_SIZE 848
 #define R700_PM4_UCODE_SIZE 1360
+
+/* Firmware Names */
+MODULE_FIRMWARE("radeon/R600_pfp.bin");
+MODULE_FIRMWARE("radeon/R600_me.bin");
+MODULE_FIRMWARE("radeon/RV610_pfp.bin");
+MODULE_FIRMWARE("radeon/RV610_me.bin");
+MODULE_FIRMWARE("radeon/RV630_pfp.bin");
+MODULE_FIRMWARE("radeon/RV630_me.bin");
+MODULE_FIRMWARE("radeon/RV620_pfp.bin");
+MODULE_FIRMWARE("radeon/RV620_me.bin");
+MODULE_FIRMWARE("radeon/RV635_pfp.bin");
+MODULE_FIRMWARE("radeon/RV635_me.bin");
+MODULE_FIRMWARE("radeon/RV670_pfp.bin");
+MODULE_FIRMWARE("radeon/RV670_me.bin");
+MODULE_FIRMWARE("radeon/RS780_pfp.bin");
+MODULE_FIRMWARE("radeon/RS780_me.bin");
+MODULE_FIRMWARE("radeon/RV770_pfp.bin");
+MODULE_FIRMWARE("radeon/RV770_me.bin");
+MODULE_FIRMWARE("radeon/RV730_pfp.bin");
+MODULE_FIRMWARE("radeon/RV730_me.bin");
+MODULE_FIRMWARE("radeon/RV710_pfp.bin");
+MODULE_FIRMWARE("radeon/RV710_me.bin");
+
+
+void r600_cs_legacy_get_tiling_conf(struct drm_device *dev, u32 *npipes, u32 *nbanks, u32 *group_size);
+int r600_cs_legacy(struct drm_device *dev, void *data, struct drm_file *filp,
+			unsigned family, u32 *ib, int *l);
+void r600_cs_legacy_init(void);
+
 
 # define ATI_PCIGART_PAGE_SIZE		4096	/**< PCI GART page size */
 # define ATI_PCIGART_PAGE_MASK		(~(ATI_PCIGART_PAGE_SIZE-1))
@@ -297,6 +326,7 @@ static void r600_vm_init(struct drm_device *dev)
 
 static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 {
+	struct platform_device *pdev;
 	const char *chip_name;
 	size_t pfp_req_size, me_req_size;
 	char fw_name[30];
@@ -315,7 +345,7 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 	case CHIP_RV730:
 	case CHIP_RV740: chip_name = "RV730"; break;
 	case CHIP_RV710: chip_name = "RV710"; break;
-	default:         panic("%s: Unsupported family %d", __func__, dev_priv->flags & RADEON_FAMILY_MASK);
+	default:         BUG();
 	}
 
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_RV770) {
@@ -327,16 +357,13 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 	}
 
 	DRM_INFO("Loading %s CP Microcode\n", chip_name);
-	err = 0;
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_pfp", chip_name);
-	dev_priv->pfp_fw = firmware_get(fw_name);
-	if (dev_priv->pfp_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&dev_priv->pfp_fw, fw_name, &pdev->dev);
+	if (err)
 		goto out;
-	}
 	if (dev_priv->pfp_fw->datasize != pfp_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "r600_cp: Bogus length %zu in firmware \"%s\"\n",
 		       dev_priv->pfp_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -344,13 +371,11 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 	}
 
 	ksnprintf(fw_name, sizeof(fw_name), "radeonkmsfw_%s_me", chip_name);
-	dev_priv->me_fw = firmware_get(fw_name);
-	if (dev_priv->me_fw == NULL) {
-		err = -ENOENT;
+	err = request_firmware(&dev_priv->me_fw, fw_name, &pdev->dev);
+	if (err)
 		goto out;
-	}
 	if (dev_priv->me_fw->datasize != me_req_size) {
-		DRM_ERROR(
+		printk(KERN_ERR
 		       "r600_cp: Bogus length %zu in firmware \"%s\"\n",
 		       dev_priv->me_fw->datasize, fw_name);
 		err = -EINVAL;
@@ -358,17 +383,13 @@ static int r600_cp_init_microcode(drm_radeon_private_t *dev_priv)
 out:
 	if (err) {
 		if (err != -EINVAL)
-			DRM_ERROR(
+			printk(KERN_ERR
 			       "r600_cp: Failed to load firmware \"%s\"\n",
 			       fw_name);
-		if (dev_priv->pfp_fw != NULL) {
-			firmware_put(dev_priv->pfp_fw, FIRMWARE_UNLOAD);
-			dev_priv->pfp_fw = NULL;
-		}
-		if (dev_priv->me_fw != NULL) {
-			firmware_put(dev_priv->me_fw, FIRMWARE_UNLOAD);
-			dev_priv->me_fw = NULL;
-		}
+		release_firmware(dev_priv->pfp_fw);
+		dev_priv->pfp_fw = NULL;
+		release_firmware(dev_priv->me_fw);
+		dev_priv->me_fw = NULL;
 	}
 	return err;
 }
@@ -393,7 +414,7 @@ static void r600_cp_load_microcode(drm_radeon_private_t *dev_priv)
 
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, R600_SOFT_RESET_CP);
 	RADEON_READ(R600_GRBM_SOFT_RESET);
-	DRM_MDELAY(15);
+	mdelay(15);
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, 0);
 
 	fw_data = (const __be32 *)dev_priv->me_fw->data;
@@ -486,7 +507,7 @@ static void r700_cp_load_microcode(drm_radeon_private_t *dev_priv)
 
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, R600_SOFT_RESET_CP);
 	RADEON_READ(R600_GRBM_SOFT_RESET);
-	DRM_MDELAY(15);
+	mdelay(15);
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, 0);
 
 	fw_data = (const __be32 *)dev_priv->pfp_fw->data;
@@ -1778,7 +1799,7 @@ static void r600_cp_init_ring_buffer(struct drm_device *dev,
 
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, R600_SOFT_RESET_CP);
 	RADEON_READ(R600_GRBM_SOFT_RESET);
-	DRM_MDELAY(15);
+	mdelay(15);
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, 0);
 
 
@@ -1865,7 +1886,7 @@ static void r600_cp_init_ring_buffer(struct drm_device *dev,
 	} else
 #endif
 		ring_start = (dev_priv->cp_ring->offset
-			      - (unsigned long)dev->sg->vaddr>
+			      - (unsigned long)dev->sg->vaddr
 			      + dev_priv->gart_vm_start);
 
 	RADEON_WRITE(R600_CP_RB_BASE, ring_start >> 8);

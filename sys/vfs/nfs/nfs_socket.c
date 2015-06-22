@@ -2112,7 +2112,7 @@ nfs_sndlock(struct nfsmount *nmp, struct nfsreq *rep)
 			error = EINTR;
 			break;
 		}
-		error = mtx_lock_ex(mtx, "nfsndlck", slpflag, slptimeo);
+		error = mtx_lock_ex(mtx, slpflag, slptimeo);
 		if (error == 0)
 			break;
 		if (slpflag == PCATCH) {
@@ -2185,10 +2185,9 @@ nfs_rcvlock(struct nfsmount *nmp, struct nfsreq *rep)
 		 */
 		if (rep) {
 			error = mtx_lock_ex_link(mtx, &rep->r_link,
-						 "nfsrcvlk",
 						 slpflag, slptimeo);
 		} else {
-			error = mtx_lock_ex(mtx, "nfsrcvlk", slpflag, slptimeo);
+			error = mtx_lock_ex(mtx, slpflag, slptimeo);
 		}
 		if (error == 0)
 			break;

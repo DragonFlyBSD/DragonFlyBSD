@@ -34,4 +34,20 @@
 #define mutex_lock(lock)	lockmgr(lock, LK_EXCLUSIVE)
 #define mutex_unlock(lock)	lockmgr(lock, LK_RELEASE)
 
+/* NOTE: mutex_trylock() returns non-zero on success */
+#define mutex_trylock(lock)	(!lockmgr(lock, LK_EXCLUSIVE|LK_NOWAIT))
+
+static inline int
+mutex_lock_interruptible(struct lock *lock)
+{
+	if (lockmgr(lock, LK_EXCLUSIVE|LK_SLEEPFAIL|LK_PCATCH))
+		return -EINTR;
+
+	return 0;
+}
+
+#define DEFINE_MUTEX(mutex)	\
+	struct lock mutex;	\
+	LOCK_SYSINIT(mutex, &mutex, "lmutex", LK_CANRECURSE)
+
 #endif	/* _LINUX_MUTEX_H_ */

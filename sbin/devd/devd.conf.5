@@ -41,7 +41,7 @@
 .\" ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 .\" SOFTWARE.
 .\"
-.Dd February 14, 2015
+.Dd May 14, 2015
 .Dt DEVD.CONF 5
 .Os
 .Sh NAME
@@ -245,13 +245,15 @@ Device node path if one is created by the
 .Xr devfs 5
 filesystem.
 .It Li channel
-Channel of the DIMM (memtemp).
+Channel of the DIMM (ecc/memtemp).
 .It Li cisproduct
 CIS-product.
 .It Li cisvendor
 CIS-vendor.
 .It Li class
 Device class.
+.It Li core
+CPU core (coretemp).
 .It Li device
 Device ID.
 .It Li devclass
@@ -261,7 +263,7 @@ Device Sub-class (USB)
 .It Li device-name
 Name of attached/detached device.
 .It Li dimm
-DIMM id within the channel and node (memtemp).
+DIMM id within the channel and node (ecc/memtemp).
 .It Li endpoints
 Endpoint count (USB)
 .It Li function
@@ -282,14 +284,14 @@ Peripheral mode (USB)
 Match the value of the
 .Dq Li notify
 variable.
+.It Li node
+CPU node (coretemp/ecc/memtemp).
 .It Li parent
 Parent device
 .It Li port
 Hub port number (USB)
 .It Li product
 Product ID (pccard/USB).
-.It Li node
-Node of the DIMM (memtemp).
 .It Li release
 Hardware revision (USB)
 .It Li sernum
@@ -412,18 +414,19 @@ Notification that the CPU core has reached critical temperature.
 String containing the temperature of the core that has become too hot.
 .El
 .El
-.It Li memtemp
+.Pp
+.It Li ecc
 Events related to the
-.Xr memtemp 4
+.Xr ecc 4
 device.
 .Bl -tag -width ".Sy Subsystem" -compact
 .It Sy Subsystem
-.It Li Thermal
-Notification that the DIMM has reached critical temperature.
-.Bl -tag -width ".Ar temperature" -compact
+.It Li ECC
+Notification that the DIMM has too many ECC errors.
+.Bl -tag -width ".Ar count" -compact
 .It Sy Type
-.It Ar temperature
-String containing the temperature of the DIMM that has become too hot.
+.It Ar count
+String containing the number of ECC errors of the DIMM.
 .El
 .El
 .Pp
@@ -437,6 +440,21 @@ Information about the state of the system.
 .It Sy Type
 .It Li resume
 Notification that the system has woken from the suspended state.
+.El
+.El
+.Pp
+.It Li memtemp
+Events related to the
+.Xr memtemp 4
+device.
+.Bl -tag -width ".Sy Subsystem" -compact
+.It Sy Subsystem
+.It Li Thermal
+Notification that the DIMM has reached critical temperature.
+.Bl -tag -width ".Ar temperature" -compact
+.It Sy Type
+.It Ar temperature
+String containing the temperature of the DIMM that has become too hot.
 .El
 .El
 .El
@@ -566,6 +584,7 @@ The installed
 has many additional examples.
 .Sh SEE ALSO
 .Xr coretemp 4 ,
+.Xr ecc 4 ,
 .Xr memtemp 4 ,
 .Xr devfs 5 ,
 .Xr re_format 7 ,
