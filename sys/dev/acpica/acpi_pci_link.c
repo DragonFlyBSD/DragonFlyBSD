@@ -39,7 +39,7 @@
 #include <dev/acpica/acpi_pcibvar.h>
 #include <dev/acpica/acpi_sci_var.h>
 
-#include <bus/pci/i386/pci_cfgreg.h>
+#include <bus/pci/pci_cfgreg.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 #include "pcib_if.h"

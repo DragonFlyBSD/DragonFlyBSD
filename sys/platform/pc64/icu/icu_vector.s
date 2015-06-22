@@ -30,7 +30,6 @@
  * 
  * from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc64/icu/icu_vector.s,v 1.1 2008/08/29 17:07:16 dillon Exp $
  */
 /*
  * WARNING!  SMP builds can use the ICU now so this code must be MP safe.
@@ -46,7 +45,7 @@
 #include <machine_base/icu/icu.h>
 #include <machine_base/icu/icu_ipl.h>
 
-#include <bus/isa/i386/isa.h>
+#include <bus/isa/isa.h>
 
 #include "assym.s"
 
