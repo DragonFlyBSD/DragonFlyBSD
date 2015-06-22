@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/hptrr.4,v 1.6 2012/06/17 03:54:10 eadler Exp $
 .\"
-.Dd August 3, 2012
+.Dd June 22, 2015
 .Dt HPTRR 4
 .Os
 .Sh NAME
@@ -96,15 +96,8 @@ RocketRAID 2522
 .Sh NOTES
 The
 .Nm
-driver only works on the i386 and x86_64 platforms as it requires a
+driver only works on the x86_64 platform as it requires a
 blob from the manufacturer which they only supply for these platforms.
-.\"The
-.\".Nm
-.\"driver does
-.\".Em not
-.\"work on i386 with
-.\".Xr pae 4
-.\"enabled.
 .Pp
 This driver does not support the RR182x series controller.
 See the

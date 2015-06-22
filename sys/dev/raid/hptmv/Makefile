@@ -10,14 +10,8 @@ SRCS+= bus_if.h device_if.h pci_if.h
 SRCS+= mv.c entry.c ioctl.c hptproc.c gui_lib.c
 OBJS+= hptmvraid.o
 
-.if $(MACHINE_ARCH) == "x86_64"
-HPTMV_RAID_O = x86_64-elf.raid.o.uu
-.else
-HPTMV_RAID_O = i386-elf.raid.o.uu
-.endif
-
-hptmvraid.o:	${.CURDIR}/$(HPTMV_RAID_O)
-	uudecode -p < ${.CURDIR}/$(HPTMV_RAID_O) > ${.TARGET}
+hptmvraid.o:
+	uudecode -p < ${.CURDIR}/$(MACHINE_ARCH)-elf.raid.o.uu > ${.TARGET}
 
 #
 # Debug Options:
