@@ -44,6 +44,7 @@
 #include <sys/file.h>
 #include <sys/soundcard.h>
 #include <sys/time.h>
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -58,7 +59,9 @@ static void acpi_setcpufreq(int nstate);
 static void setupdominfo(void);
 static int has_battery(void);
 static int mon_battery(void);
+static void getncpus(void);
 
+static int TotalCpus;
 int DebugOpt;
 int TurboOpt = 1;
 int CpuLimit;		/* # of cpus at max frequency */
@@ -143,6 +146,9 @@ main(int ac, char **av)
 	}
 	ac -= optind;
 	av += optind;
+
+	/* Get the number of cpus */
+	getncpus();
 
 	if (0 > Hysteresis || Hysteresis > 99) {
 		fprintf(stderr, "Invalid hysteresis value\n");
@@ -341,22 +347,22 @@ static
 double
 getcputime(double pollrate)
 {
-	static struct kinfo_cputime ocpu_time[64];
-	static struct kinfo_cputime ncpu_time[64];
+	static struct kinfo_cputime ocpu_time[MAXCPU];
+	static struct kinfo_cputime ncpu_time[MAXCPU];
 	size_t slen;
 	int ncpu;
 	int cpu;
 	uint64_t delta;
 
-	bcopy(ncpu_time, ocpu_time, sizeof(ncpu_time));
+	bcopy(ncpu_time, ocpu_time, sizeof(struct kinfo_cputime) * TotalCpus);
 	slen = sizeof(ncpu_time);
 	if (sysctlbyname("kern.cputime", &ncpu_time, &slen, NULL, 0) < 0) {
 		fprintf(stderr, "kern.cputime sysctl not available\n");
 		exit(1);
 	}
 	ncpu = slen / sizeof(ncpu_time[0]);
-	delta = 0;
 
+	delta = 0;
 	for (cpu = 0; cpu < ncpu; ++cpu) {
 		delta += (ncpu_time[cpu].cp_user + ncpu_time[cpu].cp_sys +
 			  ncpu_time[cpu].cp_nice + ncpu_time[cpu].cp_intr) -
@@ -630,4 +636,16 @@ mon_battery(void)
 		low_battery_alert(life);
 	}
 	return 1;
+}
+
+static void
+getncpus(void)
+{
+	size_t slen;
+
+	slen = sizeof(TotalCpus);
+	if (sysctlbyname("hw.ncpu", &TotalCpus, &slen, NULL, 0) < 0)
+		err(1, "sysctlbyname hw.ncpu failed");
+	if (DebugOpt)
+		printf("hw.ncpu %d\n", TotalCpus);
 }
