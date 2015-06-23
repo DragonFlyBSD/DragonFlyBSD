@@ -416,7 +416,7 @@ acpi_setcpufreq(int nstate)
 	/*
 	 * Set the mask of cpus the userland scheduler is allowed to use.
 	 */
-	CPUMASK_ASSBMASK(global_cpumask, nstate);
+	CPUMASK_ASSBMASK(global_cpumask, nstate == 0 ? 1 : nstate);
 	sysctlbyname("kern.usched_global_cpumask", NULL, 0,
 		     &global_cpumask, sizeof(global_cpumask));
 
