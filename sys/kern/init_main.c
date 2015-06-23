@@ -101,8 +101,9 @@ extern	struct user *proc0paddr;
 int	boothowto = 0;		/* initialized so that it can be patched */
 SYSCTL_INT(_debug, OID_AUTO, boothowto, CTLFLAG_RD, &boothowto, 0,
     "Reboot flags, from console subsystem");
-SYSCTL_ULONG(_kern, OID_AUTO, usched_global_cpumask, CTLFLAG_RW,
-    &usched_global_cpumask, 0, "global user scheduler cpumask");
+SYSCTL_OPAQUE(_kern, OID_AUTO, usched_global_cpumask, CTLFLAG_RW,
+    &usched_global_cpumask, sizeof(usched_global_cpumask), "LU",
+    "global user scheduler cpumask");
 
 /*
  * This ensures that there is at least one entry so that the sysinit_set
