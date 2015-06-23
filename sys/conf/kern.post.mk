@@ -158,7 +158,7 @@ kernel-installable:
 		/usr/bin/false; \
 	fi
 # Skip this step for vkernels
-.if ${MACHINE_PLATFORM} != vkernel && ${MACHINE_PLATFORM} != vkernel64
+.if ${MACHINE_PLATFORM} != vkernel64
 	@if [ ! -f ${DESTDIR}/boot/dloader.rc ]; then \
 		echo "You need to install a new ${DESTDIR}/boot before you"; \
 		echo "can install a new kernel, kernels are now installed"; \

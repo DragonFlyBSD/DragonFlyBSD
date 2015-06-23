@@ -4,7 +4,7 @@
 .if defined(MODULES_OVERRIDE)
 SUBDIR=${MODULES_OVERRIDE}
 .else
-.if ${MACHINE_PLATFORM} != "vkernel" && ${MACHINE_PLATFORM} != "vkernel64"
+.if ${MACHINE_PLATFORM} != "vkernel64"
 SUBDIR=bus
 .endif
 SUBDIR+=crypto emulation dev gnu kern net netbt netproto vfs

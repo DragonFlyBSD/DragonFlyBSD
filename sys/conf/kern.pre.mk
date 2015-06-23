@@ -108,8 +108,6 @@ SYSTEM_LD= @${LD} -Bdynamic -T $S/platform/$P/conf/ldscript.$M \
 #
 .if ${P} == "pc64" || ${P} == "vkernel64"
 SYSTEM_LD+= -z max-page-size=0x200000
-.elif ${P} == "pc32" || ${P} == "vkernel"
-SYSTEM_LD+= -z max-page-size=0x1000
 .endif
 
 SYSTEM_LD_TAIL= @${OBJCOPY} --strip-symbol gcc2_compiled. ${.TARGET} ; \

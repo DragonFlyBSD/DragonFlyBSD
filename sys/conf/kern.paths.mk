@@ -17,6 +17,6 @@ OLDMODULESDIR?=		/boot/modules
 
 # Set DESTDIR to /var/vkernel by default for vkernel platform so as
 # not to shoot the real kernel installation.
-.if ${MACHINE_PLATFORM} == vkernel || ${MACHINE_PLATFORM} == vkernel64
+.if ${MACHINE_PLATFORM} == vkernel64
 DESTDIR?=		/var/vkernel
 .endif
