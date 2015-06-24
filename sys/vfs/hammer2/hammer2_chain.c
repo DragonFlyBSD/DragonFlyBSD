@@ -1925,8 +1925,10 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	if (chain) {
 		key_beg = chain->bref.key +
 			  ((hammer2_key_t)1 << chain->bref.keybits);
-		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
+		if ((flags & (HAMMER2_LOOKUP_NOLOCK |
+			      HAMMER2_LOOKUP_NOUNLOCK)) == 0) {
 			hammer2_chain_unlock(chain);
+		}
 		hammer2_chain_drop(chain);
 
 		/*

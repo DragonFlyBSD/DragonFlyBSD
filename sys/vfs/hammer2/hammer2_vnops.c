@@ -467,15 +467,10 @@ static
 int
 hammer2_vop_readdir(struct vop_readdir_args *ap)
 {
-	const hammer2_inode_data_t *ripdata;
-	hammer2_inode_t *ip;
-	hammer2_inode_t *xip;
-	hammer2_cluster_t *cparent;
-	hammer2_cluster_t *cluster;
-	hammer2_cluster_t *xcluster;
+	hammer2_xop_readdir_t *xop;
 	hammer2_blockref_t bref;
+	hammer2_inode_t *ip;
 	hammer2_tid_t inum;
-	hammer2_key_t key_next;
 	hammer2_key_t lkey;
 	struct uio *uio;
 	off_t *cookies;
@@ -483,6 +478,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	int cookie_index;
 	int ncookies;
 	int error;
+	int eofflag;
 	int dtype;
 	int r;
 
@@ -490,6 +486,8 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	ip = VTOI(ap->a_vp);
 	uio = ap->a_uio;
 	saveoff = uio->uio_offset;
+	eofflag = 0;
+	error = 0;
 
 	/*
 	 * Setup cookies directory entry cookies if requested
@@ -505,11 +503,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	}
 	cookie_index = 0;
 
-	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS | HAMMER2_RESOLVE_SHARED);
-	cparent = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS |
-					    HAMMER2_RESOLVE_SHARED);
-
-	ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);
 
 	/*
 	 * Handle artificial entries.  To ensure that only positive 64 bit
@@ -520,11 +514,8 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	 * Entry 0 is used for '.' and entry 1 is used for '..'.  Do not
 	 * allow '..' to cross the mount point into (e.g.) the super-root.
 	 */
-	error = 0;
-	cluster = (void *)(intptr_t)-1;	/* non-NULL for early goto done case */
-
 	if (saveoff == 0) {
-		inum = ripdata->meta.inum & HAMMER2_DIRHASH_USERMSK;
+		inum = ip->meta.inum & HAMMER2_DIRHASH_USERMSK;
 		r = vop_write_dirent(&error, uio, inum, DT_DIR, 1, ".");
 		if (r)
 			goto done;
@@ -542,33 +533,9 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		 *
 		 * (ip is the current dir. xip is the parent dir).
 		 */
-		inum = ripdata->meta.inum & HAMMER2_DIRHASH_USERMSK;
-		while (ip->pip != NULL && ip != ip->pmp->iroot) {
-			xip = ip->pip;
-			hammer2_inode_ref(xip);
-			hammer2_inode_unlock(ip, cparent);
-			hammer2_inode_lock(xip, HAMMER2_RESOLVE_ALWAYS |
-					        HAMMER2_RESOLVE_SHARED);
-			xcluster = hammer2_inode_cluster(xip,
-						      HAMMER2_RESOLVE_ALWAYS |
-						      HAMMER2_RESOLVE_SHARED);
-
-			hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
-					       HAMMER2_RESOLVE_SHARED);
-			cparent = hammer2_inode_cluster(ip,
-						      HAMMER2_RESOLVE_ALWAYS |
-						      HAMMER2_RESOLVE_SHARED);
-			hammer2_inode_drop(xip);
-			ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
-			if (xip == ip->pip) {
-				inum = hammer2_cluster_rdata(xcluster)->
-					ipdata.meta.inum &
-					 HAMMER2_DIRHASH_USERMSK;
-				hammer2_inode_unlock(xip, xcluster);
-				break;
-			}
-			hammer2_inode_unlock(xip, xcluster);
-		}
+		inum = ip->meta.inum & HAMMER2_DIRHASH_USERMSK;
+		if (ip->pip && ip != ip->pmp->iroot)
+			inum = ip->pip->meta.inum & HAMMER2_DIRHASH_USERMSK;
 		r = vop_write_dirent(&error, uio, inum, DT_DIR, 2, "..");
 		if (r)
 			goto done;
@@ -583,31 +550,35 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	lkey = saveoff | HAMMER2_DIRHASH_VISIBLE;
 	if (hammer2_debug & 0x0020)
 		kprintf("readdir: lkey %016jx\n", lkey);
+	if (error)
+		goto done;
 
 	/*
+	 * Use XOP for cluster scan.
+	 *
 	 * parent is the inode cluster, already locked for us.  Don't
 	 * double lock shared locks as this will screw up upgrades.
 	 */
-	if (error) {
-		goto done;
-	}
-	cluster = hammer2_cluster_lookup(cparent, &key_next, lkey, lkey,
-				     HAMMER2_LOOKUP_SHARED);
-	if (cluster == NULL) {
-		cluster = hammer2_cluster_lookup(cparent, &key_next,
-					     lkey, (hammer2_key_t)-1,
-					     HAMMER2_LOOKUP_SHARED);
-	}
-	if (cluster)
-		hammer2_cluster_bref(cluster, &bref);
-	while (cluster) {
-		if (hammer2_debug & 0x0020)
-			kprintf("readdir: p=%p chain=%p %016jx (next %016jx)\n",
-				cparent->focus, cluster->focus,
-				bref.key, key_next);
+	xop = &hammer2_xop_alloc(ip, hammer2_xop_readdir)->xop_readdir;
+	xop->head.lkey = lkey;
+	hammer2_xop_start(&xop->head);
 
+	for (;;) {
+		const hammer2_inode_data_t *ripdata;
+
+		error = hammer2_xop_collect(&xop->head);
+		if (error)
+			break;
+		if (cookie_index == ncookies)
+			break;
+		if (hammer2_debug & 0x0020)
+		kprintf("cluster chain %p %p\n",
+			xop->head.cluster.focus,
+			(xop->head.cluster.focus ?
+			 xop->head.cluster.focus->data : (void *)-1));
+		ripdata = &hammer2_cluster_rdata(&xop->head.cluster)->ipdata;
+		hammer2_cluster_bref(&xop->head.cluster, &bref);
 		if (bref.type == HAMMER2_BREF_TYPE_INODE) {
-			ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
 			dtype = hammer2_get_dtype(ripdata);
 			saveoff = bref.key & HAMMER2_DIRHASH_USERMSK;
 			r = vop_write_dirent(&error, uio,
@@ -625,32 +596,19 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			/* XXX chain error */
 			kprintf("bad chain type readdir %d\n", bref.type);
 		}
-
-		/*
-		 * Keys may not be returned in order so once we have a
-		 * placemarker (cluster) the scan must allow the full range
-		 * or some entries will be missed.
-		 */
-		cluster = hammer2_cluster_next(cparent, cluster, &key_next,
-					       key_next, (hammer2_key_t)-1,
-					       HAMMER2_LOOKUP_SHARED);
-		if (cluster) {
-			hammer2_cluster_bref(cluster, &bref);
-			saveoff = (bref.key & HAMMER2_DIRHASH_USERMSK) + 1;
-		} else {
-			saveoff = (hammer2_key_t)-1;
-		}
-		if (cookie_index == ncookies)
-			break;
 	}
-	if (cluster) {
-		hammer2_cluster_unlock(cluster);
-		hammer2_cluster_drop(cluster);
+	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+	if (error == ENOENT) {
+		error = 0;
+		eofflag = 1;
+		saveoff = (hammer2_key_t)-1;
+	} else {
+		saveoff = bref.key & HAMMER2_DIRHASH_USERMSK;
 	}
 done:
-	hammer2_inode_unlock(ip, cparent);
+	hammer2_inode_unlock(ip, NULL);
 	if (ap->a_eofflag)
-		*ap->a_eofflag = (cluster == NULL);
+		*ap->a_eofflag = eofflag;
 	if (hammer2_debug & 0x0020)
 		kprintf("readdir: done at %016jx\n", saveoff);
 	uio->uio_offset = saveoff & ~HAMMER2_DIRHASH_VISIBLE;

@@ -105,7 +105,7 @@ struct hammer2_span;
 struct hammer2_state;
 struct hammer2_msg;
 struct hammer2_thread;
-struct hammer2_xop;
+union hammer2_xop;
 
 /*
  * Mutex and lock shims.  Hammer2 requires support for asynchronous and
@@ -132,6 +132,11 @@ typedef struct spinlock			hammer2_spin_t;
 #define hammer2_spin_ex			spin_lock
 #define hammer2_spin_unsh		spin_unlock_shared
 #define hammer2_spin_unex		spin_unlock
+
+TAILQ_HEAD(hammer2_xop_list, hammer2_xop_head);
+
+typedef struct hammer2_xop_list	hammer2_xop_list_t;
+
 
 /*
  * General lock support
@@ -419,13 +424,40 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
  *
- * NOTE: MATCHIND allows an indirect block / freemap node to be returned
- *	 when the passed key range matches the radix.  Remember that key_end
- *	 is inclusive (e.g. {0x000,0xFFF}, not {0x000,0x1000}).
+ * NOTES:
+ *	NOLOCK	    - Input and output chains are referenced only and not
+ *		      locked.  Output chain might be temporarily locked
+ *		      internally.
  *
- * NOTE: NODIRECT prevents a lookup of offset 0 in an inode from returning
- *	 the inode itself if the inode is in DIRECTDATA mode (i.e. file is
- *	 <= 512 bytes).
+ *	NODATA	    - Asks that the chain->data not be resolved in order
+ *		      to avoid I/O.
+ *
+ *	NODIRECT    - Prevents a lookup of offset 0 in an inode from returning
+ *		      the inode itself if the inode is in DIRECTDATA mode
+ *		      (i.e. file is <= 512 bytes).  Used by the synchronization
+ *		      code to prevent confusion.
+ *
+ *	SHARED	    - The input chain is expected to be locked shared,
+ *		      and the output chain is locked shared.
+ *
+ *	MATCHIND    - Allows an indirect block / freemap node to be returned
+ *		      when the passed key range matches the radix.  Remember
+ *		      that key_end is inclusive (e.g. {0x000,0xFFF},
+ *		      not {0x000,0x1000}).
+ *
+ *		      (Cannot be used for remote or cluster ops).
+ *
+ *	ALLNODES    - Allows NULL focus.
+ *
+ *	ALWAYS	    - Always resolve the data.  If ALWAYS and NODATA are both
+ *		      missing, bulk file data is not resolved but inodes and
+ *		      other meta-data will.
+ *
+ *	NOUNLOCK    - Used by hammer2_chain_next() to leave the lock on
+ *		      the input chain intact.  The chain is still dropped.
+ *		      This allows the caller to add a reference to the chain
+ *		      and retain it in a locked state (used by the
+ *		      XOP/feed/collect code).
  */
 #define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
 #define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
@@ -434,6 +466,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_LOOKUP_MATCHIND		0x00000200	/* return all chains */
 #define HAMMER2_LOOKUP_ALLNODES		0x00000400	/* allow NULL focus */
 #define HAMMER2_LOOKUP_ALWAYS		0x00000800	/* resolve data */
+#define HAMMER2_LOOKUP_NOUNLOCK		0x00001000	/* leave lock intact */
 
 /*
  * Flags passed to hammer2_chain_modify() and hammer2_chain_resize()
@@ -533,7 +566,11 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * to a chain still part of the synchronized set.
  */
 #define HAMMER2_MAXCLUSTER	8
+#define HAMMER2_XOPFIFO		16
+#define HAMMER2_XOPFIFO_MASK	(HAMMER2_XOPFIFO - 1)
 #define HAMMER2_XOPGROUPS	16
+#define HAMMER2_XOPGROUPS_MASK	(HAMMER2_XOPGROUPS - 1)
+#define HAMMER2_XOPMASK_VOP	0x80000000U
 
 struct hammer2_cluster_item {
 #if 0
@@ -559,6 +596,7 @@ typedef struct hammer2_cluster_item hammer2_cluster_item_t;
  */
 #define HAMMER2_CITEM_INVALID	0x00000001
 #define HAMMER2_CITEM_FEMOD	0x00000002
+#define HAMMER2_CITEM_NULL	0x00000004
 
 struct hammer2_cluster {
 	int			refs;		/* track for deallocation */
@@ -788,6 +826,7 @@ struct hammer2_thread {
 	int		repidx;
 	hammer2_trans_t	trans;
 	struct lock	lk;		/* thread control lock */
+	hammer2_xop_list_t xopq;
 };
 
 typedef struct hammer2_thread hammer2_thread_t;
@@ -802,25 +841,53 @@ typedef struct hammer2_thread hammer2_thread_t;
 
 
 /*
- * hammer2_xop - container for VOP/XOP operation.
+ * hammer2_xop - container for VOP/XOP operation (allocated, not on stack).
  *
  * This structure is used to distribute a VOP operation across multiple
  * nodes.  It provides a rendezvous for concurrent node execution and
  * can be detached from the frontend operation to allow the frontend to
  * return early.
  */
-struct hammer2_xop {
-	struct hammer2_xop	*next;
-	void			(*func)(struct hammer2_thread *thr,
-					struct hammer2_xop *xop);
-	int			refs;
-	hammer2_inode_t		*dip;
-	hammer2_inode_t		*ip;
+typedef void (*hammer2_xop_func_t)(union hammer2_xop *xop, int clidx);
+
+typedef struct hammer2_xop_fifo {
+	TAILQ_ENTRY(hammer2_xop_head) entry;
+	hammer2_chain_t		*array[HAMMER2_XOPFIFO];
+	int			errors[HAMMER2_XOPFIFO];
+	int			ri;
+	int			wi;
+	int			unused03;
+} hammer2_xop_fifo_t;
+
+struct hammer2_xop_head {
+	hammer2_xop_func_t	func;
+	struct hammer2_inode	*ip;
+	struct hammer2_xop_group *xgrp;
+	uint32_t		check_counter;
+	uint32_t		run_mask;
+	uint32_t		chk_mask;
+	int			state;
+	int			error;
+	hammer2_key_t		lkey;
+	hammer2_key_t		nkey;
+	hammer2_xop_fifo_t	collect[HAMMER2_MAXCLUSTER];
+	hammer2_cluster_t	cluster;	/* help collections */
 };
 
-typedef struct hammer2_xop hammer2_xop_t;
+typedef struct hammer2_xop_head hammer2_xop_head_t;
 
-TAILQ_HEAD(hammer2_xop_list, hammer2_xop);
+struct hammer2_xop_readdir {
+	hammer2_xop_head_t	head;
+};
+
+typedef struct hammer2_xop_readdir hammer2_xop_readdir_t;
+
+union hammer2_xop {
+	hammer2_xop_head_t	head;
+	hammer2_xop_readdir_t	xop_readdir;
+};
+
+typedef union hammer2_xop hammer2_xop_t;
 
 /*
  * hammer2_xop_group - Manage XOP support threads.
@@ -828,8 +895,6 @@ TAILQ_HEAD(hammer2_xop_list, hammer2_xop);
 struct hammer2_xop_group {
 	hammer2_thread_t	thrs[HAMMER2_MAXCLUSTER];
 	hammer2_mtx_t		mtx;
-	hammer2_xop_t		marker;
-	hammer2_xop_t		**xop_tailp;
 };
 
 typedef struct hammer2_xop_group hammer2_xop_group_t;
@@ -949,7 +1014,7 @@ struct hammer2_pfs {
 	uint8_t			pfs_mode;	/* operating mode PFSMODE */
 	uint8_t			unused01;
 	uint8_t			unused02;
-	uint32_t		unused03;
+	int			xop_iterator;
 	long			inmem_inodes;
 	uint32_t		inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */
@@ -971,6 +1036,11 @@ typedef struct hammer2_pfs hammer2_pfs_t;
 
 #define HAMMER2_LWINPROG_WAITING	0x80000000
 #define HAMMER2_LWINPROG_MASK		0x7FFFFFFF
+
+/*
+ * hammer2_cluster_check
+ */
+#define HAMMER2_CHECK_NULL	0x00000001
 
 /*
  * Bulkscan
@@ -1091,6 +1161,7 @@ const char *hammer2_error_str(int error);
 void hammer2_inode_lock(hammer2_inode_t *ip, int how);
 void hammer2_inode_unlock(hammer2_inode_t *ip, hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_inode_cluster(hammer2_inode_t *ip, int how);
+hammer2_chain_t *hammer2_inode_chain(hammer2_inode_t *ip, int clindex, int how);
 hammer2_mtx_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
 void hammer2_inode_lock_temp_restore(hammer2_inode_t *ip,
 			hammer2_mtx_state_t ostate);
@@ -1230,7 +1301,7 @@ void hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 				hammer2_chain_t **parentp,
 				hammer2_chain_t *chain, int flags);
 int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t **chainp,
-				hammer2_ioc_pfs_t *pfs);
+				hammer2_ioc_pfs_t *pmp);
 void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				hammer2_chain_t *chain, int flags);
 void hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
@@ -1302,8 +1373,19 @@ void hammer2_io_bqrelse(hammer2_io_t **diop);
 /*
  * hammer2_xops.c
  */
-void hammer2_xop_group_init(hammer2_pfs_t *pfs, hammer2_xop_group_t *xgrp);
-int hammer2_xop_readdir(struct vop_readdir_args *ap);
+void hammer2_xop_group_init(hammer2_pfs_t *pmp, hammer2_xop_group_t *xgrp);
+hammer2_xop_t *hammer2_xop_alloc(hammer2_inode_t *ip, hammer2_xop_func_t func);
+void hammer2_xop_helper_create(hammer2_pfs_t *pmp);
+void hammer2_xop_helper_cleanup(hammer2_pfs_t *pmp);
+void hammer2_xop_start(hammer2_xop_head_t *xop);
+int hammer2_xop_collect(hammer2_xop_head_t *xop);
+void hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask);
+int hammer2_xop_active(hammer2_xop_head_t *xop);
+int hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
+				int clindex, int error);
+
+
+void hammer2_xop_readdir(hammer2_xop_t *xop, int clidx);
 int hammer2_xop_readlink(struct vop_readlink_args *ap);
 int hammer2_xop_nresolve(struct vop_nresolve_args *ap);
 int hammer2_xop_nlookupdotdot(struct vop_nlookupdotdot_args *ap);
@@ -1352,6 +1434,8 @@ void hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 int hammer2_cluster_need_resize(hammer2_cluster_t *cluster, int bytes);
 uint8_t hammer2_cluster_type(hammer2_cluster_t *cluster);
 const hammer2_media_data_t *hammer2_cluster_rdata(hammer2_cluster_t *cluster);
+const hammer2_media_data_t *hammer2_cluster_rdata_bytes(
+				hammer2_cluster_t *cluster, size_t *bytesp);
 hammer2_media_data_t *hammer2_cluster_wdata(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_from_chain(hammer2_chain_t *chain);
 int hammer2_cluster_modified(hammer2_cluster_t *cluster);
@@ -1369,6 +1453,8 @@ void hammer2_cluster_drop(hammer2_cluster_t *cluster);
 void hammer2_cluster_wait(hammer2_cluster_t *cluster);
 void hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
 void hammer2_cluster_lock_except(hammer2_cluster_t *cluster, int idx, int how);
+int hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t lokey,
+			int flags);
 void hammer2_cluster_resolve(hammer2_cluster_t *cluster);
 void hammer2_cluster_forcegood(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster);
@@ -1413,7 +1499,7 @@ void hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 void hammer2_cluster_delete(hammer2_trans_t *trans, hammer2_cluster_t *pcluster,
 			hammer2_cluster_t *cluster, int flags);
 int hammer2_cluster_snapshot(hammer2_trans_t *trans,
-			hammer2_cluster_t *ocluster, hammer2_ioc_pfs_t *pfs);
+			hammer2_cluster_t *ocluster, hammer2_ioc_pfs_t *pmp);
 hammer2_cluster_t *hammer2_cluster_parent(hammer2_cluster_t *cluster);
 
 int hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,

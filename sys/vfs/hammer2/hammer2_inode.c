@@ -143,6 +143,25 @@ hammer2_inode_cluster(hammer2_inode_t *ip, int how)
 	return cluster;
 }
 
+/*
+ * Select a chain out of an inode's cluster and lock it.
+ */
+hammer2_chain_t *
+hammer2_inode_chain(hammer2_inode_t *ip, int clindex, int how)
+{
+	hammer2_chain_t *chain;
+
+	if (clindex >= ip->cluster.nchains)
+		chain = NULL;
+	else
+		chain = ip->cluster.array[clindex].chain;
+	if (chain) {
+		hammer2_chain_ref(chain);
+		hammer2_chain_lock(chain, how);
+	}
+	return chain;
+}
+
 void
 hammer2_inode_unlock(hammer2_inode_t *ip, hammer2_cluster_t *cluster)
 {
@@ -797,15 +816,17 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 			hammer2_cluster_t *dcluster,
 			int nlinks, int *errorp)
 {
-	const hammer2_inode_data_t *iptmp;
 	hammer2_inode_data_t *nipdata;
 	hammer2_cluster_t *xcluster;
 	hammer2_key_t key_dummy;
 	hammer2_key_t lhc;
 	hammer2_blockref_t bref;
 
+	lhc = ip->meta.inum;
+#if 0
 	iptmp = &hammer2_cluster_rdata(cluster)->ipdata;
 	lhc = iptmp->meta.inum;
+#endif
 	KKASSERT((lhc & HAMMER2_DIRHASH_VISIBLE) == 0);
 
 	/*
@@ -866,21 +887,20 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 	 * target.  The name isn't used but to ease debugging give it
 	 * a name after its inode number.
 	 */
+	hammer2_inode_modify(trans, ip);
 	hammer2_cluster_modify(trans, cluster, 0);
+
 	nipdata = &hammer2_cluster_wdata(cluster)->ipdata;
 	ksnprintf(nipdata->filename, sizeof(nipdata->filename),
 		  "0x%016jx", (intmax_t)nipdata->meta.inum);
-	nipdata->meta.name_len = strlen(nipdata->filename);
-	nipdata->meta.name_key = lhc;
-	nipdata->meta.nlinks += nlinks;
+	ip->meta.name_len = strlen(nipdata->filename);
+	ip->meta.name_key = lhc;
+	ip->meta.nlinks += nlinks;
 
 	/*
-	 * Resync ip->meta.  Some fields have to be retained.
+	 * Resync nipdata->meta from the local copy.
 	 */
-	nipdata->meta.size = ip->meta.size;
-	nipdata->meta.mtime = ip->meta.mtime;
-	ip->meta = nipdata->meta;
-
+	nipdata->meta = ip->meta;
 	hammer2_cluster_modsync(cluster);
 }
 
@@ -1051,24 +1071,21 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 		 * We must fixup the name stored in the inode data.
 		 * The bref key has already been adjusted by inode_connect().
 		 */
+		hammer2_inode_modify(trans, ip);
 		hammer2_cluster_modify(trans, ncluster, 0);
 		wipdata = &hammer2_cluster_wdata(ncluster)->ipdata;
 
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		bcopy(name, wipdata->filename, name_len);
-		wipdata->meta.name_key = lhc;
-		wipdata->meta.name_len = name_len;
-		wipdata->meta.nlinks = 1;
-		hammer2_cluster_modsync(ncluster);
+		ip->meta.name_key = lhc;
+		ip->meta.name_len = name_len;
+		ip->meta.nlinks = 1;
 
 		/*
-		 * Resync the in-memory inode, some fields must be retained.
+		 * Resync wipdata->meta from the local copy.
 		 */
-		if (ip) {	/* XXX move_to_hidden passes NULL */
-			wipdata->meta.size = ip->meta.size;
-			wipdata->meta.mtime = ip->meta.mtime;
-			ip->meta = wipdata->meta;
-		}
+		wipdata->meta = ip->meta;
+		hammer2_cluster_modsync(ncluster);
 	}
 
 	/*

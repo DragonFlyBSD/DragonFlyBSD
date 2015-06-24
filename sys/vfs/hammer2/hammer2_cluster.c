@@ -149,9 +149,10 @@ hammer2_cluster_need_resize(hammer2_cluster_t *cluster, int bytes)
 uint8_t
 hammer2_cluster_type(hammer2_cluster_t *cluster)
 {
-	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
-	if (cluster->error == 0)
+	if (cluster->error == 0) {
+		KKASSERT(cluster->focus != NULL);
 		return(cluster->focus->bref.type);
+	}
 	return 0;
 }
 
@@ -163,9 +164,10 @@ hammer2_cluster_type(hammer2_cluster_t *cluster)
 int
 hammer2_cluster_modified(hammer2_cluster_t *cluster)
 {
-	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
-	if (cluster->error == 0)
+	if (cluster->error == 0) {
+		KKASSERT(cluster->focus != NULL);
 		return((cluster->focus->flags & HAMMER2_CHAIN_MODIFIED) != 0);
+	}
 	return 0;
 }
 
@@ -182,8 +184,8 @@ hammer2_cluster_modified(hammer2_cluster_t *cluster)
 void
 hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref)
 {
-	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
 	if (cluster->error == 0) {
+		KKASSERT(cluster->focus != NULL);
 		*bref = cluster->focus->bref;
 		bref->data_off = 0;
 	} else {
@@ -770,6 +772,392 @@ skip4:
 	 */
 	atomic_set_int(&cluster->flags, nflags);
 	atomic_clear_int(&cluster->flags, HAMMER2_CLUSTER_ZFLAGS & ~nflags);
+}
+
+/*
+ * This is used by the XOPS subsystem to calculate the state of
+ * the collection and tell hammer2_xop_collect() what to do with it.
+ * The collection can be in various states of desynchronization, the
+ * caller specifically wants to resolve the passed-in key.
+ *
+ * Return values:
+ *	0		- Quorum agreement, key is valid
+ *
+ *	ENOENT		- Quorum agreement, end of scan
+ *
+ *	ESRCH		- Quorum agreement, key is INVALID (caller should
+ *			  skip key).
+ *
+ *	EIO		- Quorum agreement but all elements had errors.
+ *
+ *	EDEADLK		- No quorum agreement possible for key, a repair
+ *			  may be needed.  Caller has to decide what to do,
+ *			  possibly iterating the key or generating an EIO.
+ *
+ *	EINPROGRESS	- No quorum agreement yet, but agreement is still
+ *			  possible if caller waits for more responses.  Caller
+ *			  should not iterate key.
+ *
+ * XXX needs to handle SOFT_MASTER and SOFT_SLAVE
+ */
+int
+hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
+{
+	hammer2_chain_t *chain;
+	hammer2_chain_t *focus;
+	hammer2_pfs_t *pmp;
+	hammer2_tid_t quorum_tid;
+	hammer2_tid_t last_best_quorum_tid;
+	uint32_t nflags;
+	int ttlmasters;
+	int ttlslaves;
+	int nmasters;
+	int nmasters_keymatch;
+	int nslaves;
+	int nquorum;
+	int umasters;	/* unknown masters (still in progress) */
+	int smpresent;
+	int i;
+
+	cluster->error = 0;
+	cluster->focus = NULL;
+
+	nflags = 0;
+	ttlmasters = 0;
+	ttlslaves = 0;
+	nmasters = 0;
+	nmasters_keymatch = 0;
+	umasters = 0;
+	nslaves = 0;
+
+	/*
+	 * Calculate quorum
+	 */
+	pmp = cluster->pmp;
+	KKASSERT(pmp != NULL || cluster->nchains == 0);
+	nquorum = pmp ? pmp->pfs_nmasters / 2 + 1 : 0;
+	smpresent = 0;
+
+	/*
+	 * Pass 1
+	 *
+	 * NOTE: A NULL chain is not necessarily an error, it could be
+	 *	 e.g. a lookup failure or the end of an iteration.
+	 *	 Process normally.
+	 */
+	for (i = 0; i < cluster->nchains; ++i) {
+		cluster->array[i].flags &= ~HAMMER2_CITEM_FEMOD;
+		cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
+
+		chain = cluster->array[i].chain;
+		if (chain && chain->error) {
+			if (cluster->focus == NULL || cluster->focus == chain) {
+				/* error will be overridden by valid focus */
+				cluster->error = chain->error;
+			}
+
+			/*
+			 * Must count total masters and slaves whether the
+			 * chain is errored or not.
+			 */
+			switch (cluster->pmp->pfs_types[i]) {
+			case HAMMER2_PFSTYPE_MASTER:
+				++ttlmasters;
+				break;
+			case HAMMER2_PFSTYPE_SLAVE:
+				++ttlslaves;
+				break;
+			}
+			continue;
+		}
+		switch (cluster->pmp->pfs_types[i]) {
+		case HAMMER2_PFSTYPE_MASTER:
+			++ttlmasters;
+			break;
+		case HAMMER2_PFSTYPE_SLAVE:
+			++ttlslaves;
+			break;
+		case HAMMER2_PFSTYPE_SOFT_MASTER:
+			nflags |= HAMMER2_CLUSTER_WRSOFT;
+			nflags |= HAMMER2_CLUSTER_RDSOFT;
+			smpresent = 1;
+			break;
+		case HAMMER2_PFSTYPE_SOFT_SLAVE:
+			nflags |= HAMMER2_CLUSTER_RDSOFT;
+			break;
+		case HAMMER2_PFSTYPE_SUPROOT:
+			/*
+			 * Degenerate cluster representing the super-root
+			 * topology on a single device.  Fake stuff so
+			 * cluster ops work as expected.
+			 */
+			nflags |= HAMMER2_CLUSTER_WRHARD;
+			nflags |= HAMMER2_CLUSTER_RDHARD;
+			cluster->focus_index = i;
+			cluster->focus = chain;
+			cluster->error = chain ? chain->error : 0;
+			break;
+		default:
+			break;
+		}
+	}
+
+	/*
+	 * Pass 2
+	 *
+	 * Resolve nmasters		- master nodes fully match
+	 *
+	 * Resolve umasters		- master nodes operation still
+	 *				  in progress
+	 *
+	 * Resolve nmasters_keymatch	- master nodes match the passed-in
+	 *				  key and may or may not match
+	 *				  the quorum-agreed tid.
+	 * 
+	 * The quorum-agreed TID is the highest matching TID.
+	 */
+	last_best_quorum_tid = HAMMER2_TID_MAX;
+	quorum_tid = 0;		/* fix gcc warning */
+
+	while (nmasters < nquorum && last_best_quorum_tid != 0) {
+		nmasters = 0;
+		quorum_tid = 0;
+
+		for (i = 0; i < cluster->nchains; ++i) {
+			/* XXX SOFT smpresent handling */
+			if (cluster->pmp->pfs_types[i] !=
+			    HAMMER2_PFSTYPE_MASTER) {
+				continue;
+			}
+
+			chain = cluster->array[i].chain;
+
+			/*
+			 * Skip elements still in progress.  umasters keeps
+			 * track of masters that might still be in-progress.
+			 */
+			if (chain == NULL && (cluster->array[i].flags &
+					      HAMMER2_CITEM_NULL) == 0) {
+				++umasters;
+				continue;
+			}
+
+			/*
+			 * Key match?
+			 */
+			if (flags & HAMMER2_CHECK_NULL) {
+				if (chain == NULL) {
+					++nmasters;
+					++nmasters_keymatch;
+				}
+			} else if (chain && chain->bref.key == key) {
+				++nmasters_keymatch;
+				if (quorum_tid < last_best_quorum_tid &&
+				    (quorum_tid < chain->bref.modify_tid ||
+				     nmasters == 0)) {
+					/*
+					 * Better TID located, reset
+					 * nmasters count.
+					 */
+					nmasters = 0;
+					quorum_tid = chain->bref.modify_tid;
+				}
+				if (quorum_tid == chain->bref.modify_tid) {
+					/*
+					 * TID matches current collection.
+					 */
+					++nmasters;
+					if (chain->error == 0) {
+						cluster->focus = chain;
+						cluster->focus_index = i;
+					}
+				}
+			}
+		}
+		if (nmasters >= nquorum)
+			break;
+		last_best_quorum_tid = quorum_tid;
+	}
+
+	/*
+	kprintf("nmasters %d/%d nmaster_keymatch=%d umasters=%d\n",
+		nmasters, nquorum, nmasters_keymatch, umasters);
+	*/
+
+	/*
+	 * Early return if we do not have enough masters.
+	 */
+	if (nmasters < nquorum) {
+		if (nmasters + umasters >= nquorum)
+			return EINPROGRESS;
+		if (nmasters_keymatch < nquorum) 
+			return ESRCH;
+		return EDEADLK;
+	}
+
+	/*
+	 * Validated end of scan.
+	 */
+	if (flags & HAMMER2_CHECK_NULL)
+		return ENOENT;
+
+	/*
+	 * If we have a NULL focus at this point the agreeing quorum all
+	 * had chain errors.
+	 */
+	if (cluster->focus == NULL)
+		return EIO;
+
+	/*
+	 * Pass 3
+	 *
+	 * We have quorum agreement, validate elements, not end of scan.
+	 */
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i].chain;
+		if (chain == NULL ||
+		    chain->bref.key != key ||
+		    chain->bref.modify_tid != quorum_tid) {
+			continue;
+		}
+
+		switch (cluster->pmp->pfs_types[i]) {
+		case HAMMER2_PFSTYPE_MASTER:
+			cluster->array[i].flags |= HAMMER2_CITEM_FEMOD;
+			cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
+			nflags |= HAMMER2_CLUSTER_WRHARD;
+			nflags |= HAMMER2_CLUSTER_RDHARD;
+			break;
+		case HAMMER2_PFSTYPE_SLAVE:
+			/*
+			 * We must have enough up-to-date masters to reach
+			 * a quorum and the slave modify_tid must match the
+			 * quorum's modify_tid.
+			 *
+			 * Do not select an errored slave.
+			 */
+			cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
+			nflags |= HAMMER2_CLUSTER_RDHARD;
+			++nslaves;
+			break;
+		case HAMMER2_PFSTYPE_SOFT_MASTER:
+			/*
+			 * Directly mounted soft master always wins.  There
+			 * should be only one.
+			 */
+			cluster->array[i].flags |= HAMMER2_CITEM_FEMOD;
+			cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
+			break;
+		case HAMMER2_PFSTYPE_SOFT_SLAVE:
+			/*
+			 * Directly mounted soft slave always wins.  There
+			 * should be only one.
+			 *
+			 * XXX
+			 */
+			cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
+			break;
+		case HAMMER2_PFSTYPE_SUPROOT:
+			/*
+			 * spmp (degenerate case)
+			 */
+			cluster->array[i].flags |= HAMMER2_CITEM_FEMOD;
+			cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
+			break;
+		default:
+			break;
+		}
+	}
+
+	/*
+	 * Focus now set, adjust ddflag.  Skip this pass if the focus
+	 * is bad or if we are at the PFS root (the bref won't match at
+	 * the PFS root, obviously).
+	 */
+	focus = cluster->focus;
+	if (focus) {
+		cluster->ddflag =
+			(cluster->focus->bref.type == HAMMER2_BREF_TYPE_INODE);
+	} else {
+		cluster->ddflag = 0;
+		goto skip4;
+	}
+	if (cluster->focus->flags & HAMMER2_CHAIN_PFSBOUNDARY)
+		goto skip4;
+
+	/*
+	 * Pass 4
+	 *
+	 * Validate the elements that were not marked invalid.  They should
+	 * match.
+	 */
+	for (i = 0; i < cluster->nchains; ++i) {
+		int ddflag;
+
+		chain = cluster->array[i].chain;
+
+		if (chain == NULL)
+			continue;
+		if (chain == focus)
+			continue;
+		if (cluster->array[i].flags & HAMMER2_CITEM_INVALID)
+			continue;
+
+		ddflag = (chain->bref.type == HAMMER2_BREF_TYPE_INODE);
+		if (chain->bref.type != focus->bref.type ||
+		    chain->bref.key != focus->bref.key ||
+		    chain->bref.keybits != focus->bref.keybits ||
+		    chain->bref.modify_tid != focus->bref.modify_tid ||
+		    chain->bytes != focus->bytes ||
+		    ddflag != cluster->ddflag) {
+			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
+			if (hammer2_debug & 1)
+			kprintf("cluster_resolve: matching modify_tid failed "
+				"bref test: idx=%d type=%02x/%02x "
+				"key=%016jx/%d-%016jx/%d "
+				"mod=%016jx/%016jx bytes=%u/%u\n",
+				i,
+				chain->bref.type, focus->bref.type,
+				chain->bref.key, chain->bref.keybits,
+				focus->bref.key, focus->bref.keybits,
+				chain->bref.modify_tid, focus->bref.modify_tid,
+				chain->bytes, focus->bytes);
+			if (hammer2_debug & 0x4000)
+				panic("cluster_resolve");
+			/* flag issue and force resync? */
+		}
+	}
+skip4:
+
+	if (ttlslaves == 0)
+		nflags |= HAMMER2_CLUSTER_NOSOFT;
+	if (ttlmasters == 0)
+		nflags |= HAMMER2_CLUSTER_NOHARD;
+
+	/*
+	 * Set SSYNCED or MSYNCED for slaves and masters respectively if
+	 * all available nodes (even if 0 are available) are fully
+	 * synchronized.  This is used by the synchronization thread to
+	 * determine if there is work it could potentially accomplish.
+	 */
+	if (nslaves == ttlslaves)
+		nflags |= HAMMER2_CLUSTER_SSYNCED;
+	if (nmasters == ttlmasters)
+		nflags |= HAMMER2_CLUSTER_MSYNCED;
+
+	/*
+	 * Determine if the cluster was successfully locked for the
+	 * requested operation and generate an error code.  The cluster
+	 * will not be locked (or ref'd) if an error is returned.
+	 *
+	 * Caller can use hammer2_cluster_rdok() and hammer2_cluster_wrok()
+	 * to determine if reading or writing is possible.  If writing, the
+	 * cluster still requires a call to hammer2_cluster_modify() first.
+	 */
+	atomic_set_int(&cluster->flags, nflags);
+	atomic_clear_int(&cluster->flags, HAMMER2_CLUSTER_ZFLAGS & ~nflags);
+
+	return 0;
 }
 
 /*
@@ -1693,12 +2081,22 @@ hammer2_cluster_parent(hammer2_cluster_t *cluster)
 const hammer2_media_data_t *
 hammer2_cluster_rdata(hammer2_cluster_t *cluster)
 {
+	KKASSERT(cluster->focus != NULL);
+	return(cluster->focus->data);
+}
+
+const hammer2_media_data_t *
+hammer2_cluster_rdata_bytes(hammer2_cluster_t *cluster, size_t *bytesp)
+{
+	KKASSERT(cluster->focus != NULL);
+	*bytesp = cluster->focus->bytes;
 	return(cluster->focus->data);
 }
 
 hammer2_media_data_t *
 hammer2_cluster_wdata(hammer2_cluster_t *cluster)
 {
+	KKASSERT(cluster->focus != NULL);
 	KKASSERT(hammer2_cluster_modified(cluster));
 	return(cluster->focus->data);
 }

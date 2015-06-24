@@ -1,4 +1,7 @@
 
+* mtx locks should not track td_locks count?.  They can be acquired by one
+  thread and released by another.  Need API function for exclusive locks.
+
 * Convert xops and hammer2_update_spans() from cluster back into chain calls
 
 * syncthr leaves inode locks for entire sync, which is wrong.

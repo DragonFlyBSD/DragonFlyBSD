@@ -259,15 +259,30 @@ hammer2_vfs_init(struct vfsconf *conf)
 	margs_vop.objsize = sizeof(hammer2_xop_t);
 	margs_vop.mtype = M_HAMMER2;
 	
+	/*
+	 * Note thaht for the XOPS cache we want backing store allocations
+	 * to use M_ZERO.  This is not allowed in objcache_get() (to avoid
+	 * confusion), so use the backing store function that does it.  This
+	 * means that initial XOPS objects are zerod but REUSED objects are
+	 * not.  So we are responsible for cleaning the object up sufficiently
+	 * for our needs before objcache_put()ing it back (typically just the
+	 * FIFO indices).
+	 */
 	cache_buffer_read = objcache_create(margs_read.mtype->ks_shortdesc,
-				0, 1, NULL, NULL, NULL, objcache_malloc_alloc,
-				objcache_malloc_free, &margs_read);
+				0, 1, NULL, NULL, NULL,
+				objcache_malloc_alloc,
+				objcache_malloc_free,
+				&margs_read);
 	cache_buffer_write = objcache_create(margs_write.mtype->ks_shortdesc,
-				0, 1, NULL, NULL, NULL, objcache_malloc_alloc,
-				objcache_malloc_free, &margs_write);
+				0, 1, NULL, NULL, NULL,
+				objcache_malloc_alloc,
+				objcache_malloc_free,
+				&margs_write);
 	cache_xops = objcache_create(margs_vop.mtype->ks_shortdesc,
-				0, 1, NULL, NULL, NULL, objcache_malloc_alloc,
-				objcache_malloc_free, &margs_vop);
+				0, 1, NULL, NULL, NULL,
+				objcache_malloc_alloc_zero,
+				objcache_malloc_free,
+				&margs_vop);
 
 
 	lockinit(&hammer2_mntlk, "mntlk", 0, 0);
@@ -484,21 +499,16 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		 */
 		if (pmp->sync_thrs[i].td == NULL) {
 			hammer2_thr_create(&pmp->sync_thrs[i], pmp,
-					   "h2nod", i, 0,
+					   "h2nod", i, -1,
 					   hammer2_primary_sync_thread);
 		}
-
-		/*
-		 * Xops support threads
-		 */
-		for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
-			if (pmp->xop_groups[j].thrs[i].td)
-				continue;
-			hammer2_thr_create(&pmp->xop_groups[j].thrs[i], pmp,
-					   "h2xop", i, j,
-					   hammer2_primary_xops_thread);
-		}
 	}
+
+	/*
+	 * Create missing Xop threads
+	 */
+	if (pmp->mp)
+		hammer2_xop_helper_create(pmp);
 
 	hammer2_mtx_unlock(&iroot->lock);
 	hammer2_inode_drop(iroot);
@@ -1283,6 +1293,11 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	}
 
 	/*
+	 * Cleanup the frontend support XOPS threads
+	 */
+	hammer2_xop_helper_cleanup(pmp);
+
+	/*
 	 * Cleanup our reference on ihidden.
 	 */
 	if (pmp->ihidden) {
@@ -1329,6 +1344,11 @@ hammer2_mount_helper(struct mount *mp, hammer2_pfs_t *pmp)
 		kprintf("hammer2_mount hmp=%p ++mount_count=%d\n",
 			rchain->hmp, rchain->hmp->mount_count);
 	}
+
+	/*
+	 * Create missing Xop threads
+	 */
+	hammer2_xop_helper_create(pmp);
 }
 
 /*

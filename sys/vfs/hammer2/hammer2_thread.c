@@ -70,8 +70,14 @@ hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
 	thr->pmp = pmp;
 	thr->clindex = clindex;
 	thr->repidx = repidx;
-	lwkt_create(func, thr, &thr->td, NULL, 0, -1,
-		    "%s-%s", id, pmp->pfs_names[clindex]);
+	TAILQ_INIT(&thr->xopq);
+	if (repidx >= 0) {
+		lwkt_create(func, thr, &thr->td, NULL, 0, -1,
+			    "%s-%s.%02d", id, pmp->pfs_names[clindex], repidx);
+	} else {
+		lwkt_create(func, thr, &thr->td, NULL, 0, -1,
+			    "%s-%s", id, pmp->pfs_names[clindex]);
+	}
 }
 
 /*
@@ -941,8 +947,396 @@ void
 hammer2_xop_group_init(hammer2_pfs_t *pmp, hammer2_xop_group_t *xgrp)
 {
 	hammer2_mtx_init(&xgrp->mtx, "h2xopq");
-	xgrp->xop_tailp = &xgrp->marker.next;
-	xgrp->marker.refs = 0x7FFFFFFF;
+}
+
+/*
+ * Allocate a XOP request.
+ *
+ * Once allocated a XOP request can be started, collected, and retired,
+ * and can be retired early if desired.
+ *
+ * NOTE: Fifo indices might not be zero but ri == wi on objcache_get().
+ */
+hammer2_xop_t *
+hammer2_xop_alloc(hammer2_inode_t *ip, hammer2_xop_func_t func)
+{
+	hammer2_xop_t *xop;
+
+	xop = objcache_get(cache_xops, M_WAITOK);
+	xop->head.ip = ip;
+	xop->head.func = func;
+	xop->head.state = 0;
+	xop->head.error = 0;
+	xop->head.lkey = 0;
+	xop->head.nkey = 0;
+
+	xop->head.cluster.nchains = ip->cluster.nchains;
+	xop->head.cluster.pmp = ip->pmp;
+	xop->head.cluster.flags = HAMMER2_CLUSTER_LOCKED;
+
+	/*
+	 * run_mask - Active thread (or frontend) associated with XOP
+	 */
+	xop->head.run_mask = HAMMER2_XOPMASK_VOP;
+
+	hammer2_inode_ref(ip);
+
+	return xop;
+}
+
+/*
+ * A mounted PFS needs Xops threads to support frontend operations.
+ */
+void
+hammer2_xop_helper_create(hammer2_pfs_t *pmp)
+{
+	int i;
+	int j;
+
+	kprintf("XOP_HELPER_CREATE: %d\n",  pmp->pfs_nmasters);
+	for (i = 0; i < pmp->pfs_nmasters; ++i) {
+		for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+			if (pmp->xop_groups[j].thrs[i].td)
+				continue;
+			hammer2_thr_create(&pmp->xop_groups[j].thrs[i], pmp,
+					   "h2xop", i, j,
+					   hammer2_primary_xops_thread);
+		}
+	}
+}
+
+void
+hammer2_xop_helper_cleanup(hammer2_pfs_t *pmp)
+{
+	int i;
+	int j;
+
+	for (i = 0; i < pmp->pfs_nmasters; ++i) {
+		for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+			if (pmp->xop_groups[j].thrs[i].td)
+				hammer2_thr_delete(&pmp->xop_groups[j].thrs[i]);
+		}
+	}
+}
+
+
+
+
+/*
+ * Start a XOP request, queueing it to all nodes in the cluster to
+ * execute the cluster op.
+ *
+ * XXX optimize single-target case.
+ */
+void
+hammer2_xop_start(hammer2_xop_head_t *xop)
+{
+	hammer2_xop_group_t *xgrp;
+	hammer2_thread_t *thr;
+	hammer2_pfs_t *pmp;
+	int g;
+	int i;
+
+	pmp = xop->ip->pmp;
+
+	g = pmp->xop_iterator++;
+	g = g & HAMMER2_XOPGROUPS_MASK;
+	xgrp = &pmp->xop_groups[g];
+	xop->xgrp = xgrp;
+
+	for (i = 0; i < xop->ip->cluster.nchains; ++i) {
+		thr = &xgrp->thrs[i];
+		if (thr->td) {
+			lockmgr(&thr->lk, LK_EXCLUSIVE);
+			if (thr->td &&
+			    (thr->flags & HAMMER2_THREAD_STOP) == 0) {
+				atomic_set_int(&xop->run_mask, 1U << i);
+				TAILQ_INSERT_TAIL(&thr->xopq, xop,
+						  collect[i].entry);
+			}
+			lockmgr(&thr->lk, LK_RELEASE);
+			wakeup(&thr->flags);
+		}
+	}
+}
+
+/*
+ * Retire a XOP.  Used by both the VOP frontend and by the XOP backend.
+ */
+void
+hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
+{
+	hammer2_xop_group_t *xgrp;
+	hammer2_chain_t *chain;
+	int i;
+
+	xgrp = xop->xgrp;
+
+	/*
+	 * Remove the frontend or remove a backend feeder.  When removing
+	 * the frontend we must wakeup any backend feeders who are waiting
+	 * for FIFO space.
+	 *
+	 * XXX optimize wakeup.
+	 */
+	KKASSERT(xop->run_mask & mask);
+	if (atomic_fetchadd_int(&xop->run_mask, -mask) != mask) {
+		if (mask == HAMMER2_XOPMASK_VOP)
+			wakeup(xop);
+		return;
+	}
+
+	/*
+	 * Cleanup the collection cluster.
+	 */
+	for (i = 0; i < xop->cluster.nchains; ++i) {
+		xop->cluster.array[i].flags = 0;
+		chain = xop->cluster.array[i].chain;
+		if (chain) {
+			xop->cluster.array[i].chain = NULL;
+			hammer2_chain_unlock(chain);
+			hammer2_chain_drop(chain);
+		}
+	}
+
+	/*
+	 * Cleanup the fifos, use check_counter to optimize the loop.
+	 */
+	mask = xop->chk_mask;
+	for (i = 0; mask && i < HAMMER2_MAXCLUSTER; ++i) {
+		hammer2_xop_fifo_t *fifo = &xop->collect[i];
+		while (fifo->ri != fifo->wi) {
+			chain = fifo->array[fifo->ri & HAMMER2_XOPFIFO_MASK];
+			if (chain) {
+				hammer2_chain_unlock(chain);
+				hammer2_chain_drop(chain);
+			}
+			++fifo->ri;
+			if (fifo->wi - fifo->ri < HAMMER2_XOPFIFO / 2)
+				wakeup(xop);	/* XXX optimize */
+		}
+		mask &= ~(1U << i);
+	}
+
+	/*
+	 * The inode is only held at this point, simply drop it.
+	 */
+	if (xop->ip) {
+		hammer2_inode_drop(xop->ip);
+		xop->ip = NULL;
+	}
+
+	objcache_put(cache_xops, xop);
+}
+
+/*
+ * (Backend) Returns non-zero if the frontend is still attached.
+ */
+int
+hammer2_xop_active(hammer2_xop_head_t *xop)
+{
+	if (xop->run_mask & HAMMER2_XOPMASK_VOP)
+		return 1;
+	else
+		return 0;
+}
+
+/*
+ * (Backend) Feed chain data through the cluster validator and back to
+ * the frontend.  Chains are fed from multiple nodes concurrently
+ * and pipelined via per-node FIFOs in the XOP.
+ *
+ * No xop lock is needed because we are only manipulating fields under
+ * our direct control.
+ *
+ * Returns 0 on success and a hammer error code if sync is permanently
+ * lost.
+ */
+int
+hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
+		 int clindex, int error)
+{
+	hammer2_xop_fifo_t *fifo;
+
+	/*
+	 * Multi-threaded entry into the XOP collector.  We own the
+	 * fifo->wi for our clindex.
+	 */
+	fifo = &xop->collect[clindex];
+
+	while (fifo->ri == fifo->wi - HAMMER2_XOPFIFO) {
+		tsleep_interlock(xop, 0);
+		if (hammer2_xop_active(xop) == 0) {
+			error = EINTR;
+			goto done;
+		}
+		if (fifo->ri == fifo->wi - HAMMER2_XOPFIFO) {
+			tsleep(xop, PINTERLOCKED, "h2feed", hz*60);
+		}
+	}
+	if (chain)
+		hammer2_chain_ref(chain);
+	fifo->errors[fifo->wi & HAMMER2_XOPFIFO_MASK] = error;
+	fifo->array[fifo->wi & HAMMER2_XOPFIFO_MASK] = chain;
+	cpu_sfence();
+	++fifo->wi;
+	atomic_set_int(&xop->chk_mask, 1U << clindex);
+	atomic_add_int(&xop->check_counter, 1);
+	wakeup(&xop->check_counter);	/* XXX optimize */
+	error = 0;
+done:
+	return error;
+}
+
+/*
+ * (Frontend) collect a response from a running cluster op.
+ *
+ * Responses are fed from all appropriate nodes concurrently
+ * and collected into a cohesive response >= nkey.  lkey is
+ * then set to nkey and nkey is advanced prior to return.
+ * The caller may depend on xop->lkey reflecting the current
+ * key of the returned response.
+ *
+ * The collector will return the instant quorum or other requirements
+ * are met, even if some nodes get behind or become non-responsive.
+ *
+ * HAMMER2_XOP_COLLECT_NOWAIT	- Used to 'poll' a completed collection,
+ *				  usually called synchronously from the
+ *				  node XOPs for the strategy code to
+ *				  fake the frontend collection and complete
+ *				  the BIO as soon as possible.
+ *
+ * HAMMER2_XOP_SYNCHRONIZER	- Reqeuest synchronization with a particular
+ *				  cluster index, prevents looping when that
+ *				  index is out of sync so caller can act on
+ *				  the out of sync element.  ESRCH and EDEADLK
+ *				  can be returned if this flag is specified.
+ *
+ * Returns 0 on success plus a filled out xop->cluster structure.
+ * Return ENOENT on normal termination.
+ * Otherwise return an error.
+ */
+int
+hammer2_xop_collect(hammer2_xop_head_t *xop)
+{
+	hammer2_xop_fifo_t *fifo;
+	hammer2_chain_t *chain;
+	hammer2_key_t lokey;
+	int error;
+	int keynull;
+	int adv;		/* advance the element */
+	int i;
+	uint32_t check_counter;
+
+loop:
+	/*
+	 * First loop tries to advance pieces of the cluster which
+	 * are out of sync.
+	 */
+	lokey = HAMMER2_KEY_MAX;
+	keynull = HAMMER2_CHECK_NULL;
+	check_counter = xop->check_counter;
+	cpu_lfence();
+
+	for (i = 0; i < xop->cluster.nchains; ++i) {
+		chain = xop->cluster.array[i].chain;
+		if (chain == NULL) {
+			adv = 1;
+		} else if (chain->bref.key < xop->nkey) {
+			adv = 1;
+		} else {
+			keynull &= ~HAMMER2_CHECK_NULL;
+			if (lokey > chain->bref.key)
+				lokey = chain->bref.key;
+			adv = 0;
+		}
+		if (adv == 0)
+			continue;
+
+		/*
+		 * Advance element if possible, advanced element may be NULL.
+		 */
+		if (chain) {
+			hammer2_chain_unlock(chain);
+			hammer2_chain_drop(chain);
+		}
+		fifo = &xop->collect[i];
+		if (fifo->ri != fifo->wi) {
+			cpu_lfence();
+			chain = fifo->array[fifo->ri & HAMMER2_XOPFIFO_MASK];
+			++fifo->ri;
+			xop->cluster.array[i].chain = chain;
+			if (chain == NULL) {
+				xop->cluster.array[i].flags |=
+							HAMMER2_CITEM_NULL;
+			}
+			if (fifo->wi - fifo->ri < HAMMER2_XOPFIFO / 2)
+				wakeup(xop);	/* XXX optimize */
+			--i;		/* loop on same index */
+		} else {
+			/*
+			 * Retain CITEM_NULL flag.  If set just repeat EOF.
+			 * If not, the NULL,0 combination indicates an
+			 * operation in-progress.
+			 */
+			xop->cluster.array[i].chain = NULL;
+			/* retain any CITEM_NULL setting */
+		}
+	}
+
+	/*
+	 * Determine whether the lowest collected key meets clustering
+	 * requirements.  Returns:
+	 *
+	 * 0	 	 - key valid, cluster can be returned.
+	 *
+	 * ENOENT	 - normal end of scan, return ENOENT.
+	 *
+	 * ESRCH	 - sufficient elements collected, quorum agreement
+	 *		   that lokey is not a valid element and should be
+	 *		   skipped.
+	 *
+	 * EDEADLK	 - sufficient elements collected, no quorum agreement
+	 *		   (and no agreement possible).  In this situation a
+	 *		   repair is needed, for now we loop.
+	 *
+	 * EINPROGRESS	 - insufficient elements collected to resolve, wait
+	 *		   for event and loop.
+	 */
+	error = hammer2_cluster_check(&xop->cluster, lokey, keynull);
+	if (error == EINPROGRESS) {
+		if (xop->check_counter == check_counter) {
+			tsleep_interlock(&xop->check_counter, 0);
+			cpu_lfence();
+			if (xop->check_counter == check_counter) {
+				tsleep(&xop->check_counter, PINTERLOCKED,
+					"h2coll", hz*60);
+			}
+		}
+		goto loop;
+	}
+	if (error == ESRCH) {
+		if (lokey != HAMMER2_KEY_MAX) {
+			xop->nkey = lokey + 1;
+			goto loop;
+		}
+		error = ENOENT;
+	}
+	if (error == EDEADLK) {
+		kprintf("hammer2: no quorum possible lkey %016jx\n",
+			lokey);
+		if (lokey != HAMMER2_KEY_MAX) {
+			xop->nkey = lokey + 1;
+			goto loop;
+		}
+		error = ENOENT;
+	}
+	if (lokey == HAMMER2_KEY_MAX)
+		xop->nkey = lokey;
+	else
+		xop->nkey = lokey + 1;
+
+	return error;
 }
 
 /*
@@ -959,13 +1353,13 @@ hammer2_primary_xops_thread(void *arg)
 {
 	hammer2_thread_t *thr = arg;
 	hammer2_pfs_t *pmp;
-	hammer2_xop_t *xop;
-	hammer2_xop_t *prev;
+	hammer2_xop_head_t *xop;
 	hammer2_xop_group_t *xgrp;
+	uint32_t mask;
 
 	pmp = thr->pmp;
 	xgrp = &pmp->xop_groups[thr->repidx];
-	prev = &xgrp->marker;
+	mask = 1U << thr->clindex;
 
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
 	while ((thr->flags & HAMMER2_THREAD_STOP) == 0) {
@@ -994,19 +1388,26 @@ hammer2_primary_xops_thread(void *arg)
 		}
 
 		/*
-		 * Process requests.  All requests are persistent until the
-		 * last thread has processed it.
+		 * Process requests.  Each request can be multi-queued.
+		 *
+		 * If we get behind and the frontend VOP is no longer active,
+		 * we retire the request without processing it.  The callback
+		 * may also abort processing if the frontend VOP becomes
+		 * inactive.
 		 */
-		kprintf("xops_slave clindex %d\n", thr->clindex);
-
-		while ((xop = prev->next) != NULL) {
-			if (atomic_fetchadd_int(&prev->refs, -1) == 1) {
-				KKASSERT(prev == xgrp->marker.next);
-				xgrp->marker.next = xop;
-				objcache_put(cache_xops, prev);
+		while ((xop = TAILQ_FIRST(&thr->xopq)) != NULL) {
+			TAILQ_REMOVE(&thr->xopq, xop,
+				     collect[thr->clindex].entry);
+			if (hammer2_xop_active(xop)) {
+				lockmgr(&thr->lk, LK_RELEASE);
+				xop->func((hammer2_xop_t *)xop, thr->clindex);
+				hammer2_xop_retire(xop, mask);
+				lockmgr(&thr->lk, LK_EXCLUSIVE);
+			} else {
+				hammer2_xop_feed(xop, NULL, thr->clindex,
+						 ECONNABORTED);
+				hammer2_xop_retire(xop, mask);
 			}
-			xop->func(thr, xop);
-			prev = xop;
 		}
 
 		/*
@@ -1014,6 +1415,17 @@ hammer2_primary_xops_thread(void *arg)
 		 */
 		lksleep(&thr->flags, &thr->lk, 0, "h2idle", 0);
 	}
+
+	/*
+	 * Cleanup / termination
+	 */
+	while ((xop = TAILQ_FIRST(&thr->xopq)) != NULL) {
+		kprintf("hammer2_thread: aborting xop %p\n", xop->func);
+		TAILQ_REMOVE(&thr->xopq, xop,
+			     collect[thr->clindex].entry);
+		hammer2_xop_retire(xop, mask);
+	}
+
 	thr->td = NULL;
 	wakeup(thr);
 	lockmgr(&thr->lk, LK_RELEASE);
