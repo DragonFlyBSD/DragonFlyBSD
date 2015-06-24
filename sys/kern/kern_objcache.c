@@ -506,6 +506,20 @@ objcache_malloc_alloc(void *allocator_args, int ocflags)
 		       ocflags & OC_MFLAGS));
 }
 
+/*
+ * Wrapper for malloc allocation routines, with initial zeroing
+ * (but objects are not zerod on reuse from cache).
+ */
+void *
+objcache_malloc_alloc_zero(void *allocator_args, int ocflags)
+{
+	struct objcache_malloc_args *alloc_args = allocator_args;
+
+	return (kmalloc(alloc_args->objsize, alloc_args->mtype,
+		       (ocflags & OC_MFLAGS) | M_ZERO));
+}
+
+
 void
 objcache_malloc_free(void *obj, void *allocator_args)
 {

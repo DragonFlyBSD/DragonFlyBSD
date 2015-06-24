@@ -91,6 +91,7 @@ struct objcache_malloc_args {
 #ifdef	_KERNEL
 
 void	*objcache_malloc_alloc(void *allocator_args, int ocflags);
+void	*objcache_malloc_alloc_zero(void *allocator_args, int ocflags);
 void	 objcache_malloc_free(void *obj, void *allocator_args);
 
 void	*objcache_nop_alloc(void *allocator_args, int ocflags);
