@@ -53,6 +53,8 @@
 
 #include "alert1.h"
 
+#define MAXDOM		MAXCPU	/* worst case, 1 cpu per domain */
+
 static void usage(void);
 static double getcputime(double);
 static void acpi_setcpufreq(int nstate);
@@ -70,8 +72,7 @@ int PowerFd;
 int DomBeg;
 int DomEnd;
 int NCpus;
-int CpuCount[256];	/* # of cpus in any given domain */
-int CpuToDom[256];	/* domain a particular cpu belongs to */
+int CpuCount[MAXDOM];	/* # of cpus in any given domain */
 int Hysteresis = 10;	/* percentage */
 double TriggerUp = 0.25;/* single-cpu load to force max freq */
 double TriggerDown; /* load per cpu to force the min freq */
@@ -287,8 +288,7 @@ sigintr(int signo __unused)
 }
 
 /*
- * Figure out the domains and calculate the CpuCount[] and CpuToDom[]
- * arrays.
+ * Figure out the domains and calculate the CpuCount[] array.
  */
 static
 void
@@ -301,7 +301,7 @@ setupdominfo(void)
 	int i;
 	int n;
 
-	for (i = 0; i < 256; ++i) {
+	for (i = 0; i < MAXDOM; ++i) {
 		snprintf(buf, sizeof(buf),
 			 "hw.acpi.cpu.px_dom%d.available", i);
 		if (sysctlbyname(buf, NULL, NULL, NULL, 0) >= 0)
@@ -309,7 +309,7 @@ setupdominfo(void)
 	}
 	DomBeg = i;
 
-	for (i = 255; i >= DomBeg; --i) {
+	for (i = MAXDOM - 1; i >= DomBeg; --i) {
 		snprintf(buf, sizeof(buf),
 			 "hw.acpi.cpu.px_dom%d.available", i);
 		if (sysctlbyname(buf, NULL, NULL, NULL, 0) >= 0) {
@@ -332,7 +332,6 @@ setupdominfo(void)
 				if (n >= 0) {
 					++NCpus;
 					++CpuCount[i];
-					CpuToDom[n]= i;
 				}
 			}
 		}
