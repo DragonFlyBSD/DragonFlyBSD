@@ -55,16 +55,16 @@ struct hammer2_fiterate {
 
 typedef struct hammer2_fiterate hammer2_fiterate_t;
 
-static int hammer2_freemap_try_alloc(hammer2_trans_t *trans,
-			hammer2_chain_t **parentp, hammer2_blockref_t *bref,
+static int hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
+			hammer2_blockref_t *bref,
 			int radix, hammer2_fiterate_t *iter);
-static void hammer2_freemap_init(hammer2_trans_t *trans, hammer2_dev_t *hmp,
+static void hammer2_freemap_init(hammer2_dev_t *hmp,
 			hammer2_key_t key, hammer2_chain_t *chain);
-static int hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_dev_t *hmp,
+static int hammer2_bmap_alloc(hammer2_dev_t *hmp,
 			hammer2_bmap_data_t *bmap, uint16_t class,
 			int n, int radix, hammer2_key_t *basep);
-static int hammer2_freemap_iterate(hammer2_trans_t *trans,
-			hammer2_chain_t **parentp, hammer2_chain_t **chainp,
+static int hammer2_freemap_iterate(hammer2_chain_t **parentp,
+			hammer2_chain_t **chainp,
 			hammer2_fiterate_t *iter);
 
 static __inline
@@ -89,8 +89,7 @@ hammer2_freemapradix(int radix)
 
 static
 int
-hammer2_freemap_reserve(hammer2_trans_t *trans, hammer2_chain_t *chain,
-			int radix)
+hammer2_freemap_reserve(hammer2_chain_t *chain, int radix)
 {
 	hammer2_blockref_t *bref = &chain->bref;
 	hammer2_off_t off;
@@ -195,8 +194,7 @@ hammer2_freemap_reserve(hammer2_trans_t *trans, hammer2_chain_t *chain,
  * reference.  bref->key may also be used heuristically.
  */
 int
-hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
-		      size_t bytes)
+hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 {
 	hammer2_dev_t *hmp = chain->hmp;
 	hammer2_blockref_t *bref = &chain->bref;
@@ -221,14 +219,11 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 		 * Freemap blocks themselves are assigned from the reserve
 		 * area, not allocated from the freemap.
 		 */
-		error = hammer2_freemap_reserve(trans, chain, radix);
+		error = hammer2_freemap_reserve(chain, radix);
 		return error;
 	}
 
 	KKASSERT(bytes >= HAMMER2_ALLOC_MIN && bytes <= HAMMER2_ALLOC_MAX);
-
-	if (trans->flags & (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_PREFLUSH))
-		++trans->sync_xid;
 
 	/*
 	 * Calculate the starting point for our allocation search.
@@ -285,21 +280,17 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 	iter.loops = 0;
 
 	while (error == EAGAIN) {
-		error = hammer2_freemap_try_alloc(trans, &parent, bref,
-						  radix, &iter);
+		error = hammer2_freemap_try_alloc(&parent, bref, radix, &iter);
 	}
 	hmp->heur_freemap[hindex] = iter.bnext;
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
 
-	if (trans->flags & (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_PREFLUSH))
-		--trans->sync_xid;
-
 	return (error);
 }
 
 static int
-hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
+hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 			  hammer2_blockref_t *bref, int radix,
 			  hammer2_fiterate_t *iter)
 {
@@ -351,21 +342,21 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		kprintf("freemap create L1 @ %016jx bpref %016jx\n",
 			key, iter->bpref);
 #endif
-		error = hammer2_chain_create(trans, parentp, &chain, hmp->spmp,
+		error = hammer2_chain_create(parentp, &chain, hmp->spmp,
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
 				     HAMMER2_FREEMAP_LEVELN_PSIZE,
 				     0);
 		KKASSERT(error == 0);
 		if (error == 0) {
-			hammer2_chain_modify(trans, chain, 0);
+			hammer2_chain_modify(chain, 0);
 			bzero(&chain->data->bmdata[0],
 			      HAMMER2_FREEMAP_LEVELN_PSIZE);
 			chain->bref.check.freemap.bigmask = (uint32_t)-1;
 			chain->bref.check.freemap.avail = l1size;
 			/* bref.methods should already be inherited */
 
-			hammer2_freemap_init(trans, hmp, key, chain);
+			hammer2_freemap_init(hmp, key, chain);
 		}
 	} else if (chain->error) {
 		/*
@@ -385,7 +376,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		/*
 		 * Modify existing chain to setup for adjustment.
 		 */
-		hammer2_chain_modify(trans, chain, 0);
+		hammer2_chain_modify(chain, 0);
 	}
 
 	/*
@@ -402,7 +393,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		start = (int)((iter->bnext - key) >>
 			      HAMMER2_FREEMAP_LEVEL0_RADIX);
 		KKASSERT(start >= 0 && start < HAMMER2_FREEMAP_COUNT);
-		hammer2_chain_modify(trans, chain, 0);
+		hammer2_chain_modify(chain, 0);
 
 		error = ENOSPC;
 		for (count = 0; count < HAMMER2_FREEMAP_COUNT; ++count) {
@@ -435,7 +426,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			if (availchk &&
 			    (bmap->class == 0 || bmap->class == class)) {
 				base_key = key + n * l0size;
-				error = hammer2_bmap_alloc(trans, hmp, bmap,
+				error = hammer2_bmap_alloc(hmp, bmap,
 							   class, n, radix,
 							   &base_key);
 				if (error != ENOSPC) {
@@ -467,7 +458,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			if (availchk &&
 			    (bmap->class == 0 || bmap->class == class)) {
 				base_key = key + n * l0size;
-				error = hammer2_bmap_alloc(trans, hmp, bmap,
+				error = hammer2_bmap_alloc(hmp, bmap,
 							   class, n, radix,
 							   &base_key);
 				if (error != ENOSPC) {
@@ -505,7 +496,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		 * Return EAGAIN with next iteration in iter->bnext, or
 		 * return ENOSPC if the allocation map has been exhausted.
 		 */
-		error = hammer2_freemap_iterate(trans, parentp, &chain, iter);
+		error = hammer2_freemap_iterate(parentp, &chain, iter);
 	}
 
 	/*
@@ -531,8 +522,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
  */
 static
 int
-hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_dev_t *hmp,
-		   hammer2_bmap_data_t *bmap,
+hammer2_bmap_alloc(hammer2_dev_t *hmp, hammer2_bmap_data_t *bmap,
 		   uint16_t class, int n, int radix, hammer2_key_t *basep)
 {
 	hammer2_io_t *dio;
@@ -724,8 +714,8 @@ success:
 
 static
 void
-hammer2_freemap_init(hammer2_trans_t *trans, hammer2_dev_t *hmp,
-		     hammer2_key_t key, hammer2_chain_t *chain)
+hammer2_freemap_init(hammer2_dev_t *hmp, hammer2_key_t key,
+		     hammer2_chain_t *chain)
 {
 	hammer2_off_t l1size;
 	hammer2_off_t lokey;
@@ -795,8 +785,8 @@ hammer2_freemap_init(hammer2_trans_t *trans, hammer2_dev_t *hmp,
  * XXX or use intermediate entries to locate free space. TODO
  */
 static int
-hammer2_freemap_iterate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
-			hammer2_chain_t **chainp, hammer2_fiterate_t *iter)
+hammer2_freemap_iterate(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
+			hammer2_fiterate_t *iter)
 {
 	hammer2_dev_t *hmp = (*parentp)->hmp;
 
@@ -822,8 +812,7 @@ hammer2_freemap_iterate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
  * and to do the actual free.
  */
 void
-hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_dev_t *hmp,
-		       hammer2_blockref_t *bref, int how)
+hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref, int how)
 {
 	hammer2_off_t data_off = bref->data_off;
 	hammer2_chain_t *chain;
@@ -908,7 +897,7 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 	 * bref.check.freemap structure.
 	 */
 	if (chain == NULL && how == HAMMER2_FREEMAP_DORECOVER) {
-		error = hammer2_chain_create(trans, &parent, &chain, hmp->spmp,
+		error = hammer2_chain_create(&parent, &chain, hmp->spmp,
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
 				     HAMMER2_FREEMAP_LEVELN_PSIZE,
@@ -920,14 +909,14 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 		}
 
 		if (error == 0) {
-			hammer2_chain_modify(trans, chain, 0);
+			hammer2_chain_modify(chain, 0);
 			bzero(&chain->data->bmdata[0],
 			      HAMMER2_FREEMAP_LEVELN_PSIZE);
 			chain->bref.check.freemap.bigmask = (uint32_t)-1;
 			chain->bref.check.freemap.avail = l1size;
 			/* bref.methods should already be inherited */
 
-			hammer2_freemap_init(trans, hmp, key, chain);
+			hammer2_freemap_init(hmp, key, chain);
 		}
 		/* XXX handle error */
 	}
@@ -981,7 +970,7 @@ again:
 			 */
 			if ((*bitmap & bmmask11) != bmmask11) {
 				if (modified == 0) {
-					hammer2_chain_modify(trans, chain, 0);
+					hammer2_chain_modify(chain, 0);
 					modified = 1;
 					goto again;
 				}
@@ -1017,7 +1006,7 @@ again:
 			 * marked as being fully allocated.
 			 */
 			if (!modified) {
-				hammer2_chain_modify(trans, chain, 0);
+				hammer2_chain_modify(chain, 0);
 				modified = 1;
 				goto again;
 			}
@@ -1032,7 +1021,7 @@ again:
 			 */
 			if (how == HAMMER2_FREEMAP_DOREALFREE) {
 				if (!modified) {
-					hammer2_chain_modify(trans, chain, 0);
+					hammer2_chain_modify(chain, 0);
 					modified = 1;
 					goto again;
 				}

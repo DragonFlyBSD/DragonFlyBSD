@@ -62,7 +62,7 @@ typedef struct hammer2_chain_save_list hammer2_chain_save_list_t;
  * but UNLOCKED parent.  The original parent is returned in the same state.
  */
 int
-hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
+hammer2_bulk_scan(hammer2_chain_t *parent,
 		  int (*func)(hammer2_chain_t *chain, void *info),
 		  void *info)
 {
@@ -191,7 +191,6 @@ hammer2_bulk_scan(hammer2_trans_t *trans, hammer2_chain_t *parent,
  */
 typedef struct hammer2_bulkfree_info {
 	hammer2_dev_t		*hmp;
-	hammer2_trans_t		*trans;
 	kmem_anon_desc_t	kp;
 	hammer2_off_t		sbase;		/* sub-loop iteration */
 	hammer2_off_t		sstop;
@@ -213,7 +212,6 @@ static void h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 int
 hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 {
-	hammer2_trans_t trans;
 	hammer2_bulkfree_info_t cbinfo;
 	hammer2_off_t incr;
 	size_t size;
@@ -224,7 +222,6 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	bzero(&cbinfo, sizeof(cbinfo));
 	size = (bfi->size + HAMMER2_FREEMAP_LEVELN_PSIZE - 1) &
 	       ~(size_t)(HAMMER2_FREEMAP_LEVELN_PSIZE - 1);
-	cbinfo.trans = &trans;
 	cbinfo.hmp = hmp;
 	cbinfo.bmap = kmem_alloc_swapbacked(&cbinfo.kp, size);
 
@@ -258,8 +255,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 			(intmax_t)cbinfo.sbase,
 			(intmax_t)incr / HAMMER2_FREEMAP_LEVEL1_SIZE);
 
-		hammer2_trans_init(&trans, hmp->spmp, 0);
-		doabort |= hammer2_bulk_scan(&trans, &hmp->vchain,
+		hammer2_trans_init(hmp->spmp, 0);
+		doabort |= hammer2_bulk_scan(&hmp->vchain,
 					    h2_bulkfree_callback, &cbinfo);
 
 		/*
@@ -280,7 +277,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 		/*
 		 * Cleanup for next loop.
 		 */
-		hammer2_trans_done(&trans);
+		hammer2_trans_done(hmp->spmp);
 		if (doabort)
 			break;
 		cbinfo.sbase = cbinfo.sstop;
@@ -547,7 +544,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		kprintf("live %016jx %04d.%04x (avail=%d)\n",
 			data_off, bmapindex, live->class, live->avail);
 
-		hammer2_chain_modify(cbinfo->trans, live_chain, 0);
+		hammer2_chain_modify(live_chain, 0);
 		h2_bulkfree_sync_adjust(cbinfo, live, bmap);
 next:
 		data_off += HAMMER2_FREEMAP_LEVEL0_SIZE;

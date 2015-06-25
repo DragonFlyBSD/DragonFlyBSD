@@ -205,7 +205,7 @@ hammer2_primary_sync_thread(void *arg)
 		/*
 		 * Synchronization scan.
 		 */
-		hammer2_trans_init(&thr->trans, pmp, HAMMER2_TRANS_KEEPMODIFY);
+		hammer2_trans_init(pmp, 0);
 		hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_ALWAYS);
 		cparent = hammer2_inode_cluster(pmp->iroot,
 					        HAMMER2_RESOLVE_ALWAYS);
@@ -235,11 +235,11 @@ hammer2_primary_sync_thread(void *arg)
 		/*
 		 * Flush the chain.
 		 */
-		hammer2_flush(&thr->trans, chain, 1);
+		hammer2_flush(chain, 1);
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 
-		hammer2_trans_done(&thr->trans);
+		hammer2_trans_done(pmp);
 
 		/*
 		 * Wait for event, or 5-second poll.
@@ -733,7 +733,7 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 	chain = NULL;
 	if (cluster->focus_index < i)
 		hammer2_chain_lock(focus, HAMMER2_RESOLVE_ALWAYS);
-	hammer2_chain_create(&thr->trans, &cparent->array[i].chain,
+	hammer2_chain_create(&cparent->array[i].chain,
 			     &chain, thr->pmp,
 			     focus->bref.key, focus->bref.keybits,
 			     focus->bref.type, focus->bytes,
@@ -742,7 +742,7 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 		hammer2_chain_lock(focus, HAMMER2_RESOLVE_ALWAYS);
 	if (cparent->focus_index == i)
 		cparent->focus = cparent->array[i].chain;
-	hammer2_chain_modify(&thr->trans, chain, 0);
+	hammer2_chain_modify(chain, HAMMER2_MODIFY_KEEPMODIFY);
 
 	/*
 	 * Copy focus to new chain
@@ -830,7 +830,7 @@ hammer2_sync_destroy(hammer2_thread_t *thr,
 	 *     a RESOLVE_MAYBE here and pass 0 for the flags.
 	 */
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER);
-	hammer2_chain_delete(&thr->trans, cparent->array[i].chain, chain,
+	hammer2_chain_delete(cparent->array[i].chain, chain,
 			     HAMMER2_DELETE_NOSTATS |
 			     HAMMER2_DELETE_PERMANENT);
 	hammer2_chain_unlock(chain);
@@ -876,11 +876,10 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 	if (chain->bytes != focus->bytes) {
 		/* XXX what if compressed? */
 		nradix = hammer2_getradix(chain->bytes);
-		hammer2_chain_resize(&thr->trans, NULL,
-				     cparent->array[i].chain, chain,
+		hammer2_chain_resize(NULL, cparent->array[i].chain, chain,
 				     nradix, 0);
 	}
-	hammer2_chain_modify(&thr->trans, chain, 0);
+	hammer2_chain_modify(chain, HAMMER2_MODIFY_KEEPMODIFY);
 	otype = chain->bref.type;
 	chain->bref.type = focus->bref.type;
 	chain->bref.methods = focus->bref.methods;
@@ -947,6 +946,7 @@ void
 hammer2_xop_group_init(hammer2_pfs_t *pmp, hammer2_xop_group_t *xgrp)
 {
 	hammer2_mtx_init(&xgrp->mtx, "h2xopq");
+	hammer2_mtx_init(&xgrp->mtx2, "h2xopio");
 }
 
 /*
@@ -958,13 +958,13 @@ hammer2_xop_group_init(hammer2_pfs_t *pmp, hammer2_xop_group_t *xgrp)
  * NOTE: Fifo indices might not be zero but ri == wi on objcache_get().
  */
 hammer2_xop_t *
-hammer2_xop_alloc(hammer2_inode_t *ip, hammer2_xop_func_t func)
+hammer2_xop_alloc(hammer2_inode_t *ip)
 {
 	hammer2_xop_t *xop;
 
 	xop = objcache_get(cache_xops, M_WAITOK);
 	xop->head.ip = ip;
-	xop->head.func = func;
+	xop->head.func = NULL;
 	xop->head.state = 0;
 	xop->head.error = 0;
 	xop->head.lkey = 0;
@@ -982,6 +982,16 @@ hammer2_xop_alloc(hammer2_inode_t *ip, hammer2_xop_func_t func)
 	hammer2_inode_ref(ip);
 
 	return xop;
+}
+
+void
+hammer2_xop_reinit(hammer2_xop_head_t *xop)
+{
+	xop->state = 0;
+	xop->error = 0;
+	xop->lkey = 0;
+	xop->nkey = 0;
+	xop->run_mask = HAMMER2_XOPMASK_VOP;
 }
 
 /*
@@ -1029,7 +1039,7 @@ hammer2_xop_helper_cleanup(hammer2_pfs_t *pmp)
  * XXX optimize single-target case.
  */
 void
-hammer2_xop_start(hammer2_xop_head_t *xop)
+hammer2_xop_start(hammer2_xop_head_t *xop, hammer2_xop_func_t func)
 {
 	hammer2_xop_group_t *xgrp;
 	hammer2_thread_t *thr;
@@ -1042,6 +1052,7 @@ hammer2_xop_start(hammer2_xop_head_t *xop)
 	g = pmp->xop_iterator++;
 	g = g & HAMMER2_XOPGROUPS_MASK;
 	xgrp = &pmp->xop_groups[g];
+	xop->func = func;
 	xop->xgrp = xgrp;
 
 	for (i = 0; i < xop->ip->cluster.nchains; ++i) {
@@ -1150,7 +1161,14 @@ hammer2_xop_active(hammer2_xop_head_t *xop)
  * our direct control.
  *
  * Returns 0 on success and a hammer error code if sync is permanently
- * lost.
+ * lost.  The caller retains a ref on the chain but by convention
+ * the lock is typically inherited by the xop (caller loses lock).
+ *
+ * Returns non-zero on error.  In this situation the caller retains a
+ * ref on the chain but loses the lock (we unlock here).
+ *
+ * WARNING!  The chain is moving between two different threads, it must
+ *	     be locked SHARED, not exclusive.
  */
 int
 hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
@@ -1184,7 +1202,16 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 	atomic_add_int(&xop->check_counter, 1);
 	wakeup(&xop->check_counter);	/* XXX optimize */
 	error = 0;
+
+	/*
+	 * Cleanup.  If an error occurred we eat the lock.  If no error
+	 * occurred the fifo inherits the lock and gains an additional ref.
+	 *
+	 * The caller's ref remains in both cases.
+	 */
 done:
+	if (error && chain)
+		hammer2_chain_unlock(chain);
 	return error;
 }
 
@@ -1217,7 +1244,7 @@ done:
  * Otherwise return an error.
  */
 int
-hammer2_xop_collect(hammer2_xop_head_t *xop)
+hammer2_xop_collect(hammer2_xop_head_t *xop, int flags)
 {
 	hammer2_xop_fifo_t *fifo;
 	hammer2_chain_t *chain;
@@ -1306,6 +1333,8 @@ loop:
 	error = hammer2_cluster_check(&xop->cluster, lokey, keynull);
 	if (error == EINPROGRESS) {
 		if (xop->check_counter == check_counter) {
+			if (flags & HAMMER2_XOP_COLLECT_NOWAIT)
+				goto done;
 			tsleep_interlock(&xop->check_counter, 0);
 			cpu_lfence();
 			if (xop->check_counter == check_counter) {
@@ -1335,7 +1364,7 @@ loop:
 		xop->nkey = lokey;
 	else
 		xop->nkey = lokey + 1;
-
+done:
 	return error;
 }
 

@@ -67,7 +67,6 @@
 MALLOC_DEFINE(M_OBJCACHE, "objcache", "Object Cache");
 
 struct hammer2_sync_info {
-	hammer2_trans_t trans;
 	int error;
 	int waitfor;
 };
@@ -344,7 +343,7 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 
 	if (pmp == NULL) {
 		pmp = kmalloc(sizeof(*pmp), M_HAMMER2, M_WAITOK | M_ZERO);
-		hammer2_trans_manage_init(&pmp->tmanage);
+		hammer2_trans_manage_init(pmp);
 		kmalloc_create(&pmp->minode, "HAMMER2-inodes");
 		kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
 		lockinit(&pmp->lock, "pfslk", 0, 0);
@@ -1003,7 +1002,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 * creating PFSs.
 		 */
 		spmp->inode_tid = 1;
-		spmp->modify_tid = schain->bref.modify_tid;
+		spmp->modify_tid = schain->bref.modify_tid + 1;
 
 		/*
 		 * Sanity-check schain's pmp and finish initialization.
@@ -1567,14 +1566,16 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 			ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
 			hammer2_cluster_bref(cparent, &bref);
 			pmp->inode_tid = ripdata->meta.pfs_inum + 1;
-			pmp->modify_tid = bref.modify_tid;
+			if (pmp->inode_tid < HAMMER2_INODE_START)
+				pmp->inode_tid = HAMMER2_INODE_START;
+			pmp->modify_tid = bref.modify_tid + 1;
 			pmp->iroot->meta = ripdata->meta;
 			hammer2_cluster_bref(cparent, &pmp->iroot->bref);
 			kprintf("PMP focus good set nextino=%ld mod=%016jx\n",
 				pmp->inode_tid, pmp->modify_tid);
 		}
 
-		vp = hammer2_igetv(pmp->iroot, cparent, &error);
+		vp = hammer2_igetv(pmp->iroot, &error);
 		hammer2_inode_unlock(pmp->iroot, cparent);
 		*vpp = vp;
 		if (vp == NULL)
@@ -1666,7 +1667,7 @@ struct hammer2_recovery_info {
 	int	depth;
 };
 
-static int hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
+static int hammer2_recovery_scan(hammer2_dev_t *hmp,
 			hammer2_chain_t *parent,
 			struct hammer2_recovery_info *info,
 			hammer2_tid_t sync_tid);
@@ -1677,7 +1678,6 @@ static
 int
 hammer2_recovery(hammer2_dev_t *hmp)
 {
-	hammer2_trans_t trans;
 	struct hammer2_recovery_info info;
 	struct hammer2_recovery_elm *elm;
 	hammer2_chain_t *parent;
@@ -1686,7 +1686,7 @@ hammer2_recovery(hammer2_dev_t *hmp)
 	int error;
 	int cumulative_error = 0;
 
-	hammer2_trans_init(&trans, hmp->spmp, 0);
+	hammer2_trans_init(hmp->spmp, 0);
 
 	sync_tid = hmp->voldata.freemap_tid;
 	mirror_tid = hmp->voldata.mirror_tid;
@@ -1702,7 +1702,7 @@ hammer2_recovery(hammer2_dev_t *hmp)
 	TAILQ_INIT(&info.list);
 	info.depth = 0;
 	parent = hammer2_chain_lookup_init(&hmp->vchain, 0);
-	cumulative_error = hammer2_recovery_scan(&trans, hmp, parent,
+	cumulative_error = hammer2_recovery_scan(hmp, parent,
 						 &info, sync_tid);
 	hammer2_chain_lookup_done(parent);
 
@@ -1713,23 +1713,21 @@ hammer2_recovery(hammer2_dev_t *hmp)
 		kfree(elm, M_HAMMER2);
 
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
-		error = hammer2_recovery_scan(&trans, hmp, parent,
-					      &info,
-					      hmp->voldata.freemap_tid);
+		error = hammer2_recovery_scan(hmp, parent,
+					      &info, hmp->voldata.freemap_tid);
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);	/* drop elm->chain ref */
 		if (error)
 			cumulative_error = error;
 	}
-	hammer2_trans_done(&trans);
+	hammer2_trans_done(hmp->spmp);
 
 	return cumulative_error;
 }
 
 static
 int
-hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
-		      hammer2_chain_t *parent,
+hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 		      struct hammer2_recovery_info *info,
 		      hammer2_tid_t sync_tid)
 {
@@ -1743,7 +1741,7 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 	 * Adjust freemap to ensure that the block(s) are marked allocated.
 	 */
 	if (parent->bref.type != HAMMER2_BREF_TYPE_VOLUME) {
-		hammer2_freemap_adjust(trans, hmp, &parent->bref,
+		hammer2_freemap_adjust(hmp, &parent->bref,
 				       HAMMER2_FREEMAP_DORECOVER);
 	}
 
@@ -1816,7 +1814,7 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
 		if (chain->bref.mirror_tid > sync_tid) {
 			++info->depth;
-			error = hammer2_recovery_scan(trans, hmp, chain,
+			error = hammer2_recovery_scan(hmp, chain,
 						      info, sync_tid);
 			--info->depth;
 			if (error)
@@ -1829,7 +1827,7 @@ hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_dev_t *hmp,
 		 */
 		if ((chain->bref.flags & HAMMER2_BREF_FLAG_PFSROOT) &&
 		    (chain->flags & HAMMER2_CHAIN_ONFLUSH)) {
-			hammer2_flush(trans, chain, 1);
+			hammer2_flush(chain, 1);
 		}
 		chain = hammer2_chain_scan(parent, chain, &cache_index,
 					   HAMMER2_LOOKUP_NODATA);
@@ -1884,11 +1882,11 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * Preflush the vnodes using a normal transaction before interlocking
 	 * with a flush transaction.
 	 */
-	hammer2_trans_init(&info.trans, pmp, 0);
+	hammer2_trans_init(pmp, 0);
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
-	hammer2_trans_done(&info.trans);
+	hammer2_trans_done(pmp);
 #endif
 
 	/*
@@ -1902,9 +1900,9 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * should theoretically not be possible for any new file buffers
 	 * to be instantiated during this sequence.
 	 */
-	hammer2_trans_init(&info.trans, pmp, HAMMER2_TRANS_ISFLUSH |
-					     HAMMER2_TRANS_PREFLUSH);
-	hammer2_run_unlinkq(&info.trans, pmp);
+	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH |
+				HAMMER2_TRANS_PREFLUSH);
+	hammer2_run_unlinkq(pmp);
 
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
@@ -1917,8 +1915,8 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * buffer cache flushes which occur during the flush.  Device buffers
 	 * are not affected.
 	 */
-	hammer2_bioq_sync(info.trans.pmp);
-	atomic_clear_int(&info.trans.flags, HAMMER2_TRANS_PREFLUSH);
+	hammer2_bioq_sync(pmp);
+	atomic_clear_int(&pmp->trans.flags, HAMMER2_TRANS_PREFLUSH);
 
 	total_error = 0;
 
@@ -1936,15 +1934,15 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		hammer2_chain_ref(chain);
 		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 		if (chain->flags & HAMMER2_CHAIN_FLUSH_MASK) {
-			hammer2_flush(&info.trans, chain, 1);
+			hammer2_flush(chain, 1);
 			parent = chain->parent;
 			KKASSERT(chain->pmp != parent->pmp);
-			hammer2_chain_setflush(&info.trans, parent);
+			hammer2_chain_setflush(parent);
 		}
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 	}
-	hammer2_trans_done(&info.trans);
+	hammer2_trans_done(pmp);
 
 	/*
 	 * Flush all volume roots to synchronize PFS flushes with the
@@ -1984,8 +1982,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		 * mounted so there shouldn't be any vnodes, let alone any
 		 * dirty vnodes associated with it.
 		 */
-		hammer2_trans_init(&info.trans, hmp->spmp,
-				   HAMMER2_TRANS_ISFLUSH);
+		hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
 
 		/*
 		 * Media mounts have two 'roots', vchain for the topology
@@ -2007,7 +2004,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 			 */
 			hammer2_voldata_modify(hmp);
 			chain = &hmp->fchain;
-			hammer2_flush(&info.trans, chain, 1);
+			hammer2_flush(chain, 1);
 			KKASSERT(chain == &hmp->fchain);
 		}
 		hammer2_chain_unlock(&hmp->fchain);
@@ -2018,7 +2015,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 		if (hmp->vchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
 			chain = &hmp->vchain;
-			hammer2_flush(&info.trans, chain, 1);
+			hammer2_flush(chain, 1);
 			KKASSERT(chain == &hmp->vchain);
 		}
 		hammer2_chain_unlock(&hmp->vchain);
@@ -2085,7 +2082,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		if (error)
 			total_error = error;
 
-		hammer2_trans_done(&info.trans);	/* spmp trans */
+		hammer2_trans_done(hmp->spmp);	/* spmp trans */
 	}
 	return (total_error);
 }
@@ -2128,7 +2125,7 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	if ((ip->flags & HAMMER2_INODE_MODIFIED) ||
 	    !RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vfsync(vp, info->waitfor, 1, NULL, NULL);
-		hammer2_inode_fsync(&info->trans, ip, NULL);
+		hammer2_inode_fsync(ip, NULL);
 	}
 	if ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
 	    RB_EMPTY(&vp->v_rbdirty_tree)) {

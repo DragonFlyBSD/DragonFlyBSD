@@ -1,4 +1,8 @@
 
+* embedded transactions in XOPs - interlock early completion
+
+* remove current incarnation of EAGAIN
+
 * mtx locks should not track td_locks count?.  They can be acquired by one
   thread and released by another.  Need API function for exclusive locks.
 

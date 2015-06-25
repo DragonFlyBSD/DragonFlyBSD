@@ -67,7 +67,7 @@
 static int hammer2_indirect_optimize;	/* XXX SYSCTL */
 
 static hammer2_chain_t *hammer2_chain_create_indirect(
-		hammer2_trans_t *trans, hammer2_chain_t *parent,
+		hammer2_chain_t *parent,
 		hammer2_key_t key, int keybits, int for_type, int *errorp);
 static void hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop);
 static hammer2_chain_t *hammer2_combined_find(
@@ -136,7 +136,7 @@ hammer2_isclusterable(hammer2_chain_t *chain)
  * Extra ONFLUSH flagging doesn't hurt the filesystem.
  */
 void
-hammer2_chain_setflush(hammer2_trans_t *trans, hammer2_chain_t *chain)
+hammer2_chain_setflush(hammer2_chain_t *chain)
 {
 	hammer2_chain_t *parent;
 
@@ -166,7 +166,7 @@ hammer2_chain_setflush(hammer2_trans_t *trans, hammer2_chain_t *chain)
  */
 hammer2_chain_t *
 hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
-		    hammer2_trans_t *trans, hammer2_blockref_t *bref)
+		    hammer2_blockref_t *bref)
 {
 	hammer2_chain_t *chain;
 	u_int bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
@@ -993,7 +993,7 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
  * XXX return error if cannot resize.
  */
 void
-hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
+hammer2_chain_resize(hammer2_inode_t *ip,
 		     hammer2_chain_t *parent, hammer2_chain_t *chain,
 		     int nradix, int flags)
 {
@@ -1027,7 +1027,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 *
 	 * NOTE: The modify will set BMAPUPD for us if BMAPPED is set.
 	 */
-	hammer2_chain_modify(trans, chain, 0);
+	hammer2_chain_modify(chain, 0);
 
 	/*
 	 * Relocate the block, even if making it smaller (because different
@@ -1035,7 +1035,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 *
 	 * (data blocks only, we aren't copying the storage here).
 	 */
-	hammer2_freemap_alloc(trans, chain, nbytes);
+	hammer2_freemap_alloc(chain, nbytes);
 	chain->bytes = nbytes;
 	/*ip->delta_dcount += (ssize_t)(nbytes - obytes);*/ /* XXX atomic */
 
@@ -1053,7 +1053,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 }
 
 void
-hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
+hammer2_chain_modify(hammer2_chain_t *chain, int flags)
 {
 	hammer2_blockref_t obref;
 	hammer2_dev_t *hmp;
@@ -1114,7 +1114,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 		if ((chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0 ||
 		     ((flags & HAMMER2_MODIFY_NOREALLOC) == 0 && newmod)
 		) {
-			hammer2_freemap_alloc(trans, chain, chain->bytes);
+			hammer2_freemap_alloc(chain, chain->bytes);
 			/* XXX failed allocation */
 		}
 	}
@@ -1127,9 +1127,9 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 	 * NOTE: chain->pmp could be the device spmp.
 	 */
 	chain->bref.mirror_tid = hmp->voldata.mirror_tid + 1;
-	if (chain->pmp && (trans->flags & (HAMMER2_TRANS_KEEPMODIFY |
-					   HAMMER2_TRANS_ISFLUSH)) == 0) {
-		chain->bref.modify_tid = chain->pmp->modify_tid + 1;
+	if (chain->pmp && (flags & HAMMER2_MODIFY_KEEPMODIFY) == 0) {
+		/* XXX HAMMER2_TRANS_ISFLUSH */
+		chain->bref.modify_tid = chain->pmp->modify_tid;
 	}
 
 	/*
@@ -1264,7 +1264,7 @@ skip2:
 	 * set.
 	 */
 	if (chain->parent)
-		hammer2_chain_setflush(trans, chain->parent);
+		hammer2_chain_setflush(chain->parent);
 }
 
 /*
@@ -1462,9 +1462,9 @@ hammer2_chain_get(hammer2_chain_t *parent, int generation,
 	 * entry.  Resulting chain has one ref and is not locked.
 	 */
 	if (bref->flags & HAMMER2_BREF_FLAG_PFSROOT)
-		chain = hammer2_chain_alloc(hmp, NULL, NULL, bref);
+		chain = hammer2_chain_alloc(hmp, NULL, bref);
 	else
-		chain = hammer2_chain_alloc(hmp, parent->pmp, NULL, bref);
+		chain = hammer2_chain_alloc(hmp, parent->pmp, bref);
 	/* ref'd chain returned */
 
 	/*
@@ -2205,7 +2205,7 @@ done:
  * and will be reassigned.
  */
 int
-hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
+hammer2_chain_create(hammer2_chain_t **parentp,
 		     hammer2_chain_t **chainp, hammer2_pfs_t *pmp,
 		     hammer2_key_t key, int keybits, int type, size_t bytes,
 		     int flags)
@@ -2242,7 +2242,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		dummy.keybits = keybits;
 		dummy.data_off = hammer2_getradix(bytes);
 		dummy.methods = parent->bref.methods;
-		chain = hammer2_chain_alloc(hmp, pmp, trans, &dummy);
+		chain = hammer2_chain_alloc(hmp, pmp, &dummy);
 
 		/*
 		 * Lock the chain manually, chain_lock will load the chain
@@ -2373,8 +2373,7 @@ again:
 	if (parent->core.live_count == count) {
 		hammer2_chain_t *nparent;
 
-		nparent = hammer2_chain_create_indirect(trans, parent,
-							key, keybits,
+		nparent = hammer2_chain_create_indirect(parent, key, keybits,
 							type, &error);
 		if (nparent == NULL) {
 			if (allocated)
@@ -2420,8 +2419,7 @@ again:
 		case HAMMER2_BREF_TYPE_DATA:
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		case HAMMER2_BREF_TYPE_INODE:
-			hammer2_chain_modify(trans, chain,
-					     HAMMER2_MODIFY_OPTDATA);
+			hammer2_chain_modify(chain, HAMMER2_MODIFY_OPTDATA);
 			break;
 		default:
 			/*
@@ -2452,7 +2450,7 @@ again:
 	 * already set in the chain (so it won't recurse up to set it in the
 	 * parent).
 	 */
-	hammer2_chain_setflush(trans, parent);
+	hammer2_chain_setflush(parent);
 
 done:
 	*chainp = chain;
@@ -2491,7 +2489,7 @@ done:
  *	    specific chain.
  */
 void
-hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
+hammer2_chain_rename(hammer2_blockref_t *bref,
 		     hammer2_chain_t **parentp, hammer2_chain_t *chain,
 		     int flags)
 {
@@ -2537,11 +2535,11 @@ hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
 		KKASSERT(parent->refs > 0);
 		KKASSERT(parent->error == 0);
 
-		hammer2_chain_create(trans, parentp, &chain, chain->pmp,
+		hammer2_chain_create(parentp, &chain, chain->pmp,
 				     bref->key, bref->keybits, bref->type,
 				     chain->bytes, flags);
 		KKASSERT(chain->flags & HAMMER2_CHAIN_UPDATE);
-		hammer2_chain_setflush(trans, *parentp);
+		hammer2_chain_setflush(*parentp);
 	}
 }
 
@@ -2554,8 +2552,7 @@ hammer2_chain_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
  * parent may not be errored.  chain can be errored.
  */
 static void
-_hammer2_chain_delete_helper(hammer2_trans_t *trans,
-			     hammer2_chain_t *parent, hammer2_chain_t *chain,
+_hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 			     int flags)
 {
 	hammer2_dev_t *hmp;
@@ -2576,8 +2573,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		KKASSERT(parent != NULL);
 		KKASSERT(parent->error == 0);
 		KKASSERT((parent->flags & HAMMER2_CHAIN_INITIAL) == 0);
-		hammer2_chain_modify(trans, parent,
-				     HAMMER2_MODIFY_OPTDATA);
+		hammer2_chain_modify(parent, HAMMER2_MODIFY_OPTDATA);
 
 		/*
 		 * Calculate blockmap pointer
@@ -2651,7 +2647,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 		 */
 		if (base) {
 			int cache_index = -1;
-			hammer2_base_delete(trans, parent, base, count,
+			hammer2_base_delete(parent, base, count,
 					    &cache_index, chain);
 		}
 		hammer2_spin_unex(&parent->core.spin);
@@ -2732,7 +2728,7 @@ static int hammer2_chain_indkey_normal(hammer2_chain_t *parent,
 				hammer2_blockref_t *base, int count);
 static
 hammer2_chain_t *
-hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
+hammer2_chain_create_indirect(hammer2_chain_t *parent,
 			      hammer2_key_t create_key, int create_bits,
 			      int for_type, int *errorp)
 {
@@ -2765,7 +2761,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	*errorp = 0;
 	KKASSERT(hammer2_mtx_owned(&parent->lock));
 
-	/*hammer2_chain_modify(trans, &parent, HAMMER2_MODIFY_OPTDATA);*/
+	/*hammer2_chain_modify(&parent, HAMMER2_MODIFY_OPTDATA);*/
 	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
 		base = NULL;
 
@@ -2885,7 +2881,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	dummy.bref.data_off = hammer2_getradix(nbytes);
 	dummy.bref.methods = parent->bref.methods;
 
-	ichain = hammer2_chain_alloc(hmp, parent->pmp, trans, &dummy.bref);
+	ichain = hammer2_chain_alloc(hmp, parent->pmp, &dummy.bref);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);
 	hammer2_chain_lock(ichain, HAMMER2_RESOLVE_MAYBE);
 	/* ichain has one ref at this point */
@@ -2895,7 +2891,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * OPTDATA to allow it to remain in the INITIAL state.  Otherwise
 	 * it won't be acted upon by the flush code.
 	 */
-	hammer2_chain_modify(trans, ichain, HAMMER2_MODIFY_OPTDATA);
+	hammer2_chain_modify(ichain, HAMMER2_MODIFY_OPTDATA);
 
 	/*
 	 * Iterate the original parent and move the matching brefs into
@@ -3007,9 +3003,9 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		 *	    inode stats (and thus asserting if there is no
 		 *	    chain->data loaded).
 		 */
-		hammer2_chain_delete(trans, parent, chain,
+		hammer2_chain_delete(parent, chain,
 				     HAMMER2_DELETE_NOSTATS);
-		hammer2_chain_rename(trans, NULL, &ichain, chain,
+		hammer2_chain_rename(NULL, &ichain, chain,
 				     HAMMER2_INSERT_NOSTATS);
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -3049,8 +3045,8 @@ next_key_spinlocked:
 	/*
 	 * Make sure flushes propogate after our manual insertion.
 	 */
-	hammer2_chain_setflush(trans, ichain);
-	hammer2_chain_setflush(trans, parent);
+	hammer2_chain_setflush(ichain);
+	hammer2_chain_setflush(parent);
 
 	/*
 	 * Figure out what to return.
@@ -3369,8 +3365,8 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
  * for an unlinked file which is still open.
  */
 void
-hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
-		     hammer2_chain_t *chain, int flags)
+hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
+		     int flags)
 {
 	KKASSERT(hammer2_mtx_owned(&chain->lock));
 
@@ -3383,7 +3379,7 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0) {
 		KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
 			 chain->parent == parent);
-		_hammer2_chain_delete_helper(trans, parent, chain, flags);
+		_hammer2_chain_delete_helper(parent, chain, flags);
 	}
 
 	/*
@@ -3395,10 +3391,10 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 */
 	if (flags & HAMMER2_DELETE_PERMANENT) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROY);
-		hammer2_delayed_flush(trans, chain);
+		hammer2_delayed_flush(chain);
 	} else {
 		/* XXX might not be needed */
-		hammer2_chain_setflush(trans, chain);
+		hammer2_chain_setflush(chain);
 	}
 }
 
@@ -3606,7 +3602,7 @@ found:
  *	 need to be adjusted when we commit the media change.
  */
 void
-hammer2_base_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
+hammer2_base_delete(hammer2_chain_t *parent,
 		    hammer2_blockref_t *base, int count,
 		    int *cache_indexp, hammer2_chain_t *chain)
 {
@@ -3671,7 +3667,7 @@ hammer2_base_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
  *	 need to be adjusted when we commit the media change.
  */
 void
-hammer2_base_insert(hammer2_trans_t *trans __unused, hammer2_chain_t *parent,
+hammer2_base_insert(hammer2_chain_t *parent,
 		    hammer2_blockref_t *base, int count,
 		    int *cache_indexp, hammer2_chain_t *chain)
 {
@@ -4025,4 +4021,370 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 		break;
 	}
 	return r;
+}
+
+#if 0
+/*
+ * The chain has been removed from the original directory and replaced
+ * with a hardlink pointer.  Move the chain to the specified parent
+ * directory, change the filename to "0xINODENUMBER", and adjust the key.
+ * The chain becomes our invisible hardlink target.
+ *
+ * The original chain must be deleted on entry.
+ *
+ * Caller is responsible for synchronizing ip->meta.name/name_len.  This
+ * routine may be called from a XOP, so modifying ip->meta directly is out.
+ */
+static
+void
+hammer2_chain_hardlink_shiftup(
+			hammer2_chain_t *chain,
+			hammer2_key_t inum,
+			hammer2_chain_t **dchainp,
+			int *errorp)
+{
+	hammer2_inode_data_t *nipdata;
+	hammer2_chain_t *xchain;
+	hammer2_key_t key_dummy;
+	hammer2_key_t lhc;
+	hammer2_blockref_t bref;
+
+	lhc = inum;	/* bit 63 not set makes hardlinks invisible */
+	KKASSERT((lhc & HAMMER2_DIRHASH_VISIBLE) == 0);
+
+	/*
+	 * Locate the inode or indirect block to create the new
+	 * entry in.  lhc represents the inode number so there is
+	 * no collision iteration.
+	 *
+	 * There should be no key collisions with invisible inode keys.
+	 */
+	*errorp = 0;
+	xchain = hammer2_chain_lookup(dchainp, &key_dummy, lhc, lhc, 0);
+	if (xchain) {
+		hammer2_chain_unlock(xchain);
+		hammer2_chain_drop(xchain);
+		xchain =NULL;
+		*errorp = ENOSPC;
+#if 0
+		Debugger("X3");
+#endif
+	}
+
+	/*
+	 * Handle the error case
+	 */
+	if (*errorp) {
+		panic("error2");
+		KKASSERT(xchain == NULL);
+		return;
+	}
+
+	/*
+	 * Use xcluster as a placeholder for (lhc).  Duplicate cluster to the
+	 * same target bref as xcluster and then delete xcluster.  The
+	 * duplication occurs after xcluster in flush order even though
+	 * xcluster is deleted after the duplication. XXX
+	 *
+	 * WARNING! Duplications (to a different parent) can cause indirect
+	 *	    blocks to be inserted, refactor xcluster.
+	 *
+	 * WARNING! Only key and keybits is extracted from a passed-in bref.
+	 */
+	bref = chain->bref;
+	bref.key = lhc;			/* invisible dir entry key */
+	bref.keybits = 0;
+	hammer2_chain_rename(&bref, dchainp, chain, 0);
+
+	/*
+	 * cluster is now 'live' again.. adjust the filename.
+	 *
+	 * Directory entries are inodes but this is a hidden hardlink
+	 * target.  The name isn't used but to ease debugging give it
+	 * a name after its inode number.
+	 */
+	hammer2_chain_modify(chain, 0);
+	nipdata = &chain->data->ipdata;
+	ksnprintf(nipdata->filename, sizeof(nipdata->filename),
+		  "0x%016jx", (intmax_t)inum);
+
+	/*
+	 * Warning: Caller must adjust ip->meta.name_lne, name_key,
+	 *	    and nlinks.
+	 */
+	nipdata->meta.name_len = strlen(nipdata->filename);
+	nipdata->meta.name_key = lhc;
+	/*ip->meta.nlinks += nlinks;*/
+}
+
+/*
+ * Given an exclusively locked inode and cluster we consolidate the cluster
+ * for hardlink creation, adding (nlinks) to the file's link count and
+ * potentially relocating the inode to (cdip) which is a parent directory
+ * common to both the current location of the inode and the intended new
+ * hardlink.
+ *
+ * Replaces (*clusterp) if consolidation occurred, unlocking the old cluster
+ * and returning a new locked cluster.
+ *
+ * NOTE!  This function will also replace ip->cluster.
+ */
+int
+hammer2_chain_hardlink_consolidate(
+			hammer2_inode_t *ip,
+			hammer2_chain_t **chainp,
+			hammer2_inode_t *cdip,
+			hammer2_chain_t *cdchain,
+			int nlinks)
+{
+	hammer2_chain_t *chain;
+	hammer2_chain_t *parent;
+	int error;
+
+	chain = *chainp;
+	if (nlinks == 0 &&			/* no hardlink needed */
+	    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE)) {
+		return (0);
+	}
+
+	if (hammer2_hardlink_enable == 0) {	/* disallow hardlinks */
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+		*chainp = NULL;
+		return (ENOTSUP);
+	}
+
+	parent = NULL;
+
+	/*
+	 * If no change in the hardlink's target directory is required and
+	 * this is already a hardlink target, all we need to do is adjust
+	 * the link count.
+	 */
+	if (cdip == ip->pip &&
+	    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
+		if (nlinks) {
+			hammer2_inode_modify(ip);
+			ip->meta.nlinks += nlinks;
+#if 0
+			hammer2_cluster_modify(cluster, 0);
+			wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
+			wipdata->meta.nlinks += nlinks;
+			hammer2_cluster_modsync(cluster);
+			ripdata = wipdata;
+#endif
+		}
+		error = 0;
+		goto done;
+	}
+
+	/*
+	 * Cluster is the real inode.  The originating directory is locked
+	 * by the caller so we can manipulate it without worrying about races
+	 * against other lookups.
+	 *
+	 * If cluster is visible we need to delete it from the current
+	 * location and create a hardlink pointer in its place.  If it is
+	 * not visible we need only delete it.  Then later cluster will be
+	 * renamed to a parent directory and converted (if necessary) to
+	 * a hidden inode (via shiftup).
+	 *
+	 * NOTE! We must hold cparent locked through the delete/create/rename
+	 *	 operation to ensure that other threads block resolving to
+	 *	 the same hardlink, otherwise the other threads may not see
+	 *	 the hardlink.
+	 */
+	KKASSERT((cluster->focus->flags & HAMMER2_CHAIN_DELETED) == 0);
+	cparent = hammer2_cluster_parent(cluster);
+
+	hammer2_cluster_delete(cparent, cluster, 0);
+
+	KKASSERT(ip->meta.type != HAMMER2_OBJTYPE_HARDLINK);
+	if (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) {
+		const hammer2_inode_data_t *ripdata;
+		hammer2_inode_data_t *wipdata;
+		hammer2_cluster_t *ncluster;
+		hammer2_key_t lhc;
+
+		ncluster = NULL;
+		lhc = cluster->focus->bref.key;
+		error = hammer2_cluster_create(cparent, &ncluster,
+					     lhc, 0,
+					     HAMMER2_BREF_TYPE_INODE,
+					     HAMMER2_INODE_BYTES,
+					     0);
+		hammer2_cluster_modify(ncluster, 0);
+		wipdata = &hammer2_cluster_wdata(ncluster)->ipdata;
+
+		/* wipdata->meta.comp_algo = ip->meta.comp_algo; */
+		wipdata->meta.comp_algo = 0;
+		wipdata->meta.check_algo = 0;
+		wipdata->meta.version = HAMMER2_INODE_VERSION_ONE;
+		wipdata->meta.inum = ip->meta.inum;
+		wipdata->meta.target_type = ip->meta.type;
+		wipdata->meta.type = HAMMER2_OBJTYPE_HARDLINK;
+		wipdata->meta.uflags = 0;
+		wipdata->meta.rmajor = 0;
+		wipdata->meta.rminor = 0;
+		wipdata->meta.ctime = 0;
+		wipdata->meta.mtime = 0;
+		wipdata->meta.atime = 0;
+		wipdata->meta.btime = 0;
+		bzero(&wipdata->meta.uid, sizeof(wipdata->meta.uid));
+		bzero(&wipdata->meta.gid, sizeof(wipdata->meta.gid));
+		wipdata->meta.op_flags = HAMMER2_OPFLAG_DIRECTDATA;
+		wipdata->meta.cap_flags = 0;
+		wipdata->meta.mode = 0;
+		wipdata->meta.size = 0;
+		wipdata->meta.nlinks = 1;
+		wipdata->meta.iparent = 0;	/* XXX */
+		wipdata->meta.pfs_type = 0;
+		wipdata->meta.pfs_inum = 0;
+		bzero(&wipdata->meta.pfs_clid, sizeof(wipdata->meta.pfs_clid));
+		bzero(&wipdata->meta.pfs_fsid, sizeof(wipdata->meta.pfs_fsid));
+		wipdata->meta.data_quota = 0;
+		/* wipdata->data_count = 0; */
+		wipdata->meta.inode_quota = 0;
+		/* wipdata->inode_count = 0; */
+		wipdata->meta.attr_tid = 0;
+		wipdata->meta.dirent_tid = 0;
+		bzero(&wipdata->u, sizeof(wipdata->u));
+		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
+		KKASSERT(ip->meta.name_len <= sizeof(wipdata->filename));
+		bcopy(ripdata->filename, wipdata->filename,
+		      ip->meta.name_len);
+		wipdata->meta.name_key = ncluster->focus->bref.key;
+		wipdata->meta.name_len = ip->meta.name_len;
+		/* XXX transaction ids */
+		hammer2_cluster_modsync(ncluster);
+		hammer2_cluster_unlock(ncluster);
+		hammer2_cluster_drop(ncluster);
+	}
+
+	/*
+	 * cluster represents the hardlink target and is now flagged deleted.
+	 * duplicate it to the parent directory and adjust nlinks.
+	 *
+	 * WARNING! The shiftup() call can cause ncluster to be moved into
+	 *	    an indirect block, and our ncluster will wind up pointing
+	 *	    to the older/original version.
+	 */
+	KKASSERT(cluster->focus->flags & HAMMER2_CHAIN_DELETED);
+	hammer2_chain_hardlink_shiftup(cluster, ip, cdip, cdcluster,
+					 nlinks, &error);
+
+	if (error == 0)
+		hammer2_inode_repoint(ip, cdip, cluster);
+
+done:
+	/*
+	 * Cleanup, cluster/ncluster already dealt with.
+	 *
+	 * Return the shifted cluster in *clusterp.
+	 */
+	if (cparent) {
+		hammer2_cluster_unlock(cparent);
+		hammer2_cluster_drop(cparent);
+	}
+	*clusterp = cluster;
+
+	return (error);
+}
+
+/*
+ * If (*ochainp) is non-NULL it points to the forward OBJTYPE_HARDLINK
+ * inode while (*chainp) points to the resolved (hidden hardlink
+ * target) inode.  In this situation when nlinks is 1 we wish to
+ * deconsolidate the hardlink, moving it back to the directory that now
+ * represents the only remaining link.
+ */
+int
+hammer2_chain_hardlink_deconsolidate(
+			       hammer2_inode_t *dip,
+			       hammer2_chain_t **chainp,
+			       hammer2_chain_t **ochainp)
+{
+	if (*ochainp == NULL)
+		return (0);
+	/* XXX */
+	return (0);
+}
+
+#endif
+
+/*
+ * The caller presents a shared-locked (parent, chain) where the chain
+ * is of type HAMMER2_OBJTYPE_HARDLINK.  The caller must hold the ip
+ * structure representing the inode locked to prevent
+ * consolidation/deconsolidation races.
+ *
+ * We locate the hardlink in the current or a common parent directory.
+ *
+ * If we are unable to locate the hardlink, EIO is returned and
+ * (*chainp) is unlocked and dropped.
+ */
+int
+hammer2_chain_hardlink_find(hammer2_inode_t *dip,
+			hammer2_chain_t **parentp,
+			hammer2_chain_t **chainp)
+{
+	hammer2_chain_t *parent;
+	hammer2_chain_t *rchain;
+	hammer2_key_t key_dummy;
+	hammer2_key_t lhc;
+	int cache_index = -1;
+
+	/*
+	 * Obtain the key for the hardlink from *chainp.
+	 */
+	rchain = *chainp;
+	lhc = rchain->data->ipdata.meta.inum;
+	hammer2_chain_unlock(rchain);
+	hammer2_chain_drop(rchain);
+	rchain = NULL;
+
+	for (;;) {
+		int nloops;
+		rchain = hammer2_chain_lookup(parentp, &key_dummy,
+					      lhc, lhc,
+					      &cache_index,
+					      HAMMER2_LOOKUP_SHARED);
+		if (rchain)
+			break;
+
+		/*
+		 * Iterate parents, handle parent rename races by retrying
+		 * the operation.
+		 */
+		nloops = -1;
+		while (nloops) {
+			--nloops;
+			parent = *parentp;
+			if (nloops < 0 &&
+			    parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
+				nloops = 1;
+			}
+			parent = parent->parent;
+			if (parent == NULL)
+				break;
+			hammer2_chain_ref(parent);
+			hammer2_chain_unlock(*parentp);
+			hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
+						   HAMMER2_RESOLVE_SHARED);
+			if ((*parentp)->parent == parent) {
+				hammer2_chain_drop(*parentp);
+				*parentp = parent;
+			} else {
+				hammer2_chain_unlock(parent);
+				hammer2_chain_drop(parent);
+				hammer2_chain_lock(*parentp,
+						   HAMMER2_RESOLVE_ALWAYS |
+						   HAMMER2_RESOLVE_SHARED);
+				parent = NULL;	/* safety */
+			}
+		}
+	}
+
+	*chainp = rchain;
+	return (rchain ? EIO : 0);
 }

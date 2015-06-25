@@ -74,9 +74,17 @@ struct objcache *cache_buffer_write;
  *	    Reads can be initiated asynchronously, writes have to be
  *	    spooled to a separate thread for action to avoid deadlocks.
  */
+static void hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex);
+#if 0
+static void hammer2_strategy_xop_write(hammer2_xop_t *arg, int clindex);
+#endif
 static int hammer2_strategy_read(struct vop_strategy_args *ap);
 static int hammer2_strategy_write(struct vop_strategy_args *ap);
+#if 0
 static void hammer2_strategy_read_callback(hammer2_iocb_t *iocb);
+#endif
+static void hammer2_strategy_read_completion(hammer2_chain_t *chain,
+				char *data, struct bio *bio);
 
 int
 hammer2_vop_strategy(struct vop_strategy_args *ap)
@@ -231,6 +239,41 @@ static
 int
 hammer2_strategy_read(struct vop_strategy_args *ap)
 {
+	hammer2_xop_strategy_t *xop;
+	struct buf *bp;
+	struct bio *bio;
+	struct bio *nbio;
+	hammer2_inode_t *ip;
+	hammer2_key_t lbase;
+
+	bio = ap->a_bio;
+	bp = bio->bio_buf;
+	ip = VTOI(ap->a_vp);
+	nbio = push_bio(bio);
+
+	lbase = bio->bio_offset;
+	KKASSERT(((int)lbase & HAMMER2_PBUFMASK) == 0);
+
+	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS |
+			       HAMMER2_RESOLVE_SHARED);
+	xop = &hammer2_xop_alloc(ip)->xop_strategy;
+	xop->finished = 0;
+	xop->bio = bio;
+	xop->lbase = lbase;
+	hammer2_xop_start(&xop->head, hammer2_strategy_xop_read);
+	hammer2_inode_unlock(ip, NULL);
+
+	return(0);
+}
+
+#if 0
+/*
+ * Logical buffer I/O, async read.
+ */
+static
+int
+hammer2_strategy_read(struct vop_strategy_args *ap)
+{
 	struct buf *bp;
 	struct bio *bio;
 	struct bio *nbio;
@@ -291,7 +334,107 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 				   nbio);
 	return(0);
 }
+#endif
 
+/*
+ * Per-node XOP (threaded), do a synchronous lookup of the chain and
+ * its data.  The frontend is asynchronous, so we are also responsible
+ * for racing to terminate the frontend.
+ */
+static
+void
+hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
+{
+	hammer2_xop_strategy_t *xop = &arg->xop_strategy;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_dummy;
+	hammer2_key_t lbase;
+	struct bio *bio;
+	struct buf *bp;
+	int cache_index = -1;
+	int error;
+
+	lbase = xop->lbase;
+	bio = xop->bio;
+	bp = bio->bio_buf;
+
+	parent = hammer2_inode_chain(xop->head.ip, clindex,
+				     HAMMER2_RESOLVE_ALWAYS |
+				     HAMMER2_RESOLVE_SHARED);
+	if (parent) {
+		chain = hammer2_chain_lookup(&parent, &key_dummy,
+					     lbase, lbase,
+					     &cache_index,
+					     HAMMER2_LOOKUP_ALWAYS |
+					     HAMMER2_LOOKUP_SHARED);
+		error = chain ? chain->error : 0;
+	} else {
+		error = EIO;
+		chain = NULL;
+	}
+	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
+	if (chain)
+		hammer2_chain_drop(chain);
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	chain = NULL;	/* safety */
+	parent = NULL;	/* safety */
+
+	/*
+	 * Race to finish the frontend
+	 */
+	if (xop->finished)
+		return;
+	hammer2_mtx_ex(&xop->head.xgrp->mtx2);
+	if (xop->finished) {
+		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		return;
+	}
+
+	/*
+	 * Async operation has not completed and we now own the lock.
+	 * Determine if we can complete the operation by issuing the
+	 * frontend collection non-blocking.
+	 */
+	error = hammer2_xop_collect(&xop->head, HAMMER2_XOP_COLLECT_NOWAIT);
+
+	switch(error) {
+	case 0:
+		xop->finished = 1;
+		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		chain = xop->head.cluster.focus;
+		hammer2_strategy_read_completion(chain, (char *)chain->data,
+						 xop->bio);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		biodone(bio);
+		break;
+	case ENOENT:
+		xop->finished = 1;
+		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		bp->b_resid = 0;
+		bp->b_error = 0;
+		bzero(bp->b_data, bp->b_bcount);
+		biodone(bio);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		break;
+	case EINPROGRESS:
+		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		break;
+	default:
+		xop->finished = 1;
+		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		bp->b_flags |= B_ERROR;
+		bp->b_error = EIO;
+		biodone(bio);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		break;
+	}
+}
+
+#if 0
 /*
  * Read callback for hammer2_cluster_load_async().  The load function may
  * start several actual I/Os but will only make one callback, typically with
@@ -387,6 +530,33 @@ hammer2_strategy_read_callback(hammer2_iocb_t *iocb)
 		data = (void *)chain->data;
 	}
 
+	/*
+	 * Copy the data to the bio, doing whatever unpacking or decryption
+	 * is required.
+	 */
+	hammer2_strategy_read_completion(chain, data, bio);
+
+	/*
+	 * Once the iocb is cleaned up the DIO (if any) will no longer be
+	 * in-progress but will still have a ref.  Be sure to release
+	 * the ref.
+	 */
+	hammer2_io_complete(iocb);		/* physical management */
+	if (dio)				/* physical dio & buffer */
+		hammer2_io_bqrelse(&dio);
+	hammer2_cluster_unlock(cluster);	/* cluster management */
+	hammer2_cluster_drop(cluster);		/* cluster management */
+	biodone(bio);				/* logical buffer */
+}
+#endif
+
+static
+void
+hammer2_strategy_read_completion(hammer2_chain_t *chain, char *data,
+				 struct bio *bio)
+{
+	struct buf *bp = bio->bio_buf;
+
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		/*
 		 * Data is embedded in the inode (copy from inode).
@@ -428,23 +598,8 @@ hammer2_strategy_read_callback(hammer2_iocb_t *iocb)
 			      "unknown compression type");
 		}
 	} else {
-		/* bqrelse the dio to help stabilize the call to panic() */
-		if (dio)
-			hammer2_io_bqrelse(&dio);
 		panic("hammer2_strategy_read: unknown bref type");
 	}
-
-	/*
-	 * Once the iocb is cleaned up the DIO (if any) will no longer be
-	 * in-progress but will still have a ref.  Be sure to release
-	 * the ref.
-	 */
-	hammer2_io_complete(iocb);		/* physical management */
-	if (dio)				/* physical dio & buffer */
-		hammer2_io_bqrelse(&dio);
-	hammer2_cluster_unlock(cluster);	/* cluster management */
-	hammer2_cluster_drop(cluster);		/* cluster management */
-	biodone(bio);				/* logical buffer */
 }
 
 /****************************************************************************
@@ -455,26 +610,22 @@ hammer2_strategy_read_callback(hammer2_iocb_t *iocb)
  * Functions for compression in threads,
  * from hammer2_vnops.c
  */
-static void hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
-				hammer2_inode_t *ip,
+static void hammer2_write_file_core(struct buf *bp, hammer2_inode_t *ip,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase, int ioflag, int pblksize,
 				int *errorp);
-static void hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
-				hammer2_inode_t *ip,
+static void hammer2_compress_and_write(struct buf *bp, hammer2_inode_t *ip,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase, int ioflag,
 				int pblksize, int *errorp,
 				int comp_algo, int check_algo);
-static void hammer2_zero_check_and_write(struct buf *bp,
-				hammer2_trans_t *trans, hammer2_inode_t *ip,
+static void hammer2_zero_check_and_write(struct buf *bp, hammer2_inode_t *ip,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase,
 				int ioflag, int pblksize, int *errorp,
 				int check_algo);
 static int test_block_zeros(const char *buf, size_t bytes);
-static void zero_write(struct buf *bp, hammer2_trans_t *trans,
-				hammer2_inode_t *ip,
+static void zero_write(struct buf *bp, hammer2_inode_t *ip,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase,
 				int *errorp);
@@ -522,10 +673,9 @@ hammer2_write_thread(void *arg)
 	hammer2_pfs_t *pmp;
 	struct bio *bio;
 	struct buf *bp;
-	hammer2_trans_t trans;
 	struct vnode *vp;
-	hammer2_inode_t *ip;
 	hammer2_cluster_t *cparent;
+	hammer2_inode_t *ip;
 	hammer2_key_t lbase;
 	int lblksize;
 	int pblksize;
@@ -550,7 +700,7 @@ hammer2_write_thread(void *arg)
 		/*
 		 * Special transaction for logical buffer cache writes.
 		 */
-		hammer2_trans_init(&trans, pmp, HAMMER2_TRANS_BUFCACHE);
+		hammer2_trans_init(pmp, HAMMER2_TRANS_BUFCACHE);
 
 		while ((bio = bioq_takefirst(&pmp->wthread_bioq)) != NULL) {
 			/*
@@ -592,12 +742,11 @@ hammer2_write_thread(void *arg)
 			cparent = hammer2_inode_cluster(ip,
 							HAMMER2_RESOLVE_ALWAYS);
 			if (ip->flags & HAMMER2_INODE_RESIZED)
-				hammer2_inode_fsync(&trans, ip, cparent);
+				hammer2_inode_fsync(ip, cparent);
 			lblksize = hammer2_calc_logical(ip, bio->bio_offset,
 							&lbase, NULL);
 			pblksize = hammer2_calc_physical(ip, lbase);
-			hammer2_write_file_core(bp, &trans, ip,
-						cparent,
+			hammer2_write_file_core(bp, ip, cparent,
 						lbase, IO_ASYNC,
 						pblksize, &error);
 			hammer2_inode_unlock(ip, cparent);
@@ -609,7 +758,7 @@ hammer2_write_thread(void *arg)
 			biodone(bio);
 			hammer2_mtx_ex(&pmp->wthread_mtx);
 		}
-		hammer2_trans_done(&trans);
+		hammer2_trans_done(pmp);
 	}
 	pmp->wthread_destroy = -1;
 	wakeup(&pmp->wthread_destroy);
@@ -647,8 +796,7 @@ hammer2_bioq_sync(hammer2_pfs_t *pmp)
  */
 static
 hammer2_cluster_t *
-hammer2_assign_physical(hammer2_trans_t *trans,
-			hammer2_inode_t *ip, hammer2_cluster_t *cparent,
+hammer2_assign_physical(hammer2_inode_t *ip, hammer2_cluster_t *cparent,
 			hammer2_key_t lbase, int pblksize, int *errorp)
 {
 	hammer2_cluster_t *cluster;
@@ -677,7 +825,7 @@ retry:
 		 * NOTE: DATA chains are created without device backing
 		 *	 store (nor do we want any).
 		 */
-		*errorp = hammer2_cluster_create(trans, dparent, &cluster,
+		*errorp = hammer2_cluster_create(ip->pmp, dparent, &cluster,
 					       lbase, HAMMER2_PBUFRADIX,
 					       HAMMER2_BREF_TYPE_DATA,
 					       pblksize, 0);
@@ -695,12 +843,11 @@ retry:
 			 * The data is embedded in the inode, which requires
 			 * a bit more finess.
 			 */
-			hammer2_cluster_modify_ip(trans, ip, cluster, 0);
+			hammer2_cluster_modify_ip(ip, cluster, 0);
 			break;
 		case HAMMER2_BREF_TYPE_DATA:
 			if (hammer2_cluster_need_resize(cluster, pblksize)) {
-				hammer2_cluster_resize(trans, ip,
-						     dparent, cluster,
+				hammer2_cluster_resize(ip, dparent, cluster,
 						     pradix,
 						     HAMMER2_MODIFY_OPTDATA);
 			}
@@ -712,8 +859,7 @@ retry:
 			 * after resizing in case this is an encrypted or
 			 * compressed buffer.
 			 */
-			hammer2_cluster_modify(trans, cluster,
-					       HAMMER2_MODIFY_OPTDATA);
+			hammer2_cluster_modify(cluster, HAMMER2_MODIFY_OPTDATA);
 			break;
 		default:
 			panic("hammer2_assign_physical: bad type");
@@ -742,8 +888,7 @@ retry:
  */
 static
 void
-hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
-			hammer2_inode_t *ip,
+hammer2_write_file_core(struct buf *bp, hammer2_inode_t *ip,
 			hammer2_cluster_t *cparent,
 			hammer2_key_t lbase, int ioflag, int pblksize,
 			int *errorp)
@@ -760,14 +905,12 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		 * This can return NOOFFSET for inode-embedded data.
 		 * The strategy code will take care of it in that case.
 		 */
-		cluster = hammer2_assign_physical(trans, ip, cparent,
-						lbase, pblksize,
-						errorp);
+		cluster = hammer2_assign_physical(ip, cparent,
+						  lbase, pblksize, errorp);
 		if (cluster->ddflag) {
 			hammer2_inode_data_t *wipdata;
 
-			wipdata = hammer2_cluster_modify_ip(trans, ip,
-							    cluster, 0);
+			wipdata = hammer2_cluster_modify_ip(ip, cluster, 0);
 			KKASSERT(wipdata->meta.op_flags &
 				 HAMMER2_OPFLAG_DIRECTDATA);
 			KKASSERT(bp->b_loffset == 0);
@@ -787,10 +930,10 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		/*
 		 * Check for zero-fill only
 		 */
-		hammer2_zero_check_and_write(bp, trans, ip,
-				    cparent, lbase,
-				    ioflag, pblksize, errorp,
-				    ip->meta.check_algo);
+		hammer2_zero_check_and_write(bp, ip, cparent,
+					     lbase, ioflag,
+					     pblksize, errorp,
+					     ip->meta.check_algo);
 		break;
 	case HAMMER2_COMP_LZ4:
 	case HAMMER2_COMP_ZLIB:
@@ -798,8 +941,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		/*
 		 * Check for zero-fill and attempt compression.
 		 */
-		hammer2_compress_and_write(bp, trans, ip,
-					   cparent,
+		hammer2_compress_and_write(bp, ip, cparent,
 					   lbase, ioflag,
 					   pblksize, errorp,
 					   ip->meta.comp_algo,
@@ -817,8 +959,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
  */
 static
 void
-hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
-	hammer2_inode_t *ip,
+hammer2_compress_and_write(struct buf *bp, hammer2_inode_t *ip,
 	hammer2_cluster_t *cparent,
 	hammer2_key_t lbase, int ioflag, int pblksize,
 	int *errorp, int comp_algo, int check_algo)
@@ -831,7 +972,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 	char *comp_buffer;
 
 	if (test_block_zeros(bp->b_data, pblksize)) {
-		zero_write(bp, trans, ip, cparent, lbase, errorp);
+		zero_write(bp, ip, cparent, lbase, errorp);
 		return;
 	}
 
@@ -931,9 +1072,8 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 		}
 	}
 
-	cluster = hammer2_assign_physical(trans, ip, cparent,
-					  lbase, comp_block_size,
-					  errorp);
+	cluster = hammer2_assign_physical(ip, cparent, lbase,
+					  comp_block_size, errorp);
 	if (*errorp) {
 		kprintf("WRITE PATH: An error occurred while "
 			"assigning physical space.\n");
@@ -1061,8 +1201,7 @@ done:
  */
 static
 void
-hammer2_zero_check_and_write(struct buf *bp, hammer2_trans_t *trans,
-	hammer2_inode_t *ip,
+hammer2_zero_check_and_write(struct buf *bp, hammer2_inode_t *ip,
 	hammer2_cluster_t *cparent,
 	hammer2_key_t lbase, int ioflag, int pblksize, int *errorp,
 	int check_algo)
@@ -1070,10 +1209,10 @@ hammer2_zero_check_and_write(struct buf *bp, hammer2_trans_t *trans,
 	hammer2_cluster_t *cluster;
 
 	if (test_block_zeros(bp->b_data, pblksize)) {
-		zero_write(bp, trans, ip, cparent, lbase, errorp);
+		zero_write(bp, ip, cparent, lbase, errorp);
 	} else {
-		cluster = hammer2_assign_physical(trans, ip, cparent,
-						  lbase, pblksize, errorp);
+		cluster = hammer2_assign_physical(ip, cparent, lbase,
+						  pblksize, errorp);
 		hammer2_write_bp(cluster, bp, ioflag, pblksize, errorp,
 				 check_algo);
 		if (cluster) {
@@ -1109,8 +1248,7 @@ test_block_zeros(const char *buf, size_t bytes)
  */
 static
 void
-zero_write(struct buf *bp, hammer2_trans_t *trans,
-	   hammer2_inode_t *ip,
+zero_write(struct buf *bp, hammer2_inode_t *ip,
 	   hammer2_cluster_t *cparent,
 	   hammer2_key_t lbase, int *errorp __unused)
 {
@@ -1124,15 +1262,14 @@ zero_write(struct buf *bp, hammer2_trans_t *trans,
 		if (cluster->ddflag) {
 			hammer2_inode_data_t *wipdata;
 
-			wipdata = hammer2_cluster_modify_ip(trans, ip,
-							    cluster, 0);
+			wipdata = hammer2_cluster_modify_ip(ip, cluster, 0);
 			KKASSERT(wipdata->meta.op_flags &
 				 HAMMER2_OPFLAG_DIRECTDATA);
 			KKASSERT(bp->b_loffset == 0);
 			bzero(wipdata->u.data, HAMMER2_EMBEDDED_BYTES);
 			hammer2_cluster_modsync(cluster);
 		} else {
-			hammer2_cluster_delete(trans, cparent, cluster,
+			hammer2_cluster_delete(cparent, cluster,
 					       HAMMER2_DELETE_PERMANENT);
 		}
 		hammer2_cluster_unlock(cluster);

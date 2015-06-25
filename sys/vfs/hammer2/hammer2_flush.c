@@ -66,12 +66,10 @@
  */
 struct hammer2_flush_info {
 	hammer2_chain_t *parent;
-	hammer2_trans_t	*trans;
 	int		depth;
 	int		diddeferral;
 	int		cache_index;
 	struct h2_flush_list flushq;
-	hammer2_xid_t	sync_xid;	/* memory synchronization point */
 	hammer2_chain_t	*debug;
 };
 
@@ -82,38 +80,23 @@ static void hammer2_flush_core(hammer2_flush_info_t *info,
 static int hammer2_flush_recurse(hammer2_chain_t *child, void *data);
 
 /*
- * For now use a global transaction manager.  What we ultimately want to do
- * is give each non-overlapping hmp/pmp group its own transaction manager.
- *
- * Transactions govern XID tracking on the physical media (the hmp), but they
- * also govern TID tracking which is per-PFS and thus might cross multiple
- * hmp's.  So we can't just stuff tmanage into hammer2_dev or
- * hammer2_pfs.
+ * Any per-pfs transaction initialization goes here.
  */
 void
-hammer2_trans_manage_init(hammer2_trans_manage_t *tman)
+hammer2_trans_manage_init(hammer2_pfs_t *pmp)
 {
-	lockinit(&tman->translk, "h2trans", 0, 0);
-	TAILQ_INIT(&tman->transq);
-	tman->flush_xid = 1;
-	tman->alloc_xid = tman->flush_xid + 1;
-}
-
-hammer2_xid_t
-hammer2_trans_newxid(hammer2_pfs_t *pmp)
-{
-	hammer2_xid_t xid;
-
-	for (;;) {
-		xid = atomic_fetchadd_int(&pmp->tmanage.alloc_xid, 1);
-		if (xid)
-			break;
-	}
-	return xid;
 }
 
 /*
- * Transaction support functions for writing to the filesystem.
+ * Transaction support for any modifying operation.
+ *
+ * 0			- Normal transaction, interlocked against flush
+ *			  transaction.
+ *
+ * TRANS_ISFLUSH	- Flush transaction, interlocked against normal
+ *			  transaction.
+ *
+ * TRANS_BUFCACHE	- Buffer cache transaction, no interlock.
  *
  * Initializing a new transaction allocates a transaction ID.  Typically
  * passed a pmp (hmp passed as NULL), indicating a cluster transaction.  Can
@@ -133,209 +116,135 @@ hammer2_trans_newxid(hammer2_pfs_t *pmp)
  * flush depending on its state.
  */
 void
-hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfs_t *pmp, int flags)
+hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 {
-	hammer2_trans_manage_t *tman;
-	hammer2_trans_t *head;
+	uint32_t oflags;
+	uint32_t nflags;
+	int dowait;
 
-	tman = &pmp->tmanage;
+	for (;;) {
+		oflags = pmp->trans.flags;
+		cpu_ccfence();
+		dowait = 0;
 
-	bzero(trans, sizeof(*trans));
-	trans->pmp = pmp;
-	trans->flags = flags;
-	trans->td = curthread;
-
-	lockmgr(&tman->translk, LK_EXCLUSIVE);
-
-	if (flags & HAMMER2_TRANS_ISFLUSH) {
-		/*
-		 * If multiple flushes are trying to run we have to
-		 * wait until it is our turn.  All flushes are serialized.
-		 *
-		 * We queue ourselves and then wait to become the head
-		 * of the queue, allowing all prior flushes to complete.
-		 *
-		 * Multiple normal transactions can share the current
-		 * transaction id but a flush transaction needs its own
-		 * unique TID for proper block table update accounting.
-		 */
-		++tman->flushcnt;
-		++pmp->modify_tid;
-		tman->flush_xid = hammer2_trans_newxid(pmp);
-		trans->sync_xid = tman->flush_xid;
-		trans->modify_tid = pmp->modify_tid;
-		TAILQ_INSERT_TAIL(&tman->transq, trans, entry);
-		if (TAILQ_FIRST(&tman->transq) != trans) {
-			trans->blocked = 1;
-			while (trans->blocked) {
-				lksleep(&trans->sync_xid, &tman->translk,
-					0, "h2multf", hz);
-			}
-		}
-	} else if (tman->flushcnt == 0) {
-		/*
-		 * No flushes are pending, we can go.  Use prior flush_xid + 1.
-		 *
-		 * WARNING!  Also see hammer2_chain_setflush()
-		 */
-		TAILQ_INSERT_TAIL(&tman->transq, trans, entry);
-		trans->sync_xid = tman->flush_xid + 1;
-
-		/* XXX improve/optimize inode allocation */
-	} else if (trans->flags & HAMMER2_TRANS_BUFCACHE) {
-		/*
-		 * A buffer cache transaction is requested while a flush
-		 * is in progress.  The flush's PREFLUSH flag must be set
-		 * in this situation.
-		 *
-		 * The buffer cache flush takes on the main flush's
-		 * transaction id.
-		 */
-		TAILQ_FOREACH(head, &tman->transq, entry) {
-			if (head->flags & HAMMER2_TRANS_ISFLUSH)
-				break;
-		}
-		KKASSERT(head);
-		KKASSERT(head->flags & HAMMER2_TRANS_PREFLUSH);
-		trans->flags |= HAMMER2_TRANS_PREFLUSH;
-		TAILQ_INSERT_AFTER(&tman->transq, head, trans, entry);
-		trans->sync_xid = head->sync_xid;
-		trans->modify_tid = head->modify_tid;
-		trans->flags |= HAMMER2_TRANS_CONCURRENT;
-		/* not allowed to block */
-	} else {
-		/*
-		 * A normal transaction is requested while a flush is in
-		 * progress.  We insert after the current flush and may
-		 * block.
-		 *
-		 * WARNING!  Also see hammer2_chain_setflush()
-		 */
-		TAILQ_FOREACH(head, &tman->transq, entry) {
-			if (head->flags & HAMMER2_TRANS_ISFLUSH)
-				break;
-		}
-		KKASSERT(head);
-		TAILQ_INSERT_AFTER(&tman->transq, head, trans, entry);
-		trans->sync_xid = head->sync_xid + 1;
-		trans->flags |= HAMMER2_TRANS_CONCURRENT;
-
-		/*
-		 * XXX for now we must block new transactions, synchronous
-		 * flush mode is on by default.
-		 *
-		 * If synchronous flush mode is enabled concurrent
-		 * frontend transactions during the flush are not
-		 * allowed (except we don't have a choice for buffer
-		 * cache ops).
-		 */
-		if (hammer2_synchronous_flush > 0 ||
-		    TAILQ_FIRST(&tman->transq) != head) {
-			trans->blocked = 1;
-			while (trans->blocked) {
-				lksleep(&trans->sync_xid, &tman->translk,
-					0, "h2multf", hz);
-			}
-		}
-	}
-	if (flags & HAMMER2_TRANS_NEWINODE) {
-		if (pmp->spmp_hmp) {
+		if (flags & HAMMER2_TRANS_ISFLUSH) {
 			/*
-			 * Super-root transaction, all new inodes have an
-			 * inode number of 1.  Normal pfs inode cache
-			 * semantics are not used.
+			 * Requesting flush transaction.  Wait for all
+			 * currently running transactions to finish.
 			 */
-			trans->inode_tid = 1;
+			if (oflags & HAMMER2_TRANS_MASK) {
+				nflags = oflags | HAMMER2_TRANS_FPENDING |
+						  HAMMER2_TRANS_WAITING;
+				dowait = 1;
+			} else {
+				nflags = (oflags | flags) + 1;
+			}
+			++pmp->modify_tid;
+		} else if (flags & HAMMER2_TRANS_BUFCACHE) {
+			/*
+			 * Requesting strategy transaction.  Generally
+			 * allowed in all situations unless a flush
+			 * is running without the preflush flag.
+			 */
+			if ((oflags & (HAMMER2_TRANS_ISFLUSH |
+				       HAMMER2_TRANS_PREFLUSH)) ==
+			    HAMMER2_TRANS_ISFLUSH) {
+				nflags = oflags | HAMMER2_TRANS_WAITING;
+				dowait = 1;
+			} else {
+				nflags = (oflags | flags) + 1;
+			}
 		} else {
 			/*
-			 * Normal transaction
+			 * Requesting normal transaction.  Wait for any
+			 * flush to finish before allowing.
 			 */
-			if (pmp->inode_tid < HAMMER2_INODE_START)
-				pmp->inode_tid = HAMMER2_INODE_START;
-			trans->inode_tid = pmp->inode_tid++;
+			if (oflags & HAMMER2_TRANS_ISFLUSH) {
+				nflags = oflags | HAMMER2_TRANS_WAITING;
+				dowait = 1;
+			} else {
+				nflags = (oflags | flags) + 1;
+			}
 		}
+		if (dowait)
+			tsleep_interlock(&pmp->trans.sync_wait, 0);
+		if (atomic_cmpset_int(&pmp->trans.flags, oflags, nflags)) {
+			if (dowait == 0)
+				break;
+			tsleep(&pmp->trans.sync_wait, PINTERLOCKED,
+			       "h2trans", hz);
+		} else {
+			cpu_pause();
+		}
+		/* retry */
 	}
-
-	lockmgr(&tman->translk, LK_RELEASE);
 }
 
+void
+hammer2_trans_done(hammer2_pfs_t *pmp)
+{
+	uint32_t oflags;
+	uint32_t nflags;
+
+	for (;;) {
+		oflags = pmp->trans.flags;
+		cpu_ccfence();
+		KKASSERT(oflags & HAMMER2_TRANS_MASK);
+		if ((oflags & HAMMER2_TRANS_MASK) == 1) {
+			/*
+			 * This was the last transaction
+			 */
+			nflags = (oflags - 1) & ~(HAMMER2_TRANS_ISFLUSH |
+						  HAMMER2_TRANS_BUFCACHE |
+						  HAMMER2_TRANS_PREFLUSH |
+						  HAMMER2_TRANS_FPENDING |
+						  HAMMER2_TRANS_WAITING);
+		} else {
+			/*
+			 * Still transactions pending
+			 */
+			nflags = oflags - 1;
+		}
+		if (atomic_cmpset_int(&pmp->trans.flags, oflags, nflags)) {
+			if ((nflags & HAMMER2_TRANS_MASK) == 0 &&
+			    (oflags & HAMMER2_TRANS_WAITING)) {
+				wakeup(&pmp->trans.sync_wait);
+			}
+			break;
+		} else {
+			cpu_pause();
+		}
+		/* retry */
+	}
+}
+
+/*
+ * Obtain new, unique inode number (not serialized by caller).
+ */
+hammer2_tid_t
+hammer2_trans_newinum(hammer2_pfs_t *pmp)
+{
+	hammer2_tid_t tid;
+
+	KKASSERT(sizeof(long) == 8);
+	tid = atomic_fetchadd_long(&pmp->inode_tid, 1);
+
+	return tid;
+}
+
+/*
+ * Assert that a strategy call is ok here.  Strategy calls are legal
+ *
+ * (1) In a normal transaction.
+ * (2) In a flush transaction only if PREFLUSH is also set.
+ */
 void
 hammer2_trans_assert_strategy(hammer2_pfs_t *pmp)
 {
-	hammer2_trans_manage_t *tman;
-	hammer2_trans_t *head;
-
-	tman = &pmp->tmanage;
-	lockmgr(&tman->translk, LK_EXCLUSIVE);
-	if (tman->flushcnt) {
-		TAILQ_FOREACH(head, &tman->transq, entry) {
-			if (head->flags & HAMMER2_TRANS_ISFLUSH)
-				break;
-		}
-		KKASSERT(head);
-		KKASSERT(head->flags & HAMMER2_TRANS_PREFLUSH);
-	}
-	lockmgr(&tman->translk, LK_RELEASE);
+	KKASSERT((pmp->trans.flags & HAMMER2_TRANS_ISFLUSH) == 0 ||
+		 (pmp->trans.flags & HAMMER2_TRANS_PREFLUSH));
 }
 
-void
-hammer2_trans_done(hammer2_trans_t *trans)
-{
-	hammer2_trans_manage_t *tman;
-	hammer2_trans_t *head;
-	hammer2_trans_t *scan;
-
-	tman = &trans->pmp->tmanage;
-
-	/*
-	 * Remove.
-	 */
-	lockmgr(&tman->translk, LK_EXCLUSIVE);
-	TAILQ_REMOVE(&tman->transq, trans, entry);
-	head = TAILQ_FIRST(&tman->transq);
-
-	/*
-	 * Adjust flushcnt if this was a flush, clear TRANS_CONCURRENT
-	 * up through the next flush.  (If the head is a flush then we
-	 * stop there, unlike the unblock code following this section).
-	 */
-	if (trans->flags & HAMMER2_TRANS_ISFLUSH) {
-		--tman->flushcnt;
-		scan = head;
-		while (scan && (scan->flags & HAMMER2_TRANS_ISFLUSH) == 0) {
-			atomic_clear_int(&scan->flags,
-					 HAMMER2_TRANS_CONCURRENT);
-			scan = TAILQ_NEXT(scan, entry);
-		}
-	}
-
-	/*
-	 * Unblock the head of the queue and any additional transactions
-	 * up to the next flush.  The head can be a flush and it will be
-	 * unblocked along with the non-flush transactions following it
-	 * (which are allowed to run concurrently with it).
-	 *
-	 * In synchronous flush mode we stop if the head transaction is
-	 * a flush.
-	 */
-	if (head && head->blocked) {
-		head->blocked = 0;
-		wakeup(&head->sync_xid);
-
-		if (hammer2_synchronous_flush > 0)
-			scan = head;
-		else
-			scan = TAILQ_NEXT(head, entry);
-		while (scan && (scan->flags & HAMMER2_TRANS_ISFLUSH) == 0) {
-			if (scan->blocked) {
-				scan->blocked = 0;
-				wakeup(&scan->sync_xid);
-			}
-			scan = TAILQ_NEXT(scan, entry);
-		}
-	}
-	lockmgr(&tman->translk, LK_RELEASE);
-}
 
 /*
  * Chains undergoing destruction are removed from the in-memory topology.
@@ -348,7 +257,7 @@ hammer2_trans_done(hammer2_trans_t *trans)
  * be avoided.
  */
 void
-hammer2_delayed_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
+hammer2_delayed_flush(hammer2_chain_t *chain)
 {
 	if ((chain->flags & HAMMER2_CHAIN_DELAYED) == 0) {
 		hammer2_spin_ex(&chain->hmp->list_spin);
@@ -369,10 +278,6 @@ hammer2_delayed_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
  * synchronization point, propagating parent chain modifications, modify_tid,
  * and mirror_tid updates back up as needed.
  *
- * Caller must have interlocked against any non-flush-related modifying
- * operations in progress whos XXX values are less than or equal
- * to the passed sync_xid.
- *
  * Caller must have already vetted synchronization points to ensure they
  * are properly flushed.  Only snapshots and cluster flushes can create
  * these sorts of synchronization points.
@@ -386,7 +291,7 @@ hammer2_delayed_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
  * the call if it was modified.
  */
 void
-hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain, int istop)
+hammer2_flush(hammer2_chain_t *chain, int istop)
 {
 	hammer2_chain_t *scan;
 	hammer2_flush_info_t info;
@@ -403,8 +308,6 @@ hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain, int istop)
 	 */
 	bzero(&info, sizeof(info));
 	TAILQ_INIT(&info.flushq);
-	info.trans = trans;
-	info.sync_xid = trans->sync_xid;
 	info.cache_index = -1;
 
 	/*
@@ -454,7 +357,7 @@ hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t *chain, int istop)
 			if (hammer2_debug & 0x0040)
 				kprintf("deferred flush %p\n", scan);
 			hammer2_chain_lock(scan, HAMMER2_RESOLVE_MAYBE);
-			hammer2_flush(trans, scan, 0);
+			hammer2_flush(scan, 0);
 			hammer2_chain_unlock(scan);
 			hammer2_chain_drop(scan);	/* ref from deferral */
 		}
@@ -591,7 +494,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		hammer2_spin_unex(&chain->core.spin);
 		info->parent = parent;
 		if (info->diddeferral)
-			hammer2_chain_setflush(info->trans, chain);
+			hammer2_chain_setflush(chain);
 	}
 
 	/*
@@ -678,12 +581,11 @@ again:
 		 *	 embedded data don't need this.
 		 */
 		if (hammer2_debug & 0x1000) {
-			kprintf("Flush %p.%d %016jx/%d sync_xid=%08x "
-				"data=%016jx\n",
+			kprintf("Flush %p.%d %016jx/%d data=%016jx",
 				chain, chain->bref.type,
-				chain->bref.key, chain->bref.keybits,
-				info->sync_xid,
-				chain->bref.data_off);
+				(uintmax_t)chain->bref.key,
+				chain->bref.keybits,
+				(uintmax_t)chain->bref.data_off);
 		}
 		if (hammer2_debug & 0x2000) {
 			Debugger("Flush hell");
@@ -932,7 +834,7 @@ again:
 		 * We are updating the parent's blockmap, the parent must
 		 * be set modified.
 		 */
-		hammer2_chain_modify(info->trans, parent, 0);
+		hammer2_chain_modify(parent, HAMMER2_MODIFY_KEEPMODIFY);
 		if (parent->bref.modify_tid < chain->bref.modify_tid)
 			parent->bref.modify_tid = chain->bref.modify_tid;
 
@@ -989,8 +891,7 @@ again:
 		if (base && (chain->flags & HAMMER2_CHAIN_BMAPUPD)) {
 			if (chain->flags & HAMMER2_CHAIN_BMAPPED) {
 				hammer2_spin_ex(&parent->core.spin);
-				hammer2_base_delete(info->trans, parent,
-						    base, count,
+				hammer2_base_delete(parent, base, count,
 						    &info->cache_index, chain);
 				hammer2_spin_unex(&parent->core.spin);
 				/* base_delete clears both bits */
@@ -1001,8 +902,7 @@ again:
 		}
 		if (base && (chain->flags & HAMMER2_CHAIN_BMAPPED) == 0) {
 			hammer2_spin_ex(&parent->core.spin);
-			hammer2_base_insert(info->trans, parent,
-					    base, count,
+			hammer2_base_insert(parent, base, count,
 					    &info->cache_index, chain);
 			hammer2_spin_unex(&parent->core.spin);
 			/* base_insert sets BMAPPED */
@@ -1044,7 +944,6 @@ static int
 hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 {
 	hammer2_flush_info_t *info = data;
-	/*hammer2_trans_t *trans = info->trans;*/
 	hammer2_chain_t *parent = info->parent;
 
 	/*
