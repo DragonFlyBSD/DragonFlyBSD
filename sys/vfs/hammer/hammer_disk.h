@@ -129,12 +129,12 @@ typedef u_int32_t hammer_crc_t;
  * zone 0:		reserved for sanity
  * zone 1 (z,v,o):	raw volume relative (offset 0 is the volume header)
  * zone 2 (z,v,o):	raw buffer relative (offset 0 is the first buffer)
- * zone 3 (z,o):	undo fifo	- actually fixed phys array in vol hdr
+ * zone 3 (z,o):	undo fifo	- actually zone-2 address, fixed phys array in vol hdr
  * zone 4 (z,v,o):	freemap		- only real blockmap
  * zone 8 (z,v,o):	B-Tree		- actually zone-2 address
- * zone 9 (z,v,o):	Record		- actually zone-2 address
- * zone 10 (z,v,o):	Large-data	- actually zone-2 address
- * zone 11 (z,v,o):	Small-data	- actually zone-2 address
+ * zone 9 (z,v,o):	meta		- actually zone-2 address
+ * zone 10 (z,v,o):	large-data	- actually zone-2 address
+ * zone 11 (z,v,o):	small-data	- actually zone-2 address
  * zone 15:		reserved for sanity
  *
  * layer1/layer2 direct map:
