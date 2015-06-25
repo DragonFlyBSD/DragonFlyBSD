@@ -580,7 +580,11 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 			&ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX]);
 			
 		ondisk->vol0_stat_freebigblocks = initialize_freemap(vol);
-		for (i = 8; i < HAMMER_MAX_ZONES; ++i) {
+
+		/*
+		 * Format zones that are mapped to zone-2.
+		 */
+		for (i = HAMMER_ZONE_BTREE_INDEX; i < HAMMER_MAX_ZONES; ++i) {
 			format_blockmap(&ondisk->vol0_blockmap[i],
 					HAMMER_ZONE_ENCODE(i, 0));
 		}
