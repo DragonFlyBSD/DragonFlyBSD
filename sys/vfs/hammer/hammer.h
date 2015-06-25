@@ -1631,7 +1631,7 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 {
 #if defined INVARIANTS
 	int zone = HAMMER_ZONE_DECODE(zone_offset);
-	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+	KKASSERT(zone >= HAMMER_ZONE2_MAPPED_INDEX && zone < HAMMER_MAX_ZONES);
 #endif
 
 	/*

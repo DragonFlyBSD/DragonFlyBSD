@@ -183,6 +183,8 @@ hammer_cmd_checkmap(void)
 	}
 	rel_volume(volume);
 
+	assert(HAMMER_ZONE_UNDO_INDEX < HAMMER_ZONE2_MAPPED_INDEX);
+	assert(HAMMER_ZONE2_MAPPED_INDEX < HAMMER_MAX_ZONES);
 	AssertOnFailure = 0;
 
 	printf("Collecting allocation info from B-Tree: ");
@@ -486,7 +488,7 @@ dump_collect(collect_t collect, int *stats)
 		zone = layer2->zone;
 		if (AssertOnFailure) {
 			assert((zone == HAMMER_ZONE_UNDO_INDEX) ||
-				(zone >= HAMMER_ZONE_BTREE_INDEX &&
+				(zone >= HAMMER_ZONE2_MAPPED_INDEX &&
 				 zone < HAMMER_MAX_ZONES));
 		}
 		stats[zone]++;

@@ -97,7 +97,7 @@ hammer_blockmap_alloc(hammer_transaction_t trans, int zone, int bytes,
 	 */
 	bytes = (bytes + 15) & ~15;
 	KKASSERT(bytes > 0 && bytes <= HAMMER_XBUFSIZE);
-	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+	KKASSERT(zone >= HAMMER_ZONE2_MAPPED_INDEX && zone < HAMMER_MAX_ZONES);
 
 	/*
 	 * Setup
@@ -248,7 +248,7 @@ again:
 	 * We do this for B-Tree and meta-data allocations to provide
 	 * localization for updates.
 	 */
-	if ((zone == HAMMER_ZONE_BTREE_INDEX ||
+	if ((zone == HAMMER_ZONE2_MAPPED_INDEX ||
 	     zone == HAMMER_ZONE_META_INDEX) &&
 	    offset >= HAMMER_BIGBLOCK_OVERFILL &&
 	    !((next_offset ^ blockmap->next_offset) & ~HAMMER_BIGBLOCK_MASK64)
@@ -425,7 +425,7 @@ hammer_blockmap_reserve(hammer_mount_t hmp, int zone, int bytes,
 	/*
 	 * Setup
 	 */
-	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+	KKASSERT(zone >= HAMMER_ZONE2_MAPPED_INDEX && zone < HAMMER_MAX_ZONES);
 	root_volume = hammer_get_root_volume(hmp, errorp);
 	if (*errorp)
 		return(NULL);
@@ -655,7 +655,7 @@ hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone, int bytes,
 	/*
 	 * Setup
 	 */
-	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+	KKASSERT(zone >= HAMMER_ZONE2_MAPPED_INDEX && zone < HAMMER_MAX_ZONES);
 	root_volume = hammer_get_root_volume(hmp, errorp);
 	if (*errorp)
 		return (NULL);
@@ -966,7 +966,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	 * Basic zone validation & locking
 	 */
 	zone = HAMMER_ZONE_DECODE(zone_offset);
-	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+	KKASSERT(zone >= HAMMER_ZONE2_MAPPED_INDEX && zone < HAMMER_MAX_ZONES);
 	root_volume = trans->rootvol;
 	error = 0;
 
@@ -1101,7 +1101,7 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 	 * Basic zone validation & locking
 	 */
 	zone = HAMMER_ZONE_DECODE(zone_offset);
-	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+	KKASSERT(zone >= HAMMER_ZONE2_MAPPED_INDEX && zone < HAMMER_MAX_ZONES);
 	error = 0;
 
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
@@ -1209,7 +1209,7 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	 * Basic zone validation & locking
 	 */
 	zone = HAMMER_ZONE_DECODE(zone_offset);
-	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+	KKASSERT(zone >= HAMMER_ZONE2_MAPPED_INDEX && zone < HAMMER_MAX_ZONES);
 	root_volume = trans->rootvol;
 	error = 0;
 
@@ -1330,7 +1330,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 	int zone;
 
 	zone = HAMMER_ZONE_DECODE(zone_offset);
-	KKASSERT(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+	KKASSERT(zone >= HAMMER_ZONE2_MAPPED_INDEX && zone < HAMMER_MAX_ZONES);
 	root_volume = hammer_get_root_volume(hmp, errorp);
 	if (*errorp) {
 		*curp = 0;

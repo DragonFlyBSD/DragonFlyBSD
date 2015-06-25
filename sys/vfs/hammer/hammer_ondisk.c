@@ -664,7 +664,7 @@ found_aliased:
 	/*
 	 * Handle blockmap offset translations
 	 */
-	if (zone >= HAMMER_ZONE_BTREE_INDEX) {
+	if (zone >= HAMMER_ZONE2_MAPPED_INDEX) {
 		zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
 		zone2_offset = hammer_undo_lookup(hmp, buf_offset, errorp);

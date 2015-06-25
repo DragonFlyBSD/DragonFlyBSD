@@ -170,6 +170,12 @@ typedef u_int32_t hammer_crc_t;
 
 #define HAMMER_MAX_ZONES		16
 
+/*
+ * Backend zones that are mapped to zone-2 (except for zone-3)
+ * starts from this index which is 8.
+ */
+#define HAMMER_ZONE2_MAPPED_INDEX	HAMMER_ZONE_BTREE_INDEX
+
 #define HAMMER_VOL_ENCODE(vol_no)			\
 	((hammer_off_t)((vol_no) & 255) << 52)
 #define HAMMER_VOL_DECODE(ham_off)			\
