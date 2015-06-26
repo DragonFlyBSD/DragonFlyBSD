@@ -45,6 +45,7 @@
 #include <sys/queue.h>
 #include <sys/soundcard.h>
 #include <sys/time.h>
+#include <machine/cpufunc.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,6 +61,7 @@ struct cpu_pwrdom {
 	TAILQ_ENTRY(cpu_pwrdom)	dom_link;
 	int			dom_id;
 	int			dom_ncpus;
+	cpumask_t		dom_cpumask;
 };
 TAILQ_HEAD(cpu_pwrdom_list, cpu_pwrdom);
 
@@ -328,6 +330,7 @@ setupdominfo(void)
 		int bsp_domain = 0;
 
 		TAILQ_REMOVE(&tmp_list, dom, dom_link);
+		CPUMASK_ASSZERO(dom->dom_cpumask);
 
 		snprintf(buf, sizeof(buf),
 			 "hw.acpi.cpu.px_dom%d.members", dom->dom_id);
@@ -346,11 +349,21 @@ setupdominfo(void)
 				++dom->dom_ncpus;
 				if (n == 0)
 					bsp_domain = 1;
+				CPUMASK_ORBIT(dom->dom_cpumask, n);
 			}
 		}
 		if (dom->dom_ncpus == 0) {
 			free(dom);
 			continue;
+		}
+		if (DebugOpt) {
+			printf("dom%d cpumask: ", dom->dom_id);
+			for (i = 0; i < (int)NELEM(dom->dom_cpumask.ary); ++i) {
+				printf("%jx ",
+				    (uintmax_t)dom->dom_cpumask.ary[i]);
+			}
+			printf("\n");
+			fflush(stdout);
 		}
 
 		if (bsp_domain) {
@@ -412,8 +425,7 @@ getcputime(double pollrate)
  *
  * This function also sets the user scheduler global cpu mask.
  */
-static
-void
+static void
 acpi_setcpufreq(int nstate)
 {
 	int ncpus = 0;
@@ -435,14 +447,49 @@ acpi_setcpufreq(int nstate)
 	 *
 	 * Calculate the starting domain if the number of operating cpus
 	 * has decreased.
+	 *
+	 * Calculate the mask of cpus the userland scheduler is allowed
+	 * to use.
 	 */
 	NCpuPwrDomUsed = 0;
+	CPUMASK_ASSZERO(global_cpumask);
 	for (dom = TAILQ_FIRST(&CpuPwrDomain); dom != &CpuPwrDomLast;
 	     dom = TAILQ_NEXT(dom, dom_link)) {
+		cpumask_t mask;
+
 		if (ncpus >= nstate)
 			break;
 		ncpus += dom->dom_ncpus;
 		++NCpuPwrDomUsed;
+
+		mask = dom->dom_cpumask;
+		if (ncpus > nstate) {
+			int i, diff;
+
+			diff = ncpus - nstate;
+			for (i = 0; i < diff; ++i) {
+				int c;
+
+				c = BSRCPUMASK(mask);
+				CPUMASK_NANDBIT(mask, c);
+			}
+		}
+		CPUMASK_ORMASK(global_cpumask, mask);
+	}
+
+	/*
+	 * Make sure that userland scheduler has at least one cpu.
+	 */
+	if (CPUMASK_TESTZERO(global_cpumask))
+		CPUMASK_ORBIT(global_cpumask, 0);
+	if (DebugOpt) {
+		int i;
+
+		printf("\nusched cpumask: ");
+		for (i = 0; i < (int)NELEM(global_cpumask.ary); ++i)
+			printf("%jx ", (uintmax_t)global_cpumask.ary[i]);
+		printf("\n");
+		fflush(stdout);
 	}
 
 	syslog(LOG_INFO, "using %d cpus", nstate);
@@ -450,7 +497,6 @@ acpi_setcpufreq(int nstate)
 	/*
 	 * Set the mask of cpus the userland scheduler is allowed to use.
 	 */
-	CPUMASK_ASSBMASK(global_cpumask, nstate == 0 ? 1 : nstate);
 	sysctlbyname("kern.usched_global_cpumask", NULL, 0,
 		     &global_cpumask, sizeof(global_cpumask));
 
