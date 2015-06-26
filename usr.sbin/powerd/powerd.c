@@ -42,6 +42,7 @@
 #include <sys/sysctl.h>
 #include <sys/kinfo.h>
 #include <sys/file.h>
+#include <sys/queue.h>
 #include <sys/soundcard.h>
 #include <sys/time.h>
 #include <err.h>
@@ -55,6 +56,13 @@
 
 #define MAXDOM		MAXCPU	/* worst case, 1 cpu per domain */
 
+struct cpu_pwrdom {
+	TAILQ_ENTRY(cpu_pwrdom)	dom_link;
+	int			dom_id;
+	int			dom_ncpus;
+};
+TAILQ_HEAD(cpu_pwrdom_list, cpu_pwrdom);
+
 static void usage(void);
 static double getcputime(double);
 static void acpi_setcpufreq(int nstate);
@@ -63,14 +71,17 @@ static int has_battery(void);
 static int mon_battery(void);
 static void getncpus(void);
 
+static struct cpu_pwrdom_list CpuPwrDomain =
+    TAILQ_HEAD_INITIALIZER(CpuPwrDomain);
+static struct cpu_pwrdom *CpuPwrDomLimit;
+static struct cpu_pwrdom CpuPwrDomLast;
+static int NCpuPwrDomUsed;
+
 static int TotalCpus;
 int DebugOpt;
 int TurboOpt = 1;
 int CpuLimit;		/* # of cpus at max frequency */
-int DomLimit;		/* # of domains at max frequency */
 int PowerFd;
-int DomBeg;
-int DomEnd;
 int NCpus;
 int CpuCount[MAXDOM];	/* # of cpus in any given domain */
 int Hysteresis = 10;	/* percentage */
@@ -215,12 +226,12 @@ main(int ac, char **av)
 		getcputime(pollrate);
 
 		setupdominfo();
-		if (DomBeg >= DomEnd) {
+		if (TAILQ_EMPTY(&CpuPwrDomain)) {
 			usleep((int)(pollrate * 1000000.0));
 			continue;
 		}
 
-		DomLimit = DomEnd;
+		CpuPwrDomLimit = &CpuPwrDomLast;
 		CpuLimit = NCpus;
 		break;
 	}
@@ -267,7 +278,7 @@ main(int ac, char **av)
 			printf("\rqavg=%5.2f uavg=%5.2f davg=%5.2f "
 			       "%2d/%2d ncpus=%d\r",
 				qavg, uavg, davg,
-				CpuLimit, DomLimit, nstate);
+				CpuLimit, NCpuPwrDomUsed, nstate);
 			fflush(stdout);
 		}
 		if (nstate != CpuLimit)
@@ -290,51 +301,74 @@ sigintr(int signo __unused)
 /*
  * Figure out the domains and calculate the CpuCount[] array.
  */
-static
-void
+static void
 setupdominfo(void)
 {
+	struct cpu_pwrdom *dom;
+	struct cpu_pwrdom_list tmp_list;
 	char buf[64];
 	char members[1024];
 	char *str;
 	size_t msize;
-	int i;
-	int n;
+	int n, i;
 
+	TAILQ_INIT(&tmp_list);
 	for (i = 0; i < MAXDOM; ++i) {
 		snprintf(buf, sizeof(buf),
 			 "hw.acpi.cpu.px_dom%d.available", i);
-		if (sysctlbyname(buf, NULL, NULL, NULL, 0) >= 0)
-			break;
-	}
-	DomBeg = i;
+		if (sysctlbyname(buf, NULL, NULL, NULL, 0) < 0)
+			continue;
 
-	for (i = MAXDOM - 1; i >= DomBeg; --i) {
-		snprintf(buf, sizeof(buf),
-			 "hw.acpi.cpu.px_dom%d.available", i);
-		if (sysctlbyname(buf, NULL, NULL, NULL, 0) >= 0) {
-			++i;
-			break;
-		}
+		dom = calloc(1, sizeof(*dom));
+		dom->dom_id = i;
+		TAILQ_INSERT_TAIL(&tmp_list, dom, dom_link);
 	}
-	DomEnd = i;
 
-	for (i = DomBeg; i < DomEnd; ++i) {
+	while ((dom = TAILQ_FIRST(&tmp_list)) != NULL) {
+		int bsp_domain = 0;
+
+		TAILQ_REMOVE(&tmp_list, dom, dom_link);
+
 		snprintf(buf, sizeof(buf),
-			 "hw.acpi.cpu.px_dom%d.members", i);
+			 "hw.acpi.cpu.px_dom%d.members", dom->dom_id);
 		msize = sizeof(members);
-		if (sysctlbyname(buf, members, &msize, NULL, 0) == 0) {
-			members[msize] = 0;
-			for (str = strtok(members, " "); str;
-			     str = strtok(NULL, " ")) {
-				n = -1;
-				sscanf(str, "cpu%d", &n);
-				if (n >= 0) {
-					++NCpus;
-					++CpuCount[i];
-				}
+		if (sysctlbyname(buf, members, &msize, NULL, 0) < 0) {
+			free(dom);
+			continue;
+		}
+
+		members[msize] = 0;
+		for (str = strtok(members, " "); str; str = strtok(NULL, " ")) {
+			n = -1;
+			sscanf(str, "cpu%d", &n);
+			if (n >= 0) {
+				++NCpus;
+				++dom->dom_ncpus;
+				if (n == 0)
+					bsp_domain = 1;
 			}
 		}
+		if (dom->dom_ncpus == 0) {
+			free(dom);
+			continue;
+		}
+
+		if (bsp_domain) {
+			/*
+			 * Use the power domain containing the BSP as the first
+			 * power domain.  So if all CPUs are idle, we could
+			 * leave BSP to the usched without too much trouble.
+			 */
+			TAILQ_INSERT_HEAD(&CpuPwrDomain, dom, dom_link);
+		} else {
+			TAILQ_INSERT_TAIL(&CpuPwrDomain, dom, dom_link);
+		}
+		++NCpuPwrDomUsed;
+	}
+	if (!TAILQ_EMPTY(&CpuPwrDomain)) {
+		/* Install sentinel */
+		CpuPwrDomLast.dom_id = -1;
+		TAILQ_INSERT_TAIL(&CpuPwrDomain, &CpuPwrDomLast, dom_link);
 	}
 }
 
@@ -384,9 +418,7 @@ acpi_setcpufreq(int nstate)
 {
 	int ncpus = 0;
 	int increasing = (nstate > CpuLimit);
-	int dom;
-	int domBeg;
-	int domEnd;
+	struct cpu_pwrdom *dom, *domBeg, *domEnd;
 	int lowest;
 	int highest;
 	int desired;
@@ -404,10 +436,13 @@ acpi_setcpufreq(int nstate)
 	 * Calculate the starting domain if the number of operating cpus
 	 * has decreased.
 	 */
-	for (dom = DomBeg; dom < DomEnd; ++dom) {
+	NCpuPwrDomUsed = 0;
+	for (dom = TAILQ_FIRST(&CpuPwrDomain); dom != &CpuPwrDomLast;
+	     dom = TAILQ_NEXT(dom, dom_link)) {
 		if (ncpus >= nstate)
 			break;
-		ncpus += CpuCount[dom];
+		ncpus += dom->dom_ncpus;
+		++NCpuPwrDomUsed;
 	}
 
 	syslog(LOG_INFO, "using %d cpus", nstate);
@@ -420,13 +455,13 @@ acpi_setcpufreq(int nstate)
 		     &global_cpumask, sizeof(global_cpumask));
 
 	if (increasing) {
-		domBeg = DomLimit;
+		domBeg = CpuPwrDomLimit;
 		domEnd = dom;
 	} else {
 		domBeg = dom;
-		domEnd = DomLimit;
+		domEnd = CpuPwrDomLimit;
 	}
-	DomLimit = dom;
+	CpuPwrDomLimit = dom;
 	CpuLimit = nstate;
 
 	/*
@@ -434,11 +469,11 @@ acpi_setcpufreq(int nstate)
 	 */
 	if (DebugOpt)
 		printf("\n");
-	for (dom = domBeg; dom < domEnd; ++dom) {
+	for (dom = domBeg; dom != domEnd; dom = TAILQ_NEXT(dom, dom_link)) {
 		/*
 		 * Retrieve availability list
 		 */
-		asprintf(&sysid, "hw.acpi.cpu.px_dom%d.available", dom);
+		asprintf(&sysid, "hw.acpi.cpu.px_dom%d.available", dom->dom_id);
 		buflen = sizeof(buf) - 1;
 		v = sysctlbyname(sysid, buf, &buflen, NULL, 0);
 		free(sysid);
@@ -469,14 +504,14 @@ acpi_setcpufreq(int nstate)
 		 */
 		desired = increasing ? highest : lowest;
 
-		asprintf(&sysid, "hw.acpi.cpu.px_dom%d.select", dom);
+		asprintf(&sysid, "hw.acpi.cpu.px_dom%d.select", dom->dom_id);
 		buflen = sizeof(v);
 		v = 0;
 		sysctlbyname(sysid, &v, &buflen, NULL, 0);
 		{
 			if (DebugOpt) {
 				printf("dom%d set frequency %d\n",
-				       dom, desired);
+				       dom->dom_id, desired);
 			}
 			sysctlbyname(sysid, NULL, NULL,
 				     &desired, sizeof(desired));
