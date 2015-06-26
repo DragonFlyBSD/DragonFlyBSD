@@ -963,6 +963,7 @@ hammer2_xop_alloc(hammer2_inode_t *ip)
 	hammer2_xop_t *xop;
 
 	xop = objcache_get(cache_xops, M_WAITOK);
+	KKASSERT(xop->head.cluster.array[0].chain == NULL);
 	xop->head.ip = ip;
 	xop->head.func = NULL;
 	xop->head.state = 0;
@@ -1003,7 +1004,6 @@ hammer2_xop_helper_create(hammer2_pfs_t *pmp)
 	int i;
 	int j;
 
-	kprintf("XOP_HELPER_CREATE: %d\n",  pmp->pfs_nmasters);
 	for (i = 0; i < pmp->pfs_nmasters; ++i) {
 		for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
 			if (pmp->xop_groups[j].thrs[i].td)
@@ -1135,6 +1135,11 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 	if (xop->ip) {
 		hammer2_inode_drop(xop->ip);
 		xop->ip = NULL;
+	}
+	if (xop->name) {
+		kfree(xop->name, M_HAMMER2);
+		xop->name = NULL;
+		xop->name_len = 0;
 	}
 
 	objcache_put(cache_xops, xop);

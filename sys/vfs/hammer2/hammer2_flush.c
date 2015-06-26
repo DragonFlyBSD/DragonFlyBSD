@@ -991,3 +991,165 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 
 	return (0);
 }
+
+/*
+ * flush helper (backend threaded)
+ *
+ * Flushes core chains, issues disk sync, flushes volume roots.
+ *
+ * Primarily called from vfs_sync().
+ */
+void
+hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
+{
+	hammer2_xop_flush_t *xop = &arg->xop_flush;
+	hammer2_chain_t *chain;
+	hammer2_chain_t *parent;
+	hammer2_dev_t *hmp;
+	int error = 0;
+	int total_error = 0;
+	int j;
+
+	/*
+	 * Flush core chains
+	 */
+	chain = hammer2_inode_chain(xop->head.ip, clindex,
+				    HAMMER2_RESOLVE_ALWAYS);
+	if (chain) {
+		hmp = chain->hmp;
+		if (chain->flags & HAMMER2_CHAIN_FLUSH_MASK) {
+			hammer2_flush(chain, 1);
+			parent = chain->parent;
+			KKASSERT(chain->pmp != parent->pmp);
+			hammer2_chain_setflush(parent);
+		}
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+		chain = NULL;
+	} else {
+		hmp = NULL;
+	}
+
+	/*
+	 * Flush volume roots.  Avoid replication, we only want to
+	 * flush each hammer2_dev (hmp) once.
+	 */
+	for (j = clindex - 1; j >= 0; --j) {
+		if ((chain = xop->head.ip->cluster.array[j].chain) != NULL) {
+			if (chain->hmp == hmp) {
+				chain = NULL;	/* safety */
+				goto skip;
+			}
+		}
+	}
+	chain = NULL;	/* safety */
+
+	/*
+	 * spmp transaction.  The super-root is never directly mounted so
+	 * there shouldn't be any vnodes, let alone any dirty vnodes
+	 * associated with it.
+	 */
+	hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
+
+	/*
+	 * Media mounts have two 'roots', vchain for the topology
+	 * and fchain for the free block table.  Flush both.
+	 *
+	 * Note that the topology and free block table are handled
+	 * independently, so the free block table can wind up being
+	 * ahead of the topology.  We depend on the bulk free scan
+	 * code to deal with any loose ends.
+	 */
+	hammer2_chain_ref(&hmp->vchain);
+	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_chain_ref(&hmp->fchain);
+	hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
+	if (hmp->fchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
+		/*
+		 * This will also modify vchain as a side effect,
+		 * mark vchain as modified now.
+		 */
+		hammer2_voldata_modify(hmp);
+		chain = &hmp->fchain;
+		hammer2_flush(chain, 1);
+		KKASSERT(chain == &hmp->fchain);
+	}
+	hammer2_chain_unlock(&hmp->fchain);
+	hammer2_chain_unlock(&hmp->vchain);
+	hammer2_chain_drop(&hmp->fchain);
+	/* vchain dropped down below */
+
+	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
+	if (hmp->vchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
+		chain = &hmp->vchain;
+		hammer2_flush(chain, 1);
+		KKASSERT(chain == &hmp->vchain);
+	}
+	hammer2_chain_unlock(&hmp->vchain);
+	hammer2_chain_drop(&hmp->vchain);
+
+	error = 0;
+
+	/*
+	 * We can't safely flush the volume header until we have
+	 * flushed any device buffers which have built up.
+	 *
+	 * XXX this isn't being incremental
+	 */
+	vn_lock(hmp->devvp, LK_EXCLUSIVE | LK_RETRY);
+	error = VOP_FSYNC(hmp->devvp, MNT_WAIT, 0);
+	vn_unlock(hmp->devvp);
+
+	/*
+	 * The flush code sets CHAIN_VOLUMESYNC to indicate that the
+	 * volume header needs synchronization via hmp->volsync.
+	 *
+	 * XXX synchronize the flag & data with only this flush XXX
+	 */
+	if (error == 0 &&
+	    (hmp->vchain.flags & HAMMER2_CHAIN_VOLUMESYNC)) {
+		struct buf *bp;
+
+		/*
+		 * Synchronize the disk before flushing the volume
+		 * header.
+		 */
+		bp = getpbuf(NULL);
+		bp->b_bio1.bio_offset = 0;
+		bp->b_bufsize = 0;
+		bp->b_bcount = 0;
+		bp->b_cmd = BUF_CMD_FLUSH;
+		bp->b_bio1.bio_done = biodone_sync;
+		bp->b_bio1.bio_flags |= BIO_SYNC;
+		vn_strategy(hmp->devvp, &bp->b_bio1);
+		biowait(&bp->b_bio1, "h2vol");
+		relpbuf(bp, NULL);
+
+		/*
+		 * Then we can safely flush the version of the
+		 * volume header synchronized by the flush code.
+		 */
+		j = hmp->volhdrno + 1;
+		if (j >= HAMMER2_NUM_VOLHDRS)
+			j = 0;
+		if (j * HAMMER2_ZONE_BYTES64 + HAMMER2_SEGSIZE >
+		    hmp->volsync.volu_size) {
+			j = 0;
+		}
+		kprintf("sync volhdr %d %jd\n",
+			j, (intmax_t)hmp->volsync.volu_size);
+		bp = getblk(hmp->devvp, j * HAMMER2_ZONE_BYTES64,
+			    HAMMER2_PBUFSIZE, 0, 0);
+		atomic_clear_int(&hmp->vchain.flags,
+				 HAMMER2_CHAIN_VOLUMESYNC);
+		bcopy(&hmp->volsync, bp->b_data, HAMMER2_PBUFSIZE);
+		bawrite(bp);
+		hmp->volhdrno = j;
+	}
+	if (error)
+		total_error = error;
+
+	hammer2_trans_done(hmp->spmp);  /* spmp trans */
+skip:
+	error = hammer2_xop_feed(&xop->head, NULL, clindex, total_error);
+}

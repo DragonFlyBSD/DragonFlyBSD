@@ -1,4 +1,6 @@
 
+* See if we can remove hammer2_inode_repoint()
+
 * FIXME - logical buffer associated with write-in-progress on backend
   disappears once the cluster validates, even if more backend nodes
   are in progress.

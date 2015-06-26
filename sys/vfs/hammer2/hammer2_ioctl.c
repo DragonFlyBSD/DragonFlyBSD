@@ -615,7 +615,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	hammer2_trans_init(hmp->spmp, 0);
 	error = hammer2_unlink_file(hmp->spmp->iroot, NULL,
 				    pfs->name, strlen(pfs->name),
-				    2, NULL, NULL, -1);
+				    2, NULL, 0, 0);
 	hammer2_trans_done(hmp->spmp);
 
 	return (error);

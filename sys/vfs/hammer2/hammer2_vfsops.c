@@ -1817,17 +1817,12 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 int
 hammer2_vfs_sync(struct mount *mp, int waitfor)
 {
+	hammer2_xop_flush_t *xop;
 	struct hammer2_sync_info info;
 	hammer2_inode_t *iroot;
-	hammer2_chain_t *chain;
-	hammer2_chain_t *parent;
 	hammer2_pfs_t *pmp;
-	hammer2_dev_t *hmp;
 	int flags;
 	int error;
-	int total_error;
-	int i;
-	int j;
 
 	pmp = MPTOPMP(mp);
 	iroot = pmp->iroot;
@@ -1891,173 +1886,29 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	hammer2_bioq_sync(pmp);
 	atomic_clear_int(&pmp->trans.flags, HAMMER2_TRANS_PREFLUSH);
 
-	total_error = 0;
-
 	/*
-	 * Flush all nodes to synchronize the PFSROOT subtopology to the media.
+	 * Use the XOP interface to concurrently flush all nodes to
+	 * synchronize the PFSROOT subtopology to the media.  A standard
+	 * end-of-scan ENOENT error indicates cluster sufficiency.
 	 *
 	 * Note that this flush will not be visible on crash recovery until
 	 * we flush the super-root topology in the next loop.
+	 *
+	 * XXX For now wait for all flushes to complete.
 	 */
-	for (i = 0; iroot && i < iroot->cluster.nchains; ++i) {
-		chain = iroot->cluster.array[i].chain;
-		if (chain == NULL)
-			continue;
-
-		hammer2_chain_ref(chain);
-		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-		if (chain->flags & HAMMER2_CHAIN_FLUSH_MASK) {
-			hammer2_flush(chain, 1);
-			parent = chain->parent;
-			KKASSERT(chain->pmp != parent->pmp);
-			hammer2_chain_setflush(parent);
-		}
-		hammer2_chain_unlock(chain);
-		hammer2_chain_drop(chain);
+	if (iroot) {
+		xop = &hammer2_xop_alloc(iroot)->xop_flush;
+		hammer2_xop_start(&xop->head, hammer2_inode_xop_flush);
+		error = hammer2_xop_collect(&xop->head,
+					    HAMMER2_XOP_COLLECT_WAITALL);
+		if (error == ENOENT)
+			error = 0;
+	} else {
+		error = 0;
 	}
 	hammer2_trans_done(pmp);
 
-	/*
-	 * Flush all volume roots to synchronize PFS flushes with the
-	 * storage media volume header.  This will flush the freemap and
-	 * the superroot topology but stops when it reaches a PFSROOT
-	 * (which we already flushed above).
-	 *
-	 * This is the last step which connects the volume root to the
-	 * PFSROOT dirs flushed above.
-	 *
-	 * Each spmp (representing the hmp's super-root) requires its own
-	 * transaction.
-	 */
-	for (i = 0; iroot && i < iroot->cluster.nchains; ++i) {
-		hammer2_chain_t *tmp;
-
-		chain = iroot->cluster.array[i].chain;
-		if (chain == NULL)
-			continue;
-
-		hmp = chain->hmp;
-
-		/*
-		 * We only have to flush each hmp once
-		 */
-		for (j = i - 1; j >= 0; --j) {
-			if ((tmp = iroot->cluster.array[j].chain) != NULL) {
-				if (tmp->hmp == hmp)
-					break;
-			}
-		}
-		if (j >= 0)
-			continue;
-
-		/*
-		 * spmp transaction.  The super-root is never directly
-		 * mounted so there shouldn't be any vnodes, let alone any
-		 * dirty vnodes associated with it.
-		 */
-		hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
-
-		/*
-		 * Media mounts have two 'roots', vchain for the topology
-		 * and fchain for the free block table.  Flush both.
-		 *
-		 * Note that the topology and free block table are handled
-		 * independently, so the free block table can wind up being
-		 * ahead of the topology.  We depend on the bulk free scan
-		 * code to deal with any loose ends.
-		 */
-		hammer2_chain_ref(&hmp->vchain);
-		hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_ref(&hmp->fchain);
-		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
-		if (hmp->fchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
-			/*
-			 * This will also modify vchain as a side effect,
-			 * mark vchain as modified now.
-			 */
-			hammer2_voldata_modify(hmp);
-			chain = &hmp->fchain;
-			hammer2_flush(chain, 1);
-			KKASSERT(chain == &hmp->fchain);
-		}
-		hammer2_chain_unlock(&hmp->fchain);
-		hammer2_chain_unlock(&hmp->vchain);
-		hammer2_chain_drop(&hmp->fchain);
-		/* vchain dropped down below */
-
-		hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
-		if (hmp->vchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
-			chain = &hmp->vchain;
-			hammer2_flush(chain, 1);
-			KKASSERT(chain == &hmp->vchain);
-		}
-		hammer2_chain_unlock(&hmp->vchain);
-		hammer2_chain_drop(&hmp->vchain);
-
-		error = 0;
-
-		/*
-		 * We can't safely flush the volume header until we have
-		 * flushed any device buffers which have built up.
-		 *
-		 * XXX this isn't being incremental
-		 */
-		vn_lock(hmp->devvp, LK_EXCLUSIVE | LK_RETRY);
-		error = VOP_FSYNC(hmp->devvp, MNT_WAIT, 0);
-		vn_unlock(hmp->devvp);
-
-		/*
-		 * The flush code sets CHAIN_VOLUMESYNC to indicate that the
-		 * volume header needs synchronization via hmp->volsync.
-		 *
-		 * XXX synchronize the flag & data with only this flush XXX
-		 */
-		if (error == 0 &&
-		    (hmp->vchain.flags & HAMMER2_CHAIN_VOLUMESYNC)) {
-			struct buf *bp;
-
-			/*
-			 * Synchronize the disk before flushing the volume
-			 * header.
-			 */
-			bp = getpbuf(NULL);
-			bp->b_bio1.bio_offset = 0;
-			bp->b_bufsize = 0;
-			bp->b_bcount = 0;
-			bp->b_cmd = BUF_CMD_FLUSH;
-			bp->b_bio1.bio_done = biodone_sync;
-			bp->b_bio1.bio_flags |= BIO_SYNC;
-			vn_strategy(hmp->devvp, &bp->b_bio1);
-			biowait(&bp->b_bio1, "h2vol");
-			relpbuf(bp, NULL);
-
-			/*
-			 * Then we can safely flush the version of the
-			 * volume header synchronized by the flush code.
-			 */
-			i = hmp->volhdrno + 1;
-			if (i >= HAMMER2_NUM_VOLHDRS)
-				i = 0;
-			if (i * HAMMER2_ZONE_BYTES64 + HAMMER2_SEGSIZE >
-			    hmp->volsync.volu_size) {
-				i = 0;
-			}
-			kprintf("sync volhdr %d %jd\n",
-				i, (intmax_t)hmp->volsync.volu_size);
-			bp = getblk(hmp->devvp, i * HAMMER2_ZONE_BYTES64,
-				    HAMMER2_PBUFSIZE, 0, 0);
-			atomic_clear_int(&hmp->vchain.flags,
-					 HAMMER2_CHAIN_VOLUMESYNC);
-			bcopy(&hmp->volsync, bp->b_data, HAMMER2_PBUFSIZE);
-			bawrite(bp);
-			hmp->volhdrno = i;
-		}
-		if (error)
-			total_error = error;
-
-		hammer2_trans_done(hmp->spmp);	/* spmp trans */
-	}
-	return (total_error);
+	return (error);
 }
 
 /*

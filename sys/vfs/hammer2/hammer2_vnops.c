@@ -1074,8 +1074,10 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	xop = &hammer2_xop_alloc(dip)->xop_nresolve;
 
 	ncp = ap->a_nch->ncp;
-	xop->name = ncp->nc_name;
-	xop->name_len = ncp->nc_nlen;
+	xop->head.name = kmalloc(ncp->nc_nlen + 1, M_HAMMER2,
+				 M_WAITOK | M_ZERO);
+	xop->head.name_len = ncp->nc_nlen;
+	bcopy(ncp->nc_name, xop->head.name, ncp->nc_nlen);
 
 	/*
 	 * Note: In DragonFly the kernel handles '.' and '..'.
@@ -1548,7 +1550,8 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(dip->pmp, 0);
 	error = hammer2_unlink_file(dip, NULL, name, name_len,
-				    0, NULL, ap->a_nch, -1);
+				    0, NULL,
+				    cache_isopen(ap->a_nch), 0);
 	hammer2_run_unlinkq(dip->pmp);
 	hammer2_trans_done(dip->pmp);
 	if (error == 0)
@@ -1585,7 +1588,8 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	hammer2_trans_init(dip->pmp, 0);
 	hammer2_run_unlinkq(dip->pmp);
 	error = hammer2_unlink_file(dip, NULL, name, name_len,
-				    1, NULL, ap->a_nch, -1);
+				    1, NULL,
+				    cache_isopen(ap->a_nch), 0);
 	hammer2_trans_done(dip->pmp);
 	if (error == 0)
 		cache_unlink(ap->a_nch);
@@ -1687,7 +1691,8 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * Remove target if it exists.
 	 */
 	error = hammer2_unlink_file(tdip, NULL, tname, tname_len,
-				    -1, NULL, ap->a_tnch, -1);
+				    -1, NULL,
+				    cache_isopen(ap->a_tnch), 0);
 	tnch_error = error;
 	if (error && error != ENOENT)
 		goto done2;
@@ -1730,7 +1735,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *	 link count.
 	 */
 	error = hammer2_unlink_file(fdip, ip, fname, fname_len,
-				    -1, &hlink, NULL, 0);
+				    -1, &hlink, 0, 1);
 	KKASSERT(error != EAGAIN);
 	if (error)
 		goto done1;

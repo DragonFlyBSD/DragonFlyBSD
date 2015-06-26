@@ -625,6 +625,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	hammer2_xop_scanlhc_t *sxop;
 	hammer2_xop_create_t *xop;
 	hammer2_inode_t *nip;
+	hammer2_key_t lhcbase;
 	hammer2_key_t lhc;
 	int error;
 	uid_t xuid;
@@ -661,6 +662,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	/*
 	 * Locate an unused key in the collision space.
 	 */
+	lhcbase = lhc;
 	sxop = &hammer2_xop_alloc(dip)->xop_scanlhc;
 	sxop->lhc = lhc;
 	hammer2_xop_start(&sxop->head, hammer2_inode_xop_scanlhc);
@@ -677,7 +679,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 		++lhc;
 		error = 0;
 	}
-	if ((sxop->lhc ^ lhc) & ~HAMMER2_DIRHASH_LOMASK) {
+	if ((lhcbase ^ lhc) & ~HAMMER2_DIRHASH_LOMASK) {
 		error = ENOSPC;
 		goto done2;
 	}
@@ -754,8 +756,9 @@ hammer2_inode_create(hammer2_inode_t *dip,
 		xop->meta.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
 	}
 
-	xop->name = name;
-	xop->name_len = name_len;
+	xop->head.name = kmalloc(name_len + 1, M_HAMMER2, M_WAITOK | M_ZERO);
+	xop->head.name_len = name_len;
+	bcopy(name, xop->head.name, name_len);
 	xop->meta.name_len = name_len;
 	xop->meta.name_key = lhc;
 	KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
@@ -1179,8 +1182,8 @@ hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 int
 hammer2_unlink_file(hammer2_inode_t *dip, hammer2_inode_t *ip,
 		    const uint8_t *name, size_t name_len,
-		    int isdir, int *hlinkp, struct nchandle *nch,
-		    int nlinks)
+		    int isdir, int *hlinkp,
+		    int isopen, int isrename)
 {
 	const hammer2_inode_data_t *ripdata;
 	hammer2_cluster_t *cparent;
@@ -1353,10 +1356,6 @@ again:
 	 *	 (which does not represent a ref for the open-test), and to
 	 *	 force finalization of the vnode if/when the last ref gets
 	 *	 dropped.
-	 *
-	 * NOTE! Files are unlinked by rename and then relinked.  nch will be
-	 *	 passed as NULL in this situation.  hammer2_inode_connect()
-	 *	 will bump nlinks.
 	 */
 	KKASSERT(cluster != NULL);
 
@@ -1373,28 +1372,29 @@ again:
 	 * Note: nlinks is negative when decrementing, positive when
 	 *	 incrementing.
 	 */
-	last_link = (ip->meta.nlinks + nlinks == 0);
+	last_link = (ip->meta.nlinks - (isrename ? 0 : 1) == 0);
 
 	if (last_link) {
 		/*
 		 * Target nlinks has reached 0, file now unlinked (but may
 		 * still be open).
 		 *
-		 * nlinks will be -1 for a normal remove().  If this is the
-		 * last link we must flag the inode so we can optimally
-		 * throw away buffer data and destroy the file on reclaim.
+		 * On the last link when not renaming, we have to special
+		 * case the file if it is still open to prevent the bulk
+		 * free from freeing blocks out from under it.
 		 */
-		if (nlinks == -1)
+		if (isrename == 0)
 			atomic_set_int(&ip->flags, HAMMER2_INODE_ISUNLINKED);
 
-		if (nch && cache_isopen(nch)) {
+		if (isrename == 0 && isopen) {
 			/*
 			 * If an unlinked file is still open we must update
 			 * the inodes link count.
 			 */
 			/*hammer2_cluster_modify(cluster, 0);*/
 			hammer2_inode_modify(ip);
-			ip->meta.nlinks += nlinks;
+			if (isrename == 0)
+				--ip->meta.nlinks;
 			if ((int64_t)ip->meta.nlinks < 0)	/* safety */
 				ip->meta.nlinks = 0;
 			hammer2_inode_move_to_hidden(&cparent, &cluster,
@@ -1413,15 +1413,15 @@ again:
 		/*
 		 * In this situation a normal non-hardlinked file (which can
 		 * only have nlinks == 1) still has a non-zero nlinks, the
-		 * caller must be doing a RENAME operation and so is passing
-		 * a nlinks adjustment of 0, and only wishes to remove file
-		 * in order to be able to reconnect it under a different name.
+		 * caller must be doing a RENAME operation, and only wishes
+		 * to remove file in order to be able to reconnect it under
+		 * a different name.
 		 *
 		 * In this situation we do a temporary deletion of the
 		 * chain in order to allow the file to be reconnected in
 		 * a different location.
 		 */
-		KKASSERT(nlinks == 0);
+		KKASSERT(isrename != 0);
 		hammer2_cluster_delete(cparent, cluster, 0);
 	} else {
 		/*
@@ -1429,7 +1429,8 @@ again:
 		 */
 		/*hammer2_cluster_modify(cluster, 0);*/
 		hammer2_inode_modify(ip);
-		ip->meta.nlinks += nlinks;
+		if (isrename == 0)
+			--ip->meta.nlinks;
 		if ((int64_t)ip->meta.nlinks < 0)
 			ip->meta.nlinks = 0;
 		/* hammer2_cluster_modsync(cluster); */
@@ -1769,4 +1770,71 @@ hammer2_inode_fsync(hammer2_inode_t *ip, hammer2_cluster_t *cparent)
 		}
 		hammer2_cluster_modsync(cparent);
 	}
+}
+
+/*
+ * Inode create helper (threaded, backend).
+ *
+ * Frontend holds the parent directory ip locked exclusively.  We
+ * create the inode and feed the exclusively locked chain to the
+ * frontend.
+ */
+void
+hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
+{
+	hammer2_xop_create_t *xop = &arg->xop_create;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	int cache_index = -1;
+	int error;
+
+	chain = NULL;
+	parent = hammer2_inode_chain(xop->head.ip, clindex,
+				     HAMMER2_RESOLVE_ALWAYS);
+	if (parent == NULL) {
+		error = EIO;
+		goto fail;
+	}
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     xop->lhc, xop->lhc,
+				     &cache_index, 0);
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		error = EEXIST;
+		goto fail;
+	}
+
+	error = hammer2_chain_create(&parent, &chain,
+				     xop->head.ip->pmp,
+				     xop->lhc, 0,
+				     HAMMER2_BREF_TYPE_INODE,
+				     HAMMER2_INODE_BYTES,
+				     xop->flags);
+	if (error == 0) {
+		hammer2_chain_modify(chain, 0);
+		chain->data->ipdata.meta = xop->meta;
+		bcopy(xop->head.name, chain->data->ipdata.filename,
+		      xop->head.name_len);
+	}
+	hammer2_chain_unlock(chain);
+	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
+				  HAMMER2_RESOLVE_SHARED);
+fail:
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
+	if (chain)
+		hammer2_chain_drop(chain);
+}
+
+/*
+ * Inode delete helper
+ */
+void
+hammer2_inode_xop_destroy(hammer2_xop_t *arg, int clindex)
+{
+	/*hammer2_xop_inode_t *xop = &arg->xop_inode;*/
 }

@@ -88,10 +88,8 @@ hammer2_xop_readdir(hammer2_xop_t *arg, int clindex)
 	}
 
 	/*
-	 * Directory scan [re]start and loop.
-	 *
-	 * We feed the share-locked chain back to the frontend and must be
-	 * sure not to unlock it in our iteration.
+	 * Directory scan [re]start and loop, the feed inherits the chain's
+	 * lock so do not unlock it on the iteration.
 	 */
 	chain = hammer2_chain_lookup(&parent, &key_next, lkey, lkey,
 			     &cache_index, HAMMER2_LOOKUP_SHARED);
@@ -126,6 +124,8 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	const hammer2_inode_data_t *ripdata;
+	const char *name;
+	size_t name_len;
 	hammer2_key_t key_next;
 	hammer2_key_t lhc;
 	int cache_index = -1;	/* XXX */
@@ -140,11 +140,13 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 		error = EIO;
 		goto done;
 	}
+	name = xop->head.name;
+	name_len = xop->head.name_len;
 
 	/*
 	 * Lookup the directory entry
 	 */
-	lhc = hammer2_dirhash(xop->name, xop->name_len);
+	lhc = hammer2_dirhash(name, name_len);
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 				     &cache_index,
@@ -153,8 +155,8 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 	while (chain) {
 		ripdata = &chain->data->ipdata;
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-		    ripdata->meta.name_len == xop->name_len &&
-		    bcmp(ripdata->filename, xop->name, xop->name_len) == 0) {
+		    ripdata->meta.name_len == name_len &&
+		    bcmp(ripdata->filename, name, name_len) == 0) {
 			break;
 		}
 		chain = hammer2_chain_next(&parent, chain, &key_next,
@@ -187,8 +189,9 @@ done:
 }
 
 /*
- * Scan directory collision entries for the specified lhc.  Used by
- * the inode create code to locate an unused lhc.
+ * Directory collision resolver scan helper (backend, threaded).
+ *
+ * Used by the inode create code to locate an unused lhc.
  */
 void
 hammer2_inode_xop_scanlhc(hammer2_xop_t *arg, int clindex)
@@ -211,7 +214,8 @@ hammer2_inode_xop_scanlhc(hammer2_xop_t *arg, int clindex)
 	}
 
 	/*
-	 * Lookup the directory entry
+	 * Lookup all possibly conflicting directory entries, the feed
+	 * inherits the chain's lock so do not unlock it on the iteration.
 	 */
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->lhc,
@@ -232,7 +236,8 @@ hammer2_inode_xop_scanlhc(hammer2_xop_t *arg, int clindex)
 					   xop->lhc + HAMMER2_DIRHASH_LOMASK,
 					   &cache_index,
 					   HAMMER2_LOOKUP_ALWAYS |
-					   HAMMER2_LOOKUP_SHARED);
+					   HAMMER2_LOOKUP_SHARED |
+					   HAMMER2_LOOKUP_NOUNLOCK);
 	}
 done:
 	hammer2_xop_feed(&xop->head, NULL, clindex, error);
@@ -240,71 +245,4 @@ done:
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 	}
-}
-
-/*
- * Inode create helper.
- *
- * Frontend holds the parent directory ip locked exclusively.  We
- * create the inode and feed the exclusively locked chain to the
- * frontend.
- */
-void
-hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
-{
-	hammer2_xop_create_t *xop = &arg->xop_create;
-	hammer2_chain_t *parent;
-	hammer2_chain_t *chain;
-	hammer2_key_t key_next;
-	int cache_index = -1;
-	int error;
-
-	chain = NULL;
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
-				     HAMMER2_RESOLVE_ALWAYS);
-	if (parent == NULL) {
-		error = EIO;
-		goto fail;
-	}
-	chain = hammer2_chain_lookup(&parent, &key_next,
-				     xop->lhc, xop->lhc,
-				     &cache_index, 0);
-	if (chain) {
-		hammer2_chain_unlock(chain);
-		error = EEXIST;
-		goto fail;
-	}
-
-	error = hammer2_chain_create(&parent, &chain,
-				     xop->head.ip->pmp,
-				     xop->lhc, 0,
-				     HAMMER2_BREF_TYPE_INODE,
-				     HAMMER2_INODE_BYTES,
-				     xop->flags);
-	if (error == 0) {
-		hammer2_chain_modify(chain, 0);
-		chain->data->ipdata.meta = xop->meta;
-		bcopy(xop->name, chain->data->ipdata.filename,
-		      xop->name_len);
-	}
-	hammer2_chain_unlock(chain);
-	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
-				  HAMMER2_RESOLVE_SHARED);
-fail:
-	if (parent) {
-		hammer2_chain_unlock(parent);
-		hammer2_chain_drop(parent);
-	}
-	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
-	if (chain)
-		hammer2_chain_drop(chain);
-}
-
-/*
- * Inode delete helper
- */
-void
-hammer2_inode_xop_destroy(hammer2_xop_t *arg, int clindex)
-{
-	/*hammer2_xop_inode_t *xop = &arg->xop_inode;*/
 }
