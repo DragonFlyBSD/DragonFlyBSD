@@ -29,21 +29,13 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.15 2006/10/21 04:10:02 pavalos Exp $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#ifdef sunos
-#include <sys/vnode.h>
-
-#include <ufs/inode.h>
-#include <ufs/fs.h>
-#else
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/fs.h>
-#endif
 
 #include <protocols/dumprestore.h>
 

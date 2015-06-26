@@ -35,15 +35,8 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#ifdef sunos
-#include <sys/vnode.h>
-
-#include <ufs/fs.h>
-#include <ufs/inode.h>
-#else
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/fs.h>
-#endif
 
 #include <protocols/dumprestore.h>
 
@@ -501,11 +494,7 @@ startnewtape(int top)
 	int	status;
 	int	wait_pid;
 	char	*p;
-#ifdef sunos
-	void	(*interrupt_save)();
-#else
 	sig_t	interrupt_save;
-#endif
 
 	interrupt_save = signal(SIGINT, SIG_IGN);
 	parentpid = getpid();

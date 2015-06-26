@@ -33,7 +33,6 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/dump.h,v 1.12 2006/04/03 01:58:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -192,35 +191,9 @@ void	putdumptime(void);
 
 void	sig(int);
 
-/*
- * Compatibility with old systems.
- */
-#ifdef COMPAT
-#include <sys/file.h>
-#define	strchr(a,b)	index(a,b)
-#define	strrchr(a,b)	rindex(a,b)
-extern char *strdup(), *ctime();
-extern int read(), write();
-extern int errno;
-#endif
-
 #ifndef	_PATH_UTMP
 #define	_PATH_UTMP	"/etc/utmp"
 #endif
 #ifndef	_PATH_FSTAB
 #define	_PATH_FSTAB	"/etc/fstab"
-#endif
-
-#ifdef sunos
-extern char *calloc();
-extern char *malloc();
-extern long atol();
-extern char *strcpy();
-extern char *strncpy();
-extern char *strcat();
-extern time_t time();
-extern void endgrent();
-extern void exit();
-extern off_t lseek();
-extern const char *strerror();
 #endif

@@ -41,17 +41,9 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-#ifdef sunos
-#include <sys/vnode.h>
-
-#include <ufs/fs.h>
-#include <ufs/fsdir.h>
-#include <ufs/inode.h>
-#else
 #include <vfs/ufs/dir.h>
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/fs.h>
-#endif
 
 #include <protocols/dumprestore.h>
 

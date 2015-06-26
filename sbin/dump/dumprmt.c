@@ -34,13 +34,7 @@
 #include <sys/mtio.h>
 #include <sys/socket.h>
 #include <sys/time.h>
-#ifdef sunos
-#include <sys/vnode.h>
-
-#include <ufs/inode.h>
-#else
 #include <vfs/ufs/dinode.h>
-#endif
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
