@@ -48,7 +48,9 @@
 static vr_draw_t		kms_draw;
 static vr_draw_cursor_t		kms_cursor;
 static vr_blink_cursor_t	kms_blink;
+#ifndef SC_NO_CUTPASTE
 static vr_draw_mouse_t		kms_mouse;
+#endif
 
 static void			kms_nop(scr_stat *scp, ...);
 
@@ -61,7 +63,7 @@ static sc_rndr_sw_t kmsrndrsw = {
 #ifndef SC_NO_CUTPASTE
 	kms_mouse,
 #else
-	(vr_draw_mouse_t *)kms_nop;
+	(vr_draw_mouse_t *)kms_nop,
 #endif
 };
 RENDERER(kms, V_INFO_MM_TEXT, kmsrndrsw, kms_set);

@@ -204,11 +204,26 @@ static int sc_allocate_keyboard(sc_softc_t *sc, int unit);
  *
  * We use mutex spinlocks here in order to allow reentrancy which should
  * avoid issues during panics.
+ *
+ * A panic can stop a cpu while it is holding the syscons_mtx.  If this
+ * occurs we try for up to 1/2 a second and then blow the spinlock away.
+ * The asynchronous update thread makes this happen more often.
  */
 static void
 syscons_lock(void)
 {
-	mtx_spinlock(&syscons_mtx);
+	if (panicstr || shutdown_in_progress) {
+		int retries = 500000;
+		while (mtx_spinlock_try(&syscons_mtx)) {
+			tsc_delay(1000);	/* 1uS */
+			if (--retries == 0) {
+				mtx_init(&syscons_mtx, "syscons");
+				retries = 500000;
+			}
+		}
+	} else {
+		mtx_spinlock(&syscons_mtx);
+	}
 }
 
 /*
@@ -1831,8 +1846,14 @@ sccnupdate(scr_stat *scp)
 {
     /* this is a cut-down version of scrn_timer()... */
 
+    /*
+     * Don't update if videoio is in progress.  However, if we are paniced
+     * it is possible that the variable might be stuck, so ignore it in that
+     * case.
+     */
     if (scp->sc->font_loading_in_progress || scp->sc->videoio_in_progress) {
-	return;
+	if (panicstr == NULL && shutdown_in_progress == 0)
+		return;
     }
 
     if (debugger > 0 || panicstr || shutdown_in_progress) {
@@ -1998,11 +2019,16 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
 {
     int start;
     int end;
+    int cpos;
+    int copos;
     int s;
     int e;
 
     /*
-     * Try to run large screen updates as an async operation.
+     * Try to run large screen updates as an async operation, which will
+     * call this function again from a thread with BULKUNLOCK set, allowing
+     * interrupts during the update which tends to make the system behave
+     * better (no sound glitches, etc).
      */
     if ((flags & SCRN_ASYNCOK) && scp->asynctd &&
 	(scp->end - scp->start) > 16 &&
@@ -2020,8 +2046,10 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
      */
 
     /* assert(scp == scp->sc->cur_scp) */
-
     atomic_add_int(&scp->sc->videoio_in_progress, 1);
+
+    cpos = scp->cursor_pos;
+    copos = scp->cursor_oldpos;
 
 #ifndef SC_NO_CUTPASTE
     /* remove the previous mouse pointer image if necessary */
@@ -2031,9 +2059,9 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
 	if ((scp->status & (MOUSE_MOVED | MOUSE_HIDDEN))
 	    || and_region(&s, &e, scp->start, scp->end)
 	    || ((scp->status & CURSOR_ENABLED) && 
-		(scp->cursor_pos != scp->cursor_oldpos) &&
-		(and_region(&s, &e, scp->cursor_pos, scp->cursor_pos)
-		 || and_region(&s, &e, scp->cursor_oldpos, scp->cursor_oldpos)))) {
+		(cpos != copos) &&
+		(and_region(&s, &e, cpos, cpos)
+		 || and_region(&s, &e, copos, copos)))) {
 	    sc_remove_mouse_image(scp);
 	    if (scp->end >= scp->xsize*scp->ysize)
 		scp->end = scp->xsize*scp->ysize - 1;
@@ -2041,17 +2069,16 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
     }
 #endif /* !SC_NO_CUTPASTE */
 
-#if 1
-    /* debug: XXX */
+    /*
+     * WARNING: Don't add debugging kprintf()s with syscons locked.
+     *		Or at all.
+     */
     if (scp->end >= scp->xsize*scp->ysize) {
-	kprintf("scrn_update(): scp->end %d > size_of_screen!!\n", scp->end);
 	scp->end = scp->xsize*scp->ysize - 1;
     }
     if (scp->start < 0) {
-	kprintf("scrn_update(): scp->start %d < 0\n", scp->start);
 	scp->start = 0;
     }
-#endif
 
     /*
      * Main update, extract update range and reset
@@ -2063,11 +2090,15 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
     scp->start = scp->xsize * scp->ysize - 1;
 
     if (start <= end)  {
-	if (flags & SCRN_BULKUNLOCK)
+	if (flags & SCRN_BULKUNLOCK) {
+	    atomic_add_int(&scp->sc->videoio_in_progress, -1);
 	    syscons_unlock();
+	}
 	(*scp->rndr->draw)(scp, start, end - start + 1, FALSE);
-	if (flags & SCRN_BULKUNLOCK)
+	if (flags & SCRN_BULKUNLOCK) {
 	    syscons_lock();
+	    atomic_add_int(&scp->sc->videoio_in_progress, 1);
+	}
 
 	/*
 	 * Handle cut sequence
@@ -2084,11 +2115,15 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
 	    }
 	    /* does the cut-mark region overlap with the update region? */
 	    if (and_region(&s, &e, start, end)) {
-		if (flags & SCRN_BULKUNLOCK)
+		if (flags & SCRN_BULKUNLOCK) {
+		    atomic_add_int(&scp->sc->videoio_in_progress, -1);
 		    syscons_unlock();
+		}
 		(*scp->rndr->draw)(scp, s, e - s + 1, TRUE);
-		if (flags & SCRN_BULKUNLOCK)
+		if (flags & SCRN_BULKUNLOCK) {
 		    syscons_lock();
+		    atomic_add_int(&scp->sc->videoio_in_progress, 1);
+		}
 	    }
 	}
     }
@@ -2097,27 +2132,28 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
     if (!show_cursor)
 	goto cleanup;
 
+#if 0
     /* update cursor image */
-    if (scp->status & CURSOR_ENABLED) {
+    if ((scp->status & CURSOR_ENABLED) && start <= end) {
 	s = start;
 	e = end;
         /* did cursor move since last time ? */
-        if (scp->cursor_pos != scp->cursor_oldpos) {
+        if (cpos != copos) {
             /* do we need to remove old cursor image ? */
-            if (!and_region(&s, &e, scp->cursor_oldpos, scp->cursor_oldpos))
+            if (!and_region(&s, &e, copos, copos))
                 sc_remove_cursor_image(scp);
             sc_draw_cursor_image(scp);
         } else {
-            if (and_region(&s, &e, scp->cursor_pos, scp->cursor_pos))
+            if (and_region(&s, &e, cpos, cpos))
 		/* cursor didn't move, but has been overwritten */
 		sc_draw_cursor_image(scp);
 	    else if (scp->sc->flags & SC_BLINK_CURSOR)
 		/* if it's a blinking cursor, update it */
-		(*scp->rndr->blink_cursor)(scp, scp->cursor_pos,
-					   sc_inside_cutmark(scp,
-					       scp->cursor_pos));
+		(*scp->rndr->blink_cursor)(scp, cpos,
+					   sc_inside_cutmark(scp, cpos));
         }
     }
+#endif
 
 #ifndef SC_NO_CUTPASTE
     /* update "pseudo" mouse pointer image */

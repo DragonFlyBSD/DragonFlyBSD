@@ -647,7 +647,7 @@ scterm_puts(scr_stat *scp, u_char *buf, int len)
 
 	tcp = scp->ts;
 outloop:
-	scp->sc->write_in_progress++;
+	atomic_add_char(&scp->sc->write_in_progress, 1);
 
 	if (tcp->esc) {
 		scterm_scan_esc(scp, tcp, *buf);
@@ -669,7 +669,7 @@ outloop:
 
 	sc_term_gen_scroll(scp, scp->sc->scr_map[0x20], tcp->cur_attr);
 
-	scp->sc->write_in_progress--;
+	atomic_add_char(&scp->sc->write_in_progress, -1);
 	if (len)
 		goto outloop;
 }

@@ -265,20 +265,24 @@ sc_term_clr_eol(scr_stat *scp, int n, int ch, int attr)
 static __inline void
 sc_term_tab(scr_stat *scp, int n)
 {
+	int ypos;
 	int i;
 
 	if (n < 1)
 		n = 1;
 	i = (scp->xpos & ~7) + 8*n;
 	if (i >= scp->xsize) {
-		if (scp->ypos >= scp->ysize - 1) {
+		ypos = scp->ypos;
+		if (ypos >= scp->ysize - 1) {
 			scp->xpos = 0;
-			scp->ypos++;
+			scp->ypos = ypos + 1;
 			scp->cursor_pos = scp->ypos*scp->xsize;
-		} else
-			sc_move_cursor(scp, 0, scp->ypos + 1);
-	} else
+		} else {
+			sc_move_cursor(scp, 0, ypos + 1);
+		}
+	} else {
 		sc_move_cursor(scp, i, scp->ypos);
+	}
 }
 
 static __inline void
@@ -413,19 +417,31 @@ sc_term_gen_print(scr_stat *scp, u_char **buf, int *len, int attr)
 	*len = l;
 }
 
+/*
+ * Handle scrolling, take care to ensure that we don't implode the
+ * fields if we happen to be multi-entrant during a panic.
+ */
 static __inline void
 sc_term_gen_scroll(scr_stat *scp, int ch, int attr)
 {
+	int pos;
+	int ypos;
+
+	pos = scp->cursor_pos;
+	cpu_ccfence();
 	/* do we have to scroll ?? */
-	if (scp->cursor_pos >= scp->ysize*scp->xsize) {
+	if (pos >= scp->ysize*scp->xsize) {
 		sc_remove_cutmarking(scp);		/* XXX */
 #ifndef SC_NO_HISTORY
 		if (scp->history != NULL)
 			sc_hist_save_one_line(scp, 0);	/* XXX */
 #endif
 		sc_vtb_delete(&scp->vtb, 0, scp->xsize, ch, attr);
-		scp->cursor_pos -= scp->xsize;
-		scp->ypos--;
+		scp->cursor_pos = pos - scp->xsize;
+		ypos = scp->ypos - 1;
+		if (ypos <= 0)
+			ypos = 0;
+		scp->ypos = ypos;
 		mark_all(scp);
 	}
 }

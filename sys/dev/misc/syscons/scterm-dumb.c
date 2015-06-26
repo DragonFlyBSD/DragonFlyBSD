@@ -95,11 +95,11 @@ static void
 dumb_puts(scr_stat *scp, u_char *buf, int len)
 {
 	while (len > 0) {
-		++scp->sc->write_in_progress;
+		atomic_add_char(&scp->sc->write_in_progress, 1);
 		sc_term_gen_print(scp, &buf, &len, SC_NORM_ATTR << 8);
     		sc_term_gen_scroll(scp, scp->sc->scr_map[0x20],
 				   SC_NORM_ATTR << 8);
-		--scp->sc->write_in_progress;
+		atomic_add_char(&scp->sc->write_in_progress, -1);
 	}
 }
 

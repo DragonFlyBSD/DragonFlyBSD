@@ -41,6 +41,10 @@ SET_DECLARE(scterm_set, sc_term_sw_t);
 
 /* exported subroutines */
 
+/*
+ * Move the cursor, make sure reentrancy doesn't implode fields
+ * on panic.
+ */
 void
 sc_move_cursor(scr_stat *scp, int x, int y)
 {
@@ -54,7 +58,7 @@ sc_move_cursor(scr_stat *scp, int x, int y)
 		y = scp->ysize - 1;
 	scp->xpos = x;
 	scp->ypos = y;
-	scp->cursor_pos = scp->ypos*scp->xsize + scp->xpos;
+	scp->cursor_pos = scp->ypos*scp->xsize + x;
 }
 
 void
