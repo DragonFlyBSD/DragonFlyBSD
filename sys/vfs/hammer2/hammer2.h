@@ -1048,10 +1048,6 @@ struct hammer2_pfs {
 	struct spinlock		list_spin;
 	struct h2_unlk_list	unlinkq;	/* last-close unlink */
 	hammer2_thread_t	sync_thrs[HAMMER2_MAXCLUSTER];
-	thread_t		wthread_td;	/* write thread td */
-	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
-	hammer2_mtx_t 		wthread_mtx;	/* interlock */
-	int			wthread_destroy;/* termination sequencing */
 	uint32_t		flags;		/* cached cluster flags */
 	hammer2_xop_group_t	xop_groups[HAMMER2_XOPGROUPS];
 };
@@ -1062,7 +1058,8 @@ typedef struct hammer2_pfs hammer2_pfs_t;
 #define HAMMER2_DIRTYCHAIN_MASK		0x7FFFFFFF
 
 #define HAMMER2_LWINPROG_WAITING	0x80000000
-#define HAMMER2_LWINPROG_MASK		0x7FFFFFFF
+#define HAMMER2_LWINPROG_WAITING0	0x40000000
+#define HAMMER2_LWINPROG_MASK		0x3FFFFFFF
 
 /*
  * hammer2_cluster_check
@@ -1172,9 +1169,6 @@ extern long hammer2_ioa_volu_write;
 extern struct objcache *cache_buffer_read;
 extern struct objcache *cache_buffer_write;
 extern struct objcache *cache_xops;
-
-extern int destroy;
-extern int write_thread_wakeup;
 
 /*
  * hammer2_subr.c
@@ -1292,6 +1286,8 @@ void hammer2_cluster_load_async(hammer2_cluster_t *cluster,
 				void *ptr);
 void hammer2_chain_moved(hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_chain_t *chain, int flags);
+void hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain,
+				int flags);
 void hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *parent,
 				hammer2_chain_t *chain, int nradix, int flags);
 void hammer2_chain_unlock(hammer2_chain_t *chain);
@@ -1440,7 +1436,7 @@ hammer2_pfs_t *hammer2_pfsalloc(hammer2_cluster_t *cluster,
 
 void hammer2_lwinprog_ref(hammer2_pfs_t *pmp);
 void hammer2_lwinprog_drop(hammer2_pfs_t *pmp);
-void hammer2_lwinprog_wait(hammer2_pfs_t *pmp);
+void hammer2_lwinprog_wait(hammer2_pfs_t *pmp, int pipe);
 
 /*
  * hammer2_freemap.c

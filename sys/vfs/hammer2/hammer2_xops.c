@@ -255,6 +255,8 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 	hammer2_xop_create_t *xop = &arg->xop_create;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	int cache_index = -1;
 	int error;
 
 	chain = NULL;
@@ -264,6 +266,15 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 		error = EIO;
 		goto fail;
 	}
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     xop->lhc, xop->lhc,
+				     &cache_index, 0);
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		error = EEXIST;
+		goto fail;
+	}
+
 	error = hammer2_chain_create(&parent, &chain,
 				     xop->head.ip->pmp,
 				     xop->lhc, 0,
@@ -280,13 +291,13 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
 				  HAMMER2_RESOLVE_SHARED);
 fail:
-	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
-	if (chain)
-		hammer2_chain_drop(chain);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 	}
+	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
+	if (chain)
+		hammer2_chain_drop(chain);
 }
 
 /*

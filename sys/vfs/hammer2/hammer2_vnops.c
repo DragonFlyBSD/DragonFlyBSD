@@ -681,7 +681,6 @@ hammer2_vop_write(struct vop_write_args *ap)
 	struct uio *uio;
 	int error;
 	int seqcount;
-	int bigwrite;
 
 	/*
 	 * Read operations supported on this vnode?
@@ -701,7 +700,6 @@ hammer2_vop_write(struct vop_write_args *ap)
 	}
 
 	seqcount = ap->a_ioflag >> 16;
-	bigwrite = (uio->uio_resid > 100 * 1024 * 1024);
 
 	/*
 	 * Check resource limit
@@ -712,8 +710,6 @@ hammer2_vop_write(struct vop_write_args *ap)
 		lwpsignal(td->td_proc, td->td_lwp, SIGXFSZ);
 		return (EFBIG);
 	}
-
-	bigwrite = (uio->uio_resid > 100 * 1024 * 1024);
 
 	/*
 	 * The transaction interlocks against flushes initiations
@@ -980,10 +976,15 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
  * ensure that any on-media data beyond the new file EOF has been destroyed.
  *
  * WARNING: nvtruncbuf() can only be safely called without the inode lock
- *	    held due to the way our write thread works.
+ *	    held due to the way our write thread works.  If the truncation
+ *	    occurs in the middle of a buffer, nvtruncbuf() is responsible
+ *	    for dirtying that buffer and zeroing out trailing bytes.
  *
  * WARNING! Assumes that the kernel interlocks size changes at the
  *	    vnode level.
+ *
+ * WARNING! Caller assumes responsibility for removing dead blocks
+ *	    if INODE_RESIZED is set.
  */
 static
 void
@@ -1019,6 +1020,9 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
  *
  * WARNING! Assumes that the kernel interlocks size changes at the
  *	    vnode level.
+ *
+ * WARNING! Caller assumes responsibility for transitioning out
+ *	    of the inode DIRECTDATA mode if INODE_RESIZED is set.
  */
 static
 void

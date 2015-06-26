@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -88,7 +88,8 @@ hammer2_trans_manage_init(hammer2_pfs_t *pmp)
 }
 
 /*
- * Transaction support for any modifying operation.
+ * Transaction support for any modifying operation.  Transactions are used
+ * in the pmp layer by the frontend and in the spmp layer by the backend.
  *
  * 0			- Normal transaction, interlocked against flush
  *			  transaction.

@@ -144,19 +144,25 @@ hammer2_inode_cluster(hammer2_inode_t *ip, int how)
 
 /*
  * Select a chain out of an inode's cluster and lock it.
+ *
+ * The inode does not have to be locked.
  */
 hammer2_chain_t *
 hammer2_inode_chain(hammer2_inode_t *ip, int clindex, int how)
 {
 	hammer2_chain_t *chain;
 
+	hammer2_spin_sh(&ip->cluster_spin);
 	if (clindex >= ip->cluster.nchains)
 		chain = NULL;
 	else
 		chain = ip->cluster.array[clindex].chain;
 	if (chain) {
 		hammer2_chain_ref(chain);
+		hammer2_spin_unsh(&ip->cluster_spin);
 		hammer2_chain_lock(chain, how);
+	} else {
+		hammer2_spin_unsh(&ip->cluster_spin);
 	}
 	return chain;
 }

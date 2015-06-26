@@ -1268,6 +1268,16 @@ skip2:
 }
 
 /*
+ * Modify the chain associated with an inode.
+ */
+void
+hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain, int flags)
+{
+	hammer2_inode_modify(ip);
+	hammer2_chain_modify(chain, flags);
+}
+
+/*
  * Volume header data locks
  */
 void

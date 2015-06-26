@@ -361,8 +361,6 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		 */
 		if (ripdata)
 			pmp->pfs_clid = ripdata->meta.pfs_clid;
-		hammer2_mtx_init(&pmp->wthread_mtx, "h2wthr");
-		bioq_init(&pmp->wthread_bioq);
 		TAILQ_INSERT_TAIL(&hammer2_pfslist, pmp, mntentry);
 
 		/*
@@ -1144,18 +1142,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
         lockmgr(&hammer2_mntlk, LK_RELEASE);
 
 	/*
-	 * A mounted PFS needs a write thread for logical buffers and
-	 * a hidden directory for deletions of open files.  These features
-	 * are not used by unmounted PFSs.
-	 *
-	 * The logical file buffer bio write thread handles things like
-	 * physical block assignment and compression.
-	 */
-	pmp->wthread_destroy = 0;
-	lwkt_create(hammer2_write_thread, pmp,
-		    &pmp->wthread_td, NULL, 0, -1, "h2pfs-%s", label);
-
-	/*
 	 * With the cluster operational install ihidden.
 	 * (only applicable to pfs mounts, not applicable to spmp)
 	 */
@@ -1276,19 +1262,6 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		hammer2_vfs_sync(mp, MNT_WAIT);
 		hammer2_vfs_sync(mp, MNT_WAIT);
 		hammer2_vfs_sync(mp, MNT_WAIT);
-	}
-
-	if (pmp->wthread_td) {
-		hammer2_mtx_ex(&pmp->wthread_mtx);
-		pmp->wthread_destroy = 1;
-		wakeup(&pmp->wthread_bioq);
-		while (pmp->wthread_destroy != -1) {
-			mtxsleep(&pmp->wthread_destroy,
-				&pmp->wthread_mtx, 0,
-				"umount-sleep",	0);
-		}
-		hammer2_mtx_unlock(&pmp->wthread_mtx);
-		pmp->wthread_td = NULL;
 	}
 
 	/*
@@ -2291,22 +2264,30 @@ hammer2_lwinprog_drop(hammer2_pfs_t *pmp)
 				 HAMMER2_LWINPROG_WAITING);
 		wakeup(&pmp->count_lwinprog);
 	}
+	if ((lwinprog & HAMMER2_LWINPROG_WAITING0) &&
+	    (lwinprog & HAMMER2_LWINPROG_MASK) <= 0) {
+		atomic_clear_int(&pmp->count_lwinprog,
+				 HAMMER2_LWINPROG_WAITING0);
+		wakeup(&pmp->count_lwinprog);
+	}
 }
 
 void
-hammer2_lwinprog_wait(hammer2_pfs_t *pmp)
+hammer2_lwinprog_wait(hammer2_pfs_t *pmp, int flush_pipe)
 {
 	int lwinprog;
+	int lwflag = (flush_pipe) ? HAMMER2_LWINPROG_WAITING :
+				    HAMMER2_LWINPROG_WAITING0;
 
 	for (;;) {
 		lwinprog = pmp->count_lwinprog;
 		cpu_ccfence();
-		if ((lwinprog & HAMMER2_LWINPROG_MASK) < hammer2_flush_pipe)
+		if ((lwinprog & HAMMER2_LWINPROG_MASK) <= flush_pipe)
 			break;
 		tsleep_interlock(&pmp->count_lwinprog, 0);
-		atomic_set_int(&pmp->count_lwinprog, HAMMER2_LWINPROG_WAITING);
+		atomic_set_int(&pmp->count_lwinprog, lwflag);
 		lwinprog = pmp->count_lwinprog;
-		if ((lwinprog & HAMMER2_LWINPROG_MASK) < hammer2_flush_pipe)
+		if ((lwinprog & HAMMER2_LWINPROG_MASK) <= flush_pipe)
 			break;
 		tsleep(&pmp->count_lwinprog, PINTERLOCKED, "h2wpipe", hz);
 	}

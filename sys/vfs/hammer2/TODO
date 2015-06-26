@@ -1,4 +1,16 @@
 
+* FIXME - logical buffer associated with write-in-progress on backend
+  disappears once the cluster validates, even if more backend nodes
+  are in progress.
+
+* FIXME - backend ops need per-node transactions using spmp to protect
+  against flush.
+
+* FIXME - modifying backend ops are not currently validating the cluster.
+  That probably needs to be done by the frontend in hammer2_xop_start()
+
+* modify_tid handling probably broken w/ the XOP code for the moment.
+
 * embedded transactions in XOPs - interlock early completion
 
 * remove current incarnation of EAGAIN
