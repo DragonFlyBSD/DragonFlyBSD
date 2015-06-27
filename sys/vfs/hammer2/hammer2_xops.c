@@ -61,6 +61,32 @@
 #include "hammer2.h"
 
 /*
+ * Backend for hammer2_vfs_root()
+ *
+ * This is called when a newly mounted PFS has not yet synchronized
+ * to the inode_tid and modify_tid.
+ */
+void
+hammer2_xop_vfsroot(hammer2_xop_t *arg, int clindex)
+{
+	hammer2_xop_vfsroot_t *xop = &arg->xop_vfsroot;
+	hammer2_chain_t *chain;
+	int error;
+
+	chain = hammer2_inode_chain(xop->head.ip, clindex,
+				    HAMMER2_RESOLVE_ALWAYS |
+				    HAMMER2_RESOLVE_SHARED);
+	if (chain)
+		error = chain->error;
+	else
+		error = EIO;
+		
+	hammer2_xop_feed(&xop->head, chain, clindex, error);
+	if (chain)
+		hammer2_chain_drop(chain);
+}
+
+/*
  * Backend for hammer2_vop_readdir()
  */
 void
@@ -95,7 +121,7 @@ hammer2_xop_readdir(hammer2_xop_t *arg, int clindex)
 	 * lock so do not unlock it on the iteration.
 	 */
 	chain = hammer2_chain_lookup(&parent, &key_next, lkey, lkey,
-			     &cache_index, HAMMER2_LOOKUP_SHARED);
+				     &cache_index, HAMMER2_LOOKUP_SHARED);
 	if (chain == NULL) {
 		chain = hammer2_chain_lookup(&parent, &key_next,
 					     lkey, (hammer2_key_t)-1,
@@ -187,8 +213,10 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 	}
 done:
 	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
-	if (chain)
+	if (chain) {
+		/* leave lock intact for feed */
 		hammer2_chain_drop(chain);
+	}
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -636,7 +664,7 @@ done:
  * Used by the inode create code to locate an unused lhc.
  */
 void
-hammer2_inode_xop_scanlhc(hammer2_xop_t *arg, int clindex)
+hammer2_xop_scanlhc(hammer2_xop_t *arg, int clindex)
 {
 	hammer2_xop_scanlhc_t *xop = &arg->xop_scanlhc;
 	hammer2_chain_t *parent;
@@ -683,6 +711,55 @@ hammer2_inode_xop_scanlhc(hammer2_xop_t *arg, int clindex)
 	}
 done:
 	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+}
+
+/*
+ * Lookup a specific key.
+ *
+ * Used by the inode hidden directory code to find the hidden directory.
+ */
+void
+hammer2_xop_lookup(hammer2_xop_t *arg, int clindex)
+{
+	hammer2_xop_scanlhc_t *xop = &arg->xop_scanlhc;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	int cache_index = -1;	/* XXX */
+	int error = 0;
+
+	parent = hammer2_inode_chain(xop->head.ip, clindex,
+				     HAMMER2_RESOLVE_ALWAYS |
+				     HAMMER2_RESOLVE_SHARED);
+	chain = NULL;
+	if (parent == NULL) {
+		error = EIO;
+		goto done;
+	}
+
+	/*
+	 * Lookup all possibly conflicting directory entries, the feed
+	 * inherits the chain's lock so do not unlock it on the iteration.
+	 */
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     xop->lhc, xop->lhc,
+				     &cache_index,
+				     HAMMER2_LOOKUP_ALWAYS |
+				     HAMMER2_LOOKUP_SHARED);
+	if (chain)
+		hammer2_xop_feed(&xop->head, chain, clindex, chain->error);
+	else
+		hammer2_xop_feed(&xop->head, NULL, clindex, ENOENT);
+
+done:
+	if (chain) {
+		/* leave lock intact for feed */
+		hammer2_chain_drop(chain);
+	}
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);

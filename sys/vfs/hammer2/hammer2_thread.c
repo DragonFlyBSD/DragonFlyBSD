@@ -206,11 +206,11 @@ hammer2_primary_sync_thread(void *arg)
 		 * Synchronization scan.
 		 */
 		hammer2_trans_init(pmp, 0);
-		hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_inode_lock(pmp->iroot, 0);
 		cparent = hammer2_inode_cluster(pmp->iroot,
 					        HAMMER2_RESOLVE_ALWAYS);
 		hammer2_update_pfs_status(thr, cparent);
-		hammer2_inode_unlock(pmp->iroot, NULL);
+		hammer2_inode_unlock(pmp->iroot);
 		bzero(errors, sizeof(errors));
 		kprintf("sync_slaves clindex %d\n", thr->clindex);
 

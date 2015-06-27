@@ -164,12 +164,8 @@ hammer2_inode_chain(hammer2_inode_t *ip, int clindex, int how)
 }
 
 void
-hammer2_inode_unlock(hammer2_inode_t *ip, hammer2_cluster_t *cluster)
+hammer2_inode_unlock(hammer2_inode_t *ip)
 {
-	if (cluster) {
-		hammer2_cluster_unlock(cluster);
-		hammer2_cluster_drop(cluster);
-	}
 	hammer2_mtx_unlock(&ip->lock);
 	hammer2_inode_drop(ip);
 }
@@ -615,15 +611,12 @@ again:
 hammer2_inode_t *
 hammer2_inode_create(hammer2_inode_t *dip,
 		     struct vattr *vap, struct ucred *cred,
-		     const uint8_t *name, size_t name_len,
+		     const uint8_t *name, size_t name_len, hammer2_key_t lhc,
 		     hammer2_key_t inum, uint8_t type, uint8_t target_type,
 		     int flags, int *errorp)
 {
-	hammer2_xop_scanlhc_t *sxop;
 	hammer2_xop_create_t *xop;
 	hammer2_inode_t *nip;
-	hammer2_key_t lhcbase;
-	hammer2_key_t lhc;
 	int error;
 	uid_t xuid;
 	uuid_t dip_uid;
@@ -632,7 +625,8 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	uint8_t dip_comp_algo;
 	uint8_t dip_check_algo;
 
-	lhc = hammer2_dirhash(name, name_len);
+	if (name)
+		lhc = hammer2_dirhash(name, name_len);
 	*errorp = 0;
 	nip = NULL;
 
@@ -648,7 +642,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	 * two different creates can end up with the same lhc so we
 	 * cannot depend on the OS to prevent the collision.
 	 */
-	hammer2_inode_lock(dip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(dip, 0);
 
 	dip_uid = dip->meta.uid;
 	dip_gid = dip->meta.gid;
@@ -657,28 +651,34 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	dip_check_algo = dip->meta.check_algo;
 
 	/*
-	 * Locate an unused key in the collision space.
+	 * If name specified, locate an unused key in the collision space.
+	 * Otherwise use the passed-in lhc directly.
 	 */
-	lhcbase = lhc;
-	sxop = &hammer2_xop_alloc(dip)->xop_scanlhc;
-	sxop->lhc = lhc;
-	hammer2_xop_start(&sxop->head, hammer2_inode_xop_scanlhc);
-	while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
-		if (lhc != sxop->head.cluster.focus->bref.key)
-			break;
-		++lhc;
-	}
-	hammer2_xop_retire(&sxop->head, HAMMER2_XOPMASK_VOP);
+	if (name) {
+		hammer2_xop_scanlhc_t *sxop;
+		hammer2_key_t lhcbase;
 
-	if (error) {
-		if (error != ENOENT)
+		lhcbase = lhc;
+		sxop = &hammer2_xop_alloc(dip)->xop_scanlhc;
+		sxop->lhc = lhc;
+		hammer2_xop_start(&sxop->head, hammer2_xop_scanlhc);
+		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
+			if (lhc != sxop->head.cluster.focus->bref.key)
+				break;
+			++lhc;
+		}
+		hammer2_xop_retire(&sxop->head, HAMMER2_XOPMASK_VOP);
+
+		if (error) {
+			if (error != ENOENT)
+				goto done2;
+			++lhc;
+			error = 0;
+		}
+		if ((lhcbase ^ lhc) & ~HAMMER2_DIRHASH_LOMASK) {
+			error = ENOSPC;
 			goto done2;
-		++lhc;
-		error = 0;
-	}
-	if ((lhcbase ^ lhc) & ~HAMMER2_DIRHASH_LOMASK) {
-		error = ENOSPC;
-		goto done2;
+		}
 	}
 
 	/*
@@ -754,7 +754,8 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	    xop->meta.type == HAMMER2_OBJTYPE_HARDLINK) {
 		xop->meta.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
 	}
-	hammer2_xop_setname(&xop->head, name, name_len);
+	if (name)
+		hammer2_xop_setname(&xop->head, name, name_len);
 	xop->meta.name_len = name_len;
 	xop->meta.name_key = lhc;
 	KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
@@ -793,7 +794,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 done:
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 done2:
-	hammer2_inode_unlock(dip, NULL);
+	hammer2_inode_unlock(dip);
 
 	return (nip);
 }
@@ -825,7 +826,7 @@ hammer2_inode_connect_simple(hammer2_inode_t *dip, hammer2_inode_t *ip,
 		lhc = lhcbase = hammer2_dirhash(name, name_len);
 		sxop = &hammer2_xop_alloc(dip)->xop_scanlhc;
 		sxop->lhc = lhc;
-		hammer2_xop_start(&sxop->head, hammer2_inode_xop_scanlhc);
+		hammer2_xop_start(&sxop->head, hammer2_xop_scanlhc);
 		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
 			if (lhc != sxop->head.cluster.focus->bref.key)
 				break;
@@ -1105,10 +1106,10 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 	 * inode number to avoid collisions.
 	 */
 	if (isopen) {
-		hammer2_inode_lock(pmp->ihidden, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_inode_lock(pmp->ihidden, 0);
 		error = hammer2_inode_connect_simple(pmp->ihidden, ip,
 						     NULL, 0, ip->meta.inum);
-		hammer2_inode_unlock(pmp->ihidden, NULL);
+		hammer2_inode_unlock(pmp->ihidden);
 	} else {
 		error = 0;
 	}
@@ -1121,140 +1122,81 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 void
 hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 {
-	hammer2_cluster_t *cparent;
-	hammer2_cluster_t *cluster;
-	hammer2_cluster_t *scan;
-	const hammer2_inode_data_t *ripdata;
-	hammer2_inode_data_t *wipdata;
-	hammer2_key_t key_dummy;
-	hammer2_key_t key_next;
 	int error;
-	int count;
-	int dip_check_algo;
-	int dip_comp_algo;
 
 	if (pmp->ihidden)
 		return;
 
+	hammer2_trans_init(pmp, 0);
+	hammer2_inode_lock(pmp->iroot, 0);
+
 	/*
 	 * Find the hidden directory
 	 */
-	bzero(&key_dummy, sizeof(key_dummy));
-	hammer2_trans_init(pmp, 0);
+	{
+		hammer2_xop_lookup_t *xop;
 
-	/*
-	 * Setup for lookup, retrieve iroot's check and compression
-	 * algorithm request which was likely generated by newfs_hammer2.
-	 *
-	 * The check/comp fields will probably never be used since inodes
-	 * are renamed into the hidden directory and not created relative to
-	 * the hidden directory, chain creation inherits from bref.methods,
-	 * and data chains inherit from their respective file inode *_algo
-	 * fields.
-	 */
-	hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_ALWAYS);
-	cparent = hammer2_inode_cluster(pmp->iroot, HAMMER2_RESOLVE_ALWAYS);
-	ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
-	dip_check_algo = ripdata->meta.check_algo;
-	dip_comp_algo = ripdata->meta.comp_algo;
-	ripdata = NULL;
+		xop = &hammer2_xop_alloc(pmp->iroot)->xop_lookup;
+		xop->lhc = HAMMER2_INODE_HIDDENDIR;
+		hammer2_xop_start(&xop->head, hammer2_xop_lookup);
+		error = hammer2_xop_collect(&xop->head, 0);
 
-	cluster = hammer2_cluster_lookup(cparent, &key_dummy,
-					 HAMMER2_INODE_HIDDENDIR,
-					 HAMMER2_INODE_HIDDENDIR,
-					 0);
-	if (cluster) {
-		pmp->ihidden = hammer2_inode_get(pmp, pmp->iroot, cluster);
-		hammer2_inode_ref(pmp->ihidden);
-
-		/*
-		 * Remove any unlinked files which were left open as-of
-		 * any system crash.
-		 *
-		 * Don't pass NODATA, we need the inode data so the delete
-		 * can do proper statistics updates.
-		 */
-		count = 0;
-		scan = hammer2_cluster_lookup(cluster, &key_next,
-					      0, HAMMER2_TID_MAX, 0);
-		while (scan) {
-			if (hammer2_cluster_type(scan) ==
-			    HAMMER2_BREF_TYPE_INODE) {
-				hammer2_cluster_delete(cluster, scan,
-						   HAMMER2_DELETE_PERMANENT);
-				++count;
-			}
-			scan = hammer2_cluster_next(cluster, scan, &key_next,
-						    0, HAMMER2_TID_MAX, 0);
+		if (error == 0) {
+			/*
+			 * Found the hidden directory
+			 */
+			kprintf("PFS FOUND HIDDEN DIR\n");
+			pmp->ihidden = hammer2_inode_get(pmp, pmp->iroot,
+							 &xop->head.cluster);
+			hammer2_inode_ref(pmp->ihidden);
+			hammer2_inode_unlock(pmp->ihidden);
 		}
-
-		hammer2_inode_unlock(pmp->ihidden, cluster);
-		hammer2_inode_unlock(pmp->iroot, cparent);
-		hammer2_trans_done(pmp);
-		kprintf("hammer2: PFS loaded hidden dir, "
-			"removed %d dead entries\n", count);
-		return;
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	}
 
 	/*
-	 * Create the hidden directory
+	 * Create the hidden directory if it could not be found.
 	 */
-	error = hammer2_cluster_create(pmp, cparent, &cluster,
-				       HAMMER2_INODE_HIDDENDIR, 0,
-				       HAMMER2_BREF_TYPE_INODE,
-				       HAMMER2_INODE_BYTES,
-				       0);
-	hammer2_inode_unlock(pmp->iroot, cparent);
+	if (error == ENOENT) {
+		kprintf("PFS CREATE HIDDEN DIR\n");
 
-	hammer2_cluster_modify(cluster, 0);
-	wipdata = &hammer2_cluster_wdata(cluster)->ipdata;
-	wipdata->meta.type = HAMMER2_OBJTYPE_DIRECTORY;
-	wipdata->meta.inum = HAMMER2_INODE_HIDDENDIR;
-	wipdata->meta.nlinks = 1;
-	wipdata->meta.comp_algo = dip_comp_algo;
-	wipdata->meta.check_algo = dip_check_algo;
-	hammer2_cluster_modsync(cluster);
-	kprintf("hammer2: PFS root missing hidden directory, creating\n");
+		pmp->ihidden = hammer2_inode_create(pmp->iroot, NULL, NULL,
+						    NULL, 0,
+				/* lhc */	    HAMMER2_INODE_HIDDENDIR,
+				/* inum */	    HAMMER2_INODE_HIDDENDIR,
+				/* type */	    HAMMER2_OBJTYPE_DIRECTORY,
+				/* target_type */   0,
+				/* flags */	    0,
+						    &error);
+		if (pmp->ihidden) {
+			hammer2_inode_ref(pmp->ihidden);
+			hammer2_inode_unlock(pmp->ihidden);
+		}
+		if (error)
+			kprintf("PFS CREATE ERROR %d\n", error);
+	}
 
-	pmp->ihidden = hammer2_inode_get(pmp, pmp->iroot, cluster);
-	hammer2_inode_ref(pmp->ihidden);
-	hammer2_inode_unlock(pmp->ihidden, cluster);
+	/*
+	 * Scan the hidden directory on-mount and destroy its contents
+	 */
+	if (error == 0) {
+		hammer2_xop_unlinkall_t *xop;
+
+		hammer2_inode_lock(pmp->ihidden, 0);
+		xop = &hammer2_xop_alloc(pmp->ihidden)->xop_unlinkall;
+		xop->head.lkey = 0;
+		hammer2_xop_start(&xop->head, hammer2_inode_xop_unlinkall);
+
+		while ((error = hammer2_xop_collect(&xop->head, 0)) == 0) {
+			;
+		}
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		hammer2_inode_unlock(pmp->ihidden);
+	}
+
+	hammer2_inode_unlock(pmp->iroot);
 	hammer2_trans_done(pmp);
 }
-
-#if 0
-/*
- * If an open file is unlinked H2 needs to retain the file in the topology
- * to ensure that its backing store is not recovered by the bulk free scan.
- * This also allows us to avoid having to special-case the CHAIN_DELETED flag.
- *
- * To do this the file is moved to a hidden directory in the PFS root and
- * renamed.  The hidden directory must be created if it does not exist.
- */
-static
-void
-hammer2_inode_move_to_hidden(hammer2_cluster_t **cparentp,
-			     hammer2_cluster_t **clusterp,
-			     hammer2_tid_t inum)
-{
-	hammer2_cluster_t *dcluster;
-	hammer2_pfs_t *pmp;
-	int error;
-
-	pmp = (*clusterp)->pmp;
-	KKASSERT(pmp != NULL);
-	KKASSERT(pmp->ihidden != NULL);
-
-	hammer2_cluster_delete(*cparentp, *clusterp, 0);
-	hammer2_inode_lock(pmp->ihidden, HAMMER2_RESOLVE_ALWAYS);
-	dcluster = hammer2_inode_cluster(pmp->ihidden, HAMMER2_RESOLVE_ALWAYS);
-	error = hammer2_inode_connect(NULL/*XXX*/, clusterp, 0,
-				      pmp->ihidden, dcluster,
-				      NULL, 0, inum);
-	hammer2_inode_unlock(pmp->ihidden, dcluster);
-	KKASSERT(error == 0);
-}
-#endif
 
 /*
  * Find the directory common to both fdip and tdip.
@@ -1426,6 +1368,48 @@ hammer2_inode_fsync(hammer2_inode_t *ip, hammer2_cluster_t *cparent)
 }
 
 /*
+ * This handles unlinked open files after the vnode is finally dereferenced.
+ * To avoid deadlocks it cannot be called from the normal vnode recycling
+ * path, so we call it (1) after a unlink, rmdir, or rename, (2) on every
+ * flush, and (3) on umount.
+ *
+ * Caller must be in a transaction.
+ */
+void
+hammer2_inode_run_unlinkq(hammer2_pfs_t *pmp)
+{
+	hammer2_xop_destroy_t *xop;
+	hammer2_inode_unlink_t *ipul;
+	hammer2_inode_t *ip;
+	int error;
+
+	if (TAILQ_EMPTY(&pmp->unlinkq))
+		return;
+
+	LOCKSTART;
+	hammer2_spin_ex(&pmp->list_spin);
+	while ((ipul = TAILQ_FIRST(&pmp->unlinkq)) != NULL) {
+		TAILQ_REMOVE(&pmp->unlinkq, ipul, entry);
+		hammer2_spin_unex(&pmp->list_spin);
+		ip = ipul->ip;
+		kfree(ipul, pmp->minode);
+
+		hammer2_inode_lock(ip, 0);
+		xop = &hammer2_xop_alloc(ip)->xop_destroy;
+		hammer2_xop_start(&xop->head, hammer2_inode_xop_destroy);
+		error = hammer2_xop_collect(&xop->head, 0);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+
+		hammer2_inode_unlock(ip);
+		hammer2_inode_drop(ip);			/* ipul ref */
+
+		hammer2_spin_ex(&pmp->list_spin);
+	}
+	hammer2_spin_unex(&pmp->list_spin);
+	LOCKSTOP;
+}
+
+/*
  * Inode create helper (threaded, backend)
  *
  * Used by ncreate, nmknod, nsymlink, nmkdir.
@@ -1470,8 +1454,13 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 	if (error == 0) {
 		hammer2_chain_modify(chain, 0);
 		chain->data->ipdata.meta = xop->meta;
-		bcopy(xop->head.name, chain->data->ipdata.filename,
-		      xop->head.name_len);
+		if (xop->head.name) {
+			bcopy(xop->head.name,
+			      chain->data->ipdata.filename,
+			      xop->head.name_len);
+			chain->data->ipdata.meta.name_len = xop->head.name_len;
+		}
+		chain->data->ipdata.meta.name_key = xop->lhc;
 	}
 	hammer2_chain_unlock(chain);
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
@@ -1488,11 +1477,91 @@ fail:
 
 /*
  * Inode delete helper (backend, threaded)
+ *
+ * Generally used by hammer2_run_unlinkq()
  */
 void
 hammer2_inode_xop_destroy(hammer2_xop_t *arg, int clindex)
 {
-	/*hammer2_xop_inode_t *xop = &arg->xop_inode;*/
+	hammer2_xop_destroy_t *xop = &arg->xop_destroy;
+	hammer2_pfs_t *pmp;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_inode_t *ip;
+	int error;
+
+	/*
+	 * We need the precise parent chain to issue the deletion.
+	 */
+	ip = xop->head.ip;
+	pmp = ip->pmp;
+	chain = NULL;
+
+	parent = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
+	if (parent)
+		hammer2_chain_getparent(&parent, HAMMER2_RESOLVE_ALWAYS);
+	if (parent == NULL) {
+		error = EIO;
+		goto done;
+	}
+	chain = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
+	if (chain == NULL) {
+		error = EIO;
+		goto done;
+	}
+	hammer2_chain_delete(parent, chain, 0);
+	error = 0;
+done:
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+}
+
+void
+hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
+{
+	hammer2_xop_unlinkall_t *xop = &arg->xop_unlinkall;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	int cache_index = -1;
+
+	/*
+	 * We need the precise parent chain to issue the deletion.
+	 */
+	parent = hammer2_inode_chain(xop->head.ip, clindex,
+				     HAMMER2_RESOLVE_ALWAYS);
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
+				     &cache_index,
+				     HAMMER2_LOOKUP_ALWAYS);
+	while (chain) {
+		hammer2_chain_delete(parent, chain, HAMMER2_DELETE_PERMANENT);
+		hammer2_chain_unlock(chain);
+		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
+					  HAMMER2_RESOLVE_SHARED);
+		hammer2_xop_feed(&xop->head, chain, clindex, chain->error);
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					   key_next, HAMMER2_KEY_MAX,
+					   &cache_index,
+					   HAMMER2_LOOKUP_ALWAYS |
+					   HAMMER2_LOOKUP_NOUNLOCK);
+	}
+	hammer2_xop_feed(&xop->head, NULL, clindex, ENOENT);
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
 }
 
 void

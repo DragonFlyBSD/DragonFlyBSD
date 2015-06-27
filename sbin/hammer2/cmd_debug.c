@@ -627,7 +627,8 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 			  media.ipdata.meta.comp_algo);
 		tabprintf(tab, "checkalg %u\n",
 			  media.ipdata.meta.check_algo);
-		if (media.ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) {
+		if ((media.ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) ||
+		    media.ipdata.meta.pfs_type == HAMMER2_PFSTYPE_SUPROOT) {
 			tabprintf(tab, "pfs_type %u (%s)\n",
 				  media.ipdata.meta.pfs_type,
 				  hammer2_pfstype_to_str(media.ipdata.meta.pfs_type));

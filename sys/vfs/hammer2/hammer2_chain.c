@@ -2244,6 +2244,10 @@ hammer2_chain_create(hammer2_chain_t **parentp,
 		 * then allocate the in-memory chain structure.  Set the
 		 * INITIAL flag for fresh chains which do not have embedded
 		 * data.
+		 *
+		 * XXX for now set the check mode of the child based on
+		 *     the parent or, if the parent is an inode, the
+		 *     specification in the inode.
 		 */
 		bzero(&dummy, sizeof(dummy));
 		dummy.type = type;
@@ -2251,6 +2255,13 @@ hammer2_chain_create(hammer2_chain_t **parentp,
 		dummy.keybits = keybits;
 		dummy.data_off = hammer2_getradix(bytes);
 		dummy.methods = parent->bref.methods;
+		if (parent->bref.type == HAMMER2_BREF_TYPE_INODE &&
+		    parent->data) {
+			dummy.methods &= ~HAMMER2_ENC_CHECK(-1);
+			dummy.methods |= HAMMER2_ENC_CHECK(
+					  parent->data->ipdata.meta.check_algo);
+		}
+
 		chain = hammer2_chain_alloc(hmp, pmp, &dummy);
 
 		/*

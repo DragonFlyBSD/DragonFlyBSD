@@ -661,9 +661,12 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	rawip->meta.pfs_clid = Hammer2_SupCLID;
 	rawip->meta.pfs_fsid = Hammer2_SupFSID;
 	rawip->meta.pfs_type = HAMMER2_PFSTYPE_SUPROOT;
+	snprintf(rawip->filename, sizeof(rawip->filename), "SUPROOT");
+	rawip->meta.name_key = 0;
+	rawip->meta.name_len = strlen(rawip->filename);
 
-	/* first allocatable inode number */
-	rawip->meta.pfs_inum = 16;
+	/* The super-root has an inode number of 0 */
+	rawip->meta.pfs_inum = 0;
 
 	/*
 	 * Currently newfs_hammer2 just throws the PFS inodes into the

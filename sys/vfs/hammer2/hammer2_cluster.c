@@ -170,35 +170,6 @@ hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref)
 }
 
 /*
- * Set the check mode for the cluster.
- * Errored elements of the cluster are ignored.
- *
- * The cluster must be locked and modified.
- */
-void
-hammer2_cluster_setmethod_check(hammer2_cluster_t *cluster, int check_algo)
-{
-	hammer2_chain_t *chain;
-	int i;
-
-	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
-	for (i = 0; i < cluster->nchains; ++i) {
-		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
-			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
-			continue;
-		}
-		chain = cluster->array[i].chain;
-		if (chain == NULL)
-			continue;
-		if (chain->error)
-			continue;
-		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
-		chain->bref.methods &= ~HAMMER2_ENC_CHECK(-1);
-		chain->bref.methods |= HAMMER2_ENC_CHECK(check_algo);
-	}
-}
-
-/*
  * Create a degenerate cluster with one ref from a single locked chain.
  * The returned cluster will be focused on the chain and inherit its
  * error state.
@@ -891,7 +862,9 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 					++nmasters;
 					++nmasters_keymatch;
 				}
-			} else if (chain && chain->bref.key == key) {
+			} else if (chain &&
+				   (key == (hammer2_key_t)-1 ||
+				    chain->bref.key == key)) {
 				++nmasters_keymatch;
 				if (quorum_tid < last_best_quorum_tid &&
 				    (quorum_tid < chain->bref.modify_tid ||
@@ -1663,72 +1636,6 @@ done:
 }
 
 /*
- * Create a new cluster using the specified key
- */
-int
-hammer2_cluster_create(hammer2_pfs_t *pmp, hammer2_cluster_t *cparent,
-		     hammer2_cluster_t **clusterp,
-		     hammer2_key_t key, int keybits,
-		     int type, size_t bytes, int flags)
-{
-	hammer2_cluster_t *cluster;
-	int error;
-	int i;
-
-	if ((cluster = *clusterp) == NULL) {
-		cluster = kmalloc(sizeof(*cluster), M_HAMMER2,
-				  M_WAITOK | M_ZERO);
-		cluster->pmp = pmp;			/* can be NULL */
-		cluster->refs = 1;
-		cluster->flags = HAMMER2_CLUSTER_LOCKED;
-	}
-	cluster->focus_index = 0;
-	cluster->focus = NULL;
-
-	/*
-	 * NOTE: cluster->array[] entries can initially be NULL.  If
-	 *	 *clusterp is supplied, skip NULL entries, otherwise
-	 *	 create new chains.
-	 */
-	for (i = 0; i < cparent->nchains; ++i) {
-		if ((cparent->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
-			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
-			continue;
-		}
-		if (*clusterp) {
-			if ((cluster->array[i].flags &
-			     HAMMER2_CITEM_FEMOD) == 0) {
-				cluster->array[i].flags |=
-						HAMMER2_CITEM_INVALID;
-				continue;
-			}
-			if (cluster->array[i].chain == NULL)
-				continue;
-		}
-		error = hammer2_chain_create(&cparent->array[i].chain,
-					     &cluster->array[i].chain, pmp,
-					     key, keybits,
-					     type, bytes, flags);
-		if (cparent->focus_index == i)
-			cparent->focus = cparent->array[i].chain;
-		KKASSERT(error == 0);
-		if (cluster->focus == NULL) {
-			cluster->focus_index = i;
-			cluster->focus = cluster->array[i].chain;
-		}
-		if (cparent->focus == cparent->array[i].chain) {
-			cluster->focus_index = i;
-			cluster->focus = cluster->array[i].chain;
-		}
-	}
-	cluster->nchains = i;
-	*clusterp = cluster;
-	hammer2_cluster_resolve(cluster);
-
-	return error;
-}
-
-/*
  * Mark a cluster deleted
  */
 void
@@ -1817,7 +1724,7 @@ hammer2_cluster_snapshot(hammer2_cluster_t *ocluster,
 	vat.va_type = VDIR;
 	vat.va_mode = 0755;
 	nip = hammer2_inode_create(hmp->spmp->iroot, &vat, proc0.p_ucred,
-				   pmp->name, name_len,
+				   pmp->name, name_len, 0,
 				   1, 0, 0,
 				   HAMMER2_INSERT_PFSROOT, &error);
 
@@ -1854,59 +1761,9 @@ hammer2_cluster_snapshot(hammer2_cluster_t *ocluster,
 		hammer2_flush(nchain, 1);
 		hammer2_chain_unlock(nchain);
 		hammer2_chain_drop(nchain);
-		hammer2_inode_unlock(nip, NULL);
+		hammer2_inode_unlock(nip);
 	}
 	return (error);
-}
-
-/*
- * Return locked parent cluster given a locked child.  The child remains
- * locked on return.  The new parent's focus follows the child's focus
- * and the parent is always resolved.
- *
- * We must temporarily unlock the passed-in cluster to avoid a deadlock
- * between elements of the cluster.
- *
- * We must not try to hammer2_cluster_resolve() cparent.  The individual
- * parent chains for the nodes are the correct parents for the cluster but
- * do not necessarily match, so resolve would likely implode.
- */
-hammer2_cluster_t *
-hammer2_cluster_parent(hammer2_cluster_t *cluster)
-{
-	hammer2_cluster_t *cparent;
-	int i;
-
-	cparent = hammer2_cluster_copy(cluster);
-	hammer2_cluster_unlock(cluster);
-
-	for (i = 0; i < cparent->nchains; ++i) {
-		hammer2_chain_t *chain;
-		hammer2_chain_t *rchain;
-
-		/*
-		 * Calculate parent for each element.  Old chain has an extra
-		 * ref for cparent but the lock remains with cluster.
-		 */
-		chain = cparent->array[i].chain;
-		if (chain == NULL)
-			continue;
-		while ((rchain = chain->parent) != NULL) {
-			hammer2_chain_ref(rchain);
-			hammer2_chain_lock(rchain, HAMMER2_RESOLVE_ALWAYS);
-			if (chain->parent == rchain)
-				break;
-			hammer2_chain_unlock(rchain);
-			hammer2_chain_drop(rchain);
-		}
-		cparent->array[i].chain = rchain;
-		hammer2_chain_drop(chain);
-	}
-	cparent->flags |= HAMMER2_CLUSTER_LOCKED;
-	/* hammer2_cluster_resolve(cparent); */
-	hammer2_cluster_lock(cluster, HAMMER2_RESOLVE_ALWAYS);
-
-	return cparent;
 }
 
 /************************************************************************

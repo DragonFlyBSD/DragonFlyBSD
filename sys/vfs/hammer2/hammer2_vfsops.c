@@ -315,11 +315,9 @@ hammer2_vfs_uninit(struct vfsconf *vfsp __unused)
  * XXX check locking
  */
 hammer2_pfs_t *
-hammer2_pfsalloc(hammer2_cluster_t *cluster,
-		 const hammer2_inode_data_t *ripdata,
+hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 		 hammer2_tid_t modify_tid)
 {
-	hammer2_chain_t *rchain;
 	hammer2_inode_t *iroot;
 	hammer2_pfs_t *pmp;
 	int count;
@@ -381,19 +379,19 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		iroot = hammer2_inode_get(pmp, NULL, NULL);
 		pmp->iroot = iroot;
 		hammer2_inode_ref(iroot);
-		hammer2_inode_unlock(iroot, NULL);
+		hammer2_inode_unlock(iroot);
 	}
 
 	/*
-	 * Stop here if no cluster is passed in.
+	 * Stop here if no chain is passed in.
 	 */
-	if (cluster == NULL)
+	if (chain == NULL)
 		goto done;
 
 	/*
-	 * When a cluster is passed in we must add the cluster's chains
-	 * to the PFS's root inode, update pmp->pfs_types[], and update
-	 * the syncronization threads.
+	 * When a chain is passed in we must add it to the PFS's root
+	 * inode, update pmp->pfs_types[], and update the syncronization
+	 * threads.
 	 *
 	 * At the moment empty spots can develop due to removals or failures.
 	 * Ultimately we want to re-fill these spots but doing so might
@@ -405,14 +403,14 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 
 	kprintf("add PFS to pmp %p[%d]\n", pmp, j);
 
-	for (i = 0; i < cluster->nchains; ++i) {
-		if (j == HAMMER2_MAXCLUSTER)
-			break;
-		rchain = cluster->array[i].chain;
-		KKASSERT(rchain->pmp == NULL);
-		rchain->pmp = pmp;
-		hammer2_chain_ref(rchain);
-		iroot->cluster.array[j].chain = rchain;
+	if (j == HAMMER2_MAXCLUSTER) {
+		kprintf("hammer2_mount: cluster full!\n");
+		/* XXX fatal error? */
+	} else {
+		KKASSERT(chain->pmp == NULL);
+		chain->pmp = pmp;
+		hammer2_chain_ref(chain);
+		iroot->cluster.array[j].chain = chain;
 		pmp->pfs_types[j] = ripdata->meta.pfs_type;
 		pmp->pfs_names[j] = kstrdup(ripdata->filename, M_HAMMER2);
 
@@ -421,22 +419,17 @@ hammer2_pfsalloc(hammer2_cluster_t *cluster,
 		 * for the mount_count here.
 		 */
 		if (pmp->mp)
-			++rchain->hmp->mount_count;
+			++chain->hmp->mount_count;
 
 		/*
 		 * May have to fixup dirty chain tracking.  Previous
 		 * pmp was NULL so nothing to undo.
 		 */
-		if (rchain->flags & HAMMER2_CHAIN_MODIFIED)
+		if (chain->flags & HAMMER2_CHAIN_MODIFIED)
 			hammer2_pfs_memory_inc(pmp);
 		++j;
 	}
 	iroot->cluster.nchains = j;
-
-	if (i != cluster->nchains) {
-		kprintf("hammer2_mount: cluster full!\n");
-		/* XXX fatal error? */
-	}
 
 	/*
 	 * Update nmasters from any PFS inode which is part of the cluster.
@@ -736,8 +729,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	struct vnode *devvp;
 	struct nlookupdata nd;
 	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
 	hammer2_cluster_t *cluster;
-	hammer2_cluster_t *cparent;
 	const hammer2_inode_data_t *ripdata;
 	hammer2_blockref_t bref;
 	struct file *fp;
@@ -812,7 +805,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 				if (error)
 					break;
 			}
-			/*hammer2_inode_install_hidden(pmp);*/
 
 			return error;
 		}
@@ -1025,7 +1017,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		spmp->spmp_hmp = hmp;
 		spmp->pfs_types[0] = ripdata->meta.pfs_type;
 		hammer2_inode_ref(spmp->iroot);
-		hammer2_inode_unlock(spmp->iroot, cluster);
+		hammer2_inode_unlock(spmp->iroot);
+		hammer2_cluster_unlock(cluster);
+		hammer2_cluster_drop(cluster);
 		schain = NULL;
 		/* leave spmp->iroot with one ref */
 
@@ -1058,28 +1052,32 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * cluster->pmp will incorrectly point to spmp and must be fixed
 	 * up later on.
 	 */
-	hammer2_inode_lock(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
-	cparent = hammer2_inode_cluster(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_lock(spmp->iroot, 0);
+	parent = hammer2_inode_chain(spmp->iroot, 0, HAMMER2_RESOLVE_ALWAYS);
 	lhc = hammer2_dirhash(label, strlen(label));
-	cluster = hammer2_cluster_lookup(cparent, &key_next,
-				      lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-				      0);
-	while (cluster) {
-		if (hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE &&
-		    strcmp(label,
-		       hammer2_cluster_rdata(cluster)->ipdata.filename) == 0) {
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
+				     &cache_index, 0);
+	while (chain) {
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+		    strcmp(label, chain->data->ipdata.filename) == 0) {
 			break;
 		}
-		cluster = hammer2_cluster_next(cparent, cluster, &key_next,
+		chain = hammer2_chain_next(&parent, chain, &key_next,
 					    key_next,
-					    lhc + HAMMER2_DIRHASH_LOMASK, 0);
+					    lhc + HAMMER2_DIRHASH_LOMASK,
+					    &cache_index, 0);
 	}
-	hammer2_inode_unlock(spmp->iroot, cparent);
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	hammer2_inode_unlock(spmp->iroot);
 
 	/*
 	 * PFS could not be found?
 	 */
-	if (cluster == NULL) {
+	if (chain == NULL) {
 		kprintf("hammer2_mount: PFS label not found\n");
 		hammer2_unmount_helper(mp, NULL, hmp);
 		lockmgr(&hammer2_mntlk, LK_RELEASE);
@@ -1096,11 +1094,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * Check if the cluster has already been mounted.  A cluster can
 	 * only be mounted once, use null mounts to mount additional copies.
 	 */
-	ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-	hammer2_cluster_bref(cluster, &bref);
+	ripdata = &chain->data->ipdata;
+	bref = chain->bref;
 	pmp = hammer2_pfsalloc(NULL, ripdata, bref.modify_tid);
-	hammer2_cluster_unlock(cluster);
-	hammer2_cluster_drop(cluster);
+	hammer2_chain_unlock(chain);
+	hammer2_chain_drop(chain);
 
 	if (pmp->mp) {
 		kprintf("hammer2_mount: PFS already mounted!\n");
@@ -1142,12 +1140,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
         lockmgr(&hammer2_mntlk, LK_RELEASE);
 
 	/*
-	 * With the cluster operational install ihidden.
-	 * (only applicable to pfs mounts, not applicable to spmp)
-	 */
-	hammer2_inode_install_hidden(pmp);
-
-	/*
 	 * Finish setup
 	 */
 	vfs_getnewfsid(mp);
@@ -1178,12 +1170,13 @@ void
 hammer2_update_pmps(hammer2_dev_t *hmp)
 {
 	const hammer2_inode_data_t *ripdata;
-	hammer2_cluster_t *cparent;
-	hammer2_cluster_t *cluster;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
 	hammer2_blockref_t bref;
 	hammer2_pfs_t *spmp;
 	hammer2_pfs_t *pmp;
 	hammer2_key_t key_next;
+	int cache_index = -1;
 
 	/*
 	 * Lookup mount point under the media-localized super-root.
@@ -1192,27 +1185,28 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 	 * up later on.
 	 */
 	spmp = hmp->spmp;
-	hammer2_inode_lock(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
-	cparent = hammer2_inode_cluster(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
-	cluster = hammer2_cluster_lookup(cparent, &key_next,
-					 HAMMER2_KEY_MIN,
-					 HAMMER2_KEY_MAX,
-					 0);
-	while (cluster) {
-		if (hammer2_cluster_type(cluster) != HAMMER2_BREF_TYPE_INODE)
+	hammer2_inode_lock(spmp->iroot, 0);
+	parent = hammer2_inode_chain(spmp->iroot, 0, HAMMER2_RESOLVE_ALWAYS);
+	chain = hammer2_chain_lookup(&parent, &key_next,
+					 HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
+					 &cache_index, 0);
+	while (chain) {
+		if (chain->bref.type != HAMMER2_BREF_TYPE_INODE)
 			continue;
-		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
-		hammer2_cluster_bref(cluster, &bref);
+		ripdata = &chain->data->ipdata;
+		bref = chain->bref;
 		kprintf("ADD LOCAL PFS: %s\n", ripdata->filename);
 
-		pmp = hammer2_pfsalloc(cluster, ripdata, bref.modify_tid);
-		cluster = hammer2_cluster_next(cparent, cluster,
-					       &key_next,
-					       key_next,
-					       HAMMER2_KEY_MAX,
-					       0);
+		pmp = hammer2_pfsalloc(chain, ripdata, bref.modify_tid);
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					   key_next, HAMMER2_KEY_MAX,
+					   &cache_index, 0);
 	}
-	hammer2_inode_unlock(spmp->iroot, cparent);
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	hammer2_inode_unlock(spmp->iroot);
 }
 
 static
@@ -1511,48 +1505,81 @@ int
 hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 {
 	hammer2_pfs_t *pmp;
-	hammer2_cluster_t *cparent;
 	int error;
 	struct vnode *vp;
 
 	pmp = MPTOPMP(mp);
 	if (pmp->iroot == NULL) {
 		*vpp = NULL;
-		error = EINVAL;
-	} else {
-		hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_ALWAYS |
-					       HAMMER2_RESOLVE_SHARED);
-		cparent = hammer2_inode_cluster(pmp->iroot,
-						HAMMER2_RESOLVE_ALWAYS |
-					        HAMMER2_RESOLVE_SHARED);
+		return EINVAL;
+	}
 
-		/*
-		 * Initialize pmp->inode_tid and pmp->modify_tid on first access
-		 * to the root of mount that resolves good.
-		 * XXX probably not the best place for this.
-		 */
-		if (pmp->inode_tid == 0 &&
-		    cparent->error == 0 && cparent->focus) {
-			const hammer2_inode_data_t *ripdata;
-			hammer2_blockref_t bref;
+	error = 0;
+	hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_SHARED);
 
-			ripdata = &hammer2_cluster_rdata(cparent)->ipdata;
-			hammer2_cluster_bref(cparent, &bref);
-			pmp->inode_tid = ripdata->meta.pfs_inum + 1;
+	while (pmp->inode_tid == 0) {
+		hammer2_xop_vfsroot_t *xop;
+		hammer2_inode_meta_t *meta;
+
+		xop = &hammer2_xop_alloc(pmp->iroot)->xop_vfsroot;
+		hammer2_xop_start(&xop->head, hammer2_xop_vfsroot);
+		error = hammer2_xop_collect(&xop->head, 0);
+
+		if (error == 0) {
+			meta = &xop->head.cluster.focus->data->ipdata.meta;
+			pmp->iroot->meta = *meta;
+			pmp->iroot->bref = xop->head.cluster.focus->bref;
+			pmp->inode_tid = meta->pfs_inum + 1;
 			if (pmp->inode_tid < HAMMER2_INODE_START)
 				pmp->inode_tid = HAMMER2_INODE_START;
-			pmp->modify_tid = bref.modify_tid + 1;
-			pmp->iroot->meta = ripdata->meta;
-			hammer2_cluster_bref(cparent, &pmp->iroot->bref);
+			pmp->modify_tid = pmp->iroot->bref.modify_tid + 1;
+			kprintf("PFS: Starting inode %jd\n",
+				(intmax_t)pmp->inode_tid);
 			kprintf("PMP focus good set nextino=%ld mod=%016jx\n",
 				pmp->inode_tid, pmp->modify_tid);
+			wakeup(&pmp->iroot);
+
+			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+
+			/*
+			 * Prime the mount info.
+			 */
+			hammer2_vfs_statfs(mp, &mp->mnt_stat, NULL);
+
+			/*
+			 * With the cluster operational, check for and
+			 * install ihidden if needed.  The install_hidden
+			 * code needs to get a transaction so we must unlock
+			 * iroot around it.
+			 *
+			 * This is only applicable PFS mounts, there is no
+			 * hidden directory in the spmp.
+			 */
+			hammer2_inode_unlock(pmp->iroot);
+			hammer2_inode_install_hidden(pmp);
+			hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_SHARED);
+
+			break;
 		}
 
+		/*
+		 * Loop, try again
+		 */
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		hammer2_inode_unlock(pmp->iroot);
+		error = tsleep(&pmp->iroot, PCATCH, "h2root", hz);
+		hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_SHARED);
+		if (error == EINTR)
+			break;
+	}
+
+	if (error) {
+		hammer2_inode_unlock(pmp->iroot);
+		*vpp = NULL;
+	} else {
 		vp = hammer2_igetv(pmp->iroot, &error);
-		hammer2_inode_unlock(pmp->iroot, cparent);
+		hammer2_inode_unlock(pmp->iroot);
 		*vpp = vp;
-		if (vp == NULL)
-			kprintf("vnodefail\n");
 	}
 
 	return (error);
@@ -1571,7 +1598,13 @@ hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	hammer2_dev_t *hmp;
 	hammer2_blockref_t bref;
 
+	/*
+	 * NOTE: iroot might not have validated the cluster yet.
+	 */
 	pmp = MPTOPMP(mp);
+	if (pmp->iroot->cluster.focus == NULL)
+		return EINVAL;
+
 	KKASSERT(pmp->iroot->cluster.nchains >= 1);
 	hmp = pmp->iroot->cluster.focus->hmp;	/* iroot retains focus */
 	bref = pmp->iroot->cluster.focus->bref;	/* no lock */
@@ -1597,7 +1630,13 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	hammer2_dev_t *hmp;
 	hammer2_blockref_t bref;
 
+	/*
+	 * NOTE: iroot might not have validated the cluster yet.
+	 */
 	pmp = MPTOPMP(mp);
+	if (pmp->iroot->cluster.focus == NULL)
+		return EINVAL;
+
 	KKASSERT(pmp->iroot->cluster.nchains >= 1);
 	hmp = pmp->iroot->cluster.focus->hmp;	/* iroot retains focus */
 	bref = pmp->iroot->cluster.focus->bref;	/* no lock */
@@ -1870,7 +1909,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 */
 	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH |
 				HAMMER2_TRANS_PREFLUSH);
-	hammer2_run_unlinkq(pmp);
+	hammer2_inode_run_unlinkq(pmp);
 
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
