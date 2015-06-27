@@ -46,7 +46,7 @@ ACPI_MODULE_NAME("BUTTON")
 struct acpi_button_softc {
     device_t	button_dev;
     ACPI_HANDLE	button_handle;
-    boolean_t	button_type;
+    int		button_type;
 #define		ACPI_POWER_BUTTON	0
 #define		ACPI_SLEEP_BUTTON	1
     boolean_t	fixed;
