@@ -70,13 +70,12 @@ TAILQ_HEAD(cpu_pwrdom_list, cpu_pwrdom);
 static void usage(void);
 static double getcputime(double);
 static void acpi_setcpufreq(int nstate);
-static void setupdominfo(void);
+static int setupdominfo(void);
 static int has_battery(void);
 static int mon_battery(void);
 static void getncpus(void);
 
-static struct cpu_pwrdom_list CpuPwrDomain =
-    TAILQ_HEAD_INITIALIZER(CpuPwrDomain);
+static struct cpu_pwrdom_list CpuPwrDomain;
 static struct cpu_pwrdom *CpuPwrDomLimit;
 static struct cpu_pwrdom CpuPwrDomLast;
 static int NCpuPwrDomUsed;
@@ -228,17 +227,17 @@ main(int ac, char **av)
 		 * dom0 exists.
 		 */
 		getcputime(pollrate);
-
-		setupdominfo();
-		if (TAILQ_EMPTY(&CpuPwrDomain)) {
-			usleep((int)(pollrate * 1000000.0));
-			continue;
-		}
-
-		CpuPwrDomLimit = &CpuPwrDomLast;
-		CpuLimit = NCpus;
-		break;
+		if (setupdominfo())
+			break;
+		usleep((int)(pollrate * 1000000.0));
 	}
+
+	/*
+	 * Assume everything are used and are maxed out, before we
+	 * start.
+	 */
+	CpuPwrDomLimit = &CpuPwrDomLast;
+	CpuLimit = NCpus;
 
 	/*
 	 * Set to maximum performance if killed.
@@ -305,7 +304,7 @@ sigintr(int signo __unused)
 /*
  * Figure out the domains and calculate the CpuCount[] array.
  */
-static void
+static int
 setupdominfo(void)
 {
 	struct cpu_pwrdom *dom;
@@ -315,6 +314,10 @@ setupdominfo(void)
 	char *str;
 	size_t msize;
 	int n, i;
+
+	TAILQ_INIT(&CpuPwrDomain);
+	NCpuPwrDomUsed = 0;
+	NCpus = 0;
 
 	TAILQ_INIT(&tmp_list);
 	for (i = 0; i < MAXDOM; ++i) {
@@ -380,11 +383,25 @@ setupdominfo(void)
 		}
 		++NCpuPwrDomUsed;
 	}
-	if (!TAILQ_EMPTY(&CpuPwrDomain)) {
-		/* Install sentinel */
-		CpuPwrDomLast.dom_id = -1;
-		TAILQ_INSERT_TAIL(&CpuPwrDomain, &CpuPwrDomLast, dom_link);
+
+	if (NCpus != TotalCpus) {
+		while ((dom = TAILQ_FIRST(&CpuPwrDomain)) != NULL) {
+			TAILQ_REMOVE(&CpuPwrDomain, dom, dom_link);
+			free(dom);
+		}
+		if (DebugOpt) {
+			printf("Found %d cpus, expecting %d\n",
+			    NCpus, TotalCpus);
+			fflush(stdout);
+		}
+		return 0;
 	}
+
+	/* Install sentinel */
+	CpuPwrDomLast.dom_id = -1;
+	TAILQ_INSERT_TAIL(&CpuPwrDomain, &CpuPwrDomLast, dom_link);
+
+	return 1;
 }
 
 /*
@@ -402,7 +419,9 @@ getcputime(double pollrate)
 	int cpu;
 	uint64_t delta;
 
+	/* NOTE: Don't use NCpus here; it may not be initialized yet */
 	bcopy(ncpu_time, ocpu_time, sizeof(struct kinfo_cputime) * TotalCpus);
+
 	slen = sizeof(ncpu_time);
 	if (sysctlbyname("kern.cputime", &ncpu_time, &slen, NULL, 0) < 0) {
 		fprintf(stderr, "kern.cputime sysctl not available\n");
