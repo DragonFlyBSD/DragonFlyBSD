@@ -39,6 +39,8 @@
  *   - volume-add: Add new volume to HAMMER filesystem
  *   - volume-del: Remove volume from HAMMER filesystem
  *   - volume-list: List volumes making up a HAMMER filesystem
+ *   - volume-blkdevs: List volumes making up a HAMMER filesystem
+ *     in blkdevs format
  */
 
 #include "hammer.h"
@@ -129,17 +131,15 @@ hammer_cmd_volume_del(char **av, int ac)
 	close(fd);
 }
 
-/*
- * volume-list <filesystem>
- */
-void
-hammer_cmd_volume_list(char **av, int ac)
+static void
+hammer_print_volumes(char **av, int ac, char *cmd, char sep)
 {
 	struct hammer_ioc_volume_list ioc;
 	int fd;
+	int i;
 
 	if (ac != 1) {
-		fprintf(stderr, "hammer volume-list <filesystem>\n");
+		fprintf(stderr, "hammer %s <filesystem>\n", cmd);
 		exit(1);
 	}
 
@@ -148,38 +148,56 @@ hammer_cmd_volume_list(char **av, int ac)
 	fd = open(filesystem, O_RDONLY);
 	if (fd < 0) {
 		fprintf(stderr,
-		    "hammer volume-list: unable to access %s: %s\n",
-		    filesystem, strerror(errno));
+		    "hammer %s: unable to access %s: %s\n",
+		    cmd, filesystem, strerror(errno));
 		exit(1);
 	}
 
-	/*
-	 * volume-list ioctl
-	 */
 	bzero(&ioc, sizeof(ioc));
 	ioc.vols = malloc(HAMMER_MAX_VOLUMES *
 			  sizeof(struct hammer_ioc_volume));
 	if (ioc.vols == NULL) {
 		fprintf(stderr,
-		    "hammer volume-list: unable to allocate memory: %s\n",
-		    strerror(errno));
+		    "hammer %s: unable to allocate memory: %s\n",
+		    cmd, strerror(errno));
 		exit(1);
 	}
 	ioc.nvols = HAMMER_MAX_VOLUMES;
 
 	if (ioctl(fd, HAMMERIOC_LIST_VOLUMES, &ioc) < 0) {
-		fprintf(stderr, "hammer volume-list ioctl: %s\n",
-			strerror(errno));
+		fprintf(stderr, "hammer %s ioctl: %s\n",
+			cmd, strerror(errno));
 		free(ioc.vols);
 		exit(1);
 	}
 
-	int i;
-	for (i = 0; i < ioc.nvols; i++)
-		printf("%s\n", ioc.vols[i].device_name);
+	for (i = 0; i < ioc.nvols; i++) {
+		printf("%s", ioc.vols[i].device_name);
+		if (i != ioc.nvols - 1)
+			printf("%c", sep);
+	}
+	printf("\n");
 
 	free(ioc.vols);
 	close(fd);
+}
+
+/*
+ * volume-list <filesystem>
+ */
+void
+hammer_cmd_volume_list(char **av, int ac, char *cmd)
+{
+	hammer_print_volumes(av, ac, cmd, '\n');
+}
+
+/*
+ * volume-blkdevs <filesystem>
+ */
+void
+hammer_cmd_volume_blkdevs(char **av, int ac, char *cmd)
+{
+	hammer_print_volumes(av, ac, cmd, ':');
 }
 
 /*

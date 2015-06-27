@@ -516,7 +516,11 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strcmp(av[0], "volume-list") == 0) {
-		hammer_cmd_volume_list(av + 1, ac - 1);
+		hammer_cmd_volume_list(av + 1, ac - 1, av[0]);
+		exit(0);
+	}
+	if (strcmp(av[0], "volume-blkdevs") == 0) {
+		hammer_cmd_volume_blkdevs(av + 1, ac - 1, av[0]);
 		exit(0);
 	}
 
@@ -667,6 +671,7 @@ usage(int exit_code)
 		"hammer volume-add <device> <filesystem>\n"
 		"hammer volume-del <device> <filesystem>\n"
 		"hammer volume-list <filesystem>\n"
+		"hammer volume-blkdevs <filesystem>\n"
 	);
 
 	fprintf(stderr, "\nHAMMER utility version 3+ commands:\n");
