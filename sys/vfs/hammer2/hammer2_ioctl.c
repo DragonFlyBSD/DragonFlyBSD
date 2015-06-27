@@ -554,6 +554,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	hammer2_trans_init(hmp->spmp, 0);
 	nip = hammer2_inode_create(hmp->spmp->iroot, NULL, NULL,
 				   pfs->name, strlen(pfs->name),
+				   1, HAMMER2_OBJTYPE_DIRECTORY, 0,
 				   HAMMER2_INSERT_PFSROOT, &error);
 	if (error == 0) {
 		hammer2_inode_modify(nip);
@@ -607,16 +608,30 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 {
-	hammer2_dev_t *hmp;
 	hammer2_ioc_pfs_t *pfs = data;
+	hammer2_pfs_t *spmp;
+	hammer2_xop_unlink_t *xop;
+	hammer2_inode_t *dip;
 	int error;
 
-	hmp = ip->pmp->iroot->cluster.focus->hmp; /* XXX */
-	hammer2_trans_init(hmp->spmp, 0);
-	error = hammer2_unlink_file(hmp->spmp->iroot, NULL,
-				    pfs->name, strlen(pfs->name),
-				    2, NULL, 0, 0);
-	hammer2_trans_done(hmp->spmp);
+	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure termination */
+
+	/* XXX */
+	spmp = ip->pmp->iroot->cluster.focus->hmp->spmp;
+	dip = spmp->iroot;
+	hammer2_trans_init(spmp, 0);
+	hammer2_inode_lock(dip, HAMMER2_RESOLVE_ALWAYS);
+
+	xop = &hammer2_xop_alloc(dip)->xop_unlink;
+	hammer2_xop_setname(&xop->head, pfs->name, strlen(pfs->name));
+	xop->isdir = 2;
+	xop->dopermanent = 1;
+	hammer2_xop_start(&xop->head, hammer2_xop_unlink);
+
+	error = hammer2_xop_collect(&xop->head, 0);
+
+	hammer2_inode_unlock(dip, NULL);
+	hammer2_trans_done(spmp);
 
 	return (error);
 }

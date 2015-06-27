@@ -1074,10 +1074,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	xop = &hammer2_xop_alloc(dip)->xop_nresolve;
 
 	ncp = ap->a_nch->ncp;
-	xop->head.name = kmalloc(ncp->nc_nlen + 1, M_HAMMER2,
-				 M_WAITOK | M_ZERO);
-	xop->head.name_len = ncp->nc_nlen;
-	bcopy(ncp->nc_name, xop->head.name, ncp->nc_nlen);
+	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
 
 	/*
 	 * Note: In DragonFly the kernel handles '.' and '..'.
@@ -1189,7 +1186,9 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(dip->pmp, 0);
 	nip = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
-				   name, name_len, 0, &error);
+				   name, name_len,
+				   hammer2_trans_newinum(dip->pmp), 0, 0,
+				   0, &error);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1253,14 +1252,11 @@ static
 int
 hammer2_vop_nlink(struct vop_nlink_args *ap)
 {
+	hammer2_xop_nlink_t *xop1;
 	hammer2_inode_t *fdip;	/* target directory to create link in */
 	hammer2_inode_t *tdip;	/* target directory to create link in */
 	hammer2_inode_t *cdip;	/* common parent directory */
 	hammer2_inode_t *ip;	/* inode we are hardlinking to */
-	hammer2_cluster_t *cluster;
-	hammer2_cluster_t *fdcluster;
-	hammer2_cluster_t *tdcluster;
-	hammer2_cluster_t *cdcluster;
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
@@ -1301,36 +1297,56 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_inode_lock(cdip, HAMMER2_RESOLVE_ALWAYS);
 	hammer2_inode_lock(fdip, HAMMER2_RESOLVE_ALWAYS);
 	hammer2_inode_lock(tdip, HAMMER2_RESOLVE_ALWAYS);
-	cdcluster = hammer2_inode_cluster(cdip, HAMMER2_RESOLVE_ALWAYS);
-	fdcluster = hammer2_inode_cluster(fdip, HAMMER2_RESOLVE_ALWAYS);
-	tdcluster = hammer2_inode_cluster(tdip, HAMMER2_RESOLVE_ALWAYS);
-
 	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
-	cluster = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
-
-	error = hammer2_cluster_hardlink_consolidate(ip, &cluster,
-						     cdip, cdcluster, 1);
-	if (error)
-		goto done;
+	error = 0;
 
 	/*
-	 * Create a directory entry connected to the specified cluster.
-	 *
-	 * WARNING! chain can get moved by the connect (indirectly due to
-	 *	    potential indirect block creation).
+	 * If ip is not a hardlink target we must convert it to a hardlink.
+	 * If fdip != cdip we must shift the inode to cdip.
 	 */
-	error = hammer2_inode_connect(ip, &cluster, 1,
-				      tdip, tdcluster,
-				      name, name_len, 0);
+	if (fdip != cdip || (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE)) {
+		xop1 = &hammer2_xop_alloc(fdip)->xop_nlink;
+		hammer2_xop_setip2(&xop1->head, ip);
+		hammer2_xop_setip3(&xop1->head, cdip);
+
+		hammer2_xop_start(&xop1->head, hammer2_xop_nlink);
+		error = hammer2_xop_collect(&xop1->head, 0);
+		hammer2_xop_retire(&xop1->head, HAMMER2_XOPMASK_VOP);
+		if (error == ENOENT)
+			error = 0;
+	}
+
+	/*
+	 * Must synchronize original inode whos chains are now a hardlink
+	 * target.  We must match what the backend XOP did to the
+	 * chains.
+	 */
+	if (error == 0 && (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE)) {
+		hammer2_inode_modify(ip);
+		ip->meta.name_key = ip->meta.inum;
+		ip->meta.name_len = 18;	/* "0x%016jx" */
+	}
+
+	/*
+	 * Create the hardlink target and bump nlinks.
+	 */
+	if (error == 0) {
+		hammer2_inode_create(tdip, NULL, NULL,
+				     name, name_len,
+				     ip->meta.inum,
+				     HAMMER2_OBJTYPE_HARDLINK, ip->meta.type,
+				     0, &error);
+		hammer2_inode_modify(ip);
+		++ip->meta.nlinks;
+	}
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, ap->a_vp);
 	}
-done:
-	hammer2_inode_unlock(ip, cluster);
-	hammer2_inode_unlock(tdip, tdcluster);
-	hammer2_inode_unlock(fdip, fdcluster);
-	hammer2_inode_unlock(cdip, cdcluster);
+	hammer2_inode_unlock(ip, NULL);
+	hammer2_inode_unlock(tdip, NULL);
+	hammer2_inode_unlock(fdip, NULL);
+	hammer2_inode_unlock(cdip, NULL);
 	hammer2_inode_drop(cdip);
 	hammer2_trans_done(ip->pmp);
 
@@ -1369,7 +1385,9 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	hammer2_trans_init(dip->pmp, 0);
 
 	nip = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
-				   name, name_len, 0, &error);
+				   name, name_len,
+				   hammer2_trans_newinum(dip->pmp), 0, 0,
+				   0, &error);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1415,7 +1433,9 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	hammer2_trans_init(dip->pmp, 0);
 
 	nip = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
-				   name, name_len, 0, &error);
+				   name, name_len,
+				   hammer2_trans_newinum(dip->pmp), 0, 0,
+				   0, &error);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1460,7 +1480,9 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	ap->a_vap->va_type = VLNK;	/* enforce type */
 
 	nip = hammer2_inode_create(dip, ap->a_vap, ap->a_cred,
-				   name, name_len, 0, &error);
+				   name, name_len,
+				   hammer2_trans_newinum(dip->pmp), 0, 0,
+				   0, &error);
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1530,11 +1552,12 @@ static
 int
 hammer2_vop_nremove(struct vop_nremove_args *ap)
 {
+	hammer2_xop_unlink_t *xop;
 	hammer2_inode_t *dip;
+	hammer2_inode_t *ip;
 	struct namecache *ncp;
-	const uint8_t *name;
-	size_t name_len;
 	int error;
+	int isopen;
 
 	LOCKSTART;
 	dip = VTOI(ap->a_dvp);
@@ -1544,14 +1567,42 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	}
 
 	ncp = ap->a_nch->ncp;
-	name = ncp->nc_name;
-	name_len = ncp->nc_nlen;
 
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(dip->pmp, 0);
-	error = hammer2_unlink_file(dip, NULL, name, name_len,
-				    0, NULL,
-				    cache_isopen(ap->a_nch), 0);
+	hammer2_inode_lock(dip, HAMMER2_RESOLVE_ALWAYS);
+
+	/*
+	 * The unlink XOP unlinks the path from the directory and
+	 * locates and returns the cluster associated with the real inode.
+	 * We have to handle nlinks here on the frontend.
+	 */
+	xop = &hammer2_xop_alloc(dip)->xop_unlink;
+	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
+	isopen = cache_isopen(ap->a_nch);
+	xop->isdir = 0;
+	xop->dopermanent = isopen ?  0 : HAMMER2_DELETE_PERMANENT;
+	hammer2_xop_start(&xop->head, hammer2_xop_unlink);
+
+	/*
+	 * Collect the real inode and adjust nlinks, destroy the real
+	 * inode if nlinks transitions to 0 and it was the real inode
+	 * (else it has already been removed).
+	 */
+	error = hammer2_xop_collect(&xop->head, 0);
+	hammer2_inode_unlock(dip, NULL);
+
+	if (error == 0) {
+		ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		if (ip) {
+			hammer2_inode_unlink_finisher(ip, isopen);
+			hammer2_inode_unlock(ip, NULL);
+		}
+	} else {
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+	}
+
 	hammer2_run_unlinkq(dip->pmp);
 	hammer2_trans_done(dip->pmp);
 	if (error == 0)
@@ -1567,10 +1618,11 @@ static
 int
 hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 {
+	hammer2_xop_unlink_t *xop;
 	hammer2_inode_t *dip;
+	hammer2_inode_t *ip;
 	struct namecache *ncp;
-	const uint8_t *name;
-	size_t name_len;
+	int isopen;
 	int error;
 
 	LOCKSTART;
@@ -1580,16 +1632,38 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		return(EROFS);
 	}
 
-	ncp = ap->a_nch->ncp;
-	name = ncp->nc_name;
-	name_len = ncp->nc_nlen;
-
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(dip->pmp, 0);
+	hammer2_inode_lock(dip, HAMMER2_RESOLVE_ALWAYS);
+
+	xop = &hammer2_xop_alloc(dip)->xop_unlink;
+
+	ncp = ap->a_nch->ncp;
+	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
+	isopen = cache_isopen(ap->a_nch);
+	xop->isdir = 1;
+	xop->dopermanent = isopen ?  0 : HAMMER2_DELETE_PERMANENT;
+	hammer2_xop_start(&xop->head, hammer2_xop_unlink);
+
+	/*
+	 * Collect the real inode and adjust nlinks, destroy the real
+	 * inode if nlinks transitions to 0 and it was the real inode
+	 * (else it has already been removed).
+	 */
+	error = hammer2_xop_collect(&xop->head, 0);
+	hammer2_inode_unlock(dip, NULL);
+
+	if (error == 0) {
+		ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		if (ip) {
+			hammer2_inode_unlink_finisher(ip, isopen);
+			hammer2_inode_unlock(ip, NULL);
+		}
+	} else {
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+	}
 	hammer2_run_unlinkq(dip->pmp);
-	error = hammer2_unlink_file(dip, NULL, name, name_len,
-				    1, NULL,
-				    cache_isopen(ap->a_nch), 0);
 	hammer2_trans_done(dip->pmp);
 	if (error == 0)
 		cache_unlink(ap->a_nch);
@@ -1610,17 +1684,13 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	hammer2_inode_t *fdip;
 	hammer2_inode_t *tdip;
 	hammer2_inode_t *ip;
-	hammer2_cluster_t *cluster;
-	hammer2_cluster_t *fdcluster;
-	hammer2_cluster_t *tdcluster;
-	hammer2_cluster_t *cdcluster;
 	const uint8_t *fname;
 	size_t fname_len;
 	const uint8_t *tname;
 	size_t tname_len;
 	int error;
 	int tnch_error;
-	int hlink;
+	hammer2_key_t tlhc;
 
 	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)
 		return(EXDEV);
@@ -1650,126 +1720,171 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * ip represents the actual file and not the hardlink marker.
 	 */
 	ip = VTOI(fncp->nc_vp);
-	cluster = NULL;
-
 
 	/*
 	 * The common parent directory must be locked first to avoid deadlocks.
 	 * Also note that fdip and/or tdip might match cdip.
-	 *
-	 * WARNING! fdip may not match ip->pip.  That is, if the source file
-	 *	    is already a hardlink then what we are renaming is the
-	 *	    hardlink pointer, not the hardlink itself.  The hardlink
-	 *	    directory (ip->pip) will already be at a common parent
-	 *	    of fdrip.
-	 *
-	 *	    Be sure to use ip->pip when finding the common parent
-	 *	    against tdip or we might accidently move the hardlink
-	 *	    target into a subdirectory that makes it inaccessible to
-	 *	    other pointers.
 	 */
 	cdip = hammer2_inode_common_parent(ip->pip, tdip);
 	hammer2_inode_lock(cdip, HAMMER2_RESOLVE_ALWAYS);
 	hammer2_inode_lock(fdip, HAMMER2_RESOLVE_ALWAYS);
 	hammer2_inode_lock(tdip, HAMMER2_RESOLVE_ALWAYS);
-	cdcluster = hammer2_inode_cluster(cdip, HAMMER2_RESOLVE_ALWAYS);
-	fdcluster = hammer2_inode_cluster(fdip, HAMMER2_RESOLVE_ALWAYS);
-	tdcluster = hammer2_inode_cluster(tdip, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_inode_ref(ip);		/* extra ref */
+	error = 0;
 
 	/*
-	 * Keep a tight grip on the inode so the temporary unlinking from
-	 * the source location prior to linking to the target location
-	 * does not cause the cluster to be destroyed.
+	 * If ip is a hardlink target and fdip != cdip we must shift the
+	 * inode to cdip.
+	 */
+	if (fdip != cdip &&
+	    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
+		hammer2_xop_nlink_t *xop1;
+
+		xop1 = &hammer2_xop_alloc(fdip)->xop_nlink;
+		hammer2_xop_setip2(&xop1->head, ip);
+		hammer2_xop_setip3(&xop1->head, cdip);
+
+		hammer2_xop_start(&xop1->head, hammer2_xop_nlink);
+		error = hammer2_xop_collect(&xop1->head, 0);
+		hammer2_xop_retire(&xop1->head, HAMMER2_XOPMASK_VOP);
+	}
+
+	/*
+	 * Delete the target namespace.
+	 */
+	{
+		hammer2_xop_unlink_t *xop2;
+		hammer2_inode_t *tip;
+		int isopen;
+
+		/*
+		 * The unlink XOP unlinks the path from the directory and
+		 * locates and returns the cluster associated with the real
+		 * inode.  We have to handle nlinks here on the frontend.
+		 */
+		xop2 = &hammer2_xop_alloc(tdip)->xop_unlink;
+		hammer2_xop_setname(&xop2->head, tname, tname_len);
+		isopen = cache_isopen(ap->a_tnch);
+		xop2->isdir = -1;
+		xop2->dopermanent = isopen ?  0 : HAMMER2_DELETE_PERMANENT;
+		hammer2_xop_start(&xop2->head, hammer2_xop_unlink);
+
+		/*
+		 * Collect the real inode and adjust nlinks, destroy the real
+		 * inode if nlinks transitions to 0 and it was the real inode
+		 * (else it has already been removed).
+		 */
+		tnch_error = hammer2_xop_collect(&xop2->head, 0);
+		/* hammer2_inode_unlock(tdip, NULL); */
+
+		if (tnch_error == 0) {
+			tip = hammer2_inode_get(tdip->pmp, NULL,
+						&xop2->head.cluster);
+			hammer2_xop_retire(&xop2->head, HAMMER2_XOPMASK_VOP);
+			if (tip) {
+				hammer2_inode_unlink_finisher(tip, isopen);
+				hammer2_inode_unlock(tip, NULL);
+			}
+		} else {
+			hammer2_xop_retire(&xop2->head, HAMMER2_XOPMASK_VOP);
+		}
+		/* hammer2_inode_lock(tdip, HAMMER2_RESOLVE_ALWAYS); */
+
+		if (tnch_error && tnch_error != ENOENT) {
+			error = tnch_error;
+			goto done2;
+		}
+	}
+
+	/*
+	 * Resolve the collision space for (tdip, tname, tname_len)
+	 *
+	 * tdip must be held exclusively locked to prevent races.
+	 */
+	{
+		hammer2_xop_scanlhc_t *sxop;
+		hammer2_tid_t lhcbase;
+
+		tlhc = hammer2_dirhash(tname, tname_len);
+		lhcbase = tlhc;
+		sxop = &hammer2_xop_alloc(tdip)->xop_scanlhc;
+		sxop->lhc = tlhc;
+		hammer2_xop_start(&sxop->head, hammer2_inode_xop_scanlhc);
+		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
+			if (tlhc != sxop->head.cluster.focus->bref.key)
+				break;
+			++tlhc;
+		}
+		hammer2_xop_retire(&sxop->head, HAMMER2_XOPMASK_VOP);
+
+		if (error) {
+			if (error != ENOENT)
+				goto done2;
+			++tlhc;
+			error = 0;
+		}
+		if ((lhcbase ^ tlhc) & ~HAMMER2_DIRHASH_LOMASK) {
+			error = ENOSPC;
+			goto done2;
+		}
+	}
+
+	/*
+	 * Everything is setup, do the rename.
+	 *
+	 * We have to synchronize ip->meta to the underlying operation.
 	 *
 	 * NOTE: To avoid deadlocks we cannot lock (ip) while we are
 	 *	 unlinking elements from their directories.  Locking
 	 *	 the nlinks field does not lock the whole inode.
 	 */
-	hammer2_inode_ref(ip);
-
-	/*
-	 * Remove target if it exists.
-	 */
-	error = hammer2_unlink_file(tdip, NULL, tname, tname_len,
-				    -1, NULL,
-				    cache_isopen(ap->a_tnch), 0);
-	tnch_error = error;
-	if (error && error != ENOENT)
-		goto done2;
-
-	/*
-	 * When renaming a hardlinked file we may have to re-consolidate
-	 * the location of the hardlink target.
-	 *
-	 * If ip represents a regular file the consolidation code essentially
-	 * does nothing other than return the same locked cluster that was
-	 * passed in.
-	 *
-	 * The returned cluster will be locked.
-	 *
-	 * WARNING!  We do not currently have a local copy of ipdata but
-	 *	     we do use one later remember that it must be reloaded
-	 *	     on any modification to the inode, including connects.
-	 */
 	hammer2_inode_lock(ip, HAMMER2_RESOLVE_ALWAYS);
-	cluster = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
-	error = hammer2_cluster_hardlink_consolidate(ip, &cluster,
-						     cdip, cdcluster, 0);
-	if (error)
-		goto done1;
-
-	/*
-	 * Disconnect (fdip, fname) from the source directory.  This will
-	 * disconnect (ip) if it represents a direct file.  If (ip) represents
-	 * a hardlink the HARDLINK pointer object will be removed but the
-	 * hardlink will stay intact.
-	 *
-	 * Always pass nch as NULL because we intend to reconnect the inode,
-	 * so we don't want hammer2_unlink_file() to rename it to the hidden
-	 * open-but-unlinked directory.
-	 *
-	 * The target cluster may be marked DELETED but will not be destroyed
-	 * since we retain our hold on ip and cluster.
-	 *
-	 * NOTE: We pass nlinks as 0 (not -1) in order to retain the file's
-	 *	 link count.
-	 */
-	error = hammer2_unlink_file(fdip, ip, fname, fname_len,
-				    -1, &hlink, 0, 1);
-	KKASSERT(error != EAGAIN);
-	if (error)
-		goto done1;
-
-	/*
-	 * Reconnect ip to target directory using cluster.  Chains cannot
-	 * actually be moved, so this will duplicate the cluster in the new
-	 * spot and assign it to the ip, replacing the old cluster.
-	 *
-	 * WARNING: Because recursive locks are allowed and we unlinked the
-	 *	    file that we have a cluster-in-hand for just above, the
-	 *	    cluster might have been delete-duplicated.  We must
-	 *	    refactor the cluster.
-	 *
-	 * WARNING: Chain locks can lock buffer cache buffers, to avoid
-	 *	    deadlocks we want to unlock before issuing a cache_*()
-	 *	    op (that might have to lock a vnode).
-	 *
-	 * NOTE:    Pass nlinks as 0 because we retained the link count from
-	 *	    the unlink, so we do not have to modify it.
-	 */
-	error = hammer2_inode_connect(ip, &cluster, hlink,
-				      tdip, tdcluster,
-				      tname, tname_len, 0);
 	if (error == 0) {
-		KKASSERT(cluster != NULL);
-		hammer2_inode_repoint(ip, (hlink ? ip->pip : tdip), cluster);
+		hammer2_xop_nrename_t *xop4;
+
+		xop4 = &hammer2_xop_alloc(fdip)->xop_nrename;
+		xop4->lhc = tlhc;
+		xop4->ip_key = ip->meta.name_key;
+		hammer2_xop_setip2(&xop4->head, ip);
+		hammer2_xop_setip3(&xop4->head, tdip);
+		hammer2_xop_setname(&xop4->head, fname, fname_len);
+		hammer2_xop_setname2(&xop4->head, tname, tname_len);
+		hammer2_xop_start(&xop4->head, hammer2_xop_nrename);
+
+		error = hammer2_xop_collect(&xop4->head, 0);
+		hammer2_xop_retire(&xop4->head, HAMMER2_XOPMASK_VOP);
+
+		if (error == ENOENT)
+			error = 0;
+		if (error == 0 &&
+		    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE)) {
+			hammer2_inode_modify(ip);
+			ip->meta.name_len = tname_len;
+			ip->meta.name_key = tlhc;
+
+		}
 	}
-done1:
-	hammer2_inode_unlock(ip, cluster);
+
+	/*
+	 * Fixup ip->pip if we were renaming the actual file and not a
+	 * hardlink pointer.
+	 */
+	if (error == 0 && (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE)) {
+		hammer2_inode_t *opip;
+
+		if (ip->pip != tdip) {
+			hammer2_inode_ref(tdip);
+			opip = ip->pip;
+			ip->pip = tdip;
+			if (opip)
+				hammer2_inode_drop(opip);
+		}
+	}
+	hammer2_inode_unlock(ip, NULL);
 done2:
-	hammer2_inode_unlock(tdip, tdcluster);
-	hammer2_inode_unlock(fdip, fdcluster);
-	hammer2_inode_unlock(cdip, cdcluster);
+	hammer2_inode_unlock(tdip, NULL);
+	hammer2_inode_unlock(fdip, NULL);
+	hammer2_inode_unlock(cdip, NULL);
 	hammer2_inode_drop(ip);
 	hammer2_inode_drop(cdip);
 	hammer2_run_unlinkq(fdip->pmp);

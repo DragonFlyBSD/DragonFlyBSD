@@ -986,6 +986,37 @@ hammer2_xop_alloc(hammer2_inode_t *ip)
 }
 
 void
+hammer2_xop_setname(hammer2_xop_head_t *xop, const char *name, size_t name_len)
+{
+	xop->name = kmalloc(name_len + 1, M_HAMMER2, M_WAITOK | M_ZERO);
+	xop->name_len = name_len;
+	bcopy(name, xop->name, name_len);
+}
+
+void
+hammer2_xop_setname2(hammer2_xop_head_t *xop, const char *name, size_t name_len)
+{
+	xop->name2 = kmalloc(name_len + 1, M_HAMMER2, M_WAITOK | M_ZERO);
+	xop->name2_len = name_len;
+	bcopy(name, xop->name2, name_len);
+}
+
+
+void
+hammer2_xop_setip2(hammer2_xop_head_t *xop, hammer2_inode_t *ip2)
+{
+	xop->ip2 = ip2;
+	hammer2_inode_ref(ip2);
+}
+
+void
+hammer2_xop_setip3(hammer2_xop_head_t *xop, hammer2_inode_t *ip3)
+{
+	xop->ip3 = ip3;
+	hammer2_inode_ref(ip3);
+}
+
+void
 hammer2_xop_reinit(hammer2_xop_head_t *xop)
 {
 	xop->state = 0;
@@ -1136,10 +1167,23 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 		hammer2_inode_drop(xop->ip);
 		xop->ip = NULL;
 	}
+	if (xop->ip2) {
+		hammer2_inode_drop(xop->ip2);
+		xop->ip2 = NULL;
+	}
+	if (xop->ip3) {
+		hammer2_inode_drop(xop->ip3);
+		xop->ip3 = NULL;
+	}
 	if (xop->name) {
 		kfree(xop->name, M_HAMMER2);
 		xop->name = NULL;
 		xop->name_len = 0;
+	}
+	if (xop->name2) {
+		kfree(xop->name2, M_HAMMER2);
+		xop->name2 = NULL;
+		xop->name2_len = 0;
 	}
 
 	objcache_put(cache_xops, xop);

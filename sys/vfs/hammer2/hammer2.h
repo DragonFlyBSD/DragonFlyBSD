@@ -832,6 +832,8 @@ typedef struct hammer2_xop_fifo {
 struct hammer2_xop_head {
 	hammer2_xop_func_t	func;
 	struct hammer2_inode	*ip;
+	struct hammer2_inode	*ip2;
+	struct hammer2_inode	*ip3;
 	struct hammer2_xop_group *xgrp;
 	uint32_t		check_counter;
 	uint32_t		run_mask;
@@ -840,6 +842,8 @@ struct hammer2_xop_head {
 	int			error;
 	char			*name;
 	size_t			name_len;
+	char			*name2;
+	size_t			name2_len;
 	hammer2_key_t		lkey;
 	hammer2_key_t		nkey;
 	hammer2_xop_fifo_t	collect[HAMMER2_MAXCLUSTER];
@@ -863,6 +867,22 @@ struct hammer2_xop_nresolve {
 	hammer2_xop_head_t	head;
 };
 
+struct hammer2_xop_nlink {
+	hammer2_xop_head_t	head;
+};
+
+struct hammer2_xop_unlink {
+	hammer2_xop_head_t	head;
+	int			isdir;
+	int			dopermanent;
+};
+
+struct hammer2_xop_nrename {
+	hammer2_xop_head_t	head;
+	hammer2_tid_t		lhc;
+	int			ip_key;
+};
+
 struct hammer2_xop_scanlhc {
 	hammer2_xop_head_t	head;
 	hammer2_key_t		lhc;
@@ -873,6 +893,11 @@ struct hammer2_xop_create {
 	hammer2_inode_meta_t	meta;		/* initial metadata */
 	hammer2_key_t		lhc;
 	int			flags;
+};
+
+struct hammer2_xop_connect {
+	hammer2_xop_head_t	head;
+	hammer2_key_t		lhc;
 };
 
 struct hammer2_xop_destroy {
@@ -887,21 +912,29 @@ struct hammer2_xop_flush {
 
 typedef struct hammer2_xop_readdir hammer2_xop_readdir_t;
 typedef struct hammer2_xop_nresolve hammer2_xop_nresolve_t;
+typedef struct hammer2_xop_nlink hammer2_xop_nlink_t;
+typedef struct hammer2_xop_unlink hammer2_xop_unlink_t;
+typedef struct hammer2_xop_nrename hammer2_xop_nrename_t;
 typedef struct hammer2_xop_strategy hammer2_xop_strategy_t;
 typedef struct hammer2_xop_create hammer2_xop_create_t;
 typedef struct hammer2_xop_destroy hammer2_xop_destroy_t;
 typedef struct hammer2_xop_scanlhc hammer2_xop_scanlhc_t;
+typedef struct hammer2_xop_connect hammer2_xop_connect_t;
 typedef struct hammer2_xop_flush hammer2_xop_flush_t;
 
 union hammer2_xop {
 	hammer2_xop_head_t	head;
 	hammer2_xop_readdir_t	xop_readdir;
 	hammer2_xop_nresolve_t	xop_nresolve;
+	hammer2_xop_nlink_t	xop_nlink;
+	hammer2_xop_unlink_t	xop_unlink;
+	hammer2_xop_nrename_t	xop_nrename;
 	hammer2_xop_strategy_t	xop_strategy;
 	hammer2_xop_create_t	xop_create;
 	hammer2_xop_destroy_t	xop_destroy;
 	hammer2_xop_scanlhc_t	xop_scanlhc;
 	hammer2_xop_flush_t	xop_flush;
+	hammer2_xop_connect_t	xop_connect;
 };
 
 typedef union hammer2_xop hammer2_xop_t;
@@ -1237,27 +1270,15 @@ void hammer2_run_unlinkq(hammer2_pfs_t *pmp);
 hammer2_inode_t *hammer2_inode_create(hammer2_inode_t *dip,
 			struct vattr *vap, struct ucred *cred,
 			const uint8_t *name, size_t name_len,
+			hammer2_key_t inum, uint8_t type, uint8_t target_type,
 			int flags, int *errorp);
-int hammer2_inode_connect(hammer2_inode_t *ip, hammer2_cluster_t **clusterp,
-			int hlink,
-			hammer2_inode_t *dip, hammer2_cluster_t *dcluster,
-			const uint8_t *name, size_t name_len,
-			hammer2_key_t key);
+int hammer2_inode_connect_simple(hammer2_inode_t *dip, hammer2_inode_t *ip,
+			const char *name, size_t name_len,
+			hammer2_key_t lhc);
 hammer2_inode_t *hammer2_inode_common_parent(hammer2_inode_t *fdip,
 			hammer2_inode_t *tdip);
 void hammer2_inode_fsync(hammer2_inode_t *ip, hammer2_cluster_t *cparent);
-int hammer2_unlink_file(hammer2_inode_t *dip, hammer2_inode_t *ip,
-			const uint8_t *name, size_t name_len, int isdir,
-			int *hlinkp, int isopen, int isrename);
-int hammer2_cluster_hardlink_consolidate(hammer2_inode_t *ip,
-			hammer2_cluster_t **clusterp,
-			hammer2_inode_t *cdip, hammer2_cluster_t *cdcluster,
-			int nlinks);
-int hammer2_cluster_hardlink_deconsolidate(hammer2_inode_t *dip,
-			hammer2_chain_t **chainp, hammer2_chain_t **ochainp);
-int hammer2_cluster_hardlink_find(hammer2_inode_t *dip,
-			hammer2_cluster_t **cparentp,
-			hammer2_cluster_t **clusterp);
+int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen);
 int hammer2_parent_find(hammer2_cluster_t **cparentp,
 			hammer2_cluster_t *cluster);
 void hammer2_inode_install_hidden(hammer2_pfs_t *pmp);
@@ -1281,7 +1302,8 @@ hammer2_media_data_t *hammer2_chain_wdata(hammer2_chain_t *chain);
 
 int hammer2_chain_hardlink_find(hammer2_inode_t *dip,
 				hammer2_chain_t **parentp,
-				hammer2_chain_t **chainp);
+				hammer2_chain_t **chainp,
+				int flags);
 
 /*
  * hammer2_cluster.c
@@ -1301,6 +1323,7 @@ hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int generation,
 				hammer2_blockref_t *bref);
 hammer2_chain_t *hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags);
 void hammer2_chain_lookup_done(hammer2_chain_t *parent);
+hammer2_chain_t *hammer2_chain_getparent(hammer2_chain_t **parentp, int how);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_chain_t **parentp,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
@@ -1394,6 +1417,12 @@ void hammer2_io_bqrelse(hammer2_io_t **diop);
  */
 void hammer2_xop_group_init(hammer2_pfs_t *pmp, hammer2_xop_group_t *xgrp);
 hammer2_xop_t *hammer2_xop_alloc(hammer2_inode_t *ip);
+void hammer2_xop_setname(hammer2_xop_head_t *xop,
+				const char *name, size_t name_len);
+void hammer2_xop_setname2(hammer2_xop_head_t *xop,
+				const char *name, size_t name_len);
+void hammer2_xop_setip2(hammer2_xop_head_t *xop, hammer2_inode_t *ip2);
+void hammer2_xop_setip3(hammer2_xop_head_t *xop, hammer2_inode_t *ip3);
 void hammer2_xop_reinit(hammer2_xop_head_t *xop);
 void hammer2_xop_helper_create(hammer2_pfs_t *pmp);
 void hammer2_xop_helper_cleanup(hammer2_pfs_t *pmp);
@@ -1407,9 +1436,13 @@ int hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 
 void hammer2_xop_readdir(hammer2_xop_t *xop, int clidx);
 void hammer2_xop_nresolve(hammer2_xop_t *xop, int clidx);
+void hammer2_xop_unlink(hammer2_xop_t *xop, int clidx);
+void hammer2_xop_nrename(hammer2_xop_t *xop, int clidx);
+void hammer2_xop_nlink(hammer2_xop_t *xop, int clidx);
 void hammer2_inode_xop_scanlhc(hammer2_xop_t *xop, int clidx);
 void hammer2_inode_xop_create(hammer2_xop_t *xop, int clidx);
 void hammer2_inode_xop_destroy(hammer2_xop_t *xop, int clidx);
+void hammer2_inode_xop_connect(hammer2_xop_t *xop, int clidx);
 void hammer2_inode_xop_flush(hammer2_xop_t *xop, int clidx);
 #if 0
 int hammer2_xop_nmkdir(struct vop_nmkdir_args *ap);
