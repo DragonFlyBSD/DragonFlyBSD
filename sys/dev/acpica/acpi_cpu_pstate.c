@@ -154,6 +154,7 @@ static int			acpi_pst_domain_id;
 static int			acpi_pst_global_state;
 
 static int			acpi_pstate_start = -1;
+static int			acpi_pstate_count;
 static int			acpi_npstates;
 static struct acpi_pstate	*acpi_pstates;
 
@@ -306,7 +307,7 @@ acpi_pst_attach(device_t dev)
 	ACPI_STATUS status;
 	ACPI_OBJECT *obj;
 	struct acpi_pstate *pstate, *p;
-	int i, npstate, error, sstart;
+	int i, npstate, error, sstart, scount;
 
 	sc->pst_dev = dev;
 	sc->pst_parent = device_get_softc(device_get_parent(dev));
@@ -660,6 +661,61 @@ fetch_ppc:
 			device_printf(dev, "_PPC %d -> %d\n",
 			    acpi_pstate_start, sstart);
 			acpi_pstate_start = sstart;
+		}
+	}
+
+	/*
+	 * By default, we assume number of usable P-States is same as
+	 * number of P-States.
+	 */
+	scount = acpi_npstates;
+
+	/*
+	 * Adjust the number of usable entries in P-State table,
+	 * if there is _PDL object.
+	 */
+	buf.Pointer = NULL;
+	buf.Length = ACPI_ALLOCATE_BUFFER;
+	status = AcpiEvaluateObject(sc->pst_handle, "_PDL", NULL, &buf);
+	if (!ACPI_FAILURE(status)) {
+		obj = (ACPI_OBJECT *)buf.Pointer;
+		if (obj->Type == ACPI_TYPE_INTEGER) {
+			if (obj->Integer.Value >= acpi_npstates) {
+				device_printf(dev, "Invalid _PDL value\n");
+				AcpiOsFree(obj);
+				return ENXIO;
+			}
+			if (obj->Integer.Value >= acpi_pstate_start) {
+				scount = obj->Integer.Value + 1;
+				if (bootverbose)
+					device_printf(dev, "_PDL %d\n", scount);
+			} else {
+				/* Prefer _PPC as stated in ACPI 5.1 8.4.4.6 */
+				device_printf(dev, "conflict _PDL %ju and "
+				    "_PPC %d, ignore\n",
+				    (uintmax_t)obj->Integer.Value,
+				    acpi_pstate_start);
+			}
+
+			/* TODO: Install notifiy handler */
+		} else {
+			device_printf(dev, "Invalid _PDL object\n");
+			AcpiOsFree(obj);
+			return ENXIO;
+		}
+
+		/* Free _PDL */
+		AcpiOsFree(obj);
+	}
+	if (acpi_pstate_count == 0) {
+		acpi_pstate_count = scount;
+	} else if (acpi_pstate_count != scount) {
+		device_printf(dev, "_PDL mismatch, was %d, now %d\n",
+		    acpi_pstate_count, scount);
+		if (acpi_pstate_count > scount) {
+			device_printf(dev, "_PDL %d -> %d\n",
+			    acpi_pstate_count, scount);
+			acpi_pstate_count = scount;
 		}
 	}
 
@@ -1082,7 +1138,7 @@ acpi_pst_sysctl_freqs(SYSCTL_HANDLER_ARGS)
 			const char *pat;
 			char buf[32];
 
-			if (i < acpi_pstate_start)
+			if (i < acpi_pstate_start || i >= acpi_pstate_count)
 				pat = "(%u)";
 			else
 				pat = "%u";
@@ -1101,7 +1157,7 @@ acpi_pst_sysctl_freqs_bin(SYSCTL_HANDLER_ARGS)
 	uint32_t freqs[ACPI_NPSTATE_MAX];
 	int cnt, i;
 
-	cnt = acpi_npstates - acpi_pstate_start;
+	cnt = acpi_pstate_count - acpi_pstate_start;
 	for (i = 0; i < cnt; ++i)
 		freqs[i] = acpi_pstates[acpi_pstate_start + i].st_freq;
 
