@@ -775,7 +775,7 @@ ithread_handler(void *arg)
 {
     struct intr_info *info;
     int use_limit;
-    __uint32_t lseconds;
+    uint32_t lseconds;
     int intr, cpuid = mycpuid;
     int mpheld;
     struct intrec **list;

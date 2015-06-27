@@ -89,10 +89,10 @@ static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
 #ifdef	INVARIANTS
 static int panic_on_cscount = 0;
 #endif
-static __int64_t switch_count = 0;
-static __int64_t preempt_hit = 0;
-static __int64_t preempt_miss = 0;
-static __int64_t preempt_weird = 0;
+static int64_t switch_count = 0;
+static int64_t preempt_hit = 0;
+static int64_t preempt_miss = 0;
+static int64_t preempt_weird = 0;
 static int lwkt_use_spin_port;
 static struct objcache *thread_cache;
 int cpu_mwait_spin = 0;
@@ -238,7 +238,7 @@ _lwkt_enqueue(thread_t td)
     }
 }
 
-static __boolean_t
+static boolean_t
 _lwkt_thread_ctor(void *obj, void *privdata, int ocflags)
 {
 	struct thread *td = (struct thread *)obj;

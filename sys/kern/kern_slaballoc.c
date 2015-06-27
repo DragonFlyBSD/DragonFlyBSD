@@ -1393,7 +1393,7 @@ void
 chunk_mark_allocated(SLZone *z, void *chunk)
 {
     int bitdex = ((char *)chunk - (char *)z->z_BasePtr) / z->z_ChunkSize;
-    __uint32_t *bitptr;
+    uint32_t *bitptr;
 
     KKASSERT((((intptr_t)chunk ^ (intptr_t)z) & ZoneMask) == 0);
     KASSERT(bitdex >= 0 && bitdex < z->z_NMax,
@@ -1410,7 +1410,7 @@ void
 chunk_mark_free(SLZone *z, void *chunk)
 {
     int bitdex = ((char *)chunk - (char *)z->z_BasePtr) / z->z_ChunkSize;
-    __uint32_t *bitptr;
+    uint32_t *bitptr;
 
     KKASSERT((((intptr_t)chunk ^ (intptr_t)z) & ZoneMask) == 0);
     KASSERT(bitdex >= 0 && bitdex < z->z_NMax,

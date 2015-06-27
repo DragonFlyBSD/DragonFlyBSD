@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/netinet/in_cksum.c,v 1.9 2005/01/06 09:14:13 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -67,12 +65,12 @@
  * carry when collapsing it back down to 16 bits.
  */
 
-__uint32_t
+uint32_t
 in_cksum_range(const struct mbuf *m, int nxt, int offset, int bytes)
 {
-    const __uint8_t *ptr;
-    __uint32_t sum0;
-    __uint32_t sum1;
+    const uint8_t *ptr;
+    uint32_t sum0;
+    uint32_t sum1;
     int n;
     int flip;
 
@@ -126,7 +124,7 @@ in_cksum_range(const struct mbuf *m, int nxt, int offset, int bytes)
 	 * Calculate pointer base and number of bytes to snarf, account
 	 * for snarfed bytes.
 	 */
-	ptr = mtod(m, const __uint8_t *) + offset;
+	ptr = mtod(m, const uint8_t *) + offset;
 	if ((n = m->m_len - offset) > bytes)
 	    n = bytes;
 	bytes -= n;
@@ -157,9 +155,9 @@ in_cksum_range(const struct mbuf *m, int nxt, int offset, int bytes)
 	}
 	if (((intptr_t)ptr & 2) && n > 1) {
 	    if (flip)
-		sum1 += *(const __uint16_t *)ptr;
+		sum1 += *(const uint16_t *)ptr;
 	    else
-		sum0 += *(const __uint16_t *)ptr;
+		sum0 += *(const uint16_t *)ptr;
 	    ptr += 2;
 	    n -= 2;
 	}
@@ -169,7 +167,7 @@ in_cksum_range(const struct mbuf *m, int nxt, int offset, int bytes)
 	 * in sum0 or sum1.  Allow only one 16 bit overflow carry.
 	 */
 	if (n >= 4) {
-	    __uint32_t sum32;
+	    uint32_t sum32;
 
 	    sum32 = asm_ones32((const void *)ptr, n >> 2);
 	    sum32 = (sum32 >> 16) + (sum32 & 0xffff);
@@ -187,9 +185,9 @@ in_cksum_range(const struct mbuf *m, int nxt, int offset, int bytes)
 	 */
 	if (n & 2) {
 	    if (flip)
-		sum1 += *(const __uint16_t *)ptr;
+		sum1 += *(const uint16_t *)ptr;
 	    else
-		sum0 += *(const __uint16_t *)ptr;
+		sum0 += *(const uint16_t *)ptr;
 	    ptr += 2;
 	    /* n -= 2; dontcare */
 	}

@@ -114,7 +114,7 @@
  * Virtual copy operations are performed by copying VM object references
  * from one map to another, and then marking both regions as copy-on-write.
  */
-static __boolean_t vmspace_ctor(void *obj, void *privdata, int ocflags);
+static boolean_t vmspace_ctor(void *obj, void *privdata, int ocflags);
 static void vmspace_dtor(void *obj, void *privdata);
 static void vmspace_terminate(struct vmspace *vm, int final);
 
@@ -209,7 +209,7 @@ vm_init2(void)
  * for performance reasons.
  */
 static
-__boolean_t
+boolean_t
 vmspace_ctor(void *obj, void *privdata, int ocflags)
 {
 	struct vmspace *vm = obj;

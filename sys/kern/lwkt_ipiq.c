@@ -71,11 +71,11 @@
 #endif
 
 struct ipiq_stats {
-    __int64_t ipiq_count;	/* total calls to lwkt_send_ipiq*() */
-    __int64_t ipiq_fifofull;	/* number of fifo full conditions detected */
-    __int64_t ipiq_avoided;	/* interlock with target avoids cpu ipi */
-    __int64_t ipiq_passive;	/* passive IPI messages */
-    __int64_t ipiq_cscount;	/* number of cpu synchronizations */
+    int64_t ipiq_count;		/* total calls to lwkt_send_ipiq*() */
+    int64_t ipiq_fifofull;	/* number of fifo full conditions detected */
+    int64_t ipiq_avoided;	/* interlock with target avoids cpu ipi */
+    int64_t ipiq_passive;	/* passive IPI messages */
+    int64_t ipiq_cscount;	/* number of cpu synchronizations */
 } __cachealign;
 
 static struct ipiq_stats ipiq_stats_percpu[MAXCPU];
@@ -126,7 +126,7 @@ static void lwkt_cpusync_remote2(lwkt_cpusync_t cs);
 static int \
 sysctl_##name(SYSCTL_HANDLER_ARGS) \
 { \
-    __int64_t val = 0; \
+    int64_t val = 0; \
     int cpu, error; \
  \
     for (cpu = 0; cpu < ncpus; ++cpu) \

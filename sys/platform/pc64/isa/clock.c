@@ -276,14 +276,14 @@ static
 sysclock_t
 i8254_cputimer_count(void)
 {
-	static __uint16_t cputimer_last;
-	__uint16_t count;
+	static uint16_t cputimer_last;
+	uint16_t count;
 	sysclock_t ret;
 
 	clock_lock();
 	outb(TIMER_MODE, i8254_walltimer_sel | TIMER_LATCH);
-	count = (__uint8_t)inb(i8254_walltimer_cntr);		/* get countdown */
-	count |= ((__uint8_t)inb(i8254_walltimer_cntr) << 8);
+	count = (uint8_t)inb(i8254_walltimer_cntr);		/* get countdown */
+	count |= ((uint8_t)inb(i8254_walltimer_cntr) << 8);
 	count = -count;					/* -> countup */
 	if (count < cputimer_last)			/* rollover */
 		i8254_cputimer.base += 0x00010000;
@@ -328,7 +328,7 @@ i8254_intr_config(struct cputimer_intr *cti, const struct cputimer *timer)
 static void
 i8254_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 {
-    __uint16_t count;
+    uint16_t count;
 
     if (i8254_cputimer_div)
 	reload /= i8254_cputimer_div;
@@ -341,20 +341,20 @@ i8254_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
     clock_lock();
     if (timer0_running) {
 	outb(TIMER_MODE, TIMER_SEL0 | TIMER_LATCH);	/* count-down timer */
-	count = (__uint8_t)inb(TIMER_CNTR0);		/* lsb */
-	count |= ((__uint8_t)inb(TIMER_CNTR0) << 8);	/* msb */
+	count = (uint8_t)inb(TIMER_CNTR0);		/* lsb */
+	count |= ((uint8_t)inb(TIMER_CNTR0) << 8);	/* msb */
 	if (reload < count) {
 	    outb(TIMER_MODE, TIMER_SEL0 | TIMER_SWSTROBE | TIMER_16BIT);
-	    outb(TIMER_CNTR0, (__uint8_t)reload); 	/* lsb */
-	    outb(TIMER_CNTR0, (__uint8_t)(reload >> 8)); /* msb */
+	    outb(TIMER_CNTR0, (uint8_t)reload); 	/* lsb */
+	    outb(TIMER_CNTR0, (uint8_t)(reload >> 8));	/* msb */
 	}
     } else {
 	timer0_running = 1;
 	if (reload > 0xFFFF)
 	    reload = 0;		/* full count */
 	outb(TIMER_MODE, TIMER_SEL0 | TIMER_SWSTROBE | TIMER_16BIT);
-	outb(TIMER_CNTR0, (__uint8_t)reload); 		/* lsb */
-	outb(TIMER_CNTR0, (__uint8_t)(reload >> 8));	/* msb */
+	outb(TIMER_CNTR0, (uint8_t)reload); 		/* lsb */
+	outb(TIMER_CNTR0, (uint8_t)(reload >> 8));	/* msb */
     }
     clock_unlock();
 }
@@ -1181,7 +1181,7 @@ static int
 hw_i8254_timestamp(SYSCTL_HANDLER_ARGS)
 {
     sysclock_t count;
-    __uint64_t tscval;
+    uint64_t tscval;
     char buf[32];
 
     crit_enter();

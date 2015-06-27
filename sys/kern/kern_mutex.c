@@ -64,9 +64,9 @@
 #include <sys/thread2.h>
 #include <sys/mutex2.h>
 
-static __int64_t mtx_contention_count;
-static __int64_t mtx_collision_count;
-static __int64_t mtx_wakeup_count;
+static int64_t mtx_contention_count;
+static int64_t mtx_collision_count;
+static int64_t mtx_wakeup_count;
 
 SYSCTL_QUAD(_kern, OID_AUTO, mtx_contention_count, CTLFLAG_RW,
 	    &mtx_contention_count, 0, "");
