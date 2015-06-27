@@ -1304,13 +1304,6 @@ int hammer2_chain_hardlink_find(hammer2_inode_t *dip,
 				hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
 				int flags);
-
-/*
- * hammer2_cluster.c
- */
-void hammer2_cluster_load_async(hammer2_cluster_t *cluster,
-				void (*callback)(hammer2_iocb_t *iocb),
-				void *ptr);
 void hammer2_chain_moved(hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_chain_t *chain, int flags);
 void hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain,
@@ -1487,24 +1480,19 @@ void hammer2_freemap_adjust(hammer2_dev_t *hmp,
 /*
  * hammer2_cluster.c
  */
-int hammer2_cluster_need_resize(hammer2_cluster_t *cluster, int bytes);
 uint8_t hammer2_cluster_type(hammer2_cluster_t *cluster);
 const hammer2_media_data_t *hammer2_cluster_rdata(hammer2_cluster_t *cluster);
 const hammer2_media_data_t *hammer2_cluster_rdata_bytes(
 				hammer2_cluster_t *cluster, size_t *bytesp);
 hammer2_media_data_t *hammer2_cluster_wdata(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_from_chain(hammer2_chain_t *chain);
-int hammer2_cluster_modified(hammer2_cluster_t *cluster);
-int hammer2_cluster_duplicated(hammer2_cluster_t *cluster);
 void hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref);
-void hammer2_cluster_setflush(hammer2_cluster_t *cluster);
 void hammer2_cluster_setmethod_check(hammer2_cluster_t *cluster,
 				int check_algo);
 hammer2_cluster_t *hammer2_cluster_alloc(hammer2_pfs_t *pmp,
 				hammer2_blockref_t *bref);
 void hammer2_cluster_ref(hammer2_cluster_t *cluster);
 void hammer2_cluster_drop(hammer2_cluster_t *cluster);
-void hammer2_cluster_wait(hammer2_cluster_t *cluster);
 void hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
 void hammer2_cluster_lock_except(hammer2_cluster_t *cluster, int idx, int how);
 int hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t lokey,
@@ -1514,9 +1502,6 @@ void hammer2_cluster_forcegood(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
 void hammer2_cluster_unlock_except(hammer2_cluster_t *cluster, int idx);
-void hammer2_cluster_resize(hammer2_inode_t *ip,
-			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
-			int nradix, int flags);
 void hammer2_cluster_modify(hammer2_cluster_t *cluster,
 			int flags);
 hammer2_inode_data_t *hammer2_cluster_modify_ip(hammer2_inode_t *ip,
@@ -1546,9 +1531,6 @@ int hammer2_cluster_create(hammer2_pfs_t *pmp, hammer2_cluster_t *cparent,
 			hammer2_cluster_t **clusterp,
 			hammer2_key_t key, int keybits,
 			int type, size_t bytes, int flags);
-void hammer2_cluster_rename(hammer2_blockref_t *bref,
-			hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
-			int flags);
 void hammer2_cluster_delete(hammer2_cluster_t *pcluster,
 			hammer2_cluster_t *cluster, int flags);
 int hammer2_cluster_snapshot(hammer2_cluster_t *ocluster,

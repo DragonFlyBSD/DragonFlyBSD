@@ -116,31 +116,6 @@
 #include "hammer2.h"
 
 /*
- * Returns non-zero if any chain in the cluster needs to be resized.
- * Errored elements are not used in the calculation.
- */
-int
-hammer2_cluster_need_resize(hammer2_cluster_t *cluster, int bytes)
-{
-	hammer2_chain_t *chain;
-	int i;
-
-	KKASSERT(cluster->flags & HAMMER2_CLUSTER_LOCKED);
-	for (i = 0; i < cluster->nchains; ++i) {
-		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0)
-			continue;
-		chain = cluster->array[i].chain;
-		if (chain == NULL)
-			continue;
-		if (chain->error)
-			continue;
-		if (chain->bytes != bytes)
-			return 1;
-	}
-	return 0;
-}
-
-/*
  * Returns the bref type of the cluster's foucs.
  *
  * If the cluster is errored, returns HAMMER2_BREF_TYPE_EMPTY (0).
@@ -161,6 +136,7 @@ hammer2_cluster_type(hammer2_cluster_t *cluster)
  *
  * If the cluster is errored, returns 0.
  */
+static
 int
 hammer2_cluster_modified(hammer2_cluster_t *cluster)
 {
@@ -190,33 +166,6 @@ hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref)
 		bref->data_off = 0;
 	} else {
 		bzero(bref, sizeof(*bref));
-	}
-}
-
-/*
- * Flag the cluster for flushing recursively up to the root.  Despite the
- * work it does, this is relatively benign.  It just makes sure that the
- * flusher has top-down visibility to this cluster.
- *
- * Errored chains are not flagged for flushing.
- *
- * The cluster should probably be locked.
- */
-void
-hammer2_cluster_setflush(hammer2_cluster_t *cluster)
-{
-	hammer2_chain_t *chain;
-	int i;
-
-	for (i = 0; i < cluster->nchains; ++i) {
-		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0)
-			continue;
-		chain = cluster->array[i].chain;
-		if (chain == NULL)
-			continue;
-		if (chain->error)
-			continue;
-		hammer2_chain_setflush(chain);
 	}
 }
 
@@ -325,12 +274,6 @@ hammer2_cluster_drop(hammer2_cluster_t *cluster)
 		kfree(cluster, M_HAMMER2);
 		/* cluster is invalid */
 	}
-}
-
-void
-hammer2_cluster_wait(hammer2_cluster_t *cluster)
-{
-	tsleep(cluster->focus, 0, "h2clcw", 1);
 }
 
 /*
@@ -1251,36 +1194,6 @@ hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 }
 
 /*
- * Resize the cluster's physical storage allocation in-place.  This may
- * replace the cluster's chains.
- */
-void
-hammer2_cluster_resize(hammer2_inode_t *ip,
-		       hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
-		       int nradix, int flags)
-{
-	hammer2_chain_t *chain;
-	int i;
-
-	KKASSERT(cparent->pmp == cluster->pmp);		/* can be NULL */
-	KKASSERT(cparent->nchains == cluster->nchains);
-
-	for (i = 0; i < cluster->nchains; ++i) {
-		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
-			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
-			continue;
-		}
-		chain = cluster->array[i].chain;
-		if (chain) {
-			KKASSERT(cparent->array[i].chain);
-			hammer2_chain_resize(ip,
-					     cparent->array[i].chain, chain,
-					     nradix, flags);
-		}
-	}
-}
-
-/*
  * Set an inode's cluster modified, marking the related chains RW and
  * duplicating them if necessary.
  *
@@ -1816,55 +1729,6 @@ hammer2_cluster_create(hammer2_pfs_t *pmp, hammer2_cluster_t *cparent,
 }
 
 /*
- * Rename a cluster to a new parent.
- *
- * WARNING! Any passed-in bref is probaly from hammer2_cluster_bref(),
- *	    So the data_off field is not relevant.  Only the key and
- *	    keybits are used.
- */
-void
-hammer2_cluster_rename(hammer2_blockref_t *bref,
-		       hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
-		       int flags)
-{
-	hammer2_chain_t *chain;
-	hammer2_blockref_t xbref;
-	int i;
-
-#if 0
-	cluster->focus = NULL;
-	cparent->focus = NULL;
-	cluster->focus_index = 0;
-	cparent->focus_index = 0;
-#endif
-
-	for (i = 0; i < cluster->nchains; ++i) {
-		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
-			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
-			continue;
-		}
-		chain = cluster->array[i].chain;
-		if (chain) {
-			if (bref) {
-				xbref = chain->bref;
-				xbref.key = bref->key;
-				xbref.keybits = bref->keybits;
-				hammer2_chain_rename(&xbref,
-						     &cparent->array[i].chain,
-						     chain, flags);
-			} else {
-				hammer2_chain_rename(NULL,
-						     &cparent->array[i].chain,
-						     chain, flags);
-			}
-			if (cparent->focus_index == i)
-				cparent->focus = cparent->array[i].chain;
-			KKASSERT(cluster->array[i].chain == chain); /*remove*/
-		}
-	}
-}
-
-/*
  * Mark a cluster deleted
  */
 void
@@ -2081,88 +1945,4 @@ hammer2_cluster_wdata(hammer2_cluster_t *cluster)
 	KKASSERT(cluster->focus != NULL);
 	KKASSERT(hammer2_cluster_modified(cluster));
 	return(cluster->focus->data);
-}
-
-/*
- * Load cluster data asynchronously with callback.
- *
- * The callback is made for the first validated data found, or NULL
- * if no valid data is available.
- *
- * NOTE! The cluster structure is either unique or serialized (e.g. embedded
- *	 in the inode with an exclusive lock held), the chain structure may be
- *	 shared.
- */
-void
-hammer2_cluster_load_async(hammer2_cluster_t *cluster,
-			   void (*callback)(hammer2_iocb_t *iocb), void *ptr)
-{
-	hammer2_chain_t *chain;
-	hammer2_iocb_t *iocb;
-	hammer2_dev_t *hmp;
-	hammer2_blockref_t *bref;
-	int i;
-
-	i = cluster->focus_index;
-	chain = cluster->focus;
-
-	iocb = &cluster->iocb;
-	iocb->callback = callback;
-	iocb->dio = NULL;		/* for already-validated case */
-	iocb->cluster = cluster;
-	iocb->chain = chain;
-	iocb->ptr = ptr;
-	iocb->lbase = (off_t)i;
-	iocb->flags = 0;
-	iocb->error = 0;
-
-	/*
-	 * Data already validated
-	 */
-	if (chain->data) {
-		callback(iocb);
-		return;
-	}
-
-	/*
-	 * We must resolve to a device buffer, either by issuing I/O or
-	 * by creating a zero-fill element.  We do not mark the buffer
-	 * dirty when creating a zero-fill element (the hammer2_chain_modify()
-	 * API must still be used to do that).
-	 *
-	 * The device buffer is variable-sized in powers of 2 down
-	 * to HAMMER2_MIN_ALLOC (typically 1K).  A 64K physical storage
-	 * chunk always contains buffers of the same size. (XXX)
-	 *
-	 * The minimum physical IO size may be larger than the variable
-	 * block size.
-	 *
-	 * XXX TODO - handle HAMMER2_CHAIN_INITIAL for case where chain->bytes
-	 *	      matches hammer2_devblksize()?  Or does the freemap's
-	 *	      pre-zeroing handle the case for us?
-	 */
-	bref = &chain->bref;
-	hmp = chain->hmp;
-
-#if 0
-	/* handled by callback? <- TODO XXX even needed for loads? */
-	/*
-	 * The getblk() optimization for a 100% overwrite can only be used
-	 * if the physical block size matches the request.
-	 */
-	if ((chain->flags & HAMMER2_CHAIN_INITIAL) &&
-	    chain->bytes == hammer2_devblksize(chain->bytes)) {
-		error = hammer2_io_new(hmp, bref->data_off, chain->bytes, &dio);
-		KKASSERT(error == 0);
-		iocb->dio = dio;
-		callback(iocb);
-		return;
-	}
-#endif
-
-	/*
-	 * Otherwise issue a read
-	 */
-	hammer2_adjreadcounter(&chain->bref, chain->bytes);
-	hammer2_io_getblk(hmp, bref->data_off, chain->bytes, iocb);
 }
