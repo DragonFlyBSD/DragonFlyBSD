@@ -470,7 +470,7 @@ acpi_getcpufreq_str(int dom_id, int *highest0, int *lowest0)
 		/* 
 		 * Detect turbo mode
 		 */
-		if (highest - v == 1 && !TurboOpt)
+		if (!TurboOpt && highest - v == 1)
 			highest = v;
 	}
 
@@ -502,7 +502,7 @@ acpi_getcpufreq_bin(int dom_id, int *highest0, int *lowest0)
 	*lowest0 = freq[freqcnt - 1];
 
 	*highest0 = freq[0];
-	if (freqcnt > 1 && freq[0] - freq[1] == 1 && !TurboOpt)
+	if (!TurboOpt && freqcnt > 1 && freq[0] - freq[1] == 1)
 		*highest0 = freq[1];
 	return 1;
 }
