@@ -57,6 +57,8 @@
 
 #define MAXDOM		MAXCPU	/* worst case, 1 cpu per domain */
 
+#define MAXFREQ		64
+
 struct cpu_pwrdom {
 	TAILQ_ENTRY(cpu_pwrdom)	dom_link;
 	int			dom_id;
@@ -418,6 +420,85 @@ getcputime(double pollrate)
 	return((double)delta / (pollrate * 1000000.0));
 }
 
+static void
+acpi_getcpufreq_str(int dom_id, int *highest0, int *lowest0)
+{
+	char buf[256], sysid[64];
+	size_t buflen;
+	char *ptr;
+	int v, highest, lowest;
+
+	/*
+	 * Retrieve availability list
+	 */
+	snprintf(sysid, sizeof(sysid), "hw.acpi.cpu.px_dom%d.available",
+	    dom_id);
+	buflen = sizeof(buf) - 1;
+	if (sysctlbyname(sysid, buf, &buflen, NULL, 0) < 0)
+		return;
+	buf[buflen] = 0;
+
+	/*
+	 * Parse out the highest and lowest cpu frequencies
+	 */
+	ptr = buf;
+	highest = lowest = 0;
+	while (ptr && (v = strtol(ptr, &ptr, 10)) > 0) {
+		if (lowest == 0 || lowest > v)
+			lowest = v;
+		if (highest == 0 || highest < v)
+			highest = v;
+		/* 
+		 * Detect turbo mode
+		 */
+		if (highest - v == 1 && !TurboOpt)
+			highest = v;
+	}
+
+	*highest0 = highest;
+	*lowest0 = lowest;
+}
+
+static int
+acpi_getcpufreq_bin(int dom_id, int *highest0, int *lowest0)
+{
+	char sysid[64];
+	int freq[MAXFREQ];
+	size_t freqlen;
+	int freqcnt;
+
+	/*
+	 * Retrieve availability list
+	 */
+	snprintf(sysid, sizeof(sysid), "hw.acpi.cpu.px_dom%d.available_bin",
+	    dom_id);
+	freqlen = sizeof(freq);
+	if (sysctlbyname(sysid, freq, &freqlen, NULL, 0) < 0)
+		return 0;
+
+	freqcnt = freqlen / sizeof(freq[0]);
+	if (freqcnt == 0)
+		return 0;
+
+	*lowest0 = freq[freqcnt - 1];
+
+	*highest0 = freq[0];
+	if (freqcnt > 1 && freq[0] - freq[1] == 1 && !TurboOpt)
+		*highest0 = freq[1];
+	return 1;
+}
+
+static void
+acpi_getcpufreq(int dom_id, int *highest, int *lowest)
+{
+	*highest = 0;
+	*lowest = 0;
+
+	if (acpi_getcpufreq_bin(dom_id, highest, lowest))
+		return;
+	acpi_getcpufreq_str(dom_id, highest, lowest);
+}
+
 /*
  * nstate is the requested number of cpus that we wish to run at full
  * frequency.  We calculate how many domains we have to adjust to reach
@@ -434,11 +515,7 @@ acpi_setcpufreq(int nstate)
 	int lowest;
 	int highest;
 	int desired;
-	int v;
-	char *sysid;
-	char *ptr;
-	char buf[256];
-	size_t buflen;
+	char sysid[64];
 	cpumask_t global_cpumask;
 
 	/*
@@ -513,56 +590,23 @@ acpi_setcpufreq(int nstate)
 	/*
 	 * Adjust the cpu frequency
 	 */
-	if (DebugOpt)
-		printf("\n");
 	for (dom = domBeg; dom != domEnd; dom = TAILQ_NEXT(dom, dom_link)) {
-		/*
-		 * Retrieve availability list
-		 */
-		asprintf(&sysid, "hw.acpi.cpu.px_dom%d.available", dom->dom_id);
-		buflen = sizeof(buf) - 1;
-		v = sysctlbyname(sysid, buf, &buflen, NULL, 0);
-		free(sysid);
-		if (v < 0)
+		acpi_getcpufreq(dom->dom_id, &highest, &lowest);
+		if (highest == 0 || lowest == 0)
 			continue;
-		buf[buflen] = 0;
-
-		/*
-		 * Parse out the highest and lowest cpu frequencies
-		 */
-		ptr = buf;
-		highest = lowest = 0;
-		while (ptr && (v = strtol(ptr, &ptr, 10)) > 0) {
-			if (lowest == 0 || lowest > v)
-				lowest = v;
-			if (highest == 0 || highest < v)
-				highest = v;
-			/* 
-			 * Detect turbo mode
-			 */
-			if ((highest - v == 1) && ! TurboOpt)
-				highest = v;
-
-		}
 
 		/*
 		 * Calculate the desired cpu frequency, test, and set.
 		 */
 		desired = increasing ? highest : lowest;
 
-		asprintf(&sysid, "hw.acpi.cpu.px_dom%d.select", dom->dom_id);
-		buflen = sizeof(v);
-		v = 0;
-		sysctlbyname(sysid, &v, &buflen, NULL, 0);
-		{
-			if (DebugOpt) {
-				printf("dom%d set frequency %d\n",
-				       dom->dom_id, desired);
-			}
-			sysctlbyname(sysid, NULL, NULL,
-				     &desired, sizeof(desired));
+		snprintf(sysid, sizeof(sysid), "hw.acpi.cpu.px_dom%d.select",
+		    dom->dom_id);
+		if (DebugOpt) {
+			printf("dom%d set frequency %d\n",
+			       dom->dom_id, desired);
 		}
-		free(sysid);
+		sysctlbyname(sysid, NULL, NULL, &desired, sizeof(desired));
 	}
 }
 
