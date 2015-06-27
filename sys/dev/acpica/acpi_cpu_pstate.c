@@ -631,6 +631,9 @@ fetch_ppc:
 	buf.Length = ACPI_ALLOCATE_BUFFER;
 	status = AcpiEvaluateObject(sc->pst_handle, "_PPC", NULL, &buf);
 	if (!ACPI_FAILURE(status)) {
+		ACPI_OBJECT_LIST arglist;
+		ACPI_OBJECT arg[2];
+
 		obj = (ACPI_OBJECT *)buf.Pointer;
 		if (obj->Type == ACPI_TYPE_INTEGER) {
 			if (obj->Integer.Value >= acpi_npstates) {
@@ -651,6 +654,15 @@ fetch_ppc:
 
 		/* Free _PPC */
 		AcpiOsFree(obj);
+
+		/* _PPC has been successfully processed */
+		arglist.Pointer = arg;
+		arglist.Count = 2;
+		arg[0].Type = ACPI_TYPE_INTEGER;
+		arg[0].Integer.Value = 0x80;
+		arg[1].Type = ACPI_TYPE_INTEGER;
+		arg[1].Integer.Value = 0;
+		AcpiEvaluateObject(sc->pst_handle, "_OST", &arglist, NULL);
 	}
 	if (acpi_pstate_start < 0) {
 		acpi_pstate_start = sstart;
