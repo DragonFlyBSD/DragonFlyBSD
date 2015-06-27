@@ -83,7 +83,6 @@ struct acpi_pst_domain {
 	uint32_t		pd_flags;
 
 	int			pd_state;
-	int			pd_sstart;
 	struct acpi_pst_list	pd_pstlist;
 
 	struct sysctl_ctx_list	pd_sysctl_ctx;
@@ -103,7 +102,6 @@ struct acpi_pst_softc {
 	struct acpi_pst_res	pst_sreg;
 
 	int			pst_state;
-	int			pst_sstart;
 	int			pst_cpuid;
 
 	ACPI_HANDLE		pst_handle;
@@ -155,6 +153,7 @@ static int			acpi_pst_domain_id;
 
 static int			acpi_pst_global_state;
 
+static int			acpi_pstate_start = -1;
 static int			acpi_npstates;
 static struct acpi_pstate	*acpi_pstates;
 
@@ -307,7 +306,7 @@ acpi_pst_attach(device_t dev)
 	ACPI_STATUS status;
 	ACPI_OBJECT *obj;
 	struct acpi_pstate *pstate, *p;
-	int i, npstate, error;
+	int i, npstate, error, sstart;
 
 	sc->pst_dev = dev;
 	sc->pst_parent = device_get_softc(device_get_parent(dev));
@@ -621,7 +620,7 @@ fetch_pss:
 
 fetch_ppc:
 	/* By default, we start from P-State table's first entry */
-	sc->pst_sstart = 0;
+	sstart = 0;
 
 	/*
 	 * Adjust the usable first entry of P-State table,
@@ -638,9 +637,9 @@ fetch_ppc:
 				AcpiOsFree(obj);
 				return ENXIO;
 			}
-			sc->pst_sstart = obj->Integer.Value;
+			sstart = obj->Integer.Value;
 			if (bootverbose)
-				device_printf(dev, "_PPC %d\n", sc->pst_sstart);
+				device_printf(dev, "_PPC %d\n", sstart);
 
 			/* TODO: Install notifiy handler */
 		} else {
@@ -652,8 +651,17 @@ fetch_ppc:
 		/* Free _PPC */
 		AcpiOsFree(obj);
 	}
-
-	sc->pst_state = sc->pst_sstart;
+	if (acpi_pstate_start < 0) {
+		acpi_pstate_start = sstart;
+	} else if (acpi_pstate_start != sstart) {
+		device_printf(dev, "_PPC mismatch, was %d, now %d\n",
+		    acpi_pstate_start, sstart);
+		if (acpi_pstate_start < sstart) {
+			device_printf(dev, "_PPC %d -> %d\n",
+			    acpi_pstate_start, sstart);
+			acpi_pstate_start = sstart;
+		}
+	}
 
 	/*
 	 * Some CPUs only have package P-states, but some BIOSes put each
@@ -848,8 +856,6 @@ acpi_pst_domain_alloc(uint32_t domain, uint32_t coord, uint32_t nproc)
 	dom->pd_dom = domain;
 	dom->pd_coord = coord;
 	dom->pd_nproc = nproc;
-	dom->pd_state = 0; /* XXX */
-	dom->pd_sstart = 0; /* XXX */
 	LIST_INIT(&dom->pd_pstlist);
 
 	LIST_INSERT_HEAD(&acpi_pst_domains, dom, pd_link);
@@ -908,7 +914,7 @@ acpi_pst_postattach(void *arg __unused)
 	struct acpi_pst_domain *dom;
 	struct acpi_cpu_softc *cpu;
 	device_t *devices;
-	int i, ndevices, error, has_domain, sstate;
+	int i, ndevices, error, has_domain;
 
 	devices = NULL;
 	ndevices = 0;
@@ -931,19 +937,22 @@ acpi_pst_postattach(void *arg __unused)
 	if (acpi_pst_md == NULL)
 		kprintf("ACPI: no P-State CPU driver\n");
 
-	sstate = 0x7fffffff;
 	has_domain = 0;
 	LIST_FOREACH(dom, &acpi_pst_domains, pd_link) {
 		struct acpi_pst_softc *sc;
 		char buf[32];
+
+		dom->pd_state = acpi_pstate_start;
 
 		/*
 		 * Make sure that all processors belonging to this
 		 * domain are located.
 		 */
 		i = 0;
-		LIST_FOREACH(sc, &dom->pd_pstlist, pst_link)
+		LIST_FOREACH(sc, &dom->pd_pstlist, pst_link) {
+			sc->pst_state = acpi_pstate_start;
 			++i;
+		}
 		if (i != dom->pd_nproc) {
 			KKASSERT(i < dom->pd_nproc);
 
@@ -1045,9 +1054,6 @@ acpi_pst_postattach(void *arg __unused)
 					dom, 0, acpi_pst_sysctl_select,
 					"IU", "select freq");
 		}
-
-		if (dom->pd_state < sstate)
-			sstate = dom->pd_state;
 	}
 
 	if (has_domain && acpi_pst_md != NULL &&
@@ -1059,14 +1065,13 @@ acpi_pst_postattach(void *arg __unused)
 				NULL, 0, acpi_pst_sysctl_global,
 				"IU", "select freq for all domains");
 
-		acpi_pst_global_set_pstate(sstate);
+		acpi_pst_global_set_pstate(acpi_pstate_start);
 	}
 }
 
 static int
 acpi_pst_sysctl_freqs(SYSCTL_HANDLER_ARGS)
 {
-	struct acpi_pst_domain *dom = arg1;
 	int i, error;
 
 	error = 0;
@@ -1077,7 +1082,7 @@ acpi_pst_sysctl_freqs(SYSCTL_HANDLER_ARGS)
 			const char *pat;
 			char buf[32];
 
-			if (i < dom->pd_sstart)
+			if (i < acpi_pstate_start)
 				pat = "(%u)";
 			else
 				pat = "%u";
@@ -1093,13 +1098,12 @@ acpi_pst_sysctl_freqs(SYSCTL_HANDLER_ARGS)
 static int
 acpi_pst_sysctl_freqs_bin(SYSCTL_HANDLER_ARGS)
 {
-	struct acpi_pst_domain *dom = arg1;
 	uint32_t freqs[ACPI_NPSTATE_MAX];
 	int cnt, i;
 
-	cnt = acpi_npstates - dom->pd_sstart;
+	cnt = acpi_npstates - acpi_pstate_start;
 	for (i = 0; i < cnt; ++i)
-		freqs[i] = acpi_pstates[dom->pd_sstart + i].st_freq;
+		freqs[i] = acpi_pstates[acpi_pstate_start + i].st_freq;
 
 	return sysctl_handle_opaque(oidp, freqs, cnt * sizeof(freqs[0]), req);
 }
