@@ -235,140 +235,6 @@ contigmask(u_char *p, int len)
 	return i;
 }
 
-static void
-fill_ip(ipfw_insn_ip *cmd, char *av)
-{
-	char *p = NULL, md = 0;
-	u_int32_t i;
-
-	cmd->o.len &= ~F_LEN_MASK; 	/* zero len */
-
-	if (!strncmp(av, "any", strlen(av)))
-		return;
-
-	if (!strncmp(av, "me", strlen(av))) {
-		cmd->o.len |= F_INSN_SIZE(ipfw_insn);
-		return;
-	}
-
-	p = strchr(av, '/');
-	if (!p)
-		p = strchr(av, ':');
-
-	if (p) {
-		md = *p;
-		*p++ = '\0';
-	}
-
-	if (lookup_host(av, &cmd->addr) != 0)
-		errx(EX_NOHOST, "hostname ``%s'' unknown", av);
-	switch (md) {
-	case ':':
-		if (!inet_aton(p, &cmd->mask))
-			errx(EX_DATAERR, "bad netmask ``%s''", p);
-		break;
-	case '/':
-		i = atoi(p);
-		if (i == 0)
-			cmd->mask.s_addr = htonl(0);
-		else if (i > 32)
-			errx(EX_DATAERR, "bad width ``%s''", p);
-		else
-			cmd->mask.s_addr = htonl(~0 << (32 - i));
-		break;
-	default:
-		cmd->mask.s_addr = htonl(~0);
-		break;
-	}
-	cmd->addr.s_addr &= cmd->mask.s_addr;
-
-	if (p)
-		p = strchr(p, '{');
-	if (p) {
-		u_int32_t *d;
-		int low, high;
-		int i = contigmask((u_char *)&(cmd->mask), 32);
-
-		if (i < 24 || i > 31) {
-			fprintf(stderr, "invalid set with mask %d\n", i);
-			exit(0);
-		}
-		cmd->o.arg1 = 1<<(32-i);
-		cmd->addr.s_addr = ntohl(cmd->addr.s_addr);
-		d = (u_int32_t *)&cmd->mask;
-		cmd->o.opcode = O_BASIC_IP_DST_SET; 	/* default */
-		cmd->o.len |= F_INSN_SIZE(ipfw_insn_u32) + (cmd->o.arg1+31)/32;
-		for (i = 0; i < (cmd->o.arg1+31)/32 ; i++)
-			d[i] = 0; 	/* clear masks */
-
-		av = p+1;
-		low = cmd->addr.s_addr & 0xff;
-		high = low + cmd->o.arg1 - 1;
-		while (isdigit(*av)) {
-			char *s;
-			u_int16_t a = strtol(av, &s, 0);
-
-			if (s == av) /* no parameter */
-				break;
-			if (a < low || a > high) {
-				fprintf(stderr,
-					"addr %d out of range [%d-%d]\n",
-						a, low, high);
-				exit(0);
-			}
-			a -= low;
-			d[ a/32] |= 1<<(a & 31);
-			if (*s != ',')
-				break;
-			av = s+1;
-		}
-		return;
-	}
-
-	if (cmd->mask.s_addr == 0) {
-		if (cmd->o.len & F_NOT)
-			errx(EX_DATAERR, "not any never matches");
-		else	/* useless, nuke it */
-			return;
-	} else if (cmd->mask.s_addr == IP_MASK_ALL) {
-		cmd->o.len |= F_INSN_SIZE(ipfw_insn_u32);
-	} else {						/* addr/mask */
-		cmd->o.len |= F_INSN_SIZE(ipfw_insn_ip);
-		printf("cmd->o.len=%d\n", cmd->o.len);
-	}
-}
-
-
-static ipfw_insn *add_srcip(ipfw_insn *cmd, char *av)
-{
-	fill_ip((ipfw_insn_ip *)cmd, av);
-	if ((int)cmd->opcode == O_BASIC_IP_DST_SET)		/* set */
-		cmd->opcode = O_BASIC_IP_SRC_SET;
-	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn))		/* me */
-		cmd->opcode = O_BASIC_IP_SRC_ME;
-	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn_u32))	/* one IP */
-		cmd->opcode = O_BASIC_IP_SRC;
-	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn_ip))	/* addr/mask */
-		cmd->opcode = O_BASIC_IP_SRC_MASK;
-	return cmd;
-}
-
-
-static ipfw_insn *add_dstip(ipfw_insn *cmd, char *av)
-{
-	fill_ip((ipfw_insn_ip *)cmd, av);
-	if ((int)cmd->opcode == O_BASIC_IP_DST_SET)
-		cmd->opcode = O_BASIC_IP_DST_SET;
-	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn))
-		cmd->opcode = O_BASIC_IP_DST_ME;
-	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn_u32))
-		cmd->opcode = O_BASIC_IP_DST;
-	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn_ip))
-		cmd->opcode = O_BASIC_IP_DST_MASK;
-	return cmd;
-}
-
-
 static ipfw_insn *add_proto(ipfw_insn *cmd, char *av)
 {
 	struct protoent *pe;
@@ -508,21 +374,110 @@ parse_via(ipfw_insn **cmd, int *ac, char **av[])
 	NEXT_ARG1;
 }
 
+/*
+ * Below formats are supported:
+ * from any		return 0 len instruction
+ * from me		O_BASIC_IP_SRC_ME
+ * from 1.2.3.4  	O_BASIC_IP_SRC
+ * from 1.2.3.4/24	O_BASIC_IP_SRC_MASK
+ */
 void
 parse_from(ipfw_insn **cmd, int *ac, char **av[])
 {
+	ipfw_insn_ip *p = (ipfw_insn_ip *)(*cmd);
+	int i;
+
 	(*cmd)->module = MODULE_BASIC_ID;
 	NEXT_ARG1;
-	add_srcip(*cmd, **av);
+	if (strcmp(**av, "any") == 0) {
+		(*cmd)->len &= ~F_LEN_MASK;
+	} else if (strcmp(**av, "me") == 0) {
+		(*cmd)->len |= F_INSN_SIZE(ipfw_insn);
+		(*cmd)->opcode = O_BASIC_IP_SRC_ME;
+	} else {
+		char *c = NULL, md = 0;
+		c = strchr(**av, '/');
+		if (c) {
+			md = *c;
+			*c++ = '\0';
+		}
+		if (lookup_host(**av, &p->addr) != 0)
+			errx(EX_NOHOST, "hostname ``%s'' unknown", **av);
+		switch (md) {
+			case '/':
+				i = atoi(c);
+				if (i == 0)
+					p->mask.s_addr = htonl(0);
+				else if (i > 32)
+					errx(EX_DATAERR, "bad width ``%s''", c);
+				else
+					p->mask.s_addr = htonl(~0 << (32 - i));
+				break;
+			default:
+				p->mask.s_addr = htonl(~0);
+				break;
+		}
+		p->addr.s_addr &= p->mask.s_addr;
+		if (p->mask.s_addr == 0) {
+			/* high kneel */
+		} else if (p->mask.s_addr == IP_MASK_ALL) {
+			(*cmd)->len |= F_INSN_SIZE(ipfw_insn_u32);
+			(*cmd)->opcode = O_BASIC_IP_SRC;
+		} else {
+			(*cmd)->len |= F_INSN_SIZE(ipfw_insn_ip);
+			(*cmd)->opcode = O_BASIC_IP_SRC_MASK;
+		}
+	}
 	NEXT_ARG1;
 }
 
 void
 parse_to(ipfw_insn **cmd, int *ac, char **av[])
 {
+	ipfw_insn_ip *p = (ipfw_insn_ip *)(*cmd);
+	int i;
+
 	(*cmd)->module = MODULE_BASIC_ID;
 	NEXT_ARG1;
-	add_dstip(*cmd, **av);
+	if (strcmp(**av, "any") == 0) {
+		(*cmd)->len &= ~F_LEN_MASK;
+	} else if (strcmp(**av, "me") == 0) {
+		(*cmd)->len |= F_INSN_SIZE(ipfw_insn);
+		(*cmd)->opcode = O_BASIC_IP_DST_ME;
+	} else {
+		char *c = NULL, md = 0;
+		c = strchr(**av, '/');
+		if (c) {
+			md = *c;
+			*c++ = '\0';
+		}
+		if (lookup_host(**av, &p->addr) != 0)
+			errx(EX_NOHOST, "hostname ``%s'' unknown", **av);
+		switch (md) {
+			case '/':
+				i = atoi(c);
+				if (i == 0)
+					p->mask.s_addr = htonl(0);
+				else if (i > 32)
+					errx(EX_DATAERR, "bad width ``%s''", c);
+				else
+					p->mask.s_addr = htonl(~0 << (32 - i));
+				break;
+			default:
+				p->mask.s_addr = htonl(~0);
+				break;
+		}
+		p->addr.s_addr &= p->mask.s_addr;
+		if (p->mask.s_addr == 0) {
+			/* high kneel */
+		} else if (p->mask.s_addr == IP_MASK_ALL) {
+			(*cmd)->len |= F_INSN_SIZE(ipfw_insn_u32);
+			(*cmd)->opcode = O_BASIC_IP_DST;
+		} else {
+			(*cmd)->len |= F_INSN_SIZE(ipfw_insn_ip);
+			(*cmd)->opcode = O_BASIC_IP_DST_MASK;
+		}
+	}
 	NEXT_ARG1;
 }
 
@@ -718,9 +673,45 @@ show_from(ipfw_insn *cmd)
 }
 
 void
+show_from_me(ipfw_insn *cmd)
+{
+	printf(" from me");
+}
+
+void
+show_from_mask(ipfw_insn *cmd)
+{
+	int mask;
+	ipfw_insn_ip *p = (ipfw_insn_ip *)cmd;
+	printf(" from %s", inet_ntoa(p->addr));
+
+	mask = contigmask((u_char *)&(p->mask.s_addr), 32);
+	if (mask < 32)
+		printf("/%d", mask);
+}
+
+void
 show_to(ipfw_insn *cmd)
 {
 	printf(" to %s", inet_ntoa(((ipfw_insn_ip *)cmd)->addr));
+}
+
+void
+show_to_me(ipfw_insn *cmd)
+{
+	printf(" to me");
+}
+
+void
+show_to_mask(ipfw_insn *cmd)
+{
+	int mask;
+	ipfw_insn_ip *p = (ipfw_insn_ip *)cmd;
+	printf(" to %s", inet_ntoa(p->addr));
+
+	mask = contigmask((u_char *)&(p->mask.s_addr), 32);
+	if (mask < 32)
+		printf("/%d", mask);
 }
 
 void
@@ -826,11 +817,26 @@ load_module(register_func function, register_keyword keyword)
 			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_IP_SRC,
 			(parser_func)parse_from, (shower_func)show_from);
-
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME, "[from me]",
+			IPFW_KEYWORD_TYPE_FILTER);
+	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_ME,
+			(parser_func)parse_from, (shower_func)show_from_me);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_SRC_MASK, "[from mask]",
+			IPFW_KEYWORD_TYPE_FILTER);
+	function(MODULE_BASIC_ID, O_BASIC_IP_SRC_MASK,
+			(parser_func)parse_from, (shower_func)show_from_mask);
 	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST, "to",
 			IPFW_KEYWORD_TYPE_FILTER);
 	function(MODULE_BASIC_ID, O_BASIC_IP_DST,
 			(parser_func)parse_to, (shower_func)show_to);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_ME, "[to me]",
+			IPFW_KEYWORD_TYPE_FILTER);
+	function(MODULE_BASIC_ID, O_BASIC_IP_DST_ME,
+			(parser_func)parse_to, (shower_func)show_to_me);
+	keyword(MODULE_BASIC_ID, O_BASIC_IP_DST_MASK, "[to mask]",
+			IPFW_KEYWORD_TYPE_FILTER);
+	function(MODULE_BASIC_ID, O_BASIC_IP_DST_MASK,
+			(parser_func)parse_to, (shower_func)show_to_mask);
 
 	keyword(MODULE_BASIC_ID, O_BASIC_PROTO, "proto",
 			IPFW_KEYWORD_TYPE_FILTER);

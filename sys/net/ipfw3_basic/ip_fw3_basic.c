@@ -194,7 +194,15 @@ void check_prob(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 void check_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void check_from_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void check_from_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 void check_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void check_to_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void check_to_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 void check_keep_state(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
@@ -541,6 +549,52 @@ check_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 }
 
 void
+check_from_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	struct in_addr src_ip;
+	u_int hlen = 0;
+	struct mbuf *m = (*args)->m;
+	struct ip *ip = mtod(m, struct ip *);
+	src_ip = ip->ip_src;
+	if ((*args)->eh == NULL ||
+		(m->m_pkthdr.len >= sizeof(struct ip) &&
+		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
+		hlen = ip->ip_hl << 2;
+	}
+	*cmd_ctl = IP_FW_CTL_NO;
+	if (hlen > 0) {
+		struct ifnet *tif;
+		tif = INADDR_TO_IFP(&src_ip);
+		*cmd_val = (tif != NULL);
+	} else {
+		*cmd_val = IP_FW_NOT_MATCH;
+	}
+}
+
+void
+check_from_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	struct in_addr src_ip;
+	u_int hlen = 0;
+	struct mbuf *m = (*args)->m;
+	struct ip *ip = mtod(m, struct ip *);
+	src_ip = ip->ip_src;
+	if ((*args)->eh == NULL ||
+		(m->m_pkthdr.len >= sizeof(struct ip) &&
+		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
+		hlen = ip->ip_hl << 2;
+	}
+
+	*cmd_ctl = IP_FW_CTL_NO;
+	*cmd_val = (hlen > 0 &&
+			((ipfw_insn_ip *)cmd)->addr.s_addr ==
+			(src_ip.s_addr &
+			((ipfw_insn_ip *)cmd)->mask.s_addr));
+}
+
+void
 check_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
@@ -557,6 +611,52 @@ check_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	*cmd_val = (hlen > 0 &&
 			((ipfw_insn_ip *)cmd)->addr.s_addr == dst_ip.s_addr);
 	*cmd_ctl = IP_FW_CTL_NO;
+}
+
+void
+check_to_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	struct in_addr dst_ip;
+	u_int hlen = 0;
+	struct mbuf *m = (*args)->m;
+	struct ip *ip = mtod(m, struct ip *);
+	dst_ip = ip->ip_src;
+	if ((*args)->eh == NULL ||
+		(m->m_pkthdr.len >= sizeof(struct ip) &&
+		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
+		hlen = ip->ip_hl << 2;
+	}
+	*cmd_ctl = IP_FW_CTL_NO;
+	if (hlen > 0) {
+		struct ifnet *tif;
+		tif = INADDR_TO_IFP(&dst_ip);
+		*cmd_val = (tif != NULL);
+	} else {
+		*cmd_val = IP_FW_NOT_MATCH;
+	}
+}
+
+void
+check_to_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
+{
+	struct in_addr dst_ip;
+	u_int hlen = 0;
+	struct mbuf *m = (*args)->m;
+	struct ip *ip = mtod(m, struct ip *);
+	dst_ip = ip->ip_src;
+	if ((*args)->eh == NULL ||
+		(m->m_pkthdr.len >= sizeof(struct ip) &&
+		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
+		hlen = ip->ip_hl << 2;
+	}
+
+	*cmd_ctl = IP_FW_CTL_NO;
+	*cmd_val = (hlen > 0 &&
+			((ipfw_insn_ip *)cmd)->addr.s_addr ==
+			(dst_ip.s_addr &
+			((ipfw_insn_ip *)cmd)->mask.s_addr));
 }
 
 void
@@ -842,8 +942,15 @@ ipfw_basic_init(void)
 	register_ipfw_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_SRC, (filter_func)check_from);
 	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+			O_BASIC_IP_SRC_ME, (filter_func)check_from_me);
+	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+			O_BASIC_IP_SRC_MASK, (filter_func)check_from_mask);
+	register_ipfw_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_DST, (filter_func)check_to);
-
+	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+			O_BASIC_IP_DST_ME, (filter_func)check_to_me);
+	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+			O_BASIC_IP_DST_MASK, (filter_func)check_to_mask);
 	register_ipfw_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_TAG, (filter_func)check_tag);
 	register_ipfw_filter_funcs(MODULE_BASIC_ID,
