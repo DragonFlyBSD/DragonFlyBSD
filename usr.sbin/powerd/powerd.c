@@ -74,6 +74,7 @@ static int setupdominfo(void);
 static int has_battery(void);
 static int mon_battery(void);
 static void getncpus(void);
+static void getuschedmask(void);
 
 static struct cpu_pwrdom_list CpuPwrDomain;
 static struct cpu_pwrdom *CpuPwrDomLimit;
@@ -81,6 +82,7 @@ static struct cpu_pwrdom CpuPwrDomLast;
 static int NCpuPwrDomUsed;
 
 static int TotalCpus;
+static cpumask_t UschedCpumask;
 int DebugOpt;
 int TurboOpt = 1;
 int CpuLimit;		/* # of cpus at max frequency */
@@ -164,6 +166,9 @@ main(int ac, char **av)
 
 	/* Get the number of cpus */
 	getncpus();
+
+	/* Get usched cpumask */
+	getuschedmask();
 
 	if (0 > Hysteresis || Hysteresis > 99) {
 		fprintf(stderr, "Invalid hysteresis value\n");
@@ -534,7 +539,7 @@ acpi_setcpufreq(int nstate)
 	int highest;
 	int desired;
 	char sysid[64];
-	cpumask_t global_cpumask;
+	int force_uschedbsp = 0;
 
 	/*
 	 * Calculate the ending domain if the number of operating cpus
@@ -547,7 +552,7 @@ acpi_setcpufreq(int nstate)
 	 * to use.
 	 */
 	NCpuPwrDomUsed = 0;
-	CPUMASK_ASSZERO(global_cpumask);
+	CPUMASK_ASSZERO(UschedCpumask);
 	for (dom = TAILQ_FIRST(&CpuPwrDomain); dom != &CpuPwrDomLast;
 	     dom = TAILQ_NEXT(dom, dom_link)) {
 		cpumask_t mask;
@@ -569,31 +574,33 @@ acpi_setcpufreq(int nstate)
 				CPUMASK_NANDBIT(mask, c);
 			}
 		}
-		CPUMASK_ORMASK(global_cpumask, mask);
-	}
-
-	/*
-	 * Make sure that userland scheduler has at least one cpu.
-	 */
-	if (CPUMASK_TESTZERO(global_cpumask))
-		CPUMASK_ORBIT(global_cpumask, 0);
-	if (DebugOpt) {
-		int i;
-
-		printf("\nusched cpumask: ");
-		for (i = 0; i < (int)NELEM(global_cpumask.ary); ++i)
-			printf("%jx ", (uintmax_t)global_cpumask.ary[i]);
-		printf("\n");
-		fflush(stdout);
+		CPUMASK_ORMASK(UschedCpumask, mask);
 	}
 
 	syslog(LOG_INFO, "using %d cpus", nstate);
 
 	/*
 	 * Set the mask of cpus the userland scheduler is allowed to use.
+	 *
+	 * Make sure that userland scheduler has at least one cpu.
 	 */
+	if (CPUMASK_TESTZERO(UschedCpumask)) {
+		CPUMASK_ORBIT(UschedCpumask, 0);
+		force_uschedbsp = 1;
+	}
+	if (DebugOpt) {
+		int i;
+
+		printf("\nusched cpumask: ");
+		for (i = 0; i < (int)NELEM(UschedCpumask.ary); ++i)
+			printf("%jx ", (uintmax_t)UschedCpumask.ary[i]);
+		printf("\n");
+		fflush(stdout);
+	}
 	sysctlbyname("kern.usched_global_cpumask", NULL, 0,
-		     &global_cpumask, sizeof(global_cpumask));
+		     &UschedCpumask, sizeof(UschedCpumask));
+	if (force_uschedbsp)
+		CPUMASK_NANDBIT(UschedCpumask, 0);
 
 	if (increasing) {
 		domBeg = CpuPwrDomLimit;
@@ -790,4 +797,24 @@ getncpus(void)
 		err(1, "sysctlbyname hw.ncpu failed");
 	if (DebugOpt)
 		printf("hw.ncpu %d\n", TotalCpus);
+}
+
+static void
+getuschedmask(void)
+{
+	size_t slen;
+
+	slen = sizeof(UschedCpumask);
+	if (sysctlbyname("kern.usched_global_cpumask", &UschedCpumask, &slen,
+	    NULL, 0) < 0)
+		err(1, "sysctlbyname kern.usched_global_cpumask failed");
+	if (DebugOpt) {
+		int i;
+
+		printf("usched cpumask was: ");
+		for (i = 0; i < (int)NELEM(UschedCpumask.ary); ++i)
+			printf("%jx ", (uintmax_t)UschedCpumask.ary[i]);
+		printf("\n");
+		fflush(stdout);
+	}
 }
