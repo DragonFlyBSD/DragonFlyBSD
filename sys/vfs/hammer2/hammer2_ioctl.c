@@ -162,10 +162,14 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 static int
 hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data)
 {
-	hammer2_dev_t *hmp = ip->pmp->iroot->cluster.focus->hmp;
 	hammer2_ioc_version_t *version = data;
+	hammer2_dev_t *hmp;
 
-	version->version = hmp->voldata.version;
+	hmp = ip->pmp->pfs_hmps[0];
+	if (hmp)
+		version->version = hmp->voldata.version;
+	else
+		version->version = -1;
 	return 0;
 }
 
@@ -201,9 +205,13 @@ hammer2_ioctl_recluster(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_remote_scan(hammer2_inode_t *ip, void *data)
 {
-	hammer2_dev_t *hmp = ip->pmp->iroot->cluster.focus->hmp;
+	hammer2_dev_t *hmp;
 	hammer2_ioc_remote_t *remote = data;
 	int copyid = remote->copyid;
+
+	hmp = ip->pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
 
 	if (copyid < 0 || copyid >= HAMMER2_COPYID_COUNT)
 		return (EINVAL);
@@ -239,10 +247,12 @@ hammer2_ioctl_remote_add(hammer2_inode_t *ip, void *data)
 	int copyid = remote->copyid;
 	int error = 0;
 
+	hmp = pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
 	if (copyid >= HAMMER2_COPYID_COUNT)
 		return (EINVAL);
 
-	hmp = pmp->iroot->cluster.focus->hmp; /* XXX */
 	hammer2_voldata_lock(hmp);
 	if (copyid < 0) {
 		for (copyid = 1; copyid < HAMMER2_COPYID_COUNT; ++copyid) {
@@ -275,7 +285,9 @@ hammer2_ioctl_remote_del(hammer2_inode_t *ip, void *data)
 	int copyid = remote->copyid;
 	int error = 0;
 
-	hmp = pmp->iroot->cluster.focus->hmp; /* XXX */
+	hmp = pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
 	if (copyid >= HAMMER2_COPYID_COUNT)
 		return (EINVAL);
 	remote->copy1.path[sizeof(remote->copy1.path) - 1] = 0;
@@ -312,8 +324,9 @@ hammer2_ioctl_remote_rep(hammer2_inode_t *ip, void *data)
 	hammer2_dev_t *hmp;
 	int copyid = remote->copyid;
 
-	hmp = ip->pmp->iroot->cluster.focus->hmp; /* XXX */
-
+	hmp = ip->pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
 	if (copyid < 0 || copyid >= HAMMER2_COPYID_COUNT)
 		return (EINVAL);
 
@@ -344,7 +357,9 @@ hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data)
 	hammer2_dev_t *hmp;
 	int copyid = remote->copyid;
 
-	hmp = ip->pmp->iroot->cluster.focus->hmp; /* XXX */
+	hmp = ip->pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
 	if (copyid < 0 || copyid >= HAMMER2_COPYID_COUNT)
 		return (EINVAL);
 
@@ -382,11 +397,13 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	int cache_index = -1;
 	int error;
 
-	error = 0;
-	hmp = ip->pmp->iroot->cluster.focus->hmp; /* XXX */
-	pfs = data;
+	hmp = ip->pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
 
+	pfs = data;
 	save_key = pfs->name_key;
+	error = 0;
 
 	/*
 	 * Setup
@@ -417,6 +434,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		if (parent == NULL) {
 			hammer2_chain_unlock(chain);
 			hammer2_chain_drop(chain);
+			chain = NULL;
 			break;
 		}
 		chain = hammer2_chain_next(&parent, chain, &key_next,
@@ -441,16 +459,20 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		ripdata = NULL;	/* safety */
 
 		/*
-		 * Calculate name_next.
+		 * Calculate name_next, if any.
 		 */
-		chain = hammer2_chain_next(&parent, chain, &key_next,
-					    key_next, HAMMER2_KEY_MAX,
-					    &cache_index,
-					    HAMMER2_LOOKUP_SHARED);
-		if (chain)
-			pfs->name_next = chain->bref.key;
-		else
+		if (parent == NULL) {
 			pfs->name_next = (hammer2_key_t)-1;
+		} else {
+			chain = hammer2_chain_next(&parent, chain, &key_next,
+						    key_next, HAMMER2_KEY_MAX,
+						    &cache_index,
+						    HAMMER2_LOOKUP_SHARED);
+			if (chain)
+				pfs->name_next = chain->bref.key;
+			else
+				pfs->name_next = (hammer2_key_t)-1;
+		}
 	} else {
 		pfs->name_next = (hammer2_key_t)-1;
 		error = ENOENT;
@@ -493,9 +515,13 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	int error;
 	size_t len;
 
-	error = 0;
-	hmp = ip->pmp->iroot->cluster.focus->hmp; /* XXX */
+	hmp = ip->pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
+
 	pfs = data;
+	error = 0;
+
 	hammer2_inode_lock(hmp->spmp->iroot, HAMMER2_RESOLVE_SHARED);
 	parent = hammer2_inode_chain(hmp->spmp->iroot, 0,
 				     HAMMER2_RESOLVE_ALWAYS |
@@ -564,7 +590,10 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	hammer2_inode_t *nip;
 	int error;
 
-	hmp = ip->pmp->iroot->cluster.focus->hmp; /* XXX */
+	hmp = ip->pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
+
 	pfs = data;
 	nip = NULL;
 
@@ -633,15 +662,19 @@ static int
 hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_pfs_t *pfs = data;
-	hammer2_pfs_t *spmp;
+	hammer2_dev_t	*hmp;
+	hammer2_pfs_t	*spmp;
 	hammer2_xop_unlink_t *xop;
 	hammer2_inode_t *dip;
 	int error;
 
 	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure termination */
 
-	/* XXX */
-	spmp = ip->pmp->iroot->cluster.focus->hmp->spmp;
+	hmp = ip->pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
+
+	spmp = hmp->spmp;
 	dip = spmp->iroot;
 	hammer2_trans_init(spmp, 0);
 	hammer2_inode_lock(dip, 0);
@@ -664,7 +697,8 @@ static int
 hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_pfs_t *pfs = data;
-	hammer2_cluster_t *cparent;
+	hammer2_dev_t	*hmp;
+	hammer2_chain_t	*chain;
 	int error;
 
 	if (pfs->name[0] == 0)
@@ -672,15 +706,21 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	if (pfs->name[sizeof(pfs->name)-1] != 0)
 		return(EINVAL);
 
+	hmp = ip->pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
+
 	hammer2_vfs_sync(ip->pmp->mp, MNT_WAIT);
 
 	hammer2_trans_init(ip->pmp, HAMMER2_TRANS_ISFLUSH);
 	hammer2_inode_lock(ip, 0);
-	cparent = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
-	error = hammer2_cluster_snapshot(cparent, pfs);
+
+	chain = hammer2_inode_chain(ip, 0, HAMMER2_RESOLVE_ALWAYS);
+	error = hammer2_chain_snapshot(chain, pfs);
+	hammer2_chain_unlock(chain);
+	hammer2_chain_drop(chain);
+
 	hammer2_inode_unlock(ip);
-	hammer2_cluster_unlock(cparent);
-	hammer2_cluster_drop(cparent);
 	hammer2_trans_done(ip->pmp);
 
 	return (error);
@@ -693,20 +733,23 @@ static int
 hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_inode_t *ino;
+	hammer2_chain_t *chain;
 	int error;
+	int i;
 
 	ino = data;
+	error = 0;
 
 	hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);
-	if (ip->cluster.focus) {
-		/* XXX */
-		ino->data_count = ip->cluster.focus->bref.data_count;
-		ino->inode_count = ip->cluster.focus->bref.inode_count;
-		error = 0;
-	} else {
-		ino->data_count = -1;
-		ino->inode_count = -1;
-		error = EIO;
+	ino->data_count = 0;
+	ino->inode_count = 0;
+	for (i = 0; i < ip->cluster.nchains; ++i) {
+		if ((chain = ip->cluster.array[i].chain) != NULL) {
+			if (ino->data_count < chain->bref.data_count)
+				ino->data_count = chain->bref.data_count;
+			if (ino->inode_count < chain->bref.inode_count)
+				ino->inode_count = chain->bref.inode_count;
+		}
 	}
 	bzero(&ino->ip_data, sizeof(ino->ip_data));
 	ino->ip_data.meta = ip->meta;
@@ -785,8 +828,12 @@ int
 hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_bulkfree_t *bfi = data;
-	hammer2_dev_t *hmp = ip->pmp->iroot->cluster.focus->hmp;
+	hammer2_dev_t *hmp;
 	int error;
+
+	hmp = ip->pmp->pfs_hmps[0];
+	if (hmp == NULL)
+		return (EINVAL);
 
 	/* XXX run local cluster targets only */
 	error = hammer2_bulkfree_pass(hmp, bfi);

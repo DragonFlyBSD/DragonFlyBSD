@@ -37,7 +37,7 @@
   will allocate new blocks up to the root in order to propagate block table
   changes and transaction ids.
 
-* Incremental update scans are trivial by design.
+* Incremental synchronization is queueless and trivial by design.
 
 * Multiple roots, with many features.  This is implemented via the super-root
   concept.  When mounting a HAMMER2 filesystem you specify a device path and
@@ -53,6 +53,19 @@
 
 * Roots are really no different from snapshots (HAMMER1 distinguished between
   its root mount and its PFS's.  HAMMER2 does not).
+
+* I/O and chain locking thread separation.  I/O stalls and lock stalls can
+  cause any filesystem which purports to operate over multiple physical and
+  network devices to implode.  HAMMER2 incorporates a frontend/backend design
+  which separates media operations into support threads and allows the
+  frontend to validate the cluster, proceed with an operation, and disconnect
+  any remaining running operation even when backend ops have not completed
+  on all nodes.  This allows the frontend to return 'early' (so to speak).
+
+* Early return on best data-path supported by virtue of the above.  In a
+  multi-master system, frontend ops will issue I/O on all cluster elements
+  concurrently and will return the instant incoming data validates the
+  cluster.
 
 * Snapshots are writable (in HAMMER1 snapshots were read-only).
 
@@ -85,7 +98,7 @@
   discrepancies, the synchronization thread will use the quorum to figure
   out which information is not correct and update accordingly.
 
-* Support for multiple compression algorithms configured on subdirectory
+* Support for multiple compression algorithms configured on a subdirectory
   tree basis and on a file basis.  Block compression up to 64KB will be used.
   Only compression ratios at powers of 2 that are at least 2:1 (e.g. 2:1,
   4:1, 8:1, etc) will work in this scheme because physical block allocations
@@ -493,10 +506,7 @@ will contain a cluster identifier that helps HAMMER2 identify and integrate
 with the nodes making up the cluster.  HAMMER2 will automatically integrate
 *all* entries under the super-root when you mount one of them.  You have to
 mount at least one for HAMMER2 to integrate the block device in the larger
-cluster.  This mount will typically be a SOFT_MASTER, DUMMY, SLAVE, or CACHE
-mount that simply serves to cause hammer to integrate the rest of the
-represented cluster.  ALL CLUSTER ELEMENTS ARE TREATED ACCORDING TO TYPE
-NO MATTER WHICH ONE YOU MOUNT.
+cluster.
 
 For cluster servers every HAMMER2-formatted partition has a "LOCAL" MASTER
 which can be mounted in order to make the rest of the elements under the

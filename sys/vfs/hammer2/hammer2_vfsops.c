@@ -413,6 +413,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 		iroot->cluster.array[j].chain = chain;
 		pmp->pfs_types[j] = ripdata->meta.pfs_type;
 		pmp->pfs_names[j] = kstrdup(ripdata->filename, M_HAMMER2);
+		pmp->pfs_hmps[j] = chain->hmp;
 
 		/*
 		 * If the PFS is already mounted we must account
@@ -559,7 +560,6 @@ hammer2_pfsfree_scan(hammer2_dev_t *hmp)
 {
 	hammer2_pfs_t *pmp;
 	hammer2_inode_t *iroot;
-	hammer2_cluster_t *cluster;
 	hammer2_chain_t *rchain;
 	int didfreeze;
 	int i;
@@ -583,26 +583,27 @@ again:
 		 * in-progress will be aborted and it will have to start
 		 * over again when unfrozen, or exit if told to exit.
 		 */
-		cluster = &iroot->cluster;
-		for (i = 0; i < cluster->nchains; ++i) {
-			rchain = cluster->array[i].chain;
-			if (rchain == NULL || rchain->hmp != hmp)
-				continue;
-			break;
+		for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+			if (pmp->pfs_hmps[i] == hmp)
+				break;
 		}
-		if (i != cluster->nchains) {
+		if (i != HAMMER2_MAXCLUSTER) {
 			/*
 			 * Make sure all synchronization threads are locked
 			 * down.
 			 */
-			for (i = 0; i < iroot->cluster.nchains; ++i) {
+			for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+				if (pmp->pfs_hmps[i] == NULL)
+					continue;
 				hammer2_thr_freeze_async(&pmp->sync_thrs[i]);
 				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
 					hammer2_thr_freeze_async(
 						&pmp->xop_groups[j].thrs[i]);
 				}
 			}
-			for (i = 0; i < iroot->cluster.nchains; ++i) {
+			for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+				if (pmp->pfs_hmps[i] == NULL)
+					continue;
 				hammer2_thr_freeze(&pmp->sync_thrs[i]);
 				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
 					hammer2_thr_freeze(
@@ -625,27 +626,28 @@ again:
 			/*
 			 * Remove the chain from matching elements of the PFS.
 			 */
-			for (i = 0; i < cluster->nchains; ++i) {
-				rchain = cluster->array[i].chain;
-				if (rchain == NULL || rchain->hmp != hmp)
+			for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+				if (pmp->pfs_hmps[i] != hmp)
 					continue;
 				hammer2_thr_delete(&pmp->sync_thrs[i]);
 				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
 					hammer2_thr_delete(
 						&pmp->xop_groups[j].thrs[i]);
 				}
-				rchain = cluster->array[i].chain;
-				cluster->array[i].chain = NULL;
+				rchain = iroot->cluster.array[i].chain;
+				iroot->cluster.array[i].chain = NULL;
 				pmp->pfs_types[i] = 0;
 				if (pmp->pfs_names[i]) {
 					kfree(pmp->pfs_names[i], M_HAMMER2);
 					pmp->pfs_names[i] = NULL;
 				}
-				hammer2_chain_drop(rchain);
-
-				/* focus hint */
-				if (cluster->focus == rchain)
-					cluster->focus = NULL;
+				if (rchain) {
+					hammer2_chain_drop(rchain);
+					/* focus hint */
+					if (iroot->cluster.focus == rchain)
+						iroot->cluster.focus = NULL;
+				}
+				pmp->pfs_hmps[i] = NULL;
 			}
 			hammer2_mtx_unlock(&iroot->lock);
 			didfreeze = 1;	/* remaster, unfreeze down below */
@@ -654,21 +656,19 @@ again:
 		}
 
 		/*
-		 * Cleanup trailing chains.  Do not reorder chains (for now).
-		 * XXX might remove more than we intended.
+		 * Cleanup trailing chains.  Gaps may remain.
 		 */
-		while (i > 0) {
-			if (cluster->array[i - 1].chain)
+		for (i = HAMMER2_MAXCLUSTER - 1; i >= 0; --i) {
+			if (pmp->pfs_hmps[i])
 				break;
-			--i;
 		}
-		cluster->nchains = i;
+		iroot->cluster.nchains = i + 1;
 
 		/*
 		 * If the PMP has no elements remaining we can destroy it.
 		 * (this will transition management threads from frozen->exit).
 		 */
-		if (cluster->nchains == 0) {
+		if (iroot->cluster.nchains == 0) {
 			kprintf("unmount hmp %p last ref to PMP=%p\n",
 				hmp, pmp);
 			hammer2_pfsfree(pmp);
@@ -680,7 +680,9 @@ again:
 		 * flag and unfreeze it.
 		 */
 		if (didfreeze) {
-			for (i = 0; i < iroot->cluster.nchains; ++i) {
+			for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+				if (pmp->pfs_hmps[i] == NULL)
+					continue;
 				hammer2_thr_remaster(&pmp->sync_thrs[i]);
 				hammer2_thr_unfreeze(&pmp->sync_thrs[i]);
 				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
@@ -1016,6 +1018,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		spmp->iroot = hammer2_inode_get(spmp, NULL, cluster);
 		spmp->spmp_hmp = hmp;
 		spmp->pfs_types[0] = ripdata->meta.pfs_type;
+		spmp->pfs_hmps[0] = hmp;
 		hammer2_inode_ref(spmp->iroot);
 		hammer2_inode_unlock(spmp->iroot);
 		hammer2_cluster_unlock(cluster);
@@ -1518,21 +1521,21 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 	hammer2_inode_lock(pmp->iroot, HAMMER2_RESOLVE_SHARED);
 
 	while (pmp->inode_tid == 0) {
-		hammer2_xop_vfsroot_t *xop;
+		hammer2_xop_ipcluster_t *xop;
 		hammer2_inode_meta_t *meta;
 
-		xop = &hammer2_xop_alloc(pmp->iroot)->xop_vfsroot;
-		hammer2_xop_start(&xop->head, hammer2_xop_vfsroot);
+		xop = &hammer2_xop_alloc(pmp->iroot)->xop_ipcluster;
+		hammer2_xop_start(&xop->head, hammer2_xop_ipcluster);
 		error = hammer2_xop_collect(&xop->head, 0);
 
 		if (error == 0) {
 			meta = &xop->head.cluster.focus->data->ipdata.meta;
 			pmp->iroot->meta = *meta;
-			pmp->iroot->bref = xop->head.cluster.focus->bref;
 			pmp->inode_tid = meta->pfs_inum + 1;
 			if (pmp->inode_tid < HAMMER2_INODE_START)
 				pmp->inode_tid = HAMMER2_INODE_START;
-			pmp->modify_tid = pmp->iroot->bref.modify_tid + 1;
+			pmp->modify_tid =
+				xop->head.cluster.focus->bref.modify_tid + 1;
 			kprintf("PFS: Starting inode %jd\n",
 				(intmax_t)pmp->inode_tid);
 			kprintf("PMP focus good set nextino=%ld mod=%016jx\n",
@@ -1597,28 +1600,39 @@ hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	hammer2_pfs_t *pmp;
 	hammer2_dev_t *hmp;
 	hammer2_blockref_t bref;
+	int i;
 
 	/*
 	 * NOTE: iroot might not have validated the cluster yet.
 	 */
 	pmp = MPTOPMP(mp);
-	if (pmp->iroot->cluster.focus == NULL)
-		return EINVAL;
 
-	KKASSERT(pmp->iroot->cluster.nchains >= 1);
-	hmp = pmp->iroot->cluster.focus->hmp;	/* iroot retains focus */
-	bref = pmp->iroot->cluster.focus->bref;	/* no lock */
-
-	mp->mnt_stat.f_files = bref.inode_count;
+	mp->mnt_stat.f_files = 0;
 	mp->mnt_stat.f_ffree = 0;
-	mp->mnt_stat.f_blocks = (bref.data_count +
-				 hmp->voldata.allocator_free) /
-				mp->mnt_vstat.f_bsize;
-	mp->mnt_stat.f_bfree =  hmp->voldata.allocator_free /
-				mp->mnt_vstat.f_bsize;
-	mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
+	mp->mnt_stat.f_blocks = 0;
+	mp->mnt_stat.f_bfree = 0;
+	mp->mnt_stat.f_bavail = 0;
 
-	*sbp = mp->mnt_stat;
+	for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
+		hmp = pmp->pfs_hmps[i];
+		if (hmp == NULL)
+			continue;
+		if (pmp->iroot->cluster.array[i].chain)
+			bref = pmp->iroot->cluster.array[i].chain->bref;
+		else
+			bzero(&bref, sizeof(bref));
+
+		mp->mnt_stat.f_files = bref.inode_count;
+		mp->mnt_stat.f_ffree = 0;
+		mp->mnt_stat.f_blocks = (bref.data_count +
+					 hmp->voldata.allocator_free) /
+					mp->mnt_vstat.f_bsize;
+		mp->mnt_stat.f_bfree =  hmp->voldata.allocator_free /
+					mp->mnt_vstat.f_bsize;
+		mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
+
+		*sbp = mp->mnt_stat;
+	}
 	return (0);
 }
 
@@ -1629,29 +1643,41 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	hammer2_pfs_t *pmp;
 	hammer2_dev_t *hmp;
 	hammer2_blockref_t bref;
+	int i;
 
 	/*
 	 * NOTE: iroot might not have validated the cluster yet.
 	 */
 	pmp = MPTOPMP(mp);
-	if (pmp->iroot->cluster.focus == NULL)
-		return EINVAL;
 
-	KKASSERT(pmp->iroot->cluster.nchains >= 1);
-	hmp = pmp->iroot->cluster.focus->hmp;	/* iroot retains focus */
-	bref = pmp->iroot->cluster.focus->bref;	/* no lock */
-
-	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
-	mp->mnt_vstat.f_files = bref.inode_count;
+	mp->mnt_vstat.f_bsize = 0;
+	mp->mnt_vstat.f_files = 0;
 	mp->mnt_vstat.f_ffree = 0;
-	mp->mnt_vstat.f_blocks = (bref.data_count +
-				 hmp->voldata.allocator_free) /
-				mp->mnt_vstat.f_bsize;
-	mp->mnt_vstat.f_bfree = hmp->voldata.allocator_free /
-				mp->mnt_vstat.f_bsize;
-	mp->mnt_vstat.f_bavail = mp->mnt_vstat.f_bfree;
+	mp->mnt_vstat.f_blocks = 0;
+	mp->mnt_vstat.f_bfree = 0;
+	mp->mnt_vstat.f_bavail = 0;
 
-	*sbp = mp->mnt_vstat;
+	for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
+		hmp = pmp->pfs_hmps[i];
+		if (hmp == NULL)
+			continue;
+		if (pmp->iroot->cluster.array[i].chain)
+			bref = pmp->iroot->cluster.array[i].chain->bref;
+		else
+			bzero(&bref, sizeof(bref));
+
+		mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
+		mp->mnt_vstat.f_files = bref.inode_count;
+		mp->mnt_vstat.f_ffree = 0;
+		mp->mnt_vstat.f_blocks = (bref.data_count +
+					 hmp->voldata.allocator_free) /
+					mp->mnt_vstat.f_bsize;
+		mp->mnt_vstat.f_bfree = hmp->voldata.allocator_free /
+					mp->mnt_vstat.f_bsize;
+		mp->mnt_vstat.f_bavail = mp->mnt_vstat.f_bfree;
+
+		*sbp = mp->mnt_vstat;
+	}
 	return (0);
 }
 
@@ -1988,7 +2014,7 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	if ((ip->flags & HAMMER2_INODE_MODIFIED) ||
 	    !RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vfsync(vp, info->waitfor, 1, NULL, NULL);
-		hammer2_inode_fsync(ip, NULL);
+		hammer2_inode_fsync(ip);
 	}
 	if ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
 	    RB_EMPTY(&vp->v_rbdirty_tree)) {

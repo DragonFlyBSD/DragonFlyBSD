@@ -163,6 +163,53 @@ hammer2_inode_chain(hammer2_inode_t *ip, int clindex, int how)
 	return chain;
 }
 
+hammer2_chain_t *
+hammer2_inode_chain_and_parent(hammer2_inode_t *ip, int clindex,
+			       hammer2_chain_t **parentp, int how)
+{
+	hammer2_chain_t *chain;
+	hammer2_chain_t *parent;
+
+	for (;;) {
+		hammer2_spin_sh(&ip->cluster_spin);
+		if (clindex >= ip->cluster.nchains)
+			chain = NULL;
+		else
+			chain = ip->cluster.array[clindex].chain;
+		if (chain) {
+			hammer2_chain_ref(chain);
+			hammer2_spin_unsh(&ip->cluster_spin);
+			hammer2_chain_lock(chain, how);
+		} else {
+			hammer2_spin_unsh(&ip->cluster_spin);
+		}
+
+		/*
+		 * Get parent, lock order must be (parent, chain).
+		 */
+		parent = chain->parent;
+		hammer2_chain_ref(parent);
+		hammer2_chain_unlock(chain);
+		hammer2_chain_lock(parent, how);
+		hammer2_chain_lock(chain, how);
+		if (ip->cluster.array[clindex].chain == chain &&
+		    chain->parent == parent) {
+			break;
+		}
+
+		/*
+		 * Retry
+		 */
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	*parentp = parent;
+
+	return chain;
+}
+
 void
 hammer2_inode_unlock(hammer2_inode_t *ip)
 {
@@ -549,7 +596,6 @@ again:
 	if (cluster) {
 		nipdata = &hammer2_cluster_rdata(cluster)->ipdata;
 		nip->meta = nipdata->meta;
-		hammer2_cluster_bref(cluster, &nip->bref);
 		atomic_set_int(&nip->flags, HAMMER2_INODE_METAGOOD);
 		hammer2_inode_repoint(nip, NULL, cluster);
 	} else {
@@ -809,9 +855,9 @@ done2:
  * lhc collisions).
  */
 int
-hammer2_inode_connect_simple(hammer2_inode_t *dip, hammer2_inode_t *ip,
-			     const char *name, size_t name_len,
-			     hammer2_key_t lhc)
+hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
+		      const char *name, size_t name_len,
+		      hammer2_key_t lhc)
 {
 	hammer2_xop_scanlhc_t *sxop;
 	hammer2_xop_connect_t *xop;
@@ -1107,8 +1153,8 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 	 */
 	if (isopen) {
 		hammer2_inode_lock(pmp->ihidden, 0);
-		error = hammer2_inode_connect_simple(pmp->ihidden, ip,
-						     NULL, 0, ip->meta.inum);
+		error = hammer2_inode_connect(pmp->ihidden, ip,
+					      NULL, 0, ip->meta.inum);
 		hammer2_inode_unlock(pmp->ihidden);
 	} else {
 		error = 0;
@@ -1184,7 +1230,8 @@ hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 
 		hammer2_inode_lock(pmp->ihidden, 0);
 		xop = &hammer2_xop_alloc(pmp->ihidden)->xop_unlinkall;
-		xop->head.lkey = 0;
+		xop->key_beg = HAMMER2_KEY_MIN;
+		xop->key_end = HAMMER2_KEY_MAX;
 		hammer2_xop_start(&xop->head, hammer2_inode_xop_unlinkall);
 
 		while ((error = hammer2_xop_collect(&xop->head, 0)) == 0) {
@@ -1268,102 +1315,46 @@ hammer2_inode_modify(hammer2_inode_t *ip)
  * Synchronize the inode's frontend state with the chain state prior
  * to any explicit flush of the inode or any strategy write call.
  *
- * Called with a locked inode.
+ * Called with a locked inode inside a transaction.
  */
 void
-hammer2_inode_fsync(hammer2_inode_t *ip, hammer2_cluster_t *cparent)
+hammer2_inode_fsync(hammer2_inode_t *ip)
 {
-	int clear_directdata = 0;
+	if (ip->flags & (HAMMER2_INODE_RESIZED | HAMMER2_INODE_MODIFIED)) {
+		hammer2_xop_fsync_t *xop;
+		int error;
 
-	/* temporary hack, allow cparent to be NULL */
-	if (cparent == NULL) {
-		cparent = hammer2_inode_cluster(ip, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_inode_fsync(ip, cparent);
-		hammer2_cluster_unlock(cparent);
-		hammer2_cluster_drop(cparent);
-		return;
-	}
-
-	if ((ip->flags & HAMMER2_INODE_RESIZED) == 0) {
-		/* do nothing */
-	} else if (ip->meta.size < ip->osize) {
-		/*
-		 * We must delete any chains beyond the EOF.  The chain
-		 * straddling the EOF will be pending in the bioq.
-		 */
-		hammer2_cluster_t *dparent;
-		hammer2_cluster_t *cluster;
-		hammer2_key_t lbase;
-		hammer2_key_t key_next;
-
-		lbase = (ip->meta.size + HAMMER2_PBUFMASK64) &
-			~HAMMER2_PBUFMASK64;
-		dparent = hammer2_cluster_lookup_init(&ip->cluster, 0);
-		cluster = hammer2_cluster_lookup(dparent, &key_next,
-					         lbase, (hammer2_key_t)-1,
-						 HAMMER2_LOOKUP_NODATA);
-		while (cluster) {
-			/*
-			 * Degenerate embedded case, nothing to loop on
-			 */
-			switch (hammer2_cluster_type(cluster)) {
-			case HAMMER2_BREF_TYPE_INODE:
-				hammer2_cluster_unlock(cluster);
-				hammer2_cluster_drop(cluster);
-				cluster = NULL;
-				break;
-			case HAMMER2_BREF_TYPE_DATA:
-				hammer2_cluster_delete(dparent, cluster,
-						   HAMMER2_DELETE_PERMANENT);
-				/* fall through */
-			default:
-				cluster = hammer2_cluster_next(dparent, cluster,
-						   &key_next,
-						   key_next, (hammer2_key_t)-1,
-						   HAMMER2_LOOKUP_NODATA);
-				break;
+		xop = &hammer2_xop_alloc(ip)->xop_fsync;
+		xop->clear_directdata = 0;
+		if (ip->flags & HAMMER2_INODE_RESIZED) {
+			if ((ip->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA) &&
+			    ip->meta.size > HAMMER2_EMBEDDED_BYTES) {
+				ip->meta.op_flags &= ~HAMMER2_OPFLAG_DIRECTDATA;
+				xop->clear_directdata = 1;
 			}
+			xop->osize = ip->osize;
+		} else {
+			xop->osize = ip->meta.size;	/* safety */
 		}
-		hammer2_cluster_lookup_done(dparent);
-		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED);
-		KKASSERT(ip->flags & HAMMER2_INODE_MODIFIED);
-	} else if (ip->meta.size > ip->osize) {
-		/*
-		 * When resizing larger we may not have any direct-data
-		 * available.
-		 */
-		if ((ip->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA) &&
-		    ip->meta.size > HAMMER2_EMBEDDED_BYTES) {
-			ip->meta.op_flags &= ~HAMMER2_OPFLAG_DIRECTDATA;
-			clear_directdata = 1;
+		xop->ipflags = ip->flags;
+		xop->meta = ip->meta;
+
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED |
+					     HAMMER2_INODE_MODIFIED);
+		hammer2_xop_start(&xop->head, hammer2_inode_xop_fsync);
+		error = hammer2_xop_collect(&xop->head, 0);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		if (error == ENOENT)
+			error = 0;
+		if (error) {
+			kprintf("hammer2: unable to fsync inode %p\n", ip);
+			/*
+			atomic_set_int(&ip->flags,
+				       xop->ipflags & (HAMMER2_INODE_RESIZED |
+						       HAMMER2_INODE_MODIFIED));
+			*/
+			/* XXX return error somehow? */
 		}
-		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED);
-		KKASSERT(ip->flags & HAMMER2_INODE_MODIFIED);
-	} else {
-		/*
-		 * RESIZED was set but size didn't change.
-		 */
-		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED);
-		KKASSERT(ip->flags & HAMMER2_INODE_MODIFIED);
-	}
-
-	/*
-	 * Sync inode meta-data
-	 */
-	if (ip->flags & HAMMER2_INODE_MODIFIED) {
-		hammer2_inode_data_t *wipdata;
-
-		atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-		hammer2_cluster_modify(cparent, 0);
-		hammer2_inode_repoint(ip, NULL, cparent);
-
-		wipdata = &hammer2_cluster_wdata(cparent)->ipdata;
-		wipdata->meta = ip->meta;
-		if (clear_directdata) {
-			bzero(&wipdata->u.blockset,
-			      sizeof(wipdata->u.blockset));
-		}
-		hammer2_cluster_modsync(cparent);
 	}
 }
 
@@ -1538,7 +1529,7 @@ hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
 	parent = hammer2_inode_chain(xop->head.ip, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	chain = hammer2_chain_lookup(&parent, &key_next,
-				     HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
+				     xop->key_beg, xop->key_end,
 				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS);
 	while (chain) {
@@ -1548,7 +1539,7 @@ hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
 					  HAMMER2_RESOLVE_SHARED);
 		hammer2_xop_feed(&xop->head, chain, clindex, chain->error);
 		chain = hammer2_chain_next(&parent, chain, &key_next,
-					   key_next, HAMMER2_KEY_MAX,
+					   key_next, xop->key_end,
 					   &cache_index,
 					   HAMMER2_LOOKUP_ALWAYS |
 					   HAMMER2_LOOKUP_NOUNLOCK);
@@ -1641,3 +1632,87 @@ fail:
 		hammer2_chain_drop(chain);
 	}
 }
+
+void
+hammer2_inode_xop_fsync(hammer2_xop_t *arg, int clindex)
+{
+	hammer2_xop_fsync_t *xop = &arg->xop_fsync;
+	hammer2_chain_t	*parent;
+	hammer2_chain_t	*chain;
+	int error;
+
+	parent = hammer2_inode_chain(xop->head.ip, clindex,
+				     HAMMER2_RESOLVE_ALWAYS);
+	chain = NULL;
+	if (parent == NULL) {
+		error = EIO;
+		goto done;
+	}
+	if (parent->error) {
+		error = parent->error;
+		goto done;
+	}
+
+	error = 0;
+
+	if ((xop->ipflags & HAMMER2_INODE_RESIZED) == 0) {
+		/* osize must be ignored */
+	} else if (xop->meta.size < xop->osize) {
+		/*
+		 * We must delete any chains beyond the EOF.  The chain
+		 * straddling the EOF will be pending in the bioq.
+		 */
+		hammer2_key_t lbase;
+		hammer2_key_t key_next;
+		int cache_index = -1;
+
+		lbase = (xop->meta.size + HAMMER2_PBUFMASK64) &
+			~HAMMER2_PBUFMASK64;
+		chain = hammer2_chain_lookup(&parent, &key_next,
+					     lbase, HAMMER2_KEY_MAX,
+					     &cache_index,
+					     HAMMER2_LOOKUP_NODATA |
+					     HAMMER2_LOOKUP_NODIRECT);
+		while (chain) {
+			/*
+			 * Degenerate embedded case, nothing to loop on
+			 */
+			switch (chain->bref.type) {
+			case HAMMER2_BREF_TYPE_INODE:
+				KKASSERT(0);
+				break;
+			case HAMMER2_BREF_TYPE_DATA:
+				hammer2_chain_delete(parent, chain,
+						     HAMMER2_DELETE_PERMANENT);
+				break;
+			}
+			chain = hammer2_chain_next(&parent, chain, &key_next,
+						   key_next, HAMMER2_KEY_MAX,
+						   &cache_index,
+						   HAMMER2_LOOKUP_NODATA |
+						   HAMMER2_LOOKUP_NODIRECT);
+		}
+	}
+
+	/*
+	 * Sync the inode meta-data, potentially clear the blockset area
+	 * of direct data so it can be used for blockrefs.
+	 */
+	hammer2_chain_modify(parent, 0);
+	parent->data->ipdata.meta = xop->meta;
+	if (xop->clear_directdata) {
+		bzero(&parent->data->ipdata.u.blockset,
+		      sizeof(parent->data->ipdata.u.blockset));
+	}
+done:
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+}
+

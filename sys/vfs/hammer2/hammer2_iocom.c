@@ -284,12 +284,13 @@ static void
 hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 {
 	const hammer2_inode_data_t *ripdata;
-	hammer2_cluster_t *cparent;
-	hammer2_cluster_t *cluster;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
 	hammer2_pfs_t *spmp;
 	hammer2_key_t key_next;
 	kdmsg_msg_t *rmsg;
 	size_t name_len;
+	int cache_index = -1;
 
 	/*
 	 * Lookup mount point under the media-localized super-root.
@@ -299,15 +300,19 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 	 */
 	spmp = hmp->spmp;
 	hammer2_inode_lock(spmp->iroot, 0);
-	cparent = hammer2_inode_cluster(spmp->iroot, HAMMER2_RESOLVE_ALWAYS);
-	cluster = hammer2_cluster_lookup(cparent, &key_next,
-					 HAMMER2_KEY_MIN,
-					 HAMMER2_KEY_MAX,
-					 0);
-	while (cluster) {
-		if (hammer2_cluster_type(cluster) != HAMMER2_BREF_TYPE_INODE)
+
+	parent = hammer2_inode_chain(spmp->iroot, 0, HAMMER2_RESOLVE_ALWAYS);
+	chain = NULL;
+	if (parent == NULL)
+		goto done;
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
+				     &cache_index,
+				     0);
+	while (chain) {
+		if (chain->bref.type != HAMMER2_BREF_TYPE_INODE)
 			continue;
-		ripdata = &hammer2_cluster_rdata(cluster)->ipdata;
+		ripdata = &chain->data->ipdata;
 		kprintf("UPDATE SPANS: %s\n", ripdata->filename);
 
 		rmsg = kdmsg_msg_alloc(&hmp->iocom.state0,
@@ -327,16 +332,20 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 
 		kdmsg_msg_write(rmsg);
 
-		cluster = hammer2_cluster_next(cparent, cluster,
-					       &key_next,
-					       key_next,
-					       HAMMER2_KEY_MAX,
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					       key_next, HAMMER2_KEY_MAX,
+					       &cache_index,
 					       0);
 	}
 	hammer2_inode_unlock(spmp->iroot);
-	if (cparent) {
-		hammer2_cluster_unlock(cparent);
-		hammer2_cluster_drop(cparent);
+done:
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
 	}
 }
 

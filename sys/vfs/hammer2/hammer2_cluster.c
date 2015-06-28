@@ -55,8 +55,6 @@
  * Cluster operations can be broken down into three pieces:
  *
  * (1) Chain locking and data retrieval.
- *		hammer2_cluster_lock()
- *		hammer2_cluster_parent()
  *
  *	- Most complex functions, quorum management on transaction ids.
  *
@@ -78,10 +76,6 @@
  *
  * (3) Modifying Operations
  *		hammer2_cluster_create()
- *		hammer2_cluster_rename()
- *		hammer2_cluster_delete()
- *		hammer2_cluster_modify()
- *		hammer2_cluster_modsync()
  *
  *	- Can usually punt on failures, operation continues unless quorum
  *	  is lost.  If quorum is lost, must wait for resynchronization
@@ -257,7 +251,7 @@ hammer2_cluster_drop(hammer2_cluster_t *cluster)
  *	    necessarily match.
  */
 void
-hammer2_cluster_lock_except(hammer2_cluster_t *cluster, int idx, int how)
+hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 {
 	hammer2_chain_t *chain;
 	int i;
@@ -275,19 +269,11 @@ hammer2_cluster_lock_except(hammer2_cluster_t *cluster, int idx, int how)
 	 * Lock chains and resolve state.
 	 */
 	for (i = 0; i < cluster->nchains; ++i) {
-		if (i == idx)
-			continue;
 		chain = cluster->array[i].chain;
 		if (chain == NULL)
 			continue;
 		hammer2_chain_lock(chain, how);
 	}
-}
-
-void
-hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
-{
-	hammer2_cluster_lock_except(cluster, -1, how);
 }
 
 /*
@@ -677,10 +663,6 @@ skip4:
 	 * Determine if the cluster was successfully locked for the
 	 * requested operation and generate an error code.  The cluster
 	 * will not be locked (or ref'd) if an error is returned.
-	 *
-	 * Caller can use hammer2_cluster_rdok() and hammer2_cluster_wrok()
-	 * to determine if reading or writing is possible.  If writing, the
-	 * cluster still requires a call to hammer2_cluster_modify() first.
 	 */
 	atomic_set_int(&cluster->flags, nflags);
 	atomic_clear_int(&cluster->flags, HAMMER2_CLUSTER_ZFLAGS & ~nflags);
@@ -1063,10 +1045,6 @@ skip4:
 	 * Determine if the cluster was successfully locked for the
 	 * requested operation and generate an error code.  The cluster
 	 * will not be locked (or ref'd) if an error is returned.
-	 *
-	 * Caller can use hammer2_cluster_rdok() and hammer2_cluster_wrok()
-	 * to determine if reading or writing is possible.  If writing, the
-	 * cluster still requires a call to hammer2_cluster_modify() first.
 	 */
 	atomic_set_int(&cluster->flags, nflags);
 	atomic_clear_int(&cluster->flags, HAMMER2_CLUSTER_ZFLAGS & ~nflags);
@@ -1138,7 +1116,7 @@ hammer2_cluster_copy(hammer2_cluster_t *ocluster)
  * Unlock a cluster.  Refcount and focus is maintained.
  */
 void
-hammer2_cluster_unlock_except(hammer2_cluster_t *cluster, int idx)
+hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 {
 	hammer2_chain_t *chain;
 	int i;
@@ -1152,618 +1130,10 @@ hammer2_cluster_unlock_except(hammer2_cluster_t *cluster, int idx)
 	atomic_clear_int(&cluster->flags, HAMMER2_CLUSTER_LOCKED);
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		if (i == idx)
-			continue;
 		chain = cluster->array[i].chain;
 		if (chain)
 			hammer2_chain_unlock(chain);
 	}
-}
-
-void
-hammer2_cluster_unlock(hammer2_cluster_t *cluster)
-{
-	hammer2_cluster_unlock_except(cluster, -1);
-}
-
-/*
- * Set an inode's cluster modified, marking the related chains RW and
- * duplicating them if necessary.
- *
- * The passed-in chain is a localized copy of the chain previously acquired
- * when the inode was locked (and possilby replaced in the mean time), and
- * must also be updated.  In fact, we update it first and then synchronize
- * the inode's cluster cache.
- */
-hammer2_inode_data_t *
-hammer2_cluster_modify_ip(hammer2_inode_t *ip,
-			  hammer2_cluster_t *cluster, int flags)
-{
-	hammer2_inode_modify(ip);
-	hammer2_cluster_modify(cluster, flags);
-	hammer2_inode_repoint(ip, NULL, cluster);
-	return (&hammer2_cluster_wdata(cluster)->ipdata);
-}
-
-/*
- * Adjust the cluster's chains to allow modification and adjust the
- * focus.  Data will be accessible on return.
- *
- * If our focused master errors on modify, re-resolve the cluster to
- * try to select a different master.
- */
-void
-hammer2_cluster_modify(hammer2_cluster_t *cluster, int flags)
-{
-	hammer2_chain_t *chain;
-	int resolve_again;
-	int i;
-
-	resolve_again = 0;
-	for (i = 0; i < cluster->nchains; ++i) {
-		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
-			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
-			continue;
-		}
-		chain = cluster->array[i].chain;
-		if (chain == NULL)
-			continue;
-		if (chain->error)
-			continue;
-		hammer2_chain_modify(chain, flags);
-		if (cluster->focus == chain && chain->error) {
-			cluster->error = chain->error;
-			resolve_again = 1;
-		}
-	}
-	if (resolve_again)
-		hammer2_cluster_resolve(cluster);
-}
-
-/*
- * Synchronize modifications from the focus to other chains in a cluster.
- * Convenient because nominal API users can just modify the contents of the
- * focus (at least for non-blockref data).
- *
- * Nominal front-end operations only edit non-block-table data in a single
- * chain.  This code copies such modifications to the other chains in the
- * cluster.  Blocktable modifications are handled on a chain-by-chain basis
- * by both the frontend and the backend and will explode in fireworks if
- * blindly copied.
- */
-void
-hammer2_cluster_modsync(hammer2_cluster_t *cluster)
-{
-	hammer2_chain_t *focus;
-	hammer2_chain_t *scan;
-	const hammer2_inode_data_t *ripdata;
-	hammer2_inode_data_t *wipdata;
-	int i;
-
-	focus = cluster->focus;
-	KKASSERT(focus->flags & HAMMER2_CHAIN_MODIFIED);
-
-	for (i = 0; i < cluster->nchains; ++i) {
-		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0)
-			continue;
-		scan = cluster->array[i].chain;
-		if (scan == NULL || scan == focus)
-			continue;
-		if (scan->error)
-			continue;
-		KKASSERT(scan->flags & HAMMER2_CHAIN_MODIFIED);
-		KKASSERT(focus->bytes == scan->bytes &&
-			 focus->bref.type == scan->bref.type);
-		switch(focus->bref.type) {
-		case HAMMER2_BREF_TYPE_INODE:
-			ripdata = &focus->data->ipdata;
-			wipdata = &scan->data->ipdata;
-			if ((ripdata->meta.op_flags &
-			    HAMMER2_OPFLAG_DIRECTDATA) == 0) {
-				bcopy(ripdata, wipdata,
-				      offsetof(hammer2_inode_data_t, u));
-				break;
-			}
-			/* fall through to full copy */
-		case HAMMER2_BREF_TYPE_DATA:
-			bcopy(focus->data, scan->data, focus->bytes);
-			break;
-		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		case HAMMER2_BREF_TYPE_FREEMAP:
-		case HAMMER2_BREF_TYPE_VOLUME:
-			panic("hammer2_cluster_modsync: illegal node type");
-			/* NOT REACHED */
-			break;
-		default:
-			panic("hammer2_cluster_modsync: unknown node type");
-			break;
-		}
-	}
-}
-
-/*
- * Lookup initialization/completion API.  Returns a locked, fully resolved
- * cluster with one ref.
- */
-hammer2_cluster_t *
-hammer2_cluster_lookup_init(hammer2_cluster_t *cparent, int flags)
-{
-	hammer2_cluster_t *cluster;
-
-	cluster = hammer2_cluster_copy(cparent);
-	if (flags & HAMMER2_LOOKUP_SHARED) {
-		hammer2_cluster_lock(cluster, HAMMER2_RESOLVE_ALWAYS |
-					      HAMMER2_RESOLVE_SHARED);
-	} else {
-		hammer2_cluster_lock(cluster, HAMMER2_RESOLVE_ALWAYS);
-	}
-	hammer2_cluster_resolve(cluster);
-
-	return (cluster);
-}
-
-void
-hammer2_cluster_lookup_done(hammer2_cluster_t *cparent)
-{
-	if (cparent) {
-		hammer2_cluster_unlock(cparent);
-		hammer2_cluster_drop(cparent);
-	}
-}
-
-/*
- * Locate first match or overlap under parent, return a new, locked, resolved
- * cluster with one ref.
- *
- * Must never be called with HAMMER2_LOOKUP_MATCHIND.
- */
-hammer2_cluster_t *
-hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
-		     hammer2_key_t key_beg, hammer2_key_t key_end, int flags)
-{
-	hammer2_pfs_t *pmp;
-	hammer2_cluster_t *cluster;
-	hammer2_chain_t *chain;
-	hammer2_key_t key_accum;
-	hammer2_key_t key_next;
-	int null_count;
-	int rflags;
-	int i;
-
-	KKASSERT((flags & HAMMER2_LOOKUP_MATCHIND) == 0);
-
-	pmp = cparent->pmp;				/* can be NULL */
-	key_accum = *key_nextp;
-	null_count = 0;
-	if (flags & HAMMER2_LOOKUP_SHARED)
-		rflags = HAMMER2_RESOLVE_SHARED;
-	else
-		rflags = 0;
-
-	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
-	cluster->pmp = pmp;				/* can be NULL */
-	cluster->refs = 1;
-	if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-		cluster->flags |= HAMMER2_CLUSTER_LOCKED;
-
-	/*
-	 * Iterating earlier cluster elements with later elements still
-	 * locked is a problem, so we have to unlock the parent and then
-	 * re-lock as we go.
-	 */
-	hammer2_cluster_unlock(cparent);
-	cparent->flags |= HAMMER2_CLUSTER_LOCKED;
-
-	/*
-	 * Pass-1, issue lookups.
-	 */
-	for (i = 0; i < cparent->nchains; ++i) {
-		cluster->array[i].flags = cparent->array[i].flags;
-		key_next = *key_nextp;
-
-		/*
-		 * Always relock the parent as we go.
-		 */
-		if (cparent->array[i].chain) {
-			hammer2_chain_lock(cparent->array[i].chain, rflags);
-		}
-
-		/*
-		 * Nothing to base the lookup, or parent was not synchronized.
-		 */
-		if (cparent->array[i].chain == NULL ||
-		    (cparent->array[i].flags & HAMMER2_CITEM_INVALID)) {
-			++null_count;
-			continue;
-		}
-
-		chain = hammer2_chain_lookup(&cparent->array[i].chain,
-					     &key_next,
-					     key_beg, key_end,
-					     &cparent->array[i].cache_index,
-					     flags);
-		cluster->array[i].chain = chain;
-		if (chain == NULL) {
-			++null_count;
-		}
-		if (key_accum > key_next)
-			key_accum = key_next;
-	}
-
-	/*
-	 * Cleanup
-	 */
-	cluster->nchains = i;
-	*key_nextp = key_accum;
-
-	/*
-	 * The cluster must be resolved, out of sync elements may be present.
-	 *
-	 * If HAMMER2_LOOKUP_ALLNODES is not set focus must be non-NULL.
-	 */
-	if (null_count != i)
-		hammer2_cluster_resolve(cluster);
-	if (null_count == i ||
-	    (cluster->focus == NULL &&
-	     (flags & HAMMER2_LOOKUP_ALLNODES) == 0)) {
-		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-			hammer2_cluster_unlock(cluster);
-		hammer2_cluster_drop(cluster);
-		cluster = NULL;
-	}
-
-	return (cluster);
-}
-
-/*
- * Locate next match or overlap under parent, replace the passed-in cluster.
- * The returned cluster is a new, locked, resolved cluster with one ref.
- *
- * Must never be called with HAMMER2_LOOKUP_MATCHIND.
- */
-hammer2_cluster_t *
-hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
-		     hammer2_key_t *key_nextp,
-		     hammer2_key_t key_beg, hammer2_key_t key_end, int flags)
-{
-	hammer2_chain_t *ochain;
-	hammer2_chain_t *nchain;
-	hammer2_key_t key_accum;
-	hammer2_key_t key_next;
-	int parent_index;
-	int cluster_index;
-	int null_count;
-	int rflags;
-	int i;
-
-	KKASSERT((flags & HAMMER2_LOOKUP_MATCHIND) == 0);
-
-	key_accum = *key_nextp;
-	null_count = 0;
-	parent_index = cparent->focus_index;	/* save prior focus */
-	cluster_index = cluster->focus_index;
-	if (flags & HAMMER2_LOOKUP_SHARED)
-		rflags = HAMMER2_RESOLVE_SHARED;
-	else
-		rflags = 0;
-
-	cluster->focus = NULL;		/* XXX needed any more? */
-	/*cparent->focus = NULL;*/
-	cluster->focus_index = 0;	/* XXX needed any more? */
-	/*cparent->focus_index = 0;*/
-
-	cluster->ddflag = 0;
-
-	/*
-	 * The parent is always locked on entry, the iterator may be locked
-	 * depending on flags.
-	 *
-	 * We must temporarily unlock the passed-in clusters to avoid a
-	 * deadlock between elements of the cluster with other threads.
-	 * We will fixup the lock in the loop.
-	 *
-	 * Note that this will clear the focus.
-	 *
-	 * Reflag the clusters as locked, because we will relock them
-	 * as we go.
-	 */
-	if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0) {
-		hammer2_cluster_unlock(cluster);
-		cluster->flags |= HAMMER2_CLUSTER_LOCKED;
-	}
-	hammer2_cluster_unlock(cparent);
-	cparent->flags |= HAMMER2_CLUSTER_LOCKED;
-
-	for (i = 0; i < cparent->nchains; ++i) {
-		key_next = *key_nextp;
-		ochain = cluster->array[i].chain;
-
-		/*
-		 * Always relock the parent as we go.
-		 */
-		if (cparent->array[i].chain)
-			hammer2_chain_lock(cparent->array[i].chain, rflags);
-
-		/*
-		 * Nothing to iterate from.  These cases can occur under
-		 * normal operations.  For example, during synchronization
-		 * a slave might reach the end of its scan while records
-		 * are still left on the master(s).
-		 */
-		if (ochain == NULL) {
-			++null_count;
-			continue;
-		}
-		if (cparent->array[i].chain == NULL ||
-		    (cparent->array[i].flags & HAMMER2_CITEM_INVALID) ||
-		    (cluster->array[i].flags & HAMMER2_CITEM_INVALID)) {
-			/* ochain has not yet been relocked */
-			hammer2_chain_drop(ochain);
-			cluster->array[i].chain = NULL;
-			++null_count;
-			continue;
-		}
-
-		/*
-		 * Relock the child if necessary.  Parent and child will then
-		 * be locked as expected by hammer2_chain_next() and flags.
-		 */
-		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-			hammer2_chain_lock(ochain, rflags);
-		nchain = hammer2_chain_next(&cparent->array[i].chain, ochain,
-					    &key_next, key_beg, key_end,
-					    &cparent->array[i].cache_index,
-					    flags);
-		/* ochain now invalid but can still be used for focus check */
-		if (parent_index == i) {
-			cparent->focus_index = i;
-			cparent->focus = cparent->array[i].chain;
-		}
-
-		cluster->array[i].chain = nchain;
-		if (nchain == NULL) {
-			++null_count;
-		}
-		if (key_accum > key_next)
-			key_accum = key_next;
-	}
-
-	/*
-	 * Cleanup
-	 */
-	cluster->nchains = i;
-	*key_nextp = key_accum;
-
-	/*
-	 * The cluster must be resolved, out of sync elements may be present.
-	 *
-	 * If HAMMER2_LOOKUP_ALLNODES is not set focus must be non-NULL.
-	 */
-	if (null_count != i)
-		hammer2_cluster_resolve(cluster);
-	if (null_count == i ||
-	    (cluster->focus == NULL &&
-	     (flags & HAMMER2_LOOKUP_ALLNODES) == 0)) {
-		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-			hammer2_cluster_unlock(cluster);
-		hammer2_cluster_drop(cluster);
-		cluster = NULL;
-	}
-	return(cluster);
-}
-
-/*
- * Advance just one chain in the cluster and recalculate the invalid bit.
- * The cluster index is allowed to be flagged invalid on input and is
- * recalculated on return.
- *
- * (used during synchronization to advance past a chain being deleted).
- *
- * The chain being advanced must not be the focus and the clusters in
- * question must have already passed normal cluster_lookup/cluster_next
- * checks.
- *
- * The cluster always remains intact on return, so void function.
- */
-void
-hammer2_cluster_next_single_chain(hammer2_cluster_t *cparent,
-				  hammer2_cluster_t *cluster,
-				  hammer2_key_t *key_nextp,
-				  hammer2_key_t key_beg,
-				  hammer2_key_t key_end,
-				  int i, int flags)
-{
-	hammer2_chain_t *ochain;
-	hammer2_chain_t *nchain;
-	hammer2_chain_t *focus;
-	hammer2_key_t key_accum;
-	hammer2_key_t key_next;
-	int ddflag;
-
-	key_accum = *key_nextp;
-	key_next = *key_nextp;
-	ochain = cluster->array[i].chain;
-	if (ochain == NULL)
-		goto done;
-	KKASSERT(ochain != cluster->focus);
-
-	nchain = hammer2_chain_next(&cparent->array[i].chain, ochain,
-				    &key_next, key_beg, key_end,
-				    &cparent->array[i].cache_index,
-				    flags);
-	/* ochain now invalid */
-	if (cparent->focus_index == i)
-		cparent->focus = cparent->array[i].chain;
-
-	/*
-	 * Install nchain.  Note that nchain can be NULL, and can also
-	 * be in an unlocked state depending on flags.
-	 */
-	cluster->array[i].chain = nchain;
-	cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
-
-	if (key_accum > key_next)
-		key_accum = key_next;
-
-	focus = cluster->focus;
-	if (focus == NULL)
-		goto done;
-	if (nchain == NULL)
-		goto done;
-#if 0
-	if (nchain == focus)	/* ASSERTED NOT TRUE */
-		...
-#endif
-	ddflag = (nchain->bref.type == HAMMER2_BREF_TYPE_INODE);
-	if (nchain->bref.type != focus->bref.type ||
-	    nchain->bref.key != focus->bref.key ||
-	    nchain->bref.keybits != focus->bref.keybits ||
-	    nchain->bref.modify_tid != focus->bref.modify_tid ||
-	    nchain->bytes != focus->bytes ||
-	    ddflag != cluster->ddflag) {
-		cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
-	}
-
-done:
-	*key_nextp = key_accum;
-#if 0
-	/*
-	 * For now don't re-resolve cluster->flags.
-	 */
-	hammer2_cluster_resolve(cluster);
-#endif
-}
-
-/*
- * Mark a cluster deleted
- */
-void
-hammer2_cluster_delete(hammer2_cluster_t *cparent,
-		       hammer2_cluster_t *cluster, int flags)
-{
-	hammer2_chain_t *chain;
-	hammer2_chain_t *parent;
-	int i;
-
-	if (cparent == NULL) {
-		kprintf("cparent is NULL\n");
-		return;
-	}
-
-	for (i = 0; i < cluster->nchains; ++i) {
-		if ((cluster->array[i].flags & HAMMER2_CITEM_FEMOD) == 0) {
-			cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
-			continue;
-		}
-		parent = cparent->array[i].chain;
-		chain = cluster->array[i].chain;
-		if (chain == NULL)
-			continue;
-		if (chain->parent != parent) {
-			kprintf("hammer2_cluster_delete: parent "
-				"mismatch chain=%p parent=%p against=%p\n",
-				chain, chain->parent, parent);
-		} else {
-			hammer2_chain_delete(parent, chain, flags);
-		}
-	}
-}
-
-/*
- * Create a snapshot of the specified {parent, ochain} with the specified
- * label.  The originating hammer2_inode must be exclusively locked for
- * safety.
- *
- * The ioctl code has already synced the filesystem.
- */
-int
-hammer2_cluster_snapshot(hammer2_cluster_t *ocluster,
-		       hammer2_ioc_pfs_t *pmp)
-{
-	hammer2_dev_t *hmp;
-	const hammer2_inode_data_t *ripdata;
-	hammer2_inode_data_t *wipdata;
-	hammer2_chain_t *nchain;
-	hammer2_inode_t *nip;
-	size_t name_len;
-	hammer2_key_t lhc;
-	struct vattr vat;
-#if 0
-	uuid_t opfs_clid;
-#endif
-	int error;
-
-	kprintf("snapshot %s\n", pmp->name);
-
-	name_len = strlen(pmp->name);
-	lhc = hammer2_dirhash(pmp->name, name_len);
-
-	/*
-	 * Get the clid
-	 */
-	ripdata = &hammer2_cluster_rdata(ocluster)->ipdata;
-#if 0
-	opfs_clid = ripdata->meta.pfs_clid;
-#endif
-	hmp = ocluster->focus->hmp;	/* XXX find synchronized local disk */
-
-	/*
-	 * Create the snapshot directory under the super-root
-	 *
-	 * Set PFS type, generate a unique filesystem id, and generate
-	 * a cluster id.  Use the same clid when snapshotting a PFS root,
-	 * which theoretically allows the snapshot to be used as part of
-	 * the same cluster (perhaps as a cache).
-	 *
-	 * Copy the (flushed) blockref array.  Theoretically we could use
-	 * chain_duplicate() but it becomes difficult to disentangle
-	 * the shared core so for now just brute-force it.
-	 */
-	VATTR_NULL(&vat);
-	vat.va_type = VDIR;
-	vat.va_mode = 0755;
-	nip = hammer2_inode_create(hmp->spmp->iroot, &vat, proc0.p_ucred,
-				   pmp->name, name_len, 0,
-				   1, 0, 0,
-				   HAMMER2_INSERT_PFSROOT, &error);
-
-	if (nip) {
-		hammer2_inode_modify(nip);
-		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_modify(nchain, 0);
-		wipdata = &nchain->data->ipdata;
-
-		nip->meta.pfs_type = HAMMER2_PFSTYPE_MASTER;
-		nip->meta.pfs_subtype = HAMMER2_PFSSUBTYPE_SNAPSHOT;
-		nip->meta.op_flags |= HAMMER2_OPFLAG_PFSROOT;
-		kern_uuidgen(&nip->meta.pfs_fsid, 1);
-
-		/*
-		 * Give the snapshot its own private cluster id.  As a
-		 * snapshot no further synchronization with the original
-		 * cluster will be done.
-		 */
-#if 0
-		if (ocluster->focus->flags & HAMMER2_CHAIN_PFSBOUNDARY)
-			nip->meta.pfs_clid = opfs_clid;
-		else
-			kern_uuidgen(&nip->meta.pfs_clid, 1);
-#endif
-		kern_uuidgen(&nip->meta.pfs_clid, 1);
-		nchain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
-
-		/* XXX hack blockset copy */
-		/* XXX doesn't work with real cluster */
-		KKASSERT(ocluster->nchains == 1);
-		wipdata->meta = nip->meta;
-		wipdata->u.blockset = ripdata->u.blockset;
-		hammer2_flush(nchain, 1);
-		hammer2_chain_unlock(nchain);
-		hammer2_chain_drop(nchain);
-		hammer2_inode_unlock(nip);
-	}
-	return (error);
 }
 
 /************************************************************************
@@ -1785,14 +1155,6 @@ const hammer2_media_data_t *
 hammer2_cluster_rdata(hammer2_cluster_t *cluster)
 {
 	KKASSERT(cluster->focus != NULL);
-	return(cluster->focus->data);
-}
-
-const hammer2_media_data_t *
-hammer2_cluster_rdata_bytes(hammer2_cluster_t *cluster, size_t *bytesp)
-{
-	KKASSERT(cluster->focus != NULL);
-	*bytesp = cluster->focus->bytes;
 	return(cluster->focus->data);
 }
 

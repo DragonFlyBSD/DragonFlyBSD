@@ -225,7 +225,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 */
 	hammer2_inode_lock(ip, 0);
 	if (ip->flags & HAMMER2_INODE_MODIFIED)
-		hammer2_inode_fsync(ip, NULL);
+		hammer2_inode_fsync(ip);
 	hammer2_inode_unlock(ip);
 	hammer2_trans_done(ip->pmp);
 
@@ -261,6 +261,8 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	hammer2_inode_t *ip;
 	struct vnode *vp;
 	struct vattr *vap;
+	hammer2_chain_t *chain;
+	int i;
 
 	LOCKSTART;
 	vp = ap->a_vp;
@@ -286,7 +288,13 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	hammer2_time_to_timespec(ip->meta.mtime, &vap->va_mtime);
 	hammer2_time_to_timespec(ip->meta.mtime, &vap->va_atime);
 	vap->va_gen = 1;
-	vap->va_bytes = ip->bref.data_count;
+	vap->va_bytes = 0;
+	for (i = 0; i < ip->cluster.nchains; ++i) {
+		if ((chain = ip->cluster.array[i].chain) != NULL) {
+			if (vap->va_bytes < chain->bref.data_count)
+				vap->va_bytes = chain->bref.data_count;
+		}
+	}
 	vap->va_type = hammer2_get_vtype(ip->meta.type);
 	vap->va_filerev = 0;
 	vap->va_uid_uuid = ip->meta.uid;
@@ -441,7 +449,7 @@ done:
 	 * block table.
 	 */
 	if (ip->flags & HAMMER2_INODE_RESIZED)
-		hammer2_inode_fsync(ip, NULL);
+		hammer2_inode_fsync(ip);
 
 	/*
 	 * Cleanup.
@@ -551,7 +559,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	 * double lock shared locks as this will screw up upgrades.
 	 */
 	xop = &hammer2_xop_alloc(ip)->xop_readdir;
-	xop->head.lkey = lkey;
+	xop->lkey = lkey;
 	hammer2_xop_start(&xop->head, hammer2_xop_readdir);
 
 	for (;;) {
@@ -953,14 +961,14 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		hammer2_mtx_ex(&ip->lock);
 		hammer2_truncate_file(ip, old_eof);
 		if (ip->flags & HAMMER2_INODE_MODIFIED)
-			hammer2_inode_fsync(ip, NULL);
+			hammer2_inode_fsync(ip);
 		hammer2_mtx_unlock(&ip->lock);
 	} else if (modified) {
 		hammer2_mtx_ex(&ip->lock);
 		hammer2_inode_modify(ip);
 		hammer2_update_time(&ip->meta.mtime);
 		if (ip->flags & HAMMER2_INODE_MODIFIED)
-			hammer2_inode_fsync(ip, NULL);
+			hammer2_inode_fsync(ip);
 		hammer2_mtx_unlock(&ip->lock);
 		hammer2_knote(ip->vp, kflags);
 	}

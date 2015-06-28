@@ -67,9 +67,9 @@
  * to the inode_tid and modify_tid.
  */
 void
-hammer2_xop_vfsroot(hammer2_xop_t *arg, int clindex)
+hammer2_xop_ipcluster(hammer2_xop_t *arg, int clindex)
 {
-	hammer2_xop_vfsroot_t *xop = &arg->xop_vfsroot;
+	hammer2_xop_ipcluster_t *xop = &arg->xop_ipcluster;
 	hammer2_chain_t *chain;
 	int error;
 
@@ -100,7 +100,7 @@ hammer2_xop_readdir(hammer2_xop_t *arg, int clindex)
 	int cache_index = -1;
 	int error = 0;
 
-	lkey = xop->head.lkey;
+	lkey = xop->lkey;
 	if (hammer2_debug & 0x0020)
 		kprintf("xop_readdir %p lkey=%016jx\n", xop, lkey);
 
@@ -124,7 +124,7 @@ hammer2_xop_readdir(hammer2_xop_t *arg, int clindex)
 				     &cache_index, HAMMER2_LOOKUP_SHARED);
 	if (chain == NULL) {
 		chain = hammer2_chain_lookup(&parent, &key_next,
-					     lkey, (hammer2_key_t)-1,
+					     lkey, HAMMER2_KEY_MAX,
 					     &cache_index,
 					     HAMMER2_LOOKUP_SHARED);
 	}
@@ -133,7 +133,7 @@ hammer2_xop_readdir(hammer2_xop_t *arg, int clindex)
 		if (error)
 			break;
 		chain = hammer2_chain_next(&parent, chain, &key_next,
-					   key_next, (hammer2_key_t)-1,
+					   key_next, HAMMER2_KEY_MAX,
 					   &cache_index,
 					   HAMMER2_LOOKUP_SHARED |
 					   HAMMER2_LOOKUP_NOUNLOCK);
@@ -718,7 +718,7 @@ done:
 }
 
 /*
- * Lookup a specific key.
+ * Generic lookup of a specific key.
  *
  * Used by the inode hidden directory code to find the hidden directory.
  */
@@ -764,4 +764,56 @@ done:
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 	}
+}
+
+/*
+ * Generic scan
+ */
+void
+hammer2_xop_scanall(hammer2_xop_t *arg, int clindex)
+{
+	hammer2_xop_scanall_t *xop = &arg->xop_scanall;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	int cache_index = -1;
+	int error = 0;
+
+	/*
+	 * The inode's chain is the iterator.  If we cannot acquire it our
+	 * contribution ends here.
+	 */
+	parent = hammer2_inode_chain(xop->head.ip, clindex,
+				     HAMMER2_RESOLVE_ALWAYS |
+				     HAMMER2_RESOLVE_SHARED);
+	if (parent == NULL) {
+		kprintf("xop_readdir: NULL parent\n");
+		goto done;
+	}
+
+	/*
+	 * Generic scan of exact records.  Note that indirect blocks are
+	 * automatically recursed and will not be returned.
+	 */
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     xop->key_beg, xop->key_end,
+				     &cache_index, HAMMER2_LOOKUP_SHARED |
+						   HAMMER2_LOOKUP_NODIRECT);
+	while (chain) {
+		error = hammer2_xop_feed(&xop->head, chain, clindex, 0);
+		if (error)
+			break;
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					   key_next, xop->key_end,
+					   &cache_index,
+					   HAMMER2_LOOKUP_SHARED |
+					   HAMMER2_LOOKUP_NODIRECT |
+					   HAMMER2_LOOKUP_NOUNLOCK);
+	}
+	if (chain)
+		hammer2_chain_drop(chain);
+	hammer2_chain_unlock(parent);
+	hammer2_chain_drop(parent);
+done:
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
 }

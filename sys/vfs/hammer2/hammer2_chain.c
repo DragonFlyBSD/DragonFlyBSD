@@ -3023,10 +3023,8 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 *	    inode stats (and thus asserting if there is no
 		 *	    chain->data loaded).
 		 */
-		hammer2_chain_delete(parent, chain,
-				     HAMMER2_DELETE_NOSTATS);
-		hammer2_chain_rename(NULL, &ichain, chain,
-				     HAMMER2_INSERT_NOSTATS);
+		hammer2_chain_delete(parent, chain, 0);
+		hammer2_chain_rename(NULL, &ichain, chain, 0);
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 		KKASSERT(parent->refs > 0);
@@ -4122,4 +4120,98 @@ done:
 
 	*chainp = rchain;
 	return (rchain ? EINVAL : 0);
+}
+
+/*
+ * Create a snapshot of the specified {parent, ochain} with the specified
+ * label.  The originating hammer2_inode must be exclusively locked for
+ * safety.
+ *
+ * The ioctl code has already synced the filesystem.
+ */
+int
+hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp)
+{
+	hammer2_dev_t *hmp;
+	const hammer2_inode_data_t *ripdata;
+	hammer2_inode_data_t *wipdata;
+	hammer2_chain_t *nchain;
+	hammer2_inode_t *nip;
+	size_t name_len;
+	hammer2_key_t lhc;
+	struct vattr vat;
+#if 0
+	uuid_t opfs_clid;
+#endif
+	int error;
+
+	kprintf("snapshot %s\n", pmp->name);
+
+	name_len = strlen(pmp->name);
+	lhc = hammer2_dirhash(pmp->name, name_len);
+
+	/*
+	 * Get the clid
+	 */
+	ripdata = &chain->data->ipdata;
+#if 0
+	opfs_clid = ripdata->meta.pfs_clid;
+#endif
+	hmp = chain->hmp;
+
+	/*
+	 * Create the snapshot directory under the super-root
+	 *
+	 * Set PFS type, generate a unique filesystem id, and generate
+	 * a cluster id.  Use the same clid when snapshotting a PFS root,
+	 * which theoretically allows the snapshot to be used as part of
+	 * the same cluster (perhaps as a cache).
+	 *
+	 * Copy the (flushed) blockref array.  Theoretically we could use
+	 * chain_duplicate() but it becomes difficult to disentangle
+	 * the shared core so for now just brute-force it.
+	 */
+	VATTR_NULL(&vat);
+	vat.va_type = VDIR;
+	vat.va_mode = 0755;
+	nip = hammer2_inode_create(hmp->spmp->iroot, &vat, proc0.p_ucred,
+				   pmp->name, name_len, 0,
+				   1, 0, 0,
+				   HAMMER2_INSERT_PFSROOT, &error);
+
+	if (nip) {
+		hammer2_inode_modify(nip);
+		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_modify(nchain, 0);
+		wipdata = &nchain->data->ipdata;
+
+		nip->meta.pfs_type = HAMMER2_PFSTYPE_MASTER;
+		nip->meta.pfs_subtype = HAMMER2_PFSSUBTYPE_SNAPSHOT;
+		nip->meta.op_flags |= HAMMER2_OPFLAG_PFSROOT;
+		kern_uuidgen(&nip->meta.pfs_fsid, 1);
+
+		/*
+		 * Give the snapshot its own private cluster id.  As a
+		 * snapshot no further synchronization with the original
+		 * cluster will be done.
+		 */
+#if 0
+		if (chain->flags & HAMMER2_CHAIN_PFSBOUNDARY)
+			nip->meta.pfs_clid = opfs_clid;
+		else
+			kern_uuidgen(&nip->meta.pfs_clid, 1);
+#endif
+		kern_uuidgen(&nip->meta.pfs_clid, 1);
+		nchain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
+
+		/* XXX hack blockset copy */
+		/* XXX doesn't work with real cluster */
+		wipdata->meta = nip->meta;
+		wipdata->u.blockset = ripdata->u.blockset;
+		hammer2_flush(nchain, 1);
+		hammer2_chain_unlock(nchain);
+		hammer2_chain_drop(nchain);
+		hammer2_inode_unlock(nip);
+	}
+	return (error);
 }
