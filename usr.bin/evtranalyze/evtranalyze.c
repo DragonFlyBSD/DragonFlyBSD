@@ -1077,7 +1077,7 @@ struct stats_integer_ctx {
 	struct plotter *plotter;
 	plotid_t time_plot;
 	uintmax_t sum;
-	uintmax_t occurences;
+	uintmax_t occurrences;
 };
 
 static
@@ -1108,7 +1108,7 @@ stats_integer_prepare(int argc, char **argv, struct evtr_filter *filt)
 	if (argc != 1)
 		err(2, "Need exactly one variable");
 	ctx->varname = argv[0];
-	ctx->sum = ctx->occurences = 0;
+	ctx->sum = ctx->occurrences = 0;
 	filt->flags = 0;
 	filt->cpu = -1;
 	filt->ev_type = EVTR_TYPE_STMT;
@@ -1143,7 +1143,7 @@ stats_integer_each(void *_ctx, evtr_event_t ev)
 		ctx->plotter->plot_line(ctx->plotter_ctx, ctx->time_plot,
 					(double)ev->ts, (double)ev->stmt.val->num);
 	ctx->sum += ev->stmt.val->num;
-	++ctx->occurences;
+	++ctx->occurrences;
 }
 
 static
@@ -1152,7 +1152,7 @@ stats_integer_report(void *_ctx)
 {
 	struct stats_integer_ctx *ctx = _ctx;
 	printf("median for variable %s is %lf\n", ctx->varname,
-	       (double)ctx->sum / ctx->occurences);
+	       (double)ctx->sum / ctx->occurrences);
 	if (ctx->plotter)
 		ctx->plotter->plot_finish(ctx->plotter_ctx);
 

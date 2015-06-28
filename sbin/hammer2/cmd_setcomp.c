@@ -255,19 +255,19 @@ setcomp_recursive_call(char *directory, int comp_method, int set_files)
 		return 3;
     }
     struct dirent *dent;
-    int lenght;
-    lenght = strlen(directory);
+    int length;
+    length = strlen(directory);
     char name[HAMMER2_INODE_MAXNAME];
     strcpy(name, directory);
-    name[lenght] = '/';
-    ++lenght;
+    name[length] = '/';
+    ++length;
     errno = 0;
     dent = readdir(dir);
     while (dent != NULL && ecode == 0) {
 		if ((strcmp(dent->d_name, ".") != 0) &&
 		 (strcmp(dent->d_name, "..") != 0)) {
-			strncpy(name + lenght, dent->d_name, HAMMER2_INODE_MAXNAME -
-				lenght);
+			strncpy(name + length, dent->d_name, HAMMER2_INODE_MAXNAME -
+				length);
 			int fd = hammer2_ioctl_handle(name);
 			hammer2_ioc_inode_t inode;
 			int res = ioctl(fd, HAMMER2IOC_INODE_GET, &inode);
