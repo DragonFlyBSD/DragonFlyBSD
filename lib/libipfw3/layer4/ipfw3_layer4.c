@@ -157,13 +157,13 @@ parse_bpf(ipfw_insn **cmd, int *ac, char **av[])
 }
 
 void
-show_tcpflag(ipfw_insn *cmd)
+show_tcpflag(ipfw_insn *cmd, int show_or)
 {
 	printf(" tcpflag %d", cmd->arg1);
 }
 
 void
-show_uid(ipfw_insn *cmd)
+show_uid(ipfw_insn *cmd, int show_or)
 {
 	ipfw_insn_u32 *cmd32 = (ipfw_insn_u32 *)cmd;
 	struct passwd *pwd = getpwuid(cmd32->d[0]);
@@ -175,7 +175,7 @@ show_uid(ipfw_insn *cmd)
 }
 
 void
-show_gid(ipfw_insn *cmd)
+show_gid(ipfw_insn *cmd, int show_or)
 {
 	ipfw_insn_u32 *cmd32 = (ipfw_insn_u32 *)cmd;
 	struct group *grp = getgrgid(cmd32->d[0]);
@@ -187,7 +187,7 @@ show_gid(ipfw_insn *cmd)
 }
 
 void
-show_established(ipfw_insn *cmd)
+show_established(ipfw_insn *cmd, int show_or)
 {
 	printf(" established");
 }
@@ -196,8 +196,11 @@ void
 show_bpf(ipfw_insn *cmd, int show_or)
 {
 	ipfw_insn_bpf *bpf;
+	char *word = "bpf";
+	if (show_or)
+		word = "or";
 	bpf = (ipfw_insn_bpf *)cmd;
-	printf(" bpf \"%s\"", bpf->bf_str);
+	printf(" %s \"%s\"", word, bpf->bf_str);
 }
 
 void

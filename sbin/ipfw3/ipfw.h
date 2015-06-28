@@ -44,7 +44,7 @@ struct char_int_map {
 
 
 typedef void (*parser_func)(ipfw_insn **cmd,int *ac, char **av[]);
-typedef void (*shower_func)(ipfw_insn *cmd);
+typedef void (*shower_func)(ipfw_insn *cmd, int show_or);
 typedef void (*register_func)(int module, int opcode,parser_func parser,shower_func shower);
 typedef void (*register_keyword)(int module,int opcode,char *word,int type);
 void register_ipfw_keyword(int module, int opcode,char *word,int type);

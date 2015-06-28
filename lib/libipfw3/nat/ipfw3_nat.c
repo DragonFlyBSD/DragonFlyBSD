@@ -58,7 +58,7 @@ parse_nat(ipfw_insn **cmd, int *ac, char **av[])
 }
 
 void
-show_nat(ipfw_insn *cmd)
+show_nat(ipfw_insn *cmd, int show_or)
 {
 	printf(" nat %u", cmd->arg1);
 }

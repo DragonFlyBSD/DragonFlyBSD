@@ -155,13 +155,13 @@ parse_mac(ipfw_insn **cmd, int *ac, char **av[])
 }
 
 void
-show_layer2(ipfw_insn *cmd)
+show_layer2(ipfw_insn *cmd, int show_or)
 {
 	printf(" layer2");
 }
 
 void
-show_mac(ipfw_insn *cmd)
+show_mac(ipfw_insn *cmd, int show_or)
 {
 	ipfw_insn_mac *m = (ipfw_insn_mac *)cmd;
 	printf(" mac");

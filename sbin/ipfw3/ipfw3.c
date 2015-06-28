@@ -298,13 +298,13 @@ parse_deny(ipfw_insn **cmd, int *ac, char **av[])
 }
 
 void
-show_accept(ipfw_insn *cmd)
+show_accept(ipfw_insn *cmd, int show_or)
 {
 	printf(" allow");
 }
 
 void
-show_deny(ipfw_insn *cmd)
+show_deny(ipfw_insn *cmd, int show_or)
 {
 	printf(" deny");
 }
@@ -414,12 +414,99 @@ register_ipfw_func(int module, int opcode, parser_func parser, shower_func showe
 	}
 }
 
+/*
+ * check whether 'or' need to be printed,
+ *
+ * first filter with 'or', print name without 'or'
+ * same as previous, then print or and no filter name
+ * not first but different from previous, print name without 'or'
+ * show_or = 1: show or and ignore filter name
+ * show_or = 0: show filter name ignore or
+ */
+void prev_show_chk(ipfw_insn *cmd, uint8_t *prev_module, uint8_t *prev_opcode,
+		int *show_or)
+{
+	if (cmd->len & F_OR) {
+		if (*prev_module == 0 && *prev_opcode == 0) {
+			/* if first or */
+			*show_or = 0;
+			*prev_module = cmd->module;
+			*prev_opcode = cmd->opcode;
+		} else if (cmd->module == *prev_module && cmd->opcode ==
+				*prev_opcode) {
+			/* if same as previous */
+			*show_or = 1;
+		} else {
+			/* then different */
+			*show_or = 0;
+			*prev_module = cmd->module;
+			*prev_opcode = cmd->opcode;
+
+		}
+	} else {
+		*show_or = 0;
+		*prev_module = 0;
+		*prev_opcode = 0;
+	}
+}
+/*
+ * word can be: proto from to other
+ * proto show proto
+ * from show from
+ * to show to
+ * other show all other filters
+ */
+int show_filter(ipfw_insn *cmd, char *word, int type)
+{
+	struct ipfw_keyword *k;
+	struct ipfw_mapping *m;
+	shower_func fn;
+	int i, j;
+	int need_check, show_or;
+	uint8_t prev_module, prev_opcode;
+
+	k = keywords;
+	m = mappings;
+	for (i = 1; i< KEYWORD_SIZE; i++, k++) {
+		if (strcmp(word, "proto") == 0 ||
+				strcmp(word, "from") == 0 ||
+				strcmp(word, "to") == 0) {
+			need_check = strcmp(k->word, word) == 0;
+		} else {
+			need_check = strcmp(k->word, "proto") != 0 &&
+				strcmp(k->word, "from")!=0 &&
+				strcmp(k->word,	"to")!=0;
+		}
+		if (k->type == type && need_check) {
+			if (k->module == cmd->module &&
+					k->opcode == cmd->opcode) {
+				for (j = 1; j< MAPPING_SIZE; j++, m++) {
+					if (m->type ==
+						IPFW_MAPPING_TYPE_IN_USE &&
+						k->module == m->module &&
+						k->opcode == m->opcode) {
+						prev_show_chk(cmd, &prev_module,
+							&prev_opcode, &show_or);
+						if (cmd->len & F_NOT)
+							printf(" not");
+
+						fn = m->shower;
+						(*fn)(cmd, show_or);
+						return 1;
+					}
+				}
+			}
+		}
+	}
+	return 0;
+}
+
 static void
 show_rules(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 {
 	static int twidth = 0;
 	ipfw_insn *cmd;
-	int l, or_block = 0; 	/* we are in an or block */
+	int l;
 
 	u_int32_t set_disable = rule->set_disable;
 
@@ -486,7 +573,7 @@ show_rules(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 							comment_cmd = cmd;
 						} else {
 							fn = m->shower;
-							(*fn)(cmd);
+							(*fn)(cmd, 0);
 						}
 						if (cmd->module == MODULE_BASIC_ID &&
 							cmd->opcode ==
@@ -505,32 +592,9 @@ show_rules(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 	 * show proto
 	 */
 	changed=0;
-	for (l = rule->act_ofs, cmd = rule->cmd;
-		l > 0;l -= F_LEN(cmd) ,
-		cmd = (ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
-		k = keywords;
-		m = mappings;
-		for (i = 1; i< KEYWORD_SIZE; i++, k++) {
-			if (k->type == IPFW_KEYWORD_TYPE_FILTER &&
-				strcmp(k->word, "proto") == 0) {
-				if (k->module == cmd->module &&
-					k->opcode == cmd->opcode) {
-					for (j = 1; j< MAPPING_SIZE; j++, m++) {
-						if (m->type == IPFW_MAPPING_TYPE_IN_USE &&
-							k->module == m->module &&
-							k->opcode == m->opcode) {
-							if (cmd->len & F_NOT) {
-								printf(" not");
-							}
-							fn = m->shower;
-							(*fn)(cmd);
-							changed = 1;
-							goto show_from;
-						}
-					}
-				}
-			}
-		}
+	for (l = rule->act_ofs, cmd = rule->cmd; l > 0; l -= F_LEN(cmd),
+			cmd = (ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
+		changed = show_filter(cmd, "proto", IPFW_KEYWORD_TYPE_FILTER);
 	}
 	if (!changed && !do_quiet)
 		printf(" ip");
@@ -538,34 +602,10 @@ show_rules(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 	/*
 	 * show from
 	 */
-show_from:
 	changed = 0;
-	for (l = rule->act_ofs, cmd = rule->cmd;
-		l > 0; l -= F_LEN(cmd),
-		cmd = (ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
-		k = keywords;
-		m = mappings;
-		for (i = 1; i< KEYWORD_SIZE; i++, k++) {
-			if (k->type == IPFW_KEYWORD_TYPE_FILTER &&
-				strcmp(k->word, "from") == 0) {
-				if (k->module == cmd->module &&
-					k->opcode == cmd->opcode) {
-					for (j = 1; j< MAPPING_SIZE; j++, m++) {
-						if (m->type == IPFW_MAPPING_TYPE_IN_USE &&
-							k->module == m->module &&
-							k->opcode == m->opcode) {
-							if (cmd->len & F_NOT)
-								printf(" not");
-
-							fn = m->shower;
-							(*fn)(cmd);
-							changed = 1;
-							goto show_to;
-						}
-					}
-				}
-			}
-		}
+	for (l = rule->act_ofs, cmd = rule->cmd; l > 0; l -= F_LEN(cmd),
+			cmd = (ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
+		changed = show_filter(cmd, "from", IPFW_KEYWORD_TYPE_FILTER);
 	}
 	if (!changed && !do_quiet)
 		printf(" from any");
@@ -573,34 +613,10 @@ show_from:
 	/*
 	 * show to
 	 */
-show_to:
 	changed = 0;
-	for (l = rule->act_ofs, cmd = rule->cmd;
-		l > 0; l -= F_LEN(cmd),
-		cmd = (ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
-		k = keywords;
-		m = mappings;
-		for (i = 1; i< KEYWORD_SIZE; i++, k++) {
-			if (k->type == IPFW_KEYWORD_TYPE_FILTER &&
-				strcmp(k->word, "to") == 0) {
-				if (k->module == cmd->module &&
-					k->opcode == cmd->opcode) {
-					for (j = 1; j < MAPPING_SIZE; j++, m++) {
-						if (m->type == IPFW_MAPPING_TYPE_IN_USE &&
-							k->module == m->module &&
-							k->opcode == m->opcode ) {
-							if (cmd->len & F_NOT)
-								printf(" not");
-
-							fn = m->shower;
-							(*fn)(cmd);
-							changed = 1;
-							goto show_filter;
-						}
-					}
-				}
-			}
-		}
+	for (l = rule->act_ofs, cmd = rule->cmd; l > 0; l -= F_LEN(cmd),
+			cmd = (ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
+		changed = show_filter(cmd, "to", IPFW_KEYWORD_TYPE_FILTER);
 	}
 	if (!changed && !do_quiet)
 		printf(" to any");
@@ -608,44 +624,15 @@ show_to:
 	/*
 	 * show other filters
 	 */
-show_filter:
 	for (l = rule->act_ofs, cmd = rule->cmd, m = mappings;
-		l > 0; l -= F_LEN(cmd),
-		cmd=(ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
-		k = keywords;
-		m = mappings;
-		for (i = 1; i< KEYWORD_SIZE; i++, k++) {
-			if (k->module == cmd->module && k->opcode == cmd->opcode) {
-				if (strcmp(k->word, "proto") != 0 &&
-					strcmp(k->word, "from") !=0 &&
-					strcmp(k->word, "to") !=0) {
-					for (j = 1; j < MAPPING_SIZE; j++, m++) {
-						if (m->module == cmd->module &&
-							m->opcode == cmd->opcode) {
-							if (cmd->len & F_NOT)
-								printf(" not");
-
-							fn = m->shower;
-							(*fn)(cmd);
-							break;
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if (cmd->len & F_OR) {
-		printf(" or");
-		or_block = 1;
-	} else if (or_block) {
-		printf(" }");
-		or_block = 0;
+			l > 0; l -= F_LEN(cmd),
+			cmd=(ipfw_insn *)((uint32_t *)cmd + F_LEN(cmd))) {
+		show_filter(cmd, "other", IPFW_KEYWORD_TYPE_FILTER);
 	}
 
 	/* show the comment in the end */
 	if (comment_fn != NULL) {
-		(*comment_fn)(comment_cmd);
+		(*comment_fn)(comment_cmd, 0);
 	}
 done:
 	printf("\n");
@@ -1721,6 +1708,8 @@ add(int ac, char *av[])
 	static uint32_t cmdbuf[IPFW_RULE_SIZE_MAX];
 
 	ipfw_insn *src, *dst, *cmd, *action, *other;
+	ipfw_insn *prev;
+	char *prev_av;
 	ipfw_insn *the_comment = NULL;
 	struct ipfw_ioc_rule *rule;
 	struct ipfw_keyword *key;
@@ -1842,11 +1831,19 @@ add(int ac, char *av[])
 	 * other filters
 	 */
 	while (ac > 0) {
-		char *s;
+		char *s, *cur;		/* current filter */
 		ipfw_insn_u32 *cmd32; 	/* alias for cmd */
 
 		s = *av;
 		cmd32 = (ipfw_insn_u32 *)cmd;
+		if (strcmp(*av, "or") == 0) {
+			if (prev == NULL)
+				errx(EX_USAGE, "'or' should"
+						"between two filters\n");
+			prev->len |= F_OR;
+			cmd->len = F_OR;
+			*av = prev_av;
+		}
 		if (strcmp(*av, "not") == 0) {
 			if (cmd->len & F_NOT)
 				errx(EX_USAGE, "double \"not\" not allowed\n");
@@ -1854,15 +1851,10 @@ add(int ac, char *av[])
 			NEXT_ARG;
 			continue;
 		}
-		if (*s == '!') {	/* alternate syntax for NOT */
-			if (cmd->len & F_NOT)
-				errx(EX_USAGE, "double \"not\" not allowed");
-			cmd->len = F_NOT;
-			s++;
-		}
+		cur = *av;
 		for (i = 0, key = keywords; i < KEYWORD_SIZE; i++, key++) {
 			if (key->type == IPFW_KEYWORD_TYPE_FILTER &&
-				strcmp(key->word, s) == 0) {
+				strcmp(key->word, cur) == 0) {
 				for (j = 0, map = mappings;
 					j< MAPPING_SIZE; j++, map++) {
 					if (map->type == IPFW_MAPPING_TYPE_IN_USE &&
@@ -1875,12 +1867,14 @@ add(int ac, char *av[])
 				}
 				break;
 			} else if (i == KEYWORD_SIZE-1) {
-				errx(EX_USAGE, "bad command `%s'", s);
+				errx(EX_USAGE, "bad command `%s'", cur);
 			}
 		}
 		if (i >= KEYWORD_SIZE) {
 			break;
 		} else if (F_LEN(cmd) > 0) {
+			prev = cmd;
+			prev_av = cur;
 			cmd = next_cmd(cmd);
 		}
 	}

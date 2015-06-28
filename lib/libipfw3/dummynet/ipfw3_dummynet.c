@@ -67,13 +67,13 @@ parse_queue(ipfw_insn **cmd, int *ac, char **av[])
 }
 
 void
-show_pipe(ipfw_insn *cmd)
+show_pipe(ipfw_insn *cmd, int show_or)
 {
 	printf(" pipe %u", cmd->arg1);
 }
 
 void
-show_queue(ipfw_insn *cmd)
+show_queue(ipfw_insn *cmd, int show_or)
 {
 	printf(" queue %u", cmd->arg1);
 }

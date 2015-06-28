@@ -357,7 +357,7 @@ ipfw_chk(struct ip_fw_args *args)
 	uint16_t src_port = 0, dst_port = 0;	/* NOTE: host format	*/
 	struct in_addr src_ip, dst_ip;		/* NOTE: network format	*/
 	uint16_t ip_len = 0;
-
+	uint8_t prev_module = -1, prev_opcode = -1; /* previous module & opcode */
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 
 	if (m->m_pkthdr.fw_flags & IPFW_MBUF_GENERATED)
@@ -502,24 +502,38 @@ after_ip_checks:
 	/*
 	 * Now scan the rules, and parse microinstructions for each rule.
 	 */
+	int prev_val;	/*  previous result of 'or' filter */
+	int l, cmdlen;
+	ipfw_insn *cmd;
+	int cmd_ctl;
+	/* foreach rule in chain */
 	for (; f; f = f->next) {
-		int l, cmdlen;
-		ipfw_insn *cmd;
-		int cmd_ctl;
 again:  /* check the rule again*/
 		if (ctx->ipfw_set_disable & (1 << f->set)) {
 			continue;
 		}
 
+		prev_val = -1;
+		 /* foreach cmd in rule */
 		for (l = f->cmd_len, cmd = f->cmd; l > 0; l -= cmdlen,
-			cmd=(ipfw_insn *)((uint32_t *)cmd+ cmdlen)) {
+			cmd = (ipfw_insn *)((uint32_t *)cmd+ cmdlen)) {
+			cmdlen = F_LEN(cmd);
+
+			/* skip 'or' filter when already match */
+			if (cmd->len & F_OR &&
+				cmd->module == prev_module &&
+				cmd->opcode == prev_opcode &&
+				prev_val == 1) {
+				goto next_cmd;
+			}
 
 check_body: /* check the body of the rule again.*/
-			cmdlen = F_LEN(cmd);
 			(filter_funcs[cmd->module][cmd->opcode])
 				(&cmd_ctl, &cmd_val, &args, &f, cmd, ip_len);
 			switch(cmd_ctl) {
 				case IP_FW_CTL_DONE:
+					if (prev_val == 0) /* but 'or' failed */
+						goto next_rule;
 					goto done;
 				case IP_FW_CTL_AGAIN:
 					goto again;
@@ -536,12 +550,47 @@ check_body: /* check the body of the rule again.*/
 			}
 			if (cmd->len & F_NOT)
 				cmd_val= !cmd_val;
-			if (!cmd_val)
-				break;
+
+			if (cmd->len & F_OR) {	/* has 'or' */
+				if (!cmd_val) {	/* not matched */
+					if(prev_val == -1){	/* first 'or' */
+						prev_val = 0;
+						prev_module = cmd->module;
+						prev_opcode = cmd->opcode;
+					} else if (prev_module == cmd->module &&
+						prev_opcode == cmd->opcode) {
+						/* continuous 'or' filter */
+					} else if (prev_module != cmd->module ||
+						prev_opcode != cmd->opcode) {
+						/* 'or' filter changed */
+						if(prev_val == 0){
+							goto next_rule;
+						} else {
+							prev_val = 0;
+							prev_module = cmd->module;
+							prev_opcode = cmd->opcode;
+						}
+					}
+				} else { /* has 'or' and matched */
+					prev_val = 1;
+					prev_module = cmd->module;
+					prev_opcode = cmd->opcode;
+				}
+			} else { /* no or */
+				if (!cmd_val) {	/* not matched */
+					goto next_rule;
+				} else {
+					if (prev_val == 0) {
+						/* previous 'or' not matched */
+						goto next_rule;
+					} else {
+						prev_val = -1;
+					}
+				}
+			}
+next_cmd:;
 		}	/* end of inner for, scan opcodes */
-
 next_rule:;		/* try next rule		*/
-
 	}		/* end of outer for, scan rules */
 	kprintf("+++ ipfw: ouch!, skip past end of rules, denying packet\n");
 	return IP_FW_DENY;

@@ -594,19 +594,19 @@ parse_untag(ipfw_insn **cmd, int *ac, char **av[])
 }
 
 void
-show_count(ipfw_insn *cmd)
+show_count(ipfw_insn *cmd, int show_or)
 {
 	printf(" count");
 }
 
 void
-show_skipto(ipfw_insn *cmd)
+show_skipto(ipfw_insn *cmd, int show_or)
 {
 	printf(" skipto %u", cmd->arg1);
 }
 
 void
-show_forward(ipfw_insn *cmd)
+show_forward(ipfw_insn *cmd, int show_or)
 {
 	struct sockaddr_in *sa;
 	int i;
@@ -634,19 +634,19 @@ show_forward(ipfw_insn *cmd)
 }
 
 void
-show_in(ipfw_insn *cmd)
+show_in(ipfw_insn *cmd, int show_or)
 {
 	printf(" in");
 }
 
 void
-show_out(ipfw_insn *cmd)
+show_out(ipfw_insn *cmd, int show_or)
 {
 	printf(" out");
 }
 
 void
-show_via(ipfw_insn *cmd)
+show_via(ipfw_insn *cmd, int show_or)
 {
 	char *s;
 	ipfw_insn_if *cmdif = (ipfw_insn_if *)cmd;
@@ -659,7 +659,8 @@ show_via(ipfw_insn *cmd)
 		s = "via";
 	else
 		s = "?huh?";
-
+	if (show_or)
+		s = "or";
 	if (cmdif->name[0] == '\0')
 		printf(" %s %s", s, inet_ntoa(cmdif->p.ip));
 
@@ -667,23 +668,32 @@ show_via(ipfw_insn *cmd)
 }
 
 void
-show_from(ipfw_insn *cmd)
+show_from(ipfw_insn *cmd, int show_or)
 {
-	printf(" from %s", inet_ntoa(((ipfw_insn_ip *)cmd)->addr));
+	char *word = "from";
+	if (show_or)
+		word = "or";
+	printf(" %s %s", word, inet_ntoa(((ipfw_insn_ip *)cmd)->addr));
 }
 
 void
-show_from_me(ipfw_insn *cmd)
+show_from_me(ipfw_insn *cmd, int show_or)
 {
-	printf(" from me");
+	char *word = "from";
+	if (show_or)
+		word = "or";
+	printf(" %s me", word);
 }
 
 void
-show_from_mask(ipfw_insn *cmd)
+show_from_mask(ipfw_insn *cmd, int show_or)
 {
 	int mask;
+	char *word = "from";
+	if (show_or)
+		word = "or";
 	ipfw_insn_ip *p = (ipfw_insn_ip *)cmd;
-	printf(" from %s", inet_ntoa(p->addr));
+	printf(" %s %s", word, inet_ntoa(p->addr));
 
 	mask = contigmask((u_char *)&(p->mask.s_addr), 32);
 	if (mask < 32)
@@ -691,23 +701,32 @@ show_from_mask(ipfw_insn *cmd)
 }
 
 void
-show_to(ipfw_insn *cmd)
+show_to(ipfw_insn *cmd, int show_or)
 {
-	printf(" to %s", inet_ntoa(((ipfw_insn_ip *)cmd)->addr));
+	char *word = "to";
+	if (show_or)
+		word = "or";
+	printf(" %s %s", word, inet_ntoa(((ipfw_insn_ip *)cmd)->addr));
 }
 
 void
-show_to_me(ipfw_insn *cmd)
+show_to_me(ipfw_insn *cmd, int show_or)
 {
-	printf(" to me");
+	char *word = "to";
+	if (show_or)
+		word = "or";
+	printf(" %s me", word);
 }
 
 void
-show_to_mask(ipfw_insn *cmd)
+show_to_mask(ipfw_insn *cmd, int show_or)
 {
 	int mask;
+	char *word = "to";
+	if (show_or)
+		word = "or";
 	ipfw_insn_ip *p = (ipfw_insn_ip *)cmd;
-	printf(" to %s", inet_ntoa(p->addr));
+	printf(" %s %s", word, inet_ntoa(p->addr));
 
 	mask = contigmask((u_char *)&(p->mask.s_addr), 32);
 	if (mask < 32)
@@ -715,7 +734,7 @@ show_to_mask(ipfw_insn *cmd)
 }
 
 void
-show_proto(ipfw_insn *cmd)
+show_proto(ipfw_insn *cmd, int show_or)
 {
 	struct protoent *pe;
 	u_char proto = 0;
@@ -725,13 +744,13 @@ show_proto(ipfw_insn *cmd)
 }
 
 void
-show_prob(ipfw_insn *cmd)
+show_prob(ipfw_insn *cmd, int show_or)
 {
 	printf(" prob %d%%", cmd->arg1);
 }
 
 void
-show_keep_state(ipfw_insn *cmd)
+show_keep_state(ipfw_insn *cmd, int show_or)
 {
 	printf(" keep-state");
 	if (cmd->arg1 != 0) {
@@ -744,31 +763,31 @@ show_keep_state(ipfw_insn *cmd)
 }
 
 void
-show_check_state(ipfw_insn *cmd)
+show_check_state(ipfw_insn *cmd, int show_or)
 {
 	printf(" check-state");
 }
 
 void
-show_tagged(ipfw_insn *cmd)
+show_tagged(ipfw_insn *cmd, int show_or)
 {
 	printf(" tagged %d", cmd->arg1);
 }
 
 void
-show_comment(ipfw_insn *cmd)
+show_comment(ipfw_insn *cmd, int show_or)
 {
 	printf(" // %s", (char *)(cmd + 1));
 }
 
 void
-show_tag(ipfw_insn *cmd)
+show_tag(ipfw_insn *cmd, int show_or)
 {
 	printf(" tag %d", cmd->arg1);
 }
 
 void
-show_untag(ipfw_insn *cmd)
+show_untag(ipfw_insn *cmd, int show_or)
 {
 	printf(" untag %d", cmd->arg1);
 }
