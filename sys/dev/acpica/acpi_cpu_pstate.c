@@ -160,6 +160,9 @@ static struct acpi_pstate	*acpi_pstates;
 
 static const struct acpi_pst_md	*acpi_pst_md;
 
+static int			acpi_pst_pdl = -1;
+TUNABLE_INT("hw.acpi.cpu.pst.pdl", &acpi_pst_pdl);
+
 static int			acpi_pst_ht_reuse_domain = 1;
 TUNABLE_INT("hw.acpi.cpu.pst.ht_reuse_domain", &acpi_pst_ht_reuse_domain);
 
@@ -683,6 +686,24 @@ fetch_ppc:
 	scount = acpi_npstates;
 
 	/*
+	 * Allow users to override or set _PDL
+	 */
+	if (acpi_pst_pdl >= 0) {
+		if (acpi_pst_pdl < acpi_npstates) {
+			if (bootverbose) {
+				device_printf(dev, "_PDL override %d\n",
+				    acpi_pst_pdl);
+			}
+			scount = acpi_pst_pdl + 1;
+			goto proc_pdl;
+		} else {
+			device_printf(dev, "Invalid _PDL override %d, "
+			    "must be less than %d\n", acpi_pst_pdl,
+			    acpi_npstates);
+		}
+	}
+
+	/*
 	 * Adjust the number of usable entries in P-State table,
 	 * if there is _PDL object.
 	 */
@@ -719,6 +740,7 @@ fetch_ppc:
 		/* Free _PDL */
 		AcpiOsFree(obj);
 	}
+proc_pdl:
 	if (acpi_pstate_count == 0) {
 		acpi_pstate_count = scount;
 	} else if (acpi_pstate_count != scount) {
