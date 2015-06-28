@@ -489,8 +489,7 @@ acpi_getcpufreq_bin(int dom_id, int *highest0, int *lowest0)
 	/*
 	 * Retrieve availability list
 	 */
-	snprintf(sysid, sizeof(sysid), "hw.acpi.cpu.px_dom%d.available_bin",
-	    dom_id);
+	snprintf(sysid, sizeof(sysid), "hw.acpi.cpu.px_dom%d.avail", dom_id);
 	freqlen = sizeof(freq);
 	if (sysctlbyname(sysid, freq, &freqlen, NULL, 0) < 0)
 		return 0;

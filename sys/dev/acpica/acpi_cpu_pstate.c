@@ -1095,16 +1095,16 @@ acpi_pst_postattach(void *arg __unused)
 		SYSCTL_ADD_PROC(&dom->pd_sysctl_ctx,
 				SYSCTL_CHILDREN(dom->pd_sysctl_tree),
 				OID_AUTO, "available",
-				CTLTYPE_STRING | CTLFLAG_RD,
+				CTLTYPE_STRING | CTLFLAG_RD | CTLFLAG_SKIP,
 				dom, 0, acpi_pst_sysctl_freqs, "A",
 				"available frequencies");
 
 		SYSCTL_ADD_PROC(&dom->pd_sysctl_ctx,
 				SYSCTL_CHILDREN(dom->pd_sysctl_tree),
-				OID_AUTO, "available_bin",
+				OID_AUTO, "avail",
 				CTLTYPE_OPAQUE | CTLFLAG_RD,
 				dom, 0, acpi_pst_sysctl_freqs_bin, "IU",
-				"available frequencies (binary format)");
+				"available frequencies");
 
 		SYSCTL_ADD_PROC(&dom->pd_sysctl_ctx,
 				SYSCTL_CHILDREN(dom->pd_sysctl_tree),
