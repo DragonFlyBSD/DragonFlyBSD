@@ -211,7 +211,7 @@ int
 include(const char *filename)
 {
     struct includeline	*script, *se, *sp;
-    char		input[256];			/* big enough? */
+    char		input[1024];			/* big enough? */
     int			argc,res;
     char		**argv, *cp;
     int			fd, flags, line;
