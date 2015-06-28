@@ -325,30 +325,16 @@ int
 acpi_machdep_init(device_t dev)
 {
 	struct	acpi_softc *sc;
-	int intr_model;
 
 	acpi_dev = dev;
 	sc = device_get_softc(acpi_dev);
-
-	/*
-	 * XXX: Prevent the PnP BIOS code from interfering with
-	 * our own scan of ISA devices.
-	 */
-#if 0
-	PnPBIOStable = NULL;
-#endif
 
 	acpi_capm_init(sc);
 
 	acpi_install_wakeup_handler(sc);
 
 	if (ioapic_enable)
-		intr_model = ACPI_INTR_APIC;
-	else
-		intr_model = ACPI_INTR_PIC;
-
-	if (intr_model != ACPI_INTR_PIC)
-		acpi_SetIntrModel(intr_model);
+		acpi_SetIntrModel(ACPI_INTR_APIC);
 
 	SYSCTL_ADD_UINT(&sc->acpi_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->acpi_sysctl_tree), OID_AUTO,
