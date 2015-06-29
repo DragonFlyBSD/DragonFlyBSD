@@ -53,13 +53,8 @@
 ACPI_MODULE_NAME("TIMER")
 
 static device_t			acpi_timer_dev;
-static struct resource		*acpi_timer_reg;
-static bus_space_handle_t	acpi_timer_bsh;
-static bus_space_tag_t		acpi_timer_bst;
-static sysclock_t		acpi_counter_mask;
+static UINT32			acpi_timer_resolution;
 static sysclock_t		acpi_last_counter;
-
-#define ACPI_TIMER_FREQ		(14318182 / 4)
 
 static sysclock_t acpi_timer_get_timecount(void);
 static sysclock_t acpi_timer_get_timecount24(void);
@@ -76,7 +71,7 @@ static struct cputimer acpi_cputimer = {
 	cputimer_default_fromus,
 	acpi_timer_construct,
 	cputimer_default_destruct,
-	ACPI_TIMER_FREQ,
+	ACPI_PM_TIMER_FREQUENCY,
 	0, 0, 0
 };
 
@@ -105,12 +100,6 @@ static devclass_t acpi_timer_devclass;
 DRIVER_MODULE(acpi_timer, acpi, acpi_timer_driver, acpi_timer_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_timer, acpi, 1, 1, 1);
 
-static inline uint32_t
-acpi_timer_read(void)
-{
-    return (bus_space_read_4(acpi_timer_bst, acpi_timer_bsh, 0));
-}
-
 /*
  * Locate the ACPI timer using the FADT, set up and allocate the I/O resources
  * we will be using.
@@ -119,8 +108,6 @@ static int
 acpi_timer_identify(driver_t *driver, device_t parent)
 {
     device_t dev;
-    u_long rlen, rstart;
-    int rid, rtype;
 
     /*
      * Just try once, do nothing if the 'acpi' bus is rescanned.
@@ -140,62 +127,30 @@ acpi_timer_identify(driver_t *driver, device_t parent)
     }
     acpi_timer_dev = dev;
 
-    switch (AcpiGbl_FADT.XPmTimerBlock.SpaceId) {
-    case ACPI_ADR_SPACE_SYSTEM_MEMORY:
-	rtype = SYS_RES_MEMORY;
-	break;
-    case ACPI_ADR_SPACE_SYSTEM_IO:
-	rtype = SYS_RES_IOPORT;
-	break;
-    default:
-	return (ENXIO);
-    }
-    rid = 0;
-    rlen = AcpiGbl_FADT.PmTimerLength;
-    rstart = AcpiGbl_FADT.XPmTimerBlock.Address;
-    if (bus_set_resource(dev, rtype, rid, rstart, rlen, -1)) {
-	device_printf(dev, "couldn't set resource (%s 0x%lx+0x%lx)\n",
-	    (rtype == SYS_RES_IOPORT) ? "port" : "mem", rstart, rlen);
-	return (ENXIO);
-    }
     return (0);
 }
 
 static int
 acpi_timer_probe(device_t dev)
 {
-    char desc[40];
-    int i, j, rid, rtype;
-
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     if (dev != acpi_timer_dev)
 	return (ENXIO);
 
-    switch (AcpiGbl_FADT.XPmTimerBlock.SpaceId) {
-    case ACPI_ADR_SPACE_SYSTEM_MEMORY:
-	rtype = SYS_RES_MEMORY;
-	break;
-    case ACPI_ADR_SPACE_SYSTEM_IO:
-	rtype = SYS_RES_IOPORT;
-	break;
-    default:
+    if (ACPI_FAILURE(AcpiGetTimerResolution(&acpi_timer_resolution)))
 	return (ENXIO);
-    }
-    rid = 0;
-    acpi_timer_reg = bus_alloc_resource_any(dev, rtype, &rid, RF_ACTIVE);
-    if (acpi_timer_reg == NULL) {
-	device_printf(dev, "couldn't allocate resource (%s 0x%lx)\n",
-	    (rtype == SYS_RES_IOPORT) ? "port" : "mem",
-	    (u_long)AcpiGbl_FADT.XPmTimerBlock.Address);
-	return (ENXIO);
-    }
-    acpi_timer_bsh = rman_get_bushandle(acpi_timer_reg);
-    acpi_timer_bst = rman_get_bustag(acpi_timer_reg);
-    if ((AcpiGbl_FADT.Flags & ACPI_FADT_32BIT_TIMER) != 0)
-	acpi_counter_mask = 0xffffffff;
-    else
-	acpi_counter_mask = 0x00ffffff;
+
+    return (0);
+}
+
+static int
+acpi_timer_attach(device_t dev)
+{
+    char desc[40];
+    int i, j;
+
+    ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     /*
      * If all tests of the counter succeed, use the ACPI-fast method.  If
@@ -206,7 +161,7 @@ acpi_timer_probe(device_t dev)
     for (i = 0; i < 10; i++)
 	j += acpi_timer_test();
     if (j == 10) {
-	if (acpi_counter_mask == 0xffffffff) {
+	if (acpi_timer_resolution == 32) {
 	    acpi_cputimer.name = "ACPI-fast";
 	    acpi_cputimer.count = acpi_timer_get_timecount;
 	} else {
@@ -214,47 +169,19 @@ acpi_timer_probe(device_t dev)
 	    acpi_cputimer.count = acpi_timer_get_timecount24;
 	}
     } else {
-	if (acpi_counter_mask == 0xffffffff)
-		acpi_cputimer.name = "ACPI-safe";
+	if (acpi_timer_resolution == 32)
+	    acpi_cputimer.name = "ACPI-safe";
 	else
-		acpi_cputimer.name = "ACPI-safe24";
+	    acpi_cputimer.name = "ACPI-safe24";
 	acpi_cputimer.count = acpi_timer_get_timecount_safe;
     }
 
-    ksprintf(desc, "%d-bit timer at 3.579545MHz",
-	    (AcpiGbl_FADT.Flags & ACPI_FADT_32BIT_TIMER) ? 32 : 24);
+    ksprintf(desc, "%u-bit timer at 3.579545MHz", acpi_timer_resolution);
     device_set_desc_copy(dev, desc);
 
     cputimer_register(&acpi_cputimer);
     cputimer_select(&acpi_cputimer, 0);
-    /* Release the resource, we'll allocate it again during attach. */
-    bus_release_resource(dev, rtype, rid, acpi_timer_reg);
-    return (0);
-}
 
-static int
-acpi_timer_attach(device_t dev)
-{
-    int rid, rtype;
-
-    ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
-
-    switch (AcpiGbl_FADT.XPmTimerBlock.SpaceId) {
-    case ACPI_ADR_SPACE_SYSTEM_MEMORY:
-	rtype = SYS_RES_MEMORY;
-	break;
-    case ACPI_ADR_SPACE_SYSTEM_IO:
-	rtype = SYS_RES_IOPORT;
-	break;
-    default:
-	return (ENXIO);
-    }
-    rid = 0;
-    acpi_timer_reg = bus_alloc_resource_any(dev, rtype, &rid, RF_ACTIVE);
-    if (acpi_timer_reg == NULL)
-	return (ENXIO);
-    acpi_timer_bsh = rman_get_bushandle(acpi_timer_reg);
-    acpi_timer_bst = rman_get_bustag(acpi_timer_reg);
     return (0);
 }
 
@@ -285,7 +212,7 @@ acpi_timer_get_timecount24(void)
     sysclock_t counter;
 
     clock_lock();
-    counter = acpi_timer_read();
+    AcpiGetTimer(&counter);
     if (counter < acpi_last_counter)
 	acpi_cputimer.base += 0x01000000;
     acpi_last_counter = counter;
@@ -297,7 +224,10 @@ acpi_timer_get_timecount24(void)
 static sysclock_t
 acpi_timer_get_timecount(void)
 {
-    return (acpi_timer_read() + acpi_cputimer.base);
+    sysclock_t counter;
+
+    AcpiGetTimer(&counter);
+    return (counter + acpi_cputimer.base);
 }
 
 /*
@@ -312,18 +242,18 @@ acpi_timer_get_timecount_safe(void)
 {
     u_int u1, u2, u3;
 
-    if (acpi_counter_mask != 0xffffffff)
+    if (acpi_timer_resolution != 32)
 	clock_lock();
 
-    u2 = acpi_timer_read();
-    u3 = acpi_timer_read();
+    AcpiGetTimer(&u2);
+    AcpiGetTimer(&u3);
     do {
 	u1 = u2;
 	u2 = u3;
-	u3 = acpi_timer_read();
+	AcpiGetTimer(&u3);
     } while (u1 > u2 || u2 > u3);
 
-    if (acpi_counter_mask != 0xffffffff) {
+    if (acpi_timer_resolution != 32) {
 	if (u2 < acpi_last_counter)
 	    acpi_cputimer.base += 0x01000000;
 	acpi_last_counter = u2;
@@ -398,9 +328,9 @@ acpi_timer_test(void)
 #error "no read_eflags"
 #endif
     cpu_disable_intr();
-    last = acpi_timer_read();
+    AcpiGetTimer(&last);
     for (n = 0; n < 2000; n++) {
-	this = acpi_timer_read();
+	AcpiGetTimer(&this);
 	delta = acpi_TimerDelta(this, last);
 	if (delta > max) {
 	    max2 = max;
