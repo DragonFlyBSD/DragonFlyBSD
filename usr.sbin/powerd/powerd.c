@@ -75,6 +75,8 @@ static int has_battery(void);
 static int mon_battery(void);
 static void getncpus(void);
 static void getuschedmask(void);
+static int has_perfbias(void);
+static void setperfbias(cpumask_t, int);
 
 static struct cpu_pwrdom_list CpuPwrDomain;
 static struct cpu_pwrdom *CpuPwrDomLimit;
@@ -95,6 +97,7 @@ double TriggerDown; /* load per cpu to force the min freq */
 static int BatLifeMin = 2; /* shutdown the box, if low on battery life */
 static struct timespec BatLifePrevT;
 static int BatLifePollIntvl = 5; /* unit: sec */
+static int HasPerfbias = 1;
 
 static struct timespec BatShutdownStartT;
 static int BatShutdownLinger = -1;
@@ -122,10 +125,13 @@ main(int ac, char **av)
 	srt = 8.0;	/* time for samples - 8 seconds */
 	pollrate = 1.0;	/* polling rate in seconds */
 
-	while ((ch = getopt(ac, av, "dp:r:tu:B:L:P:QT:")) != -1) {
+	while ((ch = getopt(ac, av, "dep:r:tu:B:L:P:QT:")) != -1) {
 		switch(ch) {
 		case 'd':
 			DebugOpt = 1;
+			break;
+		case 'e':
+			HasPerfbias = 0;
 			break;
 		case 'p':
 			Hysteresis = (int)strtol(optarg, NULL, 10);
@@ -216,6 +222,9 @@ main(int ac, char **av)
 		monbat = 0;
 	else
 		monbat = has_battery();
+
+	if (HasPerfbias)
+		HasPerfbias = has_perfbias();
 
 	/*
 	 * Wait hw.acpi.cpu.px_dom* sysctl to be created by kernel
@@ -540,6 +549,9 @@ acpi_setcpufreq(int nstate)
 	int desired;
 	char sysid[64];
 	int force_uschedbsp = 0;
+	cpumask_t old_cpumask;
+
+	old_cpumask = UschedCpumask;
 
 	/*
 	 * Calculate the ending domain if the number of operating cpus
@@ -602,6 +614,14 @@ acpi_setcpufreq(int nstate)
 	if (force_uschedbsp)
 		CPUMASK_NANDBIT(UschedCpumask, 0);
 
+	CPUMASK_XORMASK(old_cpumask, UschedCpumask);
+
+	/*
+	 * Set performance-energy bias
+	 */
+	if (HasPerfbias)
+		setperfbias(old_cpumask, increasing);
+
 	if (increasing) {
 		domBeg = CpuPwrDomLimit;
 		domEnd = dom;
@@ -642,7 +662,7 @@ usage(void)
 	fprintf(stderr, "usage: powerd [-dt] [-p hysteresis] "
 	    "[-u trigger_up] [-T sample_interval] [-r poll_interval] "
 	    "[-B min_battery_life] [-L low_battery_linger] "
-	    "[-P battery_poll_interval] [-Q]\n");
+	    "[-P battery_poll_interval] [-Q] [-e]\n");
 	exit(1);
 }
 
@@ -816,5 +836,36 @@ getuschedmask(void)
 			printf("%jx ", (uintmax_t)UschedCpumask.ary[i]);
 		printf("\n");
 		fflush(stdout);
+	}
+}
+
+static int
+has_perfbias(void)
+{
+	size_t len;
+	int hint;
+
+	len = sizeof(hint);
+	if (sysctlbyname("machdep.perfbias0.hint", &hint, &len, NULL, 0) < 0)
+		return 0;
+	return 1;
+}
+
+static void
+setperfbias(cpumask_t mask, int increasing)
+{
+	int hint = increasing ? 0 : 15;
+
+	while (CPUMASK_TESTNZERO(mask)) {
+		char sysid[64];
+		int cpu;
+
+		cpu = BSFCPUMASK(mask);
+		CPUMASK_NANDBIT(mask, cpu);
+
+		snprintf(sysid, sizeof(sysid), "machdep.perfbias%d.hint", cpu);
+		sysctlbyname(sysid, NULL, NULL, &hint, sizeof(hint));
+		if (DebugOpt)
+			printf("cpu%d set perfbias hint %d\n", cpu, hint);
 	}
 }

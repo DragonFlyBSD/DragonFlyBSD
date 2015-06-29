@@ -9,7 +9,7 @@
 .Nd simple ACPI based CPU/power control
 .Sh SYNOPSIS
 .Nm
-.Op Fl dtQ
+.Op Fl detQ
 .Op Fl p Ar hysteresis
 .Op Fl u Ar trigger_up
 .Op Fl r Ar poll_time
@@ -37,6 +37,9 @@ Causes
 .Nm
 to not go to the background and prints some debug output to
 .Va stdout .
+.It Fl e
+Disable Intel Performance and Energy Bias Hint,
+even if it is available
 .It Fl p Ar hysteresis
 Percent of the upper limit to subtract as an hysteresis value to scale
 down to the min frequency.
