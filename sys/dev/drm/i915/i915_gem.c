@@ -1362,9 +1362,11 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 
 	/*
 	 * Call hint to ensure that NULL is not returned as a valid address
-	 * and to reduce vm_map traversals.
+	 * and to reduce vm_map traversals. XXX causes instability, use a
+	 * fixed low address as the start point instead to avoid the NULL
+	 * return issue.
 	 */
-	addr = vm_map_hint(p, 0, PROT_READ|PROT_WRITE);
+	addr = PAGE_SIZE;
 
 	/*
 	 * Use 256KB alignment.  It is unclear why this matters for a
