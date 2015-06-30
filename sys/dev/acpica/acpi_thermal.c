@@ -732,7 +732,7 @@ acpi_tz_getparam(struct acpi_tz_softc *sc, char *node, int *data)
 }
 
 /*
- * Handle sysctl for reading and changing the termal-zone polling rate.
+ * Handle sysctl for reading and changing the thermal-zone polling rate.
  */
 static int
 acpi_tz_polling_sysctl(SYSCTL_HANDLER_ARGS)
