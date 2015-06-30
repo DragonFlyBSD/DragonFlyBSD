@@ -2030,6 +2030,7 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
      * interrupts during the update which tends to make the system behave
      * better (no sound glitches, etc).
      */
+#if 0
     if ((flags & SCRN_ASYNCOK) && scp->asynctd &&
 	(scp->end - scp->start) > 16 &&
 	panicstr == NULL && shutdown_in_progress == 0) {
@@ -2038,6 +2039,7 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
 	wakeup(&scp->asynctd);
 	return;
     }
+#endif
     if (flags & SCRN_BULKUNLOCK)
 	syscons_lock();
 
@@ -2132,7 +2134,6 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
     if (!show_cursor)
 	goto cleanup;
 
-#if 0
     /* update cursor image */
     if ((scp->status & CURSOR_ENABLED) && start <= end) {
 	s = start;
@@ -2153,7 +2154,6 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
 					   sc_inside_cutmark(scp, cpos));
         }
     }
-#endif
 
 #ifndef SC_NO_CUTPASTE
     /* update "pseudo" mouse pointer image */
