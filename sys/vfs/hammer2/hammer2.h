@@ -475,7 +475,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  */
 #define HAMMER2_MODIFY_OPTDATA		0x00000002	/* data can be NULL */
 #define HAMMER2_MODIFY_NO_MODIFY_TID	0x00000004
-#define HAMMER2_MODIFY_KEEPMODIFY	0x00000008
+#define HAMMER2_MODIFY_UNUSED0008	0x00000008
 #define HAMMER2_MODIFY_NOREALLOC	0x00000010
 
 /*
@@ -825,6 +825,7 @@ typedef struct hammer2_xop_fifo {
 
 struct hammer2_xop_head {
 	hammer2_xop_func_t	func;
+	hammer2_tid_t		mtid;
 	struct hammer2_inode	*ip;
 	struct hammer2_inode	*ip2;
 	struct hammer2_inode	*ip3;
@@ -991,10 +992,9 @@ typedef struct hammer2_xop_group hammer2_xop_group_t;
 /*
  * flags to hammer2_xop_alloc()
  *
- * TRANS	- The frontend is in a transaction, backend operations
- *		  will do per-node transactions.
+ * MODIFYING	- This is a modifying transaction, allocate a mtid.
  */
-#define HAMMER2_XOP_TRANS		0x00000001
+#define HAMMER2_XOP_MODIFYING		0x00000001
 
 /*
  * Global (per partition) management structure, represents a hard block
@@ -1332,17 +1332,20 @@ void hammer2_chain_lock(hammer2_chain_t *chain, int how);
 void hammer2_chain_load_data(hammer2_chain_t *chain);
 const hammer2_media_data_t *hammer2_chain_rdata(hammer2_chain_t *chain);
 hammer2_media_data_t *hammer2_chain_wdata(hammer2_chain_t *chain);
-int hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp);
+int hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
+				hammer2_tid_t mtid);
 
 int hammer2_chain_hardlink_find(hammer2_inode_t *dip,
 				hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
 				int flags);
-void hammer2_chain_modify(hammer2_chain_t *chain, int flags);
+void hammer2_chain_modify(hammer2_chain_t *chain,
+				hammer2_tid_t mtid, int flags);
 void hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain,
-				int flags);
+				hammer2_tid_t mtid, int flags);
 void hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *parent,
-				hammer2_chain_t *chain, int nradix, int flags);
+				hammer2_chain_t *chain,
+				hammer2_tid_t mtid, int nradix, int flags);
 void hammer2_chain_unlock(hammer2_chain_t *chain);
 void hammer2_chain_wait(hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int generation,
@@ -1364,16 +1367,17 @@ hammer2_chain_t *hammer2_chain_scan(hammer2_chain_t *parent,
 				int *cache_indexp, int flags);
 
 int hammer2_chain_create(hammer2_chain_t **parentp,
-				hammer2_chain_t **chainp,
-				hammer2_pfs_t *pmp,
+				hammer2_chain_t **chainp, hammer2_pfs_t *pmp,
 				hammer2_key_t key, int keybits,
-				int type, size_t bytes, int flags);
+				int type, size_t bytes,
+				hammer2_tid_t mtid, int flags);
 void hammer2_chain_rename(hammer2_blockref_t *bref,
 				hammer2_chain_t **parentp,
-				hammer2_chain_t *chain, int flags);
-void hammer2_chain_delete(hammer2_chain_t *parent,
-				hammer2_chain_t *chain, int flags);
-void hammer2_flush(hammer2_chain_t *chain, int istop);
+				hammer2_chain_t *chain,
+				hammer2_tid_t mtid, int flags);
+void hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
+				hammer2_tid_t mtid, int flags);
+void hammer2_flush(hammer2_chain_t *chain, hammer2_tid_t mtid, int istop);
 void hammer2_delayed_flush(hammer2_chain_t *chain);
 void hammer2_chain_setflush(hammer2_chain_t *chain);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,
@@ -1398,6 +1402,8 @@ void hammer2_base_insert(hammer2_chain_t *chain,
  * hammer2_trans.c
  */
 void hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags);
+hammer2_tid_t hammer2_trans_sub(hammer2_pfs_t *pmp);
+void hammer2_trans_clear_preflush(hammer2_pfs_t *pmp);
 void hammer2_trans_done(hammer2_pfs_t *pmp);
 hammer2_tid_t hammer2_trans_newinum(hammer2_pfs_t *pmp);
 void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
@@ -1440,7 +1446,7 @@ void hammer2_io_bqrelse(hammer2_io_t **diop);
  * XOP API in hammer2_thread.c
  */
 void hammer2_xop_group_init(hammer2_pfs_t *pmp, hammer2_xop_group_t *xgrp);
-hammer2_xop_t *hammer2_xop_alloc(hammer2_inode_t *ip);
+void *hammer2_xop_alloc(hammer2_inode_t *ip, int flags);
 void hammer2_xop_setname(hammer2_xop_head_t *xop,
 				const char *name, size_t name_len);
 void hammer2_xop_setname2(hammer2_xop_head_t *xop,

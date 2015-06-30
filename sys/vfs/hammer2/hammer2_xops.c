@@ -316,7 +316,8 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 		    xop->isdir >= 1) {
 			error = EISDIR;
 		} else {
-			hammer2_chain_delete(parent, chain, xop->dopermanent);
+			hammer2_chain_delete(parent, chain,
+					     xop->head.mtid, xop->dopermanent);
 		}
 	}
 
@@ -334,6 +335,7 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 			if (chain &&
 			    (int64_t)chain->data->ipdata.meta.nlinks <= 1) {
 				hammer2_chain_delete(parent, chain,
+						     xop->head.mtid,
 						     xop->dopermanent);
 			}
 		}
@@ -400,7 +402,7 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 		error = EIO;
 		goto done;
 	}
-	hammer2_chain_delete(parent, chain, 0);
+	hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
 
 	/*
 	 * Replace the namespace with a hardlink pointer if the chain being
@@ -412,10 +414,10 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 					     chain->bref.key, 0,
 					     HAMMER2_BREF_TYPE_INODE,
 					     HAMMER2_INODE_BYTES,
-					     0);
+					     xop->head.mtid, 0);
 		if (error)
 			goto done;
-		hammer2_chain_modify(tmp, 0);
+		hammer2_chain_modify(tmp, xop->head.mtid, 0);
 		wipdata = &tmp->data->ipdata;
 		bzero(wipdata, sizeof(*wipdata));
 		wipdata->meta.name_key = chain->data->ipdata.meta.name_key;
@@ -442,7 +444,7 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 	 *
 	 * WARNING! Frontend assumes filename length is 18 bytes.
 	 */
-	hammer2_chain_modify(chain, 0);
+	hammer2_chain_modify(chain, xop->head.mtid, 0);
 	wipdata = &chain->data->ipdata;
 	ksnprintf(wipdata->filename, sizeof(wipdata->filename),
 		  "0x%016jx", (intmax_t)ip->meta.inum);
@@ -471,7 +473,7 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 				     wipdata->meta.name_key, 0,
 				     HAMMER2_BREF_TYPE_INODE,
 				     HAMMER2_INODE_BYTES,
-				     0);
+				     xop->head.mtid, 0);
 	/*
 	 * To avoid having to scan the collision space we can simply
 	 * reuse the inode's original name_key.  But ip->meta.name_key
@@ -586,7 +588,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 	/*
 	 * Delete it, then create it in the new namespace.
 	 */
-	hammer2_chain_delete(parent, chain, 0);
+	hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
 	parent = NULL;		/* safety */
@@ -610,7 +612,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 	    bcmp(xop->head.name, xop->head.name2, xop->head.name_len) != 0) {
 		hammer2_inode_data_t *wipdata;
 
-		hammer2_chain_modify(chain, 0);
+		hammer2_chain_modify(chain, xop->head.mtid, 0);
 		wipdata = &chain->data->ipdata;
 
 		bzero(wipdata->filename, sizeof(wipdata->filename));
@@ -642,7 +644,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 				     xop->lhc, 0,
 				     HAMMER2_BREF_TYPE_INODE,
 				     HAMMER2_INODE_BYTES,
-				     0);
+				     xop->head.mtid, 0);
 	/*
 	 * (frontend is responsible for fixing up ip->pip).
 	 */

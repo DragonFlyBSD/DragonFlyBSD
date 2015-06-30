@@ -64,10 +64,10 @@ static int hammer2_sync_insert(hammer2_thread_t *thr,
 			hammer2_chain_t *focus);
 static int hammer2_sync_destroy(hammer2_thread_t *thr,
 			hammer2_chain_t **parentp, hammer2_chain_t **chainp,
-			int idx);
+			hammer2_tid_t mtid, int idx);
 static int hammer2_sync_replace(hammer2_thread_t *thr,
 			hammer2_chain_t *parent, hammer2_chain_t *chain,
-			hammer2_tid_t modify_tid, int idx,
+			hammer2_tid_t mtid, int idx,
 			hammer2_chain_t *focus);
 
 /****************************************************************************
@@ -448,7 +448,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	 * against it.
 	 */
 	hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);
-	xop = &hammer2_xop_alloc(ip)->xop_scanall;
+	xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 	xop->key_beg = HAMMER2_KEY_MIN;
 	xop->key_end = HAMMER2_KEY_MAX;
 	hammer2_xop_start_except(&xop->head, hammer2_xop_scanall, idx);
@@ -527,7 +527,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			 * automatically advance the chain.
 			 */
 			nerror = hammer2_sync_destroy(thr, &parent, &chain,
-						      idx);
+						      0, idx);
 		} else if (n == 0 && chain->bref.modify_tid !=
 				     focus->bref.modify_tid) {
 			/*
@@ -672,7 +672,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		hammer2_xop_ipcluster_t *xop2;
 		hammer2_chain_t *focus;
 
-		xop2 = &hammer2_xop_alloc(ip)->xop_ipcluster;
+		xop2 = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_start_except(&xop2->head, hammer2_xop_ipcluster,
 					 idx);
 		error = hammer2_xop_collect(&xop2->head, 0);
@@ -714,8 +714,7 @@ static
 int
 hammer2_sync_insert(hammer2_thread_t *thr,
 		    hammer2_chain_t **parentp, hammer2_chain_t **chainp,
-		    hammer2_tid_t modify_tid, int idx,
-		    hammer2_chain_t *focus)
+		    hammer2_tid_t mtid, int idx, hammer2_chain_t *focus)
 {
 	hammer2_chain_t *chain;
 
@@ -726,7 +725,7 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 		(*parentp)->bref.type,
 		(*parentp)->bref.key,
 		idx,
-		focus->bref.type, focus->bref.key, modify_tid);
+		focus->bref.type, focus->bref.key, mtid);
 #endif
 
 	/*
@@ -744,8 +743,8 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 	hammer2_chain_create(parentp, &chain, thr->pmp,
 			     focus->bref.key, focus->bref.keybits,
 			     focus->bref.type, focus->bytes,
-			     0);
-	hammer2_chain_modify(chain, HAMMER2_MODIFY_KEEPMODIFY);
+			     mtid, 0);
+	hammer2_chain_modify(chain, mtid, 0);
 
 	/*
 	 * Copy focus to new chain
@@ -756,7 +755,7 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 	/* keybits already set */
 	chain->bref.vradix = focus->bref.vradix;
 	/* mirror_tid set by flush */
-	chain->bref.modify_tid = modify_tid;
+	KKASSERT(chain->bref.modify_tid == mtid);
 	chain->bref.flags = focus->bref.flags;
 	/* key already present */
 	/* check code will be recalculated */
@@ -811,7 +810,7 @@ static
 int
 hammer2_sync_destroy(hammer2_thread_t *thr,
 		     hammer2_chain_t **parentp, hammer2_chain_t **chainp,
-		     int idx)
+		     hammer2_tid_t mtid, int idx)
 {
 	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
@@ -843,7 +842,7 @@ hammer2_sync_destroy(hammer2_thread_t *thr,
 	hammer2_chain_lock(*parentp, HAMMER2_RESOLVE_ALWAYS);
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER);
 
-	hammer2_chain_delete(*parentp, chain, HAMMER2_DELETE_PERMANENT);
+	hammer2_chain_delete(*parentp, chain, mtid, HAMMER2_DELETE_PERMANENT);
 	hammer2_chain_unlock(chain);
 	hammer2_chain_drop(chain);
 	chain = NULL;			/* safety */
@@ -868,7 +867,7 @@ static
 int
 hammer2_sync_replace(hammer2_thread_t *thr,
 		     hammer2_chain_t *parent, hammer2_chain_t *chain,
-		     hammer2_tid_t modify_tid, int idx,
+		     hammer2_tid_t mtid, int idx,
 		     hammer2_chain_t *focus)
 {
 	int nradix;
@@ -879,23 +878,24 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 	kprintf("replace rec %p slave %d %d.%016jx mod=%016jx\n",
 		chain,
 		idx,
-		focus->bref.type, focus->bref.key, modify_tid);
+		focus->bref.type, focus->bref.key, mtid);
 #endif
 	hammer2_chain_unlock(chain);
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 	if (chain->bytes != focus->bytes) {
 		/* XXX what if compressed? */
 		nradix = hammer2_getradix(chain->bytes);
-		hammer2_chain_resize(NULL, parent, chain, nradix, 0);
+		hammer2_chain_resize(NULL, parent, chain,
+				     mtid, nradix, 0);
 	}
-	hammer2_chain_modify(chain, HAMMER2_MODIFY_KEEPMODIFY);
+	hammer2_chain_modify(chain, mtid, 0);
 	otype = chain->bref.type;
 	chain->bref.type = focus->bref.type;
 	chain->bref.methods = focus->bref.methods;
 	chain->bref.keybits = focus->bref.keybits;
 	chain->bref.vradix = focus->bref.vradix;
 	/* mirror_tid updated by flush */
-	chain->bref.modify_tid = modify_tid;
+	KKASSERT(chain->bref.modify_tid == mtid);
 	chain->bref.flags = focus->bref.flags;
 	/* key already present */
 	/* check code will be recalculated */
@@ -962,8 +962,8 @@ hammer2_xop_group_init(hammer2_pfs_t *pmp, hammer2_xop_group_t *xgrp)
  *
  * NOTE: Fifo indices might not be zero but ri == wi on objcache_get().
  */
-hammer2_xop_t *
-hammer2_xop_alloc(hammer2_inode_t *ip)
+void *
+hammer2_xop_alloc(hammer2_inode_t *ip, int flags)
 {
 	hammer2_xop_t *xop;
 
@@ -974,6 +974,10 @@ hammer2_xop_alloc(hammer2_inode_t *ip)
 	xop->head.state = 0;
 	xop->head.error = 0;
 	xop->head.collect_key = 0;
+	if (flags & HAMMER2_XOP_MODIFYING)
+		xop->head.mtid = hammer2_trans_sub(ip->pmp);
+	else
+		xop->head.mtid = 0;
 
 	xop->head.cluster.nchains = ip->cluster.nchains;
 	xop->head.cluster.pmp = ip->pmp;

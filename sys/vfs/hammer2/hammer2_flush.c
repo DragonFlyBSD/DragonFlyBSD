@@ -69,6 +69,7 @@ struct hammer2_flush_info {
 	int		depth;
 	int		diddeferral;
 	int		cache_index;
+	hammer2_tid_t	mtid;
 	struct h2_flush_list flushq;
 	hammer2_chain_t	*debug;
 };
@@ -140,7 +141,6 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 			} else {
 				nflags = (oflags | flags) + 1;
 			}
-			++pmp->modify_tid;
 		} else if (flags & HAMMER2_TRANS_BUFCACHE) {
 			/*
 			 * Requesting strategy transaction.  Generally
@@ -179,6 +179,31 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 		}
 		/* retry */
 	}
+}
+
+/*
+ * Start a sub-transaction, there is no 'subdone' function.  This will
+ * issue a new modify_tid (mtid) for the current transaction and must
+ * be called for each XOP when multiple XOPs are run in sequence.
+ */
+hammer2_tid_t
+hammer2_trans_sub(hammer2_pfs_t *pmp)
+{
+	hammer2_tid_t mtid;
+
+	mtid = atomic_fetchadd_64(&pmp->modify_tid, 1);
+
+	return (mtid);
+}
+
+/*
+ * Clears the PREFLUSH stage, called during a flush transaction after all
+ * logical buffer I/O has completed.
+ */
+void
+hammer2_trans_clear_preflush(hammer2_pfs_t *pmp)
+{
+	atomic_clear_int(&pmp->trans.flags, HAMMER2_TRANS_PREFLUSH);
 }
 
 void
@@ -227,8 +252,7 @@ hammer2_trans_newinum(hammer2_pfs_t *pmp)
 {
 	hammer2_tid_t tid;
 
-	KKASSERT(sizeof(long) == 8);
-	tid = atomic_fetchadd_long(&pmp->inode_tid, 1);
+	tid = atomic_fetchadd_64(&pmp->inode_tid, 1);
 
 	return tid;
 }
@@ -292,7 +316,7 @@ hammer2_delayed_flush(hammer2_chain_t *chain)
  * the call if it was modified.
  */
 void
-hammer2_flush(hammer2_chain_t *chain, int istop)
+hammer2_flush(hammer2_chain_t *chain, hammer2_tid_t mtid, int istop)
 {
 	hammer2_chain_t *scan;
 	hammer2_flush_info_t info;
@@ -310,6 +334,7 @@ hammer2_flush(hammer2_chain_t *chain, int istop)
 	bzero(&info, sizeof(info));
 	TAILQ_INIT(&info.flushq);
 	info.cache_index = -1;
+	info.mtid = mtid;
 
 	/*
 	 * Calculate parent (can be NULL), if not NULL the flush core
@@ -358,7 +383,7 @@ hammer2_flush(hammer2_chain_t *chain, int istop)
 			if (hammer2_debug & 0x0040)
 				kprintf("deferred flush %p\n", scan);
 			hammer2_chain_lock(scan, HAMMER2_RESOLVE_MAYBE);
-			hammer2_flush(scan, 0);
+			hammer2_flush(scan, mtid, 0);
 			hammer2_chain_unlock(scan);
 			hammer2_chain_drop(scan);	/* ref from deferral */
 		}
@@ -835,7 +860,7 @@ again:
 		 * We are updating the parent's blockmap, the parent must
 		 * be set modified.
 		 */
-		hammer2_chain_modify(parent, HAMMER2_MODIFY_KEEPMODIFY);
+		hammer2_chain_modify(parent, info->mtid, 0);
 		if (parent->bref.modify_tid < chain->bref.modify_tid)
 			parent->bref.modify_tid = chain->bref.modify_tid;
 
@@ -1018,7 +1043,7 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 	if (chain) {
 		hmp = chain->hmp;
 		if (chain->flags & HAMMER2_CHAIN_FLUSH_MASK) {
-			hammer2_flush(chain, 1);
+			hammer2_flush(chain, xop->head.mtid, 1);
 			parent = chain->parent;
 			KKASSERT(chain->pmp != parent->pmp);
 			hammer2_chain_setflush(parent);
@@ -1071,7 +1096,7 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 		 */
 		hammer2_voldata_modify(hmp);
 		chain = &hmp->fchain;
-		hammer2_flush(chain, 1);
+		hammer2_flush(chain, xop->head.mtid, 1);
 		KKASSERT(chain == &hmp->fchain);
 	}
 	hammer2_chain_unlock(&hmp->fchain);
@@ -1082,7 +1107,7 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 	if (hmp->vchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
 		chain = &hmp->vchain;
-		hammer2_flush(chain, 1);
+		hammer2_flush(chain, xop->head.mtid, 1);
 		KKASSERT(chain == &hmp->vchain);
 	}
 	hammer2_chain_unlock(&hmp->vchain);

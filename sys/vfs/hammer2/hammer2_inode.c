@@ -681,7 +681,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 		hammer2_key_t lhcbase;
 
 		lhcbase = lhc;
-		sxop = &hammer2_xop_alloc(dip)->xop_scanlhc;
+		sxop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 		sxop->lhc = lhc;
 		hammer2_xop_start(&sxop->head, hammer2_xop_scanlhc);
 		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
@@ -706,7 +706,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	/*
 	 * Create the inode with the lhc as the key.
 	 */
-	xop = &hammer2_xop_alloc(dip)->xop_create;
+	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 	xop->lhc = lhc;
 	xop->flags = flags;
 	bzero(&xop->meta, sizeof(xop->meta));
@@ -846,7 +846,7 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 	 */
 	if (name) {
 		lhc = lhcbase = hammer2_dirhash(name, name_len);
-		sxop = &hammer2_xop_alloc(dip)->xop_scanlhc;
+		sxop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 		sxop->lhc = lhc;
 		hammer2_xop_start(&sxop->head, hammer2_xop_scanlhc);
 		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
@@ -885,7 +885,7 @@ hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 	/*
 	 * Connect her up
 	 */
-	xop = &hammer2_xop_alloc(dip)->xop_connect;
+	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 	if (name)
 		hammer2_xop_setname(&xop->head, name, name_len);
 	hammer2_xop_setip2(&xop->head, ip);
@@ -1151,7 +1151,7 @@ hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 	{
 		hammer2_xop_lookup_t *xop;
 
-		xop = &hammer2_xop_alloc(pmp->iroot)->xop_lookup;
+		xop = hammer2_xop_alloc(pmp->iroot, HAMMER2_XOP_MODIFYING);
 		xop->lhc = HAMMER2_INODE_HIDDENDIR;
 		hammer2_xop_start(&xop->head, hammer2_xop_lookup);
 		error = hammer2_xop_collect(&xop->head, 0);
@@ -1199,7 +1199,7 @@ hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 		hammer2_xop_unlinkall_t *xop;
 
 		hammer2_inode_lock(pmp->ihidden, 0);
-		xop = &hammer2_xop_alloc(pmp->ihidden)->xop_unlinkall;
+		xop = hammer2_xop_alloc(pmp->ihidden, HAMMER2_XOP_MODIFYING);
 		xop->key_beg = HAMMER2_KEY_MIN;
 		xop->key_end = HAMMER2_KEY_MAX;
 		hammer2_xop_start(&xop->head, hammer2_inode_xop_unlinkall);
@@ -1265,13 +1265,12 @@ hammer2_inode_common_parent(hammer2_inode_t *fdip, hammer2_inode_t *tdip)
 }
 
 /*
- * Set an inode's cluster modified, marking the related chains RW and
- * duplicating them if necessary.
+ * Mark an inode as being modified, meaning that the caller will modify
+ * ip->meta.
  *
- * The passed-in chain is a localized copy of the chain previously acquired
- * when the inode was locked (and possilby replaced in the mean time), and
- * must also be updated.  In fact, we update it first and then synchronize
- * the inode's cluster cache.
+ * NOTE: No mtid (modify_tid) is passed into this routine.  The caller is
+ *	 only modifying the in-memory inode.  A modify_tid is synchronized
+ *	 later when the inode gets flushed.
  */
 void
 hammer2_inode_modify(hammer2_inode_t *ip)
@@ -1294,7 +1293,7 @@ hammer2_inode_fsync(hammer2_inode_t *ip)
 		hammer2_xop_fsync_t *xop;
 		int error;
 
-		xop = &hammer2_xop_alloc(ip)->xop_fsync;
+		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 		xop->clear_directdata = 0;
 		if (ip->flags & HAMMER2_INODE_RESIZED) {
 			if ((ip->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA) &&
@@ -1356,7 +1355,7 @@ hammer2_inode_run_unlinkq(hammer2_pfs_t *pmp)
 		kfree(ipul, pmp->minode);
 
 		hammer2_inode_lock(ip, 0);
-		xop = &hammer2_xop_alloc(ip)->xop_destroy;
+		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_start(&xop->head, hammer2_inode_xop_destroy);
 		error = hammer2_xop_collect(&xop->head, 0);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
@@ -1414,9 +1413,9 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 				     xop->lhc, 0,
 				     HAMMER2_BREF_TYPE_INODE,
 				     HAMMER2_INODE_BYTES,
-				     xop->flags);
+				     xop->head.mtid, xop->flags);
 	if (error == 0) {
-		hammer2_chain_modify(chain, 0);
+		hammer2_chain_modify(chain, xop->head.mtid, 0);
 		chain->data->ipdata.meta = xop->meta;
 		if (xop->head.name) {
 			bcopy(xop->head.name,
@@ -1473,7 +1472,7 @@ hammer2_inode_xop_destroy(hammer2_xop_t *arg, int clindex)
 		error = EIO;
 		goto done;
 	}
-	hammer2_chain_delete(parent, chain, 0);
+	hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
 	error = 0;
 done:
 	hammer2_xop_feed(&xop->head, NULL, clindex, error);
@@ -1511,7 +1510,8 @@ hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
 				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS);
 	while (chain) {
-		hammer2_chain_delete(parent, chain, HAMMER2_DELETE_PERMANENT);
+		hammer2_chain_delete(parent, chain,
+				     xop->head.mtid, HAMMER2_DELETE_PERMANENT);
 		hammer2_chain_unlock(chain);
 		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
 					  HAMMER2_RESOLVE_SHARED);
@@ -1577,7 +1577,7 @@ hammer2_inode_xop_connect(hammer2_xop_t *arg, int clindex)
 	 */
 	chain = hammer2_inode_chain(xop->head.ip2, clindex,
 				    HAMMER2_RESOLVE_ALWAYS);
-	hammer2_chain_modify(chain, 0);
+	hammer2_chain_modify(chain, xop->head.mtid, 0);
 	wipdata = &chain->data->ipdata;
 
 	hammer2_inode_modify(xop->head.ip2);
@@ -1595,7 +1595,7 @@ hammer2_inode_xop_connect(hammer2_xop_t *arg, int clindex)
 				     xop->lhc, 0,
 				     HAMMER2_BREF_TYPE_INODE,
 				     HAMMER2_INODE_BYTES,
-				     0);
+				     xop->head.mtid, 0);
 
 	/*
 	 * Feed result back.
@@ -1662,6 +1662,7 @@ hammer2_inode_xop_fsync(hammer2_xop_t *arg, int clindex)
 				break;
 			case HAMMER2_BREF_TYPE_DATA:
 				hammer2_chain_delete(parent, chain,
+						     xop->head.mtid,
 						     HAMMER2_DELETE_PERMANENT);
 				break;
 			}
@@ -1677,7 +1678,7 @@ hammer2_inode_xop_fsync(hammer2_xop_t *arg, int clindex)
 	 * Sync the inode meta-data, potentially clear the blockset area
 	 * of direct data so it can be used for blockrefs.
 	 */
-	hammer2_chain_modify(parent, 0);
+	hammer2_chain_modify(parent, xop->head.mtid, 0);
 	parent->data->ipdata.meta = xop->meta;
 	if (xop->clear_directdata) {
 		bzero(&parent->data->ipdata.u.blockset,

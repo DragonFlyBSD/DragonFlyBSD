@@ -201,6 +201,7 @@ typedef struct hammer2_bulkfree_info {
 	long			count_l0cleans;
 	long			count_linadjusts;
 	hammer2_off_t		adj_free;
+	hammer2_tid_t		mtid;
 	time_t			save_time;
 } hammer2_bulkfree_info_t;
 
@@ -256,6 +257,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 			(intmax_t)incr / HAMMER2_FREEMAP_LEVEL1_SIZE);
 
 		hammer2_trans_init(hmp->spmp, 0);
+		cbinfo.mtid = hammer2_trans_sub(hmp->spmp);
 		doabort |= hammer2_bulk_scan(&hmp->vchain,
 					    h2_bulkfree_callback, &cbinfo);
 
@@ -544,7 +546,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		kprintf("live %016jx %04d.%04x (avail=%d)\n",
 			data_off, bmapindex, live->class, live->avail);
 
-		hammer2_chain_modify(live_chain, 0);
+		hammer2_chain_modify(live_chain, cbinfo->mtid, 0);
 		h2_bulkfree_sync_adjust(cbinfo, live, bmap);
 next:
 		data_off += HAMMER2_FREEMAP_LEVEL0_SIZE;

@@ -1524,7 +1524,7 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 		hammer2_xop_ipcluster_t *xop;
 		hammer2_inode_meta_t *meta;
 
-		xop = &hammer2_xop_alloc(pmp->iroot)->xop_ipcluster;
+		xop = hammer2_xop_alloc(pmp->iroot, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_start(&xop->head, hammer2_xop_ipcluster);
 		error = hammer2_xop_collect(&xop->head, 0);
 
@@ -1702,6 +1702,7 @@ TAILQ_HEAD(hammer2_recovery_list, hammer2_recovery_elm);
 
 struct hammer2_recovery_info {
 	struct hammer2_recovery_list list;
+	hammer2_tid_t	mtid;
 	int	depth;
 };
 
@@ -1865,7 +1866,7 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 		 */
 		if ((chain->bref.flags & HAMMER2_BREF_FLAG_PFSROOT) &&
 		    (chain->flags & HAMMER2_CHAIN_ONFLUSH)) {
-			hammer2_flush(chain, 1);
+			hammer2_flush(chain, info->mtid, 1);
 		}
 		chain = hammer2_chain_scan(parent, chain, &cache_index,
 					   HAMMER2_LOOKUP_NODATA);
@@ -1934,7 +1935,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * to be instantiated during this sequence.
 	 */
 	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH |
-				HAMMER2_TRANS_PREFLUSH);
+			        HAMMER2_TRANS_PREFLUSH);
 	hammer2_inode_run_unlinkq(pmp);
 
 	info.error = 0;
@@ -1949,7 +1950,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * are not affected.
 	 */
 	hammer2_bioq_sync(pmp);
-	atomic_clear_int(&pmp->trans.flags, HAMMER2_TRANS_PREFLUSH);
+	hammer2_trans_clear_preflush(pmp);
 
 	/*
 	 * Use the XOP interface to concurrently flush all nodes to
@@ -1962,7 +1963,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * XXX For now wait for all flushes to complete.
 	 */
 	if (iroot) {
-		xop = &hammer2_xop_alloc(iroot)->xop_flush;
+		xop = hammer2_xop_alloc(iroot, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_start(&xop->head, hammer2_inode_xop_flush);
 		error = hammer2_xop_collect(&xop->head,
 					    HAMMER2_XOP_COLLECT_WAITALL);
@@ -1978,6 +1979,10 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 
 /*
  * Sync passes.
+ *
+ * Note that we ignore the tranasction mtid we got above.  Instead,
+ * each vfsync below will ultimately get its own via TRANS_BUFCACHE
+ * transactions.
  */
 static int
 hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)

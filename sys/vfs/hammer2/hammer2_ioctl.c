@@ -588,6 +588,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	hammer2_dev_t *hmp;
 	hammer2_ioc_pfs_t *pfs;
 	hammer2_inode_t *nip;
+	hammer2_tid_t mtid;
 	int error;
 
 	hmp = ip->pmp->pfs_hmps[0];
@@ -605,15 +606,15 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		return(EEXIST);
 
 	hammer2_trans_init(hmp->spmp, 0);
+	mtid = hammer2_trans_sub(hmp->spmp);
 	nip = hammer2_inode_create(hmp->spmp->iroot, NULL, NULL,
 				   pfs->name, strlen(pfs->name), 0,
 				   1, HAMMER2_OBJTYPE_DIRECTORY, 0,
 				   HAMMER2_INSERT_PFSROOT, &error);
-	kprintf("E %p %d\n", nip, error);
 	if (error == 0) {
 		hammer2_inode_modify(nip);
 		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_modify(nchain, 0);
+		hammer2_chain_modify(nchain, mtid, 0);
 		nipdata = &nchain->data->ipdata;
 
 		nip->meta.pfs_type = pfs->pfs_type;
@@ -687,7 +688,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	hammer2_trans_init(spmp, 0);
 	hammer2_inode_lock(dip, 0);
 
-	xop = &hammer2_xop_alloc(dip)->xop_unlink;
+	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 	hammer2_xop_setname(&xop->head, pfs->name, strlen(pfs->name));
 	xop->isdir = 2;
 	xop->dopermanent = 1;
@@ -707,6 +708,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	hammer2_ioc_pfs_t *pfs = data;
 	hammer2_dev_t	*hmp;
 	hammer2_chain_t	*chain;
+	hammer2_tid_t	mtid;
 	int error;
 
 	if (pfs->name[0] == 0)
@@ -721,10 +723,11 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	hammer2_vfs_sync(ip->pmp->mp, MNT_WAIT);
 
 	hammer2_trans_init(ip->pmp, HAMMER2_TRANS_ISFLUSH);
+	mtid = hammer2_trans_sub(ip->pmp);
 	hammer2_inode_lock(ip, 0);
 
 	chain = hammer2_inode_chain(ip, 0, HAMMER2_RESOLVE_ALWAYS);
-	error = hammer2_chain_snapshot(chain, pfs);
+	error = hammer2_chain_snapshot(chain, pfs, mtid);
 	hammer2_chain_unlock(chain);
 	hammer2_chain_drop(chain);
 

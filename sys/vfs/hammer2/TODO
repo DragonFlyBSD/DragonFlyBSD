@@ -1,3 +1,6 @@
+* Need backend synchronization / serialization when the frontend detaches
+  a XOP.  modify_tid tests won't be enough, the backend may wind up executing
+  the XOP out of order after the detach.
 
 * xop_start - only start synchronized elements
 

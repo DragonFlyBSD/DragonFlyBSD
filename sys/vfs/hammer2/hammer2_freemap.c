@@ -56,8 +56,8 @@ struct hammer2_fiterate {
 typedef struct hammer2_fiterate hammer2_fiterate_t;
 
 static int hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
-			hammer2_blockref_t *bref,
-			int radix, hammer2_fiterate_t *iter);
+			hammer2_blockref_t *bref, int radix,
+			hammer2_fiterate_t *iter, hammer2_tid_t mtid);
 static void hammer2_freemap_init(hammer2_dev_t *hmp,
 			hammer2_key_t key, hammer2_chain_t *chain);
 static int hammer2_bmap_alloc(hammer2_dev_t *hmp,
@@ -199,10 +199,13 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 	hammer2_dev_t *hmp = chain->hmp;
 	hammer2_blockref_t *bref = &chain->bref;
 	hammer2_chain_t *parent;
+	hammer2_tid_t mtid;
 	int radix;
 	int error;
 	unsigned int hindex;
 	hammer2_fiterate_t iter;
+
+	mtid = hammer2_trans_sub(hmp->spmp);
 
 	/*
 	 * Validate the allocation size.  It must be a power of 2.
@@ -280,7 +283,8 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 	iter.loops = 0;
 
 	while (error == EAGAIN) {
-		error = hammer2_freemap_try_alloc(&parent, bref, radix, &iter);
+		error = hammer2_freemap_try_alloc(&parent, bref, radix,
+						  &iter, mtid);
 	}
 	hmp->heur_freemap[hindex] = iter.bnext;
 	hammer2_chain_unlock(parent);
@@ -292,7 +296,7 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 static int
 hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 			  hammer2_blockref_t *bref, int radix,
-			  hammer2_fiterate_t *iter)
+			  hammer2_fiterate_t *iter, hammer2_tid_t mtid)
 {
 	hammer2_dev_t *hmp = (*parentp)->hmp;
 	hammer2_off_t l0size;
@@ -346,10 +350,10 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
 				     HAMMER2_FREEMAP_LEVELN_PSIZE,
-				     0);
+				     mtid, 0);
 		KKASSERT(error == 0);
 		if (error == 0) {
-			hammer2_chain_modify(chain, 0);
+			hammer2_chain_modify(chain, mtid, 0);
 			bzero(&chain->data->bmdata[0],
 			      HAMMER2_FREEMAP_LEVELN_PSIZE);
 			chain->bref.check.freemap.bigmask = (uint32_t)-1;
@@ -376,7 +380,7 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 		/*
 		 * Modify existing chain to setup for adjustment.
 		 */
-		hammer2_chain_modify(chain, 0);
+		hammer2_chain_modify(chain, mtid, 0);
 	}
 
 	/*
@@ -393,7 +397,7 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 		start = (int)((iter->bnext - key) >>
 			      HAMMER2_FREEMAP_LEVEL0_RADIX);
 		KKASSERT(start >= 0 && start < HAMMER2_FREEMAP_COUNT);
-		hammer2_chain_modify(chain, 0);
+		hammer2_chain_modify(chain, mtid, 0);
 
 		error = ENOSPC;
 		for (count = 0; count < HAMMER2_FREEMAP_COUNT; ++count) {
@@ -812,7 +816,8 @@ hammer2_freemap_iterate(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
  * and to do the actual free.
  */
 void
-hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref, int how)
+hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
+		       int how)
 {
 	hammer2_off_t data_off = bref->data_off;
 	hammer2_chain_t *chain;
@@ -823,6 +828,7 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref, int how)
 	hammer2_off_t l0size;
 	hammer2_off_t l1size;
 	hammer2_off_t l1mask;
+	hammer2_tid_t mtid;
 	hammer2_bitmap_t *bitmap;
 	const hammer2_bitmap_t bmmask00 = 0;
 	hammer2_bitmap_t bmmask01;
@@ -838,6 +844,8 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref, int how)
 	int error;
 
 	KKASSERT(how == HAMMER2_FREEMAP_DORECOVER);
+
+	mtid = hammer2_trans_sub(hmp->spmp);
 
 	radix = (int)data_off & HAMMER2_OFF_MASK_RADIX;
 	data_off &= ~HAMMER2_OFF_MASK_RADIX;
@@ -901,7 +909,7 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref, int how)
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
 				     HAMMER2_FREEMAP_LEVELN_PSIZE,
-				     0);
+				     mtid, 0);
 
 		if (hammer2_debug & 0x0040) {
 			kprintf("fixup create chain %p %016jx:%d\n",
@@ -909,7 +917,7 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref, int how)
 		}
 
 		if (error == 0) {
-			hammer2_chain_modify(chain, 0);
+			hammer2_chain_modify(chain, mtid, 0);
 			bzero(&chain->data->bmdata[0],
 			      HAMMER2_FREEMAP_LEVELN_PSIZE);
 			chain->bref.check.freemap.bigmask = (uint32_t)-1;
@@ -970,7 +978,7 @@ again:
 			 */
 			if ((*bitmap & bmmask11) != bmmask11) {
 				if (modified == 0) {
-					hammer2_chain_modify(chain, 0);
+					hammer2_chain_modify(chain, mtid, 0);
 					modified = 1;
 					goto again;
 				}

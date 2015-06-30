@@ -68,7 +68,8 @@ static int hammer2_indirect_optimize;	/* XXX SYSCTL */
 
 static hammer2_chain_t *hammer2_chain_create_indirect(
 		hammer2_chain_t *parent,
-		hammer2_key_t key, int keybits, int for_type, int *errorp);
+		hammer2_key_t key, int keybits,
+		hammer2_tid_t mtid, int for_type, int *errorp);
 static void hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop);
 static hammer2_chain_t *hammer2_combined_find(
 		hammer2_chain_t *parent,
@@ -996,7 +997,7 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
 void
 hammer2_chain_resize(hammer2_inode_t *ip,
 		     hammer2_chain_t *parent, hammer2_chain_t *chain,
-		     int nradix, int flags)
+		     hammer2_tid_t mtid, int nradix, int flags)
 {
 	hammer2_dev_t *hmp;
 	size_t obytes;
@@ -1029,7 +1030,7 @@ hammer2_chain_resize(hammer2_inode_t *ip,
 	 *
 	 * NOTE: The modify will set BMAPUPD for us if BMAPPED is set.
 	 */
-	hammer2_chain_modify(chain, 0);
+	hammer2_chain_modify(chain, mtid, 0);
 
 	/*
 	 * Relocate the block, even if making it smaller (because different
@@ -1055,7 +1056,8 @@ hammer2_chain_resize(hammer2_inode_t *ip,
 }
 
 void
-hammer2_chain_modify(hammer2_chain_t *chain, int flags)
+hammer2_chain_modify(hammer2_chain_t *chain,
+		     hammer2_tid_t mtid, int flags)
 {
 	hammer2_blockref_t obref;
 	hammer2_dev_t *hmp;
@@ -1128,11 +1130,9 @@ hammer2_chain_modify(hammer2_chain_t *chain, int flags)
 	 *
 	 * NOTE: chain->pmp could be the device spmp.
 	 */
+	KKASSERT(mtid != 0);
 	chain->bref.mirror_tid = hmp->voldata.mirror_tid + 1;
-	if (chain->pmp && (flags & HAMMER2_MODIFY_KEEPMODIFY) == 0) {
-		/* XXX HAMMER2_TRANS_ISFLUSH */
-		chain->bref.modify_tid = chain->pmp->modify_tid;
-	}
+	chain->bref.modify_tid = mtid;
 
 	/*
 	 * Set BMAPUPD to tell the flush code that an existing blockmap entry
@@ -1273,10 +1273,11 @@ skip2:
  * Modify the chain associated with an inode.
  */
 void
-hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain, int flags)
+hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain,
+			hammer2_tid_t mtid, int flags)
 {
 	hammer2_inode_modify(ip);
-	hammer2_chain_modify(chain, flags);
+	hammer2_chain_modify(chain, mtid, flags);
 }
 
 /*
@@ -2219,7 +2220,7 @@ int
 hammer2_chain_create(hammer2_chain_t **parentp,
 		     hammer2_chain_t **chainp, hammer2_pfs_t *pmp,
 		     hammer2_key_t key, int keybits, int type, size_t bytes,
-		     int flags)
+		     hammer2_tid_t mtid, int flags)
 {
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *chain;
@@ -2396,7 +2397,7 @@ again:
 		hammer2_chain_t *nparent;
 
 		nparent = hammer2_chain_create_indirect(parent, key, keybits,
-							type, &error);
+							mtid, type, &error);
 		if (nparent == NULL) {
 			if (allocated)
 				hammer2_chain_drop(chain);
@@ -2441,7 +2442,8 @@ again:
 		case HAMMER2_BREF_TYPE_DATA:
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		case HAMMER2_BREF_TYPE_INODE:
-			hammer2_chain_modify(chain, HAMMER2_MODIFY_OPTDATA);
+			hammer2_chain_modify(chain, mtid,
+					     HAMMER2_MODIFY_OPTDATA);
 			break;
 		default:
 			/*
@@ -2513,7 +2515,7 @@ done:
 void
 hammer2_chain_rename(hammer2_blockref_t *bref,
 		     hammer2_chain_t **parentp, hammer2_chain_t *chain,
-		     int flags)
+		     hammer2_tid_t mtid, int flags)
 {
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
@@ -2559,7 +2561,7 @@ hammer2_chain_rename(hammer2_blockref_t *bref,
 
 		hammer2_chain_create(parentp, &chain, chain->pmp,
 				     bref->key, bref->keybits, bref->type,
-				     chain->bytes, flags);
+				     chain->bytes, mtid, flags);
 		KKASSERT(chain->flags & HAMMER2_CHAIN_UPDATE);
 		hammer2_chain_setflush(*parentp);
 	}
@@ -2575,7 +2577,7 @@ hammer2_chain_rename(hammer2_blockref_t *bref,
  */
 static void
 _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
-			     int flags)
+			     hammer2_tid_t mtid, int flags)
 {
 	hammer2_dev_t *hmp;
 
@@ -2596,7 +2598,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		KKASSERT(parent != NULL);
 		KKASSERT(parent->error == 0);
 		KKASSERT((parent->flags & HAMMER2_CHAIN_INITIAL) == 0);
-		hammer2_chain_modify(parent, HAMMER2_MODIFY_OPTDATA);
+		hammer2_chain_modify(parent, mtid, HAMMER2_MODIFY_OPTDATA);
 
 		/*
 		 * Calculate blockmap pointer
@@ -2753,7 +2755,7 @@ static
 hammer2_chain_t *
 hammer2_chain_create_indirect(hammer2_chain_t *parent,
 			      hammer2_key_t create_key, int create_bits,
-			      int for_type, int *errorp)
+			      hammer2_tid_t mtid, int for_type, int *errorp)
 {
 	hammer2_dev_t *hmp;
 	hammer2_blockref_t *base;
@@ -2914,7 +2916,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	 * OPTDATA to allow it to remain in the INITIAL state.  Otherwise
 	 * it won't be acted upon by the flush code.
 	 */
-	hammer2_chain_modify(ichain, HAMMER2_MODIFY_OPTDATA);
+	hammer2_chain_modify(ichain, mtid, HAMMER2_MODIFY_OPTDATA);
 
 	/*
 	 * Iterate the original parent and move the matching brefs into
@@ -3026,8 +3028,8 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 *	    inode stats (and thus asserting if there is no
 		 *	    chain->data loaded).
 		 */
-		hammer2_chain_delete(parent, chain, 0);
-		hammer2_chain_rename(NULL, &ichain, chain, 0);
+		hammer2_chain_delete(parent, chain, mtid, 0);
+		hammer2_chain_rename(NULL, &ichain, chain, mtid, 0);
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 		KKASSERT(parent->refs > 0);
@@ -3387,7 +3389,7 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
  */
 void
 hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
-		     int flags)
+		     hammer2_tid_t mtid, int flags)
 {
 	KKASSERT(hammer2_mtx_owned(&chain->lock));
 
@@ -3400,7 +3402,7 @@ hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0) {
 		KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
 			 chain->parent == parent);
-		_hammer2_chain_delete_helper(parent, chain, flags);
+		_hammer2_chain_delete_helper(parent, chain, mtid, flags);
 	}
 
 	/*
@@ -4133,7 +4135,8 @@ done:
  * The ioctl code has already synced the filesystem.
  */
 int
-hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp)
+hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
+		       hammer2_tid_t mtid)
 {
 	hammer2_dev_t *hmp;
 	const hammer2_inode_data_t *ripdata;
@@ -4185,7 +4188,7 @@ hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp)
 	if (nip) {
 		hammer2_inode_modify(nip);
 		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_modify(nchain, 0);
+		hammer2_chain_modify(nchain, mtid, 0);
 		wipdata = &nchain->data->ipdata;
 
 		nip->meta.pfs_type = HAMMER2_PFSTYPE_MASTER;
@@ -4211,7 +4214,7 @@ hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp)
 		/* XXX doesn't work with real cluster */
 		wipdata->meta = nip->meta;
 		wipdata->u.blockset = ripdata->u.blockset;
-		hammer2_flush(nchain, 1);
+		hammer2_flush(nchain, mtid, 1);
 		hammer2_chain_unlock(nchain);
 		hammer2_chain_drop(nchain);
 		hammer2_inode_unlock(nip);

@@ -558,7 +558,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	 * parent is the inode cluster, already locked for us.  Don't
 	 * double lock shared locks as this will screw up upgrades.
 	 */
-	xop = &hammer2_xop_alloc(ip)->xop_readdir;
+	xop = hammer2_xop_alloc(ip, 0);
 	xop->lkey = lkey;
 	hammer2_xop_start(&xop->head, hammer2_xop_readdir);
 
@@ -1079,7 +1079,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 
 	LOCKSTART;
 	dip = VTOI(ap->a_dvp);
-	xop = &hammer2_xop_alloc(dip)->xop_nresolve;
+	xop = hammer2_xop_alloc(dip, 0);
 
 	ncp = ap->a_nch->ncp;
 	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
@@ -1303,7 +1303,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * If fdip != cdip we must shift the inode to cdip.
 	 */
 	if (fdip != cdip || (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE)) {
-		xop1 = &hammer2_xop_alloc(fdip)->xop_nlink;
+		xop1 = hammer2_xop_alloc(fdip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_setip2(&xop1->head, ip);
 		hammer2_xop_setip3(&xop1->head, cdip);
 
@@ -1561,7 +1561,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	 * locates and returns the cluster associated with the real inode.
 	 * We have to handle nlinks here on the frontend.
 	 */
-	xop = &hammer2_xop_alloc(dip)->xop_unlink;
+	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
 	isopen = cache_isopen(ap->a_nch);
 	xop->isdir = 0;
@@ -1620,7 +1620,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	hammer2_trans_init(dip->pmp, 0);
 	hammer2_inode_lock(dip, 0);
 
-	xop = &hammer2_xop_alloc(dip)->xop_unlink;
+	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 
 	ncp = ap->a_nch->ncp;
 	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
@@ -1724,7 +1724,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
 		hammer2_xop_nlink_t *xop1;
 
-		xop1 = &hammer2_xop_alloc(fdip)->xop_nlink;
+		xop1 = hammer2_xop_alloc(fdip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_setip2(&xop1->head, ip);
 		hammer2_xop_setip3(&xop1->head, cdip);
 
@@ -1746,7 +1746,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		 * locates and returns the cluster associated with the real
 		 * inode.  We have to handle nlinks here on the frontend.
 		 */
-		xop2 = &hammer2_xop_alloc(tdip)->xop_unlink;
+		xop2 = hammer2_xop_alloc(tdip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_setname(&xop2->head, tname, tname_len);
 		isopen = cache_isopen(ap->a_tnch);
 		xop2->isdir = -1;
@@ -1791,7 +1791,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 
 		tlhc = hammer2_dirhash(tname, tname_len);
 		lhcbase = tlhc;
-		sxop = &hammer2_xop_alloc(tdip)->xop_scanlhc;
+		sxop = hammer2_xop_alloc(tdip, HAMMER2_XOP_MODIFYING);
 		sxop->lhc = tlhc;
 		hammer2_xop_start(&sxop->head, hammer2_xop_scanlhc);
 		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
@@ -1826,7 +1826,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	if (error == 0) {
 		hammer2_xop_nrename_t *xop4;
 
-		xop4 = &hammer2_xop_alloc(fdip)->xop_nrename;
+		xop4 = hammer2_xop_alloc(fdip, HAMMER2_XOP_MODIFYING);
 		xop4->lhc = tlhc;
 		xop4->ip_key = ip->meta.name_key;
 		hammer2_xop_setip2(&xop4->head, ip);
