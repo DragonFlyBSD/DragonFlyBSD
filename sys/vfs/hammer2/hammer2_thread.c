@@ -233,12 +233,15 @@ hammer2_primary_sync_thread(void *arg)
 		/*
 		 * Synchronization scan.
 		 */
-		kprintf("sync_slaves clindex %d\n", thr->clindex);
+		kprintf("sync_slaves pfs %s clindex %d\n",
+			pmp->pfs_names[thr->clindex], thr->clindex);
 		hammer2_trans_init(pmp, 0);
 
 		hammer2_inode_ref(pmp->iroot);
+
 		for (;;) {
 			int didbreak = 0;
+			/* XXX lock synchronize pmp->modify_tid */
 			error = hammer2_sync_slaves(thr, pmp->iroot, &list);
 			if (error != EAGAIN)
 				break;
@@ -261,6 +264,7 @@ hammer2_primary_sync_thread(void *arg)
 				 * defers have completed.
 				 */
 				if (defer == list.base) {
+					--list.count;
 					list.base = defer->next;
 					kfree(defer, M_HAMMER2);
 					defer = NULL;	/* safety */
@@ -272,14 +276,16 @@ hammer2_primary_sync_thread(void *arg)
 			 * If the thread is being remastered, frozen, or
 			 * stopped, clean up any left-over deferals.
 			 */
-			if (didbreak) {
+			if (didbreak || (error && error != EAGAIN)) {
 				kprintf("didbreak\n");
 				while ((defer = list.base) != NULL) {
+					--list.count;
 					hammer2_inode_drop(defer->ip);
 					list.base = defer->next;
 					kfree(defer, M_HAMMER2);
 				}
-				error = EINPROGRESS;
+				if (error == 0 || error == EAGAIN)
+					error = EINPROGRESS;
 				break;
 			}
 		}
@@ -404,9 +410,10 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	hammer2_chain_t *chain;
 	hammer2_pfs_t *pmp;
 	hammer2_key_t key_next;
+	hammer2_tid_t sync_tid;
 	int cache_index = -1;
 	int needrescan;
-	int didwork;
+	int wantupdate;
 	int error;
 	int nerror;
 	int idx;
@@ -415,7 +422,11 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	pmp = ip->pmp;
 	idx = thr->clindex;	/* cluster node we are responsible for */
 	needrescan = 0;
-	didwork = 0;
+	wantupdate = 0;
+
+	if (ip->cluster.focus == NULL)
+		return (EINPROGRESS);
+	sync_tid = ip->cluster.focus->bref.modify_tid;
 
 #if 0
 	/*
@@ -444,6 +455,8 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	parent = hammer2_inode_chain(ip, idx,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
+	if (parent->bref.modify_tid != sync_tid)
+		wantupdate = 1;
 
 	hammer2_inode_unlock(ip);
 
@@ -454,6 +467,8 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 				     HAMMER2_LOOKUP_NODIRECT |
 				     HAMMER2_LOOKUP_NODATA);
 	error = hammer2_xop_collect(&xop->head, 0);
+	kprintf("XOP_INITIAL xop=%p clindex %d on %s\n", xop, thr->clindex,
+		pmp->pfs_names[thr->clindex]);
 
 	for (;;) {
 		/*
@@ -465,6 +480,12 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		int advance_xop = 0;
 		int dodefer = 0;
 		hammer2_chain_t *focus;
+
+		kprintf("loop xop=%p chain[1]=%p lockcnt=%d\n",
+			xop, xop->head.cluster.array[1].chain,
+			(xop->head.cluster.array[1].chain ?
+			    xop->head.cluster.array[1].chain->lockcnt : -1)
+			);
 
 		if (chain == NULL && error == ENOENT)
 			break;
@@ -507,7 +528,6 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			 */
 			nerror = hammer2_sync_destroy(thr, &parent, &chain,
 						      idx);
-			didwork = 1;
 		} else if (n == 0 && chain->bref.modify_tid !=
 				     focus->bref.modify_tid) {
 			/*
@@ -529,7 +549,6 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 						focus->bref.modify_tid,
 						idx, focus);
 			}
-			didwork = 1;
 		} else if (n == 0) {
 			/*
 			 * 100% match, advance both
@@ -551,7 +570,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 						thr, &parent, &chain,
 						0,
 						idx, focus);
-				dodefer = 1;
+				dodefer = 2;
 			} else {
 				nerror = hammer2_sync_insert(
 						thr, &parent, &chain,
@@ -560,7 +579,6 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			}
 			advance_local = 1;
 			advance_xop = 1;
-			didwork = 1;
 		}
 
 		/*
@@ -587,10 +605,10 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			xop->head.cluster.array[idx].flags =
 							HAMMER2_CITEM_INVALID;
 			xop->head.cluster.array[idx].chain = chain;
-			nip = hammer2_inode_get(pmp, ip, &xop->head.cluster);
+			nip = hammer2_inode_get(pmp, ip,
+						&xop->head.cluster, idx);
 			xop->head.cluster.array[idx].chain = NULL;
 
-			kprintf("DEFER INODE %p->%p\n", ip, nip);
 			hammer2_inode_ref(nip);
 			hammer2_inode_unlock(nip);
 
@@ -650,7 +668,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	 *
 	 * XXX inode lock was lost
 	 */
-	if (error == 0 && didwork) {
+	if (error == 0 && wantupdate) {
 		hammer2_xop_ipcluster_t *xop2;
 		hammer2_chain_t *focus;
 
@@ -660,7 +678,10 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		error = hammer2_xop_collect(&xop2->head, 0);
 		if (error == 0) {
 			focus = xop2->head.cluster.focus;
-			kprintf("syncthr: update inode\n");
+			kprintf("syncthr: update inode %p (%s)\n",
+				focus,
+				(focus ?
+				 (char *)focus->data->ipdata.filename : "?"));
 			chain = hammer2_inode_chain_and_parent(ip, idx,
 						    &parent,
 						    HAMMER2_RESOLVE_ALWAYS |
@@ -669,8 +690,8 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			KKASSERT(parent != NULL);
 			nerror = hammer2_sync_replace(
 					thr, parent, chain,
-					focus->bref.modify_tid,
-					idx, xop2->head.cluster.focus);
+					sync_tid,
+					idx, focus);
 			hammer2_chain_unlock(chain);
 			hammer2_chain_drop(chain);
 			hammer2_chain_unlock(parent);
@@ -708,15 +729,17 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 		focus->bref.type, focus->bref.key, modify_tid);
 #endif
 
+	/*
+	 * Create the missing chain.  Exclusive locks are needed.
+	 *
+	 * Have to be careful to avoid deadlocks.
+	 */
+	if (*chainp)
+		hammer2_chain_unlock(*chainp);
 	hammer2_chain_unlock(*parentp);
 	hammer2_chain_lock(*parentp, HAMMER2_RESOLVE_ALWAYS);
 	/* reissue lookup? */
 
-	/*
-	 * Create the missing chain.
-	 *
-	 * Have to be careful to avoid deadlocks.
-	 */
 	chain = NULL;
 	hammer2_chain_create(parentp, &chain, thr->pmp,
 			     focus->bref.key, focus->bref.keybits,
@@ -759,16 +782,19 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 		break;
 	}
 
-	hammer2_chain_unlock(focus);
 	hammer2_chain_unlock(chain);		/* unlock, leave ref */
+	if (*chainp)
+		hammer2_chain_drop(*chainp);
+	*chainp = chain;			/* will be returned locked */
 
 	/*
-	 * Avoid ordering deadlock when relocking cparent.
+	 * Avoid ordering deadlock when relocking.
 	 */
 	hammer2_chain_unlock(*parentp);
 	hammer2_chain_lock(*parentp, HAMMER2_RESOLVE_SHARED |
 				     HAMMER2_RESOLVE_ALWAYS);
-	hammer2_chain_lock(chain, HAMMER2_RESOLVE_SHARED);
+	hammer2_chain_lock(chain, HAMMER2_RESOLVE_SHARED |
+				  HAMMER2_RESOLVE_ALWAYS);
 
 	return 0;
 }
@@ -1012,7 +1038,10 @@ hammer2_xop_helper_create(hammer2_pfs_t *pmp)
 	int i;
 	int j;
 
-	for (i = 0; i < pmp->pfs_nmasters; ++i) {
+	lockmgr(&pmp->lock, LK_EXCLUSIVE);
+	pmp->has_xop_threads = 1;
+
+	for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
 		for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
 			if (pmp->xop_groups[j].thrs[i].td)
 				continue;
@@ -1021,6 +1050,7 @@ hammer2_xop_helper_create(hammer2_pfs_t *pmp)
 					   hammer2_primary_xops_thread);
 		}
 	}
+	lockmgr(&pmp->lock, LK_RELEASE);
 }
 
 void
@@ -1036,9 +1066,6 @@ hammer2_xop_helper_cleanup(hammer2_pfs_t *pmp)
 		}
 	}
 }
-
-
-
 
 /*
  * Start a XOP request, queueing it to all nodes in the cluster to
@@ -1057,12 +1084,17 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 	int i;
 
 	pmp = xop->ip->pmp;
+	if (pmp->has_xop_threads == 0)
+		hammer2_xop_helper_create(pmp);
 
 	g = pmp->xop_iterator++;
 	g = g & HAMMER2_XOPGROUPS_MASK;
 	xgrp = &pmp->xop_groups[g];
 	xop->func = func;
 	xop->xgrp = xgrp;
+
+	/* XXX do cluster_resolve or cluster_check here, only start
+	 * synchronized elements */
 
 	for (i = 0; i < xop->ip->cluster.nchains; ++i) {
 		thr = &xgrp->thrs[i];
@@ -1071,6 +1103,7 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 			if (thr->td &&
 			    (thr->flags & HAMMER2_THREAD_STOP) == 0) {
 				atomic_set_int(&xop->run_mask, 1U << i);
+				atomic_set_int(&xop->chk_mask, 1U << i);
 				TAILQ_INSERT_TAIL(&thr->xopq, xop,
 						  collect[i].entry);
 			}
@@ -1238,7 +1271,6 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 	fifo->array[fifo->wi & HAMMER2_XOPFIFO_MASK] = chain;
 	cpu_sfence();
 	++fifo->wi;
-	atomic_set_int(&xop->chk_mask, 1U << clindex);
 	atomic_add_int(&xop->check_counter, 1);
 	wakeup(&xop->check_counter);	/* XXX optimize */
 	error = 0;
@@ -1331,6 +1363,7 @@ loop:
 			++fifo->ri;
 			xop->cluster.array[i].chain = chain;
 			if (chain == NULL) {
+				/* XXX */
 				xop->cluster.array[i].flags |=
 							HAMMER2_CITEM_NULL;
 			}
@@ -1367,7 +1400,12 @@ loop:
 	 * EINPROGRESS	 - insufficient elements collected to resolve, wait
 	 *		   for event and loop.
 	 */
-	error = hammer2_cluster_check(&xop->cluster, lokey, keynull);
+	if ((flags & HAMMER2_XOP_COLLECT_WAITALL) &&
+	    xop->run_mask != HAMMER2_XOPMASK_VOP) {
+		error = EINPROGRESS;
+	} else {
+		error = hammer2_cluster_check(&xop->cluster, lokey, keynull);
+	}
 	if (error == EINPROGRESS) {
 		if (xop->check_counter == check_counter) {
 			if (flags & HAMMER2_XOP_COLLECT_NOWAIT)

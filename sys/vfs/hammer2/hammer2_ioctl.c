@@ -609,6 +609,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 				   pfs->name, strlen(pfs->name), 0,
 				   1, HAMMER2_OBJTYPE_DIRECTORY, 0,
 				   HAMMER2_INSERT_PFSROOT, &error);
+	kprintf("E %p %d\n", nip, error);
 	if (error == 0) {
 		hammer2_inode_modify(nip);
 		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
@@ -637,6 +638,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 			nip->meta.comp_algo =
 				HAMMER2_ENC_ALGO(HAMMER2_COMP_AUTOZERO);
 		}
+
 #if 0
 		hammer2_blockref_t bref;
 		/* XXX new PFS needs to be rescanned / added */
@@ -648,7 +650,13 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_chain_unlock(nchain);
 		hammer2_chain_drop(nchain);
 
+		/*
+		 * Super-root isn't mounted, fsync it
+		 */
+		hammer2_inode_ref(nip);
 		hammer2_inode_unlock(nip);
+		hammer2_inode_fsync(nip);
+		hammer2_inode_drop(nip);
 	}
 	hammer2_trans_done(hmp->spmp);
 

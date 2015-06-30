@@ -376,7 +376,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 	 * Create the PFS's root inode.
 	 */
 	if ((iroot = pmp->iroot) == NULL) {
-		iroot = hammer2_inode_get(pmp, NULL, NULL);
+		iroot = hammer2_inode_get(pmp, NULL, NULL, -1);
 		pmp->iroot = iroot;
 		hammer2_inode_ref(iroot);
 		hammer2_inode_unlock(iroot);
@@ -1015,7 +1015,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		cluster = hammer2_cluster_from_chain(schain);
 		hammer2_inode_drop(spmp->iroot);
 		spmp->iroot = NULL;
-		spmp->iroot = hammer2_inode_get(spmp, NULL, cluster);
+		spmp->iroot = hammer2_inode_get(spmp, NULL, cluster, -1);
 		spmp->spmp_hmp = hmp;
 		spmp->pfs_types[0] = ripdata->meta.pfs_type;
 		spmp->pfs_hmps[0] = hmp;

@@ -110,35 +110,6 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
 }
 
 /*
- * Create a locked copy of ip->cluster.  Note that the copy will have a
- * ref on the cluster AND its chains and we don't want a second ref to
- * either when we lock it.
- *
- * Exclusive inode locks set the template focus chain in (ip)
- * as a hint.  Cluster locks can ALWAYS replace the focus in the
- * working copy if the hint does not work out, so beware.
- */
-hammer2_cluster_t *
-hammer2_inode_cluster(hammer2_inode_t *ip, int how)
-{
-	hammer2_cluster_t *cluster;
-
-	cluster = hammer2_cluster_copy(&ip->cluster);
-	hammer2_cluster_lock(cluster, how);
-	hammer2_cluster_resolve(cluster);
-
-	/*
-	 * cluster->focus will be set if resolving RESOLVE_ALWAYS, but
-	 * only update the cached focus in the inode structure when taking
-	 * out an exclusive lock.
-	 */
-	if ((how & HAMMER2_RESOLVE_SHARED) == 0)
-		ip->cluster.focus = cluster->focus;
-
-	return cluster;
-}
-
-/*
  * Select a chain out of an inode's cluster and lock it.
  *
  * The inode does not have to be locked.
@@ -521,6 +492,8 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 /*
  * Returns the inode associated with the passed-in cluster, creating the
  * inode if necessary and synchronizing it to the passed-in cluster otherwise.
+ * When synchronizing, if idx >= 0, only cluster index (idx) is synchronized.
+ * Otherwise the whole cluster is synchronized.
  *
  * The passed-in cluster must be locked and will remain locked on return.
  * The returned inode will be locked and the caller may dispose of both
@@ -534,7 +507,7 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
  */
 hammer2_inode_t *
 hammer2_inode_get(hammer2_pfs_t *pmp, hammer2_inode_t *dip,
-		  hammer2_cluster_t *cluster)
+		  hammer2_cluster_t *cluster, int idx)
 {
 	hammer2_inode_t *nip;
 	const hammer2_inode_data_t *iptmp;
@@ -570,7 +543,10 @@ again:
 			hammer2_inode_drop(nip);
 			continue;
 		}
-		hammer2_inode_repoint(nip, NULL, cluster);
+		if (idx >= 0)
+			hammer2_inode_repoint_one(nip, cluster, idx);
+		else
+			hammer2_inode_repoint(nip, NULL, cluster);
 
 		return nip;
 	}
@@ -831,7 +807,7 @@ hammer2_inode_create(hammer2_inode_t *dip,
 	 * NOTE: nipdata will have chain's blockset data.
 	 */
 	if (type != HAMMER2_OBJTYPE_HARDLINK) {
-		nip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster);
+		nip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
 		nip->comp_heuristic = 0;
 	} else {
 		nip = NULL;
@@ -934,8 +910,8 @@ done:
 
 /*
  * Repoint ip->cluster's chains to cluster's chains and fixup the default
- * focus.  Only valid elements are repointed.  Invalid elements have to be
- * adjusted by the appropriate slave sync threads.
+ * focus.  All items, valid or invalid, are repointed.  hammer2_xop_start()
+ * filters out invalid or non-matching elements.
  *
  * Caller must hold the inode and cluster exclusive locked, if not NULL,
  * must also be locked.
@@ -963,13 +939,6 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 	 */
 	hammer2_spin_ex(&ip->cluster_spin);
 	for (i = 0; cluster && i < cluster->nchains; ++i) {
-		/*
-		 * Do not replace invalid elements as this might race
-		 * syncthr replacements.
-		 */
-		if (cluster->array[i].flags & HAMMER2_CITEM_INVALID)
-			continue;
-
 		/*
 		 * Do not replace elements which are the same.  Also handle
 		 * element count discrepancies.
@@ -1193,7 +1162,8 @@ hammer2_inode_install_hidden(hammer2_pfs_t *pmp)
 			 */
 			kprintf("PFS FOUND HIDDEN DIR\n");
 			pmp->ihidden = hammer2_inode_get(pmp, pmp->iroot,
-							 &xop->head.cluster);
+							 &xop->head.cluster,
+							 -1);
 			hammer2_inode_ref(pmp->ihidden);
 			hammer2_inode_unlock(pmp->ihidden);
 		}
@@ -1420,6 +1390,9 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 	int cache_index = -1;
 	int error;
 
+	kprintf("inode_create lhc %016jx clindex %d\n",
+		xop->lhc, clindex);
+
 	chain = NULL;
 	parent = hammer2_inode_chain(xop->head.ip, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
@@ -1461,7 +1434,7 @@ fail:
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 	}
-	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
+	hammer2_xop_feed(&xop->head, chain, clindex, error);
 	if (chain)
 		hammer2_chain_drop(chain);
 }
@@ -1528,6 +1501,11 @@ hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
 	 */
 	parent = hammer2_inode_chain(xop->head.ip, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
+	chain = NULL;
+	if (parent == NULL) {
+		/* XXX error */
+		goto done;
+	}
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->key_beg, xop->key_end,
 				     &cache_index,
@@ -1544,6 +1522,7 @@ hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
 					   HAMMER2_LOOKUP_ALWAYS |
 					   HAMMER2_LOOKUP_NOUNLOCK);
 	}
+done:
 	hammer2_xop_feed(&xop->head, NULL, clindex, ENOENT);
 	if (parent) {
 		hammer2_chain_unlock(parent);

@@ -360,6 +360,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			 * chain is errored or not.
 			 */
 			switch (cluster->pmp->pfs_types[i]) {
+			case HAMMER2_PFSTYPE_SUPROOT:
 			case HAMMER2_PFSTYPE_MASTER:
 				++ttlmasters;
 				break;
@@ -395,6 +396,7 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 			cluster->focus_index = i;
 			cluster->focus = chain;
 			cluster->error = chain ? chain->error : 0;
+			++ttlmasters;
 			break;
 		default:
 			break;
@@ -420,8 +422,11 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 		quorum_tid = 0;
 
 		for (i = 0; i < cluster->nchains; ++i) {
-			if (cluster->pmp->pfs_types[i] !=
-			    HAMMER2_PFSTYPE_MASTER) {
+			switch (cluster->pmp->pfs_types[i]) {
+			case HAMMER2_PFSTYPE_SUPROOT:
+			case HAMMER2_PFSTYPE_MASTER:
+				break;
+			default:
 				continue;
 			}
 			chain = cluster->array[i].chain;
@@ -755,6 +760,7 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 			 * chain is errored or not.
 			 */
 			switch (cluster->pmp->pfs_types[i]) {
+			case HAMMER2_PFSTYPE_SUPROOT:
 			case HAMMER2_PFSTYPE_MASTER:
 				++ttlmasters;
 				break;
@@ -785,6 +791,7 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 			 * topology on a single device.  Fake stuff so
 			 * cluster ops work as expected.
 			 */
+			++ttlmasters;
 			nflags |= HAMMER2_CLUSTER_WRHARD;
 			nflags |= HAMMER2_CLUSTER_RDHARD;
 			cluster->focus_index = i;
@@ -819,8 +826,11 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 
 		for (i = 0; i < cluster->nchains; ++i) {
 			/* XXX SOFT smpresent handling */
-			if (cluster->pmp->pfs_types[i] !=
-			    HAMMER2_PFSTYPE_MASTER) {
+			switch(cluster->pmp->pfs_types[i]) {
+			case HAMMER2_PFSTYPE_MASTER:
+			case HAMMER2_PFSTYPE_SUPROOT:
+				break;
+			default:
 				continue;
 			}
 
@@ -959,6 +969,8 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 			 */
 			cluster->array[i].flags |= HAMMER2_CITEM_FEMOD;
 			cluster->array[i].flags &= ~HAMMER2_CITEM_INVALID;
+			nflags |= HAMMER2_CLUSTER_WRHARD;
+			nflags |= HAMMER2_CLUSTER_RDHARD;
 			break;
 		default:
 			break;

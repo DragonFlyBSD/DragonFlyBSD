@@ -603,6 +603,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 #endif
 		/* fall through */
 	case HAMMER2_RESOLVE_ALWAYS:
+	default:
 		break;
 	}
 
@@ -1010,6 +1011,7 @@ hammer2_chain_resize(hammer2_inode_t *ip,
 	KKASSERT(chain != &hmp->vchain);
 	KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA ||
 		 chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT);
+	KKASSERT(chain->parent == parent);
 
 	/*
 	 * Nothing to do if the element is already the proper size
@@ -2579,6 +2581,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 
 	KKASSERT((chain->flags & (HAMMER2_CHAIN_DELETED |
 				  HAMMER2_CHAIN_FICTITIOUS)) == 0);
+	KKASSERT(chain->parent == parent);
 	hmp = chain->hmp;
 
 	if (chain->flags & HAMMER2_CHAIN_BMAPPED) {

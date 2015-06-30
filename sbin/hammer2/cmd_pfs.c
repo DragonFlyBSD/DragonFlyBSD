@@ -91,6 +91,7 @@ cmd_pfs_list(const char *sel_path)
 				printf("MASTER(sub?)");
 				break;
 			}
+			break;
 		default:
 			printf("%02x          ", pfs.pfs_type);
 			break;

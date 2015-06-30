@@ -1094,7 +1094,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	if (error) {
 		ip = NULL;
 	} else {
-		ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster);
+		ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
 	}
 	hammer2_inode_unlock(dip);
 
@@ -1577,7 +1577,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	hammer2_inode_unlock(dip);
 
 	if (error == 0) {
-		ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster);
+		ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
 			hammer2_inode_unlink_finisher(ip, isopen);
@@ -1638,7 +1638,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	hammer2_inode_unlock(dip);
 
 	if (error == 0) {
-		ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster);
+		ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
 			hammer2_inode_unlink_finisher(ip, isopen);
@@ -1763,7 +1763,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 
 		if (tnch_error == 0) {
 			tip = hammer2_inode_get(tdip->pmp, NULL,
-						&xop2->head.cluster);
+						&xop2->head.cluster, -1);
 			hammer2_xop_retire(&xop2->head, HAMMER2_XOPMASK_VOP);
 			if (tip) {
 				hammer2_inode_unlink_finisher(tip, isopen);

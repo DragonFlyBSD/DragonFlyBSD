@@ -1120,6 +1120,7 @@ struct hammer2_pfs {
 	struct h2_unlk_list	unlinkq;	/* last-close unlink */
 	hammer2_thread_t	sync_thrs[HAMMER2_MAXCLUSTER];
 	uint32_t		cluster_flags;	/* cached cluster flags */
+	int			has_xop_threads;
 	hammer2_xop_group_t	xop_groups[HAMMER2_XOPGROUPS];
 };
 
@@ -1252,7 +1253,6 @@ const char *hammer2_error_str(int error);
 
 void hammer2_inode_lock(hammer2_inode_t *ip, int how);
 void hammer2_inode_unlock(hammer2_inode_t *ip);
-hammer2_cluster_t *hammer2_inode_cluster(hammer2_inode_t *ip, int how);
 hammer2_chain_t *hammer2_inode_chain(hammer2_inode_t *ip, int clindex, int how);
 hammer2_chain_t *hammer2_inode_chain_and_parent(hammer2_inode_t *ip,
 			int clindex, hammer2_chain_t **parentp, int how);
@@ -1290,8 +1290,8 @@ void hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
 struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
 hammer2_inode_t *hammer2_inode_lookup(hammer2_pfs_t *pmp,
 			hammer2_tid_t inum);
-hammer2_inode_t *hammer2_inode_get(hammer2_pfs_t *pmp,
-			hammer2_inode_t *dip, hammer2_cluster_t *cluster);
+hammer2_inode_t *hammer2_inode_get(hammer2_pfs_t *pmp, hammer2_inode_t *dip,
+			hammer2_cluster_t *cluster, int idx);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
@@ -1338,7 +1338,6 @@ int hammer2_chain_hardlink_find(hammer2_inode_t *dip,
 				hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
 				int flags);
-void hammer2_chain_moved(hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_chain_t *chain, int flags);
 void hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain,
 				int flags);

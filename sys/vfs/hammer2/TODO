@@ -1,4 +1,6 @@
 
+* xop_start - only start synchronized elements
+
 * See if we can remove hammer2_inode_repoint()
 
 * FIXME - logical buffer associated with write-in-progress on backend
