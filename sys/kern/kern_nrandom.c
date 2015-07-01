@@ -429,7 +429,7 @@ L15_Vector (const LByteType * const key, const size_t keyLen)
  * By Robin J Carey, Matthew Dillon and Alex Hornung.
  */
 
-static int rand_thread_signal = 1;
+static int rand_thread_value;
 static void NANOUP_EVENT(void);
 static thread_t rand_td;
 static struct spinlock rand_spin;
@@ -438,6 +438,7 @@ static int sysctl_kern_random(SYSCTL_HANDLER_ARGS);
 
 static int nrandevents;
 static int rand_mode = 2;
+static struct systimer systimer_rand;
 
 static int sysctl_kern_rand_mode(SYSCTL_HANDLER_ARGS);
 
@@ -506,14 +507,18 @@ add_keyboard_randomness(u_char scancode)
 
 /*
  * Interrupt events.  This is SMP safe and allowed to race.
+ *
+ * This adjusts rand_thread_value which will be incorporated into the next
+ * time-buffered seed.  It does not effect the seeding period per-say.
  */
 void
 add_interrupt_randomness(int intr)
 {
-	if (rand_thread_signal == 0) {
-		rand_thread_signal = 1;
-		lwkt_schedule(rand_td);
+	if (tsc_present) {
+		rand_thread_value = (rand_thread_value << 4) ^ 1 ^
+		((int)rdtsc() % 151);
 	}
+	++rand_thread_value;				/* ~1 bit */
 }
 
 /*
@@ -684,89 +689,101 @@ sysctl_kern_rand_mode(SYSCTL_HANDLER_ARGS)
 
 /*
  * Random number generator helper thread.  This limits code overhead from
- * high frequency events by delaying the clearing of rand_thread_signal.
+ * high frequency events by delaying the clearing of rand_thread_value.
  *
- * MPSAFE thread
+ * This is a time-buffered loop, with a randomizing delay.  Note that interrupt
+ * entropy does not cause the thread to wakeup any faster, but does improve the
+ * quality of the entropy produced.
  */
 static
 void
 rand_thread_loop(void *dummy)
 {
-	int count;
+	int64_t count;
 
 	for (;;) {
-		NANOUP_EVENT ();
+		/*
+		 * Generate entropy.
+		 */
+		NANOUP_EVENT();
 		spin_lock(&rand_spin);
-		count = (int)(L15_Byte() * hz / (256 * 10) + hz / 10 + 1);
+		count = (uint8_t)L15_Byte();
 		spin_unlock(&rand_spin);
-		tsleep(rand_td, 0, "rwait", count);
-		crit_enter();
-		lwkt_deschedule_self(rand_td);
-		cpu_sfence();
-		rand_thread_signal = 0;
-		crit_exit();
-		lwkt_switch();
+
+		/*
+		 * Calculate 1/10 of a second to 2/10 of a second, fine-grained
+		 * using a L15_Byte() feedback.
+		 *
+		 * Go faster in the first 1200 seconds after boot.  This effects
+		 * the time-after-next interrupt (pipeline delay).
+		 */
+		count = sys_cputimer->freq * (count + 256) / (256 * 10);
+		if (time_uptime < 120)
+			count = count / 10 + 1;
+		systimer_rand.periodic = count;
+
+		tsleep(rand_td, 0, "rwait", 0);
 	}
+}
+
+/*
+ * Systimer trigger - fine-grained random trigger
+ */
+static
+void
+rand_thread_wakeup(struct systimer *timer, int in_ipi, struct intrframe *frame)
+{
+	wakeup(rand_td);
 }
 
 static
 void
 rand_thread_init(void)
 {
+	systimer_init_periodic_nq(&systimer_rand, rand_thread_wakeup, NULL, 25);
 	lwkt_create(rand_thread_loop, NULL, &rand_td, NULL, 0, 0, "random");
 }
 
 SYSINIT(rand, SI_SUB_HELPER_THREADS, SI_ORDER_ANY, rand_thread_init, 0);
 
 /*
- * Time-buffered event time-stamping. This is necessary to cutoff higher
- * event frequencies, e.g. an interrupt occuring at 25Hz. In such cases
- * the CPU is being chewed and the timestamps are skewed (minimal variation).
- * Use a nano-second time-delay to limit how many times an Event can occur
- * in one second; <= 5Hz. Note that this doesn't prevent time-stamp skewing.
- * This implementation randmoises the time-delay between events, which adds
- * a layer of security/unpredictability with regard to read-events (a user
- * controlled input).
+ * Caller is time-buffered.  Incorporate any accumulated interrupt randomness
+ * as well as the high frequency bits of the TSC.
  *
- * Note: now.tv_nsec should range [ 0 - 1000,000,000 ].
- * Note: "ACCUM" is a security measure (result = capped-unknown + unknown),
- *       and also produces an uncapped (>=32-bit) value.
+ * A delta nanoseconds value is used to remove absolute time from the generated
+ * entropy.  Even though we are pushing 32 bits, this entropy is probably only
+ * good for one or two bits without any interrupt sources, and possibly 8 bits with.
  */
 static void
 NANOUP_EVENT(void)
 {
-	static struct timespec	ACCUM = { 0, 0 };
-	static struct timespec	NEXT  = { 0, 0 };
+	static struct timespec	last;
 	struct timespec		now;
+	int			nsec;
 
+	/*
+	 * Delta nanoseconds since last event
+	 */
 	nanouptime(&now);
-	spin_lock(&rand_spin);
-	if ((now.tv_nsec > NEXT.tv_nsec) || (now.tv_sec != NEXT.tv_sec)) {
-		/* 
-		 * Randomised time-delay: 200e6 - 350e6 ns; 5 - 2.86 Hz. 
-		 */
-		unsigned long one_mil;
-		unsigned long timeDelay;
+	nsec = now.tv_nsec - last.tv_nsec;
+	last = now;
 
-		one_mil = 1000000UL;	/* 0.001 s */
-		timeDelay = (one_mil * 200) + 
-			    (((unsigned long)ACCUM.tv_nsec % 151) * one_mil);
-		NEXT.tv_nsec = now.tv_nsec + timeDelay;
-		NEXT.tv_sec = now.tv_sec;
-		ACCUM.tv_nsec += now.tv_nsec;
+	/*
+	 * Interrupt randomness.
+	 */
+	nsec ^= rand_thread_value;
 
-		/*
-		 * The TSC, if present, generally has an even higher
-		 * resolution.  Integrate a portion of it into our seed.
-		 */
-		if (tsc_present)
-			ACCUM.tv_nsec ^= rdtsc() & 255;
+	/*
+	 * The TSC, if present, generally has an even higher
+	 * resolution.  Integrate a portion of it into our seed.
+	 */
+	if (tsc_present)
+		nsec ^= (rdtsc() & 255) << 8;
 
-		spin_unlock(&rand_spin);
-		add_buffer_randomness_src((const uint8_t *)&ACCUM.tv_nsec,
-		    sizeof(ACCUM.tv_nsec), RAND_SRC_INTR);
-		spin_lock(&rand_spin);
-	}
-	spin_unlock(&rand_spin);
+	/* 
+	 * Ok.
+	 */
+
+	add_buffer_randomness_src((const uint8_t *)&nsec, sizeof(nsec), RAND_SRC_INTR);
 }
 
