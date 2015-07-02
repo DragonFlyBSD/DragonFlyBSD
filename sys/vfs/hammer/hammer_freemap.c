@@ -35,7 +35,7 @@
  */
 
 /*
- * REMOVED - bigblock allocations are now handled by the blockmap allocator
+ * REMOVED - big-block allocations are now handled by the blockmap allocator
  *
  * This space reserved for our low-level storage localization manager XXX
  */

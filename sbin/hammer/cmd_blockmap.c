@@ -449,8 +449,8 @@ dump_collect_table(void)
 	assert(RB_EMPTY(&CollectTree));
 
 	if (VerboseOpt) {
-		printf("zone-bigblock statistics\n");
-		printf("\tzone #\tbigblocks\n");
+		printf("Statistics\n");
+		printf("\tzone #\tbig-blocks\n");
 		for (i = 0; i < HAMMER_MAX_ZONES; i++) {
 			printf("\tzone %d\t%d\n", i, stats[i]);
 			total += stats[i];
@@ -479,7 +479,7 @@ dump_collect(collect_t collect, int *stats)
 		offset = collect->phys_offset + i * HAMMER_BIGBLOCK_SIZE;
 
 		/*
-		 * Check bigblocks referenced by data, B-Tree nodes
+		 * Check big-blocks referenced by data, B-Tree nodes
 		 * and UNDO fifo.
 		 */
 		if (track2->entry_crc == 0)

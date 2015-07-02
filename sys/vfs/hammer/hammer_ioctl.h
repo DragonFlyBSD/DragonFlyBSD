@@ -462,7 +462,7 @@ struct hammer_ioc_dedup {
 };
 
 #define HAMMER_IOC_DEDUP_CMP_FAILURE	0x0001 /* verification failed */
-#define HAMMER_IOC_DEDUP_UNDERFLOW	0x0002 /* bigblock underflow */
+#define HAMMER_IOC_DEDUP_UNDERFLOW	0x0002 /* big-block underflow */
 #define HAMMER_IOC_DEDUP_INVALID_ZONE	0x0004 /* we can't dedup all zones */
 
 /*

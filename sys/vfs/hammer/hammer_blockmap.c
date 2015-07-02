@@ -182,7 +182,7 @@ again:
 
 	/*
 	 * If we are at a big-block boundary and layer1 indicates no 
-	 * free big-blocks, then we cannot allocate a new bigblock in
+	 * free big-blocks, then we cannot allocate a new big-block in
 	 * layer2, skip to the next layer1 entry.
 	 */
 	if (offset == 0 && layer1->blocks_free == 0) {
@@ -279,7 +279,7 @@ again:
 	}
 
 	/*
-	 * The bigblock might be reserved by another zone.  If it is reserved
+	 * The big-block might be reserved by another zone.  If it is reserved
 	 * by our zone we may have to move next_offset past the append_off.
 	 */
 	base_off = hammer_xlate_to_zone2(next_offset &
@@ -307,7 +307,7 @@ again:
 	 */
 	if (layer2->zone == 0) {
 		/*
-		 * Assign the bigblock to our zone
+		 * Assign the big-block to our zone
 		 */
 		hammer_modify_buffer(trans, buffer1,
 				     layer1, sizeof(*layer1));
@@ -495,7 +495,7 @@ again:
 
 	/*
 	 * If we are at a big-block boundary and layer1 indicates no 
-	 * free big-blocks, then we cannot allocate a new bigblock in
+	 * free big-blocks, then we cannot allocate a new big-block in
 	 * layer2, skip to the next layer1 entry.
 	 */
 	if ((next_offset & HAMMER_BIGBLOCK_MASK) == 0 &&
@@ -556,7 +556,7 @@ again:
 	}
 
 	/*
-	 * The bigblock might be reserved by another zone.  If it is reserved
+	 * The big-block might be reserved by another zone.  If it is reserved
 	 * by our zone we may have to move next_offset past the append_off.
 	 */
 	base_off = hammer_xlate_to_zone2(next_offset &

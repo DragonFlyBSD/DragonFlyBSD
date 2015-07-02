@@ -154,7 +154,7 @@ retry:
 
 		/*
 		 * If there is insufficient free space it may be due to
-		 * reserved bigblocks, which flushing might fix.
+		 * reserved big-blocks, which flushing might fix.
 		 *
 		 * We must force a retest in case the unlocked cursor is
 		 * moved to the end of the leaf, or moved to an internal

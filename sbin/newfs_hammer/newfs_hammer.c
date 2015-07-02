@@ -496,7 +496,7 @@ check_volume(struct volume_info *vol)
 
 	/*
 	 * Reserve space for (future) header junk, setup our poor-man's
-	 * bigblock allocator.
+	 * big-block allocator.
 	 */
 	vol->vol_alloc = HAMMER_BUFSIZE * 16;
 }

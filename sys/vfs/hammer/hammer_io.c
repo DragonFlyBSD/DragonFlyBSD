@@ -1580,7 +1580,7 @@ hammer_indirect_callback(struct bio *bio)
 	 * may have set).
 	 *
 	 * Any preexisting device buffer should match the requested size,
-	 * but due to bigblock recycling and other factors there is some
+	 * but due to big-block recycling and other factors there is some
 	 * fragility there, so we assert that the device buffer covers
 	 * the request.
 	 */

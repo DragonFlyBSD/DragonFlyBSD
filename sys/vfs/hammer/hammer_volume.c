@@ -175,14 +175,14 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	KKASSERT(error == 0);
 
 	/*
-	 * Increase the total number of bigblocks and update stat/vstat totals.
+	 * Increase the total number of big-blocks and update stat/vstat totals.
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol,
 		vol0_stat_bigblocks);
 	trans->rootvol->ondisk->vol0_stat_bigblocks += stat.total_bigblocks;
 	hammer_modify_volume_done(trans->rootvol);
 	/*
-	 * Bigblock count changed so recompute the total number of blocks.
+	 * Big-block count changed so recompute the total number of blocks.
 	 */
 	mp->mnt_stat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
 	    (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
@@ -190,7 +190,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	    (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
 
 	/*
-	 * Increase the number of free bigblocks
+	 * Increase the number of free big-blocks
 	 * (including the copy in hmp)
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol,
@@ -328,7 +328,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_lock_ex(&hmp->blkmap_lock);
 
 	/*
-	 * We use stat later to update rootvol's bigblock stats
+	 * We use stat later to update rootvol's big-block stats
 	 */
 	struct bigblock_stat stat;
 	error = hammer_free_freemap(trans, volume, &stat);
@@ -397,7 +397,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	/*
-	 * Update the total number of bigblocks
+	 * Update the total number of big-blocks
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol,
 		vol0_stat_bigblocks);
@@ -405,7 +405,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_modify_volume_done(trans->rootvol);
 
 	/*
-	 * Update the number of free bigblocks
+	 * Update the number of free big-blocks
 	 * (including the copy in hmp)
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol,
@@ -415,7 +415,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		trans->rootvol->ondisk->vol0_stat_freebigblocks;
 	hammer_modify_volume_done(trans->rootvol);
 	/*
-	 * Bigblock count changed so recompute the total number of blocks.
+	 * Big-block count changed so recompute the total number of blocks.
 	 */
 	mp->mnt_stat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
 	    (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
@@ -512,7 +512,7 @@ hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
 
 	/*
 	 * Calculate the usable size of the volume, which
-	 * must be aligned at a bigblock (8 MB) boundary.
+	 * must be aligned at a big-block (8 MB) boundary.
 	 */
 	aligned_buf_end_off = (HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no,
 		(volume->ondisk->vol_buf_end - volume->ondisk->vol_buf_beg)
@@ -520,10 +520,10 @@ hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
 
 	/*
 	 * Iterate the volume's address space in chunks of 4 TB, where each
-	 * chunk consists of at least one physically available 8 MB bigblock.
+	 * chunk consists of at least one physically available 8 MB big-block.
 	 *
-	 * For each chunk we need one L1 entry and one L2 bigblock.
-	 * We use the first bigblock of each chunk as L2 block.
+	 * For each chunk we need one L1 entry and one L2 big-block.
+	 * We use the first big-block of each chunk as L2 block.
 	 */
 	for (phys_off = HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no, 0);
 	     phys_off < aligned_buf_end_off;
@@ -578,7 +578,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 
 	/*
 	 * Calculate the usable size of the volume, which must be aligned
-	 * at a bigblock (8 MB) boundary.
+	 * at a big-block (8 MB) boundary.
 	 */
 	hammer_off_t aligned_buf_end_off;
 	aligned_buf_end_off = (HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no,
@@ -603,7 +603,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 
 		if (block_off == 0) {
 			/*
-			 * The first entry represents the L2 bigblock itself.
+			 * The first entry represents the L2 big-block itself.
 			 */
 			layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
 			layer2->append_off = HAMMER_BIGBLOCK_SIZE;
@@ -611,7 +611,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 			++stat->total_bigblocks;
 		} else if (phys_off + block_off < aligned_buf_end_off) {
 			/*
-			 * Available bigblock
+			 * Available big-block
 			 */
 			layer2->zone = 0;
 			layer2->append_off = 0;
@@ -620,7 +620,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 			++stat->counter;
 		} else {
 			/*
-			 * Bigblock outside of physically available
+			 * Big-block outside of physically available
 			 * space
 			 */
 			layer2->zone = HAMMER_ZONE_UNAVAIL_INDEX;
@@ -843,7 +843,7 @@ hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
 
 	/*
 	 * Reserve space for (future) header junk, setup our poor-man's
-	 * bigblock allocator.
+	 * big-block allocator.
 	 */
 	int64_t vol_alloc = HAMMER_BUFSIZE * 16;
 

@@ -518,7 +518,7 @@ format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap)
 /*
  * Load the volume's remaining free space into the freemap.
  *
- * Returns the number of bigblocks available.
+ * Returns the number of big-blocks available.
  */
 int64_t
 initialize_freemap(struct volume_info *vol)
@@ -543,7 +543,7 @@ initialize_freemap(struct volume_info *vol)
 	printf("initialize freemap volume %d\n", vol->vol_no);
 
 	/*
-	 * Initialize the freemap.  First preallocate the bigblocks required
+	 * Initialize the freemap.  First preallocate the big-blocks required
 	 * to implement layer2.   This preallocation is a bootstrap allocation
 	 * using blocks from the target volume.
 	 */
@@ -584,7 +584,7 @@ initialize_freemap(struct volume_info *vol)
 		bzero(layer2, sizeof(*layer2));
 		if (phys_offset < vol->vol_free_off) {
 			/*
-			 * Fixups XXX - bigblocks already allocated as part
+			 * Fixups XXX - big-blocks already allocated as part
 			 * of the freemap bootstrap.
 			 */
 			if (layer2->zone == 0) {
@@ -624,7 +624,7 @@ initialize_freemap(struct volume_info *vol)
 }
 
 /*
- * Returns the number of bigblocks available for filesystem data and undos
+ * Returns the number of big-blocks available for filesystem data and undos
  * without formatting.
  */
 int64_t
@@ -906,8 +906,8 @@ again:
 	}
 
 	/*
-	 * If we are entering a new bigblock assign ownership to our
-	 * zone.  If the bigblock is owned by another zone skip it.
+	 * If we are entering a new big-block assign ownership to our
+	 * zone.  If the big-block is owned by another zone skip it.
 	 */
 	if (layer2->zone == 0) {
 		--layer1->blocks_free;

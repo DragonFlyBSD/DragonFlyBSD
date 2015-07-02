@@ -286,7 +286,7 @@ typedef struct hammer_blockmap *hammer_blockmap_t;
  * thus any space allocated via the freemap can be directly translated
  * to a zone:2 (or zone:8-15) address.
  *
- * zone-X blockmap offset: [zone:4][layer1:18][layer2:19][bigblock:23]
+ * zone-X blockmap offset: [zone:4][layer1:18][layer2:19][big-block:23]
  */
 struct hammer_blockmap_layer1 {
 	hammer_off_t	blocks_free;	/* big-blocks free */
@@ -303,7 +303,7 @@ typedef struct hammer_blockmap_layer1 *hammer_blockmap_layer1_t;
 	offsetof(struct hammer_blockmap_layer1, layer1_crc)
 
 /*
- * layer2 entry for 8MB bigblock.
+ * layer2 entry for 8MB big-block.
  *
  * NOTE: bytes_free is signed and can legally go negative if/when data
  *	 de-dup occurs.  This field will never go higher than
@@ -315,7 +315,7 @@ struct hammer_blockmap_layer2 {
 	u_int8_t	unused01;
 	u_int16_t	unused02;
 	u_int32_t	append_off;	/* allocatable space index */
-	int32_t		bytes_free;	/* bytes free within this bigblock */
+	int32_t		bytes_free;	/* bytes free within this big-block */
 	hammer_crc_t	entry_crc;
 };
 
@@ -619,8 +619,8 @@ struct hammer_volume_ondisk {
 	 * volume making up a HAMMER filesytem, but only the master volume
 	 * contains valid data.
 	 */
-	int64_t vol0_stat_bigblocks;	/* total bigblocks when fs is empty */
-	int64_t vol0_stat_freebigblocks;/* number of free bigblocks */
+	int64_t vol0_stat_bigblocks;	/* total big-blocks when fs is empty */
+	int64_t vol0_stat_freebigblocks;/* number of free big-blocks */
 	int64_t	vol0_stat_bytes;	/* for statfs only */
 	int64_t vol0_stat_inodes;	/* for statfs only */
 	int64_t vol0_stat_records;	/* total records in filesystem */

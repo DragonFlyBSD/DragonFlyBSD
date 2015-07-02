@@ -365,7 +365,7 @@ hammer_cmd_dedup(char **av, int ac)
 	printf("    %8s skipped\n", buf);
 	printf("    %8jd CRC collisions\n"
 	       "    %8jd SHA collisions\n"
-	       "    %8jd bigblock underflows\n"
+	       "    %8jd big-block underflows\n"
 	       "    %8jd new dedup records\n"
 	       "    %8jd new dedup bytes\n",
 	       (intmax_t)dedup_crc_failures,
@@ -632,7 +632,7 @@ process_btree_elm(hammer_btree_leaf_elm_t scan_leaf, int flags)
 		 * zone (we can dedup only in LARGE_DATA and SMALL_DATA) don't
 		 * bother with the candidate and terminate early.
 		 *
-		 * If ioctl fails because of bigblock underflow replace the
+		 * If ioctl fails because of big-block underflow replace the
 		 * leaf node that found dedup entry represents with scan_leaf.
 		 */
 		error = deduplicate(&sha_de->leaf, scan_leaf);

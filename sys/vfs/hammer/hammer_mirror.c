@@ -398,7 +398,7 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 
 		/*
 		 * If there is insufficient free space it may be due to
-		 * reserved bigblocks, which flushing might fix.
+		 * reserved big-blocks, which flushing might fix.
 		 */
 		if (hammer_checkspace(trans->hmp, HAMMER_CHKSPC_MIRROR)) {
 			if (++checkspace_count == 10) {

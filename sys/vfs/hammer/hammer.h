@@ -794,7 +794,7 @@ typedef union hammer_io_structure *hammer_io_structure_t;
 
 /*
  * The reserve structure prevents the blockmap from allocating
- * out of a reserved bigblock.  Such reservations are used by
+ * out of a reserved big-block.  Such reservations are used by
  * the direct-write mechanism.
  *
  * The structure is also used to hold off on reallocations of
@@ -894,7 +894,7 @@ struct hammer_mount {
 	int	rsv_inodes;	/* reserved space due to dirty inodes */
 	int64_t	rsv_databytes;	/* reserved space due to record data */
 	int	rsv_recs;	/* reserved space due to dirty records */
-	int	rsv_fromdelay;	/* bigblocks reserved due to flush delay */
+	int	rsv_fromdelay;	/* big-blocks reserved due to flush delay */
 	int	undo_rec_limit;	/* based on size of undo area */
 	int	last_newrecords;
 	int	count_newrecords;
@@ -927,7 +927,7 @@ struct hammer_mount {
 	hammer_tid_t	next_tid;
 	hammer_tid_t	flush_tid1;		/* flusher tid sequencing */
 	hammer_tid_t	flush_tid2;		/* flusher tid sequencing */
-	int64_t copy_stat_freebigblocks;	/* number of free bigblocks */
+	int64_t copy_stat_freebigblocks;	/* number of free big-blocks */
 	u_int32_t	undo_seqno;		/* UNDO/REDO FIFO seqno */
 	u_int32_t	recover_stage2_seqno;	/* REDO recovery seqno */
 	hammer_off_t	recover_stage2_offset;	/* REDO recovery offset */
