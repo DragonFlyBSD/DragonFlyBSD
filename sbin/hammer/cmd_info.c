@@ -107,10 +107,10 @@ show_info(char *path)
 	fprintf(stdout, "\tFSID                %s\n", fsid);
 	fprintf(stdout, "\tHAMMER Version      %d\n", fip->version);
 
-	/* Big blocks information */
+	/* Big-blocks information */
 	usedbigblocks = fip->bigblocks - fip->freebigblocks;
 
-	fprintf(stdout, "Big block information\n");
+	fprintf(stdout, "Big-block information\n");
 	fprintf(stdout, "\tTotal      %10jd\n", (intmax_t)fip->bigblocks);
 	fprintf(stdout, "\tUsed       %10jd (%.2lf%%)\n"
 			"\tReserved   %10jd (%.2lf%%)\n"

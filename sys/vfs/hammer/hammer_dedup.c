@@ -218,7 +218,7 @@ validate_zone(hammer_off_t data_offset)
  * a data block to be added to a dedup cache it has to be present on
  * disk.  This simplifies cache logic a lot - once data is laid out on
  * media it remains valid on media all the way up to the point where the
- * related big block the data was stored in is freed - so there is only
+ * related big-block the data was stored in is freed - so there is only
  * one place we need to bother with invalidation code.
  */
 

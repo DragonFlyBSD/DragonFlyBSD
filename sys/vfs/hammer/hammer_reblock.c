@@ -435,7 +435,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	 * data buffer in the cursor before calling blockmap_free.
 	 * The blockmap_free may free up the entire big-block and
 	 * will not be able to invalidate it if the cursor is holding
-	 * a data buffer cached in that big block.
+	 * a data buffer cached in that big-block.
 	 */
 	hammer_modify_buffer_noundo(cursor->trans, data_buffer);
 	bcopy(cursor->data, ndata, elm->leaf.data_len);

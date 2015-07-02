@@ -798,7 +798,7 @@ typedef union hammer_io_structure *hammer_io_structure_t;
  * the direct-write mechanism.
  *
  * The structure is also used to hold off on reallocations of
- * big blocks from the freemap until flush dependancies have
+ * big-blocks from the freemap until flush dependancies have
  * been dealt with.
  */
 struct hammer_reserve {

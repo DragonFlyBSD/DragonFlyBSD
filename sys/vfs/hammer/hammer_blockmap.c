@@ -395,7 +395,7 @@ failed:
  *
  * This code reserves bytes out of a blockmap without committing to any
  * meta-data modifications, allowing the front-end to directly issue disk
- * write I/O for big blocks of data
+ * write I/O for big-blocks of data
  *
  * The backend later finalizes the reservation with hammer_blockmap_finalize()
  * upon committing the related record.
@@ -731,7 +731,7 @@ hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone, int bytes,
 			goto failed;
 		}
 		/*
-		 * Due to possible big block underflow we can't simply
+		 * Due to possible big-block underflow we can't simply
 		 * subtract bytes from bytes_free.
 		 */
 		if (update_bytes_free(resv, bytes) == 0) {
@@ -748,7 +748,7 @@ hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone, int bytes,
 		resx->zone = zone;
 		resx->bytes_free = layer2->bytes_free;
 		/*
-		 * Due to possible big block underflow we can't simply
+		 * Due to possible big-block underflow we can't simply
 		 * subtract bytes from bytes_free.
 		 */
 		if (update_bytes_free(resx, bytes) == 0) {

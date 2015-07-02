@@ -738,7 +738,7 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 
 	/*
 	 * Size the undo buffer in multiples of HAMMER_BIGBLOCK_SIZE,
-	 * up to HAMMER_UNDO_LAYER2 big blocks.  Size to approximately
+	 * up to HAMMER_UNDO_LAYER2 big-blocks.  Size to approximately
 	 * 0.1% of the disk.
 	 *
 	 * The minimum UNDO fifo size is 500MB, or approximately 1% of
