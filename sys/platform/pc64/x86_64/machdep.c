@@ -166,7 +166,7 @@ int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
 int64_t tsc_offsets[MAXCPU];
 
-static int cpu_mwait_halt;	/* MWAIT hint (EAX) or CPU_MWAIT_HINT_ */
+static int cpu_mwait_halt_global; /* MWAIT hint (EAX) or CPU_MWAIT_HINT_ */
 
 #if defined(SWTCH_OPTIM_STATS)
 extern int swtch_optim_stats;
@@ -176,9 +176,15 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 	CTLFLAG_RD, &tlb_flush_count, 0, "");
 #endif
 SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
-	CTLFLAG_RD, &cpu_mwait_halt, 0, "");
+	CTLFLAG_RD, &cpu_mwait_halt_global, 0, "");
 SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_spin, CTLFLAG_RD, &cpu_mwait_spin, 0,
     "monitor/mwait target state");
+
+#define CPU_MWAIT_HAS_CX	\
+	((cpu_feature2 & CPUID2_MON) && \
+	 (cpu_mwait_feature & CPUID_MWAIT_EXT))
+
+#define CPU_MWAIT_CX_NAMELEN	16
 
 #define CPU_MWAIT_C1		1
 #define CPU_MWAIT_C2		2
@@ -226,6 +232,7 @@ SYSCTL_STRING(_machdep_mwait_CX, OID_AUTO, supported, CTLFLAG_RD,
 static int	cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS,
 		    int *, boolean_t);
 static int	cpu_mwait_cx_idle_sysctl(SYSCTL_HANDLER_ARGS);
+static int	cpu_mwait_cx_pcpu_idle_sysctl(SYSCTL_HANDLER_ARGS);
 static int	cpu_mwait_cx_spin_sysctl(SYSCTL_HANDLER_ARGS);
 
 SYSCTL_PROC(_machdep_mwait_CX, OID_AUTO, idle, CTLTYPE_STRING|CTLFLAG_RW,
@@ -479,6 +486,8 @@ again:
 }
 
 struct cpu_idle_stat {
+	int	hint;
+	int	reserved;
 	u_long	halt;
 	u_long	spin;
 	u_long	repeat;
@@ -539,8 +548,7 @@ cpu_mwait_attach(void)
 	struct sbuf sb;
 	int hint_idx, i;
 
-	if ((cpu_feature2 & CPUID2_MON) == 0 ||
-	    (cpu_mwait_feature & CPUID_MWAIT_EXT) == 0)
+	if (!CPU_MWAIT_HAS_CX)
 		return;
 
 	if (cpu_vendor_id == CPU_VENDOR_INTEL &&
@@ -663,6 +671,16 @@ cpu_mwait_attach(void)
 		}
 	}
 	cpu_idle_repeat_max = 256 * cpu_mwait_deep_hints_cnt;
+
+	for (i = 0; i < ncpus; ++i) {
+		char name[16];
+
+		ksnprintf(name, sizeof(name), "idle%d", i);
+		SYSCTL_ADD_PROC(NULL,
+		    SYSCTL_STATIC_CHILDREN(_machdep_mwait_CX), OID_AUTO,
+		    name, (CTLTYPE_STRING | CTLFLAG_RW), &cpu_idle_stats[i],
+		    0, cpu_mwait_cx_pcpu_idle_sysctl, "A", "");
+	}
 }
 
 static void
@@ -1079,10 +1097,9 @@ cpu_mwait_cx_hint(struct cpu_idle_stat *stat)
 	int hint, cx_idx;
 	u_int idx;
 
-	if (cpu_mwait_halt >= 0) {
-		hint = cpu_mwait_halt;
+	hint = stat->hint;
+	if (hint >= 0)
 		goto done;
-	}
 
 	idx = (stat->repeat + stat->repeat_last + stat->repeat_delta) >>
 	    cpu_mwait_repeat_shift;
@@ -1090,7 +1107,7 @@ cpu_mwait_cx_hint(struct cpu_idle_stat *stat)
 		/* Step up faster, once we walked through all C1 states */
 		stat->repeat_delta += 1 << (cpu_mwait_repeat_shift + 1);
 	}
-	if (cpu_mwait_halt == CPU_MWAIT_HINT_AUTODEEP) {
+	if (hint == CPU_MWAIT_HINT_AUTODEEP) {
 		if (idx >= cpu_mwait_deep_hints_cnt)
 			idx = cpu_mwait_deep_hints_cnt - 1;
 		hint = cpu_mwait_deep_hints[idx];
@@ -2672,13 +2689,10 @@ cpu_mwait_cx_no_bmarb(void)
 }
 
 static int
-cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0,
-    boolean_t allow_auto)
+cpu_mwait_cx_hint2name(int hint, char *name, int namelen, boolean_t allow_auto)
 {
-	int error, cx_idx, old_cx_idx, sub = 0, hint;
-	char name[16], *ptr, *start;
+	int old_cx_idx, sub = 0;
 
-	hint = *hint0;
 	if (hint >= 0) {
 		old_cx_idx = MWAIT_EAX_TO_CX(hint);
 		sub = MWAIT_EAX_TO_CX_SUB(hint);
@@ -2690,26 +2704,26 @@ cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0,
 		old_cx_idx = CPU_MWAIT_CX_MAX;
 	}
 
-	if ((cpu_feature2 & CPUID2_MON) == 0 ||
-	    (cpu_mwait_feature & CPUID_MWAIT_EXT) == 0)
-		strlcpy(name, "NONE", sizeof(name));
+	if (!CPU_MWAIT_HAS_CX)
+		strlcpy(name, "NONE", namelen);
 	else if (allow_auto && hint == CPU_MWAIT_HINT_AUTO)
-		strlcpy(name, "AUTO", sizeof(name));
+		strlcpy(name, "AUTO", namelen);
 	else if (allow_auto && hint == CPU_MWAIT_HINT_AUTODEEP)
-		strlcpy(name, "AUTODEEP", sizeof(name));
+		strlcpy(name, "AUTODEEP", namelen);
 	else if (old_cx_idx >= CPU_MWAIT_CX_MAX ||
 	    sub >= cpu_mwait_cx_info[old_cx_idx].subcnt)
-		strlcpy(name, "INVALID", sizeof(name));
+		strlcpy(name, "INVALID", namelen);
 	else
-		ksnprintf(name, sizeof(name), "C%d/%d", old_cx_idx, sub);
+		ksnprintf(name, namelen, "C%d/%d", old_cx_idx, sub);
 
-	error = sysctl_handle_string(oidp, name, sizeof(name), req);
-	if (error != 0 || req->newptr == NULL)
-		return error;
+	return old_cx_idx;
+}
 
-	if ((cpu_feature2 & CPUID2_MON) == 0 ||
-	    (cpu_mwait_feature & CPUID_MWAIT_EXT) == 0)
-		return EOPNOTSUPP;
+static int
+cpu_mwait_cx_name2hint(char *name, int *hint0, boolean_t allow_auto)
+{
+	int cx_idx, sub, hint;
+	char *ptr, *start;
 
 	if (allow_auto && strcmp(name, "AUTO") == 0) {
 		hint = CPU_MWAIT_HINT_AUTO;
@@ -2723,48 +2737,144 @@ cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0,
 	}
 
 	if (strlen(name) < 4 || toupper(name[0]) != 'C')
-		return EINVAL;
+		return -1;
 	start = &name[1];
 	ptr = NULL;
 
 	cx_idx = strtol(start, &ptr, 10);
 	if (ptr == start || *ptr != '/')
-		return EINVAL;
+		return -1;
 	if (cx_idx < 0 || cx_idx >= CPU_MWAIT_CX_MAX)
-		return EINVAL;
+		return -1;
 
 	start = ptr + 1;
 	ptr = NULL;
 
 	sub = strtol(start, &ptr, 10);
 	if (*ptr != '\0')
-		return EINVAL;
+		return -1;
 	if (sub < 0 || sub >= cpu_mwait_cx_info[cx_idx].subcnt)
-		return EINVAL;
+		return -1;
 
 	hint = MWAIT_EAX_HINT(cx_idx, sub);
 done:
+	*hint0 = hint;
+	return cx_idx;
+}
+
+static int
+cpu_mwait_cx_transit(int old_cx_idx, int cx_idx)
+{
 	if (cx_idx >= CPU_MWAIT_C3 && cpu_mwait_c3_preamble)
 		return EOPNOTSUPP;
 	if (old_cx_idx < CPU_MWAIT_C3 && cx_idx >= CPU_MWAIT_C3) {
+		int error;
+
 		error = cputimer_intr_powersave_addreq();
 		if (error)
 			return error;
 	} else if (old_cx_idx >= CPU_MWAIT_C3 && cx_idx < CPU_MWAIT_C3) {
 		cputimer_intr_powersave_remreq();
 	}
+	return 0;
+}
+
+static int
+cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0,
+    boolean_t allow_auto)
+{
+	int error, cx_idx, old_cx_idx, hint;
+	char name[CPU_MWAIT_CX_NAMELEN];
+
+	hint = *hint0;
+	old_cx_idx = cpu_mwait_cx_hint2name(hint, name, sizeof(name),
+	    allow_auto);
+
+	error = sysctl_handle_string(oidp, name, sizeof(name), req);
+	if (error != 0 || req->newptr == NULL)
+		return error;
+
+	if (!CPU_MWAIT_HAS_CX)
+		return EOPNOTSUPP;
+
+	cx_idx = cpu_mwait_cx_name2hint(name, &hint, allow_auto);
+	if (cx_idx < 0)
+		return EINVAL;
+
+	error = cpu_mwait_cx_transit(old_cx_idx, cx_idx);
+	if (error)
+		return error;
 
 	*hint0 = hint;
 	return 0;
 }
 
 static int
+cpu_mwait_cx_setname(struct cpu_idle_stat *stat, const char *cx_name)
+{
+	int error, cx_idx, old_cx_idx, hint;
+	char name[CPU_MWAIT_CX_NAMELEN];
+
+	KASSERT(CPU_MWAIT_HAS_CX, ("cpu does not support mwait CX extension"));
+
+	hint = stat->hint;
+	old_cx_idx = cpu_mwait_cx_hint2name(hint, name, sizeof(name), TRUE);
+
+	strlcpy(name, cx_name, sizeof(name));
+	cx_idx = cpu_mwait_cx_name2hint(name, &hint, TRUE);
+	if (cx_idx < 0)
+		return EINVAL;
+
+	error = cpu_mwait_cx_transit(old_cx_idx, cx_idx);
+	if (error)
+		return error;
+
+	stat->hint = hint;
+	return 0;
+}
+
+static int
 cpu_mwait_cx_idle_sysctl(SYSCTL_HANDLER_ARGS)
 {
+	int hint = cpu_mwait_halt_global;
+	int error, cx_idx, cpu;
+	char name[CPU_MWAIT_CX_NAMELEN], cx_name[CPU_MWAIT_CX_NAMELEN];
+
+	cpu_mwait_cx_hint2name(hint, name, sizeof(name), TRUE);
+
+	error = sysctl_handle_string(oidp, name, sizeof(name), req);
+	if (error != 0 || req->newptr == NULL)
+		return error;
+
+	if (!CPU_MWAIT_HAS_CX)
+		return EOPNOTSUPP;
+
+	/* Save name for later per-cpu CX configuration */
+	strlcpy(cx_name, name, sizeof(cx_name));
+
+	cx_idx = cpu_mwait_cx_name2hint(name, &hint, TRUE);
+	if (cx_idx < 0)
+		return EINVAL;
+
+	/* Change per-cpu CX configuration */
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		error = cpu_mwait_cx_setname(&cpu_idle_stats[cpu], cx_name);
+		if (error)
+			return error;
+	}
+
+	cpu_mwait_halt_global = hint;
+	return 0;
+}
+
+static int
+cpu_mwait_cx_pcpu_idle_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	struct cpu_idle_stat *stat = arg1;
 	int error;
 
 	error = cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
-	    &cpu_mwait_halt, TRUE);
+	    &stat->hint, TRUE);
 	return error;
 }
 
