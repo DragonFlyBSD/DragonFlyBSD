@@ -248,7 +248,7 @@ again:
 	 * We do this for B-Tree and meta-data allocations to provide
 	 * localization for updates.
 	 */
-	if ((zone == HAMMER_ZONE2_MAPPED_INDEX ||
+	if ((zone == HAMMER_ZONE_BTREE_INDEX ||
 	     zone == HAMMER_ZONE_META_INDEX) &&
 	    offset >= HAMMER_BIGBLOCK_OVERFILL &&
 	    !((next_offset ^ blockmap->next_offset) & ~HAMMER_BIGBLOCK_MASK64)
