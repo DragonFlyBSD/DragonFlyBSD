@@ -132,7 +132,7 @@ hammer_cmd_volume_del(char **av, int ac)
 }
 
 static void
-hammer_print_volumes(char **av, int ac, char *cmd, char sep)
+hammer_print_volumes(char **av, int ac, const char *cmd, const char sep)
 {
 	struct hammer_ioc_volume_list ioc;
 	int fd;
@@ -186,7 +186,7 @@ hammer_print_volumes(char **av, int ac, char *cmd, char sep)
  * volume-list <filesystem>
  */
 void
-hammer_cmd_volume_list(char **av, int ac, char *cmd)
+hammer_cmd_volume_list(char **av, int ac, const char *cmd)
 {
 	hammer_print_volumes(av, ac, cmd, '\n');
 }
@@ -195,7 +195,7 @@ hammer_cmd_volume_list(char **av, int ac, char *cmd)
  * volume-blkdevs <filesystem>
  */
 void
-hammer_cmd_volume_blkdevs(char **av, int ac, char *cmd)
+hammer_cmd_volume_blkdevs(char **av, int ac, const char *cmd)
 {
 	hammer_print_volumes(av, ac, cmd, ':');
 }
