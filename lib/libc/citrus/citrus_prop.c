@@ -290,8 +290,10 @@ done:
 		}
 		_memstream_ungetc(ms, ch);
 		errnum = _citrus_prop_read_character_common(ms, &ch);
-		if (errnum != 0)
+		if (errnum != 0) {
+			free(s);
 			return (errnum);
+		}
 		s[n] = ch;
 		++n, --m;
 	}
