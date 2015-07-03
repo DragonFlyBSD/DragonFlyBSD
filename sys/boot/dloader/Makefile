@@ -30,20 +30,5 @@ stack_protector.o: ../../libkern/stack_protector.c
 .include <bsd.lib.mk>
 .endif
 
-.if defined(REALLY_X86_64)
-CFLAGS+=	-I.
-.endif
-
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.CURDIR}/../common
-
-.if defined(REALLY_X86_64)
-${SRCS:M*.c:R:S/$/.o/g}: machine
-
-beforedepend ${OBJS}: machine
-
-machine:
-	${LN} -sf ${.CURDIR}/../../i386/include machine
-
-CLEANFILES+=	machine
-.endif

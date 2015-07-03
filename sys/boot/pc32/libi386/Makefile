@@ -34,19 +34,4 @@ CFLAGS+=	-I${.CURDIR}/../../common -I${.CURDIR}/../btx/lib \
 # the location of libstand
 CFLAGS+=	-I${.CURDIR}/../../../../lib/libstand/
 
-# If it's not there, don't consider it a target
-.if exists(${.CURDIR}/../../../cpu/i386/include)
-
-# Make "machine" required for all objects
-# (based on the more complete case in sys/arch/i386/boot/Makefile.inc)
-${SRCS:M*.c:R:S/$/.o/g}: machine
-
-beforedepend ${OBJS}: machine
-
-CLEANFILES+=	machine
-machine:
-	${LN} -sf ${.CURDIR}/../../../cpu/i386/include machine
-
-.endif
-
 .include <bsd.lib.mk>

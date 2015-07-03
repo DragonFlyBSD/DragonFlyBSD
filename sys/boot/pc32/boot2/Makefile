@@ -148,6 +148,7 @@ boot2$s.out: boot2$s.o sio.o ${_ADDOBJS$s}
 CLEANFILES+=	boot1$s boot1$s.out boot1$s.o \
 		boot2$s boot2$s.ldr boot2$s.bin \
 		boot2$s.ld boot2$s.out boot2$s.o boot2$s.h boot2$s.s \
+		bootasmdef.nx \
 		${_ADDOBJS$s}
 
 hammer2$s.o: hammer2.c
@@ -179,25 +180,3 @@ install:
 		boot2_64 ${DESTDIR}${BINDIR}/boot2_64
 
 .include <bsd.prog.mk>
-
-.if defined(REALLY_X86_64)
-# For x86_64, we need to fake up a complete machine/ tree
-# so that types for -m32 appear correctly.
-
-boot2.o: machine
-
-beforedepend ${OBJS}: machine cpu
-
-machine::
-	mkdir -p machine
-	${LN} -sf ${.CURDIR}/../../../cpu/i386/include/* machine
-	${LN} -sf ${.CURDIR}/../../../platform/pc32/include/* machine
-
-cpu::
-	${LN} -hsf ${.CURDIR}/../../../cpu/i386/include cpu
-
-CLEANDIRS+=	machine cpu
-.endif
-
-CLEANFILES+=	bootasmdef.nx
-

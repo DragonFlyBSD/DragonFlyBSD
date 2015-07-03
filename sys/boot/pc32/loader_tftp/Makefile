@@ -115,14 +115,3 @@ FILES+=	${.CURDIR}/../loader/dloader.rc
 ${PROG}.sym: ${OBJS} ${LIBI386} ${LIBSTAND} ${LIBDLOADER} vers.o
 	${CC} ${COMPILER_LDFLAGS} -o ${.TARGET} ${BTXCRT} ${OBJS} vers.o \
 		${LIBDLOADER} ${LIBI386} ${LIBSTAND}
-
-# If it's not there, don't consider it a target
-.if exists(${.CURDIR}/../../../i386/include)
-beforedepend ${OBJS}: machine
-
-machine:
-	${LN} -sf ${.CURDIR}/../../../i386/include machine
-
-.endif
-
-CLEANFILES+=	machine
