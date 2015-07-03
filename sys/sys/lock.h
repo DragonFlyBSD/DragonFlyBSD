@@ -87,7 +87,7 @@ struct lock {
  *	upgrade if it exists, then grant an exclusive lock. Only one exclusive
  *	lock may exist at a time, except that a process holding an exclusive
  *	lock may get additional exclusive locks if it explicitly sets the
- *	LK_CANRECURSE flag in the lock request, or if the LK_CANRECUSE flag
+ *	LK_CANRECURSE flag in the lock request, or if the LK_CANRECURSE flag
  *	was set when the lock was initialized.
  *
  *   LK_UPGRADE
