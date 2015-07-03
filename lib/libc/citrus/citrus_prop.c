@@ -1,5 +1,5 @@
-/* $FreeBSD: head/lib/libc/iconv/citrus_prop.c 219019 2011-02-25 00:04:39Z gabor $ */
-/* $NetBSD: citrus_prop.c,v 1.3 2006/11/22 23:47:21 tnozaki Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_prop.c 281798 2015-04-20 22:09:50Z pfg $ */
+/* $NetBSD: citrus_prop.c,v 1.4 2011/03/30 08:22:01 jruoho Exp $ */
 
 /*-
  * Copyright (c)2006 Citrus Project,
@@ -336,7 +336,7 @@ name_found:
 
 static int
 _citrus_prop_parse_element(struct _memstream * __restrict ms,
-    const _citrus_prop_hint_t * __restrict hints, void ** __restrict context)
+    const _citrus_prop_hint_t * __restrict hints, void * __restrict context)
 {
 	int ch, errnum;
 #define _CITRUS_PROP_HINT_NAME_LEN_MAX	255
@@ -432,8 +432,7 @@ _citrus_prop_parse_variable(const _citrus_prop_hint_t * __restrict hints,
 		if (ch == EOF || ch == '\0')
 			break;
 		_memstream_ungetc(&ms, ch);
-		errnum = _citrus_prop_parse_element(
-		    &ms, hints, (void ** __restrict)context);
+		errnum = _citrus_prop_parse_element(&ms, hints, context);
 		if (errnum != 0)
 			return (errnum);
 	}

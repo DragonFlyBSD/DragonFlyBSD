@@ -1,5 +1,5 @@
-/* $FreeBSD: head/lib/libc/iconv/citrus_prop.h 219019 2011-02-25 00:04:39Z gabor $ */
-/* $NetBSD: citrus_prop.h,v 1.3 2006/11/23 13:59:03 tnozaki Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_prop.h 263986 2014-04-01 10:36:11Z tijl $ */
+/* $NetBSD: citrus_prop.h,v 1.5 2011/05/23 14:52:32 joerg Exp $ */
 
 /*-
  * Copyright (c)2006 Citrus Project,
@@ -42,7 +42,7 @@ typedef struct _citrus_prop_hint_t _citrus_prop_hint_t;
 
 #define _CITRUS_PROP_CB0_T(_func_, _type_) \
 typedef int (*_citrus_prop_##_func_##_cb_func_t) \
-    (void ** __restrict, const char *, _type_); \
+    (void * __restrict, const char *, _type_); \
 typedef struct { \
 	_citrus_prop_##_func_##_cb_func_t func; \
 } _citrus_prop_##_func_##_cb_t;
@@ -52,7 +52,7 @@ _CITRUS_PROP_CB0_T(str, const char *)
 
 #define _CITRUS_PROP_CB1_T(_func_, _type_) \
 typedef int (*_citrus_prop_##_func_##_cb_func_t) \
-    (void ** __restrict, const char *, _type_, _type_); \
+    (void * __restrict, const char *, _type_, _type_); \
 typedef struct { \
 	_citrus_prop_##_func_##_cb_func_t func; \
 } _citrus_prop_##_func_##_cb_t;
