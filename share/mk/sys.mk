@@ -126,9 +126,9 @@ YFLAGS		?=	-d
 
 # The 'make' program is expected to define the following.
 #
-# MACHINE_PLATFORM	platform architecture (vkernel, pc32)
-# MACHINE		machine architecture (i386, etc..)
-# MACHINE_ARCH		cpu architecture (i386, x86_64, etc)
+# MACHINE_PLATFORM	platform architecture (pc64, vkernel64, etc.)
+# MACHINE		machine architecture (x86_64, etc.)
+# MACHINE_ARCH		cpu architecture (x86_64, etc.)
 #
 .if !defined(MACHINE)
 .error "MACHINE was not defined by make"
@@ -144,9 +144,6 @@ YFLAGS		?=	-d
 #
 .if !defined(MACHINE_PLATFORM)
 MACHINE_PLATFORM!=sysctl -n hw.platform
-.endif
-.if ${MACHINE} == "pc32"
-MACHINE=i386
 .endif
 
 .if defined(%POSIX)

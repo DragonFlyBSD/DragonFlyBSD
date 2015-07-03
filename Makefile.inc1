@@ -151,18 +151,9 @@ BUILD_ARCH=	x86_64
 .endif
 .endif
 
-# Backwards compatibility with older make's or older sys.mk's.  make
-# is expected to define MACHINE_PLATFORM.
-#
-.if !defined(MACHINE_PLATFORM)
-MACHINE_PLATFORM= pc32
-.endif
-
 # XXX this is ugly and we need to come up with a nicer solution
 .if !defined(TARGET_PLATFORM)
-.if ${TARGET_ARCH} == "i386"
-TARGET_PLATFORM= pc32
-.elif ${TARGET_ARCH} == "x86_64"
+.if ${TARGET_ARCH} == "x86_64"
 TARGET_PLATFORM= pc64
 .else
 .error Unknown target architecture.

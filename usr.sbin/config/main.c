@@ -149,15 +149,15 @@ main(int argc, char *argv[])
 	if (yyparse())
 		exit(3);
 	if (platformname == NULL) {
-		printf("Specify platform architecture, e.g. 'platform pc32'\n");
+		printf("Specify platform architecture, e.g. 'platform pc64'\n");
 		exit(1);
 	}
 	if (machinename == NULL) {
-		printf("Specify machine architecture, e.g. 'machine i386'\n");
+		printf("Specify machine architecture, e.g. 'machine x86_64'\n");
 		exit(1);
 	}
 	if (machinearchname == NULL) {
-		printf("Specify cpu architecture, e.g. 'machine_arch i386'\n");
+		printf("Specify cpu architecture, e.g. 'machine_arch x86_64'\n");
 		exit(1);
 	}
 	newbus_ioconf();

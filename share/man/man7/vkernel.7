@@ -39,7 +39,6 @@
 .Nm vke
 .Nd virtual kernel architecture
 .Sh SYNOPSIS
-.Cd "platform vkernel   # for 32 bit vkernels"
 .Cd "platform vkernel64 # for 64 bit vkernels"
 .Cd "device vcd"
 .Cd "device vkd"
@@ -518,11 +517,11 @@ network configuration:
 .Sh BUILDING THE WORLD UNDER A VKERNEL
 The virtual kernel platform does not have all the header files expected
 by a world build, so the easiest thing to do right now is to specify a
-pc32 (in a 32 bit vkernel) or pc64 (in a 64 bit vkernel) target when
-building the world under a virtual kernel, like this:
+pc64 (in a 64 bit vkernel) target when building the world under a virtual
+kernel, like this:
 .Bd -literal
-vkernel# make MACHINE_PLATFORM=pc32 buildworld
-vkernel# make MACHINE_PLATFORM=pc32 installworld
+vkernel# make MACHINE_PLATFORM=pc64 buildworld
+vkernel# make MACHINE_PLATFORM=pc64 installworld
 .Ed
 .Sh SEE ALSO
 .Xr vknet 1 ,
