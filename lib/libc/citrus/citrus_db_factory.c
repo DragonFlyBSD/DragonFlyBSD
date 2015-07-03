@@ -1,5 +1,5 @@
-/* $FreeBSD: head/lib/libc/iconv/citrus_db_factory.c 219019 2011-02-25 00:04:39Z gabor $ */
-/* $NetBSD: citrus_db_factory.c,v 1.9 2008/02/09 14:56:20 junyoung Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_db_factory.c 267437 2014-06-13 08:28:51Z tijl $ */
+/*	$NetBSD: citrus_db_factory.c,v 1.10 2013/09/14 13:05:51 joerg Exp $	*/
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -225,15 +225,6 @@ put8(struct _region *r, size_t *rofs, uint8_t val)
 
 	*(uint8_t *)_region_offset(r, *rofs) = val;
 	*rofs += 1;
-}
-
-static __inline void
-put16(struct _region *r, size_t *rofs, uint16_t val)
-{
-
-	val = htons(val);
-	memcpy(_region_offset(r, *rofs), &val, 2);
-	*rofs += 2;
 }
 
 static __inline void

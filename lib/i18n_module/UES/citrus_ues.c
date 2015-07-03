@@ -1,5 +1,5 @@
-/* $FreeBSD: head/lib/libiconv_modules/UES/citrus_ues.c 252583 2013-07-03 18:27:45Z peter $ */
-/* $NetBSD: citrus_ues.c,v 1.1 2006/11/13 15:16:31 tnozaki Exp $ */
+/* $FreeBSD: head/lib/libiconv_modules/UES/citrus_ues.c 281550 2015-04-15 09:09:20Z tijl $ */
+/* $NetBSD: citrus_ues.c,v 1.3 2012/02/12 13:51:29 wiz Exp $ */
 
 /*-
  * Copyright (c)2006 Citrus Project,

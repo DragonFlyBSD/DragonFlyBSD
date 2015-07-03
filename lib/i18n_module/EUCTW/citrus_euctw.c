@@ -1,4 +1,4 @@
-/* $FreeBSD: head/lib/libiconv_modules/EUCTW/citrus_euctw.c 252583 2013-07-03 18:27:45Z peter $ */
+/* $FreeBSD: head/lib/libiconv_modules/EUCTW/citrus_euctw.c 281550 2015-04-15 09:09:20Z tijl $ */
 /*	$NetBSD: citrus_euctw.c,v 1.11 2008/06/14 16:01:07 tnozaki Exp $	*/
 
 /*-
@@ -119,7 +119,7 @@ _citrus_EUCTW_count(int cs)
 	case 1:
 		/*FALLTHROUGH*/
 	case 2:
-		return (2^cs);
+		return (1 << cs);
 	case 3:
 		abort();
 		/*NOTREACHED*/

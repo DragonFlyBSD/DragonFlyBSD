@@ -82,7 +82,7 @@ struct _citrus_prop_hint_t {
 #define _CITRUS_PROP_HINT_NUM(name, cb) \
     { name, _CITRUS_PROP_NUM, { .num = { cb } } }
 #define _CITRUS_PROP_HINT_END \
-    { NULL, _CITRUS_PROP_NUM, { .num = { 0 } } }
+    { .name = NULL }
 
 __BEGIN_DECLS
 int	 _citrus_prop_parse_variable(const _citrus_prop_hint_t * __restrict,

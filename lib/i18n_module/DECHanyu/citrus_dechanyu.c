@@ -1,5 +1,5 @@
-/* $FreeBSD: head/lib/libiconv_modules/DECHanyu/citrus_dechanyu.c 252583 2013-07-03 18:27:45Z peter $ */
-/* $NetBSD: citrus_dechanyu.c,v 1.3 2008/06/14 16:01:07 tnozaki Exp $ */
+/* $FreeBSD: head/lib/libiconv_modules/DECHanyu/citrus_dechanyu.c 281550 2015-04-15 09:09:20Z tijl $ */
+/* $NetBSD: citrus_dechanyu.c,v 1.4 2011/11/19 18:20:13 tnozaki Exp $ */
 
 /*-
  * Copyright (c)2007 Citrus Project,

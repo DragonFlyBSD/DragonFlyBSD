@@ -1,5 +1,5 @@
-/* $FreeBSD: head/lib/libc/iconv/citrus_lookup.c 219019 2011-02-25 00:04:39Z gabor $ */
-/* $NetBSD: citrus_lookup.c,v 1.6 2009/02/03 04:58:38 lukem Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_lookup.c 263986 2014-04-01 10:36:11Z tijl $ */
+/*	$NetBSD: citrus_lookup.c,v 1.7 2012/05/04 16:45:05 joerg Exp $	*/
 
 /*-
  * Copyright (c)2003 Citrus Project,

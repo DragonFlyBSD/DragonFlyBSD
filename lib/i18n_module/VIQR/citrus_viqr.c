@@ -1,5 +1,5 @@
-/* $FreeBSD: head/lib/libiconv_modules/VIQR/citrus_viqr.c 252583 2013-07-03 18:27:45Z peter $ */
-/* $NetBSD: citrus_viqr.c,v 1.4 2008/06/14 16:01:08 tnozaki Exp $ */
+/* $FreeBSD: head/lib/libiconv_modules/VIQR/citrus_viqr.c 281550 2015-04-15 09:09:20Z tijl $ */
+/* $NetBSD: citrus_viqr.c,v 1.5 2011/11/19 18:20:13 tnozaki Exp $ */
 
 /*-
  * Copyright (c)2006 Citrus Project,

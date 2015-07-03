@@ -1,5 +1,5 @@
-/* $FreeBSD: head/lib/libc/iconv/citrus_mmap.c 244350 2012-12-17 10:38:51Z jilles $ */
-/* $NetBSD: citrus_mmap.c,v 1.3 2005/01/19 00:52:37 mycroft Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_mmap.c 263986 2014-04-01 10:36:11Z tijl $ */
+/*	$NetBSD: citrus_mmap.c,v 1.4 2011/10/15 23:00:01 christos Exp $	*/
 
 /*-
  * Copyright (c)2003 Citrus Project,
