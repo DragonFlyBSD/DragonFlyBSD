@@ -1502,7 +1502,7 @@
 /* #undef HAVE___SECURE_GETENV */
 
 /* Define as const if the declaration of iconv() needs const. */
-#define ICONV_CONST const
+#define ICONV_CONST
 
 /* Define to a symbolic name denoting the flavor of iconv_open()
    implementation. */

@@ -666,7 +666,7 @@
 /* #undef HAVE___CXA_THREAD_ATEXIT_IMPL */
 
 /* Define as const if the declaration of iconv() needs const. */
-#define ICONV_CONST const
+#define ICONV_CONST
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */

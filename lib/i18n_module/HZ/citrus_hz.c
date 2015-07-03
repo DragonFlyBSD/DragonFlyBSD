@@ -65,8 +65,8 @@ typedef enum {
 } charset_t;
 
 typedef struct {
-	int	 end;
 	int	 start;
+	int	 end;
 	int	 width;
 } range_t;
 
@@ -173,13 +173,13 @@ _citrus_HZ_unpack_state(_HZEncodingInfo * __restrict ei __unused,
 
 static int
 _citrus_HZ_mbrtowc_priv(_HZEncodingInfo * __restrict ei,
-    wchar_t * __restrict pwc, const char ** __restrict s, size_t n,
+    wchar_t * __restrict pwc, char ** __restrict s, size_t n,
     _HZState * __restrict psenc, size_t * __restrict nresult)
 {
 	escape_t *candidate, *init;
 	graphic_t *graphic;
 	const range_t *range;
-	const char *s0;
+	char *s0;
 	wchar_t wc;
 	int bit, ch, head, len, tail;
 
@@ -530,10 +530,9 @@ _citrus_HZ_parse_graphic(void *context, const char *name, const char *s)
 	p = (void **)context;
 	escape = (escape_t *)p[0];
 	ei = (_HZEncodingInfo *)p[1];
-	graphic = malloc(sizeof(*graphic));
+	graphic = calloc(1, sizeof(*graphic));
 	if (graphic == NULL)
 		return (ENOMEM);
-	memset(graphic, 0, sizeof(*graphic));
 	if (strcmp("GL", name) == 0) {
 		if (GL(escape) != NULL)
 			goto release;
@@ -596,10 +595,9 @@ _citrus_HZ_parse_escape(void *context, const char *name, const char *s)
 	void *p[2];
 
 	ei = (_HZEncodingInfo *)context;
-	escape = malloc(sizeof(*escape));
+	escape = calloc(1, sizeof(*escape));
 	if (escape == NULL)
 		return (EINVAL);
-	memset(escape, 0, sizeof(*escape));
 	if (strcmp("0", name) == 0) {
 		escape->set = E0SET(ei);
 		TAILQ_INSERT_TAIL(E0SET(ei), escape, entry);

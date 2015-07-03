@@ -123,9 +123,10 @@
  * 400107 - Add futimens() and utimensat() syscalls
  * 400200 - 4.2 release
  * 400300 - 4.3 development
+ * 400301 - posix compliant iconv (no const qualifier)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400300	/* propagated to newvers */
+#define __DragonFly_version 400301	/* propagated to newvers */
 
 #include <sys/_null.h>
 

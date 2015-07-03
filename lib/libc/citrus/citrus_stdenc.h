@@ -1,4 +1,4 @@
-/* $FreeBSD: head/lib/libc/iconv/citrus_stdenc.h 252583 2013-07-03 18:27:45Z peter $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_stdenc.h 281550 2015-04-15 09:09:20Z tijl $ */
 /* $NetBSD: citrus_stdenc.h,v 1.4 2005/10/29 18:02:04 tshiozak Exp $ */
 
 /*-
@@ -69,7 +69,7 @@ _citrus_stdenc_init_state(struct _citrus_stdenc * __restrict ce,
 static __inline int
 _citrus_stdenc_mbtocs(struct _citrus_stdenc * __restrict ce,
     _citrus_csid_t * __restrict csid, _citrus_index_t * __restrict idx,
-    const char ** __restrict s, size_t n, void * __restrict ps,
+    char ** __restrict s, size_t n, void * __restrict ps,
     size_t * __restrict nresult, struct iconv_hooks *hooks)
 {
 

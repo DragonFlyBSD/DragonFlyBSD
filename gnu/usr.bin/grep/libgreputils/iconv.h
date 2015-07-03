@@ -400,7 +400,7 @@ _GL_CXXALIAS_SYS (iconv, size_t,
 # endif
 _GL_CXXALIASWARN (iconv);
 # ifndef ICONV_CONST
-#  define ICONV_CONST const
+#  define ICONV_CONST
 # endif
 #endif
 

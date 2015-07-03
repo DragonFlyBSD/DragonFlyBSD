@@ -54,7 +54,7 @@
 typedef void *iconv_t;
 
 static iconv_t (*my_iconv_open)(const char *, const char *);
-static size_t(*my_iconv)(iconv_t, const char **, size_t *, char **, size_t *);
+static size_t(*my_iconv)(iconv_t, char **, size_t *, char **, size_t *);
 static int(*my_iconv_close)(iconv_t);
 
 u_char nls_lower[256];
@@ -123,7 +123,7 @@ nls_setrecode(const char *local, const char *external)
 }
 
 char *
-nls_str_toloc(char *dst, const char *src)
+nls_str_toloc(char *dst, char *src)
 {
 	char *p = dst;
 	size_t inlen, outlen;
@@ -145,7 +145,7 @@ nls_str_toloc(char *dst, const char *src)
 }
 
 char *
-nls_str_toext(char *dst, const char *src)
+nls_str_toext(char *dst, char *src)
 {
 	char *p = dst;
 	size_t inlen, outlen;
@@ -167,10 +167,10 @@ nls_str_toext(char *dst, const char *src)
 }
 
 void *
-nls_mem_toloc(void *dst, const void *src, int size)
+nls_mem_toloc(void *dst, void *src, int size)
 {
 	char *p = dst;
-	const char *s = src;
+	char *s = src;
 	size_t inlen, outlen;
 
 	if (!iconv_loaded)
@@ -192,10 +192,10 @@ nls_mem_toloc(void *dst, const void *src, int size)
 }
 
 void *
-nls_mem_toext(void *dst, const void *src, int size)
+nls_mem_toext(void *dst, void *src, int size)
 {
 	char *p = dst;
-	const char *s = src;
+	char *s = src;
 	size_t inlen, outlen;
 
 	if (size == 0)

@@ -1,4 +1,4 @@
-/* $FreeBSD: head/lib/libc/iconv/citrus_stdenc_template.h 252583 2013-07-03 18:27:45Z peter $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_stdenc_template.h 281550 2015-04-15 09:09:20Z tijl $ */
 /* $NetBSD: citrus_stdenc_template.h,v 1.4 2008/02/09 14:56:20 junyoung Exp $ */
 
 /*-
@@ -112,7 +112,7 @@ _FUNCNAME(stdenc_init_state)(struct _citrus_stdenc * __restrict ce,
 static int
 _FUNCNAME(stdenc_mbtocs)(struct _citrus_stdenc * __restrict ce,
     _citrus_csid_t * __restrict csid, _citrus_index_t * __restrict idx,
-    const char ** __restrict s, size_t n, void * __restrict ps,
+    char ** __restrict s, size_t n, void * __restrict ps,
     size_t * __restrict nresult, struct iconv_hooks *hooks)
 {
 	wchar_t wc;
@@ -151,7 +151,7 @@ _FUNCNAME(stdenc_cstomb)(struct _citrus_stdenc * __restrict ce,
 
 static int
 _FUNCNAME(stdenc_mbtowc)(struct _citrus_stdenc * __restrict ce,
-    _citrus_wc_t * __restrict wc, const char ** __restrict s, size_t n,
+    _citrus_wc_t * __restrict wc, char ** __restrict s, size_t n,
     void * __restrict ps, size_t * __restrict nresult,
     struct iconv_hooks *hooks)
 {

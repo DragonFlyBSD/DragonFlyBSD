@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libc/locale/mbrtocXX_iconv.h 252547 2013-07-03 07:03:19Z peter $
+ * $FreeBSD: head/lib/libc/locale/mbrtocXX_iconv.h 281550 2015-04-15 09:09:20Z tijl $
  */
 
 #include <sys/queue.h>
@@ -98,8 +98,7 @@ mbrtocXX_l(charXX_t * __restrict pc, const char * __restrict s, size_t n,
 
 	/* Convert as few characters to the dst buffer as possible. */
 	for (i = 0; ; i++) {
-		const char *src;
-		char *dst;
+		char *src, *dst;
 		size_t srcleft, dstleft, invlen;
 		int err;
 

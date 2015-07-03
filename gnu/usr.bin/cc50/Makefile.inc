@@ -37,6 +37,7 @@ FLAGS+=		-I${STOPDIR}/../gmp
 FLAGS+=		-I${STOPDIR}/../../../contrib/mpfr/src
 FLAGS+=		-I${STOPDIR}/../mpfr
 FLAGS+=		-I${STOPDIR}/../../../contrib/mpc/src
+FLAGS+=		-I${STOPDIR}/../../../include
 FLAGS+=		-I${GCCDIR}/gcc/config/i386
 FLAGS+=		-I${TOOLDIR}
 

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libc/locale/cXXrtomb_iconv.h 252547 2013-07-03 07:03:19Z peter $
+ * $FreeBSD: head/lib/libc/locale/cXXrtomb_iconv.h 281550 2015-04-15 09:09:20Z tijl $
  */
 
 
@@ -57,8 +57,7 @@ cXXrtomb_l(char * __restrict s, charXX_t c, mbstate_t * __restrict ps,
 {
 	_ConversionState *cs;
 	struct _citrus_iconv *handle;
-	const char *src;
-	char *dst;
+	char *src, *dst;
 	size_t srcleft, dstleft, invlen;
 	int err;
 

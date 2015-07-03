@@ -1,4 +1,4 @@
-/* $FreeBSD: head/lib/libiconv_modules/MSKanji/citrus_mskanji.c 252583 2013-07-03 18:27:45Z peter $ */
+/* $FreeBSD: head/lib/libiconv_modules/MSKanji/citrus_mskanji.c 281550 2015-04-15 09:09:20Z tijl $ */
 /*	$NetBSD: citrus_mskanji.c,v 1.13 2008/06/14 16:01:08 tnozaki Exp $	*/
 
 /*-
@@ -151,10 +151,10 @@ _citrus_MSKanji_unpack_state(_MSKanjiEncodingInfo * __restrict ei __unused,
 static int
 /*ARGSUSED*/
 _citrus_MSKanji_mbrtowc_priv(_MSKanjiEncodingInfo * __restrict ei,
-    wchar_t * __restrict pwc, const char ** __restrict s, size_t n,
+    wchar_t * __restrict pwc, char ** __restrict s, size_t n,
     _MSKanjiState * __restrict psenc, size_t * __restrict nresult)
 {
-	const char *s0;
+	char *s0;
 	wchar_t wchar;
 	int chlenbak, len;
 

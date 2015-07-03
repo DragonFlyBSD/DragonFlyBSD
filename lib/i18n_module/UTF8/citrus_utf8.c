@@ -1,4 +1,4 @@
-/* $FreeBSD: head/lib/libiconv_modules/UTF8/citrus_utf8.c 252583 2013-07-03 18:27:45Z peter $ */
+/* $FreeBSD: head/lib/libiconv_modules/UTF8/citrus_utf8.c 281550 2015-04-15 09:09:20Z tijl $ */
 /*	$NetBSD: citrus_utf8.c,v 1.17 2008/06/14 16:01:08 tnozaki Exp $	*/
 
 /*-
@@ -175,10 +175,10 @@ _citrus_UTF8_unpack_state(_UTF8EncodingInfo *ei __unused, _UTF8State *s,
 }
 
 static int
-_citrus_UTF8_mbrtowc_priv(_UTF8EncodingInfo *ei, wchar_t *pwc, const char **s,
+_citrus_UTF8_mbrtowc_priv(_UTF8EncodingInfo *ei, wchar_t *pwc, char **s,
     size_t n, _UTF8State *psenc, size_t *nresult)
 {
-	const char *s0;
+	char *s0;
 	wchar_t wchar;
 	int i;
 	uint8_t c;

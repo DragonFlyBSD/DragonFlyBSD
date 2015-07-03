@@ -1,4 +1,4 @@
-/* $FreeBSD: head/lib/libc/iconv/citrus_iconv.h 252547 2013-07-03 07:03:19Z peter $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_iconv.h 281550 2015-04-15 09:09:20Z tijl $ */
 /* $NetBSD: citrus_iconv.h,v 1.5 2008/02/09 14:56:20 junyoung Exp $ */
 
 /*-
@@ -52,7 +52,7 @@ __END_DECLS
  */
 static __inline int
 _citrus_iconv_convert(struct _citrus_iconv * __restrict cv,
-    const char * __restrict * __restrict in, size_t * __restrict inbytes,
+    char * __restrict * __restrict in, size_t * __restrict inbytes,
     char * __restrict * __restrict out, size_t * __restrict outbytes,
     uint32_t flags, size_t * __restrict nresults)
 {

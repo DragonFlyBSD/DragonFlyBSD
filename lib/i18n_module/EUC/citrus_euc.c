@@ -1,4 +1,4 @@
-/* $FreeBSD: head/lib/libiconv_modules/EUC/citrus_euc.c 252583 2013-07-03 18:27:45Z peter $ */
+/* $FreeBSD: head/lib/libiconv_modules/EUC/citrus_euc.c 281550 2015-04-15 09:09:20Z tijl $ */
 /*	$NetBSD: citrus_euc.c,v 1.14 2009/01/11 02:46:24 christos Exp $	*/
 
 /*-
@@ -188,12 +188,12 @@ _citrus_EUC_unpack_state(_EUCEncodingInfo *ei __unused, _EUCState *s,
 }
 
 static int
-_citrus_EUC_mbrtowc_priv(_EUCEncodingInfo *ei, wchar_t *pwc, const char **s,
+_citrus_EUC_mbrtowc_priv(_EUCEncodingInfo *ei, wchar_t *pwc, char **s,
     size_t n, _EUCState *psenc, size_t *nresult)
 {
 	wchar_t wchar;
 	int c, chlenbak, cs, len;
-	const char *s0, *s1 = NULL;
+	char *s0, *s1 = NULL;
 
 	s0 = *s;
 
