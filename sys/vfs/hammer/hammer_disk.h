@@ -249,12 +249,12 @@ typedef u_int32_t hammer_crc_t;
 
 /*
  * The blockmap is somewhat of a degenerate structure.  HAMMER only actually
- * uses it in its original incarnation to implement the free-map.
+ * uses it in its original incarnation to implement the freemap.
  *
  * zone:1	raw volume (no blockmap)
  * zone:2	raw buffer (no blockmap)
- * zone:3	undo-map   (direct layer2 array in volume header)
- * zone:4	free-map   (the only real blockmap)
+ * zone:3	undomap    (direct layer2 array in volume header)
+ * zone:4	freemap    (the only real blockmap)
  * zone:8-15	zone id used to classify big-block only, address is actually
  *		a zone-2 address.
  */

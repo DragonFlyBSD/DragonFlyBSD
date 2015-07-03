@@ -722,7 +722,7 @@ alloc_bigblock(struct volume_info *volume, int zone)
 }
 
 /*
- * Format the undo-map for the root volume.
+ * Format the undomap for the root volume.
  */
 void
 format_undomap(hammer_volume_ondisk_t ondisk)
