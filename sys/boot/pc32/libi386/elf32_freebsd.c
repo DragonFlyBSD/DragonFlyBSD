@@ -24,9 +24,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/elf32_freebsd.c,v 1.13 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/elf32_freebsd.c,v 1.1 2003/11/10 06:08:36 dillon Exp $
  */
 
+#define __ELF_WORD_SIZE 32
 #include <sys/param.h>
 #include <sys/exec.h>
 #include <sys/linker.h>

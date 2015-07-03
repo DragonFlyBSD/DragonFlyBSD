@@ -57,6 +57,21 @@ struct i386_devdesc
     } d_kind;
 };
 
+static __inline u_int
+read_eflags(void)
+{
+	u_int	ef;
+
+	__asm __volatile("pushfl; popl %0" : "=r" (ef));
+	return (ef);
+}
+
+static __inline void
+write_eflags(u_int ef)
+{
+	__asm __volatile("pushl %0; popfl" : : "r" (ef));
+}
+
 int	i386_getdev(void **vdev, const char *devspec, const char **path);
 char	*i386_fmtdev(void *vdev);
 int	i386_setcurrdev(struct env_var *ev, int flags, const void *value);
