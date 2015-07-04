@@ -36,7 +36,6 @@
 #include <sys/types.h>
 
 #include <wchar.h>
-#include <sys/types.h>
 
 #ifdef __cplusplus
 typedef	bool	__iconv_bool;

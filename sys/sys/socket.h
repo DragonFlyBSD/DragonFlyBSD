@@ -37,6 +37,10 @@
 #ifndef _SYS_SOCKET_H_
 #define	_SYS_SOCKET_H_
 
+#ifndef _SYS_CDEFS_H_
+#include <sys/cdefs.h>
+#endif
+
 #include <sys/_iovec.h>
 
 #ifndef _SYS_TYPES_H_
@@ -470,10 +474,6 @@ struct sf_hdtr {
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 
-#ifndef _SYS_CDEFS_H_
-#include <sys/cdefs.h>
-#endif
-
 __BEGIN_DECLS
 int	accept (int, struct sockaddr *, socklen_t *);
 int	extaccept (int, int, struct sockaddr *, socklen_t *);
@@ -495,21 +495,12 @@ int	sendfile (int, int, off_t, size_t, struct sf_hdtr *, off_t *, int);
 int	setsockopt (int, int, int, const void *, socklen_t);
 int	shutdown (int, int);
 int	sockatmark(int);
+int	socket (int, int, int);
 int	socketpair (int, int, int, int *);
 
 void	pfctlinput (int, struct sockaddr *);
 __END_DECLS
 
-#endif /* !_KERNEL */
-
-#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
-#ifndef _SYS_CDEFS_H_
-#include <sys/cdefs.h>
-#endif
-
-__BEGIN_DECLS
-int	socket (int, int, int);
-__END_DECLS
 #endif	/* !_KERNEL || _KERNEL_VIRTUAL */
 
 #endif /* !_SYS_SOCKET_H_ */
