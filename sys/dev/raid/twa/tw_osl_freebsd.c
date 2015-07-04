@@ -928,9 +928,8 @@ tw_osli_fw_passthru(struct twa_softc *sc, TW_INT8 *buf)
 	 * Make sure that the data buffer sent to firmware is a
 	 * 512 byte multiple in size.
 	 */
-	data_buf_size_adjusted =
-		(user_buf->driver_pkt.buffer_length +
-		(sc->sg_size_factor - 1)) & ~(sc->sg_size_factor - 1);
+	data_buf_size_adjusted = roundup2(user_buf->driver_pkt.buffer_length,
+	    sc->sg_size_factor);
 	if ((req->length = data_buf_size_adjusted)) {
 		req->data = kmalloc(data_buf_size_adjusted,
 		    TW_OSLI_MALLOC_CLASS, M_WAITOK);
@@ -1349,9 +1348,7 @@ tw_osli_map_request(struct tw_osli_req_context *req)
 			/* Save original data pointer and length. */
 			req->real_data = req->data;
 			req->real_length = req->length;
-			req->length = (req->length +
-				(sc->sg_size_factor - 1)) &
-				~(sc->sg_size_factor - 1);
+			req->length = roundup2(req->length, sc->sg_size_factor);
 			req->data = kmalloc(req->length, TW_OSLI_MALLOC_CLASS,
 					M_NOWAIT);
 			if (req->data == NULL) {

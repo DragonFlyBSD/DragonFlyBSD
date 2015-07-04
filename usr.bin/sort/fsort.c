@@ -74,7 +74,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SALIGN(n) ((n+sizeof(length_t)-1) & ~(sizeof(length_t)-1))
+#define SALIGN(n) roundup2(n, sizeof(length_t))
 
 void
 fsort(struct filelist *filelist, int nfiles, FILE *outfp, struct field *ftbl)

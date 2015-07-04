@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/module.c,v 1.25 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/module.c,v 1.6 2008/09/02 17:21:12 dillon Exp $
  */
 
 /*
@@ -759,8 +758,8 @@ file_search(const char *name, char **extlist)
     return(result);
 }
 
-#define	INT_ALIGN(base, ptr)	ptr = \
-	(base) + (((ptr) - (base) + sizeof(int) - 1) & ~(sizeof(int) - 1))
+#define	INT_ALIGN(base, ptr) \
+	ptr = (base) + roundup2((ptr) - (base), sizeof(int))
 
 static char *
 mod_search_hints(struct moduledir *mdp, const char *modname,

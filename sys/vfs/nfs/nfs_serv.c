@@ -2929,7 +2929,7 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	}
 	off = toff;
 	cnt = fxdr_unsigned(int, *tl);
-	siz = ((cnt + DIRBLKSIZ - 1) & ~(DIRBLKSIZ - 1));
+	siz = roundup2(cnt, DIRBLKSIZ);
 	xfer = NFS_SRVMAXDATA(nfsd);
 	if ((unsigned)cnt > xfer)
 		cnt = xfer;
@@ -3231,7 +3231,7 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	siz = fxdr_unsigned(int, *tl++);
 	cnt = fxdr_unsigned(int, *tl);
 	off = toff;
-	siz = ((siz + DIRBLKSIZ - 1) & ~(DIRBLKSIZ - 1));
+	siz = roundup2(siz, DIRBLKSIZ);
 	xfer = NFS_SRVMAXDATA(nfsd);
 	if ((unsigned)cnt > xfer)
 		cnt = xfer;

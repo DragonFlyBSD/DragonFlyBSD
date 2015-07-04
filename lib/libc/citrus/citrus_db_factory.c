@@ -28,7 +28,7 @@
  */
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/queue.h>
 
 #include <arpa/inet.h>
@@ -104,7 +104,7 @@ _citrus_db_factory_free(struct _citrus_db_factory *df)
 static __inline size_t
 ceilto(size_t sz)
 {
-	return ((sz + DB_ALIGN - 1) & ~(DB_ALIGN - 1));
+	return roundup2(sz, DB_ALIGN);
 }
 
 int

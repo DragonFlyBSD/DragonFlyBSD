@@ -67,7 +67,7 @@
 #include <string.h>
 
 /* Align records in temporary files to avoid misaligned copies */
-#define REC_ROUNDUP(n) (((n) + sizeof (long) - 1) & ~(sizeof (long) - 1))
+#define REC_ROUNDUP(n) roundup2(n, sizeof(long))
 
 static ssize_t	seq(FILE *, u_char **);
 

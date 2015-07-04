@@ -499,8 +499,7 @@ nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, struct thread *td)
 		NULLOUT(fsp = nfsm_dissect(&info, NFSX_V3FSINFO));
 		pref = fxdr_unsigned(u_int32_t, fsp->fs_wtpref);
 		if (pref < nmp->nm_wsize && pref >= NFS_FABLKSIZE)
-			nmp->nm_wsize = (pref + NFS_FABLKSIZE - 1) &
-				~(NFS_FABLKSIZE - 1);
+			nmp->nm_wsize = roundup2(pref, NFS_FABLKSIZE);
 		max = fxdr_unsigned(u_int32_t, fsp->fs_wtmax);
 		if (max < nmp->nm_wsize && max > 0) {
 			nmp->nm_wsize = max & ~(NFS_FABLKSIZE - 1);
@@ -509,8 +508,7 @@ nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, struct thread *td)
 		}
 		pref = fxdr_unsigned(u_int32_t, fsp->fs_rtpref);
 		if (pref < nmp->nm_rsize && pref >= NFS_FABLKSIZE)
-			nmp->nm_rsize = (pref + NFS_FABLKSIZE - 1) &
-				~(NFS_FABLKSIZE - 1);
+			nmp->nm_rsize = roundup2(pref, NFS_FABLKSIZE);
 		max = fxdr_unsigned(u_int32_t, fsp->fs_rtmax);
 		if (max < nmp->nm_rsize && max > 0) {
 			nmp->nm_rsize = max & ~(NFS_FABLKSIZE - 1);
@@ -519,8 +517,7 @@ nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, struct thread *td)
 		}
 		pref = fxdr_unsigned(u_int32_t, fsp->fs_dtpref);
 		if (pref < nmp->nm_readdirsize && pref >= NFS_DIRBLKSIZ)
-			nmp->nm_readdirsize = (pref + NFS_DIRBLKSIZ - 1) &
-				~(NFS_DIRBLKSIZ - 1);
+			nmp->nm_readdirsize = roundup2(pref, NFS_DIRBLKSIZ);
 		if (max < nmp->nm_readdirsize && max > 0) {
 			nmp->nm_readdirsize = max & ~(NFS_DIRBLKSIZ - 1);
 			if (nmp->nm_readdirsize == 0)

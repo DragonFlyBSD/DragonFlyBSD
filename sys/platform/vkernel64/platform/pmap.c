@@ -3408,7 +3408,7 @@ pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)
 		return addr;
 	}
 
-	addr = (addr + (NBPDR - 1)) & ~(NBPDR - 1);
+	addr = roundup2(addr, NBPDR);
 	return addr;
 }
 

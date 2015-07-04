@@ -130,7 +130,7 @@ vring_size(unsigned int num, unsigned long align)
 
 	size = num * sizeof(struct vring_desc);
 	size += sizeof(struct vring_avail) + (num * sizeof(uint16_t));
-	size = (size + align - 1) & ~(align - 1);
+	size = roundup2(size, align);
 	size += sizeof(struct vring_used) +
 	    (num * sizeof(struct vring_used_elem));
 	return (size);
@@ -144,8 +144,8 @@ vring_init(struct vring *vr, unsigned int num, uint8_t *p,
         vr->desc = (struct vring_desc *) p;
         vr->avail = (struct vring_avail *) (p +
 	    num * sizeof(struct vring_desc));
-        vr->used = (void *)
-	    (((unsigned long) &vr->avail->ring[num] + align-1) & ~(align-1));
+        vr->used =
+	    (void *)roundup2((unsigned long)&vr->avail->ring[num], align);
 }
 
 /*

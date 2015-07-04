@@ -32,13 +32,11 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sbin/rconfig/client.c,v 1.4 2005/04/02 22:15:20 dillon Exp $
  */
 
 #include "defs.h"
 
-#define LONG_ALIGN(n)	(((n) + (sizeof(long) - 1)) & ~(sizeof(long) - 1))
+#define LONG_ALIGN(n)	roundup2(n, sizeof(long))
 
 static void load_client_broadcast_tags(tag_t tag, const char *tagName);
 

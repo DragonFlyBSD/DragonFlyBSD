@@ -1994,7 +1994,7 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 	else
 		blksiz = DEV_BSIZE;
 
-	size = (ap->a_count + blksiz - 1) & ~(blksiz - 1);
+	size = roundup2(ap->a_count, blksiz);
 
 	bp = getpbuf_kva(NULL);
 	kva = (vm_offset_t)bp->b_data;

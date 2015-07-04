@@ -236,7 +236,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 	 * 	 use zbootinit().
 	 */
 	if ((z->zflags & ZONE_BOOT) == 0) {
-		z->zsize = (size + ZONE_ROUNDING - 1) & ~(ZONE_ROUNDING - 1);
+		z->zsize = roundup2(size, ZONE_ROUNDING);
 		spin_init(&z->zlock, "zinitna");
 		z->zfreecnt = 0;
 		z->ztotal = 0;

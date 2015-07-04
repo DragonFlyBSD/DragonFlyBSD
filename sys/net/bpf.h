@@ -69,7 +69,7 @@ typedef	u_int32_t bpf_u_int32;
  * even multiple of BPF_ALIGNMENT.
  */
 #define BPF_ALIGNMENT sizeof(long)
-#define BPF_WORDALIGN(x) (((x)+(BPF_ALIGNMENT-1))&~(BPF_ALIGNMENT-1))
+#define BPF_WORDALIGN(x) roundup2(x, BPF_ALIGNMENT)
 
 #define BPF_MAXINSNS 512
 #define BPF_MAXBUFSIZE 0x80000

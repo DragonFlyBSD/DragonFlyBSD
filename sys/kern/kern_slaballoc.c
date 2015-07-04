@@ -867,7 +867,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	 */
 	if (powerof2(size))
 	    align = size;
-	off = (off + align - 1) & ~(align - 1);
+	off = roundup2(off, align);
 
 	z->z_Magic = ZALLOC_SLAB_MAGIC;
 	z->z_ZoneIndex = zi;

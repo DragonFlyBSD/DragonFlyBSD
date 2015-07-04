@@ -33,7 +33,7 @@
  * $FreeBSD: head/lib/libc/db/recno/rec_delete.c 189292 2009-03-03 02:16:12Z delphij $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 
 #include <errno.h>
 #include <stdio.h>

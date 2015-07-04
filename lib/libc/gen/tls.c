@@ -32,6 +32,7 @@
  * runtime from ld-elf.so.1.
  */
 
+#include <sys/param.h>
 #include <sys/tls.h>
 
 #include <machine/tls.h>
@@ -60,9 +61,6 @@ void __libc_free_tls(struct tls_tcb *tcb);
 #endif
 
 #ifndef PIC
-
-#define round(size, align) \
-	(((size) + (align) - 1) & ~((align) - 1))
 
 static size_t tls_static_space;
 static size_t tls_init_size;
@@ -229,7 +227,7 @@ _libc_init_tls(void)
 
 	for (i = 0; (unsigned)i < phnum; i++) {
 		if (phdr[i].p_type == PT_TLS) {
-			tls_static_space = round(phdr[i].p_memsz,
+			tls_static_space = roundup2(phdr[i].p_memsz,
 			    phdr[i].p_align);
 			tls_init_size = phdr[i].p_filesz;
 			tls_init = (void*) phdr[i].p_vaddr;

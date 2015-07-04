@@ -102,7 +102,7 @@ typedef struct _page {
  * be manipulated without copying.  (This presumes that 32 bit items can be
  * manipulated on this system.)
  */
-#define	LALIGN(n)	(((n) + sizeof(pgno_t) - 1) & ~(sizeof(pgno_t) - 1))
+#define	LALIGN(n)	roundup2(n, sizeof(pgno_t))
 #define	NOVFLSIZE	(sizeof(pgno_t) + sizeof(uint32_t))
 
 /*

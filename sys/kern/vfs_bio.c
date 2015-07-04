@@ -3189,7 +3189,7 @@ allocbuf(struct buf *bp, int size)
 		 * Just get anonymous memory from the kernel.  Don't
 		 * mess with B_CACHE.
 		 */
-		mbsize = (size + DEV_BSIZE - 1) & ~(DEV_BSIZE - 1);
+		mbsize = roundup2(size, DEV_BSIZE);
 		if (bp->b_flags & B_MALLOC)
 			newbsize = mbsize;
 		else
@@ -3269,7 +3269,7 @@ allocbuf(struct buf *bp, int size)
 		vm_page_t m;
 		int desiredpages;
 
-		newbsize = (size + DEV_BSIZE - 1) & ~(DEV_BSIZE - 1);
+		newbsize = roundup2(size, DEV_BSIZE);
 		desiredpages = ((int)(bp->b_loffset & PAGE_MASK) +
 				newbsize + PAGE_MASK) >> PAGE_SHIFT;
 		KKASSERT(desiredpages <= XIO_INTERNAL_PAGES);

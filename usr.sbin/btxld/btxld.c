@@ -24,7 +24,6 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/btxld/btxld.c,v 1.4 2000/01/04 14:10:36 marcel Exp $
- * $DragonFly: src/usr.sbin/btxld/btxld.c,v 1.3 2004/08/19 21:38:30 joerg Exp $
  */
 
 #define AOUT_H_FORCE32
@@ -59,8 +58,6 @@
 
 #define IMPURE	1		/* Writable text */
 #define MAXU32	0xffffffff	/* Maximum unsigned 32-bit quantity */
-
-#define align(x, y) (((x) + (y) - 1) & ~((y) - 1))
 
 struct hdr {
     uint32_t fmt;		/* Format */
@@ -405,8 +402,8 @@ puthdr(int fd, struct hdr *hdr)
 	eh.p[0].p_vaddr = eh.p[0].p_paddr = hdr->org;
 	eh.p[0].p_filesz = eh.p[0].p_memsz = hdr->text;
 	eh.p[1].p_offset = eh.p[0].p_offset + eh.p[0].p_filesz;
-	eh.p[1].p_vaddr = eh.p[1].p_paddr = align(eh.p[0].p_paddr +
-						  eh.p[0].p_memsz, 4);
+	eh.p[1].p_vaddr = eh.p[1].p_paddr =
+	    roundup2(eh.p[0].p_paddr + eh.p[0].p_memsz, 4);
 	eh.p[1].p_filesz = eh.p[1].p_memsz = hdr->data;
 	eh.sh[2].sh_addr = eh.p[0].p_vaddr;
 	eh.sh[2].sh_offset = eh.p[0].p_offset;

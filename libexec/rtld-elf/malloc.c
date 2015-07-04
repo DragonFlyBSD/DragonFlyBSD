@@ -207,7 +207,7 @@ malloc(size_t nbytes)
 	 * Record allocated size of block and
 	 * bound space with magic numbers.
 	 */
-	op->ov_size = (nbytes + RSLOP - 1) & ~(RSLOP - 1);
+	op->ov_size = roundup2(nbytes, RSLOP);
 	op->ov_rmagic = RMAGIC;
   	*(u_short *)((caddr_t)(op + 1) + op->ov_size) = RMAGIC;
 #endif
@@ -366,7 +366,7 @@ realloc(void *cp, size_t nbytes)
 		}
 		if (nbytes <= onb && nbytes > (size_t)i) {
 #ifdef RCHECK
-			op->ov_size = (nbytes + RSLOP - 1) & ~(RSLOP - 1);
+			op->ov_size = roundup2(nbytes, RSLOP);
 			*(u_short *)((caddr_t)(op + 1) + op->ov_size) = RMAGIC;
 #endif
 			return(cp);
@@ -444,7 +444,7 @@ morepages(int n)
 
 	if (pagepool_end - pagepool_start > pagesz) {
 		caddr_t	addr = (caddr_t)
-			(((long)pagepool_start + pagesz - 1) & ~(pagesz - 1));
+			roundup2((long)pagepool_start, pagesz);
 		if (munmap(addr, pagepool_end - addr) != 0)
 			rtld_fdprintf(STDERR_FILENO, "morepages: munmap %p",
 			    addr);

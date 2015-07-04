@@ -637,7 +637,7 @@ makebootarea(char *boot, struct disklabel32 *dp, int f)
 	bootsize = (int)sb.st_size - dp->d_bbsize;
 	if (bootsize > 0) {
 		/* XXX assume d_secsize is a power of two */
-		bootsize = (bootsize + dp->d_secsize-1) & ~(dp->d_secsize-1);
+		bootsize = roundup2(bootsize, dp->d_secsize);
 		bootbuf = (char *)malloc((size_t)bootsize);
 		if (bootbuf == NULL)
 			err(4, "%s", xxboot);

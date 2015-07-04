@@ -931,7 +931,7 @@ ASR_getTidAddress(Asr_softc_t *sc, int bus, int target, int lun, int new_entry)
 	 *	fragmentation effects on the allocations.
 	 */
 #define BUS_CHUNK 8
-	new_size = ((target + BUS_CHUNK - 1) & ~(BUS_CHUNK - 1));
+	new_size = roundup2(target, BUS_CHUNK);
 	if ((bus_ptr = sc->ha_targets[bus]) == NULL) {
 		/*
 		 *	Allocate a new structure?
@@ -982,7 +982,7 @@ ASR_getTidAddress(Asr_softc_t *sc, int bus, int target, int lun, int new_entry)
 	 */
 #define TARGET_CHUNK 8
 	if ((new_size = lun) != 0) {
-		new_size = ((lun + TARGET_CHUNK - 1) & ~(TARGET_CHUNK - 1));
+		new_size = roundup2(lun, TARGET_CHUNK);
 	}
 	if ((target_ptr = bus_ptr->LUN[target]) == NULL) {
 		/*

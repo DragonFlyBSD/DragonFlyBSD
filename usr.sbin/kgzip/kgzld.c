@@ -24,7 +24,6 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kgzip/kgzld.c,v 1.2.2.1 2001/07/19 04:37:24 kris Exp $
- * $DragonFly: src/usr.sbin/kgzip/kgzld.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -40,8 +39,6 @@
 #include "aouthdr.h"
 #include "elfhdr.h"
 #include "kgzip.h"
-
-#define align(x, y) (((x) + (y) - 1) & ~((y) - 1))
 
 /*
  * Link KGZ file and loader.
@@ -79,7 +76,7 @@ kgzld(struct kgz_hdr * kh, const char *f1, const char *f2)
 	if (n != sizeof(*kh) || strcmp(kh->ident, "KGZ"))
 	    errx(1, "%s: Invalid format", idi.fname);
     }
-    sprintf(addr, "%#x", align(kh->dload + kh->dsize, 0x1000));
+    sprintf(addr, "%#x", roundup2(kh->dload + kh->dsize, 0x1000));
     switch (pid = fork()) {
     case -1:
 	err(1, NULL);

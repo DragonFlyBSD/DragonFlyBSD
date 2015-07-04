@@ -532,7 +532,7 @@ zoneindex(size_t *bytes, size_t *chunking)
 		if (x == 0)
 			_mpanic("slaballoc: byte value too high");
 	}
-	*bytes = n = (n + c - 1) & ~(c - 1);
+	*bytes = n = roundup2(n, c);
 	*chunking = c;
 	return (i + n / c - CHUNKFACTOR);
 #if 0
@@ -1111,8 +1111,7 @@ slaballoc(int zi, size_t chunking, size_t chunk_size)
 	 */
 	if ((chunk_size ^ (chunk_size - 1)) == (chunk_size << 1) - 1) {
 		ispower2 = 1;
-		chunk_offset = (sizeof(*slab) + (chunk_size - 1)) &
-			       ~(chunk_size - 1);
+		chunk_offset = roundup2(sizeof(*slab), chunk_size);
 	} else {
 		ispower2 = 0;
 		chunk_offset = sizeof(*slab) + chunking - 1;

@@ -33,7 +33,7 @@
  * $FreeBSD: head/lib/libc/db/btree/bt_delete.c 189327 2009-03-04 00:58:04Z delphij $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 
 #include <errno.h>
 #include <stdio.h>

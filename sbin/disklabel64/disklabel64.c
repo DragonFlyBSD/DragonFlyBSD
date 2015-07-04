@@ -582,8 +582,7 @@ makebootarea(int f)
 	if (boot1buf == NULL) {
 		size_t rsize;
 
-		rsize = (sizeof(struct disklabel64) + secsize - 1) &
-			~(secsize - 1);
+		rsize = roundup2(sizeof(struct disklabel64), secsize);
 		boot1size = offsetof(struct disklabel64, d_magic);
 		boot1lsize = rsize;
 		boot1buf = malloc(rsize);
@@ -630,7 +629,7 @@ makebootarea(int f)
 		err(4, "%s must be <= %d bytes!", boot2path, boot2size);
 	if ((r = read(fd, boot2buf, boot2size)) < 1)
 		err(4, "%s is empty!", boot2path);
-	boot2size = (r + secsize - 1) & ~(secsize - 1);
+	boot2size = roundup2(r, secsize);
 	close(fd);
 
 	/*

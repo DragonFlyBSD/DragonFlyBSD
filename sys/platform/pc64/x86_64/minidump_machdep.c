@@ -54,7 +54,7 @@ CTASSERT(sizeof(struct kerneldumpheader) == 512);
 #define	SIZEOF_METADATA		(64*1024)
 
 #define	MD_ALIGN(x)	(((off_t)(x) + PAGE_MASK) & ~PAGE_MASK)
-#define	DEV_ALIGN(x)	(((off_t)(x) + (DEV_BSIZE-1)) & ~(DEV_BSIZE-1))
+#define	DEV_ALIGN(x)	roundup2((off_t)(x), DEV_BSIZE)
 
 extern uint64_t KPDPphys;
 

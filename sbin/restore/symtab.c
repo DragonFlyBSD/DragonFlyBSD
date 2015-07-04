@@ -28,7 +28,6 @@
  *
  * @(#)symtab.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/symtab.c,v 1.7.2.1 2001/12/19 14:54:14 tobez Exp $
- * $DragonFly: src/sbin/restore/symtab.c,v 1.8 2005/11/06 12:49:25 swildner Exp $
  */
 
 /*
@@ -366,7 +365,7 @@ struct strhdr {
 };
 
 #define STRTBLINCR	(sizeof(struct strhdr))
-#define allocsize(size)	(((size) + 1 + STRTBLINCR - 1) & ~(STRTBLINCR - 1))
+#define allocsize(size)	roundup2((size) + 1, STRTBLINCR)
 
 static struct strhdr strtblhdr[allocsize(NAME_MAX) / STRTBLINCR];
 

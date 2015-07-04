@@ -30,7 +30,7 @@
  * $FreeBSD: head/lib/libc/db/recno/rec_put.c 190484 2009-03-28 05:45:29Z delphij $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 
 #include <errno.h>
 #include <stdio.h>

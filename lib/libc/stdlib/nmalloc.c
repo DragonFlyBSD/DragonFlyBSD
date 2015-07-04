@@ -918,9 +918,9 @@ _slaballoc(size_t size, int flags)
 		 * to improve L1 cache saturation.
 		 */
 		if ((size | (size - 1)) + 1 == (size << 1))
-			off = (off + size - 1) & ~(size - 1);
+			off = roundup2(off, size);
 		else
-			off = (off + chunking - 1) & ~(chunking - 1);
+			off = roundup2(off, chunking);
 		z->z_Magic = ZALLOC_SLAB_MAGIC;
 		z->z_ZoneIndex = zi;
 		z->z_NMax = (ZoneSize - off) / size;
