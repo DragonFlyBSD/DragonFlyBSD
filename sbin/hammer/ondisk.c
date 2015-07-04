@@ -190,22 +190,6 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 }
 
 struct volume_info *
-test_volume(int32_t vol_no)
-{
-	struct volume_info *vol;
-
-	TAILQ_FOREACH(vol, &VolList, entry) {
-		if (vol->vol_no == vol_no)
-			break;
-	}
-	if (vol == NULL)
-		return(NULL);
-	++vol->cache.refs;
-	/* not added to or removed from hammer cache */
-	return(vol);
-}
-
-struct volume_info *
 get_volume(int32_t vol_no)
 {
 	struct volume_info *vol;
@@ -214,8 +198,12 @@ get_volume(int32_t vol_no)
 		if (vol->vol_no == vol_no)
 			break;
 	}
-	if (vol == NULL)
-		errx(1, "get_volume: Volume %d does not exist!", vol_no);
+	if (vol == NULL) {
+		if (AssertOnFailure)
+			errx(1, "get_volume: Volume %d does not exist!",
+				vol_no);
+		return(NULL);
+	}
 	++vol->cache.refs;
 	/* not added to or removed from hammer cache */
 	return(vol);
@@ -258,12 +246,9 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		       HAMMER_ZONE_RAW_BUFFER);
 	}
 	vol_no = HAMMER_VOL_DECODE(buf_offset);
-	volume = test_volume(vol_no);
-	if (volume == NULL) {
-		if (AssertOnFailure)
-			errx(1, "get_buffer: Volume %d not found!", vol_no);
+	volume = get_volume(vol_no);
+	if (volume == NULL)
 		return(NULL);
-	}
 
 	buf_offset &= ~HAMMER_BUFMASK64;
 	buf = find_buffer(volume, buf_offset);
