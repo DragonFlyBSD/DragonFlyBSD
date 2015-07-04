@@ -784,6 +784,9 @@ installkernel reinstallkernel:
 	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
 	    make KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
 .endif
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Kernel install for ${INSTALLKERNEL} completed on `LC_ALL=C date`"
+	@echo "--------------------------------------------------------------"
 
 #
 # most
