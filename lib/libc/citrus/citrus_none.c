@@ -83,7 +83,7 @@ _citrus_NONE_stdenc_init_state(struct _citrus_stdenc * __restrict ce __unused,
 
 static int
 _citrus_NONE_stdenc_mbtocs(struct _citrus_stdenc * __restrict ce __unused,
-    _citrus_csid_t *csid, _citrus_index_t *idx, char **s, size_t n, 
+    _csid_t *csid, _index_t *idx, char **s, size_t n,
     void *ps __unused, size_t *nresult, struct iconv_hooks *hooks)
 {
 
