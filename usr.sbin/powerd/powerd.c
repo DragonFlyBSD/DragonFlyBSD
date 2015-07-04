@@ -90,7 +90,6 @@ int TurboOpt = 1;
 int CpuLimit;		/* # of cpus at max frequency */
 int PowerFd;
 int NCpus;
-int CpuCount[MAXDOM];	/* # of cpus in any given domain */
 int Hysteresis = 10;	/* percentage */
 double TriggerUp = 0.25;/* single-cpu load to force max freq */
 double TriggerDown; /* load per cpu to force the min freq */
@@ -316,7 +315,7 @@ sigintr(int signo __unused)
 }
 
 /*
- * Figure out the domains and calculate the CpuCount[] array.
+ * Figure out the CPU power domains.
  */
 static int
 setupdominfo(void)
