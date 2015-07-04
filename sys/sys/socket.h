@@ -48,7 +48,7 @@
 #endif
 #include <machine/stdint.h>
 
-#define _NO_NAMESPACE_POLLUTION
+#define	_NO_NAMESPACE_POLLUTION
 #include <machine/param.h>
 #undef _NO_NAMESPACE_POLLUTION
 
@@ -65,7 +65,7 @@ typedef __uint8_t	sa_family_t;
 #endif
 
 #ifndef _SOCKLEN_T_DECLARED
-#define _SOCKLEN_T_DECLARED
+#define	_SOCKLEN_T_DECLARED
 typedef __socklen_t	socklen_t;
 #endif
 
@@ -99,12 +99,12 @@ typedef __socklen_t	socklen_t;
 /*
  * Additional options, not kept in so_options.
  */
-#define SO_SNDBUF	0x1001		/* send buffer size */
-#define SO_RCVBUF	0x1002		/* receive buffer size */
-#define SO_SNDLOWAT	0x1003		/* send low-water mark */
-#define SO_RCVLOWAT	0x1004		/* receive low-water mark */
-#define SO_SNDTIMEO	0x1005		/* send timeout */
-#define SO_RCVTIMEO	0x1006		/* receive timeout */
+#define	SO_SNDBUF	0x1001		/* send buffer size */
+#define	SO_RCVBUF	0x1002		/* receive buffer size */
+#define	SO_SNDLOWAT	0x1003		/* send low-water mark */
+#define	SO_RCVLOWAT	0x1004		/* receive low-water mark */
+#define	SO_SNDTIMEO	0x1005		/* send timeout */
+#define	SO_RCVTIMEO	0x1006		/* receive timeout */
 #define	SO_ERROR	0x1007		/* get error status and clear */
 #define	SO_TYPE		0x1008		/* get socket type */
 /* 0x1009 reserved for FreeBSD compat */
@@ -147,9 +147,9 @@ struct	accept_filter_arg {
 #define	AF_DATAKIT	9		/* datakit protocols */
 #define	AF_CCITT	10		/* CCITT protocols, X.25 etc */
 #define	AF_SNA		11		/* IBM SNA */
-#define AF_DECnet	12		/* DECnet */
-#define AF_DLI		13		/* DEC Direct data link interface */
-#define AF_LAT		14		/* LAT */
+#define	AF_DECnet	12		/* DECnet */
+#define	AF_DLI		13		/* DEC Direct data link interface */
+#define	AF_LAT		14		/* LAT */
 #define	AF_HYLINK	15		/* NSC Hyperchannel */
 #define	AF_APPLETALK	16		/* Apple Talk */
 #define	AF_ROUTE	17		/* Internal Routing Protocol */
@@ -157,7 +157,7 @@ struct	accept_filter_arg {
 #define	pseudo_AF_XTP	19		/* eXpress Transfer Protocol (no AF) */
 #define	AF_COIP		20		/* connection-oriented IP, aka ST II */
 #define	AF_CNT		21		/* Computer Network Technology */
-#define pseudo_AF_RTIP	22		/* Help Identify RTIP packets */
+#define	pseudo_AF_RTIP	22		/* Help Identify RTIP packets */
 #define	AF_IPX		23		/* Novell Internet Protocol */
 #define	AF_SIP		24		/* Simple Internet Protocol */
 #define	pseudo_AF_PIP	25		/* Help Identify PIP packets */
@@ -167,7 +167,7 @@ struct	accept_filter_arg {
 #define	AF_INET6	28		/* IPv6 */
 #define	AF_NATM		29		/* native ATM access */
 #define	AF_ATM		30		/* ATM */
-#define pseudo_AF_HDRCMPLT 31		/* Used by BPF to not rewrite headers
+#define	pseudo_AF_HDRCMPLT 31		/* Used by BPF to not rewrite headers
 					 * in interface output routine
 					 */
 #define	AF_NETGRAPH	32		/* Netgraph sockets */
@@ -244,9 +244,9 @@ struct sockaddr_storage {
 #define	PF_DATAKIT	AF_DATAKIT
 #define	PF_CCITT	AF_CCITT
 #define	PF_SNA		AF_SNA
-#define PF_DECnet	AF_DECnet
-#define PF_DLI		AF_DLI
-#define PF_LAT		AF_LAT
+#define	PF_DECnet	AF_DECnet
+#define	PF_DLI		AF_DLI
+#define	PF_LAT		AF_LAT
 #define	PF_HYLINK	AF_HYLINK
 #define	PF_APPLETALK	AF_APPLETALK
 #define	PF_ROUTE	AF_ROUTE
@@ -256,8 +256,8 @@ struct sockaddr_storage {
 #define	PF_CNT		AF_CNT
 #define	PF_SIP		AF_SIP
 #define	PF_IPX		AF_IPX		/* same format as AF_NS */
-#define PF_RTIP		pseudo_AF_RTIP	/* same format as AF_INET */
-#define PF_PIP		pseudo_AF_PIP
+#define	PF_RTIP		pseudo_AF_RTIP	/* same format as AF_INET */
+#define	PF_PIP		pseudo_AF_PIP
 #define	PF_ISDN		AF_ISDN
 #define	PF_KEY		pseudo_AF_KEY
 #define	PF_INET6	AF_INET6
@@ -276,9 +276,9 @@ struct sockaddr_storage {
  *
  * Further levels are defined by the individual families below.
  */
-#define NET_MAXID	AF_MAX
+#define	NET_MAXID	AF_MAX
 
-#define CTL_NET_NAMES { \
+#define	CTL_NET_NAMES { \
 	{ 0, 0 }, \
 	{ "unix", CTLTYPE_NODE }, \
 	{ "inet", CTLTYPE_NODE }, \
@@ -323,12 +323,12 @@ struct sockaddr_storage {
  *	Fifth: type of info, defined below
  *	Sixth: flag(s) to mask with for NET_RT_FLAGS
  */
-#define NET_RT_DUMP	1		/* dump; may limit to a.f. */
-#define NET_RT_FLAGS	2		/* by flags, e.g. RESOLVING */
-#define NET_RT_IFLIST	3		/* survey interface list */
+#define	NET_RT_DUMP	1		/* dump; may limit to a.f. */
+#define	NET_RT_FLAGS	2		/* by flags, e.g. RESOLVING */
+#define	NET_RT_IFLIST	3		/* survey interface list */
 #define	NET_RT_MAXID	4
 
-#define CTL_NET_RT_NAMES { \
+#define	CTL_NET_RT_NAMES { \
 	{ 0, 0 }, \
 	{ "dump", CTLTYPE_STRUCT }, \
 	{ "flags", CTLTYPE_STRUCT }, \
@@ -343,7 +343,7 @@ struct sockaddr_storage {
 /*
  * Maximum setsockopt buffer size
  */
-#define SOMAXOPT_SIZE	65536
+#define	SOMAXOPT_SIZE	65536
 
 /*
  * Message header for recvmsg and sendmsg calls.
@@ -376,10 +376,10 @@ struct msghdr {
  * These override FIONBIO.  MSG_FNONBLOCKING is functionally equivalent to
  * MSG_DONTWAIT.
  */
-#define MSG_FBLOCKING	0x00010000	/* force blocking operation */
-#define MSG_FNONBLOCKING 0x00020000	/* force non-blocking operation */
+#define	MSG_FBLOCKING	0x00010000	/* force blocking operation */
+#define	MSG_FNONBLOCKING 0x00020000	/* force non-blocking operation */
 
-#define MSG_FMASK	0xFFFF0000	/* force mask */
+#define	MSG_FMASK	0xFFFF0000	/* force mask */
 
 /*
  * Header for ancillary data objects in msg_control buffer.
@@ -399,7 +399,7 @@ struct cmsghdr {
  * be able to fit in an mbuf, and NGROUPS_MAX is too large to allow
  * this.
 */
-#define CMGROUP_MAX 16
+#define	CMGROUP_MAX 16
 
 /*
  * Credentials structure, used to verify the identity of a peer
@@ -418,10 +418,10 @@ struct cmsgcred {
 };
 
 /* Alignment requirement for CMSG struct manipulation */
-#define _CMSG_ALIGN(n)		(((n) + 3) & ~3)
+#define	_CMSG_ALIGN(n)		(((n) + 3) & ~3)
 
 #ifdef _KERNEL
-#define CMSG_ALIGN(n)		_CMSG_ALIGN(n)
+#define	CMSG_ALIGN(n)		_CMSG_ALIGN(n)
 #endif
 
 /* given pointer to struct cmsghdr, return pointer to data */
@@ -475,30 +475,30 @@ struct sf_hdtr {
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 
 __BEGIN_DECLS
-int	accept (int, struct sockaddr *, socklen_t *);
-int	extaccept (int, int, struct sockaddr *, socklen_t *);
-int	bind (int, const struct sockaddr *, socklen_t);
-int	connect (int, const struct sockaddr *, socklen_t);
-int	extconnect (int, int, struct sockaddr *, socklen_t);
-int	getpeername (int, struct sockaddr *, socklen_t *);
-int	getsockname (int, struct sockaddr *, socklen_t *);
-int	getsockopt (int, int, int, void *, socklen_t *);
-int	listen (int, int);
-ssize_t	recv (int, void *, size_t, int);
-ssize_t	recvfrom (int, void *, size_t, int, struct sockaddr *, socklen_t *);
-ssize_t	recvmsg (int, struct msghdr *, int);
-ssize_t	send (int, const void *, size_t, int);
-ssize_t	sendto (int, const void *,
+int	accept(int, struct sockaddr *, socklen_t *);
+int	extaccept(int, int, struct sockaddr *, socklen_t *);
+int	bind(int, const struct sockaddr *, socklen_t);
+int	connect(int, const struct sockaddr *, socklen_t);
+int	extconnect(int, int, struct sockaddr *, socklen_t);
+int	getpeername(int, struct sockaddr *, socklen_t *);
+int	getsockname(int, struct sockaddr *, socklen_t *);
+int	getsockopt(int, int, int, void *, socklen_t *);
+int	listen(int, int);
+ssize_t	recv(int, void *, size_t, int);
+ssize_t	recvfrom(int, void *, size_t, int, struct sockaddr *, socklen_t *);
+ssize_t	recvmsg(int, struct msghdr *, int);
+ssize_t	send(int, const void *, size_t, int);
+ssize_t	sendto(int, const void *,
 	    size_t, int, const struct sockaddr *, socklen_t);
-ssize_t	sendmsg (int, const struct msghdr *, int);
-int	sendfile (int, int, off_t, size_t, struct sf_hdtr *, off_t *, int);
-int	setsockopt (int, int, int, const void *, socklen_t);
-int	shutdown (int, int);
+ssize_t	sendmsg(int, const struct msghdr *, int);
+int	sendfile(int, int, off_t, size_t, struct sf_hdtr *, off_t *, int);
+int	setsockopt(int, int, int, const void *, socklen_t);
+int	shutdown(int, int);
 int	sockatmark(int);
-int	socket (int, int, int);
-int	socketpair (int, int, int, int *);
+int	socket(int, int, int);
+int	socketpair(int, int, int, int *);
 
-void	pfctlinput (int, struct sockaddr *);
+void	pfctlinput(int, struct sockaddr *);
 __END_DECLS
 
 #endif	/* !_KERNEL || _KERNEL_VIRTUAL */
