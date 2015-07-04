@@ -572,6 +572,8 @@ tmpfs_write (struct vop_write_args *ap)
 		return (EINVAL);
 	seqcount = ap->a_ioflag >> 16;
 
+	TMPFS_NODE_LOCK(node);
+
 	oldsize = node->tn_size;
 	if (ap->a_ioflag & IO_APPEND)
 		uio->uio_offset = node->tn_size;
@@ -581,7 +583,8 @@ tmpfs_write (struct vop_write_args *ap)
 	 */
 	if (uio->uio_offset + uio->uio_resid >
 	  VFS_TO_TMPFS(vp->v_mount)->tm_maxfilesize) {
-		return (EFBIG);
+		error = EFBIG;
+		goto done;
 	}
 
 	/*
@@ -589,15 +592,14 @@ tmpfs_write (struct vop_write_args *ap)
 	 */
 	if (vp->v_type == VREG && td != NULL && td->td_lwp != NULL) {
 		error = kern_getrlimit(RLIMIT_FSIZE, &limit);
-		if (error != 0) {
-			return error;
-		}
+		if (error)
+			goto done;
 		if (uio->uio_offset + uio->uio_resid > limit.rlim_cur) {
 			ksignal(td->td_proc, SIGXFSZ);
-			return (EFBIG);
+			error = EFBIG;
+			goto done;
 		}
 	}
-
 
 	/*
 	 * Extend the file's size if necessary
@@ -625,7 +627,8 @@ tmpfs_write (struct vop_write_args *ap)
 
 		if ((uio->uio_offset + len) > node->tn_size) {
 			trivial = (uio->uio_offset <= node->tn_size);
-			error = tmpfs_reg_resize(vp, uio->uio_offset + len,  trivial);
+			error = tmpfs_reg_resize(vp, uio->uio_offset + len,
+						 trivial);
 			if (error)
 				break;
 		}
@@ -745,7 +748,6 @@ tmpfs_write (struct vop_write_args *ap)
 	 * order to be able to dispose of the buffer cache buffer without
 	 * flushing it.
 	 */
-	TMPFS_NODE_LOCK(node);
 	if (uio->uio_segflg != UIO_NOCOPY)
 		node->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_MODIFIED;
 	if (extended)
@@ -755,9 +757,10 @@ tmpfs_write (struct vop_write_args *ap)
 		if (priv_check_cred(ap->a_cred, PRIV_VFS_RETAINSUGID, 0))
 			node->tn_mode &= ~(S_ISUID | S_ISGID);
 	}
-	TMPFS_NODE_UNLOCK(node);
 done:
-	tmpfs_knote(vp, kflags);
+	TMPFS_NODE_UNLOCK(node);
+	if (kflags)
+		tmpfs_knote(vp, kflags);
 
 	return(error);
 }

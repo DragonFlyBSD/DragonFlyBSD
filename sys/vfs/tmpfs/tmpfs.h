@@ -312,11 +312,11 @@ struct tmpfs_mount {
 	 * used directly as it may be bigger than the current amount of
 	 * free memory; in the extreme case, it will hold the SIZE_MAX
 	 * value.  Instead, use the TMPFS_PAGES_MAX macro. */
-	vm_pindex_t		tm_pages_max;
+	long			tm_pages_max;
 
 	/* Number of pages in use by the file system.  Cannot be bigger
 	 * than the value returned by TMPFS_PAGES_MAX in any case. */
-	vm_pindex_t		tm_pages_used;
+	long			tm_pages_used;
 
 	/* Pointer to the node representing the root directory of this
 	 * file system. */

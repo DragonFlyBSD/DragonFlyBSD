@@ -277,9 +277,7 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 	objcache_put(tmp->tm_node_pool, node);
 	/* node is now invalid */
 
-	TMPFS_LOCK(tmp);
-	tmp->tm_pages_used -= pages;
-	TMPFS_UNLOCK(tmp);
+	atomic_add_long(&tmp->tm_pages_used, -(long)pages);
 }
 
 /* --------------------------------------------------------------------- */
@@ -949,6 +947,8 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
  * to be zero filled.
  *
  * Returns zero on success or an appropriate error code on failure.
+ *
+ * Caller must hold the node exclusively locked.
  */
 int
 tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
@@ -973,7 +973,6 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	 * because the last allocated page can accommodate the change on
 	 * its own.
 	 */
-	TMPFS_NODE_LOCK(node);
 	oldsize = node->tn_size;
 	oldpages = round_page64(oldsize) / PAGE_SIZE;
 	KKASSERT(oldpages == node->tn_reg.tn_aobj_pages);
@@ -981,17 +980,13 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 
 	if (newpages > oldpages &&
 	   tmp->tm_pages_used + newpages - oldpages > tmp->tm_pages_max) {
-		TMPFS_NODE_UNLOCK(node);
 		error = ENOSPC;
 		goto out;
 	}
 	node->tn_reg.tn_aobj_pages = newpages;
 	node->tn_size = newsize;
-	TMPFS_NODE_UNLOCK(node);
 
-	TMPFS_LOCK(tmp);
-	tmp->tm_pages_used += (newpages - oldpages);
-	TMPFS_UNLOCK(tmp);
+	atomic_add_long(&tmp->tm_pages_used, (newpages - oldpages));
 
 	/*
 	 * When adjusting the vnode filesize and its VM object we must
@@ -1311,6 +1306,9 @@ tmpfs_update(struct vnode *vp)
 
 /* --------------------------------------------------------------------- */
 
+/*
+ * Caller must hold an exclusive node lock.
+ */
 int
 tmpfs_truncate(struct vnode *vp, off_t length)
 {
@@ -1335,11 +1333,8 @@ tmpfs_truncate(struct vnode *vp, off_t length)
 
 	error = tmpfs_reg_resize(vp, length, 1);
 
-	if (error == 0) {
-		TMPFS_NODE_LOCK(node);
+	if (error == 0)
 		node->tn_status |= TMPFS_NODE_CHANGED | TMPFS_NODE_MODIFIED;
-		TMPFS_NODE_UNLOCK(node);
-	}
 
 out:
 	tmpfs_update(vp);
