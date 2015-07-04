@@ -146,11 +146,13 @@
 
 #define WARN_ONCE(condition, format...)	({	\
 	static bool __warned_once;		\
+	int __ret = !!(condition);		\
 						\
 	if ((condition) && !__warned_once) {	\
 		WARN(condition, format);	\
 		__warned_once = true;		\
 	}					\
+	unlikely(__ret);			\
 })
 
 #define container_of(ptr, type, member)				\
