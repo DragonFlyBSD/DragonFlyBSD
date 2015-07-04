@@ -33,8 +33,11 @@
  */
 
 /*
- * The powerd daemon monitors the cpu load and adjusts cpu frequencies
- * via hw.acpi.cpu.px_dom*.
+ * The powerd daemon :
+ * - Monitor the cpu load and adjusts cpu and cpu power domain
+ *   performance accordingly.
+ * - Monitor battery life.  Alarm alerts and shutdown the machine
+ *   if battery life goes low.
  */
 
 #define _KERNEL_STRUCTURES
@@ -65,38 +68,78 @@ struct cpu_pwrdom {
 	int			dom_ncpus;
 	cpumask_t		dom_cpumask;
 };
-TAILQ_HEAD(cpu_pwrdom_list, cpu_pwrdom);
+
+struct cpu_state {
+	double			cpu_qavg;
+	double			cpu_uavg;	/* used for speeding up */
+	double			cpu_davg;	/* used for slowing down */
+	int			cpu_limit;
+	int			cpu_count;
+	char			cpu_name[8];
+};
 
 static void usage(void);
-static double getcputime(double);
-static void acpi_setcpufreq(int nstate);
-static int setupdominfo(void);
+static void get_ncpus(void);
+
+/* usched cpumask */
+static void get_uschedcpus(void);
+static void set_uschedcpus(void);
+
+/* perfbias(4) */
+static int has_perfbias(void);
+static void set_perfbias(int, int);
+
+/* acpi(4) P-state */
+static void acpi_getcpufreq_str(int, int *, int *);
+static int acpi_getcpufreq_bin(int, int *, int *);
+static void acpi_get_cpufreq(int, int *, int *);
+static void acpi_set_cpufreq(int, int);
+static int acpi_get_cpupwrdom(void);
+
+/* Performance monitoring */
+static void init_perf(void);
+static void mon_perf(double);
+static void adj_perf(cpumask_t, cpumask_t);
+static void adj_cpu_pwrdom(int, int);
+static void adj_cpu_perf(int, int);
+static void get_cputime(double);
+static int get_nstate(struct cpu_state *, double);
+static void add_spare_cpus(const cpumask_t, int);
+static void restore_perf(void);
+
+/* Battery monitoring */
 static int has_battery(void);
 static int mon_battery(void);
-static void getncpus(void);
-static void getuschedmask(void);
-static int has_perfbias(void);
-static void setperfbias(cpumask_t, int);
+static void low_battery_alert(int);
 
-static struct cpu_pwrdom_list CpuPwrDomain;
-static struct cpu_pwrdom *CpuPwrDomLimit;
-static struct cpu_pwrdom CpuPwrDomLast;
-static int NCpuPwrDomUsed;
+/* Runtime states for performance monitoring */
+static int global_pcpu_limit;
+static struct cpu_state pcpu_state[MAXCPU];
+static struct cpu_state global_cpu_state;
+static cpumask_t cpu_used;		/* cpus w/ high perf */
+static cpumask_t cpu_pwrdom_used;	/* cpu power domains w/ high perf */
+static cpumask_t usched_cpu_used;	/* cpus for usched */
 
-static int NCpus;
-static cpumask_t UschedCpumask;
+/* Constants */
+static cpumask_t cpu_pwrdom_mask;	/* usable cpu power domains */
+static int cpu2pwrdom[MAXCPU];		/* cpu to cpu power domain map */
+static struct cpu_pwrdom *cpu_pwrdomain[MAXDOM];
+static int NCpus;			/* # of cpus */
+
 static int DebugOpt;
 static int TurboOpt = 1;
-static int CpuLimit;		/* # of cpus at max frequency */
 static int PowerFd;
 static int Hysteresis = 10;	/* percentage */
 static double TriggerUp = 0.25;	/* single-cpu load to force max freq */
 static double TriggerDown;	/* load per cpu to force the min freq */
+static int HasPerfbias = 1;
+
+static volatile int stopped;
+
+/* Battery life monitoring */
 static int BatLifeMin = 2;	/* shutdown the box, if low on battery life */
 static struct timespec BatLifePrevT;
 static int BatLifePollIntvl = 5; /* unit: sec */
-static int HasPerfbias = 1;
-
 static struct timespec BatShutdownStartT;
 static int BatShutdownLinger = -1;
 static int BatShutdownLingerSet = 60; /* unit: sec */
@@ -108,15 +151,9 @@ static void sigintr(int signo);
 int
 main(int ac, char **av)
 {
-	double qavg;
-	double uavg;	/* uavg - used for speeding up */
-	double davg;	/* davg - used for slowing down */
 	double srt;
 	double pollrate;
 	int ch;
-	int ustate;
-	int dstate;
-	int nstate;
 	char buf[64];
 	int monbat;
 
@@ -168,11 +205,10 @@ main(int ac, char **av)
 	ac -= optind;
 	av += optind;
 
-	/* Get the number of cpus */
-	getncpus();
+	setlinebuf(stdout);
 
-	/* Get usched cpumask */
-	getuschedmask();
+	/* Get number of cpus */
+	get_ncpus();
 
 	if (0 > Hysteresis || Hysteresis > 99) {
 		fprintf(stderr, "Invalid hysteresis value\n");
@@ -221,11 +257,12 @@ main(int ac, char **av)
 	else
 		monbat = has_battery();
 
+	/* Do we have perfbias(4)? */
 	if (HasPerfbias)
 		HasPerfbias = has_perfbias();
 
 	/*
-	 * Wait hw.acpi.cpu.px_dom* sysctl to be created by kernel
+	 * Wait hw.acpi.cpu.px_dom* sysctl to be created by kernel.
 	 *
 	 * Since hw.acpi.cpu.px_dom* creation is queued into ACPI
 	 * taskqueue and ACPI taskqueue is shared across various
@@ -234,103 +271,80 @@ main(int ac, char **av)
 	 * (e.g. cmbat module's task could take quite a lot of time).
 	 */
 	for (;;) {
-		/*
-		 * Prime delta cputime calculation, make sure at least
-		 * dom0 exists.
-		 */
-		getcputime(pollrate);
-		if (setupdominfo())
+		/* Prime delta cputime calculation. */
+		get_cputime(pollrate);
+
+		/* Wait for all cpus to appear */
+		if (acpi_get_cpupwrdom())
 			break;
 		usleep((int)(pollrate * 1000000.0));
 	}
 
 	/*
-	 * Assume everything are used and are maxed out, before we
-	 * start.
-	 */
-	CpuPwrDomLimit = &CpuPwrDomLast;
-	CpuLimit = NCpus;
-
-	/*
-	 * Set to maximum performance if killed.
+	 * Catch some signals so that max performance could be restored.
 	 */
 	signal(SIGINT, sigintr);
 	signal(SIGTERM, sigintr);
-	uavg = 0.0;
-	davg = 0.0;
+
+	/* Initialize performance states */
+	init_perf();
 
 	srt = srt / pollrate;	/* convert to sample count */
-
 	if (DebugOpt)
 		printf("samples for downgrading: %5.2f\n", srt);
 
 	/*
 	 * Monitoring loop
-	 *
-	 * Calculate nstate, the number of cpus we wish to run at max
-	 * frequency.  All remaining cpus will be set to their lowest
-	 * frequency and mapped out of the user process scheduler.
 	 */
-	for (;;) {
-		qavg = getcputime(pollrate);
-		uavg = (uavg * 2.0 + qavg) / 3.0;	/* speeding up */
-		davg = (davg * srt + qavg) / (srt + 1);	/* slowing down */
-		if (davg < uavg)
-			davg = uavg;
+	while (!stopped) {
+		/*
+		 * Monitor performance
+		 */
+		get_cputime(pollrate);
+		mon_perf(srt);
 
-		ustate = uavg / TriggerUp;
-		if (ustate < CpuLimit)
-			ustate = uavg / TriggerDown;
-		dstate = davg / TriggerUp;
-		if (dstate < CpuLimit)
-			dstate = davg / TriggerDown;
-
-		nstate = (ustate > dstate) ? ustate : dstate;
-		if (nstate > NCpus)
-			nstate = NCpus;
-
-		if (DebugOpt) {
-			printf("\rqavg=%5.2f uavg=%5.2f davg=%5.2f "
-			       "%2d/%2d ncpus=%d\r",
-				qavg, uavg, davg,
-				CpuLimit, NCpuPwrDomUsed, nstate);
-			fflush(stdout);
-		}
-		if (nstate != CpuLimit)
-			acpi_setcpufreq(nstate);
+		/*
+		 * Monitor battery
+		 */
 		if (monbat)
 			monbat = mon_battery();
+
 		usleep((int)(pollrate * 1000000.0));
 	}
+
+	/*
+	 * Set to maximum performance if killed.
+	 */
+	syslog(LOG_INFO, "killed, setting max and exiting");
+	restore_perf();
+
+	exit(0);
 }
 
-static
-void
+static void
 sigintr(int signo __unused)
 {
-	syslog(LOG_INFO, "killed, setting max and exiting");
-	acpi_setcpufreq(NCpus);
-	exit(1);
+	stopped = 1;
 }
 
 /*
- * Figure out the CPU power domains.
+ * Figure out the cpu power domains.
  */
 static int
-setupdominfo(void)
+acpi_get_cpupwrdom(void)
 {
 	struct cpu_pwrdom *dom;
-	struct cpu_pwrdom_list tmp_list;
+	cpumask_t pwrdom_mask;
 	char buf[64];
 	char members[1024];
 	char *str;
 	size_t msize;
-	int n, i, ncpu = 0;
+	int n, i, ncpu = 0, dom_id;
 
-	TAILQ_INIT(&CpuPwrDomain);
-	NCpuPwrDomUsed = 0;
+	memset(cpu2pwrdom, 0, sizeof(cpu2pwrdom));
+	memset(cpu_pwrdomain, 0, sizeof(cpu_pwrdomain));
+	CPUMASK_ASSZERO(cpu_pwrdom_mask);
 
-	TAILQ_INIT(&tmp_list);
 	for (i = 0; i < MAXDOM; ++i) {
 		snprintf(buf, sizeof(buf),
 			 "hw.acpi.cpu.px_dom%d.available", i);
@@ -339,19 +353,28 @@ setupdominfo(void)
 
 		dom = calloc(1, sizeof(*dom));
 		dom->dom_id = i;
-		TAILQ_INSERT_TAIL(&tmp_list, dom, dom_link);
+
+		if (cpu_pwrdomain[i] != NULL) {
+			fprintf(stderr, "cpu power domain %d exists\n", i);
+			exit(1);
+		}
+		cpu_pwrdomain[i] = dom;
+		CPUMASK_ORBIT(cpu_pwrdom_mask, i);
 	}
+	pwrdom_mask = cpu_pwrdom_mask;
 
-	while ((dom = TAILQ_FIRST(&tmp_list)) != NULL) {
-		int bsp_domain = 0;
+	while (CPUMASK_TESTNZERO(pwrdom_mask)) {
+		dom_id = BSFCPUMASK(pwrdom_mask);
+		CPUMASK_NANDBIT(pwrdom_mask, dom_id);
+		dom = cpu_pwrdomain[dom_id];
 
-		TAILQ_REMOVE(&tmp_list, dom, dom_link);
 		CPUMASK_ASSZERO(dom->dom_cpumask);
 
 		snprintf(buf, sizeof(buf),
 			 "hw.acpi.cpu.px_dom%d.members", dom->dom_id);
 		msize = sizeof(members);
 		if (sysctlbyname(buf, members, &msize, NULL, 0) < 0) {
+			cpu_pwrdomain[dom_id] = NULL;
 			free(dom);
 			continue;
 		}
@@ -363,12 +386,12 @@ setupdominfo(void)
 			if (n >= 0) {
 				++ncpu;
 				++dom->dom_ncpus;
-				if (n == 0)
-					bsp_domain = 1;
 				CPUMASK_ORBIT(dom->dom_cpumask, n);
+				cpu2pwrdom[n] = dom->dom_id;
 			}
 		}
 		if (dom->dom_ncpus == 0) {
+			cpu_pwrdomain[dom_id] = NULL;
 			free(dom);
 			continue;
 		}
@@ -379,48 +402,31 @@ setupdominfo(void)
 				    (uintmax_t)dom->dom_cpumask.ary[i]);
 			}
 			printf("\n");
-			fflush(stdout);
 		}
-
-		if (bsp_domain) {
-			/*
-			 * Use the power domain containing the BSP as the first
-			 * power domain.  So if all CPUs are idle, we could
-			 * leave BSP to the usched without too much trouble.
-			 */
-			TAILQ_INSERT_HEAD(&CpuPwrDomain, dom, dom_link);
-		} else {
-			TAILQ_INSERT_TAIL(&CpuPwrDomain, dom, dom_link);
-		}
-		++NCpuPwrDomUsed;
 	}
 
 	if (ncpu != NCpus) {
-		while ((dom = TAILQ_FIRST(&CpuPwrDomain)) != NULL) {
-			TAILQ_REMOVE(&CpuPwrDomain, dom, dom_link);
-			free(dom);
-		}
-		if (DebugOpt) {
+		if (DebugOpt)
 			printf("Found %d cpus, expecting %d\n", ncpu, NCpus);
-			fflush(stdout);
+
+		pwrdom_mask = cpu_pwrdom_mask;
+		while (CPUMASK_TESTNZERO(pwrdom_mask)) {
+			dom_id = BSFCPUMASK(pwrdom_mask);
+			CPUMASK_NANDBIT(pwrdom_mask, dom_id);
+			dom = cpu_pwrdomain[dom_id];
+			if (dom != NULL)
+				free(dom);
 		}
 		return 0;
 	}
-
-	/* Install sentinel */
-	CpuPwrDomLast.dom_id = -1;
-	TAILQ_INSERT_TAIL(&CpuPwrDomain, &CpuPwrDomLast, dom_link);
-
 	return 1;
 }
 
 /*
- * Return the one-second cpu load.  One cpu at 100% will return a value
- * of 1.0.  On a SMP system N cpus running at 100% will return a value of N.
+ * Save per-cpu load and sum of per-cpu load.
  */
-static
-double
-getcputime(double pollrate)
+static void
+get_cputime(double pollrate)
 {
 	static struct kinfo_cputime ocpu_time[MAXCPU];
 	static struct kinfo_cputime ncpu_time[MAXCPU];
@@ -440,12 +446,17 @@ getcputime(double pollrate)
 
 	delta = 0;
 	for (cpu = 0; cpu < ncpu; ++cpu) {
-		delta += (ncpu_time[cpu].cp_user + ncpu_time[cpu].cp_sys +
-			  ncpu_time[cpu].cp_nice + ncpu_time[cpu].cp_intr) -
-			 (ocpu_time[cpu].cp_user + ocpu_time[cpu].cp_sys +
-			  ocpu_time[cpu].cp_nice + ocpu_time[cpu].cp_intr);
+		uint64_t d;
+
+		d = (ncpu_time[cpu].cp_user + ncpu_time[cpu].cp_sys +
+		     ncpu_time[cpu].cp_nice + ncpu_time[cpu].cp_intr) -
+		    (ocpu_time[cpu].cp_user + ocpu_time[cpu].cp_sys +
+		     ocpu_time[cpu].cp_nice + ocpu_time[cpu].cp_intr);
+		pcpu_state[cpu].cpu_qavg = (double)d / (pollrate * 1000000.0);
+
+		delta += d;
 	}
-	return((double)delta / (pollrate * 1000000.0));
+	global_cpu_state.cpu_qavg = (double)delta / (pollrate * 1000000.0);
 }
 
 static void
@@ -516,7 +527,7 @@ acpi_getcpufreq_bin(int dom_id, int *highest0, int *lowest0)
 }
 
 static void
-acpi_getcpufreq(int dom_id, int *highest, int *lowest)
+acpi_get_cpufreq(int dom_id, int *highest, int *lowest)
 {
 	*highest = 0;
 	*lowest = 0;
@@ -524,130 +535,6 @@ acpi_getcpufreq(int dom_id, int *highest, int *lowest)
 	if (acpi_getcpufreq_bin(dom_id, highest, lowest))
 		return;
 	acpi_getcpufreq_str(dom_id, highest, lowest);
-}
-
-/*
- * nstate is the requested number of cpus that we wish to run at full
- * frequency.  We calculate how many domains we have to adjust to reach
- * this goal.
- *
- * This function also sets the user scheduler global cpu mask.
- */
-static void
-acpi_setcpufreq(int nstate)
-{
-	int ncpus = 0;
-	int increasing = (nstate > CpuLimit);
-	struct cpu_pwrdom *dom, *domBeg, *domEnd;
-	int lowest;
-	int highest;
-	int desired;
-	char sysid[64];
-	int force_uschedbsp = 0;
-	cpumask_t old_cpumask;
-
-	old_cpumask = UschedCpumask;
-
-	/*
-	 * Calculate the ending domain if the number of operating cpus
-	 * has increased.
-	 *
-	 * Calculate the starting domain if the number of operating cpus
-	 * has decreased.
-	 *
-	 * Calculate the mask of cpus the userland scheduler is allowed
-	 * to use.
-	 */
-	NCpuPwrDomUsed = 0;
-	CPUMASK_ASSZERO(UschedCpumask);
-	for (dom = TAILQ_FIRST(&CpuPwrDomain); dom != &CpuPwrDomLast;
-	     dom = TAILQ_NEXT(dom, dom_link)) {
-		cpumask_t mask;
-
-		if (ncpus >= nstate)
-			break;
-		ncpus += dom->dom_ncpus;
-		++NCpuPwrDomUsed;
-
-		mask = dom->dom_cpumask;
-		if (ncpus > nstate) {
-			int i, diff;
-
-			diff = ncpus - nstate;
-			for (i = 0; i < diff; ++i) {
-				int c;
-
-				c = BSRCPUMASK(mask);
-				CPUMASK_NANDBIT(mask, c);
-			}
-		}
-		CPUMASK_ORMASK(UschedCpumask, mask);
-	}
-
-	syslog(LOG_INFO, "using %d cpus", nstate);
-
-	/*
-	 * Set the mask of cpus the userland scheduler is allowed to use.
-	 *
-	 * Make sure that userland scheduler has at least one cpu.
-	 */
-	if (CPUMASK_TESTZERO(UschedCpumask)) {
-		CPUMASK_ORBIT(UschedCpumask, 0);
-		force_uschedbsp = 1;
-	}
-	if (DebugOpt) {
-		int i;
-
-		printf("\nusched cpumask: ");
-		for (i = 0; i < (int)NELEM(UschedCpumask.ary); ++i)
-			printf("%jx ", (uintmax_t)UschedCpumask.ary[i]);
-		printf("\n");
-		fflush(stdout);
-	}
-	sysctlbyname("kern.usched_global_cpumask", NULL, 0,
-		     &UschedCpumask, sizeof(UschedCpumask));
-	if (force_uschedbsp)
-		CPUMASK_NANDBIT(UschedCpumask, 0);
-
-	CPUMASK_XORMASK(old_cpumask, UschedCpumask);
-
-	/*
-	 * Set performance-energy bias
-	 */
-	if (HasPerfbias)
-		setperfbias(old_cpumask, increasing);
-
-	if (increasing) {
-		domBeg = CpuPwrDomLimit;
-		domEnd = dom;
-	} else {
-		domBeg = dom;
-		domEnd = CpuPwrDomLimit;
-	}
-	CpuPwrDomLimit = dom;
-	CpuLimit = nstate;
-
-	/*
-	 * Adjust the cpu frequency
-	 */
-	for (dom = domBeg; dom != domEnd; dom = TAILQ_NEXT(dom, dom_link)) {
-		acpi_getcpufreq(dom->dom_id, &highest, &lowest);
-		if (highest == 0 || lowest == 0)
-			continue;
-
-		/*
-		 * Calculate the desired cpu frequency, test, and set.
-		 */
-		desired = increasing ? highest : lowest;
-
-		snprintf(sysid, sizeof(sysid), "hw.acpi.cpu.px_dom%d.select",
-		    dom->dom_id);
-		if (DebugOpt) {
-			printf("dom%d set frequency %d\n",
-			       dom->dom_id, desired);
-		}
-		sysctlbyname(sysid, NULL, NULL, &desired, sizeof(desired));
-	}
 }
 
 static
@@ -803,7 +690,7 @@ mon_battery(void)
 }
 
 static void
-getncpus(void)
+get_ncpus(void)
 {
 	size_t slen;
 
@@ -815,23 +702,39 @@ getncpus(void)
 }
 
 static void
-getuschedmask(void)
+get_uschedcpus(void)
 {
 	size_t slen;
 
-	slen = sizeof(UschedCpumask);
-	if (sysctlbyname("kern.usched_global_cpumask", &UschedCpumask, &slen,
+	slen = sizeof(usched_cpu_used);
+	if (sysctlbyname("kern.usched_global_cpumask", &usched_cpu_used, &slen,
 	    NULL, 0) < 0)
 		err(1, "sysctlbyname kern.usched_global_cpumask failed");
 	if (DebugOpt) {
 		int i;
 
 		printf("usched cpumask was: ");
-		for (i = 0; i < (int)NELEM(UschedCpumask.ary); ++i)
-			printf("%jx ", (uintmax_t)UschedCpumask.ary[i]);
+		for (i = 0; i < (int)NELEM(usched_cpu_used.ary); ++i)
+			printf("%jx ", (uintmax_t)usched_cpu_used.ary[i]);
 		printf("\n");
-		fflush(stdout);
 	}
+}
+
+static void
+set_uschedcpus(void)
+{
+	if (DebugOpt) {
+		int i;
+
+		printf("usched cpumask: ");
+		for (i = 0; i < (int)NELEM(usched_cpu_used.ary); ++i) {
+			printf("%jx ",
+			    (uintmax_t)usched_cpu_used.ary[i]);
+		}
+		printf("\n");
+	}
+	sysctlbyname("kern.usched_global_cpumask", NULL, 0,
+	    &usched_cpu_used, sizeof(usched_cpu_used));
 }
 
 static int
@@ -847,20 +750,318 @@ has_perfbias(void)
 }
 
 static void
-setperfbias(cpumask_t mask, int increasing)
+set_perfbias(int cpu, int inc)
 {
-	int hint = increasing ? 0 : 15;
+	int hint = inc ? 0 : 15;
+	char sysid[64];
 
-	while (CPUMASK_TESTNZERO(mask)) {
-		char sysid[64];
-		int cpu;
+	if (DebugOpt)
+		printf("cpu%d set perfbias hint %d\n", cpu, hint);
+	snprintf(sysid, sizeof(sysid), "machdep.perfbias%d.hint", cpu);
+	sysctlbyname(sysid, NULL, NULL, &hint, sizeof(hint));
+}
 
-		cpu = BSFCPUMASK(mask);
-		CPUMASK_NANDBIT(mask, cpu);
+static void
+init_perf(void)
+{
+	struct cpu_state *state;
+	int cpu;
 
-		snprintf(sysid, sizeof(sysid), "machdep.perfbias%d.hint", cpu);
-		sysctlbyname(sysid, NULL, NULL, &hint, sizeof(hint));
-		if (DebugOpt)
-			printf("cpu%d set perfbias hint %d\n", cpu, hint);
+	/* Get usched cpumask */
+	get_uschedcpus();
+
+	/*
+	 * Assume everything are used and are maxed out, before we
+	 * start.
+	 */
+
+	CPUMASK_ASSBMASK(cpu_used, NCpus);
+	cpu_pwrdom_used = cpu_pwrdom_mask;
+	global_pcpu_limit = NCpus;
+
+	for (cpu = 0; cpu < NCpus; ++cpu) {
+		state = &pcpu_state[cpu];
+
+		state->cpu_uavg = 0.0;
+		state->cpu_davg = 0.0;
+		state->cpu_limit = 1;
+		state->cpu_count = 1;
+		snprintf(state->cpu_name, sizeof(state->cpu_name), "cpu%d",
+		    cpu);
 	}
+
+	state = &global_cpu_state;
+	state->cpu_uavg = 0.0;
+	state->cpu_davg = 0.0;
+	state->cpu_limit = NCpus;
+	state->cpu_count = NCpus;
+	strlcpy(state->cpu_name, "global", sizeof(state->cpu_name));
+}
+
+static int
+get_nstate(struct cpu_state *state, double srt)
+{
+	int ustate, dstate, nstate;
+
+	/* speeding up */
+	state->cpu_uavg = (state->cpu_uavg * 2.0 + state->cpu_qavg) / 3.0;
+	/* slowing down */
+	state->cpu_davg = (state->cpu_davg * srt + state->cpu_qavg) / (srt + 1);
+	if (state->cpu_davg < state->cpu_uavg)
+		state->cpu_davg = state->cpu_uavg;
+
+	ustate = state->cpu_uavg / TriggerUp;
+	if (ustate < state->cpu_limit)
+		ustate = state->cpu_uavg / TriggerDown;
+	dstate = state->cpu_davg / TriggerUp;
+	if (dstate < state->cpu_limit)
+		dstate = state->cpu_davg / TriggerDown;
+
+	nstate = (ustate > dstate) ? ustate : dstate;
+	if (nstate > state->cpu_count)
+		nstate = state->cpu_count;
+
+	if (DebugOpt) {
+		printf("%s qavg=%5.2f uavg=%5.2f davg=%5.2f "
+		    "%2d ncpus=%d\n", state->cpu_name,
+		    state->cpu_qavg, state->cpu_uavg, state->cpu_davg,
+		    state->cpu_limit, nstate);
+	}
+	return nstate;
+}
+
+static void
+mon_perf(double srt)
+{
+	cpumask_t ocpu_used, ocpu_pwrdom_used;
+	int pnstate = 0, nstate;
+	int cpu;
+
+	/*
+	 * Find cpus requiring performance and their cooresponding power
+	 * domains.  Save the number of cpus requiring performance in
+	 * pnstate.
+	 */
+	ocpu_used = cpu_used;
+	ocpu_pwrdom_used = cpu_pwrdom_used;
+
+	CPUMASK_ASSZERO(cpu_used);
+	CPUMASK_ASSZERO(cpu_pwrdom_used);
+
+	for (cpu = 0; cpu < NCpus; ++cpu) {
+		struct cpu_state *state = &pcpu_state[cpu];
+		int s;
+
+		s = get_nstate(state, srt);
+		if (s) {
+			CPUMASK_ORBIT(cpu_used, cpu);
+			CPUMASK_ORBIT(cpu_pwrdom_used, cpu2pwrdom[cpu]);
+		}
+		pnstate += s;
+
+		state->cpu_limit = s;
+	}
+
+	/*
+	 * Calculate nstate, the number of cpus we wish to run at max
+	 * performance.
+	 */
+	nstate = get_nstate(&global_cpu_state, srt);
+
+	if (nstate == global_cpu_state.cpu_limit &&
+	    (pnstate == global_pcpu_limit || nstate > pnstate)) {
+		/* Nothing changed; keep the sets */
+		cpu_used = ocpu_used;
+		cpu_pwrdom_used = ocpu_pwrdom_used;
+
+		global_pcpu_limit = pnstate;
+		return;
+	}
+	global_pcpu_limit = pnstate;
+
+	if (nstate > pnstate) {
+		/*
+		 * Add spare cpus to meet global performance requirement.
+		 */
+		add_spare_cpus(ocpu_used, nstate - pnstate);
+	}
+
+	global_cpu_state.cpu_limit = nstate;
+
+	/*
+	 * Adjust cpu and cpu power domain performance
+	 */
+	adj_perf(ocpu_used, ocpu_pwrdom_used);
+}
+
+static void
+add_spare_cpus(const cpumask_t ocpu_used, int ncpu)
+{
+	cpumask_t saved_pwrdom, xcpu_used;
+	int done = 0, cpu;
+
+	/*
+	 * Find more cpus in the previous cpu set.
+	 */
+	xcpu_used = cpu_used;
+	CPUMASK_XORMASK(xcpu_used, ocpu_used);
+	while (CPUMASK_TESTNZERO(xcpu_used)) {
+		cpu = BSFCPUMASK(xcpu_used);
+		CPUMASK_NANDBIT(xcpu_used, cpu);
+
+		if (CPUMASK_TESTBIT(ocpu_used, cpu)) {
+			CPUMASK_ORBIT(cpu_pwrdom_used, cpu2pwrdom[cpu]);
+			CPUMASK_ORBIT(cpu_used, cpu);
+			--ncpu;
+			if (ncpu == 0)
+				return;
+		}
+	}
+
+	/*
+	 * Find more cpus in the used cpu power domains.
+	 */
+	saved_pwrdom = cpu_pwrdom_used;
+again:
+	while (CPUMASK_TESTNZERO(saved_pwrdom)) {
+		cpumask_t unused_cpumask;
+		int dom;
+
+		dom = BSFCPUMASK(saved_pwrdom);
+		CPUMASK_NANDBIT(saved_pwrdom, dom);
+
+		unused_cpumask = cpu_pwrdomain[dom]->dom_cpumask;
+		CPUMASK_NANDMASK(unused_cpumask, cpu_used);
+
+		while (CPUMASK_TESTNZERO(unused_cpumask)) {
+			cpu = BSFCPUMASK(unused_cpumask);
+			CPUMASK_NANDBIT(unused_cpumask, cpu);
+
+			CPUMASK_ORBIT(cpu_pwrdom_used, dom);
+			CPUMASK_ORBIT(cpu_used, cpu);
+			--ncpu;
+			if (ncpu == 0)
+				return;
+		}
+	}
+	if (!done) {
+		done = 1;
+		/*
+		 * Find more cpus in unused cpu power domains
+		 */
+		saved_pwrdom = cpu_pwrdom_mask;
+		CPUMASK_NANDMASK(saved_pwrdom, cpu_pwrdom_used);
+		goto again;
+	}
+	if (DebugOpt)
+		printf("%d cpus not found\n", ncpu);
+}
+
+static void
+acpi_set_cpufreq(int dom, int inc)
+{
+	int lowest, highest, desired;
+	char sysid[64];
+
+	acpi_get_cpufreq(dom, &highest, &lowest);
+	if (highest == 0 || lowest == 0)
+		return;
+	desired = inc ? highest : lowest;
+
+	if (DebugOpt)
+		printf("dom%d set frequency %d\n", dom, desired);
+	snprintf(sysid, sizeof(sysid), "hw.acpi.cpu.px_dom%d.select", dom);
+	sysctlbyname(sysid, NULL, NULL, &desired, sizeof(desired));
+}
+
+static void
+adj_cpu_pwrdom(int dom, int inc)
+{
+	acpi_set_cpufreq(dom, inc);
+}
+
+static void
+adj_cpu_perf(int cpu, int inc)
+{
+	if (DebugOpt) {
+		if (inc)
+			printf("cpu%d increase perf\n", cpu);
+		else
+			printf("cpu%d decrease perf\n", cpu);
+	}
+
+	if (HasPerfbias)
+		set_perfbias(cpu, inc);
+}
+
+static void
+adj_perf(cpumask_t xcpu_used, cpumask_t xcpu_pwrdom_used)
+{
+	cpumask_t old_usched_used;
+	int cpu, inc;
+
+	/*
+	 * Set cpus requiring performance to the userland process
+	 * scheduler.  Leave the rest of cpus unmapped.
+	 */
+	old_usched_used = usched_cpu_used;
+	usched_cpu_used = cpu_used;
+	if (CPUMASK_TESTZERO(usched_cpu_used))
+		CPUMASK_ORBIT(usched_cpu_used, 0);
+	if (CPUMASK_CMPMASKNEQ(usched_cpu_used, old_usched_used))
+		set_uschedcpus();
+
+	/*
+	 * Adjust per-cpu performance.
+	 */
+	CPUMASK_XORMASK(xcpu_used, cpu_used);
+	while (CPUMASK_TESTNZERO(xcpu_used)) {
+		cpu = BSFCPUMASK(xcpu_used);
+		CPUMASK_NANDBIT(xcpu_used, cpu);
+
+		if (CPUMASK_TESTBIT(cpu_used, cpu)) {
+			/* Increase cpu performance */
+			inc = 1;
+		} else {
+			/* Decrease cpu performance */
+			inc = 0;
+		}
+		adj_cpu_perf(cpu, inc);
+	}
+
+	/*
+	 * Adjust cpu power domain performance.  This could affect
+	 * a set of cpus.
+	 */
+	CPUMASK_XORMASK(xcpu_pwrdom_used, cpu_pwrdom_used);
+	while (CPUMASK_TESTNZERO(xcpu_pwrdom_used)) {
+		int dom;
+
+		dom = BSFCPUMASK(xcpu_pwrdom_used);
+		CPUMASK_NANDBIT(xcpu_pwrdom_used, dom);
+
+		if (CPUMASK_TESTBIT(cpu_pwrdom_used, dom)) {
+			/* Increase cpu power domain performance */
+			inc = 1;
+		} else {
+			/* Decrease cpu power domain performance */
+			inc = 0;
+		}
+		adj_cpu_pwrdom(dom, inc);
+	}
+}
+
+static void
+restore_perf(void)
+{
+	cpumask_t ocpu_used, ocpu_pwrdom_used;
+
+	ocpu_used = cpu_used;
+	ocpu_pwrdom_used = cpu_pwrdom_used;
+
+	/* Max out all cpus and cpu power domains performance */
+	CPUMASK_ASSBMASK(cpu_used, NCpus);
+	cpu_pwrdom_used = cpu_pwrdom_mask;
+
+	adj_perf(ocpu_used, ocpu_pwrdom_used);
 }
