@@ -85,14 +85,14 @@ static int NCpuPwrDomUsed;
 
 static int NCpus;
 static cpumask_t UschedCpumask;
-int DebugOpt;
-int TurboOpt = 1;
-int CpuLimit;		/* # of cpus at max frequency */
-int PowerFd;
-int Hysteresis = 10;	/* percentage */
-double TriggerUp = 0.25;/* single-cpu load to force max freq */
-double TriggerDown; /* load per cpu to force the min freq */
-static int BatLifeMin = 2; /* shutdown the box, if low on battery life */
+static int DebugOpt;
+static int TurboOpt = 1;
+static int CpuLimit;		/* # of cpus at max frequency */
+static int PowerFd;
+static int Hysteresis = 10;	/* percentage */
+static double TriggerUp = 0.25;	/* single-cpu load to force max freq */
+static double TriggerDown;	/* load per cpu to force the min freq */
+static int BatLifeMin = 2;	/* shutdown the box, if low on battery life */
 static struct timespec BatLifePrevT;
 static int BatLifePollIntvl = 5; /* unit: sec */
 static int HasPerfbias = 1;
