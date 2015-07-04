@@ -83,13 +83,12 @@ static struct cpu_pwrdom *CpuPwrDomLimit;
 static struct cpu_pwrdom CpuPwrDomLast;
 static int NCpuPwrDomUsed;
 
-static int TotalCpus;
+static int NCpus;
 static cpumask_t UschedCpumask;
 int DebugOpt;
 int TurboOpt = 1;
 int CpuLimit;		/* # of cpus at max frequency */
 int PowerFd;
-int NCpus;
 int Hysteresis = 10;	/* percentage */
 double TriggerUp = 0.25;/* single-cpu load to force max freq */
 double TriggerDown; /* load per cpu to force the min freq */
@@ -326,11 +325,10 @@ setupdominfo(void)
 	char members[1024];
 	char *str;
 	size_t msize;
-	int n, i;
+	int n, i, ncpu = 0;
 
 	TAILQ_INIT(&CpuPwrDomain);
 	NCpuPwrDomUsed = 0;
-	NCpus = 0;
 
 	TAILQ_INIT(&tmp_list);
 	for (i = 0; i < MAXDOM; ++i) {
@@ -363,7 +361,7 @@ setupdominfo(void)
 			n = -1;
 			sscanf(str, "cpu%d", &n);
 			if (n >= 0) {
-				++NCpus;
+				++ncpu;
 				++dom->dom_ncpus;
 				if (n == 0)
 					bsp_domain = 1;
@@ -397,14 +395,13 @@ setupdominfo(void)
 		++NCpuPwrDomUsed;
 	}
 
-	if (NCpus != TotalCpus) {
+	if (ncpu != NCpus) {
 		while ((dom = TAILQ_FIRST(&CpuPwrDomain)) != NULL) {
 			TAILQ_REMOVE(&CpuPwrDomain, dom, dom_link);
 			free(dom);
 		}
 		if (DebugOpt) {
-			printf("Found %d cpus, expecting %d\n",
-			    NCpus, TotalCpus);
+			printf("Found %d cpus, expecting %d\n", ncpu, NCpus);
 			fflush(stdout);
 		}
 		return 0;
@@ -432,8 +429,7 @@ getcputime(double pollrate)
 	int cpu;
 	uint64_t delta;
 
-	/* NOTE: Don't use NCpus here; it may not be initialized yet */
-	bcopy(ncpu_time, ocpu_time, sizeof(struct kinfo_cputime) * TotalCpus);
+	bcopy(ncpu_time, ocpu_time, sizeof(struct kinfo_cputime) * NCpus);
 
 	slen = sizeof(ncpu_time);
 	if (sysctlbyname("kern.cputime", &ncpu_time, &slen, NULL, 0) < 0) {
@@ -811,11 +807,11 @@ getncpus(void)
 {
 	size_t slen;
 
-	slen = sizeof(TotalCpus);
-	if (sysctlbyname("hw.ncpu", &TotalCpus, &slen, NULL, 0) < 0)
+	slen = sizeof(NCpus);
+	if (sysctlbyname("hw.ncpu", &NCpus, &slen, NULL, 0) < 0)
 		err(1, "sysctlbyname hw.ncpu failed");
 	if (DebugOpt)
-		printf("hw.ncpu %d\n", TotalCpus);
+		printf("hw.ncpu %d\n", NCpus);
 }
 
 static void
