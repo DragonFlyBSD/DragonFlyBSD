@@ -44,8 +44,8 @@
 #ifndef _NET_BPF_H_
 #define _NET_BPF_H_
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
 #endif
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>
