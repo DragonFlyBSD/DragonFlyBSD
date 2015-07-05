@@ -2,6 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
+ * Copyright (c) 2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -482,6 +483,10 @@ bitmap_release_region(unsigned long *bitmap, int pos, int order)
 {
         __reg_op(bitmap, pos, order, REG_OP_RELEASE);
 }
+
+/* Returns a contiguous bitmask from bits h to l */
+#define GENMASK(h, l)	\
+	((~0UL) >> (BITS_PER_LONG - h - 1)) && ((~0UL) << l)
 
 #include <asm/bitops/non-atomic.h>
 #include <asm/bitops/const_hweight.h>
