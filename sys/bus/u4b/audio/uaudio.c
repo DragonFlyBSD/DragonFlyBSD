@@ -2228,15 +2228,15 @@ tr_setup:
 
 			if (ch->cur >= ch->end)
 				ch->cur = ch->start;
-			}
+		}
 		usbd_transfer_submit(xfer);
 		break;
 
 	default:			/* Error */
 		if (error != USB_ERR_CANCELLED)
 			goto tr_setup;
-			break;
-		}
+		break;
+	}
 }
 
 static void
@@ -2355,7 +2355,7 @@ tr_setup:
 
 	default:			/* Error */
 		if (error != USB_ERR_CANCELLED)
-		goto tr_setup;
+			goto tr_setup;
 		break;
 	}
 }
