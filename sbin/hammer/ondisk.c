@@ -817,8 +817,7 @@ void
 format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_base)
 {
 	blockmap->phys_offset = 0;
-	blockmap->alloc_offset = zone_base | HAMMER_VOL_ENCODE(255) |
-				 HAMMER_SHORT_OFF_ENCODE(-1);
+	blockmap->alloc_offset = HAMMER_ENCODE(zone_base, 255, -1);
 	blockmap->first_offset = zone_base;
 	blockmap->next_offset = zone_base;
 	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
