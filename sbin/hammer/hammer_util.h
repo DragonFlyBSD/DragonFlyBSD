@@ -168,6 +168,3 @@ void hammer_cache_used(struct cache_info *cache);
 void hammer_cache_flush(void);
 
 void score_printf(size_t i, size_t w, const char *ctl, ...) __printflike(3, 4);
-
-void panic(const char *ctl, ...) __printflike(1, 2);
-

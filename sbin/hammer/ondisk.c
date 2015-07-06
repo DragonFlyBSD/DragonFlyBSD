@@ -668,7 +668,7 @@ alloc_bigblock(struct volume_info *volume, int zone)
 
 	result_offset = volume->vol_free_off;
 	if (result_offset >= volume->vol_free_end)
-		panic("alloc_bigblock: Ran out of room, filesystem too small");
+		errx(1, "alloc_bigblock: Ran out of room, filesystem too small");
 	volume->vol_free_off += HAMMER_BIGBLOCK_SIZE;
 
 	/*
@@ -1006,16 +1006,3 @@ writehammerbuf(struct volume_info *vol, const void *data, int64_t offset)
 	if (n != HAMMER_BUFSIZE)
 		err(1, "Write volume %d (%s)", vol->vol_no, vol->name);
 }
-
-void
-panic(const char *ctl, ...)
-{
-	va_list va;
-
-	va_start(va, ctl);
-	vfprintf(stderr, ctl, va);
-	va_end(va);
-	fprintf(stderr, "\n");
-	exit(1);
-}
-
