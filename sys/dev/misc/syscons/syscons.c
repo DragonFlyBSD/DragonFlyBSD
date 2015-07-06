@@ -133,6 +133,9 @@ static	bios_values_t	bios_value;
 static	int		enable_panic_key;
 SYSCTL_INT(_machdep, OID_AUTO, enable_panic_key, CTLFLAG_RW, &enable_panic_key,
 	   0, "Enable the panic key (CTRL-ALT-SHIFT-ESC)");
+static	int		syscons_async = 1;
+SYSCTL_INT(_kern, OID_AUTO, syscons_async, CTLFLAG_RW, &syscons_async,
+	   0, "Asynchronous bulk syscons fb updates");
 
 #define SC_CONSOLECTL	255
 
@@ -2030,8 +2033,7 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
      * interrupts during the update which tends to make the system behave
      * better (no sound glitches, etc).
      */
-#if 0
-    if ((flags & SCRN_ASYNCOK) && scp->asynctd &&
+    if ((flags & SCRN_ASYNCOK) && syscons_async && scp->asynctd &&
 	(scp->end - scp->start) > 16 &&
 	panicstr == NULL && shutdown_in_progress == 0) {
 	scp->show_cursor = show_cursor;
@@ -2039,7 +2041,6 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
 	wakeup(&scp->asynctd);
 	return;
     }
-#endif
     if (flags & SCRN_BULKUNLOCK)
 	syscons_lock();
 
@@ -2135,7 +2136,7 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
 	goto cleanup;
 
     /* update cursor image */
-    if ((scp->status & CURSOR_ENABLED) && start <= end) {
+    if (scp->status & CURSOR_ENABLED) {
 	s = start;
 	e = end;
         /* did cursor move since last time ? */
@@ -2145,13 +2146,14 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
                 sc_remove_cursor_image(scp);
             sc_draw_cursor_image(scp);
         } else {
-            if (and_region(&s, &e, cpos, cpos))
+            if (s <= e && and_region(&s, &e, cpos, cpos)) {
 		/* cursor didn't move, but has been overwritten */
 		sc_draw_cursor_image(scp);
-	    else if (scp->sc->flags & SC_BLINK_CURSOR)
+	    } else if (scp->sc->flags & SC_BLINK_CURSOR) {
 		/* if it's a blinking cursor, update it */
 		(*scp->rndr->blink_cursor)(scp, cpos,
 					   sc_inside_cutmark(scp, cpos));
+	    }
         }
     }
 
