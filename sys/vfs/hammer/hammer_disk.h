@@ -193,21 +193,12 @@ typedef u_int32_t hammer_crc_t;
 	((zone_base) |					\
 	HAMMER_VOL_ENCODE(vol_no) |			\
 	HAMMER_SHORT_OFF_ENCODE(offset))
-
 #define HAMMER_ENCODE_RAW_VOLUME(vol_no, offset)	\
-	(HAMMER_ZONE_RAW_VOLUME |			\
-	HAMMER_VOL_ENCODE(vol_no) |			\
-	HAMMER_SHORT_OFF_ENCODE(offset))
-
+	HAMMER_ENCODE(HAMMER_ZONE_RAW_VOLUME, vol_no, offset)
 #define HAMMER_ENCODE_RAW_BUFFER(vol_no, offset)	\
-	(HAMMER_ZONE_RAW_BUFFER |			\
-	HAMMER_VOL_ENCODE(vol_no) |			\
-	HAMMER_SHORT_OFF_ENCODE(offset))
-
+	HAMMER_ENCODE(HAMMER_ZONE_RAW_BUFFER, vol_no, offset)
 #define HAMMER_ENCODE_FREEMAP(vol_no, offset)		\
-	(HAMMER_ZONE_FREEMAP |				\
-	HAMMER_VOL_ENCODE(vol_no) |			\
-	HAMMER_SHORT_OFF_ENCODE(offset))
+	HAMMER_ENCODE(HAMMER_ZONE_FREEMAP, vol_no, offset)
 
 /*
  * Translate a zone address to zone-2 address.
