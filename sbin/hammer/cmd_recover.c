@@ -81,8 +81,7 @@ hammer_cmd_recover(const char *target_dir)
 	TAILQ_FOREACH(scan, &VolList, entry) {
 		volume = get_volume(scan->vol_no);
 
-		off = HAMMER_ZONE_RAW_BUFFER + 0;
-		off |= HAMMER_VOL_ENCODE(volume->vol_no);
+		off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 		off_end = off + (volume->ondisk->vol_buf_end - volume->ondisk->vol_buf_beg);
 		while (off < off_end) {
 			ptr = get_buffer_data(off, &data_buffer, 0);
