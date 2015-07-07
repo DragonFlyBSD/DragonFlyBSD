@@ -1318,7 +1318,7 @@ retry:
 		for (;;) {
 			error = hammer_ip_sync_record_cursor(cursor, record);
 			if (hammer_debug_inode)
-				kprintf("GENREC %p rec %08x %d\n",	
+				kprintf("GENREC %p rec %08x %d\n",
 					ip, record->flags, error);
 			if (error != EDEADLK)
 				break;

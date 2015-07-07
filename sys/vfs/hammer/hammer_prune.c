@@ -169,7 +169,7 @@ retry:
 					(long long)elm->base.create_tid,
 					(long long)elm->base.delete_tid);
 		}
-				
+
 		if (prune_should_delete(prune, elm)) {
 			if (hammer_debug_general & 0x0200) {
 				kprintf("check %016llx %016llx: DELETE\n",

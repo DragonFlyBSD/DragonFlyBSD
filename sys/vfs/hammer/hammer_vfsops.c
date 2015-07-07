@@ -505,7 +505,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		TAILQ_INIT(&hmp->reclaim_list);
 
 		RB_INIT(&hmp->rb_dedup_crc_root);
-		RB_INIT(&hmp->rb_dedup_off_root);	
+		RB_INIT(&hmp->rb_dedup_off_root);
 		TAILQ_INIT(&hmp->dedup_lru_list);
 	}
 	hmp->hflags &= ~HMNT_USERFLAGS;

@@ -427,7 +427,7 @@ trim_volume(struct volume_info *vol)
 {
 	if (strncmp(vol->type, "DEVICE", sizeof("DEVICE")) == 0) {
 		off_t ioarg[2];
-		
+
 		/* 1MB offset to prevent destroying disk-reserved area */
 		ioarg[0] = vol->device_offset;
 		ioarg[1] = vol->size;
@@ -578,7 +578,6 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 
 		format_freemap(vol,
 			&ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX]);
-			
 		ondisk->vol0_stat_freebigblocks = initialize_freemap(vol);
 
 		/*

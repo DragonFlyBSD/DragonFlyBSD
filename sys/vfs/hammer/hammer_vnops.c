@@ -1404,7 +1404,7 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 	hammer_mount_t hmp;
 	int error;
 
-	if (ap->a_dvp->v_mount != ap->a_vp->v_mount)	
+	if (ap->a_dvp->v_mount != ap->a_vp->v_mount)
 		return(EXDEV);
 
 	nch = ap->a_nch;
@@ -1966,7 +1966,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	u_int32_t max_iterations;
 	int nlen, error;
 
-	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)	
+	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)
 		return(EXDEV);
 	if (ap->a_fdvp->v_mount != ap->a_fnch->ncp->nc_vp->v_mount)
 		return(EXDEV);
@@ -3183,7 +3183,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 			if (hammer_live_dedup)
 				hammer_dedup_cache_add(ip, cursor.leaf);
 		}
-		
+
 		error = hammer_ip_next(&cursor);
 	}
 

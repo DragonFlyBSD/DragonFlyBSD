@@ -230,7 +230,6 @@ retry:
 			error = copyout(&mrec, uptr, bytes);
 			eatdisk = 1;
 			goto didwrite;
-			
 		}
 
 		/*

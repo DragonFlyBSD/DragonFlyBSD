@@ -244,7 +244,6 @@ extract_volumes(ary_ptr_t *aryp, int *countp, char **av, int ac)
 		}
 		--ac;
 		++av;
-		
 	}
 	*aryp = ary;
 	*countp = idx;

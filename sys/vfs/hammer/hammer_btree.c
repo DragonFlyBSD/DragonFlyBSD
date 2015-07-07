@@ -88,7 +88,7 @@ static int btree_split_leaf(hammer_cursor_t cursor);
 static int btree_remove(hammer_cursor_t cursor, int *ndelete);
 static __inline int btree_node_is_full(hammer_node_ondisk_t node);
 static __inline int btree_max_elements(u_int8_t type);
-static int hammer_btree_mirror_propagate(hammer_cursor_t cursor,	
+static int hammer_btree_mirror_propagate(hammer_cursor_t cursor,
 			hammer_tid_t mirror_tid);
 static void hammer_make_separator(hammer_base_elm_t key1,
 			hammer_base_elm_t key2, hammer_base_elm_t dest);
