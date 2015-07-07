@@ -661,7 +661,7 @@ hammer_ioc_get_info(hammer_transaction_t trans, struct hammer_ioc_info *info)
 }
 
 /*
- * Add a snapshot transction id(s) to the list of snapshots.
+ * Add a snapshot transaction id(s) to the list of snapshots.
  *
  * NOTE: Records are created with an allocated TID.  If a flush cycle
  *	 is in progress the record may be synced in the current flush
@@ -811,7 +811,7 @@ again:
 
 /*
  * Retrieve as many snapshot ids as possible or until the array is
- * full, starting after the last transction id passed in.  If count
+ * full, starting after the last transaction id passed in.  If count
  * is 0 we retrieve starting at the beginning.
  *
  * NOTE: Because the b-tree key field is signed but transaction ids

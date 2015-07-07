@@ -193,7 +193,7 @@ Veritas ServPoint
 	single drive connector that goes from DB-9 FC to the 40-pin SCA
 	connector- primarily for you to try and evaluate a single FC drive.
 
-	All FC-AL disk drives are dual ported (i.e., have separte 'A' and
+	All FC-AL disk drives are dual ported (i.e., have separate 'A' and
 	'B' ports- which are completely separate loops). This seems to work
 	reasonably enough, but I haven't tested it much. It really depends
 	on the JBOD you put them to carry this dual port to the outside

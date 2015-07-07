@@ -96,7 +96,7 @@
 #define HAMMER_MAX_VOLUMES	256
 
 /*
- * Hammer transction ids are 64 bit unsigned integers and are usually
+ * Hammer transaction ids are 64 bit unsigned integers and are usually
  * synchronized with the time of day in nanoseconds.
  *
  * Hammer offsets are used for FIFO indexing and embed a cycle counter
@@ -795,7 +795,7 @@ struct hammer_entry_data {
 #define HAMMER_ENTRY_SIZE(nlen)	offsetof(struct hammer_entry_data, name[nlen])
 
 /*
- * Symlink data which does not fit in the inode is stored in a separte
+ * Symlink data which does not fit in the inode is stored in a separate
  * FIX type record.
  */
 struct hammer_symlink_data {

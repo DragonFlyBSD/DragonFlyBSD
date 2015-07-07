@@ -69,7 +69,7 @@
 #define SMB_QREAD	0x1
 
 /*
- * smbus transction op with pass-thru capabilities
+ * smbus transaction op with pass-thru capabilities
  *
  * This smbus function is capable of doing a smbus command transaction
  * (read or write), and can be flagged to not issue the 'cmd' and/or
