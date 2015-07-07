@@ -236,7 +236,6 @@ const char                      *AslCompilerMsgs [] =
 /*    ASL_MSG_MISSING_DEPENDENCY */         "Missing dependency",
 /*    ASL_MSG_ILLEGAL_FORWARD_REF */        "Illegal forward reference within a method",
 /*    ASL_MSG_ILLEGAL_METHOD_REF */         "Illegal reference across two methods"
-
 };
 
 /* Table compiler */
