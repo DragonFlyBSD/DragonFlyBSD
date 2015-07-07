@@ -186,15 +186,15 @@ typedef u_int32_t hammer_crc_t;
 #define HAMMER_VOL_DECODE(ham_off)			\
 	(int32_t)(((hammer_off_t)(ham_off) >> 52) & 255)
 
-#define HAMMER_SHORT_OFF_ENCODE(offset)			\
+#define HAMMER_OFF_SHORT_ENCODE(offset)			\
 	((hammer_off_t)(offset) & HAMMER_OFF_SHORT_MASK)
-#define HAMMER_LONG_OFF_ENCODE(offset)			\
+#define HAMMER_OFF_LONG_ENCODE(offset)			\
 	((hammer_off_t)(offset) & HAMMER_OFF_LONG_MASK)
 
 #define HAMMER_ENCODE(zone_base, vol_no, offset)	\
 	((zone_base) |					\
 	HAMMER_VOL_ENCODE(vol_no) |			\
-	HAMMER_SHORT_OFF_ENCODE(offset))
+	HAMMER_OFF_SHORT_ENCODE(offset))
 #define HAMMER_ENCODE_RAW_VOLUME(vol_no, offset)	\
 	HAMMER_ENCODE(HAMMER_ZONE_RAW_VOLUME, vol_no, offset)
 #define HAMMER_ENCODE_RAW_BUFFER(vol_no, offset)	\
