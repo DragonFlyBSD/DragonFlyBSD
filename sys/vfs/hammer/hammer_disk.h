@@ -176,14 +176,16 @@ typedef u_int32_t hammer_crc_t;
  */
 #define HAMMER_ZONE2_MAPPED_INDEX	HAMMER_ZONE_BTREE_INDEX
 
+#define HAMMER_ZONE_ENCODE(zone, ham_off)		\
+	(((hammer_off_t)(zone) << 60) | (ham_off))
+#define HAMMER_ZONE_DECODE(ham_off)			\
+	(int32_t)(((hammer_off_t)(ham_off) >> 60))
+
 #define HAMMER_VOL_ENCODE(vol_no)			\
 	((hammer_off_t)((vol_no) & 255) << 52)
 #define HAMMER_VOL_DECODE(ham_off)			\
 	(int32_t)(((hammer_off_t)(ham_off) >> 52) & 255)
-#define HAMMER_ZONE_DECODE(ham_off)			\
-	(int32_t)(((hammer_off_t)(ham_off) >> 60))
-#define HAMMER_ZONE_ENCODE(zone, ham_off)		\
-	(((hammer_off_t)(zone) << 60) | (ham_off))
+
 #define HAMMER_SHORT_OFF_ENCODE(offset)			\
 	((hammer_off_t)(offset) & HAMMER_OFF_SHORT_MASK)
 #define HAMMER_LONG_OFF_ENCODE(offset)			\
