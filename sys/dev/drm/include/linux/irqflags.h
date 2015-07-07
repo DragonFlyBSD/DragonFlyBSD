@@ -24,17 +24,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_SPINLOCK_H_
-#define _LINUX_SPINLOCK_H_
+#ifndef _LINUX_IRQFLAGS_H_
+#define _LINUX_IRQFLAGS_H_
 
-#include <sys/spinlock2.h>
-#include <sys/lock.h>
+/*
+ * Disabling interrupts, even on a single CPU core is crazy.
+ * Don't even try to do such a thing
+ */
+#define local_irq_disable()
+#define local_irq_enable()
 
-#include <linux/irqflags.h>
-#include <asm/barrier.h>
-
-#define spin_is_locked(x)	spin_held(x)
-
-#define assert_spin_locked(x)	KKASSERT(lockcountnb(x))
-
-#endif	/* _LINUX_SPINLOCK_H_ */
+#endif	/* _LINUX_IRQFLAGS_H_ */
