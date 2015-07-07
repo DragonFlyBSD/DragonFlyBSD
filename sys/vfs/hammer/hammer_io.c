@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -502,7 +502,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
  * The bp may or may not still be passively associated with the IO.  It
  * will remain passively associated if it is unreleasable (e.g. a modified
  * meta-data buffer).
- * 
+ *
  * The only requirement here is that modified meta-data and volume-header
  * buffer may NOT be disassociated from the IO structure, and consequently
  * we also leave such buffers actively associated with the IO if they already
@@ -1400,7 +1400,7 @@ struct bio_ops hammer_bioops = {
  * We must check for the presence of a HAMMER buffer to handle the case
  * where the reblocker has rewritten the data (which it does via the HAMMER
  * buffer system, not via the high-level vnode buffer cache), but not yet
- * committed the buffer to the media. 
+ * committed the buffer to the media.
  */
 int
 hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
@@ -1691,7 +1691,7 @@ hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
 		}
 		hammer_rel_volume(volume, 0);
 	} else {
-		/* 
+		/*
 		 * Must fit in a standard HAMMER buffer.  In this case all
 		 * consumers use the HAMMER buffer system and RECG_DIRECT_IO
 		 * does not need to be set-up.
@@ -1784,12 +1784,12 @@ hammer_io_direct_write_complete(struct bio *nbio)
 
 /*
  * This is called before a record is either committed to the B-Tree
- * or destroyed, to resolve any associated direct-IO. 
+ * or destroyed, to resolve any associated direct-IO.
  *
  * (1) We must wait for any direct-IO related to the record to complete.
  *
  * (2) We must remove any buffer cache aliases for data accessed via
- *     leaf->data_offset or zone2_offset so non-direct-IO consumers  
+ *     leaf->data_offset or zone2_offset so non-direct-IO consumers
  *     (the mirroring and reblocking code) do not see stale data.
  */
 void

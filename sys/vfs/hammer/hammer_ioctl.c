@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.32 2008/11/13 02:23:29 dillon Exp $
  */
 
@@ -122,7 +122,7 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		break;
 	case HAMMERIOC_UPG_PSEUDOFS:
 		if (error == 0) {
-			error = hammer_ioc_upgrade_pseudofs(&trans, ip, 
+			error = hammer_ioc_upgrade_pseudofs(&trans, ip,
 				    (struct hammer_ioc_pseudofs_rw *)data);
 		}
 		break;
@@ -157,7 +157,7 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		}
 		break;
 	case HAMMERIOC_GET_VERSION:
-		error = hammer_ioc_get_version(&trans, ip, 
+		error = hammer_ioc_get_version(&trans, ip,
 				    (struct hammer_ioc_version *)data);
 		break;
 	case HAMMERIOC_GET_INFO:
@@ -166,7 +166,7 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		break;
 	case HAMMERIOC_SET_VERSION:
 		if (error == 0) {
-			error = hammer_ioc_set_version(&trans, ip, 
+			error = hammer_ioc_set_version(&trans, ip,
 					    (struct hammer_ioc_version *)data);
 		}
 		break;
@@ -273,7 +273,7 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 	hist->head.flags &= ~HAMMER_IOC_HISTORY_NEXT_KEY;
 	hist->head.flags &= ~HAMMER_IOC_HISTORY_EOF;
 	hist->head.flags &= ~HAMMER_IOC_HISTORY_UNSYNCED;
-	if ((ip->flags & HAMMER_INODE_MODMASK) & 
+	if ((ip->flags & HAMMER_INODE_MODMASK) &
 	    ~(HAMMER_INODE_ATIME | HAMMER_INODE_MTIME)) {
 		hist->head.flags |= HAMMER_IOC_HISTORY_UNSYNCED;
 	}
@@ -312,9 +312,9 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 		 */
 		cursor.key_beg.key = hist->key;
 		cursor.key_end.key = HAMMER_MAX_KEY;
-		cursor.key_beg.localization = ip->obj_localization + 
+		cursor.key_beg.localization = ip->obj_localization +
 					      HAMMER_LOCALIZE_MISC;
-		cursor.key_end.localization = ip->obj_localization + 
+		cursor.key_end.localization = ip->obj_localization +
 					      HAMMER_LOCALIZE_MISC;
 
 		switch(ip->ino_data.obj_type) {

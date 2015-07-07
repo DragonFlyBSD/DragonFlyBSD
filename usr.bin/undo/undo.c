@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * $DragonFly: src/usr.bin/undo/undo.c,v 1.6 2008/07/17 21:34:47 thomas Exp $
  */
 /*
@@ -391,7 +391,7 @@ dogenerate(const char *filename, const char *outFileName,
 	char *ipath1 = NULL;
 	char *ipath2 = NULL;
 	FILE *fi;
-	FILE *fp; 
+	FILE *fp;
 	char *buf;
 	char *path;
 	time_t t;
@@ -592,7 +592,7 @@ collect_history(int fd, int *errorp, struct undo_hist_entry_rb_tree *tse_tree)
 			hist.key = hist.nxt_key;
 			hist.nxt_key = HAMMER_MAX_KEY;
 		}
-		if (hist.head.flags & HAMMER_IOC_HISTORY_NEXT_TID) 
+		if (hist.head.flags & HAMMER_IOC_HISTORY_NEXT_TID)
 			hist.beg_tid = hist.nxt_tid;
 		if (ioctl(fd, HAMMERIOC_GETHISTORY, &hist) < 0) {
 			*errorp = errno;

@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -52,7 +52,7 @@
 int hammer_supported_version = HAMMER_VOL_VERSION_DEFAULT;
 int hammer_debug_io;
 int hammer_debug_general;
-int hammer_debug_debug = 1;		/* medium-error panics */ 
+int hammer_debug_debug = 1;		/* medium-error panics */
 int hammer_debug_inode;
 int hammer_debug_locks;
 int hammer_debug_btree;
@@ -676,7 +676,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
 	/*MNTK_RD_MPSAFE | MNTK_GA_MPSAFE | MNTK_IN_MPSAFE;*/
 
-	/* 
+	/*
 	 * note: f_iosize is used by vnode_pager_haspage() when constructing
 	 * its VOP_BMAP call.
 	 */

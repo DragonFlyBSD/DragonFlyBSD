@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -304,7 +304,7 @@ hammer_done_cursor(hammer_cursor_t cursor)
  * We upgrade the parent first as it is the most likely to collide first
  * with the downward traversal that the frontend typically does.
  *
- * If we fail to upgrade the lock and cursor->deadlk_node is NULL, 
+ * If we fail to upgrade the lock and cursor->deadlk_node is NULL,
  * we add another reference to the node that failed and set
  * cursor->deadlk_node so hammer_done_cursor() can block on it.
  */
@@ -540,7 +540,7 @@ hammer_cursor_up(hammer_cursor_t cursor)
 		return (ENOENT);
 
 	/*
-	 * Set the node to its parent. 
+	 * Set the node to its parent.
 	 */
 	hammer_unlock(&cursor->node->lock);
 	hammer_rel_node(cursor->node);
@@ -580,7 +580,7 @@ hammer_cursor_up_locked(hammer_cursor_t cursor)
 	save_index = cursor->index;
 
 	/*
-	 * Set the node to its parent. 
+	 * Set the node to its parent.
 	 */
 	cursor->node = cursor->parent;
 	cursor->index = cursor->parent_index;

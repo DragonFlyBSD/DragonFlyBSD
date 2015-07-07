@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.19 2008/09/23 21:03:52 dillon Exp $
  */
 
@@ -345,7 +345,7 @@ prune_check_nlinks(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 
 /*
  * NOTE: THIS CODE HAS BEEN REMOVED!  Pruning no longer attempts to realign
- *	 adjacent records because it seriously interferes with every 
+ *	 adjacent records because it seriously interferes with every
  *	 mirroring algorithm I could come up with.
  *
  *	 This means that historical accesses beyond the first snapshot
@@ -397,7 +397,7 @@ realign_prune(struct hammer_ioc_prune *prune,
 	if (realign_cre >= 0) {
 		scan = &prune->elms[realign_cre];
 
-		delta = (elm->leaf.base.create_tid - scan->beg_tid) % 
+		delta = (elm->leaf.base.create_tid - scan->beg_tid) %
 			scan->mod_tid;
 		if (delta) {
 			tid = elm->leaf.base.create_tid - delta + scan->mod_tid;
@@ -431,7 +431,7 @@ realign_prune(struct hammer_ioc_prune *prune,
 	if (error == 0 && realign_del >= 0) {
 		scan = &prune->elms[realign_del];
 
-		delta = (elm->leaf.base.delete_tid - scan->beg_tid) % 
+		delta = (elm->leaf.base.delete_tid - scan->beg_tid) %
 			scan->mod_tid;
 		if (delta) {
 			error = hammer_btree_extract(cursor,

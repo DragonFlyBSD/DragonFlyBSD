@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -700,7 +700,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		} else if (offset == 0 && uio->uio_resid >= blksize) {
 			/*
 			 * Even though we are entirely overwriting the buffer
-			 * we may still have to zero it out to avoid a 
+			 * we may still have to zero it out to avoid a
 			 * mmap/write visibility issue.
 			 */
 			bp = getblk(ap->a_vp, base_offset, blksize, GETBLK_BHEAVY, 0);
@@ -787,7 +787,7 @@ hammer_vop_write(struct vop_write_args *ap)
 
 		/*
 		 * Once we dirty the buffer any cached zone-X offset
-		 * becomes invalid.  HAMMER NOTE: no-history mode cannot 
+		 * becomes invalid.  HAMMER NOTE: no-history mode cannot
 		 * allow overwriting over the same data sector unless
 		 * we provide UNDOs for the old data, which we don't.
 		 */
@@ -3025,9 +3025,9 @@ done:
  *
  * This routine may return EOPNOTSUPP if the opration is not supported for
  * the specified offset.  The contents of the pointer arguments do not
- * need to be initialized in that case. 
+ * need to be initialized in that case.
  *
- * If a disk address is available and properly aligned return 0 with 
+ * If a disk address is available and properly aligned return 0 with
  * *doffsetp set to the zone-2 address, and *runp / *runb set appropriately
  * to the run-length relative to that offset.  Callers may assume that
  * *doffsetp is valid if 0 is returned, even if *runp is not sufficiently
@@ -3328,7 +3328,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	}
 
 	/*
-	 * Reserve space and issue a direct-write from the front-end. 
+	 * Reserve space and issue a direct-write from the front-end.
 	 * NOTE: The direct_io code will hammer_bread/bcopy smaller
 	 * allocations.
 	 *
@@ -3390,7 +3390,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
  */
 static int
 hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
-		struct vnode *dvp, struct ucred *cred, 
+		struct vnode *dvp, struct ucred *cred,
 		int flags, int isdir)
 {
 	struct namecache *ncp;

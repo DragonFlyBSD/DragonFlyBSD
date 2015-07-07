@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -481,7 +481,7 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 			if (error == EALREADY)
 				error = 0;
 			if (error == 0) {
-				mirror->count += 
+				mirror->count +=
 					HAMMER_HEAD_DOALIGN(mrec.head.rec_size);
 			}
 		}
@@ -489,7 +489,7 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_done_cursor(&cursor);
 
 	/*
-	 * cumulative error 
+	 * cumulative error
 	 */
 	if (error) {
 		mirror->head.flags |= HAMMER_IOC_HEAD_ERROR;
@@ -577,7 +577,7 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 {
 	int error;
 
-	if (mrec->leaf.data_len < 0 || 
+	if (mrec->leaf.data_len < 0 ||
 	    mrec->leaf.data_len > HAMMER_XBUFSIZE ||
 	    mrec->leaf.data_len + sizeof(*mrec) > mrec->head.rec_size) {
 		return(EINVAL);

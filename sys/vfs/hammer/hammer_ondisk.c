@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.76 2008/08/29 20:19:08 dillon Exp $
  */
 /*
@@ -160,7 +160,7 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname,
 		vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
 		error = vinvalbuf(volume->devvp, V_SAVE, 0, 0);
 		if (error == 0) {
-			error = VOP_OPEN(volume->devvp, 
+			error = VOP_OPEN(volume->devvp,
 					 (ronly ? FREAD : FREAD|FWRITE),
 					 FSCRED, NULL);
 		}
@@ -190,7 +190,7 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname,
 	volume->vol_no = ondisk->vol_no;
 	volume->buffer_base = ondisk->vol_buf_beg;
 	volume->vol_flags = ondisk->vol_flags;
-	volume->nblocks = ondisk->vol_nblocks; 
+	volume->nblocks = ondisk->vol_nblocks;
 	volume->maxbuf_off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no,
 				    ondisk->vol_buf_end - ondisk->vol_buf_beg);
 	volume->maxraw_off = ondisk->vol_buf_end;
@@ -1333,7 +1333,7 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 		 * Check CRC.  NOTE: Neither flag is set and the CRC is not
 		 * generated on new B-Tree nodes.
 		 */
-		if (isnew == 0 && 
+		if (isnew == 0 &&
 		    (node->flags & HAMMER_NODE_CRCANY) == 0) {
 			if (hammer_crc_test_btree(node->ondisk) == 0) {
 				if (hammer_debug_critical)
@@ -1651,7 +1651,7 @@ hammer_alloc_btree(hammer_transaction_t trans, hammer_off_t hint, int *errorp)
  * *data_bufferp.
  */
 void *
-hammer_alloc_data(hammer_transaction_t trans, int32_t data_len, 
+hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 		  u_int16_t rec_type, hammer_off_t *data_offsetp,
 		  struct hammer_buffer **data_bufferp,
 		  hammer_off_t hint, int *errorp)

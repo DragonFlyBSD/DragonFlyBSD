@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -98,7 +98,7 @@ static void hammer_cursor_mirror_filter(hammer_cursor_t cursor);
  * Iterate records after a search.  The cursor is iterated forwards past
  * the current record until a record matching the key-range requirements
  * is found.  ENOENT is returned if the iteration goes past the ending
- * key. 
+ * key.
  *
  * The iteration is inclusive of key_beg and can be inclusive or exclusive
  * of key_end depending on whether HAMMER_CURSOR_END_INCLUSIVE is set.
@@ -136,7 +136,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 	node = cursor->node->ondisk;
 	if (node == NULL)
 		return(ENOENT);
-	if (cursor->index < node->count && 
+	if (cursor->index < node->count &&
 	    (cursor->flags & HAMMER_CURSOR_ATEDISK)) {
 		++cursor->index;
 	}
@@ -451,7 +451,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 	node = cursor->node->ondisk;
 	if (node == NULL)
 		return(ENOENT);
-	if (cursor->index != -1 && 
+	if (cursor->index != -1 &&
 	    (cursor->flags & HAMMER_CURSOR_ATEDISK)) {
 		--cursor->index;
 	}
@@ -495,7 +495,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 		 * Check internal or leaf element.  Determine if the record
 		 * at the cursor has gone beyond the end of our range.
 		 *
-		 * We recurse down through internal nodes. 
+		 * We recurse down through internal nodes.
 		 */
 		KKASSERT(cursor->index != node->count);
 		if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
@@ -626,7 +626,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
  * could not be found, EDEADLK if inserting and a retry is needed, and a
  * fatal error otherwise.  When retrying, the caller must terminate the
  * cursor and reinitialize it.  EDEADLK cannot be returned if not inserting.
- * 
+ *
  * The cursor is suitably positioned for a deletion on success, and suitably
  * positioned for an insertion on ENOENT if HAMMER_CURSOR_INSERT was
  * specified.
@@ -961,7 +961,7 @@ hammer_btree_delete(hammer_cursor_t cursor, int *ndelete)
 	++hammer_stats_btree_deletes;
 
 	/*
-	 * Delete the element from the leaf node. 
+	 * Delete the element from the leaf node.
 	 *
 	 * Remember that leaf nodes do not have boundaries.
 	 */
@@ -998,7 +998,7 @@ hammer_btree_delete(hammer_cursor_t cursor, int *ndelete)
 	 * current node.
 	 *
 	 * Ignore deadlock errors, that simply means that btree_remove
-	 * was unable to recurse and had to leave us with an empty leaf. 
+	 * was unable to recurse and had to leave us with an empty leaf.
 	 */
 	KKASSERT(cursor->index <= ondisk->count);
 	if (ondisk->count == 0) {
@@ -1021,7 +1021,7 @@ hammer_btree_delete(hammer_cursor_t cursor, int *ndelete)
  * The search can begin ANYWHERE in the B-Tree.  As a first step the search
  * iterates up the tree as necessary to properly position itself prior to
  * actually doing the sarch.
- * 
+ *
  * INSERTIONS: The search will split full nodes and leaves on its way down
  * and guarentee that the leaf it ends up on is not full.  If we run out
  * of space the search continues to the leaf, but ENOSPC is returned.
@@ -1047,7 +1047,7 @@ hammer_btree_delete(hammer_cursor_t cursor, int *ndelete)
  *   The iteration backwards because as-of searches can wind up going
  *   down the wrong branch of the B-Tree.
  */
-static 
+static
 int
 btree_search(hammer_cursor_t cursor, int flags)
 {
@@ -1070,7 +1070,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 			cursor->key_beg.rec_type,
 			(long long)cursor->key_beg.key,
 			(long long)cursor->key_beg.create_tid,
-			cursor->key_beg.localization, 
+			cursor->key_beg.localization,
 			curthread
 		);
 		if (cursor->parent)
@@ -1553,7 +1553,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		goto done;
 	++hammer_stats_btree_splits;
 
-	/* 
+	/*
 	 * Calculate the split point.  If the insertion point is at the
 	 * end of the leaf we adjust the split point significantly to the
 	 * right to try to optimize node fill and flag it.  If we hit
@@ -1618,10 +1618,10 @@ btree_split_internal(hammer_cursor_t cursor)
 	 *   0 1 2 3 4 5 6	<-- subtree indices
 	 *
 	 *       x x P x x
-	 *        s S S s  
+	 *        s S S s
 	 *         /   \
 	 *  B O O O B    B N N B	<--- inner boundary points are 'P'
-	 *   0 1 2 3      4 5 6  
+	 *   0 1 2 3      4 5 6
 	 */
 	new_node = hammer_alloc_btree(cursor->trans, 0, &error);
 	if (new_node == NULL) {
@@ -1791,7 +1791,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	KKASSERT(hammer_btree_cmp(cursor->right_bound,
 		 &cursor->node->ondisk->elms[cursor->node->ondisk->count-1].leaf.base) > 0);
 
-	/* 
+	/*
 	 * Calculate the split point.  If the insertion point is at the
 	 * end of the leaf we adjust the split point significantly to the
 	 * right to try to optimize node fill and flag it.  If we hit
@@ -1868,7 +1868,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 *  L L L L L L L L
 	 *
 	 *       x x P x x
-	 *        s S S s  
+	 *        s S S s
 	 *         /   \
 	 *  L L L L     L L L L
 	 */
@@ -1884,7 +1884,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	hammer_lock_ex(&new_leaf->lock);
 
 	/*
-	 * Create the new node and copy the leaf elements from the split 
+	 * Create the new node and copy the leaf elements from the split
 	 * point on to the new node.
 	 */
 	hammer_modify_node_all(cursor->trans, leaf);
@@ -2278,7 +2278,7 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
 
 	/*
 	 * Attempt to remove the parent's reference to the child.  If the
-	 * parent would become empty we have to recurse.  If we fail we 
+	 * parent would become empty we have to recurse.  If we fail we
 	 * leave the parent pointing to an empty leaf node.
 	 *
 	 * We have to recurse successfully before we can delete the internal

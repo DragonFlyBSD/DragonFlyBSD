@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -939,7 +939,7 @@ hammer_bulk_scan_callback(hammer_record_t record, void *data)
 }
 
 /*
- * Reserve blockmap space placemarked with an in-memory record.  
+ * Reserve blockmap space placemarked with an in-memory record.
  *
  * This routine is called by the frontend in order to be able to directly
  * flush a buffer cache buffer.  The frontend has locked the related buffer
@@ -1190,7 +1190,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	if (record->type == HAMMER_MEM_RECORD_DATA &&
 	    hammer_record_needs_overwrite_delete(record)) {
 		file_offset = record->leaf.base.key - record->leaf.data_len;
-		bytes = (record->leaf.data_len + HAMMER_BUFMASK) & 
+		bytes = (record->leaf.data_len + HAMMER_BUFMASK) &
 			~HAMMER_BUFMASK;
 		KKASSERT((file_offset & HAMMER_BUFMASK) == 0);
 		error = hammer_ip_delete_range(
@@ -1925,7 +1925,7 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
  * Backend truncation / record replacement - delete records in range.
  *
  * Delete all records within the specified range for inode ip.  In-memory
- * records still associated with the frontend are ignored. 
+ * records still associated with the frontend are ignored.
  *
  * If truncating is non-zero in-memory records associated with the back-end
  * are ignored.  If truncating is > 1 we can return EWOULDBLOCK.
@@ -2104,7 +2104,7 @@ retry:
 /*
  * This backend function deletes the specified record on-disk, similar to
  * delete_range but for a specific record.  Unlike the exact deletions
- * used when deleting a directory entry this function uses an ASOF search 
+ * used when deleting a directory entry this function uses an ASOF search
  * like delete_range.
  *
  * This function may be called with ip->obj_asof set for a slave snapshot,
@@ -2259,7 +2259,7 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 	 * This does not effect their position in the B-Tree (which is based
 	 * on their create_tid).
 	 *
-	 * Frontend B-Tree operations track inodes so we tell 
+	 * Frontend B-Tree operations track inodes so we tell
 	 * hammer_delete_at_cursor() not to.
 	 */
 	error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_LEAF);

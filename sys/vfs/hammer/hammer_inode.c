@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007-2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -194,7 +194,7 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 	 * resources which can matter a lot in a heavily loaded system.
 	 *
 	 * This can deadlock in vfsync() if we aren't careful.
-	 * 
+	 *
 	 * Do not queue the inode to the flusher if we still have visibility,
 	 * otherwise namespace calls such as chmod will unnecessarily generate
 	 * multiple inode updates.
@@ -870,7 +870,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	 */
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DIRECTORY &&
 	    ip->obj_id == HAMMER_OBJID_ROOT) {
-		ip->ino_data.ext.obj.parent_obj_localization = 
+		ip->ino_data.ext.obj.parent_obj_localization =
 						dip->obj_localization;
 	}
 #endif
@@ -1239,7 +1239,7 @@ retry:
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
 		hammer_normalize_cursor(cursor);
-		cursor->key_beg.localization = ip->obj_localization + 
+		cursor->key_beg.localization = ip->obj_localization +
 					       HAMMER_LOCALIZE_INODE;
 		cursor->key_beg.obj_id = ip->obj_id;
 		cursor->key_beg.key = 0;
@@ -1377,7 +1377,7 @@ retry:
 	 * If the inode has been destroyed, clean out any left-over flags
 	 * that may have been set by the frontend.
 	 */
-	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED)) { 
+	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED)) {
 		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY |
 				    HAMMER_INODE_SDIRTY |
 				    HAMMER_INODE_ATIME |
@@ -1409,7 +1409,7 @@ retry:
 	}
 
 	hammer_normalize_cursor(cursor);
-	cursor->key_beg.localization = ip->obj_localization + 
+	cursor->key_beg.localization = ip->obj_localization +
 				       HAMMER_LOCALIZE_INODE;
 	cursor->key_beg.obj_id = ip->obj_id;
 	cursor->key_beg.key = 0;
@@ -1647,12 +1647,12 @@ hammer_reload_inode(hammer_inode_t ip, void *arg __unused)
 void
 hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags)
 {
-	/* 
+	/*
 	 * ronly of 0 or 2 does not trigger assertion.
-	 * 2 is a special error state 
+	 * 2 is a special error state
 	 */
 	KKASSERT(ip->hmp->ronly != 1 ||
-		  (flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_XDIRTY | 
+		  (flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_XDIRTY |
 			    HAMMER_INODE_SDIRTY |
 			    HAMMER_INODE_BUFS | HAMMER_INODE_DELETED |
 			    HAMMER_INODE_ATIME | HAMMER_INODE_MTIME)) == 0);
@@ -1808,7 +1808,7 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 
 		if (good >= 0) {
 			/*
-			 * We can continue if good >= 0.  Determine how 
+			 * We can continue if good >= 0.  Determine how
 			 * many records under our inode can be flushed (and
 			 * mark them).
 			 */
@@ -1910,7 +1910,7 @@ hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
  * record		= record in question (*rec in below)
  * record->ip		= parent inode (*pip in below)
  * record->target_ip	= child inode (*ip in below)
- * 
+ *
  * *pip--------------\
  *    ^               \rec_tree
  *     \               \
@@ -1927,7 +1927,7 @@ hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
  *
  * Return 1 if the record gives us connectivity
  *
- * Return 0 if the record is not relevant 
+ * Return 0 if the record is not relevant
  *
  * Return -1 if we can't resolve the dependancy and there is no connectivity.
  */
@@ -1944,7 +1944,7 @@ hammer_setup_parent_inodes_helper(hammer_record_t record, int depth,
 	/*
 	 * If the record is already flushing, is it in our flush group?
 	 *
-	 * If it is in our flush group but it is a general record or a 
+	 * If it is in our flush group but it is a general record or a
 	 * delete-on-disk, it does not improve our connectivity (return 0),
 	 * and if the target inode is not trying to destroy itself we can't
 	 * allow the operation yet anyway (the second return -1).
@@ -2050,7 +2050,7 @@ hammer_setup_parent_inodes_helper(hammer_record_t record, int depth,
 		/*
 		 * A general directory-add contributes to our visibility.
 		 *
-		 * Otherwise it is probably a directory-delete or 
+		 * Otherwise it is probably a directory-delete or
 		 * delete-on-disk record and does not contribute to our
 		 * visbility (but we can still flush it).
 		 */
@@ -2335,7 +2335,7 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 			else
 				target_ip->flags |= HAMMER_INODE_REFLUSH;
 			break;
-		} 
+		}
 
 		/*
 		 * Target IP is not yet flushing.  This can get complex
@@ -2407,7 +2407,7 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 		}
 		break;
 	case HAMMER_FST_FLUSH:
-		/* 
+		/*
 		 * The record could be part of a previous flush group if the
 		 * inode is a directory (the record being a directory entry).
 		 * Once the flush group was closed a hammer_test_inode()
@@ -2729,7 +2729,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	 * frontend cannot change the state of FE.
 	 *
 	 * NOTE: If FE is set prior to us setting BE we still sync the
-	 * record out, but the flush completion code converts it to 
+	 * record out, but the flush completion code converts it to
 	 * a delete-on-disk record instead of destroying it.
 	 */
 	KKASSERT((record->flags & HAMMER_RECF_INTERLOCK_BE) == 0);
@@ -2780,7 +2780,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 			      "sync inode record %p?", record);
 			break; /* NOT REACHED */
 		case HAMMER_MEM_RECORD_DEL:
-			/* 
+			/*
 			 * Follow through and issue the on-disk deletion
 			 */
 			break;
@@ -3210,7 +3210,7 @@ defer_buffer_flush:
 	 */
 	if (ip->flags & HAMMER_INODE_DELETED) {
 		error = hammer_update_inode(&cursor, ip);
-	} else 
+	} else
 	if (!(ip->sync_flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_SDIRTY)) &&
 	    (ip->sync_flags & (HAMMER_INODE_ATIME | HAMMER_INODE_MTIME))) {
 		error = hammer_update_itimes(&cursor, ip);
