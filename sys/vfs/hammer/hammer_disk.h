@@ -87,9 +87,6 @@
 #define HAMMER_OFF_VOL_MASK	0x0FF0000000000000ULL /* volume portion */
 #define HAMMER_OFF_SHORT_MASK	0x000FFFFFFFFFFFFFULL /* offset portion */
 #define HAMMER_OFF_LONG_MASK	0x0FFFFFFFFFFFFFFFULL /* offset portion */
-#define HAMMER_OFF_SHORT_REC_MASK 0x000FFFFFFF000000ULL /* recovery boundary */
-#define HAMMER_OFF_LONG_REC_MASK 0x0FFFFFFFFF000000ULL /* recovery boundary */
-#define HAMMER_RECOVERY_BND	0x0000000001000000ULL
 
 #define HAMMER_OFF_BAD		((hammer_off_t)-1)
 
