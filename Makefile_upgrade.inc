@@ -2126,6 +2126,12 @@ TO_REMOVE+=/usr/share/man/man8/apmd.8.gz
 TO_REMOVE+=/usr/share/man/man8/battd.8.gz
 TO_REMOVE+=/usr/share/man/man8/zzz.8.gz
 TO_REMOVE+=/usr/lib/compat
+TO_REMOVE+=/boot/kernel/if_ar.ko
+TO_REMOVE+=/boot/kernel/if_ed.ko
+TO_REMOVE+=/boot/kernel/if_sbni.ko
+TO_REMOVE+=/boot/kernel/if_sr.ko
+TO_REMOVE+=/boot/kernel/ng_sync_ar.ko
+TO_REMOVE+=/boot/kernel/ng_sync_sr.ko
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
@@ -2135,14 +2141,8 @@ TO_REMOVE+=/usr/sbin/kgzip
 TO_REMOVE+=/usr/share/man/man8/kgzip.8.gz
 TO_REMOVE+=/usr/sbin/pnpinfo
 TO_REMOVE+=/usr/share/man/man8/pnpinfo.8.gz
-TO_REMOVE+=/boot/kernel/if_ar.ko
 TO_REMOVE+=/boot/kernel/glxsb.ko
-TO_REMOVE+=/boot/kernel/if_sbni.ko
 TO_REMOVE+=/boot/kernel/pst.ko
-TO_REMOVE+=/boot/kernel/if_ed.ko
-TO_REMOVE+=/boot/kernel/if_sr.ko
-TO_REMOVE+=/boot/kernel/ng_sync_ar.ko
-TO_REMOVE+=/boot/kernel/ng_sync_sr.ko
 .endif
 
 .if !defined(WANT_INSTALLER)

@@ -5,10 +5,6 @@ SUBDIR= an age alc ale ath bce bfe bge bwn \
 	ral re rl sbsh sf sis sk sln ste stge ti tl tx txp \
 	vge vr vx wb wi wpi xe xl ig_hal emx ae igb ix bnx
 
-.if ${MACHINE_ARCH} == "i386"
-SUBDIR+=ar ed sbni sr
-.endif
-
 # Empty for concurrent build
 #
 SUBDIR_ORDERED=
