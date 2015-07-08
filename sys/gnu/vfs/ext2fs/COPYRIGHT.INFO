@@ -18,7 +18,6 @@ restrictive FreeBSD tree.
 	ext2_linux_ialloc.c
 	ext2_linux_super.c
 	ext2_super.c		(in the cvs attic)
-	i386-bitops.h
 
 PS.
 	THANKS GODMAR!!!
