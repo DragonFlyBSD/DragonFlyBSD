@@ -42,6 +42,33 @@ crypto/serpent/serpent_test		userland	defaults		serpentecb_vt.txt
 crypto/twofish/twofish_test		userland	defaults		twofishecb_vk.txt
 crypto/twofish/twofish_test		userland	defaults		twofishecb_vt.txt
 
+# POSIX IPC tests
+posixipc/close_unnamed_semaphore/close_unnamed_semaphore        userland        defaults
+posixipc/create_excl_existing_sem/create_excl_existing_sem      userland        defaults
+posixipc/create_unnamed_semaphore/create_unnamed_semaphore      userland        defaults
+posixipc/destroy_named_semaphore/destroy_named_semaphore        userland        defaults
+posixipc/file_test/file_test                                    userland        defaults
+posixipc/init_bad_value/init_bad_value                          userland        defaults
+posixipc/max_value/max_value                                    userland        defaults
+posixipc/open_after_unlink/open_after_unlink                    userland        defaults
+posixipc/open_bad_value/open_bad_value                          userland        defaults
+posixipc/open_extra_flags/open_extra_flags                      userland        defaults
+posixipc/open_invalid_path/open_invalid_path                    userland        defaults
+posixipc/open_named_semaphore/open_named_semaphore              userland        defaults
+posixipc/open_non_existing/open_non_existing                    userland        defaults
+posixipc/open_path_too_long/open_path_too_long                  userland        defaults
+posixipc/post_test/post_test                                    userland        defaults
+posixipc/timedwait_expired/timedwait_expired                    userland        defaults
+posixipc/timedwait_locked/timedwait_locked                      userland        defaults
+posixipc/timedwait_unlocked/timedwait_unlocked                  userland        defaults
+posixipc/trywait_locked/trywait_locked                          userland        defaults
+posixipc/trywait_unlocked/trywait_unlocked                      userland        defaults
+posixipc/unlink_path_too_long/unlink_path_too_long              userland        defaults
+posixipc/use_after_unlink/use_after_unlink                      userland        defaults
+posixipc/wait_locked/wait_locked                                userland        defaults
+posixipc/wait_two_proc/wait_two_proc                            userland        defaults
+posixipc/wait_unlocked/wait_unlocked                            userland        defaults
+
 #openat_1		userland	intpre,intpost,timeout=100
 #openat_1		userland	intpre,intpost,timeout=100
 #openat_1		userland	intpre,intpost,timeout=100
