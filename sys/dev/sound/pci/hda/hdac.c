@@ -1276,7 +1276,8 @@ hdac_attach_fail:
 	hdac_irq_free(sc);
 	for (i = 0; i < sc->num_ss; i++)
 		hdac_dma_free(sc, &sc->streams[i].bdl);
-	kfree(sc->streams, M_HDAC);
+	if (sc->streams != NULL)
+		kfree(sc->streams, M_HDAC);
 	hdac_dma_free(sc, &sc->rirb_dma);
 	hdac_dma_free(sc, &sc->corb_dma);
 	hdac_mem_free(sc);
