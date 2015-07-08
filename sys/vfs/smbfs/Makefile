@@ -1,7 +1,6 @@
 # $FreeBSD: src/sys/modules/smbfs/Makefile,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $
 
 .PATH:	${.CURDIR}/../../crypto/des \
-	${.CURDIR}/../../crypto/des/arch/${MACHINE_ARCH} \
 	${.CURDIR}/../../kern \
 	${.CURDIR}/../../libkern \
 	${.CURDIR}/../../netproto/smb

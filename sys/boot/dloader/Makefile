@@ -5,7 +5,6 @@
 .include "../${MACHINE_PLATFORM}/Makefile.inc"
 .endif
 
-.PATH: ${.CURDIR}/${MACHINE_ARCH}
 SRCS=	subs.c config.c cmds.c
 
 .if HAVE_PNP

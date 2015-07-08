@@ -48,16 +48,6 @@ CLEANFILES+=	md[245]hl.c md[245].ref md[245].3 mddriver \
 		sha0.ref sha0hl.c sha1.ref sha1hl.c shadriver \
 		sha256.ref sha256hl.c sha512.ref sha512hl.c
 CFLAGS+= -I${.CURDIR}
-.PATH: ${.CURDIR}/${MACHINE_ARCH}
-
-.if exists(${MACHINE_ARCH}/sha.S)
-SRCS+=	sha.S
-CFLAGS+= -DSHA1_ASM -DELF
-.endif
-.if exists(${MACHINE_ARCH}/rmd160.S)
-SRCS+=	rmd160.S
-CFLAGS+= -DRMD160_ASM -DELF
-.endif
 
 md2hl.c: mdXhl.c
 	(echo '#define LENGTH 16'; \

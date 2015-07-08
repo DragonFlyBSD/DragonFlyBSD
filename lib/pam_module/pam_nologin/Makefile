@@ -23,7 +23,6 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/lib/libpam/modules/pam_nologin/Makefile,v 1.7 2003/03/09 20:06:36 obrien Exp $
-# $DragonFly: src/lib/pam_module/pam_nologin/Makefile,v 1.1 2008/01/02 17:41:30 matthias Exp $
 
 LIB=	pam_nologin
 SRCS=	pam_nologin.c
@@ -33,5 +32,3 @@ DPADD=	${LIBUTIL}
 LDADD=	-lutil
 
 .include <bsd.lib.mk>
-
-.PATH: ${OPENPAM_DIR}/modules/pam_unix

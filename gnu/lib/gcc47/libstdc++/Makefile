@@ -7,7 +7,6 @@ SRCDIR=	${GCCDIR}/libstdc++-v3
 .PATH:	${SRCDIR}/src
 .PATH:	${SRCDIR}/src/c++11
 .PATH:	${SRCDIR}/src/c++98
-.PATH:	${SRCDIR}/libmath
 .PATH:	${SRCDIR}/config/io
 .PATH:	${SRCDIR}/config/locale/dragonfly
 .PATH:	${SRCDIR}/config/locale/generic
