@@ -343,6 +343,7 @@ crypto/vms_rms.h
 crypto/whrlpool/Makefile
 crypto/whrlpool/wp_test.c
 crypto/x509/Makefile
+crypto/x509/verify_extra_test.c
 crypto/x509v3/Makefile
 crypto/x509v3/tabtest.c
 crypto/x509v3/v3conf.c
