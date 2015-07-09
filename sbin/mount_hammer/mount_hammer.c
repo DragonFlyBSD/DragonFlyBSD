@@ -198,10 +198,11 @@ main(int ac, char **av)
 			pr = pread(fd, od, HAMMER_BUFSIZE, 0);
 			if (pr != HAMMER_BUFSIZE ||
 				od->vol_signature != HAMMER_FSBUF_VOLUME) {
-					printf("%s: Not a valid HAMMER filesystem\n", info.volumes[ax]);
-					strlcat(fdevs, info.volumes[ax], fdevs_size);
-					if (ax < ac - 2)
-						strlcat(fdevs, " ", fdevs_size);
+				printf("%s: Not a valid HAMMER filesystem\n",
+					info.volumes[ax]);
+				strlcat(fdevs, info.volumes[ax], fdevs_size);
+				if (ax < ac - 2)
+					strlcat(fdevs, " ", fdevs_size);
 			}
 			close(fd);
 		}
