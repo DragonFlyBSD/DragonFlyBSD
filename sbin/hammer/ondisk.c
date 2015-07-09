@@ -51,10 +51,8 @@ static hammer_off_t alloc_bigblock(struct volume_info *volume, int zone);
 static void get_buffer_readahead(struct buffer_info *base);
 static __inline void *get_ondisk(hammer_off_t buf_offset,
 			struct buffer_info **bufferp, int isnew);
-#if 0
-static void readhammerbuf(struct volume_info *vol, void *data,
+static int readhammerbuf(struct volume_info *vol, void *data,
 			int64_t offset);
-#endif
 static void writehammerbuf(struct volume_info *vol, const void *data,
 			int64_t offset);
 
@@ -131,8 +129,8 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	if (isnew > 0) {
 		bzero(ondisk, HAMMER_BUFSIZE);
 	} else {
-		n = pread(vol->fd, ondisk, HAMMER_BUFSIZE, 0);
-		if (n != HAMMER_BUFSIZE) {
+		n = readhammerbuf(vol, ondisk, 0);
+		if (n == -1) {
 			err(1, "setup_volume: %s: Read failed at offset 0",
 			    vol->name);
 		}
@@ -283,9 +281,8 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	if ((ondisk = buf->ondisk) == NULL) {
 		buf->ondisk = ondisk = malloc(HAMMER_BUFSIZE);
 		if (isnew <= 0) {
-			n = pread(volume->fd, ondisk, HAMMER_BUFSIZE,
-				  buf->raw_offset);
-			if (n != HAMMER_BUFSIZE) {
+			n = readhammerbuf(volume, ondisk, buf->raw_offset);
+			if (n == -1) {
 				if (AssertOnFailure)
 					err(1, "get_buffer: %s:%016llx "
 					    "Read failed at offset %016llx",
@@ -962,21 +959,19 @@ flush_buffer(struct buffer_info *buffer)
 	buffer->cache.modified = 0;
 }
 
-#if 0
 /*
  * Core I/O operations
  */
-static void
+static int
 readhammerbuf(struct volume_info *vol, void *data, int64_t offset)
 {
 	ssize_t n;
 
 	n = pread(vol->fd, data, HAMMER_BUFSIZE, offset);
 	if (n != HAMMER_BUFSIZE)
-		err(1, "Read volume %d (%s)", vol->vol_no, vol->name);
+		return(-1);
+	return(0);
 }
-
-#endif
 
 static void
 writehammerbuf(struct volume_info *vol, const void *data, int64_t offset)
