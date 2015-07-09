@@ -2132,6 +2132,7 @@ TO_REMOVE+=/boot/kernel/if_sbni.ko
 TO_REMOVE+=/boot/kernel/if_sr.ko
 TO_REMOVE+=/boot/kernel/ng_sync_ar.ko
 TO_REMOVE+=/boot/kernel/ng_sync_sr.ko
+TO_REMOVE+=/usr/include/gnu/vfs/ext2fs/i386-bitops.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
