@@ -52,7 +52,6 @@ static void get_buffer_readahead(struct buffer_info *base);
 static __inline void *get_ondisk(hammer_off_t buf_offset,
 			struct buffer_info **bufferp, int isnew);
 #if 0
-static void init_fifo_head(hammer_fifo_head_t head, u_int16_t hdr_type);
 static void readhammerbuf(struct volume_info *vol, void *data,
 			int64_t offset);
 #endif
@@ -160,7 +159,6 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	vol->vol_no = vol_no;
 
 	if (isnew > 0) {
-		/*init_fifo_head(&ondisk->head, HAMMER_HEAD_TYPE_VOL);*/
 		vol->cache.modified = 1;
         }
 
@@ -963,22 +961,6 @@ flush_buffer(struct buffer_info *buffer)
 	writehammerbuf(buffer->volume, buffer->ondisk, buffer->raw_offset);
 	buffer->cache.modified = 0;
 }
-
-#if 0
-/*
- * Generic buffer initialization
- */
-static void
-init_fifo_head(hammer_fifo_head_t head, u_int16_t hdr_type)
-{
-	head->hdr_signature = HAMMER_HEAD_SIGNATURE;
-	head->hdr_type = hdr_type;
-	head->hdr_size = 0;
-	head->hdr_crc = 0;
-	head->hdr_seq = 0;
-}
-
-#endif
 
 #if 0
 /*
