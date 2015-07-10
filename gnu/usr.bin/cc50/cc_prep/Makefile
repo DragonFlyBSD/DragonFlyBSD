@@ -35,7 +35,7 @@ plugin-version.h:
 	echo '   datestamp, devphase, revision, configuration_arguments};' >> ${.TARGET}
 
 configargs.h: Makefile
-	echo 'static const char configuration_arguments[] = '	>> ${.TARGET}
+	echo 'static const char configuration_arguments[] = '	> ${.TARGET}
 	echo '	"DragonFly/${TARGET_ARCH} system compiler (${LANGUAGES}${LANG3}${LANG4})";'	>> ${.TARGET}
 	echo 'static const char thread_model[] = "posix";'	>> ${.TARGET}
 	echo 'static const struct {'			>> ${.TARGET}
