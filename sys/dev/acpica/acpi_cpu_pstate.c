@@ -143,6 +143,7 @@ static void	acpi_pst_get_pstate_handler(netmsg_t);
 
 static int	acpi_pst_sysctl_freqs(SYSCTL_HANDLER_ARGS);
 static int	acpi_pst_sysctl_freqs_bin(SYSCTL_HANDLER_ARGS);
+static int	acpi_pst_sysctl_power(SYSCTL_HANDLER_ARGS);
 static int	acpi_pst_sysctl_members(SYSCTL_HANDLER_ARGS);
 static int	acpi_pst_sysctl_select(SYSCTL_HANDLER_ARGS);
 static int	acpi_pst_sysctl_global(SYSCTL_HANDLER_ARGS);
@@ -1130,6 +1131,13 @@ acpi_pst_postattach(void *arg __unused)
 
 		SYSCTL_ADD_PROC(&dom->pd_sysctl_ctx,
 				SYSCTL_CHILDREN(dom->pd_sysctl_tree),
+				OID_AUTO, "power",
+				CTLTYPE_OPAQUE | CTLFLAG_RD,
+				dom, 0, acpi_pst_sysctl_power, "IU",
+				"power of available frequencies");
+
+		SYSCTL_ADD_PROC(&dom->pd_sysctl_ctx,
+				SYSCTL_CHILDREN(dom->pd_sysctl_tree),
 				OID_AUTO, "members",
 				CTLTYPE_STRING | CTLFLAG_RD,
 				dom, 0, acpi_pst_sysctl_members, "A",
@@ -1196,6 +1204,19 @@ acpi_pst_sysctl_freqs_bin(SYSCTL_HANDLER_ARGS)
 		freqs[i] = acpi_pstates[acpi_pstate_start + i].st_freq;
 
 	return sysctl_handle_opaque(oidp, freqs, cnt * sizeof(freqs[0]), req);
+}
+
+static int
+acpi_pst_sysctl_power(SYSCTL_HANDLER_ARGS)
+{
+	uint32_t power[ACPI_NPSTATE_MAX];
+	int cnt, i;
+
+	cnt = acpi_pstate_count - acpi_pstate_start;
+	for (i = 0; i < cnt; ++i)
+		power[i] = acpi_pstates[acpi_pstate_start + i].st_power;
+
+	return sysctl_handle_opaque(oidp, power, cnt * sizeof(power[0]), req);
 }
 
 static int
