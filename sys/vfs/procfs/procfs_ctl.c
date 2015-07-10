@@ -158,7 +158,7 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 			p->p_oppid = p->p_pptr->p_pid;
 			proc_reparent(p, curp);
 		}
-		proc_stop(p);
+		proc_stop(p, SSTOP);
 		return (0);
 	}
 
@@ -281,7 +281,7 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 	 * that might be in progress.
 	 */
 	if (p->p_stat == SSTOP)
-		proc_unstop(p);
+		proc_unstop(p, SSTOP);
 	return (0);
 }
 
@@ -331,7 +331,7 @@ procfs_doctl(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 				 * Make the process runnable but do not
 				 * break its tsleep.
 				 */
-				proc_unstop(p);
+				proc_unstop(p, SSTOP);
 			} else {
 				ksignal(p, nm->nm_val);
 			}

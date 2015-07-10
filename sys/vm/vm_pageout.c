@@ -1528,7 +1528,7 @@ vm_pageout_scan_callback(struct proc *p, void *data)
 	 * if the process is in a non-running type state,
 	 * don't touch it.
 	 */
-	if (p->p_stat != SACTIVE && p->p_stat != SSTOP) {
+	if (p->p_stat != SACTIVE && p->p_stat != SSTOP && p->p_stat != SCORE) {
 		lwkt_reltoken(&p->p_token);
 		return (0);
 	}
@@ -2123,7 +2123,7 @@ vm_daemon_callback(struct proc *p, void *data __unused)
 	 * if the process is in a non-running type state,
 	 * don't touch it.
 	 */
-	if (p->p_stat != SACTIVE && p->p_stat != SSTOP) {
+	if (p->p_stat != SACTIVE && p->p_stat != SSTOP && p->p_stat != SCORE) {
 		lwkt_reltoken(&p->p_token);
 		return (0);
 	}

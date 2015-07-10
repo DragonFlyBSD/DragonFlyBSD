@@ -79,6 +79,7 @@ static void	lwp_signotify(struct lwp *lp);
 static void	lwp_signotify_remote(void *arg);
 static int	kern_sigtimedwait(sigset_t set, siginfo_t *info,
 		    struct timespec *timeout);
+static void	proc_stopwait(struct proc *p);
 
 static int	filt_sigattach(struct knote *kn);
 static void	filt_sigdetach(struct knote *kn);
@@ -1212,7 +1213,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 * make the process runnable.
 		 */
 		if (sig == SIGKILL) {
-			proc_unstop(p);
+			proc_unstop(p, SSTOP);
 			goto active_process;
 		}
 
@@ -1242,7 +1243,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 			wakeup(q);
 			if (action == SIG_DFL)
 				SIGDELSET(p->p_siglist, sig);
-			proc_unstop(p);
+			proc_unstop(p, SSTOP);
 			lwkt_reltoken(&q->p_token);
 			PRELE(q);
 			if (action == SIG_CATCH)
@@ -1341,7 +1342,7 @@ active_process:
 		 */
 		if ((p->p_flags & P_WEXIT) == 0) {
 			p->p_xstat = sig;
-			proc_stop(p);
+			proc_stop(p, SSTOP);
 		}
 		goto out;
 	}
@@ -1481,18 +1482,26 @@ lwp_signotify_remote(void *arg)
  * Caller must hold p->p_token
  */
 void
-proc_stop(struct proc *p)
+proc_stop(struct proc *p, int sig)
 {
 	struct proc *q;
 	struct lwp *lp;
 
 	ASSERT_LWKT_TOKEN_HELD(&p->p_token);
 
-	/* If somebody raced us, be happy with it */
-	if (p->p_stat == SSTOP || p->p_stat == SZOMB) {
-		return;
+	/*
+	 * If somebody raced us, be happy with it.  SCORE overrides SSTOP.
+	 */
+	if (sig == SCORE) {
+		if (p->p_stat == SCORE || p->p_stat == SZOMB)
+			return;
+	} else {
+		if (p->p_stat == SSTOP || p->p_stat == SCORE ||
+		    p->p_stat == SZOMB) {
+			return;
+		}
 	}
-	p->p_stat = SSTOP;
+	p->p_stat = sig;
 
 	FOREACH_LWP_IN_PROC(lp, p) {
 		LWPHOLD(lp);
@@ -1555,13 +1564,13 @@ proc_stop(struct proc *p)
  * Caller must hold p_token
  */
 void
-proc_unstop(struct proc *p)
+proc_unstop(struct proc *p, int sig)
 {
 	struct lwp *lp;
 
 	ASSERT_LWKT_TOKEN_HELD(&p->p_token);
 
-	if (p->p_stat != SSTOP)
+	if (p->p_stat != sig)
 		return;
 
 	p->p_stat = SACTIVE;
@@ -1622,6 +1631,21 @@ proc_unstop(struct proc *p)
 	 * token.
 	 */
 	wakeup(p);
+}
+
+/*
+ * Wait for all threads except the current thread to stop.
+ */
+static void
+proc_stopwait(struct proc *p)
+{
+	while ((p->p_stat == SSTOP || p->p_stat == SCORE) &&
+	       p->p_nstopped < p->p_nthreads - 1) {
+		tsleep_interlock(&p->p_nstopped, 0);
+		if (p->p_nstopped < p->p_nthreads - 1) {
+			tsleep(&p->p_nstopped, PINTERLOCKED, "stopwt", hz);
+		}
+	}
 }
 
 /* 
@@ -1868,7 +1892,7 @@ issignal(struct lwp *lp, int maytrace)
 		/*
 		 * If this process is supposed to stop, stop this thread.
 		 */
-		if (p->p_stat == SSTOP)
+		if (p->p_stat == SSTOP || p->p_stat == SCORE)
 			tstop();
 
 		mask = lwp_sigpend(lp);
@@ -1908,7 +1932,7 @@ issignal(struct lwp *lp, int maytrace)
 			 * XXX not sure if this is still true
 			 */
 			p->p_xstat = sig;
-			proc_stop(p);
+			proc_stop(p, SSTOP);
 			do {
 				tstop();
 			} while (!trace_req(p) && (p->p_flags & P_TRACED));
@@ -1990,7 +2014,7 @@ issignal(struct lwp *lp, int maytrace)
 					break;	/* == ignore */
 				if ((p->p_flags & P_WEXIT) == 0) {
 					p->p_xstat = sig;
-					proc_stop(p);
+					proc_stop(p, SSTOP);
 					tstop();
 				}
 				break;
@@ -2166,14 +2190,26 @@ sigexit(struct lwp *lp, int sig)
 	p->p_acflag |= AXSIG;
 	if (sigprop(sig) & SA_CORE) {
 		lp->lwp_sig = sig;
+
+		/*
+		 * All threads must be stopped before we can safely coredump.
+		 * Stop threads using SCORE, which cannot be overridden.
+		 */
+		if (p->p_stat != SCORE) {
+			proc_stop(p, SCORE);
+			proc_stopwait(p);
+
+			if (coredump(lp, sig) == 0)
+				sig |= WCOREFLAG;
+			p->p_stat = SSTOP;
+		}
+
 		/*
 		 * Log signals which would cause core dumps
 		 * (Log as LOG_INFO to appease those who don't want
 		 * these messages.)
 		 * XXX : Todo, as well as euid, write out ruid too
 		 */
-		if (coredump(lp, sig) == 0)
-			sig |= WCOREFLAG;
 		if (kern_logsigexit)
 			log(LOG_INFO,
 			    "pid %d (%s), uid %d: exited on signal %d%s\n",

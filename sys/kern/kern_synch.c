@@ -1163,7 +1163,7 @@ tstop(void)
 			PRELE(q);
 		}
 	}
-	while (p->p_stat == SSTOP) {
+	while (p->p_stat == SSTOP || p->p_stat == SCORE) {
 		lp->lwp_stat = LSSTOP;
 		tsleep(p, 0, "stop", 0);
 	}

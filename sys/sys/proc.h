@@ -163,6 +163,7 @@ enum procstat {
 	SACTIVE = 2,
 	SSTOP = 3,
 	SZOMB = 4,
+	SCORE = 5,
 };
 
 struct lwp {
@@ -546,8 +547,8 @@ void	pgrpinsertinit(struct pgrp *pg);
 void	relscurproc(struct proc *curp);
 int	p_trespass (struct ucred *cr1, struct ucred *cr2);
 void	setrunnable (struct lwp *);
-void	proc_stop (struct proc *);
-void	proc_unstop (struct proc *);
+void	proc_stop (struct proc *, int);
+void	proc_unstop (struct proc *, int);
 void	sleep_gdinit (struct globaldata *);
 thread_t cpu_heavy_switch (struct thread *);
 thread_t cpu_lwkt_switch (struct thread *);

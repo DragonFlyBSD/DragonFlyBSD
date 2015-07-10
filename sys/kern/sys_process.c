@@ -506,7 +506,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		crit_enter();
 		if (p->p_stat == SSTOP) {
 			p->p_xstat = data;
-			proc_unstop(p);
+			proc_unstop(p, SSTOP);
 		} else if (data) {
 			ksignal(p, data);
 		}

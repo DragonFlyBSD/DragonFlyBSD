@@ -192,6 +192,7 @@ killalllwps(int forexec)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = lp->lwp_proc;
+	int fakestop;
 
 	/*
 	 * Interlock against P_WEXIT.  Only one of the process's thread
@@ -202,11 +203,32 @@ killalllwps(int forexec)
 	p->p_flags |= P_WEXIT;
 
 	/*
+	 * Set temporary stopped state in case we are racing a coredump.
+	 * Otherwise the coredump may hang forever.
+	 */
+	if (lp->lwp_mpflags & LWP_MP_WSTOP) {
+		fakestop = 0;
+	} else {
+		atomic_set_int(&lp->lwp_mpflags, LWP_MP_WSTOP);
+		++p->p_nstopped;
+		fakestop = 1;
+		wakeup(&p->p_nstopped);
+	}
+
+	/*
 	 * Interlock with LWP_MP_WEXIT and kill any remaining LWPs
 	 */
 	atomic_set_int(&lp->lwp_mpflags, LWP_MP_WEXIT);
 	if (p->p_nthreads > 1)
 		killlwps(lp);
+
+	/*
+	 * Undo temporary stopped state
+	 */
+	if (fakestop) {
+		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_WSTOP);
+		--p->p_nstopped;
+	}
 
 	/*
 	 * If doing this for an exec, clean up the remaining thread
@@ -893,7 +915,7 @@ loop:
 	 * the CONT when both are stopped and continued together.  This little
 	 * two-line hack restores this effect.
 	 */
-	while (q->p_stat == SSTOP)
+	while (q->p_stat == SSTOP || q->p_stat == SCORE)
             tstop();
 
 	nfound = 0;
@@ -1074,7 +1096,8 @@ loop:
 			error = 0;
 			goto done;
 		}
-		if (p->p_stat == SSTOP && (p->p_flags & P_WAITED) == 0 &&
+		if ((p->p_stat == SSTOP || p->p_stat == SCORE) &&
+		    (p->p_flags & P_WAITED) == 0 &&
 		    ((p->p_flags & P_TRACED) || (options & WUNTRACED))) {
 			PHOLD(p);
 			lwkt_gettoken(&p->p_token);
@@ -1083,7 +1106,7 @@ loop:
 				PRELE(p);
 				goto loop;
 			}
-			if (p->p_stat != SSTOP ||
+			if ((p->p_stat != SSTOP && p->p_stat != SCORE) ||
 			    (p->p_flags & P_WAITED) != 0 ||
 			    ((p->p_flags & P_TRACED) == 0 &&
 			     (options & WUNTRACED) == 0)) {
