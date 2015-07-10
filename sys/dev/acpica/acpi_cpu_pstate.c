@@ -53,7 +53,7 @@
 #include "acpi_cpu.h"
 #include "acpi_cpu_pstate.h"
 
-#define ACPI_NPSTATE_MAX	16
+#define ACPI_NPSTATE_MAX	32
 
 #define ACPI_PSS_PX_NENTRY	6
 
