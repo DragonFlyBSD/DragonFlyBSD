@@ -9,7 +9,7 @@
 .Nd simple CPU performance control and battery life monitor
 .Sh SYNOPSIS
 .Nm
-.Op Fl deftQ
+.Op Fl cdeftQ
 .Op Fl p Ar hysteresis
 .Op Fl r Ar poll_time
 .Op Fl u Ar trigger_up
@@ -35,6 +35,9 @@ and shutdown the machine after lingering for a little while
 .Pp
 The options are as follows:
 .Bl -tag -width ".Fl p Ar hysteresis"
+.It Fl c
+Enable mwait C-state hint adjustment,
+if it is available.
 .It Fl d
 Debug option.
 Causes
@@ -43,7 +46,7 @@ to not go to the background and prints some debug output to
 .Va stdout .
 .It Fl e
 Disable Intel Performance and Energy Bias Hint,
-even if it is available
+even if it is available.
 .It Fl f
 Disable CPU power domain frequency adjustment.
 CPU power domain frequency adjustment does not reduce CPU power consumption

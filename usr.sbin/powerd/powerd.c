@@ -61,6 +61,7 @@
 #define MAXDOM		MAXCPU	/* worst case, 1 cpu per domain */
 
 #define MAXFREQ		64
+#define CST_STRLEN	16
 
 struct cpu_pwrdom {
 	TAILQ_ENTRY(cpu_pwrdom)	dom_link;
@@ -96,6 +97,10 @@ static void acpi_get_cpufreq(int, int *, int *);
 static void acpi_set_cpufreq(int, int);
 static int acpi_get_cpupwrdom(void);
 
+/* mwait C-state hint */
+static int probe_cstate(void);
+static void set_cstate(int, int);
+
 /* Performance monitoring */
 static void init_perf(void);
 static void mon_perf(double);
@@ -125,6 +130,11 @@ static cpumask_t cpu_pwrdom_mask;	/* usable cpu power domains */
 static int cpu2pwrdom[MAXCPU];		/* cpu to cpu power domain map */
 static struct cpu_pwrdom *cpu_pwrdomain[MAXDOM];
 static int NCpus;			/* # of cpus */
+static char orig_global_cx[CST_STRLEN];
+static char cpu_perf_cx[CST_STRLEN];
+static int cpu_perf_cxlen;
+static char cpu_idle_cx[CST_STRLEN];
+static int cpu_idle_cxlen;
 
 static int DebugOpt;
 static int TurboOpt = 1;
@@ -134,6 +144,7 @@ static double TriggerUp = 0.25;	/* single-cpu load to force max freq */
 static double TriggerDown;	/* load per cpu to force the min freq */
 static int HasPerfbias = 1;
 static int AdjustCpuFreq = 1;
+static int AdjustCstate = 0;
 
 static volatile int stopped;
 
@@ -161,8 +172,11 @@ main(int ac, char **av)
 	srt = 8.0;	/* time for samples - 8 seconds */
 	pollrate = 1.0;	/* polling rate in seconds */
 
-	while ((ch = getopt(ac, av, "defp:r:tu:B:L:P:QT:")) != -1) {
+	while ((ch = getopt(ac, av, "cdefp:r:tu:B:L:P:QT:")) != -1) {
 		switch(ch) {
+		case 'c':
+			AdjustCstate = 1;
+			break;
 		case 'd':
 			DebugOpt = 1;
 			break;
@@ -264,6 +278,10 @@ main(int ac, char **av)
 	/* Do we have perfbias(4)? */
 	if (HasPerfbias)
 		HasPerfbias = has_perfbias();
+
+	/* Could we adjust C-state? */
+	if (AdjustCstate)
+		AdjustCstate = probe_cstate();
 
 	/*
 	 * Wait hw.acpi.cpu.px_dom* sysctl to be created by kernel.
@@ -545,7 +563,7 @@ static
 void
 usage(void)
 {
-	fprintf(stderr, "usage: powerd [-deftQ] [-p hysteresis] "
+	fprintf(stderr, "usage: powerd [-cdeftQ] [-p hysteresis] "
 	    "[-r poll_interval] [-u trigger_up] "
 	    "[-B min_battery_life] [-L low_battery_linger] "
 	    "[-P battery_poll_interval] [-T sample_interval]\n");
@@ -997,6 +1015,8 @@ adj_cpu_perf(int cpu, int inc)
 
 	if (HasPerfbias)
 		set_perfbias(cpu, inc);
+	if (AdjustCstate)
+		set_cstate(cpu, inc);
 }
 
 static void
@@ -1069,4 +1089,97 @@ restore_perf(void)
 	cpu_pwrdom_used = cpu_pwrdom_mask;
 
 	adj_perf(ocpu_used, ocpu_pwrdom_used);
+
+	if (AdjustCstate) {
+		/*
+		 * Restore the original mwait C-state
+		 */
+		if (DebugOpt)
+			printf("global set cstate %s\n", orig_global_cx);
+		sysctlbyname("machdep.mwait.CX.idle", NULL, NULL,
+		    orig_global_cx, strlen(orig_global_cx) + 1);
+	}
+}
+
+static int
+probe_cstate(void)
+{
+	char cx_supported[1024];
+	const char *target;
+	char *ptr;
+	int idle_hlt, deep = 1;
+	size_t len;
+
+	len = sizeof(idle_hlt);
+	if (sysctlbyname("machdep.cpu_idle_hlt", &idle_hlt, &len, NULL, 0) < 0)
+		return 0;
+	if (idle_hlt != 1)
+		return 0;
+
+	len = sizeof(cx_supported);
+	if (sysctlbyname("machdep.mwait.CX.supported", cx_supported, &len,
+	    NULL, 0) < 0)
+		return 0;
+
+	len = sizeof(orig_global_cx);
+	if (sysctlbyname("machdep.mwait.CX.idle", orig_global_cx, &len,
+	    NULL, 0) < 0)
+		return 0;
+
+	strlcpy(cpu_perf_cx, "AUTODEEP", sizeof(cpu_perf_cx));
+	cpu_perf_cxlen = strlen(cpu_perf_cx) + 1;
+	if (sysctlbyname("machdep.mwait.CX.idle", NULL, NULL,
+	    cpu_perf_cx, cpu_perf_cxlen) < 0) {
+		/* AUTODEEP is not supported; try AUTO */
+		deep = 0;
+		strlcpy(cpu_perf_cx, "AUTO", sizeof(cpu_perf_cx));
+		cpu_perf_cxlen = strlen(cpu_perf_cx) + 1;
+		if (sysctlbyname("machdep.mwait.CX.idle", NULL, NULL,
+		    cpu_perf_cx, cpu_perf_cxlen) < 0)
+			return 0;
+	}
+
+	if (!deep)
+		target = "C2/0";
+	else
+		target = NULL;
+	for (ptr = strtok(cx_supported, " "); ptr != NULL;
+	     ptr = strtok(NULL, " ")) {
+		if (target == NULL ||
+		    (target != NULL && strcmp(ptr, target) == 0)) {
+			strlcpy(cpu_idle_cx, ptr, sizeof(cpu_idle_cx));
+			cpu_idle_cxlen = strlen(cpu_idle_cx) + 1;
+			if (target != NULL)
+				break;
+		}
+	}
+	if (cpu_idle_cxlen == 0)
+		return 0;
+
+	if (DebugOpt) {
+		printf("cstate orig %s, perf %s, idle %s\n",
+		    orig_global_cx, cpu_perf_cx, cpu_idle_cx);
+	}
+	return 1;
+}
+
+static void
+set_cstate(int cpu, int inc)
+{
+	const char *cst;
+	char sysid[64];
+	size_t len;
+
+	if (inc) {
+		cst = cpu_perf_cx;
+		len = cpu_perf_cxlen;
+	} else {
+		cst = cpu_idle_cx;
+		len = cpu_idle_cxlen;
+	}
+
+	if (DebugOpt)
+		printf("cpu%d set cstate %s\n", cpu, cst);
+	snprintf(sysid, sizeof(sysid), "machdep.mwait.CX.idle%d", cpu);
+	sysctlbyname(sysid, NULL, NULL, cst, len);
 }
