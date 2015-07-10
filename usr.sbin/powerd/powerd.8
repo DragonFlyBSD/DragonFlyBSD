@@ -1,33 +1,37 @@
 .\" (c) Copyright 2010 by Matthew Dillon and Dima Ruban.  Permission to
 .\"    use and distribute based on the DragonFly copyright.
 .\"
-.Dd July 4, 2015
+.Dd June 10, 2015
 .Dt POWERD 8
 .Os
 .Sh NAME
 .Nm powerd
-.Nd simple ACPI based CPU/power control
+.Nd simple CPU performance control and battery life monitor
 .Sh SYNOPSIS
 .Nm
-.Op Fl detQ
+.Op Fl deftQ
 .Op Fl p Ar hysteresis
-.Op Fl u Ar trigger_up
 .Op Fl r Ar poll_time
-.Op Fl T Ar sample_time
+.Op Fl u Ar trigger_up
 .Op Fl B Ar minimum_battery_life
 .Op Fl L Ar battery_life_linger
 .Op Fl P Ar battery_poll_interval
+.Op Fl T Ar sample_time
 .Sh DESCRIPTION
 The
 .Nm
 daemon monitors the CPU load and automatically adjusts the CPU
-frequency up or down.
+performance up or down accordingly.
 .Pp
-All CPUs will be set to their maximum frequency when the 1 second
-machine load exceeds 25% of one CPU.
-All CPUs will be set to their
-minimum frequency when the 10 second machine load drops below 12% of
-one CPU.
+The
+.Nm
+also monitors battery life.
+If the battery life is low
+(less then or equal to 2% by default),
+.Nm
+will send audio alert immediately,
+and shutdown the machine after lingering for a little while
+(60 seconds by default).
 .Pp
 The options are as follows:
 .Bl -tag -width ".Fl p Ar hysteresis"
@@ -40,36 +44,41 @@ to not go to the background and prints some debug output to
 .It Fl e
 Disable Intel Performance and Energy Bias Hint,
 even if it is available
+.It Fl f
+Disable CPU power domain frequency adjustment.
+CPU power domain frequency adjustment does not reduce CPU power consumption
+much
+(if any)
+on modern Intel CPU,
+when the CPU is idle.
 .It Fl p Ar hysteresis
 Percent of the upper limit to subtract as an hysteresis value to scale
-down to the min frequency.
-The default is 10 (meaning 10%).
+down to the min performance.
+The default is 10
+(meaning 10%).
+.It Fl r Ar poll_time
+Polling time in seconds.
+Default is 1.0.
+Setting this value lower will poll for load changes faster.
+For example,
+a workstation might want to use 0.2 or 0.4.
+.Nm can become unstable if you make this value too small.
 .It Fl t
 Turbo mode.
 Disables switching to turbo mode as maximum frequency completely.
 Switching to turbo mode as maximum frequency is enabled by default,
 if the CPU supports it.
 .It Fl u Ar trigger_up
-Per CPU load limit in percent to force maximum frequency.
-The default is 25 (meaning an instantanious load of 0.25 on a
-single cpu).  The load is calculated over 3 polls.
-It is suggested that this value not be made lower than
-around 7.
-.It Fl r Ar poll_time
-Polling time in seconds.  Default is 1.0.
-Setting this value lower will poll for load changes faster.
-For example, a workstation might want to use 0.2 or 0.4.
-.Nm can become unstable if you make this value too small.
-.It Fl T Ar sample_time
-Total sample interval in seconds.  Default is 8.0.
-This effects how quickly powerd ratchets down the frequency
-and cpus on an idle machine.  Longer times will ratchet down
-more slowly.
-For example, a workstation might want to use a value of 30.0.
+Per CPU load limit in percent to force maximum performance.
+The default is 25
+(meaning an instantanious load of 0.25 on a single cpu).
+The load is calculated over 3 polls.
+It is suggested that this value not be made lower than around 7.
 .It Fl B Ar minimum_battery_life
 If battery life is less than or equal to the specified value,
 the machine will start shutting down process.
-Default is 2 (2% battery life left).
+Default is 2
+(2% battery life left).
 .It Fl L Ar battery_life_linger
 If battery life is less than or equal to the configured value,
 shutting down the machine will be delayed by the specified value.
@@ -87,6 +96,14 @@ Default is 5 seconds.
 .It Fl Q
 Don't alarm audio alert,
 if the battery life is low.
+.It Fl T Ar sample_time
+Total sample interval in seconds.
+Default is 8.0.
+This effects how quickly powerd ratchets down the performance
+and cpus on an idle machine.
+Longer times will ratchet down more slowly.
+For example,
+a workstation might want to use a value of 30.0.
 .El
 .Sh EXAMPLES
 The defaults work well for servers but a workstation user might want
@@ -112,4 +129,5 @@ The
 command first appeared in
 .Dx 2.7 .
 .Sh BUGS
-I'm shocked I tell you, shocked that there might be bugs in this program!
+I'm shocked I tell you,
+shocked that there might be bugs in this program!

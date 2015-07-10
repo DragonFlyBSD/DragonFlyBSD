@@ -133,6 +133,7 @@ static int Hysteresis = 10;	/* percentage */
 static double TriggerUp = 0.25;	/* single-cpu load to force max freq */
 static double TriggerDown;	/* load per cpu to force the min freq */
 static int HasPerfbias = 1;
+static int AdjustCpuFreq = 1;
 
 static volatile int stopped;
 
@@ -160,13 +161,16 @@ main(int ac, char **av)
 	srt = 8.0;	/* time for samples - 8 seconds */
 	pollrate = 1.0;	/* polling rate in seconds */
 
-	while ((ch = getopt(ac, av, "dep:r:tu:B:L:P:QT:")) != -1) {
+	while ((ch = getopt(ac, av, "defp:r:tu:B:L:P:QT:")) != -1) {
 		switch(ch) {
 		case 'd':
 			DebugOpt = 1;
 			break;
 		case 'e':
 			HasPerfbias = 0;
+			break;
+		case 'f':
+			AdjustCpuFreq = 0;
 			break;
 		case 'p':
 			Hysteresis = (int)strtol(optarg, NULL, 10);
@@ -541,10 +545,10 @@ static
 void
 usage(void)
 {
-	fprintf(stderr, "usage: powerd [-dt] [-p hysteresis] "
-	    "[-u trigger_up] [-T sample_interval] [-r poll_interval] "
+	fprintf(stderr, "usage: powerd [-deftQ] [-p hysteresis] "
+	    "[-r poll_interval] [-u trigger_up] "
 	    "[-B min_battery_life] [-L low_battery_linger] "
-	    "[-P battery_poll_interval] [-Q] [-e]\n");
+	    "[-P battery_poll_interval] [-T sample_interval]\n");
 	exit(1);
 }
 
@@ -977,7 +981,8 @@ acpi_set_cpufreq(int dom, int inc)
 static void
 adj_cpu_pwrdom(int dom, int inc)
 {
-	acpi_set_cpufreq(dom, inc);
+	if (AdjustCpuFreq)
+		acpi_set_cpufreq(dom, inc);
 }
 
 static void
