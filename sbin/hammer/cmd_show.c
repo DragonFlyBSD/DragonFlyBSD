@@ -170,8 +170,8 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	}
 	printf(" {\n");
 
-	maxcount = (node->type == HAMMER_BTREE_TYPE_INTERNAL) ?
-		   HAMMER_BTREE_INT_ELMS : HAMMER_BTREE_LEAF_ELMS;
+	maxcount = hammer_node_max_elements(node->type);
+	assert(maxcount != -1);
 
 	for (i = 0; i < node->count && i < maxcount; ++i) {
 		elm = &node->elms[i];

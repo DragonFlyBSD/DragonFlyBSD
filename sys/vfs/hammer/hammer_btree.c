@@ -3048,11 +3048,12 @@ static __inline
 int
 btree_max_elements(u_int8_t type)
 {
-	if (type == HAMMER_BTREE_TYPE_LEAF)
-		return(HAMMER_BTREE_LEAF_ELMS);
-	if (type == HAMMER_BTREE_TYPE_INTERNAL)
-		return(HAMMER_BTREE_INT_ELMS);
-	panic("btree_max_elements: bad type %d", type);
+	int n;
+
+	n = hammer_node_max_elements(type);
+	if (n == -1)
+		panic("btree_max_elements: bad type %d", type);
+	return(n);
 }
 
 void

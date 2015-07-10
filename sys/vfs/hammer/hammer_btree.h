@@ -209,6 +209,19 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
 #define HAMMER_BTREE_TYPE_RECORD	((u_int8_t)'R')
 #define HAMMER_BTREE_TYPE_DELETED	((u_int8_t)'D')
 
+static __inline
+int
+hammer_node_max_elements(u_int8_t type)
+{
+	switch (type) {
+	case HAMMER_BTREE_TYPE_LEAF:
+		return(HAMMER_BTREE_LEAF_ELMS);
+	case HAMMER_BTREE_TYPE_INTERNAL:
+		return(HAMMER_BTREE_INT_ELMS);
+	}
+	return(-1);  /* invalid type */
+}
+
 struct hammer_node_ondisk {
 	/*
 	 * B-Tree node header (64 bytes)
