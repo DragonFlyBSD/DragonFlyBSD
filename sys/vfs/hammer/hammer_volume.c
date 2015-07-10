@@ -185,9 +185,9 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Big-block count changed so recompute the total number of blocks.
 	 */
 	mp->mnt_stat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-	    (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
+				HAMMER_BUFFERS_PER_BIGBLOCK;
 	mp->mnt_vstat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-	    (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
+				HAMMER_BUFFERS_PER_BIGBLOCK;
 
 	/*
 	 * Increase the number of free big-blocks
@@ -418,9 +418,9 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Big-block count changed so recompute the total number of blocks.
 	 */
 	mp->mnt_stat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-	    (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
+				HAMMER_BUFFERS_PER_BIGBLOCK;
 	mp->mnt_vstat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-	    (HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
+				HAMMER_BUFFERS_PER_BIGBLOCK;
 
 	hammer_unlock(&hmp->blkmap_lock);
 	hammer_sync_unlock(trans);

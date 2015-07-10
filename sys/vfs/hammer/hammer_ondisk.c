@@ -226,9 +226,9 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname,
 			bp = NULL;
 		}
 		hmp->mp->mnt_stat.f_blocks += ondisk->vol0_stat_bigblocks *
-			(HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
+						HAMMER_BUFFERS_PER_BIGBLOCK;
 		hmp->mp->mnt_vstat.f_blocks += ondisk->vol0_stat_bigblocks *
-			(HAMMER_BIGBLOCK_SIZE / HAMMER_BUFSIZE);
+						HAMMER_BUFFERS_PER_BIGBLOCK;
 	}
 late_failure:
 	if (bp)
