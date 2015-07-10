@@ -157,63 +157,13 @@
 /* This is actually a big endian algorithm, the most significate byte
  * is used to lookup array 0 */
 
-/* use BF_PTR2 for intel boxes,
- * BF_PTR for sparc and MIPS/SGI
- * use nothing for Alpha and HP.
- */
-#undef	BF_PTR
-#undef	BF_PTR2
-#ifdef __i386__
-#define	BF_PTR2
-#else
-#ifdef __mips__
-#define	BF_PTR
-#endif
-#endif
-
 #define BF_M	0x3fc
 #define BF_0	22L
 #define BF_1	14L
 #define BF_2	 6L
 #define BF_3	 2L /* left shift */
 
-#if defined(BF_PTR2)
-
-/* This is basically a special pentium verson */
-#define BF_ENC(LL,R,S,P) \
-	{ \
-	BF_LONG t,u,v; \
-	u=R>>BF_0; \
-	v=R>>BF_1; \
-	u&=BF_M; \
-	v&=BF_M; \
-	t=  *(BF_LONG *)((unsigned char *)&(S[  0])+u); \
-	u=R>>BF_2; \
-	t+= *(BF_LONG *)((unsigned char *)&(S[256])+v); \
-	v=R<<BF_3; \
-	u&=BF_M; \
-	v&=BF_M; \
-	t^= *(BF_LONG *)((unsigned char *)&(S[512])+u); \
-	LL^=P; \
-	t+= *(BF_LONG *)((unsigned char *)&(S[768])+v); \
-	LL^=t; \
-	}
-
-#elif defined(BF_PTR)
-
-/* This is normally very good */
-
-#define BF_ENC(LL,R,S,P) \
-	LL^=P; \
-	LL^= (((*(BF_LONG *)((unsigned char *)&(S[  0])+((R>>BF_0)&BF_M))+ \
-		*(BF_LONG *)((unsigned char *)&(S[256])+((R>>BF_1)&BF_M)))^ \
-		*(BF_LONG *)((unsigned char *)&(S[512])+((R>>BF_2)&BF_M)))+ \
-		*(BF_LONG *)((unsigned char *)&(S[768])+((R<<BF_3)&BF_M)));
-#else
-
-/* This will always work, even on 64 bit machines and strangly enough,
- * on the Alpha it is faster than the pointer versions (both 32 and 64
- * versions of BF_LONG) */
+/* This will always work, even on 64 bit machines */
 
 #define BF_ENC(LL,R,S,P) \
 	LL^=P; \
@@ -221,4 +171,3 @@
 		S[0x0100+((R>>16L)&0xff)])^ \
 		S[0x0200+((R>> 8L)&0xff)])+ \
 		S[0x0300+((R     )&0xff)])&0xffffffff;
-#endif
