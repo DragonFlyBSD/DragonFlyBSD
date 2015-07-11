@@ -208,7 +208,7 @@ sensor_set_unknown(struct ksensor *sens)
 }
 
 static __inline void
-sensor_set(struct ksensor *sens, int val, enum sensor_status status)
+sensor_set(struct ksensor *sens, int64_t val, enum sensor_status status)
 {
 	sens->status = status;
 	sens->flags &= ~(SENSOR_FUNKNOWN | SENSOR_FINVALID);
