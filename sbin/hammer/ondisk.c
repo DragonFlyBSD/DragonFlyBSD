@@ -518,6 +518,7 @@ initialize_freemap(struct volume_info *vol)
 	hammer_off_t layer2_offset;
 	hammer_off_t phys_offset;
 	hammer_off_t aligned_vol_free_end;
+	hammer_blockmap_t freemap;
 	int64_t count = 0;
 	int modified1 = 0;
 
@@ -532,8 +533,9 @@ initialize_freemap(struct volume_info *vol)
 	 * to implement layer2.   This preallocation is a bootstrap allocation
 	 * using blocks from the target volume.
 	 */
-	layer1_base = root_vol->ondisk->vol0_blockmap[
-					HAMMER_ZONE_FREEMAP_INDEX].phys_offset;
+	freemap = &root_vol->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+	layer1_base = freemap->phys_offset;
+
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
@@ -660,6 +662,7 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	struct volume_info *root_vol;
 	hammer_off_t result_offset;
 	hammer_off_t layer_offset;
+	hammer_blockmap_t freemap;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
 
@@ -676,9 +679,9 @@ alloc_bigblock(struct volume_info *volume, int zone)
 	 */
 	if (zone != HAMMER_ZONE_FREEMAP_INDEX) {
 		root_vol = get_volume(RootVolNo);
-		layer_offset = root_vol->ondisk->vol0_blockmap[
-					HAMMER_ZONE_FREEMAP_INDEX].phys_offset;
-		layer_offset += HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
+		freemap = &root_vol->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+		layer_offset = freemap->phys_offset +
+			       HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
 		layer1 = get_buffer_data(layer_offset, &buffer1, 0);
 		assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 		--layer1->blocks_free;
