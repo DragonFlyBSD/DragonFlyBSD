@@ -1740,6 +1740,9 @@ device		memtemp
 # microcode update feature.
 device		cpuctl
 
+# Effective CPU frequency interface via APERF/MPERF MSRs
+device		aperf
+
 # AMD Family 0Fh, 10h and 11h temperature sensors
 device		kate
 device		km
