@@ -587,7 +587,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 			format_blockmap(&ondisk->vol0_blockmap[i],
 					HAMMER_ZONE_ENCODE(i, 0));
 		}
-		format_undomap(ondisk);
+		format_undomap(vol);
 
 		ondisk->vol0_btree_root = format_root(label);
 		++ondisk->vol0_stat_inodes;	/* root inode */

@@ -474,6 +474,9 @@ format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap)
 	struct hammer_blockmap_layer1 *layer1;
 	int i, isnew;
 
+	/* Only root volume needs formatting */
+	assert(root_vol->vol_no == RootVolNo);
+
 	layer1_offset = alloc_bigblock(root_vol, HAMMER_ZONE_FREEMAP_INDEX);
 	for (i = 0; i < (int)HAMMER_BLOCKMAP_RADIX1; ++i) {
 		isnew = ((i % HAMMER_BLOCKMAP_RADIX1_PERBUFFER) == 0);
@@ -706,16 +709,21 @@ alloc_bigblock(struct volume_info *volume, int zone)
  * Format the undomap for the root volume.
  */
 void
-format_undomap(hammer_volume_ondisk_t ondisk)
+format_undomap(struct volume_info *root_vol)
 {
 	const int undo_zone = HAMMER_ZONE_UNDO_INDEX;
 	hammer_off_t undo_limit;
 	hammer_blockmap_t blockmap;
+	struct hammer_volume_ondisk *ondisk;
 	struct buffer_info *buffer = NULL;
 	hammer_off_t scan;
 	int n;
 	int limit_index;
 	u_int32_t seqno;
+
+	/* Only root volume needs formatting */
+	assert(root_vol->vol_no == RootVolNo);
+	ondisk = root_vol->ondisk;
 
 	/*
 	 * Size the undo buffer in multiples of HAMMER_BIGBLOCK_SIZE,
