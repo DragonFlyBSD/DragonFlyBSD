@@ -487,10 +487,11 @@ format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap)
 	rel_buffer(buffer);
 
 	blockmap = &root_vol->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+	bzero(blockmap, sizeof(*blockmap));
 	blockmap->phys_offset = layer1_offset;
-	blockmap->alloc_offset = HAMMER_ENCODE_RAW_BUFFER(255, -1);
+	blockmap->first_offset = 0;
 	blockmap->next_offset = HAMMER_ENCODE_RAW_BUFFER(0, 0);
-	blockmap->reserved01 = 0;
+	blockmap->alloc_offset = HAMMER_ENCODE_RAW_BUFFER(255, -1);
 	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
 	root_vol->cache.modified = 1;
 }
@@ -811,10 +812,11 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 void
 format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_base)
 {
+	bzero(blockmap, sizeof(*blockmap));
 	blockmap->phys_offset = 0;
-	blockmap->alloc_offset = HAMMER_ENCODE(zone_base, 255, -1);
 	blockmap->first_offset = zone_base;
 	blockmap->next_offset = zone_base;
+	blockmap->alloc_offset = HAMMER_ENCODE(zone_base, 255, -1);
 	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
 }
 
