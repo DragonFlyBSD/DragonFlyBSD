@@ -153,7 +153,7 @@ void hammer_key_beg_init(hammer_base_elm_t base);
 void hammer_key_end_init(hammer_base_elm_t base);
 int hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf);
 
-void format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap);
+void format_freemap(struct volume_info *root_vol);
 int64_t initialize_freemap(struct volume_info *vol);
 int64_t count_freemap(struct volume_info *vol);
 

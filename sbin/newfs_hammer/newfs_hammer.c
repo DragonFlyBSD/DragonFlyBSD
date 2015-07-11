@@ -576,8 +576,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		 */
 		ondisk->vol0_next_tid = createtid();
 
-		format_freemap(vol,
-			&ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX]);
+		format_freemap(vol);
 		ondisk->vol0_stat_freebigblocks = initialize_freemap(vol);
 
 		/*

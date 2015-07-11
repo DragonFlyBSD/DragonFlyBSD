@@ -467,10 +467,11 @@ alloc_data_element(hammer_off_t *offp, int32_t data_len,
  * code will load each volume's freemap.
  */
 void
-format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap)
+format_freemap(struct volume_info *root_vol)
 {
 	struct buffer_info *buffer = NULL;
 	hammer_off_t layer1_offset;
+	hammer_blockmap_t blockmap;
 	struct hammer_blockmap_layer1 *layer1;
 	int i, isnew;
 
