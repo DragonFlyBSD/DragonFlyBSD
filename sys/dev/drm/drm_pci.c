@@ -56,6 +56,13 @@ drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t ali
 	drm_dma_handle_t *dmah;
 	int ret;
 
+	/* pci_alloc_consistent only guarantees alignment to the smallest
+	 * PAGE_SIZE order which is greater than or equal to the requested size.
+	 * Return NULL here for now to make sure nobody tries for larger alignment
+	 */
+	if (align > size)
+		return NULL;
+
 	/* Need power-of-two alignment, so fail the allocation if it isn't. */
 	if ((align & (align - 1)) != 0) {
 		DRM_ERROR("drm_pci_alloc with non-power-of-two alignment %d\n",
@@ -63,20 +70,11 @@ drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t ali
 		return NULL;
 	}
 
-	dmah = kmalloc(sizeof(drm_dma_handle_t), M_DRM,
-		       M_ZERO | M_WAITOK | M_NULLOK);
-	if (dmah == NULL)
+	dmah = kmalloc(sizeof(drm_dma_handle_t), M_DRM, M_WAITOK | M_NULLOK);
+	if (!dmah)
 		return NULL;
 
-#if 0 /* HT XXX XXX XXX */
-	/* Make sure we aren't holding locks here */
-	mtx_assert(&dev->dev_lock, MA_NOTOWNED);
-	if (mtx_owned(&dev->dev_lock))
-	    DRM_ERROR("called while holding dev_lock\n");
-	mtx_assert(&dev->dma_lock, MA_NOTOWNED);
-	if (mtx_owned(&dev->dma_lock))
-	    DRM_ERROR("called while holding dma_lock\n");
-#endif
+	dmah->size = size;
 
 	ret = bus_dma_tag_create(NULL, align, 0, /* tag, align, boundary */
 	    ~0, BUS_SPACE_MAXADDR, /* lowaddr, highaddr */
@@ -105,6 +103,8 @@ drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t ali
 		drm_free(dmah, M_DRM);
 		return NULL;
 	}
+
+	memset(dmah->vaddr, 0, size);
 
 	return dmah;
 }
