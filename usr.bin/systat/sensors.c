@@ -25,6 +25,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <libutil.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -190,6 +191,8 @@ initsensors(void)
 void
 printline(void)
 {
+	char buf[9];
+
 	mvwprintw(wnd, row, 0, "%s.%s%d", sensordev.xname,
 	    sensor_type_s[sensor.type], sensor.numt);
 	switch (sensor.type) {
@@ -234,6 +237,11 @@ printline(void)
 		break;
 	case SENSOR_AMPHOUR:
 		mvwprintw(wnd, row, 24, "%10.2f Ah", sensor.value / 1000000.0);
+		break;
+	case SENSOR_FREQ:
+		humanize_number(buf, sizeof(buf), sensor.value, "Hz",
+		    HN_AUTOSCALE, HN_DIVISOR_1000 | HN_DECIMAL);
+		mvwprintw(wnd, row, 24, "%15s", buf);
 		break;
 	default:
 		mvwprintw(wnd, row, 24, "%10lld", sensor.value);

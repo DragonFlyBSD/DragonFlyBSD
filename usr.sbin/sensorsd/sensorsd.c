@@ -636,6 +636,9 @@ print_sensor(enum sensor_type type, int64_t value)
 	case SENSOR_INDICATOR:
 		snprintf(fbuf, RFBUFSIZ, "%s", value? "On" : "Off");
 		break;
+	case SENSOR_FREQ:
+		snprintf(fbuf, RFBUFSIZ, "%"PRId64" Hz", value);
+		break;
 	case SENSOR_ECC:
 	case SENSOR_INTEGER:
 		snprintf(fbuf, RFBUFSIZ, "%"PRId64, value);
@@ -752,6 +755,7 @@ get_val(char *buf, int upper, enum sensor_type type)
 	case SENSOR_PERCENT:
 		rval = val * 1000.0;
 		break;
+	case SENSOR_FREQ:
 	case SENSOR_ECC:
 	case SENSOR_INDICATOR:
 	case SENSOR_INTEGER:

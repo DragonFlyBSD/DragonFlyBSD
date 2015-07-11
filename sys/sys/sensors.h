@@ -50,7 +50,7 @@ enum sensor_type {
 	SENSOR_DRIVE,			/* disk */
 	SENSOR_TIMEDELTA,		/* system time error (nSec) */
 	SENSOR_ECC,			/* memory ecc */
-	SENSOR_RESERVED_A,		/* reserved */
+	SENSOR_FREQ,			/* frequency */
 	SENSOR_RESERVED_B,		/* reserved */
 	SENSOR_RESERVED_C,		/* reserved */
 	SENSOR_RESERVED_D,		/* reserved */
@@ -76,12 +76,12 @@ static const char * const sensor_type_s[SENSOR_MAX_TYPES + 1] = {
 	"drive",
 	"timedelta",
 	"ecc",
-	"reserved_a"
-	"reserved_b"
-	"reserved_c"
-	"reserved_d"
-	"reserved_e"
-	"reserved_f"
+	"freq",
+	"reserved_b",
+	"reserved_c",
+	"reserved_d",
+	"reserved_e",
+	"reserved_f",
 	"undefined"
 };
 
