@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libc/locale/xlocale.c 232498 2012-03-04 15:31:13Z theraven $
+ * $FreeBSD: head/lib/libc/locale/xlocale.c 264038 2014-04-02 11:10:46Z theraven $
  */
 
 #include <pthread.h>
@@ -154,23 +154,24 @@ __get_locale(void)
 static void
 set_thread_locale(locale_t loc)
 {
+	locale_t l = (loc == LC_GLOBAL_LOCALE) ? 0 : loc;
 
 	_once(&once_control, init_key);
 	
-	if (NULL != loc) {
-		xlocale_retain((struct xlocale_refcounted*)loc);
+	if (NULL != l) {
+		xlocale_retain((struct xlocale_refcounted*)l);
 	}
 	locale_t old = pthread_getspecific(locale_info_key);
-	if ((NULL != old) && (loc != old)) {
+	if ((NULL != old) && (l != old)) {
 		xlocale_release((struct xlocale_refcounted*)old);
 	}
 	if (fake_tls) {
-		thread_local_locale = loc;
+		thread_local_locale = l;
 	} else {
-		pthread_setspecific(locale_info_key, loc);
+		pthread_setspecific(locale_info_key, l);
 	}
 #ifndef __NO_TLS
-	__thread_locale = loc;
+	__thread_locale = l;
 	__set_thread_rune_locale(loc);
 #endif
 }
@@ -361,9 +362,6 @@ locale_t uselocale(locale_t loc)
 {
 	locale_t old = get_thread_locale();
 	if (NULL != loc) {
-		if (LC_GLOBAL_LOCALE == loc) {
-			loc = NULL;
-		}
 		set_thread_locale(loc);
 	}
 	return (old ? old : LC_GLOBAL_LOCALE);

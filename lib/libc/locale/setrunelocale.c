@@ -34,7 +34,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libc/locale/setrunelocale.c 244126 2012-12-11 22:52:56Z jilles $
+ * $FreeBSD: head/lib/libc/locale/setrunelocale.c 264038 2014-04-02 11:10:46Z theraven $
  */
 
 
@@ -202,6 +202,8 @@ __set_thread_rune_locale(locale_t loc)
 
 	if (loc == NULL) {
 		_ThreadRuneLocale = &_DefaultRuneLocale;
+	} else if (loc == LC_GLOBAL_LOCALE) {
+		_ThreadRuneLocale = 0;
 	} else {
 		_ThreadRuneLocale = XLOCALE_CTYPE(loc)->runes;
 	}
