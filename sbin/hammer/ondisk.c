@@ -873,7 +873,7 @@ again:
 	}
 
 	/*
-	 * Dive layer 1.  For now we can't allocate data outside of volume 0.
+	 * Dive layer 1.
 	 */
 	layer1_offset = freemap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(blockmap->next_offset);
@@ -886,7 +886,7 @@ again:
 	}
 
 	/*
-	 * Dive layer 2
+	 * Dive layer 2, each entry represents a big-block.
 	 */
 	layer2_offset = layer1->phys_offset +
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(blockmap->next_offset);
