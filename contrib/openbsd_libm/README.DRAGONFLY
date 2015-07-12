@@ -1,0 +1,52 @@
+OpenBSD math library
+====================
+
+cvsroot  = anoncvs@anoncvs3.usa.openbsd.org:/cvs
+repo     = src
+pulled   = 4 July 2015
+location = lib/libm
+excludes = noieee_src
+           shlib_version
+           src/ld128
+           arch/alpha
+           arch/arm
+           arch/hp*
+           arch/s*
+           arch/m*
+           arch/pow*
+           arch/vax
+           arch/i387
+
+copy to includes:
+           include/math.h                => global
+           include/complex.h             => global
+           include/tgmath.h              => global
+           sys/arch/amd64/include/fenv.h => amd64
+           sys/arch/amd64/include/ieee.h => amd64
+
+copy to man:
+	   lib/libc/gen/fabs.3
+
+The following files have been patched
+=====================================
+arch/amd64/*.S             (elf note added to all assembly files)
+arch/amd64/fenv.c          (#include diff from OpenBSD)
+arch/amd64/fenv.h          (#include <sys/cdefs.h> for CDECL)
+include/global/math.h      (#include diff, double/float typedefs)
+src/e_j0.c                 (full coverage)
+src/e_j0f.c                (full coverage, fix sign comparison mismatch)
+src/e_j1.c                 (full coverage)
+src/e_j1f.c                (full coverage, fix sign comparison mismatch)
+src/e_jnf.c                (sign comparison mismatch)
+src/e_pow.c                (sign comparison mismatch)
+src/e_powf.c               (sign comparison mismatch)
+src/e_rem_pio2f.c          (sign comparison mismatch)
+src/ld80/e_fmodl.c         (sign comparison mismatch)
+src/ld80/s_ceill.c         (sign comparison mismatch)
+src/ld80/s_floorl.c        (sign comparison mismatch)
+src/ld80/s_nextafterl.c    (strong alias, explicit eval order, always true)
+src/ld80/s_remquol.c       (sign comparison mismatch)
+src/s_lround.c             (sign comparison mismatch)
+src/s_lroundf.c            (sign comparison mismatch)
+src/s_nan.c                (#include diff from OpenBSD)
+src/w_drem.c               (ansify prototype)
