@@ -29,7 +29,7 @@
 
 #include <sys/types.h>
 #include <ctype.h>
-#include <endian.h>
+#include <sys/endian.h>
 #include <float.h>
 #include <math.h>
 #include <stdint.h>

@@ -181,7 +181,7 @@ ynf(int n, float x)
 	b = y1f(x);
 	/* quit if b is -inf */
 	GET_FLOAT_WORD(ib,b);
-	for(i=1;i<n&&ib!=0xff800000;i++){ 
+	for(i=1;i<n&&(u_int32_t)ib!=0xff800000;i++){
 	    temp = b;
 	    b = ((float)(i+i)/x)*b - a;
 	    GET_FLOAT_WORD(ib,b);

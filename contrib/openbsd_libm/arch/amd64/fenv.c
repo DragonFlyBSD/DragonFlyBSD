@@ -28,7 +28,7 @@
  */
 
 #include <fenv.h>
-#include <machine/fpu.h>
+#include <machine/npx.h>
 
 /*
  * The following constant represents the default floating-point environment

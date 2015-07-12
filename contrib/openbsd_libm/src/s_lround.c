@@ -42,7 +42,7 @@
 #define RESTYPE_MAX LONG_MAX
 #endif
 
-#define RESTYPE_BITS (sizeof(RESTYPE) * 8)
+#define RESTYPE_BITS (int)(sizeof(RESTYPE) * 8)
 
 RESTYPE
 LROUNDNAME(double x)
@@ -60,7 +60,7 @@ LROUNDNAME(double x)
 	if (e < -1)
 		return (0);
 	/* 1.0 x 2^31 (or 2^63) is already too large */
-	if (e >= (int)RESTYPE_BITS - 1)
+	if (e >= RESTYPE_BITS - 1)
 		return (s ? RESTYPE_MIN : RESTYPE_MAX); /* ??? unspecified */
 
 	/* >= 2^52 is already an exact integer */

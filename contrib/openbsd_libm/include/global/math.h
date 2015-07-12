@@ -17,7 +17,7 @@
 #ifndef _MATH_H_
 #define _MATH_H_
 
-#include <sys/_types.h>
+#include <sys/types.h>
 #include <sys/limits.h>
 
 __BEGIN_DECLS
@@ -35,8 +35,8 @@ extern char __infinity[];
  * C99
  */
 #if __ISO_C_VISIBLE >= 1999
-typedef	__double_t	double_t;
-typedef	__float_t	float_t;
+typedef	double	double_t;
+typedef	float	float_t;
 
 #if __GNUC_PREREQ__(3, 3) && !defined(__vax__)
 #define	HUGE_VALF	__builtin_huge_valf()
@@ -71,7 +71,7 @@ extern char __nan[];
 	((sizeof (x) == sizeof (float)) ? \
 		__fpclassifyf(x) \
 	: (sizeof (x) == sizeof (double)) ? \
-		__fpclassify(x) \
+		__fpclassifyd(x) \
 	:	__fpclassifyl(x))
 #define isfinite(x) \
 	((sizeof (x) == sizeof (float)) ? \

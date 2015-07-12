@@ -131,7 +131,7 @@ remquol(long double x, long double y, int *quo)
 	    *quo = (sxy ? -q : q);
 	    return Zero[sx!=0];
 	}
-	while(hx<(1ULL<<HFRAC_BITS)) {	/* normalize x */
+	while(hx<(int64_t)(1ULL<<HFRAC_BITS)) {	/* normalize x */
 	    hx = hx+hx+(lx>>MANL_SHIFT); lx = lx+lx;
 	    iy -= 1;
 	}

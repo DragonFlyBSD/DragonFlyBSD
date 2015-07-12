@@ -30,6 +30,8 @@
 #ifndef	_AMD64_FENV_H_
 #define	_AMD64_FENV_H_
 
+#include <sys/cdefs.h>
+
 /*
  * Each symbol representing a floating point exception expands to an integer
  * constant expression with values, such that bitwise-inclusive ORs of _all
