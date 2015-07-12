@@ -369,8 +369,8 @@ struct hammer_inode {
 	int64_t			obj_id;		/* (key) object identifier */
 	hammer_tid_t		obj_asof;	/* (key) snapshot or 0 */
 	u_int32_t		obj_localization; /* (key) pseudo-fs */
-	struct hammer_mount 	*hmp;
-	hammer_objid_cache_t 	objid_cache;
+	struct hammer_mount	*hmp;
+	hammer_objid_cache_t	objid_cache;
 	int			flags;
 	int			error;		/* flush error */
 	int			cursor_ip_refs;	/* sanity */
@@ -453,7 +453,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_ATIME	0x00100000 /* in-memory atime modified */
 #define HAMMER_INODE_MTIME	0x00200000 /* in-memory mtime modified */
 #define HAMMER_INODE_WOULDBLOCK 0x00400000 /* re-issue to new flush group */
-#define HAMMER_INODE_DUMMY 	0x00800000 /* dummy inode covering bad file */
+#define HAMMER_INODE_DUMMY	0x00800000 /* dummy inode covering bad file */
 #define HAMMER_INODE_SDIRTY	0x01000000 /* in-memory ino_data.size is dirty*/
 #define HAMMER_INODE_REDO	0x02000000 /* REDO logging active */
 #define HAMMER_INODE_RDIRTY	0x04000000 /* REDO records active in fifo */
@@ -555,7 +555,7 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_INTERLOCK_BE	0x0020	/* backend interlock */
 #define HAMMER_RECF_WANTED		0x0040	/* wanted by the frontend */
 #define HAMMER_RECF_DEDUPED		0x0080	/* will be live-dedup'ed */
-#define HAMMER_RECF_CONVERT_DELETE 	0x0100	/* special case */
+#define HAMMER_RECF_CONVERT_DELETE	0x0100	/* special case */
 #define HAMMER_RECF_REDO		0x1000	/* REDO was laid down */
 
 /*

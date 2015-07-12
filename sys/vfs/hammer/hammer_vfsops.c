@@ -317,7 +317,7 @@ static int	hammer_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 static struct vfsops hammer_vfsops = {
 	.vfs_mount	= hammer_vfs_mount,
 	.vfs_unmount	= hammer_vfs_unmount,
-	.vfs_root 	= hammer_vfs_root,
+	.vfs_root	= hammer_vfs_root,
 	.vfs_statfs	= hammer_vfs_statfs,
 	.vfs_statvfs	= hammer_vfs_statvfs,
 	.vfs_sync	= hammer_vfs_sync,

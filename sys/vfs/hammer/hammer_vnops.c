@@ -115,7 +115,7 @@ struct vop_ops hammer_vnode_vops = {
 	.vop_nremove =		hammer_vop_nremove,
 	.vop_nrename =		hammer_vop_nrename,
 	.vop_nrmdir =		hammer_vop_nrmdir,
-	.vop_markatime = 	hammer_vop_markatime,
+	.vop_markatime =	hammer_vop_markatime,
 	.vop_setattr =		hammer_vop_setattr,
 	.vop_bmap =		hammer_vop_bmap,
 	.vop_strategy =		hammer_vop_strategy,
@@ -133,7 +133,7 @@ struct vop_ops hammer_spec_vops = {
 	.vop_write =		vop_stdnowrite,
 	.vop_access =		hammer_vop_access,
 	.vop_close =		hammer_vop_close,
-	.vop_markatime = 	hammer_vop_markatime,
+	.vop_markatime =	hammer_vop_markatime,
 	.vop_getattr =		hammer_vop_getattr,
 	.vop_inactive =		hammer_vop_inactive,
 	.vop_reclaim =		hammer_vop_reclaim,
@@ -147,7 +147,7 @@ struct vop_ops hammer_fifo_vops = {
 	.vop_write =		hammer_vop_fifowrite,
 	.vop_access =		hammer_vop_access,
 	.vop_close =		hammer_vop_fifoclose,
-	.vop_markatime = 	hammer_vop_markatime,
+	.vop_markatime =	hammer_vop_markatime,
 	.vop_getattr =		hammer_vop_getattr,
 	.vop_inactive =		hammer_vop_inactive,
 	.vop_reclaim =		hammer_vop_reclaim,
@@ -1090,7 +1090,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	}
 
 	vap->va_type = hammer_get_vnode_type(ip->ino_data.obj_type);
-	vap->va_filerev = 0; 	/* XXX */
+	vap->va_filerev = 0;	/* XXX */
 	vap->va_uid_uuid = ip->ino_data.uid;
 	vap->va_gid_uuid = ip->ino_data.gid;
 	vap->va_fsid_uuid = ip->hmp->fsid;
@@ -2590,7 +2590,7 @@ int
 hammer_vop_mountctl(struct vop_mountctl_args *ap)
 {
 	static const struct mountctl_opt extraopt[] = {
-		{ HMNT_NOHISTORY, 	"nohistory" },
+		{ HMNT_NOHISTORY,	"nohistory" },
 		{ HMNT_MASTERID,	"master" },
 		{ 0, NULL}
 

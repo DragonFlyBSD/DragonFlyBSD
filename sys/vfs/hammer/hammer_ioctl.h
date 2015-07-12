@@ -281,8 +281,8 @@ struct hammer_ioc_pseudofs_rw {
  */
 struct hammer_ioc_mirror_rw {
 	struct hammer_ioc_head	head;
-	struct hammer_base_elm 	key_beg;	/* start forward scan */
-	struct hammer_base_elm 	key_end;	/* stop forward scan */
+	struct hammer_base_elm	key_beg;	/* start forward scan */
+	struct hammer_base_elm	key_end;	/* stop forward scan */
 	struct hammer_base_elm	key_cur;	/* interruption point */
 	hammer_tid_t		tid_beg;	/* filter modification range */
 	hammer_tid_t		tid_end;	/* filter modification range */
@@ -318,8 +318,8 @@ struct hammer_ioc_mrecord_rec {
 
 struct hammer_ioc_mrecord_skip {
 	struct hammer_ioc_mrecord_head	head;
-	struct hammer_base_elm	 	skip_beg;
-	struct hammer_base_elm 		skip_end;
+	struct hammer_base_elm		skip_beg;
+	struct hammer_base_elm		skip_end;
 };
 
 struct hammer_ioc_mrecord_update {
@@ -495,13 +495,13 @@ struct hammer_ioc_data {
 #define HAMMERIOC_SET_VERSION	_IOWR('h',14,struct hammer_ioc_version)
 #define HAMMERIOC_REBALANCE	_IOWR('h',15,struct hammer_ioc_rebalance)
 #define HAMMERIOC_GET_INFO	_IOR('h',16,struct hammer_ioc_info)
-#define HAMMERIOC_ADD_VOLUME 	_IOWR('h',17,struct hammer_ioc_volume)
+#define HAMMERIOC_ADD_VOLUME	_IOWR('h',17,struct hammer_ioc_volume)
 #define HAMMERIOC_ADD_SNAPSHOT	_IOWR('h',18,struct hammer_ioc_snapshot)
 #define HAMMERIOC_DEL_SNAPSHOT	_IOWR('h',19,struct hammer_ioc_snapshot)
 #define HAMMERIOC_GET_SNAPSHOT	_IOWR('h',20,struct hammer_ioc_snapshot)
 #define HAMMERIOC_GET_CONFIG	_IOWR('h',21,struct hammer_ioc_config)
 #define HAMMERIOC_SET_CONFIG	_IOWR('h',22,struct hammer_ioc_config)
-#define HAMMERIOC_DEL_VOLUME 	_IOWR('h',24,struct hammer_ioc_volume)
+#define HAMMERIOC_DEL_VOLUME	_IOWR('h',24,struct hammer_ioc_volume)
 #define HAMMERIOC_DEDUP		_IOWR('h',25,struct hammer_ioc_dedup)
 #define HAMMERIOC_GET_DATA	_IOWR('h',26,struct hammer_ioc_data)
 #define HAMMERIOC_LIST_VOLUMES	_IOWR('h',27,struct hammer_ioc_volume_list)

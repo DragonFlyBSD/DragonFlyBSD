@@ -3092,10 +3092,10 @@ hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i)
 	kprintf("\tdelete_tid   = %016llx\n", (long long)elm->base.delete_tid);
 	kprintf("\trec_type     = %04x\n", elm->base.rec_type);
 	kprintf("\tobj_type     = %02x\n", elm->base.obj_type);
-	kprintf("\tbtype 	= %02x (%c)\n",
+	kprintf("\tbtype        = %02x (%c)\n",
 		elm->base.btype,
 		(elm->base.btype ? elm->base.btype : '?'));
-	kprintf("\tlocalization	= %02x\n", elm->base.localization);
+	kprintf("\tlocalization = %02x\n", elm->base.localization);
 
 	switch(type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:

@@ -346,7 +346,7 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
  * a zone-2 physical offset.
  */
 #define HAMMER_BLOCKMAP_LAYER1_OFFSET(zone2_offset)	\
-	(((zone2_offset) & HAMMER_BLOCKMAP_LAYER1_MASK) / 	\
+	(((zone2_offset) & HAMMER_BLOCKMAP_LAYER1_MASK) /	\
 	 HAMMER_BLOCKMAP_LAYER2 * sizeof(struct hammer_blockmap_layer1))
 
 #define HAMMER_BLOCKMAP_LAYER2_OFFSET(zone2_offset)	\
