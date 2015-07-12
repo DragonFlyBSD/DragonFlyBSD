@@ -4306,6 +4306,7 @@ xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
 	new_bus->flags = 0;
 	new_bus->refcount = 1;	/* Held until a bus_deregister event */
 	new_bus->generation = 0;
+	new_bus->counted_to_config = 0;
 	lockmgr(&xsoftc.xpt_topo_lock, LK_EXCLUSIVE);
 	old_bus = TAILQ_FIRST(&xsoftc.xpt_busses);
 	while (old_bus != NULL
