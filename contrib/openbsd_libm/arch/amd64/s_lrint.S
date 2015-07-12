@@ -9,4 +9,6 @@
 ENTRY(lrint)
 	cvtsd2si %xmm0, %rax
 	ret
+END(lrint)
 
+	.section .note.GNU-stack,"",%progbits

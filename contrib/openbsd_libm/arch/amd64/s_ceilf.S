@@ -20,3 +20,6 @@ ENTRY(ceilf)
 	fstps	-4(%rsp)
 	movss	-4(%rsp),%xmm0
 	ret
+END(ceilf)
+
+	.section .note.GNU-stack,"",%progbits

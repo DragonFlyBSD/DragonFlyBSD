@@ -15,3 +15,6 @@ ENTRY(atan)
 	fpatan
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(atan)
+
+	.section .note.GNU-stack,"",%progbits

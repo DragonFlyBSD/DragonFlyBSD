@@ -20,3 +20,6 @@ ENTRY(floorf)
 	fstps	-4(%rsp)
 	movss	-4(%rsp),%xmm0
 	ret
+END(floorf)
+
+	.section .note.GNU-stack,"",%progbits

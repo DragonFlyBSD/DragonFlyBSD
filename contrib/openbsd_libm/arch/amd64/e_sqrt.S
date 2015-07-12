@@ -9,3 +9,6 @@
 ENTRY(sqrt)
 	sqrtsd	%xmm0,%xmm0
 	ret
+END(sqrt)
+
+	.section .note.GNU-stack,"",%progbits

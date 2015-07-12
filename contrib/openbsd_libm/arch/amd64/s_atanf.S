@@ -15,3 +15,6 @@ ENTRY(atanf)
 	fpatan
 	XMM_FLOAT_EPILOGUE
 	ret
+END(atanf)
+
+	.section .note.GNU-stack,"",%progbits

@@ -15,3 +15,6 @@ ENTRY(significand)
 	fstp	%st(1)
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(significand)
+
+	.section .note.GNU-stack,"",%progbits

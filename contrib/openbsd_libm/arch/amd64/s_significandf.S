@@ -15,3 +15,6 @@ ENTRY(significandf)
 	fstp	%st(1)
 	XMM_FLOAT_EPILOGUE
 	ret
+END(significandf)
+
+	.section .note.GNU-stack,"",%progbits

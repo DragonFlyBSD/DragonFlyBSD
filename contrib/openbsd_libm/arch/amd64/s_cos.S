@@ -28,3 +28,6 @@ ENTRY(cos)
 	fcos
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(cos)
+
+	.section .note.GNU-stack,"",%progbits

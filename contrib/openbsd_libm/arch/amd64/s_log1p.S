@@ -73,3 +73,6 @@ use_fyl2xp1:
 	fyl2xp1
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(log1p)
+
+	.section .note.GNU-stack,"",%progbits

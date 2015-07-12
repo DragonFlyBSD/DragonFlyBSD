@@ -15,3 +15,6 @@ ENTRY(log10)
 	fyl2x
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(log10)
+
+	.section .note.GNU-stack,"",%progbits

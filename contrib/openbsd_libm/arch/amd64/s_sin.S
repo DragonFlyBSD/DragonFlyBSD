@@ -28,3 +28,6 @@ ENTRY(sin)
 	fsin
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(sin)
+
+	.section .note.GNU-stack,"",%progbits

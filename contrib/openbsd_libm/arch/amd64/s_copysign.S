@@ -18,3 +18,6 @@ ENTRY(copysign)
 	pand	%xmm3,%xmm0
 	por	%xmm1,%xmm0
 	ret
+END(copysign)
+
+	.section .note.GNU-stack,"",%progbits

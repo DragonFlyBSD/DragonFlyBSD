@@ -16,3 +16,6 @@ ENTRY(scalb)
 	fstp	%st(1)			/* bug fix for fp stack overflow */
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(scalb)
+
+	.section .note.GNU-stack,"",%progbits

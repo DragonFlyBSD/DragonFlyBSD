@@ -20,3 +20,6 @@ ENTRY(asin)
 	fpatan
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(asin)
+
+	.section .note.GNU-stack,"",%progbits

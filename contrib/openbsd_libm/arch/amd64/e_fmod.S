@@ -20,3 +20,6 @@ ENTRY(fmod)
 	fstp	%st(1)
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(fmod)
+
+	.section .note.GNU-stack,"",%progbits

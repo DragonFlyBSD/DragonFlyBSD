@@ -99,3 +99,6 @@ x_Inf_or_NaN:
 x_not_minus_Inf:
 	movsd	ARG_DOUBLE_ONE,%xmm0
 	ret
+END(exp)
+
+	.section .note.GNU-stack,"",%progbits

@@ -19,3 +19,6 @@ ENTRY(remainder)
 	fstp	%st(1)
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(remainder)
+
+	.section .note.GNU-stack,"",%progbits

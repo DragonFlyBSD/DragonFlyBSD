@@ -14,3 +14,6 @@ ENTRY(ilogbf)
 	fistpl	-4(%rsp)
 	movl	-4(%rsp),%eax
 	ret
+END(ilogbf)
+
+	.section .note.GNU-stack,"",%progbits

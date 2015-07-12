@@ -30,3 +30,6 @@ ENTRY(tan)
 	fstp	%st(0)
 	XMM_DOUBLE_EPILOGUE
 	ret
+END(tan)
+
+	.section .note.GNU-stack,"",%progbits

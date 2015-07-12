@@ -21,4 +21,6 @@ ENTRY(scalbnf)
 	fstps	-8(%rsp)
 	movss	-8(%rsp),%xmm0
 	ret
+END(scalbnf)
 
+	.section .note.GNU-stack,"",%progbits

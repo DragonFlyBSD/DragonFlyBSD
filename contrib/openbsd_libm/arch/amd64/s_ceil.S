@@ -22,3 +22,6 @@ ENTRY(ceil)
 	fstpl	-8(%rsp)
 	movsd	-8(%rsp),%xmm0
 	ret
+END(ceil)
+
+	.section .note.GNU-stack,"",%progbits

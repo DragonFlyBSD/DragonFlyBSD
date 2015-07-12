@@ -15,3 +15,6 @@ ENTRY(cosf)
 	fcos
 	XMM_FLOAT_EPILOGUE
 	ret	
+END(cosf)
+
+	.section .note.GNU-stack,"",%progbits

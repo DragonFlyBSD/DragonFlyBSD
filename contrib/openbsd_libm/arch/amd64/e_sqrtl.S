@@ -10,3 +10,6 @@ ENTRY(sqrtl)
 	fldt	8(%rsp)
 	fsqrt
 	ret
+END(sqrtl)
+
+	.section .note.GNU-stack,"",%progbits
