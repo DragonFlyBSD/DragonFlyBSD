@@ -542,11 +542,6 @@ typedef union hammer_fifo_any *hammer_fifo_any_t;
 #define HAMMER_FSBUF_VOLUME_REV	0x313052C54D4D41C8ULL	/* (reverse endian) */
 
 /*
- * The B-Tree structures need hammer_fsbuf_head.
- */
-#include "hammer_btree.h"
-
-/*
  * HAMMER Volume header
  *
  * A HAMMER filesystem is built from any number of block devices,  Each block
@@ -899,4 +894,8 @@ union hammer_data_ondisk {
 
 typedef union hammer_data_ondisk *hammer_data_ondisk_t;
 
+/*
+ * Ondisk layout of B-Tree related structures
+ */
+#include "hammer_btree.h"
 #endif
