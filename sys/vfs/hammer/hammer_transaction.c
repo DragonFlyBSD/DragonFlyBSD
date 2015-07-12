@@ -155,6 +155,8 @@ hammer_done_transaction(struct hammer_transaction *trans)
  * NOTE: When called by pseudo-backends such as ioctls the allocated
  *	 TID will be larger then the current flush TID, if a flush is running,
  *	 so any mirroring will pick the records up on a later flush.
+ *
+ * NOTE: HAMMER1 does not support multi-master clustering as of 2015.
  */
 hammer_tid_t
 hammer_alloc_tid(hammer_mount_t hmp, int count)

@@ -238,7 +238,8 @@ typedef u_int32_t hammer_crc_t;
 
 /*
  * Maximum number of mirrors operating in master mode (multi-master
- * clustering and mirroring).
+ * clustering and mirroring). Note that HAMMER1 does not support
+ * multi-master clustering as of 2015.
  */
 #define HAMMER_MAX_MASTERS		16
 
