@@ -56,6 +56,7 @@
 
 #define AMD10_MSR_PSTATE_START		0xc0010064
 #define AMD10_MSR_PSTATE_COUNT		5
+#define AMD11_MSR_PSTATE_COUNT		8	/* starting from 11h */
 
 #define AMD0F_PST_CTL_FID(cval)		(((cval) >> 0)  & 0x3f)
 #define AMD0F_PST_CTL_VID(cval)		(((cval) >> 6)  & 0x1f)
@@ -141,6 +142,8 @@ static const struct acpi_pst_md acpi_pst_intel = {
 static int acpi_pst_stringent_check = 1;
 TUNABLE_INT("hw.acpi.cpu.pstate.strigent_check", &acpi_pst_stringent_check);
 
+static int acpi_pst_amd1x_msr_pstate_count = AMD10_MSR_PSTATE_COUNT;
+
 const struct acpi_pst_md *
 acpi_pst_md_probe(void)
 {
@@ -171,6 +174,10 @@ acpi_pst_amd_probe(void)
 		if ((regs[3] & 0x06) == 0x06)
 			return &acpi_pst_amd0f;
 	} else if (CPUID_TO_FAMILY(cpu_id) >= 0x10) {	/* Family >= 10h */
+		if (CPUID_TO_FAMILY(cpu_id) >= 0x11) {
+			acpi_pst_amd1x_msr_pstate_count =
+			    AMD11_MSR_PSTATE_COUNT;
+		}
 		if (regs[3] & 0x80)
 			return &acpi_pst_amd10;
 	}
@@ -230,9 +237,9 @@ acpi_pst_amd1x_check_pstates(const struct acpi_pstate *pstates, int npstates,
 static int
 acpi_pst_amd10_check_pstates(const struct acpi_pstate *pstates, int npstates)
 {
-	/* Only P0-P4 are supported */
-	if (npstates > AMD10_MSR_PSTATE_COUNT) {
-		kprintf("cpu%d: only P0-P4 is allowed\n", mycpuid);
+	if (npstates > acpi_pst_amd1x_msr_pstate_count) {
+		kprintf("cpu%d: only %d P-states are allowed\n", mycpuid,
+		    acpi_pst_amd1x_msr_pstate_count);
 		return EINVAL;
 	}
 
