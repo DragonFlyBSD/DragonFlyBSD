@@ -54,7 +54,7 @@
 
 #define AMD_MSR_PSTATE_EN		0x8000000000000000ULL
 
-#define AMD10_MSR_PSTATE_START		0xc0010064
+#define AMD1X_MSR_PSTATE_START		0xc0010064
 #define AMD10_MSR_PSTATE_COUNT		5
 #define AMD11_MSR_PSTATE_COUNT		8	/* starting from 11h */
 
@@ -80,9 +80,9 @@ static const struct acpi_pst_md *
 		acpi_pst_amd_probe(void);
 static int	acpi_pst_amd_check_csr(const struct acpi_pst_res *,
 		    const struct acpi_pst_res *);
-static int	acpi_pst_amd1x_check_pstates(const struct acpi_pstate *, int,
+static int	acpi_pst_amd1x_check_pstates1(const struct acpi_pstate *, int,
 		    uint32_t, uint32_t);
-static int	acpi_pst_amd10_check_pstates(const struct acpi_pstate *, int);
+static int	acpi_pst_amd1x_check_pstates(const struct acpi_pstate *, int);
 static int	acpi_pst_amd0f_check_pstates(const struct acpi_pstate *, int);
 static int	acpi_pst_amd_init(const struct acpi_pst_res *,
 		    const struct acpi_pst_res *);
@@ -115,9 +115,9 @@ static int	acpi_pst_md_gas_verify(const ACPI_GENERIC_ADDRESS *);
 static uint32_t	acpi_pst_md_res_read(const struct acpi_pst_res *);
 static void	acpi_pst_md_res_write(const struct acpi_pst_res *, uint32_t);
 
-static const struct acpi_pst_md	acpi_pst_amd10 = {
+static const struct acpi_pst_md	acpi_pst_amd1x = {
 	.pmd_check_csr		= acpi_pst_amd_check_csr,
-	.pmd_check_pstates	= acpi_pst_amd10_check_pstates,
+	.pmd_check_pstates	= acpi_pst_amd1x_check_pstates,
 	.pmd_init		= acpi_pst_amd_init,
 	.pmd_set_pstate		= acpi_pst_amd1x_set_pstate,
 	.pmd_get_pstate		= acpi_pst_amd1x_get_pstate
@@ -179,7 +179,7 @@ acpi_pst_amd_probe(void)
 			    AMD11_MSR_PSTATE_COUNT;
 		}
 		if (regs[3] & 0x80)
-			return &acpi_pst_amd10;
+			return &acpi_pst_amd1x;
 	}
 	return NULL;
 }
@@ -200,8 +200,8 @@ acpi_pst_amd_check_csr(const struct acpi_pst_res *ctrl,
 }
 
 static int
-acpi_pst_amd1x_check_pstates(const struct acpi_pstate *pstates, int npstates,
-			     uint32_t msr_start, uint32_t msr_end)
+acpi_pst_amd1x_check_pstates1(const struct acpi_pstate *pstates, int npstates,
+    uint32_t msr_start, uint32_t msr_end)
 {
 	int i;
 
@@ -235,7 +235,7 @@ acpi_pst_amd1x_check_pstates(const struct acpi_pstate *pstates, int npstates,
 }
 
 static int
-acpi_pst_amd10_check_pstates(const struct acpi_pstate *pstates, int npstates)
+acpi_pst_amd1x_check_pstates(const struct acpi_pstate *pstates, int npstates)
 {
 	if (npstates > acpi_pst_amd1x_msr_pstate_count) {
 		kprintf("cpu%d: only %d P-states are allowed\n", mycpuid,
@@ -243,9 +243,9 @@ acpi_pst_amd10_check_pstates(const struct acpi_pstate *pstates, int npstates)
 		return EINVAL;
 	}
 
-	return acpi_pst_amd1x_check_pstates(pstates, npstates,
-			AMD10_MSR_PSTATE_START,
-			AMD10_MSR_PSTATE_START + AMD10_MSR_PSTATE_COUNT);
+	return acpi_pst_amd1x_check_pstates1(pstates, npstates,
+	    AMD1X_MSR_PSTATE_START,
+	    AMD1X_MSR_PSTATE_START + acpi_pst_amd1x_msr_pstate_count);
 }
 
 static int
