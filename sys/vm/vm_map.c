@@ -435,13 +435,27 @@ vmspace_terminate(struct vmspace *vm, int final)
 		/*
 		 * Get rid of most of the resources.  Leave the kernel pmap
 		 * intact.
+		 *
+		 * If the pmap does not contain wired pages we can bulk-delete
+		 * the pmap as a performance optimization before removing the related mappings.
+		 *
+		 * If the pmap contains wired pages we cannot do this pre-optimization
+		 * because currently vm_fault_unwire() expects the pmap pages to exist
+		 * and will not decrement p->wire_count if they do not.
 		 */
 		vm->vm_flags |= VMSPACE_EXIT1;
 		shmexit(vm);
-		pmap_remove_pages(vmspace_pmap(vm), VM_MIN_USER_ADDRESS,
-				  VM_MAX_USER_ADDRESS);
-		vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
-			      VM_MAX_USER_ADDRESS);
+		if (vmspace_pmap(vm)->pm_stats.wired_count) {
+			vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
+				      VM_MAX_USER_ADDRESS);
+			pmap_remove_pages(vmspace_pmap(vm), VM_MIN_USER_ADDRESS,
+					  VM_MAX_USER_ADDRESS);
+		} else {
+			pmap_remove_pages(vmspace_pmap(vm), VM_MIN_USER_ADDRESS,
+					  VM_MAX_USER_ADDRESS);
+			vm_map_remove(&vm->vm_map, VM_MIN_USER_ADDRESS,
+				      VM_MAX_USER_ADDRESS);
+		}
 		lwkt_reltoken(&vm->vm_map.token);
 	} else {
 		KKASSERT((vm->vm_flags & VMSPACE_EXIT1) != 0);
