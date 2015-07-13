@@ -21,14 +21,14 @@ SRCS+=  _once_stub.c _pthread_stubs.c _rand48.c _spinlock_stub.c \
 	getnetgrent.c getobjformat.c getosreldate.c getpagesize.c \
 	getpeereid.c getprogname.c getpwent.c getttyent.c \
 	getusershell.c getvfsbyname.c getvfsent.c glob.c \
-	initgroups.c isatty.c isinf.c isnan.c \
+	initgroups.c isatty.c isinf.c isfinite.c isnan.c isnormal.c \
 	jrand48.c lcong48.c ldexp.c libc_dlopen.c \
 	lockf.c lrand48.c modf.c mrand48.c sysvipc_msgctl.c \
 	sysvipc_msgget.c sysvipc_msgrcv.c sysvipc_msgsnd.c nftw.c nice.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
 	pause.c pmadvise.c popen.c posix_spawn.c posixshm.c \
 	psignal.c pw_scan.c pwcache.c \
-	raise.c readdir.c readpassphrase.c rewinddir.c \
+	raise.c readdir.c readpassphrase.c rewinddir.c signbit.c \
 	sysvipc.c sysvipc_shmget.c sysvipc_shmctl.c \
 	sysvipc_shmdt.c sysvipc_shmat.c\
 	scandir.c seed48.c seekdir.c sysvipc_semctl.c sysvipc_semget.c sysvipc_semop.c \

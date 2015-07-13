@@ -108,20 +108,11 @@ DF306.0 {
 	fmin;
 	fminf;
 	fminl;
-	frexp;
 	frexpf;
 	frexpl;
 	ilogb;
 	ilogbf;
 	ilogbl;
-	__isfinite;
-	__isfinitef;
-	__isfinitel;
-	isnanf;
-	__isnanl;
-	__isnormal;
-	__isnormalf;
-	__isnormall;
 	llrint;
 	llrintf;
 	llround;
@@ -161,9 +152,6 @@ DF306.0 {
 	scalbnf;
 	ldexpf;
 	ldexpl;
-	__signbit;
-	__signbitf;
-	__signbitl;
 	signgam;
 	significand;
 	significandf;
@@ -212,7 +200,6 @@ DF306.0 {
 	cproj;
 	cprojf;
 	cprojl;
-	__isnanf;
 	cbrtl;
 	cexp;
 	cexpf;
@@ -257,6 +244,25 @@ DF306.0 {
 	log1pl;
 	log2l;
 	logl;
+	/*
+	 * Erroneously versioned in libm previously.
+	 * These functions are only available in this version now for
+	 * backwards compatibility reasons (implemented with .symver)
+	 *
+	 * frexp;
+	 * isnanf;
+	 * __isfinite;
+	 * __isfinitef;
+	 * __isfinitel;
+	 * __isnanf;
+	 * __isnanl;
+	 * __isnormal;
+	 * __isnormalf;
+	 * __isnormall;
+	 * __signbit;
+	 * __signbitf;
+	 * __signbitl;
+	 */
 };
 
 /*
@@ -272,9 +278,9 @@ DF306.1 {
 	 * lgammal;
 	 * sinhl;
 	 * tanhl;
+	 * tgammal;
+	 * powl;
 	 */
-	powl;
-	tgammal;
 };
 
 /*
@@ -304,4 +310,13 @@ DF402.0 {
 	lgammal;
 	sinhl;
 	tanhl;
+};
+
+/*
+ * Implemented in 4.3-dev branch
+ */
+
+DF404.0 {
+	powl;
+	tgammal;
 };

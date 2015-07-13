@@ -1,5 +1,7 @@
+/*	$OpenBSD: frexp.c,v 1.10 2013/07/03 04:46:36 espie Exp $	*/
+
 /*-
- * Copyright (c) 2013 David Chisnall
+ * Copyright (c) 2004 David Schultz <das@FreeBSD.ORG>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,48 +25,49 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/msun/src/imprecise.c 255294 2013-09-06 07:58:23Z theraven $
+ * $FreeBSD: frexp.c,v 1.1 2004/07/18 21:23:39 das Exp $
  */
 
+#include <sys/types.h>
+#include <machine/ieee.h>
 #include <float.h>
 #include <math.h>
-
-/*
- * If long double is not the same size as double, then these will lose
- * precision and we should emit a warning whenever something links against
- * them.
- */
-#if (LDBL_MANT_DIG > 53)
-#define WARN_IMPRECISE(x) \
-	__warn_references(x, # x " has lower than advertised precision");
-#else
-#define WARN_IMPRECISE(x)
-#endif
-/*
- * Declare the functions as weak variants so that other libraries providing
- * real versions can override them.
- */
-#define	DECLARE_WEAK(x)\
-	__weak_reference(imprecise_## x, x);\
-	WARN_IMPRECISE(x)
-
-#define DECLARE_FORMER_IMPRECISE(f) \
-	__asm__(".symver imprecise_" #f "l," #f "l@DF306.1"); \
-	long double imprecise_ ## f ## l(long double v) { return f(v); }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-prototypes"
 
-__asm__(".symver imprecise_powl,powl@DF306.1");
-long double
-imprecise_powl(long double x, long double y) { return pow(x, y); }
+__asm__(".symver pastfrexp,frexp@DF306.0");
+double
+pastfrexp(double v, int *ex)
+{
+	union  {
+		double v;
+		struct ieee_double s;
+	} u;
 
-DECLARE_FORMER_IMPRECISE(cosh);
-DECLARE_FORMER_IMPRECISE(erfc);
-DECLARE_FORMER_IMPRECISE(erf);
-DECLARE_FORMER_IMPRECISE(sinh);
-DECLARE_FORMER_IMPRECISE(tanh);
-DECLARE_FORMER_IMPRECISE(tgamma);
-DECLARE_FORMER_IMPRECISE(lgamma);
+	u.v = v;
+	switch (u.s.dbl_exp) {
+	case 0:		/* 0 or subnormal */
+		if ((u.s.dbl_fracl | u.s.dbl_frach) == 0) {
+			*ex = 0;
+		} else {
+			/*
+			 * The power of 2 is arbitrary, any value from 54 to
+			 * 1024 will do.
+			 */
+			u.v *= 0x1.0p514;
+			*ex = u.s.dbl_exp - (DBL_EXP_BIAS - 1 + 514);
+			u.s.dbl_exp = DBL_EXP_BIAS - 1;
+		}
+		break;
+	case DBL_EXP_INFNAN:	/* Inf or NaN; value of *ex is unspecified */
+		break;
+	default:	/* normal */
+		*ex = u.s.dbl_exp - (DBL_EXP_BIAS - 1);
+		u.s.dbl_exp = DBL_EXP_BIAS - 1;
+		break;
+	}
+	return (u.v);
+}
 
 #pragma GCC diagnostic pop

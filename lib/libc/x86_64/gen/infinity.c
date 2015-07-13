@@ -1,12 +1,9 @@
-/*
- * infinity.c
- * $FreeBSD: head/lib/libc/amd64/gen/infinity.c 110566 2003-02-08 20:37:55Z mike $
- */
+/*	$OpenBSD: infinity.c,v 1.3 2005/08/07 16:40:13 espie Exp $ */
+/* infinity.c */
 
 #include <math.h>
 
 /* bytes for +Infinity on a 387 */
-const union __infinity_un __infinity = { { 0, 0, 0, 0, 0, 0, 0xf0, 0x7f } };
+char __infinity[] __attribute__((__aligned__(sizeof(double)))) =
+	{ 0, 0, 0, 0, 0, 0, (char)0xf0, 0x7f };
 
-/* bytes for NaN */
-const union __nan_un __nan = { { 0, 0, 0xc0, 0xff } };
