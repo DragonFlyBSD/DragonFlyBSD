@@ -1028,3 +1028,97 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 	}
     }
 }
+
+#define LWKT_IPIQ_NLATENCY	7
+
+struct lwkt_ipiq_latency_log {
+	int		idx;
+	int		pad;
+	uint64_t	latency[LWKT_IPIQ_NLATENCY];
+};
+
+static struct lwkt_ipiq_latency_log	lwkt_ipiq_latency_logs[MAXCPU];
+
+static void
+lwkt_ipiq_latency_testfunc(void *arg)
+{
+	uint64_t prev_tsc = (uintptr_t)arg;
+	uint64_t tsc;
+	struct globaldata *gd = mycpu;
+	struct lwkt_ipiq_latency_log *lat;
+
+	lat = &lwkt_ipiq_latency_logs[gd->gd_cpuid];
+
+	crit_enter_gd(gd);
+	tsc = rdtsc_ordered();
+	lat->latency[lat->idx++] = tsc - prev_tsc;
+	if (lat->idx >= LWKT_IPIQ_NLATENCY)
+		lat->idx = 0;
+	crit_exit_gd(gd);
+}
+
+/*
+ * Send IPI from cpu0 to other cpus
+ */
+static int
+lwkt_ipiq_latency_test(SYSCTL_HANDLER_ARGS)
+{
+	struct globaldata *gd;
+	int cpu = 0, orig_cpu, error;
+	uint64_t tsc;
+
+	error = sysctl_handle_int(oidp, &cpu, arg2, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	if (cpu == 0)
+		return 0;
+	else if (cpu >= ncpus || cpu < 0)
+		return EINVAL;
+
+	orig_cpu = mycpuid;
+	lwkt_migratecpu(0);
+
+	gd = globaldata_find(cpu);
+
+	tsc = rdtsc_ordered();
+	lwkt_send_ipiq(gd, lwkt_ipiq_latency_testfunc, (void *)(uintptr_t)tsc);
+
+	lwkt_migratecpu(orig_cpu);
+	return 0;
+}
+
+SYSCTL_NODE(_debug, OID_AUTO, ipiq, CTLFLAG_RW, 0, "");
+SYSCTL_PROC(_debug_ipiq, OID_AUTO, latency_test, CTLTYPE_INT | CTLFLAG_RW,
+    NULL, 0, lwkt_ipiq_latency_test, "I", "");
+
+static int
+lwkt_ipiq_latency(SYSCTL_HANDLER_ARGS)
+{
+	struct lwkt_ipiq_latency_log *latency = arg1;
+	uint64_t lat[LWKT_IPIQ_NLATENCY];
+	int i;
+
+	for (i = 0; i < LWKT_IPIQ_NLATENCY; ++i)
+		lat[i] = latency->latency[i];
+
+	return sysctl_handle_opaque(oidp, lat, sizeof(lat), req);
+}
+
+static void
+lwkt_ipiq_latency_init(void *dummy __unused)
+{
+	int cpu;
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		char name[32];
+
+		ksnprintf(name, sizeof(name), "latency%d", cpu);
+		SYSCTL_ADD_PROC(NULL, SYSCTL_STATIC_CHILDREN(_debug_ipiq),
+		    OID_AUTO, name, CTLTYPE_OPAQUE | CTLFLAG_RD,
+		    &lwkt_ipiq_latency_logs[cpu], 0, lwkt_ipiq_latency,
+		    "LU", "");
+	}
+}
+SYSINIT(lwkt_ipiq_latency, SI_SUB_CONFIGURE, SI_ORDER_ANY,
+    lwkt_ipiq_latency_init, NULL);
