@@ -1263,7 +1263,6 @@ device_delete_child(device_t dev, device_t child)
 		devclass_delete_device(child->devclass, child);
 	TAILQ_REMOVE(&dev->children, child, link);
 	TAILQ_REMOVE(&bus_data_devices, child, devlink);
-	device_set_desc(child, NULL);
 	kobj_delete((kobj_t)child, M_BUS);
 
 	bus_data_generation_update();
@@ -1405,7 +1404,7 @@ device_probe_child(device_t dev, device_t child)
 			 * certainly doesn't match.
 			 */
 			if (result > 0) {
-				device_set_driver(child, 0);
+				device_set_driver(child, NULL);
 				continue;
 			}
 
@@ -1769,6 +1768,7 @@ device_set_driver(device_t dev, driver_t *driver)
 		kfree(dev->softc, M_BUS);
 		dev->softc = NULL;
 	}
+	device_set_desc(dev, NULL);
 	kobj_delete((kobj_t) dev, 0);
 	dev->driver = driver;
 	if (driver) {
