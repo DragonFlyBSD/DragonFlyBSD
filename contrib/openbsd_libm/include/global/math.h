@@ -117,7 +117,7 @@ extern char __nan[];
 /*
  * XOPEN/SVID
  */
-#if __BSD_VISIBLE || __XPG_VISIBLE
+#if __BSD_VISIBLE || __XSI_VISIBLE
 #define	M_E		((double)2.7182818284590452354)  /* e */
 #define	M_LOG2E		((double)1.4426950408889634074)  /* log 2e */
 #define	M_LOG10E	((double)0.43429448190325182765) /* log 10e */
@@ -139,7 +139,7 @@ extern char __nan[];
 #endif /* __vax__ */
 
 extern int signgam;
-#endif /* __BSD_VISIBLE || __XPG_VISIBLE */
+#endif /* __BSD_VISIBLE || __XSI_VISIBLE */
 
 #if __POSIX_VISIBLE >= 201403
 #define	M_El		2.718281828459045235360287471352662498L /* e */
@@ -194,7 +194,7 @@ double fmod(double, double);
 /*
  * C99
  */
-#if __BSD_VISIBLE || __ISO_C_VISIBLE >= 1999 || __XPG_VISIBLE
+#if __BSD_VISIBLE || __ISO_C_VISIBLE >= 1999 || __XSI_VISIBLE
 double acosh(double);
 double asinh(double);
 double atanh(double);
@@ -238,9 +238,9 @@ double fmax(double, double);
 double fmin(double, double);
 
 double fma(double, double, double);
-#endif /* __BSD_VISIBLE || __ISO_C_VISIBLE >= 1999 || __XPG_VISIBLE */
+#endif /* __BSD_VISIBLE || __ISO_C_VISIBLE >= 1999 || __XSI_VISIBLE */
 
-#if __BSD_VISIBLE || __XPG_VISIBLE
+#if __BSD_VISIBLE || __XSI_VISIBLE
 double j0(double);
 double j1(double);
 double jn(int, double);
@@ -248,11 +248,11 @@ double scalb(double, double);
 double y0(double);
 double y1(double);
 double yn(int, double);
-#endif /* __BSD_VISIBLE || __XPG_VISIBLE */
+#endif /* __BSD_VISIBLE || __XSI_VISIBLE */
 
-#if __BSD_VISIBLE || __XPG_VISIBLE <= 500
+#if __BSD_VISIBLE || __XSI_VISIBLE <= 500
 double gamma(double);
-#endif /* __BSD_VISIBLE || __XPG_VISIBLE <= 500 */
+#endif /* __BSD_VISIBLE || __XSI_VISIBLE <= 500 */
 
 /*
  * BSD math library entry points
@@ -346,7 +346,7 @@ float fminf(float, float);
 float fmaf(float, float, float);
 #endif /* __ISO_C_VISIBLE >= 1999 */
 
-#if __BSD_VISIBLE || __XPG_VISIBLE
+#if __BSD_VISIBLE || __XSI_VISIBLE
 float j0f(float);
 float j1f(float);
 float jnf(int, float);
@@ -354,11 +354,11 @@ float scalbf(float, float);
 float y0f(float);
 float y1f(float);
 float ynf(int, float);
-#endif /* __BSD_VISIBLE || __XPG_VISIBLE */
+#endif /* __BSD_VISIBLE || __XSI_VISIBLE */
 
-#if __BSD_VISIBLE || __XPG_VISIBLE <= 500
+#if __BSD_VISIBLE || __XSI_VISIBLE <= 500
 float gammaf(float);
-#endif /* __BSD_VISIBLE || __XPG_VISIBLE <= 500 */
+#endif /* __BSD_VISIBLE || __XSI_VISIBLE <= 500 */
 
 /*
  * Float versions of BSD math library entry points
