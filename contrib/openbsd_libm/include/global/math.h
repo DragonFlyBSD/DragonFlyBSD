@@ -458,7 +458,7 @@ long double fmal(long double, long double, long double);
 /*
  * Library implementation
  */
-int __fpclassify(double);
+int __fpclassifyd(double);
 int __fpclassifyf(float);
 int __fpclassifyl(long double);
 int __isfinite(double);
