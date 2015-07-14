@@ -850,7 +850,6 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	struct hammer_blockmap_layer2 *layer2;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
-	hammer_off_t zone2_offset;
 	void *ptr;
 
 	volume = get_volume(RootVolNo);
@@ -928,10 +927,7 @@ again:
 	layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 	layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 
-	zone2_offset = HAMMER_ZONE_ENCODE(zone,
-			*result_offp & ~HAMMER_OFF_ZONE_MASK);
-
-	ptr = get_buffer_data(zone2_offset, bufferp, 0);
+	ptr = get_buffer_data(*result_offp, bufferp, 0);
 	(*bufferp)->cache.modified = 1;
 
 	rel_buffer(buffer1);
