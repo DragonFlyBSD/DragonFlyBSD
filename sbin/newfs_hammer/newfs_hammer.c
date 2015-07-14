@@ -583,8 +583,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		 * Format zones that are mapped to zone-2.
 		 */
 		for (i = HAMMER_ZONE2_MAPPED_INDEX; i < HAMMER_MAX_ZONES; ++i) {
-			format_blockmap(&ondisk->vol0_blockmap[i],
-					HAMMER_ZONE_ENCODE(i, 0));
+			format_blockmap(&ondisk->vol0_blockmap[i], i, 0);
 		}
 		format_undomap(vol);
 

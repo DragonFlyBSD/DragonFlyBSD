@@ -188,16 +188,16 @@ typedef u_int32_t hammer_crc_t;
 #define HAMMER_OFF_LONG_ENCODE(offset)			\
 	((hammer_off_t)(offset) & HAMMER_OFF_LONG_MASK)
 
-#define HAMMER_ENCODE(zone_base, vol_no, offset)	\
-	((zone_base) |					\
+#define HAMMER_ENCODE(zone, vol_no, offset)		\
+	(((hammer_off_t)(zone) << 60) |			\
 	HAMMER_VOL_ENCODE(vol_no) |			\
 	HAMMER_OFF_SHORT_ENCODE(offset))
 #define HAMMER_ENCODE_RAW_VOLUME(vol_no, offset)	\
-	HAMMER_ENCODE(HAMMER_ZONE_RAW_VOLUME, vol_no, offset)
+	HAMMER_ENCODE(HAMMER_ZONE_RAW_VOLUME_INDEX, vol_no, offset)
 #define HAMMER_ENCODE_RAW_BUFFER(vol_no, offset)	\
-	HAMMER_ENCODE(HAMMER_ZONE_RAW_BUFFER, vol_no, offset)
+	HAMMER_ENCODE(HAMMER_ZONE_RAW_BUFFER_INDEX, vol_no, offset)
 #define HAMMER_ENCODE_FREEMAP(vol_no, offset)		\
-	HAMMER_ENCODE(HAMMER_ZONE_FREEMAP, vol_no, offset)
+	HAMMER_ENCODE(HAMMER_ZONE_FREEMAP_INDEX, vol_no, offset)
 
 /*
  * Translate a zone address to zone-X address.

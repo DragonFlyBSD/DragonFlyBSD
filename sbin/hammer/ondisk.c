@@ -822,13 +822,15 @@ format_undomap(struct volume_info *root_vol)
  * all allocations are now actually done from the freemap.
  */
 void
-format_blockmap(hammer_blockmap_t blockmap, hammer_off_t zone_base)
+format_blockmap(hammer_blockmap_t blockmap, int zone, hammer_off_t offset)
 {
+	hammer_off_t zone_base = HAMMER_ZONE_ENCODE(zone, offset);
+
 	bzero(blockmap, sizeof(*blockmap));
 	blockmap->phys_offset = 0;
 	blockmap->first_offset = zone_base;
 	blockmap->next_offset = zone_base;
-	blockmap->alloc_offset = HAMMER_ENCODE(zone_base, 255, -1);
+	blockmap->alloc_offset = HAMMER_ENCODE(zone, 255, -1);
 	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
 }
 
