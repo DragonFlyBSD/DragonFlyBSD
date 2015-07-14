@@ -50,6 +50,7 @@
 #include <sys/kernel.h>
 #include <sys/cons.h>
 #include <sys/random.h>
+#include <ddb/ddb.h>
 
 #include <sys/thread2.h>
 #include <sys/mutex2.h>
@@ -1874,15 +1875,15 @@ sccnupdate(scr_stat *scp)
 
     /*
      * Don't update if videoio is in progress.  However, if we are paniced
-     * it is possible that the variable might be stuck, so ignore it in that
-     * case.
+     * or in the debugger it is possible that the variables might be stuck,
+     * so ignore it in such cases.
      */
     if (scp->sc->font_loading_in_progress || scp->sc->videoio_in_progress) {
-	if (panicstr == NULL && shutdown_in_progress == 0)
+	if (panicstr == NULL && db_active == 0 && shutdown_in_progress == 0)
 		return;
     }
 
-    if (debugger > 0 || panicstr || shutdown_in_progress) {
+    if (debugger > 0 || panicstr || db_active || shutdown_in_progress) {
 	sc_touch_scrn_saver();
     } else if (scp != scp->sc->cur_scp) {
 	return;
@@ -1905,11 +1906,11 @@ sccnupdate(scr_stat *scp)
 	|| scp->sc->switch_in_progress) {
 	return;
     }
+
     /*
      * FIXME: unlike scrn_timer(), we call scrn_update() from here even
      * when write_in_progress is non-zero.  XXX
      */
-
     if (!ISGRAPHSC(scp) && !(scp->sc->flags & SC_SCRN_BLANKED))
 	scrn_update(scp, TRUE, SCRN_ASYNCOK);
 }
@@ -2058,7 +2059,7 @@ scrn_update(scr_stat *scp, int show_cursor, int flags)
      */
     if ((flags & SCRN_ASYNCOK) && syscons_async && scp->asynctd &&
 	(scp->end - scp->start) > 16 &&
-	panicstr == NULL && shutdown_in_progress == 0) {
+	panicstr == NULL && db_active == 0 && shutdown_in_progress == 0) {
 	scp->show_cursor = show_cursor;
 	scp->queue_update_td = 1;
 	wakeup(&scp->asynctd);
