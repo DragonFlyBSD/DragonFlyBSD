@@ -319,4 +319,7 @@ DF402.0 {
 DF404.0 {
 	powl;
 	tgammal;
+	catanhl;
+	casinhl;
+	cacoshl;
 };
