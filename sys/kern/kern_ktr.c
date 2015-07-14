@@ -80,9 +80,11 @@
 #include <sys/time.h>
 #include <sys/malloc.h>
 #include <sys/spinlock.h>
+#include <sys/kbio.h>
+#include <sys/ctype.h>
+
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
-#include <sys/ctype.h>
 
 #include <machine/cpu.h>
 #include <machine/cpufunc.h>
@@ -528,17 +530,21 @@ DB_SHOW_COMMAND(ktr, db_ktr_all)
 		return;
 	}
 	/*
-	 * Lopp throug all the buffers and print the content of them, sorted
+	 * Loop throug all the buffers and print the content of them, sorted
 	 * by the timestamp.
 	 */
 	while (1) {
 		int counter;
 		u_int64_t highest_ts;
-		int highest_cpu;
 		struct ktr_entry *kp;
+		int highest_cpu;
+		int c;
 
-		if (a_flag == 1 && cncheckc() != -1)
-			return;
+		if (a_flag == 1) {
+			c = cncheckc();
+			if (c != -1 && c != NOKEY)
+				return;
+		}
 		highest_ts = 0;
 		highest_cpu = -1;
 		/*

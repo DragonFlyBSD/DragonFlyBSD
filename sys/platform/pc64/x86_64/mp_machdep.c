@@ -474,8 +474,10 @@ start_all_aps(u_int boot_addr)
 			CHECK_PRINT("trace");	/* show checkpoints */
 			/* better panic as the AP may be running loose */
 			kprintf("panic y/n? [y] ");
+			cnpoll(TRUE);
 			if (cngetc() != 'n')
 				panic("bye-bye");
+			cnpoll(FALSE);
 		}
 		CHECK_PRINT("trace");		/* show checkpoints */
 	}

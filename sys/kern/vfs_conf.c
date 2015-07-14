@@ -55,6 +55,7 @@
 #include <sys/diskslice.h>
 #include <sys/conf.h>
 #include <sys/cons.h>
+#include <sys/kbio.h>
 #include <sys/device.h>
 #include <sys/disk.h>
 #include <sys/namecache.h>
@@ -543,20 +544,26 @@ static int
 getline(char *cp, int limit)
 {
 	char *lp;
+	int dummy;
 	int c;
 
 	lp = cp;
+	cnpoll(TRUE);
 	for (;;) {
-		c = cngetc();
+		c = cncheckc();
 
 		switch (c) {
+		case NOKEY:
+			tsleep(&dummy, 0, "cnpoll", hz / 25);
+			break;
 		case -1:
-			return(-1);
+			goto done;
 		case '\n':
 		case '\r':
 			kprintf("\n");
 			*lp++ = '\0';
-			return(0);
+			c = 0;
+			goto done;
 		case '\b':
 		case '\177':
 			if (lp > cp) {
@@ -587,6 +594,9 @@ getline(char *cp, int limit)
 			continue;
 		}
 	}
+done:
+	cnpoll(FALSE);
+	return c;
 }
 
 /*

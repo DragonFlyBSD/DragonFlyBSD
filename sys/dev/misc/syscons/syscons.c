@@ -255,9 +255,10 @@ static cn_checkc_t	sccncheckc;
 static cn_putc_t	sccnputc;
 static cn_dbctl_t	sccndbctl;
 static cn_term_t	sccnterm;
+static cn_poll_t	sccnpoll;
 
 CONS_DRIVER(sc, sccnprobe, sccninit, sccninit_fini, sccnterm,
-	    sccngetc, sccncheckc, sccnputc, sccndbctl);
+	    sccngetc, sccncheckc, sccnputc, sccndbctl, sccnpoll);
 
 static	d_open_t	scopen;
 static	d_close_t	scclose;
@@ -709,6 +710,10 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
 
     switch (event) {
     case KBDIO_KEYINPUT:
+	if (sc->kbd && sc->kbd->kb_flags & KB_POLLED) {
+		lwkt_reltoken(&tty_token);
+		return 0;
+	}
 	break;
     case KBDIO_UNLOADING:
 	syscons_lock();
@@ -1743,6 +1748,23 @@ sccncheckc(void *private)
     return sccngetch(SCGETC_NONBLOCK);
 }
 
+/*
+ * Set polling mode (also disables the tty feed), use when
+ * polling for console key input.
+ */
+static void
+sccnpoll(void *private, int on)
+{
+    scr_stat *scp;
+
+    syscons_lock();
+    sc_touch_scrn_saver();
+    scp = sc_console->sc->cur_scp;	/* XXX */
+    syscons_unlock();
+    if (scp->sc->kbd)
+	    kbd_poll(scp->sc->kbd, on);
+}
+
 static void
 sccndbctl(void *private, int on)
 {
@@ -1815,9 +1837,7 @@ sccngetch(int flags)
     scp->kbd_mode = K_XLATE;
     kbd_ioctl(scp->sc->kbd, KDSKBMODE, (caddr_t)&scp->kbd_mode);
 
-    kbd_poll(scp->sc->kbd, TRUE);
     c = scgetc(scp->sc, SCGETC_CN | flags);
-    kbd_poll(scp->sc->kbd, FALSE);
 
     scp->kbd_mode = cur_mode;
     kbd_ioctl(scp->sc->kbd, KDSKBMODE, (caddr_t)&scp->kbd_mode);
@@ -1837,6 +1857,9 @@ sccngetch(int flags)
 	}
 	return c;	/* XXX */
     case NOKEY:
+	if (flags & SCGETC_NONBLOCK)
+		return c;
+	/* fall through */
     case ERRKEY:
     default:
 	return -1;

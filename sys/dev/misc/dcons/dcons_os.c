@@ -147,7 +147,7 @@ static cn_checkc_t 	dcons_cncheckc;
 static cn_putc_t	dcons_cnputc;
 
 CONS_DRIVER(dcons, dcons_cnprobe, dcons_cninit, dcons_cninit_fini,
-	    NULL, dcons_cngetc, dcons_cncheckc, dcons_cnputc, NULL);
+	    NULL, dcons_cngetc, dcons_cncheckc, dcons_cnputc, NULL, NULL);
 
 #if __FreeBSD_version >= 502122
 static gdb_probe_f dcons_dbg_probe;

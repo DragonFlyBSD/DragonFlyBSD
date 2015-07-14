@@ -242,7 +242,7 @@ static cn_checkc_t	vconscheckc;
 static cn_putc_t	vconsputc;
 
 CONS_DRIVER(vcons, vconsprobe, vconsinit, vconsinit_fini, vconsterm, vconsgetc,
-		vconscheckc, vconsputc, NULL);
+		vconscheckc, vconsputc, NULL, NULL);
 
 static struct termios init_tio;
 static struct consdev *vconsole;

@@ -61,11 +61,13 @@
 #include <sys/bus.h>
 #include <sys/sysctl.h>
 #include <sys/cons.h>
+#include <sys/kbio.h>
 #include <sys/systimer.h>
 #include <sys/globaldata.h>
-#include <sys/thread2.h>
 #include <sys/machintr.h>
 #include <sys/interrupt.h>
+
+#include <sys/thread2.h>
 
 #include <machine/clock.h>
 #include <machine/cputypes.h>
@@ -798,10 +800,14 @@ startrtclock(void)
 	freq = calibrate_clocks();
 #ifdef CLK_CALIBRATION_LOOP
 	if (bootverbose) {
-		kprintf(
-		"Press a key on the console to abort clock calibration\n");
-		while (cncheckc() == -1)
+		int c;
+
+		cnpoll(TRUE);
+		kprintf("Press a key on the console to "
+			"abort clock calibration\n");
+		while ((c = cncheckc()) == -1 || c == NOKEY)
 			calibrate_clocks();
+		cnpoll(FALSE);
 	}
 #endif
 

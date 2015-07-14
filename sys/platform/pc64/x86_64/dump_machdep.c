@@ -34,6 +34,7 @@
 #include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/kerneldump.h>
+#include <sys/kbio.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <machine/elf.h>
@@ -169,6 +170,7 @@ cb_dumpdata(struct md_pa *mdp, int seqnr, void *arg)
 
 	kprintf("  chunk %d: %ldMB (%ld pages)", seqnr, PG2MB(pgs), pgs);
 
+	cnpoll(TRUE);
 	while (pgs) {
 		chunk = pgs;
 		if (chunk > (max_iosize/PAGE_SIZE))
@@ -193,12 +195,16 @@ cb_dumpdata(struct md_pa *mdp, int seqnr, void *arg)
 
 		/* Check for user abort. */
 		c = cncheckc();
-		if (c == 0x03)
-			return (ECANCELED);
-		if (c != -1)
+		if (c == 0x03) {
+			error = ECANCELED;
+			goto done;
+		}
+		if (c != -1 && c != NOKEY)
 			kprintf(" (CTRL-C to abort) ");
 	}
 	kprintf(" ... %s\n", (error) ? "fail" : "ok");
+done:
+	cnpoll(FALSE);
 	return (error);
 }
 

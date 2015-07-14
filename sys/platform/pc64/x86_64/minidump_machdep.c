@@ -35,6 +35,7 @@
 #include <sys/kernel.h>
 #include <sys/kerneldump.h>
 #include <sys/msgbuf.h>
+#include <sys/kbio.h>
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
 #include <vm/pmap.h>
@@ -169,7 +170,7 @@ blk_write(struct dumperinfo *di, char *ptr, vm_paddr_t pa, size_t sz)
 	c = cncheckc();
 	if (c == 0x03)
 		return (ECANCELED);
-	if (c != -1)
+	if (c != -1 && c != NOKEY)
 		kprintf(" (CTRL-C to abort) ");
 
 	return (0);
@@ -192,6 +193,7 @@ minidumpsys(struct dumperinfo *di)
 	struct minidumphdr mdhdr;
 	struct mdglobaldata *md;
 
+	cnpoll(TRUE);
 	counter = 0;
 	/*
 	 * Walk page table pages, set bits in vm_page_dump.
@@ -412,9 +414,11 @@ minidumpsys(struct dumperinfo *di)
 	/* Signal completion, signoff and exit stage left. */
 	dev_ddump(di->priv, NULL, 0, 0, 0);
 	kprintf("\nDump complete\n");
+	cnpoll(FALSE);
 	return;
 
  fail:
+	cnpoll(FALSE);
 	if (error < 0)
 		error = -error;
 

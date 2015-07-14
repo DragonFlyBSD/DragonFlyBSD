@@ -133,7 +133,7 @@ static uint32_t console_rdev;
 SYSCTL_INT(_kern, OID_AUTO, console_rdev, CTLFLAG_RW,
 	&console_rdev, 0, "");
 
-CONS_DRIVER(cons, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+CONS_DRIVER(cons, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 SET_DECLARE(cons_set, struct consdev);
 
 void
@@ -521,6 +521,15 @@ cncheckc(void)
 	if ((cn_tab == NULL) || cn_mute)
 		return (-1);
 	return ((*cn_tab->cn_checkc)(cn_tab->cn_private));
+}
+
+void
+cnpoll(int on)
+{
+	if ((cn_tab == NULL) || cn_mute)
+		return;
+	if (cn_tab->cn_poll)
+		((*cn_tab->cn_poll)(cn_tab->cn_private, on));
 }
 
 void

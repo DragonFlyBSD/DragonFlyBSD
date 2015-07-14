@@ -57,6 +57,7 @@ typedef	int	cn_getc_t (void *);
 typedef	int	cn_checkc_t (void *);
 typedef	void	cn_putc_t (void *, int);
 typedef	void	cn_dbctl_t (void *, int);
+typedef void	cn_poll_t (void *, int);
 
 struct consdev {
 	cn_probe_t	*cn_probe;	/* probe hardware */
@@ -67,6 +68,7 @@ struct consdev {
 	cn_checkc_t	*cn_checkc;	/* kernel test char ready */
 	cn_putc_t	*cn_putc;	/* kernel putchar interface */
 	cn_dbctl_t	*cn_dbctl;	/* debugger control interface */
+	cn_poll_t	*cn_poll;	/* polling mode control */
 	struct	tty *cn_tp;	/* tty structure for console device */
 	cdev_t	cn_dev;		/* device after cn_init_fini tie-in */
 	short	cn_pri;		/* pecking order; the higher the better */
@@ -96,9 +98,10 @@ extern	int sysbeep_enable;		/* enable audio system beep */
 extern	struct consdev *cn_tab;	/* console device */
 extern  struct consdev *gdb_tab;/* gdb debugger device */
 
-#define CONS_DRIVER(name, probe, init, initfini, term, getc, checkc, putc, dbctl)	\
+#define CONS_DRIVER(name, probe, init, initfini, term, getc, checkc, putc, dbctl, poller)	\
 	static struct consdev name##_consdev = {			\
-		probe, init, initfini, term, getc, checkc, putc, dbctl	\
+		probe, init, initfini, term, getc, checkc, putc, dbctl,	\
+		poller							\
 	};								\
 	DATA_SET(cons_set, name##_consdev)
 
@@ -109,6 +112,7 @@ void	cninit (void);
 void	cninit_finish (void);
 void	cndbctl (int);
 void	cnputc (int);
+void	cnpoll (int);
 
 #endif /* _KERNEL */
 

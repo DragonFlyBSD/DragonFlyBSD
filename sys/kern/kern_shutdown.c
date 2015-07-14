@@ -65,6 +65,7 @@
 #include <sys/sysproto.h>
 #include <sys/device.h>
 #include <sys/cons.h>
+#include <sys/kbio.h>
 #include <sys/shm.h>
 #include <sys/kern_syscall.h>
 #include <vm/vm_map.h>
@@ -484,6 +485,7 @@ static void
 shutdown_panic(void *junk, int howto)
 {
 	int loop;
+	int c;
 
 	if (howto & RB_DUMP) {
 		if (PANIC_REBOOT_WAIT_TIME != 0) {
@@ -495,7 +497,8 @@ shutdown_panic(void *junk, int howto)
 				     loop > 0; --loop) {
 					DELAY(1000 * 100); /* 1/10th second */
 					/* Did user type a key? */
-					if (cncheckc() != -1)
+					c = cncheckc();
+					if (c != -1 && c != NOKEY)
 						break;
 				}
 				if (!loop)

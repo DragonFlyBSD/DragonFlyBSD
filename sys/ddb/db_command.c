@@ -451,6 +451,7 @@ db_command_loop(void)
 	/*
 	 * Initialize 'prev' and 'next' to dot.
 	 */
+	cnpoll(TRUE);
 	db_prev = db_dot;
 	db_next = db_dot;
 
@@ -467,6 +468,7 @@ db_command_loop(void)
 	    db_command(&db_last_command, db_command_table,
 		    SET_BEGIN(db_cmd_set), SET_LIMIT(db_cmd_set));
 	}
+	cnpoll(FALSE);
 }
 
 void

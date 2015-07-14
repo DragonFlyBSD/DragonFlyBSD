@@ -2856,7 +2856,7 @@ static cn_putc_t siocnputc;
 
 #if defined(__i386__) || defined(__x86_64__)
 CONS_DRIVER(sio, siocnprobe, siocninit, siocninit_fini,
-	    NULL, siocngetc, siocncheckc, siocnputc, NULL);
+	    NULL, siocngetc, siocncheckc, siocnputc, NULL, NULL);
 #endif
 
 /* To get the GDB related variables */
