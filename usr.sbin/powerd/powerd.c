@@ -142,7 +142,7 @@ static int PowerFd;
 static int Hysteresis = 10;	/* percentage */
 static double TriggerUp = 0.25;	/* single-cpu load to force max freq */
 static double TriggerDown;	/* load per cpu to force the min freq */
-static int HasPerfbias = 1;
+static int HasPerfbias = 0;
 static int AdjustCpuFreq = 1;
 static int AdjustCstate = 0;
 
@@ -181,7 +181,7 @@ main(int ac, char **av)
 			DebugOpt = 1;
 			break;
 		case 'e':
-			HasPerfbias = 0;
+			HasPerfbias = 1;
 			break;
 		case 'f':
 			AdjustCpuFreq = 0;
