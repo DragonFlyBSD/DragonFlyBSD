@@ -170,6 +170,15 @@ TUNABLE_INT("hw.acpi.cpu.pst.ht_reuse_domain", &acpi_pst_ht_reuse_domain);
 static int			acpi_pst_force_pkg_domain = 0;
 TUNABLE_INT("hw.acpi.cpu.pst.force_pkg_domain", &acpi_pst_force_pkg_domain);
 
+/*
+ * Force CPU package power domain for Intel CPUs.
+ *
+ * As of this write (14 July 2015), all Intel CPUs only have CPU package
+ * power domain.
+ */
+static int			acpi_pst_intel_pkg_domain = 1;
+TUNABLE_INT("hw.acpi.cpu.pst.intel_pkg_domain", &acpi_pst_intel_pkg_domain);
+
 static device_method_t acpi_pst_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,			acpi_pst_probe),
@@ -758,7 +767,10 @@ proc_pdl:
 	 * Some CPUs only have package P-states, but some BIOSes put each
 	 * hyperthread to its own P-state domain; allow user to override.
 	 */
-	if (LIST_EMPTY(&dom->pd_pstlist) && acpi_pst_force_pkg_domain) {
+	if (LIST_EMPTY(&dom->pd_pstlist) &&
+	    (acpi_pst_force_pkg_domain ||
+	     (cpu_vendor_id == CPU_VENDOR_INTEL &&
+	      acpi_pst_intel_pkg_domain))) {
 		cpumask_t mask;
 
 		mask = get_cpumask_from_level(sc->pst_cpuid, CHIP_LEVEL);
