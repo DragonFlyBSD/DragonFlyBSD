@@ -64,6 +64,7 @@
 
 #include <machine/stdarg.h>
 #include <machine/smp.h>
+#include <machine/clock.h>
 #include <machine/atomic.h>
 
 #ifdef _KERNEL_VIRTUAL
@@ -1029,43 +1030,58 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
     }
 }
 
-#define LWKT_IPIQ_NLATENCY	7
+#define LWKT_IPIQ_NLATENCY	8
+#define LWKT_IPIQ_NLATENCY_MASK	(LWKT_IPIQ_NLATENCY - 1)
 
 struct lwkt_ipiq_latency_log {
-	int		idx;
+	int		idx;	/* unmasked index */
 	int		pad;
 	uint64_t	latency[LWKT_IPIQ_NLATENCY];
 };
 
 static struct lwkt_ipiq_latency_log	lwkt_ipiq_latency_logs[MAXCPU];
+static uint64_t save_tsc;
 
+/*
+ * IPI callback (already in a critical section)
+ */
 static void
-lwkt_ipiq_latency_testfunc(void *arg)
+lwkt_ipiq_latency_testfunc(void *arg __unused)
 {
-	uint64_t prev_tsc = (uintptr_t)arg;
-	uint64_t tsc;
-	struct globaldata *gd = mycpu;
+	uint64_t delta_tsc;
+	struct globaldata *gd;
 	struct lwkt_ipiq_latency_log *lat;
 
-	lat = &lwkt_ipiq_latency_logs[gd->gd_cpuid];
+	/*
+	 * Get delta TSC (assume TSCs are synchronized) as quickly as
+	 * possible and then convert to nanoseconds.
+	 */
+	delta_tsc = rdtsc_ordered() - save_tsc;
+	delta_tsc = delta_tsc * 1000000000LU / tsc_frequency;
 
-	crit_enter_gd(gd);
-	tsc = rdtsc_ordered();
-	lat->latency[lat->idx++] = tsc - prev_tsc;
-	if (lat->idx >= LWKT_IPIQ_NLATENCY)
-		lat->idx = 0;
-	crit_exit_gd(gd);
+	/*
+	 * Record in our save array.
+	 */
+	gd = mycpu;
+	lat = &lwkt_ipiq_latency_logs[gd->gd_cpuid];
+	lat->latency[lat->idx & LWKT_IPIQ_NLATENCY_MASK] = delta_tsc;
+	++lat->idx;
 }
 
 /*
  * Send IPI from cpu0 to other cpus
+ *
+ * NOTE: Machine must be idle for test to run dependably, and also probably
+ *	 a good idea not to be running powerd.
+ *
+ * NOTE: Caller should use 'usched :1 <command>' to lock itself to cpu 0.
+ *	 See 'ipitest' script in /usr/src/test/sysperf/ipitest
  */
 static int
 lwkt_ipiq_latency_test(SYSCTL_HANDLER_ARGS)
 {
 	struct globaldata *gd;
 	int cpu = 0, orig_cpu, error;
-	uint64_t tsc;
 
 	error = sysctl_handle_int(oidp, &cpu, arg2, req);
 	if (error || req->newptr == NULL)
@@ -1081,8 +1097,8 @@ lwkt_ipiq_latency_test(SYSCTL_HANDLER_ARGS)
 
 	gd = globaldata_find(cpu);
 
-	tsc = rdtsc_ordered();
-	lwkt_send_ipiq(gd, lwkt_ipiq_latency_testfunc, (void *)(uintptr_t)tsc);
+	save_tsc = rdtsc_ordered();
+	lwkt_send_ipiq(gd, lwkt_ipiq_latency_testfunc, NULL);
 
 	lwkt_migratecpu(orig_cpu);
 	return 0;

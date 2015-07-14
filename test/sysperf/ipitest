@@ -1,0 +1,48 @@
+#!/bin/csh
+#
+# ipitest [ Cmode ]
+#
+# NOTE: Run from current directory as ./ipitest, output in ipitest.out
+#
+# NOTE: Running powerd during this test is not recommended.
+
+# Force test to run from cpu 0
+#
+if ( $?DIDUSCHED == 0 ) then
+	setenv DIDUSCHED ok
+	usched :1 ./ipitest $argv
+	exit 0
+endif
+
+# CX mode can be specified on the command line, if not
+# specified test all available CX modes.
+#
+if ( $#argv == 0 ) then
+    set modes = "`sysctl -n machdep.mwait.CX.supported`"
+else
+    set modes = "$argv"
+endif
+
+# Start test.  Use a sleep to give other cpus time to go
+# idle.  Try to avoid being on a hardclock boundary.
+#
+set file = "ipitest.out"
+echo "Testing $modes"
+
+fgrep CPU /var/run/dmesg.boot | fgrep @ | head -1 > ${file}
+date >> ${file}
+
+foreach mode ( $modes )
+    echo "Testing mode $mode"
+    sysctl machdep.mwait.CX.idle=$mode
+    foreach i ( 1 2 3 )
+	foreach j ( x x x x x x x x x )
+		sleep 0.200010
+		sysctl debug.ipiq.latency_test=$i >& /dev/null
+	end
+    end
+    sleep 0.2
+    echo "Testing mode $mode" >> ${file}
+    sysctl debug.ipiq >> ${file}
+    echo ""
+end
