@@ -12,7 +12,7 @@
 
 name="wpa_supplicant"
 rcvar=
-command="/usr/sbin/${name}"
+command="/usr/sbin/wpa_supplicant"
 conf_file="/etc/wpa_supplicant.conf"
 
 start_precmd="wpa_supplicant_precmd"
@@ -27,6 +27,22 @@ wpa_supplicant_postcmd()
 #	while ! ifconfig $ifn | grep -qw "status: associated"; do
 #		sleep 1
 #	done
+	if [ "${command}" = "/usr/sbin/wpa_supplicant" ];
+	then
+		cat << EOF
+         ==============================================================
+         =              WARNING  *  SECURITY  *  WARNING              =
+         ==============================================================
+
+The base wpa_supplicant is running.  This version is several releases behind
+and is not patched for security vulnerabilities.  It is highly recommended
+that the DPorts version be run instead.  Instructions to switch here:
+
+http://www.dragonflybsd.org/docs/docs/newhandbook/WirelessNetwork/#index1h2
+
+EOF
+		sleep 10
+	fi
 }
 
 ifn="$2"
