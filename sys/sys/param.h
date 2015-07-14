@@ -124,9 +124,10 @@
  * 400200 - 4.2 release
  * 400300 - 4.3 development
  * 400301 - posix compliant iconv (no const qualifier)
+ * 400302 - Replacement of libm with OpenBSD's libm
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400301	/* propagated to newvers */
+#define __DragonFly_version 400302	/* propagated to newvers */
 
 #include <sys/_null.h>
 
