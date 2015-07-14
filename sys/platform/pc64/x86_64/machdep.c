@@ -228,6 +228,8 @@ static int			cpu_mwait_c3_preamble =
 
 SYSCTL_STRING(_machdep_mwait_CX, OID_AUTO, supported, CTLFLAG_RD,
     cpu_mwait_cx_supported, 0, "MWAIT supported C states");
+SYSCTL_INT(_machdep_mwait_CX, OID_AUTO, c3_preamble, CTLFLAG_RD,
+    &cpu_mwait_c3_preamble, 0, "C3+ preamble mask");
 
 static int	cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS,
 		    int *, boolean_t);
