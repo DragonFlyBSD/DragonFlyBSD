@@ -358,6 +358,7 @@ int
 idr_alloc(struct idr *idp, void *ptr, int start, int end, unsigned gfp_mask)
 {
 	int lim = end > 0 ? end - 1 : INT_MAX;
+	int want = start;
 	int result, id;
 
 	if (start < 0)
@@ -368,11 +369,9 @@ idr_alloc(struct idr *idp, void *ptr, int start, int end, unsigned gfp_mask)
 
 	lwkt_gettoken(&idp->idr_token);
 
-	/*
-	 * Grow if necessary (or if forced by the loop)
-	 */
-	if (start >= idp->idr_count)
-		idr_grow(idp, start);
+grow_again:
+	if (want >= idp->idr_count)
+		idr_grow(idp, want);
 
 	/*
 	 * Check if a spot is available, break and return 0 if true,
@@ -382,8 +381,8 @@ idr_alloc(struct idr *idp, void *ptr, int start, int end, unsigned gfp_mask)
 	 */
 	id = idr_find_free(idp, start, lim);
 	if (id == -1) {
-		result = -ENOSPC;
-		goto done;
+		want = idp->idr_count;
+		goto grow_again;
 	}
 
 	if (id >= lim) {
@@ -392,7 +391,7 @@ idr_alloc(struct idr *idp, void *ptr, int start, int end, unsigned gfp_mask)
 	}
 
 	if (id >= idp->idr_count)
-		panic("idr_get_new_above(): illegal resid %d", id);
+		panic("idr_alloc(): illegal resid %d", id);
 	if (id > idp->idr_lastindex)
 		idp->idr_lastindex = id;
 	if (start <= idp->idr_freeindex)
