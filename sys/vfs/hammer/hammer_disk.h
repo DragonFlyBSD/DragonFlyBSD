@@ -200,10 +200,12 @@ typedef u_int32_t hammer_crc_t;
 	HAMMER_ENCODE(HAMMER_ZONE_FREEMAP, vol_no, offset)
 
 /*
- * Translate a zone address to zone-2 address.
+ * Translate a zone address to zone-X address.
  */
-#define hammer_xlate_to_zone2(offset) \
-	(((offset) & ~HAMMER_OFF_ZONE_MASK) | HAMMER_ZONE_RAW_BUFFER)
+#define hammer_xlate_to_zoneX(zone, offset)		\
+	HAMMER_ZONE_ENCODE((zone), (offset) & ~HAMMER_OFF_ZONE_MASK)
+#define hammer_xlate_to_zone2(offset)			\
+	hammer_xlate_to_zoneX(HAMMER_ZONE_RAW_BUFFER_INDEX, (offset))
 
 /*
  * Big-Block backing store

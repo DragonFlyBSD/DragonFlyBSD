@@ -820,8 +820,7 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 	 */
 	if (resv->refs == 1 && (resv->flags & HAMMER_RESF_LAYER2FREE)) {
 		resv->append_off = HAMMER_BIGBLOCK_SIZE;
-		base_offset = resv->zone_offset & ~HAMMER_OFF_ZONE_MASK;
-		base_offset = HAMMER_ZONE_ENCODE(resv->zone, base_offset);
+		base_offset = hammer_xlate_to_zoneX(resv->zone, resv->zone_offset);
 		if (!TAILQ_EMPTY(&hmp->dedup_lru_list))
 			hammer_dedup_cache_inval(hmp, base_offset);
 		error = hammer_del_buffers(hmp, base_offset,
