@@ -85,6 +85,16 @@ void	 idr_init(struct idr *idp);
 
 int idr_alloc(struct idr *idp, void *ptr, int start, int end, unsigned gfp_mask);
 
+static inline void idr_preload(unsigned gfp_mask)
+{
+	/* Linux disables preemption and allocates a per-cpu buffer here */
+}
+
+static inline void idr_preload_end(void)
+{
+	/* Linux re-enables preemption here */
+}
+
 #endif /* _KERNEL */
 
 #endif /* _IDR_H_ */

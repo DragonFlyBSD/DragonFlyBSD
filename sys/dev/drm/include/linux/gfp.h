@@ -30,6 +30,7 @@
 #include <vm/vm_page.h>
 #include <machine/bus_dma.h>
 
+#define GFP_NOWAIT	M_NOWAIT
 #define GFP_ATOMIC	M_NOWAIT
 #define GFP_KERNEL	M_WAITOK
 #define GFP_TEMPORARY	M_WAITOK
