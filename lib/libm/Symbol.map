@@ -3,7 +3,6 @@
  */
 
 DF306.0 {
-	__fe_dfl_env;
 	tgamma;
 	acos;
 	acosf;
@@ -205,12 +204,6 @@ DF306.0 {
 	cexpf;
 	log2;
 	log2f;
-	feclearexcept;
-	fegetexceptflag;
-	fetestexcept;
-	fegetround;
-	fesetround;
-	fesetenv;
 	acoshl;
 	asinhl;
 	atanhl;

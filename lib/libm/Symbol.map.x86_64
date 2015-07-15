@@ -2,6 +2,7 @@
  * $FreeBSD: head/lib/msun/amd64/Symbol.map 226218 2011-10-10 15:43:09Z das $
  */
 DF306.0 {
+	__fe_dfl_env;
 	fesetexceptflag;
 	feraiseexcept;
 	fegetenv;
@@ -9,4 +10,14 @@ DF306.0 {
 	feupdateenv;
 	feenableexcept;
 	fedisableexcept;
+	feclearexcept;
+	fegetexceptflag;
+	fetestexcept;
+	fegetround;
+	fesetround;
+	fesetenv;
+};
+
+DF404.0 {
+	fegetexcept;
 };
