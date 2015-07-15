@@ -2255,7 +2255,6 @@ options		IGB_RSS_DEBUG
 options		IGB_TSS_DEBUG
 options		IGB_MSIX_DEBUG
 options		IX_RSS_DEBUG
-#options	ED_NO_MIIBUS
 options 	ENABLE_ALART
 options 	FB_DEBUG=2
 options 	FB_INSTALL_CDEV

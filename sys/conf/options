@@ -628,9 +628,6 @@ BWN_TXRING_SLOTS	opt_bwn.h
 # siba_bwn driver
 SIBA_DEBUG		opt_siba.h
 
-# ed driver
-ED_NO_MIIBUS		opt_ed.h
-
 # emx driver
 EMX_RSS_DEBUG		opt_emx.h
 EMX_TSO_DEBUG		opt_emx.h
