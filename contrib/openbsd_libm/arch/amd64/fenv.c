@@ -44,7 +44,7 @@
  */
 fenv_t __fe_dfl_env = {
 	{
-		0xffff0000 | __INITIAL_NPXCW__,	/* Control word register */
+		0xffff0000 | __INITIAL_FPUCW__,	/* Control word register */
 		0xffff0000,			/* Status word register */
 		0xffffffff,			/* Tag word register */
 		{
