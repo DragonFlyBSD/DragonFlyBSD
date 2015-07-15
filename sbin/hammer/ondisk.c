@@ -869,7 +869,7 @@ again:
 	if ((blockmap->next_offset ^ (blockmap->next_offset + bytes - 1)) &
 	    ~HAMMER_BUFMASK64) {
 		volume->cache.modified = 1;
-		blockmap->next_offset = (blockmap->next_offset + bytes) &
+		blockmap->next_offset = (blockmap->next_offset + bytes - 1) &
 				        ~HAMMER_BUFMASK64;
 	}
 
