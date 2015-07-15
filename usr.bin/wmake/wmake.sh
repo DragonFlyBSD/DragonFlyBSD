@@ -17,5 +17,12 @@ if [ "$path" = "" ]; then
 fi
 
 escaped_args=`echo -n "$@" | sed -e "s/'/\\'/"`
+for i in $escaped_args; do
+    case $i in
+    DESTDIR=*)
+	escaped_args="$escaped_args _SHLIBDIRPREFIX=${i#DESTDIR=}"
+	;;
+    esac
+done
 
 eval `cd $path; make WMAKE_ARGS="'$escaped_args'" -f Makefile.inc1 wmake`
