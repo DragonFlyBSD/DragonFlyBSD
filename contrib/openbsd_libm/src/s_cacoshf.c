@@ -49,7 +49,16 @@ float complex
 cacoshf(float complex z)
 {
 	float complex w;
+	float rx, ry;
 
-	w = I * cacosf (z);
-	return (w);
+	w = cacosf (z);
+	rx = crealf (w);
+	ry = cimagf (w);
+	if (isnan(rx) && isnan(ry))
+		return (CMPLXF(ry, rx));
+	if (isnan(rx))
+		return (CMPLXF(fabsf(ry), rx));
+	if (isnan(ry))
+		return (CMPLXF(ry, ry));
+	return (CMPLXF(fabsf(ry), copysignf(rx, cimagf(z))));
 }

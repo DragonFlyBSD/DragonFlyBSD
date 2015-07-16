@@ -50,9 +50,21 @@ double complex
 cacosh(double complex z)
 {
 	double complex w;
+	double rx, ry;
 
-	w = I * cacos (z);
-	return (w);
+	w = cacos (z);
+	rx = creal (w);
+	ry = cimag (w);
+	if (isnan(rx) && isnan(ry))
+		return (CMPLX(ry, rx));
+	/* cacosh(NaN + I*+-Inf) = +Inf + I*NaN */
+	/* cacosh(+-Inf + I*NaN) = +Inf + I*NaN */
+	if (isnan(rx))
+		return (CMPLX(fabs(ry), rx));
+	/* cacosh(0 + I*NaN) = NaN + I*NaN */
+	if (isnan(ry))
+		return (CMPLX(ry, ry));
+	return (CMPLX(fabs(ry), copysign(rx, cimag(z))));
 }
 
 #if	LDBL_MANT_DIG == DBL_MANT_DIG

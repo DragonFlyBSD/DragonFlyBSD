@@ -50,7 +50,16 @@ long double complex
 cacoshl(long double complex z)
 {
 	long double complex w;
+	long double rx, ry;
 
-	w = I * cacosl(z);
-	return (w);
+	w = cacosl (z);
+	rx = creall (w);
+	ry = cimagl (w);
+	if (isnan(rx) && isnan(ry))
+		return (CMPLXL(ry, rx));
+	if (isnan(rx))
+		return (CMPLXL(fabsl(ry), rx));
+	if (isnan(ry))
+		return (CMPLXL(ry, ry));
+	return (CMPLXL(fabsl(ry), copysignl(rx, cimagl(z))));
 }
