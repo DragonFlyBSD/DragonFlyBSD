@@ -23,6 +23,9 @@ else
     set modes = "$argv"
 endif
 
+set ncpus = "`sysctl -n hw.ncpu`"
+set cpus = "`seq 1 $ncpus`"
+
 # Start test.  Use a sleep to give other cpus time to go
 # idle.  Try to avoid being on a hardclock boundary.
 #
@@ -35,7 +38,7 @@ date >> ${file}
 foreach mode ( $modes )
     echo "Testing mode $mode"
     sysctl machdep.mwait.CX.idle=$mode
-    foreach i ( 1 2 3 )
+    foreach i ( $cpus )
 	foreach j ( x x x x x x x x x )
 		sleep 0.200010
 		sysctl debug.ipiq.latency_test=$i >& /dev/null
