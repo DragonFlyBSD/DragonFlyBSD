@@ -284,7 +284,7 @@ MLINKS+=lgamma.3 lgammaf.3 \
 	lgamma.3 tgammaf.3 \
 	lgamma.3 tgammal.3 \
 	lgamma.3 gamma.3 \
-	lgamma.3 gammaf.3 \
+	lgamma.3 gammaf.3
 MLINKS+=logb.3 logbf.3 \
 	logb.3 logbl.3 \
 	logb.3 scalb.3 \
