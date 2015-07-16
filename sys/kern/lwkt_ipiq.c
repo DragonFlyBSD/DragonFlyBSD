@@ -1106,7 +1106,8 @@ lwkt_ipiq_latency_test(SYSCTL_HANDLER_ARGS)
 
 SYSCTL_NODE(_debug, OID_AUTO, ipiq, CTLFLAG_RW, 0, "");
 SYSCTL_PROC(_debug_ipiq, OID_AUTO, latency_test, CTLTYPE_INT | CTLFLAG_RW,
-    NULL, 0, lwkt_ipiq_latency_test, "I", "");
+    NULL, 0, lwkt_ipiq_latency_test, "I",
+    "ipi latency test, arg: remote cpuid");
 
 static int
 lwkt_ipiq_latency(SYSCTL_HANDLER_ARGS)
@@ -1133,7 +1134,7 @@ lwkt_ipiq_latency_init(void *dummy __unused)
 		SYSCTL_ADD_PROC(NULL, SYSCTL_STATIC_CHILDREN(_debug_ipiq),
 		    OID_AUTO, name, CTLTYPE_OPAQUE | CTLFLAG_RD,
 		    &lwkt_ipiq_latency_logs[cpu], 0, lwkt_ipiq_latency,
-		    "LU", "");
+		    "LU", "7 latest ipi latency measurement results");
 	}
 }
 SYSINIT(lwkt_ipiq_latency, SI_SUB_CONFIGURE, SI_ORDER_ANY,
