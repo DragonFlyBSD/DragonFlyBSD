@@ -910,6 +910,7 @@ again:
 		assert(layer2->append_off == 0);
 	}
 	if (layer2->zone != zone) {
+		volume->cache.modified = 1;
 		blockmap->next_offset = (blockmap->next_offset + HAMMER_BIGBLOCK_SIZE) &
 					~HAMMER_BIGBLOCK_MASK64;
 		goto again;
