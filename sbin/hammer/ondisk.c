@@ -905,6 +905,7 @@ again:
 	 */
 	if (layer2->zone == 0) {
 		--layer1->blocks_free;
+		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 		layer2->zone = zone;
 		assert(layer2->bytes_free == HAMMER_BIGBLOCK_SIZE);
 		assert(layer2->append_off == 0);
@@ -927,7 +928,6 @@ again:
 	layer2->append_off = (int)blockmap->next_offset &
 			      HAMMER_BIGBLOCK_MASK;
 
-	layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 	layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 
 	ptr = get_buffer_data(*result_offp, bufferp, 0);
