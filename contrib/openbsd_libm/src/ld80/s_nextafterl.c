@@ -8,6 +8,7 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
+ * Copyright (c) 2002, 2003 David Schultz <das@FreeBSD.ORG>
  */
 
 /* IEEE functions
@@ -22,71 +23,71 @@
 
 #include "math_private.h"
 
+union IEEEl2bits {
+	long double	e;
+	struct {
+		unsigned int	manl	:32;
+		unsigned int	manh	:32;
+		unsigned int	exp	:15;
+		unsigned int	sign	:1;
+		unsigned int	junkl	:16;
+		unsigned int	junkh	:32;
+	} bits;
+	struct {
+		unsigned long	man	:64;
+		unsigned int	expsign	:16;
+		unsigned long	junk	:48;
+	} xbits;
+};
+
+#define	LDBL_NBIT	0x80000000
+#define	mask_nbit_l(u)	((u).bits.manh &= ~LDBL_NBIT)
+
 long double
 nextafterl(long double x, long double y)
 {
-	int32_t hx,hy,ix,iy;
-	u_int32_t lx,ly;
-	int esx,esy;
+	volatile long double t;
+	union IEEEl2bits ux, uy;
 
-	GET_LDOUBLE_WORDS(esx,hx,lx,x);
-	GET_LDOUBLE_WORDS(esy,hy,ly,y);
-	ix = esx&0x7fff;		/* |x| */
-	iy = esy&0x7fff;		/* |y| */
+	ux.e = x;
+	uy.e = y;
 
-	if (((ix==0x7fff)&&(((hx&0x7fffffff)|lx)!=0)) ||   /* x is nan */
-	    ((iy==0x7fff)&&(((hy&0x7fffffff)|ly)!=0)))     /* y is nan */
-	   return x+y;
+	if ((ux.bits.exp == 0x7fff &&
+	     ((ux.bits.manh&~LDBL_NBIT)|ux.bits.manl) != 0) ||
+	    (uy.bits.exp == 0x7fff &&
+	     ((uy.bits.manh&~LDBL_NBIT)|uy.bits.manl) != 0))
+	   return x+y;	/* x or y is nan */
 	if(x==y) return y;		/* x=y, return y */
-	if((ix|hx|lx)==0) {			/* x == 0 */
-	    volatile long double u;
-	    SET_LDOUBLE_WORDS(x,esy&0x8000,0,1);/* return +-minsubnormal */
-	    u = x;
-	    u = u * u;				/* raise underflow flag */
-	    return x;
+	if(x==0.0) {
+	    ux.bits.manh = 0;			/* return +-minsubnormal */
+	    ux.bits.manl = 1;
+	    ux.bits.sign = uy.bits.sign;
+	    t = ux.e*ux.e;
+	    if(t==ux.e) return t; else return ux.e; /* raise underflow flag */
 	}
-	if(esx<0x8000) {			/* x > 0 */
-	    if(ix>iy||((ix==iy) && (hx>hy||((hx==hy)&&(lx>ly))))) {
-	      /* x > y, x -= ulp */
-		if(lx==0) {
-		    if ((hx&0x7fffffff)==0) esx -= 1;
-		    hx = (hx - 1) | (hx & 0x80000000);
-		}
-		lx -= 1;
-	    } else {				/* x < y, x += ulp */
-		lx += 1;
-		if(lx==0) {
-		    hx = (hx + 1) | (hx & 0x80000000);
-		    if ((hx&0x7fffffff)==0) esx += 1;
-		}
+	if((x>0.0) ^ (x<y)) {			/* x -= ulp */
+	    if(ux.bits.manl==0) {
+		if ((ux.bits.manh&~LDBL_NBIT)==0)
+		    ux.bits.exp -= 1;
+		ux.bits.manh = (ux.bits.manh - 1) | (ux.bits.manh & LDBL_NBIT);
 	    }
-	} else {				/* x < 0 */
-	    if(esy>=0||(ix>iy||((ix==iy)&&(hx>hy||((hx==hy)&&(lx>ly)))))){
-	      /* x < y, x -= ulp */
-		if(lx==0) {
-		    if ((hx&0x7fffffff)==0) esx -= 1;
-		    hx = (hx - 1) | (hx & 0x80000000);
-		}
-		lx -= 1;
-	    } else {				/* x > y, x += ulp */
-		lx += 1;
-		if(lx==0) {
-		    hx = (hx + 1) | (hx & 0x80000000);
-		    if ((hx&0x7fffffff)==0) esx += 1;
-		}
+	    ux.bits.manl -= 1;
+	} else {				/* x += ulp */
+	    ux.bits.manl += 1;
+	    if(ux.bits.manl==0) {
+		ux.bits.manh = (ux.bits.manh + 1) | (ux.bits.manh & LDBL_NBIT);
+		if ((ux.bits.manh&~LDBL_NBIT)==0)
+		    ux.bits.exp += 1;
 	    }
 	}
-	esy = esx&0x7fff;
-	if(esy==0x7fff) return x+x;		/* overflow  */
-	if(esy==0) {
-	    volatile long double u = x*x;	/* underflow */
-	    if(u==x) {
-		SET_LDOUBLE_WORDS(x,esx,hx,lx);
-		return x;
-	    }
+	if(ux.bits.exp==0x7fff) return x+x;	/* overflow  */
+	if(ux.bits.exp==0) {			/* underflow */
+	    mask_nbit_l(ux);
+	    t = ux.e * ux.e;
+	    if(t!=ux.e)			/* raise underflow flag */
+		return ux.e;
 	}
-	SET_LDOUBLE_WORDS(x,esx,hx,lx);
-	return x;
+	return ux.e;
 }
 
 __strong_reference(nextafterl, nexttowardl);
