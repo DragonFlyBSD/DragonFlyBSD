@@ -610,7 +610,9 @@ struct hammer_volume_ondisk {
 	/*
 	 * These fields are initialized and space is reserved in every
 	 * volume making up a HAMMER filesytem, but only the master volume
-	 * contains valid data.
+	 * contains valid data.  Note that vol0_stat_bigblocks does not
+	 * include big-blocks for freemap and undomap initially allocated
+	 * by newfs_hammer.
 	 */
 	int64_t vol0_stat_bigblocks;	/* total big-blocks when fs is empty */
 	int64_t vol0_stat_freebigblocks;/* number of free big-blocks */

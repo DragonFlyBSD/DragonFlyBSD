@@ -258,7 +258,6 @@ main(int ac, char **av)
 	 * having to fallback to an extremely inefficient algorithm.
 	 */
 	vol = get_volume(RootVolNo);
-	vol->ondisk->vol0_stat_bigblocks = vol->ondisk->vol0_stat_freebigblocks;
 	vol->cache.modified = 1;
 	uuid_to_string(&Hammer_FSId, &fsidstr, &status);
 
@@ -576,6 +575,11 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		 */
 		ondisk->vol0_next_tid = createtid();
 
+		/*
+		 * Format freemap.  vol0_stat_freebigblocks is
+		 * the number of big-blocks available for anything
+		 * other than freemap zone at this point.
+		 */
 		format_freemap(vol);
 		ondisk->vol0_stat_freebigblocks = initialize_freemap(vol);
 
@@ -585,8 +589,20 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		for (i = HAMMER_ZONE2_MAPPED_INDEX; i < HAMMER_MAX_ZONES; ++i) {
 			format_blockmap(&ondisk->vol0_blockmap[i], i, 0);
 		}
-		format_undomap(vol);
 
+		/*
+		 * Format undo zone.  Formatting decrements
+		 * vol0_stat_freebigblocks whenever a new big-block
+		 * is allocated for undo zone.
+		 */
+		format_undomap(vol);
+		ondisk->vol0_stat_bigblocks = ondisk->vol0_stat_freebigblocks;
+
+		/*
+		 * Format the root directory.  Formatting decrements
+		 * vol0_stat_freebigblocks whenever a new big-block
+		 * is allocated for required zones.
+		 */
 		ondisk->vol0_btree_root = format_root(label);
 		++ondisk->vol0_stat_inodes;	/* root inode */
 	} else {

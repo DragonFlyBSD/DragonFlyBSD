@@ -907,6 +907,7 @@ again:
 		--layer1->blocks_free;
 		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 		layer2->zone = zone;
+		--volume->ondisk->vol0_stat_freebigblocks;
 		assert(layer2->bytes_free == HAMMER_BIGBLOCK_SIZE);
 		assert(layer2->append_off == 0);
 	}
