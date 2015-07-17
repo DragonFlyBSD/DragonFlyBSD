@@ -145,6 +145,8 @@ static double TriggerDown;	/* load per cpu to force the min freq */
 static int HasPerfbias = 0;
 static int AdjustCpuFreq = 1;
 static int AdjustCstate = 0;
+static int HighestCpuFreq;
+static int LowestCpuFreq;
 
 static volatile int stopped;
 
@@ -172,7 +174,7 @@ main(int ac, char **av)
 	srt = 8.0;	/* time for samples - 8 seconds */
 	pollrate = 1.0;	/* polling rate in seconds */
 
-	while ((ch = getopt(ac, av, "cdefp:r:tu:B:L:P:QT:")) != -1) {
+	while ((ch = getopt(ac, av, "cdefh:l:p:r:tu:B:L:P:QT:")) != -1) {
 		switch(ch) {
 		case 'c':
 			AdjustCstate = 1;
@@ -185,6 +187,12 @@ main(int ac, char **av)
 			break;
 		case 'f':
 			AdjustCpuFreq = 0;
+			break;
+		case 'h':
+			HighestCpuFreq = strtol(optarg, NULL, 10);
+			break;
+		case 'l':
+			LowestCpuFreq = strtol(optarg, NULL, 10);
 			break;
 		case 'p':
 			Hysteresis = (int)strtol(optarg, NULL, 10);
@@ -505,9 +513,11 @@ acpi_getcpufreq_str(int dom_id, int *highest0, int *lowest0)
 	ptr = buf;
 	highest = lowest = 0;
 	while (ptr && (v = strtol(ptr, &ptr, 10)) > 0) {
-		if (lowest == 0 || lowest > v)
+		if ((lowest == 0 || lowest > v) &&
+		    (LowestCpuFreq <= 0 || v >= LowestCpuFreq))
 			lowest = v;
-		if (highest == 0 || highest < v)
+		if ((highest == 0 || highest < v) &&
+		    (HighestCpuFreq <= 0 || v <= HighestCpuFreq))
 			highest = v;
 		/* 
 		 * Detect turbo mode
@@ -526,7 +536,7 @@ acpi_getcpufreq_bin(int dom_id, int *highest0, int *lowest0)
 	char sysid[64];
 	int freq[MAXFREQ];
 	size_t freqlen;
-	int freqcnt;
+	int freqcnt, i;
 
 	/*
 	 * Retrieve availability list
@@ -540,11 +550,23 @@ acpi_getcpufreq_bin(int dom_id, int *highest0, int *lowest0)
 	if (freqcnt == 0)
 		return 0;
 
-	*lowest0 = freq[freqcnt - 1];
+	for (i = freqcnt - 1; i >= 0; --i) {
+		*lowest0 = freq[i];
+		if (LowestCpuFreq <= 0 || *lowest0 >= LowestCpuFreq)
+			break;
+	}
 
+	i = 0;
 	*highest0 = freq[0];
-	if (!TurboOpt && freqcnt > 1 && freq[0] - freq[1] == 1)
+	if (!TurboOpt && freqcnt > 1 && freq[0] - freq[1] == 1) {
+		i = 1;
 		*highest0 = freq[1];
+	}
+	for (; i < freqcnt; ++i) {
+		if (HighestCpuFreq <= 0 || *highest0 <= HighestCpuFreq)
+			break;
+		*highest0 = freq[i];
+	}
 	return 1;
 }
 
@@ -564,6 +586,7 @@ void
 usage(void)
 {
 	fprintf(stderr, "usage: powerd [-cdeftQ] [-p hysteresis] "
+	    "[-h highest_freq] [-l lowest_freq] "
 	    "[-r poll_interval] [-u trigger_up] "
 	    "[-B min_battery_life] [-L low_battery_linger] "
 	    "[-P battery_poll_interval] [-T sample_interval]\n");
@@ -1080,6 +1103,9 @@ static void
 restore_perf(void)
 {
 	cpumask_t ocpu_used, ocpu_pwrdom_used;
+
+	/* Remove highest cpu frequency limitation */
+	HighestCpuFreq = 0;
 
 	ocpu_used = cpu_used;
 	ocpu_pwrdom_used = cpu_pwrdom_used;

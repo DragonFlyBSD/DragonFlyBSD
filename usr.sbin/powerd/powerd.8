@@ -1,7 +1,7 @@
 .\" (c) Copyright 2010 by Matthew Dillon and Dima Ruban.  Permission to
 .\"    use and distribute based on the DragonFly copyright.
 .\"
-.Dd July 16, 2015
+.Dd July 17, 2015
 .Dt POWERD 8
 .Os
 .Sh NAME
@@ -10,6 +10,8 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl cdeftQ
+.Op Fl h Ar highest_freq
+.Op Fl l Ar lowest_freq
 .Op Fl p Ar hysteresis
 .Op Fl r Ar poll_time
 .Op Fl u Ar trigger_up
@@ -54,6 +56,16 @@ much
 (if any)
 on some of the modern Intel CPUs,
 when the CPU is idle.
+.It Fl h Ar highest_freq
+If CPU power domain frequency adjustment is enabled,
+then frequency of CPU power domains will not be set to a value higher
+than the specified limit.
+(unit: MHz)
+.It Fl l Ar lowest_freq
+If CPU power domain frequency adjustment is enabled,
+then frequency of CPU power domains will not be set to a value lower
+than the specified limit.
+(unit: MHz)
 .It Fl p Ar hysteresis
 Percent of the upper limit to subtract as an hysteresis value to scale
 down to the min performance.
