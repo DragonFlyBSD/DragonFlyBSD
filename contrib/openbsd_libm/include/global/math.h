@@ -67,6 +67,14 @@ extern char __nan[];
 #define FP_ILOGB0	(-INT_MAX)
 #define FP_ILOGBNAN	INT_MAX
 
+#define FP_FAST_FMA	1
+#define FP_FAST_FMAF	1
+#define FP_FAST_FMAL	1
+
+#define MATH_ERRNO	1
+#define MATH_ERREXCEPT	2
+#define math_errhandling	MATH_ERREXCEPT
+
 #define fpclassify(x) \
 	((sizeof (x) == sizeof (float)) ? \
 		__fpclassifyf(x) \
