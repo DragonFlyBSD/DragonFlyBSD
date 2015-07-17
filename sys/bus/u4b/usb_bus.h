@@ -123,10 +123,11 @@ struct usb_bus {
 	enum usb_revision usbrev;	/* USB revision. See "USB_REV_XXX". */
 
 	uint8_t	devices_max;		/* maximum number of USB devices */
-	uint8_t	reserved01;
+	uint8_t	do_hook;		/* intr_config_hook */
 	uint8_t	do_probe;		/* set if USB should be re-probed */
 	uint8_t no_explore;		/* don't explore USB ports */
 	uint8_t dma_bits;		/* number of DMA address bits */
+	struct intr_config_hook hook;
 };
 
 #endif					/* _USB_BUS_H_ */

@@ -397,6 +397,15 @@ usb_bus_explore(struct usb_proc_msg *pm)
 		(udev->hub->explore) (udev);
 		USB_BUS_LOCK(bus);
 	}
+
+	/*
+	 * Interrupt config hook wakes up after the second bus exploration
+	 * completes.
+	 */
+	if (bus->do_hook > 0 && --bus->do_hook == 0) {
+		config_intrhook_disestablish(&bus->hook);
+		bus->hook.ich_func = NULL;
+	}
 #if USB_HAVE_ROOT_MOUNT_HOLD
 	usb_root_mount_rel(bus);
 #endif
@@ -417,6 +426,13 @@ usb_bus_detach(struct usb_proc_msg *pm)
 	bus = ((struct usb_bus_msg *)pm)->bus;
 	udev = bus->devices[USB_ROOT_HUB_ADDR];
 	dev = bus->bdev;
+
+	/* intr_config_hook */
+	if (bus->do_hook >= 0) {
+		bus->do_hook = -1;
+		config_intrhook_disestablish(&bus->hook);
+	}
+
 	/* clear the softc */
 	device_set_softc(dev, NULL);
 	USB_BUS_UNLOCK(bus);
@@ -778,6 +794,14 @@ usb_bus_attach(struct usb_proc_msg *pm)
 	usb_power_wdog(bus);
 }
 
+/*
+ * Hook signal (ignored)
+ */
+static void
+usb_intr_config_hook(void *arg)
+{
+}
+
 /*------------------------------------------------------------------------*
  *	usb_attach_sub
  *
@@ -835,6 +859,19 @@ usb_attach_sub(device_t dev, struct usb_bus *bus)
 	bus->cleanup_msg[1].hdr.pm_callback = &usb_bus_cleanup;
 	bus->cleanup_msg[1].bus = bus;
 #endif
+
+	/*
+	 * DragonFly - intr config hook, two explore passes.
+	 */
+	bzero(&bus->hook, sizeof(bus->hook));
+	bus->hook.ich_func = usb_intr_config_hook;
+	bus->hook.ich_arg = bus;
+	bus->hook.ich_desc = "usb";
+
+	if (config_intrhook_establish(&bus->hook) == 0)
+		bus->do_hook = 2;
+	else
+		bus->do_hook = 0;
 
 #if USB_HAVE_PER_BUS_PROCESS
 	/* Create USB explore and callback processes */

@@ -224,12 +224,20 @@ xhci_pci_attach(device_t self)
 			}
 		}
 	}
-	sc->sc_irq_res = bus_alloc_resource_any(self, SYS_RES_IRQ,
-	    &sc->sc_irq_rid, RF_SHAREABLE | RF_ACTIVE);
-	if (sc->sc_irq_res == NULL) {
-		pci_release_msi(self);
-		device_printf(self, "Could not allocate IRQ\n");
-		/* goto error; FALLTHROUGH - use polling */
+
+	/*
+	 * hw.usb.xhci.use_polling=1 to force polling.
+	 */
+	if (xhci_use_polling() == 0) {
+		sc->sc_irq_res = bus_alloc_resource_any(
+					self, SYS_RES_IRQ,
+					&sc->sc_irq_rid,
+					RF_SHAREABLE | RF_ACTIVE);
+		if (sc->sc_irq_res == NULL) {
+			pci_release_msi(self);
+			device_printf(self, "Could not allocate IRQ\n");
+			/* goto error; FALLTHROUGH - use polling */
+		}
 	}
 	sc->sc_bus.bdev = device_add_child(self, "usbus", -1);
 	if (sc->sc_bus.bdev == NULL) {

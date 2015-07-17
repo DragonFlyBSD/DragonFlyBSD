@@ -86,11 +86,14 @@ SYSCTL_INT(_hw_usb_xhci, OID_AUTO, streams, CTLFLAG_RW,
     &xhcistreams, 0, "Set to enable streams mode support");
 TUNABLE_INT("hw.usb.xhci.streams", &xhcistreams);
 
+static int xhcipolling = 0;
+SYSCTL_INT(_hw_usb_xhci, OID_AUTO, use_polling, CTLFLAG_RW,
+    &xhcipolling, 0, "Set to enable software interrupt polling for XHCI controller");
+TUNABLE_INT("hw.usb.xhci.use_polling", &xhcipolling);
 
 #ifdef USB_DEBUG
 static int xhcidebug = 0;
 static int xhciroute = 0;
-static int xhcipolling = 0;
 static int xhcidma32;
 
 SYSCTL_INT(_hw_usb_xhci, OID_AUTO, debug, CTLFLAG_RW,
@@ -99,9 +102,6 @@ TUNABLE_INT("hw.usb.xhci.debug", &xhcidebug);
 SYSCTL_INT(_hw_usb_xhci, OID_AUTO, xhci_port_route, CTLFLAG_RW,
     &xhciroute, 0, "Routing bitmap for switching EHCI ports to XHCI controller");
 TUNABLE_INT("hw.usb.xhci.xhci_port_route", &xhciroute);
-SYSCTL_INT(_hw_usb_xhci, OID_AUTO, use_polling, CTLFLAG_RW,
-    &xhcipolling, 0, "Set to enable software interrupt polling for XHCI controller");
-TUNABLE_INT("hw.usb.xhci.use_polling", &xhcipolling);
 
 SYSCTL_INT(_hw_usb_xhci, OID_AUTO, dma32, CTLFLAG_RW,
     &xhcidma32, 0, "Set to only use 32-bit DMA for the XHCI controller");
@@ -196,14 +196,13 @@ xhci_dump_device(struct xhci_softc *sc, struct xhci_slot_ctx *psl)
 }
 #endif
 
+/*
+ * hw.usb.xhci.use_polling=1
+ */
 uint8_t
 xhci_use_polling(void)
 {
-#ifdef USB_DEBUG
 	return (xhcipolling != 0);
-#else
-	return (0);
-#endif
 }
 
 static void
@@ -505,9 +504,11 @@ xhci_start_controller(struct xhci_softc *sc)
 
 	/* Setup interrupter registers */
 
-	temp = XREAD4(sc, runt, XHCI_IMAN(0));
-	temp |= XHCI_IMAN_INTR_ENA;
-	XWRITE4(sc, runt, XHCI_IMAN(0), temp);
+	if (xhci_use_polling() == 0) {
+		temp = XREAD4(sc, runt, XHCI_IMAN(0));
+		temp |= XHCI_IMAN_INTR_ENA;
+		XWRITE4(sc, runt, XHCI_IMAN(0), temp);
+	}
 
 	/* set up command ring control base address */
 	addr = buf_res.physaddr;
