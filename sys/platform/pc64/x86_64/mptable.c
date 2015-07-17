@@ -1042,8 +1042,17 @@ mptable_pci_int_callback(void *xarg, const void *pos, int type)
 			break;
 	}
 	if (ioapic == NULL) {
-		kprintf("MPTABLE: warning PCI int dst apic id %d "
-			"does not exist\n", ent->dst_apic_id);
+		static char intdis_warned[64];
+		int apic_id = ent->dst_apic_id;
+
+		if (apic_id < 0 || apic_id >= sizeof(intdis_warned)) {
+			kprintf("MPTABLE: warning PCI int dst apic id %d "
+				"does not exist\n", apic_id);
+		} else if (intdis_warned[apic_id] == 0) {
+			intdis_warned[apic_id] = 1;
+			kprintf("MPTABLE: warning PCI int dst apic id %d "
+				"does not exist\n", apic_id);
+		}
 		return 0;
 	}
 
