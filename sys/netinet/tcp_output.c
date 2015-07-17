@@ -1158,6 +1158,31 @@ after_th:
 			}
 			tcp_callout_reset(tp, tp->tt_rexmt, tp->t_rxtcur,
 			    tcp_timer_rexmt);
+		} else if (len == 0 && so->so_snd.ssb_cc &&
+			   tp->t_state > TCPS_SYN_RECEIVED &&
+			   !tcp_callout_active(tp, tp->tt_rexmt) &&
+			   !tcp_callout_active(tp, tp->tt_persist)) {
+			/*
+			 * Avoid a situation where we do not set persist timer
+			 * after a zero window condition. For example:
+			 * 1) A -> B: packet with enough data to fill the window
+			 * 2) B -> A: ACK for #1 + new data (0 window
+			 *    advertisement)
+			 * 3) A -> B: ACK for #2, 0 len packet
+			 *
+			 * In this case, A will not activate the persist timer,
+			 * because it chose to send a packet. Unless tcp_output
+			 * is called for some other reason (delayed ack timer,
+			 * another input packet from B, socket syscall), A will
+			 * not send zero window probes.
+			 *
+			 * So, if you send a 0-length packet, but there is data
+			 * in the socket buffer, and neither the rexmt or
+			 * persist timer is already set, then activate the
+			 * persist timer.
+			 */
+			tp->t_rxtshift = 0;
+			tcp_setpersist(tp);
 		}
 	} else {
 		/*
