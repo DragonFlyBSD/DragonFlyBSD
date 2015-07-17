@@ -8,7 +8,7 @@
 FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz amd \
 	bootconf bootparams btconfig bthcid ccd cleanvar cryptdisks \
 	cleartmp cron cryptdisks devd devfs dhclient diskless dmesg dumpon \
-	fixbootfile fsck ftpd hostapd hostname hotplugd \
+	fixbootfile fsck ftpd hostname hotplugd \
 	inetd initdiskless initrandom ip6fw ipfw ipsec \
 	jail keyserv \
 	ldconfig local localdaemons lockd lpd lvm \

@@ -1,6 +1,5 @@
 CONTRIBDIR= ${.CURDIR}/../../../contrib
 WPA_DISTDIR=${CONTRIBDIR}/wpa_supplicant
-HOSTAPD_DISTDIR=${CONTRIBDIR}/hostapd
 
 .PATH.c:	${.CURDIR}/.. \
 		${WPA_DISTDIR}/src/ap \

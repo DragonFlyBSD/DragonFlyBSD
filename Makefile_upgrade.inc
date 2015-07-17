@@ -2134,6 +2134,13 @@ TO_REMOVE+=/boot/kernel/ng_sync_ar.ko
 TO_REMOVE+=/boot/kernel/ng_sync_sr.ko
 TO_REMOVE+=/usr/include/gnu/vfs/ext2fs/i386-bitops.h
 TO_REMOVE+=/usr/share/man/man3/ieee_test.3.gz
+TO_REMOVE+=/etc/rc.d/hostapd
+TO_REMOVE+=/usr/sbin/hostapd
+TO_REMOVE+=/usr/sbin/hostapd_cli
+TO_REMOVE+=/usr/share/man/man8/hostapd.8.gz
+TO_REMOVE+=/usr/share/man/man8/hostapd_cli.8.gz
+TO_REMOVE+=/usr/share/man/man5/hostapd.conf.5.gz
+TO_REMOVE+=/usr/share/examples/etc/hostapd.conf
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
