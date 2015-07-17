@@ -852,26 +852,33 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	struct hammer_blockmap_layer2 *layer2;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
+	hammer_off_t chunk_offset;
 	void *ptr;
 
 	volume = get_volume(RootVolNo);
 
 	blockmap = &volume->ondisk->vol0_blockmap[zone];
 	freemap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+	assert(HAMMER_ZONE_DECODE(blockmap->next_offset) == zone);
 
 	/*
 	 * Alignment and buffer-boundary issues.  If the allocation would
 	 * cross a buffer boundary we have to skip to the next buffer.
 	 */
 	bytes = (bytes + 15) & ~15;
+	assert(bytes > 0 && bytes <= HAMMER_BUFSIZE);  /* not HAMMER_XBUFSIZE */
+	assert(zone >= HAMMER_ZONE2_MAPPED_INDEX && zone < HAMMER_MAX_ZONES);
 
 again:
+	assert(blockmap->next_offset != HAMMER_ZONE_ENCODE(zone + 1, 0));
+
 	if ((blockmap->next_offset ^ (blockmap->next_offset + bytes - 1)) &
 	    ~HAMMER_BUFMASK64) {
 		volume->cache.modified = 1;
 		blockmap->next_offset = (blockmap->next_offset + bytes - 1) &
 				        ~HAMMER_BUFMASK64;
 	}
+	chunk_offset = blockmap->next_offset & HAMMER_BIGBLOCK_MASK;
 
 	/*
 	 * Dive layer 1.
@@ -880,6 +887,7 @@ again:
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(blockmap->next_offset);
 
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
+	assert(!(chunk_offset == 0 && layer1->blocks_free == 0));
 
 	if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
 		fprintf(stderr, "alloc_blockmap: ran out of space!\n");
