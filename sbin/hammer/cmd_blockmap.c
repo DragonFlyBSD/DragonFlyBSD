@@ -147,7 +147,7 @@ dump_blockmap(const char *label, int zone)
 			xerr = ' ';
 			if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
 				xerr = 'B';
-			printf("%c       %016jx zone=%d app=%-7d free=%-7d\n",
+			printf("%c       %016jx zone=%-2d app=%-7d free=%-7d\n",
 				xerr,
 				(uintmax_t)scan2,
 				layer2->zone,
@@ -494,20 +494,20 @@ dump_collect(collect_t collect, int *stats)
 		stats[zone]++;
 
 		if (track2->zone != layer2->zone) {
-			printf("BZ\tblock=%016jx calc zone=%2d, got zone=%2d\n",
+			printf("BZ\tblock=%016jx calc zone=%-2d, got zone=%-2d\n",
 				(intmax_t)offset,
 				track2->zone,
 				layer2->zone);
 			collect->error++;
 		} else if (track2->bytes_free != layer2->bytes_free) {
-			printf("BM\tblock=%016jx zone=%2d calc %d free, got %d\n",
+			printf("BM\tblock=%016jx zone=%-2d calc %d free, got %d\n",
 				(intmax_t)offset,
 				layer2->zone,
 				track2->bytes_free,
 				layer2->bytes_free);
 			collect->error++;
 		} else if (VerboseOpt) {
-			printf("\tblock=%016jx zone=%2d %d free (correct)\n",
+			printf("\tblock=%016jx zone=%-2d %d free (correct)\n",
 				(intmax_t)offset,
 				layer2->zone,
 				track2->bytes_free);
