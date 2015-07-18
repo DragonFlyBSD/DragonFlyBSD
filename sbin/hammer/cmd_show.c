@@ -342,7 +342,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 			       elm->leaf.data_len);
 			if (QuietOpt < 3) {
 				printf(" crc=%04x", elm->leaf.data_crc);
-				printf("\n\t         fills=");
+				printf("\n\t         fill=");
 				print_bigblock_fill(elm->leaf.data_offset);
 			}
 			if (QuietOpt < 2)
@@ -448,21 +448,24 @@ print_bigblock_fill(hammer_off_t offset)
 
 	blockmap_lookup(offset, &layer1, &layer2, &error);
 	if (error) {
-		printf("z%d:%lld=BADZ",
+		printf("z%d:v%d:%lu:%lu:%lu=%d",
 			HAMMER_ZONE_DECODE(offset),
-			(offset & ~HAMMER_OFF_ZONE_MASK) /
-			    HAMMER_BIGBLOCK_SIZE
-		);
+			HAMMER_VOL_DECODE(offset),
+			HAMMER_BLOCKMAP_LAYER1_INDEX(offset),
+			HAMMER_BLOCKMAP_LAYER2_INDEX(offset),
+			offset & HAMMER_BIGBLOCK_MASK64,
+			error);
 	} else {
 		fill = layer2.bytes_free * 100 / HAMMER_BIGBLOCK_SIZE;
 		fill = 100 - fill;
 
-		printf("z%d:%lld=%d%%",
+		printf("z%d:v%d:%lu:%lu:%lu=%d%%",
 			HAMMER_ZONE_DECODE(offset),
-			(offset & ~HAMMER_OFF_ZONE_MASK) /
-			    HAMMER_BIGBLOCK_SIZE,
-			fill
-		);
+			HAMMER_VOL_DECODE(offset),
+			HAMMER_BLOCKMAP_LAYER1_INDEX(offset),
+			HAMMER_BLOCKMAP_LAYER2_INDEX(offset),
+			offset & HAMMER_BIGBLOCK_MASK64,
+			fill);
 	}
 }
 
