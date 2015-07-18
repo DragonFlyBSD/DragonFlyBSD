@@ -520,7 +520,6 @@ initialize_freemap(struct volume_info *vol)
 	hammer_off_t aligned_vol_free_end;
 	hammer_blockmap_t freemap;
 	int64_t count = 0;
-	int modified1 = 0;
 
 	root_vol = get_volume(RootVolNo);
 	aligned_vol_free_end = (vol->vol_free_end + HAMMER_BLOCKMAP_LAYER2_MASK)
@@ -558,7 +557,6 @@ initialize_freemap(struct volume_info *vol)
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(vol->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BIGBLOCK_SIZE) {
-		modified1 = 0;
 		layer1_offset = layer1_base +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
@@ -581,12 +579,13 @@ initialize_freemap(struct volume_info *vol)
 			}
 		} else if (phys_offset < vol->vol_free_end) {
 			++layer1->blocks_free;
+			layer1->layer1_crc = crc32(layer1,
+						   HAMMER_LAYER1_CRCSIZE);
 			buffer1->cache.modified = 1;
 			layer2->zone = 0;
 			layer2->append_off = 0;
 			layer2->bytes_free = HAMMER_BIGBLOCK_SIZE;
 			++count;
-			modified1 = 1;
 		} else {
 			layer2->zone = HAMMER_ZONE_UNAVAIL_INDEX;
 			layer2->append_off = HAMMER_BIGBLOCK_SIZE;
@@ -594,15 +593,6 @@ initialize_freemap(struct volume_info *vol)
 		}
 		layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 		buffer2->cache.modified = 1;
-
-		/*
-		 * Finish-up layer 1
-		 */
-		if (modified1) {
-			layer1->layer1_crc = crc32(layer1,
-						   HAMMER_LAYER1_CRCSIZE);
-			buffer1->cache.modified = 1;
-		}
 	}
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);
