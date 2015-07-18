@@ -36,6 +36,7 @@
 #include <locale>
 #include <limits>
 
+#include <xlocale.h>
 #ifdef _GLIBCXX_HAVE_IEEEFP_H
 #include <ieeefp.h>
 #endif
@@ -206,61 +207,45 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       delete [] __sav;
     }
 
-
-  /*  DragonFly's implementation of setlocale won't accept something like
-      "de_DE".  According to nls manpage, the expected format is:
-      language[_territory][.codeset][@modifier], but it seems that both
-      the _territory and .codeset components are required.
-      
-      As an attempt to correct for this, we'll tack on ".UTF-8" if 
-      a period is not detected in the locale string.  
-
-      There are no locales with modifiers on DragonFly so if found, they
-      will just be stripped off silently.  e.g "de_DE@euro" will be reduced
-      to "de_DE".  The UTF-8 default would be added after that.
-  */
-
   void
   locale::facet::_S_create_c_locale(__c_locale& __cloc, const char* __s,
-				    __c_locale)
+				    __c_locale __old)
   {
-    const size_t size__s = (__s == NULL) ? 1 : strlen (__s);
-    const char UTF8[] = ".UTF-8";
-    char localspec[size__s + 6 + 1];
+    __cloc = (__c_locale)newlocale(LC_ALL_MASK, __s, (locale_t)__old);
     
-    if (__s == NULL) {
-       localspec[0] = '\0';
-    } else {
-       strcpy (localspec, __s);
-       char * pch = strchr (localspec, '@');
-       if (pch != NULL)
-          *pch = 0;
-
-       if (  (strchr (__s, '.') == NULL)
-          && (strcmp (__s, "C") != 0)
-          && (strcmp (__s, "POSIX") != 0))
-          strncat (localspec, UTF8, 6);
-    }
-
-    const char * result = std::setlocale(LC_ALL, localspec);
-    
-    if ((strcmp(result, "C") != 0) && (strcmp (result, localspec) != 0))
+    if (!__cloc)
       __throw_runtime_error(__N("locale::facet::_S_create_c_locale "
 			    "name not valid"));
-    __cloc = 0;
   }
 
   void
   locale::facet::_S_destroy_c_locale(__c_locale& __cloc)
-  { __cloc = 0; }
+  {
+    if (__cloc && _S_get_c_locale() != __cloc)
+      freelocale((locale_t)__cloc);
+  }
 
   __c_locale
-  locale::facet::_S_clone_c_locale(__c_locale&) throw()
-  { return __c_locale(); }
+  locale::facet::_S_clone_c_locale(__c_locale& __cloc) throw()
+  { return (__c_locale)duplocale((locale_t)__cloc); }
 
   __c_locale
-  locale::facet::_S_lc_ctype_c_locale(__c_locale, const char*)
-  { return __c_locale(); }
+  locale::facet::_S_lc_ctype_c_locale(__c_locale __cloc, const char* __s)
+  {
+    __c_locale __dup = (__c_locale)duplocale((locale_t)__cloc);
+    if (__dup == __c_locale(0))
+      __throw_runtime_error(__N("locale::facet::_S_lc_ctype_c_locale "
+				"duplocale error"));
+    __c_locale __changed = (__c_locale)newlocale(LC_CTYPE_MASK, __s,
+                                                   (locale_t)__dup);
+    if (__changed == __c_locale(0))
+      {
+	freelocale((locale_t)__dup);
+	__throw_runtime_error(__N("locale::facet::_S_lc_ctype_c_locale "
+				  "newlocale error"));
+      }
+    return __changed;
+  }
 
 _GLIBCXX_END_NAMESPACE_VERSION
 } // namespace
