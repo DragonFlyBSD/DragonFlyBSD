@@ -415,7 +415,7 @@ collect_get_track(collect_t collect, hammer_off_t offset, int zone,
 	struct hammer_blockmap_layer2 *track2;
 	size_t i;
 
-	i = HAMMER_BLOCKMAP_LAYER2_OFFSET(offset) / sizeof(*track2);
+	i = HAMMER_BLOCKMAP_LAYER2_INDEX(offset);
 	track2 = &collect->track2[i];
 	if (track2->entry_crc == 0) {
 		collect->layer2[i] = *layer2;

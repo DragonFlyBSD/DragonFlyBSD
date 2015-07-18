@@ -344,16 +344,28 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 #define HAMMER_BLOCKMAP_LAYER2_MASK	(HAMMER_BLOCKMAP_LAYER2 - 1)
 
 /*
- * byte offset within layer1 or layer2 big-block for the entry representing
+ * Index within layer1 or layer2 big-block for the entry representing
  * a zone-2 physical offset.
  */
-#define HAMMER_BLOCKMAP_LAYER1_OFFSET(zone2_offset)	\
+#define HAMMER_BLOCKMAP_LAYER1_INDEX(zone2_offset)		\
 	(((zone2_offset) & HAMMER_BLOCKMAP_LAYER1_MASK) /	\
-	 HAMMER_BLOCKMAP_LAYER2 * sizeof(struct hammer_blockmap_layer1))
+	 HAMMER_BLOCKMAP_LAYER2)
 
-#define HAMMER_BLOCKMAP_LAYER2_OFFSET(zone2_offset)	\
+#define HAMMER_BLOCKMAP_LAYER2_INDEX(zone2_offset)		\
 	(((zone2_offset) & HAMMER_BLOCKMAP_LAYER2_MASK) /	\
-	HAMMER_BIGBLOCK_SIZE64 * sizeof(struct hammer_blockmap_layer2))
+	HAMMER_BIGBLOCK_SIZE64)
+
+/*
+ * Byte offset within layer1 or layer2 big-block for the entry representing
+ * a zone-2 physical offset.  Multiply the index by sizeof(blockmap_layer).
+ */
+#define HAMMER_BLOCKMAP_LAYER1_OFFSET(zone2_offset)		\
+	(HAMMER_BLOCKMAP_LAYER1_INDEX(zone2_offset) *		\
+	 sizeof(struct hammer_blockmap_layer1))
+
+#define HAMMER_BLOCKMAP_LAYER2_OFFSET(zone2_offset)		\
+	(HAMMER_BLOCKMAP_LAYER2_INDEX(zone2_offset) *		\
+	 sizeof(struct hammer_blockmap_layer2))
 
 /*
  * HAMMER UNDO parameters.  The UNDO fifo is mapped directly in the volume
