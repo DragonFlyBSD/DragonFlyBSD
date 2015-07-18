@@ -118,8 +118,6 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	vol->fd = open(vol->name, oflags);
 	if (vol->fd < 0) {
 		err(1, "setup_volume: %s: Open failed", vol->name);
-		free(vol->name);
-		free(vol);
 	}
 
 	/*
@@ -441,6 +439,12 @@ alloc_meta_element(hammer_off_t *offp, int32_t data_len,
 	return (data);
 }
 
+/*
+ * The only data_len supported by HAMMER userspace for large data zone
+ * (zone 10) is HAMMER_BUFSIZE which is 16KB.  >16KB data does not fit
+ * in a buffer allocated by get_buffer().  Also alloc_blockmap() does
+ * not consider >16KB buffer size.
+ */
 void *
 alloc_data_element(hammer_off_t *offp, int32_t data_len,
 		   struct buffer_info **data_bufferp)
@@ -448,7 +452,7 @@ alloc_data_element(hammer_off_t *offp, int32_t data_len,
 	void *data;
 
 	if (data_len >= HAMMER_BUFSIZE) {
-		assert(data_len <= HAMMER_BUFSIZE); /* just one buffer */
+		assert(data_len == HAMMER_BUFSIZE); /* just one buffer */
 		data = alloc_blockmap(HAMMER_ZONE_LARGE_DATA_INDEX, data_len,
 				      offp, data_bufferp);
 		bzero(data, data_len);
@@ -752,20 +756,15 @@ format_undomap(struct volume_info *root_vol)
 	blockmap->alloc_offset = HAMMER_ZONE_ENCODE(undo_zone, undo_limit);
 	blockmap->entry_crc = crc32(blockmap, HAMMER_BLOCKMAP_CRCSIZE);
 
-	n = 0;
-	scan = blockmap->next_offset;
 	limit_index = undo_limit / HAMMER_BIGBLOCK_SIZE;
-
 	assert(limit_index <= HAMMER_UNDO_LAYER2);
 
 	for (n = 0; n < limit_index; ++n) {
 		ondisk->vol0_undo_array[n] = alloc_bigblock(NULL,
 							HAMMER_ZONE_UNDO_INDEX);
-		scan += HAMMER_BIGBLOCK_SIZE;
 	}
 	while (n < HAMMER_UNDO_LAYER2) {
-		ondisk->vol0_undo_array[n] = HAMMER_BLOCKMAP_UNAVAIL;
-		++n;
+		ondisk->vol0_undo_array[n++] = HAMMER_BLOCKMAP_UNAVAIL;
 	}
 
 	/*
@@ -919,8 +918,7 @@ again:
 	buffer1->cache.modified = 1;
 	buffer2->cache.modified = 1;
 	volume->cache.modified = 1;
-	assert(layer2->append_off ==
-	       (blockmap->next_offset & HAMMER_BIGBLOCK_MASK));
+	assert(layer2->append_off == chunk_offset);
 	layer2->bytes_free -= bytes;
 	*result_offp = blockmap->next_offset;
 	blockmap->next_offset += bytes;
