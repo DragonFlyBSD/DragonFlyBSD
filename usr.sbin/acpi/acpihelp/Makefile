@@ -30,6 +30,7 @@ SRCS+=	\
 	utglobal.c \
 	uthex.c \
 	utmath.c \
+	utnonansi.c \
 	utpredef.c \
 	utprint.c \
 	utuuid.c

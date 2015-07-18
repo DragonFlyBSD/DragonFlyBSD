@@ -28,6 +28,7 @@ SRCS+=	\
 	utexcep.c \
 	utglobal.c \
 	utmath.c \
+	utnonansi.c \
 	utprint.c \
 	utstring.c \
 	utxferror.c

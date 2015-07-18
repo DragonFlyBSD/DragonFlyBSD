@@ -33,6 +33,7 @@ SRCS+=	\
 	dbinput.c \
 	dbmethod.c \
 	dbnames.c \
+	dbobject.c \
 	dbstats.c \
 	dbtest.c \
 	dbutils.c \
@@ -41,7 +42,6 @@ SRCS+=	\
 	dmcstyle.c \
 	dmdeferred.c \
 	dmnames.c \
-	dmobject.c \
 	dmopcode.c \
 	dmresrc.c \
 	dmresrcl.c \
@@ -51,6 +51,7 @@ SRCS+=	\
 	dmwalk.c \
 	dsargs.c \
 	dscontrol.c \
+	dsdebug.c \
 	dsfield.c \
 	dsinit.c \
 	dsmethod.c \
@@ -189,6 +190,7 @@ SRCS+=	\
 	utmath.c \
 	utmisc.c \
 	utmutex.c \
+	utnonansi.c \
 	utobject.c \
 	utosi.c \
 	utownerid.c \

@@ -82,7 +82,6 @@ SRCS=	\
 	dmdeferred.c \
 	dmextern.c \
 	dmnames.c \
-	dmobject.c \
 	dmopcode.c \
 	dmresrc.c \
 	dmresrcl.c \
@@ -184,6 +183,7 @@ SRCS=	\
 	utmath.c \
 	utmisc.c \
 	utmutex.c \
+	utnonansi.c \
 	utobject.c \
 	utownerid.c \
 	utpredef.c \

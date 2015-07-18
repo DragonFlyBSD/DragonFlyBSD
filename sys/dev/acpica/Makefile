@@ -32,10 +32,11 @@ KMOD	= acpi
 # ACPICA sources
 SRCS+=	ahids.c ahuuids.c
 SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
-SRCS+=	dbinput.c dbmethod.c dbnames.c dbstats.c dbtest.c dbutils.c dbxface.c
-SRCS+=	dmbuffer.c dmcstyle.c dmdeferred.c dmnames.c dmobject.c dmopcode.c
+SRCS+=	dbinput.c dbmethod.c dbnames.c dbobject.c
+SRCS+=	dbstats.c dbtest.c dbutils.c dbxface.c
+SRCS+=	dmbuffer.c dmcstyle.c dmdeferred.c dmnames.c dmopcode.c
 SRCS+=	dmresrc.c dmresrcl.c dmresrcl2.c dmresrcs.c dmutils.c dmwalk.c
-SRCS+=	dsfield.c dsinit.c dsmethod.c dsmthdat.c
+SRCS+=	dsdebug.c dsfield.c dsinit.c dsmethod.c dsmthdat.c
 SRCS+=	dsobject.c dsopcode.c dsutils.c dswexec.c dswload.c
 SRCS+=	dswscope.c dswstate.c dsargs.c dscontrol.c dswload2.c
 SRCS+=	evevent.c evglock.c evgpe.c evgpeblk.c evgpeinit.c evgpeutil.c
@@ -60,7 +61,8 @@ SRCS+=	tbutils.c tbxface.c tbxfload.c tbxfroot.c utalloc.c utbuffer.c
 SRCS+=	utaddress.c utcopy.c
 SRCS+=	utdebug.c utdecode.c utdelete.c uterror.c uteval.c utexcep.c
 SRCS+=	utglobal.c uthex.c utids.c utinit.c utlock.c
-SRCS+=	utmath.c utmisc.c utmutex.c utobject.c utosi.c utownerid.c utpredef.c
+SRCS+=	utmath.c utmisc.c utmutex.c utnonansi.c
+SRCS+=	utobject.c utosi.c utownerid.c utpredef.c
 SRCS+=	utresrc.c utstate.c utstring.c utuuid.c utxface.c
 SRCS+=	utxferror.c utxfinit.c
 
