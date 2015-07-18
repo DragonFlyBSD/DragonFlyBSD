@@ -581,6 +581,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		 * other than freemap zone at this point.
 		 */
 		format_freemap(vol);
+		assert(ondisk->vol0_stat_freebigblocks == 0);
 		ondisk->vol0_stat_freebigblocks = initialize_freemap(vol);
 
 		/*
@@ -596,6 +597,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		 * is allocated for undo zone.
 		 */
 		format_undomap(vol);
+		assert(ondisk->vol0_stat_bigblocks == 0);
 		ondisk->vol0_stat_bigblocks = ondisk->vol0_stat_freebigblocks;
 
 		/*
@@ -605,6 +607,8 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		 */
 		ondisk->vol0_btree_root = format_root(label);
 		++ondisk->vol0_stat_inodes;	/* root inode */
+
+		rel_volume(vol);
 	} else {
 		freeblks = initialize_freemap(vol);
 		root_vol = get_volume(RootVolNo);
