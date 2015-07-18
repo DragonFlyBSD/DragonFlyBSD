@@ -67,9 +67,13 @@ extern char __nan[];
 #define FP_ILOGB0	(-INT_MAX)
 #define FP_ILOGBNAN	INT_MAX
 
+/*
+martynas@openbsd believes only F version is true.  This matches
+FreeBSD's math lib as well, so don't define D/L versions for now.
 #define FP_FAST_FMA	1
-#define FP_FAST_FMAF	1
 #define FP_FAST_FMAL	1
+*/
+#define FP_FAST_FMAF	1
 
 #define MATH_ERRNO	1
 #define MATH_ERREXCEPT	2
