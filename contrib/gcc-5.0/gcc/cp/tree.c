@@ -2237,14 +2237,14 @@ no_linkage_check (tree t, bool relaxed_p)
       return no_linkage_check (TYPE_PTRMEM_CLASS_TYPE (t), relaxed_p);
 
     case METHOD_TYPE:
-      r = no_linkage_check (TYPE_METHOD_BASETYPE (t), relaxed_p);
-      if (r)
-	return r;
-      /* Fall through.  */
     case FUNCTION_TYPE:
       {
-	tree parm;
-	for (parm = TYPE_ARG_TYPES (t);
+	tree parm = TYPE_ARG_TYPES (t);
+	if (TREE_CODE (t) == METHOD_TYPE)
+	  /* The 'this' pointer isn't interesting; a method has the same
+	     linkage (or lack thereof) as its enclosing class.  */
+	  parm = TREE_CHAIN (parm);
+	for (;
 	     parm && parm != void_list_node;
 	     parm = TREE_CHAIN (parm))
 	  {
@@ -2356,6 +2356,29 @@ bot_manip (tree* tp, int* walk_subtrees, void* data)
 	 break_out_target_exprs will have handled anything below this
 	 point.  */
       *walk_subtrees = 0;
+      return NULL_TREE;
+    }
+  if (TREE_CODE (*tp) == SAVE_EXPR)
+    {
+      t = *tp;
+      splay_tree_node n = splay_tree_lookup (target_remap,
+					     (splay_tree_key) t);
+      if (n)
+	{
+	  *tp = (tree)n->value;
+	  *walk_subtrees = 0;
+	}
+      else
+	{
+	  copy_tree_r (tp, walk_subtrees, NULL);
+	  splay_tree_insert (target_remap,
+			     (splay_tree_key)t,
+			     (splay_tree_value)*tp);
+	  /* Make sure we don't remap an already-remapped SAVE_EXPR.  */
+	  splay_tree_insert (target_remap,
+			     (splay_tree_key)*tp,
+			     (splay_tree_value)*tp);
+	}
       return NULL_TREE;
     }
 
@@ -2493,15 +2516,15 @@ replace_placeholders_r (tree* t, int* walk_subtrees, void* data_)
   switch (TREE_CODE (*t))
     {
     case PLACEHOLDER_EXPR:
-      gcc_assert (same_type_ignoring_top_level_qualifiers_p
-		  (TREE_TYPE (*t), TREE_TYPE (obj)));
-      *t = obj;
-      *walk_subtrees = false;
-      break;
-
-    case TARGET_EXPR:
-      /* Don't mess with placeholders in an unrelated object.  */
-      *walk_subtrees = false;
+      {
+	tree x = obj;
+	for (; !(same_type_ignoring_top_level_qualifiers_p
+		 (TREE_TYPE (*t), TREE_TYPE (x)));
+	     x = TREE_OPERAND (x, 0))
+	  gcc_assert (TREE_CODE (x) == COMPONENT_REF);
+	*t = x;
+	*walk_subtrees = false;
+      }
       break;
 
     case CONSTRUCTOR:
@@ -2517,7 +2540,12 @@ replace_placeholders_r (tree* t, int* walk_subtrees, void* data_)
 	    if (TREE_CODE (*valp) == CONSTRUCTOR
 		&& AGGREGATE_TYPE_P (type))
 	      {
-		subob = build_ctor_subob_ref (ce->index, type, obj);
+		/* If we're looking at the initializer for OBJ, then build
+		   a sub-object reference.  If we're looking at an
+		   initializer for another object, just pass OBJ down.  */
+		if (same_type_ignoring_top_level_qualifiers_p
+		    (TREE_TYPE (*t), TREE_TYPE (obj)))
+		  subob = build_ctor_subob_ref (ce->index, type, obj);
 		if (TREE_CODE (*valp) == TARGET_EXPR)
 		  valp = &TARGET_EXPR_INITIAL (*valp);
 	      }
@@ -3574,13 +3602,15 @@ handle_abi_tag_attribute (tree* node, tree name, tree args,
 		 name, *node);
 	  goto fail;
 	}
-      else if (CLASSTYPE_TEMPLATE_INSTANTIATION (*node))
+      else if (CLASS_TYPE_P (*node)
+	       && CLASSTYPE_TEMPLATE_INSTANTIATION (*node))
 	{
 	  warning (OPT_Wattributes, "ignoring %qE attribute applied to "
 		   "template instantiation %qT", name, *node);
 	  goto fail;
 	}
-      else if (CLASSTYPE_TEMPLATE_SPECIALIZATION (*node))
+      else if (CLASS_TYPE_P (*node)
+	       && CLASSTYPE_TEMPLATE_SPECIALIZATION (*node))
 	{
 	  warning (OPT_Wattributes, "ignoring %qE attribute applied to "
 		   "template specialization %qT", name, *node);
