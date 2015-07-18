@@ -4,10 +4,10 @@ GCC-5.1.1 RELEASE
 Original source of man pages can be downloaded from:
 http://ftp.gnu.org/gnu/gcc
 
-file = gcc-5.1.0-RC-20150412.tar.bz2
-date = 13 April 2015
-size = 95081824
-sha1 = 405c12ba75a30d52ed3e0b369e84e36a6ec7d6a4
+file = gcc-5.2.0.tar.bz2
+date = 16 July 2015
+size = 95221552
+sha1 = fe3f5390949d47054b613edc36c557eb1d51c18e
 
 The source files are pulled directly from GCC's Subversion repository.
 See LAST_UPDATED for SVN revision
@@ -22,3 +22,4 @@ The following files have been patched (* planned)
   gcc/gcc.c
   gcc/ginclude/stddef.h
 * gcc/tree-inline.c
+  libstdc++-v3/config/os/bsd/dragonfly/os_defines.h

@@ -119,7 +119,7 @@
 #define HAVE_EWOULDBLOCK 1
 
 /* Define to 1 if you have the <execinfo.h> header file. */
-#define HAVE_EXECINFO_H 1
+/* #undef HAVE_EXECINFO_H */
 
 /* Define to 1 if you have the `expf' function. */
 #define HAVE_EXPF 1
@@ -771,7 +771,7 @@
 
 /* Define if C99 functions or macros from <wchar.h>, <math.h>, <complex.h>,
    <stdio.h>, and <stdlib.h> can be used or exposed. */
-#define _GLIBCXX_USE_C99 1
+/* #undef _GLIBCXX_USE_C99 */
 
 /* Define if C99 functions in <complex.h> should be used in <complex>. Using
    compiler builtins for these functions requires corresponding C99 library
@@ -781,7 +781,7 @@
 /* Define if C99 functions in <complex.h> should be used in <tr1/complex>.
    Using compiler builtins for these functions requires corresponding C99
    library functions to be present. */
-/* #undef _GLIBCXX_USE_C99_COMPLEX_TR1 */
+#define _GLIBCXX_USE_C99_COMPLEX_TR1 1
 
 /* Define if C99 functions in <ctype.h> should be imported in <tr1/cctype> in
    namespace std::tr1. */
@@ -851,6 +851,9 @@
 
 /* Define if pthreads_num_processors_np is available in <pthread.h>. */
 /* #undef _GLIBCXX_USE_PTHREADS_NUM_PROCESSORS_NP */
+
+/* Define if POSIX read/write locks are available in <gthr.h>. */
+#define _GLIBCXX_USE_PTHREAD_RWLOCK_T 1
 
 /* Define if /dev/random and /dev/urandom are available for the random_device
    of TR1 (Chapter 5.1). */

@@ -463,6 +463,7 @@ libffi/
 libgcc/ChangeLog
 libgcc/Makefile.in
 libgcc/config.in
+libgcc/config/aarch64/
 libgcc/config/alpha/
 libgcc/config/arm/
 libgcc/config/avr/
@@ -479,6 +480,7 @@ libgcc/config/i386/cygming-crtend.c
 libgcc/config/i386/cygwin.S
 libgcc/config/i386/darwin-lib.h
 libgcc/config/i386/enable-execute-stack-mingw32.c
+libgcc/config/i386/freebsd-unwind.h
 libgcc/config/i386/gthr-win32.c
 libgcc/config/i386/gthr-win32.h
 libgcc/config/i386/libgcc-cygming.ver
