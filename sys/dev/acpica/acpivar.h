@@ -303,10 +303,6 @@ acpi_TimerDelta(uint32_t end, uint32_t start)
 	return (end - start);
 }
 
-#ifdef ACPI_DEBUGGER
-void		acpi_EnterDebugger(void);
-#endif
-
 #ifdef ACPI_DEBUG
 #include <sys/cons.h>
 #define STEP(x)		do {printf x, printf("\n"); cngetc();} while (0)

@@ -59,7 +59,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ddb.4,v 1.7.2.6 2001/08/17 13:08:37 ru Exp $
 .\"
-.Dd March 8, 2013
+.Dd July 19, 2015
 .Dt DDB 4
 .Os
 .Sh NAME
@@ -450,6 +450,12 @@ with an error message.
 Attempts to watch wired kernel memory
 may cause unrecoverable error in some systems such as i386.
 Watchpoints on user addresses work best.
+.It Cm acpidb
+If the kernel was compiled with
+.Dv ACPI_DEBUG ,
+call the ACPICA debugger.
+For more information, see the
+.Dq ACPI Component Architecture User Guide and Programmer Reference .
 .It Cm gdb
 Toggles between remote GDB and DDB mode.  In remote GDB mode, another
 machine is required that runs

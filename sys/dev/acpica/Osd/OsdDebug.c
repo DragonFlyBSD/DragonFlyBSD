@@ -93,19 +93,19 @@ AcpiOsSignal(UINT32 Function, void *Info)
 }
 
 #ifdef ACPI_DEBUGGER
-void
-acpi_EnterDebugger(void)
+DB_COMMAND(acpidb, db_cmd_acpidb)
 {
-    ACPI_PARSE_OBJECT	obj;
-    static int		initted = 0;
-
-    if (!initted) {
-	kprintf("Initialising ACPICA debugger...\n");
-	AcpiDbInitialize();
-	initted = 1;
-    }
-
     kprintf("Entering ACPICA debugger...\n");
-    AcpiDbUserCommands('A', &obj);
+    while (!AcpiGbl_DbTerminateThreads) {
+	AcpiDbSetOutputDestination(ACPI_DB_CONSOLE_OUTPUT);
+	if (!AcpiGbl_MethodExecuting)
+	    AcpiOsPrintf("%1c ", ACPI_DEBUGGER_COMMAND_PROMPT);
+	else
+	    AcpiOsPrintf("%1c ", ACPI_DEBUGGER_EXECUTE_PROMPT);
+	AcpiOsGetLine(AcpiGbl_DbLineBuf, ACPI_DB_LINE_BUFFER_SIZE, NULL);
+	AcpiDbCommandDispatch(AcpiGbl_DbLineBuf, NULL, NULL);
+    }
+    AcpiGbl_DbTerminateThreads = FALSE;
+    kprintf("Leaving ACPICA debugger...\n");
 }
 #endif /* ACPI_DEBUGGER */
