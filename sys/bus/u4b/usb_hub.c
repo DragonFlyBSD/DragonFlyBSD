@@ -97,12 +97,14 @@ TUNABLE_INT("hw.usb.power_timeout", &usb_power_timeout);
 
 #if USB_HAVE_DISABLE_ENUM
 static int usb_disable_enumeration = 0;
-SYSCTL_INT(_hw_usb, OID_AUTO, disable_enumeration, CTLFLAG_RWTUN,
+SYSCTL_INT(_hw_usb, OID_AUTO, disable_enumeration, CTLFLAG_RW,
     &usb_disable_enumeration, 0, "Set to disable all USB device enumeration.");
+TUNABLE_INT("hw.usb.disable_enumeration", &disable_enumeration);
 
 static int usb_disable_port_power = 0;
-SYSCTL_INT(_hw_usb, OID_AUTO, disable_port_power, CTLFLAG_RWTUN,
+SYSCTL_INT(_hw_usb, OID_AUTO, disable_port_power, CTLFLAG_RW,
     &usb_disable_port_power, 0, "Set to disable all USB port power.");
+TUNABLE_INT("hw.usb.disable_port_power", &disable_port_power);
 #endif
 
 struct uhub_current_state {
@@ -1417,12 +1419,12 @@ uhub_attach(device_t dev)
 
 	if (sysctl_ctx != NULL && sysctl_tree != NULL) {
 		(void) SYSCTL_ADD_INT(sysctl_ctx, SYSCTL_CHILDREN(sysctl_tree),
-		    OID_AUTO, "disable_enumeration", CTLFLAG_RWTUN,
+		    OID_AUTO, "disable_enumeration", CTLFLAG_RW,
 		    &sc->sc_disable_enumeration, 0,
 		    "Set to disable enumeration on this USB HUB.");
 
 		(void) SYSCTL_ADD_INT(sysctl_ctx, SYSCTL_CHILDREN(sysctl_tree),
-		    OID_AUTO, "disable_port_power", CTLFLAG_RWTUN,
+		    OID_AUTO, "disable_port_power", CTLFLAG_RW,
 		    &sc->sc_disable_port_power, 0,
 		    "Set to disable USB port power on this USB HUB.");
 	}
