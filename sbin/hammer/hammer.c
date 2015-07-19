@@ -587,6 +587,7 @@ hammer_parsedevs(const char *blkdevs)
 {
 	char *copy;
 	char *volname;
+	int volnum = 0;
 
 	if (blkdevs == NULL) {
 		errx(1, "A -f blkdevs specification is required "
@@ -600,11 +601,16 @@ hammer_parsedevs(const char *blkdevs)
 		volname = getdevpath(volname, 0);
 		if (strchr(volname, ':'))
 			hammer_parsedevs(volname);
-		else
+		else {
 			setup_volume(-1, volname, 0, O_RDONLY);
+			++volnum;
+		}
 		free(volname);
 	}
 	free(copy);
+
+	assert(NumVolumes == 0);
+	NumVolumes = volnum;
 }
 
 static
