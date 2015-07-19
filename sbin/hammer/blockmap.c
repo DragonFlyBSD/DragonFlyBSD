@@ -63,21 +63,15 @@ blockmap_lookup(hammer_off_t zone_offset,
 
 	zone = HAMMER_ZONE_DECODE(zone_offset);
 
-	if (AssertOnFailure) {
-		assert(zone > HAMMER_ZONE_RAW_VOLUME_INDEX);
-		assert(zone < HAMMER_MAX_ZONES);
-		assert(RootVolNo >= 0);
-	} else {
-		if (zone <= HAMMER_ZONE_RAW_VOLUME_INDEX)
-			error = -1;
-		if (zone >= HAMMER_MAX_ZONES)
-			error = -2;
-		if (RootVolNo < 0)
-			error = -3;
-		if (error) {
-			result_offset = HAMMER_OFF_BAD;
-			goto done;
-		}
+	if (zone <= HAMMER_ZONE_RAW_VOLUME_INDEX)
+		error = -1;
+	if (zone >= HAMMER_MAX_ZONES)
+		error = -2;
+	if (RootVolNo < 0)
+		error = -3;
+	if (error) {
+		result_offset = HAMMER_OFF_BAD;
+		goto done;
 	}
 
 	root_volume = get_volume(RootVolNo);
@@ -88,14 +82,10 @@ blockmap_lookup(hammer_off_t zone_offset,
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
 		i = (zone_offset & HAMMER_OFF_SHORT_MASK) /
 		    HAMMER_BIGBLOCK_SIZE;
-		if (AssertOnFailure) {
-			assert(zone_offset < blockmap->alloc_offset);
-		} else {
-			if (zone_offset >= blockmap->alloc_offset) {
-				error = -4;
-				result_offset = HAMMER_OFF_BAD;
-				goto done;
-			}
+		if (zone_offset >= blockmap->alloc_offset) {
+			error = -4;
+			result_offset = HAMMER_OFF_BAD;
+			goto done;
 		}
 		result_offset = root_volume->ondisk->vol0_undo_array[i] +
 				(zone_offset & HAMMER_BIGBLOCK_MASK64);
@@ -110,13 +100,9 @@ blockmap_lookup(hammer_off_t zone_offset,
 	 * Note that a valid offset can still be returned if AssertOnFailure
 	 * is zero.
 	 */
-	if (AssertOnFailure) {
-		assert(HAMMER_ZONE_DECODE(blockmap->alloc_offset) == zone);
-	} else {
-		if (HAMMER_ZONE_DECODE(blockmap->alloc_offset) != zone) {
-			error = -5;
-			goto done;
-		}
+	if (HAMMER_ZONE_DECODE(blockmap->alloc_offset) != zone) {
+		error = -5;
+		goto done;
 	}
 
 	/*
@@ -131,19 +117,15 @@ blockmap_lookup(hammer_off_t zone_offset,
 	layer1_offset = freemap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
-	if (AssertOnFailure) {
-		assert(layer1);
-		assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
-	} else {
-		if (layer1 == NULL) {
-			error = -6;
-			goto done;
-		}
-		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
-			error = -7;
-			goto done;
-		}
+	if (layer1 == NULL) {
+		error = -6;
+		goto done;
 	}
+	if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
+		error = -7;
+		goto done;
+	}
+
 	if (save_layer1)
 		*save_layer1 = *layer1;
 
@@ -154,18 +136,13 @@ blockmap_lookup(hammer_off_t zone_offset,
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
 	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
-	if (AssertOnFailure) {
-		assert(layer2);
-		assert(layer2->zone == zone);
-	} else {
-		if (layer2 == NULL) {
-			error = -8;
-			goto done;
-		}
-		if (layer2->zone != zone) {
-			error = -9;
-			goto done;
-		}
+	if (layer2 == NULL) {
+		error = -8;
+		goto done;
+	}
+	if (layer2->zone != zone) {
+		error = -9;
+		goto done;
 	}
 	if (save_layer2)
 		*save_layer2 = *layer2;
@@ -175,6 +152,8 @@ done:
 	rel_buffer(buffer2);
 	rel_volume(root_volume);
 
+	if (AssertOnFailure && error != 0)
+		errx(1, "blockmap_lookup: error=%d\n", error);
 	if (errorp)
 		*errorp = error;
 
