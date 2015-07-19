@@ -106,8 +106,10 @@ dump_blockmap(const char *label, int zone)
 	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
 	assert(rootmap->phys_offset != 0);
 
-	printf("zone %-16s next %016jx alloc %016jx\n",
+	printf("zone %-16s phys %016jx first %016jx next %016jx alloc %016jx\n",
 		label,
+		(uintmax_t)rootmap->phys_offset,
+		(uintmax_t)rootmap->first_offset,
 		(uintmax_t)rootmap->next_offset,
 		(uintmax_t)rootmap->alloc_offset);
 
