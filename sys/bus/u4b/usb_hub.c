@@ -99,12 +99,12 @@ TUNABLE_INT("hw.usb.power_timeout", &usb_power_timeout);
 static int usb_disable_enumeration = 0;
 SYSCTL_INT(_hw_usb, OID_AUTO, disable_enumeration, CTLFLAG_RW,
     &usb_disable_enumeration, 0, "Set to disable all USB device enumeration.");
-TUNABLE_INT("hw.usb.disable_enumeration", &disable_enumeration);
+TUNABLE_INT("hw.usb.disable_enumeration", &usb_disable_enumeration);
 
 static int usb_disable_port_power = 0;
 SYSCTL_INT(_hw_usb, OID_AUTO, disable_port_power, CTLFLAG_RW,
     &usb_disable_port_power, 0, "Set to disable all USB port power.");
-TUNABLE_INT("hw.usb.disable_port_power", &disable_port_power);
+TUNABLE_INT("hw.usb.disable_port_power", &usb_disable_port_power);
 #endif
 
 struct uhub_current_state {
