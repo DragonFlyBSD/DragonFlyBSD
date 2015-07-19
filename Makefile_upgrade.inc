@@ -1372,7 +1372,6 @@ TO_REMOVE+=/usr/include/machine/float.h
 TO_REMOVE+=/usr/include/cpu/floatingpoint.h
 TO_REMOVE+=/usr/include/machine/floatingpoint.h
 TO_REMOVE+=/usr/include/cpu/ieee.h
-TO_REMOVE+=/usr/include/machine/ieee.h
 TO_REMOVE+=/usr/include/cpu/math.h
 TO_REMOVE+=/usr/include/machine/math.h
 TO_REMOVE+=/usr/libdata/gcc44/tgmath.h
