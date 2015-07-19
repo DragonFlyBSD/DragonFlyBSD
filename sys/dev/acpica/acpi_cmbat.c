@@ -57,6 +57,7 @@ ACPI_MODULE_NAME("BATTERY")
 struct acpi_cmbat_softc {
     device_t	    dev;
     int		    flags;
+    int		    bix_present;
 
     struct acpi_bif bif;
     struct acpi_bst bst;
@@ -121,7 +122,7 @@ static int
 acpi_cmbat_attach(device_t dev)
 {
     int		error;
-    ACPI_HANDLE	handle;
+    ACPI_HANDLE	handle, h;
     struct acpi_cmbat_softc *sc;
 
     sc = device_get_softc(dev);
@@ -131,6 +132,10 @@ acpi_cmbat_attach(device_t dev)
     ACPI_SERIAL_INIT(cmbat);
 
     timespecclear(&sc->bst_lastupdated);
+
+    sc->bix_present = ACPI_SUCCESS(AcpiGetHandle(handle, "_BIX", &h));
+    if (sc->bix_present)
+	device_printf(dev, "supports extended information\n");
 
     error = acpi_battery_register(dev);
     if (error != 0) {
@@ -311,62 +316,70 @@ acpi_cmbat_get_bif(void *arg)
     ACPI_STATUS	as;
     ACPI_OBJECT	*res;
     ACPI_HANDLE	h;
-    ACPI_BUFFER	bif_buffer;
+    ACPI_BUFFER	info_buffer;
     device_t dev;
+    int i;
 
     ACPI_SERIAL_ASSERT(cmbat);
 
     dev = arg;
     sc = device_get_softc(dev);
     h = acpi_get_handle(dev);
-    bif_buffer.Pointer = NULL;
-    bif_buffer.Length = ACPI_ALLOCATE_BUFFER;
+    info_buffer.Pointer = NULL;
+    info_buffer.Length = ACPI_ALLOCATE_BUFFER;
 
-    as = AcpiEvaluateObject(h, "_BIF", NULL, &bif_buffer);
+    as = AcpiEvaluateObject(h, sc->bix_present ? "_BIX" : "_BIF", NULL,
+	&info_buffer);
     if (ACPI_FAILURE(as)) {
 	ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
-		    "error fetching current battery info -- %s\n",
+		    "error fetching current %sbattery info -- %s\n",
+		    sc->bix_present ? "extended " : "",
 		    AcpiFormatException(as));
 	goto end;
     }
 
-    res = (ACPI_OBJECT *)bif_buffer.Pointer;
-    if (!ACPI_PKG_VALID(res, 13)) {
+    res = (ACPI_OBJECT *)info_buffer.Pointer;
+    if (!ACPI_PKG_VALID(res, sc->bix_present ? 20 : 13)) {
 	ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
-		    "battery info corrupted\n");
+		    "%sbattery info corrupted\n",
+		    sc->bix_present ? "extended " : "");
 	goto end;
     }
 
-    if (acpi_PkgInt32(res, 0, &sc->bif.units) != 0)
+    i = sc->bix_present ? 1 : 0; /* _BIX: Skip Revision field. */
+    if (acpi_PkgInt32(res, i++, &sc->bif.units) != 0)
 	goto end;
-    if (acpi_PkgInt32(res, 1, &sc->bif.dcap) != 0)
+    if (acpi_PkgInt32(res, i++, &sc->bif.dcap) != 0)
 	goto end;
-    if (acpi_PkgInt32(res, 2, &sc->bif.lfcap) != 0)
+    if (acpi_PkgInt32(res, i++, &sc->bif.lfcap) != 0)
 	goto end;
-    if (acpi_PkgInt32(res, 3, &sc->bif.btech) != 0)
+    if (acpi_PkgInt32(res, i++, &sc->bif.btech) != 0)
 	goto end;
-    if (acpi_PkgInt32(res, 4, &sc->bif.dvol) != 0)
+    if (acpi_PkgInt32(res, i++, &sc->bif.dvol) != 0)
 	goto end;
-    if (acpi_PkgInt32(res, 5, &sc->bif.wcap) != 0)
+    if (acpi_PkgInt32(res, i++, &sc->bif.wcap) != 0)
 	goto end;
-    if (acpi_PkgInt32(res, 6, &sc->bif.lcap) != 0)
+    if (acpi_PkgInt32(res, i++, &sc->bif.lcap) != 0)
 	goto end;
-    if (acpi_PkgInt32(res, 7, &sc->bif.gra1) != 0)
+    if (sc->bix_present)
+	i += 6;	   /* _BIX: Continue with Battery Capacity Granularity 1. */
+    if (acpi_PkgInt32(res, i++, &sc->bif.gra1) != 0)
 	goto end;
-    if (acpi_PkgInt32(res, 8, &sc->bif.gra2) != 0)
+    if (acpi_PkgInt32(res, i++, &sc->bif.gra2) != 0)
 	goto end;
-    if (acpi_PkgStr(res,  9, sc->bif.model, ACPI_CMBAT_MAXSTRLEN) != 0)
+    if (acpi_PkgStr(res,  i++, sc->bif.model, ACPI_CMBAT_MAXSTRLEN) != 0)
 	goto end;
-    if (acpi_PkgStr(res, 10, sc->bif.serial, ACPI_CMBAT_MAXSTRLEN) != 0)
+    if (acpi_PkgStr(res, i++, sc->bif.serial, ACPI_CMBAT_MAXSTRLEN) != 0)
 	goto end;
-    if (acpi_PkgStr(res, 11, sc->bif.type, ACPI_CMBAT_MAXSTRLEN) != 0)
+    if (acpi_PkgStr(res, i++, sc->bif.type, ACPI_CMBAT_MAXSTRLEN) != 0)
 	goto end;
-    if (acpi_PkgStr(res, 12, sc->bif.oeminfo, ACPI_CMBAT_MAXSTRLEN) != 0)
+    if (acpi_PkgStr(res, i++, sc->bif.oeminfo, ACPI_CMBAT_MAXSTRLEN) != 0)
 	goto end;
+    /* _BIX: Ignore Battery Swapping Capability field. */
 
 end:
-    if (bif_buffer.Pointer != NULL)
-	AcpiOsFree(bif_buffer.Pointer);
+    if (info_buffer.Pointer != NULL)
+	AcpiOsFree(info_buffer.Pointer);
 }
 
 static int
