@@ -61,8 +61,11 @@
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
+#include <vm/vm_param.h>
 #include <vm/vm_pageout.h>
 #include <vm/pmap.h>
+
+#include <vm/vm_page2.h>
 
 #include <machine/md_var.h>
 
@@ -99,8 +102,11 @@ static int agp_sb_get_gtt_total_entries(device_t dev);
 static int agp_gen8_get_gtt_total_entries(device_t dev);
 
 static int agp_i830_install_gatt(device_t dev);
+static int agp_sb_install_gatt(device_t dev);
+static int agp_vlv_install_gatt(device_t dev);
 
 static void agp_i830_deinstall_gatt(device_t dev);
+static void agp_sb_deinstall_gatt(device_t dev);
 
 static void agp_i915_install_gtt_pte(device_t dev, u_int index,
     vm_offset_t physical, int flags);
@@ -109,6 +115,8 @@ static void agp_i965_install_gtt_pte(device_t dev, u_int index,
 static void agp_g4x_install_gtt_pte(device_t dev, u_int index,
     vm_offset_t physical, int flags);
 static void agp_sb_install_gtt_pte(device_t dev, u_int index,
+    vm_offset_t physical, int flags);
+static void agp_vlv_install_gtt_pte(device_t dev, u_int index,
     vm_offset_t physical, int flags);
 static void agp_gen8_install_gtt_pte(device_t dev, u_int index,
     vm_offset_t physical, int flags);
@@ -182,7 +190,7 @@ struct agp_i810_softc {
 	u_int gtt_mappable_entries;	/* Number of gtt ptes mappable by CPU */
 	device_t bdev;			/* bridge device */
 	void *argb_cursor;		/* contigmalloc area for ARGB cursor */
-	struct resource *sc_res[2];
+	struct resource *sc_res[3];
 	const struct agp_i810_match *match;
 	int sc_flush_page_rid;
 	struct resource *sc_flush_page_res;
@@ -339,8 +347,8 @@ static const struct agp_i810_driver agp_i810_sb_driver = {
 	.get_stolen_size = agp_sb_get_stolen_size,
 	.get_gtt_mappable_entries = agp_i915_get_gtt_mappable_entries,
 	.get_gtt_total_entries = agp_sb_get_gtt_total_entries,
-	.install_gatt = agp_i830_install_gatt,
-	.deinstall_gatt = agp_i830_deinstall_gatt,
+	.install_gatt = agp_sb_install_gatt,
+	.deinstall_gatt = agp_sb_deinstall_gatt,
 	.write_gtt = agp_sb_write_gtt,
 	.install_gtt_pte = agp_sb_install_gtt_pte,
 	.sync_gtt_pte = agp_g4x_sync_gtt_pte,
@@ -355,16 +363,16 @@ static const struct agp_i810_driver valleyview_gtt_driver = {
 	.gen = 7,
 	.busdma_addr_mask_sz = 40,
 	.res_spec = agp_g4x_res_spec,
-	.check_active = agp_sb_check_active,
+	.check_active = NULL,
 	.set_desc = agp_i810_set_desc,
 	.dump_regs = agp_sb_dump_regs,
 	.get_stolen_size = agp_sb_get_stolen_size,
 	.get_gtt_mappable_entries = agp_i915_get_gtt_mappable_entries,
 	.get_gtt_total_entries = agp_sb_get_gtt_total_entries,
-	.install_gatt = agp_i830_install_gatt,
-	.deinstall_gatt = agp_i830_deinstall_gatt,
+	.install_gatt = agp_vlv_install_gatt,
+	.deinstall_gatt = agp_sb_deinstall_gatt,
 	.write_gtt = agp_sb_write_gtt,
-	.install_gtt_pte = agp_sb_install_gtt_pte,
+	.install_gtt_pte = agp_vlv_install_gtt_pte,
 	.sync_gtt_pte = agp_g4x_sync_gtt_pte,
 	.set_aperture = agp_i915_set_aperture,
 	.chipset_flush_setup = agp_i810_chipset_flush_setup,
@@ -589,11 +597,14 @@ static const struct agp_i810_match {
 		.name = "IvyBridge server GT2 IG",
 		.driver = &agp_i810_sb_driver
 	},
-	{
-		.devid = 0x0f30,
-		.name = "ValleyView",
-		.driver = &valleyview_gtt_driver
-	},
+
+	{	0x0f30, "ValleyView/Baytrail", &valleyview_gtt_driver },
+	{	0x0f31, "ValleyView/Baytrail", &valleyview_gtt_driver },
+	{	0x0f32, "ValleyView/Baytrail", &valleyview_gtt_driver },
+	{	0x0f33, "ValleyView/Baytrail", &valleyview_gtt_driver },
+	{	0x0155, "ValleyView/Baytrail", &valleyview_gtt_driver },
+	{	0x0157, "ValleyView/Baytrail", &valleyview_gtt_driver },
+
 	{
 		.devid = 0x0402,
 		.name = "Haswell desktop GT1 IG",
@@ -683,6 +694,7 @@ agp_i810_match(device_t dev)
 		return (NULL);
 
 	devid = pci_get_device(dev);
+	kprintf("agp_i810_match(): devid = 0x%x\n", devid);
 	for (i = 0; agp_i810_matches[i].devid != 0; i++) {
 		if (agp_i810_matches[i].devid == devid)
 			break;
@@ -746,7 +758,7 @@ agp_i810_probe(device_t dev)
 {
 	device_t bdev;
 	const struct agp_i810_match *match;
-	int err;
+	int err = 0;
 
 	if (resource_disabled("agp", device_get_unit(dev)))
 		return (ENXIO);
@@ -764,11 +776,13 @@ agp_i810_probe(device_t dev)
 	/*
 	 * checking whether internal graphics device has been activated.
 	 */
-	err = match->driver->check_active(bdev);
-	if (err != 0) {
-		if (bootverbose)
-			kprintf("i810: disabled, not probing\n");
-		return (err);
+	if (match->driver->check_active != NULL) {
+		err = match->driver->check_active(bdev);
+		if (err != 0) {
+			if (bootverbose)
+				kprintf("i810: disabled, not probing\n");
+			return (err);
+		}
 	}
 
 	match->driver->set_desc(dev, match);
@@ -796,9 +810,9 @@ agp_i965_dump_regs(device_t dev)
 	device_printf(dev, "AGP_I965_PGTBL_CTL2: %08x\n",
 	    bus_read_4(sc->sc_res[0], AGP_I965_PGTBL_CTL2));
 	device_printf(dev, "AGP_I855_GCC1: 0x%02x\n",
-	    pci_read_config(sc->bdev, AGP_I855_GCC1, 1));
+	    pci_read_config(dev, AGP_I855_GCC1, 1));
 	device_printf(dev, "AGP_I965_MSAC: 0x%02x\n",
-	    pci_read_config(sc->bdev, AGP_I965_MSAC, 1));
+	    pci_read_config(dev, AGP_I965_MSAC, 1));
 }
 
 static void
@@ -809,7 +823,7 @@ agp_sb_dump_regs(device_t dev)
 	device_printf(dev, "AGP_SNB_GFX_MODE: %08x\n",
 	    bus_read_4(sc->sc_res[0], AGP_SNB_GFX_MODE));
 	device_printf(dev, "AGP_SNB_GCC1: 0x%04x\n",
-	    pci_read_config(sc->bdev, AGP_SNB_GCC1, 2));
+	    pci_read_config(dev, AGP_SNB_GCC1, 2));
 }
 
 static int
@@ -960,7 +974,8 @@ agp_sb_get_stolen_size(device_t dev)
 	uint16_t gmch_ctl;
 
 	sc = device_get_softc(dev);
-	gmch_ctl = pci_read_config(sc->bdev, AGP_SNB_GCC1, 2);
+	gmch_ctl = pci_read_config(dev, AGP_SNB_GCC1, 2);
+
 	switch (gmch_ctl & AGP_SNB_GMCH_GMS_STOLEN_MASK) {
 	case AGP_SNB_GMCH_GMS_STOLEN_32M:
 		sc->stolen_size = 32 * 1024 * 1024;
@@ -1011,6 +1026,7 @@ agp_sb_get_stolen_size(device_t dev)
 		sc->stolen_size = 512 * 1024 * 1024;
 		break;
 	}
+	kprintf("stolen size %d\n", sc->stolen_size);
 	sc->stolen = (sc->stolen_size - 4) / 4096;
 	return (0);
 }
@@ -1023,10 +1039,9 @@ agp_gen8_get_stolen_size(device_t dev)
 	int v;
 
 	sc = device_get_softc(dev);
-	gcc1 = pci_read_config(sc->bdev, AGP_SNB_GCC1, 2);
+	gcc1 = pci_read_config(dev, AGP_SNB_GCC1, 2);
 	v = (gcc1 >> 8) & 0xFF;
 	sc->stolen_size = v * (32L * 1024 * 1024);	/* 32MB increments */
-	kprintf("GTT STOLEN %ld\n", (long)sc->stolen_size);
 
 	return 0;
 }
@@ -1147,7 +1162,7 @@ agp_sb_get_gtt_total_entries(device_t dev)
 
 	sc = device_get_softc(dev);
 
-	gcc1 = pci_read_config(sc->bdev, AGP_SNB_GCC1, 2);
+	gcc1 = pci_read_config(dev, AGP_SNB_GCC1, 2);
 	switch (gcc1 & AGP_SNB_GTT_SIZE_MASK) {
 	default:
 	case AGP_SNB_GTT_SIZE_0M:
@@ -1172,7 +1187,7 @@ agp_gen8_get_gtt_total_entries(device_t dev)
 
 	sc = device_get_softc(dev);
 
-	gcc1 = pci_read_config(sc->bdev, AGP_SNB_GCC1, 2);
+	gcc1 = pci_read_config(dev, AGP_SNB_GCC1, 2);
 	v = (gcc1 >> 6) & 3;
 	if (v)
 		v = 1 << v;
@@ -1210,6 +1225,50 @@ agp_i830_install_gatt(device_t dev)
 
 	sc->gatt->ag_physical = pgtblctl & ~1;
 	return (0);
+}
+
+static int
+agp_sb_install_gatt(device_t dev)
+{
+	struct agp_i810_softc *sc;
+	uint32_t pgtblctl;
+
+	sc = device_get_softc(dev);
+
+	/*
+	 * The i830 automatically initializes the 128k gatt on boot.
+	 * GATT address is already in there, make sure it's enabled.
+	 */
+	pgtblctl = bus_read_4(sc->sc_res[0], AGP_I810_PGTBL_CTL);
+	pgtblctl |= 1;
+	bus_write_4(sc->sc_res[0], AGP_I810_PGTBL_CTL, pgtblctl);
+
+	sc->gatt->ag_physical = pgtblctl & ~1;
+	return (0);
+}
+
+static int
+agp_vlv_install_gatt(device_t dev)
+{
+	void *pg = contigmalloc(4096, M_AGP, M_WAITOK | M_ZERO,
+			        0x10000, 0xFFFFFFFFU,
+				PAGE_SIZE, PAGE_SIZE);
+	struct agp_i810_softc *sc;
+	uint32_t pte;
+	int i;
+
+	/*
+	 * Make the entire aperture valid by pointing to a page of junk
+	 * memory.
+	 *
+	 * NOTE: valleyview has not PGTBL_CTL
+	 */
+	sc = device_get_softc(dev);
+	pte = vtophys(pg) | 0x03;
+	for (i = 0; i < 2 * 1024 * 1024; i += 4)
+		bus_write_4(sc->sc_res[0], i + (2 * 1024 * 1024), pte);
+
+	return 0;
 }
 
 static int
@@ -1287,6 +1346,20 @@ agp_i830_deinstall_gatt(device_t dev)
 	pgtblctl = bus_read_4(sc->sc_res[0], AGP_I810_PGTBL_CTL);
 	pgtblctl &= ~1;
 	bus_write_4(sc->sc_res[0], AGP_I810_PGTBL_CTL, pgtblctl);
+}
+
+static void
+agp_sb_deinstall_gatt(device_t dev)
+{
+	struct agp_i810_softc *sc;
+	unsigned int pgtblctl;
+
+	sc = device_get_softc(dev);
+	if (sc->sc_res[0]) {
+		pgtblctl = bus_read_4(sc->sc_res[0], AGP_I810_PGTBL_CTL);
+		pgtblctl &= ~1;
+		bus_write_4(sc->sc_res[0], AGP_I810_PGTBL_CTL, pgtblctl);
+	}
 }
 
 static int
@@ -1384,7 +1457,7 @@ agp_i915_write_gtt(device_t dev, u_int index, uint32_t pte)
 	struct agp_i810_softc *sc;
 
 	sc = device_get_softc(dev);
-	bus_write_4(sc->sc_res[1], index * 4, pte);
+	bus_write_4(sc->sc_res[0], index * 4, pte);
 }
 
 static void
@@ -1452,6 +1525,31 @@ agp_sb_install_gtt_pte(device_t dev, u_int index,
 		pte |= GEN6_PTE_LLC | gfdt;
 
 	pte |= (physical & 0x000000ff00000000ull) >> 28;
+	agp_sb_write_gtt(dev, index, pte);
+}
+
+#define GEN6_PTE_VALID			(1 << 0)
+#define BYT_PTE_WRITEABLE		(1 << 1)
+#define BYT_PTE_SNOOPED_BY_CPU_CACHES	(1 << 2)
+#define GEN6_PTE_ADDR_ENCODE(addr)	GEN6_GTT_ADDR_ENCODE(addr)
+#define GEN6_GTT_ADDR_ENCODE(addr)	((addr) | (((addr) >> 28) & 0xff0))
+
+static void
+agp_vlv_install_gtt_pte(device_t dev, u_int index,
+			vm_offset_t physical, int flags)
+{
+	int type_mask;
+	uint32_t pte;
+
+	pte = GEN6_PTE_ADDR_ENCODE(physical) | GEN6_PTE_VALID;
+	pte |= BYT_PTE_WRITEABLE;
+
+	type_mask = flags & ~AGP_USER_CACHED_MEMORY_GFDT;
+	if (type_mask != AGP_USER_MEMORY) {
+		 pte |= BYT_PTE_SNOOPED_BY_CPU_CACHES;
+		 if (flags & AGP_USER_CACHED_MEMORY_GFDT)
+			pte |= GEN6_PTE_GFDT;
+	}
 	agp_sb_write_gtt(dev, index, pte);
 }
 
