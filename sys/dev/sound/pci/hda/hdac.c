@@ -77,7 +77,7 @@ static const struct {
 	char		quirks_off;
 } hdac_devices[] = {
 	{ HDA_INTEL_OAK,     "Intel Oaktrail",	0, 0 },
-	{ HDA_INTEL_BAY,     "Intel BayTrail",	0, HDAC_QUIRK_MSI },
+	{ HDA_INTEL_BAY,     "Intel BayTrail",	0, 0 },
 	{ HDA_INTEL_HSW1,    "Intel Haswell",	0, 0 },
 	{ HDA_INTEL_HSW2,    "Intel Haswell",	0, 0 },
 	{ HDA_INTEL_HSW3,    "Intel Haswell",	0, 0 },
@@ -357,6 +357,7 @@ static int
 hdac_reset(struct hdac_softc *sc, int wakeup)
 {
 	uint32_t gctl;
+	uint32_t wee;
 	int count, i;
 
 	/*
@@ -425,6 +426,14 @@ hdac_reset(struct hdac_softc *sc, int wakeup)
 	 * it's reset properly.
 	 */
 	DELAY(1000);
+
+	/*
+	 * BIOS May have left some wake bits enabled / pending, which can
+	 *	force a continuous interrupt.  Make sure it is turned off.
+	 */
+	wee = HDAC_READ_2(&sc->mem, HDAC_WAKEEN);
+	HDAC_WRITE_2(&sc->mem, HDAC_WAKEEN, wee & ~HDAC_WAKEEN_SDIWEN_MASK);
+	/*HDAC_WRITE_2(&sc->mem, HDAC_STATESTS, HDAC_STATESTS_SDIWAKE_MASK);*/
 
 	return (0);
 }
@@ -1121,16 +1130,17 @@ hdac_attach(device_t dev)
 		sc->quirks_on = 0;
 		sc->quirks_off = 0;
 	}
+	hdac_config_fetch(sc, &sc->quirks_on, &sc->quirks_off);
 	if (resource_int_value(device_get_name(dev),
-	    device_get_unit(dev), "msi", &i) == 0) {
-		if (i == 0)
+			       device_get_unit(dev), "msi", &i) == 0) {
+		if (i == 0) {
+			sc->quirks_on &= ~HDAC_QUIRK_MSI;
 			sc->quirks_off |= HDAC_QUIRK_MSI;
-		else {
+		} else {
 			sc->quirks_on |= HDAC_QUIRK_MSI;
-			sc->quirks_off |= ~HDAC_QUIRK_MSI;
+			sc->quirks_off &= ~HDAC_QUIRK_MSI;
 		}
 	}
-	hdac_config_fetch(sc, &sc->quirks_on, &sc->quirks_off);
 	HDA_BOOTVERBOSE(
 		device_printf(sc->dev,
 		    "Config options: on=0x%08x off=0x%08x\n",
