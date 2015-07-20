@@ -232,6 +232,8 @@ SYSCTL_NODE(_hw, OID_AUTO, drm, CTLFLAG_RW, NULL, "DRM device");
 SYSCTL_NODE(_hw_drm, OID_AUTO, msi, CTLFLAG_RW, NULL, "DRM device msi");
 SYSCTL_INT(_hw_drm_msi, OID_AUTO, enable, CTLFLAG_RD, &drm_msi, 0,
     "Enable MSI interrupts for drm devices");
+SYSCTL_INT(_hw_drm, OID_AUTO, debug, CTLFLAG_RW, &drm_debug, 0,
+    "DRM debugging");
 
 static struct drm_msi_blacklist_entry drm_msi_blacklist[] = {
 	{0x8086, 0x2772}, /* Intel i945G	*/ \
@@ -1002,4 +1004,3 @@ dmi_check_system(const struct dmi_system_id *sysid)
 	}
 	return (num);
 }
-

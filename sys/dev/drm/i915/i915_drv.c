@@ -411,6 +411,7 @@ void intel_detect_pch(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct device *pch = NULL;
+	struct pci_devinfo *di;
 
 	/* In all current cases, num_pipes is equivalent to the PCH_NOP setting
 	 * (which really amounts to a PCH but no South Display).
@@ -435,7 +436,9 @@ void intel_detect_pch(struct drm_device *dev)
 	 * all the ISA bridge devices and check for the first match, instead
 	 * of only checking the first one.
 	 */
-	while ((pch = pci_find_class(PCIC_BRIDGE, PCIS_BRIDGE_ISA))) {
+	di = NULL;
+
+	while ((pch = pci_iterate_class(&di, PCIC_BRIDGE, PCIS_BRIDGE_ISA))) {
 		if (pci_get_vendor(pch) == PCI_VENDOR_INTEL) {
 			unsigned short id = pci_get_device(pch) & INTEL_PCH_DEVICE_ID_MASK;
 			dev_priv->pch_id = id;

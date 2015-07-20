@@ -260,6 +260,7 @@ static void set_data(device_t idev, int val)
 	dev_priv = sc->drm_dev->dev_private;
 
 	reserved = get_reserved(idev);
+
 	if (val)
 		data_bits = GPIO_DATA_DIR_IN | GPIO_DATA_DIR_MASK;
 	else
@@ -306,9 +307,7 @@ intel_gpio_setup(device_t idev)
 	device_set_desc(idev, sc->name);
 
 	sc->reg0 = (pin + 1) | GMBUS_RATE_100KHZ;
-	sc->reg = map_pin_to_reg[pin + 1];
-	if (HAS_PCH_SPLIT(dev_priv->dev))
-		sc->reg += PCH_GPIOA - GPIOA;
+	sc->reg = dev_priv->gpio_mmio_base + map_pin_to_reg[pin + 1];
 
 	/* add generic bit-banging code */
 	sc->iic_dev = device_add_child(idev, "iicbb", -1);
