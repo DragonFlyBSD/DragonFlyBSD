@@ -499,6 +499,10 @@ device_t pci_find_bsf(uint8_t, uint8_t, uint8_t);
 device_t pci_find_dbsf(uint32_t, uint8_t, uint8_t, uint8_t);
 device_t pci_find_device(uint16_t, uint16_t);
 device_t pci_find_class(uint8_t class, uint8_t subclass);
+#if defined(_SYS_BUS_H_) && defined(_SYS_PCIIO_H_)
+device_t pci_iterate_class(struct pci_devinfo **dinfop,
+			uint8_t class, uint8_t subclass);
+#endif
 
 /* Can be used by drivers to manage the MSI-X table. */
 int	pci_pending_msix_vector(device_t dev, u_int index);

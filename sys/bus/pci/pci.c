@@ -379,6 +379,28 @@ pci_find_class(uint8_t class, uint8_t subclass)
 	return (NULL);
 }
 
+device_t
+pci_iterate_class(struct pci_devinfo **dinfop, uint8_t class, uint8_t subclass)
+{
+	struct pci_devinfo *dinfo;
+
+	if (*dinfop)
+		dinfo = STAILQ_NEXT(*dinfop, pci_links);
+	else
+		dinfo = STAILQ_FIRST(&pci_devq);
+
+	while (dinfo) {
+		if (dinfo->cfg.baseclass == class &&
+		    dinfo->cfg.subclass == subclass) {
+			*dinfop = dinfo;
+			return (dinfo->cfg.dev);
+		}
+		dinfo = STAILQ_NEXT(dinfo, pci_links);
+	}
+	*dinfop = NULL;
+	return (NULL);
+}
+
 /* return base address of memory or port map */
 
 static uint32_t
