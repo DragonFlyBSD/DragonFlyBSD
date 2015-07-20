@@ -43,6 +43,7 @@
 typedef struct collect {
 	RB_ENTRY(collect) entry;
 	hammer_off_t	phys_offset;  /* layer2 address pointed by layer1 */
+	hammer_off_t	*offsets;  /* big-block offset for layer2[i] */
 	struct hammer_blockmap_layer2 *track2;  /* track of layer2 entries */
 	struct hammer_blockmap_layer2 *layer2;  /* 1<<19 x 16 bytes entries */
 	int error;  /* # of inconsistencies */
@@ -386,7 +387,7 @@ collect_blockmap(hammer_off_t offset, int32_t length, int zone)
 		assert(error == 0);
 	}
 	collect = collect_get(layer1.phys_offset); /* layer2 address */
-	track2 = collect_get_track(collect, offset, zone, &layer2);
+	track2 = collect_get_track(collect, result_offset, zone, &layer2);
 	track2->bytes_free -= length;
 }
 
@@ -403,6 +404,7 @@ collect_get(hammer_off_t phys_offset)
 	collect = calloc(sizeof(*collect), 1);
 	collect->track2 = malloc(HAMMER_BIGBLOCK_SIZE);  /* 1<<23 bytes */
 	collect->layer2 = malloc(HAMMER_BIGBLOCK_SIZE);  /* 1<<23 bytes */
+	collect->offsets = malloc(sizeof(hammer_off_t) * HAMMER_BLOCKMAP_RADIX2);
 	collect->phys_offset = phys_offset;
 	RB_INSERT(collect_rb_tree, &CollectTree, collect);
 	bzero(collect->track2, HAMMER_BIGBLOCK_SIZE);
@@ -415,6 +417,7 @@ static
 void
 collect_rel(collect_t collect)
 {
+	free(collect->offsets);
 	free(collect->layer2);
 	free(collect->track2);
 	free(collect);
@@ -432,6 +435,7 @@ collect_get_track(collect_t collect, hammer_off_t offset, int zone,
 	track2 = &collect->track2[i];
 	if (track2->entry_crc == 0) {
 		collect->layer2[i] = *layer2;
+		collect->offsets[i] = offset & ~HAMMER_BIGBLOCK_MASK64;
 		track2->zone = zone;
 		track2->bytes_free = HAMMER_BIGBLOCK_SIZE;
 		track2->entry_crc = 1;	/* steal field to tag track load */
@@ -489,7 +493,7 @@ dump_collect(collect_t collect, int *stats)
 	for (i = 0; i < HAMMER_BLOCKMAP_RADIX2; ++i) {
 		track2 = &collect->track2[i];
 		layer2 = &collect->layer2[i];
-		offset = collect->phys_offset + i * HAMMER_BIGBLOCK_SIZE;
+		offset = collect->offsets[i];
 
 		/*
 		 * Check big-blocks referenced by data, B-Tree nodes
