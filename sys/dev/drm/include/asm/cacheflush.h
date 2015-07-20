@@ -30,7 +30,7 @@
 static inline int set_pages_uc(struct vm_page *page, int num_pages)
 {
 	pmap_change_attr(PHYS_TO_DMAP(VM_PAGE_TO_PHYS(page)),
-			 num_pages << PAGE_SHIFT, PAT_UNCACHED);
+			 num_pages, PAT_UNCACHED);
 
 	return 0;
 }
