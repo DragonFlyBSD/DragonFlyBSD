@@ -77,7 +77,7 @@ static const struct {
 	char		quirks_off;
 } hdac_devices[] = {
 	{ HDA_INTEL_OAK,     "Intel Oaktrail",	0, 0 },
-	{ HDA_INTEL_BAY,     "Intel BayTrail",	0, 0 },
+	{ HDA_INTEL_BAY,     "Intel BayTrail",	0, HDAC_QUIRK_MSI },
 	{ HDA_INTEL_HSW1,    "Intel Haswell",	0, 0 },
 	{ HDA_INTEL_HSW2,    "Intel Haswell",	0, 0 },
 	{ HDA_INTEL_HSW3,    "Intel Haswell",	0, 0 },
