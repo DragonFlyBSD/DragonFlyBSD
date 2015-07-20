@@ -5078,8 +5078,7 @@ pmap_page_set_memattr(vm_page_t m, vm_memattr_t ma)
      * required for data coherence.
      */
     if ((m->flags & PG_FICTITIOUS) == 0)
-        pmap_change_attr(PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)), PAGE_SIZE,
-        m->pat_mode);
+        pmap_change_attr(PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)), 1, m->pat_mode);
 }
 
 /*

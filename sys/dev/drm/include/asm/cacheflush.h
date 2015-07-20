@@ -29,20 +29,20 @@
 
 static inline int set_memory_wc(unsigned long vaddr, int numpages)
 {
-	pmap_change_attr(vaddr, numpages * PAGE_SIZE, PAT_WRITE_COMBINING);
+	pmap_change_attr(vaddr, numpages, PAT_WRITE_COMBINING);
 	return 0;
 }
 
 static inline int set_memory_wb(unsigned long vaddr, int numpages)
 {
-	pmap_change_attr(vaddr, numpages * PAGE_SIZE, PAT_WRITE_BACK);
+	pmap_change_attr(vaddr, numpages, PAT_WRITE_BACK);
 	return 0;
 }
 
 static inline int set_pages_uc(struct vm_page *page, int num_pages)
 {
 	pmap_change_attr(PHYS_TO_DMAP(VM_PAGE_TO_PHYS(page)),
-			 num_pages << PAGE_SHIFT, PAT_UNCACHED);
+			 num_pages, PAT_UNCACHED);
 
 	return 0;
 }
