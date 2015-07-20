@@ -2973,7 +2973,7 @@ xhci_early_takeover(device_t self)
 			bus_write_1(res, eecp + XHCI_XECP_BIOS_SEM, 0x00);
 		} else {
 			if (bootverbose) 
-				kprintf("xhci early:"
+				kprintf("xhci early: "
 				    "handover successful\n");
 		}
 	
