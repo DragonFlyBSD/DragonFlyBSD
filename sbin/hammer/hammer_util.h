@@ -104,6 +104,11 @@ struct buffer_info {
 	void			*ondisk;
 };
 
+struct zone_stat {
+	int			zone;		/* zone index, not used */
+	hammer_off_t		blocks;		/* number of big-blocks */
+};
+
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
 extern int64_t BootAreaSize;

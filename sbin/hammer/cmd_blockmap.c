@@ -78,7 +78,7 @@ static struct hammer_blockmap_layer2 *collect_get_track(
 	struct hammer_blockmap_layer2 *layer2);
 static collect_t collect_get(hammer_off_t phys_offset);
 static void dump_collect_table(void);
-static void dump_collect(collect_t collect, int *stats);
+static void dump_collect(collect_t collect, struct zone_stat *stats);
 
 void
 hammer_cmd_blockmap(void)
@@ -451,7 +451,7 @@ dump_collect_table(void)
 	int i;
 	int error = 0;
 	int total = 0;
-	int stats[HAMMER_MAX_ZONES];
+	struct zone_stat stats[HAMMER_MAX_ZONES];
 	bzero(stats, sizeof(stats));
 
 	RB_FOREACH(collect, collect_rb_tree, &CollectTree) {
@@ -469,8 +469,8 @@ dump_collect_table(void)
 		printf("Statistics\n");
 		printf("\tzone #\tbig-blocks\n");
 		for (i = 0; i < HAMMER_MAX_ZONES; i++) {
-			printf("\tzone %d\t%d\n", i, stats[i]);
-			total += stats[i];
+			printf("\tzone %d\t%ju\n", i, (uintmax_t)stats[i].blocks);
+			total += stats[i].blocks;
 		}
 		printf("\t---------------\n");
 		printf("\ttotal\t%d\n", total);
@@ -482,7 +482,7 @@ dump_collect_table(void)
 
 static
 void
-dump_collect(collect_t collect, int *stats)
+dump_collect(collect_t collect, struct zone_stat *stats)
 {
 	struct hammer_blockmap_layer2 *track2;
 	struct hammer_blockmap_layer2 *layer2;
@@ -508,7 +508,7 @@ dump_collect(collect_t collect, int *stats)
 				(zone >= HAMMER_ZONE2_MAPPED_INDEX &&
 				 zone < HAMMER_MAX_ZONES));
 		}
-		stats[zone]++;
+		stats[zone].blocks++;
 
 		if (track2->zone != layer2->zone) {
 			printf("BZ\tblock=%016jx calc zone=%-2d, got zone=%-2d\n",
