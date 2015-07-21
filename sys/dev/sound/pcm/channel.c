@@ -288,6 +288,23 @@ chn_polltrigger(struct pcm_channel *c)
 			delta = sndbuf_getfree(bs);
 		else
 			delta = sndbuf_getready(bs);
+
+		/*
+		 * XXX really bad hack.  Force 50% hysteresis.
+		 * when audio is playing via audio/alsa-plugins
+		 * (work/.../oss) from firefox the playback thread
+		 * for some reason is cpu-bound and continuously
+		 * poll()s in a situation where there is on the
+		 * order of ~30000 bytes of buffer space left.
+		 *
+		 * The real bug seems to be in the ioplug library,
+		 * or perhaps some very stringent assumption for the
+		 * ioctls that we aren't following.
+		 */
+		if (c->direction == PCMDIR_PLAY &&
+		    delta < sndbuf_getsize(bs) / 2) {
+			delta = 0;
+		}
 	}
 
 	return ((delta < c->lw) ? 0 : 1);
