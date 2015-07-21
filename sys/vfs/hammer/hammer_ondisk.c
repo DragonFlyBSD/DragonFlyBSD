@@ -599,7 +599,7 @@ found_aliased:
 		 * buffers will never be in a modified state.  This should
 		 * only occur on the 0->1 transition of refs.
 		 *
-		 * lose_list can be modified via a biodone() interrupt
+		 * lose_root can be modified via a biodone() interrupt
 		 * so the io_token must be held.
 		 */
 		if (buffer->io.mod_root == &hmp->lose_root) {
@@ -987,10 +987,10 @@ hammer_ref_buffer(hammer_buffer_t buffer)
 
 	/*
 	 * At this point a biodone() will not touch the buffer other then
-	 * incidental bits.  However, lose_list can be modified via
+	 * incidental bits.  However, lose_root can be modified via
 	 * a biodone() interrupt.
 	 *
-	 * No longer loose.  lose_list requires the io_token.
+	 * No longer loose.  lose_root requires the io_token.
 	 */
 	if (buffer->io.mod_root == &hmp->lose_root) {
 		lwkt_gettoken(&hmp->io_token);
