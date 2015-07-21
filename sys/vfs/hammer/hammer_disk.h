@@ -105,7 +105,6 @@
  */
 typedef u_int64_t hammer_tid_t;
 typedef u_int64_t hammer_off_t;
-typedef u_int32_t hammer_seq_t;
 typedef u_int32_t hammer_crc_t;
 
 #define HAMMER_MIN_TID		0ULL			/* unsigned */
