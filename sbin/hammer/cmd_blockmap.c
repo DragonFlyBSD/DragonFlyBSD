@@ -448,11 +448,11 @@ void
 dump_collect_table(void)
 {
 	collect_t collect;
-	int i;
 	int error = 0;
-	int total = 0;
-	struct zone_stat stats[HAMMER_MAX_ZONES];
-	bzero(stats, sizeof(stats));
+	struct zone_stat *stats = NULL;
+
+	if (VerboseOpt)
+		stats = hammer_init_zone_stat();
 
 	RB_FOREACH(collect, collect_rb_tree, &CollectTree) {
 		dump_collect(collect, stats);
@@ -466,14 +466,8 @@ dump_collect_table(void)
 	assert(RB_EMPTY(&CollectTree));
 
 	if (VerboseOpt) {
-		printf("Statistics\n");
-		printf("\tzone #\tbig-blocks\n");
-		for (i = 0; i < HAMMER_MAX_ZONES; i++) {
-			printf("\tzone %d\t%ju\n", i, (uintmax_t)stats[i].blocks);
-			total += stats[i].blocks;
-		}
-		printf("\t---------------\n");
-		printf("\ttotal\t%d\n", total);
+		hammer_print_zone_stat(stats);
+		hammer_cleanup_zone_stat(stats);
 	}
 
 	if (error || VerboseOpt)
@@ -508,7 +502,8 @@ dump_collect(collect_t collect, struct zone_stat *stats)
 				(zone >= HAMMER_ZONE2_MAPPED_INDEX &&
 				 zone < HAMMER_MAX_ZONES));
 		}
-		stats[zone].blocks++;
+		if (VerboseOpt)
+			hammer_add_zone_stat_layer2(stats, layer2);
 
 		if (track2->zone != layer2->zone) {
 			printf("BZ\tblock=%016jx calc zone=%-2d, got zone=%-2d\n",

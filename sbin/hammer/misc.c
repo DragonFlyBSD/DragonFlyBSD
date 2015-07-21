@@ -196,3 +196,71 @@ hammer_check_restrict(const char *filesystem)
 		++rlen;
 	}
 }
+
+/*
+ * Functions for zone statistics.
+ */
+struct zone_stat*
+hammer_init_zone_stat(void)
+{
+	return calloc(HAMMER_MAX_ZONES, sizeof(struct zone_stat));
+}
+
+void
+hammer_cleanup_zone_stat(struct zone_stat *stats)
+{
+	free(stats);
+}
+
+/*
+ * If the same layer2 is used more than once the result will be wrong.
+ */
+void
+hammer_add_zone_stat_layer2(struct zone_stat *stats,
+			struct hammer_blockmap_layer2 *layer2)
+{
+	int zone = layer2->zone;
+
+	stats[zone].blocks++;
+	stats[zone].used += (HAMMER_BIGBLOCK_SIZE - layer2->bytes_free);
+}
+
+void
+hammer_print_zone_stat(const struct zone_stat *stats)
+{
+	int i;
+	double per;
+	hammer_off_t total_blocks = 0;
+	hammer_off_t total_used = 0;
+	const struct zone_stat *p = stats;
+
+	printf("HAMMER zone statistics\n");
+	printf("\tzone #  blocks       used[B]             used[%%]\n");
+
+	for (i = 0; i < HAMMER_MAX_ZONES; i++) {
+		if (p->blocks)
+			per = ((double)(p->used * 100)) /
+				(p->blocks * HAMMER_BIGBLOCK_SIZE);
+		else
+			per = 0;
+		printf("\tzone %-2d %-12ju %-19ju %g\n",
+			i, p->blocks, p->used, per);
+		total_blocks += p->blocks;
+		total_used += p->used;
+		p++;
+	}
+
+	/*
+	 * Remember that zone0 is always 0% used and zone15 is
+	 * always 100% used.
+	 */
+	if (total_blocks)
+		per = ((double)(total_used * 100)) /
+			(total_blocks * HAMMER_BIGBLOCK_SIZE);
+	else
+		per = 0;
+
+	printf("\t--------------------------------------------------\n");
+	printf("\ttotal   %-12ju %-19ju %g\n",
+		(uintmax_t)total_blocks, (uintmax_t)total_used, per);
+}
