@@ -956,7 +956,7 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 	struct fb_info *info;
 	struct drm_fb_helper_surface_size sizes;
 	int gamma_size = 0;
-	int kms_console = 0;
+	int kms_console = 1;
 
 	memset(&sizes, 0, sizeof(struct drm_fb_helper_surface_size));
 	sizes.surface_depth = 24;
