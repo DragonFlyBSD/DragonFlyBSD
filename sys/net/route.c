@@ -148,16 +148,19 @@ static void
 rtable_init_oncpu(netmsg_t msg)
 {
 	struct domain *dom;
-	int cpu = mycpuid;
+	int nextcpu = mycpuid + 1;
 
 	SLIST_FOREACH(dom, &domains, dom_next) {
 		if (dom->dom_rtattach) {
 			dom->dom_rtattach(
-				(void **)&rt_tables[cpu][dom->dom_family],
+				(void **)&rt_tables[mycpuid][dom->dom_family],
 			        dom->dom_rtoffset);
 		}
 	}
-	ifnet_forwardmsg(&msg->lmsg, cpu + 1);
+	if (nextcpu < ncpus)
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &msg->lmsg);
+	else
+		lwkt_replymsg(&msg->lmsg, 0);
 }
 
 static void
@@ -166,7 +169,7 @@ rtable_init(void)
 	struct netmsg_base msg;
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport, 0, rtable_init_oncpu);
-	ifnet_domsg(&msg.lmsg, 0);
+	rt_domsg_global(&msg);
 }
 
 /*
