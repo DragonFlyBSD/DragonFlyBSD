@@ -27,6 +27,6 @@ _installlinks:
 		t=${DESTDIR}$$1; \
 		shift; \
 		${ECHO} $$t -\> $$l; \
-		${LN} -fs $$l $$t; \
+		${LN} -fhs $$l $$t; \
 	done; true
 .endif
