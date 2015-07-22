@@ -2140,6 +2140,9 @@ TO_REMOVE+=/usr/share/man/man8/hostapd.8.gz
 TO_REMOVE+=/usr/share/man/man8/hostapd_cli.8.gz
 TO_REMOVE+=/usr/share/man/man5/hostapd.conf.5.gz
 TO_REMOVE+=/usr/share/examples/etc/hostapd.conf
+TO_REMOVE+=/usr/share/locale/*/*.UTF-8
+TO_REMOVE+=/usr/share/locale/hi_IN/hi_IN.ISCII-DEV
+TO_REMOVE+=/usr/share/locale/la_LN/la_LN.ISO8859-1
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
