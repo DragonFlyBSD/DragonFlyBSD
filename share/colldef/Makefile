@@ -25,8 +25,8 @@ LOCALES=	bg_BG.CP1251 \
 		la_LN.ISO8859-2 \
 		la_LN.ISO8859-4 \
 		la_LN.US-ASCII \
-		no_NO.ISO8859-1 \
-		no_NO.ISO8859-15 \
+		nb_NO.ISO8859-1 \
+		nb_NO.ISO8859-15 \
 		lt_LT.ISO8859-4 \
 		pl_PL.ISO8859-2 \
 		ru_RU.CP1251 \
@@ -72,7 +72,7 @@ LATIN1LINKS=	af_ZA da_DK en_AU en_CA en_GB en_NZ en_US eu_ES fi_FI \
 ISO8859-15_ISO8859-15= \
 	ca_ES:ca_AD ca_ES:ca_FR ca_ES:ca_IT \
 	de_DE:de_AT de_DE:de_CH \
-	no_NO:nb_NO no_NO:nn_NO \
+	nb_NO:nn_NO \
 	${LATIN1LINKS:C/^/la_LN:/}
 
 LATIN2LINKS=    hu_HU ro_RO sr_YU
@@ -99,7 +99,7 @@ UTF8LINKS=	af_ZA am_ET be_BY bg_BG ca_AD ca_ES ca_FR ca_IT cs_CZ \
 		el_GR en_AU en_CA en_GB en_IE en_NZ en_US es_ES et_EE eu_ES \
 		fi_FI fr_BE fr_CA fr_CH fr_FR he_IL hr_HR hu_HU hy_AM \
 		is_IS it_CH it_IT ja_JP kk_KZ ko_KR lt_LT lv_LV mn_MN \
-		nb_NO nl_BE nl_NL nn_NO no_NO pl_PL pt_BR pt_PT \
+		nb_NO nl_BE nl_NL nn_NO pl_PL pt_BR pt_PT \
 		ro_RO ru_RU sk_SK sl_SI sr_YU sv_SE tr_TR uk_UA zh_CN zh_HK \
 		zh_TW
 US-ASCII_UTF-8=	${UTF8LINKS:C/^/la_LN:/}

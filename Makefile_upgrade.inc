@@ -2143,6 +2143,8 @@ TO_REMOVE+=/usr/share/examples/etc/hostapd.conf
 TO_REMOVE+=/usr/share/locale/*/*.UTF-8
 TO_REMOVE+=/usr/share/locale/hi_IN/hi_IN.ISCII-DEV
 TO_REMOVE+=/usr/share/locale/la_LN/la_LN.ISO8859-1
+TO_REMOVE+=/usr/share/locale/no_NO*
+TO_REMOVE+=/usr/share/nls/no_NO.ISO8859-1
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

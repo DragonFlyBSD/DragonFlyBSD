@@ -1,6 +1,4 @@
-$ $FreeBSD: head/lib/libc/nls/no_NO.ISO8859-1.msg 189765 2009-03-13 10:40:38Z gabor $
-$
-$ Message catalog for no_NO.ISO8859-1 locale
+$ Message catalog for nb_NO.ISO8859-1 locale
 $
 $ strerror() support catalog
 $

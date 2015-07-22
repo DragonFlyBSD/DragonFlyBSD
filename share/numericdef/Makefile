@@ -32,7 +32,7 @@ LOCALES=	af_ZA.ISO8859-1 \
 		ko_KR.eucKR \
 		lt_LT.ISO8859-13 \
 		nl_NL.ISO8859-1 \
-		no_NO.ISO8859-1 \
+		nb_NO.ISO8859-1 \
 		pl_PL.ISO8859-2 \
 		pt_BR.ISO8859-1 \
 		pt_PT.ISO8859-1 \
@@ -77,7 +77,7 @@ DE_LINKS=	de_DE:de_AT
 FR_LINKS=	fr_FR:fr_CA fr_FR:fr_CH
 GB_LINKS=	en_GB:en_AU en_GB:en_NZ
 IT_LINKS=	it_IT:it_CH
-NO_LINKS=	no_NO:nb_NO no_NO:nn_NO
+NO_LINKS=	nb_NO:nn_NO
 US_LINKS=	en_US:en_CA en_US:en_GB
 
 # Identical UTF-8 styles
@@ -100,8 +100,8 @@ COMMA_DOT_3=	de_DE:ca_AD de_DE:ca_ES de_DE:ca_FR de_DE:ca_IT \
 COMMA_NBSP_3=	af_ZA:be_BY af_ZA:bg_BG af_ZA:cs_CZ af_ZA:et_EE \
 		af_ZA:fi_FI af_ZA:fr_CA af_ZA:fr_FR af_ZA:hu_HU \
 		af_ZA:kk_KZ af_ZA:lv_LV af_ZA:nb_NO af_ZA:nn_NO \
-		af_ZA:no_NO af_ZA:pl_PL af_ZA:pt_PT af_ZA:ru_RU \
-		af_ZA:sk_SK af_ZA:sv_SE af_ZA:uk_UA
+		af_ZA:pl_PL af_ZA:pt_PT af_ZA:ru_RU af_ZA:sk_SK \
+		af_ZA:sv_SE af_ZA:uk_UA
 
 CP1251_CP1131=	be_BY
 CP1251_ISO8859-5= be_BY
@@ -113,7 +113,7 @@ eucCN_GBK=	zh_CN
 eucJP_SJIS=	ja_JP
 eucKR_CP949=	ko_KR
 ISO8859-1_ISO8859-15= af_ZA ca_ES da_DK de_CH de_DE en_US es_ES eu_ES \
-		fi_FI fr_BE fr_FR is_IS it_IT nl_NL no_NO pt_PT sv_SE \
+		fi_FI fr_BE fr_FR is_IS it_IT nl_NL pt_PT sv_SE \
 		${BE_LINKS} ${CA_LINKS} ${DE_LINKS} ${FR_LINKS} ${GB_LINKS} \
 		${IT_LINKS} ${NO_LINKS} ${US_LINKS}
 ISO8859-1_ISO8859-1= ${BE_LINKS} ${CA_LINKS} ${DE_LINKS} ${FR_LINKS} \
