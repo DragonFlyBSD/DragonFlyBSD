@@ -100,6 +100,7 @@ dump_blockmap(const char *label, int zone)
 	hammer_off_t layer2_offset;
 	hammer_off_t scan1;
 	hammer_off_t scan2;
+	struct zone_stat *stats = NULL;
 	int xerr;
 
 	assert(RootVolNo >= 0);
@@ -113,6 +114,9 @@ dump_blockmap(const char *label, int zone)
 		(uintmax_t)rootmap->first_offset,
 		(uintmax_t)rootmap->next_offset,
 		(uintmax_t)rootmap->alloc_offset);
+
+	if (VerboseOpt)
+		stats = hammer_init_zone_stat();
 
 	for (scan1 = HAMMER_ZONE_ENCODE(zone, 0);
 	     scan1 < HAMMER_ZONE_ENCODE(zone, HAMMER_OFF_LONG_MASK);
@@ -167,11 +171,19 @@ dump_blockmap(const char *label, int zone)
 			printf("app=%-7d free=%-7d\n",
 				layer2->append_off,
 				layer2->bytes_free);
+
+			if (VerboseOpt)
+				hammer_add_zone_stat_layer2(stats, layer2);
 		}
 	}
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);
 	rel_volume(root_volume);
+
+	if (VerboseOpt) {
+		hammer_print_zone_stat(stats);
+		hammer_cleanup_zone_stat(stats);
+	}
 }
 
 void
