@@ -54,7 +54,7 @@ LOCALES=	af_ZA.ISO8859-1 \
 		ko_KR.UTF-8 \
 		lt_LT.ISO8859-13 \
 		lv_LV.ISO8859-13 \
-		mn_MN.UTF-8 \
+		mn_Cyrl_MN.UTF-8 \
 		nl_BE.ISO8859-1 \
 		nl_BE.UTF-8 \
 		nl_NL.ISO8859-1 \
@@ -74,21 +74,21 @@ LOCALES=	af_ZA.ISO8859-1 \
 		ru_RU.UTF-8 \
 		sk_SK.ISO8859-2 \
 		sl_SI.ISO8859-2 \
-		sr_YU.ISO8859-2 \
-		sr_YU.ISO8859-5 \
-		sr_YU.UTF-8 \
+		sr_Latn_RS.ISO8859-2 \
+		sr_Cyrl_RS.ISO8859-5 \
+		sr_Latn_RS.UTF-8 \
 		sv_SE.ISO8859-1 \
 		tr_TR.ISO8859-9 \
 		uk_UA.CP1251 \
 		uk_UA.ISO8859-5 \
 		uk_UA.KOI8-U \
 		uk_UA.UTF-8 \
-		zh_CN.eucCN \
-		zh_CN.GB18030 \
-		zh_CN.GB2312 \
-		zh_CN.UTF-8 \
-		zh_HK.UTF-8 \
-		zh_TW.Big5
+		zh_hans_CN.eucCN \
+		zh_hans_CN.GB18030 \
+		zh_hans_CN.GB2312 \
+		zh_hans_CN.UTF-8 \
+		zh_hant_HK.UTF-8 \
+		zh_hant_TW.Big5
 
 LOCALEDIR=	/usr/share/locale
 
@@ -110,10 +110,10 @@ ENCODINGS=	Big5 Big5HKSCS CP949 eucJP eucKR GB2312 GBK \
 		ISO8859-1 ISO8859-2 ISO8859-4 ISO8859-7 ISO8859-9 \
 		ISO8859-13 ISO8859-15 SJIS US-ASCII UTF-8
 
-Big5_UTF-8=	zh_TW
+Big5_UTF-8=	zh_hant_TW
 eucJP_SJIS=	ja_JP
 eucKR_CP949=	ko_KR
-GB2312_GBK=	zh_CN
+GB2312_GBK=	zh_hans_CN
 ISO8859-1_ISO8859-1= ca_ES:ca_AD ca_ES:ca_FR ca_ES:ca_IT es_ES:eu_ES \
 		de_CH:fr_CH de_CH:it_CH nb_NO:nn_NO
 ISO8859-1_ISO8859-15= af_ZA ca_AD ca_ES ca_FR ca_IT da_DK de_AT de_CH de_DE \
@@ -129,7 +129,7 @@ ISO8859-13_ISO8859-4= lt_LT
 ISO8859-13_UTF-8= lt_LT lv_LV
 ISO8859-15_ISO8859-15= es_ES:eu_ES
 ISO8859-15_UTF-8= et_EE
-UTF-8_Big5HKSCS= zh_HK
+UTF-8_Big5HKSCS= zh_hant_HK
 UTF-8_UTF-8=	ca_ES:ca_AD ca_ES:ca_FR ca_ES:ca_IT \
 		es_ES:eu_ES de_CH:fr_CH de_CH:it_CH
 

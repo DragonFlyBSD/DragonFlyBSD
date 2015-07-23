@@ -23,12 +23,12 @@ LOCALES=	UTF-8 \
 		ru_RU.KOI8-R \
 		tr_TR.ISO8859-9 \
 		uk_UA.KOI8-U \
-		zh_CN.eucCN \
-		zh_CN.GB18030 \
-		zh_CN.GB2312 \
-		zh_CN.GBK \
-		zh_HK.Big5HKSCS \
-		zh_TW.Big5
+		zh_hans_CN.eucCN \
+		zh_hans_CN.GB18030 \
+		zh_hans_CN.GB2312 \
+		zh_hans_CN.GBK \
+		zh_hant_HK.Big5HKSCS \
+		zh_hant_TW.Big5
 
 LOCALEDIR=	/usr/share/locale
 
@@ -62,13 +62,13 @@ ISO8859-1_ISO8859-1= ${LATIN1LINKS:C/^/la_LN:/}
 LATIN15LINKS=	${LATIN1XLINKS} et_EE
 ISO8859-15_ISO8859-15= ${LATIN15LINKS:C/^/la_LN:/}
 
-LATIN2LINKS=	cs_CZ hr_HR hu_HU pl_PL sl_SI sr_YU ro_RO sk_SK
+LATIN2LINKS=	cs_CZ hr_HR hu_HU pl_PL sl_SI sr_Latn_RS ro_RO sk_SK
 ISO8859-2_ISO8859-2= ${LATIN2LINKS:C/^/la_LN:/}
 
 LATIN4LINKS=	lt_LT
 ISO8859-4_ISO8859-4= ${LATIN4LINKS:C/^/la_LN:/}
 
-LATIN5LINKS=	sr_YU uk_UA be_BY
+LATIN5LINKS=	sr_Cyrl_RS uk_UA be_BY
 ISO8859-5_ISO8859-5= ${LATIN5LINKS:C/^/ru_RU:/}
 
 LATIN13LINKS=	lt_LT lv_LV
@@ -82,10 +82,10 @@ UTF8LINKS=	af_ZA be_BY bg_BG ca_AD ca_ES ca_FR ca_IT cs_CZ \
 		en_AU en_CA en_GB en_IE en_NZ en_US es_ES et_EE eu_ES fi_FI \
 		fr_BE \
 		fr_CA fr_CH fr_FR he_IL hr_HR hu_HU hy_AM is_IS it_CH it_IT \
-		ja_JP kk_KZ ko_KR lt_LT lv_LV mn_MN \
+		ja_JP kk_KZ ko_KR lt_LT lv_LV mn_Cyrl_MN \
 		nb_NO nl_BE nl_NL nn_NO pl_PL pt_BR pt_PT \
-		ro_RO ru_RU sk_SK sl_SI sr_YU sv_SE tr_TR uk_UA zh_CN zh_HK \
-		zh_TW
+		ro_RO ru_RU sk_SK sl_SI sv_SE tr_TR uk_UA \
+		sr_Cyrl_RS sr_Latn_RS zh_hans_CN zh_hant_HK zh_hant_TW
 UTF-8_UTF-8=	${UTF8LINKS:C/^/:/}
 
 

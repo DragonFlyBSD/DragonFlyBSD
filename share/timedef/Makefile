@@ -55,7 +55,7 @@ LOCALES=	am_ET.UTF-8 \
 		lt_LT.UTF-8 \
 		lv_LV.ISO8859-13 \
 		lv_LV.UTF-8 \
-		mn_MN.UTF-8 \
+		mn_Cyrl_MN.UTF-8 \
 		nb_NO.ISO8859-1 \
 		nb_NO.UTF-8 \
 		nl_NL.ISO8859-1 \
@@ -78,9 +78,9 @@ LOCALES=	am_ET.UTF-8 \
 		sk_SK.UTF-8 \
 		sl_SI.ISO8859-2 \
 		sl_SI.UTF-8 \
-		sr_YU.ISO8859-2 \
-		sr_YU.ISO8859-5 \
-		sr_YU.UTF-8 \
+		sr_Latn_RS.ISO8859-2 \
+		sr_Cyrl_RS.ISO8859-5 \
+		sr_Latn_RS.UTF-8 \
 		sv_SE.ISO8859-1 \
 		sv_SE.UTF-8 \
 		tr_TR.ISO8859-9 \
@@ -89,12 +89,12 @@ LOCALES=	am_ET.UTF-8 \
 		uk_UA.ISO8859-5 \
 		uk_UA.KOI8-U \
 		uk_UA.UTF-8 \
-		zh_CN.eucCN \
-		zh_CN.GB18030 \
-		zh_CN.GB2312 \
-		zh_CN.UTF-8 \
-		zh_TW.Big5 \
-		zh_TW.UTF-8
+		zh_hans_CN.eucCN \
+		zh_hans_CN.GB18030 \
+		zh_hans_CN.GB2312 \
+		zh_hans_CN.UTF-8 \
+		zh_hant_TW.Big5 \
+		zh_hant_TW.UTF-8
 
 LOCALEDIR=      /usr/share/locale
 
@@ -124,7 +124,7 @@ NL_LINKS=	nl_NL:nl_BE
 GB_LINKS=	en_GB:en_AU en_GB:en_CA en_GB:en_NZ
 
 eucKR_CP949=	ko_KR
-GB2312_GBK=	zh_CN
+GB2312_GBK=	zh_hans_CN
 ISO8859-1_ISO8859-1= ${CA_LINKS} ${DE_LINKS} ${FR_LINKS} ${GB_LINKS} \
 		${IT_LINKS} ${NL_LINKS} ${NO_LINKS} en_US:af_ZA
 ISO8859-1_ISO8859-15= ca_ES da_DK de_AT de_DE en_GB en_US es_ES eu_ES \
@@ -137,10 +137,10 @@ ISO8859-1_ISO8859-2= la_LN
 ISO8859-1_ISO8859-4= la_LN
 ISO8859-1_UTF-8= en_GB en_US eu_ES nl_NL
 ISO8859-15_ISO8859-15= en_US:af_ZA
-UTF-8_Big5HKSCS= zh_TW:zh_HK
+UTF-8_Big5HKSCS= zh_hant_TW:zh_hant_HK
 UTF-8_UTF-8=	${CA_LINKS} ${DE_LINKS} ${FR_LINKS} ${GB_LINKS} ${IT_LINKS} \
 		${NL_LINKS} ${NO_LINKS} \
-		en_GB:en_IE en_US:af_ZA zh_TW:zh_HK
+		en_GB:en_IE en_US:af_ZA zh_hant_TW:zh_hant_HK
 
 SYMLINKS=
 .for enc1 in ${ENCODINGS}

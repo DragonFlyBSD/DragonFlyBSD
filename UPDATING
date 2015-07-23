@@ -9,6 +9,36 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 4.2 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
+
+SEVERAL LOCALES RENAMED
+-----------------------
+
+Several locales were using obsolete and misleading names, and thus have
+been adjusted to current standards. Any users of the following locales
+need to select alternates:
+
+DFLY 4.2 locale            DFLY 4.4 alterative locale
+---------------            ------------------------------------
+mn_MN.UTF-8                mn_Cyrl_MN.UTF-8
+no_NO.UTF-8                nb_NO.UTF-8      or nn_NO.UTF-8
+no_NO.ISO8859-1            nb_NO.ISO8869-1  or nn_NO.ISO8859-1
+no_NO.ISO8859-15           nb_NO.ISO8859-15 or nn_NO.ISO8859-15
+sr_YU.UTF-8                sr_Cyrl_RS.UTF-8 or sr_Latn_RS.UTF-8
+sr_YU.ISO8859-5            sr_Cyrl_RS.ISO8859-5
+sr_YU.ISO8859-2            sr_Latn_RS.ISO8859-2
+zh_CN.GBK                  zh_Hans_CN.GBK
+zh_CN.UTF-8                zh_Hans_CN.UTF-8
+zh_CN.eucCN                zh_Hans_CN.eucCN
+zh_CN.GB2312               zh_Hans_CH.GB2312
+zh_CN.GB18030              zh_Hans_CH.GB18030
+zh_HK.Big5HKSCS            zh_Hant_HK.Big5HKSCS
+zh_HK.UTF_8                zh_Hant_HK.UTF-8
+zh_TW.Big5                 zh_Hant_TW.Big5
+zh_TW.UTF-8                zh_Hant_TW.UTF-8
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 4.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 

@@ -2144,7 +2144,14 @@ TO_REMOVE+=/usr/share/locale/*/*.UTF-8
 TO_REMOVE+=/usr/share/locale/hi_IN/hi_IN.ISCII-DEV
 TO_REMOVE+=/usr/share/locale/la_LN/la_LN.ISO8859-1
 TO_REMOVE+=/usr/share/locale/no_NO*
+TO_REMOVE+=/usr/share/locale/mn_MN*
+TO_REMOVE+=/usr/share/locale/sr_YU*
+TO_REMOVE+=/usr/share/locale/zh_CN*
+TO_REMOVE+=/usr/share/locale/zh_HK*
+TO_REMOVE+=/usr/share/locale/zh_TW*
 TO_REMOVE+=/usr/share/nls/no_NO.ISO8859-1
+TO_REMOVE+=/usr/share/nls/mn_MN.UTF-8
+TO_REMOVE+=/usr/share/nls/zh_CN.*
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

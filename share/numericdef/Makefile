@@ -40,12 +40,12 @@ LOCALES=	af_ZA.ISO8859-1 \
 		ru_RU.KOI8-R \
 		sk_SK.ISO8859-2 \
 		sl_SI.ISO8859-2 \
-		sr_YU.ISO8859-2 \
-		sr_YU.ISO8859-5 \
+		sr_Latn_RS.ISO8859-2 \
+		sr_Cyrl_RS.ISO8859-5 \
 		sv_SE.ISO8859-1 \
 		tr_TR.ISO8859-9 \
 		uk_UA.KOI8-U \
-		zh_CN.eucCN
+		zh_hans_CN.eucCN
 
 LOCALEDIR=	/usr/share/locale
 
@@ -89,8 +89,13 @@ US_LINKS=	en_US:en_CA en_US:en_GB
 
 DOT_COMMA_3=	en_US:am_ET en_US:en_AU en_US:en_CA en_US:en_GB \
 		en_US:en_IE en_US:en_NZ en_US:he_IL en_US:ja_JP \
-		en_US:ko_KR en_US:mn_MN en_US:sr_YU en_US:zh_CN \
-		en_US:zh_HK en_US:zh_TW
+		en_US:ko_KR \
+		en_US:mn_Cyrl_MN \
+		en_US:sr_Cyrl_RS \
+		en_US:sr_Latn_RS \
+		en_US:zh_hans_CN \
+		en_US:zh_hant_HK \
+		en_US:zh_hant_TW
 DOT_TICK_3=	de_CH:fr_CH de_CH:it_CH
 COMMA_DOT_3=	de_DE:ca_AD de_DE:ca_ES de_DE:ca_FR de_DE:ca_IT \
 		de_DE:da_DK de_DE:de_AT de_DE:el_GR de_DE:es_ES \
@@ -105,11 +110,11 @@ COMMA_NBSP_3=	af_ZA:be_BY af_ZA:bg_BG af_ZA:cs_CZ af_ZA:et_EE \
 
 CP1251_CP1131=	be_BY
 CP1251_ISO8859-5= be_BY
-eucCN_Big5=	zh_CN:zh_TW
-eucCN_Big5HKSCS= zh_CN:zh_HK
-eucCN_GB18030=	zh_CN
-eucCN_GB2312=	zh_CN
-eucCN_GBK=	zh_CN
+eucCN_Big5=	zh_hans_CN:zh_hant_TW
+eucCN_Big5HKSCS= zh_hans_CN:zh_hant_HK
+eucCN_GB18030=	zh_hans_CN
+eucCN_GB2312=	zh_hans_CN
+eucCN_GBK=	zh_hans_CN
 eucJP_SJIS=	ja_JP
 eucKR_CP949=	ko_KR
 ISO8859-1_ISO8859-15= af_ZA ca_ES da_DK de_CH de_DE en_US es_ES eu_ES \
