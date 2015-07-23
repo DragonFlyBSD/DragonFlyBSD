@@ -23,12 +23,12 @@ LOCALES=	UTF-8 \
 		ru_RU.KOI8-R \
 		tr_TR.ISO8859-9 \
 		uk_UA.KOI8-U \
-		zh_hans_CN.eucCN \
-		zh_hans_CN.GB18030 \
-		zh_hans_CN.GB2312 \
-		zh_hans_CN.GBK \
-		zh_hant_HK.Big5HKSCS \
-		zh_hant_TW.Big5
+		zh_Hans_CN.eucCN \
+		zh_Hans_CN.GB18030 \
+		zh_Hans_CN.GB2312 \
+		zh_Hans_CN.GBK \
+		zh_Hant_HK.Big5HKSCS \
+		zh_Hant_TW.Big5
 
 LOCALEDIR=	/usr/share/locale
 
@@ -85,7 +85,7 @@ UTF8LINKS=	af_ZA be_BY bg_BG ca_AD ca_ES ca_FR ca_IT cs_CZ \
 		ja_JP kk_KZ ko_KR lt_LT lv_LV mn_Cyrl_MN \
 		nb_NO nl_BE nl_NL nn_NO pl_PL pt_BR pt_PT \
 		ro_RO ru_RU sk_SK sl_SI sv_SE tr_TR uk_UA \
-		sr_Cyrl_RS sr_Latn_RS zh_hans_CN zh_hant_HK zh_hant_TW
+		sr_Cyrl_RS sr_Latn_RS zh_Hans_CN zh_Hant_HK zh_Hant_TW
 UTF-8_UTF-8=	${UTF8LINKS:C/^/:/}
 
 

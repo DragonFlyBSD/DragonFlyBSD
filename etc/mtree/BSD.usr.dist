@@ -707,23 +707,23 @@
             ..
             uk_UA.UTF-8
             ..
-            zh_hans_CN.GB18030
+            zh_Hans_CN.GB18030
             ..
-            zh_hans_CN.GB2312
+            zh_Hans_CN.GB2312
             ..
-            zh_hans_CN.GBK
+            zh_Hans_CN.GBK
             ..
-            zh_hans_CN.UTF-8
+            zh_Hans_CN.UTF-8
             ..
-            zh_hans_CN.eucCN
+            zh_Hans_CN.eucCN
             ..
-            zh_hant_HK.Big5HKSCS
+            zh_Hant_HK.Big5HKSCS
             ..
-            zh_hant_HK.UTF-8
+            zh_Hant_HK.UTF-8
             ..
-            zh_hant_TW.Big5
+            zh_Hant_TW.Big5
             ..
-            zh_hant_TW.UTF-8
+            zh_Hant_TW.UTF-8
             ..
         ..
         man
@@ -876,11 +876,11 @@
             ..
             uk_UA.UTF-8
             ..
-            zh_hans_CN.GB18030
+            zh_Hans_CN.GB18030
             ..
-            zh_hans_CN.GB2312
+            zh_Hans_CN.GB2312
             ..
-            zh_hans_CN.UTF-8
+            zh_Hans_CN.UTF-8
             ..
         ..
         openssl

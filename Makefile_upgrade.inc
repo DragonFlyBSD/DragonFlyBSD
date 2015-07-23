@@ -2149,9 +2149,11 @@ TO_REMOVE+=/usr/share/locale/sr_YU*
 TO_REMOVE+=/usr/share/locale/zh_CN*
 TO_REMOVE+=/usr/share/locale/zh_HK*
 TO_REMOVE+=/usr/share/locale/zh_TW*
+TO_REMOVE+=/usr/share/locale/zh_han*
 TO_REMOVE+=/usr/share/nls/no_NO.ISO8859-1
 TO_REMOVE+=/usr/share/nls/mn_MN.UTF-8
 TO_REMOVE+=/usr/share/nls/zh_CN.*
+TO_REMOVE+=/usr/share/nls/zh_hans_CN.*
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

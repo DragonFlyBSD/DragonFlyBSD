@@ -12,9 +12,9 @@ UTF8=	af_ZA am_ET be_BY bg_BG ca_AD ca_ES ca_FR ca_IT \
 	mn_Cyrl_MN \
 	sr_Cyrl_RS \
 	sr_Latn_RS \
-	zh_hans_CN \
-	zh_hant_HK \
-	zh_hant_TW 
+	zh_Hans_CN \
+	zh_Hant_HK \
+	zh_Hant_TW
 
 EURO=	af_ZA ca_AD ca_ES ca_FR ca_IT da_DK de_AT de_CH \
 	de_DE en_AU en_CA en_GB en_NZ en_US es_ES et_EE \

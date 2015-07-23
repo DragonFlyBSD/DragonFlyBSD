@@ -64,7 +64,7 @@ CLEANFILES=	${FILES}
 ENCODINGS=	Big5 Big5HKSCS CP949 eucCN eucJP eucKR GB18030 GB2312 GBK \
 		ISO8859-1 ISO8859-2 ISO8859-13 ISO8859-15 SJIS US-ASCII UTF-8
 
-ISO8859-1_Big5=	is_IS:zh_hant_TW
+ISO8859-1_Big5=	is_IS:zh_Hant_TW
 ISO8859-1_ISO8859-1= ${ISO8859-15_ISO8859-15} pt_PT:pt_BR
 
 LATIN1LINKS=	af_ZA da_DK en_AU en_CA en_GB en_NZ en_US eu_ES fi_FI \
@@ -81,14 +81,14 @@ ISO8859-2_ISO8859-2= ${LATIN2LINKS:C/^/la_LN:/} cs_CZ:sk_SK
 LATIN13LINKS=	lt_LT lv_LV
 ISO8859-13_ISO8859-13= ${LATIN13LINKS:C/^/la_LN:/}
 
-US-ASCII_Big5HKSCS= la_LN:zh_hant_HK
+US-ASCII_Big5HKSCS= la_LN:zh_Hant_HK
 US-ASCII_CP949=	la_LN:ko_KR
-US-ASCII_eucCN=	la_LN:zh_hans_CN
+US-ASCII_eucCN=	la_LN:zh_Hans_CN
 US-ASCII_eucJP=	la_LN:ja_JP
 US-ASCII_eucKR=	la_LN:ko_KR
-US-ASCII_GB18030= la_LN:zh_hans_CN
-US-ASCII_GB2312= la_LN:zh_hans_CN
-US-ASCII_GBK=	la_LN:zh_hans_CN
+US-ASCII_GB18030= la_LN:zh_Hans_CN
+US-ASCII_GB2312= la_LN:zh_Hans_CN
+US-ASCII_GBK=	la_LN:zh_Hans_CN
 US-ASCII_SJIS=	la_LN:ja_JP
 
 ASCIILINKS=	en_AU en_CA en_GB en_NZ en_US
@@ -101,7 +101,7 @@ UTF8LINKS=	af_ZA am_ET be_BY bg_BG ca_AD ca_ES ca_FR ca_IT cs_CZ \
 		is_IS it_CH it_IT ja_JP kk_KZ ko_KR lt_LT lv_LV mn_Cyrl_MN \
 		nb_NO nl_BE nl_NL nn_NO pl_PL pt_BR pt_PT \
 		ro_RO ru_RU sk_SK sl_SI sv_SE tr_TR uk_UA \
-		sr_Cyrl_RS sr_Latn_RS zh_hans_CN zh_hant_HK zh_hant_TW
+		sr_Cyrl_RS sr_Latn_RS zh_Hans_CN zh_Hant_HK zh_Hant_TW
 US-ASCII_UTF-8=	${UTF8LINKS:C/^/la_LN:/}
 
 SYMLINKS=
