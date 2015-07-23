@@ -54,11 +54,13 @@ typedef struct btree_search {
 static void print_btree_node(hammer_off_t node_offset, btree_search_t search,
 			int depth, hammer_tid_t mirror_tid,
 			hammer_base_elm_t left_bound,
-			hammer_base_elm_t right_bound);
+			hammer_base_elm_t right_bound,
+			struct zone_stat *stats);
 static const char *check_data_crc(hammer_btree_elm_t elm);
 static void print_record(hammer_btree_elm_t elm);
 static void print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
-			int flags, const char *label, const char *ext);
+			int flags, const char *label, const char *ext,
+			struct zone_stat *stats);
 static int get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			hammer_btree_elm_t elm, u_int8_t btype,
 			hammer_base_elm_t left_bound,
@@ -76,9 +78,13 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 	struct volume_info *volume;
 	struct btree_search search;
 	btree_search_t searchp = NULL;
+	struct zone_stat *stats = NULL;
 	int zone;
 
 	AssertOnFailure = 0;
+
+	if (VerboseOpt)
+		stats = hammer_init_zone_stat();
 
 	if (node_offset == (hammer_off_t)-1) {
 		volume = get_volume(RootVolNo);
@@ -116,15 +122,21 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 	}
 	printf(" depth %d\n", depth);
 	print_btree_node(node_offset, searchp, depth, HAMMER_MAX_TID,
-			 left_bound, right_bound);
+			 left_bound, right_bound, stats);
 
 	AssertOnFailure = 1;
+
+	if (VerboseOpt) {
+		hammer_print_zone_stat(stats);
+		hammer_cleanup_zone_stat(stats);
+	}
 }
 
 static void
 print_btree_node(hammer_off_t node_offset, btree_search_t search,
 		int depth, hammer_tid_t mirror_tid,
-		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
+		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound,
+		struct zone_stat *stats)
 {
 	struct buffer_info *buffer = NULL;
 	hammer_node_ondisk_t node;
@@ -170,6 +182,9 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	}
 	printf(" {\n");
 
+	if (VerboseOpt)
+		hammer_add_zone_stat(stats, node_offset, sizeof(*node));
+
 	maxcount = hammer_node_max_elements(node->type);
 	assert(maxcount != -1);
 
@@ -192,7 +207,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 		flags = get_elm_flags(node, node_offset,
 					elm, elm->base.btype,
 					left_bound, right_bound);
-		print_btree_elm(elm, i, node->type, flags, "ELM", ext);
+		print_btree_elm(elm, i, node->type, flags, "ELM", ext, stats);
 	}
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		elm = &node->elms[i];
@@ -200,7 +215,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 		flags = get_elm_flags(node, node_offset,
 					elm, 'I',
 					left_bound, right_bound);
-		print_btree_elm(elm, i, node->type, flags, "RBN", NULL);
+		print_btree_elm(elm, i, node->type, flags, "RBN", NULL, stats);
 	}
 	printf("     }\n");
 
@@ -218,7 +233,8 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 				print_btree_node(elm->internal.subtree_offset,
 						 search, depth + 1,
 						 elm->internal.mirror_tid,
-						 &elm[0].base, &elm[1].base);
+						 &elm[0].base, &elm[1].base,
+						 stats);
 				/*
 				 * Cause show to do normal iteration after
 				 * seeking to the lo:objid:rectype:key:tid
@@ -270,7 +286,8 @@ is_root_btree_end(u_int8_t type, int i, hammer_btree_elm_t elm)
 static
 void
 print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
-		int flags, const char *label, const char *ext)
+		int flags, const char *label, const char *ext,
+		struct zone_stat *stats)
 {
 	char flagstr[8] = { 0, '-', '-', '-', '-', '-', '-', 0 };
 	char deleted;
@@ -347,6 +364,10 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 			}
 			if (QuietOpt < 2)
 				print_record(elm);
+			if (VerboseOpt)
+				hammer_add_zone_stat(stats,
+					elm->leaf.data_offset,
+					elm->leaf.data_len);
 			break;
 		}
 		break;

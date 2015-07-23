@@ -198,8 +198,31 @@ hammer_check_restrict(const char *filesystem)
 }
 
 /*
- * Functions for zone statistics.
+ * Functions and data structure for zone statistics
  */
+struct _block_offset {
+	RB_ENTRY(_block_offset)	entry;
+	hammer_off_t		offset;	/* offset of big-block */
+};
+
+static
+int
+_block_offset_compare(struct _block_offset *z1, struct _block_offset *z2)
+{
+	if (z1->offset < z2->offset)
+		return(-1);
+	if (z1->offset > z2->offset)
+		return(1);
+	return(0);
+}
+
+RB_HEAD(_block_offset_tree, _block_offset) _BlockOffsetTree =
+	RB_INITIALIZER(&_BlockOffsetTree);
+RB_PROTOTYPE2(_block_offset_tree, _block_offset, entry,
+	_block_offset_compare, hammer_off_t);
+RB_GENERATE2(_block_offset_tree, _block_offset, entry,
+	_block_offset_compare, hammer_off_t, offset);
+
 struct zone_stat*
 hammer_init_zone_stat(void)
 {
@@ -209,7 +232,52 @@ hammer_init_zone_stat(void)
 void
 hammer_cleanup_zone_stat(struct zone_stat *stats)
 {
+	struct _block_offset *p;
+
+	while ((p = RB_ROOT(&_BlockOffsetTree)) != NULL) {
+		RB_REMOVE(_block_offset_tree, &_BlockOffsetTree, p);
+		free(p);
+	}
+
 	free(stats);
+}
+
+static
+void
+_hammer_add_zone_stat(struct zone_stat *stats, int zone,
+			hammer_off_t bytes, int new_block, int new_item)
+{
+	struct zone_stat *stat = stats + zone;
+
+	if (new_block)
+		stat->blocks++;
+	if (new_item)
+		stat->items++;
+	stat->used += bytes;
+}
+
+void
+hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
+			hammer_off_t bytes)
+{
+	int zone, new_block;
+	struct _block_offset *p;
+
+	offset &= ~HAMMER_BIGBLOCK_MASK64;
+	zone = HAMMER_ZONE_DECODE(offset);
+	new_block = 0;
+
+	p = RB_LOOKUP(_block_offset_tree, &_BlockOffsetTree, offset);
+	if (p == NULL) {
+		new_block = 1;
+		p = malloc(sizeof(*p));
+		if (p == NULL)
+			perror("malloc");
+		bzero(p, sizeof(*p));
+		p->offset = offset;
+		RB_INSERT(_block_offset_tree, &_BlockOffsetTree, p);
+	}
+	_hammer_add_zone_stat(stats, zone, bytes, new_block, 1);
 }
 
 /*
@@ -219,10 +287,8 @@ void
 hammer_add_zone_stat_layer2(struct zone_stat *stats,
 			struct hammer_blockmap_layer2 *layer2)
 {
-	int zone = layer2->zone;
-
-	stats[zone].blocks++;
-	stats[zone].used += (HAMMER_BIGBLOCK_SIZE - layer2->bytes_free);
+	_hammer_add_zone_stat(stats, layer2->zone,
+		HAMMER_BIGBLOCK_SIZE - layer2->bytes_free, 1, 0);
 }
 
 void
@@ -231,11 +297,12 @@ hammer_print_zone_stat(const struct zone_stat *stats)
 	int i;
 	double per;
 	hammer_off_t total_blocks = 0;
+	hammer_off_t total_items = 0;
 	hammer_off_t total_used = 0;
 	const struct zone_stat *p = stats;
 
 	printf("HAMMER zone statistics\n");
-	printf("\tzone #  blocks       used[B]             used[%%]\n");
+	printf("\tzone #  blocks       items              used[B]             used[%%]\n");
 
 	for (i = 0; i < HAMMER_MAX_ZONES; i++) {
 		if (p->blocks)
@@ -243,9 +310,10 @@ hammer_print_zone_stat(const struct zone_stat *stats)
 				(p->blocks * HAMMER_BIGBLOCK_SIZE);
 		else
 			per = 0;
-		printf("\tzone %-2d %-12ju %-19ju %g\n",
-			i, p->blocks, p->used, per);
+		printf("\tzone %-2d %-12ju %-18ju %-19ju %g\n",
+			i, p->blocks, p->items, p->used, per);
 		total_blocks += p->blocks;
+		total_items += p->items;
 		total_used += p->used;
 		p++;
 	}
@@ -260,7 +328,8 @@ hammer_print_zone_stat(const struct zone_stat *stats)
 	else
 		per = 0;
 
-	printf("\t--------------------------------------------------\n");
-	printf("\ttotal   %-12ju %-19ju %g\n",
-		(uintmax_t)total_blocks, (uintmax_t)total_used, per);
+	printf("\t----------------------------------------------------------------------\n");
+	printf("\ttotal   %-12ju %-18ju %-19ju %g\n",
+		(uintmax_t)total_blocks, (uintmax_t)total_items,
+		(uintmax_t)total_used, per);
 }

@@ -110,6 +110,7 @@ struct buffer_info {
 struct zone_stat {
 	int			zone;		/* zone index, not used */
 	hammer_off_t		blocks;		/* number of big-blocks */
+	hammer_off_t		items;		/* number of items */
 	hammer_off_t		used;		/* bytes used */
 };
 
@@ -180,6 +181,8 @@ void score_printf(size_t i, size_t w, const char *ctl, ...) __printflike(3, 4);
 
 struct zone_stat *hammer_init_zone_stat(void);
 void hammer_cleanup_zone_stat(struct zone_stat *stats);
+void hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
+			hammer_off_t bytes);
 void hammer_add_zone_stat_layer2(struct zone_stat *stats,
 			struct hammer_blockmap_layer2 *layer2);
 void hammer_print_zone_stat(const struct zone_stat *stats);
