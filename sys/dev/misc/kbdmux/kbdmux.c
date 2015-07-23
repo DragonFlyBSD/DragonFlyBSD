@@ -66,12 +66,6 @@ MALLOC_DEFINE(M_KBDMUX, KEYBOARD_NAME, "Keyboard multiplexor");
 
 #define	KBDMUX_Q_SIZE	512	/* input queue size */
 
-#define KBDMUX_LOCK_DECL_GLOBAL \
-	struct lock ks_lock
-
-#define KBDMUX_SLEEP(s, f, d, t) \
-	lksleep(&(s)->f, &(s)->ks_lock, PCATCH, (d), (t))
-
 #define KBDMUX_CALLOUT_INIT(s) \
 	callout_init_mp(&(s)->ks_timo)
 
@@ -113,8 +107,6 @@ struct kbdmux_state
 	u_char			 ks_prefix;	/* AT scan code prefix */
 
 	SLIST_HEAD(, kbdmux_kbd) ks_kbds;	/* keyboards */
-
-	KBDMUX_LOCK_DECL_GLOBAL;
 };
 
 typedef struct kbdmux_state	kbdmux_state_t;
@@ -464,7 +456,7 @@ kbdmux_term(keyboard_t *kbd)
 
 	/* wait for interrupt task */
 	while (state->ks_flags & TASK)
-		KBDMUX_SLEEP(state, ks_task, "kbdmuxc", 0);
+		lksleep(&state->ks_task, &kbd->kb_lock, PCATCH, "kbdmuxc", 0);
 
 	/* release all keyboards from the mux */
 	while ((k = SLIST_FIRST(&state->ks_kbds)) != NULL) {
@@ -635,7 +627,8 @@ next_code:
 				goto next_code;
 		} else {
 			if (wait) {
-				KBDMUX_SLEEP(state, ks_task, "kbdwai", hz/10);
+				lksleep(&state->ks_task, &kbd->kb_lock, PCATCH,
+				    "kbdwai", hz/10);
 				goto next_code;
 			}
 		}
