@@ -1058,10 +1058,33 @@ _slabrealloc(void *ptr, size_t size)
 			if (big->base == ptr) {
 				size = (size + PAGE_MASK) & ~(size_t)PAGE_MASK;
 				bigbytes = big->bytes;
-				if (bigbytes == size) {
+
+				/*
+				 * If it already fits determine if it makes
+				 * sense to shrink/reallocate.  Try to optimize
+				 * programs which stupidly make incremental
+				 * reallocations larger or smaller by scaling
+				 * the allocation.  Also deal with potential
+				 * coloring.
+				 */
+				if (size <= bigbytes &&
+				    (size + 4096 == bigbytes ||
+				     size >= bigbytes - (size >> 2))) {
 					bigalloc_unlock(ptr);
 					return(ptr);
 				}
+
+				/*
+				 * For large allocations, allocate more space
+				 * than we need to try to avoid excessive
+				 * reallocations later on.
+				 */
+				if (size > PAGE_SIZE * 16) {
+					size += size >> 3;
+					size = (size + PAGE_MASK) &
+					       ~(size_t)PAGE_MASK;
+				}
+
 				*bigp = big->next;
 				bigalloc_unlock(ptr);
 				if ((nptr = _slaballoc(size, 0)) == NULL) {
