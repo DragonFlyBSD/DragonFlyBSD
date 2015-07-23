@@ -30,6 +30,8 @@
 #include <sys/sensors.h>
 
 #include "lm78var.h"
+#include "../wbsio/wbsioreg.h"
+#include "../wbsio/wbsiovar.h"
 
 /* ISA registers */
 #define LMC_ADDR	0x05
@@ -75,16 +77,29 @@ static driver_t lm_isa_driver = {
 static devclass_t lm_devclass;
 
 DRIVER_MODULE(lm, isa, lm_isa_driver, lm_devclass, NULL, NULL);
+DRIVER_MODULE(lm, wbsio, lm_isa_driver, lm_devclass, NULL, NULL);
 
 int
 lm_isa_probe(struct device *dev)
 {
 	struct lm_isa_softc *sc = device_get_softc(dev);
+	struct wbsio_softc *wbsc = NULL;
 	struct resource *iores;
+	struct devclass *parent_devclass;
+	const char *parent_name;
 	int iorid = 0;
 	bus_space_tag_t iot;
 	bus_space_handle_t ioh;
 	int banksel, vendid, chipid, addr;
+
+	parent_devclass = device_get_devclass(device_get_parent(dev));
+	parent_name = devclass_get_name(parent_devclass);
+	if (strcmp("wbsio", parent_name) == 0) {
+		wbsc = device_get_softc(device_get_parent(dev));
+		sc->sc_lmsc.sioid = wbsc->sc_devid;
+	} else {
+		sc->sc_lmsc.sioid = 0;
+	}
 
 	iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &iorid,
 	    0ul, ~0ul, 8, RF_ACTIVE);
@@ -98,10 +113,17 @@ lm_isa_probe(struct device *dev)
 	/* Probe for Winbond chips. */
 	bus_space_write_1(iot, ioh, LMC_ADDR, WB_BANKSEL);
 	banksel = bus_space_read_1(iot, ioh, LMC_DATA);
+	bus_space_write_1(iot, ioh, LMC_ADDR, WB_BANKSEL);
+	bus_space_write_1(iot, ioh, LMC_DATA, WB_BANKSEL_HBAC);
 	bus_space_write_1(iot, ioh, LMC_ADDR, WB_VENDID);
-	vendid = bus_space_read_1(iot, ioh, LMC_DATA);
-	if (((banksel & 0x80) && vendid == (WB_VENDID_WINBOND >> 8)) ||
-	    (!(banksel & 0x80) && vendid == (WB_VENDID_WINBOND & 0xff)))
+	vendid = bus_space_read_1(iot, ioh, LMC_DATA) << 8;
+	bus_space_write_1(iot, ioh, LMC_ADDR, WB_BANKSEL);
+	bus_space_write_1(iot, ioh, LMC_DATA, 0);
+	bus_space_write_1(iot, ioh, LMC_ADDR, WB_VENDID);
+	vendid |= bus_space_read_1(iot, ioh, LMC_DATA);
+	bus_space_write_1(iot, ioh, LMC_ADDR, WB_BANKSEL);
+	bus_space_write_1(iot, ioh, LMC_DATA, banksel);
+	if (vendid == WB_VENDID_WINBOND)
 		goto found;
 
 	/* Probe for ITE chips (and don't attach if we find one). */

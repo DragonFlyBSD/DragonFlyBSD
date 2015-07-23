@@ -29,49 +29,10 @@
 #include <sys/systm.h>
 
 #include <bus/isa/isavar.h>
+#include <bus/isa/isa_common.h>
 
-/* ISA bus registers */
-#define WBSIO_INDEX		0x00	/* Configuration Index Register */
-#define WBSIO_DATA		0x01	/* Configuration Data Register */
-
-#define WBSIO_IOSIZE		0x02	/* ISA I/O space size */
-
-#define WBSIO_CONF_EN_MAGIC	0x87	/* enable configuration mode */
-#define WBSIO_CONF_DS_MAGIC	0xaa	/* disable configuration mode */
-
-/* Configuration Space Registers */
-#define WBSIO_LDN		0x07	/* Logical Device Number */
-#define WBSIO_ID		0x20	/* Device ID */
-#define WBSIO_REV		0x21	/* Device Revision */
-
-#define WBSIO_ID_W83627HF	0x52
-#define WBSIO_ID_W83627THF	0x82
-#define WBSIO_ID_W83627EHF	0x88
-#define WBSIO_ID_W83627DHG	0xa0
-#define WBSIO_ID_W83627DHGP	0xb0
-#define WBSIO_ID_W83627SF	0x59
-#define WBSIO_ID_W83627UHG	0xa2
-#define WBSIO_ID_W83637HF	0x70
-#define WBSIO_ID_W83667HG	0xa5
-#define WBSIO_ID_W83687THF	0x85
-#define WBSIO_ID_W83697HF	0x60
-
-/* Logical Device Number (LDN) Assignments */
-#define WBSIO_LDN_HM		0x0b
-
-/* Hardware Monitor Control Registers (LDN B) */
-#define WBSIO_HM_ADDR_MSB	0x60	/* Address [15:8] */
-#define WBSIO_HM_ADDR_LSB	0x61	/* Address [7:0] */
-
-struct wbsio_softc {
-	struct device		*sc_dev;
-
-	struct resource		*sc_iores;
-	int			sc_iorid;
-
-	bus_space_tag_t		sc_iot;
-	bus_space_handle_t	sc_ioh;
-};
+#include "wbsioreg.h"
+#include "wbsiovar.h"
 
 static void	wbsio_identify(driver_t *, struct device *);
 static int	wbsio_probe(struct device *);
@@ -79,12 +40,21 @@ static int	wbsio_attach(struct device *);
 static int	wbsio_detach(struct device *);
 
 static device_method_t wbsio_methods[] = {
+	/* Device interface */
 	DEVMETHOD(device_identify,	wbsio_identify),
 	DEVMETHOD(device_probe,		wbsio_probe),
 	DEVMETHOD(device_attach, 	wbsio_attach),
 	DEVMETHOD(device_detach,	wbsio_detach),
 
-	{ NULL, NULL}
+	/* Bus interface */
+	DEVMETHOD(bus_add_child,	bus_generic_add_child),
+	DEVMETHOD(bus_set_resource,	bus_generic_set_resource),
+	DEVMETHOD(bus_alloc_resource,	isa_alloc_resource),
+	DEVMETHOD(bus_release_resource,	isa_release_resource),
+	DEVMETHOD(bus_activate_resource,	bus_generic_activate_resource),
+	DEVMETHOD(bus_deactivate_resource,	bus_generic_deactivate_resource),
+
+	DEVMETHOD_END
 };
 
 static driver_t wbsio_driver = {
@@ -213,6 +183,9 @@ wbsio_probe(struct device *dev)
 	case WBSIO_ID_W83697HF:
 		desc = "W83697HF";
 		break;
+	case WBSIO_ID_NCT6776F:
+		desc = "NCT6776F";
+		break;
 	}
 
 	if (desc == NULL) {
@@ -239,10 +212,7 @@ wbsio_attach(struct device *dev)
 	struct wbsio_softc *sc = device_get_softc(dev);
 	uint8_t reg0, reg1;
 	uint16_t iobase;
-	struct device *parent = device_get_parent(dev);
 	struct device *child;
-	struct devclass *c_dc;
-	int c_maxunit;
 
 	/* Map ISA I/O space */
 	sc->sc_iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->sc_iorid,
@@ -257,6 +227,9 @@ wbsio_attach(struct device *dev)
 
 	/* Enter configuration mode */
 	wbsio_conf_enable(sc->sc_iot, sc->sc_ioh);
+
+	/* Read device ID */
+	sc->sc_devid = wbsio_conf_read(sc->sc_iot, sc->sc_ioh, WBSIO_ID);
 
 	/* Select HM logical device */
 	wbsio_conf_write(sc->sc_iot, sc->sc_ioh, WBSIO_LDN, WBSIO_LDN_HM);
@@ -280,41 +253,7 @@ wbsio_attach(struct device *dev)
 		return 0;
 	}
 
-	child = NULL;
-	c_dc = devclass_find("lm");
-	if (c_dc == NULL) {
-		device_printf(dev, "lm devclass not found\n");
-		return ENXIO;
-	}
-	c_maxunit = devclass_get_maxunit(c_dc);
-	for (int u = 0; u < c_maxunit; u++) {
-		child = devclass_get_device(c_dc, u);
-		if (child == NULL)
-			continue;
-		if (isa_get_port(child) == iobase) {
-			if (device_is_attached(child)) {
-				device_printf(dev,
-				    "%s is already attached at 0x%x\n",
-				    device_get_nameunit(child), iobase);
-				return 0;
-			}
-			break;
-		}
-		if (device_is_attached(child)) {
-			child = NULL;
-			continue;
-		}
-		device_printf(dev,
-		    "found unused %s at 0x%x with state %i, reusing at 0x%x\n",
-		    device_get_nameunit(child), isa_get_port(child),
-		    device_get_state(child), iobase);
-		break;
-	}
-	if (child == NULL)
-		child = BUS_ADD_CHILD(parent, parent, ISA_ORDER_PNP,
-		    "lm", -1);
-//	child = BUS_ADD_CHILD(parent, parent, ISA_ORDER_PNP,
-//	    "lm", 3 + device_get_unit(dev));
+	child = BUS_ADD_CHILD(dev, dev, 0, "lm", -1);
 	if (child == NULL) {
 		device_printf(dev, "cannot add child\n");
 		return ENXIO;

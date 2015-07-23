@@ -114,7 +114,7 @@
 #define WB_CHIPID_W83627EHF_A	0x88 /* early version, only for ASUS MBs */
 #define WB_CHIPID_W83627THF	0x90
 #define WB_CHIPID_W83627EHF	0xa1
-#define WB_CHIPID_W83627DHG	0xc1
+#define WB_CHIPID_W83627DHG	0xc1 /* also used in WBSIO_ID_NCT6776F */
 
 /* Config bits */
 #define WB_CONFIG_VMR9		0x01
@@ -150,7 +150,9 @@ struct lm_softc {
 
 	u_int8_t sbusaddr;
 	u_int8_t chipid;
+	u_int8_t sioid;
 	u_int8_t vrm9;
+
 };
 
 void lm_probe(struct lm_softc *);
