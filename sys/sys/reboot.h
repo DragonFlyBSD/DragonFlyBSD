@@ -32,7 +32,6 @@
  *
  *	@(#)reboot.h	8.3 (Berkeley) 12/13/94
  * $FreeBSD: src/sys/sys/reboot.h,v 1.18.2.1 2001/12/17 18:44:43 guido Exp $
- * $DragonFly: src/sys/sys/reboot.h,v 1.4 2004/06/25 05:37:59 dillon Exp $
  */
 
 #ifndef _SYS_REBOOT_H_
@@ -57,7 +56,7 @@
 #define	RB_RDONLY	0x080	/* mount root fs read-only */
 #define	RB_DUMP		0x100	/* dump kernel memory before reboot */
 #define	RB_MINIROOT	0x200	/* mini-root present in memory at boot time */
-#define RB_CONFIG	0x400	/* invoke user configuration routing */
+#define RB_UNUSED10	0x400	/* was: invoke user configuration routing */
 #define RB_VERBOSE	0x800	/* print all potentially useful info */
 #define	RB_SERIAL	0x1000	/* user serial port as console */
 #define	RB_CDROM	0x2000	/* use cdrom as root */

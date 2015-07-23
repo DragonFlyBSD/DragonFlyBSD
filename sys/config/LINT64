@@ -1087,10 +1087,6 @@ device		sio0	at isa? port IO_COM1 flags 0x10 irq 4
 #		access the device in any normal way.
 #	0x80	use this port for serial line gdb support in ddb.
 #
-# PnP `flags' (set via userconfig using pnp x flags y)
-#	0x1	disable probing of this device.  Used to prevent your modem
-#		from being attached as a PnP modem.
-#
 
 # Options for serial drivers that support consoles (only for sio now):
 options 	BREAK_TO_DEBUGGER	#a BREAK on a comconsole goes to

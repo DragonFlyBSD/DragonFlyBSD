@@ -170,10 +170,6 @@ cpu_startup(void *dummy)
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
 		      (nswbuf*MAXPHYS) + pager_map_size);
 	pager_map.system_map = 1;
-#if defined(USERCONFIG)
-        userconfig();
-	cninit();               /* the preferred console may have changed */
-#endif
 	kprintf("avail memory = %lu (%luK bytes)\n", ptoa(vmstats.v_free_count),
 		ptoa(vmstats.v_free_count) / 1024);
 	mp_start();

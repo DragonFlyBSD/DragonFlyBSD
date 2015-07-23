@@ -2154,6 +2154,8 @@ TO_REMOVE+=/usr/share/nls/no_NO.ISO8859-1
 TO_REMOVE+=/usr/share/nls/mn_MN.UTF-8
 TO_REMOVE+=/usr/share/nls/zh_CN.*
 TO_REMOVE+=/usr/share/nls/zh_hans_CN.*
+TO_REMOVE+=/usr/share/man/man8/boot_pc32.8.gz
+TO_REMOVE+=/usr/share/man/man5/kernel.conf.5.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

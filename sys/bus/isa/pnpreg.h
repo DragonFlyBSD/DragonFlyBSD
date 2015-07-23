@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnpreg.h,v 1.3.2.1 2000/05/11 11:10:35 nyan Exp $
- *	$DragonFly: src/sys/bus/isa/pnpreg.h,v 1.3 2005/06/12 20:55:14 swildner Exp $
  *      from: pnp.h,v 1.7 1998/09/13 22:15:44 eivind Exp
  */
 
@@ -39,14 +38,6 @@
 
 /* Maximum Number of PnP Devices.  8 should be plenty */
 #define PNP_MAX_CARDS 8
-
-#if 0
-/*
- * the following is the maximum number of PnP Logical devices that
- * userconfig can handle.
- */
-#define MAX_PNP_LDN	20
-#endif
 
 /* Static ports to access PnP state machine */
 #define _PNP_ADDRESS		0x279

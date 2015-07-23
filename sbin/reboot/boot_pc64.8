@@ -36,7 +36,7 @@
 .\"
 .\" $FreeBSD: src/sbin/reboot/boot_i386.8,v 1.23.2.11 2002/04/24 17:47:58 rnordier Exp $
 .\"
-.Dd September 2, 2008
+.Dd July 23, 2015
 .Dt BOOT 8
 .Os
 .Sh NAME
@@ -168,14 +168,6 @@ during kernel initialization,
 ask for the device to mount as the root file system.
 .It Fl C
 boot from CDROM.
-.It Fl c
-run UserConfig to modify hardware parameters for the loaded
-kernel.  If the kernel was built with one of
-.Dv USERCONFIG , INTRO_USERCONFIG , VISUAL_USERCONFIG
-options,
-remain in UserConfig regardless of any
-.Ic quit
-commands present in the script.
 .It Fl D
 Use all available consoles as the system console.  Input will be accepted
 on any console and output will be routed to all of them.  This is the

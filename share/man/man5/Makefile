@@ -28,7 +28,6 @@ MAN=	acct.5 \
 	intro.5 \
 	libmap.conf.5 \
 	kernconf.5 \
-	kernel.conf.5 \
 	link.5 \
 	linprocfs.5 \
 	loader.conf.5 \

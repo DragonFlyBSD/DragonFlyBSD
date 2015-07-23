@@ -7,7 +7,6 @@ unload
 
 unset boot_askname
 unset boot_cdrom
-unset boot_userconfig
 unset boot_ddb
 unset boot_gdb
 unset boot_single

@@ -2235,7 +2235,7 @@ scsplash_callback(int event, void *arg)
 	if (add_scrn_saver(scsplash_saver) == 0) {
 	    sc->flags &= ~SC_SAVER_FAILED;
 	    run_scrn_saver = TRUE;
-	    if (cold && !(boothowto & (RB_VERBOSE | RB_CONFIG))) {
+	    if (cold) {
 		scsplash_stick(TRUE);
 		(*current_saver)(sc, TRUE);
 	    }

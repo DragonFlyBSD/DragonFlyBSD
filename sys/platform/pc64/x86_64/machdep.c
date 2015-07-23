@@ -475,12 +475,6 @@ again:
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
 		      ((vm_offset_t)nswbuf * MAXPHYS) + pager_map_size);
 	pager_map.system_map = 1;
-
-#if defined(USERCONFIG)
-	userconfig();
-	cninit();		/* the preferred console may have changed */
-#endif
-
 	kprintf("avail memory = %ju (%ju MB)\n",
 		(uintmax_t)ptoa(vmstats.v_free_count + vmstats.v_dma_pages),
 		(uintmax_t)ptoa(vmstats.v_free_count + vmstats.v_dma_pages) /

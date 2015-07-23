@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
 .\"
-.Dd November 12, 2014
+.Dd July 23, 2015
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -487,9 +487,6 @@ Selects gdb-remote mode for the kernel debugger by default.
 .It Va boot_single
 Prevents the kernel from initiating a multi-user startup; instead single-user
 mode will be entered when the kernel has finished device probing.
-.It Va boot_userconfig
-Requests that the kernel's interactive device configuration program
-be run when the kernel is booted.
 .It Va boot_verbose
 Setting this variable causes extra debugging information to be printed
 by the kernel during and after the boot phase.
@@ -818,15 +815,6 @@ Boot in single user mode:
 .Pp
 .Dl loadall
 .Dl boot -s
-.Pp
-Load kernel's user configuration file.
-Notice that a kernel must be loaded before any other
-.Ic load
-command is attempted.
-.Bd -literal -offset indent
-load kernel
-load -t userconfig_script kernel.conf
-.Ed
 .Pp
 Load the kernel, a splash screen, and then autoboot in five seconds.
 .Bd -literal -offset indent
