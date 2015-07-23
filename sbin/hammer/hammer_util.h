@@ -180,6 +180,7 @@ void hammer_cache_flush(void);
 void score_printf(size_t i, size_t w, const char *ctl, ...) __printflike(3, 4);
 
 struct zone_stat *hammer_init_zone_stat(void);
+struct zone_stat *hammer_init_zone_stat_bits(void);
 void hammer_cleanup_zone_stat(struct zone_stat *stats);
 void hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
 			hammer_off_t bytes);

@@ -84,7 +84,7 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 	AssertOnFailure = 0;
 
 	if (VerboseOpt)
-		stats = hammer_init_zone_stat();
+		stats = hammer_init_zone_stat_bits();
 
 	if (node_offset == (hammer_off_t)-1) {
 		volume = get_volume(RootVolNo);

@@ -200,28 +200,53 @@ hammer_check_restrict(const char *filesystem)
 /*
  * Functions and data structure for zone statistics
  */
-struct _block_offset {
-	RB_ENTRY(_block_offset)	entry;
-	hammer_off_t		offset;	/* offset of big-block */
-};
+/*
+ * Layer1 needs ((2^18) / 64) = 4096 uint64_t and
+ * Layer2 needs ((2^19) / 64) = 8192 uint64_t for each Layer1 on demand.
+ */
+#define HAMMER_LAYER1_UINT64 4096
+#define HAMMER_LAYER2_UINT64 8192
+#define HAMMER_LAYER1_BYTES (HAMMER_LAYER1_UINT64 * sizeof(uint64_t))
+#define HAMMER_LAYER2_BYTES (HAMMER_LAYER2_UINT64 * sizeof(uint64_t))
 
-static
+static uint64_t *l1_bits = NULL;
+static uint64_t *l2_bits = NULL;
+static int l1_max = 0;
+
+static __inline
 int
-_block_offset_compare(struct _block_offset *z1, struct _block_offset *z2)
+hammer_set_layer_bits(uint64_t *bits, int i)
 {
-	if (z1->offset < z2->offset)
-		return(-1);
-	if (z1->offset > z2->offset)
+	int q, r;
+
+	q = i >> 6;
+	r = i & ((1 << 6) - 1);
+
+	bits += q;
+	if (!((*bits) & ((uint64_t)1 << r))) {
+		(*bits) |= ((uint64_t)1 << r);
 		return(1);
-	return(0);
+	}
+	return(0);  /* already seen this block */
 }
 
-RB_HEAD(_block_offset_tree, _block_offset) _BlockOffsetTree =
-	RB_INITIALIZER(&_BlockOffsetTree);
-RB_PROTOTYPE2(_block_offset_tree, _block_offset, entry,
-	_block_offset_compare, hammer_off_t);
-RB_GENERATE2(_block_offset_tree, _block_offset, entry,
-	_block_offset_compare, hammer_off_t, offset);
+static
+void
+hammer_extend_layer2_bits(int newsiz, int oldsiz)
+{
+	uint64_t *p;
+
+	assert(newsiz > oldsiz);
+	if (l2_bits == NULL)
+		l2_bits = malloc(HAMMER_LAYER2_BYTES * newsiz);
+	else
+		l2_bits = realloc(l2_bits, HAMMER_LAYER2_BYTES * newsiz);
+	if (l2_bits == NULL)
+		perror("alloc");
+
+	p = l2_bits + HAMMER_LAYER2_UINT64 * oldsiz;
+	bzero((void*)p, HAMMER_LAYER2_BYTES * (newsiz - oldsiz));
+}
 
 struct zone_stat*
 hammer_init_zone_stat(void)
@@ -229,16 +254,26 @@ hammer_init_zone_stat(void)
 	return calloc(HAMMER_MAX_ZONES, sizeof(struct zone_stat));
 }
 
+struct zone_stat*
+hammer_init_zone_stat_bits(void)
+{
+	l1_bits = malloc(HAMMER_LAYER1_BYTES);
+	if (l1_bits == NULL)
+		perror("malloc");
+	bzero(l1_bits, HAMMER_LAYER1_BYTES);
+	assert(hammer_set_layer_bits(l1_bits, 0) == 1);
+
+	hammer_extend_layer2_bits(1, 0);
+
+	return(hammer_init_zone_stat());
+}
+
 void
 hammer_cleanup_zone_stat(struct zone_stat *stats)
 {
-	struct _block_offset *p;
-
-	while ((p = RB_ROOT(&_BlockOffsetTree)) != NULL) {
-		RB_REMOVE(_block_offset_tree, &_BlockOffsetTree, p);
-		free(p);
-	}
-
+	l1_max = 0;
+	free(l1_bits);
+	free(l2_bits);
 	free(stats);
 }
 
@@ -260,23 +295,22 @@ void
 hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
 			hammer_off_t bytes)
 {
-	int zone, new_block;
-	struct _block_offset *p;
+	int zone, new_block, i, j;
 
 	offset &= ~HAMMER_BIGBLOCK_MASK64;
 	zone = HAMMER_ZONE_DECODE(offset);
+	i = (int)HAMMER_BLOCKMAP_LAYER1_INDEX(offset);
+	j = (int)HAMMER_BLOCKMAP_LAYER2_INDEX(offset);
 	new_block = 0;
 
-	p = RB_LOOKUP(_block_offset_tree, &_BlockOffsetTree, offset);
-	if (p == NULL) {
-		new_block = 1;
-		p = malloc(sizeof(*p));
-		if (p == NULL)
-			perror("malloc");
-		bzero(p, sizeof(*p));
-		p->offset = offset;
-		RB_INSERT(_block_offset_tree, &_BlockOffsetTree, p);
+	if (i > l1_max) {
+		hammer_extend_layer2_bits(i + 1, l1_max + 1);
+		new_block |= hammer_set_layer_bits(l1_bits, i);
+		assert(new_block == 1);
+		l1_max = i;
 	}
+
+	new_block |= hammer_set_layer_bits(l2_bits + i, j);
 	_hammer_add_zone_stat(stats, zone, bytes, new_block, 1);
 }
 
