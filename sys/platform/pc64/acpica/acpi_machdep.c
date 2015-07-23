@@ -318,7 +318,6 @@ acpi_capm_init(struct acpi_softc *sc)
 {
         make_dev(&apm_ops, 0, 0, 5, 0664, "apm");
         make_dev(&apm_ops, 8, 0, 5, 0664, "apm");
-	kprintf("Warning: ACPI is disabling APM's device.  You can't run both\n");
 }
 
 int
