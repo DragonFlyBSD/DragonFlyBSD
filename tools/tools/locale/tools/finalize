@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# This is a helper script for the Makefile in the parent directory.
+# When the localization definitions are generated in the draft area,
+# this script will copy base ones that others symlink to, and rearrange
+# the generate makefile to pull the LOCALES first.
+#
+
+usage ()
+{
+   echo "finalize <type>' to package standard localization"
+   echo "type must be one of { monetdef, msgdef, numericdef, timedef }"
+   exit 1
+}
+
+[ $# -ne 1 ] && usage
+[ $1 = "monetdef" -o $1 = "msgdef" -o \
+  $1 = "numericdef" -o $1 = "timedef" ] || usage
+
+self=$(realpath $0)
+base=$(dirname ${self})
+old=${base}/../${1}.draft
+new=${base}/../${1}
+TEMP=/tmp/${1}.locales
+AWKCMD="/## PLACEHOLDER/ { \
+	  while ( getline line < \"${TEMP}\" ) {print line} } \
+	!/## PLACEHOLDER/ { print \$0 }"
+
+grep '^LOCALES+' ${old}/Makefile > ${TEMP}
+keep=$(cat ${TEMP} | awk '{ print $2 }')
+
+for original in ${keep}
+do
+	cp ${old}/${original}.src ${new}/
+done
+
+grep -v '^LOCALES+' ${old}/Makefile | awk "${AWKCMD}" > ${new}/Makefile
+
+rm -f ${TEMP}
