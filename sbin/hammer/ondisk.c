@@ -250,7 +250,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	if (buf == NULL) {
 		buf = malloc(sizeof(*buf));
 		bzero(buf, sizeof(*buf));
-		if (DebugOpt) {
+		if (DebugOpt > 1) {
 			fprintf(stderr, "get_buffer: %016llx %016llx at %p\n",
 				(long long)orig_offset, (long long)buf_offset,
 				buf);
@@ -266,7 +266,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		hammer_cache_add(&buf->cache, ISBUFFER);
 		dora = (isnew == 0);
 	} else {
-		if (DebugOpt) {
+		if (DebugOpt > 1) {
 			fprintf(stderr, "get_buffer: %016llx %016llx at %p *\n",
 				(long long)orig_offset, (long long)buf_offset,
 				buf);

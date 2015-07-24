@@ -216,7 +216,7 @@ hammer_cmd_checkmap(void)
 
 	assert(HAMMER_ZONE_UNDO_INDEX < HAMMER_ZONE2_MAPPED_INDEX);
 	assert(HAMMER_ZONE2_MAPPED_INDEX < HAMMER_MAX_ZONES);
-	AssertOnFailure = 0;
+	AssertOnFailure = (DebugOpt != 0);
 
 	printf("Collecting allocation info from freemap: ");
 	fflush(stdout);

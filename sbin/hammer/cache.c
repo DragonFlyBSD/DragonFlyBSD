@@ -127,7 +127,7 @@ hammer_cache_flush(void)
 			if (CacheUse < target)
 				break;
 		}
-		if (DebugOpt)
+		if (DebugOpt > 1)
 			fprintf(stderr, "hammer_cache_flush: free %d/%d cache\n",
 				ncache - NCache, ncache);
 	}

@@ -81,7 +81,7 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 	struct zone_stat *stats = NULL;
 	int zone;
 
-	AssertOnFailure = 0;
+	AssertOnFailure = (DebugOpt != 0);
 
 	if (VerboseOpt)
 		stats = hammer_init_zone_stat_bits();
