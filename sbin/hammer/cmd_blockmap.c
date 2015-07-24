@@ -67,7 +67,7 @@ RB_GENERATE2(collect_rb_tree, collect, entry, collect_compare, hammer_off_t,
 static void dump_blockmap(const char *label, int zone);
 static void check_freemap(hammer_blockmap_t freemap);
 static void check_btree_node(hammer_off_t node_offset, int depth);
-static void check_undo(hammer_blockmap_t rootmap);
+static void check_undo(hammer_blockmap_t undomap);
 static __inline void collect_btree_root(hammer_off_t node_offset);
 static __inline void collect_btree_internal(hammer_btree_elm_t elm);
 static __inline void collect_btree_leaf(hammer_btree_elm_t elm);
@@ -194,13 +194,13 @@ hammer_cmd_checkmap(void)
 {
 	struct volume_info *volume;
 	hammer_blockmap_t freemap;
-	hammer_blockmap_t rootmap;
+	hammer_blockmap_t undomap;
 	hammer_off_t node_offset;
 
 	volume = get_volume(RootVolNo);
 	node_offset = volume->ondisk->vol0_btree_root;
 	freemap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
-	rootmap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	undomap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	if (QuietOpt < 3) {
 		printf("Volume header\trecords=%jd next_tid=%016jx\n",
@@ -209,7 +209,7 @@ hammer_cmd_checkmap(void)
 		printf("\t\tbufoffset=%016jx\n",
 		       (uintmax_t)volume->ondisk->vol_buf_beg);
 		printf("\t\tundosize=%jdMB\n",
-		       (intmax_t)((rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)
+		       (intmax_t)((undomap->alloc_offset & HAMMER_OFF_LONG_MASK)
 			/ (1024 * 1024)));
 	}
 	rel_volume(volume);
@@ -225,13 +225,12 @@ hammer_cmd_checkmap(void)
 
 	printf("Collecting allocation info from B-Tree: ");
 	fflush(stdout);
-	collect_btree_root(node_offset);
 	check_btree_node(node_offset, 0);
 	printf("done\n");
 
 	printf("Collecting allocation info from UNDO: ");
 	fflush(stdout);
-	check_undo(rootmap);
+	check_undo(undomap);
 	printf("done\n");
 
 	dump_collect_table();
@@ -266,6 +265,8 @@ check_btree_node(hammer_off_t node_offset, int depth)
 	int i;
 	char badc;
 
+	if (depth == 0)
+		collect_btree_root(node_offset);
 	node = get_node(node_offset, &buffer);
 
 	if (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) == node->crc)
@@ -308,14 +309,14 @@ check_btree_node(hammer_off_t node_offset, int depth)
 }
 
 static void
-check_undo(hammer_blockmap_t rootmap)
+check_undo(hammer_blockmap_t undomap)
 {
 	struct buffer_info *buffer = NULL;
 	hammer_off_t scan_offset;
 	hammer_fifo_head_t head;
 
 	scan_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
-	while (scan_offset < rootmap->alloc_offset) {
+	while (scan_offset < undomap->alloc_offset) {
 		head = get_buffer_data(scan_offset, &buffer, 0);
 		switch (head->hdr_type) {
 		case HAMMER_HEAD_TYPE_PAD:
