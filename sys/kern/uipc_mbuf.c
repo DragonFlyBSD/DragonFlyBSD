@@ -475,13 +475,12 @@ sysctl_nmbclusters(SYSCTL_HANDLER_ARGS)
 	int error;
 	int value;
 
-	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
 	value = nmbclusters;
 	error = sysctl_handle_int(oidp, &value, 0, req);
-	if (error || req->newptr == NULL) {
-		lockmgr(&mbupdate_lk, LK_RELEASE);
+	if (error || req->newptr == NULL)
 		return error;
-	}
+
+	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
 	if (nmbclusters != value) {
 		nmbclusters = value;
 		mbupdatelimits();
@@ -496,13 +495,12 @@ sysctl_nmbjclusters(SYSCTL_HANDLER_ARGS)
 	int error;
 	int value;
 
-	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
 	value = nmbjclusters;
 	error = sysctl_handle_int(oidp, &value, 0, req);
-	if (error || req->newptr == NULL) {
-		lockmgr(&mbupdate_lk, LK_RELEASE);
+	if (error || req->newptr == NULL)
 		return error;
-	}
+
+	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
 	if (nmbjclusters != value) {
 		nmbjclusters = value;
 		mbupdatelimits();
@@ -517,13 +515,12 @@ sysctl_nmbufs(SYSCTL_HANDLER_ARGS)
 	int error;
 	int value;
 
-	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
 	value = nmbufs;
 	error = sysctl_handle_int(oidp, &value, 0, req);
-	if (error || req->newptr == NULL) {
-		lockmgr(&mbupdate_lk, LK_RELEASE);
+	if (error || req->newptr == NULL)
 		return error;
-	}
+
+	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
 	if (nmbufs != value) {
 		nmbufs = value;
 		mbupdatelimits();
@@ -857,6 +854,9 @@ mbupdatelimits(void)
 {
 	int mb_limit, cl_limit, ncl_limit, jcl_limit;
 	int limit;
+
+	KASSERT(lockstatus(&mbupdate_lk, curthread) != 0,
+	    ("mbupdate_lk is not held"));
 
 	/*
 	 * Figure out adjustments to object caches after nmbufs, nmbclusters,
