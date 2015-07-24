@@ -4094,7 +4094,6 @@ intel_dp_init_panel_power_sequencer_registers(struct drm_device *dev,
 		pp_off_reg = VLV_PIPE_PP_OFF_DELAYS(pipe);
 		pp_div_reg = VLV_PIPE_PP_DIVISOR(pipe);
 	}
-	mutex_unlock(&dev->mode_config.mutex);
 
 	/*
 	 * And finally store the new values in the power sequencer. The
