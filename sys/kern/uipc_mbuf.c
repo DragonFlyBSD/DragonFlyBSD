@@ -420,6 +420,10 @@ static void m_mjclfree(void *arg);
 #define NMBUFS		(nmbclusters * 2 + maxfiles)
 #endif
 
+#define NMBCLUSTERS_MIN	(NMBCLUSTERS / 2)
+#define NMBJCLUSTERS_MIN (NMBJCLUSTERS / 2)
+#define NMBUFS_MIN	((NMBCLUSTERS * 2 + maxfiles) / 2)
+
 /*
  * Perform sanity checks of tunables declared above.
  */
@@ -480,6 +484,9 @@ sysctl_nmbclusters(SYSCTL_HANDLER_ARGS)
 	if (error || req->newptr == NULL)
 		return error;
 
+	if (value < NMBCLUSTERS_MIN)
+		return EINVAL;
+
 	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
 	if (nmbclusters != value) {
 		nmbclusters = value;
@@ -500,6 +507,9 @@ sysctl_nmbjclusters(SYSCTL_HANDLER_ARGS)
 	if (error || req->newptr == NULL)
 		return error;
 
+	if (value < NMBJCLUSTERS_MIN)
+		return EINVAL;
+
 	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
 	if (nmbjclusters != value) {
 		nmbjclusters = value;
@@ -519,6 +529,9 @@ sysctl_nmbufs(SYSCTL_HANDLER_ARGS)
 	error = sysctl_handle_int(oidp, &value, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
+
+	if (value < NMBUFS_MIN)
+		return EINVAL;
 
 	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
 	if (nmbufs != value) {
