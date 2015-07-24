@@ -65,11 +65,14 @@ RB_GENERATE2(collect_rb_tree, collect, entry, collect_compare, hammer_off_t,
 	phys_offset);
 
 static void dump_blockmap(const char *label, int zone);
+static void check_freemap(hammer_blockmap_t freemap);
 static void check_btree_node(hammer_off_t node_offset, int depth);
 static void check_undo(hammer_blockmap_t rootmap);
 static __inline void collect_btree_root(hammer_off_t node_offset);
 static __inline void collect_btree_internal(hammer_btree_elm_t elm);
 static __inline void collect_btree_leaf(hammer_btree_elm_t elm);
+static __inline void collect_freemap_layer1(hammer_blockmap_t freemap);
+static __inline void collect_freemap_layer2(struct hammer_blockmap_layer1 *layer1);
 static __inline void collect_undo(hammer_off_t scan_offset,
 	hammer_fifo_head_t head);
 static void collect_blockmap(hammer_off_t offset, int32_t length, int zone);
@@ -190,11 +193,13 @@ void
 hammer_cmd_checkmap(void)
 {
 	struct volume_info *volume;
+	hammer_blockmap_t freemap;
 	hammer_blockmap_t rootmap;
 	hammer_off_t node_offset;
 
 	volume = get_volume(RootVolNo);
 	node_offset = volume->ondisk->vol0_btree_root;
+	freemap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	rootmap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	if (QuietOpt < 3) {
@@ -213,6 +218,11 @@ hammer_cmd_checkmap(void)
 	assert(HAMMER_ZONE2_MAPPED_INDEX < HAMMER_MAX_ZONES);
 	AssertOnFailure = 0;
 
+	printf("Collecting allocation info from freemap: ");
+	fflush(stdout);
+	check_freemap(freemap);
+	printf("done\n");
+
 	printf("Collecting allocation info from B-Tree: ");
 	fflush(stdout);
 	collect_btree_root(node_offset);
@@ -226,6 +236,25 @@ hammer_cmd_checkmap(void)
 
 	dump_collect_table();
 	AssertOnFailure = 1;
+}
+
+static void
+check_freemap(hammer_blockmap_t freemap)
+{
+	hammer_off_t offset;
+	struct buffer_info *buffer1 = NULL;
+	struct hammer_blockmap_layer1 *layer1;
+	int i;
+
+	collect_freemap_layer1(freemap);
+
+	for (i = 0; i < (int)HAMMER_BLOCKMAP_RADIX1; ++i) {
+		offset = freemap->phys_offset + i * sizeof(*layer1);
+		layer1 = get_buffer_data(offset, &buffer1, 0);
+		if (layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL)
+			collect_freemap_layer2(layer1);
+	}
+	rel_buffer(buffer1);
 }
 
 static void
@@ -312,6 +341,34 @@ check_undo(hammer_blockmap_t rootmap)
 		}
 	}
 	rel_buffer(buffer);
+}
+
+static __inline
+void
+collect_freemap_layer1(hammer_blockmap_t freemap)
+{
+	/*
+	 * This translation is necessary to do checkmap properly
+	 * as zone4 is really just zone2 address space.
+	 */
+	hammer_off_t zone4_offset = hammer_xlate_to_zoneX(
+		HAMMER_ZONE_FREEMAP_INDEX, freemap->phys_offset);
+	collect_blockmap(zone4_offset, HAMMER_BIGBLOCK_SIZE,
+		HAMMER_ZONE_FREEMAP_INDEX);
+}
+
+static __inline
+void
+collect_freemap_layer2(struct hammer_blockmap_layer1 *layer1)
+{
+	/*
+	 * This translation is necessary to do checkmap properly
+	 * as zone4 is really just zone2 address space.
+	 */
+	hammer_off_t zone4_offset = hammer_xlate_to_zoneX(
+		HAMMER_ZONE_FREEMAP_INDEX, layer1->phys_offset);
+	collect_blockmap(zone4_offset, HAMMER_BIGBLOCK_SIZE,
+		HAMMER_ZONE_FREEMAP_INDEX);
 }
 
 static __inline
@@ -502,8 +559,8 @@ dump_collect(collect_t collect, struct zone_stat *stats)
 		offset = collect->offsets[i];
 
 		/*
-		 * Check big-blocks referenced by data, B-Tree nodes
-		 * and UNDO fifo.
+		 * Check big-blocks referenced by freemap, data,
+		 * B-Tree nodes and UNDO fifo.
 		 */
 		if (track2->entry_crc == 0)
 			continue;
@@ -511,6 +568,7 @@ dump_collect(collect_t collect, struct zone_stat *stats)
 		zone = layer2->zone;
 		if (AssertOnFailure) {
 			assert((zone == HAMMER_ZONE_UNDO_INDEX) ||
+				(zone == HAMMER_ZONE_FREEMAP_INDEX) ||
 				(zone >= HAMMER_ZONE2_MAPPED_INDEX &&
 				 zone < HAMMER_MAX_ZONES));
 		}

@@ -364,8 +364,8 @@ option.
 .It Cm checkmap
 Check the blockmap allocation count.
 .Nm
-will scan the B-Tree, collect allocation information, and
-construct a blockmap in-memory.
+will scan the freemap, B-Tree, UNDO FIFO, then collect allocation information,
+and construct a blockmap in-memory.
 It will then check that blockmap against the on-disk blockmap.
 .Pp
 This command needs the

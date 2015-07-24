@@ -100,7 +100,8 @@ blockmap_lookup(hammer_off_t zone_offset,
 	 * Note that a valid offset can still be returned if AssertOnFailure
 	 * is zero.
 	 */
-	if (HAMMER_ZONE_DECODE(blockmap->alloc_offset) != zone) {
+	if (HAMMER_ZONE_FREEMAP_INDEX != zone &&
+	    HAMMER_ZONE_DECODE(blockmap->alloc_offset) != zone) {
 		error = -5;
 		goto done;
 	}
