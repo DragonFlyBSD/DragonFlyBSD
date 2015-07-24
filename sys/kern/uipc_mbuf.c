@@ -256,6 +256,8 @@ struct objcache *mclmeta_cache, *mjclmeta_cache;
 struct objcache *mbufcluster_cache, *mbufphdrcluster_cache;
 struct objcache *mbufjcluster_cache, *mbufphdrjcluster_cache;
 
+struct lock	mbupdate_lk = LOCK_INITIALIZER("mbupdate", 0, 0);
+
 int		nmbclusters;
 static int	nmbjclusters;
 int		nmbufs;
@@ -340,16 +342,24 @@ do_mbtypes(SYSCTL_HANDLER_ARGS)
 }
 
 /*
- * These are read-only because we do not currently have any code
- * to adjust the objcache limits after the fact.  The variables
- * may only be set as boot-time tunables.
+ * The variables may be set as boot-time tunables or live.  Setting these
+ * values too low can deadlock your network.  Network interfaces may also
+ * adjust nmbclusters and/or nmbjclusters to account for preloading the
+ * hardware rings.
  */
-SYSCTL_INT(_kern_ipc, KIPC_NMBCLUSTERS, nmbclusters, CTLFLAG_RD,
-	   &nmbclusters, 0, "Maximum number of mbuf clusters available");
-SYSCTL_INT(_kern_ipc, OID_AUTO, nmbufs, CTLFLAG_RD, &nmbufs, 0,
-	   "Maximum number of mbufs available");
-SYSCTL_INT(_kern_ipc, OID_AUTO, nmbjclusters, CTLFLAG_RD, &nmbjclusters, 0,
+static int sysctl_nmbclusters(SYSCTL_HANDLER_ARGS);
+static int sysctl_nmbjclusters(SYSCTL_HANDLER_ARGS);
+static int sysctl_nmbufs(SYSCTL_HANDLER_ARGS);
+SYSCTL_PROC(_kern_ipc, KIPC_NMBCLUSTERS, nmbclusters, CTLTYPE_INT | CTLFLAG_RW,
+	   0, 0, sysctl_nmbclusters, "I",
+	   "Maximum number of mbuf clusters available");
+SYSCTL_PROC(_kern_ipc, OID_AUTO, nmbjclusters, CTLTYPE_INT | CTLFLAG_RW,
+	   0, 0, sysctl_nmbjclusters, "I",
 	   "Maximum number of mbuf jclusters available");
+SYSCTL_PROC(_kern_ipc, OID_AUTO, nmbufs, CTLTYPE_INT | CTLFLAG_RW,
+	   0, 0, sysctl_nmbufs, "I",
+	   "Maximum number of mbufs available");
+
 SYSCTL_INT(_kern_ipc, OID_AUTO, mjclph_cachefrac, CTLFLAG_RD,
 	   &mjclph_cachefrac, 0,
 	   "Fraction of cacheable mbuf jclusters w/ pkthdr");
@@ -456,6 +466,72 @@ tunable_mbinit(void *dummy)
 SYSINIT(tunable_mbinit, SI_BOOT1_TUNABLES, SI_ORDER_ANY,
 	tunable_mbinit, NULL);
 
+/*
+ * Sysctl support to update nmbclusters, nmbjclusters, and nmbufs.
+ */
+static int
+sysctl_nmbclusters(SYSCTL_HANDLER_ARGS)
+{
+	int error;
+	int value;
+
+	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
+	value = nmbclusters;
+	error = sysctl_handle_int(oidp, &value, 0, req);
+	if (error || req->newptr == NULL) {
+		lockmgr(&mbupdate_lk, LK_RELEASE);
+		return error;
+	}
+	if (nmbclusters != value) {
+		nmbclusters = value;
+		mbupdatelimits();
+	}
+	lockmgr(&mbupdate_lk, LK_RELEASE);
+	return 0;
+}
+
+static int
+sysctl_nmbjclusters(SYSCTL_HANDLER_ARGS)
+{
+	int error;
+	int value;
+
+	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
+	value = nmbjclusters;
+	error = sysctl_handle_int(oidp, &value, 0, req);
+	if (error || req->newptr == NULL) {
+		lockmgr(&mbupdate_lk, LK_RELEASE);
+		return error;
+	}
+	if (nmbjclusters != value) {
+		nmbjclusters = value;
+		mbupdatelimits();
+	}
+	lockmgr(&mbupdate_lk, LK_RELEASE);
+	return 0;
+}
+
+static int
+sysctl_nmbufs(SYSCTL_HANDLER_ARGS)
+{
+	int error;
+	int value;
+
+	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
+	value = nmbufs;
+	error = sysctl_handle_int(oidp, &value, 0, req);
+	if (error || req->newptr == NULL) {
+		lockmgr(&mbupdate_lk, LK_RELEASE);
+		return error;
+	}
+	if (nmbufs != value) {
+		nmbufs = value;
+		mbupdatelimits();
+	}
+	lockmgr(&mbupdate_lk, LK_RELEASE);
+	return 0;
+}
+
 /* "number of clusters of pages" */
 #define NCL_INIT	1
 
@@ -467,7 +543,6 @@ SYSINIT(tunable_mbinit, SI_BOOT1_TUNABLES, SI_ORDER_ANY,
  * particular, m_len and m_pkthdr.len are uninitialized.  It is the
  * responsibility of the caller to initialize those fields before use.
  */
-
 static __inline boolean_t
 mbuf_ctor(void *obj, void *private, int ocflags)
 {
@@ -692,7 +767,7 @@ mbinit(void *dummy)
 	}
 
 	/*
-	 * Create objtect caches and save cluster limits, which will
+	 * Create object caches and save cluster limits, which will
 	 * be used to adjust backing kmalloc pools' limit later.
 	 */
 
@@ -767,6 +842,72 @@ mbinit(void *dummy)
 			    (MCLBYTES * (size_t)ncl_limit) +
 			    (MJUMPAGESIZE * (size_t)jcl_limit));
 
+	mb_limit += mb_limit / 8;
+	kmalloc_raise_limit(mbuf_malloc_args.mtype,
+			    mbuf_malloc_args.objsize * (size_t)mb_limit);
+}
+
+/*
+ * Adjust mbuf limits after changes have been made
+ *
+ * Caller must hold mbupdate_lk
+ */
+void
+mbupdatelimits(void)
+{
+	int mb_limit, cl_limit, ncl_limit, jcl_limit;
+	int limit;
+
+	/*
+	 * Figure out adjustments to object caches after nmbufs, nmbclusters,
+	 * or nmbjclusters has been modified.
+	 */
+	mb_limit = cl_limit = 0;
+
+	limit = nmbufs;
+	objcache_set_cluster_limit(mbuf_cache, limit);
+	mb_limit += limit;
+
+	limit = nmbufs;
+	objcache_set_cluster_limit(mbufphdr_cache, limit);
+	mb_limit += limit;
+
+	ncl_limit = nmbclusters;
+	objcache_set_cluster_limit(mclmeta_cache, ncl_limit);
+	cl_limit += ncl_limit;
+
+	jcl_limit = nmbjclusters;
+	objcache_set_cluster_limit(mjclmeta_cache, jcl_limit);
+	cl_limit += jcl_limit;
+
+	limit = nmbclusters;
+	objcache_set_cluster_limit(mbufcluster_cache, limit);
+	mb_limit += limit;
+
+	limit = nmbclusters;
+	objcache_set_cluster_limit(mbufphdrcluster_cache, limit);
+	mb_limit += limit;
+
+	limit = nmbjclusters;
+	objcache_set_cluster_limit(mbufjcluster_cache, limit);
+	mb_limit += limit;
+
+	limit = nmbjclusters;
+	objcache_set_cluster_limit(mbufphdrjcluster_cache, limit);
+	mb_limit += limit;
+
+	/*
+	 * Adjust backing kmalloc pools' limit
+	 *
+	 * NOTE: We raise the limit by another 1/8 to take the effect
+	 * of loosememuse into account.
+	 */
+	cl_limit += cl_limit / 8;
+	kmalloc_raise_limit(mclmeta_malloc_args.mtype,
+			    mclmeta_malloc_args.objsize * (size_t)cl_limit);
+	kmalloc_raise_limit(M_MBUFCL,
+			    (MCLBYTES * (size_t)ncl_limit) +
+			    (MJUMPAGESIZE * (size_t)jcl_limit));
 	mb_limit += mb_limit / 8;
 	kmalloc_raise_limit(mbuf_malloc_args.mtype,
 			    mbuf_malloc_args.objsize * (size_t)mb_limit);
