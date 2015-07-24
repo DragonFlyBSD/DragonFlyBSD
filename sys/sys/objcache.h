@@ -70,6 +70,7 @@ struct objcache
 			  int cluster_limit, int nom_cache,
 			  objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
 			  void *privdata);
+void	objcache_set_cluster_limit(struct objcache *oc, int cluster_limit);
 void	*objcache_get(struct objcache *oc, int ocflags);
 void	 objcache_put(struct objcache *oc, void *obj);
 void	 objcache_dtor(struct objcache *oc, void *obj);

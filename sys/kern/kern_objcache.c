@@ -81,6 +81,7 @@ struct magazinedepot {
 
 	/* magazines not yet allocated towards limit */
 	int			unallocated_objects;
+	int			cluster_limit;	/* ref for adjustments */
 
 	/* infrequently used fields */
 	int			waiting;	/* waiting for another cpu to
@@ -258,13 +259,24 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 	 * partial magazines can stay on the cpus what we really need here
 	 * is to specify the number of extra magazines we allocate for the
 	 * depot.
+	 *
+	 * Use ~1B objects to mean 'unlimited'.  A negative unallocated
+	 * object count is possible due to dynamic adjustments so we can't
+	 * use a negative number to mean 'unlimited'.  We need some overflow
+	 * capacity too due to the preallocated mags.
 	 */
 	if (cluster_limit == 0) {
-		depot->unallocated_objects = -1;
+		depot->unallocated_objects = 0x40000000;
 	} else {
 		depot->unallocated_objects = ncpus * mag_capacity * 2 +
 					     cluster_limit;
 	}
+
+	/*
+	 * This is a dynamic adjustment aid initialized to the callers
+	 * expectations of the current limit.
+	 */
+	depot->cluster_limit = cluster_limit;
 
 	/*
 	 * Initialize per-cpu caches
@@ -303,6 +315,29 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 	spin_unlock(&objcachelist_spin);
 
 	return (oc);
+}
+
+/*
+ * Adjust the cluster limit.  This is allowed to cause unallocated_objects
+ * to go negative.  Note that due to the magazine hysteresis there is a
+ * limit to how much of the objcache can be reclaimed using this API to
+ * reduce its size.
+ */
+void
+objcache_set_cluster_limit(struct objcache *oc, int cluster_limit)
+{
+	struct magazinedepot *depot;
+	int delta;
+
+	depot = &oc->depot[myclusterid];
+	if (depot->cluster_limit != cluster_limit) {
+		spin_lock(&depot->spin);
+		delta = cluster_limit - depot->cluster_limit;
+		depot->unallocated_objects += delta;
+		depot->cluster_limit = cluster_limit;
+		spin_unlock(&depot->spin);
+		wakeup(depot);
+	}
 }
 
 struct objcache *
@@ -433,10 +468,10 @@ retry:
 	 * not hit our object limit we can allocate a new object using
 	 * the back-end allocator.
 	 *
-	 * note: unallocated_objects can be initialized to -1, which has
-	 * the effect of removing any allocation limits.
+	 * NOTE: unallocated_objects can wind up being negative due to
+	 *	 objcache_set_cluster_limit() calls.
 	 */
-	if (depot->unallocated_objects) {
+	if (depot->unallocated_objects > 0) {
 		--depot->unallocated_objects;
 		spin_unlock(&depot->spin);
 		crit_exit();
@@ -783,31 +818,6 @@ depot_disassociate(struct magazinedepot *depot, struct magazinelist *tmplist)
 	maglist_disassociate(depot, &depot->emptymagazines, tmplist, TRUE);
 }
 
-#ifdef notneeded
-void
-objcache_reclaim(struct objcache *oc)
-{
-	struct percpu_objcache *cache_percpu = &oc->cache_percpu[myclusterid];
-	struct magazinedepot *depot = &oc->depot[myclusterid];
-	struct magazinelist tmplist;
-	int count;
-
-	SLIST_INIT(&tmplist);
-	crit_enter();
-	count = mag_purge(oc, &cache_percpu->loaded_magazine, FALSE);
-	count += mag_purge(oc, &cache_percpu->previous_magazine, FALSE);
-	crit_exit();
-
-	spin_lock(&depot->spin);
-	depot->unallocated_objects += count;
-	depot_disassociate(depot, &tmplist);
-	spin_unlock(&depot->spin);
-	count += maglist_purge(oc, &tmplist);
-	if (count && depot->waiting)
-		wakeup(depot);
-}
-#endif
-
 /*
  * Try to free up some memory.  Return as soon as some free memory is found.
  * For each object cache on the reclaim list, first try the current per-cpu
@@ -898,106 +908,6 @@ objcache_destroy(struct objcache *oc)
 	kfree(oc, M_OBJCACHE);
 }
 
-#if 0
-/*
- * Populate the per-cluster depot with elements from a linear block
- * of memory.  Must be called for individually for each cluster.
- * Populated depots should not be destroyed.
- */
-void
-objcache_populate_linear(struct objcache *oc, void *base, int nelts, int size)
-{
-	char *p = base;
-	char *end = (char *)base + (nelts * size);
-	struct magazinedepot *depot = &oc->depot[myclusterid];
-	struct magazine *emptymag = mag_alloc(depot->magcapcity);
-
-	while (p < end) {
-		emptymag->objects[emptymag->rounds++] = p;
-		if (MAGAZINE_FULL(emptymag)) {
-			spin_lock_wr(&depot->spin);
-			SLIST_INSERT_HEAD(&depot->fullmagazines, emptymag,
-					  nextmagazine);
-			depot->unallocated_objects += emptymag->rounds;
-			spin_unlock_wr(&depot->spin);
-			if (depot->waiting)
-				wakeup(depot);
-			emptymag = mag_alloc(depot->magcapacity);
-		}
-		p += size;
-	}
-	if (MAGAZINE_EMPTY(emptymag)) {
-		crit_enter();
-		mag_purge(oc, &emptymag, TRUE);
-		crit_exit();
-	} else {
-		spin_lock_wr(&depot->spin);
-		SLIST_INSERT_HEAD(&depot->fullmagazines, emptymag,
-				  nextmagazine);
-		depot->unallocated_objects += emptymag->rounds;
-		spin_unlock_wr(&depot->spin);
-		if (depot->waiting)
-			wakeup(depot);
-		emptymag = mag_alloc(depot->magcapacity);
-	}
-}
-#endif
-
-#if 0
-/*
- * Check depot contention once a minute.
- * 2 contested locks per second allowed.
- */
-static int objcache_rebalance_period;
-static const int objcache_contention_rate = 120;
-static struct callout objcache_callout;
-
-#define MAXMAGSIZE 512
-
-/*
- * Check depot contention and increase magazine size if necessary.
- */
-static void
-objcache_timer(void *dummy)
-{
-	struct objcache *oc;
-	struct magazinedepot *depot;
-	struct magazinelist tmplist;
-
-	XXX we need to detect when an objcache is destroyed out from under
-	    us XXX
-
-	SLIST_INIT(&tmplist);
-
-	spin_lock_wr(&objcachelist_spin);
-	LIST_FOREACH(oc, &allobjcaches, oc_next) {
-		depot = &oc->depot[myclusterid];
-		if (depot->magcapacity < MAXMAGSIZE) {
-			if (depot->contested > objcache_contention_rate) {
-				spin_lock_wr(&depot->spin);
-				depot_disassociate(depot, &tmplist);
-				depot->magcapacity *= 2;
-				spin_unlock_wr(&depot->spin);
-				kprintf("objcache_timer: increasing cache %s"
-				       " magsize to %d, contested %d times\n",
-				    oc->name, depot->magcapacity,
-				    depot->contested);
-			}
-			depot->contested = 0;
-		}
-		spin_unlock_wr(&objcachelist_spin);
-		if (maglist_purge(oc, &tmplist) > 0 && depot->waiting)
-			wakeup(depot);
-		spin_lock_wr(&objcachelist_spin);
-	}
-	spin_unlock_wr(&objcachelist_spin);
-
-	callout_reset(&objcache_callout, objcache_rebalance_period,
-		      objcache_timer, NULL);
-}
-
-#endif
-
 static void
 objcache_init(void)
 {
@@ -1009,7 +919,6 @@ objcache_init(void)
 		kprintf("objcache: magazine cap [%d, %d]\n",
 		    magazine_capmin, magazine_capmax);
 	}
-
 #if 0
 	callout_init_mp(&objcache_callout);
 	objcache_rebalance_period = 60 * hz;
