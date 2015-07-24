@@ -684,10 +684,6 @@ extern inthand_t
 	IDTVEC(fast_syscall), IDTVEC(fast_syscall32);
 #endif
 
-#ifdef DEBUG_INTERRUPTS
-extern inthand_t *Xrsvdary[256];
-#endif
-
 int
 ptrace_set_pc(struct lwp *lp, unsigned long addr)
 {

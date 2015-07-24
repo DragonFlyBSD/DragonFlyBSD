@@ -2236,7 +2236,6 @@ options 	CLUSTERDEBUG
 #options 	COMPAT_LINUX
 options 	DEBUG
 options 	DEBUG_CRIT_SECTIONS
-options 	DEBUG_INTERRUPTS
 #options 	DISABLE_PSE
 options		BCE_RSS_DEBUG
 options		BCE_TSS_DEBUG

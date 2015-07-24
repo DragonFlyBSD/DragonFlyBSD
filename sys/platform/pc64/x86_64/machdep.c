@@ -1509,10 +1509,6 @@ extern inthand_t
 	IDTVEC(xmm), IDTVEC(dblfault),
 	IDTVEC(fast_syscall), IDTVEC(fast_syscall32);
 
-#ifdef DEBUG_INTERRUPTS
-extern inthand_t *Xrsvdary[256];
-#endif
-
 void
 sdtossd(struct user_segment_descriptor *sd, struct soft_segment_descriptor *ssd)
 {

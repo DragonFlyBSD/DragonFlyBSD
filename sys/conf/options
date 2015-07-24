@@ -449,7 +449,6 @@ DEBUG_CRIT_SECTIONS	opt_global.h
 DIAGNOSTIC		opt_global.h
 INVARIANTS		opt_global.h
 VFS_BIO_DEBUG		opt_global.h
-DEBUG_INTERRUPTS	opt_global.h
 SOCKBUF_DEBUG		opt_global.h
 PANIC_DEBUG		opt_global.h
 MBUF_DEBUG		opt_global.h
