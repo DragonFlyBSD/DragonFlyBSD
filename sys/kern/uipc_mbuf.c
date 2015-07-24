@@ -394,6 +394,8 @@ static void m_mclref(void *arg);
 static void m_mclfree(void *arg);
 static void m_mjclfree(void *arg);
 
+static void mbupdatelimits(void);
+
 /*
  * NOTE: Default NMBUFS must take into account a possible DOS attack
  *	 using fd passing on unix domain sockets.
@@ -862,7 +864,7 @@ mbinit(void *dummy)
  *
  * Caller must hold mbupdate_lk
  */
-void
+static void
 mbupdatelimits(void)
 {
 	int mb_limit, cl_limit, ncl_limit, jcl_limit;
