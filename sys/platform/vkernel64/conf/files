@@ -3,9 +3,6 @@
 #
 crypto/blowfish/bf_enc.c		optional	ipsec ipsec_esp
 crypto/des/des_enc.c			optional	ipsec ipsec_esp
-crypto/des/des_ecb.c			optional	netsmbcrypto
-crypto/des/des_enc.c			optional	netsmbcrypto
-crypto/des/des_setkey.c			optional	netsmbcrypto
 crypto/blowfish/bf_enc.c		optional	crypto
 crypto/des/des_enc.c			optional	crypto
 crypto/des/des_ecb.c			optional	crypto

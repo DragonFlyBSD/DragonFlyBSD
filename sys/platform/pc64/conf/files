@@ -40,12 +40,9 @@ emulation/ndis/subr_pe.c	optional	ndisapi pci
 emulation/ndis/subr_u4bd.c	optional	ndisapi pci
 emulation/ndis/winx64_wrap.S	optional	ndisapi pci
 
-# XXX use assembler versions of bf_enc and des_enc
+# XXX use assembler versions of bf_enc
 crypto/blowfish/bf_enc.c		optional	ipsec ipsec_esp
 crypto/des/des_enc.c			optional	ipsec ipsec_esp
-crypto/des/des_ecb.c			optional	netsmbcrypto
-crypto/des/des_enc.c			optional	netsmbcrypto
-crypto/des/des_setkey.c			optional	netsmbcrypto
 crypto/blowfish/bf_enc.c		optional	crypto
 crypto/des/des_enc.c			optional	crypto
 crypto/des/des_ecb.c			optional	crypto

@@ -21,12 +21,7 @@ NETSMBCRYPTO=yes
 .endif
 
 .if defined(NETSMBCRYPTO)
-SRCS+=	des_ecb.c des_setkey.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	des_enc.S
-.else
-SRCS+=	des_enc.c
-.endif
+SRCS+=	des_ecb.c des_enc.c des_setkey.c
 .endif
 
 # Build with INET support (1|0)
