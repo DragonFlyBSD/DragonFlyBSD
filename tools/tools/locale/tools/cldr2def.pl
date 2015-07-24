@@ -199,7 +199,15 @@ sub callback_altmon {
 	my $s = shift;
 
 	if (defined $alternativemonths{$callback{data}{l}}{$callback{data}{c}}) {
-		return $alternativemonths{$callback{data}{l}}{$callback{data}{c}};
+		my @altnames = split(";",$alternativemonths{$callback{data}{l}}{$callback{data}{c}});
+		my @cleaned;
+		foreach (@altnames)
+		{
+			$_ =~ s/^\s+//;
+			$_ =~ s/\s+$//;
+			push @cleaned, $_;
+		}
+		return join(";",@cleaned);
 	}
 
 	return $s;
