@@ -66,18 +66,18 @@ odp.
 %e. %B %Y %H:%M:%S %Z
 #
 # Long month names (without case ending)
-			"leden
-		"únor
-		"bøezen
-		"duben
-		"kvìten
-		"èerven
-		"èervenec
-		"srpen
-		"záøí
-		"øíjen
-		"listopad
-		"prosinec"		
+leden
+únor
+bøezen
+duben
+kvìten
+èerven
+èervenec
+srpen
+záøí
+øíjen
+listopad
+prosinec
 #
 # md_order
 dm

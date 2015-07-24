@@ -66,18 +66,18 @@ PM
 %e %B %Y %H:%M:%S %Z
 #
 # Long month names (without case ending)
-			"styczeń
-		"luty
-		"marzec
-		"kwiecień
-		"maj
-		"czerwiec
-		"lipiec
-		"sierpień
-		"wrzesień
-		"październik
-		"listopad
-		"grudzień"		
+styczeń
+luty
+marzec
+kwiecień
+maj
+czerwiec
+lipiec
+sierpień
+wrzesień
+październik
+listopad
+grudzień
 #
 # md_order
 dm

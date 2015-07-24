@@ -66,18 +66,18 @@ popiet
 %Y m. %B %e d. %H:%M:%S %Z
 #
 # Long month names (without case ending)
-			"sausis
-		"vasaris
-		"kovas
-		"balandis
-		"gegužė
-		"birželis
-		"liepa
-		"rugpjūtis
-		"rugsėjis
-		"spalis
-		"lapkritis
-		"gruodis"		
+sausis
+vasaris
+kovas
+balandis
+gegužė
+birželis
+liepa
+rugpjūtis
+rugsėjis
+spalis
+lapkritis
+gruodis
 #
 # md_order
 md

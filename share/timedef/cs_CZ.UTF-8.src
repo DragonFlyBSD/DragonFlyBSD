@@ -66,18 +66,18 @@ odp.
 %e. %B %Y %H:%M:%S %Z
 #
 # Long month names (without case ending)
-			"leden
-		"únor
-		"březen
-		"duben
-		"květen
-		"červen
-		"červenec
-		"srpen
-		"září
-		"říjen
-		"listopad
-		"prosinec"		
+leden
+únor
+březen
+duben
+květen
+červen
+červenec
+srpen
+září
+říjen
+listopad
+prosinec
 #
 # md_order
 dm
