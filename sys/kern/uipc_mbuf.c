@@ -256,7 +256,7 @@ struct objcache *mclmeta_cache, *mjclmeta_cache;
 struct objcache *mbufcluster_cache, *mbufphdrcluster_cache;
 struct objcache *mbufjcluster_cache, *mbufphdrjcluster_cache;
 
-struct lock	mbupdate_lk = LOCK_INITIALIZER("mbupdate", 0, 0);
+struct lock	mbupdate_lk = LOCK_INITIALIZER("mbupdate", 0, LK_CANRECURSE);
 
 int		nmbclusters;
 static int	nmbjclusters;
@@ -472,76 +472,89 @@ tunable_mbinit(void *dummy)
 SYSINIT(tunable_mbinit, SI_BOOT1_TUNABLES, SI_ORDER_ANY,
 	tunable_mbinit, NULL);
 
+static void
+mbinclimit(int *limit, int inc, int minlim)
+{
+	int new_limit;
+
+	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
+
+	new_limit = *limit + inc;
+	if (new_limit < minlim)
+		new_limit = minlim;
+
+	if (*limit != new_limit) {
+		*limit = new_limit;
+		mbupdatelimits();
+	}
+
+	lockmgr(&mbupdate_lk, LK_RELEASE);
+}
+
+static int
+mbsetlimit(int *limit, int new_limit, int minlim)
+{
+	if (new_limit < minlim)
+		return EINVAL;
+
+	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
+	mbinclimit(limit, new_limit - *limit, minlim);
+	lockmgr(&mbupdate_lk, LK_RELEASE);
+	return 0;
+}
+
+static int
+sysctl_mblimit(SYSCTL_HANDLER_ARGS, int *limit, int minlim)
+{
+	int error, value;
+
+	value = *limit;
+	error = sysctl_handle_int(oidp, &value, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	return mbsetlimit(limit, value, minlim);
+}
+
 /*
  * Sysctl support to update nmbclusters, nmbjclusters, and nmbufs.
  */
 static int
 sysctl_nmbclusters(SYSCTL_HANDLER_ARGS)
 {
-	int error;
-	int value;
-
-	value = nmbclusters;
-	error = sysctl_handle_int(oidp, &value, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-
-	if (value < NMBCLUSTERS_MIN)
-		return EINVAL;
-
-	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
-	if (nmbclusters != value) {
-		nmbclusters = value;
-		mbupdatelimits();
-	}
-	lockmgr(&mbupdate_lk, LK_RELEASE);
-	return 0;
+	return sysctl_mblimit(oidp, arg1, arg2, req, &nmbclusters,
+	    NMBCLUSTERS_MIN);
 }
 
 static int
 sysctl_nmbjclusters(SYSCTL_HANDLER_ARGS)
 {
-	int error;
-	int value;
-
-	value = nmbjclusters;
-	error = sysctl_handle_int(oidp, &value, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-
-	if (value < NMBJCLUSTERS_MIN)
-		return EINVAL;
-
-	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
-	if (nmbjclusters != value) {
-		nmbjclusters = value;
-		mbupdatelimits();
-	}
-	lockmgr(&mbupdate_lk, LK_RELEASE);
-	return 0;
+	return sysctl_mblimit(oidp, arg1, arg2, req, &nmbjclusters,
+	    NMBJCLUSTERS_MIN);
 }
 
 static int
 sysctl_nmbufs(SYSCTL_HANDLER_ARGS)
 {
-	int error;
-	int value;
+	return sysctl_mblimit(oidp, arg1, arg2, req, &nmbufs, NMBUFS_MIN);
+}
 
-	value = nmbufs;
-	error = sysctl_handle_int(oidp, &value, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
+void
+mcl_inclimit(int inc)
+{
+	mbinclimit(&nmbclusters, inc, NMBCLUSTERS_MIN);
+}
 
-	if (value < NMBUFS_MIN)
-		return EINVAL;
+void
+mjcl_inclimit(int inc)
+{
+	mbinclimit(&nmbjclusters, inc, NMBJCLUSTERS_MIN);
+}
 
-	lockmgr(&mbupdate_lk, LK_EXCLUSIVE);
-	if (nmbufs != value) {
-		nmbufs = value;
-		mbupdatelimits();
-	}
-	lockmgr(&mbupdate_lk, LK_RELEASE);
-	return 0;
+void
+mb_inclimit(int inc)
+{
+	mbinclimit(&nmbufs, inc, NMBUFS_MIN);
 }
 
 /* "number of clusters of pages" */

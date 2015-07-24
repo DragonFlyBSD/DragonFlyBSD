@@ -490,6 +490,9 @@ extern	int		 nmbufs;
 
 struct uio;
 
+void		 mcl_inclimit(int);
+void		 mjcl_inclimit(int);
+void		 mb_inclimit(int);
 void		 m_adj(struct mbuf *, int);
 void		 m_align(struct mbuf *, int);
 int		 m_apply(struct mbuf *, int, int,
