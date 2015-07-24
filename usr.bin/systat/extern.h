@@ -38,7 +38,6 @@
 
 extern struct	cmdtab *curcmd;
 extern struct	cmdtab cmdtab[];
-extern struct	text *xtext;
 extern WINDOW	*wnd;
 extern char	c, *namp, hostname[];
 extern double	avenrun[3];
