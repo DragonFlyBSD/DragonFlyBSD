@@ -44,6 +44,7 @@
 
 static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 {
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 base;
 
 	/* Almost universally we can find the Graphics Base of Stolen Memory
@@ -71,6 +72,50 @@ static unsigned long i915_stolen_to_physical(struct drm_device *dev)
 
 	if (base == 0)
 		return 0;
+
+	/* make sure we don't clobber the GTT if it's within stolen memory */
+	if (INTEL_INFO(dev)->gen <= 4 && !IS_G33(dev) && !IS_G4X(dev)) {
+		struct {
+			u32 start, end;
+		} stolen[2] = {
+			{ .start = base, .end = base + dev_priv->gtt.stolen_size, },
+			{ .start = base, .end = base + dev_priv->gtt.stolen_size, },
+		};
+		u64 gtt_start, gtt_end;
+
+		gtt_start = I915_READ(PGTBL_CTL);
+		if (IS_GEN4(dev))
+			gtt_start = (gtt_start & PGTBL_ADDRESS_LO_MASK) |
+				(gtt_start & PGTBL_ADDRESS_HI_MASK) << 28;
+		else
+			gtt_start &= PGTBL_ADDRESS_LO_MASK;
+		gtt_end = gtt_start + gtt_total_entries(dev_priv->gtt) * 4;
+
+		if (gtt_start >= stolen[0].start && gtt_start < stolen[0].end)
+			stolen[0].end = gtt_start;
+		if (gtt_end > stolen[1].start && gtt_end <= stolen[1].end)
+			stolen[1].start = gtt_end;
+
+		/* pick the larger of the two chunks */
+		if (stolen[0].end - stolen[0].start >
+		    stolen[1].end - stolen[1].start) {
+			base = stolen[0].start;
+			dev_priv->gtt.stolen_size = stolen[0].end - stolen[0].start;
+		} else {
+			base = stolen[1].start;
+			dev_priv->gtt.stolen_size = stolen[1].end - stolen[1].start;
+		}
+
+		if (stolen[0].start != stolen[1].start ||
+		    stolen[0].end != stolen[1].end) {
+			DRM_DEBUG_KMS("GTT within stolen memory at 0x%llx-0x%llx\n",
+				      (unsigned long long) gtt_start,
+				      (unsigned long long) gtt_end - 1);
+			DRM_DEBUG_KMS("Stolen memory adjusted to 0x%x-0x%x\n",
+				      base, base + (u32) dev_priv->gtt.stolen_size - 1);
+		}
+	}
+
 
 	/* Verify that nothing else uses this physical address. Stolen
 	 * memory should be reserved by the BIOS and hidden from the
@@ -215,7 +260,7 @@ int i915_gem_init_stolen(struct drm_device *dev)
 	int bios_reserved = 0;
 
 #ifdef CONFIG_INTEL_IOMMU
-	if (intel_iommu_gfx_mapped) {
+	if (intel_iommu_gfx_mapped && INTEL_INFO(dev)->gen < 8) {
 		DRM_INFO("DMAR active, disabling use of stolen memory\n");
 		return 0;
 	}

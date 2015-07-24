@@ -59,7 +59,7 @@ struct ww_mutex {
 };
 
 #define DEFINE_WW_CLASS(classname)	\
-	struct ww_class classname {	\
+	struct ww_class classname = {	\
 		.stamp = 0,		\
 		.name = #classname	\
 	}
@@ -211,7 +211,7 @@ __ww_mutex_lock(struct ww_mutex *lock, struct ww_acquire_ctx *ctx, bool slow, bo
 }
 
 static inline int
-ww_mutex_lock(struct ww_mutex *lock, struct ww_acquire_ctx *ctx, bool slow) {
+ww_mutex_lock(struct ww_mutex *lock, struct ww_acquire_ctx *ctx) {
 	return __ww_mutex_lock(lock, ctx, false, false);
 }
 	
@@ -221,13 +221,13 @@ ww_mutex_lock_slow(struct ww_mutex *lock, struct ww_acquire_ctx *ctx) {
 }
 
 static inline int
-ww_mutex_lock_interruptible(struct ww_mutex *lock, struct ww_acquire_ctx *ctx, bool slow) {
+ww_mutex_lock_interruptible(struct ww_mutex *lock, struct ww_acquire_ctx *ctx) {
 	return __ww_mutex_lock(lock, ctx, false, true);
 }
 	
-static inline void
+static inline int __must_check
 ww_mutex_lock_slow_interruptible(struct ww_mutex *lock, struct ww_acquire_ctx *ctx) {
-	(void)__ww_mutex_lock(lock, ctx, true, true);
+	return __ww_mutex_lock(lock, ctx, true, true);
 }
 
 static inline void

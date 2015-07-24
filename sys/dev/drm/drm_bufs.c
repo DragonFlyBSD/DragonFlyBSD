@@ -526,7 +526,7 @@ static int drm_do_addbufs_agp(struct drm_device *dev, struct drm_buf_desc *reque
 		buf->pending = 0;
 		buf->file_priv = NULL;
 
-		buf->dev_priv_size = dev->driver->buf_priv_size;
+		buf->dev_priv_size = dev->driver->dev_priv_size;
 		buf->dev_private = kmalloc(buf->dev_priv_size, M_DRM,
 					   M_WAITOK | M_NULLOK | M_ZERO);
 		if (buf->dev_private == NULL) {
@@ -672,7 +672,7 @@ static int drm_do_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *reque
 			buf->pending = 0;
 			buf->file_priv = NULL;
 
-			buf->dev_priv_size = dev->driver->buf_priv_size;
+			buf->dev_priv_size = dev->driver->dev_priv_size;
 			buf->dev_private = kmalloc(buf->dev_priv_size,
 						   M_DRM,
 						   M_WAITOK | M_NULLOK |
@@ -788,7 +788,7 @@ static int drm_do_addbufs_sg(struct drm_device *dev, struct drm_buf_desc *reques
 		buf->pending = 0;
 		buf->file_priv = NULL;
 
-		buf->dev_priv_size = dev->driver->buf_priv_size;
+		buf->dev_priv_size = dev->driver->dev_priv_size;
 		buf->dev_private = kmalloc(buf->dev_priv_size, M_DRM,
 					   M_WAITOK | M_NULLOK | M_ZERO);
 		if (buf->dev_private == NULL) {

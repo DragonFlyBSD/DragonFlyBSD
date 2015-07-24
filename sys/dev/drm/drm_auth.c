@@ -112,34 +112,39 @@ static int drm_remove_magic(struct drm_device *dev, drm_magic_t magic)
 }
 
 /**
- * Called by the client, this returns a unique magic number to be authorized
- * by the master.
+ * Get a unique magic number (ioctl).
  *
- * The master may use its own knowledge of the client (such as the X
- * connection that the magic is passed over) to determine if the magic number
- * should be authenticated.
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg pointer to a resulting drm_auth structure.
+ * \return zero on success, or a negative number on failure.
+ *
+ * If there is a magic number in drm_file::magic then use it, otherwise
+ * searches an unique non-zero magic number and add it associating it with \p
+ * file_priv.
+ * This ioctl needs protection by the drm_global_mutex, which protects
+ * struct drm_file::magic and struct drm_magic_entry::priv.
  */
 int drm_getmagic(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	static drm_magic_t sequence = 0;
+	static struct spinlock lock = SPINLOCK_INITIALIZER(&lock, "drm_gm");
 	struct drm_auth *auth = data;
 
 	/* Find unique magic */
 	if (file_priv->magic) {
 		auth->magic = file_priv->magic;
 	} else {
-		DRM_LOCK(dev);
 		do {
-			int old = sequence;
-
-			auth->magic = old+1;
-
-			if (!atomic_cmpset_int(&sequence, old, auth->magic))
-				continue;
+			spin_lock(&lock);
+			if (!sequence)
+				++sequence;	/* reserve 0 */
+			auth->magic = sequence++;
+			spin_unlock(&lock);
 		} while (drm_find_file(dev, auth->magic));
 		file_priv->magic = auth->magic;
 		drm_add_magic(dev, file_priv, auth->magic);
-		DRM_UNLOCK(dev);
 	}
 
 	DRM_DEBUG("%u\n", auth->magic);
@@ -148,25 +153,29 @@ int drm_getmagic(struct drm_device *dev, void *data, struct drm_file *file_priv)
 }
 
 /**
- * Marks the client associated with the given magic number as authenticated.
+ * Authenticate with a magic.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg pointer to a drm_auth structure.
+ * \return zero if authentication successed, or a negative number otherwise.
+ *
+ * Checks if \p file_priv is associated with the magic number passed in \arg.
+ * This ioctl needs protection by the drm_global_mutex, which protects
+ * struct drm_file::magic and struct drm_magic_entry::priv.
  */
 int drm_authmagic(struct drm_device *dev, void *data,
 		  struct drm_file *file_priv)
 {
 	struct drm_auth *auth = data;
-	struct drm_file *priv;
+	struct drm_file *file;
 
 	DRM_DEBUG("%u\n", auth->magic);
-
-	DRM_LOCK(dev);
-	priv = drm_find_file(dev, auth->magic);
-	if (priv != NULL) {
-		priv->authenticated = 1;
+	if ((file = drm_find_file(dev, auth->magic))) {
+		file->authenticated = 1;
 		drm_remove_magic(dev, auth->magic);
-		DRM_UNLOCK(dev);
 		return 0;
-	} else {
-		DRM_UNLOCK(dev);
-		return EINVAL;
 	}
+	return -EINVAL;
 }

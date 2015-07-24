@@ -5,6 +5,8 @@
  * $FreeBSD: head/sys/dev/drm2/drm_os_freebsd.h 254858 2013-08-25 14:27:14Z dumbbell $
  */
 
+#include <sys/endian.h>
+
 #define DRM_READ8(map, offset)						\
 	*(volatile u_int8_t *)(((vm_offset_t)(map)->handle) +		\
 	    (vm_offset_t)(offset))

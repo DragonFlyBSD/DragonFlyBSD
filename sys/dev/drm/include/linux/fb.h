@@ -47,4 +47,6 @@ struct fb_info {
 
 extern int register_framebuffer(struct fb_info *fb_info);
 
+extern int fb_get_options(const char *name, char **option);
+
 #endif	/* _LINUX_FB_H_ */

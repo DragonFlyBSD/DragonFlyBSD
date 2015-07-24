@@ -43,7 +43,6 @@
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/proc.h>
-#include <sys/vnode.h>
 #include <sys/conf.h>
 #include <sys/socket.h>
 #include <sys/mbuf.h>

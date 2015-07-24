@@ -227,6 +227,7 @@ struct opregion_asle {
 
 #define MAX_DSLP	1500
 
+#ifdef CONFIG_ACPI
 static int swsci(struct drm_device *dev, u32 function, u32 parm, u32 *parm_out)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -401,6 +402,17 @@ static u32 asle_set_backlight(struct drm_device *dev, u32 bclp)
 
 	DRM_DEBUG_DRIVER("bclp = 0x%08x\n", bclp);
 
+	/*
+	 * If the acpi_video interface is not supposed to be used, don't
+	 * bother processing backlight level change requests from firmware.
+	 */
+#if 0
+	if (!acpi_video_verify_backlight_support()) {
+		DRM_DEBUG_KMS("opregion backlight request ignored\n");
+		return 0;
+	}
+#endif
+
 	if (!(bclp & ASLE_BCLP_VALID))
 		return ASLC_BACKLIGHT_FAILED;
 
@@ -408,7 +420,7 @@ static u32 asle_set_backlight(struct drm_device *dev, u32 bclp)
 	if (bclp > 255)
 		return ASLC_BACKLIGHT_FAILED;
 
-	mutex_lock(&dev->mode_config.mutex);
+	drm_modeset_lock(&dev->mode_config.connection_mutex, NULL);
 
 	/*
 	 * Update backlight on all connectors that support backlight (usually
@@ -419,7 +431,7 @@ static u32 asle_set_backlight(struct drm_device *dev, u32 bclp)
 		intel_panel_set_backlight(intel_connector, bclp, 255);
 	iowrite32(DIV_ROUND_UP(bclp * 100, 255) | ASLE_CBLV_VALID, &asle->cblv);
 
-	mutex_unlock(&dev->mode_config.mutex);
+	drm_modeset_unlock(&dev->mode_config.connection_mutex);
 
 
 	return 0;
@@ -678,7 +690,7 @@ blind_set:
 		int output_type = ACPI_OTHER_OUTPUT;
 		if (i >= 8) {
 			device_printf(dev->dev,
-				   "More than 8 outputs in connector list\n");
+				"More than 8 outputs in connector list\n");
 			return;
 		}
 		switch (connector->connector_type) {
@@ -844,12 +856,15 @@ static void swsci_setup(struct drm_device *dev)
 			 opregion->swsci_gbda_sub_functions,
 			 opregion->swsci_sbcb_sub_functions);
 }
+#else /* CONFIG_ACPI */
+static inline void swsci_setup(struct drm_device *dev) {}
+#endif  /* CONFIG_ACPI */
 
 int intel_opregion_setup(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_opregion *opregion = &dev_priv->opregion;
-	char *base;
+	char __iomem *base;
 	u32 asls, mboxes;
 	char buf[sizeof(OPREGION_SIGNATURE)];
 	int err = 0;
@@ -860,8 +875,6 @@ int intel_opregion_setup(struct drm_device *dev)
 		DRM_DEBUG_DRIVER("ACPI OpRegion not supported!\n");
 		return -ENOTSUP;
 	}
-
-#define MAX_DSLP	1500
 
 #ifdef CONFIG_ACPI
 	INIT_WORK(&opregion->asle_work, asle_work);

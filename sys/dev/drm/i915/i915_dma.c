@@ -53,7 +53,7 @@ extern struct drm_i915_private *i915_mch_dev;
  * has access to the ring.
  */
 #define RING_LOCK_TEST_WITH_RETURN(dev, file) do {			\
-	if (LP_RING(dev->dev_private)->obj == NULL)			\
+	if (LP_RING(dev->dev_private)->buffer->obj == NULL)			\
 		LOCK_TEST_WITH_RETURN(dev, file);			\
 } while (0)
 
@@ -78,7 +78,7 @@ void i915_update_dri1_breadcrumb(struct drm_device *dev)
 
 static void i915_write_hws_pga(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 addr;
 
 	addr = dev_priv->status_page_dmah->busaddr;
@@ -93,8 +93,8 @@ static void i915_write_hws_pga(struct drm_device *dev)
  */
 static void i915_free_hws(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
-	struct intel_ring_buffer *ring = LP_RING(dev_priv);
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_engine_cs *ring = LP_RING(dev_priv);
 
 	if (dev_priv->status_page_dmah) {
 		drm_pci_free(dev, dev_priv->status_page_dmah);
@@ -114,8 +114,10 @@ static void i915_free_hws(struct drm_device *dev)
 
 void i915_kernel_lost_context(struct drm_device * dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
-	struct intel_ring_buffer *ring = LP_RING(dev_priv);
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *master_priv = dev_priv;
+	struct intel_engine_cs *ring = LP_RING(dev_priv);
+	struct intel_ringbuffer *ringbuf = ring->buffer;
 
 	/*
 	 * We should never lose context on the ring with modesetting
@@ -124,24 +126,25 @@ void i915_kernel_lost_context(struct drm_device * dev)
 	if (drm_core_check_feature(dev, DRIVER_MODESET))
 		return;
 
-	ring->head = I915_READ_HEAD(ring) & HEAD_ADDR;
-	ring->tail = I915_READ_TAIL(ring) & TAIL_ADDR;
-	ring->space = ring->head - (ring->tail + I915_RING_FREE_SPACE);
-	if (ring->space < 0)
-		ring->space += ring->size;
+	ringbuf->head = I915_READ_HEAD(ring) & HEAD_ADDR;
+	ringbuf->tail = I915_READ_TAIL(ring) & TAIL_ADDR;
+	ringbuf->space = ringbuf->head - (ringbuf->tail + I915_RING_FREE_SPACE);
+	if (ringbuf->space < 0)
+		ringbuf->space += ringbuf->size;
 
 #if 0
 	if (!dev->primary->master)
 		return;
-#endif
 
-	if (ring->head == ring->tail && dev_priv->sarea_priv)
-		dev_priv->sarea_priv->perf_boxes |= I915_BOX_RING_EMPTY;
+	master_priv = dev->primary->master->driver_priv;
+#endif
+	if (ringbuf->head == ringbuf->tail && master_priv->sarea_priv)
+		master_priv->sarea_priv->perf_boxes |= I915_BOX_RING_EMPTY;
 }
 
 static int i915_dma_cleanup(struct drm_device * dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	int i;
 
 	/* Make sure interrupts are disabled here because the uninstall ioctl
@@ -165,7 +168,7 @@ static int i915_dma_cleanup(struct drm_device * dev)
 
 static int i915_initialize(struct drm_device * dev, drm_i915_init_t * init)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret;
 
 	dev_priv->sarea = drm_getsarea(dev);
@@ -179,7 +182,7 @@ static int i915_initialize(struct drm_device * dev, drm_i915_init_t * init)
 	    ((u8 *) dev_priv->sarea->handle + init->sarea_priv_offset);
 
 	if (init->ring_size != 0) {
-		if (LP_RING(dev_priv)->obj != NULL) {
+		if (LP_RING(dev_priv)->buffer->obj != NULL) {
 			i915_dma_cleanup(dev);
 			DRM_ERROR("Client tried to initialize ringbuffer in "
 				  "GEM mode\n");
@@ -211,12 +214,12 @@ static int i915_initialize(struct drm_device * dev, drm_i915_init_t * init)
 
 static int i915_dma_resume(struct drm_device * dev)
 {
-	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-	struct intel_ring_buffer *ring = LP_RING(dev_priv);
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_engine_cs *ring = LP_RING(dev_priv);
 
 	DRM_DEBUG_DRIVER("%s\n", __func__);
 
-	if (ring->virtual_start == NULL) {
+	if (ring->buffer->virtual_start == NULL) {
 		DRM_ERROR("can not ioremap virtual address for"
 			  " ring buffer\n");
 		return -ENOMEM;
@@ -335,10 +338,10 @@ static int validate_cmd(int cmd)
 
 static int i915_emit_cmds(struct drm_device * dev, int *buffer, int dwords)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	int i, ret;
 
-	if ((dwords+1) * sizeof(int) >= LP_RING(dev_priv)->size - 8)
+	if ((dwords+1) * sizeof(int) >= LP_RING(dev_priv)->buffer->size - 8)
 		return -EINVAL;
 
 	for (i = 0; i < dwords;) {
@@ -409,7 +412,7 @@ i915_emit_box(struct drm_device *dev,
 
 static void i915_emit_breadcrumb(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	dev_priv->dri1.counter++;
 	if (dev_priv->dri1.counter > 0x7FFFFFFFUL)
@@ -524,7 +527,7 @@ static int i915_dispatch_batchbuffer(struct drm_device * dev,
 
 static int i915_dispatch_flip(struct drm_device * dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret;
 
 	if (!dev_priv->sarea_priv)
@@ -600,14 +603,16 @@ static int i915_flush_ioctl(struct drm_device *dev, void *data,
 static int i915_batchbuffer(struct drm_device *dev, void *data,
 			    struct drm_file *file_priv)
 {
-	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-	drm_i915_sarea_t *sarea_priv = (drm_i915_sarea_t *)dev_priv->sarea_priv;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	drm_i915_sarea_t *sarea_priv;
 	drm_i915_batchbuffer_t *batch = data;
 	int ret;
 	struct drm_clip_rect *cliprects = NULL;
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET))
 		return -ENODEV;
+
+	sarea_priv = (drm_i915_sarea_t *) dev_priv->sarea_priv;
 
 	if (!dev_priv->dri1.allow_batchbuffer) {
 		DRM_ERROR("Batchbuffer ioctl disabled\n");
@@ -654,8 +659,8 @@ fail_free:
 static int i915_cmdbuffer(struct drm_device *dev, void *data,
 			  struct drm_file *file_priv)
 {
-	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-	drm_i915_sarea_t *sarea_priv = (drm_i915_sarea_t *)dev_priv->sarea_priv;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	drm_i915_sarea_t *sarea_priv;
 	drm_i915_cmdbuffer_t *cmdbuf = data;
 	struct drm_clip_rect *cliprects = NULL;
 	void *batch_data;
@@ -666,6 +671,8 @@ static int i915_cmdbuffer(struct drm_device *dev, void *data,
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET))
 		return -ENODEV;
+
+	sarea_priv = (drm_i915_sarea_t *) dev_priv->sarea_priv;
 
 	RING_LOCK_TEST_WITH_RETURN(dev, file_priv);
 
@@ -714,12 +721,13 @@ fail_clip_free:
 	kfree(cliprects);
 fail_batch_free:
 	kfree(batch_data);
+
 	return ret;
 }
 
 static int i915_emit_irq(struct drm_device * dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 #if 0
 	struct drm_i915_master_private *master_priv = dev->primary->master->driver_priv;
 #endif
@@ -747,12 +755,12 @@ static int i915_emit_irq(struct drm_device * dev)
 
 static int i915_wait_irq(struct drm_device * dev, int irq_nr)
 {
-	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 #if 0
 	struct drm_i915_master_private *master_priv = dev->primary->master->driver_priv;
 #endif
 	int ret = 0;
-	struct intel_ring_buffer *ring = LP_RING(dev_priv);
+	struct intel_engine_cs *ring = LP_RING(dev_priv);
 
 	DRM_DEBUG_DRIVER("irq_nr=%d breadcrumb=%d\n", irq_nr,
 		  READ_BREADCRUMB(dev_priv));
@@ -799,14 +807,14 @@ static int i915_wait_irq(struct drm_device * dev, int irq_nr)
 static int i915_irq_emit(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	drm_i915_irq_emit_t *emit = data;
 	int result;
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET))
 		return -ENODEV;
 
-	if (!dev_priv || !LP_RING(dev_priv)->virtual_start) {
+	if (!dev_priv || !LP_RING(dev_priv)->buffer->virtual_start) {
 		DRM_ERROR("called with no initialization\n");
 		return -EINVAL;
 	}
@@ -830,7 +838,7 @@ static int i915_irq_emit(struct drm_device *dev, void *data,
 static int i915_irq_wait(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	drm_i915_irq_wait_t *irqwait = data;
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET))
@@ -847,7 +855,7 @@ static int i915_irq_wait(struct drm_device *dev, void *data,
 static int i915_vblank_pipe_get(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	drm_i915_vblank_pipe_t *pipe = data;
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET))
@@ -908,7 +916,7 @@ static int i915_flip_bufs(struct drm_device *dev, void *data,
 static int i915_getparam(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	drm_i915_getparam_t *param = data;
 	int value;
 
@@ -977,7 +985,7 @@ static int i915_getparam(struct drm_device *dev, void *data,
 		value = HAS_WT(dev);
 		break;
 	case I915_PARAM_HAS_ALIASING_PPGTT:
-		value = dev_priv->mm.aliasing_ppgtt ? 1 : 0;
+		value = dev_priv->mm.aliasing_ppgtt || USES_FULL_PPGTT(dev);
 		break;
 	case I915_PARAM_HAS_WAIT_TIMEOUT:
 		value = 1;
@@ -993,6 +1001,9 @@ static int i915_getparam(struct drm_device *dev, void *data,
 		break;
 	case I915_PARAM_HAS_EXEC_HANDLE_LUT:
 		value = 1;
+		break;
+	case I915_PARAM_CMD_PARSER_VERSION:
+		value = i915_cmd_parser_get_version();
 		break;
 	default:
 		DRM_DEBUG("Unknown parameter %d\n", param->param);
@@ -1010,7 +1021,7 @@ static int i915_getparam(struct drm_device *dev, void *data,
 static int i915_setparam(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	drm_i915_setparam_t *param = data;
 
 	if (!dev_priv) {
@@ -1046,9 +1057,9 @@ static int i915_set_status_page(struct drm_device *dev, void *data,
 				struct drm_file *file_priv)
 {
 #if 0	/* We don't care about dri1 */
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	drm_i915_hws_addr_t *hws = data;
-	struct intel_ring_buffer *ring;
+	struct intel_engine_cs *ring;
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET))
 		return -ENODEV;
@@ -1119,7 +1130,7 @@ static int i915_get_bridge_dev(struct drm_device *dev)
 static int
 intel_alloc_mchbar_resource(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	int reg = INTEL_INFO(dev)->gen >= 4 ? MCHBAR_I965 : MCHBAR_I915;
 	device_t vga;
 	u32 temp_lo, temp_hi = 0;
@@ -1161,10 +1172,13 @@ intel_alloc_mchbar_resource(struct drm_device *dev)
 static void
 intel_setup_mchbar(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	int mchbar_reg = INTEL_INFO(dev)->gen >= 4 ? MCHBAR_I965 : MCHBAR_I915;
 	u32 temp;
 	bool enabled;
+
+	if (IS_VALLEYVIEW(dev))
+		return;
 
 	dev_priv->mchbar_need_disable = false;
 
@@ -1198,7 +1212,7 @@ intel_setup_mchbar(struct drm_device *dev)
 static void
 intel_teardown_mchbar(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	int mchbar_reg = INTEL_INFO(dev)->gen >= 4 ? MCHBAR_I965 : MCHBAR_I915;
 	device_t vga;
 	u32 temp;
@@ -1261,12 +1275,13 @@ static void i915_switcheroo_set_state(struct pci_dev *pdev, enum vga_switcheroo_
 static bool i915_switcheroo_can_switch(struct pci_dev *pdev)
 {
 	struct drm_device *dev = pci_get_drvdata(pdev);
-	bool can_switch;
 
-	spin_lock(&dev->count_lock);
-	can_switch = (dev->open_count == 0);
-	spin_unlock(&dev->count_lock);
-	return can_switch;
+	/*
+	 * FIXME: open_count is protected by drm_global_mutex but that would lead to
+	 * locking inversion with the driver load path. And the access here is
+	 * completely racy anyway. So don't bother with locking for now.
+	 */
+	return dev->open_count == 0;
 }
 
 static const struct vga_switcheroo_client_ops i915_switcheroo_ops = {
@@ -1311,11 +1326,11 @@ static int i915_load_modeset_init(struct drm_device *dev)
 		goto cleanup_vga_switcheroo;
 #endif
 
-	ret = drm_irq_install(dev);
+	intel_power_domains_init_hw(dev_priv);
+
+	ret = drm_irq_install(dev, dev->irq);
 	if (ret)
 		goto cleanup_gem_stolen;
-
-	intel_power_domains_init_hw(dev);
 
 	/* Important: The output setup functions called by modeset_init need
 	 * working irqs for e.g. gmbus and dp aux transfers. */
@@ -1323,7 +1338,7 @@ static int i915_load_modeset_init(struct drm_device *dev)
 
 	ret = i915_gem_init(dev);
 	if (ret)
-		goto cleanup_power;
+		goto cleanup_irq;
 
 #if 0
 	INIT_WORK(&dev_priv->console_resume_work, intel_console_resume);
@@ -1335,7 +1350,6 @@ static int i915_load_modeset_init(struct drm_device *dev)
 	/* FIXME: do pre/post-mode set stuff in core KMS code */
 	dev->vblank_disable_allowed = 1;
 	if (INTEL_INFO(dev)->num_pipes == 0) {
-		intel_display_power_put(dev, POWER_DOMAIN_VGA);
 		return 0;
 	}
 
@@ -1370,10 +1384,8 @@ cleanup_gem:
 	i915_gem_cleanup_ringbuffer(dev);
 	i915_gem_context_fini(dev);
 	mutex_unlock(&dev->struct_mutex);
-	i915_gem_cleanup_aliasing_ppgtt(dev);
-	drm_mm_takedown(&dev_priv->gtt.base.mm);
-cleanup_power:
-	intel_display_power_put(dev, POWER_DOMAIN_VGA);
+	WARN_ON(dev_priv->mm.aliasing_ppgtt);
+cleanup_irq:
 	drm_irq_uninstall(dev);
 cleanup_gem_stolen:
 #if 0
@@ -1440,10 +1452,43 @@ static void i915_kick_out_firmware_fb(struct drm_i915_private *dev_priv)
 }
 #endif
 
+#if !defined(CONFIG_VGA_CONSOLE)
+static int i915_kick_out_vgacon(struct drm_i915_private *dev_priv)
+{
+	return 0;
+}
+#elif !defined(CONFIG_DUMMY_CONSOLE)
+static int i915_kick_out_vgacon(struct drm_i915_private *dev_priv)
+{
+	return -ENODEV;
+}
+#else
+static int i915_kick_out_vgacon(struct drm_i915_private *dev_priv)
+{
+	int ret = 0;
+
+	DRM_INFO("Replacing VGA console driver\n");
+
+	console_lock();
+	if (con_is_bound(&vga_con))
+		ret = do_take_over_console(&dummy_con, 0, MAX_NR_CONSOLES - 1, 1);
+	if (ret == 0) {
+		ret = do_unregister_con_driver(&vga_con);
+
+		/* Ignore "already unregistered". */
+		if (ret == -ENODEV)
+			ret = 0;
+	}
+	console_unlock();
+
+	return ret;
+}
+#endif
+
 static void i915_dump_device_info(struct drm_i915_private *dev_priv)
 {
 #if 0
-	const struct intel_device_info *info = dev_priv->info;
+	const struct intel_device_info *info = &dev_priv->info;
 
 #define PRINT_S(name) "%s"
 #define SEP_EMPTY
@@ -1461,6 +1506,62 @@ static void i915_dump_device_info(struct drm_i915_private *dev_priv)
 #endif
 }
 
+/*
+ * Determine various intel_device_info fields at runtime.
+ *
+ * Use it when either:
+ *   - it's judged too laborious to fill n static structures with the limit
+ *     when a simple if statement does the job,
+ *   - run-time checks (eg read fuse/strap registers) are needed.
+ *
+ * This function needs to be called:
+ *   - after the MMIO has been setup as we are reading registers,
+ *   - after the PCH has been detected,
+ *   - before the first usage of the fields it can tweak.
+ */
+static void intel_device_info_runtime_init(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_device_info *info;
+	enum i915_pipe pipe;
+
+	info = (struct intel_device_info *)&dev_priv->info;
+
+	if (IS_VALLEYVIEW(dev))
+		for_each_pipe(pipe)
+			info->num_sprites[pipe] = 2;
+	else
+		for_each_pipe(pipe)
+			info->num_sprites[pipe] = 1;
+
+	if (i915.disable_display) {
+		DRM_INFO("Display disabled (module parameter)\n");
+		info->num_pipes = 0;
+	} else if (info->num_pipes > 0 &&
+		   (INTEL_INFO(dev)->gen == 7 || INTEL_INFO(dev)->gen == 8) &&
+		   !IS_VALLEYVIEW(dev)) {
+		u32 fuse_strap = I915_READ(FUSE_STRAP);
+		u32 sfuse_strap = I915_READ(SFUSE_STRAP);
+
+		/*
+		 * SFUSE_STRAP is supposed to have a bit signalling the display
+		 * is fused off. Unfortunately it seems that, at least in
+		 * certain cases, fused off display means that PCH display
+		 * reads don't land anywhere. In that case, we read 0s.
+		 *
+		 * On CPT/PPT, we can detect this case as SFUSE_STRAP_FUSE_LOCK
+		 * should be set when taking over after the firmware.
+		 */
+		if (fuse_strap & ILK_INTERNAL_DISPLAY_DISABLE ||
+		    sfuse_strap & SFUSE_STRAP_DISPLAY_DISABLED ||
+		    (dev_priv->pch_type == PCH_CPT &&
+		     !(sfuse_strap & SFUSE_STRAP_FUSE_LOCK))) {
+			DRM_INFO("Display fused off, disabling\n");
+			info->num_pipes = 0;
+		}
+	}
+}
+
 /**
  * i915_driver_load - setup chip and create an initial config
  * @dev: DRM device
@@ -1475,7 +1576,7 @@ static void i915_dump_device_info(struct drm_i915_private *dev_priv)
 int i915_driver_load(struct drm_device *dev, unsigned long flags)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	const struct intel_device_info *info;
+	struct intel_device_info *info, *device_info;
 	unsigned long base, size;
 	int ret = 0, mmio_bar, mmio_size;
 	uint32_t aperture_size;
@@ -1496,17 +1597,16 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 		return -ENODEV;
 	}
 
-	/* UMS needs agp support. */
-	if (!drm_core_check_feature(dev, DRIVER_MODESET) && !dev->agp)
-		return -EINVAL;
-
 	dev_priv = kzalloc(sizeof(*dev_priv), GFP_KERNEL);
 	if (dev_priv == NULL)
 		return -ENOMEM;
 
 	dev->dev_private = (void *)dev_priv;
 	dev_priv->dev = dev;
-	dev_priv->info = info;
+
+	/* copy initial configuration to dev_priv->info */
+	device_info = (struct intel_device_info *)&dev_priv->info;
+	*device_info = *info;
 
 	lockinit(&dev_priv->irq_lock, "userirq", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->gpu_error.lock, "915err", 0, LK_CANRECURSE);
@@ -1563,8 +1663,6 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	    _DRM_KERNEL | _DRM_DRIVER, &dev_priv->mmio_map);
 #endif
 
-	intel_uncore_early_sanitize(dev);
-
 	/* This must be called before any calls to HAS_PCH_* */
 	intel_detect_pch(dev);
 
@@ -1574,8 +1672,15 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	if (ret)
 		goto out_regs;
 
-	if (drm_core_check_feature(dev, DRIVER_MODESET))
+	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
+		ret = i915_kick_out_vgacon(dev_priv);
+		if (ret) {
+			DRM_ERROR("failed to remove conflicting VGA console\n");
+			goto out_gtt;
+		}
+
 		i915_kick_out_firmware_fb(dev_priv);
+	}
 
 #if 0
 	pci_set_master(dev->pdev);
@@ -1657,9 +1762,7 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 		pci_enable_msi(dev->pdev);
 #endif
 
-	dev_priv->num_plane = 1;
-	if (IS_VALLEYVIEW(dev))
-		dev_priv->num_plane = 2;
+	intel_device_info_runtime_init(dev);
 
 	if (INTEL_INFO(dev)->num_pipes) {
 		ret = drm_vblank_init(dev, INTEL_INFO(dev)->num_pipes);
@@ -1667,7 +1770,7 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 			goto out_gem_unload;
 	}
 
-	intel_power_domains_init(dev);
+	intel_power_domains_init(dev_priv);
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
 		ret = i915_load_modeset_init(dev);
@@ -1700,7 +1803,7 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	return 0;
 
 out_power_well:
-	intel_power_domains_remove(dev);
+	intel_power_domains_remove(dev_priv);
 	drm_vblank_cleanup(dev);
 out_gem_unload:
 
@@ -1714,8 +1817,6 @@ out_mtrrfree:
 	io_mapping_free(dev_priv->gtt.mappable);
 #endif
 out_gtt:
-	list_del(&dev_priv->gtt.base.global_link);
-	drm_mm_takedown(&dev_priv->gtt.base.mm);
 	dev_priv->gtt.base.cleanup(&dev_priv->gtt.base);
 out_regs:
 	intel_uncore_fini(dev);
@@ -1742,14 +1843,14 @@ int i915_driver_unload(struct drm_device *dev)
 	/* The i915.ko module is still not prepared to be loaded when
 	 * the power well is not enabled, so just enable it in case
 	 * we're going to unload/reload. */
-	intel_display_set_init_power(dev, true);
-	intel_power_domains_remove(dev);
+	intel_display_set_init_power(dev_priv, true);
+	intel_power_domains_remove(dev_priv);
 
 #if 0
 	i915_teardown_sysfs(dev);
 
-	if (dev_priv->mm.inactive_shrinker.scan_objects)
-		unregister_shrinker(&dev_priv->mm.inactive_shrinker);
+	WARN_ON(unregister_oom_notifier(&dev_priv->mm.oom_notifier));
+	unregister_shrinker(&dev_priv->mm.shrinker);
 
 	io_mapping_free(dev_priv->gtt.mappable);
 #endif
@@ -1785,8 +1886,6 @@ int i915_driver_unload(struct drm_device *dev)
 	i915_destroy_error_state(dev);
 #endif
 
-	cancel_delayed_work_sync(&dev_priv->pc8.enable_work);
-
 	intel_opregion_fini(dev);
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
@@ -1794,11 +1893,10 @@ int i915_driver_unload(struct drm_device *dev)
 		flush_workqueue(dev_priv->wq);
 
 		mutex_lock(&dev->struct_mutex);
-		i915_gem_free_all_phys_object(dev);
 		i915_gem_cleanup_ringbuffer(dev);
 		i915_gem_context_fini(dev);
+		WARN_ON(dev_priv->mm.aliasing_ppgtt);
 		mutex_unlock(&dev->struct_mutex);
-		i915_gem_cleanup_aliasing_ppgtt(dev);
 #if 0
 		i915_gem_cleanup_stolen(dev);
 #endif
@@ -1807,7 +1905,6 @@ int i915_driver_unload(struct drm_device *dev)
 			i915_free_hws(dev);
 	}
 
-	list_del(&dev_priv->gtt.base.global_link);
 	WARN_ON(!list_empty(&dev_priv->vm_list));
 
 	drm_vblank_cleanup(dev);
@@ -1817,7 +1914,6 @@ int i915_driver_unload(struct drm_device *dev)
 
 	bus_generic_detach(dev->dev);
 	drm_rmmap(dev, dev_priv->mmio_map);
-	intel_teardown_gmbus(dev);
 
 	destroy_workqueue(dev_priv->wq);
 	pm_qos_remove_request(&dev_priv->pm_qos);
@@ -1831,26 +1927,18 @@ int i915_driver_unload(struct drm_device *dev)
 #endif
 
 	pci_dev_put(dev_priv->bridge_dev);
-	kfree(dev->dev_private);
+	kfree(dev_priv);
 
 	return 0;
 }
 
 int i915_driver_open(struct drm_device *dev, struct drm_file *file)
 {
-	struct drm_i915_file_private *file_priv;
+	int ret;
 
-	DRM_DEBUG_DRIVER("\n");
-	file_priv = kzalloc(sizeof(*file_priv), GFP_KERNEL);
-	if (!file_priv)
-		return -ENOMEM;
-
-	file->driver_priv = file_priv;
-
-	spin_init(&file_priv->mm.lock, "i915_priv");
-	INIT_LIST_HEAD(&file_priv->mm.request_list);
-
-	idr_init(&file_priv->context_idr);
+	ret = i915_gem_open(dev, file);
+	if (ret)
+		return ret;
 
 	return 0;
 }
@@ -1869,7 +1957,7 @@ int i915_driver_open(struct drm_device *dev, struct drm_file *file)
  */
 void i915_driver_lastclose(struct drm_device * dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	/* On gen6+ we refuse to init without kms enabled, but then the drm core
 	 * goes right around and calls lastclose. Check for this and don't clean
@@ -1902,6 +1990,8 @@ void i915_driver_postclose(struct drm_device *dev, struct drm_file *file)
 {
 	struct drm_i915_file_private *file_priv = file->driver_priv;
 
+	if (file_priv && file_priv->bsd_ring)
+		file_priv->bsd_ring = NULL;
 	kfree(file_priv);
 }
 
@@ -1912,7 +2002,7 @@ struct drm_ioctl_desc i915_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(I915_BATCHBUFFER, i915_batchbuffer, DRM_AUTH),
 	DRM_IOCTL_DEF_DRV(I915_IRQ_EMIT, i915_irq_emit, DRM_AUTH),
 	DRM_IOCTL_DEF_DRV(I915_IRQ_WAIT, i915_irq_wait, DRM_AUTH),
-	DRM_IOCTL_DEF_DRV(I915_GETPARAM, i915_getparam, DRM_AUTH),
+	DRM_IOCTL_DEF_DRV(I915_GETPARAM, i915_getparam, DRM_AUTH|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(I915_SETPARAM, i915_setparam, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_IOCTL_DEF_DRV(I915_ALLOC, drm_noop, DRM_AUTH),
 	DRM_IOCTL_DEF_DRV(I915_FREE, drm_noop, DRM_AUTH),
@@ -1954,9 +2044,13 @@ struct drm_ioctl_desc i915_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(I915_GEM_CONTEXT_CREATE, i915_gem_context_create_ioctl, DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(I915_GEM_CONTEXT_DESTROY, i915_gem_context_destroy_ioctl, DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(I915_REG_READ, i915_reg_read_ioctl, DRM_UNLOCKED),
+	DRM_IOCTL_DEF_DRV(I915_GET_RESET_STATS, i915_get_reset_stats_ioctl, DRM_UNLOCKED|DRM_RENDER_ALLOW),
+#if 0
+	DRM_IOCTL_DEF_DRV(I915_GEM_USERPTR, i915_gem_userptr_ioctl, DRM_UNLOCKED|DRM_RENDER_ALLOW),
+#endif
 };
 
-int i915_max_ioctl = DRM_ARRAY_SIZE(i915_ioctls);
+int i915_max_ioctl = ARRAY_SIZE(i915_ioctls);
 
 /*
  * This is really ugly: Because old userspace abused the linux agp interface to

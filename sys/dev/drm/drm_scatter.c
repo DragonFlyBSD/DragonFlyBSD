@@ -32,9 +32,10 @@
 
 #include <drm/drmP.h>
 
-int
-drm_sg_alloc(struct drm_device *dev, struct drm_scatter_gather *request)
+int drm_sg_alloc(struct drm_device *dev, void *data,
+		 struct drm_file *file_priv)
 {
+	struct drm_scatter_gather *request = data;
 	struct drm_sg_mem *entry;
 	vm_size_t size;
 	vm_pindex_t pindex;
@@ -79,17 +80,6 @@ drm_sg_alloc(struct drm_device *dev, struct drm_scatter_gather *request)
 	    *(unsigned long *)entry->vaddr);
 
 	return (0);
-}
-
-int
-drm_sg_alloc_ioctl(struct drm_device *dev, void *data,
-		   struct drm_file *file_priv)
-{
-	struct drm_scatter_gather *request = data;
-
-	DRM_DEBUG("\n");
-
-	return (drm_sg_alloc(dev, request));
 }
 
 void

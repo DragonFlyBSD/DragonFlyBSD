@@ -37,8 +37,9 @@
 #define cpu_has_clflush	1
 
 void
-drm_clflush_virt_range(char *addr, unsigned long length)
+drm_clflush_virt_range(void *in_addr, unsigned long length)
 {
+	char *addr = in_addr;
 	if (cpu_has_clflush) {
 		char *end = addr + length;
 		cpu_mfence();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 François Tigeot
+ * Copyright (c) 2013-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,8 +32,15 @@
 
 #include <linux/sched.h>
 
+#include <bus/iicbus/iic.h>
+#include <bus/iicbus/iiconf.h>
+#include "iicbus_if.h"
+
 #define i2c_msg iic_msg
 
 #define I2C_M_RD	IIC_M_RD
+#define I2C_M_NOSTART	IIC_M_NOSTART
+
+#define i2c_adapter	device
 
 #endif	/* _LINUX_I2C_H_ */

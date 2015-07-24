@@ -70,4 +70,8 @@ trace_i915_gem_object_change_domain(struct drm_i915_gem_object *obj, u32 read, u
 
 #define trace_i915_gem_evict_vm(vm)
 
+#define trace_i915_pipe_update_start(crtc, min, max)
+#define trace_i915_pipe_update_vblank_evaded(crtc, min, max, start_vbl_count)
+#define trace_i915_pipe_update_end(crtc, end_vbl_count)
+
 #endif /* _I915_TRACE_H_ */

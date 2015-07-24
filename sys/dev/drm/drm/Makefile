@@ -13,6 +13,7 @@ SRCS	= \
 	drm_dma.c \
 	drm_dp_helper.c \
 	drm_dp_iic_helper.c \
+	drm_dragonfly.c \
 	drm_drv.c \
 	drm_edid.c \
 	drm_fb_helper.c \
@@ -27,7 +28,10 @@ SRCS	= \
 	drm_memory.c \
 	drm_mm.c \
 	drm_modes.c \
+	drm_modeset_lock.c \
 	drm_pci.c \
+	drm_plane_helper.c \
+	drm_probe_helper.c \
 	drm_rect.c \
 	drm_scatter.c \
 	drm_stub.c \

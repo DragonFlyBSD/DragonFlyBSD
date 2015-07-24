@@ -30,9 +30,17 @@
 #include <linux/spinlock.h>
 #include <linux/types.h>
 
+struct drm_vma_offset_file {
+	struct rb_node vm_rb;
+	struct file *vm_filp;
+	unsigned long vm_count;
+};
+
 struct drm_vma_offset_node {
+	struct lock vm_lock;
 	struct drm_mm_node vm_node;
 	struct rb_node vm_rb;
+	struct rb_root vm_files;
 };
 
 struct drm_vma_offset_manager {
@@ -55,6 +63,11 @@ int drm_vma_offset_add(struct drm_vma_offset_manager *mgr,
 		       struct drm_vma_offset_node *node, unsigned long pages);
 void drm_vma_offset_remove(struct drm_vma_offset_manager *mgr,
 			   struct drm_vma_offset_node *node);
+
+int drm_vma_node_allow(struct drm_vma_offset_node *node, struct file *filp);
+void drm_vma_node_revoke(struct drm_vma_offset_node *node, struct file *filp);
+bool drm_vma_node_is_allowed(struct drm_vma_offset_node *node,
+			     struct file *filp);
 
 /**
  * drm_vma_offset_exact_lookup() - Look up node by exact address
@@ -122,9 +135,8 @@ static inline void drm_vma_offset_unlock_lookup(struct drm_vma_offset_manager *m
  * drm_vma_node_reset() - Initialize or reset node object
  * @node: Node to initialize or reset
  *
- * Reset a node to its initial state. This must be called if @node isn't
- * already cleared (eg., via kzalloc) before using it with any VMA offset
- * manager.
+ * Reset a node to its initial state. This must be called before using it with
+ * any VMA offset manager.
  *
  * This must not be called on an already allocated node, or you will leak
  * memory.
@@ -132,6 +144,8 @@ static inline void drm_vma_offset_unlock_lookup(struct drm_vma_offset_manager *m
 static inline void drm_vma_node_reset(struct drm_vma_offset_node *node)
 {
 	memset(node, 0, sizeof(*node));
+	node->vm_files = RB_ROOT;
+	lockinit(&node->vm_lock, "vmlock", 0, LK_CANRECURSE);
 }
 
 /**
@@ -207,8 +221,8 @@ static inline __u64 drm_vma_node_offset_addr(struct drm_vma_offset_node *node)
  * @file_mapping: Address space to unmap @node from
  *
  * Unmap all userspace mappings for a given offset node. The mappings must be
- * associated with the @file_mapping address-space. If no offset exists or
- * the address-space is invalid, nothing is done.
+ * associated with the @file_mapping address-space. If no offset exists
+ * nothing is done.
  *
  * This call is unlocked. The caller must guarantee that drm_vma_offset_remove()
  * is not called on this node concurrently.
@@ -216,11 +230,29 @@ static inline __u64 drm_vma_node_offset_addr(struct drm_vma_offset_node *node)
 static inline void drm_vma_node_unmap(struct drm_vma_offset_node *node,
 				      struct address_space *file_mapping)
 {
-	if (file_mapping && drm_vma_node_has_offset(node))
+	if (drm_vma_node_has_offset(node))
 		unmap_mapping_range(file_mapping,
 				    drm_vma_node_offset_addr(node),
 				    drm_vma_node_size(node) << PAGE_SHIFT, 1);
 }
 #endif
+
+/**
+ * drm_vma_node_verify_access() - Access verification helper for TTM
+ * @node: Offset node
+ * @filp: Open-file
+ *
+ * This checks whether @filp is granted access to @node. It is the same as
+ * drm_vma_node_is_allowed() but suitable as drop-in helper for TTM
+ * verify_access() callbacks.
+ *
+ * RETURNS:
+ * 0 if access is granted, -EACCES otherwise.
+ */
+static inline int drm_vma_node_verify_access(struct drm_vma_offset_node *node,
+					     struct file *filp)
+{
+	return drm_vma_node_is_allowed(node, filp) ? 0 : -EACCES;
+}
 
 #endif /* __DRM_VMA_MANAGER_H__ */

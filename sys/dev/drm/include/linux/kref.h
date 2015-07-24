@@ -31,6 +31,8 @@
 
 #include <sys/refcount.h>
 
+#include <linux/atomic.h>
+
 struct kref {
 	atomic_t refcount;
 };

@@ -32,6 +32,7 @@
 
 #include <sys/types.h>
 #include <sys/malloc.h>
+#include <sys/proc.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
 #include <linux/timer.h>

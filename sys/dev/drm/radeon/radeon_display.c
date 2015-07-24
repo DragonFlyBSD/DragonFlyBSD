@@ -368,7 +368,7 @@ static int radeon_crtc_page_flip(struct drm_crtc *crtc,
 	work->event = event;
 	work->rdev = rdev;
 	work->crtc_id = radeon_crtc->crtc_id;
-	old_radeon_fb = to_radeon_framebuffer(crtc->fb);
+	old_radeon_fb = to_radeon_framebuffer(crtc->primary->fb);
 	new_radeon_fb = to_radeon_framebuffer(fb);
 	/* schedule unpin of the old buffer */
 	obj = old_radeon_fb->obj;
@@ -459,7 +459,7 @@ static int radeon_crtc_page_flip(struct drm_crtc *crtc,
 	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	/* update crtc fb */
-	crtc->fb = fb;
+	crtc->primary->fb = fb;
 
 	r = drm_vblank_get(dev, radeon_crtc->crtc_id);
 	if (r) {
@@ -608,7 +608,7 @@ static void radeon_print_display_setup(struct drm_device *dev)
 	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
 		radeon_connector = to_radeon_connector(connector);
 		DRM_INFO("Connector %d:\n", i);
-		DRM_INFO("  %s\n", drm_get_connector_name(connector));
+		DRM_INFO("  %s\n", connector->name);
 		if (radeon_connector->hpd.hpd != RADEON_HPD_NONE)
 			DRM_INFO("  %s\n", hpd_names[radeon_connector->hpd.hpd]);
 		if (radeon_connector->ddc_bus) {
