@@ -62,6 +62,7 @@ my %FILESNAMES = (
 my %callback = (
 	mdorder => \&callback_mdorder,
 	altmon => \&callback_altmon,
+	cformat => \&callback_cformat,
 	data => undef,
 );
 
@@ -103,7 +104,7 @@ my %DESC = (
 	"day"		=> "Long weekday names",
 	"t_fmt"		=> "X_fmt",
 	"d_fmt"		=> "x_fmt",
-	"d_t_fmt"	=> "c_fmt",
+	"c_fmt"		=> "c_fmt",
 	"am_pm"		=> "AM/PM",
 	"d_t_fmt"	=> "date_fmt",
 	"altmon"	=> "Long month names (without case ending)",
@@ -165,6 +166,7 @@ if ($TYPE eq "timedef") {
 	    "day"		=> "as",
 	    "t_fmt"		=> "s",
 	    "d_fmt"		=> "s",
+	    "c_fmt"		=> "<cformat<d_t_fmt<s",
 	    "am_pm"		=> "as",
 	    "d_fmt"		=> "s",
 	    "d_t_fmt"		=> "s",
@@ -176,6 +178,13 @@ if ($TYPE eq "timedef") {
 	print_fields();
 	make_makefile();
 }
+
+sub callback_cformat {
+ 	my $s = shift;
+ 	$s =~ s/ %Z//;
+ 	$s =~ s/ %z//;
+ 	return $s;
+};
 
 sub callback_mdorder {
 	my $s = shift;
