@@ -152,8 +152,14 @@ static int ether_input_ckhash;
 
 #define ETHER_TSOLEN_DEFAULT	(4 * ETHERMTU)
 
+#define ETHER_NMBCLUSTERS_DEFMIN	32
+#define ETHER_NMBCLUSTERS_DEFAULT	256
+
 static int ether_tsolen_default = ETHER_TSOLEN_DEFAULT;
 TUNABLE_INT("net.link.ether.tsolen", &ether_tsolen_default);
+
+static int ether_nmbclusters_default = ETHER_NMBCLUSTERS_DEFAULT;
+TUNABLE_INT("net.link.ether.nmbclusters", &ether_nmbclusters_default);
 
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_ETHER, ether, CTLFLAG_RW, 0, "Ethernet");
@@ -558,6 +564,25 @@ ether_ifattach_bpf(struct ifnet *ifp, const uint8_t *lla,
 	char ethstr[ETHER_ADDRSTRLEN + 1];
 	struct ifaltq *ifq;
 	int i;
+
+	/*
+	 * If driver does not configure # of mbuf clusters/jclusters
+	 * that could sit on the device queues for quite some time,
+	 * we then assume:
+	 * - The device queues only consume mbuf clusters.
+	 * - No more than ether_nmbclusters_default (by default 256)
+	 *   mbuf clusters will sit on the device queues for quite
+	 *   some time.
+	 */
+	if (ifp->if_nmbclusters <= 0 && ifp->if_nmbjclusters <= 0) {
+		if (ether_nmbclusters_default < ETHER_NMBCLUSTERS_DEFMIN) {
+			kprintf("ether nmbclusters %d -> %d\n",
+			    ether_nmbclusters_default,
+			    ETHER_NMBCLUSTERS_DEFAULT);
+			ether_nmbclusters_default = ETHER_NMBCLUSTERS_DEFAULT;
+		}
+		ifp->if_nmbclusters = ether_nmbclusters_default;
+	}
 
 	ifp->if_type = IFT_ETHER;
 	ifp->if_addrlen = ETHER_ADDR_LEN;

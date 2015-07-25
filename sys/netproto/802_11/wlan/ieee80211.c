@@ -54,6 +54,12 @@ __FBSDID("$FreeBSD$");
 
 #include <net/bpf.h>
 
+#define IEEE80211_NMBCLUSTERS_DEFMIN	32
+#define IEEE80211_NMBCLUSTERS_DEFAULT	128
+
+static int ieee80211_nmbclusters_default = IEEE80211_NMBCLUSTERS_DEFAULT;
+TUNABLE_INT("net.link.ieee80211.nmbclusters", &ieee80211_nmbclusters_default);
+
 const char *ieee80211_phymode_name[IEEE80211_MODE_MAX] = {
 	[IEEE80211_MODE_AUTO]	  = "auto",
 	[IEEE80211_MODE_11A]	  = "11a",
@@ -348,6 +354,27 @@ ieee80211_ifattach(struct ieee80211com *ic,
 
 	ifp->if_addrlen = IEEE80211_ADDR_LEN;
 	ifp->if_hdrlen = 0;
+
+	/*
+	 * If driver does not configure # of mbuf clusters/jclusters
+	 * that could sit on the device queues for quite some time,
+	 * we then assume:
+	 * - The device queues only consume mbuf clusters.
+	 * - No more than ieee80211_nmbclusters_default (by default
+	 *   128) mbuf clusters will sit on the device queues for
+	 *   quite some time.
+	 */
+	if (ifp->if_nmbclusters <= 0 && ifp->if_nmbjclusters <= 0) {
+		if (ieee80211_nmbclusters_default <
+		    IEEE80211_NMBCLUSTERS_DEFMIN) {
+			kprintf("ieee80211 nmbclusters %d -> %d\n",
+			    ieee80211_nmbclusters_default,
+			    IEEE80211_NMBCLUSTERS_DEFAULT);
+			ieee80211_nmbclusters_default =
+			    IEEE80211_NMBCLUSTERS_DEFAULT;
+		}
+		ifp->if_nmbclusters = ieee80211_nmbclusters_default;
+	}
 
 	CURVNET_SET(vnet0);
 

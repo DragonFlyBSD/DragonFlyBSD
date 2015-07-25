@@ -621,6 +621,15 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	ifq_set_classic(ifq);
 
 	/*
+	 * Increase mbuf cluster/jcluster limits for the mbufs that
+	 * could sit on the device queues for quite some time.
+	 */
+	if (ifp->if_nmbclusters > 0)
+		mcl_inclimit(ifp->if_nmbclusters);
+	if (ifp->if_nmbjclusters > 0)
+		mjcl_inclimit(ifp->if_nmbjclusters);
+
+	/*
 	 * Install this ifp into ifindex2inet, ifnet queue and ifnet
 	 * array after it is setup.
 	 *
@@ -933,6 +942,12 @@ if_detach(struct ifnet *ifp)
 		ifpoll_deregister(ifp);
 #endif
 	if_down(ifp);
+
+	/* Decrease the mbuf clusters/jclusters limits increased by us */
+	if (ifp->if_nmbclusters > 0)
+		mcl_inclimit(-ifp->if_nmbclusters);
+	if (ifp->if_nmbjclusters > 0)
+		mjcl_inclimit(-ifp->if_nmbjclusters);
 
 #ifdef ALTQ
 	if (ifq_is_enabled(&ifp->if_snd))

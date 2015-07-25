@@ -408,7 +408,15 @@ struct ifnet {
 	int	if_unused4;
 	struct ifdata_pcpu *if_data_pcpu; /* per-cpu stats */
 	void	*if_pf_kif;		/* pf interface */
-	void	*if_unused7;
+
+	/*
+	 * Mbuf clusters/jclusters limits should be increased
+	 * by if_nmbclusters/if_nmbjclusters.  Mainly for mbuf
+	 * clusters/jclusters that could sit on the device
+	 * queues, e.g. reception queues, for quite some time.
+	 */
+	int	if_nmbclusters;
+	int	if_nmbjclusters;
 };
 typedef void if_init_f_t (void *);
 
