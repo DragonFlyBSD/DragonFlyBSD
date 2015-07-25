@@ -201,17 +201,13 @@ hammer_check_restrict(const char *filesystem)
  * Functions and data structure for zone statistics
  */
 /*
- * Layer1 needs ((2^18) / 64) = 4096 uint64_t and
  * Layer2 needs ((2^19) / 64) = 8192 uint64_t for each Layer1 on demand.
  */
-#define HAMMER_LAYER1_UINT64 4096
 #define HAMMER_LAYER2_UINT64 8192
-#define HAMMER_LAYER1_BYTES (HAMMER_LAYER1_UINT64 * sizeof(uint64_t))
 #define HAMMER_LAYER2_BYTES (HAMMER_LAYER2_UINT64 * sizeof(uint64_t))
 
-static uint64_t *l1_bits = NULL;
-static uint64_t *l2_bits = NULL;
-static int l1_max = 0;
+static int *l1_max = NULL;
+static uint64_t **l2_bits = NULL;
 
 static __inline
 int
@@ -232,20 +228,45 @@ hammer_set_layer_bits(uint64_t *bits, int i)
 
 static
 void
-hammer_extend_layer2_bits(int newsiz, int oldsiz)
+hammer_extend_layer2_bits(int vol, int newsiz, int oldsiz)
 {
 	uint64_t *p;
 
 	assert(newsiz > oldsiz);
-	if (l2_bits == NULL)
-		l2_bits = malloc(HAMMER_LAYER2_BYTES * newsiz);
-	else
-		l2_bits = realloc(l2_bits, HAMMER_LAYER2_BYTES * newsiz);
-	if (l2_bits == NULL)
-		perror("alloc");
+	assert(newsiz > 0 && oldsiz >= 0);
 
-	p = l2_bits + HAMMER_LAYER2_UINT64 * oldsiz;
+	p = l2_bits[vol];
+	if (p == NULL)
+		p = malloc(HAMMER_LAYER2_BYTES * newsiz);
+	else
+		p = realloc(p, HAMMER_LAYER2_BYTES * newsiz);
+	if (p == NULL)
+		perror("alloc");
+	l2_bits[vol] = p;
+
+	p += HAMMER_LAYER2_UINT64 * oldsiz;
 	bzero((void*)p, HAMMER_LAYER2_BYTES * (newsiz - oldsiz));
+}
+
+static
+void
+hammer_dump_layer2_bits(void)
+{
+	int i, j, n;
+
+	assert(l2_bits);
+	printf("Layer2 bitmaps\n");
+
+	for (i = 0; i < HAMMER_MAX_VOLUMES; i++) {
+		if (l1_max[i] != -1) {
+			printf("volume=%d %p\n", i, l2_bits[i]);
+			n = (l1_max[i] + 1) * HAMMER_LAYER2_UINT64;
+			for (j = 0; j < n; j++) {
+				printf("\tblock[%d][%d]=0x%016lX\n",
+					i, j << 6, *(l2_bits[i] + j));
+			}
+		}
+	}
 }
 
 struct zone_stat*
@@ -257,23 +278,43 @@ hammer_init_zone_stat(void)
 struct zone_stat*
 hammer_init_zone_stat_bits(void)
 {
-	l1_bits = malloc(HAMMER_LAYER1_BYTES);
-	if (l1_bits == NULL)
-		perror("malloc");
-	bzero(l1_bits, HAMMER_LAYER1_BYTES);
-	assert(hammer_set_layer_bits(l1_bits, 0) == 1);
+	int i;
 
-	hammer_extend_layer2_bits(1, 0);
+	l1_max = calloc(HAMMER_MAX_VOLUMES, sizeof(int));
+	if (l1_max == NULL)
+		perror("calloc");
 
+	l2_bits = calloc(HAMMER_MAX_VOLUMES, sizeof(uint64_t*));
+	if (l2_bits == NULL)
+		perror("calloc");
+
+	for (i = 0; i < HAMMER_MAX_VOLUMES; i++) {
+		l1_max[i] = -1;  /* +1 needs to be 0 */
+		l2_bits[i] = NULL;
+	}
 	return(hammer_init_zone_stat());
 }
 
 void
 hammer_cleanup_zone_stat(struct zone_stat *stats)
 {
-	l1_max = 0;
-	free(l1_bits);
+	int i;
+
+	if (l2_bits) {
+		if (DebugOpt)
+			hammer_dump_layer2_bits();
+		for (i = 0; i < HAMMER_MAX_VOLUMES; i++) {
+			free(l2_bits[i]);
+			l2_bits[i] = NULL;
+		}
+	}
+
 	free(l2_bits);
+	l2_bits = NULL;
+
+	free(l1_max);
+	l1_max = NULL;
+
 	free(stats);
 }
 
@@ -295,22 +336,25 @@ void
 hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
 			hammer_off_t bytes)
 {
-	int zone, new_block, i, j;
+	int zone, vol, i, j, new_block;
+	uint64_t *p;
 
 	offset &= ~HAMMER_BIGBLOCK_MASK64;
 	zone = HAMMER_ZONE_DECODE(offset);
+	vol = HAMMER_VOL_DECODE(offset);
+
+	offset &= HAMMER_OFF_SHORT_MASK;  /* cut off volume bits from layer1 */
 	i = (int)HAMMER_BLOCKMAP_LAYER1_INDEX(offset);
 	j = (int)HAMMER_BLOCKMAP_LAYER2_INDEX(offset);
-	new_block = 0;
 
-	if (i > l1_max) {
-		hammer_extend_layer2_bits(i + 1, l1_max + 1);
-		new_block |= hammer_set_layer_bits(l1_bits, i);
-		assert(new_block == 1);
-		l1_max = i;
+	if (i > l1_max[vol]) {
+		assert(i < 1024);  /* XXX hardcoded */
+		hammer_extend_layer2_bits(vol, i + 1, l1_max[vol] + 1);
+		l1_max[vol] = i;
 	}
 
-	new_block |= hammer_set_layer_bits(l2_bits + i, j);
+	p = l2_bits[vol] + i * HAMMER_LAYER2_UINT64;
+	new_block = hammer_set_layer_bits(p, j);
 	_hammer_add_zone_stat(stats, zone, bytes, new_block, 1);
 }
 
