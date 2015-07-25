@@ -1675,6 +1675,8 @@ oce_attach_ifp(POCE_SOFTC sc)
 	if_initname(sc->ifp,
 		    device_get_name(sc->dev), device_get_unit(sc->dev));
 
+	sc->ifp->if_nmbclusters = sc->nrqs * sc->rq[0]->cfg.q_len;
+
 	ifq_set_maxlen(&sc->ifp->if_snd, OCE_MAX_TX_DESC - 1);
 	ifq_set_ready(&sc->ifp->if_snd);
 

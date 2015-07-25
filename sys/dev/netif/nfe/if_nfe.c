@@ -613,6 +613,7 @@ nfe_attach(device_t dev)
 #endif
 	ifp->if_watchdog = nfe_watchdog;
 	ifp->if_init = nfe_init;
+	ifp->if_nmbclusters = sc->sc_rx_ring_count;
 	ifq_set_maxlen(&ifp->if_snd, sc->sc_tx_ring_count);
 	ifq_set_ready(&ifp->if_snd);
 

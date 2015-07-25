@@ -2029,6 +2029,8 @@ emx_setup_ifp(struct emx_softc *sc)
 	ifp->if_serialize_assert = emx_serialize_assert;
 #endif
 
+	ifp->if_nmbclusters = sc->rx_ring_cnt * sc->rx_data[0].num_rx_desc;
+
 	ifq_set_maxlen(&ifp->if_snd, sc->tx_data[0].num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
 	ifq_set_subq_cnt(&ifp->if_snd, sc->tx_ring_cnt);

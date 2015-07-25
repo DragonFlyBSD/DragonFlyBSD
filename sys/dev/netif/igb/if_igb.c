@@ -1557,6 +1557,8 @@ igb_setup_ifp(struct igb_softc *sc)
 	ifp->if_npoll = igb_npoll;
 #endif
 
+	ifp->if_nmbclusters = sc->rx_ring_cnt * sc->rx_rings[0].num_rx_desc;
+
 	ifq_set_maxlen(&ifp->if_snd, sc->tx_rings[0].num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
 	ifq_set_subq_cnt(&ifp->if_snd, sc->tx_ring_cnt);

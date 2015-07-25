@@ -343,6 +343,7 @@ et_attach(device_t dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
 	ifp->if_capenable = ifp->if_capabilities;
+	ifp->if_nmbclusters = ET_RX_NDESC;
 	ifq_set_maxlen(&ifp->if_snd, ET_TX_NDESC);
 	ifq_set_ready(&ifp->if_snd);
 
@@ -367,6 +368,9 @@ et_attach(device_t dev)
 		goto fail;
 	}
 
+	/* Increase non-cluster mbuf limit; used by tiny RX ring */
+	mb_inclimit(ET_RX_NDESC);
+
 	return 0;
 fail:
 	et_detach(dev);
@@ -387,6 +391,9 @@ et_detach(device_t dev)
 		lwkt_serialize_exit(ifp->if_serializer);
 
 		ether_ifdetach(ifp);
+
+		/* Decrease non-cluster mbuf limit increased by us */
+		mb_inclimit(-ET_RX_NDESC);
 	}
 
 	if (sc->sc_miibus != NULL)

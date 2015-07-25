@@ -2460,6 +2460,7 @@ bge_attach(device_t dev)
 	ifp->if_init = bge_init;
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_capabilities = IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
+	ifp->if_nmbclusters = BGE_STD_RX_RING_CNT;
 	ifq_set_maxlen(&ifp->if_snd, BGE_TX_RING_CNT - 1);
 	ifq_set_ready(&ifp->if_snd);
 

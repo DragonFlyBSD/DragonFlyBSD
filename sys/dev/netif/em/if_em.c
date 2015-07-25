@@ -2522,6 +2522,7 @@ em_setup_ifp(struct adapter *adapter)
 	ifp->if_npoll = em_npoll;
 #endif
 	ifp->if_watchdog = em_watchdog;
+	ifp->if_nmbclusters = adapter->num_rx_desc;
 	ifq_set_maxlen(&ifp->if_snd, adapter->num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
 

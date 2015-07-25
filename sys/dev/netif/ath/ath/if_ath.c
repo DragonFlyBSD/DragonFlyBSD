@@ -847,6 +847,10 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 	ifp->if_ioctl = ath_ioctl;
 	ifp->if_init = ath_init;
 #if defined(__DragonFly__)
+	if (sc->sc_isedma)
+		ifp->if_nmbjclusters = ath_rxbuf;
+	else
+		ifp->if_nmbclusters = ath_rxbuf;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 #else
 	IFQ_SET_MAXLEN(&ifp->if_snd, ifqmaxlen);

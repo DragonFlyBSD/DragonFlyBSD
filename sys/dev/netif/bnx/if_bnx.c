@@ -2211,6 +2211,8 @@ bnx_attach(device_t dev)
 		ifp->if_capabilities |= IFCAP_RSS;
 	ifp->if_capenable = ifp->if_capabilities;
 
+	ifp->if_nmbclusters = BGE_STD_RX_RING_CNT;
+
 	ifq_set_maxlen(&ifp->if_snd, BGE_TX_RING_CNT - 1);
 	ifq_set_ready(&ifp->if_snd);
 	ifq_set_subq_cnt(&ifp->if_snd, sc->bnx_tx_ringcnt);

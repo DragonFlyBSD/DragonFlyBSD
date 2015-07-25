@@ -997,6 +997,8 @@ bce_attach(device_t dev)
 	else
 		ifp->if_baudrate = IF_Gbps(1);
 
+	ifp->if_nmbclusters = sc->rx_ring_cnt * USABLE_RX_BD(&sc->rx_rings[0]);
+
 	ifq_set_maxlen(&ifp->if_snd, USABLE_TX_BD(&sc->tx_rings[0]));
 	ifq_set_ready(&ifp->if_snd);
 	ifq_set_subq_cnt(&ifp->if_snd, sc->tx_ring_cnt);

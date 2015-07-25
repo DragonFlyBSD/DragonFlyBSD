@@ -1539,6 +1539,9 @@ ix_setup_ifp(struct ix_softc *sc)
 	/* Increase TSO burst length */
 	ifp->if_tsolen = (8 * ETHERMTU);
 
+	ifp->if_nmbclusters = sc->rx_ring_cnt * sc->rx_rings[0].rx_ndesc;
+	ifp->if_nmbjclusters = ifp->if_nmbclusters;
+
 	ifq_set_maxlen(&ifp->if_snd, sc->tx_rings[0].tx_ndesc - 2);
 	ifq_set_ready(&ifp->if_snd);
 	ifq_set_subq_cnt(&ifp->if_snd, sc->tx_ring_cnt);

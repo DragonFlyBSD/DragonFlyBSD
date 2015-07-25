@@ -3193,6 +3193,9 @@ mxge_alloc_rings(mxge_softc_t *sc)
 		    tx_ring_entries, rx_ring_entries);
 	}
 
+	sc->ifp->if_nmbclusters = rx_ring_entries * sc->num_slices;
+	sc->ifp->if_nmbjclusters = sc->ifp->if_nmbclusters;
+
 	ifq_set_maxlen(&sc->ifp->if_snd, tx_ring_entries - 1);
 	ifq_set_ready(&sc->ifp->if_snd);
 	ifq_set_subq_cnt(&sc->ifp->if_snd, sc->num_tx_rings);
@@ -4403,6 +4406,9 @@ mxge_attach(device_t dev)
 
 	mxge_add_sysctls(sc);
 
+	/* Increase non-cluster mbuf limit; used by small RX rings */
+	mb_inclimit(ifp->if_nmbclusters);
+
 	callout_reset_bycpu(&sc->co_hdl, mxge_ticks, mxge_tick, sc,
 	    sc->ss[0].intr_cpuid);
 	return 0;
@@ -4419,6 +4425,7 @@ mxge_detach(device_t dev)
 
 	if (device_is_attached(dev)) {
 		struct ifnet *ifp = sc->ifp;
+		int mblimit = ifp->if_nmbclusters;
 
 		ifnet_serialize_all(ifp);
 
@@ -4434,6 +4441,9 @@ mxge_detach(device_t dev)
 		callout_terminate(&sc->co_hdl);
 
 		ether_ifdetach(ifp);
+
+		/* Decrease non-cluster mbuf limit increased by us */
+		mb_inclimit(-mblimit);
 	}
 	ifmedia_removeall(&sc->media);
 

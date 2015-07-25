@@ -1027,6 +1027,8 @@ jme_attach(device_t dev)
 #ifdef INVARIANTS
 	ifp->if_serialize_assert = jme_serialize_assert;
 #endif
+	ifp->if_nmbclusters = sc->jme_cdata.jme_rx_ring_cnt *
+	    sc->jme_cdata.jme_rx_data[0].jme_rx_desc_cnt;
 	ifq_set_maxlen(&ifp->if_snd,
 	    sc->jme_cdata.jme_tx_data.jme_tx_desc_cnt - JME_TXD_RSVD);
 	ifq_set_ready(&ifp->if_snd);

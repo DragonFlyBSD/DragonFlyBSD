@@ -680,6 +680,7 @@ wpi_attach(device_t dev)
 	ifp->if_ioctl = wpi_ioctl;
 	ifp->if_start = wpi_start;
 #if defined(__DragonFly__)
+	ifp->if_nmbjclusters = WPI_RX_RING_COUNT;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 #else
 	IFQ_SET_MAXLEN(&ifp->if_snd, ifqmaxlen);

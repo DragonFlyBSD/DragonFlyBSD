@@ -1601,6 +1601,7 @@ re_attach(device_t dev)
 		ifp->if_baudrate = 1000000000;
 	else
 		ifp->if_baudrate = 100000000;
+	ifp->if_nmbclusters = sc->re_rx_desc_cnt;
 	ifq_set_maxlen(&ifp->if_snd, qlen);
 	ifq_set_ready(&ifp->if_snd);
 

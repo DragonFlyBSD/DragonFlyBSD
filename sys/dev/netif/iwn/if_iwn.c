@@ -663,6 +663,7 @@ iwn_attach(device_t dev)
 	ifp->if_ioctl = iwn_ioctl;
 	ifp->if_start = iwn_start;
 #if defined(__DragonFly__)
+	ifp->if_nmbjclusters = IWN_RX_RING_COUNT;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 #else
 	IFQ_SET_MAXLEN(&ifp->if_snd, ifqmaxlen);
