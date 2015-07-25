@@ -133,7 +133,7 @@ static bool
 plan_a(const char *filename)
 {
 	int		ifd, statfailed;
-	char		*p, *s, lbuf[INITLINELEN];
+	char		*p, *s;
 	struct stat	filestat;
 	ptrdiff_t	sz;
 	size_t		i;
@@ -165,78 +165,18 @@ plan_a(const char *filename)
 	}
 	if (statfailed && check_only)
 		fatal("%s not found, -C mode, can't probe further\n", filename);
-	/* For nonexistent or read-only files, look for RCS or SCCS versions.  */
+	/*
+	 * For nonexistent or read-only files we no longer attempt to locate
+	 * or checkout the file via RCS or SCCS, or do any call to system()
+	 * whatsoever.  CVE-2015-1416.
+	 */
 	if (statfailed ||
 	    /* No one can write to it.  */
 	    (filestat.st_mode & 0222) == 0 ||
 	    /* I can't write to it.  */
 	    ((filestat.st_mode & 0022) == 0 && filestat.st_uid != getuid())) {
-		const char	*cs = NULL, *filebase, *filedir;
-		struct stat	cstat;
-		char *tmp_filename1, *tmp_filename2;
-
-		tmp_filename1 = strdup(filename);
-		tmp_filename2 = strdup(filename);
-		if (tmp_filename1 == NULL || tmp_filename2 == NULL)
-			fatal("strdupping filename");
-		filebase = basename(tmp_filename1);
-		filedir = dirname(tmp_filename2);
-
-		/* Leave room in lbuf for the diff command.  */
-		s = lbuf + 20;
-
-#define try(f, a1, a2, a3) \
-	(snprintf(s, buf_size - 20, f, a1, a2, a3), stat(s, &cstat) == 0)
-
-		if (try("%s/RCS/%s%s", filedir, filebase, RCSSUFFIX) ||
-		    try("%s/RCS/%s%s", filedir, filebase, "") ||
-		    try("%s/%s%s", filedir, filebase, RCSSUFFIX)) {
-			snprintf(buf, buf_size, CHECKOUT, filename);
-			snprintf(lbuf, sizeof lbuf, RCSDIFF, filename);
-			cs = "RCS";
-		} else if (try("%s/SCCS/%s%s", filedir, SCCSPREFIX, filebase) ||
-		    try("%s/%s%s", filedir, SCCSPREFIX, filebase)) {
-			snprintf(buf, buf_size, GET, s);
-			snprintf(lbuf, sizeof lbuf, SCCSDIFF, s, filename);
-			cs = "SCCS";
-		} else if (statfailed)
+		if (statfailed)
 			fatal("can't find %s\n", filename);
-
-		free(tmp_filename1);
-		free(tmp_filename2);
-
-		/*
-		 * else we can't write to it but it's not under a version
-		 * control system, so just proceed.
-		 */
-		if (cs) {
-			if (!statfailed) {
-				if ((filestat.st_mode & 0222) != 0)
-					/* The owner can write to it.  */
-					fatal("file %s seems to be locked "
-					    "by somebody else under %s\n",
-					    filename, cs);
-				/*
-				 * It might be checked out unlocked.  See if
-				 * it's safe to check out the default version
-				 * locked.
-				 */
-				if (verbose)
-					say("Comparing file %s to default "
-					    "%s version...\n",
-					    filename, cs);
-				if (system(lbuf))
-					fatal("can't check out file %s: "
-					    "differs from default %s version\n",
-					    filename, cs);
-			}
-			if (verbose)
-				say("Checking out file %s from %s...\n",
-				    filename, cs);
-			if (system(buf) || stat(filename, &filestat))
-				fatal("can't check out file %s from %s\n",
-				    filename, cs);
-		}
 	}
 	filemode = filestat.st_mode;
 	if (!S_ISREG(filemode))

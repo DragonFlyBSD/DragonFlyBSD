@@ -481,14 +481,10 @@ file names or, for a non-context diff, the
 file name, and choose the file name with the fewest path components,
 the shortest basename, and the shortest total file name length (in that order).
 .It
-If no file exists,
+The
 .Nm
-checks for the existence of the files in an SCCS or RCS directory
-(using the appropriate prefix or suffix) using the criteria specified
-above.
-If found,
-.Nm
-will attempt to get or check out the file.
+behavior of attempting to checkout RCS or SCCS files when the file is not
+otherwise present is considered too dangerous and is no longer supported.
 .It
 If no suitable file was found to patch, the patch file is a context or
 unified diff, and the old file was zero length, the new file name is
