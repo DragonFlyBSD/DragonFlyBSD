@@ -1541,8 +1541,24 @@ out:
 
 /**
  * i915_gem_fault - fault a page into the GTT
- * vma: VMA in question
- * vmf: fault info
+ *
+ * vm_obj is locked on entry and expected to be locked on return.
+ *
+ * The vm_pager has placemarked the object with an anonymous memory page
+ * which we must replace atomically to avoid races against concurrent faults
+ * on the same page.  XXX we currently are unable to do this atomically.
+ *
+ * If we are to return an error we should not touch the anonymous page,
+ * the caller will deallocate it.
+ *
+ * XXX Most GEM calls appear to be interruptable, but we can't hard loop
+ * in that case.  Release all resources and wait 1 tick before retrying.
+ * This is a huge problem which needs to be fixed by getting rid of most
+ * of the interruptability.  The linux code does not retry but does appear
+ * to have some sort of mechanism (VM_FAULT_NOPAGE ?) for the higher level
+ * to be able to retry.
+ *
+ * --
  *
  * The fault handler is set up by drm_gem_mmap() when a object is GTT mapped
  * from userspace.  The fault handler takes care of binding the object to
@@ -1554,6 +1570,10 @@ out:
  * from the GTT and/or fence registers to make room.  So performance may
  * suffer if the GTT working set is large or there are few fence registers
  * left.
+ *
+ * vm_obj is locked on entry and expected to be locked on return.  The VM
+ * pager has placed an anonymous memory page at (obj,offset) which we have
+ * to replace.
  */
 int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t *mres)
 {
@@ -1563,6 +1583,7 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 	unsigned long page_offset;
 	vm_page_t m, oldm = NULL;
 	int ret = 0;
+	int didpip = 0;
 	bool write = !!(prot & VM_PROT_WRITE);
 
 	intel_runtime_pm_get(dev_priv);
@@ -1570,6 +1591,7 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 	/* We don't use vmf->pgoff since that has the fake offset */
 	page_offset = (unsigned long)offset;
 
+retry:
 	ret = i915_mutex_lock_interruptible(dev);
 	if (ret)
 		goto out;
@@ -1591,94 +1613,141 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 		goto unlock;
 	}
 
-/* Magic FreeBSD VM stuff */
-	vm_object_pip_add(vm_obj, 1);
+	/*
+	 * START FREEBSD MAGIC
+	 *
+	 * Add a pip count to avoid destruction and certain other
+	 * complex operations (such as collapses?) while unlocked.
+	 */
+	if (didpip == 0) {
+		vm_object_pip_add(vm_obj, 1);
+		didpip = 1;
+	}
 
 	/*
-	 * Remove the placeholder page inserted by vm_fault() from the
-	 * object before dropping the object lock. If
-	 * i915_gem_release_mmap() is active in parallel on this gem
-	 * object, then it owns the drm device sx and might find the
-	 * placeholder already. Then, since the page is busy,
-	 * i915_gem_release_mmap() sleeps waiting for the busy state
-	 * of the page cleared. We will be not able to acquire drm
-	 * device lock until i915_gem_release_mmap() is able to make a
-	 * progress.
+	 * XXX We must currently remove the placeholder page now to avoid
+	 * a deadlock against a concurrent i915_gem_release_mmap().
+	 * Otherwise concurrent operation will block on the busy page
+	 * while holding locks which we need to obtain.
 	 */
 	if (*mres != NULL) {
 		oldm = *mres;
 		vm_page_remove(oldm);
 		*mres = NULL;
-	} else
+	} else {
 		oldm = NULL;
-retry:
+	}
+
 	VM_OBJECT_UNLOCK(vm_obj);
-unlocked_vmobj:
 	ret = 0;
 	m = NULL;
 
 	/*
-	 * Since the object lock was dropped, other thread might have
-	 * faulted on the same GTT address and instantiated the
-	 * mapping for the page.  Recheck.
+	 * Since the object lock was dropped, another thread might have
+	 * faulted on the same GTT address and instantiated the mapping.
+	 * Recheck.
 	 */
 	VM_OBJECT_LOCK(vm_obj);
 	m = vm_page_lookup(vm_obj, OFF_TO_IDX(offset));
 	if (m != NULL) {
-		if ((m->flags & PG_BUSY) != 0) {
+		/*
+		 * Try to busy the page, retry on failure (non-zero ret).
+		 */
+		if (vm_page_busy_try(m, false)) {
+			kprintf("i915_gem_fault: PG_BUSY\n");
+			VM_OBJECT_UNLOCK(vm_obj);
+			mutex_unlock(&dev->struct_mutex);
+			int dummy;
+			tsleep(&dummy, 0, "delay", 1); /* XXX */
+			VM_OBJECT_LOCK(vm_obj);
 			goto retry;
 		}
 		goto have_page;
-	} else
-		VM_OBJECT_UNLOCK(vm_obj);
-/* End magic VM stuff */
+	}
+	/*
+	 * END FREEBSD MAGIC
+	 */
+
+	/*
+	 * Object must be unlocked here to avoid deadlock during
+	 * other GEM calls.  All goto targets expect the object to
+	 * be locked.
+	 */
+	VM_OBJECT_UNLOCK(vm_obj);
 
 	/* Now bind it into the GTT if needed */
 	ret = i915_gem_obj_ggtt_pin(obj, 0, PIN_MAPPABLE);
-	if (ret)
+	if (ret) {
+		VM_OBJECT_LOCK(vm_obj);
 		goto unlock;
+	}
 
 	ret = i915_gem_object_set_to_gtt_domain(obj, write);
-	if (ret)
+	if (ret) {
+		VM_OBJECT_LOCK(vm_obj);
 		goto unpin;
+	}
 
 	ret = i915_gem_object_get_fence(obj);
-	if (ret)
+	if (ret) {
+		VM_OBJECT_LOCK(vm_obj);
 		goto unpin;
+	}
 
 	obj->fault_mappable = true;
 
+	/*
+	 * Relock object for insertion, leave locked for return.
+	 */
 	VM_OBJECT_LOCK(vm_obj);
 	m = vm_phys_fictitious_to_vm_page(dev->agp->base +
-	    i915_gem_obj_ggtt_offset(obj) + offset);
+					  i915_gem_obj_ggtt_offset(obj) +
+					  offset);
 	if (m == NULL) {
 		ret = -EFAULT;
 		goto unpin;
 	}
-	KASSERT((m->flags & PG_FICTITIOUS) != 0,
-	    ("not fictitious %p", m));
+	KASSERT((m->flags & PG_FICTITIOUS) != 0, ("not fictitious %p", m));
 	KASSERT(m->wire_count == 1, ("wire_count not 1 %p", m));
 
-	if ((m->flags & PG_BUSY) != 0) {
+	/*
+	 * Try to busy the page.  Fails on non-zero return.
+	 */
+	if (vm_page_busy_try(m, false)) {
+		VM_OBJECT_UNLOCK(vm_obj);
 		i915_gem_object_ggtt_unpin(obj);
+		kprintf("i915_gem_fault: PG_BUSY(2)\n");
+		i915_gem_object_ggtt_unpin(obj);
+		mutex_unlock(&dev->struct_mutex);
+		int dummy;
+		tsleep(&dummy, 0, "delay", 1); /* XXX */
+		VM_OBJECT_LOCK(vm_obj);
 		goto retry;
 	}
 	m->valid = VM_PAGE_BITS_ALL;
 
-	/* Finally, remap it using the new GTT offset */
+	/*
+	 * Finally, remap it using the new GTT offset.
+	 *
+	 * (object expected to be in a locked state)
+	 */
 	vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
 have_page:
 	*mres = m;
-	vm_page_busy_try(m, false);
 
 	i915_gem_object_ggtt_unpin(obj);
 	mutex_unlock(&dev->struct_mutex);
-	if (oldm != NULL) {
+	if (oldm != NULL)
 		vm_page_free(oldm);
-	}
-	vm_object_pip_wakeup(vm_obj);
+	if (didpip)
+		vm_object_pip_wakeup(vm_obj);
 	return (VM_PAGER_OK);
 
+	/*
+	 * ALTERNATIVE ERROR RETURN.
+	 *
+	 * OBJECT EXPECTED TO BE LOCKED.
+	 */
 unpin:
 	i915_gem_object_ggtt_unpin(obj);
 unlock:
@@ -1693,23 +1762,40 @@ out:
 //			ret = VM_FAULT_SIGBUS;
 			break;
 		}
+		/* fall through */
 	case -EAGAIN:
 		/*
 		 * EAGAIN means the gpu is hung and we'll wait for the error
 		 * handler to reset everything when re-faulting in
 		 * i915_mutex_lock_interruptible.
 		 */
+		/* fall through */
 	case -ERESTARTSYS:
 	case -EINTR:
-		goto unlocked_vmobj;
+		kprintf("i915_gem_fault: %d\n", ret);
+		VM_OBJECT_UNLOCK(vm_obj);
+		int dummy;
+		tsleep(&dummy, 0, "delay", 1); /* XXX */
+		VM_OBJECT_LOCK(vm_obj);
+		goto retry;
 	default:
 		WARN_ONCE(ret, "unhandled error in i915_gem_fault: %i\n", ret);
-		VM_OBJECT_LOCK(vm_obj);
-		vm_object_pip_wakeup(vm_obj);
 		ret = VM_PAGER_ERROR;
+		break;
 	}
 
 	intel_runtime_pm_put(dev_priv);
+
+	/*
+	 * Error return.  We already NULL'd out *mres so we should be able
+	 * to free (oldm) here even though we are returning an error and the
+	 * caller usually handles the freeing.
+	 */
+	if (oldm != NULL)
+		vm_page_free(oldm);
+	if (didpip)
+		vm_object_pip_wakeup(vm_obj);
+
 	return ret;
 }
 
