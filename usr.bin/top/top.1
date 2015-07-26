@@ -1,4 +1,4 @@
-.Dd August 21, 2013
+.Dd July 26, 2015
 .Dt TOP 1
 .Os
 .Sh NAME
@@ -387,11 +387,9 @@ the command
 .Xr nice 1 .
 .It SIZE
 Total size of the process (text, data, and stack) given in kilobytes.
-.It PRES
-Proportional resident memory: current amount of process memory that resides
-in physical memory, given in kilobytes.
-Shared memory is divided among the processes doing the sharing.
-This field replaces RES.
+.It RES
+Resident memory: current amount of process memory that resides in physical
+memory, given in kilobytes, megabytes or gigabytes depending on the size to be reported.
 .It STATE
 Current state (typically one of
 .Sq sleep ,
