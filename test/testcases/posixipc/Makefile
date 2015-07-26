@@ -13,7 +13,6 @@ SUBDIR+= open_named_semaphore
 SUBDIR+= open_non_existing
 SUBDIR+= open_path_too_long
 SUBDIR+= post_test
-SUBDIR+= sem
 SUBDIR+= timedwait_expired
 SUBDIR+= timedwait_locked
 SUBDIR+= timedwait_unlocked
