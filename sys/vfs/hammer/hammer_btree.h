@@ -227,7 +227,7 @@ struct hammer_node_ondisk {
 	 * B-Tree node header (64 bytes)
 	 */
 	hammer_crc_t	crc;		/* MUST BE FIRST FIELD OF STRUCTURE */
-	u_int32_t	signature;
+	u_int32_t	signature;	/* 0 or 0xB3A49586 but not used for anything */
 	hammer_off_t	parent;		/* 0 if at root of cluster */
 	int32_t		count;
 	u_int8_t	type;
@@ -250,7 +250,7 @@ struct hammer_node_ondisk {
 };
 
 #define HAMMER_BTREE_SIGNATURE_GOOD		0xB3A49586
-#define HAMMER_BTREE_SIGNATURE_DESTROYED	0x4A3B2C1D
+#define HAMMER_BTREE_SIGNATURE_DESTROYED	0x4A3B2C1D  /* not used */
 #define HAMMER_BTREE_CRCSIZE	\
 	(sizeof(struct hammer_node_ondisk) - sizeof(hammer_crc_t))
 

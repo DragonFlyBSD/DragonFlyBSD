@@ -180,6 +180,8 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 		printf(" fill=");
 		print_bigblock_fill(node_offset);
 	}
+	if (node->signature)
+		printf(" sign=%04x", node->signature);
 	printf(" {\n");
 
 	if (VerboseOpt)
