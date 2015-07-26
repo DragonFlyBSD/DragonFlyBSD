@@ -107,6 +107,7 @@ void	bios_getmem(void);
 extern u_int32_t	bios_basemem;				/* base memory in bytes */
 extern u_int32_t	bios_extmem;				/* extended memory in bytes */
 extern vm_offset_t	memtop;
+extern vm_offset_t	heapbase;
 
 void	biosacpi_detect(void);
 

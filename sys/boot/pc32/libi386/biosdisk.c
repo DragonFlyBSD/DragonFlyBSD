@@ -148,7 +148,11 @@ static int	bd_bestslice(struct open_disk *od);
 static void	bd_chainextended(struct open_disk *od, u_int32_t base,
 					u_int32_t offset);
 
-static caddr_t	bounce_base;
+/*
+ * Bounce buffers can no longer be malloc()'d because the malloc pool
+ * now uses high memory.  Declare statically.
+ */
+static char	bounce_base[BOUNCEBUF_SIZE];
 
 /*
  * Translate between BIOS device numbers and our private unit numbers.
@@ -182,9 +186,6 @@ static int
 bd_init(void) 
 {
     int	base, unit, nfd = 0;
-
-    if (bounce_base == NULL)
-	bounce_base = malloc(BOUNCEBUF_SIZE * 2);
 
     /* sequence 0, 0x80 */
     for (base = 0; base <= 0x80; base += 0x80) {

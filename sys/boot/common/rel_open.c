@@ -161,18 +161,21 @@ rel_open(const char *path, char **abspathp, int flags)
 		ptr = malloc(strlen(DirBase) + strlen(path) + 1);
 		sprintf(ptr, "%s%s", DirBase, path);
 		fd = open(ptr, flags);
-		if (abspathp && fd >= 0)
+		if (abspathp && fd >= 0) {
 			*abspathp = ptr;
-		else if (abspathp)
+		} else if (abspathp) {
 			*abspathp = NULL;
-		else
 			free(ptr);
+		} else {
+			free(ptr);
+		}
 	} else {
 		fd = open(path, flags);
-		if (abspathp && fd >= 0)
+		if (abspathp && fd >= 0) {
 			*abspathp = strdup(path);
-		else if (abspathp)
+		} else if (abspathp) {
 			*abspathp = NULL;
+		}
 	}
 	return(fd);
 }
@@ -196,4 +199,3 @@ rel_stat(const char *path, struct stat *st)
 	}
 	return(res);
 }
-

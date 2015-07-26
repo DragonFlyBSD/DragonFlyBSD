@@ -173,6 +173,15 @@ main(void)
     bios_getmem();
     memend = (char *)&memend - 0x8000;	/* space for stack (16K) */
     memend = (char *)((uintptr_t)memend & ~(uintptr_t)(0x1000 - 1));
+
+    /*
+     * Steal the heap from high memory.  bios_basemem no longer has
+     * enough space, last failure was the gunzip code for initrd.img
+     * needing > ~32KB of temporary buffer space and we ran out.  again.
+     *
+     * High memory reserves at least ~1MB for the loader.
+     */
+#if 0
     if (memend < (char *)_end) {
 	setheap((void *)_end, PTOV(bios_basemem));
     } else {
@@ -180,6 +189,8 @@ main(void)
 	    memend = (char *)PTOV(bios_basemem);
 	setheap((void *)_end, memend);
     }
+#endif
+    setheap((void *)heapbase, (void *)memtop);
 
     /* 
      * XXX Chicken-and-egg problem; we want to have console output early, 

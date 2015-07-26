@@ -33,7 +33,10 @@
 #include "libi386.h"
 #include "btxv86.h"
 
+#define LOADER_HEAP_SIZE	(1024 * 1024)
+
 vm_offset_t	memtop;
+vm_offset_t	heapbase;
 u_int32_t	bios_basemem, bios_extmem, bios_howmem;
 
 #define SMAPSIG	0x534D4150
@@ -127,5 +130,6 @@ bios_getmem(void)
      */
     memtop = 0x100000 + bios_extmem;	/* XXX ignored */
     memtop = 64 * 1024 * 1024;
+    heapbase = memtop - LOADER_HEAP_SIZE;
 }    
 

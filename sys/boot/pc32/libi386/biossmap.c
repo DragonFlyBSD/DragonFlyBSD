@@ -85,10 +85,42 @@ bios_getsmap(void)
 		v86.eax = 0xe820;
 		v86.ecx = sizeof(struct smap);
 		v86.edx = SMAPSIG;
-		v86.es = VTOPSEG(&smapbase[smaplen]);
-		v86.edi = VTOPOFF(&smapbase[smaplen]);
+		v86.es = VTOPSEG(&smap);
+		v86.edi = VTOPOFF(&smap);
 		v86int();
-		smaplen++;
+
+		/*
+		 * Our heap is now in high memory and must be removed from
+		 * the smap so the kernel does not blow away passed-in
+		 * arguments, smap, kenv, etc.
+		 *
+		 * This wastes a little memory.
+		 */
+		if (smap.type == 1 &&
+		    smap.base + smap.length > heapbase &&
+		    smap.base < memtop) {
+			if (smap.base <= heapbase) {
+				if (heapbase - smap.base) {
+					smapbase[smaplen] = smap;
+					smapbase[smaplen].length =
+						heapbase - smap.base;
+					++smaplen;
+				}
+			}
+			if (smap.base + smap.length >= memtop) {
+				if (smap.base + smap.length - memtop) {
+					smapbase[smaplen] = smap;
+					smapbase[smaplen].base = memtop;
+					smapbase[smaplen].length =
+						smap.base + smap.length -
+						memtop;
+					++smaplen;
+				}
+			}
+		} else {
+			smapbase[smaplen] = smap;
+			++smaplen;
+		}
 		if ((v86.efl & 1) || (v86.eax != SMAPSIG))
 			break;
 	} while (v86.ebx != 0 && smaplen < n);

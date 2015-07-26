@@ -35,21 +35,21 @@
 #include "stand.h"
 
 static size_t	maxheap, heapsize = 0;
-static void	*heapbase;
+static void	*sbrkbase;
 
 void
 setheap(void *base, void *top)
 {
     /* Align start address to 16 bytes for the malloc code. Sigh. */
-    heapbase = (void *)(((uintptr_t)base + 15) & ~15);
-    maxheap = top - heapbase;
+    sbrkbase = (void *)(((uintptr_t)base + 15) & ~15);
+    maxheap = top - sbrkbase;
 }
 
 char *
 getheap(size_t *sizep)
 {
     *sizep = maxheap;
-    return heapbase;
+    return sbrkbase;
 }
 
 char *
@@ -58,7 +58,7 @@ sbrk(int incr)
     char	*ret;
     
     if ((heapsize + incr) <= maxheap) {
-	ret = heapbase + heapsize;
+	ret = sbrkbase + heapsize;
 	bzero(ret, incr);
 	heapsize += incr;
 	return(ret);
