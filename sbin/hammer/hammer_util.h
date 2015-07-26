@@ -35,8 +35,10 @@
 #include <sys/types.h>
 #include <sys/tree.h>
 #include <sys/queue.h>
+#include <sys/mount.h>
 
 #include <vfs/hammer/hammer_disk.h>
+#include <vfs/hammer/hammer_ioctl.h>
 #include <uuid.h>
 
 /*
@@ -102,6 +104,15 @@ struct buffer_info {
 	int			use_count;	/* read count */
 	struct volume_info	*volume;
 	void			*ondisk;
+};
+
+struct softprune {
+	struct softprune *next;
+	struct statfs fs;
+	char *filesystem;
+	struct hammer_ioc_prune prune;
+	int maxelms;
+	int prune_min;
 };
 
 /*

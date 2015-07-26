@@ -56,18 +56,8 @@
 #include <uuid.h>
 
 #include "hammer_util.h"
-#include <vfs/hammer/hammer_ioctl.h>
 
 #include <libhammer.h>
-
-struct softprune {
-	struct softprune *next;
-	struct statfs fs;
-	char *filesystem;
-	struct hammer_ioc_prune prune;
-	int maxelms;
-	int prune_min;
-};
 
 extern int RecurseOpt;
 extern int VerboseOpt;
@@ -96,6 +86,7 @@ void hammer_cmd_show(hammer_tid_t node_offset, const char *arg,
 void hammer_cmd_show_undo(void);
 void hammer_cmd_sshremote(const char *cmd, const char *target);
 void hammer_cmd_recover(const char *target_dir);
+void hammer_cmd_blockmap(void);
 void hammer_cmd_checkmap(void);
 void hammer_cmd_prune(char **av, int ac);
 void hammer_cmd_softprune(char **av, int ac, int everything_opt);
@@ -107,7 +98,6 @@ void hammer_cmd_mirror_write(char **av, int ac);
 void hammer_cmd_mirror_copy(char **av, int ac, int streaming);
 void hammer_cmd_mirror_dump(char **av, int ac);
 void hammer_cmd_history(const char *offset_str, char **av, int ac);
-void hammer_cmd_blockmap(void);
 void hammer_cmd_reblock(char **av, int ac, int flags);
 void hammer_cmd_rebalance(char **av, int ac);
 void hammer_cmd_pseudofs_status(char **av, int ac);
