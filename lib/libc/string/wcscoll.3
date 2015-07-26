@@ -32,7 +32,7 @@
 .\"     @(#)strcoll.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/string/wcscoll.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd December 25, 2013
+.Dd July 26, 2015
 .Dt WCSCOLL 3
 .Os
 .Sh NAME
@@ -63,13 +63,13 @@ is equivalent to
 .Fn wcscmp .
 .Pp
 The
-.Fn wcsxfrm_l
+.Fn wcscoll_l
 function is identical to
-.Fn wcsxfrm
+.Fn wcscoll
 but takes an explicit
 .Fa locale
 argument, whereas
-.Fn wcsxfrm
+.Fn wcscoll
 uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
