@@ -34,42 +34,6 @@
  *
  */
 
-/*
- * See below a small table with the vnode operation and syscall correspondence
- * where it applies:
- *
- * VNODE OP		SCALL	SCALL_AT  FD	PATH	COMMENTS
- * dirfs_ncreate	Y	Y	  Y	Y	open(2), openat(2)
- * dirfs_nresolve	-	-	  -	Y	no syscall needed
- * dirfs_nlookupdot	-	-	  -	-	-
- * dirfs_nmknod		Y	Y	  Y	Y	mknod(2), mknodat(2)
- * dirfs_open		Y	Y	  Y	Y	open(2), openat(2)
- * dirfs_close		Y	Y	  Y	Y	close(2)
- * dirfs_access		-	-	  -	-	data from stat(2)
- * dirfs_getattr	Y	Y	  Y	Y	lstat(2), fstatat(2)
- * dirfs_setattr	-	-	  -	-	-
- * dirfs_read		Y	-	  Y	-	read(2).
- * dirfs_write		Y	-	  Y	-	write(2).
- * dirfs_fsync		Y	-	  Y	-	fsync(2)
- * dirfs_mountctl	-	-	  -	-	-
- * dirfs_nremove	Y	-	  -	Y	unlink(2)
- * dirfs_nlink		-	-	  -	-	-
- * dirfs_nrename	Y	Y	  Y	Y	rename(2), renameat(2)
- * dirfs_nmkdir		Y	Y	  Y	Y	mkdir(2), mkdirat(2)
- * dirfs_nrmdir		Y	-	  -	Y	rmdir(2)
- * dirfs_nsymlink	Y	Y	  Y	Y	symlink(2), symlinkat(2)
- * dirfs_readdir	Y	-	  Y	-	getdirentries(2)
- * dirfs_readlink	Y	Y	  Y	Y	readlinkat(2)
- * dirfs_inactive	-	-	  -	-	-
- * dirfs_reclaim	-	-	  -	-	-
- * dirfs_print		-	-	  -	-	-
- * dirfs_pathconf	-	-	  -	-	-
- * dirfs_bmap		-	-	  -	-	-
- * dirfs_strategy	Y	-	  Y	-	pwrite(2), pread(2)
- * dirfs_advlock	-	-	  -	-	-
- * dirfs_kqfilter	-	-	  -	-	-
- */
-
 #include <stdio.h>
 #include <errno.h>
 #include <strings.h>
