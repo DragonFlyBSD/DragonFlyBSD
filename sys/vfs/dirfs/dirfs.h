@@ -73,19 +73,22 @@ extern int getdirentries(int, char *, int, long *);
 extern int statfs(const char *, struct statfs *);
 
 /*
- * Debugging macros. The impact should be determined and in case it has a
- * considerable performance penalty, it should be enclosed in a DEBUG #ifdef.
+ * Debugging macros.
+ *
+ * LEVEL	USED FOR
+ *
+ *     1	Calls to VFS operations (mount, umount, ...)
+ *     3	Calls to VN operations (open, close, read, ...)
+ *     5	Calls to subroutines
+ *     9	Everything
+ *
  */
-#define debug_called() do {					\
-		dbg(9, "called\n", __func__);			\
-} while(0)
-
 #define dbg(lvl, fmt, ...) do {					\
 		debug(lvl, "%s: " fmt, __func__, ##__VA_ARGS__);	\
 } while(0)
 
 #define debug_node(s) do {						\
-		dbg(5, "mode=%u flags=%u dn_name=%s "			\
+		dbg(9, "mode=%u flags=%u dn_name=%s "			\
 		    "uid=%u gid=%u objtype=%u nlinks=%d "		\
 		    "size=%jd ctime=%ju atime=%ju mtime=%ju\n",		\
 		    s->dn_mode, s->dn_flags, s->dn_name,		\
@@ -96,7 +99,7 @@ extern int statfs(const char *, struct statfs *);
 } while(0)
 
 #define debug_node2(n) do {						\
-		dbg(5, "dnp=%p name=%s fd=%d parent=%p vnode=%p "	\
+		dbg(9, "dnp=%p name=%s fd=%d parent=%p vnode=%p "	\
 		    "refcnt=%d state=%s\n",				\
 		    n, n->dn_name, n->dn_fd, n->dn_parent, n->dn_vnode,	\
 		    n->dn_refcnt, dirfs_flag2str(n));			\

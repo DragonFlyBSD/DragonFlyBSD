@@ -56,7 +56,7 @@
 void
 dirfs_node_setname(dirfs_node_t dnp, const char *name, int len)
 {
-	debug_called();
+	dbg(5, "called\n");
 
 	if (dnp->dn_name)
 		kfree(dnp->dn_name, M_DIRFS_MISC);
@@ -75,7 +75,7 @@ dirfs_node_alloc(struct mount *mp)
 {
         dirfs_node_t dnp;
 
-        debug_called();
+        dbg(5, "called\n");
 
         dnp = kmalloc(sizeof(*dnp), M_DIRFS_NODE, M_WAITOK | M_ZERO);
         lockinit(&dnp->dn_lock, "dfsnode", 0, LK_CANRECURSE);
@@ -91,6 +91,8 @@ dirfs_node_alloc(struct mount *mp)
 void
 dirfs_node_drop(dirfs_mount_t dmp, dirfs_node_t dnp)
 {
+	dbg(5, "called\n");
+
 	if (dirfs_node_unref(dnp))
 		dirfs_node_free(dmp, dnp);
 }
@@ -105,7 +107,7 @@ dirfs_node_free(dirfs_mount_t dmp, dirfs_node_t dnp)
 {
 	struct vnode *vp;
 
-	debug_called();
+	dbg(5, "called\n");
 
 	KKASSERT(dnp != NULL);
 	debug_node2(dnp);
@@ -171,7 +173,7 @@ dirfs_alloc_file(dirfs_mount_t dmp, dirfs_node_t *dnpp, dirfs_node_t pdnp,
 	char *pathfree;
 	int error;
 
-	debug_called();
+	dbg(5, "called\n");
 
 	error = 0;
 	vp = NULL;
@@ -215,7 +217,7 @@ dirfs_alloc_file(dirfs_mount_t dmp, dirfs_node_t *dnpp, dirfs_node_t pdnp,
 	*vpp = vp;
 	*dnpp = dnp;
 
-	dbg(5, "tmp=%s dnp=%p allocated\n", tmp, dnp);
+	dbg(9, "tmp=%s dnp=%p allocated\n", tmp, dnp);
 	dirfs_dropfd(dmp, pathnp, pathfree);
 
 	/* We want VOP_INACTIVE() to be called on last ref */
@@ -235,7 +237,7 @@ dirfs_alloc_vp(struct mount *mp, struct vnode **vpp, int lkflags,
 	struct vnode *vp;
 	dirfs_mount_t dmp = VFS_TO_DIRFS(mp);
 
-	debug_called();
+	dbg(5, "called\n");
 
 	/*
 	 * Handle vnode reclaim/alloc races
@@ -288,7 +290,7 @@ dirfs_alloc_vp(struct mount *mp, struct vnode **vpp, int lkflags,
 	}
 	KKASSERT(vp != NULL);
 	*vpp = vp;
-	dbg(5, "dnp=%p vp=%p type=%d\n", dnp, vp, vp->v_type);
+	dbg(9, "dnp=%p vp=%p type=%d\n", dnp, vp, vp->v_type);
 }
 
 /*
@@ -298,6 +300,8 @@ void
 dirfs_free_vp(dirfs_mount_t dmp, dirfs_node_t dnp)
 {
 	struct vnode *vp = NODE_TO_VP(dnp);
+
+	dbg(5, "called\n");
 
 	dnp->dn_vnode = NULL;
 	vp->v_data = NULL;
@@ -309,8 +313,6 @@ dirfs_nodetype(struct stat *st)
 {
 	int ret;
 	mode_t mode = st->st_mode;
-
-	debug_called();
 
 	if (S_ISDIR(mode))
 		ret = VDIR;
@@ -338,7 +340,7 @@ dirfs_node_stat(int fd, const char *path, dirfs_node_t dnp)
 	struct stat st;
 	int error;
 
-	debug_called();
+	dbg(5, "called\n");
 	if (fd == DIRFS_NOFD)
 		error = lstat(path, &st);
 	else
@@ -383,7 +385,7 @@ dirfs_node_absolute_path_plus(dirfs_mount_t dmp, dirfs_node_t cur,
 	char *buf;
 	int count;
 
-	debug_called();
+	dbg(5, "called\n");
 
 	KKASSERT(dmp->dm_root);	/* Sanity check */
 	*pathfreep = NULL;
@@ -433,7 +435,7 @@ dirfs_node_absolute_path_plus(dirfs_mount_t dmp, dirfs_node_t cur,
 	if (dnp1 && count <= MAXPATHLEN) {
 		bcopy(dmp->dm_path, &buf[MAXPATHLEN - count], len);
 		*pathfreep = buf;
-		dbg(5, "absolute_path %s\n", &buf[MAXPATHLEN - count]);
+		dbg(9, "absolute_path %s\n", &buf[MAXPATHLEN - count]);
 		return (&buf[MAXPATHLEN - count]);
 	} else {
 		kfree(buf, M_DIRFS_MISC);
@@ -455,7 +457,7 @@ dirfs_findfd(dirfs_mount_t dmp, dirfs_node_t cur,
 	int count;
 	char *buf;
 
-	debug_called();
+	dbg(5, "called\n");
 
 	*pathfreep = NULL;
 	*pathto = NULL;
@@ -484,10 +486,10 @@ dirfs_findfd(dirfs_mount_t dmp, dirfs_node_t cur,
 		*pathfreep = buf;
 		*pathto = &buf[MAXPATHLEN - count + 1];	/* skip '/' prefix */
 		dirfs_node_ref(dnp1);
-		dbg(5, "fd=%d dnp1=%p dnp1->dn_name=%d &buf[off]=%s\n",
+		dbg(9, "fd=%d dnp1=%p dnp1->dn_name=%d &buf[off]=%s\n",
 		    dnp1->dn_fd, dnp1, dnp1->dn_name, *pathto);
 	} else {
-		dbg(5, "failed too long\n");
+		dbg(9, "failed too long\n");
 		kfree(buf, M_DIRFS_MISC);
 		*pathfreep = NULL;
 		*pathto = NULL;
@@ -564,7 +566,7 @@ dirfs_open_helper(dirfs_mount_t dmp, dirfs_node_t dnp, int parentfd,
 	int perms;
 	int error;
 
-	debug_called();
+	dbg(5, "called\n");
 
 	flags = error = perms = 0;
 	tmp = NULL;
@@ -603,7 +605,7 @@ dirfs_open_helper(dirfs_mount_t dmp, dirfs_node_t dnp, int parentfd,
 	if (dnp->dn_fd == -1)
 		error = errno;
 
-	dbg(5, "dnp=%p tmp2=%s parentfd=%d flags=%d error=%d "
+	dbg(9, "dnp=%p tmp2=%s parentfd=%d flags=%d error=%d "
 	    "flags=%08x w=%d x=%d\n", dnp, tmp, parentfd, flags, error,
 	    perms);
 
@@ -618,11 +620,11 @@ dirfs_close_helper(dirfs_node_t dnp)
 {
 	int error = 0;
 
-	debug_called();
+	dbg(5, "called\n");
 
 
 	if (dnp->dn_fd != DIRFS_NOFD) {
-		dbg(5, "closed fd on dnp=%p\n", dnp);
+		dbg(9, "closed fd on dnp=%p\n", dnp);
 #if 0
 		/* buffer cache buffers may still be present */
 		error = close(dnp->dn_fd); /* XXX EINTR should be checked */
@@ -647,8 +649,6 @@ dirfs_node_chtimes(dirfs_node_t dnp)
 	int error = 0;
 	char *tmp;
 	char *pathfree;
-
-	debug_called();
 
 	vp = NODE_TO_VP(dnp);
 	dmp = VFS_TO_DIRFS(vp->v_mount);
@@ -681,8 +681,6 @@ dirfs_node_chflags(dirfs_node_t dnp, int vaflags, struct ucred *cred)
 	int flags;
 	char *tmp;
 	char *pathfree;
-
-	debug_called();
 
 	vp = NODE_TO_VP(dnp);
 	dmp = VFS_TO_DIRFS(vp->v_mount);
@@ -760,8 +758,6 @@ dirfs_node_chsize(dirfs_node_t dnp, off_t nsize)
 	off_t osize;
 	int biosize;
 
-	debug_called();
-
 	KKASSERT(dnp);
 
 	vp = NODE_TO_VP(dnp);
@@ -793,7 +789,7 @@ dirfs_node_chsize(dirfs_node_t dnp, off_t nsize)
 		error = errno;
 	if (error == 0)
 		dnp->dn_size = nsize;
-	dbg(5, "TRUNCATE %016jx %016jx\n", (intmax_t)nsize, dnp->dn_size);
+	dbg(9, "TRUNCATE %016jx %016jx\n", (intmax_t)nsize, dnp->dn_size);
 	/*dirfs_node_stat(DIRFS_NOFD, tmp, dnp); don't need to do this*/
 
 	dirfs_dropfd(dmp, NULL, pathfree);
@@ -808,6 +804,8 @@ void
 dirfs_node_setpassive(dirfs_mount_t dmp, dirfs_node_t dnp, int state)
 {
 	struct vnode *vp;
+
+	dbg(5, "dnp=%p state=%d dnp->dn_fd=%d\n", dnp, state, dnp->dn_fd);
 
 	if (state && (dnp->dn_state & DIRFS_PASVFD) == 0 &&
 	    dnp->dn_fd != DIRFS_NOFD) {
@@ -831,8 +829,8 @@ dirfs_node_setpassive(dirfs_mount_t dmp, dirfs_node_t dnp, int state)
 		TAILQ_REMOVE(&dmp->dm_fdlist, dnp, dn_fdentry);
 		--dirfs_fd_used;
 		--dmp->dm_fd_used;
-		dbg(5, "dnp=%p removed from fdlist. %d used\n",
-		    dnp, dirfs_fd_used);
+		dbg(5, "dnp=%p removed from fdlist. %d used refs=%d\n",
+		    dnp, dirfs_fd_used, dirfs_node_refcnt(dnp));
 
 		/*
 		 * Attempt to close the descriptor.  We can only do this
@@ -855,14 +853,14 @@ dirfs_node_setpassive(dirfs_mount_t dmp, dirfs_node_t dnp, int state)
 		    !dirfs_node_isroot(dnp) &&
 		    (vp->v_flag & (VINACTIVE|VOBJDIRTY)) == VINACTIVE &&
 		    RB_EMPTY(&vp->v_rbdirty_tree)) {
-			dbg(5, "passive cache: closing %d\n", dnp->dn_fd);
+			dbg(9, "passive cache: closing %d\n", dnp->dn_fd);
 			close(dnp->dn_fd);
 			dnp->dn_fd = DIRFS_NOFD;
 		} else {
 			if (dirfs_node_refcnt(dnp) == 1 && dnp->dn_vnode == NULL &&
 			    dnp->dn_fd != DIRFS_NOFD &&
 			    dnp != dmp->dm_root) {
-				dbg(5, "passive cache: closing %d\n", dnp->dn_fd);
+				dbg(9, "passive cache: closing %d\n", dnp->dn_fd);
 				close(dnp->dn_fd);
 				dnp->dn_fd = DIRFS_NOFD;
 			}
@@ -894,4 +892,3 @@ debug(int level, const char *fmt, ...)
 		__va_end(ap);
 	}
 }
-
