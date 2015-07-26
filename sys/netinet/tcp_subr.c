@@ -2293,3 +2293,144 @@ tcpsignature_apply(void *fstate, void *data, unsigned int len)
 	return (0);
 }
 #endif /* TCP_SIGNATURE */
+
+static void
+tcp_drop_sysctl_dispatch(netmsg_t nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->lmsg;
+	/* addrs[0] is a foreign socket, addrs[1] is a local one. */
+	struct sockaddr_storage *addrs = lmsg->u.ms_resultp;
+	int error;
+	struct sockaddr_in *fin, *lin;
+#ifdef INET6
+	struct sockaddr_in6 *fin6, *lin6;
+	struct in6_addr f6, l6;
+#endif
+	struct inpcb *inp;
+
+	switch (addrs[0].ss_family) {
+#ifdef INET6
+	case AF_INET6:
+		fin6 = (struct sockaddr_in6 *)&addrs[0];
+		lin6 = (struct sockaddr_in6 *)&addrs[1];
+		error = in6_embedscope(&f6, fin6, NULL, NULL);
+		if (error)
+			goto done;
+		error = in6_embedscope(&l6, lin6, NULL, NULL);
+		if (error)
+			goto done;
+		inp = in6_pcblookup_hash(&tcbinfo[mycpuid], &f6,
+		    fin6->sin6_port, &l6, lin6->sin6_port, FALSE, NULL);
+		break;
+#endif
+#ifdef INET
+	case AF_INET:
+		fin = (struct sockaddr_in *)&addrs[0];
+		lin = (struct sockaddr_in *)&addrs[1];
+		inp = in_pcblookup_hash(&tcbinfo[mycpuid], fin->sin_addr,
+		    fin->sin_port, lin->sin_addr, lin->sin_port, FALSE, NULL);
+		break;
+#endif
+	default:
+		/*
+		 * Must not reach here, since the address family was
+		 * checked in sysctl handler.
+		 */
+		panic("unknown address family %d", addrs[0].ss_family);
+	}
+	if (inp != NULL) {
+		struct tcpcb *tp = intotcpcb(inp);
+
+		KASSERT((inp->inp_flags & INP_WILDCARD) == 0,
+		    ("in wildcard hash"));
+
+		if (tp == NULL) {
+			error = ESRCH;
+			goto done;
+		}
+		KASSERT((tp->t_flags & TF_LISTEN) == 0, ("listen socket"));
+		tcp_drop(tp, ECONNABORTED);
+		error = 0;
+	} else {
+		error = ESRCH;
+	}
+done:
+	lwkt_replymsg(lmsg, error);
+}
+
+static int
+sysctl_tcp_drop(SYSCTL_HANDLER_ARGS)
+{
+	/* addrs[0] is a foreign socket, addrs[1] is a local one. */
+	struct sockaddr_storage addrs[2];
+	struct sockaddr_in *fin, *lin;
+#ifdef INET6
+	struct sockaddr_in6 *fin6, *lin6;
+#endif
+	struct netmsg_base nmsg;
+	struct lwkt_msg *lmsg = &nmsg.lmsg;
+	struct lwkt_port *port = NULL;
+	int error;
+
+	fin = lin = NULL;
+#ifdef INET6
+	fin6 = lin6 = NULL;
+#endif
+	error = 0;
+
+	if (req->oldptr != NULL || req->oldlen != 0)
+		return (EINVAL);
+	if (req->newptr == NULL)
+		return (EPERM);
+	if (req->newlen < sizeof(addrs))
+		return (ENOMEM);
+	error = SYSCTL_IN(req, &addrs, sizeof(addrs));
+	if (error)
+		return (error);
+
+	switch (addrs[0].ss_family) {
+#ifdef INET6
+	case AF_INET6:
+		fin6 = (struct sockaddr_in6 *)&addrs[0];
+		lin6 = (struct sockaddr_in6 *)&addrs[1];
+		if (fin6->sin6_len != sizeof(struct sockaddr_in6) ||
+		    lin6->sin6_len != sizeof(struct sockaddr_in6))
+			return (EINVAL);
+		if (IN6_IS_ADDR_V4MAPPED(&fin6->sin6_addr) ||
+		    IN6_IS_ADDR_V4MAPPED(&lin6->sin6_addr))
+			return (EADDRNOTAVAIL);
+#if 0
+		error = sa6_embedscope(fin6, V_ip6_use_defzone);
+		if (error)
+			return (error);
+		error = sa6_embedscope(lin6, V_ip6_use_defzone);
+		if (error)
+			return (error);
+#endif
+		port = tcp6_addrport();
+		break;
+#endif
+#ifdef INET
+	case AF_INET:
+		fin = (struct sockaddr_in *)&addrs[0];
+		lin = (struct sockaddr_in *)&addrs[1];
+		if (fin->sin_len != sizeof(struct sockaddr_in) ||
+		    lin->sin_len != sizeof(struct sockaddr_in))
+			return (EINVAL);
+		port = tcp_addrport(fin->sin_addr.s_addr, fin->sin_port,
+		    lin->sin_addr.s_addr, lin->sin_port);
+		break;
+#endif
+	default:
+		return (EINVAL);
+	}
+
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport, 0,
+	    tcp_drop_sysctl_dispatch);
+	lmsg->u.ms_resultp = addrs;
+	return lwkt_domsg(port, lmsg, 0);
+}
+
+SYSCTL_PROC(_net_inet_tcp, OID_AUTO, drop,
+    CTLTYPE_STRUCT | CTLFLAG_WR | CTLFLAG_SKIP, NULL,
+    0, sysctl_tcp_drop, "", "Drop TCP connection");

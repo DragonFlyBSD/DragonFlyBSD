@@ -120,6 +120,7 @@ SUBDIR= 802_11 \
 	sysvipcd \
 	tcpdchk \
 	tcpdmatch \
+	tcpdrop \
 	tcpdump \
 	timed \
 	traceroute \
