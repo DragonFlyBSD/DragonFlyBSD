@@ -175,7 +175,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	       (uintmax_t)node_offset, node->count,
 	       (uintmax_t)node->parent,
 	       (node->type ? node->type : '?'), depth);
-	printf(" mirror %016jx", (uintmax_t)node->mirror_tid);
+	printf(" mirror=%016jx", (uintmax_t)node->mirror_tid);
 	if (QuietOpt < 3) {
 		printf(" fill=");
 		print_bigblock_fill(node_offset);
