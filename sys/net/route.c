@@ -747,8 +747,9 @@ rtrequest1_msghandler(netmsg_t msg)
 	nextcpu = mycpuid + 1;
 	if (error && rmsg->req != RTM_DELETE) {
 		if (mycpuid != 0) {
-			panic("rtrequest1_msghandler: rtrequest table "
-			      "error was cpu%d, err %d\n", mycpuid, error);
+			panic("rtrequest1_msghandler: rtrequest table req %d, "
+			    "failed on cpu%d, error %d\n",
+			    rmsg->req, mycpuid, error);
 		}
 		lwkt_replymsg(&rmsg->base.lmsg, error);
 	} else if (nextcpu < ncpus) {
