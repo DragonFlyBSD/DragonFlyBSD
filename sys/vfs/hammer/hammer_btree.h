@@ -208,6 +208,7 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
 #define HAMMER_BTREE_TYPE_LEAF		((u_int8_t)'L')
 #define HAMMER_BTREE_TYPE_RECORD	((u_int8_t)'R')
 #define HAMMER_BTREE_TYPE_DELETED	((u_int8_t)'D')
+#define HAMMER_BTREE_TYPE_NONE		((u_int8_t)0)
 
 static __inline
 int

@@ -1603,7 +1603,6 @@ btree_split_internal(hammer_cursor_t cursor)
 		ondisk->elms[0].internal.mirror_tid = ondisk->mirror_tid;
 		ondisk->elms[1].base = hmp->root_btree_end;
 		hammer_modify_node_done(parent);
-		/* ondisk->elms[1].base.btype - not used */
 		made_root = 1;
 		parent_index = 0;	/* index of current node in parent */
 	} else {
@@ -1853,7 +1852,6 @@ btree_split_leaf(hammer_cursor_t cursor)
 		ondisk->elms[0].internal.subtree_offset = leaf->node_offset;
 		ondisk->elms[0].internal.mirror_tid = ondisk->mirror_tid;
 		ondisk->elms[1].base = hmp->root_btree_end;
-		/* ondisk->elms[1].base.btype = not used */
 		hammer_modify_node_done(parent);
 		made_root = 1;
 		parent_index = 0;	/* insertion point in parent */

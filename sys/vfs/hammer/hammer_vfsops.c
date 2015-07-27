@@ -477,6 +477,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->root_btree_beg.delete_tid = 1;
 		hmp->root_btree_beg.rec_type = 0;
 		hmp->root_btree_beg.obj_type = 0;
+		hmp->root_btree_beg.btype = HAMMER_BTREE_TYPE_NONE;
 
 		hmp->root_btree_end.localization = 0xFFFFFFFFU;
 		hmp->root_btree_end.obj_id = 0x7FFFFFFFFFFFFFFFLL;
@@ -485,6 +486,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->root_btree_end.delete_tid = 0;   /* special case */
 		hmp->root_btree_end.rec_type = 0xFFFFU;
 		hmp->root_btree_end.obj_type = 0;
+		hmp->root_btree_end.btype = HAMMER_BTREE_TYPE_NONE;
 
 		hmp->krate.freq = 1;	/* maximum reporting rate (hz) */
 		hmp->krate.count = -16;	/* initial burst */
