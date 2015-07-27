@@ -1632,33 +1632,17 @@ static int
 in6_ifinit(struct ifnet *ifp, struct in6_ifaddr *ia, struct sockaddr_in6 *sin6,
 	   int newhost)
 {
-	int	error = 0, plen, ifacount = 0;
-	struct ifaddr_container *ifac;
-
-	/*
-	 * Give the interface a chance to initialize
-	 * if this is its first address,
-	 * and to validate the address if necessary.
-	 */
-	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
-		if (ifac->ifa->ifa_addr == NULL)
-			continue;	/* just for safety */
-		if (ifac->ifa->ifa_addr->sa_family != AF_INET6)
-			continue;
-		ifacount++;
-	}
-
-	ifnet_serialize_all(ifp);
+	int error = 0, plen;
 
 	ia->ia_addr = *sin6;
 
-	if (ifacount <= 1 && ifp->if_ioctl &&
-	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia, NULL))) {
+	if (ifp->if_ioctl != NULL) {
+		ifnet_serialize_all(ifp);
+		error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia, NULL);
 		ifnet_deserialize_all(ifp);
-		return (error);
+		if (error)
+			return (error);
 	}
-
-	ifnet_deserialize_all(ifp);
 
 	ia->ia_ifa.ifa_metric = ifp->if_metric;
 
