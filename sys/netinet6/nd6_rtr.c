@@ -746,10 +746,7 @@ pfxrtr_add(struct nd_prefix *pr, struct nd_defrouter *dr)
 {
 	struct nd_pfxrouter *new;
 
-	new = (struct nd_pfxrouter *)kmalloc(sizeof(*new), M_IP6NDP,
-	    M_NOWAIT | M_ZERO);
-	if (new == NULL)
-		return;
+	new = kmalloc(sizeof(*new), M_IP6NDP, M_WAITOK | M_ZERO);
 	new->router = dr;
 
 	LIST_INSERT_HEAD(&pr->ndpr_advrtrs, new, pfr_entry);
@@ -790,10 +787,7 @@ nd6_prelist_add(struct nd_prefix *pr, struct nd_defrouter *dr,
 	struct nd_prefix *new = NULL;
 	int i;
 
-	new = (struct nd_prefix *)kmalloc(sizeof(*new), M_IP6NDP,
-	    M_NOWAIT | M_ZERO);
-	if (new == NULL)
-		return ENOMEM;
+	new = kmalloc(sizeof(*new), M_IP6NDP, M_WAITOK);
 	*new = *pr;
 	if (newp != NULL)
 		*newp = new;

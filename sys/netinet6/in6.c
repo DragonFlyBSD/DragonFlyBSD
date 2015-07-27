@@ -1007,14 +1007,8 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 	 */
 	if (ia == NULL) {
 		hostIsNew = 1;
-		/*
-		 * When in6_update_ifa() is called in a process of a received
-		 * RA, it is called under splnet().  So, we should call malloc
-		 * with M_NOWAIT.
-		 */
-		ia = ifa_create(sizeof(*ia), M_NOWAIT);
-		if (ia == NULL)
-			return (ENOBUFS);
+		ia = ifa_create(sizeof(*ia), M_WAITOK);
+
 		/* Initialize the address and masks */
 		ia->ia_ifa.ifa_addr = (struct sockaddr *)&ia->ia_addr;
 		ia->ia_addr.sin6_family = AF_INET6;
@@ -1768,15 +1762,7 @@ in6_addmulti(struct in6_addr *maddr6, struct ifnet *ifp, int *errorp)
 		return ifma->ifma_protospec;
 	}
 
-	/* XXX - if_addmulti uses M_WAITOK.  Can this really be called
-	   at interrupt time?  If so, need to fix if_addmulti. XXX */
-	in6m = (struct in6_multi *)kmalloc(sizeof(*in6m), M_IPMADDR, M_NOWAIT);
-	if (in6m == NULL) {
-		crit_exit();
-		return (NULL);
-	}
-
-	bzero(in6m, sizeof *in6m);
+	in6m = kmalloc(sizeof(*in6m), M_IPMADDR, M_WAITOK | M_ZERO);
 	in6m->in6m_addr = *maddr6;
 	in6m->in6m_ifp = ifp;
 	in6m->in6m_ifma = ifma;
