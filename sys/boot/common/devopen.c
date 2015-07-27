@@ -32,6 +32,10 @@
 
 #include "bootstrap.h"
 
+/*
+ * Install f_dev and f_devinfo.  Some devices uses the generic
+ * devdesc, others will replace it with their own and clear F_DEVDESC.
+ */
 int
 devopen(struct open_file *f, const char *fname, const char **file) 
 {
@@ -40,12 +44,13 @@ devopen(struct open_file *f, const char *fname, const char **file)
 
     if ((result = archsw.arch_getdev((void *)&dev, fname, file)) == 0) {	/* get the device */
 	/* point to device-specific data so that device open can use it */
+	f->f_flags |= F_DEVDESC;
 	f->f_devdata = dev;
 	if ((result = dev->d_dev->dv_open(f, dev)) == 0) { 		/* try to open it */
 	    /* reference the devsw entry from the open_file structure */
 	    f->f_dev = dev->d_dev;
 	} else {
-	    free(dev);		/* release the device descriptor */
+	    devclose(f);
 	}
     }
     return(result);
@@ -54,9 +59,22 @@ devopen(struct open_file *f, const char *fname, const char **file)
 int
 devclose(struct open_file *f)
 {
-    if (f->f_devdata != NULL) {
-	free(f->f_devdata);
-	f->f_devdata = NULL;
+    if (f->f_flags & F_DEVDESC) {
+	    if (f->f_devdata != NULL) {
+		free(f->f_devdata);
+		f->f_devdata = NULL;
+	    }
+	    f->f_flags &= ~F_DEVDESC;
     }
     return(0);
+}
+
+void
+devreplace(struct open_file *f, void *devdata)
+{
+    if (f->f_flags & F_DEVDESC) {
+	free(f->f_devdata);
+	f->f_flags &= ~F_DEVDESC;
+    }
+    f->f_devdata = devdata;
 }

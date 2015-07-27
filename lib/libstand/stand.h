@@ -174,7 +174,7 @@ extern struct open_file files[];
 #define	F_READ		0x0001	/* file opened for reading */
 #define	F_WRITE		0x0002	/* file opened for writing */
 #define	F_RAW		0x0004	/* raw device open - no file system */
-#define F_NODEV		0x0008	/* network open - no device */
+#define F_DEVDESC	0x0008	/* generic devdesc, else specific */
 
 #define isascii(c)	(((c) & ~0x7F) == 0)
 
@@ -379,6 +379,7 @@ extern int		ischar(void);
 extern void		putchar(int);
 extern int		devopen(struct open_file *, const char *, const char **);
 extern int		devclose(struct open_file *);
+extern void		devreplace(struct open_file *, void *devdata);
 extern void		panic(const char *, ...) __dead2 __printflike(1, 2);
 extern struct fs_ops	*file_system[];
 extern struct devsw	*devsw[];

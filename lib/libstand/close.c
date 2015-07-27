@@ -80,7 +80,7 @@ close(int fd)
     }
     if (!(f->f_flags & F_RAW) && f->f_ops)
 	err1 = (f->f_ops->fo_close)(f);
-    if (!(f->f_flags & F_NODEV) && f->f_dev)
+    if (f->f_dev)
 	err2 = (f->f_dev->dv_close)(f);
     if (f->f_devdata != NULL)
 	devclose(f);

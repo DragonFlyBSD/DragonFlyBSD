@@ -146,7 +146,7 @@ net_open(struct open_file *f, ...)
 	netdev_opens++;
     }
     netdev_opens++;
-    f->f_devdata = &netdev_sock;
+    devreplace(f, &netdev_sock);
     return (error);
 }
 

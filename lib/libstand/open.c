@@ -105,8 +105,7 @@ open(const char *fname, int mode)
     f->f_fsdata = NULL;
     file = NULL;
     error = devopen(f, fname, &file);
-    if (error ||
-	(((f->f_flags & F_NODEV) == 0) && f->f_dev == NULL))
+    if (error || f->f_dev == NULL)
 	goto err;
 
     /* see if we opened a raw device; otherwise, 'file' is the file name. */
@@ -129,7 +128,7 @@ open(const char *fname, int mode)
     }
     error = besterror;
 
-    if ((f->f_flags & F_NODEV) == 0)
+    if (f->f_dev)
 	f->f_dev->dv_close(f);
     if (error)
 	devclose(f);

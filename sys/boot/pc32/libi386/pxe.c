@@ -321,7 +321,8 @@ pxe_open(struct open_file *f, ...)
 	}
     }
     pxe_opens++;
-    f->f_devdata = &pxe_sock;
+    devreplace(f, &pxe_sock);
+
     return (error);
 }
 
