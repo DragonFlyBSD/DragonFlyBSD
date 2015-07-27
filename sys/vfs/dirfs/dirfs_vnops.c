@@ -229,8 +229,6 @@ dirfs_ncreate(struct vop_ncreate_args *ap)
 	ncp = ap->a_nch->ncp;
 	vpp = ap->a_vpp;
 
-	dirfs_mount_gettoken(dmp);
-
 	dirfs_node_getperms(pdnp, &perms);
 	if ((perms & DIRFS_NODE_WR) == 0)
 		error = EPERM;
@@ -242,8 +240,6 @@ dirfs_ncreate(struct vop_ncreate_args *ap)
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *vpp);
 	}
-
-	dirfs_mount_reltoken(dmp);
 
 	KTR_LOG(dirfs_ncreate, dnp, ncp->nc_name, pdnp, pdnp->dn_fd, error);
 
@@ -449,8 +445,6 @@ dirfs_setattr(struct vop_setattr_args *ap)
 	dnp = VP_TO_NODE(vp);
 	dmp = VFS_TO_DIRFS(vp->v_mount);
 
-	dirfs_mount_gettoken(dmp);
-
 	/*
 	 * Check for unsettable attributes.
 	 */
@@ -553,8 +547,6 @@ dirfs_setattr(struct vop_setattr_args *ap)
 
 	}
 out:
-	dirfs_mount_reltoken(dmp);
-
 	KTR_LOG(dirfs_setattr, dnp, msg[msgno], error);
 
 	return error;
@@ -1346,8 +1338,6 @@ dirfs_inactive(struct vop_inactive_args *ap)
 		return 0;
 	}
 
-	dirfs_mount_gettoken(dmp);
-
 	/*
 	 * Deal with the case the inode has 0 links which means it was unlinked.
 	 */
@@ -1363,7 +1353,6 @@ dirfs_inactive(struct vop_inactive_args *ap)
 	 */
 	dirfs_node_setpassive(dmp, dnp, 1);
 out:
-	dirfs_mount_reltoken(dmp);
 
 	return 0;
 

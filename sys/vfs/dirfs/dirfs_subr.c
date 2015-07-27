@@ -120,8 +120,6 @@ dirfs_node_free(dirfs_mount_t dmp, dirfs_node_t dnp)
 	 * as we are tearing down the node.
 	 * Root inode will be removed on VOP_UNMOUNT()
 	 */
-	dirfs_mount_gettoken(dmp);
-
 	if (dnp->dn_parent) {	/* NULL when children reaped parents */
 		dirfs_node_drop(dmp, dnp->dn_parent);
 		dnp->dn_parent = NULL;
@@ -147,8 +145,6 @@ dirfs_node_free(dirfs_mount_t dmp, dirfs_node_t dnp)
 	lockuninit(&dnp->dn_lock);
 	kfree(dnp, M_DIRFS_NODE);
 	dnp = NULL;
-
-	dirfs_mount_reltoken(dmp);
 
 	return 0;
 }
