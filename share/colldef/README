@@ -1,6 +1,0 @@
-$FreeBSD: src/share/colldef/README,v 1.4 2012/11/17 01:50:27 svnexp Exp $
-
-WARNING: For the compatibility sake try to keep collating table backward 
-compatible with ASCII, i.e.  add other symbols to the existent ASCII order.
-
-For mnemonic names see ftp://std.dkuug.dk/i18n/charmaps/
