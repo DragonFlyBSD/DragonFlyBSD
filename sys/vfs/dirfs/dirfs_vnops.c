@@ -136,6 +136,14 @@ int dirfs_getattr(struct vop_getattr_args *);
 int dirfs_setattr(struct vop_setattr_args *);
 int dirfs_reclaim(struct vop_reclaim_args *);
 
+static __inline
+void
+dirfs_knote(struct vnode *vp, int flags)
+{
+	if (flags)
+		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);
+}
+
 static int
 dirfs_nresolve(struct vop_nresolve_args *ap)
 {
@@ -239,6 +247,7 @@ dirfs_ncreate(struct vop_ncreate_args *ap)
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *vpp);
+		dirfs_knote(dvp, NOTE_WRITE);
 	}
 
 	KTR_LOG(dirfs_ncreate, dnp, ncp->nc_name, pdnp, pdnp->dn_fd, error);
@@ -424,6 +433,7 @@ dirfs_setattr(struct vop_setattr_args *ap)
 	struct vattr *vap;
 	struct ucred *cred;
 	int error;
+	int kflags = 0;
 #ifdef KTR
 	const char *msg[6] = {
 		"invalid",
@@ -461,10 +471,12 @@ dirfs_setattr(struct vop_setattr_args *ap)
 	 * Change file flags
 	 */
 	if (error == 0 && (vap->va_flags != VNOVAL)) {
-		if (vp->v_mount->mnt_flag & MNT_RDONLY)
+		if (vp->v_mount->mnt_flag & MNT_RDONLY) {
 			error = EROFS;
-		else
+		} else {
 			error = dirfs_node_chflags(dnp, vap->va_flags, cred);
+			kflags |= NOTE_ATTRIB;
+		}
 		msgno = 1;
 		goto out;
 	}
@@ -473,10 +485,15 @@ dirfs_setattr(struct vop_setattr_args *ap)
 	 * Extend or truncate a file
 	 */
 	if (error == 0 && (vap->va_size != VNOVAL)) {
-		if (vp->v_mount->mnt_flag & MNT_RDONLY)
+		if (vp->v_mount->mnt_flag & MNT_RDONLY) {
 			error = EROFS;
-		else
+		} else {
+			if (vap->va_size > dnp->dn_size)
+				kflags |= NOTE_WRITE | NOTE_EXTEND;
+			else
+				kflags |= NOTE_WRITE;
 			error = dirfs_node_chsize(dnp, vap->va_size);
+		}
 		dbg(9, "dnp size=%jd vap size=%jd\n", dnp->dn_size, vap->va_size);
 		msgno = 2;
 		goto out;
@@ -503,6 +520,7 @@ dirfs_setattr(struct vop_setattr_args *ap)
 			     cur_gid != dnp->dn_gid)) {
 				error = dirfs_node_chown(dmp, dnp, cur_uid,
 							 cur_gid, cur_mode);
+				kflags |= NOTE_ATTRIB;
 			}
 		}
 		msgno = 3;
@@ -525,6 +543,7 @@ dirfs_setattr(struct vop_setattr_args *ap)
 						 cur_uid, cur_gid, &cur_mode);
 			if (error == 0 && cur_mode != dnp->dn_mode) {
 				error = dirfs_node_chmod(dmp, dnp, cur_mode);
+				kflags |= NOTE_ATTRIB;
 			}
 		}
 		msgno = 4;
@@ -538,16 +557,20 @@ dirfs_setattr(struct vop_setattr_args *ap)
 		vap->va_atime.tv_nsec != VNOVAL) ||
 		(vap->va_mtime.tv_sec != VNOVAL &&
 		vap->va_mtime.tv_nsec != VNOVAL) )) {
-		if (vp->v_mount->mnt_flag & MNT_RDONLY)
+		if (vp->v_mount->mnt_flag & MNT_RDONLY) {
 			error = EROFS;
-		else
+		} else {
 			error = dirfs_node_chtimes(dnp);
+			kflags |= NOTE_ATTRIB;
+		}
 		msgno = 5;
 		goto out;
 
 	}
 out:
 	KTR_LOG(dirfs_setattr, dnp, msg[msgno], error);
+
+	dirfs_knote(vp, kflags);
 
 	return error;
 }
@@ -650,6 +673,7 @@ dirfs_write (struct vop_write_args *ap)
 	struct uio *uio = ap->a_uio;
 	struct thread *td = uio->uio_td;
 	int error;
+	int kflags = 0;
 	off_t osize;
 	off_t nsize;
 	off_t base_offset;
@@ -699,6 +723,7 @@ dirfs_write (struct vop_write_args *ap)
 		ftruncate(dnp->dn_fd, nsize);
 		nvextendbuf(vp, osize, nsize,
 			    BSIZE, BSIZE, -1, -1, 0);
+		kflags |= NOTE_EXTEND;
 	} /* else nsize = osize; NOT USED */
 
 	while (uio->uio_resid > 0) {
@@ -719,6 +744,7 @@ dirfs_write (struct vop_write_args *ap)
 			dbg(9, "WRITE uiomove failed\n");
 			break;
 		}
+		kflags |= NOTE_WRITE;
 
 		dbg(9, "WRITE dn_size=%jd uio_offset=%jd uio_resid=%jd base_offset=%jd\n",
 		    dnp->dn_size, uio->uio_offset, uio->uio_resid, base_offset);
@@ -732,6 +758,8 @@ dirfs_write (struct vop_write_args *ap)
 	KTR_LOG(dirfs_write, dnp, base_offset, uio->uio_resid,
 	    dnp->dn_size, error);
 
+	if (kflags)
+		dirfs_knote(vp, kflags);
 	return error;
 }
 
@@ -881,6 +909,7 @@ dirfs_nremove(struct vop_nremove_args *ap)
 		error = unlinkat(pathnp->dn_fd, tmp, 0);
 		if (error == 0) {
 			cache_unlink(nch);
+			dirfs_knote(vp, NOTE_DELETE);
 			dirfs_node_setpassive(dmp, dnp, 0);
 			if (dnp->dn_parent) {
 				dirfs_node_drop(dmp, dnp->dn_parent);
@@ -892,6 +921,7 @@ dirfs_nremove(struct vop_nremove_args *ap)
 		dirfs_node_unlock(pdnp);
 		dirfs_dropfd(dmp, pathnp, pathfree);
 	}
+	dirfs_knote(dvp, NOTE_WRITE);
 	vrele(vp);
 	lwkt_reltoken(&mp->mnt_token);
 
@@ -955,7 +985,7 @@ dirfs_nrename(struct vop_nrename_args *ap)
 		vp = fncp->nc_vp;	/* file being renamed */
 		dnp = VP_TO_NODE(vp);
 		dirfs_node_setname(dnp, tncp->nc_name, tncp->nc_nlen);
-
+		dirfs_knote(fdvp, NOTE_RENAME);
 		/*
 		 * We have to mark the target file that was replaced by
 		 * the rename as having been unlinked.
@@ -965,6 +995,7 @@ dirfs_nrename(struct vop_nrename_args *ap)
 			dbg(9, "RENAME2\n");
 			dnp = VP_TO_NODE(vp);
 			cache_unlink(ap->a_tnch);
+			dirfs_knote(vp, NOTE_DELETE);
 			dirfs_node_setpassive(dmp, dnp, 0);
 			if (dnp->dn_parent) {
 				dirfs_node_drop(dmp, dnp->dn_parent);
@@ -979,6 +1010,9 @@ dirfs_nrename(struct vop_nrename_args *ap)
 			cache_inval_vp(vp, CINV_DESTROY);
 		}
 		cache_rename(ap->a_fnch, ap->a_tnch);
+		dirfs_knote(fdvp, NOTE_WRITE);
+		dirfs_knote(tdvp, NOTE_WRITE);
+
 	}
 	dirfs_dropfd(dmp, NULL, fpathfree);
 	dirfs_dropfd(dmp, NULL, tpathfree);
@@ -1036,6 +1070,7 @@ dirfs_nmkdir(struct vop_nmkdir_args *ap)
 			error = errno;
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *vpp);
+		dirfs_knote(dvp, NOTE_WRITE | NOTE_LINK);
 	}
 	dirfs_node_unlock(pdnp);
 
@@ -1088,6 +1123,7 @@ dirfs_nrmdir(struct vop_nrmdir_args *ap)
 		error = rmdir(tmp);
 		if (error == 0) {
 			cache_unlink(nch);
+			dirfs_knote(dvp, NOTE_WRITE | NOTE_LINK);
 			dirfs_node_setpassive(dmp, dnp, 0);
 			if (dnp->dn_parent) {
 				dirfs_node_drop(dmp, dnp->dn_parent);
@@ -1161,6 +1197,7 @@ dirfs_nsymlink(struct vop_nsymlink_args *ap)
 			error = errno;
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *vpp);
+		dirfs_knote(*vpp, NOTE_WRITE);
 	}
 	dbg(5, "path=%s a_target=%s\n", path, ap->a_target);
 
@@ -1405,15 +1442,112 @@ dirfs_pathconf(struct vop_pathconf_args *v)
 	return EOPNOTSUPP;
 }
 
+/************************************************************************
+ *                          KQFILTER OPS                                *
+ ************************************************************************/
+
+static void filt_dirfsdetach(struct knote *kn);
+static int filt_dirfsread(struct knote *kn, long hint);
+static int filt_dirfswrite(struct knote *kn, long hint);
+static int filt_dirfsvnode(struct knote *kn, long hint);
+
+static struct filterops dirfsread_filtops =
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_dirfsdetach, filt_dirfsread };
+static struct filterops dirfswrite_filtops =
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_dirfsdetach, filt_dirfswrite };
+static struct filterops dirfsvnode_filtops =
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_dirfsdetach, filt_dirfsvnode };
+
 static int
 dirfs_kqfilter (struct vop_kqfilter_args *ap)
 {
-	dbg(3, "called\n");
+	struct vnode *vp = ap->a_vp;
+	struct knote *kn = ap->a_kn;
 
-	KTR_LOG(dirfs_unsupported, __func__);
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &dirfsread_filtops;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &dirfswrite_filtops;
+		break;
+	case EVFILT_VNODE:
+		kn->kn_fop = &dirfsvnode_filtops;
+		break;
+	default:
+		return (EOPNOTSUPP);
+	}
 
-	return EOPNOTSUPP;
+	kn->kn_hook = (caddr_t)vp;
+
+	knote_insert(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
+
+	return(0);
 }
+
+static void
+filt_dirfsdetach(struct knote *kn)
+{
+	struct vnode *vp = (void *)kn->kn_hook;
+
+	knote_remove(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
+}
+
+static int
+filt_dirfsread(struct knote *kn, long hint)
+{
+	struct vnode *vp = (void *)kn->kn_hook;
+	dirfs_node_t dnp  = VP_TO_NODE(vp);
+	off_t off;
+
+	if (hint == NOTE_REVOKE) {
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
+		return(1);
+	}
+
+	/*
+	 * Interlock against MP races when performing this function.
+	 */
+	dirfs_node_lock(dnp);
+	off = dnp->dn_size - kn->kn_fp->f_offset;
+	kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
+	if (kn->kn_sfflags & NOTE_OLDAPI) {
+		dirfs_node_unlock(dnp);
+		return(1);
+	}
+	if (kn->kn_data == 0) {
+		kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
+	}
+	dirfs_node_unlock(dnp);
+	return (kn->kn_data != 0);
+}
+
+static int
+filt_dirfswrite(struct knote *kn, long hint)
+{
+	if (hint == NOTE_REVOKE)
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
+	kn->kn_data = 0;
+	return (1);
+}
+
+static int
+filt_dirfsvnode(struct knote *kn, long hint)
+{
+	if (kn->kn_sfflags & hint)
+		kn->kn_fflags |= hint;
+	if (hint == NOTE_REVOKE) {
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
+		return (1);
+	}
+	return (kn->kn_fflags != 0);
+}
+
+
+/* --------------------------------------------------------------------- */
 
 struct vop_ops dirfs_vnode_vops = {
 	.vop_default =			vop_defaultop,

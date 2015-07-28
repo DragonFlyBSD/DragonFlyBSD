@@ -42,6 +42,7 @@
 #include <sys/lockf.h>
 #include <sys/stat.h>
 #include <sys/vnode.h>
+#include <sys/file.h>
 
 MALLOC_DECLARE(M_DIRFS);
 MALLOC_DECLARE(M_DIRFS_NODE);
