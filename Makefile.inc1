@@ -852,7 +852,7 @@ BSTRAPDIRS1= ${_strfile} \
 	bin/chmod bin/cp bin/cpdup bin/dd bin/mkdir bin/rm bin/echo \
 	bin/test bin/cat bin/ln bin/mv bin/csh bin/expr bin/sh \
 	bin/hostname bin/kill \
-	usr.bin/yacc usr.bin/m4 usr.bin/colldef \
+	usr.bin/yacc usr.bin/m4 usr.bin/localedef \
 	usr.bin/uudecode usr.bin/xinstall \
 	usr.bin/rpcgen usr.bin/bmake usr.bin/awk usr.bin/stat \
 	usr.bin/find usr.bin/flex
