@@ -828,6 +828,8 @@ EXPORT_SYMBOL(drm_mm_clean);
 void drm_mm_init(struct drm_mm * mm, unsigned long start, unsigned long size)
 {
 	INIT_LIST_HEAD(&mm->hole_stack);
+	INIT_LIST_HEAD(&mm->unused_nodes);
+	mm->num_unused = 0;
 	mm->scanned_blocks = 0;
 
 	/* Clever trick to avoid a special case in the free hole tracking. */
