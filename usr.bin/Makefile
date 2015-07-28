@@ -40,7 +40,6 @@ SUBDIR=	alias \
 	cmp \
 	col \
 	colcrt \
-	colldef \
 	colrm \
 	column \
 	comm \
@@ -106,6 +105,7 @@ SUBDIR=	alias \
 	lesskey \
 	limits \
 	locale \
+	localedef \
 	locate \
 	lock \
 	lockf \
