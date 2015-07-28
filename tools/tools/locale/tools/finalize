@@ -9,12 +9,12 @@
 usage ()
 {
    echo "finalize <type>' to package standard localization"
-   echo "type must be one of { monetdef, msgdef, numericdef, timedef }"
+   echo "type must be one of { monetdef, msgdef, numericdef, timedef, colldef }"
    exit 1
 }
 
 [ $# -ne 1 ] && usage
-[ $1 = "monetdef" -o $1 = "msgdef" -o \
+[ $1 = "monetdef" -o $1 = "msgdef" -o $1 = "colldef" -o \
   $1 = "numericdef" -o $1 = "timedef" ] || usage
 
 self=$(realpath $0)
@@ -22,6 +22,8 @@ base=$(dirname ${self})
 old=${base}/../${1}.draft
 new=${base}/../${1}
 TEMP=/tmp/${1}.locales
+FULLMAP=/tmp/utf8-map
+FULLEXTRACT=/tmp/extracted-names
 AWKCMD="/## PLACEHOLDER/ { \
 	  while ( getline line < \"${TEMP}\" ) {print line} } \
 	!/## PLACEHOLDER/ { print \$0 }"
@@ -33,6 +35,14 @@ for original in ${keep}
 do
 	cp ${old}/${original}.src ${new}/
 done
+
+if [ $1 = "colldef" ]
+then
+	/usr/bin/sed -E -e 's/[ ]+/ /g' \
+		${CLDRDIR}/posix/UTF-8.cm \
+		> ${new}/map.UTF-8
+	cp ${base}/../etc/charmaps/widths.txt ${new}/
+fi
 
 grep -v '^LOCALES+' ${old}/Makefile | awk "${AWKCMD}" > ${new}/Makefile
 

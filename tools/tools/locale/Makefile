@@ -13,10 +13,11 @@ CLDRDIR!=	grep ^cldr etc/unicode.conf | cut -f 2 -d " "
 .if !defined(UNIDATADIR)
 UNIDATADIR!=	grep ^unidata etc/unicode.conf | cut -f 2 -d " "
 .endif
+PASSON=		CLDRDIR="${CLDRDIR}" UNIDATADIR="${UNIDATADIR}"
 
 ETCDIR=		${.CURDIR}/etc
 
-TYPES?=		monetdef numericdef msgdef timedef
+TYPES?=		monetdef numericdef msgdef timedef colldef
 LOCALE_DESTDIR?=	/tmp/generated-locales/
 
 .if defined(LC)
@@ -45,7 +46,7 @@ build-${t}:
 		--unidata=$$(realpath ${UNIDATADIR}) \
 		--etc=$$(realpath ${ETCDIR}) \
 		--type=${t} ${LC}
-	tools/finalize ${t}
+	env ${PASSON} tools/finalize ${t}
 .endfor
 
 clean:
