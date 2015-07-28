@@ -205,14 +205,8 @@ DF402.0 {
 
 DFprivate_1.0 {
     __detect_path_locale;
-    __collate_err;
     __collate_load;
-    __collate_load_error;
     __collate_load_tables;
-    __collate_load_tables_l;
-    __collate_lookup;
-    __collate_strdup;
-    __collate_substitute;
     __collate_range_cmp;
     __ctype_load;
     __fix_locale_grouping_str;
@@ -262,4 +256,6 @@ DFprivate_1.0 {
     _PathLocale;
     _ascii_init;
     _none_init;
+    _collate_load_tables_l;
+    _collate_lookup;
 };
