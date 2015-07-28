@@ -690,8 +690,9 @@ sub make_makefile {
 	return if ($#filter > -1);
 	print "Creating Makefile for $TYPE\n";
 	my $SRCOUT = ($TYPE eq "colldef") ?
-		"localedef -D -U -w widths.txt -f map.UTF-8 -i \${.IMPSRC} " .
-		"\${.IMPSRC:R}" :
+		"localedef -D -U -w \${.CURDIR}/widths.txt -f " .
+		"\${.CURDIR}/map.UTF-8 -i \${.IMPSRC} ".
+		"\${.OBJDIR}/\${.IMPSRC:T:R}" :
 		"grep -v '^\#' < \${.IMPSRC} > \${.TARGET}";
 	my $SRCOUT2 = ($TYPE eq "colldef") ?
 		"LC_COLLATE" : "out";
