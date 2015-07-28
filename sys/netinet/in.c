@@ -513,7 +513,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			struct ifaddr *ifa;
 			int i;
 
-			ia = ifa_create(sizeof(*ia), M_WAITOK);
+			ia = ifa_create(sizeof(*ia));
 			ifa = &ia->ia_ifa;
 
 			/*

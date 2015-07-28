@@ -1007,7 +1007,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 	 */
 	if (ia == NULL) {
 		hostIsNew = 1;
-		ia = ifa_create(sizeof(*ia), M_WAITOK);
+		ia = ifa_create(sizeof(*ia));
 
 		/* Initialize the address and masks */
 		ia->ia_ifa.ifa_addr = (struct sockaddr *)&ia->ia_addr;

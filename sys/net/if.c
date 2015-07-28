@@ -465,7 +465,7 @@ if_default_serialize_assert(struct ifnet *ifp,
 void
 if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 {
-	unsigned socksize, ifasize;
+	unsigned socksize;
 	int namelen, masklen;
 	struct sockaddr_dl *sdl, *sdl_addr;
 	struct ifaddr *ifa;
@@ -542,8 +542,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	if (socksize < sizeof(*sdl))
 		socksize = sizeof(*sdl);
 	socksize = RT_ROUNDUP(socksize);
-	ifasize = sizeof(struct ifaddr) + 2 * socksize;
-	ifa = ifa_create(ifasize, M_WAITOK);
+	ifa = ifa_create(sizeof(struct ifaddr) + 2 * socksize);
 	sdl = sdl_addr = (struct sockaddr_dl *)(ifa + 1);
 	sdl->sdl_len = socksize;
 	sdl->sdl_family = AF_LINK;
@@ -3124,20 +3123,18 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 }
 
 void *
-ifa_create(int size, int flags)
+ifa_create(int size)
 {
 	struct ifaddr *ifa;
 	int i;
 
 	KASSERT(size >= sizeof(*ifa), ("ifaddr size too small"));
 
-	ifa = kmalloc(size, M_IFADDR, flags | M_ZERO);
-	if (ifa == NULL)
-		return NULL;
-
+	ifa = kmalloc(size, M_IFADDR, M_INTWAIT | M_ZERO);
 	ifa->ifa_containers =
 	    kmalloc_cachealign(ncpus * sizeof(struct ifaddr_container),
-	        M_IFADDR, M_WAITOK | M_ZERO);
+	        M_IFADDR, M_INTWAIT | M_ZERO);
+
 	ifa->ifa_ncnt = ncpus;
 	for (i = 0; i < ncpus; ++i) {
 		struct ifaddr_container *ifac = &ifa->ifa_containers[i];

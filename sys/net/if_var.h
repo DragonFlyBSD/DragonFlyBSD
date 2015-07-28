@@ -985,7 +985,7 @@ typedef void if_com_free_t(void *com, u_char type);
 void    if_register_com_alloc(u_char, if_com_alloc_t *a, if_com_free_t *);
 void    if_deregister_com_alloc(u_char);
 
-void	*ifa_create(int, int);
+void	*ifa_create(int);
 void	ifa_destroy(struct ifaddr *);
 void	ifa_iflink(struct ifaddr *, struct ifnet *, int);
 void	ifa_ifunlink(struct ifaddr *, struct ifnet *);
