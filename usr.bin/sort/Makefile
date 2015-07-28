@@ -14,6 +14,10 @@ LDADD=	-lmd
 
 DPADD+=	${LIBPTHREAD}
 LDADD+=	-lpthread
-CFLAGS+=	-DSORT_THREADS
+CFLAGS+= -DSORT_THREADS
+.if defined(BOOTSTRAPPING)
+CFLAGS+= -DBOOTSTRAPPING
+.endif
+
 
 .include <bsd.prog.mk>
