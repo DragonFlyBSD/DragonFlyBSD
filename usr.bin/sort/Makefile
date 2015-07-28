@@ -1,14 +1,19 @@
-#	$NetBSD: Makefile,v 1.7 2009/09/05 09:16:18 dsl Exp $
+# $FreeBSD: head/usr.bin/sort/Makefile 275042 2014-11-25 14:29:10Z bapt $
 
 PROG=	sort
-SRCS=	append.c \
-	fields.c \
-	files.c \
-	fsort.c \
-	init.c \
-	msort.c \
+SRCS=	bwstring.c \
+	coll.c \
+	file.c \
+	mem.c \
+	radixsort.c \
 	sort.c \
-	tmp.c \
-	radix_sort.c
+	vsort.c
+
+DPADD=	${LIBMD}
+LDADD=	-lmd
+
+DPADD+=	${LIBPTHREAD}
+LDADD+=	-lpthread
+CFLAGS+=	-DSORT_THREADS
 
 .include <bsd.prog.mk>
