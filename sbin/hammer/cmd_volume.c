@@ -234,8 +234,8 @@ check_volume(const char *vol_name)
 		errx(1, "HAMMER cannot be placed in a partition "
 			"which overlaps the disklabel or MBR");
 	}
-	if (pinfo.media_blksize > 16384 ||
-	    16384 % pinfo.media_blksize) {
+	if (pinfo.media_blksize > HAMMER_BUFSIZE ||
+	    HAMMER_BUFSIZE % pinfo.media_blksize) {
 		errx(1, "A media sector size of %d is not supported",
 		     pinfo.media_blksize);
 	}
