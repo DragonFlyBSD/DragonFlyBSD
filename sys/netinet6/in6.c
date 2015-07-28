@@ -1746,7 +1746,7 @@ in6_addmulti(struct in6_addr *maddr6, struct ifnet *ifp, int *errorp)
 		return ifma->ifma_protospec;
 	}
 
-	in6m = kmalloc(sizeof(*in6m), M_IPMADDR, M_WAITOK | M_ZERO);
+	in6m = kmalloc(sizeof(*in6m), M_IPMADDR, M_INTWAIT | M_ZERO);
 	in6m->in6m_addr = *maddr6;
 	in6m->in6m_ifp = ifp;
 	in6m->in6m_ifma = ifma;

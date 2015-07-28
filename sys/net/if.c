@@ -2439,8 +2439,8 @@ if_addmulti_serialized(struct ifnet *ifp, struct sockaddr *sa,
 		llsa = NULL;
 	}
 
-	ifma = kmalloc(sizeof *ifma, M_IFMADDR, M_WAITOK);
-	dupsa = kmalloc(sa->sa_len, M_IFMADDR, M_WAITOK);
+	ifma = kmalloc(sizeof *ifma, M_IFMADDR, M_INTWAIT);
+	dupsa = kmalloc(sa->sa_len, M_IFMADDR, M_INTWAIT);
 	bcopy(sa, dupsa, sa->sa_len);
 
 	ifma->ifma_addr = dupsa;
@@ -2462,8 +2462,8 @@ if_addmulti_serialized(struct ifnet *ifp, struct sockaddr *sa,
 		if (ifma) {
 			ifma->ifma_refcount++;
 		} else {
-			ifma = kmalloc(sizeof *ifma, M_IFMADDR, M_WAITOK);
-			dupsa = kmalloc(llsa->sa_len, M_IFMADDR, M_WAITOK);
+			ifma = kmalloc(sizeof *ifma, M_IFMADDR, M_INTWAIT);
+			dupsa = kmalloc(llsa->sa_len, M_IFMADDR, M_INTWAIT);
 			bcopy(llsa, dupsa, llsa->sa_len);
 			ifma->ifma_addr = dupsa;
 			ifma->ifma_ifp = ifp;

@@ -1330,7 +1330,7 @@ in_addmulti(struct in_addr *ap, struct ifnet *ifp)
 	if (ifma->ifma_protospec != NULL)
 		return ifma->ifma_protospec;
 
-	inm = kmalloc(sizeof *inm, M_IPMADDR, M_WAITOK | M_ZERO);
+	inm = kmalloc(sizeof *inm, M_IPMADDR, M_INTWAIT | M_ZERO);
 	inm->inm_addr = *ap;
 	inm->inm_ifp = ifp;
 	inm->inm_ifma = ifma;
