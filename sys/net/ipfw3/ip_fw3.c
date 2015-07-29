@@ -629,7 +629,7 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	pkt = m_tag_data(mtag);
 	bzero(pkt, sizeof(*pkt));
 
-	cmd = fwa->rule->cmd + fwa->rule->act_ofs;
+	cmd = (ipfw_insn *)((uint32_t *)fwa->rule->cmd + fwa->rule->act_ofs);
 	KASSERT(cmd->opcode == O_DUMMYNET_PIPE ||
 			cmd->opcode == O_DUMMYNET_QUEUE,
 			("Rule is not PIPE or QUEUE, opcode %d", cmd->opcode));
