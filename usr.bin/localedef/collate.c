@@ -34,15 +34,6 @@
 #include "avl.h"
 
 /*
- * Work around buildworld bootstrapping from older systems whos limits.h
- * sets COLL_WEIGHTS_MAX to 0.
- */
-#if COLL_WEIGHTS_MAX == 0
-#undef COLL_WEIGHTS_MAX
-#define COLL_WEIGHTS_MAX 10
-#endif
-
-/*
  * Design notes.
  *
  * It will be extremely helpful to the reader if they have access to

@@ -41,6 +41,15 @@
 #include <limits.h>
 #include "xlocale_private.h"
 
+/*
+ * Work around buildworld bootstrapping from older systems whos limits.h
+ * sets COLL_WEIGHTS_MAX to 0.
+ */
+#if COLL_WEIGHTS_MAX == 0
+#undef COLL_WEIGHTS_MAX
+#define COLL_WEIGHTS_MAX 10
+#endif
+
 #define	COLLATE_STR_LEN		24		/* should be 64-bit multiple */
 #define	COLLATE_VERSION		"DragonFly-4.4\n"
 

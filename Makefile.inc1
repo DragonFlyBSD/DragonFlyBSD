@@ -945,7 +945,6 @@ _btxld=	usr.sbin/btxld
 
 CTOOLSDIRS= ${_btxld} ${_binutils} \
 		usr.bin/objformat usr.bin/crunch/crunchide \
-		usr.bin/localedef \
 		${_gcc_common_cross} \
 		${_gcc47_cross} ${_gcc50_cross} ${_custom_cross}
 
