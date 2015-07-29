@@ -1133,14 +1133,7 @@ nd6_dad_start(struct ifaddr *ifa,
 		return;
 	}
 
-	dp = kmalloc(sizeof(*dp), M_IP6NDP, M_NOWAIT | M_ZERO);
-	if (dp == NULL) {
-		log(LOG_ERR, "nd6_dad_start: memory allocation failed for "
-			"%s(%s)\n",
-			ip6_sprintf(&ia->ia_addr.sin6_addr),
-			ifa->ifa_ifp ? if_name(ifa->ifa_ifp) : "???");
-		return;
-	}
+	dp = kmalloc(sizeof(*dp), M_IP6NDP, M_INTWAIT | M_ZERO);
 	callout_init(&dp->dad_timer_ch);
 	TAILQ_INSERT_TAIL(&dadq, dp, dad_list);
 
