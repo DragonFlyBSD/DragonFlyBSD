@@ -322,7 +322,8 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 			break;
 		}
 	}
-	kprintf("\n");
+	if (count >= 5)
+		kprintf("\n");
 
 	hammer_sync_lock_sh(trans);
 	hammer_lock_ex(&hmp->blkmap_lock);
