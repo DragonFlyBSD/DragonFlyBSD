@@ -215,7 +215,7 @@ int	kvsnrprintf (char *, size_t, int, const char *,
 			__va_list) __printflike(4, 0);
 int	kvasnrprintf (char **, size_t, int, const char *,
 			__va_list) __printflike(4, 0);
-int     kvsprintf (char *buf, const char *,
+int	kvsprintf (char *buf, const char *,
 			__va_list) __printflike(2, 0);
 int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);
 void	hexdump (const void *ptr, int length, const char *hdr, int flags);
