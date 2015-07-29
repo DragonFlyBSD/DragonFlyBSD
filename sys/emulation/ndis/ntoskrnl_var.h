@@ -476,9 +476,6 @@ typedef struct general_lookaside general_lookaside;
 
 struct npaged_lookaside_list {
 	general_lookaside	nll_l;
-#ifdef __i386__
-	kspin_lock		nll_obsoletelock;
-#endif
 };
 
 typedef struct npaged_lookaside_list npaged_lookaside_list;
@@ -1446,14 +1443,8 @@ extern void KeClearEvent(nt_kevent *);
 extern uint32_t KeReadStateEvent(nt_kevent *);
 extern uint32_t KeSetEvent(nt_kevent *, uint32_t, uint8_t);
 extern uint32_t KeResetEvent(nt_kevent *);
-#ifdef __i386__
-extern void KefAcquireSpinLockAtDpcLevel(kspin_lock *);
-extern void KefReleaseSpinLockFromDpcLevel(kspin_lock *);
-extern uint8_t KeAcquireSpinLockRaiseToDpc(kspin_lock *);
-#else
 extern void KeAcquireSpinLockAtDpcLevel(kspin_lock *);
 extern void KeReleaseSpinLockFromDpcLevel(kspin_lock *);
-#endif
 extern void KeInitializeSpinLock(kspin_lock *);
 extern uint8_t KeAcquireInterruptSpinLock(kinterrupt *);
 extern void KeReleaseInterruptSpinLock(kinterrupt *, uint8_t);
@@ -1501,16 +1492,6 @@ extern void IoQueueWorkItem(io_workitem *, io_workitem_func,
  * On the Windows x86 arch, KeAcquireSpinLock() and KeReleaseSpinLock()
  * routines live in the HAL. We try to imitate this behavior.
  */
-#ifdef __i386__
-#define	KI_USER_SHARED_DATA 0xffdf0000
-#define KeAcquireSpinLock(a, b)	*(b) = KfAcquireSpinLock(a)
-#define KeReleaseSpinLock(a, b)	KfReleaseSpinLock(a, b)
-#define KeRaiseIrql(a, b)	*(b) = KfRaiseIrql(a)
-#define KeLowerIrql(a)		KfLowerIrql(a)
-#define KeAcquireSpinLockAtDpcLevel(a)	KefAcquireSpinLockAtDpcLevel(a)
-#define KeReleaseSpinLockFromDpcLevel(a)  KefReleaseSpinLockFromDpcLevel(a)
-#endif /* __i386__ */
-
 #ifdef __x86_64__
 #define	KI_USER_SHARED_DATA 0xfffff78000000000UL
 #define KeAcquireSpinLock(a, b)	*(b) = KfAcquireSpinLock(a)

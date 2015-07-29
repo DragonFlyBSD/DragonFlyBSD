@@ -184,9 +184,6 @@ bincvt(char *sysfile, char *outfile, void *img, int fsize)
 		*strchr(outfile, '.') = '\0';
 
 	snprintf(sysbuf, sizeof(sysbuf),
-#ifdef __i386__
-	    "objcopy -I binary -O elf32-i386 -B i386 %s %s.o\n",
-#endif
 #ifdef __x86_64__
 	    "objcopy -I binary -O elf64-x86-64 -B i386 %s %s.o\n",
 #endif
@@ -223,9 +220,6 @@ firmcvt(char *firmfile)
 	basefile = strdup(outfile);
 
 	snprintf(sysbuf, sizeof(sysbuf),
-#ifdef __i386__
-	    "objcopy -I binary -O elf32-i386 -B i386 %s %s.o\n",
-#endif
 #ifdef __x86_64__
 	    "objcopy -I binary -O elf64-x86-64 -B i386 %s %s.o\n",
 #endif

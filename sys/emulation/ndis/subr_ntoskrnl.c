@@ -2081,10 +2081,6 @@ ExInitializePagedLookasideList(paged_lookaside_list *lookaside,
 	else
 		lookaside->nll_l.gl_freefunc = freefunc;
 
-#ifdef __i386__
-	KeInitializeSpinLock(&lookaside->nll_obsoletelock);
-#endif
-
 	lookaside->nll_l.gl_type = NonPagedPool;
 	lookaside->nll_l.gl_depth = depth;
 	lookaside->nll_l.gl_maxdepth = LOOKASIDE_DEPTH;
@@ -2124,10 +2120,6 @@ ExInitializeNPagedLookasideList(npaged_lookaside_list *lookaside,
 		    ntoskrnl_findwrap((funcptr)ExFreePool);
 	else
 		lookaside->nll_l.gl_freefunc = freefunc;
-
-#ifdef __i386__
-	KeInitializeSpinLock(&lookaside->nll_obsoletelock);
-#endif
 
 	lookaside->nll_l.gl_type = NonPagedPool;
 	lookaside->nll_l.gl_depth = depth;
@@ -2200,44 +2192,6 @@ KeInitializeSpinLock(kspin_lock *lock)
 	*lock = 0;
 }
 
-#ifdef __i386__
-void
-KefAcquireSpinLockAtDpcLevel(kspin_lock *lock)
-{
-#ifdef NTOSKRNL_DEBUG_SPINLOCKS
-	int			i = 0;
-#endif
-
-	while (atomic_cmpset_acq_int((volatile u_int *)lock, 0, 1) == 0) {
-		/* sit and spin */;
-#ifdef NTOSKRNL_DEBUG_SPINLOCKS
-		i++;
-		if (i > 200000000)
-			panic("DEADLOCK!");
-#endif
-	}
-}
-
-void
-KefReleaseSpinLockFromDpcLevel(kspin_lock *lock)
-{
-	atomic_store_rel_int((volatile u_int *)lock, 0);
-}
-
-uint8_t
-KeAcquireSpinLockRaiseToDpc(kspin_lock *lock)
-{
-	uint8_t                 oldirql;
-
-	if (KeGetCurrentIrql() > DISPATCH_LEVEL)
-		panic("IRQL_NOT_LESS_THAN_OR_EQUAL");
-
-	KeRaiseIrql(DISPATCH_LEVEL, &oldirql);
-	KeAcquireSpinLockAtDpcLevel(lock);
-
-	return (oldirql);
-}
-#else
 void
 KeAcquireSpinLockAtDpcLevel(kspin_lock *lock)
 {
@@ -2250,7 +2204,6 @@ KeReleaseSpinLockFromDpcLevel(kspin_lock *lock)
 {
 	atomic_store_rel_int((volatile u_int *)lock, 0);
 }
-#endif /* __i386__ */
 
 uintptr_t
 InterlockedExchange(volatile uint32_t *dst, uintptr_t val)
@@ -4147,22 +4100,14 @@ image_patch_table ntoskrnl_functbl[] = {
 	IMPORT_SFUNC(ExAllocatePoolWithTag, 3),
 	IMPORT_SFUNC(ExFreePoolWithTag, 2),
 	IMPORT_SFUNC(ExFreePool, 1),
-#ifdef __i386__
-	IMPORT_FFUNC(KefAcquireSpinLockAtDpcLevel, 1),
-	IMPORT_FFUNC(KefReleaseSpinLockFromDpcLevel,1),
-	IMPORT_FFUNC(KeAcquireSpinLockRaiseToDpc, 1),
-#else
 	/*
 	 * For AMD64, we can get away with just mapping
 	 * KeAcquireSpinLockRaiseToDpc() directly to KfAcquireSpinLock()
 	 * because the calling conventions end up being the same.
-	 * On i386, we have to be careful because KfAcquireSpinLock()
-	 * is _fastcall but KeAcquireSpinLockRaiseToDpc() isn't.
 	 */
 	IMPORT_SFUNC(KeAcquireSpinLockAtDpcLevel, 1),
 	IMPORT_SFUNC(KeReleaseSpinLockFromDpcLevel, 1),
 	IMPORT_SFUNC_MAP(KeAcquireSpinLockRaiseToDpc, KfAcquireSpinLock, 1),
-#endif
 	IMPORT_SFUNC_MAP(KeReleaseSpinLock, KfReleaseSpinLock, 1),
 	IMPORT_FFUNC(InterlockedIncrement, 1),
 	IMPORT_FFUNC(InterlockedDecrement, 1),
