@@ -362,26 +362,5 @@ sysctl.
 .Xr munmap 2 ,
 .Xr getpagesize 3
 .Sh BUGS
-.Fa len
-is limited to 2GB.  Mmapping slightly more than 2GB doesn't work, but
-it is possible to map a window of size (filesize % 2GB) for file sizes
-of slightly less than 2G, 4GB, 6GB and 8GB.
+None, zero, nada... hopefully.
 .Pp
-The limit is imposed for a variety of reasons.
-Most of them have to do
-with
-.Dx
-not wanting to use 64 bit offsets in the VM system due to
-the extreme performance penalty.
-So
-.Dx
-uses 32bit page indexes and
-this gives
-.Dx
-a maximum of 8TB filesizes.
-It's actually bugs in
-the filesystem code that causes the limit to be further restricted to
-1TB (loss of precision when doing blockno calculations).
-.Pp
-Another reason for the 2GB limit is that filesystem metadata can
-reside at negative offsets.
