@@ -826,7 +826,7 @@ hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
 	 * before.
 	 */
 	if (ondisk->vol_signature == HAMMER_FSBUF_VOLUME) {
-		kprintf("hammer_volume_add: Formatting of valid HAMMER volume "
+		kprintf("Formatting of valid HAMMER volume "
 			"%s denied. Erase with dd!\n", vol_name);
 		error = EFTYPE;
 		goto late_failure;
