@@ -659,11 +659,6 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 {
 	struct bigblock_stat *stat = (struct bigblock_stat*)data;
 
-	/*
-	 * No modifications to ondisk structures
-	 */
-	int testonly = (stat == NULL);
-
 	if (layer1) {
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
 			/*
@@ -674,9 +669,6 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 
 		KKASSERT((int)HAMMER_VOL_DECODE(layer1->phys_offset) ==
 			trans->hmp->volume_to_remove);
-
-		if (testonly)
-			return 0;
 
 		/*
 		 * Free the L1 entry
@@ -694,18 +686,14 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 		}
 
 		if (layer2->zone == HAMMER_ZONE_FREEMAP_INDEX) {
-			if (stat) {
-				++stat->total_bigblocks;
-			}
+			++stat->total_bigblocks;
 			return 0;
 		}
 
 		if (layer2->append_off == 0 &&
 		    layer2->bytes_free == HAMMER_BIGBLOCK_SIZE) {
-			if (stat) {
-				++stat->total_bigblocks;
-				++stat->total_free_bigblocks;
-			}
+			++stat->total_bigblocks;
+			++stat->total_free_bigblocks;
 			return 0;
 		}
 
@@ -720,6 +708,36 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 	return EINVAL;
 }
 
+/*
+ * Non-zero return value means we can't free the volume.
+ */
+static int
+test_free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
+	hammer_buffer_t *bufferp,
+	struct hammer_blockmap_layer1 *layer1,
+	struct hammer_blockmap_layer2 *layer2,
+	hammer_off_t phys_off,
+	hammer_off_t block_off __unused,
+	void *data)
+{
+	if (layer2 == NULL) {
+		return(0);  /* only layer2 needs to be tested */
+	}
+
+	if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
+		return(0);  /* beyond physically available space */
+	}
+	if (layer2->zone == HAMMER_ZONE_FREEMAP_INDEX) {
+		return(0);  /* big-block for layer1/2 */
+	}
+	if (layer2->append_off == 0 &&
+	    layer2->bytes_free == HAMMER_BIGBLOCK_SIZE) {
+		return(0);  /* big-block is 0% used */
+	}
+
+	return(EBUSY);  /* big-block has data */
+}
+
 static int
 hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume,
 	struct bigblock_stat *stat)
@@ -729,10 +747,9 @@ hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume,
 	stat->total_bigblocks = 0;
 	stat->total_free_bigblocks = 0;
 	stat->counter = 0;
-
-	error = hammer_iterate_l1l2_entries(trans, volume, free_callback, NULL);
+	error = hammer_iterate_l1l2_entries(trans, volume, test_free_callback, NULL);
 	if (error)
-		return error;
+		return error;  /* not ready to free */
 
 	error = hammer_iterate_l1l2_entries(trans, volume, free_callback, stat);
 	return error;
