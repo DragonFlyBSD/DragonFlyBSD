@@ -1063,8 +1063,7 @@ struct dadq {
 	struct callout dad_timer_ch;
 };
 
-static struct dadq_head dadq;
-static int dad_init = 0;
+static struct dadq_head dadq = TAILQ_HEAD_INITIALIZER(dadq);
 
 static struct dadq *
 nd6_dad_find(struct ifaddr *ifa)
@@ -1102,11 +1101,6 @@ nd6_dad_start(struct ifaddr *ifa,
 {
 	struct in6_ifaddr *ia = (struct in6_ifaddr *)ifa;
 	struct dadq *dp;
-
-	if (!dad_init) {
-		TAILQ_INIT(&dadq);
-		dad_init++;
-	}
 
 	/*
 	 * If we don't need DAD, don't do it.
@@ -1188,8 +1182,6 @@ nd6_dad_stop(struct ifaddr *ifa)
 {
 	struct dadq *dp;
 
-	if (!dad_init)
-		return;
 	dp = nd6_dad_find(ifa);
 	if (!dp) {
 		/* DAD wasn't started yet */
