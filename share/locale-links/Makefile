@@ -17,15 +17,36 @@ UTF8=	af_ZA am_ET be_BY bg_BG ca_AD ca_ES ca_FR ca_IT \
 	zh_Hant_TW
 
 EURO=	af_ZA ca_AD ca_ES ca_FR ca_IT da_DK de_AT de_CH \
-	de_DE en_AU en_CA en_GB en_NZ en_US es_ES et_EE \
-	eu_ES fi_FI fr_BE fr_CA fr_CH fr_FR is_IS it_CH \
-	it_IT la_LN nb_NO nl_BE nl_NL nn_NO pt_PT sv_SE
+	de_DE en_AU en_CA en_GB en_NZ en_US en_ZA es_ES \
+	et_EE eu_ES fi_FI fr_BE fr_CA fr_CH fr_FR is_IS \
+	it_CH it_IT la_LN nb_NO nl_BE nl_NL nn_NO pt_PT \
+	sv_SE
+
+STD1=	${EURO:Net_EE} pt_BR la_LN
+STD2=	cs_CZ hr_HR hu_HU pl_PL ro_RO sk_SK sl_SI sr_Latn_RS
+STD5=	be_BY ru_RU uk_UA sr_Cyrl_RS
+MANUAL=	lt_LT el_GR tr_TR lv_LV
 
 LOCALEDIR=	/usr/share/locale
 
-SYMLINKS=	la_LN.ISO8859-1 ${LOCALEDIR}/la_LN
+SYMLINKS=	lt_LT.ISO8859-4 ${LOCALEDIR}/lt_LT \
+		el_GR.ISO8859-7 ${LOCALEDIR}/el_GR \
+		tr_TR.ISO8859-9 ${LOCALEDIR}/tr_TR \
+		lv_LV.ISO8859-13 ${LOCALEDIR}/lv_LV
+.for symdir in ${STD1}
+SYMLINKS+=	${symdir}.ISO8859-1 ${LOCALEDIR}/${symdir}
+.endfor
+.for symdir in ${STD2}
+SYMLINKS+=	${symdir}.ISO8859-2 ${LOCALEDIR}/${symdir}
+.endfor
+.for symdir in ${STD5}
+SYMLINKS+=	${symdir}.ISO8859-5 ${LOCALEDIR}/${symdir}
+.endfor
 .for symdir in ${UTF8}
+.  if ! (${STD1:M${symdir}} || ${STD2:M${symdir}} || \
+         ${STD5:M${symdir}} || ${MANUAL:M${symdir}})
 SYMLINKS+=	${symdir}.UTF-8 ${LOCALEDIR}/${symdir}
+.  endif
 SYMLINKS+=	${symdir}.UTF-8 ${LOCALEDIR}/${symdir}.UTF8
 .endfor
 .for symdir in ${EURO}
