@@ -1,6 +1,5 @@
 # This creates short versions of locales as symlinks to full versions
-# e.g. en_GB is a symlink to en_GB.UTF-8.
-# The UTF-8 version will always be the target if available
+# e.g. zh_Hant_TW is a symlink to zh_Hant_TW.UTF-8.
 
 UTF8=	af_ZA am_ET be_BY bg_BG ca_AD ca_ES ca_FR ca_IT \
 	cs_CZ da_DK de_AT de_CH de_DE el_GR en_AU en_CA \
@@ -29,10 +28,13 @@ MANUAL=	lt_LT el_GR tr_TR lv_LV
 
 LOCALEDIR=	/usr/share/locale
 
-SYMLINKS=	lt_LT.ISO8859-4 ${LOCALEDIR}/lt_LT \
-		el_GR.ISO8859-7 ${LOCALEDIR}/el_GR \
-		tr_TR.ISO8859-9 ${LOCALEDIR}/tr_TR \
-		lv_LV.ISO8859-13 ${LOCALEDIR}/lv_LV
+SYMLINKS=	lt_LT.ISO8859-4  ${LOCALEDIR}/lt_LT \
+		el_GR.ISO8859-7  ${LOCALEDIR}/el_GR \
+		tr_TR.ISO8859-9  ${LOCALEDIR}/tr_TR \
+		lv_LV.ISO8859-13 ${LOCALEDIR}/lv_LV \
+		en_US.ISO8859-1  ${LOCALEDIR}/en_US.ISO-8859-1 \
+		en_US.ISO8859-15 ${LOCALEDIR}/en_US.ISO-8859-15 \
+		ja_JP.eucJP      ${LOCALEDIR}/ja_JP.eucjp
 .for symdir in ${STD1}
 SYMLINKS+=	${symdir}.ISO8859-1 ${LOCALEDIR}/${symdir}
 .endfor
