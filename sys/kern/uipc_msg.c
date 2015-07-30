@@ -58,21 +58,6 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, async_rcvd_drop_race, CTLFLAG_RW,
     &async_rcvd_drop_race, 0, "# of asynchronized pru_rcvd msg drop races");
 
 /*
- * Abort a socket and free it.  Called from soabort() only.  soabort()
- * got a ref on the socket which we must free on reply.
- */
-void
-so_pru_abort(struct socket *so)
-{
-	struct netmsg_pru_abort msg;
-
-	netmsg_init(&msg.base, so, &curthread->td_msgport,
-		    0, so->so_proto->pr_usrreqs->pru_abort);
-	lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
-	sofree(msg.base.nm_so);
-}
-
-/*
  * Abort a socket and free it, asynchronously.  Called from
  * soabort_async() only.  soabort_async() got a ref on the
  * socket which we must free on reply.
@@ -91,6 +76,7 @@ so_pru_abort_async(struct socket *so)
 /*
  * Abort a socket and free it.  Called from soabort_oncpu() only.
  * Caller must make sure that the current CPU is inpcb's owner CPU.
+ * soabort_oncpu() got a ref on the socket which we must free.
  */
 void
 so_pru_abort_direct(struct socket *so)
