@@ -3,12 +3,12 @@
 
 COMPATIBILITY_H = config/abi/compatibility.h
 CLOCALE_CC = config/locale/dragonfly/c_locale.cc
-CLOCALE_H = config/locale/generic/c_locale.h
+CLOCALE_H = config/locale/dragonfly/c_locale.h
 CLOCALE_INTERNAL_H = config/locale/generic/c++locale_internal.h
 CMESSAGES_CC = config/locale/generic/messages_members.cc
 CMESSAGES_H = config/locale/generic/messages_members.h
-CMONEY_CC = config/locale/generic/monetary_members.cc
-CNUMERIC_CC = config/locale/generic/numeric_members.cc
+CMONEY_CC = config/locale/dragonfly/monetary_members.cc
+CNUMERIC_CC = config/locale/dragonfly/numeric_members.cc
 ATOMIC_WORD_SRCDIR = config/cpu/generic
 ABI_TWEAKS_SRCDIR = config/cpu/generic
 CPU_DEFINES_SRCDIR = config/cpu/generic
@@ -61,9 +61,9 @@ host_headers_extra = \
 	c++config.h \
 	${glibcxx_srcdir}/config/allocator/new_allocator_base.h \
 	${glibcxx_srcdir}/config/io/c_io_stdio.h \
-	${glibcxx_srcdir}/config/locale/generic/c_locale.h \
+	${glibcxx_srcdir}/config/locale/dragonfly/c_locale.h \
 	${glibcxx_srcdir}/config/locale/generic/messages_members.h \
-	${glibcxx_srcdir}/config/locale/generic/time_members.h \
+	${glibcxx_srcdir}/config/locale/dragonfly/time_members.h \
 	${glibcxx_srcdir}/${CPU_OPT_BITS_RANDOM} \
 	gthr.h \
 	gthr-default.h \

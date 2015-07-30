@@ -19,7 +19,8 @@ CXXFLAGS+=	-ffunction-sections -fdata-sections
 SHARED_CXXFLAGS=	-D_GLIBCXX_SHARED
 
 SRCS=	${libc__98convenience_la_SOURCES}
-COW=	collate.x messages.x monetary.x numeric.x
+COWD=	collate.x monetary.x numeric.x
+COWG=	messages.x
 GENCC=	atomicity.cc basic_file.cc c++locale.cc ${COW:.x=_members_cow.cc}
 
 FLAGS_GROUPS=		gnu11 cow concept explicit
@@ -42,8 +43,13 @@ explicit_FLAGS_FILES+=	${F}
 . endif
 .endfor
 
-.for F in ${COW}
+.for F in ${COWG}
 ${F:.x=_members_cow.cc}: ${SRCDIR}/config/locale/generic/${F:.x=_members.cc}
+	cp ${.ALLSRC} ${.TARGET}
+.endfor
+
+.for F in ${COWD}
+${F:.x=_members_cow.cc}: ${SRCDIR}/config/locale/dragonfly/${F:.x=_members.cc}
 	cp ${.ALLSRC} ${.TARGET}
 .endfor
 
