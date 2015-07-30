@@ -665,13 +665,6 @@ discard:
  * at any given moment.
  */
 void
-soabort(struct socket *so)
-{
-	soreference(so);
-	so_pru_abort(so);
-}
-
-void
 soabort_async(struct socket *so)
 {
 	soreference(so);
