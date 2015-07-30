@@ -419,16 +419,16 @@ sodiscard(struct socket *so)
 
 		while ((sp = TAILQ_FIRST(&so->so_incomp)) != NULL) {
 			TAILQ_REMOVE(&so->so_incomp, sp, so_list);
+			so->so_incqlen--;
 			soclrstate(sp, SS_INCOMP);
 			sp->so_head = NULL;
-			so->so_incqlen--;
 			soabort_async(sp);
 		}
 		while ((sp = TAILQ_FIRST(&so->so_comp)) != NULL) {
 			TAILQ_REMOVE(&so->so_comp, sp, so_list);
+			so->so_qlen--;
 			soclrstate(sp, SS_COMP);
 			sp->so_head = NULL;
-			so->so_qlen--;
 			soabort_async(sp);
 		}
 	}
