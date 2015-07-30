@@ -1,38 +1,38 @@
-/*
- * Sun RPC is a product of Sun Microsystems, Inc. and is provided for
- * unrestricted use provided that this legend is included on all tape
- * media and as a part of the software program in whole or part.  Users
- * may copy or modify Sun RPC without charge, but are not authorized
- * to license or distribute it to anyone else except as part of a product or
- * program developed by the user.
+/*-
+ * Copyright (c) 2010, Oracle America, Inc.
  *
- * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
  *
- * Sun RPC is provided with no support and without any obligation on the
- * part of Sun Microsystems, Inc. to assist in its use, correction,
- * modification or enhancement.
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above
+ *       copyright notice, this list of conditions and the following
+ *       disclaimer in the documentation and/or other materials
+ *       provided with the distribution.
+ *     * Neither the name of the "Oracle America, Inc." nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
  *
- * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
- * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
- * OR ANY PART THEREOF.
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *   FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *   COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ *   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ *   DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ *   GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ *   WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * In no event will Sun Microsystems, Inc. be liable for any lost revenue
- * or profits or other special, indirect and consequential damages, even if
- * Sun has been advised of the possibility of such damages.
- *
- * Sun Microsystems, Inc.
- * 2550 Garcia Avenue
- * Mountain View, California  94043
- *
- * $FreeBSD: src/lib/libc/xdr/xdr_sizeof.c,v 1.5 2003/03/07 13:19:40 nectar Exp $
+ * $FreeBSD: head/lib/libc/xdr/xdr_sizeof.c 283835 2015-05-31 19:09:24Z rodrigc $
  */
 
 /*
  * xdr_sizeof.c
- *
- * Copyright 1990 Sun Microsystems, Inc.
  *
  * General purpose routine to see how much space something will use
  * when serialized using XDR.
@@ -47,7 +47,7 @@
 
 /* ARGSUSED */
 static bool_t
-x_putlong(XDR *xdrs, long *longp __unused)
+x_putlong(XDR *xdrs, const long *longp __unused)
 {
 	xdrs->x_handy += BYTES_PER_XDR_UNIT;
 	return (TRUE);
@@ -55,7 +55,7 @@ x_putlong(XDR *xdrs, long *longp __unused)
 
 /* ARGSUSED */
 static bool_t
-x_putbytes(XDR *xdrs, char *bp __unused, u_int len)
+x_putbytes(XDR *xdrs, const char *bp __unused, u_int len)
 {
 	xdrs->x_handy += len;
 	return (TRUE);
@@ -84,7 +84,7 @@ x_inline(XDR *xdrs, u_int len)
 	if (xdrs->x_op != XDR_ENCODE) {
 		return (NULL);
 	}
-	if (len < (u_int)xdrs->x_base) {
+	if (len < (u_int)(uintptr_t)xdrs->x_base) {
 		/* x_private was already allocated */
 		xdrs->x_handy += len;
 		return ((int32_t *) xdrs->x_private);
@@ -96,7 +96,7 @@ x_inline(XDR *xdrs, u_int len)
 			xdrs->x_base = 0;
 			return (NULL);
 		}
-		xdrs->x_base = (caddr_t) len;
+		xdrs->x_base = (caddr_t)(uintptr_t)len;
 		xdrs->x_handy += len;
 		return ((int32_t *) xdrs->x_private);
 	}

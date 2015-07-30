@@ -29,7 +29,6 @@
  *	from: @(#)xdr.h	2.2 88/07/29 4.0 RPCSRC
  * $NetBSD: xdr.h,v 1.19 2000/07/17 05:00:45 matt Exp $
  * $FreeBSD: src/include/rpc/xdr.h,v 1.23 2003/03/07 13:19:40 nectar Exp $
- * $DragonFly: src/include/rpc/xdr.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
  */
 
 /*
@@ -320,6 +319,7 @@ extern bool_t	xdr_hyper(XDR *, quad_t *);
 extern bool_t	xdr_u_hyper(XDR *, u_quad_t *);
 extern bool_t	xdr_longlong_t(XDR *, quad_t *);
 extern bool_t	xdr_u_longlong_t(XDR *, u_quad_t *);
+extern unsigned long xdr_sizeof(xdrproc_t, void *);
 __END_DECLS
 
 /*
