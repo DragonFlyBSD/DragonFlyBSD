@@ -224,8 +224,13 @@ soaccept_predicate(struct netmsg_so_notify *msg)
 		TAILQ_REMOVE(&head->so_comp, so, so_list);
 		head->so_qlen--;
 		soclrstate(so, SS_COMP);
-		so->so_head = NULL;
+
+		/*
+		 * Keep a reference before clearing the so_head
+		 * to avoid racing socket close in netisr.
+		 */
 		soreference(so);
+		so->so_head = NULL;
 
 		lwkt_relpooltoken(head);
 

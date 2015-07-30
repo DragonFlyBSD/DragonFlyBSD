@@ -437,8 +437,7 @@ sonewconn_faddr(struct socket *head, int connstatus,
 			TAILQ_REMOVE(&head->so_incomp, sp, so_list);
 			head->so_incqlen--;
 			soclrstate(sp, SS_INCOMP);
-			sp->so_head = NULL;
-			soabort_async(sp);
+			soabort_async(sp, TRUE);
 		}
 		TAILQ_INSERT_TAIL(&head->so_incomp, so, so_list);
 		sosetstate(so, SS_INCOMP);

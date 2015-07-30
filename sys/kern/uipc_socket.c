@@ -421,15 +421,13 @@ sodiscard(struct socket *so)
 			TAILQ_REMOVE(&so->so_incomp, sp, so_list);
 			so->so_incqlen--;
 			soclrstate(sp, SS_INCOMP);
-			sp->so_head = NULL;
-			soabort_async(sp);
+			soabort_async(sp, TRUE);
 		}
 		while ((sp = TAILQ_FIRST(&so->so_comp)) != NULL) {
 			TAILQ_REMOVE(&so->so_comp, sp, so_list);
 			so->so_qlen--;
 			soclrstate(sp, SS_COMP);
-			sp->so_head = NULL;
-			soabort_async(sp);
+			soabort_async(sp, TRUE);
 		}
 	}
 	lwkt_relpooltoken(so);
@@ -665,9 +663,15 @@ discard:
  * at any given moment.
  */
 void
-soabort_async(struct socket *so)
+soabort_async(struct socket *so, boolean_t clr_head)
 {
+	/*
+	 * Keep a reference before clearing the so_head
+	 * to avoid racing socket close in netisr.
+	 */
 	soreference(so);
+	if (clr_head)
+		so->so_head = NULL;
 	so_pru_abort_async(so);
 }
 
