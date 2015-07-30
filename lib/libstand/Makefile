@@ -46,11 +46,6 @@ SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
         strcmp.c strcpy.c strcspn.c strlen.c strncat.c strncmp.c strncpy.c \
 	strpbrk.c strrchr.c strsep.c strspn.c strstr.c strtok.c swab.c
 .endif
-.PATH:  ${.CURDIR}/../libc/quad
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=  ucmpdi2.c
-.endif
-
 .PATH:	${.CURDIR}/../../sys/libkern
 SRCS+=  icrc32.c
 

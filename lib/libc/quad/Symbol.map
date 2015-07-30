@@ -1,9 +1,0 @@
-DFprivate_1.0 {
-	__cmpdi2;
-	__divdi3;
-	__moddi3;
-	__qdivrem;
-	__ucmpdi2;
-	__udivdi3;
-	__umoddi3;
-};
