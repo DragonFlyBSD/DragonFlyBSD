@@ -114,8 +114,8 @@ struct hammer_base_elm {
 typedef struct hammer_base_elm *hammer_base_elm_t;
 
 /*
- * Localization has sorting priority over the obj_id,rec_type,key and
- * is used to localize inodes for very fast directory scans.
+ * Localization has sorting priority over the obj_id,rec_type,key,tid
+ * and is used to localize inodes for very fast directory scans.
  *
  * Localization can also be used to create pseudo-filesystems within
  * a HAMMER filesystem.  Pseudo-filesystems would be suitable
