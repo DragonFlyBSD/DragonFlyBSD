@@ -56,6 +56,8 @@
 #include <net/if_types.h>
 #include <net/if_dl.h>
 #include <net/route.h>
+#include <net/netisr2.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -82,13 +84,17 @@
 #define SDL(s) ((struct sockaddr_dl *)s)
 
 struct dadq;
-static struct dadq *nd6_dad_find (struct ifaddr *);
-static void nd6_dad_starttimer (struct dadq *, int);
-static void nd6_dad_stoptimer (struct dadq *);
-static void nd6_dad_timer (struct ifaddr *);
-static void nd6_dad_ns_output (struct dadq *, struct ifaddr *);
-static void nd6_dad_ns_input (struct ifaddr *);
-static void nd6_dad_na_input (struct ifaddr *);
+static struct dadq *nd6_dad_find(struct ifaddr *);
+static void nd6_dad_starttimer(struct dadq *, int);
+static void nd6_dad_stoptimer(struct dadq *);
+static void nd6_dad_timer(void *);
+static void nd6_dad_timer_handler(netmsg_t);
+static void nd6_dad_ns_output(struct dadq *, struct ifaddr *);
+static void nd6_dad_ns_input(struct ifaddr *);
+static void nd6_dad_na_input(struct ifaddr *);
+static struct dadq *nd6_dad_create(struct ifaddr *);
+static void nd6_dad_destroy(struct dadq *);
+static void nd6_dad_duplicated(struct ifaddr *);
 
 static int dad_ignore_ns = 0;	/* ignore NS in DAD - specwise incorrect*/
 static int dad_maxtry = 15;	/* max # of *tries* to transmit DAD packet */
@@ -1051,7 +1057,11 @@ nd6_ifptomac(struct ifnet *ifp)
 	}
 }
 
-TAILQ_HEAD(dadq_head, dadq);
+struct netmsg_dad {
+	struct netmsg_base	base;
+	struct dadq		*dadq;
+};
+
 struct dadq {
 	TAILQ_ENTRY(dadq) dad_list;
 	struct ifaddr *dad_ifa;
@@ -1061,7 +1071,9 @@ struct dadq {
 	int dad_ns_icount;
 	int dad_na_icount;
 	struct callout dad_timer_ch;
+	struct netmsg_dad dad_nmsg;
 };
+TAILQ_HEAD(dadq_head, dadq);
 
 static struct dadq_head dadq = TAILQ_HEAD_INITIALIZER(dadq);
 
@@ -1069,6 +1081,8 @@ static struct dadq *
 nd6_dad_find(struct ifaddr *ifa)
 {
 	struct dadq *dp;
+
+	ASSERT_IN_NETISR(0);
 
 	TAILQ_FOREACH(dp, &dadq, dad_list) {
 		if (dp->dad_ifa == ifa)
@@ -1080,15 +1094,14 @@ nd6_dad_find(struct ifaddr *ifa)
 static void
 nd6_dad_starttimer(struct dadq *dp, int ticks)
 {
-
-	callout_reset(&dp->dad_timer_ch, ticks,
-	    (void (*) (void *))nd6_dad_timer, (void *)dp->dad_ifa);
+	ASSERT_IN_NETISR(0);
+	callout_reset(&dp->dad_timer_ch, ticks, nd6_dad_timer, dp);
 }
 
 static void
 nd6_dad_stoptimer(struct dadq *dp)
 {
-
+	ASSERT_IN_NETISR(0);
 	callout_stop(&dp->dad_timer_ch);
 }
 
@@ -1101,6 +1114,8 @@ nd6_dad_start(struct ifaddr *ifa,
 {
 	struct in6_ifaddr *ia = (struct in6_ifaddr *)ifa;
 	struct dadq *dp;
+
+	ASSERT_IN_NETISR(0);
 
 	/*
 	 * If we don't need DAD, don't do it.
@@ -1133,24 +1148,16 @@ nd6_dad_start(struct ifaddr *ifa,
 		return;
 	}
 
-	dp = kmalloc(sizeof(*dp), M_IP6NDP, M_INTWAIT | M_ZERO);
-	callout_init(&dp->dad_timer_ch);
-	TAILQ_INSERT_TAIL(&dadq, dp, dad_list);
-
+	dp = nd6_dad_create(ifa);
 	nd6log((LOG_DEBUG, "%s: starting DAD for %s\n", if_name(ifa->ifa_ifp),
 	    ip6_sprintf(&ia->ia_addr.sin6_addr)));
 
 	/*
-	 * Send NS packet for DAD, ip6_dad_count times.
+	 * Send NS packet for DAD, dp->dad_count times.
 	 * Note that we must delay the first transmission, if this is the
 	 * first packet to be sent from the interface after interface
 	 * (re)initialization.
 	 */
-	dp->dad_ifa = ifa;
-	_IFAREF(ifa, 0);	/* just for safety */
-	dp->dad_count = ip6_dad_count;
-	dp->dad_ns_icount = dp->dad_na_icount = 0;
-	dp->dad_ns_ocount = dp->dad_ns_tcount = 0;
 	if (tick == NULL) {
 		nd6_dad_ns_output(dp, ifa);
 		nd6_dad_starttimer(dp,
@@ -1168,70 +1175,119 @@ nd6_dad_start(struct ifaddr *ifa,
 }
 
 /*
- * terminate DAD unconditionally.  used for address removals.
+ * Terminate DAD unconditionally.  Used for address removals.
  */
 void
 nd6_dad_stop(struct ifaddr *ifa)
 {
 	struct dadq *dp;
 
+	ASSERT_IN_NETISR(0);
+
 	dp = nd6_dad_find(ifa);
 	if (!dp) {
 		/* DAD wasn't started yet */
 		return;
 	}
+	nd6_dad_destroy(dp);
+}
 
-	nd6_dad_stoptimer(dp);
+static struct dadq *
+nd6_dad_create(struct ifaddr *ifa)
+{
+	struct netmsg_dad *dm;
+	struct dadq *dp;
 
-	TAILQ_REMOVE(&dadq, dp, dad_list);
-	kfree(dp, M_IP6NDP);
-	dp = NULL;
-	_IFAFREE(ifa, 0);
+	ASSERT_IN_NETISR(0);
+
+	dp = kmalloc(sizeof(*dp), M_IP6NDP, M_INTWAIT | M_ZERO);
+	callout_init_mp(&dp->dad_timer_ch);
+
+	dm = &dp->dad_nmsg;
+	netmsg_init(&dm->base, NULL, &netisr_adone_rport,
+	    MSGF_DROPABLE | MSGF_PRIORITY, nd6_dad_timer_handler);
+	dm->dadq = dp;
+
+	dp->dad_ifa = ifa;
+	IFAREF(ifa);	/* just for safety */
+
+	/* Send NS packet for DAD, ip6_dad_count times. */
+	dp->dad_count = ip6_dad_count;
+
+	TAILQ_INSERT_TAIL(&dadq, dp, dad_list);
+
+	return dp;
 }
 
 static void
-nd6_dad_timer(struct ifaddr *ifa)
+nd6_dad_destroy(struct dadq *dp)
 {
+	struct lwkt_msg *lmsg = &dp->dad_nmsg.base.lmsg;
+
+	ASSERT_IN_NETISR(0);
+
+	TAILQ_REMOVE(&dadq, dp, dad_list);
+
+	nd6_dad_stoptimer(dp);
+
+	crit_enter();
+	if ((lmsg->ms_flags & MSGF_DONE) == 0)
+		lwkt_dropmsg(lmsg);
+	crit_exit();
+
+	IFAFREE(dp->dad_ifa);
+	kfree(dp, M_IP6NDP);
+}
+
+static void
+nd6_dad_timer(void *xdp)
+{
+	struct dadq *dp = xdp;
+	struct lwkt_msg *lmsg = &dp->dad_nmsg.base.lmsg;
+
+	KASSERT(mycpuid == 0, ("dad timer not on cpu0"));
+
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), lmsg);
+	crit_exit();
+}
+
+static void
+nd6_dad_timer_handler(netmsg_t msg)
+{
+	struct netmsg_dad *dm = (struct netmsg_dad *)msg;
+	struct dadq *dp = dm->dadq;
+	struct ifaddr *ifa = dp->dad_ifa;
 	struct in6_ifaddr *ia = (struct in6_ifaddr *)ifa;
-	struct dadq *dp;
 
-	mtx_lock(&nd6_mtx);
+	ASSERT_IN_NETISR(0);
 
-	/* Sanity check */
-	if (ia == NULL) {
-		log(LOG_ERR, "nd6_dad_timer: called with null parameter\n");
-		goto done;
-	}
-	dp = nd6_dad_find(ifa);
-	if (dp == NULL) {
-		log(LOG_ERR, "nd6_dad_timer: DAD structure not found\n");
-		goto done;
-	}
+	/* Reply ASAP */
+	crit_enter();
+	lwkt_replymsg(&dm->base.lmsg, 0);
+	crit_exit();
+
 	if (ia->ia6_flags & IN6_IFF_DUPLICATED) {
 		log(LOG_ERR, "nd6_dad_timer: called with duplicated address "
 			"%s(%s)\n",
 			ip6_sprintf(&ia->ia_addr.sin6_addr),
 			ifa->ifa_ifp ? if_name(ifa->ifa_ifp) : "???");
-		goto done;
+		goto destroy;
 	}
 	if (!(ia->ia6_flags & IN6_IFF_TENTATIVE)) {
 		log(LOG_ERR, "nd6_dad_timer: called with non-tentative address "
 			"%s(%s)\n",
 			ip6_sprintf(&ia->ia_addr.sin6_addr),
 			ifa->ifa_ifp ? if_name(ifa->ifa_ifp) : "???");
-		goto done;
+		goto destroy;
 	}
 
-	/* timeouted with IFF_{RUNNING,UP} check */
+	/* Timed out with IFF_{RUNNING,UP} check */
 	if (dp->dad_ns_tcount > dad_maxtry) {
 		nd6log((LOG_INFO, "%s: could not run DAD, driver problem?\n",
 			if_name(ifa->ifa_ifp)));
-
-		TAILQ_REMOVE(&dadq, dp, dad_list);
-		kfree(dp, M_IP6NDP);
-		dp = NULL;
-		_IFAFREE(ifa, 0);
-		goto done;
+		goto destroy;
 	}
 
 	/* Need more checks? */
@@ -1290,7 +1346,7 @@ nd6_dad_timer(struct ifaddr *ifa)
 		}
 
 		if (duplicate) {
-			/* (*dp) will be freed in nd6_dad_duplicated() */
+			/* dp will be freed in nd6_dad_duplicated() */
 			dp = NULL;
 			nd6_dad_duplicated(ifa);
 		} else {
@@ -1299,28 +1355,25 @@ nd6_dad_timer(struct ifaddr *ifa)
 			 * duplicated address found.
 			 */
 			ia->ia6_flags &= ~IN6_IFF_TENTATIVE;
-
 			nd6log((LOG_DEBUG,
 			    "%s: DAD complete for %s - no duplicates found\n",
 			    if_name(ifa->ifa_ifp),
 			    ip6_sprintf(&ia->ia_addr.sin6_addr)));
-
-			TAILQ_REMOVE(&dadq, dp, dad_list);
-			kfree(dp, M_IP6NDP);
-			dp = NULL;
-			_IFAFREE(ifa, 0);
+			goto destroy;
 		}
 	}
-
-done:
-	mtx_unlock(&nd6_mtx);
+	return;
+destroy:
+	nd6_dad_destroy(dp);
 }
 
-void
+static void
 nd6_dad_duplicated(struct ifaddr *ifa)
 {
 	struct in6_ifaddr *ia = (struct in6_ifaddr *)ifa;
 	struct dadq *dp;
+
+	ASSERT_IN_NETISR(0);
 
 	dp = nd6_dad_find(ifa);
 	if (dp == NULL) {
@@ -1328,6 +1381,9 @@ nd6_dad_duplicated(struct ifaddr *ifa)
 		return;
 	}
 
+	/*
+	 * We are done with DAD, with duplicated address found. (failure)
+	 */
 	log(LOG_ERR, "%s: DAD detected duplicate IPv6 address %s: "
 	    "NS in/out=%d/%d, NA in=%d\n",
 	    if_name(ifa->ifa_ifp), ip6_sprintf(&ia->ia_addr.sin6_addr),
@@ -1336,18 +1392,12 @@ nd6_dad_duplicated(struct ifaddr *ifa)
 	ia->ia6_flags &= ~IN6_IFF_TENTATIVE;
 	ia->ia6_flags |= IN6_IFF_DUPLICATED;
 
-	/* We are done with DAD, with duplicated address found. (failure) */
-	nd6_dad_stoptimer(dp);
-
 	log(LOG_ERR, "%s: DAD complete for %s - duplicate found\n",
 	    if_name(ifa->ifa_ifp), ip6_sprintf(&ia->ia_addr.sin6_addr));
 	log(LOG_ERR, "%s: manual intervention required\n",
 	    if_name(ifa->ifa_ifp));
 
-	TAILQ_REMOVE(&dadq, dp, dad_list);
-	kfree(dp, M_IP6NDP);
-	dp = NULL;
-	_IFAFREE(ifa, 0);
+	nd6_dad_destroy(dp);
 }
 
 static void
@@ -1355,6 +1405,8 @@ nd6_dad_ns_output(struct dadq *dp, struct ifaddr *ifa)
 {
 	struct in6_ifaddr *ia = (struct in6_ifaddr *)ifa;
 	struct ifnet *ifp = ifa->ifa_ifp;
+
+	ASSERT_IN_NETISR(0);
 
 	dp->dad_ns_tcount++;
 	if (!(ifp->if_flags & IFF_UP)) {
@@ -1381,6 +1433,8 @@ nd6_dad_ns_input(struct ifaddr *ifa)
 	const struct in6_addr *taddr6;
 	struct dadq *dp;
 	int duplicate;
+
+	ASSERT_IN_NETISR(0);
 
 	if (!ifa)
 		panic("ifa == NULL in nd6_dad_ns_input");
@@ -1425,6 +1479,8 @@ static void
 nd6_dad_na_input(struct ifaddr *ifa)
 {
 	struct dadq *dp;
+
+	ASSERT_IN_NETISR(0);
 
 	if (!ifa)
 		panic("ifa == NULL in nd6_dad_na_input");
