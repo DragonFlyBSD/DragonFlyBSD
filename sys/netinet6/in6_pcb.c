@@ -998,8 +998,7 @@ in6_pcbpurgeif0(struct inpcbinfo *pcbinfo, struct ifnet *ifp)
 	 * In this case, the pcbinfo must be able to be shared, i.e.
 	 * pcbinfo->infotoken is not NULL.
 	 */
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 	KASSERT(pcbinfo->cpu == 0 || pcbinfo->infotoken != NULL,
 	    ("pcbinfo could not be shared"));
 

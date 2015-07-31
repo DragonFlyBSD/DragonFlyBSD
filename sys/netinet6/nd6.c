@@ -432,8 +432,7 @@ nd6_timer_dispatch(netmsg_t nmsg)
 	struct ifnet *ifp;
 	struct in6_ifaddr *ia6, *nia6;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
@@ -1826,8 +1825,7 @@ nd6_slowtimo_dispatch(netmsg_t nmsg)
 	struct nd_ifinfo *nd6if;
 	int i;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */

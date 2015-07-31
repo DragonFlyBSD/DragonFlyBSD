@@ -741,8 +741,7 @@ if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 	struct ifnet *ifp = lmsg->u.ms_resultp;
 	struct ifaddr_container *ifac, *next;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	/*
 	 * The ifaddr processing in the following loop will block,
@@ -1653,8 +1652,7 @@ if_slowtimo_dispatch(netmsg_t nmsg)
 	const struct ifnet_array *arr;
 	int i;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	crit_enter_gd(gd);
 	lwkt_replymsg(&nmsg->lmsg, 0);  /* reply ASAP */

@@ -853,8 +853,7 @@ tcp_close(struct tcpcb *tp)
 		 * Currently the inheritance could only happen on the
 		 * listen(2) sockets w/ SO_REUSEPORT set.
 		 */
-		KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-		    ("listen socket close not in netisr0"));
+		ASSERT_IN_NETISR(0);
 		inp_inh = in_pcblocalgroup_last(&tcbinfo[0], inp);
 		if (inp_inh != NULL)
 			tp_inh = intotcpcb(inp_inh);
@@ -882,7 +881,7 @@ tcp_close(struct tcpcb *tp)
 		struct netmsg_listen_detach nmsg;
 
 		KKASSERT(so->so_port == netisr_cpuport(0));
-		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
+		ASSERT_IN_NETISR(0);
 		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
 
 		netmsg_init(&nmsg.base, NULL, &curthread->td_msgport,
@@ -1480,7 +1479,7 @@ tcp_ctlinput(netmsg_t msg)
 	} else {
 		struct netmsg_tcp_notify *nm;
 
-		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
+		ASSERT_IN_NETISR(0);
 		nm = kmalloc(sizeof(*nm), M_LWKTMSG, M_INTWAIT);
 		netmsg_init(&nm->base, NULL, &netisr_afree_rport,
 			    0, tcp_notifyall_oncpu);

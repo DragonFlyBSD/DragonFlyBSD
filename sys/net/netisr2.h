@@ -125,9 +125,12 @@ netisr_hashport(uint16_t hash)
 	return netisr_cpuport(netisr_hashcpu(hash));
 }
 
+#define IS_NETISR(td, n)	(&(td)->td_msgport == netisr_cpuport((n)))
+#define ASSERT_IS_NETISR(td, n)	\
+	KASSERT(IS_NETISR((td), (n)), ("thread %p is not netisr%d", (td), (n)))
+#define ASSERT_IN_NETISR(n)	ASSERT_IS_NETISR(curthread, (n))
 #define ASSERT_CANDOMSG_NETISR0(td) \
-	KASSERT((td)->td_type != TD_TYPE_NETISR || \
-	    &(td)->td_msgport == netisr_cpuport(0), \
-	    ("can't domsg to netisr0 in thread %p", (td)))
+	KASSERT((td)->td_type != TD_TYPE_NETISR || IS_NETISR((td), 0), \
+	    ("can't domsg to netisr0 from thread %p", (td)))
 
 #endif	/* _NET_NETISR2_H_ */

@@ -2429,8 +2429,7 @@ in6_if_up_dispatch(netmsg_t nmsg)
 	struct in6_ifaddr *ia;
 	int dad_delay;		/* delay ticks before DAD output */
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	/*
 	 * special cases, like 6to4, are handled in in6_ifattach
@@ -2511,8 +2510,7 @@ in6_setmaxmtu(void)
 	const struct ifnet_array *arr;
 	int i;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	arr = ifnet_array_get();
 	for (i = 0; i < arr->ifnet_count; ++i) {

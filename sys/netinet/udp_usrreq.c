@@ -306,8 +306,7 @@ check_multicast_membership(const struct ip *ip, const struct inpcb *inp,
 		return (0);
 	}
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("multicast input not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	mopt = inp->inp_moptions;
 	if (mopt == NULL)
@@ -824,7 +823,7 @@ udp_ctlinput(netmsg_t msg)
 	} else {
 		struct netmsg_udp_notify *nm;
 
-		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
+		ASSERT_IN_NETISR(0);
 		nm = kmalloc(sizeof(*nm), M_LWKTMSG, M_INTWAIT);
 		netmsg_init(&nm->base, NULL, &netisr_afree_rport,
 			    0, udp_notifyall_oncpu);

@@ -352,8 +352,7 @@ tbr_timeout_dispatch(netmsg_t nmsg)
 	const struct ifnet_array *arr;
 	int active, i;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */

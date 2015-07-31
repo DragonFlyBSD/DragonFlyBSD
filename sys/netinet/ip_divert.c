@@ -170,8 +170,7 @@ div_packet(struct mbuf *m, int incoming, int port)
 	struct divert_info *divinfo;
 	u_int16_t nport;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	/* Locate the divert info */
 	mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
@@ -325,8 +324,7 @@ div_output(struct socket *so, struct mbuf *m,
 	struct m_tag *mtag;
 	struct divert_info *divinfo;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	if (control)
 		m_freem(control);		/* XXX */
@@ -389,8 +387,7 @@ div_attach(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	inp  = so->so_pcb;
 	if (inp)
@@ -424,8 +421,7 @@ div_detach(netmsg_t msg)
 	struct socket *so = msg->detach.base.nm_so;
 	struct inpcb *inp;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	inp = so->so_pcb;
 	if (inp == NULL)
@@ -450,8 +446,7 @@ div_disconnect(netmsg_t msg)
 	struct socket *so = msg->disconnect.base.nm_so;
 	int error;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	if (so->so_state & SS_ISCONNECTED) {
 		soisdisconnected(so);
@@ -469,8 +464,7 @@ div_bind(netmsg_t msg)
 	struct sockaddr *nam = msg->bind.nm_nam;
 	int error;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	/*
 	 * in_pcbbind assumes that nam is a sockaddr_in
@@ -494,8 +488,7 @@ div_shutdown(netmsg_t msg)
 {
 	struct socket *so = msg->shutdown.base.nm_so;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	socantsendmore(so);
 

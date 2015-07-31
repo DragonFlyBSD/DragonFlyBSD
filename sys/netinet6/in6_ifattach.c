@@ -827,8 +827,7 @@ in6_ifdetach_dispatch(netmsg_t nmsg)
 	struct sockaddr_in6 sin6;
 	struct in6_multi *in6m, *in6m_next;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	/* remove neighbor management table */
 	nd6_purge(ifp);
@@ -944,8 +943,7 @@ in6_tmpaddrtimer_dispatch(netmsg_t nmsg)
 	u_int8_t nullbuf[8];
 	int i;
 
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("not in netisr0"));
+	ASSERT_IN_NETISR(0);
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);  /* reply ASAP */

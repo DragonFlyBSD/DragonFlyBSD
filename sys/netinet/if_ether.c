@@ -1015,8 +1015,7 @@ match:
 	 *
 	 * However, we only need to generate rtmsg on CPU0.
 	 */
-	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
-	    ("arp input not in netisr0, but on cpu%d", mycpuid));
+	ASSERT_IN_NETISR(0);
 	arp_update_oncpu(m, isaddr.s_addr, itaddr.s_addr == myaddr.s_addr,
 	    RTL_REPORTMSG, TRUE);
 

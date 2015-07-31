@@ -463,7 +463,7 @@ tcp6_usr_listen(netmsg_t msg)
 		 * Put this inpcb into wildcard hash on other cpus.
 		 */
 		KKASSERT(so->so_port == netisr_cpuport(0));
-		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
+		ASSERT_IN_NETISR(0);
 		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
 		ASSERT_INP_NOTINHASH(inp);
 
