@@ -89,7 +89,7 @@ static void nd6_dad_starttimer(struct dadq *, int);
 static void nd6_dad_stoptimer(struct dadq *);
 static void nd6_dad_timer(void *);
 static void nd6_dad_timer_handler(netmsg_t);
-static void nd6_dad_ns_output(struct dadq *, struct ifaddr *);
+static void nd6_dad_ns_output(struct dadq *);
 static void nd6_dad_ns_input(struct ifaddr *);
 static void nd6_dad_na_input(struct ifaddr *);
 static struct dadq *nd6_dad_create(struct ifaddr *);
@@ -1159,7 +1159,7 @@ nd6_dad_start(struct ifaddr *ifa,
 	 * (re)initialization.
 	 */
 	if (tick == NULL) {
-		nd6_dad_ns_output(dp, ifa);
+		nd6_dad_ns_output(dp);
 		nd6_dad_starttimer(dp,
 		    ND_IFINFO(ifa->ifa_ifp)->retrans * hz / 1000);
 	} else {
@@ -1295,7 +1295,7 @@ nd6_dad_timer_handler(netmsg_t msg)
 		/*
 		 * We have more NS to go.  Send NS packet for DAD.
 		 */
-		nd6_dad_ns_output(dp, ifa);
+		nd6_dad_ns_output(dp);
 		nd6_dad_starttimer(dp,
 			ND_IFINFO(ifa->ifa_ifp)->retrans * hz / 1000);
 	} else {
@@ -1401,10 +1401,10 @@ nd6_dad_duplicated(struct ifaddr *ifa)
 }
 
 static void
-nd6_dad_ns_output(struct dadq *dp, struct ifaddr *ifa)
+nd6_dad_ns_output(struct dadq *dp)
 {
-	struct in6_ifaddr *ia = (struct in6_ifaddr *)ifa;
-	struct ifnet *ifp = ifa->ifa_ifp;
+	struct in6_ifaddr *ia = (struct in6_ifaddr *)dp->dad_ifa;
+	struct ifnet *ifp = dp->dad_ifa->ifa_ifp;
 
 	ASSERT_IN_NETISR(0);
 
