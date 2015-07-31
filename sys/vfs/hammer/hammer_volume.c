@@ -500,9 +500,7 @@ hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
 {
 	struct hammer_mount *hmp = trans->hmp;
 	hammer_blockmap_t freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
-	hammer_buffer_t buffer = NULL;
 	int error = 0;
-
 	hammer_off_t phys_off;
 	hammer_off_t block_off;
 	hammer_off_t layer1_off;
@@ -510,6 +508,8 @@ hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
 	hammer_off_t aligned_buf_end_off;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
+	hammer_buffer_t buffer1 = NULL;
+	hammer_buffer_t buffer2 = NULL;
 
 	/*
 	 * Calculate the usable size of the volume, which
@@ -534,11 +534,11 @@ hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
 		     block_off += HAMMER_BIGBLOCK_SIZE) {
 			layer2_off = phys_off +
 				HAMMER_BLOCKMAP_LAYER2_OFFSET(block_off);
-			layer2 = hammer_bread(hmp, layer2_off, &error, &buffer);
+			layer2 = hammer_bread(hmp, layer2_off, &error, &buffer2);
 			if (error)
 				goto end;
 
-			error = callback(trans, volume, &buffer, NULL,
+			error = callback(trans, volume, &buffer2, NULL,
 					 layer2, phys_off, block_off, data);
 			if (error)
 				goto end;
@@ -546,21 +546,21 @@ hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
 
 		layer1_off = freemap->phys_offset +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_off);
-		layer1 = hammer_bread(hmp, layer1_off, &error, &buffer);
+		layer1 = hammer_bread(hmp, layer1_off, &error, &buffer1);
 		if (error)
 			goto end;
 
-		error = callback(trans, volume, &buffer, layer1, NULL,
+		error = callback(trans, volume, &buffer1, layer1, NULL,
 				 phys_off, 0, data);
 		if (error)
 			goto end;
 	}
 
 end:
-	if (buffer) {
-		hammer_rel_buffer(buffer, 0);
-		buffer = NULL;
-	}
+	if (buffer1)
+		hammer_rel_buffer(buffer1, 0);
+	if (buffer2)
+		hammer_rel_buffer(buffer2, 0);
 
 	return error;
 }
