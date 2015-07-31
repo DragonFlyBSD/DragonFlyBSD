@@ -137,14 +137,6 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#if defined(__i386__)
-#include "opt_asr.h"
-#include <machine/cputypes.h>
-
-#if defined(ASR_COMPAT)
-#define ASR_IOCTL_COMPAT
-#endif /* ASR_COMPAT */
-#endif
 #include <machine/vmparam.h>
 
 #include <bus/pci/pcivar.h>
@@ -3710,19 +3702,6 @@ asr_ioctl(struct dev_ioctl_args *ap)
 #endif /* ASR_IOCTL_COMPAT */
 
 		Info.processorFamily = ASR_sig.dsProcessorFamily;
-#if defined(__i386__)
-		switch (cpu) {
-		case CPU_386SX: case CPU_386:
-			Info.processorType = PROC_386; break;
-		case CPU_486SX: case CPU_486:
-			Info.processorType = PROC_486; break;
-		case CPU_586:
-			Info.processorType = PROC_PENTIUM; break;
-		case CPU_686:
-			Info.processorType = PROC_SEXIUM; break;
-		}
-#endif
-
 		Info.osType = OS_BSDI_UNIX;
 		Info.osMajorVersion = osrelease[0] - '0';
 		Info.osMinorVersion = osrelease[2] - '0';

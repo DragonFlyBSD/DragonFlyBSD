@@ -46,49 +46,7 @@ extern struct rqinfo rqinfo[];
 extern struct rqinfo *rqip;
 int rqinfo_size = RQINFO_SIZE;				    /* for debugger */
 
-#ifdef __i386__						    /* check for validity */
-void
-LongJmp(jmp_buf buf, int retval)
-{
-/*
-   * longjmp is not documented, not even jmp_buf.
-   * This is what's in i386/i386/support.s:
-   * ENTRY(longjmp)
-   *    movl    4(%esp),%eax
-   *    movl    (%eax),%ebx                      restore ebx
-   *    movl    4(%eax),%esp                     restore esp
-   *    movl    8(%eax),%ebp                     restore ebp
-   *    movl    12(%eax),%esi                    restore esi
-   *    movl    16(%eax),%edi                    restore edi
-   *    movl    20(%eax),%edx                    get rta
-   *    movl    %edx,(%esp)                      put in return frame
-   *    xorl    %eax,%eax                        return(1);
-   *    incl    %eax
-   *    ret
-   *
-   * from which we deduce the structure of jmp_buf:
- */
-    struct JmpBuf {
-	int jb_ebx;
-	int jb_esp;
-	int jb_ebp;
-	int jb_esi;
-	int jb_edi;
-	int jb_eip;
-    };
-
-    struct JmpBuf *jb = (struct JmpBuf *) buf;
-
-    if ((jb->jb_esp < 0xc0000000)
-	|| (jb->jb_ebp < 0xc0000000)
-	|| (jb->jb_eip < 0xc0000000))
-	panic("Invalid longjmp");
-    longjmp(buf, retval);
-}
-
-#else
 #define LongJmp longjmp					    /* just use the kernel function */
-#endif
 #endif
 
 /* find the base name of a path name */

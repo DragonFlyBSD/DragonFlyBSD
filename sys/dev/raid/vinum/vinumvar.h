@@ -747,9 +747,4 @@ enum debugflags {
 					 * harmless warnings  */
 };
 
-#ifdef _KERNEL
-#ifdef __i386__
-#define longjmp LongJmp			/* test our longjmps */
-#endif
-#endif
 #endif
