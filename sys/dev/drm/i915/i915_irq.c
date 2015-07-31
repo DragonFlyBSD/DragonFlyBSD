@@ -1071,7 +1071,7 @@ static bool intel_hpd_irq_event(struct drm_device *dev,
 
 	DRM_DEBUG_KMS("[CONNECTOR:%d:%s] status updated from %s to %s\n",
 		      connector->base.id,
-		      "connector->name",
+		      connector->name,
 		      drm_get_connector_status_name(old_status),
 		      drm_get_connector_status_name(connector->status));
 
@@ -1115,7 +1115,7 @@ static void i915_hotplug_work_func(struct work_struct *work)
 		    connector->polled == DRM_CONNECTOR_POLL_HPD) {
 			DRM_INFO("HPD interrupt storm detected on connector %s: "
 				 "switching from hotplug detection to polling\n",
-				"connector->name");
+				connector->name);
 			dev_priv->hpd_stats[intel_encoder->hpd_pin].hpd_mark = HPD_DISABLED;
 			connector->polled = DRM_CONNECTOR_POLL_CONNECT
 				| DRM_CONNECTOR_POLL_DISCONNECT;
@@ -1123,7 +1123,7 @@ static void i915_hotplug_work_func(struct work_struct *work)
 		}
 		if (hpd_event_bits & (1 << intel_encoder->hpd_pin)) {
 			DRM_DEBUG_KMS("Connector %s (pin %i) received hotplug event.\n",
-				      "connector->name", intel_encoder->hpd_pin);
+				      connector->name, intel_encoder->hpd_pin);
 		}
 	}
 	 /* if there were no outputs to poll, poll was disabled,
@@ -4252,7 +4252,7 @@ static void intel_hpd_irq_reenable(unsigned long data)
 			if (intel_connector->encoder->hpd_pin == i) {
 				if (connector->polled != intel_connector->polled)
 					DRM_DEBUG_DRIVER("Reenabling HPD on connector %s\n",
-							 "connector->name");
+							 connector->name);
 				connector->polled = intel_connector->polled;
 				if (!connector->polled)
 					connector->polled = DRM_CONNECTOR_POLL_HPD;

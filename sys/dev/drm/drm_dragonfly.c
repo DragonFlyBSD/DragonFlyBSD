@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015 Imre Vadász <imre@vdsz.com>
+ * Copyright (c) 2015 Rimvydas Jasinskas
  *
  * DRM Dragonfly-specific helper functions
  *
@@ -80,3 +81,39 @@ fb_get_options(const char *connector_name, char **option)
 	}
 }
 
+/*
+ * Implement simplified version of kvasnrprintf() for drm needs using
+ * M_DRM and kvsnprintf(). Since it is unclear what string size is
+ * optimal thus use of an actual length.
+ */
+char *drm_vasprintf(int flags, const char *format, __va_list ap)
+{
+	char *str;
+	size_t size;
+	__va_list aq;
+
+	__va_copy(aq, ap);
+	size = kvsnprintf(NULL, 0, format, aq);
+	__va_end(aq);
+
+	str = kmalloc(size+1, M_DRM, flags);
+	if (str == NULL)
+		return NULL;
+
+	kvsnprintf(str, size+1, format, ap);
+
+	return str;
+}
+
+/* mimic ksnrprintf(), return pointer to char* and match drm api */
+char *drm_asprintf(int flags, const char *format, ...)
+{
+	char *str;
+	__va_list ap;
+
+	__va_start(ap, format);
+	str = drm_vasprintf(flags, format, ap);
+	__va_end(ap);
+
+	return str;
+}

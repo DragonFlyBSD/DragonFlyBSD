@@ -215,4 +215,8 @@ static inline int64_t abs64(int64_t x)
 	return (x < 0 ? -x : x);
 }
 
+/* simplified version of kvasnrprintf() for drm needs. */
+char *drm_vasprintf(int flags, const char *format, __va_list ap) __printflike(2, 0);
+char *drm_asprintf(int flags, const char *format, ...) __printflike(2, 3);
+
 #endif	/* _LINUX_KERNEL_H_ */

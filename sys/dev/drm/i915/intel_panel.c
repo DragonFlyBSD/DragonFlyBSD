@@ -1183,7 +1183,7 @@ int intel_panel_setup_backlight(struct drm_connector *connector)
 
 	if (ret) {
 		DRM_DEBUG_KMS("failed to setup backlight for connector %s\n",
-			      "connector->name");
+			      connector->name);
 		return ret;
 	}
 

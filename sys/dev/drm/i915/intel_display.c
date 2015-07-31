@@ -4934,7 +4934,7 @@ static void intel_connector_check_state(struct intel_connector *connector)
 
 		DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
 			      connector->base.base.id,
-			      "connector->base.name");
+			      connector->base.name);
 
 		WARN(connector->base.dpms == DRM_MODE_DPMS_OFF,
 		     "wrong connector dpms state\n");
@@ -7857,7 +7857,7 @@ void intel_write_eld(struct drm_encoder *encoder,
 
 	DRM_DEBUG_DRIVER("ELD on [CONNECTOR:%d:%s], [ENCODER:%d:%s]\n",
 			 connector->base.id,
-			 "connector->name",
+			 connector->name,
 			 connector->encoder->base.id,
 			 connector->encoder->name);
 
@@ -8312,8 +8312,8 @@ bool intel_get_load_detect_pipe(struct drm_connector *connector,
 	int ret, i = -1;
 
 	DRM_DEBUG_KMS("[CONNECTOR:%d:%s], [ENCODER:%d:%s]\n",
-		      connector->base.id, "connector->name",
-		      encoder->base.id, "encoder->name");
+		      connector->base.id, connector->name,
+		      encoder->base.id, encoder->name);
 
 	drm_modeset_acquire_init(ctx, 0);
 
@@ -8444,8 +8444,8 @@ void intel_release_load_detect_pipe(struct drm_connector *connector,
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 
 	DRM_DEBUG_KMS("[CONNECTOR:%d:%s], [ENCODER:%d:%s]\n",
-		      connector->base.id, "connector->name",
-		      encoder->base.id, "encoder->name");
+		      connector->base.id, connector->name,
+		      encoder->base.id, encoder->name);
 
 	if (old->load_detect_temp) {
 		to_intel_connector(connector)->new_encoder = NULL;
@@ -9414,7 +9414,7 @@ connected_sink_compute_bpp(struct intel_connector *connector,
 
 	DRM_DEBUG_KMS("[CONNECTOR:%d:%s] checking for sink bpp constrains\n",
 		connector->base.base.id,
-		"connector->base.name");
+		connector->base.name);
 
 	/* Don't use an invalid EDID bpc value */
 	if (connector->base.display_info.bpc &&
@@ -10627,7 +10627,7 @@ intel_modeset_stage_output_state(struct drm_device *dev,
 
 			DRM_DEBUG_KMS("[CONNECTOR:%d:%s] to [NOCRTC]\n",
 				connector->base.base.id,
-				"connector->base.name");
+				connector->base.name);
 		}
 
 
@@ -10662,7 +10662,7 @@ intel_modeset_stage_output_state(struct drm_device *dev,
 
 		DRM_DEBUG_KMS("[CONNECTOR:%d:%s] to [CRTC:%d]\n",
 			connector->base.base.id,
-			"connector->base.name",
+			connector->base.name,
 			new_crtc->base.id);
 	}
 
@@ -12159,7 +12159,7 @@ static void intel_modeset_readout_hw_state(struct drm_device *dev)
 		}
 		DRM_DEBUG_KMS("[CONNECTOR:%d:%s] hw state readout: %s\n",
 			      connector->base.base.id,
-			      "connector->base.name",
+			      connector->base.name,
 			      connector->base.encoder ? "enabled" : "disabled");
 	}
 }

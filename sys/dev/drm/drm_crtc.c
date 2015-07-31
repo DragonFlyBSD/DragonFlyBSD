@@ -860,6 +860,14 @@ int drm_connector_init(struct drm_device *dev,
 		ret = connector->connector_type_id;
 		goto out_put;
 	}
+	connector->name =
+		drm_asprintf(GFP_KERNEL, "%s-%d",
+			  drm_connector_enum_list[connector_type].name,
+			  connector->connector_type_id);
+	if (!connector->name) {
+		ret = -ENOMEM;
+		goto out_put;
+	}
 
 	INIT_LIST_HEAD(&connector->probed_modes);
 	INIT_LIST_HEAD(&connector->modes);
@@ -906,6 +914,8 @@ void drm_connector_cleanup(struct drm_connector *connector)
 		drm_mode_remove(connector, mode);
 
 	drm_mode_object_put(dev, &connector->base);
+	kfree(connector->name);
+	connector->name = NULL;
 	list_del(&connector->head);
 	dev->mode_config.num_connector--;
 }
@@ -1012,9 +1022,20 @@ int drm_encoder_init(struct drm_device *dev,
 	encoder->dev = dev;
 	encoder->encoder_type = encoder_type;
 	encoder->funcs = funcs;
+	encoder->name = drm_asprintf(GFP_KERNEL, "%s-%d",
+				  drm_encoder_enum_list[encoder_type].name,
+				  encoder->base.id);
+	if (!encoder->name) {
+		ret = -ENOMEM;
+		goto out_put;
+	}
 
 	list_add_tail(&encoder->head, &dev->mode_config.encoder_list);
 	dev->mode_config.num_encoder++;
+
+out_put:
+	if (ret)
+		drm_mode_object_put(dev, &encoder->base);
 
 out_unlock:
 	drm_modeset_unlock_all(dev);
