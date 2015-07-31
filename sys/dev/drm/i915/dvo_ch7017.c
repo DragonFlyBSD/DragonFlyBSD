@@ -200,9 +200,12 @@ static bool ch7017_write(struct intel_dvo_device *dvo, u8 addr, u8 val)
 static bool ch7017_init(struct intel_dvo_device *dvo,
 			struct i2c_adapter *adapter)
 {
+	struct intel_iic_softc *sc;
 	struct ch7017_priv *priv;
 	const char *str;
 	u8 val;
+
+	sc = device_get_softc(adapter);
 
 	priv = kzalloc(sizeof(struct ch7017_priv), GFP_KERNEL);
 	if (priv == NULL)
@@ -227,12 +230,12 @@ static bool ch7017_init(struct intel_dvo_device *dvo,
 	default:
 		DRM_DEBUG_KMS("ch701x not detected, got %d: from %s "
 			      "slave %d.\n",
-			      val, "adapter->name", dvo->slave_addr);
+			      val, sc->name, dvo->slave_addr);
 		goto fail;
 	}
 
 	DRM_DEBUG_KMS("%s detected on %s, addr %d\n",
-		      str, "adapter->name", dvo->slave_addr);
+		      str, sc->name, dvo->slave_addr);
 	return true;
 
 fail:

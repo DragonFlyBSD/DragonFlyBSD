@@ -134,6 +134,7 @@ static char *ch7xxx_get_did(uint8_t did)
 /** Reads an 8 bit register */
 static bool ch7xxx_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 {
+	struct intel_iic_softc *sc;
 	struct ch7xxx_priv *ch7xxx = dvo->dev_priv;
 	struct i2c_adapter *adapter = dvo->i2c_bus;
 	u8 out_buf[2];
@@ -157,6 +158,8 @@ static bool ch7xxx_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 	out_buf[0] = addr;
 	out_buf[1] = 0;
 
+	sc = device_get_softc(adapter);
+
 	if (iicbus_transfer(adapter, msgs, 2) == 0) {
 		*ch = in_buf[0];
 		return true;
@@ -164,7 +167,7 @@ static bool ch7xxx_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 
 	if (!ch7xxx->quiet) {
 		DRM_DEBUG_KMS("Unable to read register 0x%02x from %s:%02x.\n",
-			  addr, "adapter->name", dvo->slave_addr);
+			  addr, sc->name, dvo->slave_addr);
 	}
 	return false;
 }
@@ -172,6 +175,7 @@ static bool ch7xxx_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 /** Writes an 8 bit register */
 static bool ch7xxx_writeb(struct intel_dvo_device *dvo, int addr, uint8_t ch)
 {
+	struct intel_iic_softc *sc;
 	struct ch7xxx_priv *ch7xxx = dvo->dev_priv;
 	struct i2c_adapter *adapter = dvo->i2c_bus;
 	uint8_t out_buf[2];
@@ -185,12 +189,14 @@ static bool ch7xxx_writeb(struct intel_dvo_device *dvo, int addr, uint8_t ch)
 	out_buf[0] = addr;
 	out_buf[1] = ch;
 
+	sc = device_get_softc(adapter);
+
 	if (iicbus_transfer(adapter, &msg, 1) == 0)
 		return true;
 
 	if (!ch7xxx->quiet) {
 		DRM_DEBUG_KMS("Unable to write register 0x%02x to %s:%d.\n",
-			  addr, "adapter->name", dvo->slave_addr);
+			  addr, sc->name, dvo->slave_addr);
 	}
 
 	return false;
@@ -199,10 +205,13 @@ static bool ch7xxx_writeb(struct intel_dvo_device *dvo, int addr, uint8_t ch)
 static bool ch7xxx_init(struct intel_dvo_device *dvo,
 			struct i2c_adapter *adapter)
 {
+	struct intel_iic_softc *sc;
 	/* this will detect the CH7xxx chip on the specified i2c bus */
 	struct ch7xxx_priv *ch7xxx;
 	uint8_t vendor, device;
 	char *name, *devid;
+
+	sc = device_get_softc(adapter);
 
 	ch7xxx = kzalloc(sizeof(struct ch7xxx_priv), GFP_KERNEL);
 	if (ch7xxx == NULL)
@@ -219,7 +228,7 @@ static bool ch7xxx_init(struct intel_dvo_device *dvo,
 	if (!name) {
 		DRM_DEBUG_KMS("ch7xxx not detected; got 0x%02x from %s "
 				"slave %d.\n",
-			  vendor, "adapter->name", dvo->slave_addr);
+			  vendor, sc->name, dvo->slave_addr);
 		goto out;
 	}
 
@@ -231,7 +240,7 @@ static bool ch7xxx_init(struct intel_dvo_device *dvo,
 	if (!devid) {
 		DRM_DEBUG_KMS("ch7xxx not detected; got 0x%02x from %s "
 				"slave %d.\n",
-			  vendor, "adapter->name", dvo->slave_addr);
+			  vendor, sc->name, dvo->slave_addr);
 		goto out;
 	}
 

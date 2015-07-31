@@ -67,6 +67,7 @@ struct sil164_priv {
 
 static bool sil164_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 {
+	struct intel_iic_softc *sc;
 	struct sil164_priv *sil = dvo->dev_priv;
 	struct i2c_adapter *adapter = dvo->i2c_bus;
 	u8 out_buf[2];
@@ -90,6 +91,8 @@ static bool sil164_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 	out_buf[0] = addr;
 	out_buf[1] = 0;
 
+	sc = device_get_softc(adapter);
+
 	if (iicbus_transfer(adapter, msgs, 2) == 0) {
 		*ch = in_buf[0];
 		return true;
@@ -97,13 +100,14 @@ static bool sil164_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 
 	if (!sil->quiet) {
 		DRM_DEBUG_KMS("Unable to read register 0x%02x from %s:%02x.\n",
-			  addr, "adapter->name", dvo->slave_addr);
+			  addr, sc->name, dvo->slave_addr);
 	}
 	return false;
 }
 
 static bool sil164_writeb(struct intel_dvo_device *dvo, int addr, uint8_t ch)
 {
+	struct intel_iic_softc *sc;
 	struct sil164_priv *sil = dvo->dev_priv;
 	struct i2c_adapter *adapter = dvo->i2c_bus;
 	uint8_t out_buf[2];
@@ -117,12 +121,14 @@ static bool sil164_writeb(struct intel_dvo_device *dvo, int addr, uint8_t ch)
 	out_buf[0] = addr;
 	out_buf[1] = ch;
 
+	sc = device_get_softc(adapter);
+
 	if (iicbus_transfer(adapter, &msg, 1) == 0)
 		return true;
 
 	if (!sil->quiet) {
 		DRM_DEBUG_KMS("Unable to write register 0x%02x to %s:%d.\n",
-			  addr, "adapter->name", dvo->slave_addr);
+			  addr, sc->name, dvo->slave_addr);
 	}
 
 	return false;
@@ -132,9 +138,12 @@ static bool sil164_writeb(struct intel_dvo_device *dvo, int addr, uint8_t ch)
 static bool sil164_init(struct intel_dvo_device *dvo,
 			struct i2c_adapter *adapter)
 {
+	struct intel_iic_softc *sc;
 	/* this will detect the SIL164 chip on the specified i2c bus */
 	struct sil164_priv *sil;
 	unsigned char ch;
+
+	sc = device_get_softc(adapter);
 
 	sil = kzalloc(sizeof(struct sil164_priv), GFP_KERNEL);
 	if (sil == NULL)
@@ -149,7 +158,7 @@ static bool sil164_init(struct intel_dvo_device *dvo,
 
 	if (ch != (SIL164_VID & 0xff)) {
 		DRM_DEBUG_KMS("sil164 not detected got %d: from %s Slave %d.\n",
-			  ch, "adapter->name", dvo->slave_addr);
+			  ch, sc->name, dvo->slave_addr);
 		goto out;
 	}
 
@@ -158,7 +167,7 @@ static bool sil164_init(struct intel_dvo_device *dvo,
 
 	if (ch != (SIL164_DID & 0xff)) {
 		DRM_DEBUG_KMS("sil164 not detected got %d: from %s Slave %d.\n",
-			  ch, "adapter->name", dvo->slave_addr);
+			  ch, sc->name, dvo->slave_addr);
 		goto out;
 	}
 	sil->quiet = false;
