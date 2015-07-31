@@ -30,10 +30,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)re_format.7	8.3 (Berkeley) 3/20/94
-.\" $FreeBSD: src/lib/libc/regex/re_format.7,v 1.12 2008/09/05 17:41:20 keramida Exp $
-.\" $DragonFly: src/lib/libc/regex/re_format.7,v 1.3 2008/05/02 02:05:04 swildner Exp $
+.\" $FreeBSD: head/lib/libc/regex/re_format.7 282007 2015-04-26 10:55:39Z bapt $
 .\"
-.Dd March 20, 1994
+.Dd June 30, 2014
 .Dt RE_FORMAT 7
 .Os
 .Sh NAME
@@ -311,6 +310,13 @@ compatible with but not specified by
 .St -p1003.2 ,
 and should be used with
 caution in software intended to be portable to other systems.
+The additional word delimiters
+.Ql \e<
+and
+.Ql \e>
+are provided to ease compatibility with traditional
+.Xr svr4 4
+systems but are not portable and should be avoided.
 .Pp
 In the event that an RE could match more than one substring of a given
 string,

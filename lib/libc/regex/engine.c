@@ -30,10 +30,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: head/lib/libc/regex/engine.c 279104 2015-02-21 15:02:27Z pfg $
+ *
  *	@(#)engine.c	8.5 (Berkeley) 3/20/94
- * $FreeBSD: src/lib/libc/regex/engine.c,v 1.21 2007/05/25 12:44:58 delphij Exp $
- * $DragonFly: src/lib/libc/regex/engine.c,v 1.7 2005/11/20 09:18:37 swildner Exp $
  */
+
 
 /*
  * The matching engine and friends.  This file is #included by regexec.c
@@ -156,7 +157,7 @@ matcher(struct re_guts *g,
 	int i;
 	struct match mv;
 	struct match *m = &mv;
-	const char *dp;
+	const char *dp = NULL;
 	const sopno gf = g->firststate+1;	/* +1 for OEND */
 	const sopno gl = g->laststate;
 	const char *start;
@@ -243,8 +244,10 @@ matcher(struct re_guts *g,
 	ZAPSTATE(&m->mbs);
 
 	/* Adjust start according to moffset, to speed things up */
-	if (g->moffset > -1)
+	if (dp != NULL && g->moffset > -1)
 		start = ((dp - g->moffset) < start) ? start : dp - g->moffset;
+
+	SP("mloop", m->st, *start);
 
 	/* this loop does only one repetition except for backrefs */
 	for (;;) {
@@ -683,19 +686,16 @@ backref(struct match *m,
 		while (m->g->strip[ss] != SOP(O_BACK, i))
 			ss++;
 		return(backref(m, sp+len, stop, ss+1, stopst, lev, rec));
-		break;
 	case OQUEST_:		/* to null or not */
 		dp = backref(m, sp, stop, ss+1, stopst, lev, rec);
 		if (dp != NULL)
 			return(dp);	/* not */
 		return(backref(m, sp, stop, ss+OPND(s)+1, stopst, lev, rec));
-		break;
 	case OPLUS_:
 		assert(m->lastpos != NULL);
 		assert(lev+1 <= m->g->nplus);
 		m->lastpos[lev+1] = sp;
 		return(backref(m, sp, stop, ss+1, stopst, lev+1, rec));
-		break;
 	case O_PLUS:
 		if (sp == m->lastpos[lev])	/* last pass matched null */
 			return(backref(m, sp, stop, ss+1, stopst, lev-1, rec));
@@ -706,7 +706,6 @@ backref(struct match *m,
 			return(backref(m, sp, stop, ss+1, stopst, lev-1, rec));
 		else
 			return(dp);
-		break;
 	case OCH_:		/* find the right one, if any */
 		ssub = ss + 1;
 		esub = ss + OPND(s) - 1;
@@ -727,6 +726,7 @@ backref(struct match *m,
 			else
 				assert(OP(m->g->strip[esub]) == O_CH);
 		}
+		/* NOTREACHED */
 		break;
 	case OLPAREN:		/* must undo assignment if rest fails */
 		i = OPND(s);
@@ -738,7 +738,6 @@ backref(struct match *m,
 			return(dp);
 		m->pmatch[i].rm_so = offsave;
 		return(NULL);
-		break;
 	case ORPAREN:		/* must undo assignment if rest fails */
 		i = OPND(s);
 		assert(0 < i && i <= m->g->nsub);
@@ -749,7 +748,6 @@ backref(struct match *m,
 			return(dp);
 		m->pmatch[i].rm_eo = offsave;
 		return(NULL);
-		break;
 	default:		/* uh oh */
 		assert(nope);
 		break;
@@ -786,6 +784,7 @@ fast(	struct match *m,
 
 	CLEAR(st);
 	SET1(st, startst);
+	SP("fast", st, *p);
 	st = step(m->g, startst, stopst, st, NOTHING, st);
 	ASSIGN(fresh, st);
 	SP("start", st, *p);
@@ -1071,7 +1070,7 @@ step(struct re_guts *g,
 						OP(s = g->strip[pc+look]) != O_CH;
 						look += OPND(s))
 					assert(OP(s) == OOR2);
-				FWD(aft, aft, look);
+				FWD(aft, aft, look + 1);
 			}
 			break;
 		case OOR2:		/* propagate OCH_'s marking */

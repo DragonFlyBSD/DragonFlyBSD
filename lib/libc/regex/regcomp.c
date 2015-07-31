@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)regcomp.c	8.5 (Berkeley) 3/20/94
- * $FreeBSD: head/lib/libc/regex/regcomp.c 247596 2013-03-01 23:26:13Z delphij $
+ * $FreeBSD: head/lib/libc/regex/regcomp.c 281858 2015-04-22 17:09:02Z pfg $
  *
  *	@(#)regcomp.c	8.5 (Berkeley) 3/20/94
  */
@@ -426,7 +426,17 @@ p_ere_exp(struct parse *p)
 	case '\\':
 		(void)REQUIRE(MORE(), REG_EESCAPE);
 		wc = WGETNEXT();
-		ordinary(p, wc);
+		switch (wc) {
+		case '<':
+			EMIT(OBOW, 0);
+			break;
+		case '>':
+			EMIT(OEOW, 0);
+			break;
+		default:
+			ordinary(p, wc);
+			break;
+		}
 		break;
 	case '{':		/* okay as ordinary except if digit follows */
 		(void)REQUIRE(!MORE() || !isdigit((uch)PEEK()), REG_BADRPT);
@@ -582,6 +592,12 @@ p_simp_re(struct parse *p,
 		break;
 	case '[':
 		p_bracket(p);
+		break;
+	case BACKSL|'<':
+		EMIT(OBOW, 0);
+		break;
+	case BACKSL|'>':
+		EMIT(OEOW, 0);
 		break;
 	case BACKSL|'{':
 		SETERROR(REG_BADRPT);
@@ -760,7 +776,6 @@ p_b_term(struct parse *p, cset *cs)
 	case '-':
 		SETERROR(REG_ERANGE);
 		return;			/* NOTE RETURN */
-		break;
 	default:
 		c = '\0';
 		break;
@@ -1404,8 +1419,8 @@ static void
 findmust(struct parse *p, struct re_guts *g)
 {
 	sop *scan;
-	sop *start;
-	sop *newstart;
+	sop *start = NULL;
+	sop *newstart = NULL;
 	sopno newlen;
 	sop s;
 	char *cp;
