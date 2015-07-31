@@ -104,7 +104,7 @@
 
 #include <ddb/ddb.h>
 
-#include <setjmp.h>
+#include <machine/setjmp.h>
 
 void		gdb_handle_exception (db_regs_t *, int, int);
 

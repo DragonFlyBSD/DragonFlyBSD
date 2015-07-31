@@ -46,8 +46,7 @@
 #include <ddb/db_output.h>
 
 #include <machine/md_var.h>	/* needed for db_reset() */
-
-#include <setjmp.h>
+#include <machine/setjmp.h>
 
 /*
  * Exported global variables

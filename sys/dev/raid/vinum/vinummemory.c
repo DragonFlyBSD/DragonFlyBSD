@@ -35,14 +35,11 @@
  *
  * $Id: vinummemory.c,v 1.25 2000/05/04 01:57:48 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinummemory.c,v 1.22.2.1 2000/06/02 04:26:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.9 2006/09/05 00:55:42 dillon Exp $
  */
 
 #include "vinumhdr.h"
 
 #ifdef VINUMDEBUG
-#undef longjmp						    /* this was defined as LongJmp */
-void longjmp(jmp_buf, int);				    /* the kernel doesn't define this */
 
 #include "request.h"
 extern struct rqinfo rqinfo[];

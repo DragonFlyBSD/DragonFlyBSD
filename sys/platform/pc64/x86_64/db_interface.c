@@ -78,7 +78,7 @@
 
 #include <sys/thread2.h>
 
-#include <setjmp.h>
+#include <machine/setjmp.h>
 
 static jmp_buf *db_nofault = NULL;
 extern jmp_buf	db_jmpbuf;

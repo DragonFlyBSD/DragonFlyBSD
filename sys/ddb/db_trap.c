@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_trap.c,v 1.14 1999/08/28 00:41:11 peter Exp $
- * $DragonFly: src/sys/ddb/db_trap.c,v 1.4 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -36,11 +35,12 @@
  * Trap entry point to kernel debugger.
  */
 #include <sys/param.h>
+#include <sys/systm.h>
 
 #include <ddb/ddb.h>
 #include <ddb/db_command.h>
 
-#include <setjmp.h>
+#include <machine/setjmp.h>
 
 extern jmp_buf	db_jmpbuf;
 
