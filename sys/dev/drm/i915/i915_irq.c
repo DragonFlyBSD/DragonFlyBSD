@@ -1335,6 +1335,10 @@ static void ivybridge_parity_work(struct work_struct *work)
 		POSTING_READ(reg);
 
 		parity_event[0] = I915_L3_PARITY_UEVENT "=1";
+		parity_event[1] = drm_asprintf(GFP_KERNEL, "ROW=%d", row);
+		parity_event[2] = drm_asprintf(GFP_KERNEL, "BANK=%d", bank);
+		parity_event[3] = drm_asprintf(GFP_KERNEL, "SUBBANK=%d", subbank);
+		parity_event[4] = drm_asprintf(GFP_KERNEL, "SLICE=%d", slice);
 		parity_event[5] = NULL;
 
 #if 0
@@ -1345,12 +1349,10 @@ static void ivybridge_parity_work(struct work_struct *work)
 		DRM_DEBUG("Parity error: Slice = %d, Row = %d, Bank = %d, Sub bank = %d.\n",
 			  slice, row, bank, subbank);
 
-#if 0
 		kfree(parity_event[4]);
 		kfree(parity_event[3]);
 		kfree(parity_event[2]);
 		kfree(parity_event[1]);
-#endif
 	}
 
 	I915_WRITE(GEN7_MISCCPCTL, misccpctl);
