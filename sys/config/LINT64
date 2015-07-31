@@ -800,7 +800,7 @@ pseudo-device	ccd	4	# Concatenated disk driver
 #
 # see vinum(4) for more reasons not to use these options.
 pseudo-device	vinum		#Vinum concat/mirror/raid driver
-#options 	VINUMDEBUG	#enable Vinum debugging hooks
+options 	VINUMDEBUG	#enable Vinum debugging hooks
 
 # Kernel side iconv library
 options 	LIBICONV
