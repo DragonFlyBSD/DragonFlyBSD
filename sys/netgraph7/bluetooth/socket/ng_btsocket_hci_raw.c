@@ -33,7 +33,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <bitstring.h>		/* XXX */
+#include <sys/bitstring.h>
 #include <sys/domain.h>
 #include <sys/endian.h>
 #include <sys/errno.h>
