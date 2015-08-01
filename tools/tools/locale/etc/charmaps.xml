@@ -97,12 +97,8 @@
 	<language name="ja"
 		encoding="SJIS eucJP"
 		countries="JP" />
-<!--	<language name="kk"
-		family="Cyrl"
-		namecountry_link="kk_KZ"
-		encoding="PT154"
-		countries="KZ" />
--->
+	<language name="kk"
+		countries="KZ" />  <!-- PT154 not available, UTF-8 -->
 	<language name="ko"
 		encoding="eucKR"
 		encoding_link="eucKR:CP949"
@@ -113,6 +109,9 @@
 	<language name="lt"
 		encoding="ISO8859-4 ISO8859-13"
 		countries="LT" />
+	<language name="lv"
+		encoding="ISO8859-13"
+		countries="LV" />
 	<language name="mn"
 		family="Cyrl"
 		countries="MN" />
@@ -130,7 +129,7 @@
 		countries="PL" />
 	<language name="pt"
 		encoding="ISO8859-1 ISO8859-15"
-		countries="PT" />
+		countries="PT BR" />
 	<language name="ro"
 		encoding="ISO8859-2"
 		countries="RO" />

@@ -38,8 +38,17 @@ all:
 install:
 .for t in ${TYPES}
 .  if ${KNOWN:M${t}}
-	cd ${t} && make
-	cd ${t} && sudo DESTDIR=${LOCALE_DESTDIR} make install
+	rm -rf ${.CURDIR}/${t}.draft
+	rm -rf ${DESTDIR}/usr/src/share/${t}
+	mv ${.CURDIR}/${t} ${DESTDIR}/usr/src/share/
+.  endif
+.endfor
+
+post-install:
+.for t in ${TYPES}
+.  if ${KNOWN:M${t}}
+	(cd ${DESTDIR}/usr/src/share/${t} && \
+		make && make install && make clean)
 .  endif
 .endfor
 
