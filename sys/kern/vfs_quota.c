@@ -39,7 +39,6 @@
 #include <sys/vfs_quota.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
-#include <inttypes.h>
 
 #include <sys/sysproto.h>
 #include <libprop/proplib.h>
