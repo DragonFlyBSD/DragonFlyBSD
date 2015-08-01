@@ -18,10 +18,9 @@ UTF8=	af_ZA am_ET be_BY bg_BG ca_AD ca_ES ca_FR ca_IT \
 EURO=	af_ZA ca_AD ca_ES ca_FR ca_IT da_DK de_AT de_CH \
 	de_DE en_AU en_CA en_GB en_NZ en_US en_ZA es_ES \
 	et_EE eu_ES fi_FI fr_BE fr_CA fr_CH fr_FR is_IS \
-	it_CH it_IT la_LN nb_NO nl_BE nl_NL nn_NO pt_PT \
-	sv_SE
+	it_CH it_IT nb_NO nl_BE nl_NL nn_NO pt_PT sv_SE
 
-STD1=	${EURO:Net_EE} pt_BR la_LN
+STD1=	${EURO:Net_EE} pt_BR
 STD2=	cs_CZ hr_HR hu_HU pl_PL ro_RO sk_SK sl_SI sr_Latn_RS
 STD5=	be_BY ru_RU uk_UA sr_Cyrl_RS
 MANUAL=	lt_LT el_GR tr_TR lv_LV

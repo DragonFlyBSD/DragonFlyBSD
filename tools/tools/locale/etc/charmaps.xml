@@ -59,9 +59,15 @@
 		countries="AU CA GB NZ US ZA" />
 	<language name="en"
 		countries="IE" />
+	<language name="en"
+		encoding="ISO8859-1"
+		countries="HK PH SG" />
 	<language name="es"
 		encoding="ISO8859-1 ISO8859-15"
 		countries="ES" />
+	<language name="es"
+		encoding="ISO8859-1"
+		countries="AR CR MX" />
 	<language name="et"
 		encoding="ISO8859-15"
 		countries="EE" />
@@ -103,9 +109,6 @@
 		encoding="eucKR"
 		encoding_link="eucKR:CP949"
 		countries="KR" />
-	<language name="la"
-		encoding="ISO8859-1 ISO8859-2 ISO8859-4 ISO8859-15 US-ASCII"
-		countries="LN" definitions="timedef" />
 	<language name="lt"
 		encoding="ISO8859-4 ISO8859-13"
 		countries="LT" />
@@ -136,6 +139,8 @@
 	<language name="ru"
 		encoding="CP1251 CP866 ISO8859-5 KOI8-R"
 		countries="RU" />
+	<language name="se"
+		countries="NO FI" />
 	<language name="sk"
 		encoding="ISO8859-2"
 		countries="SK" />
@@ -152,7 +157,7 @@
 		countries="RS" />
 	<language name="sv"
 		encoding="ISO8859-1 ISO8859-15"
-		countries="SE" />
+		countries="SE FI" />
 	<language name="tr"
 		encoding="ISO8859-9"
 		countries="TR" />
@@ -539,6 +544,9 @@
 	    cldr="RIGHT SINGLE QUOTATION MARK" unicode="APOSTROPHE" />
 
 	<translation encoding="ISCII-DEV" cldr="INDIAN RUPEE SIGN" hex="FC" />
+	<translation encoding="ISO8859-1" cldr="PESO SIGN" hex="A4" />
+	<translation encoding="ISO8859-1" cldr="COLON SIGN" hex="A4" />
+
 
 </translations>
 

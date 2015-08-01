@@ -4,13 +4,13 @@
 # -----------------------------------------------------------------------------
 #
 # Short month names
-Ian
+Jan
 Feb
 Mar
 Apr
-Mai
-Iun
-Iul
+May
+Jun
+Jul
 Aug
 Sep
 Oct
@@ -18,70 +18,70 @@ Nov
 Dec
 #
 # Long month names (as in a date)
-Ianuarius
-Februarius
-Martius
-Aprilis
-Maius
-Iunius
-Iulius
-Augustus
+January
+February
+March
+April
+May
+June
+July
+August
 September
 October
 November
 December
 #
 # Short weekday names
-Sol
-Lun
-Mar
-Mer
-Iov
-Ven
+Sun
+Mon
+Tue
+Wed
+Thu
+Fri
 Sat
 #
 # Long weekday names
-dies Solis
-dies Lunae
-dies Martis
-dies Mercurii
-dies Iovis
-dies Veneris
-dies Saturni
+Sunday
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Saturday
 #
 # X_fmt
-%H:%M:%S
+%I:%M:%S %p
 #
 # x_fmt
-%d.%m.%y
+%e/%m/%y
 #
 # c_fmt
-%a %e %b %Y:%X
+%e %B, %Y %I:%M:%S %p
 #
 # AM/PM
 AM
 PM
 #
 # date_fmt
-%a %e %b %Y:%X %Z
+%e %B, %Y %I:%M:%S %p %Z
 #
 # Long month names (without case ending)
-Ianuarius
-Februarius
-Martius
-Aprilis
-Maius
-Iunius
-Iulius
-Augustus
+January
+February
+March
+April
+May
+June
+July
+August
 September
 October
 November
 December
 #
 # md_order
-dm
+m
 #
 # ampm_fmt
-
+%I:%M:%S %p
 # EOF
