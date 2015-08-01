@@ -17,7 +17,8 @@ PASSON=		CLDRDIR="${CLDRDIR}" UNIDATADIR="${UNIDATADIR}"
 
 ETCDIR=		${.CURDIR}/etc
 
-TYPES?=		monetdef numericdef msgdef timedef colldef
+KNOWN=		monetdef numericdef msgdef timedef colldef ctypedef
+TYPES?=		${KNOWN}
 LOCALE_DESTDIR?=	/tmp/generated-locales/
 
 .if defined(LC)
@@ -26,16 +27,20 @@ LC:=	--lc=${LC}
 
 all:
 .for t in ${TYPES}
+.  if ${KNOWN:M${t}}
 	test -d ${t} || mkdir ${t}
 	make build-${t}
+.  endif
 .endfor
 	@echo ""
 	@find . -name *failed
 
 install:
 .for t in ${TYPES}
+.  if ${KNOWN:M${t}}
 	cd ${t} && make
 	cd ${t} && sudo DESTDIR=${LOCALE_DESTDIR} make install
+.  endif
 .endfor
 
 .for t in ${TYPES}
