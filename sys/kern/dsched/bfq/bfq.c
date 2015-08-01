@@ -39,7 +39,6 @@
  *
  */
 
-#include <inttypes.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
@@ -58,6 +57,7 @@
 #include <sys/buf2.h>
 #include <sys/dsched.h>
 #include <sys/fcntl.h>
+#include <machine/inttypes.h>
 #include <machine/varargs.h>
 
 #include <kern/dsched/bfq/bfq.h>
