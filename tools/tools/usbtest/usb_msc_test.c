@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/tools/tools/usbtest/usb_msc_test.c 260587 2014-01-13 13:27:00Z hselasky $ */
 /*-
  * Copyright (c) 2007-2012 Hans Petter Selasky. All rights reserved.
  *
@@ -38,7 +38,7 @@
 #include <libusb20.h>
 #include <libusb20_desc.h>
 
-#include <dev/usb/usb_endian.h>
+#include <bus/u4b/usb_endian.h>
 
 #include "usbtest.h"
 
@@ -105,7 +105,7 @@ static int sense_recurse;
 
 /*
  * SCSI commands sniffed off the wire - LUN maybe needs to be
- * adjusted!  Refer to "dev/usb/storage/ustorage_fs.c" for more
+ * adjusted!  Refer to "bus/u4b/storage/ustorage_fs.c" for more
  * information.
  */
 static uint8_t mode_sense_6[0x6] = {0x1a, 0, 0x3f, 0, 0x0c};
@@ -252,6 +252,35 @@ do_msc_cmd(uint8_t *pcmd, uint8_t cmdlen, void *pdata, uint32_t datalen,
 	} else {
 		stats.xfer_success++;
 		return (0);
+	}
+}
+
+static void
+do_msc_shorter_cmd(uint8_t lun)
+{
+	uint8_t buffer[sizeof(umass_bbb_cbw_t)];
+	int actlen;
+	int error;
+	int x;
+
+	memset(buffer, 0, sizeof(buffer));
+
+	for (x = 0; x != (sizeof(buffer) - 1); x++) {
+		error = libusb20_tr_bulk_intr_sync(xfer_out,
+		    buffer, x, &actlen, 250);
+
+		printf("Sent short %d of %d bytes wrapper block, "
+		    "status = %d\n", x, (int)(sizeof(buffer) - 1),
+		    error);
+
+		do_msc_reset(lun);
+
+		if (error != 0) {
+			printf("ERROR: Too short command wrapper "
+			    "was not accepted\n");
+			stats.xfer_error++;
+			break;
+		}
 	}
 }
 
@@ -564,6 +593,11 @@ usb_msc_test(struct usb_msc_params *p)
 	if (capacity_bs != 512)
 		printf("INFO: Blocksize is not 512 bytes\n");
 
+	if (p->try_shorter_wrapper_block) {
+		printf("Trying too short command wrapper:\n");
+		do_msc_shorter_cmd(lun);
+	}
+
 	if (p->try_invalid_scsi_command) {
 		int status;
 
@@ -798,7 +832,7 @@ retry_read_init:
 		}
 		timersub(&sub_tv, &ref_tv, &res_tv);
 
-		if ((res_tv.tv_sec < 0) || (res_tv.tv_sec >= p->duration))
+		if ((res_tv.tv_sec < 0) || (res_tv.tv_sec >= (int)p->duration))
 			break;
 
 		do_io_test(p, lun, lba_max, buffer, reference);
@@ -1195,6 +1229,7 @@ show_host_msc_test(uint8_t level, uint16_t vid,
 		    "14) Toggle try aborted write transfer: <%s>\n"
 		    "15) Toggle request sense on error: <%s>\n"
 		    "16) Toggle try all LUN: <%s>\n"
+		    "17) Toggle try too short wrapper block: <%s>\n"
 		    "20) Reset parameters\n"
 		    "30) Start test (VID=0x%04x, PID=0x%04x)\n"
 		    "40) Select another device\n"
@@ -1215,6 +1250,7 @@ show_host_msc_test(uint8_t level, uint16_t vid,
 		    (params.try_abort_data_write ? "YES" : "NO"),
 		    (params.try_sense_on_error ? "YES" : "NO"),
 		    (params.try_all_lun ? "YES" : "NO"),
+		    (params.try_shorter_wrapper_block ? "YES" : "NO"),
 		    vid, pid);
 		switch (retval) {
 		case 0:
@@ -1273,6 +1309,9 @@ show_host_msc_test(uint8_t level, uint16_t vid,
 			break;
 		case 16:
 			params.try_all_lun ^= 1;
+			break;
+		case 17:
+			params.try_shorter_wrapper_block ^= 1;
 			break;
 		case 20:
 			set_defaults(&params);

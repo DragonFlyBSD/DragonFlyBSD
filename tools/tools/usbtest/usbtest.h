@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/tools/tools/usbtest/usbtest.h 254159 2013-08-09 20:08:42Z hselasky $ */
 /*-
  * Copyright (c) 2010 Hans Petter Selasky. All rights reserved.
  *

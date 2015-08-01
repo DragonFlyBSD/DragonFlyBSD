@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/tools/tools/usbtest/usbtest.c 254159 2013-08-09 20:08:42Z hselasky $ */
 /*-
  * Copyright (c) 2010 Hans Petter Selasky. All rights reserved.
  *
@@ -35,7 +35,7 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
-#include <dev/usb/usb_ioctl.h>
+#include <bus/u4b/usb_ioctl.h>
 
 #include "usbtest.h"
 

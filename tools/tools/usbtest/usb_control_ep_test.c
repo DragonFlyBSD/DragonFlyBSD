@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/tools/tools/usbtest/usb_control_ep_test.c 254241 2013-08-12 09:15:33Z hselasky $ */
 /*-
  * Copyright (c) 2007-2010 Hans Petter Selasky. All rights reserved.
  *
@@ -38,9 +38,9 @@
 #include <libusb20.h>
 #include <libusb20_desc.h>
 
-#include <dev/usb/usb_endian.h>
-#include <dev/usb/usb.h>
-#include <dev/usb/usb_cdc.h>
+#include <bus/u4b/usb_endian.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usb_cdc.h>
 
 #include "usbtest.h"
 
@@ -286,7 +286,7 @@ usb_port_reset_test(uint16_t vid, uint16_t pid, uint32_t duration)
 		}
 		timersub(&sub_tv, &ref_tv, &res_tv);
 
-		if ((res_tv.tv_sec < 0) || (res_tv.tv_sec >= duration))
+		if ((res_tv.tv_sec < 0) || (res_tv.tv_sec >= (int)duration))
 			break;
 
 		if (libusb20_dev_reset(pdev)) {
@@ -445,7 +445,7 @@ usb_suspend_resume_test(uint16_t vid, uint16_t pid, uint32_t duration)
 		}
 		timersub(&sub_tv, &ref_tv, &res_tv);
 
-		if ((res_tv.tv_sec < 0) || (res_tv.tv_sec >= duration))
+		if ((res_tv.tv_sec < 0) || (res_tv.tv_sec >= (int)duration))
 			break;
 
 		error = libusb20_dev_set_power_mode(pdev, (iter & 1) ?

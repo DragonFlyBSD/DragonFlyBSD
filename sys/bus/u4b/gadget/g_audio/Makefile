@@ -1,7 +1,7 @@
 #
-# $FreeBSD: head/tools/tools/usbtest/Makefile 275407 2014-12-02 13:58:57Z hselasky $
+# $FreeBSD: head/sys/modules/usb/g_audio/Makefile 253544 2013-07-22 13:39:33Z hselasky $
 #
-# Copyright (c) 2013 Hans Petter Selasky. All rights reserved.
+# Copyright (c) 2010 Hans Petter Selasky. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -24,18 +24,12 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-PROG=	usbtest
-MAN=
-SRCS+=	usbtest.c
-SRCS+=	usb_msc_test.c
-SRCS+=	usb_modem_test.c
-SRCS+=	usb_control_ep_test.c
 
-DPADD+=	${LIBUSB}
-LDADD+=	-lusb
+.PATH: ${.CURDIR}/..
 
-WARNS=	3
+KMOD=	g_audio
 
-CFLAGS+= -I ${.CURDIR}/../../../sys/bus/u4b/gadget
+SRCS=	bus_if.h usb_if.h device_if.h \
+    card_if.h opt_usb.h pci_if.h g_audio.c
 
-.include <bsd.prog.mk>
+.include <bsd.kmod.mk>
