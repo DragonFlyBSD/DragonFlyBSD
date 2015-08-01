@@ -41,7 +41,6 @@
  *	  -> mqueue::mq_mtx
  */
 
-#include <stdbool.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/errno.h>
@@ -62,6 +61,7 @@
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 #include <sys/stat.h>
+#include <sys/stdbool.h>
 #include <sys/sysctl.h>
 #include <sys/sysproto.h>
 #include <sys/systm.h>
