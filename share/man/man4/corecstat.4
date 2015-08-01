@@ -1,0 +1,104 @@
+.\"-
+.\" Copyright (c) 2026 Imre Vadász
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd January 24, 2026
+.Dt CORECSTAT 4
+.Os
+.Sh NAME
+.Nm corecstat
+.Nd device driver for Intel Core C-State and Package C-State residency counters.
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device corecstat"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+corecstat_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for Intel's Core C-State and Package C-State residency
+counters, that are provided in Nehalem and newer Core and Xeon CPUs,
+as well as in Atom CPUs of the Silvermont and newer architectures.
+Core C-State residency is shown for each physical CPU core, and
+Package C-State residency is shown per CPU package.
+The values are exposed through the
+.Dv HW_SENSORS
+.Xr sysctl 3
+tree.
+For example:
+.Bd -literal -offset indent
+% sysctl hw.sensors
+hw.sensors.cpu2.percent0: 0.00% (node0 core0 C3 res.)
+hw.sensors.cpu2.percent1: 0.00% (node0 core0 C6 res.)
+hw.sensors.cpu2.percent2: 99.42% (node0 core0 C7 res.)
+hw.sensors.cpu3.percent0: 0.00% (node0 core1 C3 res.)
+hw.sensors.cpu3.percent1: 0.00% (node0 core1 C6 res.)
+hw.sensors.cpu3.percent2: 99.62% (node0 core1 C7 res.)
+hw.sensors.cpu_node0.percent0: 14.33% (node0 PC2 residency)
+hw.sensors.cpu_node0.percent1: 0.03% (node0 PC3 residency)
+hw.sensors.cpu_node0.percent2: 0.00% (node0 PC6 residency)
+hw.sensors.cpu_node0.percent3: 85.18% (node0 PC7 residency)
+hw.sensors.cpu_node0.percent4: 0.00% (node0 PC8 residency)
+hw.sensors.cpu_node0.percent5: 0.00% (node0 PC9 residency)
+hw.sensors.cpu_node0.percent6: 0.00% (node0 PC10 residency)
+.Ed
+.Pp
+These numbers are useful to understand how much, and to what extent CPU
+powersaving is being used. Higher numbers designate a "deeper" powersaving
+state, which will use less electricity. However "deeper" powersaving states
+will also include a slower wakeup time, which can sometimes degrade
+interactive performance under partial system load.
+You can modify the C-State powersaving behavior on these Intel CPUs by
+adjusting the
+.Va machdep.mwait.CX
+sysctl knobs.
+.Sh SEE ALSO
+.Xr systat 1 ,
+.Xr sysctl 3 ,
+.Xr coretemp 4 ,
+.Xr corepower 4 ,
+.Xr devctl 4 ,
+.Xr devd 8 ,
+.Xr sensorsd 8 ,
+.Xr sysctl 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Dx 6.5 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+driver was written by
+.An Imre Vadász Aq Mt imre@vdsz.com .

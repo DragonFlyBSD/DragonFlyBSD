@@ -398,6 +398,7 @@ dev/powermng/perfbias/perfbias.c	optional perfbias
 dev/powermng/amdsmn/amdsmn.c	optional amdsmn
 dev/powermng/amdsmn/amdsmn.c	optional amdtemp
 dev/powermng/amdtemp/amdtemp.c	optional amdtemp
+dev/powermng/corecstat/corecstat.c	optional corecstat
 dev/powermng/corepower/corepower.c	optional corepower
 dev/powermng/coretemp/coretemp.c	optional coretemp
 dev/powermng/kate/kate.c	optional kate pci

@@ -627,6 +627,12 @@
 #define	MSR_MTRR4kBase		0x268
 #define	MSR_PAT			0x277
 #define	MSR_MTRRdefType		0x2ff
+#define	MSR_PKG_C3_RESIDENCY	0x3f8	/* Nehalem and later */
+#define	MSR_PKG_C6_RESIDENCY	0x3f9	/* Nehalem and later */
+#define	MSR_PKG_C7_RESIDENCY	0x3fa	/* Nehalem and later */
+#define	MSR_CORE_C3_RESIDENCY	0x3fc	/* Nehalem and later */
+#define	MSR_CORE_C6_RESIDENCY	0x3fd	/* Nehalem and later */
+#define	MSR_CORE_C7_RESIDENCY	0x3fe	/* Sandy Bridge and later */
 #define	MSR_MC0_CTL		0x400
 #define	MSR_MC0_STATUS		0x401
 #define	MSR_MC0_ADDR		0x402
@@ -674,6 +680,10 @@
 #define	MSR_PPERF		0x64e /* Productive Performance Count */
 #define	MSR_PERF_LIMIT_REASONS	0x64f /* Indicator of Frequency Clipping */
 #define	MSR_TSC_DEADLINE	0x6e0 /* LAPIC TSC Deadline Mode Target count */
+#define	MSR_PKG_C2_RESIDENCY	0x60d	/* Sandy Bridge and later */
+#define	MSR_PKG_C8_RESIDENCY	0x630	/* Haswell Family 06_45H and later */
+#define	MSR_PKG_C9_RESIDENCY	0x631	/* Haswell Family 06_45H and later */
+#define	MSR_PKG_C10_RESIDENCY	0x632	/* Haswell Family 06_45H and later */
 
 /* Hardware P-states interface */
 #define	MSR_PM_ENABLE		0x770 /* Enable/disable HWP */

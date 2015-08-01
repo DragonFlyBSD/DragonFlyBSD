@@ -1640,6 +1640,9 @@ device		perfbias
 # Intel software controlled clock modulation
 device		clockmod
 
+# Intel Nehalem and newer CPUs Cstate and Package-Cstate residency counters.
+device		corecstat
+
 # Intel Sandy Bridge and newer CPUs power usage estimation
 device		corepower
 
