@@ -2156,6 +2156,8 @@ TO_REMOVE+=/usr/share/man/man8/boot_pc32.8.gz
 TO_REMOVE+=/usr/share/man/man5/kernel.conf.5.gz
 TO_REMOVE+=/usr/bin/mklocale
 TO_REMOVE+=/usr/share/man/man1/mklocale.1.gz
+TO_REMOVE+=/usr/share/locale/la_LN*
+TO_REMOVE+=/usr/share/locale/kk_KZ.PT154
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
