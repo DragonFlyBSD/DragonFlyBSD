@@ -7,9 +7,9 @@ FILESNAME=	LC_CTYPE
 MAPLOC=		${.CURDIR}/../../tools/tools/locale/etc/final-maps
 
 .src.LC_CTYPE:
-	localedef -D -U -w ${MAPLOC}/widths.txt \
+	localedef -D -U -c -w ${MAPLOC}/widths.txt \
 	-f ${MAPLOC}/map.${.IMPSRC:T:R:C/^.*\.//} \
-	-i ${.IMPSRC} ${.OBJDIR}/${.IMPSRC:T:R}
+	-i ${.IMPSRC} ${.OBJDIR}/${.IMPSRC:T:R}  || true
 
 LOCALES+=	am_ET.UTF-8
 LOCALES+=	be_BY.CP1131

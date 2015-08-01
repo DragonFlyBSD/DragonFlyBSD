@@ -7,8 +7,8 @@ FILESNAME=	LC_COLLATE
 MAPLOC=		${.CURDIR}/../../tools/tools/locale/etc/final-maps
 
 .src.LC_COLLATE:
-	localedef -D -U -c -i ${.IMPSRC} \
-	-f ${MAPLOC}/map.UTF-8 ${.OBJDIR}/${.IMPSRC:T:R} || true
+	localedef -D -U -i ${.IMPSRC} \
+	-f ${MAPLOC}/map.UTF-8 ${.OBJDIR}/${.IMPSRC:T:R}
 
 LOCALES+=	af_ZA.UTF-8
 LOCALES+=	am_ET.UTF-8

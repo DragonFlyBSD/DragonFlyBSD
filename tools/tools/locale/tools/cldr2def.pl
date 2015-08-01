@@ -771,16 +771,18 @@ sub make_makefile {
 	my $SRCOUT2;
 	my $MAPLOC;
 	if ($TYPE eq "colldef") {
-		$SRCOUT = "localedef -D -U -c -i \${.IMPSRC} \\\n" .
-			"\t-f \${.CURDIR}/../ctypedef/map.UTF-8 " .
-			"\${.OBJDIR}/\${.IMPSRC:T:R} || true";
+		$SRCOUT = "localedef -D -U -i \${.IMPSRC} \\\n" .
+			"\t-f \${MAPLOC}/map.UTF-8 " .
+			"\${.OBJDIR}/\${.IMPSRC:T:R}";
+		$MAPLOC = "MAPLOC=\t\t\${.CURDIR}/../../tools/tools/" .
+				"locale/etc/final-maps\n";
 		$SRCOUT2 = "LC_COLLATE";
 	}
 	elsif ($TYPE eq "ctypedef") {
-	    # TODO !
-		$SRCOUT = "localedef -D -U -w \${MAPLOC}/widths.txt \\\n" .
+		$SRCOUT = "localedef -D -U -c -w \${MAPLOC}/widths.txt \\\n" .
 			"\t-f \${MAPLOC}/map.\${.IMPSRC:T:R:C/^.*\\.//} " .
-			"\\\n\t-i \${.IMPSRC} \${.OBJDIR}/\${.IMPSRC:T:R}";
+			"\\\n\t-i \${.IMPSRC} \${.OBJDIR}/\${.IMPSRC:T:R} " .
+			" || true";
 		$SRCOUT2 = "LC_CTYPE";
 		$MAPLOC = "MAPLOC=\t\t\${.CURDIR}/../../tools/tools/" .
 				"locale/etc/final-maps\n";
