@@ -27,8 +27,8 @@
  * Including this file is mandatory for all USB related c-files in the kernel.
  */
 
-#ifndef _USB_FREEBSD_H_
-#define	_USB_FREEBSD_H_
+#ifndef _USB_DRAGONFLY_H_
+#define	_USB_DRAGONFLY_H_
 
 /* Default USB configuration */
 #define	USB_HAVE_UGEN 1
@@ -40,6 +40,7 @@
 #define	USB_HAVE_TT_SUPPORT 1
 #define	USB_HAVE_POWERD 1
 #define	USB_HAVE_MSCTEST 1
+#define	USB_HAVE_MSCTEST_DETACH 1
 #define	USB_HAVE_PF 1
 #define	USB_HAVE_ROOT_MOUNT_HOLD 0
 #define	USB_HAVE_ID_SECTION 1
@@ -96,4 +97,4 @@ typedef uint32_t usb_ticks_t;		/* system defined */
 typedef uint16_t usb_power_mask_t;	/* see "USB_HW_POWER_XXX" */
 typedef uint16_t usb_stream_t;		/* stream ID */
 
-#endif	/* _USB_FREEBSD_H_ */
+#endif	/* _USB_DRAGONFLY_H_ */
