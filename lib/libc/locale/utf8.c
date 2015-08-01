@@ -1,4 +1,6 @@
-/*-
+/*
+ * Copyright 2013 Garrett D'Amore <garrett@damore.org>
+ * Copyright 2011 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2002-2004 Tim J. Robbins
  * All rights reserved.
  *
@@ -27,8 +29,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: head/lib/libc/locale/utf8.c 227753 2011-11-20 14:45:42Z theraven $
  */
 
 #include <sys/param.h>
@@ -70,7 +70,7 @@ _UTF8_init(struct xlocale_ctype *l, _RuneLocale *rl)
 	l->__mbsnrtowcs = _UTF8_mbsnrtowcs;
 	l->__wcsnrtombs = _UTF8_wcsnrtombs;
 	l->runes = rl;
-	l->__mb_cur_max = 6;
+	l->__mb_cur_max = 4;
 	/*
 	 * UCS-4 encoding used as the internal representation, so
 	 * slots 0x0080-0x00FF are occuped and must be excluded
@@ -113,13 +113,6 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 		/* Incomplete multibyte sequence */
 		return ((size_t)-2);
 
-	if (us->want == 0 && ((ch = (unsigned char)*s) & ~0x7f) == 0) {
-		/* Fast path for plain ASCII characters. */
-		if (pwc != NULL)
-			*pwc = ch;
-		return (ch != '\0' ? 1 : 0);
-	}
-
 	if (us->want == 0) {
 		/*
 		 * Determine the number of octets that make up this character
@@ -135,10 +128,12 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 		 */
 		ch = (unsigned char)*s;
 		if ((ch & 0x80) == 0) {
-			mask = 0x7f;
-			want = 1;
-			lbound = 0;
-		} else if ((ch & 0xe0) == 0xc0) {
+			/* Fast path for plain ASCII characters. */
+			if (pwc != NULL)
+				*pwc = ch;
+			return (ch != '\0' ? 1 : 0);
+		}
+		if ((ch & 0xe0) == 0xc0) {
 			mask = 0x1f;
 			want = 2;
 			lbound = 0x80;
@@ -150,6 +145,9 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 			mask = 0x07;
 			want = 4;
 			lbound = 0x10000;
+#if 0
+		/* These would be illegal in the UTF-8 space */
+
 		} else if ((ch & 0xfc) == 0xf8) {
 			mask = 0x03;
 			want = 5;
@@ -158,6 +156,7 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 			mask = 0x01;
 			want = 6;
 			lbound = 0x4000000;
+#endif
 		} else {
 			/*
 			 * Malformed input; input is not UTF-8.
@@ -178,6 +177,7 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 		wch = (unsigned char)*s++ & mask;
 	else
 		wch = us->ch;
+
 	for (i = (us->want == 0) ? 1 : 0; i < MIN(want, n); i++) {
 		if ((*s & 0xc0) != 0x80) {
 			/*
@@ -310,12 +310,6 @@ _UTF8_wcrtomb(char * __restrict s, wchar_t wc, mbstate_t * __restrict ps)
 		/* Reset to initial shift state (no-op) */
 		return (1);
 
-	if ((wc & ~0x7f) == 0) {
-		/* Fast path for plain ASCII characters. */
-		*s = (char)wc;
-		return (1);
-	}
-
 	/*
 	 * Determine the number of octets needed to represent this character.
 	 * We always output the shortest sequence possible. Also specify the
@@ -323,8 +317,9 @@ _UTF8_wcrtomb(char * __restrict s, wchar_t wc, mbstate_t * __restrict ps)
 	 * about the sequence length.
 	 */
 	if ((wc & ~0x7f) == 0) {
-		lead = 0;
-		len = 1;
+		/* Fast path for plain ASCII characters. */
+		*s = (char)wc;
+		return (1);
 	} else if ((wc & ~0x7ff) == 0) {
 		lead = 0xc0;
 		len = 2;
@@ -334,12 +329,15 @@ _UTF8_wcrtomb(char * __restrict s, wchar_t wc, mbstate_t * __restrict ps)
 	} else if ((wc & ~0x1fffff) == 0) {
 		lead = 0xf0;
 		len = 4;
+#if 0
+	/* Again, 5 and 6 byte encodings are simply not permitted */
 	} else if ((wc & ~0x3ffffff) == 0) {
 		lead = 0xf8;
 		len = 5;
 	} else if ((wc & ~0x7fffffff) == 0) {
 		lead = 0xfc;
 		len = 6;
+#endif
 	} else {
 		errno = EILSEQ;
 		return ((size_t)-1);
@@ -419,7 +417,7 @@ _UTF8_wcsnrtombs(char * __restrict dst, const wchar_t ** __restrict src,
 			if (nb > (int)len)
 				/* MB sequence for character won't fit. */
 				break;
-			memcpy(dst, buf, nb);
+			(void) memcpy(dst, buf, nb);
 		}
 		if (*s == L'\0') {
 			*src = NULL;

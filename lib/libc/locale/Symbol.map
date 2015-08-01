@@ -246,7 +246,10 @@ DFprivate_1.0 {
     __wcwidth_l;
     __wrap_setrunelocale;
     _BIG5_init;
-    _EUC_init;
+    _EUC_CN_init;
+    _EUC_JP_init;
+    _EUC_KR_init;
+    _EUC_TW_init;
     _GB18030_init;
     _GB2312_init;
     _GBK_init;
@@ -254,7 +257,6 @@ DFprivate_1.0 {
     _Read_RuneMagi;
     _UTF8_init;
     _PathLocale;
-    _ascii_init;
     _none_init;
     _collate_load_tables_l;
     _collate_lookup;

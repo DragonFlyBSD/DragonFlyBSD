@@ -1,4 +1,6 @@
-/*-
+/*
+ * Copyright 2013 Garrett D'Amore <garrett@damore.org>
+ * Copyright 2010 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2002-2004 Tim J. Robbins.
  * All rights reserved.
  *
@@ -27,10 +29,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: head/lib/libc/locale/wcsnrtombs.c 227753 2011-11-20 14:45:42Z theraven $
  */
-
 
 #include <limits.h>
 #include <stdlib.h>
@@ -57,21 +56,21 @@ wcsnrtombs(char * __restrict dst, const wchar_t ** __restrict src, size_t nwc,
 
 size_t
 __wcsnrtombs_std(char * __restrict dst, const wchar_t ** __restrict src,
-    size_t nwc, size_t len, mbstate_t * __restrict ps)
+    size_t nwc, size_t len, mbstate_t * __restrict ps,
+    wcrtomb_pfn_t pwcrtomb)
 {
 	mbstate_t mbsbak;
 	char buf[MB_LEN_MAX];
 	const wchar_t *s;
 	size_t nbytes;
 	size_t nb;
-	struct xlocale_ctype *l = XLOCALE_CTYPE(__get_locale());
 
 	s = *src;
 	nbytes = 0;
 
 	if (dst == NULL) {
 		while (nwc-- > 0) {
-			if ((nb = l->__wcrtomb(buf, *s, ps)) == (size_t)-1)
+			if ((nb = pwcrtomb(buf, *s, ps)) == (size_t)-1)
 				/* Invalid character - wcrtomb() sets errno. */
 				return ((size_t)-1);
 			else if (*s == L'\0')
@@ -85,7 +84,7 @@ __wcsnrtombs_std(char * __restrict dst, const wchar_t ** __restrict src,
 	while (len > 0 && nwc-- > 0) {
 		if (len > (size_t)MB_CUR_MAX) {
 			/* Enough space to translate in-place. */
-			if ((nb = l->__wcrtomb(dst, *s, ps)) == (size_t)-1) {
+			if ((nb = pwcrtomb(dst, *s, ps)) == (size_t)-1) {
 				*src = s;
 				return ((size_t)-1);
 			}
@@ -98,7 +97,7 @@ __wcsnrtombs_std(char * __restrict dst, const wchar_t ** __restrict src,
 			 * character is too long for the buffer.
 			 */
 			mbsbak = *ps;
-			if ((nb = l->__wcrtomb(buf, *s, ps)) == (size_t)-1) {
+			if ((nb = pwcrtomb(buf, *s, ps)) == (size_t)-1) {
 				*src = s;
 				return ((size_t)-1);
 			}
@@ -107,7 +106,7 @@ __wcsnrtombs_std(char * __restrict dst, const wchar_t ** __restrict src,
 				*ps = mbsbak;
 				break;
 			}
-			memcpy(dst, buf, nb);
+			(void) memcpy(dst, buf, nb);
 		}
 		if (*s == L'\0') {
 			*src = NULL;

@@ -1,4 +1,6 @@
-/*-
+/*
+ * Copyright 2013 Garrett D'Amore <garrett@damore.org>
+ * Copyright 2010 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2002-2004 Tim J. Robbins
  * All rights reserved.
  *
@@ -27,9 +29,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: head/lib/libc/locale/gb18030.c 227753 2011-11-20 14:45:42Z theraven $
  */
+
 /*
  * PRC National Standard GB 18030-2000 encoding of Chinese text.
  *
@@ -50,6 +51,13 @@ static size_t	_GB18030_mbrtowc(wchar_t * __restrict, const char * __restrict,
 static int	_GB18030_mbsinit(const mbstate_t *);
 static size_t	_GB18030_wcrtomb(char * __restrict, wchar_t,
 		    mbstate_t * __restrict);
+static size_t	_GB18030_mbsnrtowcs(wchar_t * __restrict,
+		    const char ** __restrict, size_t, size_t,
+		    mbstate_t * __restrict);
+static size_t	_GB18030_wcsnrtombs(char * __restrict,
+		    const wchar_t ** __restrict, size_t, size_t,
+		    mbstate_t * __restrict);
+
 
 typedef struct {
 	int	count;
@@ -63,6 +71,8 @@ _GB18030_init(struct xlocale_ctype *l, _RuneLocale *rl)
 	l->__mbrtowc = _GB18030_mbrtowc;
 	l->__wcrtomb = _GB18030_wcrtomb;
 	l->__mbsinit = _GB18030_mbsinit;
+	l->__mbsnrtowcs = _GB18030_mbsnrtowcs;
+	l->__wcsnrtombs = _GB18030_wcsnrtombs;
 	l->runes = rl;
 	l->__mb_cur_max = 4;
 	l->__mb_sb_limit = 128;
@@ -100,7 +110,7 @@ _GB18030_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s,
 	}
 
 	ncopy = MIN(MIN(n, MB_CUR_MAX), sizeof(gs->bytes) - gs->count);
-	memcpy(gs->bytes + gs->count, s, ncopy);
+	(void) memcpy(gs->bytes + gs->count, s, ncopy);
 	ocount = gs->count;
 	gs->count += ncopy;
 	s = (char *)gs->bytes;
@@ -222,4 +232,20 @@ _GB18030_wcrtomb(char * __restrict s, wchar_t wc, mbstate_t * __restrict ps)
 ilseq:
 	errno = EILSEQ;
 	return ((size_t)-1);
+}
+
+static size_t
+_GB18030_mbsnrtowcs(wchar_t * __restrict dst,
+    const char ** __restrict src, size_t nms, size_t len,
+    mbstate_t * __restrict ps)
+{
+	return (__mbsnrtowcs_std(dst, src, nms, len, ps, _GB18030_mbrtowc));
+}
+
+static size_t
+_GB18030_wcsnrtombs(char * __restrict dst,
+    const wchar_t ** __restrict src, size_t nwc, size_t len,
+    mbstate_t * __restrict ps)
+{
+	return (__wcsnrtombs_std(dst, src, nwc, len, ps, _GB18030_wcrtomb));
 }
