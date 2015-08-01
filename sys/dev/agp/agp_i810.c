@@ -694,7 +694,6 @@ agp_i810_match(device_t dev)
 		return (NULL);
 
 	devid = pci_get_device(dev);
-	kprintf("agp_i810_match(): devid = 0x%x\n", devid);
 	for (i = 0; agp_i810_matches[i].devid != 0; i++) {
 		if (agp_i810_matches[i].devid == devid)
 			break;
@@ -1026,7 +1025,6 @@ agp_sb_get_stolen_size(device_t dev)
 		sc->stolen_size = 512 * 1024 * 1024;
 		break;
 	}
-	kprintf("stolen size %d\n", sc->stolen_size);
 	sc->stolen = (sc->stolen_size - 4) / 4096;
 	return (0);
 }
