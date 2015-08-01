@@ -4,10 +4,11 @@
 LOCALEDIR=	/usr/share/locale
 FILESNAME=	LC_COLLATE
 .SUFFIXES:	.src .LC_COLLATE
+MAPLOC=		${.CURDIR}/../../tools/tools/locale/etc/final-maps
 
 .src.LC_COLLATE:
 	localedef -D -U -c -i ${.IMPSRC} \
-	-f ${.CURDIR}/../ctypedef/map.UTF-8 ${.OBJDIR}/${.IMPSRC:T:R} || true
+	-f ${MAPLOC}/map.UTF-8 ${.OBJDIR}/${.IMPSRC:T:R} || true
 
 LOCALES+=	af_ZA.UTF-8
 LOCALES+=	am_ET.UTF-8
