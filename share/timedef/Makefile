@@ -6,7 +6,7 @@ FILESNAME=	LC_TIME
 .SUFFIXES:	.src .out
 
 .src.out:
-	grep -v '^#' < ${.IMPSRC} > ${.TARGET}
+	grep -v -E '^#[ ]?$$' < ${.IMPSRC} > ${.TARGET}
 
 LOCALES+=	af_ZA.ISO8859-1
 LOCALES+=	am_ET.UTF-8

@@ -6,7 +6,8 @@ FILESNAME=	LC_COLLATE
 .SUFFIXES:	.src .LC_COLLATE
 
 .src.LC_COLLATE:
-	localedef -D -U -w ${.CURDIR}/widths.txt -f ${.CURDIR}/map.UTF-8 -i ${.IMPSRC} ${.OBJDIR}/${.IMPSRC:T:R}
+	localedef -D -U -c -i ${.IMPSRC} \
+	-f ${.CURDIR}/../ctypedef/map.UTF-8 ${.OBJDIR}/${.IMPSRC:T:R} || true
 
 LOCALES+=	af_ZA.UTF-8
 LOCALES+=	am_ET.UTF-8

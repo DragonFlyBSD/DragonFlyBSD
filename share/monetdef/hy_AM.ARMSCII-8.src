@@ -7,13 +7,13 @@
 AMD 
 #
 # currency_symbol
-¹ñ©
+¹ñ.
 #
 # mon_decimal_point
-«
+,
 #
 # mon_thousands_sep
-©
+.
 #
 # mon_grouping
 -1
@@ -22,7 +22,7 @@ AMD
 
 #
 # negative_sign
-¬
+-
 #
 # int_frac_digits
 0
