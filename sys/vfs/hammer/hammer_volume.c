@@ -334,7 +334,11 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	struct bigblock_stat stat;
 	error = hammer_free_freemap(trans, volume, &stat);
 	if (error) {
-		kprintf("Failed to free volume. Volume not empty!\n");
+		kprintf("Failed to free volume: ");
+		if (error == EBUSY)
+			kprintf("Volume %d not empty\n", volume->vol_no);
+		else
+			kprintf("%d\n", error);
 		hmp->volume_to_remove = -1;
 		hammer_rel_volume(volume, 0);
 		hammer_unlock(&hmp->blkmap_lock);
