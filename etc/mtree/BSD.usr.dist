@@ -381,8 +381,6 @@
         installer
         ..
         locale
-            UTF-8
-            ..
             af_ZA.ISO8859-1
             ..
             af_ZA.ISO8859-15
@@ -670,6 +668,8 @@
             pl_PL.UTF-8
             ..
             pt_BR.ISO8859-1
+            ..
+            pt_BR.ISO8859-15
             ..
             pt_BR.UTF-8
             ..
