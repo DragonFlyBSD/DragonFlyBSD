@@ -6,7 +6,7 @@ FILESNAME=	LC_NUMERIC
 .SUFFIXES:	.src .out
 
 .src.out:
-	grep -v -E '^#[ ]?$$' < ${.IMPSRC} > ${.TARGET}
+	grep -v -E '^(#$$|#[ ])' < ${.IMPSRC} > ${.TARGET}
 
 LOCALES+=	af_ZA.ISO8859-1
 LOCALES+=	af_ZA.UTF-8

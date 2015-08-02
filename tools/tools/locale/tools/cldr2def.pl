@@ -788,7 +788,7 @@ sub make_makefile {
 				"locale/etc/final-maps\n";
 	}
 	else {
-		$SRCOUT = "grep -v -E '^\#[ ]?\$\$' < \${.IMPSRC} > \${.TARGET}";
+		$SRCOUT = "grep -v -E '^(\#\$\$|\#[ ])' < \${.IMPSRC} > \${.TARGET}";
 		$SRCOUT2 = "out";
 	}
 	open(FOUT, ">$TYPE.draft/Makefile");
