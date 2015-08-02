@@ -177,10 +177,12 @@ main(int ac, char **av)
 		/* Build fdevs in case of error to report failed devices */
 		fdevs_size = ac * PATH_MAX;
 		fdevs = malloc(fdevs_size);
+		bzero(fdevs, fdevs_size);
+
 		for (ax = 0; ax < info.nvolumes; ax++) {
 			fd = open(info.volumes[ax], O_RDONLY);
 			if (fd < 0 ) {
-				printf ("%s: open failed\n", info.volumes[ax]);
+				fprintf(stderr, "%s: open failed\n", info.volumes[ax]);
 				strlcat(fdevs, info.volumes[ax], fdevs_size);
 				if (ax < ac - 2)
 					strlcat(fdevs, " ", fdevs_size);
@@ -198,7 +200,7 @@ main(int ac, char **av)
 			pr = pread(fd, od, HAMMER_BUFSIZE, 0);
 			if (pr != HAMMER_BUFSIZE ||
 				od->vol_signature != HAMMER_FSBUF_VOLUME) {
-				printf("%s: Not a valid HAMMER filesystem\n",
+				fprintf(stderr, "%s: Not a valid HAMMER filesystem\n",
 					info.volumes[ax]);
 				strlcat(fdevs, info.volumes[ax], fdevs_size);
 				if (ax < ac - 2)
@@ -206,7 +208,10 @@ main(int ac, char **av)
 			}
 			close(fd);
 		}
-		err(1,"mount %s on %s", fdevs, mountpt);
+		if (strlen(fdevs))
+			err(1, "mount %s on %s", fdevs, mountpt);
+		else
+			err(1, "Unknown error");
 	}
 	exit (0);
 }
