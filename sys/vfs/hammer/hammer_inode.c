@@ -1171,12 +1171,23 @@ hammer_unload_pseudofs_callback(hammer_inode_t ip, void *data)
 	int res;
 
 	hammer_ref(&ip->lock);
-	if (hammer_isactive(&ip->lock) == 2 && ip->vp)
-		vclean_unlocked(ip->vp);
-	if (hammer_isactive(&ip->lock) == 1 && ip->vp == NULL)
+	if (ip->vp && (ip->vp->v_flag & VPFSROOT)) {
+		/*
+		 * The hammer pfs-upgrade directive itself might have the
+		 * root of the pfs open.  Just allow it.
+		 */
 		res = 0;
-	else
-		res = -1;	/* stop, someone is using the inode */
+	} else {
+		/*
+		 * Don't allow any subdirectories or files to be open.
+		 */
+		if (hammer_isactive(&ip->lock) == 2 && ip->vp)
+			vclean_unlocked(ip->vp);
+		if (hammer_isactive(&ip->lock) == 1 && ip->vp == NULL)
+			res = 0;
+		else
+			res = -1;	/* stop, someone is using the inode */
+	}
 	hammer_rel_inode(ip, 0);
 	return(res);
 }
