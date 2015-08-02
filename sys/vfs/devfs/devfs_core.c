@@ -2815,7 +2815,8 @@ struct cdev_privdata {
 	cdevpriv_dtr_t	cdpd_dtr;
 };
 
-int devfs_get_cdevpriv(struct file *fp, void **datap)
+int
+devfs_get_cdevpriv(struct file *fp, void **datap)
 {
 	struct cdev_privdata *p;
 	int error;
@@ -2838,7 +2839,8 @@ int devfs_get_cdevpriv(struct file *fp, void **datap)
 	return (error);
 }
 
-int devfs_set_cdevpriv(struct file *fp, void *priv, cdevpriv_dtr_t dtr)
+int
+devfs_set_cdevpriv(struct file *fp, void *priv, cdevpriv_dtr_t dtr)
 {
 	struct cdev_privdata *p;
 	int error;
@@ -2866,7 +2868,8 @@ int devfs_set_cdevpriv(struct file *fp, void *priv, cdevpriv_dtr_t dtr)
 	return error;
 }
 
-void devfs_clear_cdevpriv(struct file *fp)
+void
+devfs_clear_cdevpriv(struct file *fp)
 {
 	struct cdev_privdata *p;
 
