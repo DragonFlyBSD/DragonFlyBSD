@@ -3619,6 +3619,12 @@ vn_cache_strategy(struct vnode *vp, struct bio *bio)
 	int i;
 
 	/*
+	 * Stop using swapcache if paniced, dumping, or dumped
+	 */
+	if (panicstr || dumping)
+		return(0);
+
+	/*
 	 * Is this buffer cache buffer suitable for reading from
 	 * the swap cache?
 	 */

@@ -387,8 +387,18 @@ vm_swapcache_writing(vm_page_t marker, int count, int scount)
 	       count > 0 && scount-- > 0) {
 		KKASSERT(m->queue == marker->queue);
 
+		/*
+		 * Stop using swap if paniced, dumping, or dumped.
+		 * Don't try to write if our curburst has been exhausted.
+		 */
+		if (panicstr || dumping)
+			break;
 		if (vm_swapcache_curburst < 0)
 			break;
+
+		/*
+		 * Move marker
+		 */
 		TAILQ_REMOVE(
 			&vm_page_queues[marker->queue].pl, marker, pageq);
 		TAILQ_INSERT_AFTER(
