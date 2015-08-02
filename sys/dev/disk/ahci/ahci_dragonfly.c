@@ -165,7 +165,8 @@ static int
 ahci_sysctl_link_pwr_state (SYSCTL_HANDLER_ARGS)
 {
 	struct ahci_port *ap = arg1;
-	const char *state_names[] = {"unknown", "active", "partial", "slumber"};
+	const char *state_names[] =
+	    {"unknown", "active", "partial", "slumber", "devsleep"};
 	char buf[16];
 	int state;
 

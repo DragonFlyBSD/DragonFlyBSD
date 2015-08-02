@@ -103,7 +103,11 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_REG_CAP2_BOH		(1<<0) /* BIOS/OS Handoff */
 #define  AHCI_REG_CAP2_NVMP		(1<<1) /* NVMHCI Present */
 #define  AHCI_REG_CAP2_APST		(1<<2) /* A-Partial to Slumber Trans */
-#define  AHCI_FMT_CAP2		"\020" "\003BOH" "\002NVMP" "\001BOH"
+#define  AHCI_REG_CAP2_SDS		(1<<3) /* Supports DevSleep */
+#define  AHCI_REG_CAP2_SADM		(1<<4) /* Supports A-DevSleep Mgmt */
+#define  AHCI_REG_CAP2_DESO		(1<<5) /* DevSleep only from Slumber */
+#define  AHCI_FMT_CAP2		"\020" "\006DESO" "\005SADM" "\004SDS"	\
+				"\003APST" "\002NVMP" "\001BOH"
 
 #define AHCI_REG_BOHC		0x028 /* BIOS/OS Handoff Control and Status */
 #define  AHCI_REG_BOHC_BOS		(1<<0) /* BIOS Owned Semaphore */
@@ -235,6 +239,7 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_PREG_SSTS_IPM_ACTIVE	0x100
 #define  AHCI_PREG_SSTS_IPM_PARTIAL	0x200
 #define  AHCI_PREG_SSTS_IPM_SLUMBER	0x600
+#define  AHCI_PREG_SSTS_IPM_DEVSLEEP	0x800
 
 #define AHCI_PREG_SCTL		0x2c /* SATA Control */
 #define  AHCI_PREG_SCTL_DET		0xf /* Device Detection */
@@ -323,6 +328,10 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_PREG_FBS_DEV_SHIFT	8
 #define  AHCI_PREG_FBS_ADO_SHIFT	12
 #define  AHCI_PREG_FBS_DWE_SHIFT	16
+
+#define AHCI_PREG_DEVSLP	0x44 /* Device Sleep */
+#define  AHCI_PREG_DEVSLP_DSP		0x00000002 /* Device Sleep Present */
+#define  AHCI_PREG_DEVSLP_ADSE		0x00000001 /* A-Device Sleep Enable*/
 
 /*
  * AHCI mapped structures
