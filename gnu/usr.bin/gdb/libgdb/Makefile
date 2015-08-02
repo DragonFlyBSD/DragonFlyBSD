@@ -191,6 +191,7 @@ init.c: ${SRCS:Ninit.c} Makefile
 	echo '}' >> ${.TARGET}
 
 xml-builtin.c: feature_to_c.sh ${XMLFILES}
+	rm -f ${.TARGET}
 	sh ${CONTRIBDIR}/features/feature_to_c.sh ${.TARGET} ${.ALLSRC:M*.dtd}
 
 common-agent.c:	${CONTRIBDIR}/common/agent.c
