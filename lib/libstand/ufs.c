@@ -372,6 +372,8 @@ search_directory(char *name, struct open_file *f, ino_t *inumber_p)
 		while (dp < edp) {
 			if (dp->d_ino == (ino_t)0)
 				goto next;
+			if (dp->d_type == DT_WHT)
+				goto next;
 #if BYTE_ORDER == LITTLE_ENDIAN
 			if (fp->f_fs->fs_maxsymlinklen <= 0)
 				namlen = dp->d_type;

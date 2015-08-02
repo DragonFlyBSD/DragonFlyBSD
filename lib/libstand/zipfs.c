@@ -171,7 +171,7 @@ zf_open(const char *fname, struct open_file *f)
     struct stat		sb;
 
     /* Have to be in "just read it" mode */
-    if (f->f_flags != F_READ)
+    if ((f->f_flags & (F_READ | F_WRITE)) != F_READ)
 	return(EPERM);
 
     /* If the name already ends in .gz or .bz2, ignore it */
