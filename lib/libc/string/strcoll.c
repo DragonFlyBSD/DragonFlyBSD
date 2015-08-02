@@ -50,9 +50,20 @@ strcoll_l(const char *s, const char *s2, locale_t locale)
 	int ret;
 	wchar_t *t1 = NULL, *t2 = NULL;
 	wchar_t *w1 = NULL, *w2 = NULL;
+	const char *cs1, *cs2;
 	mbstate_t mbs1 = { 0 };
 	mbstate_t mbs2 = { 0 };
 	size_t sz1, sz2;
+
+	/*
+	 * The mbsrtowcs_l function can set the src pointer to null upon
+	 * failure, so it should act on a copy to avoid:
+	 *   - sending null pointer to strcmp
+	 *   - having strcoll/strcoll_l change *s or *s2 to null
+	 */
+	cs1 = s;
+	cs2 = s2;
+
 	FIX_LOCALE(locale);
 	struct xlocale_collate *table =
 		(struct xlocale_collate*)locale->components[XLC_COLLATE];
@@ -75,10 +86,10 @@ strcoll_l(const char *s, const char *s2, locale_t locale)
 		goto error;
 	w2 = t2;
 
-	if ((mbsrtowcs_l(w1, &s, sz1, &mbs1, locale)) == (size_t)-1)
+	if ((mbsrtowcs_l(w1, &cs1, sz1, &mbs1, locale)) == (size_t)-1)
 		goto error;
 
-	if ((mbsrtowcs_l(w2, &s2, sz2, &mbs2, locale)) == (size_t)-1)
+	if ((mbsrtowcs_l(w2, &cs2, sz2, &mbs2, locale)) == (size_t)-1)
 		goto error;
 
 	ret = wcscoll_l(w1, w2, locale);
