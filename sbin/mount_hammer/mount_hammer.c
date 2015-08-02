@@ -177,7 +177,7 @@ main(int ac, char **av)
 		/* Build fdevs in case of error to report failed devices */
 		fdevs_size = ac * PATH_MAX;
 		fdevs = malloc(fdevs_size);
-		for (ax = 0; ax < ac - 1; ax++) {
+		for (ax = 0; ax < info.nvolumes; ax++) {
 			fd = open(info.volumes[ax], O_RDONLY);
 			if (fd < 0 ) {
 				printf ("%s: open failed\n", info.volumes[ax]);
