@@ -3,11 +3,12 @@
 
 UTF8=	af_ZA am_ET be_BY bg_BG ca_AD ca_ES ca_FR ca_IT \
 	cs_CZ da_DK de_AT de_CH de_DE el_GR en_AU en_CA \
-	en_GB en_IE en_NZ en_US es_ES et_EE eu_ES fi_FI \
-	fr_BE fr_CA fr_CH fr_FR he_IL hi_IN hr_HR hu_HU \
-	hy_AM is_IS it_CH it_IT ja_JP kk_KZ ko_KR lt_LT \
-	lv_LV nb_NO nl_BE nl_NL nn_NO pl_PL pt_BR pt_PT \
-	ro_RO ru_RU sk_SK sl_SI sv_SE tr_TR uk_UA \
+	en_GB en_HK en_IE en_NZ en_PH en_SG en_US es_AR \
+	es_CR es_ES es_MX et_EE eu_ES fi_FI fr_BE fr_CA \
+	fr_CH fr_FR he_IL hi_IN hr_HR hu_HU hy_AM is_IS \
+	it_CH it_IT ja_JP kk_KZ ko_KR lt_LT lv_LV nb_NO \
+	nl_BE nl_NL nn_NO pl_PL pt_BR pt_PT ro_RO ru_RU \
+	se_FI se_NO sk_SK sl_SI sv_FI sv_SE tr_TR uk_UA \
 	mn_Cyrl_MN \
 	sr_Cyrl_RS \
 	sr_Latn_RS \
@@ -18,9 +19,10 @@ UTF8=	af_ZA am_ET be_BY bg_BG ca_AD ca_ES ca_FR ca_IT \
 EURO=	af_ZA ca_AD ca_ES ca_FR ca_IT da_DK de_AT de_CH \
 	de_DE en_AU en_CA en_GB en_NZ en_US en_ZA es_ES \
 	et_EE eu_ES fi_FI fr_BE fr_CA fr_CH fr_FR is_IS \
-	it_CH it_IT nb_NO nl_BE nl_NL nn_NO pt_PT sv_SE
+	it_CH it_IT nb_NO nl_BE nl_NL nn_NO pt_BR pt_PT \
+	sv_FI sv_SE
 
-STD1=	${EURO:Net_EE} pt_BR
+STD1=	${EURO:Net_EE} en_HK en_PH en_SG es_AR es_CR es_MX
 STD2=	cs_CZ hr_HR hu_HU pl_PL ro_RO sk_SK sl_SI sr_Latn_RS
 STD5=	be_BY ru_RU uk_UA sr_Cyrl_RS
 MANUAL=	lt_LT el_GR tr_TR lv_LV
