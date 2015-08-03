@@ -1,0 +1,149 @@
+NAME
+  testregex - regex(3) test harness
+
+SYNOPSIS
+  testregex [ options ]
+
+DESCRIPTION
+  testregex reads regex(3) test specifications, one per line, from the
+  standard input and writes one output line for each failed test. A
+  summary line is written after all tests are done. Each successful
+  test is run again with REG_NOSUB. Unsupported features are noted
+  before the first test, and tests requiring these features are
+  silently ignored.
+
+OPTIONS
+  -c	catch signals and non-terminating calls
+  -e	ignore error return mismatches
+  -h	list help on standard error
+  -n	do not repeat successful tests with regnexec()
+  -o	ignore match[] overrun errors
+  -p	ignore negative position mismatches
+  -s	use stack instead of malloc
+  -x	do not repeat successful tests with REG_NOSUB
+  -v	list each test line
+  -A	list failed test lines with actual answers
+  -B	list all test lines with actual answers
+  -F	list failed test lines
+  -P	list passed test lines
+  -S	output one summary line
+
+INPUT FORMAT
+  Input lines may be blank, a comment beginning with #, or a test
+  specification. A specification is five fields separated by one
+  or more tabs. NULL denotes the empty string and NIL denotes the
+  0 pointer.
+
+  Field 1: the regex(3) flags to apply, one character per REG_feature
+  flag. The test is skipped if REG_feature is not supported by the
+  implementation. If the first character is not [BEASKLP] then the
+  specification is a global control line. One or more of [BEASKLP] may be
+  specified; the test will be repeated for each mode.
+
+    B 	basic			BRE	(grep, ed, sed)
+    E 	REG_EXTENDED		ERE	(egrep)
+    A	REG_AUGMENTED		ARE	(egrep with negation)
+    S	REG_SHELL		SRE	(sh glob)
+    K	REG_SHELL|REG_AUGMENTED	KRE	(ksh glob)
+    L	REG_LITERAL		LRE	(fgrep)
+
+    a	REG_LEFT|REG_RIGHT	implicit ^...$
+    b	REG_NOTBOL		lhs does not match ^
+    c	REG_COMMENT		ignore space and #...\n
+    d	REG_SHELL_DOT		explicit leading . match
+    e	REG_NOTEOL		rhs does not match $
+    f	REG_MULTIPLE		multiple \n separated patterns
+    g	FNM_LEADING_DIR		testfnmatch only -- match until /
+    h	REG_MULTIREF		multiple digit backref
+    i	REG_ICASE		ignore case
+    j	REG_SPAN		. matches \n
+    k	REG_ESCAPE		\ to ecape [...] delimiter
+    l	REG_LEFT		implicit ^...
+    m	REG_MINIMAL		minimal match
+    n	REG_NEWLINE		explicit \n match
+    o	REG_ENCLOSED		(|&) magic inside [@|&](...)
+    p	REG_SHELL_PATH		explicit / match
+    q	REG_DELIMITED		delimited pattern
+    r	REG_RIGHT		implicit ...$
+    s	REG_SHELL_ESCAPED	\ not special
+    t	REG_MUSTDELIM		all delimiters must be specified
+    u	standard unspecified behavior -- errors not counted
+    v	REG_CLASS_ESCAPE	\ special inside [...]
+    w	REG_NOSUB		no subexpression match array
+    x	REG_LENIENT		let some errors slide
+    y	REG_LEFT		regexec() implicit ^...
+    z	REG_NULL		NULL subexpressions ok
+    $	                        expand C \c escapes in fields 2 and 3
+    /	                        field 2 is a regsubcomp() expression
+    =	                        field 3 is a regdecomp() expression
+
+  Field 1 control lines:
+
+    C		set LC_COLLATE and LC_CTYPE to locale in field 2
+
+    ?test ...	output field 5 if passed and != EXPECTED, silent otherwise
+    &test ...	output field 5 if current and previous passed
+    |test ...	output field 5 if current passed and previous failed
+    ; ...	output field 2 if previous failed
+    {test ...	skip if failed until }
+    }		end of skip
+
+    : comment		comment copied as output NOTE
+    :comment:test	:comment: ignored
+    N[OTE] comment	comment copied as output NOTE
+    T[EST] comment	comment
+
+    number		use number for nmatch (20 by default)
+
+  Field 2: the regular expression pattern; SAME uses the pattern from
+    the previous specification.
+
+  Field 3: the string to match.
+
+  Field 4: the test outcome. This is either one of the posix error
+    codes (with REG_ omitted) or the match array, a list of (m,n)
+    entries with m and n being first and last+1 positions in the
+    field 3 string, or NULL if REG_NOSUB is in effect and success
+    is expected. BADPAT is acceptable in place of any regcomp(3)
+    error code. The match[] array is initialized to (-2,-2) before
+    each test. All array elements from 0 to nmatch-1 must be specified
+    in the outcome. Unspecified endpoints (offset -1) are denoted by ?.
+    Unset endpoints (offset -2) are denoted by X. {x}(o:n) denotes a
+    matched (?{...}) expression, where x is the text enclosed by {...},
+    o is the expression ordinal counting from 1, and n is the length of
+    the unmatched portion of the subject string. If x starts with a
+    number then that is the return value of re_execf(), otherwise 0 is
+    returned.
+
+  Field 5: optional comment appended to the report.
+
+CAVEAT
+    If a regex implementation misbehaves with memory then all bets are off.
+
+CONTRIBUTORS
+  Glenn Fowler    glenn.s.fowler@gmail.com    (ksh strmatch, regex extensions)
+  David Korn      dgkorn@gmail.com            (ksh glob matcher)
+  Doug McIlroy    mcilroy@dartmouth.edu       (ast regex/testre in C++)
+  Tom Lord        lord@regexps.com            (rx tests)
+  Henry Spencer   henry@zoo.toronto.edu       (original public regex)
+  Andrew Hume     andrew@research.att.com     (gre tests)
+  John Maddock    John_Maddock@compuserve.com (regex++ tests)
+  Philip Hazel    ph10@cam.ac.uk              (pcre tests)
+  Ville Laurikari vl@iki.fi                   (libtre tests)
+  
+WEB SITE
+  http://www2.research.att.com/~astopen/testregex/
+  AT&T Research regex(3) regression tests
+
+  Glenn Fowler <glenn.s.fowler@gmail.com>
+  AT&T Research - Florham Park NJ
+
+  testregex.c 2004-05-31 is the latest source for the AT&T Research regression
+  test harness for the X/Open regex pattern match interface.
+  The source and test data posted here are license free.
+
+  testregex can:
+     - verify stability for a particular implementation in the face of source
+       code and/or compilation environment changes
+     - verify standard compliance for all implementations
+     - provide a basis for discussions on what compliance means
