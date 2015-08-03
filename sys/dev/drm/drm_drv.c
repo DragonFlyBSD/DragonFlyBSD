@@ -99,7 +99,7 @@ MODULE_DEPEND(drm, iicbus, 1, 1, 1);
 	[DRM_IOCTL_NR(ioctl)] = {.cmd = ioctl, .func = _func, .flags = _flags, .cmd_drv = 0, .name = #ioctl}
 
 /** Ioctl table */
-static struct drm_ioctl_desc drm_ioctls[] = {
+static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_VERSION, drm_version, DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_UNIQUE, drm_getunique, 0),
 	DRM_IOCTL_DEF(DRM_IOCTL_GET_MAGIC, drm_getmagic, 0),
@@ -720,7 +720,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 {
 	struct cdev *kdev = ap->a_head.a_dev;
 	struct drm_device *dev;
-	struct drm_ioctl_desc *ioctl = NULL;
+	const struct drm_ioctl_desc *ioctl = NULL;
 	u_long cmd = ap->a_cmd;
 	unsigned int nr = DRM_IOCTL_NR(cmd);
 	int retcode = 0;

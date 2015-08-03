@@ -2023,7 +2023,7 @@ struct drm_i915_cmd_table {
 
 #include "i915_trace.h"
 
-extern struct drm_ioctl_desc i915_ioctls[];
+extern const struct drm_ioctl_desc i915_ioctls[];
 extern int i915_max_ioctl;
 
 extern int i915_suspend(device_t kdev);

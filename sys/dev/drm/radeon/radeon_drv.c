@@ -88,7 +88,7 @@ extern int radeon_get_crtc_scanoutpos(struct drm_device *dev, int crtc,
 				      unsigned int flags,
 				      int *vpos, int *hpos, ktime_t *stime,
 				      ktime_t *etime);
-extern struct drm_ioctl_desc radeon_ioctls_kms[];
+extern const struct drm_ioctl_desc radeon_ioctls_kms[];
 extern int radeon_max_kms_ioctl;
 #ifdef DUMBBELL_WIP
 int radeon_mmap(struct file *filp, struct vm_area_struct *vma);
