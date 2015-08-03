@@ -189,16 +189,9 @@ acuabort(int s)
 static acu_t *
 acutype(char *s)
 {
-	acu_t *p;
-	extern acu_t acutable[];
-
-	for (p = acutable; p->acu_name != '\0'; p++)
-		if (!strcmp(s, p->acu_name))
-			return (p);
-
-	#if UNIDIALER
+#if UNIDIALER
 	return unidialer_getmodem (s);
-	#else
+#else
 	return (NULL);
-	#endif
+#endif
 }

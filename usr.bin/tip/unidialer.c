@@ -413,9 +413,9 @@ unidialer_dialer(char *num, char *acu)
 	char line [80];
 #endif
 
-	#ifdef DEBUG
+#ifdef DEBUG
 	dumpmodemparms (modem_name);
-	#endif
+#endif
 
 	if (lock_baud) {
 		int i;
@@ -540,9 +540,9 @@ unidialer_disconnect(void)
 	}
 	if (!okay)
 	{
-		#if ACULOG
+#if ACULOG
 		logent(value(HOST), "", modem_name, "can't hang up modem");
-		#endif
+#endif
 		if (boolean(value(VERBOSE)))
 			printf("hang up failed\n");
 	}

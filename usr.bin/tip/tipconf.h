@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1983, 1993
+ * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,58 +30,79 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)acutab.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/tip/tip/acutab.c,v 1.4 1999/08/28 01:06:32 peter Exp $
+ * @(#)tipconf.h 8.1 (Berkeley) 3/25/95
  */
 
-#include "tipconf.h"
-#include "tip.h"
+#ifndef tipconf_h_included
+#define tipconf_h_included
 
-acu_t acutable[] = {
-#if BIZ1031
-	{ "biz31f",	biz31f_dialer,	biz31_disconnect,	biz31_abort } ,
-	{ "biz31w",	biz31w_dialer,	biz31_disconnect,	biz31_abort } ,
-#endif
-#if BIZ1022
-	{ "biz22f",	biz22f_dialer,	biz22_disconnect,	biz22_abort } ,
-	{ "biz22w",	biz22w_dialer,	biz22_disconnect,	biz22_abort } ,
-#endif
-#if DF02
-	{ "df02",	df02_dialer,	df_disconnect,		df_abort } ,
-#endif
-#if DF03
-	{ "df03",	df03_dialer,	df_disconnect,		df_abort } ,
-#endif
-#if DN11
-	{ "dn11",	dn_dialer,	dn_disconnect,		dn_abort } ,
-#endif
-#if VENTEL
-	{ "ventel",	ven_dialer,	ven_disconnect,		ven_abort } ,
-#endif
-#if HAYES
-	{ "hayes",	hay_dialer,	hay_disconnect,		hay_abort } ,
-#endif
-#if COURIER
-	{ "courier",	cour_dialer,	cour_disconnect,	cour_abort } ,
-#endif
-#if MULTITECH
-	{ "multitech",	multitech_dialer, multitech_disconnect,	multitech_abort } ,
-#endif
-#if T3000
-	{ "t3000",	t3000_dialer,	t3000_disconnect,	t3000_abort } ,
-#endif
-#if V3451
-#if !V831
-	{ "vadic",	v3451_dialer,	v3451_disconnect,	v3451_abort } ,
-#endif
-	{ "v3451",	v3451_dialer,	v3451_disconnect,	v3451_abort } ,
-#endif
-#if V831
-#if !V3451
-	{ "vadic",	v831_dialer,	v831_disconnect,	v831_abort } ,
-#endif
-	{ "v831",	v831_dialer,	v831_disconnect,	v831_abort } ,
-#endif
-	{ 0,		0,		0,			0 }
-};
+/*
+	Define constness
+*/
+#define CONST const
 
+/*
+	Specify default bit rate for connections
+*/
+#define DEFBR 1200
+
+/*
+	Default frame size for file transfer buffering of writes
+	on local side
+*/
+#ifndef BUFSIZ
+#define DEFFS 1024
+#else
+#define DEFFS BUFSIZ
+#endif
+
+/*
+	Enable logging of ACU use
+*/
+#define ACULOG             1
+
+/*
+	Strip phone #s from ACU log file
+*/
+#define PRISTINE           1
+
+/*
+	Enable command to "connect" remote with local process
+*/
+#define CONNECT            1
+
+/*
+	Specify style of UUCP lock files
+*/
+#define HAVE_V2_LOCKFILES  0
+#define HAVE_HDB_LOCKFILES 1
+
+/*
+	System has a millisecond based sleep function
+*/
+#define HAVE_USLEEP        0
+
+/*
+	System has select
+*/
+#define HAVE_SELECT        1
+
+/*
+	System has termios tty interface
+*/
+#define HAVE_TERMIOS       1
+
+/*
+	Include configurable modem driver
+*/
+#define UNIDIALER          1
+
+/*
+	Include cu interface so that, when tip is linked to cu and then
+	invoked as cu, it behaves like cu.
+*/
+#define INCLUDE_CU_INTERFACE 1
+
+#endif
+
+/* end of tipconf.h */
