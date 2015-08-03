@@ -162,8 +162,7 @@ SUBDIR+=btxld \
 .endif
 
 .if ${MACHINE_ARCH} == "i386"
-SUBDIR+=kgzip \
-	stlstats
+SUBDIR+=kgzip
 .endif
 
 .ifdef BOOT0CFG_SUPPORT
