@@ -55,11 +55,30 @@ hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
 static int
 hammer_clear_volume_header(struct vnode *devvp);
 
+static int
+hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip);
+
 struct bigblock_stat {
 	uint64_t total_bigblocks;
 	uint64_t total_free_bigblocks;
 	uint64_t counter;
 };
+
+static int
+hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
+	int (*callback)(hammer_transaction_t, hammer_volume_t, hammer_buffer_t*,
+		struct hammer_blockmap_layer1*, struct hammer_blockmap_layer2*,
+		hammer_off_t, hammer_off_t, void*),
+	void *data);
+
+static int
+test_free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
+	hammer_buffer_t *bufferp,
+	struct hammer_blockmap_layer1 *layer1,
+	struct hammer_blockmap_layer2 *layer2,
+	hammer_off_t phys_off,
+	hammer_off_t block_off __unused,
+	void *data);
 
 static int
 hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume,
@@ -272,35 +291,18 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	/*
-	 * Reblock filesystem
+	 * Reblock filesystem if the volume is not empty
 	 */
 	hmp->volume_to_remove = volume->vol_no;
 
-	struct hammer_ioc_reblock reblock;
-	bzero(&reblock, sizeof(reblock));
-
-	reblock.key_beg.localization = HAMMER_MIN_LOCALIZATION;
-	reblock.key_beg.obj_id = HAMMER_MIN_OBJID;
-	reblock.key_end.localization = HAMMER_MAX_LOCALIZATION;
-	reblock.key_end.obj_id = HAMMER_MAX_OBJID;
-	reblock.head.flags = HAMMER_IOC_DO_FLAGS;
-	reblock.free_level = 0;
-
-	error = hammer_ioc_reblock(trans, ip, &reblock);
-
-	if (reblock.head.flags & HAMMER_IOC_HEAD_INTR) {
-		error = EINTR;
-	}
-
-	if (error) {
-		if (error == EINTR) {
-			kprintf("reblock was interrupted\n");
-		} else {
-			kprintf("reblock failed: %d\n", error);
+	if (hammer_iterate_l1l2_entries(trans, volume,
+					test_free_callback, NULL)) {
+		error = hammer_do_reblock(trans, ip);
+		if (error) {
+			hmp->volume_to_remove = -1;
+			hammer_rel_volume(volume, 0);
+			goto end;
 		}
-		hmp->volume_to_remove = -1;
-		hammer_rel_volume(volume, 0);
-		goto end;
 	}
 
 	/*
@@ -347,7 +349,6 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	hmp->volume_to_remove = -1;
-
 	hammer_rel_volume(volume, 0);
 
 	/*
@@ -489,6 +490,41 @@ hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
 	ioc->nvols = cnt;
 
 	return (error);
+}
+
+static
+int
+hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip)
+{
+	int error;
+
+	struct hammer_ioc_reblock reblock;
+	bzero(&reblock, sizeof(reblock));
+
+	reblock.key_beg.localization = HAMMER_MIN_LOCALIZATION;
+	reblock.key_beg.obj_id = HAMMER_MIN_OBJID;
+	reblock.key_end.localization = HAMMER_MAX_LOCALIZATION;
+	reblock.key_end.obj_id = HAMMER_MAX_OBJID;
+	reblock.head.flags = HAMMER_IOC_DO_FLAGS;
+	reblock.free_level = 0;
+
+	kprintf("reblock started\n");
+	error = hammer_ioc_reblock(trans, ip, &reblock);
+
+	if (reblock.head.flags & HAMMER_IOC_HEAD_INTR) {
+		error = EINTR;
+	}
+
+	if (error) {
+		if (error == EINTR) {
+			kprintf("reblock was interrupted\n");
+		} else {
+			kprintf("reblock failed: %d\n", error);
+		}
+		return(error);
+	}
+
+	return(0);
 }
 
 /*

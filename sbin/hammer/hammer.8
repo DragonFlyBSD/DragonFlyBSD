@@ -760,6 +760,10 @@ in
 .Pa /boot/loader.conf ,
 see
 .Xr loader 8 .
+.Pp
+This command may
+.Cm reblock
+filesystem before it attemps to remove the volume if the volume is not empty.
 .\" ==== volume-list ====
 .It Cm volume-list Ar filesystem
 List the volumes that make up
