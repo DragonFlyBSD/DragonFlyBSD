@@ -65,28 +65,15 @@ struct bigblock_stat {
 };
 
 static int
-hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
-	int (*callback)(hammer_transaction_t, hammer_volume_t, hammer_buffer_t*,
-		struct hammer_blockmap_layer1*, struct hammer_blockmap_layer2*,
-		hammer_off_t, hammer_off_t, void*),
-	void *data);
-
-static int
-test_free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
-	hammer_buffer_t *bufferp,
-	struct hammer_blockmap_layer1 *layer1,
-	struct hammer_blockmap_layer2 *layer2,
-	hammer_off_t phys_off,
-	hammer_off_t block_off __unused,
-	void *data);
-
-static int
 hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume,
 	struct bigblock_stat *stat);
 
 static int
 hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume,
 	struct bigblock_stat *stat);
+
+static int
+hammer_test_free_freemap(hammer_transaction_t trans, hammer_volume_t volume);
 
 int
 hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
@@ -295,8 +282,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	hmp->volume_to_remove = volume->vol_no;
 
-	if (hammer_iterate_l1l2_entries(trans, volume,
-					test_free_callback, NULL)) {
+	if (hammer_test_free_freemap(trans, volume)) {
 		error = hammer_do_reblock(trans, ip);
 		if (error) {
 			hmp->volume_to_remove = -1;
@@ -784,15 +770,20 @@ hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume,
 {
 	int error;
 
-	stat->total_bigblocks = 0;
-	stat->total_free_bigblocks = 0;
-	stat->counter = 0;
-	error = hammer_iterate_l1l2_entries(trans, volume, test_free_callback, NULL);
+	error = hammer_test_free_freemap(trans, volume);
 	if (error)
 		return error;  /* not ready to free */
 
-	error = hammer_iterate_l1l2_entries(trans, volume, free_callback, stat);
-	return error;
+	stat->total_bigblocks = 0;
+	stat->total_free_bigblocks = 0;
+	stat->counter = 0;
+	return hammer_iterate_l1l2_entries(trans, volume, free_callback, stat);
+}
+
+static int
+hammer_test_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
+{
+	return hammer_iterate_l1l2_entries(trans, volume, test_free_callback, NULL);
 }
 
 /************************************************************************
