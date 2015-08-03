@@ -104,6 +104,7 @@
 		encoding="SJIS eucJP"
 		countries="JP" />
 	<language name="kk"
+		family="Cyrl"
 		countries="KZ" />  <!-- PT154 not available, UTF-8 -->
 	<language name="ko"
 		encoding="eucKR"
@@ -182,6 +183,8 @@
 	<!-- These don't have a special Euro sign so just use Eu for it -->
 	<translation encoding="ISO8859-1" cldr="EURO SIGN" string="Eu" />
 	<translation encoding="ISO8859-2" cldr="EURO SIGN" string="Eu" />
+	<translation encoding="ISO8859-4" cldr="EURO SIGN" string="Eu" />
+	<translation encoding="ISO8859-13" cldr="EURO SIGN" string="Eu" />
 
 	<!-- Minus and dashes -->
 	<translation encoding="ISO8859-1 ISO8859-4 ISO8859-13 ISO8859-15"
@@ -417,7 +420,7 @@
 	    unicode="IDEOGRAPHIC SPACE" />
 	<translation encoding="GB2312 eucCN Big5" cldr="FULL STOP"
 	    unicode="FULLWIDTH FULL STOP" />
-	<translation encoding="Big5" cldr="SOLIDUS"
+	<translation encoding="GB2312 eucCN Big5" cldr="SOLIDUS"
 	    unicode="FULLWIDTH SOLIDUS" />
 	<translation encoding="GB2312 eucCN Big5" cldr="COMMA"
 	    unicode="FULLWIDTH COMMA" />
@@ -428,21 +431,31 @@
 	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
 	    cldr="CJK UNIFIED IDEOGRAPH-4E00" ucc="4E00" />
 	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
+	    cldr="CJK UNIFIED IDEOGRAPH-4E03" ucc="4E03" />
+	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
 	    cldr="CJK UNIFIED IDEOGRAPH-4E09" ucc="4E09" />
 	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
 	    cldr="CJK UNIFIED IDEOGRAPH-4E0A" ucc="4E0A" />
 	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
 	    cldr="CJK UNIFIED IDEOGRAPH-4E0B" ucc="4E0B" />
 	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
+	    cldr="CJK UNIFIED IDEOGRAPH-4E0D" ucc="4E0D" />
+	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
+	    cldr="CJK UNIFIED IDEOGRAPH-4E5D" ucc="4E5D" />
+	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
 	    cldr="CJK UNIFIED IDEOGRAPH-4E8C" ucc="4E8C" />
 	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
 	    cldr="CJK UNIFIED IDEOGRAPH-4E94" ucc="4E94" />
+	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
+	    cldr="CJK UNIFIED IDEOGRAPH-516B" ucc="516B" />
 	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
 	    cldr="CJK UNIFIED IDEOGRAPH-516D" ucc="516D" />
 	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
 	    cldr="CJK UNIFIED IDEOGRAPH-5206" ucc="5206" />
 	<translation encoding="eucJP SJIS"
 	    cldr="CJK UNIFIED IDEOGRAPH-524D" ucc="524D" />
+	<translation encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN"
+	    cldr="CJK UNIFIED IDEOGRAPH-5341" ucc="5341" />
 	<translation
 	    encoding="GB2312 GB18030 GBK Big5 Big5HKSCS eucCN eucJP SJIS"
 	    cldr="CJK UNIFIED IDEOGRAPH-5348" ucc="5348" />
@@ -546,7 +559,10 @@
 	<translation encoding="ISCII-DEV" cldr="INDIAN RUPEE SIGN" hex="FC" />
 	<translation encoding="ISO8859-1" cldr="PESO SIGN" hex="A4" />
 	<translation encoding="ISO8859-1" cldr="COLON SIGN" hex="A4" />
-
+	<translation encoding="ARMSCII-8" cldr="ARMENIAN DRAM SIGN"
+	    hex="B9F12E" />
+	<translation encoding="ISO8859-9" cldr="TURKISH LIRA SIGN"
+	    string="TL" />
 
 </translations>
 

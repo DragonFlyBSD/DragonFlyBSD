@@ -790,6 +790,7 @@ sub make_makefile {
 	else {
 		$SRCOUT = "grep -v -E '^(\#\$\$|\#[ ])' < \${.IMPSRC} > \${.TARGET}";
 		$SRCOUT2 = "out";
+		$MAPLOC = "";
 	}
 	open(FOUT, ">$TYPE.draft/Makefile");
 	print FOUT <<EOF;
