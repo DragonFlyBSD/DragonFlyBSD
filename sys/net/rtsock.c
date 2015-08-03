@@ -1611,7 +1611,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	int	*name = (int *)arg1;
 	u_int	namelen = arg2;
 	int	error = EINVAL;
-	int	origcpu;
+	int	origcpu, cpu;
 	u_char  af;
 	struct	walkarg w;
 
@@ -1634,11 +1634,16 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	if (namelen == 4) {
 		if (name[3] < 0 || name[3] >= ncpus)
 			return (EINVAL);
-		origcpu = mycpuid;
-		lwkt_migratecpu(name[3]);
+		cpu = name[3];
 	} else {
-		origcpu = -1;
+		/*
+		 * Target cpu is not specified, use cpu0 then, so that
+		 * the result set will be relatively stable.
+		 */
+		cpu = 0;
 	}
+	origcpu = mycpuid;
+	lwkt_migratecpu(cpu);
 
 	switch (w.w_op) {
 	case NET_RT_DUMP:
@@ -1653,8 +1658,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	if (w.w_tmem != NULL)
 		kfree(w.w_tmem, M_RTABLE);
 
-	if (origcpu >= 0)
-		lwkt_migratecpu(origcpu);
+	lwkt_migratecpu(origcpu);
 	return (error);
 }
 
