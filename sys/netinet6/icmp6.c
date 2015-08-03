@@ -2578,8 +2578,13 @@ nolladdropt:;
 	/* connect m0 to m */
 	m->m_next = m0;
 	m->m_pkthdr.len = m->m_len + m0->m_len;
+	m0 = NULL;
     }
 noredhdropt:;
+	if (m0 != NULL) {
+		m_freem(m0);
+		m0 = NULL;
+	}
 
 	if (IN6_IS_ADDR_LINKLOCAL(&sip6->ip6_src))
 		sip6->ip6_src.s6_addr16[1] = 0;
