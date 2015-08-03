@@ -1552,7 +1552,7 @@ in6_ifadd(struct nd_prefix *pr, struct in6_addr *ifid)
 	struct in6_addr mask;
 	int prefixlen = pr->ndpr_plen;
 
-	in6_len2mask(&mask, prefixlen);
+	in6_prefixlen2mask(&mask, prefixlen);
 
 	/*
 	 * find a link-local address (will be interface ID).
