@@ -94,8 +94,8 @@ subota
 #
 # AM/PM
 pre podhe
-popodhe""pre podne
-popodne
+po podhe""pre podne
+po podne
 #
 # date_fmt
 %d. %B %Y. %H.%M.%S %Z""%d. %B %Y. %H.%M.%S %Z

@@ -53,14 +53,14 @@ Cumartesi
 %H:%M:%S
 #
 # x_fmt
-%d.%m.%Y
+%e.%m.%Y
 #
 # c_fmt
 %e %B %Y %H:%M:%S
 #
 # AM/PM
-AM
-PM
+ÖÖ
+ÖS
 #
 # date_fmt
 %e %B %Y %H:%M:%S %Z
@@ -80,8 +80,8 @@ Kasım
 Aralık
 #
 # md_order
-dm
+m
 #
 # ampm_fmt
-%I:%M:%S %p
+%p %I:%M:%S
 # EOF

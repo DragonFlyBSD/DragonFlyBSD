@@ -4,10 +4,10 @@
 # -----------------------------------------------------------------------------
 #
 # yesexpr
-^(([eE]([vV][eE][tT])?)|([yY]([eE][sS])?))
+^(([eE]([vV][eE][tT])?)|([eE])|([yY]([eE][sS])?)|([yY]))
 #
 # noexpr
-^(([hH]([aA][yY][ıI][rR])?)|([hH]([aA][yY][iI][rR])?)|([nN]([oO])?))
+^(([hH]([aA][yY][ıI][rR])?)|([hH]([aA][yY][iI][rR])?)|([hH])|([nN]([oO])?)|([nN]))
 #
 # yesstr
 evet:e:EVET:E:yes:y:YES:Y

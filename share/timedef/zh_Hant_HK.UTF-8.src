@@ -53,7 +53,7 @@
 %p%I:%M:%S
 #
 # x_fmt
-%y年%m月%e日
+%e/%m/%y
 #
 # c_fmt
 %Y年%m月%e日 %p%I:%M:%S [%Z]

@@ -4,83 +4,83 @@
 # -----------------------------------------------------------------------------
 #
 # Short month names
-Jan
-Feb
-Mar
-Apr
-May
-Jun
-Jul
-Aug
-Sep
-Oct
-Nov
-Dec
+ene
+feb
+mar
+abr
+may
+jun
+jul
+ago
+sep
+oct
+nov
+dic
 #
 # Long month names (as in a date)
-January
-February
-March
-April
-May
-June
-July
-August
-September
-October
-November
-December
+enero
+febrero
+marzo
+abril
+mayo
+junio
+julio
+agosto
+septiembre
+octubre
+noviembre
+diciembre
 #
 # Short weekday names
-Sun
-Mon
-Tue
-Wed
-Thu
-Fri
-Sat
+dom.
+lun.
+mar.
+mié.
+jue.
+vie.
+sáb.
 #
 # Long weekday names
-Sunday
-Monday
-Tuesday
-Wednesday
-Thursday
-Friday
-Saturday
+domingo
+lunes
+martes
+miércoles
+jueves
+viernes
+sábado
 #
 # X_fmt
 %I:%M:%S %p
 #
 # x_fmt
-%e/%m/%y
+%d/%m/%y
 #
 # c_fmt
-%e %B, %Y %I:%M:%S %p
+%e de %B de %Y, %I:%M:%S %p
 #
 # AM/PM
-AM
-PM
+a.m.
+p.m.
 #
 # date_fmt
-%e %B, %Y %I:%M:%S %p %Z
+%e de %B de %Y, %I:%M:%S %p %Z
 #
 # Long month names (without case ending)
-January
-February
-March
-April
-May
-June
-July
-August
-September
-October
-November
-December
+enero
+febrero
+marzo
+abril
+mayo
+junio
+julio
+agosto
+septiembre
+octubre
+noviembre
+diciembre
 #
 # md_order
-m
+dm
 #
 # ampm_fmt
 %I:%M:%S %p

@@ -4,18 +4,18 @@
 # -----------------------------------------------------------------------------
 #
 # Short month names
-de gen.
-de febr.
-de març
-d'abr.
-de maig
-de juny
-de jul.
-d'ag.
-de set.
-d'oct.
-de nov.
-de des.
+gen.
+febr.
+març
+abr.
+maig
+juny
+jul.
+ag.
+set.
+oct.
+nov.
+des.
 #
 # Long month names (as in a date)
 de gener
@@ -53,17 +53,17 @@ dissabte
 %H:%M:%S
 #
 # x_fmt
-%d/%m/%y
+%e/%m/%y
 #
 # c_fmt
-%e %B de %Y %H:%M:%S
+%e %B de %Y, %H:%M:%S
 #
 # AM/PM
-a.m.
-p.m.
+a. m.
+p. m.
 #
 # date_fmt
-%e %B de %Y %H:%M:%S %Z
+%e %B de %Y, %H:%M:%S %Z
 #
 # Long month names (without case ending)
 de gener
@@ -80,7 +80,7 @@ de novembre
 de desembre
 #
 # md_order
-dm
+m
 #
 # ampm_fmt
 %I:%M:%S %p

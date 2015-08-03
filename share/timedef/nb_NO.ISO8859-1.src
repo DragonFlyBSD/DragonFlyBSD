@@ -6,11 +6,11 @@
 # Short month names
 jan.
 feb.
-mars
+mar.
 apr.
 mai
-juni
-juli
+jun.
+jul.
 aug.
 sep.
 okt.
@@ -50,20 +50,20 @@ fredag
 lørdag
 #
 # X_fmt
-%H:%M:%S
+%H.%M.%S
 #
 # x_fmt
-%d.%m.%y
+%d.%m.%Y
 #
 # c_fmt
-%H:%M:%S %e. %B %Y
+%e. %B %Y kl. %H.%M.%S
 #
 # AM/PM
-AM
-PM
+a.m.
+p.m.
 #
 # date_fmt
-%H:%M:%S %Z %e. %B %Y
+%e. %B %Y kl. %H.%M.%S %Z
 #
 # Long month names (without case ending)
 januar
@@ -83,5 +83,5 @@ desember
 dm
 #
 # ampm_fmt
-%I:%M:%S %p
+%I.%M.%S %p
 # EOF

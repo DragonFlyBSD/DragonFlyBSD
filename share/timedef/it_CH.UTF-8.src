@@ -59,8 +59,8 @@ sabato
 %e %B %Y %H:%M:%S
 #
 # AM/PM
-m.
-p.
+AM
+PM
 #
 # date_fmt
 %e %B %Y %H:%M:%S %Z

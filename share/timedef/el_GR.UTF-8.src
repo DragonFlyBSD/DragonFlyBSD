@@ -8,7 +8,7 @@
 Φεβ
 Μαρ
 Απρ
-Μαϊ
+Μαΐ
 Ιουν
 Ιουλ
 Αυγ
@@ -34,11 +34,11 @@
 # Short weekday names
 Κυρ
 Δευ
-Τρι
+Τρί
 Τετ
-Πεμ
+Πέμ
 Παρ
-Σαβ
+Σάβ
 #
 # Long weekday names
 Κυριακή
@@ -56,14 +56,14 @@
 %e/%m/%y
 #
 # c_fmt
-%e %B %Y %I:%M:%S %p
+%e %B %Y - %I:%M:%S %p
 #
 # AM/PM
 π.μ.
 μ.μ.
 #
 # date_fmt
-%e %B %Y %I:%M:%S %p %Z
+%e %B %Y - %I:%M:%S %p %Z
 #
 # Long month names (without case ending)
 Ιανουάριος

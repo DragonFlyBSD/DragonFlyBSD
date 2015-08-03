@@ -11751,7 +11751,7 @@ cntrl	<NULL>;/
 	<END_OF_TRANSMISSION>;/
 	<ENQUIRY>;/
 	<ACKNOWLEDGE>;/
-	<BELL>;/
+	<ALERT>;/
 	<BACKSPACE>;/
 	<tab>;/
 	<newline>;/

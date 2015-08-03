@@ -4,10 +4,10 @@
 # -----------------------------------------------------------------------------
 #
 # int_curr_symbol (last character always SPACE)
-LVL 
+EUR 
 #
 # currency_symbol
-Ls
+Eu
 #
 # mon_decimal_point
 ,
@@ -16,7 +16,7 @@ Ls
  
 #
 # mon_grouping
-3
+-1
 #
 # positive_sign
 
@@ -31,16 +31,16 @@ Ls
 2
 #
 # p_cs_precedes
-0
+1
 #
 # p_sep_by_space
-1
-#
-# n_cs_precedes
 0
 #
-# n_sep_by_space
+# n_cs_precedes
 1
+#
+# n_sep_by_space
+0
 #
 # p_sign_posn
 1

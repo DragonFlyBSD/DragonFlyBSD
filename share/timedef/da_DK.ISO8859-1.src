@@ -32,13 +32,13 @@ november
 december
 #
 # Short weekday names
-søn
-man
-tir
-ons
-tor
-fre
-lør
+søn.
+man.
+tir.
+ons.
+tor.
+fre.
+lør.
 #
 # Long weekday names
 søndag
@@ -53,17 +53,17 @@ lørdag
 %H.%M.%S
 #
 # x_fmt
-%d/%m/%y
+%d/%m/%Y
 #
 # c_fmt
-%e. %b %Y %H.%M.%S
+%e. %B %Y kl. %H.%M.%S
 #
 # AM/PM
-f.m.
-e.m.
+AM
+PM
 #
 # date_fmt
-%e. %b %Y %H.%M.%S %Z
+%e. %B %Y kl. %H.%M.%S %Z
 #
 # Long month names (without case ending)
 januar

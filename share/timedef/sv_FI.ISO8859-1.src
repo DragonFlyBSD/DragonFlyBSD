@@ -4,18 +4,18 @@
 # -----------------------------------------------------------------------------
 #
 # Short month names
-jan
-feb
-mar
-apr
+jan.
+feb.
+mars
+apr.
 maj
-jun
-jul
-aug
-sep
-okt
-nov
-dec
+juni
+juli
+aug.
+sep.
+okt.
+nov.
+dec.
 #
 # Long month names (as in a date)
 januari
@@ -53,7 +53,7 @@ lördag
 %H:%M:%S
 #
 # x_fmt
-%Y-%m-%d
+%d-%m-%Y
 #
 # c_fmt
 %e %B %Y %H:%M:%S
@@ -80,7 +80,7 @@ november
 december
 #
 # md_order
-md
+dm
 #
 # ampm_fmt
 %I:%M:%S %p

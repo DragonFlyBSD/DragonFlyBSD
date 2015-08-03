@@ -4,41 +4,41 @@
 # -----------------------------------------------------------------------------
 #
 # Short month names
-urt
-ots
-mar
-api
-mai
-eka
-uzt
-abu
-ira
-urr
-aza
-abe
+urt.
+ots.
+mar.
+api.
+mai.
+eka.
+uzt.
+abu.
+ira.
+urr.
+aza.
+abe.
 #
 # Long month names (as in a date)
-urtarrila
-otsaila
-martxoa
-apirila
-maiatza
-ekaina
-uztaila
-abuztua
-iraila
-urria
-azaroa
-abendua
+urtarrilak
+otsailak
+martxoak
+apirilak
+maiatzak
+ekainak
+uztailak
+abuztuak
+irailak
+urriak
+azaroak
+abenduak
 #
 # Short weekday names
-ig
-al
-as
-az
-og
-or
-lr
+ig.
+al.
+ar.
+az.
+og.
+or.
+lr.
 #
 # Long weekday names
 igandea
@@ -53,31 +53,31 @@ larunbata
 %H:%M:%S
 #
 # x_fmt
-%Y-%m-%d
+%Y/%m/%d
 #
 # c_fmt
-%Yeko %bren %da %H:%M:%S
+%Y(e)ko %B %e %H:%M:%S (%Z)
 #
 # AM/PM
 AM
 PM
 #
 # date_fmt
-%Yeko %bren %da %H:%M:%S %Z
+%Y(e)ko %B %e %H:%M:%S (%Z)
 #
 # Long month names (without case ending)
-urtarrila
-otsaila
-martxoa
-apirila
-maiatza
-ekaina
-uztaila
-abuztua
-iraila
-urria
-azaroa
-abendua
+urtarrilak
+otsailak
+martxoak
+apirilak
+maiatzak
+ekainak
+uztailak
+abuztuak
+irailak
+urriak
+azaroak
+abenduak
 #
 # md_order
 md

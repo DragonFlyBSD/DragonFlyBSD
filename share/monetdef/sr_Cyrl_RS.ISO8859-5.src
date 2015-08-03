@@ -7,7 +7,7 @@
 RSD ""RSD 
 #
 # currency_symbol
-дин.""din.
+RSD""RSD
 #
 # mon_decimal_point
 ,"",
@@ -31,13 +31,13 @@ RSD ""RSD
 00
 #
 # p_cs_precedes
-01
+00
 #
 # p_sep_by_space
 11
 #
 # n_cs_precedes
-01
+00
 #
 # n_sep_by_space
 11

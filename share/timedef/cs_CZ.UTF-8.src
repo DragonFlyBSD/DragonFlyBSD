@@ -4,18 +4,18 @@
 # -----------------------------------------------------------------------------
 #
 # Short month names
-Led
-Úno
-Bře
-Dub
-Kvě
-Čer
-Čvc
-Srp
-Zář
-Říj
-Lis
-Pro
+led
+úno
+bře
+dub
+kvě
+čvn
+čvc
+srp
+zář
+říj
+lis
+pro
 #
 # Long month names (as in a date)
 ledna
@@ -59,8 +59,8 @@ sobota
 %e. %B %Y %H:%M:%S
 #
 # AM/PM
-dop.
-odp.
+dopoledne
+odpoledne
 #
 # date_fmt
 %e. %B %Y %H:%M:%S %Z

@@ -18,18 +18,18 @@
 #1#2TB
 #
 # Long month names (as in a date)
-#1TB
-#2TB
-#3TB
-#4TB
-#5TB
-#6TB
-#7TB
-#8TB
-#9TB
-#1#0TB
-#1#1TB
-#1#2TB
+R;TB
+6~TB
+H}TB
+KDTB
+NeTB
+AyTB
+F_TB
+0KTB
+>ETB
+J.TB
+J.R;TB
+J.6~TB
 #
 # Short weekday names
 V\HU
@@ -53,31 +53,31 @@ PGFZAy
 %p%I:%M:%S
 #
 # x_fmt
-%y-%m-%e
+%y#/%m#/%e
 #
 # c_fmt
-%YDj%mTB%eHU%Z%p%IJ1%M7V%SCk
+%YDj%mTB%eHU %p%I:%M:%S
 #
 # AM/PM
 IONg
 OBNg
 #
 # date_fmt
-%YDj%mTB%eHU%Z%p%IJ1%M7V%SCk
+%YDj%mTB%eHU %Z %p%I:%M:%S
 #
 # Long month names (without case ending)
-#1TB
-#2TB
-#3TB
-#4TB
-#5TB
-#6TB
-#7TB
-#8TB
-#9TB
-#1#0TB
-#1#1TB
-#1#2TB
+R;TB
+6~TB
+H}TB
+KDTB
+NeTB
+AyTB
+F_TB
+0KTB
+>ETB
+J.TB
+J.R;TB
+J.6~TB
 #
 # md_order
 m

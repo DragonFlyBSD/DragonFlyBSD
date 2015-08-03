@@ -7,7 +7,7 @@
 HUF 
 #
 # currency_symbol
-Ft
+HUF
 #
 # mon_decimal_point
 ,
@@ -25,10 +25,10 @@ Ft
 -
 #
 # int_frac_digits
-0
+2
 #
 # frac_digits
-0
+2
 #
 # p_cs_precedes
 0

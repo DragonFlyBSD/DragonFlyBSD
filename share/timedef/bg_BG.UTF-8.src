@@ -53,17 +53,17 @@
 %H:%M:%S
 #
 # x_fmt
-%d.%m.%y
+%e.%m.%y г.
 #
 # c_fmt
-%d %B %Y, %H:%M:%S
+%e %B %Y г., %H:%M:%S
 #
 # AM/PM
-пр. об.
-сл. об.
+пр.об.
+сл.об.
 #
 # date_fmt
-%d %B %Y, %H:%M:%S %Z
+%e %B %Y г., %H:%M:%S %Z
 #
 # Long month names (without case ending)
 януари
@@ -80,7 +80,7 @@
 декември
 #
 # md_order
-dm
+m
 #
 # ampm_fmt
 %I:%M:%S %p

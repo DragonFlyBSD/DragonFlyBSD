@@ -4,18 +4,18 @@
 # -----------------------------------------------------------------------------
 #
 # Short month names
-Jan
-Feb
-Mär
-Apr
+Jan.
+Feb.
+März
+Apr.
 Mai
-Jun
-Jul
-Aug
-Sep
-Okt
-Nov
-Dez
+Juni
+Juli
+Aug.
+Sep.
+Okt.
+Nov.
+Dez.
 #
 # Long month names (as in a date)
 Januar
@@ -56,14 +56,14 @@ Samstag
 %d.%m.%y
 #
 # c_fmt
-%e. %B %Y %H:%M:%S
+%e. %B %Y um %H:%M:%S
 #
 # AM/PM
 vorm.
 nachm.
 #
 # date_fmt
-%e. %B %Y %H:%M:%S %Z
+%e. %B %Y um %H:%M:%S %Z
 #
 # Long month names (without case ending)
 Januar

@@ -10,10 +10,10 @@ MNT
 ₮
 #
 # mon_decimal_point
-,
+.
 #
 # mon_thousands_sep
- 
+,
 #
 # mon_grouping
 3

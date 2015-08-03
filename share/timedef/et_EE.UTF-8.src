@@ -59,8 +59,8 @@ laupäev
 %e. %B %Y %H:%M.%S
 #
 # AM/PM
-enne keskpäeva
-pärast keskpäeva
+AM
+PM
 #
 # date_fmt
 %e. %B %Y %H:%M.%S %Z

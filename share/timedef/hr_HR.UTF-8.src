@@ -53,17 +53,17 @@ subota
 %H:%M:%S
 #
 # x_fmt
-%e.%m.%Y.
+%d.%m.%Y.
 #
 # c_fmt
-%e. %B %Y. %H:%M:%S
+%e. %B %Y. u %H:%M:%S
 #
 # AM/PM
-prije podne
+AM
 PM
 #
 # date_fmt
-%e. %B %Y. %H:%M:%S %Z
+%e. %B %Y. u %H:%M:%S %Z
 #
 # Long month names (without case ending)
 siječnja
@@ -80,7 +80,7 @@ studenoga
 prosinca
 #
 # md_order
-m
+dm
 #
 # ampm_fmt
 %I:%M:%S %p

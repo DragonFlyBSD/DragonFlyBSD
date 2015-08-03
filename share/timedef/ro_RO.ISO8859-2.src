@@ -32,13 +32,13 @@ noiembrie
 decembrie
 #
 # Short weekday names
-Du
-Lu
-Ma
-Mi
-Jo
-Vi
-Sâ
+Dum
+Lun
+Mar
+Mie
+Joi
+Vin
+Sâm
 #
 # Long weekday names
 duminicã
@@ -59,8 +59,8 @@ sâmbãtã
 %e %B %Y, %H:%M:%S
 #
 # AM/PM
-AM
-PM
+a.m.
+p.m.
 #
 # date_fmt
 %e %B %Y, %H:%M:%S %Z

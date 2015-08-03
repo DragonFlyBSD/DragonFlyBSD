@@ -53,7 +53,7 @@ szombat
 %H:%M:%S
 #
 # x_fmt
-%Y.%m.%d.
+%Y. %m. %d.
 #
 # c_fmt
 %Y. %B %e. %H:%M:%S

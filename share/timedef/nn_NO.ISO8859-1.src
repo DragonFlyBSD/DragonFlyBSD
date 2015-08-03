@@ -53,17 +53,17 @@ laurdag
 %H:%M:%S
 #
 # x_fmt
-%d.%m.%y
+%d.%m.%Y
 #
 # c_fmt
-%e. %B %Y %H:%M:%S
+%e. %B %Y kl. %H:%M:%S
 #
 # AM/PM
 formiddag
 ettermiddag
 #
 # date_fmt
-%e. %B %Y %H:%M:%S %Z
+%e. %B %Y kl. %H:%M:%S %Z
 #
 # Long month names (without case ending)
 januar
