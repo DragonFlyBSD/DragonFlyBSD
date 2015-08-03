@@ -2159,6 +2159,8 @@ TO_REMOVE+=/usr/share/man/man1/mklocale.1.gz
 TO_REMOVE+=/usr/share/locale/la_LN*
 TO_REMOVE+=/usr/share/locale/kk_KZ*
 TO_REMOVE+=/usr/share/locale/UTF-8
+TO_REMOVE+=/usr/sbin/pnpinfo
+TO_REMOVE+=/usr/share/man/man8/pnpinfo.8.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
@@ -2166,8 +2168,6 @@ TO_REMOVE+=/usr/share/man/man8/i386/stlstats.8.gz
 TO_REMOVE+=/usr/share/man/man4/i386/stl.4.gz
 TO_REMOVE+=/usr/sbin/kgzip
 TO_REMOVE+=/usr/share/man/man8/kgzip.8.gz
-TO_REMOVE+=/usr/sbin/pnpinfo
-TO_REMOVE+=/usr/share/man/man8/pnpinfo.8.gz
 TO_REMOVE+=/boot/kernel/glxsb.ko
 TO_REMOVE+=/boot/kernel/pst.ko
 .endif

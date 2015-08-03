@@ -163,7 +163,6 @@ SUBDIR+=btxld \
 
 .if ${MACHINE_ARCH} == "i386"
 SUBDIR+=kgzip \
-	pnpinfo \
 	stlstats
 .endif
 
