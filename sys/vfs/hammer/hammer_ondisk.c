@@ -213,6 +213,9 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname,
 		error = EEXIST;
 	}
 
+	if (error == 0)
+		HAMMER_VOLUME_NUMBER_ADD(hmp, volume);
+
 	/*
 	 * Set the root volume .  HAMMER special cases rootvol the structure.
 	 * We do not hold a ref because this would prevent related I/O
@@ -346,6 +349,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	 * Destroy the structure
 	 */
 	RB_REMOVE(hammer_vol_rb_tree, &hmp->rb_vols_root, volume);
+	HAMMER_VOLUME_NUMBER_DEL(hmp, volume);
 	hammer_free_volume(volume);
 	return(0);
 }
@@ -501,7 +505,7 @@ hammer_mountcheck_volumes(struct hammer_mount *hmp)
 	hammer_volume_t vol;
 	int i;
 
-	for (i = 0; i < hmp->nvolumes; ++i) {
+	HAMMER_VOLUME_NUMBER_FOREACH(hmp, i) {
 		vol = RB_LOOKUP(hammer_vol_rb_tree, &hmp->rb_vols_root, i);
 		if (vol == NULL)
 			return(EINVAL);

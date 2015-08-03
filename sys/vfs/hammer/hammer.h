@@ -959,6 +959,7 @@ struct hammer_mount {
 	struct lwkt_token	io_token;	/* low level (IO callback) */
 
 	struct hammer_inostats	inostats[HAMMER_INOSTATS_HSIZE];
+	uint64_t volume_map[4];  /* 256 bits bitfield */
 };
 
 typedef struct hammer_mount	*hammer_mount_t;
@@ -968,6 +969,19 @@ typedef struct hammer_mount	*hammer_mount_t;
 #define HAMMER_MOUNT_REDO_SYNC		0x0004
 #define HAMMER_MOUNT_REDO_RECOVERY_REQ	0x0008
 #define HAMMER_MOUNT_REDO_RECOVERY_RUN	0x0010
+
+#define HAMMER_VOLUME_NUMBER_ADD(hmp, vol)			\
+	(hmp)->volume_map[(vol)->vol_no >> 6] |=		\
+	((uint64_t)1 << ((vol)->vol_no & ((1 << 6) - 1)))
+
+#define HAMMER_VOLUME_NUMBER_DEL(hmp, vol)			\
+	(hmp)->volume_map[(vol)->vol_no >> 6] &=		\
+	~((uint64_t)1 << ((vol)->vol_no & ((1 << 6) - 1)))
+
+#define HAMMER_VOLUME_NUMBER_FOREACH(hmp, n)			\
+	for (n = 0; n < HAMMER_MAX_VOLUMES; n++)		\
+		if ((hmp)->volume_map[n >> 6] &			\
+			((uint64_t)1 << (n & ((1 << 6) - 1))))
 
 struct hammer_sync_info {
 	int error;
