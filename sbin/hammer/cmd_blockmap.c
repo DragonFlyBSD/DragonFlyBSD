@@ -95,6 +95,7 @@ dump_blockmap(const char *label, int zone)
 {
 	struct volume_info *root_volume;
 	hammer_blockmap_t rootmap;
+	hammer_blockmap_t blockmap;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
 	struct buffer_info *buffer1 = NULL;
@@ -105,18 +106,26 @@ dump_blockmap(const char *label, int zone)
 	hammer_off_t scan2;
 	struct zone_stat *stats = NULL;
 	int xerr;
+	int i;
 
 	assert(RootVolNo >= 0);
 	root_volume = get_volume(RootVolNo);
 	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
 	assert(rootmap->phys_offset != 0);
 
-	printf("zone %-16s phys %016jx first %016jx next %016jx alloc %016jx\n",
-		label,
-		(uintmax_t)rootmap->phys_offset,
-		(uintmax_t)rootmap->first_offset,
-		(uintmax_t)rootmap->next_offset,
-		(uintmax_t)rootmap->alloc_offset);
+	printf("                   "
+	       "phys             first            next             alloc\n");
+	for (i = 0; i < HAMMER_MAX_ZONES; i++) {
+		blockmap = &root_volume->ondisk->vol0_blockmap[i];
+		if (VerboseOpt || i == zone) {
+			printf("zone %-2d %-10s %016jx %016jx %016jx %016jx\n",
+				i, (i == zone ? label : ""),
+				(uintmax_t)blockmap->phys_offset,
+				(uintmax_t)blockmap->first_offset,
+				(uintmax_t)blockmap->next_offset,
+				(uintmax_t)blockmap->alloc_offset);
+		}
+	}
 
 	if (VerboseOpt)
 		stats = hammer_init_zone_stat();
