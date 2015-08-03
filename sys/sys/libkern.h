@@ -111,7 +111,6 @@ int	 fls (int);
 #ifndef HAVE_INLINE_FLSL
 int	 flsl(long);
 #endif
-int	 locc (int, char *, u_int);
 void	 kqsort (void *base, size_t nmemb, size_t size,
 		    int (*compar)(const void *, const void *));
 void	 kqsort_r(void *base, size_t nmemb, size_t size, void *thunk,
