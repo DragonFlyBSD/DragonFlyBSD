@@ -43,6 +43,7 @@ static void hammer_reserve_setdelay_offset(hammer_mount_t hmp,
 				    struct hammer_blockmap_layer2 *layer2);
 static void hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 static int update_bytes_free(hammer_reserve_t resv, int bytes);
+static int hammer_check_volume(hammer_mount_t, hammer_off_t*);
 
 /*
  * Reserved big-blocks red-black tree support
@@ -188,6 +189,10 @@ again:
 	if (offset == 0 && layer1->blocks_free == 0) {
 		next_offset = (next_offset + HAMMER_BLOCKMAP_LAYER2) &
 			      ~HAMMER_BLOCKMAP_LAYER2_MASK;
+		if (hammer_check_volume(hmp, &next_offset)) {
+			result_offset = 0;
+			goto failed;
+		}
 		goto again;
 	}
 	KKASSERT(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
@@ -502,6 +507,8 @@ again:
 	    layer1->blocks_free == 0) {
 		next_offset = (next_offset + HAMMER_BLOCKMAP_LAYER2) &
 			      ~HAMMER_BLOCKMAP_LAYER2_MASK;
+		if (hammer_check_volume(hmp, &next_offset))
+			goto failed;
 		goto again;
 	}
 	KKASSERT(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
@@ -1516,3 +1523,41 @@ _hammer_checkspace(hammer_mount_t hmp, int slop, int64_t *resp)
 	return (ENOSPC);
 }
 
+static int
+hammer_check_volume(hammer_mount_t hmp, hammer_off_t *offsetp)
+{
+	hammer_blockmap_t freemap;
+	struct hammer_blockmap_layer1 *layer1;
+	hammer_buffer_t buffer1 = NULL;
+	hammer_off_t layer1_offset, offset;
+	int zone, vol_no, error = 0;
+
+	offset = *offsetp;
+	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+
+	layer1_offset = freemap->phys_offset +
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(offset);
+
+	layer1 = hammer_bread(hmp, layer1_offset, &error, &buffer1);
+	if (error)
+		goto end;
+
+	/*
+	 * No more available space in layer1s of this volume.
+	 */
+	if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
+		zone = HAMMER_ZONE_DECODE(offset);
+		vol_no = HAMMER_VOL_DECODE(offset) + 1;
+		KKASSERT(vol_no <= HAMMER_MAX_VOLUMES);
+		if (vol_no == HAMMER_MAX_VOLUMES) {
+			vol_no = 0;
+			++zone;
+		}
+		offset &= HAMMER_BLOCKMAP_LAYER2_MASK;
+		*offsetp = HAMMER_ENCODE(zone, vol_no, offset);
+	}
+end:
+	if (buffer1)
+		hammer_rel_buffer(buffer1, 0);
+	return(error);
+}
