@@ -897,11 +897,10 @@ icmp6_notify_error(struct mbuf *m, int off, int icmp6len, int code)
 			case IPPROTO_DSTOPTS:
 			case IPPROTO_AH:
 #ifndef PULLDOWN_TEST
-				IP6_EXTHDR_CHECK(m, 0, eoff +
-						 sizeof(struct ip6_ext),
-						 -1);
-				eh = (struct ip6_ext *)(mtod(m, caddr_t)
-							+ eoff);
+				IP6_EXTHDR_CHECK(m, 0,
+				    eoff + sizeof(struct ip6_ext), -1);
+				eh = (struct ip6_ext *)
+				    (mtod(m, caddr_t) + eoff);
 #else
 				IP6_EXTHDR_GET(eh, struct ip6_ext *, m,
 					       eoff, sizeof(*eh));
@@ -2469,35 +2468,35 @@ icmp6_redirect_output(struct mbuf *m0, struct rtentry *rt)
 	if (!router_ll6)
 		goto nolladdropt;
 
-    {
-	/* target lladdr option */
-	struct rtentry *rt_router = NULL;
-	int len;
-	struct sockaddr_dl *sdl;
-	struct nd_opt_hdr *nd_opt;
-	char *lladdr;
+	{
+		/* target lladdr option */
+		struct rtentry *rt_router = NULL;
+		int len;
+		struct sockaddr_dl *sdl;
+		struct nd_opt_hdr *nd_opt;
+		char *lladdr;
 
-	rt_router = nd6_lookup(router_ll6, 0, ifp);
-	if (!rt_router)
-		goto nolladdropt;
-	len = sizeof(*nd_opt) + ifp->if_addrlen;
-	len = (len + 7) & ~7;	/* round by 8 */
-	/* safety check */
-	if (len + (p - (u_char *)ip6) > maxlen)
-		goto nolladdropt;
-	if (!(rt_router->rt_flags & RTF_GATEWAY) &&
-	    (rt_router->rt_flags & RTF_LLINFO) &&
-	    (rt_router->rt_gateway->sa_family == AF_LINK) &&
-	    (sdl = (struct sockaddr_dl *)rt_router->rt_gateway) &&
-	    sdl->sdl_alen) {
-		nd_opt = (struct nd_opt_hdr *)p;
-		nd_opt->nd_opt_type = ND_OPT_TARGET_LINKADDR;
-		nd_opt->nd_opt_len = len >> 3;
-		lladdr = (char *)(nd_opt + 1);
-		bcopy(LLADDR(sdl), lladdr, ifp->if_addrlen);
-		p += len;
+		rt_router = nd6_lookup(router_ll6, 0, ifp);
+		if (!rt_router)
+			goto nolladdropt;
+		len = sizeof(*nd_opt) + ifp->if_addrlen;
+		len = (len + 7) & ~7;	/* round by 8 */
+		/* safety check */
+		if (len + (p - (u_char *)ip6) > maxlen)
+			goto nolladdropt;
+		if (!(rt_router->rt_flags & RTF_GATEWAY) &&
+		    (rt_router->rt_flags & RTF_LLINFO) &&
+		    (rt_router->rt_gateway->sa_family == AF_LINK) &&
+		    (sdl = (struct sockaddr_dl *)rt_router->rt_gateway) &&
+		    sdl->sdl_alen) {
+			nd_opt = (struct nd_opt_hdr *)p;
+			nd_opt->nd_opt_type = ND_OPT_TARGET_LINKADDR;
+			nd_opt->nd_opt_len = len >> 3;
+			lladdr = (char *)(nd_opt + 1);
+			bcopy(LLADDR(sdl), lladdr, ifp->if_addrlen);
+			p += len;
+		}
 	}
-    }
 nolladdropt:;
 
 	m->m_pkthdr.len = m->m_len = p - (u_char *)ip6;
@@ -2590,12 +2589,6 @@ noredhdropt:;
 		sip6->ip6_src.s6_addr16[1] = 0;
 	if (IN6_IS_ADDR_LINKLOCAL(&sip6->ip6_dst))
 		sip6->ip6_dst.s6_addr16[1] = 0;
-#if 0
-	if (IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_src))
-		ip6->ip6_src.s6_addr16[1] = 0;
-	if (IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_dst))
-		ip6->ip6_dst.s6_addr16[1] = 0;
-#endif
 	if (IN6_IS_ADDR_LINKLOCAL(&nd_rd->nd_rd_target))
 		nd_rd->nd_rd_target.s6_addr16[1] = 0;
 	if (IN6_IS_ADDR_LINKLOCAL(&nd_rd->nd_rd_dst))
