@@ -978,10 +978,13 @@ typedef struct hammer_mount	*hammer_mount_t;
 	(hmp)->volume_map[(vol)->vol_no >> 6] &=		\
 	~((uint64_t)1 << ((vol)->vol_no & ((1 << 6) - 1)))
 
+#define HAMMER_VOLUME_NUMBER_IS_SET(hmp, n)			\
+	(((hmp)->volume_map[(n) >> 6] &				\
+	((uint64_t)1 << ((n) & ((1 << 6) - 1)))) != 0)
+
 #define HAMMER_VOLUME_NUMBER_FOREACH(hmp, n)			\
 	for (n = 0; n < HAMMER_MAX_VOLUMES; n++)		\
-		if ((hmp)->volume_map[n >> 6] &			\
-			((uint64_t)1 << (n & ((1 << 6) - 1))))
+		if (HAMMER_VOLUME_NUMBER_IS_SET(hmp, n))
 
 struct hammer_sync_info {
 	int error;

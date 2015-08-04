@@ -82,6 +82,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	struct hammer_mount *hmp = trans->hmp;
 	struct mount *mp = hmp->mp;
 	hammer_volume_t volume;
+	int vol_no;
 	int error;
 
 	if (mp->mnt_flag & MNT_RDONLY) {
@@ -104,7 +105,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	int free_vol_no = 0;
 	while (free_vol_no < HAMMER_MAX_VOLUMES &&
-	       RB_LOOKUP(hammer_vol_rb_tree, &hmp->rb_vols_root, free_vol_no)) {
+		HAMMER_VOLUME_NUMBER_IS_SET(hmp, free_vol_no)) {
 		++free_vol_no;
 	}
 	if (free_vol_no >= HAMMER_MAX_VOLUMES) {
@@ -143,12 +144,9 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * Set each volumes new value of the vol_count field.
 	 */
-	for (int vol_no = 0; vol_no < HAMMER_MAX_VOLUMES; ++vol_no) {
+	HAMMER_VOLUME_NUMBER_FOREACH(hmp, vol_no) {
 		volume = hammer_get_volume(hmp, vol_no, &error);
 		if (volume == NULL && error == ENOENT) {
-			/*
-			 * Skip unused volume numbers
-			 */
 			error = 0;
 			continue;
 		}
@@ -230,6 +228,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	struct hammer_mount *hmp = trans->hmp;
 	struct mount *mp = hmp->mp;
 	hammer_volume_t volume;
+	int vol_no;
 	int error = 0;
 
 	if (mp->mnt_flag & MNT_RDONLY) {
@@ -247,12 +246,9 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * find volume by volname
 	 */
-	for (int vol_no = 0; vol_no < HAMMER_MAX_VOLUMES; ++vol_no) {
+	HAMMER_VOLUME_NUMBER_FOREACH(hmp, vol_no) {
 		volume = hammer_get_volume(hmp, vol_no, &error);
 		if (volume == NULL && error == ENOENT) {
-			/*
-			 * Skip unused volume numbers
-			 */
 			error = 0;
 			continue;
 		}
@@ -357,12 +353,9 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * Set each volume's new value of the vol_count field.
 	 */
-	for (int vol_no = 0; vol_no < HAMMER_MAX_VOLUMES; ++vol_no) {
+	HAMMER_VOLUME_NUMBER_FOREACH(hmp, vol_no) {
 		volume = hammer_get_volume(hmp, vol_no, &error);
 		if (volume == NULL && error == ENOENT) {
-			/*
-			 * Skip unused volume numbers
-			 */
 			error = 0;
 			continue;
 		}
@@ -451,9 +444,11 @@ hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
 	struct hammer_mount *hmp = trans->hmp;
 	hammer_volume_t volume;
 	int error = 0;
-	int i, cnt, len;
+	int i, len, cnt = 0;
 
-	for (i = 0, cnt = 0; i < HAMMER_MAX_VOLUMES && cnt < ioc->nvols; i++) {
+	HAMMER_VOLUME_NUMBER_FOREACH(hmp, i) {
+		if (cnt >= ioc->nvols)
+			break;
 		volume = hammer_get_volume(hmp, i, &error);
 		if (volume == NULL && error == ENOENT) {
 			error = 0;
