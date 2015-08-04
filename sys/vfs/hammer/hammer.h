@@ -607,7 +607,9 @@ RB_PROTOTYPE2(hammer_mod_rb_tree, hammer_io, rb_node,
  *
  * VOLUME	- hammer_volume containing meta-data
  * META_BUFFER	- hammer_buffer containing meta-data
+ * UNDO_BUFFER	- hammer_buffer containing undo-data
  * DATA_BUFFER	- hammer_buffer containing pure-data
+ * DUMMY	- hammer_buffer not containing valid data
  *
  * Dirty volume headers and dirty meta-data buffers are locked until the
  * flusher can sequence them out.  Dirty pure-data buffers can be written.
