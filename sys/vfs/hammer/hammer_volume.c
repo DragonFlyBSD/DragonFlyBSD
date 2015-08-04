@@ -446,6 +446,11 @@ hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
 	int error = 0;
 	int i, len, cnt = 0;
 
+	if (hammer_lock_ex_try(&hmp->volume_lock) != 0) {
+		kprintf("Another volume operation is in progress!\n");
+		return (EAGAIN);
+	}
+
 	HAMMER_VOLUME_NUMBER_FOREACH(hmp, i) {
 		if (cnt >= ioc->nvols)
 			break;
@@ -463,13 +468,15 @@ hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
 				len);
 		if (error) {
 			hammer_rel_volume(volume, 0);
-			return (error);
+			goto end;
 		}
 		cnt++;
 		hammer_rel_volume(volume, 0);
 	}
 	ioc->nvols = cnt;
 
+end:
+	hammer_unlock(&hmp->volume_lock);
 	return (error);
 }
 
