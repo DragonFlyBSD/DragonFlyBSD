@@ -308,6 +308,7 @@ struct in_addr {
 #define	INADDR_ALLRTRS_GROUP	(u_int32_t)0xe0000002	/* 224.0.0.2 */
 #define	INADDR_CARP_GROUP       (u_int32_t)0xe0000012   /* 224.0.0.18 */
 #define	INADDR_PFSYNC_GROUP	(u_int32_t)0xe00000f0	/* 224.0.0.240 */
+#define	INADDR_ALLMDNS_GROUP	(u_int32_t)0xe00000fb	/* 224.0.0.251 */
 #define	INADDR_MAX_LOCAL_GROUP	(u_int32_t)0xe00000ff	/* 224.0.0.255 */
 
 #define	IN_LOOPBACKNET		127			/* official! */
