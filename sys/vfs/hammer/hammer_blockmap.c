@@ -366,6 +366,10 @@ again:
 	if ((next_offset & HAMMER_BUFMASK) == 0) {
 		hammer_bnew_ext(trans->hmp, next_offset, bytes,
 				errorp, &buffer3);
+		if (*errorp) {
+			result_offset = 0;
+			goto failed;
+		}
 	}
 	result_offset = next_offset;
 
@@ -609,8 +613,11 @@ again:
 	 * afford to block while holding the blkmap_lock!
 	 */
 	if (bytes < HAMMER_BUFSIZE && (next_offset & HAMMER_BUFMASK) == 0) {
-		if (!vm_page_count_min(HAMMER_BUFSIZE / PAGE_SIZE))
+		if (!vm_page_count_min(HAMMER_BUFSIZE / PAGE_SIZE)) {
 			hammer_bnew(hmp, next_offset, errorp, &buffer3);
+			if (*errorp)
+				goto failed;
+		}
 	}
 
 	/*
