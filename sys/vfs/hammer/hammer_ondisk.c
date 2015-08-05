@@ -1167,6 +1167,7 @@ _hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
 	int32_t xoff = (int32_t)buf_offset & HAMMER_BUFMASK;
 
 	buf_offset &= ~HAMMER_BUFMASK64;
+	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) != 0);
 
 	buffer = *bufferp;
 	if (buffer == NULL || (buffer->zone2_offset != buf_offset &&
