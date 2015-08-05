@@ -374,7 +374,7 @@ int	ip6_output (struct mbuf *, struct ip6_pktopts *,
 			struct ip6_moptions *, struct ifnet **,
 			struct inpcb *);
 void	ip6_ctloutput_dispatch(netmsg_t msg);
-int	ip6_ctloutput (struct socket *, struct sockopt *sopt);
+int	ip6_ctloutput (struct socket *, struct sockopt *);
 int	ip6_raw_ctloutput (struct socket *, struct sockopt *);
 void	init_ip6pktopts (struct ip6_pktopts *);
 int
@@ -392,7 +392,7 @@ void	frag6_slowtimo (void);
 void	frag6_drain (void);
 
 void	rip6_init (void);
-int	rip6_input (struct mbuf **mp, int *offp, int proto);
+int	rip6_input (struct mbuf **, int *, int);
 void	rip6_ctlinput (union netmsg *);
 void	rip6_ctloutput (union netmsg *);
 int	rip6_output (struct mbuf *, struct socket *, ...);

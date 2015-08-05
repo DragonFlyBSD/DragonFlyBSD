@@ -130,9 +130,8 @@ struct	in6_ifaddr {
 	int	ia6_flags;
 
 	struct in6_addrlifetime ia6_lifetime;
-	struct nd_prefix *ia6_ndpr; /* back pointer to the ND prefix
-				     * (for autoconfigured addresses only)
-				     */
+	/* back pointer to the ND prefix (for autoconfigured addresses only) */
+	struct nd_prefix *ia6_ndpr;
 };
 
 /* control structure to manage address selection policy */
@@ -600,15 +599,14 @@ do { \
 		IN6_NEXT_MULTI((step), (in6m)); \
 } while(0)
 
-struct	in6_multi *in6_addmulti (struct in6_addr *, struct ifnet *,
-				     int *);
+struct	in6_multi *in6_addmulti (struct in6_addr *, struct ifnet *, int *);
 void	in6_delmulti (struct in6_multi *);
 struct	in6_multi_mship *in6_joingroup(struct ifnet *, struct in6_addr *, int *);
 int	in6_leavegroup(struct in6_multi_mship *);
 
 int	in6_mask2len(const struct in6_addr *, const u_char *);
 void	in6_control_dispatch(netmsg_t msg);
-int	in6_control (u_long, caddr_t, struct ifnet *, struct thread *);
+int	in6_control(u_long, caddr_t, struct ifnet *, struct thread *);
 int	in6_update_ifa (struct ifnet *, struct in6_aliasreq *,
 			struct in6_ifaddr *);
 void	in6_purgeaddr (struct ifaddr *);
@@ -621,17 +619,15 @@ void	in6_setmaxmtu   (void);
 void	in6_restoremkludge (struct in6_ifaddr *, struct ifnet *);
 void	in6_purgemkludge (struct ifnet *);
 struct in6_ifaddr *in6ifa_ifpforlinklocal (struct ifnet *, int);
-struct in6_ifaddr *in6ifa_ifpwithaddr (struct ifnet *,
-					     struct in6_addr *);
+struct in6_ifaddr *in6ifa_ifpwithaddr (struct ifnet *, struct in6_addr *);
 struct in6_ifaddr *in6ifa_ifplocaladdr(const struct ifnet *,
 					const struct in6_addr *);
 struct in6_ifaddr *in6ifa_llaonifp(struct ifnet *);
 char	*ip6_sprintf (const struct in6_addr *);
 int	in6_addr2scopeid (struct ifnet *, struct in6_addr *);
 int	in6_matchlen (struct in6_addr *, struct in6_addr *);
-int	in6_are_prefix_equal (struct in6_addr *p1, struct in6_addr *p2,
-				  int len);
-void	in6_prefixlen2mask (struct in6_addr *maskp, int len);
+int	in6_are_prefix_equal(struct in6_addr *p1, struct in6_addr *p2, int len);
+void	in6_prefixlen2mask(struct in6_addr *maskp, int len);
 void	in6_ifremloop(struct ifaddr *);
 void	in6_ifaddloop(struct ifaddr *);
 

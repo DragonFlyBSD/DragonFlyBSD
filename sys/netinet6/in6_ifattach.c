@@ -461,7 +461,7 @@ in6_ifattach_linklocal(struct ifnet *ifp,
 		 * XXX: When the interface does not support IPv6, this call
 		 * would fail in the SIOCSIFADDR ioctl.  I believe the
 		 * notification is rather confusing in this case, so just
-		 * supress it.  (jinmei@kame.net 20010130)
+		 * suppress it.  (jinmei@kame.net 20010130)
 		 */
 		if (error != EAFNOSUPPORT)
 			log(LOG_NOTICE, "in6_ifattach_linklocal: failed to "
@@ -489,7 +489,7 @@ in6_ifattach_linklocal(struct ifnet *ifp,
 	}
 
 	/*
-	 * Make the link-local prefix (fe80::/64%link) as on-link.
+	 * Make the link-local prefix (fe80::%link/64) as on-link.
 	 * Since we'd like to manage prefixes separately from addresses,
 	 * we make an ND6 prefix structure for the link-local prefix,
 	 * and add it to the prefix list as a never-expire prefix.
@@ -504,7 +504,7 @@ in6_ifattach_linklocal(struct ifnet *ifp,
 	/* apply the mask for safety. (nd6_prelist_add will apply it again) */
 	for (i = 0; i < 4; i++) {
 		pr0.ndpr_prefix.sin6_addr.s6_addr32[i] &=
-			in6mask64.s6_addr32[i];
+		    in6mask64.s6_addr32[i];
 	}
 	/*
 	 * Initialize parameters.  The link-local prefix must always be
@@ -741,7 +741,7 @@ in6_ifattach(struct ifnet *ifp,
 
 	/* some of the interfaces are inherently not IPv6 capable */
 	switch (ifp->if_type) {
-#ifdef IFT_BRIDGE	/*OpenBSD 2.8*/
+#ifdef IFT_BRIDGE	/* OpenBSD 2.8, NetBSD 1.6 */
 	case IFT_BRIDGE:
 		return;
 #endif
@@ -833,7 +833,8 @@ in6_ifdetach_dispatch(netmsg_t nmsg)
 	nd6_purge(ifp);
 
 	/* nuke any of IPv6 addresses we have */
-	TAILQ_FOREACH_MUTABLE(ifac, &ifp->if_addrheads[mycpuid], ifa_link, next) {
+	TAILQ_FOREACH_MUTABLE(ifac, &ifp->if_addrheads[mycpuid], ifa_link,
+	    next) {
 		struct ifaddr *ifa = ifac->ifa;
 
 		if (ifa->ifa_addr->sa_family != AF_INET6)
@@ -882,7 +883,7 @@ in6_ifdetach_dispatch(netmsg_t nmsg)
 	if (rt != NULL && rt->rt_ifp == ifp) {
 		--rt->rt_refcnt;
 		rtrequest(RTM_DELETE, (struct sockaddr *)rt_key(rt),
-			rt->rt_gateway, rt_mask(rt), rt->rt_flags, 0);
+		    rt->rt_gateway, rt_mask(rt), rt->rt_flags, 0);
 	}
 
 	lwkt_replymsg(lmsg, 0);

@@ -79,7 +79,7 @@ struct protosw in6_gif_protosw =
     {
 	.pr_type = SOCK_RAW,
 	.pr_domain = &inet6domain,
-	.pr_protocol = 0/*IPPROTO_IPV[46]*/,
+	.pr_protocol = 0 /* IPPROTO_IPV[46] */,
 	.pr_flags = PR_ATOMIC|PR_ADDR,
 
 	.pr_input = in6_gif_input,
@@ -152,7 +152,7 @@ in6_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 		m_freem(m);
 		return EAFNOSUPPORT;
 	}
-	
+
 	/* prepend new IP header */
 	M_PREPEND(m, sizeof(struct ip6_hdr), M_NOWAIT);
 	if (m && m->m_len < sizeof(struct ip6_hdr))
@@ -217,7 +217,7 @@ in6_gif_output(struct ifnet *ifp, int family, struct mbuf *m)
 			      sizeof(struct ip6_hdr);
 #endif
 	}
-	
+
 #ifdef IPV6_MINMTU
 	/*
 	 * force fragmentation to minimum MTU, to avoid path MTU discovery.
@@ -296,7 +296,7 @@ in6_gif_input(struct mbuf **mp, int *offp, int proto)
 		m_freem(m);
 		return IPPROTO_DONE;
 	}
-		
+
 	gif_input(m, af, gifp);
 	return IPPROTO_DONE;
 }

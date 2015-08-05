@@ -133,7 +133,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 	 * Do not forward packets to multicast destination (should be handled
 	 * by ip6_mforward().
 	 * Do not forward packets with unspecified source.  It was discussed
-	 * in July 2000, on ipngwg mailing list.
+	 * in July 2000, on the ipngwg mailing list.
 	 */
 	if ((m->m_flags & (M_BCAST | M_MCAST)) != 0 ||
 	    IN6_IS_ADDR_MULTICAST(&ip6->ip6_dst) ||
@@ -277,7 +277,7 @@ ip6_forward(struct mbuf *m, int srcrt)
 			break;
 		default:
 			kprintf("ip6_output (ipsec): error code %d\n", error);
-			/* fall through */
+			/* FALLTHROUGH */
 		case ENOENT:
 			/* don't show these error codes to the user */
 			break;
@@ -299,15 +299,14 @@ skip_ipsec:
 
 	dst = (struct sockaddr_in6 *)&ip6_forward_rt.ro_dst;
 	if (!srcrt) {
-		/*
-		 * ip6_forward_rt.ro_dst.sin6_addr is equal to ip6->ip6_dst
-		 */
+		/* ip6_forward_rt.ro_dst.sin6_addr is equal to ip6->ip6_dst */
 		if (ip6_forward_rt.ro_rt == NULL ||
 		    !(ip6_forward_rt.ro_rt->rt_flags & RTF_UP)) {
 			if (ip6_forward_rt.ro_rt) {
 				RTFREE(ip6_forward_rt.ro_rt);
 				ip6_forward_rt.ro_rt = 0;
 			}
+
 			/* this probably fails but give it a try again */
 			rtalloc_ign((struct route *)&ip6_forward_rt,
 				    RTF_PRCLONING);
@@ -324,7 +323,7 @@ skip_ipsec:
 			return;
 		}
 	} else if ((rt = ip6_forward_rt.ro_rt) == NULL ||
-		 !IN6_ARE_ADDR_EQUAL(&ip6->ip6_dst, &dst->sin6_addr)) {
+		   !IN6_ARE_ADDR_EQUAL(&ip6->ip6_dst, &dst->sin6_addr)) {
 		if (ip6_forward_rt.ro_rt) {
 			RTFREE(ip6_forward_rt.ro_rt);
 			ip6_forward_rt.ro_rt = 0;
@@ -417,7 +416,7 @@ skip_ipsec:
 		}
 		m_freem(m);
 		return;
- 	}
+	}
 
 	if (rt->rt_flags & RTF_GATEWAY)
 		dst = (struct sockaddr_in6 *)rt->rt_gateway;
@@ -542,12 +541,10 @@ senderr:
 		return;
 	switch (error) {
 	case 0:
-#if 1
 		if (type == ND_REDIRECT) {
 			icmp6_redirect_output(mcopy, rt);
 			return;
 		}
-#endif
 		goto freecopy;
 
 	case EMSGSIZE:

@@ -50,4 +50,4 @@ int in6_gif_detach (struct gif_softc *);
 
 #endif
 
-#endif /*_NETINET6_IN6_GIF_H_*/
+#endif /* _NETINET6_IN6_GIF_H_ */

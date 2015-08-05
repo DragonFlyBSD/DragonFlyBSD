@@ -429,7 +429,7 @@ int	ip6_auto_flowlabel = 1;
 int	ip6_gif_hlim = 0;
 int	ip6_use_deprecated = 1;	/* allow deprecated addr (RFC2462 5.5.4) */
 int	ip6_rr_prune = 5;	/* router renumbering prefix
-				 * walk list every 5 sec.    */
+				 * walk list every 5 sec. */
 
 u_int32_t ip6_id = 0UL;
 int	ip6_keepfaith = 0;

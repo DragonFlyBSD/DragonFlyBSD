@@ -159,9 +159,9 @@ struct secspacq {
  * DISCARD, IPSEC and NONE are allowed for setkey() in SPD.
  * DISCARD and NONE are allowed for system default.
  */
-#define IPSEC_POLICY_DISCARD	0	/* discarding packet */
-#define IPSEC_POLICY_NONE	1	/* through IPsec engine */
-#define IPSEC_POLICY_IPSEC	2	/* do IPsec */
+#define IPSEC_POLICY_DISCARD	0	/* discard the packet */
+#define IPSEC_POLICY_NONE	1	/* bypass IPsec engine */
+#define IPSEC_POLICY_IPSEC	2	/* pass to IPsec */
 #define IPSEC_POLICY_ENTRUST	3	/* consulting SPD if present. */
 #define IPSEC_POLICY_BYPASS	4	/* only for privileged socket. */
 #define IPSEC_POLICY_TCP 5 /* TCP MD5 policy */
@@ -306,15 +306,13 @@ extern struct secpolicy *ipsec4_getpolicybyaddr
 	(struct mbuf *, u_int, int, int *);
 
 struct inpcb;
-extern int ipsec_init_policy (struct socket *so, struct inpcbpolicy **);
+extern int ipsec_init_policy (struct socket *, struct inpcbpolicy **);
 extern int ipsec_copy_policy
 	(struct inpcbpolicy *, struct inpcbpolicy *);
 extern u_int ipsec_get_reqlevel (struct ipsecrequest *);
 
-extern int ipsec4_set_policy (struct inpcb *inp, int optname,
-	caddr_t request, size_t len, int priv);
-extern int ipsec4_get_policy (struct inpcb *inpcb, caddr_t request,
-	size_t len, struct mbuf **mp);
+extern int ipsec4_set_policy (struct inpcb *, int, caddr_t, size_t, int);
+extern int ipsec4_get_policy (struct inpcb *, caddr_t, size_t, struct mbuf **);
 extern int ipsec4_delete_pcbpolicy (struct inpcb *);
 extern int ipsec4_in_reject_so (struct mbuf *, struct socket *);
 extern int ipsec4_in_reject (struct mbuf *, struct inpcb *);
