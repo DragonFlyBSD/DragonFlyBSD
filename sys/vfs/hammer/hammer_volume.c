@@ -633,11 +633,15 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 		if (block_off == 0) {
 			/*
 			 * The first entry represents the L2 big-block itself.
+			 * Note that the first entry represents the L1 big-block
+			 * and the second entry represents the L2 big-block for
+			 * root volume, but this function assumes the volume is
+			 * non-root given that we can't add a new root volume.
 			 */
+			KKASSERT(trans->rootvol && trans->rootvol != volume);
 			layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
 			layer2->append_off = HAMMER_BIGBLOCK_SIZE;
 			layer2->bytes_free = 0;
-			++stat->total_bigblocks;
 		} else if (phys_off + block_off < aligned_buf_end_off) {
 			/*
 			 * Available big-block
@@ -714,7 +718,6 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 		}
 
 		if (layer2->zone == HAMMER_ZONE_FREEMAP_INDEX) {
-			++stat->total_bigblocks;
 			return 0;
 		}
 
