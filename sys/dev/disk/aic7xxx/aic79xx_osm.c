@@ -116,6 +116,7 @@ ahd_attach(struct ahd_softc *ahd)
 
 	count = 0;
 	sim = NULL;
+	path = NULL;
 
 	/*
 	 * Create a thread to perform all recovery.
