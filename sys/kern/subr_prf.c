@@ -75,6 +75,7 @@
 #define TOTTY		0x02
 #define TOLOG		0x04
 #define TOWAKEUP	0x08
+#define TONOSPIN	0x10	/* avoid serialization */
 
 /* Max number conversion buffer length: a u_quad_t in base 2, plus NUL byte. */
 #define MAXNBUF	(sizeof(intmax_t) * NBBY + 1)
@@ -112,6 +113,9 @@ static int      log_console_output = 1;
 TUNABLE_INT("kern.log_console_output", &log_console_output);
 SYSCTL_INT(_kern, OID_AUTO, log_console_output, CTLFLAG_RW,
     &log_console_output, 0, "");
+static int	kprintf_logging = TOLOG | TOCONS;
+SYSCTL_INT(_kern, OID_AUTO, kprintf_logging, CTLFLAG_RW,
+    &kprintf_logging, 0, "");
 
 static int unprivileged_read_msgbuf = 1;
 SYSCTL_INT(_security, OID_AUTO, unprivileged_read_msgbuf, CTLFLAG_RW,
@@ -229,7 +233,10 @@ log(int level, const char *fmt, ...)
 
 	pca.tty = NULL;
 	pca.pri = level;
-	pca.flags = log_open ? TOLOG : TOCONS;
+	if ((kprintf_logging & TOCONS) == 0 || log_open)
+		pca.flags = TOLOG;
+	else
+		pca.flags = TOCONS;
 
 	__va_start(ap, fmt);
 	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
@@ -299,7 +306,7 @@ kprintf(const char *fmt, ...)
 	consintr = 0;
 	__va_start(ap, fmt);
 	pca.tty = NULL;
-	pca.flags = TOCONS | TOLOG;
+	pca.flags = kprintf_logging & ~TOTTY;
 	pca.pri = -1;
 	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 	__va_end(ap);
@@ -319,7 +326,7 @@ kvprintf(const char *fmt, __va_list ap)
 	savintr = consintr;		/* disable interrupts */
 	consintr = 0;
 	pca.tty = NULL;
-	pca.flags = TOCONS | TOLOG;
+	pca.flags = kprintf_logging & ~TOTTY;
 	pca.pri = -1;
 	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
 	if (!panicstr)
@@ -597,6 +604,7 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 		radix = 10;
 
 	usespin = (func == kputchar &&
+		   (kprintf_logging & TONOSPIN) == 0 &&
 		   panic_cpu_gd != mycpu &&
 		   (((struct putchar_arg *)arg)->flags & TOTTY) == 0);
 	if (usespin) {
