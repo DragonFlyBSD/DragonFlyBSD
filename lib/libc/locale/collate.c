@@ -643,3 +643,56 @@ fail:
 		free(tr);
 	return ((size_t)(-1));
 }
+
+/*
+ * __collate_equiv_value returns the primary collation value for the given
+ * collating symbol specified by str and len.  Zero or negative is returned
+ * if the collating symbol was not found.  This function is used by bracket
+ * code in the TRE regex library.
+ */
+int
+__collate_equiv_value(locale_t locale, const wchar_t *str, size_t len)
+{
+	int32_t e;
+
+	if (len < 1 || len >= COLLATE_STR_LEN)
+		return (-1);
+
+	FIX_LOCALE(locale);
+	struct xlocale_collate *table =
+		(struct xlocale_collate*)locale->components[XLC_COLLATE];
+
+	if (table->__collate_load_error)
+		return ((len == 1 && *str <= UCHAR_MAX) ? *str : -1);
+
+	if (len == 1) {
+		e = -1;
+		if (*str <= UCHAR_MAX)
+			e = table->char_pri_table[*str].pri[0];
+		else if (table->info->large_count > 0) {
+			collate_large_t *match_large;
+			match_large = largesearch(table, *str);
+			if (match_large)
+				e = match_large->pri.pri[0];
+		}
+		if (e == 0)
+			return (1);
+		return (e > 0 ? e : 0);
+	}
+	if (table->info->chain_count > 0) {
+		wchar_t name[COLLATE_STR_LEN];
+		collate_chain_t *match_chain;
+		int clen;
+
+		wcsncpy (name, str, len);
+		name[len] = 0;
+		match_chain = chainsearch(table, name, &clen);
+		if (match_chain) {
+			e = match_chain->pri[0];
+			if (e == 0)
+				return (1);
+			return (e < 0 ? -e : e);
+		}
+	}
+	return (0);
+}

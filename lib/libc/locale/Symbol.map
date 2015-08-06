@@ -205,6 +205,7 @@ DF402.0 {
 
 DFprivate_1.0 {
     __detect_path_locale;
+    __collate_equiv_value;
     __collate_load;
     __collate_load_tables;
     __collate_range_cmp;
