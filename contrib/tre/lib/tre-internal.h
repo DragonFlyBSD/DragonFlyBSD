@@ -18,7 +18,9 @@
 #endif /* !HAVE_WCTYPE_H */
 
 #include <ctype.h>
+#include <bitstring.h>
 #include "tre.h"
+#include "xlocale_private.h"
 
 #ifdef TRE_DEBUG
 #include <stdio.h>
@@ -31,6 +33,7 @@
 
 #ifdef HAVE_MBRTOWC
 #define tre_mbrtowc(pwc, s, n, ps) (mbrtowc((pwc), (s), (n), (ps)))
+#define tre_mbrtowc_l(pwc,s,n,ps,l) (mbrtowc_l((pwc), (s), (n), (ps), (l)))
 #else /* !HAVE_MBRTOWC */
 #ifdef HAVE_MBTOWC
 #define tre_mbrtowc(pwc, s, n, ps) (mbtowc((pwc), (s), (n)))
@@ -52,6 +55,7 @@ typedef wint_t tre_cint_t;
 
 #ifdef TRE_MULTIBYTE
 #define TRE_MB_CUR_MAX MB_CUR_MAX
+#define TRE_MB_CUR_MAX_L MB_CUR_MAX_L
 #else /* !TRE_MULTIBYTE */
 #define TRE_MB_CUR_MAX 1
 #endif /* !TRE_MULTIBYTE */
@@ -74,6 +78,14 @@ typedef wint_t tre_cint_t;
 #define tre_tolower towlower
 #define tre_toupper towupper
 #define tre_strlen  wcslen
+
+#define tre_isalnum_l iswalnum_l
+#define tre_isdigit_l iswdigit_l
+#define tre_islower_l iswlower_l
+#define tre_isupper_l iswupper_l
+#define tre_isxdigit_l iswxdigit_l
+#define tre_tolower_l towlower_l
+#define tre_toupper_l towupper_l
 
 #else /* !TRE_WCHAR */
 
@@ -115,6 +127,8 @@ typedef short tre_cint_t;
 typedef wctype_t tre_ctype_t;
 #define tre_isctype iswctype
 #define tre_ctype   wctype
+#define tre_isctype_l iswctype_l
+#define tre_ctype_l   wctype_l
 #else /* !TRE_USE_SYSTEM_WCTYPE */
 /* Define our own versions of iswctype() and wctype(). */
 typedef int (*tre_ctype_t)(tre_cint_t);
@@ -122,7 +136,7 @@ typedef int (*tre_ctype_t)(tre_cint_t);
 tre_ctype_t tre_ctype(const char *name);
 #endif /* !TRE_USE_SYSTEM_WCTYPE */
 
-typedef enum { STR_WIDE, STR_BYTE, STR_MBS, STR_USER } tre_str_type_t;
+typedef enum { STR_WIDE, STR_BYTE, STR_MBS } tre_str_type_t;
 
 /* Returns number of bytes to add to (char *)ptr to make it
    properly aligned for the type. */
@@ -142,6 +156,47 @@ typedef enum { STR_WIDE, STR_BYTE, STR_MBS, STR_USER } tre_str_type_t;
 #else /* !TRE_WCHAR */
 #define STRF "s"
 #endif /* !TRE_WCHAR */
+
+/* Types to handle bracket expressions. */
+typedef enum {
+  TRE_BRACKET_MATCH_TYPE_UNUSED = 0,
+  TRE_BRACKET_MATCH_TYPE_CHAR,		/* Single character value */
+  TRE_BRACKET_MATCH_TYPE_RANGE_BEGIN,	/* Collation range begin */
+  TRE_BRACKET_MATCH_TYPE_RANGE_END,	/* Collation range end */
+  TRE_BRACKET_MATCH_TYPE_CLASS,		/* Character class */
+  TRE_BRACKET_MATCH_TYPE_EQUIVALENCE,	/* Collation equivalence value */
+} tre_bracket_match_type_t;
+
+typedef struct {
+  tre_bracket_match_type_t type;
+  tre_cint_t value;
+} tre_bracket_match_t;
+
+#define TRE_BRACKET_MATCH_FLAG_NEGATE	1
+
+typedef struct {
+  int num_bracket_matches;
+  int flags;
+  tre_bracket_match_t bracket_matches[0];
+} tre_bracket_match_list_t;
+
+#define SIZEOF_BRACKET_MATCH_LIST_N(n)	(sizeof(tre_bracket_match_list_t) + \
+					 sizeof(tre_bracket_match_t) * (n))
+#define SIZEOF_BRACKET_MATCH_LIST(l)	SIZEOF_BRACKET_MATCH_LIST_N( \
+					 (l)->num_bracket_matches)
+
+/* The "count" field is the number of time the tag was set, initially zero.
+   The "first" field contains the first set value (when "count" equals 1).
+   The "value" field contains the current value of the tag, if "count" is
+   greater than zero (the tag's current value is -1 if "count" is zero).
+   The "touch" field is the touch value, a montonically increasing value
+   (maintained by the caller) set each time the tag itself is set. */
+typedef struct {
+  int count;
+  int first;
+  int value;
+  int touch;
+} tre_tag_t;
 
 /* TNFA transition type. A TNFA state is an array of transitions,
    the terminator is a transition with NULL `state'. */
@@ -163,32 +218,30 @@ struct tnfa_transition {
   int assertions;
   /* Assertion parameters. */
   union {
-    /* Character class assertion. */
-    tre_ctype_t class;
+    /* Bracket matches. */
+    tre_bracket_match_list_t *bracket_match_list;
     /* Back reference assertion. */
     int backref;
   } u;
-  /* Negative character class assertions. */
-  tre_ctype_t *neg_classes;
 };
 
 
 /* Assertions. */
 #define ASSERT_AT_BOL		  1   /* Beginning of line. */
 #define ASSERT_AT_EOL		  2   /* End of line. */
-#define ASSERT_CHAR_CLASS	  4   /* Character class in `class'. */
-#define ASSERT_CHAR_CLASS_NEG	  8   /* Character classes in `neg_classes'. */
-#define ASSERT_AT_BOW		 16   /* Beginning of word. */
-#define ASSERT_AT_EOW		 32   /* End of word. */
-#define ASSERT_AT_WB		 64   /* Word boundary. */
-#define ASSERT_AT_WB_NEG	128   /* Not a word boundary. */
-#define ASSERT_BACKREF		256   /* A back reference in `backref'. */
-#define ASSERT_LAST		256
+#define ASSERT_BRACKET_MATCH	  4   /* Matches in `bracket_match_list'. */
+#define ASSERT_AT_BOW		  8   /* Beginning of word. */
+#define ASSERT_AT_EOW		 16   /* End of word. */
+#define ASSERT_AT_WB		 32   /* Word boundary. */
+#define ASSERT_AT_WB_NEG	 64   /* Not a word boundary. */
+#define ASSERT_BACKREF		128   /* A back reference in `backref'. */
+#define ASSERT_LAST		128
 
 /* Tag directions. */
 typedef enum {
   TRE_TAG_MINIMIZE = 0,
-  TRE_TAG_MAXIMIZE = 1
+  TRE_TAG_MAXIMIZE,
+  TRE_TAG_LEFT_MAXIMIZE,
 } tre_tag_direction_t;
 
 /* Parameters that can be changed dynamically while matching. */
@@ -218,66 +271,95 @@ struct tre_submatch_data {
   int so_tag;
   /* Tag that gives the value for rm_eo (submatch end offset). */
   int eo_tag;
-  /* List of submatches this submatch is contained in. */
-  int *parents;
 };
 
 typedef struct tre_submatch_data tre_submatch_data_t;
 
+
+/* LAST MATCHED structures */
+struct __previous_type;
+struct __previous_branch_type;
+struct __current_type;
+struct __current_branch_type;
+
+typedef struct __previous_branch_type {
+  struct __previous_branch_type *next;
+  struct __previous_type *last_matched; int n_last_matched; int cmp_tag; int n_tags;
+  int tot_branches;
+  int tot_last_matched;
+  int tot_tags;
+  bitstr_t tags[0];
+} tre_last_matched_branch_pre_t;
+
+typedef struct __previous_type {
+  struct __previous_type *next;
+  tre_last_matched_branch_pre_t *branches; int n_branches; int start_tag;
+  int tot_branches;
+  int tot_last_matched;
+  int tot_tags;
+} tre_last_matched_pre_t;
+
+typedef struct __current_branch_type {
+  int *tags;
+  struct __current_type *last_matched; int n_last_matched; int cmp_tag; int n_tags;
+} tre_last_matched_branch_t;
+
+typedef struct __current_type {
+  tre_last_matched_branch_t *branches; int n_branches; int start_tag;
+} tre_last_matched_t;
 
 /* TNFA definition. */
 typedef struct tnfa tre_tnfa_t;
 
 struct tnfa {
   tre_tnfa_transition_t *transitions;
-  unsigned int num_transitions;
   tre_tnfa_transition_t *initial;
   tre_tnfa_transition_t *final;
   tre_submatch_data_t *submatch_data;
-  char *firstpos_chars;
-  int first_char;
-  unsigned int num_submatches;
   tre_tag_direction_t *tag_directions;
   int *minimal_tags;
+  tre_last_matched_branch_t *last_matched_branch;
+  locale_t loc;
+  unsigned int num_transitions;
+  int first_char;
+  unsigned int num_submatches;
+  unsigned int num_submatches_invisible;
   int num_tags;
   int num_minimals;
   int end_tag;
   int num_states;
   int cflags;
   int have_backrefs;
+  int num_reorder_tags;
   int have_approx;
   int params_depth;
 };
 
 int
-tre_compile(regex_t *preg, const tre_char_t *regex, size_t n, int cflags);
+tre_compile(regex_t *preg, const tre_char_t *regex, size_t n, int cflags,
+	    locale_t loc);
 
 void
 tre_free(regex_t *preg);
 
-void
+reg_errcode_t
 tre_fill_pmatch(size_t nmatch, regmatch_t pmatch[], int cflags,
-		const tre_tnfa_t *tnfa, int *tags, int match_eo);
+		const tre_tnfa_t *tnfa, const tre_tag_t *tags, int match_eo);
 
 reg_errcode_t
 tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
-		      tre_str_type_t type, int *match_tags, int eflags,
-		      int *match_end_ofs);
-
-reg_errcode_t
-tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
-		      tre_str_type_t type, int *match_tags, int eflags,
+		      tre_str_type_t type, tre_tag_t *match_tags, int eflags,
 		      int *match_end_ofs);
 
 reg_errcode_t
 tre_tnfa_run_backtrack(const tre_tnfa_t *tnfa, const void *string,
-		       int len, tre_str_type_t type, int *match_tags,
+		       int len, tre_str_type_t type, tre_tag_t *match_tags,
 		       int eflags, int *match_end_ofs);
 
 #ifdef TRE_APPROX
 reg_errcode_t
 tre_tnfa_run_approx(const tre_tnfa_t *tnfa, const void *string, int len,
-		    tre_str_type_t type, int *match_tags,
+		    tre_str_type_t type, tre_tag_t *match_tags,
 		    regamatch_t *match, regaparams_t params,
 		    int eflags, int *match_end_ofs);
 #endif /* TRE_APPROX */

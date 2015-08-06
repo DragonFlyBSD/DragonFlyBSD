@@ -10,6 +10,8 @@
 #ifndef TRE_AST_H
 #define TRE_AST_H 1
 
+#include <limits.h>
+
 #include "tre-mem.h"
 #include "tre-internal.h"
 #include "tre-compile.h"
@@ -36,18 +38,26 @@ typedef enum {
 #define IS_BACKREF(x)	((x)->code_min == BACKREF)
 #define IS_PARAMETER(x) ((x)->code_min == PARAMETER)
 
+#define SUBMATCH_ID_INVISIBLE_START	(INT_MAX / 2 + 1)
+
 
 /* A generic AST node.  All AST nodes consist of this node on the top
    level with `obj' pointing to the actual content. */
-typedef struct {
-  tre_ast_type_t type;   /* Type of the node. */
+typedef struct _tre_ast_node {
   void *obj;             /* Pointer to actual node. */
-  int nullable;
+  tre_last_matched_branch_pre_t *last_matched_branch;
+  tre_last_matched_pre_t *last_matched_in_progress;
+  tre_pos_and_tags_t *firstpos;
+  tre_pos_and_tags_t *lastpos;
+  /* The original pointer is used to point to the original node, when a
+   * CATENATION and tag are added.  If NULL, this is node is the original */
+  struct _tre_ast_node *original;
+  tre_ast_type_t type;   /* Type of the node. */
   int submatch_id;
   int num_submatches;
   int num_tags;
-  tre_pos_and_tags_t *firstpos;
-  tre_pos_and_tags_t *lastpos;
+  short nullable;
+  short make_branches;
 } tre_ast_node_t;
 
 
@@ -55,14 +65,13 @@ typedef struct {
    tags, matching parameter settings, and all expressions that match one
    character. */
 typedef struct {
-  long code_min;
-  long code_max;
+  tre_cint_t code_min;
+  tre_cint_t code_max;
   int position;
   union {
-    tre_ctype_t class;
+    tre_bracket_match_list_t *bracket_match_list;
     int *params;
   } u;
-  tre_ctype_t *neg_classes;
 } tre_literal_t;
 
 /* A "catenation" node.	 These are created when two regexps are concatenated.
@@ -95,6 +104,9 @@ typedef struct {
 typedef struct {
   tre_ast_node_t *left;
   tre_ast_node_t *right;
+  /* The left end right end tags if non-zero */
+  int left_tag;
+  int right_tag;
 } tre_union_t;
 
 tre_ast_node_t *

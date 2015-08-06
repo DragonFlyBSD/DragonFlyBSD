@@ -27,6 +27,10 @@
 #include <config.h>
 #endif /* HAVE_CONFIG_H */
 
+/* Unset TRE_USE_ALLOCA to avoid using the stack to hold all the state
+   info while running */
+#undef TRE_USE_ALLOCA
+
 #ifdef TRE_USE_ALLOCA
 /* AIX requires this to be the first thing in the file.	 */
 #ifndef __GNUC__
@@ -69,34 +73,33 @@ char *alloca ();
 
 typedef struct {
   tre_tnfa_transition_t *state;
-  int *tags;
+  tre_tag_t *tags;
 } tre_tnfa_reach_t;
 
 typedef struct {
   int pos;
-  int **tags;
+  tre_tag_t **tags;
 } tre_reach_pos_t;
 
 
 #ifdef TRE_DEBUG
 static void
+tre_print_reach1(tre_tnfa_transition_t *state, tre_tag_t *tags, int num_tags)
+{
+  DPRINT((" %p", (void *)state));
+  if (num_tags > 0)
+    {
+      DPRINT(("/"));
+      tre_print_tags(tags, num_tags);
+    }
+}
+
+static void
 tre_print_reach(const tre_tnfa_t *tnfa, tre_tnfa_reach_t *reach, int num_tags)
 {
-  int i;
-
   while (reach->state != NULL)
     {
-      DPRINT((" %p", (void *)reach->state));
-      if (num_tags > 0)
-	{
-	  DPRINT(("/"));
-	  for (i = 0; i < num_tags; i++)
-	    {
-	      DPRINT(("%d:%d", i, reach->tags[i]));
-	      if (i < (num_tags-1))
-		DPRINT((","));
-	    }
-	}
+      tre_print_reach1(reach->state, reach->tags, num_tags);
       reach++;
     }
   DPRINT(("\n"));
@@ -106,7 +109,7 @@ tre_print_reach(const tre_tnfa_t *tnfa, tre_tnfa_reach_t *reach, int num_tags)
 
 reg_errcode_t
 tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
-		      tre_str_type_t type, int *match_tags, int eflags,
+		      tre_str_type_t type, tre_tag_t *match_tags, int eflags,
 		      int *match_end_ofs)
 {
   /* State variables required by GET_NEXT_WCHAR. */
@@ -123,7 +126,6 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
   int reg_notbol = eflags & REG_NOTBOL;
   int reg_noteol = eflags & REG_NOTEOL;
   int reg_newline = tnfa->cflags & REG_NEWLINE;
-  int str_user_end = 0;
 
   char *buf;
   tre_tnfa_transition_t *trans_i;
@@ -133,9 +135,13 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
   int num_tags, i;
 
   int match_eo = -1;	   /* end offset of match (-1 if no match found yet) */
-  int new_match = 0;
-  int *tmp_tags = NULL;
-  int *tmp_iptr;
+#ifdef TRE_DEBUG
+  int once;
+#endif /* TRE_DEBUG */
+  tre_tag_t *tmp_tags = NULL;
+  tre_tag_t *tmp_iptr;
+  int tbytes;
+  int touch = 1;
 
 #ifdef TRE_MBSTATE
   memset(&mbstate, '\0', sizeof(mbstate));
@@ -153,17 +159,17 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
      everything in a single large block from the stack frame using alloca()
      or with malloc() if alloca is unavailable. */
   {
-    int tbytes, rbytes, pbytes, xbytes, total_bytes;
+    int rbytes, pbytes, total_bytes;
     char *tmp_buf;
     /* Compute the length of the block we need. */
     tbytes = sizeof(*tmp_tags) * num_tags;
     rbytes = sizeof(*reach_next) * (tnfa->num_states + 1);
     pbytes = sizeof(*reach_pos) * tnfa->num_states;
-    xbytes = sizeof(int) * num_tags;
     total_bytes =
       (sizeof(long) - 1) * 4 /* for alignment paddings */
-      + (rbytes + xbytes * tnfa->num_states) * 2 + tbytes + pbytes;
+      + (rbytes + tbytes * tnfa->num_states) * 2 + tbytes + pbytes;
 
+    DPRINT(("tre_tnfa_run_parallel, allocate %d bytes\n", total_bytes));
     /* Allocate the memory. */
 #ifdef TRE_USE_ALLOCA
     buf = alloca(total_bytes);
@@ -190,9 +196,9 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
     for (i = 0; i < tnfa->num_states; i++)
       {
 	reach[i].tags = (void *)tmp_buf;
-	tmp_buf += xbytes;
+	tmp_buf += tbytes;
 	reach_next[i].tags = (void *)tmp_buf;
-	tmp_buf += xbytes;
+	tmp_buf += tbytes;
       }
   }
 
@@ -200,15 +206,103 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
     reach_pos[i].pos = -1;
 
   /* If only one character can start a match, find it first. */
-  if (tnfa->first_char >= 0 && type == STR_BYTE && str_byte)
+  if (tnfa->first_char >= 0 && str_byte)
     {
       const char *orig_str = str_byte;
       int first = tnfa->first_char;
+      int found_high_bit = 0;
 
-      if (len >= 0)
-	str_byte = memchr(orig_str, first, (size_t)len);
-      else
-	str_byte = strchr(orig_str, first);
+
+      if (type == STR_BYTE)
+	{
+	  if (len >= 0)
+	    str_byte = memchr(orig_str, first, (size_t)len);
+	  else
+	    str_byte = strchr(orig_str, first);
+	}
+      else if (type == STR_MBS)
+	{
+	  /*
+	   * If the match character is ASCII, try to match the character
+	   * directly, but if a high bit character is found, we stop there.
+	   */
+	  if (first < 0x80)
+	    {
+	      if (len >= 0)
+		{
+		  int i;
+		  for (i = 0; ; str_byte++, i++)
+		    {
+		      if (i >= len)
+			{
+			  str_byte = NULL;
+			  break;
+			}
+		      if (*str_byte == first)
+			break;
+		      if (*str_byte & 0x80)
+			{
+			  found_high_bit = 1;
+			  break;
+			}
+		    }
+		}
+	      else
+		{
+		  for (; ; str_byte++)
+		    {
+		      if (!*str_byte)
+			{
+			  str_byte = NULL;
+			  break;
+			}
+		      if (*str_byte == first)
+			break;
+		      if (*str_byte & 0x80)
+			{
+			  found_high_bit = 1;
+			  break;
+			}
+		    }
+		}
+	    }
+	  else
+	    {
+	      if (len >= 0)
+		{
+		  int i;
+		  for (i = 0; ; str_byte++, i++)
+		    {
+		      if (i >= len)
+			{
+			  str_byte = NULL;
+			  break;
+			}
+		      if (*str_byte & 0x80)
+			{
+			  found_high_bit = 1;
+			  break;
+			}
+		    }
+		}
+	      else
+		{
+		  for (; ; str_byte++)
+		    {
+		      if (!*str_byte)
+			{
+			  str_byte = NULL;
+			  break;
+			}
+		      if (*str_byte & 0x80)
+			{
+			  found_high_bit = 1;
+			  break;
+			}
+		    }
+		}
+	    }
+	}
       if (str_byte == NULL)
 	{
 #ifndef TRE_USE_ALLOCA
@@ -218,51 +312,35 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
 	  return REG_NOMATCH;
 	}
       DPRINT(("skipped %lu chars\n", (unsigned long)(str_byte - orig_str)));
-      if (str_byte >= orig_str + 1)
-	prev_c = (unsigned char)*(str_byte - 1);
-      next_c = (unsigned char)*str_byte;
-      pos = str_byte - orig_str;
-      if (len < 0 || pos < len)
-	str_byte++;
-    }
-  else
-    {
-      GET_NEXT_WCHAR();
-      pos = 0;
-    }
-
-#if 0
-  /* Skip over characters that cannot possibly be the first character
-     of a match. */
-  if (tnfa->firstpos_chars != NULL)
-    {
-      char *chars = tnfa->firstpos_chars;
-
-      if (len < 0)
+      if (!found_high_bit)
 	{
-	  const char *orig_str = str_byte;
-	  /* XXX - use strpbrk() and wcspbrk() because they might be
-	     optimized for the target architecture.  Try also strcspn()
-	     and wcscspn() and compare the speeds. */
-	  while (next_c != L'\0' && !chars[next_c])
-	    {
-	      next_c = *str_byte++;
-	    }
-	  prev_c = *(str_byte - 2);
-	  pos += str_byte - orig_str;
-	  DPRINT(("skipped %d chars\n", str_byte - orig_str));
+	  if (str_byte >= orig_str + 1)
+	    prev_c = (unsigned char)*(str_byte - 1);
+	  next_c = (unsigned char)*str_byte;
+	  pos = str_byte - orig_str;
+	  if (len < 0 || pos < len)
+	    str_byte++;
 	}
       else
 	{
-	  while (pos <= len && !chars[next_c])
-	    {
-	      prev_c = next_c;
-	      next_c = (unsigned char)(*str_byte++);
-	      pos++;
-	    }
+	  if (str_byte == orig_str)
+	    goto no_first_optimization;
+	  /*
+	   * Back up one character, fix up the position, then call
+	   * GET_NEXT_WCHAR() to process the multibyte character.
+	   */
+	  /* no need to set prev_c, since GET_NEXT_WCHAR will overwrite */
+	  next_c = (unsigned char)*(str_byte - 1);
+	  pos = (str_byte - 1) - orig_str;
+	  GET_NEXT_WCHAR();
 	}
     }
-#endif
+  else
+    {
+no_first_optimization:
+      GET_NEXT_WCHAR();
+      pos = 0;
+    }
 
   DPRINT(("length: %d\n", len));
   DPRINT(("pos:chr/code | states and tags\n"));
@@ -290,23 +368,23 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
 
 		  DPRINT((" %p", (void *)trans_i->state));
 		  reach_next_i->state = trans_i->state;
-		  for (i = 0; i < num_tags; i++)
-		    reach_next_i->tags[i] = -1;
+		  memset(reach_next_i->tags, 0, tbytes);
 		  tag_i = trans_i->tags;
 		  if (tag_i)
-		    while (*tag_i >= 0)
-		      {
-			if (*tag_i < num_tags)
-			  reach_next_i->tags[*tag_i] = pos;
-			tag_i++;
-		      }
+		    {
+		      while (*tag_i >= 0)
+			{
+			  if (*tag_i < num_tags)
+			    tre_tag_set(reach_next_i->tags, *tag_i, pos, touch);
+			  tag_i++;
+			}
+			touch++;
+		    }
 		  if (reach_next_i->state == tnfa->final)
 		    {
 		      DPRINT(("	 found empty match\n"));
 		      match_eo = pos;
-		      new_match = 1;
-		      for (i = 0; i < num_tags; i++)
-			match_tags[i] = reach_next_i->tags[i];
+		      memcpy(match_tags, reach_next_i->tags, tbytes);
 		    }
 		  reach_pos[trans_i->state_id].pos = pos;
 		  reach_pos[trans_i->state_id].tags = &reach_next_i->tags;
@@ -327,12 +405,7 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
       /* Check for end of string. */
       if (len < 0)
 	{
-	  if (type == STR_USER)
-	    {
-	      if (str_user_end)
-		break;
-	    }
-	  else if (next_c == L'\0')
+	  if (next_c == L'\0')
 	    break;
 	}
       else
@@ -346,8 +419,6 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
 #ifdef TRE_DEBUG
       DPRINT(("%3d:%2lc/%05d |", pos - 1, (tre_cint_t)prev_c, (int)prev_c));
       tre_print_reach(tnfa, reach_next, num_tags);
-      DPRINT(("%3d:%2lc/%05d |", pos, (tre_cint_t)next_c, (int)next_c));
-      tre_print_reach(tnfa, reach_next, num_tags);
 #endif /* TRE_DEBUG */
 
       /* Swap `reach' and `reach_next'. */
@@ -355,51 +426,9 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
       reach = reach_next;
       reach_next = reach_i;
 
-      /* For each state in `reach', weed out states that don't fulfill the
-	 minimal matching conditions. */
-      if (tnfa->num_minimals && new_match)
-	{
-	  new_match = 0;
-	  reach_next_i = reach_next;
-	  for (reach_i = reach; reach_i->state; reach_i++)
-	    {
-	      int skip = 0;
-	      for (i = 0; tnfa->minimal_tags[i] >= 0; i += 2)
-		{
-		  int end = tnfa->minimal_tags[i];
-		  int start = tnfa->minimal_tags[i + 1];
-		  DPRINT(("  Minimal start %d, end %d\n", start, end));
-		  if (end >= num_tags)
-		    {
-		      DPRINT(("	 Throwing %p out.\n", reach_i->state));
-		      skip = 1;
-		      break;
-		    }
-		  else if (reach_i->tags[start] == match_tags[start]
-			   && reach_i->tags[end] < match_tags[end])
-		    {
-		      DPRINT(("	 Throwing %p out because t%d < %d\n",
-			      reach_i->state, end, match_tags[end]));
-		      skip = 1;
-		      break;
-		    }
-		}
-	      if (!skip)
-		{
-		  reach_next_i->state = reach_i->state;
-		  tmp_iptr = reach_next_i->tags;
-		  reach_next_i->tags = reach_i->tags;
-		  reach_i->tags = tmp_iptr;
-		  reach_next_i++;
-		}
-	    }
-	  reach_next_i->state = NULL;
-
-	  /* Swap `reach' and `reach_next'. */
-	  reach_i = reach;
-	  reach = reach_next;
-	  reach_next = reach_i;
-	}
+#ifdef TRE_DEBUG
+      once = 0;
+#endif /* TRE_DEBUG */
 
       /* For each state in `reach' see if there is a transition leaving with
 	 the current input symbol to a state not yet in `reach_next', and
@@ -422,16 +451,57 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
 		    }
 
 		  /* Compute the tags after this transition. */
-		  for (i = 0; i < num_tags; i++)
-		    tmp_tags[i] = reach_i->tags[i];
+		  memcpy(tmp_tags, reach_i->tags, tbytes);
 		  tag_i = trans_i->tags;
 		  if (tag_i != NULL)
-		    while (*tag_i >= 0)
-		      {
-			if (*tag_i < num_tags)
-			  tmp_tags[*tag_i] = pos;
-			tag_i++;
-		      }
+		    {
+		      while (*tag_i >= 0)
+			{
+			  if (*tag_i < num_tags)
+			    tre_tag_set(tmp_tags, *tag_i, pos, touch);
+			  tag_i++;
+			}
+			touch++;
+		    }
+
+		  /* For each new transition, weed out those that don't
+		     fulfill the minimal matching conditions. */
+		  if (tnfa->num_minimals && match_eo >= 0)
+		    {
+		      int skip = 0;
+#ifdef TRE_DEBUG
+		      if (!once)
+			{
+			  DPRINT(("Checking minimal conditions: match_eo=%d "
+				  "match_tags=", match_eo));
+			  tre_print_tags(match_tags, num_tags);
+			  DPRINT(("\n"));
+			  once++;
+			}
+#endif /* TRE_DEBUG */
+		      for (i = 0; tnfa->minimal_tags[i] >= 0; i += 2)
+			{
+			   int end = tnfa->minimal_tags[i];
+			   int start = tnfa->minimal_tags[i + 1];
+			   DPRINT(("  Minimal start %d, end %d\n", start, end));
+			   if (tre_minimal_tag_order(start, end, match_tags,
+						     tmp_tags) > 0)
+			     {
+				skip = 1;
+				break;
+			     }
+			}
+		      if (skip)
+			{
+#ifdef TRE_DEBUG
+			   DPRINT(("	 Throwing out"));
+			   tre_print_reach1(reach_i->state, tmp_tags,
+					     num_tags);
+			   DPRINT(("\n"));
+#endif /* TRE_DEBUG */
+			   continue;
+			}
+		    }
 
 		  if (reach_pos[trans_i->state_id].pos < pos)
 		    {
@@ -446,13 +516,16 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
 		      if (reach_next_i->state == tnfa->final
 			  && (match_eo == -1
 			      || (num_tags > 0
-				  && reach_next_i->tags[0] <= match_tags[0])))
+				  && tre_tag_get(reach_next_i->tags, 0) <=
+				  tre_tag_get(match_tags, 0))))
 			{
-			  DPRINT(("  found match %p\n", trans_i->state));
+#ifdef TRE_DEBUG
+			  DPRINT(("  found match"));
+			  tre_print_reach1(trans_i->state, reach_next_i->tags, num_tags);
+			  DPRINT(("\n"));
+#endif /* TRE_DEBUG */
 			  match_eo = pos;
-			  new_match = 1;
-			  for (i = 0; i < num_tags; i++)
-			    match_tags[i] = reach_next_i->tags[i];
+			  memcpy(match_tags, reach_next_i->tags, tbytes);
 			}
 		      reach_next_i++;
 
@@ -472,11 +545,13 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
 			  *reach_pos[trans_i->state_id].tags = tmp_tags;
 			  if (trans_i->state == tnfa->final)
 			    {
-			      DPRINT(("	 found better match\n"));
+#ifdef TRE_DEBUG
+			      DPRINT(("	 found better match"));
+			      tre_print_reach1(trans_i->state, tmp_tags, num_tags);
+			      DPRINT(("\n"));
+#endif /* TRE_DEBUG */
 			      match_eo = pos;
-			      new_match = 1;
-			      for (i = 0; i < num_tags; i++)
-				match_tags[i] = tmp_tags[i];
+			      memcpy(match_tags, tmp_tags, tbytes);
 			    }
 			  tmp_tags = tmp_iptr;
 			}
@@ -489,12 +564,21 @@ tre_tnfa_run_parallel(const tre_tnfa_t *tnfa, const void *string, int len,
 
   DPRINT(("match end offset = %d\n", match_eo));
 
+  *match_end_ofs = match_eo;
+#ifdef TRE_DEBUG
+  if (match_tags)
+    {
+      DPRINT(("Winning tags="));
+      tre_print_tags_all(match_tags, num_tags);
+      DPRINT((" touch=%d\n", touch));
+    }
+#endif /* TRE_DEBUG */
+
 #ifndef TRE_USE_ALLOCA
   if (buf)
     xfree(buf);
 #endif /* !TRE_USE_ALLOCA */
 
-  *match_end_ofs = match_eo;
   return match_eo >= 0 ? REG_OK : REG_NOMATCH;
 }
 

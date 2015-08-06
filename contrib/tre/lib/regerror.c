@@ -47,7 +47,10 @@ static const char *tre_error_messages[] =
     gettext_noop("Invalid contents of {}"),		 /* REG_BADBR */
     gettext_noop("Invalid character range"),		 /* REG_ERANGE */
     gettext_noop("Out of memory"),			 /* REG_ESPACE */
-    gettext_noop("Invalid use of repetition operators")	 /* REG_BADRPT */
+    gettext_noop("Invalid use of repetition operators"), /* REG_BADRPT */
+    gettext_noop("Empty (sub)expression"),		 /* REG_EMPTY */
+    gettext_noop("Invalid argument to regex routine"),	 /* REG_INVARG */
+    gettext_noop("Illegal byte sequence")		 /* REG_ILLSEQ */
   };
 
 size_t

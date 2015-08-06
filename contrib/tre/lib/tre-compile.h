@@ -16,10 +16,10 @@ typedef struct {
   int code_max;
   int *tags;
   int assertions;
-  tre_ctype_t class;
-  tre_ctype_t *neg_classes;
+  tre_bracket_match_list_t *bracket_match_list;
   int backref;
   int *params;
+  locale_t loc;
 } tre_pos_and_tags_t;
 
 #endif /* TRE_COMPILE_H */

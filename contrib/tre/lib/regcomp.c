@@ -19,7 +19,8 @@
 #include "xmalloc.h"
 
 int
-tre_regncomp(regex_t *preg, const char *regex, size_t n, int cflags)
+tre_regncomp_l(regex_t *preg, const char *regex, size_t n, int cflags,
+    locale_t loc)
 {
   int ret;
 #if TRE_WCHAR
@@ -30,13 +31,15 @@ tre_regncomp(regex_t *preg, const char *regex, size_t n, int cflags)
   if (wregex == NULL)
     return REG_ESPACE;
 
+  FIX_LOCALE(loc);
+
   /* If the current locale uses the standard single byte encoding of
      characters, we don't do a multibyte string conversion.  If we did,
      many applications which use the default locale would break since
      the default "C" locale uses the 7-bit ASCII character set, and
      all characters with the eighth bit set would be considered invalid. */
 #if TRE_MULTIBYTE
-  if (TRE_MB_CUR_MAX == 1)
+  if (TRE_MB_CUR_MAX_L(loc) == 1)
 #endif /* TRE_MULTIBYTE */
     {
       unsigned int i;
@@ -50,7 +53,7 @@ tre_regncomp(regex_t *preg, const char *regex, size_t n, int cflags)
 #if TRE_MULTIBYTE
   else
     {
-      int consumed;
+      size_t consumed;
       tre_char_t *wcptr = wregex;
 #ifdef HAVE_MBSTATE_T
       mbstate_t state;
@@ -58,7 +61,7 @@ tre_regncomp(regex_t *preg, const char *regex, size_t n, int cflags)
 #endif /* HAVE_MBSTATE_T */
       while (n > 0)
 	{
-	  consumed = tre_mbrtowc(wcptr, regex, n, &state);
+	  consumed = tre_mbrtowc_l(wcptr, regex, n, &state, loc);
 
 	  switch (consumed)
 	    {
@@ -71,15 +74,11 @@ tre_regncomp(regex_t *preg, const char *regex, size_t n, int cflags)
 		  return REG_BADPAT;
 		}
 	      break;
-	    case -1:
+	    case (size_t)-1:
+	    case (size_t)-2:
 	      DPRINT(("mbrtowc: error %d: %s.\n", errno, strerror(errno)));
 	      xfree(wregex);
-	      return REG_BADPAT;
-	    case -2:
-	      /* The last character wasn't complete.  Let's not call it a
-		 fatal error. */
-	      consumed = n;
-	      break;
+	      return REG_ILLSEQ;
 	    }
 	  regex += consumed;
 	  n -= consumed;
@@ -90,33 +89,70 @@ tre_regncomp(regex_t *preg, const char *regex, size_t n, int cflags)
 #endif /* TRE_MULTIBYTE */
 
   wregex[wlen] = L'\0';
-  ret = tre_compile(preg, wregex, wlen, cflags);
+  ret = tre_compile(preg, wregex, wlen, cflags, loc);
   xfree(wregex);
 #else /* !TRE_WCHAR */
-  ret = tre_compile(preg, (const tre_char_t *)regex, n, cflags);
+  FIX_LOCALE(loc);
+  ret = tre_compile(preg, (const tre_char_t *)regex, n, cflags, loc);
 #endif /* !TRE_WCHAR */
 
   return ret;
 }
 
 int
-tre_regcomp(regex_t *preg, const char *regex, int cflags)
+tre_regncomp(regex_t *preg, const char *regex, size_t n, int cflags)
 {
-  return tre_regncomp(preg, regex, regex ? strlen(regex) : 0, cflags);
+  return tre_regncomp_l(preg, regex, n, cflags, __get_locale());
 }
 
+int
+tre_regcomp_l(regex_t *preg, const char *regex, int cflags, locale_t loc)
+{
+  size_t len;
+
+  if (cflags & REG_PEND)
+    {
+      if ((const char *)(preg->re_endp) < regex)
+	return REG_INVARG;
+      len = (const char *)(preg->re_endp) - regex;
+    }
+  else
+    len = strlen(regex);
+  return tre_regncomp_l(preg, regex, len, cflags, loc);
+}
+
+int
+tre_regcomp(regex_t *preg, const char *regex, int cflags)
+{
+  return tre_regcomp_l(preg, regex, cflags, __get_locale());
+}
 
 #ifdef TRE_WCHAR
 int
+tre_regwncomp_l(regex_t *preg, const wchar_t *regex, size_t n, int cflags,
+    locale_t loc)
+{
+  FIX_LOCALE(loc);
+  return tre_compile(preg, regex, n, cflags, loc);
+}
+
+int
 tre_regwncomp(regex_t *preg, const wchar_t *regex, size_t n, int cflags)
 {
-  return tre_compile(preg, regex, n, cflags);
+  return tre_compile(preg, regex, n, cflags, __get_locale());
+}
+
+int
+tre_regwcomp_l(regex_t *preg, const wchar_t *regex, int cflags, locale_t loc)
+{
+  FIX_LOCALE(loc);
+  return tre_compile(preg, regex, wcslen(regex), cflags, loc);
 }
 
 int
 tre_regwcomp(regex_t *preg, const wchar_t *regex, int cflags)
 {
-  return tre_compile(preg, regex, regex ? wcslen(regex) : 0, cflags);
+  return tre_regwncomp(preg, regex, wcslen(regex), cflags);
 }
 #endif /* TRE_WCHAR */
 

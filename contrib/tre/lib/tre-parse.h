@@ -9,6 +9,8 @@
 #ifndef TRE_PARSE_H
 #define TRE_PARSE_H 1
 
+#include "xlocale_private.h"
+
 /* Parse context. */
 typedef struct {
   /* Memory allocator.	The AST is allocated using this. */
@@ -23,13 +25,19 @@ typedef struct {
   const tre_char_t *re_start;
   /* The first character after the end of the regexp. */
   const tre_char_t *re_end;
+  /* The current locale */
+  locale_t loc;
   int len;
   /* Current submatch ID. */
   int submatch_id;
+  /* Current invisible submatch ID. */
+  int submatch_id_invisible;
   /* Current position (number of literal). */
   int position;
   /* The highest back reference or -1 if none seen so far. */
   int max_backref;
+  /* Number of tags that need reordering. */
+  int num_reorder_tags;
   /* This flag is set if the regexp uses approximate matching. */
   int have_approx;
   /* Compilation flags. */

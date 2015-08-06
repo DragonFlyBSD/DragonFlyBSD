@@ -154,8 +154,8 @@ tre_do_print(FILE *stream, tre_ast_node_t *ast, int indent)
       else if (IS_ASSERTION(lit))
 	{
 	  int i;
-	  char *assertions[] = { "bol", "eol", "ctype", "!ctype",
-				 "bow", "eow", "wb", "!wb" };
+	  char *assertions[] = { "bol", "eol", "bracket",
+				 "bow", "eow", "wb", "!wb", "backref" };
 	  if (code_max >= ASSERT_LAST << 1)
 	    assert(0);
 	  fprintf(stream, "assertions: ");
