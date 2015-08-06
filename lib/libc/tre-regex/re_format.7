@@ -30,9 +30,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)re_format.7	8.3 (Berkeley) 3/20/94
-.\" $FreeBSD: head/lib/libc/regex/re_format.7 282007 2015-04-26 10:55:39Z bapt $
+.\" $FreeBSD: src/lib/libc/regex/re_format.7,v 1.12 2008/09/05 17:41:20 keramida Exp $
 .\"
-.Dd June 30, 2014
+.Dd August 6, 2015
 .Dt RE_FORMAT 7
 .Os
 .Sh NAME
@@ -310,13 +310,6 @@ compatible with but not specified by
 .St -p1003.2 ,
 and should be used with
 caution in software intended to be portable to other systems.
-The additional word delimiters
-.Ql \e<
-and
-.Ql \e>
-are provided to ease compatibility with traditional
-.Xr svr4 4
-systems but are not portable and should be avoided.
 .Pp
 In the event that an RE could match more than one substring of a given
 string,
@@ -445,6 +438,347 @@ or
 .Ql cc
 but not
 .Ql bc .
+.Sh ENHANCED FEATURES
+When the
+.Dv REG_ENHANCED
+flag is passed to one of the
+.Fn regcomp
+variants, additional features are activated.
+Like the enhanced
+.Nm regex
+implementations in scripting languages such as
+.Xr perl 1
+and
+.Xr python 1 ,
+these additional features may conflict with the
+.St -p1003.2
+standards in some ways.
+Use this with care in situations which require portability
+(including to past versions of the Mac OS X using the previous
+.Nm regex
+implementation).
+.Pp
+For enhanced basic REs,
+.Ql \&+ ,
+.Ql \&?
+and
+.Ql \&|
+remain regular characters, but
+.Ql \e+ ,
+.Ql \e?
+and
+.Ql \e|
+have the same special meaning as the unescaped characters do for
+extended REs, i.e., one or more matches, zero or one matches and alteration,
+respectively.
+For enhanced extended REs,
+back references are available.
+Additional enhanced features are listed below.
+.Pp
+Within a bracket expression, most characters lose their magic.
+This also applies to the additional enhanced features, which don't operate
+inside a bracket expression.
+.Ss Assertions (available for both enhanced basic and enhanced extended REs)
+In addition to
+.Ql \&^
+and
+.Ql \&$
+(the assertions that match the null string at the beginning and end of line,
+respectively), the following assertions become available:
+.Bl -tag -width ".Sy \eB" -offset indent
+.It Sy \e<
+Matches the null string at the beginning of a word.
+This is equivalent to
+.Ql [[:<:]] .
+.It Sy \e>
+Matches the null string at the end of a word.
+This is equivalent to
+.Ql [[:>:]] .
+.It Sy \eb
+Matches the null string at a word boundary (either the beginning or end of
+a word).
+.It Sy \eB
+Matches the null string where there is no word boundary.
+This is the opposite of
+.Ql \eb .
+.El
+.Ss Shortcuts (available for both enhanced basic and enhanced extended REs)
+The following shortcuts can be used to replace more complicated
+bracket expressions.
+.Bl -tag -width ".Sy \eD" -offset indent
+.It Sy \ed
+Matches a digit character.
+This is equivalent to
+.Ql [[:digit:]] .
+.It Sy \eD
+Matches a non-digit character.
+This is equivalent to
+.Ql [^[:digit:]] .
+.It Sy \es
+Matches a space character.
+This is equivalent to
+.Ql [[:space:]] .
+.It Sy \eS
+Matches a non-space character.
+This is equivalent to
+.Ql [^[:space:]] .
+.It Sy \ew
+Matches a word character.
+This is equivalent to
+.Ql [[:alnum:]_] .
+.It Sy \eW
+Matches a non-word character.
+This is equivalent to
+.Ql [^[:alnum:]_] .
+.El
+.Ss Literal Sequences (available for both enhanced basic and enhanced extended REs)
+Literals are normally just ordinary characters that are matched directly.
+Under enhanced mode, certain character sequences are
+converted to specific literals.
+.Bl -tag -width ".Sy \ea" -offset indent
+.It Sy \ea
+The
+.Dq bell
+character (ASCII code 7).
+.It Sy \ee
+The
+.Dq escape
+character (ASCII code 27).
+.It Sy \ef
+The
+.Dq form-feed
+character (ASCII code 12).
+.It Sy \en
+The
+.Dq new-line/line-feed
+character (ASCII code 10).
+.It Sy \er
+The
+.Dq carriage-return
+character (ASCII code 13).
+.It Sy \et
+The
+.Dq horizontal-tab
+character (ASCII code 9).
+.El
+.Pp
+Literals can also be specified directly, using their wide character values.
+Note that when matching a multibyte character string, the string's bytes
+are converted to wide character before comparing.
+This means that a single literal wide character value may match more than
+one string byte, depending on the locale's wide character encoding.
+.Bl -tag -width ".Sy \ex{ Ns Em x.. Ns Sy \&}" -offset indent
+.It Sy \ex Ns Em x..
+An arbitray eight-bit value.
+The
+.Em x..
+sequence represents zero, one or two hexadecimal digits.
+(Note: if
+.Em x..
+is less than two hexadecimal digits, and the character following this sequence
+happens to be a hexadecimal digit, use the (following) brace form to avoid
+confusion.)
+.It Sy \ex{ Ns Em x.. Ns Sy \&}
+An arbitrary, up to 32-bit value.
+The
+.Em x..
+sequence is an arbitrary sequence of hexadecimal digits that is long enough
+to represent the necessary value.
+.El
+.Ss Inline Literal Mode (available for both enhanced basic and enhanced extended REs)
+A
+.Ql \eQ
+sequence causes literal
+.Pq Dq quote
+mode to be entered,
+while
+.Ql \eE
+ends literal mode, and returns to normal regular expression processing.
+This is similar to specifying the
+.Dv REG_NOSPEC
+(or
+.Dv REG_LITERAL )
+option to
+.Fn regcomp ,
+except that rather than applying to the whole RE string, it only applies to
+the part between the
+.Ql \eQ
+and
+.Ql \eE .
+Note that it is not possible to have a
+.Ql \eE
+in the middle of an inline literal range, as that would terminate literal mode
+prematurely.
+.Ss Minimal Repetitions (available for enhanced extended REs only)
+By default, the repetition operators,
+.Ql \&* ,
+.Em bound ,
+.Ql \&?
+and
+.Ql \&+
+are
+.Em greedy ;
+they try to match as many times as possible.
+In enhanced mode, appending a
+.Ql \&?
+to a repetition operator makes it minimal (or
+.Em ungreedy ) ;
+it tries to match the fewest number of times (including zero times, as
+appropriate).
+.Pp
+For example, against the string
+.Ql aaa ,
+the RE
+.Ql a*
+would match the entire string,
+while
+.Ql a*?
+would match the null string at the beginning of the line
+(matches zero times).
+Likewise, against the string
+.Ql ababab ,
+the RE
+.Ql .*b ,
+would also match the entire string,
+while
+.Ql .*?b
+would only match the first two characters.
+.Pp
+The
+.Fn regcomp
+flag
+.Dv REG_UNGREEDY
+will make the regular
+.Pq greedy
+repetition operators ungreedy by default.
+Appending
+.Ql \&?
+makes them greedy again.
+.Pp
+Note that minimal repetitions are not specified by an official
+standard, so there may be differences between different implementations.
+In the current implementation, minimal repetitions have a high precedence,
+and can cause other standards requirements to be violated.
+For instance, on the string
+.Ql aaaaa ,
+the RE
+.Ql (aaa??)*
+will only match the first four characters, violating the rules that the longest
+possible match is made and the longest subexpressions are matched.
+Using
+.Ql (aaa??)*$
+forces the entire string to be matched.
+.Ss Non-capturing Parenthesized Subexpressions (available for enhanced extended REs only)
+Normally, the match offsets to parenthesized subexpressions are
+recorded in the
+.Fa pmatch
+array (that is, when
+.Dv REG_NOSUB
+is not specified, and
+.Fa nmatch
+is large enough to encompass the parenthesized subexpression in question).
+In enhanced mode, if the first two characters following the left parenthesis
+are
+.Ql ?: ,
+grouping of the remaining contents is done, but the corresponding offsets are
+not recorded in the
+.Fa pmatch
+array.
+For example, against the string
+.Ql fubar ,
+the RE
+.Ql (fu)(bar)
+would have two subexpression matches in
+.Fa pmatch ;
+the first for
+.Ql fu
+and the second for
+.Ql bar .
+But with the RE
+.Ql (?:fu)(bar) ,
+there would only be one subexpression match, that of
+.Ql bar .
+Furthermore,
+against the string
+.Ql fufubar ,
+the RE
+.Ql (?fu)*(bar)
+would again match the entire string, but only
+.Ql bar
+would be recorded in
+.Fa pmatch .
+.Ss Inline Options (available for enhanced extended REs only)
+Like the inline literal mode mentioned above, other options can be switched
+on and off for part of a RE.
+.Ql (? Ns Em o.. Ns \&)
+will turn on the options specified in
+.Em o..
+(one or more options characters; see below), while
+.Ql (?- Ns Em o.. Ns \&)
+will turn off the specified options, and
+.Ql (? Ns Em o1.. Ns \&- Ns Em o2.. Ns \&)
+will turn on the first set of options, and turn off the second set.
+.Pp
+The available options are:
+.Bl -tag -width ".Sy \&U" -offset indent
+.It Sy \&i
+Turning on this option will ignore case during matching, while turning off
+will restore case-sensitive matching.
+If
+.Dv REG_ICASE
+was specified to
+.Fn regcomp ,
+this option can be use to turn that off.
+.It Sy \&n
+Turn on or off special handling of the newline character.
+If
+.Dv REG_NEWLINE
+was specified to
+.Fn regcomp ,
+this option can be use to turn that off.
+.It Sy \&U
+Turning on this option will make ungreedy repetitions the default, while
+turning off will make greedy repetitions the default.
+If
+.Dv REG_UNGREEDY
+was specified to
+.Fn regcomp ,
+this option can be use to turn that off.
+.El
+.Pp
+The scope of the option change begins immediately following the right
+parenthesis,
+but up to the end of the enclosing subexpression (if any).
+Thus, for example, given the RE
+.Ql (fu(?i)bar)baz ,
+the
+.Ql fu
+portion matches case sensitively,
+.Ql bar
+matches case insensitively, and
+.Ql baz
+matches case sensitively again (since is it outside the scope of the
+subexpression in which the inline option was specified).
+.Pp
+The inline options syntax can be combined with the non-capturing parenthesized
+subexpression to limit the option scope to just that of the subexpression.
+Then, for example,
+.Ql fu(?i:bar)baz
+is similar to the previous example, except for the parenthesize subexpression
+around
+.Ql fu(?i)bar
+in the previous example.
+.Ss Inline Comments (available for enhanced extended REs only)
+The syntax
+.Ql (?# Ns Em comment Ns \&)
+can be used to embed comments within a RE.
+Note that
+.Em comment
+can not contain a right parenthesis.
+Also note that while syntactically, option characters can be added before
+the
+.Ql \&#
+character, they will be ignored.
 .Sh SEE ALSO
 .Xr regex 3
 .Rs
@@ -483,4 +817,4 @@ The
 definition given above
 is current consensus among implementors as to the right interpretation.
 .Pp
-The syntax for word boundaries is incredibly ugly.
+The bracket syntax for word boundaries is incredibly ugly.

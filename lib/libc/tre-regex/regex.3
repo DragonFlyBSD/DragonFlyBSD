@@ -31,37 +31,135 @@
 .\"
 .\"	@(#)regex.3	8.4 (Berkeley) 3/20/94
 .\" $FreeBSD: src/lib/libc/regex/regex.3,v 1.21 2007/01/09 00:28:04 imp Exp $
-.\" $DragonFly: src/lib/libc/regex/regex.3,v 1.5 2008/06/02 06:50:08 hasso Exp $
 .\"
-.Dd August 17, 2005
+.Dd August 6, 2015
 .Dt REGEX 3
 .Os
 .Sh NAME
 .Nm regcomp ,
-.Nm regexec ,
+.Nm regcomp_l ,
 .Nm regerror ,
-.Nm regfree
+.Nm regexec ,
+.Nm regfree ,
+.Nm regncomp ,
+.Nm regncomp_l ,
+.Nm regnexec ,
+.Nm regnwcomp ,
+.Nm regnwcomp_l ,
+.Nm regnwexec ,
+.Nm regwcomp ,
+.Nm regwcomp_l ,
+.Nm regwexec
 .Nd regular-expression library
-.Sh LIBRARY
-.Lb libc
 .Sh SYNOPSIS
+.Sy (Standards-compliant APIs)
+.Pp
 .In regex.h
 .Ft int
 .Fo regcomp
-.Fa "regex_t * restrict preg" "const char * restrict pattern" "int cflags"
-.Fc
-.Ft int
-.Fo regexec
-.Fa "const regex_t * restrict preg" "const char * restrict string"
-.Fa "size_t nmatch" "regmatch_t pmatch[restrict]" "int eflags"
+.Fa "regex_t *restrict preg"
+.Fa "const char *restrict pattern"
+.Fa "int cflags"
 .Fc
 .Ft size_t
 .Fo regerror
-.Fa "int errcode" "const regex_t * restrict preg"
-.Fa "char * restrict errbuf" "size_t errbuf_size"
+.Fa "int errcode"
+.Fa "const regex_t *restrict preg"
+.Fa "char *restrict errbuf"
+.Fa "size_t errbuf_size"
+.Fc
+.Ft int
+.Fo regexec
+.Fa "const regex_t *restrict preg"
+.Fa "const char *restrict string"
+.Fa "size_t nmatch"
+.Fa "regmatch_t pmatch[restrict]"
+.Fa "int eflags"
 .Fc
 .Ft void
-.Fn regfree "regex_t *preg"
+.Fo regfree
+.Fa "regex_t *preg"
+.Fc
+.Pp
+.Sy (Non-portable extensions)
+.Ft int
+.Fo regncomp
+.Fa "regex_t *restrict preg"
+.Fa "const char *restrict pattern"
+.Fa "size_t len"
+.Fa "int cflags"
+.Fc
+.Ft int
+.Fo regnexec
+.Fa "const regex_t *restrict preg"
+.Fa "const char *restrict string"
+.Fa "size_t len"
+.Fa "size_t nmatch"
+.Fa "regmatch_t pmatch[restrict]"
+.Fa "int eflags"
+.Fc
+.Ft int
+.Fo regwcomp
+.Fa "regex_t *restrict preg"
+.Fa "const wchar_t *restrict widepat"
+.Fa "int cflags"
+.Fc
+.Ft int
+.Fo regwexec
+.Fa "const regex_t *restrict preg"
+.Fa "const wchar_t *restrict widestr"
+.Fa "size_t nmatch"
+.Fa "regmatch_t pmatch[restrict]"
+.Fa "int eflags"
+.Fc
+.Ft int
+.Fo regwncomp
+.Fa "regex_t *restrict preg"
+.Fa "const wchar_t *restrict widepat"
+.Fa "size_t len"
+.Fa "int cflags"
+.Fc
+.Ft int
+.Fo regwnexec
+.Fa "const regex_t *restrict preg"
+.Fa "const wchar_t *restrict widestr"
+.Fa "size_t len"
+.Fa "size_t nmatch"
+.Fa "regmatch_t pmatch[restrict]"
+.Fa "int eflags"
+.Fc
+.In regex.h
+.In xlocale.h
+.Ft int
+.Fo regcomp_l
+.Fa "regex_t *restrict preg"
+.Fa "const char *restrict pattern"
+.Fa "int cflags"
+.Fa "locale_t restrict"
+.Fc
+.Ft int
+.Fo regncomp_l
+.Fa "regex_t *restrict preg"
+.Fa "const char *restrict pattern"
+.Fa "size_t len"
+.Fa "int cflags"
+.Fa "locale_t restrict"
+.Fc
+.Ft int
+.Fo regwcomp_l
+.Fa "regex_t *restrict preg"
+.Fa "const wchar_t *restrict widepat"
+.Fa "int cflags"
+.Fa "locale_t restrict"
+.Fc
+.Ft int
+.Fo regwncomp_l
+.Fa "regex_t *restrict preg"
+.Fa "const wchar_t *restrict widepat"
+.Fa "size_t len"
+.Fa "int cflags"
+.Fa "locale_t restrict"
+.Fc
 .Sh DESCRIPTION
 These routines implement
 .St -p1003.2
@@ -72,12 +170,11 @@ see
 The
 .Fn regcomp
 function
-compiles an RE written as a string into an internal form,
+compiles an RE, written as a string, into an internal form.
 .Fn regexec
-matches that internal form against a string and reports results,
+matches that internal form against a string and reports results.
 .Fn regerror
-transforms error codes from either into human-readable messages,
-and
+transforms error codes from either into human-readable messages.
 .Fn regfree
 frees any dynamically-allocated storage used by the internal form
 of an RE.
@@ -142,6 +239,9 @@ and
 may not be used
 in the same call to
 .Fn regcomp .
+.It Dv REG_LITERAL
+An alias of
+.Dv REG_NOSPEC .
 .It Dv REG_ICASE
 Compile for matching that ignores upper/lower case distinctions.
 See
@@ -167,6 +267,16 @@ and the
 anchor matches the null string before any newline in the
 string in addition to its normal function.
 .It Dv REG_PEND
+(Note that
+.Dv REG_PEND
+is not recognized by any of the wide character or
+.Dq Nm n
+variants.
+Besides, the
+.Dq Nm n
+variants can be used instead of
+.Dv REG_PEND ;
+see EXTENDED APIS below.)
 The regular expression ends,
 not at the first NUL,
 but just before the character pointed to by the
@@ -184,6 +294,30 @@ compatible with but not specified by
 .St -p1003.2 ,
 and should be used with
 caution in software intended to be portable to other systems.
+.It Dv REG_ENHANCED
+Recognized enhanced regular expression features; see
+.Xr re_format 7
+for details.
+This is an extension not specified by
+.St -p1003.2 ,
+and should be used with
+caution in software intended to be portable to other systems.
+.It Dv REG_MINIMAL
+Use minimal (non-greedy) repetitions instead of the normal greedy ones; see
+.Xr re_format 7
+for details.
+(This only applies when both
+.Dv REG_ENHANCED
+and
+.Dv REG_EXTENDED
+are also set.)
+This is an extension not specified by
+.St -p1003.2 ,
+and should be used with
+caution in software intended to be portable to other systems.
+.It Dv REG_UNGREEDY
+Alias of
+.Dv REG_MINIMAL .
 .El
 .Pp
 When successful,
@@ -502,7 +636,95 @@ is undefined.
 None of these functions references global variables except for tables
 of constants;
 all are safe for use from multiple threads if the arguments are safe.
+.Sh EXTENDED APIS
+These extended APIs are available in Mac OS X 10.8 and beyond, when the
+deployment target is 10.8 or later.
+It should also be noted that any of the
+.Fn regcomp
+variants may be used to initialize a
+.Ft regex_t
+structure, that can then be passed to any of the
+.Fn regexec
+variants.
+So it is quite legal to compile a wide character RE and use it to match a
+multibyte character string, or vice versa.
+.Pp
+The
+.Fn regncomp
+routine compiles regular expressions like
+.Fn regcomp ,
+but the length of the regular expression string is specified, allowing a string
+that is not NUL terminated and/or contains NUL characters.
+This is a modern replacement for using
+.Fn regcomp
+with the
+.Dv REG_PEND
+option.
+.Pp
+Similarly, the
+.Fn regnexec
+routine is like
+.Fn regexec ,
+but the length of the string to match is specified, allowing a string
+that is not NUL terminated and/or contains NUL characters.
+.Pp
+The
+.Fn regwcomp
+and
+.Fn regwexec
+variants take a wide-character
+.Vt ( wchar_t )
+string for the regular expression and string to match.
+And
+.Fn regwncomp
+and
+.Fn regwnexec
+are variants that allow specifying the wide character string length, and
+so allows wide character strings that are not NUL terminated and/or
+contains NUL characters.
+.Sh INTERACTION WITH THE LOCALE
+When
+.Fn regcomp
+or one of its variants is run, the regular expression is compiled into an
+internal form, which may include specific information about the locale currently
+in effect, such as equivalence classes or multi-character collation symbols.
+So a reference to the current locale is also stored with the internal form,
+so that when
+.Fn regexec
+is run, it can use the same locale (even if the locale is changed in-between
+the calls to
+.Fn regcomp
+and
+.Fn regexec ) .
+.Pp
+To provide more direct control over which locale is used,
+routines with
+.Dq Nm _l
+appended to their names are provided that work just like the variants
+without the
+.Dq Nm _l ,
+except that a locale (via a
+.Vt locale_t
+variable type) is specified directly.
+Note that only variants of
+.Fn regcomp
+have
+.Dq Nm _l
+variants, since the
+.Fn regexec
+variants just use the reference to the locale stored in the internal form.
 .Sh IMPLEMENTATION CHOICES
+The
+.Nm regex
+implementation in Mac OS X 10.8 and later is based on a heavily modified subset
+of TRE (http://laurikari.net/tre/).
+This provides improved performance, better conformance and additional features.
+However, both API and binary compatibility have been maintained with previous
+releases, so binaries
+built on previous releases should work on 10.8 and later, and binaries built on
+10.8 and later should be able to run on previous releases (as long as none of
+the new variants or new features are used.
+.Pp
 There are a number of decisions that
 .St -p1003.2
 leaves up to the implementor,
@@ -551,7 +773,11 @@ A repetition operator
 .Ql +\& ,
 or bounds)
 cannot follow another
-repetition operator.
+repetition operator, except for the use of
+.Ql ?\&
+for minimal repetition (for enhanced extended REs; see
+.Xr re_format 7
+for details).
 A repetition operator cannot begin an expression or subexpression
 or follow
 .Ql ^\&
@@ -653,55 +879,49 @@ sections 2.8 (Regular Expression Notation)
 and
 B.5 (C Binding for Regular Expression Matching).
 .Sh HISTORY
-Originally written by
-.An Henry Spencer .
-Altered for inclusion in the
+The
+.Nm regex
+implementation is based on a heavily modified subset of TRE
+(http://laurikari.net/tre/), originally written by Ville Laurikari.
+Previous releases used an implementation originally written by
+.An Henry Spencer ,
+and altered for inclusion in the
 .Bx 4.4
 distribution.
 .Sh BUGS
-This is an alpha release with known defects.
-Please report problems.
+The beginning-of-line and end-of-line anchors (
+.Dq ^\&
+and
+.Dq $\& )
+are currently implemented so that repetitions can not be applied to them.
+The standards are unclear about whether this is legal, but other
+.Nm regex
+packages do support this case.
+It is best to avoid this non-portable (and not really very useful) case.
 .Pp
 The back-reference code is subtle and doubts linger about its correctness
 in complex cases.
 .Pp
 The
 .Fn regexec
-function
-performance is poor.
-This will improve with later releases.
-The
-.Fa nmatch
-argument
-exceeding 0 is expensive;
-.Fa nmatch
-exceeding 1 is worse.
-The
-.Fn regexec
-function
-is largely insensitive to RE complexity
-.Em except
-that back
-references are massively expensive.
-RE length does matter; in particular, there is a strong speed bonus
-for keeping RE length under about 30 characters,
-with most special characters counting roughly double.
+variants use one of two internal matching engines.
+The normal one is linear worst-case time in the length of the text being
+searched, and quadratic worst-case time in the length of the used regular
+expression.
+When back-references are used, a slower, backtracking engine is used.
+While all backtracking matching engines suffer from extreme slowness for certain
+pathological cases, the normal engines doesn't suffer from these cases.
+It is advised to avoid back-references whenever possible.
 .Pp
 The
 .Fn regcomp
-function
+variants
 implements bounded repetitions by macro expansion,
 which is costly in time and space if counts are large
 or bounded repetitions are nested.
 An RE like, say,
 .Ql "((((a{1,100}){1,100}){1,100}){1,100}){1,100}"
 will (eventually) run almost any existing machine out of swap space.
-.Pp
-There are suspected problems with response to obscure error conditions.
-Notably,
-certain kinds of internal overflow,
-produced only by truly enormous REs or by multiply nested bounded repetitions,
-are probably not handled well.
 .Pp
 Due to a mistake in
 .St -p1003.2 ,
@@ -721,8 +941,3 @@ match
 .Ql "abbbd" ?
 Until the standard is clarified,
 behavior in such cases should not be relied on.
-.Pp
-The implementation of word-boundary matching is a bit of a kludge,
-and bugs may lurk in combinations of word-boundary matching and anchoring.
-.Pp
-Word-boundary matching does not work properly in multibyte locales.
