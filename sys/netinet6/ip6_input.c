@@ -1630,7 +1630,7 @@ ip6_findaux(struct mbuf *m)
 void
 ip6_delaux(struct mbuf *m)
 {
-	struct m_tag *mtag
+	struct m_tag *mtag;
 
 	mtag = m_tag_find(m, PACKET_TAG_IPV6_INPUT, NULL);
 	if (mtag)
