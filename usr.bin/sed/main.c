@@ -47,13 +47,13 @@
 #include <libgen.h>
 #include <limits.h>
 #include <locale.h>
-#include <regex.h>
 #include <stddef.h>
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <regex.h>
 
 #include "defs.h"
 #include "extern.h"
