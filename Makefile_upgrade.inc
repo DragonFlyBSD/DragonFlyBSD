@@ -1377,7 +1377,6 @@ TO_REMOVE+=/usr/libdata/gcc44/tgmath.h
 TO_REMOVE+=/usr/libdata/gcc47/tgmath.h
 TO_REMOVE+=/usr/share/man/man4/i386/pcf.4.gz
 TO_REMOVE+=/usr/share/man/man3/fpsetsticky.3.gz
-TO_REMOVE+=/usr/include/sys/bitstring.h
 TO_REMOVE+=/usr/share/man/man4/pst.4.gz
 TO_REMOVE+=/usr/share/man/man8/loader.8.gz.old
 TO_REMOVE+=/usr/share/man/man2/syslink.2.gz
