@@ -1,0 +1,16 @@
+TRE REGEX LIBRARY
+=================
+
+Original source can be downloaded from:
+http://laurikari.net/tre/
+
+file = tre-0.8.0.tar.bz2
+date = Sep 20 2009
+size = 380714
+sha1 = a41692e64b40ebae3cffe83931ddbf8420a10ae3
+
+A list of files and directories removed is in README.DELETED
+
+Local modifications applied all files.  The collation, equivalence, and
+legacy character-name table support came from modifications by Apple
+(opensource.apple.com)
