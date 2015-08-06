@@ -1,5 +1,5 @@
-set -e
-
+#!/bin/sh
+#
 # Generates kdump_subr.c
 # mkioctls is a special-purpose script, and works fine as it is
 # now, so it remains independent. The idea behind how it generates
@@ -17,7 +17,8 @@ set -e
 # MANUAL: Manually entered and must therefore be manually updated.
 
 # $FreeBSD: src/usr.bin/kdump/mksubr,v 1.9 2007/04/09 19:16:24 emaste Exp $
-# $DragonFly: src/usr.bin/kdump/mksubr,v 1.2 2008/01/07 01:35:43 corecode Exp $
+
+set -e
 
 LC_ALL=C; export LC_ALL
 
@@ -48,6 +49,7 @@ void
 $name (int arg)
 {
 	int	or = 0;
+	printf("%#x<", arg);
 _EOF_
 	egrep "^#[[:space:]]*define[[:space:]]+"${grep}"[[:space:]]*" \
 		$include_dir/$file | \
@@ -57,6 +59,7 @@ _EOF_
 		++i; \
 		printf "\tif(!((arg>0)^((%s)>0)))\n\t\tif_print_or(arg, %s, or);\n", $i, $i }'
 cat <<_EOF_
+	printf(">");
 	if (or == 0)
 		(void)printf("<invalid>%ld", (long)arg);
 }
@@ -419,11 +422,13 @@ void
 sendrecvflagsname (int flags)
 {
 	int	or = 0;
-	
+
 	if (flags == 0) {
 		(void)printf("0");
 		return;
 	}
+
+	printf("%#x<", flags);
 _EOF_
 egrep "^#[[:space:]]*define[[:space:]]+MSG_[A-Z]+[[:space:]]+0x[0-9]+[[:space:]]*" $include_dir/sys/socket.h | \
 	awk '{ for (i = 1; i <= NF; i++) \
@@ -432,6 +437,7 @@ egrep "^#[[:space:]]*define[[:space:]]+MSG_[A-Z]+[[:space:]]+0x[0-9]+[[:space:]]
 		++i; \
 		printf "\tif(!((flags>0)^((%s)>0)))\n\t\tif_print_or(flags, %s, or);\n", $i, $i }'
 cat <<_EOF_
+	printf(">");
 }
 
 _EOF_
