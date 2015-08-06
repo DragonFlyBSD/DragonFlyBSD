@@ -745,6 +745,10 @@ int radeon_ddc_get_modes(struct radeon_connector *radeon_connector)
 	if (radeon_connector->edid) {
 		drm_mode_connector_update_edid_property(&radeon_connector->base, radeon_connector->edid);
 		ret = drm_add_edid_modes(&radeon_connector->base, radeon_connector->edid);
+		/* XXX Dragonfly does not support HDMI deep colors safely for now */
+		if (radeon_connector->base.connector_type == DRM_MODE_CONNECTOR_HDMIA) {
+			radeon_connector->base.display_info.bpc = 8;
+		}
 		return ret;
 	}
 	drm_mode_connector_update_edid_property(&radeon_connector->base, NULL);
