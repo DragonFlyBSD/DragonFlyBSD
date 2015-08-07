@@ -534,6 +534,7 @@ hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
 	hammer_off_t layer1_off;
 	hammer_off_t layer2_off;
 	hammer_off_t aligned_buf_end_off;
+	hammer_off_t aligned_vol_end_off;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
 	hammer_buffer_t buffer1 = NULL;
@@ -543,9 +544,11 @@ hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
 	 * Calculate the usable size of the volume, which
 	 * must be aligned at a big-block (8 MB) boundary.
 	 */
-	aligned_buf_end_off = (HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no,
+	aligned_buf_end_off = HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no,
 		(volume->ondisk->vol_buf_end - volume->ondisk->vol_buf_beg)
-		& ~HAMMER_BIGBLOCK_MASK64));
+		& ~HAMMER_BIGBLOCK_MASK64);
+	aligned_vol_end_off = (aligned_buf_end_off + HAMMER_BLOCKMAP_LAYER2_MASK)
+		& ~HAMMER_BLOCKMAP_LAYER2_MASK;
 
 	/*
 	 * Iterate the volume's address space in chunks of 4 TB, where each
@@ -555,7 +558,7 @@ hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
 	 * We use the first big-block of each chunk as L2 block.
 	 */
 	for (phys_off = HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no, 0);
-	     phys_off < aligned_buf_end_off;
+	     phys_off < aligned_vol_end_off;
 	     phys_off += HAMMER_BLOCKMAP_LAYER2) {
 		for (block_off = 0;
 		     block_off < HAMMER_BLOCKMAP_LAYER2;
@@ -610,9 +613,9 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 	 * at a big-block (8 MB) boundary.
 	 */
 	hammer_off_t aligned_buf_end_off;
-	aligned_buf_end_off = (HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no,
+	aligned_buf_end_off = HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no,
 		(volume->ondisk->vol_buf_end - volume->ondisk->vol_buf_beg)
-		& ~HAMMER_BIGBLOCK_MASK64));
+		& ~HAMMER_BIGBLOCK_MASK64);
 
 	if (layer1) {
 		KKASSERT(layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL);
