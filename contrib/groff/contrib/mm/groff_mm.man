@@ -3455,7 +3455,7 @@ then assigns the argument to the string variable
 .
 .SH AUTHOR
 .
-Jörgen Hägg, Lund, Sweden <jh@axis.se>.
+J\[:o]rgen H\[:a]gg, Lund, Sweden <jh@axis.se>.
 .
 .
 .SH FILES

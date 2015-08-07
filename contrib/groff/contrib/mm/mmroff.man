@@ -42,7 +42,7 @@ references and by using this option \fBgroff\fP will only
 be run once.
 .\".SH BUGS
 .SH AUTHOR
-Jörgen Hägg, Lund, Sweden <jh@axis.se>.
+J\[:o]rgen H\[:a]gg, Lund, Sweden <jh@axis.se>.
 .SH FILES
 .TP
 .B @MACRODIR@/@TMAC_M_PREFIX@m.tmac

@@ -19,7 +19,7 @@ the original English.
 ..
 .
 .\"
-.\" Skrivet av Jörgen Hägg, Lund, Sverige
+.\" Skrivet av J\[:o]rgen H\[:a]gg, Lund, Sverige
 .\"
 .
 .mso sv.tmac
@@ -29,7 +29,7 @@ the original English.
 .
 .SH NAMN
 .
-groff_mmse \- svenska mm makro för groff
+groff_mmse \- svenska mm makro f\[:o]r groff
 .
 .
 .SH SYNTAX
@@ -47,40 +47,40 @@ groff_mmse \- svenska mm makro för groff
 .SH BESKRIVNING
 .
 .B m@TMAC_M_PREFIX@mse
-är en svensk variant av
+\[:a]r en svensk variant av
 .BR m@TMAC_M_PREFIX@m .
-Alla texter är översatta.
-En A4 sida får text som är 13\~cm bred,
-3.5\~cm indragning samt är 28.5\~cm hög.
-Det finns stöd för brevuppställning enligt svensk standard
-för vänster och högerjusterad text.
+Alla texter \[:a]r \[:o]versatta.
+En A4 sida f\[oa]r text som \[:a]r 13\~cm bred,
+3.5\~cm indragning samt \[:a]r 28.5\~cm h\[:o]g.
+Det finns st\[:o]d f\[:o]r brevuppst\[:a]llning enligt svensk standard
+f\[:o]r v\[:a]nster och h\[:o]gerjusterad text.
 .
 .LP
 .B COVER
-kan använda
+kan anv\[:a]nda
 .I se_ms
 som argument.
-Detta ger ett svenskt försättsblad.
+Detta ger ett svenskt f\[:o]rs\[:a]ttsblad.
 Se
 .BR groff_mm (@MAN7EXT@)
-för övriga detaljer.
+f\[:o]r \[:o]vriga detaljer.
 .
 .
 .SH BREV
 .
-Tillgängliga brevtyper:
+Tillg\[:a]ngliga brevtyper:
 .
 .TP
 .B ".LT SVV"
-Vänsterställd löptext med adressat i position T0 (vänsterställt).
+V\[:a]nsterst\[:a]lld l\[:o]ptext med adressat i position T0 (v\[:a]nsterst\[:a]llt).
 .
 .TP
 .B ".LT SVH"
-Högerställd löptext med adressat i position T4 (passar
-fönsterkuvert).
+H\[:o]gerst\[:a]lld l\[:o]ptext med adressat i position T4 (passar
+f\[:o]nsterkuvert).
 .
 .LP
-Följande extra LO-variabler används.
+F\[:o]ljande extra LO-variabler anv\[:a]nds.
 .
 .TP
 .BI ".LO DNAMN\ " namn
@@ -93,8 +93,8 @@ Mottagarens datum, anges under
 .RB ( LetMDAT ).
 .
 .TP
-.BI ".LO BIL\ " sträng
-Anger bilaga, nummer eller sträng med
+.BI ".LO BIL\ " str\[:a]ng
+Anger bilaga, nummer eller str\[:a]ng med
 .B Bilaga
 .RB ( LetBIL )
 som prefix.
@@ -109,7 +109,7 @@ Anger dokumentbeteckning eller dokumentnummer.
 .
 .TP
 .BI ".LO BET\ " beteckning
-Anger beteckning (ärendebeteckning i form av diarienummer eller liknande).
+Anger beteckning (\[:a]rendebeteckning i form av diarienummer eller liknande).
 .
 .TP
 .BI ".LO SIDOR\ " antal
@@ -119,13 +119,13 @@ parenteser.
 .LP
 Om makrot
 .B .TP
-är definierat anropas det efter utskrift av brevhuvudet.
-Där lägger man lämpligen in postadress och annat som brevfot.
+\[:a]r definierat anropas det efter utskrift av brevhuvudet.
+D\[:a]r l\[:a]gger man l\[:a]mpligen in postadress och annat som brevfot.
 .
 .
 .SH "SKRIVET AV"
 .
-Jörgen Hägg, Lund, Sweden <Jorgen.Hagg@axis.se>
+J\[:o]rgen H\[:a]gg, Lund, Sweden <Jorgen.Hagg@axis.se>
 .
 .
 .SH FILER
@@ -136,7 +136,7 @@ Jörgen Hägg, Lund, Sweden <Jorgen.Hagg@axis.se>
 .B @TMAC_MDIR@/se_*.cov
 .
 .
-.SH "SE OCKSÅ"
+.SH "SE OCKS\[oA]"
 .
 .BR groff (@MAN1EXT@),
 .BR @g@troff (@MAN1EXT@),
