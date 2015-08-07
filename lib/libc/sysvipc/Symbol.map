@@ -1,4 +1,4 @@
-DF402.0 {
+DF404.0 {
     connect_to_daemon;
     daemon_fd;
     get_hash_size;
@@ -8,7 +8,6 @@ DF402.0 {
     is_sysvinit;
     lock_resources;
     lock_undo;
-    msginfo;
     receive_fd;
     receive_message;
     receive_msg_with_cred;
@@ -17,10 +16,11 @@ DF402.0 {
     send_message;
     send_msg_with_cred;
     set_shmdata_access;
-    shm_data;
     shmaddrs;
     shmchild;
     shmres;
+    sysv_cond_wait;
+    sysv_cond_signal;
     sysv_mutex_init;
     sysv_mutex_lock;
     sysv_mutex_unlock;
@@ -43,7 +43,6 @@ DF402.0 {
     sysvipc_shmctl;
     sysvipc_shmdt;
     sysvipc_shmget;
-    sysvipc_userland;
     undos;
 };
 
@@ -55,13 +54,5 @@ DFprivate_1.0 {
     _hash_insert;
     _hash_lookup;
     _hash_remove;
-    _msgctl;
-    _msgget;
-    _msgrcv;
-    _msgsnd;
     _semget;
-    _semop;
-    _sysv_umtx_init;
-    _sysv_umtx_lock;
-    _sysv_umtx_unlock;
 };

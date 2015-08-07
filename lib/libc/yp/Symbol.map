@@ -1,6 +1,8 @@
-DF402.0 {
+DF404.0 {
     _yp_check;
     _yp_dobind;
+    xdr_datum;
+    xdr_ypresp_all_seq;
     yp_all;
     yp_bind;
     yp_first;
@@ -18,7 +20,14 @@ DF402.0 {
     ypresp_data;
 };
 
-DFprivate_1.0 {
-    _ypbindlist;
-    _yplib_timeout;
-};
+/***  static  ***
+ * _yp_unbind
+ * yp_bind_locked
+ * yp_unbind_locked
+ * yp_get_default_domain_locked
+ * ypmatch_cache_delete
+ * ypmatch_cache_flush
+ * ypmatch_cache_expire
+ * ypmatch_cache_insert
+ * ypmatch_cache_lookup
+ */

@@ -1,7 +1,15 @@
-DF402.0 {
-	__clock_gettime;
-	__getpid;
-	__upmap_map;
+DF404.0 {
+	clock_gettime
+	getpid
+};
+
+DFprivate_1.0 {
 	__kpmap_map;
+	__upmap_map;
 	__ukp_spt;
 };
+
+/***  weak  **
+ * __clock_gettime;
+ * __getpid;
+ */

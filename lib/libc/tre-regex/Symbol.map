@@ -1,20 +1,17 @@
-DF402.0 {
+DF404.0 {
     regcomp;
+    regcomp_l
     regerror;
     regexec;
     regfree;
-};
-
-DF404.0 {
-    regcomp_l
     regncomp
     regncomp_l
+    regnexec
     regnwcomp
     regnwcomp_l
+    regnwexec
     regwcomp
     regwcomp_l
-    regnexec
-    regnwexec
     regwexec
     tre_version
     tre_config

@@ -1,9 +1,8 @@
-DF402.0 {
+DF404.0 {
     xdr_array;
     xdr_bool;
     xdr_bytes;
     xdr_char;
-    xdr_datum;
     xdr_double;
     xdr_enum;
     xdr_float;
@@ -20,6 +19,7 @@ DF402.0 {
     xdr_pointer;
     xdr_reference;
     xdr_short;
+    xdr_sizeof;
     xdr_string;
     xdr_u_char;
     xdr_u_hyper;
@@ -44,11 +44,51 @@ DF402.0 {
     xdrstdio_create;
 };
 
-DF404.0 {
-    xdr_sizeof;
-};
-
 DFprivate_1.0 {
     __xdrrec_getrec;
     __xdrrec_setnonblock;
 };
+
+/***  STATIC  ***
+ * xdrmem_destroy
+ * xdrmem_getlong_aligned
+ * xdrmem_putlong_aligned
+ * xdrmem_getlong_unaligned
+ * xdrmem_putlong_unaligned
+ * xdrmem_getbytes
+ * xdrmem_putbytes
+ * xdrmem_getpos
+ * xdrmem_setpos
+ * xdrmem_inline_aligned
+ * xdrmem_inline_unaligned
+ * xdrrec_getlong
+ * xdrrec_putlong
+ * xdrrec_getbytes
+ * xdrrec_putbytes
+ * xdrrec_getpos
+ * xdrrec_setpos
+ * xdrrec_inline
+ * xdrrec_destroy
+ * fix_buf_size
+ * flush_out
+ * fill_input_buf
+ * get_input_bytes
+ * set_input_fragment
+ * skip_input_bytes
+ * realloc_stream
+ * x_putlong
+ * x_putbytes
+ * x_getpostn
+ * x_setpostn
+ * x_inline
+ * harmless
+ * x_destroy
+ * xdrstdio_destroy
+ * xdrstdio_getlong
+ * xdrstdio_putlong
+ * xdrstdio_getbytes
+ * xdrstdio_putbytes
+ * xdrstdio_getpos
+ * xdrstdio_setpos
+ * xdrstdio_inline
+ * /

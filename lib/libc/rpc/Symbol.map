@@ -211,7 +211,6 @@ DF402.0 {
     xdr_ypreqtype;
     xdr_yprequest;
     xdr_ypresp_all;
-    xdr_ypresp_all_seq;
     xdr_ypresp_key_val;
     xdr_ypresp_maplist;
     xdr_ypresp_master;

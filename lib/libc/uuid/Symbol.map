@@ -1,4 +1,4 @@
-DF402.0 {
+DF404.0 {
     uuid_addr_lookup;
     uuid_compare;
     uuid_create;
@@ -15,3 +15,13 @@ DF402.0 {
     uuid_reset_lookup;
     uuid_to_string;
 };
+
+/***  static  ***
+ * uuid_loadcache
+ * uuid_name_loaded
+ * uuid_urbcmp
+ * uuid_nrbcmp
+ * uuid_rbnamecmp
+ * uuid_rbuuidcmp
+ * uuid_freenode
+ */
