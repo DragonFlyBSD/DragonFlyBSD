@@ -54,7 +54,11 @@ NORMALFILES= man.tmac mandoc.tmac andoc.tmac an-old.tmac an-ext.tmac \
 SPECIALFILES=	an.tmac s.tmac www.tmac
 STRIPFILES=	e.tmac doc.tmac doc-old.tmac mdoc.local
 MDOCFILES=	doc-common doc-ditroff doc-nroff doc-syms \
-		fr.ISO8859-1 ru.KOI8-R
+		fr.ISO8859-1
+# Disable ru.KO18-R mdoc option.  The man page template is not using valid
+# ASCII characters and sed will break buildworld if a named locale is set
+# via the LANG or LC_CTYPE environment variables.  It's likely unused anyway.
+#MDOCFILES+=	ru.KOI8-R
 
 all: ${MDOCFILES:S/$/-s/} ${STRIPFILES:S/$/-s/} ${SPECIALFILES:S/$/-s/} ${NORMALFILES:S/$/-s/}
 

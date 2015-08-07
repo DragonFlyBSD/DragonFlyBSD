@@ -120,8 +120,6 @@
 .
 .\" Locale support
 .if d doc-locale \{\
-.  ie "\*[doc-locale]"ru.KOI8-R" \
-.    mso mdoc/ru.KOI8-R
-.  el \{ .if "\*[doc-locale]"fr.ISO8859-1" \
+.  if "\*[doc-locale]"fr.ISO8859-1" \
 .    mso mdoc/fr.ISO8859-1
-.\}\}
+.\}
