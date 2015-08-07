@@ -85,7 +85,7 @@ main(int argc, char **argv)
 	int trpoints = ALL_POINTS;
 	char *cp;
 
-	(void) setlocale(LC_CTYPE, "");
+	setlocale(LC_CTYPE, "");
 
 	while ((ch = getopt(argc,argv,"acf:djlm:np:RTt:")) != -1)
 		switch((char)ch) {
@@ -186,7 +186,7 @@ main(int argc, char **argv)
 			break;
 		}
 		if (tail)
-			(void)fflush(stdout);
+			fflush(stdout);
 	}
 	exit(0);
 }
@@ -197,7 +197,7 @@ fread_tail(void *buf, int size, int num)
 	int i;
 
 	while ((i = fread(buf, size, num, stdin)) == 0 && tail) {
-		(void)sleep(1);
+		sleep(1);
 		clearerr(stdin);
 	}
 	return (i);
@@ -234,7 +234,7 @@ dumpheader(struct ktr_header *kth)
 		type = "USER";
 		break;
 	default:
-		(void)sprintf(unknown, "UNKNOWN(%d)", kth->ktr_type);
+		sprintf(unknown, "UNKNOWN(%d)", kth->ktr_type);
 		type = unknown;
 	}
 
@@ -277,9 +277,9 @@ ktrsyscall(struct ktr_syscall *ktr)
 	register_t *ip;
 
 	if (ktr->ktr_code >= nsyscalls || ktr->ktr_code < 0)
-		(void)printf("[%d]", ktr->ktr_code);
+		printf("[%d]", ktr->ktr_code);
 	else
-		(void)printf("%s", syscallnames[ktr->ktr_code]);
+		printf("%s", syscallnames[ktr->ktr_code]);
 	ip = &ktr->ktr_args[0];
 	if (narg) {
 		char c = '(';
@@ -287,9 +287,9 @@ ktrsyscall(struct ktr_syscall *ktr)
 
 #define print_number(i,n,c) do {                      \
 	if (decimal)                                  \
-		(void)printf("%c%ld", c, (long)*i);   \
+		printf("%c%ld", c, (long)*i);   \
 	else                                          \
-		(void)printf("%c%#lx", c, (long)*i);  \
+		printf("%c%#lx", c, (long)*i);  \
 	i++;                                          \
 	n--;                                          \
 	c = ',';                                      \
@@ -299,19 +299,19 @@ ktrsyscall(struct ktr_syscall *ktr)
 				const char *cp;
 				print_number(ip,narg,c);
 				if ((cp = ioctlname(*ip)) != NULL)
-					(void)printf(",%s", cp);
+					printf(",%s", cp);
 				else {
 					if (decimal)
-						(void)printf(",%ld", (long)*ip);
+						printf(",%ld", (long)*ip);
 					else
-						(void)printf(",%#lx ", (long)*ip);
+						printf(",%#lx ", (long)*ip);
 				}
 				c = ',';
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_access) {
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				accessmodename ((int)*ip);
 				ip++;
 				narg--;
@@ -322,14 +322,14 @@ ktrsyscall(struct ktr_syscall *ktr)
 				print_number(ip,narg,c);
 				flags = *ip;
 				mode = *++ip;
-				(void)putchar(',');
+				putchar(',');
 				flagsandmodename (flags, mode, decimal);
 				ip++;
 				narg-=2;
 			} else if (ktr->ktr_code == SYS_wait4) {
 				print_number(ip,narg,c);
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				wait4optname ((int)*ip);
 				ip++;
 				narg--;
@@ -337,33 +337,33 @@ ktrsyscall(struct ktr_syscall *ktr)
 				   ktr->ktr_code == SYS_fchmod ||
 				   ktr->ktr_code == SYS_lchmod) {
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				modename ((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_mknod) {
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				modename ((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_getfsstat) {
 				print_number(ip,narg,c);
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				getfsstatflagsname ((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_mount) {
 				print_number(ip,narg,c);
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				mountflagsname ((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_unmount) {
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				mountflagsname ((int)*ip);
 				ip++;
 				narg--;
@@ -371,7 +371,7 @@ ktrsyscall(struct ktr_syscall *ktr)
 				   ktr->ktr_code == SYS_sendmsg) {
 				print_number(ip,narg,c);
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				sendrecvflagsname ((int)*ip);
 				ip++;
 				narg--;
@@ -380,46 +380,46 @@ ktrsyscall(struct ktr_syscall *ktr)
 				print_number(ip,narg,c);
 				print_number(ip,narg,c);
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				sendrecvflagsname ((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_chflags ||
 				   ktr->ktr_code == SYS_fchflags) {
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				modename((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_kill) {
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				signame((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_reboot) {
-				(void)putchar('(');
+				putchar('(');
 				rebootoptname((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_umask) {
-				(void)putchar('(');
+				putchar('(');
 				modename((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_msync) {
 				print_number(ip,narg,c);
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				msyncflagsname((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_mmap) {
 				print_number(ip,narg,c);
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				mmapprotname ((int)*ip);
-				(void)putchar(',');
+				putchar(',');
 				ip++;
 				narg--;
 				mmapflagsname ((int)*ip);
@@ -428,19 +428,19 @@ ktrsyscall(struct ktr_syscall *ktr)
 			} else if (ktr->ktr_code == SYS_mprotect) {
 				print_number(ip,narg,c);
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				mmapprotname ((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_madvise) {
 				print_number(ip,narg,c);
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				madvisebehavname((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_setpriority) {
-				(void)putchar('(');
+				putchar('(');
 				prioname((int)*ip);
 				ip++;
 				narg--;
@@ -453,16 +453,16 @@ ktrsyscall(struct ktr_syscall *ktr)
 				print_number(ip,narg,c);
 				cmd = *ip;
 				arg = *++ip;
-				(void)putchar(',');
+				putchar(',');
 				fcntlcmdname(cmd, arg, decimal);
 				ip++;
 				narg-=2;
 			} else if (ktr->ktr_code == SYS_socket) {
-				(void)putchar('(');
+				putchar('(');
 				sockdomainname((int)*ip);
 				ip++;
 				narg--;
-				(void)putchar(',');
+				putchar(',');
 				socktypename((int)*ip);
 				ip++;
 				narg--;
@@ -470,11 +470,11 @@ ktrsyscall(struct ktr_syscall *ktr)
 			} else if (ktr->ktr_code == SYS_setsockopt ||
 				   ktr->ktr_code == SYS_getsockopt) {
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				sockoptlevelname((int)*ip, decimal);
 				ip++;
 				narg--;
-				(void)putchar(',');
+				putchar(',');
 				sockoptname((int)*ip);
 				ip++;
 				narg--;
@@ -483,42 +483,42 @@ ktrsyscall(struct ktr_syscall *ktr)
 				/* Hidden 'pad' argument, not in lseek(2) */
 				print_number(ip,narg,c);
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				whencename ((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_flock) {
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				flockname((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_mkfifo ||
 				   ktr->ktr_code == SYS_mkdir) {
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				modename((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_shutdown) {
 				print_number(ip,narg,c);
-				(void)putchar(',');
+				putchar(',');
 				shutdownhowname((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_socketpair) {
-				(void)putchar('(');
+				putchar('(');
 				sockdomainname((int)*ip);
 				ip++;
 				narg--;
-				(void)putchar(',');
+				putchar(',');
 				socktypename((int)*ip);
 				ip++;
 				narg--;
 				c = ',';
 			} else if (ktr->ktr_code == SYS_getrlimit ||
 				   ktr->ktr_code == SYS_setrlimit) {
-				(void)putchar('(');
+				putchar('(');
 				rlimitname((int)*ip);
 				ip++;
 				narg--;
@@ -530,7 +530,7 @@ ktrsyscall(struct ktr_syscall *ktr)
 				narg--;
 				c = ',';
 			} else if (ktr->ktr_code == SYS_rtprio) {
-				(void)putchar('(');
+				putchar('(');
 				rtprioname((int)*ip);
 				ip++;
 				narg--;
@@ -570,19 +570,19 @@ ktrsyscall(struct ktr_syscall *ktr)
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_rfork) {
-				(void)putchar('(');
+				putchar('(');
 				rforkname((int)*ip);
 				ip++;
 				narg--;
 				c = ',';
 			} else if (ktr->ktr_code == SYS_lio_listio) {
-				(void)putchar('(');
+				putchar('(');
 				lio_listioname((int)*ip);
 				ip++;
 				narg--;
 				c = ',';
 			} else if (ktr->ktr_code == SYS_mlockall) {
-				(void)putchar('(');
+				putchar('(');
 				mlockallname((int)*ip);
 				ip++;
 				narg--;
@@ -593,7 +593,7 @@ ktrsyscall(struct ktr_syscall *ktr)
 				narg--;
 			} else if (ktr->ktr_code == SYS_sched_get_priority_max ||
 				   ktr->ktr_code == SYS_sched_get_priority_min) {
-				(void)putchar('(');
+				putchar('(');
 				schedpolicyname((int)*ip);
 				ip++;
 				narg--;
@@ -613,7 +613,7 @@ ktrsyscall(struct ktr_syscall *ktr)
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_sigprocmask) {
-				(void)putchar('(');
+				putchar('(');
 				sigprocmaskhowname((int)*ip);
 				ip++;
 				narg--;
@@ -631,7 +631,7 @@ ktrsyscall(struct ktr_syscall *ktr)
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_sigaction) {
-				(void)putchar('(');
+				putchar('(');
 				signame((int)*ip);
 				ip++;
 				narg--;
@@ -644,33 +644,33 @@ ktrsyscall(struct ktr_syscall *ktr)
 			} else if (ktr->ktr_code == SYS_ptrace) {
 				if (*ip < (register_t)(sizeof(ptrace_ops) /
 				    sizeof(ptrace_ops[0])) && *ip >= 0)
-					(void)printf("(%s", ptrace_ops[*ip]);
+					printf("(%s", ptrace_ops[*ip]);
 #ifdef PT_GETREGS
 				else if (*ip == PT_GETREGS)
-					(void)printf("(%s", "PT_GETREGS");
+					printf("(%s", "PT_GETREGS");
 #endif
 #ifdef PT_SETREGS
 				else if (*ip == PT_SETREGS)
-					(void)printf("(%s", "PT_SETREGS");
+					printf("(%s", "PT_SETREGS");
 #endif
 #ifdef PT_GETFPREGS
 				else if (*ip == PT_GETFPREGS)
-					(void)printf("(%s", "PT_GETFPREGS");
+					printf("(%s", "PT_GETFPREGS");
 #endif
 #ifdef PT_SETFPREGS
 				else if (*ip == PT_SETFPREGS)
-					(void)printf("(%s", "PT_SETFPREGS");
+					printf("(%s", "PT_SETFPREGS");
 #endif
 #ifdef PT_GETDBREGS
 				else if (*ip == PT_GETDBREGS)
-					(void)printf("(%s", "PT_GETDBREGS");
+					printf("(%s", "PT_GETDBREGS");
 #endif
 #ifdef PT_SETDBREGS
 				else if (*ip == PT_SETDBREGS)
-					(void)printf("(%s", "PT_SETDBREGS");
+					printf("(%s", "PT_SETDBREGS");
 #endif
 				else
-					(void)printf("(%ld", (long)*ip);
+					printf("(%ld", (long)*ip);
 				c = ',';
 				ip++;
 				narg--;
@@ -679,9 +679,9 @@ ktrsyscall(struct ktr_syscall *ktr)
 		while (narg > 0) {
 			print_number(ip,narg,c);
 		}
-		(void)putchar(')');
+		putchar(')');
 	}
-	(void)putchar('\n');
+	putchar('\n');
 }
 
 static void
@@ -692,37 +692,37 @@ ktrsysret(struct ktr_sysret *ktr)
 	int code = ktr->ktr_code;
 
 	if (code >= nsyscalls || code < 0)
-		(void)printf("[%d] ", code);
+		printf("[%d] ", code);
 	else
-		(void)printf("%s ", syscallnames[code]);
+		printf("%s ", syscallnames[code]);
 
 	if (error == 0) {
 		if (fancy) {
-			(void)printf("%ld", (long)ret);
+			printf("%ld", (long)ret);
 			if (ret < 0 || ret > 9)
-				(void)printf("/%#lx", (long)ret);
+				printf("/%#lx", (long)ret);
 		} else {
 			if (decimal)
-				(void)printf("%ld", (long)ret);
+				printf("%ld", (long)ret);
 			else
-				(void)printf("%#lx", (long)ret);
+				printf("%#lx", (long)ret);
 		}
 	} else if (error == ERESTART)
-		(void)printf("RESTART");
+		printf("RESTART");
 	else if (error == EJUSTRETURN)
-		(void)printf("JUSTRETURN");
+		printf("JUSTRETURN");
 	else {
-		(void)printf("-1 errno %d", ktr->ktr_error);
+		printf("-1 errno %d", ktr->ktr_error);
 		if (fancy)
-			(void)printf(" %s", strerror(ktr->ktr_error));
+			printf(" %s", strerror(ktr->ktr_error));
 	}
-	(void)putchar('\n');
+	putchar('\n');
 }
 
 static void
 ktrnamei(char *cp, int len)
 {
-	(void)printf("\"%.*s\"\n", len, cp);
+	printf("\"%.*s\"\n", len, cp);
 }
 
 static void
@@ -750,23 +750,23 @@ ktrgenio(struct ktr_genio *ktr, int len)
 		datalen == 1 ? "" : "s");
 	if (maxdata && datalen > maxdata)
 		datalen = maxdata;
-	(void)printf("       \"");
+	printf("       \"");
 	col = 8;
 	for (;datalen > 0; datalen--, dp++) {
-		(void) vis(visbuf, *dp, VIS_CSTYLE, *(dp+1));
+		vis(visbuf, *dp, VIS_CSTYLE, *(dp+1));
 		cp = visbuf;
 		/*
 		 * Keep track of printables and
 		 * space chars (like fold(1)).
 		 */
 		if (col == 0) {
-			(void)putchar('\t');
+			putchar('\t');
 			col = 8;
 		}
 		switch(*cp) {
 		case '\n':
 			col = 0;
-			(void)putchar('\n');
+			putchar('\n');
 			continue;
 		case '\t':
 			width = 8 - (col&07);
@@ -775,17 +775,17 @@ ktrgenio(struct ktr_genio *ktr, int len)
 			width = strlen(cp);
 		}
 		if (col + width > (screenwidth-2)) {
-			(void)printf("\\\n\t");
+			printf("\\\n\t");
 			col = 8;
 		}
 		col += width;
 		do {
-			(void)putchar(*cp++);
+			putchar(*cp++);
 		} while (*cp);
 	}
 	if (col == 0)
-		(void)printf("       ");
-	(void)printf("\"\n");
+		printf("       ");
+	printf("\"\n");
 }
 
 const char *signames[NSIG] = {
@@ -800,18 +800,18 @@ const char *signames[NSIG] = {
 static void
 ktrpsig(struct ktr_psig *psig)
 {
-	(void)printf("SIG%s ", signames[psig->signo]);
+	printf("SIG%s ", signames[psig->signo]);
 	if (psig->action == SIG_DFL)
-		(void)printf("SIG_DFL\n");
+		printf("SIG_DFL\n");
 	else
-		(void)printf("caught handler=0x%lx mask=0x%x code=0x%x\n",
+		printf("caught handler=0x%lx mask=0x%x code=0x%x\n",
 		    (u_long)psig->action, psig->mask.__bits[0], psig->code);
 }
 
 static void
 ktrcsw(struct ktr_csw *cs)
 {
-	(void)printf("%s %s\n", cs->out ? "stop" : "resume",
+	printf("%s %s\n", cs->out ? "stop" : "resume",
 		cs->user ? "user" : "kernel");
 }
 
@@ -954,16 +954,16 @@ ktruser(int len, unsigned char *p)
 		return;
 	}
 
-	(void)printf("%d ", len);
+	printf("%d ", len);
 	while (len--)
-		(void)printf(" %02x", *p++);
-	(void)printf("\n");
+		printf(" %02x", *p++);
+	printf("\n");
 }
 
 static void
 usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: kdump [-dnlRT] [-f trfile] [-m maxdata] [-t [cnisuw]] [-p pid]\n");
 	exit(1);
 }
