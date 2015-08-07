@@ -119,6 +119,7 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname,
 	int error;
 	int ronly;
 	int setmp = 0;
+	int i;
 
 	mp = hmp->mp;
 	ronly = ((mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
@@ -184,6 +185,12 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname,
 	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
 		kprintf("hammer_mount: volume %s has an invalid header\n",
 			volume->vol_name);
+		for (i = 0; i < (int)sizeof(ondisk->vol_signature); i++) {
+			kprintf("%02x", ((char*)&ondisk->vol_signature)[i] & 0xFF);
+			if (i != (int)sizeof(ondisk->vol_signature) - 1)
+				kprintf(" ");
+		}
+		kprintf("\n");
 		error = EFTYPE;
 		goto late_failure;
 	}
