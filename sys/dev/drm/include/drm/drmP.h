@@ -1386,7 +1386,6 @@ unsigned long drm_get_resource_start(struct drm_device *dev,
 unsigned long drm_get_resource_len(struct drm_device *dev,
 				   unsigned int resource);
 void	drm_rmmap(struct drm_device *dev, drm_local_map_t *map);
-int	drm_order(unsigned long size);
 int	drm_addbufs_agp(struct drm_device *dev, struct drm_buf_desc *request);
 int	drm_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *request);
 extern int drm_addmap(struct drm_device *dev, resource_size_t offset,

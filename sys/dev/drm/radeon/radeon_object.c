@@ -330,7 +330,7 @@ int radeon_bo_init(struct radeon_device *rdev)
 		rdev->mc.vram_mtrr = arch_phys_wc_add(rdev->mc.aper_base, rdev->mc.aper_size);
 	}
 	DRM_INFO("Detected VRAM RAM=%juM, BAR=%juM\n",
-		(uintmax_t)rdev->mc.mc_vram_size >> 20,
+		rdev->mc.mc_vram_size >> 20,
 		(uintmax_t)rdev->mc.aper_size >> 20);
 	DRM_INFO("RAM width %dbits %cDR\n",
 			rdev->mc.vram_width, rdev->mc.vram_is_ddr ? 'D' : 'S');
@@ -353,14 +353,15 @@ void radeon_bo_list_add_object(struct radeon_bo_list *lobj,
 	}
 }
 
-int radeon_bo_list_validate(struct list_head *head, int ring)
+int radeon_bo_list_validate(struct ww_acquire_ctx *ticket,
+			    struct list_head *head, int ring)
 {
 	struct radeon_bo_list *lobj;
 	struct radeon_bo *bo;
 	u32 domain;
 	int r;
 
-	r = ttm_eu_reserve_buffers(head);
+	r = ttm_eu_reserve_buffers(ticket, head);
 	if (unlikely(r != 0)) {
 		return r;
 	}

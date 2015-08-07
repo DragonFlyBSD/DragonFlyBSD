@@ -71,7 +71,18 @@ int radeon_pm_get_type_index(struct radeon_device *rdev,
 
 void radeon_pm_acpi_event_handler(struct radeon_device *rdev)
 {
-	if (rdev->pm.pm_method == PM_METHOD_PROFILE) {
+	if ((rdev->pm.pm_method == PM_METHOD_DPM) && rdev->pm.dpm_enabled) {
+		lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+#if zRJ_TODO
+		if (power_supply_is_system_supplied() > 0)
+			rdev->pm.dpm.ac_power = true;
+		else
+#endif
+			rdev->pm.dpm.ac_power = false;
+		if (rdev->asic->dpm.enable_bapm)
+			radeon_dpm_enable_bapm(rdev, rdev->pm.dpm.ac_power);
+		lockmgr(&rdev->pm.mutex, LK_RELEASE);
+        } else if (rdev->pm.pm_method == PM_METHOD_PROFILE) {
 		if (rdev->pm.profile == PM_PROFILE_AUTO) {
 			lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
 			radeon_pm_update_profile(rdev);
@@ -595,6 +606,8 @@ static int radeon_hwmon_init(struct radeon_device *rdev)
 	case THERMAL_TYPE_NI:
 	case THERMAL_TYPE_SUMO:
 	case THERMAL_TYPE_SI:
+	case THERMAL_TYPE_CI:
+	case THERMAL_TYPE_KV:
 		if (rdev->asic->pm.get_temperature == NULL)
 			return err;
 
@@ -650,7 +663,15 @@ static void radeon_dpm_thermal_work_handler(void *arg, int pending)
 			/* switch back the user state */
 			dpm_state = rdev->pm.dpm.user_state;
 	}
-	radeon_dpm_enable_power_state(rdev, dpm_state);
+	mutex_lock(&rdev->pm.mutex);
+	if (dpm_state == POWER_STATE_TYPE_INTERNAL_THERMAL)
+		rdev->pm.dpm.thermal_active = true;
+	else
+		rdev->pm.dpm.thermal_active = false;
+	rdev->pm.dpm.state = dpm_state;
+	mutex_unlock(&rdev->pm.mutex);
+
+	radeon_pm_compute_clocks(rdev);
 }
 
 static struct radeon_ps *radeon_dpm_pick_power_state(struct radeon_device *rdev,
@@ -713,7 +734,10 @@ restart_search:
 			break;
 		/* internal states */
 		case POWER_STATE_TYPE_INTERNAL_UVD:
-			return rdev->pm.dpm.uvd_ps;
+			if (rdev->pm.dpm.uvd_ps)
+				return rdev->pm.dpm.uvd_ps;
+			else
+				break;
 		case POWER_STATE_TYPE_INTERNAL_UVD_SD:
 			if (ps->class & ATOM_PPLIB_CLASSIFICATION_SDSTATE)
 				return ps;
@@ -755,10 +779,17 @@ restart_search:
 	/* use a fallback state if we didn't match */
 	switch (dpm_state) {
 	case POWER_STATE_TYPE_INTERNAL_UVD_SD:
+		dpm_state = POWER_STATE_TYPE_INTERNAL_UVD_HD;
+		goto restart_search;
 	case POWER_STATE_TYPE_INTERNAL_UVD_HD:
 	case POWER_STATE_TYPE_INTERNAL_UVD_HD2:
 	case POWER_STATE_TYPE_INTERNAL_UVD_MVC:
-		return rdev->pm.dpm.uvd_ps;
+		if (rdev->pm.dpm.uvd_ps) {
+			return rdev->pm.dpm.uvd_ps;
+		} else {
+			dpm_state = POWER_STATE_TYPE_PERFORMANCE;
+			goto restart_search;
+		}
 	case POWER_STATE_TYPE_INTERNAL_THERMAL:
 		dpm_state = POWER_STATE_TYPE_INTERNAL_ACPI;
 		goto restart_search;
@@ -876,38 +907,57 @@ static void radeon_dpm_change_power_state_locked(struct radeon_device *rdev)
 
 	radeon_dpm_post_set_power_state(rdev);
 
+	if (rdev->asic->dpm.force_performance_level) {
+		if (rdev->pm.dpm.thermal_active)
+			/* force low perf level for thermal */
+			radeon_dpm_force_performance_level(rdev, RADEON_DPM_FORCED_LEVEL_LOW);
+		else
+			/* otherwise, enable auto */
+			radeon_dpm_force_performance_level(rdev, RADEON_DPM_FORCED_LEVEL_AUTO);
+	}
+
 done:
 	lockmgr(&rdev->ring_lock, LK_RELEASE);
 	lockmgr(&rdev->pm.mclk_lock, LK_RELEASE); // up_write
 	lockmgr(&rdev->ddev->struct_mutex, LK_RELEASE);
 }
 
-void radeon_dpm_enable_power_state(struct radeon_device *rdev,
-				   enum radeon_pm_state_type dpm_state)
+void radeon_dpm_enable_uvd(struct radeon_device *rdev, bool enable)
 {
-	if (!rdev->pm.dpm_enabled)
-		return;
+	enum radeon_pm_state_type dpm_state;
 
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
-	switch (dpm_state) {
-	case POWER_STATE_TYPE_INTERNAL_THERMAL:
-		rdev->pm.dpm.thermal_active = true;
-		break;
-	case POWER_STATE_TYPE_INTERNAL_UVD:
-	case POWER_STATE_TYPE_INTERNAL_UVD_SD:
-	case POWER_STATE_TYPE_INTERNAL_UVD_HD:
-	case POWER_STATE_TYPE_INTERNAL_UVD_HD2:
-	case POWER_STATE_TYPE_INTERNAL_UVD_MVC:
-		rdev->pm.dpm.uvd_active = true;
-		break;
-	default:
-		rdev->pm.dpm.thermal_active = false;
-		rdev->pm.dpm.uvd_active = false;
-		break;
+	if (rdev->asic->dpm.powergate_uvd) {
+		mutex_lock(&rdev->pm.mutex);
+		/* enable/disable UVD */
+		radeon_dpm_powergate_uvd(rdev, !enable);
+		mutex_unlock(&rdev->pm.mutex);
+	} else {
+		if (enable) {
+			mutex_lock(&rdev->pm.mutex);
+			rdev->pm.dpm.uvd_active = true;
+			/* disable this for now */
+#if 0
+			if ((rdev->pm.dpm.sd == 1) && (rdev->pm.dpm.hd == 0))
+				dpm_state = POWER_STATE_TYPE_INTERNAL_UVD_SD;
+			else if ((rdev->pm.dpm.sd == 2) && (rdev->pm.dpm.hd == 0))
+				dpm_state = POWER_STATE_TYPE_INTERNAL_UVD_HD;
+			else if ((rdev->pm.dpm.sd == 0) && (rdev->pm.dpm.hd == 1))
+				dpm_state = POWER_STATE_TYPE_INTERNAL_UVD_HD;
+			else if ((rdev->pm.dpm.sd == 0) && (rdev->pm.dpm.hd == 2))
+				dpm_state = POWER_STATE_TYPE_INTERNAL_UVD_HD2;
+			else
+#endif
+				dpm_state = POWER_STATE_TYPE_INTERNAL_UVD;
+			rdev->pm.dpm.state = dpm_state;
+			mutex_unlock(&rdev->pm.mutex);
+		} else {
+			mutex_lock(&rdev->pm.mutex);
+			rdev->pm.dpm.uvd_active = false;
+			mutex_unlock(&rdev->pm.mutex);
+		}
+
+		radeon_pm_compute_clocks(rdev);
 	}
-	rdev->pm.dpm.state = dpm_state;
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
-	radeon_pm_compute_clocks(rdev);
 }
 
 static void radeon_pm_suspend_old(struct radeon_device *rdev)
@@ -947,7 +997,7 @@ static void radeon_pm_resume_old(struct radeon_device *rdev)
 {
 	/* set up the default clocks if the MC ucode is loaded */
 	if ((rdev->family >= CHIP_BARTS) &&
-	    (rdev->family <= CHIP_HAINAN) &&
+	    (rdev->family <= CHIP_CAYMAN) &&
 	    rdev->mc_fw) {
 		if (rdev->pm.default_vddc)
 			radeon_atom_set_voltage(rdev, rdev->pm.default_vddc,
@@ -993,7 +1043,7 @@ static void radeon_pm_resume_dpm(struct radeon_device *rdev)
 	if (ret) {
 		DRM_ERROR("radeon: dpm resume failed\n");
 		if ((rdev->family >= CHIP_BARTS) &&
-		    (rdev->family <= CHIP_HAINAN) &&
+		    (rdev->family <= CHIP_CAYMAN) &&
 		    rdev->mc_fw) {
 			if (rdev->pm.default_vddc)
 				radeon_atom_set_voltage(rdev, rdev->pm.default_vddc,
@@ -1044,7 +1094,7 @@ static int radeon_pm_init_old(struct radeon_device *rdev)
 		radeon_pm_init_profile(rdev);
 		/* set up the default clocks if the MC ucode is loaded */
 		if ((rdev->family >= CHIP_BARTS) &&
-		    (rdev->family <= CHIP_HAINAN) &&
+		    (rdev->family <= CHIP_CAYMAN) &&
 		    rdev->mc_fw) {
 			if (rdev->pm.default_vddc)
 				radeon_atom_set_voltage(rdev, rdev->pm.default_vddc,
@@ -1105,9 +1155,10 @@ static int radeon_pm_init_dpm(struct radeon_device *rdev)
 {
 	int ret;
 
-	/* default to performance state */
+	/* default to balanced state */
 	rdev->pm.dpm.state = POWER_STATE_TYPE_BALANCED;
 	rdev->pm.dpm.user_state = POWER_STATE_TYPE_BALANCED;
+	rdev->pm.dpm.forced_level = RADEON_DPM_FORCED_LEVEL_AUTO;
 	rdev->pm.default_sclk = rdev->clock.default_sclk;
 	rdev->pm.default_mclk = rdev->clock.default_mclk;
 	rdev->pm.current_sclk = rdev->clock.default_sclk;
@@ -1135,7 +1186,7 @@ static int radeon_pm_init_dpm(struct radeon_device *rdev)
 	if (ret) {
 		rdev->pm.dpm_enabled = false;
 		if ((rdev->family >= CHIP_BARTS) &&
-		    (rdev->family <= CHIP_HAINAN) &&
+		    (rdev->family <= CHIP_CAYMAN) &&
 		    rdev->mc_fw) {
 			if (rdev->pm.default_vddc)
 				radeon_atom_set_voltage(rdev, rdev->pm.default_vddc,
@@ -1214,6 +1265,9 @@ int radeon_pm_init(struct radeon_device *rdev)
 	case CHIP_VERDE:
 	case CHIP_OLAND:
 	case CHIP_HAINAN:
+	case CHIP_BONAIRE:
+	case CHIP_KABINI:
+	case CHIP_KAVERI:
 		/* DPM requires the RLC, RV770+ dGPU requires SMC */
 		if (!rdev->rlc_fw)
 			rdev->pm.pm_method = PM_METHOD_PROFILE;

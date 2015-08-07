@@ -24,10 +24,7 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/evergreen_cs.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
@@ -948,7 +945,7 @@ static int evergreen_cs_track_check(struct radeon_cs_parser *p)
 							(u64)track->vgt_strmout_size[i];
 					if (offset > radeon_bo_size(track->vgt_strmout_bo[i])) {
 						DRM_ERROR("streamout %d bo too small: 0x%jx, 0x%lx\n",
-							  i, (uintmax_t)offset,
+							  i, offset,
 							  radeon_bo_size(track->vgt_strmout_bo[i]));
 						return -EINVAL;
 					}
@@ -2109,7 +2106,7 @@ static int evergreen_packet3_check(struct radeon_cs_parser *p,
 
 				if ((tmp + size) > radeon_bo_size(reloc->robj)) {
 					dev_warn(p->dev, "CP DMA src buffer too small (%ju %lu)\n",
-						 (uintmax_t)tmp + size, radeon_bo_size(reloc->robj));
+						 tmp + size, radeon_bo_size(reloc->robj));
 					return -EINVAL;
 				}
 
@@ -2147,7 +2144,7 @@ static int evergreen_packet3_check(struct radeon_cs_parser *p,
 
 				if ((tmp + size) > radeon_bo_size(reloc->robj)) {
 					dev_warn(p->dev, "CP DMA dst buffer too small (%ju %lu)\n",
-						 (uintmax_t)tmp + size, radeon_bo_size(reloc->robj));
+						 tmp + size, radeon_bo_size(reloc->robj));
 					return -EINVAL;
 				}
 
@@ -2441,7 +2438,7 @@ static int evergreen_packet3_check(struct radeon_cs_parser *p,
 			offset += ((u64)(radeon_get_ib_value(p, idx+2) & 0xff)) << 32;
 			if ((offset + 4) > radeon_bo_size(reloc->robj)) {
 				DRM_ERROR("bad STRMOUT_BUFFER_UPDATE dst bo too small: 0x%jx, 0x%lx\n",
-					  (uintmax_t)offset + 4, radeon_bo_size(reloc->robj));
+					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
 			offset += reloc->lobj.gpu_offset;
@@ -2460,7 +2457,7 @@ static int evergreen_packet3_check(struct radeon_cs_parser *p,
 			offset += ((u64)(radeon_get_ib_value(p, idx+4) & 0xff)) << 32;
 			if ((offset + 4) > radeon_bo_size(reloc->robj)) {
 				DRM_ERROR("bad STRMOUT_BUFFER_UPDATE src bo too small: 0x%jx, 0x%lx\n",
-					  (uintmax_t)offset + 4, radeon_bo_size(reloc->robj));
+					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
 			offset += reloc->lobj.gpu_offset;
@@ -2489,7 +2486,7 @@ static int evergreen_packet3_check(struct radeon_cs_parser *p,
 		}
 		if ((offset + 8) > radeon_bo_size(reloc->robj)) {
 			DRM_ERROR("bad MEM_WRITE bo too small: 0x%jx, 0x%lx\n",
-				  (uintmax_t)offset + 8, radeon_bo_size(reloc->robj));
+				  offset + 8, radeon_bo_size(reloc->robj));
 			return -EINVAL;
 		}
 		offset += reloc->lobj.gpu_offset;
@@ -2514,7 +2511,7 @@ static int evergreen_packet3_check(struct radeon_cs_parser *p,
 			offset += ((u64)(radeon_get_ib_value(p, idx+2) & 0xff)) << 32;
 			if ((offset + 4) > radeon_bo_size(reloc->robj)) {
 				DRM_ERROR("bad COPY_DW src bo too small: 0x%jx, 0x%lx\n",
-					  (uintmax_t)offset + 4, radeon_bo_size(reloc->robj));
+					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
 			offset += reloc->lobj.gpu_offset;
@@ -2538,7 +2535,7 @@ static int evergreen_packet3_check(struct radeon_cs_parser *p,
 			offset += ((u64)(radeon_get_ib_value(p, idx+4) & 0xff)) << 32;
 			if ((offset + 4) > radeon_bo_size(reloc->robj)) {
 				DRM_ERROR("bad COPY_DW dst bo too small: 0x%jx, 0x%lx\n",
-					  (uintmax_t)offset + 4, radeon_bo_size(reloc->robj));
+					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
 			offset += reloc->lobj.gpu_offset;
@@ -2663,7 +2660,7 @@ int evergreen_cs_parse(struct radeon_cs_parser *p)
 	} while (p->idx < p->chunks[p->chunk_ib_idx].length_dw);
 #if 0
 	for (r = 0; r < p->ib.length_dw; r++) {
-		DRM_INFO("%05d  0x%08X\n", r, p->ib.ptr[r]);
+		printk(KERN_INFO "%05d  0x%08X\n", r, p->ib.ptr[r]);
 		mdelay(1);
 	}
 #endif
@@ -2713,7 +2710,7 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 			switch (sub_cmd) {
 			/* tiled */
 			case 8:
-				dst_offset = ib[idx+1];
+				dst_offset = radeon_get_ib_value(p, idx+1);
 				dst_offset <<= 8;
 
 				ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset >> 8);
@@ -2721,20 +2718,20 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 				break;
 			/* linear */
 			case 0:
-				dst_offset = ib[idx+1];
-				dst_offset |= ((u64)(ib[idx+2] & 0xff)) << 32;
+				dst_offset = radeon_get_ib_value(p, idx+1);
+				dst_offset |= ((u64)(radeon_get_ib_value(p, idx+2) & 0xff)) << 32;
 
 				ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
 				ib[idx+2] += upper_32_bits(dst_reloc->lobj.gpu_offset) & 0xff;
 				p->idx += count + 3;
 				break;
 			default:
-				DRM_ERROR("bad DMA_PACKET_WRITE [%6d] 0x%08x sub cmd is not 0 or 8\n", idx, ib[idx+0]);
+				DRM_ERROR("bad DMA_PACKET_WRITE [%6d] 0x%08x sub cmd is not 0 or 8\n", idx, header);
 				return -EINVAL;
 			}
 			if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 				dev_warn(p->dev, "DMA write buffer too small (%ju %lu)\n",
-					 (uintmax_t)dst_offset, radeon_bo_size(dst_reloc->robj));
+					 dst_offset, radeon_bo_size(dst_reloc->robj));
 				return -EINVAL;
 			}
 			break;
@@ -2753,18 +2750,18 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 			/* Copy L2L, DW aligned */
 			case 0x00:
 				/* L2L, dw */
-				src_offset = ib[idx+2];
-				src_offset |= ((u64)(ib[idx+4] & 0xff)) << 32;
-				dst_offset = ib[idx+1];
-				dst_offset |= ((u64)(ib[idx+3] & 0xff)) << 32;
+				src_offset = radeon_get_ib_value(p, idx+2);
+				src_offset |= ((u64)(radeon_get_ib_value(p, idx+4) & 0xff)) << 32;
+				dst_offset = radeon_get_ib_value(p, idx+1);
+				dst_offset |= ((u64)(radeon_get_ib_value(p, idx+3) & 0xff)) << 32;
 				if ((src_offset + (count * 4)) > radeon_bo_size(src_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2L, dw src buffer too small (%ju %lu)\n",
-							(uintmax_t)src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
+							src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2L, dw dst buffer too small (%ju %lu)\n",
-							(uintmax_t)dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
+							dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
 					return -EINVAL;
 				}
 				ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
@@ -2776,35 +2773,35 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 			/* Copy L2T/T2L */
 			case 0x08:
 				/* detile bit */
-				if (ib[idx + 2] & (1 << 31)) {
+				if (radeon_get_ib_value(p, idx + 2) & (1 << 31)) {
 					/* tiled src, linear dst */
-					src_offset = ib[idx+1];
+					src_offset = radeon_get_ib_value(p, idx+1);
 					src_offset <<= 8;
 					ib[idx+1] += (u32)(src_reloc->lobj.gpu_offset >> 8);
 
 					dst_offset = radeon_get_ib_value(p, idx + 7);
-					dst_offset |= ((u64)(ib[idx+8] & 0xff)) << 32;
+					dst_offset |= ((u64)(radeon_get_ib_value(p, idx+8) & 0xff)) << 32;
 					ib[idx+7] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
 					ib[idx+8] += upper_32_bits(dst_reloc->lobj.gpu_offset) & 0xff;
 				} else {
 					/* linear src, tiled dst */
-					src_offset = ib[idx+7];
-					src_offset |= ((u64)(ib[idx+8] & 0xff)) << 32;
+					src_offset = radeon_get_ib_value(p, idx+7);
+					src_offset |= ((u64)(radeon_get_ib_value(p, idx+8) & 0xff)) << 32;
 					ib[idx+7] += (u32)(src_reloc->lobj.gpu_offset & 0xfffffffc);
 					ib[idx+8] += upper_32_bits(src_reloc->lobj.gpu_offset) & 0xff;
 
-					dst_offset = ib[idx+1];
+					dst_offset = radeon_get_ib_value(p, idx+1);
 					dst_offset <<= 8;
 					ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset >> 8);
 				}
 				if ((src_offset + (count * 4)) > radeon_bo_size(src_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, src buffer too small (%ju %lu)\n",
-							(uintmax_t)src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
+							src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, dst buffer too small (%ju %lu)\n",
-							(uintmax_t)dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
+							dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
 					return -EINVAL;
 				}
 				p->idx += 9;
@@ -2812,18 +2809,18 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 			/* Copy L2L, byte aligned */
 			case 0x40:
 				/* L2L, byte */
-				src_offset = ib[idx+2];
-				src_offset |= ((u64)(ib[idx+4] & 0xff)) << 32;
-				dst_offset = ib[idx+1];
-				dst_offset |= ((u64)(ib[idx+3] & 0xff)) << 32;
+				src_offset = radeon_get_ib_value(p, idx+2);
+				src_offset |= ((u64)(radeon_get_ib_value(p, idx+4) & 0xff)) << 32;
+				dst_offset = radeon_get_ib_value(p, idx+1);
+				dst_offset |= ((u64)(radeon_get_ib_value(p, idx+3) & 0xff)) << 32;
 				if ((src_offset + count) > radeon_bo_size(src_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2L, byte src buffer too small (%ju %lu)\n",
-							(uintmax_t)src_offset + count, radeon_bo_size(src_reloc->robj));
+							src_offset + count, radeon_bo_size(src_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst_offset + count) > radeon_bo_size(dst_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2L, byte dst buffer too small (%ju %lu)\n",
-							(uintmax_t)dst_offset + count, radeon_bo_size(dst_reloc->robj));
+							dst_offset + count, radeon_bo_size(dst_reloc->robj));
 					return -EINVAL;
 				}
 				ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset & 0xffffffff);
@@ -2854,25 +2851,25 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 					DRM_ERROR("bad L2L, dw, broadcast DMA_PACKET_COPY\n");
 					return -EINVAL;
 				}
-				dst_offset = ib[idx+1];
-				dst_offset |= ((u64)(ib[idx+4] & 0xff)) << 32;
-				dst2_offset = ib[idx+2];
-				dst2_offset |= ((u64)(ib[idx+5] & 0xff)) << 32;
-				src_offset = ib[idx+3];
-				src_offset |= ((u64)(ib[idx+6] & 0xff)) << 32;
+				dst_offset = radeon_get_ib_value(p, idx+1);
+				dst_offset |= ((u64)(radeon_get_ib_value(p, idx+4) & 0xff)) << 32;
+				dst2_offset = radeon_get_ib_value(p, idx+2);
+				dst2_offset |= ((u64)(radeon_get_ib_value(p, idx+5) & 0xff)) << 32;
+				src_offset = radeon_get_ib_value(p, idx+3);
+				src_offset |= ((u64)(radeon_get_ib_value(p, idx+6) & 0xff)) << 32;
 				if ((src_offset + (count * 4)) > radeon_bo_size(src_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2L, dw, broadcast src buffer too small (%ju %lu)\n",
-							(uintmax_t)src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
+							src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2L, dw, broadcast dst buffer too small (%ju %lu)\n",
-							(uintmax_t)dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
+							dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst2_offset + (count * 4)) > radeon_bo_size(dst2_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2L, dw, broadcast dst2 buffer too small (%ju %lu)\n",
-							(uintmax_t)dst2_offset + (count * 4), radeon_bo_size(dst2_reloc->robj));
+							dst2_offset + (count * 4), radeon_bo_size(dst2_reloc->robj));
 					return -EINVAL;
 				}
 				ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
@@ -2885,7 +2882,7 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 				break;
 			/* Copy L2T Frame to Field */
 			case 0x48:
-				if (ib[idx + 2] & (1 << 31)) {
+				if (radeon_get_ib_value(p, idx + 2) & (1 << 31)) {
 					DRM_ERROR("bad L2T, frame to fields DMA_PACKET_COPY\n");
 					return -EINVAL;
 				}
@@ -2894,25 +2891,25 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 					DRM_ERROR("bad L2T, frame to fields DMA_PACKET_COPY\n");
 					return -EINVAL;
 				}
-				dst_offset = ib[idx+1];
+				dst_offset = radeon_get_ib_value(p, idx+1);
 				dst_offset <<= 8;
-				dst2_offset = ib[idx+2];
+				dst2_offset = radeon_get_ib_value(p, idx+2);
 				dst2_offset <<= 8;
-				src_offset = ib[idx+8];
-				src_offset |= ((u64)(ib[idx+9] & 0xff)) << 32;
+				src_offset = radeon_get_ib_value(p, idx+8);
+				src_offset |= ((u64)(radeon_get_ib_value(p, idx+9) & 0xff)) << 32;
 				if ((src_offset + (count * 4)) > radeon_bo_size(src_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, frame to fields src buffer too small (%ju %lu)\n",
-							(uintmax_t)src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
+							src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, frame to fields buffer too small (%ju %lu)\n",
-							(uintmax_t)dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
+							dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst2_offset + (count * 4)) > radeon_bo_size(dst2_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, frame to fields buffer too small (%ju %lu)\n",
-							(uintmax_t)dst2_offset + (count * 4), radeon_bo_size(dst2_reloc->robj));
+							dst2_offset + (count * 4), radeon_bo_size(dst2_reloc->robj));
 					return -EINVAL;
 				}
 				ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset >> 8);
@@ -2929,7 +2926,7 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 					return -EINVAL;
 				}
 				/* detile bit */
-				if (ib[idx + 2 ] & (1 << 31)) {
+				if (radeon_get_ib_value(p, idx + 2) & (1 << 31)) {
 					/* tiled src, linear dst */
 					ib[idx+1] += (u32)(src_reloc->lobj.gpu_offset >> 8);
 
@@ -2947,7 +2944,7 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 			/* Copy L2T broadcast */
 			case 0x4b:
 				/* L2T, broadcast */
-				if (ib[idx + 2] & (1 << 31)) {
+				if (radeon_get_ib_value(p, idx + 2) & (1 << 31)) {
 					DRM_ERROR("bad L2T, broadcast DMA_PACKET_COPY\n");
 					return -EINVAL;
 				}
@@ -2956,25 +2953,25 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 					DRM_ERROR("bad L2T, broadcast DMA_PACKET_COPY\n");
 					return -EINVAL;
 				}
-				dst_offset = ib[idx+1];
+				dst_offset = radeon_get_ib_value(p, idx+1);
 				dst_offset <<= 8;
-				dst2_offset = ib[idx+2];
+				dst2_offset = radeon_get_ib_value(p, idx+2);
 				dst2_offset <<= 8;
-				src_offset = ib[idx+8];
-				src_offset |= ((u64)(ib[idx+9] & 0xff)) << 32;
+				src_offset = radeon_get_ib_value(p, idx+8);
+				src_offset |= ((u64)(radeon_get_ib_value(p, idx+9) & 0xff)) << 32;
 				if ((src_offset + (count * 4)) > radeon_bo_size(src_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, broadcast src buffer too small (%ju %lu)\n",
-							(uintmax_t)src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
+							src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, broadcast dst buffer too small (%ju %lu)\n",
-							(uintmax_t)dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
+							dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst2_offset + (count * 4)) > radeon_bo_size(dst2_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, broadcast dst2 buffer too small (%ju %lu)\n",
-							(uintmax_t)dst2_offset + (count * 4), radeon_bo_size(dst2_reloc->robj));
+							dst2_offset + (count * 4), radeon_bo_size(dst2_reloc->robj));
 					return -EINVAL;
 				}
 				ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset >> 8);
@@ -2987,35 +2984,35 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 			case 0x4c:
 				/* L2T, T2L */
 				/* detile bit */
-				if (ib[idx + 2] & (1 << 31)) {
+				if (radeon_get_ib_value(p, idx + 2) & (1 << 31)) {
 					/* tiled src, linear dst */
-					src_offset = ib[idx+1];
+					src_offset = radeon_get_ib_value(p, idx+1);
 					src_offset <<= 8;
 					ib[idx+1] += (u32)(src_reloc->lobj.gpu_offset >> 8);
 
-					dst_offset = ib[idx+7];
-					dst_offset |= ((u64)(ib[idx+8] & 0xff)) << 32;
+					dst_offset = radeon_get_ib_value(p, idx+7);
+					dst_offset |= ((u64)(radeon_get_ib_value(p, idx+8) & 0xff)) << 32;
 					ib[idx+7] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
 					ib[idx+8] += upper_32_bits(dst_reloc->lobj.gpu_offset) & 0xff;
 				} else {
 					/* linear src, tiled dst */
-					src_offset = ib[idx+7];
-					src_offset |= ((u64)(ib[idx+8] & 0xff)) << 32;
+					src_offset = radeon_get_ib_value(p, idx+7);
+					src_offset |= ((u64)(radeon_get_ib_value(p, idx+8) & 0xff)) << 32;
 					ib[idx+7] += (u32)(src_reloc->lobj.gpu_offset & 0xfffffffc);
 					ib[idx+8] += upper_32_bits(src_reloc->lobj.gpu_offset) & 0xff;
 
-					dst_offset = ib[idx+1];
+					dst_offset = radeon_get_ib_value(p, idx+1);
 					dst_offset <<= 8;
 					ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset >> 8);
 				}
 				if ((src_offset + (count * 4)) > radeon_bo_size(src_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, T2L src buffer too small (%ju %lu)\n",
-							(uintmax_t)src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
+							src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, T2L dst buffer too small (%ju %lu)\n",
-							(uintmax_t)dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
+							dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
 					return -EINVAL;
 				}
 				p->idx += 9;
@@ -3034,7 +3031,7 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 			/* Copy L2T broadcast (tile units) */
 			case 0x4f:
 				/* L2T, broadcast */
-				if (ib[idx + 2] & (1 << 31)) {
+				if (radeon_get_ib_value(p, idx + 2) & (1 << 31)) {
 					DRM_ERROR("bad L2T, broadcast DMA_PACKET_COPY\n");
 					return -EINVAL;
 				}
@@ -3043,25 +3040,25 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 					DRM_ERROR("bad L2T, broadcast DMA_PACKET_COPY\n");
 					return -EINVAL;
 				}
-				dst_offset = ib[idx+1];
+				dst_offset = radeon_get_ib_value(p, idx+1);
 				dst_offset <<= 8;
-				dst2_offset = ib[idx+2];
+				dst2_offset = radeon_get_ib_value(p, idx+2);
 				dst2_offset <<= 8;
-				src_offset = ib[idx+8];
-				src_offset |= ((u64)(ib[idx+9] & 0xff)) << 32;
+				src_offset = radeon_get_ib_value(p, idx+8);
+				src_offset |= ((u64)(radeon_get_ib_value(p, idx+9) & 0xff)) << 32;
 				if ((src_offset + (count * 4)) > radeon_bo_size(src_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, broadcast src buffer too small (%ju %lu)\n",
-							(uintmax_t)src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
+							src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, broadcast dst buffer too small (%ju %lu)\n",
-							(uintmax_t)dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
+							dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
 					return -EINVAL;
 				}
 				if ((dst2_offset + (count * 4)) > radeon_bo_size(dst2_reloc->robj)) {
 					dev_warn(p->dev, "DMA L2T, broadcast dst2 buffer too small (%ju %lu)\n",
-							(uintmax_t)dst2_offset + (count * 4), radeon_bo_size(dst2_reloc->robj));
+							dst2_offset + (count * 4), radeon_bo_size(dst2_reloc->robj));
 					return -EINVAL;
 				}
 				ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset >> 8);
@@ -3071,7 +3068,7 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 				p->idx += 10;
 				break;
 			default:
-				DRM_ERROR("bad DMA_PACKET_COPY [%6d] 0x%08x invalid sub cmd\n", idx, ib[idx+0]);
+				DRM_ERROR("bad DMA_PACKET_COPY [%6d] 0x%08x invalid sub cmd\n", idx, header);
 				return -EINVAL;
 			}
 			break;
@@ -3085,7 +3082,7 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 			dst_offset |= ((u64)(radeon_get_ib_value(p, idx+3) & 0x00ff0000)) << 16;
 			if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 				dev_warn(p->dev, "DMA constant fill buffer too small (%ju %lu)\n",
-					 (uintmax_t)dst_offset, radeon_bo_size(dst_reloc->robj));
+					 dst_offset, radeon_bo_size(dst_reloc->robj));
 				return -EINVAL;
 			}
 			ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
@@ -3102,7 +3099,7 @@ int evergreen_dma_cs_parse(struct radeon_cs_parser *p)
 	} while (p->idx < p->chunks[p->chunk_ib_idx].length_dw);
 #if 0
 	for (r = 0; r < p->ib->length_dw; r++) {
-		DRM_INFO("%05d  0x%08X\n", r, p->ib.ptr[r]);
+		printk(KERN_INFO "%05d  0x%08X\n", r, p->ib.ptr[r]);
 		mdelay(1);
 	}
 #endif

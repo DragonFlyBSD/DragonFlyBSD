@@ -61,13 +61,11 @@ SRCS	+=								\
 	r520.c								\
 	r600.c								\
 	r600_audio.c							\
-	r600_blit_kms.c							\
 	r600_blit_shaders.c						\
 	r600_cs.c							\
 	r600_hdmi.c							\
 	rv770.c								\
 	evergreen.c							\
-	evergreen_blit_kms.c						\
 	evergreen_blit_shaders.c					\
 	evergreen_cs.c							\
 	evergreen_hdmi.c						\
@@ -75,7 +73,6 @@ SRCS	+=								\
 	ni.c								\
 	si.c								\
 	si_blit_shaders.c						\
-	radeon_uvd.c							\
 	cik.c								\
 	cik_blit_shaders.c						\
 	r600_dpm.c							\
@@ -93,8 +90,29 @@ SRCS	+=								\
 	trinity_smc.c							\
 	ni_dpm.c							\
 	si_smc.c							\
-	si_dpm.c
+	si_dpm.c							\
+	kv_smc.c							\
+	kv_dpm.c							\
+	ci_smc.c							\
+	ci_dpm.c							\
+	dce6_afmt.c
 
+# async DMA block
+SRCS	+=								\
+	r600_dma.c							\
+	rv770_dma.c							\
+	evergreen_dma.c							\
+	ni_dma.c							\
+	si_dma.c							\
+	cik_sdma.c
+
+# UVD block
+SRCS	+=								\
+	radeon_uvd.c							\
+	uvd_v1_0.c							\
+	uvd_v2_2.c							\
+	uvd_v3_1.c							\
+	uvd_v4_2.c
 
 # UMS driver
 #SRCS	+=								\

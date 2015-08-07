@@ -24,10 +24,7 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_irq_kms.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include <drm/drm_crtc_helper.h>
 #include <uapi_drm/radeon_drm.h>
@@ -264,7 +261,6 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 {
 	int r = 0;
 
-
 	lockinit(&rdev->irq.lock, "drm__radeon_device__irq__lock", 0, LK_CANRECURSE);
 	r = drm_vblank_init(rdev->ddev, rdev->num_crtc);
 	if (r) {
@@ -273,18 +269,19 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 	/* enable msi */
 	rdev->msi_enabled = (rdev->ddev->irq_type == PCI_INTR_TYPE_MSI);
 
+	TASK_INIT(&rdev->hotplug_work, 0, radeon_hotplug_work_func, rdev);
+	TASK_INIT(&rdev->audio_work, 0, r600_audio_update_hdmi, rdev);
+	TASK_INIT(&rdev->reset_work, 0, radeon_irq_reset_work_func, rdev);
+
 	rdev->irq.installed = true;
 	DRM_UNLOCK(rdev->ddev);
 	r = drm_irq_install(rdev->ddev, rdev->ddev->irq);
 	DRM_LOCK(rdev->ddev);
 	if (r) {
 		rdev->irq.installed = false;
+		taskqueue_drain(rdev->tq, &rdev->hotplug_work);
 		return r;
 	}
-
-	TASK_INIT(&rdev->hotplug_work, 0, radeon_hotplug_work_func, rdev);
-	TASK_INIT(&rdev->audio_work, 0, r600_audio_update_hdmi, rdev);
-	TASK_INIT(&rdev->reset_work, 0, radeon_irq_reset_work_func, rdev);
 
 	DRM_INFO("radeon: irq initialized.\n");
 	return 0;
@@ -303,8 +300,8 @@ void radeon_irq_kms_fini(struct radeon_device *rdev)
 	if (rdev->irq.installed) {
 		drm_irq_uninstall(rdev->ddev);
 		rdev->irq.installed = false;
+		taskqueue_drain(rdev->tq, &rdev->hotplug_work);
 	}
-	taskqueue_drain(rdev->tq, &rdev->hotplug_work);
 }
 
 /**

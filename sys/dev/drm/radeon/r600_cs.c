@@ -424,7 +424,7 @@ static int r600_cs_track_validate_cb(struct radeon_cs_parser *p, int i)
 	}
 	if (!IS_ALIGNED(base_offset, base_align)) {
 		dev_warn(p->dev, "%s offset[%d] 0x%jx 0x%jx, %d not aligned\n", __func__, i,
-			 (uintmax_t)base_offset, (uintmax_t)base_align, array_mode);
+			 base_offset, base_align, array_mode);
 		return -EINVAL;
 	}
 
@@ -453,7 +453,7 @@ static int r600_cs_track_validate_cb(struct radeon_cs_parser *p, int i)
 		} else {
 			dev_warn(p->dev, "%s offset[%d] %d %ju %d %lu too big (%d %d) (%d %d %d)\n",
 				 __func__, i, array_mode,
-				 (uintmax_t)track->cb_color_bo_offset[i], tmp,
+				 track->cb_color_bo_offset[i], tmp,
 				 radeon_bo_size(track->cb_color_bo[i]),
 				 pitch, height, r600_fmt_get_nblocksx(format, pitch),
 				 r600_fmt_get_nblocksy(format, height),
@@ -485,7 +485,7 @@ static int r600_cs_track_validate_cb(struct radeon_cs_parser *p, int i)
 				dev_warn(p->dev, "%s FMASK_TILE_MAX too large "
 					 "(tile_max=%u, bytes=%u, offset=%ju, bo_size=%lu)\n",
 					 __func__, tile_max, bytes,
-					 (uintmax_t)track->cb_color_frag_offset[i],
+					 track->cb_color_frag_offset[i],
 					 radeon_bo_size(track->cb_color_frag_bo[i]));
 				return -EINVAL;
 			}
@@ -503,7 +503,7 @@ static int r600_cs_track_validate_cb(struct radeon_cs_parser *p, int i)
 			dev_warn(p->dev, "%s CMASK_BLOCK_MAX too large "
 				 "(block_max=%u, bytes=%u, offset=%ju, bo_size=%lu)\n",
 				 __func__, block_max, bytes,
-				 (uintmax_t)track->cb_color_tile_offset[i],
+				 track->cb_color_tile_offset[i],
 				 radeon_bo_size(track->cb_color_tile_bo[i]));
 			return -EINVAL;
 		}
@@ -615,7 +615,7 @@ static int r600_cs_track_validate_db(struct radeon_cs_parser *p)
 		}
 		if (!IS_ALIGNED(base_offset, base_align)) {
 			dev_warn(p->dev, "%s offset 0x%jx, 0x%jx, %d not aligned\n", __func__,
-					(uintmax_t)base_offset, (uintmax_t)base_align, array_mode);
+					base_offset, base_align, array_mode);
 			return -EINVAL;
 		}
 
@@ -724,7 +724,7 @@ static int r600_cs_track_check(struct radeon_cs_parser *p)
 						(u64)track->vgt_strmout_size[i];
 					if (offset > radeon_bo_size(track->vgt_strmout_bo[i])) {
 						DRM_ERROR("streamout %d bo too small: 0x%jx, 0x%lx\n",
-							  i, (uintmax_t)offset,
+							  i, offset,
 							  radeon_bo_size(track->vgt_strmout_bo[i]));
 						return -EINVAL;
 					}
@@ -1556,12 +1556,12 @@ static int r600_check_texture_resource(struct radeon_cs_parser *p,  u32 idx,
 	}
 	if (!IS_ALIGNED(base_offset, base_align)) {
 		dev_warn(p->dev, "%s:%d tex base offset (0x%jx, 0x%jx, %d) invalid\n",
-			 __func__, __LINE__, (uintmax_t)base_offset, (uintmax_t)base_align, G_038000_TILE_MODE(word0));
+			 __func__, __LINE__, base_offset, base_align, G_038000_TILE_MODE(word0));
 		return -EINVAL;
 	}
 	if (!IS_ALIGNED(mip_offset, base_align)) {
 		dev_warn(p->dev, "%s:%d tex mip offset (0x%jx, 0x%jx, %d) invalid\n",
-			 __func__, __LINE__, (uintmax_t)mip_offset, (uintmax_t)base_align, G_038000_TILE_MODE(word0));
+			 __func__, __LINE__, mip_offset, base_align, G_038000_TILE_MODE(word0));
 		return -EINVAL;
 	}
 
@@ -1584,7 +1584,7 @@ static int r600_check_texture_resource(struct radeon_cs_parser *p,  u32 idx,
 			 w0, h0, pitch_align, height_align,
 			 array_check.array_mode, format, word2,
 			 l0_size, radeon_bo_size(texture));
-		dev_warn(p->dev, "alignments %d %d %d %jd\n", pitch, pitch_align, height_align, (uintmax_t)base_align);
+		dev_warn(p->dev, "alignments %d %d %d %jd\n", pitch, pitch_align, height_align, base_align);
 		return -EINVAL;
 	}
 	/* using get ib will give us the offset into the mipmap bo */
@@ -1795,7 +1795,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 
 			if ((tmp + size) > radeon_bo_size(reloc->robj)) {
 				dev_warn(p->dev, "CP DMA src buffer too small (%ju %lu)\n",
-					 (uintmax_t)tmp + size, radeon_bo_size(reloc->robj));
+					 tmp + size, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
 
@@ -1825,7 +1825,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 
 			if ((tmp + size) > radeon_bo_size(reloc->robj)) {
 				dev_warn(p->dev, "CP DMA dst buffer too small (%ju %lu)\n",
-					 (uintmax_t)tmp + size, radeon_bo_size(reloc->robj));
+					 tmp + size, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
 
@@ -2095,13 +2095,13 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 			offset = radeon_get_ib_value(p, idx+1) << 8;
 			if (offset != track->vgt_strmout_bo_offset[idx_value]) {
 				DRM_ERROR("bad STRMOUT_BASE_UPDATE, bo offset does not match: 0x%jx, 0x%x\n",
-					  (uintmax_t)offset, track->vgt_strmout_bo_offset[idx_value]);
+					  offset, track->vgt_strmout_bo_offset[idx_value]);
 				return -EINVAL;
 			}
 
 			if ((offset + 4) > radeon_bo_size(reloc->robj)) {
 				DRM_ERROR("bad STRMOUT_BASE_UPDATE bo too small: 0x%jx, 0x%lx\n",
-					  (uintmax_t)offset + 4, radeon_bo_size(reloc->robj));
+					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
 			ib[idx+1] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
@@ -2134,7 +2134,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 			offset += ((u64)(radeon_get_ib_value(p, idx+2) & 0xff)) << 32;
 			if ((offset + 4) > radeon_bo_size(reloc->robj)) {
 				DRM_ERROR("bad STRMOUT_BUFFER_UPDATE dst bo too small: 0x%jx, 0x%lx\n",
-					  (uintmax_t)offset + 4, radeon_bo_size(reloc->robj));
+					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
 			offset += reloc->lobj.gpu_offset;
@@ -2153,7 +2153,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 			offset += ((u64)(radeon_get_ib_value(p, idx+4) & 0xff)) << 32;
 			if ((offset + 4) > radeon_bo_size(reloc->robj)) {
 				DRM_ERROR("bad STRMOUT_BUFFER_UPDATE src bo too small: 0x%jx, 0x%lx\n",
-					  (uintmax_t)offset + 4, radeon_bo_size(reloc->robj));
+					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
 			offset += reloc->lobj.gpu_offset;
@@ -2182,7 +2182,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 		}
 		if ((offset + 8) > radeon_bo_size(reloc->robj)) {
 			DRM_ERROR("bad MEM_WRITE bo too small: 0x%jx, 0x%lx\n",
-				  (uintmax_t)offset + 8, radeon_bo_size(reloc->robj));
+				  offset + 8, radeon_bo_size(reloc->robj));
 			return -EINVAL;
 		}
 		offset += reloc->lobj.gpu_offset;
@@ -2207,7 +2207,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 			offset += ((u64)(radeon_get_ib_value(p, idx+2) & 0xff)) << 32;
 			if ((offset + 4) > radeon_bo_size(reloc->robj)) {
 				DRM_ERROR("bad COPY_DW src bo too small: 0x%jx, 0x%lx\n",
-					  (uintmax_t)offset + 4, radeon_bo_size(reloc->robj));
+					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
 			offset += reloc->lobj.gpu_offset;
@@ -2231,7 +2231,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 			offset += ((u64)(radeon_get_ib_value(p, idx+4) & 0xff)) << 32;
 			if ((offset + 4) > radeon_bo_size(reloc->robj)) {
 				DRM_ERROR("bad COPY_DW dst bo too small: 0x%jx, 0x%lx\n",
-					  (uintmax_t)offset + 4, radeon_bo_size(reloc->robj));
+					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
 			offset += reloc->lobj.gpu_offset;
@@ -2307,7 +2307,7 @@ int r600_cs_parse(struct radeon_cs_parser *p)
 	} while (p->idx < p->chunks[p->chunk_ib_idx].length_dw);
 #if 0
 	for (r = 0; r < p->ib.length_dw; r++) {
-		DRM_INFO("%05d  0x%08X\n", r, p->ib.ptr[r]);
+		printk(KERN_INFO "%05d  0x%08X\n", r, p->ib.ptr[r]);
 		mdelay(1);
 	}
 #endif
@@ -2510,7 +2510,7 @@ int r600_dma_cs_parse(struct radeon_cs_parser *p)
 			}
 			if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 				dev_warn(p->dev, "DMA write buffer too small (%ju %lu)\n",
-					 (uintmax_t)dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
+					 dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
 				return -EINVAL;
 			}
 			break;
@@ -2577,12 +2577,12 @@ int r600_dma_cs_parse(struct radeon_cs_parser *p)
 			}
 			if ((src_offset + (count * 4)) > radeon_bo_size(src_reloc->robj)) {
 				dev_warn(p->dev, "DMA copy src buffer too small (%ju %lu)\n",
-					 (uintmax_t)src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
+					 src_offset + (count * 4), radeon_bo_size(src_reloc->robj));
 				return -EINVAL;
 			}
 			if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 				dev_warn(p->dev, "DMA write dst buffer too small (%ju %lu)\n",
-					 (uintmax_t)dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
+					 dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
 				return -EINVAL;
 			}
 			break;
@@ -2600,7 +2600,7 @@ int r600_dma_cs_parse(struct radeon_cs_parser *p)
 			dst_offset |= ((u64)(radeon_get_ib_value(p, idx+3) & 0x00ff0000)) << 16;
 			if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
 				dev_warn(p->dev, "DMA constant fill buffer too small (%ju %lu)\n",
-					 (uintmax_t)dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
+					 dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
 				return -EINVAL;
 			}
 			ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
@@ -2617,7 +2617,7 @@ int r600_dma_cs_parse(struct radeon_cs_parser *p)
 	} while (p->idx < p->chunks[p->chunk_ib_idx].length_dw);
 #if 0
 	for (r = 0; r < p->ib->length_dw; r++) {
-		DRM_INFO("%05d  0x%08X\n", r, p->ib.ptr[r]);
+		printk(KERN_INFO "%05d  0x%08X\n", r, p->ib.ptr[r]);
 		mdelay(1);
 	}
 #endif

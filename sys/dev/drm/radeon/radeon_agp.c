@@ -23,10 +23,7 @@
  * Authors:
  *    Dave Airlie
  *    Jerome Glisse <glisse@freedesktop.org>
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_agp.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include "radeon.h"
 #include <uapi_drm/radeon_drm.h>
@@ -156,7 +153,7 @@ int radeon_agp_init(struct radeon_device *rdev)
 		drm_agp_release(rdev->ddev);
 		dev_warn(rdev->dev, "AGP aperture too small (%juM) "
 			"need at least 32M, disabling AGP\n",
-			(uintmax_t)rdev->ddev->agp->agp_info.ai_aperture_size);
+			rdev->ddev->agp->agp_info.ai_aperture_size);
 		return -EINVAL;
 	}
 
@@ -249,7 +246,7 @@ int radeon_agp_init(struct radeon_device *rdev)
 	rdev->mc.gtt_start = rdev->mc.agp_base;
 	rdev->mc.gtt_end = rdev->mc.gtt_start + rdev->mc.gtt_size - 1;
 	dev_info(rdev->dev, "GTT: %juM 0x%08jX - 0x%08jX\n",
-		(uintmax_t)rdev->mc.gtt_size >> 20, (uintmax_t)rdev->mc.gtt_start, (uintmax_t)rdev->mc.gtt_end);
+		rdev->mc.gtt_size >> 20, rdev->mc.gtt_start, rdev->mc.gtt_end);
 
 	/* workaround some hw issues */
 	if (rdev->family < CHIP_R200) {

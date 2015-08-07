@@ -172,7 +172,7 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 	case _DRM_SHM:
 		map->handle = kmalloc(map->size, M_DRM, M_WAITOK | M_NULLOK);
 		DRM_DEBUG("%lu %d %p\n",
-		    map->size, drm_order(map->size), map->handle);
+			  map->size, order_base_2(map->size), map->handle);
 		if (!map->handle) {
 			drm_free(map, M_DRM);
 			return ENOMEM;
@@ -460,7 +460,7 @@ static int drm_do_addbufs_agp(struct drm_device *dev, struct drm_buf_desc *reque
 	drm_buf_t **temp_buflist;
 
 	count = request->count;
-	order = drm_order(request->size);
+	order = order_base_2(request->size);
 	size = 1 << order;
 
 	alignment  = (request->flags & _DRM_PAGE_ALIGN)
@@ -591,7 +591,7 @@ static int drm_do_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *reque
 	drm_buf_t **temp_buflist;
 
 	count = request->count;
-	order = drm_order(request->size);
+	order = order_base_2(request->size);
 	size = 1 << order;
 
 	DRM_DEBUG("count=%d, size=%d (%d), order=%d\n",
@@ -743,7 +743,7 @@ static int drm_do_addbufs_sg(struct drm_device *dev, struct drm_buf_desc *reques
 	drm_buf_t **temp_buflist;
 
 	count = request->count;
-	order = drm_order(request->size);
+	order = order_base_2(request->size);
 	size = 1 << order;
 
 	alignment  = (request->flags & _DRM_PAGE_ALIGN)
@@ -854,7 +854,7 @@ int drm_addbufs_agp(struct drm_device * dev, struct drm_buf_desc * request)
 	if (request->count < 0 || request->count > 4096)
 		return EINVAL;
 	
-	order = drm_order(request->size);
+	order = order_base_2(request->size);
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
 		return EINVAL;
 
@@ -888,7 +888,7 @@ static int drm_addbufs_sg(struct drm_device * dev, struct drm_buf_desc * request
 	if (request->count < 0 || request->count > 4096)
 		return EINVAL;
 
-	order = drm_order(request->size);
+	order = order_base_2(request->size);
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
 		return EINVAL;
 
@@ -922,7 +922,7 @@ int drm_addbufs_pci(struct drm_device * dev, struct drm_buf_desc * request)
 	if (request->count < 0 || request->count > 4096)
 		return EINVAL;
 
-	order = drm_order(request->size);
+	order = order_base_2(request->size);
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
 		return EINVAL;
 
@@ -1066,9 +1066,7 @@ int drm_markbufs(struct drm_device *dev, void *data,
 
 	DRM_DEBUG("%d, %d, %d\n",
 		  request->size, request->low_mark, request->high_mark);
-	
-
-	order = drm_order(request->size);	
+	order = order_base_2(request->size);
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER ||
 	    request->low_mark < 0 || request->high_mark < 0) {
 		return EINVAL;
@@ -1223,34 +1221,9 @@ int drm_mapbufs(struct drm_device *dev, void *data,
 			goto done;
 		}
 	}
-
- done:
+      done:
 	request->count = dma->buf_count;
-
 	DRM_DEBUG("%d buffers, retcode = %d\n", request->count, retcode);
 
 	return retcode;
 }
-
-/**
- * Compute size order.  Returns the exponent of the smaller power of two which
- * is greater or equal to given number.
- *
- * \param size size.
- * \return order.
- *
- * \todo Can be made faster.
- */
-int drm_order(unsigned long size)
-{
-	int order;
-	unsigned long tmp;
-
-	for (order = 0, tmp = size >> 1; tmp; tmp >>= 1, order++) ;
-
-	if (size & (size - 1))
-		++order;
-
-	return order;
-}
-EXPORT_SYMBOL(drm_order);

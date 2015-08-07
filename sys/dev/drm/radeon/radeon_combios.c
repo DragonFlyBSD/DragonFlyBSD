@@ -895,8 +895,8 @@ struct radeon_encoder_primary_dac *radeon_combios_get_primary_dac_info(struct
 	/* quirks */
 	/* Radeon 7000 (RV100) */
 	if (((rdev->ddev->pci_device == 0x5159) &&
-+	    (rdev->ddev->pci_subvendor == 0x174B) &&
-+	    (rdev->ddev->pci_subdevice == 0x7c28)) ||
+	    (rdev->ddev->pci_subvendor == 0x174B) &&
+	    (rdev->ddev->pci_subdevice == 0x7c28)) ||
 	/* Radeon 9100 (R200) */
 	   ((rdev->ddev->pci_device == 0x514D) &&
 	    (rdev->ddev->pci_subvendor == 0x174B) &&

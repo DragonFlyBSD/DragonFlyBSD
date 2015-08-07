@@ -497,8 +497,8 @@ void radeon_vram_location(struct radeon_device *rdev, struct radeon_mc *mc, u64 
 	if (limit && limit < mc->real_vram_size)
 		mc->real_vram_size = limit;
 	dev_info(rdev->dev, "VRAM: %juM 0x%016jX - 0x%016jX (%juM used)\n",
-			(uintmax_t)mc->mc_vram_size >> 20, (uintmax_t)mc->vram_start,
-			(uintmax_t)mc->vram_end, (uintmax_t)mc->real_vram_size >> 20);
+			mc->mc_vram_size >> 20, mc->vram_start,
+			mc->vram_end, mc->real_vram_size >> 20);
 }
 
 /**
@@ -534,7 +534,7 @@ void radeon_gtt_location(struct radeon_device *rdev, struct radeon_mc *mc)
 	}
 	mc->gtt_end = mc->gtt_start + mc->gtt_size - 1;
 	dev_info(rdev->dev, "GTT: %juM 0x%016jX - 0x%016jX\n",
-			(uintmax_t)mc->gtt_size >> 20, (uintmax_t)mc->gtt_start, (uintmax_t)mc->gtt_end);
+			mc->gtt_size >> 20, mc->gtt_start, mc->gtt_end);
 }
 
 /*
@@ -1002,16 +1002,28 @@ static void radeon_check_arguments(struct radeon_device *rdev)
 		radeon_vram_limit = 0;
 	}
 
+	if (radeon_gart_size == -1) {
+		/* default to a larger gart size on newer asics */
+		if (rdev->family >= CHIP_RV770)
+			radeon_gart_size = 1024;
+		else
+			radeon_gart_size = 512;
+	}
 	/* gtt size must be power of two and greater or equal to 32M */
 	if (radeon_gart_size < 32) {
-		dev_warn(rdev->dev, "gart size (%d) too small forcing to 512M\n",
+		dev_warn(rdev->dev, "gart size (%d) too small\n",
 				radeon_gart_size);
-		radeon_gart_size = 512;
-
+		if (rdev->family >= CHIP_RV770)
+			radeon_gart_size = 1024;
+		else
+			radeon_gart_size = 512;
 	} else if (!radeon_check_pot_argument(radeon_gart_size)) {
 		dev_warn(rdev->dev, "gart size (%d) must be a power of 2\n",
 				radeon_gart_size);
-		radeon_gart_size = 512;
+		if (rdev->family >= CHIP_RV770)
+			radeon_gart_size = 1024;
+		else
+			radeon_gart_size = 512;
 	}
 	rdev->mc.gtt_size = (uint64_t)radeon_gart_size << 20;
 
@@ -1146,7 +1158,7 @@ int radeon_device_init(struct radeon_device *rdev,
 	rdev->family = flags & RADEON_FAMILY_MASK;
 	rdev->is_atom_bios = false;
 	rdev->usec_timeout = RADEON_MAX_USEC_TIMEOUT;
-	rdev->mc.gtt_size = radeon_gart_size * 1024 * 1024;
+	rdev->mc.gtt_size = 512 * 1024 * 1024;
 	rdev->accel_working = false;
 	rdev->fictitious_range_registered = false;
 	/* set up ring ids */
@@ -1292,7 +1304,7 @@ int radeon_device_init(struct radeon_device *rdev,
 	/* this will fail for cards that aren't VGA class devices, just
 	 * ignore it */
 	vga_client_register(rdev->pdev, rdev, NULL, radeon_vga_set_decode);
-	vga_switcheroo_register_client(rdev->pdev, &radeon_switcheroo_ops);
+	vga_switcheroo_register_client(rdev->pdev, &radeon_switcheroo_ops, false);
 #endif /* DUMBBELL_WIP */
 
 	r = radeon_init(rdev);
@@ -1336,13 +1348,22 @@ int radeon_device_init(struct radeon_device *rdev,
 	rdev->fictitious_range_registered = true;
 
 	if ((radeon_testing & 1)) {
-		radeon_test_moves(rdev);
+		if (rdev->accel_working)
+			radeon_test_moves(rdev);
+		else
+			DRM_INFO("radeon: acceleration disabled, skipping move tests\n");
 	}
 	if ((radeon_testing & 2)) {
-		radeon_test_syncing(rdev);
+		if (rdev->accel_working)
+			radeon_test_syncing(rdev);
+		else
+			DRM_INFO("radeon: acceleration disabled, skipping sync tests\n");
 	}
 	if (radeon_benchmarking) {
-		radeon_benchmark(rdev, radeon_benchmarking);
+		if (rdev->accel_working)
+			radeon_benchmark(rdev, radeon_benchmarking);
+		else
+			DRM_INFO("radeon: acceleration disabled, skipping benchmarks\n");
 	}
 	return 0;
 }

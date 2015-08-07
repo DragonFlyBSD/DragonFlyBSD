@@ -146,6 +146,7 @@ int radeon_uvd_init(struct radeon_device *rdev)
 	for (i = 0; i < RADEON_MAX_UVD_HANDLES; ++i) {
 		atomic_set(&rdev->uvd.handles[i], 0);
 		rdev->uvd.filp[i] = NULL;
+		rdev->uvd.img_size[i] = 0;
 	}
 
 	return 0;
@@ -346,6 +347,7 @@ static int radeon_uvd_cs_msg(struct radeon_cs_parser *p, struct radeon_bo *bo,
 			     unsigned offset, unsigned buf_sizes[])
 {
 	int32_t *msg, msg_type, handle;
+	unsigned img_size = 0;
 	void *ptr;
 
 	int i, r;
@@ -382,6 +384,8 @@ static int radeon_uvd_cs_msg(struct radeon_cs_parser *p, struct radeon_bo *bo,
 	if (msg_type == 1) {
 		/* it's a decode msg, calc buffer sizes */
 		r = radeon_uvd_cs_msg_decode(msg, buf_sizes);
+		/* calc image size (width * height) */
+		img_size = msg[6] * msg[7];
 		radeon_bo_kunmap(bo);
 		if (r)
 			return r;
@@ -393,6 +397,8 @@ static int radeon_uvd_cs_msg(struct radeon_cs_parser *p, struct radeon_bo *bo,
 		radeon_bo_kunmap(bo);
 		return 0;
 	} else {
+		/* it's a create msg, calc image size (width * height) */
+		img_size = msg[7] * msg[8];
 		radeon_bo_kunmap(bo);
 
 		if (msg_type != 0) {
@@ -416,6 +422,7 @@ static int radeon_uvd_cs_msg(struct radeon_cs_parser *p, struct radeon_bo *bo,
 #endif
 		if (atomic_cmpset(&p->rdev->uvd.handles[i], 0, handle) == 1) {
 			p->rdev->uvd.filp[i] = p->filp;
+			p->rdev->uvd.img_size[i] = img_size;
 			return 0;
 		}
 	}
@@ -592,6 +599,7 @@ static int radeon_uvd_send_msg(struct radeon_device *rdev,
 			       struct radeon_fence **fence)
 {
 	struct ttm_validate_buffer tv;
+	struct ww_acquire_ctx ticket;
 	struct list_head head;
 	struct radeon_ib ib;
 	uint64_t addr;
@@ -603,7 +611,7 @@ static int radeon_uvd_send_msg(struct radeon_device *rdev,
 	INIT_LIST_HEAD(&head);
 	list_add(&tv.head, &head);
 
-	r = ttm_eu_reserve_buffers(&head);
+	r = ttm_eu_reserve_buffers(&ticket, &head);
 	if (r)
 		return r;
 
@@ -611,16 +619,12 @@ static int radeon_uvd_send_msg(struct radeon_device *rdev,
 	radeon_uvd_force_into_uvd_segment(bo);
 
 	r = ttm_bo_validate(&bo->tbo, &bo->placement, true, false);
-	if (r) {
-		ttm_eu_backoff_reservation(&head);
-		return r;
-	}
+	if (r)
+		goto err;
 
 	r = radeon_ib_get(rdev, ring, &ib, NULL, 16);
-	if (r) {
-		ttm_eu_backoff_reservation(&head);
-		return r;
-	}
+	if (r)
+		goto err;
 
 	addr = radeon_bo_gpu_offset(bo);
 	ib.ptr[0] = PACKET0(UVD_GPCOM_VCPU_DATA0, 0);
@@ -634,11 +638,9 @@ static int radeon_uvd_send_msg(struct radeon_device *rdev,
 	ib.length_dw = 16;
 
 	r = radeon_ib_schedule(rdev, &ib, NULL);
-	if (r) {
-		ttm_eu_backoff_reservation(&head);
-		return r;
-	}
-	ttm_eu_fence_buffer_objects(&head, ib.fence);
+	if (r)
+		goto err;
+	ttm_eu_fence_buffer_objects(&ticket, &head, ib.fence);
 
 	if (fence)
 		*fence = radeon_fence_ref(ib.fence);
@@ -646,6 +648,10 @@ static int radeon_uvd_send_msg(struct radeon_device *rdev,
 	radeon_ib_free(rdev, &ib);
 	radeon_bo_unref(&bo);
 	return 0;
+
+err:
+	ttm_eu_backoff_reservation(&ticket, &head);
+	return r;
 }
 
 /* multiple fence commands without any stream commands in between can
@@ -736,6 +742,34 @@ int radeon_uvd_get_destroy_msg(struct radeon_device *rdev, int ring,
 	return radeon_uvd_send_msg(rdev, ring, bo, fence);
 }
 
+/**
+ * radeon_uvd_count_handles - count number of open streams
+ *
+ * @rdev: radeon_device pointer
+ * @sd: number of SD streams
+ * @hd: number of HD streams
+ *
+ * Count the number of open SD/HD streams as a hint for power mangement
+ */
+static void radeon_uvd_count_handles(struct radeon_device *rdev,
+				     unsigned *sd, unsigned *hd)
+{
+	unsigned i;
+
+	*sd = 0;
+	*hd = 0;
+
+	for (i = 0; i < RADEON_MAX_UVD_HANDLES; ++i) {
+		if (!atomic_read(&rdev->uvd.handles[i]))
+			continue;
+
+		if (rdev->uvd.img_size[i] >= 720*576)
+			++(*hd);
+		else
+			++(*sd);
+	}
+}
+
 static void radeon_uvd_idle_work_handler(struct work_struct *work)
 {
 	struct radeon_device *rdev =
@@ -743,10 +777,7 @@ static void radeon_uvd_idle_work_handler(struct work_struct *work)
 
 	if (radeon_fence_count_emitted(rdev, R600_RING_TYPE_UVD_INDEX) == 0) {
 		if ((rdev->pm.pm_method == PM_METHOD_DPM) && rdev->pm.dpm_enabled) {
-			lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
-			rdev->pm.dpm.uvd_active = false;
-			lockmgr(&rdev->pm.mutex, LK_RELEASE);
-			radeon_pm_compute_clocks(rdev);
+			radeon_dpm_enable_uvd(rdev, false);
 		} else {
 			radeon_set_uvd_clocks(rdev, 0, 0);
 		}
@@ -758,13 +789,26 @@ static void radeon_uvd_idle_work_handler(struct work_struct *work)
 
 void radeon_uvd_note_usage(struct radeon_device *rdev)
 {
+	bool streams_changed = false;
 	bool set_clocks = !cancel_delayed_work_sync(&rdev->uvd.idle_work);
 	set_clocks &= schedule_delayed_work(&rdev->uvd.idle_work,
 					    msecs_to_jiffies(UVD_IDLE_TIMEOUT_MS));
-	if (set_clocks) {
+
+	if ((rdev->pm.pm_method == PM_METHOD_DPM) && rdev->pm.dpm_enabled) {
+		unsigned hd = 0, sd = 0;
+		radeon_uvd_count_handles(rdev, &sd, &hd);
+		if ((rdev->pm.dpm.sd != sd) ||
+		    (rdev->pm.dpm.hd != hd)) {
+			rdev->pm.dpm.sd = sd;
+			rdev->pm.dpm.hd = hd;
+			/* disable this for now */
+			/*streams_changed = true;*/
+		}
+	}
+
+	if (set_clocks || streams_changed) {
 		if ((rdev->pm.pm_method == PM_METHOD_DPM) && rdev->pm.dpm_enabled) {
-			/* XXX pick SD/HD/MVC */
-			radeon_dpm_enable_power_state(rdev, POWER_STATE_TYPE_INTERNAL_UVD);
+			radeon_dpm_enable_uvd(rdev, true);
 		} else {
 			radeon_set_uvd_clocks(rdev, 53300, 40000);
 		}

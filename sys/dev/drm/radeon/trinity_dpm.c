@@ -1072,6 +1072,17 @@ static void trinity_update_requested_ps(struct radeon_device *rdev,
 	pi->requested_rps.ps_priv = &pi->requested_ps;
 }
 
+void trinity_dpm_enable_bapm(struct radeon_device *rdev, bool enable)
+{
+	struct trinity_power_info *pi = trinity_get_pi(rdev);
+
+	if (pi->enable_bapm) {
+		trinity_acquire_mutex(rdev);
+		trinity_dpm_bapm_enable(rdev, enable);
+		trinity_release_mutex(rdev);
+	}
+}
+
 int trinity_dpm_enable(struct radeon_device *rdev)
 {
 	struct trinity_power_info *pi = trinity_get_pi(rdev);
@@ -1095,6 +1106,7 @@ int trinity_dpm_enable(struct radeon_device *rdev)
 	trinity_program_sclk_dpm(rdev);
 	trinity_start_dpm(rdev);
 	trinity_wait_for_dpm_enabled(rdev);
+	trinity_dpm_bapm_enable(rdev, false);
 	trinity_release_mutex(rdev);
 
 	if (rdev->irq.installed &&
@@ -1120,6 +1132,7 @@ void trinity_dpm_disable(struct radeon_device *rdev)
 		trinity_release_mutex(rdev);
 		return;
 	}
+	trinity_dpm_bapm_enable(rdev, false);
 	trinity_disable_clock_power_gating(rdev);
 	sumo_clear_vc(rdev);
 	trinity_wait_for_level_0(rdev);
@@ -1216,6 +1229,8 @@ int trinity_dpm_set_power_state(struct radeon_device *rdev)
 
 	trinity_acquire_mutex(rdev);
 	if (pi->enable_dpm) {
+		if (pi->enable_bapm)
+			trinity_dpm_bapm_enable(rdev, rdev->pm.dpm.ac_power);
 		trinity_set_uvd_clock_before_set_eng_clock(rdev, new_ps, old_ps);
 		trinity_enable_power_level_0(rdev);
 		trinity_force_level_0(rdev);
@@ -1225,7 +1240,6 @@ int trinity_dpm_set_power_state(struct radeon_device *rdev)
 		trinity_force_level_0(rdev);
 		trinity_unforce_levels(rdev);
 		trinity_set_uvd_clock_after_set_eng_clock(rdev, new_ps, old_ps);
-		rdev->pm.dpm.forced_level = RADEON_DPM_FORCED_LEVEL_AUTO;
 	}
 	trinity_release_mutex(rdev);
 
@@ -1679,6 +1693,7 @@ static int trinity_parse_power_table(struct radeon_device *rdev)
 	rdev->pm.dpm.backbias_response_time = le16_to_cpu(power_info->pplib.usBackbiasTime);
 	rdev->pm.dpm.voltage_response_time = le16_to_cpu(power_info->pplib.usVoltageTime);
 	for (i = 0; i < state_array->ucNumEntries; i++) {
+		u8 *idx;
 		power_state = (union pplib_power_state *)power_state_offset;
 		non_clock_array_index = power_state->v2.nonClockInfoIndex;
 		non_clock_info = (struct _ATOM_PPLIB_NONCLOCK_INFO *)
@@ -1692,14 +1707,16 @@ static int trinity_parse_power_table(struct radeon_device *rdev)
 		}
 		rdev->pm.dpm.ps[i].ps_priv = ps;
 		k = 0;
+		idx = (u8 *)&power_state->v2.clockInfoIndex[0];
 		for (j = 0; j < power_state->v2.ucNumDPMLevels; j++) {
-			clock_array_index = power_state->v2.clockInfoIndex[j];
+			clock_array_index = idx[j];
 			if (clock_array_index >= clock_info_array->ucNumEntries)
 				continue;
 			if (k >= SUMO_MAX_HARDWARE_POWERLEVELS)
 				break;
 			clock_info = (union pplib_clock_info *)
-				&clock_info_array->clockInfo[clock_array_index * clock_info_array->ucEntrySize];
+				((u8 *)&clock_info_array->clockInfo[0] +
+				 (clock_array_index * clock_info_array->ucEntrySize));
 			trinity_parse_pplib_clock_info(rdev,
 						       &rdev->pm.dpm.ps[i], k,
 						       clock_info);
@@ -1855,6 +1872,7 @@ int trinity_dpm_init(struct radeon_device *rdev)
 	for (i = 0; i < SUMO_MAX_HARDWARE_POWERLEVELS; i++)
 		pi->at[i] = TRINITY_AT_DFLT;
 
+	pi->enable_bapm = false;
 	pi->enable_nbps_policy = true;
 	pi->enable_sclk_ds = true;
 	pi->enable_gfx_power_gating = true;

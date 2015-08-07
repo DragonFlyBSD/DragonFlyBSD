@@ -99,9 +99,6 @@ int radeon_mode_dumb_mmap(struct drm_file *filp,
 int radeon_mode_dumb_create(struct drm_file *file_priv,
 			    struct drm_device *dev,
 			    struct drm_mode_create_dumb *args);
-int radeon_mode_dumb_destroy(struct drm_file *file_priv,
-			     struct drm_device *dev,
-			     uint32_t handle);
 struct sg_table *radeon_gem_prime_get_sg_table(struct drm_gem_object *obj);
 struct drm_gem_object *radeon_gem_prime_import_sg_table(struct drm_device *dev,
 							size_t size,
@@ -131,12 +128,12 @@ int radeon_dynclks = -1;
 int radeon_r4xx_atom = 0;
 int radeon_agpmode = 0;
 int radeon_vram_limit = 0;
-int radeon_gart_size = 512; /* default gart size */
+int radeon_gart_size = -1; /* auto */
 int radeon_benchmarking = 0;
 int radeon_testing = 0;
 int radeon_connector_table = 0;
 int radeon_tv = 1;
-int radeon_audio = 0;
+int radeon_audio = -1;
 int radeon_disp_priority = 0;
 int radeon_hw_i2c = 0;
 int radeon_pcie_gen2 = -1;
@@ -170,7 +167,7 @@ MODULE_PARM_DESC(agpmode, "AGP Mode (-1 == PCI)");
 module_param_named(agpmode, radeon_agpmode, int, 0444);
 
 TUNABLE_INT("drm.radeon.gart_size", &radeon_gart_size);
-MODULE_PARM_DESC(gartsize, "Size of PCIE/IGP gart to setup in megabytes (32, 64, etc)");
+MODULE_PARM_DESC(gartsize, "Size of PCIE/IGP gart to setup in megabytes (32, 64, etc., -1 = auto)");
 module_param_named(gartsize, radeon_gart_size, int, 0600);
 
 TUNABLE_INT("drm.radeon.benchmarking", &radeon_benchmarking);
@@ -190,7 +187,7 @@ MODULE_PARM_DESC(tv, "TV enable (0 = disable)");
 module_param_named(tv, radeon_tv, int, 0444);
 
 TUNABLE_INT("drm.radeon.audio", &radeon_audio);
-MODULE_PARM_DESC(audio, "Audio enable (1 = enable)");
+MODULE_PARM_DESC(audio, "Audio enable (-1 = auto, 0 = disable, 1 = enable)");
 module_param_named(audio, radeon_audio, int, 0444);
 
 TUNABLE_INT("drm.radeon.disp_priority", &radeon_disp_priority);
@@ -270,7 +267,6 @@ static const struct file_operations radeon_driver_old_fops = {
 	.unlocked_ioctl = drm_ioctl,
 	.mmap = drm_mmap,
 	.poll = drm_poll,
-	.fasync = drm_fasync,
 	.read = drm_read,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = radeon_compat_ioctl,
@@ -383,7 +379,6 @@ static const struct file_operations radeon_driver_kms_fops = {
 	.unlocked_ioctl = drm_ioctl,
 	.mmap = radeon_mmap,
 	.poll = drm_poll,
-	.fasync = drm_fasync,
 	.read = drm_read,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = radeon_kms_compat_ioctl,
@@ -393,15 +388,14 @@ static const struct file_operations radeon_driver_kms_fops = {
 
 static struct drm_driver kms_driver = {
 	.driver_features =
-	    DRIVER_USE_AGP | DRIVER_PCI_DMA | DRIVER_SG |
-	    DRIVER_HAVE_IRQ | DRIVER_HAVE_DMA | DRIVER_IRQ_SHARED | DRIVER_GEM |
-	    DRIVER_PRIME /* | DRIVE_MODESET */,
+	    DRIVER_USE_AGP |
+	    DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED | DRIVER_GEM |
+	    DRIVER_PRIME | DRIVER_RENDER,
 #ifdef DUMBBELL_WIP
 	.dev_priv_size = 0,
 #endif /* DUMBBELL_WIP */
 	.load = radeon_driver_load_kms,
 	.use_msi = radeon_msi_ok,
-	.firstopen = radeon_driver_firstopen_kms,
 	.open = radeon_driver_open_kms,
 	.preclose = radeon_driver_preclose_kms,
 	.postclose = radeon_driver_postclose_kms,
@@ -424,10 +418,9 @@ static struct drm_driver kms_driver = {
 	.gem_free_object = radeon_gem_object_free,
 	.gem_open_object = radeon_gem_object_open,
 	.gem_close_object = radeon_gem_object_close,
-	.dma_ioctl = radeon_dma_ioctl_kms,
 	.dumb_create = radeon_mode_dumb_create,
 	.dumb_map_offset = radeon_mode_dumb_mmap,
-	.dumb_destroy = radeon_mode_dumb_destroy,
+	.dumb_destroy = drm_gem_dumb_destroy,
 #ifdef DUMBBELL_WIP
 	.fops = &radeon_driver_kms_fops,
 #endif /* DUMBBELL_WIP */
