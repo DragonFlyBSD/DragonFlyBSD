@@ -6,7 +6,7 @@
 # cares to do some of the `dirty' work like maintaining the modules
 # database accordingly.
 #
-# Written by Jörg Wunsch, 95/03/07, and placed in the public domain.
+# Written by Joerg Wunsch, 95/03/07, and placed in the public domain.
 #
 # $FreeBSD: src/gnu/usr.bin/cvs/contrib/easy-import.pl,v 1.16 1999/09/05 17:35:31 peter Exp $
 # $DragonFly: src/gnu/usr.bin/cvs/contrib/easy-import.pl,v 1.2 2003/06/17 04:25:45 dillon Exp $
