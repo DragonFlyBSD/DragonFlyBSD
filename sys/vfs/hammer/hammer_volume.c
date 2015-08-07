@@ -623,8 +623,6 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 		layer1->blocks_free = stat->counter;
 		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 		hammer_modify_buffer_done(*bufferp);
-
-		stat->total_free_bigblocks += stat->counter;
 		stat->counter = 0; /* reset */
 	} else if (layer2) {
 		hammer_modify_buffer(trans, *bufferp, layer2, sizeof(*layer2));
@@ -650,6 +648,7 @@ format_callback(hammer_transaction_t trans, hammer_volume_t volume,
 			layer2->append_off = 0;
 			layer2->bytes_free = HAMMER_BIGBLOCK_SIZE;
 			++stat->total_bigblocks;
+			++stat->total_free_bigblocks;
 			++stat->counter;
 		} else {
 			/*
