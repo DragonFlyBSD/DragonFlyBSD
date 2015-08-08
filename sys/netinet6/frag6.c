@@ -494,7 +494,7 @@ dropfrag:
  * Free a fragment reassembly header and all
  * associated datagrams.
  */
-void
+static void
 frag6_freef(struct ip6q *q6)
 {
 	struct ip6asfrag *af6, *down6;
@@ -535,7 +535,7 @@ frag6_freef(struct ip6q *q6)
  * Put an ip fragment on a reassembly chain.
  * Like insque, but pointers in middle of structure.
  */
-void
+static void
 frag6_enq(struct ip6asfrag *af6, struct ip6asfrag *up6)
 {
 	af6->ip6af_up = up6;
@@ -547,14 +547,14 @@ frag6_enq(struct ip6asfrag *af6, struct ip6asfrag *up6)
 /*
  * To frag6_enq as remque is to insque.
  */
-void
+static void
 frag6_deq(struct ip6asfrag *af6)
 {
 	af6->ip6af_up->ip6af_down = af6->ip6af_down;
 	af6->ip6af_down->ip6af_up = af6->ip6af_up;
 }
 
-void
+static void
 frag6_insque(struct ip6q *new, struct ip6q *old)
 {
 	new->ip6q_prev = old;
@@ -563,7 +563,7 @@ frag6_insque(struct ip6q *new, struct ip6q *old)
 	old->ip6q_next = new;
 }
 
-void
+static void
 frag6_remque(struct ip6q *p6)
 {
 	p6->ip6q_prev->ip6q_next = p6->ip6q_next;

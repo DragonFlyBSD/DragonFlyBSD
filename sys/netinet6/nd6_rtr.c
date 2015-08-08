@@ -481,7 +481,7 @@ defrouter_addreq(struct nd_defrouter *new)
 }
 
 /* Add a route to a given interface as default */
-void
+static void
 defrouter_addifreq(struct ifnet *ifp)
 {
 	struct sockaddr_in6 def, mask;

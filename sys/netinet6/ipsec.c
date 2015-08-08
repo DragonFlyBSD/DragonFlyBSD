@@ -679,7 +679,7 @@ ipsec6_getpolicybyaddr(struct mbuf *m, u_int dir, int flag, int *error)
  *	0:	success.
  *	other:	failure, and set errno.
  */
-int
+static int
 ipsec_setspidx_mbuf(struct secpolicyindex *spidx, u_int dir, u_int family,
 		    struct mbuf *m, int needport)
 {
