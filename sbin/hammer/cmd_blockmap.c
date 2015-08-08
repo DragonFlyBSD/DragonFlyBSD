@@ -180,9 +180,15 @@ dump_blockmap(const char *label, int zone)
 					HAMMER_VOL_DECODE(scan2),
 					HAMMER_BLOCKMAP_LAYER1_INDEX(scan2),
 					HAMMER_BLOCKMAP_LAYER2_INDEX(scan2));
-			printf("app=%-7d free=%-7d\n",
+			printf("app=%-7d free=%-7d",
 				layer2->append_off,
 				layer2->bytes_free);
+			if (VerboseOpt)
+				printf(" crc=%04x-%04x\n",
+					layer1->layer1_crc,
+					layer2->entry_crc);
+			else
+				printf("\n");
 
 			if (VerboseOpt)
 				hammer_add_zone_stat_layer2(stats, layer2);
