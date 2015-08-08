@@ -289,11 +289,6 @@ lo_altqstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			isr = NETISR_IPV6;
 			break;
 #endif
-#ifdef ISO
-		case AF_ISO:
-			isr = NETISR_ISO;
-			break;
-#endif
 		default:
 			kprintf("lo_altqstart: can't handle af%d\n", af);
 			m_freem(m);

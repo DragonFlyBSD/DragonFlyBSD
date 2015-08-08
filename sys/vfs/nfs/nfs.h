@@ -35,7 +35,6 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.21 2008/09/17 21:44:24 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -456,7 +455,6 @@ struct nfsuid {
 /* Bits for nu_flag */
 #define	NU_INETADDR	0x1
 #define NU_NAM		0x2
-#define NU_NETFAM(u)	(((u)->nu_flag & NU_INETADDR) ? AF_INET : AF_ISO)
 
 struct nfsrv_rec {
 	STAILQ_ENTRY(nfsrv_rec) nr_link;

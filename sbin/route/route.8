@@ -28,7 +28,7 @@
 .\"     @(#)route.8	8.3 (Berkeley) 3/19/94
 .\" $FreeBSD: src/sbin/route/route.8,v 1.17.2.9 2003/02/24 00:56:43 trhodes Exp $
 .\"
-.Dd June 8, 2001
+.Dd August 8, 2015
 .Dt ROUTE 8
 .Os
 .Sh NAME
@@ -131,8 +131,7 @@ command is specified,
 .Nm
 will ``flush'' the routing tables of all gateway entries.
 When the address family may is specified by any of the
-.Fl osi ,
-.Fl inet6 ,
+.Fl inet6
 or
 .Fl inet
 modifiers, only routes having destinations with addresses in the
@@ -219,29 +218,20 @@ itself may be given, in which case the route remains valid even
 if the local or remote addresses change.
 .Pp
 The optional modifiers
-.Fl mpls ,
-.Fl osi ,
+.Fl mpls
 and
 .Fl link
 specify that all subsequent addresses are in the
-.Tn MPLS ,
-or
-.Tn OSI
-address families,
+.Tn MPLS
+address family
 or are specified as link-level addresses,
 and the names must be numeric specifications rather than
 symbolic names.
 .Pp
 The optional
 .Fl netmask
-modifier is intended
-to achieve the effect of an
-.Tn OSI
-.Tn ESIS
-redirect with the netmask option,
-or to manually add subnet routes with
-netmasks different from that of the implied network interface
-(as would otherwise be communicated using the OSPF or ISIS routing protocols).
+modifier is intended to manually add subnet routes with
+netmasks different from that of the implied network interface.
 One specifies an additional ensuing address parameter
 (to be interpreted as a network mask).
 The implicit network mask generated in the AF_INET case

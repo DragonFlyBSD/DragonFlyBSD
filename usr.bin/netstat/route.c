@@ -190,9 +190,6 @@ pr_family(int af1)
 		afname = "Internet6";
 		break;
 #endif /*INET6*/
-	case AF_ISO:
-		afname = "ISO";
-		break;
 	case AF_CCITT:
 		afname = "X.25";
 		break;

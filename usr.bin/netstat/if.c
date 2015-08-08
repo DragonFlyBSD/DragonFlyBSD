@@ -44,10 +44,6 @@
 #include <net/ethernet.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
-#ifdef ISO
-#include <netiso/iso.h>
-#include <netiso/iso_var.h>
-#endif
 #include <arpa/inet.h>
 
 #include <libutil.h>
@@ -115,9 +111,6 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 		struct in_ifaddr in;
 #ifdef INET6
 		struct in6_ifaddr in6;
-#endif
-#ifdef ISO
-		struct iso_ifaddr iso;
 #endif
 	} ifaddr;
 	u_long ifaddraddr;

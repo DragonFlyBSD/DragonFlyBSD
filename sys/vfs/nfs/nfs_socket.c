@@ -1640,7 +1640,7 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 		    for (nuidp = NUIDHASH(slp, nd->nd_cr.cr_uid)->lh_first;
 			nuidp != NULL; nuidp = nuidp->nu_hash.le_next) {
 			if (nuidp->nu_cr.cr_uid == nd->nd_cr.cr_uid &&
-			    (!nd->nd_nam2 || netaddr_match(NU_NETFAM(nuidp),
+			    (!nd->nd_nam2 || netaddr_match(AF_INET,
 			     &nuidp->nu_haddr, nd->nd_nam2)))
 			    break;
 		    }
@@ -2456,7 +2456,7 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 			    nuidp != NULL; nuidp = nuidp->nu_hash.le_next) {
 				if (nuidp->nu_cr.cr_uid == nickuid &&
 				    (!nd->nd_nam2 ||
-				     netaddr_match(NU_NETFAM(nuidp),
+				     netaddr_match(AF_INET,
 				      &nuidp->nu_haddr, nd->nd_nam2)))
 					break;
 			}

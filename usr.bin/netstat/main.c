@@ -219,21 +219,6 @@ struct protox netgraphprotox[] = {
 	  0,		NULL,		NULL,	0 }
 };
 
-#ifdef ISO
-struct protox isoprotox[] = {
-	{ ISO_TP,	N_TPSTAT,	1,	iso_protopr,
-	  tp_stats,	NULL,		"tp" },
-	{ N_CLTP,	N_CLTPSTAT,	1,	iso_protopr,
-	  cltp_stats,	NULL,		"cltp" },
-	{ -1,		N_CLNPSTAT,	1,	 0,
-	  clnp_stats,	NULL,		"clnp"},
-	{ -1,		N_ESISSTAT,	1,	 0,
-	  esis_stats,	NULL,		"esis"},
-	{ -1,		-1,		0,	0,
-	  0,		NULL,		0 }
-};
-#endif
-
 struct protox *protoprotox[] = {
 					 protox,
 #ifdef INET6
@@ -241,9 +226,6 @@ struct protox *protoprotox[] = {
 #endif
 #ifdef IPSEC
 					 pfkeyprotox,
-#endif
-#ifdef ISO
-					 isoprotox, 
 #endif
 					 NULL };
 
@@ -329,10 +311,6 @@ main(int argc, char **argv)
 			else if (strcmp(optarg, "ng") == 0
 			    || strcmp(optarg, "netgraph") == 0)
 				af = AF_NETGRAPH;
-#ifdef ISO
-			else if (strcmp(optarg, "iso") == 0)
-				af = AF_ISO;
-#endif
 			else if (strcmp(optarg, "link") == 0)
 				af = AF_LINK;
 			else if (strcmp(optarg, "mpls") == 0)
@@ -530,11 +508,6 @@ main(int argc, char **argv)
 	if (af == AF_NETGRAPH || af == AF_UNSPEC)
 		for (tp = netgraphprotox; tp->pr_name; tp++)
 			printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);
-#ifdef ISO
-	if (af == AF_ISO || af == AF_UNSPEC)
-		for (tp = isoprotox; tp->pr_name; tp++)
-			printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);
-#endif
 	if ((af == AF_UNIX || af == AF_UNSPEC) && !Lflag && !sflag)
 		unixpr();
 	exit(0);

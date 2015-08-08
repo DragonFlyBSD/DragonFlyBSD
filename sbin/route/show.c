@@ -115,10 +115,6 @@ show(int argc, char *argv[])
                         case K_LINK:
                                 af = AF_LINK;
                                 break;
-                        case K_ISO:
-                        case K_OSI:
-                                af = AF_ISO;
-                                break;
                         case K_X25:
                                 af = AF_CCITT;
                                 break;
@@ -253,9 +249,6 @@ pr_family(int af)
 		afname = "Internet6";
 		break;
 #endif /* INET6 */
-	case AF_ISO:
-		afname = "ISO";
-		break;
 	case AF_CCITT:
 		afname = "X.25";
 		break;

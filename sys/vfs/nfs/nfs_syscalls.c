@@ -225,7 +225,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 			    nuidp != 0; nuidp = nuidp->nu_hash.le_next) {
 				if (nuidp->nu_cr.cr_uid == nsd->nsd_cr.cr_uid &&
 				    (!nfsd->nfsd_nd->nd_nam2 ||
-				     netaddr_match(NU_NETFAM(nuidp),
+				     netaddr_match(AF_INET,
 				     &nuidp->nu_haddr, nfsd->nfsd_nd->nd_nam2)))
 					break;
 			}
@@ -278,7 +278,6 @@ sys_nfssvc(struct nfssvc_args *uap)
 					nuidp->nu_inetaddr =
 					     saddr->sin_addr.s_addr;
 					break;
-				    case AF_ISO:
 				    default:
 					nuidp->nu_flag |= NU_NAM;
 					nuidp->nu_nam = 
