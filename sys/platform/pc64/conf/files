@@ -201,6 +201,7 @@ dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
 dev/misc/ppc/ppc.c			optional	ppc
 dev/misc/psm/psm.c			optional	psm
 dev/serial/sio/sio.c			optional	sio
+dev/serial/sio/sio_pccard.c		optional	sio pccard
 bus/isa/syscons_isa.c			optional	sc
 bus/isa/vga_isa.c			optional	vga
 platform/pc64/isa/clock.c		standard
