@@ -20,9 +20,7 @@ LDFLAGS+=-Wl,-Bsymbolic
 # base sources
 SRCS=	cryptlib.c mem.c mem_dbg.c cversion.c ex_data.c cpt_err.c ebcdic.c \
 	uid.c o_time.c o_dir.c o_fips.c o_init.c fips_ers.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	x86cpuid.s
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	x86_64cpuid.s
 .endif
 INCS=	../e_os2.h
@@ -50,9 +48,7 @@ opensslconf.h: opensslconf-${MACHINE_ARCH}.h
 
 # aes
 SRCS+=	aes_misc.c aes_ecb.c aes_cfb.c aes_ofb.c aes_ctr.c aes_ige.c aes_wrap.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	aes-586.s vpaes-x86.s aesni-x86.s
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	aes-x86_64.s vpaes-x86_64.s bsaes-x86_64.s aesni-x86_64.s aesni-sha1-x86_64.s
 .endif
 INCS+=	aes.h
@@ -75,9 +71,7 @@ INCS+=	asn1.h asn1_mac.h asn1t.h
 
 # bf
 SRCS+=	bf_skey.c bf_ecb.c bf_cfb64.c bf_ofb64.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	bf-586.s
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	bf_enc.c
 .endif
 INCS+=	blowfish.h
@@ -97,9 +91,7 @@ SRCS+=	bn_add.c bn_div.c bn_exp.c bn_lib.c bn_ctx.c bn_mul.c bn_mod.c \
 	bn_kron.c bn_sqrt.c bn_gcd.c bn_prime.c bn_err.c bn_sqr.c \
 	bn_recp.c bn_mont.c bn_mpi.c bn_exp2.c bn_gf2m.c bn_nist.c \
 	bn_depr.c bn_const.c bn_x931p.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	bn-586.s co-586.s x86-mont.s x86-gf2m.s
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	x86_64-gcc.c x86_64-mont.s x86_64-mont5.s x86_64-gf2m.s modexp512-x86_64.s
 .endif
 INCS+=	bn.h
@@ -110,9 +102,7 @@ INCS+=	buffer.h
 
 # camellia
 SRCS+=	cmll_ecb.c cmll_ofb.c cmll_cfb.c cmll_ctr.c cmll_utl.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	cmll-x86.s
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	cmll-x86_64.s cmll_misc.c
 .endif
 INCS+=	camellia.h
@@ -148,9 +138,7 @@ SRCS+=	set_key.c  ecb_enc.c  cbc_enc.c \
 	ofb_enc.c  str2key.c  pcbc_enc.c qud_cksm.c rand_key.c \
 	fcrypt.c xcbc_enc.c rpc_enc.c  cbc_cksm.c \
 	ede_cbcm_enc.c des_old.c des_old2.c read2pwd.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	des-586.s crypt586.s
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	des_enc.c fcrypt_b.c
 .endif
 INCS+=	des.h des_old.h
@@ -242,9 +230,7 @@ INCS+=	md4.h
 
 # md5
 SRCS+=	md5_dgst.c md5_one.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	md5-586.s
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	md5-x86_64.s
 .endif
 INCS+=	md5.h
@@ -256,9 +242,7 @@ INCS+=	mdc2.h
 # modes
 SRCS+=	cbc128.c ctr128.c cts128.c cfb128.c ofb128.c gcm128.c \
 	ccm128.c xts128.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	ghash-x86.s
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	ghash-x86_64.s
 .endif
 INCS+=	modes.h
@@ -303,9 +287,7 @@ INCS+=	rc2.h
 
 # rc4
 SRCS+=	rc4_utl.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	rc4-586.s
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	rc4-x86_64.s rc4-md5-x86_64.s
 .endif
 INCS+=	rc4.h
@@ -317,9 +299,6 @@ INCS+=	rc4.h
 
 # ripemd
 SRCS+=	rmd_dgst.c rmd_one.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	rmd-586.s
-.endif
 INCS+=	ripemd.h
 
 # rsa
@@ -335,9 +314,7 @@ INCS+=	seed.h
 
 # sha
 SRCS+=	sha_dgst.c sha1dgst.c sha_one.c sha1_one.c sha256.c sha512.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	sha1-586.s sha256-586.s sha512-586.s
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	sha1-x86_64.s sha256-x86_64.s sha512-x86_64.s
 .endif
 INCS+=	sha.h
@@ -370,9 +347,7 @@ INCS+=	ui.h ui_compat.h
 
 # whrlpool
 SRCS+=	wp_dgst.c
-.if ${MACHINE_ARCH} == "i386"
-SRCS+=	wp_block.c wp-mmx.s
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	wp-x86_64.s
 .endif
 INCS+=	whrlpool.h

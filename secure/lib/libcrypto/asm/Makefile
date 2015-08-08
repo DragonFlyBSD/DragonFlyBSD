@@ -1,5 +1,5 @@
 # This file automatically generates the asm .s files after importing a new
-# version of OpenSSL.  You need to run it with MACHINE_ARCH=i386 and x86_64
+# version of OpenSSL.  You need to run it with MACHINE_ARCH=x86_64
 # to get everything generated properly.
 
 OPENSSL_SRC=	../../../../crypto/openssl
@@ -18,46 +18,7 @@ OPENSSL_SRC=	../../../../crypto/openssl
 	${OPENSSL_SRC}/crypto/sha/asm \
 	${OPENSSL_SRC}/crypto/whrlpool/asm
 
-.if ${MACHINE_ARCH} == "i386"
-# cpuid
-SRCS=	x86cpuid.pl
-
-# bn
-SRCS+=	bn-586.pl co-586.pl x86-mont.pl x86-gf2m.pl
-
-# des
-SRCS+=	des-586.pl crypt586.pl
-
-# aes
-SRCS+=	aes-586.pl vpaes-x86.pl aesni-x86.pl
-
-# bf
-SRCS+=	bf-586.pl
-
-# rc4
-SRCS+=	rc4-586.pl
-
-# md5
-SRCS+=	md5-586.pl
-
-# sha
-SRCS+=	sha1-586.pl sha256-586.pl sha512-586.pl
-
-# ripemd
-SRCS+=	rmd-586.pl
-
-# whrlpool
-SRCS+=	wp-mmx.pl
-
-# camellia
-SRCS+=	cmll-x86.pl
-
-# modes
-SRCS+=	ghash-x86.pl
-
-PERLFLAGS=	${CFLAGS}
-
-.elif ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 # cpuid
 SRCS=	x86_64cpuid.pl
 
