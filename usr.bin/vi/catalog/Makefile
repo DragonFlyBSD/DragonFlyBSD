@@ -3,7 +3,7 @@
 
 .include <bsd.own.mk>
 
-V=	${.CURDIR}/../../../contrib/nvi
+V=	${.CURDIR}/../../../contrib/nvi2
 
 CAT=	dutch english french german polish ru_RU.KOI8-R spanish swedish \
 	uk_UA.KOI8-U zh_CN.GB2312
@@ -101,7 +101,7 @@ english.base: dump ${SCAN} #Makefile
 
 
 dump: dump.c
-	${CC} -o dump ${.ALLSRC}
+	${CC} -o ${.TARGET} ${.ALLSRC}
 
 CLEANFILES+= dump ${CAT} english.base *.check __ck1 __ck2
 

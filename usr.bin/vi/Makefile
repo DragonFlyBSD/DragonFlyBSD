@@ -4,10 +4,8 @@
 
 .include <bsd.own.mk>
 
-SRCDIR=		${.CURDIR}/../../contrib/nvi
+SRCDIR=		${.CURDIR}/../../contrib/nvi2
 SUBDIR+=	catalog
-
-APISTUFF=	ex_tcl.c ex_perl.c
 
 WARNS?=	0	# some warn issues on 32 bit machines
 
@@ -23,7 +21,7 @@ LINKS=	${BINDIR}/${VI} ${BINDIR}/${EX} ${BINDIR}/${VI} ${BINDIR}/${VIEW}
 LINKS+= ${BINDIR}/${VI} ${BINDIR}/vi ${BINDIR}/${EX} ${BINDIR}/ex
 LINKS+= ${BINDIR}/${VI} ${BINDIR}/view
 
-MAN=	${SRCDIR}/docs/USD.doc/vi.man/vi.1
+MAN=	${SRCDIR}/docs/man/vi.1
 MLINKS+=vi.1 ex.1 vi.1 view.1
 MLINKS+=vi.1 nex.1 vi.1 nview.1 vi.1 nvi.1
 
@@ -38,12 +36,11 @@ CFLAGS+=-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/regex -I${SRCDIR}/vi
 DPADD=		${LIBUTIL}
 LDADD=		-lutil
 
-CFLAGS+=	-DUSE_WIDECHAR
 DPADD+=		${LIBNCURSESW}
 LDADD+=		-lncursesw
-CFLAGS+=	-DUSE_ICONV
 
 CLEANFILES+=${EX}
+
 # Vi curses sources
 SRCS+=	cl_funcs.c cl_main.c cl_read.c cl_screen.c cl_term.c
 
@@ -74,11 +71,5 @@ SRCS+=	vs_line.c vs_msg.c vs_refresh.c vs_relative.c vs_smap.c vs_split.c
 
 # Wide char regex
 SRCS+=	regcomp.c regerror.c regexec.c regfree.c
-
-
-# Clean up files from version 1.71 (remove at Release 3.8)
-# They will overwrite the versions in contrib, breaking the build
-beforedepend:
-	@rm -f ${.OBJDIR}/ex_write.c ${.OBJDIR}/v_ex.c
 
 .include <bsd.prog.mk>
