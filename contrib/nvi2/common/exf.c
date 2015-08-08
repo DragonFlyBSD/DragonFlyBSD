@@ -77,7 +77,7 @@ file_add(
 	 */
 	gp = sp->gp;
 	if (name != NULL)
-		TAILQ_FOREACH_SAFE(frp, gp->frefq, q, tfrp) {
+		TAILQ_FOREACH_MUTABLE(frp, gp->frefq, q, tfrp) {
 			if (frp->name == NULL) {
 				TAILQ_REMOVE(gp->frefq, frp, q);
 				if (frp->name != NULL)

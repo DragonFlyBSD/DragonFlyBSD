@@ -8,6 +8,8 @@
  *
  *	$Id: exf.h,v 10.10 2012/07/06 16:03:37 zy Exp $
  */
+
+#include <sys/timespec.h>
 					/* Undo direction. */
 /*
  * exf --

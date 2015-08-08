@@ -512,7 +512,7 @@ cscope_find(SCR *sp, EXCMD *cmdp, CHAR_T *pattern)
 	/* Search all open connections for a match. */
 	matches = 0;
 	/* Copy next connect here in case csc is killed. */
-	SLIST_FOREACH_SAFE(csc, exp->cscq, q, csc_next) {
+	SLIST_FOREACH_MUTABLE(csc, exp->cscq, q, csc_next) {
 		/*
 		 * Send the command to the cscope program.  (We skip the
 		 * first two bytes of the command, because we stored the

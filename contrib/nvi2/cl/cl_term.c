@@ -190,7 +190,7 @@ cl_term_end(GS *gp)
 	SEQ *qp, *nqp, *pre_qp = NULL;
 
 	/* Delete screen specific mappings. */
-	SLIST_FOREACH_SAFE(qp, gp->seqq, q, nqp)
+	SLIST_FOREACH_MUTABLE(qp, gp->seqq, q, nqp)
 		if (F_ISSET(qp, SEQ_SCREEN)) {
 			if (qp == SLIST_FIRST(gp->seqq))
 				SLIST_REMOVE_HEAD(gp->seqq, q);

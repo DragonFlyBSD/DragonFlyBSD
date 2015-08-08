@@ -338,6 +338,10 @@ conv_init(SCR *orig, SCR *sp)
 			setlocale(LC_CTYPE, "zh_CN.eucCN");
 		else if (!strcmp(ctype, "zh_CN.GBK"))
 			setlocale(LC_CTYPE, "zh_CN.GB18030");
+		else if (!strcmp(ctype, "zh_Hans_CN.GB2312"))
+			setlocale(LC_CTYPE, "zh_Hans_CN.eucCN");
+		else if (!strcmp(ctype, "zh_Hans_CN.GBK"))
+			setlocale(LC_CTYPE, "zh_Hans_CN.GB18030");
 
 		/*
 		 * Switch to 8bit mode if locale is C;

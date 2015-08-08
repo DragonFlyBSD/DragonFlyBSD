@@ -266,7 +266,7 @@ ex_g_insdel(SCR *sp, lnop_t op, recno_t lno)
 	SLIST_FOREACH(ecp, sp->gp->ecq, q) {
 		if (!FL_ISSET(ecp->agv_flags, AGV_AT | AGV_GLOBAL | AGV_V))
 			continue;
-		TAILQ_FOREACH_SAFE(rp, ecp->rq, q, nrp) {
+		TAILQ_FOREACH_MUTABLE(rp, ecp->rq, q, nrp) {
 			/* If range less than the line, ignore it. */
 			if (rp->stop < lno)
 				continue;

@@ -230,4 +230,4 @@ typedef enum {
 } tagmsg_t;
 
 #include "ex_def.h"
-#include "extern.h"
+#include "ex_extern.h"

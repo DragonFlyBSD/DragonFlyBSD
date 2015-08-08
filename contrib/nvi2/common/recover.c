@@ -38,7 +38,7 @@ static const char sccsid[] = "$Id: recover.c,v 11.3 2015/04/04 03:50:42 zy Exp $
 #include <time.h>
 #include <unistd.h>
 
-#include "../ex/version.h"
+#include "version.h"
 #include "common.h"
 #include "pathnames.h"
 
