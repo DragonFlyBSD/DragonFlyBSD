@@ -178,6 +178,7 @@ SUBDIR=	alias \
 	shar \
 	shlock \
 	showmount \
+	smbutil \
 	sockstat \
 	soelim \
 	sort \
@@ -254,11 +255,6 @@ SUBDIR+=hesinfo
 .if !defined(NO_OPENSSL)
 SUBDIR+=bc \
 	dc
-.endif
-
-.if ${MACHINE_ARCH} == "i386"
-# Things that don't compile on x86_64 or are i386 specific:
-SUBDIR+=smbutil
 .endif
 
 .include <bsd.subdir.mk>
