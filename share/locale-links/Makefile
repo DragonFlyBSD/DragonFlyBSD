@@ -57,4 +57,11 @@ SYMLINKS+=	${symdir}.ISO8859-15 ${LOCALEDIR}/${symdir}@euro
 SYMLINKS+=	${symdir}.ISO8859-15 ${LOCALEDIR}/${symdir}.ISO-8859-15@euro
 .endfor
 
+# We need to keep zh_CN.* around as aliases to zh_Hans_CN.* because some
+# of the lang catalogs use zh_CN still (e.g. vi), plus people may expect it
+# We won't alias zh_Hans_CN or zh_Hans_UTF8 though
+.for CN in GB18030 GB2312 GBK UTF-8 eucCN
+SYMLINKS+=	zh_Hans_CN.${CN} ${LOCALEDIR}/zh_CN.${CN}
+.endfor
+
 .include <bsd.prog.mk>
