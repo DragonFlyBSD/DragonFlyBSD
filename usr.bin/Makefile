@@ -125,7 +125,6 @@ SUBDIR=	alias \
 	mkdep \
 	mkesdb \
 	mkfifo \
-	mklocale \
 	mkstr \
 	mktemp \
 	monitor \
