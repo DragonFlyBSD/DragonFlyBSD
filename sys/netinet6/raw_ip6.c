@@ -408,13 +408,13 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 			ip6->ip6_dst.s6_addr16[1] = htons(oifp->if_index);
 		} else if (dstsock->sin6_scope_id) {
 			/* boundary check */
-			if (dstsock->sin6_scope_id < 0
-			 || if_index < dstsock->sin6_scope_id) {
+			if (dstsock->sin6_scope_id < 0 ||
+			    if_index < dstsock->sin6_scope_id) {
 				error = ENXIO;  /* XXX EINVAL? */
 				goto bad;
 			}
-			ip6->ip6_dst.s6_addr16[1]
-				= htons(dstsock->sin6_scope_id & 0xffff);/*XXX*/
+			ip6->ip6_dst.s6_addr16[1] =
+			    htons(dstsock->sin6_scope_id & 0xffff); /* XXX */
 		}
 	}
 
@@ -424,11 +424,9 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 	{
 		struct in6_addr *in6a;
 
-		if ((in6a = in6_selectsrc(dstsock, optp,
-					  in6p->in6p_moptions,
-					  &in6p->in6p_route,
-					  &in6p->in6p_laddr,
-					  &error, NULL)) == NULL) {
+		if ((in6a = in6_selectsrc(dstsock, optp, in6p->in6p_moptions,
+		    &in6p->in6p_route, &in6p->in6p_laddr, &error, NULL))
+		    == NULL) {
 			if (error == 0)
 				error = EADDRNOTAVAIL;
 			goto bad;
@@ -671,7 +669,6 @@ rip6_bind(netmsg_t msg)
 		error = EINVAL;
 		goto out;
 	}
-
 	if (ifnet_array_isempty() || addr->sin6_family != AF_INET6) {
 		error = EADDRNOTAVAIL;
 		goto out;

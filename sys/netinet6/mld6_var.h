@@ -47,11 +47,11 @@
 struct mbuf;
 struct in6_multi;
 
-void	mld6_init (void);
-void	mld6_input (struct mbuf *, int);
-void	mld6_start_listening (struct in6_multi *);
-void	mld6_stop_listening (struct in6_multi *);
-void	mld6_fasttimeo (void);
+void	mld6_init(void);
+void	mld6_input(struct mbuf *, int);
+void	mld6_start_listening(struct in6_multi *);
+void	mld6_stop_listening(struct in6_multi *);
+void	mld6_fasttimeo(void);
 
 #endif /* _KERNEL */
 

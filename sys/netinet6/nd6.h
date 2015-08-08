@@ -383,16 +383,16 @@ void nd6_setmtu (struct ifnet *);
 void nd6_purge (struct ifnet *);
 struct llinfo_nd6 *nd6_free (struct rtentry *);
 void nd6_nud_hint (struct rtentry *, struct in6_addr *, int);
-int nd6_resolve (struct ifnet *, struct rtentry *,
-		     struct mbuf *, struct sockaddr *, u_char *);
+int nd6_resolve(struct ifnet *, struct rtentry *,
+	struct mbuf *, struct sockaddr *, u_char *);
 void nd6_rtrequest (int, struct rtentry *);
 int nd6_ioctl (u_long, caddr_t, struct ifnet *);
 struct rtentry *nd6_cache_lladdr (struct ifnet *, struct in6_addr *,
 	char *, int, int, int);
-int nd6_output (struct ifnet *, struct ifnet *, struct mbuf *,
-		    struct sockaddr_in6 *, struct rtentry *);
-int nd6_storelladdr (struct ifnet *, struct rtentry *, struct mbuf *,
-			 struct sockaddr *, u_char *);
+int nd6_output(struct ifnet *, struct ifnet *, struct mbuf *,
+	struct sockaddr_in6 *, struct rtentry *);
+int nd6_storelladdr(struct ifnet *, struct rtentry *, struct mbuf *,
+	struct sockaddr *, u_char *);
 int nd6_need_cache (struct ifnet *);
 
 /* nd6_nbr.c */
@@ -415,17 +415,16 @@ void defrouter_delreq (struct nd_defrouter *, int);
 void defrouter_select (void);
 void defrtrlist_del (struct nd_defrouter *);
 void prelist_remove (struct nd_prefix *);
-int prelist_update (struct nd_prefix *, struct nd_defrouter *,
-			struct mbuf *);
-int nd6_prelist_add (struct nd_prefix *, struct nd_defrouter *,
-			 struct nd_prefix **);
+int prelist_update(struct nd_prefix *, struct nd_defrouter *,
+	struct mbuf *);
+int nd6_prelist_add(struct nd_prefix *, struct nd_defrouter *,
+	struct nd_prefix **);
 int nd6_prefix_onlink (struct nd_prefix *);
 int nd6_prefix_offlink (struct nd_prefix *);
 void pfxlist_onlink_check (void);
-struct nd_defrouter *defrouter_lookup (struct in6_addr *,
-					   struct ifnet *);
+struct nd_defrouter *defrouter_lookup(struct in6_addr *, struct ifnet *);
 struct nd_prefix *nd6_prefix_lookup (struct nd_prefix *);
-int in6_init_prefix_ltimes (struct nd_prefix *ndpr);
+int in6_init_prefix_ltimes (struct nd_prefix *);
 void rt6_flush (struct in6_addr *, struct ifnet *);
 int nd6_setdefaultiface (int);
 int in6_tmpifadd (const struct in6_ifaddr *, int);
