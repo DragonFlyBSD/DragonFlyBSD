@@ -33,6 +33,7 @@
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <wchar.h>
+#include <xlocale.h>
 
 #define tre_regcomp   regcomp
 #define tre_regexec   regexec
