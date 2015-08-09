@@ -2483,8 +2483,8 @@ in6_setmaxmtu(void)
 		if (ifp->if_afdata[AF_INET6] == NULL)
 			continue;
 		if ((ifp->if_flags & IFF_LOOPBACK) == 0 &&
-		    ND_IFINFO(ifp)->linkmtu > maxmtu)
-			maxmtu =  ND_IFINFO(ifp)->linkmtu;
+		    IN6_LINKMTU(ifp) > maxmtu)
+			maxmtu = IN6_LINKMTU(ifp);
 	}
 	if (maxmtu)	/* update only when maxmtu is positive */
 		in6_maxmtu = maxmtu;

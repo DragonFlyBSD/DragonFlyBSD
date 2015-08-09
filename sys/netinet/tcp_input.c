@@ -3026,12 +3026,10 @@ tcp_mss(struct tcpcb *tp, int offer)
 	 */
 	if (offer == 0) {
 		if (isipv6) {
-			if (in6_localaddr(&inp->in6p_faddr)) {
-				offer = ND_IFINFO(rt->rt_ifp)->linkmtu -
-					min_protoh;
-			} else {
+			if (in6_localaddr(&inp->in6p_faddr))
+				offer = IN6_LINKMTU(rt->rt_ifp) - min_protoh;
+			else
 				offer = tcp_v6mssdflt;
-			}
 		} else {
 			if (in_localaddr(inp->inp_faddr))
 				offer = ifp->if_mtu - min_protoh;
@@ -3089,13 +3087,14 @@ tcp_mss(struct tcpcb *tp, int offer)
 	 * as our final mss.
 	 */
 	if (rt->rt_rmx.rmx_mtu) {
-		mss = rt->rt_rmx.rmx_mtu - min_protoh;
+		mss = rt->rt_rmx.rmx_mtu;
 	} else {
 		if (isipv6)
-			mss = ND_IFINFO(rt->rt_ifp)->linkmtu - min_protoh;
+			mss = IN6_LINKMTU(rt->rt_ifp);
 		else
-			mss = ifp->if_mtu - min_protoh;
+			mss = ifp->if_mtu;
 	}
+	mss -= min_protoh;
 	mss = min(mss, offer);
 
 	/*
@@ -3197,7 +3196,12 @@ tcp_mssopt(struct tcpcb *tp)
 	if (rt == NULL)
 		return (isipv6 ? tcp_v6mssdflt : tcp_mssdflt);
 
+#ifdef INET6
+	return ((isipv6 ? IN6_LINKMTU(rt->rt_ifp) : rt->rt_ifp->if_mtu) -
+	    min_protoh);
+#else
 	return (rt->rt_ifp->if_mtu - min_protoh);
+#endif
 }
 
 /*

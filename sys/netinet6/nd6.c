@@ -157,7 +157,6 @@ nd6_ifattach(struct ifnet *ifp)
 
 	nd->initialized = 1;
 
-	nd->linkmtu = ifp->if_mtu;
 	nd->chlim = IPV6_DEFHLIM;
 	nd->basereachable = REACHABLE_TIME;
 	nd->reachable = ND_COMPUTE_RTIME(nd->basereachable);
@@ -205,11 +204,9 @@ nd6_setmtu0_dispatch(netmsg_t msg)
 	struct netmsg_nd6setmtu *nmsg = (struct netmsg_nd6setmtu *)msg;
 	struct ifnet *ifp = nmsg->ifp;
 	struct nd_ifinfo *ndi = nmsg->ndi;
-	u_long oldmaxmtu;
-	u_long oldlinkmtu;
+	uint32_t omaxmtu;
 
-	oldmaxmtu = ndi->maxmtu;
-	oldlinkmtu = ndi->linkmtu;
+	omaxmtu = ndi->maxmtu;
 
 	switch (ifp->if_type) {
 	case IFT_ETHER:
@@ -228,30 +225,20 @@ nd6_setmtu0_dispatch(netmsg_t msg)
 		break;
 	}
 
-	if (oldmaxmtu != ndi->maxmtu) {
-		/*
-		 * If the ND level MTU is not set yet, or if the maxmtu
-		 * is reset to a smaller value than the ND level MTU,
-		 * also reset the ND level MTU.
-		 */
-		if (ndi->linkmtu == 0 ||
-		    ndi->maxmtu < ndi->linkmtu) {
-			ndi->linkmtu = ndi->maxmtu;
-			/* also adjust in6_maxmtu if necessary. */
-			if (oldlinkmtu == 0) {
-				/*
-				 * XXX: the case analysis is grotty, but
-				 * it is not efficient to call in6_setmaxmtu()
-				 * here when we are during the initialization
-				 * procedure.
-				 */
-				if (in6_maxmtu < ndi->linkmtu)
-					in6_maxmtu = ndi->linkmtu;
-			} else
-				in6_setmaxmtu();
-		}
+	/*
+	 * Decreasing the interface MTU under IPV6 minimum MTU may cause
+	 * undesirable situation.  We thus notify the operator of the change
+	 * explicitly.  The check for omaxmtu is necessary to restrict the
+	 * log to the case of changing the MTU, not initializing it.
+	 */
+	if (omaxmtu >= IPV6_MMTU && ndi->maxmtu < IPV6_MMTU) {
+		log(LOG_NOTICE, "nd6_setmtu0: "
+		    "new link MTU on %s (%lu) is too small for IPv6\n",
+		    if_name(ifp), (unsigned long)ndi->maxmtu);
 	}
-#undef MIN
+
+	if (ndi->maxmtu > in6_maxmtu)
+		in6_setmaxmtu(); /* check all interfaces just in case */
 
 	lwkt_replymsg(&nmsg->nmsg.lmsg, 0);
 }
@@ -1443,7 +1430,7 @@ nd6_ioctl(u_long cmd, caddr_t	data, struct ifnet *ifp)
 	case OSIOCGIFINFO_IN6:
 		/* XXX: old ndp(8) assumes a positive value for linkmtu. */
 		bzero(&ndi->ndi, sizeof(ndi->ndi));
-		ndi->ndi.linkmtu = ND_IFINFO(ifp)->linkmtu;
+		ndi->ndi.linkmtu = IN6_LINKMTU(ifp);
 		ndi->ndi.maxmtu = ND_IFINFO(ifp)->maxmtu;
 		ndi->ndi.basereachable = ND_IFINFO(ifp)->basereachable;
 		ndi->ndi.reachable = ND_IFINFO(ifp)->reachable;
@@ -1455,6 +1442,7 @@ nd6_ioctl(u_long cmd, caddr_t	data, struct ifnet *ifp)
 		break;
 	case SIOCGIFINFO_IN6:
 		ndi->ndi = *ND_IFINFO(ifp);
+		ndi->ndi.linkmtu = IN6_LINKMTU(ifp);
 		break;
 	case SIOCSIFINFO_FLAGS:
 		ND_IFINFO(ifp)->flags = ndi->ndi.flags;

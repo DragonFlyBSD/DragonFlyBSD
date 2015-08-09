@@ -1307,19 +1307,14 @@ ip6_getpmtu(struct route_in6 *ro_pmtu, struct route_in6 *ro,
 	}
 	if (ro_pmtu->ro_rt) {
 		u_int32_t ifmtu;
-		struct in_conninfo inc;
-
-		bzero(&inc, sizeof(inc));
-		inc.inc_flags = 1; /* IPv6 */
-		inc.inc6_faddr = *dst;
 
 		if (ifp == NULL)
 			ifp = ro_pmtu->ro_rt->rt_ifp;
 		ifmtu = IN6_LINKMTU(ifp);
 		mtu = ro_pmtu->ro_rt->rt_rmx.rmx_mtu;
-		if (mtu == 0)
+		if (mtu == 0) {
 			mtu = ifmtu;
-		else if (mtu < IPV6_MMTU) {
+		} else if (mtu < IPV6_MMTU) {
 			/*
 			 * RFC2460 section 5, last paragraph:
 			 * if we record ICMPv6 too big message with
@@ -1344,8 +1339,9 @@ ip6_getpmtu(struct route_in6 *ro_pmtu, struct route_in6 *ro,
 		}
 	} else if (ifp) {
 		mtu = IN6_LINKMTU(ifp);
-	} else
+	} else {
 		error = EHOSTUNREACH; /* XXX */
+	}
 
 	*mtup = mtu;
 	if (alwaysfragp)

@@ -96,6 +96,7 @@
 #include <netinet6/ip6_var.h>
 
 #include <netinet/icmp6.h>
+#include <netinet6/nd6.h>
 
 #include <netinet/tcp.h>
 #include <netinet/tcp_seq.h>
@@ -154,7 +155,7 @@ in6_addroute(char *key, char *mask, struct radix_node_head *head,
 
 	if (!rt->rt_rmx.rmx_mtu && !(rt->rt_rmx.rmx_locks & RTV_MTU) &&
 	    rt->rt_ifp != NULL)
-		rt->rt_rmx.rmx_mtu = rt->rt_ifp->if_mtu;
+		rt->rt_rmx.rmx_mtu = IN6_LINKMTU(rt->rt_ifp);
 
 	ret = rn_addroute(key, mask, head, treenodes);
 	if (ret == NULL && rt->rt_flags & RTF_HOST) {
