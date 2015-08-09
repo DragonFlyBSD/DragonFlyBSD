@@ -99,7 +99,7 @@ struct nd_ifinfo {
 	u_int32_t flags;		/* Flags */
 	int recalctm;			/* BaseReacable re-calculation timer */
 	u_int8_t chlim;			/* CurHopLimit */
-	u_int8_t receivedra;
+	u_int8_t reserved;		/* reserved 0 */
 	u_int8_t initialized;		/* Flag to see the entry is initialized */
 	/* the following 3 members are for privacy extension for addrconf */
 	u_int8_t randomseed0[8]; /* upper 64 bits of MD5 digest */

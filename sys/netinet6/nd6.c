@@ -161,7 +161,6 @@ nd6_ifattach(struct ifnet *ifp)
 	nd->basereachable = REACHABLE_TIME;
 	nd->reachable = ND_COMPUTE_RTIME(nd->basereachable);
 	nd->retrans = RETRANS_TIMER;
-	nd->receivedra = 0;
 
 	/*
 	 * Note that the default value of ip6_accept_rtadv is 0, which means
@@ -1438,7 +1437,6 @@ nd6_ioctl(u_long cmd, caddr_t	data, struct ifnet *ifp)
 		ndi->ndi.flags = ND_IFINFO(ifp)->flags;
 		ndi->ndi.recalctm = ND_IFINFO(ifp)->recalctm;
 		ndi->ndi.chlim = ND_IFINFO(ifp)->chlim;
-		ndi->ndi.receivedra = ND_IFINFO(ifp)->receivedra;
 		break;
 	case SIOCGIFINFO_IN6:
 		ndi->ndi = *ND_IFINFO(ifp);
