@@ -5,12 +5,12 @@
 
 PROG=		kdump
 SRCS=		kdump.c ioctl.c kdump_subr.c subr.c
-CFLAGS+=	-I${.CURDIR}/../ktrace -I${.CURDIR} -I${.CURDIR}/../.. -I${.CURDIR}/../../sys
+CFLAGS+=	-I${.CURDIR}/../ktrace -I${.CURDIR} -I${.CURDIR}/../.. -I${.CURDIR}/../../sys -I${.CURDIR}/../../sys/dev/drm/include
 
 CLEANFILES=	ioctl.c kdump_subr.c
 
 ioctl.c!
-	sh ${.CURDIR}/mkioctls ${DESTDIR}/usr/include > ${.TARGET}
+	sh ${.CURDIR}/mkioctls ${DESTDIR}/usr/include ${.CURDIR} > ${.TARGET}
 
 kdump_subr.c!
 	sh ${.CURDIR}/mksubr ${DESTDIR}/usr/include > ${.TARGET}

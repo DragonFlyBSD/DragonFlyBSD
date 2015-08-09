@@ -6,7 +6,7 @@ SRCS=	main.c setup.c syscalls.c syscalls.h ioctl.c ${MACHINE_ARCH}-fbsd.c
 SRCS+=	i386-linux.c linux_syscalls.h
 .endif
 
-CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../sys -I.
+CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../sys -I${.CURDIR}/../../sys/dev/drm/include -I.
 
 CLEANFILES+=i386l-syscalls.master syscalls.master linux_syscalls.h \
 	syscalls.h ioctl.c
@@ -28,6 +28,6 @@ syscalls.h:	syscalls.master
 		${.CURDIR}/i386.conf
 
 ioctl.c!
-	sh ${.CURDIR}/../kdump/mkioctls ${DESTDIR}/usr/include > ${.TARGET}
+	sh ${.CURDIR}/../kdump/mkioctls ${DESTDIR}/usr/include ${.CURDIR} > ${.TARGET}
 
 .include <bsd.prog.mk>

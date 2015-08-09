@@ -11,8 +11,8 @@ else
 	use_switch=0
 fi
 
-if [ -z "$1" ]; then
-	echo "usage: sh $0 [-s] include-dir"
+if [ -z "$1" -o -z "$2" ]; then
+	echo "usage: sh $0 [-s] include-dir current-dir"
 	exit 1
 fi
 
@@ -29,10 +29,14 @@ ioctl_includes=`
 		xargs egrep -l \
 '^#[ 	]*define[ 	]+[A-Za-z_][A-Za-z0-9_]*[ 	]+_IO[^a-z0-9_]' |
 		awk '{printf("#include <%s>\\\\n", $1)}'
+	printf '#undef loff_t /* XXX ext2_fs.h defines it */\\\\n'
+	printf '#include <dev/drm/include/uapi_drm/drm.h>\\\\n'
+	printf '#include <dev/drm/include/uapi_drm/i915_drm.h>\\\\n'
+	printf '#include <dev/drm/include/uapi_drm/radeon_drm.h>\\\\n'
 `
 
 awk -v x="$ioctl_includes" 'BEGIN {print x}' |
-	gcc -D_KERNEL_STRUCTURES -E -I$1 -dM - |
+	gcc -D_KERNEL_STRUCTURES -E -I$1 -I$2/../../sys -I$2/../../sys/dev/drm/include -dM - |
 	awk -v ioctl_includes="$ioctl_includes" -v use_switch="$use_switch" '
 BEGIN {
 	print "/* XXX obnoxious prerequisites. */"
@@ -72,6 +76,14 @@ BEGIN {
 		printf("\tif (val ==  %s)\n\t\treturn(\"%s\");\n", $i, $i);
 
 }
+
+/^#[ 	]*define[ 	]+[^ 	]+[ 	]+DRM_IO/ {
+	if (use_switch)
+		printf("\tcase %s:\n\t\treturn(\"%s\");\n", $2, $2);
+	else
+		printf("\tif (val ==  %s)\n\t\treturn(\"%s\");\n", $2, $2);
+}
+
 END {
 	if (use_switch)
 		print "\t}"
