@@ -495,6 +495,7 @@ hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip)
 	reblock.key_end.obj_id = HAMMER_MAX_OBJID;
 	reblock.head.flags = HAMMER_IOC_DO_FLAGS;
 	reblock.free_level = 0;
+	reblock.allpfs = 1;
 
 	kprintf("reblock started\n");
 	error = hammer_ioc_reblock(trans, ip, &reblock);
