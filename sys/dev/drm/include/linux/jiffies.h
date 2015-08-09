@@ -73,4 +73,9 @@ unsigned long usecs_to_jiffies(const unsigned int u)
 		return jiffies;
 }
 
+static inline u64 get_jiffies_64(void)
+{
+	return (u64)ticks;
+}
+
 #endif	/* _LINUX_JIFFIES_H_ */
