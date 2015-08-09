@@ -414,6 +414,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 		    hammer_cursor_t cursor, hammer_btree_elm_t elm)
 {
 	struct hammer_buffer *data_buffer = NULL;
+	hammer_off_t odata_offset;
 	hammer_off_t ndata_offset;
 	int error;
 	void *ndata;
@@ -447,9 +448,16 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 
 	hammer_modify_node(cursor->trans, cursor->node,
 			   &elm->leaf.data_offset, sizeof(hammer_off_t));
+	odata_offset = elm->leaf.data_offset;
 	elm->leaf.data_offset = ndata_offset;
 	hammer_modify_node_done(cursor->node);
 
+	if (hammer_debug_general & 0x4000) {
+		kprintf("REBLOCK DATA %08x %016llx -> %016llx\n",
+			elm->base.localization,
+			(long long)odata_offset,
+			(long long)ndata_offset);
+	}
 done:
 	if (data_buffer)
 		hammer_rel_buffer(data_buffer, 0);
@@ -515,7 +523,8 @@ hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
 	hammer_delete_node(cursor->trans, onode);
 
 	if (hammer_debug_general & 0x4000) {
-		kprintf("REBLOCK LNODE %016llx -> %016llx\n",
+		kprintf("REBLOCK LNODE %08x %016llx -> %016llx\n",
+			elm->base.localization,
 			(long long)onode->node_offset,
 			(long long)nnode->node_offset);
 	}
@@ -607,7 +616,8 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	hammer_delete_node(cursor->trans, onode);
 
 	if (hammer_debug_general & 0x4000) {
-		kprintf("REBLOCK INODE %016llx -> %016llx\n",
+		kprintf("REBLOCK INODE %08x %016llx -> %016llx\n",
+			elm->base.localization,
 			(long long)onode->node_offset,
 			(long long)nnode->node_offset);
 	}
