@@ -1280,13 +1280,13 @@ hammer_node_t hammer_btree_get_parent(hammer_transaction_t trans,
 void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
 void	hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i);
 
-void	*hammer_bread(struct hammer_mount *hmp, hammer_off_t off,
+void	*hammer_bread(hammer_mount_t hmp, hammer_off_t off,
 			int *errorp, struct hammer_buffer **bufferp);
-void	*hammer_bnew(struct hammer_mount *hmp, hammer_off_t off,
+void	*hammer_bnew(hammer_mount_t hmp, hammer_off_t off,
 			int *errorp, struct hammer_buffer **bufferp);
-void	*hammer_bread_ext(struct hammer_mount *hmp, hammer_off_t off, int bytes,
+void	*hammer_bread_ext(hammer_mount_t hmp, hammer_off_t off, int bytes,
 			int *errorp, struct hammer_buffer **bufferp);
-void	*hammer_bnew_ext(struct hammer_mount *hmp, hammer_off_t off, int bytes,
+void	*hammer_bnew_ext(hammer_mount_t hmp, hammer_off_t off, int bytes,
 			int *errorp, struct hammer_buffer **bufferp);
 
 hammer_volume_t hammer_get_root_volume(hammer_mount_t hmp, int *errorp);

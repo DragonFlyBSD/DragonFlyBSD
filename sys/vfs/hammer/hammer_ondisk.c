@@ -108,7 +108,7 @@ RB_GENERATE2(hammer_nod_rb_tree, hammer_node, rb_node,
  * Calls made to hammer_load_volume() or single-threaded
  */
 int
-hammer_install_volume(struct hammer_mount *hmp, const char *volname,
+hammer_install_volume(hammer_mount_t hmp, const char *volname,
 		      struct vnode *devvp)
 {
 	struct mount *mp;
@@ -382,7 +382,7 @@ hammer_free_volume(hammer_volume_t volume)
  * Get a HAMMER volume.  The volume must already exist.
  */
 hammer_volume_t
-hammer_get_volume(struct hammer_mount *hmp, int32_t vol_no, int *errorp)
+hammer_get_volume(hammer_mount_t hmp, int32_t vol_no, int *errorp)
 {
 	struct hammer_volume *volume;
 
@@ -433,7 +433,7 @@ hammer_ref_volume(hammer_volume_t volume)
  * May be called without fs_token
  */
 hammer_volume_t
-hammer_get_root_volume(struct hammer_mount *hmp, int *errorp)
+hammer_get_root_volume(hammer_mount_t hmp, int *errorp)
 {
 	hammer_volume_t volume;
 
@@ -506,7 +506,7 @@ hammer_rel_volume(hammer_volume_t volume, int locked)
 }
 
 int
-hammer_mountcheck_volumes(struct hammer_mount *hmp)
+hammer_mountcheck_volumes(hammer_mount_t hmp)
 {
 	hammer_volume_t vol;
 	int i;
