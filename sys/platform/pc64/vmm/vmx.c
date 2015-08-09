@@ -258,12 +258,12 @@ build_vmx_sysctl(void)
 		    OID_AUTO, "vmx",
 		    CTLFLAG_RD, 0, "VMX options");
 
-	SYSCTL_ADD_INT(&vmx_sysctl_ctx,
+	SYSCTL_ADD_UINT(&vmx_sysctl_ctx,
 	    SYSCTL_CHILDREN(vmx_sysctl_tree),
 	    OID_AUTO, "revision", CTLFLAG_RD,
 	    &vmx_revision, 0,
 	    "VMX revision");
-	SYSCTL_ADD_INT(&vmx_sysctl_ctx,
+	SYSCTL_ADD_UINT(&vmx_sysctl_ctx,
 	    SYSCTL_CHILDREN(vmx_sysctl_tree),
 	    OID_AUTO, "region_size", CTLFLAG_RD,
 	    &vmx_region_size, 0,
@@ -273,35 +273,35 @@ build_vmx_sysctl(void)
 	    OID_AUTO, "width_addr", CTLFLAG_RD,
 	    &vmx_width_addr, 0,
 	    "VMX width address");
-	SYSCTL_ADD_INT(&vmx_sysctl_ctx,
+	SYSCTL_ADD_UINT(&vmx_sysctl_ctx,
 	    SYSCTL_CHILDREN(vmx_sysctl_tree),
 	    OID_AUTO, "pinbased_ctls", CTLFLAG_RD,
 	    &vmx_pinbased.ctls, 0,
-	    "VMX width address");
-	SYSCTL_ADD_INT(&vmx_sysctl_ctx,
+	    "VMX pin-based controls");
+	SYSCTL_ADD_UINT(&vmx_sysctl_ctx,
 	    SYSCTL_CHILDREN(vmx_sysctl_tree),
 	    OID_AUTO, "procbased_ctls", CTLFLAG_RD,
 	    &vmx_procbased.ctls, 0,
-	    "VMX width address");
-	SYSCTL_ADD_INT(&vmx_sysctl_ctx,
+	    "VMX primary processor-based controls");
+	SYSCTL_ADD_UINT(&vmx_sysctl_ctx,
 	    SYSCTL_CHILDREN(vmx_sysctl_tree),
 	    OID_AUTO, "procbased2_ctls", CTLFLAG_RD,
 	    &vmx_procbased2.ctls, 0,
-	    "VMX width address");
-	SYSCTL_ADD_INT(&vmx_sysctl_ctx,
+	    "VMX secondary processor-based controls");
+	SYSCTL_ADD_UINT(&vmx_sysctl_ctx,
 	    SYSCTL_CHILDREN(vmx_sysctl_tree),
 	    OID_AUTO, "vmexit_ctls", CTLFLAG_RD,
 	    &vmx_exit.ctls, 0,
-	    "VMX width address");
-	SYSCTL_ADD_INT(&vmx_sysctl_ctx,
+	    "VMX exit controls");
+	SYSCTL_ADD_UINT(&vmx_sysctl_ctx,
 	    SYSCTL_CHILDREN(vmx_sysctl_tree),
 	    OID_AUTO, "vmentry_ctls", CTLFLAG_RD,
 	    &vmx_entry.ctls, 0,
-	    "VMX width address");
-	SYSCTL_ADD_INT(&vmx_sysctl_ctx,
+	    "VMX entry controls");
+	SYSCTL_ADD_ULONG(&vmx_sysctl_ctx,
 	    SYSCTL_CHILDREN(vmx_sysctl_tree),
 	    OID_AUTO, "ept_vpid_cap", CTLFLAG_RD,
-	    &vmx_ept_vpid_cap, 0,
+	    &vmx_ept_vpid_cap,
 	    "VMX EPT VPID CAP");
 }
 
