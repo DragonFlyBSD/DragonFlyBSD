@@ -36,4 +36,10 @@
 	}					\
 } while (0)
 
+enum {
+	DUMP_PREFIX_NONE,
+	DUMP_PREFIX_ADDRESS,
+	DUMP_PREFIX_OFFSET
+};
+
 #endif	/* _LINUX_PRINTK_H_ */
