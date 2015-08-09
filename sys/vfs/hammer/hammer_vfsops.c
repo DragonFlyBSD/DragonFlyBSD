@@ -643,9 +643,10 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	/*
 	 * Make sure we found a root volume
 	 */
-	if (error == 0 && hmp->rootvol == NULL) {
+	if (hmp->rootvol == NULL) {
 		kprintf("hammer_mount: No root volume found!\n");
 		error = EINVAL;
+		goto failed;
 	}
 
 	/*
@@ -654,12 +655,15 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	if (error == 0 && hammer_mountcheck_volumes(hmp)) {
 		kprintf("hammer_mount: Missing volumes, cannot mount!\n");
 		error = EINVAL;
+		goto failed;
 	}
 
+	/*
+	 * Other errors
+	 */
 	if (error) {
-		/* called with fs_token held */
-		hammer_free_hmp(mp);
-		return (error);
+		kprintf("hammer_mount: Failed to load volumes!\n");
+		goto failed;
 	}
 
 	/*
