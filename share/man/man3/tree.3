@@ -1,6 +1,5 @@
 .\"	$NetBSD: tree.3,v 1.3 2004/04/14 11:05:19 pooka Exp $
 .\"	$OpenBSD: tree.3,v 1.9 2003/05/20 09:13:38 jmc Exp $
-.\" $DragonFly: src/share/man/man3/tree.3,v 1.2 2008/05/10 17:52:10 swildner Exp $
 .\"/*
 .\" * Copyright 2002 Niels Provos <provos@citi.umich.edu>
 .\" * All rights reserved.
@@ -30,7 +29,7 @@
 .\" * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.Dd February 24, 2002
+.Dd August 9, 2015
 .Dt TREE 3
 .Os
 .Sh NAME
@@ -66,6 +65,11 @@
 .Nm RB_RIGHT ,
 .Nm RB_PARENT ,
 .Nm RB_FOREACH ,
+.Nm RB_FOREACH_FROM ,
+.Nm RB_FOREACH_SAFE ,
+.Nm RB_FOREACH_REVERSE ,
+.Nm RB_FOREACH_REVERSE_FROM ,
+.Nm RB_FOREACH_REVERSE_SAFE ,
 .Nm RB_INIT ,
 .Nm RB_INSERT ,
 .Nm RB_REMOVE
@@ -125,6 +129,11 @@
 .Ft "struct TYPE *"
 .Fn RB_PARENT "struct TYPE *elm" "RB_ENTRY NAME"
 .Fn RB_FOREACH "VARNAME" "NAME" "RB_HEAD *head"
+.Fn RB_FOREACH_FROM "VARNAME" "NAME" "POS_VARNAME"
+.Fn RB_FOREACH_SAFE "VARNAME" "NAME" "RB_HEAD *head" "TEMP_VARNAME"
+.Fn RB_FOREACH_REVERSE VARNAME NAME "RB_HEAD *head"
+.Fn RB_FOREACH_REVERSE_FROM "VARNAME" "NAME" "POS_VARNAME"
+.Fn RB_FOREACH_REVERSE_SAFE "VARNAME" "NAME" "RB_HEAD *head" "TEMP_VARNAME"
 .Ft void
 .Fn RB_INIT "RB_HEAD *head"
 .Ft "struct TYPE *"
@@ -408,10 +417,35 @@ for (np = RB_MIN(NAME, \*[Am]head); np != NULL; np = RB_NEXT(NAME, \*[Am]head, n
 .Pp
 Or, for simplicity, one can use the
 .Fn RB_FOREACH
+or
+.Fn RB_FOREACH_REVERSE
 macro:
 .Bd -literal -offset indent
 RB_FOREACH(np, NAME, head)
 .Ed
+.Pp
+The macros
+.Fn RB_FOREACH_SAFE
+and
+.Fn RB_FOREACH_REVERSE_SAFE
+traverse the tree referenced by head
+in a forward or reverse direction respectively,
+assigning each element in turn to np.
+However, unlike their unsafe counterparts,
+they permit both the removal of np
+as well as freeing it from within the loop safely
+without interfering with the traversal.
+.Pp
+Both
+.Fn RB_FOREACH_FROM
+and
+.Fn RB_FOREACH_REVERSE_FROM
+may be used to continue an interrupted traversal
+in a forward or reverse direction respectively.
+The head pointer is not required.
+The pointer to the node from where to resume the traversal
+should be passed as their last argument,
+and will be overwritten to provide safe traversal.
 .Pp
 The
 .Fn RB_EMPTY
