@@ -962,8 +962,7 @@ hammer_flusher_haswork(hammer_mount_t hmp)
 	    RB_ROOT(&hmp->undo_root) ||
 	    RB_ROOT(&hmp->data_root) ||
 	    RB_ROOT(&hmp->meta_root) ||
-	    (hmp->hflags & HMNT_UNDO_DIRTY)		/* UNDO FIFO sync */
-	) {
+	    (hmp->hflags & HMNT_UNDO_DIRTY)) {		/* UNDO FIFO sync */
 		return(1);
 	}
 	return(0);

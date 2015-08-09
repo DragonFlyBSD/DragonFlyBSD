@@ -155,8 +155,7 @@ dump_blockmap(const char *label, int zone)
 			continue;
 		for (scan2 = scan1;
 		     scan2 < scan1 + HAMMER_BLOCKMAP_LAYER2;
-		     scan2 += HAMMER_BIGBLOCK_SIZE
-		) {
+		     scan2 += HAMMER_BIGBLOCK_SIZE) {
 			/*
 			 * Dive layer 2, each entry represents a big-block.
 			 */

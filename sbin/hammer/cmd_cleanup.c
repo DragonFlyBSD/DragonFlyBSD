@@ -916,8 +916,7 @@ cleanup_softlinks(int fd, int new_config,
 				continue;
 			asprintf(&fpath, "%s/%s", snapshots_path, den->d_name);
 			if (lstat(fpath, &st) == 0 && S_ISLNK(st.st_mode) &&
-			    (anylink || strncmp(den->d_name, "snap-", 5) == 0)
-			) {
+			    (anylink || strncmp(den->d_name, "snap-", 5) == 0)) {
 				if (check_expired(den->d_name, arg2)) {
 					if (VerboseOpt) {
 						printf("    expire %s\n",

@@ -257,8 +257,7 @@ mode1:
 		 * made to the file are write or write-extends.
 		 */
 		if ((ip->flags & HAMMER_INODE_REDO) &&
-		    (ip->flags & HAMMER_INODE_MODMASK_NOREDO) == 0
-		) {
+		    (ip->flags & HAMMER_INODE_MODMASK_NOREDO) == 0) {
 			++hammer_count_fsyncs;
 			hammer_flusher_flush_undos(hmp, mode);
 			ip->redo_count = 0;
@@ -2262,8 +2261,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				 sizeof(uuid_uid)) ||
 			    bcmp(&uuid_gid, &ip->ino_data.gid,
 				 sizeof(uuid_gid)) ||
-			    ip->ino_data.mode != cur_mode
-			) {
+			    ip->ino_data.mode != cur_mode) {
 				ip->ino_data.uid = uuid_uid;
 				ip->ino_data.gid = uuid_gid;
 				ip->ino_data.mode = cur_mode;

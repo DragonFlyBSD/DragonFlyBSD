@@ -325,8 +325,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	volume->ondisk = NULL;
 	if (volume->devvp) {
 		if (volume->devvp->v_rdev &&
-		    volume->devvp->v_rdev->si_mountpoint == hmp->mp
-		) {
+		    volume->devvp->v_rdev->si_mountpoint == hmp->mp) {
 			volume->devvp->v_rdev->si_mountpoint = NULL;
 		}
 		if (ronly) {

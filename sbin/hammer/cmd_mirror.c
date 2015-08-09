@@ -566,8 +566,7 @@ generate_histogram(int fd, const char *filesystem,
 		}
 		for (off = 0;
 		     off < mirror.count;
-		     off += HAMMER_HEAD_DOALIGN(mrec->head.rec_size)
-		) {
+		     off += HAMMER_HEAD_DOALIGN(mrec->head.rec_size)) {
 			mrec = (void *)((char *)mirror.ubuf + off);
 
 			/*
@@ -1063,8 +1062,7 @@ again:
 	mrec = read_mrecord(0, &error, &pickup);
 	if (mrec == NULL ||
 	    (mrec->head.type != HAMMER_MREC_TYPE_SYNC &&
-	     mrec->head.type != HAMMER_MREC_TYPE_IDLE)
-	 ) {
+	     mrec->head.type != HAMMER_MREC_TYPE_IDLE)) {
 		fprintf(stderr, "Mirror-dump: Did not get termination "
 				"sync record\n");
 	}

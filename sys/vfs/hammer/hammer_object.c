@@ -1682,8 +1682,7 @@ again:
 	 * further seeks.
 	 */
 	while (cursor->rec_generation != cursor->ip->rec_generation &&
-	       error == 0
-	) {
+	       error == 0) {
 		kprintf("HAMMER: Debug: generation changed during scan @ino=%016llx\n", (long long)cursor->ip->obj_id);
 		cursor->rec_generation = cursor->ip->rec_generation;
 		if (cursor->flags & HAMMER_CURSOR_MEMEOF)
