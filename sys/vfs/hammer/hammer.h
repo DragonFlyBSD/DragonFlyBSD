@@ -1120,6 +1120,7 @@ int	hammer_unload_buffer(hammer_buffer_t buffer, void *data);
 int	hammer_install_volume(hammer_mount_t hmp, const char *volname,
 			struct vnode *devvp);
 int	hammer_mountcheck_volumes(hammer_mount_t hmp);
+int	hammer_get_installed_volumes(hammer_mount_t hmp);
 
 int	hammer_mem_add(hammer_record_t record);
 int	hammer_ip_lookup(hammer_cursor_t cursor);

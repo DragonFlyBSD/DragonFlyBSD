@@ -519,6 +519,16 @@ hammer_mountcheck_volumes(struct hammer_mount *hmp)
 	return(0);
 }
 
+int
+hammer_get_installed_volumes(hammer_mount_t hmp)
+{
+	int i, ret = 0;
+
+	HAMMER_VOLUME_NUMBER_FOREACH(hmp, i)
+		ret++;
+	return(ret);
+}
+
 /************************************************************************
  *				BUFFERS					*
  ************************************************************************

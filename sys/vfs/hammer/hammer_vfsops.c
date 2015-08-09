@@ -392,6 +392,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	int error;
 	int i;
 	int master_id;
+	int nvolumes;
 	char *next_volume_ptr = NULL;
 
 	/*
@@ -663,6 +664,15 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	if (error) {
 		kprintf("hammer_mount: Failed to load volumes!\n");
+		goto failed;
+	}
+
+	nvolumes = hammer_get_installed_volumes(hmp);
+	if (hmp->nvolumes != nvolumes) {
+		kprintf("hammer_mount: volume header says %d volumes, "
+			"but %d installed\n",
+			hmp->nvolumes, nvolumes);
+		error = EINVAL;
 		goto failed;
 	}
 
