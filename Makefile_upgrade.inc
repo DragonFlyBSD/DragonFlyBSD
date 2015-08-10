@@ -2164,6 +2164,7 @@ TO_REMOVE+=/usr/share/man/man4/i386/stl.4.gz
 TO_REMOVE+=/boot/kernel/pst.ko
 TO_REMOVE+=/usr/share/tmac/mdoc/ru.KOI8-R
 TO_REMOVE+=/usr/bin/colldef
+TO_REMOVE+=/usr/share/locale/*.ISO-8859-15@euro
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/kgzip

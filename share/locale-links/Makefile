@@ -55,7 +55,6 @@ SYMLINKS+=	${symdir}.UTF-8 ${LOCALEDIR}/${symdir}.UTF8
 .endfor
 .for symdir in ${EURO}
 SYMLINKS+=	${symdir}.ISO8859-15 ${LOCALEDIR}/${symdir}@euro
-SYMLINKS+=	${symdir}.ISO8859-15 ${LOCALEDIR}/${symdir}.ISO-8859-15@euro
 .endfor
 
 # We need to keep zh_CN.* around as aliases to zh_Hans_CN.* because some
