@@ -625,7 +625,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 			cdev_t dev = kgetdiskbyname(path);
 			error = bdevvp(dev, &devvp);
 			if (error) {
-				kprintf("hammer_mountroot: can't find devvp\n");
+				kprintf("hammer_mount: can't find devvp\n");
 			}
 		} else {
 			error = copyin(&info.volumes[i], &upath,
