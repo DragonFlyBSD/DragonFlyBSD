@@ -27,7 +27,7 @@
 .\" ARISING IN ANY WAY  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd June 20, 2015
+.Dd August 10, 2015
 .Dt IOCTL 9
 .Os
 .Sh NAME
@@ -102,6 +102,8 @@ Here are some examples:
 .Xr disklabel 5
 .It 'd'
 diskslice
+.It 'd'
+.Xr drm 4
 .It 'f'
 generic file-descriptor
 .It 'F'
@@ -124,6 +126,9 @@ and
 .Pa /dev/midi
 .It 'm'
 .Xr mtio 4
+.It 'M'
+.Xr sound 4
+mixer
 .It 'n'
 .Xr smb 4
 .It 'n'
