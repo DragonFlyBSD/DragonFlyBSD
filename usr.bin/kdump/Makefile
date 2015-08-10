@@ -9,8 +9,13 @@ CFLAGS+=	-I${.CURDIR}/../ktrace -I${.CURDIR} -I${.CURDIR}/../.. -I${.CURDIR}/../
 
 CLEANFILES=	ioctl.c kdump_subr.c
 
+.if make(test)
+SFLAG=		-s
+test: all
+.endif
+
 ioctl.c!
-	sh ${.CURDIR}/mkioctls ${DESTDIR}/usr/include ${.CURDIR} > ${.TARGET}
+	sh ${.CURDIR}/mkioctls ${SFLAG} ${DESTDIR}/usr/include ${.CURDIR} > ${.TARGET}
 
 kdump_subr.c!
 	sh ${.CURDIR}/mksubr ${DESTDIR}/usr/include > ${.TARGET}
