@@ -70,6 +70,7 @@
 #include <machine/smp.h>
 #include <machine/globaldata.h>
 #include <machine/md_var.h>
+#include <machine/setjmp.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -77,8 +78,6 @@
 #include <ddb/ddb.h>
 
 #include <sys/thread2.h>
-
-#include <setjmp.h>
 
 static jmp_buf *db_nofault = NULL;
 extern jmp_buf	db_jmpbuf;
