@@ -84,6 +84,13 @@ BEGIN {
 		printf("\tif (val ==  %s)\n\t\treturn(\"%s\");\n", $2, $2);
 }
 
+/^#[ 	]*define[ 	]+[^ 	]+[ 	]+MIXER_(READ|WRITE)/ {
+	if (use_switch)
+		printf("\tcase %s:\n\t\treturn(\"%s\");\n", $2, $2);
+	else
+		printf("\tif (val ==  %s)\n\t\treturn(\"%s\");\n", $2, $2);
+}
+
 END {
 	if (use_switch)
 		print "\t}"
