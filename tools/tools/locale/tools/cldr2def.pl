@@ -826,8 +826,10 @@ EOF
 		} elsif ($TYPE eq "ctypedef") {
 			@files = sort {
 				if ($a =~ /^en_x_US/ ||
+				    $a =~ /^en_x_GB.ISO8859-15/ ||
 				    $a =~ /^ru_x_RU/) { return -1; }
 				elsif ($b =~ /^en_x_US/ ||
+				       $b =~ /^en_x_GB.ISO8859-15/ ||
 				       $b =~ /ru_x_RU/) { return 1; }
 				else { return uc($b) cmp uc($a); }
 

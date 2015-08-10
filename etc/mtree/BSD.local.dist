@@ -273,8 +273,6 @@
             ..
             af_ZA.ISO8859-1
             ..
-            af_ZA.ISO8859-15
-            ..
             af_ZA.UTF-8
             ..
             am_ET.UTF-8
@@ -331,15 +329,11 @@
             ..
             en_AU.ISO8859-1
             ..
-            en_AU.ISO8859-15
-            ..
             en_AU.US-ASCII
             ..
             en_AU.UTF-8
             ..
             en_CA.ISO8859-1
-            ..
-            en_CA.ISO8859-15
             ..
             en_CA.US-ASCII
             ..
@@ -363,8 +357,6 @@
             ..
             en_NZ.ISO8859-1
             ..
-            en_NZ.ISO8859-15
-            ..
             en_NZ.US-ASCII
             ..
             en_NZ.UTF-8
@@ -379,15 +371,11 @@
             ..
             en_US.ISO8859-1
             ..
-            en_US.ISO8859-15
-            ..
             en_US.US-ASCII
             ..
             en_US.UTF-8
             ..
             en_ZA.ISO8859-1
-            ..
-            en_ZA.ISO8859-15
             ..
             en_ZA.US-ASCII
             ..
@@ -438,8 +426,6 @@
             fr_BE.UTF-8
             ..
             fr_CA.ISO8859-1
-            ..
-            fr_CA.ISO8859-15
             ..
             fr_CA.UTF-8
             ..
@@ -532,8 +518,6 @@
             pl_PL.UTF-8
             ..
             pt_BR.ISO8859-1
-            ..
-            pt_BR.ISO8859-15
             ..
             pt_BR.UTF-8
             ..

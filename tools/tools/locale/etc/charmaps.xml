@@ -28,7 +28,7 @@
 
 	-->
 	<language name="af"
-		encoding="ISO8859-1 ISO8859-15"
+		encoding="ISO8859-1"
 		countries="ZA" />
 	<language name="am"
 		countries="ET" />		<!-- UTF-8 only -->
@@ -56,7 +56,10 @@
 		countries="GR" />
 	<language name="en"
 		encoding="ISO8859-1 ISO8859-15 US-ASCII"
-		countries="AU CA GB NZ US ZA" />
+		countries="GB" />
+	<language name="en"
+		encoding="ISO8859-1 US-ASCII"
+		countries="AU CA NZ US ZA" />
 	<language name="en"
 		encoding="ISO8859-15"
 		countries="IE" />
@@ -80,7 +83,10 @@
 		countries="FI" />
 	<language name="fr"
 		encoding="ISO8859-1 ISO8859-15"
-		countries="BE CA CH FR" />
+		countries="BE CH FR" />
+	<language name="fr"
+		encoding="ISO8859-1"
+		countries="CA" />
 	<language name="he"
 		countries="IL" />
 	<language name="hi"
@@ -134,7 +140,10 @@
 		countries="PL" />
 	<language name="pt"
 		encoding="ISO8859-1 ISO8859-15"
-		countries="PT BR" />
+		countries="PT" />
+	<language name="pt"
+		encoding="ISO8859-1"
+		countries="BR" />
 	<language name="ro"
 		encoding="ISO8859-2"
 		countries="RO" />

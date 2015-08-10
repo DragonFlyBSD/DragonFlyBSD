@@ -40,7 +40,6 @@ SYMLINKS=	lt_LT.ISO8859-13 ${LOCALEDIR}/lt_LT \
 		el_GR.ISO8859-7  ${LOCALEDIR}/el_GR \
 		lv_LV.ISO8859-13 ${LOCALEDIR}/lv_LV \
 		en_US.ISO8859-1  ${LOCALEDIR}/en_US.ISO-8859-1 \
-		en_US.ISO8859-15 ${LOCALEDIR}/en_US.ISO-8859-15 \
 		ja_JP.eucJP      ${LOCALEDIR}/ja_JP.eucjp
 
 .for symdir in ${STD1}
