@@ -172,7 +172,7 @@ extern struct lock sysctllock;
 #define	SYSCTL_XUNLOCK()	lockmgr(&sysctllock, LK_RELEASE)
 #define	SYSCTL_SLOCK()		lockmgr(&sysctllock, LK_SHARED)
 #define	SYSCTL_SUNLOCK()	lockmgr(&sysctllock, LK_RELEASE)
-#define	SYSCTL_ASSERT_XLOCKED() \
+#define	SYSCTL_ASSERT_LOCKED() \
 	KKASSERT(lockstatus(&sysctllock, curthread) != 0)
 
 /*

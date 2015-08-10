@@ -270,7 +270,7 @@ sysctl_ctx_entry_add(struct sysctl_ctx_list *clist, struct sysctl_oid *oidp)
 {
 	struct sysctl_ctx_entry *e;
 
-	SYSCTL_ASSERT_XLOCKED();
+	SYSCTL_ASSERT_LOCKED();
 	if (clist == NULL || oidp == NULL)
 		return(NULL);
 	e = kmalloc(sizeof(struct sysctl_ctx_entry), M_SYSCTLOID, M_WAITOK);
@@ -285,7 +285,7 @@ sysctl_ctx_entry_find(struct sysctl_ctx_list *clist, struct sysctl_oid *oidp)
 {
 	struct sysctl_ctx_entry *e;
 
-	SYSCTL_ASSERT_XLOCKED();
+	SYSCTL_ASSERT_LOCKED();
 	if (clist == NULL || oidp == NULL)
 		return(NULL);
 	TAILQ_FOREACH(e, clist, link) {
@@ -343,7 +343,7 @@ sysctl_remove_oid_locked(struct sysctl_oid *oidp, int del, int recurse)
 	struct sysctl_oid *p, *tmp;
 	int error;
 
-	SYSCTL_ASSERT_XLOCKED();
+	SYSCTL_ASSERT_LOCKED();
 	if (oidp == NULL)
 		return(EINVAL);
 	if ((oidp->oid_kind & CTLFLAG_DYN) == 0) {
@@ -750,7 +750,7 @@ name2oid(char *name, int *oid, int *len, struct sysctl_oid **oidpp)
 	struct sysctl_oid_list *lsp = &sysctl__children;
 	char *p;
 
-	SYSCTL_ASSERT_XLOCKED();
+	SYSCTL_ASSERT_LOCKED();
 
 	for (*len = 0; *len < CTL_MAXNAME;) {
 		p = strsep(&name, ".");

@@ -205,7 +205,7 @@ sensordev_get(int num)
 {
 	struct ksensordev *sd;
 
-	SYSCTL_ASSERT_XLOCKED();
+	SYSCTL_ASSERT_LOCKED();
 
 	TAILQ_FOREACH(sd, &sensordev_list, list) {
 		if (sd->num == num)
@@ -220,7 +220,7 @@ sensor_find(struct ksensordev *sensdev, enum sensor_type type, int numt)
 	struct ksensor *s;
 	struct ksensors_head *sh;
 
-	SYSCTL_ASSERT_XLOCKED();
+	SYSCTL_ASSERT_LOCKED();
 
 	sh = &sensdev->sensors_list;
 	SLIST_FOREACH(s, sh, list) {
@@ -385,7 +385,7 @@ sensordev_sysctl_install(struct ksensordev *sensdev)
 	struct ksensor *s;
 	struct ksensors_head *sh = &sensdev->sensors_list;
 
-	SYSCTL_ASSERT_XLOCKED();
+	SYSCTL_ASSERT_LOCKED();
 
 	KASSERT(sensdev->oid == NULL,
 	    ("sensor device %s sysctl node already installed", sensdev->xname));
@@ -409,7 +409,7 @@ sensor_sysctl_install(struct ksensordev *sensdev, struct ksensor *sens)
 {
 	char n[32];
 
-	SYSCTL_ASSERT_XLOCKED();
+	SYSCTL_ASSERT_LOCKED();
 
 	if (sensdev->oid == NULL) {
 		/* Sensor device sysctl node is not installed yet */
@@ -429,7 +429,7 @@ sensor_sysctl_install(struct ksensordev *sensdev, struct ksensor *sens)
 static void
 sensordev_sysctl_deinstall(struct ksensordev *sensdev)
 {
-	SYSCTL_ASSERT_XLOCKED();
+	SYSCTL_ASSERT_LOCKED();
 
 	if (sensdev->oid != NULL) {
 		sysctl_ctx_free(&sensdev->clist);
@@ -440,7 +440,7 @@ sensordev_sysctl_deinstall(struct ksensordev *sensdev)
 static void
 sensor_sysctl_deinstall(struct ksensordev *sensdev, struct ksensor *sens)
 {
-	SYSCTL_ASSERT_XLOCKED();
+	SYSCTL_ASSERT_LOCKED();
 
 	if (sensdev->oid != NULL && sens->oid != NULL) {
 		sysctl_ctx_entry_del(&sensdev->clist, sens->oid);
