@@ -2178,6 +2178,26 @@ TO_REMOVE+=/usr/share/locale/en_US.ISO8859-15
 TO_REMOVE+=/usr/share/locale/en_US@euro
 TO_REMOVE+=/usr/share/locale/pt_BR.ISO8859-15
 TO_REMOVE+=/usr/share/locale/pt_BR@euro
+TO_REMOVE+=/usr/share/locale/en_US.ISO-8859-15
+TO_REMOVE+=/usr/share/locale/ca_??.ISO8859-1
+TO_REMOVE+=/usr/share/locale/d?_??.ISO8859-1
+TO_REMOVE+=/usr/share/locale/en_GB.ISO8859-1
+TO_REMOVE+=/usr/share/locale/en_PH.ISO8859-1
+TO_REMOVE+=/usr/share/locale/en_CR.ISO8859-1
+TO_REMOVE+=/usr/share/locale/en_ES.ISO8859-1
+TO_REMOVE+=/usr/share/locale/es_CR.ISO8859-1
+TO_REMOVE+=/usr/share/locale/es_ES.ISO8859-1
+TO_REMOVE+=/usr/share/locale/eu_ES.ISO8859-1
+TO_REMOVE+=/usr/share/locale/fi_FI.ISO8859-1
+TO_REMOVE+=/usr/share/locale/fr_BE.ISO8859-1
+TO_REMOVE+=/usr/share/locale/fr_CH.ISO8859-1
+TO_REMOVE+=/usr/share/locale/fr_FR.ISO8859-1
+TO_REMOVE+=/usr/share/locale/is_IS.ISO8859-1
+TO_REMOVE+=/usr/share/locale/it_??.ISO8859-1
+TO_REMOVE+=/usr/share/locale/n?_NO.ISO8859-1
+TO_REMOVE+=/usr/share/locale/nl_??.ISO8859-1
+TO_REMOVE+=/usr/share/locale/pt_PT.ISO8859-1
+TO_REMOVE+=/usr/share/locale/sv_??.ISO8859-1
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/kgzip
