@@ -412,7 +412,8 @@ DOMAIN_SET(inet6);
 #ifndef	IPV6_SENDREDIRECTS
 #define	IPV6_SENDREDIRECTS	1
 #endif
-int	nd6_onlink_ns_rfc4861 = 0; /* allow 'on-link' nd6 NS (as in RFC 4861) */
+
+int	nd6_onlink_ns_rfc4861 = 0; /* allow 'on-link' NS/NA (as in RFC 4861) */
 
 int	ip6_forwarding = IPV6FORWARDING;	/* act as router? */
 int	ip6_sendredirects = IPV6_SENDREDIRECTS;
@@ -596,4 +597,4 @@ SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_MAXNUDHINT, nd6_maxnudhint, CTLFLAG_R
 SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_DEBUG, nd6_debug, CTLFLAG_RW,
     &nd6_debug, 0, "Enable debug output");
 SYSCTL_INT(_net_inet6_icmp6, ICMPV6CTL_ND6_ONLINKNSRFC4861, nd6_onlink_ns_rfc4861, CTLFLAG_RW,
-    &nd6_onlink_ns_rfc4861, 0, "Accept 'on-link' nd6 NS in compliance with RFC 4861.");
+    &nd6_onlink_ns_rfc4861, 0, "Accept 'on-link' NS/NA in compliance with RFC 4861.");

@@ -679,13 +679,15 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 		goto freeit;
 	}
 
-	/*
-	 * Make sure the source address is from a neighbor's address.
-	 */
-	if (in6ifa_ifplocaladdr(ifp, &saddr6) == NULL) {
-		nd6log((LOG_INFO, "nd6_na_input: "
-		    "NA packet from non-neighbor\n"));
-		goto bad;
+	if (!nd6_onlink_ns_rfc4861) {
+		/*
+		 * Make sure the source address is from a neighbor's address.
+		 */
+		if (in6ifa_ifplocaladdr(ifp, &saddr6) == NULL) {
+			nd6log((LOG_INFO, "nd6_na_input: "
+			    "NA packet from non-neighbor\n"));
+			goto bad;
+		}
 	}
 
 	if (lladdr && ((ifp->if_addrlen + 2 + 7) & ~7) != lladdrlen) {
