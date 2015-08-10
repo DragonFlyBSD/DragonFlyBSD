@@ -25,7 +25,7 @@ LC_ALL=C; export LC_ALL
 ioctl_includes=`
 	cd $1
 	find -s * -name '*.h' -follow |
-		egrep -v '^(cam/)|^(fs/)|^(netsmb/)|^(ufs/)' |
+		egrep -v '^(cam/)|^(compat/)|^(fs/)|^(isofs/)|^(mfs/)|^(msdosfs/)|^(netipsec/)|^(netkey/)|^(netsmb/)|^(nfs/)|^(ntfs/)|^(pccard/)|^(ufs/)' |
 		xargs egrep -l \
 '^#[ 	]*define[ 	]+[A-Za-z_][A-Za-z0-9_]*[ 	]+_IO[^a-z0-9_]' |
 		awk '{printf("#include <%s>\\\\n", $1)}'
