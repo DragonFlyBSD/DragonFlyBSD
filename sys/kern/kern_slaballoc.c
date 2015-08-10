@@ -500,9 +500,10 @@ clean_zone_rchunks(SLZone *z)
 }
 
 /*
- * If the zone becomes totally free, and there are other zones we
- * can allocate from, move this zone to the FreeZones list.  Since
- * this code can be called from an IPI callback, do *NOT* try to mess
+ * If the zone becomes totally free and it is not the first zone in the list,
+ * move this zone to the FreeZones list.  Leaving the first zone in the list
+ * intact even when totally free should be beneficial to cache locality.
+ * Since this code can be called from an IPI callback, do *NOT* try to mess
  * with kernel_map here.  Hysteresis will be performed at malloc() time.
  */
 static __inline
@@ -510,7 +511,7 @@ SLZone *
 check_zone_free(SLGlobalData *slgd, SLZone *z)
 {
     if (z->z_NFree == z->z_NMax &&
-	(z->z_Next || LIST_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z) &&
+	LIST_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z &&
 	z->z_RCount == 0
     ) {
 	SLZone *znext;
@@ -1097,17 +1098,21 @@ kfree_remote(void *ptr)
     }
 
     /*
-     * If the zone becomes totally free, and there are other zones we
-     * can allocate from, move this zone to the FreeZones list.  Since
-     * this code can be called from an IPI callback, do *NOT* try to mess
-     * with kernel_map here.  Hysteresis will be performed at malloc() time.
+     * If the zone becomes totally free and it is not the first zone in the
+     * list, move this zone to the FreeZones list.  Leaving the first zone in
+     * the list intact even when totally free should be beneficial to cache
+     * locality.
+     *
+     * Since this code can be called from an IPI callback, do *NOT* try to
+     * mess with kernel_map here.  Hysteresis will be performed at malloc()
+     * time.
      *
      * Do not move the zone if there is an IPI inflight, otherwise MP
      * races can result in our free_remote code accessing a destroyed
      * zone.
      */
     if (z->z_NFree == z->z_NMax &&
-	(z->z_Next || LIST_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z) &&
+	LIST_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z &&
 	z->z_RCount == 0
     ) {
 	int *kup;

@@ -98,7 +98,7 @@ typedef struct SLZone {
     int		z_Cpu;		/* which cpu owns this zone? */
     struct globaldata *z_CpuGd;	/* which cpu owns this zone? */
     LIST_ENTRY(SLZone) z_Entry;	/* ZoneAry[] if z_NFree!=0, else Free*Zones */
-    struct SLZone *z_Next;	/* ZoneAry[] link if z_NFree non-zero */
+    void	*z_UNused01;
     int		z_NFree;	/* total free chunks / ualloc space in zone */
     int		z_NMax;		/* maximum free chunks */
     char	*z_BasePtr;	/* pointer to start of chunk array */

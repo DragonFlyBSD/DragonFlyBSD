@@ -149,7 +149,9 @@ dumpslab(kvm_t *kd, int cpu, struct SLGlobalData *slab)
     struct SLZone zone;
     SLChunk *chunkp;
     SLChunk chunk;
-    int z = 0;
+    int z;
+    int pass;
+    int xcount;
     int rcount;
     int first;
     int64_t save;
@@ -158,51 +160,75 @@ dumpslab(kvm_t *kd, int cpu, struct SLGlobalData *slab)
     printf("cpu %d NFreeZones=%d JunkIndex=%d\n", cpu, slab->NFreeZones,
 	slab->JunkIndex);
 
-    zonep = LIST_FIRST(slab->ZoneAry);
-    kkread(kd, (u_long)zonep, &zone, sizeof(zone));
-
     for (z = 0; z < NZONES; z++) {
-	printf("    zone %2d", z);
+    for (pass = 1; pass <= 2; ++pass) {
+	zonep = LIST_FIRST(&slab->ZoneAry[z]);
 	first = 1;
 	save = extra;
-	if (first)
-		printf(" chunk=%-5d elms=%-4d free:",
-		    zone.z_ChunkSize, zone.z_NMax);
 
-	if (first == 0)
-		printf(",");
-	printf(" %d", zone.z_NFree);
-	extra += zone.z_NFree * zone.z_ChunkSize;
-	first = 0;
-
-	chunkp = zone.z_RChunks;
-	rcount = 0;
-	while (chunkp) {
-		kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
-		chunkp = chunk.c_Next;
-		++rcount;
-	}
-	if (rcount) {
-		printf(" rchunks=%d", rcount);
-		extra += rcount * zone.z_ChunkSize;
-	}
-	chunkp = zone.z_LChunks;
-	rcount = 0;
-	while (chunkp) {
-		kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
-		chunkp = chunk.c_Next;
-		++rcount;
-	}
-	if (rcount) {
-		printf(" lchunks=%d", rcount);
-		extra += rcount * zone.z_ChunkSize;
-	}
-	printf(" (%jdK free)\n", (intmax_t)(extra - save) / 1024);
-	zonep = LIST_NEXT(&zone, z_Entry);
-	if (zonep)
+	while (zonep) {
 		kkread(kd, (u_long)zonep, &zone, sizeof(zone));
+
+		if (pass == 1) {
+			if (first) {
+				printf("    zone %2d", z);
+				printf(" chunk=%-5d elms=%-4d free:",
+				       zone.z_ChunkSize, zone.z_NMax);
+			}
+		} else if (pass == 2 && first == 0) {
+			printf(",");
+		}
+		first = 0;
+
+		if (pass == 2)
+			printf(" %d", zone.z_NFree);
+		extra += zone.z_NFree * zone.z_ChunkSize;
+
+		chunkp = zone.z_RChunks;
+		rcount = 0;
+		while (chunkp) {
+			kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
+			chunkp = chunk.c_Next;
+			++rcount;
+		}
+		xcount = rcount;
+		if (xcount) {
+			if (pass == 2)
+				printf(" [rc=%d", xcount);
+			extra += xcount * zone.z_ChunkSize;
+		}
+		chunkp = zone.z_LChunks;
+		rcount = 0;
+		while (chunkp) {
+			kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
+			chunkp = chunk.c_Next;
+			++rcount;
+		}
+		if (rcount) {
+			if (pass == 2) {
+				if (xcount)
+					printf(",");
+				else
+					printf(" [");
+				printf("lc=%d", rcount);
+			}
+			extra += rcount * zone.z_ChunkSize;
+		}
+		if (rcount || xcount) {
+			if (pass == 2)
+				printf("]");
+		}
+		zonep = LIST_NEXT(&zone, z_Entry);
+	}
+	if (first == 0 && pass == 1)
+		printf(" (%6jdK free)", (intmax_t)(extra - save) / 1024);
+	if (first == 0 && pass == 2)
+		printf("\n");
     }
-    printf("    TotalUnused %jdM\n", (intmax_t)extra / 1024 / 1024);
+    }
+    printf("    TotalUnused %jd.%03dM\n",
+	   (intmax_t)extra / 1024 / 1024,
+	   (int)(extra % 1024) * 999 / 1024);
 }
 
 static void
