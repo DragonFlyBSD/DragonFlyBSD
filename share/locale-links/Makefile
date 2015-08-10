@@ -28,14 +28,15 @@ STD1=	af_ZA en_AU en_CA en_HK en_NZ en_SG en_US en_ZA \
 STD2=	cs_CZ hr_HR hu_HU pl_PL ro_RO sk_SK sl_SI sr_Latn_RS
 STD5=	be_BY ru_RU uk_UA sr_Cyrl_RS
 STD15=	ca_AD ca_ES ca_FR ca_IT da_DK de_AT de_CH de_DE \
-	en_GB es_ES eu_ES fi_FI fr_BE fr_CH fr_FR is_IS \
-	it_CH it_IT nb_NO nl_BE nl_NL nn_NO pt_PT sv_SE
+	en_GB en_IE es_ES et_EE eu_ES fi_FI fr_BE fr_CH \
+	fr_FR is_IS it_CH it_IT nb_NO nl_BE nl_NL nn_NO \
+	pt_PT sv_SE
 
 MANUAL=	lt_LT el_GR tr_TR lv_LV
 
 LOCALEDIR=	/usr/share/locale
 
-SYMLINKS=	lt_LT.ISO8859-4  ${LOCALEDIR}/lt_LT \
+SYMLINKS=	lt_LT.ISO8859-13 ${LOCALEDIR}/lt_LT \
 		el_GR.ISO8859-7  ${LOCALEDIR}/el_GR \
 		tr_TR.ISO8859-9  ${LOCALEDIR}/tr_TR \
 		lv_LV.ISO8859-13 ${LOCALEDIR}/lv_LV \

@@ -58,6 +58,7 @@
 		encoding="ISO8859-1 ISO8859-15 US-ASCII"
 		countries="AU CA GB NZ US ZA" />
 	<language name="en"
+		encoding="ISO8859-15"
 		countries="IE" />
 	<language name="en"
 		encoding="ISO8859-1"
@@ -111,7 +112,7 @@
 		encoding_link="eucKR:CP949"
 		countries="KR" />
 	<language name="lt"
-		encoding="ISO8859-4 ISO8859-13"
+		encoding="ISO8859-13"
 		countries="LT" />
 	<language name="lv"
 		encoding="ISO8859-13"
