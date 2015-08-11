@@ -146,10 +146,6 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	HAMMER_VOLUME_NUMBER_FOREACH(hmp, vol_no) {
 		volume = hammer_get_volume(hmp, vol_no, &error);
-		if (volume == NULL && error == ENOENT) {
-			error = 0;
-			continue;
-		}
 		KKASSERT(volume != NULL && error == 0);
 		hammer_modify_volume_field(trans, volume, vol_count);
 		volume->ondisk->vol_count = hmp->nvolumes;
@@ -248,10 +244,6 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	HAMMER_VOLUME_NUMBER_FOREACH(hmp, vol_no) {
 		volume = hammer_get_volume(hmp, vol_no, &error);
-		if (volume == NULL && error == ENOENT) {
-			error = 0;
-			continue;
-		}
 		KKASSERT(volume != NULL && error == 0);
 		if (strcmp(volume->vol_name, ioc->device_name) == 0) {
 			break;
@@ -355,11 +347,6 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	HAMMER_VOLUME_NUMBER_FOREACH(hmp, vol_no) {
 		volume = hammer_get_volume(hmp, vol_no, &error);
-		if (volume == NULL && error == ENOENT) {
-			error = 0;
-			continue;
-		}
-
 		KKASSERT(volume != NULL && error == 0);
 		hammer_modify_volume_field(trans, volume, vol_count);
 		volume->ondisk->vol_count = hmp->nvolumes;
@@ -455,10 +442,6 @@ hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
 		if (cnt >= ioc->nvols)
 			break;
 		volume = hammer_get_volume(hmp, i, &error);
-		if (volume == NULL && error == ENOENT) {
-			error = 0;
-			continue;
-		}
 		KKASSERT(volume != NULL && error == 0);
 
 		len = strlen(volume->vol_name) + 1;
