@@ -17,10 +17,9 @@ UTF8=	af_ZA am_ET be_BY bg_BG ca_AD ca_ES ca_FR ca_IT \
 	zh_Hant_HK \
 	zh_Hant_TW
 
-EURO=	af_ZA ca_AD ca_ES ca_FR ca_IT da_DK de_AT de_CH \
-	de_DE en_AU en_CA en_GB en_NZ en_US en_ZA es_ES \
-	et_EE eu_ES fi_FI fr_BE fr_CA fr_CH fr_FR is_IS \
-	it_CH it_IT nb_NO nl_BE nl_NL nn_NO pt_BR pt_PT \
+EURO=	ca_AD ca_ES ca_FR ca_IT da_DK de_AT de_CH de_DE \
+	en_GB es_ES et_EE eu_ES fi_FI fr_BE fr_CH fr_FR \
+	is_IS it_CH it_IT nb_NO nl_BE nl_NL nn_NO pt_PT \
 	sv_FI sv_SE
 
 STD1=	af_ZA en_AU en_CA en_HK en_NZ en_SG en_US en_ZA \
