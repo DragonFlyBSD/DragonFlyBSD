@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/getconf/getconf.c,v 1.6.2.1 2002/10/27 04:18:40 wollman Exp $
- * $DragonFly: src/usr.bin/getconf/getconf.c,v 1.4 2006/12/06 11:58:57 tgen Exp $
  */
 
 #include <sys/types.h>
@@ -59,7 +58,7 @@ main(int argc, char **argv)
 {
 	int c, key, valid;
 	const char *name, *vflag, *alt_path;
-	gc_intmax_t limitval;
+	intmax_t limitval;
 
 	vflag = NULL;
 	while ((c = getopt(argc, argv, "v:")) != -1) {
@@ -98,7 +97,7 @@ main(int argc, char **argv)
 	if (argv[optind + 1] == NULL) { /* confstr or sysconf */
 		if ((valid = find_limit(name, &limitval)) != 0) {
 			if (valid > 0)
-				printf("%" GC_PRIdMAX "\n", limitval);
+				printf("%" PRIdMAX "\n", limitval);
 			else
 				printf("undefined\n");
 
