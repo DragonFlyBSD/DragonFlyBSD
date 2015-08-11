@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD: head/usr.bin/getconf/getconf.1 267773 2014-06-23 08:23:05Z bapt $
 .\"
-.Dd September 18, 2002
+.Dd August 11, 2015
 .Dt GETCONF 1
 .Os
 .Sh NAME
@@ -117,13 +117,11 @@ None.
 .It Li POSIX_V6_ILP32_OFFBIG
 Exactly 32-bit integer, long, and pointer; at least 64-bit file offset.
 .Sy Supported platforms :
-.Tn IA32 ,
-.Tn PowerPC .
+None.
 .It Li POSIX_V6_LP64_OFF64
 Exactly 32-bit integer; exactly 64-bit long, pointer, and file offset.
 .Sy Supported platforms :
-.Tn Alpha ,
-.Tn SPARC64 .
+.Tn x86_64 .
 .It Li POSIX_V6_LPBIG_OFFBIG
 At least 32-bit integer; at least 64-bit long, pointer, and file offset.
 .Sy Supported platforms :
