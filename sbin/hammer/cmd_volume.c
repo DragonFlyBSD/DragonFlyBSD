@@ -48,7 +48,6 @@
 #include <stdlib.h>
 
 static uint64_t check_volume(const char *vol_name);
-static void init_area_size(struct hammer_ioc_volume *iocp);
 
 /*
  * volume-add <device> <filesystem>
@@ -80,7 +79,8 @@ hammer_cmd_volume_add(char **av, int ac)
 	bzero(&ioc, sizeof(ioc));
 	strncpy(ioc.device_name, device, MAXPATHLEN);
 	ioc.vol_size = check_volume(device);
-	init_area_size(&ioc);
+	ioc.boot_area_size = init_boot_area_size(0, ioc.vol_size);
+	ioc.mem_area_size = init_mem_area_size(0, ioc.vol_size);
 
 	if (ioctl(fd, HAMMERIOC_ADD_VOLUME, &ioc) < 0) {
 		fprintf(stderr, "hammer volume-add ioctl: %s\n",
@@ -242,48 +242,4 @@ check_volume(const char *vol_name)
 
 	close(fd);
 	return pinfo.media_size;
-}
-
-/*
- * Calculate defaults for the boot and memory area sizes.
- * XXX This code is taken from sbin/newfs_hammer/newfs_hammer.c
- */
-static
-void
-init_area_size(struct hammer_ioc_volume *iocp)
-{
-#if 0
-	/*
-	 * The original boot/mem area size values by volume-add
-	 * that are different from what newfs_hammer has by default.
-	 */
-	BootAreaSize = HAMMER_BOOT_NOMBYTES;
-	MemAreaSize = HAMMER_MEM_NOMBYTES;
-#else
-	BootAreaSize = 0;
-	MemAreaSize = 0;
-#endif
-
-	if (BootAreaSize == 0) {
-		BootAreaSize = HAMMER_BOOT_NOMBYTES;
-		while (BootAreaSize > iocp->vol_size / HAMMER_MAX_VOLUMES)
-			BootAreaSize >>= 1;
-		if (BootAreaSize < HAMMER_BOOT_MINBYTES)
-			BootAreaSize = 0;
-	} else if (BootAreaSize < HAMMER_BOOT_MINBYTES) {
-		BootAreaSize = HAMMER_BOOT_MINBYTES;
-	}
-
-	if (MemAreaSize == 0) {
-		MemAreaSize = HAMMER_MEM_NOMBYTES;
-		while (MemAreaSize > iocp->vol_size / HAMMER_MAX_VOLUMES)
-			MemAreaSize >>= 1;
-		if (MemAreaSize < HAMMER_MEM_MINBYTES)
-			MemAreaSize = 0;
-	} else if (MemAreaSize < HAMMER_MEM_MINBYTES) {
-		MemAreaSize = HAMMER_MEM_MINBYTES;
-	}
-
-	iocp->boot_area_size = BootAreaSize;
-	iocp->mem_area_size = MemAreaSize;
 }

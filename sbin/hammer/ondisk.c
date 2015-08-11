@@ -1001,3 +1001,33 @@ writehammerbuf(struct volume_info *vol, const void *data, int64_t offset)
 	if (n != HAMMER_BUFSIZE)
 		err(1, "Write volume %d (%s)", vol->vol_no, vol->name);
 }
+
+int64_t init_boot_area_size(int64_t value, off_t avg_vol_size)
+{
+	if (value == 0) {
+		value = HAMMER_BOOT_NOMBYTES;
+		while (value > avg_vol_size / HAMMER_MAX_VOLUMES)
+			value >>= 1;
+		if (value < HAMMER_BOOT_MINBYTES)
+			value = 0;
+	} else if (value < HAMMER_BOOT_MINBYTES) {
+		value = HAMMER_BOOT_MINBYTES;
+	}
+
+	return(value);
+}
+
+int64_t init_mem_area_size(int64_t value, off_t avg_vol_size)
+{
+	if (value == 0) {
+		value = HAMMER_MEM_NOMBYTES;
+		while (value > avg_vol_size / HAMMER_MAX_VOLUMES)
+			value >>= 1;
+		if (value < HAMMER_MEM_MINBYTES)
+			value = 0;
+	} else if (value < HAMMER_MEM_MINBYTES) {
+		value = HAMMER_MEM_MINBYTES;
+	}
+
+	return(value);
+}

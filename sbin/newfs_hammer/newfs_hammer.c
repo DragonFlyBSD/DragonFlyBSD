@@ -55,6 +55,7 @@ main(int ac, char **av)
 {
 	u_int32_t status;
 	off_t total;
+	off_t avg_vol_size;
 	int ch;
 	int i;
 	const char *label = NULL;
@@ -222,24 +223,9 @@ main(int ac, char **av)
 	/*
 	 * Calculate defaults for the boot and memory area sizes.
 	 */
-	if (BootAreaSize == 0) {
-		BootAreaSize = HAMMER_BOOT_NOMBYTES;
-		while (BootAreaSize > total / NumVolumes / HAMMER_MAX_VOLUMES)
-			BootAreaSize >>= 1;
-		if (BootAreaSize < HAMMER_BOOT_MINBYTES)
-			BootAreaSize = 0;
-	} else if (BootAreaSize < HAMMER_BOOT_MINBYTES) {
-		BootAreaSize = HAMMER_BOOT_MINBYTES;
-	}
-	if (MemAreaSize == 0) {
-		MemAreaSize = HAMMER_MEM_NOMBYTES;
-		while (MemAreaSize > total / NumVolumes / HAMMER_MAX_VOLUMES)
-			MemAreaSize >>= 1;
-		if (MemAreaSize < HAMMER_MEM_MINBYTES)
-			MemAreaSize = 0;
-	} else if (MemAreaSize < HAMMER_MEM_MINBYTES) {
-		MemAreaSize = HAMMER_MEM_MINBYTES;
-	}
+	avg_vol_size = total / NumVolumes;
+	BootAreaSize = init_boot_area_size(BootAreaSize, avg_vol_size);
+	MemAreaSize = init_mem_area_size(MemAreaSize, avg_vol_size);
 
 	/*
 	 * Format the volumes.  Format the root volume first so we can

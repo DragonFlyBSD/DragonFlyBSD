@@ -182,6 +182,9 @@ void flush_all_volumes(void);
 void flush_volume(struct volume_info *vol);
 void flush_buffer(struct buffer_info *buf);
 
+int64_t init_boot_area_size(int64_t value, off_t avg_vol_size);
+int64_t init_mem_area_size(int64_t value, off_t avg_vol_size);
+
 void hammer_cache_set(int bytes);
 void hammer_cache_add(struct cache_info *cache, enum cache_type type);
 void hammer_cache_del(struct cache_info *cache);
