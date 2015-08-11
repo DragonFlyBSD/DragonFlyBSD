@@ -30,12 +30,10 @@ static const struct map *in_word_set(const char *str);
  * be updated.  (We cheat here and define the supported environments
  * statically.)
  */
-#if defined(__sparc64__) || defined(__x86_64__)
+#if defined(__x86_64__)
 #define	have_LP64_OFF64		NULL
-#endif
-
-#if defined(__i386__) || defined(__powerpc__)
-#define	have_ILP32_OFFBIG	NULL
+#else
+#error platform not handled in progenv.gperf
 #endif
 
 %}
