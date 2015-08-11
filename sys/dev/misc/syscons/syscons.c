@@ -134,7 +134,7 @@ static	bios_values_t	bios_value;
 static	int		enable_panic_key;
 SYSCTL_INT(_machdep, OID_AUTO, enable_panic_key, CTLFLAG_RW, &enable_panic_key,
 	   0, "Enable the panic key (CTRL-ALT-SHIFT-ESC)");
-static	int		syscons_async = 1;
+static	int		syscons_async;
 SYSCTL_INT(_kern, OID_AUTO, syscons_async, CTLFLAG_RW, &syscons_async,
 	   0, "Asynchronous bulk syscons fb updates");
 

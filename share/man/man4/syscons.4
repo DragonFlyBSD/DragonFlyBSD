@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/syscons.4,v 1.10.2.14 2003/04/25 21:21:36 brueffer Exp $
 .\"
-.Dd July 21, 2015
+.Dd August 11, 2015
 .Dt SYSCONS 4
 .Os
 .Sh NAME
@@ -70,7 +70,7 @@ and the video card drivers
 or
 .Xr vga 4 ) .
 Please see
-.Sx Loader Tunables
+.Sx DRIVER CONFIGURATION
 below on how to make the console work with
 .Xr i915kms 4
 or
@@ -250,7 +250,7 @@ and
 for more details.
 .Sh DRIVER CONFIGURATION
 .Ss Loader Tunables
-The following tunable is available and can be set in
+The following tunables are available and can be set in
 .Xr loader.conf 5 .
 .Bl -tag -width ".Va kern.kms_console"
 .It Va kern.kms_console
@@ -277,6 +277,24 @@ tries to find a more or less pleasant looking default.
 Setting
 .Va kern.kms_columns
 to a negative value turns off scaling.
+.El
+.Ss Sysctl Variables
+The following
+.Xr sysctl 8
+variable is available and can be either set via
+.Xr sysctl.conf 5
+or from the command line.
+.Bl -tag -width ".Va kern.syscons_async"
+.It Va kern.syscons_async
+Set to 1 to enable asynchronous bulk framebuffer updates.
+It is intended to help with
+.Xr sound 4
+stuttering when a high resolution
+.Nm
+scrolls during playback.
+It is not enabled by default because on certain machines it has lead to
+subtle issues with for example
+.Xr ddb 4 .
 .El
 .Ss Kernel Configuration Options
 The following kernel configuration options control the
