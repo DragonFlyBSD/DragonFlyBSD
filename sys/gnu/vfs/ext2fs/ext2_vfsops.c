@@ -681,7 +681,6 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 	struct ext2_sb_info *fs;
 	struct ext2_super_block *es;
 	cdev_t dev;
-	struct partinfo dpart;
 	int error, i;
 	int ronly;
 
@@ -713,7 +712,6 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 		mp->mnt_iosize_max = dev->si_iosize_max;
 	if (mp->mnt_iosize_max > MAXPHYS)
 		mp->mnt_iosize_max = MAXPHYS;
-	VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, cred, NULL);
 
 	bp = NULL;
 	ump = NULL;
