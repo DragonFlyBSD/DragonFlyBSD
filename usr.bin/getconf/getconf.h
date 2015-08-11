@@ -26,7 +26,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/getconf/getconf.h,v 1.4.2.1 2002/10/27 04:18:40 wollman Exp $
+ * $FreeBSD: head/usr.bin/getconf/getconf.h 106017 2002-10-27 04:14:08Z wollman $
  */
 
 #include <inttypes.h>

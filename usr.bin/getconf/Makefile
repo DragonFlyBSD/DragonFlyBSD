@@ -1,4 +1,4 @@
-# $FreeBSD: src/usr.bin/getconf/Makefile,v 1.3.2.2 2002/11/25 09:02:40 ru Exp $
+# $FreeBSD: head/usr.bin/getconf/Makefile 107224 2002-11-25 09:00:05Z ru $
 
 PROG=	getconf
 
@@ -7,7 +7,6 @@ CFLAGS+= -I${.CURDIR}
 CLEANFILES+=	confstr.c limits.c pathconf.c progenv.c sysconf.c \
 		confstr.names limits.names pathconf.names sysconf.names \
 		conflicting.names unique.names
-WARNS?=	2
 
 .SUFFIXES: .gperf .names
 .PHONY: conflicts

@@ -26,7 +26,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/getconf/getconf.c,v 1.6.2.1 2002/10/27 04:18:40 wollman Exp $
+ * $FreeBSD: head/usr.bin/getconf/getconf.c 164945 2006-12-06 12:00:26Z maxim $
  */
 
 #include <sys/types.h>
@@ -47,9 +47,9 @@ static void	do_pathconf(const char *name, int key, const char *path);
 static void
 usage(void)
 {
-	fprintf(stderr, "usage:\n"
-		"\tgetconf [-v prog_env] system_var\n"
-		"\tgetconf [-v prog_env] path_var pathname\n");
+	fprintf(stderr,
+"usage: getconf [-v prog_env] system_var\n"
+"       getconf [-v prog_env] path_var pathname\n");
 	exit(EX_USAGE);
 }
 
@@ -137,21 +137,24 @@ main(int argc, char **argv)
 static void
 do_confstr(const char *name, int key)
 {
-	char *buf;
 	size_t len;
+	int savederr;
 
+	savederr = errno;
 	errno = 0;
 	len = confstr(key, 0, 0);
-	if (len == 0 && errno != 0)
-		err(EX_OSERR, "confstr: %s", name);
-	
 	if (len == 0) {
-		printf("undefined\n");
+		if (errno)
+			err(EX_OSERR, "confstr: %s", name);
+		else
+			printf("undefined\n");
 	} else {
-		buf = alloca(len);
+		char buf[len + 1];
+
 		confstr(key, buf, len);
 		printf("%s\n", buf);
 	}
+	errno = savederr;
 }
 
 static void

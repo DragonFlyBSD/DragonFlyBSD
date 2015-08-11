@@ -2,13 +2,11 @@
 /*
  * Copyright is disclaimed as to the contents of this file.
  *
- * $FreeBSD: src/usr.bin/getconf/pathconf.gperf,v 1.3.2.1 2002/10/27 04:18:40 wollman Exp $
- * $DragonFly: src/usr.bin/getconf/pathconf.gperf,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $FreeBSD: head/usr.bin/getconf/pathconf.gperf 119312 2003-08-22 17:32:07Z markm $
  */
 
 #include <sys/types.h>
 
-#include <limits.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -17,10 +15,10 @@
 /*
  * Override gperf's built-in external scope.
  */
-static const struct map *in_word_set(const char *str, unsigned int len);
+static const struct map *in_word_set(const char *str);
 
 %}
-struct map { char *name; int key; int valid; };
+struct map { const char *name; int key; int valid; };
 %%
 FILESIZEBITS, _PC_FILESIZEBITS
 LINK_MAX, _PC_LINK_MAX
@@ -52,7 +50,7 @@ find_pathconf(const char *name, int *key)
 {
 	const struct map *rv;
 
-	rv = in_word_set(name, strlen(name));
+	rv = in_word_set(name);
 	if (rv != NULL) {
 		if (rv->valid) {
 			*key = rv->key;

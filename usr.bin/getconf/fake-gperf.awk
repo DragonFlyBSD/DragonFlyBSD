@@ -1,6 +1,5 @@
 #!/usr/bin/awk -f
-# $FreeBSD: src/usr.bin/getconf/fake-gperf.awk,v 1.2.2.1 2002/10/27 04:18:40 wollman Exp $
-# $DragonFly: src/usr.bin/getconf/fake-gperf.awk,v 1.2 2003/06/17 04:29:27 dillon Exp $
+# $FreeBSD: head/usr.bin/getconf/fake-gperf.awk 119312 2003-08-22 17:32:07Z markm $
 BEGIN {
   state = 0;
   struct_seen = "";
@@ -21,8 +20,6 @@ state == 1 { print; next; }
 }
 /^%%$/ && state == 0 {
   state = 2;
-  print "#include <stddef.h>";
-  print "#include <string.h>";
   if (struct_seen !~ /^$/) {
     print "static const struct", struct_seen, "wordlist[] = {";
   } else {
@@ -37,11 +34,11 @@ state == 1 { print; next; }
 }
 /^%%$/ && state == 2 {
   state = 3;
-  print "\t{ NULL }";
+  print "\t{ NULL, 0, 0 }";
   print "};";
   print "#define\tNWORDS\t(sizeof(wordlist)/sizeof(wordlist[0]) - 1)";
   print "static const struct map *";
-  print "in_word_set(const char *word, unsigned int len)";
+  print "in_word_set(const char *word)";
   print "{";
   print "\tconst struct", struct_seen, "*mp;";
   print "";
