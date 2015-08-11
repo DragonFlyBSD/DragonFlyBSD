@@ -162,7 +162,7 @@ dumpslab(kvm_t *kd, int cpu, struct SLGlobalData *slab)
 
     for (z = 0; z < NZONES; z++) {
     for (pass = 1; pass <= 2; ++pass) {
-	zonep = LIST_FIRST(&slab->ZoneAry[z]);
+	zonep = TAILQ_FIRST(&slab->ZoneAry[z]);
 	first = 1;
 	save = extra;
 
@@ -172,7 +172,7 @@ dumpslab(kvm_t *kd, int cpu, struct SLGlobalData *slab)
 		if (pass == 1) {
 			if (first) {
 				printf("    zone %2d", z);
-				printf(" chunk=%-5d elms=%-4d free:",
+				printf(" chunk=%-5d elms=%-4d ",
 				       zone.z_ChunkSize, zone.z_NMax);
 			}
 		} else if (pass == 2 && first == 0) {
@@ -218,10 +218,10 @@ dumpslab(kvm_t *kd, int cpu, struct SLGlobalData *slab)
 			if (pass == 2)
 				printf("]");
 		}
-		zonep = LIST_NEXT(&zone, z_Entry);
+		zonep = TAILQ_NEXT(&zone, z_Entry);
 	}
 	if (first == 0 && pass == 1)
-		printf(" (%6jdK free)", (intmax_t)(extra - save) / 1024);
+		printf(" %6jdK free:", (intmax_t)(extra - save) / 1024);
 	if (first == 0 && pass == 2)
 		printf("\n");
     }

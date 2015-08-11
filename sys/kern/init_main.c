@@ -758,6 +758,7 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	lwkt_gdinit(gd);
 	vm_map_entry_reserve_cpu_init(gd);
 	sleep_gdinit(gd);
+	slab_gdinit(gd);
 	ATOMIC_CPUMASK_ORBIT(usched_global_cpumask, cpuid);
 }
 

@@ -143,6 +143,7 @@ struct _jmp_buf;
 void	Debugger (const char *msg);
 void	print_backtrace(int count);
 void	mi_gdinit (struct globaldata *gd, int cpu);
+void	slab_gdinit (struct globaldata *gd);
 void	mi_proc0init(struct globaldata *gd, struct user *proc0paddr);
 int	setjmp(struct _jmp_buf *) __returns_twice;
 void	longjmp(struct _jmp_buf *, int) __dead2;

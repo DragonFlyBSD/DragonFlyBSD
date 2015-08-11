@@ -227,8 +227,13 @@ SYSCTL_INT(_kern, OID_AUTO, zone_gen_alloc, CTLFLAG_RD, &ZoneGenAlloc, 0, "");
 SYSCTL_INT(_kern, OID_AUTO, zone_cache, CTLFLAG_RW, &ZoneRelsThresh, 0, "");
 static long SlabsAllocated;
 static long SlabsFreed;
-SYSCTL_LONG(_kern, OID_AUTO, slabs_allocated, CTLFLAG_RD, &SlabsAllocated, 0, "");
-SYSCTL_LONG(_kern, OID_AUTO, slabs_freed, CTLFLAG_RD, &SlabsFreed, 0, "");
+SYSCTL_LONG(_kern, OID_AUTO, slabs_allocated, CTLFLAG_RD,
+	    &SlabsAllocated, 0, "");
+SYSCTL_LONG(_kern, OID_AUTO, slabs_freed, CTLFLAG_RD,
+	    &SlabsFreed, 0, "");
+static int SlabFreeToTail;
+SYSCTL_INT(_kern, OID_AUTO, slab_freetotail, CTLFLAG_RW,
+	    &SlabFreeToTail, 0, "");
 
 /*
  * Returns the kernel memory size limit for the purposes of initializing
@@ -293,6 +298,24 @@ kmeminit(void *dummy)
 
     if (bootverbose)
 	kprintf("Slab ZoneSize set to %dKB\n", ZoneSize / 1024);
+}
+
+/*
+ * (low level) Initialize slab-related elements in the globaldata structure.
+ *
+ * Occurs after kmeminit().
+ */
+void
+slab_gdinit(globaldata_t gd)
+{
+	SLGlobalData *slgd;
+	int i;
+
+	slgd = &gd->gd_slab;
+	for (i = 0; i < NZONES; ++i)
+		TAILQ_INIT(&slgd->ZoneAry[i]);
+	TAILQ_INIT(&slgd->FreeZones);
+	TAILQ_INIT(&slgd->FreeOvZones);
 }
 
 /*
@@ -500,36 +523,39 @@ clean_zone_rchunks(SLZone *z)
 }
 
 /*
- * If the zone becomes totally free and it is not the first zone in the list,
- * move this zone to the FreeZones list.  Leaving the first zone in the list
- * intact even when totally free should be beneficial to cache locality.
+ * If the zone becomes totally free and is not the only zone listed for a
+ * chunk size we move it to the FreeZones list.  We always leave at least
+ * one zone per chunk size listed, even if it is freeable.
+ *
+ * Do not move the zone if there is an IPI in_flight (z_RCount != 0),
+ * otherwise MP races can result in our free_remote code accessing a
+ * destroyed zone.  The remote end interlocks z_RCount with z_RChunks
+ * so one has to test both z_NFree and z_RCount.
+ *
  * Since this code can be called from an IPI callback, do *NOT* try to mess
- * with kernel_map here.  Hysteresis will be performed at malloc() time.
+ * with kernel_map here.  Hysteresis will be performed at kmalloc() time.
  */
 static __inline
 SLZone *
 check_zone_free(SLGlobalData *slgd, SLZone *z)
 {
-    if (z->z_NFree == z->z_NMax &&
-	LIST_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z &&
-	z->z_RCount == 0
+    SLZone *znext;
+
+    znext = TAILQ_NEXT(z, z_Entry);
+    if (z->z_NFree == z->z_NMax && z->z_RCount == 0 &&
+	(TAILQ_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z || znext)
     ) {
-	SLZone *znext;
 	int *kup;
 
-	znext = LIST_NEXT(z, z_Entry);
-	LIST_REMOVE(z, z_Entry);
+	TAILQ_REMOVE(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
 
 	z->z_Magic = -1;
-	LIST_INSERT_HEAD(&slgd->FreeZones, z, z_Entry);
+	TAILQ_INSERT_HEAD(&slgd->FreeZones, z, z_Entry);
 	++slgd->NFreeZones;
 	kup = btokup(z);
 	*kup = 0;
-	z = znext;
-    } else {
-	z = LIST_NEXT(z, z_Entry);
     }
-    return z;
+    return znext;
 }
 
 #ifdef SLAB_DEBUG
@@ -677,8 +703,9 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	if (slgd->NFreeZones > ZoneRelsThresh) {	/* crit sect race */
 	    int *kup;
 
-	    z = LIST_FIRST(&slgd->FreeZones);
-	    LIST_REMOVE(z, z_Entry);
+	    z = TAILQ_LAST(&slgd->FreeZones, SLZoneList);
+	    KKASSERT(z != NULL);
+	    TAILQ_REMOVE(&slgd->FreeZones, z, z_Entry);
 	    --slgd->NFreeZones;
 	    kup = btokup(z);
 	    *kup = 0;
@@ -691,13 +718,13 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
     /*
      * XXX handle oversized frees that were queued from kfree().
      */
-    while (LIST_FIRST(&slgd->FreeOvZones) && (flags & M_RNOWAIT) == 0) {
+    while (TAILQ_FIRST(&slgd->FreeOvZones) && (flags & M_RNOWAIT) == 0) {
 	crit_enter();
-	if ((z = LIST_FIRST(&slgd->FreeOvZones)) != NULL) {
+	if ((z = TAILQ_LAST(&slgd->FreeOvZones, SLZoneList)) != NULL) {
 	    vm_size_t tsize;
 
 	    KKASSERT(z->z_Magic == ZALLOC_OVSZ_MAGIC);
-	    LIST_REMOVE(z, z_Entry);
+	    TAILQ_REMOVE(&slgd->FreeOvZones, z, z_Entry);
 	    tsize = z->z_ChunkSize;
 	    kmem_slab_free(z, tsize);	/* may block */
 	    atomic_add_int(&ZoneBigAlloc, -(int)tsize / 1024);
@@ -743,7 +770,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
     KKASSERT(zi < NZONES);
     crit_enter();
 
-    if ((z = LIST_FIRST(&slgd->ZoneAry[zi])) != NULL) {
+    if ((z = TAILQ_LAST(&slgd->ZoneAry[zi], SLZoneList)) != NULL) {
 	/*
 	 * Locate a chunk - we have to have at least one.  If this is the
 	 * last chunk go ahead and do the work to retrieve chunks freed
@@ -773,7 +800,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	     * Clear RSignal
 	     */
 	    if (z->z_NFree == 0) {
-		LIST_REMOVE(z, z_Entry);
+		TAILQ_REMOVE(&slgd->ZoneAry[zi], z, z_Entry);
 	    } else {
 		z->z_RSignal = 0;
 	    }
@@ -836,8 +863,8 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	int off;
 	int *kup;
 
-	if ((z = LIST_FIRST(&slgd->FreeZones)) != NULL) {
-	    LIST_REMOVE(z, z_Entry);
+	if ((z = TAILQ_FIRST(&slgd->FreeZones)) != NULL) {
+	    TAILQ_REMOVE(&slgd->FreeZones, z, z_Entry);
 	    --slgd->NFreeZones;
 	    bzero(z, sizeof(SLZone));
 	    z->z_Flags |= SLZF_UNOTZEROD;
@@ -885,7 +912,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	bzero(z->z_Sources, sizeof(z->z_Sources));
 #endif
 	chunk = (SLChunk *)(z->z_BasePtr + z->z_UIndex * size);
-	LIST_INSERT_HEAD(&slgd->ZoneAry[zi], z, z_Entry);
+	TAILQ_INSERT_HEAD(&slgd->ZoneAry[zi], z, z_Entry);
 	if ((z->z_Flags & SLZF_UNOTZEROD) == 0) {
 	    flags &= ~M_ZERO;	/* already zero'd */
 	    flags |= M_PASSIVE_ZERO;
@@ -1094,32 +1121,32 @@ kfree_remote(void *ptr)
      */
     clean_zone_rchunks(z);
     if (z->z_NFree && nfree == 0) {
-	LIST_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
+	TAILQ_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
     }
 
     /*
-     * If the zone becomes totally free and it is not the first zone in the
-     * list, move this zone to the FreeZones list.  Leaving the first zone in
-     * the list intact even when totally free should be beneficial to cache
-     * locality.
+     * If the zone becomes totally free and is not the only zone listed for a
+     * chunk size we move it to the FreeZones list.  We always leave at least
+     * one zone per chunk size listed, even if it is freeable.
      *
      * Since this code can be called from an IPI callback, do *NOT* try to
      * mess with kernel_map here.  Hysteresis will be performed at malloc()
      * time.
      *
-     * Do not move the zone if there is an IPI inflight, otherwise MP
-     * races can result in our free_remote code accessing a destroyed
-     * zone.
+     * Do not move the zone if there is an IPI in_flight (z_RCount != 0),
+     * otherwise MP races can result in our free_remote code accessing a
+     * destroyed zone.  The remote end interlocks z_RCount with z_RChunks
+     * so one has to test both z_NFree and z_RCount.
      */
-    if (z->z_NFree == z->z_NMax &&
-	LIST_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z &&
-	z->z_RCount == 0
+    if (z->z_NFree == z->z_NMax && z->z_RCount == 0 &&
+	(TAILQ_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z ||
+	 TAILQ_NEXT(z, z_Entry))
     ) {
 	int *kup;
 
-	LIST_REMOVE(z, z_Entry);
+	TAILQ_REMOVE(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
 	z->z_Magic = -1;
-	LIST_INSERT_HEAD(&slgd->FreeZones, z, z_Entry);
+	TAILQ_INSERT_HEAD(&slgd->FreeZones, z, z_Entry);
 	++slgd->NFreeZones;
 	kup = btokup(z);
 	*kup = 0;
@@ -1205,7 +1232,7 @@ kfree(void *ptr, struct malloc_type *type)
 	    z->z_Magic = ZALLOC_OVSZ_MAGIC;
 	    z->z_ChunkSize = size;
 
-	    LIST_INSERT_HEAD(&slgd->FreeOvZones, z, z_Entry);
+	    TAILQ_INSERT_HEAD(&slgd->FreeOvZones, z, z_Entry);
 	    crit_exit();
 	} else {
 	    crit_exit();
@@ -1340,10 +1367,17 @@ kfree(void *ptr, struct malloc_type *type)
 
     /*
      * Bump the number of free chunks.  If it becomes non-zero the zone
-     * must be added back onto the appropriate list.
+     * must be added back onto the appropriate list.  A fully allocated
+     * zone that sees its first free is considered 'mature' and is placed
+     * at the head, giving the system time to potentially free the remaining
+     * entries even while other allocations are going on and making the zone
+     * freeable.
      */
     if (z->z_NFree++ == 0) {
-	LIST_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
+	if (SlabFreeToTail)
+		TAILQ_INSERT_TAIL(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
+	else
+		TAILQ_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
     }
 
     --type->ks_inuse[z->z_Cpu];
@@ -1355,8 +1389,10 @@ kfree(void *ptr, struct malloc_type *type)
 }
 
 /*
- * Cleanup slabs which are hanging around due to RChunks.  Called once every
- * 10 seconds on all cpus.
+ * Cleanup slabs which are hanging around due to RChunks or which are wholely
+ * free and can be moved to the free list if not moved by other means.
+ *
+ * Called once every 10 seconds on all cpus.
  */
 void
 slab_cleanup(void)
@@ -1367,12 +1403,11 @@ slab_cleanup(void)
 
     crit_enter();
     for (i = 0; i < NZONES; ++i) {
-	if ((z = LIST_FIRST(&slgd->ZoneAry[i])) == NULL)
+	if ((z = TAILQ_FIRST(&slgd->ZoneAry[i])) == NULL)
 		continue;
-	z = LIST_NEXT(z, z_Entry);
 
 	/*
-	 * Scan zones starting with the second zone in each list.
+	 * Scan zones.
 	 */
 	while (z) {
 	    /*
