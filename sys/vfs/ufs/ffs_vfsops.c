@@ -449,7 +449,6 @@ ffs_reload(struct mount *mp, struct ucred *cred)
 	void *space;
 	struct buf *bp;
 	struct fs *fs, *newfs;
-	struct partinfo dpart;
 	int i, blks, size, error;
 	struct scaninfo scaninfo;
 	int32_t *lp;
@@ -476,12 +475,6 @@ ffs_reload(struct mount *mp, struct ucred *cred)
 	/*
 	 * Step 2: re-read superblock from disk.
 	 */
-	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD,
-	    cred, NULL) != 0) {
-		size = DEV_BSIZE;
-	} else {
-		size = dpart.media_blksize;
-	}
 	if ((error = bread(devvp, SBOFF, SBSIZE, &bp)) != 0) {
 		brelse(bp);
 		return (error);
@@ -597,7 +590,6 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 	struct buf *bp;
 	struct fs *fs;
 	cdev_t dev;
-	struct partinfo dpart;
 	void *space;
 	int error, i, blks, size, ronly;
 	int32_t *lp;
@@ -644,13 +636,6 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 	 */
 	if (devvp->v_object == NULL)
 		panic("ffs_reload: devvp has no VM object!");
-
-	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD,
-		      proc0.p_ucred, NULL) != 0) {
-		size = DEV_BSIZE;
-	} else {
-		size = dpart.media_blksize;
-	}
 
 	bp = NULL;
 	ump = NULL;
