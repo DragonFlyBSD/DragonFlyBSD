@@ -44,8 +44,6 @@
  */
 
 #include "hammer.h"
-#include <string.h>
-#include <stdlib.h>
 
 static uint64_t check_volume(const char *vol_name);
 

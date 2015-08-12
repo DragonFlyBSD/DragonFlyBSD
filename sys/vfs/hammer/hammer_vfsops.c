@@ -32,17 +32,10 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/kernel.h>
-#include <sys/vnode.h>
-#include <sys/mount.h>
-#include <sys/malloc.h>
 #include <sys/nlookup.h>
 #include <sys/fcntl.h>
 #include <sys/sysctl.h>
-#include <sys/buf.h>
-#include <sys/buf2.h>
+
 #include "hammer.h"
 
 /*

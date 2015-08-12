@@ -35,8 +35,9 @@
  * HAMMER structural locking
  */
 
-#include "hammer.h"
 #include <sys/dirent.h>
+
+#include "hammer.h"
 
 void
 hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident)

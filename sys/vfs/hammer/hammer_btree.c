@@ -79,8 +79,6 @@
  * up the boundaries).
  */
 #include "hammer.h"
-#include <sys/buf.h>
-#include <sys/buf2.h>
 
 static int btree_search(hammer_cursor_t cursor, int flags);
 static int btree_split_internal(hammer_cursor_t cursor);

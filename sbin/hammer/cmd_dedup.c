@@ -32,9 +32,10 @@
  * SUCH DAMAGE.
  */
 
-#include "hammer.h"
 #include <libutil.h>
 #include <crypto/sha2/sha2.h>
+
+#include "hammer.h"
 
 #define DEDUP_BUF (64 * 1024)
 

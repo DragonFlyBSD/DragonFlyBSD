@@ -33,7 +33,6 @@
  */
 
 #include "hammer.h"
-#include <vm/vm_extern.h>
 
 static int	hammer_unload_inode(struct hammer_inode *ip);
 static void	hammer_free_inode(hammer_inode_t ip);

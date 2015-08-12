@@ -38,7 +38,6 @@
 
 #include "hammer.h"
 
-
 static void loaddelay(struct timespec *ts, const char *arg);
 
 void

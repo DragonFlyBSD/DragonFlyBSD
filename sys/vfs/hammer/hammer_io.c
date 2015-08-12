@@ -48,12 +48,10 @@
  * the fs_token will be held in all other cases.
  */
 
-#include "hammer.h"
 #include <sys/fcntl.h>
 #include <sys/nlookup.h>
-#include <sys/buf.h>
 
-#include <sys/buf2.h>
+#include "hammer.h"
 
 static void hammer_io_modify(hammer_io_t io, int count);
 static void hammer_io_deallocate(struct buf *bp);

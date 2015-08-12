@@ -32,10 +32,10 @@
  * SUCH DAMAGE.
  */
 
-#include "hammer.h"
-#include <signal.h>
 #include <math.h>
 #include <fstab.h>
+
+#include "hammer.h"
 
 static void hammer_parsedevs(const char *blkdevs);
 static void sigalrm(int signo);

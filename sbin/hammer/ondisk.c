@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <assert.h>
 #include <stdio.h>
@@ -43,6 +42,7 @@
 #include <stddef.h>
 #include <err.h>
 #include <fcntl.h>
+
 #include "hammer_util.h"
 
 static void *alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,

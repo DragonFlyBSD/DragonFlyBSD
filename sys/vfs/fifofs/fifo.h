@@ -35,6 +35,8 @@
  * $DragonFly: src/sys/vfs/fifofs/fifo.h,v 1.5 2006/07/18 22:22:15 dillon Exp $
  */
 
+#include <sys/vnode.h>
+
 extern struct vop_ops fifo_vnode_vops;
 
 /*

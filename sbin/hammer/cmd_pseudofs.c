@@ -34,8 +34,9 @@
  * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.12 2008/10/08 21:01:54 thomas Exp $
  */
 
-#include "hammer.h"
 #include <libgen.h>
+
+#include "hammer.h"
 
 static int scanpfsid(struct hammer_ioc_pseudofs_rw *pfs, const char *path);
 static void parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd);

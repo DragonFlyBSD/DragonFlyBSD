@@ -32,8 +32,9 @@
  * SUCH DAMAGE.
  */
 
-#include "hammer.h"
 #include <libutil.h>
+
+#include "hammer.h"
 
 #define FLAG_TOOFARLEFT		0x0001
 #define FLAG_TOOFARRIGHT	0x0002

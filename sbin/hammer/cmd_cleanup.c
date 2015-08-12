@@ -59,6 +59,7 @@
  */
 
 #include <libutil.h>
+
 #include "hammer.h"
 
 struct didpfs {

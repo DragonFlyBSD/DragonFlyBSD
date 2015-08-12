@@ -55,9 +55,9 @@
 #include <dirent.h>
 #include <uuid.h>
 
-#include "hammer_util.h"
-
 #include <libhammer.h>
+
+#include "hammer_util.h"
 
 extern int RecurseOpt;
 extern int VerboseOpt;

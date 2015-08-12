@@ -32,18 +32,11 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/kernel.h>
 #include <sys/fcntl.h>
 #include <sys/namecache.h>
-#include <sys/vnode.h>
-#include <sys/lockf.h>
 #include <sys/event.h>
-#include <sys/stat.h>
 #include <sys/dirent.h>
 #include <sys/file.h>
-#include <vm/vm_extern.h>
 #include <vm/swap_pager.h>
 #include <vfs/fifofs/fifo.h>
 

@@ -32,13 +32,9 @@
  * SUCH DAMAGE.
  */
 
-#include "hammer.h"
-#include <sys/types.h>
-#include <sys/mount.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <string.h>
 #include <time.h>
+
+#include "hammer.h"
 
 static void config_get(const char *dirpath, struct hammer_ioc_config *config);
 static void config_set(const char *dirpath, struct hammer_ioc_config *config);
