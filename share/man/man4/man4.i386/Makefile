@@ -11,7 +11,6 @@ MAN=	ar.4 \
 	glxsb.4 \
 	io.4 \
 	linux.4 \
-	lnc.4 \
 	longrun.4 \
 	npx.4 \
 	perfmon.4 \
@@ -29,7 +28,6 @@ MAN=	ar.4 \
 MLINKS+=ar.4 if_ar.4
 MLINKS+=ed.4 if_ed.4
 MLINKS+=ep.4 if_ep.4
-MLINKS+=lnc.4 if_lnc.4
 MLINKS+=sbni.4 if_sbni.4
 MLINKS+=sr.4 if_sr.4
 MLINKS+=tx.4 if_tx.4
