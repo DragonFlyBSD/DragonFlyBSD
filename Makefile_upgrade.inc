@@ -2198,11 +2198,11 @@ TO_REMOVE+=/usr/share/locale/n?_NO.ISO8859-1
 TO_REMOVE+=/usr/share/locale/nl_??.ISO8859-1
 TO_REMOVE+=/usr/share/locale/pt_PT.ISO8859-1
 TO_REMOVE+=/usr/share/locale/sv_??.ISO8859-1
+TO_REMOVE+=/boot/kernel/glxsb.ko
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/kgzip
 TO_REMOVE+=/usr/share/man/man8/kgzip.8.gz
-TO_REMOVE+=/boot/kernel/glxsb.ko
 .endif
 
 .if !defined(WANT_INSTALLER)
