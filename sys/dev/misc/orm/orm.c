@@ -105,8 +105,8 @@ orm_identify(driver_t* driver, device_t parent)
 		bus_set_resource(child, SYS_RES_MEMORY, sc->rnum, chunk,
 		    IOMEM_STEP, -1);
 		rid = sc->rnum;
-		res = bus_alloc_resource(child, SYS_RES_MEMORY, &rid, 0ul, 
-		    ~0ul, IOMEM_STEP, RF_ACTIVE);
+		res = bus_alloc_resource_any(child, SYS_RES_MEMORY, &rid,
+		    RF_ACTIVE);
 		if (res == NULL) {
 			bus_delete_resource(child, SYS_RES_MEMORY, sc->rnum);
 			chunk += IOMEM_STEP;
@@ -137,8 +137,7 @@ orm_identify(driver_t* driver, device_t parent)
 		bus_set_resource(child, SYS_RES_MEMORY, sc->rnum, chunk,
 		    rom_size, -1);
 		rid = sc->rnum;
-		res = bus_alloc_resource(child, SYS_RES_MEMORY, &rid, 0ul,
-		    ~0ul, rom_size, 0);
+		res = bus_alloc_resource_any(child, SYS_RES_MEMORY, &rid, 0);
 		if (res == NULL) {
 			bus_delete_resource(child, SYS_RES_MEMORY, sc->rnum);
 			chunk += IOMEM_STEP;
@@ -158,9 +157,9 @@ orm_identify(driver_t* driver, device_t parent)
 		return (ENXIO);
 	}
 	if (sc->rnum == 1)
-		device_set_desc(child, "Option ROM");
+		device_set_desc(child, "ISA Option ROM");
 	else
-		device_set_desc(child, "Option ROMs");
+		device_set_desc(child, "ISA Option ROMs");
 	return (0);
 }
 
