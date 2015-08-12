@@ -48,10 +48,6 @@
  * XXX use an intermediate #define for the tag/handle
  */
 
-#ifdef __i386__
-#define ACPI_BUS_SPACE_IO	I386_BUS_SPACE_IO
-#define ACPI_BUS_HANDLE		0
-#endif
 #ifdef __x86_64__
 #define ACPI_BUS_SPACE_IO	X86_64_BUS_SPACE_IO
 #define ACPI_BUS_HANDLE		0

@@ -136,7 +136,7 @@ acpi_config_intr(device_t dev, ACPI_RESOURCE *res)
 	panic("%s: bad resource type %u", __func__, res->Type);
     }
 
-#if defined(__x86_64__) || defined(__i386__)
+#if defined(__x86_64__)
     /*
      * XXX: Certain BIOSes have buggy AML that specify an IRQ that is
      * edge-sensitive and active-lo.  However, edge-sensitive IRQs
@@ -362,17 +362,6 @@ acpi_parse_resource(ACPI_RESOURCE *res, void *context)
 		"ignored %s for non-memory, non-I/O\n", name));
 	    break;
 	}
-
-#ifdef __i386__
-	if (min > ULONG_MAX || (res->Data.Address.MaxAddressFixed && max >
-	    ULONG_MAX)) {
-	    ACPI_DEBUG_PRINT((ACPI_DB_RESOURCES, "ignored %s above 4G\n",
-		name));
-	    break;
-	}
-	if (max > ULONG_MAX)
-		max = ULONG_MAX;
-#endif
 	if (res->Data.Address.MinAddressFixed == ACPI_ADDRESS_FIXED &&
 	    res->Data.Address.MaxAddressFixed == ACPI_ADDRESS_FIXED) {
 	    if (res->Data.Address.ResourceType == ACPI_MEMORY_RANGE) {

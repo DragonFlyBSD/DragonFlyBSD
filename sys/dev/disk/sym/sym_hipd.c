@@ -125,7 +125,7 @@ typedef	u_int32_t u32;
  *  make sense) to be used.
  */
 
-#if	defined	__i386__ || defined __x86_64__
+#if	defined __x86_64__
 #define MEMORY_BARRIER()	do { ; } while(0)
 #elif	defined	__powerpc__
 #define MEMORY_BARRIER()	__asm__ volatile("eieio; sync" : : : "memory")

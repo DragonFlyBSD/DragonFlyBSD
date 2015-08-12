@@ -607,10 +607,6 @@ db_mach_vtrace(int cpu, struct ktr_entry *kp, int idx)
 	}
 	db_printf("%s\t", kp->ktr_info->kf_name);
 	db_printf("from(%p,%p) ", kp->ktr_caller1, kp->ktr_caller2);
-#ifdef __i386__
-	if (kp->ktr_info->kf_format)
-		db_vprintf(kp->ktr_info->kf_format, (__va_list)kp->ktr_data);
-#endif
 	db_printf("\n");
 
 	return(1);

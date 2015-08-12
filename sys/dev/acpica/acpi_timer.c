@@ -320,12 +320,10 @@ acpi_timer_test(void)
     max = max2 = 0;
 
     /* Test the timer with interrupts disabled to get accurate results. */
-#if defined(__i386__)
-    s = read_eflags();
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
     s = read_rflags();
 #else
-#error "no read_eflags"
+#error "no read_*flags"
 #endif
     cpu_disable_intr();
     AcpiGetTimer(&last);
@@ -342,12 +340,10 @@ acpi_timer_test(void)
 	    min = delta;
 	last = this;
     }
-#if defined(__i386__)
-    write_eflags(s);
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
     write_rflags(s);
 #else
-#error "no read_eflags"
+#error "no read_*flags"
 #endif
 
     delta = max2 - min;

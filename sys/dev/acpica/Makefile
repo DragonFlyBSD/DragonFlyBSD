@@ -107,9 +107,7 @@ SRCS+=	acpi_cpu_machdep.c
 # Machine-specific code such as sleep/wakeup
 SRCS+=	acpi_machdep.c acpi_wakecode.h
 SRCS+=	acpi_wakeup.c
-.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
-# APIC enumerators
-#SRCS+=	madt.c
+.if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	pmtimer.c
 .endif
 CLEANFILES+=	acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin

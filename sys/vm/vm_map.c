@@ -3954,22 +3954,6 @@ vm_map_hint(struct proc *p, vm_offset_t addr, vm_prot_t prot)
 
 		return addr;
 	}
-
-#ifdef notyet
-#ifdef __i386__
-	/*
-	 * If executable skip first two pages, otherwise start
-	 * after data + heap region.
-	 */
-	if ((prot & VM_PROT_EXECUTE) &&
-	    ((vm_offset_t)vms->vm_daddr >= I386_MAX_EXE_ADDR)) {
-		addr = (PAGE_SIZE * 2) +
-		    (karc4random() & (I386_MAX_EXE_ADDR / 2 - 1));
-		return (round_page(addr));
-	}
-#endif /* __i386__ */
-#endif /* notyet */
-
 	addr = (vm_offset_t)vms->vm_daddr + MAXDSIZ;
 	addr += karc4random() & (MIN((256 * 1024 * 1024), MAXDSIZ) - 1);
 

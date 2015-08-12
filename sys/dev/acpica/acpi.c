@@ -2288,10 +2288,8 @@ acpi_ReqSleepState(struct acpi_softc *sc, int state)
 	    return (ENXIO);
     }
 
-#if !defined(__i386__)
     /* This platform does not support acpi suspend/resume. */
     return (EOPNOTSUPP);
-#endif
 
     /* If a suspend request is already in progress, just return. */
     ACPI_LOCK(acpi);
@@ -2349,10 +2347,8 @@ acpi_AckSleepState(struct apm_clone_data *clone, int error)
     struct acpi_softc *sc;
     int ret, sleeping;
 
-#if !defined(__i386__)
     /* This platform does not support acpi suspend/resume. */
     return (EOPNOTSUPP);
-#endif
 
     /* If no pending sleep state, return an error. */
     ACPI_LOCK(acpi);

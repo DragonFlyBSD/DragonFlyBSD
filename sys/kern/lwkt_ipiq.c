@@ -218,10 +218,10 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
      * ipiq interrupt to the target cpu.
      */
     if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
-#if defined(__i386__)
-	unsigned int eflags = read_eflags();
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 	unsigned long rflags = read_rflags();
+#else
+#error "no read_*flags"
 #endif
 
 	cpu_enable_intr();
@@ -241,10 +241,10 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 #endif
 	}
 	DEBUG_POP_INFO();
-#if defined(__i386__)
-	write_eflags(eflags);
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 	write_rflags(rflags);
+#else
+#error "no write_*flags"
 #endif
     }
 
@@ -315,10 +315,10 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
      * enabled while we liveloop to avoid deadlocking the APIC.
      */
     if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
-#if defined(__i386__)
-	unsigned int eflags = read_eflags();
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 	unsigned long rflags = read_rflags();
+#else
+#error "no read_*flags"
 #endif
 
 	cpu_enable_intr();
@@ -338,10 +338,10 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 #endif
 	}
 	DEBUG_POP_INFO();
-#if defined(__i386__)
-	write_eflags(eflags);
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 	write_rflags(rflags);
+#else
+#error "no write_*flags"
 #endif
     }
 
@@ -471,10 +471,10 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
     if (target != mycpu) {
 	ip = &mycpu->gd_ipiq[target->gd_cpuid];
 	if ((int)(ip->ip_xindex - seq) < 0) {
-#if defined(__i386__)
-	    unsigned int eflags = read_eflags();
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 	    unsigned long rflags = read_rflags();
+#else
+#error "no read_*flags"
 #endif
 	    int64_t time_tgt = tsc_get_target(1000000000LL);
 	    int time_loops = 10;
@@ -517,10 +517,10 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 		cpu_lfence();
 	    }
 	    DEBUG_POP_INFO();
-#if defined(__i386__)
-	    write_eflags(eflags);
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 	    write_rflags(rflags);
+#else
+#error "no write_*flags"
 #endif
 	}
     }
@@ -735,9 +735,7 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
 		kprintf("cpu %d ipifunc %p %p %d (frame %p)\n",
 			mycpu->gd_cpuid,
 			copy_func, copy_arg1, copy_arg2,
-#if defined(__i386__)
-			(frame ? (void *)frame->if_eip : NULL));
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 			(frame ? (void *)frame->if_rip : NULL));
 #else
 			NULL);

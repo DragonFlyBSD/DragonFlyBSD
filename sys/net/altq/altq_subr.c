@@ -1,5 +1,4 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.12 2008/05/14 11:59:23 sephe Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -844,7 +843,7 @@ init_machclk(void)
 	machclk_usepcc = 1;
 #endif
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 	if (!tsc_mpsync)
 		machclk_usepcc = 0;
 #else

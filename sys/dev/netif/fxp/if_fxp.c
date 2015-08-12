@@ -286,15 +286,11 @@ SYSCTL_INT(_hw, OID_AUTO, fxp_rnr, CTLFLAG_RW, &fxp_rnr, 0, "fxp rnr events");
 static void
 fxp_lwcopy(volatile u_int32_t *src, volatile u_int32_t *dst)
 {
-#ifdef __i386__
-	*dst = *src;
-#else
 	volatile u_int16_t *a = (volatile u_int16_t *)src;
 	volatile u_int16_t *b = (volatile u_int16_t *)dst;
 
 	b[0] = a[0];
 	b[1] = a[1];
-#endif
 }
 
 /*
