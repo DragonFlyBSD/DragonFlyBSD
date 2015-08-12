@@ -67,7 +67,7 @@
 		encoding="ISO8859-1"
 		countries="HK SG" />
 	<language name="en"
-		countries="PH" />               <!-- UTF-8 only -->
+		countries="PH COMMON" />        <!-- UTF-8 only -->
 	<language name="es"
 		countries="CR" />               <!-- UTF-8 only -->
 	<language name="es"
