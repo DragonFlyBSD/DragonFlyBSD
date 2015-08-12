@@ -28,8 +28,9 @@
  */
 
 /*
- * 6.1 : Environmental support
+ * Environmental and ACPI Tables (partial)
  */
+
 #include <sys/types.h>
 #include <sys/linker_set.h>
 #include <sys/sysctl.h>

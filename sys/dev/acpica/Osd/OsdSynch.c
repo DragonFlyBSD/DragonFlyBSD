@@ -28,7 +28,7 @@
  */
 
 /*
- * 6.1 : Mutual Exclusion and Synchronisation
+ * Mutual Exclusion and Synchronisation
  */
 
 #include "acpi.h"

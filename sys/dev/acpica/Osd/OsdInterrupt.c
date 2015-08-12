@@ -28,7 +28,7 @@
  */
 
 /*
- * 6.5 : Interrupt handling
+ * Interrupt Handling
  */
 
 #include <sys/param.h>

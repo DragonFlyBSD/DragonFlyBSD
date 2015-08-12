@@ -28,7 +28,7 @@
  */
 
 /*
- * 6.3 : Scheduling services
+ * Multithreading and Scheduling Services
  */
 
 #include "opt_acpi.h"

@@ -28,7 +28,7 @@
  */
 
 /*
- * 6.7 : Hardware Abstraction
+ * Hardware Abstraction
  */
 
 #include "acpi.h"

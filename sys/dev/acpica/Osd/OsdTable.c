@@ -27,7 +27,7 @@
  */
 
 /*
- * ACPI Table interfaces
+ * Environmental and ACPI Tables (partial)
  */
 
 #include "acpi.h"

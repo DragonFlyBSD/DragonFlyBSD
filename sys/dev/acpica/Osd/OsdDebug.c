@@ -28,7 +28,7 @@
  */
 
 /*
- * 6.8 : Debugging support
+ * Debugging Support
  */
 
 #include "opt_ddb.h"

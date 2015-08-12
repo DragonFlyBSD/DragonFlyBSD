@@ -28,7 +28,7 @@
  */
 
 /*
- * 6.6 : Stream I/O
+ * Stream I/O
  */
 
 #include "acpi.h"

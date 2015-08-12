@@ -29,7 +29,7 @@
  */
 
 /*
- * 6.2 : Memory Management
+ * Memory Management
  */
 
 #include "acpi.h"
