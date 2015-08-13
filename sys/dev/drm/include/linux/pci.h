@@ -42,6 +42,8 @@
 
 #include <linux/pci_ids.h>
 
+struct pci_bus;
+
 struct pci_device_id {
 	uint32_t class;
 	uint32_t class_mask;
@@ -53,13 +55,21 @@ struct pci_device_id {
 };
 
 struct pci_dev {
-//	struct pci_bus *bus;		/* bus device is nailed to */
+	struct pci_bus *bus;		/* bus device is nailed to */
 	struct device *dev;		/* NOTE the star */
 
 	unsigned short vendor;		/* vendor ID */
 	unsigned short device;		/* device ID */
 	unsigned short subsystem_vendor;
 	unsigned short subsystem_device;
+};
+
+struct pci_bus {
+	struct pci_dev *self;		/* handle to pdev self */
+	struct device *dev;		/* handle to dev */
+
+	unsigned char number;		/* bus addr number */
+//	unsigned char max_bus_speed;	/* max bus speed */
 };
 
 #define PCI_DEVFN(slot, func)   ((((slot) & 0x1f) << 3) | ((func) & 0x07))

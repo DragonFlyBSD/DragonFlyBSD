@@ -140,9 +140,18 @@ void drm_init_pdev(struct device *dev, struct pci_dev **pdev)
 
 	*pdev = kzalloc(sizeof(struct pci_dev), GFP_KERNEL);
 	drm_fill_pdev(dev, *pdev);
+
+	(*pdev)->bus = kzalloc(sizeof(struct pci_bus), GFP_KERNEL);
+	(*pdev)->bus->self = kzalloc(sizeof(struct pci_dev), GFP_KERNEL);
+
+	drm_fill_pdev(device_get_parent(dev), (*pdev)->bus->self);
+	(*pdev)->bus->number = pci_get_bus(dev);
 }
 
 void drm_fini_pdev(struct pci_dev **pdev)
 {
+	kfree((*pdev)->bus->self);
+	kfree((*pdev)->bus);
+
 	kfree(*pdev);
 }
