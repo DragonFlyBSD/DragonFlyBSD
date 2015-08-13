@@ -415,6 +415,8 @@
             ..
             ca_IT.UTF-8
             ..
+            common.UTF-8
+            ..
             cs_CZ.ISO8859-2
             ..
             cs_CZ.UTF-8
