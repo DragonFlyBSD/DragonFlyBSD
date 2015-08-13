@@ -641,7 +641,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 		 * If the destination is a node-local scope multicast,
 		 * the packet should be loop-backed only.
 		 */
-		if (IN6_IS_ADDR_MC_NODELOCAL(&ip6->ip6_dst)) {
+		if (IN6_IS_ADDR_MC_INTFACELOCAL(&ip6->ip6_dst)) {
 			/*
 			 * If the outgoing interface is already specified,
 			 * it should be a loopback interface.
@@ -2610,7 +2610,7 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 			 * address, and choose the outgoing interface.
 			 *   XXX: is it a good approach?
 			 */
-			if (IN6_IS_ADDR_MC_NODELOCAL(&mreq->ipv6mr_multiaddr)) {
+			if (IN6_IS_ADDR_MC_INTFACELOCAL(&mreq->ipv6mr_multiaddr)) {
 				ifp = &loif[0];
 			} else {
 				ro.ro_rt = NULL;

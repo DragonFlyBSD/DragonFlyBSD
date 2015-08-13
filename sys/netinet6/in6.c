@@ -912,7 +912,8 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 					      &ifra->ifra_dstaddr.sin6_addr,
 					      ifp)) != 0)
 			return (error);
-		scopeid = in6_addr2scopeid(ifp, &dst6.sin6_addr);
+		if (in6_addr2zoneid(ifp, &dst6.sin6_addr, &scopeid))
+			return (EINVAL);
 		if (dst6.sin6_scope_id == 0) /* user omit to specify the ID. */
 			dst6.sin6_scope_id = scopeid;
 		else if (dst6.sin6_scope_id != scopeid)
@@ -1535,8 +1536,9 @@ in6_lifaddr_ioctl(u_long cmd, caddr_t data, struct ifnet *ifp,
 			s6 = (struct sockaddr_in6 *)&iflr->addr;
 			if (IN6_IS_ADDR_LINKLOCAL(&s6->sin6_addr)) {
 				s6->sin6_addr.s6_addr16[1] = 0;
-				s6->sin6_scope_id =
-					in6_addr2scopeid(ifp, &s6->sin6_addr);
+				if (in6_addr2zoneid(ifp, &s6->sin6_addr,
+				    &s6->sin6_scope_id))
+					return (EINVAL);/* XXX */
 			}
 			if (ifp->if_flags & IFF_POINTOPOINT) {
 				bcopy(&ia->ia_dstaddr, &iflr->dstaddr,
@@ -1544,9 +1546,9 @@ in6_lifaddr_ioctl(u_long cmd, caddr_t data, struct ifnet *ifp,
 				s6 = (struct sockaddr_in6 *)&iflr->dstaddr;
 				if (IN6_IS_ADDR_LINKLOCAL(&s6->sin6_addr)) {
 					s6->sin6_addr.s6_addr16[1] = 0;
-					s6->sin6_scope_id =
-						in6_addr2scopeid(ifp,
-								 &s6->sin6_addr);
+					if (in6_addr2zoneid(ifp,
+					    &s6->sin6_addr, &s6->sin6_scope_id))
+						return (EINVAL); /* EINVAL */
 				}
 			} else
 				bzero(&iflr->dstaddr, sizeof(iflr->dstaddr));
@@ -2014,6 +2016,7 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst, struct ucred *cred)
 	int dst_scope =	in6_addrscope(dst), src_scope, best_scope = 0;
 	int blen = -1;
 	struct in6_ifaddr *ifa_best = NULL;
+	u_int32_t dstzone, odstzone;
 	int jailed = 0;
 	const struct ifnet_array *arr;
 	int i;
@@ -2021,12 +2024,11 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst, struct ucred *cred)
 	if(cred && cred->cr_prison)
 		jailed = 1;
 
-	if (oifp == NULL) {
-#if 0
-		kprintf("in6_ifawithscope: output interface is not specified\n");
-#endif
+	if (oifp == NULL)
 		return (NULL);
-	}
+
+	if (in6_addr2zoneid(oifp, dst, &odstzone))
+		return (NULL);
 
 	/*
 	 * We search for all addresses on all interfaces from the beginning.
@@ -2044,7 +2046,7 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst, struct ucred *cred)
 		 */
 		if (ifp->if_afdata[AF_INET6] == NULL)
 			continue;
-		if (in6_addr2scopeid(ifp, dst) != in6_addr2scopeid(oifp, dst))
+		if (in6_addr2zoneid(ifp, dst, &dstzone) || dstzone != odstzone)
 			continue;
 
 		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {

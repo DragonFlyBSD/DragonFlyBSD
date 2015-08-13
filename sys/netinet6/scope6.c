@@ -81,7 +81,7 @@ scope6_ifattach(struct ifnet *ifp)
 	 * XXX: IPV6_ADDR_SCOPE_xxx macros are not standard.
 	 * Should we rather hardcode here?
 	 */
-	sid->s6id_list[IPV6_ADDR_SCOPE_NODELOCAL] = ifp->if_index;
+	sid->s6id_list[IPV6_ADDR_SCOPE_INTFACELOCAL] = ifp->if_index;
 	sid->s6id_list[IPV6_ADDR_SCOPE_LINKLOCAL] = ifp->if_index;
 #ifdef MULTI_SCOPE
 	/* by default, we don't care about scope boundary for these scopes. */
@@ -124,6 +124,16 @@ scope6_set(struct ifnet *ifp, struct scope6_id *idlist)
 	for (i = 0; i < 16; i++) {
 		if (idlist->s6id_list[i] &&
 		    idlist->s6id_list[i] != sid->s6id_list[i]) {
+			/*
+			 * An interface zone ID must be the corresponding
+			 * interface index by definition.
+			 */
+			if (i == IPV6_ADDR_SCOPE_INTFACELOCAL &&
+			    idlist->s6id_list[i] != ifp->if_index) {
+				crit_exit();
+				return (EINVAL);
+			}
+
 			if (i == IPV6_ADDR_SCOPE_LINKLOCAL &&
 			    idlist->s6id_list[i] > if_index) {
 				/*
@@ -171,8 +181,8 @@ in6_addrscope(struct in6_addr *addr)
 {
 	int scope;
 
-	if (addr->s6_addr8[0] == 0xfe) {
-		scope = addr->s6_addr8[1] & 0xc0;
+	if (addr->s6_addr[0] == 0xfe) {
+		scope = addr->s6_addr[1] & 0xc0;
 
 		switch (scope) {
 		case 0x80:
@@ -188,16 +198,16 @@ in6_addrscope(struct in6_addr *addr)
 	}
 
 
-	if (addr->s6_addr8[0] == 0xff) {
-		scope = addr->s6_addr8[1] & 0x0f;
+	if (addr->s6_addr[0] == 0xff) {
+		scope = addr->s6_addr[1] & 0x0f;
 
 		/*
 		 * due to other scope such as reserved,
 		 * return scope doesn't work.
 		 */
 		switch (scope) {
-		case IPV6_ADDR_SCOPE_NODELOCAL:
-			return IPV6_ADDR_SCOPE_NODELOCAL;
+		case IPV6_ADDR_SCOPE_INTFACELOCAL:
+			return IPV6_ADDR_SCOPE_INTFACELOCAL;
 			break;
 		case IPV6_ADDR_SCOPE_LINKLOCAL:
 			return IPV6_ADDR_SCOPE_LINKLOCAL;
@@ -211,26 +221,41 @@ in6_addrscope(struct in6_addr *addr)
 		}
 	}
 
+	/*
+	 * Regard loopback and unspecified addresses as global, since
+	 * they have no ambiguity.
+	 */
 	if (bcmp(&kin6addr_loopback, addr, sizeof(*addr) - 1) == 0) {
-		if (addr->s6_addr8[15] == 1) /* loopback */
-			return IPV6_ADDR_SCOPE_NODELOCAL;
-		if (addr->s6_addr8[15] == 0) /* unspecified */
+		if (addr->s6_addr[15] == 1) /* loopback */
 			return IPV6_ADDR_SCOPE_LINKLOCAL;
+		if (addr->s6_addr[15] == 0) /* unspecified */
+			return IPV6_ADDR_SCOPE_GLOBAL; /* XXX: correct? */
 	}
 
 	return IPV6_ADDR_SCOPE_GLOBAL;
 }
 
+/*
+ * When we introduce the "4+28" split semantics in sin6_scope_id,
+ * a 32bit integer is not enough to tell a large ID from an error (-1).
+ * So, we intentionally use a large type as the return value.
+ */
 int
-in6_addr2scopeid(struct ifnet *ifp,	/* must not be NULL */
-		 struct in6_addr *addr)	/* must not be NULL */
+in6_addr2zoneid(struct ifnet *ifp,	/* must not be NULL */
+		struct in6_addr *addr,	/* must not be NULL */
+		u_int32_t *ret_id)	/* must not be NULL */
 {
 	int scope;
+	u_int32_t zoneid = 0;
 	struct scope6_id *sid = SID(ifp);
 
 #ifdef DIAGNOSTIC
 	if (sid == NULL) { /* should not happen */
 		panic("in6_addr2zoneid: scope array is NULL");
+		/* NOTREACHED */
+	}
+	if (ret_id == NULL) {
+		panic("in6_addr2zoneid: return ID is null");
 		/* NOTREACHED */
 	}
 #endif
@@ -240,30 +265,39 @@ in6_addr2scopeid(struct ifnet *ifp,	/* must not be NULL */
 	 * interface.
 	 */
 	if (IN6_IS_ADDR_LOOPBACK(addr)) {
-		if (!(ifp->if_flags & IFF_LOOPBACK))
+		if (!(ifp->if_flags & IFF_LOOPBACK)) {
 			return (-1);
-		else
-			return (0); /* there's no ambiguity */
+		} else {
+			*ret_id = 0; /* there's no ambiguity */
+			return (0);
+		}
 	}
 
 	scope = in6_addrscope(addr);
 
-	switch(scope) {
-	case IPV6_ADDR_SCOPE_NODELOCAL:
-		return (-1);	/* XXX: is this an appropriate value? */
+	switch (scope) {
+	case IPV6_ADDR_SCOPE_INTFACELOCAL: /* should be interface index */
+		zoneid = sid->s6id_list[IPV6_ADDR_SCOPE_INTFACELOCAL];
+		break;
 
 	case IPV6_ADDR_SCOPE_LINKLOCAL:
-		return (sid->s6id_list[IPV6_ADDR_SCOPE_LINKLOCAL]);
+		zoneid = sid->s6id_list[IPV6_ADDR_SCOPE_LINKLOCAL];
+		break;
 
 	case IPV6_ADDR_SCOPE_SITELOCAL:
-		return (sid->s6id_list[IPV6_ADDR_SCOPE_SITELOCAL]);
+		zoneid = sid->s6id_list[IPV6_ADDR_SCOPE_SITELOCAL];
+		break;
 
 	case IPV6_ADDR_SCOPE_ORGLOCAL:
-		return (sid->s6id_list[IPV6_ADDR_SCOPE_ORGLOCAL]);
+		zoneid = sid->s6id_list[IPV6_ADDR_SCOPE_ORGLOCAL];
+		break;
 
 	default:
-		return (0);	/* XXX: treat as global. */
+		zoneid = 0;     /* XXX: treat as global. */
+		break;
 	}
+	*ret_id = zoneid;
+	return (0);
 }
 
 void
@@ -276,12 +310,12 @@ scope6_setdefault(struct ifnet *ifp)	/* note that this might be NULL */
 	 * "interface" and provide a user interface to set the default.
 	 */
 	if (ifp) {
-		sid_default.s6id_list[IPV6_ADDR_SCOPE_NODELOCAL] =
+		sid_default.s6id_list[IPV6_ADDR_SCOPE_INTFACELOCAL] =
 			ifp->if_index;
 		sid_default.s6id_list[IPV6_ADDR_SCOPE_LINKLOCAL] =
 			ifp->if_index;
 	} else {
-		sid_default.s6id_list[IPV6_ADDR_SCOPE_NODELOCAL] = 0;
+		sid_default.s6id_list[IPV6_ADDR_SCOPE_INTFACELOCAL] = 0;
 		sid_default.s6id_list[IPV6_ADDR_SCOPE_LINKLOCAL] = 0;
 	}
 }

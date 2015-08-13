@@ -412,7 +412,8 @@ ip6_input(netmsg_t msg)
 			ip6stat.ip6s_badscope++;
 			goto bad;
 		}
-		if (IN6_IS_SCOPE_LINKLOCAL(&ip6->ip6_dst) &&
+		if ((IN6_IS_ADDR_MC_INTFACELOCAL(&ip6->ip6_dst) ||
+		     IN6_IS_SCOPE_LINKLOCAL(&ip6->ip6_dst)) &&
 		    ip6->ip6_dst.s6_addr16[1]) {
 			ip6stat.ip6s_badscope++;
 			goto bad;
@@ -1126,8 +1127,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 		struct in6_pktinfo pi6;
 
 		bcopy(&ip6->ip6_dst, &pi6.ipi6_addr, sizeof(struct in6_addr));
-		if (IN6_IS_SCOPE_LINKLOCAL(&pi6.ipi6_addr))
-			pi6.ipi6_addr.s6_addr16[1] = 0;
+		in6_clearscope(&pi6.ipi6_addr); /* XXX */
 		pi6.ipi6_ifindex = (m && m->m_pkthdr.rcvif) ?
 		    m->m_pkthdr.rcvif->if_index : 0;
 		*mp = sbcreatecontrol((caddr_t)&pi6, sizeof(struct in6_pktinfo),

@@ -624,7 +624,7 @@ struct in6_ifaddr *in6ifa_ifplocaladdr(const struct ifnet *,
 					const struct in6_addr *);
 struct in6_ifaddr *in6ifa_llaonifp(struct ifnet *);
 char	*ip6_sprintf (const struct in6_addr *);
-int	in6_addr2scopeid (struct ifnet *, struct in6_addr *);
+int	in6_addr2zoneid(struct ifnet *, struct in6_addr *, u_int32_t *);
 int	in6_matchlen (struct in6_addr *, struct in6_addr *);
 int	in6_are_prefix_equal(struct in6_addr *p1, struct in6_addr *p2, int len);
 void	in6_prefixlen2mask(struct in6_addr *maskp, int len);
