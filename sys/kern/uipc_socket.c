@@ -437,70 +437,68 @@ sodiscard(struct socket *so)
 	sosetstate(so, SS_NOFDREF);	/* take ref */
 }
 
+/*
+ * Append the completed queue of head to head_inh (inherting listen socket).
+ */
 void
-soinherit(struct socket *so, struct socket *so_inh)
+soinherit(struct socket *head, struct socket *head_inh)
 {
-	TAILQ_HEAD(, socket) comp, incomp;
-	struct socket *sp;
-	int qlen, incqlen;
+	boolean_t do_wakeup = FALSE;
 
-	KASSERT(so->so_options & SO_ACCEPTCONN,
-	    ("so does not accept connection"));
-	KASSERT(so_inh->so_options & SO_ACCEPTCONN,
-	    ("so_inh does not accept connection"));
+	KASSERT(head->so_options & SO_ACCEPTCONN,
+	    ("head does not accept connection"));
+	KASSERT(head_inh->so_options & SO_ACCEPTCONN,
+	    ("head_inh does not accept connection"));
 
-	TAILQ_INIT(&comp);
-	TAILQ_INIT(&incomp);
+	lwkt_getpooltoken(head);
+	lwkt_getpooltoken(head_inh);
 
-	lwkt_getpooltoken(so);
-	lwkt_getpooltoken(so_inh);
+	if (head->so_qlen > 0)
+		do_wakeup = TRUE;
 
-	/*
-	 * Save completed queue and incompleted queue
-	 */
-	TAILQ_CONCAT(&comp, &so->so_comp, so_list);
-	qlen = so->so_qlen;
-	so->so_qlen = 0;
+	while (!TAILQ_EMPTY(&head->so_comp)) {
+		struct ucred *old_cr;
+		struct socket *sp;
 
-	TAILQ_CONCAT(&incomp, &so->so_incomp, so_list);
-	incqlen = so->so_incqlen;
-	so->so_incqlen = 0;
+		sp = TAILQ_FIRST(&head->so_comp);
 
-	/*
-	 * Append the saved completed queue and incompleted
-	 * queue to the socket inherits them.
-	 *
-	 * XXX
-	 * This may temporarily break the inheriting socket's
-	 * so_qlimit.
-	 */
-	TAILQ_FOREACH(sp, &comp, so_list) {
-		sp->so_head = so_inh;
-		crfree(sp->so_cred);
-		sp->so_cred = crhold(so_inh->so_cred);
+		/*
+		 * Remove this socket from the current listen socket
+		 * completed queue.
+		 */
+		TAILQ_REMOVE(&head->so_comp, sp, so_list);
+		head->so_qlen--;
+
+		/* Save the old ucred for later free. */
+		old_cr = sp->so_cred;
+
+		/*
+		 * Install this socket to the inheriting listen socket
+		 * completed queue.
+		 */
+		sp->so_cred = crhold(head_inh->so_cred); /* non-blocking */
+		sp->so_head = head_inh;
+
+		TAILQ_INSERT_TAIL(&head_inh->so_comp, sp, so_list);
+		head_inh->so_qlen++;
+
+		/*
+		 * NOTE:
+		 * crfree() may block and release the tokens temporarily.
+		 * However, we are fine here, since the transition is done.
+		 */
+		crfree(old_cr);
 	}
 
-	TAILQ_FOREACH(sp, &incomp, so_list) {
-		sp->so_head = so_inh;
-		crfree(sp->so_cred);
-		sp->so_cred = crhold(so_inh->so_cred);
-	}
+	lwkt_relpooltoken(head_inh);
+	lwkt_relpooltoken(head);
 
-	TAILQ_CONCAT(&so_inh->so_comp, &comp, so_list);
-	so_inh->so_qlen += qlen;
-
-	TAILQ_CONCAT(&so_inh->so_incomp, &incomp, so_list);
-	so_inh->so_incqlen += incqlen;
-
-	lwkt_relpooltoken(so_inh);
-	lwkt_relpooltoken(so);
-
-	if (qlen) {
+	if (do_wakeup) {
 		/*
 		 * "New" connections have arrived
 		 */
-		sorwakeup(so_inh);
-		wakeup(&so_inh->so_timeo);
+		sorwakeup(head_inh);
+		wakeup(&head_inh->so_timeo);
 	}
 }
 
