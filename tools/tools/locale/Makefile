@@ -26,7 +26,7 @@ LC:=	--lc=${LC}
 .endif
 
 all:
-	cp ${ETCDIR}/en_COMMON.UTF-8.src ${CLDRDIR}/posix/
+	cp ${ETCDIR}/en_COMMON.UTF-8.src ${CLDRDIR}/posix/xx_Comm_US.UTF-8.src
 .for t in ${TYPES}
 .  if ${KNOWN:M${t}}
 	test -d ${t} || mkdir ${t}

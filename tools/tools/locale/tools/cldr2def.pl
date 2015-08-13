@@ -347,7 +347,6 @@ sub transform_ctypes {
 		$file .= $f . "_" if ($f ne "x");
 		$file .= $c;
 		my $actfile = $file;
-		if ($c eq "COMMON") { $actfile = "common"; }
 
 		my $filename = "$CLDRDIR/posix/$file.$DEFENCODING.src";
 		$filename = "$ETCDIR/$file.$DEFENCODING.src"
@@ -420,7 +419,6 @@ sub transform_collation {
 		$file .= $f . "_" if ($f ne "x");
 		$file .= $c;
 		my $actfile = $file;
-		if ($c eq "COMMON") { $actfile = "common"; }
 
 		my $filename = "$CLDRDIR/posix/$file.$DEFENCODING.src";
 		$filename = "$ETCDIR/$file.$DEFENCODING.src"
@@ -634,7 +632,6 @@ sub print_fields {
 			my $file = $l;
 			$file .= "_" . $f if ($f ne "x");
 			$file .= "_" . $c;
-			if ($c eq "COMMON") { $file = "common"; }
 			print "Writing to $file in $enc\n";
 
 			if ($enc ne $DEFENCODING &&
@@ -842,22 +839,20 @@ EOF
 				} keys(%{$hashtable{$hash}});
 		} else {
 			@files = sort {
-				if ($a =~ /COMMON/ ||
-				    $b =~ /^en_x_US.UT/) { return 1; }
-				elsif ($b =~ /COMMON/ ||
-				       $a =~ /^en_x_US.UT/) { return -1; }
+				if ($a =~ /_Comm_/ ||
+				    $b eq 'en_x_US.UTF-8') { return 1; }
+				elsif ($b =~ /_Comm_/ ||
+				       $a eq 'en_x_US.UTF-8') { return -1; }
 				else { return uc($b) cmp uc($a); }
 				} keys(%{$hashtable{$hash}});
 		}
 		if ($#files > 0) {
 			my $link = shift(@files);
 			$link =~ s/_x_/_/;	# strip family if none there
-			$link =~ s/en_COMMON/common/;
 			foreach my $file (@files) {
 				my @a = split(/_/, $file);
 				my @b = split(/\./, $a[-1]);
 				$file =~ s/_x_/_/;
-				$file =~ s/en_COMMON/common/;
 				print FOUT "SAME+=\t\t$link:$file\n";
 				undef($languages{$a[0]}{$a[1]}{data}{$b[0]}{$b[1]});
 			}
@@ -881,7 +876,6 @@ EOF
 			my $file = $l . "_";
 			$file .= $f . "_" if ($f ne "x");
 			$file .= $c;
-			if ($c eq "COMMON") { $file = "common"; }
 			next if (!defined $languages{$l}{$f}{data}{$c}{$e});
 			print FOUT "LOCALES+=\t$file.$e\n";
 		}
