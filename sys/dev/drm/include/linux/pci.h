@@ -53,8 +53,13 @@ struct pci_device_id {
 };
 
 struct pci_dev {
-	struct device	*dev;
-	unsigned short device;
+//	struct pci_bus *bus;		/* bus device is nailed to */
+	struct device *dev;		/* NOTE the star */
+
+	unsigned short vendor;		/* vendor ID */
+	unsigned short device;		/* device ID */
+	unsigned short subsystem_vendor;
+	unsigned short subsystem_device;
 };
 
 #define PCI_DEVFN(slot, func)   ((((slot) & 0x1f) << 3) | ((func) & 0x07))

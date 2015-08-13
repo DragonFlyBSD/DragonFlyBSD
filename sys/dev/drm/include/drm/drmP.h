@@ -1701,6 +1701,10 @@ void drm_device_assert_struct_unlocked(struct drm_device *dev);
 void drm_compat_locking_init(struct drm_device *dev);
 void drm_sleep_locking_init(struct drm_device *dev);
 
+/* XXX glue logic, should be done in drm_pci_init(), pending drm update */
+void drm_init_pdev(struct device *dev, struct pci_dev **pdev);
+void drm_fini_pdev(struct pci_dev **pdev);
+
 /* Inline replacements for drm_alloc and friends */
 static __inline__ void *
 drm_alloc(size_t size, struct malloc_type *area)

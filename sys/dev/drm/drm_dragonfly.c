@@ -117,3 +117,32 @@ char *drm_asprintf(int flags, const char *format, ...)
 
 	return str;
 }
+
+/*
+ * XXX pci glue logic helpers
+ * Should be done in drm_pci_init(), pending drm update.
+ * Assumes static runtime data.
+ * Only for usage in *_driver_[un]load()
+ */
+
+static void drm_fill_pdev(struct device *dev, struct pci_dev *pdev)
+{
+	pdev->dev = dev;
+	pdev->vendor = pci_get_vendor(dev);
+	pdev->device = pci_get_device(dev);
+	pdev->subsystem_vendor = pci_get_subvendor(dev);
+	pdev->subsystem_device = pci_get_subdevice(dev);
+}
+
+void drm_init_pdev(struct device *dev, struct pci_dev **pdev)
+{
+	BUG_ON(*pdev != NULL);
+
+	*pdev = kzalloc(sizeof(struct pci_dev), GFP_KERNEL);
+	drm_fill_pdev(dev, *pdev);
+}
+
+void drm_fini_pdev(struct pci_dev **pdev)
+{
+	kfree(*pdev);
+}
