@@ -343,6 +343,7 @@ man_getopt (int argc, char **argv)
      ) {
 	char *tmp, *short_locale;
 	struct ltable *pltable;
+	size_t locale_len;
 
 	*locale_lang = '\0';
 	*locale_terr = '\0';
@@ -354,20 +355,25 @@ man_getopt (int argc, char **argv)
 	if ((tmp = strchr(short_locale, '.')) != NULL)
 		*tmp = '\0';
 
-	if (strlen(short_locale) == 2)
-		strcpy(locale_lang, short_locale);
-	else if ((tmp = strchr(short_locale, '_')) == NULL ||
-		 tmp != short_locale + 2 ||
-		 strlen(tmp + 1) != 2
-		) {
-		errno = EINVAL;
-		perror ("ctype locale format");
-		locale = NULL;
-	} else {
+	locale_len = strlen(short_locale);
+	tmp = strchr(short_locale, '_');
+	if (locale_len == 5 && tmp == short_locale + 2) {
+		/* assume position 3 and 4 are not "_"; don't check */
 		strncpy(locale_terr, short_locale + 3, 2);
 		locale_terr[2] = '\0';
 		strncpy(locale_lang, short_locale, 2);
 		locale_lang[2] = '\0';
+	} else if (locale_len == 10 && tmp == short_locale + 2 &&
+            short_locale[7] == '_') {
+		/* assume positions 3-6 and 8-9 are not "_" */
+		strncpy(locale_terr, short_locale + 8, 2);
+		locale_terr[2] = '\0';
+		strncpy(locale_lang, short_locale, 2);
+		locale_lang[2] = '\0';
+	} else {
+		errno = EINVAL;
+		perror ("ctype locale format");
+		locale = NULL;
 	}
 
 	free(short_locale);
