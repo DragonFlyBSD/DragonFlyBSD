@@ -172,15 +172,17 @@ main(int ac, char **av)
 	NumVolumes = ac;
 	RootVolNo = 0;
 
-        if (NumVolumes == 0) {
-                fprintf(stderr,
-                        "newfs_hammer: You must specify at least one special file (volume)\n");
-                exit(1);
-        }
+	if (NumVolumes == 0) {
+		fprintf(stderr,
+			"newfs_hammer: You must specify at least one "
+			"special file (volume)\n");
+		exit(1);
+	}
 
 	if (NumVolumes > HAMMER_MAX_VOLUMES) {
-                fprintf(stderr,
-                        "newfs_hammer: The maximum number of volumes is %d\n", HAMMER_MAX_VOLUMES);
+		fprintf(stderr,
+			"newfs_hammer: The maximum number of volumes is %d\n",
+			HAMMER_MAX_VOLUMES);
 		exit(1);
 	}
 

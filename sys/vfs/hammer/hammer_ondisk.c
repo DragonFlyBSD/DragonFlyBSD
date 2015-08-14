@@ -1328,8 +1328,7 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 		if ((buffer = node->buffer) != NULL) {
 			error = hammer_ref_buffer(buffer);
 			if (error == 0 && node->buffer == NULL) {
-				TAILQ_INSERT_TAIL(&buffer->clist,
-						  node, entry);
+				TAILQ_INSERT_TAIL(&buffer->clist, node, entry);
 				node->buffer = buffer;
 			}
 		} else {
@@ -1338,8 +1337,7 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 						   HAMMER_BUFSIZE, 0, &error);
 			if (buffer) {
 				KKASSERT(error == 0);
-				TAILQ_INSERT_TAIL(&buffer->clist,
-						  node, entry);
+				TAILQ_INSERT_TAIL(&buffer->clist, node, entry);
 				node->buffer = buffer;
 			}
 		}

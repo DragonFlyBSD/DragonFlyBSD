@@ -177,7 +177,8 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 					cursor->parent_index,
 					curthread);
 			}
-			KKASSERT(cursor->parent == NULL || cursor->parent->ondisk->elms[cursor->parent_index].internal.subtree_offset == cursor->node->node_offset);
+			KKASSERT(cursor->parent == NULL ||
+				 cursor->parent->ondisk->elms[cursor->parent_index].internal.subtree_offset == cursor->node->node_offset);
 			error = hammer_cursor_up(cursor);
 			if (error)
 				break;
@@ -2320,8 +2321,7 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
 			if (error == 0) {
 				KKASSERT(node != cursor->node);
 				hammer_cursor_removed_node(
-					node, cursor->node,
-					cursor->index);
+					node, cursor->node, cursor->index);
 				hammer_modify_node_all(cursor->trans, node);
 				ondisk = node->ondisk;
 				ondisk->type = HAMMER_BTREE_TYPE_DELETED;
@@ -2784,8 +2784,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 					item = TAILQ_FIRST(&lcache->list);
 					KKASSERT(item != NULL);
 					item->flags |= HAMMER_NODE_LOCK_LCACHE;
-					TAILQ_REMOVE(&lcache->list,
-						     item, entry);
+					TAILQ_REMOVE(&lcache->list, item, entry);
 				} else {
 					item = kmalloc(sizeof(*item),
 						       hmp->m_misc,

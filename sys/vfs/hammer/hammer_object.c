@@ -1206,8 +1206,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 * that must be deleted before we can insert the new record.
 	 */
 	if (record->type == HAMMER_MEM_RECORD_GENERAL) {
-		error = hammer_delete_general(cursor, record->ip,
-					      &record->leaf);
+		error = hammer_delete_general(cursor, record->ip, &record->leaf);
 		if (error && error != ENOENT)
 			goto done;
 	}
@@ -1547,8 +1546,7 @@ _hammer_ip_reseek(hammer_cursor_t cursor)
 	if ((cursor->flags & HAMMER_CURSOR_ATEDISK) == 0 &&
 	    (cursor->flags & HAMMER_CURSOR_LASTWASMEM)) {
 		elm = &cursor->node->ondisk->elms[cursor->index];
-		r = hammer_btree_cmp(&elm->base,
-				     &cursor->iprec->leaf.base);
+		r = hammer_btree_cmp(&elm->base, &cursor->iprec->leaf.base);
 		if (cursor->flags & HAMMER_CURSOR_ASOF) {
 			if (r >= -1 && r <= 1) {
 				kprintf("HAMMER: Debug: iterated after "

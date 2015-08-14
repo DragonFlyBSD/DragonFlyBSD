@@ -51,8 +51,7 @@ static hammer_off_t alloc_bigblock(struct volume_info *volume, int zone);
 static void get_buffer_readahead(struct buffer_info *base);
 static __inline void *get_ondisk(hammer_off_t buf_offset,
 			struct buffer_info **bufferp, int isnew);
-static int readhammerbuf(struct volume_info *vol, void *data,
-			int64_t offset);
+static int readhammerbuf(struct volume_info *vol, void *data, int64_t offset);
 static void writehammerbuf(struct volume_info *vol, const void *data,
 			int64_t offset);
 
@@ -396,8 +395,7 @@ get_node(hammer_off_t node_offset, struct buffer_info **bufferp)
  */
 static __inline
 void *
-get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp,
-	int isnew)
+get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp, int isnew)
 {
 	struct buffer_info *buffer;
 
@@ -416,8 +414,7 @@ get_ondisk(hammer_off_t buf_offset, struct buffer_info **bufferp,
  * Allocate HAMMER elements - btree nodes, meta data, data storage
  */
 void *
-alloc_btree_element(hammer_off_t *offp,
-		    struct buffer_info **data_bufferp)
+alloc_btree_element(hammer_off_t *offp, struct buffer_info **data_bufferp)
 {
 	hammer_node_ondisk_t node;
 

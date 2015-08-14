@@ -175,8 +175,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * Increase the total number of big-blocks and update stat/vstat totals.
 	 */
-	hammer_modify_volume_field(trans, trans->rootvol,
-		vol0_stat_bigblocks);
+	hammer_modify_volume_field(trans, trans->rootvol, vol0_stat_bigblocks);
 	trans->rootvol->ondisk->vol0_stat_bigblocks += stat.total_bigblocks;
 	hammer_modify_volume_done(trans->rootvol);
 	/*
@@ -369,8 +368,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * Update the total number of big-blocks
 	 */
-	hammer_modify_volume_field(trans, trans->rootvol,
-		vol0_stat_bigblocks);
+	hammer_modify_volume_field(trans, trans->rootvol, vol0_stat_bigblocks);
 	trans->rootvol->ondisk->vol0_stat_bigblocks -= stat.total_bigblocks;
 	hammer_modify_volume_done(trans->rootvol);
 

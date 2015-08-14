@@ -313,14 +313,11 @@ again:
 		/*
 		 * Assign the big-block to our zone
 		 */
-		hammer_modify_buffer(trans, buffer1,
-				     layer1, sizeof(*layer1));
+		hammer_modify_buffer(trans, buffer1, layer1, sizeof(*layer1));
 		--layer1->blocks_free;
-		layer1->layer1_crc = crc32(layer1,
-					   HAMMER_LAYER1_CRCSIZE);
+		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 		hammer_modify_buffer_done(buffer1);
-		hammer_modify_buffer(trans, buffer2,
-				     layer2, sizeof(*layer2));
+		hammer_modify_buffer(trans, buffer2, layer2, sizeof(*layer2));
 		layer2->zone = zone;
 		KKASSERT(layer2->bytes_free == HAMMER_BIGBLOCK_SIZE);
 		KKASSERT(layer2->append_off == 0);
@@ -331,8 +328,7 @@ again:
 			root_volume->ondisk->vol0_stat_freebigblocks;
 		hammer_modify_volume_done(trans->rootvol);
 	} else {
-		hammer_modify_buffer(trans, buffer2,
-				     layer2, sizeof(*layer2));
+		hammer_modify_buffer(trans, buffer2, layer2, sizeof(*layer2));
 	}
 	KKASSERT(layer2->zone == zone);
 
@@ -1269,11 +1265,9 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	 * already assigned ownership.
 	 */
 	if (layer2->zone == 0) {
-		hammer_modify_buffer(trans, buffer1,
-				     layer1, sizeof(*layer1));
+		hammer_modify_buffer(trans, buffer1, layer1, sizeof(*layer1));
 		--layer1->blocks_free;
-		layer1->layer1_crc = crc32(layer1,
-					   HAMMER_LAYER1_CRCSIZE);
+		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 		hammer_modify_buffer_done(buffer1);
 		layer2->zone = zone;
 		KKASSERT(layer2->bytes_free == HAMMER_BIGBLOCK_SIZE);

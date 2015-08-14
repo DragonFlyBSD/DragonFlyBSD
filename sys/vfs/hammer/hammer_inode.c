@@ -1466,8 +1466,7 @@ retry:
 	}
 	if (error == EDEADLK) {
 		hammer_done_cursor(cursor);
-		error = hammer_init_cursor(trans, cursor,
-					   &ip->cache[0], ip);
+		error = hammer_init_cursor(trans, cursor, &ip->cache[0], ip);
 		if (error == 0)
 			goto retry;
 	}
@@ -2500,8 +2499,7 @@ hammer_wait_inode(hammer_inode_t ip)
 						"async flush ip %016jx\n",
 						(intmax_t)ip->obj_id);
 				}
-				hammer_flusher_async(ip->hmp,
-						     ip->flush_group);
+				hammer_flusher_async(ip->hmp, ip->flush_group);
 				continue; /* retest */
 			}
 		}

@@ -244,8 +244,7 @@ static __inline int _dev_validate(hammer_dedup_cache_t dcp, void *data,
 		int *errorp);
 
 int
-hammer_dedup_crc_rb_compare(hammer_dedup_cache_t dc1,
-				hammer_dedup_cache_t dc2)
+hammer_dedup_crc_rb_compare(hammer_dedup_cache_t dc1, hammer_dedup_cache_t dc2)
 {
 	if (dc1->crc < dc2->crc)
 		return (-1);
@@ -256,8 +255,7 @@ hammer_dedup_crc_rb_compare(hammer_dedup_cache_t dc1,
 }
 
 int
-hammer_dedup_off_rb_compare(hammer_dedup_cache_t dc1,
-				hammer_dedup_cache_t dc2)
+hammer_dedup_off_rb_compare(hammer_dedup_cache_t dc1, hammer_dedup_cache_t dc2)
 {
 	if (dc1->data_offset < dc2->data_offset)
 		return (-1);
@@ -394,8 +392,7 @@ hammer_destroy_dedup_cache(hammer_mount_t hmp)
 }
 
 int
-hammer_dedup_validate(hammer_dedup_cache_t dcp, int zone, int bytes,
-		      void *data)
+hammer_dedup_validate(hammer_dedup_cache_t dcp, int zone, int bytes, void *data)
 {
 	int error;
 

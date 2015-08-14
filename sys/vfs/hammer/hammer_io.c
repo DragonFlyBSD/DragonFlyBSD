@@ -1758,8 +1758,7 @@ hammer_io_direct_write_complete(struct bio *nbio)
 	obio = pop_bio(nbio);
 	if (bp->b_flags & B_ERROR) {
 		lwkt_gettoken(&hmp->fs_token);
-		hammer_critical_error(hmp, record->ip,
-				      bp->b_error,
+		hammer_critical_error(hmp, record->ip, bp->b_error,
 				      "while writing bulk data");
 		lwkt_reltoken(&hmp->fs_token);
 		bp->b_flags |= B_INVAL;

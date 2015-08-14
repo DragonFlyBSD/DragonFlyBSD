@@ -644,7 +644,6 @@ struct hammer_volume_ondisk {
 	 * Array of zone-2 addresses for undo FIFO.
 	 */
 	hammer_off_t		vol0_undo_array[HAMMER_UNDO_LAYER2];
-
 };
 
 typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;

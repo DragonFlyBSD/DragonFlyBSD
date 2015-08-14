@@ -454,7 +454,9 @@ hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t root_volume)
 				kprintf("HAMMER(%s) Continuing recovery\n",
 					root_volume->ondisk->vol_name);
 			} else {
-				kprintf("HAMMER(%s) Recovery failure: Insufficient buffer cache to hold dirty buffers on read-only mount!\n",
+				kprintf("HAMMER(%s) Recovery failure: "
+					"Insufficient buffer cache to hold "
+					"dirty buffers on read-only mount!\n",
 					root_volume->ondisk->vol_name);
 				error = EIO;
 				break;
