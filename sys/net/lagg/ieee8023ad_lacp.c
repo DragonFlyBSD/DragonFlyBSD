@@ -189,7 +189,7 @@ static const char *lacp_format_systemid(const struct lacp_systemid *, char *,
 static const char *lacp_format_portid(const struct lacp_portid *, char *,
 		    size_t);
 static void	lacp_dprintf(const struct lacp_port *, const char *, ...)
-		    __attribute__((__format__(__printf__, 2, 3)));
+		    __printflike(2, 3);
 
 static int lacp_debug = 0;
 SYSCTL_NODE(_net_link_lagg, OID_AUTO, lacp, CTLFLAG_RD, 0, "ieee802.3ad");
