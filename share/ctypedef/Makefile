@@ -12,6 +12,7 @@ MAPLOC=		${.CURDIR}/../../tools/tools/locale/etc/final-maps
 	-i ${.IMPSRC} ${.OBJDIR}/${.IMPSRC:T:R}  || true
 
 LOCALES+=	am_ET.UTF-8
+LOCALES+=	ar_SA.UTF-8
 LOCALES+=	be_BY.CP1131
 LOCALES+=	ca_IT.ISO8859-15
 LOCALES+=	ca_IT.UTF-8
@@ -113,6 +114,11 @@ SAME+=		en_US.ISO8859-1:en_HK.ISO8859-1
 SAME+=		en_US.ISO8859-1:en_CA.ISO8859-1
 SAME+=		en_US.ISO8859-1:en_AU.ISO8859-1
 SAME+=		en_US.ISO8859-1:af_ZA.ISO8859-1
+SAME+=		ar_SA.UTF-8:ar_QA.UTF-8
+SAME+=		ar_SA.UTF-8:ar_MA.UTF-8
+SAME+=		ar_SA.UTF-8:ar_JO.UTF-8
+SAME+=		ar_SA.UTF-8:ar_EG.UTF-8
+SAME+=		ar_SA.UTF-8:ar_AE.UTF-8
 SAME+=		ru_RU.UTF-8:sr_Cyrl_RS.UTF-8
 SAME+=		ru_RU.UTF-8:mn_Cyrl_MN.UTF-8
 SAME+=		ru_RU.UTF-8:kk_Cyrl_KZ.UTF-8

@@ -12,6 +12,7 @@ MAPLOC=		${.CURDIR}/../../tools/tools/locale/etc/final-maps
 
 LOCALES+=	af_ZA.UTF-8
 LOCALES+=	am_ET.UTF-8
+LOCALES+=	ar_SA.UTF-8
 LOCALES+=	be_BY.UTF-8
 LOCALES+=	ca_AD.UTF-8
 LOCALES+=	cs_CZ.UTF-8
@@ -46,6 +47,11 @@ LOCALES+=	zh_Hans_CN.UTF-8
 LOCALES+=	zh_Hant_TW.UTF-8
 
 SAME+=		af_ZA.UTF-8:af_ZA.ISO8859-1
+SAME+=		ar_SA.UTF-8:ar_QA.UTF-8
+SAME+=		ar_SA.UTF-8:ar_MA.UTF-8
+SAME+=		ar_SA.UTF-8:ar_JO.UTF-8
+SAME+=		ar_SA.UTF-8:ar_EG.UTF-8
+SAME+=		ar_SA.UTF-8:ar_AE.UTF-8
 SAME+=		be_BY.UTF-8:be_BY.ISO8859-5
 SAME+=		be_BY.UTF-8:be_BY.CP1251
 SAME+=		be_BY.UTF-8:be_BY.CP1131
