@@ -105,6 +105,8 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <net/raw_cb.h>
+#include <net/netisr2.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -155,6 +157,7 @@ u_int		mrt6debug = 0;	  /* debug level 	*/
 #endif
 
 static void	expire_upcalls (void *);
+static void	expire_upcalls_dispatch(netmsg_t);
 #define	EXPIRE_TIMEOUT	(hz / 4)	/* 4x / second */
 #define	UPCALL_EXPIRE	6		/* number of timeouts */
 
@@ -256,6 +259,7 @@ static int add_m6fc (struct mf6cctl *);
 static int del_m6fc (struct mf6cctl *);
 
 static struct callout expire_upcalls_ch;
+static struct netmsg_base expire_upcalls_nmsg;
 
 /*
  * Handle MRT setsockopt commands to modify the multicast routing tables.
@@ -409,6 +413,8 @@ ip6_mrouter_init(struct socket *so, struct mbuf *m, int cmd)
 {
 	int *v;
 
+	ASSERT_IN_NETISR(0);
+
 #ifdef MRT6DEBUG
 	if (mrt6debug)
 		log(LOG_DEBUG,
@@ -438,6 +444,10 @@ ip6_mrouter_init(struct socket *so, struct mbuf *m, int cmd)
 
 	pim6 = 0;/* used for stubbing out/in pim stuff */
 
+	callout_init_mp(&expire_upcalls_ch);
+	netmsg_init(&expire_upcalls_nmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY | MSGF_DROPABLE, expire_upcalls_dispatch);
+
 	callout_reset(&expire_upcalls_ch, EXPIRE_TIMEOUT,
 	    expire_upcalls, NULL);
 
@@ -461,6 +471,12 @@ ip6_mrouter_done(void)
 	struct in6_ifreq ifr;
 	struct mf6c *rt;
 	struct rtdetq *rte;
+	struct lwkt_msg *lmsg = &expire_upcalls_nmsg.lmsg;
+
+	ASSERT_IN_NETISR(0);
+
+	if (ip6_mrouter == NULL)
+		return EINVAL;
 
 	/*
 	 * For each phyint in use, disable promiscuous reception of all IPv6
@@ -501,6 +517,10 @@ ip6_mrouter_done(void)
 	pim6 = 0; /* used to stub out/in pim specific code */
 
 	callout_stop(&expire_upcalls_ch);
+	crit_enter();
+	if ((lmsg->ms_flags & MSGF_DONE) == 0)
+		lwkt_dropmsg(lmsg);
+	crit_exit();
 
 	/*
 	 * Free all multicast forwarding cache entries.
@@ -1186,13 +1206,19 @@ ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
  * Call from the Slow Timeout mechanism, every half second.
  */
 static void
-expire_upcalls(void *unused)
+expire_upcalls_dispatch(netmsg_t nmsg)
 {
 	struct rtdetq *rte;
 	struct mf6c *mfc, **nptr;
 	int i;
 
+	ASSERT_IN_NETISR(0);
+
+	/* Reply ASAP */
 	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);
+	crit_exit();
+
 	for (i = 0; i < MF6CTBLSIZ; i++) {
 		if (n6expire[i] == 0)
 			continue;
@@ -1233,9 +1259,21 @@ expire_upcalls(void *unused)
 			}
 		}
 	}
-	crit_exit();
 	callout_reset(&expire_upcalls_ch, EXPIRE_TIMEOUT,
 	    expire_upcalls, NULL);
+}
+
+static void
+expire_upcalls(void *arg __unused)
+{
+	struct lwkt_msg *lmsg = &expire_upcalls_nmsg.lmsg;
+
+	KASSERT(mycpuid == 0, ("expire upcalls timer not on cpu0"));
+
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), lmsg);
+	crit_exit();
 }
 
 /*
