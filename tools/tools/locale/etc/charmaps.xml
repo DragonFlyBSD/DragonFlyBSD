@@ -32,6 +32,8 @@
 		countries="ZA" />
 	<language name="am"
 		countries="ET" />		<!-- UTF-8 only -->
+	<language name="ar"
+		countries="AE EG JO MA QA SA" />
 	<language name="be"
 		encoding="CP1131 CP1251 ISO8859-5"
 		countries="BY" />

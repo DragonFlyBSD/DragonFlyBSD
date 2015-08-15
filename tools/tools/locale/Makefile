@@ -70,7 +70,8 @@ clean:
 .endfor
 
 BASE_LOCALES_OF_INTEREST?= \
-	af_ZA am_ET be_BY bg_BG ca_AD ca_ES ca_FR ca_IT \
+	af_ZA am_ET ar_AE ar_EG ar_JO ar_MA ar_QA ar_SA \
+	be_BY bg_BG ca_AD ca_ES ca_FR ca_IT \
 	cs_CZ da_DK de_AT de_CH de_DE el_GR en_AU en_CA \
 	en_GB en_HK en_IE en_NZ en_PH en_SG en_US en_ZA \
 	es_AR es_CR es_ES es_MX et_EE eu_ES fi_FI fr_BE \
