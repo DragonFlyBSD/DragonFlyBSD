@@ -118,6 +118,45 @@ pci_write_config_dword(struct pci_dev *pdev, int where, u32 val)
 	return 0;
 }
 
+/* extracted from drm/radeon/evergreen.c */
+static inline int
+pcie_get_readrq(struct pci_dev *pdev)
+{
+	u16 ctl;
+	int err, cap;
+
+	err = pci_find_extcap(pdev->dev, PCIY_EXPRESS, &cap);
+	WARN_ON(err);
+
+	cap += PCIER_DEVCTRL;
+
+	ctl = pci_read_config(pdev->dev, cap, 2);
+
+	return 128 << ((ctl & PCIEM_DEVCTL_MAX_READRQ_MASK) >> 12);
+}
+
+/* valid rq sizes: 128, 256, 512, 1024, 2048, 4096 (^2N) */
+static inline int
+pcie_set_readrq(struct pci_dev *pdev, int rq)
+{
+	u16 ctl;
+	int err, cap;
+
+	if (rq < 128 || rq > 4096 || !is_power_of_2(rq))
+		return -EINVAL;
+
+	err = pci_find_extcap(pdev->dev, PCIY_EXPRESS, &cap);
+	if (err)
+		return (-1);
+
+	cap += PCIER_DEVCTRL;
+
+	ctl = pci_read_config(pdev->dev, cap, 2);
+	ctl &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
+	ctl |= ((ffs(rq) - 8) << 12);
+	pci_write_config(pdev->dev, cap, ctl, 2);
+	return 0;
+}
 
 static inline struct pci_dev *
 pci_dev_get(struct pci_dev *dev)
