@@ -58,7 +58,7 @@ my %FILESNAMES = (
 	"timedef"	=> "LC_TIME",
 	"msgdef"	=> "LC_MESSAGES",
 	"numericdef"	=> "LC_NUMERIC",
-	"colldef"       => "LC_COLLATE",
+	"colldef"	=> "LC_COLLATE",
 	"ctypedef"	=> "LC_CTYPE"
 );
 
@@ -388,7 +388,22 @@ sub transform_ctypes {
 # CLDR project, obtained from http://cldr.unicode.org/
 # -----------------------------------------------------------------------------
 EOF
-		print FOUT @lines;
+		my $category = '';
+		foreach my $line (@lines) {
+			if ($actfile eq "xx_Comm_US") {
+				print FOUT $line;
+				next;
+			}
+			if ($line =~ /^([a-z]{3,})\s+</) {
+				$category = $1;
+				if ($category eq 'print') {
+					print FOUT "blank\t<NO-BREAK_SPACE>\n";
+					print FOUT "print\t<NO-BREAK_SPACE>\n\n";
+				}
+			}
+			next if ($category eq 'print');
+			print FOUT $line;
+		}
 		close(FOUT);
 
 		foreach my $enc (sort keys(%{$languages{$l}{$f}{data}{$c}})) {
