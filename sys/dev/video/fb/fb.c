@@ -679,24 +679,14 @@ fb_commonioctl(video_adapter_t *adp, u_long cmd, caddr_t arg)
 		((video_adapter_info_t *)arg)->va_io_size = adp->va_io_size;
 		((video_adapter_info_t *)arg)->va_mem_base = adp->va_mem_base;
 		((video_adapter_info_t *)arg)->va_mem_size = adp->va_mem_size;
-		((video_adapter_info_t *)arg)->va_window
-#ifdef __i386__
-			= vtophys(adp->va_window);
-#else
-			= adp->va_window;
-#endif
+		((video_adapter_info_t *)arg)->va_window = adp->va_window;
 		((video_adapter_info_t *)arg)->va_window_size
 			= adp->va_window_size;
 		((video_adapter_info_t *)arg)->va_window_gran
 			= adp->va_window_gran;
 		((video_adapter_info_t *)arg)->va_window_orig
 			= adp->va_window_orig;
-		((video_adapter_info_t *)arg)->va_unused0
-#ifdef __i386__
-			= (adp->va_buffer) ? vtophys(adp->va_buffer) : 0;
-#else
-			= adp->va_buffer;
-#endif
+		((video_adapter_info_t *)arg)->va_unused0 = adp->va_buffer;
 		((video_adapter_info_t *)arg)->va_buffer_size
 			= adp->va_buffer_size;
 		((video_adapter_info_t *)arg)->va_mode = adp->va_mode;

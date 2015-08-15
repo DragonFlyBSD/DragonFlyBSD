@@ -383,9 +383,6 @@ sc_attach_unit(int unit, int flags)
 {
     sc_softc_t *sc;
     scr_stat *scp;
-#ifdef SC_PIXEL_MODE
-    video_info_t info;
-#endif
     int vc;
     cdev_t dev;
     flags &= ~SC_KERNEL_CONSOLE;
@@ -439,24 +436,6 @@ sc_attach_unit(int unit, int flags)
     scp = SC_STAT(sc->dev[0]);
     if (sc_console == NULL)	/* sc_console_unit < 0 */
 	sc_console = scp;
-
-#ifdef SC_PIXEL_MODE
-    if ((sc->config & SC_VESA800X600)
-	&& ((*vidsw[sc->adapter]->get_info)(sc->adp, M_VESA_800x600, &info) == 0)) {
-#if NSPLASH > 0
-	if (sc->flags & SC_SPLASH_SCRN)
-	    splash_term(sc->adp);
-#endif
-	sc_set_graphics_mode(scp, NULL, M_VESA_800x600);
-	sc_set_pixel_mode(scp, NULL, 0, 0, 16);
-	sc->initial_mode = M_VESA_800x600;
-#if NSPLASH > 0
-	/* put up the splash again! */
-	if (sc->flags & SC_SPLASH_SCRN)
-    	    splash_init(sc->adp, scsplash_callback, sc);
-#endif
-    }
-#endif /* SC_PIXEL_MODE */
 
     /* initialize cursor */
     if (!ISGRAPHSC(scp))

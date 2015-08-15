@@ -2200,6 +2200,7 @@ TO_REMOVE+=/usr/share/locale/pt_PT.ISO8859-1
 TO_REMOVE+=/usr/share/locale/sv_??.ISO8859-1
 TO_REMOVE+=/boot/kernel/glxsb.ko
 TO_REMOVE+=/usr/share/locale/common.UTF-8
+TO_REMOVE+=/usr/share/man/man4/vesa.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/kgzip

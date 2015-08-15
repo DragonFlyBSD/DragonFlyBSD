@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fbreg.h,v 1.6 1999/12/29 04:35:36 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.10 2007/08/15 19:31:11 swildner Exp $
  */
 
 #ifndef _DEV_FB_FBREG_H_
@@ -35,7 +34,7 @@
 #define V_MAX_ADAPTERS		8		/* XXX */
 
 /* some macros */
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 #define bcopy_io(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))
 #define bcopy_toio(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))
 #define bcopy_fromio(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))
@@ -43,7 +42,7 @@
 #define fill_io(p, d, c)	fill((p), (void *)(d), (c))
 #define fillw_io(p, d, c)	fillw((p), (void *)(d), (c))
 void generic_bcopy(const void *s, void *d, size_t c);
-#else /* !__i386__ */
+#else /* !__x86_64__ */
 #define bcopy_io(s, d, c)	memcpy_io((d), (s), (c))
 #define bcopy_toio(s, d, c)	memcpy_toio((d), (void *)(s), (c))
 #define bcopy_fromio(s, d, c)	memcpy_fromio((void *)(d), (s), (c))
@@ -51,7 +50,7 @@ void generic_bcopy(const void *s, void *d, size_t c);
 #define fill_io(p, d, c)	memset_io((d), (p), (c))
 #define fillw(p, d, c)		memsetw((d), (p), (c))
 #define fillw_io(p, d, c)	memsetw_io((d), (p), (c))
-#endif /* !__i386__ */
+#endif /* !__x86_64__ */
 
 /* video function table */
 typedef int vi_probe_t(int unit, video_adapter_t **adpp, void *arg, int flags);

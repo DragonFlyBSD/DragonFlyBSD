@@ -174,7 +174,6 @@ struct dev_ioctl_args;
 typedef struct sc_softc {
 	int		unit;			/* unit # */
 	int		config;			/* configuration flags */
-#define SC_VESA800X600	(1 << 7)
 #define SC_AUTODETECT_KBD (1 << 8)
 #define SC_KERNEL_CONSOLE (1 << 9)
 

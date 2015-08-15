@@ -47,7 +47,7 @@
 
 #include <machine/clock.h>
 #include <machine/md_var.h>
-#ifdef __i386__
+#ifdef __x86_64__
 #include <machine/pc/bios.h>
 #endif
 
@@ -62,10 +62,6 @@
 #define VGA_DEBUG		0
 #endif
 
-/* machine/pc/bios.h has got too much i386-specific stuff in it */
-#ifndef BIOS_PADDRTOVADDR
-#define BIOS_PADDRTOVADDR(x) (((x) - ISA_HOLE_START) + atdevbase)
-#endif
 int
 vga_probe_unit(int unit, video_adapter_t *buf, int flags)
 {
@@ -802,7 +798,7 @@ set_display_start(video_adapter_t *adp, int x, int y)
 }
 
 #ifndef VGA_NO_MODE_CHANGE
-#if defined(__i386__) || defined(__x86_64__)	/* XXX */
+#if defined(__x86_64__)	/* XXX */
 static void
 fill(int val, void *d, size_t size)
 {
@@ -811,7 +807,7 @@ fill(int val, void *d, size_t size)
     while (size-- > 0)
 	*p++ = val;
 }
-#endif /* __i386__ || __x86_64__ */
+#endif /* __x86_64__ */
 
 static void
 filll_io(int val, vm_offset_t d, size_t size)
@@ -1719,9 +1715,7 @@ vga_mmap_buf(video_adapter_t *adp, vm_offset_t offset, int prot)
     if (offset > adp->va_window_size - PAGE_SIZE)
 	return -1;
 
-#if defined(__i386__)
-    return i386_btop(adp->va_info.vi_window + offset);
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
     return x86_64_btop(adp->va_info.vi_window + offset);
 #else
 #error "vga_mmap_buf needs to return something"

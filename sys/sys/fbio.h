@@ -37,7 +37,6 @@
  *	@(#)fbio.h	8.2 (Berkeley) 10/30/93
  *
  * $FreeBSD: src/sys/sys/fbio.h,v 1.9.2.1 2000/05/05 09:16:16 nyan Exp $
- * $DragonFly: src/sys/sys/fbio.h,v 1.8 2008/01/09 21:29:11 swildner Exp $
  */
 
 #ifndef _SYS_FBIO_H_
@@ -212,7 +211,6 @@ struct video_info {
 #define V_INFO_COLOR	(1 << 0)
 #define V_INFO_GRAPHICS	(1 << 1)
 #define V_INFO_LINEAR	(1 << 2)
-#define V_INFO_VESA	(1 << 3)
     int			vi_width;
     int			vi_height;
     int			vi_cwidth;
@@ -265,7 +263,6 @@ struct video_adapter {
 #define V_ADP_FONT	(1 << 4)
 #define V_ADP_PALETTE	(1 << 5)
 #define V_ADP_BORDER	(1 << 6)
-#define V_ADP_VESA	(1 << 7)
 #define V_ADP_PROBED	(1 << 16)
 #define V_ADP_INITIALIZED (1 << 17)
 #define V_ADP_REGISTERED (1 << 18)
@@ -379,37 +376,6 @@ typedef struct video_adapter_info video_adapter_info_t;
 #define M_HGC_P0	0xe0	/* hercules graphics - page 0 @ B0000 */
 #define M_HGC_P1	0xe1	/* hercules graphics - page 1 @ B8000 */
 #define M_MCA_MODE	0xff	/* monochrome adapter mode */
-
-#define M_VESA_BASE		0x100	/* VESA mode number base */
-#define M_VESA_CG640x400	0x100	/* 640x400, 256 color */
-#define M_VESA_CG640x480	0x101	/* 640x480, 256 color */
-#define M_VESA_800x600		0x102	/* 800x600, 16 color */
-#define M_VESA_CG800x600	0x103	/* 800x600, 256 color */
-#define M_VESA_1024x768		0x104	/* 1024x768, 16 color */
-#define M_VESA_CG1024x768	0x105	/* 1024x768, 256 color */
-#define M_VESA_1280x1024	0x106	/* 1280x1024, 16 color */
-#define M_VESA_CG1280x1024	0x107	/* 1280x1024, 256 color */
-#define M_VESA_C80x60		0x108	/* 8x8 font */
-#define M_VESA_C132x25		0x109	/* 8x16 font */
-#define M_VESA_C132x43		0x10a	/* 8x14 font */
-#define M_VESA_C132x50		0x10b	/* 8x8 font */
-#define M_VESA_C132x60		0x10c	/* 8x8 font */
-#define M_VESA_32K_320		0x10d	/* 320x200, 5:5:5 */
-#define M_VESA_64K_320		0x10e	/* 320x200, 5:6:5 */
-#define M_VESA_FULL_320		0x10f	/* 320x200, 8:8:8 */
-#define M_VESA_32K_640		0x110	/* 640x480, 5:5:5 */
-#define M_VESA_64K_640		0x111	/* 640x480, 5:6:5 */
-#define M_VESA_FULL_640		0x112	/* 640x480, 8:8:8 */
-#define M_VESA_32K_800		0x113	/* 800x600, 5:5:5 */
-#define M_VESA_64K_800		0x114	/* 800x600, 5:6:5 */
-#define M_VESA_FULL_800		0x115	/* 800x600, 8:8:8 */
-#define M_VESA_32K_1024		0x116	/* 1024x768, 5:5:5 */
-#define M_VESA_64K_1024		0x117	/* 1024x768, 5:6:5 */
-#define M_VESA_FULL_1024	0x118	/* 1024x768, 8:8:8 */
-#define M_VESA_32K_1280		0x119	/* 1280x1024, 5:5:5 */
-#define M_VESA_64K_1280		0x11a	/* 1280x1024, 5:6:5 */
-#define M_VESA_FULL_1280	0x11b	/* 1280x1024, 8:8:8 */
-#define M_VESA_MODE_MAX		0x1fff
 
 struct video_display_start {
 	int		x;

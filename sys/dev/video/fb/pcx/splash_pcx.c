@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/splash/pcx/splash_pcx.c,v 1.4 1999/08/28 00:47:39 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/pcx/splash_pcx.c,v 1.5 2006/12/22 23:26:27 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -70,9 +69,6 @@ pcx_start(video_adapter_t *adp)
 {
     static int modes[] = {
 	M_VGA_CG320,
-	M_VESA_CG640x480,
-	M_VESA_CG800x600,
-	M_VESA_CG1024x768,
 	-1,
     };
     video_info_t info;

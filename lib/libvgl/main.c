@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libvgl/main.c,v 1.6.2.2 2001/07/30 14:31:30 yokota Exp $
- * $DragonFly: src/lib/libvgl/main.c,v 1.4 2008/09/30 16:57:06 swildner Exp $
  */
 
 #include <stdio.h>
@@ -55,7 +54,6 @@ static int VGLAbortPending;
 static int VGLOnDisplay;
 static unsigned int VGLCurWindow;
 static int VGLInitDone = 0;
-static struct winsize VGLOldWSize;
 
 void
 VGLEnd(void)
@@ -75,19 +73,7 @@ struct vt_mode smode;
     munmap(VGLMem, VGLAdpInfo.va_window_size);
   }
 
-  if (VGLOldMode >= M_VESA_BASE) {
-    /* ugly, but necessary */
-    ioctl(0, _IO('V', VGLOldMode - M_VESA_BASE), 0);
-    if (VGLOldMode == M_VESA_800x600) {
-      int size[3];
-      size[0] = VGLOldWSize.ws_col;
-      size[1] = VGLOldWSize.ws_row;
-      size[2] = 16;
-      ioctl(0, KDRASTER, size);
-    }
-  } else {
-    ioctl(0, _IO('S', VGLOldMode), 0);
-  }
+  ioctl(0, _IO('S', VGLOldMode), 0);
   ioctl(0, KDDISABIO, 0);
   ioctl(0, KDSETMODE, KD_TEXT);
   smode.mode = VT_AUTO;
@@ -147,11 +133,6 @@ VGLInit(int mode)
   VGLModeInfo.vi_mode = mode;
   if (ioctl(0, CONS_MODEINFO, &VGLModeInfo))	/* FBIO_MODEINFO */
     return -1;
-
-  /* If current mode is VESA_800x600 then save its geometry to restore later */
-  if ((VGLOldMode >= M_VESA_BASE) && (VGLOldMode == M_VESA_800x600))
-    if (ioctl(0, TIOCGWINSZ, &VGLOldWSize))
-      return -1;
 
   VGLDisplay = (VGLBitmap *)malloc(sizeof(VGLBitmap));
   if (VGLDisplay == NULL)

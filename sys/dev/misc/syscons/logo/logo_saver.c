@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/logo/logo_saver.c,v 1.8 1999/08/28 00:47:51 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/logo/logo_saver.c,v 1.4 2005/06/11 00:26:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -131,9 +130,7 @@ logo_init(video_adapter_t *adp)
 {
     video_info_t info;
     
-    if (!get_mode_info(adp, M_VESA_CG800x600, &info)) {
-	scrmode = M_VESA_CG800x600;
-    } else if (!get_mode_info(adp, M_VGA_CG320, &info)) {
+    if (!get_mode_info(adp, M_VGA_CG320, &info)) {
 	scrmode = M_VGA_CG320;
     } else {
         log(LOG_NOTICE, "logo_saver: no suitable graphics mode\n");

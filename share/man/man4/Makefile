@@ -539,7 +539,6 @@ MLINKS+=upmap.4 kpmap.4
 #MLINKS+=ural.4 if_ural.4
 MLINKS+=urndis.4 if_urndis.4
 MLINKS+=urtwn.4 if_urtwn.4
-MLINKS+=vga.4 vesa.4
 MLINKS+=vge.4 if_vge.4
 MLINKS+=vlan.4 if_vlan.4
 MLINKS+=vpo.4 imm.4

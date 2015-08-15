@@ -13,7 +13,7 @@
 .\"     @(#)vidcontrol.1
 .\" $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.1,v 1.24.2.14 2002/09/15 22:31:50 dd Exp $
 .\"
-.Dd May 27, 2002
+.Dd August 14, 2015
 .Dt VIDCONTROL 1
 .Os
 .Sh NAME
@@ -77,17 +77,10 @@ The modes currently recognized are:
 .Ar VGA_90x50 ,
 .Ar VGA_90x60 ,
 .Ar EGA_80x25 ,
-.Ar EGA_80x43 ,
-.Ar VESA_132x25 ,
-.Ar VESA_132x43 ,
-.Ar VESA_132x50 ,
-.Ar VESA_132x60 .
+.Ar EGA_80x43 .
 .\"The graphic mode
 .\".Ar VGA_320x200
-.\"and
-The raster text mode
-.Ar VESA_800x600
-can also be chosen.
+.\"can also be chosen.
 Alternatively, a mode can be specified with its number by using a mode name of
 the form
 .Ar MODE_<NUMBER> .
@@ -161,9 +154,7 @@ Set the
 .Ar geometry
 of the text mode for the modes with selectable
 geometry.
-Currently only raster modes, such as
-.Ar VESA_800x600 ,
-support this option.
+Currently only raster modes support this option.
 See also
 .Sx Video Mode Support
 and
@@ -239,12 +230,6 @@ hardware.
 You can verify which mode is supported by the video hardware, using the
 .Fl i Cm mode
 option.
-.Pp
-The VESA BIOS support must be linked to the kernel
-or loaded as a KLD module if you wish to use VESA video modes
-or 132 column modes
-(see
-.Xr vga 4 ) .
 .Pp
 You need to compile your kernel with the
 .Ar VGA_WIDTH90
@@ -468,11 +453,6 @@ option if the file is found in
 .Pp
 The above command will load
 .Pa /usr/share/syscons/scrnmaps/iso-8859-1_to_cp437.scm .
-.Pp
-The following command will set-up a 100x37 raster text mode (useful for
-some LCD models):
-.Pp
-.Dl vidcontrol -g 100x37 VESA_800x600
 .Pp
 The following command will capture the contents of the first virtual
 terminal, and redirect the output to the

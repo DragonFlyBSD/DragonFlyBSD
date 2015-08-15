@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/splash/bmp/splash_bmp.c,v 1.10.2.3 2000/10/31 08:00:06 nyan Exp $
- * $DragonFly: src/sys/dev/video/fb/bmp/splash_bmp.c,v 1.10 2007/09/15 13:18:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -66,9 +65,6 @@ bmp_start(video_adapter_t *adp)
 {
     /* currently only 256-color modes are supported XXX */
     static int		modes[] = {
-			M_VESA_CG640x480,
-			M_VESA_CG800x600,
-			M_VESA_CG1024x768,
 			M_CG640x480,
     			/*
 			 * As 320x200 doesn't generally look great,

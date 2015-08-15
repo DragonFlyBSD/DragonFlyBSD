@@ -23,7 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.conf.5,v 1.18 2002/08/27 01:02:56 trhodes Exp $
-.Dd March 28, 2015
+.\"
+.Dd August 14, 2015
 .Dt LOADER.CONF 5
 .Os
 .Sh NAME
@@ -265,12 +266,6 @@ If set to
 .Dq YES ,
 will load the splash screen module, making it possible to display a pcx image
 on the screen while booting.
-.It Va vesa_load
-.Pq Dq NO
-If set to
-.Dq YES ,
-the vesa module will be loaded, enabling bitmaps above VGA resolution to
-be displayed.
 .El
 .Sh IPMI
 Generally speaking machines with IPMI capabilities are capable of

@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.15 2008/11/02 21:52:46 swildner Exp $
  */
 
 #include <machine/console.h>
@@ -73,8 +72,8 @@ struct {
 
 int hex = 0;
 int number;
-int vesa_cols;
-int vesa_rows;
+int g_cols;
+int g_rows;
 int font_height;
 int colors_changed;
 int video_mode_changed;
@@ -530,10 +529,6 @@ video_mode(int argc, char **argv, int *mode_index)
 		     { "80x43",		M_ENH_C80x43 },
 		     { "80x50",		M_VGA_C80x50 },
 		     { "80x60",		M_VGA_C80x60 },
-		     { "132x25",	M_VESA_C132x25 },
-		     { "132x43",	M_VESA_C132x43 },
-		     { "132x50",	M_VESA_C132x50 },
-		     { "132x60",	M_VESA_C132x60 },
 		     { "VGA_40x25",	M_VGA_C40x25 },
 		     { "VGA_80x25",	M_VGA_C80x25 },
 		     { "VGA_80x30",	M_VGA_C80x30 },
@@ -549,11 +544,6 @@ video_mode(int argc, char **argv, int *mode_index)
 		     { "VGA_320x200",	M_CG320 },
 		     { "EGA_80x25",	M_ENH_C80x25 },
 		     { "EGA_80x43",	M_ENH_C80x43 },
-		     { "VESA_132x25",	M_VESA_C132x25 },
-		     { "VESA_132x43",	M_VESA_C132x43 },
-		     { "VESA_132x50",	M_VESA_C132x50 },
-		     { "VESA_132x60",	M_VESA_C132x60 },
-		     { "VESA_800x600",	M_VESA_800x600 },
 		     { NULL, 0 },
 	};
 
@@ -618,21 +608,21 @@ video_mode(int argc, char **argv, int *mode_index)
 
 			/* adjust columns */
 
-			if ((vesa_cols * 8 > new_mode_info.vi_width) ||
-			    (vesa_cols <= 0)) {
+			if ((g_cols * 8 > new_mode_info.vi_width) ||
+			    (g_cols <= 0)) {
 				size[0] = new_mode_info.vi_width / 8;
 			} else {
-				size[0] = vesa_cols;
+				size[0] = g_cols;
 			}
 
 			/* adjust rows */
 
-			if ((vesa_rows * font_height > new_mode_info.vi_height) ||
-			    (vesa_rows <= 0)) {
+			if ((g_rows * font_height > new_mode_info.vi_height) ||
+			    (g_rows <= 0)) {
 				size[1] = new_mode_info.vi_height /
 					  font_height;
 			} else {
-				size[1] = vesa_rows;
+				size[1] = g_rows;
 			}
 
 			/* set raster mode */
@@ -882,9 +872,8 @@ show_adapter_info(void)
 	}
 
 	printf("fb%d:\n", ad.va_index);
-	printf("    %.*s%d, type:%s%s (%d), flags:0x%x\n",
+	printf("    %.*s%d, type:%s (%d), flags:0x%x\n",
 	       (int)sizeof(ad.va_name), ad.va_name, ad.va_unit,
-	       (ad.va_flags & V_ADP_VESA) ? "VESA " : "",
 	       adapter_name(ad.va_type), ad.va_type, ad.va_flags);
 	printf("    initial mode:%d, current mode:%d, BIOS mode:%d\n",
 	       ad.va_initial_mode, ad.va_mode, ad.va_initial_bios_mode);
@@ -915,7 +904,7 @@ show_mode_info(void)
 	printf("---------------------------------------"
 	       "---------------------------------------\n");
 
-	for (mode = 0; mode < M_VESA_MODE_MAX; ++mode) {
+	for (mode = 0; mode <= M_MCA_MODE; ++mode) {
 		vinfo.vi_mode = mode;
 
 		if (ioctl(0, CONS_MODEINFO, &vinfo))
@@ -1146,8 +1135,7 @@ main(int argc, char **argv)
 			load_font(type, font);
 			break;
 		case 'g':
-			if (sscanf(optarg, "%dx%d",
-			    &vesa_cols, &vesa_rows) != 2) {
+			if (sscanf(optarg, "%dx%d", &g_cols, &g_rows) != 2) {
 				revert();
 				warnx("incorrect geometry: %s", optarg);
 				usage();
