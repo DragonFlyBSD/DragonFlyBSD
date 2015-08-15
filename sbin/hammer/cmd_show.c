@@ -350,7 +350,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	       elm->base.rec_type,
 	       (uintmax_t)elm->base.key,
 	       elm->base.obj_type);
-	printf("\t       %c tids %016jx:%016jx ",
+	printf("\t       %c tids=%016jx:%016jx ",
 	       (rootelm == ' ' ? deleted : rootelm),
 	       (uintmax_t)elm->base.create_tid,
 	       (uintmax_t)elm->base.delete_tid);
@@ -360,7 +360,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 		printf("suboff=%016jx",
 		       (uintmax_t)elm->internal.subtree_offset);
 		if (QuietOpt < 3) {
-			printf(" mirror %016jx",
+			printf(" mirror=%016jx",
 			       (uintmax_t)elm->internal.mirror_tid);
 		}
 		if (ext)
