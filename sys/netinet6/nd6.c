@@ -1854,7 +1854,7 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m,
 		goto sendpkt;
 
 	/*
-	 * next hop determination.  This routine is derived from ether_outpout.
+	 * Next hop determination.  This routine is derived from rt_llroute.
 	 */
 	if (rt != NULL) {
 		if (!(rt->rt_flags & RTF_UP)) {
@@ -1902,6 +1902,7 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m,
 				if (rt->rt_gwroute == NULL)
 					gotoerr(EHOSTUNREACH);
 			}
+			rt = rt->rt_gwroute;
 		}
 	}
 
