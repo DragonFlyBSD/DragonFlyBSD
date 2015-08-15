@@ -258,8 +258,11 @@ arp_rtrequest(int req, struct rtentry *rt)
 			rt->rt_expire = time_uptime;
 			break;
 		}
-		/* Announce a new entry if requested. */
-		if (rt->rt_flags & RTF_ANNOUNCE) {
+		/*
+		 * Announce a new entry if requested, and only announce it
+		 * once on cpu0.
+		 */
+		if ((rt->rt_flags & RTF_ANNOUNCE) && mycpuid == 0) {
 			arprequest_async(rt->rt_ifp,
 			    &SIN(rt_key(rt))->sin_addr,
 			    &SIN(rt_key(rt))->sin_addr,
