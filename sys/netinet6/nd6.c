@@ -1179,12 +1179,13 @@ nd6_rtrequest(int req, struct rtentry *rt)
 		 */
 #if 0
 		/* XXX it does not work */
-		if (rt->rt_flags & RTF_ANNOUNCE)
+		if ((rt->rt_flags & RTF_ANNOUNCE) && mycpuid == 0) {
 			nd6_na_output(ifp,
 			      &SIN6(rt_key(rt))->sin6_addr,
 			      &SIN6(rt_key(rt))->sin6_addr,
 			      ip6_forwarding ? ND_NA_FLAG_ROUTER : 0,
 			      1, NULL);
+		}
 #endif
 		/* FALLTHROUGH */
 	case RTM_RESOLVE:
@@ -1278,8 +1279,11 @@ nd6_rtrequest(int req, struct rtentry *rt)
 			ln->ln_state = ND6_LLINFO_REACHABLE;
 			ln->ln_byhint = 0;
 
-			/* join solicited node multicast for proxy ND */
-			if (ifp->if_flags & IFF_MULTICAST) {
+			/*
+			 * Join solicited node multicast for proxy ND, and only
+			 * join it once on cpu0.
+			 */
+			if ((ifp->if_flags & IFF_MULTICAST) && mycpuid == 0) {
 				struct in6_addr llsol;
 				int error;
 
@@ -1302,9 +1306,12 @@ nd6_rtrequest(int req, struct rtentry *rt)
 	case RTM_DELETE:
 		if (!ln)
 			break;
-		/* leave from solicited node multicast for proxy ND */
+		/*
+		 * Leave from solicited node multicast for proxy ND, and only
+		 * leave it once on cpu0 (since we joined it once on cpu0).
+		 */
 		if ((rt->rt_flags & RTF_ANNOUNCE) &&
-		    (ifp->if_flags & IFF_MULTICAST)) {
+		    (ifp->if_flags & IFF_MULTICAST) && mycpuid == 0) {
 			struct in6_addr llsol;
 			struct in6_multi *in6m;
 
