@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_input.c,v 1.28.2.1 2002/03/08 16:37:10 yar Exp $
- * $DragonFly: src/sys/ddb/db_input.c,v 1.5 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -70,14 +69,14 @@ static int	db_inputchar (int c);
 static void	db_putnchars (int c, int count);
 static void	db_putstring (char *s, int count);
 
-void
+static void
 db_putstring(char *s, int count)
 {
 	while (--count >= 0)
 	    cnputc(*s++);
 }
 
-void
+static void
 db_putnchars(int c, int count)
 {
 	while (--count >= 0)
@@ -89,7 +88,7 @@ db_putnchars(int c, int count)
  */
 #define	DEL_FWD		0
 #define	DEL_BWD		1
-void
+static void
 db_delete(int n, int bwd)
 {
 	char *p;
@@ -108,7 +107,7 @@ db_delete(int n, int bwd)
 }
 
 /* returns TRUE at end-of-line */
-int
+static int
 db_inputchar(int c)
 {
 	static int escstate;
@@ -284,7 +283,7 @@ db_inputchar(int c)
 	return (0);
 }
 
-int
+static int
 cnmaygetc(void)
 {
 	return (-1);
