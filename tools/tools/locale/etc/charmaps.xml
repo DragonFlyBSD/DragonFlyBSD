@@ -181,9 +181,6 @@
 	<language name="uk"
 		encoding="CP1251 ISO8859-5 KOI8-U"
 		countries="UA" />
-	<language name="xx"
-		family="Comm"
-		countries="US" />               <!-- Special LC_CTYPE -->
 	<language name="zh"
 		family="Hans"
 		encoding="GB18030 GB2312 GBK eucCN"

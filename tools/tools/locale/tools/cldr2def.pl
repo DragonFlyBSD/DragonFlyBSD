@@ -348,19 +348,9 @@ sub transform_ctypes {
 		$file .= $c;
 		my $actfile = $file;
 
-		my $filename = "$CLDRDIR/posix/$file.$DEFENCODING.src";
-		$filename = "$ETCDIR/$file.$DEFENCODING.src"
-		    if (! -f $filename);
-		if (! -f $filename
-		 && defined $languages{$l}{$f}{fallback}) {
-			$file = $languages{$l}{$f}{fallback};
-			$filename = "$CLDRDIR/posix/$file.$DEFENCODING.src";
-		}
-		$filename = "$CLDRDIR/posix/$file.$DEFENCODING.src"
-		    if (! -f $filename);
+		my $filename = "$CLDRDIR/posix/xx_Comm_US.UTF-8.src";
 		if (! -f $filename) {
-			print STDERR
-			    "Cannot open $file.$DEFENCODING.src or fallback\n";
+			print STDERR "Cannot open $filename\n";
 			next;
 		}
 		open(FIN, "$filename");
@@ -370,49 +360,45 @@ sub transform_ctypes {
 		my $shex;
 		my $uhex;
 		while (<FIN>) {
-			if ((/^comment_char\s/) || (/^escape_char\s/)){
-				push @lines, $_;
-			}
-			if (/^LC_CTYPE/../^END LC_CTYPE/) {
-				push @lines, $_;
-			}
+			push @lines, $_;
 		}
 		close(FIN);
 		$shex = sha1_hex(join("\n", @lines));
 		$languages{$l}{$f}{data}{$c}{$DEFENCODING} = $shex;
 		$hashtable{$shex}{"${l}_${f}_${c}.$DEFENCODING"} = 1;
 		open(FOUT, ">$TYPE.draft/$actfile.$DEFENCODING.src");
-		print FOUT <<EOF;
+		print FOUT @lines;
+		close(FOUT);
+		foreach my $enc (sort keys(%{$languages{$l}{$f}{data}{$c}})) {
+			next if ($enc eq $DEFENCODING);
+			$filename = "$CLDRDIR/posix/$file.$DEFENCODING.src";
+			if (! -f $filename) {
+				print STDERR "Cannot open $filename\n";
+				next;
+			}
+			@lines = ();
+			open(FIN, "$filename");
+			while (<FIN>) {
+				if ((/^comment_char\s/) || (/^escape_char\s/)){
+					push @lines, $_;
+				}
+				if (/^LC_CTYPE/../^END LC_CTYPE/) {
+					push @lines, $_;
+				}
+			}
+			close(FIN);
+			$uhex = sha1_hex(join("\n", @lines) . $enc);
+			$languages{$l}{$f}{data}{$c}{$enc} = $uhex;
+			$hashtable{$uhex}{"${l}_${f}_${c}.$enc"} = 1;
+			open(FOUT, ">$TYPE.draft/$actfile.$enc.src");
+			print FOUT <<EOF;
 # Warning: Do not edit. This file is automatically extracted from the
 # tools in /usr/src/tools/tools/locale. The data is obtained from the
 # CLDR project, obtained from http://cldr.unicode.org/
 # -----------------------------------------------------------------------------
 EOF
-		my $category = '';
-		foreach my $line (@lines) {
-			if ($actfile eq "xx_Comm_US") {
-				print FOUT $line;
-				next;
-			}
-			if ($line =~ /^([a-z]{3,})\s+</) {
-				$category = $1;
-				if ($category eq 'print') {
-					print FOUT "blank\t<NO-BREAK_SPACE>\n";
-					print FOUT "print\t<NO-BREAK_SPACE>\n\n";
-				}
-			}
-			next if ($category eq 'print');
-			print FOUT $line;
-		}
-		close(FOUT);
-
-		foreach my $enc (sort keys(%{$languages{$l}{$f}{data}{$c}})) {
-			next if ($enc eq $DEFENCODING);
-			copy ("$TYPE.draft/$actfile.$DEFENCODING.src",
-			      "$TYPE.draft/$actfile.$enc.src");
-			$uhex = sha1_hex(join("\n", @lines) . $enc);
-			$languages{$l}{$f}{data}{$c}{$enc} = $uhex;
-			$hashtable{$uhex}{"${l}_${f}_${c}.$enc"} = 1;
+			print FOUT @lines;
+			close(FOUT);
 		}
 	}
 	}
@@ -840,17 +826,17 @@ EOF
 				} keys(%{$hashtable{$hash}});
 		} elsif ($TYPE eq "ctypedef") {
 			@files = sort {
-				if ($a =~ /^en_x_US/ ||
-				    $a =~ /^en_x_GB.ISO8859-15/ ||
+				if ($a eq 'en_x_US.UTF-8') { return -1; }
+				elsif ($b eq 'en_x_US.UTF-8') { return 1; }
+				if ($a =~ /^en_x_US/) { return -1; }
+				elsif ($b =~ /^en_x_US/) { return 1; }
+
+				if ($a =~ /^en_x_GB.ISO8859-15/ ||
 				    $a =~ /^ru_x_RU/) { return -1; }
-				elsif ($b =~ /^en_x_US/ ||
-				       $b =~ /^en_x_GB.ISO8859-15/ ||
+				elsif ($b =~ /^en_x_GB.ISO8859-15/ ||
 				       $b =~ /ru_x_RU/) { return 1; }
 				else { return uc($b) cmp uc($a); }
 
-				if ($a eq 'en_x_US.UTF-8') { return -1; }
-				elsif ($b eq 'en_x_US.UTF-8') { return 1; }
-				else { return uc($b) cmp uc($a); }
 				} keys(%{$hashtable{$hash}});
 		} else {
 			@files = sort {
