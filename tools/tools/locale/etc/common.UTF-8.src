@@ -5161,6 +5161,9 @@ graph	<HANGUL_CHOSEONG_KIYEOK>;...;<HANGUL_CHOSEONG_CEONGCHIEUMSSANGSIOS>;/
 
 *******      REMAINING DEFINITIONS ARE MANUALLY ASSEMBLED      *******
 
+blank	<NO-BREAK_SPACE>
+print	<NO-BREAK_SPACE>
+
 **********************************************************************
 * 0x02B0 - 0x02FF Spacing Modification Letters
 **********************************************************************
