@@ -39,6 +39,12 @@
 
 #include "hammer.h"
 
+struct bigblock_stat {
+	int64_t total_bigblocks;
+	int64_t total_free_bigblocks;
+	int64_t counter;
+};
+
 static int
 hammer_format_volume_header(struct hammer_mount *hmp,
 	struct hammer_volume_ondisk *ondisk,
@@ -46,13 +52,11 @@ hammer_format_volume_header(struct hammer_mount *hmp,
 	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size);
 
 static int
-hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip);
+hammer_update_volumes_header(hammer_transaction_t trans,
+	struct bigblock_stat *stat);
 
-struct bigblock_stat {
-	int64_t total_bigblocks;
-	int64_t total_free_bigblocks;
-	int64_t counter;
-};
+static int
+hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip);
 
 static int
 hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume,
@@ -74,7 +78,6 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	struct hammer_volume_ondisk ondisk;
 	struct bigblock_stat stat;
 	hammer_volume_t volume;
-	int vol_no;
 	int error;
 
 	if (mp->mnt_flag & MNT_RDONLY) {
@@ -133,61 +136,8 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_rel_volume(volume, 0);
 
 	++hmp->nvolumes;
-
-	/*
-	 * Set each volume's new value of the vol_count field.
-	 */
-	HAMMER_VOLUME_NUMBER_FOREACH(hmp, vol_no) {
-		volume = hammer_get_volume(hmp, vol_no, &error);
-		KKASSERT(volume != NULL && error == 0);
-		hammer_modify_volume_field(trans, volume, vol_count);
-		volume->ondisk->vol_count = hmp->nvolumes;
-		hammer_modify_volume_done(volume);
-
-		/*
-		 * Only changes to the header of the root volume
-		 * are automatically flushed to disk. For all
-		 * other volumes that we modify we do it here.
-		 *
-		 * No interlock is needed, volume buffers are not
-		 * messed with by bioops.
-		 */
-		if (volume != trans->rootvol && volume->io.modified) {
-			hammer_crc_set_volume(volume->ondisk);
-			hammer_io_flush(&volume->io, 0);
-		}
-
-		hammer_rel_volume(volume, 0);
-	}
-
-	/*
-	 * Update the total number of big-blocks.
-	 */
-	hammer_modify_volume_field(trans, trans->rootvol, vol0_stat_bigblocks);
-	trans->rootvol->ondisk->vol0_stat_bigblocks += stat.total_bigblocks;
-	hammer_modify_volume_done(trans->rootvol);
-
-	/*
-	 * Big-block count changed so recompute the total number of blocks.
-	 */
-	mp->mnt_stat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-				HAMMER_BUFFERS_PER_BIGBLOCK;
-	mp->mnt_vstat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-				HAMMER_BUFFERS_PER_BIGBLOCK;
-
-	/*
-	 * Update the total number of free big-blocks.
-	 */
-	hammer_modify_volume_field(trans, trans->rootvol,
-		vol0_stat_freebigblocks);
-	trans->rootvol->ondisk->vol0_stat_freebigblocks += stat.total_free_bigblocks;
-	hammer_modify_volume_done(trans->rootvol);
-
-	/*
-	 * Update the copy in hmp.
-	 */
-	hmp->copy_stat_freebigblocks =
-		trans->rootvol->ondisk->vol0_stat_freebigblocks;
+	error = hammer_update_volumes_header(trans, &stat);
+	KKASSERT(error == 0);
 
 	hammer_unlock(&hmp->blkmap_lock);
 	hammer_sync_unlock(trans);
@@ -329,61 +279,8 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	--hmp->nvolumes;
-
-	/*
-	 * Set each volume's new value of the vol_count field.
-	 */
-	HAMMER_VOLUME_NUMBER_FOREACH(hmp, vol_no) {
-		volume = hammer_get_volume(hmp, vol_no, &error);
-		KKASSERT(volume != NULL && error == 0);
-		hammer_modify_volume_field(trans, volume, vol_count);
-		volume->ondisk->vol_count = hmp->nvolumes;
-		hammer_modify_volume_done(volume);
-
-		/*
-		 * Only changes to the header of the root volume
-		 * are automatically flushed to disk. For all
-		 * other volumes that we modify we do it here.
-		 *
-		 * No interlock is needed, volume buffers are not
-		 * messed with by bioops.
-		 */
-		if (volume != trans->rootvol && volume->io.modified) {
-			hammer_crc_set_volume(volume->ondisk);
-			hammer_io_flush(&volume->io, 0);
-		}
-
-		hammer_rel_volume(volume, 0);
-	}
-
-	/*
-	 * Update the total number of big-blocks.
-	 */
-	hammer_modify_volume_field(trans, trans->rootvol, vol0_stat_bigblocks);
-	trans->rootvol->ondisk->vol0_stat_bigblocks += stat.total_bigblocks;
-	hammer_modify_volume_done(trans->rootvol);
-
-	/*
-	 * Big-block count changed so recompute the total number of blocks.
-	 */
-	mp->mnt_stat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-				HAMMER_BUFFERS_PER_BIGBLOCK;
-	mp->mnt_vstat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
-				HAMMER_BUFFERS_PER_BIGBLOCK;
-
-	/*
-	 * Update the total number of free big-blocks.
-	 */
-	hammer_modify_volume_field(trans, trans->rootvol,
-		vol0_stat_freebigblocks);
-	trans->rootvol->ondisk->vol0_stat_freebigblocks += stat.total_free_bigblocks;
-	hammer_modify_volume_done(trans->rootvol);
-
-	/*
-	 * Update the copy in hmp.
-	 */
-	hmp->copy_stat_freebigblocks =
-		trans->rootvol->ondisk->vol0_stat_freebigblocks;
+	error = hammer_update_volumes_header(trans, &stat);
+	KKASSERT(error == 0);
 
 	hammer_unlock(&hmp->blkmap_lock);
 	hammer_sync_unlock(trans);
@@ -797,4 +694,73 @@ hammer_format_volume_header(struct hammer_mount *hmp,
 			      HAMMER_BUFSIZE;
 	ondisk->vol_blocksize = HAMMER_BUFSIZE;
 	return(0);
+}
+
+static int
+hammer_update_volumes_header(hammer_transaction_t trans,
+	struct bigblock_stat *stat)
+{
+	struct hammer_mount *hmp = trans->hmp;
+	struct mount *mp = hmp->mp;
+	hammer_volume_t volume;
+	int vol_no;
+	int error = 0;
+
+	/*
+	 * Set each volume's new value of the vol_count field.
+	 */
+	HAMMER_VOLUME_NUMBER_FOREACH(hmp, vol_no) {
+		volume = hammer_get_volume(hmp, vol_no, &error);
+		KKASSERT(volume != NULL && error == 0);
+		hammer_modify_volume_field(trans, volume, vol_count);
+		volume->ondisk->vol_count = hmp->nvolumes;
+		hammer_modify_volume_done(volume);
+
+		/*
+		 * Only changes to the header of the root volume
+		 * are automatically flushed to disk. For all
+		 * other volumes that we modify we do it here.
+		 *
+		 * No interlock is needed, volume buffers are not
+		 * messed with by bioops.
+		 */
+		if (volume != trans->rootvol && volume->io.modified) {
+			hammer_crc_set_volume(volume->ondisk);
+			hammer_io_flush(&volume->io, 0);
+		}
+
+		hammer_rel_volume(volume, 0);
+	}
+
+	/*
+	 * Update the total number of big-blocks.
+	 */
+	hammer_modify_volume_field(trans, trans->rootvol, vol0_stat_bigblocks);
+	trans->rootvol->ondisk->vol0_stat_bigblocks += stat->total_bigblocks;
+	hammer_modify_volume_done(trans->rootvol);
+
+	/*
+	 * Big-block count changed so recompute the total number of blocks.
+	 */
+	mp->mnt_stat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
+				HAMMER_BUFFERS_PER_BIGBLOCK;
+	mp->mnt_vstat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
+				HAMMER_BUFFERS_PER_BIGBLOCK;
+
+	/*
+	 * Update the total number of free big-blocks.
+	 */
+	hammer_modify_volume_field(trans, trans->rootvol,
+		vol0_stat_freebigblocks);
+	trans->rootvol->ondisk->vol0_stat_freebigblocks +=
+		stat->total_free_bigblocks;
+	hammer_modify_volume_done(trans->rootvol);
+
+	/*
+	 * Update the copy in hmp.
+	 */
+	hmp->copy_stat_freebigblocks =
+		trans->rootvol->ondisk->vol0_stat_freebigblocks;
+
+	return(error);
 }
