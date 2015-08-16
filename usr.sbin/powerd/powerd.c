@@ -159,6 +159,9 @@ static int BatShutdownLinger = -1;
 static int BatShutdownLingerSet = 60; /* unit: sec */
 static int BatShutdownLingerCnt;
 static int BatShutdownAudioAlert = 1;
+static int BackLightPct = 100;
+static int OldBackLightLevel;
+static int BackLightDown;
 
 static void sigintr(int signo);
 
@@ -174,8 +177,11 @@ main(int ac, char **av)
 	srt = 8.0;	/* time for samples - 8 seconds */
 	pollrate = 1.0;	/* polling rate in seconds */
 
-	while ((ch = getopt(ac, av, "cdefh:l:p:r:tu:B:L:P:QT:")) != -1) {
+	while ((ch = getopt(ac, av, "b:cdefh:l:p:r:tu:B:L:P:QT:")) != -1) {
 		switch(ch) {
+		case 'b':
+			BackLightPct = strtol(optarg, NULL, 10);
+			break;
 		case 'c':
 			AdjustCstate = 1;
 			break;
@@ -244,6 +250,11 @@ main(int ac, char **av)
 	if (0 > TriggerUp || TriggerUp > 1) {
 		fprintf(stderr, "Invalid load limit value\n");
 		exit(1);
+	}
+
+	if (BackLightPct > 100 || BackLightPct <= 0) {
+		fprintf(stderr, "Invalid backlight setting, ignore\n");
+		BackLightPct = 100;
 	}
 
 	TriggerDown = TriggerUp - (TriggerUp * (double) Hysteresis / 100);
@@ -589,7 +600,8 @@ usage(void)
 	    "[-h highest_freq] [-l lowest_freq] "
 	    "[-r poll_interval] [-u trigger_up] "
 	    "[-B min_battery_life] [-L low_battery_linger] "
-	    "[-P battery_poll_interval] [-T sample_interval]\n");
+	    "[-P battery_poll_interval] [-T sample_interval] "
+	    "[-b backlight]\n");
 	exit(1);
 }
 
@@ -704,8 +716,49 @@ mon_battery(void)
 	if (acline) {
 		BatShutdownLinger = -1;
 		BatShutdownLingerCnt = 0;
+		if (BackLightDown) {
+			BackLightDown = 0;
+			sysctlbyname("hw.backlight_level", NULL, NULL,
+			    &OldBackLightLevel, sizeof(OldBackLightLevel));
+		}
 		return 1;
 	}
+
+	if (!BackLightDown && BackLightPct != 100) {
+		int backlight_max, backlight;
+
+		len = sizeof(backlight_max);
+		if (sysctlbyname("hw.backlight_max", &backlight_max, &len,
+		    NULL, 0) < 0) {
+			/* No more backlight adjustment */
+			BackLightPct = 100;
+			goto after_backlight;
+		}
+
+		len = sizeof(OldBackLightLevel);
+		if (sysctlbyname("hw.backlight_level", &OldBackLightLevel, &len,
+		    NULL, 0) < 0) {
+			/* No more backlight adjustment */
+			BackLightPct = 100;
+			goto after_backlight;
+		}
+
+		backlight = (backlight_max * BackLightPct) / 100;
+		if (backlight >= OldBackLightLevel) {
+			/* No more backlight adjustment */
+			BackLightPct = 100;
+			goto after_backlight;
+		}
+
+		if (sysctlbyname("hw.backlight_level", NULL, NULL,
+		    &backlight, sizeof(backlight)) < 0) {
+			/* No more backlight adjustment */
+			BackLightPct = 100;
+			goto after_backlight;
+		}
+		BackLightDown = 1;
+	}
+after_backlight:
 
 	len = sizeof(life);
 	if (sysctlbyname("hw.acpi.battery.life", &life, &len, NULL, 0) < 0)
