@@ -1,0 +1,760 @@
+
+*******      REMAINING DEFINITIONS ARE MANUALLY ASSEMBLED      *******
+
+**********************************************************************
+* 0x02B0 - 0x02FF Spacing Modification Letters
+**********************************************************************
+
+graph	<MODIFIER_LETTER_SMALL_H>;...;<MODIFIER_LETTER_LOW_LEFT_ARROW>
+punct	<MODIFIER_LETTER_PRIME>;...;<MODIFIER_LETTER_LEFT_HALF_RING>;/
+	<MODIFIER_LETTER_LEFT_ARROWHEAD>;...;<MODIFIER_LETTER_CROSS_ACCENT>;/
+	<MODIFIER_LETTER_EXTRA-HIGH_TONE_BAR>;...;/
+	<MODIFIER_LETTER_LOW_LEFT_ARROW>
+lower	<MODIFIER_LETTER_SMALL_H>;...;<MODIFIER_LETTER_SMALL_Y>;/
+	<MODIFIER_LETTER_GLOTTAL_STOP>;/
+	<MODIFIER_LETTER_REVERSED+GLOTTAL_STOP>;/
+	<MODIFIER_LETTER_SMALL_GAMMA>;...;/
+	<MODIFIER_LETTER_SMALL_REVERSED_GLOTTAL_STOP>
+
+**********************************************************************
+* 0x0300 - 0x036F Combining Diacritical Marks
+**********************************************************************
+
+graph	<COMBINING_GRAVE_ACCENT>;...;<COMBINING_LATIN_SMALL_LETTER_X>
+
+**********************************************************************
+* 0x0300 - 0x0370 Coptic (Automatic section skips it)
+**********************************************************************
+
+graph	<COPTIC_CAPITAL_LETTER_SHEI>;/
+	<COPTIC_CAPITAL_LETTER_FEI>;/
+	<COPTIC_CAPITAL_LETTER_KHEI>;/
+	<COPTIC_CAPITAL_LETTER_HORI>;/
+	<COPTIC_CAPITAL_LETTER_GANGIA>;/
+	<COPTIC_CAPITAL_LETTER_SHIMA>;/
+	<COPTIC_CAPITAL_LETTER_DEI>;/
+	<COPTIC_SMALL_LETTER_SHEI>;/
+	<COPTIC_SMALL_LETTER_FEI>;/
+	<COPTIC_SMALL_LETTER_KHEI>;/
+	<COPTIC_SMALL_LETTER_HORI>;/
+	<COPTIC_SMALL_LETTER_GANGIA>;/
+	<COPTIC_SMALL_LETTER_SHIMA>;/
+	<COPTIC_SMALL_LETTER_DEI>
+upper	<COPTIC_CAPITAL_LETTER_SHEI>;/
+	<COPTIC_CAPITAL_LETTER_FEI>;/
+	<COPTIC_CAPITAL_LETTER_KHEI>;/
+	<COPTIC_CAPITAL_LETTER_HORI>;/
+	<COPTIC_CAPITAL_LETTER_GANGIA>;/
+	<COPTIC_CAPITAL_LETTER_SHIMA>;/
+	<COPTIC_CAPITAL_LETTER_DEI>
+lower	<COPTIC_SMALL_LETTER_SHEI>;/
+	<COPTIC_SMALL_LETTER_FEI>;/
+	<COPTIC_SMALL_LETTER_KHEI>;/
+	<COPTIC_SMALL_LETTER_HORI>;/
+	<COPTIC_SMALL_LETTER_GANGIA>;/
+	<COPTIC_SMALL_LETTER_SHIMA>;/
+	<COPTIC_SMALL_LETTER_DEI>
+toupper	(<COPTIC_SMALL_LETTER_SHEI>,<COPTIC_CAPITAL_LETTER_SHEI>);/
+	(<COPTIC_SMALL_LETTER_FEI>,<COPTIC_CAPITAL_LETTER_FEI>);/
+	(<COPTIC_SMALL_LETTER_KHEI>,<COPTIC_CAPITAL_LETTER_KHEI>);/
+	(<COPTIC_SMALL_LETTER_HORI>,<COPTIC_CAPITAL_LETTER_HORI>);/
+	(<COPTIC_SMALL_LETTER_GANGIA>,<COPTIC_CAPITAL_LETTER_GANGIA>);/
+	(<COPTIC_SMALL_LETTER_SHIMA>,<COPTIC_CAPITAL_LETTER_SHIMA>);/
+	(<COPTIC_SMALL_LETTER_DEI>,<COPTIC_CAPITAL_LETTER_DEI>)
+tolower	(<COPTIC_CAPITAL_LETTER_SHEI>,<COPTIC_SMALL_LETTER_SHEI>);/
+	(<COPTIC_CAPITAL_LETTER_FEI>,<COPTIC_SMALL_LETTER_FEI>);/
+	(<COPTIC_CAPITAL_LETTER_KHEI>,<COPTIC_SMALL_LETTER_KHEI>);/
+	(<COPTIC_CAPITAL_LETTER_HORI>,<COPTIC_SMALL_LETTER_HORI>);/
+	(<COPTIC_CAPITAL_LETTER_GANGIA>,<COPTIC_SMALL_LETTER_GANGIA>);/
+	(<COPTIC_CAPITAL_LETTER_SHIMA>,<COPTIC_SMALL_LETTER_SHIMA>);/
+	(<COPTIC_CAPITAL_LETTER_DEI>,<COPTIC_SMALL_LETTER_DEI>)
+
+**********************************************************************
+* 0x0700 - 0x074F Syriac
+**********************************************************************
+
+graph	<SYRIAC_END_OF_PARAGRAPH>;...;<SYRIAC_LETTER_SOGDIAN_FE>
+
+**********************************************************************
+* 0x0780 - 0x07BF Thaana
+**********************************************************************
+
+graph	<THAANA_LETTER_HAA>;...;<THAANA_LETTER_NAA>
+
+**********************************************************************
+* 0x07C0 - 0x07FF Nko
+**********************************************************************
+
+graph	<NKO_DIGIT_ZERO>;...;<NKO_LAJANYALAN>
+digit	<NKO_DIGIT_ZERO>;...;<NKO_DIGIT_NINE>
+
+**********************************************************************
+* 0x0800 - 0x083F Samaritan
+**********************************************************************
+
+graph	<SAMARITAN_LETTER_ALAF>;...;<SAMARITAN_PUNCTUATION_ANNAAU>
+
+**********************************************************************
+* 0x0840 - 0x085F Mandaic
+**********************************************************************
+
+graph	<MANDAIC_LETTER_HALQA>;...;<MANDAIC_GEMINATION_MARK>;/
+	<MANDAIC_PUNCTUATION>
+
+**********************************************************************
+* 0x1400 - 0x167F Unified Canadian Aboriginal Syllabics
+**********************************************************************
+
+graph	<CANADIAN_SYLLABICS_HYPHEN>;...;<CANADIAN_SYLLABICS_BLACKFOOT_W>
+
+**********************************************************************
+* 0x1680 - 0x169F Ogham
+**********************************************************************
+
+graph	<OGHAM_SPACE_MARK>;...;<OGHAM_REVERSED_FEATHER_MARK>
+
+**********************************************************************
+* 0x16A0 - 0x16FF Runic
+**********************************************************************
+
+graph	<RUNIC_LETTER_FEHU_FEOH_FE_F>;...;<RUNIC_LETTER_FRANKS_CASKET_AESC>
+
+**********************************************************************
+* 0x1700 - 0x171F Tagalog
+**********************************************************************
+
+graph	<TAGALOG_LETTER_A>;...;<TAGALOG_SIGN_VIRAMA>
+
+**********************************************************************
+* 0x1720 - 0x173F Hanunoo
+**********************************************************************
+
+graph	<HANUNOO_LETTER_A>;...;<PHILIPPINE_DOUBLE_PUNCTUATION>
+
+***********************************************************************
+* 0x1740 - 0x175F Buhid
+**********************************************************************
+
+graph	<BUHID_LETTER_A>;...;<BUHID_VOWEL_SIGN_U>
+
+**********************************************************************
+* 0x1760 - 0x177F Tagbanwa
+**********************************************************************
+
+graph	<TAGBANWA_LETTER_A>;...;<TAGBANWA_VOWEL_SIGN_U>
+
+**********************************************************************
+* 0x1800 - 0x18AF Mongolian
+**********************************************************************
+
+graph	<MONGOLIAN_BIRGA>;...;<MONGOLIAN_DIGIT_NINE>;/
+	<MONGOLIAN_LETTER_A>;...;<MONGOLIAN_LETTER_MANCHU_ZHA>;/
+	<MONGOLIAN_LETTER_ALI_GALI_ANUSVARA_ONE>;...;/
+	<MONGOLIAN_LETTER_MANCHU_ALI_GALI_LHA>
+digit	<MONGOLIAN_DIGIT_ZERO>;...;<MONGOLIAN_DIGIT_NINE>
+
+**********************************************************************
+* 0x18B0 - 0x18FF Unified CA Aboriginal Syllabics Extended
+**********************************************************************
+
+graph	<CANADIAN_SYLLABICS_OY>;...;<CANADIAN_SYLLABICS_CARRIER_DENTAL_S>
+
+**********************************************************************
+* 0x1900 - 0x194F Limbu
+**********************************************************************
+
+graph	<LIMBU_VOWEL-CARRIER_LETTER>;...;<LIMBU_LETTER_TRA>;/
+	<LIMBU_VOWEL_SIGN_A>;...;<LIMBU_SUBJOINED_LETTER_WA>;/
+	<LIMBU_SMALL_LETTER_KA>;...;<LIMBU_SIGN_SA-I>;/
+	<LIMBU_SIGN_LOO>;/
+	<LIMBU_EXCLAMATION_MARK>;...;<LIMBU_DIGIT_NINE>
+digit	<LIMBU_DIGIT_ZERO>;...;<LIMBU_DIGIT_NINE>
+
+**********************************************************************
+* 0x1950 - 0x197F Tai Le
+**********************************************************************
+
+graph	<TAI_LE_LETTER_KA>;...;<TAI_LE_LETTER_AI>;/
+	<TAI_LE_LETTER_TONE-2>;...;<TAI_LE_LETTER_TONE-6>
+
+**********************************************************************
+* 0x1980 - 0x19DF New Tai Le
+**********************************************************************
+
+graph	<NEW_TAI_LUE_LETTER_HIGH_QA>;...;<NEW_TAI_LUE_LETTER_LOW_SUA>;/
+	<NEW_TAI_LUE_VOWEL_SIGN_VOWEL_SHORTENER>;...;/
+	<NEW_TAI_LUE_TONE_MARK-2>;/
+	<NEW_TAI_LUE_DIGIT_ZERO>;...;<NEW_TAI_LUE_THAM_DIGIT_ONE>;/
+	<NEW_TAI_LUE_SIGN_LAE>;/
+	<NEW_TAI_LUE_SIGN_LAEV>
+digit	<NEW_TAI_LUE_DIGIT_ZERO>;...;<NEW_TAI_LUE_THAM_DIGIT_ONE>
+
+**********************************************************************
+* 0x1A00 - 0x1A1F Buginese
+**********************************************************************
+
+graph	<BUGINESE_LETTER_KA>;...;<BUGINESE_VOWEL_SIGN_AE>;/
+	<BUGINESE_PALLAWA>;/
+	<BUGINESE_END_OF_SECTION>
+
+**********************************************************************
+* 0x1A20 - 0x1AAF Tai Tham
+**********************************************************************
+
+graph	<TAI_THAM_LETTER_HIGH_KA>;...;<TAI_THAM_CONSONANT_SIGN_SA>;/
+	<TAI_THAM_SIGN_SAKOT>;...;<TAI_THAM_SIGN_KHUEN-LUE_KARAN>;/
+	<TAI_THAM_COMBINING_CRYPTOGRAMMIC_DOT>;/
+	<TAI_THAM_HORA_DIGIT_ZERO>;...;<TAI_THAM_HORA_DIGIT_NINE>;/
+	<TAI_THAM_THAM_DIGIT_ZERO>;...;<TAI_THAM_THAM_DIGIT_NINE>;/
+	<TAI_THAM_SIGN_WIANG>;...;<TAI_THAM_SIGN_CAANG>
+digit	<TAI_THAM_HORA_DIGIT_ZERO>;...;<TAI_THAM_HORA_DIGIT_NINE>;/
+	<TAI_THAM_THAM_DIGIT_ZERO>;...;<TAI_THAM_THAM_DIGIT_NINE>
+
+**********************************************************************
+* 0x1AB0 - 0x1AFF Combining Diacritical Marks Extended
+**********************************************************************
+
+graph	<COMBINING_DOUBLED_CIRCUMFLEX_ACCENT>;...;/
+	<COMBINING_PARENTHESES_OVERLAY>
+
+**********************************************************************
+* 0x1B00 - 0x1B7F Balinese
+**********************************************************************
+
+graph	<BALINESE_SIGN_ULU_RICEM>;...;<BALINESE_LETTER_ASYURA_SASAK>;/
+	<BALINESE_DIGIT_ZERO>;...;<BALINESE_MUSICAL_SYMBOL_LEFT-HAND_OPEN_PING>
+digit	<BALINESE_DIGIT_ZERO>;...;<BALINESE_DIGIT_NINE>
+
+**********************************************************************
+* 0x1B80 - 0x1BBF Sundanese
+**********************************************************************
+
+graph	<SUNDANESE_SIGN_PANYECEK>;...;<SUNDANESE_LETTER_FINAL_M>
+digit	<SUNDANESE_DIGIT_ZERO>;...;<SUNDANESE_DIGIT_NINE>
+
+**********************************************************************
+* 0x1BC0 - 0x1BFF Batak
+**********************************************************************
+
+graph	<BATAK_LETTER_A>;...;<BATAK_PANONGONAN>;/
+	<BATAK_SYMBOL_BINDU_NA_METEK>;...;<BATAK_SYMBOL_BINDU_PANGOLAT>
+
+**********************************************************************
+* 0x1C00 - 0x1C4F Lepcha
+**********************************************************************
+
+graph	<LEPCHA_LETTER_KA>;...;<LEPCHA_SIGN_NUKTA>;/
+	<LEPCHA_PUNCTUATION_TA-ROL>;...;<LEPCHA_DIGIT_NINE>;/
+	<LEPCHA_LETTER_TTA>;...;<LEPCHA_LETTER_DDA>
+digit	<LEPCHA_DIGIT_ZERO>;...;<LEPCHA_DIGIT_NINE>
+
+**********************************************************************
+* 0x1C50 - 0x1C7F Ol Chiki
+**********************************************************************
+
+graph	<OL_CHIKI_DIGIT_ZERO>;...;<OL_CHIKI_PUNCTUATION_DOUBLE_MUCAAD>
+digit	<OL_CHIKI_DIGIT_ZERO>;...;<OL_CHIKI_DIGIT_NINE>
+
+**********************************************************************
+* 0x1CC0 - 0x1CCF Sundanese Supplement
+**********************************************************************
+
+graph	<SUNDANESE_PUNCTUATION_BINDU_SURYA>;...;/
+	<SUNDANESE_PUNCTUATION_BINDU_BA_SATANGA>
+
+**********************************************************************
+* 0x1CD0 - 0x1CFF Vedic Extensions
+**********************************************************************
+
+graph	<VEDIC_TONE_KARSHANA>;...;<VEDIC_TONE_DOUBLE_RING_ABOVE>
+
+**********************************************************************
+* 0x1DC0 - 0x1DFF Combining Diacritical Marks Supplement
+**********************************************************************
+
+graph	<COMBINING_DOTTED_GRAVE_ACCENT>;...;<COMBINING_UP_TACK_ABOVE>;/
+	<COMBINING_DOUBLE_INVERTED_BREVE_BELOW>;...;/
+	<COMBINING_RIGHT_ARROWHEAD_AND_DOWN_ARROWHEAD_BELOW>
+
+**********************************************************************
+* 0x2000 - 0x206F General Punctuation
+**********************************************************************
+
+graph	<HYPHEN>;...;<HYPHENATION_POINT>;/
+	<PER_MILLE_SIGN>;...;<VERTICAL_FOUR_DOTS>
+space	<EN_QUAD>;...;<RIGHT-TO-LEFT_MARK>;/
+	<LINE_SEPARATOR>;...;<NARROW_NO-BREAK_SPACE>
+punct	<HYPHEN>;...;<HYPHENATION_POINT>;/
+	<PER_MILLE_SIGN>;...;<VERTICAL_FOUR_DOTS>
+
+**********************************************************************
+* 0x2070 - 0x209F Superscripts and Subscripts
+**********************************************************************
+
+graph	<SUPERSCRIPT_ZERO>;...;<LATIN_SUBSCRIPT_SMALL_LETTER_T>
+digit	<SUPERSCRIPT_ZERO>;<SUPERSCRIPT_FOUR>;...;<SUPERSCRIPT_NINE>
+digit	<SUBSCRIPT_ZERO>;...;<SUBSCRIPT_NINE>
+punct	<SUPERSCRIPT_MINUS>;...;<SUPERSCRIPT_RIGHT_PARENTHESIS>
+punct	<SUBSCRIPT_PLUS_SIGN>;...;<SUBSCRIPT_RIGHT_PARENTHESIS>
+lower	<SUPERSCRIPT_LATIN_SMALL_LETTER_I>;/
+	<SUPERSCRIPT_LATIN_SMALL_LETTER_N>;/
+	<LATIN_SUBSCRIPT_SMALL_LETTER_A>;...;<LATIN_SUBSCRIPT_SMALL_LETTER_T>
+
+**********************************************************************
+* 0x20A0 - 0x20CF Currency Symbols
+**********************************************************************
+
+graph	<EURO-CURRENCY_SIGN>;...;<RUBLE_SIGN>
+punct	<EURO-CURRENCY_SIGN>;...;<RUBLE_SIGN>
+
+**********************************************************************
+* 0x20D0 - 0x20FF Combining Diacritical Marks for Symbols
+**********************************************************************
+
+graph	<COMBINING_LEFT_HARPOON_ABOVE>;...;<COMBINING_ASTERISK_ABOVE>
+
+**********************************************************************
+* 0x2100 - 0x214F Letterlike Symbols
+**********************************************************************
+
+graph	<ACCOUNT_OF>;...;<SYMBOL_FOR_SAMARITAN_SOURCE>
+punct	<ACCOUNT_OF>;/
+	<ADDRESSED_TO_THE_SUBJECT>;/
+	<DEGREE_CELSIUS>;...;<CADA_UNA>;/
+	<SCRUPLE>;/
+	<DEGREE_FAHRENHEIT>;/
+	<L_B_BAR_SYMBOL>;/
+	<NUMERO_SIGN>;...;<SCRIPT_CAPITAL_P>;/
+	<PRESCRIPTION_TAKE>;...;<VERSICLE>;/
+	<OUNCE_SIGN>;/
+	<INVERTED_OHM_SIGN>;/
+	<TURNED_GREEK_SMALL_LETTER_IOTA>;/
+	<ESTIMATED_SYMBOL>;/
+	<ROTATED_CAPITAL_Q>;/
+	<DOUBLE-STRUCK_N-ARY_SUMMATION>;...;<TURNED_SANS-SERIF_CAPITAL_Y>;/
+	<PROPERTY_LINE>;...;<AKTIESELSKAB>;/
+	<SYMBOL_FOR_SAMARITAN_SOURCE>
+upper	<KELVIN_SIGN>;<ANGSTROM_SIGN>;<TURNED_CAPITAL_F>
+lower	<TURNED_SMALL_F>
+alpha	<DOUBLE-STRUCK_CAPITAL_C>;/
+	<EULER_CONSTANT>;/
+	<SCRIPT_SMALL_G>;...;<SCRIPT_SMALL_L>;/
+	<DOUBLE-STRUCK_CAPITAL_N>;/
+	<DOUBLE-STRUCK_CAPITAL_P>;...;<DOUBLE-STRUCK_CAPITAL_R>;/
+	<DOUBLE-STRUCK_CAPITAL_Z>;/
+	<OHM_SIGN>;/
+	<BLACK-LETTER_CAPITAL_Z>;/
+	<KELVIN_SIGN>;...;<BLACK-LETTER_CAPITAL_C>;/
+	<SCRIPT_SMALL_E>;...;<SCRIPT_SMALL_O>;/
+	<INFORMATION_SOURCE>;/
+	<DOUBLE-STRUCK_SMALL_PI>;...;<DOUBLE-STRUCK_CAPITAL_PI>;/
+	<DOUBLE-STRUCK_ITALIC_CAPITAL_D>;...;<DOUBLE-STRUCK_ITALIC_SMALL_J>
+tolower (<KELVIN_SIGN>,<k>);/
+	(<ANGSTROM_SIGN>,<LATIN_SMALL_LETTER_A_WITH_RING_ABOVE>);/
+	(<TURNED_CAPITAL_F>,<TURNED_SMALL_F>)
+toupper	(<TURNED_SMALL_F>,<TURNED_CAPITAL_F>)
+
+**********************************************************************
+* 0x2150 - 0x218F Number Forms (differential)
+**********************************************************************
+
+graph	<VULGAR_FRACTION_ONE_SEVENTH>;...;<FRACTION_NUMERATOR_ONE>;/
+	<VULGAR_FRACTION_ZERO_THIRDS>
+special	<VULGAR_FRACTION_ONE_SEVENTH>;...;<FRACTION_NUMERATOR_ONE>;/
+	<VULGAR_FRACTION_ZERO_THIRDS>
+
+**********************************************************************
+* 0x2190 - 0x21FF Arrows
+**********************************************************************
+
+graph	<LEFTWARDS_ARROW>;...;<LEFT_RIGHT_OPEN-HEADED_ARROW>
+punct	<LEFTWARDS_ARROW>;...;<LEFT_RIGHT_OPEN-HEADED_ARROW>
+
+**********************************************************************
+* 0x2200 - 0x22FF Mathematical Operators
+**********************************************************************
+
+graph	<FOR_ALL>;...;<Z_NOTATION_BAG_MEMBERSHIP>
+punct	<FOR_ALL>;...;<Z_NOTATION_BAG_MEMBERSHIP>
+
+**********************************************************************
+* 0x2300 - 0x23FF Miscellaneous Technical
+**********************************************************************
+
+graph	<DIAMETER_SIGN>;...;<BLACK_CIRCLE_FOR_RECORD>
+punct	<DIAMETER_SIGN>;...;<BLACK_CIRCLE_FOR_RECORD>
+
+**********************************************************************
+* 0x2400 - 0x243F Control Pictures
+**********************************************************************
+
+graph	<SYMBOL_FOR_NULL>;...;<SYMBOL_FOR_SUBSTITUTE_FORM_TWO>
+punct	<SYMBOL_FOR_NULL>;...;<SYMBOL_FOR_SUBSTITUTE_FORM_TWO>
+
+**********************************************************************
+* 0x2440 - 0x245F Optical Character Recognition
+**********************************************************************
+
+graph	<OCR_HOOK>;...;<OCR_DOUBLE_BACKSLASH>
+punct	<OCR_HOOK>;...;<OCR_DOUBLE_BACKSLASH>
+
+**********************************************************************
+* 0x2460 - 0x24FF Enclosed Alphanumerics
+**********************************************************************
+
+graph	<CIRCLED_DIGIT_ONE>;...;<NEGATIVE_CIRCLED_DIGIT_ZERO>
+special	<CIRCLED_DIGIT_ONE>;...;<PARENTHESIZED_NUMBER_TWENTY>;/
+	<CIRCLED_DIGIT_ZERO>;...;<NEGATIVE_CIRCLED_DIGIT_ZERO>
+punct	<DIGIT_ONE_FULL_STOP>;...;<CIRCLED_LATIN_SMALL_LETTER_Z>
+
+**********************************************************************
+* 0x2500 - 0x257F Box Drawing
+**********************************************************************
+
+graph	<BOX_DRAWINGS_LIGHT_HORIZONTAL>;...;/
+	<BOX_DRAWINGS_HEAVY_UP_AND_LIGHT_DOWN>
+punct	<BOX_DRAWINGS_LIGHT_HORIZONTAL>;...;/
+	<BOX_DRAWINGS_HEAVY_UP_AND_LIGHT_DOWN>
+
+**********************************************************************
+* 0x2580 - 0x259F Block Elements
+**********************************************************************
+
+graph	<UPPER_HALF_BLOCK>;...;/
+	<QUADRANT_UPPER_RIGHT_AND_LOWER_LEFT_AND_LOWER_RIGHT>
+punct	<UPPER_HALF_BLOCK>;...;/
+	<QUADRANT_UPPER_RIGHT_AND_LOWER_LEFT_AND_LOWER_RIGHT>
+
+**********************************************************************
+* 0x25A0 - 0x25FF Geometric Shapes
+**********************************************************************
+
+graph	<BLACK_SQUARE>;...;<LOWER_RIGHT_TRIANGLE>
+punct	<BLACK_SQUARE>;...;<LOWER_RIGHT_TRIANGLE>
+
+**********************************************************************
+* 0x2600 - 0x26FF Miscellaneous symbols
+**********************************************************************
+
+graph	<BLACK_SUN_WITH_RAYS>;...;/
+	<WHITE_FLAG_WITH_HORIZONTAL_MIDDLE_BLACK_STRIPE>
+punct	<BLACK_SUN_WITH_RAYS>;...;/
+	<WHITE_FLAG_WITH_HORIZONTAL_MIDDLE_BLACK_STRIPE>
+
+**********************************************************************
+* 0x2700 - 0x27BF Dingbats
+**********************************************************************
+
+graph	<BLACK_SAFETY_SCISSORS>;...;<DOUBLE_CURLY_LOOP>
+special	<DINGBAT_NEGATIVE_CIRCLED_DIGIT_ONE>;...;/
+	<DINGBAT_NEGATIVE_CIRCLED_SANS-SERIF_NUMBER_TEN>
+punct	<BLACK_SAFETY_SCISSORS>;...;<MEDIUM_RIGHT_CURLY_BRACKET_ORNAMENT>;/
+	<HEAVY_WIDE-HEADED_RIGHTWARDS_ARROW>;...;<DOUBLE_CURLY_LOOP>
+
+**********************************************************************
+* 0x27C0 - 0x27EF Miscellaneous Mathematical Symbols-A
+**********************************************************************
+
+graph	<THREE_DIMENSIONAL_ANGLE>;...;/
+	<MATHEMATICAL_RIGHT_FLATTENED_PARENTHESIS>
+punct	<THREE_DIMENSIONAL_ANGLE>;...;/
+	<MATHEMATICAL_RIGHT_FLATTENED_PARENTHESIS>
+
+**********************************************************************
+* 0x27F0 - 0x27FF Supplemental Arrows-A
+**********************************************************************
+
+graph	<UPWARDS_QUADRUPLE_ARROW>;...;<LONG_RIGHTWARDS_SQUIGGLE_ARROW>
+punct	<UPWARDS_QUADRUPLE_ARROW>;...;<LONG_RIGHTWARDS_SQUIGGLE_ARROW>
+
+**********************************************************************
+* 0x2800 - 0x28FF Braille Patterns
+**********************************************************************
+
+graph	<BRAILLE_PATTERN_BLANK>;...;<BRAILLE_PATTERN_DOTS-12345678>
+punct	<BRAILLE_PATTERN_BLANK>;...;<BRAILLE_PATTERN_DOTS-12345678>
+
+**********************************************************************
+* 0x2900 - 0x297F Supplemental Arrows-B
+**********************************************************************
+
+graph	<RIGHTWARDS_TWO-HEADED_ARROW_WITH_VERTICAL_STROKE>;...;/
+	<DOWN_FISH_TAIL>
+punct	<RIGHTWARDS_TWO-HEADED_ARROW_WITH_VERTICAL_STROKE>;...;/
+	<DOWN_FISH_TAIL>
+
+**********************************************************************
+* 0x2980 - 0x29FF Miscellaneouis Mathematical Symbols-B
+**********************************************************************
+
+graph	<TRIPLE_VERTICAL_BAR_DELIMITER>;...;<MINY>
+punct	<TRIPLE_VERTICAL_BAR_DELIMITER>;...;<MINY>
+
+**********************************************************************
+* 0x2A00 - 0x2AFF Supplemental Mathematical Operators
+**********************************************************************
+
+graph	<N-ARY_CIRCLED_DOT_OPERATOR>;...;<N-ARY_WHITE_VERTICAL_BAR>
+punct	<N-ARY_CIRCLED_DOT_OPERATOR>;...;<N-ARY_WHITE_VERTICAL_BAR>
+
+**********************************************************************
+* 0x2B00 - 0x2BFF Miscellaneous Symbols and Arrows
+**********************************************************************
+
+graph	<NORTH_EAST_WHITE_ARROW>;...;<DOWNWARDS_TRIANGLE-HEADED_ARROW_TO_BAR>;/
+	<NORTH_WEST_TRIANGLE-HEADED_ARROW_TO_BAR>;...;/
+	<RIGHTWARDS_BLACK_ARROW>;/
+	<THREE-D_TOP-LIGHTED_LEFTWARDS_EQUILATERAL_ARROWHEAD>;...;/
+	<UP_ARROWHEAD_IN_A_RECTANGLE_BOX>;/
+	<BALLOT_BOX_WITH_LIGHT_X>;...;<UNCERTAINTY_SIGN>
+punct	<NORTH_EAST_WHITE_ARROW>;...;<DOWNWARDS_TRIANGLE-HEADED_ARROW_TO_BAR>;/
+	<NORTH_WEST_TRIANGLE-HEADED_ARROW_TO_BAR>;...;/
+	<RIGHTWARDS_BLACK_ARROW>;/
+	<THREE-D_TOP-LIGHTED_LEFTWARDS_EQUILATERAL_ARROWHEAD>;...;/
+	<UP_ARROWHEAD_IN_A_RECTANGLE_BOX>;/
+	<BALLOT_BOX_WITH_LIGHT_X>;...;<UNCERTAINTY_SIGN>
+
+**********************************************************************
+* 0x2C00 - 0x2C5F Glagolitic
+**********************************************************************
+
+graph	<GLAGOLITIC_CAPITAL_LETTER_AZU>;...;/
+	<GLAGOLITIC_CAPITAL_LETTER_LATINATE_MYSLITE>;/
+	<GLAGOLITIC_SMALL_LETTER_AZU>;...;/
+	<GLAGOLITIC_SMALL_LETTER_LATINATE_MYSLITE>
+
+**********************************************************************
+* 0x2C80 - 0x2CFF Coptic
+**********************************************************************
+
+graph	<COPTIC_CAPITAL_LETTER_ALFA>;...;<COPTIC_SMALL_LETTER_BOHAIRIC_KHEI>;/
+	<COPTIC_OLD_NUBIAN_FULL_STOP>;...;<COPTIC_MORPHOLOGICAL_DIVIDER>
+
+**********************************************************************
+* 0x2E00 - 0x2E7F Supplemental Punctuation
+**********************************************************************
+
+graph	<RIGHT_ANGLE_SUBSTITUTION_MARKER>;...;/
+	<DOUBLE_LOW-REVERSED-9_QUOTATION_MARK>
+punct	<RIGHT_ANGLE_SUBSTITUTION_MARKER>;...;/
+	<DOUBLE_LOW-REVERSED-9_QUOTATION_MARK>
+
+**********************************************************************
+* 0x2E80 - 0x2EFF CJK Radicals Supplement
+**********************************************************************
+
+graph	<CJK_RADICAL_REPEAT>;...;<CJK_RADICAL_C-SIMPLIFIED_TURTLE>
+punct	<CJK_RADICAL_REPEAT>;...;<CJK_RADICAL_C-SIMPLIFIED_TURTLE>
+
+**********************************************************************
+* 0x2F00 - 0x2FDF Kangxi Radicals
+**********************************************************************
+
+graph	<KANGXI_RADICAL_ONE>;...;<KANGXI_RADICAL_FLUTE>
+punct	<KANGXI_RADICAL_ONE>;...;<KANGXI_RADICAL_FLUTE>
+
+**********************************************************************
+* 0x2FF0 - 0x2FFF Ideographic Description Characters
+**********************************************************************
+
+graph	<IDEOGRAPHIC_DESCRIPTION_CHARACTER_LEFT_TO_RIGHT>;...;/
+	<IDEOGRAPHIC_DESCRIPTION_CHARACTER_OVERLAID>
+punct	<IDEOGRAPHIC_DESCRIPTION_CHARACTER_LEFT_TO_RIGHT>;...;/
+	<IDEOGRAPHIC_DESCRIPTION_CHARACTER_OVERLAID>
+
+**********************************************************************
+* 0x3000 - 0x30FF CJK Symbols and Punctuation
+**********************************************************************
+
+space	<IDEOGRAPHIC_SPACE>
+graph	<IDEOGRAPHIC_COMMA>;...;<IDEOGRAPHIC_HALF_FILL_SPACE>
+special	<IDEOGRAPHIC_NUMBER_ZERO>;/
+	<HANGZHOU_NUMERAL_ONE>;...;<HANGZHOU_NUMERAL_NINE>;/
+	<HANGZHOU_NUMERAL_TEN>;...;<HANGZHOU_NUMERAL_THIRTY>
+alpha	<IDEOGRAPHIC_ITERATION_MARK>;/
+	<IDEOGRAPHIC_CLOSING_MARK>;/
+	<VERTICAL_IDEOGRAPHIC_ITERATION_MARK>
+punct	<IDEOGRAPHIC_COMMA>;...;<JAPANESE_INDUSTRIAL_STANDARD_SYMBOL>;/
+	<LEFT_ANGLE_BRACKET>;...;<POSTAL_MARK_FACE>;/
+	<IDEOGRAPHIC_LEVEL_TONE_MARK>;...;/
+	<IDEOGRAPHIC_TELEGRAPH_LINE_FEED_SEPARATOR_SYMBOL>;/
+	<MASU_MARK>;...;<IDEOGRAPHIC_HALF_FILL_SPACE>
+
+**********************************************************************
+* 0x3100 - 0x312F Bopomofo
+**********************************************************************
+
+graph	<BOPOMOFO_LETTER_B>;...;<BOPOMOFO_LETTER_IH>
+
+**********************************************************************
+* 0x3190 - 0x319F Kanbun
+**********************************************************************
+
+graph	<IDEOGRAPHIC_ANNOTATION_LINKING_MARK>;...;/
+	<IDEOGRAPHIC_ANNOTATION_MAN_MARK>
+special	<IDEOGRAPHIC_ANNOTATION_ONE_MARK>;...;/
+	<IDEOGRAPHIC_ANNOTATION_FOUR_MARK>
+punct	<IDEOGRAPHIC_ANNOTATION_LINKING_MARK>;/
+	<IDEOGRAPHIC_ANNOTATION_REVERSE_MARK>;/
+	<IDEOGRAPHIC_ANNOTATION_MIDDLE_MARK>;...;/
+	<IDEOGRAPHIC_ANNOTATION_MAN_MARK>
+
+**********************************************************************
+* 0x31A0 - 0x31BF : Bopomofo Extended
+**********************************************************************
+
+graph	<BOPOMOFO_LETTER_BU>;...;<BOPOMOFO_LETTER_ZY>
+
+**********************************************************************
+* 0x31C0 - 0x31EF : CJK Strokes
+**********************************************************************
+
+graph	<CJK_STROKE_T>;...;<CJK_STROKE_Q>
+
+**********************************************************************
+* 0x4DC0 - 0x4DFF Yijing Hexagram Symbols
+**********************************************************************
+
+graph	<HEXAGRAM_FOR_THE_CREATIVE_HEAVEN>;...;<HEXAGRAM_FOR_BEFORE_COMPLETION>
+
+**********************************************************************
+* 0xA4D0 - 0xA4FF Lisu
+**********************************************************************
+
+graph	<LISU_LETTER_BA>;...;<LISU_PUNCTUATION_FULL_STOP>
+
+**********************************************************************
+* 0xA6A0 - 0xA6FF Bamum
+**********************************************************************
+
+graph	<BAMUM_LETTER_A>;...;<BAMUM_QUESTION_MARK>
+
+**********************************************************************
+* 0xA700 - 0xA71F Modifier Tone Letters
+**********************************************************************
+
+graph	<MODIFIER_LETTER_CHINESE_TONE_YIN_PING>;...;/
+	<MODIFIER_LETTER_LOW_INVERTED_EXCLAMATION_MARK>
+
+**********************************************************************
+* 0xFB50 - 0xFDFF Arabic Presentation Forms (differential)
+**********************************************************************
+
+graph	<ORNATE_LEFT_PARENTHESIS>;/
+	<ORNATE_RIGHT_PARENTHESIS>
+punct	<ORNATE_LEFT_PARENTHESIS>;/
+	<ORNATE_RIGHT_PARENTHESIS>
+
+**********************************************************************
+* 0xFE10 - 0xFE1F Vertical Forms
+**********************************************************************
+
+graph	<PRESENTATION_FORM_FOR_VERTICAL_COMMA>;...;/
+	<PRESENTATION_FORM_FOR_VERTICAL_HORIZONTAL_ELLIPSIS>
+
+**********************************************************************
+* 0xFE20 - 0xFE2F Combining Half Marks
+**********************************************************************
+
+graph	<COMBINING_LIGATURE_LEFT_HALF>;...;<COMBINING_CONJOINING_MACRON_BELOW>
+
+**********************************************************************
+* 0xFE30 - 0xFE4F CJK Compatibility Forms
+**********************************************************************
+
+graph	<PRESENTATION_FORM_FOR_VERTICAL_TWO_DOT_LEADER>;...;<WAVY_LOW_LINE>
+punct	<PRESENTATION_FORM_FOR_VERTICAL_TWO_DOT_LEADER>;...;<WAVY_LOW_LINE>
+
+**********************************************************************
+* 0xFE50 - 0xFE6F Small Form Variants
+**********************************************************************
+
+graph	<SMALL_COMMA>;...;<SMALL_COMMERCIAL_AT>
+punct	<SMALL_COMMA>;...;<SMALL_COMMERCIAL_AT>
+
+**********************************************************************
+* 0xFE70 - 0xFEFF Arabic Presentation Forms-B (differential)
+**********************************************************************
+
+blank	<ZERO_WIDTH_NO-BREAK_SPACE>
+
+**********************************************************************
+* 0x10300 - 0x1032F Old Italic
+**********************************************************************
+
+graph	<OLD_ITALIC_LETTER_A>;...;<OLD_ITALIC_NUMERAL_FIFTY>
+special	<OLD_ITALIC_NUMERAL_ONE>;...;<OLD_ITALIC_NUMERAL_FIFTY>
+
+**********************************************************************
+* 0x10330 - 0x1034F Gothic
+**********************************************************************
+
+graph	<GOTHIC_LETTER_AHSA>;...;<GOTHIC_LETTER_NINE_HUNDRED>
+special	<GOTHIC_LETTER_NINE_HUNDRED>
+
+**********************************************************************
+* 0x1D100 - 0x1D1FF Musical Symbols
+**********************************************************************
+
+cntrl	<MUSICAL_SYMBOL_BEGIN_BEAM>;...;<MUSICAL_SYMBOL_END_PHRASE>
+graph	<MUSICAL_SYMBOL_SINGLE_BARLINE>;...;<MUSICAL_SYMBOL_DRUM_CLEF-2>;/
+	<MUSICAL_SYMBOL_MULTIPLE_MEASURE_REST>;...;/
+	<MUSICAL_SYMBOL_COMBINING_FLAG-5>;/
+	<MUSICAL_SYMBOL_COMBINING_ACCENT>;...;<MUSICAL_SYMBOL_PES_SUBPUNCTIS>
+punct	<MUSICAL_SYMBOL_SINGLE_BARLINE>;...;<MUSICAL_SYMBOL_DRUM_CLEF-2>;/
+	<MUSICAL_SYMBOL_MULTIPLE_MEASURE_REST>;...;/
+	<MUSICAL_SYMBOL_COMBINING_FLAG-5>;/
+	<MUSICAL_SYMBOL_COMBINING_ACCENT>
+
+**********************************************************************
+* 0x1D400 - 0x1D7FF Mathematical Alphanumeric Symbols
+**********************************************************************
+
+graph	<MATHEMATICAL_BOLD_CAPITAL_A>;...;<MATHEMATICAL_MONOSPACE_DIGIT_NINE>
+
+**********************************************************************
+* 0x1F600 - 0x1F64F Emoticons (Emoji)
+**********************************************************************
+
+graph	<GRINNING_FACE>;...;<PERSON_WITH_FOLDED_HANDS>
+
+**********************************************************************
+* 0x1F680 - 0x1F6FF Transport and Map Symbols
+**********************************************************************
+
+graph	<ROCKET>;...;<LEFT_LUGGAGE>
+
+**********************************************************************
+* 0x1F700 - 0x1F77F Alchemical Symbols
+**********************************************************************
+
+graph	<ALCHEMICAL_SYMBOL_FOR_QUINTESSENCE>;...;/
+	<ALCHEMICAL_SYMBOL_FOR_HALF_OUNCE>
+
+**********************************************************************
+* 0x1F800 - 0x1F8FF Supplemental Arrows-C
+**********************************************************************
+
+graph	<LEFTWARDS_ARROW_WITH_SMALL_TRIANGLE_ARROWHEAD>;...;/
+	<WHITE_ARROW_SHAFT_WIDTH_TWO_THIRDS>
+
+**********************************************************************
+* 0x20000 - 0x2A6D6 CJK Unified Ideographs Extension B
+**********************************************************************
+
+graph	<CJK_UNIFIED_IDEOGRAPH-20000>;...;<CJK_UNIFIED_IDEOGRAPH-2B81D>
+alpha	<CJK_UNIFIED_IDEOGRAPH-20000>;...;<CJK_UNIFIED_IDEOGRAPH-2B81D>
+
+**********************************************************************
+* 0x2A700 - 0x2B734 CJK Unified Ideographs Extension C
+**********************************************************************
+
+graph	<CJK_UNIFIED_IDEOGRAPH-2A700>;...;<CJK_UNIFIED_IDEOGRAPH-2B734>
+alpha	<CJK_UNIFIED_IDEOGRAPH-2A700>;...;<CJK_UNIFIED_IDEOGRAPH-2B734>
+
+**********************************************************************
+* 0x2B740 - 0x2B81D CJK Unified Ideographs Extension D
+**********************************************************************
+
+graph	<CJK_UNIFIED_IDEOGRAPH-2B740>;...;<CJK_UNIFIED_IDEOGRAPH-2B81D>
+alpha	<CJK_UNIFIED_IDEOGRAPH-2B740>;...;<CJK_UNIFIED_IDEOGRAPH-2B81D>
