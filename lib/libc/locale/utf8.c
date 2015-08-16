@@ -1,4 +1,5 @@
 /*
+ * Copyright 2015 Matthew Dillon <dillon@backplane.com> (mbintowcr, wcrtombin)
  * Copyright 2013 Garrett D'Amore <garrett@damore.org>
  * Copyright 2011 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2002-2004 Tim J. Robbins
@@ -31,6 +32,22 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * WCSBIN_EOF -		Indicate EOF on input buffer.
+ *
+ * WCSBIN_SURRO -	Pass-through surrogate space (typically if the UTF-8
+ *			has already been escaped), on bytes-to-wchars and
+ *			wchars-to-bytes.  Escaping of other illegal codes will
+ *			still occur on input but de-escaping will not occur
+ *			on output (they will remain in the surrogate space).
+ *
+ * WCSBIN_LONGCODES -	Allow 4-byte >= 0x10FFFF, 5-byte and 6-byte sequences
+ *			(normally illegal), otherwise escape it on input
+ *			and fail on output.
+ *
+ * WCSBIN_STRICT -	Allow byte-to-wide conversions to fail.
+ */
+
 #include <sys/param.h>
 
 #include <errno.h>
@@ -53,6 +70,12 @@ static size_t	_UTF8_wcrtomb(char * __restrict, wchar_t,
 		    mbstate_t * __restrict);
 static size_t	_UTF8_wcsnrtombs(char * __restrict, const wchar_t ** __restrict,
 		    size_t, size_t, mbstate_t * __restrict);
+static size_t	_UTF8_mbintowcr(wchar_t * __restrict dst,
+		    const char * __restrict src,
+		    size_t dlen, size_t *slen, int flags);
+static size_t	_UTF8_wcrtombin(char * __restrict dst,
+		    const wchar_t * __restrict src,
+		    size_t dlen, size_t *slen, int flags);
 
 typedef struct {
 	wchar_t	ch;
@@ -69,6 +92,8 @@ _UTF8_init(struct xlocale_ctype *l, _RuneLocale *rl)
 	l->__mbsinit = _UTF8_mbsinit;
 	l->__mbsnrtowcs = _UTF8_mbsnrtowcs;
 	l->__wcsnrtombs = _UTF8_wcsnrtombs;
+	l->__mbintowcr = _UTF8_mbintowcr;
+	l->__wcrtombin = _UTF8_wcrtombin;
 	l->runes = rl;
 	l->__mb_cur_max = 4;
 	/*
@@ -187,7 +212,8 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 	}
 	if (wch < lbound || (wch & ~0x10ffff)) {
 		/*
-		 * Malformed input; redundant encoding.
+		 * Malformed input; redundant encoding or illegal
+		 *		    code sequence.
 		 */
 		errno = EILSEQ;
 		return ((size_t)-1);
@@ -409,4 +435,297 @@ _UTF8_wcsnrtombs(char * __restrict dst, const wchar_t ** __restrict src,
 	}
 	*src = s;
 	return (nbytes);
+}
+
+/*
+ * Clean binary to wchar buffer conversions.  This is basically like a normal
+ * buffer conversion but with a sane argument API and escaping.  See none.c
+ * for a more complete description.
+ */
+static size_t
+_UTF8_mbintowcr(wchar_t * __restrict dst, const char * __restrict src,
+		size_t dlen, size_t *slen, int flags)
+{
+	size_t i;
+	size_t j;
+	size_t k;
+	size_t n = *slen;
+	int ch, mask, want;
+	wchar_t lbound, wch;
+
+	for (i = j = 0; i < n; ++i) {
+		if (j == dlen)
+			break;
+		ch = (unsigned char)src[i];
+
+		if ((ch & 0x80) == 0) {
+			/* Fast path for plain ASCII characters. */
+			if (dst)
+				dst[j] = ch;
+			++j;
+			continue;
+		}
+		if ((ch & 0xe0) == 0xc0) {
+			mask = 0x1f;
+			want = 2;
+			lbound = 0x80;
+		} else if ((ch & 0xf0) == 0xe0) {
+			mask = 0x0f;
+			want = 3;
+			lbound = 0x800;
+		} else if ((ch & 0xf8) == 0xf0) {
+			mask = 0x07;
+			want = 4;
+			lbound = 0x10000;
+		} else if ((ch & 0xfc) == 0xf8) {
+			/* normally illegal, handled down below */
+			mask = 0x03;
+			want = 5;
+			lbound = 0x200000;
+		} else if ((ch & 0xfe) == 0xfc) {
+			/* normally illegal, handled down below */
+			mask = 0x01;
+			want = 6;
+			lbound = 0x4000000;
+		} else {
+			/*
+			 * Malformed input; input is not UTF-8, escape
+			 * with UTF-8B.
+			 */
+			if (flags & WCSBIN_STRICT) {
+				if (i == 0) {
+					errno = EILSEQ;
+					return ((size_t)-1);
+				}
+				break;
+			}
+			if (dst)
+				dst[j] = 0xDC00 | ch;
+			++j;
+			continue;
+		}
+
+		/*
+		 * Construct wchar_t from multibyte sequence.
+		 */
+		wch = ch & mask;
+		for (k = 1; k < want; ++k) {
+			/*
+			 * Stop if not enough input (don't do this early
+			 * so we can detect illegal characters as they occur
+			 * in the stream).
+			 *
+			 * If termination is requested force-escape all chars.
+			 */
+			if (i + k >= n)	{
+				if (flags & WCSBIN_EOF) {
+					want = n - i;
+					goto forceesc;
+				}
+				goto breakout;
+			}
+
+			ch = src[i+k];
+			if ((ch & 0xc0) != 0x80) {
+				/*
+				 * Malformed input, bad characters in the
+				 * middle of a multibyte sequence.  Escape
+				 * with UTF-8B.
+				 */
+				if (flags & WCSBIN_STRICT) {
+					if (i == 0) {
+						errno = EILSEQ;
+						return ((size_t)-1);
+					}
+					goto breakout;
+				}
+				if (dst)
+					dst[j] = 0xDC00 | (unsigned char)src[i];
+				++j;
+				goto loopup;
+			}
+			wch <<= 6;
+			wch |= ch & 0x3f;
+		}
+
+		/*
+		 * Check validity of the wchar.  If invalid we could escape
+		 * just the first character and loop up, but it ought to be
+		 * more readable if we escape all the chars in the sequence
+		 * (since they are all >= 0x80 and might represent a legacy
+		 * 5-byte or 6-byte code).
+		 */
+		if (wch < lbound ||
+		    ((flags & WCSBIN_LONGCODES) == 0 && (wch & ~0x10ffff)) ||
+		    ((flags & WCSBIN_LONGCODES) == 0 && want >= 5)) {
+			goto forceesc;
+		}
+
+		/*
+		 * Check if wch is a surrogate code (which also encloses our
+		 * UTF-8B escaping range).  This is normally illegal in UTF8.
+		 * If it is, we need to escape each characer in the sequence.
+		 * Breakout if there isn't enough output buffer space.
+		 *
+		 * If (flags & WCSBIN_SURRO) the caller wishes to accept
+		 * surrogate codes, i.e. the input might potentially already
+		 * be escaped UTF8-B or unchecked UTF-16 that was converted
+		 * into UTF-8.
+		 */
+		if ((flags & WCSBIN_SURRO) == 0 &&
+		    wch >= 0xD800 && wch <= 0xDFFF) {
+forceesc:
+			if (j + want > dlen)
+				break;
+			if (flags & WCSBIN_STRICT) {
+				if (i == 0) {
+					errno = EILSEQ;
+					return ((size_t)-1);
+				}
+				break;
+			}
+			for (k = 0; k < want; ++k) {
+				if (dst) {
+					dst[j] = 0xDC00 |
+						 (unsigned char)src[i+k];
+				}
+				++j;
+			}
+			i += k - 1;
+		} else {
+			i += k - 1;
+			if (dst)
+				dst[j] = wch;
+			++j;
+		}
+loopup:
+		;
+	}
+breakout:
+	*slen = i;
+
+	return j;
+}
+
+static size_t
+_UTF8_wcrtombin(char * __restrict dst, const wchar_t * __restrict src,
+		size_t dlen, size_t *slen, int flags)
+{
+	size_t i;
+	size_t j;
+	size_t k;
+	size_t n = *slen;
+	size_t len;
+	unsigned char lead;
+	wchar_t wc;
+
+	for (i = j = 0; i < n; ++i) {
+		if (j == dlen)
+			break;
+		wc = src[i];
+
+		if ((wc & ~0x7f) == 0) {
+			/* Fast path for plain ASCII characters. */
+			if (dst)
+				dst[j] = (unsigned char)wc;
+			++j;
+			continue;
+		}
+		if ((wc & ~0x7ff) == 0) {
+			lead = 0xc0;
+			len = 2;
+		} else if (wc >= 0xDC80 && wc <= 0xDCFF &&
+			   (flags & WCSBIN_SURRO) == 0) {
+			if (flags & WCSBIN_STRICT) {
+				/*
+				 * STRICT without SURRO is an error for
+				 * surrogates.
+				 */
+				if (i == 0) {
+					errno = EILSEQ;
+					return ((size_t)-1);
+				}
+				break;
+			}
+			if (dst)
+				dst[j] = (unsigned char)wc;
+			++j;
+			continue;
+		} else if ((wc & ~0xffff) == 0) {
+			if (wc >= 0xD800 && wc <= 0xDFFF &&
+			    (flags & (WCSBIN_SURRO | WCSBIN_STRICT)) ==
+			    WCSBIN_STRICT) {
+				/*
+				 * Surrogates in general are an error
+				 * if STRICT is specified and SURRO is not
+				 * specified.
+				 */
+				if (i == 0) {
+					errno = EILSEQ;
+					return ((size_t)-1);
+				}
+				break;
+			}
+			lead = 0xe0;
+			len = 3;
+		} else if ((wc & ~0x10ffff) == 0) {
+			lead = 0xf0;
+			len = 4;
+		} else if ((flags & WCSBIN_LONGCODES) && wc < 0x200000) {
+			/* normally illegal */
+			lead = 0xf0;
+			len = 4;
+		} else if ((flags & WCSBIN_LONGCODES) && wc < 0x4000000) {
+			/* normally illegal */
+			lead = 0xf8;
+			len = 5;
+		} else if ((flags & WCSBIN_LONGCODES) &&
+			   (uint32_t)wc < 0x80000000U) {
+			/* normally illegal */
+			lead = 0xfc;
+			len = 6;
+		} else {
+			if (i == 0) {
+				errno = EILSEQ;
+				return ((size_t)-1);
+			}
+			/* stop here, process error on next loop */
+			break;
+		}
+
+		/*
+		 * Output the octets representing the character in chunks
+		 * of 6 bits, least significant last. The first octet is
+		 * a special case because it contains the sequence length
+		 * information.
+		 */
+		if (j + len > dlen)
+			break;
+		k = j;
+		j += len;
+		if (dst) {
+			while (--len > 0) {
+				dst[k + len] = (wc & 0x3f) | 0x80;
+				wc >>= 6;
+			}
+			dst[k] = (wc & 0xff) | lead;
+		}
+	}
+	*slen = i;
+
+	return j;
+}
+
+size_t
+utf8towcr(wchar_t * __restrict dst, const char * __restrict src,
+		size_t dlen, size_t *slen, int flags)
+{
+	return _UTF8_mbintowcr(dst, src, dlen, slen, flags);
+}
+
+size_t
+wcrtoutf8(char * __restrict dst, const wchar_t * __restrict src,
+	  size_t dlen, size_t *slen, int flags)
+{
+	return _UTF8_wcrtombin(dst, src, dlen, slen, flags);
 }

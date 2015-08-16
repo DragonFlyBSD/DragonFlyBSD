@@ -78,6 +78,10 @@ int			 mbsinit_l(const mbstate_t *, locale_t);
 size_t			 mbsrtowcs_l(wchar_t * __restrict,
 			    const char ** __restrict, size_t,
 			    mbstate_t * __restrict, locale_t);
+size_t			 mbintowcr_k(wchar_t * __restrict,
+			    const char * __restrict,
+			    size_t dlen, size_t *,
+			    locale_t, int);
 wint_t			 putwc_l(wchar_t, FILE *, locale_t);
 wint_t			 putwchar_l(wchar_t, locale_t);
 int			 swprintf_l(wchar_t * __restrict, size_t n, locale_t,
@@ -99,6 +103,10 @@ size_t			 wcsftime_l(wchar_t * __restrict, size_t,
 size_t			 wcsrtombs_l(char * __restrict,
 			    const wchar_t ** __restrict, size_t,
 			    mbstate_t * __restrict, locale_t);
+size_t			 wcrtombin_l(char * __restrict,
+			    const wchar_t * __restrict,
+			    size_t, size_t *,
+			    locale_t, int);
 double			 wcstod_l(const wchar_t * __restrict,
 			    wchar_t ** __restrict, locale_t);
 long			 wcstol_l(const wchar_t * __restrict,

@@ -77,6 +77,7 @@ struct lconv {
 __BEGIN_DECLS
 struct lconv	*localeconv(void);
 char		*setlocale(int, const char *);
+int		locale_isstrict(void);
 
 #if __POSIX_VISIBLE >= 200809
 #include <xlocale/_locale.h>

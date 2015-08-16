@@ -183,6 +183,99 @@ _none_wcsnrtombs(char * __restrict dst, const wchar_t ** __restrict src,
 	return (nchr);
 }
 
+/*
+ * Multibyte binary data to escaped wchar.
+ * Round-trip match guaranteed, including 0x00 bytes.
+ *
+ * Cannot return an error.  *slen bytes is converted to the destination
+ * buffer until one or the other is exhausted.  Destination elements returned
+ * and *slen modified with source elements processed.
+ *
+ * Incomplete sequences or partial re-encodings that would overflow the
+ * destination buffer are not processed and will also leave excess *slen.
+ *
+ * Never returns an error.  Instead, incomplete sequences are not processed
+ * and *slen will index to the beginning of the incomplete sequence.  It is
+ * possible for 0 to be returned and for *slen to be set to 0 due to an
+ * incomplete whole-buffer sequence, unless termination is specified.
+ *
+ * If termination is specified any trailing incomplete sequences are escaped
+ * and *slen will index to the end of the source buffer, unless insufficient
+ * room exists in the destination.  If there is insufficient room, *slen may
+ * not be able to index to the end of the source buffer.
+ *
+ * Does not support a NULL dst on purpose - caller is expected to loop
+ * in parts.
+ */
+static size_t
+_none_mbintowcr(wchar_t * __restrict dst, const char * __restrict src,
+		size_t dlen, size_t *slen, int flags)
+{
+	size_t i;
+	size_t j;
+	size_t n = *slen;
+
+	for (i = j = 0; i < n; ++i) {
+		if (j == dlen)
+			break;
+		if (dst)
+			dst[j] = (unsigned char)src[i];
+		++j;
+	}
+	/* no partial sequences so we can ignore flags */
+	*slen = i;
+
+	return j;
+}
+
+/*
+ * Escaped wchar to multibyte binary data.
+ * Round-trip match guaranteed, including 0x00 bytes.
+ *
+ * *slen bytes is converted to the destination buffer until one or the other
+ * is exhausted.  Destination elements returned and *slen modified with
+ * source elements processed.
+ *
+ * Can return an error only if the first wchar src[] element is illegal,
+ * otherwise will process up to the illegal wchar and return an error on
+ * the next call (if called with the remainder).
+ *
+ * Never returns -2.  Instead, incomplete sequences are not processed and
+ * *slen will index to the beginning of the incomplete sequence.  If
+ * termination is specified, incomplete sequences are discarded and *slen
+ * indexes to the end of the input array.
+ *
+ * Does not support a NULL dst on purpose - caller is expected to loop
+ * in parts.
+ */
+static size_t
+_none_wcrtombin(char * __restrict dst, const wchar_t * __restrict src,
+		size_t dlen, size_t *slen, int flags)
+{
+	size_t i;
+	size_t j;
+	size_t n = *slen;
+
+	for (i = j = 0; i < n; ++i) {
+		if (j == dlen)
+			break;
+		if (src[i] >= 0x100) {
+			if (i == 0) {
+				errno = EILSEQ;
+				return(-1);
+			}
+			break;
+		}
+		if (dst)
+			dst[j] = (unsigned char)src[i];
+		++j;
+	}
+	/* no partial sequences so we can ignore flags */
+	*slen = i;
+
+	return j;
+}
+
 /* setup defaults */
 
 struct xlocale_ctype __xlocale_global_ctype = {
@@ -193,6 +286,8 @@ struct xlocale_ctype __xlocale_global_ctype = {
 	_none_mbsnrtowcs,
 	_none_wcrtomb,
 	_none_wcsnrtombs,
+	_none_mbintowcr,
+	_none_wcrtombin,
 	1, /* __mb_cur_max, */
 	256 /* __mb_sb_limit */
 };
@@ -205,6 +300,8 @@ struct xlocale_ctype __xlocale_C_ctype = {
 	_none_mbsnrtowcs,
 	_none_wcrtomb,
 	_none_wcsnrtombs,
+	_none_mbintowcr,
+	_none_wcrtombin,
 	1, /* __mb_cur_max, */
 	256 /* __mb_sb_limit */
 };

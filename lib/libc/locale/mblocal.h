@@ -54,6 +54,12 @@ struct xlocale_ctype {
 	size_t (*__wcrtomb)(char * __restrict, wchar_t, mbstate_t * __restrict);
 	size_t (*__wcsnrtombs)(char * __restrict, const wchar_t ** __restrict,
 		size_t, size_t, mbstate_t * __restrict);
+	size_t (*__mbintowcr)(wchar_t * __restrict dst,
+		const char * __restrict src, size_t dlen, size_t *slen,
+		int flags);
+	size_t (*__wcrtombin)(char * __restrict dst,
+		const wchar_t * __restrict src, size_t dlen, size_t *slen,
+		int flags);
 	int __mb_cur_max;
 	int __mb_sb_limit;
 };

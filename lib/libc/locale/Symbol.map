@@ -117,6 +117,9 @@ DF402.0 {
 	isxdigit_l;
 	localeconv;
 	localeconv_l;
+	locale_isstrict;
+	wcrtoutf8;
+	utf8towcr;
 	mblen;
 	mblen_l;
 	mbrlen;

@@ -11,15 +11,17 @@ SRCS+=	big5.c btowc.c collate.c collcmp.c euc.c fix_grouping.c \
 	mbrlen.c \
 	mbrtowc.c mbsinit.c mbsnrtowcs.c \
 	mbsrtowcs.c mbtowc.c mbstowcs.c \
+	mbintowcr.c \
 	mskanji.c nextwctype.c nl_langinfo.c nomacros.c none.c rpmatch.c \
 	rune.c \
-	runetype.c setlocale.c setrunelocale.c \
+	runetype.c setlocale.c setrunelocale.c locale_isstrict.c \
 	table.c \
 	tolower.c toupper.c utf8.c wcrtomb.c wcsnrtombs.c \
 	wcsrtombs.c wcsftime.c \
 	wcstof.c wcstod.c \
 	wcstoimax.c wcstol.c wcstold.c wcstoll.c \
 	wcstombs.c \
+	wcrtombin.c \
 	wcstoul.c wcstoull.c wcstoumax.c wctob.c wctomb.c wctrans.c wctype.c \
 	wcwidth.c\
 	xlocale.c
@@ -35,6 +37,7 @@ MAN+=	btowc.3 \
 	isupper.3 iswalnum.3 iswalnum_l.3 isxdigit.3 \
 	localeconv.3 mblen.3 mbrlen.3 \
 	mbrtowc.3 \
+	mbintowcr.3 \
 	mbsinit.3 \
 	mbsrtowcs.3 mbstowcs.3 mbtowc.3 multibyte.3 \
 	nextwctype.3 nl_langinfo.3 rpmatch.3 \
@@ -97,6 +100,9 @@ MLINKS+=mbtowc.3 mbtowc_l.3
 MLINKS+=nl_langinfo.3 nl_langinfo_l.3
 MLINKS+=tolower.3 tolower_l.3
 MLINKS+=toupper.3 toupper_l.3
+MLINKS+=mbintowcr.3 wcrtombin.3
+MLINKS+=mbintowcr.3 wcrtoutf8.3
+MLINKS+=mbintowcr.3 utf8towcr.3
 MLINKS+=wcrtomb.3 c16rtomb.3 wcrtomb.3 c32rtomb.3 wcrtomb.3 wcrtomb_l.3
 MLINKS+=wcsftime.3 wcsftime_l.3
 MLINKS+=wcsrtombs.3 wcsnrtombs.3 wcsrtombs.3 wcsnrtombs_l.3 \
