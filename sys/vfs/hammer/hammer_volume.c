@@ -70,8 +70,9 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		struct hammer_ioc_volume *ioc)
 {
 	struct hammer_mount *hmp = trans->hmp;
-	struct hammer_volume_ondisk ondisk;
 	struct mount *mp = hmp->mp;
+	struct hammer_volume_ondisk ondisk;
+	struct bigblock_stat stat;
 	hammer_volume_t volume;
 	int vol_no;
 	int error;
@@ -124,10 +125,17 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_sync_lock_sh(trans);
 	hammer_lock_ex(&hmp->blkmap_lock);
 
+	volume = hammer_get_volume(hmp, free_vol_no, &error);
+	KKASSERT(volume != NULL && error == 0);
+
+	error =	hammer_format_freemap(trans, volume, &stat);
+	KKASSERT(error == 0);
+	hammer_rel_volume(volume, 0);
+
 	++hmp->nvolumes;
 
 	/*
-	 * Set each volumes new value of the vol_count field.
+	 * Set each volume's new value of the vol_count field.
 	 */
 	HAMMER_VOLUME_NUMBER_FOREACH(hmp, vol_no) {
 		volume = hammer_get_volume(hmp, vol_no, &error);
@@ -152,19 +160,13 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		hammer_rel_volume(volume, 0);
 	}
 
-	volume = hammer_get_volume(hmp, free_vol_no, &error);
-	KKASSERT(volume != NULL && error == 0);
-
-	struct bigblock_stat stat;
-	error =	hammer_format_freemap(trans, volume, &stat);
-	KKASSERT(error == 0);
-
 	/*
-	 * Increase the total number of big-blocks and update stat/vstat totals.
+	 * Update the total number of big-blocks.
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol, vol0_stat_bigblocks);
 	trans->rootvol->ondisk->vol0_stat_bigblocks += stat.total_bigblocks;
 	hammer_modify_volume_done(trans->rootvol);
+
 	/*
 	 * Big-block count changed so recompute the total number of blocks.
 	 */
@@ -174,17 +176,18 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 				HAMMER_BUFFERS_PER_BIGBLOCK;
 
 	/*
-	 * Increase the number of free big-blocks
-	 * (including the copy in hmp)
+	 * Update the total number of free big-blocks.
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol,
 		vol0_stat_freebigblocks);
 	trans->rootvol->ondisk->vol0_stat_freebigblocks += stat.total_free_bigblocks;
-	hmp->copy_stat_freebigblocks =
-		trans->rootvol->ondisk->vol0_stat_freebigblocks;
 	hammer_modify_volume_done(trans->rootvol);
 
-	hammer_rel_volume(volume, 0);
+	/*
+	 * Update the copy in hmp.
+	 */
+	hmp->copy_stat_freebigblocks =
+		trans->rootvol->ondisk->vol0_stat_freebigblocks;
 
 	hammer_unlock(&hmp->blkmap_lock);
 	hammer_sync_unlock(trans);
@@ -208,6 +211,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	struct hammer_mount *hmp = trans->hmp;
 	struct mount *mp = hmp->mp;
 	struct hammer_volume_ondisk *ondisk;
+	struct bigblock_stat stat;
 	hammer_volume_t volume;
 	int vol_no;
 	int error = 0;
@@ -292,7 +296,6 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * We use stat later to update rootvol's big-block stats
 	 */
-	struct bigblock_stat stat;
 	error = hammer_free_freemap(trans, volume, &stat);
 	if (error) {
 		kprintf("Failed to free volume: ");
@@ -325,7 +328,6 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		goto end;
 	}
 
-	volume = NULL;
 	--hmp->nvolumes;
 
 	/*
@@ -355,22 +357,12 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	/*
-	 * Update the total number of big-blocks
+	 * Update the total number of big-blocks.
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol, vol0_stat_bigblocks);
 	trans->rootvol->ondisk->vol0_stat_bigblocks -= stat.total_bigblocks;
 	hammer_modify_volume_done(trans->rootvol);
 
-	/*
-	 * Update the number of free big-blocks
-	 * (including the copy in hmp)
-	 */
-	hammer_modify_volume_field(trans, trans->rootvol,
-		vol0_stat_freebigblocks);
-	trans->rootvol->ondisk->vol0_stat_freebigblocks -= stat.total_free_bigblocks;
-	hmp->copy_stat_freebigblocks =
-		trans->rootvol->ondisk->vol0_stat_freebigblocks;
-	hammer_modify_volume_done(trans->rootvol);
 	/*
 	 * Big-block count changed so recompute the total number of blocks.
 	 */
@@ -379,12 +371,28 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	mp->mnt_vstat.f_blocks = trans->rootvol->ondisk->vol0_stat_bigblocks *
 				HAMMER_BUFFERS_PER_BIGBLOCK;
 
+	/*
+	 * Update the total number of free big-blocks.
+	 */
+	hammer_modify_volume_field(trans, trans->rootvol,
+		vol0_stat_freebigblocks);
+	trans->rootvol->ondisk->vol0_stat_freebigblocks -= stat.total_free_bigblocks;
+	hammer_modify_volume_done(trans->rootvol);
+
+	/*
+	 * Update the copy in hmp.
+	 */
+	hmp->copy_stat_freebigblocks =
+		trans->rootvol->ondisk->vol0_stat_freebigblocks;
+
 	hammer_unlock(&hmp->blkmap_lock);
 	hammer_sync_unlock(trans);
 
 	KKASSERT(error == 0);
 end:
 	hammer_unlock(&hmp->volume_lock);
+	if (error)
+		kprintf("An error occurred: %d\n", error);
 	return (error);
 }
 
