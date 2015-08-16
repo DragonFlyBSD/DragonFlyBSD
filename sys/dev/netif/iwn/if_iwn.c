@@ -1422,7 +1422,9 @@ iwn_detach(device_t dev)
 
 		callout_drain(&sc->watchdog_to);
 		callout_drain(&sc->calib_to);
+		wlan_serialize_enter();
 		ieee80211_ifdetach(ic);
+		wlan_serialize_exit();
 	}
 
 	/* Uninstall interrupt handler. */
