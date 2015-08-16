@@ -98,7 +98,7 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 
 	us = (_UTF8State *)ps;
 
-	if (us->want < 0 || us->want > 6) {
+	if (us->want < 0 || us->want > 4) {
 		errno = EINVAL;
 		return ((size_t)-1);
 	}
@@ -185,7 +185,7 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 		us->ch = wch;
 		return ((size_t)-2);
 	}
-	if (wch < lbound) {
+	if (wch < lbound || (wch & ~10ffffff)) {
 		/*
 		 * Malformed input; redundant encoding.
 		 */
