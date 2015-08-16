@@ -109,7 +109,6 @@ SAME+=		en_US.UTF-8:en_AU.UTF-8
 SAME+=		en_US.UTF-8:en_AU.US-ASCII
 SAME+=		en_US.UTF-8:en_AU.ISO8859-1
 SAME+=		en_US.UTF-8:am_ET.UTF-8
-SAME+=		en_US.UTF-8:xx_Comm_US.UTF-8
 SAME+=		ar_SA.UTF-8:ar_QA.UTF-8
 SAME+=		ar_SA.UTF-8:ar_JO.UTF-8
 SAME+=		ar_SA.UTF-8:ar_EG.UTF-8
