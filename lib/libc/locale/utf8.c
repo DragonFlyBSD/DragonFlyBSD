@@ -185,7 +185,7 @@ _UTF8_mbrtowc(wchar_t * __restrict pwc, const char * __restrict s, size_t n,
 		us->ch = wch;
 		return ((size_t)-2);
 	}
-	if (wch < lbound || (wch & ~10ffffff)) {
+	if (wch < lbound || (wch & ~0x10ffffff)) {
 		/*
 		 * Malformed input; redundant encoding.
 		 */
