@@ -78,6 +78,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	struct hammer_volume_ondisk ondisk;
 	struct bigblock_stat stat;
 	hammer_volume_t volume;
+	int free_vol_no = 0;
 	int error;
 
 	if (mp->mnt_flag & MNT_RDONLY) {
@@ -98,15 +99,14 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * Find an unused volume number.
 	 */
-	int free_vol_no = 0;
 	while (free_vol_no < HAMMER_MAX_VOLUMES &&
 		HAMMER_VOLUME_NUMBER_IS_SET(hmp, free_vol_no)) {
 		++free_vol_no;
 	}
 	if (free_vol_no >= HAMMER_MAX_VOLUMES) {
 		kprintf("Max number of HAMMER volumes exceeded\n");
-		hammer_unlock(&hmp->volume_lock);
-		return (EINVAL);
+		error = EINVAL;
+		goto end;
 	}
 
 	error = hammer_format_volume_header(
@@ -164,6 +164,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	struct bigblock_stat stat;
 	hammer_volume_t volume;
 	int vol_no;
+	int count = 0;
 	int error = 0;
 
 	if (mp->mnt_flag & MNT_RDONLY) {
@@ -176,11 +177,10 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		return (EAGAIN);
 	}
 
-	volume = NULL;
-
 	/*
 	 * find volume by volname
 	 */
+	volume = NULL;
 	HAMMER_VOLUME_NUMBER_FOREACH(hmp, vol_no) {
 		volume = hammer_get_volume(hmp, vol_no, &error);
 		KKASSERT(volume != NULL && error == 0);
@@ -221,7 +221,6 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * Sync filesystem
 	 */
-	int count = 0;
 	while (hammer_flusher_haswork(hmp)) {
 		hammer_flusher_sync(hmp);
 		++count;
@@ -255,9 +254,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 			kprintf("%d\n", error);
 		hmp->volume_to_remove = -1;
 		hammer_rel_volume(volume, 0);
-		hammer_unlock(&hmp->blkmap_lock);
-		hammer_sync_unlock(trans);
-		goto end;
+		goto end1;
 	}
 
 	hmp->volume_to_remove = -1;
@@ -273,19 +270,17 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	error = hammer_unload_volume(volume, &ondisk);
 	if (error == -1) {
 		kprintf("Failed to unload volume\n");
-		hammer_unlock(&hmp->blkmap_lock);
-		hammer_sync_unlock(trans);
-		goto end;
+		goto end1;
 	}
 
 	--hmp->nvolumes;
 	error = hammer_update_volumes_header(trans, &stat);
 	KKASSERT(error == 0);
 
+end1:
 	hammer_unlock(&hmp->blkmap_lock);
 	hammer_sync_unlock(trans);
 
-	KKASSERT(error == 0);
 end:
 	hammer_unlock(&hmp->volume_lock);
 	if (error)
@@ -319,12 +314,10 @@ hammer_ioc_volume_list(hammer_transaction_t trans, hammer_inode_t ip,
 
 		error = copyout(volume->vol_name, ioc->vols[cnt].device_name,
 				len);
-		if (error) {
-			hammer_rel_volume(volume, 0);
-			goto end;
-		}
-		cnt++;
 		hammer_rel_volume(volume, 0);
+		if (error)
+			goto end;
+		cnt++;
 	}
 	ioc->nvols = cnt;
 
