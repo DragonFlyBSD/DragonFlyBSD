@@ -628,7 +628,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 						  MAXPATHLEN, NULL);
 		}
 		if (error == 0)
-			error = hammer_install_volume(hmp, path, devvp);
+			error = hammer_install_volume(hmp, path, devvp, NULL);
 		if (error)
 			break;
 	}

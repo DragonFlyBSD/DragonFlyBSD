@@ -40,18 +40,10 @@
 #include "hammer.h"
 
 static int
-hammer_setup_device(struct vnode **devvpp, const char *dev_path, int ronly);
-
-static void
-hammer_close_device(struct vnode **devvpp, int ronly);
-
-static int
-hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
+hammer_format_volume_header(struct hammer_mount *hmp,
+	struct hammer_volume_ondisk *ondisk,
 	const char *vol_name, int vol_no, int vol_count,
 	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size);
-
-static int
-hammer_clear_volume_header(struct vnode *devvp);
 
 static int
 hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip);
@@ -78,6 +70,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		struct hammer_ioc_volume *ioc)
 {
 	struct hammer_mount *hmp = trans->hmp;
+	struct hammer_volume_ondisk ondisk;
 	struct mount *mp = hmp->mp;
 	hammer_volume_t volume;
 	int vol_no;
@@ -112,25 +105,19 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		return (EINVAL);
 	}
 
-	struct vnode *devvp = NULL;
-	error = hammer_setup_device(&devvp, ioc->device_name, 0);
-	if (error)
-		goto end;
-	KKASSERT(devvp);
 	error = hammer_format_volume_header(
 		hmp,
-		devvp,
+		&ondisk,
 		hmp->rootvol->ondisk->vol_name,
 		free_vol_no,
 		hmp->nvolumes+1,
 		ioc->vol_size,
 		ioc->boot_area_size,
 		ioc->mem_area_size);
-	hammer_close_device(&devvp, 0);
 	if (error)
 		goto end;
 
-	error = hammer_install_volume(hmp, ioc->device_name, NULL);
+	error = hammer_install_volume(hmp, ioc->device_name, NULL, &ondisk);
 	if (error)
 		goto end;
 
@@ -220,6 +207,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 {
 	struct hammer_mount *hmp = trans->hmp;
 	struct mount *mp = hmp->mp;
+	struct hammer_volume_ondisk *ondisk;
 	hammer_volume_t volume;
 	int vol_no;
 	int error = 0;
@@ -328,7 +316,8 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
         RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
 		hammer_unload_buffer, volume);
 
-	error = hammer_unload_volume(volume, NULL);
+	bzero(&ondisk, sizeof(ondisk));
+	error = hammer_unload_volume(volume, &ondisk);
 	if (error == -1) {
 		kprintf("Failed to unload volume\n");
 		hammer_unlock(&hmp->blkmap_lock);
@@ -392,26 +381,6 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 
 	hammer_unlock(&hmp->blkmap_lock);
 	hammer_sync_unlock(trans);
-
-	/*
-	 * Erase the volume header of the removed device.
-	 *
-	 * This is to not accidentally mount the volume again.
-	 */
-	struct vnode *devvp = NULL;
-	error = hammer_setup_device(&devvp, ioc->device_name, 0);
-	if (error) {
-		kprintf("Failed to open device: %s\n", ioc->device_name);
-		goto end;
-	}
-	KKASSERT(devvp);
-	error = hammer_clear_volume_header(devvp);
-	if (error) {
-		kprintf("Failed to clear volume header of device: %s\n",
-			ioc->device_name);
-		goto end;
-	}
-	hammer_close_device(&devvp, 0);
 
 	KKASSERT(error == 0);
 end:
@@ -773,99 +742,15 @@ hammer_test_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 	return hammer_iterate_l1l2_entries(trans, volume, test_free_callback, NULL);
 }
 
-/************************************************************************
- *				MISC					*
- ************************************************************************
- */
-
 static int
-hammer_setup_device(struct vnode **devvpp, const char *dev_path, int ronly)
-{
-	int error;
-	struct nlookupdata nd;
-
-	/*
-	 * Get the device vnode
-	 */
-	if (*devvpp == NULL) {
-		error = nlookup_init(&nd, dev_path, UIO_SYSSPACE, NLC_FOLLOW);
-		if (error == 0)
-			error = nlookup(&nd);
-		if (error == 0)
-			error = cache_vref(&nd.nl_nch, nd.nl_cred, devvpp);
-		nlookup_done(&nd);
-	} else {
-		error = 0;
-	}
-
-	if (error == 0) {
-		if (vn_isdisk(*devvpp, &error)) {
-			error = vfs_mountedon(*devvpp);
-		}
-	}
-	if (error == 0 && vcount(*devvpp) > 0)
-		error = EBUSY;
-	if (error == 0) {
-		vn_lock(*devvpp, LK_EXCLUSIVE | LK_RETRY);
-		error = vinvalbuf(*devvpp, V_SAVE, 0, 0);
-		if (error == 0) {
-			error = VOP_OPEN(*devvpp,
-					 (ronly ? FREAD : FREAD|FWRITE),
-					 FSCRED, NULL);
-		}
-		vn_unlock(*devvpp);
-	}
-	if (error && *devvpp) {
-		vrele(*devvpp);
-		*devvpp = NULL;
-	}
-	return (error);
-}
-
-static void
-hammer_close_device(struct vnode **devvpp, int ronly)
-{
-	if (*devvpp) {
-		vn_lock(*devvpp, LK_EXCLUSIVE | LK_RETRY);
-		vinvalbuf(*devvpp, ronly ? 0 : V_SAVE, 0, 0);
-		VOP_CLOSE(*devvpp, (ronly ? FREAD : FREAD|FWRITE), NULL);
-		vn_unlock(*devvpp);
-		vrele(*devvpp);
-		*devvpp = NULL;
-	}
-}
-
-static int
-hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
+hammer_format_volume_header(struct hammer_mount *hmp,
+	struct hammer_volume_ondisk *ondisk,
 	const char *vol_name, int vol_no, int vol_count,
 	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size)
 {
-	struct buf *bp = NULL;
-	struct hammer_volume_ondisk *ondisk;
-	int error;
+	int64_t vol_alloc;
 
-	/*
-	 * Extract the volume number from the volume header and do various
-	 * sanity checks.
-	 */
 	KKASSERT(HAMMER_BUFSIZE >= sizeof(struct hammer_volume_ondisk));
-	error = bread(devvp, 0LL, HAMMER_BUFSIZE, &bp);
-	if (error || bp->b_bcount < sizeof(struct hammer_volume_ondisk))
-		goto late_failure;
-
-	ondisk = (struct hammer_volume_ondisk*) bp->b_data;
-
-	/*
-	 * Note that we do NOT allow to use a device that contains
-	 * a valid HAMMER signature. It has to be cleaned up with dd
-	 * before.
-	 */
-	if (ondisk->vol_signature == HAMMER_FSBUF_VOLUME) {
-		kprintf("Formatting of valid HAMMER volume "
-			"%s denied. Erase with dd!\n", vol_name);
-		error = EFTYPE;
-		goto late_failure;
-	}
 
 	bzero(ondisk, sizeof(struct hammer_volume_ondisk));
 	ksnprintf(ondisk->vol_name, sizeof(ondisk->vol_name), "%s", vol_name);
@@ -881,8 +766,7 @@ hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
 	 * Reserve space for (future) header junk, setup our poor-man's
 	 * big-block allocator.
 	 */
-	int64_t vol_alloc = HAMMER_BUFSIZE * 16;
-
+	vol_alloc = HAMMER_BUFSIZE * 16;
 	ondisk->vol_bot_beg = vol_alloc;
 	vol_alloc += boot_area_size;
 	ondisk->vol_mem_beg = vol_alloc;
@@ -898,49 +782,11 @@ hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
 	if (ondisk->vol_buf_end < ondisk->vol_buf_beg) {
 		kprintf("volume %d %s is too small to hold the volume header\n",
 		     ondisk->vol_no, ondisk->vol_name);
-		error = EFTYPE;
-		goto late_failure;
+		return(EFTYPE);
 	}
 
 	ondisk->vol_nblocks = (ondisk->vol_buf_end - ondisk->vol_buf_beg) /
 			      HAMMER_BUFSIZE;
 	ondisk->vol_blocksize = HAMMER_BUFSIZE;
-
-	/*
-	 * Write volume header to disk
-	 */
-	error = bwrite(bp);
-	bp = NULL;
-
-late_failure:
-	if (bp)
-		brelse(bp);
-	return (error);
-}
-
-/*
- * Invalidates the volume header. Used by volume-del.
- */
-static int
-hammer_clear_volume_header(struct vnode *devvp)
-{
-	struct buf *bp = NULL;
-	struct hammer_volume_ondisk *ondisk;
-	int error;
-
-	KKASSERT(HAMMER_BUFSIZE >= sizeof(struct hammer_volume_ondisk));
-	error = bread(devvp, 0LL, HAMMER_BUFSIZE, &bp);
-	if (error || bp->b_bcount < sizeof(struct hammer_volume_ondisk))
-		goto late_failure;
-
-	ondisk = (struct hammer_volume_ondisk*) bp->b_data;
-	bzero(ondisk, sizeof(struct hammer_volume_ondisk));
-
-	error = bwrite(bp);
-	bp = NULL;
-
-late_failure:
-	if (bp)
-		brelse(bp);
-	return (error);
+	return(0);
 }

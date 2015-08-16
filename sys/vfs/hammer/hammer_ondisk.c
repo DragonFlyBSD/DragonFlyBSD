@@ -97,8 +97,8 @@ RB_GENERATE2(hammer_nod_rb_tree, hammer_node, rb_node,
  ************************************************************************
  *
  * Load a HAMMER volume by name.  Returns 0 on success or a positive error
- * code on failure.  Volumes must be loaded at mount time, hammer_get_volume()
- * will not load a new volume.
+ * code on failure.  Volumes must be loaded at mount time or via hammer
+ * volume-add command, hammer_get_volume() will not load a new volume.
  *
  * The passed devvp is vref()'d but not locked.  This function consumes the
  * ref (typically by associating it with the volume structure).
@@ -107,11 +107,12 @@ RB_GENERATE2(hammer_nod_rb_tree, hammer_node, rb_node,
  */
 int
 hammer_install_volume(hammer_mount_t hmp, const char *volname,
-		      struct vnode *devvp)
+		      struct vnode *devvp, void *data)
 {
 	struct mount *mp;
 	hammer_volume_t volume;
 	struct hammer_volume_ondisk *ondisk;
+	struct hammer_volume_ondisk *img;
 	struct nlookupdata nd;
 	struct buf *bp = NULL;
 	int error;
@@ -180,6 +181,21 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	if (error)
 		goto late_failure;
 	ondisk = (void *)bp->b_data;
+
+	/*
+	 * Initialize the volume header with data if the data is specified.
+	 */
+	if (data) {
+		img = (struct hammer_volume_ondisk *)data;
+		if (ondisk->vol_signature == HAMMER_FSBUF_VOLUME) {
+			kprintf("Formatting of valid HAMMER volume "
+				"%s denied. Erase with dd!\n", volname);
+			error = EFTYPE;
+			goto late_failure;
+		}
+		bcopy(img, ondisk, sizeof(*img));
+	}
+
 	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
 		kprintf("hammer_mount: volume %s has an invalid header\n",
 			volume->vol_name);
@@ -281,10 +297,31 @@ hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused)
  * so returns -1 on failure.
  */
 int
-hammer_unload_volume(hammer_volume_t volume, void *data __unused)
+hammer_unload_volume(hammer_volume_t volume, void *data)
 {
 	hammer_mount_t hmp = volume->io.hmp;
+	struct buf *bp = NULL;
+	struct hammer_volume_ondisk *img;
 	int ronly = ((hmp->mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
+	int error;
+
+	/*
+	 * Clear the volume header with data if the data is specified.
+	 */
+	if (data && volume->devvp) {
+		img = (struct hammer_volume_ondisk *)data;
+		error = bread(volume->devvp, 0LL, HAMMER_BUFSIZE, &bp);
+		if (error || bp->b_bcount < sizeof(*img)) {
+			kprintf("Failed to read volume header: %d\n", error);
+			brelse(bp);
+		} else {
+			bcopy(img, bp->b_data, sizeof(*img));
+			error = bwrite(bp);
+			if (error)
+				kprintf("Failed to clear volume header: %d\n",
+					error);
+		}
+	}
 
 	/*
 	 * Clean up the root volume pointer, which is held unlocked in hmp.
