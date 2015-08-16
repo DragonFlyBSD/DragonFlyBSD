@@ -49,9 +49,9 @@ static int
 hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip);
 
 struct bigblock_stat {
-	uint64_t total_bigblocks;
-	uint64_t total_free_bigblocks;
-	uint64_t counter;
+	int64_t total_bigblocks;
+	int64_t total_free_bigblocks;
+	int64_t counter;
 };
 
 static int
@@ -360,7 +360,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Update the total number of big-blocks.
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol, vol0_stat_bigblocks);
-	trans->rootvol->ondisk->vol0_stat_bigblocks -= stat.total_bigblocks;
+	trans->rootvol->ondisk->vol0_stat_bigblocks += stat.total_bigblocks;
 	hammer_modify_volume_done(trans->rootvol);
 
 	/*
@@ -376,7 +376,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol,
 		vol0_stat_freebigblocks);
-	trans->rootvol->ondisk->vol0_stat_freebigblocks -= stat.total_free_bigblocks;
+	trans->rootvol->ondisk->vol0_stat_freebigblocks += stat.total_free_bigblocks;
 	hammer_modify_volume_done(trans->rootvol);
 
 	/*
@@ -682,8 +682,8 @@ free_callback(hammer_transaction_t trans, hammer_volume_t volume __unused,
 
 		if (layer2->append_off == 0 &&
 		    layer2->bytes_free == HAMMER_BIGBLOCK_SIZE) {
-			++stat->total_bigblocks;
-			++stat->total_free_bigblocks;
+			--stat->total_bigblocks;
+			--stat->total_free_bigblocks;
 			return 0;
 		}
 
