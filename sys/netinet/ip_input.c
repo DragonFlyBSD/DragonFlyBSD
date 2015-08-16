@@ -1026,8 +1026,8 @@ ip_reass(struct mbuf *m)
 	int i, next;
 	u_short sum;
 
-	/* If maxnipq is 0, never accept fragments. */
-	if (maxnipq == 0) {
+	/* If maxnipq or maxfragsperpacket are 0, never accept fragments. */
+	if (maxnipq == 0 || maxfragsperpacket == 0) {
 		ipstat.ips_fragments++;
 		ipstat.ips_fragdropped++;
 		m_freem(m);
