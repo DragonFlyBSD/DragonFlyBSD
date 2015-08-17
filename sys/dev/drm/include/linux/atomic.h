@@ -51,6 +51,9 @@ typedef struct {
 #define	atomic_inc_and_test(v)		(atomic_add_return(1, (v)) == 0)
 #define atomic_dec_return(v)             atomic_sub_return(1, (v))
 
+#define	atomic64_add(i, v)		atomic_add_return_long((i), (v))
+#define	atomic64_sub(i, v)		atomic_sub_return_long((i), (v))
+
 #define atomic_xchg(p, v)		atomic_swap_int(&((p)->counter), v)
 #define atomic64_xchg(p, v)		atomic_swap_long(&((p)->counter), v)
 
@@ -62,10 +65,22 @@ atomic_add_return(int i, atomic_t *v)
 	return i + atomic_fetchadd_int(&v->counter, i);
 }
 
+static inline int64_t
+atomic_add_return_long(int64_t i, atomic64_t *v)
+{
+	return i + atomic_fetchadd_long(&v->counter, i);
+}
+
 static inline int
 atomic_sub_return(int i, atomic_t *v)
 {
 	return atomic_fetchadd_int(&v->counter, -i) - i;
+}
+
+static inline int64_t
+atomic_sub_return_long(int64_t i, atomic64_t *v)
+{
+	return atomic_fetchadd_long(&v->counter, -i) - i;
 }
 
 static inline void
