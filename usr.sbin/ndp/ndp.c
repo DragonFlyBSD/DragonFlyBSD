@@ -150,7 +150,7 @@ static void setdefif(char *);
 #endif
 static char *sec2str(time_t t);
 static char *ether_str(struct sockaddr_dl *sdl);
-static void ts_print(const struct timeval *);
+static void ts_print(const struct timespec *);
 
 static char *rtpref_str[] = {
 	"medium",		/* 00 */
@@ -548,7 +548,7 @@ dump(struct in6_addr *addr)
 	struct sockaddr_dl *sdl;
 	extern int h_errno;
 	struct in6_nbrinfo *nbi;
-	struct timeval time;
+	struct timespec sp;
 	int addrwidth;
 	int llwidth;
 	int ifwidth;
@@ -631,9 +631,9 @@ again:;
 #endif
 			continue;
 		}
-		gettimeofday(&time, 0);
+		clock_gettime(CLOCK_MONOTONIC, &sp);
 		if (tflag)
-			ts_print(&time);
+			ts_print(&sp);
 
 		addrwidth = strlen(host_buf);
 		if (addrwidth < W_ADDR)
@@ -654,9 +654,9 @@ again:;
 		/* Print neighbor discovery specific informations */
 		nbi = getnbrinfo(&sin->sin6_addr, sdl->sdl_index, 1);
 		if (nbi) {
-			if (nbi->expire > time.tv_sec) {
+			if (nbi->expire > sp.tv_sec) {
 				printf(" %-9.9s",
-				       sec2str(nbi->expire - time.tv_sec));
+				       sec2str(nbi->expire - sp.tv_sec));
 			} else if (nbi->expire == 0)
 				printf(" %-9.9s", "permanent");
 			else
@@ -1497,12 +1497,12 @@ sec2str(time_t total)
  * from tcpdump/util.c
  */
 static void
-ts_print(const struct timeval *tvp)
+ts_print(const struct timespec *sp)
 {
 	int s;
 
 	/* Default */
-	s = (tvp->tv_sec + thiszone) % 86400;
+	s = (sp->tv_sec + thiszone) % 86400;
 	printf("%02d:%02d:%02d.%06u ",
-	    s / 3600, (s % 3600) / 60, s % 60, (u_int32_t)tvp->tv_usec);
+	    s / 3600, (s % 3600) / 60, s % 60, (u_int32_t)(sp->tv_nsec / 1000));
 }
