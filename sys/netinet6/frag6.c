@@ -70,6 +70,7 @@ static void frag6_freef (struct ip6q *);
 /* XXX we eventually need splreass6, or some real semaphore */
 int frag6_doing_reass;
 u_int frag6_nfragpackets;
+u_int frag6_nfrags;
 struct	ip6q ip6q;	/* ip6 reassemble queue */
 
 /* FreeBSD tweak */
@@ -84,6 +85,7 @@ frag6_init(void)
 	struct timeval tv;
 
 	ip6_maxfragpackets = nmbclusters / 4;
+	ip6_maxfrags = nmbclusters / 4;
 
 	/*
 	 * in many cases, random() here does NOT return random number
@@ -208,6 +210,16 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 
 	frag6_doing_reass = 1;
 
+	/*
+	 * Enforce upper bound on number of fragments.
+	 * If maxfrag is 0, never accept fragments.
+	 * If maxfrag is -1, accept all fragments without limitation.
+	 */
+	if (ip6_maxfrags < 0)
+		;
+	else if (frag6_nfrags >= (u_int)ip6_maxfrags)
+		goto dropfrag;
+
 	for (q6 = ip6q.ip6q_next; q6 != &ip6q; q6 = q6->ip6q_next)
 		if (ip6f->ip6f_ident == q6->ip6q_ident &&
 		    IN6_ARE_ADDR_EQUAL(&ip6->ip6_src, &q6->ip6q_src) &&
@@ -249,6 +261,7 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 		q6->ip6q_src	= ip6->ip6_src;
 		q6->ip6q_dst	= ip6->ip6_dst;
 		q6->ip6q_unfrglen = -1;	/* The 1st fragment has not arrived. */
+		q6->ip6q_nfrag = 0;
 	}
 
 	/*
@@ -377,6 +390,8 @@ insert:
 	 * the most recently active fragmented packet.
 	 */
 	frag6_enq(ip6af, af6->ip6af_up);
+	frag6_nfrags++;
+	q6->ip6q_nfrag++;
 #if 0 /* xxx */
 	if (q6 != ip6q.ip6q_next) {
 		frag6_remque(q6);
@@ -439,6 +454,7 @@ insert:
 		/* this comes with no copy if the boundary is on cluster */
 		if ((t = m_split(m, offset, M_NOWAIT)) == NULL) {
 			frag6_remque(q6);
+			frag6_nfrags -= q6->ip6q_nfrag;
 			kfree(q6, M_FTABLE);
 			frag6_nfragpackets--;
 			goto dropfrag;
@@ -456,6 +472,7 @@ insert:
 	}
 
 	frag6_remque(q6);
+	frag6_nfrags -= q6->ip6q_nfrag;
 	kfree(q6, M_FTABLE);
 	frag6_nfragpackets--;
 
@@ -527,6 +544,7 @@ frag6_freef(struct ip6q *q6)
 		kfree(af6, M_FTABLE);
 	}
 	frag6_remque(q6);
+	frag6_nfrags -= q6->ip6q_nfrag;
 	kfree(q6, M_FTABLE);
 	frag6_nfragpackets--;
 }
