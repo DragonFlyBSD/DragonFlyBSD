@@ -1976,8 +1976,19 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m,
 	 * 7.2.2 of RFC 2461, because the timer is set correctly after sending
 	 * an NS below.
 	 */
-	if (ln->ln_state == ND6_LLINFO_NOSTATE)
+	if (ln->ln_state == ND6_LLINFO_NOSTATE) {
+		/*
+		 * This neighbor cache entry was just created; change its
+		 * state to INCOMPLETE and start its life cycle.
+		 *
+		 * We force an NS output below by setting ln_expire to 1
+		 * (nd6_rtrequest() could set it to the current time_uptime)
+		 * and zeroing out ln_asked (XXX this may not be necessary).
+		 */
 		ln->ln_state = ND6_LLINFO_INCOMPLETE;
+		ln->ln_expire = 1;
+		ln->ln_asked = 0;
+	}
 	if (ln->ln_hold)
 		m_freem(ln->ln_hold);
 	ln->ln_hold = m;
