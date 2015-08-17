@@ -40,6 +40,7 @@
 #define jiffies_to_msecs(x)	(((int64_t)(x)) * 1000 / hz)
 #define msecs_to_jiffies(x)	(((int64_t)(x)) * hz / 1000)
 #define jiffies			ticks
+#define jiffies_64		ticks /* XXX hmmm */
 #define time_after(a,b)		((long)(b) - (long)(a) < 0)
 #define time_after_eq(a,b)	((long)(b) - (long)(a) <= 0)
 
