@@ -1726,6 +1726,9 @@ device		perfbias
 # Intel software controlled clock modulation
 device		clockmod
 
+# Intel Sandy Bridge and newer CPUs power usage estimation
+device		corepower
+
 # Intel Core and newer CPUs on-die digital thermal sensor support
 device		coretemp
 
