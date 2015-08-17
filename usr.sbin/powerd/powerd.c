@@ -117,6 +117,9 @@ static int has_battery(void);
 static int mon_battery(void);
 static void low_battery_alert(int);
 
+/* Backlight */
+static void restore_backlight(void);
+
 /* Runtime states for performance monitoring */
 static int global_pcpu_limit;
 static struct cpu_state pcpu_state[MAXCPU];
@@ -358,6 +361,7 @@ main(int ac, char **av)
 	 */
 	syslog(LOG_INFO, "killed, setting max and exiting");
 	restore_perf();
+	restore_backlight();
 
 	exit(0);
 }
@@ -716,11 +720,7 @@ mon_battery(void)
 	if (acline) {
 		BatShutdownLinger = -1;
 		BatShutdownLingerCnt = 0;
-		if (BackLightDown) {
-			BackLightDown = 0;
-			sysctlbyname("hw.backlight_level", NULL, NULL,
-			    &OldBackLightLevel, sizeof(OldBackLightLevel));
-		}
+		restore_backlight();
 		return 1;
 	}
 
@@ -1261,4 +1261,14 @@ set_cstate(int cpu, int inc)
 		printf("cpu%d set cstate %s\n", cpu, cst);
 	snprintf(sysid, sizeof(sysid), "machdep.mwait.CX.idle%d", cpu);
 	sysctlbyname(sysid, NULL, NULL, cst, len);
+}
+
+static void
+restore_backlight(void)
+{
+	if (BackLightDown) {
+		BackLightDown = 0;
+		sysctlbyname("hw.backlight_level", NULL, NULL,
+		    &OldBackLightLevel, sizeof(OldBackLightLevel));
+	}
 }
