@@ -388,6 +388,9 @@ S_sensor(int l2, void *p)
 		case SENSOR_VOLTS_DC:
 			printf("%.2f VDC", s->value / 1000000.0);
 			break;
+		case SENSOR_WATTS:
+			printf("%.2f W", s->value / 1000000.0);
+			break;
 		case SENSOR_AMPS:
 			printf("%.2f A", s->value / 1000000.0);
 			break;

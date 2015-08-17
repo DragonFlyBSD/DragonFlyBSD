@@ -207,6 +207,9 @@ printline(void)
 		mvwprintw(wnd, row, 24, "%10.2f V DC",
 		    sensor.value / 1000000.0);
 		break;
+	case SENSOR_WATTS:
+		mvwprintw(wnd, row, 24, "%13.2f W", sensor.value / 1000000.0);
+		break;
 	case SENSOR_AMPS:
 		mvwprintw(wnd, row, 24, "%10.2f A", sensor.value / 1000000.0);
 		break;
