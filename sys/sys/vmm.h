@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2013 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2013 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Mihai Carabas <mihai.carabas@gmail.com>
@@ -32,8 +32,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef	_SYS_VMM_GUEST_CTL_H_
-#define	_SYS_VMM_GUEST_CTL_H_
+#ifndef	_SYS_VMM_H_
+#define	_SYS_VMM_H_
 
 /*
  * Init the calling thread with a VM context
@@ -41,7 +41,7 @@
  * Destroy the VM context of the thread
  */
 
-#define		VMM_GUEST_RUN		1
+#define	VMM_GUEST_RUN		1
 
 #include <sys/types.h>
 #include <machine/frame.h>
@@ -55,8 +55,7 @@ struct vmm_guest_options {
 };
 
 
-int	vmm_guest_ctl (int, struct vmm_guest_options *);
+int	vmm_guest_ctl(int, struct vmm_guest_options *);
+int	vmm_guest_sync_addr(long *, long *);
 
-int	vmm_guest_sync_addr (long *, long *);
-
-#endif	/* !_SYS_VMM_GUEST_CTL_H_ */
+#endif	/* !_SYS_VMM_H_ */
