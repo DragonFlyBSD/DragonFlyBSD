@@ -1425,9 +1425,9 @@ _hammer_rel_node(hammer_node_t node, int locked)
 	/*
 	 * Deref the node.  If this isn't the 1->0 transition we're basically
 	 * done.  If locked is non-zero this function will just deref the
-	 * locked node and return TRUE, otherwise it will deref the locked
-	 * node and either lock and return TRUE on the 1->0 transition or
-	 * not lock and return FALSE.
+	 * locked node and return 1, otherwise it will deref the locked
+	 * node and either lock and return 1 on the 1->0 transition or
+	 * not lock and return 0.
 	 */
 	if (hammer_rel_interlock(&node->lock, locked) == 0)
 		return;

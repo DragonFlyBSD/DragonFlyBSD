@@ -390,16 +390,16 @@ hammer_rel(struct hammer_lock *lock)
  * hammer_ref_interlock() bumps the ref-count and conditionally acquires
  * the interlock for 0->1 transitions or if the CHECK is found to be set.
  *
- * This case will return TRUE, the interlock will be held, and the CHECK
+ * This case will return 1, the interlock will be held, and the CHECK
  * bit also set.  Other threads attempting to ref will see the CHECK bit
  * and block until we clean up.
  *
- * FALSE is returned for transitions other than 0->1 when the CHECK bit
+ * 0 is returned for transitions other than 0->1 when the CHECK bit
  * is not found to be set, or if the function loses the race with another
  * thread.
  *
- * TRUE is only returned to one thread and the others will block.
- * Effectively a TRUE indicator means 'someone transitioned 0->1
+ * 1 is only returned to one thread and the others will block.
+ * Effectively a 1 indicator means 'someone transitioned 0->1
  * and you are the first guy to successfully lock it after that, so you
  * need to check'.  Due to races the ref-count may be greater than 1 upon
  * return.
@@ -489,7 +489,7 @@ hammer_ref_interlock(struct hammer_lock *lock)
  *
  * NOTE that CHECK will never be found set when the ref-count is 0.
  *
- * TRUE is always returned to match the API for hammer_ref_interlock().
+ * 1 is always returned to match the API for hammer_ref_interlock().
  * This function returns with one ref, the lock held, and the CHECK bit set.
  */
 int
@@ -541,16 +541,16 @@ hammer_ref_interlock_done(struct hammer_lock *lock)
  * acquire the lock in tandem with a 1->0 transition.  CHECK is
  * not used.
  *
- * TRUE is returned on 1->0 transitions with the lock held on return
- * and FALSE is returned otherwise with the lock not held.
+ * 1 is returned on 1->0 transitions with the lock held on return
+ * and 0 is returned otherwise with the lock not held.
  *
  * It is important to note that the refs are not stable and may
- * increase while we hold the lock, the TRUE indication only means
+ * increase while we hold the lock, the 1 indication only means
  * that we transitioned 1->0, not necessarily that we stayed at 0.
  *
  * Another thread bumping refs while we hold the lock will set CHECK,
  * causing one of the competing hammer_ref_interlock() calls to
- * return TRUE after we release our lock.
+ * return 1 after we release our lock.
  *
  * MPSAFE
  */
@@ -640,7 +640,7 @@ hammer_rel_interlock_done(struct hammer_lock *lock, int orig_locked __unused)
 /*
  * Acquire the interlock on lock->refs.
  *
- * Return TRUE if CHECK is currently set.  Note that CHECK will not
+ * Return 1 if CHECK is currently set.  Note that CHECK will not
  * be set if the reference count is 0, but can get set if this function
  * is preceeded by, say, hammer_ref(), or through races with other
  * threads.  The return value allows the caller to use the same logic
