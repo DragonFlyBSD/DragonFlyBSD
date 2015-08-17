@@ -141,18 +141,13 @@ hammer_ioc_dedup(hammer_transaction_t trans, hammer_inode_t ip,
 			cursor1.leaf->data_offset, cursor1.leaf->data_len);
 	if (error) {
 		if (error == ERANGE) {
-			/*
-			 * Return with error = 0, but set an UNDERFLOW flag
-			 */
+			/* Return with error = 0, but set an UNDERFLOW flag */
 			dedup->head.flags |= HAMMER_IOC_DEDUP_UNDERFLOW;
 			error = 0;
-			goto downgrade_cursors;
-		} else {
-			/*
-			 * Return an error -> block goes to pass2 list
-			 */
-			goto downgrade_cursors;
 		}
+
+		/* Return all other errors -> block goes to pass2 list */
+		goto downgrade_cursors;
 	}
 
 	/*
