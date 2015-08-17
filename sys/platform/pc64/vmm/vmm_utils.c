@@ -110,7 +110,7 @@ guest_phys_addr(struct vmspace *vm, register_t *gpa, register_t guest_cr3,
 		kprintf("%s: could not get pml4e\n", __func__);
 		goto error;
 	}
-	if (!(pml4e & kernel_pmap.pmap_bits[PG_V_IDX])) {
+	if ((pml4e & kernel_pmap.pmap_bits[PG_V_IDX]) == 0) {
 		kprintf("%s: pml4e not valid\n", __func__);
 		err = EFAULT;
 		goto error;
@@ -122,7 +122,7 @@ guest_phys_addr(struct vmspace *vm, register_t *gpa, register_t guest_cr3,
 		kprintf("%s: could not get pdpe\n", __func__);
 		goto error;
 	}
-	if (!(pdpe & kernel_pmap.pmap_bits[PG_V_IDX])) {
+	if ((pdpe & kernel_pmap.pmap_bits[PG_V_IDX]) == 0) {
 		kprintf("%s: pdpe not valid\n", __func__);
 		err = EFAULT;
 		goto error;
@@ -138,7 +138,7 @@ guest_phys_addr(struct vmspace *vm, register_t *gpa, register_t guest_cr3,
 		kprintf("%s: could not get pdpe\n", __func__);
 		goto error;
 	}
-	if (!(pde & kernel_pmap.pmap_bits[PG_V_IDX])) {
+	if ((pde & kernel_pmap.pmap_bits[PG_V_IDX]) == 0) {
 		kprintf("%s: pde not valid\n", __func__);
 		err = EFAULT;
 		goto error;
@@ -154,7 +154,7 @@ guest_phys_addr(struct vmspace *vm, register_t *gpa, register_t guest_cr3,
 		kprintf("%s: could not get pte\n", __func__);
 		goto error;
 	}
-	if (!(pte & kernel_pmap.pmap_bits[PG_V_IDX])) {
+	if ((pte & kernel_pmap.pmap_bits[PG_V_IDX]) == 0) {
 		kprintf("%s: pte not valid\n", __func__);
 		err = EFAULT;
 		goto error;
