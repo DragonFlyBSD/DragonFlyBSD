@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2013 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2013 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Mihai Carabas <mihai.carabas@gmail.com>
@@ -64,9 +64,11 @@ sys_vmm_guest_ctl(struct vmm_guest_ctl_args *uap)
 
 	switch (uap->op) {
 		case VMM_GUEST_RUN:
-			error = copyin(uap->options, &options, sizeof(struct vmm_guest_options));
+			error = copyin(uap->options, &options,
+			    sizeof(struct vmm_guest_options));
 			if (error) {
-				kprintf("sys_vmm_guest: error copyin vmm_guest_options\n");
+				kprintf("%s: error copyin vmm_guest_options\n",
+				    __func__);
 				goto out;
 			}
 
@@ -74,15 +76,19 @@ sys_vmm_guest_ctl(struct vmm_guest_ctl_args *uap)
 				stack_limit -= PAGE_SIZE;
 				options.new_stack -= PAGE_SIZE;
 
-				error = copyin((const void *)stack_limit, (void *)stack_page, PAGE_SIZE);
+				error = copyin((const void *)stack_limit,
+				    (void *)stack_page, PAGE_SIZE);
 				if (error) {
-					kprintf("sys_vmm_guest: error copyin stack\n");
+					kprintf("%s: error copyin stack\n",
+					    __func__);
 					goto out;
 				}
 
-				error = copyout((const void *)stack_page, (void *)options.new_stack, PAGE_SIZE);
+				error = copyout((const void *)stack_page,
+				    (void *)options.new_stack, PAGE_SIZE);
 				if (error) {
-					kprintf("sys_vmm_guest: error copyout stack\n");
+					kprintf("%s: error copyout stack\n",
+					    __func__);
 					goto out;
 				}
 			}
@@ -92,13 +98,12 @@ sys_vmm_guest_ctl(struct vmm_guest_ctl_args *uap)
 			error = vmm_vminit(&options);
 			if (error) {
 				if (error == ENODEV) {
-					kprintf("sys_vmm_guest: vmm_vminit failed -"
-					    "no VMM available \n");
+					kprintf("%s: vmm_vminit failed - "
+					    "no VMM available \n", __func__);
 					goto out;
-				} else {
-					kprintf("sys_vmm_guest: vmm_vminit failed\n");
-					goto out_exit;
 				}
+				kprintf("%s: vmm_vminit failed\n", __func__);
+				goto out_exit;
 			}
 
 			generic_lwp_return(curthread->td_lwp, tf);
@@ -107,7 +112,7 @@ sys_vmm_guest_ctl(struct vmm_guest_ctl_args *uap)
 
 			break;
 		default:
-			kprintf("sys_vmm_guest: INVALID op\n");
+			kprintf("%s: INVALID op\n", __func__);
 			error = EINVAL;
 			goto out;
 	}
@@ -117,8 +122,7 @@ out:
 	return (error);
 }
 
-static
-void
+static void
 vmm_exit_vmm(void *dummy __unused)
 {
 }
