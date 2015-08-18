@@ -798,7 +798,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * FUTURE: Leave the root directory cached referenced but unlocked
 	 * in hmp->rootvp (need to flush it on unmount).
 	 */
-	error = hammer_vfs_vget(mp, NULL, 1, &rootvp);
+	error = hammer_vfs_vget(mp, NULL, HAMMER_OBJID_ROOT, &rootvp);
 	if (error)
 		goto done;
 	vput(rootvp);
@@ -1056,7 +1056,7 @@ hammer_vfs_root(struct mount *mp, struct vnode **vpp)
 {
 	int error;
 
-	error = hammer_vfs_vget(mp, NULL, 1, vpp);
+	error = hammer_vfs_vget(mp, NULL, HAMMER_OBJID_ROOT, vpp);
 	return (error);
 }
 
