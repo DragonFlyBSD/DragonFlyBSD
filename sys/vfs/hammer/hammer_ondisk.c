@@ -185,7 +185,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	/*
 	 * Initialize the volume header with data if the data is specified.
 	 */
-	if (data) {
+	if (ronly == 0 && data) {
 		img = (struct hammer_volume_ondisk *)data;
 		if (ondisk->vol_signature == HAMMER_FSBUF_VOLUME) {
 			kprintf("Formatting of valid HAMMER volume "
@@ -308,7 +308,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data)
 	/*
 	 * Clear the volume header with data if the data is specified.
 	 */
-	if (data && volume->devvp) {
+	if (ronly == 0 && data && volume->devvp) {
 		img = (struct hammer_volume_ondisk *)data;
 		error = bread(volume->devvp, 0LL, HAMMER_BUFSIZE, &bp);
 		if (error || bp->b_bcount < sizeof(*img)) {
