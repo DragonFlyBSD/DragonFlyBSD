@@ -60,6 +60,15 @@ hw.sensors.cpu_node0.power0: 0.84 W (node0 Package Power)
 hw.sensors.cpu_node0.power1: 0.73 W (node0 DRAM Power)
 hw.sensors.cpu_node0.power2: 0.02 W (node0 Cores Power)
 hw.sensors.cpu_node0.power3: 0.00 W (node0 Graphics Power)
+.Ed
+.Pp
+Both the
+.Dq Cores Power
+and the
+.Dq Graphics Power
+values are included in the
+.Dq Package Power
+value, which estimates the total power usage of the CPU package.
 .Sh SEE ALSO
 .Xr systat 1 ,
 .Xr sysctl 3 ,
