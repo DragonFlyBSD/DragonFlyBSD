@@ -451,7 +451,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER, M_WAITOK | M_ZERO);
 		mp->mnt_data = (qaddr_t)hmp;
 		hmp->mp = mp;
-		/*TAILQ_INIT(&hmp->recycle_list);*/
 
 		/*
 		 * Make sure kmalloc type limits are set appropriately.
@@ -683,7 +682,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * on return.
 	 */
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
-	/*MNTK_RD_MPSAFE | MNTK_GA_MPSAFE | MNTK_IN_MPSAFE;*/
 
 	/*
 	 * note: f_iosize is used by vnode_pager_haspage() when constructing
@@ -792,17 +790,12 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	hammer_flusher_create(hmp);
 
 	/*
-	 * Locate the root directory using the root cluster's B-Tree as a
-	 * starting point.  The root directory uses an obj_id of 1.
-	 *
-	 * FUTURE: Leave the root directory cached referenced but unlocked
-	 * in hmp->rootvp (need to flush it on unmount).
+	 * Locate the root directory with an obj_id of 1.
 	 */
 	error = hammer_vfs_vget(mp, NULL, HAMMER_OBJID_ROOT, &rootvp);
 	if (error)
 		goto done;
 	vput(rootvp);
-	/*vn_unlock(hmp->rootvp);*/
 	if (hmp->ronly == 0)
 		error = hammer_recover_stage2(hmp, rootvol);
 

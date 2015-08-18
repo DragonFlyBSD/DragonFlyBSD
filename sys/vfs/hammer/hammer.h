@@ -866,7 +866,6 @@ struct hammer_flusher {
  */
 struct hammer_mount {
 	struct mount *mp;
-	/*struct vnode *rootvp;*/
 	struct hammer_ino_rb_tree rb_inos_root;
 	struct hammer_redo_rb_tree rb_redo_root;
 	struct hammer_vol_rb_tree rb_vols_root;

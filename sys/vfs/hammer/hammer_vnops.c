@@ -45,7 +45,6 @@
 /*
  * USERFS VNOPS
  */
-/*static int hammer_vop_vnoperate(struct vop_generic_args *);*/
 static int hammer_vop_fsync(struct vop_fsync_args *);
 static int hammer_vop_read(struct vop_read_args *);
 static int hammer_vop_write(struct vop_write_args *);
@@ -165,15 +164,6 @@ static int hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 			   int flags, int isdir);
 static int hammer_vop_strategy_read(struct vop_strategy_args *ap);
 static int hammer_vop_strategy_write(struct vop_strategy_args *ap);
-
-#if 0
-static
-int
-hammer_vop_vnoperate(struct vop_generic_args *)
-{
-	return (VOCALL(&hammer_vnode_vops, ap));
-}
-#endif
 
 /*
  * hammer_vop_fsync { vp, waitfor }
