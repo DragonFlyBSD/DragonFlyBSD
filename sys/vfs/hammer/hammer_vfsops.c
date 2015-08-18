@@ -430,7 +430,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	if (info.hflags & HMNT_MASTERID) {
 		if (hmp && hmp->master_id != info.master_id) {
-			kprintf("hammer: cannot change master id "
+			kprintf("HAMMER: cannot change master id "
 				"with mount update\n");
 			return(EINVAL);
 		}
@@ -528,7 +528,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		lwkt_gettoken(&hmp->fs_token);
 		error = 0;
 		if (hmp->ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
-			kprintf("HAMMER read-only -> read-write\n");
+			kprintf("HAMMER: read-only -> read-write\n");
 			hmp->ronly = 0;
 			RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
 				hammer_adjust_volume_mode, NULL);
@@ -545,7 +545,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 				hammer_reload_inode, NULL);
 			/* kernel clears MNT_RDONLY */
 		} else if (hmp->ronly == 0 && (mp->mnt_flag & MNT_RDONLY)) {
-			kprintf("HAMMER read-write -> read-only\n");
+			kprintf("HAMMER: read-write -> read-only\n");
 			hmp->ronly = 1;	/* messy */
 			RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
 				hammer_reload_inode, NULL);

@@ -2495,7 +2495,7 @@ hammer_wait_inode(hammer_inode_t ip)
 			KKASSERT(ip->flush_group);
 			if (ip->flush_group->closed == 0) {
 				if (hammer_debug_inode) {
-					kprintf("hammer: debug: forcing "
+					kprintf("HAMMER: debug: forcing "
 						"async flush ip %016jx\n",
 						(intmax_t)ip->obj_id);
 				}

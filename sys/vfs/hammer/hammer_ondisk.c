@@ -867,7 +867,7 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 		if (buffer) {
 			error = hammer_ref_buffer(buffer);
 			if (hammer_debug_general & 0x20000) {
-				kprintf("hammer: delbufr %016jx "
+				kprintf("HAMMER: delbufr %016jx "
 					"rerr=%d 1ref=%d\n",
 					(intmax_t)buffer->zoneX_offset,
 					error,

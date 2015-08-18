@@ -837,7 +837,7 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 					   HAMMER_BIGBLOCK_SIZE,
 					   1);
 		if (hammer_debug_general & 0x20000) {
-			kprintf("hammer: delbgblk %016jx error %d\n",
+			kprintf("HAMMER: delbgblk %016jx error %d\n",
 				(intmax_t)base_offset, error);
 		}
 		if (error)
@@ -845,7 +845,7 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 	}
 	if (--resv->refs == 0) {
 		if (hammer_debug_general & 0x20000) {
-			kprintf("hammer: delresvr %016jx zone %02x\n",
+			kprintf("HAMMER: delresvr %016jx zone %02x\n",
 				(intmax_t)resv->zone_offset, resv->zone);
 		}
 		KKASSERT((resv->flags & HAMMER_RESF_ONDELAY) == 0);

@@ -2355,7 +2355,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 			hammer_crc_set_leaf(ndata, leaf);
 			break;
 		default:
-			panic("hammer: hammer_create_at_cursor: bad mode %d",
+			panic("HAMMER: hammer_create_at_cursor: bad mode %d",
 				mode);
 			break; /* NOT REACHED */
 		}
