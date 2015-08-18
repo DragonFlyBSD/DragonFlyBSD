@@ -201,7 +201,7 @@ ufs_init(struct vfsconf *vfsp)
  * Call the VFS_CHECKEXP beforehand to verify access.
  */
 int
-ufs_fhtovp(struct mount *mp, struct vnode *rootpv,
+ufs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	   struct ufid *ufhp, struct vnode **vpp)
 {
 	struct inode *ip;
