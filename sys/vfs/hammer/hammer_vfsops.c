@@ -883,31 +883,12 @@ hammer_free_hmp(struct mount *mp)
 {
 	hammer_mount_t hmp = (void *)mp->mnt_data;
 	hammer_flush_group_t flg;
-	int count;
-	int dummy;
 
 	/*
 	 * Flush anything dirty.  This won't even run if the
 	 * filesystem errored-out.
 	 */
-	count = 0;
-	while (hammer_flusher_haswork(hmp)) {
-		hammer_flusher_sync(hmp);
-		++count;
-		if (count >= 5) {
-			if (count == 5)
-				kprintf("HAMMER: umount flushing.");
-			else
-				kprintf(".");
-			tsleep(&dummy, 0, "hmrufl", hz);
-		}
-		if (count == 30) {
-			kprintf("giving up\n");
-			break;
-		}
-	}
-	if (count >= 5 && count < 30)
-		kprintf("\n");
+	hammer_flush_dirty(hmp, 30);
 
 	/*
 	 * If the mount had a critical error we have to destroy any

@@ -1527,6 +1527,7 @@ int  hammer_flusher_undo_exhausted(hammer_transaction_t trans, int quarter);
 void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 void hammer_flusher_finalize(hammer_transaction_t trans, int final);
 int  hammer_flusher_haswork(hammer_mount_t hmp);
+int  hammer_flush_dirty(hammer_mount_t hmp, int max_count);
 void hammer_flusher_flush_undos(hammer_mount_t hmp, int already_flushed);
 
 int hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t rootvol);

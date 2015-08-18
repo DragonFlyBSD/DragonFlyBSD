@@ -164,7 +164,6 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	struct bigblock_stat stat;
 	hammer_volume_t volume;
 	int vol_no;
-	int count = 0;
 	int error = 0;
 
 	if (mp->mnt_flag & MNT_RDONLY) {
@@ -221,23 +220,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * Sync filesystem
 	 */
-	while (hammer_flusher_haswork(hmp)) {
-		hammer_flusher_sync(hmp);
-		++count;
-		if (count >= 5) {
-			if (count == 5)
-				kprintf("HAMMER: flushing.");
-			else
-				kprintf(".");
-			tsleep(&count, 0, "hmrufl", hz);
-		}
-		if (count == 30) {
-			kprintf("giving up");
-			break;
-		}
-	}
-	if (count >= 5)
-		kprintf("\n");
+	hammer_flush_dirty(hmp, 30);
 
 	hammer_sync_lock_sh(trans);
 	hammer_lock_ex(&hmp->blkmap_lock);

@@ -968,3 +968,31 @@ hammer_flusher_haswork(hammer_mount_t hmp)
 	return(0);
 }
 
+int
+hammer_flush_dirty(hammer_mount_t hmp, int max_count)
+{
+	int count = 0;
+	int dummy;
+
+	while (hammer_flusher_haswork(hmp)) {
+		hammer_flusher_sync(hmp);
+		++count;
+		if (count >= 5) {
+			if (count == 5)
+				kprintf("HAMMER: flushing.");
+			else
+				kprintf(".");
+			tsleep(&dummy, 0, "hmrufl", hz);
+		}
+		if (max_count != -1 && count == max_count) {
+			kprintf("giving up");
+			break;
+		}
+	}
+	if (count >= 5)
+		kprintf("\n");
+
+	if (count >= max_count)
+		return(-1);
+	return(0);
+}
