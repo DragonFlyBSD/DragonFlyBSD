@@ -437,6 +437,8 @@ in_inithead(void **head, int off)
 	struct in_rtqtimo_ctx *ctx;
 	int cpuid = mycpuid;
 
+	KKASSERT(head == (void **)&rt_tables[cpuid][AF_INET]);
+
 	if (!rn_inithead(head, rn_cpumaskhead(cpuid), off))
 		return 0;
 
