@@ -286,6 +286,7 @@ sobind(struct socket *so, struct sockaddr *nam, struct thread *td)
 static void
 sodealloc(struct socket *so)
 {
+	KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) == 0);
 	if (so->so_rcv.ssb_hiwat)
 		(void)chgsbsize(so->so_cred->cr_uidinfo,
 		    &so->so_rcv.ssb_hiwat, 0, RLIM_INFINITY);
@@ -363,6 +364,8 @@ sofree(struct socket *so)
 	 */
 	if (head != NULL) {
 		if (so->so_state & SS_INCOMP) {
+			KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) ==
+			    SS_INCOMP);
 			TAILQ_REMOVE(&head->so_incomp, so, so_list);
 			head->so_incqlen--;
 		} else if (so->so_state & SS_COMP) {
@@ -372,6 +375,8 @@ sofree(struct socket *so)
 			 * accept(2) may hang after select(2) indicated
 			 * that the listening socket was ready.
 			 */
+			KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) ==
+			    SS_COMP);
 			lwkt_relpooltoken(head);
 			return;
 		} else {
@@ -418,12 +423,16 @@ sodiscard(struct socket *so)
 		struct socket *sp;
 
 		while ((sp = TAILQ_FIRST(&so->so_incomp)) != NULL) {
+			KKASSERT((sp->so_state & (SS_INCOMP | SS_COMP)) ==
+			    SS_INCOMP);
 			TAILQ_REMOVE(&so->so_incomp, sp, so_list);
 			so->so_incqlen--;
 			soclrstate(sp, SS_INCOMP);
 			soabort_async(sp, TRUE);
 		}
 		while ((sp = TAILQ_FIRST(&so->so_comp)) != NULL) {
+			KKASSERT((sp->so_state & (SS_INCOMP | SS_COMP)) ==
+			    SS_COMP);
 			TAILQ_REMOVE(&so->so_comp, sp, so_list);
 			so->so_qlen--;
 			soclrstate(sp, SS_COMP);
@@ -461,6 +470,7 @@ soinherit(struct socket *head, struct socket *head_inh)
 		struct socket *sp;
 
 		sp = TAILQ_FIRST(&head->so_comp);
+		KKASSERT((sp->so_state & (SS_INCOMP | SS_COMP)) == SS_COMP);
 
 		/*
 		 * Remove this socket from the current listen socket

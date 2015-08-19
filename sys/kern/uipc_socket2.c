@@ -254,6 +254,7 @@ soisconnected(struct socket *so)
 		/*
 		 * Listen socket are not per-cpu.
 		 */
+		KKASSERT((so->so_state & (SS_COMP | SS_INCOMP)) == SS_INCOMP);
 		TAILQ_REMOVE(&head->so_incomp, so, so_list);
 		head->so_incqlen--;
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
@@ -428,17 +429,21 @@ sonewconn_faddr(struct socket *head, int connstatus,
 
 	lwkt_getpooltoken(head);
 	if (connstatus) {
+		KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) == 0);
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
 		sosetstate(so, SS_COMP);
 		head->so_qlen++;
 	} else {
 		if (head->so_incqlen > head->so_qlimit) {
 			sp = TAILQ_FIRST(&head->so_incomp);
+			KKASSERT((sp->so_state & (SS_INCOMP | SS_COMP)) ==
+			    SS_INCOMP);
 			TAILQ_REMOVE(&head->so_incomp, sp, so_list);
 			head->so_incqlen--;
 			soclrstate(sp, SS_INCOMP);
 			soabort_async(sp, TRUE);
 		}
+		KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) == 0);
 		TAILQ_INSERT_TAIL(&head->so_incomp, so, so_list);
 		sosetstate(so, SS_INCOMP);
 		head->so_incqlen++;

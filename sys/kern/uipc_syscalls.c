@@ -221,6 +221,7 @@ soaccept_predicate(struct netmsg_so_notify *msg)
 	if (!TAILQ_EMPTY(&head->so_comp)) {
 		/* Abuse nm_so field as copy in/copy out parameter. XXX JH */
 		so = TAILQ_FIRST(&head->so_comp);
+		KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) == SS_COMP);
 		TAILQ_REMOVE(&head->so_comp, so, so_list);
 		head->so_qlen--;
 		soclrstate(so, SS_COMP);
