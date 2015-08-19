@@ -33,6 +33,8 @@
  */
 
 #include <sys/stat.h>
+#include <sys/diskslice.h>
+#include <sys/diskmbr.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -180,6 +182,54 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	}
 	TAILQ_INSERT_TAIL(&VolList, vol, entry);
 	return(vol);
+}
+
+/*
+ * Check basic volume characteristics.
+ */
+void
+check_volume(struct volume_info *vol)
+{
+	struct partinfo pinfo;
+	struct stat st;
+
+	/*
+	 * Get basic information about the volume
+	 */
+	if (ioctl(vol->fd, DIOCGPART, &pinfo) < 0) {
+		/*
+		 * Allow the formatting of regular files as HAMMER volumes
+		 */
+		if (fstat(vol->fd, &st) < 0)
+			err(1, "Unable to stat %s", vol->name);
+		vol->size = st.st_size;
+		vol->type = "REGFILE";
+	} else {
+		/*
+		 * When formatting a block device as a HAMMER volume the
+		 * sector size must be compatible.  HAMMER uses 16384 byte
+		 * filesystem buffers.
+		 */
+		if (pinfo.reserved_blocks) {
+			errx(1, "HAMMER cannot be placed in a partition "
+				"which overlaps the disklabel or MBR");
+		}
+		if (pinfo.media_blksize > HAMMER_BUFSIZE ||
+		    HAMMER_BUFSIZE % pinfo.media_blksize) {
+			errx(1, "A media sector size of %d is not supported",
+			     pinfo.media_blksize);
+		}
+
+		vol->size = pinfo.media_size;
+		vol->device_offset = pinfo.media_offset;
+		vol->type = "DEVICE";
+	}
+
+	/*
+	 * Reserve space for (future) header junk, setup our poor-man's
+	 * big-block allocator.
+	 */
+	vol->vol_alloc = HAMMER_BUFSIZE * 16;
 }
 
 struct volume_info *

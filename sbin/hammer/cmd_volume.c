@@ -45,8 +45,6 @@
 
 #include "hammer.h"
 
-static uint64_t check_volume(const char *vol_name);
-
 /*
  * volume-add <device> <filesystem>
  */
@@ -54,6 +52,7 @@ void
 hammer_cmd_volume_add(char **av, int ac)
 {
 	struct hammer_ioc_volume ioc;
+	struct volume_info *vol;
 	int fd;
 
 	if (ac != 2) {
@@ -72,11 +71,23 @@ hammer_cmd_volume_add(char **av, int ac)
 	}
 
 	/*
+	 * Initialize and check the device
+	 */
+	vol = setup_volume(-1, device, 1, O_RDONLY);
+	assert(vol->vol_no == -1);
+	check_volume(vol);
+	if (strcmp(vol->type, "DEVICE")) {
+		fprintf(stderr, "Not a block device: %s\n", device);
+		exit(1);
+	}
+	close(vol->fd);
+
+	/*
 	 * volume-add ioctl
 	 */
 	bzero(&ioc, sizeof(ioc));
 	strncpy(ioc.device_name, device, MAXPATHLEN);
-	ioc.vol_size = check_volume(device);
+	ioc.vol_size = vol->size;
 	ioc.boot_area_size = init_boot_area_size(0, ioc.vol_size);
 	ioc.mem_area_size = init_mem_area_size(0, ioc.vol_size);
 
@@ -196,48 +207,4 @@ void
 hammer_cmd_volume_blkdevs(char **av, int ac, const char *cmd)
 {
 	hammer_print_volumes(av, ac, cmd, ':');
-}
-
-/*
- * Check basic volume characteristics.  HAMMER filesystems use a minimum
- * of a 16KB filesystem buffer size.
- *
- * Returns the size of the device.
- *
- * From newfs_hammer.c
- */
-static
-uint64_t
-check_volume(const char *vol_name)
-{
-	struct partinfo pinfo;
-	int fd;
-
-	/*
-	 * Get basic information about the volume
-	 */
-	fd = open(vol_name, O_RDWR);
-	if (fd < 0)
-		errx(1, "Unable to open %s R+W", vol_name);
-
-	if (ioctl(fd, DIOCGPART, &pinfo) < 0) {
-		errx(1, "No block device: %s", vol_name);
-	}
-	/*
-	 * When formatting a block device as a HAMMER volume the
-	 * sector size must be compatible. HAMMER uses 16384 byte
-	 * filesystem buffers.
-	 */
-	if (pinfo.reserved_blocks) {
-		errx(1, "HAMMER cannot be placed in a partition "
-			"which overlaps the disklabel or MBR");
-	}
-	if (pinfo.media_blksize > HAMMER_BUFSIZE ||
-	    HAMMER_BUFSIZE % pinfo.media_blksize) {
-		errx(1, "A media sector size of %d is not supported",
-		     pinfo.media_blksize);
-	}
-
-	close(fd);
-	return pinfo.media_size;
 }

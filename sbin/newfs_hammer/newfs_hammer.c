@@ -37,7 +37,6 @@
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static const char *sizetostr(off_t size);
 static void trim_volume(struct volume_info *vol);
-static void check_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label,
 			off_t total_size);
 static hammer_off_t format_root(const char *label);
@@ -195,7 +194,17 @@ main(int ac, char **av)
 		 * its remaining fields.
 		 */
 		check_volume(vol);
+		printf("Volume %d %s %-15s size %s\n",
+			vol->vol_no, vol->type, vol->name,
+			sizetostr(vol->size));
+
 		if (Eflag) {
+			if (strcmp(vol->type, "REGFILE") == 0) {
+				fprintf(stderr, "Cannot TRIM regular file %s\n",
+					vol->name);
+				exit(1);
+			}
+
 			char sysctl_name[64];
 			int trim_enabled = 0;
 			size_t olen = sizeof(trim_enabled);
@@ -426,63 +435,6 @@ trim_volume(struct volume_info *vol)
 			usage ();
 		}
 	}
-}
-
-/*
- * Check basic volume characteristics.  HAMMER filesystems use a minimum
- * of a 16KB filesystem buffer size.
- */
-static
-void
-check_volume(struct volume_info *vol)
-{
-	struct partinfo pinfo;
-	struct stat st;
-
-	/*
-	 * Get basic information about the volume
-	 */
-	if (ioctl(vol->fd, DIOCGPART, &pinfo) < 0) {
-		/*
-		 * Allow the formatting of regular files as HAMMER volumes
-		 */
-		if (fstat(vol->fd, &st) < 0)
-			err(1, "Unable to stat %s", vol->name);
-		vol->size = st.st_size;
-		vol->type = "REGFILE";
-
-		if (Eflag)
-			errx(1,"Cannot TRIM regular file %s\n", vol->name);
-
-	} else {
-		/*
-		 * When formatting a block device as a HAMMER volume the
-		 * sector size must be compatible.  HAMMER uses 16384 byte
-		 * filesystem buffers.
-		 */
-		if (pinfo.reserved_blocks) {
-			errx(1, "HAMMER cannot be placed in a partition "
-				"which overlaps the disklabel or MBR");
-		}
-		if (pinfo.media_blksize > HAMMER_BUFSIZE ||
-		    HAMMER_BUFSIZE % pinfo.media_blksize) {
-			errx(1, "A media sector size of %d is not supported",
-			     pinfo.media_blksize);
-		}
-
-		vol->size = pinfo.media_size;
-		vol->device_offset = pinfo.media_offset;
-		vol->type = "DEVICE";
-	}
-	printf("Volume %d %s %-15s size %s\n",
-	       vol->vol_no, vol->type, vol->name,
-	       sizetostr(vol->size));
-
-	/*
-	 * Reserve space for (future) header junk, setup our poor-man's
-	 * big-block allocator.
-	 */
-	vol->vol_alloc = HAMMER_BUFSIZE * 16;
 }
 
 /*

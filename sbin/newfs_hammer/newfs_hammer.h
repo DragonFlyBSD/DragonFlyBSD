@@ -34,9 +34,6 @@
  * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.h,v 1.4 2008/01/03 06:48:48 dillon Exp $
  */
 
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
-#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/sysctl.h>
 #include <sys/ioctl_compat.h>
