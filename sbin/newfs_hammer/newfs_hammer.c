@@ -442,9 +442,6 @@ check_volume(struct volume_info *vol)
 	/*
 	 * Get basic information about the volume
 	 */
-	vol->fd = open(vol->name, O_RDWR);
-	if (vol->fd < 0)
-		err(1, "Unable to open %s R+W", vol->name);
 	if (ioctl(vol->fd, DIOCGPART, &pinfo) < 0) {
 		/*
 		 * Allow the formatting of regular files as HAMMER volumes
