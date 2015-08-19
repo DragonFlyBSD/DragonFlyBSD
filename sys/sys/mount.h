@@ -676,8 +676,10 @@ struct netcred {
  * Network export information
  */
 struct netexport {
-	struct	netcred ne_defexported;		      /* Default export */
-	struct	radix_node_head *ne_rtable[AF_MAX+1]; /* Individual exports */
+	struct	netcred ne_defexported;		/* Default export */
+	struct	radix_node_head *ne_inethead;	/* IPv4 radix */
+	struct	radix_node_head *ne_inet6head;	/* IPv6 radix */
+	struct	radix_node_head *ne_maskhead;	/* Shared mask radix */
 };
 
 #endif

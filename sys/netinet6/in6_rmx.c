@@ -520,9 +520,6 @@ in6_inithead(void **head, int off)
 	if (!rn_inithead(head, rn_cpumaskhead(cpuid), off))
 		return 0;
 
-	if (head != (void **)&rt_tables[cpuid][AF_INET6]) /* BOGUS! */
-		return 1;	/* only do this for the real routing table */
-
 	rnh = *head;
 	rnh->rnh_addaddr = in6_addroute;
 	rnh->rnh_matchaddr = in6_matchroute;

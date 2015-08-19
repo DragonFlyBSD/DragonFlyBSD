@@ -39,13 +39,14 @@
  * External virtual filesystem routines
  */
 #include "opt_ddb.h"
+#include "opt_inet.h"
+#include "opt_inet6.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/dirent.h>
-#include <sys/domain.h>
 #include <sys/eventhandler.h>
 #include <sys/fcntl.h>
 #include <sys/file.h>
@@ -83,6 +84,8 @@
 #include <sys/sysref2.h>
 #include <sys/mplock2.h>
 
+#include <netinet/in.h>
+
 static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
 int numvnodes;
@@ -117,10 +120,14 @@ int desiredvnodes;
 SYSCTL_INT(_kern, KERN_MAXVNODES, maxvnodes, CTLFLAG_RW, 
 		&desiredvnodes, 0, "Maximum number of vnodes");
 
+static struct radix_node_head *vfs_create_addrlist_af (
+		    struct radix_node_head **prnh, int off,
+		    struct radix_node_head *maskhead);
 static void	vfs_free_addrlist (struct netexport *nep);
 static int	vfs_free_netcred (struct radix_node *rn, void *w);
+static void	vfs_free_addrlist_af (struct radix_node_head **prnh);
 static int	vfs_hang_addrlist (struct mount *mp, struct netexport *nep,
-				       const struct export_args *argp);
+	            const struct export_args *argp);
 
 int	prtactive = 0;		/* 1 => print out reclaim of active vnodes */
 
@@ -1913,7 +1920,7 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 	int i;
 	struct radix_node *rn;
 	struct sockaddr *saddr, *smask = NULL;
-	struct domain *dom;
+	int off;
 	int error;
 
 	if (argp->ex_addrlen == 0) {
@@ -1947,22 +1954,38 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 		if (smask->sa_len > argp->ex_masklen)
 			smask->sa_len = argp->ex_masklen;
 	}
-	i = saddr->sa_family;
-	if ((rnh = nep->ne_rtable[i]) == NULL) {
-		/*
-		 * Seems silly to initialize every AF when most are not used,
-		 * do so on demand here
-		 */
-		SLIST_FOREACH(dom, &domains, dom_next)
-			if (dom->dom_family == i && dom->dom_rtattach) {
-				dom->dom_rtattach((void **) &nep->ne_rtable[i],
-				    dom->dom_rtoffset);
-				break;
-			}
-		if ((rnh = nep->ne_rtable[i]) == NULL) {
+	if (nep->ne_maskhead == NULL) {
+		if (!rn_inithead((void **)&nep->ne_maskhead, NULL, 0)) {
 			error = ENOBUFS;
 			goto out;
 		}
+	}
+	switch (saddr->sa_family) {
+#ifdef INET
+	case AF_INET:
+		if ((rnh = nep->ne_inethead) == NULL) {
+			off = offsetof(struct sockaddr_in, sin_addr) << 3;
+			rnh = vfs_create_addrlist_af(&nep->ne_inethead, off,
+			    nep->ne_maskhead);
+		}
+		break;
+#endif
+#ifdef INET6
+	case AF_INET6:
+		if ((rnh = nep->ne_inet6head) == NULL) {
+			off = offsetof(struct sockaddr_in6, sin6_addr) << 3;
+			rnh = vfs_create_addrlist_af(&nep->ne_inet6head, off,
+			    nep->ne_maskhead);
+		}
+		break;
+#endif
+	default:
+		error = EAFNOSUPPORT;
+		goto out;
+	}
+	if (rnh == NULL) {
+		error = ENOBUFS;
+		goto out;
 	}
 	rn = (*rnh->rnh_addaddr) ((char *) saddr, (char *) smask, rnh,
 	    np->netc_rnodes);
@@ -1990,22 +2013,36 @@ vfs_free_netcred(struct radix_node *rn, void *w)
 	return (0);
 }
 
+static struct radix_node_head *
+vfs_create_addrlist_af(struct radix_node_head **prnh, int off,
+    struct radix_node_head *maskhead)
+{
+	KKASSERT(maskhead != NULL);
+	if (!rn_inithead((void **)prnh, maskhead, off))
+		return (NULL);
+	return (*prnh);
+}
+
+static void
+vfs_free_addrlist_af(struct radix_node_head **prnh)
+{
+	struct radix_node_head *rnh = *prnh;
+
+	(*rnh->rnh_walktree) (rnh, vfs_free_netcred, rnh);
+	kfree(rnh, M_RTABLE);
+	prnh = NULL;
+}
+
 /*
  * Free the net address hash lists that are hanging off the mount points.
  */
 static void
 vfs_free_addrlist(struct netexport *nep)
 {
-	int i;
-	struct radix_node_head *rnh;
-
-	for (i = 0; i <= AF_MAX; i++)
-		if ((rnh = nep->ne_rtable[i])) {
-			(*rnh->rnh_walktree) (rnh, vfs_free_netcred,
-			    (caddr_t) rnh);
-			kfree((caddr_t) rnh, M_RTABLE);
-			nep->ne_rtable[i] = 0;
-		}
+	if (nep->ne_inethead != NULL)
+		vfs_free_addrlist_af(&nep->ne_inethead);
+	if (nep->ne_inet6head != NULL)
+		vfs_free_addrlist_af(&nep->ne_inet6head);
 }
 
 int
@@ -2133,7 +2170,20 @@ vfs_export_lookup(struct mount *mp, struct netexport *nep,
 		 */
 		if (nam != NULL) {
 			saddr = nam;
-			rnh = nep->ne_rtable[saddr->sa_family];
+			switch (saddr->sa_family) {
+#ifdef INET
+			case AF_INET:
+				rnh = nep->ne_inethead;
+				break;
+#endif
+#ifdef INET6
+			case AF_INET6:
+				rnh = nep->ne_inet6head;
+				break;
+#endif
+			default:
+				rnh = NULL;
+			}
 			if (rnh != NULL) {
 				np = (struct netcred *)
 					(*rnh->rnh_matchaddr)((char *)saddr,
