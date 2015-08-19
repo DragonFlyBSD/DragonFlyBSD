@@ -72,6 +72,17 @@ write_eflags(u_int ef)
 	__asm __volatile("pushl %0; popfl" : : "r" (ef));
 }
 
+/*
+ * Max number of sectors to bounce-buffer if the request crosses a 64k boundary
+ *
+ * Bounce buffers can no longer be malloc()'d because the malloc pool
+ * now uses high memory.  Declare statically.
+ */
+#define BOUNCEBUF_SIZE  8192
+#define BOUNCEBUF_SECTS (BOUNCEBUF_SIZE / BIOSDISK_SECSIZE)
+
+extern char	bounce_base[BOUNCEBUF_SIZE];
+
 int	i386_getdev(void **vdev, const char *devspec, const char **path);
 char	*i386_fmtdev(void *vdev);
 int	i386_setcurrdev(struct env_var *ev, int flags, const void *value);

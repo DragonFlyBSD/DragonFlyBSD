@@ -124,12 +124,6 @@ static int	bd_open(struct open_file *f, ...);
 static int	bd_close(struct open_file *f);
 static void	bd_print(int verbose);
 
-/*
- * Max number of sectors to bounce-buffer if the request crosses a 64k boundary
- */
-#define BOUNCEBUF_SIZE	8192
-#define BOUNCEBUF_SECTS	(BOUNCEBUF_SIZE / BIOSDISK_SECSIZE)
-
 struct devsw biosdisk = {
     "disk", 
     DEVT_DISK, 
@@ -148,11 +142,8 @@ static int	bd_bestslice(struct open_disk *od);
 static void	bd_chainextended(struct open_disk *od, u_int32_t base,
 					u_int32_t offset);
 
-/*
- * Bounce buffers can no longer be malloc()'d because the malloc pool
- * now uses high memory.  Declare statically.
- */
-static char	bounce_base[BOUNCEBUF_SIZE];
+char	bounce_base[BOUNCEBUF_SIZE];	/* also used by CD code */
+
 
 /*
  * Translate between BIOS device numbers and our private unit numbers.

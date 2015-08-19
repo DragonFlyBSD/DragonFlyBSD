@@ -217,6 +217,7 @@ bc_strategy(void *devdata, int rw, daddr_t dblk, size_t size, char *buf,
 	int unit;
 	int blks;
 #ifdef BD_SUPPORT_FRAGS
+#error "xxx broken code xxx"
 	char fragbuf[BIOSCD_SECSIZE];
 	size_t fragsize;
 
@@ -262,6 +263,7 @@ bc_read(int unit, daddr_t dblk, int blks, caddr_t dest)
 	u_int result, retry;
 	static unsigned short packet[8];
 	int biosdev;
+	int n;
 #ifdef DISK_DEBUG
 	int error;
 #endif
@@ -288,11 +290,15 @@ bc_read(int unit, daddr_t dblk, int blks, caddr_t dest)
 			v86.edx = biosdev;
 			v86int();
 		}
+
+		n = BOUNCEBUF_SIZE / BIOSCD_SECSIZE;
+		if (n > blks)
+			n = blks;
 	    
 		packet[0] = 0x10;
-		packet[1] = blks;
-		packet[2] = VTOPOFF(dest);
-		packet[3] = VTOPSEG(dest);
+		packet[1] = n;
+		packet[2] = VTOPOFF(bounce_base);
+		packet[3] = VTOPSEG(bounce_base);
 		packet[4] = dblk & 0xffff;
 		packet[5] = dblk >> 16;
 		packet[6] = 0;
@@ -305,8 +311,14 @@ bc_read(int unit, daddr_t dblk, int blks, caddr_t dest)
 		v86.esi = VTOPOFF(packet);
 		v86int();
 		result = (v86.efl & PSL_C);
-		if (result == 0)
-			break;
+		if (result == 0) {
+			bcopy(bounce_base, dest, n * BIOSCD_SECSIZE);
+			blks -= n;
+			dest += n * BIOSCD_SECSIZE;
+			if (blks == 0)
+				break;
+			retry = 0;
+		}
 	}
 	
 #ifdef DISK_DEBUG
