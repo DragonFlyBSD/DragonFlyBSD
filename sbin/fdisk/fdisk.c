@@ -84,7 +84,7 @@ struct mboot
 	off_t bootinst_size;
 	struct	dos_partition parts[4];
 };
-struct mboot mboot = {{0}, NULL, 0};
+struct mboot mboot;
 
 #define ACTIVE 0x80
 #define BOOT_MAGIC 0xAA55
@@ -136,7 +136,7 @@ static int v_flag  = 0;		/* Be verbose */
 struct part_type
 {
  unsigned char type;
- char *name;
+ const char *name;
 }part_types[] =
 {
 	 {0x00, "unused"}
@@ -231,21 +231,21 @@ static void print_part(int i);
 static void init_sector0(unsigned long start);
 static void init_boot(void);
 static void change_part(int i);
-static void print_params();
+static void print_params(void);
 static void change_active(int which);
-static void change_code();
-static void get_params_to_use();
+static void change_code(void);
+static void get_params_to_use(void);
 static void dos(struct dos_partition *partp);
-static int open_disk(int u_flag);
+static int open_disk(void);
 static void erase_partition(int i);
 static ssize_t read_disk(off_t sector, void *buf);
 static ssize_t write_disk(off_t sector, void *buf);
-static int get_params();
-static int read_s0();
-static int write_s0();
-static int ok(char *str);
-static int decimal(char *str, int *num, int deflt);
-static char *get_type(int type);
+static int get_params(void);
+static int read_s0(void);
+static int write_s0(void);
+static int ok(const char *str);
+static int decimal(const char *str, int *num, int deflt);
+static const char *get_type(int type);
 static int read_config(char *config_file);
 static void reset_boot(void);
 static int sanitize_partition(struct dos_partition *);
@@ -321,7 +321,7 @@ main(int argc, char *argv[])
 
 	if (argc > 0) {
 		disk = getdevpath(argv[0], 0);
-		if (open_disk(u_flag) < 0)
+		if (open_disk() < 0)
 			err(1, "cannot open disk %s", disk);
 	} else if (disk == NULL) {
 		int rv = 0;
@@ -329,13 +329,13 @@ main(int argc, char *argv[])
 		for(i = 0; disks[i]; i++)
 		{
 			disk = disks[i];
-			rv = open_disk(u_flag);
+			rv = open_disk();
 			if(rv != -2) break;
 		}
 		if(rv < 0)
 			err(1, "cannot open any disk");
 	} else {
-		if (open_disk(u_flag) < 0)
+		if (open_disk() < 0)
 			err(1, "cannot open disk %s", disk);
 	}
 
@@ -348,7 +348,7 @@ main(int argc, char *argv[])
 
 	if (s_flag)
 	{
-		int i;
+		int j;
 		struct dos_partition *partp;
 
 		if (read_s0())
@@ -356,11 +356,11 @@ main(int argc, char *argv[])
 		printf("%s: %d cyl %d hd %d sec\n", disk, dos_cyls, dos_heads,
 		    dos_sectors);
 		printf("Part  %11s %11s Type Flags\n", "Start", "Size");
-		for (i = 0; i < NDOSPART; i++) {
-			partp = ((struct dos_partition *) &mboot.parts) + i;
+		for (j = 0; j < NDOSPART; j++) {
+			partp = ((struct dos_partition *) &mboot.parts) + j;
 			if (partp->dp_start == 0 && partp->dp_size == 0)
 				continue;
-			printf("%4d: %11lu %11lu 0x%02x 0x%02x\n", i + 1,
+			printf("%4d: %11lu %11lu 0x%02x 0x%02x\n", j + 1,
 			    (u_long) partp->dp_start,
 			    (u_long) partp->dp_size, partp->dp_typ,
 			    partp->dp_flag);
@@ -510,7 +510,7 @@ static void
 print_part(int i)
 {
 	struct	  dos_partition *partp;
-	u_int64_t part_mb;
+	uint64_t part_mb;
 
 	partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 
@@ -747,7 +747,7 @@ static void
 dos(struct dos_partition *partp)
 {
 	int cy, sec;
-	u_int32_t end;
+	uint32_t end;
 
 	if (partp->dp_typ == 0 && partp->dp_start == 0 && partp->dp_size == 0) {
 		memcpy(partp, &mtpart, sizeof(*partp));
@@ -829,7 +829,7 @@ erase_partition(int i)
 	/* Getting device status */
 
 static int
-open_disk(int u_flag)
+open_disk(void)
 {
 	struct stat 	st;
 
@@ -991,7 +991,7 @@ write_s0(void)
 
 
 static int
-ok(char *str)
+ok(const char *str)
 {
 	printf("%s [n] ", str);
 	fflush(stdout);
@@ -1008,7 +1008,7 @@ ok(char *str)
 }
 
 static int
-decimal(char *str, int *num, int deflt)
+decimal(const char *str, int *num, int deflt)
 {
 int acc = 0, c;
 char *cp;
@@ -1117,7 +1117,7 @@ char *cp = lbuf;
 }
 #endif
 
-static char *
+static const char *
 get_type(int type)
 {
 	int	numentries = (sizeof(part_types)/sizeof(struct part_type));
@@ -1297,9 +1297,9 @@ process_geometry(CMD *command)
 static int
 process_partition(CMD *command)
 {
-    int				status = 0, partition;
-    u_int32_t			prev_head_boundary, prev_cyl_boundary;
-    u_int32_t			adj_size, max_end;
+    int				status = 0, part;
+    uint32_t			prev_head_boundary, prev_cyl_boundary;
+    uint32_t			adj_size, max_end;
     struct dos_partition	*partp;
 
     while (1)
@@ -1311,14 +1311,14 @@ process_partition(CMD *command)
 		    current_line_number);
 	    break;
 	}
-	partition = command->args[0].arg_val;
-	if (partition < 1 || partition > 4)
+	part = command->args[0].arg_val;
+	if (part < 1 || part > 4)
 	{
 	    warnx("ERROR line %d: invalid partition number %d",
-		    current_line_number, partition);
+		    current_line_number, part);
 	    break;
 	}
-	partp = ((struct dos_partition *) &mboot.parts) + partition - 1;
+	partp = ((struct dos_partition *) &mboot.parts) + part - 1;
 	bzero((char *)partp, sizeof (struct dos_partition));
 	partp->dp_typ = command->args[1].arg_val;
 	partp->dp_start = command->args[2].arg_val;
@@ -1344,7 +1344,7 @@ process_partition(CMD *command)
 	if (partp->dp_start % dos_sectors != 0)
 	{
 	    prev_head_boundary = partp->dp_start / dos_sectors * dos_sectors;
-	    if (max_end < dos_sectors ||
+	    if (max_end < (uint32_t)dos_sectors ||
 		prev_head_boundary > max_end - dos_sectors)
 	    {
 		/*
@@ -1353,13 +1353,13 @@ process_partition(CMD *command)
 		warnx(
 	"ERROR line %d: unable to adjust start of partition %d to fall on\n\
     a head boundary",
-			current_line_number, partition);
+			current_line_number, part);
 		break;
 	    }
 	    warnx(
 	"WARNING: adjusting start offset of partition %d\n\
     from %u to %u, to fall on a head boundary",
-		    partition, (u_int)partp->dp_start,
+		    part, (u_int)partp->dp_start,
 		    (u_int)(prev_head_boundary + dos_sectors));
 	    partp->dp_start = prev_head_boundary + dos_sectors;
 	}
@@ -1384,13 +1384,13 @@ process_partition(CMD *command)
 	    warnx(
 	"WARNING: adjusting size of partition %d from %u to %u\n\
     to end on a cylinder boundary",
-		    partition, (u_int)partp->dp_size, (u_int)adj_size);
+		    part, (u_int)partp->dp_size, (u_int)adj_size);
 	    partp->dp_size = adj_size;
 	}
 	if (partp->dp_size == 0)
 	{
 	    warnx("ERROR line %d: size of partition %d is zero",
-		    current_line_number, partition);
+		    current_line_number, part);
 	    break;
 	}
 
@@ -1405,7 +1405,7 @@ process_partition(CMD *command)
 static int
 process_active(CMD *command)
 {
-    int				status = 0, partition, i;
+    int				status = 0, part, i;
     struct dos_partition	*partp;
 
     while (1)
@@ -1418,11 +1418,11 @@ process_active(CMD *command)
 	    status = 0;
 	    break;
 	}
-	partition = command->args[0].arg_val;
-	if (partition < 1 || partition > 4)
+	part = command->args[0].arg_val;
+	if (part < 1 || part > 4)
 	{
 	    warnx("ERROR line %d: invalid partition number %d",
-		    current_line_number, partition);
+		    current_line_number, part);
 	    break;
 	}
 	/*
@@ -1431,7 +1431,7 @@ process_active(CMD *command)
 	partp = ((struct dos_partition *) &mboot.parts);
 	for (i = 0; i < NDOSPART; i++)
 	    partp[i].dp_flag = 0;
-	partp[partition-1].dp_flag = ACTIVE;
+	partp[part-1].dp_flag = ACTIVE;
 
 	status = 1;
 	break;
@@ -1547,8 +1547,8 @@ reset_boot(void)
 static int
 sanitize_partition(struct dos_partition *partp)
 {
-    u_int32_t			prev_head_boundary, prev_cyl_boundary;
-    u_int32_t			max_end, size, start;
+    uint32_t			prev_head_boundary, prev_cyl_boundary;
+    uint32_t			max_end, size, start;
 
     start = partp->dp_start;
     size = partp->dp_size;
@@ -1582,7 +1582,7 @@ sanitize_partition(struct dos_partition *partp)
      */
     if (start % dos_sectors != 0) {
 	prev_head_boundary = start / dos_sectors * dos_sectors;
-	if (max_end < dos_sectors ||
+	if (max_end < (uint32_t)dos_sectors ||
 	    prev_head_boundary >= max_end - dos_sectors) {
 	    /*
 	     * Can't go past end of partition
