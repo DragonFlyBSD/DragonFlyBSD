@@ -482,8 +482,10 @@ struct {								\
 } while (0)
 
 #define	QMD_TAILQ_CHECK_TAIL(head, field) do {				\
-	if (*(head)->tqh_last != NULL)					\
-		panic("Bad tailq NEXT(%p->tqh_last) != NULL", (head));	\
+	if (*(head)->tqh_last != NULL) {				\
+		panic("Bad tailq NEXT(%p->tqh_last) != NULL, last %p",	\
+		    (head), *(head)->tqh_last);				\
+	}								\
 } while (0)
 
 #define	QMD_TAILQ_CHECK_NEXT(elm, field) do {				\
