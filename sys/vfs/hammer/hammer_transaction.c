@@ -173,7 +173,7 @@ hammer_alloc_tid(hammer_mount_t hmp, int count)
 		tid |= hmp->master_id;
 	}
 	if (tid >= 0xFFFFFFFFFF000000ULL)
-		panic("hammer_start_transaction: Ran out of TIDs!");
+		panic("hammer_alloc_tid: Ran out of TIDs!");
 	if (hammer_debug_tid)
 		kprintf("alloc_tid %016llx\n", (long long)tid);
 	return(tid);
