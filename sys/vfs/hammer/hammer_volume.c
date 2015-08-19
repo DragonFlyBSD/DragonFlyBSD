@@ -644,10 +644,10 @@ hammer_format_volume_header(struct hammer_mount *hmp,
 	ondisk->vol_version = hmp->version;
 
 	/*
-	 * Reserve space for (future) header junk, setup our poor-man's
-	 * big-block allocator.
+	 * Reserve space for (future) header junk, copy volume relative
+	 * offset from the existing root volume.
 	 */
-	vol_alloc = HAMMER_BUFSIZE * 16;
+	vol_alloc = hmp->rootvol->ondisk->vol_bot_beg;
 	ondisk->vol_bot_beg = vol_alloc;
 	vol_alloc += boot_area_size;
 	ondisk->vol_mem_beg = vol_alloc;
