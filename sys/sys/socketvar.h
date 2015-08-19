@@ -186,10 +186,10 @@ struct socket {
 #define	SS_CANTRCVMORE		0x0020	/* can't receive more data from peer */
 #define	SS_RCVATMARK		0x0040	/* at mark on input */
 
+#define	SS_ISCLOSING		0x0080	/* in process of closing */
 #define	SS_ASSERTINPROG		0x0100	/* sonewconn race debugging */
 #define	SS_ASYNC		0x0200	/* async i/o notify */
 #define	SS_ISCONFIRMING		0x0400	/* deciding to accept connection req */
-#define	SS_ISCLOSING		0x0800	/* in process of closing */
 
 #define	SS_INCOMP		0x0800	/* unaccepted, incomplete connection */
 #define	SS_COMP			0x1000	/* unaccepted, complete connection */
