@@ -761,6 +761,14 @@ in
 see
 .Xr loader 8 .
 .Pp
+It is not possible to remove the
+.Ar root-volume
+as it contains
+.Ar filesystem
+meta data such as
+.Nm HAMMER Ns 's
+layer1 blockmap and UNDO FIFO.
+.Pp
 This command may
 .Cm reblock
 filesystem before it attemps to remove the volume if the volume is not empty.

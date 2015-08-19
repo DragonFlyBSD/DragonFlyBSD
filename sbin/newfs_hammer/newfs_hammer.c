@@ -262,6 +262,7 @@ main(int ac, char **av)
 	printf("%d volume%s total size %s version %d\n",
 		NumVolumes, (NumVolumes == 1 ? "" : "s"),
 		sizetostr(total), HammerVersion);
+	printf("root-volume:         %s\n", vol->name);
 	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
 	printf("memory-log-size:     %s\n", sizetostr(MemAreaSize));
 	printf("undo-buffer-size:    %s\n", sizetostr(UndoBufferSize));
