@@ -80,6 +80,9 @@ or
 .Fl c
 option specified on the command line will be the boot disk.
 The CD9660 filesystem is assumed when booting from this media.
+.It Fl d
+Disables hardware pagetable for
+.Nm .
 .It Fl e Ar name Ns = Ns Li value : Ns Ar name Ns = Ns Li value : Ns ...
 Specify an environment to be used by the kernel.
 This option can be specified more than once.
@@ -249,8 +252,6 @@ or
 option specified on the command line will be the boot disk.
 .It Fl s
 Boot into single-user mode.
-.It Fl d
-Disables hardware pagetable for vkernel.
 .It Fl U
 Enable writing to kernel memory and module loading.
 By default, those are disabled for security reasons.
