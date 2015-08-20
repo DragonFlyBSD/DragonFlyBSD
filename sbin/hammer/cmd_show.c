@@ -489,25 +489,19 @@ print_bigblock_fill(hammer_off_t offset)
 	int error;
 
 	blockmap_lookup(offset, &layer1, &layer2, &error);
+	printf("z%d:v%d:%lu:%lu:%lu=",
+		HAMMER_ZONE_DECODE(offset),
+		HAMMER_VOL_DECODE(offset),
+		HAMMER_BLOCKMAP_LAYER1_INDEX(offset),
+		HAMMER_BLOCKMAP_LAYER2_INDEX(offset),
+		offset & HAMMER_BIGBLOCK_MASK64);
+
 	if (error) {
-		printf("z%d:v%d:%lu:%lu:%lu=%d",
-			HAMMER_ZONE_DECODE(offset),
-			HAMMER_VOL_DECODE(offset),
-			HAMMER_BLOCKMAP_LAYER1_INDEX(offset),
-			HAMMER_BLOCKMAP_LAYER2_INDEX(offset),
-			offset & HAMMER_BIGBLOCK_MASK64,
-			error);
+		printf("B%d", error);
 	} else {
 		fill = layer2.bytes_free * 100 / HAMMER_BIGBLOCK_SIZE;
 		fill = 100 - fill;
-
-		printf("z%d:v%d:%lu:%lu:%lu=%d%%",
-			HAMMER_ZONE_DECODE(offset),
-			HAMMER_VOL_DECODE(offset),
-			HAMMER_BLOCKMAP_LAYER1_INDEX(offset),
-			HAMMER_BLOCKMAP_LAYER2_INDEX(offset),
-			offset & HAMMER_BIGBLOCK_MASK64,
-			fill);
+		printf("%d%%", fill);
 	}
 }
 
