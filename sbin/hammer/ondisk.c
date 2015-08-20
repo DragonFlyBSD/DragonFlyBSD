@@ -54,7 +54,7 @@ static void get_buffer_readahead(struct buffer_info *base);
 static __inline void *get_ondisk(hammer_off_t buf_offset,
 			struct buffer_info **bufferp, int isnew);
 static int readhammerbuf(struct volume_info *vol, void *data, int64_t offset);
-static void writehammerbuf(struct volume_info *vol, const void *data,
+static int writehammerbuf(struct volume_info *vol, const void *data,
 			int64_t offset);
 
 int DebugOpt;
@@ -1014,14 +1014,19 @@ flush_volume(struct volume_info *volume)
 		TAILQ_FOREACH(buffer, &volume->buffer_lists[i], entry)
 			flush_buffer(buffer);
 	}
-	writehammerbuf(volume, volume->ondisk, 0);
+	if (writehammerbuf(volume, volume->ondisk, 0) == -1)
+		err(1, "Write volume %d (%s)", volume->vol_no, volume->name);
 	volume->cache.modified = 0;
 }
 
 void
 flush_buffer(struct buffer_info *buffer)
 {
-	writehammerbuf(buffer->volume, buffer->ondisk, buffer->raw_offset);
+	struct volume_info *vol;
+
+	vol = buffer->volume;
+	if (writehammerbuf(vol, buffer->ondisk, buffer->raw_offset) == -1)
+		err(1, "Write volume %d (%s)", vol->vol_no, vol->name);
 	buffer->cache.modified = 0;
 }
 
@@ -1039,14 +1044,15 @@ readhammerbuf(struct volume_info *vol, void *data, int64_t offset)
 	return(0);
 }
 
-static void
+static int
 writehammerbuf(struct volume_info *vol, const void *data, int64_t offset)
 {
 	ssize_t n;
 
 	n = pwrite(vol->fd, data, HAMMER_BUFSIZE, offset);
 	if (n != HAMMER_BUFSIZE)
-		err(1, "Write volume %d (%s)", vol->vol_no, vol->name);
+		return(-1);
+	return(0);
 }
 
 int64_t init_boot_area_size(int64_t value, off_t avg_vol_size)
