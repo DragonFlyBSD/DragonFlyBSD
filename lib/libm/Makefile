@@ -279,7 +279,6 @@ MLINKS+=lgamma.3 lgammaf.3 \
 	lgamma.3 lgammal.3 \
 	lgamma.3 lgamma_r.3 \
 	lgamma.3 lgammaf_r.3 \
-	lgamma.3 lgammal_r.3 \
 	lgamma.3 tgamma.3 \
 	lgamma.3 tgammaf.3 \
 	lgamma.3 tgammal.3 \

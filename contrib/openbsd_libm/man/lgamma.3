@@ -37,7 +37,7 @@
 .Nm lgammal ,
 .Nm lgamma_r ,
 .Nm lgammaf_r ,
-.Nm lgammal_r ,
+.\".Nm lgammal_r ,
 .Nm tgamma ,
 .Nm tgammaf ,
 .Nm tgammal
@@ -57,8 +57,8 @@
 .Fn lgamma_r "double x" "int *signgamp"
 .Ft float
 .Fn lgammaf_r "float x" "int *signgamp"
-.Ft long double
-.Fn lgammal_r "long double x" "int *signgamp"
+.\".Ft long double
+.\".Fn lgammal_r "long double x" "int *signgamp"
 .Ft double
 .Fn tgamma "double x"
 .Ft float
@@ -91,15 +91,17 @@ function is an extended precision version of
 .Fn lgamma .
 .Pp
 The
-.Fn lgamma_r ,
-.Fn lgammaf_r ,
+.Fn lgamma_r
 and
-.Fn lgammal_r
+.Fn lgammaf_r
+.\"and
+.\".Fn lgammal_r
 functions are thread-safe versions of
-.Fn lgamma ,
-.Fn lgammaf ,
+.Fn lgamma
 and
-.Fn lgammal
+.Fn lgammaf
+.\"and
+.\".Fn lgammal
 that return the sign via the
 .Fa signgamp
 pointer instead of modifying
@@ -156,10 +158,11 @@ functions are expected to conform to
 .St -isoC-99 .
 .Pp
 The
-.Fn lgamma_r ,
-.Fn lgammaf_r ,
+.Fn lgamma_r
 and
-.Fn lgammal_r
+.Fn lgammaf_r
+.\"and
+.\".Fn lgammal_r
 functions are
 .Bx
 extensions.
