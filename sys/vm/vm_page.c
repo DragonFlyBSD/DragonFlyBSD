@@ -1571,8 +1571,13 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	if (curthread->td_flags & TDF_SYSTHREAD)
 		page_req |= VM_ALLOC_SYSTEM;
 
+	/*
+	 * Impose various limitations.  Note that the v_free_reserved test
+	 * must match the opposite of vm_page_count_target() to avoid
+	 * livelocks, be careful.
+	 */
 loop:
-	if (vmstats.v_free_count > vmstats.v_free_reserved ||
+	if (vmstats.v_free_count >= vmstats.v_free_reserved ||
 	    ((page_req & VM_ALLOC_INTERRUPT) && vmstats.v_free_count > 0) ||
 	    ((page_req & VM_ALLOC_SYSTEM) && vmstats.v_cache_count == 0 &&
 		vmstats.v_free_count > vmstats.v_interrupt_free_min)

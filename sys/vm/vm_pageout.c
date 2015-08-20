@@ -200,13 +200,26 @@ static void vm_req_vmdaemon (void);
 #endif
 static void vm_pageout_page_stats(int q);
 
+/*
+ * Calculate approximately how many pages on each queue to try to
+ * clean.  An exact calculation creates an edge condition when the
+ * queues are unbalanced so add significant slop.  The queue scans
+ * will stop early when targets are reached and will start where they
+ * left off on the next pass.
+ */
 static __inline int
 PQAVERAGE(int n)
 {
-	if (n >= 0)
-		return((n + (PQ_L2_SIZE - 1)) / PQ_L2_SIZE + 1);
-	else
-		return((n - (PQ_L2_SIZE - 1)) / PQ_L2_SIZE - 1);
+	int avg;
+
+	if (n >= 0) {
+		avg = ((n + (PQ_L2_SIZE - 1)) / PQ_L2_SIZE + 1);
+		avg += avg / 2 + 1;
+	} else {
+		avg = ((n - (PQ_L2_SIZE - 1)) / PQ_L2_SIZE - 1);
+		avg += avg / 2 - 1;
+	}
+	return avg;
 }
 
 /*
@@ -1134,15 +1147,22 @@ next:
 		 *
 		 * To deal with this we abort the nominal active->inactive
 		 * scan before we hit the inactive target when free+cache
-		 * levels have already reached their target.
+		 * levels have reached a reasonable target.
 		 *
-		 * Note that nominally the inactive scan is not freeing or
-		 * caching pages, it is deactivating active pages, so it
-		 * will not by itself cause the abort condition.
+		 * When deciding to stop early we need to add some slop to
+		 * the test and we need to return full completion to the caller
+		 * to prevent the caller from thinking there is something
+		 * wrong and issuing a low-memory+swap warning or pkill.
 		 */
 		vm_page_queues_spin_lock(PQ_INACTIVE + q);
-		if (vm_paging_target() < 0)
+		if (vm_paging_target() < -vm_max_launder) {
+			/*
+			 * Stopping early, return full completion to caller.
+			 */
+			if (delta < avail_shortage)
+				delta = avail_shortage;
 			break;
+		}
 	}
 
 	/* page queue still spin-locked */
@@ -1397,6 +1417,7 @@ static void
 vm_pageout_scan_cache(int avail_shortage, int pass,
 		      int vnodes_skipped, int recycle_count)
 {
+	static int lastkillticks;
 	struct vm_pageout_scan_info info;
 	vm_page_t m;
 
@@ -1482,25 +1503,30 @@ vm_pageout_scan_cache(int avail_shortage, int pass,
 	 * couldn't get to the target.
 	 */
 	if (swap_pager_almost_full &&
+	    pass > 0 &&
 	    (vm_page_count_min(recycle_count) || avail_shortage > 0)) {
 		kprintf("Warning: system low on memory+swap "
 			"shortage %d for %d ticks!\n",
 			avail_shortage, ticks - swap_fail_ticks);
 	}
 	if (swap_pager_full &&
+	    pass > 1 &&
 	    avail_shortage > 0 &&
-	    vm_paging_target() > 0) {
+	    vm_paging_target() > 0 &&
+	    (unsigned int)(ticks - lastkillticks) >= hz) {
 		/*
-		 * Kill something.
+		 * Kill something, maximum rate once per second to give
+		 * the process time to free up sufficient memory.
 		 */
+		lastkillticks = ticks;
 		info.bigproc = NULL;
 		info.bigsize = 0;
 		allproc_scan(vm_pageout_scan_callback, &info);
 		if (info.bigproc != NULL) {
-			killproc(info.bigproc, "out of swap space");
 			info.bigproc->p_nice = PRIO_MIN;
 			info.bigproc->p_usched->resetpriority(
 				FIRST_LWP_IN_PROC(info.bigproc));
+			killproc(info.bigproc, "out of swap space");
 			wakeup(&vmstats.v_free_count);
 			PRELE(info.bigproc);
 		}
@@ -1980,17 +2006,17 @@ vm_pageout_thread(void)
 		 */
 		if (avail_shortage > 0) {
 			++pass;
-			if (swap_pager_full) {
-				/*
-				 * Running out of memory, catastrophic back-off
-				 * to one-second intervals.
-				 */
-				tsleep(&vm_pages_needed, 0, "pdelay", hz);
-			} else if (pass < 10 && vm_pages_needed > 1) {
+			if (pass < 10 && vm_pages_needed > 1) {
 				/*
 				 * Normal operation, additional processes
-				 * have already kicked us.  Retry immediately.
+				 * have already kicked us.  Retry immediately
+				 * unless swap space is completely full in
+				 * which case delay a bit.
 				 */
+				if (swap_pager_full) {
+					tsleep(&vm_pages_needed, 0, "pdelay",
+						hz / 5);
+				} /* else immediate retry */
 			} else if (pass < 10) {
 				/*
 				 * Normal operation, fewer processes.  Delay
@@ -1999,11 +2025,17 @@ vm_pageout_thread(void)
 				vm_pages_needed = 0;
 				tsleep(&vm_pages_needed, 0, "pdelay", hz / 10);
 				vm_pages_needed = 1;
-			} else {
+			} else if (swap_pager_full == 0) {
 				/*
 				 * We've taken too many passes, forced delay.
 				 */
 				tsleep(&vm_pages_needed, 0, "pdelay", hz / 10);
+			} else {
+				/*
+				 * Running out of memory, catastrophic
+				 * back-off to one-second intervals.
+				 */
+				tsleep(&vm_pages_needed, 0, "pdelay", hz);
 			}
 		} else if (vm_pages_needed) {
 			/*
