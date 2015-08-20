@@ -36,16 +36,20 @@
 #include <xlocale.h>
 
 #define tre_regcomp   regcomp
+#define tre_regcomp_l regcomp_l
 #define tre_regexec   regexec
 #define tre_regerror  regerror
 #define tre_regfree   regfree
 
-#define tre_regwcomp  regwcomp
-#define tre_regwexec  regwexec
 #define tre_regncomp  regncomp
+#define tre_regncomp_l regncomp_l
 #define tre_regnexec  regnexec
-#define tre_regnwcomp regnwcomp
-#define tre_regnwexec regnwexec
+#define tre_regwcomp  regwcomp
+#define tre_regwcomp_l regwcomp_l
+#define tre_regwexec  regwexec
+#define tre_regwncomp regwncomp
+#define tre_regwncomp_l regwncomp_l
+#define tre_regwnexec regwnexec
 
 typedef enum {
   REG_OK = 0,		/* No error. */

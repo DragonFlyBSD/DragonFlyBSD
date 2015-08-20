@@ -29,13 +29,13 @@ MLINKS+=regex.3 regcomp.3 \
 	regex.3 regcomp_l.3 \
 	regex.3 regncomp.3 \
 	regex.3 regncomp_l.3 \
-	regex.3 regnwcomp.3 \
-	regex.3 regnwcomp_l.3 \
 	regex.3 regwcomp.3 \
 	regex.3 regwcomp_l.3 \
+	regex.3 regwncomp.3 \
+	regex.3 regwncomp_l.3 \
 	regex.3 regnexec.3 \
-	regex.3 regnwexec.3 \
 	regex.3 regwexec.3 \
+	regex.3 regwnexec.3 \
 	regex.3 regexec.3 \
 	regex.3 regerror.3 \
 	regex.3 regfree.3

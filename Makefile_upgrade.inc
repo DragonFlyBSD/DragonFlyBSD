@@ -2203,6 +2203,9 @@ TO_REMOVE+=/usr/share/locale/common.UTF-8
 TO_REMOVE+=/usr/share/man/man4/vesa.4.gz
 TO_REMOVE+=/usr/share/locale/xx_Comm_US.UTF-8
 TO_REMOVE+=/usr/share/man/man3/scalbl.3.gz
+TO_REMOVE+=/usr/share/man/man3/regnwcomp.3.gz
+TO_REMOVE+=/usr/share/man/man3/regnwcomp_l.3.gz
+TO_REMOVE+=/usr/share/man/man3/regnwexec.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/kgzip

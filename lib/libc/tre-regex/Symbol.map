@@ -7,12 +7,12 @@ DF404.0 {
     regncomp
     regncomp_l
     regnexec
-    regnwcomp
-    regnwcomp_l
-    regnwexec
     regwcomp
     regwcomp_l
     regwexec
+    regwncomp
+    regwncomp_l
+    regwnexec
     tre_version
     tre_config
     tre_have_backrefs
