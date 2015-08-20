@@ -156,6 +156,9 @@ hammer_node_ondisk_t get_node(hammer_off_t node_offset,
 void rel_volume(struct volume_info *volume);
 void rel_buffer(struct buffer_info *buffer);
 
+hammer_off_t alloc_bigblock(struct volume_info *volume, int zone);
+void *alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
+	       struct buffer_info **bufferp);
 hammer_off_t blockmap_lookup(hammer_off_t bmap_off,
 				struct hammer_blockmap_layer1 *layer1,
 				struct hammer_blockmap_layer2 *layer2,
