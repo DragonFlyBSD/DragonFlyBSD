@@ -1387,15 +1387,19 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 
 	bytes = layer2->bytes_free;
 
+	/*
+	 * *curp becomes 1 only when no error and,
+	 * next_offset and zone_offset are in the same big-block.
+	 */
 	if ((blockmap->next_offset ^ zone_offset) & ~HAMMER_BIGBLOCK_MASK64)
-		*curp = 0;
+		*curp = 0;  /* not same */
 	else
 		*curp = 1;
 failed:
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
 	hammer_rel_volume(root_volume, 0);
-	if (hammer_debug_general & 0x0800) {
+	if (hammer_debug_general & 0x4000) {
 		kprintf("hammer_blockmap_getfree: %016llx -> %d\n",
 			(long long)zone_offset, bytes);
 	}

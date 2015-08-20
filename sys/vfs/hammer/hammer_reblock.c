@@ -306,6 +306,15 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 		bytes = hammer_blockmap_getfree(hmp, tmp_offset, &cur, &error);
 		if (hammer_debug_general & 0x4000)
 			kprintf("D %6d/%d\n", bytes, reblock->free_level);
+		/*
+		 * Start data reblock if
+		 * 1. there is no error
+		 * 2. the data and allocator offset are not in the same
+		 *    big-block, or free level threshold is 0
+		 * 3. free bytes in the data's big-block is larger than
+		 *    free level threshold (means if threshold is 0 then
+		 *    do reblock no matter what).
+		 */
 		if (error == 0 && (cur == 0 || reblock->free_level == 0) &&
 		    bytes >= reblock->free_level) {
 			/*
@@ -371,6 +380,15 @@ skip:
 		bytes = hammer_blockmap_getfree(hmp, tmp_offset, &cur, &error);
 		if (hammer_debug_general & 0x4000)
 			kprintf("B %6d/%d\n", bytes, reblock->free_level);
+		/*
+		 * Start node reblock if
+		 * 1. there is no error
+		 * 2. the node and allocator offset are not in the same
+		 *    big-block, or free level threshold is 0
+		 * 3. free bytes in the node's big-block is larger than
+		 *    free level threshold (means if threshold is 0 then
+		 *    do reblock no matter what).
+		 */
 		if (error == 0 && (cur == 0 || reblock->free_level == 0) &&
 		    bytes >= reblock->free_level) {
 			error = hammer_cursor_upgrade(cursor);
