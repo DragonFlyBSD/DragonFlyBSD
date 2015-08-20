@@ -256,7 +256,6 @@ double fma(double, double, double);
 double j0(double);
 double j1(double);
 double jn(int, double);
-double scalb(double, double);
 double y0(double);
 double y1(double);
 double yn(int, double);
@@ -265,6 +264,10 @@ double yn(int, double);
 #if __BSD_VISIBLE || __XSI_VISIBLE <= 500
 double gamma(double);
 #endif /* __BSD_VISIBLE || __XSI_VISIBLE <= 500 */
+
+#if __BSD_VISIBLE || __XSI_VISIBLE <= 600
+double scalb(double, double);
+#endif /* __BSD_VISIBLE || __XSI_VISIBLE <= 600 */
 
 /*
  * BSD math library entry points
