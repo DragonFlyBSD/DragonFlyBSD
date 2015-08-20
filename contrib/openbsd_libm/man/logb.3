@@ -37,7 +37,7 @@
 .Nm logbl ,
 .Nm scalb ,
 .Nm scalbf ,
-.Nm scalbl ,
+.\".Nm scalbl ,
 .Nm significand ,
 .Nm significandf
 .Nd IEEE test functions
@@ -53,8 +53,8 @@
 .Fn scalb "double x" "double n"
 .Ft float
 .Fn scalbf "float x" "float n"
-.Ft long double
-.Fn scalbl "long double x" "long double n"
+.\".Ft long double
+.\".Fn scalbl "long double x" "long double n"
 .Ft double
 .Fn significand "double x"
 .Ft float
@@ -87,9 +87,9 @@ computed by exponent manipulation.
 .Fn scalbf
 is the single precision form of
 .Fn scalb .
-.Fn scalbl
-is the extended precision form of
-.Fn scalb .
+.\".Fn scalbl
+.\"is the extended precision form of
+.\".Fn scalb .
 .Pp
 .Fn significand x
 returns

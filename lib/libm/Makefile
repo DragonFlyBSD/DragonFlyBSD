@@ -289,7 +289,6 @@ MLINKS+=logb.3 logbf.3 \
 	logb.3 logbl.3 \
 	logb.3 scalb.3 \
 	logb.3 scalbf.3 \
-	logb.3 scalbl.3 \
 	logb.3 significand.3 \
 	logb.3 significandf.3
 MLINKS+=lrint.3 llrint.3 \
