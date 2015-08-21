@@ -275,6 +275,14 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 		goto skip;
 
 	/*
+	 * If reblock->vol_no is specified we only want to reblock data
+	 * in that volume, but ignore everything else.
+	 */
+	if (reblock->vol_no != -1 &&
+	    reblock->vol_no != HAMMER_VOL_DECODE(tmp_offset))
+		goto skip;
+
+	/*
 	 * NOTE: Localization restrictions may also have been set-up, we can't
 	 *	 just set the match flags willy-nilly here.
 	 */
@@ -372,6 +380,15 @@ skip:
 	 * Further revisits of the internal node (index > 0) are ignored.
 	 */
 	tmp_offset = cursor->node->node_offset;
+
+	/*
+	 * If reblock->vol_no is specified we only want to reblock data
+	 * in that volume, but ignore everything else.
+	 */
+	if (reblock->vol_no != -1 &&
+	    reblock->vol_no != HAMMER_VOL_DECODE(tmp_offset))
+		goto end;
+
 	if (cursor->index == 0 &&
 	    error == 0 && (reblock->head.flags & HAMMER_IOC_DO_BTREE)) {
 		++reblock->btree_count;
@@ -418,6 +435,7 @@ skip:
 	}
 
 	hammer_cursor_downgrade(cursor);
+end:
 	return(error);
 }
 

@@ -314,9 +314,13 @@ int
 hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip)
 {
 	int error;
+	int vol_no;
 
 	struct hammer_ioc_reblock reblock;
 	bzero(&reblock, sizeof(reblock));
+
+	vol_no = trans->hmp->volume_to_remove;
+	KKASSERT(vol_no != -1);
 
 	reblock.key_beg.localization = HAMMER_MIN_LOCALIZATION;
 	reblock.key_beg.obj_id = HAMMER_MIN_OBJID;
@@ -325,6 +329,7 @@ hammer_do_reblock(hammer_transaction_t trans, hammer_inode_t ip)
 	reblock.head.flags = HAMMER_IOC_DO_FLAGS;
 	reblock.free_level = 0;	/* reblock all big-blocks */
 	reblock.allpfs = 1;	/* reblock all PFS */
+	reblock.vol_no = vol_no;
 
 	kprintf("reblock started\n");
 	error = hammer_ioc_reblock(trans, ip, &reblock);

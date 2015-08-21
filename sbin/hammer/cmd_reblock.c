@@ -63,6 +63,7 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 
 	reblock.head.flags = flags & HAMMER_IOC_DO_FLAGS;
 	reblock.allpfs = AllPFS;
+	reblock.vol_no = -1;	/* Don't select a volume */
 
 	/*
 	 * Restrict the localization domain if asked to do inodes or data,

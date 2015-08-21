@@ -200,7 +200,8 @@ struct hammer_ioc_reblock {
 	int64_t		data_moves;		/* Data segments moved */
 	int64_t		data_byte_moves;	/* Data bytes moved */
 
-	int32_t		allpfs;			/* Reblock all PFS if set */
+	int16_t		allpfs;			/* Reblock all PFS if set */
+	int16_t		vol_no;			/* Volume to reblock if set */
 	int32_t		unused03;
 };
 
