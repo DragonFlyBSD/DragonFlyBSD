@@ -120,9 +120,8 @@ int desiredvnodes;
 SYSCTL_INT(_kern, KERN_MAXVNODES, maxvnodes, CTLFLAG_RW, 
 		&desiredvnodes, 0, "Maximum number of vnodes");
 
-static struct radix_node_head *vfs_create_addrlist_af (
-		    struct radix_node_head **prnh, int off,
-		    struct radix_node_head *maskhead);
+static struct radix_node_head *vfs_create_addrlist_af(int af,
+		    struct netexport *nep);
 static void	vfs_free_addrlist (struct netexport *nep);
 static int	vfs_free_netcred (struct radix_node *rn, void *w);
 static void	vfs_free_addrlist_af (struct radix_node_head **prnh);
@@ -1920,7 +1919,6 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 	int i;
 	struct radix_node *rn;
 	struct sockaddr *saddr, *smask = NULL;
-	int off;
 	int error;
 
 	if (argp->ex_addrlen == 0) {
@@ -1954,41 +1952,20 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 		if (smask->sa_len > argp->ex_masklen)
 			smask->sa_len = argp->ex_masklen;
 	}
+	NE_LOCK(nep);
 	if (nep->ne_maskhead == NULL) {
 		if (!rn_inithead((void **)&nep->ne_maskhead, NULL, 0)) {
 			error = ENOBUFS;
 			goto out;
 		}
 	}
-	switch (saddr->sa_family) {
-#ifdef INET
-	case AF_INET:
-		if ((rnh = nep->ne_inethead) == NULL) {
-			off = offsetof(struct sockaddr_in, sin_addr) << 3;
-			rnh = vfs_create_addrlist_af(&nep->ne_inethead, off,
-			    nep->ne_maskhead);
-		}
-		break;
-#endif
-#ifdef INET6
-	case AF_INET6:
-		if ((rnh = nep->ne_inet6head) == NULL) {
-			off = offsetof(struct sockaddr_in6, sin6_addr) << 3;
-			rnh = vfs_create_addrlist_af(&nep->ne_inet6head, off,
-			    nep->ne_maskhead);
-		}
-		break;
-#endif
-	default:
-		error = EAFNOSUPPORT;
-		goto out;
-	}
-	if (rnh == NULL) {
+	if((rnh = vfs_create_addrlist_af(saddr->sa_family, nep)) == NULL) {
 		error = ENOBUFS;
 		goto out;
 	}
 	rn = (*rnh->rnh_addaddr) ((char *) saddr, (char *) smask, rnh,
 	    np->netc_rnodes);
+	NE_UNLOCK(nep);
 	if (rn == NULL || np != (struct netcred *) rn) {	/* already exists */
 		error = EPERM;
 		goto out;
@@ -2014,13 +1991,37 @@ vfs_free_netcred(struct radix_node *rn, void *w)
 }
 
 static struct radix_node_head *
-vfs_create_addrlist_af(struct radix_node_head **prnh, int off,
-    struct radix_node_head *maskhead)
+vfs_create_addrlist_af(int af, struct netexport *nep)
 {
+	int off;
+	struct radix_node_head *rnh = NULL;
+	struct radix_node_head *maskhead = nep->ne_maskhead;
+
+	NE_ASSERT_LOCKED(nep);
 	KKASSERT(maskhead != NULL);
-	if (!rn_inithead((void **)prnh, maskhead, off))
-		return (NULL);
-	return (*prnh);
+	switch (af) {
+#ifdef INET
+	case AF_INET:
+		if ((rnh = nep->ne_inethead) == NULL) {
+			off = offsetof(struct sockaddr_in, sin_addr) << 3;
+			if (!rn_inithead((void **)&rnh, maskhead, off))
+				return (NULL);
+			nep->ne_inethead = rnh;
+		}
+		break;
+#endif
+#ifdef INET6
+	case AF_INET6:
+		if ((rnh = nep->ne_inet6head) == NULL) {
+			off = offsetof(struct sockaddr_in6, sin6_addr) << 3;
+			if (!rn_inithead((void **)&rnh, maskhead, off))
+				return (NULL);
+			nep->ne_inet6head = rnh;
+		}
+		break;
+#endif
+	}
+	return (rnh);
 }
 
 static void
@@ -2030,7 +2031,7 @@ vfs_free_addrlist_af(struct radix_node_head **prnh)
 
 	(*rnh->rnh_walktree) (rnh, vfs_free_netcred, rnh);
 	kfree(rnh, M_RTABLE);
-	prnh = NULL;
+	*prnh = NULL;
 }
 
 /*
@@ -2039,10 +2040,14 @@ vfs_free_addrlist_af(struct radix_node_head **prnh)
 static void
 vfs_free_addrlist(struct netexport *nep)
 {
+	NE_LOCK(nep);
 	if (nep->ne_inethead != NULL)
 		vfs_free_addrlist_af(&nep->ne_inethead);
 	if (nep->ne_inet6head != NULL)
 		vfs_free_addrlist_af(&nep->ne_inet6head);
+	if (nep->ne_maskhead)
+		vfs_free_addrlist_af(&nep->ne_maskhead);
+	NE_UNLOCK(nep);
 }
 
 int
@@ -2168,6 +2173,7 @@ vfs_export_lookup(struct mount *mp, struct netexport *nep,
 		/*
 		 * Lookup in the export list first.
 		 */
+		NE_LOCK(nep);
 		if (nam != NULL) {
 			saddr = nam;
 			switch (saddr->sa_family) {
@@ -2192,6 +2198,7 @@ vfs_export_lookup(struct mount *mp, struct netexport *nep,
 					np = NULL;
 			}
 		}
+		NE_UNLOCK(nep);
 		/*
 		 * If no address match, use the default if it exists.
 		 */

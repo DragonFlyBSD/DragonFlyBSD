@@ -681,6 +681,10 @@ struct netexport {
 	struct	radix_node_head *ne_inet6head;	/* IPv6 radix */
 	struct	radix_node_head *ne_maskhead;	/* Shared mask radix */
 };
+#define NE_LOCK(nep)		lwkt_getpooltoken(nep)
+#define NE_UNLOCK(nep)		lwkt_relpooltoken(nep)
+#define NE_ASSERT_LOCKED(nep)	\
+    ASSERT_LWKT_TOKEN_HELD(lwkt_token_pool_lookup(nep))
 
 #endif
 
