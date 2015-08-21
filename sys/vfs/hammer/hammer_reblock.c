@@ -273,8 +273,6 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 	tmp_offset = elm->leaf.data_offset;
 	if (tmp_offset == 0)
 		goto skip;
-	if (error)
-		goto skip;
 
 	/*
 	 * NOTE: Localization restrictions may also have been set-up, we can't
