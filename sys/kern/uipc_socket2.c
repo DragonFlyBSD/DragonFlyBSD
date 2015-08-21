@@ -431,8 +431,12 @@ sonewconn_faddr(struct socket *head, int connstatus,
 	if (connstatus) {
 		KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) == 0);
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
-		sosetstate(so, SS_COMP);
 		head->so_qlen++;
+		/*
+		 * Set connstatus within head token, so that the accepted
+		 * socket will have connstatus (SS_ISCONNECTED) set.
+		 */
+		sosetstate(so, SS_COMP | connstatus);
 	} else {
 		if (head->so_incqlen > head->so_qlimit) {
 			sp = TAILQ_FIRST(&head->so_incomp);
@@ -445,10 +449,17 @@ sonewconn_faddr(struct socket *head, int connstatus,
 		}
 		KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) == 0);
 		TAILQ_INSERT_TAIL(&head->so_incomp, so, so_list);
-		sosetstate(so, SS_INCOMP);
 		head->so_incqlen++;
+		sosetstate(so, SS_INCOMP);
 	}
+	/*
+	 * Clear SS_ASSERTINPROG within head token, so that it will not
+	 * race against accept-close or abort for "synchronous" sockets,
+	 * e.g. unix socket, on other CPUs.
+	 */
+	soclrstate(so, SS_ASSERTINPROG);
 	lwkt_relpooltoken(head);
+
 	if (connstatus) {
 		/*
 		 * XXX head may be on a different protocol thread.
@@ -461,10 +472,7 @@ sonewconn_faddr(struct socket *head, int connstatus,
 		logsowakeup(nconn_wakeupstart);
 		wakeup((caddr_t)&head->so_timeo);
 		logsowakeup(nconn_wakeupend);
-
-		sosetstate(so, connstatus);
 	}
-	soclrstate(so, SS_ASSERTINPROG);
 	return (so);
 }
 
