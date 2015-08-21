@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low.h,v 1.1.2.4 2001/07/22 00:21:41 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.12 2006/11/07 19:56:20 dillon Exp $	*/
 /*	$NecBSD: scsi_low.h,v 1.24.10.5 2001/06/26 07:31:46 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -598,10 +597,6 @@ struct scsi_low_softc {
 
 	/* targinfo size */
 	int sl_targsize;
-
-#if	defined(i386) || defined(__i386__)
-	u_int sl_irq;		/* XXX */
-#endif	/* i386 */
 };
 
 /*************************************************

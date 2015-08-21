@@ -107,8 +107,6 @@ struct reg_save_area {
 	uint64_t rdi, rsi, rdx, rcx, r8, r9;
 	/* XMM registers follow, but we don't use them */
 };
-#elif __i386__
-typedef void *machine_va_list;
 #endif
 
 static int cflag;
@@ -1375,67 +1373,6 @@ free_areas:
 free_valist:
 	free(valist);
 	*_valist = NULL;
-	return -1;
-}
-#elif __i386__
-
-static void
-va_list_cleanup(machine_va_list *valist)
-{
-	if (*valist)
-		free(*valist);
-}
-
-static int
-va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t blobsize)
-{
-	const char *f;
-	char *n;
-	size_t bytes, sz;
-	enum argument_class argclass;
-
-	n = NULL;
-	bytes = 0;
-	for (f = fmt; *f != '\0'; ++f) {
-		if (*f != '%')
-			continue;
-		sz = conversion_size(f, &argclass);
-		if (blobsize < sz) {
-			fprintf(stderr, "not enough data available "
-				"for format: %s\n", fmt);
-			goto free_va;
-		}
-		if ((argclass == ARGCLASS_INTEGER) && (sz < 4)) {
-			int i = -1;	/* do C integer promotion */
-			if (sz == 1)
-				i = *(char *)blob;
-			else
-				i = *(short *)blob;
-			if (!(n = realloc(n, bytes + 4)))
-				goto free_va;
-			memcpy(n + bytes, &i, sizeof(i));
-			bytes += 4;
-		} else {
-			if (!(n = realloc(n, bytes + sz)))
-				goto free_va;
-			memcpy(n + bytes, blob, sz);
-			bytes += sz;
-		}
-		blob += sz;
-		blobsize -= sz;
-
-	}
-	if (blobsize) {
-		fprintf(stderr, "Couldn't consume all data for format %s "
-			"(%zd bytes left over)\n", fmt, blobsize);
-		goto free_va;
-	}
-	*valist = n;
-	return 0;
-free_va:
-	if (n)
-		free(n);
-	*valist = NULL;
 	return -1;
 }
 

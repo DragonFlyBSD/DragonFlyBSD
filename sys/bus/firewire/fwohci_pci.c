@@ -255,12 +255,8 @@ fwohci_pci_attach(device_t self)
 
 	/* For the moment, put in a message stating what is wrong */
 	intr = pci_read_config(self, PCIR_INTLINE, 1);
-	if (intr == 0 || intr == 255) {
+	if (intr == 0 || intr == 255)
 		device_printf(self, "Invalid irq %d\n", intr);
-#ifdef __i386__
-		device_printf(self, "Please switch PNP-OS to 'No' in BIOS\n");
-#endif
-	}
 
 	if (bootverbose)
 		firewire_debug = bootverbose;

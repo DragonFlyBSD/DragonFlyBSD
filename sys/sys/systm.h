@@ -336,7 +336,7 @@ typedef void timeout_t (void *);	/* timeout function type */
  * For the alpha arch, some of these functions are static __inline, and
  * the others should be.
  */
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
 void		setdelayed (void);
 void		setsoftcambio (void);
 void		setsoftcamnet (void);
@@ -351,7 +351,7 @@ void		splz (void);
 void		splz_check (void);
 void		cpu_mmw_pause_int(int*, int, int, int);
 void		cpu_mmw_pause_long(long*, long, int, int);
-#endif /* __i386__ || __x86_64__ */
+#endif /* __x86_64__ */
 
 /*
  * Various callout lists.

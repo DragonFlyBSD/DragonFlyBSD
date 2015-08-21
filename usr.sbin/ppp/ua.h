@@ -24,19 +24,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/ua.h,v 1.3 1999/08/28 01:18:49 peter Exp $
- * $DragonFly: src/usr.sbin/ppp/ua.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
  */
 
-#ifdef __i386__		/* Do any other archs not care about alignment ? */
-
-#  define ua_htonl(src, tgt) (*(u_int32_t *)(tgt) = htonl(*(u_int32_t *)(src)))
-#  define ua_ntohl(src, tgt) (*(u_int32_t *)(tgt) = ntohl(*(u_int32_t *)(src)))
-#  define ua_htons(src, tgt) (*(u_int16_t *)(tgt) = htons(*(u_int16_t *)(src)))
-#  define ua_ntohs(src, tgt) (*(u_int16_t *)(tgt) = ntohs(*(u_int16_t *)(src)))
-
-#else	/* We care about alignment (or else drop a core !) */
-
-#  define ua_htonl(src, tgt)				\
+#define ua_htonl(src, tgt)				\
     do {						\
       u_int32_t __oh;					\
       memcpy(&__oh, (src), sizeof __oh);		\
@@ -46,7 +36,7 @@
       *((u_char *)(tgt) + 3) = __oh & 0xff;		\
     } while (0)
 
-#  define ua_ntohl(src, tgt)				\
+#define ua_ntohl(src, tgt)				\
     do {						\
       u_int32_t __nh;					\
       __nh = ((u_int32_t)*(u_char *)(src) << 24) |	\
@@ -56,7 +46,7 @@
       memcpy((tgt), &__nh, sizeof __nh);		\
     } while (0)
 
-#  define ua_htons(src, tgt)				\
+#define ua_htons(src, tgt)				\
     do {						\
       u_int16_t __oh;					\
       memcpy(&__oh, (src), sizeof __oh);		\
@@ -64,12 +54,10 @@
       *((u_char *)(tgt) + 1) = __oh & 0xff;		\
     } while (0)
 
-#  define ua_ntohs(src, tgt)				\
+#define ua_ntohs(src, tgt)				\
     do {						\
       u_int16_t __nh;					\
       __nh = ((u_int16_t)*(u_char *)(src) << 8) |	\
           (u_int16_t)*((u_char *)(src) + 1);		\
       memcpy((tgt), &__nh, sizeof __nh);		\
     } while (0)
-
-#endif
