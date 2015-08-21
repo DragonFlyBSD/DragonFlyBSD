@@ -47,12 +47,13 @@
 #include "acdebug.h"
 #include "actables.h"
 
+#if (defined ACPI_DEBUGGER || defined ACPI_DISASSEMBLER)
 
 #define _COMPONENT          ACPI_CA_DEBUGGER
         ACPI_MODULE_NAME    ("dbfileio")
 
-
 #ifdef ACPI_DEBUGGER
+
 /*******************************************************************************
  *
  * FUNCTION:    AcpiDbCloseDebugFile
@@ -282,3 +283,5 @@ AcpiDbGetTableFromFile (
 #endif  /* ACPI_APPLICATION */
     return (AE_OK);
 }
+
+#endif /* ACPI_DEBUGGER */

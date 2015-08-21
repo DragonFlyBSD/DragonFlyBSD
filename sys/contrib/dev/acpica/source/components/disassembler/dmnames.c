@@ -48,6 +48,8 @@
 #include "acdisasm.h"
 
 
+#ifdef ACPI_DISASSEMBLER
+
 #define _COMPONENT          ACPI_CA_DEBUGGER
         ACPI_MODULE_NAME    ("dmnames")
 
@@ -446,4 +448,6 @@ AcpiDmValidateName (
             " /**** Name not found or not accessible from this scope ****/ ");
     }
 }
+#endif
+
 #endif
