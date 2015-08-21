@@ -152,17 +152,13 @@ SUBDIR+=lpr
 SUBDIR+=nscd
 .endif
 
-.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64"
 SUBDIR+=btxld \
 	kgmon \
 	lptcontrol \
 	mptable \
 	rndcontrol \
 	sicontrol
-.endif
-
-.if ${MACHINE_ARCH} == "i386"
-SUBDIR+=kgzip
 .endif
 
 .ifdef BOOT0CFG_SUPPORT

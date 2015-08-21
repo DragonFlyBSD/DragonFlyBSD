@@ -2207,11 +2207,8 @@ TO_REMOVE+=/usr/share/man/man3/regnwcomp.3.gz
 TO_REMOVE+=/usr/share/man/man3/regnwcomp_l.3.gz
 TO_REMOVE+=/usr/share/man/man3/regnwexec.3.gz
 TO_REMOVE+=/usr/share/man/man3/lgammal_r.3.gz
-
-.if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/kgzip
 TO_REMOVE+=/usr/share/man/man8/kgzip.8.gz
-.endif
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
