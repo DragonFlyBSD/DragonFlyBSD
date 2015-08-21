@@ -287,6 +287,8 @@ static void
 sodealloc(struct socket *so)
 {
 	KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) == 0);
+	/* TODO: assert accept queues are empty, after unix socket is fixed */
+
 	if (so->so_rcv.ssb_hiwat)
 		(void)chgsbsize(so->so_cred->cr_uidinfo,
 		    &so->so_rcv.ssb_hiwat, 0, RLIM_INFINITY);
@@ -318,6 +320,33 @@ solisten(struct socket *so, int backlog, struct thread *td)
 		backlog = somaxconn;
 	so->so_qlimit = backlog;
 	return so_pru_listen(so, td);
+}
+
+static void
+soqflush(struct socket *so)
+{
+	lwkt_getpooltoken(so);
+	if (so->so_options & SO_ACCEPTCONN) {
+		struct socket *sp;
+
+		while ((sp = TAILQ_FIRST(&so->so_incomp)) != NULL) {
+			KKASSERT((sp->so_state & (SS_INCOMP | SS_COMP)) ==
+			    SS_INCOMP);
+			TAILQ_REMOVE(&so->so_incomp, sp, so_list);
+			so->so_incqlen--;
+			soclrstate(sp, SS_INCOMP);
+			soabort_async(sp, TRUE);
+		}
+		while ((sp = TAILQ_FIRST(&so->so_comp)) != NULL) {
+			KKASSERT((sp->so_state & (SS_INCOMP | SS_COMP)) ==
+			    SS_COMP);
+			TAILQ_REMOVE(&so->so_comp, sp, so_list);
+			so->so_qlen--;
+			soclrstate(sp, SS_COMP);
+			soabort_async(sp, TRUE);
+		}
+	}
+	lwkt_relpooltoken(so);
 }
 
 /*
@@ -358,11 +387,11 @@ sofree(struct socket *so)
 	KKASSERT(so->so_pcb == NULL && (so->so_state & SS_NOFDREF));
 	KKASSERT((so->so_state & SS_ASSERTINPROG) == 0);
 
-	/*
-	 * We're done, remove ourselves from the accept queue we are
-	 * on, if we are on one.
-	 */
 	if (head != NULL) {
+		/*
+		 * We're done, remove ourselves from the accept queue we are
+		 * on, if we are on one.
+		 */
 		if (so->so_state & SS_INCOMP) {
 			KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) ==
 			    SS_INCOMP);
@@ -385,6 +414,9 @@ sofree(struct socket *so)
 		soclrstate(so, SS_INCOMP);
 		so->so_head = NULL;
 		lwkt_relpooltoken(head);
+	} else {
+		/* Flush accept queues, if we are accepting. */
+		soqflush(so);
 	}
 	ssb_release(&so->so_snd, so);
 	sorflush(so);
@@ -418,29 +450,6 @@ soclose(struct socket *so, int fflag)
 void
 sodiscard(struct socket *so)
 {
-	lwkt_getpooltoken(so);
-	if (so->so_options & SO_ACCEPTCONN) {
-		struct socket *sp;
-
-		while ((sp = TAILQ_FIRST(&so->so_incomp)) != NULL) {
-			KKASSERT((sp->so_state & (SS_INCOMP | SS_COMP)) ==
-			    SS_INCOMP);
-			TAILQ_REMOVE(&so->so_incomp, sp, so_list);
-			so->so_incqlen--;
-			soclrstate(sp, SS_INCOMP);
-			soabort_async(sp, TRUE);
-		}
-		while ((sp = TAILQ_FIRST(&so->so_comp)) != NULL) {
-			KKASSERT((sp->so_state & (SS_INCOMP | SS_COMP)) ==
-			    SS_COMP);
-			TAILQ_REMOVE(&so->so_comp, sp, so_list);
-			so->so_qlen--;
-			soclrstate(sp, SS_COMP);
-			soabort_async(sp, TRUE);
-		}
-	}
-	lwkt_relpooltoken(so);
-
 	if (so->so_state & SS_NOFDREF)
 		panic("soclose: NOFDREF");
 	sosetstate(so, SS_NOFDREF);	/* take ref */
