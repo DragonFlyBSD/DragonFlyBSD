@@ -44,6 +44,7 @@ static void hammer_reserve_setdelay_offset(hammer_mount_t hmp,
 static void hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 static int update_bytes_free(hammer_reserve_t resv, int bytes);
 static int hammer_check_volume(hammer_mount_t, hammer_off_t*);
+static void hammer_skip_volume(hammer_off_t *offsetp);
 
 /*
  * Reserved big-blocks red-black tree support
@@ -198,15 +199,14 @@ again:
 	KKASSERT(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 
 	/*
-	 * Skip this layer1 entry if it is pointing to a layer2 big-block
+	 * Skip the whole volume if it is pointing to a layer2 big-block
 	 * on a volume that we are currently trying to remove from the
 	 * file-system. This is used by the volume-del code together with
 	 * the reblocker to free up a volume.
 	 */
 	if ((int)HAMMER_VOL_DECODE(layer1->phys_offset) ==
 	    hmp->volume_to_remove) {
-		next_offset = (next_offset + HAMMER_BLOCKMAP_LAYER2) &
-			      ~HAMMER_BLOCKMAP_LAYER2_MASK;
+		hammer_skip_volume(&next_offset);
 		goto again;
 	}
 
@@ -1533,35 +1533,44 @@ hammer_check_volume(hammer_mount_t hmp, hammer_off_t *offsetp)
 	hammer_blockmap_t freemap;
 	struct hammer_blockmap_layer1 *layer1;
 	hammer_buffer_t buffer1 = NULL;
-	hammer_off_t layer1_offset, offset;
-	int zone, vol_no, error = 0;
+	hammer_off_t layer1_offset;
+	int error = 0;
 
-	offset = *offsetp;
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 
 	layer1_offset = freemap->phys_offset +
-			HAMMER_BLOCKMAP_LAYER1_OFFSET(offset);
-
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(*offsetp);
 	layer1 = hammer_bread(hmp, layer1_offset, &error, &buffer1);
 	if (error)
 		goto end;
 
 	/*
-	 * No more available space in layer1s of this volume.
+	 * No more physically available space in layer1s
+	 * of the current volume, go to the next volume.
 	 */
-	if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
-		zone = HAMMER_ZONE_DECODE(offset);
-		vol_no = HAMMER_VOL_DECODE(offset) + 1;
-		KKASSERT(vol_no <= HAMMER_MAX_VOLUMES);
-		if (vol_no == HAMMER_MAX_VOLUMES) {
-			vol_no = 0;
-			++zone;
-		}
-		offset &= HAMMER_BLOCKMAP_LAYER2_MASK;
-		*offsetp = HAMMER_ENCODE(zone, vol_no, offset);
-	}
+	if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL)
+		hammer_skip_volume(offsetp);
 end:
 	if (buffer1)
 		hammer_rel_buffer(buffer1, 0);
 	return(error);
+}
+
+static void
+hammer_skip_volume(hammer_off_t *offsetp)
+{
+	hammer_off_t offset;
+	int zone, vol_no;
+
+	offset = *offsetp;
+	zone = HAMMER_ZONE_DECODE(offset);
+	vol_no = HAMMER_VOL_DECODE(offset) + 1;
+	KKASSERT(vol_no <= HAMMER_MAX_VOLUMES);
+
+	if (vol_no == HAMMER_MAX_VOLUMES) {  /* wrap */
+		vol_no = 0;
+		++zone;
+	}
+
+	*offsetp = HAMMER_ENCODE(zone, vol_no, 0);
 }
