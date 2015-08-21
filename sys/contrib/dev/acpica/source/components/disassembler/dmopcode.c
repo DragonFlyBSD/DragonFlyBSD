@@ -45,7 +45,6 @@
 #include "accommon.h"
 #include "acparser.h"
 #include "amlcode.h"
-#include "acdisasm.h"
 #include "acinterp.h"
 #include "acnamesp.h"
 #include "acdebug.h"

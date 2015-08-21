@@ -19,6 +19,7 @@ SRCS=	\
 SRCS+=	\
 	cmfsize.c \
 	dsfield.c \
+	dsinit.c \
 	dsmthdat.c \
 	dsobject.c \
 	dsutils.c \
@@ -30,6 +31,7 @@ SRCS+=	\
 	exdump.c \
 	exmutex.c \
 	exnames.c \
+	exprep.c \
 	exresnte.c \
 	exresolv.c \
 	exsystem.c \
