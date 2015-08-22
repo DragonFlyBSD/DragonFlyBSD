@@ -76,6 +76,14 @@ struct pci_bus {
 
 #define PCI_DMA_BIDIRECTIONAL	0
 
+/* extracted from radeon/si.c radeon/cik.c */
+#define PCI_EXP_LNKCTL PCIER_LINKCTRL /* 16 */
+#define PCI_EXP_LNKCTL2 48
+#define PCI_EXP_LNKCTL_HAWD PCIEM_LNKCTL_HAWD /* 0x0200 */
+#define PCI_EXP_DEVSTA PCIER_DEVSTS /* 10 */
+#define PCI_EXP_DEVSTA_TRPND 0x0020
+#define PCI_EXP_LNKCAP_CLKPM 0x00040000
+
 static inline int
 pci_read_config_byte(struct pci_dev *pdev, int where, u8 *val)
 {

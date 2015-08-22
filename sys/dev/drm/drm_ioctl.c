@@ -57,7 +57,7 @@ int drm_getunique(struct drm_device *dev, void *data,
 	struct drm_unique *u = data;
 
 	if (u->unique_len >= dev->unique_len) {
-		if (DRM_COPY_TO_USER(u->unique, dev->unique, dev->unique_len))
+		if (copy_to_user(u->unique, dev->unique, dev->unique_len))
 			return EFAULT;
 	}
 	u->unique_len = dev->unique_len;
@@ -94,7 +94,7 @@ int drm_setunique(struct drm_device *dev, void *data,
 	if (busid == NULL)
 		return ENOMEM;
 
-	if (DRM_COPY_FROM_USER(busid, u->unique, u->unique_len)) {
+	if (copy_from_user(busid, u->unique, u->unique_len)) {
 		drm_free(busid, M_DRM);
 		return EFAULT;
 	}

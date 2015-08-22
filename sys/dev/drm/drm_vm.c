@@ -103,7 +103,7 @@ int drm_mmap(struct dev_mmap_args *ap)
 		DRM_UNLOCK(dev);
 		return -1;
 	}
-	if (((map->flags & _DRM_RESTRICTED) && !DRM_SUSER(DRM_CURPROC))) {
+	if (((map->flags & _DRM_RESTRICTED) && !capable(CAP_SYS_ADMIN))) {
 		DRM_UNLOCK(dev);
 		DRM_DEBUG("restricted map\n");
 		return -1;

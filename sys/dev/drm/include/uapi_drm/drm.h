@@ -635,14 +635,6 @@ struct drm_get_cap {
  */
 #define DRM_CLIENT_CAP_UNIVERSAL_PLANES  2
 
-/**
- * DRM_CLIENT_CAP_UNIVERSAL_PLANES
- *
- * If set to 1, the DRM core will expose all planes (overlay, primary, and
- * cursor) to userspace.
- */
-#define DRM_CLIENT_CAP_UNIVERSAL_PLANES  2
-
 /** DRM_IOCTL_SET_CLIENT_CAP ioctl argument type */
 struct drm_set_client_cap {
 	__u64 capability;
@@ -769,7 +761,7 @@ struct drm_prime_handle {
 
 /**
  * Device specific ioctls should only be in their respective headers
- * The device specific ioctl range is from 0x40 to 0x99.
+ * The device specific ioctl range is from 0x40 to 0x9f.
  * Generic IOCTLS restart at 0xA0.
  *
  * \sa drmCommandNone(), drmCommandRead(), drmCommandWrite(), and

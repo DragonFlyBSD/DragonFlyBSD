@@ -61,7 +61,6 @@
 #define	unlikely(x)            __builtin_expect(!!(x), 0)
 #define	likely(x)              __builtin_expect(!!(x), 1)
 
-#define DRM_HZ			hz
 #define DRM_UDELAY(udelay)	DELAY(udelay)
 #define DRM_MDELAY(msecs)	do { int loops = (msecs);		\
 				  while (loops--) DELAY(1000);		\

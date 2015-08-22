@@ -576,7 +576,7 @@ static bool legacy_read_disabled_bios(struct radeon_device *rdev)
 
 #define	PCI_DEVICE_ID_ATI_RADEON_QY	0x5159
 
-	if (rdev->ddev->pci_device == PCI_DEVICE_ID_ATI_RADEON_QY) {
+	if (rdev->ddev->pdev->device == PCI_DEVICE_ID_ATI_RADEON_QY) {
 		fp2_gen_cntl = RREG32(RADEON_FP2_GEN_CNTL);
 	}
 
@@ -613,7 +613,7 @@ static bool legacy_read_disabled_bios(struct radeon_device *rdev)
 		(RADEON_CRTC_SYNC_TRISTAT |
 		 RADEON_CRTC_DISPLAY_DIS)));
 
-	if (rdev->ddev->pci_device == PCI_DEVICE_ID_ATI_RADEON_QY) {
+	if (rdev->ddev->pdev->device == PCI_DEVICE_ID_ATI_RADEON_QY) {
 		WREG32(RADEON_FP2_GEN_CNTL, (fp2_gen_cntl & ~RADEON_FP2_ON));
 	}
 
@@ -631,7 +631,7 @@ static bool legacy_read_disabled_bios(struct radeon_device *rdev)
 		WREG32(RADEON_CRTC2_GEN_CNTL, crtc2_gen_cntl);
 	}
 	WREG32(RADEON_CRTC_EXT_CNTL, crtc_ext_cntl);
-	if (rdev->ddev->pci_device == PCI_DEVICE_ID_ATI_RADEON_QY) {
+	if (rdev->ddev->pdev->device == PCI_DEVICE_ID_ATI_RADEON_QY) {
 		WREG32(RADEON_FP2_GEN_CNTL, fp2_gen_cntl);
 	}
 	return r;
@@ -690,11 +690,11 @@ static bool radeon_acpi_vfct_bios(struct radeon_device *rdev)
 			vhdr->PCIBus, vhdr->PCIDevice, vhdr->PCIFunction,
 			vhdr->VendorID, vhdr->DeviceID, vhdr->ImageLength);
 
-	if (vhdr->PCIBus != rdev->ddev->pci_bus ||
+	if (vhdr->PCIBus != rdev->pdev->bus->number ||
 	    vhdr->PCIDevice != rdev->ddev->pci_slot ||
 	    vhdr->PCIFunction != rdev->ddev->pci_func ||
-	    vhdr->VendorID != rdev->ddev->pci_vendor ||
-	    vhdr->DeviceID != rdev->ddev->pci_device) {
+	    vhdr->VendorID != rdev->pdev->vendor ||
+	    vhdr->DeviceID != rdev->pdev->device) {
 		DRM_INFO("ACPI VFCT table is not for this card\n");
 		goto out_unmap;
 	}

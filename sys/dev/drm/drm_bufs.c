@@ -279,7 +279,7 @@ int drm_addmap_ioctl(struct drm_device *dev, void *data,
 	if (!(dev->flags & (FREAD|FWRITE)))
 		return EACCES; /* Require read/write */
 
-	if (!DRM_SUSER(DRM_CURPROC) && request->type != _DRM_AGP)
+	if (!capable(CAP_SYS_ADMIN) && request->type != _DRM_AGP)
 		return EACCES;
 
 	DRM_LOCK(dev);
@@ -882,7 +882,7 @@ static int drm_addbufs_sg(struct drm_device * dev, struct drm_buf_desc * request
 {
 	int order, ret;
 
-	if (!DRM_SUSER(DRM_CURPROC))
+	if (!capable(CAP_SYS_ADMIN))
 		return EACCES;
 
 	if (request->count < 0 || request->count > 4096)
@@ -916,7 +916,7 @@ int drm_addbufs_pci(struct drm_device * dev, struct drm_buf_desc * request)
 {
 	int order, ret;
 
-	if (!DRM_SUSER(DRM_CURPROC))
+	if (!capable(CAP_SYS_ADMIN))
 		return EACCES;
 
 	if (request->count < 0 || request->count > 4096)
@@ -1023,7 +1023,7 @@ int drm_infobufs(struct drm_device *dev, void *data,
 				from.low_mark = dma->bufs[i].freelist.low_mark;
 				from.high_mark = dma->bufs[i].freelist.high_mark;
 
-				if (DRM_COPY_TO_USER(&request->list[count], &from,
+				if (copy_to_user(&request->list[count], &from,
 				    sizeof(struct drm_buf_desc)) != 0) {
 					retcode = EFAULT;
 					break;
@@ -1112,7 +1112,7 @@ int drm_freebufs(struct drm_device *dev, void *data,
 	
 	spin_lock(&dev->dma_lock);
 	for (i = 0; i < request->count; i++) {
-		if (DRM_COPY_FROM_USER(&idx, &request->list[i], sizeof(idx))) {
+		if (copy_from_user(&idx, &request->list[i], sizeof(idx))) {
 			retcode = EFAULT;
 			break;
 		}
@@ -1199,23 +1199,23 @@ int drm_mapbufs(struct drm_device *dev, void *data,
 	request->virtual = (void *)vaddr;
 
 	for (i = 0; i < dma->buf_count; i++) {
-		if (DRM_COPY_TO_USER(&request->list[i].idx,
+		if (copy_to_user(&request->list[i].idx,
 		    &dma->buflist[i]->idx, sizeof(request->list[0].idx))) {
 			retcode = EFAULT;
 			goto done;
 		}
-		if (DRM_COPY_TO_USER(&request->list[i].total,
+		if (copy_to_user(&request->list[i].total,
 		    &dma->buflist[i]->total, sizeof(request->list[0].total))) {
 			retcode = EFAULT;
 			goto done;
 		}
-		if (DRM_COPY_TO_USER(&request->list[i].used, &zero,
+		if (copy_to_user(&request->list[i].used, &zero,
 		    sizeof(zero))) {
 			retcode = EFAULT;
 			goto done;
 		}
 		address = vaddr + dma->buflist[i]->offset; /* *** */
-		if (DRM_COPY_TO_USER(&request->list[i].address, &address,
+		if (copy_to_user(&request->list[i].address, &address,
 		    sizeof(address))) {
 			retcode = EFAULT;
 			goto done;

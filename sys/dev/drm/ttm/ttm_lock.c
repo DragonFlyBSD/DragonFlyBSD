@@ -226,14 +226,6 @@ int ttm_write_lock(struct ttm_lock *lock, bool interruptible)
 }
 EXPORT_SYMBOL(ttm_write_lock);
 
-void ttm_write_lock_downgrade(struct ttm_lock *lock)
-{
-	lockmgr(&lock->lock, LK_EXCLUSIVE);
-	lock->rw = 1;
-	wakeup(lock);
-	lockmgr(&lock->lock, LK_RELEASE);
-}
-
 static int __ttm_vt_unlock(struct ttm_lock *lock)
 {
 	int ret = 0;

@@ -780,7 +780,7 @@ static int ttm_get_pages(vm_page_t *pages, unsigned npages, int flags,
 	return 0;
 }
 
-static void ttm_page_pool_init_locked(struct ttm_page_pool *pool, int flags,
+static void ttm_page_pool_init_locked(struct ttm_page_pool *pool, gfp_t flags,
 				      char *name)
 {
 	lockinit(&pool->lock, "ttmpool", 0, LK_CANRECURSE);

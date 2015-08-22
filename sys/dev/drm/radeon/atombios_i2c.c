@@ -49,7 +49,7 @@ static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 	PROCESS_I2C_CHANNEL_TRANSACTION_PS_ALLOCATION args;
 	int index = GetIndexIntoMasterTable(COMMAND, ProcessI2cChannelTransaction);
 	unsigned char *base;
-	u16 out;
+	u16 out = cpu_to_le16(0);
 
 	memset(&args, 0, sizeof(args));
 
@@ -60,9 +60,14 @@ static int radeon_process_i2c_ch(struct radeon_i2c_chan *chan,
 			DRM_ERROR("hw i2c: tried to write too many bytes (%d vs 3)\n", num);
 			return EINVAL;
 		}
-		args.ucRegIndex = buf[0];
-		if (num > 1)
-			memcpy(&out, &buf[1], num - 1);
+		if (buf == NULL)
+			args.ucRegIndex = 0;
+		else
+			args.ucRegIndex = buf[0];
+		if (num)
+			num--;
+		if (num)
+			memcpy(&out, &buf[1], num);
 		args.lpI2CDataOut = cpu_to_le16(out);
 	} else {
 		if (num > ATOM_MAX_HW_I2C_READ) {
@@ -99,14 +104,14 @@ radeon_atom_hw_i2c_xfer(device_t dev, struct iic_msg *msgs, u_int num)
 	struct radeon_i2c_chan *i2c = device_get_softc(dev);
 	struct iic_msg *p;
 	int i, remaining, current_count, buffer_offset, max_bytes, ret;
-	u8 buf = 0, flags;
+	u8 flags;
 
 	/* check for bus probe */
 	p = &msgs[0];
 	if ((num == 1) && (p->len == 0)) {
 		ret = radeon_process_i2c_ch(i2c,
 					    p->slave, HW_I2C_WRITE,
-					    &buf, 1);
+					    NULL, 0);
 		if (ret)
 			return ret;
 		else

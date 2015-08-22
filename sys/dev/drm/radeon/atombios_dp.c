@@ -123,7 +123,7 @@ static int radeon_process_aux_ch(struct radeon_i2c_chan *chan,
 	/* flags not zero */
 	if (args.v1.ucReplyStatus == 2) {
 		DRM_DEBUG_KMS("dp_aux_ch flags not zero\n");
-		return -EBUSY;
+		return -EIO;
 	}
 
 	/* error */
@@ -161,7 +161,7 @@ static int radeon_dp_aux_native_write(struct radeon_connector *radeon_connector,
 	msg[3] = (msg_bytes << 4) | (send_bytes - 1);
 	memcpy(&msg[4], send, send_bytes);
 
-	for (retry = 0; retry < 4; retry++) {
+	for (retry = 0; retry < 7; retry++) {
 		ret = radeon_process_aux_ch(dig_connector->dp_i2c_bus,
 					    msg, msg_bytes, NULL, 0, delay, &ack);
 		if (ret == -EBUSY)
@@ -172,7 +172,7 @@ static int radeon_dp_aux_native_write(struct radeon_connector *radeon_connector,
 		if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_ACK)
 			return send_bytes;
 		else if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_DEFER)
-			udelay(400);
+			usleep_range(400, 500);
 		else
 			return -EIO;
 	}
@@ -195,7 +195,7 @@ static int radeon_dp_aux_native_read(struct radeon_connector *radeon_connector,
 	msg[2] = DP_AUX_NATIVE_READ << 4;
 	msg[3] = (msg_bytes << 4) | (recv_bytes - 1);
 
-	for (retry = 0; retry < 4; retry++) {
+	for (retry = 0; retry < 7; retry++) {
 		ret = radeon_process_aux_ch(dig_connector->dp_i2c_bus,
 					    msg, msg_bytes, recv, recv_bytes, delay, &ack);
 		if (ret == -EBUSY)
@@ -206,7 +206,7 @@ static int radeon_dp_aux_native_read(struct radeon_connector *radeon_connector,
 		if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_ACK)
 			return ret;
 		else if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_DEFER)
-			udelay(400);
+			usleep_range(400, 500);
 		else if (ret == 0)
 			return -EPROTO;
 		else
@@ -245,35 +245,31 @@ int radeon_dp_i2c_aux_ch(device_t dev, int mode, u8 write_byte, u8 *read_byte)
 	int ret;
 	u8 ack;
 
-	/* Set up the command byte */
-	if (mode & MODE_I2C_READ)
-		msg[2] = DP_AUX_I2C_READ << 4;
-	else
-		msg[2] = DP_AUX_I2C_WRITE << 4;
-
-	if (!(mode & MODE_I2C_STOP))
-		msg[2] |= DP_AUX_I2C_MOT << 4;
-
+	/* Set up the address */
 	msg[0] = address;
 	msg[1] = address >> 8;
 
-	switch (mode) {
-	case MODE_I2C_WRITE:
+	/* Set up the command byte */
+	if (mode & MODE_I2C_READ) {
+		msg[2] = DP_AUX_I2C_READ << 4;
+		msg_bytes = 4;
+		msg[3] = msg_bytes << 4;
+	} else {
+		msg[2] = DP_AUX_I2C_WRITE << 4;
 		msg_bytes = 5;
 		msg[3] = msg_bytes << 4;
 		msg[4] = write_byte;
-		break;
-	case MODE_I2C_READ:
-		msg_bytes = 4;
-		msg[3] = msg_bytes << 4;
-		break;
-	default:
-		msg_bytes = 4;
-		msg[3] = 3 << 4;
-		break;
 	}
 
-	for (retry = 0; retry < 4; retry++) {
+	/* special handling for start/stop */
+	if (mode & (MODE_I2C_START | MODE_I2C_STOP))
+		msg[3] = 3 << 4;
+
+	/* Set MOT bit for all but stop */
+	if ((mode & MODE_I2C_STOP) == 0)
+		msg[2] |= DP_AUX_I2C_MOT << 4;
+
+	for (retry = 0; retry < 7; retry++) {
 		ret = radeon_process_aux_ch(auxch,
 					    msg, msg_bytes, reply, reply_bytes, 0, &ack);
 		if (ret == -EBUSY)
@@ -294,7 +290,7 @@ int radeon_dp_i2c_aux_ch(device_t dev, int mode, u8 write_byte, u8 *read_byte)
 			return -EREMOTEIO;
 		case DP_AUX_NATIVE_REPLY_DEFER:
 			DRM_DEBUG_KMS("aux_ch native defer\n");
-			udelay(400);
+			usleep_range(500, 600);
 			continue;
 		default:
 			DRM_ERROR("aux_ch invalid native reply 0x%02x\n", ack);
@@ -311,7 +307,7 @@ int radeon_dp_i2c_aux_ch(device_t dev, int mode, u8 write_byte, u8 *read_byte)
 			return -EREMOTEIO;
 		case DP_AUX_I2C_REPLY_DEFER:
 			DRM_DEBUG_KMS("aux_i2c defer\n");
-			udelay(400);
+			usleep_range(400, 500);
 			break;
 		default:
 			DRM_ERROR("aux_i2c invalid reply 0x%02x\n", ack);
@@ -385,6 +381,19 @@ static int dp_get_max_dp_pix_clock(int link_rate,
 
 /***** radeon specific DP functions *****/
 
+static int radeon_dp_get_max_link_rate(struct drm_connector *connector,
+				       u8 dpcd[DP_DPCD_SIZE])
+{
+	int max_link_rate;
+
+	if (radeon_connector_is_dp12_capable(connector))
+		max_link_rate = min(drm_dp_max_link_rate(dpcd), 540000);
+	else
+		max_link_rate = min(drm_dp_max_link_rate(dpcd), 270000);
+
+	return max_link_rate;
+}
+
 /* First get the min lane# when low rate is used according to pixel clock
  * (prefer low rate), second check max lane# supported by DP panel,
  * if the max lane# < low rate lane# then use max lane# instead.
@@ -394,7 +403,7 @@ static int radeon_dp_get_dp_lane_number(struct drm_connector *connector,
 					int pix_clock)
 {
 	int bpp = convert_bpc_to_bpp(radeon_get_monitor_bpc(connector));
-	int max_link_rate = drm_dp_max_link_rate(dpcd);
+	int max_link_rate = radeon_dp_get_max_link_rate(connector, dpcd);
 	int max_lane_num = drm_dp_max_lane_count(dpcd);
 	int lane_num;
 	int max_dp_pix_clock;
@@ -432,7 +441,7 @@ static int radeon_dp_get_dp_link_clock(struct drm_connector *connector,
 			return 540000;
 	}
 
-	return drm_dp_max_link_rate(dpcd);
+	return radeon_dp_get_max_link_rate(connector, dpcd);
 }
 
 static u8 radeon_dp_encoder_service(struct radeon_device *rdev,
@@ -602,6 +611,26 @@ bool radeon_dp_needs_link_train(struct radeon_connector *radeon_connector)
 	return true;
 }
 
+void radeon_dp_set_rx_power_state(struct drm_connector *connector,
+				  u8 power_state)
+{
+	struct radeon_connector *radeon_connector = to_radeon_connector(connector);
+	struct radeon_connector_atom_dig *dig_connector;
+
+	if (!radeon_connector->con_priv)
+		return;
+
+	dig_connector = radeon_connector->con_priv;
+
+	/* power up/down the sink */
+	if (dig_connector->dpcd[0] >= 0x11) {
+		radeon_write_dpcd_reg(radeon_connector,
+				   DP_SET_POWER, power_state);
+		usleep_range(1000, 2000);
+	}
+}
+
+
 struct radeon_dp_link_train_info {
 	struct radeon_device *rdev;
 	struct drm_encoder *encoder;
@@ -672,9 +701,7 @@ static int radeon_dp_link_train_init(struct radeon_dp_link_train_info *dp_info)
 	u8 tmp;
 
 	/* power up the sink */
-	if (dp_info->dpcd[0] >= 0x11)
-		radeon_write_dpcd_reg(dp_info->radeon_connector,
-				      DP_SET_POWER, DP_SET_POWER_D0);
+	radeon_dp_set_rx_power_state(dp_info->connector, DP_SET_POWER_D0);
 
 	/* possibly enable downspread on the sink */
 	if (dp_info->dpcd[3] & 0x1)
@@ -691,8 +718,7 @@ static int radeon_dp_link_train_init(struct radeon_dp_link_train_info *dp_info)
 
 	/* set the lane count on the sink */
 	tmp = dp_info->dp_lane_count;
-	if (dp_info->dpcd[DP_DPCD_REV] >= 0x11 &&
-	    dp_info->dpcd[DP_MAX_LANE_COUNT] & DP_ENHANCED_FRAME_CAP)
+	if (drm_dp_enhanced_frame_cap(dp_info->dpcd))
 		tmp |= DP_LANE_COUNT_ENHANCED_FRAME_EN;
 	radeon_write_dpcd_reg(dp_info->radeon_connector, DP_LANE_COUNT_SET, tmp);
 

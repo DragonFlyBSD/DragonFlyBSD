@@ -24,8 +24,6 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  *          Jerome Glisse
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/r300.c 255573 2013-09-14 17:24:41Z dumbbell $
  */
 #include <drm/drmP.h>
 #include <uapi_drm/drm.h>
@@ -69,25 +67,28 @@ void rv370_pcie_gart_tlb_flush(struct radeon_device *rdev)
 	mb();
 }
 
+#define R300_PTE_UNSNOOPED (1 << 0)
 #define R300_PTE_WRITEABLE (1 << 2)
 #define R300_PTE_READABLE  (1 << 3)
 
-int rv370_pcie_gart_set_page(struct radeon_device *rdev, int i, uint64_t addr)
+void rv370_pcie_gart_set_page(struct radeon_device *rdev, unsigned i,
+			      uint64_t addr, uint32_t flags)
 {
 	volatile uint32_t *ptr = rdev->gart.ptr;
 
-	if (i < 0 || i > rdev->gart.num_gpu_pages) {
-		return -EINVAL;
-	}
 	addr = (lower_32_bits(addr) >> 8) |
-	       ((upper_32_bits(addr) & 0xff) << 24) |
-	       R300_PTE_WRITEABLE | R300_PTE_READABLE;
+		((upper_32_bits(addr) & 0xff) << 24);
+	if (flags & RADEON_GART_PAGE_READ)
+		addr |= R300_PTE_READABLE;
+	if (flags & RADEON_GART_PAGE_WRITE)
+		addr |= R300_PTE_WRITEABLE;
+	if (!(flags & RADEON_GART_PAGE_SNOOP))
+		addr |= R300_PTE_UNSNOOPED;
 	/* on x86 we want this to be CPU endian, on powerpc
 	 * on powerpc without HW swappers, it'll get swapped on way
 	 * into VRAM - so no need for cpu_to_le32 on VRAM tables */
 	ptr += i;
 	*ptr = (uint32_t)addr;
-	return 0;
 }
 
 int rv370_pcie_gart_init(struct radeon_device *rdev)
@@ -124,7 +125,6 @@ int rv370_pcie_gart_enable(struct radeon_device *rdev)
 	r = radeon_gart_table_vram_pin(rdev);
 	if (r)
 		return r;
-	radeon_gart_restore(rdev);
 	/* discard memory request outside of configured range */
 	tmp = RADEON_PCIE_TX_GART_UNMAPPED_ACCESS_DISCARD;
 	WREG32_PCIE(RADEON_PCIE_TX_GART_CNTL, tmp);
@@ -294,7 +294,7 @@ void r300_ring_start(struct radeon_device *rdev, struct radeon_ring *ring)
 	radeon_ring_write(ring,
 			  R300_GEOMETRY_ROUND_NEAREST |
 			  R300_COLOR_ROUND_NEAREST);
-	radeon_ring_unlock_commit(rdev, ring);
+	radeon_ring_unlock_commit(rdev, ring, false);
 }
 
 static void r300_errata(struct radeon_device *rdev)
@@ -327,8 +327,8 @@ static void r300_gpu_init(struct radeon_device *rdev)
 {
 	uint32_t gb_tile_config, tmp;
 
-	if ((rdev->family == CHIP_R300 && rdev->ddev->pci_device != 0x4144) ||
-	    (rdev->family == CHIP_R350 && rdev->ddev->pci_device != 0x4148)) {
+	if ((rdev->family == CHIP_R300 && rdev->pdev->device != 0x4144) ||
+	    (rdev->family == CHIP_R350 && rdev->pdev->device != 0x4148)) {
 		/* r300,r350 */
 		rdev->num_gb_pipes = 2;
 	} else {
@@ -641,7 +641,7 @@ static int r300_packet0_check(struct radeon_cs_parser *p,
 		track->cb[i].robj = reloc->robj;
 		track->cb[i].offset = idx_value;
 		track->cb_dirty = true;
-		ib[idx] = idx_value + ((u32)reloc->lobj.gpu_offset);
+		ib[idx] = idx_value + ((u32)reloc->gpu_offset);
 		break;
 	case R300_ZB_DEPTHOFFSET:
 		r = radeon_cs_packet_next_reloc(p, &reloc, 0);
@@ -654,7 +654,7 @@ static int r300_packet0_check(struct radeon_cs_parser *p,
 		track->zb.robj = reloc->robj;
 		track->zb.offset = idx_value;
 		track->zb_dirty = true;
-		ib[idx] = idx_value + ((u32)reloc->lobj.gpu_offset);
+		ib[idx] = idx_value + ((u32)reloc->gpu_offset);
 		break;
 	case R300_TX_OFFSET_0:
 	case R300_TX_OFFSET_0+4:
@@ -683,16 +683,16 @@ static int r300_packet0_check(struct radeon_cs_parser *p,
 
 		if (p->cs_flags & RADEON_CS_KEEP_TILING_FLAGS) {
 			ib[idx] = (idx_value & 31) | /* keep the 1st 5 bits */
-				  ((idx_value & ~31) + (u32)reloc->lobj.gpu_offset);
+				  ((idx_value & ~31) + (u32)reloc->gpu_offset);
 		} else {
-			if (reloc->lobj.tiling_flags & RADEON_TILING_MACRO)
+			if (reloc->tiling_flags & RADEON_TILING_MACRO)
 				tile_flags |= R300_TXO_MACRO_TILE;
-			if (reloc->lobj.tiling_flags & RADEON_TILING_MICRO)
+			if (reloc->tiling_flags & RADEON_TILING_MICRO)
 				tile_flags |= R300_TXO_MICRO_TILE;
-			else if (reloc->lobj.tiling_flags & RADEON_TILING_MICRO_SQUARE)
+			else if (reloc->tiling_flags & RADEON_TILING_MICRO_SQUARE)
 				tile_flags |= R300_TXO_MICRO_TILE_SQUARE;
 
-			tmp = idx_value + ((u32)reloc->lobj.gpu_offset);
+			tmp = idx_value + ((u32)reloc->gpu_offset);
 			tmp |= tile_flags;
 			ib[idx] = tmp;
 		}
@@ -754,11 +754,11 @@ static int r300_packet0_check(struct radeon_cs_parser *p,
 				return r;
 			}
 
-			if (reloc->lobj.tiling_flags & RADEON_TILING_MACRO)
+			if (reloc->tiling_flags & RADEON_TILING_MACRO)
 				tile_flags |= R300_COLOR_TILE_ENABLE;
-			if (reloc->lobj.tiling_flags & RADEON_TILING_MICRO)
+			if (reloc->tiling_flags & RADEON_TILING_MICRO)
 				tile_flags |= R300_COLOR_MICROTILE_ENABLE;
-			else if (reloc->lobj.tiling_flags & RADEON_TILING_MICRO_SQUARE)
+			else if (reloc->tiling_flags & RADEON_TILING_MICRO_SQUARE)
 				tile_flags |= R300_COLOR_MICROTILE_SQUARE_ENABLE;
 
 			tmp = idx_value & ~(0x7 << 16);
@@ -839,11 +839,11 @@ static int r300_packet0_check(struct radeon_cs_parser *p,
 				return r;
 			}
 
-			if (reloc->lobj.tiling_flags & RADEON_TILING_MACRO)
+			if (reloc->tiling_flags & RADEON_TILING_MACRO)
 				tile_flags |= R300_DEPTHMACROTILE_ENABLE;
-			if (reloc->lobj.tiling_flags & RADEON_TILING_MICRO)
+			if (reloc->tiling_flags & RADEON_TILING_MICRO)
 				tile_flags |= R300_DEPTHMICROTILE_TILED;
-			else if (reloc->lobj.tiling_flags & RADEON_TILING_MICRO_SQUARE)
+			else if (reloc->tiling_flags & RADEON_TILING_MICRO_SQUARE)
 				tile_flags |= R300_DEPTHMICROTILE_TILED_SQUARE;
 
 			tmp = idx_value & ~(0x7 << 16);
@@ -1053,7 +1053,7 @@ static int r300_packet0_check(struct radeon_cs_parser *p,
 			radeon_cs_dump_packet(p, pkt);
 			return r;
 		}
-		ib[idx] = idx_value + ((u32)reloc->lobj.gpu_offset);
+		ib[idx] = idx_value + ((u32)reloc->gpu_offset);
 		break;
 	case 0x4e0c:
 		/* RB3D_COLOR_CHANNEL_MASK */
@@ -1098,7 +1098,7 @@ static int r300_packet0_check(struct radeon_cs_parser *p,
 		track->aa.robj = reloc->robj;
 		track->aa.offset = idx_value;
 		track->aa_dirty = true;
-		ib[idx] = idx_value + ((u32)reloc->lobj.gpu_offset);
+		ib[idx] = idx_value + ((u32)reloc->gpu_offset);
 		break;
 	case R300_RB3D_AARESOLVE_PITCH:
 		track->aa.pitch = idx_value & 0x3FFE;
@@ -1163,7 +1163,7 @@ static int r300_packet3_check(struct radeon_cs_parser *p,
 			radeon_cs_dump_packet(p, pkt);
 			return r;
 		}
-		ib[idx+1] = radeon_get_ib_value(p, idx + 1) + ((u32)reloc->lobj.gpu_offset);
+		ib[idx+1] = radeon_get_ib_value(p, idx + 1) + ((u32)reloc->gpu_offset);
 		r = r100_cs_track_check_pkt3_indx_buffer(p, pkt, reloc->robj);
 		if (r) {
 			return r;
@@ -1449,6 +1449,7 @@ int r300_resume(struct radeon_device *rdev)
 
 int r300_suspend(struct radeon_device *rdev)
 {
+	radeon_pm_suspend(rdev);
 	r100_cp_disable(rdev);
 	radeon_wb_disable(rdev);
 	r100_irq_disable(rdev);
@@ -1461,6 +1462,7 @@ int r300_suspend(struct radeon_device *rdev)
 
 void r300_fini(struct radeon_device *rdev)
 {
+	radeon_pm_fini(rdev);
 	r100_cp_fini(rdev);
 	radeon_wb_fini(rdev);
 	radeon_ib_pool_fini(rdev);
@@ -1546,6 +1548,9 @@ int r300_init(struct radeon_device *rdev)
 			return r;
 	}
 	r300_set_reg_safe(rdev);
+
+	/* Initialize power management */
+	radeon_pm_init(rdev);
 
 	rdev->accel_working = true;
 	r = r300_startup(rdev);

@@ -192,6 +192,8 @@ int drm_lock_free(struct drm_lock_data *lock_data, unsigned int context)
 		    context, _DRM_LOCKING_CONTEXT(old));
 		return 1;
 	}
-	DRM_WAKEUP_INT((void *)&lock_data->lock_queue);
+#if 0
+	wake_up_interruptible(&lock_data->lock_queue);
+#endif
 	return 0;
 }

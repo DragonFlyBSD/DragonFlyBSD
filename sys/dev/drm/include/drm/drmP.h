@@ -93,6 +93,7 @@ MALLOC_DECLARE(M_DRM);
 
 #include <linux/atomic.h>
 #include <linux/bug.h>
+#include <linux/capability.h>
 #include <linux/err.h>
 #include <linux/idr.h>
 #include <linux/pci.h>
@@ -221,7 +222,6 @@ int drm_err(const char *func, const char *format, ...);
 
 SYSCTL_DECL(_hw_drm);
 
-#define DRM_ARRAY_SIZE(x) NELEM(x)
 #define DRM_MAX(a,b) ((a)>(b)?(a):(b))
 
 #define DRM_IF_VERSION(maj, min) (maj << 16 | min)
@@ -231,10 +231,6 @@ SYSCTL_DECL(_hw_drm);
 #define DRM_DEV_MODE	(S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
 #define DRM_DEV_UID	0
 #define DRM_DEV_GID	0
-
-#define DRM_WAKEUP(w)		wakeup((void *)w)
-#define DRM_WAKEUP_INT(w)	wakeup(w)
-#define DRM_INIT_WAITQUEUE(queue) do {(void)(queue);} while (0)
 
 #define DRM_CURPROC		curthread
 #define DRM_STRUCTPROC		struct thread
@@ -253,7 +249,6 @@ SYSCTL_DECL(_hw_drm);
 
 #define DRM_SYSCTL_HANDLER_ARGS	(SYSCTL_HANDLER_ARGS)
 
-#define DRM_IRQ_ARGS		void *arg
 typedef void			irqreturn_t;
 #define IRQ_HANDLED		/* nothing */
 #define IRQ_NONE		/* nothing */
@@ -267,38 +262,8 @@ enum {
 
 #define drm_get_device_from_kdev(_kdev) (_kdev->si_drv1)
 
-/* DRM_SUSER returns true if the user is superuser */
-#define DRM_SUSER(p)		(priv_check(p, PRIV_DRIVER) == 0)
 #define DRM_AGP_FIND_DEVICE()	agp_find_device()
 #define DRM_MTRR_WC		MDF_WRITECOMBINE
-
-/* DRM_READMEMORYBARRIER() prevents reordering of reads.
- * DRM_WRITEMEMORYBARRIER() prevents reordering of writes.
- * DRM_MEMORYBARRIER() prevents reordering of reads and writes.
- */
-#define DRM_READMEMORYBARRIER()		cpu_lfence()
-#define DRM_WRITEMEMORYBARRIER()	cpu_sfence()
-#define DRM_MEMORYBARRIER()		cpu_mfence()
-
-#define DRM_VERIFYAREA_READ( uaddr, size )		\
-	(!useracc(__DECONST(caddr_t, uaddr), size, VM_PROT_READ))
-
-#define DRM_COPY_TO_USER(user, kern, size) \
-	copyout(kern, user, size)
-#define DRM_COPY_FROM_USER(kern, user, size) \
-	copyin(user, kern, size)
-#define DRM_COPY_FROM_USER_UNCHECKED(arg1, arg2, arg3) 	\
-	copyin(arg2, arg1, arg3)
-#define DRM_COPY_TO_USER_UNCHECKED(arg1, arg2, arg3)	\
-	copyout(arg2, arg1, arg3)
-#define DRM_GET_USER_UNCHECKED(val, uaddr)		\
-	((val) = fuword32(uaddr), 0)
-
-#define	drm_can_sleep()	(DRM_HZ & 1)
-
-#define DRM_GET_PRIV_SAREA(_dev, _ctx, _map) do {	\
-	(_map) = (_dev)->context_sareas[_ctx];		\
-} while(0)
 
 #define LOCK_TEST_WITH_RETURN(dev, file_priv)				\
 do {									\
@@ -882,7 +847,7 @@ struct drm_driver {
 	void	(*irq_preinstall)(struct drm_device *dev);
 	int	(*irq_postinstall)(struct drm_device *dev);
 	void	(*irq_uninstall)(struct drm_device *dev);
-	void	(*irq_handler)(DRM_IRQ_ARGS);
+	void	(*irq_handler)(void *arg);
 
 	u32	(*get_vblank_counter)(struct drm_device *dev, int crtc);
 	int	(*enable_vblank)(struct drm_device *dev, int crtc);
@@ -1066,7 +1031,7 @@ struct drm_device {
 
 	/** \name Usage Counters */
 	/*@{ */
-	int		  open_count;	/* Outstanding files open	   */
+	int open_count;			/**< Outstanding files open, protected by drm_global_mutex. */
 	int		  buf_use;	/* Buffers in use -- cannot alloc  */
 	/*@} */
 
@@ -1769,7 +1734,8 @@ static __inline__ void drm_core_dropmap(struct drm_map *map)
 
 extern int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *speed_mask);
 
-#define	drm_can_sleep()	(DRM_HZ & 1)
+/* XXX bad */
+#define	drm_can_sleep()	(HZ & 1)
 
 #endif /* __KERNEL__ */
 #endif /* _DRM_P_H_ */

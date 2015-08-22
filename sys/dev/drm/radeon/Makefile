@@ -1,4 +1,8 @@
-# $FreeBSD: head/sys/modules/drm2/radeonkms/Makefile 254885 2013-08-25 19:37:15Z dumbbell $
+#
+# Makefile for the drm device(radeonkms) driver.
+#
+# Please keep SRC list structured in blocks and sorted.
+#
 
 KMOD	= radeonkms
 SRCS	=								\
@@ -33,6 +37,7 @@ SRCS	+=								\
 	radeon_gart.c							\
 	radeon_gem.c							\
 	radeon_i2c.c							\
+	radeon_ib.c							\
 	radeon_irq_kms.c						\
 	radeon_kms.c							\
 	radeon_legacy_crtc.c						\
@@ -45,6 +50,7 @@ SRCS	+=								\
 	radeon_semaphore.c						\
 	radeon_test.c							\
 	radeon_ttm.c							\
+	radeon_vm.c							\
 	atom.c								\
 	atombios_crtc.c							\
 	atombios_dp.c							\
@@ -65,6 +71,7 @@ SRCS	+=								\
 	r600_cs.c							\
 	r600_hdmi.c							\
 	rv770.c								\
+	dce3_1_afmt.c							\
 	evergreen.c							\
 	evergreen_blit_shaders.c					\
 	evergreen_cs.c							\
@@ -114,6 +121,12 @@ SRCS	+=								\
 	uvd_v3_1.c							\
 	uvd_v4_2.c
 
+# add VCE block
+SRCS	+=								\
+	radeon_vce.c							\
+	vce_v1_0.c							\
+	vce_v2_0.c
+
 # UMS driver
 #SRCS	+=								\
 	radeon_cp.c							\
@@ -139,6 +152,8 @@ SRCS	+=								\
 	iicbb_if.h							\
 	iicbus_if.h							\
 	pci_if.h
+
+CFLAGS+= -DCONFIG_ACPI
 
 CFLAGS+= -I${.CURDIR}/../../../dev/drm/radeon
 CFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include

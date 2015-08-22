@@ -1,5 +1,3 @@
-/* $FreeBSD: head/sys/dev/drm2/radeon/radeon_kms.h 254885 2013-08-25 19:37:15Z dumbbell $ */
-
 #ifndef __RADEON_KMS_H__
 #define	__RADEON_KMS_H__
 

@@ -21,9 +21,11 @@
  *
  */
 
+#include <linux/firmware.h>
 #include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
+#include "radeon_ucode.h"
 #include "cikd.h"
 #include "r600_dpm.h"
 #include "ci_dpm.h"
@@ -41,6 +43,20 @@
 #define VOLTAGE_SCALE               4
 #define VOLTAGE_VID_OFFSET_SCALE1    625
 #define VOLTAGE_VID_OFFSET_SCALE2    100
+
+static const struct ci_pt_defaults defaults_hawaii_xt =
+{
+	1, 0xF, 0xFD, 0x19, 5, 0x14, 0, 0xB0000,
+	{ 0x84,  0x0,   0x0,   0x7F,  0x0,   0x0,   0x5A,  0x60,  0x51,  0x8E,  0x79,  0x6B,  0x5F,  0x90,  0x79  },
+	{ 0x1EA, 0x1EA, 0x1EA, 0x224, 0x224, 0x224, 0x24F, 0x24F, 0x24F, 0x28E, 0x28E, 0x28E, 0x2BC, 0x2BC, 0x2BC }
+};
+
+static const struct ci_pt_defaults defaults_hawaii_pro =
+{
+	1, 0xF, 0xFD, 0x19, 5, 0x14, 0, 0x65062,
+	{ 0x93,  0x0,   0x0,   0x97,  0x0,   0x0,   0x6B,  0x60,  0x51,  0x95,  0x79,  0x6B,  0x5F,  0x90,  0x79  },
+	{ 0x1EA, 0x1EA, 0x1EA, 0x224, 0x224, 0x224, 0x24F, 0x24F, 0x24F, 0x28E, 0x28E, 0x28E, 0x2BC, 0x2BC, 0x2BC }
+};
 
 static const struct ci_pt_defaults defaults_bonaire_xt =
 {
@@ -173,22 +189,39 @@ static void ci_initialize_powertune_defaults(struct radeon_device *rdev)
 {
 	struct ci_power_info *pi = ci_get_pi(rdev);
 
-	switch (rdev->ddev->pci_device) {
-        case 0x6650:
-        case 0x6658:
-        case 0x665C:
-        default:
+	switch (rdev->pdev->device) {
+	case 0x6649:
+	case 0x6650:
+	case 0x6651:
+	case 0x6658:
+	case 0x665C:
+	case 0x665D:
+	default:
 		pi->powertune_defaults = &defaults_bonaire_xt;
 		break;
-        case 0x6651:
-        case 0x665D:
-		pi->powertune_defaults = &defaults_bonaire_pro;
-		break;
-        case 0x6640:
+	case 0x6640:
+	case 0x6641:
+	case 0x6646:
+	case 0x6647:
 		pi->powertune_defaults = &defaults_saturn_xt;
 		break;
-        case 0x6641:
-		pi->powertune_defaults = &defaults_saturn_pro;
+	case 0x67B8:
+	case 0x67B0:
+		pi->powertune_defaults = &defaults_hawaii_xt;
+		break;
+	case 0x67BA:
+	case 0x67B1:
+		pi->powertune_defaults = &defaults_hawaii_pro;
+		break;
+	case 0x67A0:
+	case 0x67A1:
+	case 0x67A2:
+	case 0x67A8:
+	case 0x67A9:
+	case 0x67AA:
+	case 0x67B9:
+	case 0x67BE:
+		pi->powertune_defaults = &defaults_bonaire_xt;
 		break;
 	}
 
@@ -704,6 +737,14 @@ static void ci_apply_state_adjust_rules(struct radeon_device *rdev,
 	u32 max_sclk_vddc, max_mclk_vddci, max_mclk_vddc;
 	int i;
 
+	if (rps->vce_active) {
+		rps->evclk = rdev->pm.dpm.vce_states[rdev->pm.dpm.vce_level].evclk;
+		rps->ecclk = rdev->pm.dpm.vce_states[rdev->pm.dpm.vce_level].ecclk;
+	} else {
+		rps->evclk = 0;
+		rps->ecclk = 0;
+	}
+
 	if ((rdev->pm.dpm.new_active_crtc_count > 1) ||
 	    ci_dpm_vblank_too_short(rdev))
 		disable_mclk_switching = true;
@@ -762,6 +803,13 @@ static void ci_apply_state_adjust_rules(struct radeon_device *rdev,
 		sclk = ps->performance_levels[0].sclk;
 	}
 
+	if (rps->vce_active) {
+		if (sclk < rdev->pm.dpm.vce_states[rdev->pm.dpm.vce_level].sclk)
+			sclk = rdev->pm.dpm.vce_states[rdev->pm.dpm.vce_level].sclk;
+		if (mclk < rdev->pm.dpm.vce_states[rdev->pm.dpm.vce_level].mclk)
+			mclk = rdev->pm.dpm.vce_states[rdev->pm.dpm.vce_level].mclk;
+	}
+
 	ps->performance_levels[0].sclk = sclk;
 	ps->performance_levels[0].mclk = mclk;
 
@@ -806,6 +854,9 @@ static int ci_set_thermal_temperature_range(struct radeon_device *rdev,
 	tmp |= DIG_THERM_DPM(high_temp / 1000);
 	WREG32_SMC(CG_THERMAL_CTRL, tmp);
 #endif
+
+	rdev->pm.dpm.thermal.min_temp = low_temp;
+	rdev->pm.dpm.thermal.max_temp = high_temp;
 
 	return 0;
 }
@@ -878,7 +929,18 @@ static void ci_get_leakage_voltages(struct radeon_device *rdev)
 	pi->vddc_leakage.count = 0;
 	pi->vddci_leakage.count = 0;
 
-	if (radeon_atom_get_leakage_id_from_vbios(rdev, &leakage_id) == 0) {
+	if (rdev->pm.dpm.platform_caps & ATOM_PP_PLATFORM_CAP_EVV) {
+		for (i = 0; i < CISLANDS_MAX_LEAKAGE_COUNT; i++) {
+			virtual_voltage_id = ATOM_VIRTUAL_VOLTAGE_ID0 + i;
+			if (radeon_atom_get_voltage_evv(rdev, virtual_voltage_id, &vddc) != 0)
+				continue;
+			if (vddc != 0 && vddc != virtual_voltage_id) {
+				pi->vddc_leakage.actual_voltage[pi->vddc_leakage.count] = vddc;
+				pi->vddc_leakage.leakage_id[pi->vddc_leakage.count] = virtual_voltage_id;
+				pi->vddc_leakage.count++;
+			}
+		}
+	} else if (radeon_atom_get_leakage_id_from_vbios(rdev, &leakage_id) == 0) {
 		for (i = 0; i < CISLANDS_MAX_LEAKAGE_COUNT; i++) {
 			virtual_voltage_id = ATOM_VIRTUAL_VOLTAGE_ID0 + i;
 			if (radeon_atom_get_leakage_vddc_based_on_leakage_params(rdev, &vddc, &vddci,
@@ -1117,7 +1179,7 @@ static int ci_stop_dpm(struct radeon_device *rdev)
 	tmp &= ~GLOBAL_PWRMGT_EN;
 	WREG32_SMC(GENERAL_PWRMGT, tmp);
 
-	tmp = RREG32(SCLK_PWRMGT_CNTL);
+	tmp = RREG32_SMC(SCLK_PWRMGT_CNTL);
 	tmp &= ~DYNAMIC_PM_EN;
 	WREG32_SMC(SCLK_PWRMGT_CNTL, tmp);
 
@@ -3426,7 +3488,6 @@ static int ci_enable_uvd_dpm(struct radeon_device *rdev, bool enable)
 		0 : -EINVAL;
 }
 
-#if 0
 static int ci_enable_vce_dpm(struct radeon_device *rdev, bool enable)
 {
 	struct ci_power_info *pi = ci_get_pi(rdev);
@@ -3459,6 +3520,7 @@ static int ci_enable_vce_dpm(struct radeon_device *rdev, bool enable)
 		0 : -EINVAL;
 }
 
+#if 0
 static int ci_enable_samu_dpm(struct radeon_device *rdev, bool enable)
 {
 	struct ci_power_info *pi = ci_get_pi(rdev);
@@ -3545,7 +3607,6 @@ static int ci_update_uvd_dpm(struct radeon_device *rdev, bool gate)
 	return ci_enable_uvd_dpm(rdev, !gate);
 }
 
-#if 0
 static u8 ci_get_vce_boot_level(struct radeon_device *rdev)
 {
 	u8 i;
@@ -3566,15 +3627,15 @@ static int ci_update_vce_dpm(struct radeon_device *rdev,
 			     struct radeon_ps *radeon_current_state)
 {
 	struct ci_power_info *pi = ci_get_pi(rdev);
-	bool new_vce_clock_non_zero = (radeon_new_state->evclk != 0);
-	bool old_vce_clock_non_zero = (radeon_current_state->evclk != 0);
 	int ret = 0;
 	u32 tmp;
 
-	if (new_vce_clock_non_zero != old_vce_clock_non_zero) {
-		if (new_vce_clock_non_zero) {
-			pi->smc_state_table.VceBootLevel = ci_get_vce_boot_level(rdev);
+	if (radeon_current_state->evclk != radeon_new_state->evclk) {
+		if (radeon_new_state->evclk) {
+			/* turn the clocks on when encoding */
+			cik_update_cg(rdev, RADEON_CG_BLOCK_VCE, false);
 
+			pi->smc_state_table.VceBootLevel = ci_get_vce_boot_level(rdev);
 			tmp = RREG32_SMC(DPM_TABLE_475);
 			tmp &= ~VceBootLevel_MASK;
 			tmp |= VceBootLevel(pi->smc_state_table.VceBootLevel);
@@ -3582,12 +3643,16 @@ static int ci_update_vce_dpm(struct radeon_device *rdev,
 
 			ret = ci_enable_vce_dpm(rdev, true);
 		} else {
+			/* turn the clocks off when not encoding */
+			cik_update_cg(rdev, RADEON_CG_BLOCK_VCE, true);
+
 			ret = ci_enable_vce_dpm(rdev, false);
 		}
 	}
 	return ret;
 }
 
+#if 0
 static int ci_update_samu_dpm(struct radeon_device *rdev, bool gate)
 {
 	return ci_enable_samu_dpm(rdev, gate);
@@ -4461,7 +4526,7 @@ static void ci_get_memory_type(struct radeon_device *rdev)
 }
 
 static void ci_update_current_ps(struct radeon_device *rdev,
-			  struct radeon_ps *rps)
+				 struct radeon_ps *rps)
 {
 	struct ci_ps *new_ps = ci_get_ps(rps);
 	struct ci_power_info *pi = ci_get_pi(rdev);
@@ -4472,7 +4537,7 @@ static void ci_update_current_ps(struct radeon_device *rdev,
 }
 
 static void ci_update_requested_ps(struct radeon_device *rdev,
-			    struct radeon_ps *rps)
+				   struct radeon_ps *rps)
 {
 	struct ci_ps *new_ps = ci_get_ps(rps);
 	struct ci_power_info *pi = ci_get_pi(rdev);
@@ -4506,6 +4571,11 @@ void ci_dpm_post_set_power_state(struct radeon_device *rdev)
 
 void ci_dpm_setup_asic(struct radeon_device *rdev)
 {
+	int r;
+
+	r = ci_mc_load_microcode(rdev);
+	if (r)
+		DRM_ERROR("Failed to load MC firmware!\n");
 	ci_read_clock_registers(rdev);
 	ci_get_memory_type(rdev);
 	ci_enable_acpi_power_management(rdev);
@@ -4517,13 +4587,6 @@ int ci_dpm_enable(struct radeon_device *rdev)
 	struct ci_power_info *pi = ci_get_pi(rdev);
 	struct radeon_ps *boot_ps = rdev->pm.dpm.boot_ps;
 	int ret;
-
-	cik_update_cg(rdev, (RADEON_CG_BLOCK_GFX |
-			     RADEON_CG_BLOCK_MC |
-			     RADEON_CG_BLOCK_SDMA |
-			     RADEON_CG_BLOCK_BIF |
-			     RADEON_CG_BLOCK_UVD |
-			     RADEON_CG_BLOCK_HDP), false);
 
 	if (ci_is_smc_running(rdev))
 		return -EINVAL;
@@ -4622,6 +4685,18 @@ int ci_dpm_enable(struct radeon_device *rdev)
 		DRM_ERROR("ci_enable_power_containment failed\n");
 		return ret;
 	}
+
+	ci_enable_auto_throttle_source(rdev, RADEON_DPM_AUTO_THROTTLE_SRC_THERMAL, true);
+
+	ci_update_current_ps(rdev, boot_ps);
+
+	return 0;
+}
+
+int ci_dpm_late_enable(struct radeon_device *rdev)
+{
+	int ret;
+
 	if (rdev->irq.installed &&
 	    r600_is_internal_thermal_sensor(rdev->pm.int_thermal_type)) {
 #if 0
@@ -4642,18 +4717,7 @@ int ci_dpm_enable(struct radeon_device *rdev)
 #endif
 	}
 
-	ci_enable_auto_throttle_source(rdev, RADEON_DPM_AUTO_THROTTLE_SRC_THERMAL, true);
-
 	ci_dpm_powergate_uvd(rdev, true);
-
-	cik_update_cg(rdev, (RADEON_CG_BLOCK_GFX |
-			     RADEON_CG_BLOCK_MC |
-			     RADEON_CG_BLOCK_SDMA |
-			     RADEON_CG_BLOCK_BIF |
-			     RADEON_CG_BLOCK_UVD |
-			     RADEON_CG_BLOCK_HDP), true);
-
-	ci_update_current_ps(rdev, boot_ps);
 
 	return 0;
 }
@@ -4662,12 +4726,6 @@ void ci_dpm_disable(struct radeon_device *rdev)
 {
 	struct ci_power_info *pi = ci_get_pi(rdev);
 	struct radeon_ps *boot_ps = rdev->pm.dpm.boot_ps;
-
-	cik_update_cg(rdev, (RADEON_CG_BLOCK_GFX |
-			     RADEON_CG_BLOCK_MC |
-			     RADEON_CG_BLOCK_SDMA |
-			     RADEON_CG_BLOCK_UVD |
-			     RADEON_CG_BLOCK_HDP), false);
 
 	ci_dpm_powergate_uvd(rdev, false);
 
@@ -4699,13 +4757,6 @@ int ci_dpm_set_power_state(struct radeon_device *rdev)
 	struct radeon_ps *old_ps = &pi->current_rps;
 	int ret;
 
-	cik_update_cg(rdev, (RADEON_CG_BLOCK_GFX |
-			     RADEON_CG_BLOCK_MC |
-			     RADEON_CG_BLOCK_SDMA |
-			     RADEON_CG_BLOCK_BIF |
-			     RADEON_CG_BLOCK_UVD |
-			     RADEON_CG_BLOCK_HDP), false);
-
 	ci_find_dpm_states_clocks_in_dpm_table(rdev, new_ps);
 	if (pi->pcie_performance_request)
 		ci_request_link_speed_change_before_state_change(rdev, new_ps, old_ps);
@@ -4724,13 +4775,13 @@ int ci_dpm_set_power_state(struct radeon_device *rdev)
 		DRM_ERROR("ci_generate_dpm_level_enable_mask failed\n");
 		return ret;
 	}
-#if 0
+
 	ret = ci_update_vce_dpm(rdev, new_ps, old_ps);
 	if (ret) {
 		DRM_ERROR("ci_update_vce_dpm failed\n");
 		return ret;
 	}
-#endif
+
 	ret = ci_update_sclk_t(rdev);
 	if (ret) {
 		DRM_ERROR("ci_update_sclk_t failed\n");
@@ -4760,13 +4811,6 @@ int ci_dpm_set_power_state(struct radeon_device *rdev)
 	}
 	if (pi->pcie_performance_request)
 		ci_notify_link_speed_change_after_state_change(rdev, new_ps, old_ps);
-
-	cik_update_cg(rdev, (RADEON_CG_BLOCK_GFX |
-			     RADEON_CG_BLOCK_MC |
-			     RADEON_CG_BLOCK_SDMA |
-			     RADEON_CG_BLOCK_BIF |
-			     RADEON_CG_BLOCK_UVD |
-			     RADEON_CG_BLOCK_HDP), true);
 
 	return 0;
 }
@@ -4938,9 +4982,6 @@ static int ci_parse_power_table(struct radeon_device *rdev)
 	if (!rdev->pm.dpm.ps)
 		return -ENOMEM;
 	power_state_offset = (u8 *)state_array->states;
-	rdev->pm.dpm.platform_caps = le32_to_cpu(power_info->pplib.ulPlatformCaps);
-	rdev->pm.dpm.backbias_response_time = le16_to_cpu(power_info->pplib.usBackbiasTime);
-	rdev->pm.dpm.voltage_response_time = le16_to_cpu(power_info->pplib.usVoltageTime);
 	for (i = 0; i < state_array->ucNumEntries; i++) {
 		u8 *idx;
 		power_state = (union pplib_power_state *)power_state_offset;
@@ -4977,11 +5018,26 @@ static int ci_parse_power_table(struct radeon_device *rdev)
 		power_state_offset += 2 + power_state->v2.ucNumDPMLevels;
 	}
 	rdev->pm.dpm.num_ps = state_array->ucNumEntries;
+
+	/* fill in the vce power states */
+	for (i = 0; i < RADEON_MAX_VCE_LEVELS; i++) {
+		u32 sclk, mclk;
+		clock_array_index = rdev->pm.dpm.vce_states[i].clk_idx;
+		clock_info = (union pplib_clock_info *)
+			&clock_info_array->clockInfo[clock_array_index * clock_info_array->ucEntrySize];
+		sclk = le16_to_cpu(clock_info->ci.usEngineClockLow);
+		sclk |= clock_info->ci.ucEngineClockHigh << 16;
+		mclk = le16_to_cpu(clock_info->ci.usMemoryClockLow);
+		mclk |= clock_info->ci.ucMemoryClockHigh << 16;
+		rdev->pm.dpm.vce_states[i].sclk = sclk;
+		rdev->pm.dpm.vce_states[i].mclk = mclk;
+	}
+
 	return 0;
 }
 
 static int ci_get_vbios_boot_values(struct radeon_device *rdev,
-			     struct ci_vbios_boot_state *boot_state)
+				    struct ci_vbios_boot_state *boot_state)
 {
 	struct radeon_mode_info *mode_info = &rdev->mode_info;
 	int index = GetIndexIntoMasterTable(DATA, FirmwareInfo);
@@ -5056,12 +5112,20 @@ int ci_dpm_init(struct radeon_device *rdev)
 		ci_dpm_fini(rdev);
 		return ret;
 	}
-	ret = ci_parse_power_table(rdev);
+
+	ret = r600_get_platform_caps(rdev);
 	if (ret) {
 		ci_dpm_fini(rdev);
 		return ret;
 	}
+
 	ret = r600_parse_extended_power_table(rdev);
+	if (ret) {
+		ci_dpm_fini(rdev);
+		return ret;
+	}
+
+	ret = ci_parse_power_table(rdev);
 	if (ret) {
 		ci_dpm_fini(rdev);
 		return ret;
@@ -5085,6 +5149,12 @@ int ci_dpm_init(struct radeon_device *rdev)
 	pi->mclk_dpm_key_disabled = 0;
 	pi->pcie_dpm_key_disabled = 0;
 
+	/* mclk dpm is unstable on some R7 260X cards with the old mc ucode */
+	if ((rdev->pdev->device == 0x6658) &&
+	    (rdev->mc_fw->datasize == (BONAIRE_MC_UCODE_SIZE * 4))) {
+		pi->mclk_dpm_key_disabled = 1;
+	}
+
 	pi->caps_sclk_ds = true;
 
 	pi->mclk_strobe_mode_threshold = 40000;
@@ -5099,6 +5169,7 @@ int ci_dpm_init(struct radeon_device *rdev)
 	pi->caps_sclk_throttle_low_notification = false;
 
 	pi->caps_uvd_dpm = true;
+	pi->caps_vce_dpm = true;
 
         ci_get_leakage_voltages(rdev);
         ci_patch_dependency_tables_with_leakage(rdev);
@@ -5129,9 +5200,15 @@ int ci_dpm_init(struct radeon_device *rdev)
 	rdev->pm.dpm.dyn_state.valid_mclk_values.count = 0;
 	rdev->pm.dpm.dyn_state.valid_mclk_values.values = NULL;
 
-	pi->thermal_temp_setting.temperature_low = 99500;
-	pi->thermal_temp_setting.temperature_high = 100000;
-	pi->thermal_temp_setting.temperature_shutdown = 104000;
+	if (rdev->family == CHIP_HAWAII) {
+		pi->thermal_temp_setting.temperature_low = 94500;
+		pi->thermal_temp_setting.temperature_high = 95000;
+		pi->thermal_temp_setting.temperature_shutdown = 104000;
+	} else {
+		pi->thermal_temp_setting.temperature_low = 99500;
+		pi->thermal_temp_setting.temperature_high = 100000;
+		pi->thermal_temp_setting.temperature_shutdown = 104000;
+	}
 
 	pi->uvd_enabled = false;
 

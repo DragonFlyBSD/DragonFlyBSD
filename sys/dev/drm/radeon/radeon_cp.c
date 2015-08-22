@@ -430,15 +430,15 @@ static void radeon_init_pipes(struct drm_device *dev)
 		gb_pipe_sel = RADEON_READ(R400_GB_PIPE_SELECT);
 		dev_priv->num_gb_pipes = ((gb_pipe_sel >> 12) & 0x3) + 1;
 		/* SE cards have 1 pipe */
-		if ((dev->pci_device == 0x5e4c) ||
-		    (dev->pci_device == 0x5e4f))
+		if ((dev->pdev->device == 0x5e4c) ||
+		    (dev->pdev->device == 0x5e4f))
 			dev_priv->num_gb_pipes = 1;
 	} else {
 		/* R3xx */
 		if (((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R300 &&
-		     dev->pci_device != 0x4144) ||
+		     dev->pdev->device != 0x4144) ||
 		    ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R350 &&
-		     dev->pci_device != 0x4148)) {
+		     dev->pdev->device != 0x4148)) {
 			dev_priv->num_gb_pipes = 2;
 		} else {
 			/* RV3xx/R300 AD/R350 AH */
@@ -2019,10 +2019,10 @@ static int radeon_cp_get_buffers(struct drm_device *dev,
 
 		buf->file_priv = file_priv;
 
-		if (DRM_COPY_TO_USER(&d->request_indices[i], &buf->idx,
+		if (copy_to_user(&d->request_indices[i], &buf->idx,
 				     sizeof(buf->idx)))
 			return -EFAULT;
-		if (DRM_COPY_TO_USER(&d->request_sizes[i], &buf->total,
+		if (copy_to_user(&d->request_sizes[i], &buf->total,
 				     sizeof(buf->total)))
 			return -EFAULT;
 
@@ -2096,7 +2096,7 @@ int radeon_driver_load(struct drm_device *dev, unsigned long flags)
 		break;
 	}
 
-	pci_enable_busmaster(dev->dev);
+	pci_enable_busmaster(dev->pdev->dev);
 
 	if (drm_device_is_agp(dev))
 		dev_priv->flags |= RADEON_IS_AGP;
@@ -2232,7 +2232,7 @@ void radeon_commit_ring(drm_radeon_private_t *dev_priv)
 
 	dev_priv->ring.tail &= dev_priv->ring.tail_mask;
 
-	DRM_MEMORYBARRIER();
+	mb();
 	GET_RING_HEAD( dev_priv );
 
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600) {

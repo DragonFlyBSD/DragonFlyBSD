@@ -149,7 +149,7 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 	priv->pid		= p->td_proc->p_pid;
 
 	/* for compatibility root is always authenticated */
-	priv->authenticated	= DRM_SUSER(p);
+	priv->authenticated = capable(CAP_SYS_ADMIN);
 
 	INIT_LIST_HEAD(&priv->fbs);
 	INIT_LIST_HEAD(&priv->event_list);

@@ -467,7 +467,7 @@ int drm_lastclose(struct drm_device * dev)
 	if (dev->lock.hw_lock) {
 		dev->lock.hw_lock = NULL; /* SHM removed */
 		dev->lock.file_priv = NULL;
-		DRM_WAKEUP_INT((void *)&dev->lock.lock_queue);
+		wakeup(&dev->lock.lock_queue);
 	}
 	DRM_UNLOCK(dev);
 
@@ -494,7 +494,7 @@ static int drm_load(struct drm_device *dev)
 	dev->types[4]  = _DRM_STAT_LOCKS;
 	dev->types[5]  = _DRM_STAT_UNLOCKS;
 
-	for (i = 0; i < DRM_ARRAY_SIZE(dev->counts); i++)
+	for (i = 0; i < ARRAY_SIZE(dev->counts); i++)
 		atomic_set(&dev->counts[i], 0);
 
 	INIT_LIST_HEAD(&dev->vblank_event_list);
@@ -592,7 +592,7 @@ int drm_version(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	if ( len > name##_len ) len = name##_len;			\
 	name##_len = strlen( value );					\
 	if ( len && name ) {						\
-		if ( DRM_COPY_TO_USER( name, value, len ) )		\
+		if ( copy_to_user( name, value, len ) )		\
 			return EFAULT;				\
 	}
 
@@ -725,7 +725,6 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	unsigned int nr = DRM_IOCTL_NR(cmd);
 	int retcode = 0;
 	caddr_t data = ap->a_data;
-	struct thread *p = curthread;
 	int (*func)(struct drm_device *dev, void *data, struct drm_file *file_priv);
 	int is_driver_ioctl = 0;
 	struct drm_file *file_priv;
@@ -772,7 +771,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 		return EINVAL;
 	}
 
-	if (((ioctl->flags & DRM_ROOT_ONLY) && !DRM_SUSER(p)) ||
+	if (((ioctl->flags & DRM_ROOT_ONLY) && !capable(CAP_SYS_ADMIN)) ||
 	    ((ioctl->flags & DRM_AUTH) && !file_priv->authenticated) ||
 	    ((ioctl->flags & DRM_MASTER) && !file_priv->master))
 		return EACCES;

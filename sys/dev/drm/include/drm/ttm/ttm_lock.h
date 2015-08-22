@@ -198,8 +198,6 @@ extern void ttm_write_unlock(struct ttm_lock *lock);
  */
 extern int ttm_write_lock(struct ttm_lock *lock, bool interruptible);
 
-void ttm_write_lock_downgrade(struct ttm_lock *lock);
-
 /**
  * ttm_lock_set_kill
  *

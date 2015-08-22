@@ -1108,7 +1108,7 @@ out:
 		DRM_DEBUG_KMS("lid notifier registration failed\n");
 		lvds_connector->lid_notifier.notifier_call = NULL;
 	}
-	drm_sysfs_connector_add(connector);
+	drm_connector_register(connector);
 #endif
 
 	intel_panel_init(&intel_connector->panel, fixed_mode, downclock_mode);
