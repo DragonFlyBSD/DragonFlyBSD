@@ -23,7 +23,6 @@ SRCS	= \
 	drm_hashtab.c \
 	drm_ioctl.c \
 	drm_irq.c \
-	drm_linux_list_sort.c \
 	drm_lock.c \
 	drm_memory.c \
 	drm_mm.c \
@@ -40,8 +39,9 @@ SRCS	= \
 	drm_vm.c \
 	linux_compat.c \
 	drm_vma_manager.c \
-	linux_shmem.c \
 	linux_hdmi.c \
+	linux_list_sort.c \
+	linux_shmem.c \
 	ttm_lock.c \
 	ttm_object.c \
 	ttm_tt.c \

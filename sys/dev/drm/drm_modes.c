@@ -31,6 +31,7 @@
  */
 
 #include <linux/list.h>
+#include <linux/list_sort.h>
 #include <linux/export.h>
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
@@ -1001,7 +1002,7 @@ static int drm_mode_compare(void *priv, struct list_head *lh_a, struct list_head
  */
 void drm_mode_sort(struct list_head *mode_list)
 {
-	drm_list_sort(NULL, mode_list, drm_mode_compare);
+	list_sort(NULL, mode_list, drm_mode_compare);
 }
 EXPORT_SYMBOL(drm_mode_sort);
 
