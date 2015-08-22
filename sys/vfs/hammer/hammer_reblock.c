@@ -52,6 +52,8 @@ static int hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
 				hammer_cursor_t cursor, hammer_btree_elm_t elm);
 static int hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 				hammer_cursor_t cursor, hammer_btree_elm_t elm);
+static void hammer_move_node(hammer_cursor_t cursor, hammer_btree_elm_t elm,
+				hammer_node_t onode, hammer_node_t nnode);
 
 int
 hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
@@ -522,37 +524,17 @@ hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
 	if (nnode == NULL)
 		return (error);
 
-	/*
-	 * Move the node
-	 */
 	hammer_lock_ex(&nnode->lock);
 	hammer_modify_node_noundo(cursor->trans, nnode);
-	bcopy(onode->ondisk, nnode->ondisk, sizeof(*nnode->ondisk));
 
-	if (elm) {
-		/*
-		 * We are not the root of the B-Tree
-		 */
-		hammer_modify_node(cursor->trans, cursor->parent,
-				   &elm->internal.subtree_offset,
-				   sizeof(elm->internal.subtree_offset));
-		elm->internal.subtree_offset = nnode->node_offset;
-		hammer_modify_node_done(cursor->parent);
-	} else {
-		/*
-		 * We are the root of the B-Tree
-		 */
-                hammer_volume_t volume;
-                volume = hammer_get_root_volume(cursor->trans->hmp, &error);
-                KKASSERT(error == 0);
+	hammer_move_node(cursor, elm, onode, nnode);
 
-                hammer_modify_volume_field(cursor->trans, volume,
-					   vol0_btree_root);
-                volume->ondisk->vol0_btree_root = nnode->node_offset;
-                hammer_modify_volume_done(volume);
-                hammer_rel_volume(volume, 0);
-        }
-
+	/*
+	 * Clean up.
+	 *
+	 * The new node replaces the current node in the cursor.  The cursor
+	 * expects it to be locked so leave it locked.  Discard onode.
+	 */
 	hammer_cursor_replaced_node(onode, nnode);
 	hammer_delete_node(cursor->trans, onode);
 
@@ -586,7 +568,6 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	hammer_node_t onode;
 	hammer_node_t nnode;
 	int error;
-	int i;
 
 	hammer_node_lock_init(&lockroot, cursor->node);
 	error = hammer_btree_lock_children(cursor, 1, &lockroot, NULL);
@@ -599,46 +580,10 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	if (nnode == NULL)
 		goto done;
 
-	/*
-	 * Move the node.  Adjust the parent's pointer to us first.
-	 */
 	hammer_lock_ex(&nnode->lock);
 	hammer_modify_node_noundo(cursor->trans, nnode);
-	bcopy(onode->ondisk, nnode->ondisk, sizeof(*nnode->ondisk));
 
-	if (elm) {
-		/*
-		 * We are not the root of the B-Tree
-		 */
-		hammer_modify_node(cursor->trans, cursor->parent,
-				   &elm->internal.subtree_offset,
-				   sizeof(elm->internal.subtree_offset));
-		elm->internal.subtree_offset = nnode->node_offset;
-		hammer_modify_node_done(cursor->parent);
-	} else {
-		/*
-		 * We are the root of the B-Tree
-		 */
-                hammer_volume_t volume;
-                volume = hammer_get_root_volume(cursor->trans->hmp, &error);
-                KKASSERT(error == 0);
-
-                hammer_modify_volume_field(cursor->trans, volume,
-					   vol0_btree_root);
-                volume->ondisk->vol0_btree_root = nnode->node_offset;
-                hammer_modify_volume_done(volume);
-                hammer_rel_volume(volume, 0);
-        }
-
-	/*
-	 * Now adjust our children's pointers to us.
-	 */
-	for (i = 0; i < nnode->ondisk->count; ++i) {
-		elm = &nnode->ondisk->elms[i];
-		error = btree_set_parent(cursor->trans, nnode, elm);
-		if (error)
-			panic("reblock internal node: fixup problem");
-	}
+	hammer_move_node(cursor, elm, onode, nnode);
 
 	/*
 	 * Clean up.
@@ -666,3 +611,56 @@ done:
 	return (error);
 }
 
+/*
+ * nnode is a newly allocated node, and now elm becomes the node
+ * element within nnode's parent that represents a pointer to nnode,
+ * or nnode becomes the root node if elm does not exist.
+ */
+static void
+hammer_move_node(hammer_cursor_t cursor, hammer_btree_elm_t elm,
+		 hammer_node_t onode, hammer_node_t nnode)
+{
+	int error, i;
+
+	bcopy(onode->ondisk, nnode->ondisk, sizeof(*nnode->ondisk));
+
+	/*
+	 * Adjust the parent's pointer to us first.
+	 */
+	if (elm) {
+		/*
+		 * We are not the root of the B-Tree
+		 */
+		hammer_modify_node(cursor->trans, cursor->parent,
+				   &elm->internal.subtree_offset,
+				   sizeof(elm->internal.subtree_offset));
+		elm->internal.subtree_offset = nnode->node_offset;
+		hammer_modify_node_done(cursor->parent);
+	} else {
+		/*
+		 * We are the root of the B-Tree
+		 */
+		hammer_volume_t volume;
+		volume = hammer_get_root_volume(cursor->trans->hmp, &error);
+		KKASSERT(error == 0);
+
+		hammer_modify_volume_field(cursor->trans, volume,
+					   vol0_btree_root);
+		volume->ondisk->vol0_btree_root = nnode->node_offset;
+		hammer_modify_volume_done(volume);
+		hammer_rel_volume(volume, 0);
+	}
+
+	/*
+	 * Now adjust our children's pointers to us
+	 * if we are an internal node.
+	 */
+	if (nnode->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL) {
+		for (i = 0; i < nnode->ondisk->count; ++i) {
+			error = btree_set_parent(cursor->trans, nnode,
+					&nnode->ondisk->elms[i]);
+			if (error)
+				panic("reblock internal node: fixup problem");
+		}
+	}
+}
