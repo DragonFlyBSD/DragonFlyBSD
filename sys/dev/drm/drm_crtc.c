@@ -4187,6 +4187,15 @@ out:
 	return ret;
 }
 
+/*
+ * The Linux version of kfree() is a macro and can't be called
+ * directly via a function pointer
+ */
+static void drm_kms_free(void *arg)
+{
+	kfree(arg);
+}
+
 /**
  * drm_mode_page_flip_ioctl - schedule an asynchronous fb update
  * @dev: DRM device
@@ -4277,8 +4286,9 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 		e->event.user_data = page_flip->user_data;
 		e->base.event = &e->event.base;
 		e->base.file_priv = file_priv;
+		/* XXX: DragonFly-specific */
 		e->base.destroy =
-			(void (*) (struct drm_pending_event *)) kfree;
+			(void (*) (struct drm_pending_event *)) drm_kms_free;
 	}
 
 	old_fb = crtc->primary->fb;
