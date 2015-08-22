@@ -191,12 +191,12 @@ struct hammer_ioc_reblock {
 	struct hammer_base_elm key_cur;		/* scan interruption point */
 
 	int64_t		btree_count;		/* B-Tree nodes checked */
-	int64_t		record_count;		/* Records checked */
+	int64_t		reserved02a;
 	int64_t		data_count;		/* Data segments checked */
 	int64_t		data_byte_count;	/* Data bytes checked */
 
 	int64_t		btree_moves;		/* B-Tree nodes moved */
-	int64_t		record_moves;		/* Records moved */
+	int64_t		reserved02b;
 	int64_t		data_moves;		/* Data segments moved */
 	int64_t		data_byte_moves;	/* Data bytes moved */
 
