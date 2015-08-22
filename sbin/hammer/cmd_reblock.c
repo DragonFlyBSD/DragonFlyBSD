@@ -125,9 +125,14 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	close(fd);
 	printf("Reblocked:\n"
 	       "    %jd/%jd btree nodes\n"
+	       "    %jd/%jd btree bytes\n"
 	       "    %jd/%jd data elements\n"
 	       "    %jd/%jd data bytes\n",
 	       (intmax_t)reblock.btree_moves, (intmax_t)reblock.btree_count,
+	       (intmax_t)(reblock.btree_moves *
+		       sizeof(struct hammer_node_ondisk)),
+	       (intmax_t)(reblock.btree_count *
+		       sizeof(struct hammer_node_ondisk)),
 	       (intmax_t)reblock.data_moves, (intmax_t)reblock.data_count,
 	       (intmax_t)reblock.data_byte_moves,
 	       (intmax_t)reblock.data_byte_count
