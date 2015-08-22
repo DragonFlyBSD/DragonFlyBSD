@@ -57,6 +57,8 @@
 #include <sys/socketvar2.h>
 #include <sys/msgport2.h>
 
+#define UNP_ISATTACHED(unp)	((unp) != NULL)
+
 typedef struct unp_defdiscard {
 	struct unp_defdiscard *next;
 	struct file *fp;
@@ -148,7 +150,7 @@ uipc_abort(netmsg_t msg)
 
 	lwkt_gettoken(&unp_token);
 	unp = msg->base.nm_so->so_pcb;
-	if (unp) {
+	if (UNP_ISATTACHED(unp)) {
 		unp_drop(unp, ECONNABORTED);
 		unp_free(unp);
 		error = 0;
@@ -168,7 +170,7 @@ uipc_accept(netmsg_t msg)
 
 	lwkt_gettoken(&unp_token);
 	unp = msg->base.nm_so->so_pcb;
-	if (unp == NULL) {
+	if (!UNP_ISATTACHED(unp)) {
 		error = EINVAL;
 	} else {
 		struct unpcb *unp2 = unp->unp_conn;
@@ -200,10 +202,8 @@ uipc_attach(netmsg_t msg)
 
 	lwkt_gettoken(&unp_token);
 	unp = msg->base.nm_so->so_pcb;
-	if (unp)
-		error = EISCONN;
-	else
-		error = unp_attach(msg->base.nm_so, msg->attach.nm_ai);
+	KASSERT(unp == NULL, ("double unp attach"));
+	error = unp_attach(msg->base.nm_so, msg->attach.nm_ai);
 	lwkt_reltoken(&unp_token);
 	lwkt_replymsg(&msg->lmsg, error);
 }
@@ -216,7 +216,7 @@ uipc_bind(netmsg_t msg)
 
 	lwkt_gettoken(&unp_token);
 	unp = msg->base.nm_so->so_pcb;
-	if (unp)
+	if (UNP_ISATTACHED(unp))
 		error = unp_bind(unp, msg->bind.nm_nam, msg->bind.nm_td);
 	else
 		error = EINVAL;
@@ -231,7 +231,7 @@ uipc_connect(netmsg_t msg)
 	int error;
 
 	unp = msg->base.nm_so->so_pcb;
-	if (unp) {
+	if (UNP_ISATTACHED(unp)) {
 		error = unp_connect(msg->base.nm_so,
 				    msg->connect.nm_nam,
 				    msg->connect.nm_td);
@@ -248,7 +248,7 @@ uipc_connect2(netmsg_t msg)
 	int error;
 
 	unp = msg->connect2.nm_so1->so_pcb;
-	if (unp) {
+	if (UNP_ISATTACHED(unp)) {
 		error = unp_connect2(msg->connect2.nm_so1,
 				     msg->connect2.nm_so2);
 	} else {
@@ -267,7 +267,7 @@ uipc_detach(netmsg_t msg)
 
 	lwkt_gettoken(&unp_token);
 	unp = msg->base.nm_so->so_pcb;
-	if (unp) {
+	if (UNP_ISATTACHED(unp)) {
 		unp_free(unp);
 		error = 0;
 	} else {
@@ -285,7 +285,7 @@ uipc_disconnect(netmsg_t msg)
 
 	lwkt_gettoken(&unp_token);
 	unp = msg->base.nm_so->so_pcb;
-	if (unp) {
+	if (UNP_ISATTACHED(unp)) {
 		unp_disconnect(unp);
 		error = 0;
 	} else {
@@ -303,7 +303,7 @@ uipc_listen(netmsg_t msg)
 
 	lwkt_gettoken(&unp_token);
 	unp = msg->base.nm_so->so_pcb;
-	if (unp == NULL || unp->unp_vnode == NULL)
+	if (!UNP_ISATTACHED(unp) || unp->unp_vnode == NULL)
 		error = EINVAL;
 	else
 		error = unp_listen(unp, msg->listen.nm_td);
@@ -319,7 +319,7 @@ uipc_peeraddr(netmsg_t msg)
 
 	lwkt_gettoken(&unp_token);
 	unp = msg->base.nm_so->so_pcb;
-	if (unp == NULL) {
+	if (!UNP_ISATTACHED(unp)) {
 		error = EINVAL;
 	} else if (unp->unp_conn && unp->unp_conn->unp_addr) {
 		struct unpcb *unp2 = unp->unp_conn;
@@ -362,7 +362,7 @@ uipc_rcvd(netmsg_t msg)
 			break;
 		lwkt_relpooltoken(unp);
 	}
-	if (unp == NULL) {
+	if (!UNP_ISATTACHED(unp)) {
 		error = EINVAL;
 		goto done;
 	}
@@ -438,7 +438,7 @@ uipc_send(netmsg_t msg)
 			break;
 		lwkt_relpooltoken(unp);
 	}
-	if (unp == NULL) {
+	if (!UNP_ISATTACHED(unp)) {
 		error = EINVAL;
 		goto done;
 	}
@@ -617,7 +617,7 @@ uipc_sense(netmsg_t msg)
 			break;
 		lwkt_relpooltoken(unp);
 	}
-	if (unp == NULL) {
+	if (!UNP_ISATTACHED(unp)) {
 		error = EINVAL;
 		goto done;
 	}
@@ -656,7 +656,7 @@ uipc_shutdown(netmsg_t msg)
 			break;
 		lwkt_relpooltoken(unp);
 	}
-	if (unp) {
+	if (UNP_ISATTACHED(unp)) {
 		/* pool token held */
 		socantsendmore(so);
 		unp_shutdown(unp);
@@ -687,7 +687,7 @@ uipc_sockaddr(netmsg_t msg)
 			break;
 		lwkt_relpooltoken(unp);
 	}
-	if (unp) {
+	if (UNP_ISATTACHED(unp)) {
 		/* pool token held */
 		if (unp->unp_addr) {
 			*msg->sockaddr.nm_nam =
