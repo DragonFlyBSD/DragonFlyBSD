@@ -337,7 +337,7 @@ sosetport(struct socket *so, lwkt_port_t port)
  */
 struct socket *
 sonewconn_faddr(struct socket *head, int connstatus,
-    const struct sockaddr *faddr)
+    const struct sockaddr *faddr, boolean_t keep_ref)
 {
 	struct socket *so;
 	struct socket *sp;
@@ -393,7 +393,13 @@ sonewconn_faddr(struct socket *head, int connstatus,
 	    so->so_refs == 2) ||	/* attach + our base ref */
 	   ((so->so_proto->pr_flags & PR_ASYNC_RCVD) &&
 	    so->so_refs == 3));		/* + async rcvd ref */
-	sofree(so);
+	if (keep_ref) {
+		/*
+		 * Keep the reference; caller will free it.
+		 */
+	} else {
+		sofree(so);
+	}
 	KKASSERT(so->so_port != NULL);
 	so->so_rcv.ssb_lowat = head->so_rcv.ssb_lowat;
 	so->so_snd.ssb_lowat = head->so_snd.ssb_lowat;
@@ -479,7 +485,7 @@ sonewconn_faddr(struct socket *head, int connstatus,
 struct socket *
 sonewconn(struct socket *head, int connstatus)
 {
-	return sonewconn_faddr(head, connstatus, NULL);
+	return sonewconn_faddr(head, connstatus, NULL, FALSE /* don't ref */);
 }
 
 /*

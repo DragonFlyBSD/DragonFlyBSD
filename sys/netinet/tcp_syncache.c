@@ -734,8 +734,14 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	 *
 	 * Set the protocol processing port for the socket to the current
 	 * port (that the connection came in on).
+	 *
+	 * NOTE:
+	 * We don't keep a reference on the new socket, since its
+	 * destruction will run in this thread (netisrN); there is no
+	 * race here.
 	 */
-	so = sonewconn_faddr(lso, SS_ISCONNECTED, faddr);
+	so = sonewconn_faddr(lso, SS_ISCONNECTED, faddr,
+	    FALSE /* don't ref */);
 	if (so == NULL) {
 		/*
 		 * Drop the connection; we will send a RST if the peer

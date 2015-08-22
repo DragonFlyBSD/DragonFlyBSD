@@ -444,7 +444,7 @@ void	sosetport (struct socket *so, struct lwkt_port *port);
 int	solisten (struct socket *so, int backlog, struct thread *td);
 struct socket *sonewconn (struct socket *head, int connstatus);
 struct socket *sonewconn_faddr (struct socket *head, int connstatus,
-	    const struct sockaddr *faddr);
+	    const struct sockaddr *faddr, boolean_t keep_ref);
 void	soinherit(struct socket *so, struct socket *so_inh);
 int	sooptcopyin (struct sockopt *sopt, void *buf, size_t len,
 			 size_t minlen);
