@@ -1275,7 +1275,7 @@ hammer_node_t hammer_btree_get_parent(hammer_transaction_t trans,
 			int *errorp, int try_exclusive);
 
 void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
-void	hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i);
+void	hammer_print_btree_elm(hammer_btree_elm_t elm);
 
 void	*hammer_bread(hammer_mount_t hmp, hammer_off_t off,
 			int *errorp, struct hammer_buffer **bufferp);

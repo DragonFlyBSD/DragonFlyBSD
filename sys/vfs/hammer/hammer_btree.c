@@ -3047,33 +3047,35 @@ btree_max_elements(u_int8_t type)
 void
 hammer_print_btree_node(hammer_node_ondisk_t ondisk)
 {
-	hammer_btree_elm_t elm;
-	int i;
+	int i, n;
 
 	kprintf("node %p count=%d parent=%016llx type=%c\n",
 		ondisk, ondisk->count,
 		(long long)ondisk->parent, ondisk->type);
 
+	switch (ondisk->type) {
+	case HAMMER_BTREE_TYPE_INTERNAL:
+		n = ondisk->count + 1;  /* count is NOT boundary inclusive */
+		break;
+	case HAMMER_BTREE_TYPE_LEAF:
+		n = ondisk->count;  /* there is no boundary */
+		break;
+	default:
+		return;  /* nothing to do */
+	}
+
 	/*
-	 * Dump both boundary elements if an internal node
+	 * Dump elements including boundary.
 	 */
-	if (ondisk->type == HAMMER_BTREE_TYPE_INTERNAL) {
-		for (i = 0; i <= ondisk->count; ++i) {
-			elm = &ondisk->elms[i];
-			hammer_print_btree_elm(elm, ondisk->type, i);
-		}
-	} else {
-		for (i = 0; i < ondisk->count; ++i) {
-			elm = &ondisk->elms[i];
-			hammer_print_btree_elm(elm, ondisk->type, i);
-		}
+	for (i = 0; i < n; ++i) {
+		kprintf("  %2d", i);
+		hammer_print_btree_elm(&ondisk->elms[i]);
 	}
 }
 
 void
-hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i)
+hammer_print_btree_elm(hammer_btree_elm_t elm)
 {
-	kprintf("  %2d", i);
 	kprintf("\tobj_id       = %016llx\n", (long long)elm->base.obj_id);
 	kprintf("\tkey          = %016llx\n", (long long)elm->base.key);
 	kprintf("\tcreate_tid   = %016llx\n", (long long)elm->base.create_tid);
@@ -3085,19 +3087,13 @@ hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i)
 		(elm->base.btype ? elm->base.btype : '?'));
 	kprintf("\tlocalization = %02x\n", elm->base.localization);
 
-	/*
-	 * Print info based on type of node that the elm is a part of.
-	 */
-	switch(type) {
-	case HAMMER_BTREE_TYPE_INTERNAL:
+	if (hammer_is_internal_node_elm(elm)) {
 		kprintf("\tsubtree_off  = %016llx\n",
 			(long long)elm->internal.subtree_offset);
-		break;
-	case HAMMER_BTREE_TYPE_LEAF:
+	} else if (hammer_is_leaf_node_elm(elm)) {
 		kprintf("\tdata_offset  = %016llx\n",
 			(long long)elm->leaf.data_offset);
 		kprintf("\tdata_len     = %08x\n", elm->leaf.data_len);
 		kprintf("\tdata_crc     = %08x\n", elm->leaf.data_crc);
-		break;
 	}
 }
