@@ -235,8 +235,6 @@ struct hammer_pseudofs_inmem {
 
 typedef struct hammer_pseudofs_inmem *hammer_pseudofs_inmem_t;
 
-#define HAMMER_PFSM_DELETED	0x0001
-
 /*
  * Cache object ids.  A fixed number of objid cache structures are
  * created to reserve object id's for newly created files in multiples
