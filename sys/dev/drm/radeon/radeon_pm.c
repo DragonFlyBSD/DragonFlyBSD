@@ -648,15 +648,33 @@ static void
 radeon_hwmon_refresh(void *arg)
 {
 	struct radeon_device *rdev = (struct radeon_device *)arg;
+	struct drm_device *ddev = rdev->ddev;
 	struct ksensor *s = rdev->pm.int_sensor;
 	int temp;
+	enum sensor_status stat;
 
-	if (rdev->asic->pm.get_temperature)
-		temp = radeon_get_temperature(rdev);
+	/* Can't get temperature when the card is off */
+	if  ((rdev->flags & RADEON_IS_PX) &&
+	     (ddev->switch_power_state != DRM_SWITCH_POWER_ON)) {
+		sensor_set_unknown(s);
+		s->status = SENSOR_S_OK;
+		return;
+	}
+
+	if (rdev->asic->pm.get_temperature == NULL) {
+		sensor_set_invalid(s);
+		return;
+	}
+
+	temp = radeon_get_temperature(rdev);
+	if (temp >= rdev->pm.dpm.thermal.max_temp)
+		stat = SENSOR_S_CRIT;
+	else if (temp >= rdev->pm.dpm.thermal.min_temp)
+		stat = SENSOR_S_WARN;
 	else
-		temp = 0;
+		stat = SENSOR_S_OK;
 
-	s->value = temp * 1000 + 273150000;
+	sensor_set(s, temp * 1000 + 273150000, stat);
 }
 
 static int radeon_hwmon_init(struct radeon_device *rdev)
@@ -687,6 +705,7 @@ static int radeon_hwmon_init(struct radeon_device *rdev)
 		    device_get_nameunit(rdev->dev),
 		    sizeof(rdev->pm.int_sensordev->xname));
 		rdev->pm.int_sensor->type = SENSOR_TEMP;
+		rdev->pm.int_sensor->flags |= SENSOR_FINVALID;
 		sensor_attach(rdev->pm.int_sensordev, rdev->pm.int_sensor);
 		sensor_task_register(rdev, radeon_hwmon_refresh, 5);
 		sensordev_install(rdev->pm.int_sensordev);
