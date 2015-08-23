@@ -359,8 +359,7 @@ hammer_cursor_upgrade_node(hammer_cursor_t cursor)
 }
 
 /*
- * Downgrade cursor->node and cursor->parent to shared locks.  This
- * function can return EDEADLK.
+ * Downgrade cursor->node and cursor->parent to shared locks.
  */
 void
 hammer_cursor_downgrade(hammer_cursor_t cursor)
