@@ -138,6 +138,31 @@ unp_free(struct unpcb *unp)
 		unp_detach(unp);
 }
 
+static __inline struct unpcb *
+unp_getsocktoken(struct socket *so)
+{
+	struct unpcb *unp;
+
+	/*
+	 * The unp pointer is invalid until we verify that it is
+	 * good by re-checking so_pcb AFTER obtaining the token.
+	 */
+	while ((unp = so->so_pcb) != NULL) {
+		lwkt_getpooltoken(unp);
+		if (unp == so->so_pcb)
+			break;
+		lwkt_relpooltoken(unp);
+	}
+	return unp;
+}
+
+static void
+unp_reltoken(struct unpcb *unp)
+{
+	if (unp != NULL)
+		lwkt_relpooltoken(unp);
+}
+
 /*
  * NOTE: (so) is referenced from soabort*() and netmsg_pru_abort()
  *	 will sofree() it when we return.
@@ -352,21 +377,15 @@ uipc_rcvd(netmsg_t msg)
 
 	/*
 	 * so_pcb is only modified with both the global and the unp
-	 * pool token held.  The unp pointer is invalid until we verify
-	 * that it is good by re-checking so_pcb AFTER obtaining the token.
+	 * pool token held.
 	 */
 	so = msg->base.nm_so;
-	while ((unp = so->so_pcb) != NULL) {
-		lwkt_getpooltoken(unp);
-		if (unp == so->so_pcb)
-			break;
-		lwkt_relpooltoken(unp);
-	}
+	unp = unp_getsocktoken(so);
+
 	if (!UNP_ISATTACHED(unp)) {
 		error = EINVAL;
 		goto done;
 	}
-	/* pool token held */
 
 	switch (so->so_type) {
 	case SOCK_DGRAM:
@@ -405,8 +424,8 @@ uipc_rcvd(netmsg_t msg)
 		/*NOTREACHED*/
 	}
 	error = 0;
-	lwkt_relpooltoken(unp);
 done:
+	unp_reltoken(unp);
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -428,21 +447,15 @@ uipc_send(netmsg_t msg)
 
 	/*
 	 * so_pcb is only modified with both the global and the unp
-	 * pool token held.  The unp pointer is invalid until we verify
-	 * that it is good by re-checking so_pcb AFTER obtaining the token.
+	 * pool token held.
 	 */
 	so = msg->base.nm_so;
-	while ((unp = so->so_pcb) != NULL) {
-		lwkt_getpooltoken(unp);
-		if (unp == so->so_pcb)
-			break;
-		lwkt_relpooltoken(unp);
-	}
+	unp = unp_getsocktoken(so);
+
 	if (!UNP_ISATTACHED(unp)) {
 		error = EINVAL;
-		goto done;
+		goto release;
 	}
-	/* pool token held */
 
 	if (msg->send.nm_flags & PRUS_OOB) {
 		error = EOPNOTSUPP;
@@ -581,9 +594,8 @@ uipc_send(netmsg_t msg)
 	if (control && error != 0)
 		unp_dispose(control);
 release:
-	lwkt_relpooltoken(unp);
+	unp_reltoken(unp);
 	wakeup_end_delayed();
-done:
 
 	if (control)
 		m_freem(control);
@@ -608,20 +620,14 @@ uipc_sense(netmsg_t msg)
 
 	/*
 	 * so_pcb is only modified with both the global and the unp
-	 * pool token held.  The unp pointer is invalid until we verify
-	 * that it is good by re-checking so_pcb AFTER obtaining the token.
+	 * pool token held.
 	 */
-	while ((unp = so->so_pcb) != NULL) {
-		lwkt_getpooltoken(unp);
-		if (unp == so->so_pcb)
-			break;
-		lwkt_relpooltoken(unp);
-	}
+	unp = unp_getsocktoken(so);
+
 	if (!UNP_ISATTACHED(unp)) {
 		error = EINVAL;
 		goto done;
 	}
-	/* pool token held */
 
 	sb->st_blksize = so->so_snd.ssb_hiwat;
 	sb->st_dev = NOUDEV;
@@ -632,8 +638,8 @@ uipc_sense(netmsg_t msg)
 	}
 	sb->st_ino = unp->unp_ino;
 	error = 0;
-	lwkt_relpooltoken(unp);
 done:
+	unp_reltoken(unp);
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -646,25 +652,20 @@ uipc_shutdown(netmsg_t msg)
 
 	/*
 	 * so_pcb is only modified with both the global and the unp
-	 * pool token held.  The unp pointer is invalid until we verify
-	 * that it is good by re-checking so_pcb AFTER obtaining the token.
+	 * pool token held.
 	 */
 	so = msg->base.nm_so;
-	while ((unp = so->so_pcb) != NULL) {
-		lwkt_getpooltoken(unp);
-		if (unp == so->so_pcb)
-			break;
-		lwkt_relpooltoken(unp);
-	}
+	unp = unp_getsocktoken(so);
+
 	if (UNP_ISATTACHED(unp)) {
-		/* pool token held */
 		socantsendmore(so);
 		unp_shutdown(unp);
-		lwkt_relpooltoken(unp);
 		error = 0;
 	} else {
 		error = EINVAL;
 	}
+
+	unp_reltoken(unp);
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -677,27 +678,22 @@ uipc_sockaddr(netmsg_t msg)
 
 	/*
 	 * so_pcb is only modified with both the global and the unp
-	 * pool token held.  The unp pointer is invalid until we verify
-	 * that it is good by re-checking so_pcb AFTER obtaining the token.
+	 * pool token held.
 	 */
 	so = msg->base.nm_so;
-	while ((unp = so->so_pcb) != NULL) {
-		lwkt_getpooltoken(unp);
-		if (unp == so->so_pcb)
-			break;
-		lwkt_relpooltoken(unp);
-	}
+	unp = unp_getsocktoken(so);
+
 	if (UNP_ISATTACHED(unp)) {
-		/* pool token held */
 		if (unp->unp_addr) {
 			*msg->sockaddr.nm_nam =
 				dup_sockaddr((struct sockaddr *)unp->unp_addr);
 		}
-		lwkt_relpooltoken(unp);
 		error = 0;
 	} else {
 		error = EINVAL;
 	}
+
+	unp_reltoken(unp);
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -1078,14 +1074,12 @@ unp_connect2(struct socket *so, struct socket *so2)
 	struct unpcb *unp2;
 
 	lwkt_gettoken(&unp_token);
-	unp = so->so_pcb;
 	if (so2->so_type != so->so_type) {
 		lwkt_reltoken(&unp_token);
 		return (EPROTOTYPE);
 	}
-	unp2 = so2->so_pcb;
-	lwkt_getpooltoken(unp);
-	lwkt_getpooltoken(unp2);
+	unp = unp_getsocktoken(so);
+	unp2 = unp_getsocktoken(so2);
 
 	unp->unp_conn = unp2;
 
@@ -1105,8 +1099,9 @@ unp_connect2(struct socket *so, struct socket *so2)
 	default:
 		panic("unp_connect2");
 	}
-	lwkt_relpooltoken(unp2);
-	lwkt_relpooltoken(unp);
+
+	unp_reltoken(unp2);
+	unp_reltoken(unp);
 	lwkt_reltoken(&unp_token);
 	return (0);
 }
