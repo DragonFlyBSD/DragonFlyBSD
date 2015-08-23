@@ -436,9 +436,8 @@ skip:
 			}
 		}
 	}
-
-	hammer_cursor_downgrade(cursor);
 end:
+	hammer_cursor_downgrade(cursor);
 	return(error);
 }
 
