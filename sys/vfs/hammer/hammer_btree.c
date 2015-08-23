@@ -3096,12 +3096,15 @@ hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i)
 		(elm->base.btype ? elm->base.btype : '?'));
 	kprintf("\tlocalization = %02x\n", elm->base.localization);
 
+	/*
+	 * Print info based on type of node that the elm is a part of.
+	 */
 	switch(type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
 		kprintf("\tsubtree_off  = %016llx\n",
 			(long long)elm->internal.subtree_offset);
 		break;
-	case HAMMER_BTREE_TYPE_RECORD:
+	case HAMMER_BTREE_TYPE_LEAF:
 		kprintf("\tdata_offset  = %016llx\n",
 			(long long)elm->leaf.data_offset);
 		kprintf("\tdata_len     = %08x\n", elm->leaf.data_len);
