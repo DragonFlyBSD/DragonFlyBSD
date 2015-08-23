@@ -30,4 +30,17 @@
 #define DMI_MATCH(a, b)		{(a), (b)}
 #define DMI_EXACT_MATCH(a, b)	{(a), (b)}
 
+struct dmi_strmatch {
+	unsigned char slot;
+	char substr[79];
+};
+
+struct dmi_system_id {
+        int (*callback)(const struct dmi_system_id *);
+        const char *ident;
+        struct dmi_strmatch matches[4];
+};
+
+int dmi_check_system(const struct dmi_system_id *);
+
 #endif	/* _LINUX_MOD_DEVICETABLE_H_ */

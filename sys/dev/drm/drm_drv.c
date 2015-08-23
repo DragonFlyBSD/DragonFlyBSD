@@ -49,6 +49,7 @@
 #include <sys/devfs.h>
 
 #include <linux/export.h>
+#include <linux/dmi.h>
 #include <drm/drmP.h>
 #include <drm/drm_core.h>
 
@@ -984,8 +985,7 @@ done:
 	return found;
 }
 
-bool
-dmi_check_system(const struct dmi_system_id *sysid)
+int dmi_check_system(const struct dmi_system_id *sysid)
 {
 	const struct dmi_system_id *dsi;
 	int num = 0;
