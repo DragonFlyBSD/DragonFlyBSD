@@ -378,7 +378,8 @@ skip:
 	/*
 	 * Reblock a B-Tree internal or leaf node.  A leaf node is reblocked
 	 * on initial entry only (element 0).  An internal node is reblocked
-	 * when entered upward from its first leaf node only (also element 0).
+	 * when entered upward from its first leaf node only (also element 0,
+	 * see hammer_btree_iterate() where cursor moves up and may return).
 	 * Further revisits of the internal node (index > 0) are ignored.
 	 */
 	tmp_offset = cursor->node->node_offset;
@@ -539,7 +540,8 @@ hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
 	hammer_delete_node(cursor->trans, onode);
 
 	if (hammer_debug_general & 0x4000) {
-		kprintf("REBLOCK LNODE %08x %016llx -> %016llx\n",
+		kprintf("REBLOCK %cNODE %08x %016llx -> %016llx\n",
+			nnode->ondisk->type,
 			elm->base.localization,
 			(long long)onode->node_offset,
 			(long long)nnode->node_offset);
@@ -574,6 +576,10 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	if (error)
 		goto done;
 
+	/*
+	 * Don't supply a hint when allocating the leaf.  Fills are done
+	 * from the leaf upwards.
+	 */
 	onode = cursor->node;
 	nnode = hammer_alloc_btree(cursor->trans, 0, &error);
 
@@ -595,7 +601,8 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	hammer_delete_node(cursor->trans, onode);
 
 	if (hammer_debug_general & 0x4000) {
-		kprintf("REBLOCK INODE %08x %016llx -> %016llx\n",
+		kprintf("REBLOCK %cNODE %08x %016llx -> %016llx\n",
+			nnode->ondisk->type,
 			elm->base.localization,
 			(long long)onode->node_offset,
 			(long long)nnode->node_offset);
