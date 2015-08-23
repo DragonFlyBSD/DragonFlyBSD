@@ -491,7 +491,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 
 	if (hammer_debug_general & 0x4000) {
 		kprintf("REBLOCK DATA %08x %016llx -> %016llx\n",
-			elm->base.localization,
+			(elm ? elm->base.localization : -1),
 			(long long)odata_offset,
 			(long long)ndata_offset);
 	}
@@ -542,7 +542,7 @@ hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
 	if (hammer_debug_general & 0x4000) {
 		kprintf("REBLOCK %cNODE %08x %016llx -> %016llx\n",
 			nnode->ondisk->type,
-			elm->base.localization,
+			(elm ? elm->base.localization : -1),
 			(long long)onode->node_offset,
 			(long long)nnode->node_offset);
 	}
@@ -603,7 +603,7 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	if (hammer_debug_general & 0x4000) {
 		kprintf("REBLOCK %cNODE %08x %016llx -> %016llx\n",
 			nnode->ondisk->type,
-			elm->base.localization,
+			(elm ? elm->base.localization : -1),
 			(long long)onode->node_offset,
 			(long long)nnode->node_offset);
 	}
