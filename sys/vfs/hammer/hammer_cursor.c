@@ -652,9 +652,14 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		node = hammer_get_node(cursor->trans,
 				       elm->internal.subtree_offset, 0, &error);
 		if (error == 0) {
-			KASSERT(elm->base.btype == node->ondisk->type, ("BTYPE MISMATCH %c %c NODE %p", elm->base.btype, node->ondisk->type, node));
+			KASSERT(elm->base.btype == node->ondisk->type,
+				("BTYPE MISMATCH %c %c NODE %p",
+				 elm->base.btype, node->ondisk->type, node));
 			if (node->ondisk->parent != cursor->parent->node_offset)
-				panic("node %p %016llx vs %016llx", node, (long long)node->ondisk->parent, (long long)cursor->parent->node_offset);
+				panic("node %p %016llx vs %016llx",
+					node,
+					(long long)node->ondisk->parent,
+					(long long)cursor->parent->node_offset);
 			KKASSERT(node->ondisk->parent == cursor->parent->node_offset);
 		}
 		break;
