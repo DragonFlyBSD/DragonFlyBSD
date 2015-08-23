@@ -42,6 +42,7 @@ SRCS	= \
 	linux_hdmi.c \
 	linux_list_sort.c \
 	linux_shmem.c \
+	linux_workqueue.c \
 	ttm_lock.c \
 	ttm_object.c \
 	ttm_tt.c \

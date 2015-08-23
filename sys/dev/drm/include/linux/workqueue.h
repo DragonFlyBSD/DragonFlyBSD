@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2015 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -162,6 +162,9 @@ _create_workqueue_common(char *name, int cpus)
 #define alloc_ordered_workqueue(name, flags)				\
 	_create_workqueue_common(name, 1)
 
+#define alloc_workqueue(name, flags, max_active)			\
+	_create_workqueue_common(name, max_active)
+
 static inline void
 destroy_workqueue(struct workqueue_struct *wq)
 {
@@ -234,5 +237,9 @@ mod_delayed_work(struct workqueue_struct *wq, struct delayed_work *dwork,
 	queue_delayed_work(wq, dwork, delay);
 	return false;
 }
+
+/* System-wide workqueues */
+extern struct workqueue_struct *system_wq;
+extern struct workqueue_struct *system_long_wq;
 
 #endif	/* _LINUX_WORKQUEUE_H_ */
