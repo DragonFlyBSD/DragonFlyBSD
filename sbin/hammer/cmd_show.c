@@ -390,6 +390,10 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 					elm->leaf.data_offset,
 					elm->leaf.data_len);
 			break;
+		default:
+			printf("\n\t         ");
+			printf("badtype=%d", elm->base.btype);
+			break;
 		}
 		break;
 	default:
