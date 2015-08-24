@@ -54,12 +54,9 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 
 	bzero(&reblock, sizeof(reblock));
 
-	reblock.key_beg.localization = HAMMER_MIN_LOCALIZATION;
 	reblock.key_beg.obj_id = HAMMER_MIN_OBJID;
-	hammer_get_cycle(&reblock.key_beg, NULL);
-
-	reblock.key_end.localization = HAMMER_MAX_LOCALIZATION;
 	reblock.key_end.obj_id = HAMMER_MAX_OBJID;
+	hammer_get_cycle(&reblock.key_beg, NULL);
 
 	reblock.head.flags = flags & HAMMER_IOC_DO_FLAGS;
 	reblock.allpfs = AllPFS;
@@ -67,17 +64,24 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 
 	/*
 	 * Restrict the localization domain if asked to do inodes or data,
-	 * but not both.
+	 * but not both.  Note that using INODE or MISC for localization
+	 * adds a limitation to reblock range of B-Tree node, if BTREE is
+	 * used with INODES or (DATA and/or DIRS) but not both.
 	 */
 	switch(flags & (HAMMER_IOC_DO_INODES|HAMMER_IOC_DO_DATA|HAMMER_IOC_DO_DIRS)) {
 	case HAMMER_IOC_DO_INODES:
 		reblock.key_beg.localization = HAMMER_LOCALIZE_INODE;
 		reblock.key_end.localization = HAMMER_LOCALIZE_INODE;
 		break;
-	case HAMMER_IOC_DO_DIRS:
 	case HAMMER_IOC_DO_DATA:
+	case HAMMER_IOC_DO_DIRS:
+	case HAMMER_IOC_DO_DATA | HAMMER_IOC_DO_DIRS:
 		reblock.key_beg.localization = HAMMER_LOCALIZE_MISC;
 		reblock.key_end.localization = HAMMER_LOCALIZE_MISC;
+		break;
+	default:
+		reblock.key_beg.localization = HAMMER_MIN_LOCALIZATION;
+		reblock.key_end.localization = HAMMER_MAX_LOCALIZATION;
 		break;
 	}
 
