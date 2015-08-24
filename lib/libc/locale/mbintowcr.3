@@ -1,3 +1,4 @@
+.\"-
 .\" Copyright (c) 2015 Matthew Dillon
 .\" All rights reserved.
 .\"
@@ -76,22 +77,25 @@ and
 functions translate byte data into wide-char format and back again.
 Under normal conditions (but not with all flags) these functions
 guarantee that the round-trip will be 8-bit-clean.
-Some care must be taken to properly specify the WCSBIN_EOF flag to
-properly handle trailing incomplete sequences at stream EOF.
+Some care must be taken to properly specify the
+.Dv WCSBIN_EOF
+flag to properly handle trailing incomplete sequences at stream EOF.
 .Pp
 For the "C" locale these functions are 1:1 (do not convert UTF-8).
-For UTF-8 locales these functions convert to/from UTF-8.  Most of the
-discussion below pertains to UTF-8 translations.
+For UTF-8 locales these functions convert to/from UTF-8.
+Most of the discussion below pertains to UTF-8 translations.
 .Pp
 The
 .Fn utf8towcr
 and
 .Fn wcrtoutf8
 functions do exactly the same thing as the above functions but are locked
-to the UTF8 locale.  That is, these functions work regardless of which locale
-has been selected and also do not require any initial setlocale() call
-to initialize.  Applications working explicitly in UTF8 should use these
-versions.
+to the UTF-8 locale.
+That is, these functions work regardless of which localehas been selected
+and also do not require any initial
+.Fn setlocale
+call to initialize.
+Applications working explicitly in UTF-8 should use these versions.
 .Pp
 Any illegal sequences will be escaped using UTF-8B (U+DC80 - U+DCFF).
 Illegal sequences include surrogate-space encodings, non-canonical encodings,
@@ -103,7 +107,10 @@ The
 .Fn mbintowcr
 function takes generic 8-bit byte data as its input which the caller
 expects to be loosely coded in UTF-8 and converts it to an array of
-wchar_t's, and returns the number of wchar_t's that were converted.
+.Vt wchar_t ,
+and returns the number of
+.Vt wchar_t
+that were converted.
 The caller must set
 .Fa *slen
 to the number of bytes in the input buffer and the function will
@@ -113,60 +120,81 @@ on return to the number of bytes in the input buffer that were processed.
 .Pp
 Fewer bytes than specified might be processed due to the output buffer
 reaching its limit or due to an incomplete sequence at the end of the input
-buffer when the WCSBIN_EOF flag has not been specified.
+buffer when the
+.Dv WCSBIN_EOF
+flag has not been specified.
 .Pp
 If processing a stream, the caller
 typically copies any unprocessed data at the end of the buffer back to
 the beginning and then continues loading the buffer from there.
 Be sure to check for an incomplete translation at stream EOF and do a
-final translation of the remainder with the WCSBIN_EOF flag set.
+final translation of the remainder with the
+.Dv WCSBIN_EOF
+flag set.
 .Pp
-This function will always generate escapes for illegal UTF8 code sequences
-and by can produce a clean BYTE-WCHAR-BYTE conversion.  See the flags
-description later on.
+This function will always generate escapes for illegal UTF-8 code sequences
+and by can produce a clean BYTE-WCHAR-BYTE conversion.
+See the flags description later on.
 .Pp
-This function cannot return an error unless the WCSBIN_STRICT flag is set.
+This function cannot return an error unless the
+.Dv WCSBIN_STRICT
+flag is set.
 In case of error, any valid conversions are returned first and the caller
-is expected to iterate.  The error is returned when it becomes the first
-element of the buffer.
+is expected to iterate.
+The error is returned when it becomes the first element of the buffer.
 .Pp
 A
 .Dv NULL
 destination buffer may be specified in which case this function operates
-identically except for actually trying to fill the buffer.  This feature
-is typically used for validation with WCSBIN_STRICT and sometimes also
-used in combination with WCSBIN_SURRO (set if you want to allow surrogates).
+identically except for actually trying to fill the buffer.
+This feature is typically used for validation with
+.Dv WCSBIN_STRICT
+and sometimes also used in combination with
+.Dv WCSBIN_SURRO
+(set if you want to allow surrogates).
 .Pp
 The
 .Fn wcrtombin
-function takes an array of wchar_t's as its input which is usually expected
-to be well-formed and converts it to an array of generic 8-bit byte data.
+function takes an array of
+.Vt wchar_t
+as its input which is usually expected to be well-formed and converts it
+to an array of generic 8-bit byte data.
 The caller must set
 .Fa *slen
-to the number of elements in the input buffer and the function will
-set
+to the number of elements in the input buffer and the function will set
 .Fa *slen
 on return to the number of elements in the input buffer that were processed.
 .Pp
-Be sure to properly set the WCSBIN_EOF flag for the last buffer at stream EOF.
+Be sure to properly set the
+.Dv WCSBIN_EOF
+flag for the last buffer at stream EOF.
 .Pp
 This function can return an error regardless of the flags if a supplied
-wchar code is out of range.  Some flags change the range of allowed wchar
-codes.  In case of error, any valid conversions are returned first and the
-caller is expected to iterate.  The error is returned when it becomes the
-first element of the buffer.
+wchar code is out of range.
+Some flags change the range of allowed wchar codes.
+In case of error, any valid conversions are returned first and the
+caller is expected to iterate.
+The error is returned when it becomes the first element of the buffer.
 .Pp
 A
 .Dv NULL
 destination buffer may be specified in which case this function operates
-identically except for actually trying to fill the buffer.  This feature
-is typically used for validation with or without WCSBIN_STRICT
-and sometimes also used in combination with WCSBIN_SURRO.
+identically except for actually trying to fill the buffer.
+This feature is typically used for validation with or without
+.Dv WCSBIN_STRICT
+and sometimes also used in combination with
+.Dv WCSBIN_SURRO .
 .Pp
-One final note on the use of WCSBIN_SURRO for wchars-to-bytes.  If this flag
+One final note on the use of
+.Dv WCSBIN_SURRO
+for wchars-to-bytes.
+If this flag
 is not set surrogates in the escape range will be de-escaped (giving us our
-8-bit-clean round-trip), and other surrogates will be passed through as UTF8
-encodings.  In WCSBIN_STRICT mode this flag works slightly differently.
+8-bit-clean round-trip), and other surrogates will be passed through as UTF-8
+encodings.
+In
+.Dv WCSBIN_STRICT
+mode this flag works slightly differently.
 If not specified no surrogates are allowed at all (escaped or otherwise),
 and if specified all surrogates are allowed and will never be de-escaped.
 .Pp
@@ -180,70 +208,85 @@ argument, whereas the
 non-suffixed versions use the current global or per-thread locale.
 .Sh UTF-8B ESCAPE SEQUENCES
 Escaping is handled by converting one or more bytes in the byte sequence to
-the UTF-8B escape wchar (U+DC80 - U+DCFF).  Most illegal sequences escape
-the first byte and then reprocess the remaining bytes.  An illegal byte
+the UTF-8B escape wchar (U+DC80 - U+DCFF).
+Most illegal sequences escape the first byte and then reprocess the remaining
+bytes.
+An illegal byte
 sequence length (5 or 6 bytes), non-canonical encoding, or illegal wchar value
 (beyond 0x10FFFF if not modified by flags) will escape all bytes in the
 sequence as long as they were not malformed.
 .Pp
 When converting back to a byte-sequence, if not modified by flags, UTF-8B
-escape wchars are converted back to their original bytes.  Other surrogate
-codes (U+D800 - U+DFFF which are normally illegal) will be passed through
-and encoded as UTF-8.
+escape wchars are converted back to their original bytes.
+Other surrogate codes (U+D800 - U+DFFF which are normally illegal) will be
+passed through and encoded as UTF-8.
 .Sh FLAGS
-.Bl -tag -width Er
-.It Li WCSBIN_EOF
+.Bl -tag -width ".Dv WCSBIN_LONGCODES"
+.It Dv WCSBIN_EOF
 Indicate that the input buffer represents the last of the input stream.
 This causes any partial sequences at the end of the input buffer to be
 processed.
-.It Li WCSBIN_SURRO
-This flag passes-through any surrogate codes that are already UTF8-encoded.
+.It Dv WCSBIN_SURRO
+This flag passes-through any surrogate codes that are already UTF-8-encoded.
 This is normally illegal but if you are processing a stream which has already
-been UTF8B escaped this flag will prevent the U+DC80 - U+DCFF codes from
+been UTF-8B escaped this flag will prevent the U+DC80 - U+DCFF codes from
 being re-escaped bytes-to-wchars and will prevent decoding back to the
-original bytes wchars-to-bytes.  This flag is sometimes used on input if the
+original bytes wchars-to-bytes.
+This flag is sometimes used on input if the
 caller expects the input stream to already be escaped, and not usually used
 on output unless the caller explicitly wants to encode to an intermediate
-illegal UTF8 encoding that retains the escapes as escapes.
+illegal UTF-8 encoding that retains the escapes as escapes.
 .Pp
 This flag does not prevent additional escapes from being translated on
-bytes-to-wchars (WCSBIN_STRICT prevents escaping on bytes-to-wchars), but
+bytes-to-wchars
+.Dv ( WCSBIN_STRICT
+prevents escaping on bytes-to-wchars), but
 will prevent de-escaping on wchars-to-bytes.
 .Pp
 This flag breaks round-trip 8-bit-clean operation since escape codes use
 the surrogate space and will mix with surrogates that are passed through
 on input by this flag in a way that cannot be distinguished.
-.It Li WCSBIN_LONGCODES
+.It Dv WCSBIN_LONGCODES
 Specifying this flag in the bytes-to-wchars direction allows for decoding
 of legacy 5-byte and 6-byte sequences as well as 4-byte sequences which
-would normally be illegal.  These sequences are illegal and this flag should
+would normally be illegal.
+These sequences are illegal and this flag should
 not normally be used unless the caller explicitly wants to handle the legacy
 case.
 .Pp
 Specifying this flag in the wchars-to-bytes direction allows normally illegal
-wchars to be encoded.  Again, not recommended.
+wchars to be encoded.
+Again, not recommended.
 .Pp
-This flag does NOT allow decoding non-canonical sequences.  Such sequences
-will still be escaped.
-.It Li WCSBIN_STRICT
+This flag does not allow decoding non-canonical sequences.
+Such sequences will still be escaped.
+.It Dv WCSBIN_STRICT
 This flag forces strict parsing in the bytes-to-wchars direction and will
 cause
 .Fn mbintowcr
 to proces short or return with an error once processing reaches the
 illegal coding rather than escaping the illegal sequence.
 This flag is usually specified only when the caller desires to validate
-a UTF8 buffer.  Remember that an error may also be present with return values
-greater than 0.  A partial sequences at the end of the buffer is not
-considered to be an error unless WCSBIN_EOF is also specified.
+a UTF-8 buffer.
+Remember that an error may also be present with return values greater than 0.
+A partial sequences at the end of the buffer is not
+considered to be an error unless
+.Dv WCSBIN_EOF
+is also specified.
 .Pp
 Caller is reminded that when using this feature for validation, a
 short-return can happen rather than an error if the error is not at the
-base of the source or if WCSBIN_EOF is not specified.  If the caller is not
-chaining buffers than WCSBIN_EOF should be specified and a simple check
-of whether
+base of the source or if
+.Dv WCSBIN_EOF
+is not specified.
+If the caller is not chaining buffers then
+.Dv WCSBIN_EOF
+should be specified and a simple check of whether
 .Fa *slen
 equals the original input buffer length on return is sufficient to determine
-if an error occurred or not.  If the caller is chaining buffers WCSBIN_EOF
+if an error occurred or not.
+If the caller is chaining buffers
+.Dv WCSBIN_EOF
 is not specified and the caller must proceed with the copy-down / continued
 buffer loading loop to distinguish between an incomplete buffer and an error.
 .El
@@ -256,20 +299,23 @@ The
 .Fn wcrtombin_l
 and
 .Fn wcrtoutf8
-functions return the number of output elements generated and set *slen to
-the number of input elements converted.
+functions return the number of output elements generated and set
+.Fa *slen
+to the number of input elements converted.
 If an error occurs but the output buffer has already been populated,
 a short return will occur and the next iteration where the error is
-the first element will return the error.  The caller is responsible for
-processing any error conditions before continuing.
+the first element will return the error.
+The caller is responsible for processing any error conditions before
+continuing.
 .Pp
 The
 .Fn mbintowcr ,
 .Fn mbintowcr_l
 and
 .Fn utf8towcr
-functions can return a (size_t)-1 error if WCSBIN_STRICT is
-specified, and otherwise cannot.
+functions can return a (size_t)-1 error if
+.Dv WCSBIN_STRICT
+is specified, and otherwise cannot.
 .Pp
 The
 .Fn wcrtombin ,
@@ -277,10 +323,12 @@ The
 and
 .Fn wcrtoutf8
 functions can return a (size_t)-1 error if given an illegal wchar code,
-as modified by flags.  Any wchar code >= 0x80000000U always causes an
-error to be returned.
+as modified by
+.Fa flags .
+Any wchar code >= 0x80000000U always causes an error to be returned.
 .Sh ERRORS
-If an error is returned, errno will be set to EILSEQ.
+If an error is returned, errno will be set to
+.Er EILSEQ .
 .Sh SEE ALSO
 .Xr mbtowc 3 ,
 .Xr multibyte 3 ,
