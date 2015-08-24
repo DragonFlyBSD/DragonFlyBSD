@@ -366,13 +366,14 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		if (hammer_debug_btree) {
 			int i = cursor->index;
 			hammer_btree_elm_t elm = &cursor->node->ondisk->elms[i];
-			kprintf("ITERATE  %p:%d %016llx %02x "
+			kprintf("ITERATE  %p:%d %c %016llx %02x "
 				"key=%016llx lo=%02x\n",
 				cursor->node, i,
-				(long long)elm->internal.base.obj_id,
-				elm->internal.base.rec_type,
-				(long long)elm->internal.base.key,
-				elm->internal.base.localization
+				elm->leaf.base.btype ? elm->leaf.base.btype : '?',
+				(long long)elm->leaf.base.obj_id,
+				elm->leaf.base.rec_type,
+				(long long)elm->leaf.base.key,
+				elm->leaf.base.localization
 			);
 		}
 		return(0);
@@ -606,13 +607,14 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 		if (hammer_debug_btree) {
 			int i = cursor->index;
 			hammer_btree_elm_t elm = &cursor->node->ondisk->elms[i];
-			kprintf("ITERATER %p:%d %016llx %02x "
+			kprintf("ITERATER %p:%d %c %016llx %02x "
 				"key=%016llx lo=%02x\n",
 				cursor->node, i,
-				(long long)elm->internal.base.obj_id,
-				elm->internal.base.rec_type,
-				(long long)elm->internal.base.key,
-				elm->internal.base.localization
+				elm->leaf.base.btype ? elm->leaf.base.btype : '?',
+				(long long)elm->leaf.base.obj_id,
+				elm->leaf.base.rec_type,
+				(long long)elm->leaf.base.key,
+				elm->leaf.base.localization
 			);
 		}
 		return(0);
