@@ -321,7 +321,6 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 #define HAMMER_LAYER2_CRCSIZE	\
 	offsetof(struct hammer_blockmap_layer2, entry_crc)
 
-#define HAMMER_BLOCKMAP_FREE	0ULL
 #define HAMMER_BLOCKMAP_UNAVAIL	((hammer_off_t)-1LL)
 
 #define HAMMER_BLOCKMAP_RADIX1	/* 262144 (18) */	\

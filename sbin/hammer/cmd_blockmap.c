@@ -151,8 +151,7 @@ dump_blockmap(const char *label, int zone)
 			(uintmax_t)scan1,
 			(uintmax_t)layer1->phys_offset,
 			(intmax_t)layer1->blocks_free);
-		if (layer1->phys_offset == HAMMER_BLOCKMAP_FREE)
-			continue;
+
 		for (scan2 = scan1;
 		     scan2 < scan1 + HAMMER_BLOCKMAP_LAYER2;
 		     scan2 += HAMMER_BIGBLOCK_SIZE) {
