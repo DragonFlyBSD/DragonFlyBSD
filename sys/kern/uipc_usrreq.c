@@ -57,7 +57,10 @@
 #include <sys/socketvar2.h>
 #include <sys/msgport2.h>
 
-#define UNP_ISATTACHED(unp)	((unp) != NULL)
+#define UNP_DETACHED		UNP_PRIVATE1
+
+#define UNP_ISATTACHED(unp)	\
+    ((unp) != NULL && ((unp)->unp_flags & UNP_DETACHED) == 0)
 
 typedef struct unp_defdiscard {
 	struct unp_defdiscard *next;
@@ -186,14 +189,18 @@ uipc_abort(netmsg_t msg)
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = msg->base.nm_so->so_pcb;
+	unp = unp_getsocktoken(msg->base.nm_so);
+
 	if (UNP_ISATTACHED(unp)) {
+		unp_setflags(unp, UNP_DETACHED);
 		unp_drop(unp, ECONNABORTED);
 		unp_free(unp);
 		error = 0;
 	} else {
 		error = EINVAL;
 	}
+
+	unp_reltoken(unp);
 	lwkt_reltoken(&unp_token);
 
 	lwkt_replymsg(&msg->lmsg, error);
@@ -303,14 +310,19 @@ uipc_detach(netmsg_t msg)
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = msg->base.nm_so->so_pcb;
+	unp = unp_getsocktoken(msg->base.nm_so);
+
 	if (UNP_ISATTACHED(unp)) {
+		unp_setflags(unp, UNP_DETACHED);
 		unp_free(unp);
 		error = 0;
 	} else {
 		error = EINVAL;
 	}
+
+	unp_reltoken(unp);
 	lwkt_reltoken(&unp_token);
+
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
