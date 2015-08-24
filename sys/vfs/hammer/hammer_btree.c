@@ -795,7 +795,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	if ((flags & HAMMER_CURSOR_GET_DATA) == 0)
 		return(0);
 	if (elm->leaf.base.btype != HAMMER_BTREE_TYPE_RECORD)
-		return(0);
+		return(EINVAL);
 	data_off = elm->leaf.data_offset;
 	data_len = elm->leaf.data_len;
 	if (data_off == 0)

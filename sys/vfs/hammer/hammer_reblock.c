@@ -271,7 +271,7 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 	if (cursor->node->ondisk->type != HAMMER_BTREE_TYPE_LEAF)
 		goto skip;
 	if (elm->leaf.base.btype != HAMMER_BTREE_TYPE_RECORD)
-		return(0);
+		return(EINVAL);
 	tmp_offset = elm->leaf.data_offset;
 	if (tmp_offset == 0)
 		goto skip;
