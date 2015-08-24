@@ -210,6 +210,37 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
 #define HAMMER_BTREE_TYPE_DELETED	((u_int8_t)'D')
 #define HAMMER_BTREE_TYPE_NONE		((u_int8_t)0)
 
+/*
+ * Return 1 if elm is a node element of an internal node,
+ * otherwise return 0.
+ */
+static __inline
+int
+hammer_is_internal_node_elm(hammer_btree_elm_t elm)
+{
+	switch (elm->base.btype) {
+	case HAMMER_BTREE_TYPE_INTERNAL:
+	case HAMMER_BTREE_TYPE_LEAF:
+		return(1);
+	}
+	return(0);
+}
+
+/*
+ * Return 1 if elm is a node element of a leaf node,
+ * otherwise return 0.
+ */
+static __inline
+int
+hammer_is_leaf_node_elm(hammer_btree_elm_t elm)
+{
+	switch (elm->base.btype) {
+	case HAMMER_BTREE_TYPE_RECORD:
+		return(1);
+	}
+	return(0);
+}
+
 static __inline
 int
 hammer_node_max_elements(u_int8_t type)

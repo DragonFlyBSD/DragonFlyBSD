@@ -637,6 +637,7 @@ hammer_move_node(hammer_cursor_t cursor, hammer_btree_elm_t elm,
 		/*
 		 * We are not the root of the B-Tree
 		 */
+		KKASSERT(hammer_is_internal_node_elm(elm));
 		hammer_modify_node(cursor->trans, cursor->parent,
 				   &elm->internal.subtree_offset,
 				   sizeof(elm->internal.subtree_offset));

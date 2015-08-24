@@ -2619,9 +2619,7 @@ btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
 
 	error = 0;
 
-	switch(elm->base.btype) {
-	case HAMMER_BTREE_TYPE_INTERNAL:
-	case HAMMER_BTREE_TYPE_LEAF:
+	if (hammer_is_internal_node_elm(elm)) {
 		child = hammer_get_node(trans, elm->internal.subtree_offset,
 					0, &error);
 		if (error == 0) {
@@ -2630,9 +2628,6 @@ btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
 			hammer_modify_node_done(child);
 			hammer_rel_node(child);
 		}
-		break;
-	default:
-		break;
 	}
 	return(error);
 }
@@ -2741,15 +2736,13 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 	for (i = 0; i < ondisk->count; ++i) {
 		++hammer_stats_btree_elements;
 		elm = &ondisk->elms[i];
-		if (elm->base.btype != HAMMER_BTREE_TYPE_LEAF &&
-		    elm->base.btype != HAMMER_BTREE_TYPE_INTERNAL) {
-			continue;
+		if (hammer_is_internal_node_elm(elm)) {
+			child = hammer_get_node(cursor->trans,
+						elm->internal.subtree_offset,
+						0, &error);
+			if (child)
+				hammer_rel_node(child);
 		}
-		child = hammer_get_node(cursor->trans,
-					elm->internal.subtree_offset,
-					0, &error);
-		if (child)
-			hammer_rel_node(child);
 	}
 
 	/*
@@ -2759,17 +2752,13 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 		++hammer_stats_btree_elements;
 		elm = &ondisk->elms[i];
 
-		switch(elm->base.btype) {
-		case HAMMER_BTREE_TYPE_INTERNAL:
-		case HAMMER_BTREE_TYPE_LEAF:
+		if (hammer_is_internal_node_elm(elm)) {
 			KKASSERT(elm->internal.subtree_offset != 0);
 			child = hammer_get_node(cursor->trans,
 						elm->internal.subtree_offset,
 						0, &error);
-			break;
-		default:
+		} else {
 			child = NULL;
-			break;
 		}
 		if (child) {
 			if (hammer_lock_ex_try(&child->lock) != 0) {

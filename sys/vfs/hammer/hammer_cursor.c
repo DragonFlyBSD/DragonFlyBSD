@@ -639,12 +639,9 @@ hammer_cursor_down(hammer_cursor_t cursor)
 	elm = &node->ondisk->elms[cursor->parent_index];
 
 	/*
-	 * Ok, push down into elm.  If elm specifies an internal or leaf
-	 * node the current node must be an internal node.
+	 * Ok, push down into elm of an internal node.
 	 */
-	switch(elm->base.btype) {
-	case HAMMER_BTREE_TYPE_INTERNAL:
-	case HAMMER_BTREE_TYPE_LEAF:
+	if (hammer_is_internal_node_elm(elm)) {
 		KKASSERT(node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
 		KKASSERT(elm->internal.subtree_offset != 0);
 		cursor->left_bound = &elm[0].internal.base;
@@ -662,12 +659,10 @@ hammer_cursor_down(hammer_cursor_t cursor)
 					(long long)cursor->parent->node_offset);
 			KKASSERT(node->ondisk->parent == cursor->parent->node_offset);
 		}
-		break;
-	default:
+	} else {
 		panic("hammer_cursor_down: illegal btype %02x (%c)",
 		      elm->base.btype,
 		      (elm->base.btype ? elm->base.btype : '?'));
-		break;
 	}
 
 	/*
