@@ -297,8 +297,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 					"key=%016llx lo=%02x %d\n",
 					(long long)cursor->node->node_offset,
 					cursor->index,
-					(elm[0].leaf.base.btype ?
-					 elm[0].leaf.base.btype : '?'),
+					hammer_elm_btype(&elm[0]),
 					(long long)elm[0].leaf.base.obj_id,
 					elm[0].leaf.base.rec_type,
 					(long long)elm[0].leaf.base.key,
@@ -369,7 +368,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 			kprintf("ITERATE  %p:%d %c %016llx %02x "
 				"key=%016llx lo=%02x\n",
 				cursor->node, i,
-				elm->leaf.base.btype ? elm->leaf.base.btype : '?',
+				hammer_elm_btype(elm),
 				(long long)elm->leaf.base.obj_id,
 				elm->leaf.base.rec_type,
 				(long long)elm->leaf.base.key,
@@ -561,8 +560,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 					"key=%016llx lo=%02x %d\n",
 					(long long)cursor->node->node_offset,
 					cursor->index,
-					(elm[0].leaf.base.btype ?
-					 elm[0].leaf.base.btype : '?'),
+					hammer_elm_btype(&elm[0]),
 					(long long)elm[0].leaf.base.obj_id,
 					elm[0].leaf.base.rec_type,
 					(long long)elm[0].leaf.base.key,
@@ -610,7 +608,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 			kprintf("ITERATER %p:%d %c %016llx %02x "
 				"key=%016llx lo=%02x\n",
 				cursor->node, i,
-				elm->leaf.base.btype ? elm->leaf.base.btype : '?',
+				hammer_elm_btype(elm),
 				(long long)elm->leaf.base.obj_id,
 				elm->leaf.base.rec_type,
 				(long long)elm->leaf.base.key,
@@ -3084,9 +3082,8 @@ hammer_print_btree_elm(hammer_btree_elm_t elm)
 	kprintf("\tdelete_tid   = %016llx\n", (long long)elm->base.delete_tid);
 	kprintf("\trec_type     = %04x\n", elm->base.rec_type);
 	kprintf("\tobj_type     = %02x\n", elm->base.obj_type);
-	kprintf("\tbtype        = %02x (%c)\n",
-		elm->base.btype,
-		(elm->base.btype ? elm->base.btype : '?'));
+	kprintf("\tbtype        = %02x (%c)\n", elm->base.btype,
+						hammer_elm_btype(elm));
 	kprintf("\tlocalization = %02x\n", elm->base.localization);
 
 	if (hammer_is_internal_node_elm(elm)) {

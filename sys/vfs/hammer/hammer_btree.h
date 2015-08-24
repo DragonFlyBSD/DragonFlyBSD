@@ -254,6 +254,23 @@ hammer_node_max_elements(u_int8_t type)
 	return(-1);  /* invalid type */
 }
 
+static __inline
+char
+hammer_elm_btype(hammer_btree_elm_t elm)
+{
+	switch(elm->base.btype) {
+	case HAMMER_BTREE_TYPE_INTERNAL:
+	case HAMMER_BTREE_TYPE_LEAF:
+	case HAMMER_BTREE_TYPE_RECORD:
+	case HAMMER_BTREE_TYPE_DELETED:
+		return(elm->base.btype);  /* ascii */
+	case HAMMER_BTREE_TYPE_NONE:
+		return('*');
+	default:
+		return('?');
+	}
+}
+
 struct hammer_node_ondisk {
 	/*
 	 * B-Tree node header (64 bytes)

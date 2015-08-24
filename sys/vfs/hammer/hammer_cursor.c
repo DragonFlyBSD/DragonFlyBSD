@@ -661,8 +661,7 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		}
 	} else {
 		panic("hammer_cursor_down: illegal btype %02x (%c)",
-		      elm->base.btype,
-		      (elm->base.btype ? elm->base.btype : '?'));
+		      elm->base.btype, hammer_elm_btype(elm));
 	}
 
 	/*

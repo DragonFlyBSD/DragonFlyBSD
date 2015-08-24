@@ -299,7 +299,6 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	char flagstr[8] = { 0, '-', '-', '-', '-', '-', '-', 0 };
 	char deleted;
 	char rootelm;
-	char btype;
 
 	flagstr[0] = flags ? 'B' : 'G';
 	if (flags & FLAG_TOOFARLEFT)
@@ -328,22 +327,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	else
 		deleted = ' ';
 
-	switch(elm->base.btype) {
-	case HAMMER_BTREE_TYPE_INTERNAL:
-	case HAMMER_BTREE_TYPE_LEAF:
-	case HAMMER_BTREE_TYPE_RECORD:
-	case HAMMER_BTREE_TYPE_DELETED:
-		btype = elm->base.btype;  /* ascii */
-		break;
-	case HAMMER_BTREE_TYPE_NONE:
-		btype = ' ';
-		break;
-	default:
-		btype = '?';
-		break;
-	}
-
-	printf("%s\t%s %2d %c ", flagstr, label, i, btype);
+	printf("%s\t%s %2d %c ", flagstr, label, i, hammer_elm_btype(elm));
 	printf("lo=%08x obj=%016jx rt=%02x key=%016jx ot=%02x\n",
 	       elm->base.localization,
 	       (uintmax_t)elm->base.obj_id,
