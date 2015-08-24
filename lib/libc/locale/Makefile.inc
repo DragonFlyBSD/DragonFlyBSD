@@ -100,9 +100,11 @@ MLINKS+=mbtowc.3 mbtowc_l.3
 MLINKS+=nl_langinfo.3 nl_langinfo_l.3
 MLINKS+=tolower.3 tolower_l.3
 MLINKS+=toupper.3 toupper_l.3
-MLINKS+=mbintowcr.3 wcrtombin.3
-MLINKS+=mbintowcr.3 wcrtoutf8.3
-MLINKS+=mbintowcr.3 utf8towcr.3
+MLINKS+=mbintowcr.3 mbintowcr_l.3 \
+	mbintowcr.3 utf8towcr.3 \
+	mbintowcr.3 wcrtombin.3 \
+	mbintowcr.3 wcrtombin_l.3 \
+	mbintowcr.3 wcrtoutf8.3
 MLINKS+=wcrtomb.3 c16rtomb.3 wcrtomb.3 c32rtomb.3 wcrtomb.3 wcrtomb_l.3
 MLINKS+=wcsftime.3 wcsftime_l.3
 MLINKS+=wcsrtombs.3 wcsnrtombs.3 wcsrtombs.3 wcsnrtombs_l.3 \
