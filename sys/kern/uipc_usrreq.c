@@ -156,11 +156,23 @@ unp_getsocktoken(struct socket *so)
 	return unp;
 }
 
-static void
+static __inline void
 unp_reltoken(struct unpcb *unp)
 {
 	if (unp != NULL)
 		lwkt_relpooltoken(unp);
+}
+
+static __inline void
+unp_setflags(struct unpcb *unp, int flags)
+{
+	atomic_set_int(&unp->unp_flags, flags);
+}
+
+static __inline void
+unp_clrflags(struct unpcb *unp, int flags)
+{
+	atomic_clear_int(&unp->unp_flags, flags);
 }
 
 /*
@@ -1037,7 +1049,7 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		 * (which is now).
 		 */
 		cru2x(p->p_ucred, &unp3->unp_peercred);
-		unp3->unp_flags |= UNP_HAVEPC;
+		unp_setflags(unp3, UNP_HAVEPC);
 		/*
 		 * The receiver's (server's) credentials are copied
 		 * from the unp_peercred member of socket on which the
@@ -1049,7 +1061,7 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		    ("unp_connect: listener without cached peercred"));
 		memcpy(&unp->unp_peercred, &unp2->unp_peercred,
 		    sizeof(unp->unp_peercred));
-		unp->unp_flags |= UNP_HAVEPC;
+		unp_setflags(unp, UNP_HAVEPC);
 
 		so2 = so3;
 	}
@@ -1940,7 +1952,7 @@ unp_listen(struct unpcb *unp, struct thread *td)
 	KKASSERT(p);
 	lwkt_gettoken(&unp_token);
 	cru2x(p->p_ucred, &unp->unp_peercred);
-	unp->unp_flags |= UNP_HAVEPCCACHED;
+	unp_setflags(unp, UNP_HAVEPCCACHED);
 	lwkt_reltoken(&unp_token);
 	return (0);
 }
