@@ -461,7 +461,7 @@ main(int ac, char **av)
 	if (strncmp(av[0], "reblock", 7) == 0) {
 		signal(SIGINT, sigalrm);
 		if (strcmp(av[0], "reblock") == 0)
-			hammer_cmd_reblock(av + 1, ac - 1, -1);
+			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_FLAGS);
 		else if (strcmp(av[0], "reblock-btree") == 0)
 			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_BTREE);
 		else if (strcmp(av[0], "reblock-inodes") == 0)
