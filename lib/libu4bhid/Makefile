@@ -7,6 +7,7 @@ MAN=	usbhid.3
 SHLIB_MAJOR= 4
 
 MLINKS=	usbhid.3 libusbhid.3 usbhid.3 hid_get_report_desc.3 \
+	usbhid.3 hid_get_report_id.3 \
 	usbhid.3 hid_dispose_report_desc.3 \
 	usbhid.3 hid_start_parse.3 usbhid.3 hid_end_parse.3 \
 	usbhid.3 hid_get_item.3 usbhid.3 hid_report_size.3 \
