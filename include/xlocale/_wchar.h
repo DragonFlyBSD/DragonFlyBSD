@@ -78,7 +78,7 @@ int			 mbsinit_l(const mbstate_t *, locale_t);
 size_t			 mbsrtowcs_l(wchar_t * __restrict,
 			    const char ** __restrict, size_t,
 			    mbstate_t * __restrict, locale_t);
-size_t			 mbintowcr_k(wchar_t * __restrict,
+size_t			 mbintowcr_l(wchar_t * __restrict,
 			    const char * __restrict,
 			    size_t dlen, size_t *,
 			    locale_t, int);
