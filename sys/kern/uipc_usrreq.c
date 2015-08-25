@@ -120,7 +120,7 @@ static int     unp_listen (struct unpcb *, struct thread *);
 static void    unp_fp_externalize(struct lwp *lp, struct file *fp, int fd);
 static int     unp_find_lockref(struct sockaddr *nam, struct thread *td,
 		   short type, struct unpcb **unp_ret);
-static void    unp_connect_pair(struct unpcb *unp, struct unpcb *unp2);
+static int     unp_connect_pair(struct unpcb *unp, struct unpcb *unp2);
 
 /*
  * SMP Considerations:
@@ -1085,13 +1085,17 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		    sizeof(unp->unp_peercred));
 		unp_setflags(unp, UNP_HAVEPC);
 
-		unp_connect_pair(unp, unp3);
+		error = unp_connect_pair(unp, unp3);
+		if (error) {
+			/* XXX we need a better name */
+			soabort_oncpu(so3);
+		}
 
 		/* Done with unp3 */
 		unp_free(unp3);
 		unp_reltoken(unp3);
 	} else {
-		unp_connect_pair(unp, unp2);
+		error = unp_connect_pair(unp, unp2);
 	}
 done:
 	unp_free(unp2);
@@ -1144,8 +1148,7 @@ unp_connect2(struct socket *so, struct socket *so2)
 		goto done;
 	}
 
-	unp_connect_pair(unp, unp2);
-	error = 0;
+	error = unp_connect_pair(unp, unp2);
 done:
 	unp_reltoken(unp2);
 	unp_reltoken(unp);
@@ -2134,7 +2137,7 @@ failed:
 	return error;
 }
 
-static void
+static int
 unp_connect_pair(struct unpcb *unp, struct unpcb *unp2)
 {
 	struct socket *so = unp->unp_socket;
@@ -2145,6 +2148,11 @@ unp_connect_pair(struct unpcb *unp, struct unpcb *unp2)
 
 	KASSERT(so->so_type == so2->so_type,
 	    ("socket type mismatch, so %d, so2 %d", so->so_type, so2->so_type));
+
+	if (!UNP_ISATTACHED(unp))
+		return EINVAL;
+	if (!UNP_ISATTACHED(unp2))
+		return ECONNREFUSED;
 
 	KASSERT(unp->unp_conn == NULL, ("unp is already connected"));
 	unp->unp_conn = unp2;
@@ -2166,4 +2174,5 @@ unp_connect_pair(struct unpcb *unp, struct unpcb *unp2)
 	default:
 		panic("unp_connect_pair: unknown socket type %d", so->so_type);
 	}
+	return 0;
 }
