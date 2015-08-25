@@ -452,5 +452,18 @@ bitcount32(uint32_t x)
 	return (x);
 }
 
+static __inline uint64_t
+bitcount64(uint64_t x)
+{
+
+	x = (x & 0x5555555555555555) + ((x & 0xaaaaaaaaaaaaaaaa) >> 1);
+	x = (x & 0x3333333333333333) + ((x & 0xcccccccccccccccc) >> 2);
+	x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0f;
+	x = (x + (x >> 8));
+	x = (x + (x >> 16));
+	x = (x + (x >> 32)) & 0x000000ff;
+	return (x);
+}
+
 #endif	/* _KERNEL */
 #endif /* !_SYS_SYSTM_H_ */
