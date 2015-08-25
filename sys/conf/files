@@ -1931,7 +1931,6 @@ dev/drm/drm_global.c			optional drm
 dev/drm/drm_hashtab.c			optional drm
 dev/drm/drm_ioctl.c			optional drm
 dev/drm/drm_irq.c			optional drm
-dev/drm/drm_linux_list_sort.c		optional drm
 dev/drm/drm_lock.c			optional drm
 dev/drm/drm_memory.c			optional drm
 dev/drm/drm_mm.c			optional drm
@@ -1949,7 +1948,9 @@ dev/drm/drm_vm.c			optional drm
 dev/drm/drm_vma_manager.c		optional drm
 dev/drm/linux_compat.c			optional drm
 dev/drm/linux_hdmi.c			optional drm
+dev/drm/linux_list_sort.c		optional drm
 dev/drm/linux_shmem.c			optional drm
+dev/drm/linux_workqueue.c		optional drm
 dev/drm/ttm/ttm_lock.c			optional drm
 dev/drm/ttm/ttm_object.c		optional drm
 dev/drm/ttm/ttm_tt.c			optional drm
@@ -2004,15 +2005,23 @@ dev/drm/ttm/ttm_bo_vm.c			optional drm
 #dev/drm/radeon/atombios_i2c.c		optional radeonkms drm
 #dev/drm/radeon/btc_dpm.c		optional radeonkms drm
 #dev/drm/radeon/cayman_blit_shaders.c	optional radeonkms drm
+#dev/drm/radeon/ci_dpm.c			optional radeonkms drm
+#dev/drm/radeon/ci_smc.c			optional radeonkms drm
 #dev/drm/radeon/cik.c			optional radeonkms drm
 #dev/drm/radeon/cik_blit_shaders.c	optional radeonkms drm
+#dev/drm/radeon/cik_dma.c		optional radeonkms drm
 #dev/drm/radeon/cypress_dpm.c		optional radeonkms drm
+#dev/drm/radeon/dce3_1_afmt.c		optional radeonkms drm
+#dev/drm/radeon/dce6_afmt.c		optional radeonkms drm
 #dev/drm/radeon/evergreen.c		optional radeonkms drm
-#dev/drm/radeon/evergreen_blit_kms.c	optional radeonkms drm
 #dev/drm/radeon/evergreen_blit_shaders.c	optional radeonkms drm
 #dev/drm/radeon/evergreen_cs.c		optional radeonkms drm
+#dev/drm/radeon/evergreen_dma.c		optional radeonkms drm
 #dev/drm/radeon/evergreen_hdmi.c	optional radeonkms drm
+#dev/drm/radeon/kv_dpm.c			optional radeonkms drm
+#dev/drm/radeon/kv_smc.c			optional radeonkms drm
 #dev/drm/radeon/ni.c			optional radeonkms drm
+#dev/drm/radeon/ni_dma.c			optional radeonkms drm
 #dev/drm/radeon/ni_dpm.c			optional radeonkms drm
 #dev/drm/radeon/r100.c			optional radeonkms drm
 #dev/drm/radeon/r200.c			optional radeonkms drm
@@ -2023,10 +2032,10 @@ dev/drm/ttm/ttm_bo_vm.c			optional drm
 #dev/drm/radeon/r600.c			optional radeonkms drm
 #dev/drm/radeon/r600_audio.c		optional radeonkms drm
 ##dev/drm/radeon/r600_blit.c		optional radeonkms drm
-#dev/drm/radeon/r600_blit_kms.c		optional radeonkms drm
 #dev/drm/radeon/r600_blit_shaders.c	optional radeonkms drm
 ##dev/drm/radeon/r600_cp.c		optional radeonkms drm
 #dev/drm/radeon/r600_cs.c		optional radeonkms drm
+#dev/drm/radeon/r600_dma.c		optional radeonkms drm
 #dev/drm/radeon/r600_dpm.c		optional radeonkms drm
 #dev/drm/radeon/r600_hdmi.c		optional radeonkms drm
 #dev/drm/radeon/radeon_acpi.c		optional radeonkms drm
@@ -2050,6 +2059,7 @@ dev/drm/ttm/ttm_bo_vm.c			optional drm
 #dev/drm/radeon/radeon_gart.c		optional radeonkms drm
 #dev/drm/radeon/radeon_gem.c		optional radeonkms drm
 #dev/drm/radeon/radeon_i2c.c		optional radeonkms drm
+#dev/drm/radeon/radeon_ib.c		optional radeonkms drm
 ##dev/drm/radeon/radeon_irq.c		optional radeonkms drm
 #dev/drm/radeon/radeon_irq_kms.c	optional radeonkms drm
 #dev/drm/radeon/radeon_kms.c		optional radeonkms drm
@@ -2066,6 +2076,8 @@ dev/drm/ttm/ttm_bo_vm.c			optional drm
 #dev/drm/radeon/radeon_test.c		optional radeonkms drm
 #dev/drm/radeon/radeon_ttm.c		optional radeonkms drm
 #dev/drm/radeon/radeon_uvd.c		optional radeonkms drm
+#dev/drm/radeon/radeon_vce.c		optional radeonkms drm
+#dev/drm/radeon/radeon_vm.c		optional radeonkms drm
 #dev/drm/radeon/rs400.c			optional radeonkms drm
 #dev/drm/radeon/rs600.c			optional radeonkms drm
 #dev/drm/radeon/rs690.c			optional radeonkms drm
@@ -2076,15 +2088,23 @@ dev/drm/ttm/ttm_bo_vm.c			optional drm
 #dev/drm/radeon/rv740_dpm.c		optional radeonkms drm
 #dev/drm/radeon/rv770.c			optional radeonkms drm
 #dev/drm/radeon/rv770_dpm.c		optional radeonkms drm
+#dev/drm/radeon/rv770_dma.c		optional radeonkms drm
 #dev/drm/radeon/rv770_smc.c		optional radeonkms drm
 #dev/drm/radeon/si.c			optional radeonkms drm
 #dev/drm/radeon/si_blit_shaders.c	optional radeonkms drm
 #dev/drm/radeon/si_dpm.c			optional radeonkms drm
+#dev/drm/radeon/si_dma.c			optional radeonkms drm
 #dev/drm/radeon/si_smc.c			optional radeonkms drm
 #dev/drm/radeon/sumo_dpm.c		optional radeonkms drm
 #dev/drm/radeon/sumo_smc.c		optional radeonkms drm
 #dev/drm/radeon/trinity_dpm.c		optional radeonkms drm
 #dev/drm/radeon/trinity_smc.c		optional radeonkms drm
+#dev/drm/radeon/uvd_v1_0.c		optional radeonkms drm
+#dev/drm/radeon/uvd_v2_2.c		optional radeonkms drm
+#dev/drm/radeon/uvd_v3_1.c		optional radeonkms drm
+#dev/drm/radeon/uvd_v4_2.c		optional radeonkms drm
+#dev/drm/radeon/vce_v1_0.c		optional radeonkms drm
+#dev/drm/radeon/vce_v2_0.c		optional radeonkms drm
 dev/misc/nsclpcsio/nsclpcsio_isa.c	optional nsclpcsio isa
 dev/powermng/aps/aps.c			optional aps isa
 dev/powermng/it/it.c			optional it isa
