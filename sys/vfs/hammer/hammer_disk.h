@@ -686,7 +686,6 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_RECTYPE_PFS		0x0015	/* PFS management */
 #define HAMMER_RECTYPE_SNAPSHOT		0x0016	/* Snapshot management */
 #define HAMMER_RECTYPE_CONFIG		0x0017	/* hammer cleanup config */
-#define HAMMER_RECTYPE_MOVED		0x8000	/* special recovery flag */
 #define HAMMER_RECTYPE_MAX		0xFFFF
 
 #define HAMMER_RECTYPE_ENTRY_START	(HAMMER_RECTYPE_INODE + 1)
