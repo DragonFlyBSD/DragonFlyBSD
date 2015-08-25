@@ -498,25 +498,34 @@ uipc_send(netmsg_t msg)
 				error = EISCONN;
 				break;
 			}
-			error = unp_connect(so,
-					    msg->send.nm_addr,
-					    msg->send.nm_td);
+			error = unp_find_lockref(msg->send.nm_addr,
+			    msg->send.nm_td, so->so_type, &unp2);
 			if (error)
 				break;
+			/*
+			 * NOTE:
+			 * unp2 is locked and referenced.
+			 *
+			 * We could unlock unp2 now, since it was checked
+			 * and referenced.
+			 */
+			unp_reltoken(unp2);
 		} else {
 			if (unp->unp_conn == NULL) {
 				error = ENOTCONN;
 				break;
 			}
+			/* XXX racy. */
+			unp2 = unp->unp_conn;
+			unp_reference(unp2);
 		}
-		unp2 = unp->unp_conn;
+		/* NOTE: unp2 is referenced. */
 		so2 = unp2->unp_socket;
+
 		if (unp->unp_addr)
 			from = (struct sockaddr *)unp->unp_addr;
 		else
 			from = &sun_noname;
-
-		unp_reference(unp2);
 
 		lwkt_gettoken(&so2->so_rcv.ssb_token);
 		if (ssb_appendaddr(&so2->so_rcv, from, m, control)) {
@@ -526,8 +535,6 @@ uipc_send(netmsg_t msg)
 		} else {
 			error = ENOBUFS;
 		}
-		if (msg->send.nm_addr)
-			unp_disconnect(unp);
 		lwkt_reltoken(&so2->so_rcv.ssb_token);
 
 		unp_free(unp2);
