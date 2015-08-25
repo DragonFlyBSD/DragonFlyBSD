@@ -80,8 +80,6 @@
 #define	KTR_DRM		KTR_DEV
 #define	KTR_DRM_REG	KTR_SPARE3
 
-#define	hweight32(i)	bitcount32(i)
-
 /**
  * ror32 - rotate a 32-bit value right
  * @word: value to rotate

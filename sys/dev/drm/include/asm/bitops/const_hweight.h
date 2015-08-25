@@ -27,14 +27,10 @@
 #ifndef _ASM_BITOPS_CONST_HWEIGHT_H_
 #define _ASM_BITOPS_CONST_HWEIGHT_H_
 
-static __inline uint16_t
-hweight16(uint32_t x)
-{
-	x = (x & 0x5555) + ((x & 0xaaaa) >> 1);
-	x = (x & 0x3333) + ((x & 0xcccc) >> 2);
-	x = (x + (x >> 4)) & 0x0f0f;
-	x = (x + (x >> 8)) & 0x00ff;
-	return (x);
-}
+#include <sys/systm.h>
+
+#define hweight16(x)	bitcount16(x)
+#define hweight32(x)	bitcount32(x)
+#define hweight64(x)	bitcount64(x)
 
 #endif	/* _ASM_BITOPS_CONST_HWEIGHT_H_ */
