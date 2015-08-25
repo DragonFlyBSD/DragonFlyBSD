@@ -24,14 +24,18 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_HASHTABLE_H_
-#define _LINUX_HASHTABLE_H_
+#ifndef _LINUX_RCULIST_H_
+#define _LINUX_RCULIST_H_
 
-#include <linux/rculist.h>
+#include <linux/list.h>
 
-#define DECLARE_HASHTABLE(name, bits)
+static inline void hlist_add_behind_rcu(struct hlist_node *n,
+				        struct hlist_node *prev)
+{
+	hlist_add_after(prev, n);
+}
 
-#define hash_for_each_possible(name, obj, member, key) \
-	hlist_for_each_entry(obj, &name[hash_min(key, HASH_BITS(name))], member)
+#define hlist_for_each_entry_rcu(pos, head, member)	\
+	hlist_for_each_entry(pos, head, member)
 
-#endif	/* _LINUX_HASHTABLE_H_ */
+#endif	/* _LINUX_RCULIST_H_ */

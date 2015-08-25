@@ -99,6 +99,7 @@ MALLOC_DECLARE(M_DRM);
 #include <linux/pci.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
+#include <linux/fs.h>
 #include <linux/kref.h>
 #include <linux/list.h>
 #include <linux/mm.h>

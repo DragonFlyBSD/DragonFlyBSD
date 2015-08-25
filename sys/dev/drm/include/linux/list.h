@@ -398,10 +398,14 @@ static inline int list_is_last(const struct list_head *list,
 #define	hlist_for_each_safe(p, n, head)					\
 	for (p = (head)->first; p && ({ n = p->next; 1; }); p = n)
 
-#define	hlist_for_each_entry(tp, p, head, field)			\
-	for (p = (head)->first;						\
-	    p ? (tp = hlist_entry(p, typeof(*tp), field)): NULL; p = p->next)
- 
+#define hlist_entry_safe(ptr, type, member) \
+	(ptr) ? hlist_entry(ptr, type, member) : NULL
+
+#define hlist_for_each_entry(pos, head, member)				\
+	for (pos = hlist_entry_safe((head)->first, typeof(*(pos)), member);\
+	     pos;							\
+	     pos = hlist_entry_safe((pos)->member.next, typeof(*(pos)), member))
+
 #define hlist_for_each_entry_continue(tp, p, field)			\
 	for (p = (p)->next;						\
 	    p ? (tp = hlist_entry(p, typeof(*tp), field)): NULL; p = p->next)
@@ -417,11 +421,6 @@ static inline int list_is_last(const struct list_head *list,
 
 void drm_list_sort(void *priv, struct list_head *head, int (*cmp)(void *priv,
     struct list_head *a, struct list_head *b));
-
-#define hlist_for_each_entry_rcu(tp, p, head, field)	\
-		hlist_for_each_entry(tp, p, head, field)
-
-#define hlist_add_after_rcu(prev, n)	hlist_add_after(prev, n)
 
 #define hlist_add_head_rcu(n, h)	hlist_add_head(n, h)
 

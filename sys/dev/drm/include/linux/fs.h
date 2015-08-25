@@ -24,14 +24,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_HASHTABLE_H_
-#define _LINUX_HASHTABLE_H_
+#ifndef _LINUX_FS_H_
+#define _LINUX_FS_H_
 
 #include <linux/rculist.h>
 
-#define DECLARE_HASHTABLE(name, bits)
-
-#define hash_for_each_possible(name, obj, member, key) \
-	hlist_for_each_entry(obj, &name[hash_min(key, HASH_BITS(name))], member)
-
-#endif	/* _LINUX_HASHTABLE_H_ */
+#endif	/* _LINUX_FS_H_ */
