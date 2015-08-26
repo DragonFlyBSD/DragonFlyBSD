@@ -59,6 +59,7 @@
 
 #define UNP_DETACHED		UNP_PRIVATE1
 #define UNP_CONNECTING		UNP_PRIVATE2
+#define UNP_DROPPED		UNP_PRIVATE3
 
 #define UNP_ISATTACHED(unp)	\
     ((unp) != NULL && ((unp)->unp_flags & UNP_DETACHED) == 0)
@@ -103,9 +104,8 @@ static void    unp_detach (struct unpcb *);
 static int     unp_bind (struct unpcb *,struct sockaddr *, struct thread *);
 static int     unp_connect (struct socket *,struct sockaddr *,
 				struct thread *);
-static void    unp_disconnect (struct unpcb *);
+static void    unp_disconnect(struct unpcb *, int);
 static void    unp_shutdown (struct unpcb *);
-static void    unp_drop (struct unpcb *, int);
 static void    unp_gc (void);
 static int     unp_gc_clearmarks(struct file *, void *);
 static int     unp_gc_checkmarks(struct file *, void *);
@@ -121,6 +121,7 @@ static void    unp_fp_externalize(struct lwp *lp, struct file *fp, int fd);
 static int     unp_find_lockref(struct sockaddr *nam, struct thread *td,
 		   short type, struct unpcb **unp_ret);
 static int     unp_connect_pair(struct unpcb *unp, struct unpcb *unp2);
+static void    unp_drop(struct unpcb *unp, int error);
 
 /*
  * SMP Considerations:
@@ -311,6 +312,7 @@ uipc_detach(netmsg_t msg)
 
 	if (UNP_ISATTACHED(unp)) {
 		unp_setflags(unp, UNP_DETACHED);
+		unp_drop(unp, 0);
 		unp_free(unp);
 		error = 0;
 	} else {
@@ -330,14 +332,18 @@ uipc_disconnect(netmsg_t msg)
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = msg->base.nm_so->so_pcb;
+	unp = unp_getsocktoken(msg->base.nm_so);
+
 	if (UNP_ISATTACHED(unp)) {
-		unp_disconnect(unp);
+		unp_disconnect(unp, 0);
 		error = 0;
 	} else {
 		error = EINVAL;
 	}
+
+	unp_reltoken(unp);
 	lwkt_reltoken(&unp_token);
+
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -905,10 +911,6 @@ unp_detach(struct unpcb *unp)
 		vrele(unp->unp_vnode);
 		unp->unp_vnode = NULL;
 	}
-	if (unp->unp_conn)
-		unp_disconnect(unp);
-	while (!LIST_EMPTY(&unp->unp_refs))
-		unp_drop(LIST_FIRST(&unp->unp_refs), ECONNRESET);
 	soisdisconnected(unp->unp_socket);
 	so = unp->unp_socket;
 	soreference(so);		/* for delayed sorflush */
@@ -931,6 +933,9 @@ unp_detach(struct unpcb *unp)
 	sofree(so);
 	lwkt_relpooltoken(unp);
 	lwkt_reltoken(&unp_token);
+
+	KASSERT(unp->unp_conn == NULL, ("unp is still connected"));
+	KASSERT(LIST_EMPTY(&unp->unp_refs), ("unp still has references"));
 
 	if (unp->unp_addr)
 		kfree(unp->unp_addr, M_SONAME);
@@ -1163,12 +1168,16 @@ done:
  *	 pool token also be held.
  */
 static void
-unp_disconnect(struct unpcb *unp)
+unp_disconnect(struct unpcb *unp, int error)
 {
+	struct socket *so = unp->unp_socket;
 	struct unpcb *unp2;
 
-	lwkt_gettoken(&unp_token);
-	lwkt_getpooltoken(unp);
+	ASSERT_LWKT_TOKEN_HELD(&unp_token);
+	UNP_ASSERT_TOKEN_HELD(unp);
+
+	if (error)
+		so->so_error = error;
 
 	while ((unp2 = unp->unp_conn) != NULL) {
 		lwkt_getpooltoken(unp2);
@@ -1177,31 +1186,38 @@ unp_disconnect(struct unpcb *unp)
 		lwkt_relpooltoken(unp2);
 	}
 	if (unp2 == NULL)
-		goto done;
+		return;
+	/* unp2 is locked. */
+
+	KASSERT((unp2->unp_flags & UNP_DROPPED) == 0, ("unp2 was dropped"));
 
 	unp->unp_conn = NULL;
 
-	switch (unp->unp_socket->so_type) {
+	switch (so->so_type) {
 	case SOCK_DGRAM:
 		LIST_REMOVE(unp, unp_reflink);
-		soclrstate(unp->unp_socket, SS_ISCONNECTED);
+		soclrstate(so, SS_ISCONNECTED);
 		break;
 
 	case SOCK_STREAM:
 	case SOCK_SEQPACKET:
+		/*
+		 * Keep a reference before clearing the unp_conn
+		 * to avoid racing uipc_detach()/uipc_abort() in
+		 * other thread.
+		 */
 		unp_reference(unp2);
+		KASSERT(unp2->unp_conn == unp, ("unp_conn mismatch"));
 		unp2->unp_conn = NULL;
 
-		soisdisconnected(unp->unp_socket);
+		soisdisconnected(so);
 		soisdisconnected(unp2->unp_socket);
 
 		unp_free(unp2);
 		break;
 	}
+
 	lwkt_relpooltoken(unp2);
-done:
-	lwkt_relpooltoken(unp);
-	lwkt_reltoken(&unp_token);
 }
 
 #ifdef notdef
@@ -1321,15 +1337,6 @@ unp_shutdown(struct unpcb *unp)
 	    unp->unp_conn != NULL && (so = unp->unp_conn->unp_socket)) {
 		socantrcvmore(so);
 	}
-}
-
-static void
-unp_drop(struct unpcb *unp, int err)
-{
-	struct socket *so = unp->unp_socket;
-
-	so->so_error = err;
-	unp_disconnect(unp);
 }
 
 #ifdef notdef
@@ -2176,4 +2183,23 @@ unp_connect_pair(struct unpcb *unp, struct unpcb *unp2)
 		panic("unp_connect_pair: unknown socket type %d", so->so_type);
 	}
 	return 0;
+}
+
+static void
+unp_drop(struct unpcb *unp, int error)
+{
+	struct unpcb *unp2;
+
+	ASSERT_LWKT_TOKEN_HELD(&unp_token);
+	UNP_ASSERT_TOKEN_HELD(unp);
+	KASSERT(unp->unp_flags & UNP_DETACHED, ("unp is not detached"));
+
+	unp_disconnect(unp, error);
+
+	while ((unp2 = LIST_FIRST(&unp->unp_refs)) != NULL) {
+		lwkt_getpooltoken(unp2);
+		unp_disconnect(unp2, ECONNRESET);
+		lwkt_relpooltoken(unp2);
+	}
+	unp_setflags(unp, UNP_DROPPED);
 }

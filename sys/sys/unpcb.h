@@ -99,12 +99,13 @@ struct	unpcb {
  * (there may not even be a peer).  This is set in unp_listen() when
  * it fills in unp_peercred for later consumption by unp_connect().
  *
- * UNP_PRIVATE1, UNP_PRIVATE2 - Implementation private.
+ * UNP_PRIVATE1, UNP_PRIVATE2, UNP_PRIVATE3 - Implementation private.
  */
 #define UNP_HAVEPC			0x001
 #define UNP_HAVEPCCACHED		0x002
 #define UNP_PRIVATE1			0x004
 #define UNP_PRIVATE2			0x008
+#define UNP_PRIVATE3			0x010
 
 /* Hack alert -- this structure depends on <sys/socketvar.h>. */
 #ifdef	_SYS_SOCKETVAR_H_
