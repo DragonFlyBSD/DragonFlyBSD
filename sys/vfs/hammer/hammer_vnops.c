@@ -2976,8 +2976,8 @@ done:
 	 * Cache the b-tree node for the last data read in cache[1].
 	 *
 	 * If we hit the file EOF then also cache the node in the
-	 * governing director's cache[3], it will be used to initialize
-	 * the inode's cache[1] for any inodes looked up via the directory.
+	 * governing directory's cache[3], it will be used to initialize
+	 * the new inode's cache[1] for any inodes looked up via the directory.
 	 *
 	 * This doesn't reduce disk accesses since the B-Tree chain is
 	 * likely cached, but it does reduce cpu overhead when looking

@@ -383,7 +383,15 @@ struct hammer_inode {
 	struct hammer_inode_data ino_data;	/* in-memory cache */
 	struct hammer_rec_rb_tree rec_tree;	/* in-memory cache */
 	int			rec_generation;
-	struct hammer_node_cache cache[4];	/* search initiate cache */
+
+	/*
+	 * search initiate cache
+	 * cache[0] - this inode
+	 * cache[1] - related data, the content depends on situations
+	 * cache[2] - for dip to cache ip to shortcut B-Tree search
+	 * cache[3] - related data copied from dip to a new ip's cache[1]
+	 */
+	struct hammer_node_cache cache[4];
 
 	/*
 	 * When a demark is created to synchronize an inode to

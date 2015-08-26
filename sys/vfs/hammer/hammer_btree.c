@@ -1199,11 +1199,16 @@ btree_search(hammer_cursor_t cursor, int flags)
 		}
 
 		/*
-		 * These cases occur when the parent's idea of the boundary
+		 * The first two cases (i == 0 or i == node->count + 1)
+		 * occur when the parent's idea of the boundary
 		 * is wider then the child's idea of the boundary, and
 		 * require special handling.  If not inserting we can
 		 * terminate the search early for these cases but the
 		 * child's boundaries cannot be unconditionally modified.
+		 *
+		 * The last case (neither of the above) fits in child's
+		 * idea of the boundary, so we can simply push down the
+		 * cursor.
 		 */
 		if (i == 0) {
 			/*
@@ -1644,7 +1649,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	ondisk = node->ondisk;
 	elm = &ondisk->elms[split];
 	bcopy(elm, &new_node->ondisk->elms[0],
-	      (ondisk->count - split + 1) * esize);
+	      (ondisk->count - split + 1) * esize);  /* +1 for boundary */
 	new_node->ondisk->count = ondisk->count - split;
 	new_node->ondisk->parent = parent->node_offset;
 	new_node->ondisk->type = HAMMER_BTREE_TYPE_INTERNAL;
@@ -1673,6 +1678,10 @@ btree_split_internal(hammer_cursor_t cursor)
 	parent_elm = &ondisk->elms[parent_index+1];
 	bcopy(parent_elm, parent_elm + 1,
 	      (ondisk->count - parent_index) * esize);
+
+	/*
+	 * Why not use hammer_make_separator() here ?
+	 */
 	parent_elm->internal.base = elm->base;	/* separator P */
 	parent_elm->internal.base.btype = new_node->ondisk->type;
 	parent_elm->internal.subtree_offset = new_node->node_offset;
@@ -1924,6 +1933,12 @@ btree_split_leaf(hammer_cursor_t cursor)
 	bcopy(parent_elm, parent_elm + 1,
 	      (ondisk->count - parent_index) * esize);
 
+	/*
+	 * elm[-1] is the right-most elm in the original node.
+	 * elm[0] equals the left-most elm at index=0 in the new node.
+	 * parent_elm[-1] and parent_elm point to original and new node.
+	 * Update the parent_elm base to meet >elm[-1] and <=elm[0].
+	 */
 	hammer_make_separator(&elm[-1].base, &elm[0].base, &parent_elm->base);
 	parent_elm->internal.base.btype = new_leaf->ondisk->type;
 	parent_elm->internal.subtree_offset = new_leaf->node_offset;
@@ -2546,6 +2561,11 @@ hammer_btree_mirror_propagate(hammer_cursor_t cursor, hammer_tid_t mirror_tid)
 	return(error);
 }
 
+/*
+ * Return a pointer to node's parent.  If there is no error,
+ * *parent_index is set to an index of parent's elm that points
+ * to this node.
+ */
 hammer_node_t
 hammer_btree_get_parent(hammer_transaction_t trans, hammer_node_t node,
 			int *parent_indexp, int *errorp, int try_exclusive)
