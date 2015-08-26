@@ -2143,6 +2143,7 @@ unp_connect_pair(struct unpcb *unp, struct unpcb *unp2)
 	struct socket *so = unp->unp_socket;
 	struct socket *so2 = unp2->unp_socket;
 
+	ASSERT_LWKT_TOKEN_HELD(&unp_token);
 	UNP_ASSERT_TOKEN_HELD(unp);
 	UNP_ASSERT_TOKEN_HELD(unp2);
 
