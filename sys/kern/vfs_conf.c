@@ -579,8 +579,8 @@ getline(char *cp, int limit)
 			if (lp < cp)
 				lp = cp;
 			continue;
-		case '@':
 		case 'u' & 037:
+			/* NOTE: '@' no longer processed here, used for H2 */
 			lp = cp;
 			kprintf("%c", '\n');
 			continue;
