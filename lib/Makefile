@@ -46,7 +46,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libdevstat \
 	libdl \
 	libdm \
-	${xxxlibdmsg} \
+	${_libdmsg} \
 	libedit \
 	libevtr \
 	libexpat \
@@ -91,6 +91,10 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libypclnt \
 	libz \
 	pam_module
+
+.if defined(WANT_HAMMER2)
+_libdmsg=	libdmsg
+.endif
 
 .if !defined(NO_LIBC_R)
 _libc_r=	libc_r

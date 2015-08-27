@@ -31,6 +31,7 @@ SUBDIR=	adjkerntz \
 	growfs \
 	gpt \
 	hammer \
+	${_hammer2} \
 	ifconfig \
 	init \
 	ip6fw \
@@ -53,6 +54,7 @@ SUBDIR=	adjkerntz \
 	mount_dirfs \
 	mount_ext2fs \
 	mount_hammer \
+	${_mount_hammer2} \
 	mount_hpfs \
 	mount_msdos \
 	mount_nfs \
@@ -69,6 +71,7 @@ SUBDIR=	adjkerntz \
 	newbtconf \
 	newfs \
 	newfs_hammer \
+	${_newfs_hammer2} \
 	newfs_msdos \
 	nfsd \
 	nfsiod \
@@ -112,6 +115,14 @@ SUBDIR+= ${MACHINE}
 .endif
 .if exists(${.CURDIR}/${MACHINE_ARCH})
 SUBDIR+= ${MACHINE_ARCH}
+.endif
+
+# include hammer2 utilities
+#
+.if defined(WANT_HAMMER2)
+_mount_hammer2= mount_hammer2
+_newfs_hammer2=	newfs_hammer2
+_hammer2=	hammer2
 .endif
 
 # maximum parallelism
