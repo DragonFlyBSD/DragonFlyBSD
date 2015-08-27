@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 23, 2011
+.Dd Aug 26, 2015
 .Dt NEWFS_HAMMER2 8
 .Os
 .Sh NAME
@@ -42,7 +42,7 @@
 .Op Fl b Ar bootsize
 .Op Fl r Ar redosize
 .Op Fl V Ar version
-.Op Fl L Ar label
+.Op Fl L Ar label ...
 .Ar special
 .Sh DESCRIPTION
 The
@@ -57,19 +57,31 @@ of a larger cluster.
 Regardless, you must still format each block device separately using
 this command.
 .Pp
-By default the
+The
 .Nm
-program creates three local MASTER PFSs: "LOCAL", "BOOT", and "ROOT".
-The "LOCAL" PFS is mandatory and is always created.  It represents an
-unclustered mount point representative of the just block device you
-formatted.
+program always creates a PFS called "LOCAL" which may be used for
+device-specific configuration.  This PFS should never be used for generic
+data.
 .Pp
-The "BOOT" and "ROOT" PFSs are optional and will be created by default.
-These provide convenient initially non-clustered mount points for your
-boot or root filesystem.
-These PFSs are not created if the
-.Fl L Ar label
-option is specified.
+If no
+.Fl L
+option is specified,
+.Nm
+will use the partition id to create a default label for you. 
+.Bl -tag -width indent
+.It partition 'a'
+"BOOT" is created.
+.It partition 'd'
+"ROOT" is created.
+.It otherwise
+"DATA" is created.
+.El
+.Pp
+You can override the default PFS name by specifying one or more
+.Fl L
+options.
+By default these PFSs all represent unclustered mount points.
+.Pp
 You can specify
 .Fl L Ar none
 if you do not want
@@ -135,7 +147,9 @@ Specify a fixed area in which a boot related kernel and data can be stored.
 The
 .Ar bootsize
 is specified in bytes.
-By default a boot area of approximately 4MB will be created.
+By default a boot area of approximately 64MB will be created.
+This area is not currently used for booting and may be repurposed in the
+future.
 .It Fl f
 Force operation.
 This is needed for the creation of a

@@ -40,7 +40,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include <unistd.h>
 #include <dmsg.h>
 
@@ -67,6 +67,14 @@ main(int argc, char *argv[])
 	error = getvfsbyname("hammer2", &vfc);
 	if (error) {
 		fprintf(stderr, "hammer2 vfs not loaded\n");
+		exit(1);
+	}
+
+	if (strchr(argv[1], '@') == NULL) {
+		fprintf(stderr,
+			"hammer2_mount: no @LABEL specified: \"%s\"\n"
+			"typical labels are @BOOT, @ROOT, and @DATA\n",
+			argv[1]);
 		exit(1);
 	}
 

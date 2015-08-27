@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -97,7 +97,7 @@ main(int ac, char **av)
 	int ch;
 	int fd = -1;
 	int i;
-	int nolabels = 0;
+	int defaultlabels = 1;
 	char *vol_fsid;
 	char *sup_clid_name;
 	char *sup_fsid_name;
@@ -137,8 +137,8 @@ main(int ac, char **av)
 			ForceOpt = 1;
 			break;
 		case 'L':
+			defaultlabels = 0;
 			if (strcasecmp(optarg, "none") == 0) {
-				nolabels = 1;
 				break;
 			}
 			if (NLabels >= MAXLABELS) {
@@ -179,16 +179,6 @@ main(int ac, char **av)
 	}
 
 	/*
-	 * Adjust Label[] and NLabels
-	 */
-	if (nolabels) {
-		NLabels = 1;
-	} else if (NLabels == 1) {
-		Label[NLabels++] = "BOOT";
-		Label[NLabels++] = "ROOT";
-	}
-
-	/*
 	 * Check Hammer2 version
 	 */
 	if (Hammer2Version < 0) {
@@ -214,16 +204,32 @@ main(int ac, char **av)
 		}
 	}
 
-	/*
-	 * Collect volume information.
-	 */
 	ac -= optind;
 	av += optind;
 
-	if (ac != 1) {
+	if (ac != 1 || av[0][0] == 0) {
 		fprintf(stderr, "Exactly one disk device must be specified\n");
 		exit(1);
 	}
+
+	/*
+	 * Adjust Label[] and NLabels.
+	 */
+	if (defaultlabels == 0) {
+		NLabels = 1;
+	} else {
+		char c = av[0][strlen(av[0]) - 1];
+		if (c == 'a')
+			Label[NLabels++] = "BOOT";
+		else if (c == 'd')
+			Label[NLabels++] = "ROOT";
+		else
+			Label[NLabels++] = "DATA";
+	}
+
+	/*
+	 * Collect volume information.
+	 */
 	total_space = check_volume(av[0], &fd);
 
 	/*
@@ -235,6 +241,9 @@ main(int ac, char **av)
 	/*
 	 * Calculate defaults for the boot area size and round to the
 	 * volume alignment boundary.
+	 *
+	 * NOTE: These areas are currently not used for booting but are
+	 *	 reserved for future filesystem expansion.
 	 */
 	if (BootAreaSize == 0) {
 		BootAreaSize = HAMMER2_BOOT_NOM_BYTES;
@@ -251,6 +260,9 @@ main(int ac, char **av)
 	/*
 	 * Calculate defaults for the redo area size and round to the
 	 * volume alignment boundary.
+	 *
+	 * NOTE: These areas are currently not used for logging but are
+	 *	 reserved for future filesystem expansion.
 	 */
 	if (AuxAreaSize == 0) {
 		AuxAreaSize = HAMMER2_REDO_NOM_BYTES;
