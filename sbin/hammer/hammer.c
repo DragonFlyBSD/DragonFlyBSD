@@ -585,6 +585,7 @@ static
 void
 hammer_parsedevs(const char *blkdevs)
 {
+	struct volume_info *vol = NULL;
 	char *copy;
 	char *volname;
 	int volnum = 0;
@@ -602,12 +603,21 @@ hammer_parsedevs(const char *blkdevs)
 		if (strchr(volname, ':'))
 			hammer_parsedevs(volname);
 		else {
-			setup_volume(-1, volname, 0, O_RDONLY);
+			vol = setup_volume(-1, volname, 0, O_RDONLY);
+			assert(vol);
 			++volnum;
 		}
 		free(volname);
 	}
 	free(copy);
+
+	/*
+	 * All volumes have the same vol_count.
+	 */
+	assert(vol);
+	if (volnum != vol->ondisk->vol_count)
+		errx(1, "Volume header says %d volumes, but %d specified.",
+			vol->ondisk->vol_count, volnum);
 
 	assert(NumVolumes == 0);
 	NumVolumes = volnum;
