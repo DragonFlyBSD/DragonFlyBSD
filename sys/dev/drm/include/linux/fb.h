@@ -29,6 +29,9 @@
 
 #include <uapi_linux/fb.h>
 
+#include <linux/fs.h>
+#include <linux/notifier.h>
+#include <linux/list.h>
 #include <linux/backlight.h>
 
 #define	KHZ2PICOS(a)	(1000000000UL/(a))

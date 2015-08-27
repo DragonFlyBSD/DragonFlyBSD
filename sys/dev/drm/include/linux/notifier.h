@@ -1,5 +1,8 @@
-/*
- * Copyright (c) 2015 François Tigeot
+/*-
+ * Copyright (c) 2010 Isilon Systems, Inc.
+ * Copyright (c) 2010 iX Systems, Inc.
+ * Copyright (c) 2010 Panasas, Inc.
+ * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,20 +27,31 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_BACKLIGHT_H_
-#define _LINUX_BACKLIGHT_H_
+#ifndef	_LINUX_NOTIFIER_H_
+#define	_LINUX_NOTIFIER_H_
 
-#include <linux/device.h>
-#include <linux/fb.h>
-#include <linux/mutex.h>
-#include <linux/notifier.h>
+#include <sys/eventhandler.h>
 
-struct backlight_properties {
-	int brightness;
+/*
+ * Max number of FreeBSD events to map to Linux events per notify type.
+ */
+#define	NOTIFY_DONE	0
+#define	_NOTIFY_COUNT	7
+
+struct notifier_block {
+	int (*notifier_call)(struct notifier_block *, unsigned long, void *);
+	struct notifier_block	*next;
+	int			priority;
+	eventhandler_tag	tags[_NOTIFY_COUNT];
 };
 
-struct backlight_device {
-	struct backlight_properties props;
-};
+/* Values must be less than NOTIFY_COUNT */
+#define	NETDEV_UP		0x0001
+#define	NETDEV_DOWN		0x0002
+#define	NETDEV_REGISTER		0x0003
+#define	NETDEV_UNREGISTER	0x0004
+#define	NETDEV_CHANGEADDR       0x0005
+#define	NETDEV_CHANGEIFADDR     0x0006
 
-#endif	/* _LINUX_BACKLIGHT_H_ */
+
+#endif	/* _LINUX_NOTIFIER_H_ */
