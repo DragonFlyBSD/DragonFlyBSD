@@ -164,15 +164,18 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	vclrisdirty(vp);
 
 	/*
-	 * Once reclaimed the inode is disconnected from the normal flush
-	 * mechanism and must be tracked
+	 * An unlinked inode may have been relinked to the ihidden directory.
+	 * This occurs if the inode was unlinked while open.  Reclamation of
+	 * these inodes requires processing we cannot safely do here so add
+	 * the inode to the unlinkq in that situation.
 	 *
 	 * A reclaim can occur at any time so we cannot safely start a
 	 * transaction to handle reclamation of unlinked files.  Instead,
 	 * the ip is left with a reference and placed on a linked list and
 	 * handled later on.
 	 */
-	if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
+	if ((ip->flags & HAMMER2_INODE_ISUNLINKED) &&
+	    (ip->flags & HAMMER2_INODE_ISDELETED) == 0) {
 		hammer2_inode_unlink_t *ipul;
 
 		ipul = kmalloc(sizeof(*ipul), pmp->minode, M_WAITOK | M_ZERO);

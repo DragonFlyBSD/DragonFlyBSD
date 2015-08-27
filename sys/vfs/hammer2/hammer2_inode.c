@@ -1089,8 +1089,10 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 	 */
 	if (ip->meta.nlinks == 1) {
 		atomic_set_int(&ip->flags, HAMMER2_INODE_ISUNLINKED);
-		if (isopen == 0)
+		if (isopen == 0) {
+			atomic_set_int(&ip->flags, HAMMER2_INODE_ISDELETED);
 			return 0;
+		}
 	}
 
 	hammer2_inode_modify(ip);
@@ -1360,6 +1362,8 @@ hammer2_inode_run_unlinkq(hammer2_pfs_t *pmp)
 		error = hammer2_xop_collect(&xop->head, 0);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_ISDELETED);
+
 		hammer2_inode_unlock(ip);
 		hammer2_inode_drop(ip);			/* ipul ref */
 
@@ -1389,6 +1393,7 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 	int cache_index = -1;
 	int error;
 
+	if (hammer2_debug & 0x0001)
 	kprintf("inode_create lhc %016jx clindex %d\n",
 		xop->lhc, clindex);
 

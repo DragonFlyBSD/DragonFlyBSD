@@ -450,6 +450,7 @@ typedef uint32_t hammer2_crc32_t;
 #define HAMMER2_DIRHASH_FORCED	0x0000000000008000ULL	/* bit forced on */
 
 #define HAMMER2_SROOT_KEY	0x0000000000000000ULL	/* volume to sroot */
+#define HAMMER2_BOOT_KEY	0xd9b36ce135528000ULL	/* sroot to BOOT PFS */
 
 /************************************************************************
  *				DMSG SUPPORT				*

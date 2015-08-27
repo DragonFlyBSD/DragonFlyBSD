@@ -727,7 +727,7 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_RENAME_INPROG	0x0004
 #define HAMMER2_INODE_ONRBTREE		0x0008
 #define HAMMER2_INODE_RESIZED		0x0010	/* requires inode_fsync */
-#define HAMMER2_INODE_UNUSED0020	0x0020
+#define HAMMER2_INODE_ISDELETED		0x0020	/* deleted, not in ihidden */
 #define HAMMER2_INODE_ISUNLINKED	0x0040
 #define HAMMER2_INODE_METAGOOD		0x0080	/* inode meta-data good */
 
