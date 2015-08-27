@@ -2209,6 +2209,7 @@ TO_REMOVE+=/usr/share/man/man3/regnwexec.3.gz
 TO_REMOVE+=/usr/share/man/man3/lgammal_r.3.gz
 TO_REMOVE+=/usr/sbin/kgzip
 TO_REMOVE+=/usr/share/man/man8/kgzip.8.gz
+TO_REMOVE+=/usr/share/man/man1/colldef.1.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
