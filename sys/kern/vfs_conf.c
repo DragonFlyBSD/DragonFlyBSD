@@ -420,10 +420,12 @@ vfs_mountroot_try(const char *mountfrom)
 		}
 		mp->mnt_flag |= MNT_ROOTFS;
 
-		/* do our best to set rootdev */
-		if ((strcmp(vfsname, "hammer") != 0) && (devname[0] != 0) &&
-		    setrootbyname(devname))
+		/* do our best to set rootdev (really just for UFS) */
+		if (strcmp(vfsname, "hammer") != 0 &&
+		    strcmp(vfsname, "hammer2") != 0 &&
+		    (devname[0] != 0) && setrootbyname(devname)) {
 			kprintf("setrootbyname failed\n");
+		}
 
 		/* If the root device is a type "memory disk", mount RW */
 		if (rootdev != NULL && dev_is_good(rootdev) &&
