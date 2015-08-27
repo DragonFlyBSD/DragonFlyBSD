@@ -119,10 +119,13 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
  *
  * Localization can also be used to create pseudo-filesystems within
  * a HAMMER filesystem.  Pseudo-filesystems would be suitable
- * replication targets.
+ * replication targets.  Upper 16 bits of the localization field in
+ * struct hammer_base_elm represents pseudo-filesystem id, and lower
+ * 16 bits of this field represents its type (inode or misc).
  *
  * The root inode (not the PFS root inode but the real root) uses
- * HAMMER_DEF_LOCALIZATION for its ip->obj_localization.
+ * HAMMER_DEF_LOCALIZATION for its incore ip->obj_localization.
+ * HAMMER_DEF_LOCALIZATION implies PFS 0 and no localization type.
  */
 #define HAMMER_LOCALIZE_RESERVED00	0x00000000
 #define HAMMER_LOCALIZE_INODE		0x00000001
@@ -130,7 +133,6 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
 #define HAMMER_LOCALIZE_RESERVED03	0x00000003
 #define HAMMER_LOCALIZE_MASK		0x0000FFFF
 #define HAMMER_LOCALIZE_PSEUDOFS_MASK	0xFFFF0000
-#define HAMMER_LOCALIZE_PSEUDOFS_INC	0x00010000
 
 #define HAMMER_MIN_LOCALIZATION		0x00000000U
 #define HAMMER_MAX_LOCALIZATION		0x0000FFFFU
