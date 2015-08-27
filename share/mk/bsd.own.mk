@@ -121,7 +121,7 @@
 #
 #
 # NLSDIR	Base path for National Language Support files
-#		installation (see mklocale(1)). [${SHAREDIR}/nls]
+#		installation (see localedef(1)). [${SHAREDIR}/nls]
 #
 # NLSGRP	National Language Support files group. [${SHAREOWN}]
 #
