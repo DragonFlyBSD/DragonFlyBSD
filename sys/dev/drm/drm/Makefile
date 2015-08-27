@@ -17,6 +17,7 @@ SRCS	= \
 	drm_drv.c \
 	drm_edid.c \
 	drm_fb_helper.c \
+	drm_fb_cma_helper.c \
 	drm_fops.c \
 	drm_gem.c \
 	drm_global.c \
@@ -33,7 +34,6 @@ SRCS	= \
 	drm_probe_helper.c \
 	drm_rect.c \
 	drm_scatter.c \
-	drm_stub.c \
 	drm_sysctl.c \
 	drm_sysfs.c \
 	drm_vm.c \

@@ -331,6 +331,10 @@ struct drm_crtc {
 	struct drm_plane *primary;
 	struct drm_plane *cursor;
 
+	/* position of cursor plane on crtc */
+	int cursor_x;
+	int cursor_y;
+
 	/* Temporary tracking of the old fb while a modeset is ongoing. Used
 	 * by drm_mode_set_config_internal to implement correct refcounting. */
 	struct drm_framebuffer *old_fb;
@@ -524,6 +528,8 @@ struct drm_connector {
 	struct drm_property_blob *edid_blob_ptr;
 	struct drm_object_properties properties;
 
+	struct drm_property_blob *path_blob_ptr;
+
 	uint8_t polled; /* DRM_CONNECTOR_POLL_* */
 
 	/* requested DPMS state */
@@ -533,6 +539,7 @@ struct drm_connector {
 
 	/* forced on connector */
 	enum drm_connector_force force;
+	bool override_edid;
 	uint32_t encoder_ids[DRM_CONNECTOR_MAX_ENCODER];
 	struct drm_encoder *encoder; /* currently active encoder */
 
@@ -545,6 +552,8 @@ struct drm_connector {
 	int audio_latency[2];
 	int null_edid_counter; /* needed to workaround some HW bugs where we get all 0s */
 	unsigned bad_edid_counter;
+
+	void *debugfs_entry;
 };
 
 /**
@@ -800,6 +809,7 @@ struct drm_mode_config {
 	struct list_head property_blob_list;
 	struct drm_property *edid_property;
 	struct drm_property *dpms_property;
+	struct drm_property *path_property;
 	struct drm_property *plane_type_property;
 
 	/* DVI-I properties */
@@ -823,6 +833,7 @@ struct drm_mode_config {
 
 	/* Optional properties */
 	struct drm_property *scaling_mode_property;
+	struct drm_property *aspect_ratio_property;
 	struct drm_property *dirty_info_property;
 
 	/* dumb ioctl parameters */
@@ -852,7 +863,7 @@ struct drm_prop_enum_list {
 extern int drm_crtc_init_with_planes(struct drm_device *dev,
 				     struct drm_crtc *crtc,
 				     struct drm_plane *primary,
-				     void *cursor,
+				     struct drm_plane *cursor,
 				     const struct drm_crtc_funcs *funcs);
 extern int drm_crtc_init(struct drm_device *dev,
 			 struct drm_crtc *crtc,
@@ -939,15 +950,18 @@ extern const char *drm_get_tv_select_name(int val);
 extern void drm_fb_release(struct drm_file *file_priv);
 extern int drm_mode_group_init_legacy_group(struct drm_device *dev, struct drm_mode_group *group);
 extern void drm_mode_group_destroy(struct drm_mode_group *group);
-extern bool drm_probe_ddc(struct device *adapter);
+extern void drm_reinit_primary_mode_group(struct drm_device *dev);
+extern bool drm_probe_ddc(struct i2c_adapter *adapter);
 extern struct edid *drm_get_edid(struct drm_connector *connector,
-				 struct device *adapter);
+				 struct i2c_adapter *adapter);
 extern struct edid *drm_edid_duplicate(const struct edid *edid);
 extern int drm_add_edid_modes(struct drm_connector *connector, struct edid *edid);
 extern void drm_mode_config_init(struct drm_device *dev);
 extern void drm_mode_config_reset(struct drm_device *dev);
 extern void drm_mode_config_cleanup(struct drm_device *dev);
 
+extern int drm_mode_connector_set_path_property(struct drm_connector *connector,
+						char *path);
 extern int drm_mode_connector_update_edid_property(struct drm_connector *connector,
 						struct edid *edid);
 
@@ -1012,6 +1026,7 @@ extern int drm_mode_create_dvi_i_properties(struct drm_device *dev);
 extern int drm_mode_create_tv_properties(struct drm_device *dev, int num_formats,
 				     char *formats[]);
 extern int drm_mode_create_scaling_mode_property(struct drm_device *dev);
+extern int drm_mode_create_aspect_ratio_property(struct drm_device *dev);
 extern int drm_mode_create_dirty_info_property(struct drm_device *dev);
 
 extern int drm_mode_connector_attach_encoder(struct drm_connector *connector,

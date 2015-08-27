@@ -1127,7 +1127,7 @@ i915_gem_check_wedge(struct i915_gpu_error *error,
  * Compare seqno against outstanding lazy request. Emit a request if they are
  * equal.
  */
-static int
+int
 i915_gem_check_olr(struct intel_engine_cs *ring, u32 seqno)
 {
 	int ret;
@@ -1193,7 +1193,7 @@ static int __wait_seqno(struct intel_engine_cs *ring, u32 seqno,
 	bool wait_forever = true;
 	int ret;
 
-	WARN(dev_priv->pm.irqs_disabled, "IRQs disabled\n");
+	WARN(!intel_irqs_enabled(dev_priv), "IRQs disabled");
 
 	if (i915_seqno_passed(ring->get_seqno(ring, true), seqno))
 		return 0;
@@ -1755,10 +1755,13 @@ unlock:
 out:
 	switch (ret) {
 	case -EIO:
-		/* If this -EIO is due to a gpu hang, give the reset code a
-		 * chance to clean up the mess. Otherwise return the proper
-		 * SIGBUS. */
-		if (i915_terminally_wedged(&dev_priv->gpu_error)) {
+		/*
+		 * We eat errors when the gpu is terminally wedged to avoid
+		 * userspace unduly crashing (gl has no provisions for mmaps to
+		 * fail). But any other -EIO isn't ours (e.g. swap in failure)
+		 * and so needs to be reported.
+		 */
+		if (!i915_terminally_wedged(&dev_priv->gpu_error)) {
 //			ret = VM_FAULT_SIGBUS;
 			break;
 		}
@@ -1772,7 +1775,6 @@ out:
 		/* fall through */
 	case -ERESTARTSYS:
 	case -EINTR:
-		kprintf("i915_gem_fault: %d\n", ret);
 		VM_OBJECT_UNLOCK(vm_obj);
 		int dummy;
 		tsleep(&dummy, 0, "delay", 1); /* XXX */
@@ -2378,6 +2380,8 @@ i915_gem_object_move_to_inactive(struct drm_i915_gem_object *obj)
 			list_move_tail(&vma->mm_list, &vm->inactive_list);
 	}
 
+	intel_fb_obj_flush(obj, true);
+
 	list_del_init(&obj->ring_list);
 	obj->ring = NULL;
 
@@ -2487,7 +2491,7 @@ int __i915_add_request(struct intel_engine_cs *ring,
 	u32 request_ring_position, request_start;
 	int ret;
 
-	request_start = intel_ring_get_tail(ring);
+	request_start = intel_ring_get_tail(ring->buffer);
 	/*
 	 * Emit any outstanding flushes - execbuf can fail to emit the flush
 	 * after having emitted the batchbuffer command. Hence we need to fix
@@ -2508,7 +2512,7 @@ int __i915_add_request(struct intel_engine_cs *ring,
 	 * GPU processing the request, we never over-estimate the
 	 * position of the head.
 	 */
-	request_ring_position = intel_ring_get_tail(ring);
+	request_ring_position = intel_ring_get_tail(ring->buffer);
 
 	ret = ring->add_request(ring);
 	if (ret)
@@ -2999,6 +3003,8 @@ i915_gem_object_sync(struct drm_i915_gem_object *obj,
 	idx = intel_ring_sync_index(from, to);
 
 	seqno = obj->last_read_seqno;
+	/* Optimization: Avoid semaphore sync when we are sure we already
+	 * waited for an object with higher seqno */
 	if (seqno <= from->semaphore.sync_seqno[idx])
 		return 0;
 
@@ -3082,8 +3088,6 @@ int i915_vma_unbind(struct i915_vma *vma)
 
 	vma->unbind_vma(vma);
 
-	i915_gem_gtt_finish_object(obj);
-
 	list_del_init(&vma->mm_list);
 	/* Avoid an unnecessary call to unbind on rebind. */
 	if (i915_is_ggtt(vma->vm))
@@ -3094,8 +3098,10 @@ int i915_vma_unbind(struct i915_vma *vma)
 
 	/* Since the unbound list is global, only move to that list if
 	 * no more VMAs exist. */
-	if (list_empty(&obj->vma_list))
+	if (list_empty(&obj->vma_list)) {
+		i915_gem_gtt_finish_object(obj);
 		list_move_tail(&obj->global_list, &dev_priv->mm.unbound_list);
+	}
 
 	/* And finally now the object is completely decoupled from this vma,
 	 * we can drop its hold on the backing storage and allow it to be
@@ -3707,6 +3713,10 @@ i915_gem_object_flush_gtt_write_domain(struct drm_i915_gem_object *obj)
 	old_write_domain = obj->base.write_domain;
 	obj->base.write_domain = 0;
 
+	intel_fb_obj_flush(obj, false);
+
+	intel_fb_obj_flush(obj, false);
+
 	trace_i915_gem_object_change_domain(obj,
 					    obj->base.read_domains,
 					    old_write_domain);
@@ -3780,6 +3790,9 @@ i915_gem_object_set_to_gtt_domain(struct drm_i915_gem_object *obj, bool write)
 		obj->base.write_domain = I915_GEM_DOMAIN_GTT;
 		obj->dirty = 1;
 	}
+
+	if (write)
+		intel_fb_obj_invalidate(obj, NULL);
 
 	trace_i915_gem_object_change_domain(obj,
 					    old_read_domains,
@@ -4116,6 +4129,9 @@ i915_gem_object_set_to_cpu_domain(struct drm_i915_gem_object *obj, bool write)
 		obj->base.read_domains = I915_GEM_DOMAIN_CPU;
 		obj->base.write_domain = I915_GEM_DOMAIN_CPU;
 	}
+
+	if (write)
+		intel_fb_obj_invalidate(obj, NULL);
 
 	trace_i915_gem_object_change_domain(obj,
 					    old_read_domains,
@@ -4612,6 +4628,8 @@ void i915_gem_free_object(struct drm_gem_object *gem_obj)
 	if (obj->stolen)
 		i915_gem_object_unpin_pages(obj);
 
+	WARN_ON(obj->frontbuffer_bits);
+
 	if (WARN_ON(obj->pages_pin_count))
 		obj->pages_pin_count = 0;
 	if (discard_backing_storage(obj))
@@ -4706,7 +4724,9 @@ i915_gem_suspend(struct drm_device *dev)
 
 	del_timer_sync(&dev_priv->gpu_error.hangcheck_timer);
 	cancel_delayed_work_sync(&dev_priv->mm.retire_work);
-	cancel_delayed_work_sync(&dev_priv->mm.idle_work);
+#if 0
+	flush_delayed_work(&dev_priv->mm.idle_work);
+#endif
 
 	return 0;
 
@@ -5090,14 +5110,16 @@ i915_gem_load(struct drm_device *dev)
 	dev_priv->mm.interruptible = true;
 
 #if 0
-	dev_priv->mm.inactive_shrinker.scan_objects = i915_gem_inactive_scan;
-	dev_priv->mm.inactive_shrinker.count_objects = i915_gem_inactive_count;
-	dev_priv->mm.inactive_shrinker.seeks = DEFAULT_SEEKS;
-	register_shrinker(&dev_priv->mm.inactive_shrinker);
-	/* Old FreeBSD code */
-	dev_priv->mm.inactive_shrinker = EVENTHANDLER_REGISTER(vm_lowmem,
-	    i915_gem_inactive_shrink, dev, EVENTHANDLER_PRI_ANY);
+	dev_priv->mm.shrinker.scan_objects = i915_gem_shrinker_scan;
+	dev_priv->mm.shrinker.count_objects = i915_gem_shrinker_count;
+	dev_priv->mm.shrinker.seeks = DEFAULT_SEEKS;
+	register_shrinker(&dev_priv->mm.shrinker);
+
+	dev_priv->mm.oom_notifier.notifier_call = i915_gem_shrinker_oom;
+	register_oom_notifier(&dev_priv->mm.oom_notifier);
 #endif
+
+	lockinit(&dev_priv->fb_tracking.lock, "drmftl", 0, LK_CANRECURSE);
 }
 
 void i915_gem_release(struct drm_device *dev, struct drm_file *file)
@@ -5181,6 +5203,23 @@ int i915_gem_open(struct drm_device *dev, struct drm_file *file)
 		kfree(file_priv);
 
 	return ret;
+}
+
+void i915_gem_track_fb(struct drm_i915_gem_object *old,
+		       struct drm_i915_gem_object *new,
+		       unsigned frontbuffer_bits)
+{
+	if (old) {
+		WARN_ON(!mutex_is_locked(&old->base.dev->struct_mutex));
+		WARN_ON(!(old->frontbuffer_bits & frontbuffer_bits));
+		old->frontbuffer_bits &= ~frontbuffer_bits;
+	}
+
+	if (new) {
+		WARN_ON(!mutex_is_locked(&new->base.dev->struct_mutex));
+		WARN_ON(new->frontbuffer_bits & frontbuffer_bits);
+		new->frontbuffer_bits |= frontbuffer_bits;
+	}
 }
 
 #if 0
@@ -5271,12 +5310,13 @@ unsigned long i915_gem_obj_offset(struct drm_i915_gem_object *o,
 	    vm == &dev_priv->mm.aliasing_ppgtt->base)
 		vm = &dev_priv->gtt.base;
 
-	BUG_ON(list_empty(&o->vma_list));
 	list_for_each_entry(vma, &o->vma_list, vma_link) {
 		if (vma->vm == vm)
 			return vma->node.start;
 
 	}
+	WARN(1, "%s vma for this object not found.\n",
+	     i915_is_ggtt(vm) ? "global" : "ppgtt");
 	return -1;
 }
 

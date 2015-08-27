@@ -74,6 +74,79 @@ static int get_connectors_for_crtc(struct drm_crtc *crtc,
 }
 
 /**
+ * drm_plane_helper_check_update() - Check plane update for validity
+ * @plane: plane object to update
+ * @crtc: owning CRTC of owning plane
+ * @fb: framebuffer to flip onto plane
+ * @src: source coordinates in 16.16 fixed point
+ * @dest: integer destination coordinates
+ * @clip: integer clipping coordinates
+ * @min_scale: minimum @src:@dest scaling factor in 16.16 fixed point
+ * @max_scale: maximum @src:@dest scaling factor in 16.16 fixed point
+ * @can_position: is it legal to position the plane such that it
+ *                doesn't cover the entire crtc?  This will generally
+ *                only be false for primary planes.
+ * @can_update_disabled: can the plane be updated while the crtc
+ *                       is disabled?
+ * @visible: output parameter indicating whether plane is still visible after
+ *           clipping
+ *
+ * Checks that a desired plane update is valid.  Drivers that provide
+ * their own plane handling rather than helper-provided implementations may
+ * still wish to call this function to avoid duplication of error checking
+ * code.
+ *
+ * RETURNS:
+ * Zero if update appears valid, error code on failure
+ */
+int drm_plane_helper_check_update(struct drm_plane *plane,
+				    struct drm_crtc *crtc,
+				    struct drm_framebuffer *fb,
+				    struct drm_rect *src,
+				    struct drm_rect *dest,
+				    const struct drm_rect *clip,
+				    int min_scale,
+				    int max_scale,
+				    bool can_position,
+				    bool can_update_disabled,
+				    bool *visible)
+{
+	int hscale, vscale;
+
+	if (!crtc->enabled && !can_update_disabled) {
+		DRM_DEBUG_KMS("Cannot update plane of a disabled CRTC.\n");
+		return -EINVAL;
+	}
+
+	/* Check scaling */
+	hscale = drm_rect_calc_hscale(src, dest, min_scale, max_scale);
+	vscale = drm_rect_calc_vscale(src, dest, min_scale, max_scale);
+	if (hscale < 0 || vscale < 0) {
+		DRM_DEBUG_KMS("Invalid scaling of plane\n");
+		return -ERANGE;
+	}
+
+	*visible = drm_rect_clip_scaled(src, dest, clip, hscale, vscale);
+	if (!*visible)
+		/*
+		 * Plane isn't visible; some drivers can handle this
+		 * so we just return success here.  Drivers that can't
+		 * (including those that use the primary plane helper's
+		 * update function) will return an error from their
+		 * update_plane handler.
+		 */
+		return 0;
+
+	if (!can_position && !drm_rect_equals(dest, clip)) {
+		DRM_DEBUG_KMS("Plane must cover entire CRTC\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(drm_plane_helper_check_update);
+
+/**
  * drm_primary_helper_update() - Helper for primary plane update
  * @plane: plane object to update
  * @crtc: owning CRTC of owning plane
@@ -299,9 +372,10 @@ struct drm_plane *drm_primary_helper_create_plane(struct drm_device *dev,
 	}
 
 	/* possible_crtc's will be filled in later by crtc_init */
-	ret = drm_plane_init(dev, primary, 0, &drm_primary_helper_funcs,
-			     formats, num_formats,
-			     DRM_PLANE_TYPE_PRIMARY);
+	ret = drm_universal_plane_init(dev, primary, 0,
+				       &drm_primary_helper_funcs,
+				       formats, num_formats,
+				       DRM_PLANE_TYPE_PRIMARY);
 	if (ret) {
 		kfree(primary);
 		primary = NULL;

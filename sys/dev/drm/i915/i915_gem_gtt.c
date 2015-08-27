@@ -36,25 +36,43 @@ static void chv_setup_private_ppat(struct drm_i915_private *dev_priv);
 
 bool intel_enable_ppgtt(struct drm_device *dev, bool full)
 {
-	if (i915.enable_ppgtt == 0 || !HAS_ALIASING_PPGTT(dev))
+	if (i915.enable_ppgtt == 0)
 		return false;
 
 	if (i915.enable_ppgtt == 1 && full)
 		return false;
 
+	return true;
+}
+
+static int sanitize_enable_ppgtt(struct drm_device *dev, int enable_ppgtt)
+{
+	if (enable_ppgtt == 0 || !HAS_ALIASING_PPGTT(dev))
+		return 0;
+
+	if (enable_ppgtt == 1)
+		return 1;
+
+	if (enable_ppgtt == 2 && HAS_PPGTT(dev))
+		return 2;
+
 #ifdef CONFIG_INTEL_IOMMU
 	/* Disable ppgtt on SNB if VT-d is on. */
 	if (INTEL_INFO(dev)->gen == 6 && intel_iommu_gfx_mapped) {
 		DRM_INFO("Disabling PPGTT because VT-d is on\n");
-		return false;
+		return 0;
 	}
 #endif
 
-	/* Full ppgtt disabled by default for now due to issues. */
-	if (full)
-		return HAS_PPGTT(dev) && (i915.enable_ppgtt == 2);
-	else
-		return HAS_ALIASING_PPGTT(dev);
+	/* Early VLV doesn't have this */
+	int revision = pci_read_config(dev->dev, PCIR_REVID, 1);
+	if (IS_VALLEYVIEW(dev) && !IS_CHERRYVIEW(dev) &&
+	    revision < 0xb) {
+		DRM_DEBUG_DRIVER("disabling PPGTT on pre-B3 step VLV\n");
+		return 0;
+	}
+
+	return HAS_ALIASING_PPGTT(dev) ? 1 : 0;
 }
 
 static void ppgtt_bind_vma(struct i915_vma *vma,
@@ -100,7 +118,7 @@ static inline gen8_ppgtt_pde_t gen8_pde_encode(struct drm_device *dev,
 
 static gen6_gtt_pte_t snb_pte_encode(dma_addr_t addr,
 				     enum i915_cache_level level,
-				     bool valid)
+				     bool valid, u32 unused)
 {
 	gen6_gtt_pte_t pte = valid ? GEN6_PTE_VALID : 0;
 	pte |= GEN6_PTE_ADDR_ENCODE(addr);
@@ -122,7 +140,7 @@ static gen6_gtt_pte_t snb_pte_encode(dma_addr_t addr,
 
 static gen6_gtt_pte_t ivb_pte_encode(dma_addr_t addr,
 				     enum i915_cache_level level,
-				     bool valid)
+				     bool valid, u32 unused)
 {
 	gen6_gtt_pte_t pte = valid ? GEN6_PTE_VALID : 0;
 	pte |= GEN6_PTE_ADDR_ENCODE(addr);
@@ -146,7 +164,7 @@ static gen6_gtt_pte_t ivb_pte_encode(dma_addr_t addr,
 
 static gen6_gtt_pte_t byt_pte_encode(dma_addr_t addr,
 				     enum i915_cache_level level,
-				     bool valid)
+				     bool valid, u32 flags)
 {
 	gen6_gtt_pte_t pte = valid ? GEN6_PTE_VALID : 0;
 	pte |= GEN6_PTE_ADDR_ENCODE(addr);
@@ -154,7 +172,8 @@ static gen6_gtt_pte_t byt_pte_encode(dma_addr_t addr,
 	/* Mark the page as writeable.  Other platforms don't have a
 	 * setting for read-only/writable, so this matches that behavior.
 	 */
-	pte |= BYT_PTE_WRITEABLE;
+	if (!(flags & PTE_READ_ONLY))
+		pte |= BYT_PTE_WRITEABLE;
 
 	if (level != I915_CACHE_NONE)
 		pte |= BYT_PTE_SNOOPED_BY_CPU_CACHES;
@@ -164,7 +183,7 @@ static gen6_gtt_pte_t byt_pte_encode(dma_addr_t addr,
 
 static gen6_gtt_pte_t hsw_pte_encode(dma_addr_t addr,
 				     enum i915_cache_level level,
-				     bool valid)
+				     bool valid, u32 unused)
 {
 	gen6_gtt_pte_t pte = valid ? GEN6_PTE_VALID : 0;
 	pte |= HSW_PTE_ADDR_ENCODE(addr);
@@ -177,7 +196,7 @@ static gen6_gtt_pte_t hsw_pte_encode(dma_addr_t addr,
 
 static gen6_gtt_pte_t iris_pte_encode(dma_addr_t addr,
 				      enum i915_cache_level level,
-				      bool valid)
+				      bool valid, u32 unused)
 {
 	gen6_gtt_pte_t pte = valid ? GEN6_PTE_VALID : 0;
 	pte |= HSW_PTE_ADDR_ENCODE(addr);
@@ -292,7 +311,7 @@ static void gen8_ppgtt_insert_entries(struct i915_address_space *vm,
 				      vm_page_t *pages,
 				      uint64_t start,
 				      unsigned int num_entries,
-				      enum i915_cache_level cache_level)
+				      enum i915_cache_level cache_level, u32 unused)
 {
 	struct i915_hw_ppgtt *ppgtt =
 		container_of(vm, struct i915_hw_ppgtt, base);
@@ -630,7 +649,7 @@ static void gen6_dump_ppgtt(struct i915_hw_ppgtt *ppgtt, struct seq_file *m)
 	uint32_t pd_entry;
 	int pte, pde;
 
-	scratch_pte = vm->pte_encode(vm->scratch.addr, I915_CACHE_LLC, true);
+	scratch_pte = vm->pte_encode(vm->scratch.addr, I915_CACHE_LLC, true, 0);
 
 	pd_addr = (gen6_gtt_pte_t __iomem *)dev_priv->gtt.gsm +
 		ppgtt->pd_offset / sizeof(gen6_gtt_pte_t);
@@ -932,7 +951,7 @@ static void gen6_ppgtt_clear_range(struct i915_address_space *vm,
 	unsigned first_pte = first_entry % I915_PPGTT_PT_ENTRIES;
 	unsigned last_pte, i;
 
-	scratch_pte = vm->pte_encode(vm->scratch.addr, I915_CACHE_LLC, true);
+	scratch_pte = vm->pte_encode(vm->scratch.addr, I915_CACHE_LLC, true, 0);
 
 	while (num_entries) {
 		last_pte = first_pte + num_entries;
@@ -956,7 +975,7 @@ static void gen6_ppgtt_insert_entries(struct i915_address_space *vm,
 				      vm_page_t *pages,
 				      uint64_t start,
 				      unsigned num_entries,
-				      enum i915_cache_level cache_level)
+				      enum i915_cache_level cache_level, u32 flags)
 {
 	struct i915_hw_ppgtt *ppgtt =
 		container_of(vm, struct i915_hw_ppgtt, base);
@@ -972,7 +991,7 @@ static void gen6_ppgtt_insert_entries(struct i915_address_space *vm,
 
 		pt_vaddr[act_pte] =
 			vm->pte_encode(VM_PAGE_TO_PHYS(pages[i]),
-				       cache_level, true);
+				       cache_level, true, flags);
 		if (++act_pte == I915_PPGTT_PT_ENTRIES) {
 			kunmap_atomic(pt_vaddr);
 			pt_vaddr = NULL;
@@ -1211,9 +1230,13 @@ ppgtt_bind_vma(struct i915_vma *vma,
 {
 	const unsigned int num_entries = vma->obj->base.size >> PAGE_SHIFT;
 
+	/* Currently applicable only to VLV */
+	if (vma->obj->gt_ro)
+		flags |= PTE_READ_ONLY;
+
 	vma->vm->insert_entries(vma->vm, vma->obj->pages, vma->node.start,
 				num_entries,
-				cache_level);
+				cache_level, flags);
 }
 
 static void ppgtt_unbind_vma(struct i915_vma *vma)
@@ -1293,6 +1316,16 @@ void i915_check_and_clear_faults(struct drm_device *dev)
 	POSTING_READ(RING_FAULT_REG(&dev_priv->ring[RCS]));
 }
 
+static void i915_ggtt_flush(struct drm_i915_private *dev_priv)
+{
+	if (INTEL_INFO(dev_priv->dev)->gen < 6) {
+		intel_gtt_chipset_flush();
+	} else {
+		I915_WRITE(GFX_FLSH_CNTL_GEN6, GFX_FLSH_CNTL_EN);
+		POSTING_READ(GFX_FLSH_CNTL_GEN6);
+	}
+}
+
 void i915_gem_suspend_gtt_mappings(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -1309,6 +1342,8 @@ void i915_gem_suspend_gtt_mappings(struct drm_device *dev)
 				       dev_priv->gtt.base.start,
 				       dev_priv->gtt.base.total,
 				       true);
+
+	i915_ggtt_flush(dev_priv);
 }
 
 void i915_gem_restore_gtt_mappings(struct drm_device *dev)
@@ -1361,7 +1396,7 @@ void i915_gem_restore_gtt_mappings(struct drm_device *dev)
 		gen6_write_pdes(container_of(vm, struct i915_hw_ppgtt, base));
 	}
 
-	i915_gem_chipset_flush(dev);
+	i915_ggtt_flush(dev_priv);
 }
 
 int i915_gem_gtt_prepare_object(struct drm_i915_gem_object *obj)
@@ -1393,7 +1428,7 @@ static void gen8_ggtt_insert_entries(struct i915_address_space *vm,
 				     vm_page_t *pages,
 				     uint64_t start,
 				     unsigned int num_entries,
-				     enum i915_cache_level level)
+				     enum i915_cache_level level, u32 unused)
 {
 	struct drm_i915_private *dev_priv = vm->dev->dev_private;
 	unsigned first_entry = start >> PAGE_SHIFT;
@@ -1437,18 +1472,18 @@ static void gen6_ggtt_insert_entries(struct i915_address_space *vm,
 				     vm_page_t *pages,
 				     uint64_t start,
 				     unsigned int num_entries,
-				     enum i915_cache_level level)
+				     enum i915_cache_level level, u32 flags)
 {
 	struct drm_i915_private *dev_priv = vm->dev->dev_private;
 	unsigned first_entry = start >> PAGE_SHIFT;
 	gen6_gtt_pte_t __iomem *gtt_entries =
 		(gen6_gtt_pte_t __iomem *)dev_priv->gtt.gsm + first_entry;
 	int i = 0;
-	dma_addr_t addr;
+	dma_addr_t addr = 0; /* shut up gcc */
 
 	for (i = 0; i < num_entries; i++) {
 		addr = VM_PAGE_TO_PHYS(pages[i]);
-		iowrite32(vm->pte_encode(addr, level, true), &gtt_entries[i]);
+		iowrite32(vm->pte_encode(addr, level, true, flags), &gtt_entries[i]);
 	}
 
 	/* XXX: This serves as a posting read to make sure that the PTE has
@@ -1457,9 +1492,10 @@ static void gen6_ggtt_insert_entries(struct i915_address_space *vm,
 	 * of NUMA access patterns. Therefore, even with the way we assume
 	 * hardware should work, we must keep this posting read for paranoia.
 	 */
-	if (i != 0)
-		WARN_ON(readl(&gtt_entries[i-1]) !=
-			vm->pte_encode(addr, level, true));
+	if (i != 0) {
+		unsigned long gtt = readl(&gtt_entries[i-1]);
+		WARN_ON(gtt != vm->pte_encode(addr, level, true, flags));
+	}
 
 	/* This next bit makes the above posting read even more important. We
 	 * want to flush the TLBs only after we're certain all the PTE updates
@@ -1513,7 +1549,7 @@ static void gen6_ggtt_clear_range(struct i915_address_space *vm,
 		 first_entry, num_entries, max_entries))
 		num_entries = max_entries;
 
-	scratch_pte = vm->pte_encode(vm->scratch.addr, I915_CACHE_LLC, use_scratch);
+	scratch_pte = vm->pte_encode(vm->scratch.addr, I915_CACHE_LLC, use_scratch, 0);
 
 	for (i = 0; i < num_entries; i++)
 		iowrite32(scratch_pte, &gtt_base[i]);
@@ -1562,6 +1598,10 @@ static void ggtt_bind_vma(struct i915_vma *vma,
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_i915_gem_object *obj = vma->obj;
 
+	/* Currently applicable only to VLV */
+	if (obj->gt_ro)
+		flags |= PTE_READ_ONLY;
+
 	/* If there is no aliasing PPGTT, or the caller needs a global mapping,
 	 * or we have a global mapping already but the cacheability flags have
 	 * changed, set the global PTEs.
@@ -1579,7 +1619,7 @@ static void ggtt_bind_vma(struct i915_vma *vma,
 			vma->vm->insert_entries(vma->vm, obj->pages,
 						vma->node.start,
 						obj->base.size >> PAGE_SHIFT,
-						cache_level);
+						cache_level, flags);
 			obj->has_global_gtt_mapping = 1;
 		}
 	}
@@ -1592,7 +1632,7 @@ static void ggtt_bind_vma(struct i915_vma *vma,
 					    vma->obj->pages,
 					    vma->node.start,
 					    obj->base.size >> PAGE_SHIFT,
-					    cache_level);
+					    cache_level, flags);
 		vma->obj->has_aliasing_ppgtt_mapping = 1;
 	}
 }
@@ -2056,6 +2096,9 @@ static void i915_gmch_remove(struct i915_address_space *vm)
 		drm_mm_takedown(&vm->mm);
 		list_del(&vm->global_link);
 	}
+#if 0
+	intel_gmch_remove();
+#endif
 }
 
 int i915_gem_gtt_init(struct drm_device *dev)
@@ -2101,6 +2144,14 @@ int i915_gem_gtt_init(struct drm_device *dev)
 	if (intel_iommu_gfx_mapped)
 		DRM_INFO("VT-d active for gfx access\n");
 #endif
+	/*
+	 * i915.enable_ppgtt is read-only, so do an early pass to validate the
+	 * user's requested state against the hardware/driver capabilities.  We
+	 * do this now so that we can print out any log messages once rather
+	 * than every time we check intel_enable_ppgtt().
+	 */
+	i915.enable_ppgtt = sanitize_enable_ppgtt(dev, i915.enable_ppgtt);
+	DRM_DEBUG_DRIVER("ppgtt mode: %i\n", i915.enable_ppgtt);
 
 	return 0;
 }

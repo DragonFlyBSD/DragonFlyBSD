@@ -24,6 +24,7 @@
  */
 
 #include <linux/i2c.h>
+#include <linux/fb.h>
 #include <drm/drm_edid.h>
 #include <drm/drmP.h>
 #include "intel_drv.h"
@@ -54,7 +55,7 @@ int intel_connector_update_modes(struct drm_connector *connector,
  * Fetch the EDID information from @connector using the DDC bus.
  */
 int intel_ddc_get_modes(struct drm_connector *connector,
-			device_t adapter)
+			struct i2c_adapter *adapter)
 {
 	struct edid *edid;
 	int ret;

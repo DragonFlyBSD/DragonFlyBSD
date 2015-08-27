@@ -49,6 +49,7 @@
  */
 
 #include <drm/drmP.h>
+#include "drm_legacy.h"
 
 int drm_lock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {

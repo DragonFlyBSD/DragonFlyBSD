@@ -251,12 +251,10 @@ static int drm_bufs_info DRM_SYSCTL_HANDLER_ARGS
 	DRM_SYSCTL_PRINT("\n o     size count  free	 segs pages    kB\n");
 	for (i = 0; i <= DRM_MAX_ORDER; i++) {
 		if (dma->bufs[i].buf_count)
-			DRM_SYSCTL_PRINT("%2d %8d %5d %5d %5d %5d %5d\n",
+			DRM_SYSCTL_PRINT("%2d %8d %5d %5d %5d %5d\n",
 				       i,
 				       dma->bufs[i].buf_size,
 				       dma->bufs[i].buf_count,
-				       atomic_read(&dma->bufs[i]
-						   .freelist.count),
 				       dma->bufs[i].seg_count,
 				       dma->bufs[i].seg_count
 				       *(1 << dma->bufs[i].page_order),

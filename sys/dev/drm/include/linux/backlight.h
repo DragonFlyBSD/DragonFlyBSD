@@ -34,6 +34,7 @@
 
 struct backlight_properties {
 	int brightness;
+	int max_brightness;
 };
 
 struct backlight_device {

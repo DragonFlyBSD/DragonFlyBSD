@@ -989,22 +989,34 @@ int drm_addbufs(struct drm_device *dev, void *data,
  * \param arg pointer to a drm_buf_info structure.
  * \return zero on success or a negative number on failure.
  *
- * Increments drm_device::buf_use while holding the drm_device::count_lock
+ * Increments drm_device::buf_use while holding the drm_device::buf_lock
  * lock, preventing of allocating more buffers after this call. Information
  * about each requested buffer is then copied into user space.
  */
 int drm_infobufs(struct drm_device *dev, void *data,
 		 struct drm_file *file_priv)
 {
-	drm_device_dma_t *dma = dev->dma;
+	struct drm_device_dma *dma = dev->dma;
 	struct drm_buf_info *request = data;
 	int i;
 	int count;
-	int retcode = 0;
 
-	spin_lock(&dev->dma_lock);
+	if (drm_core_check_feature(dev, DRIVER_MODESET))
+		return -EINVAL;
+
+	if (!drm_core_check_feature(dev, DRIVER_HAVE_DMA))
+		return -EINVAL;
+
+	if (!dma)
+		return -EINVAL;
+
+	spin_lock(&dev->buf_lock);
+	if (atomic_read(&dev->buf_alloc)) {
+		spin_unlock(&dev->buf_lock);
+		return -EBUSY;
+	}
 	++dev->buf_use;		/* Can't allocate more after this call */
-	spin_unlock(&dev->dma_lock);
+	spin_unlock(&dev->buf_lock);
 
 	for (i = 0, count = 0; i < DRM_MAX_ORDER + 1; i++) {
 		if (dma->bufs[i].buf_count)
@@ -1016,31 +1028,36 @@ int drm_infobufs(struct drm_device *dev, void *data,
 	if (request->count >= count) {
 		for (i = 0, count = 0; i < DRM_MAX_ORDER + 1; i++) {
 			if (dma->bufs[i].buf_count) {
-				struct drm_buf_desc from;
-
-				from.count = dma->bufs[i].buf_count;
-				from.size = dma->bufs[i].buf_size;
-				from.low_mark = dma->bufs[i].freelist.low_mark;
-				from.high_mark = dma->bufs[i].freelist.high_mark;
-
-				if (copy_to_user(&request->list[count], &from,
-				    sizeof(struct drm_buf_desc)) != 0) {
-					retcode = EFAULT;
-					break;
-				}
+				struct drm_buf_desc __user *to =
+				    &request->list[count];
+				struct drm_buf_entry *from = &dma->bufs[i];
+				if (copy_to_user(&to->count,
+						 &from->buf_count,
+						 sizeof(from->buf_count)) ||
+				    copy_to_user(&to->size,
+						 &from->buf_size,
+						 sizeof(from->buf_size)) ||
+				    copy_to_user(&to->low_mark,
+						 &from->low_mark,
+						 sizeof(from->low_mark)) ||
+				    copy_to_user(&to->high_mark,
+						 &from->high_mark,
+						 sizeof(from->high_mark)))
+					return -EFAULT;
 
 				DRM_DEBUG("%d %d %d %d %d\n",
-				    i, dma->bufs[i].buf_count,
-				    dma->bufs[i].buf_size,
-				    dma->bufs[i].freelist.low_mark,
-				    dma->bufs[i].freelist.high_mark);
+					  i,
+					  dma->bufs[i].buf_count,
+					  dma->bufs[i].buf_size,
+					  dma->bufs[i].low_mark,
+					  dma->bufs[i].high_mark);
 				++count;
 			}
 		}
 	}
 	request->count = count;
 
-	return retcode;
+	return 0;
 }
 
 /**
@@ -1060,28 +1077,34 @@ int drm_infobufs(struct drm_device *dev, void *data,
 int drm_markbufs(struct drm_device *dev, void *data,
 		 struct drm_file *file_priv)
 {
-	drm_device_dma_t *dma = dev->dma;
+	struct drm_device_dma *dma = dev->dma;
 	struct drm_buf_desc *request = data;
 	int order;
+	struct drm_buf_entry *entry;
+
+	if (drm_core_check_feature(dev, DRIVER_MODESET))
+		return -EINVAL;
+
+	if (!drm_core_check_feature(dev, DRIVER_HAVE_DMA))
+		return -EINVAL;
+
+	if (!dma)
+		return -EINVAL;
 
 	DRM_DEBUG("%d, %d, %d\n",
 		  request->size, request->low_mark, request->high_mark);
 	order = order_base_2(request->size);
-	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER ||
-	    request->low_mark < 0 || request->high_mark < 0) {
-		return EINVAL;
-	}
+	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
+		return -EINVAL;
+	entry = &dma->bufs[order];
 
-	spin_lock(&dev->dma_lock);
-	if (request->low_mark > dma->bufs[order].buf_count ||
-	    request->high_mark > dma->bufs[order].buf_count) {
-		spin_unlock(&dev->dma_lock);
-		return EINVAL;
-	}
+	if (request->low_mark < 0 || request->low_mark > entry->buf_count)
+		return -EINVAL;
+	if (request->high_mark < 0 || request->high_mark > entry->buf_count)
+		return -EINVAL;
 
-	dma->bufs[order].freelist.low_mark  = request->low_mark;
-	dma->bufs[order].freelist.high_mark = request->high_mark;
-	spin_unlock(&dev->dma_lock);
+	entry->low_mark = request->low_mark;
+	entry->high_mark = request->high_mark;
 
 	return 0;
 }

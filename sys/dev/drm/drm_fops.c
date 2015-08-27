@@ -40,6 +40,7 @@
 
 #include <drm/drmP.h>
 #include <linux/module.h>
+#include "drm_legacy.h"
 
 /* from BKL pushdown: note that nothing else serializes idr_find() */
 DEFINE_MUTEX(drm_global_mutex);
@@ -196,98 +197,6 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
  * zero calls drm_lastclose().
  */
 
-#if 0 /* old drm_release equivalent from DragonFly */
-void drm_cdevpriv_dtor(void *cd)
-{
-	struct drm_file *file_priv = cd;
-	struct drm_device *dev = file_priv->dev;
-	int retcode = 0;
-
-	DRM_DEBUG("open_count = %d\n", dev->open_count);
-
-	DRM_LOCK(dev);
-
-	if (dev->driver->preclose != NULL)
-		dev->driver->preclose(dev, file_priv);
-
-	/* ========================================================
-	 * Begin inline drm_release
-	 */
-
-	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
-	    DRM_CURRENTPID, (long)dev->dev, dev->open_count);
-
-	if (dev->driver->driver_features & DRIVER_GEM)
-		drm_gem_release(dev, file_priv);
-
-	if (dev->primary->master->lock.hw_lock
-	    && _DRM_LOCK_IS_HELD(dev->primary->master->lock.hw_lock->lock)
-	    && dev->primary->master->lock.file_priv == file_priv) {
-		DRM_DEBUG("Process %d dead, freeing lock for context %d\n",
-			  DRM_CURRENTPID,
-			  _DRM_LOCKING_CONTEXT(dev->primary->master->lock.hw_lock->lock));
-		if (dev->driver->reclaim_buffers_locked != NULL)
-			dev->driver->reclaim_buffers_locked(dev, file_priv);
-
-		drm_lock_free(&dev->primary->master->lock,
-		    _DRM_LOCKING_CONTEXT(dev->primary->master->lock.hw_lock->lock));
-
-				/* FIXME: may require heavy-handed reset of
-                                   hardware at this point, possibly
-                                   processed via a callback to the X
-                                   server. */
-	} else if (dev->driver->reclaim_buffers_locked != NULL &&
-	    dev->primary->master->lock.hw_lock != NULL) {
-		/* The lock is required to reclaim buffers */
-		for (;;) {
-			if (!dev->primary->master->lock.hw_lock) {
-				/* Device has been unregistered */
-				retcode = EINTR;
-				break;
-			}
-			if (drm_lock_take(&dev->primary->master->lock, DRM_KERNEL_CONTEXT)) {
-				dev->primary->master->lock.file_priv = file_priv;
-				dev->primary->master->lock.lock_time = jiffies;
-				atomic_inc(&dev->counts[_DRM_STAT_LOCKS]);
-				break;	/* Got lock */
-			}
-			/* Contention */
-			retcode = DRM_LOCK_SLEEP(dev, &dev->primary->master->lock.lock_queue,
-			    PCATCH, "drmlk2", 0);
-			if (retcode)
-				break;
-		}
-		if (retcode == 0) {
-			dev->driver->reclaim_buffers_locked(dev, file_priv);
-			drm_lock_free(&dev->primary->master->lock, DRM_KERNEL_CONTEXT);
-		}
-	}
-
-	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA) &&
-	    !dev->driver->reclaim_buffers_locked)
-		drm_reclaim_buffers(dev, file_priv);
-
-	funsetown(&dev->buf_sigio);
-
-	if (dev->driver->postclose != NULL)
-		dev->driver->postclose(dev, file_priv);
-	list_del(&file_priv->lhead);
-
-
-	/* ========================================================
-	 * End inline drm_release
-	 */
-
-	atomic_inc(&dev->counts[_DRM_STAT_CLOSES]);
-	device_unbusy(dev->dev);
-	if (--dev->open_count == 0) {
-		retcode = drm_lastclose(dev);
-	}
-
-	DRM_UNLOCK(dev);
-}
-#endif
-
 static void drm_unload(struct drm_device *dev)
 {
 	int i;
@@ -297,8 +206,6 @@ static void drm_unload(struct drm_device *dev)
 	drm_sysctl_cleanup(dev);
 	if (dev->devnode != NULL)
 		destroy_dev(dev->devnode);
-
-	drm_ctxbitmap_cleanup(dev);
 
 	if (dev->driver->driver_features & DRIVER_GEM)
 		drm_gem_destroy(dev);

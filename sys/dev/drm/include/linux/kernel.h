@@ -176,6 +176,8 @@
 #define max_t(type, _x, _y)		(type)(_x) > (type)(_y) ? (type)(_x) : (_y)
 #define clamp_t(type, _x, min, max)	min_t(type, max_t(type, _x, min), max)
 
+#define clamp(x, lo, hi)		min( max(x,lo), hi)
+
 /*
  * This looks more complex than it should be. But we need to
  * get the type for the ~ right in round_down (it needs to be

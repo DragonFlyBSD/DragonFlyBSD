@@ -156,6 +156,7 @@ struct i915_vma {
 	void (*unbind_vma)(struct i915_vma *vma);
 	/* Map an object into an address space with the given cache flags. */
 #define GLOBAL_BIND (1<<0)
+#define PTE_READ_ONLY (1<<1)
 	void (*bind_vma)(struct i915_vma *vma,
 			 enum i915_cache_level cache_level,
 			 u32 flags);
@@ -199,7 +200,7 @@ struct i915_address_space {
 	/* FIXME: Need a more generic return type */
 	gen6_gtt_pte_t (*pte_encode)(dma_addr_t addr,
 				     enum i915_cache_level level,
-				     bool valid); /* Create a valid PTE */
+				     bool valid, u32 flags); /* Create a valid PTE */
 	void (*clear_range)(struct i915_address_space *vm,
 			    uint64_t start,
 			    uint64_t length,
@@ -208,7 +209,7 @@ struct i915_address_space {
 			       vm_page_t *pages,
 			       uint64_t start,
 			       unsigned int num_entries,
-			       enum i915_cache_level cache_level);
+			       enum i915_cache_level cache_level, u32 flags);
 	void (*cleanup)(struct i915_address_space *vm);
 };
 
