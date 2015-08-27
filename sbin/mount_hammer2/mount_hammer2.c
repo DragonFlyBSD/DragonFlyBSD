@@ -55,6 +55,7 @@ main(int argc, char *argv[])
 	struct hammer2_mount_info info;
 	struct vfsconf vfc;
 	char *mountpt;
+	char *devpath;
 	int error;
 	int mount_flags;
 
@@ -70,11 +71,13 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (strchr(argv[1], '@') == NULL) {
+	devpath = strdup(argv[1]);
+
+	if (strchr(devpath, '@') == NULL) {
 		fprintf(stderr,
 			"hammer2_mount: no @LABEL specified: \"%s\"\n"
 			"typical labels are @BOOT, @ROOT, and @DATA\n",
-			argv[1]);
+			devpath);
 		exit(1);
 	}
 
@@ -86,18 +89,24 @@ main(int argc, char *argv[])
 	 * the mount program will fork, detach, print a message, and exit(0)
 	 * the originator while retrying in the background.
 	 */
-	info.cluster_fd = cluster_connect(argv[1]);
+	info.cluster_fd = cluster_connect(devpath);
 	if (info.cluster_fd < 0) {
 		fprintf(stderr,
 			"hammer2_mount: cluster_connect(%s) failed\n",
-			argv[1]);
+			devpath);
 		exit(1);
 	}
 
 	/*
-	 * Try to mount it
+	 * Try to mount it, prefix if necessary.
 	 */
-	info.volume = argv[1];
+	if (devpath[0] != '/') {
+		char *p2;
+		asprintf(&p2, "/dev/%s", devpath);
+		free(devpath);
+		devpath = p2;
+	}
+	info.volume = devpath;
 	info.hflags = 0;
 	mountpt = argv[2];
 
@@ -112,6 +121,7 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 	}
+	free(devpath);
 
 	/*
 	 * XXX fork a backgrounded reconnector process to handle connection
