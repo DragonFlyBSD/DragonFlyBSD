@@ -777,7 +777,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			return (error);
 	}
 
-	kprintf("X1\n");
 	/* Extract device and label */
 	dev = devstr;
 	label = strchr(devstr, '@');
@@ -787,10 +786,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 	*label = '\0';
 	label++;
-	kprintf("X2\n");
 	if (*label == '\0')
 		return (EINVAL);
-	kprintf("X3\n");
 
 	if (mp->mnt_flag & MNT_UPDATE) {
 		/*
