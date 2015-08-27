@@ -2649,6 +2649,9 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 	error = 0;
 	hmp = cursor->trans->hmp;
 
+	if (ondisk->type != HAMMER_BTREE_TYPE_INTERNAL)
+		return(0);  /* This could return non-zero */
+
 	/*
 	 * We really do not want to block on I/O with exclusive locks held,
 	 * pre-get the children before trying to lock the mess.  This is
@@ -2657,13 +2660,11 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 	for (i = 0; i < ondisk->count; ++i) {
 		++hammer_stats_btree_elements;
 		elm = &ondisk->elms[i];
-		if (hammer_is_internal_node_elm(elm)) {
-			child = hammer_get_node(cursor->trans,
-						elm->internal.subtree_offset,
-						0, &error);
-			if (child)
-				hammer_rel_node(child);
-		}
+		child = hammer_get_node(cursor->trans,
+					elm->internal.subtree_offset,
+					0, &error);
+		if (child)
+			hammer_rel_node(child);
 	}
 
 	/*
@@ -2673,14 +2674,10 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 		++hammer_stats_btree_elements;
 		elm = &ondisk->elms[i];
 
-		if (hammer_is_internal_node_elm(elm)) {
-			KKASSERT(elm->internal.subtree_offset != 0);
-			child = hammer_get_node(cursor->trans,
-						elm->internal.subtree_offset,
-						0, &error);
-		} else {
-			child = NULL;
-		}
+		KKASSERT(elm->internal.subtree_offset != 0);
+		child = hammer_get_node(cursor->trans,
+					elm->internal.subtree_offset,
+					0, &error);
 		if (child) {
 			if (hammer_lock_ex_try(&child->lock) != 0) {
 				if (cursor->deadlk_node == NULL) {
