@@ -224,7 +224,16 @@ h2read(struct hammer2_fs *hfs, void *buf, size_t nbytes, off_t off)
 	if (rc || rlen != nbytes)
 		rc = -1;
 #elif defined(BOOT2)
-	rc = dskread(buf, off >> DEV_BSHIFT, nbytes >> DEV_BSHIFT);
+	/* BIOS interface may barf on 64KB reads */
+	rc = 0;
+	while (nbytes > 16384) {
+		rc = dskread(buf, off >> DEV_BSHIFT, 16384 >> DEV_BSHIFT);
+		nbytes -= 16384;
+		buf = (char *)buf + 16384;
+		off += 16384;
+	}
+	if (nbytes)
+		rc = dskread(buf, off >> DEV_BSHIFT, nbytes >> DEV_BSHIFT);
 	if (rc)
 		rc = -1;
 #else
@@ -567,6 +576,7 @@ h2init(struct hammer2_fs *hfs)
 	off_t off;
 	int best;
 	int i;
+	int r;
 
 	/*
 	 * Find the best volume header.
@@ -611,9 +621,21 @@ h2init(struct hammer2_fs *hfs)
 	h2lookup(hfs, NULL, 0, 0, NULL, NULL);
 
 	/*
-	 * Lookup sroot and clear the cache again.
+	 * Lookup sroot/BOOT and clear the cache again.
 	 */
-	h2lookup(hfs, &hfs->sroot, 0, 0, &hfs->sroot, &data);
+	r = h2lookup(hfs, &hfs->sroot,
+		     HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY,
+		     &hfs->sroot, &data);
+	if (r <= 0)
+		return(-1);
+	h2lookup(hfs, NULL, 0, 0, NULL, NULL);
+	r = h2lookup(hfs, &hfs->sroot,
+		     HAMMER2_BOOT_KEY, HAMMER2_BOOT_KEY,
+		     &hfs->sroot, &data);
+	if (r <= 0) {
+		printf("hammer2: 'BOOT' PFS not found\n");
+		return(-1);
+	}
 	h2lookup(hfs, NULL, 0, 0, NULL, NULL);
 
 	return (0);
