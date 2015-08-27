@@ -761,7 +761,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 */
 		bzero(&info, sizeof(info));
 		info.cluster_fd = -1;
-		return (EOPNOTSUPP);
+		ksnprintf(devstr, sizeof(devstr), "%s",
+			  mp->mnt_stat.f_mntfromname);
+		kprintf("hammer2_mount: root '%s'\n", devstr);
 	} else {
 		/*
 		 * Non-root mount or updating a mount
@@ -773,43 +775,46 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		error = copyinstr(info.volume, devstr, MNAMELEN - 1, &done);
 		if (error)
 			return (error);
+	}
 
-		/* Extract device and label */
-		dev = devstr;
-		label = strchr(devstr, '@');
-		if (label == NULL ||
-		    ((label + 1) - dev) > done) {
-			return (EINVAL);
+	kprintf("X1\n");
+	/* Extract device and label */
+	dev = devstr;
+	label = strchr(devstr, '@');
+	if (label == NULL ||
+	    ((label + 1) - dev) > done) {
+		return (EINVAL);
+	}
+	*label = '\0';
+	label++;
+	kprintf("X2\n");
+	if (*label == '\0')
+		return (EINVAL);
+	kprintf("X3\n");
+
+	if (mp->mnt_flag & MNT_UPDATE) {
+		/*
+		 * Update mount.  Note that pmp->iroot->cluster is
+		 * an inode-embedded cluster and thus cannot be
+		 * directly locked.
+		 *
+		 * XXX HAMMER2 needs to implement NFS export via
+		 *     mountctl.
+		 */
+		pmp = MPTOPMP(mp);
+		cluster = &pmp->iroot->cluster;
+		for (i = 0; i < cluster->nchains; ++i) {
+			if (cluster->array[i].chain == NULL)
+				continue;
+			hmp = cluster->array[i].chain->hmp;
+			devvp = hmp->devvp;
+			error = hammer2_remount(hmp, mp, path,
+						devvp, cred);
+			if (error)
+				break;
 		}
-		*label = '\0';
-		label++;
-		if (*label == '\0')
-			return (EINVAL);
 
-		if (mp->mnt_flag & MNT_UPDATE) {
-			/*
-			 * Update mount.  Note that pmp->iroot->cluster is
-			 * an inode-embedded cluster and thus cannot be
-			 * directly locked.
-			 *
-			 * XXX HAMMER2 needs to implement NFS export via
-			 *     mountctl.
-			 */
-			pmp = MPTOPMP(mp);
-			cluster = &pmp->iroot->cluster;
-			for (i = 0; i < cluster->nchains; ++i) {
-				if (cluster->array[i].chain == NULL)
-					continue;
-				hmp = cluster->array[i].chain->hmp;
-				devvp = hmp->devvp;
-				error = hammer2_remount(hmp, mp, path,
-							devvp, cred);
-				if (error)
-					break;
-			}
-
-			return error;
-		}
+		return error;
 	}
 
 	/*
@@ -817,12 +822,20 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 *
 	 * Lookup name and verify it refers to a block device.
 	 */
-	error = nlookup_init(&nd, dev, UIO_SYSSPACE, NLC_FOLLOW);
-	if (error == 0)
-		error = nlookup(&nd);
-	if (error == 0)
-		error = cache_vref(&nd.nl_nch, nd.nl_cred, &devvp);
-	nlookup_done(&nd);
+	if (path) {
+		error = nlookup_init(&nd, dev, UIO_SYSSPACE, NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&nd);
+		if (error == 0)
+			error = cache_vref(&nd.nl_nch, nd.nl_cred, &devvp);
+		nlookup_done(&nd);
+	} else {
+		/* root mount */
+		cdev_t cdev = kgetdiskbyname(dev);
+		error = bdevvp(cdev, &devvp);
+		if (error)
+			kprintf("hammer2: cannot find '%s'\n", dev);
+	}
 
 	if (error == 0) {
 		if (vn_isdisk(devvp, &error))
@@ -1036,12 +1049,16 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		/*
 		 * Ref the cluster management messaging descriptor.  The mount
 		 * program deals with the other end of the communications pipe.
+		 *
+		 * Root mounts typically do not supply one.
 		 */
-		fp = holdfp(curproc->p_fd, info.cluster_fd, -1);
-		if (fp) {
-			hammer2_cluster_reconnect(hmp, fp);
-		} else {
-			kprintf("hammer2_mount: bad cluster_fd!\n");
+		if (info.cluster_fd >= 0) {
+			fp = holdfp(curproc->p_fd, info.cluster_fd, -1);
+			if (fp) {
+				hammer2_cluster_reconnect(hmp, fp);
+			} else {
+				kprintf("hammer2_mount: bad cluster_fd!\n");
+			}
 		}
 	} else {
 		spmp = hmp->spmp;
@@ -1150,12 +1167,21 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	vfs_add_vnodeops(mp, &hammer2_spec_vops, &mp->mnt_vn_spec_ops);
 	vfs_add_vnodeops(mp, &hammer2_fifo_vops, &mp->mnt_vn_fifo_ops);
 
-	copyinstr(info.volume, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
-	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
+	if (path) {
+		copyinstr(info.volume, mp->mnt_stat.f_mntfromname,
+			  MNAMELEN - 1, &size);
+		bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
+	} /* else root mount, already in there */
+
 	bzero(mp->mnt_stat.f_mntonname, sizeof(mp->mnt_stat.f_mntonname));
-	copyinstr(path, mp->mnt_stat.f_mntonname,
-		  sizeof(mp->mnt_stat.f_mntonname) - 1,
-		  &size);
+	if (path) {
+		copyinstr(path, mp->mnt_stat.f_mntonname,
+			  sizeof(mp->mnt_stat.f_mntonname) - 1,
+			  &size);
+	} else {
+		/* root mount */
+		mp->mnt_stat.f_mntonname[0] = '/';
+	}
 
 	/*
 	 * Initial statfs to prime mnt_stat.
@@ -1214,7 +1240,7 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 
 static
 int
-hammer2_remount(hammer2_dev_t *hmp, struct mount *mp, char *path,
+hammer2_remount(hammer2_dev_t *hmp, struct mount *mp, char *path __unused,
 		struct vnode *devvp, struct ucred *cred)
 {
 	int error;

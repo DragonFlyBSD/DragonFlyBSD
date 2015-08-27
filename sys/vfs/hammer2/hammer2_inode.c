@@ -463,6 +463,9 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 			vp->v_type = VFIFO;
 			vp->v_ops = &pmp->mp->mnt_vn_fifo_ops;
 			break;
+		case HAMMER2_OBJTYPE_SOCKET:
+			vp->v_type = VSOCK;
+			break;
 		default:
 			panic("hammer2: unhandled objtype %d",
 			      ip->meta.type);
