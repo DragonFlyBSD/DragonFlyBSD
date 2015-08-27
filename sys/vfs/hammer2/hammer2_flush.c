@@ -634,8 +634,11 @@ again:
 			KKASSERT(hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED);
 			KKASSERT(chain == &hmp->fchain);
 			hmp->voldata.freemap_tid = chain->bref.mirror_tid;
-			kprintf("sync freemap mirror_tid %08jx\n",
-				(intmax_t)chain->bref.mirror_tid);
+			if (hammer2_debug & 0x8000) {
+				/* debug only, avoid syslogd loop */
+				kprintf("sync freemap mirror_tid %08jx\n",
+					(intmax_t)chain->bref.mirror_tid);
+			}
 
 			/*
 			 * The freemap can be flushed independently of the
@@ -662,8 +665,11 @@ again:
 			hammer2_chain_lock(&hmp->fchain,
 					   HAMMER2_RESOLVE_ALWAYS);
 			hammer2_voldata_lock(hmp);
-			kprintf("sync volume  mirror_tid %08jx\n",
-				(intmax_t)chain->bref.mirror_tid);
+			if (hammer2_debug & 0x8000) {
+				/* debug only, avoid syslogd loop */
+				kprintf("sync volume  mirror_tid %08jx\n",
+					(intmax_t)chain->bref.mirror_tid);
+			}
 
 			/*
 			 * Update the volume header's mirror_tid to the
@@ -701,9 +707,12 @@ again:
 					 HAMMER2_VOLUME_ICRCVH_OFF,
 					HAMMER2_VOLUME_ICRCVH_SIZE);
 
-			kprintf("syncvolhdr %016jx %016jx\n",
-				hmp->voldata.mirror_tid,
-				hmp->vchain.bref.mirror_tid);
+			if (hammer2_debug & 0x8000) {
+				/* debug only, avoid syslogd loop */
+				kprintf("syncvolhdr %016jx %016jx\n",
+					hmp->voldata.mirror_tid,
+					hmp->vchain.bref.mirror_tid);
+			}
 			hmp->volsync = hmp->voldata;
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_VOLUMESYNC);
 			hammer2_voldata_unlock(hmp);
@@ -1161,8 +1170,11 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 		    hmp->volsync.volu_size) {
 			j = 0;
 		}
-		kprintf("sync volhdr %d %jd\n",
-			j, (intmax_t)hmp->volsync.volu_size);
+		if (hammer2_debug & 0x8000) {
+			/* debug only, avoid syslogd loop */
+			kprintf("sync volhdr %d %jd\n",
+				j, (intmax_t)hmp->volsync.volu_size);
+		}
 		bp = getblk(hmp->devvp, j * HAMMER2_ZONE_BYTES64,
 			    HAMMER2_PBUFSIZE, 0, 0);
 		atomic_clear_int(&hmp->vchain.flags,
