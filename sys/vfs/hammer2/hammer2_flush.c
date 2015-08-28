@@ -69,7 +69,7 @@ struct hammer2_flush_info {
 	int		depth;
 	int		diddeferral;
 	int		cache_index;
-	hammer2_tid_t	mtid;
+	int		flags;
 	struct h2_flush_list flushq;
 	hammer2_chain_t	*debug;
 };
@@ -77,7 +77,7 @@ struct hammer2_flush_info {
 typedef struct hammer2_flush_info hammer2_flush_info_t;
 
 static void hammer2_flush_core(hammer2_flush_info_t *info,
-				hammer2_chain_t *chain, int deleting);
+				hammer2_chain_t *chain, int flags);
 static int hammer2_flush_recurse(hammer2_chain_t *child, void *data);
 
 /*
@@ -183,8 +183,14 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 
 /*
  * Start a sub-transaction, there is no 'subdone' function.  This will
- * issue a new modify_tid (mtid) for the current transaction and must
- * be called for each XOP when multiple XOPs are run in sequence.
+ * issue a new modify_tid (mtid) for the current transaction, which is a
+ * CLC (cluster level change) id and not a per-node id.
+ *
+ * This function must be called for each XOP when multiple XOPs are run in
+ * sequence within a transaction.
+ *
+ * Callers typically update the inode with the transaction mtid manually
+ * to enforce sequencing.
  */
 hammer2_tid_t
 hammer2_trans_sub(hammer2_pfs_t *pmp)
@@ -300,15 +306,17 @@ hammer2_delayed_flush(hammer2_chain_t *chain)
 
 /*
  * Flush the chain and all modified sub-chains through the specified
- * synchronization point, propagating parent chain modifications, modify_tid,
- * and mirror_tid updates back up as needed.
+ * synchronization point, propagating blockref updates back up.  As
+ * part of this propagation, mirror_tid and inode/data usage statistics
+ * propagates back upward.
  *
- * Caller must have already vetted synchronization points to ensure they
- * are properly flushed.  Only snapshots and cluster flushes can create
- * these sorts of synchronization points.
+ * modify_tid (clc - cluster level change) is not propagated.
+ *
+ * update_tid (clc) is used for validation and is not propagated by this
+ * function.
  *
  * This routine can be called from several places but the most important
- * is from VFS_SYNC.
+ * is from VFS_SYNC (frontend) via hammer2_inode_xop_flush (backend).
  *
  * chain is locked on call and will remain locked on return.  The chain's
  * UPDATE flag indicates that its parent's block table (which is not yet
@@ -316,7 +324,7 @@ hammer2_delayed_flush(hammer2_chain_t *chain)
  * the call if it was modified.
  */
 void
-hammer2_flush(hammer2_chain_t *chain, hammer2_tid_t mtid, int istop)
+hammer2_flush(hammer2_chain_t *chain, int flags)
 {
 	hammer2_chain_t *scan;
 	hammer2_flush_info_t info;
@@ -334,7 +342,7 @@ hammer2_flush(hammer2_chain_t *chain, hammer2_tid_t mtid, int istop)
 	bzero(&info, sizeof(info));
 	TAILQ_INIT(&info.flushq);
 	info.cache_index = -1;
-	info.mtid = mtid;
+	info.flags = flags & ~HAMMER2_FLUSH_TOP;
 
 	/*
 	 * Calculate parent (can be NULL), if not NULL the flush core
@@ -383,7 +391,7 @@ hammer2_flush(hammer2_chain_t *chain, hammer2_tid_t mtid, int istop)
 			if (hammer2_debug & 0x0040)
 				kprintf("deferred flush %p\n", scan);
 			hammer2_chain_lock(scan, HAMMER2_RESOLVE_MAYBE);
-			hammer2_flush(scan, mtid, 0);
+			hammer2_flush(scan, flags & ~HAMMER2_FLUSH_TOP);
 			hammer2_chain_unlock(scan);
 			hammer2_chain_drop(scan);	/* ref from deferral */
 		}
@@ -392,7 +400,7 @@ hammer2_flush(hammer2_chain_t *chain, hammer2_tid_t mtid, int istop)
 		 * [re]flush chain.
 		 */
 		info.diddeferral = 0;
-		hammer2_flush_core(&info, chain, istop);
+		hammer2_flush_core(&info, chain, flags);
 
 		/*
 		 * Only loop if deep recursions have been deferred.
@@ -449,7 +457,7 @@ hammer2_flush(hammer2_chain_t *chain, hammer2_tid_t mtid, int istop)
  */
 static void
 hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
-		   int istop)
+		   int flags)
 {
 	hammer2_chain_t *parent;
 	hammer2_dev_t *hmp;
@@ -480,16 +488,9 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 * Already deferred.
 		 */
 		++info->diddeferral;
-	} else if (info->depth == HAMMER2_FLUSH_DEPTH_LIMIT) {
-		/*
-		 * Recursion depth reached.
-		 */
-		KKASSERT((chain->flags & HAMMER2_CHAIN_DELAYED) == 0);
-		hammer2_chain_ref(chain);
-		TAILQ_INSERT_TAIL(&info->flushq, chain, flush_node);
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DEFERRED);
-		++info->diddeferral;
-	} else if ((chain->flags & HAMMER2_CHAIN_PFSBOUNDARY) && istop == 0) {
+	} else if ((chain->flags & HAMMER2_CHAIN_PFSBOUNDARY) &&
+		   (flags & HAMMER2_FLUSH_ALL) == 0 &&
+		   (flags & HAMMER2_FLUSH_TOP) == 0) {
 		/*
 		 * We do not recurse through PFSROOTs.  PFSROOT flushes are
 		 * handled by the related pmp's (whether mounted or not,
@@ -499,18 +500,25 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 * table updates in their parent (which IS part of our flush).
 		 *
 		 * Note that the volume root, vchain, does not set this flag.
+		 * Note the logic here requires that this test be done before
+		 * the depth-limit test, else it might become the top on a
+		 * flushq iteration.
 		 */
 		;
+	} else if (info->depth == HAMMER2_FLUSH_DEPTH_LIMIT) {
+		/*
+		 * Recursion depth reached.
+		 */
+		KKASSERT((chain->flags & HAMMER2_CHAIN_DELAYED) == 0);
+		hammer2_chain_ref(chain);
+		TAILQ_INSERT_TAIL(&info->flushq, chain, flush_node);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DEFERRED);
+		++info->diddeferral;
 	} else if (chain->flags & HAMMER2_CHAIN_ONFLUSH) {
 		/*
 		 * Downward recursion search (actual flush occurs bottom-up).
 		 * pre-clear ONFLUSH.  It can get set again due to races,
 		 * which we want so the scan finds us again in the next flush.
-		 * These races can also include 
-		 *
-		 * Flush recursions stop at PFSROOT boundaries.  Each PFS
-		 * must be individually flushed and then the root must
-		 * be flushed.
 		 */
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
 		info->parent = chain;
@@ -869,7 +877,7 @@ again:
 		 * We are updating the parent's blockmap, the parent must
 		 * be set modified.
 		 */
-		hammer2_chain_modify(parent, info->mtid, 0);
+		hammer2_chain_modify(parent, 0, 0);
 		if (parent->bref.modify_tid < chain->bref.modify_tid)
 			parent->bref.modify_tid = chain->bref.modify_tid;
 
@@ -1002,13 +1010,13 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 	 */
 	if (child->flags & HAMMER2_CHAIN_FLUSH_MASK) {
 		++info->depth;
-		hammer2_flush_core(info, child, 0);
+		hammer2_flush_core(info, child, info->flags);
 		--info->depth;
 	} else if (hammer2_debug & 0x200) {
 		if (info->debug == NULL)
 			info->debug = child;
 		++info->depth;
-		hammer2_flush_core(info, child, 0);
+		hammer2_flush_core(info, child, info->flags);
 		--info->depth;
 		if (info->debug == child)
 			info->debug = NULL;
@@ -1024,6 +1032,39 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 	hammer2_spin_ex(&parent->core.spin);
 
 	return (0);
+}
+
+/*
+ * flush helper (direct)
+ *
+ * Quickly flushes any dirty chains for a device.  This will update our
+ * concept of the volume root but does NOT flush the actual volume root
+ * and does not flush dirty device buffers.
+ *
+ * This function is primarily used by the bulkfree code to allow it to
+ * create a snapshot for the pass.  It doesn't care about any pending
+ * work (dirty vnodes, dirty inodes, dirty logical buffers) for which blocks
+ * have not yet been allocated.
+ */
+void
+hammer2_flush_quick(hammer2_dev_t *hmp)
+{
+	hammer2_chain_t *chain;
+
+	hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
+
+	hammer2_chain_ref(&hmp->vchain);
+	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
+	if (hmp->vchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
+		chain = &hmp->vchain;
+		hammer2_flush(chain, HAMMER2_FLUSH_TOP |
+				     HAMMER2_FLUSH_ALL);
+		KKASSERT(chain == &hmp->vchain);
+	}
+	hammer2_chain_unlock(&hmp->vchain);
+	hammer2_chain_drop(&hmp->vchain);
+
+	hammer2_trans_done(hmp->spmp);  /* spmp trans */
 }
 
 /*
@@ -1052,7 +1093,7 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 	if (chain) {
 		hmp = chain->hmp;
 		if (chain->flags & HAMMER2_CHAIN_FLUSH_MASK) {
-			hammer2_flush(chain, xop->head.mtid, 1);
+			hammer2_flush(chain, HAMMER2_FLUSH_TOP);
 			parent = chain->parent;
 			KKASSERT(chain->pmp != parent->pmp);
 			hammer2_chain_setflush(parent);
@@ -1081,7 +1122,8 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 	/*
 	 * spmp transaction.  The super-root is never directly mounted so
 	 * there shouldn't be any vnodes, let alone any dirty vnodes
-	 * associated with it.
+	 * associated with it, so we shouldn't have to mess around with any
+	 * vnode flushes here.
 	 */
 	hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
 
@@ -1105,7 +1147,7 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 		 */
 		hammer2_voldata_modify(hmp);
 		chain = &hmp->fchain;
-		hammer2_flush(chain, xop->head.mtid, 1);
+		hammer2_flush(chain, HAMMER2_FLUSH_TOP);
 		KKASSERT(chain == &hmp->fchain);
 	}
 	hammer2_chain_unlock(&hmp->fchain);
@@ -1116,7 +1158,7 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 	if (hmp->vchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
 		chain = &hmp->vchain;
-		hammer2_flush(chain, xop->head.mtid, 1);
+		hammer2_flush(chain, HAMMER2_FLUSH_TOP);
 		KKASSERT(chain == &hmp->vchain);
 	}
 	hammer2_chain_unlock(&hmp->vchain);

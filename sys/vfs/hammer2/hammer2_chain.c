@@ -1059,9 +1059,15 @@ hammer2_chain_resize(hammer2_inode_t *ip,
 	}
 }
 
+/*
+ * Set the chain modified so its data can be changed by the caller.
+ *
+ * Sets bref.modify_tid to mtid only if mtid != 0.  Note that bref.modify_tid
+ * is a CLC (cluster level change) field and is not updated by parent
+ * propagation during a flush.
+ */
 void
-hammer2_chain_modify(hammer2_chain_t *chain,
-		     hammer2_tid_t mtid, int flags)
+hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid, int flags)
 {
 	hammer2_blockref_t obref;
 	hammer2_dev_t *hmp;
@@ -1115,12 +1121,12 @@ hammer2_chain_modify(hammer2_chain_t *chain,
 	 * The modification or re-modification requires an allocation and
 	 * possible COW.
 	 *
-	 * We normally always allocate new storage here.  If storage exists
-	 * and MODIFY_NOREALLOC is passed in, we do not allocate new storage.
+	 * XXX can a chain already be marked MODIFIED without a data
+	 * assignment?  If not, assert here instead of testing the case.
 	 */
 	if (chain != &hmp->vchain && chain != &hmp->fchain) {
 		if ((chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0 ||
-		     ((flags & HAMMER2_MODIFY_NOREALLOC) == 0 && newmod)
+		     newmod
 		) {
 			hammer2_freemap_alloc(chain, chain->bytes);
 			/* XXX failed allocation */
@@ -1129,14 +1135,14 @@ hammer2_chain_modify(hammer2_chain_t *chain,
 
 	/*
 	 * Update mirror_tid and modify_tid.  modify_tid is only updated
-	 * automatically by this function when used from the frontend.
-	 * Flushes and synchronization adjust the flag manually.
+	 * if not passed as zero (during flushes, parent propagation passes
+	 * the value 0).
 	 *
 	 * NOTE: chain->pmp could be the device spmp.
 	 */
-	KKASSERT(mtid != 0);
 	chain->bref.mirror_tid = hmp->voldata.mirror_tid + 1;
-	chain->bref.modify_tid = mtid;
+	if (mtid)
+		chain->bref.modify_tid = mtid;
 
 	/*
 	 * Set BMAPUPD to tell the flush code that an existing blockmap entry
@@ -4273,7 +4279,7 @@ hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
 		/* XXX doesn't work with real cluster */
 		wipdata->meta = nip->meta;
 		wipdata->u.blockset = ripdata->u.blockset;
-		hammer2_flush(nchain, mtid, 1);
+		hammer2_flush(nchain, 1);
 		hammer2_chain_unlock(nchain);
 		hammer2_chain_drop(nchain);
 		hammer2_inode_unlock(nip);

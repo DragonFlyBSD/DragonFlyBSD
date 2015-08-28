@@ -228,7 +228,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 */
 	hammer2_inode_lock(ip, 0);
 	if (ip->flags & HAMMER2_INODE_MODIFIED)
-		hammer2_inode_fsync(ip);
+		hammer2_inode_chain_sync(ip);
 	hammer2_inode_unlock(ip);
 	hammer2_trans_done(ip->pmp);
 
@@ -460,7 +460,7 @@ done:
 	 * block table.
 	 */
 	if (ip->flags & HAMMER2_INODE_RESIZED)
-		hammer2_inode_fsync(ip);
+		hammer2_inode_chain_sync(ip);
 
 	/*
 	 * Cleanup.
@@ -972,14 +972,14 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		hammer2_mtx_ex(&ip->lock);
 		hammer2_truncate_file(ip, old_eof);
 		if (ip->flags & HAMMER2_INODE_MODIFIED)
-			hammer2_inode_fsync(ip);
+			hammer2_inode_chain_sync(ip);
 		hammer2_mtx_unlock(&ip->lock);
 	} else if (modified) {
 		hammer2_mtx_ex(&ip->lock);
 		hammer2_inode_modify(ip);
 		hammer2_update_time(&ip->meta.mtime);
 		if (ip->flags & HAMMER2_INODE_MODIFIED)
-			hammer2_inode_fsync(ip);
+			hammer2_inode_chain_sync(ip);
 		hammer2_mtx_unlock(&ip->lock);
 		hammer2_knote(ip->vp, kflags);
 	}
@@ -1034,8 +1034,9 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
  *
  * Even though the file size is changing, we do not have to set the
  * INODE_RESIZED bit unless the file size crosses the EMBEDDED_BYTES
- * boundary.  When this occurs a hammer2_inode_fsync() is required
- * to prepare the inode cluster's indirect block table.
+ * boundary.  When this occurs a hammer2_inode_chain_sync() is required
+ * to prepare the inode cluster's indirect block table, otherwise
+ * async execution of the strategy code will implode on us.
  *
  * WARNING! Assumes that the kernel interlocks size changes at the
  *	    vnode level.
@@ -1060,8 +1061,10 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	ip->meta.size = nsize;
 	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 
-	if (osize <= HAMMER2_EMBEDDED_BYTES && nsize > HAMMER2_EMBEDDED_BYTES)
+	if (osize <= HAMMER2_EMBEDDED_BYTES && nsize > HAMMER2_EMBEDDED_BYTES) {
 		atomic_set_int(&ip->flags, HAMMER2_INODE_RESIZED);
+		hammer2_inode_chain_sync(ip);
+	}
 
 	hammer2_mtx_unlock(&ip->lock);
 	if (ip->vp) {

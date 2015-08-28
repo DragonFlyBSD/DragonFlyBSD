@@ -476,7 +476,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_MODIFY_OPTDATA		0x00000002	/* data can be NULL */
 #define HAMMER2_MODIFY_NO_MODIFY_TID	0x00000004
 #define HAMMER2_MODIFY_UNUSED0008	0x00000008
-#define HAMMER2_MODIFY_NOREALLOC	0x00000010
 
 /*
  * Flags passed to hammer2_chain_lock()
@@ -767,6 +766,10 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_FREEMAP_HEUR_TYPES	8
 #define HAMMER2_FREEMAP_HEUR		(HAMMER2_FREEMAP_HEUR_NRADIX * \
 					 HAMMER2_FREEMAP_HEUR_TYPES)
+
+#define HAMMER2_FLUSH_TOP		0x0001
+#define HAMMER2_FLUSH_ALL		0x0002
+
 
 /*
  * Hammer2 support thread element.
@@ -1317,7 +1320,7 @@ int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_inode_t *ip,
 			hammer2_key_t lhc);
 hammer2_inode_t *hammer2_inode_common_parent(hammer2_inode_t *fdip,
 			hammer2_inode_t *tdip);
-void hammer2_inode_fsync(hammer2_inode_t *ip);
+void hammer2_inode_chain_sync(hammer2_inode_t *ip);
 int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen);
 void hammer2_inode_install_hidden(hammer2_pfs_t *pmp);
 
@@ -1382,8 +1385,6 @@ void hammer2_chain_rename(hammer2_blockref_t *bref,
 				hammer2_tid_t mtid, int flags);
 void hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
 				hammer2_tid_t mtid, int flags);
-void hammer2_flush(hammer2_chain_t *chain, hammer2_tid_t mtid, int istop);
-void hammer2_delayed_flush(hammer2_chain_t *chain);
 void hammer2_chain_setflush(hammer2_chain_t *chain);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count);
@@ -1404,6 +1405,13 @@ void hammer2_base_delete(hammer2_chain_t *chain,
 void hammer2_base_insert(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
 				int *cache_indexp, hammer2_chain_t *child);
+
+/*
+ * hammer2_flush.c
+ */
+void hammer2_flush(hammer2_chain_t *chain, int istop);
+void hammer2_flush_quick(hammer2_dev_t *hmp);
+void hammer2_delayed_flush(hammer2_chain_t *chain);
 
 /*
  * hammer2_trans.c
@@ -1486,7 +1494,7 @@ void hammer2_xop_scanall(hammer2_xop_t *xop, int clidx);
 void hammer2_xop_lookup(hammer2_xop_t *xop, int clidx);
 void hammer2_inode_xop_create(hammer2_xop_t *xop, int clidx);
 void hammer2_inode_xop_destroy(hammer2_xop_t *xop, int clidx);
-void hammer2_inode_xop_fsync(hammer2_xop_t *xop, int clidx);
+void hammer2_inode_xop_chain_sync(hammer2_xop_t *xop, int clidx);
 void hammer2_inode_xop_unlinkall(hammer2_xop_t *xop, int clidx);
 void hammer2_inode_xop_connect(hammer2_xop_t *xop, int clidx);
 void hammer2_inode_xop_flush(hammer2_xop_t *xop, int clidx);

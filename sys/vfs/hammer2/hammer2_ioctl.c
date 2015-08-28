@@ -656,7 +656,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		 */
 		hammer2_inode_ref(nip);
 		hammer2_inode_unlock(nip);
-		hammer2_inode_fsync(nip);
+		hammer2_inode_chain_sync(nip);
 		hammer2_inode_drop(nip);
 	}
 	hammer2_trans_done(hmp->spmp);

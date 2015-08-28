@@ -245,65 +245,65 @@ blockref is then recorded when the filesystem is mounted after a crash and
 the update chain is reconstituted when a matching blockref is encountered
 again during normal operation of the filesystem.
 
-			    MIRROR_TID, MODIFY_TID
+			MIRROR_TID, MODIFY_TID, UPDATE_TID
 
-In HAMMER2, the core block reference is 64-byte structure called a blockref.
+In HAMMER2, the core block reference is 128-byte structure called a blockref.
 The blockref contains various bits of information including the 64-bit radix
 key (typically a directory hash if a directory entry, inode number if a
 hidden hardlink target, or file offset if a file block), 64-bit data offset
 with the physical block size radix encoded in it (physical block size can be
-different from logical block size due to compression), two 64-bit transaction
-ids, type information, and 192 bits worth of check data for the block being
-reference which can be a simple CRC or stronger HASH.
-
-Both mirror_tid and modify_tid propagate upward from the change point all the
-way to the root, but serve different purposes and work in slightly different
-ways.
+different from logical block size due to compression), three 64-bit
+transaction ids, type information, and up to 512 bits worth of check data
+for the block being reference which can be anything from a simple CRC to
+a strong cryptographic hash.
 
 mirror_tid - This is a media-centric (as in physical disk partition)
-	     transaction id which tracks media-level updates.
+	     transaction id which tracks media-level updates.  The mirror_tid
+	     can be different at the same point on different nodes in a
+	     cluster.
 
 	     Whenever any block in the media topology is modified, its
 	     mirror_tid is updated with the flush id and will propagate
 	     upward during the flush all the way to the volume header.
 
-	     mirror_tid is monotonic.
+	     mirror_tid is monotonic.  It is primarily used for on-mount
+	     recovery and volume root validation.  The name is historical
+	     from H1, it is not used for nominal mirroring.
 
 modify_tid - This is a cluster-centric (as in across all the nodes used
 	     to build a cluster) transaction id which tracks filesystem-level
 	     updates.
 
 	     modify_tid is updated when the front-end of the filesystem makes
-	     a change to an inode or data block.  It will also propagate
-	     upward, stopping at the root of the PFS (the mount point for
-	     the cluster).
+	     a change to an inode or data block.  It does NOT propagate upward
+	     during a flush.
 
-The major difference between mirror_tid and modify_tid is that for any given
-element in the topology residing on different nodes.  e.g. file "x" on node 1
-and file "x" on node 2, if the files are synchronized with each other they
-will have the same modify_tid on a block-by-block basis, and a single check
-of the inode's modify_tid is sufficient to determine that the files are fully
-synchronized and identical.  These same inodes and representitive blocks will
-have very different mirror_tids because the nodes will reside on different
-physical media.
+update_tid - This is a cluster synchronization transaction id.  Modifications
+	     made to the topology will clear this field to 0 as they propagate
+	     up to the root.  This gives the synchronizer an easy way to
+	     determine what needs revalidation.
 
-I noted above that modify_tids also propagate upward, but not in all cases.
-A node which is undergoing SYNCHRONIZATION only updates the modify_tid of
-a block when it has determined that the block and its entire sub-block
-hierarchy has been synchronized to that point.
+	     The synchronizer revalidates the cluster bottom-up by validating
+	     a sub-topology and propagating the highest modify_tid in the
+	     validated sub-topology up via the update_tid field.
+
+	     Update to this field may be optimized by the HAMMER2 VFS to
+	     avoid the double-transition.
 
 The synchronization code updates an out-of-sync node bottom-up and will
-definitely set modify_tid as it goes, but media flushes can occur at any
+dynamically set update_tid as it goes, but media flushes can occur at any
 time and these flushes will use mirror_tid for flush and freemap management.
 The mirror_tid for each flush propagates upward to the volume header on each
-flush.
+flush.  modify_tid is set for any chains modified by a cluster op but does
+not propagate up, instead serving as a seed for update_tid.
 
 * The synchronization code is able to determine that a sub-tree is
-  synchronized simply by observing the modify_tid at the root of the sub-tree,
-  on a directory-by-directory basis.
+  synchronized simply by observing the update_tid at the root of the sub-tree,
+  on an inode-by-inode basis and also on a data-block-by-data-block basis.
 
 * The synchronization code is able to do an incremental update of an
-  out-of-sync node simply by skipping elements with matching modify_tids.
+  out-of-sync node simply by skipping elements with a matching update_tid
+  (when not 0).
 
 * The synchronization code can be interrupted and restarted at any time,
   and is able to pick up where it left off with very little overhead.

@@ -165,7 +165,7 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
  * Bulkfree algorithm
  *
  * Repeat {
- *	Chain flush (partial synchronization)
+ *	Chain flush (partial synchronization) XXX removed
  *	Scan the whole topology - build in-memory freemap (mark 11)
  *	Reconcile the in-memory freemap against the on-disk freemap.
  *		ondisk xx -> ondisk 11 (if allocated)
@@ -206,13 +206,15 @@ typedef struct hammer2_bulkfree_info {
 	long			count_linadjusts;
 	hammer2_off_t		adj_free;
 	hammer2_tid_t		mtid;
+	hammer2_tid_t		saved_mirror_tid;
 	time_t			save_time;
 } hammer2_bulkfree_info_t;
 
 static int h2_bulkfree_callback(hammer2_chain_t *chain, void *info);
 static void h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo);
 static void h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
-			hammer2_bmap_data_t *live, hammer2_bmap_data_t *bmap);
+			hammer2_bmap_data_t *live, hammer2_bmap_data_t *bmap,
+			int nofree);
 
 int
 hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
@@ -230,11 +232,23 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	 */
 	lockmgr(&hmp->bulklk, LK_EXCLUSIVE);
 
+#if 0
 	/*
-	 * Flush-a-roonie.  A full filesystem flush is not needed
+	 * XXX This has been removed.  Instead of trying to flush, which
+	 * appears to have a ton of races against life chains even with
+	 * the two-stage scan, we simply refuse to free any blocks
+	 * related to freemap chains modified after the last filesystem
+	 * sync.
+	 *
+	 * Do a quick flush so we can snapshot vchain for any blocks that
+	 * have been allocated prior to this point.  We don't need to
+	 * flush vnodes, logical buffers, or dirty inodes that have not
+	 * allocated blocks yet.  We do not want to flush the device buffers
+	 * nor do we want to flush the actual volume root to disk here,
+	 * that is not needed to perform the snapshot.
 	 */
-
-	/* hammer2_vfs_sync(hmp->mp, MNT_WAIT); XXX */
+	hammer2_flush_quick(hmp);
+#endif
 
 	/*
 	 * Setup for free pass
@@ -244,6 +258,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	       ~(size_t)(HAMMER2_FREEMAP_LEVELN_PSIZE - 1);
 	cbinfo.hmp = hmp;
 	cbinfo.bmap = kmem_alloc_swapbacked(&cbinfo.kp, size);
+	cbinfo.saved_mirror_tid = hmp->voldata.mirror_tid;
 
 	/*
 	 * Normalize start point to a 2GB boundary.  We operate on a
@@ -479,8 +494,8 @@ h2_bulkfree_callback(hammer2_chain_t *chain, void *info)
  * direct copy.  Instead the bitmaps must be compared:
  *
  *	In-memory	Live-freemap
- *	   00		  11 -> 10
- *			  10 -> 00
+ *	   00		  11 -> 10	(do nothing if live modified)
+ *			  10 -> 00	(do nothing if live modified)
  *	   11		  10 -> 11	handles race against live
  *			  ** -> 11	nominally warn of corruption
  * 
@@ -497,6 +512,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	hammer2_chain_t *live_chain;
 	int cache_index = -1;
 	int bmapindex;
+	int nofree;
 
 	kprintf("hammer2_bulkfree - range %016jx-%016jx\n",
 		(intmax_t)cbinfo->sbase,
@@ -509,6 +525,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	hammer2_chain_ref(live_parent);
 	hammer2_chain_lock(live_parent, HAMMER2_RESOLVE_ALWAYS);
 	live_chain = NULL;
+	nofree = 1;	/* safety */
 
 	while (data_off < cbinfo->sstop) {
 		/*
@@ -536,8 +553,22 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 					    key + HAMMER2_FREEMAP_LEVEL1_MASK,
 					    &cache_index,
 					    HAMMER2_LOOKUP_ALWAYS);
-			if (live_chain)
+			/*
+			 * If recent allocations were made we avoid races by
+			 * not freeing any blocks.
+			 */
+			if (live_chain) {
 				kprintf("live_chain %016jx\n", (intmax_t)key);
+				if (live_chain->bref.mirror_tid >
+				    cbinfo->saved_mirror_tid) {
+					kprintf("hammer2_bulkfree: "
+						"avoid %016jx\n",
+						data_off);
+					nofree = 1;
+				} else {
+					nofree = 0;
+				}
+			}
 					
 		}
 		if (live_chain == NULL) {
@@ -582,7 +613,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 			data_off, bmapindex, live->class, live->avail);
 
 		hammer2_chain_modify(live_chain, cbinfo->mtid, 0);
-		h2_bulkfree_sync_adjust(cbinfo, live, bmap);
+		h2_bulkfree_sync_adjust(cbinfo, live, bmap, nofree);
 next:
 		data_off += HAMMER2_FREEMAP_LEVEL0_SIZE;
 		++bmap;
@@ -597,10 +628,17 @@ next:
 	}
 }
 
+/*
+ * Merge the bulkfree bitmap against the existing bitmap.
+ *
+ * If nofree is non-zero the merge will only mark free blocks as allocated
+ * and will refuse to free any blocks.
+ */
 static
 void
 h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
-			hammer2_bmap_data_t *live, hammer2_bmap_data_t *bmap)
+			hammer2_bmap_data_t *live, hammer2_bmap_data_t *bmap,
+			int nofree)
 {
 	int bindex;
 	int scount;
@@ -629,6 +667,8 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 						"transition m=00/l=01\n");
 					break;
 				case 2:	/* 10 -> 00 */
+					if (nofree)
+						break;
 					live->bitmapq[bindex] &=
 					    ~((hammer2_bitmap_t)2 << scount);
 					live->avail +=
@@ -638,6 +678,8 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 					++cbinfo->count_10_00;
 					break;
 				case 3:	/* 11 -> 10 */
+					if (nofree)
+						break;
 					live->bitmapq[bindex] &=
 					    ~((hammer2_bitmap_t)1 << scount);
 					++cbinfo->count_11_10;

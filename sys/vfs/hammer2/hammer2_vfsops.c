@@ -1896,7 +1896,7 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 		 */
 		if ((chain->bref.flags & HAMMER2_BREF_FLAG_PFSROOT) &&
 		    (chain->flags & HAMMER2_CHAIN_ONFLUSH)) {
-			hammer2_flush(chain, info->mtid, 1);
+			hammer2_flush(chain, HAMMER2_FLUSH_TOP);
 		}
 		chain = hammer2_chain_scan(parent, chain, &cache_index,
 					   HAMMER2_LOOKUP_NODATA);
@@ -2050,7 +2050,12 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	if ((ip->flags & HAMMER2_INODE_MODIFIED) ||
 	    !RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vfsync(vp, info->waitfor, 1, NULL, NULL);
-		hammer2_inode_fsync(ip);
+		if (ip->flags & (HAMMER2_INODE_RESIZED |
+				 HAMMER2_INODE_MODIFIED)) {
+			hammer2_inode_lock(ip, 0);
+			hammer2_inode_chain_sync(ip);
+			hammer2_inode_unlock(ip);
+		}
 	}
 	if ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
 	    RB_EMPTY(&vp->v_rbdirty_tree)) {

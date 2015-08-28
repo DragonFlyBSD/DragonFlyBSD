@@ -533,38 +533,44 @@ typedef struct dmsg_lnk_hammer2_volconf dmsg_lnk_hammer2_volconf_t;
  * The primary feature a blockref represents is the ability to validate
  * the entire tree underneath it via its check code.  Any modification to
  * anything propagates up the blockref tree all the way to the root, replacing
- * the related blocks.  Propagations can shortcut to the volume root to
- * implement the 'fast syncing' feature but this only delays the eventual
- * propagation.
+ * the related blocks and compounding the generated check code.
  *
- * The check code can be a simple 32-bit iscsi code, a 64-bit crc,
- * or as complex as a 192 bit cryptographic hash.  192 bits is the maximum
- * supported check code size, which is not sufficient for unverified dedup
- * UNLESS one doesn't mind once-in-a-blue-moon data corruption (such as when
- * farming web data).  HAMMER2 has an unverified dedup feature for just this
- * purpose.
+ * The check code can be a simple 32-bit iscsi code, a 64-bit crc, or as
+ * complex as a 512 bit cryptographic hash.  I originally used a 64-byte
+ * blockref but later expanded it to 128 bytes to be able to support the
+ * larger check code as well as to embed statistics for quota operation.
+ *
+ * Simple check codes are not sufficient for unverified dedup.  Even with
+ * a maximally-sized check code unverified dedup should only be used in
+ * in subdirectory trees where you do not need 100% data integrity.
+ *
+ * Unverified dedup is deduping based on meta-data only without verifying
+ * that the data blocks are actually identical.  Verified dedup guarantees
+ * integrity but is a far more I/O-expensive operation.
  *
  * --
+ *
+ * mirror_tid - per cluster node modified (propagated upward by flush)
+ * modify_tid - clc record modified (not propagated).
+ * update_tid - clc record updated (propagated upward on verification)
+ *
+ * CLC - Stands for 'Cluster Level Change', identifiers which are identical
+ *	 within the topology across all cluster nodes (when fully
+ *	 synchronized).
  *
  * NOTE: The range of keys represented by the blockref is (key) to
  *	 ((key) + (1LL << keybits) - 1).  HAMMER2 usually populates
  *	 blocks bottom-up, inserting a new root when radix expansion
  *	 is required.
  *
- * --
+ *				    RESERVED FIELDS
+ *
+ * A number of blockref fields are reserved and should generally be set to
+ * 0 for future compatibility.
+ *
  *				FUTURE BLOCKREF EXPANSION
  *
- * In order to implement a 256-bit content addressable index we want to
- * have a 256-bit key which essentially represents the cryptographic hash.
- * (so, 64-bit key + 192-bit crypto-hash or 256-bit key-is-the-hash +
- * 32-bit consistency check for indirect block layers).
- *
- * THIS IS POSSIBLE in a 64-byte blockref structure.  Of course, any number
- * of bits can be represented by sizing the blockref.  For the purposes of
- * HAMMER2 though my limit is 256 bits.  Not only that, but it will be an
- * optimal construction because H2 already uses a variably-sized radix to
- * pack the blockrefs at each level.  A 256-bit mechanic would allow us
- * to implement a content-addressable index.
+ * CONTENT ADDRESSABLE INDEXING (future) - Using a 256 or 512-bit check code.
  */
 struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 	uint8_t		type;		/* type of underlying item */
@@ -577,11 +583,11 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 	uint8_t		reserved07;
 	hammer2_key_t	key;		/* key specification */
 	hammer2_tid_t	mirror_tid;	/* media flush topology & freemap */
-	hammer2_tid_t	modify_tid;	/* cluster level change / flush */
+	hammer2_tid_t	modify_tid;	/* clc modify (not propagated) */
 	hammer2_off_t	data_off;	/* low 6 bits is phys size (radix)*/
 	hammer2_key_t	data_count;	/* statistics aggregation */
 	hammer2_key_t	inode_count;	/* statistics aggregation */
-	hammer2_key_t	reserved38;
+	hammer2_tid_t	update_tid;	/* clc modify (propagated upward) */
 	union {				/* check info */
 		char	buf[64];
 		struct {

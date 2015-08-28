@@ -1301,7 +1301,7 @@ hammer2_inode_modify(hammer2_inode_t *ip)
  * Called with a locked inode inside a transaction.
  */
 void
-hammer2_inode_fsync(hammer2_inode_t *ip)
+hammer2_inode_chain_sync(hammer2_inode_t *ip)
 {
 	if (ip->flags & (HAMMER2_INODE_RESIZED | HAMMER2_INODE_MODIFIED)) {
 		hammer2_xop_fsync_t *xop;
@@ -1324,7 +1324,7 @@ hammer2_inode_fsync(hammer2_inode_t *ip)
 
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED |
 					     HAMMER2_INODE_MODIFIED);
-		hammer2_xop_start(&xop->head, hammer2_inode_xop_fsync);
+		hammer2_xop_start(&xop->head, hammer2_inode_xop_chain_sync);
 		error = hammer2_xop_collect(&xop->head, 0);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (error == ENOENT)
@@ -1629,8 +1629,11 @@ fail:
 	}
 }
 
+/*
+ * Synchronize the in-memory inode with the chain.
+ */
 void
-hammer2_inode_xop_fsync(hammer2_xop_t *arg, int clindex)
+hammer2_inode_xop_chain_sync(hammer2_xop_t *arg, int clindex)
 {
 	hammer2_xop_fsync_t *xop = &arg->xop_fsync;
 	hammer2_chain_t	*parent;
@@ -1688,6 +1691,18 @@ hammer2_inode_xop_fsync(hammer2_xop_t *arg, int clindex)
 						   &cache_index,
 						   HAMMER2_LOOKUP_NODATA |
 						   HAMMER2_LOOKUP_NODIRECT);
+		}
+
+		/*
+		 * Reset to point at inode for following code, if necessary.
+		 */
+		if (parent->bref.type != HAMMER2_BREF_TYPE_INODE) {
+			hammer2_chain_unlock(parent);
+			hammer2_chain_drop(parent);
+			parent = hammer2_inode_chain(xop->head.ip1, clindex,
+						     HAMMER2_RESOLVE_ALWAYS);
+			kprintf("hammer2: TRUNCATE RESET on '%s'\n",
+				parent->data->ipdata.filename);
 		}
 	}
 
