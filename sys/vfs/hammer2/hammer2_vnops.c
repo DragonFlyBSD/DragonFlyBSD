@@ -292,10 +292,18 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	hammer2_time_to_timespec(ip->meta.mtime, &vap->va_atime);
 	vap->va_gen = 1;
 	vap->va_bytes = 0;
-	for (i = 0; i < ip->cluster.nchains; ++i) {
-		if ((chain = ip->cluster.array[i].chain) != NULL) {
-			if (vap->va_bytes < chain->bref.data_count)
-				vap->va_bytes = chain->bref.data_count;
+	if (ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY) {
+		/*
+		 * Can't really calculate directory use sans the files under
+		 * it, just assume one block for now.
+		 */
+		vap->va_bytes += HAMMER2_INODE_BYTES;
+	} else {
+		for (i = 0; i < ip->cluster.nchains; ++i) {
+			if ((chain = ip->cluster.array[i].chain) != NULL) {
+				if (vap->va_bytes < chain->bref.data_count)
+					vap->va_bytes = chain->bref.data_count;
+			}
 		}
 	}
 	vap->va_type = hammer2_get_vtype(ip->meta.type);

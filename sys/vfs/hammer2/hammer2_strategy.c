@@ -253,6 +253,7 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	xop->finished = 0;
 	xop->bio = bio;
 	xop->lbase = lbase;
+	hammer2_mtx_init(&xop->lock, "h2bio");
 	hammer2_xop_start(&xop->head, hammer2_strategy_xop_read);
 
 	return(0);
@@ -281,7 +282,7 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 	bio = xop->bio;
 	bp = bio->bio_buf;
 
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	if (parent) {
@@ -310,9 +311,9 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 	 */
 	if (xop->finished)
 		return;
-	hammer2_mtx_ex(&xop->head.xgrp->mtx2);
+	hammer2_mtx_ex(&xop->lock);
 	if (xop->finished) {
-		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		hammer2_mtx_unlock(&xop->lock);
 		return;
 	}
 
@@ -326,7 +327,7 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 	switch(error) {
 	case 0:
 		xop->finished = 1;
-		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		hammer2_mtx_unlock(&xop->lock);
 		chain = xop->head.cluster.focus;
 		hammer2_strategy_read_completion(chain, (char *)chain->data,
 						 xop->bio);
@@ -335,7 +336,7 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 		break;
 	case ENOENT:
 		xop->finished = 1;
-		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		hammer2_mtx_unlock(&xop->lock);
 		bp->b_resid = 0;
 		bp->b_error = 0;
 		bzero(bp->b_data, bp->b_bcount);
@@ -343,11 +344,11 @@ hammer2_strategy_xop_read(hammer2_xop_t *arg, int clindex)
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		break;
 	case EINPROGRESS:
-		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		hammer2_mtx_unlock(&xop->lock);
 		break;
 	default:
 		xop->finished = 1;
-		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		hammer2_mtx_unlock(&xop->lock);
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 		biodone(bio);
@@ -490,7 +491,7 @@ hammer2_strategy_xop_write(hammer2_xop_t *arg, int clindex)
 	lbase = xop->lbase;
 	bio = xop->bio;
 	bp = bio->bio_buf;
-	ip = xop->head.ip;
+	ip = xop->head.ip1;
 
 	/* hammer2_trans_init(parent->hmp->spmp, HAMMER2_TRANS_BUFCACHE); */
 
@@ -512,9 +513,9 @@ hammer2_strategy_xop_write(hammer2_xop_t *arg, int clindex)
 	 */
 	if (xop->finished)
 		return;
-	hammer2_mtx_ex(&xop->head.xgrp->mtx2);
+	hammer2_mtx_ex(&xop->lock);
 	if (xop->finished) {
-		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		hammer2_mtx_unlock(&xop->lock);
 		return;
 	}
 
@@ -529,7 +530,7 @@ hammer2_strategy_xop_write(hammer2_xop_t *arg, int clindex)
 	case ENOENT:
 	case 0:
 		xop->finished = 1;
-		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		hammer2_mtx_unlock(&xop->lock);
 		bp->b_resid = 0;
 		bp->b_error = 0;
 		biodone(bio);
@@ -537,11 +538,11 @@ hammer2_strategy_xop_write(hammer2_xop_t *arg, int clindex)
 		hammer2_lwinprog_drop(ip->pmp);
 		break;
 	case EINPROGRESS:
-		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		hammer2_mtx_unlock(&xop->lock);
 		break;
 	default:
 		xop->finished = 1;
-		hammer2_mtx_unlock(&xop->head.xgrp->mtx2);
+		hammer2_mtx_unlock(&xop->lock);
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 		biodone(bio);

@@ -73,7 +73,7 @@ hammer2_xop_ipcluster(hammer2_xop_t *arg, int clindex)
 	hammer2_chain_t *chain;
 	int error;
 
-	chain = hammer2_inode_chain(xop->head.ip, clindex,
+	chain = hammer2_inode_chain(xop->head.ip1, clindex,
 				    HAMMER2_RESOLVE_ALWAYS |
 				    HAMMER2_RESOLVE_SHARED);
 	if (chain)
@@ -108,7 +108,7 @@ hammer2_xop_readdir(hammer2_xop_t *arg, int clindex)
 	 * The inode's chain is the iterator.  If we cannot acquire it our
 	 * contribution ends here.
 	 */
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	if (parent == NULL) {
@@ -163,7 +163,7 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 	int cache_index = -1;	/* XXX */
 	int error;
 
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	if (parent == NULL) {
@@ -172,8 +172,8 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 		error = EIO;
 		goto done;
 	}
-	name = xop->head.name;
-	name_len = xop->head.name_len;
+	name = xop->head.name1;
+	name_len = xop->head.name1_len;
 
 	/*
 	 * Lookup the directory entry
@@ -206,7 +206,7 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 	if (chain) {
 		if (chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
 			error = hammer2_chain_hardlink_find(
-						xop->head.ip,
+						xop->head.ip1,
 						&parent, &chain,
 						HAMMER2_RESOLVE_SHARED);
 		}
@@ -252,7 +252,7 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 	/*
 	 * Requires exclusive lock
 	 */
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		kprintf("xop_nresolve: NULL parent\n");
@@ -260,8 +260,8 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 		error = EIO;
 		goto done;
 	}
-	name = xop->head.name;
-	name_len = xop->head.name_len;
+	name = xop->head.name1;
+	name_len = xop->head.name1_len;
 
 	/*
 	 * Lookup the directory entry
@@ -329,7 +329,7 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 	if (chain) {
 		if (chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
 			error = hammer2_chain_hardlink_find(
-						xop->head.ip,
+						xop->head.ip1,
 						&parent, &chain,
 						0);
 			if (chain &&
@@ -543,7 +543,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 		}
 	} else {
 		/*
-		 * head.ip is fdip, do a namespace search.
+		 * head.ip1 is fdip, do a namespace search.
 		 */
 		const hammer2_inode_data_t *ripdata;
 		hammer2_key_t lhc;
@@ -551,7 +551,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 		const char *name;
 		size_t name_len;
 
-		parent = hammer2_inode_chain(xop->head.ip, clindex,
+		parent = hammer2_inode_chain(xop->head.ip1, clindex,
 					     HAMMER2_RESOLVE_ALWAYS |
 					     HAMMER2_RESOLVE_SHARED);
 		if (parent == NULL) {
@@ -559,8 +559,8 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 			error = EIO;
 			goto done;
 		}
-		name = xop->head.name;
-		name_len = xop->head.name_len;
+		name = xop->head.name1;
+		name_len = xop->head.name1_len;
 
 		/*
 		 * Lookup the directory entry
@@ -608,8 +608,8 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 	 * XXX in-inode parent directory specification?
 	 */
 	if (chain->data->ipdata.meta.name_key != xop->lhc ||
-	    xop->head.name_len != xop->head.name2_len ||
-	    bcmp(xop->head.name, xop->head.name2, xop->head.name_len) != 0) {
+	    xop->head.name1_len != xop->head.name2_len ||
+	    bcmp(xop->head.name1, xop->head.name2, xop->head.name1_len) != 0) {
 		hammer2_inode_data_t *wipdata;
 
 		hammer2_chain_modify(chain, xop->head.mtid, 0);
@@ -675,7 +675,7 @@ hammer2_xop_scanlhc(hammer2_xop_t *arg, int clindex)
 	int cache_index = -1;	/* XXX */
 	int error = 0;
 
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	if (parent == NULL) {
@@ -734,7 +734,7 @@ hammer2_xop_lookup(hammer2_xop_t *arg, int clindex)
 	int cache_index = -1;	/* XXX */
 	int error = 0;
 
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	chain = NULL;
@@ -785,7 +785,7 @@ hammer2_xop_scanall(hammer2_xop_t *arg, int clindex)
 	 * The inode's chain is the iterator.  If we cannot acquire it our
 	 * contribution ends here.
 	 */
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	if (parent == NULL) {

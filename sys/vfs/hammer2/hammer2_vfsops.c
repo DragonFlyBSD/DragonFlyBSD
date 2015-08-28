@@ -346,10 +346,16 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 		kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
 		lockinit(&pmp->lock, "pfslk", 0, 0);
 		spin_init(&pmp->inum_spin, "hm2pfsalloc_inum");
+		spin_init(&pmp->xop_spin, "h2xop");
 		RB_INIT(&pmp->inum_tree);
 		TAILQ_INIT(&pmp->unlinkq);
 		spin_init(&pmp->list_spin, "hm2pfsalloc_list");
 
+		/*
+		 * Distribute backend operations to threads
+		 */
+		for (j = 0; j < HAMMER2_MAXCLUSTER; ++j)
+			TAILQ_INIT(&pmp->xopq[j]);
 		for (j = 0; j < HAMMER2_XOPGROUPS; ++j)
 			hammer2_xop_group_init(pmp, &pmp->xop_groups[j]);
 
@@ -895,6 +901,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		TAILQ_INIT(&hmp->flushq);
 
 		lockinit(&hmp->vollk, "h2vol", 0, 0);
+		lockinit(&hmp->bulklk, "h2bulk", 0, 0);
 
 		/*
 		 * vchain setup. vchain.data is embedded.
@@ -1990,6 +1997,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		hammer2_xop_start(&xop->head, hammer2_inode_xop_flush);
 		error = hammer2_xop_collect(&xop->head,
 					    HAMMER2_XOP_COLLECT_WAITALL);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (error == ENOENT)
 			error = 0;
 	} else {

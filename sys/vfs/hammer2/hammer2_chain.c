@@ -190,8 +190,12 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 	case HAMMER2_BREF_TYPE_FREEMAP:
-		chain = NULL;
-		panic("hammer2_chain_alloc volume type illegal for op");
+		/*
+		 * Only hammer2_chain_bulksnap() calls this function with these
+		 * types.
+		 */
+		chain = kmalloc(sizeof(*chain), hmp->mchain, M_WAITOK | M_ZERO);
+		break;
 	default:
 		chain = NULL;
 		panic("hammer2_chain_alloc: unrecognized blockref type: %d",
@@ -1729,11 +1733,11 @@ again:
 		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
-		base = &hmp->voldata.sroot_blockset.blockref[0];
+		base = &parent->data->voldata.sroot_blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP:
-		base = &hmp->voldata.freemap_blockset.blockref[0];
+		base = &parent->data->blkset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
@@ -2055,6 +2059,10 @@ again:
 	case HAMMER2_BREF_TYPE_INODE:
 		/*
 		 * An inode with embedded data has no sub-chains.
+		 *
+		 * WARNING! Bulk scan code may pass a static chain marked
+		 *	    as BREF_TYPE_INODE with a copy of the volume
+		 *	    root blockset to snapshot the volume.
 		 */
 		if (parent->data->ipdata.meta.op_flags &
 		    HAMMER2_OPFLAG_DIRECTDATA) {
@@ -2079,11 +2087,11 @@ again:
 		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
-		base = &hmp->voldata.sroot_blockset.blockref[0];
+		base = &parent->data->voldata.sroot_blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP:
-		base = &hmp->voldata.freemap_blockset.blockref[0];
+		base = &parent->data->blkset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
@@ -2359,12 +2367,12 @@ again:
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		KKASSERT(parent->data != NULL);
-		base = &hmp->voldata.sroot_blockset.blockref[0];
+		base = &parent->data->voldata.sroot_blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP:
 		KKASSERT(parent->data != NULL);
-		base = &hmp->voldata.freemap_blockset.blockref[0];
+		base = &parent->data->blkset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
@@ -2643,11 +2651,12 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 			count = parent->bytes / sizeof(hammer2_blockref_t);
 			break;
 		case HAMMER2_BREF_TYPE_VOLUME:
-			base = &hmp->voldata.sroot_blockset.blockref[0];
+			base = &parent->data->voldata.
+					sroot_blockset.blockref[0];
 			count = HAMMER2_SET_COUNT;
 			break;
 		case HAMMER2_BREF_TYPE_FREEMAP:
-			base = &parent->data->npdata[0];
+			base = &parent->data->blkset.blockref[0];
 			count = HAMMER2_SET_COUNT;
 			break;
 		default:
@@ -2823,11 +2832,12 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 			count = parent->bytes / sizeof(hammer2_blockref_t);
 			break;
 		case HAMMER2_BREF_TYPE_VOLUME:
-			base = &hmp->voldata.sroot_blockset.blockref[0];
+			base = &parent->data->voldata.
+					sroot_blockset.blockref[0];
 			count = HAMMER2_SET_COUNT;
 			break;
 		case HAMMER2_BREF_TYPE_FREEMAP:
-			base = &hmp->voldata.freemap_blockset.blockref[0];
+			base = &parent->data->blkset.blockref[0];
 			count = HAMMER2_SET_COUNT;
 			break;
 		default:
@@ -3882,11 +3892,11 @@ hammer2_base_sort(hammer2_chain_t *chain)
 		count = chain->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
-		base = &chain->hmp->voldata.sroot_blockset.blockref[0];
+		base = &chain->data->voldata.sroot_blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP:
-		base = &chain->hmp->voldata.freemap_blockset.blockref[0];
+		base = &chain->data->blkset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
@@ -4125,6 +4135,55 @@ done:
 
 	*chainp = rchain;
 	return (rchain ? EINVAL : 0);
+}
+
+/*
+ * Used by the bulkscan code to snapshot the synchronized storage for
+ * a volume, allowing it to be scanned concurrently against normal
+ * operation.
+ */
+hammer2_chain_t *
+hammer2_chain_bulksnap(hammer2_chain_t *chain)
+{
+	hammer2_chain_t *copy;
+
+	copy = hammer2_chain_alloc(chain->hmp, chain->pmp, &chain->bref);
+	switch(chain->bref.type) {
+	case HAMMER2_BREF_TYPE_VOLUME:
+		copy->data = kmalloc(sizeof(copy->data->voldata),
+				     chain->hmp->mchain,
+				     M_WAITOK | M_ZERO);
+		hammer2_spin_ex(&chain->core.spin);
+		copy->data->voldata = chain->data->voldata;
+		hammer2_spin_unex(&chain->core.spin);
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		copy->data = kmalloc(sizeof(hammer2_blockset_t),
+				     chain->hmp->mchain,
+				     M_WAITOK | M_ZERO);
+		hammer2_spin_ex(&chain->core.spin);
+		copy->data->blkset = chain->data->blkset;
+		hammer2_spin_unex(&chain->core.spin);
+		break;
+	default:
+		break;
+	}
+	return copy;
+}
+
+void
+hammer2_chain_bulkdrop(hammer2_chain_t *copy)
+{
+	switch(copy->bref.type) {
+	case HAMMER2_BREF_TYPE_VOLUME:
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		KKASSERT(copy->data);
+		kfree(copy->data, copy->hmp->mchain);
+		copy->data = NULL;
+	default:
+		break;
+	}
+	hammer2_chain_drop(copy);
 }
 
 /*

@@ -84,9 +84,9 @@ hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
 {
 	lockinit(&thr->lk, "h2thr", 0, 0);
 	thr->pmp = pmp;
+	thr->xopq = &pmp->xopq[clindex];
 	thr->clindex = clindex;
 	thr->repidx = repidx;
-	TAILQ_INIT(&thr->xopq);
 	if (repidx >= 0) {
 		lwkt_create(func, thr, &thr->td, NULL, 0, -1,
 			    "%s-%s.%02d", id, pmp->pfs_names[clindex], repidx);
@@ -110,12 +110,13 @@ hammer2_thr_delete(hammer2_thread_t *thr)
 		return;
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
 	atomic_set_int(&thr->flags, HAMMER2_THREAD_STOP);
-	wakeup(&thr->flags);
+	wakeup(thr->xopq);
 	while (thr->td) {
 		lksleep(thr, &thr->lk, 0, "h2thr", hz);
 	}
 	lockmgr(&thr->lk, LK_RELEASE);
 	thr->pmp = NULL;
+	thr->xopq = NULL;
 	lockuninit(&thr->lk);
 }
 
@@ -131,7 +132,7 @@ hammer2_thr_remaster(hammer2_thread_t *thr)
 		return;
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
 	atomic_set_int(&thr->flags, HAMMER2_THREAD_REMASTER);
-	wakeup(&thr->flags);
+	wakeup(thr->xopq);
 	lockmgr(&thr->lk, LK_RELEASE);
 }
 
@@ -139,7 +140,7 @@ void
 hammer2_thr_freeze_async(hammer2_thread_t *thr)
 {
 	atomic_set_int(&thr->flags, HAMMER2_THREAD_FREEZE);
-	wakeup(&thr->flags);
+	wakeup(thr->xopq);
 }
 
 void
@@ -149,7 +150,7 @@ hammer2_thr_freeze(hammer2_thread_t *thr)
 		return;
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
 	atomic_set_int(&thr->flags, HAMMER2_THREAD_FREEZE);
-	wakeup(&thr->flags);
+	wakeup(thr->xopq);
 	while ((thr->flags & HAMMER2_THREAD_FROZEN) == 0) {
 		lksleep(thr, &thr->lk, 0, "h2frz", hz);
 	}
@@ -163,7 +164,7 @@ hammer2_thr_unfreeze(hammer2_thread_t *thr)
 		return;
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
 	atomic_clear_int(&thr->flags, HAMMER2_THREAD_FROZEN);
-	wakeup(&thr->flags);
+	wakeup(thr->xopq);
 	lockmgr(&thr->lk, LK_RELEASE);
 }
 
@@ -218,7 +219,7 @@ hammer2_primary_sync_thread(void *arg)
 		 * Force idle if frozen until unfrozen or stopped.
 		 */
 		if (thr->flags & HAMMER2_THREAD_FROZEN) {
-			lksleep(&thr->flags, &thr->lk, 0, "frozen", 0);
+			lksleep(thr->xopq, &thr->lk, 0, "frozen", 0);
 			continue;
 		}
 
@@ -299,7 +300,7 @@ hammer2_primary_sync_thread(void *arg)
 		/*
 		 * Wait for event, or 5-second poll.
 		 */
-		lksleep(&thr->flags, &thr->lk, 0, "h2idle", hz * 5);
+		lksleep(thr->xopq, &thr->lk, 0, "h2idle", hz * 5);
 	}
 	thr->td = NULL;
 	wakeup(thr);
@@ -950,8 +951,7 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 void
 hammer2_xop_group_init(hammer2_pfs_t *pmp, hammer2_xop_group_t *xgrp)
 {
-	hammer2_mtx_init(&xgrp->mtx, "h2xopq");
-	hammer2_mtx_init(&xgrp->mtx2, "h2xopio");
+	/* no extra fields in structure at the moment */
 }
 
 /*
@@ -969,7 +969,7 @@ hammer2_xop_alloc(hammer2_inode_t *ip, int flags)
 
 	xop = objcache_get(cache_xops, M_WAITOK);
 	KKASSERT(xop->head.cluster.array[0].chain == NULL);
-	xop->head.ip = ip;
+	xop->head.ip1 = ip;
 	xop->head.func = NULL;
 	xop->head.state = 0;
 	xop->head.error = 0;
@@ -996,9 +996,9 @@ hammer2_xop_alloc(hammer2_inode_t *ip, int flags)
 void
 hammer2_xop_setname(hammer2_xop_head_t *xop, const char *name, size_t name_len)
 {
-	xop->name = kmalloc(name_len + 1, M_HAMMER2, M_WAITOK | M_ZERO);
-	xop->name_len = name_len;
-	bcopy(name, xop->name, name_len);
+	xop->name1 = kmalloc(name_len + 1, M_HAMMER2, M_WAITOK | M_ZERO);
+	xop->name1_len = name_len;
+	bcopy(name, xop->name1, name_len);
 }
 
 void
@@ -1081,26 +1081,56 @@ void
 hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 			 int notidx)
 {
+#if 0
 	hammer2_xop_group_t *xgrp;
 	hammer2_thread_t *thr;
+#endif
 	hammer2_pfs_t *pmp;
+#if 0
 	int g;
+#endif
 	int i;
 
-	pmp = xop->ip->pmp;
+	pmp = xop->ip1->pmp;
 	if (pmp->has_xop_threads == 0)
 		hammer2_xop_helper_create(pmp);
 
+#if 0
 	g = pmp->xop_iterator++;
 	g = g & HAMMER2_XOPGROUPS_MASK;
 	xgrp = &pmp->xop_groups[g];
-	xop->func = func;
 	xop->xgrp = xgrp;
+#endif
+	xop->func = func;
 
-	/* XXX do cluster_resolve or cluster_check here, only start
-	 * synchronized elements */
+	/*
+	 * The XOP sequencer is based on ip1, ip2, and ip3.  Because ops can
+	 * finish early and unlock the related inodes, some targets may get
+	 * behind.  The sequencer ensures that ops on the same inode execute
+	 * in the same order.
+	 */
+	hammer2_spin_ex(&pmp->xop_spin);
+	for (i = 0; i < xop->ip1->cluster.nchains; ++i) {
+		if (i != notidx) {
+			atomic_set_int(&xop->run_mask, 1U << i);
+			atomic_set_int(&xop->chk_mask, 1U << i);
+			TAILQ_INSERT_TAIL(&pmp->xopq[i], xop, collect[i].entry);
+		}
+	}
+	hammer2_spin_unex(&pmp->xop_spin);
 
-	for (i = 0; i < xop->ip->cluster.nchains; ++i) {
+	/*
+	 * Try to wakeup just one xop thread for each cluster node.
+	 */
+	for (i = 0; i < xop->ip1->cluster.nchains; ++i) {
+		if (i != notidx)
+			wakeup_one(&pmp->xopq[i]);
+	}
+#if 0
+	/*
+	 * Dispatch to concurrent threads.
+	 */
+	for (i = 0; i < xop->ip1->cluster.nchains; ++i) {
 		thr = &xgrp->thrs[i];
 		if (thr->td && i != notidx) {
 			lockmgr(&thr->lk, LK_EXCLUSIVE);
@@ -1115,6 +1145,7 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 			wakeup(&thr->flags);
 		}
 	}
+#endif
 }
 
 void
@@ -1129,11 +1160,8 @@ hammer2_xop_start(hammer2_xop_head_t *xop, hammer2_xop_func_t func)
 void
 hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 {
-	hammer2_xop_group_t *xgrp;
 	hammer2_chain_t *chain;
 	int i;
-
-	xgrp = xop->xgrp;
 
 	/*
 	 * Remove the frontend or remove a backend feeder.  When removing
@@ -1184,9 +1212,9 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 	/*
 	 * The inode is only held at this point, simply drop it.
 	 */
-	if (xop->ip) {
-		hammer2_inode_drop(xop->ip);
-		xop->ip = NULL;
+	if (xop->ip1) {
+		hammer2_inode_drop(xop->ip1);
+		xop->ip1 = NULL;
 	}
 	if (xop->ip2) {
 		hammer2_inode_drop(xop->ip2);
@@ -1196,10 +1224,10 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 		hammer2_inode_drop(xop->ip3);
 		xop->ip3 = NULL;
 	}
-	if (xop->name) {
-		kfree(xop->name, M_HAMMER2);
-		xop->name = NULL;
-		xop->name_len = 0;
+	if (xop->name1) {
+		kfree(xop->name1, M_HAMMER2);
+		xop->name1 = NULL;
+		xop->name1_len = 0;
 	}
 	if (xop->name2) {
 		kfree(xop->name2, M_HAMMER2);
@@ -1448,6 +1476,115 @@ done:
 }
 
 /*
+ * N x M processing threads are available to handle XOPs, N per cluster
+ * index x M cluster nodes.  All the threads for any given cluster index
+ * share and pull from the same xopq.
+ *
+ * Locate and return the next runnable xop, or NULL if no xops are
+ * present or none of the xops are currently runnable (for various reasons).
+ * The xop is left on the queue and serves to block other dependent xops
+ * from being run.
+ *
+ * Dependent xops will not be returned.
+ *
+ * Sets HAMMER2_XOP_FIFO_RUN on the returned xop or returns NULL.
+ *
+ * NOTE! Xops run concurrently for each cluster index.
+ */
+#define XOP_HASH_SIZE	16
+#define XOP_HASH_MASK	(XOP_HASH_SIZE - 1)
+
+static __inline
+int
+xop_testhash(hammer2_thread_t *thr, hammer2_inode_t *ip, uint32_t *hash)
+{
+	uint32_t mask;
+	int hv;
+
+	hv = (int)((uintptr_t)ip + (uintptr_t)thr) / sizeof(hammer2_inode_t);
+	mask = 1U << (hv & 31);
+	hv >>= 5;
+
+	return ((int)(hash[hv & XOP_HASH_MASK] & mask));
+}
+
+static __inline
+void
+xop_sethash(hammer2_thread_t *thr, hammer2_inode_t *ip, uint32_t *hash)
+{
+	uint32_t mask;
+	int hv;
+
+	hv = (int)((uintptr_t)ip + (uintptr_t)thr) / sizeof(hammer2_inode_t);
+	mask = 1U << (hv & 31);
+	hv >>= 5;
+
+	hash[hv & XOP_HASH_MASK] |= mask;
+}
+
+static
+hammer2_xop_head_t *
+hammer2_xop_next(hammer2_thread_t *thr)
+{
+	hammer2_pfs_t *pmp = thr->pmp;
+	int clindex = thr->clindex;
+	uint32_t hash[XOP_HASH_SIZE] = { 0 };
+	hammer2_xop_head_t *xop;
+
+	hammer2_spin_ex(&pmp->xop_spin);
+	TAILQ_FOREACH(xop, thr->xopq, collect[clindex].entry) {
+		/*
+		 * Check dependency
+		 */
+		if (xop_testhash(thr, xop->ip1, hash) ||
+		    (xop->ip2 && xop_testhash(thr, xop->ip2, hash)) ||
+		    (xop->ip3 && xop_testhash(thr, xop->ip3, hash))) {
+			continue;
+		}
+		xop_sethash(thr, xop->ip1, hash);
+		if (xop->ip2)
+			xop_sethash(thr, xop->ip2, hash);
+		if (xop->ip3)
+			xop_sethash(thr, xop->ip3, hash);
+
+		/*
+		 * Check already running
+		 */
+		if (xop->collect[clindex].flags & HAMMER2_XOP_FIFO_RUN)
+			continue;
+
+		/*
+		 * Found a good one, return it.
+		 */
+		atomic_set_int(&xop->collect[clindex].flags,
+			       HAMMER2_XOP_FIFO_RUN);
+		break;
+	}
+	hammer2_spin_unex(&pmp->xop_spin);
+
+	return xop;
+}
+
+/*
+ * Remove the completed XOP from the queue, clear HAMMER2_XOP_FIFO_RUN.
+ *
+ * NOTE! Xops run concurrently for each cluster index.
+ */
+static
+void
+hammer2_xop_dequeue(hammer2_thread_t *thr, hammer2_xop_head_t *xop)
+{
+	hammer2_pfs_t *pmp = thr->pmp;
+	int clindex = thr->clindex;
+
+	hammer2_spin_ex(&pmp->xop_spin);
+	TAILQ_REMOVE(thr->xopq, xop, collect[clindex].entry);
+	atomic_clear_int(&xop->collect[clindex].flags,
+			 HAMMER2_XOP_FIFO_RUN);
+	hammer2_spin_unex(&pmp->xop_spin);
+}
+
+/*
  * Primary management thread for xops support.  Each node has several such
  * threads which replicate front-end operations on cluster nodes.
  *
@@ -1462,11 +1599,10 @@ hammer2_primary_xops_thread(void *arg)
 	hammer2_thread_t *thr = arg;
 	hammer2_pfs_t *pmp;
 	hammer2_xop_head_t *xop;
-	hammer2_xop_group_t *xgrp;
 	uint32_t mask;
 
 	pmp = thr->pmp;
-	xgrp = &pmp->xop_groups[thr->repidx];
+	/*xgrp = &pmp->xop_groups[thr->repidx]; not needed */
 	mask = 1U << thr->clindex;
 
 	lockmgr(&thr->lk, LK_EXCLUSIVE);
@@ -1483,7 +1619,7 @@ hammer2_primary_xops_thread(void *arg)
 		 * Force idle if frozen until unfrozen or stopped.
 		 */
 		if (thr->flags & HAMMER2_THREAD_FROZEN) {
-			lksleep(&thr->flags, &thr->lk, 0, "frozen", 0);
+			lksleep(thr->xopq, &thr->lk, 0, "frozen", 0);
 			continue;
 		}
 
@@ -1503,27 +1639,33 @@ hammer2_primary_xops_thread(void *arg)
 		 * may also abort processing if the frontend VOP becomes
 		 * inactive.
 		 */
-		while ((xop = TAILQ_FIRST(&thr->xopq)) != NULL) {
-			TAILQ_REMOVE(&thr->xopq, xop,
-				     collect[thr->clindex].entry);
+		tsleep_interlock(thr->xopq, 0);
+		while ((xop = hammer2_xop_next(thr)) != NULL) {
 			if (hammer2_xop_active(xop)) {
 				lockmgr(&thr->lk, LK_RELEASE);
 				xop->func((hammer2_xop_t *)xop, thr->clindex);
+				hammer2_xop_dequeue(thr, xop);
 				hammer2_xop_retire(xop, mask);
 				lockmgr(&thr->lk, LK_EXCLUSIVE);
 			} else {
 				hammer2_xop_feed(xop, NULL, thr->clindex,
 						 ECONNABORTED);
+				hammer2_xop_dequeue(thr, xop);
 				hammer2_xop_retire(xop, mask);
 			}
 		}
 
 		/*
-		 * Wait for event.
+		 * Wait for event.  The xopq is not interlocked by thr->lk,
+		 * use the tsleep interlock sequence.
+		 *
+		 * For robustness poll on a 30-second interval, but nominally
+		 * expect to be woken up.
 		 */
-		lksleep(&thr->flags, &thr->lk, 0, "h2idle", 0);
+		lksleep(thr->xopq, &thr->lk, PINTERLOCKED, "h2idle", hz*30);
 	}
 
+#if 0
 	/*
 	 * Cleanup / termination
 	 */
@@ -1533,6 +1675,7 @@ hammer2_primary_xops_thread(void *arg)
 			     collect[thr->clindex].entry);
 		hammer2_xop_retire(xop, mask);
 	}
+#endif
 
 	thr->td = NULL;
 	wakeup(thr);

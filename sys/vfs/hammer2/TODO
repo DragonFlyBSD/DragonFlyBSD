@@ -1,3 +1,7 @@
+
+* bulkfree pass needs to do a vchain flush from the root to avoid
+  accidently freeing live in-process chains.
+
 * Need backend synchronization / serialization when the frontend detaches
   a XOP.  modify_tid tests won't be enough, the backend may wind up executing
   the XOP out of order after the detach.

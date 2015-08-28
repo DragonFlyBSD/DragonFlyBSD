@@ -274,6 +274,10 @@ void
 hammer2_inode_ref(hammer2_inode_t *ip)
 {
 	atomic_add_int(&ip->refs, 1);
+	if (hammer2_debug & 0x80000) {
+		kprintf("INODE+1 %p (%d->%d)\n", ip, ip->refs - 1, ip->refs);
+		print_backtrace(8);
+	}
 }
 
 /*
@@ -288,6 +292,11 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 	u_int refs;
 
 	while (ip) {
+		if (hammer2_debug & 0x80000) {
+			kprintf("INODE-1 %p (%d->%d)\n",
+				ip, ip->refs, ip->refs - 1);
+			print_backtrace(8);
+		}
 		refs = ip->refs;
 		cpu_ccfence();
 		if (refs == 1) {
@@ -1401,7 +1410,7 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 		xop->lhc, clindex);
 
 	chain = NULL;
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		error = EIO;
@@ -1417,7 +1426,7 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 	}
 
 	error = hammer2_chain_create(&parent, &chain,
-				     xop->head.ip->pmp,
+				     xop->head.ip1->pmp,
 				     xop->lhc, 0,
 				     HAMMER2_BREF_TYPE_INODE,
 				     HAMMER2_INODE_BYTES,
@@ -1425,11 +1434,11 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 	if (error == 0) {
 		hammer2_chain_modify(chain, xop->head.mtid, 0);
 		chain->data->ipdata.meta = xop->meta;
-		if (xop->head.name) {
-			bcopy(xop->head.name,
+		if (xop->head.name1) {
+			bcopy(xop->head.name1,
 			      chain->data->ipdata.filename,
-			      xop->head.name_len);
-			chain->data->ipdata.meta.name_len = xop->head.name_len;
+			      xop->head.name1_len);
+			chain->data->ipdata.meta.name_len = xop->head.name1_len;
 		}
 		chain->data->ipdata.meta.name_key = xop->lhc;
 	}
@@ -1464,7 +1473,7 @@ hammer2_inode_xop_destroy(hammer2_xop_t *arg, int clindex)
 	/*
 	 * We need the precise parent chain to issue the deletion.
 	 */
-	ip = xop->head.ip;
+	ip = xop->head.ip1;
 	pmp = ip->pmp;
 	chain = NULL;
 
@@ -1506,7 +1515,7 @@ hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
 	/*
 	 * We need the precise parent chain to issue the deletion.
 	 */
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	chain = NULL;
 	if (parent == NULL) {
@@ -1558,8 +1567,8 @@ hammer2_inode_xop_connect(hammer2_xop_t *arg, int clindex)
 	 * Get directory, then issue a lookup to prime the parent chain
 	 * for the create.  The lookup is expected to fail.
 	 */
-	pmp = xop->head.ip->pmp;
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
+	pmp = xop->head.ip1->pmp;
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		chain = NULL;
@@ -1589,10 +1598,10 @@ hammer2_inode_xop_connect(hammer2_xop_t *arg, int clindex)
 	wipdata = &chain->data->ipdata;
 
 	hammer2_inode_modify(xop->head.ip2);
-	if (xop->head.name) {
+	if (xop->head.name1) {
 		bzero(wipdata->filename, sizeof(wipdata->filename));
-		bcopy(xop->head.name, wipdata->filename, xop->head.name_len);
-		wipdata->meta.name_len = xop->head.name_len;
+		bcopy(xop->head.name1, wipdata->filename, xop->head.name1_len);
+		wipdata->meta.name_len = xop->head.name1_len;
 	}
 	wipdata->meta.name_key = xop->lhc;
 
@@ -1628,7 +1637,7 @@ hammer2_inode_xop_fsync(hammer2_xop_t *arg, int clindex)
 	hammer2_chain_t	*chain;
 	int error;
 
-	parent = hammer2_inode_chain(xop->head.ip, clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	chain = NULL;
 	if (parent == NULL) {

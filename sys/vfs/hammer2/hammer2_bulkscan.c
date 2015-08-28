@@ -162,23 +162,27 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 }
 
 /*
- * Bulkfree algorithm -
+ * Bulkfree algorithm
  *
- * DoTwice {
- *	flush sync
- *	Scan the whole topology and build the freemap
- *	** -> 11 during scan for all elements scanned (and thus not free)
- *	11 -> 10 after scan if allocated in-topo and free in-memory, mark 10
- *	10 -> 00 after scan if possibly-free in-topo and free in-memory mark 00
+ * Repeat {
+ *	Chain flush (partial synchronization)
+ *	Scan the whole topology - build in-memory freemap (mark 11)
+ *	Reconcile the in-memory freemap against the on-disk freemap.
+ *		ondisk xx -> ondisk 11 (if allocated)
+ *		ondisk 11 -> ondisk 10 (if free in-memory)
+ *		ondisk 10 -> ondisk 00 (if free in-memory) - on next pass
  * }
  *
- * Adjustment of the freemap ->10 and ->00 cannot occur until the topology
- * scan is complete.  The scan runs concurrentlyt with normal filesystem
- * operations and any allocation will also remark the freemap bitmap 11.
- * We handle races by performing two scans and only changing the map to
- * fully free (00) if both passes believe it is free.
+ * The topology scan may have to be performed multiple times to window
+ * freemaps which are too large to fit in kernel memory.
  *
- * Temporary memory in multiples of 64KB is required to reconstruct leaf
+ * Races are handled using a double-transition (11->10, 10->00).  The bulkfree
+ * scan snapshots the volume root's blockset and thus can run concurrent with
+ * normal operations, as long as a full flush is made between each pass to
+ * synchronize any modified chains (otherwise their blocks might be improperly
+ * freed).
+ *
+ * Temporary memory in multiples of 64KB is required to reconstruct the leaf
  * hammer2_bmap_data blocks so they can later be compared against the live
  * freemap.  Each 64KB block represents 128 x 16KB x 1024 = ~2 GB of storage.
  * A 32MB save area thus represents around ~1 TB.  The temporary memory
@@ -214,12 +218,27 @@ int
 hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 {
 	hammer2_bulkfree_info_t cbinfo;
+	hammer2_chain_t *vchain;
 	hammer2_off_t incr;
 	size_t size;
 	int doabort = 0;
 
+	/*
+	 * A bulkfree operations lock is required for the duration.  We
+	 * must hold it across our flushes to guarantee that we never run
+	 * two bulkfree passes in a row without a flush in the middle.
+	 */
+	lockmgr(&hmp->bulklk, LK_EXCLUSIVE);
+
+	/*
+	 * Flush-a-roonie.  A full filesystem flush is not needed
+	 */
+
 	/* hammer2_vfs_sync(hmp->mp, MNT_WAIT); XXX */
 
+	/*
+	 * Setup for free pass
+	 */
 	bzero(&cbinfo, sizeof(cbinfo));
 	size = (bfi->size + HAMMER2_FREEMAP_LEVELN_PSIZE - 1) &
 	       ~(size_t)(HAMMER2_FREEMAP_LEVELN_PSIZE - 1);
@@ -234,6 +253,16 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	if (cbinfo.sbase > hmp->voldata.volu_size)
 		cbinfo.sbase = hmp->voldata.volu_size;
 	cbinfo.sbase &= ~HAMMER2_FREEMAP_LEVEL1_MASK;
+
+	/*
+	 * The primary storage scan must use a snapshot of the volume
+	 * root to avoid racing renames and other frontend work.
+	 *
+	 * Note that snapshots only snap synchronized storage, so
+	 * we have to flush between each pass or we risk freeing
+	 * storage allocated by the frontend.
+	 */
+	vchain = hammer2_chain_bulksnap(&hmp->vchain);
 
 	/*
 	 * Loop on a full meta-data scan as many times as required to
@@ -258,8 +287,11 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 
 		hammer2_trans_init(hmp->spmp, 0);
 		cbinfo.mtid = hammer2_trans_sub(hmp->spmp);
-		doabort |= hammer2_bulk_scan(&hmp->vchain,
-					    h2_bulkfree_callback, &cbinfo);
+
+		doabort |= hammer2_bulk_scan(vchain, h2_bulkfree_callback,
+					     &cbinfo);
+		kprintf("bulkfree lastdrop %d %d\n",
+			vchain->refs, vchain->core.chain_count);
 
 		/*
 		 * If complete scan succeeded we can synchronize our
@@ -284,6 +316,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 			break;
 		cbinfo.sbase = cbinfo.sstop;
 	}
+	hammer2_chain_bulkdrop(vchain);
 	kmem_free_swapbacked(&cbinfo.kp);
 
 	bfi->sstop = cbinfo.sbase;
@@ -301,6 +334,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	kprintf("    raced on           %ld\n", cbinfo.count_10_11);
 	kprintf("    ~2MB segs cleaned  %ld\n", cbinfo.count_l0cleans);
 	kprintf("    linear adjusts     %ld\n", cbinfo.count_linadjusts);
+
+	lockmgr(&hmp->bulklk, LK_RELEASE);
 
 	return doabort;
 }

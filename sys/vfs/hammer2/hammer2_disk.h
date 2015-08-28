@@ -1249,6 +1249,7 @@ typedef struct hammer2_volume_data hammer2_volume_data_t;
 union hammer2_media_data {
 	hammer2_volume_data_t	voldata;
         hammer2_inode_data_t    ipdata;
+	hammer2_blockset_t	blkset;
 	hammer2_blockref_t	npdata[HAMMER2_IND_COUNT_MAX];
 	hammer2_bmap_data_t	bmdata[HAMMER2_FREEMAP_COUNT];
 	char			buf[HAMMER2_PBUFSIZE];

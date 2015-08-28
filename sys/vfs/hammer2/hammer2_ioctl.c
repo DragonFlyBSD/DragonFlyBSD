@@ -834,6 +834,13 @@ hammer2_ioctl_debug_dump(hammer2_inode_t *ip)
 	return 0;
 }
 
+/*
+ * Executes one flush/free pass per call.  If trying to recover
+ * data we just freed up a moment ago it can take up to six passes
+ * to fully free the blocks.  Note that passes occur automatically based
+ * on free space as the storage fills up, but manual passes may be needed
+ * if storage becomes almost completely full.
+ */
 static
 int
 hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
@@ -846,7 +853,6 @@ hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 	if (hmp == NULL)
 		return (EINVAL);
 
-	/* XXX run local cluster targets only */
 	error = hammer2_bulkfree_pass(hmp, bfi);
 
 	return error;

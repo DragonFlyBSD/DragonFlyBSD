@@ -1047,7 +1047,7 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 	/*
 	 * Flush core chains
 	 */
-	chain = hammer2_inode_chain(xop->head.ip, clindex,
+	chain = hammer2_inode_chain(xop->head.ip1, clindex,
 				    HAMMER2_RESOLVE_ALWAYS);
 	if (chain) {
 		hmp = chain->hmp;
@@ -1069,7 +1069,7 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 	 * flush each hammer2_dev (hmp) once.
 	 */
 	for (j = clindex - 1; j >= 0; --j) {
-		if ((chain = xop->head.ip->cluster.array[j].chain) != NULL) {
+		if ((chain = xop->head.ip1->cluster.array[j].chain) != NULL) {
 			if (chain->hmp == hmp) {
 				chain = NULL;	/* safety */
 				goto skip;

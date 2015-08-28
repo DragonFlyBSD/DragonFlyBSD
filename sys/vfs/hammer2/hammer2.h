@@ -784,13 +784,13 @@ typedef struct hammer2_trans hammer2_trans_t;
  */
 struct hammer2_thread {
 	struct hammer2_pfs *pmp;
+	hammer2_xop_list_t *xopq;	/* points into pmp->xopq[] */
 	thread_t	td;
 	uint32_t	flags;
 	int		depth;
 	int		clindex;	/* cluster element index */
 	int		repidx;
 	struct lock	lk;		/* thread control lock */
-	hammer2_xop_list_t xopq;
 };
 
 typedef struct hammer2_thread hammer2_thread_t;
@@ -811,6 +811,8 @@ typedef struct hammer2_thread hammer2_thread_t;
  * nodes.  It provides a rendezvous for concurrent node execution and
  * can be detached from the frontend operation to allow the frontend to
  * return early.
+ *
+ * This structure also sequences operations on up to three inodes.
  */
 typedef void (*hammer2_xop_func_t)(union hammer2_xop *xop, int clidx);
 
@@ -820,24 +822,25 @@ typedef struct hammer2_xop_fifo {
 	int			errors[HAMMER2_XOPFIFO];
 	int			ri;
 	int			wi;
-	int			unused03;
+	int			flags;
 } hammer2_xop_fifo_t;
+
+#define HAMMER2_XOP_FIFO_RUN	0x0001
 
 struct hammer2_xop_head {
 	hammer2_xop_func_t	func;
 	hammer2_tid_t		mtid;
-	struct hammer2_inode	*ip;
+	struct hammer2_inode	*ip1;
 	struct hammer2_inode	*ip2;
 	struct hammer2_inode	*ip3;
-	struct hammer2_xop_group *xgrp;
 	uint32_t		check_counter;
 	uint32_t		run_mask;
 	uint32_t		chk_mask;
 	int			state;
 	int			error;
 	hammer2_key_t		collect_key;
-	char			*name;
-	size_t			name_len;
+	char			*name1;
+	size_t			name1_len;
 	char			*name2;
 	size_t			name2_len;
 	hammer2_xop_fifo_t	collect[HAMMER2_MAXCLUSTER];
@@ -854,6 +857,7 @@ struct hammer2_xop_strategy {
 	hammer2_xop_head_t	head;
 	hammer2_key_t		lbase;
 	int			finished;
+	hammer2_mtx_t		lock;
 	struct bio		*bio;
 };
 
@@ -977,8 +981,6 @@ typedef union hammer2_xop hammer2_xop_t;
  */
 struct hammer2_xop_group {
 	hammer2_thread_t	thrs[HAMMER2_MAXCLUSTER];
-	hammer2_mtx_t		mtx;
-	hammer2_mtx_t		mtx2;
 };
 
 typedef struct hammer2_xop_group hammer2_xop_group_t;
@@ -1025,6 +1027,7 @@ struct hammer2_dev {
 	struct spinlock	list_spin;
 	struct h2_flush_list	flushq;	/* flush seeds */
 	struct hammer2_pfs *spmp;	/* super-root pmp for transactions */
+	struct lock	bulklk;		/* bulkfree lock */
 	struct lock	vollk;		/* lockmgr lock */
 	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR];
 	int		volhdrno;	/* last volhdrno written */
@@ -1121,7 +1124,9 @@ struct hammer2_pfs {
 	hammer2_thread_t	sync_thrs[HAMMER2_MAXCLUSTER];
 	uint32_t		cluster_flags;	/* cached cluster flags */
 	int			has_xop_threads;
+	struct spinlock		xop_spin;	/* xop sequencer */
 	hammer2_xop_group_t	xop_groups[HAMMER2_XOPGROUPS];
+	hammer2_xop_list_t	xopq[HAMMER2_MAXCLUSTER];
 };
 
 typedef struct hammer2_pfs hammer2_pfs_t;
@@ -1382,6 +1387,8 @@ void hammer2_delayed_flush(hammer2_chain_t *chain);
 void hammer2_chain_setflush(hammer2_chain_t *chain);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count);
+hammer2_chain_t *hammer2_chain_bulksnap(hammer2_chain_t *chain);
+void hammer2_chain_bulkdrop(hammer2_chain_t *copy);
 
 void hammer2_chain_setcheck(hammer2_chain_t *chain, void *bdata);
 int hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata);
