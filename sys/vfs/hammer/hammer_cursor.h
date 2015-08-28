@@ -79,8 +79,8 @@ struct hammer_cursor {
 
 	/*
 	 * Pointer to the current node's bounds.  Typically points to the
-	 * appropriate boundary elements in the parent or points to bounds
-	 * stored in the cluster.  The right-boundary is range-exclusive.
+	 * appropriate boundary elements in the parent.
+	 * The right-boundary is range-exclusive.
 	 */
 	hammer_base_elm_t left_bound;
 	hammer_base_elm_t right_bound;

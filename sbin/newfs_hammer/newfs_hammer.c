@@ -439,7 +439,7 @@ trim_volume(struct volume_info *vol)
 }
 
 /*
- * Format a HAMMER volume.  Cluster 0 will be initially placed in volume 0.
+ * Format a HAMMER volume.
  */
 static
 void

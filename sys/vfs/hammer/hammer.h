@@ -710,8 +710,7 @@ struct hammer_volume {
 typedef struct hammer_volume *hammer_volume_t;
 
 /*
- * In-memory buffer (other then volume, super-cluster, or cluster),
- * representing an on-disk buffer.
+ * In-memory buffer representing an on-disk buffer.
  */
 struct hammer_buffer {
 	struct hammer_io io;
@@ -729,19 +728,13 @@ typedef struct hammer_buffer *hammer_buffer_t;
  * In-memory B-Tree node, representing an on-disk B-Tree node.
  *
  * This is a hang-on structure which is backed by a hammer_buffer,
- * indexed by a hammer_cluster, and used for fine-grained locking of
- * B-Tree nodes in order to properly control lock ordering.  A hammer_buffer
- * can contain multiple nodes representing wildly disassociated portions
- * of the B-Tree so locking cannot be done on a buffer-by-buffer basis.
- *
- * This structure uses a cluster-relative index to reduce the number
- * of layers required to access it, and also because all on-disk B-Tree
- * references are cluster-relative offsets.
+ * and used for fine-grained locking of B-Tree nodes in order to
+ * properly control lock ordering.
  */
 struct hammer_node {
 	struct hammer_lock	lock;		/* node-by-node lock */
 	TAILQ_ENTRY(hammer_node) entry;		/* per-buffer linkage */
-	RB_ENTRY(hammer_node)	rb_node;	/* per-cluster linkage */
+	RB_ENTRY(hammer_node)	rb_node;	/* per-mount linkage */
 	hammer_off_t		node_offset;	/* full offset spec */
 	struct hammer_mount	*hmp;
 	struct hammer_buffer	*buffer;	/* backing buffer */
@@ -895,7 +888,7 @@ struct hammer_mount {
 	int	ronly;
 	int	nvolumes;
 	int	volume_iterator;
-	int	master_id;	/* -1 or 0-15 - clustering and mirroring */
+	int	master_id;	/* -1 or 0-15 for mirroring */
 	int	version;	/* hammer filesystem version to use */
 	int	rsv_inodes;	/* reserved space due to dirty inodes */
 	int64_t	rsv_databytes;	/* reserved space due to record data */

@@ -56,9 +56,7 @@
  * A HAMMER filesystem may span multiple volumes.
  *
  * A HAMMER filesystem uses a 16K filesystem buffer size.  All filesystem
- * I/O is done in multiples of 16K.  Most buffer-sized headers such as those
- * used by volumes, super-clusters, clusters, and basic filesystem buffers
- * use fixed-sized A-lists which are heavily dependant on HAMMER_BUFSIZE.
+ * I/O is done in multiples of 16K.
  *
  * 64K X-bufs are used for blocks >= a file's 1MB mark.
  *
@@ -594,7 +592,7 @@ struct hammer_volume_ondisk {
 	int64_t vol_mem_beg;	/* byte offset of memory log or 0 */
 	int64_t vol_buf_beg;	/* byte offset of first buffer in volume */
 	int64_t vol_buf_end;	/* byte offset of volume EOF (on buf bndry) */
-	int64_t vol_locked;	/* reserved clusters are >= this offset */
+	int64_t vol_locked;	/* not used */
 
 	uuid_t    vol_fsid;	/* identify filesystem */
 	uuid_t    vol_fstype;	/* identify filesystem type */

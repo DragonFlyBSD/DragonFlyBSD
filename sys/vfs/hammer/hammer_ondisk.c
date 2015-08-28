@@ -352,8 +352,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data)
 	KKASSERT(volume->io.bp == NULL);
 
 	/*
-	 * There should be no references on the volume, no clusters, and
-	 * no super-clusters.
+	 * There should be no references on the volume.
 	 */
 	KKASSERT(hammer_norefs(&volume->io.lock));
 
@@ -1274,11 +1273,7 @@ hammer_bnew_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
  * This allows the HAMMER implementation to cache hammer_nodes long-term
  * and short-cut a great deal of the infrastructure's complexity.  In
  * most cases a cached node can be reacquired without having to dip into
- * either the buffer or cluster management code.
- *
- * The caller must pass a referenced cluster on call and will retain
- * ownership of the reference on return.  The node will acquire its own
- * additional references, if necessary.
+ * the B-Tree.
  */
 hammer_node_t
 hammer_get_node(hammer_transaction_t trans, hammer_off_t node_offset,

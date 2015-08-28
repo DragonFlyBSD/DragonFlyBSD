@@ -422,7 +422,7 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 }
 
 /*
- * Retrieve a pointer to a B-Tree node given a cluster offset.  The underlying
+ * Retrieve a pointer to a B-Tree node given a zone offset.  The underlying
  * bufferp is freed if non-NULL and a referenced buffer is loaded into it.
  */
 hammer_node_ondisk_t

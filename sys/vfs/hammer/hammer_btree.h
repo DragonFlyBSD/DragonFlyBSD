@@ -69,33 +69,11 @@
  * (within the confines of the parent's boundaries) on the fly.  This greatly
  * improves the efficiency of many operations.
  *
- * HAMMER B-Trees are per-cluster.  The global multi-cluster B-Tree is
- * constructed by allowing internal nodes to link to the roots of other
- * clusters.  Fields in the cluster header then reference back to its
- * parent and use the cluster generation number to detect stale linkages.
- *
- * The B-Tree balancing code can operate within a cluster or across the
- * filesystem's ENTIRE B-Tree super-structure.  A cluster's B-Tree root
- * can be a leaf node in the worse case.  A cluster is guarenteed to have
- * sufficient free space to hold a single completely full leaf in the
- * degenerate case.
- *
  * All of the structures below are on-disk structures.
  */
 
 /*
  * Common base for all B-Tree element types (40 bytes)
- *
- * obj_type is set to the object type the record represents if an inode,
- * directory entry, or an inter-cluster reference.  A cluster range is
- * special in that the B-Tree nodes represent a range within the B-Tree
- * inclusive of rec_type field, so obj_type must be used to detect the
- * cluster range entries.
- *
- * btype is only used by the elements making up an internal or leaf B-Tree
- * node and applies to the node rather then to the key.  This means that
- * btype must be assigned/reassigned after any update to the base_elm making
- * up a B-Tree element.
  */
 struct hammer_base_elm {
 	int64_t	obj_id;		/* 00 object record is associated with */
@@ -279,7 +257,7 @@ struct hammer_node_ondisk {
 	 */
 	hammer_crc_t	crc;		/* MUST BE FIRST FIELD OF STRUCTURE */
 	u_int32_t	signature;	/* 0 or 0xB3A49586 but not used for anything */
-	hammer_off_t	parent;		/* 0 if at root of cluster */
+	hammer_off_t	parent;		/* 0 if at root of B-Tree */
 	int32_t		count;
 	u_int8_t	type;
 	u_int8_t	reserved01;
