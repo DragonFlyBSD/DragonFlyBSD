@@ -107,6 +107,58 @@ hammer_cmd_iostats(char **av, int ac)
 	}
 }
 
+void
+hammer_cmd_stats(char **av, int ac)
+{
+	struct libhammer_btree_stats bs, bsc;
+	struct libhammer_io_stats ios, iosc;
+	struct timespec delay = { 1, 0 };
+	int64_t tiops = 0;
+	int count;
+
+	if (ac > 0)
+		loaddelay(&delay, av[0]);
+
+	bzero(&bsc, sizeof(bsc));
+	bzero(&iosc, sizeof(iosc));
+
+	for (count = 0; ; ++count) {
+		if (libhammer_btree_stats(&bs) < 0)
+			err(1, "Failed to get information from HAMMER sysctls");
+		if (libhammer_io_stats(&ios) < 0)
+			err(1, "Failed to get information from HAMMER sysctls");
+		tiops = (ios.file_iop_writes + ios.file_iop_reads) -
+		    (iosc.file_iop_writes + iosc.file_iop_reads);
+		if (count) {
+			if ((count & 15) == 1) {
+				printf("  elements iterations    lookups    "
+				    "inserts    deletes     splits\t");
+				printf("  file-rd   file-wr  dev-read dev-write"
+				    " inode_ops ino_flush    commit      undo\n");
+			}
+			printf("%10jd %10jd %10jd %10jd %10jd %10jd\t",
+			    (intmax_t)(bs.elements - bsc.elements),
+			    (intmax_t)(bs.iterations - bsc.iterations),
+			    (intmax_t)(bs.lookups - bsc.lookups),
+			    (intmax_t)(bs.inserts - bsc.inserts),
+			    (intmax_t)(bs.deletes - bsc.deletes),
+			    (intmax_t)(bs.splits - bsc.splits));
+			printf("%9jd %9jd %9jd %9jd %9jd %9jd %9jd %9jd\n",
+			    (intmax_t)(ios.file_reads - iosc.file_reads),
+			    (intmax_t)(ios.file_writes - iosc.file_writes),
+			    (intmax_t)(ios.dev_reads - iosc.dev_reads),
+			    (intmax_t)(ios.dev_writes - iosc.dev_writes),
+			    (intmax_t)tiops,
+			    (intmax_t)(ios.inode_flushes - iosc.inode_flushes),
+			    (intmax_t)(ios.commits - iosc.commits),
+			    (intmax_t)(ios.undo - iosc.undo));
+		}
+		bcopy(&bs, &bsc, sizeof(bs));
+		bcopy(&ios, &iosc, sizeof(ios));
+		nanosleep(&delay, NULL);
+	}
+}
+
 /*
  * Convert a delay string (e.g. "0.1") into a timespec.
  */

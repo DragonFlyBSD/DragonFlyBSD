@@ -305,6 +305,17 @@ Pause
 .Ar interval
 seconds between each display.
 The default interval is one second.
+.\" ==== stats ====
+.It Cm stats Op Ar interval
+Output
+.Nm HAMMER
+B-Tree and
+.Tn I/O
+statistics until interrupted.
+Pause
+.Ar interval
+seconds between each display.
+The default interval is one second.
 .\" ==== history ====
 .It Cm history Ns Oo Cm @ Ns Ar offset Ns Oo Cm \&, Ns Ar length Oc Oc Ar path ...
 Show the modification history for inode and data of

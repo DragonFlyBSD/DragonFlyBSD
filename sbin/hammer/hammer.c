@@ -448,6 +448,10 @@ main(int ac, char **av)
 		hammer_cmd_iostats(av + 1, ac - 1);
 		exit(0);
 	}
+	if (strcmp(av[0], "stats") == 0) {
+		hammer_cmd_stats(av + 1, ac - 1);
+		exit(0);
+	}
 
 	if (strncmp(av[0], "history", 7) == 0) {
 		hammer_cmd_history(av[0] + 7, av + 1, ac - 1);

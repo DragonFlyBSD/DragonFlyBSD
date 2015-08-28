@@ -92,6 +92,7 @@ void hammer_cmd_prune(char **av, int ac);
 void hammer_cmd_softprune(char **av, int ac, int everything_opt);
 void hammer_cmd_bstats(char **av, int ac);
 void hammer_cmd_iostats(char **av, int ac);
+void hammer_cmd_stats(char **av, int ac);
 void hammer_cmd_synctid(char **av, int ac);
 void hammer_cmd_mirror_read(char **av, int ac, int streaming);
 void hammer_cmd_mirror_write(char **av, int ac);
