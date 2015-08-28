@@ -681,7 +681,6 @@ typedef struct hammer_io *hammer_io_t;
 #undef  HAMMER_CLUSTER_SIZE
 #define HAMMER_CLUSTER_SIZE	MAXBSIZE
 #endif
-#define HAMMER_CLUSTER_BUFS	(HAMMER_CLUSTER_SIZE / HAMMER_BUFSIZE)
 
 /*
  * In-memory volume representing on-disk buffer
