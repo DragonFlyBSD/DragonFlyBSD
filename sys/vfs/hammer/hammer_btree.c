@@ -3084,7 +3084,7 @@ hammer_print_btree_elm(hammer_btree_elm_t elm)
 	kprintf("\tobj_type     = %02x\n", elm->base.obj_type);
 	kprintf("\tbtype        = %02x (%c)\n", elm->base.btype,
 						hammer_elm_btype(elm));
-	kprintf("\tlocalization = %02x\n", elm->base.localization);
+	kprintf("\tlocalization = %08x\n", elm->base.localization);
 
 	if (hammer_is_internal_node_elm(elm)) {
 		kprintf("\tsubtree_off  = %016llx\n",
