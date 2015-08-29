@@ -83,6 +83,10 @@ static collect_t collect_get(hammer_off_t phys_offset);
 static void dump_collect_table(void);
 static void dump_collect(collect_t collect, struct zone_stat *stats);
 
+static int num_bad_layer1 = 0;
+static int num_bad_layer2 = 0;
+static int num_bad_node = 0;
+
 void
 hammer_cmd_blockmap(void)
 {
@@ -139,9 +143,13 @@ dump_blockmap(const char *label, int zone)
 		layer1_offset = rootmap->phys_offset +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(scan1);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
-		xerr = ' ';
-		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
+
+		xerr = ' ';  /* good */
+		if (layer1->layer1_crc !=
+		    crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
 			xerr = 'B';
+			++num_bad_layer1;
+		}
 		if (xerr == ' ' &&
 		    layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
 			continue;
@@ -161,9 +169,13 @@ dump_blockmap(const char *label, int zone)
 			layer2_offset = layer1->phys_offset +
 					HAMMER_BLOCKMAP_LAYER2_OFFSET(scan2);
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
-			xerr = ' ';
-			if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
+
+			xerr = ' ';  /* good */
+			if (layer2->entry_crc !=
+			    crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
 				xerr = 'B';
+				++num_bad_layer2;
+			}
 			printf("%c       %016jx zone=%-2d ",
 				xerr,
 				(uintmax_t)scan2,
@@ -199,6 +211,13 @@ dump_blockmap(const char *label, int zone)
 	if (VerboseOpt) {
 		hammer_print_zone_stat(stats);
 		hammer_cleanup_zone_stat(stats);
+	}
+
+	if (num_bad_layer1 || VerboseOpt) {
+		printf("%d bad layer1\n", num_bad_layer1);
+	}
+	if (num_bad_layer2 || VerboseOpt) {
+		printf("%d bad layer2\n", num_bad_layer1);
 	}
 }
 
@@ -276,25 +295,35 @@ check_btree_node(hammer_off_t node_offset, int depth)
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
 	int i;
-	char badc;
+	char badc = ' ';  /* good */
+	char badm = ' ';  /* good */
 
 	if (depth == 0)
 		collect_btree_root(node_offset);
 	node = get_node(node_offset, &buffer);
 
-	if (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) == node->crc)
-		badc = ' ';
-	else
+	if (node == NULL) {
 		badc = 'B';
+		badm = 'I';
+	} else if (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) != node->crc) {
+		badc = 'B';
+	}
 
-	if (badc != ' ') {
-		printf("%c    NODE %016jx cnt=%02d p=%016jx "
-		       "type=%c depth=%d",
-		       badc,
-		       (uintmax_t)node_offset, node->count,
-		       (uintmax_t)node->parent,
-		       (node->type ? node->type : '?'), depth);
-		printf(" mirror %016jx\n", (uintmax_t)node->mirror_tid);
+	if (badm != ' ' || badc != ' ') {  /* not good */
+		++num_bad_node;
+		printf("%c%c   NODE %016jx ",
+			badc, badm, (uintmax_t)node_offset);
+		if (node == NULL) {
+			printf("(IO ERROR)\n");
+			return;
+		} else {
+			printf("cnt=%02d p=%016jx type=%c depth=%d mirror=%016jx\n",
+			       node->count,
+			       (uintmax_t)node->parent,
+			       (node->type ? node->type : '?'),
+			       depth,
+			       (uintmax_t)node->mirror_tid);
+		}
 	}
 
 	for (i = 0; i < node->count; ++i) {
@@ -553,8 +582,12 @@ dump_collect_table(void)
 		hammer_cleanup_zone_stat(stats);
 	}
 
-	if (error || VerboseOpt)
+	if (num_bad_node || VerboseOpt) {
+		printf("%d bad nodes\n", num_bad_node);
+	}
+	if (error || VerboseOpt) {
 		printf("%d errors\n", error);
+	}
 }
 
 static

@@ -71,6 +71,9 @@ static int init_btree_search(const char *arg, int filter,
 			btree_search_t search);
 static int test_btree_search(hammer_btree_elm_t elm, btree_search_t search);
 
+static int num_bad_node = 0;
+static int num_bad_elm = 0;
+
 void
 hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 		int filter, int depth,
@@ -131,6 +134,13 @@ hammer_cmd_show(hammer_off_t node_offset, const char *arg,
 		hammer_print_zone_stat(stats);
 		hammer_cleanup_zone_stat(stats);
 	}
+
+	if (num_bad_node || VerboseOpt) {
+		printf("%d bad nodes\n", num_bad_node);
+	}
+	if (num_bad_elm || VerboseOpt) {
+		printf("%d bad elms\n", num_bad_elm);
+	}
 }
 
 static void
@@ -145,38 +155,39 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	int i;
 	int flags;
 	int maxcount;
-	char badc;
-	char badm;
+	char badc = ' ';  /* good */
+	char badm = ' ';  /* good */
 	const char *ext;
 
 	node = get_node(node_offset, &buffer);
 
 	if (node == NULL) {
-		printf("BI   NODE %016jx (IO ERROR)\n",
-		       (uintmax_t)node_offset);
+		badc = 'B';
+		badm = 'I';
+	} else {
+		if (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) != node->crc)
+			badc = 'B';
+		if (node->mirror_tid > mirror_tid) {
+			badc = 'B';
+			badm = 'M';
+		}
+	}
+
+	if (badm != ' ' || badc != ' ')  /* not good */
+		++num_bad_node;
+
+	printf("%c%c   NODE %016jx ", badc, badm, (uintmax_t)node_offset);
+	if (node == NULL) {
+		printf("(IO ERROR)\n");
 		return;
 	}
 
-	if (crc32(&node->crc + 1, HAMMER_BTREE_CRCSIZE) == node->crc)
-		badc = ' ';
-	else
-		badc = 'B';
-
-	if (node->mirror_tid <= mirror_tid) {
-		badm = ' ';
-	} else {
-		badm = 'M';
-		badc = 'B';
-	}
-
-	printf("%c%c   NODE %016jx cnt=%02d p=%016jx "
-	       "type=%c depth=%d",
-	       badc,
-	       badm,
-	       (uintmax_t)node_offset, node->count,
+	printf("cnt=%02d p=%016jx type=%c depth=%d mirror=%016jx",
+	       node->count,
 	       (uintmax_t)node->parent,
-	       (node->type ? node->type : '?'), depth);
-	printf(" mirror=%016jx", (uintmax_t)node->mirror_tid);
+	       (node->type ? node->type : '?'),
+	       depth,
+	       (uintmax_t)node->mirror_tid);
 	if (QuietOpt < 3) {
 		printf(" fill=");
 		print_bigblock_fill(node_offset);
@@ -207,16 +218,16 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 			ext = NULL;
 		}
 
-		flags = get_elm_flags(node, node_offset,
-					elm, elm->base.btype,
+		flags = get_elm_flags(node, node_offset, elm,
+					elm->base.btype,
 					left_bound, right_bound);
 		print_btree_elm(elm, i, node->type, flags, "ELM", ext, stats);
 	}
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		elm = &node->elms[i];
 
-		flags = get_elm_flags(node, node_offset,
-					elm, 'I',
+		flags = get_elm_flags(node, node_offset, elm,
+					HAMMER_BTREE_TYPE_INTERNAL,
 					left_bound, right_bound);
 		print_btree_elm(elm, i, node->type, flags, "RBN", NULL, stats);
 	}
@@ -311,6 +322,8 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 		flagstr[5] = 'C';
 	if (flags & FLAG_BADMIRRORTID)
 		flagstr[6] = 'M';
+	if (flagstr[0] == 'B')
+		++num_bad_elm;
 
 	/*
 	 * Check if elm is derived from root split
