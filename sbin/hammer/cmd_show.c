@@ -171,6 +171,14 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 			badc = 'B';
 			badm = 'M';
 		}
+		maxcount = hammer_node_max_elements(node->type);
+		if (maxcount == -1) {
+			badc = 'B';
+			badm = 'U';
+		} else if (node->count == 0 || node->count > maxcount) {
+			badc = 'B';
+			badm = 'C';
+		}
 	}
 
 	if (badm != ' ' || badc != ' ')  /* not good */
@@ -199,10 +207,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 	if (VerboseOpt)
 		hammer_add_zone_stat(stats, node_offset, sizeof(*node));
 
-	maxcount = hammer_node_max_elements(node->type);
-	assert(maxcount != -1);
-
-	for (i = 0; i < node->count && i < maxcount; ++i) {
+	for (i = 0; i < node->count; ++i) {
 		elm = &node->elms[i];
 
 		if (node->type != HAMMER_BTREE_TYPE_INTERNAL) {
@@ -224,6 +229,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 		print_btree_elm(elm, i, node->type, flags, "ELM", ext, stats);
 	}
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
+		assert(i == node->count);  /* boundary */
 		elm = &node->elms[i];
 
 		flags = get_elm_flags(node, node_offset, elm,
