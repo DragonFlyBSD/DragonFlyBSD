@@ -641,27 +641,22 @@ hammer_cursor_down(hammer_cursor_t cursor)
 	/*
 	 * Ok, push down into elm of an internal node.
 	 */
-	if (hammer_is_internal_node_elm(elm)) {
-		KKASSERT(node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
-		KKASSERT(elm->internal.subtree_offset != 0);
-		cursor->left_bound = &elm[0].internal.base;
-		cursor->right_bound = &elm[1].internal.base;
-		node = hammer_get_node(cursor->trans,
-				       elm->internal.subtree_offset, 0, &error);
-		if (error == 0) {
-			KASSERT(elm->base.btype == node->ondisk->type,
-				("BTYPE MISMATCH %c %c NODE %p",
-				 elm->base.btype, node->ondisk->type, node));
-			if (node->ondisk->parent != cursor->parent->node_offset)
-				panic("node %p %016llx vs %016llx",
-					node,
-					(long long)node->ondisk->parent,
-					(long long)cursor->parent->node_offset);
-			KKASSERT(node->ondisk->parent == cursor->parent->node_offset);
-		}
-	} else {
-		panic("hammer_cursor_down: illegal btype %02x (%c)",
-		      elm->base.btype, hammer_elm_btype(elm));
+	KKASSERT(node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
+	KKASSERT(elm->internal.subtree_offset != 0);
+	cursor->left_bound = &elm[0].internal.base;
+	cursor->right_bound = &elm[1].internal.base;
+	node = hammer_get_node(cursor->trans,
+			       elm->internal.subtree_offset, 0, &error);
+	if (error == 0) {
+		KASSERT(elm->base.btype == node->ondisk->type,
+			("BTYPE MISMATCH %c %c NODE %p",
+			 elm->base.btype, node->ondisk->type, node));
+		if (node->ondisk->parent != cursor->parent->node_offset)
+			panic("node %p %016llx vs %016llx",
+				node,
+				(long long)node->ondisk->parent,
+				(long long)cursor->parent->node_offset);
+		KKASSERT(node->ondisk->parent == cursor->parent->node_offset);
 	}
 
 	/*
