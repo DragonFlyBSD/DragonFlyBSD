@@ -679,6 +679,6 @@ static driver_t au_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_aureal, pci, au_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_aureal, pci, au_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_aureal, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_aureal, 1);

@@ -267,4 +267,4 @@ static driver_t drm_iic_dp_aux_driver = {
 };
 static devclass_t drm_iic_dp_aux_devclass;
 DRIVER_MODULE_ORDERED(drm_iic_dp_aux, drm, drm_iic_dp_aux_driver,
-    drm_iic_dp_aux_devclass, 0, 0, SI_ORDER_SECOND);
+    drm_iic_dp_aux_devclass, NULL, NULL, SI_ORDER_SECOND);

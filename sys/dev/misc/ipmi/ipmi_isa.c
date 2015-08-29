@@ -282,4 +282,4 @@ static driver_t ipmi_isa_driver = {
 	sizeof(struct ipmi_softc),
 };
 
-DRIVER_MODULE(ipmi_isa, isa, ipmi_isa_driver, ipmi_devclass, 0, 0);
+DRIVER_MODULE(ipmi_isa, isa, ipmi_isa_driver, ipmi_devclass, NULL, NULL);

@@ -145,7 +145,7 @@ static driver_t g_keyboard_driver = {
 	.size = sizeof(struct g_keyboard_softc),
 };
 
-DRIVER_MODULE(g_keyboard, uhub, g_keyboard_driver, g_keyboard_devclass, 0, 0);
+DRIVER_MODULE(g_keyboard, uhub, g_keyboard_driver, g_keyboard_devclass, NULL, NULL);
 MODULE_DEPEND(g_keyboard, usb, 1, 1, 1);
 
 static const struct usb_config g_keyboard_config[G_KEYBOARD_N_TRANSFER] = {

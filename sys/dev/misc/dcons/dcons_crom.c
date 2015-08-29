@@ -235,7 +235,7 @@ static driver_t dcons_crom_driver = {
 };
 
 DRIVER_MODULE(dcons_crom, firewire, dcons_crom_driver,
-					dcons_crom_devclass, 0, 0);
+    dcons_crom_devclass, NULL, NULL);
 MODULE_VERSION(dcons_crom, 1);
 MODULE_DEPEND(dcons_crom, dcons,
 	DCONS_VERSION, DCONS_VERSION, DCONS_VERSION);

@@ -145,7 +145,7 @@ static driver_t g_modem_driver = {
 	.size = sizeof(struct g_modem_softc),
 };
 
-DRIVER_MODULE(g_modem, uhub, g_modem_driver, g_modem_devclass, 0, 0);
+DRIVER_MODULE(g_modem, uhub, g_modem_driver, g_modem_devclass, NULL, NULL);
 MODULE_DEPEND(g_modem, usb, 1, 1, 1);
 
 static const struct usb_config g_modem_config[G_MODEM_N_TRANSFER] = {

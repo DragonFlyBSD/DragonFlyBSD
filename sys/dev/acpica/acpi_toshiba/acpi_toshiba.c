@@ -199,7 +199,7 @@ static driver_t acpi_toshiba_video_driver = {
 
 static devclass_t acpi_toshiba_video_devclass;
 DRIVER_MODULE(acpi_toshiba_video, acpi, acpi_toshiba_video_driver,
-    acpi_toshiba_video_devclass, 0, 0);
+    acpi_toshiba_video_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_toshiba_video, acpi, 1, 1, 1);
 
 static int	enable_fn_keys = 1;

@@ -127,7 +127,7 @@ static driver_t acpi_panasonic_driver = {
 static devclass_t acpi_panasonic_devclass;
 
 DRIVER_MODULE(acpi_panasonic, acpi, acpi_panasonic_driver,
-    acpi_panasonic_devclass, 0, 0);
+    acpi_panasonic_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_panasonic, acpi, 1, 1, 1);
 
 static int

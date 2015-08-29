@@ -3056,7 +3056,7 @@ static driver_t intel_sdvo_ddc_proxy_driver = {
 };
 static devclass_t intel_sdvo_devclass;
 DRIVER_MODULE_ORDERED(intel_sdvo_ddc_proxy, drm, intel_sdvo_ddc_proxy_driver,
-    intel_sdvo_devclass, 0, 0, SI_ORDER_FIRST);
+    intel_sdvo_devclass, NULL, NULL, SI_ORDER_FIRST);
 
 bool intel_sdvo_init(struct drm_device *dev, uint32_t sdvo_reg, bool is_sdvob)
 {

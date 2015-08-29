@@ -1940,6 +1940,6 @@ static driver_t es_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_es137x, pci, es_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_es137x, pci, es_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_es137x, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_es137x, 1);

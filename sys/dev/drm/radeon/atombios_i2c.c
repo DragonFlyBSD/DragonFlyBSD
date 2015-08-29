@@ -212,4 +212,4 @@ static driver_t radeon_atom_hw_i2c_driver = {
 
 static devclass_t radeon_atom_hw_i2c_devclass;
 DRIVER_MODULE_ORDERED(radeon_atom_hw_i2c, drm, radeon_atom_hw_i2c_driver,
-    radeon_atom_hw_i2c_devclass, 0, 0, SI_ORDER_ANY);
+    radeon_atom_hw_i2c_devclass, NULL, NULL, SI_ORDER_ANY);

@@ -1232,7 +1232,7 @@ static devclass_t	hpt_devclass;
 #define __DRIVER_MODULE(p1, p2, p3, p4, p5, p6) DRIVER_MODULE(p1, p2, p3, p4, p5, p6)
 #define __MODULE_VERSION(p1, p2) MODULE_VERSION(p1, p2)
 #define __MODULE_DEPEND(p1, p2, p3, p4, p5) MODULE_DEPEND(p1, p2, p3, p4, p5)
-__DRIVER_MODULE(TARGETNAME, pci, hpt_pci_driver, hpt_devclass, 0, 0);
+__DRIVER_MODULE(TARGETNAME, pci, hpt_pci_driver, hpt_devclass, NULL, NULL);
 __MODULE_VERSION(TARGETNAME, 1);
 __MODULE_DEPEND(TARGETNAME, cam, 1, 1, 1);
 

@@ -815,6 +815,6 @@ static driver_t nm_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_neomagic, pci, nm_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_neomagic, pci, nm_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_neomagic, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_neomagic, 1);

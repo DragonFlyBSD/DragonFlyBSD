@@ -150,7 +150,7 @@ static driver_t g_audio_driver = {
 	.size = sizeof(struct g_audio_softc),
 };
 
-DRIVER_MODULE(g_audio, uhub, g_audio_driver, g_audio_devclass, 0, 0);
+DRIVER_MODULE(g_audio, uhub, g_audio_driver, g_audio_devclass, NULL, NULL);
 MODULE_DEPEND(g_audio, usb, 1, 1, 1);
 
 static const struct usb_config g_audio_config[G_AUDIO_N_TRANSFER] = {

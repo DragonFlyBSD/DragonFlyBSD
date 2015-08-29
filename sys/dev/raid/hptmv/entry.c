@@ -99,7 +99,7 @@ static driver_t hpt_pci_driver = {
 static devclass_t	hpt_devclass;
 
 #define __DRIVER_MODULE(p1, p2, p3, p4, p5, p6) DRIVER_MODULE(p1, p2, p3, p4, p5, p6)
-__DRIVER_MODULE(PROC_DIR_NAME, pci, hpt_pci_driver, hpt_devclass, 0, 0);
+__DRIVER_MODULE(PROC_DIR_NAME, pci, hpt_pci_driver, hpt_devclass, NULL, NULL);
 MODULE_DEPEND(PROC_DIR_NAME, cam, 1, 1, 1);
 
 #define ccb_ccb_ptr spriv_ptr0

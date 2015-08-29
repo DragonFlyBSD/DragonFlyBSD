@@ -1062,6 +1062,6 @@ static driver_t tr_driver = {
 	PCM_SOFTC_SIZE,
 };
 
-DRIVER_MODULE(snd_t4dwave, pci, tr_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_t4dwave, pci, tr_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_t4dwave, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_t4dwave, 1);

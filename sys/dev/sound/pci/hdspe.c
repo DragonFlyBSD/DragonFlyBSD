@@ -392,4 +392,4 @@ static driver_t hdspe_driver = {
 
 static devclass_t hdspe_devclass;
 
-DRIVER_MODULE(snd_hdspe, pci, hdspe_driver, hdspe_devclass, 0, 0);
+DRIVER_MODULE(snd_hdspe, pci, hdspe_driver, hdspe_devclass, NULL, NULL);

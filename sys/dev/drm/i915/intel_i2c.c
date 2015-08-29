@@ -715,7 +715,7 @@ static driver_t intel_gmbus_driver = {
 };
 static devclass_t intel_gmbus_devclass;
 DRIVER_MODULE_ORDERED(intel_gmbus, drm, intel_gmbus_driver,
-    intel_gmbus_devclass, 0, 0, SI_ORDER_FIRST);
+    intel_gmbus_devclass, NULL, NULL, SI_ORDER_FIRST);
 DRIVER_MODULE(iicbus, intel_gmbus, iicbus_driver, iicbus_devclass, NULL, NULL);
 
 static device_method_t intel_iicbb_methods[] =	{
@@ -741,7 +741,7 @@ static driver_t intel_iicbb_driver = {
 };
 static devclass_t intel_iicbb_devclass;
 DRIVER_MODULE_ORDERED(intel_iicbb, drm, intel_iicbb_driver,
-    intel_iicbb_devclass, 0, 0, SI_ORDER_FIRST);
+    intel_iicbb_devclass, NULL, NULL, SI_ORDER_FIRST);
 DRIVER_MODULE(iicbb, intel_iicbb, iicbb_driver, iicbb_devclass, NULL, NULL);
 
 static void intel_teardown_gmbus_m(struct drm_device *dev, int m);

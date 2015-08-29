@@ -2053,6 +2053,6 @@ static driver_t agg_driver = {
 
 /*static devclass_t pcm_devclass;*/
 
-DRIVER_MODULE(snd_maestro, pci, agg_driver, pcm_devclass, 0, 0);
+DRIVER_MODULE(snd_maestro, pci, agg_driver, pcm_devclass, NULL, NULL);
 MODULE_DEPEND(snd_maestro, sound, SOUND_MINVER, SOUND_PREFVER, SOUND_MAXVER);
 MODULE_VERSION(snd_maestro, 1);

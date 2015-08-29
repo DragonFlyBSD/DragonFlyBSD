@@ -1651,7 +1651,7 @@ static int __init i915_init(void)
 #endif
 }
 
-DRIVER_MODULE_ORDERED(i915kms, vgapci, i915_driver, drm_devclass, 0, 0,
+DRIVER_MODULE_ORDERED(i915kms, vgapci, i915_driver, drm_devclass, NULL, NULL,
     SI_ORDER_ANY);
 MODULE_DEPEND(i915kms, drm, 1, 1, 1);
 MODULE_DEPEND(i915kms, agp, 1, 1, 1);
