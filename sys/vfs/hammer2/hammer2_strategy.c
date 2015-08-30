@@ -81,6 +81,10 @@ static int hammer2_strategy_write(struct vop_strategy_args *ap);
 static void hammer2_strategy_read_completion(hammer2_chain_t *chain,
 				char *data, struct bio *bio);
 
+static void hammer2_dedup_record(hammer2_chain_t *chain, char *data);
+static hammer2_off_t hammer2_dedup_lookup(hammer2_dev_t *hmp,
+			char **datap, int pblksize);
+
 int
 hammer2_vop_strategy(struct vop_strategy_args *ap)
 {
@@ -376,9 +380,12 @@ hammer2_strategy_read_completion(hammer2_chain_t *chain, char *data,
 		bp->b_error = 0;
 	} else if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
 		/*
-		 * Data is on-media, issue device I/O and copy.
-		 *
-		 * XXX direct-IO shortcut could go here XXX.
+		 * Data is on-media, record for live dedup.
+		 */
+		hammer2_dedup_record(chain, data);
+
+		/*
+		 * Decopmression and copy.
 		 */
 		switch (HAMMER2_DEC_COMP(chain->bref.methods)) {
 		case HAMMER2_COMP_LZ4:
@@ -568,16 +575,21 @@ hammer2_bioq_sync(hammer2_pfs_t *pmp)
  *
  * cparent can wind up being anything.
  *
+ * If datap is not NULL, *datap points to the real data we intend to write.
+ * If we can dedup the storage location we set *datap to NULL to indicate
+ * to the caller that a dedup occurred.
+ *
  * NOTE: Special case for data embedded in inode.
  */
 static
 hammer2_chain_t *
 hammer2_assign_physical(hammer2_inode_t *ip, hammer2_chain_t **parentp,
 			hammer2_key_t lbase, int pblksize,
-			hammer2_tid_t mtid, int *errorp)
+			hammer2_tid_t mtid, char **datap, int *errorp)
 {
 	hammer2_chain_t *chain;
 	hammer2_key_t key_dummy;
+	hammer2_off_t dedup_off;
 	int pradix = hammer2_getradix(pblksize);
 	int cache_index = -1;
 
@@ -601,11 +613,13 @@ retry:
 		 * NOTE: DATA chains are created without device backing
 		 *	 store (nor do we want any).
 		 */
+		dedup_off = hammer2_dedup_lookup((*parentp)->hmp, datap,
+						 pblksize);
 		*errorp = hammer2_chain_create(parentp, &chain, ip->pmp,
 					       lbase, HAMMER2_PBUFRADIX,
 					       HAMMER2_BREF_TYPE_DATA,
-					       pblksize,
-					       mtid, 0);
+					       pblksize, mtid,
+					       dedup_off, 0);
 		if (chain == NULL) {
 			panic("hammer2_chain_create: par=%p error=%d\n",
 			      *parentp, *errorp);
@@ -622,9 +636,12 @@ retry:
 			hammer2_chain_modify_ip(ip, chain, mtid, 0);
 			break;
 		case HAMMER2_BREF_TYPE_DATA:
+			dedup_off = hammer2_dedup_lookup(chain->hmp, datap,
+							 pblksize);
 			if (chain->bytes != pblksize) {
 				hammer2_chain_resize(ip, *parentp, chain,
-						     mtid, pradix,
+						     mtid, dedup_off,
+						     pradix,
 						     HAMMER2_MODIFY_OPTDATA);
 			}
 
@@ -635,7 +652,7 @@ retry:
 			 * after resizing in case this is an encrypted or
 			 * compressed buffer.
 			 */
-			hammer2_chain_modify(chain, mtid,
+			hammer2_chain_modify(chain, mtid, dedup_off,
 					     HAMMER2_MODIFY_OPTDATA);
 			break;
 		default:
@@ -663,6 +680,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_inode_t *ip,
 			hammer2_tid_t mtid, int *errorp)
 {
 	hammer2_chain_t *chain;
+	char *data = bp->b_data;
 
 	switch(HAMMER2_DEC_ALGO(ip->meta.comp_algo)) {
 	case HAMMER2_COMP_NONE:
@@ -675,7 +693,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_inode_t *ip,
 		 * The strategy code will take care of it in that case.
 		 */
 		chain = hammer2_assign_physical(ip, parentp, lbase, pblksize,
-						mtid, errorp);
+						mtid, &data, errorp);
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			hammer2_inode_data_t *wipdata;
 
@@ -685,6 +703,15 @@ hammer2_write_file_core(struct buf *bp, hammer2_inode_t *ip,
 			KKASSERT(bp->b_loffset == 0);
 			bcopy(bp->b_data, wipdata->u.data,
 			      HAMMER2_EMBEDDED_BYTES);
+			++hammer2_iod_file_wembed;
+		} else if (data == NULL) {
+			/*
+			 * Copy of data already present on-media.
+			 */
+			chain->bref.methods =
+				HAMMER2_ENC_COMP(HAMMER2_COMP_NONE) +
+				HAMMER2_ENC_CHECK(ip->meta.check_algo);
+			hammer2_chain_setcheck(chain, bp->b_data);
 		} else {
 			hammer2_write_bp(chain, bp, ioflag, pblksize,
 					 mtid, errorp, ip->meta.check_algo);
@@ -736,6 +763,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_inode_t *ip,
 	int comp_size;
 	int comp_block_size;
 	char *comp_buffer;
+	char *data;
 
 	if (test_block_zeros(bp->b_data, pblksize)) {
 		zero_write(bp, ip, parentp, lbase, mtid, errorp);
@@ -836,10 +864,25 @@ hammer2_compress_and_write(struct buf *bp, hammer2_inode_t *ip,
 			/* NOT REACHED */
 			comp_block_size = pblksize;
 		}
+
+		/*
+		 * Must zero the remainder or dedup (which operates on a
+		 * physical block basis) will not find matches.
+		 */
+		if (comp_size < comp_block_size) {
+			bzero(comp_buffer + comp_size,
+			      comp_block_size - comp_size);
+		}
 	}
 
+	/*
+	 * Assign physical storage, data will be set to NULL if a live-dedup
+	 * was successful.
+	 */
+	data = comp_size ? comp_buffer : bp->b_data;
 	chain = hammer2_assign_physical(ip, parentp, lbase, comp_block_size,
-					mtid, errorp);
+					mtid, &data, errorp);
+
 	if (*errorp) {
 		kprintf("WRITE PATH: An error occurred while "
 			"assigning physical space.\n");
@@ -855,6 +898,27 @@ hammer2_compress_and_write(struct buf *bp, hammer2_inode_t *ip,
 		KKASSERT(wipdata->meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA);
 		KKASSERT(bp->b_loffset == 0);
 		bcopy(bp->b_data, wipdata->u.data, HAMMER2_EMBEDDED_BYTES);
+		++hammer2_iod_file_wembed;
+	} else if (data == NULL) {
+		/*
+		 * Live deduplication, a copy of the data is already present
+		 * on the media.
+		 */
+		char *bdata;
+
+		if (comp_size) {
+			chain->bref.methods =
+				HAMMER2_ENC_COMP(comp_algo) +
+				HAMMER2_ENC_CHECK(check_algo);
+		} else {
+			chain->bref.methods =
+				HAMMER2_ENC_COMP(
+					HAMMER2_COMP_NONE) +
+				HAMMER2_ENC_CHECK(check_algo);
+		}
+		bdata = comp_size ? comp_buffer : bp->b_data;
+		hammer2_chain_setcheck(chain, bdata);
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 	} else {
 		hammer2_io_t *dio;
 		char *bdata;
@@ -891,10 +955,6 @@ hammer2_compress_and_write(struct buf *bp, hammer2_inode_t *ip,
 					HAMMER2_ENC_COMP(comp_algo) +
 					HAMMER2_ENC_CHECK(check_algo);
 				bcopy(comp_buffer, bdata, comp_size);
-				if (comp_size != comp_block_size) {
-					bzero(bdata + comp_size,
-					      comp_block_size - comp_size);
-				}
 			} else {
 				chain->bref.methods =
 					HAMMER2_ENC_COMP(
@@ -909,6 +969,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_inode_t *ip,
 			 * so we do it here.
 			 */
 			hammer2_chain_setcheck(chain, bdata);
+			hammer2_dedup_record(chain, bdata);
 
 			/*
 			 * Device buffer is now valid, chain is no longer in
@@ -966,14 +1027,17 @@ hammer2_zero_check_and_write(struct buf *bp, hammer2_inode_t *ip,
 	int check_algo)
 {
 	hammer2_chain_t *chain;
+	char *data = bp->b_data;
 
 	if (test_block_zeros(bp->b_data, pblksize)) {
 		zero_write(bp, ip, parentp, lbase, mtid, errorp);
 	} else {
 		chain = hammer2_assign_physical(ip, parentp, lbase, pblksize,
-						mtid, errorp);
-		hammer2_write_bp(chain, bp, ioflag, pblksize,
-				 mtid, errorp, check_algo);
+						mtid, &data, errorp);
+		if (data) {
+			hammer2_write_bp(chain, bp, ioflag, pblksize,
+					 mtid, errorp, check_algo);
+		} /* else dedup occurred */
 		if (chain) {
 			hammer2_chain_unlock(chain);
 			hammer2_chain_drop(chain);
@@ -1029,12 +1093,16 @@ zero_write(struct buf *bp, hammer2_inode_t *ip,
 				 HAMMER2_OPFLAG_DIRECTDATA);
 			KKASSERT(bp->b_loffset == 0);
 			bzero(wipdata->u.data, HAMMER2_EMBEDDED_BYTES);
+			++hammer2_iod_file_wembed;
 		} else {
 			hammer2_chain_delete(*parentp, chain,
 					     mtid, HAMMER2_DELETE_PERMANENT);
+			++hammer2_iod_file_wzero;
 		}
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
+	} else {
+		++hammer2_iod_file_wzero;
 	}
 }
 
@@ -1067,6 +1135,7 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
 		KKASSERT(bp->b_loffset == 0);
 		bcopy(bp->b_data, wipdata->u.data, HAMMER2_EMBEDDED_BYTES);
 		error = 0;
+		++hammer2_iod_file_wembed;
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 		error = hammer2_io_newnz(chain->hmp,
@@ -1080,8 +1149,7 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
 		}
 		bdata = hammer2_io_data(dio, chain->bref.data_off);
 
-		chain->bref.methods = HAMMER2_ENC_COMP(
-						HAMMER2_COMP_NONE) +
+		chain->bref.methods = HAMMER2_ENC_COMP(HAMMER2_COMP_NONE) +
 				      HAMMER2_ENC_CHECK(check_algo);
 		bcopy(bp->b_data, bdata, chain->bytes);
 
@@ -1091,6 +1159,7 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
 		 * so we do it here.
 		 */
 		hammer2_chain_setcheck(chain, bdata);
+		hammer2_dedup_record(chain, bdata);
 
 		/*
 		 * Device buffer is now valid, chain is no longer in
@@ -1125,4 +1194,96 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
 	}
 	KKASSERT(error == 0);	/* XXX TODO */
 	*errorp = error;
+}
+
+/*
+ * LIVE DEDUP HEURISTIC
+ *
+ * WARNING! This code is SMP safe but the heuristic allows SMP collisions.
+ *	    All fields must be loaded into locals and validated.
+ */
+static
+void
+hammer2_dedup_record(hammer2_chain_t *chain, char *data)
+{
+	hammer2_dev_t *hmp;
+	hammer2_dedup_t *dedup;
+	int32_t crc;
+	int best = 0;
+	int i;
+	int dticks;
+
+	hmp = chain->hmp;
+	crc = hammer2_icrc32(data, chain->bytes);
+	dedup = &hmp->heur_dedup[crc & (HAMMER2_DEDUP_HEUR_MASK & ~3)];
+	for (i = 0; i < 4; ++i) {
+		if (dedup[i].data_crc == crc) {
+			best = i;
+			break;
+		}
+		dticks = (int)(dedup[i].ticks - dedup[best].ticks);
+		if (dticks < 0 || dticks > hz * 60 * 30)
+			best = i;
+	}
+	dedup += best;
+	if (hammer2_debug & 0x40000) {
+		kprintf("REC %04x %08x %016jx\n",
+			(int)(dedup - hmp->heur_dedup),
+			crc,
+			chain->bref.data_off);
+	}
+	dedup->ticks = ticks;
+	dedup->data_off = chain->bref.data_off;
+	dedup->data_crc = crc;
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DEDUP);
+}
+
+static
+hammer2_off_t
+hammer2_dedup_lookup(hammer2_dev_t *hmp, char **datap, int pblksize)
+{
+	hammer2_dedup_t *dedup;
+	hammer2_io_t *dio;
+	hammer2_off_t off;
+	uint32_t crc;
+	char *data;
+	int i;
+
+	data = *datap;
+	if (data == NULL)
+		return 0;
+
+	crc = hammer2_icrc32(data, pblksize);
+	dedup = &hmp->heur_dedup[crc & (HAMMER2_DEDUP_HEUR_MASK & ~3)];
+
+	if (hammer2_debug & 0x40000) {
+		kprintf("LOC %04x/4 %08x\n",
+			(int)(dedup - hmp->heur_dedup),
+			crc);
+	}
+
+	for (i = 0; i < 4; ++i) {
+		off = dedup[i].data_off;
+		cpu_ccfence();
+		if (dedup[i].data_crc != crc)
+			continue;
+		if ((1 << (int)(off & HAMMER2_OFF_MASK_RADIX)) != pblksize)
+			continue;
+		dio = hammer2_io_getquick(hmp, off, pblksize);
+		if (dio &&
+		    bcmp(data, hammer2_io_data(dio, off), pblksize) == 0) {
+			if (hammer2_debug & 0x40000) {
+				kprintf("DEDUP SUCCESS %016jx\n",
+					(intmax_t)off);
+			}
+			hammer2_io_putblk(&dio);
+			*datap = NULL;
+			dedup[i].ticks = ticks;	/* update use */
+			++hammer2_iod_file_wdedup;
+			return off;		/* RETURN */
+		}
+		if (dio)
+			hammer2_io_putblk(&dio);
+	}
+	return 0;
 }

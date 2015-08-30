@@ -46,9 +46,9 @@ static int hammer2_io_cleanup_callback(hammer2_io_t *dio, void *arg);
 static int
 hammer2_io_cmp(hammer2_io_t *io1, hammer2_io_t *io2)
 {
-	if (io2->pbase < io1->pbase)
+	if (io1->pbase < io2->pbase)
 		return(-1);
-	if (io2->pbase > io1->pbase)
+	if (io1->pbase > io2->pbase)
 		return(1);
 	return(0);
 }
@@ -145,8 +145,12 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 		/*
 		 * Issue the iocb immediately if the buffer is already good.
 		 * Once set GOOD cannot be cleared until refs drops to 0.
+		 *
+		 * lfence required because dio is not interlockedf for
+		 * the DIO_GOOD test.
 		 */
 		if (refs & HAMMER2_DIO_GOOD) {
+			cpu_lfence();
 			iocb->callback(iocb);
 			break;
 		}
@@ -186,6 +190,123 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 		}
 		/* retry */
 	}
+}
+
+/*
+ * Quickly obtain a good DIO buffer, return NULL if the system no longer
+ * caches the data.
+ */
+hammer2_io_t *
+hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
+{
+	hammer2_iocb_t iocb;
+	hammer2_io_t *dio;
+	struct buf *bp;
+	off_t pbase;
+	off_t pmask;
+	int psize = HAMMER2_PBUFSIZE;
+	int orefs;
+	int nrefs;
+
+	pmask = ~(hammer2_off_t)(psize - 1);
+
+	KKASSERT((1 << (int)(lbase & HAMMER2_OFF_MASK_RADIX)) == lsize);
+	lbase &= ~HAMMER2_OFF_MASK_RADIX;
+	pbase = lbase & pmask;
+	KKASSERT(pbase != 0 && ((lbase + lsize - 1) & pmask) == pbase);
+
+	/*
+	 * Access/Allocate the DIO, bump dio->refs to prevent destruction.
+	 */
+	hammer2_spin_sh(&hmp->io_spin);
+	dio = RB_LOOKUP(hammer2_io_tree, &hmp->iotree, pbase);
+	if (dio == NULL) {
+		hammer2_spin_unsh(&hmp->io_spin);
+		return NULL;
+	}
+
+	if ((atomic_fetchadd_int(&dio->refs, 1) & HAMMER2_DIO_MASK) == 0)
+		atomic_add_int(&dio->hmp->iofree_count, -1);
+	hammer2_spin_unsh(&hmp->io_spin);
+
+	if (dio->act < 5)	/* SMP race ok */
+		++dio->act;
+
+	/*
+	 * Obtain/validate the buffer.  Do NOT issue I/O.  Discard if
+	 * the system does not have the data already cached.
+	 */
+	nrefs = -1;
+	for (;;) {
+		orefs = dio->refs;
+		cpu_ccfence();
+
+		/*
+		 * Issue the iocb immediately if the buffer is already good.
+		 * Once set GOOD cannot be cleared until refs drops to 0.
+		 *
+		 * lfence required because dio is not interlockedf for
+		 * the DIO_GOOD test.
+		 */
+		if (orefs & HAMMER2_DIO_GOOD) {
+			cpu_lfence();
+			break;
+		}
+
+		/*
+		 * Try to own the DIO by setting INPROG so we can issue
+		 * I/O on it.  INPROG might already be set, in which case
+		 * there is no way we can do this non-blocking so we punt.
+		 */
+		if ((orefs & HAMMER2_DIO_INPROG))
+			break;
+		nrefs = orefs | HAMMER2_DIO_INPROG;
+		if (atomic_cmpset_int(&dio->refs, orefs, nrefs) == 0)
+			continue;
+
+		/*
+		 * We own DIO_INPROG, try to set DIO_GOOD.
+		 *
+		 * For now do not use GETBLK_NOWAIT because 
+		 */
+		bp = dio->bp;
+		dio->bp = NULL;
+		if (bp == NULL) {
+#if 0
+			bp = getblk(hmp->devvp, dio->pbase, dio->psize, 0, 0);
+#endif
+			bread(hmp->devvp, dio->pbase, dio->psize, &bp);
+		}
+		if (bp) {
+			if ((bp->b_flags & B_ERROR) == 0 &&
+			    (bp->b_flags & B_CACHE)) {
+				dio->bp = bp;	/* assign BEFORE setting flag */
+				atomic_set_int(&dio->refs, HAMMER2_DIO_GOOD);
+			} else {
+				bqrelse(bp);
+				bp = NULL;
+			}
+		}
+
+		/*
+		 * Clear DIO_INPROG.
+		 *
+		 * This is actually a bit complicated, see
+		 * hammer2_io_complete() for more information.
+		 */
+		iocb.dio = dio;
+		iocb.flags = HAMMER2_IOCB_INPROG;
+		hammer2_io_complete(&iocb);
+		break;
+	}
+
+	/*
+	 * Only return the dio if its buffer is good.
+	 */
+	if ((dio->refs & HAMMER2_DIO_GOOD) == 0) {
+		hammer2_io_putblk(&dio);
+	}
+	return dio;
 }
 
 /*
@@ -336,53 +457,59 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	off_t peof;
 	off_t pbase;
 	int psize;
-	int refs;
+	int orefs;
+	int nrefs;
 
 	dio = *diop;
 	*diop = NULL;
+	hmp = dio->hmp;
 
 	/*
-	 * Drop refs, on 1->0 transition clear flags, set INPROG.
+	 * Drop refs.
+	 *
+	 * On the 1->0 transition clear flags and set INPROG.
+	 *
+	 * On the 1->0 transition if INPROG is already set, another thread
+	 * is in lastdrop and we can just return after the transition.
+	 *
+	 * On any other transition we can generally just return.
 	 */
 	for (;;) {
-		refs = dio->refs;
+		orefs = dio->refs;
+		cpu_ccfence();
+		nrefs = orefs - 1;
 
-		if ((refs & HAMMER2_DIO_MASK) == 1) {
-			if (refs & HAMMER2_DIO_INPROG) {
-				hammer2_iocb_t *xcb;
-
-				xcb = TAILQ_FIRST(&dio->iocbq);
-				kprintf("BAD REFS dio %p %08x/%08x, cbio %p\n",
-					dio, refs, dio->refs, xcb);
-				if (xcb)
-					kprintf("   IOCB: func=%p dio=%p cl=%p ch=%p ptr=%p\n",
-						xcb->callback,
-						xcb->dio,
-						xcb->cluster,
-						xcb->chain,
-						xcb->ptr);
-			}
-			KKASSERT((refs & HAMMER2_DIO_INPROG) == 0);
-			if (atomic_cmpset_int(&dio->refs, refs,
-					      ((refs - 1) &
-					       ~(HAMMER2_DIO_GOOD |
-						 HAMMER2_DIO_DIRTY)) |
-					      HAMMER2_DIO_INPROG)) {
+		if ((orefs & HAMMER2_DIO_MASK) == 1 &&
+		    (orefs & HAMMER2_DIO_INPROG) == 0) {
+			/*
+			 * Lastdrop case, INPROG can be set.
+			 */
+			nrefs &= ~(HAMMER2_DIO_GOOD | HAMMER2_DIO_DIRTY);
+			nrefs |= HAMMER2_DIO_INPROG;
+			if (atomic_cmpset_int(&dio->refs, orefs, nrefs))
 				break;
-			}
-			/* retry */
-		} else {
-			if (atomic_cmpset_int(&dio->refs, refs, refs - 1))
+		} else if ((orefs & HAMMER2_DIO_MASK) == 1) {
+			/*
+			 * Lastdrop case, INPROG already set.
+			 */
+			if (atomic_cmpset_int(&dio->refs, orefs, nrefs)) {
+				atomic_add_int(&hmp->iofree_count, 1);
 				return;
-			/* retry */
+			}
+		} else {
+			/*
+			 * Normal drop case.
+			 */
+			if (atomic_cmpset_int(&dio->refs, orefs, nrefs))
+				return;
 		}
+		cpu_pause();
 		/* retry */
 	}
 
 	/*
-	 * We have set DIO_INPROG to gain control of the buffer and we have
-	 * cleared DIO_GOOD to prevent other accessors from thinking it is
-	 * still good.
+	 * Lastdrop (1->0 transition).  INPROG has been set, GOOD and DIRTY
+	 * have been cleared.
 	 *
 	 * We can now dispose of the buffer, and should do it before calling
 	 * io_complete() in case there's a race against a new reference
@@ -393,9 +520,9 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	bp = dio->bp;
 	dio->bp = NULL;
 
-	if (refs & HAMMER2_DIO_GOOD) {
+	if (orefs & HAMMER2_DIO_GOOD) {
 		KKASSERT(bp != NULL);
-		if (refs & HAMMER2_DIO_DIRTY) {
+		if (orefs & HAMMER2_DIO_DIRTY) {
 			if (hammer2_cluster_enable) {
 				peof = (pbase + HAMMER2_SEGMASK64) &
 				       ~HAMMER2_SEGMASK64;
@@ -410,7 +537,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 			bqrelse(bp);
 		}
 	} else if (bp) {
-		if (refs & HAMMER2_DIO_DIRTY) {
+		if (orefs & HAMMER2_DIO_DIRTY) {
 			bdwrite(bp);
 		} else {
 			brelse(bp);
@@ -437,13 +564,13 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	 * We cache free buffers so re-use cases can use a shared lock, but
 	 * if too many build up we have to clean them out.
 	 */
-	if (hmp->iofree_count > 1000) {
+	if (hmp->iofree_count > 65536) {
 		struct hammer2_cleanupcb_info info;
 
 		RB_INIT(&info.tmptree);
 		hammer2_spin_ex(&hmp->io_spin);
-		if (hmp->iofree_count > 1000) {
-			info.count = hmp->iofree_count / 2;
+		if (hmp->iofree_count > 65536) {
+			info.count = hmp->iofree_count / 4;
 			RB_SCAN(hammer2_io_tree, &hmp->iotree, NULL,
 				hammer2_io_cleanup_callback, &info);
 		}

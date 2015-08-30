@@ -1001,7 +1001,8 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
 void
 hammer2_chain_resize(hammer2_inode_t *ip,
 		     hammer2_chain_t *parent, hammer2_chain_t *chain,
-		     hammer2_tid_t mtid, int nradix, int flags)
+		     hammer2_tid_t mtid, hammer2_off_t dedup_off,
+		     int nradix, int flags)
 {
 	hammer2_dev_t *hmp;
 	size_t obytes;
@@ -1034,7 +1035,7 @@ hammer2_chain_resize(hammer2_inode_t *ip,
 	 *
 	 * NOTE: The modify will set BMAPUPD for us if BMAPPED is set.
 	 */
-	hammer2_chain_modify(chain, mtid, 0);
+	hammer2_chain_modify(chain, mtid, dedup_off, 0);
 
 	/*
 	 * Relocate the block, even if making it smaller (because different
@@ -1065,9 +1066,14 @@ hammer2_chain_resize(hammer2_inode_t *ip,
  * Sets bref.modify_tid to mtid only if mtid != 0.  Note that bref.modify_tid
  * is a CLC (cluster level change) field and is not updated by parent
  * propagation during a flush.
+ *
+ * If the caller passes a non-zero dedup_off we assign data_off to that
+ * instead of allocating a ne block.  Caller must not modify the data already
+ * present at the target offset.
  */
 void
-hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid, int flags)
+hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
+		     hammer2_off_t dedup_off, int flags)
 {
 	hammer2_blockref_t obref;
 	hammer2_dev_t *hmp;
@@ -1104,7 +1110,10 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid, int flags)
 	 * Set MODIFIED to indicate that the chain has been modified.
 	 * Set UPDATE to ensure that the blockref is updated in the parent.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+	if ((chain->flags & (HAMMER2_CHAIN_DEDUP | HAMMER2_CHAIN_MODIFIED)) ==
+	    (HAMMER2_CHAIN_DEDUP | HAMMER2_CHAIN_MODIFIED)) {
+		newmod = 1;
+	} else if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		hammer2_chain_ref(chain);
 		hammer2_pfs_memory_inc(chain->pmp);	/* can be NULL */
@@ -1116,10 +1125,14 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid, int flags)
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
 		hammer2_chain_ref(chain);
 	}
+	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DEDUP);
 
 	/*
 	 * The modification or re-modification requires an allocation and
 	 * possible COW.
+	 *
+	 * If dedup_off is non-zero, caller already has a data offset
+	 * containing the caller's desired data.
 	 *
 	 * XXX can a chain already be marked MODIFIED without a data
 	 * assignment?  If not, assert here instead of testing the case.
@@ -1128,7 +1141,13 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid, int flags)
 		if ((chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0 ||
 		     newmod
 		) {
-			hammer2_freemap_alloc(chain, chain->bytes);
+			if (dedup_off) {
+				chain->bref.data_off = dedup_off;
+				atomic_set_int(&chain->flags,
+					       HAMMER2_CHAIN_DEDUP);
+			} else {
+				hammer2_freemap_alloc(chain, chain->bytes);
+			}
 			/* XXX failed allocation */
 		}
 	}
@@ -1207,10 +1226,13 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid, int flags)
 		 * chain->data exists or not and set the dirty state for
 		 * the new buffer.  hammer2_io_new() will handle the
 		 * zero-fill.
+		 *
+		 * If a dedup_off was supplied this is an existing block
+		 * and no COW, copy, or further modification is required.
 		 */
 		KKASSERT(chain != &hmp->vchain && chain != &hmp->fchain);
 
-		if (wasinitial) {
+		if (wasinitial && dedup_off == 0) {
 			error = hammer2_io_new(hmp, chain->bref.data_off,
 					       chain->bytes, &dio);
 		} else {
@@ -1236,8 +1258,11 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid, int flags)
 		bdata = hammer2_io_data(dio, chain->bref.data_off);
 
 		if (chain->data) {
+			/*
+			 * COW (unless a dedup).
+			 */
 			KKASSERT(chain->dio != NULL);
-			if (chain->data != (void *)bdata) {
+			if (chain->data != (void *)bdata && dedup_off == 0) {
 				bcopy(chain->data, bdata, chain->bytes);
 			}
 		} else if (wasinitial == 0) {
@@ -1256,12 +1281,17 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid, int flags)
 		 * WARNING! The system buffer cache may have already flushed
 		 *	    the buffer, so we must be sure to [re]dirty it
 		 *	    for further modification.
+		 *
+		 *	    If dedup_off was supplied, the caller is not
+		 *	    expected to make any further modification to the
+		 *	    buffer.
 		 */
 		if (chain->dio)
-			hammer2_io_brelse(&chain->dio);
+			hammer2_io_bqrelse(&chain->dio);
 		chain->data = (void *)bdata;
 		chain->dio = dio;
-		hammer2_io_setdirty(dio);	/* modified by bcopy above */
+		if (dedup_off == 0)
+			hammer2_io_setdirty(dio);
 		break;
 	default:
 		panic("hammer2_chain_modify: illegal non-embedded type %d",
@@ -1287,7 +1317,7 @@ hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain,
 			hammer2_tid_t mtid, int flags)
 {
 	hammer2_inode_modify(ip);
-	hammer2_chain_modify(chain, mtid, flags);
+	hammer2_chain_modify(chain, mtid, 0, flags);
 }
 
 /*
@@ -2234,7 +2264,7 @@ int
 hammer2_chain_create(hammer2_chain_t **parentp,
 		     hammer2_chain_t **chainp, hammer2_pfs_t *pmp,
 		     hammer2_key_t key, int keybits, int type, size_t bytes,
-		     hammer2_tid_t mtid, int flags)
+		     hammer2_tid_t mtid, hammer2_off_t dedup_off, int flags)
 {
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *chain;
@@ -2456,7 +2486,7 @@ again:
 		case HAMMER2_BREF_TYPE_DATA:
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		case HAMMER2_BREF_TYPE_INODE:
-			hammer2_chain_modify(chain, mtid,
+			hammer2_chain_modify(chain, mtid, dedup_off,
 					     HAMMER2_MODIFY_OPTDATA);
 			break;
 		default:
@@ -2575,7 +2605,7 @@ hammer2_chain_rename(hammer2_blockref_t *bref,
 
 		hammer2_chain_create(parentp, &chain, chain->pmp,
 				     bref->key, bref->keybits, bref->type,
-				     chain->bytes, mtid, flags);
+				     chain->bytes, mtid, 0, flags);
 		KKASSERT(chain->flags & HAMMER2_CHAIN_UPDATE);
 		hammer2_chain_setflush(*parentp);
 	}
@@ -2612,7 +2642,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		KKASSERT(parent != NULL);
 		KKASSERT(parent->error == 0);
 		KKASSERT((parent->flags & HAMMER2_CHAIN_INITIAL) == 0);
-		hammer2_chain_modify(parent, mtid, HAMMER2_MODIFY_OPTDATA);
+		hammer2_chain_modify(parent, mtid, 0, HAMMER2_MODIFY_OPTDATA);
 
 		/*
 		 * Calculate blockmap pointer
@@ -2932,7 +2962,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	 * OPTDATA to allow it to remain in the INITIAL state.  Otherwise
 	 * it won't be acted upon by the flush code.
 	 */
-	hammer2_chain_modify(ichain, mtid, HAMMER2_MODIFY_OPTDATA);
+	hammer2_chain_modify(ichain, mtid, 0, HAMMER2_MODIFY_OPTDATA);
 
 	/*
 	 * Iterate the original parent and move the matching brefs into
@@ -4253,7 +4283,7 @@ hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
 	if (nip) {
 		hammer2_inode_modify(nip);
 		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_modify(nchain, mtid, 0);
+		hammer2_chain_modify(nchain, mtid, 0, 0);
 		wipdata = &nchain->data->ipdata;
 
 		nip->meta.pfs_type = HAMMER2_PFSTYPE_MASTER;

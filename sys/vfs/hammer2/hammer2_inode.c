@@ -1430,9 +1430,9 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 				     xop->lhc, 0,
 				     HAMMER2_BREF_TYPE_INODE,
 				     HAMMER2_INODE_BYTES,
-				     xop->head.mtid, xop->flags);
+				     xop->head.mtid, 0, xop->flags);
 	if (error == 0) {
-		hammer2_chain_modify(chain, xop->head.mtid, 0);
+		hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
 		chain->data->ipdata.meta = xop->meta;
 		if (xop->head.name1) {
 			bcopy(xop->head.name1,
@@ -1594,7 +1594,7 @@ hammer2_inode_xop_connect(hammer2_xop_t *arg, int clindex)
 	 */
 	chain = hammer2_inode_chain(xop->head.ip2, clindex,
 				    HAMMER2_RESOLVE_ALWAYS);
-	hammer2_chain_modify(chain, xop->head.mtid, 0);
+	hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
 	wipdata = &chain->data->ipdata;
 
 	hammer2_inode_modify(xop->head.ip2);
@@ -1612,7 +1612,7 @@ hammer2_inode_xop_connect(hammer2_xop_t *arg, int clindex)
 				     xop->lhc, 0,
 				     HAMMER2_BREF_TYPE_INODE,
 				     HAMMER2_INODE_BYTES,
-				     xop->head.mtid, 0);
+				     xop->head.mtid, 0, 0);
 
 	/*
 	 * Feed result back.
@@ -1710,7 +1710,7 @@ hammer2_inode_xop_chain_sync(hammer2_xop_t *arg, int clindex)
 	 * Sync the inode meta-data, potentially clear the blockset area
 	 * of direct data so it can be used for blockrefs.
 	 */
-	hammer2_chain_modify(parent, xop->head.mtid, 0);
+	hammer2_chain_modify(parent, xop->head.mtid, 0, 0);
 	parent->data->ipdata.meta = xop->meta;
 	if (xop->clear_directdata) {
 		bzero(&parent->data->ipdata.u.blockset,

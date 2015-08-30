@@ -612,7 +612,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		kprintf("live %016jx %04d.%04x (avail=%d)\n",
 			data_off, bmapindex, live->class, live->avail);
 
-		hammer2_chain_modify(live_chain, cbinfo->mtid, 0);
+		hammer2_chain_modify(live_chain, cbinfo->mtid, 0, 0);
 		h2_bulkfree_sync_adjust(cbinfo, live, bmap, nofree);
 next:
 		data_off += HAMMER2_FREEMAP_LEVEL0_SIZE;

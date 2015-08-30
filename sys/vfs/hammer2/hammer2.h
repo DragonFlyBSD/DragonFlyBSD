@@ -372,7 +372,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
 #define HAMMER2_CHAIN_DESTROY		0x00000004
-#define HAMMER2_CHAIN_UNUSED0008	0x00000008
+#define HAMMER2_CHAIN_DEDUP		0x00000008	/* used as dedup src */
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_UPDATE		0x00000040	/* need parent update */
@@ -764,8 +764,11 @@ typedef struct hammer2_trans hammer2_trans_t;
 
 #define HAMMER2_FREEMAP_HEUR_NRADIX	4	/* pwr 2 PBUFRADIX-MINIORADIX */
 #define HAMMER2_FREEMAP_HEUR_TYPES	8
-#define HAMMER2_FREEMAP_HEUR		(HAMMER2_FREEMAP_HEUR_NRADIX * \
+#define HAMMER2_FREEMAP_HEUR_SIZE	(HAMMER2_FREEMAP_HEUR_NRADIX * \
 					 HAMMER2_FREEMAP_HEUR_TYPES)
+
+#define HAMMER2_DEDUP_HEUR_SIZE		65536
+#define HAMMER2_DEDUP_HEUR_MASK		(HAMMER2_DEDUP_HEUR_SIZE - 1)
 
 #define HAMMER2_FLUSH_TOP		0x0001
 #define HAMMER2_FLUSH_ALL		0x0002
@@ -806,6 +809,16 @@ typedef struct hammer2_thread hammer2_thread_t;
 #define HAMMER2_THREAD_FREEZE		0x0020	/* force idle */
 #define HAMMER2_THREAD_FROZEN		0x0040	/* restart */
 
+/*
+ * Support structure for dedup heuristic.
+ */
+struct hammer2_dedup {
+	hammer2_off_t	data_off;
+	uint32_t	data_crc;
+	uint32_t	ticks;
+};
+
+typedef struct hammer2_dedup hammer2_dedup_t;
 
 /*
  * hammer2_xop - container for VOP/XOP operation (allocated, not on stack).
@@ -819,14 +832,16 @@ typedef struct hammer2_thread hammer2_thread_t;
  */
 typedef void (*hammer2_xop_func_t)(union hammer2_xop *xop, int clidx);
 
-typedef struct hammer2_xop_fifo {
+struct hammer2_xop_fifo {
 	TAILQ_ENTRY(hammer2_xop_head) entry;
 	hammer2_chain_t		*array[HAMMER2_XOPFIFO];
 	int			errors[HAMMER2_XOPFIFO];
 	int			ri;
 	int			wi;
 	int			flags;
-} hammer2_xop_fifo_t;
+};
+
+typedef struct hammer2_xop_fifo hammer2_xop_fifo_t;
 
 #define HAMMER2_XOP_FIFO_RUN	0x0001
 
@@ -1032,7 +1047,8 @@ struct hammer2_dev {
 	struct hammer2_pfs *spmp;	/* super-root pmp for transactions */
 	struct lock	bulklk;		/* bulkfree lock */
 	struct lock	vollk;		/* lockmgr lock */
-	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR];
+	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR_SIZE];
+	hammer2_dedup_t heur_dedup[HAMMER2_DEDUP_HEUR_SIZE];
 	int		volhdrno;	/* last volhdrno written */
 	char		devrepname[64];	/* for kprintf */
 	hammer2_volume_data_t voldata;
@@ -1231,6 +1247,9 @@ extern long hammer2_iod_indr_read;
 extern long hammer2_iod_fmap_read;
 extern long hammer2_iod_volu_read;
 extern long hammer2_iod_file_write;
+extern long hammer2_iod_file_wembed;
+extern long hammer2_iod_file_wzero;
+extern long hammer2_iod_file_wdedup;
 extern long hammer2_iod_meta_write;
 extern long hammer2_iod_indr_write;
 extern long hammer2_iod_fmap_write;
@@ -1347,13 +1366,14 @@ int hammer2_chain_hardlink_find(hammer2_inode_t *dip,
 				hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
 				int flags);
-void hammer2_chain_modify(hammer2_chain_t *chain,
-				hammer2_tid_t mtid, int flags);
+void hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
+				hammer2_off_t dedup_off, int flags);
 void hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain,
 				hammer2_tid_t mtid, int flags);
 void hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *parent,
 				hammer2_chain_t *chain,
-				hammer2_tid_t mtid, int nradix, int flags);
+				hammer2_tid_t mtid, hammer2_off_t dedup_off,
+				int nradix, int flags);
 void hammer2_chain_unlock(hammer2_chain_t *chain);
 void hammer2_chain_wait(hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int generation,
@@ -1377,8 +1397,8 @@ hammer2_chain_t *hammer2_chain_scan(hammer2_chain_t *parent,
 int hammer2_chain_create(hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp, hammer2_pfs_t *pmp,
 				hammer2_key_t key, int keybits,
-				int type, size_t bytes,
-				hammer2_tid_t mtid, int flags);
+				int type, size_t bytes, hammer2_tid_t mtid,
+				hammer2_off_t dedup_off, int flags);
 void hammer2_chain_rename(hammer2_blockref_t *bref,
 				hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
@@ -1435,6 +1455,7 @@ int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 void hammer2_io_putblk(hammer2_io_t **diop);
 void hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree);
 char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
+hammer2_io_t *hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize);
 void hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_iocb_t *iocb);
 void hammer2_io_complete(hammer2_iocb_t *iocb);
@@ -1458,7 +1479,21 @@ void hammer2_io_brelse(hammer2_io_t **diop);
 void hammer2_io_bqrelse(hammer2_io_t **diop);
 
 /*
- * XOP API in hammer2_thread.c
+ * hammer2_thread.c
+ */
+void hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
+			const char *id, int clindex, int repidx,
+			void (*func)(void *arg));
+void hammer2_thr_delete(hammer2_thread_t *thr);
+void hammer2_thr_remaster(hammer2_thread_t *thr);
+void hammer2_thr_freeze_async(hammer2_thread_t *thr);
+void hammer2_thr_freeze(hammer2_thread_t *thr);
+void hammer2_thr_unfreeze(hammer2_thread_t *thr);
+int hammer2_thr_break(hammer2_thread_t *thr);
+void hammer2_primary_xops_thread(void *arg);
+
+/*
+ * hammer2_thread.c (XOP API)
  */
 void hammer2_xop_group_init(hammer2_pfs_t *pmp, hammer2_xop_group_t *xgrp);
 void *hammer2_xop_alloc(hammer2_inode_t *ip, int flags);
@@ -1481,7 +1516,13 @@ int hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 				int clindex, int error);
 
 /*
- * XOP backends in hammer2_xops.c
+ * hammer2_synchro.c
+ */
+void hammer2_primary_sync_thread(void *arg);
+
+/*
+ * XOP backends in hammer2_xops.c, primarily for VNOPS.  Other XOP backends
+ * may be integrated into other source files.
  */
 void hammer2_xop_ipcluster(hammer2_xop_t *xop, int clidx);
 void hammer2_xop_readdir(hammer2_xop_t *xop, int clidx);
@@ -1558,20 +1599,6 @@ int hammer2_bulkfree_pass(hammer2_dev_t *hmp,
 void hammer2_iocom_init(hammer2_dev_t *hmp);
 void hammer2_iocom_uninit(hammer2_dev_t *hmp);
 void hammer2_cluster_reconnect(hammer2_dev_t *hmp, struct file *fp);
-
-/*
- * hammer2_thread.c
- */
-void hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
-			const char *id, int clindex, int repidx,
-			void (*func)(void *arg));
-void hammer2_thr_delete(hammer2_thread_t *thr);
-void hammer2_thr_remaster(hammer2_thread_t *thr);
-void hammer2_thr_freeze_async(hammer2_thread_t *thr);
-void hammer2_thr_freeze(hammer2_thread_t *thr);
-void hammer2_thr_unfreeze(hammer2_thread_t *thr);
-void hammer2_primary_sync_thread(void *arg);
-void hammer2_primary_xops_thread(void *arg);
 
 /*
  * hammer2_strategy.c

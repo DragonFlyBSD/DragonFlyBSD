@@ -90,6 +90,9 @@ long hammer2_iod_indr_read;
 long hammer2_iod_fmap_read;
 long hammer2_iod_volu_read;
 long hammer2_iod_file_write;
+long hammer2_iod_file_wembed;
+long hammer2_iod_file_wzero;
+long hammer2_iod_file_wdedup;
 long hammer2_iod_meta_write;
 long hammer2_iod_indr_write;
 long hammer2_iod_fmap_write;
@@ -143,6 +146,12 @@ SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_read, CTLFLAG_RW,
 
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_write, CTLFLAG_RW,
 	   &hammer2_iod_file_write, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wembed, CTLFLAG_RW,
+	   &hammer2_iod_file_wembed, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wzero, CTLFLAG_RW,
+	   &hammer2_iod_file_wzero, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_wdedup, CTLFLAG_RW,
+	   &hammer2_iod_file_wdedup, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_write, CTLFLAG_RW,
 	   &hammer2_iod_meta_write, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_write, CTLFLAG_RW,

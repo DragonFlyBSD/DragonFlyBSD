@@ -614,7 +614,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	if (error == 0) {
 		hammer2_inode_modify(nip);
 		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_modify(nchain, mtid, 0);
+		hammer2_chain_modify(nchain, mtid, 0, 0);
 		nipdata = &nchain->data->ipdata;
 
 		nip->meta.pfs_type = pfs->pfs_type;

@@ -104,6 +104,9 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	 * release.  Be sure to destroy any left-over buffer cache buffers
 	 * so we do not waste time trying to flush them.
 	 *
+	 * Note that deleting the file block chains under the inode chain
+	 * would just be a waste of time.
+	 *
 	 * WARNING: nvtruncbuf() can only be safely called without the inode
 	 *	    lock held due to the way our write thread works.
 	 */

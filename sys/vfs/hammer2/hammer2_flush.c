@@ -877,7 +877,7 @@ again:
 		 * We are updating the parent's blockmap, the parent must
 		 * be set modified.
 		 */
-		hammer2_chain_modify(parent, 0, 0);
+		hammer2_chain_modify(parent, 0, 0, 0);
 		if (parent->bref.modify_tid < chain->bref.modify_tid)
 			parent->bref.modify_tid = chain->bref.modify_tid;
 
