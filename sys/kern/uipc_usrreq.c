@@ -225,7 +225,8 @@ uipc_accept(netmsg_t msg)
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = msg->base.nm_so->so_pcb;
+	unp = unp_getsocktoken(msg->base.nm_so);
+
 	if (!UNP_ISATTACHED(unp)) {
 		error = EINVAL;
 	} else {
@@ -246,20 +247,23 @@ uipc_accept(netmsg_t msg)
 		}
 		error = 0;
 	}
+
+	unp_reltoken(unp);
 	lwkt_reltoken(&unp_token);
+
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
 static void
 uipc_attach(netmsg_t msg)
 {
-	struct unpcb *unp;
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = msg->base.nm_so->so_pcb;
-	KASSERT(unp == NULL, ("double unp attach"));
+
+	KASSERT(msg->base.nm_so->so_pcb == NULL, ("double unp attach"));
 	error = unp_attach(msg->base.nm_so, msg->attach.nm_ai);
+
 	lwkt_reltoken(&unp_token);
 	lwkt_replymsg(&msg->lmsg, error);
 }
@@ -271,12 +275,16 @@ uipc_bind(netmsg_t msg)
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = msg->base.nm_so->so_pcb;
+	unp = unp_getsocktoken(msg->base.nm_so);
+
 	if (UNP_ISATTACHED(unp))
 		error = unp_bind(unp, msg->bind.nm_nam, msg->bind.nm_td);
 	else
 		error = EINVAL;
+
+	unp_reltoken(unp);
 	lwkt_reltoken(&unp_token);
+
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -354,12 +362,16 @@ uipc_listen(netmsg_t msg)
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = msg->base.nm_so->so_pcb;
+	unp = unp_getsocktoken(msg->base.nm_so);
+
 	if (!UNP_ISATTACHED(unp) || unp->unp_vnode == NULL)
 		error = EINVAL;
 	else
 		error = unp_listen(unp, msg->listen.nm_td);
+
+	unp_reltoken(unp);
 	lwkt_reltoken(&unp_token);
+
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -370,7 +382,8 @@ uipc_peeraddr(netmsg_t msg)
 	int error;
 
 	lwkt_gettoken(&unp_token);
-	unp = msg->base.nm_so->so_pcb;
+	unp = unp_getsocktoken(msg->base.nm_so);
+
 	if (!UNP_ISATTACHED(unp)) {
 		error = EINVAL;
 	} else if (unp->unp_conn && unp->unp_conn->unp_addr) {
@@ -390,7 +403,10 @@ uipc_peeraddr(netmsg_t msg)
 		*msg->peeraddr.nm_nam = dup_sockaddr(&sun_noname);
 		error = 0;
 	}
+
+	unp_reltoken(unp);
 	lwkt_reltoken(&unp_token);
+
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -706,7 +722,6 @@ uipc_shutdown(netmsg_t msg)
 static void
 uipc_sockaddr(netmsg_t msg)
 {
-	struct socket *so;
 	struct unpcb *unp;
 	int error;
 
@@ -714,8 +729,7 @@ uipc_sockaddr(netmsg_t msg)
 	 * so_pcb is only modified with both the global and the unp
 	 * pool token held.
 	 */
-	so = msg->base.nm_so;
-	unp = unp_getsocktoken(so);
+	unp = unp_getsocktoken(msg->base.nm_so);
 
 	if (UNP_ISATTACHED(unp)) {
 		if (unp->unp_addr) {
@@ -761,10 +775,16 @@ uipc_ctloutput(netmsg_t msg)
 	struct unpcb *unp;
 	int error = 0;
 
-	lwkt_gettoken(&unp_token);
 	so = msg->base.nm_so;
 	sopt = msg->ctloutput.nm_sopt;
-	unp = so->so_pcb;
+
+	lwkt_gettoken(&unp_token);
+	unp = unp_getsocktoken(so);
+
+	if (!UNP_ISATTACHED(unp)) {
+		error = EINVAL;
+		goto done;
+	}
 
 	switch (sopt->sopt_dir) {
 	case SOPT_GET:
@@ -792,7 +812,11 @@ uipc_ctloutput(netmsg_t msg)
 		error = EOPNOTSUPP;
 		break;
 	}
+
+done:
+	unp_reltoken(unp);
 	lwkt_reltoken(&unp_token);
+
 	lwkt_replymsg(&msg->lmsg, error);
 }
 	
@@ -953,16 +977,15 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 	struct nlookupdata nd;
 	char buf[SOCK_MAXADDRLEN];
 
-	lwkt_gettoken(&unp_token);
-	if (unp->unp_vnode != NULL) {
-		error = EINVAL;
-		goto failed;
-	}
+	ASSERT_LWKT_TOKEN_HELD(&unp_token);
+	UNP_ASSERT_TOKEN_HELD(unp);
+
+	if (unp->unp_vnode != NULL)
+		return EINVAL;
+
 	namelen = soun->sun_len - offsetof(struct sockaddr_un, sun_path);
-	if (namelen <= 0) {
-		error = EINVAL;
-		goto failed;
-	}
+	if (namelen <= 0)
+		return EINVAL;
 	strncpy(buf, soun->sun_path, namelen);
 	buf[namelen] = 0;	/* null-terminate the string */
 	error = nlookup_init(&nd, buf, UIO_SYSSPACE,
@@ -991,8 +1014,6 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 	}
 done:
 	nlookup_done(&nd);
-failed:
-	lwkt_reltoken(&unp_token);
 	return (error);
 }
 
@@ -1994,11 +2015,12 @@ unp_listen(struct unpcb *unp, struct thread *td)
 {
 	struct proc *p = td->td_proc;
 
+	ASSERT_LWKT_TOKEN_HELD(&unp_token);
+	UNP_ASSERT_TOKEN_HELD(unp);
+
 	KKASSERT(p);
-	lwkt_gettoken(&unp_token);
 	cru2x(p->p_ucred, &unp->unp_peercred);
 	unp_setflags(unp, UNP_HAVEPCCACHED);
-	lwkt_reltoken(&unp_token);
 	return (0);
 }
 
