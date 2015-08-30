@@ -1287,3 +1287,23 @@ hammer2_dedup_lookup(hammer2_dev_t *hmp, char **datap, int pblksize)
 	}
 	return 0;
 }
+
+/*
+ * Poof.  Races are ok, if someone gets in and reuses a dedup offset
+ * before or while we are clearing it they will also recover the freemap
+ * entry (set it to fully allocated), so a bulkfree race can only set it
+ * to a possibly-free state.
+ *
+ * XXX ok, well, not really sure races are ok but going to run with it
+ *     for the moment.
+ */
+void
+hammer2_dedup_clear(hammer2_dev_t *hmp)
+{
+	int i;
+
+	for (i = 0; i < HAMMER2_DEDUP_HEUR_SIZE; ++i) {
+		hmp->heur_dedup[i].data_off = 0;
+		hmp->heur_dedup[i].ticks = ticks - 1;
+	}
+}

@@ -409,6 +409,27 @@ network connectivity is lost.
 TODO.
 .Sh RESTORING FROM A SNAPSHOT BACKUP
 TODO.
+.Sh PERFORMANCE TUNING
+Because HAMMER2 implements compression, decompression, and deup natively,
+it always double-buffers file data.  This means that the file data is
+cached via the device vnode (in compressed / dedupped-form) and the same
+data is also cached by the file vnode (in decompressed / non-dedupped form).
+.Pp
+While HAMMER2 will try to age the logical file buffers on its, some
+additional performance tuning may be necessary for optimal operation
+whether swapcache is used or not.  Our recommendation is to reduce the
+number of vnodes (and thus also the logical buffer cache behind the
+vnodes) that the system caches via the
+.Va kern.maxvnodes
+sysctl.
+.Pp
+Too-large a value will result in excessive double-caching and can cause
+unnecessary read disk I/O.
+We recommend a number between 25000 and 250000 vnodes, depending on your
+use case.
+Keep in mind that even though the vnode cache is smaller, this will make
+room for a great deal more device-level buffer caching which can encompasses
+far more data and meta-data than the vnode-level caching.
 .Sh ENVIRONMENT
 TODO.
 .Sh FILES

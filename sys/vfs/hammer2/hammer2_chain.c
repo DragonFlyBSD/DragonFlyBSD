@@ -868,29 +868,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	/*
 	 * Statistics
 	 */
-	if (hammer2_io_isdirty(chain->dio) == 0) {
-		;
-	} else if (chain->flags & HAMMER2_CHAIN_IOFLUSH) {
-		switch(chain->bref.type) {
-		case HAMMER2_BREF_TYPE_DATA:
-			counterp = &hammer2_ioa_file_write;
-			break;
-		case HAMMER2_BREF_TYPE_INODE:
-			counterp = &hammer2_ioa_meta_write;
-			break;
-		case HAMMER2_BREF_TYPE_INDIRECT:
-			counterp = &hammer2_ioa_indr_write;
-			break;
-		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-			counterp = &hammer2_ioa_fmap_write;
-			break;
-		default:
-			counterp = &hammer2_ioa_volu_write;
-			break;
-		}
-		*counterp += chain->bytes;
-	} else {
+	if (hammer2_io_isdirty(chain->dio)) {
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_DATA:
 			counterp = &hammer2_iod_file_write;
@@ -915,26 +893,11 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	/*
 	 * Clean out the dio.
 	 *
-	 * If a device buffer was used for data be sure to destroy the
-	 * buffer when we are done to avoid aliases (XXX what about the
-	 * underlying VM pages?).
-	 *
 	 * NOTE: Freemap leaf's use reserved blocks and thus no aliasing
 	 *	 is possible.
-	 *
-	 * NOTE: The isdirty check tracks whether we have to bdwrite() the
-	 *	 buffer or not.  The buffer might already be dirty.  The
-	 *	 flag is re-set when chain_modify() is called, even if
-	 *	 MODIFIED is already set, allowing the OS to retire the
-	 *	 buffer independent of a hammer2 flush.
 	 */
 	chain->data = NULL;
-	if ((chain->flags & HAMMER2_CHAIN_IOFLUSH) &&
-	    hammer2_io_isdirty(chain->dio)) {
-		hammer2_io_bawrite(&chain->dio);
-	} else {
-		hammer2_io_bqrelse(&chain->dio);
-	}
+	hammer2_io_bqrelse(&chain->dio);
 	hammer2_mtx_unlock(&chain->lock);
 }
 
@@ -1132,7 +1095,10 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	 * possible COW.
 	 *
 	 * If dedup_off is non-zero, caller already has a data offset
-	 * containing the caller's desired data.
+	 * containing the caller's desired data.  The dedup offset is
+	 * allowed to be in a partially free state and we must be sure
+	 * to reset it to a fully allocated state to force two bulkfree
+	 * passes to free it again.
 	 *
 	 * XXX can a chain already be marked MODIFIED without a data
 	 * assignment?  If not, assert here instead of testing the case.
@@ -1145,6 +1111,8 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 				chain->bref.data_off = dedup_off;
 				atomic_set_int(&chain->flags,
 					       HAMMER2_CHAIN_DEDUP);
+				hammer2_freemap_adjust(hmp, &chain->bref,
+						HAMMER2_FREEMAP_DORECOVER);
 			} else {
 				hammer2_freemap_alloc(chain, chain->bytes);
 			}
@@ -2023,24 +1991,32 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 
 /*
  * The raw scan function is similar to lookup/next but does not seek to a key.
- * Blockrefs are iterated via first_chain = (parent, NULL) and
- * next_chain = (parent, chain).
+ * Blockrefs are iterated via first_bref = (parent, NULL) and
+ * next_chain = (parent, bref).
  *
- * The passed-in parent must be locked and its data resolved.  The returned
- * chain will be locked.  Pass chain == NULL to acquire the first sub-chain
- * under parent and then iterate with the passed-in chain (which this
- * function will unlock).
+ * The passed-in parent must be locked and its data resolved.  The function
+ * nominally returns a locked and referenced *chainp != NULL for chains
+ * the caller might need to recurse on (and will dipose of any *chainp passed
+ * in).  The caller must check the chain->bref.type either way.
+ *
+ * *chainp is not set for leaf elements.
+ *
+ * This function takes a pointer to a stack-based bref structure whos
+ * contents is updated for each iteration.  The same pointer is returned,
+ * or NULL when the iteration is complete.  *firstp must be set to 1 for
+ * the first ieration.  This function will set it to 0.
  */
-hammer2_chain_t *
-hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t *chain,
+hammer2_blockref_t *
+hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t **chainp,
+		   hammer2_blockref_t *bref, int *firstp,
 		   int *cache_indexp, int flags)
 {
 	hammer2_dev_t *hmp;
 	hammer2_blockref_t *base;
-	hammer2_blockref_t *bref;
-	hammer2_blockref_t bcopy;
+	hammer2_blockref_t *bref_ptr;
 	hammer2_key_t key;
 	hammer2_key_t next_key;
+	hammer2_chain_t *chain = NULL;
 	int count = 0;
 	int how_always = HAMMER2_RESOLVE_ALWAYS;
 	int how_maybe = HAMMER2_RESOLVE_MAYBE;
@@ -2070,17 +2046,24 @@ hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	/*
 	 * Calculate key to locate first/next element, unlocking the previous
 	 * element as we go.  Be careful, the key calculation can overflow.
+	 *
+	 * (also reset bref to NULL)
 	 */
-	if (chain) {
-		key = chain->bref.key +
-		      ((hammer2_key_t)1 << chain->bref.keybits);
-		hammer2_chain_unlock(chain);
-		hammer2_chain_drop(chain);
-		chain = NULL;
-		if (key == 0)
-			goto done;
-	} else {
+	if (*firstp) {
 		key = 0;
+		*firstp = 0;
+	} else {
+		key = bref->key + ((hammer2_key_t)1 << bref->keybits);
+		if ((chain = *chainp) != NULL) {
+			*chainp = NULL;
+			hammer2_chain_unlock(chain);
+			hammer2_chain_drop(chain);
+			chain = NULL;
+		}
+		if (key == 0) {
+			bref = NULL;
+			goto done;
+		}
 	}
 
 again:
@@ -2102,6 +2085,7 @@ again:
 		 */
 		if (parent->data->ipdata.meta.op_flags &
 		    HAMMER2_OPFLAG_DIRECTDATA) {
+			bref = NULL;
 			goto done;
 		}
 		base = &parent->data->ipdata.u.blockset.blockref[0];
@@ -2150,40 +2134,68 @@ again:
 		hammer2_chain_countbrefs(parent, base, count);
 
 	next_key = 0;
+	bref_ptr = NULL;
 	hammer2_spin_ex(&parent->core.spin);
 	chain = hammer2_combined_find(parent, base, count,
 				      cache_indexp, &next_key,
 				      key, HAMMER2_KEY_MAX,
-				      &bref);
+				      &bref_ptr);
 	generation = parent->core.generation;
 
 	/*
 	 * Exhausted parent chain, we're done.
 	 */
-	if (bref == NULL) {
+	if (bref_ptr == NULL) {
 		hammer2_spin_unex(&parent->core.spin);
 		KKASSERT(chain == NULL);
+		bref = NULL;
 		goto done;
 	}
+
+	/*
+	 * Copy into the supplied stack-based blockref.
+	 */
+	*bref = *bref_ptr;
 
 	/*
 	 * Selected from blockref or in-memory chain.
 	 */
 	if (chain == NULL) {
-		bcopy = *bref;
-		hammer2_spin_unex(&parent->core.spin);
-		chain = hammer2_chain_get(parent, generation, &bcopy);
-		if (chain == NULL) {
-			kprintf("retry scan parent %p keys %016jx\n",
-				parent, key);
-			goto again;
-		}
-		if (bcmp(&bcopy, bref, sizeof(bcopy))) {
-			hammer2_chain_drop(chain);
-			chain = NULL;
-			goto again;
+		switch(bref->type) {
+		case HAMMER2_BREF_TYPE_INODE:
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		case HAMMER2_BREF_TYPE_INDIRECT:
+		case HAMMER2_BREF_TYPE_VOLUME:
+		case HAMMER2_BREF_TYPE_FREEMAP:
+			/*
+			 * Recursion, always get the chain
+			 */
+			hammer2_spin_unex(&parent->core.spin);
+			chain = hammer2_chain_get(parent, generation, bref);
+			if (chain == NULL) {
+				kprintf("retry scan parent %p keys %016jx\n",
+					parent, key);
+				goto again;
+			}
+			if (bcmp(bref, bref_ptr, sizeof(*bref))) {
+				hammer2_chain_drop(chain);
+				chain = NULL;
+				goto again;
+			}
+			break;
+		default:
+			/*
+			 * No recursion, do not waste time instantiating
+			 * a chain, just iterate using the bref.
+			 */
+			hammer2_spin_unex(&parent->core.spin);
+			break;
 		}
 	} else {
+		/*
+		 * Recursion or not we need the chain in order to supply
+		 * the bref.
+		 */
 		hammer2_chain_ref(chain);
 		hammer2_spin_unex(&parent->core.spin);
 	}
@@ -2192,7 +2204,8 @@ again:
 	 * chain is referenced but not locked.  We must lock the chain
 	 * to obtain definitive DUPLICATED/DELETED state
 	 */
-	hammer2_chain_lock(chain, how);
+	if (chain)
+		hammer2_chain_lock(chain, how);
 
 	/*
 	 * Skip deleted chains (XXX cache 'i' end-of-block-array? XXX)
@@ -2210,22 +2223,26 @@ again:
 	 *	 releasing the spinlock with the flag after locking the
 	 *	 chain.
 	 */
-	if (chain->flags & HAMMER2_CHAIN_DELETED) {
+	if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 		chain = NULL;
 
 		key = next_key;
-		if (key == 0)
+		if (key == 0) {
+			bref = NULL;
 			goto done;
+		}
 		goto again;
 	}
 
 done:
 	/*
-	 * All done, return the chain or NULL
+	 * All done, return the bref or NULL, supply chain if necessary.
 	 */
-	return (chain);
+	if (chain)
+		*chainp = chain;
+	return (bref);
 }
 
 /*

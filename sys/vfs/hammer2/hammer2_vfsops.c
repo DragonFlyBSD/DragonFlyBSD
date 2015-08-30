@@ -1780,8 +1780,7 @@ hammer2_recovery(hammer2_dev_t *hmp)
 	TAILQ_INIT(&info.list);
 	info.depth = 0;
 	parent = hammer2_chain_lookup_init(&hmp->vchain, 0);
-	cumulative_error = hammer2_recovery_scan(hmp, parent,
-						 &info, sync_tid);
+	cumulative_error = hammer2_recovery_scan(hmp, parent, &info, sync_tid);
 	hammer2_chain_lookup_done(parent);
 
 	while ((elm = TAILQ_FIRST(&info.list)) != NULL) {
@@ -1791,8 +1790,8 @@ hammer2_recovery(hammer2_dev_t *hmp)
 		kfree(elm, M_HAMMER2);
 
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
-		error = hammer2_recovery_scan(hmp, parent,
-					      &info, hmp->voldata.freemap_tid);
+		error = hammer2_recovery_scan(hmp, parent, &info,
+					      hmp->voldata.freemap_tid);
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);	/* drop elm->chain ref */
 		if (error)
@@ -1811,9 +1810,11 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 {
 	const hammer2_inode_data_t *ripdata;
 	hammer2_chain_t *chain;
+	hammer2_blockref_t bref;
 	int cache_index;
 	int cumulative_error = 0;
 	int error;
+	int first;
 
 	/*
 	 * Adjust freemap to ensure that the block(s) are marked allocated.
@@ -1886,11 +1887,28 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 	 * hanging around after we are done with them.
 	 */
 	cache_index = 0;
-	chain = hammer2_chain_scan(parent, NULL, &cache_index,
-				   HAMMER2_LOOKUP_NODATA);
-	while (chain) {
+	chain = NULL;
+	first = 1;
+
+	while (hammer2_chain_scan(parent, &chain, &bref,
+				  &first, &cache_index,
+				  HAMMER2_LOOKUP_NODATA) != NULL) {
+		/*
+		 * If this is a leaf
+		 */
+		if (chain == NULL) {
+			if (bref.mirror_tid > sync_tid) {
+				hammer2_freemap_adjust(hmp, &bref,
+						     HAMMER2_FREEMAP_DORECOVER);
+			}
+			continue;
+		}
+
+		/*
+		 * This may or may not be a recursive node.
+		 */
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
-		if (chain->bref.mirror_tid > sync_tid) {
+		if (bref.mirror_tid > sync_tid) {
 			++info->depth;
 			error = hammer2_recovery_scan(hmp, chain,
 						      info, sync_tid);
@@ -1903,12 +1921,10 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 		 * Flush the recovery at the PFS boundary to stage it for
 		 * the final flush of the super-root topology.
 		 */
-		if ((chain->bref.flags & HAMMER2_BREF_FLAG_PFSROOT) &&
+		if ((bref.flags & HAMMER2_BREF_FLAG_PFSROOT) &&
 		    (chain->flags & HAMMER2_CHAIN_ONFLUSH)) {
 			hammer2_flush(chain, HAMMER2_FLUSH_TOP);
 		}
-		chain = hammer2_chain_scan(parent, chain, &cache_index,
-					   HAMMER2_LOOKUP_NODATA);
 	}
 
 	return cumulative_error;

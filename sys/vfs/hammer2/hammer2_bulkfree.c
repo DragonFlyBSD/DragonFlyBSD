@@ -51,112 +51,158 @@
  */
 typedef struct hammer2_chain_save {
 	TAILQ_ENTRY(hammer2_chain_save)	entry;
-	hammer2_chain_t	*parent;
+	hammer2_chain_t	*chain;
+	int pri;
 } hammer2_chain_save_t;
 
 TAILQ_HEAD(hammer2_chain_save_list, hammer2_chain_save);
 typedef struct hammer2_chain_save_list hammer2_chain_save_list_t;
 
+typedef struct hammer2_bulkfree_info {
+	hammer2_dev_t		*hmp;
+	kmem_anon_desc_t	kp;
+	hammer2_off_t		sbase;		/* sub-loop iteration */
+	hammer2_off_t		sstop;
+	hammer2_bmap_data_t	*bmap;
+	int			depth;
+	long			count_10_00;
+	long			count_11_10;
+	long			count_10_11;
+	long			count_l0cleans;
+	long			count_linadjusts;
+	long			count_inodes_scanned;
+	long			count_dedup_factor;
+	long			bytes_scanned;
+	hammer2_off_t		adj_free;
+	hammer2_tid_t		mtid;
+	hammer2_tid_t		saved_mirror_tid;
+	time_t			save_time;
+	hammer2_chain_save_list_t list;
+	hammer2_dedup_t		*dedup;
+	int			pri;
+} hammer2_bulkfree_info_t;
+
+static int h2_bulkfree_test(hammer2_bulkfree_info_t *info,
+			hammer2_blockref_t *bref, int pri);
+
 /*
  * General bulk scan function with callback.  Called with a referenced
- * but UNLOCKED parent.  The original parent is returned in the same state.
+ * but UNLOCKED parent.  The parent is returned in the same state.
  */
+static
 int
 hammer2_bulk_scan(hammer2_chain_t *parent,
-		  int (*func)(hammer2_chain_t *chain, void *info),
-		  void *info)
+		  int (*func)(hammer2_bulkfree_info_t *info,
+			      hammer2_blockref_t *bref),
+		  hammer2_bulkfree_info_t *info)
 {
-	hammer2_chain_save_list_t list;
-	hammer2_chain_save_t *save;
+	hammer2_blockref_t bref;
+	hammer2_chain_t *chain;
+	int cache_index = -1;
 	int doabort = 0;
+	int first = 1;
 
-	TAILQ_INIT(&list);
-	hammer2_chain_ref(parent);
-	save = kmalloc(sizeof(*save), M_HAMMER2, M_WAITOK | M_ZERO);
-	save->parent = parent;
-	TAILQ_INSERT_TAIL(&list, save, entry);
+	++info->pri;
 
-	while ((save = TAILQ_FIRST(&list)) != NULL && doabort == 0) {
-		hammer2_chain_t *chain;
-		int cache_index;
+	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
+				   HAMMER2_RESOLVE_SHARED);
+	chain = NULL;
 
-		TAILQ_REMOVE(&list, save, entry);
-
-		parent = save->parent;
-		save->parent = NULL;
-		chain = NULL;
-		cache_index = -1;
-
+	/*
+	 * Generally loop on the contents if we have not been flagged
+	 * for abort.
+	 *
+	 * Remember that these chains are completely isolated from
+	 * the frontend, so we can release locks temporarily without
+	 * imploding.
+	 */
+	while ((doabort & HAMMER2_BULK_ABORT) == 0 &&
+	       hammer2_chain_scan(parent, &chain, &bref, &first,
+				  &cache_index,
+				  HAMMER2_LOOKUP_NODATA |
+				  HAMMER2_LOOKUP_SHARED) != NULL) {
 		/*
-		 * lock the parent, the lock eats the ref.
+		 * Process bref, chain is only non-NULL if the bref
+		 * might be recursable (its possible that we sometimes get
+		 * a non-NULL chain where the bref cannot be recursed).
 		 */
-		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
-					   HAMMER2_RESOLVE_SHARED);
-
-		/*
-		 * Generally loop on the contents if we have not been flagged
-		 * for abort.
-		 */
-		while ((doabort & HAMMER2_BULK_ABORT) == 0) {
-			chain = hammer2_chain_scan(parent, chain, &cache_index,
-						   HAMMER2_LOOKUP_NODATA |
-						   HAMMER2_LOOKUP_SHARED);
-			if (chain == NULL)
-				break;
-			doabort |= func(chain, info);
-
-			if (doabort & HAMMER2_BULK_ABORT) {
-				hammer2_chain_unlock(chain);
-				hammer2_chain_drop(chain);
-				chain = NULL;
-				break;
-			}
-			switch(chain->bref.type) {
-			case HAMMER2_BREF_TYPE_INODE:
-			case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-			case HAMMER2_BREF_TYPE_INDIRECT:
-			case HAMMER2_BREF_TYPE_VOLUME:
-			case HAMMER2_BREF_TYPE_FREEMAP:
-				/*
-				 * Breadth-first scan.  Chain is referenced
-				 * to save for later and will be unlocked on
-				 * our loop (so it isn't left locked while on
-				 * the list).
-				 */
-				if (save == NULL) {
-					save = kmalloc(sizeof(*save),
-						       M_HAMMER2,
-						       M_WAITOK | M_ZERO);
-				}
-				hammer2_chain_ref(chain);
-				save->parent = chain;
-				TAILQ_INSERT_TAIL(&list, save, entry);
-				save = NULL;
-				break;
-			default:
-				/* does not recurse */
-				break;
-			}
+#if 0
+		kprintf("SCAN %016jx\n", bref.data_off);
+		int xerr = tsleep(&info->pri, PCATCH, "slp", hz / 10);
+		if (xerr == EINTR || xerr == ERESTART) {
+			doabort |= HAMMER2_BULK_ABORT;
 		}
+#endif
+		++info->pri;
+		if (h2_bulkfree_test(info, &bref, 1))
+			continue;
+
+		doabort |= func(info, &bref);
+
+		if (doabort & HAMMER2_BULK_ABORT)
+			break;
 
 		/*
-		 * Releases the lock and the ref the lock inherited.  Free
-		 * save structure if we didn't recycle it above.
+		 * A non-null chain is always returned if it is
+		 * recursive, otherwise a non-null chain might be
+		 * returned but usually is not when not recursive.
 		 */
-		hammer2_chain_unlock(parent);
-		hammer2_chain_drop(parent);
-		if (save)
-			kfree(save, M_HAMMER2);
+		if (chain == NULL)
+			continue;
+
+		/*
+		 * Else check type and setup depth-first scan.
+		 *
+		 * Account for bytes actually read.
+		 */
+		info->bytes_scanned += chain->bytes;
+
+		switch(chain->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		case HAMMER2_BREF_TYPE_INDIRECT:
+		case HAMMER2_BREF_TYPE_VOLUME:
+		case HAMMER2_BREF_TYPE_FREEMAP:
+			++info->depth;
+			if (info->depth > 16) {
+				hammer2_chain_save_t *save;
+				save = kmalloc(sizeof(*save), M_HAMMER2,
+					       M_WAITOK | M_ZERO);
+				save->chain = chain;
+				hammer2_chain_ref(chain);
+				TAILQ_INSERT_TAIL(&info->list, save, entry);
+
+				/* guess */
+				info->pri += 10;
+			} else {
+				int savepri = info->pri;
+
+				hammer2_chain_unlock(chain);
+				info->pri = 0;
+				doabort |= hammer2_bulk_scan(chain, func, info);
+				info->pri += savepri;
+				hammer2_chain_lock(chain,
+						   HAMMER2_RESOLVE_ALWAYS |
+						   HAMMER2_RESOLVE_SHARED);
+			}
+			--info->depth;
+			break;
+		default:
+			/* does not recurse */
+			break;
+		}
+	}
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
 	}
 
 	/*
-	 * Cleanup anything left undone due to an abort
+	 * Save with higher pri now that we know what it is.
 	 */
-	while ((save = TAILQ_FIRST(&list)) != NULL) {
-		TAILQ_REMOVE(&list, save, entry);
-		hammer2_chain_drop(save->parent);
-		kfree(save, M_HAMMER2);
-	}
+	h2_bulkfree_test(info, &parent->bref, info->pri + 1);
+
+	hammer2_chain_unlock(parent);
 
 	return doabort;
 }
@@ -193,24 +239,8 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 /*
  * Bulkfree callback info
  */
-typedef struct hammer2_bulkfree_info {
-	hammer2_dev_t		*hmp;
-	kmem_anon_desc_t	kp;
-	hammer2_off_t		sbase;		/* sub-loop iteration */
-	hammer2_off_t		sstop;
-	hammer2_bmap_data_t	*bmap;
-	long			count_10_00;
-	long			count_11_10;
-	long			count_10_11;
-	long			count_l0cleans;
-	long			count_linadjusts;
-	hammer2_off_t		adj_free;
-	hammer2_tid_t		mtid;
-	hammer2_tid_t		saved_mirror_tid;
-	time_t			save_time;
-} hammer2_bulkfree_info_t;
-
-static int h2_bulkfree_callback(hammer2_chain_t *chain, void *info);
+static int h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo,
+			hammer2_blockref_t *bref);
 static void h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo);
 static void h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_bmap_data_t *live, hammer2_bmap_data_t *bmap,
@@ -221,6 +251,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 {
 	hammer2_bulkfree_info_t cbinfo;
 	hammer2_chain_t *vchain;
+	hammer2_chain_save_t *save;
 	hammer2_off_t incr;
 	size_t size;
 	int doabort = 0;
@@ -231,6 +262,15 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	 * two bulkfree passes in a row without a flush in the middle.
 	 */
 	lockmgr(&hmp->bulklk, LK_EXCLUSIVE);
+
+	/*
+	 * We have to clear the live dedup cache as it might have entries
+	 * that are freeable as of now.  Any new entries in the dedup cache
+	 * made after this point, even if they become freeable, will have
+	 * previously been fully allocated and will be protected by the
+	 * 2-stage bulkfree.
+	 */
+	hammer2_dedup_clear(hmp);
 
 #if 0
 	/*
@@ -260,6 +300,9 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	cbinfo.bmap = kmem_alloc_swapbacked(&cbinfo.kp, size);
 	cbinfo.saved_mirror_tid = hmp->voldata.mirror_tid;
 
+	cbinfo.dedup = kmalloc(sizeof(*cbinfo.dedup) * HAMMER2_DEDUP_HEUR_SIZE,
+			       M_HAMMER2, M_WAITOK | M_ZERO);
+
 	/*
 	 * Normalize start point to a 2GB boundary.  We operate on a
 	 * 64KB leaf bitmap boundary which represents 2GB of storage.
@@ -278,6 +321,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	 * storage allocated by the frontend.
 	 */
 	vchain = hammer2_chain_bulksnap(&hmp->vchain);
+	TAILQ_INIT(&cbinfo.list);
 
 	/*
 	 * Loop on a full meta-data scan as many times as required to
@@ -302,9 +346,27 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 
 		hammer2_trans_init(hmp->spmp, 0);
 		cbinfo.mtid = hammer2_trans_sub(hmp->spmp);
-
+		cbinfo.pri = 0;
 		doabort |= hammer2_bulk_scan(vchain, h2_bulkfree_callback,
 					     &cbinfo);
+
+		while ((save = TAILQ_FIRST(&cbinfo.list)) != NULL &&
+		       doabort == 0) {
+			TAILQ_REMOVE(&cbinfo.list, save, entry);
+			cbinfo.pri = 0;
+			doabort |= hammer2_bulk_scan(save->chain,
+						     h2_bulkfree_callback,
+						     &cbinfo);
+			hammer2_chain_drop(save->chain);
+			kfree(save, M_HAMMER2);
+		}
+		while (save) {
+			TAILQ_REMOVE(&cbinfo.list, save, entry);
+			hammer2_chain_drop(save->chain);
+			kfree(save, M_HAMMER2);
+			save = TAILQ_FIRST(&cbinfo.list);
+		}
+
 		kprintf("bulkfree lastdrop %d %d\n",
 			vchain->refs, vchain->core.chain_count);
 
@@ -333,6 +395,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	}
 	hammer2_chain_bulkdrop(vchain);
 	kmem_free_swapbacked(&cbinfo.kp);
+	kfree(cbinfo.dedup, M_HAMMER2);
+	cbinfo.dedup = NULL;
 
 	bfi->sstop = cbinfo.sbase;
 
@@ -349,6 +413,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	kprintf("    raced on           %ld\n", cbinfo.count_10_11);
 	kprintf("    ~2MB segs cleaned  %ld\n", cbinfo.count_l0cleans);
 	kprintf("    linear adjusts     %ld\n", cbinfo.count_linadjusts);
+	kprintf("    dedup factor       %ld\n", cbinfo.count_dedup_factor);
 
 	lockmgr(&hmp->bulklk, LK_RELEASE);
 
@@ -356,9 +421,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 }
 
 static int
-h2_bulkfree_callback(hammer2_chain_t *chain, void *info)
+h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 {
-	hammer2_bulkfree_info_t *cbinfo = info;
 	hammer2_bmap_data_t *bmap;
 	hammer2_off_t data_off;
 	uint16_t class;
@@ -371,26 +435,26 @@ h2_bulkfree_callback(hammer2_chain_t *chain, void *info)
 	 */
 	if (hammer2_signal_check(&cbinfo->save_time))
 		return HAMMER2_BULK_ABORT;
+	if (bref->type == HAMMER2_BREF_TYPE_INODE) {
+		++cbinfo->count_inodes_scanned;
+		if ((cbinfo->count_inodes_scanned & 1023) == 0)
+			kprintf(" inodes %6ld bytes %9ld\n",
+				cbinfo->count_inodes_scanned,
+				cbinfo->bytes_scanned);
+	}
 
-#if 0
-	kprintf("scan chain %016jx %016jx/%-2d type=%02x\n",
-		(intmax_t)chain->bref.data_off,
-		(intmax_t)chain->bref.key,
-		chain->bref.keybits,
-		chain->bref.type);
-#endif
 
 	/*
 	 * Calculate the data offset and determine if it is within
 	 * the current freemap range being gathered.
 	 */
 	error = 0;
-	data_off = chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX;
+	data_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
 	if (data_off < cbinfo->sbase || data_off > cbinfo->sstop)
 		return 0;
-	if (data_off < chain->hmp->voldata.allocator_beg)
+	if (data_off < cbinfo->hmp->voldata.allocator_beg)
 		return 0;
-	if (data_off > chain->hmp->voldata.volu_size)
+	if (data_off > cbinfo->hmp->voldata.volu_size)
 		return 0;
 
 	/*
@@ -400,16 +464,16 @@ h2_bulkfree_callback(hammer2_chain_t *chain, void *info)
 	 * Hammer2 does not allow allocations to cross the L1 (2GB) boundary,
 	 * it's a problem if it does.  (Or L0 (2MB) for that matter).
 	 */
-	radix = (int)(chain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
+	radix = (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	bytes = (size_t)1 << radix;
-	class = (chain->bref.type << 8) | hammer2_devblkradix(radix);
+	class = (bref->type << 8) | hammer2_devblkradix(radix);
 
 	if (data_off + bytes > cbinfo->sstop) {
 		kprintf("hammer2_bulkfree_scan: illegal 2GB boundary "
 			"%016jx %016jx/%d\n",
-			(intmax_t)chain->bref.data_off,
-			(intmax_t)chain->bref.key,
-			chain->bref.keybits);
+			(intmax_t)bref->data_off,
+			(intmax_t)bref->key,
+			bref->keybits);
 		bytes = cbinfo->sstop - data_off;	/* XXX */
 	}
 
@@ -430,9 +494,9 @@ h2_bulkfree_callback(hammer2_chain_t *chain, void *info)
 	if (data_off + bytes > HAMMER2_FREEMAP_LEVEL0_SIZE) {
 		kprintf("hammer2_bulkfree_scan: illegal 2MB boundary "
 			"%016jx %016jx/%d\n",
-			(intmax_t)chain->bref.data_off,
-			(intmax_t)chain->bref.key,
-			chain->bref.keybits);
+			(intmax_t)bref->data_off,
+			(intmax_t)bref->key,
+			bref->keybits);
 		bytes = HAMMER2_FREEMAP_LEVEL0_SIZE - data_off;
 	}
 
@@ -443,9 +507,9 @@ h2_bulkfree_callback(hammer2_chain_t *chain, void *info)
 	if (bmap->class != class) {
 		kprintf("hammer2_bulkfree_scan: illegal mixed class "
 			"%016jx %016jx/%d (%04x vs %04x)\n",
-			(intmax_t)chain->bref.data_off,
-			(intmax_t)chain->bref.key,
-			chain->bref.keybits,
+			(intmax_t)bref->data_off,
+			(intmax_t)bref->key,
+			bref->keybits,
 			class, bmap->class);
 	}
 	if (bmap->linear < (int32_t)data_off + (int32_t)bytes)
@@ -751,4 +815,40 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 			bmap->bitmap[6], bmap->bitmap[7]);
 	}
 #endif
+}
+
+/*
+ * BULKFREE DEDUP HEURISTIC
+ *
+ * WARNING! This code is SMP safe but the heuristic allows SMP collisions.
+ *	    All fields must be loaded into locals and validated.
+ */
+static
+int
+h2_bulkfree_test(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref,
+		 int pri)
+{
+	hammer2_dedup_t *dedup;
+	int best;
+	int n;
+	int i;
+
+	n = hammer2_icrc32(&bref->data_off, sizeof(bref->data_off));
+	dedup = cbinfo->dedup + (n & (HAMMER2_DEDUP_HEUR_MASK & ~7));
+
+	for (i = best = 0; i < 8; ++i) {
+		if (dedup[i].data_off == bref->data_off) {
+			if (dedup[i].ticks < pri)
+				dedup[i].ticks = pri;
+			if (pri == 1)
+				cbinfo->count_dedup_factor += dedup[i].ticks;
+			return 1;
+		}
+		if (dedup[i].ticks < dedup[best].ticks)
+			best = i;
+	}
+	dedup[best].data_off = bref->data_off;
+	dedup[best].ticks = pri;
+
+	return 0;
 }

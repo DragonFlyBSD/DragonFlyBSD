@@ -787,7 +787,9 @@ again:
 		 * (this only really works if the DIO system buffer is the
 		 * same size as chain->bytes).
 		 */
-		if ((chain->flags & HAMMER2_CHAIN_DESTROY) && chain->dio) {
+		if ((chain->flags & HAMMER2_CHAIN_DESTROY) &&
+		    (chain->flags & HAMMER2_CHAIN_DEDUP) == 0 &&
+		    chain->dio) {
 			hammer2_io_setinval(chain->dio, chain->bytes);
 		}
 	}

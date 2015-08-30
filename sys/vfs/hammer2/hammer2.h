@@ -377,7 +377,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_UPDATE		0x00000040	/* need parent update */
 #define HAMMER2_CHAIN_DEFERRED		0x00000080	/* flush depth defer */
-#define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
+#define HAMMER2_CHAIN_UNUSED000001000	0x00000100
 #define HAMMER2_CHAIN_ONFLUSH		0x00000200	/* on a flush list */
 #define HAMMER2_CHAIN_FICTITIOUS	0x00000400	/* unsuitable for I/O */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
@@ -1390,9 +1390,10 @@ hammer2_chain_t *hammer2_chain_next(hammer2_chain_t **parentp,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
 				int *cache_indexp, int flags);
-hammer2_chain_t *hammer2_chain_scan(hammer2_chain_t *parent,
-				hammer2_chain_t *chain,
-				int *cache_indexp, int flags);
+hammer2_blockref_t *hammer2_chain_scan(hammer2_chain_t *parent,
+				hammer2_chain_t **chainp,
+				hammer2_blockref_t *bref,
+				int *firstp, int *cache_indexp, int flags);
 
 int hammer2_chain_create(hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp, hammer2_pfs_t *pmp,
@@ -1587,9 +1588,6 @@ void hammer2_cluster_forcegood(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
 
-int hammer2_bulk_scan(hammer2_chain_t *parent,
-			int (*func)(hammer2_chain_t *chain, void *info),
-			void *info);
 int hammer2_bulkfree_pass(hammer2_dev_t *hmp,
 			struct hammer2_ioc_bulkfree *bfi);
 
@@ -1607,6 +1605,7 @@ int hammer2_vop_strategy(struct vop_strategy_args *ap);
 int hammer2_vop_bmap(struct vop_bmap_args *ap);
 void hammer2_write_thread(void *arg);
 void hammer2_bioq_sync(hammer2_pfs_t *pmp);
+void hammer2_dedup_clear(hammer2_dev_t *hmp);
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */
