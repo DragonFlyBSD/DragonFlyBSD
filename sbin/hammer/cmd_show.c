@@ -415,31 +415,35 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		hammer_btree_elm_t elm, int i,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
+	hammer_off_t child_offset;
 	int flags = 0;
 
 	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
-		if (elm->internal.subtree_offset) {
-			struct buffer_info *buffer = NULL;
-			hammer_node_ondisk_t subnode;
-
-			subnode = get_node(elm->internal.subtree_offset,
-					   &buffer);
-			if (subnode == NULL)
-				flags |= FLAG_BADCHILDPARENT;
-			else if (subnode->parent != node_offset)
-				flags |= FLAG_BADCHILDPARENT;
-			rel_buffer(buffer);
-		}
+		child_offset = elm->internal.subtree_offset;
 		if (elm->internal.mirror_tid > node->mirror_tid)
 			flags |= FLAG_BADMIRRORTID;
 
 		if (i == node->count) {
+			if (child_offset != 0)
+				flags |= FLAG_BADCHILDPARENT;
 			/*
 			 * elm->base.btype is not guaranteed for rbn.
 			 */
 			flags |= test_rbn_lr(elm, left_bound, right_bound);
 		} else {
+			if (child_offset == 0) {
+				flags |= FLAG_BADCHILDPARENT;
+			} else {
+				struct buffer_info *buffer = NULL;
+				hammer_node_ondisk_t subnode;
+				subnode = get_node(child_offset, &buffer);
+				if (subnode == NULL)
+					flags |= FLAG_BADCHILDPARENT;
+				else if (subnode->parent != node_offset)
+					flags |= FLAG_BADCHILDPARENT;
+				rel_buffer(buffer);
+			}
 			switch(elm->base.btype) {
 			case HAMMER_BTREE_TYPE_INTERNAL:
 			case HAMMER_BTREE_TYPE_LEAF:
@@ -452,6 +456,13 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		}
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
+		if (elm->leaf.data_offset == 0) {
+			flags |= FLAG_BADCHILDPARENT;
+		}
+		if (elm->leaf.data_len == 0) {
+			flags |= FLAG_BADCHILDPARENT;
+		}
+
 		if (node->mirror_tid == 0 &&
 		    !(node->parent == 0 && node->count == 2)) {
 			flags |= FLAG_BADMIRRORTID;
