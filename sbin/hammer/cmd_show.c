@@ -66,6 +66,12 @@ static int get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			hammer_btree_elm_t elm, int i,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
+static int test_lr(hammer_btree_elm_t elm,
+			hammer_base_elm_t left_bound,
+			hammer_base_elm_t right_bound);
+static int test_rbn_lr(hammer_btree_elm_t elm,
+			hammer_base_elm_t left_bound,
+			hammer_base_elm_t right_bound);
 static void print_bigblock_fill(hammer_off_t offset);
 static int init_btree_search(const char *arg, int filter,
 			btree_search_t search);
@@ -410,11 +416,6 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	int flags = 0;
-	u_int8_t btype;
-
-	btype = elm->base.btype;
-	if (i == node->count)
-		btype = HAMMER_BTREE_TYPE_INTERNAL;  /* XXX */
 
 	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
@@ -433,26 +434,21 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		if (elm->internal.mirror_tid > node->mirror_tid)
 			flags |= FLAG_BADMIRRORTID;
 
-		switch(btype) {
-		case HAMMER_BTREE_TYPE_INTERNAL:
-			if (left_bound == NULL || right_bound == NULL)
+		if (i == node->count) {
+			/*
+			 * elm->base.btype is not guaranteed for rbn.
+			 */
+			flags |= test_rbn_lr(elm, left_bound, right_bound);
+		} else {
+			switch(elm->base.btype) {
+			case HAMMER_BTREE_TYPE_INTERNAL:
+			case HAMMER_BTREE_TYPE_LEAF:
+				flags |= test_lr(elm, left_bound, right_bound);
 				break;
-			if (hammer_btree_cmp(&elm->base, left_bound) < 0)
-				flags |= FLAG_TOOFARLEFT;
-			if (hammer_btree_cmp(&elm->base, right_bound) > 0)
-				flags |= FLAG_TOOFARRIGHT;
-			break;
-		case HAMMER_BTREE_TYPE_LEAF:
-			if (left_bound == NULL || right_bound == NULL)
+			default:
+				flags |= FLAG_BADTYPE;
 				break;
-			if (hammer_btree_cmp(&elm->base, left_bound) < 0)
-				flags |= FLAG_TOOFARLEFT;
-			if (hammer_btree_cmp(&elm->base, right_bound) >= 0)
-				flags |= FLAG_TOOFARRIGHT;
-			break;
-		default:
-			flags |= FLAG_BADTYPE;
-			break;
+			}
 		}
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
@@ -468,14 +464,9 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		    elm->base.delete_tid > node->mirror_tid) {
 			flags |= FLAG_BADMIRRORTID;
 		}
-		switch(btype) {
+		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
-			if (left_bound == NULL || right_bound == NULL)
-				break;
-			if (hammer_btree_cmp(&elm->base, left_bound) < 0)
-				flags |= FLAG_TOOFARLEFT;
-			if (hammer_btree_cmp(&elm->base, right_bound) >= 0)
-				flags |= FLAG_TOOFARRIGHT;
+			flags |= test_lr(elm, left_bound, right_bound);
 			break;
 		default:
 			flags |= FLAG_BADTYPE;
@@ -487,6 +478,34 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		break;
 	}
 	return(flags);
+}
+
+static
+int
+test_lr(hammer_btree_elm_t elm,
+	hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
+{
+	if (left_bound == NULL || right_bound == NULL)
+		return(0);
+	if (hammer_btree_cmp(&elm->base, left_bound) < 0)
+		return(FLAG_TOOFARLEFT);
+	if (hammer_btree_cmp(&elm->base, right_bound) >= 0)
+		return(FLAG_TOOFARRIGHT);
+	return(0);
+}
+
+static
+int
+test_rbn_lr(hammer_btree_elm_t rbn,
+	hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
+{
+	if (left_bound == NULL || right_bound == NULL)
+		return(0);
+	if (hammer_btree_cmp(&rbn->base, left_bound) < 0)
+		return(FLAG_TOOFARLEFT);
+	if (hammer_btree_cmp(&rbn->base, right_bound) > 0)
+		return(FLAG_TOOFARRIGHT);
+	return(0);
 }
 
 static
