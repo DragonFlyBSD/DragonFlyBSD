@@ -646,12 +646,12 @@ print_record(hammer_btree_elm_t elm)
 
 	data_offset = elm->leaf.data_offset;
 	data_len = elm->leaf.data_len;
-	data_buffer = NULL;
+	assert(data_offset != 0);
+	assert(data_len != 0);
 
-	if (data_offset)
-		data = get_buffer_data(data_offset, &data_buffer, 0);
-	else
-		data = NULL;
+	data_buffer = NULL;
+	data = get_buffer_data(data_offset, &data_buffer, 0);
+	assert(data != NULL);
 
 	switch(elm->leaf.base.rec_type) {
 	case HAMMER_RECTYPE_UNKNOWN:
@@ -740,6 +740,7 @@ print_record(hammer_btree_elm_t elm)
 		}
 		break;
 	default:
+		assert(0);
 		break;
 	}
 	rel_buffer(data_buffer);
