@@ -63,7 +63,7 @@ static void print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 			int flags, const char *label, const char *ext,
 			struct zone_stat *stats);
 static int get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
-			hammer_btree_elm_t elm, u_int8_t btype,
+			hammer_btree_elm_t elm, int i,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
 static void print_bigblock_fill(hammer_off_t offset);
@@ -223,8 +223,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 			ext = NULL;
 		}
 
-		flags = get_elm_flags(node, node_offset, elm,
-					elm->base.btype,
+		flags = get_elm_flags(node, node_offset, elm, i,
 					left_bound, right_bound);
 		print_btree_elm(elm, i, node->type, flags, "ELM", ext, stats);
 	}
@@ -232,8 +231,7 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 		assert(i == node->count);  /* boundary */
 		elm = &node->elms[i];
 
-		flags = get_elm_flags(node, node_offset, elm,
-					HAMMER_BTREE_TYPE_INTERNAL,
+		flags = get_elm_flags(node, node_offset, elm, i,
 					left_bound, right_bound);
 		print_btree_elm(elm, i, node->type, flags, "RBN", NULL, stats);
 	}
@@ -408,10 +406,15 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 static
 int
 get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
-		hammer_btree_elm_t elm, u_int8_t btype,
+		hammer_btree_elm_t elm, int i,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	int flags = 0;
+	u_int8_t btype;
+
+	btype = elm->base.btype;
+	if (i == node->count)
+		btype = HAMMER_BTREE_TYPE_INTERNAL;  /* XXX */
 
 	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
