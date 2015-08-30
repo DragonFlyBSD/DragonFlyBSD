@@ -3,6 +3,9 @@
 
 blank	<NO-BREAK_SPACE>
 print	<NO-BREAK_SPACE>
+punct	<CENT_SIGN>;...;<COPYRIGHT_SIGN>;/
+	<LEFT-POINTING_DOUBLE_ANGLE_QUOTATION_MARK>;...;<SUPERSCRIPT_ONE>;/
+	<RIGHT-POINTING_DOUBLE_ANGLE_QUOTATION_MARK>;...;<INVERTED_QUESTION_MARK>
 
 **********************************************************************
 * 0x02B0 - 0x02FF Spacing Modification Letters
