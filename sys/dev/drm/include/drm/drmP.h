@@ -1244,8 +1244,6 @@ extern drm_local_map_t	*drm_getsarea(struct drm_device *dev);
 
 void drm_cdevpriv_dtor(void *cd);
 
-void drm_event_wakeup(struct drm_pending_event *e);
-
 int drm_add_busid_modesetting(struct drm_device *dev,
     struct sysctl_ctx_list *ctx, struct sysctl_oid *top);
 

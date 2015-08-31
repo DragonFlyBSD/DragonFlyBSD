@@ -300,29 +300,24 @@ drm_read(struct dev_read_args *ap)
 {
 	struct cdev *kdev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
-	int ioflag = ap->a_ioflag;
 	struct drm_file *file_priv;
-	struct drm_device *dev;
+	struct drm_device *dev = drm_get_device_from_kdev(kdev);
 	struct drm_pending_event *e;
 	int error;
+	int ret;
 
 	error = devfs_get_cdevpriv(ap->a_fp, (void **)&file_priv);
 	if (error != 0) {
 		DRM_ERROR("can't find authenticator\n");
 		return (EINVAL);
 	}
-	dev = drm_get_device_from_kdev(kdev);
+
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
-	while (list_empty(&file_priv->event_list)) {
-		if ((ioflag & O_NONBLOCK) != 0) {
-			error = EAGAIN;
-			goto out;
-		}
-		error = lksleep(&file_priv->event_space, &dev->event_lock,
-	           PCATCH, "drmrea", 0);
-	       if (error != 0)
-		       goto out;
-	}
+	ret = wait_event_interruptible(file_priv->event_wait,
+				       !list_empty(&file_priv->event_list));
+	if (ret < 0)
+		return ret;
+
 	while (drm_dequeue_event(dev, file_priv, uio, &e)) {
 		lockmgr(&dev->event_lock, LK_RELEASE);
 		error = uiomove((caddr_t)e->event, e->event->length, uio);
@@ -331,23 +326,9 @@ drm_read(struct dev_read_args *ap)
 			return (error);
 		lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	}
-out:
+
 	lockmgr(&dev->event_lock, LK_RELEASE);
 	return (error);
-}
-
-void
-drm_event_wakeup(struct drm_pending_event *e)
-{
-	struct drm_file *file_priv;
-	struct drm_device *dev;
-
-	file_priv = e->file_priv;
-	dev = file_priv->dev;
-	KKASSERT(lockstatus(&dev->event_lock, curthread) != 0);
-
-	wakeup(&file_priv->event_space);
-	KNOTE(&file_priv->dkq.ki_note, 0);
 }
 
 static int

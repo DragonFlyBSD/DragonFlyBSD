@@ -46,6 +46,7 @@ init_waitqueue_head(wait_queue_head_t *eq)
 
 #define wake_up(eq)			wakeup_one(eq)
 #define wake_up_all(eq)			wakeup(eq)
+#define wake_up_interruptible(eq)	wakeup_one(eq)
 #define wake_up_interruptible_all(eq)	wakeup(eq)
 
 /*
