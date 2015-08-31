@@ -56,6 +56,7 @@
 #include "acpi.h"
 #include <dev/acpica/acpivar.h>
 #include <dev/acpica/acpiio.h>
+#include <dev/acpica/acpiio_mcall.h>
 #include "achware.h"
 #include "acnamesp.h"
 #include "acglobal.h"
@@ -292,6 +293,10 @@ SYSCTL_INT(_debug_acpi, OID_AUTO, do_powerstate, CTLFLAG_RW,
 
 /* Allow users to override quirks. */
 TUNABLE_INT("debug.acpi.quirks", &acpi_quirks);
+
+/* Allow to call ACPI methods from userland. */
+static int acpi_allow_mcall;
+TUNABLE_INT("debug.acpi.allow_method_calls", &acpi_allow_mcall);
 
 static int acpi_susp_bounce;
 SYSCTL_INT(_debug_acpi, OID_AUTO, suspend_bounce, CTLFLAG_RW,
@@ -3184,6 +3189,48 @@ acpiioctl(struct dev_ioctl_args *ap)
 	if (state >= ACPI_STATE_S0 && state <= ACPI_S_STATES_MAX)
 	    if (ACPI_SUCCESS(acpi_SetSleepState(sc, state)))
 		error = 0;
+	break;
+    case ACPIIO_DO_MCALL:
+	if (acpi_allow_mcall == 1) {
+	    struct acpi_mcall_ioctl_arg *params;
+	    ACPI_BUFFER result = { ACPI_ALLOCATE_BUFFER, NULL };
+	    ACPI_OBJECT *resobj;
+
+	    error = EINVAL;
+	    params = (struct acpi_mcall_ioctl_arg *)ap->a_data;
+	    params->retval = AcpiEvaluateObject(NULL, params->path,
+		&params->args, &result);
+	    if (ACPI_SUCCESS(params->retval) && result.Pointer != NULL &&
+		params->result.Pointer != NULL) {
+		params->result.Length = min(params->result.Length,
+		    result.Length);
+		copyout(result.Pointer, params->result.Pointer,
+		    params->result.Length);
+		params->reslen = result.Length;
+		if (result.Length >= sizeof(ACPI_OBJECT)) {
+		    resobj = (ACPI_OBJECT *)params->result.Pointer;
+		    switch (resobj->Type) {
+		    case ACPI_TYPE_STRING:
+			resobj->String.Pointer = (char *)
+			    ((UINT8 *)(resobj->String.Pointer) -
+				(UINT8 *)result.Pointer +
+				(UINT8 *)resobj);
+			break;
+		    case ACPI_TYPE_BUFFER:
+			resobj->Buffer.Pointer -= (UINT8 *)result.Pointer -
+			    (UINT8 *)resobj;
+			break;
+		    }
+		}
+		error = 0;
+	    }
+	    if (result.Pointer != NULL)
+		AcpiOsFree(result.Pointer);
+	} else {
+		device_printf(sc->acpi_dev,
+		    "debug.acpi.allow_method_calls must be set\n");
+		error = ENXIO;
+	}
 	break;
     default:
 	error = ENXIO;

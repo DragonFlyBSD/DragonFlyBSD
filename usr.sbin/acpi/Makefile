@@ -1,5 +1,6 @@
 SUBDIR=	\
 	acpibin \
+	acpicall \
 	acpiconf \
 	acpidump \
 	acpiexec \

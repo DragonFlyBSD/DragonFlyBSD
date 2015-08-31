@@ -6,7 +6,9 @@ SRCS=	main.c setup.c syscalls.c syscalls.h ioctl.c ${MACHINE_ARCH}-fbsd.c
 SRCS+=	i386-linux.c linux_syscalls.h
 .endif
 
-CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../sys -I${.CURDIR}/../../sys/dev/drm/include -I.
+CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../sys
+CFLAGS+= -I${.CURDIR}/../../sys/dev/drm/include -I.
+CFLAGS+= -I${.CURDIR}/../../sys/contrib/dev/acpica/source/include
 
 CLEANFILES+=i386l-syscalls.master syscalls.master linux_syscalls.h \
 	syscalls.h ioctl.c

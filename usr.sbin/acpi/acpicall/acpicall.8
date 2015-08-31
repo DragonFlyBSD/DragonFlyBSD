@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+.\" Copyright (c) 2015 The DragonFly Project.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -28,85 +28,108 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 16, 2015
-.Dt ACPIHELP 8
+.Dd August 31, 2015
+.Dt ACPICALL 8
 .Os
 .Sh NAME
-.Nm acpihelp
-.Nd help utility for ASL operators, AML opcodes, and ACPI predefined names
+.Nm acpicall
+.Nd call ACPI methods
 .Sh SYNOPSIS
 .Nm
-.Op Ar option ...
-.Op Ar name/prefix | hex_value
+.Op Fl hv
+.Op Fl b Ar hexstring
+.Op Fl d Ar file
+.Op Fl i Ar number
+.Op Fl o Ar i | s | b | o
+.Op Fl s Ar string
+.Ar path
 .Sh DESCRIPTION
+The
+.Nm
+utility calls the ACPI method
+.Ar path
+with the arguments specified by any
+.Fl b ,
+.Fl i ,
+.Fl o ,
+and
+.Fl s
+options.
+The
+.Ar path
+argument must be a full ACPI namespace path such as
+.Pa \e_SB.PCI0.PEGR.GFX0._DSM .
+.Pp
+Note that in order to be able to use the
+.Nm
+utility, the
+.Va debug.acpi.allow_method_calls
+loader tunable must be specified in
+.Pa /boot/loader.conf .
+.Pp
 The following options are supported:
 .Bl -tag -width indent
-.It Fl a Op Ar name/prefix
-Find/Display both ASL operator and AML opcode name(s).
-.It Fl d
-Display iASL Preprocessor directives.
-.It Fl e Op Ar hex_value
-Decode ACPICA exception code.
-.It Fl h
-Display help.
-.It Fl i
-Display known ACPI Device IDs (_HID).
-.It Fl k Op Ar name/prefix
-Find/Display ASL non-operator keyword(s).
-.It Fl m Op Ar name/prefix
-Find/Display AML opcode name(s).
-.It Fl o Op Ar hex_value
-Decode hex AML opcode.
-.It Fl p Op Ar name/prefix
-Find/Display ASL predefined method name(s).
-.It Fl s Op Ar name/prefix
-Find/Display ASL operator name(s).
-.It Fl t
-Display supported ACPI tables.
-.It Fl u
-Display ACPI-related UUIDs.
+.It Fl b Ar hexstring
+Pass
+.Ar hexstring
+as a buffer argument.
+.It Fl d Ar file
+Specify the path of the ACPI control device.
+The default is
+.Pa /dev/acpi .
+.It Fl i Ar number
+Pass
+.Ar number
+as an integer argument.
+.It Fl o Ar i | s | b | o
+Choose the format to print the result in:
+.Ar ( i ) Ns nteger ,
+.Ar ( s ) Ns tring ,
+.Ar ( b ) Ns uffer ,
+or
+.Ar ( o ) Ns bject .
+.It Fl s Ar string
+Pass
+.Ar string
+as a string argument.
 .It Fl v
-Display version information.
+Increase verbosity.
 .El
+.Sh EXAMPLES
+Note that many ACPI methods are specific to the BIOS and machine in
+question, so it is impossible to present any generic examples that will
+work everywhere.
+Some familiarity with ASL and the DSDT code of the specific machine to
+be tweaked is highly recommended.
 .Pp
-If neither
-.Ar name/prefix
-nor
-.Ar hex_value
-are specified
-.Nm
-defaults to displaying all information available for the specified option.
-.Pp
-If a
-.Ar name/prefix
-but no options are specified
-.Nm
-defaults to finding ASL operator names if
-.Ar name/prefix
-does not start with an underscore, and to finding ASL predefined method
-names if
-.Ar name/prefix
-does start with an underscore.
+The following calls were successfully used to turn off the discrete
+.Tn NVIDIA
+GPU on the
+.Tn Optimus
+based
+.Tn Asus K53SV
+laptop:
+.Bd -literal
+acpicall -b "f8d886a4da0b1b47a72b6042a6b5bee0" \e
+         -i 256 -i 26 -b "01000003" "\_SB.PCI0.PEGR.GFX0._DSM"
+
+acpicall "\_SB.PCI0.PEGR.GFX0._PS3"
+.Ed
 .Sh SEE ALSO
 .Xr acpi 4 ,
 .Xr acpibin 8 ,
-.Xr acpicall 8 ,
 .Xr acpiconf 8 ,
 .Xr acpidump 8 ,
 .Xr acpiexec 8 ,
+.Xr acpihelp 8 ,
 .Xr acpinames 8 ,
 .Xr acpixtract 8 ,
 .Xr iasl 8
-.Pp
-.Lk https://acpica.org/documentation/
 .Sh AUTHORS
-The
 .Nm
-utility is provided by
-.Tn Intel
-as part of their
-.Sy ACPICA
-distribution.
-.Pp
+is based on the
+.Nm acpi_call
+utility by
+.An Maxim Ignatenko Aq Mt gelraen.ua@gmail.com .
 This manual page was written by
 .An Sascha Wildner .

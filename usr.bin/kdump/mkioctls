@@ -49,6 +49,11 @@ BEGIN {
 	print "#include <netinet6/ip6_mroute.h>"
 	print "#include <stdio.h>"
 	print "#include <cam/cam.h>"
+	print "#define ACPI_DEBUG_OUTPUT"
+	print "#define ACPI_APPLICATION"
+	print "#include <contrib/dev/acpica/source/include/acpi.h>"
+	print "#undef ACPI_APPLICATION"
+	print "#undef ACPI_DEBUG_OUTPUT"
 	print ""
 	print ioctl_includes
 	print "const char *ioctlname(u_long);"
