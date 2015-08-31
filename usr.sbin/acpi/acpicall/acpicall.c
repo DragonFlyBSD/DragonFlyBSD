@@ -69,7 +69,7 @@ main(int argc, char *argv[])
 	params.args.Pointer = args;
 
 	while ((c = getopt(argc, argv, "vb:d:i:o:s:")) != -1) {
-		switch(c) {
+		switch (c) {
 		case 'b':
 		case 'i':
 		case 's':
@@ -195,7 +195,7 @@ parse_buffer(ACPI_OBJECT *dst, char *src)
 		exit(1);
 	}
 
-	for(i = 0; i < len; i++) {
+	for (i = 0; i < len; i++) {
 		tmp[0] = src[i * 2];
 		tmp[1] = src[i * 2 + 1];
 		dst->Buffer.Pointer[i] = strtol(tmp, NULL, 16);
@@ -211,7 +211,7 @@ print_params(struct acpi_mcall_ioctl_arg *p)
 
 	printf("path: %s\n", p->path);
 	printf("number of arguments: %d\n", p->args.Count);
-	for(i = 0; i < (int)p->args.Count; i++) {
+	for (i = 0; i < (int)p->args.Count; i++) {
 		printf("argument %d type: ", i + 1);
 		switch (p->args.Pointer[i].Type) {
 		case ACPI_TYPE_INTEGER:
@@ -243,7 +243,7 @@ print_acpi_object(ACPI_OBJECT *obj)
 		printf("%s", obj->String.Pointer);
 		break;
 	case ACPI_TYPE_BUFFER:
-		for(i = 0; i < (int)obj->Buffer.Length; i++)
+		for (i = 0; i < (int)obj->Buffer.Length; i++)
 			printf("%02x", obj->Buffer.Pointer[i]);
 		break;
 	default:
@@ -265,7 +265,7 @@ print_acpi_buffer(ACPI_BUFFER *buf, char format)
 		printf("%s", (char *)buf->Pointer);
 		break;
 	case 'b':
-		for(i = 0; i < (int)buf->Length; i++)
+		for (i = 0; i < (int)buf->Length; i++)
 			printf("%02x", ((UINT8 *)(buf->Pointer))[i]);
 		break;
 	case 'o':
