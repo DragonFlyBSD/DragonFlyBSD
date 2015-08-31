@@ -537,7 +537,6 @@ uipc_send(netmsg_t msg)
 				error = ENOTCONN;
 				break;
 			}
-			/* XXX racy. */
 			unp2 = unp->unp_conn;
 			unp_reference(unp2);
 		}
@@ -570,26 +569,34 @@ uipc_send(netmsg_t msg)
 		 * Note: A better implementation would complain
 		 * if not equal to the peer's address.
 		 */
-		if (!(so->so_state & SS_ISCONNECTED)) {
+		if (unp->unp_conn == NULL) {
 			if (msg->send.nm_addr) {
 				error = unp_connect(so,
 						    msg->send.nm_addr,
 						    msg->send.nm_td);
 				if (error)
 					break;	/* XXX */
-			} else {
+			}
+			/*
+			 * NOTE:
+			 * unp_conn still could be NULL, even if the
+			 * above unp_connect() succeeds; since the
+			 * current unp's token could be released due
+			 * to blocking operations after unp_conn is
+			 * assigned.
+			 */
+			if (unp->unp_conn == NULL) {
 				error = ENOTCONN;
 				break;
 			}
 		}
-
 		if (so->so_state & SS_CANTSENDMORE) {
 			error = EPIPE;
 			break;
 		}
-		if (unp->unp_conn == NULL)
-			panic("uipc_send connected but no connection?");
+
 		unp2 = unp->unp_conn;
+		KASSERT(unp2 != NULL, ("unp is not connected"));
 		so2 = unp2->unp_socket;
 
 		unp_reference(unp2);
