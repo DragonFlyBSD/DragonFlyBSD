@@ -137,14 +137,14 @@ static void    unp_drop(struct unpcb *unp, int error);
  *	unp to be held.
  */
 
-/* NOTE: unp_token MUST be held */
 static __inline void
 unp_reference(struct unpcb *unp)
 {
+	/* 0->1 transition will not work */
+	KKASSERT(unp->unp_refcnt > 0);
 	atomic_add_int(&unp->unp_refcnt, 1);
 }
 
-/* NOTE: unp_token MUST be held */
 static __inline void
 unp_free(struct unpcb *unp)
 {
