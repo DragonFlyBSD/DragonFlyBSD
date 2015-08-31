@@ -1433,7 +1433,6 @@ int  hammer_ip_delete_clean(hammer_cursor_t cursor, hammer_inode_t ip,
 			int *countp);
 int  hammer_ip_sync_data(hammer_cursor_t cursor, hammer_inode_t ip,
 			int64_t offset, void *data, int bytes);
-int  hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t rec);
 int  hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t rec);
 hammer_pseudofs_inmem_t  hammer_load_pseudofs(hammer_transaction_t trans,
 			u_int32_t localization, int *errorp);

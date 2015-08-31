@@ -1259,7 +1259,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	if (hammer_debug_inode)
 		kprintf("DOINSERT LOOKUP %d\n", error);
 	if (error == 0) {
-		kprintf("hammer_ip_sync_record: duplicate rec "
+		kprintf("hammer_ip_sync_record_cursor: duplicate rec "
 			"at (%016llx)\n", (long long)record->leaf.base.key);
 		if (hammer_debug_critical)
 			Debugger("duplicate record1");
