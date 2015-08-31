@@ -729,6 +729,7 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_ISDELETED		0x0020	/* deleted, not in ihidden */
 #define HAMMER2_INODE_ISUNLINKED	0x0040
 #define HAMMER2_INODE_METAGOOD		0x0080	/* inode meta-data good */
+#define HAMMER2_INODE_ONSIDEQ		0x0100	/* on side processing queue */
 
 int hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2);
 RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
@@ -737,13 +738,13 @@ RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
 /*
  * inode-unlink side-structure
  */
-struct hammer2_inode_unlink {
-	TAILQ_ENTRY(hammer2_inode_unlink) entry;
+struct hammer2_inode_sideq {
+	TAILQ_ENTRY(hammer2_inode_sideq) entry;
 	hammer2_inode_t	*ip;
 };
-TAILQ_HEAD(h2_unlk_list, hammer2_inode_unlink);
+TAILQ_HEAD(h2_sideq_list, hammer2_inode_sideq);
 
-typedef struct hammer2_inode_unlink hammer2_inode_unlink_t;
+typedef struct hammer2_inode_sideq hammer2_inode_sideq_t;
 
 /*
  * Transaction management sub-structure under hammer2_pfs
@@ -1139,7 +1140,7 @@ struct hammer2_pfs {
 	uint32_t		inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */
 	struct spinlock		list_spin;
-	struct h2_unlk_list	unlinkq;	/* last-close unlink */
+	struct h2_sideq_list	sideq;		/* last-close dirty/unlink */
 	hammer2_thread_t	sync_thrs[HAMMER2_MAXCLUSTER];
 	uint32_t		cluster_flags;	/* cached cluster flags */
 	int			has_xop_threads;
@@ -1327,7 +1328,7 @@ void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 void hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 			int idx);
 void hammer2_inode_modify(hammer2_inode_t *ip);
-void hammer2_inode_run_unlinkq(hammer2_pfs_t *pmp);
+void hammer2_inode_run_sideq(hammer2_pfs_t *pmp);
 
 hammer2_inode_t *hammer2_inode_create(hammer2_inode_t *dip,
 			struct vattr *vap, struct ucred *cred,

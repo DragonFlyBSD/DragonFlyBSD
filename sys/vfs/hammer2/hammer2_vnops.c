@@ -105,7 +105,7 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	 * so we do not waste time trying to flush them.
 	 *
 	 * Note that deleting the file block chains under the inode chain
-	 * would just be a waste of time.
+	 * would just be a waste of energy, so don't do it.
 	 *
 	 * WARNING: nvtruncbuf() can only be safely called without the inode
 	 *	    lock held due to the way our write thread works.
@@ -170,23 +170,37 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * An unlinked inode may have been relinked to the ihidden directory.
 	 * This occurs if the inode was unlinked while open.  Reclamation of
 	 * these inodes requires processing we cannot safely do here so add
-	 * the inode to the unlinkq in that situation.
+	 * the inode to the sideq in that situation.
+	 *
+	 * A modified inode may require chain synchronization which will no
+	 * longer be driven by a sync or fsync without the vnode, also use
+	 * the sideq for that.
 	 *
 	 * A reclaim can occur at any time so we cannot safely start a
 	 * transaction to handle reclamation of unlinked files.  Instead,
 	 * the ip is left with a reference and placed on a linked list and
 	 * handled later on.
 	 */
-	if ((ip->flags & HAMMER2_INODE_ISUNLINKED) &&
+	if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
+			  HAMMER2_INODE_MODIFIED |
+			  HAMMER2_INODE_RESIZED)) &&
 	    (ip->flags & HAMMER2_INODE_ISDELETED) == 0) {
-		hammer2_inode_unlink_t *ipul;
+		hammer2_inode_sideq_t *ipul;
 
 		ipul = kmalloc(sizeof(*ipul), pmp->minode, M_WAITOK | M_ZERO);
 		ipul->ip = ip;
 
 		hammer2_spin_ex(&pmp->list_spin);
-		TAILQ_INSERT_TAIL(&pmp->unlinkq, ipul, entry);
-		hammer2_spin_unex(&pmp->list_spin);
+		if ((ip->flags & HAMMER2_INODE_ONSIDEQ) == 0) {
+			/* ref -> sideq */
+			atomic_set_int(&ip->flags, HAMMER2_INODE_ONSIDEQ);
+			TAILQ_INSERT_TAIL(&pmp->sideq, ipul, entry);
+			hammer2_spin_unex(&pmp->list_spin);
+		} else {
+			hammer2_spin_unex(&pmp->list_spin);
+			kfree(ipul, pmp->minode);
+			hammer2_inode_drop(ip);		/* vp ref */
+		}
 		/* retain ref from vp for ipul */
 	} else {
 		hammer2_inode_drop(ip);			/* vp ref */
@@ -1604,7 +1618,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	}
 
-	hammer2_inode_run_unlinkq(dip->pmp);
+	hammer2_inode_run_sideq(dip->pmp);
 	hammer2_trans_done(dip->pmp);
 	if (error == 0)
 		cache_unlink(ap->a_nch);
@@ -1664,7 +1678,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	} else {
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	}
-	hammer2_inode_run_unlinkq(dip->pmp);
+	hammer2_inode_run_sideq(dip->pmp);
 	hammer2_trans_done(dip->pmp);
 	if (error == 0)
 		cache_unlink(ap->a_nch);
@@ -1888,7 +1902,7 @@ done2:
 	hammer2_inode_unlock(cdip);
 	hammer2_inode_drop(ip);
 	hammer2_inode_drop(cdip);
-	hammer2_inode_run_unlinkq(fdip->pmp);
+	hammer2_inode_run_sideq(fdip->pmp);
 	hammer2_trans_done(tdip->pmp);
 
 	/*

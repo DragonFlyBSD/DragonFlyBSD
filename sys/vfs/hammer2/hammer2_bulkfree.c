@@ -65,9 +65,11 @@ typedef struct hammer2_bulkfree_info {
 	hammer2_off_t		sstop;
 	hammer2_bmap_data_t	*bmap;
 	int			depth;
-	long			count_10_00;
-	long			count_11_10;
-	long			count_10_11;
+	long			count_10_00;	/* staged->free	     */
+	long			count_11_10;	/* allocated->staged */
+	long			count_00_11;	/* (should not happen) */
+	long			count_01_11;	/* (should not happen) */
+	long			count_10_11;	/* staged->allocated */
 	long			count_l0cleans;
 	long			count_linadjusts;
 	long			count_inodes_scanned;
@@ -410,7 +412,9 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 
 	kprintf("    transition->free   %ld\n", cbinfo.count_10_00);
 	kprintf("    transition->staged %ld\n", cbinfo.count_11_10);
-	kprintf("    raced on           %ld\n", cbinfo.count_10_11);
+	kprintf("    ERR(00)->allocated %ld\n", cbinfo.count_00_11);
+	kprintf("    ERR(01)->allocated %ld\n", cbinfo.count_01_11);
+	kprintf("    staged->allocated  %ld\n", cbinfo.count_10_11);
 	kprintf("    ~2MB segs cleaned  %ld\n", cbinfo.count_l0cleans);
 	kprintf("    linear adjusts     %ld\n", cbinfo.count_linadjusts);
 	kprintf("    dedup factor       %ld\n", cbinfo.count_dedup_factor);
@@ -591,6 +595,10 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	live_chain = NULL;
 	nofree = 1;	/* safety */
 
+	/*
+	 * Iterate each hammer2_bmap_data_t line (128 bytes) managing
+	 * 4MB of storage.
+	 */
 	while (data_off < cbinfo->sstop) {
 		/*
 		 * The freemap is not used below allocator_beg or beyond
@@ -619,7 +627,8 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 					    HAMMER2_LOOKUP_ALWAYS);
 			/*
 			 * If recent allocations were made we avoid races by
-			 * not freeing any blocks.
+			 * not staging or freeing any blocks.  We can still
+			 * remark blocks as fully allocated.
 			 */
 			if (live_chain) {
 				kprintf("live_chain %016jx\n", (intmax_t)key);
@@ -636,6 +645,11 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 					
 		}
 		if (live_chain == NULL) {
+			/*
+			 * XXX if we implement a full recovery mode we need
+			 * to create/recreate missing freemap chains if our
+			 * bmap has any allocated blocks.
+			 */
 			if (bmap->class &&
 			    bmap->avail != HAMMER2_FREEMAP_LEVEL0_SIZE) {
 				kprintf("hammer2_bulkfree: cannot locate "
@@ -661,13 +675,10 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		live = &live_chain->data->bmdata[bmapindex];
 
 		/*
-		 * For now just handle the 11->10, 10->00, and 10->11
-		 * transitions.
+		 * TODO - we could shortcut this by testing that both
+		 * live->class and bmap->class are 0, and both avails are
+		 * set to HAMMER2_FREEMAP_LEVEL0_SIZE (4MB).
 		 */
-		if (live->class == 0 ||
-		    live->avail == HAMMER2_FREEMAP_LEVEL0_SIZE) {
-			goto next;
-		}
 		if (bcmp(live->bitmapq, bmap->bitmapq,
 			 sizeof(bmap->bitmapq)) == 0) {
 			goto next;
@@ -677,6 +688,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 			data_off, bmapindex, live->class, live->avail);
 
 		hammer2_chain_modify(live_chain, cbinfo->mtid, 0, 0);
+
 		h2_bulkfree_sync_adjust(cbinfo, live, bmap, nofree);
 next:
 		data_off += HAMMER2_FREEMAP_LEVEL0_SIZE;
@@ -722,6 +734,10 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 				/*
 				 * in-memory 00		live 11 -> 10
 				 *			live 10 -> 00
+				 *
+				 * Storage might be marked allocated or
+				 * staged and must be remarked staged or
+				 * free.
 				 */
 				switch (lmask & 3) {
 				case 0:	/* 00 */
@@ -737,6 +753,11 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 					    ~((hammer2_bitmap_t)2 << scount);
 					live->avail +=
 						HAMMER2_FREEMAP_BLOCK_SIZE;
+					if (live->avail >
+					    HAMMER2_FREEMAP_LEVEL0_SIZE) {
+						live->avail =
+						    HAMMER2_FREEMAP_LEVEL0_SIZE;
+					}
 					cbinfo->adj_free +=
 						HAMMER2_FREEMAP_BLOCK_SIZE;
 					++cbinfo->count_10_00;
@@ -749,28 +770,36 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 					++cbinfo->count_11_10;
 					break;
 				}
-			} else if ((lmask & 3) == 3) {
+			} else if ((mmask & 3) == 3) {
 				/*
 				 * in-memory 11		live 10 -> 11
 				 *			live ** -> 11
+				 *
+				 * Storage might be incorrectly marked free
+				 * or staged and must be remarked fully
+				 * allocated.
 				 */
 				switch (lmask & 3) {
 				case 0:	/* 00 */
-					kprintf("hammer2_bulkfree: cannot "
-						"transition m=11/l=00\n");
+					++cbinfo->count_00_11;
+					cbinfo->adj_free -=
+						HAMMER2_FREEMAP_BLOCK_SIZE;
+					live->avail -=
+						HAMMER2_FREEMAP_BLOCK_SIZE;
+					if ((int32_t)live->avail < 0)
+						live->avail = 0;
 					break;
 				case 1:	/* 01 */
-					kprintf("hammer2_bulkfree: cannot "
-						"transition m=11/l=01\n");
+					++cbinfo->count_01_11;
 					break;
 				case 2:	/* 10 -> 11 */
-					live->bitmapq[bindex] |=
-						((hammer2_bitmap_t)1 << scount);
 					++cbinfo->count_10_11;
 					break;
 				case 3:	/* 11 */
 					break;
 				}
+				live->bitmapq[bindex] |=
+					((hammer2_bitmap_t)3 << scount);
 			}
 			mmask >>= 2;
 			lmask >>= 2;
@@ -786,7 +815,9 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 		if (live->bitmapq[bindex] != 0)
 			break;
 	}
-	if (bindex < 0) {
+	if (nofree) {
+		/* do nothing */
+	} else if (bindex < 0) {
 		live->avail = HAMMER2_FREEMAP_LEVEL0_SIZE;
 		live->class = 0;
 		live->linear = 0;
@@ -797,6 +828,16 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 			live->linear = bindex * HAMMER2_FREEMAP_BLOCK_SIZE;
 			++cbinfo->count_linadjusts;
 		}
+
+		/*
+		 * XXX this fine-grained measure still has some issues.
+		 */
+		if (live->linear < bindex * HAMMER2_FREEMAP_BLOCK_SIZE) {
+			live->linear = bindex * HAMMER2_FREEMAP_BLOCK_SIZE;
+			++cbinfo->count_linadjusts;
+		}
+	} else {
+		live->linear = HAMMER2_SEGSIZE;
 	}
 
 #if 0

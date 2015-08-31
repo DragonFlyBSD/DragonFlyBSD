@@ -357,7 +357,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 		spin_init(&pmp->inum_spin, "hm2pfsalloc_inum");
 		spin_init(&pmp->xop_spin, "h2xop");
 		RB_INIT(&pmp->inum_tree);
-		TAILQ_INIT(&pmp->unlinkq);
+		TAILQ_INIT(&pmp->sideq);
 		spin_init(&pmp->list_spin, "hm2pfsalloc_list");
 
 		/*
@@ -1434,7 +1434,7 @@ again:
 	/*
 	 * Cycle the volume data lock as a safety (probably not needed any
 	 * more).  To ensure everything is out we need to flush at least
-	 * three times.  (1) The running of the unlinkq can dirty the
+	 * three times.  (1) The running of the sideq can dirty the
 	 * filesystem, (2) A normal flush can dirty the freemap, and
 	 * (3) ensure that the freemap is fully synchronized.
 	 *
@@ -1991,7 +1991,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 */
 	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH |
 			        HAMMER2_TRANS_PREFLUSH);
-	hammer2_inode_run_unlinkq(pmp);
+	hammer2_inode_run_sideq(pmp);
 
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;

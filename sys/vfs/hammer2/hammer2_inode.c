@@ -1342,39 +1342,62 @@ hammer2_inode_chain_sync(hammer2_inode_t *ip)
 }
 
 /*
- * This handles unlinked open files after the vnode is finally dereferenced.
- * To avoid deadlocks it cannot be called from the normal vnode recycling
- * path, so we call it (1) after a unlink, rmdir, or rename, (2) on every
- * flush, and (3) on umount.
+ * The normal filesystem sync no longer has visibility to an inode structure
+ * after its vnode has been reclaimed.  In this situation an unlinked-but-open
+ * inode or a dirty inode may require additional processing to synchronize
+ * ip->meta to its underlying cluster nodes.
+ *
+ * In particular, reclaims can occur in almost any state (for example, when
+ * doing operations on unrelated vnodes) and flushing the reclaimed inode
+ * in the reclaim path itself is a non-starter.
  *
  * Caller must be in a transaction.
  */
 void
-hammer2_inode_run_unlinkq(hammer2_pfs_t *pmp)
+hammer2_inode_run_sideq(hammer2_pfs_t *pmp)
 {
 	hammer2_xop_destroy_t *xop;
-	hammer2_inode_unlink_t *ipul;
+	hammer2_inode_sideq_t *ipul;
 	hammer2_inode_t *ip;
 	int error;
 
-	if (TAILQ_EMPTY(&pmp->unlinkq))
+	if (TAILQ_EMPTY(&pmp->sideq))
 		return;
 
 	LOCKSTART;
 	hammer2_spin_ex(&pmp->list_spin);
-	while ((ipul = TAILQ_FIRST(&pmp->unlinkq)) != NULL) {
-		TAILQ_REMOVE(&pmp->unlinkq, ipul, entry);
-		hammer2_spin_unex(&pmp->list_spin);
+	while ((ipul = TAILQ_FIRST(&pmp->sideq)) != NULL) {
+		TAILQ_REMOVE(&pmp->sideq, ipul, entry);
 		ip = ipul->ip;
+		KKASSERT(ip->flags & HAMMER2_INODE_ONSIDEQ);
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_ONSIDEQ);
+		hammer2_spin_unex(&pmp->list_spin);
 		kfree(ipul, pmp->minode);
 
 		hammer2_inode_lock(ip, 0);
-		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
-		hammer2_xop_start(&xop->head, hammer2_inode_xop_destroy);
-		error = hammer2_xop_collect(&xop->head, 0);
-		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
+			/*
+			 * The inode was unlinked while open, causing H2
+			 * to relink it to a hidden directory to allow
+			 * cluster operations to continue until close.
+			 *
+			 * The inode must be deleted and destroyed.
+			 */
+			xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
+			hammer2_xop_start(&xop->head,
+					  hammer2_inode_xop_destroy);
+			error = hammer2_xop_collect(&xop->head, 0);
+			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 
-		atomic_clear_int(&ip->flags, HAMMER2_INODE_ISDELETED);
+			atomic_clear_int(&ip->flags, HAMMER2_INODE_ISDELETED);
+		} else {
+			/*
+			 * The inode was dirty as-of the reclaim, requiring
+			 * synchronization of ip->meta with its underlying
+			 * chains.
+			 */
+			hammer2_inode_chain_sync(ip);
+		}
 
 		hammer2_inode_unlock(ip);
 		hammer2_inode_drop(ip);			/* ipul ref */
@@ -1458,7 +1481,7 @@ fail:
 /*
  * Inode delete helper (backend, threaded)
  *
- * Generally used by hammer2_run_unlinkq()
+ * Generally used by hammer2_run_sideq()
  */
 void
 hammer2_inode_xop_destroy(hammer2_xop_t *arg, int clindex)

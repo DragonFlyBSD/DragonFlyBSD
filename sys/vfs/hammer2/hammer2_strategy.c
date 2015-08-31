@@ -36,6 +36,11 @@
 /*
  * This module handles low level logical file I/O (strategy) which backs
  * the logical buffer cache.
+ *
+ * [De]compression, zero-block, check codes, and buffer cache operations
+ * for file data is handled here.
+ *
+ * Live dedup makes its home here as well.
  */
 
 #include <sys/param.h>
