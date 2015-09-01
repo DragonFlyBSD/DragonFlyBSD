@@ -35,7 +35,7 @@
 #include "hammer.h"
 
 static int hammer_mem_lookup(hammer_cursor_t cursor);
-static void hammer_mem_first(hammer_cursor_t cursor);
+static int hammer_mem_first(hammer_cursor_t cursor);
 static int hammer_frontend_trunc_callback(hammer_record_t record,
 				void *data __unused);
 static int hammer_bulk_scan_callback(hammer_record_t record, void *data);
@@ -598,7 +598,7 @@ static
 int
 hammer_mem_lookup(hammer_cursor_t cursor)
 {
-	KKASSERT(cursor->ip);
+	KKASSERT(cursor->ip != NULL);
 	if (cursor->iprec) {
 		hammer_rel_mem_record(cursor->iprec);
 		cursor->iprec = NULL;
@@ -617,25 +617,23 @@ hammer_mem_lookup(hammer_cursor_t cursor)
  * will set ATEMEM the same as MEMEOF, and does not return any error.
  */
 static
-void
+int
 hammer_mem_first(hammer_cursor_t cursor)
 {
-	hammer_inode_t ip;
-
-	ip = cursor->ip;
-	KKASSERT(ip != NULL);
-
+	KKASSERT(cursor->ip != NULL);
 	if (cursor->iprec) {
 		hammer_rel_mem_record(cursor->iprec);
 		cursor->iprec = NULL;
 	}
-	hammer_rec_rb_tree_RB_SCAN(&ip->rec_tree, hammer_rec_scan_cmp,
+	hammer_rec_rb_tree_RB_SCAN(&cursor->ip->rec_tree, hammer_rec_scan_cmp,
 				   hammer_rec_scan_callback, cursor);
 
 	if (cursor->iprec)
 		cursor->flags &= ~(HAMMER_CURSOR_MEMEOF | HAMMER_CURSOR_ATEMEM);
 	else
 		cursor->flags |= HAMMER_CURSOR_MEMEOF | HAMMER_CURSOR_ATEMEM;
+
+	return (cursor->iprec ? 0 : ENOENT);
 }
 
 /************************************************************************
