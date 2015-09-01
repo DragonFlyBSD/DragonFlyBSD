@@ -133,7 +133,8 @@ struct namecache {
     int			nc_timeout;	/* compared against ticks, or 0 */
     u_int		nc_lockstatus;	/* namespace locking */
     struct thread	*nc_locktd;	/* namespace locking */
-    long		nc_namecache_gen; /* cmp against mnt_namecache_gen */
+    u_int		nc_namecache_gen; /* mount generation (autoclear) */
+    u_int		nc_generation;	/* rename/unlink generation */
 };
 
 /*

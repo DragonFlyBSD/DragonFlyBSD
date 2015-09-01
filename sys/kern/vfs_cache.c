@@ -1542,8 +1542,10 @@ _cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 	KKASSERT(_cache_lockstatus(ncp) == LK_EXCLUSIVE);
 
 	_cache_setunresolved(ncp);
-	if (flags & CINV_DESTROY)
+	if (flags & CINV_DESTROY) {
 		ncp->nc_flag |= NCF_DESTROYED;
+		++ncp->nc_generation;
+	}
 	if ((flags & CINV_CHILDREN) && 
 	    (kid = TAILQ_FIRST(&ncp->nc_list)) != NULL
 	) {
@@ -1714,6 +1716,8 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 	char *oname;
 	char *nname;
 
+	++fncp->nc_generation;
+	++tncp->nc_generation;
 	if (tncp->nc_nlen) {
 		nname = kmalloc(tncp->nc_nlen + 1, M_VFSCACHE, M_WAITOK);
 		bcopy(tncp->nc_name, nname, tncp->nc_nlen);
@@ -1786,6 +1790,7 @@ _cache_unlink(struct namecache *ncp)
 	 * name to be created under ncp->nc_parent.
 	 */
 	ncp->nc_flag |= NCF_DESTROYED;
+	++ncp->nc_generation;
 
 	/*
 	 * Attempt to trigger a deactivation.  Set VREF_FINALIZE to

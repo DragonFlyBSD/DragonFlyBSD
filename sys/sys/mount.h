@@ -213,7 +213,8 @@ struct mount {
 	TAILQ_ENTRY(mount) mnt_list;		/* mount list */
 	struct vfsops	*mnt_op;		/* operations on fs */
 	struct vfsconf	*mnt_vfc;		/* configuration info */
-	long		mnt_namecache_gen;	/* ++ to clear negative hits */
+	u_int		mnt_namecache_gen;	/* ++ to clear negative hits */
+	u_int		mnt_unused01;
 	struct vnode	*mnt_syncer;		/* syncer vnode */
 	struct syncer_ctx *mnt_syncer_ctx;	/* syncer process context */
 	struct vnodelst	mnt_nvnodelist;		/* list of vnodes this mount */

@@ -3859,6 +3859,8 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	struct vnode *tdvp;
 	struct mount *mp;
 	int error;
+	u_int fncp_gen;
+	u_int tncp_gen;
 
 	bwillinode(1);
 	fromnd->nl_flags |= NLC_REFDVP | NLC_RENAME_SRC;
@@ -3880,6 +3882,9 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	 */
 	KKASSERT(fromnd->nl_flags & NLC_NCPISLOCKED);
 	fromnd->nl_flags &= ~NLC_NCPISLOCKED;
+
+	fncp_gen = fromnd->nl_nch.ncp->nc_generation;
+
 	cache_unlock(&fromnd->nl_nch);
 
 	tond->nl_flags |= NLC_RENAME_DST | NLC_REFDVP;
@@ -3887,6 +3892,8 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 		cache_drop(&fnchd);
 		return (error);
 	}
+	tncp_gen = tond->nl_nch.ncp->nc_generation;
+
 	if ((tnchd.ncp = tond->nl_nch.ncp->nc_parent) == NULL) {
 		cache_drop(&fnchd);
 		return (ENOENT);
@@ -3928,6 +3935,21 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	fromnd->nl_flags |= NLC_NCPISLOCKED;
 
 	/*
+	 * If the namecache generation changed for either fromnd or tond,
+	 * we must retry.
+	 */
+	if (fromnd->nl_nch.ncp->nc_generation != fncp_gen ||
+	    tond->nl_nch.ncp->nc_generation != tncp_gen) {
+		kprintf("kern_rename: retry due to gen on: "
+			"\"%s\" -> \"%s\"\n",
+			fromnd->nl_nch.ncp->nc_name,
+			tond->nl_nch.ncp->nc_name);
+		cache_drop(&fnchd);
+		cache_drop(&tnchd);
+		return (EAGAIN);
+	}
+
+	/*
 	 * If either fromnd or tond are marked destroyed a ripout occured
 	 * out from under us and we must retry.
 	 */
@@ -3944,7 +3966,8 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	}
 
 	/*
-	 * make sure the parent directories linkages are the same
+	 * Make sure the parent directories linkages are the same.
+	 * XXX shouldn't be needed any more w/ generation check above.
 	 */
 	if (fnchd.ncp != fromnd->nl_nch.ncp->nc_parent ||
 	    tnchd.ncp != tond->nl_nch.ncp->nc_parent) {
