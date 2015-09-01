@@ -848,6 +848,8 @@ static void send_vblank_event(struct drm_device *dev,
 	list_add_tail(&e->base.link,
 		      &e->base.file_priv->event_list);
 	wake_up_interruptible(&e->base.file_priv->event_wait);
+	/* XXX: DragonFly-specific */
+	KNOTE(&e->base.file_priv->dkq.ki_note, 0);
 #if 0
 	trace_drm_vblank_event_delivered(e->base.pid, e->pipe,
 					 e->event.sequence);
