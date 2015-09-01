@@ -26,8 +26,10 @@ SRCS+=	pread.c pwrite.c preadv.c pwritev.c
 # Add machine dependent asm sources:
 SRCS+=${MDASM}
 
+# After 1 OCT 2015, verify no impacts with 3rd party software, then
+# remove the following 2 lines and the stack_protector.c source file
 # Add stack dependant asm sources:
-SRCS+=		stack_protector.c
+# SRCS+=		stack_protector.c
 
 # Look through the complete list of syscalls (MIASM) for names that are
 # not defined with machine dependent implementations (MDASM) and are
