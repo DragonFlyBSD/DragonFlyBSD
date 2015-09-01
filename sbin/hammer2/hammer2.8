@@ -140,7 +140,7 @@ There are two exceptions.
 If you mount a SOFT_SLAVE or a SOFT_MASTER then soft quorum semantics are
 employed... the soft slave or soft master's current state will always be used
 and the quorum protocol will not be used.  The soft PFS will still be
-synchronized to masters in the background when available. 
+synchronized to masters in the background when available.
 Also, you can use 'mount -o local' to mount ONLY a local HAMMER2 PFS and
 not run any network or quorum protocols for the mount.
 All such mounts except for a SOFT_MASTER mount will be read-only.
@@ -358,7 +358,7 @@ When you
 .Xr newfs_hammer2 8
 a HAMMER2 filesystem or use the 'pfs-create' directive on one already mounted
 to create a new PFS, with no special options, you wind up with a PFS
-typed as a MASTER and a unique cluster uuid, but because there is only one 
+typed as a MASTER and a unique cluster uuid, but because there is only one
 PFS for that cluster (for each PFS you create via pfs-create), it will
 act just like a normal filesystem would act and does not require any special
 protocols to operate.
