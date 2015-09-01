@@ -5165,13 +5165,126 @@ blank	<NO-BREAK_SPACE>
 digit	<SUPERSCRIPT_TWO>;<SUPERSCRIPT_THREE>;<SUPERSCRIPT_ONE>
 punct	<INVERTED_EXCLAMATION_MARK>;...;<COPYRIGHT_SIGN>;/
 	<LEFT-POINTING_DOUBLE_ANGLE_QUOTATION_MARK>;...;<PLUS-MINUS_SIGN>;/
-	<ACUTE_ACCENT>;...;<CEDILLA>;/
+	<ACUTE_ACCENT>;/
+	<PILCROW_SIGN>;...;<CEDILLA>;/
 	<RIGHT-POINTING_DOUBLE_ANGLE_QUOTATION_MARK>;...;<INVERTED_QUESTION_MARK>
+number	<VULGAR_FRACTION_ONE_QUARTER>;...;<VULGAR_FRACTION_THREE_QUARTERS>
 cntrl	<CONTROL-0080>;...;<APPLICATION_PROGRAM_COMMAND>
-graph	<NO-BREAK_SPACE>;...;<INVERTED_QUESTION_MARK>
+graph	<INVERTED_EXCLAMATION_MARK>;...;<INVERTED_QUESTION_MARK>
 
 punct	<DIVISION_SIGN>;<MULTIPLICATION_SIGN>
 graph	<DIVISION_SIGN>;<MULTIPLICATION_SIGN>
+
+**********************************************************************
+* Complete set of "special" characters
+**********************************************************************
+
+special	<EXCLAMATION_MARK>;...;<SOLIDUS>;/
+	<COLON>;...;<COMMERCIAL_AT>;/
+	<LEFT_SQUARE_BRACKET>;...;<GRAVE_ACCENT>;/
+	<LEFT_CURLY_BRACKET>;...;<TILDE>;/
+	<INVERTED_EXCLAMATION_MARK>;...;<ACUTE_ACCENT>;/
+	<MIDDLE_DOT>;...;<INVERTED_QUESTION_MARK>;/
+	<MULTIPLICATION_SIGN>;/
+	<DIVISION_SIGN>;/
+	<HYPHEN>;...;<HYPHENATION_POINT>;/
+	<PER_MILLE_SIGN>;...;<VERTICAL_FOUR_DOTS>
+
+**********************************************************************
+* Supplement generated sections with "number" classification
+**********************************************************************
+
+digit	<ARABIC-INDIC_DIGIT_ZERO>;...;<ARABIC-INDIC_DIGIT_NINE>
+digit	<EXTENDED_ARABIC-INDIC_DIGIT_ZERO>;...;<EXTENDED_ARABIC-INDIC_DIGIT_NINE>
+digit	<DEVANAGARI_DIGIT_ZERO>;...;<DEVANAGARI_DIGIT_NINE>
+digit	<BENGALI_DIGIT_ZERO>;...;<BENGALI_DIGIT_NINE>
+number	<BENGALI_CURRENCY_NUMERATOR_ONE>;...;<BENGALI_CURRENCY_DENOMINATOR_SIXTEEN>
+digit	<GURMUKHI_DIGIT_ZERO>;...;<GURMUKHI_DIGIT_NINE>
+digit	<GUJARATI_DIGIT_ZERO>;...;<GUJARATI_DIGIT_NINE>
+digit	<ORIYA_DIGIT_ZERO>;...;<ORIYA_DIGIT_NINE>
+digit	<TAMIL_DIGIT_ZERO>;...;<TAMIL_DIGIT_NINE>
+number	<TAMIL_NUMBER_TEN>;...;<TAMIL_NUMBER_ONE_THOUSAND>
+digit	<TELUGU_DIGIT_ZERO>;...;<TELUGU_DIGIT_NINE>
+number	<TELUGU_FRACTION_DIGIT_ZERO_FOR_ODD_POWERS_OF_FOUR>;...;<TELUGU_FRACTION_DIGIT_THREE_FOR_EVEN_POWERS_OF_FOUR>
+digit	<KANNADA_DIGIT_ZERO>;...;<KANNADA_DIGIT_NINE>
+digit	<MALAYALAM_DIGIT_ZERO>;...;<MALAYALAM_DIGIT_NINE>
+number	<MALAYALAM_NUMBER_TEN>;...;<MALAYALAM_FRACTION_THREE_QUARTERS>
+digit	<THAI_DIGIT_ZERO>;...;<THAI_DIGIT_NINE>
+digit	<LAO_DIGIT_ZERO>;...;<LAO_DIGIT_NINE>
+digit	<TIBETAN_DIGIT_ZERO>;...;<TIBETAN_DIGIT_NINE>
+number	<TIBETAN_DIGIT_HALF_ONE>;...;<TIBETAN_DIGIT_HALF_ZERO>
+digit	<MYANMAR_DIGIT_ZERO>;...;<MYANMAR_DIGIT_NINE>
+digit	<MYANMAR_SHAN_DIGIT_ZERO>;...;<MYANMAR_SHAN_DIGIT_NINE>
+digit	<ETHIOPIC_DIGIT_ONE>;...;<ETHIOPIC_DIGIT_NINE>
+number	<ETHIOPIC_NUMBER_TEN>;...;<ETHIOPIC_NUMBER_TEN_THOUSAND>
+digit	<KHMER_DIGIT_ZERO>;...;<KHMER_DIGIT_NINE>
+number	<KHMER_SYMBOL_LEK_ATTAK_SON>;...;<KHMER_SYMBOL_LEK_ATTAK_PRAM-BUON>
+digit	<VAI_DIGIT_ZERO>;...;<VAI_DIGIT_NINE>
+number	<ROMAN_NUMERAL_ONE>;...;<ROMAN_NUMERAL_ONE_HUNDRED_THOUSAND>
+number	<PARENTHESIZED_IDEOGRAPH_ONE>;...;<PARENTHESIZED_IDEOGRAPH_TEN>
+number	<CIRCLED_NUMBER_TEN_ON_BLACK_SQUARE>;...;<CIRCLED_NUMBER_EIGHTY_ON_BLACK_SQUARE>
+number	<CIRCLED_NUMBER_TWENTY_ONE>;...;<CIRCLED_NUMBER_THIRTY_FIVE>
+number	<CIRCLED_IDEOGRAPH_ONE>;...;<CIRCLED_IDEOGRAPH_TEN>
+number	<CIRCLED_NUMBER_THIRTY_SIX>;...;<CIRCLED_NUMBER_FIFTY>
+number	<CJK_UNIFIED_IDEOGRAPH-3405>;/
+	<CJK_UNIFIED_IDEOGRAPH-3483>;/
+	<CJK_UNIFIED_IDEOGRAPH-382A>;/
+	<CJK_UNIFIED_IDEOGRAPH-3B4D>;/
+	<CJK_UNIFIED_IDEOGRAPH-4E00>;/
+	<CJK_UNIFIED_IDEOGRAPH-4E03>;/
+	<CJK_UNIFIED_IDEOGRAPH-4E07>;/
+	<CJK_UNIFIED_IDEOGRAPH-4E09>;/
+	<CJK_UNIFIED_IDEOGRAPH-4E5D>;/
+	<CJK_UNIFIED_IDEOGRAPH-4E8C>;/
+	<CJK_UNIFIED_IDEOGRAPH-4E94>;/
+	<CJK_UNIFIED_IDEOGRAPH-4E96>;/
+	<CJK_UNIFIED_IDEOGRAPH-4EBF>;/
+	<CJK_UNIFIED_IDEOGRAPH-4EC0>;/
+	<CJK_UNIFIED_IDEOGRAPH-4EDF>;/
+	<CJK_UNIFIED_IDEOGRAPH-4EE8>;/
+	<CJK_UNIFIED_IDEOGRAPH-4F0D>;/
+	<CJK_UNIFIED_IDEOGRAPH-4F70>;/
+	<CJK_UNIFIED_IDEOGRAPH-5104>;/
+	<CJK_UNIFIED_IDEOGRAPH-5146>;/
+	<CJK_UNIFIED_IDEOGRAPH-5169>;/
+	<CJK_UNIFIED_IDEOGRAPH-516B>;/
+	<CJK_UNIFIED_IDEOGRAPH-516D>;/
+	<CJK_UNIFIED_IDEOGRAPH-5341>;/
+	<CJK_UNIFIED_IDEOGRAPH-5343>;...;<CJK_UNIFIED_IDEOGRAPH-5345>;/
+	<CJK_UNIFIED_IDEOGRAPH-534C>;/
+	<CJK_UNIFIED_IDEOGRAPH-53C1>;...;<CJK_UNIFIED_IDEOGRAPH-53C4>;/
+	<CJK_UNIFIED_IDEOGRAPH-56DB>;/
+	<CJK_UNIFIED_IDEOGRAPH-58F1>;/
+	<CJK_UNIFIED_IDEOGRAPH-58F9>;/
+	<CJK_UNIFIED_IDEOGRAPH-5E7A>;/
+	<CJK_UNIFIED_IDEOGRAPH-5EFE>;/
+	<CJK_UNIFIED_IDEOGRAPH-5EFF>;/
+	<CJK_UNIFIED_IDEOGRAPH-5F0C>;...;<CJK_UNIFIED_IDEOGRAPH-5F0E>;/
+	<CJK_UNIFIED_IDEOGRAPH-5F10>;/
+	<CJK_UNIFIED_IDEOGRAPH-62FE>;/
+	<CJK_UNIFIED_IDEOGRAPH-634C>;/
+	<CJK_UNIFIED_IDEOGRAPH-67D2>;/
+	<CJK_UNIFIED_IDEOGRAPH-6F06>;/
+	<CJK_UNIFIED_IDEOGRAPH-7396>;/
+	<CJK_UNIFIED_IDEOGRAPH-767E>;/
+	<CJK_UNIFIED_IDEOGRAPH-8086>;/
+	<CJK_UNIFIED_IDEOGRAPH-842C>;/
+	<CJK_UNIFIED_IDEOGRAPH-8CAE>;/
+	<CJK_UNIFIED_IDEOGRAPH-83B3>;/
+	<CJK_UNIFIED_IDEOGRAPH-8D30>;/
+	<CJK_UNIFIED_IDEOGRAPH-9621>;/
+	<CJK_UNIFIED_IDEOGRAPH-9646>;/
+	<CJK_UNIFIED_IDEOGRAPH-964C>;/
+	<CJK_UNIFIED_IDEOGRAPH-9678>;/
+	<CJK_UNIFIED_IDEOGRAPH-96F6>
+number	<CJK_COMPATIBILITY_IDEOGRAPH-F96B>;/
+	<CJK_COMPATIBILITY_IDEOGRAPH-F973>;/
+	<CJK_COMPATIBILITY_IDEOGRAPH-F978>;/
+	<CJK_COMPATIBILITY_IDEOGRAPH-F9B2>;/
+	<CJK_COMPATIBILITY_IDEOGRAPH-F9D1>;/
+	<CJK_COMPATIBILITY_IDEOGRAPH-F9D3>;/
+	<CJK_COMPATIBILITY_IDEOGRAPH-F9FD>
+digit	<FULLWIDTH_DIGIT_ZERO>;...;<FULLWIDTH_DIGIT_NINE>
 
 **********************************************************************
 * 0x02B0 - 0x02FF Spacing Modification Letters
@@ -5257,8 +5370,8 @@ graph	<THAANA_LETTER_HAA>;...;<THAANA_LETTER_NAA>
 * 0x07C0 - 0x07FF Nko
 **********************************************************************
 
-graph	<NKO_DIGIT_ZERO>;...;<NKO_LAJANYALAN>
 digit	<NKO_DIGIT_ZERO>;...;<NKO_DIGIT_NINE>
+graph	<NKO_LETTER_A>;...;<NKO_LAJANYALAN>
 
 **********************************************************************
 * 0x0800 - 0x083F Samaritan
@@ -5290,6 +5403,7 @@ graph	<OGHAM_SPACE_MARK>;...;<OGHAM_REVERSED_FEATHER_MARK>
 **********************************************************************
 
 graph	<RUNIC_LETTER_FEHU_FEOH_FE_F>;...;<RUNIC_LETTER_FRANKS_CASKET_AESC>
+number	<RUNIC_ARLAUG_SYMBOL>;...;<RUNIC_BELGTHOR_SYMBOL>
 
 **********************************************************************
 * 0x1700 - 0x171F Tagalog
@@ -5319,7 +5433,7 @@ graph	<TAGBANWA_LETTER_A>;...;<TAGBANWA_VOWEL_SIGN_U>
 * 0x1800 - 0x18AF Mongolian
 **********************************************************************
 
-graph	<MONGOLIAN_BIRGA>;...;<MONGOLIAN_DIGIT_NINE>;/
+graph	<MONGOLIAN_BIRGA>;...;<MONGOLIAN_VOWEL_SEPARATOR>;/
 	<MONGOLIAN_LETTER_A>;...;<MONGOLIAN_LETTER_MANCHU_ZHA>;/
 	<MONGOLIAN_LETTER_ALI_GALI_ANUSVARA_ONE>;...;/
 	<MONGOLIAN_LETTER_MANCHU_ALI_GALI_LHA>
@@ -5339,7 +5453,8 @@ graph	<LIMBU_VOWEL-CARRIER_LETTER>;...;<LIMBU_LETTER_TRA>;/
 	<LIMBU_VOWEL_SIGN_A>;...;<LIMBU_SUBJOINED_LETTER_WA>;/
 	<LIMBU_SMALL_LETTER_KA>;...;<LIMBU_SIGN_SA-I>;/
 	<LIMBU_SIGN_LOO>;/
-	<LIMBU_EXCLAMATION_MARK>;...;<LIMBU_DIGIT_NINE>
+	<LIMBU_EXCLAMATION_MARK>;/
+	<LIMBU_QUESTION_MARK>
 digit	<LIMBU_DIGIT_ZERO>;...;<LIMBU_DIGIT_NINE>
 
 **********************************************************************
@@ -5356,7 +5471,6 @@ graph	<TAI_LE_LETTER_KA>;...;<TAI_LE_LETTER_AI>;/
 graph	<NEW_TAI_LUE_LETTER_HIGH_QA>;...;<NEW_TAI_LUE_LETTER_LOW_SUA>;/
 	<NEW_TAI_LUE_VOWEL_SIGN_VOWEL_SHORTENER>;...;/
 	<NEW_TAI_LUE_TONE_MARK-2>;/
-	<NEW_TAI_LUE_DIGIT_ZERO>;...;<NEW_TAI_LUE_THAM_DIGIT_ONE>;/
 	<NEW_TAI_LUE_SIGN_LAE>;/
 	<NEW_TAI_LUE_SIGN_LAEV>
 digit	<NEW_TAI_LUE_DIGIT_ZERO>;...;<NEW_TAI_LUE_THAM_DIGIT_ONE>
@@ -5376,8 +5490,6 @@ graph	<BUGINESE_LETTER_KA>;...;<BUGINESE_VOWEL_SIGN_AE>;/
 graph	<TAI_THAM_LETTER_HIGH_KA>;...;<TAI_THAM_CONSONANT_SIGN_SA>;/
 	<TAI_THAM_SIGN_SAKOT>;...;<TAI_THAM_SIGN_KHUEN-LUE_KARAN>;/
 	<TAI_THAM_COMBINING_CRYPTOGRAMMIC_DOT>;/
-	<TAI_THAM_HORA_DIGIT_ZERO>;...;<TAI_THAM_HORA_DIGIT_NINE>;/
-	<TAI_THAM_THAM_DIGIT_ZERO>;...;<TAI_THAM_THAM_DIGIT_NINE>;/
 	<TAI_THAM_SIGN_WIANG>;...;<TAI_THAM_SIGN_CAANG>
 digit	<TAI_THAM_HORA_DIGIT_ZERO>;...;<TAI_THAM_HORA_DIGIT_NINE>;/
 	<TAI_THAM_THAM_DIGIT_ZERO>;...;<TAI_THAM_THAM_DIGIT_NINE>
@@ -5386,15 +5498,14 @@ digit	<TAI_THAM_HORA_DIGIT_ZERO>;...;<TAI_THAM_HORA_DIGIT_NINE>;/
 * 0x1AB0 - 0x1AFF Combining Diacritical Marks Extended
 **********************************************************************
 
-graph	<COMBINING_DOUBLED_CIRCUMFLEX_ACCENT>;...;/
-	<COMBINING_PARENTHESES_OVERLAY>
+graph	<COMBINING_DOUBLED_CIRCUMFLEX_ACCENT>;...;<COMBINING_PARENTHESES_OVERLAY>
 
 **********************************************************************
 * 0x1B00 - 0x1B7F Balinese
 **********************************************************************
 
 graph	<BALINESE_SIGN_ULU_RICEM>;...;<BALINESE_LETTER_ASYURA_SASAK>;/
-	<BALINESE_DIGIT_ZERO>;...;<BALINESE_MUSICAL_SYMBOL_LEFT-HAND_OPEN_PING>
+	<BALINESE_PANTI>;...;<BALINESE_MUSICAL_SYMBOL_LEFT-HAND_OPEN_PING>
 digit	<BALINESE_DIGIT_ZERO>;...;<BALINESE_DIGIT_NINE>
 
 **********************************************************************
@@ -5416,7 +5527,7 @@ graph	<BATAK_LETTER_A>;...;<BATAK_PANONGONAN>;/
 **********************************************************************
 
 graph	<LEPCHA_LETTER_KA>;...;<LEPCHA_SIGN_NUKTA>;/
-	<LEPCHA_PUNCTUATION_TA-ROL>;...;<LEPCHA_DIGIT_NINE>;/
+	<LEPCHA_PUNCTUATION_TA-ROL>;...;<LEPCHA_PUNCTUATION_TSHOOK>;/
 	<LEPCHA_LETTER_TTA>;...;<LEPCHA_LETTER_DDA>
 digit	<LEPCHA_DIGIT_ZERO>;...;<LEPCHA_DIGIT_NINE>
 
@@ -5424,7 +5535,7 @@ digit	<LEPCHA_DIGIT_ZERO>;...;<LEPCHA_DIGIT_NINE>
 * 0x1C50 - 0x1C7F Ol Chiki
 **********************************************************************
 
-graph	<OL_CHIKI_DIGIT_ZERO>;...;<OL_CHIKI_PUNCTUATION_DOUBLE_MUCAAD>
+graph	<OL_CHIKI_LETTER_LA>;...;<OL_CHIKI_PUNCTUATION_DOUBLE_MUCAAD>
 digit	<OL_CHIKI_DIGIT_ZERO>;...;<OL_CHIKI_DIGIT_NINE>
 
 **********************************************************************
@@ -5452,8 +5563,6 @@ graph	<COMBINING_DOTTED_GRAVE_ACCENT>;...;<COMBINING_UP_TACK_ABOVE>;/
 * 0x2000 - 0x206F General Punctuation
 **********************************************************************
 
-graph	<HYPHEN>;...;<HYPHENATION_POINT>;/
-	<PER_MILLE_SIGN>;...;<VERTICAL_FOUR_DOTS>
 space	<EN_QUAD>;...;<RIGHT-TO-LEFT_MARK>;/
 	<LINE_SEPARATOR>;...;<NARROW_NO-BREAK_SPACE>
 punct	<HYPHEN>;...;<HYPHENATION_POINT>;/
@@ -5464,7 +5573,8 @@ punct	<HYPHEN>;...;<HYPHENATION_POINT>;/
 **********************************************************************
 
 graph	<SUPERSCRIPT_ZERO>;...;<LATIN_SUBSCRIPT_SMALL_LETTER_T>
-digit	<SUPERSCRIPT_ZERO>;<SUPERSCRIPT_FOUR>;...;<SUPERSCRIPT_NINE>
+digit	<SUPERSCRIPT_ZERO>
+digit	<SUPERSCRIPT_FOUR>;...;<SUPERSCRIPT_NINE>
 digit	<SUBSCRIPT_ZERO>;...;<SUBSCRIPT_NINE>
 punct	<SUPERSCRIPT_MINUS>;...;<SUPERSCRIPT_RIGHT_PARENTHESIS>
 punct	<SUBSCRIPT_PLUS_SIGN>;...;<SUBSCRIPT_RIGHT_PARENTHESIS>
@@ -5476,7 +5586,6 @@ lower	<SUPERSCRIPT_LATIN_SMALL_LETTER_I>;/
 * 0x20A0 - 0x20CF Currency Symbols
 **********************************************************************
 
-graph	<EURO-CURRENCY_SIGN>;...;<RUBLE_SIGN>
 punct	<EURO-CURRENCY_SIGN>;...;<RUBLE_SIGN>
 
 **********************************************************************
@@ -5530,44 +5639,37 @@ toupper	(<TURNED_SMALL_F>,<TURNED_CAPITAL_F>)
 * 0x2150 - 0x218F Number Forms (differential)
 **********************************************************************
 
-graph	<VULGAR_FRACTION_ONE_SEVENTH>;...;<FRACTION_NUMERATOR_ONE>;/
-	<VULGAR_FRACTION_ZERO_THIRDS>
-special	<VULGAR_FRACTION_ONE_SEVENTH>;...;<FRACTION_NUMERATOR_ONE>;/
+number	<VULGAR_FRACTION_ONE_SEVENTH>;...;<FRACTION_NUMERATOR_ONE>;/
 	<VULGAR_FRACTION_ZERO_THIRDS>
 
 **********************************************************************
 * 0x2190 - 0x21FF Arrows
 **********************************************************************
 
-graph	<LEFTWARDS_ARROW>;...;<LEFT_RIGHT_OPEN-HEADED_ARROW>
 punct	<LEFTWARDS_ARROW>;...;<LEFT_RIGHT_OPEN-HEADED_ARROW>
 
 **********************************************************************
 * 0x2200 - 0x22FF Mathematical Operators
 **********************************************************************
 
-graph	<FOR_ALL>;...;<Z_NOTATION_BAG_MEMBERSHIP>
 punct	<FOR_ALL>;...;<Z_NOTATION_BAG_MEMBERSHIP>
 
 **********************************************************************
 * 0x2300 - 0x23FF Miscellaneous Technical
 **********************************************************************
 
-graph	<DIAMETER_SIGN>;...;<BLACK_CIRCLE_FOR_RECORD>
 punct	<DIAMETER_SIGN>;...;<BLACK_CIRCLE_FOR_RECORD>
 
 **********************************************************************
 * 0x2400 - 0x243F Control Pictures
 **********************************************************************
 
-graph	<SYMBOL_FOR_NULL>;...;<SYMBOL_FOR_SUBSTITUTE_FORM_TWO>
 punct	<SYMBOL_FOR_NULL>;...;<SYMBOL_FOR_SUBSTITUTE_FORM_TWO>
 
 **********************************************************************
 * 0x2440 - 0x245F Optical Character Recognition
 **********************************************************************
 
-graph	<OCR_HOOK>;...;<OCR_DOUBLE_BACKSLASH>
 punct	<OCR_HOOK>;...;<OCR_DOUBLE_BACKSLASH>
 
 **********************************************************************
@@ -5575,51 +5677,56 @@ punct	<OCR_HOOK>;...;<OCR_DOUBLE_BACKSLASH>
 **********************************************************************
 
 graph	<CIRCLED_DIGIT_ONE>;...;<NEGATIVE_CIRCLED_DIGIT_ZERO>
-special	<CIRCLED_DIGIT_ONE>;...;<PARENTHESIZED_NUMBER_TWENTY>;/
-	<CIRCLED_DIGIT_ZERO>;...;<NEGATIVE_CIRCLED_DIGIT_ZERO>
-punct	<DIGIT_ONE_FULL_STOP>;...;<CIRCLED_LATIN_SMALL_LETTER_Z>
+digit	<CIRCLED_DIGIT_ONE>;...;<CIRCLED_DIGIT_NINE>
+digit	<PARENTHESIZED_DIGIT_ONE>;...;<PARENTHESIZED_DIGIT_NINE>
+digit	<DIGIT_ONE_FULL_STOP>;...;<DIGIT_NINE_FULL_STOP>
+digit	<CIRCLED_DIGIT_ZERO>
+digit	<DOUBLE_CIRCLED_DIGIT_ONE>;...;<DOUBLE_CIRCLED_DIGIT_NINE>
+digit	<NEGATIVE_CIRCLED_DIGIT_ZERO>
+number	<CIRCLED_NUMBER_TEN>;...;<CIRCLED_NUMBER_TWENTY>
+number	<PARENTHESIZED_NUMBER_TEN>;...;<PARENTHESIZED_NUMBER_TWENTY>
+number	<NUMBER_TEN_FULL_STOP>;...;<NUMBER_TWENTY_FULL_STOP>
+number	<NEGATIVE_CIRCLED_NUMBER_ELEVEN>;...;<NEGATIVE_CIRCLED_NUMBER_TWENTY>
+number	<DOUBLE_CIRCLED_NUMBER_TEN>
+lower	<PARENTHESIZED_LATIN_SMALL_LETTER_A>;...;<PARENTHESIZED_LATIN_SMALL_LETTER_Z>
+upper	<CIRCLED_LATIN_CAPITAL_LETTER_A>;...;<CIRCLED_LATIN_CAPITAL_LETTER_Z>
+lower	<CIRCLED_LATIN_SMALL_LETTER_A>;...;<CIRCLED_LATIN_SMALL_LETTER_Z>
 
 **********************************************************************
 * 0x2500 - 0x257F Box Drawing
 **********************************************************************
 
-graph	<BOX_DRAWINGS_LIGHT_HORIZONTAL>;...;/
-	<BOX_DRAWINGS_HEAVY_UP_AND_LIGHT_DOWN>
-punct	<BOX_DRAWINGS_LIGHT_HORIZONTAL>;...;/
-	<BOX_DRAWINGS_HEAVY_UP_AND_LIGHT_DOWN>
+punct	<BOX_DRAWINGS_LIGHT_HORIZONTAL>;...;<BOX_DRAWINGS_HEAVY_UP_AND_LIGHT_DOWN>
 
 **********************************************************************
 * 0x2580 - 0x259F Block Elements
 **********************************************************************
 
-graph	<UPPER_HALF_BLOCK>;...;/
-	<QUADRANT_UPPER_RIGHT_AND_LOWER_LEFT_AND_LOWER_RIGHT>
-punct	<UPPER_HALF_BLOCK>;...;/
-	<QUADRANT_UPPER_RIGHT_AND_LOWER_LEFT_AND_LOWER_RIGHT>
+punct	<UPPER_HALF_BLOCK>;...;<QUADRANT_UPPER_RIGHT_AND_LOWER_LEFT_AND_LOWER_RIGHT>
 
 **********************************************************************
 * 0x25A0 - 0x25FF Geometric Shapes
 **********************************************************************
 
-graph	<BLACK_SQUARE>;...;<LOWER_RIGHT_TRIANGLE>
 punct	<BLACK_SQUARE>;...;<LOWER_RIGHT_TRIANGLE>
 
 **********************************************************************
 * 0x2600 - 0x26FF Miscellaneous symbols
 **********************************************************************
 
-graph	<BLACK_SUN_WITH_RAYS>;...;/
-	<WHITE_FLAG_WITH_HORIZONTAL_MIDDLE_BLACK_STRIPE>
-punct	<BLACK_SUN_WITH_RAYS>;...;/
-	<WHITE_FLAG_WITH_HORIZONTAL_MIDDLE_BLACK_STRIPE>
+punct	<BLACK_SUN_WITH_RAYS>;...;<WHITE_FLAG_WITH_HORIZONTAL_MIDDLE_BLACK_STRIPE>
 
 **********************************************************************
 * 0x2700 - 0x27BF Dingbats
 **********************************************************************
 
 graph	<BLACK_SAFETY_SCISSORS>;...;<DOUBLE_CURLY_LOOP>
-special	<DINGBAT_NEGATIVE_CIRCLED_DIGIT_ONE>;...;/
-	<DINGBAT_NEGATIVE_CIRCLED_SANS-SERIF_NUMBER_TEN>
+digit	<DINGBAT_NEGATIVE_CIRCLED_DIGIT_ONE>;...;<DINGBAT_NEGATIVE_CIRCLED_DIGIT_NINE>
+number	<DINGBAT_NEGATIVE_CIRCLED_NUMBER_TEN>
+digit	<DINGBAT_CIRCLED_SANS-SERIF_DIGIT_ONE>;...;<DINGBAT_CIRCLED_SANS-SERIF_DIGIT_NINE>
+number	<DINGBAT_CIRCLED_SANS-SERIF_NUMBER_TEN>
+digit	<DINGBAT_NEGATIVE_CIRCLED_SANS-SERIF_DIGIT_ONE>;...;<DINGBAT_NEGATIVE_CIRCLED_SANS-SERIF_DIGIT_NINE>
+number	<DINGBAT_NEGATIVE_CIRCLED_SANS-SERIF_NUMBER_TEN>
 punct	<BLACK_SAFETY_SCISSORS>;...;<MEDIUM_RIGHT_CURLY_BRACKET_ORNAMENT>;/
 	<HEAVY_WIDE-HEADED_RIGHTWARDS_ARROW>;...;<DOUBLE_CURLY_LOOP>
 
@@ -5627,46 +5734,36 @@ punct	<BLACK_SAFETY_SCISSORS>;...;<MEDIUM_RIGHT_CURLY_BRACKET_ORNAMENT>;/
 * 0x27C0 - 0x27EF Miscellaneous Mathematical Symbols-A
 **********************************************************************
 
-graph	<THREE_DIMENSIONAL_ANGLE>;...;/
-	<MATHEMATICAL_RIGHT_FLATTENED_PARENTHESIS>
-punct	<THREE_DIMENSIONAL_ANGLE>;...;/
-	<MATHEMATICAL_RIGHT_FLATTENED_PARENTHESIS>
+punct	<THREE_DIMENSIONAL_ANGLE>;...;<MATHEMATICAL_RIGHT_FLATTENED_PARENTHESIS>
 
 **********************************************************************
 * 0x27F0 - 0x27FF Supplemental Arrows-A
 **********************************************************************
 
-graph	<UPWARDS_QUADRUPLE_ARROW>;...;<LONG_RIGHTWARDS_SQUIGGLE_ARROW>
 punct	<UPWARDS_QUADRUPLE_ARROW>;...;<LONG_RIGHTWARDS_SQUIGGLE_ARROW>
 
 **********************************************************************
 * 0x2800 - 0x28FF Braille Patterns
 **********************************************************************
 
-graph	<BRAILLE_PATTERN_BLANK>;...;<BRAILLE_PATTERN_DOTS-12345678>
 punct	<BRAILLE_PATTERN_BLANK>;...;<BRAILLE_PATTERN_DOTS-12345678>
 
 **********************************************************************
 * 0x2900 - 0x297F Supplemental Arrows-B
 **********************************************************************
 
-graph	<RIGHTWARDS_TWO-HEADED_ARROW_WITH_VERTICAL_STROKE>;...;/
-	<DOWN_FISH_TAIL>
-punct	<RIGHTWARDS_TWO-HEADED_ARROW_WITH_VERTICAL_STROKE>;...;/
-	<DOWN_FISH_TAIL>
+punct	<RIGHTWARDS_TWO-HEADED_ARROW_WITH_VERTICAL_STROKE>;...;<DOWN_FISH_TAIL>
 
 **********************************************************************
 * 0x2980 - 0x29FF Miscellaneouis Mathematical Symbols-B
 **********************************************************************
 
-graph	<TRIPLE_VERTICAL_BAR_DELIMITER>;...;<MINY>
 punct	<TRIPLE_VERTICAL_BAR_DELIMITER>;...;<MINY>
 
 **********************************************************************
 * 0x2A00 - 0x2AFF Supplemental Mathematical Operators
 **********************************************************************
 
-graph	<N-ARY_CIRCLED_DOT_OPERATOR>;...;<N-ARY_WHITE_VERTICAL_BAR>
 punct	<N-ARY_CIRCLED_DOT_OPERATOR>;...;<N-ARY_WHITE_VERTICAL_BAR>
 
 **********************************************************************
@@ -5701,36 +5798,30 @@ graph	<GLAGOLITIC_CAPITAL_LETTER_AZU>;...;/
 
 graph	<COPTIC_CAPITAL_LETTER_ALFA>;...;<COPTIC_SMALL_LETTER_BOHAIRIC_KHEI>;/
 	<COPTIC_OLD_NUBIAN_FULL_STOP>;...;<COPTIC_MORPHOLOGICAL_DIVIDER>
+number	<COPTIC_FRACTION_ONE_HALF>
 
 **********************************************************************
 * 0x2E00 - 0x2E7F Supplemental Punctuation
 **********************************************************************
 
-graph	<RIGHT_ANGLE_SUBSTITUTION_MARKER>;...;/
-	<DOUBLE_LOW-REVERSED-9_QUOTATION_MARK>
-punct	<RIGHT_ANGLE_SUBSTITUTION_MARKER>;...;/
-	<DOUBLE_LOW-REVERSED-9_QUOTATION_MARK>
+punct	<RIGHT_ANGLE_SUBSTITUTION_MARKER>;...;<DOUBLE_LOW-REVERSED-9_QUOTATION_MARK>
 
 **********************************************************************
 * 0x2E80 - 0x2EFF CJK Radicals Supplement
 **********************************************************************
 
-graph	<CJK_RADICAL_REPEAT>;...;<CJK_RADICAL_C-SIMPLIFIED_TURTLE>
 punct	<CJK_RADICAL_REPEAT>;...;<CJK_RADICAL_C-SIMPLIFIED_TURTLE>
 
 **********************************************************************
 * 0x2F00 - 0x2FDF Kangxi Radicals
 **********************************************************************
 
-graph	<KANGXI_RADICAL_ONE>;...;<KANGXI_RADICAL_FLUTE>
 punct	<KANGXI_RADICAL_ONE>;...;<KANGXI_RADICAL_FLUTE>
 
 **********************************************************************
 * 0x2FF0 - 0x2FFF Ideographic Description Characters
 **********************************************************************
 
-graph	<IDEOGRAPHIC_DESCRIPTION_CHARACTER_LEFT_TO_RIGHT>;...;/
-	<IDEOGRAPHIC_DESCRIPTION_CHARACTER_OVERLAID>
 punct	<IDEOGRAPHIC_DESCRIPTION_CHARACTER_LEFT_TO_RIGHT>;...;/
 	<IDEOGRAPHIC_DESCRIPTION_CHARACTER_OVERLAID>
 
@@ -5740,7 +5831,7 @@ punct	<IDEOGRAPHIC_DESCRIPTION_CHARACTER_LEFT_TO_RIGHT>;...;/
 
 space	<IDEOGRAPHIC_SPACE>
 graph	<IDEOGRAPHIC_COMMA>;...;<IDEOGRAPHIC_HALF_FILL_SPACE>
-special	<IDEOGRAPHIC_NUMBER_ZERO>;/
+number	<IDEOGRAPHIC_NUMBER_ZERO>;/
 	<HANGZHOU_NUMERAL_ONE>;...;<HANGZHOU_NUMERAL_NINE>;/
 	<HANGZHOU_NUMERAL_TEN>;...;<HANGZHOU_NUMERAL_THIRTY>
 alpha	<IDEOGRAPHIC_ITERATION_MARK>;/
@@ -5764,7 +5855,7 @@ graph	<BOPOMOFO_LETTER_B>;...;<BOPOMOFO_LETTER_IH>
 
 graph	<IDEOGRAPHIC_ANNOTATION_LINKING_MARK>;...;/
 	<IDEOGRAPHIC_ANNOTATION_MAN_MARK>
-special	<IDEOGRAPHIC_ANNOTATION_ONE_MARK>;...;/
+number	<IDEOGRAPHIC_ANNOTATION_ONE_MARK>;...;/
 	<IDEOGRAPHIC_ANNOTATION_FOUR_MARK>
 punct	<IDEOGRAPHIC_ANNOTATION_LINKING_MARK>;/
 	<IDEOGRAPHIC_ANNOTATION_REVERSE_MARK>;/
@@ -5800,6 +5891,7 @@ graph	<LISU_LETTER_BA>;...;<LISU_PUNCTUATION_FULL_STOP>
 **********************************************************************
 
 graph	<BAMUM_LETTER_A>;...;<BAMUM_QUESTION_MARK>
+number	<BAMUM_LETTER_MO>;...;<BAMUM_LETTER_KOGHOM>
 
 **********************************************************************
 * 0xA700 - 0xA71F Modifier Tone Letters
@@ -5809,11 +5901,90 @@ graph	<MODIFIER_LETTER_CHINESE_TONE_YIN_PING>;...;/
 	<MODIFIER_LETTER_LOW_INVERTED_EXCLAMATION_MARK>
 
 **********************************************************************
+* 0xA800 - 0xA82F Syloti Nagri
+**********************************************************************
+
+graph	<SYLOTI_NAGRI_LETTER_A>;...;<SYLOTI_NAGRI_POETRY_MARK-4>
+
+**********************************************************************
+* 0xA830 - 0x083F Common Indic Number Forms
+**********************************************************************
+
+number	<NORTH_INDIC_FRACTION_ONE_QUARTER>;...;<NORTH_INDIC_FRACTION_THREE_SIXTEENTHS>
+graph	<NORTH_INDIC_QUARTER_MARK>;...;<NORTH_INDIC_QUANTITY_MARK>
+
+**********************************************************************
+* 0xA840 - 0xA87F Phags-pa
+**********************************************************************
+
+graph	<PHAGS-PA_LETTER_KA>;...;<PHAGS-PA_MARK_DOUBLE_SHAD>
+
+**********************************************************************
+* 0xA880 - 0xA8DF Saurashra
+**********************************************************************
+
+graph	<SAURASHTRA_SIGN_ANUSVARA>;...;<SAURASHTRA_SIGN_VIRAMA>;/
+	<SAURASHTRA_DANDA>;/
+	<SAURASHTRA_DOUBLE_DANDA>
+digit	<SAURASHTRA_DIGIT_ZERO>;...;<SAURASHTRA_DIGIT_NINE>
+
+**********************************************************************
+* 0xA900 - 0xA92F Kayah Li
+**********************************************************************
+
+digit	<KAYAH_LI_DIGIT_ZERO>;...;<KAYAH_LI_DIGIT_NINE>
+graph	<KAYAH_LI_LETTER_KA>;...;<KAYAH_LI_SIGN_SHYA>
+
+**********************************************************************
+* 0xA930 - 0xA95F Rejang
+**********************************************************************
+
+graph	<REJANG_LETTER_KA>;...;<REJANG_VIRAMA>;/
+	<REJANG_SECTION_MARK>
+
+**********************************************************************
+* 0xA980 - 0xA9DF Javanese
+**********************************************************************
+
+graph	<JAVANESE_SIGN_PANYANGGA>;...;<JAVANESE_TURNED_PADA_PISELEH>;/
+	<JAVANESE_PANGRANGKEP>;/
+	<JAVANESE_PADA_TIRTA_TUMETES>;/
+	<JAVANESE_PADA_ISEN-ISEN>
+digit	<JAVANESE_DIGIT_ZERO>;...;<JAVANESE_DIGIT_NINE>
+
+**********************************************************************
+* 0xAA00 - 0xAA5F Cham
+**********************************************************************
+
+graph	<CHAM_LETTER_A>;...;<CHAM_CONSONANT_SIGN_WA>;/
+	<CHAM_LETTER_FINAL_K>;...;<CHAM_CONSONANT_SIGN_FINAL_H>;/
+	<CHAM_PUNCTUATION_SPIRAL>;...;<CHAM_PUNCTUATION_TRIPLE_DANDA>
+digit	<CHAM_DIGIT_ZERO>;...;<CHAM_DIGIT_NINE>
+
+**********************************************************************
+* 0xAA80 - 0xAADF Tal Viet
+**********************************************************************
+
+graph	<TAI_VIET_LETTER_LOW_KO>;...;<TAI_VIET_TONE_MAI_SONG>;/
+	<TAI_VIET_SYMBOL_KON>;...;<TAI_VIET_SYMBOL_KOI_KOI>
+
+**********************************************************************
+* 0xAAE0 - 0xAAFF Meetei Mayek Extensions
+**********************************************************************
+
+graph	<MEETEI_MAYEK_LETTER_E>;...;<MEETEI_MAYEK_VIRAMA>
+
+**********************************************************************
+* 0xABC0 - 0xABFF Meetei Mayek
+**********************************************************************
+
+graph	<MEETEI_MAYEK_LETTER_KOK>;...;<MEETEI_MAYEK_APUN_IYEK>
+digit	<MEETEI_MAYEK_DIGIT_ZERO>;...;<MEETEI_MAYEK_DIGIT_NINE>
+
+**********************************************************************
 * 0xFB50 - 0xFDFF Arabic Presentation Forms (differential)
 **********************************************************************
 
-graph	<ORNATE_LEFT_PARENTHESIS>;/
-	<ORNATE_RIGHT_PARENTHESIS>
 punct	<ORNATE_LEFT_PARENTHESIS>;/
 	<ORNATE_RIGHT_PARENTHESIS>
 
@@ -5834,14 +6005,12 @@ graph	<COMBINING_LIGATURE_LEFT_HALF>;...;<COMBINING_CONJOINING_MACRON_BELOW>
 * 0xFE30 - 0xFE4F CJK Compatibility Forms
 **********************************************************************
 
-graph	<PRESENTATION_FORM_FOR_VERTICAL_TWO_DOT_LEADER>;...;<WAVY_LOW_LINE>
 punct	<PRESENTATION_FORM_FOR_VERTICAL_TWO_DOT_LEADER>;...;<WAVY_LOW_LINE>
 
 **********************************************************************
 * 0xFE50 - 0xFE6F Small Form Variants
 **********************************************************************
 
-graph	<SMALL_COMMA>;...;<SMALL_COMMERCIAL_AT>
 punct	<SMALL_COMMA>;...;<SMALL_COMMERCIAL_AT>
 
 **********************************************************************
@@ -5855,28 +6024,24 @@ blank	<ZERO_WIDTH_NO-BREAK_SPACE>
 **********************************************************************
 
 graph	<OLD_ITALIC_LETTER_A>;...;<OLD_ITALIC_NUMERAL_FIFTY>
-special	<OLD_ITALIC_NUMERAL_ONE>;...;<OLD_ITALIC_NUMERAL_FIFTY>
+number	<OLD_ITALIC_NUMERAL_ONE>;...;<OLD_ITALIC_NUMERAL_FIFTY>
 
 **********************************************************************
 * 0x10330 - 0x1034F Gothic
 **********************************************************************
 
 graph	<GOTHIC_LETTER_AHSA>;...;<GOTHIC_LETTER_NINE_HUNDRED>
-special	<GOTHIC_LETTER_NINE_HUNDRED>
+number	<GOTHIC_LETTER_NINE_HUNDRED>
 
 **********************************************************************
 * 0x1D100 - 0x1D1FF Musical Symbols
 **********************************************************************
 
-cntrl	<MUSICAL_SYMBOL_BEGIN_BEAM>;...;<MUSICAL_SYMBOL_END_PHRASE>
-graph	<MUSICAL_SYMBOL_SINGLE_BARLINE>;...;<MUSICAL_SYMBOL_DRUM_CLEF-2>;/
-	<MUSICAL_SYMBOL_MULTIPLE_MEASURE_REST>;...;/
-	<MUSICAL_SYMBOL_COMBINING_FLAG-5>;/
-	<MUSICAL_SYMBOL_COMBINING_ACCENT>;...;<MUSICAL_SYMBOL_PES_SUBPUNCTIS>
 punct	<MUSICAL_SYMBOL_SINGLE_BARLINE>;...;<MUSICAL_SYMBOL_DRUM_CLEF-2>;/
-	<MUSICAL_SYMBOL_MULTIPLE_MEASURE_REST>;...;/
-	<MUSICAL_SYMBOL_COMBINING_FLAG-5>;/
+	<MUSICAL_SYMBOL_MULTIPLE_MEASURE_REST>;...;<MUSICAL_SYMBOL_COMBINING_FLAG-5>;/
 	<MUSICAL_SYMBOL_COMBINING_ACCENT>
+cntrl	<MUSICAL_SYMBOL_BEGIN_BEAM>;...;<MUSICAL_SYMBOL_END_PHRASE>
+graph	<MUSICAL_SYMBOL_COMBINING_STACCATO>;...;<MUSICAL_SYMBOL_PES_SUBPUNCTIS>
 
 **********************************************************************
 * 0x1D400 - 0x1D7FF Mathematical Alphanumeric Symbols
@@ -5914,21 +6079,18 @@ graph	<LEFTWARDS_ARROW_WITH_SMALL_TRIANGLE_ARROWHEAD>;...;/
 * 0x20000 - 0x2A6D6 CJK Unified Ideographs Extension B
 **********************************************************************
 
-graph	<CJK_UNIFIED_IDEOGRAPH-20000>;...;<CJK_UNIFIED_IDEOGRAPH-2B81D>
 alpha	<CJK_UNIFIED_IDEOGRAPH-20000>;...;<CJK_UNIFIED_IDEOGRAPH-2B81D>
 
 **********************************************************************
 * 0x2A700 - 0x2B734 CJK Unified Ideographs Extension C
 **********************************************************************
 
-graph	<CJK_UNIFIED_IDEOGRAPH-2A700>;...;<CJK_UNIFIED_IDEOGRAPH-2B734>
 alpha	<CJK_UNIFIED_IDEOGRAPH-2A700>;...;<CJK_UNIFIED_IDEOGRAPH-2B734>
 
 **********************************************************************
 * 0x2B740 - 0x2B81D CJK Unified Ideographs Extension D
 **********************************************************************
 
-graph	<CJK_UNIFIED_IDEOGRAPH-2B740>;...;<CJK_UNIFIED_IDEOGRAPH-2B81D>
 alpha	<CJK_UNIFIED_IDEOGRAPH-2B740>;...;<CJK_UNIFIED_IDEOGRAPH-2B81D>
 
 END LC_CTYPE
