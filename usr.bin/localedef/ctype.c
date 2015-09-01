@@ -47,6 +47,10 @@
 #include "runefile.h"
 #include "avl.h"
 
+/* Needed for bootstrapping, _CTYPE_N not available before 1 Sep 2015 */
+#ifndef _CTYPE_N
+#define _CTYPE_N	0x00400000L
+#endif
 
 #define _ISUPPER	_CTYPE_U
 #define _ISLOWER	_CTYPE_L
