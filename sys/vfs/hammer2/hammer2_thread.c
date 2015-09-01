@@ -289,6 +289,7 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 	int g;
 #endif
 	int i;
+	int nchains;
 
 	pmp = xop->ip1->pmp;
 	if (pmp->has_xop_threads == 0)
@@ -307,9 +308,14 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 	 * finish early and unlock the related inodes, some targets may get
 	 * behind.  The sequencer ensures that ops on the same inode execute
 	 * in the same order.
+	 *
+	 * The instant xop is queued another thread can pick it off.  In the
+	 * case of asynchronous ops, another thread might even finish and
+	 * deallocate it.
 	 */
 	hammer2_spin_ex(&pmp->xop_spin);
-	for (i = 0; i < xop->ip1->cluster.nchains; ++i) {
+	nchains = xop->ip1->cluster.nchains;
+	for (i = 0; i < nchains; ++i) {
 		if (i != notidx) {
 			atomic_set_int(&xop->run_mask, 1U << i);
 			atomic_set_int(&xop->chk_mask, 1U << i);
@@ -317,34 +323,15 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 		}
 	}
 	hammer2_spin_unex(&pmp->xop_spin);
+	/* xop can become invalid at this point */
 
 	/*
 	 * Try to wakeup just one xop thread for each cluster node.
 	 */
-	for (i = 0; i < xop->ip1->cluster.nchains; ++i) {
+	for (i = 0; i < nchains; ++i) {
 		if (i != notidx)
 			wakeup_one(&pmp->xopq[i]);
 	}
-#if 0
-	/*
-	 * Dispatch to concurrent threads.
-	 */
-	for (i = 0; i < xop->ip1->cluster.nchains; ++i) {
-		thr = &xgrp->thrs[i];
-		if (thr->td && i != notidx) {
-			lockmgr(&thr->lk, LK_EXCLUSIVE);
-			if (thr->td &&
-			    (thr->flags & HAMMER2_THREAD_STOP) == 0) {
-				atomic_set_int(&xop->run_mask, 1U << i);
-				atomic_set_int(&xop->chk_mask, 1U << i);
-				TAILQ_INSERT_TAIL(&thr->xopq, xop,
-						  collect[i].entry);
-			}
-			lockmgr(&thr->lk, LK_RELEASE);
-			wakeup(&thr->flags);
-		}
-	}
-#endif
 }
 
 void

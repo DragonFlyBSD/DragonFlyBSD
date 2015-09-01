@@ -1282,6 +1282,10 @@ hammer2_inode_common_parent(hammer2_inode_t *fdip, hammer2_inode_t *tdip)
  * Mark an inode as being modified, meaning that the caller will modify
  * ip->meta.
  *
+ * If a vnode is present we set the vnode dirty and the nominal filesystem
+ * sync will also handle synchronizing the inode meta-data.  If no vnode
+ * is present we must ensure that the inode is on pmp->sideq.
+ *
  * NOTE: No mtid (modify_tid) is passed into this routine.  The caller is
  *	 only modifying the in-memory inode.  A modify_tid is synchronized
  *	 later when the inode gets flushed.
@@ -1289,9 +1293,31 @@ hammer2_inode_common_parent(hammer2_inode_t *fdip, hammer2_inode_t *tdip)
 void
 hammer2_inode_modify(hammer2_inode_t *ip)
 {
+	hammer2_inode_sideq_t *ipul;
+	hammer2_pfs_t *pmp;
+
 	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-	if (ip->vp)
+	if (ip->vp) {
 		vsetisdirty(ip->vp);
+	} else if ((pmp = ip->pmp) != NULL) {
+		if ((ip->flags & HAMMER2_INODE_ONSIDEQ) == 0) {
+			ipul = kmalloc(sizeof(*ipul), pmp->minode,
+				       M_WAITOK | M_ZERO);
+			ipul->ip = ip;
+			hammer2_inode_ref(ip);
+			hammer2_spin_ex(&pmp->list_spin);
+			if ((ip->flags & HAMMER2_INODE_ONSIDEQ) == 0) {
+				atomic_set_int(&ip->flags,
+					       HAMMER2_INODE_ONSIDEQ);
+				TAILQ_INSERT_TAIL(&pmp->sideq, ipul, entry);
+				hammer2_spin_unex(&pmp->list_spin);
+			} else {
+				hammer2_spin_unex(&pmp->list_spin);
+				hammer2_inode_drop(ip);
+				kfree(ipul, pmp->minode);
+			}
+		}
+	}
 }
 
 /*

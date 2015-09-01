@@ -264,6 +264,7 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	xop->lbase = lbase;
 	hammer2_mtx_init(&xop->lock, "h2bio");
 	hammer2_xop_start(&xop->head, hammer2_strategy_xop_read);
+	/* asynchronous completion */
 
 	return(0);
 }
