@@ -892,6 +892,7 @@ struct hammer2_xop_nresolve {
 
 struct hammer2_xop_nlink {
 	hammer2_xop_head_t	head;
+	int			nlinks_delta;
 };
 
 struct hammer2_xop_unlink {
@@ -1123,6 +1124,7 @@ struct hammer2_pfs {
 	hammer2_dev_t		*pfs_hmps[HAMMER2_MAXCLUSTER];
 	hammer2_trans_t		trans;
 	struct lock		lock;		/* PFS lock for certain ops */
+	struct lock		lock_nlink;	/* rename and nlink lock */
 	struct netexport	export;		/* nfs export */
 	int			ronly;		/* read-only mount */
 	struct malloc_type	*minode;

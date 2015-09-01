@@ -227,7 +227,7 @@ done:
  * Backend for hammer2_vop_nremove(), hammer2_vop_nrmdir(), and helper
  * for hammer2_vop_nrename().
  *
- * This function does locates and removes the directory entry.  If the
+ * This function locates and removes the directory entry.  If the
  * entry is a hardlink pointer, this function will also remove the
  * hardlink target if the target's nlinks is 1.
  *
@@ -243,7 +243,6 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 	const hammer2_inode_data_t *ripdata;
 	const char *name;
 	size_t name_len;
-	uint8_t type;
 	hammer2_key_t key_next;
 	hammer2_key_t lhc;
 	int cache_index = -1;	/* XXX */
@@ -302,12 +301,14 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 	error = 0;
 	if (chain) {
 		int dopermanent = xop->dopermanent;
+		uint8_t type;
 
 		type = chain->data->ipdata.meta.type;
 		if (type == HAMMER2_OBJTYPE_HARDLINK) {
 			type = chain->data->ipdata.meta.target_type;
 			dopermanent |= HAMMER2_DELETE_PERMANENT;
 		}
+
 		if (type == HAMMER2_OBJTYPE_DIRECTORY &&
 		    xop->isdir == 0) {
 			error = ENOTDIR;
@@ -316,29 +317,48 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 		    xop->isdir >= 1) {
 			error = EISDIR;
 		} else {
+			/*
+			 * This deletes the directory entry itself, which is
+			 * also the inode when nlinks == 1.  Hardlink targets
+			 * are handled in the next conditional.
+			 */
 			hammer2_chain_delete(parent, chain,
-					     xop->head.mtid, xop->dopermanent);
+					     xop->head.mtid, dopermanent);
 		}
 	}
 
 	/*
 	 * If the entry is a hardlink pointer, resolve it.  If this is the
-	 * last link, delete it.  We aren't the frontend so we can't adjust
-	 * nlinks.
+	 * last link, delete it.  The frontend has the master copy of nlinks
+	 * but we still have to make adjustments here to synchronize with it.
+	 *
+	 * On delete / adjust nlinks if there is no error.  But we still need
+	 * to resolve the hardlink to feed the inode's real chain back to
+	 * the frontend.
+	 *
+	 * XXX we are basically tracking the nlinks count by doing a delta
+	 *     adjustment instead of having the frontend pass the absolute
+	 *     value down.  We really need to have the frontend pass the
+	 *     absolute value down (difficult because there might not be
+	 *     an 'ip').  See also hammer2_xop_nlink().
 	 */
-	if (chain) {
-		if (chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
-			error = hammer2_chain_hardlink_find(
-						xop->head.ip1,
-						&parent, &chain,
-						0);
-			if (chain &&
-			    (int64_t)chain->data->ipdata.meta.nlinks <= 1) {
-				hammer2_chain_delete(parent, chain,
-						     xop->head.mtid,
-						     xop->dopermanent);
-			}
+	if (chain &&
+	    chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
+		int error2;
+
+		error2 = hammer2_chain_hardlink_find(xop->head.ip1,
+						     &parent, &chain, 0);
+		if (chain && error == 0 && error2 == 0 &&
+		    (int64_t)chain->data->ipdata.meta.nlinks <= 1) {
+			hammer2_chain_delete(parent, chain,
+					     xop->head.mtid,
+					     xop->dopermanent);
+		} else if (chain && error == 0 && error2 == 0) {
+			hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+			--chain->data->ipdata.meta.nlinks;
 		}
+		if (error == 0)
+			error = error2;
 	}
 
 	/*
@@ -367,8 +387,17 @@ done:
 /*
  * Backend for hammer2_vop_nlink() and hammer2_vop_nrename()
  *
- * Convert the target {dip,ip} to a hardlink target and replace
- * the original namespace with a hardlink pointer.
+ * ip1 - fdip
+ * ip2 - ip
+ * ip3 - cdip
+ *
+ * If a hardlink pointer:
+ *	The existing hardlink target {fdip,ip} must be moved to another
+ *	directory {cdip,ip}
+ *
+ * If not a hardlink pointer:
+ *	Convert the target {fdip,ip} to a hardlink target {cdip,ip} and
+ *	replace the original namespace {fdip,name} with a hardlink pointer.
  */
 void
 hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
@@ -383,6 +412,7 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 	hammer2_key_t key_dummy;
 	int cache_index = -1;
 	int error;
+	int did_delete = 0;
 
 	/*
 	 * We need the precise parent chain to issue the deletion.
@@ -402,13 +432,19 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 		error = EIO;
 		goto done;
 	}
-	hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
+	KKASSERT(chain->parent == parent);
 
-	/*
-	 * Replace the namespace with a hardlink pointer if the chain being
-	 * moved is not already a hardlink target.
-	 */
 	if (chain->data->ipdata.meta.name_key & HAMMER2_DIRHASH_VISIBLE) {
+		/*
+		 * Delete the original chain and hold onto it for the move
+		 * to cdir.
+		 *
+		 * Replace the namespace with a hardlink pointer if the
+		 * chain being moved is not already a hardlink target.
+		 */
+		hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
+		did_delete = 1;
+
 		tmp = NULL;
 		error = hammer2_chain_create(&parent, &tmp, pmp,
 					     chain->bref.key, 0,
@@ -433,10 +469,23 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 
 		hammer2_chain_unlock(tmp);
 		hammer2_chain_drop(tmp);
+	} else if (xop->head.ip1 != xop->head.ip3) {
+		/*
+		 * Delete the hardlink target so it can be moved
+		 * to cdir.
+		 */
+		hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
+		did_delete = 1;
+	} else {
+		/*
+		 * Deletion not necessary (just a nlinks update).
+		 */
+		did_delete = 0;
 	}
 
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
+	parent = NULL;
 
 	/*
 	 * Ok, back to the deleted chain.  We must reconnect this chain
@@ -444,36 +493,51 @@ hammer2_xop_nlink(hammer2_xop_t *arg, int clindex)
 	 *
 	 * WARNING! Frontend assumes filename length is 18 bytes.
 	 */
-	hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
-	wipdata = &chain->data->ipdata;
-	ksnprintf(wipdata->filename, sizeof(wipdata->filename),
-		  "0x%016jx", (intmax_t)ip->meta.inum);
-	wipdata->meta.name_len = strlen(wipdata->filename);
-	wipdata->meta.name_key = ip->meta.inum;
+	if (did_delete) {
+		hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+		wipdata = &chain->data->ipdata;
+		ksnprintf(wipdata->filename, sizeof(wipdata->filename),
+			  "0x%016jx", (intmax_t)ip->meta.inum);
+		wipdata->meta.name_len = strlen(wipdata->filename);
+		wipdata->meta.name_key = ip->meta.inum;
+
+		/*
+		 * We must seek parent properly for the create to reattach
+		 * chain.  XXX just use chain->parent or
+		 * inode_chain_and_parent() ?
+		 */
+		parent = hammer2_inode_chain(xop->head.ip3, clindex,
+					     HAMMER2_RESOLVE_ALWAYS);
+		if (parent == NULL) {
+			error = EIO;
+			goto done;
+		}
+		tmp = hammer2_chain_lookup(&parent, &key_dummy,
+					   ip->meta.inum, ip->meta.inum,
+					   &cache_index, 0);
+		if (tmp) {
+			hammer2_chain_unlock(tmp);
+			hammer2_chain_drop(tmp);
+			error = EEXIST;
+			goto done;
+		}
+		error = hammer2_chain_create(&parent, &chain, pmp,
+					     wipdata->meta.name_key, 0,
+					     HAMMER2_BREF_TYPE_INODE,
+					     HAMMER2_INODE_BYTES,
+					     xop->head.mtid, 0, 0);
+	} else {
+		error = 0;
+	}
 
 	/*
-	 * We must seek parent properly for the create.
+	 * Bump nlinks to synchronize with frontend.
 	 */
-	parent = hammer2_inode_chain(xop->head.ip3, clindex,
-				     HAMMER2_RESOLVE_ALWAYS);
-	if (parent == NULL) {
-		error = EIO;
-		goto done;
+	if (xop->nlinks_delta) {
+		hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+		chain->data->ipdata.meta.nlinks += xop->nlinks_delta;
 	}
-	tmp = hammer2_chain_lookup(&parent, &key_dummy,
-				   ip->meta.inum, ip->meta.inum,
-				   &cache_index, 0);
-	if (tmp) {
-		hammer2_chain_unlock(tmp);
-		hammer2_chain_drop(tmp);
-		error = EEXIST;
-		goto done;
-	}
-	error = hammer2_chain_create(&parent, &chain, pmp,
-				     wipdata->meta.name_key, 0,
-				     HAMMER2_BREF_TYPE_INODE,
-				     HAMMER2_INODE_BYTES,
-				     xop->head.mtid, 0, 0);
+
 	/*
 	 * To avoid having to scan the collision space we can simply
 	 * reuse the inode's original name_key.  But ip->meta.name_key
@@ -543,7 +607,8 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 		}
 	} else {
 		/*
-		 * head.ip1 is fdip, do a namespace search.
+		 * The hardlink pointer for the head.ip1 hardlink target
+		 * is in fdip, do a namespace search.
 		 */
 		const hammer2_inode_data_t *ripdata;
 		hammer2_key_t lhc;
@@ -552,8 +617,7 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 		size_t name_len;
 
 		parent = hammer2_inode_chain(xop->head.ip1, clindex,
-					     HAMMER2_RESOLVE_ALWAYS |
-					     HAMMER2_RESOLVE_SHARED);
+					     HAMMER2_RESOLVE_ALWAYS);
 		if (parent == NULL) {
 			kprintf("xop_nrename: NULL parent\n");
 			error = EIO;
@@ -585,6 +649,15 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 		}
 	}
 
+	if (chain == NULL) {
+		/* XXX shouldn't happen, but does under fsstress */
+		kprintf("hammer2_xop_rename: \"%s\" -> \"%s\"  ENOENT\n",
+			xop->head.name1,
+			xop->head.name2);
+		error = ENOENT;
+		goto done;
+	}
+
 	/*
 	 * Delete it, then create it in the new namespace.
 	 */
@@ -592,7 +665,6 @@ hammer2_xop_nrename(hammer2_xop_t *arg, int clindex)
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
 	parent = NULL;		/* safety */
-
 
 	/*
 	 * Ok, back to the deleted chain.  We must reconnect this chain

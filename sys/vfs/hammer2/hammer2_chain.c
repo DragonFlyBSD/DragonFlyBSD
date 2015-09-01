@@ -1109,6 +1109,8 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		) {
 			if (dedup_off) {
 				chain->bref.data_off = dedup_off;
+				chain->bytes = 1 << (dedup_off &
+						     HAMMER2_OFF_MASK_RADIX);
 				atomic_set_int(&chain->flags,
 					       HAMMER2_CHAIN_DEDUP);
 				hammer2_freemap_adjust(hmp, &chain->bref,

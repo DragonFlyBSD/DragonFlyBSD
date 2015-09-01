@@ -354,6 +354,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain, const hammer2_inode_data_t *ripdata,
 		kmalloc_create(&pmp->minode, "HAMMER2-inodes");
 		kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
 		lockinit(&pmp->lock, "pfslk", 0, 0);
+		lockinit(&pmp->lock_nlink, "h2nlink", 0, 0);
 		spin_init(&pmp->inum_spin, "hm2pfsalloc_inum");
 		spin_init(&pmp->xop_spin, "h2xop");
 		RB_INIT(&pmp->inum_tree);

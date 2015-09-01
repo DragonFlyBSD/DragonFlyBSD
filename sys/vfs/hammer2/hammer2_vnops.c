@@ -1289,6 +1289,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
+	int nlink_locked;
 	int error;
 
 	LOCKSTART;
@@ -1320,7 +1321,20 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	/*
 	 * The common parent directory must be locked first to avoid deadlocks.
 	 * Also note that fdip and/or tdip might match cdip.
+	 *
+	 * WARNING!  The kernel's namecache locks are insufficient for
+	 *	     protecting us from hardlink shifts, since unrelated
+	 *	     rename() or link() calls on parent directories might
+	 *	     cause a shift.  A PFS-wide lock is required for this
+	 *	     situation.
 	 */
+	if (ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY ||
+	    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
+		lockmgr(&ip->pmp->lock_nlink, LK_EXCLUSIVE);
+		nlink_locked = 1;
+	} else {
+		nlink_locked = 0;
+	}
 	fdip = ip->pip;
 	cdip = hammer2_inode_common_parent(fdip, tdip);
 	hammer2_inode_lock(cdip, 0);
@@ -1330,13 +1344,24 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	error = 0;
 
 	/*
+	 * Dispatch xop_nlink unconditionally since we have to update nlinks.
+	 *
+	 * Otherwise we'd be able to avoid the XOP if the ip does not have
+	 * to be converted or moved.
 	 * If ip is not a hardlink target we must convert it to a hardlink.
 	 * If fdip != cdip we must shift the inode to cdip.
+	 *
+	 * XXX this and other nlink update usage should be passed top-down
+	 *     and not updated with a delta bottom-up.
 	 */
-	if (fdip != cdip || (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE)) {
+#if 0
+	if (fdip != cdip || (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE))
+#endif
+	{
 		xop1 = hammer2_xop_alloc(fdip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_setip2(&xop1->head, ip);
 		hammer2_xop_setip3(&xop1->head, cdip);
+		xop1->nlinks_delta = 1;
 
 		hammer2_xop_start(&xop1->head, hammer2_xop_nlink);
 		error = hammer2_xop_collect(&xop1->head, 0);
@@ -1377,6 +1402,9 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_inode_unlock(fdip);
 	hammer2_inode_unlock(cdip);
 	hammer2_inode_drop(cdip);
+
+	if (nlink_locked)
+		lockmgr(&ip->pmp->lock_nlink, LK_RELEASE);
 	hammer2_trans_done(ip->pmp);
 
 	LOCKSTOP;
@@ -1705,6 +1733,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	size_t tname_len;
 	int error;
 	int tnch_error;
+	int nlink_locked;
 	hammer2_key_t tlhc;
 
 	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)
@@ -1739,7 +1768,21 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	/*
 	 * The common parent directory must be locked first to avoid deadlocks.
 	 * Also note that fdip and/or tdip might match cdip.
+	 *
+	 * WARNING!  The kernel's namecache locks are insufficient for
+	 *	     protecting us from hardlink shifts, since unrelated
+	 *	     rename() or link() calls on parent directories might
+	 *	     cause a shift.  A PFS-wide lock is required for this
+	 *	     situation.
 	 */
+	if (ip->meta.type == HAMMER2_OBJTYPE_DIRECTORY ||
+	    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
+		lockmgr(&ip->pmp->lock_nlink, LK_EXCLUSIVE);
+		nlink_locked = 1;
+	} else {
+		nlink_locked = 0;
+	}
+
 	cdip = hammer2_inode_common_parent(ip->pip, tdip);
 	hammer2_inode_lock(cdip, 0);
 	hammer2_inode_lock(fdip, 0);
@@ -1751,6 +1794,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * If ip is a hardlink target and fdip != cdip we must shift the
 	 * inode to cdip.
 	 */
+	hammer2_inode_lock(ip, 0);
 	if (fdip != cdip &&
 	    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
 		hammer2_xop_nlink_t *xop1;
@@ -1758,11 +1802,13 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		xop1 = hammer2_xop_alloc(fdip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_setip2(&xop1->head, ip);
 		hammer2_xop_setip3(&xop1->head, cdip);
+		xop1->nlinks_delta = 0;
 
 		hammer2_xop_start(&xop1->head, hammer2_xop_nlink);
 		error = hammer2_xop_collect(&xop1->head, 0);
 		hammer2_xop_retire(&xop1->head, HAMMER2_XOPMASK_VOP);
 	}
+	/* hammer2_inode_unlock(ip); */
 
 	/*
 	 * Delete the target namespace.
@@ -1853,7 +1899,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *	 unlinking elements from their directories.  Locking
 	 *	 the nlinks field does not lock the whole inode.
 	 */
-	hammer2_inode_lock(ip, 0);
+	/* hammer2_inode_lock(ip, 0); */
 	if (error == 0) {
 		hammer2_xop_nrename_t *xop4;
 
@@ -1895,14 +1941,17 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 				hammer2_inode_drop(opip);
 		}
 	}
-	hammer2_inode_unlock(ip);
 done2:
+	hammer2_inode_unlock(ip);
 	hammer2_inode_unlock(tdip);
 	hammer2_inode_unlock(fdip);
 	hammer2_inode_unlock(cdip);
 	hammer2_inode_drop(ip);
 	hammer2_inode_drop(cdip);
 	hammer2_inode_run_sideq(fdip->pmp);
+
+	if (nlink_locked)
+		lockmgr(&ip->pmp->lock_nlink, LK_RELEASE);
 	hammer2_trans_done(tdip->pmp);
 
 	/*
