@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd August 31, 2015
+.Dd September 1, 2015
 .Dt ACPICALL 8
 .Os
 .Sh NAME
@@ -36,12 +36,13 @@
 .Nd call ACPI methods
 .Sh SYNOPSIS
 .Nm
-.Op Fl hv
+.Op Fl v
 .Op Fl b Ar hexstring
 .Op Fl d Ar file
 .Op Fl i Ar number
 .Op Fl o Ar i | s | b | o
 .Op Fl s Ar string
+.Op Fl U Ar uuid
 .Ar path
 .Sh DESCRIPTION
 The
@@ -52,8 +53,9 @@ with the arguments specified by any
 .Fl b ,
 .Fl i ,
 .Fl o ,
+.Fl s ,
 and
-.Fl s
+.Fl U
 options.
 The
 .Ar path
@@ -92,6 +94,10 @@ or
 Pass
 .Ar string
 as a string argument.
+.It Fl U Ar uuid
+Pass
+.Ar uuid
+as a buffer argument.
 .It Fl v
 Increase verbosity.
 .El
@@ -110,8 +116,8 @@ based
 .Tn Asus K53SV
 laptop:
 .Bd -literal
-acpicall -b "f8d886a4da0b1b47a72b6042a6b5bee0" \e
-         -i 256 -i 26 -b "01000003" "\e_SB.PCI0.PEGR.GFX0._DSM"
+acpicall -U a486d8f8-0bda-471b-a72b-6042a6b5bee0 \e
+         -i 256 -i 26 -b 01000003 "\e_SB.PCI0.PEGR.GFX0._DSM"
 
 acpicall "\e_SB.PCI0.PEGR.GFX0._PS3"
 .Ed

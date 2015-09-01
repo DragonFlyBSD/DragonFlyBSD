@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <uuid.h>
 
 #include <contrib/dev/acpica/source/include/acpi.h>
 #include <dev/acpica/acpiio_mcall.h>
@@ -61,18 +62,20 @@ int
 main(int argc, char *argv[])
 {
 	char c;
-	int i, fd;
+	int i, fd, status;
+	uuid_t uuid;
 
 	bzero(&params, sizeof(params));
 	params.path = method_path;
 	params.args.Count = 0;
 	params.args.Pointer = args;
 
-	while ((c = getopt(argc, argv, "vb:d:i:o:s:")) != -1) {
+	while ((c = getopt(argc, argv, "b:d:i:o:s:U:v")) != -1) {
 		switch (c) {
 		case 'b':
 		case 'i':
 		case 's':
+		case 'U':
 			i = params.args.Count;
 			if (i >= ACPI_METHOD_NUM_ARGS) {
 				fprintf(stderr,
@@ -98,6 +101,21 @@ main(int argc, char *argv[])
 				args[i].Type = ACPI_TYPE_STRING;
 				args[i].String.Length = strlen(optarg);
 				args[i].String.Pointer = optarg;
+				break;
+			case 'U':
+				uuid_from_string(optarg, &uuid, &status);
+				if (status != uuid_s_ok) {
+					fprintf(stderr, "invalid uuid %s\n",
+					    optarg);
+					exit(1);
+				}
+				args[i].Type = ACPI_TYPE_BUFFER;
+				args[i].Buffer.Length = 16;
+				if ((args[i].Buffer.Pointer = malloc(16)) == NULL) {
+					fprintf(stderr, "malloc failure\n");
+					exit(1);
+				}
+				uuid_enc_le(args[i].Buffer.Pointer, &uuid);
 				break;
 			}
 			params.args.Count++;
@@ -177,7 +195,7 @@ usage(void)
 	fprintf(stderr,
 	    "usage: acpicall [-v] [-b hexstring] [-d file] [-i number] "
 	    "[-o i | s | b | o]\n");
-	fprintf(stderr, "                [-s string] path\n");
+	fprintf(stderr, "                [-s string] [-U uuid] path\n");
 	exit(1);
 }
 
