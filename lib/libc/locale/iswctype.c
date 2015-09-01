@@ -44,7 +44,7 @@
 int
 iswalnum(wint_t wc)
 {
-	return (__istype(wc, _CTYPE_A|_CTYPE_D));
+	return (__istype(wc, _CTYPE_A|_CTYPE_N));
 }
 
 #undef iswalpha
@@ -114,7 +114,7 @@ iswlower(wint_t wc)
 int
 iswnumber(wint_t wc)
 {
-	return (__istype(wc, _CTYPE_D));
+	return (__istype(wc, _CTYPE_N));
 }
 
 #undef iswphonogram	

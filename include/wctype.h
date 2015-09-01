@@ -95,7 +95,7 @@ wint_t	nextwctype(wint_t, wctype_t);
 __END_DECLS
 
 #ifndef __cplusplus
-#define	iswalnum(wc)		__istype((wc), _CTYPE_A|_CTYPE_D)
+#define	iswalnum(wc)		__istype((wc), _CTYPE_A|_CTYPE_N)
 #define	iswalpha(wc)		__istype((wc), _CTYPE_A)
 #define	iswblank(wc)		__istype((wc), _CTYPE_B)
 #define	iswcntrl(wc)		__istype((wc), _CTYPE_C)
@@ -113,9 +113,9 @@ __END_DECLS
 
 #if __BSD_VISIBLE
 #define	iswascii(wc)		(((wc) & ~0x7F) == 0)
-#define	iswhexnumber(wc)	__istype((wc), _CTYPE_X)
+#define	iswhexnumber(wc)	__istype((wc), _CTYPE_X) /* alias of iswxdigit */
 #define	iswideogram(wc)		__istype((wc), _CTYPE_I)
-#define	iswnumber(wc)		__istype((wc), _CTYPE_D)
+#define	iswnumber(wc)		__istype((wc), _CTYPE_N)
 #define	iswphonogram(wc)	__istype((wc), _CTYPE_Q)
 #define	iswrune(wc)		__istype((wc), 0xFFFFFF00L)
 #define	iswspecial(wc)		__istype((wc), _CTYPE_T)

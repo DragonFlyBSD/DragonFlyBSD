@@ -58,6 +58,7 @@
 #define	_CTYPE_I	0x00080000L		/* Ideogram */
 #define	_CTYPE_T	0x00100000L		/* Special */
 #define	_CTYPE_Q	0x00200000L		/* Phonogram */
+#define	_CTYPE_N	0x00400000L		/* Number (superset of digit) */
 #define	_CTYPE_SW0	0x20000000L		/* 0 width character */
 #define	_CTYPE_SW1	0x40000000L		/* 1 width character */
 #define	_CTYPE_SW2	0x80000000L		/* 2 width character */
@@ -223,17 +224,17 @@ int	isspecial(int);
 __END_DECLS
 
 #ifndef __cplusplus
-#define	isalnum(c)	__sbistype((c), _CTYPE_A|_CTYPE_D)
+#define	isalnum(c)	__sbistype((c), _CTYPE_A|_CTYPE_N)
 #define	isalpha(c)	__sbistype((c), _CTYPE_A)
 #define	iscntrl(c)	__sbistype((c), _CTYPE_C)
-#define	isdigit(c)	__isctype((c), _CTYPE_D) /* ANSI -- locale independent */
+#define	isdigit(c)	__sbistype((c), _CTYPE_D)
 #define	isgraph(c)	__sbistype((c), _CTYPE_G)
 #define	islower(c)	__sbistype((c), _CTYPE_L)
 #define	isprint(c)	__sbistype((c), _CTYPE_R)
 #define	ispunct(c)	__sbistype((c), _CTYPE_P)
 #define	isspace(c)	__sbistype((c), _CTYPE_S)
 #define	isupper(c)	__sbistype((c), _CTYPE_U)
-#define	isxdigit(c)	__isctype((c), _CTYPE_X) /* ANSI -- locale independent */
+#define	isxdigit(c)	__sbistype((c), _CTYPE_X)
 #define	tolower(c)	__sbtolower(c)
 #define	toupper(c)	__sbtoupper(c)
 #endif /* !__cplusplus */
@@ -264,7 +265,7 @@ __END_DECLS
 #define	digittoint(c)	__sbmaskrune((c), 0xFF)
 #define	ishexnumber(c)	__sbistype((c), _CTYPE_X)
 #define	isideogram(c)	__sbistype((c), _CTYPE_I)
-#define	isnumber(c)	__sbistype((c), _CTYPE_D)
+#define	isnumber(c)	__sbistype((c), _CTYPE_N)
 #define	isphonogram(c)	__sbistype((c), _CTYPE_Q)
 #define	isrune(c)	__sbistype((c), 0xFFFFFF00L)
 #define	isspecial(c)	__sbistype((c), _CTYPE_T)

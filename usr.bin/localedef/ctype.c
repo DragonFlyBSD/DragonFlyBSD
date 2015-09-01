@@ -62,7 +62,7 @@
 #define	_E1		_CTYPE_Q
 #define	_E2		_CTYPE_I
 #define	_E3		0
-#define	_E4		0
+#define	_E4		_CTYPE_N
 #define	_E5		_CTYPE_T
 
 static avl_tree_t	ctypes;
