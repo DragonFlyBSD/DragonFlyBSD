@@ -224,7 +224,7 @@ int	isspecial(int);
 __END_DECLS
 
 #ifndef __cplusplus
-#define	isalnum(c)	__sbistype((c), _CTYPE_A|_CTYPE_N)
+#define	isalnum(c)	__sbistype((c), _CTYPE_A|_CTYPE_D|_CTYPE_N)
 #define	isalpha(c)	__sbistype((c), _CTYPE_A)
 #define	iscntrl(c)	__sbistype((c), _CTYPE_C)
 #define	isdigit(c)	__sbistype((c), _CTYPE_D)
@@ -265,7 +265,7 @@ __END_DECLS
 #define	digittoint(c)	__sbmaskrune((c), 0xFF)
 #define	ishexnumber(c)	__sbistype((c), _CTYPE_X)
 #define	isideogram(c)	__sbistype((c), _CTYPE_I)
-#define	isnumber(c)	__sbistype((c), _CTYPE_N)
+#define	isnumber(c)	__sbistype((c), _CTYPE_D|_CTYPE_N)
 #define	isphonogram(c)	__sbistype((c), _CTYPE_Q)
 #define	isrune(c)	__sbistype((c), 0xFFFFFF00L)
 #define	isspecial(c)	__sbistype((c), _CTYPE_T)
