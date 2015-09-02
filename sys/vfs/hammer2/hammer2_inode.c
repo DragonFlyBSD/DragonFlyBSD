@@ -1455,21 +1455,20 @@ hammer2_inode_xop_create(hammer2_xop_t *arg, int clindex)
 	int error;
 
 	if (hammer2_debug & 0x0001)
-	kprintf("inode_create lhc %016jx clindex %d\n",
-		xop->lhc, clindex);
+		kprintf("inode_create lhc %016jx clindex %d\n",
+			xop->lhc, clindex);
 
-	chain = NULL;
 	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		error = EIO;
+		chain = NULL;
 		goto fail;
 	}
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->lhc, xop->lhc,
 				     &cache_index, 0);
 	if (chain) {
-		hammer2_chain_unlock(chain);
 		error = EEXIST;
 		goto fail;
 	}
@@ -1500,8 +1499,10 @@ fail:
 		hammer2_chain_drop(parent);
 	}
 	hammer2_xop_feed(&xop->head, chain, clindex, error);
-	if (chain)
+	if (chain) {
+		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
+	}
 }
 
 /*
@@ -1582,11 +1583,11 @@ hammer2_inode_xop_unlinkall(hammer2_xop_t *arg, int clindex)
 		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
 					  HAMMER2_RESOLVE_SHARED);
 		hammer2_xop_feed(&xop->head, chain, clindex, chain->error);
+		/* depend on function to unlock the shared lock */
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, xop->key_end,
 					   &cache_index,
-					   HAMMER2_LOOKUP_ALWAYS |
-					   HAMMER2_LOOKUP_NOUNLOCK);
+					   HAMMER2_LOOKUP_ALWAYS);
 	}
 done:
 	hammer2_xop_feed(&xop->head, NULL, clindex, ENOENT);

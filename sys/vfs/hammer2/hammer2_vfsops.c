@@ -84,6 +84,7 @@ int hammer2_flush_pipe = 100;
 int hammer2_synchronous_flush = 1;
 int hammer2_dio_count;
 long hammer2_limit_dirty_chains;
+long hammer2_count_modified_chains;
 long hammer2_iod_file_read;
 long hammer2_iod_meta_read;
 long hammer2_iod_indr_read;
@@ -130,6 +131,8 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, synchronous_flush, CTLFLAG_RW,
 	   &hammer2_synchronous_flush, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_dirty_chains, CTLFLAG_RW,
 	   &hammer2_limit_dirty_chains, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, hammer2_count_modified_chains, CTLFLAG_RW,
+	   &hammer2_count_modified_chains, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, dio_count, CTLFLAG_RD,
 	   &hammer2_dio_count, 0, "");
 
@@ -1479,6 +1482,7 @@ again:
 	 * of these chains.
 	 */
 	if (hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) {
+		atomic_add_long(&hammer2_count_modified_chains, -1);
 		atomic_clear_int(&hmp->vchain.flags,
 				 HAMMER2_CHAIN_MODIFIED);
 		hammer2_pfs_memory_wakeup(hmp->vchain.pmp);
@@ -1491,6 +1495,7 @@ again:
 	}
 
 	if (hmp->fchain.flags & HAMMER2_CHAIN_MODIFIED) {
+		atomic_add_long(&hammer2_count_modified_chains, -1);
 		atomic_clear_int(&hmp->fchain.flags,
 				 HAMMER2_CHAIN_MODIFIED);
 		hammer2_pfs_memory_wakeup(hmp->fchain.pmp);

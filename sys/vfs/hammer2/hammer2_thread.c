@@ -350,9 +350,9 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 	int i;
 
 	/*
-	 * Remove the frontend or remove a backend feeder.  When removing
-	 * the frontend we must wakeup any backend feeders who are waiting
-	 * for FIFO space.
+	 * Remove the frontend collector or remove a backend feeder.
+	 * When removing the frontend we must wakeup any backend feeders
+	 * who are waiting for FIFO space.
 	 *
 	 * XXX optimize wakeup.
 	 */
@@ -364,6 +364,10 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 	}
 
 	/*
+	 * All collectors are gone, we can cleanup and dispose of the XOP.
+	 * Note that this can wind up being a frontend OR a backend.
+	 * Pending chains are locked shared and not owned by any thread.
+	 *
 	 * Cleanup the collection cluster.
 	 */
 	for (i = 0; i < xop->cluster.nchains; ++i) {
@@ -371,6 +375,7 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 		chain = xop->cluster.array[i].chain;
 		if (chain) {
 			xop->cluster.array[i].chain = NULL;
+			hammer2_chain_pull_shared_lock(chain);
 			hammer2_chain_unlock(chain);
 			hammer2_chain_drop(chain);
 		}
@@ -383,8 +388,10 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 	for (i = 0; mask && i < HAMMER2_MAXCLUSTER; ++i) {
 		hammer2_xop_fifo_t *fifo = &xop->collect[i];
 		while (fifo->ri != fifo->wi) {
+			cpu_lfence();
 			chain = fifo->array[fifo->ri & HAMMER2_XOPFIFO_MASK];
 			if (chain) {
+				hammer2_chain_pull_shared_lock(chain);
 				hammer2_chain_unlock(chain);
 				hammer2_chain_drop(chain);
 			}
@@ -441,6 +448,10 @@ hammer2_xop_active(hammer2_xop_head_t *xop)
  * the frontend.  Chains are fed from multiple nodes concurrently
  * and pipelined via per-node FIFOs in the XOP.
  *
+ * The chain must be locked shared.  This function adds an additional
+ * shared-lock and ref to the chain for the frontend to collect.  Caller
+ * must still unlock/drop the chain.
+ *
  * No xop lock is needed because we are only manipulating fields under
  * our direct control.
  *
@@ -483,8 +494,10 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 			tsleep(xop, PINTERLOCKED, "h2feed", hz*60);
 		}
 	}
-	if (chain)
+	if (chain) {
 		hammer2_chain_ref(chain);
+		hammer2_chain_push_shared_lock(chain);
+	}
 	fifo->errors[fifo->wi & HAMMER2_XOPFIFO_MASK] = error;
 	fifo->array[fifo->wi & HAMMER2_XOPFIFO_MASK] = chain;
 	cpu_sfence();
@@ -500,8 +513,6 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 	 * The caller's ref remains in both cases.
 	 */
 done:
-	if (error && chain)
-		hammer2_chain_unlock(chain);
 	return error;
 }
 
@@ -786,6 +797,7 @@ hammer2_primary_xops_thread(void *arg)
 	hammer2_pfs_t *pmp;
 	hammer2_xop_head_t *xop;
 	uint32_t mask;
+	hammer2_xop_func_t last_func = NULL;
 
 	pmp = thr->pmp;
 	/*xgrp = &pmp->xop_groups[thr->repidx]; not needed */
@@ -829,11 +841,13 @@ hammer2_primary_xops_thread(void *arg)
 		while ((xop = hammer2_xop_next(thr)) != NULL) {
 			if (hammer2_xop_active(xop)) {
 				lockmgr(&thr->lk, LK_RELEASE);
+				last_func = xop->func;
 				xop->func((hammer2_xop_t *)xop, thr->clindex);
 				hammer2_xop_dequeue(thr, xop);
 				hammer2_xop_retire(xop, mask);
 				lockmgr(&thr->lk, LK_EXCLUSIVE);
 			} else {
+				last_func = xop->func;
 				hammer2_xop_feed(xop, NULL, thr->clindex,
 						 ECONNABORTED);
 				hammer2_xop_dequeue(thr, xop);

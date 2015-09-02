@@ -581,6 +581,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		hammer2_mtx_sh(&chain->lock);
 	else
 		hammer2_mtx_ex(&chain->lock);
+	++curthread->td_tracker;
 
 	/*
 	 * If we already have a valid data pointer no further action is
@@ -616,6 +617,30 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 * Caller requires data
 	 */
 	hammer2_chain_load_data(chain);
+}
+
+/*
+ * Obtains a second shared lock on the chain, does not account the second
+ * shared lock as being owned by the current thread.
+ *
+ * Caller must already own a shared lock on this chain.
+ */
+void
+hammer2_chain_push_shared_lock(hammer2_chain_t *chain)
+{
+	hammer2_mtx_sh(&chain->lock);
+	atomic_add_int(&chain->lockcnt, 1);
+	/* do not count in td_tracker for this thread */
+}
+
+/*
+ * Accounts for a shared lock that was pushed to us as being owned by our
+ * thread.
+ */
+void
+hammer2_chain_pull_shared_lock(hammer2_chain_t *chain)
+{
+	++curthread->td_tracker;
 }
 
 /*
@@ -811,6 +836,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	long *counterp;
 	u_int lockcnt;
 
+	--curthread->td_tracker;
 	/*
 	 * If multiple locks are present (or being attempted) on this
 	 * particular chain we can just unlock, drop refs, and return.
@@ -899,6 +925,76 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	chain->data = NULL;
 	hammer2_io_bqrelse(&chain->dio);
 	hammer2_mtx_unlock(&chain->lock);
+}
+
+/*
+ * Helper to obtain the blockref[] array base and count for a chain.
+ *
+ * XXX Not widely used yet, various use cases need to be validated and
+ *     converted to use this function.
+ */
+static
+hammer2_blockref_t *
+hammer2_chain_base_and_count(hammer2_chain_t *parent, int *countp)
+{
+	hammer2_blockref_t *base;
+	int count;
+
+	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
+		base = NULL;
+
+		switch(parent->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_INDIRECT:
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+			count = parent->bytes / sizeof(hammer2_blockref_t);
+			break;
+		case HAMMER2_BREF_TYPE_VOLUME:
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_FREEMAP:
+			count = HAMMER2_SET_COUNT;
+			break;
+		default:
+			panic("hammer2_chain_create_indirect: "
+			      "unrecognized blockref type: %d",
+			      parent->bref.type);
+			count = 0;
+			break;
+		}
+	} else {
+		switch(parent->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			base = &parent->data->ipdata.u.blockset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_INDIRECT:
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+			base = &parent->data->npdata[0];
+			count = parent->bytes / sizeof(hammer2_blockref_t);
+			break;
+		case HAMMER2_BREF_TYPE_VOLUME:
+			base = &parent->data->voldata.
+					sroot_blockset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_FREEMAP:
+			base = &parent->data->blkset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		default:
+			panic("hammer2_chain_create_indirect: "
+			      "unrecognized blockref type: %d",
+			      parent->bref.type);
+			count = 0;
+			break;
+		}
+	}
+	*countp = count;
+
+	return base;
 }
 
 /*
@@ -1075,13 +1171,32 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	 */
 	if ((chain->flags & (HAMMER2_CHAIN_DEDUP | HAMMER2_CHAIN_MODIFIED)) ==
 	    (HAMMER2_CHAIN_DEDUP | HAMMER2_CHAIN_MODIFIED)) {
+		/*
+		 * Modified already set but a new allocation is needed
+		 * anyway because we recorded this data_off for possible
+		 * dedup operation.
+		 */
 		newmod = 1;
 	} else if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+		/*
+		 * Must set modified bit.  If the chain has been deleted
+		 * it must be placed on the delayed-flush queue to prevent
+		 * it from possibly being lost (a normal flush of the topology
+		 * will no longer see it).
+		 */
+		atomic_add_long(&hammer2_count_modified_chains, 1);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		hammer2_chain_ref(chain);
 		hammer2_pfs_memory_inc(chain->pmp);	/* can be NULL */
+		if ((chain->flags & HAMMER2_CHAIN_DELETED) &&
+		    (chain->flags & HAMMER2_CHAIN_DELAYED) == 0) {
+			hammer2_delayed_flush(chain);
+		}
 		newmod = 1;
 	} else {
+		/*
+		 * Already flagged modified, no new allocation is needed.
+		 */
 		newmod = 0;
 	}
 	if ((chain->flags & HAMMER2_CHAIN_UPDATE) == 0) {
@@ -1309,6 +1424,7 @@ void
 hammer2_voldata_modify(hammer2_dev_t *hmp)
 {
 	if ((hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+		atomic_add_long(&hammer2_count_modified_chains, 1);
 		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED);
 		hammer2_chain_ref(&hmp->vchain);
 		hammer2_pfs_memory_inc(hmp->vchain.pmp);
@@ -2338,6 +2454,7 @@ hammer2_chain_create(hammer2_chain_t **parentp,
 		chain->lockcnt = 1;
 		hammer2_mtx_ex(&chain->lock);
 		allocated = 1;
+		++curthread->td_tracker;
 
 		/*
 		 * Set INITIAL to optimize I/O.  The flag will generally be
@@ -2851,58 +2968,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	KKASSERT(hammer2_mtx_owned(&parent->lock));
 
 	/*hammer2_chain_modify(&parent, HAMMER2_MODIFY_OPTDATA);*/
-	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
-		base = NULL;
-
-		switch(parent->bref.type) {
-		case HAMMER2_BREF_TYPE_INODE:
-			count = HAMMER2_SET_COUNT;
-			break;
-		case HAMMER2_BREF_TYPE_INDIRECT:
-		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-			count = parent->bytes / sizeof(hammer2_blockref_t);
-			break;
-		case HAMMER2_BREF_TYPE_VOLUME:
-			count = HAMMER2_SET_COUNT;
-			break;
-		case HAMMER2_BREF_TYPE_FREEMAP:
-			count = HAMMER2_SET_COUNT;
-			break;
-		default:
-			panic("hammer2_chain_create_indirect: "
-			      "unrecognized blockref type: %d",
-			      parent->bref.type);
-			count = 0;
-			break;
-		}
-	} else {
-		switch(parent->bref.type) {
-		case HAMMER2_BREF_TYPE_INODE:
-			base = &parent->data->ipdata.u.blockset.blockref[0];
-			count = HAMMER2_SET_COUNT;
-			break;
-		case HAMMER2_BREF_TYPE_INDIRECT:
-		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-			base = &parent->data->npdata[0];
-			count = parent->bytes / sizeof(hammer2_blockref_t);
-			break;
-		case HAMMER2_BREF_TYPE_VOLUME:
-			base = &parent->data->voldata.
-					sroot_blockset.blockref[0];
-			count = HAMMER2_SET_COUNT;
-			break;
-		case HAMMER2_BREF_TYPE_FREEMAP:
-			base = &parent->data->blkset.blockref[0];
-			count = HAMMER2_SET_COUNT;
-			break;
-		default:
-			panic("hammer2_chain_create_indirect: "
-			      "unrecognized blockref type: %d",
-			      parent->bref.type);
-			count = 0;
-			break;
-		}
-	}
+	base = hammer2_chain_base_and_count(parent, &count);
 
 	/*
 	 * dummy used in later chain allocation (no longer used for lookups).
@@ -2997,6 +3063,12 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	reason = 0;
 
 	for (;;) {
+		/*
+		 * Parent may have been modified, relocating its block array.
+		 * Reload the base pointer.
+		 */
+		base = hammer2_chain_base_and_count(parent, &count);
+
 		if (++loops > 100000) {
 		    hammer2_spin_unex(&parent->core.spin);
 		    panic("excessive loops r=%d p=%p base/count %p:%d %016jx\n",
@@ -3092,6 +3164,9 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 *	    to prevent delete/insert from trying to access
 		 *	    inode stats (and thus asserting if there is no
 		 *	    chain->data loaded).
+		 *
+		 * WARNING! The (parent, chain) deletion may modify the parent
+		 *	    and invalidate the base pointer.
 		 */
 		hammer2_chain_delete(parent, chain, mtid, 0);
 		hammer2_chain_rename(NULL, &ichain, chain, mtid, 0);
@@ -3099,6 +3174,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		hammer2_chain_drop(chain);
 		KKASSERT(parent->refs > 0);
 		chain = NULL;
+		base = NULL;	/* safety */
 next_key:
 		hammer2_spin_ex(&parent->core.spin);
 next_key_spinlocked:
@@ -3124,6 +3200,7 @@ next_key_spinlocked:
 	 * The insertion shouldn't race as this is a completely new block
 	 * and the parent is locked.
 	 */
+	base = NULL;	/* safety, parent modify may change address */
 	KKASSERT((ichain->flags & HAMMER2_CHAIN_ONRBTREE) == 0);
 	hammer2_chain_insert(parent, ichain,
 			     HAMMER2_CHAIN_INSERT_SPIN |
@@ -3472,7 +3549,7 @@ hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
 
 	/*
 	 * To avoid losing track of a permanent deletion we add the chain
-	 * to the delayed flush queue.  If were to flush it right now the
+	 * to the delayed flush queue.  If we were to flush it right now the
 	 * parent would end up in a modified state and generate I/O.
 	 * The delayed queue gives the parent a chance to be deleted to
 	 * (e.g. rm -rf).

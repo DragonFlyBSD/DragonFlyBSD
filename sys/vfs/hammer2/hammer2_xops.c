@@ -82,8 +82,10 @@ hammer2_xop_ipcluster(hammer2_xop_t *arg, int clindex)
 		error = EIO;
 		
 	hammer2_xop_feed(&xop->head, chain, clindex, error);
-	if (chain)
+	if (chain) {
+		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
+	}
 }
 
 /*
@@ -135,11 +137,12 @@ hammer2_xop_readdir(hammer2_xop_t *arg, int clindex)
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, HAMMER2_KEY_MAX,
 					   &cache_index,
-					   HAMMER2_LOOKUP_SHARED |
-					   HAMMER2_LOOKUP_NOUNLOCK);
+					   HAMMER2_LOOKUP_SHARED);
 	}
-	if (chain)
+	if (chain) {
+		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
+	}
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
 done:
@@ -214,7 +217,7 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 done:
 	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
 	if (chain) {
-		/* leave lock intact for feed */
+		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 	}
 	if (parent) {
@@ -253,9 +256,9 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 	 */
 	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
+	chain = NULL;
 	if (parent == NULL) {
 		kprintf("xop_nresolve: NULL parent\n");
-		chain = NULL;
 		error = EIO;
 		goto done;
 	}
@@ -376,11 +379,15 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 	 */
 done:
 	hammer2_xop_feed(&xop->head, chain, clindex, error);
-	if (chain)
+	if (chain) {
+		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
+		chain = NULL;
+	}
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
+		parent = NULL;
 	}
 }
 
@@ -771,6 +778,7 @@ hammer2_xop_scanlhc(hammer2_xop_t *arg, int clindex)
 		error = hammer2_xop_feed(&xop->head, chain, clindex,
 					 chain->error);
 		if (error) {
+			hammer2_chain_unlock(chain);
 			hammer2_chain_drop(chain);
 			chain = NULL;	/* safety */
 			break;
@@ -780,8 +788,7 @@ hammer2_xop_scanlhc(hammer2_xop_t *arg, int clindex)
 					   xop->lhc + HAMMER2_DIRHASH_LOMASK,
 					   &cache_index,
 					   HAMMER2_LOOKUP_ALWAYS |
-					   HAMMER2_LOOKUP_SHARED |
-					   HAMMER2_LOOKUP_NOUNLOCK);
+					   HAMMER2_LOOKUP_SHARED);
 	}
 done:
 	hammer2_xop_feed(&xop->head, NULL, clindex, error);
@@ -831,7 +838,7 @@ hammer2_xop_lookup(hammer2_xop_t *arg, int clindex)
 
 done:
 	if (chain) {
-		/* leave lock intact for feed */
+		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 	}
 	if (parent) {
@@ -881,11 +888,12 @@ hammer2_xop_scanall(hammer2_xop_t *arg, int clindex)
 					   key_next, xop->key_end,
 					   &cache_index,
 					   HAMMER2_LOOKUP_SHARED |
-					   HAMMER2_LOOKUP_NODIRECT |
-					   HAMMER2_LOOKUP_NOUNLOCK);
+					   HAMMER2_LOOKUP_NODIRECT);
 	}
-	if (chain)
+	if (chain) {
+		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
+	}
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
 done:

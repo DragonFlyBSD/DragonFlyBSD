@@ -301,6 +301,7 @@ hammer2_delayed_flush(hammer2_chain_t *chain)
 			hammer2_chain_ref(chain);
 		}
 		hammer2_spin_unex(&chain->hmp->list_spin);
+		hammer2_voldata_modify(chain->hmp);
 	}
 }
 
@@ -577,6 +578,7 @@ again:
 		KKASSERT((chain->flags & HAMMER2_CHAIN_UPDATE) ||
 			 chain == &hmp->vchain);
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+		atomic_add_long(&hammer2_count_modified_chains, -1);
 
 		/*
 		 * Manage threads waiting for excessive dirty memory to
