@@ -1,7 +1,8 @@
-DF402.0 {
+DF404.0 {
     bcmp;
     bcopy;
     bzero;
+    errstr;
     ffs;
     ffsl;
     ffsll;
@@ -30,6 +31,7 @@ DF402.0 {
     strchrnul;
     strcmp;
     strcoll;
+    strcoll_l;
     strcpy;
     strcspn;
     strdup;
@@ -56,6 +58,7 @@ DF402.0 {
     strtok;
     strtok_r;
     strxfrm;
+    strxfrm_l;
     swab;
     wcpcpy;
     wcpncpy;
@@ -64,6 +67,7 @@ DF402.0 {
     wcschr;
     wcscmp;
     wcscoll;
+    wcscoll_l;
     wcscpy;
     wcscspn;
     wcsdup;

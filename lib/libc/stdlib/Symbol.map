@@ -1,8 +1,9 @@
-DF402.0 {
-    _Exit;
+DF404.0 {
     __cxa_atexit;
     __cxa_finalize;
-    __isthreaded;
+    _Exit;
+    _nmalloc_thr_init;
+    _system;
     a64l;
     abort;
     abs;
@@ -20,6 +21,7 @@ DF402.0 {
     bsearch;
     calloc;
     div;
+    environ;
     exit;
     free;
     getenv;
@@ -74,18 +76,16 @@ DF402.0 {
     srandom;
     srandomdev;
     strfmon;
-    strtod_l;
-    strtof_l;
+    strfmon_l;
     strtoimax;
     strtoimax_l;
     strtol;
     strtol_l;
-    strtold_l;
+    strtold;
     strtoll;
     strtoll_l;
     strtonum;
     strtoq;
-    strtoq_l;
     strtoul;
     strtoul_l;
     strtoull;
@@ -93,7 +93,6 @@ DF402.0 {
     strtoumax;
     strtoumax_l;
     strtouq;
-    strtouq_l;
     suboptarg;
     system;
     tdelete;
@@ -111,6 +110,4 @@ DF402.0 {
 DFprivate_1.0 {
     __cleanup;
     __system;
-    _nmalloc_thr_init;
-    _system;
 };

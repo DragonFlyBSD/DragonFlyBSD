@@ -1,10 +1,10 @@
 DF402.0 {
     strtod;
+    strtod_l;
     strtodg_l;
     strtof;
-
-    /* DragonFly, not gdtoa */
-    strtold;
+    strtof_l;
+    strtold_l;
 };
 
 DFprivate_1.0 {

@@ -1,4 +1,27 @@
-DF402.0 {
+DF404.0 {
+    fork;
+    ftruncate;
+    lseek;
+    mmap;
+    pread;
+    preadv;
+    pwrite;
+    pwritev;
+    truncate;
+
+/*  SYSCALLS  */
+    __acl_aclcheck_fd;
+    __acl_aclcheck_file;
+    __acl_delete_fd;
+    __acl_delete_file;
+    __acl_get_fd;
+    __acl_get_file;
+    __acl_set_fd;
+    __acl_set_file;
+    __getcwd;
+    __semctl;
+    __syscall;
+    __sysctl;
     accept;
     access;
     acct;
@@ -13,6 +36,7 @@ DF402.0 {
     bind;
     chdir;
     chflags;
+    chflagsat;
     chmod;
     chown;
     chroot;
@@ -23,13 +47,13 @@ DF402.0 {
     close;
     closefrom;
     connect;
-    dup2;
     dup;
+    dup2;
     eaccess;
-    environ;
     exec_sys_register;
     exec_sys_unregister;
     execve;
+    exit;
     extaccept;
     extattr_delete_file;
     extattr_get_file;
@@ -54,13 +78,12 @@ DF402.0 {
     fhstatfs;
     fhstatvfs;
     flock;
-    fork;
     fpathconf;
     fstat;
     fstatat;
     fstatfs;
+    fstatvfs;
     fsync;
-    ftruncate;
     futimens;
     futimes;
     get_tls_area;
@@ -74,6 +97,7 @@ DF402.0 {
     getgid;
     getgroups;
     getitimer;
+    getlogin;
     getpeername;
     getpgid;
     getpgrp;
@@ -89,7 +113,7 @@ DF402.0 {
     getsockopt;
     gettimeofday;
     getuid;
-    getvfsbytype;
+    getvfsstat;
     ioctl;
     ioprio_get;
     ioprio_set;
@@ -115,7 +139,6 @@ DF402.0 {
     lio_listio;
     listen;
     lpathconf;
-    lseek;
     lstat;
     lutimes;
     lwp_create;
@@ -134,14 +157,12 @@ DF402.0 {
     mknodat;
     mlock;
     mlockall;
-    mmap;
     modfind;
     modfnext;
     modnext;
     modstat;
     mount;
     mountctl;
-    procctl;
     mprotect;
     mq_close;
     mq_getattr;
@@ -154,6 +175,9 @@ DF402.0 {
     mq_timedsend;
     mq_unlink;
     msgctl;
+    msgget;
+    msgrcv;
+    msgsnd;
     msync;
     munlock;
     munlockall;
@@ -163,20 +187,16 @@ DF402.0 {
     netbsd_msync;
     nfssvc;
     ntp_adjtime;
-    ntp_gettime;
     open;
     openat;
     pathconf;
     pipe;
     pipe2;
     poll;
-    pread;
-    preadv;
+    procctl;
     profil;
     pselect;
     ptrace;
-    pwrite;
-    pwritev;
     quotactl;
     read;
     readlink;
@@ -191,15 +211,16 @@ DF402.0 {
     rfork;
     rmdir;
     rtprio;
-    sched_get_priority_max;
-    sched_get_priority_min;
+    sched_get_priority_;
     sched_getparam;
     sched_getscheduler;
-    sched_rr_get_interval;
+    sched_rr_get_interv;
     sched_setparam;
     sched_setscheduler;
     sched_yield;
     select;
+    semget;
+    semop;
     sendfile;
     sendmsg;
     sendto;
@@ -233,12 +254,12 @@ DF402.0 {
     sigreturn;
     sigsuspend;
     sigtimedwait;
-    sigwait;
     sigwaitinfo;
     socket;
     socketpair;
     stat;
     statfs;
+    statvfs;
     swapoff;
     swapon;
     symlink;
@@ -247,7 +268,6 @@ DF402.0 {
     sys_checkpoint;
     sysarch;
     syscall;
-    truncate;
     umask;
     umtx_sleep;
     umtx_wakeup;
@@ -256,6 +276,7 @@ DF402.0 {
     unlinkat;
     unmount;
     usched_set;
+    utimensat;
     utimes;
     utrace;
     uuidgen;
@@ -280,15 +301,9 @@ DF402.0 {
 };
 
 DFprivate_1.0 {
-    ___semctl;
-    ___syscall;
-    ___sysctl;
-    __chk_fail;
-    __semctl;
-    __stack_chk_fail;
-    __stack_chk_fail_local;
-    __stack_chk_guard;
-    __stack_smash_handler;
+    __fork;
+
+/*  SYSCALLS  */;
     __sys___acl_aclcheck_fd;
     __sys___acl_aclcheck_file;
     __sys___acl_delete_fd;
@@ -315,6 +330,7 @@ DFprivate_1.0 {
     __sys_bind;
     __sys_chdir;
     __sys_chflags;
+    __sys_chflagsat;
     __sys_chmod;
     __sys_chown;
     __sys_chroot;
@@ -331,6 +347,7 @@ DFprivate_1.0 {
     __sys_exec_sys_register;
     __sys_exec_sys_unregister;
     __sys_execve;
+    __sys_exit;
     __sys_extaccept;
     __sys_extattr_delete_file;
     __sys_extattr_get_file;
@@ -440,7 +457,6 @@ DFprivate_1.0 {
     __sys_modstat;
     __sys_mount;
     __sys_mountctl;
-    __sys_procctl;
     __sys_mprotect;
     __sys_mq_close;
     __sys_mq_getattr;
@@ -471,6 +487,7 @@ DFprivate_1.0 {
     __sys_pipe;
     __sys_pipe2;
     __sys_poll;
+    __sys_procctl;
     __sys_profil;
     __sys_pselect;
     __sys_ptrace;
@@ -488,15 +505,13 @@ DFprivate_1.0 {
     __sys_rfork;
     __sys_rmdir;
     __sys_rtprio;
-    __sys_sched_get_priority_max;
-    __sys_sched_get_priority_min;
+    __sys_sched_get_priority_;
     __sys_sched_getparam;
     __sys_sched_getscheduler;
-    __sys_sched_rr_get_interval;
+    __sys_sched_rr_get_interv;
     __sys_sched_setparam;
     __sys_sched_setscheduler;
     __sys_sched_yield;
-    __sys_sctp_peeloff;
     __sys_select;
     __sys_semget;
     __sys_semop;
@@ -555,6 +570,7 @@ DFprivate_1.0 {
     __sys_unlinkat;
     __sys_unmount;
     __sys_usched_set;
+    __sys_utimensat;
     __sys_utimes;
     __sys_utrace;
     __sys_uuidgen;
@@ -576,8 +592,8 @@ DFprivate_1.0 {
     __sys_wait4;
     __sys_write;
     __sys_writev;
-    __syscall;
-    __sysctl;
+
+/*  SYSCALLS  */;
     ___acl_aclcheck_fd;
     ___acl_aclcheck_file;
     ___acl_delete_fd;
@@ -586,14 +602,10 @@ DFprivate_1.0 {
     ___acl_get_file;
     ___acl_set_fd;
     ___acl_set_file;
-    __acl_aclcheck_fd;
-    __acl_aclcheck_file;
-    __acl_delete_fd;
-    __acl_delete_file;
-    __acl_get_fd;
-    __acl_get_file;
-    __acl_set_fd;
-    __acl_set_file;
+    ___getcwd;
+    ___semctl;
+    ___syscall;
+    ___sysctl;
     _accept;
     _access;
     _acct;
@@ -608,6 +620,7 @@ DFprivate_1.0 {
     _bind;
     _chdir;
     _chflags;
+    _chflagsat;
     _chmod;
     _chown;
     _chroot;
@@ -624,14 +637,14 @@ DFprivate_1.0 {
     _exec_sys_register;
     _exec_sys_unregister;
     _execve;
-    _execvpe;
-    _extexit;
+    _exit;
     _extaccept;
     _extattr_delete_file;
     _extattr_get_file;
     _extattr_set_file;
     _extattrctl;
     _extconnect;
+    _extexit;
     _extpread;
     _extpreadv;
     _extpwrite;
@@ -650,7 +663,6 @@ DFprivate_1.0 {
     _fhstatvfs;
     _flock;
     _fpathconf;
-    _fseeko;
     _fstat;
     _fstatat;
     _fstatfs;
@@ -669,6 +681,7 @@ DFprivate_1.0 {
     _getgid;
     _getgroups;
     _getitimer;
+    _getlogin;
     _getpeername;
     _getpgid;
     _getpgrp;
@@ -734,7 +747,6 @@ DFprivate_1.0 {
     _modstat;
     _mount;
     _mountctl;
-    _procctl;
     _mprotect;
     _mq_close;
     _mq_getattr;
@@ -746,6 +758,10 @@ DFprivate_1.0 {
     _mq_timedreceive;
     _mq_timedsend;
     _mq_unlink;
+    _msgctl;
+    _msgget;
+    _msgrcv;
+    _msgsnd;
     _msync;
     _munlock;
     _munlockall;
@@ -761,6 +777,7 @@ DFprivate_1.0 {
     _pipe;
     _pipe2;
     _poll;
+    _procctl;
     _profil;
     _pselect;
     _ptrace;
@@ -778,25 +795,16 @@ DFprivate_1.0 {
     _rfork;
     _rmdir;
     _rtprio;
-    _sched_get_priority_max;
-    _sched_get_priority_min;
+    _sched_get_priority_;
     _sched_getparam;
     _sched_getscheduler;
-    _sched_rr_get_interval;
+    _sched_rr_get_interv;
     _sched_setparam;
     _sched_setscheduler;
     _sched_yield;
     _select;
-    _sem_close;
-    _sem_destroy;
-    _sem_getvalue;
-    _sem_init;
-    _sem_open;
-    _sem_post;
-    _sem_timedwait;
-    _sem_trywait;
-    _sem_unlink;
-    _sem_wait;
+    _semget;
+    _semop;
     _sendfile;
     _sendmsg;
     _sendto;
@@ -852,6 +860,7 @@ DFprivate_1.0 {
     _unlinkat;
     _unmount;
     _usched_set;
+    _utimensat;
     _utimes;
     _utrace;
     _uuidgen;
@@ -873,5 +882,4 @@ DFprivate_1.0 {
     _wait4;
     _write;
     _writev;
-    __fork;
 };

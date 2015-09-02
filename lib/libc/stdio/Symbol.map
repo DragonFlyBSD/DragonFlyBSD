@@ -1,16 +1,17 @@
-DF402.0 {
+DF404.0 {
     __fpending;
+    __isthreaded;
     __srget;
     __stderrp;
     __stdinp;
     __stdoutp;
     __swbuf;
+    _flockfile_debug;
     asprintf;
     asprintf_l;
     clearerr;
     clearerr_unlocked;
     dprintf;
-    f_prealloc;
     fclose;
     fcloseall;
     fcookie;
@@ -75,13 +76,10 @@ DF402.0 {
     getwchar;
     getwchar_l;
     mkdtemp;
-    mkostemp;
-    mkostemps;
     mkstemp;
     mkstemps;
     mktemp;
     open_memstream;
-    open_wmemstream;
     perror;
     printf;
     printf_l;
@@ -218,8 +216,8 @@ DFprivate_1.0 {
     _cleanup;
     _fcookie;
     _flockfile;
-    _flockfile_debug;
     _flockfile_debug_stub;
+    _fseeko;
     _ftello;
     _ftrylockfile;
     _funlockfile;

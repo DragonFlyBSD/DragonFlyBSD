@@ -11,7 +11,6 @@ DF402.0 {
     asctime_r;
     ctime;
     ctime_r;
-    daylight;
     difftime;
     gmtime;
     gmtime_r;
@@ -21,9 +20,11 @@ DF402.0 {
     offtime;
     posix2time;
     strftime;
+    strftime_l;
     strptime;
-    time2posix;
+    strptime_l;
     timegm;
+    time2posix;
     timelocal;
     timeoff;
     tzname;
