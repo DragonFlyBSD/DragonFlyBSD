@@ -280,7 +280,7 @@ struct thread {
     int		td_wakefromcpu;	/* who woke me up? */
     int		td_upri;	/* user priority (sub-priority under td_pri) */
     int		td_type;	/* thread type, TD_TYPE_ */
-    int		td_unused02[1];	/* for future fields */
+    int		td_tracker;	/* for callers to debug lock counts */
     int		td_unused03[4];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
