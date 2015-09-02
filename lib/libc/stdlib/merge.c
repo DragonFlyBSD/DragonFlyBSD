@@ -253,7 +253,7 @@ COPY:	    			b = t;
  * when THRESHOLD/2 pairs compare with same sense.  (Only used when NATURAL
  * is defined.  Otherwise simple pairwise merging is used.)
  */
-void
+static void
 setup(u_char *list1, u_char *list2, size_t n, size_t size,
       int (*cmp)(const void *, const void *))
 {
