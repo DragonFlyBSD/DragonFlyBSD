@@ -372,7 +372,9 @@ struct hammer_inode {
 	int			flags;
 	int			error;		/* flush error */
 	int			cursor_ip_refs;	/* sanity */
+#if 0
 	int			cursor_exclreq_count;
+#endif
 	int			rsv_recs;
 	struct vnode		*vp;
 	hammer_pseudofs_inmem_t	pfsm;
@@ -742,7 +744,9 @@ struct hammer_node {
 	TAILQ_HEAD(, hammer_cursor) cursor_list;  /* deadlock recovery */
 	struct hammer_node_cache_list cache_list; /* passive caches */
 	int			flags;
+#if 0
 	int			cursor_exclreq_count;
+#endif
 };
 
 #define HAMMER_NODE_DELETED	0x0001
