@@ -664,7 +664,7 @@ hammer_move_node(hammer_cursor_t cursor, hammer_btree_elm_t elm,
 	 */
 	if (nnode->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		for (i = 0; i < nnode->ondisk->count; ++i) {
-			error = btree_set_parent(cursor->trans, nnode,
+			error = btree_set_parent_of_child(cursor->trans, nnode,
 					&nnode->ondisk->elms[i]);
 			if (error)
 				panic("reblock internal node: fixup problem");

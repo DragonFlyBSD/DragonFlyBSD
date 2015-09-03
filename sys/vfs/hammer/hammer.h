@@ -1257,7 +1257,8 @@ int	hammer_btree_chkts(hammer_tid_t ts, hammer_base_elm_t key);
 int	hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid);
 int	hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid);
 
-int	btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
+int	btree_set_parent_of_child(hammer_transaction_t trans,
+                        hammer_node_t node,
                         hammer_btree_elm_t elm);
 void	hammer_node_lock_init(hammer_node_lock_t parent, hammer_node_t node);
 void	hammer_btree_lcache_init(hammer_mount_t hmp, hammer_node_lock_t lcache,

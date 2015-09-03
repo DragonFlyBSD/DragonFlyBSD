@@ -1598,7 +1598,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	 */
 	for (i = 0; i < new_node->ondisk->count; ++i) {
 		elm = &new_node->ondisk->elms[i];
-		error = btree_set_parent(cursor->trans, new_node, elm);
+		error = btree_set_parent_of_child(cursor->trans, new_node, elm);
 		if (error) {
 			panic("btree_split_internal: btree-fixup problem");
 		}
@@ -2532,7 +2532,7 @@ hammer_btree_get_parent(hammer_transaction_t trans, hammer_node_t node,
  * XXX deadlock potential here with our exclusive locks
  */
 int
-btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
+btree_set_parent_of_child(hammer_transaction_t trans, hammer_node_t node,
 		 hammer_btree_elm_t elm)
 {
 	hammer_node_t child;
