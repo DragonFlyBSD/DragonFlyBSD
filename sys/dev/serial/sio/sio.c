@@ -362,6 +362,10 @@ static struct pci_ids pci_ids[] = {
 	{ 0x7101135e, "SeaLevel Ultra 530.PCI Single Port Serial", 0x18 },
 	{ 0x0000151f, "SmartLink 5634PCV SurfRider", 0x10 },
 	{ 0x98459710, "Netmos Nm9845 PCI Bridge with Dual UART", 0x10 },
+	{ 0x8c3d8086, "Intel Lynx Point KT Controller", 0x10 },
+	{ 0x9c3d8086, "Intel Lynx Point-LP HECI KT", 0x10 },
+	{ 0x8cbd8086, "Intel Wildcat Point KT Controller", 0x10 },
+	{ 0x9cbd8086, "Intel Wildcat Point-LP KT Controller", 0x10 },
 	{ 0x00000000, NULL, 0 }
 };
 
