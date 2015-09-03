@@ -325,7 +325,6 @@ void
 hammer2_chain_drop(hammer2_chain_t *chain)
 {
 	u_int refs;
-	u_int need = 0;
 
 	if (hammer2_debug & 0x200000)
 		Debugger("drop");
@@ -334,11 +333,7 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 	print_backtrace(8);
 #endif
 
-	if (chain->flags & HAMMER2_CHAIN_UPDATE)
-		++need;
-	if (chain->flags & HAMMER2_CHAIN_MODIFIED)
-		++need;
-	KKASSERT(chain->refs > need);
+	KKASSERT(chain->refs > 0);
 
 	while (chain) {
 		refs = chain->refs;
@@ -366,6 +361,8 @@ hammer2_chain_drop(hammer2_chain_t *chain)
  * the kernel stack.
  *
  * The chain cannot be freed if it has any children.
+ * The chain cannot be freed if flagged MODIFIED unless we can dispose of that.
+ * The chain cannot be freed if flagged UPDATE unless we can dispose of that.
  *
  * The core spinlock is allowed nest child-to-parent (not parent-to-child).
  */
@@ -379,34 +376,93 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	hammer2_chain_t *rdrop;
 
 	/*
-	 * Spinlock the core and check to see if it is empty.  If it is
-	 * not empty we leave chain intact with refs == 0.  The elements
-	 * in core->rbtree are associated with other chains contemporary
-	 * with ours but not with our chain directly.
+	 * Critical field access.
 	 */
 	hammer2_spin_ex(&chain->core.spin);
 
+	if (chain->parent) {
+		/*
+		 * If the chain has a parent the UPDATE bit prevents scrapping
+		 * as the chain is needed to properly flush the parent.  Try
+		 * to complete the 1->0 transition and return NULL.  Retry
+		 * (return chain) if we are unable to complete the 1->0
+		 * transition, else return NULL (nothing more to do).
+		 *
+		 * If the chain has a parent the MODIFIED bit prevents
+		 * scrapping.
+		 */
+		if (chain->flags & (HAMMER2_CHAIN_UPDATE |
+				    HAMMER2_CHAIN_MODIFIED)) {
+			if (atomic_cmpset_int(&chain->refs, 1, 0)) {
+				hammer2_spin_unex(&chain->core.spin);
+				chain = NULL;
+			} else {
+				hammer2_spin_unex(&chain->core.spin);
+			}
+			return (chain);
+		}
+		/* spinlock still held */
+	} else {
+		/*
+		 * The chain has no parent and can be flagged for destruction.
+		 * Since it has no parent, UPDATE can also be cleared.
+		 */
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROY);
+		if (chain->flags & HAMMER2_CHAIN_UPDATE)
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
+
+		/*
+		 * If the chain has children or if it has been MODIFIED and
+		 * also recorded for DEDUP, we must still flush the chain.
+		 *
+		 * In the case where it has children, the DESTROY flag test
+		 * in the flush code will prevent unnecessary flushes of
+		 * MODIFIED chains that are not flagged DEDUP so don't worry
+		 * about that here.
+		 */
+		if (chain->core.chain_count ||
+		    (chain->flags & (HAMMER2_CHAIN_MODIFIED |
+				     HAMMER2_CHAIN_DEDUP)) ==
+		    (HAMMER2_CHAIN_MODIFIED |
+		     HAMMER2_CHAIN_DEDUP)) {
+			/*
+			 * Put on flushq (should ensure refs > 1), retry
+			 * the drop.
+			 */
+			hammer2_spin_unex(&chain->core.spin);
+			hammer2_delayed_flush(chain);
+			return(chain);	/* retry drop */
+		}
+
+		/*
+		 * Otherwise we can scrap the MODIFIED bit if it is set,
+		 * and continue along the freeing path.
+		 */
+		if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+			atomic_add_long(&hammer2_count_modified_chains, -1);
+		}
+		/* spinlock still held */
+	}
+
 	/*
-	 * We can't free non-stale chains with children until we are
-	 * able to free the children because there might be a flush
-	 * dependency.  Flushes of stale children (which should also
-	 * have their deleted flag set) short-cut recursive flush
-	 * dependencies and can be freed here.  Any flushes which run
-	 * through stale children due to the flush synchronization
-	 * point should have a FLUSH_* bit set in the chain and not
-	 * reach lastdrop at this time.
+	 * If any children exist we must leave the chain intact with refs == 0.
+	 * They exist because chains are retained below us which have refs or
+	 * may require flushing.  This case can occur when parent != NULL.
 	 *
-	 * NOTE: We return (chain) on failure to retry.
+	 * Retry (return chain) if we fail to transition the refs to 0, else
+	 * return NULL indication nothing more to do.
 	 */
 	if (chain->core.chain_count) {
 		if (atomic_cmpset_int(&chain->refs, 1, 0)) {
 			hammer2_spin_unex(&chain->core.spin);
-			chain = NULL;	/* success */
+			chain = NULL;
 		} else {
 			hammer2_spin_unex(&chain->core.spin);
 		}
-		return(chain);
+		return (chain);
 	}
+	/* spinlock still held */
 	/* no chains left under us */
 
 	/*
@@ -429,15 +485,15 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	if ((parent = chain->parent) != NULL) {
 		hammer2_spin_ex(&parent->core.spin);
 		if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
-			/* 1->0 transition failed */
+			/* 1->0 transition failed, retry */
 			hammer2_spin_unex(&parent->core.spin);
 			hammer2_spin_unex(&chain->core.spin);
-			return(chain);	/* retry */
+			return(chain);
 		}
 
 		/*
-		 * 1->0 transition successful, remove chain from its
-		 * above core.
+		 * 1->0 transition successful, remove chain from the
+		 * parent.
 		 */
 		if (chain->flags & HAMMER2_CHAIN_ONRBTREE) {
 			RB_REMOVE(hammer2_chain_tree,
@@ -454,9 +510,11 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		 */
 		if (parent->core.chain_count == 0) {
 			rdrop = parent;
-			if (atomic_cmpset_int(&rdrop->refs, 0, 1) == 0) {
+			atomic_add_int(&rdrop->refs, 1);
+			/*
+			if (atomic_cmpset_int(&rdrop->refs, 0, 1) == 0)
 				rdrop = NULL;
-			}
+			*/
 		}
 		hammer2_spin_unex(&parent->core.spin);
 		parent = NULL;	/* safety */
@@ -473,7 +531,8 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		 chain->core.chain_count == 0);
 
 	/*
-	 * All spin locks are gone, finish freeing stuff.
+	 * All spin locks are gone, no pointers remain to the chain, finish
+	 * freeing it.
 	 */
 	KKASSERT((chain->flags & (HAMMER2_CHAIN_UPDATE |
 				  HAMMER2_CHAIN_MODIFIED)) == 0);
@@ -880,6 +939,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 
 	/*
 	 * Shortcut the case if the data is embedded or not resolved.
+	 * Only drop non-DIO-based data if the chain is not modified.
 	 *
 	 * Do NOT NULL out chain->data (e.g. inode data), it might be
 	 * dirty.
@@ -1179,19 +1239,11 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		newmod = 1;
 	} else if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		/*
-		 * Must set modified bit.  If the chain has been deleted
-		 * it must be placed on the delayed-flush queue to prevent
-		 * it from possibly being lost (a normal flush of the topology
-		 * will no longer see it).
+		 * Must set modified bit.
 		 */
 		atomic_add_long(&hammer2_count_modified_chains, 1);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
-		hammer2_chain_ref(chain);
 		hammer2_pfs_memory_inc(chain->pmp);	/* can be NULL */
-		if ((chain->flags & HAMMER2_CHAIN_DELETED) &&
-		    (chain->flags & HAMMER2_CHAIN_DELAYED) == 0) {
-			hammer2_delayed_flush(chain);
-		}
 		newmod = 1;
 	} else {
 		/*
@@ -1199,10 +1251,13 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		 */
 		newmod = 0;
 	}
-	if ((chain->flags & HAMMER2_CHAIN_UPDATE) == 0) {
+
+	/*
+	 * Flag parent update required, clear DEDUP flag (already processed
+	 * above).
+	 */
+	if ((chain->flags & HAMMER2_CHAIN_UPDATE) == 0)
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
-		hammer2_chain_ref(chain);
-	}
 	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DEDUP);
 
 	/*
@@ -1426,7 +1481,6 @@ hammer2_voldata_modify(hammer2_dev_t *hmp)
 	if ((hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		atomic_add_long(&hammer2_count_modified_chains, 1);
 		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED);
-		hammer2_chain_ref(&hmp->vchain);
 		hammer2_pfs_memory_inc(hmp->vchain.pmp);
 	}
 }
@@ -2642,10 +2696,8 @@ again:
 		 * setflush so the flush recognizes that it must update
 		 * the bref in the parent.
 		 */
-		if ((chain->flags & HAMMER2_CHAIN_UPDATE) == 0) {
-			hammer2_chain_ref(chain);
+		if ((chain->flags & HAMMER2_CHAIN_UPDATE) == 0)
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
-		}
 	}
 
 	/*
@@ -2770,7 +2822,8 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		/*
 		 * Chain is blockmapped, so there must be a parent.
 		 * Atomically remove the chain from the parent and remove
-		 * the blockmap entry.
+		 * the blockmap entry.  The parent must be set modified
+		 * to remove the blockmap entry.
 		 */
 		hammer2_blockref_t *base;
 		int count;
@@ -3548,15 +3601,10 @@ hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	}
 
 	/*
-	 * To avoid losing track of a permanent deletion we add the chain
-	 * to the delayed flush queue.  If we were to flush it right now the
-	 * parent would end up in a modified state and generate I/O.
-	 * The delayed queue gives the parent a chance to be deleted to
-	 * (e.g. rm -rf).
+	 * Permanent deletions mark the chain as destroyed.  H
 	 */
 	if (flags & HAMMER2_DELETE_PERMANENT) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROY);
-		hammer2_delayed_flush(chain);
 	} else {
 		/* XXX might not be needed */
 		hammer2_chain_setflush(chain);
@@ -4194,6 +4242,9 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
  * structure representing the inode locked to prevent
  * consolidation/deconsolidation races.
  *
+ * The flags passed in are LOOKUP flags, not RESOLVE flags.  Only
+ * HAMMER2_LOOKUP_SHARED is supported.
+ *
  * We locate the hardlink in the current or a common parent directory.
  *
  * If we are unable to locate the hardlink, EIO is returned and
@@ -4210,6 +4261,10 @@ hammer2_chain_hardlink_find(hammer2_inode_t *dip,
 	hammer2_key_t key_dummy;
 	hammer2_key_t lhc;
 	int cache_index = -1;
+	int resolve_flags;
+
+	resolve_flags = (flags & HAMMER2_LOOKUP_SHARED) ?
+			HAMMER2_RESOLVE_SHARED : 0;
 
 	/*
 	 * Obtain the key for the hardlink from *chainp.
@@ -4248,7 +4303,7 @@ hammer2_chain_hardlink_find(hammer2_inode_t *dip,
 			hammer2_chain_ref(parent);
 			hammer2_chain_unlock(*parentp);
 			hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
-						   flags);
+						   resolve_flags);
 			if ((*parentp)->parent == parent) {
 				hammer2_chain_drop(*parentp);
 				*parentp = parent;
@@ -4257,7 +4312,7 @@ hammer2_chain_hardlink_find(hammer2_inode_t *dip,
 				hammer2_chain_drop(parent);
 				hammer2_chain_lock(*parentp,
 						   HAMMER2_RESOLVE_ALWAYS |
-						   flags);
+						   resolve_flags);
 				parent = NULL;	/* safety */
 				/* retry */
 			}

@@ -61,6 +61,34 @@
 #include "hammer2.h"
 
 /*
+ * Determine if the specified directory is empty.  Returns 0 on success.
+ */
+static
+int
+checkdirempty(hammer2_chain_t *orig_parent)
+{
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	int cache_index = -1;
+	int error;
+
+	parent = hammer2_chain_lookup_init(orig_parent, 0);
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     HAMMER2_DIRHASH_VISIBLE,
+				     HAMMER2_KEY_MAX,
+				     &cache_index, 0);
+	error = chain ? ENOTEMPTY : 0;
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+	hammer2_chain_lookup_done(parent);
+
+	return error;
+}
+
+/*
  * Backend for hammer2_vfs_root()
  *
  * This is called when a newly mounted PFS has not yet synchronized
@@ -211,7 +239,7 @@ hammer2_xop_nresolve(hammer2_xop_t *arg, int clindex)
 			error = hammer2_chain_hardlink_find(
 						xop->head.ip1,
 						&parent, &chain,
-						HAMMER2_RESOLVE_SHARED);
+						HAMMER2_LOOKUP_SHARED);
 		}
 	}
 done:
@@ -313,6 +341,9 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 		}
 
 		if (type == HAMMER2_OBJTYPE_DIRECTORY &&
+		    checkdirempty(chain) != 0) {
+			error = ENOTEMPTY;
+		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
 		    xop->isdir == 0) {
 			error = ENOTDIR;
 		} else 
@@ -325,6 +356,7 @@ hammer2_xop_unlink(hammer2_xop_t *arg, int clindex)
 			 * also the inode when nlinks == 1.  Hardlink targets
 			 * are handled in the next conditional.
 			 */
+			error = chain->error;
 			hammer2_chain_delete(parent, chain,
 					     xop->head.mtid, dopermanent);
 		}

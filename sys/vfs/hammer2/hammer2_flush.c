@@ -572,11 +572,25 @@ again:
 		/*
 		 * Dispose of the modified bit.
 		 *
+		 * If parent is present, the UPDATE bit should already be set.
 		 * UPDATE should already be set.
 		 * bref.mirror_tid should already be set.
 		 */
 		KKASSERT((chain->flags & HAMMER2_CHAIN_UPDATE) ||
-			 chain == &hmp->vchain);
+			 chain->parent == NULL);
+		if (hammer2_debug & 0x800000) {
+			hammer2_chain_t *pp;
+
+			for (pp = chain; pp->parent; pp = pp->parent)
+				;
+			kprintf("FLUSH CHAIN %p (p=%p pp=%p/%d) TYPE %d FLAGS %08x (%s)\n",
+				chain, chain->parent, pp, pp->bref.type,
+				chain->bref.type, chain->flags,
+				(chain->bref.type == 1 ? (const char *)chain->data->ipdata.filename : "?")
+
+				);
+			print_backtrace(10);
+		}
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		atomic_add_long(&hammer2_count_modified_chains, -1);
 
@@ -587,22 +601,17 @@ again:
 		if (chain->pmp)
 			hammer2_pfs_memory_wakeup(chain->pmp);
 
-		if ((chain->flags & HAMMER2_CHAIN_UPDATE) ||
-		    chain == &hmp->vchain ||
-		    chain == &hmp->fchain) {
+#if 0
+		if ((chain->flags & HAMMER2_CHAIN_UPDATE) == 0 &&
+		    chain != &hmp->vchain &&
+		    chain != &hmp->fchain) {
 			/*
-			 * Drop the ref from the MODIFIED bit we cleared,
-			 * net -1 ref.
-			 */
-			hammer2_chain_drop(chain);
-		} else {
-			/*
-			 * Drop the ref from the MODIFIED bit we cleared and
-			 * set a ref for the UPDATE bit we are setting.  Net
-			 * 0 refs.
+			 * Set UPDATE bit indicating that the parent block
+			 * table requires updating.
 			 */
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
 		}
+#endif
 
 		/*
 		 * Issue the flush.  This is indirect via the DIO.
@@ -808,10 +817,8 @@ again:
 	 * chain gets reattached later on the bit will simply get set
 	 * again.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_UPDATE) && parent == NULL) {
+	if ((chain->flags & HAMMER2_CHAIN_UPDATE) && parent == NULL)
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
-		hammer2_chain_drop(chain);
-	}
 
 	/*
 	 * The chain may need its blockrefs updated in the parent.  This
@@ -852,10 +859,8 @@ again:
 		 * Clear UPDATE flag, mark parent modified, update its
 		 * modify_tid if necessary, and adjust the parent blockmap.
 		 */
-		if (chain->flags & HAMMER2_CHAIN_UPDATE) {
+		if (chain->flags & HAMMER2_CHAIN_UPDATE)
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
-			hammer2_chain_drop(chain);
-		}
 
 		/*
 		 * (optional code)
@@ -1096,7 +1101,8 @@ hammer2_inode_xop_flush(hammer2_xop_t *arg, int clindex)
 				    HAMMER2_RESOLVE_ALWAYS);
 	if (chain) {
 		hmp = chain->hmp;
-		if (chain->flags & HAMMER2_CHAIN_FLUSH_MASK) {
+		if ((chain->flags & HAMMER2_CHAIN_FLUSH_MASK) ||
+		    TAILQ_FIRST(&hmp->flushq) != NULL) {
 			hammer2_flush(chain, HAMMER2_FLUSH_TOP);
 			parent = chain->parent;
 			KKASSERT(chain->pmp != parent->pmp);

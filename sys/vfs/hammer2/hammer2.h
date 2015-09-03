@@ -357,9 +357,12 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  *		  related buffer.  The data is assumed to be all-zeros.  It
  *		  is primarily used for indirect blocks.
  *
- * MODIFIED	- The chain's media data has been modified.
+ * MODIFIED	- The chain's media data has been modified.  Prevents chain
+ *		  free on lastdrop if still in the topology.
  *
- * UPDATE	- Chain might not be modified but parent blocktable needs update
+ * UPDATE	- Chain might not be modified but parent blocktable needs
+ *		  an update.  Prevents chain free on lastdrop if still in
+ *		  the topology.
  *
  * FICTITIOUS	- Faked chain as a placeholder for an error condition.  This
  *		  chain is unsuitable for I/O.
@@ -574,6 +577,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 struct hammer2_cluster_item {
 	hammer2_chain_t		*chain;
 	int			cache_index;
+	int			error;
 	uint32_t		flags;
 };
 

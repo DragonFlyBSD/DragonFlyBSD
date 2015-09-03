@@ -498,6 +498,8 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 		hammer2_chain_ref(chain);
 		hammer2_chain_push_shared_lock(chain);
 	}
+	if (error == 0 && chain)
+		error = chain->error;
 	fifo->errors[fifo->wi & HAMMER2_XOPFIFO_MASK] = error;
 	fifo->array[fifo->wi & HAMMER2_XOPFIFO_MASK] = chain;
 	cpu_sfence();
@@ -589,8 +591,10 @@ loop:
 		if (fifo->ri != fifo->wi) {
 			cpu_lfence();
 			chain = fifo->array[fifo->ri & HAMMER2_XOPFIFO_MASK];
+			error = fifo->errors[fifo->ri & HAMMER2_XOPFIFO_MASK];
 			++fifo->ri;
 			xop->cluster.array[i].chain = chain;
+			xop->cluster.array[i].error = error;
 			if (chain == NULL) {
 				/* XXX */
 				xop->cluster.array[i].flags |=

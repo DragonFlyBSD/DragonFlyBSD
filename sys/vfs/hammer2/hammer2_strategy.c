@@ -975,6 +975,9 @@ hammer2_compress_and_write(struct buf *bp, hammer2_inode_t *ip,
 			 * The flush code doesn't calculate check codes for
 			 * file data (doing so can result in excessive I/O),
 			 * so we do it here.
+			 *
+			 * Record for dedup only after the DIO's buffer cache
+			 * buffer has been updated.
 			 */
 			hammer2_chain_setcheck(chain, bdata);
 			hammer2_dedup_record(chain, bdata);
@@ -1165,6 +1168,9 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
 		 * The flush code doesn't calculate check codes for
 		 * file data (doing so can result in excessive I/O),
 		 * so we do it here.
+		 *
+		 * Record for dedup only after the DIO's buffer cache
+		 * buffer has been updated.
 		 */
 		hammer2_chain_setcheck(chain, bdata);
 		hammer2_dedup_record(chain, bdata);

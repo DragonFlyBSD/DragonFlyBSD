@@ -56,6 +56,31 @@ hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
 	return(0);
 }
 
+static
+void
+hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
+{
+	hammer2_inode_sideq_t *ipul;
+	hammer2_pfs_t *pmp = ip->pmp;
+
+	if ((ip->flags & HAMMER2_INODE_ONSIDEQ) == 0) {
+		ipul = kmalloc(sizeof(*ipul), pmp->minode,
+			       M_WAITOK | M_ZERO);
+		ipul->ip = ip;
+		hammer2_spin_ex(&pmp->list_spin);
+		if ((ip->flags & HAMMER2_INODE_ONSIDEQ) == 0) {
+			hammer2_inode_ref(ip);
+			atomic_set_int(&ip->flags,
+				       HAMMER2_INODE_ONSIDEQ);
+			TAILQ_INSERT_TAIL(&pmp->sideq, ipul, entry);
+			hammer2_spin_unex(&pmp->list_spin);
+		} else {
+			hammer2_spin_unex(&pmp->list_spin);
+			kfree(ipul, pmp->minode);
+		}
+	}
+}
+
 /*
  * HAMMER2 inode locks
  *
@@ -1293,30 +1318,13 @@ hammer2_inode_common_parent(hammer2_inode_t *fdip, hammer2_inode_t *tdip)
 void
 hammer2_inode_modify(hammer2_inode_t *ip)
 {
-	hammer2_inode_sideq_t *ipul;
 	hammer2_pfs_t *pmp;
 
 	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	if (ip->vp) {
 		vsetisdirty(ip->vp);
 	} else if ((pmp = ip->pmp) != NULL) {
-		if ((ip->flags & HAMMER2_INODE_ONSIDEQ) == 0) {
-			ipul = kmalloc(sizeof(*ipul), pmp->minode,
-				       M_WAITOK | M_ZERO);
-			ipul->ip = ip;
-			hammer2_inode_ref(ip);
-			hammer2_spin_ex(&pmp->list_spin);
-			if ((ip->flags & HAMMER2_INODE_ONSIDEQ) == 0) {
-				atomic_set_int(&ip->flags,
-					       HAMMER2_INODE_ONSIDEQ);
-				TAILQ_INSERT_TAIL(&pmp->sideq, ipul, entry);
-				hammer2_spin_unex(&pmp->list_spin);
-			} else {
-				hammer2_spin_unex(&pmp->list_spin);
-				hammer2_inode_drop(ip);
-				kfree(ipul, pmp->minode);
-			}
-		}
+		hammer2_inode_delayed_sideq(ip);
 	}
 }
 

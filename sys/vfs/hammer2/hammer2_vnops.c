@@ -181,6 +181,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * the ip is left with a reference and placed on a linked list and
 	 * handled later on.
 	 */
+
 	if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
 			  HAMMER2_INODE_MODIFIED |
 			  HAMMER2_INODE_RESIZED)) &&
@@ -1041,8 +1042,8 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	KKASSERT((ip->flags & HAMMER2_INODE_RESIZED) == 0);
 	ip->osize = ip->meta.size;
 	ip->meta.size = nsize;
-	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED |
-				   HAMMER2_INODE_RESIZED);
+	atomic_set_int(&ip->flags, HAMMER2_INODE_RESIZED);
+	hammer2_inode_modify(ip);
 	LOCKSTOP;
 }
 
@@ -1073,10 +1074,10 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	LOCKSTART;
 
 	KKASSERT((ip->flags & HAMMER2_INODE_RESIZED) == 0);
+	hammer2_inode_modify(ip);
 	osize = ip->meta.size;
 	ip->osize = osize;
 	ip->meta.size = nsize;
-	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 
 	if (osize <= HAMMER2_EMBEDDED_BYTES && nsize > HAMMER2_EMBEDDED_BYTES) {
 		atomic_set_int(&ip->flags, HAMMER2_INODE_RESIZED);
@@ -1795,6 +1796,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * inode to cdip.
 	 */
 	hammer2_inode_lock(ip, 0);
+
 	if (fdip != cdip &&
 	    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
 		hammer2_xop_nlink_t *xop1;

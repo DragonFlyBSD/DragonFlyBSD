@@ -716,6 +716,7 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	int nquorum;
 	int umasters;	/* unknown masters (still in progress) */
 	int smpresent;
+	int error;
 	int i;
 
 	cluster->error = 0;
@@ -749,10 +750,11 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 		cluster->array[i].flags |= HAMMER2_CITEM_INVALID;
 
 		chain = cluster->array[i].chain;
-		if (chain && chain->error) {
+		error = cluster->array[i].error;
+		if (chain && error) {
 			if (cluster->focus == NULL || cluster->focus == chain) {
 				/* error will be overridden by valid focus */
-				cluster->error = chain->error;
+				/* XXX */
 			}
 
 			/*
@@ -796,7 +798,7 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 			nflags |= HAMMER2_CLUSTER_RDHARD;
 			cluster->focus_index = i;
 			cluster->focus = chain;
-			cluster->error = chain ? chain->error : 0;
+			cluster->error = error;
 			break;
 		default:
 			break;
@@ -835,6 +837,7 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 			}
 
 			chain = cluster->array[i].chain;
+			error = cluster->array[i].error;
 
 			/*
 			 * Skip elements still in progress.  umasters keeps
@@ -853,6 +856,8 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 				if (chain == NULL) {
 					++nmasters;
 					++nmasters_keymatch;
+					if (cluster->error == 0)
+						cluster->error = error;
 				}
 			} else if (chain &&
 				   (key == (hammer2_key_t)-1 ||
@@ -871,6 +876,8 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 				if (quorum_tid == chain->bref.modify_tid) {
 					/*
 					 * TID matches current collection.
+					 *
+					 * (error handled in next pass)
 					 */
 					++nmasters;
 					if (chain->error == 0) {
@@ -904,8 +911,11 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	/*
 	 * Validated end of scan.
 	 */
-	if (flags & HAMMER2_CHECK_NULL)
-		return ENOENT;
+	if (flags & HAMMER2_CHECK_NULL) {
+		if (cluster->error == 0)
+			cluster->error = ENOENT;
+		return cluster->error;
+	}
 
 	/*
 	 * If we have a NULL focus at this point the agreeing quorum all
@@ -919,13 +929,23 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	 *
 	 * We have quorum agreement, validate elements, not end of scan.
 	 */
+	cluster->error = 0;
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i].chain;
+		error = cluster->array[i].error;
 		if (chain == NULL ||
 		    chain->bref.key != key ||
 		    chain->bref.modify_tid != quorum_tid) {
 			continue;
 		}
+
+		/*
+		 * Quorum Match
+		 *
+		 * XXX for now, cumulative error.
+		 */
+		if (cluster->error == 0)
+			cluster->error = error;
 
 		switch (cluster->pmp->pfs_types[i]) {
 		case HAMMER2_PFSTYPE_MASTER:
@@ -1061,7 +1081,7 @@ skip4:
 	atomic_set_int(&cluster->flags, nflags);
 	atomic_clear_int(&cluster->flags, HAMMER2_CLUSTER_ZFLAGS & ~nflags);
 
-	return 0;
+	return cluster->error;
 }
 
 /*
