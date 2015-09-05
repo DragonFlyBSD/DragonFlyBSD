@@ -908,4 +908,4 @@ typedef union hammer_data_ondisk *hammer_data_ondisk_t;
  * Ondisk layout of B-Tree related structures
  */
 #include "hammer_btree.h"
-#endif
+#endif /* !VFS_HAMMER_DISK_H_ */

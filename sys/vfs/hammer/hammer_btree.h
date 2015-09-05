@@ -34,6 +34,9 @@
  * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.24 2008/06/26 04:06:22 dillon Exp $
  */
 
+#ifndef VFS_HAMMER_BTREE_H_
+#define VFS_HAMMER_BTREE_H_
+
 /*
  * HAMMER B-Tree index
  *
@@ -294,3 +297,5 @@ struct hammer_node_ondisk {
 	(sizeof(struct hammer_node_ondisk) - sizeof(hammer_crc_t))
 
 typedef struct hammer_node_ondisk *hammer_node_ondisk_t;
+
+#endif /* !VFS_HAMMER_BTREE_H_ */

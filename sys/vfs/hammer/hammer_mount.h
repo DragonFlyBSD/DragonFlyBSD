@@ -34,6 +34,9 @@
  * $DragonFly: src/sys/vfs/hammer/hammer_mount.h,v 1.11 2008/09/17 21:44:20 dillon Exp $
  */
 
+#ifndef VFS_HAMMER_MOUNT_H_
+#define VFS_HAMMER_MOUNT_H_
+
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -62,3 +65,4 @@ struct hammer_mount_info {
 
 #define HMNT_USERFLAGS	(HMNT_NOHISTORY | HMNT_MASTERID)
 
+#endif /* !VFS_HAMMER_MOUNT_H_ */

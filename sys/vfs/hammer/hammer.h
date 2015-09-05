@@ -31,6 +31,10 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#ifndef VFS_HAMMER_HAMMER_H_
+#define VFS_HAMMER_HAMMER_H_
+
 /*
  * This header file contains structures used internally by the HAMMERFS
  * implementation.  See hammer_disk.h for on-disk structures.
@@ -1695,3 +1699,5 @@ hammer_dir_localization(hammer_inode_t dip)
 		return(HAMMER_LOCALIZE_MISC);
 }
 #endif  /* _KERNEL */
+
+#endif /* !VFS_HAMMER_HAMMER_H_ */

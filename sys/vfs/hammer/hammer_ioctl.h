@@ -509,5 +509,5 @@ struct hammer_ioc_data {
 #define HAMMERIOC_LIST_VOLUMES	_IOWR('h',27,struct hammer_ioc_volume_list)
 #define HAMMERIOC_PFS_ITERATE	_IOWR('h',28,struct hammer_ioc_pfs_iterate)
 
-#endif
+#endif /* !VFS_HAMMER_IOCTL_H_ */
 

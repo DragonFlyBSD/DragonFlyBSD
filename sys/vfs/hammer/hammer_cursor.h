@@ -34,6 +34,9 @@
  * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.26 2008/08/06 15:38:58 dillon Exp $
  */
 
+#ifndef VFS_HAMMER_CURSOR_H_
+#define VFS_HAMMER_CURSOR_H_
+
 struct hammer_cmirror;
 
 /*
@@ -172,3 +175,4 @@ struct hammer_cmirror {
 #define hammer_cursor_ondisk(cursor)		\
 			((cursor)->leaf != &(cursor)->iprec->leaf)
 
+#endif /* !VFS_HAMMER_CURSOR_H_ */
