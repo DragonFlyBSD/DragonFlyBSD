@@ -37,6 +37,8 @@
 #ifndef _VM_VM_PAGE2_H_
 #define _VM_VM_PAGE2_H_
 
+#ifdef _KERNEL
+
 #ifndef _SYS_VMMETER_H_
 #include <sys/vmmeter.h>
 #endif
@@ -52,8 +54,6 @@
 #ifndef _SYS_SPINLOCK2_H_
 #include <sys/spinlock2.h>
 #endif
-
-#ifdef _KERNEL
 
 /*
  * Return TRUE if we are under our severe low-free-pages threshold
