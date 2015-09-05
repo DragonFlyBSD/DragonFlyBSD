@@ -17,7 +17,6 @@ SRCS	= \
 	drm_drv.c \
 	drm_edid.c \
 	drm_fb_helper.c \
-	drm_fb_cma_helper.c \
 	drm_fops.c \
 	drm_gem.c \
 	drm_global.c \
