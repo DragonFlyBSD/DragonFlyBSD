@@ -37,6 +37,8 @@
  * Check for interruption when doing a long ioctl operation.
  */
 
+#include <sys/signal2.h>
+
 #include "hammer.h"
 
 /*

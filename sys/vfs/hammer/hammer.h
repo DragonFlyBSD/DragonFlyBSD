@@ -62,11 +62,8 @@
 #include <sys/limits.h>
 #include <vm/vm_extern.h>
 
-#ifdef _KERNEL
 #include <sys/buf2.h>
-#include <sys/signal2.h>
 #include <vm/vm_page2.h>
-#endif
 
 #include "hammer_disk.h"
 #include "hammer_mount.h"
