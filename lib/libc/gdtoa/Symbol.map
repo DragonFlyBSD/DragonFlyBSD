@@ -1,62 +1,8 @@
-DF402.0 {
+DF404.0 {
     strtod;
     strtod_l;
-    strtodg_l;
     strtof;
     strtof_l;
+    strtold;
     strtold_l;
-};
-
-DFprivate_1.0 {
-    __hexnan_D2A;
-    __strtodg;
-    __strtord;
-    __strtorx;
-    __strtord_l;
-    __strtorx_l;
-
-    __Balloc_D2A;
-    __Bfree_D2A;
-    __ULtod_D2A;
-    __ULtox_D2A;
-    __any_on_D2A;
-    __b2d_D2A;
-    __bigtens_D2A;
-    __cmp_D2A;
-    __copybits_D2A;
-    __d2b_D2A;
-    __decrement_D2A;
-    __diff_D2A;
-    __gethex_D2A;
-    __hexdig_D2A;
-    __hexdig_init_D2A;
-    __hi0bits_D2A;
-    __i2b_D2A;
-    __increment_D2A;
-    __lo0bits_D2A;
-    __lshift_D2A;
-    __match_D2A;
-    __mult_D2A;
-    __multadd_D2A;
-    __nrv_alloc_D2A;
-    __pow5mult_D2A;
-    __quorem_D2A;
-    __ratio_D2A;
-    __rshift_D2A;
-    __rv_alloc_D2A;
-    __s2b_D2A;
-    __set_ones_D2A;
-    __strcp_D2A;
-    __sum_D2A;
-    __tens_D2A;
-    __tinytens_D2A;
-    __trailz_D2A;
-    __ulp_D2A;
-
-    __dtoa;
-    __gdtoa_locks;
-    __gdtoa;
-    __hdtoa;
-    __hldtoa;
-    __ldtoa;
 };

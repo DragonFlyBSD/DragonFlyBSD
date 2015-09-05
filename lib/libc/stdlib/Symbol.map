@@ -81,7 +81,6 @@ DF404.0 {
     strtoimax_l;
     strtol;
     strtol_l;
-    strtold;
     strtoll;
     strtoll_l;
     strtonum;

@@ -61,6 +61,8 @@ DF404.0 {
     hesiod_init;
     hesiod_resolve;
     hesiod_to_bind;
+    htonl;
+    htons;
     if_freenameindex;
     if_indextoname;
     if_nameindex;
@@ -101,6 +103,8 @@ DF404.0 {
     link_addr;
     link_ntoa;
     nsdispatch;
+    ntohl;
+    ntohs;
     rcmd;
     rcmd_af;
     rcmdsh;

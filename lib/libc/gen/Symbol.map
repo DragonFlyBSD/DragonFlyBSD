@@ -496,7 +496,6 @@ DFprivate_1.0 {
     _libc_allocate_tls;
     _libc_init_tls;
     _logname_valid;
-    _makecontext;
     _once;
     _pthread_atfork;
     _pthread_attr_destroy;
