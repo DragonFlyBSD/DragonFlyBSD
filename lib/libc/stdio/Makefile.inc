@@ -16,8 +16,9 @@ SRCS+=	__fpending.c _flock_stub.c \
 	fseek.c fsetpos.c ftell.c funopen.c fvwrite.c fwalk.c fwide.c \
 	fwprintf.c fwrite.c fwscanf.c getc.c getchar.c \
 	getdelim.c getline.c gets.c getw.c \
-	getwc.c getwchar.c makebuf.c mktemp.c open_memstream.c perror.c \
-	printf-pos.c printf.c putc.c \
+	getwc.c getwchar.c makebuf.c mktemp.c \
+	open_memstream.c open_wmemstream.c \
+	perror.c printf-pos.c printf.c putc.c \
 	putchar.c puts.c putw.c putwc.c putwchar.c refill.c remove.c rewind.c \
 	rget.c scanf.c setbuf.c setbuffer.c setvbuf.c snprintf.c sprintf.c \
 	sreadahead.c \
@@ -62,6 +63,7 @@ MLINKS+=getline.3 getdelim.3
 MLINKS+=getwc.3 fgetwc.3 getwc.3 fgetwc_l.3 getwc.3 getwc_l.3 \
 	getwc.3 getwchar.3 getwc.3 getwchar_l.3
 MLINKS+=mktemp.3 mkdtemp.3 mktemp.3 mkstemp.3 mktemp.3 mkstemps.3
+MLINKS+=open_memstream.3 open_wmemstream.3
 MLINKS+=printf.3 asprintf.3 printf.3 dprintf.3 printf.3 fprintf.3 \
 	printf.3 snprintf.3 printf.3 sprintf.3 \
 	printf.3 vasprintf.3 printf.3 vdprintf.3 \

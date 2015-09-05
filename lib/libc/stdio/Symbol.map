@@ -80,6 +80,7 @@ DF404.0 {
     mkstemps;
     mktemp;
     open_memstream;
+    open_wmemstream;
     perror;
     printf;
     printf_l;

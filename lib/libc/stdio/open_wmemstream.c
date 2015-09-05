@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libc/stdio/open_memstream.c 281887 2015-04-23 14:22:20Z jhb $
+ * $FreeBSD: head/lib/libc/stdio/open_wmemstream.c 281887 2015-04-23 14:22:20Z jhb $
  */
 
 #include "namespace.h"
@@ -40,31 +40,32 @@
 /* XXX: There is no FPOS_MAX.  This assumes fpos_t is an off_t. */
 #define	FPOS_MAX	OFF_MAX
 
-struct memstream {
-	char **bufp;
+struct wmemstream {
+	wchar_t **bufp;
 	size_t *sizep;
 	ssize_t len;
 	fpos_t offset;
+	mbstate_t mbstate;
 };
 
 static int
-memstream_grow(struct memstream *ms, fpos_t newoff)
+wmemstream_grow(struct wmemstream *ms, fpos_t newoff)
 {
-	char *buf;
+	wchar_t *buf;
 	ssize_t newsize;
 
-	if (newoff < 0 || newoff >= SSIZE_MAX)
-		newsize = SSIZE_MAX - 1;
+	if (newoff < 0 || newoff >= SSIZE_MAX / sizeof(wchar_t))
+		newsize = SSIZE_MAX / sizeof(wchar_t) - 1;
 	else
 		newsize = newoff;
 	if (newsize > ms->len) {
-		buf = realloc(*ms->bufp, newsize + 1);
+		buf = realloc(*ms->bufp, (newsize + 1) * sizeof(wchar_t));
 		if (buf != NULL) {
 #ifdef DEBUG
-			fprintf(stderr, "MS: %p growing from %zd to %zd\n",
+			fprintf(stderr, "WMS: %p growing from %zd to %zd\n",
 			    ms, ms->len, newsize);
 #endif
-			memset(buf + ms->len + 1, 0, newsize - ms->len);
+			wmemset(buf + ms->len + 1, 0, newsize - ms->len);
 			*ms->bufp = buf;
 			ms->len = newsize;
 			return (1);
@@ -75,46 +76,103 @@ memstream_grow(struct memstream *ms, fpos_t newoff)
 }
 
 static void
-memstream_update(struct memstream *ms)
+wmemstream_update(struct wmemstream *ms)
 {
 
 	assert(ms->len >= 0 && ms->offset >= 0);
 	*ms->sizep = ms->len < ms->offset ? ms->len : ms->offset;
 }
 
-static int
-memstream_write(void *cookie, const char *buf, int len)
+/*
+ * Based on a starting multibyte state and an input buffer, determine
+ * how many wchar_t's would be output.  This doesn't use mbsnrtowcs()
+ * so that it can handle embedded null characters.
+ */
+static size_t
+wbuflen(const mbstate_t *state, const char *buf, int len)
 {
-	struct memstream *ms;
-	ssize_t tocopy;
+	mbstate_t lenstate;
+	size_t charlen, count;
+
+	count = 0;
+	lenstate = *state;
+	while (len > 0) {
+		charlen = mbrlen(buf, len, &lenstate);
+		if (charlen == (size_t)-1)
+			return (-1);
+		if (charlen == (size_t)-2)
+			break;
+		if (charlen == 0)
+			/* XXX: Not sure how else to handle this. */
+			charlen = 1;
+		len -= charlen;
+		buf += charlen;
+		count++;
+	}
+	return (count);
+}
+
+static int
+wmemstream_write(void *cookie, const char *buf, int len)
+{
+	struct wmemstream *ms;
+	ssize_t consumed, wlen;
+	size_t charlen;
 
 	ms = cookie;
-	if (!memstream_grow(ms, ms->offset + len))
+	wlen = wbuflen(&ms->mbstate, buf, len);
+	if (wlen < 0) {
+		errno = EILSEQ;
 		return (-1);
-	tocopy = ms->len - ms->offset;
-	if (len < tocopy)
-		tocopy = len;
-	memcpy(*ms->bufp + ms->offset, buf, tocopy);
-	ms->offset += tocopy;
-	memstream_update(ms);
+	}
+	if (!wmemstream_grow(ms, ms->offset + wlen))
+		return (-1);
+
+	/*
+	 * This copies characters one at a time rather than using
+	 * mbsnrtowcs() so it can properly handle embedded null
+	 * characters.
+	 */
+	consumed = 0;
+	while (len > 0 && ms->offset < ms->len) {
+		charlen = mbrtowc(*ms->bufp + ms->offset, buf, len,
+		    &ms->mbstate);
+		if (charlen == (size_t)-1) {
+			if (consumed == 0) {
+				errno = EILSEQ;
+				return (-1);
+			}
+			/* Treat it as a successful short write. */
+			break;
+		}
+		if (charlen == 0)
+			/* XXX: Not sure how else to handle this. */
+			charlen = 1;
+		if (charlen == (size_t)-2) {
+			consumed += len;
+			len = 0;
+		} else {
+			consumed += charlen;
+			buf += charlen;
+			len -= charlen;
+			ms->offset++;
+		}
+	}
+	wmemstream_update(ms);
 #ifdef DEBUG
-	fprintf(stderr, "MS: write(%p, %d) = %zd\n", ms, len, tocopy);
+	fprintf(stderr, "WMS: write(%p, %d) = %zd\n", ms, len, consumed);
 #endif
-	return (tocopy);
+	return (consumed);
 }
 
 static fpos_t
-memstream_seek(void *cookie, fpos_t pos, int whence)
+wmemstream_seek(void *cookie, fpos_t pos, int whence)
 {
-	struct memstream *ms;
-#ifdef DEBUG
+	struct wmemstream *ms;
 	fpos_t old;
-#endif
 
 	ms = cookie;
-#ifdef DEBUG
 	old = ms->offset;
-#endif
 	switch (whence) {
 	case SEEK_SET:
 		/* _fseeko() checks for negative offsets. */
@@ -130,7 +188,7 @@ memstream_seek(void *cookie, fpos_t pos, int whence)
 			if (pos + ms->len < 0) {
 #ifdef DEBUG
 				fprintf(stderr,
-				    "MS: bad SEEK_END: pos %jd, len %zd\n",
+				    "WMS: bad SEEK_END: pos %jd, len %zd\n",
 				    (intmax_t)pos, ms->len);
 #endif
 				errno = EINVAL;
@@ -140,7 +198,7 @@ memstream_seek(void *cookie, fpos_t pos, int whence)
 			if (FPOS_MAX - ms->len < pos) {
 #ifdef DEBUG
 				fprintf(stderr,
-				    "MS: bad SEEK_END: pos %jd, len %zd\n",
+				    "WMS: bad SEEK_END: pos %jd, len %zd\n",
 				    (intmax_t)pos, ms->len);
 #endif
 				errno = EOVERFLOW;
@@ -150,16 +208,19 @@ memstream_seek(void *cookie, fpos_t pos, int whence)
 		ms->offset = ms->len + pos;
 		break;
 	}
-	memstream_update(ms);
+	/* Reset the multibyte state if a seek changes the position. */
+	if (ms->offset != old)
+		memset(&ms->mbstate, 0, sizeof(ms->mbstate));
+	wmemstream_update(ms);
 #ifdef DEBUG
-	fprintf(stderr, "MS: seek(%p, %jd, %d) %jd -> %jd\n", ms, (intmax_t)pos,
-	    whence, (intmax_t)old, (intmax_t)ms->offset);
+	fprintf(stderr, "WMS: seek(%p, %jd, %d) %jd -> %jd\n", ms,
+	    (intmax_t)pos, whence, (intmax_t)old, (intmax_t)ms->offset);
 #endif
 	return (ms->offset);
 }
 
 static int
-memstream_close(void *cookie)
+wmemstream_close(void *cookie)
 {
 
 	free(cookie);
@@ -167,9 +228,9 @@ memstream_close(void *cookie)
 }
 
 FILE *
-open_memstream(char **bufp, size_t *sizep)
+open_wmemstream(wchar_t **bufp, size_t *sizep)
 {
-	struct memstream *ms;
+	struct wmemstream *ms;
 	int save_errno;
 	FILE *fp;
 
@@ -177,7 +238,7 @@ open_memstream(char **bufp, size_t *sizep)
 		errno = EINVAL;
 		return (NULL);
 	}
-	*bufp = calloc(1, 1);
+	*bufp = calloc(1, sizeof(wchar_t));
 	if (*bufp == NULL)
 		return (NULL);
 	ms = malloc(sizeof(*ms));
@@ -192,9 +253,10 @@ open_memstream(char **bufp, size_t *sizep)
 	ms->sizep = sizep;
 	ms->len = 0;
 	ms->offset = 0;
-	memstream_update(ms);
-	fp = funopen(ms, NULL, memstream_write, memstream_seek,
-	    memstream_close);
+	memset(&ms->mbstate, 0, sizeof(mbstate_t));
+	wmemstream_update(ms);
+	fp = funopen(ms, NULL, wmemstream_write, wmemstream_seek,
+	    wmemstream_close);
 	if (fp == NULL) {
 		save_errno = errno;
 		free(ms);
@@ -203,6 +265,6 @@ open_memstream(char **bufp, size_t *sizep)
 		errno = save_errno;
 		return (NULL);
 	}
-	fwide(fp, -1);
+	fwide(fp, 1);
 	return (fp);
 }
