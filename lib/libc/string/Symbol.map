@@ -2,7 +2,6 @@ DF404.0 {
     bcmp;
     bcopy;
     bzero;
-    errstr;
     ffs;
     ffsl;
     ffsll;
