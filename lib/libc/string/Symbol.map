@@ -86,7 +86,7 @@ DF404.0 {
     wcswidth;
     wcswidth_l;
     wcsxfrm;
-    wcwidth_l;
+    wcsxfrm_l;
     wmemchr;
     wmemcmp;
     wmemcpy;
