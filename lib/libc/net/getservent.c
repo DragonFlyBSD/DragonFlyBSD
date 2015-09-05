@@ -773,7 +773,7 @@ fin:
 	return (res);
 }
 
-int
+static int
 serv_marshal_func(char *buffer, size_t *buffer_size, void *retval __unused,
     va_list ap, void *cache_mdata)
 {
@@ -874,7 +874,7 @@ serv_marshal_func(char *buffer, size_t *buffer_size, void *retval __unused,
 	return (NS_SUCCESS);
 }
 
-int
+static int
 serv_unmarshal_func(char *buffer, size_t buffer_size, void *retval, va_list ap,
     void *cache_mdata)
 {

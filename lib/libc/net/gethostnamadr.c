@@ -522,7 +522,7 @@ gethostbyname2_r(const char *name, int af, struct hostent *he, char *buffer,
 	    h_errnop, statp));
 }
 
-int
+static int
 gethostbyname_internal(const char *name, int af, struct hostent *hp, char *buf,
 		       size_t buflen, struct hostent **result, int *h_errnop,
 		       res_state statp)

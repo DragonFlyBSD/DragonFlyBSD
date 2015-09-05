@@ -232,7 +232,7 @@ netname2host(char *netname, char *hostname, int hostlen)
  * reads the file /etc/netid looking for a + to optionally go to the
  * network information service.
  */
-int
+static int
 getnetid(char *key, char *ret)
 {
 	char            buf[1024];	/* big enough */
