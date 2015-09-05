@@ -32,6 +32,9 @@
  * SUCH DAMAGE.
  */
 
+#ifndef HAMMER_HAMMER_H_
+#define HAMMER_HAMMER_H_
+
 #include <sys/types.h>
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
@@ -136,3 +139,5 @@ void hammer_check_restrict(const char *path);
 void hammer_softprune_scandir(struct softprune **basep,
                          struct hammer_ioc_prune *template,
                          const char *dirname);
+
+#endif /* !HAMMER_HAMMER_H_ */

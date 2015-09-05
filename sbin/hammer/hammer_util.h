@@ -32,6 +32,9 @@
  * SUCH DAMAGE.
  */
 
+#ifndef HAMMER_UTIL_H_
+#define HAMMER_UTIL_H_
+
 #include <sys/types.h>
 #include <sys/tree.h>
 #include <sys/queue.h>
@@ -205,3 +208,5 @@ void hammer_add_zone_stat(struct zone_stat *stats, hammer_off_t offset,
 void hammer_add_zone_stat_layer2(struct zone_stat *stats,
 			struct hammer_blockmap_layer2 *layer2);
 void hammer_print_zone_stat(const struct zone_stat *stats);
+
+#endif /* !HAMMER_UTIL_H_ */
