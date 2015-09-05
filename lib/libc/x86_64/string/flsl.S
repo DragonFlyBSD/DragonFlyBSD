@@ -38,3 +38,6 @@ ENTRY(flsl)
 	cmovzq	%rcx, %rax
 	addq	$1, %rax
 	ret
+END(flsl)
+
+	.section .note.GNU-stack,"",%progbits

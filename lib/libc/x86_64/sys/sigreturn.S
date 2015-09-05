@@ -42,3 +42,5 @@
  */
 
 RSYSCALL(sigreturn)
+
+	.section .note.GNU-stack,"",%progbits

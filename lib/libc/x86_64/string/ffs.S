@@ -38,3 +38,6 @@ ENTRY(ffs)
 	cmovzl	%ecx, %eax
 	addl	$1, %eax
 	ret
+END(ffs)
+
+	.section .note.GNU-stack,"",%progbits

@@ -85,3 +85,5 @@ ENTRY(_getcontext)
 	jmp	HIDENAME(cerror)
 #endif
 END(_getcontext)
+
+	.section .note.GNU-stack,"",%progbits

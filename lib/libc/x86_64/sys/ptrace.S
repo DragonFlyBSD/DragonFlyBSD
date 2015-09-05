@@ -57,3 +57,5 @@ ENTRY(__sys_ptrace)
 	jmp	HIDENAME(cerror)
 #endif
 END(__sys_ptrace)
+
+	.section .note.GNU-stack,"",%progbits

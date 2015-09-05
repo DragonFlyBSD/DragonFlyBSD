@@ -38,3 +38,5 @@ L6:	xorl	%eax,%eax		/* Perform unsigned comparison	*/
 	subl	%edx,%eax
 	ret
 END(memcmp)
+
+	.section .note.GNU-stack,"",%progbits

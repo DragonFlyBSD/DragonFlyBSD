@@ -70,3 +70,5 @@ ENTRY(strcmp)
 	subq	%rdx,%rax
 	ret
 END(strcmp)
+
+	.section .note.GNU-stack,"",%progbits

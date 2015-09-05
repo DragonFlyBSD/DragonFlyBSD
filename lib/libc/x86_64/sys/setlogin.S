@@ -61,3 +61,5 @@ ENTRY(__sys_setlogin)
 	jmp	HIDENAME(cerror)
 #endif
 END(__sys_setlogin)
+
+	.section .note.GNU-stack,"",%progbits

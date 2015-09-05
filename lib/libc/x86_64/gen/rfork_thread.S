@@ -101,3 +101,5 @@ ENTRY(rfork_thread)
 	jmp	HIDENAME(cerror)
 #endif
 END(rfork_thread)
+
+	.section .note.GNU-stack,"",%progbits

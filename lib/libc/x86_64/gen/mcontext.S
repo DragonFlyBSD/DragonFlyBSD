@@ -96,6 +96,7 @@ ENTRY(_get_mcontext)
 	 */
 	subq	%rax,%rax
 	ret
+END(_get_mcontext)
 
 
 	/*
@@ -153,4 +154,6 @@ ENTRY(_set_mcontext)
 	movq	MC_RAX(%rdi),%rax
 	movq	MC_RDI(%rdi),%rdi
 	retq
+END(_set_mcontext)
 
+	.section .note.GNU-stack,"",%progbits
