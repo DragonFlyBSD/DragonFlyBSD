@@ -1563,6 +1563,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	 * its subtree_offset was moved to the new node.  If we had created
 	 * a new root its parent pointer may have changed.
 	 */
+	elm->base.btype = HAMMER_BTREE_TYPE_NONE;
 	elm->internal.subtree_offset = 0;
 	ondisk->count = split;
 

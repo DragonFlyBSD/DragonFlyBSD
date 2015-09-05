@@ -74,6 +74,16 @@
 
 /*
  * Common base for all B-Tree element types (40 bytes)
+ *
+ * The following fields are keys used by hammer_btree_cmp()
+ * to compare B-Tree elements listed from higher priority
+ * to lower priority on comparison.
+ *
+ * 1. localization
+ * 2. obj_id
+ * 3. rec_type
+ * 4. key
+ * 5. create_id
  */
 struct hammer_base_elm {
 	int64_t	obj_id;		/* 00 object record is associated with */

@@ -427,10 +427,14 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		if (i == node->count) {
 			if (child_offset != 0)
 				flags |= FLAG_BADCHILDPARENT;
-			/*
-			 * elm->base.btype is not guaranteed for rbn.
-			 */
-			flags |= test_rbn_lr(elm, left_bound, right_bound);
+			switch(elm->base.btype) {
+			case HAMMER_BTREE_TYPE_NONE:
+				flags |= test_rbn_lr(elm, left_bound, right_bound);
+				break;
+			default:
+				flags |= FLAG_BADTYPE;
+				break;
+			}
 		} else {
 			if (child_offset == 0) {
 				flags |= FLAG_BADCHILDPARENT;
