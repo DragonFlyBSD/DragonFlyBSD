@@ -35,8 +35,6 @@
  * HAMMER structural locking
  */
 
-#include <sys/dirent.h>
-
 #include "hammer.h"
 
 void

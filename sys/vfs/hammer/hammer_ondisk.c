@@ -39,7 +39,6 @@
  * managing in-memory structures.
  */
 
-#include <sys/fcntl.h>
 #include <sys/nlookup.h>
 
 #include "hammer.h"

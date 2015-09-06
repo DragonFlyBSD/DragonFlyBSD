@@ -32,12 +32,7 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/fcntl.h>
 #include <sys/namecache.h>
-#include <sys/event.h>
-#include <sys/dirent.h>
-#include <sys/file.h>
-#include <vm/swap_pager.h>
 #include <vfs/fifofs/fifo.h>
 
 #include "hammer.h"

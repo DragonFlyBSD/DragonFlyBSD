@@ -53,13 +53,19 @@
 #include <sys/vnode.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
+#include <sys/dirent.h>
 #include <sys/stat.h>
 #include <sys/globaldata.h>
+#include <sys/fcntl.h>
 #include <sys/lockf.h>
+#include <sys/file.h>
+#include <sys/event.h>
 #include <sys/buf.h>
 #include <sys/queue.h>
 #include <sys/ktr.h>
 #include <sys/limits.h>
+#include <sys/sysctl.h>
+#include <vm/swap_pager.h>
 #include <vm/vm_extern.h>
 
 #include <sys/buf2.h>

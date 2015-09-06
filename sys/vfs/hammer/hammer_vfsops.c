@@ -33,8 +33,6 @@
  */
 
 #include <sys/nlookup.h>
-#include <sys/fcntl.h>
-#include <sys/sysctl.h>
 
 #include "hammer.h"
 
