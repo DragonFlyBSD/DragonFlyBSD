@@ -1064,7 +1064,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	if (ip->ino_data.size >= HAMMER_XDEMARC) {
 		vap->va_bytes = (ip->ino_data.size + HAMMER_XBUFMASK64) &
 				~HAMMER_XBUFMASK64;
-	} else if (ip->ino_data.size > HAMMER_BUFSIZE / 2) {
+	} else if (ip->ino_data.size > HAMMER_HBUFSIZE) {
 		vap->va_bytes = (ip->ino_data.size + HAMMER_BUFMASK64) &
 				~HAMMER_BUFMASK64;
 	} else {
@@ -3327,7 +3327,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	 */
 	KKASSERT((bio->bio_offset & HAMMER_BUFMASK) == 0);
 	KKASSERT(bio->bio_offset < ip->ino_data.size);
-	if (bio->bio_offset || ip->ino_data.size > HAMMER_BUFSIZE / 2)
+	if (bio->bio_offset || ip->ino_data.size > HAMMER_HBUFSIZE)
 		bytes = bp->b_bufsize;
 	else
 		bytes = ((int)ip->ino_data.size + 15) & ~15;

@@ -1741,7 +1741,7 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			 * mirror source to fs block size when it was written
 			 * if the file size was >HAMMER_BUFSIZE/2.
 			 */
-			if (data_len <= HAMMER_BUFSIZE / 2) {
+			if (data_len <= HAMMER_HBUFSIZE) {
 				zone = HAMMER_ZONE_SMALL_DATA_INDEX;
 			} else {
 				data_len = (data_len + HAMMER_BUFMASK) &
