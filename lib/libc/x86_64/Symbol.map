@@ -2,15 +2,11 @@ DF404.0 {
 	/* PSEUDO syscalls */
 	_exit;
 
-	__flt_rounds;
-	__infinity;
-	__isfinitel;
-	__isnanl;
-	__isnormall;
-	__nan;
 	_setjmp;
 	_longjmp;
 	.mcount;
+	get_mcontext;
+	getcontext;
 	fabs;
 	fpgetmask;
 	fpgetprec;
@@ -23,6 +19,7 @@ DF404.0 {
 	rfork_thread;
 	setjmp;
 	longjmp;
+	set_mcontext;
 	sigsetjmp;
 	siglongjmp;
 	amd64_get_fsbase;
@@ -41,11 +38,21 @@ DFprivate_1.0 {
 	__sys_getlogin;
 
 	___longjmp;
+	__flt_rounds;
+	__infinity;
+	__isfinitel;
+	__isnanl;
+	__isnormall;
 	__longjmp;
+	__nan;
 	__siglongjmp;
+	_DYNAMIC;
 	_brk;
 	_end;
+	_get_mcontext;
+	_getcontext;
 	_makecontext;
+	_set_mcontext;
 	.curbrk;
 	.minbrk;
 	.cerror;

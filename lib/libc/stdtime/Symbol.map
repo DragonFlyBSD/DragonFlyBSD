@@ -27,6 +27,7 @@ DF404.0 {
     time2posix;
     timelocal;
     timeoff;
+    timezone;
     tzname;
     tzset;
     tzsetwall;

@@ -54,5 +54,4 @@ DFprivate_1.0 {
     _hash_insert;
     _hash_lookup;
     _hash_remove;
-    _semget;
 };
