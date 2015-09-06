@@ -450,16 +450,6 @@ collect_btree_leaf(hammer_btree_elm_t elm)
 		break;
 	case HAMMER_RECTYPE_DATA:
 	case HAMMER_RECTYPE_DB:
-		/*
-		 * There is an exceptional case where HAMMER uses
-		 * HAMMER_ZONE_LARGE_DATA when the data length is
-		 * >HAMMER_BUFSIZE/2 (not >=HAMMER_BUFSIZE).
-		 * This exceptional case is currently being used
-		 * by mirror write code, however the following code
-		 * can ignore that and simply use the normal way
-		 * of selecting a zone using >=HAMMER_BUFSIZE.
-		 * See hammer_alloc_data() for details.
-		 */
 		zone = elm->leaf.data_len >= HAMMER_BUFSIZE ?
 		       HAMMER_ZONE_LARGE_DATA_INDEX :
 		       HAMMER_ZONE_SMALL_DATA_INDEX;
