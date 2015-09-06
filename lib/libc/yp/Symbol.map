@@ -19,15 +19,3 @@ DF404.0 {
     ypresp_allfn;
     ypresp_data;
 };
-
-/***  static  ***
- * _yp_unbind
- * yp_bind_locked
- * yp_unbind_locked
- * yp_get_default_domain_locked
- * ypmatch_cache_delete
- * ypmatch_cache_flush
- * ypmatch_cache_expire
- * ypmatch_cache_insert
- * ypmatch_cache_lookup
- */

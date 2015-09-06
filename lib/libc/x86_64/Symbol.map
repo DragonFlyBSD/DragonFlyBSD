@@ -1,7 +1,4 @@
 DF404.0 {
-	/* PSEUDO syscalls */
-	_exit;
-
 	_setjmp;
 	_longjmp;
 	.mcount;
@@ -32,11 +29,6 @@ DF404.0 {
 };
 
 DFprivate_1.0 {
-	/* PSEUDO syscalls */
-	_getlogin;
-	__sys_exit;
-	__sys_getlogin;
-
 	___longjmp;
 	__flt_rounds;
 	__infinity;
@@ -46,6 +38,7 @@ DFprivate_1.0 {
 	__longjmp;
 	__nan;
 	__siglongjmp;
+	__signbitl;
 	_DYNAMIC;
 	_brk;
 	_end;

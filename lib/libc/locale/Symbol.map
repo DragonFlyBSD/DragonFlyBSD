@@ -105,8 +105,6 @@ DF404.0 {
 	iswpunct_l;
 	iswrune;
 	iswrune_l;
-	iswctype;
-	iswctype_l;
 	iswspace;
 	iswspace_l;
 	iswspecial;

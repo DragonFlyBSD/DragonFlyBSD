@@ -11,6 +11,7 @@ DF404.0 {
     asctime_r;
     ctime;
     ctime_r;
+    daylight;
     difftime;
     gmtime;
     gmtime_r;

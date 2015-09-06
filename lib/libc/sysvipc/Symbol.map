@@ -8,6 +8,7 @@ DF404.0 {
     is_sysvinit;
     lock_resources;
     lock_undo;
+    msginfo;
     receive_fd;
     receive_message;
     receive_msg_with_cred;

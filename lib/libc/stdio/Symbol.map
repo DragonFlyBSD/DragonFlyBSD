@@ -1,6 +1,5 @@
 DF404.0 {
     __fpending;
-    __isthreaded;
     __srget;
     __stderrp;
     __stdinp;

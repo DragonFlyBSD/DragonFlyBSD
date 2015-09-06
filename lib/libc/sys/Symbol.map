@@ -211,10 +211,11 @@ DF404.0 {
     rfork;
     rmdir;
     rtprio;
-    sched_get_priority_;
+    sched_get_priority_max;
+    sched_get_priority_min;
     sched_getparam;
     sched_getscheduler;
-    sched_rr_get_interv;
+    sched_rr_get_interval;
     sched_setparam;
     sched_setscheduler;
     sched_yield;
@@ -303,7 +304,7 @@ DF404.0 {
 DFprivate_1.0 {
     __fork;
 
-/*  SYSCALLS  */;
+/*  SYSCALLS  */
     __sys___acl_aclcheck_fd;
     __sys___acl_aclcheck_file;
     __sys___acl_delete_fd;
@@ -505,10 +506,11 @@ DFprivate_1.0 {
     __sys_rfork;
     __sys_rmdir;
     __sys_rtprio;
-    __sys_sched_get_priority_;
+    __sys_sched_get_priority_max;
+    __sys_sched_get_priority_min;
     __sys_sched_getparam;
     __sys_sched_getscheduler;
-    __sys_sched_rr_get_interv;
+    __sys_sched_rr_get_interval;
     __sys_sched_setparam;
     __sys_sched_setscheduler;
     __sys_sched_yield;
@@ -593,7 +595,7 @@ DFprivate_1.0 {
     __sys_write;
     __sys_writev;
 
-/*  SYSCALLS  */;
+/*  SYSCALLS  */
     ___acl_aclcheck_fd;
     ___acl_aclcheck_file;
     ___acl_delete_fd;
@@ -795,10 +797,11 @@ DFprivate_1.0 {
     _rfork;
     _rmdir;
     _rtprio;
-    _sched_get_priority_;
+    _sched_get_priority_max;
+    _sched_get_priority_min;
     _sched_getparam;
     _sched_getscheduler;
-    _sched_rr_get_interv;
+    _sched_rr_get_interval;
     _sched_setparam;
     _sched_setscheduler;
     _sched_yield;

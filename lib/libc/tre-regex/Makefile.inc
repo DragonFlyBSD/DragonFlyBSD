@@ -2,7 +2,7 @@ TRESRC=	${.CURDIR}/../../contrib/tre/lib
 
 .PATH: ${TRESRC} ${.CURDIR}/../libc/tre-regex
 
-CMAPS+=	${.CURDIR}/regex/Symbol.map
+CMAPS+=	${.CURDIR}/tre-regex/Symbol.map
 
 SRCS+=	tre-ast.c \
 	tre-compile.c \

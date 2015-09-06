@@ -22,7 +22,6 @@ DF404.0 {
     calloc;
     div;
     environ;
-    exit;
     free;
     getenv;
     getopt;
