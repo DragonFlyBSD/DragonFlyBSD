@@ -54,12 +54,16 @@ SRCS+=	${SASM} ${SPSEUDO}
 CLEANFILES+=	${SASM} ${SPSEUDO}
 
 # Generate the syscalls source-files
+NOTE_GNU_STACK='.section .note.GNU-stack,"",%%progbits\n'
+
 ${SASM}:
 	printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' > ${.TARGET}
+	printf  ${NOTE_GNU_STACK} >> ${.TARGET}
 
 ${SPSEUDO}:
 	printf '#include "SYS.h"\nPSEUDO(${.PREFIX:S/_//})\n' \
 	    > ${.TARGET}
+	printf  ${NOTE_GNU_STACK} >> ${.TARGET}
 
 .if ${LIB} == "c"
 MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
