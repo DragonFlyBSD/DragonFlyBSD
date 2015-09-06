@@ -1727,9 +1727,7 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			/*
 			 * Only mirror-write comes here.
 			 */
-			zone = data_len >= HAMMER_BUFSIZE ?
-			       HAMMER_ZONE_LARGE_DATA_INDEX :
-			       HAMMER_ZONE_SMALL_DATA_INDEX;
+			zone = hammer_data_zone_index(data_len);
 			if (zone == HAMMER_ZONE_LARGE_DATA_INDEX) {
 				/* round up */
 				data_len = (data_len + HAMMER_BUFMASK) &

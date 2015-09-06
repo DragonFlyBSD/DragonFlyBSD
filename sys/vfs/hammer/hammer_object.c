@@ -967,8 +967,7 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 	 * align the reservation.
 	 */
 	record = hammer_alloc_mem_record(ip, 0);
-	zone = (bytes >= HAMMER_BUFSIZE) ? HAMMER_ZONE_LARGE_DATA_INDEX :
-					   HAMMER_ZONE_SMALL_DATA_INDEX;
+	zone = hammer_data_zone_index(bytes);
 	if (bytes == 0)
 		crc = 0;
 	else

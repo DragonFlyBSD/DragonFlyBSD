@@ -450,9 +450,7 @@ collect_btree_leaf(hammer_btree_elm_t elm)
 		break;
 	case HAMMER_RECTYPE_DATA:
 	case HAMMER_RECTYPE_DB:
-		zone = elm->leaf.data_len >= HAMMER_BUFSIZE ?
-		       HAMMER_ZONE_LARGE_DATA_INDEX :
-		       HAMMER_ZONE_SMALL_DATA_INDEX;
+		zone = hammer_data_zone_index(elm->leaf.data_len);
 		break;
 	default:
 		zone = HAMMER_ZONE_UNAVAIL_INDEX;

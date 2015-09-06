@@ -200,6 +200,15 @@ typedef u_int32_t hammer_crc_t;
 #define hammer_xlate_to_zone2(offset)			\
 	hammer_xlate_to_zoneX(HAMMER_ZONE_RAW_BUFFER_INDEX, (offset))
 
+#define hammer_data_zone(data_len)			\
+	(((data_len) >= HAMMER_BUFSIZE) ?		\
+	 HAMMER_ZONE_LARGE_DATA :			\
+	 HAMMER_ZONE_SMALL_DATA)
+#define hammer_data_zone_index(data_len)		\
+	(((data_len) >= HAMMER_BUFSIZE) ?		\
+	 HAMMER_ZONE_LARGE_DATA_INDEX :			\
+	 HAMMER_ZONE_SMALL_DATA_INDEX)
+
 /*
  * Big-Block backing store
  *
