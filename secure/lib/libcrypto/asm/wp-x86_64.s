@@ -856,3 +856,4 @@ whirlpool_block:
 .byte	228,39,65,139,167,125,149,216
 .byte	251,238,124,102,221,23,71,158
 .byte	202,45,191,7,173,90,131,51
+.section .note.GNU-stack,"",%progbits

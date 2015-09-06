@@ -1257,3 +1257,4 @@ rc4_md5_enc:
 .Labort:
 	.byte	0xf3,0xc3
 .size	rc4_md5_enc,.-rc4_md5_enc
+.section .note.GNU-stack,"",%progbits

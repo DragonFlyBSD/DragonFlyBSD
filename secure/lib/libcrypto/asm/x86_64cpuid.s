@@ -232,3 +232,4 @@ OPENSSL_ia32_rdrand:
 	cmoveq	%rcx,%rax
 	.byte	0xf3,0xc3
 .size	OPENSSL_ia32_rdrand,.-OPENSSL_ia32_rdrand
+.section .note.GNU-stack,"",%progbits
