@@ -34,8 +34,6 @@
  *
  */
 
-#include <sys/nlookup.h>
-
 #include "hammer.h"
 
 struct bigblock_stat {

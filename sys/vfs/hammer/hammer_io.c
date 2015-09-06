@@ -48,7 +48,6 @@
  * the fs_token will be held in all other cases.
  */
 
-#include <sys/nlookup.h>
 #include <sys/buf2.h>
 
 #include "hammer.h"
