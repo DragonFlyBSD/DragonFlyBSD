@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/mountctl.h>
 #include <sys/nlookup.h>
 
 #include "hammer.h"

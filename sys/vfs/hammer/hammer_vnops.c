@@ -32,7 +32,9 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/mountctl.h>
 #include <sys/namecache.h>
+#include <sys/buf2.h>
 #include <vfs/fifofs/fifo.h>
 
 #include "hammer.h"

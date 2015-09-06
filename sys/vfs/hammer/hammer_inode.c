@@ -32,6 +32,8 @@
  * SUCH DAMAGE.
  */
 
+#include <vm/vm_page2.h>
+
 #include "hammer.h"
 
 static int	hammer_unload_inode(struct hammer_inode *ip);

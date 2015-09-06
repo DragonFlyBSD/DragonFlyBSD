@@ -35,6 +35,8 @@
 /*
  * HAMMER blockmap
  */
+#include <vm/vm_page2.h>
+
 #include "hammer.h"
 
 static int hammer_res_rb_compare(hammer_reserve_t res1, hammer_reserve_t res2);

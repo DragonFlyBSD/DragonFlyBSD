@@ -49,13 +49,11 @@
 #include <sys/tree.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
-#include <sys/mountctl.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/dirent.h>
 #include <sys/stat.h>
-#include <sys/globaldata.h>
 #include <sys/fcntl.h>
 #include <sys/lockf.h>
 #include <sys/file.h>
@@ -67,9 +65,6 @@
 #include <sys/sysctl.h>
 #include <vm/swap_pager.h>
 #include <vm/vm_extern.h>
-
-#include <sys/buf2.h>
-#include <vm/vm_page2.h>
 
 #include "hammer_disk.h"
 #include "hammer_mount.h"

@@ -49,6 +49,7 @@
  */
 
 #include <sys/nlookup.h>
+#include <sys/buf2.h>
 
 #include "hammer.h"
 
