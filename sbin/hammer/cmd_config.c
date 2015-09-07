@@ -32,8 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <time.h>
-
 #include "hammer.h"
 
 static void config_get(const char *dirpath, struct hammer_ioc_config *config);

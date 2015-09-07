@@ -32,9 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <math.h>
-#include <fstab.h>
-
 #include "hammer.h"
 
 static void hammer_parsedevs(const char *blkdevs);

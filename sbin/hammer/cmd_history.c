@@ -34,8 +34,6 @@
  * $DragonFly: src/sbin/hammer/cmd_history.c,v 1.4 2008/06/24 17:40:21 dillon Exp $
  */
 
-#include <limits.h>
-
 #include "hammer.h"
 
 static void hammer_do_history(const char *path, off_t off, int len);

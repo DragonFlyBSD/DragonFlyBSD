@@ -36,8 +36,6 @@
 #define HAMMER_HAMMER_H_
 
 #include <sys/types.h>
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/mount.h>
@@ -51,9 +49,12 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <fstab.h>
 #include <assert.h>
 #include <err.h>
 #include <ctype.h>
+#include <limits.h>
+#include <time.h>
 #include <signal.h>
 #include <dirent.h>
 #include <uuid.h>
