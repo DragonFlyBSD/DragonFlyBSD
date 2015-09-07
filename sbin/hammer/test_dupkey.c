@@ -2,7 +2,8 @@
  * This is a really simple stupid standalone program which will find two
  * filenames with the same CRC, used to test the directory iterator.
  *
- * cc -I /usr/src/sys test_dupkey.c /usr/src/sys/libkern/crc32.c -o test_dupkey
+ * cc -I /usr/src/sys test_dupkey.c /usr/src/sys/libkern/crc32.c \
+ * /usr/src/sys/libkern/icrc32.c -o test_dupkey
  *
  * $DragonFly: src/sbin/hammer/test_dupkey.c,v 1.1 2008/06/26 04:07:57 dillon Exp $
  */
