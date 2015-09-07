@@ -236,8 +236,6 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		hammer_rel_volume(volume, 0);
 		goto end1;
 	}
-
-	hmp->volume_to_remove = -1;
 	hammer_rel_volume(volume, 0);
 
 	/*
@@ -256,6 +254,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	--hmp->nvolumes;
 	error = hammer_update_volumes_header(trans, &stat);
 	KKASSERT(error == 0);
+	hmp->volume_to_remove = -1;
 
 end1:
 	hammer_unlock(&hmp->blkmap_lock);
