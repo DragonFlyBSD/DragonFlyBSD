@@ -34,19 +34,7 @@
  * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.h,v 1.4 2008/01/03 06:48:48 dillon Exp $
  */
 
-#include <sys/time.h>
 #include <sys/sysctl.h>
 #include <sys/ioctl_compat.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <err.h>
 
 #include "hammer_util.h"

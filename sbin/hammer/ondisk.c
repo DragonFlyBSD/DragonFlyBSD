@@ -32,18 +32,8 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/stat.h>
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-#include <stddef.h>
-#include <err.h>
-#include <fcntl.h>
 
 #include "hammer_util.h"
 

@@ -7,9 +7,6 @@
  * $DragonFly: src/sbin/hammer/test_dupkey.c,v 1.1 2008/06/26 04:07:57 dillon Exp $
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include "hammer_util.h"
 
 static u_int32_t namekey(const char *name);

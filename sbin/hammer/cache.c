@@ -34,15 +34,6 @@
  * $DragonFly: src/sbin/hammer/cache.c,v 1.5 2008/05/16 18:39:03 dillon Exp $
  */
 
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-#include <err.h>
-#include <fcntl.h>
-
 #include "hammer_util.h"
 
 static int CacheUse;
