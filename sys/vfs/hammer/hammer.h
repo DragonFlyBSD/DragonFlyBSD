@@ -1187,7 +1187,6 @@ void	hammer_time_to_timespec(u_int64_t xtime, struct timespec *ts);
 u_int64_t hammer_timespec_to_time(struct timespec *ts);
 int	hammer_str_to_tid(const char *str, int *ispfsp,
 			hammer_tid_t *tidp, u_int32_t *localizationp);
-int	hammer_is_atatext(const char *name, int len);
 hammer_tid_t hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip,
 			int64_t namekey);
 void hammer_clear_objid(hammer_inode_t dip);
