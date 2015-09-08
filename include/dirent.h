@@ -72,7 +72,6 @@ typedef void *	DIR;
 
 __BEGIN_DECLS
 DIR	*opendir(const char *);
-DIR	*fdopendir(int);
 struct dirent *
 	 readdir(DIR *);
 void	 rewinddir(DIR *);
@@ -83,6 +82,7 @@ int	 readdir_r(DIR *, struct dirent *, struct dirent **);
 #if __POSIX_VISIBLE >= 200809
 int	 alphasort(const struct dirent **, const struct dirent **);
 int	 dirfd(DIR *);
+DIR	*fdopendir(int);
 int	 scandir(const char *, struct dirent ***,
 	    int (*)(const struct dirent *),
 	    int (*)(const struct dirent **, const struct dirent **));
