@@ -598,15 +598,9 @@ DFprivate_1.0 {
     __signbitf;
 
 	/* thread locale storage */
-    __libc_allocate_tls;
-    __libc_call_init;
-    __libc_free_tls;
-    __libc_tls_get_addr;
-    __libc_tls_get_addr_tcb;
     __tls_get_addr;
     __tls_get_addr_tcb;
     _init_tls;
-    _libc_init_tls;
     _rtld_allocate_tls;
     _rtld_call_init;
     _rtld_free_tls;
@@ -626,7 +620,6 @@ DFprivate_1.0 {
     __wait;
     __waitpid;
     _err;
-    _libc_allocate_tls;
     _readdir_unlocked;
     _reclaim_telldir;
     _rtld_addr_phdr;
