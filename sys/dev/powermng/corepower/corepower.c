@@ -60,11 +60,12 @@ struct corepower_sensor {
 struct corepower_softc {
 	device_t		sc_dev;
 
-	uint32_t		sc_watt_divisor;
-	uint32_t		sc_joule_divisor;
-	uint32_t		sc_second_divisor;
+	uint32_t		sc_watt_unit;
+	uint32_t		sc_joule_unit;
+	uint32_t		sc_second_unit;
 
 	int			sc_have_sens;
+	int			sc_is_atom;
 
 	struct corepower_sensor	sc_pkg_sens;
 	struct corepower_sensor	sc_dram_sens;
@@ -182,6 +183,7 @@ corepower_probe(device_t dev)
 		case 0x37:
 		case 0x4a:
 		case 0x4c:
+		case 0x4d:
 		case 0x5a:
 		case 0x5d:
 			break;
@@ -208,11 +210,12 @@ corepower_attach(device_t dev)
 
 	sc->sc_dev = dev;
 	sc->sc_have_sens = 0;
+	sc->sc_is_atom = 0;
 
 	cpu_family = CPUID_TO_FAMILY(cpu_id);
 	cpu_model = CPUID_TO_MODEL(cpu_id);
 
-	/* XXX Check CPU version */
+	/* Check CPU model */
 	if (cpu_family == 0x06) {
 		switch (cpu_model) {
 		/* Core CPUs */
@@ -243,9 +246,12 @@ corepower_attach(device_t dev)
 		case 0x37:
 		case 0x4a:
 		case 0x4c:
+		case 0x4d:
 		case 0x5a:
 		case 0x5d:
 			sc->sc_have_sens = 0x5;
+			/* use quirk for Valleyview Atom CPUs */
+			sc->sc_is_atom = 1;
 			break;
 		default:
 			return (ENXIO);
@@ -258,9 +264,9 @@ corepower_attach(device_t dev)
 	energy_units = __SHIFTOUT(val, MSR_RAPL_POWER_UNIT_ENERGY);
 	time_units = __SHIFTOUT(val, MSR_RAPL_POWER_UNIT_TIME);
 
-	sc->sc_watt_divisor = (1 << power_units);
-	sc->sc_joule_divisor = (1 << energy_units);
-	sc->sc_second_divisor = (1 << time_units);
+	sc->sc_watt_unit = (1 << power_units);
+	sc->sc_joule_unit = (1 << energy_units);
+	sc->sc_second_unit = (1 << time_units);
 
 	/*
 	 * Add hw.sensors.cpu_nodeN MIB.
@@ -313,8 +319,12 @@ corepower_energy_to_uwatts(struct corepower_softc *sc, uint32_t units,
 {
 	uint64_t val;
 
-	val = ((uint64_t)units) * 1000ULL * 1000ULL;
-	val /= sc->sc_joule_divisor;
+	if (sc->sc_is_atom) {
+		val = ((uint64_t)units) * sc->sc_joule_unit;
+	} else {
+		val = ((uint64_t)units) * 1000ULL * 1000ULL;
+		val /= sc->sc_joule_unit;
+	}
 
 	return val / secs;
 }
