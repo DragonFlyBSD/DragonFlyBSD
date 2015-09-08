@@ -109,6 +109,13 @@ dlvsym(void *handle __unused,const char *name __unused,
 	return NULL;
 }
 
+#pragma weak _rtld_thread_init
+void
+_rtld_thread_init(void * li)
+{
+	_rtld_error(sorry);
+}
+
 #pragma weak dlinfo
 int
 dlinfo(void *handle __unused, int request __unused, void *p __unused)
