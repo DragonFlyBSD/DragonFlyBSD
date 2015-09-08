@@ -601,6 +601,7 @@ DFprivate_1.0 {
     __tls_get_addr;
     __tls_get_addr_tcb;
     _init_tls;
+    _libc_allocate_tls;
     _rtld_allocate_tls;
     _rtld_call_init;
     _rtld_free_tls;
@@ -625,6 +626,7 @@ DFprivate_1.0 {
     _rtld_addr_phdr;
     _rtld_error;
     _rtld_get_stack_prot;
+    _rtld_thread_init;
     _seekdir;
     _setcontext;
     _sigwait;
