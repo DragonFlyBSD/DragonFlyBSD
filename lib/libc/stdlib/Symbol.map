@@ -21,7 +21,6 @@ DF404.0 {
     bsearch;
     calloc;
     div;
-    environ;
     free;
     getenv;
     getopt;

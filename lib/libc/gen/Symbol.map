@@ -1,3 +1,26 @@
+DF306.0 {
+	/*
+	 * These symbols are weakly bound to libc and must match the
+	 * versions defined in libexec/rtld-elf/Symbol.map
+	 */
+    __tls_get_addr;
+    __tls_get_addr_tcb;
+	/*
+	 * These are weakly bound to rtld.  Matching versions may not
+	 * be necessary but let's keep the rtld functions together.
+	 */
+    dl_iterate_phdr;
+    dladdr;
+    dlclose;
+    dlerror;
+    dlfunc;
+    dlinfo;
+    dlopen;
+    dlsym;
+    dlvsym;
+    fdlopen;
+};
+
 DF404.0 {
 	/* pthread stubs */
     pthread_atfork;
@@ -198,15 +221,6 @@ DF404.0 {
     devname_r;
     dirfd;
     dirname;
-    dl_iterate_phdr;
-    dladdr;
-    dlclose;
-    dlerror;
-    dlfunc;
-    dlinfo;
-    dlopen;
-    dlsym;
-    dlvsym;
     drand48;
     endfsent;
     endgrent;
@@ -230,7 +244,6 @@ DF404.0 {
     execvp;
     fdevname;
     fdevname_r;
-    fdlopen;
     fdopendir;
     fflagstostr;
     finite;
@@ -598,8 +611,6 @@ DFprivate_1.0 {
     __signbitf;
 
 	/* thread locale storage */
-    __tls_get_addr;
-    __tls_get_addr_tcb;
     _init_tls;
     _libc_allocate_tls;
     _rtld_allocate_tls;
@@ -613,7 +624,6 @@ DFprivate_1.0 {
     __isthreaded;
     __opendir2;
     __pause;
-    __progname;
     __pw_scan;
     __sleep;
     __tcdrain;
