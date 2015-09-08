@@ -136,7 +136,7 @@ size_t	 strspn(const char *, const char *) __pure;
 char	*strstr(const char *, const char *) __pure;
 #endif
 char	*strtok(char * __restrict, const char * __restrict);
-#if __POSIX_VISIBLE >= 199506 || __XSI_VISIBLE >= 500
+#if __POSIX_VISIBLE >= 199506
 char	*strtok_r(char *, const char *, char **);
 #endif
 size_t	 strxfrm(char * __restrict, const char * __restrict, size_t);
