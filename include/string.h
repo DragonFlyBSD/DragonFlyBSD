@@ -51,7 +51,7 @@ typedef	__size_t	size_t;
 #endif
 
 __BEGIN_DECLS
-#if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE >= 600
+#if __XSI_VISIBLE >= 600
 void	*memccpy(void * __restrict, const void * __restrict, int, size_t);
 #endif
 void	*memchr(const void *, int, size_t) __pure;
