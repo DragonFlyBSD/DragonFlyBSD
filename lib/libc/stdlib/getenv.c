@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2007-2008 Sean C. Farley <scf@FreeBSD.org>
+ * Copyright (c) 2007-2009 Sean C. Farley <scf@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/getenv.c,v 1.15 2008/08/03 22:47:23 scf Exp $
+ * $FreeBSD: head/lib/libc/stdlib/getenv.c 253413 2013-07-17 08:45:27Z avg $
  */
 
 #include "namespace.h"
@@ -52,7 +52,7 @@ static const char CorruptEnvValueMsg[] =
  *	intEnviron:	Internally-built environ.  Exposed via environ during
  *			(re)builds of the environment.
  */
-char **environ;
+extern char **environ;
 static char **origEnviron;
 static char **intEnviron = NULL;
 static int environSize = 0;
@@ -158,7 +158,7 @@ __findenv(const char *name, size_t nameLen, int *envNdx, bool onlyActive)
 
 	/*
 	 * Find environment variable from end of array (more likely to be
-	 * active).  A variable created by putenv is always active or it is not
+	 * active).  A variable created by putenv is always active, or it is not
 	 * tracked in the array.
 	 */
 	for (ndx = *envNdx; ndx >= 0; ndx--)
@@ -424,13 +424,14 @@ getenv(const char *name)
 	}
 
 	/*
-	 * An empty environment (environ or its first value) regardless if
-	 * environ has been copied before will return a NULL.
+	 * Variable search order:
+	 * 1. Check for an empty environ.  This allows an application to clear
+	 *    the environment.
+	 * 2. Search the external environ array.
+	 * 3. Search the internal environment.
 	 *
-	 * If the environment is not empty, find an environment variable via
-	 * environ if environ has not been copied via an *env() call or been
-	 * replaced by a running program, otherwise, use the rebuilt
-	 * environment.
+	 * Since malloc() depends upon getenv(), getenv() must never cause the
+	 * internal environment storage to be generated.
 	 */
 	if (environ == NULL || environ[0] == NULL)
 		return (NULL);
@@ -502,9 +503,8 @@ __setenv(const char *name, size_t nameLen, const char *value, int overwrite)
 		envVars[envNdx].valueSize = valueLen;
 
 		/* Save name of name/value pair. */
-		env = stpcpy(envVars[envNdx].name, name);
-		if ((envVars[envNdx].name)[nameLen] != '=')
-			env = stpcpy(env, "=");
+		env = stpncpy(envVars[envNdx].name, name, nameLen);
+		*env++ = '=';
 	}
 	else
 		env = envVars[envNdx].value;
@@ -659,6 +659,7 @@ unsetenv(const char *name)
 {
 	int envNdx;
 	size_t nameLen;
+	int newEnvActive;
 
 	/* Check for malformed name. */
 	if (name == NULL || (nameLen = __strleneq(name)) == 0) {
@@ -671,13 +672,18 @@ unsetenv(const char *name)
 		return (-1);
 
 	/* Deactivate specified variable. */
+	/* Remove all occurrences. */
 	envNdx = envVarsTotal - 1;
-	if (__findenv(name, nameLen, &envNdx, true) != NULL) {
+	newEnvActive = envActive;
+	while (__findenv(name, nameLen, &envNdx, true) != NULL) {
 		envVars[envNdx].active = false;
 		if (envVars[envNdx].putenv)
 			__remove_putenv(envNdx);
-		__rebuild_environ(envActive - 1);
+		envNdx--;
+		newEnvActive--;
 	}
+	if (newEnvActive != envActive)
+		__rebuild_environ(newEnvActive);
 
 	return (0);
 }
