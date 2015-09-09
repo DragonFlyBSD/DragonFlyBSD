@@ -181,8 +181,6 @@ bus/pci/x86_64/legacy.c			optional	pci
 bus/pci/x86_64/pci_bus.c			optional	pci
 bus/pci/x86_64/pci_cfgreg.c		optional	pci
 bus/pci/x86_64/mptable_pci.c		optional	pci
-# notyet (BIOS struct and functions)
-#bus/pci/x86_64/pci_pir.c			optional	pci
 
 platform/pc64/x86_64/pmap.c		standard
 platform/pc64/x86_64/pmap_inval.c		standard
