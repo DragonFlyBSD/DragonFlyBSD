@@ -514,6 +514,28 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	 */
 	if (lp) {
 		lwkt_gettoken(&lp->lwp_token);
+
+		/*
+		 * If the umbrella process is in the SCORE state then
+		 * make sure that the thread is flagged going into a
+		 * normal sleep to allow the core dump to proceed, otherwise
+		 * the coredump can end up waiting forever.  If the normal
+		 * sleep is woken up, the thread will enter a stopped state
+		 * upon return to userland.
+		 *
+		 * We do not want to interrupt or cause a thread exist at
+		 * this juncture because that will mess-up the state the
+		 * coredump is trying to save.
+		 */
+		if (p->p_stat == SCORE &&
+		    (lp->lwp_mpflags & LWP_MP_WSTOP) == 0) {
+			atomic_set_int(&lp->lwp_mpflags, LWP_MP_WSTOP);
+			++p->p_nstopped;
+		}
+
+		/*
+		 * PCATCH requested.
+		 */
 		if (catch) {
 			/*
 			 * Early termination if PCATCH was set and a
