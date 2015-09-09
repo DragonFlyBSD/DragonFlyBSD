@@ -54,7 +54,7 @@ __BEGIN_DECLS
 int	setjmp (jmp_buf) __returns_twice;
 void	longjmp (jmp_buf, int) __dead2;
 
-#if __POSIX_VISIBLE || __XSI_VISIBLE
+#if __POSIX_VISIBLE
 int	sigsetjmp (sigjmp_buf, int) __returns_twice;
 void	siglongjmp (sigjmp_buf, int) __dead2;
 #endif

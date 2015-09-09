@@ -58,11 +58,11 @@
 /*
  * System defined signals.
  */
-#if __POSIX_VISIBLE || __XSI_VISIBLE
+#if __POSIX_VISIBLE
 #define	SIGHUP		1	/* hangup */
 #endif
 #define	SIGINT		2	/* interrupt */
-#if __POSIX_VISIBLE || __XSI_VISIBLE
+#if __POSIX_VISIBLE
 #define	SIGQUIT		3	/* quit */
 #endif
 #define	SIGILL		4	/* illegal instr. (not reset when caught) */
@@ -75,7 +75,7 @@
 #define	SIGEMT		7	/* EMT instruction */
 #endif
 #define	SIGFPE		8	/* floating point exception */
-#if __POSIX_VISIBLE || __XSI_VISIBLE
+#if __POSIX_VISIBLE
 #define	SIGKILL		9	/* kill (cannot be caught or ignored) */
 #endif
 #if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
@@ -85,7 +85,7 @@
 #if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
 #define	SIGSYS		12	/* non-existent system call invoked */
 #endif
-#if __POSIX_VISIBLE || __XSI_VISIBLE
+#if __POSIX_VISIBLE
 #define	SIGPIPE		13	/* write on a pipe with no one to read it */
 #define	SIGALRM		14	/* alarm clock */
 #endif
@@ -93,7 +93,7 @@
 #if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
 #define	SIGURG		16	/* urgent condition on IO channel */
 #endif
-#if __POSIX_VISIBLE || __XSI_VISIBLE
+#if __POSIX_VISIBLE
 #define	SIGSTOP		17	/* sendable stop signal not from tty */
 #define	SIGTSTP		18	/* stop signal from tty */
 #define	SIGCONT		19	/* continue a stopped process */
@@ -114,7 +114,7 @@
 #define	SIGWINCH	28	/* window size changes */
 #define	SIGINFO		29	/* information request */
 #endif
-#if __POSIX_VISIBLE || __XSI_VISIBLE
+#if __POSIX_VISIBLE
 #define	SIGUSR1		30	/* user defined signal 1 */
 #define	SIGUSR2		31	/* user defined signal 2 */
 #endif
@@ -181,7 +181,7 @@
 #endif	/* __POSIX_VISIBLE >= 199309 || __XSI_VISIBLE */
 
 
-#if __POSIX_VISIBLE || __XSI_VISIBLE
+#if __POSIX_VISIBLE
 /** si_code */
 #define	SI_USER		0	/* Sent by kill(2)			*/
 #define	SI_QUEUE	-1	/* Sent by the sigqueue(2)		*/
@@ -276,7 +276,7 @@ typedef struct __siginfo {
 } siginfo_t;
 #endif /* __POSIX_VISIBLE >= 199309 || __XSI_VISIBLE */
 
-/* #if __POSIX_VISIBLE || __XSI_VISIBLE */
+/* #if __POSIX_VISIBLE */
 typedef struct __sigset {
 	unsigned int	__bits[_SIG_WORDS];
 } sigset_t;
@@ -288,7 +288,7 @@ typedef struct __sigset {
  */     
 #include <machine/signal.h>     /* sig_atomic_t; trap codes; sigcontext */
 
-#if __POSIX_VISIBLE || __XSI_VISIBLE
+#if __POSIX_VISIBLE
 struct __siginfo;
 
 /*
@@ -307,7 +307,7 @@ struct	sigaction {
 #define	sa_handler	__sigaction_u.__sa_handler
 
 #define SA_NOCLDSTOP	0x0008	/* do not generate SIGCHLD on child stop */
-#endif /* __POSIX_VISIBLE || __XSI_VISIBLE */
+#endif /* __POSIX_VISIBLE */
 
 #if __XSI_VISIBLE
 #define	sa_sigaction	__sigaction_u.__sa_sigaction
@@ -400,7 +400,7 @@ struct	sigstack {
 #define	BADSIG		SIG_ERR
 #endif
 
-#if __POSIX_VISIBLE || __XSI_VISIBLE
+#if __POSIX_VISIBLE
 /*
  * Flags for sigprocmask:
  */

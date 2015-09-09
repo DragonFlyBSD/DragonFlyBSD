@@ -74,7 +74,7 @@ struct group	*getgrnam(const char *);
 #if __BSD_VISIBLE
 const char	*group_from_gid(gid_t, int);
 #endif
-#if __BSD_VISIBLE || __XSI_VISIBLE
+#if __XSI_VISIBLE
 void		 setgrent(void);
 #endif
 #if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE

@@ -44,7 +44,7 @@
  * compile-time diagnostics for mismatches.  The structs are the same
  * internally to avoid some run-time errors for mismatches.
  */
-#if __BSD_VISIBLE || __POSIX_VISIBLE || __XSI_VISIBLE
+#if __POSIX_VISIBLE
 typedef	struct _sigjmp_buf { long _sjb[_JBLEN]; } sigjmp_buf[1];
 #endif
 
