@@ -34,15 +34,18 @@
 
 extern unsigned	int	__sleep(unsigned int);
 
+#include "namespace.h"
+#include <stdlib.h>
 #include <sys/fcntl.h>
 #include <stdio.h>
-#include <sys/sched.h>
-#include <unistd.h>
-#include <pthread.h>
 #include <string.h>
-#include "pthread_private.h"
+#include <sys/sched.h>
+#include <pthread.h>
+#include <unistd.h>
+#include "un-namespace.h"
 
-extern char *__progname;
+#include "libc_private.h"
+#include "pthread_private.h"
 
 void
 _spinunlock(spinlock_t *lck)
@@ -99,7 +102,7 @@ _spinlock_debug(spinlock_t *lck, char *fname, int lineno)
 		cnt++;
 		if (cnt > 100) {
 			char str[256];
-			snprintf(str, sizeof(str), "%s - Warning: Thread %p attempted to lock %p from %s (%d) was left locked from %s (%d)\n", __progname, curthread, lck, fname, lineno, lck->fname, lck->lineno);
+			snprintf(str, sizeof(str), "%s - Warning: Thread %p attempted to lock %p from %s (%d) was left locked from %s (%d)\n", _getprogname(), curthread, lck, fname, lineno, lck->fname, lck->lineno);
 			__sys_extpwrite(2, str, strlen(str), O_FBLOCKING, -1);
 			__sleep(1);
 			cnt = 0;
