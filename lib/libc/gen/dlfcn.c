@@ -33,7 +33,6 @@
 #include <string.h>
 
 extern char **environ;
-void	_rtld_error(const char *, ...);
 
 static char sorry[] = "Service unavailable";
 
@@ -142,15 +141,12 @@ build_phdr_info(void)
 		case AT_BASE:
 			phdr_info.dlpi_addr = (Elf_Addr) auxp->a_un.a_ptr;
 			break;
-
 		case AT_EXECPATH:
 			phdr_info.dlpi_name = (const char *) auxp->a_un.a_ptr;
 			break;
-
 		case AT_PHDR:
 			phdr_info.dlpi_phdr = (const Elf_Phdr *) auxp->a_un.a_ptr;
 			break;
-
 		case AT_PHNUM:
 			phdr_info.dlpi_phnum = (Elf_Half) auxp->a_un.a_val;
 			break;
@@ -161,7 +157,7 @@ build_phdr_info(void)
 	    if (phdr_info.dlpi_phdr[i].p_type == PT_TLS) {
 		phdr_info.dlpi_tls_modid = 1;
 		phdr_info.dlpi_tls_data =
-		  (void*) phdr_info.dlpi_phdr[i].p_vaddr;
+		  (void*)phdr_info.dlpi_phdr[i].p_vaddr;
 	    }
 
 	return (phdr_info);
@@ -186,8 +182,8 @@ dl_iterate_phdr(int (*callback)(struct dl_phdr_info *, size_t, void *),
 void *
 fdlopen(int fd __unused, int mode __unused)
 {
-        _rtld_error(sorry);
-        return NULL;
+	_rtld_error(sorry);
+	return NULL;
 }
 
 #pragma weak _rtld_addr_phdr
