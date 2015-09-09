@@ -249,9 +249,7 @@ MLINKS+=atomic.9 atomic_add.9 \
 	atomic.9 atomic_set.9 \
 	atomic.9 atomic_subtract.9 \
 	atomic.9 atomic_store.9
-MLINKS+=bios.9 bios32.9 \
-	bios.9 bios32_SDlookup.9 \
-	bios.9 BIOS_PADDRTOVADDR.9 \
+MLINKS+=bios.9 BIOS_PADDRTOVADDR.9 \
 	bios.9 bios_sigsearch.9 \
 	bios.9 BIOS_VADDRTOPADDR.9
 MLINKS+=buf.9 bp.9
