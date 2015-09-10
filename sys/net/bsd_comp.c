@@ -444,7 +444,7 @@ bsd_decomp_init(void *state, u_char *options, int opt_len,
  *
  * return new slen
  */
-int
+static int
 bsd_compress(void *state, struct mbuf **mret, struct mbuf *mp, 
     int slen, int maxolen)
 {
@@ -785,7 +785,7 @@ bsd_incomp(void *state, struct mbuf *dmsg)
  * bug, so we return DECOMP_FATALERROR for them in order to turn off
  * compression, even though they are detected by inspecting the input.
  */
-int
+static int
 bsd_decompress(void *state, struct mbuf *cmp, struct mbuf **dmpp)
 {
     struct bsd_db *db = (struct bsd_db *) state;

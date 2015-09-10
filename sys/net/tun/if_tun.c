@@ -266,7 +266,7 @@ tuninit(struct ifnet *ifp)
  *
  * MPSAFE
  */
-int
+static int
 tunifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifreq *ifr = (struct ifreq *)data;

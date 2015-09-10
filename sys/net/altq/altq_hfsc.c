@@ -398,7 +398,7 @@ hfsc_purge(struct hfsc_if *hif)
 		ALTQ_SQ_CNTR_RESET(&hif->hif_ifq->altq_subq[HFSC_SUBQ_INDEX]);
 }
 
-struct hfsc_class *
+static struct hfsc_class *
 hfsc_class_create(struct hfsc_if *hif, struct service_curve *rsc,
 		  struct service_curve *fsc, struct service_curve *usc,
 		  struct hfsc_class *parent, int qlimit, int flags, int qid)

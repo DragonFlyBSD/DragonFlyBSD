@@ -705,7 +705,7 @@ set_assert(int i)
 /*
  * Configure API capabilities
  */
-int
+static int
 set_api_config(uint32_t *apival)
 {
     int i;

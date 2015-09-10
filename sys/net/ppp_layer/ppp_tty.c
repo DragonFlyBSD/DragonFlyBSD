@@ -770,7 +770,7 @@ pppasyncctlp(struct ppp_softc *sc)
  * called later at splsoftnet.
  * Called at spltty or higher.
  */
-int
+static int
 pppstart(struct tty *tp)
 {
     struct ppp_softc *sc = (struct ppp_softc *) tp->t_sc;

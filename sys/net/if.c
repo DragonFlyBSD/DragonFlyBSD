@@ -211,7 +211,7 @@ TAILQ_HEAD(, ifg_group) ifg_head = TAILQ_HEAD_INITIALIZER(ifg_head);
  * parameters.
  */
 /* ARGSUSED*/
-void
+static void
 ifinit(void *dummy)
 {
 	struct ifnet *ifp;

@@ -698,7 +698,7 @@ do { \
 #undef IF_INIT
 }
 
-int
+static int
 ether_resolvemulti(
 	struct ifnet *ifp,
 	struct sockaddr **llsa,
