@@ -51,6 +51,7 @@ struct taskqueue {
 	STAILQ_ENTRY(taskqueue)	tq_link;
 	STAILQ_HEAD(, task)	tq_queue;
 	const char		*tq_name;
+	/* NOTE: tq must be locked before calling tq_enqueue */
 	taskqueue_enqueue_fn	tq_enqueue;
 	void			*tq_context;
 
@@ -74,7 +75,7 @@ _timeout_task_init(struct taskqueue *queue, struct timeout_task *timeout_task,
 {
 
 	TASK_INIT(&timeout_task->t, priority, func, context);
-	callout_init(&timeout_task->c);
+	callout_init(&timeout_task->c); /* XXX use callout_init_mp() */
 	timeout_task->q = queue;
 	timeout_task->f = 0;
 }
@@ -134,11 +135,15 @@ taskqueue_create(const char *name, int mflags,
 	return queue;
 }
 
+/* NOTE: tq must be locked */
 static void
 taskqueue_terminate(struct thread **pp, struct taskqueue *tq)
 {
 	while(tq->tq_tcount > 0) {
+		/* Unlock spinlock before wakeup() */
+		TQ_UNLOCK(tq);
 		wakeup(tq);
+		TQ_LOCK(tq);
 		TQ_SLEEP(tq, pp, "taskqueue_terminate");
 	}
 }
@@ -253,10 +258,13 @@ taskqueue_timeout_func(void *arg)
 
 	timeout_task = arg;
 	queue = timeout_task->q;
+
+	TQ_LOCK(queue);
 	KASSERT((timeout_task->f & DT_CALLOUT_ARMED) != 0, ("Stray timeout"));
 	timeout_task->f &= ~DT_CALLOUT_ARMED;
 	queue->tq_callouts--;
 	taskqueue_enqueue_locked(timeout_task->q, &timeout_task->t);
+	TQ_UNLOCK(queue);
 }
 
 int
@@ -497,6 +505,7 @@ taskqueue_thread_loop(void *arg)
 	lwkt_exit();
 }
 
+/* NOTE: tq must be locked */
 void
 taskqueue_thread_enqueue(void *context)
 {
@@ -505,7 +514,10 @@ taskqueue_thread_enqueue(void *context)
 	tqp = context;
 	tq = *tqp;
 
+	/* Unlock spinlock before wakeup_one() */
+	TQ_UNLOCK(tq);
 	wakeup_one(tq);
+	TQ_LOCK(tq);
 }
 
 TASKQUEUE_DEFINE(swi, taskqueue_swi_enqueue, 0,
