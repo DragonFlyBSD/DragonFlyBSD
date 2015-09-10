@@ -92,7 +92,6 @@ MAN=	aac.4 \
 	ecc.4 \
 	ehci.4 \
 	em.4 \
-	est.4 \
 	et.4 \
 	exca.4 \
 	faith.4 \

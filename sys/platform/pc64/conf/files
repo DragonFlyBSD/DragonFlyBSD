@@ -74,7 +74,6 @@ dev/crypto/rdrand/rdrand_harvest_x86_64.S	optional	rdrand
 dev/video/fb/fb.c			optional	vga
 dev/video/fb/splash.c			optional	splash
 dev/video/fb/vga.c			optional	vga
-dev/powermng/est/est.c			optional	cpu_enable_est
 dev/netif/ndis/if_ndis.c		optional	ndis
 dev/netif/ndis/if_ndis_pccard.c		optional	ndis pccard
 dev/netif/ndis/if_ndis_pci.c		optional	ndis cardbus
