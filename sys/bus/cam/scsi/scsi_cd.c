@@ -2787,7 +2787,7 @@ cdprevent(struct cam_periph *periph, int action)
 	}
 }
 
-int
+static int
 cdcheckmedia(struct cam_periph *periph)
 {
 	struct cd_softc *softc;

@@ -1781,7 +1781,7 @@ pci_ht_map_msi(device_t dev, uint64_t addr)
 /*
  * Support for MSI message signalled interrupts.
  */
-void
+static void
 pci_enable_msi(device_t dev, uint64_t address, uint16_t data)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(dev);
@@ -1808,7 +1808,7 @@ pci_enable_msi(device_t dev, uint64_t address, uint16_t data)
 	pci_ht_map_msi(dev, address);
 }
 
-void
+static void
 pci_disable_msi(device_t dev)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(dev);

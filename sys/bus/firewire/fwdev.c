@@ -407,7 +407,7 @@ isoloop:
 /*
  * ioctl support.
  */
-int
+static int
 fw_ioctl (struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;

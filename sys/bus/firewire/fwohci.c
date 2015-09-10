@@ -750,12 +750,12 @@ fwohci_init(struct fwohci_softc *sc, device_t dev)
 	return 0;
 }
 
-void
+static void
 fwohci_timeout(void *arg)
 {
 }
 
-u_int32_t
+static u_int32_t
 fwohci_cyctimer(struct firewire_comm *fc)
 {
 	struct fwohci_softc *sc = (struct fwohci_softc *)fc;
@@ -1018,7 +1018,7 @@ fwohci_start_ats(struct firewire_comm *fc)
 	return;
 }
 
-void
+static void
 fwohci_txd(struct fwohci_softc *sc, struct fwohci_dbch *dbch)
 {
 	int ch, err = 0;
@@ -2187,7 +2187,7 @@ fwohci_rbuf_update(struct fwohci_softc *sc, int dmach)
 	}
 }
 
-void
+static void
 dump_dma(struct fwohci_softc *sc, u_int32_t ch)
 {
 	u_int32_t off, cntl, stat, cmd, match;
@@ -2232,7 +2232,7 @@ dump_dma(struct fwohci_softc *sc, u_int32_t ch)
 	}
 }
 
-void
+static void
 dump_db(struct fwohci_softc *sc, u_int32_t ch)
 {
 	struct fwohci_dbch *dbch;
@@ -2319,7 +2319,7 @@ outdb:
 	return;
 }
 
-void
+static void
 print_db(struct fwohcidb_tr *db_tr, struct fwohcidb *db,
 		u_int32_t ch, u_int32_t max)
 {
@@ -2403,7 +2403,7 @@ print_db(struct fwohcidb_tr *db_tr, struct fwohcidb *db,
 	return;
 }
 
-void
+static void
 fwohci_ibr(struct firewire_comm *fc)
 {
 	struct fwohci_softc *sc;
@@ -2529,7 +2529,7 @@ fwohci_add_tx_buf(struct fwohci_dbch *dbch, struct fwohcidb_tr *db_tr,
 	return 0;
 }
 
-int
+static int
 fwohci_add_rx_buf(struct fwohci_dbch *dbch, struct fwohcidb_tr *db_tr,
 		int poffset, struct fwdma_alloc *dummy_dma)
 {
