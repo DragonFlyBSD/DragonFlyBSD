@@ -180,7 +180,7 @@ again:
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
-			panic("CRC FAILED: LAYER1");
+			hpanic("CRC FAILED: LAYER1");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -230,7 +230,7 @@ again:
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
-			panic("CRC FAILED: LAYER2");
+			hpanic("CRC FAILED: LAYER2");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -495,7 +495,7 @@ again:
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
-			panic("CRC FAILED: LAYER1");
+			hpanic("CRC FAILED: LAYER1");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -530,7 +530,7 @@ again:
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
-			panic("CRC FAILED: LAYER2");
+			hpanic("CRC FAILED: LAYER2");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -691,7 +691,7 @@ hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone, int bytes,
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
-			panic("CRC FAILED: LAYER1");
+			hpanic("CRC FAILED: LAYER1");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 	KKASSERT(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
@@ -711,7 +711,7 @@ hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone, int bytes,
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
-			panic("CRC FAILED: LAYER2");
+			hpanic("CRC FAILED: LAYER2");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -995,7 +995,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
-			panic("CRC FAILED: LAYER1");
+			hpanic("CRC FAILED: LAYER1");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -1010,7 +1010,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
-			panic("CRC FAILED: LAYER2");
+			hpanic("CRC FAILED: LAYER2");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -1129,7 +1129,7 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
-			panic("CRC FAILED: LAYER1");
+			hpanic("CRC FAILED: LAYER1");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -1144,7 +1144,7 @@ hammer_blockmap_dedup(hammer_transaction_t trans,
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
-			panic("CRC FAILED: LAYER2");
+			hpanic("CRC FAILED: LAYER2");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -1238,7 +1238,7 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
-			panic("CRC FAILED: LAYER1");
+			hpanic("CRC FAILED: LAYER1");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -1253,7 +1253,7 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
-			panic("CRC FAILED: LAYER2");
+			hpanic("CRC FAILED: LAYER2");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -1362,7 +1362,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
-			panic("CRC FAILED: LAYER1");
+			hpanic("CRC FAILED: LAYER1");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -1382,7 +1382,7 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
-			panic("CRC FAILED: LAYER2");
+			hpanic("CRC FAILED: LAYER2");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 	KKASSERT(layer2->zone == zone);
@@ -1454,7 +1454,7 @@ hammer_blockmap_lookup_verify(hammer_mount_t hmp, hammer_off_t zone_offset,
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
-			panic("CRC FAILED: LAYER1");
+			hpanic("CRC FAILED: LAYER1");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 
@@ -1480,7 +1480,7 @@ hammer_blockmap_lookup_verify(hammer_mount_t hmp, hammer_off_t zone_offset,
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);
 		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
-			panic("CRC FAILED: LAYER2");
+			hpanic("CRC FAILED: LAYER2");
 		hammer_unlock(&hmp->blkmap_lock);
 	}
 

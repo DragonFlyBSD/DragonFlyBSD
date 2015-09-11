@@ -652,7 +652,7 @@ hammer_cursor_down(hammer_cursor_t cursor)
 			("BTYPE MISMATCH %c %c NODE %p",
 			 elm->base.btype, node->ondisk->type, node));
 		if (node->ondisk->parent != cursor->parent->node_offset)
-			panic("node %p %016llx vs %016llx",
+			hpanic("node %p %016llx vs %016llx",
 				node,
 				(long long)node->ondisk->parent,
 				(long long)cursor->parent->node_offset);

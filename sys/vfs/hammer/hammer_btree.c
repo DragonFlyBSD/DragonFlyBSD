@@ -2089,7 +2089,7 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 			elm = &cursor->node->ondisk->elms[cursor->index].base;
 			if (elm->btype == HAMMER_BTREE_TYPE_RECORD)
 				break;
-			panic("Illegal leaf record type %02x", elm->btype);
+			hpanic("Illegal leaf record type %02x", elm->btype);
 		}
 		error = hammer_cursor_down(cursor);
 		if (error)
@@ -2513,7 +2513,7 @@ hammer_btree_get_parent(hammer_transaction_t trans, hammer_node_t node,
 	}
 	if (i == parent->ondisk->count) {
 		hammer_unlock(&parent->lock);
-		panic("Bad B-Tree link: parent %p node %p", parent, node);
+		hpanic("Bad B-Tree link: parent %p node %p", parent, node);
 	}
 	*parent_indexp = i;
 	KKASSERT(*errorp == 0);

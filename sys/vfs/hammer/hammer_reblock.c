@@ -425,7 +425,7 @@ skip:
 							reblock, cursor, elm);
 					break;
 				default:
-					panic("Illegal B-Tree node type");
+					hpanic("Illegal B-Tree node type");
 				}
 			}
 			if (error == 0) {
@@ -664,7 +664,7 @@ hammer_move_node(hammer_cursor_t cursor, hammer_btree_elm_t elm,
 			error = btree_set_parent_of_child(cursor->trans, nnode,
 					&nnode->ondisk->elms[i]);
 			if (error)
-				panic("reblock internal node: fixup problem");
+				hpanic("reblock internal node: fixup problem");
 		}
 	}
 }

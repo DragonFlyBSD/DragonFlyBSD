@@ -2026,7 +2026,7 @@ retry:
 			 * split existing records.
 			 */
 			if (off < ran_beg && leaf->base.key > ran_beg) {
-				panic("hammer left edge case %016llx %d",
+				hpanic("hammer left edge case %016llx %d",
 					(long long)leaf->base.key,
 					leaf->data_len);
 			}
@@ -2047,7 +2047,7 @@ retry:
 			if (leaf->base.key - 1 > ran_end) {
 				if (leaf->base.key - leaf->data_len > ran_end)
 					break;
-				panic("hammer right edge case");
+				hpanic("hammer right edge case");
 			}
 		} else {
 			off = leaf->base.key;
