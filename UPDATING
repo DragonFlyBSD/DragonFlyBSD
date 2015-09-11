@@ -12,6 +12,11 @@
 +         UPGRADING DRAGONFLY FROM 4.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+COMPILE_ET AND LIBCOM_ERR REMOVED
+---------------------------------
+compile_et(1) and com_err(3) have been removed. They should have been
+removed along with kerberos support, back in 2009.
+
 BINUTILS 2.25 REPLACES 2.22, PRIMARY
 ------------------------------------
 

@@ -2111,6 +2111,16 @@ TO_REMOVE+=/usr/share/mk/bsd.info.mk
 TO_REMOVE+=/usr/share/man/en.ISO8859-15
 TO_REMOVE+=/usr/share/zoneinfo/America/Montreal
 TO_REMOVE+=/usr/include/gnu/vfs/ext2fs/ext2mount.h
+TO_REMOVE+=/usr/bin/compile_et
+TO_REMOVE+=/usr/include/com_err.h
+TO_REMOVE+=/usr/include/com_right.h
+TO_REMOVE+=/usr/lib/libcom_err.a
+TO_REMOVE+=/usr/lib/libcom_err.so
+TO_REMOVE+=/usr/lib/libcom_err.so.3
+TO_REMOVE+=/usr/lib/profile/libcom_err.a
+TO_REMOVE+=/usr/share/man/man1/compile_et.1.gz
+TO_REMOVE+=/usr/share/man/man3/com_err.3.gz
+TO_REMOVE+=/usr/share/man/man7/com_err.7.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
