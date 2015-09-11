@@ -2214,9 +2214,12 @@ TO_REMOVE+=/usr/share/man/man9/bios32.9.gz
 TO_REMOVE+=/usr/share/man/man9/bios32_SDlookup.9.gz
 TO_REMOVE+=/boot/kernel/est.ko
 TO_REMOVE+=/usr/share/man/man4/est.4.gz
+TO_REMOVE+=/usr/bin/compile_et
 TO_REMOVE+=/usr/include/com_err.h
+TO_REMOVE+=/usr/include/com_right.h
 TO_REMOVE+=/usr/lib/libcom_err.a
 TO_REMOVE+=/usr/lib/profile/libcom_err.a
+TO_REMOVE+=/usr/share/man/man1/compile_et.1.gz
 TO_REMOVE+=/usr/share/man/man3/com_err.3.gz
 TO_REMOVE+=/usr/share/man/man7/com_err.7.gz
 
