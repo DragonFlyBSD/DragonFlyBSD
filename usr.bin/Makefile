@@ -43,7 +43,6 @@ SUBDIR=	alias \
 	colrm \
 	column \
 	comm \
-	compile_et \
 	compress \
 	cpio \
 	crunch \

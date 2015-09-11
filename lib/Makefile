@@ -5,7 +5,6 @@
 # built are visible:
 #
 # ${_libc_r} must be built before libpthread.
-# libcom_err must be built before libpam.
 # libcrypt must be built before libpam.
 # libmd must be built before libarchive, libopie, libradius, and libtacplus.
 # libncurses must be built before libdialog and libedit.
@@ -19,7 +18,6 @@
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
 SUBDIR_ORDERED=	${_libc_r} \
-	libcom_err \
 	libcrypt \
 	libmd \
 	libncurses \

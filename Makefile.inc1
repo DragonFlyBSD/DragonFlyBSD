@@ -864,7 +864,7 @@ BSTRAPDIRS2= \
 	usr.bin/mkdep usr.bin/mktemp usr.bin/lorder usr.bin/file2c \
 	usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \
 	usr.bin/gencat usr.bin/chflags usr.bin/expand usr.bin/paste \
-	usr.bin/uuencode usr.bin/compile_et usr.bin/hexdump \
+	usr.bin/uuencode usr.bin/hexdump \
 	usr.bin/cap_mkdb usr.bin/true usr.bin/false \
 	usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
 	usr.bin/tail usr.bin/unifdef usr.bin/tic \
@@ -1021,7 +1021,7 @@ _prebuild_libs+=	lib/libpcap
 
 _generic_libs=	gnu/lib
 
-_prebuild_libs+= lib/libcom_err lib/libcrypt lib/libmd \
+_prebuild_libs+= lib/libcrypt lib/libmd \
 		lib/libncurses/libncurses lib/libopie
 
 lib/libopie__L lib/libradius__L lib/libtacplus__L: lib/libmd__L

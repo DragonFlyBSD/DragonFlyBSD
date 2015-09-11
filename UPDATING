@@ -12,6 +12,17 @@
 +         UPGRADING DRAGONFLY FROM 4.2 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+EST DRIVER REMOVED, COMPILE_ET AND LIBCOM_ERR TOO
+-------------------------------------------------
+
+The est(4) driver has been removed. All CPUs it supported (except one)
+were 32 bits only. Those who are still using the Core 2 Duo T7500 should
+report back if there are any issues with this CPU and our regular ACPI
+P-state support.
+
+Also, compile_et(1) and com_err(3) have been removed as well. They
+should have been removed along with kerberos support, back in 2009.
+
 SEVERAL LOCALES RENAMED
 -----------------------
 
