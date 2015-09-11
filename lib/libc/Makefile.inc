@@ -28,6 +28,7 @@ WARNS=2
 .include "${.CURDIR}/../libc/nls/Makefile.inc"
 .include "${.CURDIR}/../libc/tre-regex/Makefile.inc"
 .include "${.CURDIR}/../libc/resolv/Makefile.inc"
+.include "${.CURDIR}/../libc/secure/Makefile.inc"
 .include "${.CURDIR}/../libc/stdio/Makefile.inc"
 .include "${.CURDIR}/../libc/stdlib/Makefile.inc"
 .include "${.CURDIR}/../libc/stdtime/Makefile.inc"

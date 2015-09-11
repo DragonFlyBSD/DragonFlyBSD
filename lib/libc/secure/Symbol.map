@@ -1,0 +1,6 @@
+
+DF404.0 {
+	__chk_fail;
+	__stack_chk_fail;
+	__stack_chk_guard;
+};

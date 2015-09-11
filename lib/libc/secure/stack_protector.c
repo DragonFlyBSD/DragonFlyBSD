@@ -39,17 +39,11 @@
 
 extern int __sys_sigaction(int, const struct sigaction *, struct sigaction *);
 
+long __stack_chk_guard[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 static void __guard_setup(void) __attribute__ ((constructor));
 static void __fail(const char *);
 void __stack_chk_fail(void);
 void __chk_fail(void);
-void __stack_chk_fail_local(void);
-
-long __stack_chk_guard[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-
-/* For compatibility with propolice used by gcc34. */
-void __stack_smash_handler(char func[], int damaged);
-extern __typeof(__stack_chk_guard) __guard __attribute__ ((alias ("__stack_chk_guard")));
 
 static void
 __guard_setup(void)
@@ -95,19 +89,8 @@ __fail(const char *msg)
     sa.sa_flags = 0;
     sa.sa_handler = SIG_DFL;
     __sys_sigaction(SIGABRT, &sa, NULL);
-
     kill(getpid(), SIGABRT);
-
     _exit(127);
-}
-
-void
-__stack_smash_handler(char func[], int damaged  __unused)
-{
-    static char buf[128];
-
-    snprintf(buf, sizeof(buf), "stack overflow in function %s", func);
-    __fail(buf);
 }
 
 void
@@ -122,8 +105,6 @@ __chk_fail(void)
     __fail("buffer overflow detected; terminated");
 }
 
-void
-__stack_chk_fail_local(void)
-{
-    __stack_chk_fail();
-}
+#ifndef PIC
+__weak_reference(__stack_chk_fail, __stack_chk_fail_local);
+#endif
