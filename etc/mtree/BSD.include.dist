@@ -216,8 +216,6 @@
         ..
     ..
     emulation
-        posix4
-        ..
         linux
         ..
     ..
