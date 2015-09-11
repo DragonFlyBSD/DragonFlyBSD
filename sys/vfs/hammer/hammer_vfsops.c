@@ -43,7 +43,6 @@
 int hammer_supported_version = HAMMER_VOL_VERSION_DEFAULT;
 int hammer_debug_io;
 int hammer_debug_general;
-int hammer_debug_debug = 1;		/* medium-error panics */
 int hammer_debug_inode;
 int hammer_debug_locks;
 int hammer_debug_btree;
@@ -127,8 +126,6 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_general, CTLFLAG_RW,
 	   &hammer_debug_general, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_io, CTLFLAG_RW,
 	   &hammer_debug_io, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_debug, CTLFLAG_RW,
-	   &hammer_debug_debug, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_inode, CTLFLAG_RW,
 	   &hammer_debug_inode, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_locks, CTLFLAG_RW,
@@ -428,8 +425,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	if (info.hflags & HMNT_MASTERID) {
 		if (hmp && hmp->master_id != info.master_id) {
-			kprintf("HAMMER: cannot change master id "
-				"with mount update\n");
+			hkprintf("cannot change master id with mount update\n");
 			return(EINVAL);
 		}
 		master_id = info.master_id;
@@ -525,7 +521,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		lwkt_gettoken(&hmp->fs_token);
 		error = 0;
 		if (hmp->ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
-			kprintf("HAMMER: read-only -> read-write\n");
+			hkprintf("read-only -> read-write\n");
 			hmp->ronly = 0;
 			RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
 				hammer_adjust_volume_mode, NULL);
@@ -542,7 +538,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 				hammer_reload_inode, NULL);
 			/* kernel clears MNT_RDONLY */
 		} else if (hmp->ronly == 0 && (mp->mnt_flag & MNT_RDONLY)) {
-			kprintf("HAMMER: read-write -> read-only\n");
+			hkprintf("read-write -> read-only\n");
 			hmp->ronly = 1;	/* messy */
 			RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
 				hammer_reload_inode, NULL);
@@ -728,8 +724,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	hmp->version = rootvol->ondisk->vol_version;
 	if (hmp->version < HAMMER_VOL_VERSION_MIN ||
 	    hmp->version > HAMMER_VOL_VERSION_MAX) {
-		kprintf("HAMMER: mount unsupported fs version %d\n",
-			hmp->version);
+		hkprintf("mount unsupported fs version %d\n", hmp->version);
 		error = ERANGE;
 		goto done;
 	}
@@ -742,7 +737,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	hmp->undo_rec_limit = hammer_undo_max(hmp) / 8192 + 100;
 	if (hammer_debug_general & 0x0001)
-		kprintf("HAMMER: undo_rec_limit %d\n", hmp->undo_rec_limit);
+		hkprintf("undo_rec_limit %d\n", hmp->undo_rec_limit);
 
 	/*
 	 * NOTE: Recover stage1 not only handles meta-data recovery, it
@@ -903,7 +898,7 @@ hammer_free_hmp(struct mount *mp)
 		TAILQ_REMOVE(&hmp->flush_group_list, flg, flush_entry);
 		KKASSERT(RB_EMPTY(&flg->flush_tree));
 		if (flg->refs) {
-			kprintf("HAMMER: Warning, flush_group %p was "
+			hkprintf("Warning, flush_group %p was "
 				"not empty on umount!\n", flg);
 		}
 		kfree(flg, hmp->m_misc);
@@ -953,9 +948,8 @@ hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
 {
 	hmp->flags |= HAMMER_MOUNT_CRITICAL_ERROR;
 
-	krateprintf(&hmp->krate,
-		    "HAMMER(%s): Critical error inode=%jd error=%d %s\n",
-		    hmp->mp->mnt_stat.f_mntfromname,
+	hmkrateprintf(&hmp->krate, hmp,
+		    "Critical error inode=%jd error=%d %s\n",
 		    (intmax_t)(ip ? ip->obj_id : -1),
 		    error, msg);
 
@@ -964,8 +958,7 @@ hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
 		hmp->mp->mnt_flag |= MNT_RDONLY;
 		RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
 			hammer_adjust_volume_mode, NULL);
-		kprintf("HAMMER(%s): Forcing read-only mode\n",
-			hmp->mp->mnt_stat.f_mntfromname);
+		hmkprintf(hmp, "Forcing read-only mode\n");
 	}
 	hmp->error = error;
 	if (hammer_debug_critical)

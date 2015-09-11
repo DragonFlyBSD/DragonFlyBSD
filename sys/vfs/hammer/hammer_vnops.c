@@ -1259,8 +1259,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 				      asof, localization,
 				      flags, &error);
 		if (error == ENOENT) {
-			kprintf("HAMMER: WARNING: Missing "
-				"inode for dirent \"%s\"\n"
+			hkprintf("WARNING: Missing inode for dirent \"%s\"\n"
 				"\tobj_id = %016llx, asof=%016llx, lo=%08x\n",
 				ncp->nc_name,
 				(long long)obj_id, (long long)asof,
@@ -3451,8 +3450,8 @@ retry:
 				      0, &error);
 		hammer_lock_sh(&cursor.ip->lock);
 		if (error == ENOENT) {
-			kprintf("HAMMER: WARNING: Removing "
-				"dirent w/missing inode \"%s\"\n"
+			hkprintf("WARNING: Removing dirent w/missing inode "
+				"\"%s\"\n"
 				"\tobj_id = %016llx\n",
 				ncp->nc_name,
 				(long long)cursor.data->entry.obj_id);
@@ -3494,7 +3493,7 @@ retry:
 			error = hammer_ip_check_directory_empty(trans, ip);
 			hammer_lock_cursor(&cursor);
 			if (cursor.flags & HAMMER_CURSOR_RETEST) {
-				kprintf("HAMMER: Warning: avoided deadlock "
+				hkprintf("Warning: avoided deadlock "
 					"on rmdir '%s'\n",
 					ncp->nc_name);
 				error = EDEADLK;

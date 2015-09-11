@@ -1182,18 +1182,6 @@ hammer_crc_set_leaf(void *data, hammer_btree_leaf_elm_t leaf)
 	}
 }
 
-void
-hkprintf(const char *ctl, ...)
-{
-	__va_list va;
-
-	if (hammer_debug_debug) {
-		__va_start(va, ctl);
-		kvprintf(ctl, va);
-		__va_end(va);
-	}
-}
-
 /*
  * Return the block size at the specified file offset.
  */

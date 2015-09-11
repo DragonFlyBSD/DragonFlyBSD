@@ -96,7 +96,7 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		 * little memory will not be able to do it.
 		 */
 		if (error == 0 && nbuf < HAMMER_REBALANCE_MIN_BUFS) {
-			kprintf("HAMMER: System has insufficient buffers "
+			hkprintf("System has insufficient buffers "
 				"to rebalance the tree.  nbuf < %d\n",
 				HAMMER_REBALANCE_MIN_BUFS);
 			error = ENOSPC;
@@ -884,12 +884,12 @@ hammer_ioc_get_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
 			 */
 			if (cursor.data->snap.tid !=
 			    (hammer_tid_t)cursor.leaf->base.key) {
-				kprintf("HAMMER: lo=%08x snapshot key "
+				hkprintf("lo=%08x snapshot key "
 					"0x%016jx data mismatch 0x%016jx\n",
 					cursor.key_beg.localization,
 					(uintmax_t)cursor.data->snap.tid,
 					cursor.leaf->base.key);
-				kprintf("HAMMER: Probably left over from the "
+				hkprintf("Probably left over from the "
 					"original v3 conversion, hammer "
 					"cleanup should get it eventually\n");
 				snap->snaps[snap->count].tid =

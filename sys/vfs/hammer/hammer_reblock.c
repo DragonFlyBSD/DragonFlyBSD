@@ -347,17 +347,14 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 			ondisk = cursor->node->ondisk;
 			elm = &ondisk->elms[cursor->index];
 			if (cursor->flags & HAMMER_CURSOR_RETEST) {
-				kprintf("HAMMER: debug: retest on "
-					"reblocker uncache\n");
+				hkprintf("debug: retest on reblocker uncache\n");
 				error = EDEADLK;
 			} else if (ondisk->type != HAMMER_BTREE_TYPE_LEAF ||
 				   cursor->index >= ondisk->count) {
-				kprintf("HAMMER: debug: shifted on "
-					"reblocker uncache\n");
+				hkprintf("debug: shifted on reblocker uncache\n");
 				error = EDEADLK;
 			} else if (bcmp(&elm->leaf, &leaf, sizeof(leaf))) {
-				kprintf("HAMMER: debug: changed on "
-					"reblocker uncache\n");
+				hkprintf("debug: changed on reblocker uncache\n");
 				error = EDEADLK;
 			}
 			if (error == 0)

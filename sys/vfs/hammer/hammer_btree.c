@@ -694,7 +694,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	 * Certain types of corruption can result in a NULL node pointer.
 	 */
 	if (cursor->node == NULL) {
-		kprintf("HAMMER: NULL cursor->node, filesystem might "
+		hkprintf("NULL cursor->node, filesystem might "
 			"have gotten corrupted\n");
 		return (EINVAL);
 	}

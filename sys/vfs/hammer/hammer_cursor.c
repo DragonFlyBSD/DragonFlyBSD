@@ -1059,7 +1059,7 @@ again2:
 		KKASSERT(cursor->node == oparent);
 		if (cursor->index != pindex)
 			continue;
-		kprintf("HAMMER debug: shifted cursor pointing at parent\n"
+		hkprintf("debug: shifted cursor pointing at parent\n"
 			"parent %016jx:%d onode %016jx:%d nnode %016jx:%d\n",
 			(intmax_t)oparent->node_offset, pindex,
 			(intmax_t)onode->node_offset, oindex,

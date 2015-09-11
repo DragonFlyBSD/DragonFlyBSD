@@ -1885,8 +1885,8 @@ hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
 	 */
 	if (depth == 20 && TAILQ_FIRST(&ip->target_list)) {
 		if (hammer_debug_general & 0x10000)
-			krateprintf(&hammer_gen_krate,
-			    "HAMMER Warning: depth limit reached on "
+			hkrateprintf(&hammer_gen_krate,
+			    "Warning: depth limit reached on "
 			    "setup recursion, inode %p %016llx\n",
 			    ip, (long long)ip->obj_id);
 		return(-2);
@@ -2497,7 +2497,7 @@ hammer_wait_inode(hammer_inode_t ip)
 			KKASSERT(ip->flush_group);
 			if (ip->flush_group->closed == 0) {
 				if (hammer_debug_inode) {
-					kprintf("HAMMER: debug: forcing "
+					hkprintf("debug: forcing "
 						"async flush ip %016jx\n",
 						(intmax_t)ip->obj_id);
 				}

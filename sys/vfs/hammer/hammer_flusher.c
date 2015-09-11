@@ -571,7 +571,7 @@ hammer_flusher_flush_inode(hammer_inode_t ip, void *data)
 	while (hmp->flusher.finalize_want)
 		tsleep(&hmp->flusher.finalize_want, 0, "hmrsxx", 0);
 	if (hammer_flusher_undo_exhausted(trans, 1)) {
-		kprintf("HAMMER: Warning: UNDO area too small!\n");
+		hkprintf("Warning: UNDO area too small!\n");
 		hammer_flusher_finalize(trans, 1);
 	} else if (hammer_flusher_meta_limit(trans->hmp)) {
 		hammer_flusher_finalize(trans, 0);
@@ -871,9 +871,9 @@ failed:
 	hammer_sync_unlock(trans);
 
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) {
-		kprintf("HAMMER(%s): Critical write error during flush, "
-			"refusing to sync UNDO FIFO\n",
-			root_volume->ondisk->vol_name);
+		hvkprintf(root_volume,
+			"Critical write error during flush, "
+			"refusing to sync UNDO FIFO\n");
 	}
 
 done:
@@ -979,7 +979,7 @@ hammer_flush_dirty(hammer_mount_t hmp, int max_count)
 		++count;
 		if (count >= 5) {
 			if (count == 5)
-				kprintf("HAMMER: flushing.");
+				hkprintf("flushing.");
 			else
 				kprintf(".");
 			tsleep(&dummy, 0, "hmrufl", hz);

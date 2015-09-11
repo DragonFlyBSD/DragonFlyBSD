@@ -681,9 +681,8 @@ found_aliased:
 				   hammer_xlate_to_zone2(buf_offset));
 		if (buffer) {
 			if (hammer_debug_general & 0x0001) {
-				krateprintf(&hmp->kdiag,
-					    "HAMMER: recovered "
-					    "aliased %016jx\n",
+				hkrateprintf(&hmp->kdiag,
+					    "recovered aliased %016jx\n",
 					    (intmax_t)buf_offset);
 			}
 			goto found_aliased;
@@ -866,8 +865,7 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 		if (buffer) {
 			error = hammer_ref_buffer(buffer);
 			if (hammer_debug_general & 0x20000) {
-				kprintf("HAMMER: delbufr %016jx "
-					"rerr=%d 1ref=%d\n",
+				hkprintf("delbufr %016jx rerr=%d 1ref=%d\n",
 					(intmax_t)buffer->zoneX_offset,
 					error,
 					hammer_oneref(&buffer->io.lock));

@@ -1524,7 +1524,7 @@ _hammer_ip_reseek(hammer_cursor_t cursor)
 	/*
 	 * Do the re-seek.
 	 */
-	kprintf("HAMMER: Debug: re-seeked during scan @ino=%016llx\n",
+	hkprintf("Debug: re-seeked during scan @ino=%016llx\n",
 		(long long)cursor->ip->obj_id);
 	save = cursor->key_beg;
 	cursor->key_beg = cursor->iprec->leaf.base;
@@ -1544,14 +1544,14 @@ _hammer_ip_reseek(hammer_cursor_t cursor)
 		r = hammer_btree_cmp(&elm->base, &cursor->iprec->leaf.base);
 		if (cursor->flags & HAMMER_CURSOR_ASOF) {
 			if (r >= -1 && r <= 1) {
-				kprintf("HAMMER: Debug: iterated after "
+				hkprintf("Debug: iterated after "
 					"re-seek (asof r=%d)\n", r);
 				cursor->flags |= HAMMER_CURSOR_ATEDISK;
 				again = 1;
 			}
 		} else {
 			if (r == 0) {
-				kprintf("HAMMER: Debug: iterated after "
+				hkprintf("Debug: iterated after "
 					"re-seek\n");
 				cursor->flags |= HAMMER_CURSOR_ATEDISK;
 				again = 1;
@@ -1676,7 +1676,8 @@ again:
 	 */
 	while (cursor->rec_generation != cursor->ip->rec_generation &&
 	       error == 0) {
-		kprintf("HAMMER: Debug: generation changed during scan @ino=%016llx\n", (long long)cursor->ip->obj_id);
+		hkprintf("Debug: generation changed during scan @ino=%016llx\n",
+			(long long)cursor->ip->obj_id);
 		cursor->rec_generation = cursor->ip->rec_generation;
 		if (cursor->flags & HAMMER_CURSOR_MEMEOF)
 			break;
