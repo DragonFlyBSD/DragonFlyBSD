@@ -131,6 +131,7 @@ MODULE_PARM_DESC(enable_ppgtt,
 	"(-1=auto [default], 0=disabled, 1=aliasing, 2=full)");
 
 module_param_named(enable_psr, i915.enable_psr, int, 0600);
+TUNABLE_INT("drm.i915.enable_psr", &i915.enable_psr);
 MODULE_PARM_DESC(enable_psr, "Enable PSR (default: false)");
 
 module_param_named(preliminary_hw_support, i915.preliminary_hw_support, int, 0600);

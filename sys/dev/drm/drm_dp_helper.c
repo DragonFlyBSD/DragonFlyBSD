@@ -178,6 +178,7 @@ static int drm_dp_dpcd_access(struct drm_dp_aux *aux, u8 request,
 	for (retry = 0; retry < 7; retry++) {
 
 		mutex_lock(&aux->hw_mutex);
+		KKASSERT(aux->transfer != NULL);
 		err = aux->transfer(aux, &msg);
 		mutex_unlock(&aux->hw_mutex);
 		if (err < 0) {

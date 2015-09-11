@@ -548,7 +548,7 @@ struct drm_dp_aux_msg {
  */
 struct drm_dp_aux {
 	const char *name;
-	struct device ddc;
+	device_t ddc;
 	struct device *dev;
 	struct lock hw_mutex;
 	ssize_t (*transfer)(struct drm_dp_aux *aux,

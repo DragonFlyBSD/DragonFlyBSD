@@ -44,6 +44,15 @@ section in
 .Xr syscons 4
 for more information about how to make the console work with
 .Nm .
+.Sh LOADER TUNABLES
+Tunables can be set at the
+.Xr loader 8
+prompt before booting the kernel or stored in
+.Xr loader.conf 5 .
+.Bl -tag -width "xxxxxx"
+.It Va drm.i915.enable_psr
+Enable PSR (panel self refresh).
+1 = enable, 0 = disable (default)
 .Sh SYSCTL VARIABLES
 If display backlight level can be controlled by the GPU (which is often
 the case in notebooks), the sysctl
