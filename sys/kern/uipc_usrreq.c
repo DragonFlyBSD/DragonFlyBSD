@@ -1510,15 +1510,11 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	int error;
 
 	KKASSERT(p);
-	lwkt_gettoken(&unp_token);
 
-	fdescp = p->p_fd;
 	if ((cm->cmsg_type != SCM_RIGHTS && cm->cmsg_type != SCM_CREDS) ||
 	    cm->cmsg_level != SOL_SOCKET ||
-	    CMSG_ALIGN(cm->cmsg_len) != control->m_len) {
-		error = EINVAL;
-		goto done;
-	}
+	    CMSG_ALIGN(cm->cmsg_len) != control->m_len)
+		return EINVAL;
 
 	/*
 	 * Fill in credential information.
@@ -1533,20 +1529,41 @@ unp_internalize(struct mbuf *control, struct thread *td)
 							CMGROUP_MAX);
 		for (i = 0; i < cmcred->cmcred_ngroups; i++)
 			cmcred->cmcred_groups[i] = p->p_ucred->cr_groups[i];
-		error = 0;
-		goto done;
+		return 0;
 	}
 
 	/*
 	 * cmsghdr may not be aligned, do not allow calculation(s) to
 	 * go negative.
 	 */
-	if (cm->cmsg_len < CMSG_LEN(0)) {
-		error = EINVAL;
-		goto done;
-	}
+	if (cm->cmsg_len < CMSG_LEN(0))
+		return EINVAL;
 
 	oldfds = (cm->cmsg_len - CMSG_LEN(0)) / sizeof (int);
+
+	/*
+	 * Now replace the integer FDs with pointers to
+	 * the associated global file table entry..
+	 * Allocate a bigger buffer as necessary. But if an cluster is not
+	 * enough, return E2BIG.
+	 */
+	newlen = CMSG_LEN(oldfds * sizeof(struct file *));
+	if (newlen > MCLBYTES)
+		return E2BIG;
+	if (newlen - control->m_len > M_TRAILINGSPACE(control)) {
+		if (control->m_flags & M_EXT)
+			return E2BIG;
+		MCLGET(control, M_WAITOK);
+		if (!(control->m_flags & M_EXT))
+			return ENOBUFS;
+
+		/* copy the data to the cluster */
+		memcpy(mtod(control, char *), cm, cm->cmsg_len);
+		cm = mtod(control, struct cmsghdr *);
+	}
+
+	fdescp = p->p_fd;
+	spin_lock_shared(&fdescp->fd_spin);
 
 	/*
 	 * check that all the FDs passed in refer to legal OPEN files
@@ -1564,32 +1581,6 @@ unp_internalize(struct mbuf *control, struct thread *td)
 			error = EOPNOTSUPP;
 			goto done;
 		}
-	}
-	/*
-	 * Now replace the integer FDs with pointers to
-	 * the associated global file table entry..
-	 * Allocate a bigger buffer as necessary. But if an cluster is not
-	 * enough, return E2BIG.
-	 */
-	newlen = CMSG_LEN(oldfds * sizeof(struct file *));
-	if (newlen > MCLBYTES) {
-		error = E2BIG;
-		goto done;
-	}
-	if (newlen - control->m_len > M_TRAILINGSPACE(control)) {
-		if (control->m_flags & M_EXT) {
-			error = E2BIG;
-			goto done;
-		}
-		MCLGET(control, M_WAITOK);
-		if (!(control->m_flags & M_EXT)) {
-			error = ENOBUFS;
-			goto done;
-		}
-
-		/* copy the data to the cluster */
-		memcpy(mtod(control, char *), cm, cm->cmsg_len);
-		cm = mtod(control, struct cmsghdr *);
 	}
 
 	/*
@@ -1634,7 +1625,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	}
 	error = 0;
 done:
-	lwkt_reltoken(&unp_token);
+	spin_unlock_shared(&fdescp->fd_spin);
 	return error;
 }
 
