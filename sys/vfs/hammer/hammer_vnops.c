@@ -1725,7 +1725,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 		KKASSERT(cursor.leaf->data_len > HAMMER_ENTRY_NAME_OFF);
 
 		if (base->obj_id != ip->obj_id)
-			panic("readdir: bad record at %p", cursor.node);
+			hpanic("bad record at %p", cursor.node);
 
 		/*
 		 * Convert pseudo-filesystems into softlinks

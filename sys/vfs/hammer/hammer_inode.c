@@ -934,8 +934,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		hammer_free_inode(ip);
 		ip = NULL;
 	} else if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
-		panic("hammer_create_inode: duplicate obj_id %llx",
-		      (long long)ip->obj_id);
+		hpanic("duplicate obj_id %llx", (long long)ip->obj_id);
 		/* not reached */
 		hammer_free_inode(ip);
 	}
@@ -2780,12 +2779,11 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 			error = 0;
 			goto done;
 		case HAMMER_MEM_RECORD_ADD:
-			panic("hammer_sync_record_callback: illegal add "
-			      "during inode deletion record %p", record);
+			hpanic("illegal add during inode deletion record %p",
+				record);
 			break; /* NOT REACHED */
 		case HAMMER_MEM_RECORD_INODE:
-			panic("hammer_sync_record_callback: attempt to "
-			      "sync inode record %p?", record);
+			hpanic("attempt to sync inode record %p?", record);
 			break; /* NOT REACHED */
 		case HAMMER_MEM_RECORD_DEL:
 			/*

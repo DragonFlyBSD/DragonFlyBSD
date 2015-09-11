@@ -221,11 +221,11 @@ hammer_lock_upgrade(struct hammer_lock *lock, int shcount)
 			}
 		} else if (lv & HAMMER_LOCKF_EXCLUSIVE) {
 			if (lock->lowner != curthread)
-				panic("hammer_lock_upgrade: illegal state");
+				hpanic("illegal state");
 			error = 0;
 			break;
 		} else if ((lv & ~HAMMER_LOCKF_WANTED) == 0) {
-			panic("hammer_lock_upgrade: lock is not held");
+			hpanic("lock is not held");
 			/* NOT REACHED */
 			error = EDEADLK;
 			break;
@@ -296,7 +296,7 @@ hammer_unlock(struct hammer_lock *lock)
 				break;
 			}
 		} else {
-			panic("hammer_unlock: lock %p is not held", lock);
+			hpanic("lock %p is not held", lock);
 		}
 	}
 }
@@ -314,7 +314,7 @@ hammer_lock_status(struct hammer_lock *lock)
 		return(1);
 	else if (lv)
 		return(-1);
-	panic("hammer_lock_status: lock must be held: %p", lock);
+	hpanic("lock must be held: %p", lock);
 }
 
 /*
@@ -500,8 +500,7 @@ hammer_ref_interlock_true(struct hammer_lock *lock)
 		lv = lock->refs;
 
 		if (lv) {
-			panic("hammer_ref_interlock_true: bad lock %p %08x",
-			      lock, lock->refs);
+			hpanic("bad lock %p %08x", lock, lock->refs);
 		}
 		nlv = 1 | HAMMER_REFS_LOCKED | HAMMER_REFS_CHECK;
 		if (atomic_cmpset_int(&lock->refs, lv, nlv)) {
@@ -1029,7 +1028,7 @@ hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
 	default:
 		key = 0;			/* compiler warning */
 		*max_iterationsp = 1;		/* sanity */
-		panic("hammer_directory_namekey: bad algorithm %p", dip);
+		hpanic("bad algorithm %p", dip);
 		break;
 	}
 	return(key);
@@ -1214,7 +1213,7 @@ hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2)
 			return(file_offset2);
 		return(HAMMER_XDEMARC);
 	}
-	panic("hammer_blockdemarc: illegal range %lld %lld",
+	hpanic("illegal range %lld %lld",
 	      (long long)file_offset1, (long long)file_offset2);
 }
 

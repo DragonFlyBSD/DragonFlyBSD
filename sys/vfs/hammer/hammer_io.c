@@ -146,7 +146,7 @@ hammer_io_disassociate(hammer_io_structure_t iou)
 		iou->buffer.ondisk = NULL;
 		break;
 	case HAMMER_STRUCTURE_DUMMY:
-		panic("hammer_io_disassociate: bad io type");
+		hpanic("bad io type");
 		break;
 	}
 }
@@ -1029,11 +1029,11 @@ hammer_io_set_modlist(struct hammer_io *io)
 		io->mod_root = &hmp->data_root;
 		break;
 	case HAMMER_STRUCTURE_DUMMY:
-		panic("hammer_io_set_modlist: bad io type");
+		hpanic("bad io type");
 		break; /* NOT REACHED */
 	}
 	if (RB_INSERT(hammer_mod_rb_tree, io->mod_root, io)) {
-		panic("hammer_io_set_modlist: duplicate entry");
+		hpanic("duplicate entry");
 		/* NOT REACHED */
 	}
 	lwkt_reltoken(&hmp->io_token);
@@ -1213,7 +1213,7 @@ hammer_io_deallocate(struct buf *bp)
 			iou->io.mod_root = &hmp->lose_root;
 			if (RB_INSERT(hammer_mod_rb_tree, iou->io.mod_root,
 				      &iou->io)) {
-				panic("hammer_io_deallocate: duplicate entry");
+				hpanic("duplicate entry");
 			}
 		}
 		hammer_put_interlock(&iou->io.lock, 1);
@@ -1294,7 +1294,7 @@ hammer_io_checkwrite(struct buf *bp)
 	if (io->type == HAMMER_STRUCTURE_VOLUME ||
 	    io->type == HAMMER_STRUCTURE_META_BUFFER) {
 		if (!panicstr)
-			panic("hammer_io_checkwrite: illegal buffer");
+			hpanic("illegal buffer");
 		if ((bp->b_flags & B_LOCKED) == 0) {
 			bp->b_flags |= B_LOCKED;
 			atomic_add_int(&hammer_count_io_locked, 1);

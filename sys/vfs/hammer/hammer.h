@@ -1708,6 +1708,9 @@ hammer_dir_localization(hammer_inode_t dip)
 	krateprintf(rate, "HAMMER(%s) "format, hmp->mp->mnt_stat.f_mntfromname,## args)
 #define hdkrateprintf(rate, format, args...)		\
 	krateprintf(rate, "%s: "format, __func__,## args)
+
+#define hpanic(format, args...)				\
+	panic("%s: "format, __func__,## args)
 #endif  /* _KERNEL */
 
 #endif /* !VFS_HAMMER_HAMMER_H_ */

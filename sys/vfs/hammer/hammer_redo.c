@@ -88,7 +88,7 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 
 	/* undo had better not roll over (loose test) */
 	if (hammer_undo_space(trans) < len + HAMMER_BUFSIZE*3)
-		panic("HAMMER: insufficient undo FIFO space!");
+		hpanic("insufficient undo FIFO space!");
 
 	/*
 	 * Loop until the undo for the entire range has been laid down.
@@ -180,8 +180,7 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 				ip->redo_fifo_start = next_offset;
 				if (RB_INSERT(hammer_redo_rb_tree,
 					      &hmp->rb_redo_root, ip)) {
-					panic("hammer_generate_redo: "
-					      "cannot insert inode %p on "
+					hpanic("cannot insert inode %p on "
 					      "redo FIFO", ip);
 				}
 				ip->flags |= HAMMER_INODE_RDIRTY;
@@ -368,9 +367,7 @@ hammer_redo_fifo_end_flush(hammer_inode_t ip)
 	if (ip->redo_fifo_next) {
 		ip->redo_fifo_start = ip->redo_fifo_next;
 		if (RB_INSERT(hammer_redo_rb_tree, &hmp->rb_redo_root, ip)) {
-			panic("hammer_generate_redo: cannot reinsert "
-			      "inode %p on redo FIFO",
-			      ip);
+			hpanic("cannot reinsert inode %p on redo FIFO", ip);
 		}
 		ip->flags |= HAMMER_INODE_RDIRTY;
 	}

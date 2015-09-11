@@ -1599,7 +1599,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		elm = &new_node->ondisk->elms[i];
 		error = btree_set_parent_of_child(cursor->trans, new_node, elm);
 		if (error) {
-			panic("btree_split_internal: btree-fixup problem");
+			hpanic("btree-fixup problem");
 		}
 	}
 	hammer_modify_node_done(new_node);
@@ -2023,7 +2023,7 @@ hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid)
 			error = hammer_btree_correct_lhb(cursor, tid);
 			break;
 		default:
-			panic("hammer_btree_correct_rhb(): Bad node type");
+			hpanic("Bad node type");
 			error = EINVAL;
 			break;
 		}
@@ -2128,7 +2128,7 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 			elm->create_tid = tid;
 			hammer_modify_node_done(cursor->node);
 		} else {
-			panic("hammer_btree_correct_lhb(): Bad element type");
+			hpanic("Bad element type");
 		}
 	}
 
@@ -2955,7 +2955,7 @@ btree_max_elements(u_int8_t type)
 
 	n = hammer_node_max_elements(type);
 	if (n == -1)
-		panic("btree_max_elements: bad type %d", type);
+		hpanic("bad type %d", type);
 	return(n);
 }
 

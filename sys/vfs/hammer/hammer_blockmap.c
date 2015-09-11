@@ -1475,8 +1475,7 @@ hammer_blockmap_lookup_verify(hammer_mount_t hmp, hammer_off_t zone_offset,
 		KKASSERT(resv && resv->zone == zone);
 
 	} else if (layer2->zone != zone) {
-		panic("hammer_blockmap_lookup_verify: bad zone %d/%d",
-			layer2->zone, zone);
+		hpanic("bad zone %d/%d", layer2->zone, zone);
 	}
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
 		hammer_lock_ex(&hmp->blkmap_lock);

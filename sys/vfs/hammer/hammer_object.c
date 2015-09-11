@@ -242,7 +242,7 @@ hammer_rec_trunc_cmp(hammer_record_t rec, void *data)
 			return(-1);
 		break;
 	default:
-		panic("hammer_rec_trunc_cmp: unexpected record type");
+		hpanic("unexpected record type");
 	}
 
 	/*
@@ -1828,7 +1828,10 @@ again:
 				}
 				/* fall through to memory entry */
 			} else {
-				panic("hammer_ip_next: duplicate mem/b-tree entry %p %d %08x", cursor->iprec, cursor->iprec->type, cursor->iprec->flags);
+				hpanic("duplicate mem/b-tree entry %p %d %08x",
+					cursor->iprec,
+					cursor->iprec->type,
+					cursor->iprec->flags);
 				cursor->flags |= HAMMER_CURSOR_ATEMEM;
 				goto again;
 			}
@@ -1850,7 +1853,9 @@ again:
 		 */
 		if (cursor->iprec->type == HAMMER_MEM_RECORD_DEL &&
 		    (cursor->flags & HAMMER_CURSOR_DELETE_VISIBILITY) == 0) {
-			panic("hammer_ip_next: del-on-disk with no b-tree entry iprec %p flags %08x", cursor->iprec, cursor->iprec->flags);
+			hpanic("del-on-disk with no b-tree entry iprec %p flags %08x",
+				cursor->iprec,
+				cursor->iprec->flags);
 		}
 		break;
 	case HAMMER_CURSOR_ATEMEM:
@@ -2351,8 +2356,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 			hammer_crc_set_leaf(ndata, leaf);
 			break;
 		default:
-			panic("HAMMER: hammer_create_at_cursor: bad mode %d",
-				mode);
+			hpanic("bad mode %d", mode);
 			break; /* NOT REACHED */
 		}
 		hammer_modify_buffer_done(data_buffer);

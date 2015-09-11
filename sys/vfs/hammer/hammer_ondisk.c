@@ -1733,8 +1733,7 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			}
 			break;
 		default:
-			panic("hammer_alloc_data: rec_type %04x unknown",
-			      rec_type);
+			hpanic("rec_type %04x unknown", rec_type);
 			zone = 0;	/* NOT REACHED */
 			break;
 		}
