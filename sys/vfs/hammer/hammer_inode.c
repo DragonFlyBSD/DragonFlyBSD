@@ -2724,14 +2724,12 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	if (record->flush_state != HAMMER_FST_FLUSH)
 		return(0);
 
-#if 1
 	if (record->flush_group != record->ip->flush_group) {
 		kprintf("sync_record %p ip %p bad flush group %p %p\n", record, record->ip, record->flush_group ,record->ip->flush_group);
 		if (hammer_debug_critical)
 			Debugger("blah2");
 		return(0);
 	}
-#endif
 	KKASSERT(record->flush_group == record->ip->flush_group);
 
 	/*
