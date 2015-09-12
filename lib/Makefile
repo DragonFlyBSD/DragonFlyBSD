@@ -90,6 +90,10 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libz \
 	pam_module
 
+.if make(install)
+SUBDIR:=	libc ${SUBDIR:Nlibc}
+.endif
+
 .if defined(WANT_HAMMER2)
 _libdmsg=	libdmsg
 .endif
