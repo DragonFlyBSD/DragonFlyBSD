@@ -767,7 +767,8 @@ struct hammer_inode_data {
 /*
  * Capability & implementation flags.
  *
- * DIR_LOCAL_INO - Use inode B-Tree localization for directory entries.
+ * HAMMER_INODE_CAP_DIR_LOCAL_INO - Use inode B-Tree localization
+ * for directory entries.  Also see HAMMER_DIR_INODE_LOCALIZATION().
  */
 #define HAMMER_INODE_CAP_DIRHASH_MASK	0x03	/* directory: hash algorithm */
 #define HAMMER_INODE_CAP_DIRHASH_ALG0	0x00
@@ -911,4 +912,10 @@ typedef union hammer_data_ondisk *hammer_data_ondisk_t;
  * Ondisk layout of B-Tree related structures
  */
 #include "hammer_btree.h"
+
+#define HAMMER_DIR_INODE_LOCALIZATION(ino_data)				\
+	(((ino_data)->cap_flags & HAMMER_INODE_CAP_DIR_LOCAL_INO) ?	\
+	 HAMMER_LOCALIZE_INODE :					\
+	 HAMMER_LOCALIZE_MISC)
+
 #endif /* !VFS_HAMMER_DISK_H_ */

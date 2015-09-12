@@ -1690,10 +1690,7 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 static __inline u_int32_t
 hammer_dir_localization(hammer_inode_t dip)
 {
-	if (dip->ino_data.cap_flags & HAMMER_INODE_CAP_DIR_LOCAL_INO)
-		return(HAMMER_LOCALIZE_INODE);
-	else
-		return(HAMMER_LOCALIZE_MISC);
+	return(HAMMER_DIR_INODE_LOCALIZATION(&dip->ino_data));
 }
 #endif  /* _KERNEL */
 
